@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: checks (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos-arm64
+          - os: windows-latest
+            platform: windows-amd64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # 与 mise.toml 固定版本一致（Node 24.14.0 / pnpm 10.33.2）。
+      # --ignore-scripts：检查型 CI 不需要 Electron 下载与原生编译（见 WP-02 错误基线）。
+      - name: Install dependencies (frozen lockfile, no scripts)
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Workspace TypeScript version (must be 6.x, not global)
+        run: pnpm exec tsc --version
+
+      # 以下三项为 WP-02 双树错误基线中全绿的门禁（两树均 rc=0）。
+      - name: Root typecheck (11 projects)
+        run: pnpm typecheck
+
+      - name: Root lint
+        run: pnpm lint
+
+      # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
+      # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
+      - name: Agent workspace typecheck (turbo)
+        working-directory: apps/zcode-cli
+        run: npx --yes turbo@2.9.14 run typecheck
+
+      # stage1 私有化清理的结构断言（基线 23/23）。
+      - name: Stage1 cleanup structural tests
+        run: node --test tests/private-cleanup/cleanup.test.cjs
+        env:
+          TYPESCRIPT_MODULE_PATH: ${{ github.workspace }}/node_modules/typescript
+
+      # 已知上游既有红灯（不设卡点、不静默：内层 oxlint 84 项 max-lines 类错误、
+      # desktop 全工程 tsc 211/204 对称错误）按计划在后续工作包处置，暂不入 CI。
