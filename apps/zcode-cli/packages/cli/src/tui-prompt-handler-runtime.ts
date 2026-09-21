@@ -1,10 +1,10 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 // tui-prompt-handler.ts 顶到 oxlint max-lines 上限（400 行），把 createApp 里
 // 「读 dotenv → 定位要恢复的会话 → 装 bootstrap 模块 → 起 Provider Registry
 // 常驻运行时 → 读默认模型选择」这段进程级准备拆到本文件；
 // 公开面仍从 tui-prompt-handler.ts 导出。
 import { loadBootstrapModule } from "./bootstrap-loader.js";
 import { loadCliDotenv } from "./env.js";
-import { createCliProviderRefreshReporter } from "./provider-runtime-env.js";
 import { resolveResumeSession } from "./resume.js";
 import type { CliResumeRequest, RunDependencies } from "./cli-types.js";
 
@@ -16,12 +16,10 @@ type ProviderRegistryRuntime = Awaited<
 // 只在终态 close 时对称 shutdown。之前是 createTuiSubmitPrompt 里的三个 let 闭包变量。
 interface TuiProcessRuntimeState {
   providerRegistryRuntimePromise: Promise<ProviderRegistryRuntime> | undefined;
-  shutdownTelemetry: (() => Promise<void>) | undefined;
 }
 
 export const createTuiProcessRuntimeState = (): TuiProcessRuntimeState => ({
   providerRegistryRuntimePromise: undefined,
-  shutdownTelemetry: undefined,
 });
 
 // 返回值类型交给推断：原地 createApp 里这几个都是推断出来的局部变量，手写接口反而会把
@@ -49,18 +47,7 @@ export async function prepareTuiAppRuntime(
   const bootstrapModule = deps.createZCodeApp ? undefined : await loadBootstrapModule();
   const createAppFactory = deps.createZCodeApp ?? bootstrapModule?.createZCodeApp;
   if (!createAppFactory) throw new Error("ZCode app factory is unavailable.");
-  const prepareTelemetry =
-    deps.prepareZCodeTelemetryEnv ?? bootstrapModule?.prepareZCodeTelemetryEnv;
-  if (prepareTelemetry) {
-    state.shutdownTelemetry =
-      deps.shutdownZCodeTelemetry ?? bootstrapModule?.shutdownZCodeTelemetry;
-  }
-  const appEnv = prepareTelemetry
-    ? await prepareTelemetry(env, {
-        cliVersion: version,
-        productVersion: env.ZCODE_APP_VERSION,
-      })
-    : env;
+  const appEnv = env;
   const startProviderRegistryRuntime =
     deps.startProcessProviderRegistryRuntime ??
     bootstrapModule?.startProcessProviderRegistryRuntime;
@@ -73,7 +60,6 @@ export async function prepareTuiAppRuntime(
       ? {}
       : {
           standalone: {
-            ...createCliProviderRefreshReporter(),
             ...(deps.userConfigPath ? { legacyCliUserConfigFilePath: deps.userConfigPath } : {}),
           },
         },

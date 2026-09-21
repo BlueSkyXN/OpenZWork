@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { join } from "node:path";
 import { createNodeContextSourceAdapter } from "@zcode/adapters/context";
 import { createNodeExecutionAdapter } from "@zcode/adapters/exec";
@@ -12,31 +13,12 @@ import {
   type ChildClientPortsContext,
   type PermissionService,
 } from "@zcode/core";
-import {
-  type AgentExecutionTelemetryPort,
-  type ContextSourcePort,
-  type FileSystemPort,
-  type HttpClientPort,
-  type ImageProcessorPort,
-  type JsonSchema,
-  type PdfDocumentPort,
-  type Logger,
-  type McpPort,
-  type ModelRequestAdmission,
-  type SessionId,
-  type SessionStorePort,
-  type ToolArtifactStorePort,
-  type TraceContext,
-  type WorkflowAgentCallInput,
-  type WorkflowEscalatePort,
-  type WorkflowSubmitPort,
-} from "@zcode/contracts";
+import { type ContextSourcePort, type FileSystemPort, type HttpClientPort, type ImageProcessorPort, type JsonSchema, type PdfDocumentPort, type Logger, type McpPort, type ModelRequestAdmission, type SessionId, type SessionStorePort, type ToolArtifactStorePort, type TraceContext, type WorkflowAgentCallInput, type WorkflowEscalatePort, type WorkflowSubmitPort } from "@zcode/contracts";
 import { collectDisabledPaths } from "../skill-command-overrides.js";
 import { parseProviderQualifiedModelSelection } from "./provider-registry-selection.js";
 import type { ZCodeAppOptions } from "./types.js";
 
 export interface ScriptWorkflowAgentRuntimeDeps {
-  agentTelemetry: AgentExecutionTelemetryPort;
   appOptions: ZCodeAppOptions;
   appVersion: string;
   artifactStore?: ToolArtifactStorePort;
@@ -159,10 +141,6 @@ function createRuntimeDeps(
   clientPortsContext: ChildClientPortsContext,
 ): ConstructorParameters<typeof AgentRuntime>[2] {
   return {
-    agentTelemetry: deps.agentTelemetry,
-    agentTelemetryCausation: deps.agentTelemetry.captureCausation(),
-    // Script workflow child 具有独立生命周期；用 Link 保留发起关系。
-    agentTelemetryCausationMode: "linked_root",
     appVersion: deps.appVersion,
     artifactStore: deps.artifactStore,
     contextSourcePort:

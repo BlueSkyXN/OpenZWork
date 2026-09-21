@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { createConfig } from "@zcode/adapters/config";
 import { createNodeModelSelectionFacade } from "@zcode/provider-node";
 import { createNodeLoggerFactory } from "@zcode/adapters/logging";
@@ -47,7 +48,6 @@ import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
 import { startProtocolResourceSampler } from "./zcode-protocol/resource-sampler.js";
 import { acquireProtocolStartupResource } from "./zcode-protocol/startup-resource.js";
 import type { ZCodeProcessResourceSampler } from "./process-resource-sampler.js";
-import { prepareZCodeTelemetryEnv, shutdownZCodeTelemetry } from "./telemetry-bootstrap.js";
 
 function applyProtocolPresentationSurface(
   options: Omit<ZCodeAppOptions, "providerRegistry">,
@@ -167,19 +167,6 @@ export async function runZCodeProtocolAgent(
       module: "bootstrap.zcode_protocol",
       providerCount: providerRegistryRuntime.snapshot.registry.providers.length,
     });
-    const runtimeSurface = resolveProtocolRuntimeSurface(runtimeEnv);
-    const telemetryEnv = await acquireProtocolStartupResource({
-      signal: options.lifecycle?.signal,
-      logger,
-      disposeLate: () => shutdownZCodeTelemetry(),
-      create: () =>
-        prepareZCodeTelemetryEnv(runtimeEnv, {
-          cliVersion: options.version,
-          productVersion: options.env?.ZCODE_APP_VERSION,
-          runtimeSurface,
-        }),
-    });
-    const telemetryDeviceMid = telemetryEnv.ZCODE_TELEMETRY_DEVICE_MID;
     mcpTelemetryTracker =
       configResult.config.features.mcp === false
         ? undefined
@@ -263,9 +250,8 @@ export async function runZCodeProtocolAgent(
             };
           },
           env: {
-            ...telemetryEnv,
+            ...runtimeEnv,
             ...appOptions.env,
-            ...(telemetryDeviceMid ? { ZCODE_TELEMETRY_DEVICE_MID: telemetryDeviceMid } : {}),
           },
           ...(nodeReplBrowserBroker ? { nodeReplBrowserBroker } : {}),
           ...(mcpConnectionPool
@@ -277,7 +263,6 @@ export async function runZCodeProtocolAgent(
                   }),
               }
             : {}),
-          sourceTitle: "electron",
           onToolExecResource: (params) =>
             connection.send({ method: zcodeProtocolNotifications.toolExecResource, params }),
         }),

@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import {
   ProviderRegistryService,
   MutableAccountProviderConfigSource,
@@ -55,10 +56,6 @@ export class NodeProviderRegistryRuntime {
 
   get personalRepository(): NodeProviderConfigRuntime["personalRepository"] {
     return this.#configRuntime.personalRepository;
-  }
-
-  onDidCheckZCodeBuiltin(listener: () => Promise<void>): () => void {
-    return this.#configRuntime.onDidCheckZCodeBuiltin(listener);
   }
 
   dispose(): void {

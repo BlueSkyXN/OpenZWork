@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { beginLocalTurnPreparation, type LocalTtftDetail } from "@zcode/contracts";
 import { runtimeInputMetadata } from "../../agent/runtime-input-presentation.js";
 import {
@@ -23,22 +24,7 @@ import type {
   SessionGoal,
   TurnState,
 } from "../deps.js";
-import {
-  parseCompactCommand,
-  parseRewindCommand,
-  createTurnAbortScope,
-  throwIfTurnAborted,
-  createTurnFailureError,
-  isTurnCancellationError,
-  appendTurnOutcomeEvent,
-  buildDateChangeReminderBody,
-  buildRuntimeUserEntriesFromTurn,
-  buildUserContentFromTurn,
-  logResolvedTurnAttachments,
-  resolveTurnAttachments,
-  summarizeTurnAttachmentsForEvent,
-  runtimeMetadataForSyntheticUserMessageSource,
-} from "../helpers/index.js";
+import { parseCompactCommand, parseRewindCommand, createTurnAbortScope, throwIfTurnAborted, createTurnFailureError, appendTurnOutcomeEvent, buildDateChangeReminderBody, buildRuntimeUserEntriesFromTurn, buildUserContentFromTurn, logResolvedTurnAttachments, resolveTurnAttachments, summarizeTurnAttachmentsForEvent, runtimeMetadataForSyntheticUserMessageSource } from "../helpers/index.js";
 import type { ActiveTurnSteeringState, ExecuteTurnOptions, TurnResult } from "../types.js";
 import type { ActiveTurnStartReservation } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
@@ -174,11 +160,6 @@ export async function executeTurnCommand(
       status: "completed",
     });
   };
-  const turnTelemetry = this.agentTelemetry.turn({
-    inputSource: options?.inputSource,
-    traceContext: turnTraceContext,
-    turnNumber: this.turnNumber,
-  });
 
   const execute = () =>
     runWithContextAsync(turnTraceContext, async () => {
@@ -796,7 +777,6 @@ export async function executeTurnCommand(
       }
     }).then(
       (result) => {
-        turnTelemetry.finishCompleted("assistant_message");
         return result;
       },
       (error: unknown) => {
@@ -811,16 +791,11 @@ export async function executeTurnCommand(
             status: "failed",
           });
         }
-        if (isTurnCancellationError(error, turnAbortSignal)) {
-          turnTelemetry.finishCancelled("abort_signal");
-        } else {
-          turnTelemetry.finishFailed("unhandled", "unknown", error);
-        }
         throw error;
       },
     );
 
-  return turnTelemetry.run(execute).finally(async () => {
+  return (execute)().finally(async () => {
     if (targetRunHeartbeat) {
       clearInterval(targetRunHeartbeat);
     }

@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import {
   SessionEventType,
   createChildTraceContext,
@@ -11,7 +12,6 @@ import type {
   SessionEvent,
   TraceContext,
 } from "../deps.js";
-import type { AgentTelemetryCausation } from "@zcode/contracts";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { createRefreshRuntimeHeadersBeforeModelAttempt } from "./model-runtime-headers.js";
 import { recordModelUsageFact } from "./usage-observability.js";
@@ -53,41 +53,6 @@ export async function generateTitleCandidate(
   this: AgentRuntimeInternal,
   input: string,
   options: {
-    causation?: AgentTelemetryCausation;
-    messageID?: MessageId;
-    querySource: string;
-    traceContext: TraceContext;
-  },
-): Promise<{ modelSelection: ModelSelection; title: string; traceContext: TraceContext } | null> {
-  const titleTelemetry = this.agentTelemetry.detached({
-    causation: options.causation,
-    executionKind: "background",
-    operation:
-      options.querySource === GOAL_SUMMARY_TITLE_QUERY_SOURCE
-        ? "goal_title_generation"
-        : "session_title_generation",
-    targetKind: options.querySource === GOAL_SUMMARY_TITLE_QUERY_SOURCE ? "goal" : "session",
-    trigger: "turn",
-    traceContext: options.traceContext,
-  });
-  return titleTelemetry.run(async () => {
-    try {
-      const result = await generateTitleCandidateImpl.call(this, input, options);
-      titleTelemetry.setResultType(result ? "metadata" : "other");
-      titleTelemetry.finishCompleted();
-      return result;
-    } catch (error) {
-      titleTelemetry.finishFailed("execute", "unknown", error);
-      throw error;
-    }
-  });
-}
-
-async function generateTitleCandidateImpl(
-  this: AgentRuntimeInternal,
-  input: string,
-  options: {
-    causation?: AgentTelemetryCausation;
     messageID?: MessageId;
     querySource: string;
     traceContext: TraceContext;

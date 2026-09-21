@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { recordArmsCustomEventForE2E } from "@zcode/ui";
 import { DesktopCommandIds, buildLocalMediaPreviewUrl, type IPlatformService } from "@zcode/shared";
 
@@ -61,16 +62,6 @@ export function createDesktopPlatform(options: {
       recordArmsCustomEventForE2E(payload);
       return window.zcode.reportArmsCustomEvent(payload);
     },
-    getRendererActionTraceConfig: window.zcode.getRendererActionTraceConfig
-      ? () => window.zcode.getRendererActionTraceConfig!()
-      : undefined,
-    onRendererActionTraceConfigChanged: window.zcode.onRendererActionTraceConfigChanged
-      ? (callback) => window.zcode.onRendererActionTraceConfigChanged!(callback)
-      : undefined,
-    reportLocalTtftBatch: (batch) => window.zcode.reportLocalTtftBatch(batch),
-    reportRendererActionTraceBatch: window.zcode.reportRendererActionTraceBatch
-      ? (batch) => window.zcode.reportRendererActionTraceBatch!(batch)
-      : undefined,
     reportRendererHeapSample: window.zcode.reportRendererHeapSample
       ? (sample) => window.zcode.reportRendererHeapSample!(sample)
       : undefined,

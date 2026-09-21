@@ -1,9 +1,6 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 export * from "./zcode-builtin-provider-config-source.js";
 export * from "./zcode-builtin-release.js";
-export * from "./zcode-builtin-download.js";
-export * from "./zcode-builtin-remote-synchronizer.js";
-export * from "./zcode-builtin-cache-paths.js";
-export * from "./endpoint-scoped-zcode-builtin-source.js";
 export * from "./zcode-builtin-provider-config-materializer.js";
 export * from "./model-selection-config-repository.js";
 export * from "./personal-provider-config-repository.js";

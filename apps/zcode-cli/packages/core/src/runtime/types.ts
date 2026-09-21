@@ -1,25 +1,8 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import type { RuntimeInputPresentation } from "@zcode/contracts";
 /* eslint-disable max-lines -- Runtime 类型集中承载 core/runtime 对外结构，拆分需要单独迁移。 */
 import { PermissionService, ToolScheduler } from "./deps.js";
-import type {
-  JsonSchema,
-  AgentExecutionTelemetryPort,
-  AgentTelemetryCausation,
-  BackgroundResultOriginMeta,
-  ContextUsageBreakdownItem,
-  CoordinatorResponsePort,
-  ForkCommitBundle,
-  ForkChildSessionMetadata,
-  ModelRequestAuth,
-  ModelRequestDependencies,
-  ModelSelection,
-  PluginReferenceCatalog,
-  ResolvedUserInstructions,
-  StableForkGoalBoundaryMetadata,
-  StableForkTargetMetadata,
-  WorkspaceHookBundleSnapshot,
-  WorkspaceId,
-} from "@zcode/contracts";
+import type { JsonSchema, BackgroundResultOriginMeta, ContextUsageBreakdownItem, CoordinatorResponsePort, ForkCommitBundle, ForkChildSessionMetadata, ModelRequestAuth, ModelRequestDependencies, ModelSelection, PluginReferenceCatalog, ResolvedUserInstructions, StableForkGoalBoundaryMetadata, StableForkTargetMetadata, WorkspaceHookBundleSnapshot, WorkspaceId } from "@zcode/contracts";
 import type { ZCodeProviderAccountAccess } from "@zcode/shared";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 import type { RuntimeMessageEntry } from "../agent/message-history.js";
@@ -307,9 +290,6 @@ export interface MemoryRuntimeConfig {
 }
 
 export interface AgentRuntimeDeps {
-  agentTelemetry?: AgentExecutionTelemetryPort;
-  agentTelemetryCausation?: AgentTelemetryCausation;
-  agentTelemetryCausationMode?: "child" | "linked_root";
   appVersion?: string;
   eventStore: SessionEventStorePort;
   sessionStore?: SessionStorePort;

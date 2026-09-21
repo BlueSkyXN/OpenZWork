@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { getDefaultConfigPath, updateUiLocaleInFileConfig } from "@zcode/adapters/config";
 import type { SessionEvent } from "@zcode/contracts";
 import type { ZCodeAppOptions } from "@zcode/bootstrap";
@@ -373,12 +374,6 @@ export function createTuiSubmitPrompt(
   submitPrompt.close = async () => {
     closeHandlerPromise ??= (async () => {
       await closeApp();
-      // Bug 根因：TUI 的 Session 切换和进程退出共用了 App close，不能在 /new 等路径
-      // 提前关闭共享 Owner；只有整个 Prompt Handler 终态才做对称 shutdown。
-      await runCliCleanupWithTimeout(
-        async () => processRuntime.shutdownTelemetry?.(),
-        cleanupTimeoutMs,
-      );
       const providerRegistryRuntime = await processRuntime.providerRegistryRuntimePromise;
       providerRegistryRuntime?.dispose();
     })();

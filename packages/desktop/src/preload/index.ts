@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import {
   databaseStartupControlSchema,
   databaseStartupStateSchema,
@@ -27,56 +28,7 @@ function parseDeviceIdFromArgs(): string {
 // 在 contextBridge 建立之前就暴露同步值，让 renderer 在 React 渲染前就能读到
 contextBridge.exposeInMainWorld("__ZCODE_DEVICE_ID__", parseDeviceIdFromArgs());
 
-import type {
-  AppSettings,
-  ApplicationIconRequest,
-  BrowserViewOperationPayload,
-  BrowserGuestAttachResult,
-  BrowserViewScreenshotSurfacePreparePayload,
-  BrowserViewScreenshotSurfaceReadyPayload,
-  BrowserViewScreenshotSurfaceReleasePayload,
-  BrowserViewViewportChangedPayload,
-  BrowserViewCloseTabNotification,
-  BrowserViewCloseTabRequest,
-  BrowserViewResidencyReportPayload,
-  BrowserViewResidencyTransitionPayload,
-  BrowserViewRestoredTabShell,
-  BrowserViewRestoreTabsRequest,
-  BrowserViewportSize,
-  DesktopZoomState,
-  DesktopWindowChromeState,
-  DesktopCommandId,
-  DesktopTitleBarTheme,
-  EmbeddedBrowserOpenUrlRequest,
-  Locale,
-  OAuthStateRegistration,
-  OpenInEditorOptions,
-  RemoteTarget,
-  TaskNotificationPayload,
-  TelemetryRendererContext,
-  RendererActionTraceBatchV1,
-  RendererActionTraceConfigV1,
-  RendererHeapSample,
-  PostUpdateReleaseNotesPayload,
-  RemoteSessionClosedEvent,
-  UpdateCheckResultPayload,
-  UpdateStatePayload,
-  ZCodeStdioTapDevState,
-  LoadCliMcpFromUserDirectoryRequest,
-  MigrateLegacyCommonMcpRequest,
-  SaveCliMcpToUserDirectoryRequest,
-  SaveFileRequest,
-  SaveFileResult,
-  PrintPageToPdfResult,
-  SSHConfigAliasOption,
-  RemoteConnectionRuntimeLog,
-  WindowControlsOverlayMetrics,
-  WindowControlsOverlayReadyPayload,
-  CreateTempTextAttachmentRequest,
-  OpenCuaPermissionOnboardingOptions,
-  ConfigureFinalArmsCustomEventE2ERequest,
-  FinalArmsCustomEventE2EEntry,
-} from "@zcode/shared";
+import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OAuthStateRegistration, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, TelemetryRendererContext, RendererHeapSample, PostUpdateReleaseNotesPayload, RemoteSessionClosedEvent, UpdateCheckResultPayload, UpdateStatePayload, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest, OpenCuaPermissionOnboardingOptions, ConfigureFinalArmsCustomEventE2ERequest, FinalArmsCustomEventE2EEntry } from "@zcode/shared";
 import {
   InternalChannels,
   PlatformChannels,
@@ -639,23 +591,6 @@ contextBridge.exposeInMainWorld("zcode", {
     value?: number;
     properties?: Record<string, string | number | boolean | undefined>;
   }) => ipcRenderer.invoke(PlatformChannels.ReportArmsCustomEvent, payload),
-  /** 读取 Renderer 用户操作 Trace 灰度配置。 */
-  getRendererActionTraceConfig: (): Promise<RendererActionTraceConfigV1> =>
-    ipcRenderer.invoke(PlatformChannels.GetRendererActionTraceConfig),
-  /** 订阅 Main 推送的 Renderer 用户操作 Trace 配置变化。 */
-  onRendererActionTraceConfigChanged: (
-    callback: (config: RendererActionTraceConfigV1) => void,
-  ): (() => void) => {
-    const handler = (_event: unknown, config: RendererActionTraceConfigV1) => callback(config);
-    ipcRenderer.on(PlatformChannels.RendererActionTraceConfigChanged, handler);
-    return () =>
-      ipcRenderer.removeListener(PlatformChannels.RendererActionTraceConfigChanged, handler);
-  },
-  /** 发送已结束 Span；使用 send 避免遥测往返阻塞业务。 */
-  reportLocalTtftBatch: (batch: import("@zcode/shared").LocalTtftBatch): void =>
-    ipcRenderer.send(PlatformChannels.ReportLocalTtftBatch, batch),
-  reportRendererActionTraceBatch: (batch: RendererActionTraceBatchV1): void =>
-    ipcRenderer.send(PlatformChannels.ReportRendererActionTraceBatch, batch),
   /**
    * 主窗口 renderer 的 60 秒 heap 读数。
    * 只提供单向 send：main 不回执，renderer 也不能靠它反查 main 的进程事实。

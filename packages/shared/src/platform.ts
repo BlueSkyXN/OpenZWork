@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 /* eslint-disable max-lines -- 跨端 platform contract 集中声明 renderer 能力；OAuth 与 browser lifecycle 必须保持 desktop/web 类型合同，本 MR 不拆分平台边界。 */
 import type {
   DockerConnectOptions,
@@ -15,10 +16,6 @@ import type {
 import type { OAuthStateRegistration } from "./oauth.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { ArmsCustomEventPayload, RendererTelemetryEventPayload } from "./telemetry.js";
-import type {
-  RendererActionTraceBatchV1,
-  RendererActionTraceConfigV1,
-} from "./rendererActionTrace.js";
 import type { RendererHeapSample } from "./validation.js";
 import type {
   CuaAccessibilitySettingsResult,
@@ -689,16 +686,6 @@ export interface IPlatformService {
 
   /** 通过宿主环境上报 ARMS 自定义事件；Web 端当前为空实现 */
   reportArmsCustomEvent(payload: ArmsCustomEventPayload): Promise<void>;
-
-  /** 读取 Desktop Renderer 用户操作 Trace 的当前灰度配置；Web/手机不实现。 */
-  getRendererActionTraceConfig?(): Promise<RendererActionTraceConfigV1>;
-  /** 订阅 Main 推送的 Renderer 用户操作 Trace 配置；Web/手机不实现。 */
-  onRendererActionTraceConfigChanged?(
-    callback: (config: RendererActionTraceConfigV1) => void,
-  ): () => void;
-  /** Renderer → Main：发送已结束的 ui_action batch；严格旁路、fire-and-forget。 */
-  reportRendererActionTraceBatch?(batch: RendererActionTraceBatchV1): void;
-  reportLocalTtftBatch?(batch: import("./localTtft.js").LocalTtftBatch): void;
 
   /**
    * Renderer → Main：主窗口 renderer 每 60 秒的 heap 读数，进 `renderer_main` 角色事件。单向 send、fire-and-forget；

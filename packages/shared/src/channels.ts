@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 /* eslint-disable max-lines -- 通信频道和请求响应映射必须集中定义，避免跨进程 channel 字符串散落。 */
 import type {
   ResourceUsageSnapshot,
@@ -17,10 +18,6 @@ import type {
   RendererTelemetryEventPayload,
   TelemetryRendererContext,
 } from "./telemetry.js";
-import type {
-  RendererActionTraceBatchV1,
-  RendererActionTraceConfigV1,
-} from "./rendererActionTrace.js";
 import type { RendererHeapSample } from "./validation.js";
 import type {
   CancelPendingRemoteConnectionRequest,
@@ -315,15 +312,8 @@ export const PlatformChannels = {
   ReportTelemetryEvent: "zcode:report-telemetry-event",
   /** Renderer → Main：上报 ARMS 自定义事件 */
   ReportArmsCustomEvent: "zcode:report-arms-custom-event",
-  /** Renderer → Main：读取 Renderer 用户操作 Trace 灰度配置。 */
-  GetRendererActionTraceConfig: "zcode:get-renderer-action-trace-config",
-  /** Main → Renderer：Renderer 用户操作 Trace 灰度配置变化。 */
-  RendererActionTraceConfigChanged: "zcode:renderer-action-trace-config-changed",
-  /** Renderer → Main：发送已结束的 ui_action batch。 */
-  ReportRendererActionTraceBatch: "zcode:report-renderer-action-trace-batch",
   /** Renderer → Main：主窗口 renderer 每 60 秒的 heap 读数，单向 send，不需要回执。 */
   ReportRendererHeapSample: "zcode:report-renderer-heap-sample",
-  ReportLocalTtftBatch: "zcode:report-local-ttft-batch",
   /** E2E preload → Main：读取 sendCustom 最终参数的内存 ring。 */
   ReadFinalArmsCustomEventsE2E: "zcode:e2e:read-final-arms-custom-events",
   /** E2E preload → Main：清空 sendCustom 最终参数的内存 ring。 */
@@ -909,18 +899,6 @@ export interface PlatformChannelMap {
   };
   [PlatformChannels.ReportArmsCustomEvent]: {
     request: ArmsCustomEventPayload;
-    response: void;
-  };
-  [PlatformChannels.GetRendererActionTraceConfig]: {
-    request: void;
-    response: RendererActionTraceConfigV1;
-  };
-  [PlatformChannels.RendererActionTraceConfigChanged]: {
-    request: RendererActionTraceConfigV1;
-    response: void;
-  };
-  [PlatformChannels.ReportRendererActionTraceBatch]: {
-    request: RendererActionTraceBatchV1;
     response: void;
   };
   // 单向 send（不是 invoke）：60 秒一条的旁路遥测样本，renderer 不等 main 回执。
