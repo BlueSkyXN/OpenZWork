@@ -17,6 +17,7 @@ import {
   type WorkflowTaskSnapshot,
   type WorkflowTaskStatus,
 } from "@zcode/contracts";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import { readWorkflowScriptDocument } from "./script-workflow-meta.js";
 import type { ScriptWorkflowRuntime } from "./script-workflow-runtime.js";
 import { isScriptWorkflowStore } from "./script-workflow-utils.js";
@@ -315,7 +316,7 @@ async function resolveNamedWorkflowPath(
   const fileName = workflowFileName(name);
   const candidates = [
     join(deps.workingDirectory, ".zcode", "workflows", fileName),
-    join(homedir(), ".zcode", "workflows", fileName),
+    join(homedir(), OPENZWORK_DATA_DIR_NAME, "workflows", fileName),
   ];
   const builtIn = BUILTIN_WORKFLOW_ALLOWLIST.get(name);
   if (builtIn) candidates.push(builtIn);

@@ -12,6 +12,7 @@ import type {
   WorkflowRunListItem,
   WorkflowStorePort,
 } from "@zcode/contracts";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import {
   WorkflowDefinitionSchema,
   WorkflowEventSchema,
@@ -32,7 +33,7 @@ interface WorkflowIndexFile {
   runs: WorkflowRunListItem[];
 }
 
-const DEFAULT_WORKFLOW_ROOT = join(homedir(), ".zcode", "cli", "workflows");
+const DEFAULT_WORKFLOW_ROOT = join(homedir(), OPENZWORK_DATA_DIR_NAME, "cli", "workflows");
 const WORKFLOW_DEFINITION_FILE_EXTENSION = ".json";
 
 export class NodeWorkflowStore implements WorkflowStorePort {

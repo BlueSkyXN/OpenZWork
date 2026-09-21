@@ -34,7 +34,7 @@ function defaultCredentialSecret(env: NodeJS.ProcessEnv): string {
     // 部分运行环境可能拿不到系统用户，失败时退回默认占位值。
   }
 
-  return `zcode-credential-fallback:${platform()}:${homedir()}:${username}`;
+  return `openzwork-credential-fallback:${platform()}:${homedir()}:${username}`;
 }
 
 function base64urlToBuffer(raw: string): Buffer {
