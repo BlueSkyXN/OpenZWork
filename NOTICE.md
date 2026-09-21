@@ -1,3 +1,16 @@
+# OpenZWork 分支声明
+
+OpenZWork（本仓库）是 ZCode 的私有化分支，集自上游提交 `872ad960de7ec172591f7e1952f7849229f94521`（[zai-org/ZCode](https://github.com/zai-org/ZCode)）。
+
+- 本项目整体以 **GNU GPL-3.0** 授权（见 [LICENSE](LICENSE)）。
+- 仓库中源自上游 ZCode 的大量代码原以 **Apache-2.0** 授权，该部分维持 Apache-2.0，全文保留于 [LICENSE.Apache-2.0.txt](LICENSE.Apache-2.0.txt)；Apache-2.0 代码并入 GPL-3.0 作品为单向兼容。
+- 第三方组件的原始版权与许可声明见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+- OpenZWork 维护者与上游项目无隶属、无代表关系。
+
+以下为上游原有声明，保持原文。
+
+---
+
 # ZCode 相关功能说明与第三方组件声明
 
 本声明适用于本仓库公开的源码及其构建产物。各运行形态的功能、权限、存储位置和网络行为不同，不能将其中一种形态的默认设置理解为整个项目的统一设置。
