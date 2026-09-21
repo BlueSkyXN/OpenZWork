@@ -10,7 +10,7 @@ import {
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { ModelTextResult } from "@zcode/contracts";
-import { ZCODE_RUNTIME_ENV_KEY, normalizeZCodeRuntimeEnv } from "@zcode/shared";
+import { OPENZWORK_DATA_DIR_NAME, ZCODE_RUNTIME_ENV_KEY, normalizeZCodeRuntimeEnv } from "@zcode/shared";
 import { redactAnthropicRequestMetadata } from "./anthropic-request-metadata.js";
 import type { EnvRecord } from "./model-execution.js";
 import { sanitizeModelIODebugRecord } from "./runner-debug-redaction.js";
@@ -585,9 +585,9 @@ function sanitizeFileSegment(value?: string): string {
 }
 
 // storage profile 回滚删除了自定义 CLI 根模块，遗留 import 会让 adapters 无法构建。
-// 这里保持历史语义：开发态写 ~/.zcode/cli/debug，生产态写 ~/.zcode/cli/rollout。
+// 这里保持历史语义：开发态写 ~/.openzwork/cli/debug，生产态写 ~/.openzwork/cli/rollout。
 function getModelIOBaseDir(isDev: boolean): string {
-  return join(homedir(), ".zcode", "cli", isDev ? "debug" : "rollout");
+  return join(homedir(), OPENZWORK_DATA_DIR_NAME, "cli", isDev ? "debug" : "rollout");
 }
 
 function stringifyDebugRecord(record: Record<string, unknown>): string {

@@ -4,10 +4,14 @@ type SkillSourceType = "glm" | "unknown";
 
 function resolveSkillSourceType(skillPath: string): SkillSourceType {
   const normalized = skillPath.replaceAll("\\", "/").toLowerCase();
-  if (normalized.includes("/.zcode/skills/")) {
+  // 项目级根保留 .zcode（D-03），用户级根为 .openzwork，两者都属于原生来源。
+  if (normalized.includes("/.zcode/skills/") || normalized.includes("/.openzwork/skills/")) {
     return "glm";
   }
-  if (normalized.includes("/.zcode/cli/plugins/cache/")) {
+  if (
+    normalized.includes("/.zcode/cli/plugins/cache/") ||
+    normalized.includes("/.openzwork/cli/plugins/cache/")
+  ) {
     return "glm";
   }
   return "unknown";

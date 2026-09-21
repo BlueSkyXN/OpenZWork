@@ -2,12 +2,14 @@ import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { CustomCommandRoot, CustomCommandSource } from "@zcode/contracts";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 
 const COMMANDS_DIR = "commands";
 const GIT_MARKER = ".git";
 const HOME_PREFIX = "~/";
 const PRIORITY_STEP = 10;
-const ZCODE_DIR = ".zcode";
+const ZCODE_DIR = ".zcode"; // 项目级（workspace 内）目录名，与官方版共享（D-03）
+const USER_DATA_DIR_NAME = OPENZWORK_DATA_DIR_NAME; // 用户级（home）数据根
 const AGENTS_DIR = ".agents";
 
 export interface CustomCommandRootResolutionOptions {
@@ -97,9 +99,9 @@ function commandRootsForBase(
   nextPriority: () => number,
 ): CustomCommandRoot[] {
   // 合并而不是 fallback：兼容 `.agents` 命令和原生 `.zcode` 命令需要同时可见。
-  // 同一级别 `.zcode` 先扫描，命令同名时仍按“先到先赢”处理。
+  // 同一级别原生目录先扫描（用户级为 .openzwork，项目级为 .zcode），命令同名时仍按“先到先赢”处理。
   return [
-    root(join(baseDirectory, ZCODE_DIR, COMMANDS_DIR), scope, "zcode", nextPriority()),
+    root(join(baseDirectory, scope === "user" ? USER_DATA_DIR_NAME : ZCODE_DIR, COMMANDS_DIR), scope, "zcode", nextPriority()),
     root(join(baseDirectory, AGENTS_DIR, COMMANDS_DIR), scope, "agents", nextPriority()),
   ];
 }

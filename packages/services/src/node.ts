@@ -490,7 +490,7 @@ import { createCanonicalCuaHelperInstaller } from "./cua-permission-broker/cuaHe
 import { WindowsCuaHelperHost } from "#src/cua-permission-broker/windowsCuaDevHelperHost.js";
 import { DEV_HELPER_APP_NAME, HELPER_APP_NAME } from "@zcode/zcode-cua/broker/helperConstants";
 import { resolveBrokerSocketPath } from "@zcode/zcode-cua/broker/socketPath";
-import { DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY, resolveSafeEndpointHostname, ZCODE_JWT_INVALID_BROADCAST_CHANNEL, formatLogPrefix, isCredentialDecryptError, isStartPlanModelProviderId, OFF_PEAK_PROVIDER_IDS, BIGMODEL_PROVIDER_ID, type ProviderFamilyDomain, type ServiceAuthorityMode, resolveRuntimeZCodeEndpointOrigin, type BrowserBackendDescriptor, type BrowserClientMode, type BrowserCommand, isZCodeCuaMcpCommand, isZCodeCuaMcpPackageArg, isZCodeCuaInternalFeatureEnabled, ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY, type ZCodeAutomation, type ZCodeAutomationRun, ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV, ZAI_PROVIDER_ID, zcodeAccountAccessSchema, zcodeProviderAccountAccessSchema, ZCODE_VERSION, buildRuntimeZCodeApiUrl } from "@zcode/shared";
+import { BIGMODEL_PROVIDER_ID, DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY, OFF_PEAK_PROVIDER_IDS, OPENZWORK_DATA_DIR_NAME, ZAI_PROVIDER_ID, ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY, ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV, ZCODE_JWT_INVALID_BROADCAST_CHANNEL, ZCODE_VERSION, buildRuntimeZCodeApiUrl, formatLogPrefix, isCredentialDecryptError, isStartPlanModelProviderId, isZCodeCuaInternalFeatureEnabled, isZCodeCuaMcpCommand, isZCodeCuaMcpPackageArg, resolveRuntimeZCodeEndpointOrigin, resolveSafeEndpointHostname, type BrowserBackendDescriptor, type BrowserClientMode, type BrowserCommand, type ProviderFamilyDomain, type ServiceAuthorityMode, type ZCodeAutomation, type ZCodeAutomationRun, zcodeAccountAccessSchema, zcodeProviderAccountAccessSchema } from "@zcode/shared";
 
 // 这些 conversation-share 实现依赖 Node 文件系统；仅通过 @zcode/services/node 暴露，
 // 防止 browser-safe 根入口把 node:* 依赖带进 renderer。
@@ -1038,7 +1038,7 @@ export { isOfficialCuaPluginEnabledForWorkspace };
 
 export function hasGlobalCliZCodeCuaServer(env: NodeJS.ProcessEnv = process.env): boolean {
   const home = env.HOME?.trim() || homedir();
-  const configPath = join(home, ".zcode", "cli", "config.json");
+  const configPath = join(home, OPENZWORK_DATA_DIR_NAME, "cli", "config.json");
   let parsed: unknown;
   try {
     parsed = JSON.parse(readFileSync(configPath, "utf8"));
@@ -1743,7 +1743,7 @@ export function createLocalServices(options: {
     const socketPath = resolveBrokerSocketPath();
     // standaloneHelperCandidatePaths 未在上游 exports 白名单——此处按同一规则枚举安装候选
     //（dev-desktop → dev/ 前缀；app 名一律取 helperConstants，不写字面量）。
-    const home = process.env.ZCODE_HOME?.trim() || join(homedir(), ".zcode");
+    const home = process.env.ZCODE_HOME?.trim() || join(homedir(), OPENZWORK_DATA_DIR_NAME);
     const baseRoot = join(home, "computer-use");
     // 安装布局见上游 helperLauncher.resolveCuaHelperInstallRoot：dev 是独立子根 `dev/` 且 app
     // 名换成 DEV_HELPER_APP_NAME；preview 是独立子根 `preview/` 但**沿用**稳定 app 名

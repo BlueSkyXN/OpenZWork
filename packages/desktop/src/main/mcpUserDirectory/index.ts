@@ -15,6 +15,7 @@ import type {
   NativeMcpServerRecord,
   SaveCliMcpToUserDirectoryRequest,
 } from "@zcode/shared";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import type { McpConfigKeyName } from "./types.js";
 import { isRecord, readJsonObject, writeTextAtomic } from "./utils.js";
 import { migrateLegacyCommonMcp } from "./legacy.js";
@@ -37,7 +38,7 @@ interface DirectoryMcpDescriptor {
 const ZCODE_MCP_DESCRIPTOR: DirectoryMcpDescriptor = {
   source: "zcodeagentmcp",
   directorySource: "zcode",
-  userConfigDirSegments: [".zcode", "cli"],
+  userConfigDirSegments: [OPENZWORK_DATA_DIR_NAME, "cli"],
   workspaceConfigDirSegments: [".zcode"],
   fileName: "config.json",
   format: "json",
@@ -340,7 +341,7 @@ async function readDirectoryServersFromPreferredSources(
     scope,
     workspacePath,
   );
-  // `.zcode` 是强优先级来源；只要读到 MCP server，同 scope 的 `.agents` 就不再参与。
+  // 原生目录（用户级 .openzwork / 项目级 .zcode）是强优先级来源；只要读到 MCP server，同 scope 的 `.agents` 就不再参与。
   if (zcodeServers.length > 0) {
     return zcodeServers;
   }
