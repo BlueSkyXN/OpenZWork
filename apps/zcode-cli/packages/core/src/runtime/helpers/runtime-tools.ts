@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import {
   createConfiguredHookRunner,
   createInMemoryHookRunner,
@@ -152,8 +153,6 @@ function createRuntimeToolExecutor(
 ): ToolExecutor {
   const browserUseEnabled = resolveRuntimeBrowserUseEnabled(runtime, deps);
   return createToolExecutor({
-    agentTelemetry: runtime.agentTelemetry.port,
-    agentTelemetryActorKind: runtime.agentTelemetry.actorKind,
     registry: runtime.registry,
     permissionService: runtime.permissionService,
     permissionBroker: runtime.permissionBroker,

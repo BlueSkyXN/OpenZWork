@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { existsSync } from "node:fs";
 import { access } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -43,7 +44,6 @@ const cliWorkspaceBuilds = [
   { packageName: "@zcode/core", packageDir: "core" },
   { packageName: "@zcode/adapters", packageDir: "adapters" },
   { packageName: "@zcode/i18n", packageDir: "i18n" },
-  { packageName: "@zcode/telemetry", packageDir: "telemetry" },
   { packageName: "@zcode/bootstrap", packageDir: "bootstrap" },
 ];
 // 官方插件 manifest 可以在 server.js 缺失时被 filesystem seed，直到 session

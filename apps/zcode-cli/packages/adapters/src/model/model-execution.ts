@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 /* eslint-disable max-lines -- AI SDK 模型执行装配集中维护 provider factory、鉴权和网络错误适配，拆分会让状态同步更脆弱。 */
 // ============================================================
 // Vercel AI SDK model execution
@@ -19,12 +20,10 @@ import {
   type ModelRequestAuth,
 } from "@zcode/contracts";
 import type { RegistryProviderConfig } from "@zcode/provider";
-import { withOpenRouterAttributionHeaders } from "@zcode/shared";
 import { createAnthropicCompatFetch } from "./anthropic-stream-compat.js";
 import { createOpenAIResponsesJsonCompatFetch } from "./openai-responses-json-compat.js";
 import { createModelOptionMapFetch, type RawRequestBodyCapture } from "./model-option-map-fetch.js";
 import { createNetworkProxyFetch } from "../network/proxy-fetch.js";
-import { createOfficialCodingPlanGatewayFetch } from "./official-coding-plan-gateway.js";
 import { normalizeModelTlsFailure } from "./failure-tls.js";
 import { mergeModelRequestHeaders } from "./model-request-headers.js";
 
@@ -200,10 +199,9 @@ export class AiSdkModelExecution {
     readonly supportsJsonSchemaOutput: boolean;
   }): AiSdkModelSnapshot {
     const configuredProvider = toAiSdkProviderConfig(input.providerId, input.providerConfig);
-    // 重构后模型 SDK 曾只接到用户 Header，漏掉版本和站点归因；在公共绑定边界恢复，
-    // 不依赖签名成功，不给各业务重复补头，也不修改 Provider 或已绑定 Model 的配置。
+    // Private fork: merge only caller-supplied headers; do not add product attribution.
     configuredProvider.headers = mergeModelRequestHeaders(
-      withOpenRouterAttributionHeaders(this.defaultHeaders, configuredProvider.baseURL),
+      this.defaultHeaders,
       configuredProvider.headers,
     );
     const apiKey = this.resolveApiKey(configuredProvider);
@@ -326,9 +324,9 @@ export class AiSdkModelExecution {
     if (current) {
       return current;
     }
-    // 官方 Coding Plan 端点先替换为平台网关端点，再进入用户 HTTP 代理 fetch，
-    // httpProxy / noProxy 按实际发送地址判定。
-    const transport = createProviderTransportFetch({
+    // Private fork: use the configured provider URL without product gateway rewriting.
+    // Explicit proxy, no-proxy and CA settings remain part of the transport.
+    const transport = createProviderProxyFetch({
       caCertFile: this.network.caCertFile,
       env: this.env,
       fetch: this.baseTransport,
@@ -506,18 +504,6 @@ function createProviderProxyFetch(options: ProviderProxyFetchOptions): ProviderF
   // Node 的 global fetch 不会自动读取 HTTP_PROXY/http_proxy。
   // 模型 provider 和 MCP HTTP transport 都复用同一层 proxy-aware fetch，避免多套出口规则漂移。
   return createNetworkProxyFetch(options);
-}
-
-/**
- * 模型请求出口：官方 Coding Plan 端点经 ZCode 平台网关发送（做套餐权益校验等平台侧处理），
- * 其余 provider 直连；之后统一进入用户 HTTP 代理 fetch，httpProxy / noProxy 按实际发送地址判定。
- * 官方端点与网关端点的对应关系见 official-coding-plan-gateway.ts。
- */
-function createProviderTransportFetch(options: ProviderProxyFetchOptions): ProviderFetch {
-  return createOfficialCodingPlanGatewayFetch({
-    env: options.env,
-    fetch: createProviderProxyFetch(options),
-  });
 }
 
 async function detectProviderBusinessError(

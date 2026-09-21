@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import type { ZCodeToolExecResource, BackgroundBashOutputResult } from "@zcode/shared";
 import type { AiSdkModelAdapter } from "@zcode/adapters/model";
 import type {
@@ -28,7 +29,6 @@ import type {
 import type { ZCodeModelOption } from "@zcode/shared";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 export type { ZCodeModelOption } from "@zcode/shared";
-import type { ModelProviderSourceTitle } from "../model-config.js";
 import type { ZCodeInstalledPluginData } from "../plugins.js";
 import type {
   AutomationPort,
@@ -94,7 +94,7 @@ import type {
 import type { NodeReplBrowserBroker } from "./node-repl-browser-broker.js";
 import type { SessionTranscriptMessage } from "../session-transcript.js";
 import type { WorkspaceHookReviewCommandResult } from "./workspace-hook-review-controller.js";
-import type { AgentTelemetryRuntimeOwner, WorkspaceHookPolicy } from "@zcode/contracts";
+import type { WorkspaceHookPolicy } from "@zcode/contracts";
 import type { ProviderRegistryModelSource } from "./provider-registry-model-runtime.js";
 
 export interface WorkspaceHookReviewHostContext {
@@ -130,7 +130,6 @@ export interface ZCodeAppOptions {
    * stdio 协议模式的 agent 进程由 Electron host 拉起，模型服务需要看到 electron 来源。
    * 普通 CLI 不传，继续使用 cli 默认值。
    */
-  sourceTitle?: ModelProviderSourceTitle;
   eventStore?: SessionEventStorePort;
   sessionStore?: SessionStorePort;
   sessionMailboxPort?: SessionMailboxPort;
@@ -143,7 +142,6 @@ export interface ZCodeAppOptions {
   configuredDefaultModelSelection?: ModelSelection;
   modelIoFullRetentionEnabled?: boolean;
   /** 同进程嵌入宿主可注入完整的 borrowed 进程级 Owner；Endpoint 配置不得覆盖它。 */
-  telemetryOwner?: AgentTelemetryRuntimeOwner;
   /**
    * provider runtime headers 端口：主 runtime 每次调用报自己的会话；child runtime 一律向父
    * runtime 取派生实例。

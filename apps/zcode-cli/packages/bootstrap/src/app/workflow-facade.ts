@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { join } from "node:path";
 import { createNodeContextSourceAdapter } from "@zcode/adapters/context";
 import { createNodeExecutionAdapter } from "@zcode/adapters/exec";
@@ -19,31 +20,12 @@ import {
   type PermissionService,
   type WorkflowAgentRunner,
 } from "@zcode/core";
-import {
-  type AgentExecutionTelemetryPort,
-  createChildTraceContext,
-  createSessionId,
-  type ContextSourcePort,
-  type ExecutionPort,
-  type FileSystemPort,
-  type HttpClientPort,
-  type ImageProcessorPort,
-  type PdfDocumentPort,
-  type Logger,
-  type McpPort,
-  type SessionEventSink,
-  type SessionId,
-  type SessionStorePort,
-  type ToolArtifactStorePort,
-  type TraceContext,
-  type WorkflowDefinition,
-} from "@zcode/contracts";
+import { createChildTraceContext, createSessionId, type ContextSourcePort, type ExecutionPort, type FileSystemPort, type HttpClientPort, type ImageProcessorPort, type PdfDocumentPort, type Logger, type McpPort, type SessionEventSink, type SessionId, type SessionStorePort, type ToolArtifactStorePort, type TraceContext, type WorkflowDefinition } from "@zcode/contracts";
 import { collectDisabledPaths } from "../skill-command-overrides.js";
 import type { PrepareUserExecutionBoundary, ZCodeAppOptions } from "./types.js";
 import { createWorkflowMethods, type WorkflowFacade } from "./workflow-methods.js";
 
 interface CreateWorkflowFacadeDeps {
-  agentTelemetry: AgentExecutionTelemetryPort;
   appOptions: ZCodeAppOptions;
   appVersion: string;
   artifactStore?: ToolArtifactStorePort;
@@ -292,10 +274,6 @@ function createWorkflowChildRuntime(
       workingDirectory: deps.workingDirectory,
     },
     {
-      agentTelemetry: deps.agentTelemetry,
-      agentTelemetryCausation: deps.agentTelemetry.captureCausation(),
-      // Workflow 在父工具返回后独立调度，不能伪装成父 Span 的同步 Child。
-      agentTelemetryCausationMode: "linked_root",
       eventStore: createInMemorySessionEventStore(),
       sessionStore: deps.sessionStore,
       logger: deps.logger,

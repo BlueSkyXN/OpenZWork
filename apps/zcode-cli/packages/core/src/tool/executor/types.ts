@@ -1,39 +1,5 @@
-import type {
-  AgentExecutionTelemetryPort,
-  AgentTelemetryActorKind,
-  BackgroundResultOriginMeta,
-  CollaborationMode,
-  CoordinatorResponsePort,
-  DynamicWorkflowRunPort,
-  DynamicWorkflowSnippetPort,
-  ModelCatalogPort,
-  EmbeddedSearchBackend,
-  ExecutionPort,
-  BrowserControlPort,
-  ExecutionShellSelection,
-  AutomationPort,
-  OffPeakPort,
-  FileSystemPort,
-  HttpClientPort,
-  ImageProcessorPort,
-  PdfDocumentPort,
-  Logger,
-  Model,
-  PermissionBrokerPort,
-  SessionEvent,
-  SessionId,
-  SessionModePort,
-  SessionStorePort,
-  SkillPort,
-  SubagentRunOptions,
-  SubagentPort,
-  ToolArtifactStorePort,
-  TraceContext,
-  TurnId,
-  WorkflowPort,
-  WorkflowEscalatePort,
-  WorkflowSubmitPort,
-} from "@zcode/contracts";
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+import type { BackgroundResultOriginMeta, CollaborationMode, CoordinatorResponsePort, DynamicWorkflowRunPort, DynamicWorkflowSnippetPort, ModelCatalogPort, EmbeddedSearchBackend, ExecutionPort, BrowserControlPort, ExecutionShellSelection, AutomationPort, OffPeakPort, FileSystemPort, HttpClientPort, ImageProcessorPort, PdfDocumentPort, Logger, Model, PermissionBrokerPort, SessionEvent, SessionId, SessionModePort, SessionStorePort, SkillPort, SubagentRunOptions, SubagentPort, ToolArtifactStorePort, TraceContext, TurnId, WorkflowPort, WorkflowEscalatePort, WorkflowSubmitPort } from "@zcode/contracts";
 import type { HookRunner } from "../../hooks/index.js";
 import type { PermissionService } from "../../permission/service.js";
 import type { RuntimeTaskRegistry } from "../../runtime-task/registry.js";
@@ -73,8 +39,6 @@ export type ShouldEnqueueBackgroundTaskNotification = (
 ) => boolean;
 
 export interface ToolExecutorOptions {
-  agentTelemetry?: AgentExecutionTelemetryPort;
-  agentTelemetryActorKind?: AgentTelemetryActorKind;
   registry: ToolRegistry;
   permissionService: PermissionService;
   permissionBroker?: PermissionBrokerPort;
@@ -177,8 +141,6 @@ export interface ToolBatchExecuteOptions extends ToolExecuteOptions {
 }
 
 export interface ToolExecutorDeps {
-  agentTelemetry?: AgentExecutionTelemetryPort;
-  agentTelemetryActorKind?: AgentTelemetryActorKind;
   registry: ToolRegistry;
   permissionService: PermissionService;
   permissionBroker: PermissionBrokerPort;

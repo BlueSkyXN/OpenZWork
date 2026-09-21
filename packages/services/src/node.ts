@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
 import { randomBytes } from "node:crypto";
@@ -342,7 +343,6 @@ import { createCredentialService } from "./credential/credentialService.js";
 import { createBroadcastService } from "./broadcast/broadcastService.js";
 import { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
 import type { ZCodeAgentCommandResolver } from "./zcode-agent/zcodeAgentProcessManager.js";
-import { buildAgentTelemetrySpawnEnv } from "./zcode-agent/agentTelemetryEnv.js";
 import { resolveZCodeAgentPresentationSurface } from "./zcode-agent/zcodeAgentPresentationSurface.js";
 import { createZCodeTaskServiceAdapter } from "./zcode-agent/zcodeTaskServiceAdapter.js";
 import { createZCodeSessionService } from "./zcode-session/zcodeSessionService.js";
@@ -368,7 +368,6 @@ import { bindAccountProviderInvalidation } from "./model-provider/accountProvide
 import { AccountProviderApiClient } from "./model-provider/accountProviderApiClient.js";
 import { AccountProviderApiKeyResolver } from "./model-provider/accountProviderApiKeyResolver.js";
 import { createProviderConfigRuntime } from "./model-provider/providerConfigRuntime.js";
-import { fetchZCodeBuiltinRemoteRelease } from "./model-provider/zcodeBuiltinRemoteConfig.js";
 import {
   createProviderRuntimeFromConfigRuntime,
   type ProviderRuntime,
@@ -388,7 +387,6 @@ import {
 import { createProviderProvisioningTarget } from "./model-provider/providerProvisioningTarget.js";
 import { IProviderProvisioningTargetService } from "./model-provider/providerProvisioning.js";
 import { buildOffPeakModelSelectionView } from "./model-provider/offPeakModelSelectionView.js";
-import { resolveClientConfigPlatform } from "./runtime-tools/clientPlatform.js";
 import {
   createAccountRequestAuthService,
   type IAccountRequestAuthService,
@@ -492,36 +490,7 @@ import { createCanonicalCuaHelperInstaller } from "./cua-permission-broker/cuaHe
 import { WindowsCuaHelperHost } from "#src/cua-permission-broker/windowsCuaDevHelperHost.js";
 import { DEV_HELPER_APP_NAME, HELPER_APP_NAME } from "@zcode/zcode-cua/broker/helperConstants";
 import { resolveBrokerSocketPath } from "@zcode/zcode-cua/broker/socketPath";
-import {
-  DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
-  resolveSafeEndpointHostname,
-  ZCODE_JWT_INVALID_BROADCAST_CHANNEL,
-  formatLogPrefix,
-  isCredentialDecryptError,
-  isStartPlanModelProviderId,
-  OFF_PEAK_PROVIDER_IDS,
-  BIGMODEL_PROVIDER_ID,
-  type ProviderFamilyDomain,
-  type ServiceAuthorityMode,
-  resolveRuntimeZCodeEndpointOrigin,
-  type BrowserBackendDescriptor,
-  type BrowserClientMode,
-  type BrowserCommand,
-  isZCodeCuaMcpCommand,
-  isZCodeCuaMcpPackageArg,
-  isZCodeCuaInternalFeatureEnabled,
-  ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
-  type ZCodeAutomation,
-  type ZCodeAutomationRun,
-  getCapturedZCodeAgentTelemetryEnv,
-  ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
-  ZAI_PROVIDER_ID,
-  zcodeAccountAccessSchema,
-  zcodeProviderAccountAccessSchema,
-  ZCODE_VERSION,
-  ZCODE_ENV,
-  buildRuntimeZCodeApiUrl,
-} from "@zcode/shared";
+import { DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY, resolveSafeEndpointHostname, ZCODE_JWT_INVALID_BROADCAST_CHANNEL, formatLogPrefix, isCredentialDecryptError, isStartPlanModelProviderId, OFF_PEAK_PROVIDER_IDS, BIGMODEL_PROVIDER_ID, type ProviderFamilyDomain, type ServiceAuthorityMode, resolveRuntimeZCodeEndpointOrigin, type BrowserBackendDescriptor, type BrowserClientMode, type BrowserCommand, isZCodeCuaMcpCommand, isZCodeCuaMcpPackageArg, isZCodeCuaInternalFeatureEnabled, ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY, type ZCodeAutomation, type ZCodeAutomationRun, ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV, ZAI_PROVIDER_ID, zcodeAccountAccessSchema, zcodeProviderAccountAccessSchema, ZCODE_VERSION, buildRuntimeZCodeApiUrl } from "@zcode/shared";
 
 // 这些 conversation-share 实现依赖 Node 文件系统；仅通过 @zcode/services/node 暴露，
 // 防止 browser-safe 根入口把 node:* 依赖带进 renderer。
@@ -1507,31 +1476,8 @@ export function createLocalServices(options: {
     }),
   );
   const providerConfigLog = createServiceLogger("provider-config");
-  const clientConfigPlatform = resolveClientConfigPlatform();
   const providerConfigRuntime = createProviderConfigRuntime({
     zcodeBuiltinFilePath: options.zcodeBuiltinProviderConfigFilePath,
-    zcodeBuiltinEnvironment: {
-      environmentConfigRoot: resolveAppConfigDir(),
-      platform: clientConfigPlatform,
-      appVersion: ZCODE_VERSION,
-      resolveEndpointOrigin: resolveCurrentZCodeEndpointOrigin,
-      onRefreshResult: (event) => {
-        if (event.result === "updated")
-          providerConfigLog.info(undefined, "ZCode Built-in CDN 配置已更新", event);
-        else providerConfigLog.debug(undefined, "ZCode Built-in 刷新检查", event);
-      },
-      fetchRelease: (endpointOrigin, signal) =>
-        fetchZCodeBuiltinRemoteRelease({
-          apiClient,
-          endpointOrigin,
-          signal,
-          appVersion: ZCODE_VERSION,
-          platform: clientConfigPlatform,
-        }),
-    },
-    onZCodeBuiltinRefreshError: (error) => {
-      providerConfigLog.warn(undefined, "ZCode Built-in Config 远端刷新失败", { error });
-    },
     onPersonalConfigRecovery: (event) => {
       providerConfigLog.warn(
         undefined,
@@ -2197,16 +2143,6 @@ export function createLocalServices(options: {
           [BROKER_UNAVAILABLE_ENV]: "broker_unavailable: helper lifecycle is disposed",
         };
       }
-      const telemetryEnv = getCapturedZCodeAgentTelemetryEnv();
-      const telemetryConfigured = Boolean(
-        telemetryEnv.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || telemetryEnv.OTEL_EXPORTER_OTLP_ENDPOINT,
-      );
-      const telemetryProfile = telemetryConfigured
-        ? await oauthCredentialRepo.loadActiveUserProfile().catch(() => null)
-        : null;
-      const telemetryDeviceMid = telemetryConfigured
-        ? options?.agentRuntimeContext?.getDeviceMid?.()?.trim()
-        : undefined;
       // Host 是旧配置迁移的唯一写入者。Agent spawn 前等待初始化完成，避免 Worker
       // 先拿到尚不存在的 provider_config.json 并发布短暂空 Registry。
       await providerConfigRuntime.start();
@@ -2224,12 +2160,6 @@ export function createLocalServices(options: {
         // 上面 cuaProductHelperEnv 已完成代际校验与 unavailable 兜底，取代 staging 侧
         // 直接调用 buildCuaProductHelperAgentEnv 的旧路径。
         ...cuaProductHelperEnv,
-        ...buildAgentTelemetrySpawnEnv({
-          deviceMid: telemetryDeviceMid,
-          runtimeSurface: options?.agentRuntimeContext?.runtimeSurface ?? "remote_workspace_host",
-          telemetryEnv,
-          userId: telemetryProfile?.id,
-        }),
         ...createNodeProviderRuntimePathEnv({
           // Built-in Active 路径按当前 Endpoint 隔离，不能通过同步的固定路径
           // getter 读取；Agent spawn 必须等待本轮 Endpoint Source 完成解析和物化。

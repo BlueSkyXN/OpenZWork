@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 
 import process from "node:process";
 import { existsSync, readFileSync } from "node:fs";
@@ -88,13 +89,6 @@ function resolveBootstrapWithRemoteEnv(baseEnv = process.env) {
 const bootstrapWithRemoteEnv = resolveBootstrapWithRemoteEnv();
 const pnpmCommand = resolvePnpmCommand();
 
-function runGit(args) {
-  runCommand(gitCommand, args, {
-    cwd: rootDir,
-    env: process.env,
-  });
-}
-
 function runPnpm(args, options = {}) {
   runCommand(pnpmCommand, args, {
     cwd: rootDir,
@@ -158,7 +152,7 @@ function runBootstrapWithRemoteBuild() {
   runBootstrapDesktopBuild();
 }
 
-runGit(["submodule", "update", "--init", "--recursive", "apps/zcode-cli"]);
+// The uploaded Agent source is an ordinary workspace directory, not a Git submodule.
 
 runPnpm(withRemoteAssets ? ["install", "--config.confirmModulesPurge=false"] : ["install"]);
 

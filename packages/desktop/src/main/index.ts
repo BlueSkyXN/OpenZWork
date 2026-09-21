@@ -1,4 +1,5 @@
-import { createLocalTtftExporter } from "./localTtftExporter.js";
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
@@ -46,7 +47,7 @@ import {
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
 import { spawn } from "node:child_process";
 import { join, resolve } from "node:path";
-import { homedir, hostname } from "node:os";
+import { homedir } from "node:os";
 import {
   createCredentialService,
   createSettingService,
@@ -62,25 +63,7 @@ import {
   normalizeRuntimeProcessEnv,
   setDataBaseDir,
 } from "@zcode/services/node";
-import {
-  desktopMenuMessageIds,
-  type Locale,
-  type AppSettings,
-  PlatformChannels,
-  ZCODE_ENV,
-  ZCODE_PRODUCT_FLAVOR,
-  DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-  DEFAULT_LOCALE,
-  ZCODE_VERSION,
-  ZCODE_TELEMETRY_ENABLED,
-  ZCODE_ARMS_RUM_ENDPOINT,
-  buildZCodeEndpointUrls,
-  resolveZCodeEndpointOrigin,
-  shouldEnableE2ETestBridge,
-  type UpdateStatePayload,
-  type TelemetryEventPayload,
-  HostMessageTypes,
-} from "@zcode/shared";
+import { desktopMenuMessageIds, type Locale, type AppSettings, PlatformChannels, ZCODE_ENV, ZCODE_PRODUCT_FLAVOR, DEFAULT_ZCODE_ENDPOINT_ORIGIN, DEFAULT_LOCALE, ZCODE_VERSION, ZCODE_TELEMETRY_ENABLED, ZCODE_ARMS_RUM_ENDPOINT, resolveZCodeEndpointOrigin, shouldEnableE2ETestBridge, type UpdateStatePayload, type TelemetryEventPayload, HostMessageTypes } from "@zcode/shared";
 import { logger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
 import { createCuaPipFocusRouter, resolveCuaPipWindowKey } from "./cuaPipFocusRouter.js";
@@ -102,17 +85,12 @@ import { TaskRealtimeBus } from "./taskRealtimeBus.js";
 import { createAppLaunchGate } from "./appLaunchGate.js";
 import { createAppLaunchCoordinator } from "./appLaunchCoordinator.js";
 import { createAppTelemetryRuntime } from "./appTelemetryRuntime.js";
-import { createRendererActionTraceBroker } from "./rendererActionTraceBroker.js";
-import { createRendererActionTraceExporter } from "./rendererActionTraceExporter.js";
-import { registerRendererActionTraceIpc } from "./rendererActionTraceIpc.js";
-import { createRendererActionTraceRollout } from "./rendererActionTraceRollout.js";
 import {
   resolveAppShutdownPolicy,
   selectAppShutdownPolicy,
   type AppShutdownKind,
 } from "./appShutdownPolicy.js";
 import { createPrimaryWindowCoordinator } from "./primaryWindowCoordinator.js";
-import { createTempTextAttachment } from "./tempTextAttachment.js";
 import { flushMainE2ECoverage } from "./e2eCoverage.js";
 import { resolveStartupWindowBootstrap, type StartupWindowBootstrap } from "./startupWorkspace.js";
 import {
@@ -199,11 +177,6 @@ import {
 } from "./resourceManagerWindow.js";
 import { createDesktopHelpConfigReader } from "./desktopHelpConfig.js";
 import { registerPlatformIpcHandlers } from "./desktopMainIpcPlatform.js";
-import {
-  loadCliMcpFromUserDirectory,
-  migrateLegacyCommonMcp,
-  saveCliMcpToUserDirectory,
-} from "./mcpUserDirectory/index.js";
 import { registerRemoteIpcHandlers } from "./desktopMainIpcRemote.js";
 import {
   configureDesktopStabilityTelemetry,
@@ -806,26 +779,6 @@ desktopContextPromptRollout = createDesktopContextPromptRollout({
   fetchConfig: electronClientConfigsFetcher,
   logger,
 });
-const rendererActionTraceRollout = createRendererActionTraceRollout({
-  fetchConfig: electronClientConfigsFetcher,
-  logger,
-});
-const localTtftExporter = createLocalTtftExporter({
-  env: { ...hostProcessLocalEnv, ...process.env },
-  version: ZCODE_VERSION || app.getVersion(),
-  logger,
-});
-ipcMain.on(PlatformChannels.ReportLocalTtftBatch, (_event, batch: unknown) =>
-  localTtftExporter.enqueue(batch),
-);
-const rendererActionTraceBroker = createRendererActionTraceBroker({
-  exporter: createRendererActionTraceExporter({
-    ...hostProcessLocalEnv,
-    ...process.env,
-  }),
-  logger,
-});
-let disposeRendererActionTraceIpc: (() => void) | undefined;
 const armsUserIdentitySync = createArmsUserIdentitySync({
   deviceMid,
   // 采集停用时 SDK 未初始化，setConfig 会抛错。
@@ -1024,8 +977,6 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   stopDesktopZCodeDataSizeTelemetry();
   stopDesktopNetworkTelemetry();
   stopRemoteUsageArmsPeriodicSampling();
-  disposeRendererActionTraceIpc?.();
-  disposeRendererActionTraceIpc = undefined;
   notifyStabilityAppExit(
     getStabilityLifecycleScene() === "update_install" ? "update_install" : "app_quit",
     logger,
@@ -1048,10 +999,6 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
     // 修复原因：Main 过去不会等待仍在发送的 /event/report，正常退出也会直接丢事件。
     // 与其它 owner 并行进入既有屏障，最多等待 2 秒，避免 telemetry 串行放大退出预算。
     appTelemetryCore.flushPendingReports({ timeoutMs: 2_000 }),
-    localTtftExporter.shutdown(),
-    rendererActionTraceBroker.shutdown().catch((error) => {
-      logger.warn(`[app-quit] renderer action trace shutdown failed (${reason}):`, error);
-    }),
     // 旧流程先等待 Cron 的 1.5s deadline，再启动 Host timer，导致声明的
     // 4.5s/9s 退出总预算被串行放大。两类 owner 无关闭依赖，统一并行进入同一屏障。
     (async () => {
@@ -2086,13 +2033,6 @@ app.whenReady().then(async () => {
     syncAppSettings: syncImmediateAppSettings,
     setShortcutRecordingActive,
     deviceMid,
-  });
-
-  disposeRendererActionTraceIpc = registerRendererActionTraceIpc({
-    rollout: rendererActionTraceRollout,
-    broker: rendererActionTraceBroker,
-    env: process.env,
-    logger,
   });
 
   registerRemoteIpcHandlers({

@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import type { TraceContext, TurnId } from "@zcode/contracts";
 import { createDenyPermissionBroker } from "../../permission/broker.js";
 import type { ToolSchedule } from "../scheduler.js";
@@ -19,8 +20,6 @@ export class ToolExecutorImpl implements ToolExecutor {
 
   constructor(options: ToolExecutorOptions) {
     this.deps = {
-      agentTelemetry: options.agentTelemetry,
-      agentTelemetryActorKind: options.agentTelemetryActorKind,
       registry: options.registry,
       permissionService: options.permissionService,
       permissionBroker: options.permissionBroker ?? createDenyPermissionBroker(),

@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 /**
  * 遥测文本与模型身份的脱敏收口。
  *
@@ -5,8 +6,7 @@
  * 本机路径、邮箱、完整 URL 和凭据。这里提供纯函数实现，供 desktop main 的 `beforeReport` 与
  * renderer 侧埋点共用，避免每个埋点各写一份模式。
  *
- * 模式与 CLI 的 `apps/zcode-cli/packages/telemetry/src/error-sanitizer.ts` 保持一致；两者位于不同
- * workspace 且不允许互相依赖，扩展任一侧时必须同步另一侧。
+ * 独立版改造已移除 CLI 遥测包。本文件仍被尚未清理的桌面 ARMS 路径引用。
  */
 
 import { decodeCustomModelValue } from "./custom-model-value.js";

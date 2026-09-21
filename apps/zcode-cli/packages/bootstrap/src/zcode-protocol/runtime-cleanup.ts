@@ -1,7 +1,7 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import type { Logger, McpPort } from "@zcode/contracts";
 import type { McpConnectionPool, McpTelemetryTracker } from "@zcode/adapters/mcp";
 import type { SqliteSessionStore } from "@zcode/adapters/storage";
-import { shutdownPreparedModelTelemetry } from "@zcode/telemetry";
 import { closeSessionStore } from "../app/session-store.js";
 import type { NodeReplBrowserBroker } from "../app/node-repl-browser-broker.js";
 import type { ZCodeProcessResourceSampler } from "../process-resource-sampler.js";
@@ -63,6 +63,5 @@ export async function cleanupProtocolRuntime(options: {
       if (options.sessionStore) closeSessionStore(options.sessionStore);
     }),
     step("provider_registry", () => options.providerRegistryRuntime?.dispose()),
-    step("telemetry", () => shutdownPreparedModelTelemetry()),
   ]);
 }

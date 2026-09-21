@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import {
   CompactPhase,
   CompactReason,
@@ -73,73 +74,6 @@ const AUTO_COMPACT_MAX_ATTEMPTS = 3;
 const COMPACT_TOOL_KEEP_MAX_COUNT = 100;
 
 export async function compactActiveConversation(
-  this: AgentRuntimeInternal,
-  customInstructions: string | undefined,
-  turnTraceContext: TraceContext,
-  events: SessionEvent[],
-  options: {
-    abortSignal?: AbortSignal;
-    compactContextTelemetry?: {
-      inputTokens: number;
-      policyContextWindowTokens: number;
-      thresholdTokens?: number;
-      tokenSource: "estimate" | "provider_usage";
-    };
-    autoCompactThreshold?: number;
-    compactReason?: CompactReason;
-    initialPromptTooLongCause?: unknown;
-    phase?: CompactPhase;
-    sourceCommandId?: string;
-    trigger?: CompactTrigger;
-    model?: Model;
-    activeEntries?: readonly RuntimeMessageEntry[];
-  } = {},
-): Promise<{
-  displayText: string;
-  entries: readonly RuntimeMessageEntry[];
-  outcome: Extract<CompactAttemptOutcome, "compacted" | "skipped">;
-  tokenCount: number;
-}> {
-  const trigger = options.trigger ?? CompactTrigger.Manual;
-  const phase = options.phase ?? defaultCompactPhaseForTrigger(trigger);
-  const compactTelemetry = this.agentTelemetry.compaction({
-    trigger,
-    phase,
-    maxAttempts: AUTO_COMPACT_MAX_ATTEMPTS,
-    modelMode: this.config.modelStreaming === "off" ? "non_streaming" : "streaming",
-    policyContextWindowTokens: options.compactContextTelemetry?.policyContextWindowTokens,
-    thresholdTokens: options.compactContextTelemetry?.thresholdTokens,
-    tokenSource: options.compactContextTelemetry?.tokenSource,
-    traceContext: turnTraceContext,
-  });
-  if (options.compactContextTelemetry) {
-    // Auto 复用策略决策，Reactive 复用 overflow 路径 activeMessages；其他 trigger 不额外投影。
-    compactTelemetry.setInputTokens(options.compactContextTelemetry.inputTokens);
-  }
-  return compactTelemetry.run(async () => {
-    try {
-      const result = await compactActiveConversationImpl.call(
-        this,
-        customInstructions,
-        turnTraceContext,
-        events,
-        options,
-      );
-      compactTelemetry.setOutputTokens(result.tokenCount);
-      compactTelemetry.finishCompleted();
-      return result;
-    } catch (error) {
-      if (isTurnCancellationError(error, options.abortSignal)) {
-        compactTelemetry.finishCancelled("abort_signal");
-      } else {
-        compactTelemetry.finishFailed("unhandled", "unknown", error);
-      }
-      throw error;
-    }
-  });
-}
-
-async function compactActiveConversationImpl(
   this: AgentRuntimeInternal,
   customInstructions: string | undefined,
   turnTraceContext: TraceContext,

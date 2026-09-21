@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 // Bootstrap public API surface.
 
 export * from "./app/create-app.js";
@@ -69,7 +70,6 @@ export { runZCodeProtocolAgent } from "./zcode-protocol-entrypoint.js";
 // Exposed for the CLI's --output-format stream-json: it needs the same event
 // shape the protocol server emits, rather than inventing a second one.
 export { mapSessionEvent } from "./zcode-protocol/session-mapper.js";
-export { prepareZCodeTelemetryEnv, shutdownZCodeTelemetry } from "./telemetry-bootstrap.js";
 export type { SessionTranscriptMessage, SessionTranscriptPart } from "./session-transcript.js";
 export { listZCodeSessions, resolveLatestSession } from "./sessions.js";
 export { inspectZCodeSkill, listZCodeSkills } from "./skills.js";

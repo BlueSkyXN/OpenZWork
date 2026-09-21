@@ -1,3 +1,4 @@
+// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { join } from "node:path";
 import {
   NodeProviderConfigRuntime,
@@ -12,9 +13,6 @@ import { importLegacyPersonalProviderConfig } from "./legacyPersonalProviderConf
 export interface ProviderConfigRuntimeOptions {
   readonly zcodeBuiltinFilePath: string;
   readonly zcodeBuiltinActiveFilePath?: string;
-  readonly zcodeBuiltinRemote?: NodeProviderConfigRuntimeOptions["zcodeBuiltinRemote"];
-  readonly zcodeBuiltinEnvironment?: NodeProviderConfigRuntimeOptions["zcodeBuiltinEnvironment"];
-  readonly onZCodeBuiltinRefreshError?: (error: unknown) => void;
   readonly onPersonalConfigRecovery?: (event: PersonalProviderConfigRecoveryEvent) => void;
   readonly onPersonalConfigPollingError?: (error: unknown) => void;
   readonly personalFilePath?: string;
@@ -35,9 +33,6 @@ export class ProviderConfigRuntime {
     const runtimeOptions: NodeProviderConfigRuntimeOptions = {
       zcodeBuiltinFilePath: options.zcodeBuiltinFilePath,
       zcodeBuiltinActiveFilePath: options.zcodeBuiltinActiveFilePath,
-      zcodeBuiltinRemote: options.zcodeBuiltinRemote,
-      zcodeBuiltinEnvironment: options.zcodeBuiltinEnvironment,
-      onZCodeBuiltinRefreshError: options.onZCodeBuiltinRefreshError,
       onPersonalConfigRecovery: options.onPersonalConfigRecovery,
       onPersonalConfigPollingError: options.onPersonalConfigPollingError,
       personalFilePath:
@@ -67,14 +62,6 @@ export class ProviderConfigRuntime {
 
   resolveZCodeBuiltinActiveFilePath(): Promise<string> {
     return this.#runtime.resolveZCodeBuiltinActiveFilePath();
-  }
-
-  refreshZCodeBuiltin(options?: { readonly force?: boolean }) {
-    return this.#runtime.refreshZCodeBuiltin(options);
-  }
-
-  onDidCheckZCodeBuiltin(listener: () => Promise<void>): () => void {
-    return this.#runtime.onDidCheckZCodeBuiltin(listener);
   }
 
   dispose(): void {
