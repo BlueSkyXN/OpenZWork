@@ -2,11 +2,10 @@ import type { LaunchMarks } from "@zcode/shared";
 
 export function shouldReportLaunchToInput(state: {
   isStartupRenderBlocked: boolean;
-  welcomeScreenOpen: boolean;
   alreadyReported: boolean;
 }): boolean {
   // 门禁清除 = RootStartupLoading 退场、输入框挂载;welcome 时虽门禁清除但显示登录页、无输入框,不算"能输入"。
-  return !state.alreadyReported && !state.isStartupRenderBlocked && !state.welcomeScreenOpen;
+  return !state.alreadyReported && !state.isStartupRenderBlocked;
 }
 
 export function readRendererLaunchTimings(): {

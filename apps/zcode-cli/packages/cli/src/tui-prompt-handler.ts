@@ -20,12 +20,6 @@ import {
 } from "./tui-prompt-handler-runtime.js";
 import { DEFAULT_CLI_CLEANUP_TIMEOUT_MS, runCliCleanupWithTimeout } from "./shutdown.js";
 import {
-  configureApiKeyForTui,
-  loginBigmodelForTui,
-  loginForTui,
-  logoutForTui,
-} from "./tui-auth.js";
-import {
   listCustomCommandsForTui,
   listSessionsForTui,
   listSkillsForTui,
@@ -37,7 +31,6 @@ import {
   TUI_TITLE_GENERATION_CONFIG,
   type TuiPromptHandler,
 } from "./tui-command-state.js";
-import { createTuiModelAvailabilityChecker } from "./tui-login-state.js";
 import { withTuiMetadata } from "./tui-submit-metadata.js";
 import type {
   CliModeState,
@@ -151,11 +144,6 @@ export function createTuiSubmitPrompt(
         projectConfigPath: deps.projectConfigPath,
         providerRegistry: providerRegistryRuntime.runtime.registryService,
         configuredDefaultModelSelection,
-        ...(providerRegistryRuntime.providerRuntimeHeadersPort
-          ? {
-              providerRuntimeHeadersPort: providerRegistryRuntime.providerRuntimeHeadersPort,
-            }
-          : {}),
         resume: sessionId !== undefined,
         runtimeConfig: {
           ...(modeState.override ? { mode: modeState.override } : {}),
@@ -261,13 +249,14 @@ export function createTuiSubmitPrompt(
     getMode: () => currentCliMode(modeState),
     getLocale: () =>
       app?.getLocale?.() ?? resolveDisplayLocale(activeUiLocale, uiDetectedLocale) ?? startupLocale,
-    hasSelectableModels: createTuiModelAvailabilityChecker(getApp),
+    hasSelectableModels: async () => {
+      // Registry 已按 provider/账号可用性过滤；这里只判断是否存在可用模型。
+      const app = await getApp();
+      return ((await app.listModels?.()) ?? []).some((model) => !model.disabledReason);
+    },
     listCustomCommands: () => listCustomCommandsForTui(deps),
     listSessions: () => listSessionsForTui(deps),
     listSkills: () => listSkillsForTui(deps),
-    configureApiKey: (options) => configureApiKeyForTui(deps, options),
-    login: (options) => loginForTui(deps, options),
-    loginBigmodel: (options) => loginBigmodelForTui(deps, options),
     loadCustomCommand: (name) => loadCustomCommandForTui(deps, name),
     newApp,
     recordInputHistory: async (input, kind) => {
@@ -281,7 +270,6 @@ export function createTuiSubmitPrompt(
       }
       await runtime.modelSelectionConfigRepository.saveConfiguredDefault(selection);
     },
-    logout: () => logoutForTui(deps),
     setLocale: async (locale) => {
       if (app?.setLocale) {
         const result = await app.setLocale(locale);
