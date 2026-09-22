@@ -17,12 +17,6 @@ export interface NodeReplPersistedResult {
   sizeLabel: string;
 }
 
-/** 本次 cell 操作的目标应用（Computer Use）；由 CLI 的 node_repl display 携带。 */
-export interface NodeReplCuaApp {
-  appKey: string;
-  displayName?: string;
-}
-
 export interface NodeReplDisplayModel {
   operation: NodeReplOperation;
   userTitle?: string;
@@ -33,7 +27,6 @@ export interface NodeReplDisplayModel {
   images: NodeReplDisplayImage[];
   persistedResult?: NodeReplPersistedResult;
   displaySource?: "browser_turn_end";
-  app?: NodeReplCuaApp;
 }
 
 const IMPLEMENTATION_TITLE_PATTERN = /(?:\bjs\b|\bjavascript\b|node[\s_-]*repl)/i;
@@ -318,38 +311,6 @@ function extractImages(values: unknown[]): NodeReplDisplayImage[] {
   return images;
 }
 
-/**
- * 从 raw 里找 node_repl display 携带的 App 身份。
- *
- * 与 `extractImages` / `hasBrowserTurnEndDisplay` 同款递归：实时 tool.updated 把 display 放在
- * raw.result 内，终态 snapshot 则把 completed part 的 metadata 直接当作 raw，只扫一个固定位置
- * 会让对话结束后图标消失。
- */
-function findCuaApp(value: unknown, visited = new Set<object>()): NodeReplCuaApp | undefined {
-  if (!value || typeof value !== "object" || visited.has(value)) return undefined;
-  visited.add(value);
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findCuaApp(item, visited);
-      if (found) return found;
-    }
-    return undefined;
-  }
-  if (!isRecord(value)) return undefined;
-  if (value.kind === "node_repl_images" && isRecord(value.app)) {
-    const appKey = readNonEmptyString(value.app.appKey)?.trim();
-    if (appKey) {
-      const displayName = readNonEmptyString(value.app.displayName)?.trim();
-      return { appKey, ...(displayName ? { displayName } : {}) };
-    }
-  }
-  for (const item of Object.values(value)) {
-    const found = findCuaApp(item, visited);
-    if (found) return found;
-  }
-  return undefined;
-}
-
 function hasBrowserTurnEndDisplay(value: unknown, visited = new Set<object>()): boolean {
   if (!value || typeof value !== "object" || visited.has(value)) return false;
   visited.add(value);
@@ -399,7 +360,6 @@ export function buildNodeReplDisplayModel(toolCall: ChatToolCall): NodeReplDispl
   // 实时 tool.updated 把 display 放在 raw.result 内，终态 snapshot 则把
   // completed part 的 metadata 直接作为 raw。只扫描 raw.result 会让对话结束后的图片消失。
   const images = extractImages([...outputCandidates, toolCall.raw]);
-  const app = findCuaApp(toolCall.raw);
   const persisted = parsePersistedResult(
     removeProjectedImagePlaceholders(
       removeProjectedCompletionMarkers(projectedText),
@@ -416,7 +376,6 @@ export function buildNodeReplDisplayModel(toolCall: ChatToolCall): NodeReplDispl
     ...(hasBrowserTurnEndDisplay(toolCall.raw)
       ? { displaySource: "browser_turn_end" as const }
       : {}),
-    ...(app ? { app } : {}),
     error:
       extractError(toolCall.error) ??
       (toolCall.status === "failed"

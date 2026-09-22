@@ -3,7 +3,6 @@ import type { ApprovalPrompt } from "./app-model.js";
 import { approvalDecisions, palette } from "./app-model.js";
 import {
   approvalDecisionLabel,
-  isOfficialCuaProjectApproval,
   approvalPermissionScopes,
   approvalRequestDescription,
   previewPermissionInput,
@@ -99,17 +98,6 @@ function approvalRows(approval: ApprovalPrompt, contentWidth: number): ApprovalT
       approvalTextRow(
         `scope-${index}`,
         `${scope.kind === "prefix" ? "Command prefix" : "Exact command only"}: ${scope.text}`,
-        palette.muted,
-        contentWidth,
-      ),
-    );
-  }
-
-  if (isOfficialCuaProjectApproval(approval.request)) {
-    rows.push(
-      approvalTextRow(
-        "computer-use-scope",
-        "Do not ask again for official Computer Use actions in this project",
         palette.muted,
         contentWidth,
       ),

@@ -38,7 +38,6 @@ import { resolveDesktopZoomLevelFromFactor } from "./desktopZoom.js";
 import { resolveDesktopWindowChromeState } from "./desktopWindowChromeState.js";
 import { handleWindowUnreadCountSync } from "./desktopWindowLifecycle.js";
 import { captureWindowScreenshot, openPathInFileManager } from "./desktopMainIpcHelpers.js";
-import { registerCuaPermissionIpcHandlers } from "./desktopCuaPermissionIpc.js";
 import {
   registerDesktopBrowserIpcHandlers,
   type AttachBrowserGuest,
@@ -54,10 +53,8 @@ import {
 import { createTempTextAttachment } from "./tempTextAttachment.js";
 import { registerDesktopSaveFileIpcHandler } from "./desktopSaveFile.js";
 import { registerDesktopPrintToPdfIpcHandler } from "./desktopPrintToPdf.js";
-import { registerCuaPipActiveSessionIpc } from "./desktopCuaPipIpc.js";
 
 export function registerPlatformIpcHandlers(options: {
-  fetchHelpConfig?: () => Promise<unknown>;
   logger: {
     info: (...args: unknown[]) => void;
     warn: (...args: unknown[]) => void;
@@ -70,13 +67,11 @@ export function registerPlatformIpcHandlers(options: {
   ) => { activated: boolean; winId?: number };
   windowWorkspaceMap: Map<number, Set<string>>;
   windowUnreadCountMap: Map<number, number>;
-  currentApplicationLocale: () => Locale;
   executeDesktopCommand: (
     command: DesktopCommandId,
     senderWindow?: BrowserWindow | null,
   ) => Promise<unknown>;
   acknowledgePostUpdateReleaseNotes: (version: string) => Promise<void>;
-  syncActiveTaskSession: (windowId: number, sessionId: string | null) => void;
   syncTaskRealtimeWorkspaceKeys: (windowId: number, workspaceKeys: Iterable<string>) => void;
   getUpdateState: () => UpdateStatePayload;
   openUpdateStatusWindow: () => void;
@@ -260,10 +255,6 @@ export function registerPlatformIpcHandlers(options: {
       options.logger,
     );
   });
-  registerCuaPipActiveSessionIpc({
-    syncActiveTaskSession: options.syncActiveTaskSession,
-    warn: (message) => options.logger.warn(message),
-  });
   ipcMain.on(
     PlatformChannels.WindowControlsOverlayReady,
     (event, payload: WindowControlsOverlayReadyPayload) => {
@@ -317,11 +308,6 @@ export function registerPlatformIpcHandlers(options: {
     openPathInFileManager(rawPath, options.logger),
   );
 
-  registerCuaPermissionIpcHandlers({
-    logger: options.logger,
-    currentApplicationLocale: options.currentApplicationLocale,
-  });
-
   ipcMain.handle(PlatformChannels.CanOpenCommunity, async (_event, locale: unknown) => {
     const result = localeSchema.safeParse(locale);
     if (!result.success) {
@@ -331,7 +317,6 @@ export function registerPlatformIpcHandlers(options: {
 
     const communityUrl = await resolveCommunityUrl({
       locale: result.data,
-      fetchRemoteConfig: options.fetchHelpConfig,
       logger: options.logger,
     });
 
@@ -404,7 +389,7 @@ export function registerPlatformIpcHandlers(options: {
       return;
     }
 
-    // 返回值直通 renderer 的 executeDesktopCommand promise（GetCuaOsSupport 依赖此行为）。
+    // 返回值直通 renderer 的 executeDesktopCommand promise。
     return await options.executeDesktopCommand(command as DesktopCommandId, senderWindow);
   });
 }

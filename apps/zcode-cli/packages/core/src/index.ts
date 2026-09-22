@@ -88,7 +88,6 @@ export * from "./plugin-reference/index.js";
 // Node REPL/browser-use plugin runtime primitives
 export { NodeReplSession } from "./repl/node-repl-session.js";
 export type {
-  NodeReplCuaAppIdentity,
   NodeReplImage,
   NodeReplRequestMeta,
   NodeReplRunResult,

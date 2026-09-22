@@ -132,7 +132,7 @@ export function useBrowserResizeOperationWarning({
       if (!sizeChanged || isAgentLayoutSettling) return;
 
       // 坐标类动作可能仍基于 resize 前的视觉信息。同一 active 周期只提示一次，
-      // 避免连续拖拽产生提示风暴，同时保持 locator/CUA 的既有执行语义不变。
+      // 避免连续拖拽产生提示风暴，同时保持 locator 输入命令的既有执行语义不变。
       warnForBrowserResize();
     });
     observer.observe(element);

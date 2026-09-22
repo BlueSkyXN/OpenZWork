@@ -1,14 +1,9 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { CoreErrorType, createChildTraceContext, createCoreError, createRootTraceContext, getCurrentTraceContext, traceContextToLogContext, type SessionEvent } from "@zcode/contracts";
 import {
-  OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
-  attestOfficialCuaFrameContent,
-} from "@zcode/zcode-cua/frame-contract";
-import {
   normalizeToolExecutionInput,
   prepareInitialToolExecutionInput,
 } from "../input-normalization.js";
-import { hasOfficialCuaFrameAuthority } from "../../mcp/image-normalization.js";
 import type { SkillTelemetryMetadata } from "@zcode/contracts";
 import type { ToolExecutionContext, ToolExecutionResult } from "../types.js";
 import type { ToolEntry } from "../types.js";
@@ -411,10 +406,8 @@ async function executeToolCallImpl(
       throw createToolHandlerFailureError(canonicalToolCall, output);
     }
     validateOutput(output, entry);
-    // node_repl 同时承载 Browser Use 与 CUA，不能在注册时把整个 server 标成 official。
-    // CUA SDK 结果带 producer integrity metadata 时，才为本次序列化临时打开原子帧保护；
-    // 否则通用 resultBudget 会截断/重排 image_ref，或非 authority 路径会把引用剥掉。
-    const modelOutputEntry = resolveModelOutputEntry(entry, output);
+    // node_repl 结果可能带结构化媒体；序列化沿用注册时的 entry 预算。
+    const modelOutputEntry = entry;
     let serialization = await serializeOutput(
       deps,
       output,
@@ -439,7 +432,6 @@ async function executeToolCallImpl(
     );
     const display = createToolResultDisplay(canonicalToolCall.name, output, {
       mcp: entry.metadata.mcpPresentation,
-      officialCua: entry.modelContentProtection === OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
     });
     const perf = mergeToolExecutionTelemetry(readToolExecutionTelemetry(output), {
       permissionWaitMs,
@@ -449,21 +441,6 @@ async function executeToolCallImpl(
     });
 
     const finalModelContent = serialization.modelContent ?? serialization.content;
-    const modelContentProtection = modelOutputEntry.modelContentProtection
-      ? attestOfficialCuaFrameContent(finalModelContent, modelOutputEntry.modelContentProtection)
-      : undefined;
-    if (
-      modelOutputEntry.modelContentProtection &&
-      Array.isArray(finalModelContent) &&
-      finalModelContent.some((block) => block.type === "image") &&
-      !modelContentProtection
-    ) {
-      throw createCoreError(
-        CoreErrorType.ToolExecutionFailed,
-        "Official CUA frame failed final model-content attestation",
-        { recoverable: true },
-      );
-    }
 
     const result: ToolExecutionResult = withTerminalToolTurnStop(
       {
@@ -574,30 +551,6 @@ async function executeToolCallImpl(
   } finally {
     unlinkParentAbort();
   }
-}
-
-function resolveModelOutputEntry(entry: ToolEntry, output: unknown): ToolEntry {
-  const isSharedNodeRepl =
-    entry.metadata.name === "mcp__node_repl__js" ||
-    entry.metadata.mcpPresentation?.serverName === "node_repl";
-  if (
-    entry.modelContentProtection === OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION ||
-    !isSharedNodeRepl ||
-    !hasOfficialCuaFrameAuthority(output)
-  ) {
-    return entry;
-  }
-  return {
-    ...entry,
-    modelContentProtection: OFFICIAL_CUA_FRAME_MODEL_CONTENT_PROTECTION,
-    resultBudget: {
-      ...entry.resultBudget,
-      maxInlineBytes: Math.max(entry.resultBudget.maxInlineBytes, 256 * 1024),
-      maxModelBytes: Math.max(entry.resultBudget.maxModelBytes, 256 * 1024),
-      strategy: "truncate",
-      preview: { direction: "head" },
-    },
-  };
 }
 
 function isEmptyToolName(toolName: string): boolean {

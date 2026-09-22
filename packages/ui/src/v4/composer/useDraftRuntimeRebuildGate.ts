@@ -55,7 +55,7 @@ interface DraftRuntimeRebuildGate {
 }
 
 /**
- * CUA Helper 就绪、liveness 恢复等原因会回收 agent runtime（workspace-dispose），把草稿态
+ * liveness 恢复等原因会回收 agent runtime（workspace-dispose），把草稿态
  * 尚未持久化的预热会话一并冲掉。此 hook 在 runtime 换代时递增 draftRuntimeInvalidationVersion
  * 触发重建，并在重建窗口内给出 rebuilding=true 供发送门禁使用。
  *

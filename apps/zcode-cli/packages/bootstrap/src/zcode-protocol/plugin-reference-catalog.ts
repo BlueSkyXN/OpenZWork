@@ -3,7 +3,6 @@
 // 且 plugins.ts 已接近 max-lines 门禁。
 import {
   ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
-  zcodeProtocolNotifications,
   zcodePluginsReferenceCatalogParamsSchema,
   zcodePluginsResolveSuggestedReferenceParamsSchema,
   type ZCodePluginReferenceCatalogEntry,
@@ -16,7 +15,6 @@ import { buildPluginReferenceCatalog } from "@zcode/core";
 import {
   getZCodePluginsOverview,
   resolveZCodePlugins,
-  updateZCodePluginMarketplace,
 } from "../plugins.js";
 import {
   parseParams,
@@ -60,13 +58,12 @@ export async function getPluginReferenceCatalog(
 }
 
 const SUGGESTED_PLUGIN_MARKETPLACE = ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID;
-const SUGGESTED_PLUGIN_MARKETPLACE_REFRESH_TIMEOUT_MS = 10_000;
 
-/** 推荐 Prompt 的安装前可信解析；missing 必须先刷新官方目录，失败时禁止旧快照安装。 */
+/** 推荐 Prompt 的安装前可信解析；本地官方 catalog 未命中即按未列出处理，禁止旧快照安装。 */
 export async function resolveSuggestedPluginReference(
   context: ZCodeProtocolAgentServerContext,
   rawParams: unknown,
-  signal?: AbortSignal,
+  _signal?: AbortSignal,
 ): Promise<ZCodePluginsResolveSuggestedReferenceResult> {
   const params = parseParams(zcodePluginsResolveSuggestedReferenceParamsSchema, rawParams);
   const stableId = params.stableId.trim();
@@ -139,83 +136,9 @@ export async function resolveSuggestedPluginReference(
   const initial = readState();
   if (initial.entry) return toResult(initial.entry);
 
-  // 旧流程只有官方 Marketplace 刷新完成后才把 missing 结果返回 UI，网络等待期间
-  // 没有任何反馈，用户会误以为点击未生效。首次本地检查缺失后先通知同一 operation 进入 loading。
-  context.notify({
-    method: zcodeProtocolNotifications.pluginOperationProgress,
-    params: { operationId: params.operationId, state: "refreshing" },
-  });
-
-  const refreshController = new AbortController();
-  const abortRefresh = () => refreshController.abort(signal?.reason);
-  if (signal?.aborted) abortRefresh();
-  else signal?.addEventListener("abort", abortRefresh, { once: true });
-  let refreshTimedOut = false;
-  let refreshTimeout: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const refreshRequest = updateZCodePluginMarketplace({
-      abortSignal: refreshController.signal,
-      logger: context.logger,
-      marketplace: SUGGESTED_PLUGIN_MARKETPLACE,
-      workingDirectory,
-    });
-    const refreshTimeoutRequest = new Promise<never>((_, reject) => {
-      // 刷新超时必须中止底层网络/进程；仅结束协议等待会让旧 operation 继续改写目录快照。
-      refreshTimeout = setTimeout(() => {
-        refreshTimedOut = true;
-        const timeoutError = new Error("刷新 zcode-plugins-official 超时（10000 ms）");
-        timeoutError.name = "TimeoutError";
-        refreshController.abort(timeoutError);
-        reject(timeoutError);
-      }, SUGGESTED_PLUGIN_MARKETPLACE_REFRESH_TIMEOUT_MS);
-    });
-    const refreshed = await Promise.race([refreshRequest, refreshTimeoutRequest]);
-    if (signal?.aborted) return unavailable("plugin_operation_cancelled", "插件操作已取消");
-    const failure = refreshed.diagnostics.find(
-      (item) => item.pluginId === SUGGESTED_PLUGIN_MARKETPLACE,
-    );
-    if (failure) return unavailable("marketplace_refresh_failed", failure.message);
-  } catch (error) {
-    if (refreshTimedOut) {
-      return unavailable(
-        "marketplace_refresh_failed",
-        error instanceof Error ? error.message : String(error),
-      );
-    }
-    if (signal?.aborted) {
-      return unavailable("plugin_operation_cancelled", "插件操作已取消");
-    }
-    return unavailable(
-      "marketplace_refresh_failed",
-      error instanceof Error ? error.message : String(error),
-    );
-  } finally {
-    if (refreshTimeout !== undefined) clearTimeout(refreshTimeout);
-    signal?.removeEventListener("abort", abortRefresh);
-  }
-
-  const afterRefresh = readState();
-  if (afterRefresh.entry) return toResult(afterRefresh.entry);
-  const overview = getZCodePluginsOverview({ logger: context.logger, workingDirectory });
-  const candidate = overview.availablePlugins.find((item) => item.id === stableId);
-  if (
-    !candidate ||
-    candidate.name !== pluginName ||
-    candidate.marketplace !== SUGGESTED_PLUGIN_MARKETPLACE
-  ) {
-    return unavailable("plugin_suggested_reference_not_listed", "刷新后的官方目录中未找到该插件");
-  }
-  const icon = candidate.listing?.icon?.trim();
-  return {
-    stableId,
-    status: "missing",
-    marketplace: SUGGESTED_PLUGIN_MARKETPLACE,
-    pluginName: candidate.name,
-    sourceTrust: "official",
-    ...(icon ? { icon } : {}),
-    ...(candidate.listing ? { listing: candidate.listing } : {}),
-    diagnostics: [],
-  };
+  // 官方市场远端刷新已随官方服务移除：本地 catalog（bundled seed 合并的官方目录）未命中
+  // 即按未列出处理，不再等待网络目录，也不允许用旧快照继续安装。
+  return unavailable("plugin_suggested_reference_not_listed", "官方目录中未找到该插件");
 }
 
 /**

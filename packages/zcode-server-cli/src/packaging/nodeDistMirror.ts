@@ -2,9 +2,8 @@
  * Node dist 下载源的唯一解析点（本包内）。
  *
  * 与 `.gitlab/ci/00-workflow.yml` 的 `ZCODE_NODE_DIST_MIRROR` CI 变量、
- * `scripts/prepare-prebuilds.mjs` 的 `nodeDistBase()`、
- * `scripts/cua-helper-sea-base.mjs` 的 `DEFAULT_MIRROR` 是同一个约定和同一个默认值。
- * 四处必须保持一致——CI 变量会覆盖
+ * `scripts/prepare-prebuilds.mjs` 的 `nodeDistBase()` 保持同一约定和同一个默认值。
+ * 三处必须保持一致——CI 变量会覆盖
  * 代码默认值，两者一旦不同，改代码默认值在 CI 里就等于没改。
  *
  * `stageCli.ts` 与 `scripts/prepare-prebuilds.mjs` 都硬编码

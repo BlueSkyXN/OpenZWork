@@ -33,8 +33,6 @@ import {
   isResumeWorkflowRunToolCall,
   isSaveWorkflowToolCall,
 } from "@/lib/workflowToolNames.js";
-import { CuaToolCallBlock, isCuaToolCall } from "@/ToolCallBlocks/renderers/cua.js";
-import { CuaGroupToolCallBlock } from "@/ToolCallBlocks/renderers/cua-group.js";
 import { GoalToolCallBlock } from "@/ToolCallBlocks/renderers/goal.js";
 import { NodeReplToolCallBlock } from "@/ToolCallBlocks/renderers/node-repl.js";
 import { McpToolCallBlock, readMcpToolPresentation } from "@/ToolCallBlocks/renderers/mcp.js";
@@ -60,12 +58,6 @@ export function resolveToolCallRenderer(context: ToolCallBlockRenderContext) {
   }
   if (context.toolCallNode.toolCall.kind === "executeGroup") {
     return ExecuteGroupToolCallBlock;
-  }
-  if (context.toolCallNode.toolCall.kind === "cuaGroup") {
-    return CuaGroupToolCallBlock;
-  }
-  if (isCuaToolCall(context.toolCallNode.toolCall)) {
-    return CuaToolCallBlock;
   }
 
   const identity = resolveToolCallIdentity(context.toolCallNode.toolCall);

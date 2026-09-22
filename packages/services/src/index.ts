@@ -151,7 +151,6 @@ export type {
   ZCodeAgentAttachmentChunkParams,
   ZCodeAgentAttachmentTerminalParams,
   ZCodeAgentCreateSessionParams,
-  ZCodeAgentCuaPermissionObservation,
   ZCodeAgentInitializeResult,
   ZCodeAgentStorageStartupSnapshot,
   ZCodeAgentRuntimeLifecycleEvent,
@@ -208,14 +207,6 @@ export { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
 // Storage（资源管理器「存储」tab）：数据类型在 @zcode/shared；这里只导出服务接口与卷分组纯函数
 export type { IStorageService } from "./storage/contract.js";
 
-export {
-  IClientScenesService,
-  type ClientSceneConfig,
-  type ClientSceneItem,
-  type ClientSceneOption,
-  type ClientSceneResponseBody,
-  type ClientScenesResponse,
-} from "./client-scenes/clientScenes.js";
 export { isValidCronExpr } from "./session/automationCronValidation.js";
 // 闲时任务管理服务（与 automation 服务面独立）；接口/描述符 browser-safe。
 
@@ -224,20 +215,6 @@ export { ISkillsService } from "./skills/skills.js";
 export { ISkillSyncService } from "./skill-sync/skillSync.js";
 export { IMcpSyncService } from "./mcp-sync/mcpSync.js";
 export { IPluginSyncService } from "./plugin-sync/pluginSync.js";
-export {
-  ICuaPermissionService,
-  type CuaPermissionState,
-  type CuaPermissionRestartOptions,
-  type CuaPermissionStatus,
-  type CuaPermissionStatusQueryOptions,
-  type CuaPermissionStatusResult,
-  type CuaPermissionStatusUnavailable,
-  isCuaPermissionStatusAvailable,
-} from "./cua-permission-broker/cuaPermissionService.js";
-export {
-  ICuaPipSessionService,
-  type CuaPipSessionService,
-} from "./cua-permission-broker/cuaPipSession.js";
 
 // Plugins service — IPluginsService is both a type (interface) and value (descriptor)
 export { IPluginsService } from "./plugins/plugins.js";
@@ -278,4 +255,3 @@ export type {
   FeedbackTicketSummary,
   FeedbackTicketType,
 } from "@zcode/shared";
-export { IClientConfigService } from "./client-config/clientConfig.js";

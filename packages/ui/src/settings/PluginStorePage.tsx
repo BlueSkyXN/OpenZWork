@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { useServices } from "@/hooks/useServices.js";
-import { usePluginStoreOrder } from "@/hooks/usePluginStoreOrder.js";
 import { useZCodeSessionService } from "@/hooks/useZCodeSessionService.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
@@ -37,7 +36,6 @@ import {
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
 import { PluginUninstallConfirmDialog } from "@/settings/PluginUninstallConfirmDialog.js";
 import { usePluginUninstall } from "@/settings/usePluginUninstall.js";
-import { claimMarketplaceAutoRefresh } from "@/settings/officialMarketplaceAutoRefresh.js";
 import { consumePluginStoreOpenTarget } from "@/lib/pluginStoreNavigation.js";
 import { SettingsBreadcrumbReporter } from "@/settings/SettingsHeaderBreadcrumb.js";
 import {
@@ -61,7 +59,6 @@ export function PluginStorePage({
   onManageInstalled,
 }: PluginStorePageProps) {
   const { intl, locale } = useZCodeIntl();
-  const { order: storeOrder, refresh: refreshStoreOrder } = usePluginStoreOrder();
   const { pluginManagementService, skillsService } = useServices();
   const zcodeSessionService = useZCodeSessionService(
     workspacePath ?? undefined,
@@ -124,19 +121,6 @@ export function PluginStorePage({
       pluginService: pluginManagementService,
     });
   }, [initialize, pluginManagementService, workspaceIdentity, workspacePath]);
-
-  // 目录自动刷新（Catalog Auto-Refresh）：只针对 ZCode 官方市场。每次进入商店页都刷新 CDN 目录，
-  // 否则新上架插件要等用户手动点刷新才可见；以 10 分钟窗口节流，并在发起时占位防抖（失败/在飞不重复），
-  // 判据见 officialMarketplaceAutoRefresh。状态放模块级而非组件 ref，因为每次进入都是重新挂载。
-  useEffect(() => {
-    const official = marketplaces.find((item) => item.id === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID);
-    if (
-      official &&
-      claimMarketplaceAutoRefresh(ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID, official.lastUpdated)
-    ) {
-      void updateMarketplace(ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID, pluginManagementService);
-    }
-  }, [marketplaces, pluginManagementService, updateMarketplace]);
 
   const items = useMemo(
     () =>
@@ -241,7 +225,6 @@ export function PluginStorePage({
   // 操作内部完成后会重载概览），随后按更新徽标数量给完成提示。只做本地重载时，
   // 用户点了刷新看不到 CDN 新插件（与规格「刷新→update(null)」不符）。
   const handleRefresh = async () => {
-    void refreshStoreOrder(true);
     setRefreshing(true);
     try {
       await handleCheckForUpdates();
@@ -539,7 +522,6 @@ export function PluginStorePage({
         />
       ) : (
         <PluginStoreListView
-          order={storeOrder}
           items={items}
           marketplaces={marketplaces}
           actions={actions}

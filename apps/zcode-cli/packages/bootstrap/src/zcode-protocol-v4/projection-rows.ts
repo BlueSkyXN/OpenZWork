@@ -162,7 +162,7 @@ export function mapGoalStatus(status: GoalStatus): GoalState["status"] {
 export function buildToolOutput(result: ToolResultPayload, toolCallId: string): ToolOutput {
   const text = result.content;
   // 模型可见文本只保留图片占位符，若 V4 output 不独立携带 display，
-  // 实时投影和冷恢复都会丢失 CUA 截图。Node REPL 图片仍走 ToolCallRow.display 专用通道。
+  // 实时投影和冷恢复都会丢失结构化截图。Node REPL 图片仍走 ToolCallRow.display 专用通道。
   const display = result.display?.kind === "node_repl_images" ? undefined : result.display;
   const headBytes = PROTOCOL_V4_LIMITS.toolOutputFinalHeadBytes;
   const tailBytes = PROTOCOL_V4_LIMITS.toolOutputFinalTailBytes;

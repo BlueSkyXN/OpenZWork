@@ -84,7 +84,7 @@ async function buildApplicationPathIndex(
             Math.min(PLIST_READ_TIMEOUT_MS, remainingMs),
           )
         ).trim();
-        // 索引按小写 bundle id 建键：CUA producer 的 appKey 是 `darwin:<bundleId.toLowerCase()>`，
+        // 索引按小写 bundle id 建键，
         // 而 Info.plist 里是原始大小写（com.apple.Notes）。Spotlight 主路径用的是
         // 大小写不敏感查询（`"..."c`），兜底索引若保持精确匹配，就会只在 Spotlight 不可用的
         // 机器上取不到图标 —— 两条路径必须同一套大小写语义。
@@ -183,8 +183,8 @@ function normalizedRequest(
   if (platform === "darwin" && SAFE_BUNDLE_ID.test(value)) {
     return { locators: [{ kind: "darwin-bundle-id", value }] };
   }
-  // Legacy string 仅兼容历史 macOS bundle id。Windows exe 必须来自 official CUA
-  // authority 的结构化 locator，不能把模型 input 当作本地文件路径。
+  // Legacy string 仅兼容历史 macOS bundle id。Windows exe 必须来自结构化
+  // locator，不能把模型 input 当作本地文件路径。
   return null;
 }
 

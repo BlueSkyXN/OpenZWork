@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { findOfficialMcpReservedHeaders } from "@zcode/shared";
 import type {
   McpOAuthConfig,
   McpServerConfig,
@@ -13,9 +12,10 @@ import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
 import { ZCODE_PLUGIN_ID_ENV_KEY } from "@zcode/shared";
 import type { LoadedPlugin } from "./types.js";
 import { isNotFoundError, isPluginOptionValue, isRecord, resolveInside } from "./helpers.js";
-import { buildOfficialProvenance, parseZCodeOfficialAuth } from "./mcp-official-auth.js";
 
 const SUPPORTED_MCP_TYPES = new Set(["stdio", "http", "sse"]);
+// SDK 协议头由 runtime 权威控制，静态配置携带会干扰连接复用与协议协商。
+const RESERVED_SDK_PROTOCOL_HEADERS = ["mcp-session-id", "mcp-protocol-version"] as const;
 const TEMPLATE_PATTERN = /\$\{([^}]+)\}/g;
 const ENVIRONMENT_VARIABLE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -187,25 +187,16 @@ function resolveMcpServerConfig(
     kind: context.loaded.marketplace === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE ? "builtin" : "plugin",
   };
 
-  // zcode_official 允许 http 与 stdio，sse 出现即禁用该 MCP，不静默忽略——静默会让配置作者以为鉴权已生效。
-  //
-  // stdio 之所以能放开：请求由插件进程自己发出，身份头随每条出站协议消息的 _meta 下发
-  // （见 adapters/src/mcp/index.ts）。sse 没有对应通道，继续拒绝。
-  const officialAuth = parseZCodeOfficialAuth(server.auth, identity.mcpKey);
-  if (officialAuth && type !== "http" && type !== "stdio") {
+  // 官方 MCP 鉴权已随官方服务整体移除。旧缓存插件 .mcp.json 里的 auth:zcode_official 显式
+  // 拒绝而不是静默匿名降级——fail-fast 让装载失败落进 plugin_mcp_invalid，用户能看见原因。
+  if (isRecord(server.auth) && server.auth.type === "zcode_official") {
     throw new Error(
-      `MCP server ${identity.mcpKey}: ${officialAuth.type} auth requires type "http" or "stdio", got "${type}"`,
+      `MCP server ${identity.mcpKey}: auth type "zcode_official" is no longer supported`,
     );
   }
 
   if (type === "stdio") {
     const command = requireString(server.command, "stdio MCP server requires command");
-    // stdio 不走 OAuth 分支，声明 oauth 属无效配置；与 http 一样不做优先级裁决，直接禁用。
-    if (officialAuth && server.oauth !== undefined) {
-      throw new Error(
-        `MCP server ${identity.mcpKey}: ${officialAuth.type} auth cannot be combined with oauth`,
-      );
-    }
     const env = resolveStringRecord(
       {
         CLAUDE_PROJECT_DIR: context.workingDirectory,
@@ -220,8 +211,7 @@ function resolveMcpServerConfig(
       { allowSensitive: true },
     );
     // 插件 manifest 可自定义 env，但插件身份必须由 resolver 权威写入（loaded.id 来自本地 plugin
-    // registry，不是可序列化配置），不能让第三方伪造 official zcode-cua 身份后获得只应定向注入给
-    // 内置插件的 broker 凭据。manifest env spread 之后覆写，确保 user/manifest 无法覆盖。
+    // registry，不是可序列化配置），manifest env spread 之后覆写，确保 user/manifest 无法覆盖。
     env[ZCODE_PLUGIN_ID_ENV_KEY] = context.loaded.id;
     return {
       type: "stdio",
@@ -239,13 +229,6 @@ function resolveMcpServerConfig(
       env,
       source,
       timeoutMs: typeof server.timeoutMs === "number" ? server.timeoutMs : undefined,
-      ...(officialAuth
-        ? {
-            auth: officialAuth,
-            // provenance 由宿主生成；即便 .mcp.json 里写了 official 字段也会被此处覆盖。
-            official: buildOfficialProvenance(identity),
-          }
-        : {}),
     };
   }
 
@@ -254,33 +237,17 @@ function resolveMcpServerConfig(
     ? resolveStringRecord(server.headers, context, { allowSensitive: true })
     : undefined;
   const oauth = resolveMcpOAuthConfig(server.oauth, context);
-
-  if (officialAuth) {
-    // 第一阶段不做优先级裁决：两种鉴权同时声明属于配置错误，直接禁用。
-    if (oauth) {
-      throw new Error(
-        `MCP server ${identity.mcpKey}: ${officialAuth.type} auth cannot be combined with oauth`,
-      );
-    }
-    // 保留头只在官方鉴权路径下拦截。普通/第三方 MCP 静态携带 authorization 是既有合法用法，
-    // 全局拦截会造成回归。
-    const reserved = findOfficialMcpReservedHeaders(headers);
-    if (reserved.length > 0) {
-      throw new Error(
-        `MCP server ${identity.mcpKey}: static headers must not contain reserved header(s): ${reserved.join(", ")}`,
-      );
-    }
-    return {
-      type: "http",
-      url: resolveTemplate(url, context, { allowSensitive: false }),
-      enabled: typeof server.enabled === "boolean" ? server.enabled : undefined,
-      headers,
-      auth: officialAuth,
-      source,
-      // provenance 由宿主生成；即便 .mcp.json 里写了 official 字段也会被此处覆盖。
-      official: buildOfficialProvenance(identity),
-      timeoutMs: typeof server.timeoutMs === "number" ? server.timeoutMs : undefined,
-    };
+  // 普通/第三方 MCP 静态携带 authorization 是既有合法用法，不拦截；只拦 SDK 协议头。
+  const headerNames = new Set(
+    Object.keys(headers ?? {}).map((name) => name.trim().toLowerCase()),
+  );
+  const reserved = RESERVED_SDK_PROTOCOL_HEADERS.filter((reservedName) =>
+    headerNames.has(reservedName),
+  );
+  if (reserved.length > 0) {
+    throw new Error(
+      `MCP server ${identity.mcpKey}: static headers must not contain reserved header(s): ${reserved.join(", ")}`,
+    );
   }
 
   return {
@@ -294,9 +261,6 @@ function resolveMcpServerConfig(
   } as McpServerConfig;
 }
 
-/**
- * 严格解析 `auth` 的实现已移到 mcp-official-auth.ts（mcp.ts 已到 max-lines 上限）。
- */
 function resolveMcpOAuthConfig(
   value: unknown,
   context: VariableContext,

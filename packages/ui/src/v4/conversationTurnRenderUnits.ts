@@ -136,7 +136,7 @@ function isTurnEndingTimelineMarkerRow(row: AssistantWorkRow): row is TimelineMa
  * 分享页只有这条兜底——最终答复被卷进「已工作」并整轮默认展开。
  *
  * 它是追加的产出物、不属于对话流，按轮尾处理即可；与 browserTurnEndRows 摘轮尾截图同理。
- * 注意不能改成「取 flow 里最后一条 assistantText」：那会把 CUA 响应中途的正文
+ * 注意不能改成「取 flow 里最后一条 assistantText」：那会把响应中途的正文
  * 提升成最终答复，拆散同一个 assistantResponseId 的分组。
  */
 function isTurnTrailingArtifactRow(row: AssistantWorkRow): boolean {

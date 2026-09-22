@@ -46,7 +46,7 @@ import {
   type DraftSuggestedPluginOperation,
   trackDraftSuggestedPluginOperation,
 } from "@/v4/ConversationDraftSuggestedPluginFlow.js";
-import { useDraftSuggestedPromptItems } from "@/v4/useDraftSuggestedPromptItems.js";
+import { getRecommendedPromptPool } from "@/v4/featureSuggestedPrompts.js";
 import { useDraftSuggestedPluginActionPopover } from "@/v4/useDraftSuggestedPluginActionPopover.js";
 import { getComposerDraftRevision } from "@/v4/composer/composerDraftRevision.js";
 import { useComposerTextInsertApplied } from "@/v4/useComposerTextInsertApplied.js";
@@ -135,11 +135,11 @@ export function ConversationDraftSuggestedPromptsContainer({
   const activeOperationRef = useRef<DraftSuggestedPluginOperation | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
-  const allItems = useDraftSuggestedPromptItems({
-    clientScenesService: resolution.services.clientScenesService,
-    rpcReady: resolution.rpcReady,
-    workspaceKey,
-  });
+  // Client scenes 远端推荐已随官方服务移除；推荐提示词改用本地静态池。
+  const allItems = useMemo(
+    () => getRecommendedPromptPool(isOfficeMode),
+    [isOfficeMode],
+  );
   const items = useMemo(
     () =>
       (proactive ? recommendedItems : allItems).filter(

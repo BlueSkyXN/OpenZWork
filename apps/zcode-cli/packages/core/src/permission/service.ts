@@ -4,8 +4,6 @@
 
 import {
   AMEND_WORKFLOW_TOOL_NAME,
-  PermissionCapabilityGroup,
-  type PermissionCapabilityGroup as PermissionCapabilityGroupType,
   type PermissionRuleValue,
   type PermissionRuleset,
   type PermissionUpdate,
@@ -14,7 +12,6 @@ import {
   type RiskLevel,
   type ToolPermissionSpec,
 } from "@zcode/contracts";
-import { OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME } from "@zcode/shared";
 import { resolvePlanModeTransitionPermission } from "./plan-mode-policy.js";
 import { webFetchRuleSubjects, wildcardToRegExp } from "./rule-matching.js";
 import { isPreapprovedWorkflowDraftWrite } from "./workflow-draft-path.js";
@@ -52,7 +49,6 @@ export interface PermissionToolCapability {
   sideEffectScope?: ModelToolSideEffectScope;
   riskLevel?: RiskLevel;
   needsApproval?: boolean;
-  permissionCapabilityGroup?: PermissionCapabilityGroupType;
   permission?: ToolPermissionSpec;
 }
 
@@ -240,7 +236,7 @@ export class PermissionService {
     const rules = ruleset?.[behavior];
     if (!Array.isArray(rules)) return false;
     const toolRules = rules.filter((rule) =>
-      this.matchesRuleScope(rule, context.toolName, capability),
+      this.matchesRuleToolName(rule.toolName, context.toolName),
     );
     if (toolRules.length === 0) return false;
     if (rulePolicy) return rulePolicy.evaluateRules(behavior, toolRules);
@@ -252,7 +248,7 @@ export class PermissionService {
     context: PermissionContext,
     capability: ResolvedPermissionCapability,
   ): boolean {
-    if (!this.matchesRuleScope(rule, context.toolName, capability)) return false;
+    if (!this.matchesRuleToolName(rule.toolName, context.toolName)) return false;
     if (!rule.ruleContent) return true;
 
     const subjects = this.ruleSubjects(context.input, context.toolName);
@@ -264,20 +260,6 @@ export class PermissionService {
   private matchesRuleToolName(ruleToolName: string, contextToolName: string): boolean {
     if (ruleToolName === contextToolName) return true;
     return contextToolName === "Write" && ruleToolName === "Edit";
-  }
-
-  private matchesRuleScope(
-    rule: PermissionRuleValue,
-    contextToolName: string,
-    capability: ResolvedPermissionCapability,
-  ): boolean {
-    if (rule.toolName === OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME) {
-      // 保留 key 只有在当前 tool entry 另行携带宿主验证后的 official_cua
-      // capability 时才匹配。同名第三方 MCP、authority 漂移以及旧普通 tool
-      // 都不能把可解析的 wire/storage 字符串升级成可信能力。
-      return capability.permissionCapabilityGroup === PermissionCapabilityGroup.OfficialCua;
-    }
-    return this.matchesRuleToolName(rule.toolName, contextToolName);
   }
 
   private ruleSubjects(input: unknown, toolName: string): string[] {
@@ -605,7 +587,6 @@ export class PermissionService {
         toolCapability?.permission?.needsApproval ??
         toolCapability?.needsApproval ??
         !this.isReadOnlyTool(context.toolName),
-      permissionCapabilityGroup: toolCapability?.permissionCapabilityGroup,
       permissionName: toolCapability?.permission?.permission,
     };
   }
@@ -667,7 +648,6 @@ interface ResolvedPermissionCapability {
   sideEffectScope: ModelToolSideEffectScope;
   riskLevel: RiskLevel;
   needsApproval: boolean;
-  permissionCapabilityGroup?: PermissionCapabilityGroupType;
   permissionName?: string;
 }
 

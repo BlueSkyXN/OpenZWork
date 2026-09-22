@@ -59,13 +59,10 @@ export function setupBrowserRuntime(opts: {
     documentationRoot: opts.documentationRoot,
     assertAvailable: opts.assertAvailable,
   }).asRuntimeObject();
-  const previousDocumentation = agent.documentation;
-  const previousGet = previousDocumentation?.get;
   agent.documentation = Object.freeze({
     get: async (name: string) => {
       opts.assertAvailable?.();
       if (!name) throw new TypeError("agent.documentation.get requires a document name");
-      if (name === "computer-use" && previousGet) return await previousGet(name);
       return loadBrowserDocumentation(opts.documentationRoot, name);
     },
   });

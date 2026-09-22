@@ -11,7 +11,6 @@ import {
   isCompactToolCallRunningState,
 } from "@/lib/toolCallSummary.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
-import { CuaGroupToolCallBlock } from "@/ToolCallBlocks/renderers/cua-group.js";
 import { resolveToolCallRenderer } from "@/ToolCallBlocks/resolveRenderer.js";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import {
@@ -19,7 +18,6 @@ import {
   type ToolCallBlockRenderContext,
 } from "@/ToolCallBlocks/shared.js";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
-import type { ConversationCuaGroupEvent } from "@/v4/conversationCuaGroups.js";
 
 const NESTED_TOOLCALL_CONTAINER_CLASS =
   "ml-2 space-y-2 border-border border-l pl-3.5 border-border";
@@ -77,7 +75,6 @@ function ToolCallBlockComponent({
   theme,
   codePreviewSettings,
   showIcon = true,
-  cuaAppIconClassName,
   onOpenCodeViewer,
   onOpenFileLink,
   onOpenBrowserUrl,
@@ -99,9 +96,6 @@ function ToolCallBlockComponent({
   authoritativeAgentType,
   streamingEntranceActive = false,
   streamingEntranceKeyPrefix = "tool",
-  cuaGroupEvents,
-  renderCuaAssistantMessage,
-  renderCuaReasoning,
 }: {
   toolCallNode: TaskChatToolCallTreeNode;
   depth?: number;
@@ -111,7 +105,6 @@ function ToolCallBlockComponent({
   /** 代码预览设置（store 耦合剥离）：由宿主传入并保持引用稳定。 */
   codePreviewSettings?: ToolCallBlockRenderContext["codePreviewSettings"];
   showIcon?: boolean;
-  cuaAppIconClassName?: ToolCallBlockRenderContext["cuaAppIconClassName"];
   onOpenCodeViewer?: (source: CodeViewerSource) => void;
   onOpenFileLink?: (target: MessageFileLinkTarget) => void;
   onOpenBrowserUrl?: (url: string) => void;
@@ -143,13 +136,6 @@ function ToolCallBlockComponent({
   authoritativeAgentType?: ToolCallBlockRenderContext["authoritativeAgentType"];
   streamingEntranceActive?: boolean;
   streamingEntranceKeyPrefix?: string;
-  cuaGroupEvents?: readonly ConversationCuaGroupEvent[];
-  renderCuaAssistantMessage?: (
-    event: Extract<ConversationCuaGroupEvent, { kind: "assistantMessage" }>,
-  ) => ReactNode;
-  renderCuaReasoning?: (
-    event: Extract<ConversationCuaGroupEvent, { kind: "reasoning" }>,
-  ) => ReactNode;
 }) {
   const { toolCall, childToolCalls } = toolCallNode;
   const { intl } = useZCodeIntl();
@@ -301,7 +287,6 @@ function ToolCallBlockComponent({
       errorText,
       childToolList,
       showIcon,
-      cuaAppIconClassName,
       showTodoToolCalls,
       disableSummaryContentAnimation,
       animateDiffCountOnMount,
@@ -330,7 +315,6 @@ function ToolCallBlockComponent({
       authoritativeAgentType,
       childToolList,
       codePreviewSettings,
-      cuaAppIconClassName,
       displayModel,
       disableSummaryContentAnimation,
       animateDiffCountOnMount,
@@ -375,16 +359,7 @@ function ToolCallBlockComponent({
       data-status={toolCall.status}
       data-zcode-tool-stream-animate={shouldPlayEntranceAnimation ? "true" : undefined}
     >
-      {toolCall.kind === "cuaGroup" ? (
-        <CuaGroupToolCallBlock
-          {...renderContext}
-          events={cuaGroupEvents}
-          renderAssistantMessage={renderCuaAssistantMessage}
-          renderReasoning={renderCuaReasoning}
-        />
-      ) : (
-        <ToolCallRenderer {...renderContext} />
-      )}
+      <ToolCallRenderer {...renderContext} />
     </div>
   );
 }

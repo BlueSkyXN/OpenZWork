@@ -24,18 +24,6 @@ export interface NodeReplStructuredResult {
   _meta?: Record<string, unknown>;
 }
 
-/**
- * 本次 cell 操作的目标应用身份（Computer Use）。
- *
- * 只由宿主的 CUA bridge 在收到 broker 响应时记录 —— 它不在 sandbox globals 上，模型改不到。
- * `nodeRepl.setResponseMeta` / `nodeRepl.emitStructuredResult` 都是模型可写通道，经它们到达的
- * producer 应用元数据不可信，必须在 toMcpRunResult 里丢弃。
- */
-export interface NodeReplCuaAppIdentity {
-  appKey: string;
-  displayName?: string;
-}
-
 /** 输出 sink：REPL 内 nodeRepl.write / console 汇聚到这里；emitImage 收集图片。 */
 export interface NodeReplWriteSink {
   write(text: string): void;
@@ -43,7 +31,6 @@ export interface NodeReplWriteSink {
   browserScreenshots: NodeReplImage[];
   structuredResults: NodeReplStructuredResult[];
   responseMeta: Record<string, unknown>;
-  cuaApps: NodeReplCuaAppIdentity[];
 }
 
 export interface NodeReplRunResult {
@@ -61,8 +48,6 @@ export interface NodeReplRunResult {
   structuredResults?: NodeReplStructuredResult[];
   /** 本次 run 期间 nodeRepl.setResponseMeta 设置的元数据。 */
   responseMeta?: Record<string, unknown>;
-  /** 本次 cell 最后一个确立身份的 CUA 调用所操作的应用；由宿主 bridge 记录，模型不可写。 */
-  cuaApp?: NodeReplCuaAppIdentity;
 }
 
 export type NodeReplRequestMeta = Record<string, unknown>;
@@ -95,18 +80,6 @@ function browserScreenshotIndexResult(
     remainingByPayload.set(key, remaining - 1);
   });
   return browserScreenshotImageIndices.length > 0 ? { browserScreenshotImageIndices } : {};
-}
-
-/**
- * 一个 cell 里多次 CUA 调用时取最后一个确立身份的那个，与 `_meta` 既有的 last-write-wins 一致。
- * 不产生 primary 的调用（list_apps 的 items 模式、request_access / stop 的 none）根本不会
- * 进入这个数组，所以不会把前面动作的身份覆盖掉。
- */
-function latestCuaAppResult(
-  cuaApps: readonly NodeReplCuaAppIdentity[],
-): Pick<NodeReplRunResult, "cuaApp"> {
-  const cuaApp = cuaApps.at(-1);
-  return cuaApp ? { cuaApp } : {};
 }
 
 /**
@@ -198,7 +171,7 @@ export class NodeReplSession {
       // 把图片（如 tab.screenshot 结果）作为 image 内容块回给模型；接受 bytes/base64/dataUrl。
       emitImage: (image: unknown) => this.emitImage(image),
       // SDK 结果必须走结构化通道；否则模型的 console.log 会把 image/image_ref 拆成普通文本，
-      // 官方 CUA 的精确帧校验就无法确认这两块仍然相邻且未被改写。
+      // 媒体块与配对引用的相邻关系就无法保持。
       emitStructuredResult: (result: unknown) => this.emitStructuredResult(result),
       setResponseMeta: (meta: unknown) => this.setResponseMeta(meta),
     };
@@ -353,17 +326,6 @@ export class NodeReplSession {
     this.currentSink.browserScreenshots.push(image);
   }
 
-  /**
-   * CUA bridge 从 broker 响应记录本次调用的目标应用身份。
-   *
-   * 刻意不放进 sandbox globals（对比 write/emitImage/emitStructuredResult/setResponseMeta）：
-   * 工具卡据此显示 App 图标，模型能写就能声称自己操作了别的应用。
-   */
-  recordCuaAppIdentity(app: NodeReplCuaAppIdentity): void {
-    if (!this.currentSink) return;
-    this.currentSink.cuaApps.push(app);
-  }
-
   /** 执行一段代码；signal 支持取消（超时/停止）。 */
   async run(
     code: string,
@@ -384,7 +346,6 @@ export class NodeReplSession {
     const browserScreenshots: NodeReplImage[] = [];
     const structuredResults: NodeReplStructuredResult[] = [];
     const responseMeta: Record<string, unknown> = {};
-    const cuaApps: NodeReplCuaAppIdentity[] = [];
     if (this.nodeReplApi) {
       this.nodeReplApi.requestMeta = { ...options.requestMeta };
     }
@@ -396,7 +357,6 @@ export class NodeReplSession {
       browserScreenshots,
       structuredResults,
       responseMeta,
-      cuaApps,
     };
     try {
       // 执行委托给 executor（默认路线 B：instrument 顶层声明 → async-IIFE → runInContext），
@@ -414,7 +374,6 @@ export class NodeReplSession {
         ...browserScreenshotIndexResult(images, browserScreenshots),
         ...(structuredResults.length > 0 ? { structuredResults } : {}),
         ...(Object.keys(responseMeta).length > 0 ? { responseMeta } : {}),
-        ...latestCuaAppResult(cuaApps),
       };
     } catch (error) {
       // 注意：vm context 内抛出的 Error 属于不同 realm，host 侧 `instanceof Error` 为 false。
@@ -442,7 +401,6 @@ export class NodeReplSession {
         ...browserScreenshotIndexResult(images, browserScreenshots),
         ...(structuredResults.length > 0 ? { structuredResults } : {}),
         ...(Object.keys(responseMeta).length > 0 ? { responseMeta } : {}),
-        ...latestCuaAppResult(cuaApps),
       };
     } finally {
       this.currentSink = null;

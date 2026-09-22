@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME,
   WORKFLOW_REFINE_PERMISSION_OPTION_ID,
   type ZCodePermissionOption,
   type ZCodePermissionRequest,
@@ -104,15 +103,6 @@ function readPermissionRuleScopes(option: ZCodePermissionOption): PermissionRule
   return scopes.slice(0, 5);
 }
 
-function isOfficialCuaProjectPermission(option: ZCodePermissionOption): boolean {
-  return (option.response?.permissionUpdates ?? []).some(
-    (update) =>
-      update.type === "addRules" &&
-      update.behavior === "allow" &&
-      update.rules.some((rule) => rule.toolName === OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME),
-  );
-}
-
 /**
  * workflow Refine（拒绝并附修改意见）。
  * 该选项不渲染成按钮，而是作为反馈行的应答目标：用户在其他确认窗同一行编号输入行里写修改意见，
@@ -181,7 +171,6 @@ const GLOBAL_PERMISSION_OPTION_NAME_LABELS: Record<string, PermissionOptionNameM
     description: "chat.permission.fullAccess.description",
   },
   "always allow in this project": { label: "chat.permission.allowForProject" },
-  "always allow computer use in this project": { label: "chat.permission.cua.allowForProject" },
   // workflow 运行确认窗的会话免确认：
   // CLI 侧 name 是匹配键，wire kind 是 allowAlways（排序 / 样式同 always allow）。
   "always allow in this session": {
@@ -736,17 +725,14 @@ export function PermissionDialog({
             >
               {orderedOptions.map((option, index) => {
                 const isSelected = index === selectedIndex;
-                const officialCuaProjectPermission = isOfficialCuaProjectPermission(option);
-                const labelMessageId = officialCuaProjectPermission
-                  ? "chat.permission.cua.allowForProject"
-                  : option.name.trim().toLowerCase() === "always allow in this project" &&
-                      preview.scope === "command"
+                const labelMessageId =
+                  option.name.trim().toLowerCase() === "always allow in this project" &&
+                  preview.scope === "command"
                     ? "chat.permission.allowCommand"
                     : getOptionLabelMessageId(option.kind);
                 const nameMessageIds = getProviderOptionNameMessageIds(provider, option.name);
-                const descriptionMessageId = officialCuaProjectPermission
-                  ? "chat.permission.cua.allowForProject.description"
-                  : labelMessageId === "chat.permission.allowCommand"
+                const descriptionMessageId =
+                  labelMessageId === "chat.permission.allowCommand"
                     ? "chat.permission.allowCommand.description"
                     : (nameMessageIds?.description ??
                       getOptionDescriptionMessageId(option.kind, preview.scope));

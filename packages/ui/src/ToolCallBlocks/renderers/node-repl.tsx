@@ -15,9 +15,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { cuaAppKeyToIconRequest } from "@/lib/cuaAppIconRequest.js";
 import { buildNodeReplDisplayModel, type NodeReplDisplayModel } from "@/lib/nodeReplToolDisplay.js";
-import { CuaAppSummaryIcon } from "@/ToolCallBlocks/renderers/cuaAppSummaryIcon.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
 import { ToolLayout } from "@/ToolCallBlocks/ToolLayout.js";
 import { NodeReplImageGrid } from "@/ToolCallBlocks/renderers/nodeReplImageGrid.js";
@@ -172,21 +170,7 @@ export function NodeReplToolCallBlock(context: ToolCallBlockRenderContext) {
     () => getSummary(model, toolCall.status, context.isRunning, formatMessage),
     [context.isRunning, formatMessage, model, toolCall.status],
   );
-  // Computer Use 的 cell 携带目标应用身份时，leading icon 换成该应用的真实图标 —— 连续
-  // CUA 步骤据此一眼看出各步操作的是哪个 app。图标由平台服务按
-  // locator 现取，取不到时保持 node_repl 自己的图标，不切换成另一个指针图形。
-  const leadingIcon = useMemo(() => {
-    if (!model.app) return NODE_REPL_TOOL_ICON;
-    const iconRequest = cuaAppKeyToIconRequest(model.app.appKey);
-    if (!iconRequest) return NODE_REPL_TOOL_ICON;
-    return (
-      <CuaAppSummaryIcon
-        iconRequest={iconRequest}
-        name={model.app.displayName ?? model.app.appKey}
-        fallback={NODE_REPL_TOOL_ICON}
-      />
-    );
-  }, [model.app]);
+  const leadingIcon = NODE_REPL_TOOL_ICON;
   const resultLabel = formatMessage("chat.toolCall.nodeRepl.result");
   const noResultLabel = formatMessage("chat.toolCall.nodeRepl.noResult");
   const detailsLabel = formatMessage("chat.toolCall.nodeRepl.details");

@@ -42,7 +42,6 @@ export * from "./fork.js";
 export * from "./telemetry.js";
 export * from "./controller.js";
 export * from "./workspace-hook-review.js";
-export * from "./cuaPermission.js";
 
 export {
   executionOutputPreviewSchema,
