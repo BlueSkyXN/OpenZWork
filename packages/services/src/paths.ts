@@ -170,10 +170,6 @@ export function getFeedbackRootDir(): string {
   return join(getZCodeDataRootDir(), "feedback");
 }
 
-export function getFeedbackAttachmentDir(): string {
-  return join(getFeedbackRootDir(), "attachments");
-}
-
 export function getFeedbackLogArchiveDir(): string {
   return join(getFeedbackRootDir(), "logs");
 }

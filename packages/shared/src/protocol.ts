@@ -80,9 +80,6 @@ export type LocalePreference = "system" | Locale;
 /** ZCode 运行中继续输入时的交互行为 */
 export type ZCodeInteractionBehavior = "queue" | "guide";
 
-/** 桌面端 Electron 自动更新发布通道。 */
-export type ElectronReleaseChannel = "stable" | "preview";
-
 /** Windows Bash 工具可使用的集成终端 shell 方言。 */
 export type IntegratedTerminalShellDialect = "cmd" | "git-bash";
 
@@ -342,20 +339,6 @@ export interface AppSettings {
   lastActiveTaskByWorkspace?: Record<string, string>;
   /** 数据目录的根路径（替代 homedir），默认为 os.homedir()；.openzwork/v2 后缀不变 */
   dataBaseDir?: string;
-  /** 自动更新安装完成后，等待首次启动展示的版本说明 */
-  pendingPostUpdateReleaseNotes?: {
-    version: string;
-    title: string;
-    markdown: string;
-    releaseDate?: string;
-    releaseNotesByLocale?: Partial<Record<Locale, { title: string; markdown: string }>>;
-  };
-  /** 设置页“接收 preview 自动更新”偏好；仅桌面端自动更新读取。 */
-  receivePreviewUpdates?: boolean;
-  /** 设置页/更新弹窗“以后自动下载并安装更新”偏好；仅桌面端自动更新读取。 */
-  autoDownloadAndInstallUpdates?: boolean;
-  /** 用户跳过的 Electron 自动更新版本；按通道隔离，避免 stable / preview 互相遮挡。 */
-  skippedElectronUpdateVersions?: Partial<Record<ElectronReleaseChannel, string>>;
   /** 首次启动设置同步提示是否已消费；只表示弹窗不再出现，不代表导入成功。 */
   settingsSyncFirstRunPromptHandled?: boolean;
   /** 设置页里的临时 endpoint override；正式/测试默认 base url 由 ZCODE_BASE_URL env 管理。 */

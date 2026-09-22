@@ -323,3 +323,66 @@ test('[structural, not runtime] WP-06: CUA / clientScenes / plugin-creator surfa
     assert.doesNotMatch(text, /cuaPermission|CuaPermission|cuaAccessibility|CuaOsSupport|computerUse|ComputerUse|clientScenes|ClientScenes|pluginCreator|trustedOfficialCua|syncActiveTaskSession|ZCODE_CUA_/, file);
   }
 });
+
+test('[structural, not runtime] WP-07: conversation-share / cloud feedback / app-update sources are physically absent', () => {
+  const dm = 'packages/desktop/src/main/', sh = 'packages/shared/src/', ui = 'packages/ui/src/';
+  const v4 = ui + 'v4/', fb = 'packages/services/src/feedback/', web = 'packages/web/src/';
+  // 应用更新与强更门禁 / conversationShare 全链 / 云端反馈工单与 UI / web 分享页登录
+  const removed = [
+    dm + 'autoUpdater.ts', dm + 'forceUpdateGuard.ts', dm + 'forceUpdatePrompt.ts',
+    dm + 'manifestUpdateProvider.ts', dm + 'windowsInstallResourceLocks.ts',
+    sh + 'update.ts', sh + 'forceUpdate.ts', sh + 'conversation-share.ts', sh + 'feedback.ts',
+    ui + 'UpdateStatusButton.tsx', ui + 'UpdateStatusDialog.tsx', ui + 'UpdateStatusDialogController.tsx',
+    ui + 'UpdateStatusWindowRoot.tsx', ui + 'updateStatusModel.ts', ui + 'updateStatusButtonLayout.ts',
+    ui + 'UpdateReleaseNotesTooltip.tsx', ui + 'updateReleaseNotes.ts',
+    ui + 'hooks/useDesktopUpdateMenu.ts', ui + 'lib/desktopUpdateMenu.ts',
+    'packages/services/src/conversation-share', 'packages/desktop/src/host/conversationShareAttachmentService.ts',
+    ui + 'ConversationShareMenu.tsx', ui + 'ConversationSharePermissionPicker.tsx',
+    ui + 'store/conversationShareSelectionStore.ts', ui + 'lib/conversationShareContext.ts',
+    ui + 'lib/conversationShareError.ts', ui + 'root/shareImportIntent.ts',
+    v4 + 'ConversationShareConfirmationDock.tsx', v4 + 'ConversationShareSuccessDock.tsx',
+    v4 + 'ConversationShareSelectionDock.tsx', v4 + 'ConversationShareSelectionPanel.tsx',
+    v4 + 'ConversationShareSelectionReopenTab.tsx', v4 + 'ConversationShareSelectionScrim.tsx',
+    v4 + 'ConversationShareImportNotice.tsx', v4 + 'ConversationShareReadonlyTimeline.tsx',
+    v4 + 'conversationShareAttempt.ts', v4 + 'conversationShareMarkdown.ts',
+    v4 + 'conversationShareModeMotion.ts', v4 + 'conversationShareModePolicy.ts',
+    v4 + 'conversationSharePreflightCache.ts', v4 + 'conversationShareScrollbarMetrics.ts',
+    v4 + 'conversationShareSelectionPanelLayout.ts', v4 + 'useConversationShareSelectionOutsideDismiss.ts',
+    web + 'share',
+    // 云端反馈工单与 UI（保留本地日志导出 feedbackLogArchive）
+    fb + 'feedbackHttpClient.ts', fb + 'feedbackService.ts', fb + 'feedback.ts',
+    fb + 'feedbackLocalTicketStore.ts', fb + 'compactLogArchive.ts',
+    ui + 'feedback', ui + 'lib/errorFeedbackDraft.ts', ui + 'lib/taskFeedbackDraft.ts',
+    web + 'auth', // OAuthCredentialRepo 最后残留
+  ];
+  for (const file of removed) assert.equal(fs.existsSync(path.join(root, file)), false, file);
+});
+
+test('[structural, not runtime] WP-07: updater dependencies and share/feedback/update channel surface are gone', () => {
+  const desktopPkg = JSON.parse(fs.readFileSync(path.join(root, 'packages/desktop/package.json'), 'utf8'));
+  for (const dep of ['electron-updater', 'semver', 'yaml']) {
+    assert.equal(desktopPkg.dependencies?.[dep], undefined, dep);
+  }
+  for (const file of [
+    'packages/shared/src/channels.ts', 'packages/shared/src/platform.ts', 'packages/shared/src/index.ts',
+    'packages/shared/src/protocol.ts', 'packages/shared/src/desktopMenu.ts',
+    'packages/desktop/src/main/index.ts', 'packages/desktop/src/main/desktopCommandHandlers.ts',
+    'packages/desktop/src/preload/index.ts', 'packages/desktop/src/renderer/src/desktopPlatform.ts',
+    'packages/client/src/globals.d.ts', 'packages/client/src/remoteServiceAccess.ts',
+    'packages/web/src/main.tsx', 'packages/web/vite.config.ts',
+  ]) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.doesNotMatch(text, /ConversationShare|conversationShareService|IConversationShareService/, file);
+    assert.doesNotMatch(text, /openFeedback|OpenFeedbackDialog|onShareImport|ShareImport|IFeedbackService|feedbackService/, file);
+    assert.doesNotMatch(text, /UpdateReady|UpdateCheckResult|UpdateStateChanged|GetUpdateState|DownloadUpdate|CancelUpdateDownload|OpenUpdateStatusWindow|AutoUpdatePreferences|AutoDownloadAndInstallUpdates|PostUpdateReleaseNotes|SkipUpdateVersion|QuitAndInstallUpdate|updateStatusWindow|forceUpdate|ForceUpdate|initAutoUpdater|electron-updater|VITE_ZAI_OAUTH|ZAI_OAUTH_ORIGIN|ZAI_OAUTH_CLIENT_ID/, file);
+  }
+});
+
+test('[structural, not runtime] WP-07: local log export chain is preserved', () => {
+  assert.equal(fs.existsSync(path.join(root, 'packages/services/src/feedback/feedbackLogArchive.ts')), true);
+  const nodeExports = fs.readFileSync(path.join(root, 'packages/services/src/node.ts'), 'utf8');
+  assert.match(nodeExports, /export \{ createFeedbackDiagnosticArchive \} from "\.\/feedback\/feedbackLogArchive\.js";/);
+  assert.doesNotMatch(nodeExports, /createFeedbackService|CreateFeedbackServiceOptions/);
+  const sharedIndex = fs.readFileSync(path.join(root, 'packages/shared/src/index.ts'), 'utf8');
+  assert.match(sharedIndex, /redactFeedbackText/);
+});

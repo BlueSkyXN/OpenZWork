@@ -18,7 +18,6 @@ import {
   type OpenInEditorOptions,
   type SaveCliMcpToUserDirectoryRequest,
   type CreateTempTextAttachmentRequest,
-  type UpdateStatePayload,
   type WindowControlsOverlayReadyPayload,
 } from "@zcode/shared";
 import { getInstalledEditors } from "./editors.js";
@@ -37,7 +36,7 @@ import { syncWindowControlsOverlayForZoomLevel } from "./desktopWindowButtonPosi
 import { resolveDesktopZoomLevelFromFactor } from "./desktopZoom.js";
 import { resolveDesktopWindowChromeState } from "./desktopWindowChromeState.js";
 import { handleWindowUnreadCountSync } from "./desktopWindowLifecycle.js";
-import { captureWindowScreenshot, openPathInFileManager } from "./desktopMainIpcHelpers.js";
+import { openPathInFileManager } from "./desktopMainIpcHelpers.js";
 import {
   registerDesktopBrowserIpcHandlers,
   type AttachBrowserGuest,
@@ -71,17 +70,10 @@ export function registerPlatformIpcHandlers(options: {
     command: DesktopCommandId,
     senderWindow?: BrowserWindow | null,
   ) => Promise<unknown>;
-  acknowledgePostUpdateReleaseNotes: (version: string) => Promise<void>;
   syncTaskRealtimeWorkspaceKeys: (windowId: number, workspaceKeys: Iterable<string>) => void;
-  getUpdateState: () => UpdateStatePayload;
-  openUpdateStatusWindow: () => void;
   getDesktopSessionActivity: () => {
     runningAgentSessionCount: number;
   };
-  getAutoUpdatePreferences: () => Promise<{
-    autoDownloadAndInstallUpdates: boolean;
-  }>;
-  setAutoDownloadAndInstallUpdates: (enabled: boolean) => Promise<void>;
   syncAppSettings: (patch: unknown) => void;
   /** 快捷键设置页录制态开关：true 时 main 重建菜单摘除可配置 accelerator */
   setShortcutRecordingActive?: (active: boolean, ownerWebContentsId?: number | null) => void;
@@ -323,30 +315,6 @@ export function registerPlatformIpcHandlers(options: {
     return typeof communityUrl === "string" && communityUrl.length > 0;
   });
 
-  ipcMain.handle(
-    PlatformChannels.AcknowledgePostUpdateReleaseNotes,
-    async (_event, version: string) => {
-      const validatedVersion = nonEmptyStringSchema.parse(version);
-      await options.acknowledgePostUpdateReleaseNotes(validatedVersion);
-    },
-  );
-
-  ipcMain.handle(PlatformChannels.GetUpdateState, () => options.getUpdateState());
-  ipcMain.handle(PlatformChannels.OpenUpdateStatusWindow, () => {
-    options.openUpdateStatusWindow();
-  });
-  ipcMain.handle(PlatformChannels.GetAutoUpdatePreferences, () =>
-    options.getAutoUpdatePreferences(),
-  );
-  ipcMain.handle(
-    PlatformChannels.SetAutoDownloadAndInstallUpdates,
-    async (_event, enabled: unknown) => {
-      if (typeof enabled !== "boolean") {
-        return;
-      }
-      await options.setAutoDownloadAndInstallUpdates(enabled);
-    },
-  );
   ipcMain.handle(PlatformChannels.GetDesktopSessionActivity, () =>
     options.getDesktopSessionActivity(),
   );
@@ -371,10 +339,6 @@ export function registerPlatformIpcHandlers(options: {
   );
   ipcMain.handle(PlatformChannels.GetDeviceId, () => options.deviceMid);
   ipcMain.handle(PlatformChannels.ExportLogs, () => exportLogs());
-  ipcMain.handle(PlatformChannels.CaptureWindowScreenshot, async (event) => {
-    const senderWindow = BrowserWindow.fromWebContents(event.sender);
-    return captureWindowScreenshot(senderWindow);
-  });
   ipcMain.handle(
     PlatformChannels.OpenInEditor,
     (_event, payload: { editorId: string; path: string; options?: OpenInEditorOptions }) =>
