@@ -416,6 +416,9 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
   ];
   const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json)$/;
   const ignoreDirs = new Set(['node_modules', 'dist', 'out', '.git', 'mock-cdn']);
+  // 豁免表与本测试自排除串统一使用 POSIX 风格相对路径；
+  // path.relative 在 Windows 上返回反斜杠，必须先归一化再比较，否则豁免/自排除在 win32 全部失效。
+  const toPosixRelative = file => file.split(path.sep).join('/');
   const violations = [];
   const walk = dir => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -424,7 +427,7 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
         continue;
       }
       if (!scanExtensions.test(entry.name)) continue;
-      const file = path.relative(root, path.join(dir, entry.name));
+      const file = toPosixRelative(path.relative(root, path.join(dir, entry.name)));
       if (exemptFiles.has(file) || file === 'tests/private-cleanup/cleanup.test.cjs') continue;
       const text = fs.readFileSync(path.join(dir, entry.name), 'utf8');
       const match = text.match(officialDomainRe);
