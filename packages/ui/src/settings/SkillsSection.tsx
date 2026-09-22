@@ -6,7 +6,6 @@ import {
   ChevronRight,
   ExternalLink,
   Import,
-  Plus,
   Trash2,
   UploadCloud,
   WandSparkles,
@@ -34,7 +33,6 @@ import {
   useWorkspaceServicesResolution,
 } from "@/hooks/useWorkspaceServices.js";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
-import { buildSkillMentionMarkdown } from "@/mentions/mentionMarkdown.js";
 import { filterSkillsForProvider } from "@/lib/skillSourceFilter.js";
 import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
 import { PluginStoreAvatar } from "@/settings/PluginStoreAvatar.js";
@@ -165,7 +163,6 @@ export function SkillsSection({
   scopeFilter,
   searchQuery,
   onVisibleCountChange,
-  onCreateTask,
   onDetailOpenChange,
   onOpenPluginStore,
   showMarketplaceBreadcrumb = false,
@@ -506,40 +503,6 @@ export function SkillsSection({
   useEffect(() => {
     onVisibleCountChange?.(filteredSkillCount);
   }, [filteredSkillCount, onVisibleCountChange]);
-  const handleCreateSkill = () => {
-    if (!activeWorkspacePath || !onCreateTask) {
-      return;
-    }
-    const effectiveProvider: ZCodeProvider = ZCODE_AGENT_PROVIDER;
-    const skillCreator = filterSkillsForProvider(skills, effectiveProvider).find(
-      (skill) => skill.name === "skill-creator",
-    );
-    const markdown = buildSkillMentionMarkdown("skill-creator", skillCreator?.path);
-
-    // v4 迁移删除旧 pendingComposerPrefill 后，这个入口仍手工操作 session
-    // store，只剩返回聊天页的导航，skill-creator 文本没有进入新 Composer。统一委托
-    // Root 的新任务入口，让草稿持久化、workspaceIdentity 隔离和 Composer 插入保持单一路径。
-    onCreateTask({
-      provider: effectiveProvider,
-      initialPrompt: `${markdown} `,
-      initialPromptMention: {
-        id: `skill:${skillCreator?.id ?? "skill-creator"}`,
-        category: "skills",
-        label: "skill-creator",
-        value: "skill-creator",
-        markdown,
-        ...(skillCreator?.description ? { description: skillCreator.description } : {}),
-        ...(skillCreator
-          ? {
-              data: {
-                path: skillCreator.path,
-                scope: skillCreator.scope,
-              },
-            }
-          : {}),
-      },
-    });
-  };
 
   const detailSkill = selectedSkill
     ? (skills.find((skill) => skill.id === selectedSkill.id) ?? selectedSkill)
@@ -656,10 +619,8 @@ export function SkillsSection({
     <SettingsResourceHeaderActions
       onRefresh={() => void Promise.all([refresh(), refreshSharedSkillStoreForCurrentWorkspace()])}
       onImport={() => setImportDialogOpen(true)}
-      onNew={handleCreateSkill}
       importDisabled={!capability?.userScopeAvailable}
       importActionId="settings.skills.import.open"
-      newActionId="settings.skills.create.open"
     />
   );
   const remoteSyncAction = connectedRemoteSyncTarget ? (
@@ -822,12 +783,6 @@ export function SkillsSection({
                 })}
                 actions={
                   <>
-                    <Button type="button" variant="default" size="lg" onClick={handleCreateSkill}>
-                      <Plus data-icon="inline-start" aria-hidden="true" />
-                      {intl.formatMessage({
-                        id: "settings.plugin.skills.newSkill",
-                      })}
-                    </Button>
                     <Button
                       type="button"
                       variant="outline"

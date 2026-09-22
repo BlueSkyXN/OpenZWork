@@ -266,12 +266,6 @@ export interface AppSettings {
   embeddedBrowserAllowInsecureCertificates?: boolean;
   /** 人类用户主动打开 Browser tab 时的一次性显示偏好；Agent Browser Use 不读写。 */
   embeddedBrowserViewportPreference?: EmbeddedBrowserViewportPreference;
-  /**
-   * 用户已在设置页关闭输入框的「电脑操作」按钮（内部 hidden 态）。
-   * 取 hidden 语义而非 visible：undefined 即默认显示，老用户无需数据迁移。
-   * 关闭后按钮不再渲染，且不因重启或版本更新自愈，仅能在设置页重新开启。
-   */
-  computerUseComposerEntryHidden?: boolean;
   /** 自动归档已完成旧任务的总开关 */
   taskAutoArchiveEnabled?: boolean;
   /** 自动归档阈值；当任务最后更新时间早于该天数时允许被归档 */

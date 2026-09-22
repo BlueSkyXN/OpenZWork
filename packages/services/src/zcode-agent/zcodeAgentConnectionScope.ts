@@ -867,14 +867,6 @@ export function createZCodeAgentConnectionScope(
         withTrustedConnection(workspaceTarget(params), forwardedConnection(params)),
       );
     },
-    onDynamicCuaPermissionObservation() {
-      assertOpen();
-      // 权限弹窗是本地桌面副作用；手机 replay attachment 只能消费可恢复对话事实。
-      if (role !== "terminal-client" || context.clientMode !== "desktop-continuous") {
-        return RpcEvent.None;
-      }
-      return base.onDynamicCuaPermissionObservation();
-    },
     async subscribeSessionsIndexV4(params) {
       assertReady();
       const forwarded = forwardedConnection(params);

@@ -85,8 +85,6 @@ export * from "./remote-workspace-identity.js";
 export * from "./zcode-api-retry-status.js";
 export * from "./zcode-network-debug-status.js";
 export * from "./zcode-session-visible-content.js";
-export * from "./official-mcp-auth.js";
-export * from "./official-mcp-tool-error.js";
 export * from "./conversation-message-projection-policy.js";
 export * from "./conversation-share.js";
 export * from "./conversation-preview-artifacts.js";
@@ -161,7 +159,6 @@ export type {
   SaveFileResult,
   PrintPageToPdfResult,
   DesktopCommandId,
-  CuaOsSupport,
   DesktopWindowChromeState,
   DesktopTitleBarTheme,
   DockerContainerInfo,
@@ -187,12 +184,6 @@ export type {
   WSLDistro,
   ZCodeStdioTapDevState,
 } from "./platform.js";
-export type {
-  CuaAccessibilitySettingsResult,
-  CuaPermissionKind,
-  OpenCuaPermissionOnboardingOptions,
-  PrepareCuaHelperPermissionDragResult,
-} from "./cuaAccessibilitySettings.js";
 export type { ZCodeTaskCreateResult } from "./zcode-task-types.js";
 export * from "./zcode-task-types.js";
 export * from "./automation-types.js";
@@ -264,7 +255,6 @@ export { bashOutputDisplaySchema } from "./bash-output-display.js";
 
 export * from "./localTtft.js";
 export * from "./pluginStoreOrder.js";
-export * from "./clientConfig.js";
 export * from "./pluginStoreOrdering.js";
 export * from "./session-debug.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";

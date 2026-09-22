@@ -13,14 +13,11 @@ import {
   IZCodeTaskService,
   IZCodeAgentService,
   IZCodeSessionService,
-  ICuaPermissionService,
   IConversationShareService,
   IFileWatcherService,
   IModelSelectionService,
   IProviderSettingsService,
   IProviderProvisioningTargetService,
-  IClientConfigService,
-  IClientScenesService,
   ISkillsService,
   ISkillSyncService,
   IMcpSyncService,
@@ -58,17 +55,12 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly windowControllerService: IWindowControllerService;
   readonly zcodeAgentService: IZCodeAgentService;
   readonly zcodeSessionService: IZCodeSessionService;
-  // cuaPermissionService 在 IServiceAccessor 上是可选（远端 host 不提供），但桌面 renderer
-  // 经 RPC 一定能拿到（main host 始终注册此 descriptor；非 macOS / 未启用时方法返回 available:false）。
-  readonly cuaPermissionService: ICuaPermissionService;
   readonly conversationShareService: IConversationShareService;
   readonly fileWatcherService: IFileWatcherService;
   readonly providerSettingsService: IProviderSettingsService;
   readonly modelSelectionService: IModelSelectionService;
   /** Host-only target proxy；不属于 IServiceAccessor，避免向 Renderer 暴露 Secret 写入接口。 */
   readonly providerProvisioningTargetService!: IProviderProvisioningTargetService;
-  readonly clientConfigService: IClientConfigService;
-  readonly clientScenesService: IClientScenesService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;
@@ -128,9 +120,6 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.zcodeSessionService = ProxyChannel.toService<IZCodeSessionService>(
       channelClient.getChannel(IZCodeSessionService.channelName),
     );
-    this.cuaPermissionService = ProxyChannel.toService<ICuaPermissionService>(
-      channelClient.getChannel(ICuaPermissionService.channelName),
-    );
     this.conversationShareService = ProxyChannel.toService<IConversationShareService>(
       channelClient.getChannel(IConversationShareService.channelName),
     );
@@ -149,12 +138,6 @@ export class RemoteServiceAccess implements IServiceAccessor {
       ),
       enumerable: false,
     });
-    this.clientConfigService = ProxyChannel.toService<IClientConfigService>(
-      channelClient.getChannel(IClientConfigService.channelName),
-    );
-    this.clientScenesService = ProxyChannel.toService<IClientScenesService>(
-      channelClient.getChannel(IClientScenesService.channelName),
-    );
     this.skillsService = ProxyChannel.toService<ISkillsService>(
       channelClient.getChannel(ISkillsService.channelName),
     );

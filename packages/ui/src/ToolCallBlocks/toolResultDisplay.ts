@@ -42,34 +42,11 @@ interface RespondToCoordinatorToolResultDisplay {
   status: "success" | "failed";
 }
 
-interface CuaToolResultDisplay {
-  kind: "cua";
-  schemaVersion: 1;
-  toolName: string;
-  status: "success" | "failed";
-  structuredContent?: string;
-  text?: string;
-  errorCode?: string;
-  suggestedAction?: string;
-  media?: Array<{ mimeType: string; data?: string; artifactUri?: string }>;
-  truncated?: boolean;
-  targetApp?: {
-    schemaVersion: 1;
-    displayName?: string;
-    iconLocators: Array<
-      | { kind: "darwin-bundle-id"; value: string }
-      | { kind: "windows-executable-path"; value: string }
-      | { kind: "windows-aumid"; value: string }
-    >;
-  };
-}
-
 export type ToolResultDisplay =
   | LocalAgentMessageToolResultDisplay
   | TaskStopToolResultDisplay
   | TaskOutputToolResultDisplay
   | RespondToCoordinatorToolResultDisplay
-  | CuaToolResultDisplay
   | ToolCallGetWorkflowRunDisplay
   | ToolCallListWorkflowRunsDisplay
   | ToolCallEvalWorkflowSnippetDisplay
@@ -200,59 +177,6 @@ function parseDisplay(value: unknown): ToolResultDisplay | undefined {
     };
   }
 
-  if (value.kind === "cua") {
-    const toolName = readOptionalString(value, "toolName");
-    const legacyInput = readOptionalString(value, "input");
-    const structuredContent = readOptionalString(value, "structuredContent");
-    const text = readOptionalString(value, "text");
-    const errorCode = readOptionalString(value, "errorCode");
-    const suggestedAction = readOptionalString(value, "suggestedAction");
-    const media = Array.isArray(value.media)
-      ? value.media.flatMap((item) => {
-          if (!isRecord(item)) return [];
-          const mimeType = readOptionalString(item, "mimeType");
-          const data = readOptionalString(item, "data");
-          const artifactUri = readOptionalString(item, "artifactUri");
-          return mimeType && data !== null && artifactUri !== null
-            ? [
-                {
-                  mimeType,
-                  ...(data ? { data } : {}),
-                  ...(artifactUri ? { artifactUri } : {}),
-                },
-              ]
-            : [];
-        })
-      : undefined;
-    const targetApp = parseCuaTargetApp(value.targetApp);
-    if (
-      value.schemaVersion !== 1 ||
-      !toolName ||
-      legacyInput === null ||
-      (value.status !== "success" && value.status !== "failed") ||
-      structuredContent === null ||
-      text === null ||
-      errorCode === null ||
-      suggestedAction === null ||
-      targetApp === null ||
-      (value.truncated !== undefined && typeof value.truncated !== "boolean")
-    )
-      return undefined;
-    return {
-      kind: "cua",
-      schemaVersion: 1,
-      toolName,
-      status: value.status,
-      ...(structuredContent !== undefined ? { structuredContent } : {}),
-      ...(text !== undefined ? { text } : {}),
-      ...(errorCode !== undefined ? { errorCode } : {}),
-      ...(suggestedAction !== undefined ? { suggestedAction } : {}),
-      ...(media?.length ? { media } : {}),
-      ...(value.truncated !== undefined ? { truncated: value.truncated } : {}),
-      ...(targetApp !== undefined ? { targetApp } : {}),
-    };
-  }
-
   // 工作流工具的 display kind（观察五件套 + ResumeWorkflowRun 恢复卡）：按 kind 查表后用
   // shared 的 strict schema 解析，保证 UI 消费侧与协议侧字段表永远同步——手写第二套结构
   // 校验是漂移温床。
@@ -264,36 +188,6 @@ function parseDisplay(value: unknown): ToolResultDisplay | undefined {
   }
 
   return undefined;
-}
-
-function parseCuaTargetApp(value: unknown): CuaToolResultDisplay["targetApp"] | undefined | null {
-  if (value === undefined) return undefined;
-  if (!isRecord(value) || value.schemaVersion !== 1 || !Array.isArray(value.iconLocators)) {
-    return null;
-  }
-  const displayName = readOptionalString(value, "displayName");
-  if (displayName === null || (displayName !== undefined && displayName.length > 512)) return null;
-  if (value.iconLocators.length > 3) return null;
-  const iconLocators: NonNullable<CuaToolResultDisplay["targetApp"]>["iconLocators"] =
-    value.iconLocators.flatMap((locator) => {
-      if (!isRecord(locator)) return [];
-      const locatorValue = readOptionalString(locator, "value");
-      if (
-        !locatorValue ||
-        (locator.kind !== "darwin-bundle-id" &&
-          locator.kind !== "windows-executable-path" &&
-          locator.kind !== "windows-aumid")
-      ) {
-        return [];
-      }
-      return [{ kind: locator.kind, value: locatorValue }];
-    });
-  if (iconLocators.length !== value.iconLocators.length) return null;
-  return {
-    schemaVersion: 1,
-    ...(displayName !== undefined ? { displayName } : {}),
-    iconLocators,
-  };
 }
 
 export function readToolResultDisplay(raw: unknown): ToolResultDisplay | undefined {

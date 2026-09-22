@@ -25,7 +25,6 @@ import { showAboutDialog } from "./about.js";
 import { checkForUpdateMenuClick } from "./autoUpdater.js";
 import { exportLogs } from "./exportLogs.js";
 import { openResourceManager } from "./resourceManagerWindow.js";
-import { resolveCuaOsSupport } from "./cuaOsSupport.js";
 import { syncWindowControlsOverlayForZoomLevel } from "./desktopWindowButtonPosition.js";
 import {
   DEFAULT_DESKTOP_WINDOW_HEIGHT,
@@ -148,11 +147,6 @@ export async function clearCodingPlanWebviewStorage(options: {
   }
 }
 
-async function fetchRemoteAppConfig(fetchRemoteConfig?: () => Promise<unknown>): Promise<unknown> {
-  if (!fetchRemoteConfig) throw new Error("Help config reader is unavailable");
-  return fetchRemoteConfig();
-}
-
 function resolveLocalAppConfigPath(options?: {
   appPath?: string;
   isPackaged?: boolean;
@@ -172,8 +166,8 @@ async function readLocalAppConfig(readLocalConfig?: () => unknown): Promise<unkn
   return readLocalConfig?.() ?? JSON.parse(await readFile(localConfigPath, "utf-8"));
 }
 
-async function resolveRemoteAppConfigValue(options: {
-  fetchRemoteConfig?: () => Promise<unknown>;
+// 官方 /api/v1/client/configs 远端拉取已随官方服务移除：反馈/社区配置只读本地打包默认值。
+async function resolveLocalAppConfigValue(options: {
   readLocalConfig?: () => unknown;
   resolveFromConfig: (config: unknown) => string | undefined;
   logPrefix: "feedback" | "community";
@@ -181,16 +175,6 @@ async function resolveRemoteAppConfigValue(options: {
     warn: (...args: unknown[]) => void;
   };
 }): Promise<string | undefined> {
-  try {
-    const remoteConfig = await fetchRemoteAppConfig(options.fetchRemoteConfig);
-    const remoteResolvedValue = options.resolveFromConfig(remoteConfig);
-    if (remoteResolvedValue) {
-      return remoteResolvedValue;
-    }
-  } catch (error) {
-    options.logger.warn(`[${options.logPrefix}] failed to fetch remote config:`, error);
-  }
-
   try {
     const localConfig = await readLocalAppConfig(options.readLocalConfig);
     const localResolvedValue = options.resolveFromConfig(localConfig);
@@ -205,13 +189,12 @@ async function resolveRemoteAppConfigValue(options: {
 }
 
 export async function resolveFeedbackUrl(options: {
-  fetchRemoteConfig?: () => Promise<unknown>;
   readLocalConfig?: () => unknown;
   logger: {
     warn: (...args: unknown[]) => void;
   };
 }): Promise<string | undefined> {
-  return resolveRemoteAppConfigValue({
+  return resolveLocalAppConfigValue({
     ...options,
     logPrefix: "feedback",
     resolveFromConfig: getFeedbackUrlFromConfig,
@@ -220,19 +203,11 @@ export async function resolveFeedbackUrl(options: {
 
 export async function resolveCommunityUrl(options: {
   locale: Locale;
-  fetchRemoteConfig?: () => Promise<unknown>;
   readLocalConfig?: () => unknown;
   logger: {
     warn: (...args: unknown[]) => void;
   };
 }): Promise<string | undefined> {
-  let remoteConfig: unknown;
-  try {
-    remoteConfig = await fetchRemoteAppConfig(options.fetchRemoteConfig);
-  } catch (error) {
-    options.logger.warn("[community] failed to fetch remote config:", error);
-  }
-
   let localConfig: unknown;
   try {
     localConfig = await readLocalAppConfig(options.readLocalConfig);
@@ -240,27 +215,20 @@ export async function resolveCommunityUrl(options: {
     options.logger.warn("[community] failed to read local config:", error);
   }
 
-  return getCommunityUrlFromConfigs(remoteConfig, localConfig, options.locale);
+  return getCommunityUrlFromConfigs(undefined, localConfig, options.locale);
 }
 
 async function openFeedback(
   logger: { warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void },
   targetWindow?: BrowserWindow | null,
-  fetchRemoteConfig?: () => Promise<unknown>,
 ) {
-  let remoteConfig: unknown;
   let localConfig: unknown;
-  try {
-    remoteConfig = await fetchRemoteAppConfig(fetchRemoteConfig);
-  } catch (error) {
-    logger.warn("[feedback] failed to fetch remote config:", error);
-  }
   try {
     localConfig = await readLocalAppConfig();
   } catch (error) {
     logger.warn("[feedback] failed to read local config:", error);
   }
-  const config = resolveHelpAppConfig(remoteConfig, localConfig);
+  const config = resolveHelpAppConfig(localConfig);
   if (!config.feedback_use_external_form) {
     resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
     return;
@@ -274,11 +242,10 @@ async function openCommunity(
     warn: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
   },
-  fetchRemoteConfig?: () => Promise<unknown>,
 ) {
-  const communityUrl = await resolveCommunityUrl({ locale, logger, fetchRemoteConfig });
+  const communityUrl = await resolveCommunityUrl({ locale, logger });
   if (!communityUrl) {
-    logger.warn("[community] community_urls is missing from both remote and local config");
+    logger.warn("[community] community_urls is missing from local config");
     return;
   }
   await shell.openExternal(communityUrl);
@@ -476,7 +443,6 @@ async function resolveCurrentZCodeEndpointOrigin(settingService: {
 
 export async function executeDesktopCommand(options: {
   command: DesktopCommandId;
-  fetchHelpConfig?: () => Promise<unknown>;
   senderWindow?: BrowserWindow | null;
   logger: {
     info: (...args: unknown[]) => void;
@@ -600,14 +566,10 @@ export async function executeDesktopCommand(options: {
       await options.onRelaunchApp();
       return;
     case DesktopCommandIds.OpenFeedback:
-      await openFeedback(options.logger, targetWindow, options.fetchHelpConfig);
+      await openFeedback(options.logger, targetWindow);
       return;
     case DesktopCommandIds.OpenCommunity:
-      await openCommunity(
-        options.currentApplicationLocale,
-        options.logger,
-        options.fetchHelpConfig,
-      );
+      await openCommunity(options.currentApplicationLocale, options.logger);
       return;
     case DesktopCommandIds.ExportLogs:
       await exportLogs();
@@ -682,7 +644,5 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.ClearCodingPlanWebviewStorage:
       await clearCodingPlanWebviewStorage({ logger: options.logger });
       return;
-    case DesktopCommandIds.GetCuaOsSupport:
-      return resolveCuaOsSupport();
   }
 }

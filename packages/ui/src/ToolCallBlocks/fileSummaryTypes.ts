@@ -218,8 +218,6 @@ export interface ToolCallBlockRenderContext {
   errorText?: string;
   childToolList: ReactNode;
   showIcon?: boolean;
-  /** CUA Group 子项显式放大 App Icon；独立 CUA 保持默认尺寸。 */
-  cuaAppIconClassName?: "size-4" | "size-5";
   kindLabelOverride?: ReactNode;
   showTodoToolCalls?: boolean;
   disableSummaryContentAnimation?: boolean;

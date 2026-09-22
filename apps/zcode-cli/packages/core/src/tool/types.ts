@@ -38,7 +38,7 @@ import type {
   WorkflowEscalatePort,
   WorkflowSubmitPort,
 } from "@zcode/contracts";
-import type { JsonSchema, ModelToolSideEffectScope, PermissionBrokerReasonSource, PermissionCapabilityGroup, PermissionRuleBehavior, PermissionRuleValue, PermissionUpdate, ProviderNativeToolSpec, ToolExecutionMode, ToolCancellationPolicy, ToolContractDeclaration, ToolResultBudgetStrategy, ToolResultDisplayPayload, ToolTimeoutPolicy, ToolExecutionTelemetry } from "@zcode/contracts";
+import type { JsonSchema, ModelToolSideEffectScope, PermissionBrokerReasonSource, PermissionRuleBehavior, PermissionRuleValue, PermissionUpdate, ProviderNativeToolSpec, ToolExecutionMode, ToolCancellationPolicy, ToolContractDeclaration, ToolResultBudgetStrategy, ToolResultDisplayPayload, ToolTimeoutPolicy, ToolExecutionTelemetry } from "@zcode/contracts";
 import type { PersistedReadFileStateMetadata } from "./read-file-state-metadata.js";
 import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 
@@ -72,8 +72,6 @@ export interface ToolMetadata {
     serverName: string;
     toolName: string;
     description?: string;
-    /** 来自声明 zcode_official 鉴权的 MCP server；仅用于信任其结果里的结构化标识。 */
-    official?: boolean;
   };
 }
 
@@ -268,10 +266,6 @@ export interface ToolEntry extends ToolContractDeclaration {
    */
   resultArtifactContentType?: string;
   metadata: ToolMetadata;
-  /**
-   * 只由宿主验证后的可信来源写入；不能从模型可见的 MCP 名称或 descriptor 推导。
-   */
-  permissionCapabilityGroup?: PermissionCapabilityGroup;
   executionMode?: ToolExecutionMode;
   providerNative?: ProviderNativeToolSpec;
   handler: ToolHandler;
@@ -421,7 +415,7 @@ export interface ToolResultSerialization {
   modelContent?: ModelMessageContent;
   originalBytes: number;
   /**
-   * 实际进入模型请求的字节。对受保护 CUA 结构化帧，序列化文本里 image 块
+   * 实际进入模型请求的字节。对含媒体的结构化结果，序列化文本里 image 块
    * 只渲染为短占位符，但真实 base64 栅格原样发送——因此这里 = 序列化文本
    * 字节 + 真实媒体载荷，成本/用量观测（setOutputBytes、turn-tool-usage、
    * usage-observability）不得少计图片。该 aggregate 是唯一公开计量状态。

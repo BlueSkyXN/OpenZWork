@@ -37,7 +37,6 @@ import {
 import { browserCommandResultSchema } from "../browser-use/result.js";
 import { integratedTerminalShellSelectionSchema } from "../validationAppSettings.js";
 import { zcodeTaskModeSchema } from "../zcode-task-mode-schema.js";
-import { OFFICIAL_MCP_AUTH_PORT_FAILURE_REASONS } from "../official-mcp-auth.js";
 import {
   zcodeDeliveryKindSchema,
   zcodeMessageVisibilitySchema,
@@ -1045,58 +1044,6 @@ export const zcodeEventEnvelopeSchema = z
   })
   .strict();
 
-const zcodeComputerUseOperationEventBaseSchema = z
-  .object({
-    eventId: nonEmptyString,
-    sequenceNumber: z.number().int().nonnegative(),
-    sessionId: nonEmptyString,
-    timestamp: timestampMsSchema,
-  })
-  .strict();
-
-const zcodeComputerUseTurnStartedEventSchema = zcodeComputerUseOperationEventBaseSchema.extend({
-  kind: z.literal("turn-started"),
-  turnId: nonEmptyString,
-});
-const zcodeComputerUseTurnCompletedEventSchema = zcodeComputerUseOperationEventBaseSchema.extend({
-  kind: z.literal("turn-completed"),
-  turnId: nonEmptyString,
-});
-const zcodeComputerUseTurnFailedEventSchema = zcodeComputerUseOperationEventBaseSchema.extend({
-  kind: z.literal("turn-failed"),
-  turnId: nonEmptyString,
-});
-const zcodeComputerUseToolScheduledEventSchema = zcodeComputerUseOperationEventBaseSchema.extend({
-  kind: z.literal("tool-scheduled"),
-  turnId: nonEmptyString,
-  toolCallId: nonEmptyString,
-  toolName: nonEmptyString,
-  // 这个 cell 是否在用 Computer Use。只表达布尔事实，不再携带动作名——旧的
-  // operationAction 靠从模型源码里抽取动作名得到，SDK 面一变就整体失配（见
-  // bootstrap/src/zcode-protocol/computer-use-operation-event.ts 的 usesComputerUse）。
-  // 只挂在 scheduled 上：ToolCallStartedPayload 没有 input，start 时已拿不到模型源码。
-  computerUse: z.literal(true).optional(),
-});
-const zcodeComputerUseToolStartedEventSchema = zcodeComputerUseOperationEventBaseSchema.extend({
-  kind: z.literal("tool-started"),
-  turnId: nonEmptyString.optional(),
-  toolCallId: nonEmptyString,
-  toolName: nonEmptyString.optional(),
-});
-const zcodeComputerUseSessionClosedEventSchema = zcodeComputerUseOperationEventBaseSchema.extend({
-  kind: z.literal("session-closed"),
-});
-
-export const zcodeComputerUseOperationEventSchema = z.discriminatedUnion("kind", [
-  zcodeComputerUseTurnStartedEventSchema,
-  zcodeComputerUseTurnCompletedEventSchema,
-  zcodeComputerUseTurnFailedEventSchema,
-  zcodeComputerUseToolScheduledEventSchema,
-  zcodeComputerUseToolStartedEventSchema,
-  zcodeComputerUseSessionClosedEventSchema,
-]);
-export type ZCodeComputerUseOperationEvent = z.infer<typeof zcodeComputerUseOperationEventSchema>;
-
 export const zcodeSessionEventTypeSchema = z.enum([
   "session.created",
   "session.resumed",
@@ -1586,7 +1533,7 @@ export const zcodeSessionResumeParamsSchema = z
     // 旧 session 尚无 runtime/model_selection entry 时，由同 task 的索引元数据提供迁移 hint。
     thoughtLevel: nonEmptyString.optional(),
     mcpServers: z.array(zcodeProtocolMcpServerSchema).optional(),
-    // 冷恢复重建 runtime 时必须沿用 create 的工具面约束（否则会绕过 allow/deny，尤其 CUA 会话）。
+    // 冷恢复重建 runtime 时必须沿用 create 的工具面约束（否则会绕过 allow/deny）。
     toolAllowlist: z.array(nonEmptyString).optional(),
     toolDenylist: z.array(nonEmptyString).optional(),
     // 与 create 同语义；resume 不带会导致冷恢复丢 Off-Peak 工具面。
@@ -2428,52 +2375,6 @@ export const zcodeProviderRuntimeHeadersResponseSchema = z.discriminatedUnion("h
 ]);
 export type ZCodeProviderRuntimeHeadersResponse = z.infer<
   typeof zcodeProviderRuntimeHeadersResponseSchema
->;
-
-// ── 官方 Server MCP 鉴权──
-// Agent 进程不是用户身份权威：它把 (pluginId, mcpKey, targetOrigin) 报给 host，由 host
-// 解析当前 Coding Plan 凭证并回传本次请求的身份头。请求侧不含任何秘密。
-// 与 interaction/requestProviderRuntimeHeaders 同类：Agent 发起、host 自动响应、零 UI。
-export const zcodeOfficialMcpAuthHeadersRequestParamsSchema = z
-  .object({
-    requestId: nonEmptyString,
-    workspace: zcodeWorkspaceRefSchema,
-    pluginId: nonEmptyString,
-    mcpKey: nonEmptyString,
-    targetOrigin: nonEmptyString,
-  })
-  .strict();
-export type ZCodeOfficialMcpAuthHeadersRequestParams = z.infer<
-  typeof zcodeOfficialMcpAuthHeadersRequestParamsSchema
->;
-
-/**
- * 失败原因必须可枚举，避免调用方按文本分流；因此响应不含 errorMessage。
- *
- * `official_mcp_origin_untrusted` 是 host 侧二次校验的拒绝原因：`targetOrigin` 不等于当前
- * ZCode API origin。判定只看 origin，`pluginId` / `mcpKey` 仅用于日志归属。与"未登录/无凭据"
- * 分开，才能在排查时区分"被拒绝"和"没身份"。
- */
-export const zcodeOfficialMcpAuthFailureReasonSchema = z.enum(
-  OFFICIAL_MCP_AUTH_PORT_FAILURE_REASONS,
-);
-
-export const zcodeOfficialMcpAuthHeadersResponseSchema = z.discriminatedUnion("ok", [
-  z
-    .object({
-      ok: z.literal(true),
-      headers: z.record(z.string(), z.string()),
-    })
-    .strict(),
-  z
-    .object({
-      ok: z.literal(false),
-      reason: zcodeOfficialMcpAuthFailureReasonSchema,
-    })
-    .strict(),
-]);
-export type ZCodeOfficialMcpAuthHeadersResponse = z.infer<
-  typeof zcodeOfficialMcpAuthHeadersResponseSchema
 >;
 
 // ── Plugin management (list + enable/disable) ──
@@ -3559,7 +3460,6 @@ export type ZCodeOffPeakListProtocolResult = z.infer<typeof zcodeOffPeakListResu
 
 export const zcodeProtocolMethods = {
   runtimeCapabilities: "runtime/capabilities",
-  computerUseOperationEvent: "computer-use/operation-event",
   sessionCreate: "session/create",
   sessionResume: "session/resume",
   sessionList: "session/list",
@@ -3657,7 +3557,6 @@ export const zcodeProtocolMethods = {
   interactionRequestPermission: "interaction/requestPermission",
   interactionRequestUserInput: "interaction/requestUserInput",
   interactionRequestProviderRuntimeHeaders: "interaction/requestProviderRuntimeHeaders",
-  interactionRequestOfficialMcpAuthHeaders: "interaction/requestOfficialMcpAuthHeaders",
   // browser-use 反向请求由 agent 发起，host 转给 main 中的 CDP executor。
   interactionBrowserList: "interaction/browserList",
   interactionBrowserExecute: "interaction/browserExecute",

@@ -82,8 +82,8 @@ export async function createWorkspaceZCodeApp(
       // createZCodeApp 会把 workingDirectory 规范化为执行 cwd。把协议入口的
       // workspacePath 单独注入 runtime，session 持久化才能保留本地 workspaceKey 的路径表示。
       workspacePath: workspace.workspacePath,
-      // 远端 session 是 shared-host CUA 的第二层隔离边界：不能只传 workspacePath/identity，
-      // 否则同一远端 workspace 的不同 attachment 会复用 Accessibility frame/action 状态。
+      // 远端 session 是 shared-host 的第二层隔离边界：不能只传 workspacePath/identity，
+      // 否则同一远端 workspace 的不同 attachment 会复用会话级运行状态。
       // 放在这个 helper 里而不是各调用点，是为了两条 session 创建路径都拿到同一份隔离键。
       ...(workspace.remoteSessionId ? { remoteSessionId: workspace.remoteSessionId } : {}),
       ...(workspace.workspaceIdentity

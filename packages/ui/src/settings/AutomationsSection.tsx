@@ -82,7 +82,6 @@ import {
   resolveAutomationTemplateText,
   type ScheduledAutomationTemplate,
 } from "@/settings/automationTemplateCatalog.js";
-import { useAutomationTemplates } from "@/settings/useAutomationTemplates.js";
 import type { AutomationsNavigationTab } from "@/lib/taskNavigationHistory.js";
 import {
   AutomationsPageTitle,
@@ -375,7 +374,7 @@ export function AutomationsSection({
 }: AutomationsSectionProps) {
   const { intl, locale } = useZCodeIntl();
   const platform = usePlatform();
-  const { clientScenesService, zcodeAgentService } = useServices();
+  const { zcodeAgentService } = useServices();
   const confirmDialog = useConfirmDialog();
   const providerSettingsRead = useProviderSettingsView();
   const providerSettingsView =
@@ -398,7 +397,9 @@ export function AutomationsSection({
   const deleteRun = useAutomationManagementStore((state) => state.deleteRun);
   const refresh = useAutomationManagementStore((state) => state.refresh);
 
-  const automationTemplates = useAutomationTemplates(clientScenesService);
+  // Client Scenes 模板目录已随官方服务移除：模板区固定空态（automations.templates.unavailable），
+  // 保留手动创建入口，与 Scenes 请求失败时的原有降级行为一致。
+  const automationTemplates = { scheduled: [] as ScheduledAutomationTemplate[], loading: false };
   const [refreshing, setRefreshing] = useState(false);
   const [view, setView] = useState<AutomationsView>({ mode: "list" });
   // tab 与状态筛选同居一个状态：所有 setTab 调用都经 resolveAutomationTabState 归约，

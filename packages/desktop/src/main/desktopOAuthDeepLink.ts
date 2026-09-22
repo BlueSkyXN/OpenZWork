@@ -16,7 +16,7 @@ interface DeepLinkWorkspaceGateOptions {
   canOpenWorkspace?: (workspacePath: string) => boolean;
   confirmationCopy?: ExternalWorkspaceOpenDialogCopy;
   onWorkspaceOpenBlocked?: (workspacePath: string) => void;
-  /** 业务窗口解析器；必须排除 CUA indicator 等 Main 辅助窗口。 */
+  /** 业务窗口解析器；必须排除更新浮窗等 Main 辅助窗口。 */
   resolveApplicationWindow?: () => BrowserWindow | null;
 }
 
@@ -260,7 +260,7 @@ export function handleDeepLink(
     }
     const payload = { shareCode };
     // share 分支也必须走 resolveApplicationWindow——聚焦兜底
-    // getAllWindows()[0] 会命中 CUA indicator 等辅助窗口；且 pending 队列必须绑定目标窗口，
+    // getAllWindows()[0] 会命中辅助窗口；且 pending 队列必须绑定目标窗口，
     // 否则多窗口时导入会投递给先 ready 的 renderer，写入错误 workspace 的 .zcode-share。
     const targetWindow = options.resolveApplicationWindow
       ? options.resolveApplicationWindow()

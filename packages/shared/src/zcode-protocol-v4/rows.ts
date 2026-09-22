@@ -179,15 +179,6 @@ export type ReasoningRow = z.infer<typeof reasoningRowSchema>;
 // toolCall 展示层 schema 已拆至 ./toolDisplay.ts（rows.ts 受 max-lines 约束）。
 import { toolCallDisplaySchema, toolOutputSchema, toolProgressSchema } from "./toolDisplay.js";
 
-export const cuaAppIdentitySchema = z
-  .object({
-    pid: z.number().int().positive(),
-    name: z.string().trim().min(1).max(256),
-    bundleId: z.string().trim().min(1).max(512).optional(),
-  })
-  .strict();
-export type CuaAppIdentity = z.infer<typeof cuaAppIdentitySchema>;
-
 export const toolCallRowSchema = z.object({
   ...rowBaseFields,
   kind: z.literal("toolCall"),
@@ -198,7 +189,6 @@ export const toolCallRowSchema = z.object({
   status: z.enum(["inputStreaming", "pendingApproval", "running", "success", "error", "cancelled"]),
   inputText: z.string(),
   input: z.unknown().optional(),
-  cuaApp: cuaAppIdentitySchema.optional(),
   output: toolOutputSchema.optional(),
   display: toolCallDisplaySchema.optional(),
   // status=error 时必带。

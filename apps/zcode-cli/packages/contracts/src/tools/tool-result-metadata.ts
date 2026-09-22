@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { OFFICIAL_MCP_TOOL_ERROR_CODES } from "@zcode/shared";
 
 import {
   CREATE_WORKFLOW_DISPLAY_MAX_DIAGNOSTICS,
@@ -20,38 +19,6 @@ export const TASK_OUTPUT_DISPLAY_MAX_STATUS_CHARS = 64;
 export const TASK_OUTPUT_DISPLAY_MAX_OUTPUT_CHARS = 2_000;
 export const MCP_TOOL_DISPLAY_MAX_NAME_CHARS = 256;
 export const MCP_TOOL_DISPLAY_MAX_DESCRIPTION_CHARS = 4 * 1024;
-export const CUA_TARGET_APP_DISPLAY_META_KEY = "zcode.cua/target-app-display-v1" as const;
-
-export const applicationIconLocatorSchema = z.discriminatedUnion("kind", [
-  z
-    .object({ kind: z.literal("darwin-bundle-id"), value: z.string().trim().min(1).max(512) })
-    .strict(),
-  z
-    .object({
-      kind: z.literal("windows-executable-path"),
-      value: z.string().trim().min(1).max(32_768),
-    })
-    .strict(),
-  z.object({ kind: z.literal("windows-aumid"), value: z.string().trim().min(1).max(512) }).strict(),
-]);
-
-export const cuaTargetAppDisplaySchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    displayName: z.string().trim().min(1).max(512).optional(),
-    iconLocators: z.array(applicationIconLocatorSchema).max(3),
-  })
-  .strict();
-
-export const cuaRequestAccessStatusDisplaySchema = z
-  .object({
-    schemaVersion: z.literal(1),
-    platform: z.literal("darwin"),
-    grantOwner: z.string().trim().min(1).max(512),
-    accessibility: z.enum(["granted", "stale", "denied"]),
-    screenRecording: z.enum(["granted", "denied", "unknown"]),
-  })
-  .strict();
 
 // CreateWorkflow display 诊断的限长常量与条目 schema 已移至 create-workflow.ts
 // （被 create_workflow 与 eval_workflow_snippet 两个 display payload 复用，放这里会成环）。
@@ -114,53 +81,9 @@ export const respondToCoordinatorToolResultDisplayPayloadSchema = z
   })
   .strict();
 
-export const cuaToolResultDisplayPayloadSchema = z
-  .object({
-    kind: z.literal("cua"),
-    schemaVersion: z.literal(1),
-    toolName: z.string().min(1),
-    status: z.enum(["success", "failed"]),
-    // 旧 v1 历史记录曾重复携带 ToolCallRow.input；只为回放兼容继续接受，新 producer 不再写入。
-    input: z.string().optional(),
-    structuredContent: z.string().optional(),
-    text: z.string().optional(),
-    errorCode: z.string().optional(),
-    suggestedAction: z.string().optional(),
-    targetApp: cuaTargetAppDisplaySchema.optional(),
-    permissionStatus: cuaRequestAccessStatusDisplaySchema.optional(),
-    media: z
-      .array(
-        z
-          .object({
-            mimeType: z.string().min(1),
-            // 256 KiB 原始图片编码后的最大 base64 长度；总预算由投影器执行。
-            data: z.string().min(1).max(349_528).optional(),
-            artifactUri: z.string().min(1).optional(),
-          })
-          .strict(),
-      )
-      .max(4)
-      .optional(),
-    truncated: z.boolean().optional(),
-  })
-  .strict();
-
-/**
- * node_repl cell 的目标应用身份（Computer Use）。`appKey` 是 producer 的形态：
- * `darwin:<bundleId>` / `windows-aumid:<aumid>` / `windows-exe:<path>` / `linux-exe:<path>`；
- * UI 按前缀派生 `ApplicationIconLocator` 再交给平台服务解析，协议不承载图标字节。
- */
-export const nodeReplCuaAppDisplaySchema = z
-  .object({
-    appKey: z.string().trim().min(1).max(2_048),
-    displayName: z.string().trim().min(1).max(512).optional(),
-  })
-  .strict();
-
 export const nodeReplImageToolResultDisplayPayloadSchema = z
   .object({
     kind: z.literal("node_repl_images"),
-    // images 可选而不是 min(1)：CUA 的纯动作 cell（点击、输入）没有截图，但仍要投影 app 身份。
     // kind 名保留为 node_repl_images —— 改名会让已持久化的 row 在 strict union 里整段被剥掉。
     images: z
       .array(
@@ -177,7 +100,6 @@ export const nodeReplImageToolResultDisplayPayloadSchema = z
       .min(1)
       .max(2)
       .optional(),
-    app: nodeReplCuaAppDisplaySchema.optional(),
     truncated: z.boolean().optional(),
     source: z.literal("browser_turn_end").optional(),
   })
@@ -189,15 +111,6 @@ export const mcpToolResultDisplayPayloadSchema = z
     serverName: z.string().min(1).max(MCP_TOOL_DISPLAY_MAX_NAME_CHARS),
     toolName: z.string().min(1).max(MCP_TOOL_DISPLAY_MAX_NAME_CHARS),
     description: z.string().min(1).max(MCP_TOOL_DISPLAY_MAX_DESCRIPTION_CHARS).optional(),
-    /**
-     * 官方 Server MCP 判定本次调用不可用时下发的结构化标识（额度耗尽 / 无 Coding Plan）。
-     * 只在 tool result 为 isError 且该 MCP 为官方来源时出现，UI 据此在输入框上方提示。
-     * 与 code 同源：`@zcode/shared` 的 OFFICIAL_MCP_TOOL_ERROR_CODES。
-     */
-    unavailable: z
-      .object({ code: z.enum(OFFICIAL_MCP_TOOL_ERROR_CODES) })
-      .strict()
-      .optional(),
   })
   .strict();
 
@@ -238,7 +151,6 @@ export const toolResultDisplayPayloadSchema = z.discriminatedUnion("kind", [
   taskStopToolResultDisplayPayloadSchema,
   taskOutputToolResultDisplayPayloadSchema,
   respondToCoordinatorToolResultDisplayPayloadSchema,
-  cuaToolResultDisplayPayloadSchema,
   nodeReplImageToolResultDisplayPayloadSchema,
   mcpToolResultDisplayPayloadSchema,
   createWorkflowToolResultDisplayPayloadSchema,
@@ -265,10 +177,6 @@ export type TaskOutputToolResultDisplayPayload = z.infer<
 export type RespondToCoordinatorToolResultDisplayPayload = z.infer<
   typeof respondToCoordinatorToolResultDisplayPayloadSchema
 >;
-export type CuaToolResultDisplayPayload = z.infer<typeof cuaToolResultDisplayPayloadSchema>;
-export type ApplicationIconLocator = z.infer<typeof applicationIconLocatorSchema>;
-export type CuaTargetAppDisplay = z.infer<typeof cuaTargetAppDisplaySchema>;
-export type CuaRequestAccessStatusDisplay = z.infer<typeof cuaRequestAccessStatusDisplaySchema>;
 export type NodeReplImageToolResultDisplayPayload = z.infer<
   typeof nodeReplImageToolResultDisplayPayloadSchema
 >;
@@ -276,7 +184,6 @@ export type McpToolResultDisplayPayload = z.infer<typeof mcpToolResultDisplayPay
 export type CreateWorkflowToolResultDisplayPayload = z.infer<
   typeof createWorkflowToolResultDisplayPayloadSchema
 >;
-export type NodeReplCuaAppDisplay = z.infer<typeof nodeReplCuaAppDisplaySchema>;
 
 export type ToolResultDisplayPayload = z.infer<typeof toolResultDisplayPayloadSchema>;
 

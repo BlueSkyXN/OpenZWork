@@ -64,7 +64,6 @@ const FILE_RULES: FileRule[] = [
   { categoryId: "toolOutputs", pattern: /^v2\/coding-plan-cache\.json$/ },
   // Bot 历史缓存仅供资源管理器识别展示，不加载配置或启动渠道。
   { categoryId: "toolOutputs", pattern: /^v2\/bots-model-cache[^/]*\.json$/ },
-  { categoryId: "logs", pattern: /^computer-use\/run\/[^/]+\.log$/ },
   { categoryId: "config", pattern: /^v2\/[^/]+\.json$/ },
   { categoryId: "config", pattern: /^cli\/config\.json$/ },
   { categoryId: "config", pattern: /^agents\/[^/]+\.md$/ },
@@ -94,7 +93,7 @@ const PREFIX_RULES: Record<Exclude<StorageCategoryId, "other">, string[]> = {
   logs: ["v2/logs", "cli/log", "logs", "v2/crash", "v2/perf", "feedback/logs"],
   backups: ["backup", "v2/backup", "v2/migrations", "cli/db/backup", "cli/db/backups"],
   exports: ["export-log", "export-log-stage", "feedback"],
-  runtimes: ["agents", "bundled-agents", "lite", "computer-use", "cli/plugins"],
+  runtimes: ["agents", "bundled-agents", "lite", "cli/plugins"],
   // cli/plugins 整体（含 cache）不可清理，插件缓存归运行时。
   config: [
     "v2/agent-config",
@@ -117,7 +116,6 @@ const PREFIX_RULES: Record<Exclude<StorageCategoryId, "other">, string[]> = {
     "controller",
     "launcher",
     "dev-signing",
-    "cua-helper-dev-identity",
     "perf-task-manifests",
     "plugin-workspace",
     "projects",
@@ -200,7 +198,6 @@ export function isProtectedStoragePath(rawPath: string): boolean {
 /** 文件规则所在的目录：清理时只需非递归枚举这些目录。 */
 const FILE_RULE_SCOPES: Partial<Record<StorageCategoryId, string[]>> = {
   backups: ["cli/db", "cli", "v2"],
-  logs: ["computer-use/run"],
 };
 /** 只靠文件规则、且需要递归枚举的类别：候选按分类过滤后只剩命中文件规则的路径。 */
 const RECURSIVE_FILE_RULE_SCOPES: Partial<Record<StorageCategoryId, string[]>> = {

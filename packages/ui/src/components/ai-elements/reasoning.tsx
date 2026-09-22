@@ -545,7 +545,7 @@ export const ReasoningContent = memo(
               ref={scrollRef}
               className={cn(
                 "max-h-60 space-y-2 overflow-auto text-ui-base text-foreground-subtlest",
-                // CUA Group 已提供清晰的父级边界；子思考继续显示左导线与缩进会形成重复层级。
+                // 父级分组卡已提供清晰的父级边界；子思考继续显示左导线与缩进会形成重复层级。
                 variant === "default" && "ml-2 border-border border-l pl-3.5",
               )}
               data-reasoning-scroll-mask={scrollMaskData}

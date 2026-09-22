@@ -20,7 +20,7 @@ function parseDeviceIdFromArgs(): string {
 // 在 contextBridge 建立之前就暴露同步值，让 renderer 在 React 渲染前就能读到
 contextBridge.exposeInMainWorld("__ZCODE_DEVICE_ID__", parseDeviceIdFromArgs());
 
-import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, PostUpdateReleaseNotesPayload, RemoteSessionClosedEvent, UpdateCheckResultPayload, UpdateStatePayload, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest, OpenCuaPermissionOnboardingOptions } from "@zcode/shared";
+import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, PostUpdateReleaseNotesPayload, RemoteSessionClosedEvent, UpdateCheckResultPayload, UpdateStatePayload, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest } from "@zcode/shared";
 import {
   InternalChannels,
   PlatformChannels,
@@ -262,8 +262,6 @@ contextBridge.exposeInMainWorld("zcode", {
   /** 同步当前窗口的未读 task 数到 main 进程 */
   syncWindowUnreadCount: (count: number) =>
     ipcRenderer.send(PlatformChannels.SyncWindowUnreadCount, count),
-  syncActiveTaskSession: (sessionId: string | null) =>
-    ipcRenderer.send(PlatformChannels.SyncActiveTaskSession, sessionId),
   /** 同步需要 main 进程即时感知的应用设置 */
   syncAppSettings: (patch: Partial<AppSettings>) =>
     ipcRenderer.send(PlatformChannels.SyncAppSettings, patch),
@@ -507,20 +505,6 @@ contextBridge.exposeInMainWorld("zcode", {
   openInFileManager: (path: string) => ipcRenderer.invoke(PlatformChannels.OpenInFileManager, path),
   /** 使用系统默认应用打开本地文件 */
   openExternalFile: (path: string) => ipcRenderer.invoke(PlatformChannels.OpenExternalFile, path),
-  /** 打开 ZCode Computer Use 完整权限引导 */
-  openCuaPermissionOnboarding: (options?: OpenCuaPermissionOnboardingOptions) =>
-    ipcRenderer.invoke(PlatformChannels.OpenCuaPermissionOnboarding, options),
-  /** 只取消当前 renderer 以 operationId 发起的 onboarding participant。 */
-  cancelCuaPermissionOnboarding: (operationId: string) =>
-    ipcRenderer.send(PlatformChannels.CancelCuaPermissionOnboarding, {
-      operationId,
-    }),
-  /** 预热并缓存已验证的 Helper 路径，使 dragstart 能同步 startDrag（避免异步 I/O 错过手势） */
-  prepareCuaHelperPermissionDrag: () =>
-    ipcRenderer.invoke(PlatformChannels.PrepareCuaHelperPermissionDrag),
-  /** 从权限浮窗拖拽 Helper.app 到 macOS 权限列表。必须是 send —— invoke 的往返会错过手势。 */
-  startCuaHelperPermissionDrag: () =>
-    ipcRenderer.send(PlatformChannels.StartCuaHelperPermissionDrag),
   onShareImport: (callback: (payload: { shareCode: string }) => void): (() => void) => {
     shareImportCallbacks.add(callback);
     while (pendingShareImports.length > 0) {

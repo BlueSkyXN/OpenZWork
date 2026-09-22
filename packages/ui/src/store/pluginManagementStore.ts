@@ -40,7 +40,7 @@ export interface PluginManagementState {
   /**
    * 最近一次失败操作的归属插件：带 pluginId 的操作（如 setEnabled）失败写该
    * id；无插件目标的操作（marketplace add/update/validate、列表加载、refresh）写 null。
-   * 消费方（CUA 输入框按钮等）只应把「目标是自己」的 error 当成自身错误，避免共享
+   * 消费方只应把「目标是自己」的 error 当成自身错误，避免共享
    * error 字段把无关失败误映射成自己的错误态。
    */
   lastFailedPluginId: string | null;

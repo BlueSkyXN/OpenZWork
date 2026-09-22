@@ -250,3 +250,76 @@ test('[structural, not runtime] tool executor uses its business implementation, 
 test('[structural, not runtime] bootstrap no longer treats ordinary Agent directory as a submodule', () => {
   assert.doesNotMatch(fs.readFileSync(path.join(root, 'scripts/bootstrap.mjs'), 'utf8'), /git submodule|runGit\(|["']submodule["']/);
 });
+test('[structural, not runtime] WP-06: official MCP residue is removed from agent packages', () => {
+  for (const file of [
+    'apps/zcode-cli/packages/adapters/src/mcp/index.ts',
+    'apps/zcode-cli/packages/adapters/src/plugins/mcp.ts',
+    'apps/zcode-cli/packages/contracts/src/interfaces/mcp.port.ts',
+    'apps/zcode-cli/packages/core/src/tool/types.ts',
+    'packages/shared/src/index.ts',
+    'packages/shared/src/channels.ts',
+  ]) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    // zcode_official 只允许作为旧缓存配置的显式拒绝文案存在（plugins/mcp.ts 的退役 throw）。
+    assert.doesNotMatch(text, /officialMcp|OfficialMcp|official_mcp|OFFICIAL_MCP/);
+  }
+  for (const removed of [
+    'packages/shared/src/official-mcp-auth.ts',
+    'packages/shared/src/official-mcp-tool-error.ts',
+    'packages/shared/src/clientConfig.ts',
+    'packages/shared/src/cuaAccessibilitySettings.ts',
+    'packages/zcode-cua',
+    'apps/zcode-cli/packages/adapters/src/mcp/official-auth.ts',
+    'apps/zcode-cli/packages/adapters/src/plugins/mcp-official-auth.ts',
+    'apps/zcode-cli/packages/services/client-config',
+    'apps/zcode-cli/packages/services/client-scenes',
+    'apps/zcode-cli/packages/services/cua-permission-broker',
+    'apps/zcode-cli/packages/core/src/runtime/helpers/official-cua-media.ts',
+    'apps/zcode-cli/packages/core/src/subagent/computer-use-policy.ts',
+    'apps/zcode-cli/packages/node-repl-host/src/cua-bridge.ts',
+    'apps/zcode-cli/packages/node-repl-host/src/cua-broker.ts',
+    'apps/zcode-cli/packages/bootstrap/src/zcode-protocol/computer-use-operation-event.ts',
+    'apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/cua-app-snapshot.ts',
+    'apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/cua-permission-observation.ts',
+    'apps/zcode-cli/packages/bootstrap/src/app/superpowers-plugin',
+    'packages/services/src/cua-permission-broker',
+    'packages/services/src/client-config',
+    'packages/services/src/client-scenes',
+    'packages/ui/src/settings/ComputerUseSection.tsx',
+    'packages/desktop/src/main/desktopCuaPermissionIpc.ts',
+    'packages/desktop/src/main/cuaPermissionDragPanel.ts',
+    'packages/desktop/src/main/windowsCuaOperationIndicator.ts',
+    'packages/desktop/src/preload/cuaPermissionPanel.ts',
+    'packages/desktop/src/renderer/cuaPermissionPanel.tsx',
+  ]) {
+    assert.equal(fs.existsSync(path.join(root, removed)), false, removed);
+  }
+});
+test('[structural, not runtime] WP-06: CUA / clientScenes / plugin-creator surfaces are gone', () => {
+  const surfaces = [
+    'packages/shared/src/runtimeEnv.ts',
+    'packages/shared/src/platform.ts',
+    'packages/shared/src/zcode-protocol/index.ts',
+    'packages/shared/src/zcode-protocol-v4/rows.ts',
+    'packages/services/src/node.ts',
+    'packages/services/src/zcode-agent/zcodeAgentService.ts',
+    'packages/desktop/src/main/index.ts',
+    'packages/desktop/src/preload/index.ts',
+    'packages/desktop/src/renderer/src/desktopPlatform.ts',
+    'packages/ui/src/v4/ConversationDraftSuggestedPromptsContainer.tsx',
+    'packages/ui/src/settings/settingsPageConfig.ts',
+    'packages/ui/src/i18n/locales/zh-CN.ts',
+    'packages/ui/src/i18n/locales/en-US.ts',
+    'packages/client/src/globals.d.ts',
+    'apps/zcode-cli/packages/bootstrap/src/app/runtime-config.ts',
+    'apps/zcode-cli/packages/bootstrap/src/mcp-config.ts',
+    'apps/zcode-cli/packages/core/src/mcp/index.ts',
+    'apps/zcode-cli/packages/core/src/runtime/types.ts',
+    'apps/zcode-cli/packages/node-repl-host/src/server.ts',
+    'apps/zcode-cli/packages/cli/src/plugin-host-command.ts',
+  ];
+  for (const file of surfaces) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.doesNotMatch(text, /cuaPermission|CuaPermission|cuaAccessibility|CuaOsSupport|computerUse|ComputerUse|clientScenes|ClientScenes|pluginCreator|trustedOfficialCua|syncActiveTaskSession|ZCODE_CUA_/, file);
+  }
+});

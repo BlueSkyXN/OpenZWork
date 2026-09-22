@@ -164,7 +164,6 @@ import {
   normalizeAvailableZCodeMode,
   settingsToConfigOptions,
 } from "./zcodeConfigOptions.js";
-import type { CuaProductMcpServerResolver } from "#src/cua-permission-broker/index.js";
 import { registerMemoryDiagnosticsProvider } from "#src/memoryDiagnostics.js";
 
 interface TaskOverlay {
@@ -182,7 +181,6 @@ interface CreateZCodeTaskServiceAdapterOptions {
   // 否则 desktop-continuous 路径和 task adapter 路径的事件订阅会分裂成两份，UI 收不全。
   taskIndexSyncer: ZCodeTaskIndexSyncer;
   settingService?: Pick<ISettingService, "get">;
-  cuaProductMcpServerResolver?: CuaProductMcpServerResolver;
 }
 
 interface TaskTarget {
@@ -328,16 +326,6 @@ export function createZCodeTaskServiceAdapter(
       };
     }
     return {};
-  }
-
-  async function resolveProductMcpServers(
-    servers: ZCodeAgentMcpServer[] | undefined,
-  ): Promise<ZCodeAgentMcpServer[] | undefined> {
-    const configuredServers = (servers?.length ?? 0) > 0 ? servers : undefined;
-    if (!configuredServers || !options.cuaProductMcpServerResolver) {
-      return configuredServers;
-    }
-    return options.cuaProductMcpServerResolver.resolveMcpServers(configuredServers);
   }
 
   function workspaceKey(params: { workspacePath: string; workspaceIdentity?: string }): string {
@@ -1143,7 +1131,7 @@ export function createZCodeTaskServiceAdapter(
   ): Promise<ZCodeSessionStateSnapshot> {
     rememberTaskTarget(params);
     const thoughtLevel = params.thoughtLevel?.trim();
-    const mcpServers = await resolveProductMcpServers(params.mcpServers);
+    const mcpServers = params.mcpServers;
     return options.zcodeAgentService.resumeSession({
       workspacePath: params.workspacePath,
       workspaceIdentity: params.workspaceIdentity,
@@ -1250,7 +1238,7 @@ export function createZCodeTaskServiceAdapter(
       // 复用导入模块的严格来源校验，避免清理 ACP 时误删这条独立的数据迁移路径。
       const history = await readLegacyImportedClaudeHistory(params);
       if (!history) throw error;
-      const mcpServers = await resolveProductMcpServers(params.mcpServers);
+      const mcpServers = params.mcpServers;
       const restored = await options.zcodeAgentService.createSession({
         workspacePath: params.workspacePath,
         workspaceIdentity: params.workspaceIdentity,
@@ -1780,7 +1768,7 @@ export function createZCodeTaskServiceAdapter(
             }
           : undefined);
       const draftSessionId = params.draftSessionId?.trim();
-      const mcpServers = await resolveProductMcpServers(params.mcpServers);
+      const mcpServers = params.mcpServers;
       let snapshot: ZCodeSessionStateSnapshot | null = null;
       if (draftSessionId && !mcpServers) {
         try {

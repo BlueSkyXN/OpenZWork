@@ -16,7 +16,7 @@ interface CreateHostResourceUsageResponderOptions {
   postMessage: (message: HostResourceUsageSnapshotResultResponse) => void;
   hostPid?: number;
   sampler?: ProcessResourceSampler;
-  /** Host 直管的内置插件进程（如 Windows CUA Helper）：pid → 插件名 */
+  /** Host 直管的内置插件进程：pid → 插件名 */
   getBuiltinPluginPids?: () => ReadonlyMap<number, string>;
   now?: () => number;
 }

@@ -53,7 +53,7 @@ export async function resolveToolPermission(
   const rulePolicy = entry.resolvePermissionRulePolicy?.(executionInput, runtimePermissionContext);
   const suggestedPermissionUpdates =
     rulePolicy?.suggestedPermissionUpdates ??
-    buildDefaultPermissionUpdates(toolCall.name, executionInput, entry.permissionCapabilityGroup);
+    buildDefaultPermissionUpdates(toolCall.name, executionInput);
 
   let projectRules: PermissionRuleset | null;
   try {
