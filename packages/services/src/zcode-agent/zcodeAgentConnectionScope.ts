@@ -875,33 +875,6 @@ export function createZCodeAgentConnectionScope(
       }
       return base.onDynamicCuaPermissionObservation();
     },
-    onDynamicProcessResourceSample() {
-      assertOpen();
-      // CLI 资源样本只供远端 Desktop Host relay 回传 main；renderer/mobile attachment
-      // 不消费该事件，也不能把它引入 continuous/replayable 消息面。
-      if (role !== "trusted-host-relay") {
-        return RpcEvent.None;
-      }
-      return base.onDynamicProcessResourceSample();
-    },
-    onDynamicToolExecResource() {
-      // 完成事实与会话交付无关，禁止进入 continuous/replayable attachment。
-      if (disposed || role !== "trusted-host-relay") return RpcEvent.None;
-      return base.onDynamicToolExecResource();
-    },
-    onDynamicMcpResourceSamples() {
-      // 资源事实不属于会话流，桌面 continuous 与手机 replayable attachment 均不能订阅。
-      if (disposed || role !== "trusted-host-relay") return RpcEvent.None;
-      return base.onDynamicMcpResourceSamples();
-    },
-    onDynamicMcpTelemetry() {
-      assertOpen();
-      // MCP 遥测与 CLI 资源样本共用可信 Host relay 边界，不进入 renderer/mobile 会话链路。
-      if (role !== "trusted-host-relay") {
-        return RpcEvent.None;
-      }
-      return base.onDynamicMcpTelemetry();
-    },
     async subscribeSessionsIndexV4(params) {
       assertReady();
       const forwarded = forwardedConnection(params);

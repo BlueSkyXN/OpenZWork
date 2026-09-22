@@ -166,11 +166,76 @@ test('[behavior / file-port doubles] removed remote-refresh options cannot invok
 test('[structural, not runtime] removed gateways and exporters are physically absent', () => {
   for (const file of [adapter + 'official-coding-plan-gateway.ts', 'packages/shared/src/openrouter-attribution.ts', 'apps/zcode-cli/packages/telemetry', 'apps/zcode-cli/packages/core/src/telemetry/runtime-telemetry.ts', 'packages/provider-node/src/zcode-builtin-download.ts', 'packages/provider-node/src/endpoint-scoped-zcode-builtin-source.ts', 'packages/desktop/src/main/localTtftExporter.ts', 'packages/desktop/src/main/rendererActionTraceExporter.ts']) assert.equal(fs.existsSync(path.join(root, file)), false, file);
 });
+test('[structural, not runtime] WP-05 telemetry full-chain sources are physically absent', () => {
+  const removed = [
+    'packages/desktop/src/main/appARMSBootstrap.ts',
+    'packages/desktop/src/main/appTelemetryRuntime.ts',
+    'packages/desktop/src/shared/armsRumShared.ts',
+    'packages/desktop/src/shared/armsRumBridgeForward.ts',
+    'packages/desktop/src/main/armsEventRedaction.ts',
+    'packages/desktop/src/main/armsUserIdentity.ts',
+    'packages/desktop/src/main/armsBrowserPerfLoadNudge.ts',
+    'packages/desktop/src/main/desktopArmsCustomEvent.ts',
+    'packages/desktop/src/main/desktopStabilityTelemetry.ts',
+    'packages/desktop/src/main/desktopMcpTelemetry.ts',
+    'packages/desktop/src/main/desktopRemoteUsageArmsTelemetry.ts',
+    'packages/desktop/src/main/desktopNetworkTelemetry.ts',
+    'packages/desktop/src/main/networkTelemetryAggregator.ts',
+    'packages/desktop/src/main/databaseStartupTelemetry.ts',
+    'packages/desktop/src/main/startupTelemetryDelivery.ts',
+    'packages/desktop/src/main/longTaskAttributionSummary.ts',
+    'packages/desktop/src/main/desktopTelemetryFetch.ts',
+    'packages/desktop/src/main/desktopResourceTelemetry.ts',
+    'packages/desktop/src/main/desktopZCodeDataSizeTelemetry.ts',
+    'packages/desktop/src/main/zcodeDataSizeTelemetryState.ts',
+    'packages/desktop/src/main/processResourceRoleClassifier.ts',
+    'packages/desktop/src/main/resourceMetricsStats.ts',
+    'packages/desktop/src/scheduler/schedulerResourceTelemetry.ts',
+    'packages/desktop/src/host/hostNetworkTelemetry.ts',
+    'packages/desktop/src/host/hostSessionCreateTelemetry.ts',
+    'packages/desktop/src/host/hostServiceResourceTelemetry.ts',
+    'packages/desktop/src/host/hostSelfResourceTelemetry.ts',
+    'packages/desktop/src/host/hostMcpTelemetry.ts',
+    'packages/desktop/src/host/hostResourceTelemetryEnvironment.ts',
+    'packages/services/src/telemetry/telemetryCore.ts',
+    'packages/services/src/oauth/repo/oauthCredentialRepo.ts',
+    'packages/shared/src/telemetry.ts',
+    'packages/shared/src/remoteUsageTelemetry.ts',
+    'packages/shared/src/sessionCreateTelemetry.ts',
+    'packages/shared/src/rendererActionTrace.ts',
+    'packages/shared/src/processResourceTelemetry.ts',
+    'packages/shared/src/telemetryRedaction.ts',
+    'packages/ui/src/lib/appTelemetry.ts',
+    'packages/ui/src/lib/sessionCreateTelemetry.ts',
+    'packages/ui/src/lib/uiPerfArmsTelemetry.ts',
+    'packages/ui/src/lib/sessionOpenArmsTelemetry.ts',
+    'packages/ui/src/lib/userActionTelemetry.ts',
+    'packages/ui/src/lib/userActionTraceCatalog.ts',
+    'packages/ui/src/v4/telemetry/conversationTelemetrySupervisor.ts',
+    'packages/ui/src/v4/telemetry/ConversationTelemetryAttachment.tsx',
+    'packages/ui/src/v4/telemetry/localTtftObserver.ts',
+    'packages/ui/src/onboarding/useOnboardingTelemetry.ts',
+    'packages/desktop/src/renderer/appTelemetryBridge.ts',
+  ];
+  for (const file of removed) assert.equal(fs.existsSync(path.join(root, file)), false, file);
+});
 test('[structural, not runtime] Desktop OTLP initialization and IPC bridge methods are removed', () => {
   for (const file of ['packages/desktop/src/main/index.ts', 'packages/desktop/src/preload/index.ts', 'packages/desktop/src/renderer/src/desktopPlatform.ts', 'packages/shared/src/platform.ts']) {
     const text = fs.readFileSync(path.join(root, file), 'utf8');
     assert.doesNotMatch(text, /createLocalTtftExporter|createRendererActionTraceExporter|reportLocalTtftBatch|reportRendererActionTraceBatch|getRendererActionTraceConfig/);
   }
+});
+test('[structural, not runtime] build configs no longer validate or inject telemetry runtime modules', () => {
+  const bundle = fs.readFileSync(path.join(root, 'packages/desktop/scripts/bundle.mjs'), 'utf8');
+  const builder = fs.readFileSync(path.join(root, 'packages/desktop/electron-builder.config.js'), 'utf8');
+  assert.doesNotMatch(bundle, /@opentelemetry|@arms\/|@babel\/runtime/);
+  assert.doesNotMatch(builder, /@opentelemetry|@arms\/|@babel\/runtime/);
+});
+test('[structural, not runtime] shared telemetry env constants and channels are removed', () => {
+  const env = fs.readFileSync(path.join(root, 'packages/shared/src/env.ts'), 'utf8');
+  assert.doesNotMatch(env, /ZCODE_TELEMETRY_ENABLED|ZCODE_TELEMETRY_REPORT_ENDPOINT|ZCODE_ARMS_RUM_ENDPOINT|ArmsRumEnv/);
+  const channels = fs.readFileSync(path.join(root, 'packages/shared/src/channels.ts'), 'utf8');
+  assert.doesNotMatch(channels, /SyncTelemetryContext|ReportTelemetryEvent|ReportArmsCustomEvent|ReportRendererHeapSample|FinalArmsCustomEventsE2E/);
 });
 test('[structural, not runtime] Agent and Desktop direct exporter dependencies are removed', () => {
   const bootstrap = JSON.parse(fs.readFileSync(path.join(root, 'apps/zcode-cli/packages/bootstrap/package.json')));

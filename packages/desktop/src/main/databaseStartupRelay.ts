@@ -6,7 +6,7 @@ import {
   databaseStartupControlSchema,
   type DatabaseStartupState,
 } from "@zcode/shared";
-import { reportDatabaseStartupState } from "./databaseStartupTelemetry.js";
+import { logger } from "./logger.js";
 
 let localStorageReady = false;
 let quit: (() => void) | undefined;
@@ -48,11 +48,14 @@ export function bindDatabaseStartupRelay(
     if (latest && state.startupId === latest.startupId && state.sequence <= latest.sequence) return;
     latest = state;
     forward(state);
-    try {
-      reportDatabaseStartupState(state);
-    } catch {
-      /* 遥测故障不阻断启动。 */
-    }
+    // 迁移终态留本地主日志一行摘要，遥测上报链已随 WP-05 移除。
+    logger.info("[database-startup] terminal", {
+      attemptId: state.attemptId,
+      status: state.phase,
+      durationMs: state.updatedAt - state.startedAt,
+      errorCode: state.errorCode,
+      disk: state.disk,
+    });
     if (state.phase === "ready" && !localStorageReady) {
       localStorageReady = true;
       for (const listener of readyListeners) listener();

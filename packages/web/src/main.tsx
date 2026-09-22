@@ -257,8 +257,6 @@ function createWebPlatform(): IPlatformService {
     openExternalFile: () => Promise.resolve({ success: false, error: "Not supported in web mode" }),
     onShareImport: () => () => {},
     notifyRendererReady: () => {},
-    reportTelemetryEvent: async () => {},
-    reportArmsCustomEvent: () => Promise.resolve(),
     showTaskNotification: (payload) => {
       if (document.hasFocus()) {
         return;

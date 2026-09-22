@@ -78,11 +78,6 @@ import {
 } from "@/settings/automationStatusFilter.js";
 import { isRemoteAutomationWorkspace } from "@/hooks/useAutomationProjectOptions.js";
 import {
-  reportAutomationActionClick,
-  reportAutomationCreateResult,
-  resolveAutomationSelectionTelemetry,
-} from "@/lib/automationTelemetry.js";
-import {
   materializeScheduledTemplateDraft,
   resolveAutomationTemplateText,
   type ScheduledAutomationTemplate,
@@ -614,16 +609,6 @@ export function AutomationsSection({
         },
         zcodeAgentService,
       );
-      void reportAutomationCreateResult(platform, {
-        automationId: created?.automationId,
-        cronExpr: input.cronExpr ?? "",
-        templateId: view.mode === "create" ? view.draft?.templateId : undefined,
-        error: useAutomationManagementStore.getState().error,
-        modelFields: resolveAutomationSelectionTelemetry(
-          input.modelSelection,
-          providerSettingsView,
-        ),
-      });
       if (!created) {
         const createError = useAutomationManagementStore.getState().error;
         toast(
@@ -697,12 +682,6 @@ export function AutomationsSection({
         automationId: automation.automationId,
         source,
       });
-      void reportAutomationActionClick(platform, {
-        action: "run_now",
-        source,
-        automation,
-        providerSettingsView,
-      });
       const result = await runAutomationNow(automation.automationId, zcodeAgentService);
       logger.debug("[automations] 立即运行交互结束", {
         automationId: automation.automationId,
@@ -760,7 +739,7 @@ export function AutomationsSection({
   );
 
   const handleDelete = useCallback(
-    async (automation: ZCodeAutomation, source: "list" | "editor" = "list") => {
+    async (automation: ZCodeAutomation, _source: "list" | "editor" = "list") => {
       const confirmed = await confirmDialog({
         presentation: "automation-confirmation",
         title: intl.formatMessage({ id: "automations.delete.title" }),
@@ -775,12 +754,6 @@ export function AutomationsSection({
         showKeyboardHints: false,
       });
       if (!confirmed) return;
-      void reportAutomationActionClick(platform, {
-        action: "delete",
-        source,
-        automation,
-        providerSettingsView,
-      });
       await deleteAutomation(automation.automationId, zcodeAgentService);
       const message = useAutomationManagementStore.getState().error;
       if (message) toast(intl.formatMessage({ id: getAutomationActionErrorToastId("delete") }));

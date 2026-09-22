@@ -176,7 +176,6 @@ function createServerInfo(options: HttpServerOptions): ServerRemoteInfo {
     capabilities: {
       desktopContinuous: true,
       websocketRpc: true,
-      processResourceTelemetry: true,
     },
   };
 }

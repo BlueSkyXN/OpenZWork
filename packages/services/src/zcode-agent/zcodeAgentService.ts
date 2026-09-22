@@ -63,10 +63,6 @@ import {
   zcodeProtocolEmptyResultSchema,
   zcodeProtocolMethods,
   zcodeProtocolNotifications,
-  zcodeMcpTelemetryEventSchema,
-  zcodeMcpResourceSamplesSchema,
-  zcodeToolExecResourceSchema,
-  zcodeProcessResourceSampleSchema,
   zcodeSessionCloseResultSchema,
   zcodeSessionCompactResultSchema,
   zcodeSessionEventsResultSchema,
@@ -92,11 +88,6 @@ import {
   type ZCodeAutomation,
   type ZCodeAutomationRun,
   zcodeWorkspaceUpdateDynamicWorkflowPolicyResultSchema,
-  type AgentLaneResourceSample,
-  type ProcessResourceCliLane,
-  type ZCodeMcpTelemetryEvent,
-  type ZCodeMcpResourceSample,
-  type ZCodeToolExecResource,
   type ZCodePluginOperationProgressNotification,
   type ZCodeTaskMode,
 } from "@zcode/shared";
@@ -123,7 +114,6 @@ import type {
   ZCodeAgentAppRuntimePreferences,
   ZCodeAgentRuntimeLifecycleEvent,
   ZCodeAgentAddPluginMarketplaceParams,
-  ZCodeAgentAppUsageParams,
   ZCodeAgentCancelPluginOperationParams,
   ZCodeAgentCompactParams,
   ZCodeAgentConfigurePluginParams,
@@ -253,7 +243,6 @@ import {
   v4ConversationSubscribeResultSchema,
   v4ConversationUsageResultSchema,
   v4SessionsIndexSubscribeResultSchema,
-  v4UsageStatsResultSchema,
   v4WorkspaceConfigSubscribeResultSchema,
   workspaceConfigTopic,
   workspaceConfigTopicWireCandidateSchema,
@@ -953,10 +942,6 @@ export function createZCodeAgentService(
   }
   const sessionRuntimePreferencesRequestEmitter =
     new Emitter<ZCodeAgentSessionRuntimePreferencesRequest>();
-  const processResourceSampleEmitter = new Emitter<AgentLaneResourceSample>();
-  const toolExecResourceEmitter = new Emitter<ZCodeToolExecResource>();
-  const mcpResourceSamplesEmitter = new Emitter<ZCodeMcpResourceSample[]>();
-  const mcpTelemetryEmitter = new Emitter<ZCodeMcpTelemetryEvent>();
   const pluginOperationProgressEmitters = new Map<
     string,
     Emitter<ZCodePluginOperationProgressNotification>
@@ -1538,11 +1523,6 @@ export function createZCodeAgentService(
   function wireClient(
     client: ZCodeProtocolClient,
     workspace: ZCodeAgentWorkspaceTarget,
-    /**
-     * 该 client 所属的进程泳道。CLI 进程不知道自己被哪个进程管理器拉起，
-     * 因此资源样本的 lane 只能在这里按调用方补齐。
-     */
-    lane: ProcessResourceCliLane,
   ): void {
     if (wiredClients.has(client)) {
       return;
@@ -1565,47 +1545,6 @@ export function createZCodeAgentService(
           const pending = pendingProviderRuntimeHeaders.get(key);
           // 旧 client 或同路径不同 identity 的取消不能删除新 runtime/其他工作区的请求。
           if (pending?.client === client) cancelProviderRuntimeHeaders(key, pending);
-          return;
-        }
-        if (message.method === zcodeProtocolNotifications.processResourceSample) {
-          const parsed = zcodeProcessResourceSampleSchema.safeParse(message.params);
-          if (parsed.success) {
-            processResourceSampleEmitter.fire({ ...parsed.data, lane });
-          } else {
-            logger.debug(undefined, "丢弃无效 ZCode CLI 资源样本", {
-              issues: parsed.error.issues.map((issue) => ({
-                code: issue.code,
-                path: issue.path.join("."),
-              })),
-            });
-          }
-          return;
-        }
-
-        if (message.method === zcodeProtocolNotifications.toolExecResource) {
-          const parsed = zcodeToolExecResourceSchema.safeParse(message.params);
-          if (parsed.success) toolExecResourceEmitter.fire(parsed.data);
-          return;
-        }
-        if (message.method === zcodeProtocolNotifications.mcpResourceSamples) {
-          const parsed = zcodeMcpResourceSamplesSchema.safeParse(message.params);
-          if (parsed.success) mcpResourceSamplesEmitter.fire(parsed.data);
-          else logger.debug(undefined, "丢弃无效 MCP 资源样本");
-          return;
-        }
-
-        if (message.method === zcodeProtocolNotifications.mcpTelemetry) {
-          const parsed = zcodeMcpTelemetryEventSchema.safeParse(message.params);
-          if (parsed.success) {
-            mcpTelemetryEmitter.fire(parsed.data);
-          } else {
-            logger.debug(undefined, "丢弃无效 ZCode CLI MCP 遥测事件", {
-              issues: parsed.error.issues.map((issue) => ({
-                code: issue.code,
-                path: issue.path.join("."),
-              })),
-            });
-          }
           return;
         }
 
@@ -2351,7 +2290,7 @@ export function createZCodeAgentService(
     }
 
     const client = await processManager.getClient(params);
-    wireClient(client, params, "chat");
+    wireClient(client, params);
 
     // processManager 会按 workspaceKey 对并发启动 single-flight。await 期间若另一条
     // read/write 路径已登记同一 client，必须复用现有 entry，不能把已提升的写能力降回 false。
@@ -2504,7 +2443,7 @@ export function createZCodeAgentService(
       if (!existingClient) {
         throw createRuntimeUnavailableError(params);
       }
-      wireClient(existingClient, params, "chat");
+      wireClient(existingClient, params);
       activeClientsByWorkspaceKey.set(workspaceKey, {
         client: existingClient,
         modelExecutionEnabled: false,
@@ -2518,7 +2457,7 @@ export function createZCodeAgentService(
   async function getPluginManagementClient(): Promise<ZCodeProtocolClient> {
     const workspace = { workspacePath: ensurePluginManagementWorkspacePath() };
     const client = await pluginProcessManager.getClient(workspace);
-    wireClient(client, workspace, "plugin");
+    wireClient(client, workspace);
     return client;
   }
 
@@ -2574,7 +2513,7 @@ export function createZCodeAgentService(
   async function getMcpStatusClient(): Promise<ZCodeProtocolClient> {
     const workspace = { workspacePath: ensurePluginManagementWorkspacePath() };
     const client = await mcpStatusProcessManager.getClient(workspace);
-    wireClient(client, workspace, "mcp-status");
+    wireClient(client, workspace);
     return client;
   }
 
@@ -2587,10 +2526,6 @@ export function createZCodeAgentService(
     }
     sessionEmitters.clear();
     sessionRuntimePreferencesRequestEmitter.dispose();
-    processResourceSampleEmitter.dispose();
-    mcpTelemetryEmitter.dispose();
-    toolExecResourceEmitter.dispose();
-    mcpResourceSamplesEmitter.dispose();
     for (const emitter of pluginOperationProgressEmitters.values()) {
       emitter.dispose();
     }
@@ -2683,7 +2618,7 @@ export function createZCodeAgentService(
   return {
     async prepareStorage(params) {
       const client = await processManager.getClient(params);
-      wireClient(client, params, "chat");
+      wireClient(client, params);
       await client.storageStartup.wait();
     },
     async getStorageStartupState(params) {
@@ -2981,21 +2916,6 @@ export function createZCodeAgentService(
           endedLimit: params.endedLimit ?? 20,
         },
         zcodeSessionSubagentsResultSchema,
-      );
-    },
-
-    async getAppUsageStats(params: ZCodeAgentAppUsageParams) {
-      // usage 表位于全局 session 库；复用任意已连接的 workspace client 即可拿到全应用范围数据。
-      const active = activeClientsByWorkspaceKey.values().next().value;
-      if (!active) {
-        throw new Error("no_active_workspace");
-      }
-      // usage/stats → v4/usage/stats（additive query，事实源在 CLI usage store，
-      // 载荷同形；旧词消费清零，CLI 旧 case 留到旧词删除之时）。
-      return active.client.request(
-        V4_METHODS.usageStats,
-        { range: params.range, timeZone: params.timeZone },
-        v4UsageStatsResultSchema,
       );
     },
 
@@ -4893,21 +4813,6 @@ export function createZCodeAgentService(
 
     onDynamicWorkspaceConfigFrame(params: ZCodeAgentWorkspaceTarget) {
       return getWorkspaceConfigFrameEmitter(params).event;
-    },
-
-    onDynamicProcessResourceSample() {
-      return processResourceSampleEmitter.event;
-    },
-
-    onDynamicToolExecResource() {
-      return toolExecResourceEmitter.event;
-    },
-    onDynamicMcpResourceSamples() {
-      return mcpResourceSamplesEmitter.event;
-    },
-
-    onDynamicMcpTelemetry() {
-      return mcpTelemetryEmitter.event;
     },
 
     // （CLI 重连重订）：进程换代直通 process manager；v4 订阅方（task-index
