@@ -166,7 +166,6 @@ export { createMemoryService } from "./memory/memoryService.js";
 export { createSettingsSyncService } from "./settings-sync/settingsSyncService.js";
 export { createFeedbackDiagnosticArchive } from "./feedback/feedbackLogArchive.js";
 export { createLocalPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransferService.js";
-export { createNodeApiClient, NodeApiClient } from "./providers/api/nodeApiClient.js";
 export {
   createHostApiNetworkTransport,
   type HostApiNetworkTransport,
@@ -263,7 +262,6 @@ import { createProviderSettingsConnectivityTester } from "./model-provider/provi
 import {
   createProviderProvisioningSource,
   listProviderProvisioningCredentialKeys,
-  PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS,
   resolveCredentialFilePath,
   type ProviderProvisioningSource,
 } from "./model-provider/providerProvisioningSource.js";
@@ -463,10 +461,9 @@ export function createLocalServices(options: {
     resolveRuntimeZCodeEndpointOrigin(process.env, {
       overrideOrigin: (await settingService.get()).zcodeEndpointOrigin,
     });
-  const provisioningOAuthKeys = new Set<string>(PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS);
   const credentialService = createCredentialService({
     onDidMutate: ({ key }) => {
-      if (provisioningOAuthKeys.has(key) || isProviderProvisioningAccountCredentialKey(key)) {
+      if (isProviderProvisioningAccountCredentialKey(key)) {
         options.onProviderProvisioningSourceChanged?.("credential");
       }
     },
@@ -516,7 +513,6 @@ export function createLocalServices(options: {
   });
   const providerProvisioningSource = createProviderProvisioningSource({
     personalRepository: providerConfigRuntime.personalRepository,
-    settingService,
     credentialFilePath: resolveCredentialFilePath(resolveAppConfigDir()),
     personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
   });
@@ -526,14 +522,6 @@ export function createLocalServices(options: {
       // 作为同步触发，避免其它 Host 的 poll-changed 把一次保存重复计入多个代际。
       if (reason === "personal:updated") {
         options.onProviderProvisioningSourceChanged?.("personal-config");
-      }
-    }),
-    settingService.onDidUpdate((event) => {
-      if (
-        event.keys.includes("providerFamilyDomain") ||
-        event.keys.includes("providerFamilyConnectionSelections")
-      ) {
-        options.onProviderProvisioningSourceChanged?.("account-settings");
       }
     }),
   ];
@@ -747,7 +735,6 @@ export function createLocalServices(options: {
         providerRuntime,
         personalRepository: providerConfigRuntime.personalRepository,
         credentialService,
-        settingService,
         personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
         stateFilePath: join(resolveAppConfigDir(), "runtime", "provider", "provisioning.json"),
         listProvisioningCredentialKeys: () =>

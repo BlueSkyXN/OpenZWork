@@ -1,9 +1,6 @@
 import { Cpu } from "lucide-react";
 import { useCallback, useMemo } from "react";
-import {
-  getModelProviderFamilySpec,
-  resolveModelProviderFamilyIdByProviderId,
-} from "@zcode/shared";
+import { resolveModelProviderFamilyLabelByProviderId } from "@zcode/shared";
 import { thoughtLevelLabelId } from "@/chat-input-toolbar/thoughtLevelOptions.js";
 import { useWorkflowSubagentModelProviderName } from "@/hooks/useWorkflowSubagentModelProviderName.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -159,9 +156,9 @@ function listModelsGroupName(
   providerName: ProviderNameLookup,
   formatMessage: FormatMessage,
 ): string {
-  const familyId = resolveModelProviderFamilyIdByProviderId(providerId);
-  if (familyId !== null) {
-    return getModelProviderFamilySpec(familyId).label;
+  const familyLabel = resolveModelProviderFamilyLabelByProviderId(providerId);
+  if (familyLabel !== null) {
+    return familyLabel;
   }
   const label = providerLabel?.trim();
   if (label !== undefined && label.length > 0 && label !== providerId) {

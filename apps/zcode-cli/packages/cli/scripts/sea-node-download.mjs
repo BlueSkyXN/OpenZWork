@@ -7,6 +7,13 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { nodeReleaseArtifact, targetParts } from "./sea-targets.mjs";
 
+// Node dist 下载源与 scripts/prepare-prebuilds.mjs、packages/zcode-server-cli 的
+// nodeDistMirror.ts 保持同一约定：默认国内镜像，ZCODE_NODE_DIST_MIRROR 可覆盖。
+const DEFAULT_NODE_DIST_BASE = "https://cdn.npmmirror.com/binaries/node";
+
+const nodeDistBase = (env = process.env) =>
+  (env.ZCODE_NODE_DIST_MIRROR?.trim() || DEFAULT_NODE_DIST_BASE).replace(/\/+$/u, "");
+
 const commandText = (command, args) => [command, ...args].join(" ");
 
 const run = (command, args, options = {}) => {
@@ -87,7 +94,7 @@ const ensureShasums = async ({ nodeCache, nodeVersion }) => {
   const destination = shasumsPath(nodeCache, nodeVersion);
 
   if (!existsSync(destination)) {
-    await downloadFile(`https://nodejs.org/dist/v${nodeVersion}/SHASUMS256.txt`, destination);
+    await downloadFile(`${nodeDistBase()}/v${nodeVersion}/SHASUMS256.txt`, destination);
   }
 
   return readFile(destination, "utf8");
@@ -118,7 +125,7 @@ const ensureDownloadedArtifact = async ({ artifact, destination, nodeCache, node
   }
 
   await downloadFile(
-    new URL(artifact, `https://nodejs.org/dist/v${nodeVersion}/`).href,
+    new URL(artifact, `${nodeDistBase()}/v${nodeVersion}/`).href,
     destination,
   );
 

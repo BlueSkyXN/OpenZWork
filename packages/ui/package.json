@@ -5,7 +5,6 @@
   "exports": {
     ".": "./src/index.ts",
     "./useTheme": "./src/useTheme.ts",
-    "./oauth-provider-icon": "./src/lib/oauthProviderIcon.tsx",
     "./message": "./src/components/ai-elements/message.tsx",
     "./e2e-store-bridge": "./src/lib/e2eStoreBridgeBootstrap.ts",
     "./remote-workspace-session-store": "./src/store/remoteWorkspaceSessionStore.ts",

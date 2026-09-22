@@ -1692,12 +1692,11 @@ export function SessionPane({
 
       const fromProvider = resolveProviderLabel(fromProviderId, modelSelectionView);
       const toProvider = resolveProviderLabel(targetModel.provider, modelSelectionView);
-      const fromModel = formatModelChangeLabel(fromProviderId, fromProvider, fromModelId, intl);
+      const fromModel = formatModelChangeLabel(fromProviderId, fromProvider, fromModelId);
       const toModel = formatModelChangeLabel(
         targetModel.provider,
         toProvider,
         targetModel.model,
-        intl,
       );
       toast(intl.formatMessage({ id: "chat.modelChangeNotice.changed" }, { fromModel, toModel }));
     },

@@ -48,7 +48,7 @@ import {
   normalizeRuntimeProcessEnv,
   setDataBaseDir,
 } from "@zcode/services/node";
-import { DEFAULT_LOCALE, DEFAULT_ZCODE_ENDPOINT_ORIGIN, OPENZWORK_DATA_DIR_NAME, PlatformChannels, ZCODE_ENV, ZCODE_PRODUCT_FLAVOR, desktopMenuMessageIds, resolveZCodeEndpointOrigin, type AppSettings, type Locale } from "@zcode/shared";
+import { DEFAULT_LOCALE, OPENZWORK_DATA_DIR_NAME, PlatformChannels, ZCODE_ENV, ZCODE_PRODUCT_FLAVOR, desktopMenuMessageIds, type AppSettings, type Locale } from "@zcode/shared";
 import { logger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
 import { BroadcastHub } from "./broadcastHub.js";
@@ -538,13 +538,6 @@ const disposingHostProcessTimers = new WeakMap<
   ReturnType<typeof setTimeout>
 >();
 const mainSettingService = createSettingService();
-async function resolveCurrentZCodeEndpointOrigin() {
-  return resolveZCodeEndpointOrigin({
-    env: ZCODE_ENV,
-    envBaseOrigin: resolveZCodeEndpointEnvBaseOrigin(hostProcessLocalEnv),
-    overrideOrigin: (await mainSettingService.get()).zcodeEndpointOrigin,
-  });
-}
 
 app.on("browser-window-focus", () => {
   rebuildMenu();
@@ -835,17 +828,6 @@ async function executeDesktopCommandForApp(
   });
 }
 
-async function resolveZCodeEndpointSelection(): Promise<"production" | "test" | "custom"> {
-  if (ZCODE_ENV === "production") {
-    return "production";
-  }
-  const origin = await resolveCurrentZCodeEndpointOrigin();
-  if (origin === DEFAULT_ZCODE_ENDPOINT_ORIGIN) {
-    return "production";
-  }
-  return "custom";
-}
-
 async function handleZCodeEndpointChanged() {
   rebuildMenu();
 }
@@ -885,11 +867,9 @@ function resetShortcutRecordingForWebContents(webContentsId: number) {
 }
 
 function rebuildMenu() {
-  void Promise.all([resolveZCodeEndpointSelection(), mainSettingService.get()]).then(
-    ([zcodeEndpointSelection, settings]) => {
+  void mainSettingService.get().then((settings) => {
       rebuildApplicationMenu({
         currentApplicationLocale,
-        zcodeEndpointSelection,
         executeDesktopCommand: executeDesktopCommandForApp,
         currentZoomLevel: resolveFocusedDesktopZoomLevel(),
         // 菜单 accelerator 跟随用户快捷键设置（shortcutBindings 用户覆盖）

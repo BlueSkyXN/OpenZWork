@@ -1,8 +1,7 @@
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
-
 /**
  * transcript 和 custom provider 的安全 code/message 证据集中在这里判定：
  * 低基数 allowlist，每条规则原子返回同一份证据决定的 source/reason。
+ * 官方套餐 provider id 已随账号链下线；保留为字面量用于历史 transcript 归因。
  */
 interface TelemetryEvidenceAttribution {
   errorSource: "provider" | "runtime" | "network";
@@ -10,10 +9,10 @@ interface TelemetryEvidenceAttribution {
 }
 
 const PROVIDER_BUSINESS_CODE_PROVIDER_IDS: ReadonlySet<string> = new Set([
-  BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
-  BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
-  BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
-  BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan,
+  "account:zai-individual-coding-plan",
+  "account:zai-start-plan",
+  "account:bigmodel-individual-coding-plan",
+  "account:bigmodel-start-plan",
 ]);
 
 const PROVIDER_CODE_FAILURE_REASONS: Readonly<Record<string, string>> = {

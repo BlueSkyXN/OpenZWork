@@ -312,7 +312,7 @@ class IabPlaywrightLocatorSession {
             needsEditable,
             needsEnabled,
             // fill/type 不等待 stable，也不做 click 的 hit-target 检查。
-            // z.ai 输入框的持续动画会让 stable 永不成立，等待 stable 会卡到 MCP hard timeout。
+            // 带持续动画的输入框会让 stable 永不成立，等待 stable 会卡到 MCP hard timeout。
             // force pointer action 仍等待稳定并滚动，但跳过 hit-target 校验。
             needsHitTarget: needsPointer && action.force !== true,
             needsStable: needsPointer,

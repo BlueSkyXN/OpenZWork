@@ -1,10 +1,7 @@
 import { access, readFile, mkdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import type {
-  AppSettings,
-  ProviderFamilyConnectionSelectionSettings,
-} from "@zcode/shared";
+import type { AppSettings } from "@zcode/shared";
 import {
   OPENZWORK_DATA_DIR_NAME,
   appSettingsPatchSchema,
@@ -19,13 +16,6 @@ import { isEffectiveDevelopmentNodeEnv } from "../runtime-tools/nodeEnv.js";
 import { maybeThrowInjectedFsFault } from "../fs/fsFaultInjection.js";
 import { atomicWriteText } from "../fs/atomicFileUtils.js";
 import { withSettingsWriteQueueTimeout } from "./settingsWriteQueue.js";
-import {
-  migrateLegacyAccountConnectionSettings,
-  needsLegacyAccountConnectionMigration,
-  readLegacyAccountConnectionSettingsFile,
-  readIncompleteLegacyTeamConnections,
-  retainLegacyAccountConnectionFields,
-} from "#src/setting/legacyAccountConnectionSettings.js";
 const MAX_RECENT_PROJECTS = 10;
 const DEFAULT_PROJECT_NAME = "ZCodeProject";
 const SETTINGS_PARSE_RETRY_DELAY_MS = 300;
@@ -100,8 +90,6 @@ function shouldPersistSettingsMigrations(rawValue: unknown): boolean {
   if (!rawValue || typeof rawValue !== "object" || Array.isArray(rawValue)) return false;
   const raw = rawValue as Record<string, unknown>;
   return (
-    (needsLegacyAccountConnectionMigration(rawValue) &&
-      readIncompleteLegacyTeamConnections(rawValue).length === 0) ||
     raw.closeToTrayOnWindowsMigrationInitialized !== true ||
     raw.messageStreamShowReasoningMigrationInitialized !== true
   );
@@ -143,7 +131,7 @@ async function readSettingsWithMeta(): Promise<ReadSettingsResult> {
         };
       }
     }
-    const result = appSettingsSchema.safeParse(migrateLegacyAccountConnectionSettings(rawValue));
+    const result = appSettingsSchema.safeParse(rawValue);
     if (!result.success) {
       log(
         "read failed schema validation, returning defaults. error:",
@@ -191,7 +179,6 @@ async function writeSettings(
   shouldCommit: () => boolean = () => true,
   runExclusiveCommit: (commit: () => Promise<void>) => Promise<void> = (commit) => commit(),
   enterCommitPhase: () => void = () => undefined,
-  commitAccountSelection = false,
 ): Promise<void> {
   const settingsDir = getSettingsDir();
   const settingsFile = getSettingsFile();
@@ -202,14 +189,7 @@ async function writeSettings(
   await mkdir(settingsDir, { recursive: true });
   if (!shouldCommit()) return;
   maybeThrowInjectedFsFault({ operation: "writeFile", path: settingsFile });
-  const raw = await readLegacyAccountConnectionSettingsFile(settingsFile);
-  const rollbackFields = retainLegacyAccountConnectionFields(raw);
-  const persisted = { ...rollbackFields, ...settings };
-  // 旧 Team 尚待 OAuth 补组织时，schema 的默认 {} 不是用户的新选择。
-  // 普通偏好保存必须保留新字段缺席；只有迁移提交或用户显式选连接才结束旧导入。
-  if (!commitAccountSelection && readIncompleteLegacyTeamConnections(raw).length > 0) {
-    delete persisted.providerFamilyConnectionSelections;
-  }
+  const persisted = settings;
   await atomicWriteText(settingsFile, JSON.stringify(persisted, null, 2), {
     beforeRename: () => {
       if (!shouldCommit()) {
@@ -288,21 +268,10 @@ export function createSettingService(): ISettingService {
       return readSettings();
     },
 
-    async update(patch: Partial<AppSettings>, expectedAccountSettings): Promise<void> {
+    async update(patch: Partial<AppSettings>): Promise<void> {
       const runUpdate = async (shouldCommit: () => boolean, enterCommitPhase: () => void) => {
         const validatedPatch = appSettingsPatchSchema.parse(normalizeSettingsPatch(patch));
         const current = await readSettings();
-        if (expectedAccountSettings) {
-          // 账号查询期间用户可能已手动切换。必须在同一写队列内校验，不能靠调用方先读再写。
-          const expected = appSettingsPatchSchema.parse(expectedAccountSettings);
-          if (
-            current.providerFamilyDomain !== expected.providerFamilyDomain ||
-            JSON.stringify(current.providerFamilyConnectionSelections ?? {}) !==
-              JSON.stringify(expected.providerFamilyConnectionSelections ?? {})
-          ) {
-            throw new Error("Account connection settings changed");
-          }
-        }
         const merged = appSettingsSchema.parse({
           ...current,
           ...validatedPatch,
@@ -316,13 +285,7 @@ export function createSettingService(): ISettingService {
           merged.recentProjects = [...new Set(merged.recentProjects)].slice(0, MAX_RECENT_PROJECTS);
         }
 
-        await writeSettings(
-          merged,
-          shouldCommit,
-          runSettingsCommit,
-          enterCommitPhase,
-          Object.hasOwn(patch, "providerFamilyConnectionSelections"),
-        );
+        await writeSettings(merged, shouldCommit, runSettingsCommit, enterCommitPhase);
       };
 
       await enqueueSettingsWrite(runUpdate);

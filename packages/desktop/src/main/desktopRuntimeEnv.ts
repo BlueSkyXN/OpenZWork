@@ -17,9 +17,6 @@ import {
   resolveRuntimeZCodeEndpointOrigin,
   readProductEndpointEnv,
   pickProductEndpointEnv,
-  resolveZaiBusinessBaseUrl,
-  resolveZaiOAuthClientId,
-  resolveZaiOAuthOrigin,
   normalizeDynamicWorkflowMode,
   sanitizeZCodeRuntimeEnv,
   type ZCodeRuntimeEnv,
@@ -272,14 +269,14 @@ function applySelectedZCodeEnvLinks(env: Record<string, string>): Record<string,
     ...env,
     ZCODE_ENV,
   };
+  // 缺配置时 resolver 返回 undefined：host 进程不注入 ZCODE_BASE_URL，
+  // 由 agent 侧对未配置端点显式报错，不再回退任何官方默认域。
+  const endpointOrigin = env.ZCODE_BASE_URL ?? resolveRuntimeZCodeEndpointOrigin(endpointEnv);
 
   return {
     ...pickProductEndpointEnv(endpointEnv),
     ...env,
-    ZCODE_BASE_URL: env.ZCODE_BASE_URL ?? resolveRuntimeZCodeEndpointOrigin(endpointEnv),
-    ZAI_OAUTH_ORIGIN: env.ZAI_OAUTH_ORIGIN ?? resolveZaiOAuthOrigin(endpointEnv),
-    ZAI_BUSINESS_BASE_URL: env.ZAI_BUSINESS_BASE_URL ?? resolveZaiBusinessBaseUrl(endpointEnv),
-    ZAI_OAUTH_CLIENT_ID: env.ZAI_OAUTH_CLIENT_ID ?? resolveZaiOAuthClientId(endpointEnv),
+    ...(endpointOrigin !== undefined ? { ZCODE_BASE_URL: endpointOrigin } : {}),
   };
 }
 

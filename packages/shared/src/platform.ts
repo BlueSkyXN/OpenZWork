@@ -446,19 +446,16 @@ export const DesktopCommandIds = {
   ZoomIn: "zoomIn",
   ZoomOut: "zoomOut",
   ShowAbout: "showAbout",
-  OpenChangelog: "openChangelog",
   RelaunchApp: "relaunchApp",
   OpenCommunity: "openCommunity",
   ExportLogs: "exportLogs",
   ToggleDevTools: "toggleDevTools",
   OpenResourceManager: "openResourceManager",
   ToggleZCodeStdioTapDevProxy: "toggleZCodeStdioTapDevProxy",
-  SetZCodeEndpointProduction: "setZCodeEndpointProduction",
   SetZCodeEndpointTest: "setZCodeEndpointTest",
   SetZCodeEndpointCustom: "setZCodeEndpointCustom",
   ResetZCodeEndpoint: "resetZCodeEndpoint",
   ClearAllData: "clearAllData",
-  ClearCodingPlanWebviewStorage: "clearCodingPlanWebviewStorage",
 } as const;
 
 export type DesktopCommandId = (typeof DesktopCommandIds)[keyof typeof DesktopCommandIds];
