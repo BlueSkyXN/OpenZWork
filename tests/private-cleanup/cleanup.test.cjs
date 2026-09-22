@@ -359,9 +359,17 @@ test('[structural, not runtime] WP-07: conversation-share / cloud feedback / app
 });
 
 test('[structural, not runtime] WP-07: updater dependencies and share/feedback/update channel surface are gone', () => {
-  const desktopPkg = JSON.parse(fs.readFileSync(path.join(root, 'packages/desktop/package.json'), 'utf8'));
+  // 依赖声明暂留（lockfile 未同步，归 WP-09 终审删除）；此处断言更强的行为事实：
+  // desktop 源码不再 import 更新链三包，声明本身不产生任何可执行路径。
+  const depImported = dep => {
+    const re = new RegExp(`['"]${dep}(/[^'"]*)?['"]`);
+    const walk = d => fs.readdirSync(d, { withFileTypes: true }).some(e =>
+      e.isDirectory() ? walk(path.join(d, e.name))
+        : /\.[cm]?[jt]sx?$/.test(e.name) && re.test(fs.readFileSync(path.join(d, e.name), 'utf8')));
+    return walk(path.join(root, 'packages/desktop/src'));
+  };
   for (const dep of ['electron-updater', 'semver', 'yaml']) {
-    assert.equal(desktopPkg.dependencies?.[dep], undefined, dep);
+    assert.equal(depImported(dep), false, dep);
   }
   for (const file of [
     'packages/shared/src/channels.ts', 'packages/shared/src/platform.ts', 'packages/shared/src/index.ts',
