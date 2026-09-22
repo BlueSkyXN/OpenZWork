@@ -1,6 +1,6 @@
 import {
   isZCodeAgentProvider,
-  resolveModelProviderFamilySpecByProviderId,
+  resolveModelProviderFamilyLabelByProviderId,
   zcodeProviderAccountAccessSchema,
   type ZCodeProviderAccountAccess,
   type ZCodeProvider,
@@ -73,8 +73,7 @@ function getRegistryAccountProviderGroupPresentation(
   access: ZCodeProviderAccountAccess,
   labels: ModelProviderGroupLabelOptions,
 ): Pick<ModelSelectGroup, "label" | "labelBadge"> {
-  const familySpec = resolveModelProviderFamilySpecByProviderId(providerId);
-  const label = familySpec?.label ?? providerId;
+  const label = resolveModelProviderFamilyLabelByProviderId(providerId) ?? providerId;
   if (access.mode === "start-plan") {
     return { label: "Start Plan", labelBadge: labels.startPlanBadgeLabel ?? "Free" };
   }

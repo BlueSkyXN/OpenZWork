@@ -25,7 +25,6 @@ export * from "../process-diagnostic.js";
 import { errorAttributionSchema } from "../zcode-protocol-v4/snapshot.js";
 import { modelSelectionSchema } from "../model-selection.js";
 import { completeModelPropertiesDataSchema } from "../model-config.js";
-import { accountProviderUnavailableReasonSchema } from "../account-provider-state.js";
 import { modelExecutionSchema } from "../model-execution.js";
 import { APP_USAGE_RANGES, appUsageSnapshotSchema } from "../usage-stats.js";
 // browser-use 命令/结果契约单一来源：agent 构造、协议校验和 main executor 共用同一 schema。
@@ -2090,39 +2089,6 @@ export type ZCodeProviderTestModelConnectivityResult = z.infer<
   typeof zcodeProviderTestModelConnectivityResultSchema
 >;
 
-export const zcodeProviderUpdateAccountConfigParamsSchema = z
-  .object({
-    revision: nonEmptyString,
-    basedOnZCodeBuiltinRevision: nonEmptyString,
-    // Provider Config 的字段校验由 @zcode/provider 负责；协议层只约束可传输信封。
-    providers: z.record(z.string(), z.unknown()),
-    // 账号状态与 Overlay 必须一起传递，否则 Worker 会丢失非当前套餐的执行门禁。
-    states: z.record(
-      z.string(),
-      z
-        .object({
-          availability: z.enum(["available", "pending", "unavailable", "unknown"]),
-          entitled: z.boolean(),
-          unavailableReason: accountProviderUnavailableReasonSchema.optional(),
-          current: z.boolean().optional(),
-          connectionKey: z.string().optional(),
-          effectiveAt: z.number().finite().optional(),
-        })
-        .strict(),
-    ),
-  })
-  .strict();
-export const zcodeProviderUpdateAccountConfigResultSchema = z
-  .object({
-    // 收到账号结果不代表配套 Built-in 已到达；应用版本只能读取 Registry 快照。
-    receivedRevision: nonEmptyString,
-    providerCount: z.number().int().nonnegative(),
-    status: z.enum(["received", "unchanged"]),
-  })
-  .strict();
-export type ZCodeProviderUpdateAccountConfigResult = z.infer<
-  typeof zcodeProviderUpdateAccountConfigResultSchema
->;
 export const zcodeInteractionPreferencesSchema = z
   .object({
     askUserQuestionAutoResolutionEnabled: z.boolean(),
@@ -3496,8 +3462,6 @@ export const zcodeProtocolMethods = {
   sessionSetMode: "session/setMode",
   workspaceReadPresentation: "workspace/readPresentation",
   workspaceHookTrustGrant: "workspace/hooks/trustGrant",
-  // 进程级 Account Provider Config 与 workspace 运行目录分离。
-  providerUpdateAccountConfig: "provider/updateAccountConfig",
   workspaceUpdateInteractionPreferences: "workspace/updateInteractionPreferences",
   workspaceUpdateModelIoPreferences: "workspace/updateModelIoPreferences",
   // Off-Peak 工具面门禁是 workspace 级事实（灰度 + 本地/远程），由 host 在 agent 就绪时同步；

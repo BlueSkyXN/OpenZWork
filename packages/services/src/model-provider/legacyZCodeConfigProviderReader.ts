@@ -3,11 +3,6 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import {
-  BUILTIN_MODEL_PROVIDER_IDS,
-  resolveBigModelApiOrigin,
-  resolveRuntimeZCodeEnv,
-} from "@zcode/shared";
-import {
   createModelProviderModelConfig,
   getDefaultModelSupportedFormatsFromApiFormat,
   getDefaultModelSupportedFormatsFromEndpoints,
@@ -48,48 +43,19 @@ import {
 } from "./legacyModelProviderSerialized.js";
 import { getAppConfigDir } from "../paths.js";
 
-const LEGACY_PRESET_GLM_PROVIDER_IDS = new Set<string>([
-  "zai-api",
-  BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
-  BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
-  "bigmodel-api",
-  BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
-  BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan,
+/**
+ * 已下线的官方套餐 provider id（账号链移除后不可再物化凭据）。
+ * 旧 config.json 中引用这些 id 的条目在升级导入时整条跳过，
+ * 避免产生永远无法连通的死 Provider 条目。
+ */
+const LEGACY_RETIRED_ACCOUNT_PROVIDER_IDS = new Set<string>([
+  "account:zai-individual-coding-plan",
+  "account:zai-team-coding-plan",
+  "account:zai-start-plan",
+  "account:bigmodel-individual-coding-plan",
+  "account:bigmodel-team-coding-plan",
+  "account:bigmodel-start-plan",
 ]);
-
-function isLegacyPresetGlmProviderId(providerId: string): boolean {
-  return LEGACY_PRESET_GLM_PROVIDER_IDS.has(providerId);
-}
-
-const BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL = "https://open.bigmodel.cn/api/anthropic";
-
-function normalizeBigModelCodingPlanAnthropicBaseUrlForEnv(
-  baseUrl: string | undefined,
-  env: Record<string, string | undefined> = process.env,
-): string {
-  const fallbackBaseUrl =
-    resolveRuntimeZCodeEnv(env) === "production"
-      ? BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL
-      : `${resolveBigModelApiOrigin(env)}/api/anthropic`;
-  const normalizedBaseUrl = normalizeModelProviderBaseUrlForKind(
-    baseUrl ?? fallbackBaseUrl,
-    "anthropic",
-  );
-  if (resolveRuntimeZCodeEnv(env) === "production") {
-    return normalizedBaseUrl || fallbackBaseUrl;
-  }
-
-  try {
-    const parsed = new URL(normalizedBaseUrl || fallbackBaseUrl);
-    const productionParsed = new URL(BIGMODEL_CODING_PLAN_ANTHROPIC_BASE_URL);
-    // 旧配置可能保存生产域名；测试环境的 Team Plan Key 无法调用生产网关。
-    return parsed.origin === productionParsed.origin
-      ? fallbackBaseUrl
-      : normalizedBaseUrl || fallbackBaseUrl;
-  } catch {
-    return fallbackBaseUrl;
-  }
-}
 
 function getZCodeConfigFilePath(): string {
   return join(getAppConfigDir(), "config.json");
@@ -426,86 +392,12 @@ function resolveOpenCodeProviderDefaultKind(
   );
 }
 
-function resolvePresetProviderKindFromRuntimeBaseUrl(
-  providerId: string,
-  baseURL: string | undefined,
-): ModelProviderKind | undefined {
-  if (!baseURL || !isLegacyPresetGlmProviderId(providerId)) {
-    return undefined;
-  }
-
-  // 历史 config.json 可能保存成 kind=anthropic 但 baseURL 指向
-  // /coding/paas/v4。ZAI/BigModel 这组内置 provider 的运行协议必须和已知
-  // runtime URL 对齐，否则 agent 会用 Anthropic adapter 请求 OpenAI Chat endpoint。
-  const normalized = baseURL.trim().toLowerCase();
-  if (!normalized) {
-    return undefined;
-  }
-
-  const path = resolveRuntimeBaseUrlPath(normalized);
-
-  if (isBigModelCodingPlanLegacyOpenAiRuntime(providerId, normalized)) {
-    // BigModel Coding Plan 的默认 runtime 已统一回 Anthropic。
-    // 历史落盘的 /coding/paas/v4 不能继续把该内置 provider 推断成 OpenAI-compatible。
-    return "anthropic";
-  }
-  if (path.includes("/coding/paas/v4")) {
-    return "openai-compatible";
-  }
-  if (path.includes("/api/anthropic") || path.includes("/zcode-plan/anthropic")) {
-    return "anthropic";
-  }
-  return undefined;
-}
-
-function resolveRuntimeBaseUrlPath(baseURL: string): string {
-  try {
-    return new URL(baseURL).pathname.toLowerCase();
-  } catch {
-    // 非 URL 的历史值继续按原始字符串做保守匹配。
-    return baseURL.toLowerCase();
-  }
-}
-
-function isBigModelCodingPlanLegacyOpenAiRuntime(
-  providerId: string,
-  baseURL: string | undefined,
-): boolean {
-  if (providerId !== BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan) {
-    return false;
-  }
-  const normalized = baseURL?.trim().toLowerCase() ?? "";
-  if (!normalized) {
-    return false;
-  }
-  return resolveRuntimeBaseUrlPath(normalized).includes("/coding/paas/v4");
-}
-
 function resolveOpenCodeProviderEndpoints(
   provider: ZCodeOpenCodeProviderConfig,
   defaultKind: ModelProviderKind,
-  providerId: string,
 ): ModelProviderEndpoints {
   const baseURL = readString(provider.options?.baseURL) ?? readString(provider.api);
   if (baseURL) {
-    if (isBigModelCodingPlanLegacyOpenAiRuntime(providerId, baseURL)) {
-      // 旧版本把 BigModel Coding Plan 保存到 OpenAI Chat 的 coding endpoint。
-      // 现在该内置 provider 默认使用 Anthropic endpoint，读取时需要把 baseURL 一并迁移。
-      return {
-        baseURL: normalizeBigModelCodingPlanAnthropicBaseUrlForEnv(undefined),
-        paths: {
-          anthropic: "/v1/messages",
-        },
-      };
-    }
-    if (providerId === BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan) {
-      return {
-        baseURL: normalizeBigModelCodingPlanAnthropicBaseUrlForEnv(baseURL),
-        paths: {
-          anthropic: "/v1/messages",
-        },
-      };
-    }
     // config.json 新结构的 options.baseURL 是用户配置的 runtime baseURL。
     // 读取时不能按 kind 删除 /v1、/responses 等路径段，否则设置页失焦/刷新会改写用户输入。
     const normalizedBaseURL = normalizeModelProviderConfiguredBaseUrl(baseURL);
@@ -646,11 +538,8 @@ function openCodeProviderToModelProviderConfig(
   const preferOpenCodeFields = hasOpenCodeProviderRuntimeFields(provider);
   const configuredDefaultKind = resolveOpenCodeProviderDefaultKind(provider);
   const options = provider.options ?? {};
-  const configuredRuntimeBaseURL = readString(options.baseURL) ?? readString(provider.api);
-  const defaultKind =
-    resolvePresetProviderKindFromRuntimeBaseUrl(providerId, configuredRuntimeBaseURL) ??
-    configuredDefaultKind;
-  const endpoints = resolveOpenCodeProviderEndpoints(provider, defaultKind, providerId);
+  const defaultKind = configuredDefaultKind;
+  const endpoints = resolveOpenCodeProviderEndpoints(provider, defaultKind);
   const apiKey = readString(options.apiKey) ?? "";
   const now = Date.now();
   const models = Object.entries(provider.models ?? {}).map(([modelId, model]) =>
@@ -918,9 +807,11 @@ function normalizeProviderForStore(provider: ModelProviderConfig): ModelProvider
 function applyProviderStoreMigrations(providers: ModelProviderConfig[]): ModelProviderConfig[] {
   // default-* 预置模板不随产品分发：空 API Key 表示用户从未启用该供应商。
   // 在迁移边界清掉这些旧预置项，避免刷新后继续占用设置页和模型菜单。
+  // 官方套餐 provider（account:*）已随账号链下线；旧配置里的这类条目整条跳过导入。
   let next = providers.filter(
     (provider) =>
       provider.id !== RETIRED_ZAPI_PROVIDER_ID &&
+      !LEGACY_RETIRED_ACCOUNT_PROVIDER_IDS.has(provider.id) &&
       !(provider.id.startsWith("default-") && provider.apiKey.trim().length === 0),
   );
 

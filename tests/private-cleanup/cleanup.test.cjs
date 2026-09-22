@@ -1,3 +1,4 @@
+/* oxlint-disable eslint(max-lines) -- 各清理工作包的门禁断言聚合在同一文件，CI 以 node --test 单文件入口运行，不拆分。 */
 /* Tests added for the private-fork cleanup. No application dependencies are faked in production.
  * These focused tests transpile real source with TypeScript. Only unavailable SDK factories,
  * ProxyAgent construction and the provider-runtime's file-port collaborators use test doubles.
@@ -393,4 +394,146 @@ test('[structural, not runtime] WP-07: local log export chain is preserved', () 
   assert.doesNotMatch(nodeExports, /createFeedbackService|CreateFeedbackServiceOptions/);
   const sharedIndex = fs.readFileSync(path.join(root, 'packages/shared/src/index.ts'), 'utf8');
   assert.match(sharedIndex, /redactFeedbackText/);
+});
+
+test('[structural, not runtime] WP-08: official product endpoints are absent outside the explicit exemption list', () => {
+  // WP-08 收敛后源码树不得再携带官方产品域。允许残留的文件必须在此显式登记豁免，
+  // 并在 PR 描述里挂待办：D-2（builtin.json off-peak 规则）、D-3（productDocs 官方文档外链）。
+  const officialDomainRe =
+    /zcode\.z\.ai|open\.bigmodel\.cn|chat\.z\.ai|api\.z\.ai|cdn-zcode\.z\.ai|bigmodel\.cn|(?:^|[^a-z0-9.-])z\.ai(?:\/|[^a-z0-9.-]|$)|zcode\.ai/;
+  const exemptFiles = new Set([
+    // D-2：off-peak 两条 providerRules 仍绑定官方域（路线乙过渡态，独立工作包下线 off-peak 链后收敛）。
+    'config/provider/zcode-builtin.json',
+    // D-3：帮助菜单产品文档外链去留未决，先豁免登记。
+    'packages/ui/src/lib/productDocs.ts',
+  ]);
+  const scanRoots = [
+    'packages/shared/src', 'packages/services/src', 'packages/server/src',
+    'packages/desktop/src', 'packages/ui/src', 'packages/web/src',
+    'packages/client/src', 'packages/provider/src', 'packages/provider-node/src',
+    'apps/zcode-cli/packages',
+    'scripts', 'tests',
+  ];
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json)$/;
+  const ignoreDirs = new Set(['node_modules', 'dist', 'out', '.git', 'mock-cdn']);
+  const violations = [];
+  const walk = dir => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (entry.isDirectory()) {
+        if (!ignoreDirs.has(entry.name)) walk(path.join(dir, entry.name));
+        continue;
+      }
+      if (!scanExtensions.test(entry.name)) continue;
+      const file = path.relative(root, path.join(dir, entry.name));
+      if (exemptFiles.has(file) || file === 'tests/private-cleanup/cleanup.test.cjs') continue;
+      const text = fs.readFileSync(path.join(dir, entry.name), 'utf8');
+      const match = text.match(officialDomainRe);
+      if (match) violations.push(`${file}: ${match[0]}`);
+    }
+  };
+  for (const rel of scanRoots) walk(path.join(root, rel));
+  assert.deepEqual(violations, [], `official domains found outside exemptions:\n${violations.join('\n')}`);
+});
+
+test('[structural, not runtime] WP-08: builtin release keeps 16 third-party templates, no account plan bindings outside off-peak', () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(root, 'config/provider/zcode-builtin.json'), 'utf8'));
+  assert.equal(cfg.revision, 31);
+  const pcr = cfg.config.providerConfigRules;
+  assert.equal(pcr.templateRules.length, 16);
+  const templateIds = new Set(pcr.templateRules.map(t => t.templateId));
+  for (const official of ['zai-api', 'zai-standard-api', 'bigmodel-api', 'bigmodel-standard-api']) {
+    assert.equal(templateIds.has(official), false, official);
+  }
+  const providerIds = pcr.providerRules.map(r => r.providerId);
+  // D-2 路线乙：仅保留两条 off-peak idle plan 规则（zhipu-account 无法物化后不可达，属过渡态）。
+  assert.deepEqual(providerIds.sort(), [
+    'account:bigmodel-offpeak-idle-plan',
+    'account:zai-offpeak-idle-plan',
+  ]);
+  for (const r of pcr.providerRules) {
+    assert.match(r.config.access.type, /zhipu-account/, r.providerId);
+  }
+  const mcr = cfg.config.modelConfigRules;
+  const builtinRuleProviderIds = new Set(mcr.builtinProviderModelRules.map(r => r.providerId));
+  for (const id of builtinRuleProviderIds) {
+    assert.match(id, /offpeak-idle-plan$/, id);
+  }
+  const templateModelTemplateIds = new Set(mcr.templateModelRules.map(r => r.templateId));
+  for (const official of ['zai-api', 'zai-standard-api', 'bigmodel-api', 'bigmodel-standard-api']) {
+    assert.equal(templateModelTemplateIds.has(official), false, official);
+  }
+});
+
+test('[behavior, not runtime] WP-08: endpoint resolver returns undefined without configuration and never invents official origins', async () => {
+  const load = createLoader();
+  const endpoint = load('packages/shared/src/zcodeEndpoint.ts');
+  // 缺配置 = undefined（能力未配置），不 throw、不回退官方默认域。
+  assert.equal(endpoint.resolveZCodeEndpointOrigin({}), undefined);
+  assert.equal(endpoint.resolveZCodeEndpointOrigin({ envBaseOrigin: '', overrideOrigin: '' }), undefined);
+  assert.equal(endpoint.resolveRuntimeZCodeEndpointOrigin({ ZCODE_ENV: 'production' }), undefined);
+  assert.equal(endpoint.resolveRuntimeZCodeEndpointOrigin({}), undefined);
+  // 显式传入合法值仍解析；显式非法值仍 throw（配置错误 ≠ 缺配置）。
+  assert.equal(
+    endpoint.resolveZCodeEndpointOrigin({ envBaseOrigin: 'http://intra.example:8443/' }),
+    'http://intra.example:8443',
+  );
+  assert.throws(() => endpoint.resolveZCodeEndpointOrigin({ envBaseOrigin: 'not a url' }));
+  // 键表收缩：产品端点 env 只透传通用键，不再收集官方 provider 键。
+  const picked = endpoint.pickProductEndpointEnv({
+    ZCODE_BASE_URL: 'http://127.0.0.1:9/',
+    ZAI_OAUTH_ORIGIN: 'https://chat.z.ai',
+    BIGMODEL_API_BASE_URL: 'https://bigmodel.cn',
+  });
+  assert.deepEqual(picked, { ZCODE_BASE_URL: 'http://127.0.0.1:9/' });
+  // CDN 缺配置返回空数组，由远端连接链显式报错。
+  const cdnText = fs.readFileSync(path.join(root, 'packages/desktop/src/main/remoteCdn.ts'), 'utf8');
+  assert.doesNotMatch(cdnText, /DEFAULT_CDN_BASE_URL/);
+});
+
+test('[structural, not runtime] WP-08: removed login/startPlan key families stay absent and locales stay aligned', () => {
+  // 覆盖率口径：WP-08 只承诺「本包删除文件的直接键不再存在」与「双 locale 键集一致」。
+  // 存量历史孤儿键的清理归 D-4 独立决策，这里不设立全局零孤儿断言，避免门禁必红。
+  const localeFiles = [
+    'packages/ui/src/i18n/locales/zh-CN.ts',
+    'packages/ui/src/i18n/locales/en-US.ts',
+  ];
+  const collectKeys = file =>
+    [...fs.readFileSync(path.join(root, file), 'utf8').matchAll(/^[ \t]*"((?:[^"\\]|\\.)+)":/gm)]
+      .map(m => m[1]);
+  const zhKeys = collectKeys(localeFiles[0]);
+  const enKeys = collectKeys(localeFiles[1]);
+  // 存量 locale 存在历史键集漂移（归 D-4）；WP-08 只承诺被删键族在两个 locale 同步消失。
+  const bannedExact = new Set([
+    'quickPick.command.login',
+    'quickPick.command.logout',
+    'welcome.login',
+    'welcome.loginFailed',
+    'app.login',
+    'settings.modelProvider.useSubscription',
+  ]);
+  const bannedPrefixes = ['login.', 'settings.modelProvider.startPlan.'];
+  for (const keys of [zhKeys, enKeys]) {
+    for (const key of keys) {
+      assert.equal(bannedExact.has(key), false, key);
+      for (const prefix of bannedPrefixes) {
+        assert.equal(key.startsWith(prefix), false, `${key} (prefix ${prefix})`);
+      }
+    }
+  }
+});
+
+test('[structural, not runtime] WP-08: retained live i18n key families stay defined', () => {
+  const zh = fs.readFileSync(path.join(root, 'packages/ui/src/i18n/locales/zh-CN.ts'), 'utf8');
+  // 这些键族在源码仍有静态/动态引用，必须保留，防止后续清理误删活键。
+  const mustStay = [
+    'settings.modelProvider.connectionMode.codingPlan',
+    'settings.modelProvider.connectionMode.startPlan',
+    'settings.modelProvider.connectionMode.teamPlan',
+    'settings.mcp.oauth.',
+    'offPeak.',
+    'chat.permission.feedback.',
+  ];
+  for (const key of mustStay) {
+    assert.ok(zh.includes(`"${key}`), key);
+  }
 });

@@ -1,10 +1,9 @@
 /* eslint-disable max-lines -- 桌面命令分发需要共享窗口与平台上下文，集中维护更便于一致性 */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { app, BrowserWindow, dialog, session, shell } from "electron";
+import { app, BrowserWindow, dialog, shell } from "electron";
 import type { MessageBoxOptions } from "electron";
 import {
-  DEFAULT_ZCODE_ENDPOINT_ORIGIN,
   DesktopCommandIds,
   PlatformChannels,
   type AppSettings,
@@ -12,10 +11,8 @@ import {
   type Locale,
   resolveRuntimeZCodeEndpointOrigin,
   ZCODE_ENV,
-  buildZCodeEndpointUrls,
   getCommunityUrlFromConfigs,
   normalizeZCodeEndpointOrigin,
-  resolveZCodeEndpointOrigin,
 } from "@zcode/shared";
 import { readZCodeStdioTapDevState, setZCodeStdioTapDevEnabled } from "@zcode/services/node";
 import { showAboutDialog } from "./about.js";
@@ -36,7 +33,6 @@ export const HELP_TOGGLE_DEV_TOOLS_MENU_ID = "help.toggle-dev-tools";
 export const HELP_TOGGLE_ZCODE_STDIO_TAP_MENU_ID = "help.toggle-zcode-stdio-tap";
 const ZCODE_ENDPOINT_PROMPT_WIDTH = 460;
 const ZCODE_ENDPOINT_PROMPT_HEIGHT = 210;
-const CODING_PLAN_WEBVIEW_PARTITION = "persist:zcode-coding-plan";
 
 function resolveTargetWindow(senderWindow?: BrowserWindow | null) {
   if (senderWindow && !senderWindow.isDestroyed()) {
@@ -122,25 +118,6 @@ async function clearAllDataAndRelaunch(options: {
 
   app.relaunch();
   app.exit(0);
-}
-
-export async function clearCodingPlanWebviewStorage(options: {
-  logger: {
-    info: (...args: unknown[]) => void;
-    warn: (...args: unknown[]) => void;
-  };
-}) {
-  try {
-    // Coding Plan webview 使用独立持久 partition，默认窗口 session.clearStorageData()
-    // 不会覆盖它；退出登录/清理数据时必须显式清除，避免旧账号 token 被下一次官网首屏读到。
-    await session.fromPartition(CODING_PLAN_WEBVIEW_PARTITION).clearStorageData();
-    options.logger.info("[coding-plan-webview] cleared persistent partition storage");
-  } catch (error) {
-    options.logger.warn(
-      "[coding-plan-webview] failed to clear persistent partition storage:",
-      error,
-    );
-  }
 }
 
 function resolveLocalAppConfigPath(options?: {
@@ -355,35 +332,6 @@ function toggleZCodeStdioTapDevProxy(options: {
   });
 }
 
-function resolveChangelogUrl(
-  locale: Locale,
-  endpointOrigin = DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-): string {
-  // 帮助菜单里的外链以前只有固定英文地址，切到中文界面后仍会落到英文 changelog。
-  // 这里统一收口到主进程按当前应用语言分流，避免菜单模板里手写分支后续再出现多处不一致。
-  const origin = buildZCodeEndpointUrls(endpointOrigin).origin;
-  return locale === "zh-CN" ? `${origin}/cn/changelog` : `${origin}/en/changelog`;
-}
-
-export async function openChangelog(
-  locale: Locale,
-  endpointOrigin = DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-) {
-  await shell.openExternal(resolveChangelogUrl(locale, endpointOrigin));
-}
-
-async function resolveCurrentZCodeEndpointOrigin(settingService: {
-  get(): Promise<{ zcodeEndpointOrigin?: string }>;
-  envBaseOrigin?: string | null;
-}): Promise<string> {
-  const settings = await settingService.get();
-  return resolveZCodeEndpointOrigin({
-    env: ZCODE_ENV,
-    envBaseOrigin: settingService.envBaseOrigin,
-    overrideOrigin: settings.zcodeEndpointOrigin,
-  });
-}
-
 export async function executeDesktopCommand(options: {
   command: DesktopCommandId;
   senderWindow?: BrowserWindow | null;
@@ -488,15 +436,6 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.ShowAbout:
       await showAboutDialog(targetWindow ?? undefined, options.currentApplicationLocale);
       return;
-    case DesktopCommandIds.OpenChangelog:
-      await openChangelog(
-        options.currentApplicationLocale,
-        await resolveCurrentZCodeEndpointOrigin({
-          ...options.settingService,
-          envBaseOrigin: options.zcodeEndpointEnvBaseOrigin,
-        }),
-      );
-      return;
     case DesktopCommandIds.RelaunchApp:
       await options.onRelaunchApp();
       return;
@@ -518,25 +457,19 @@ export async function executeDesktopCommand(options: {
         updateZCodeStdioTapDevMenuState: options.updateZCodeStdioTapDevMenuState,
       });
       return;
-    case DesktopCommandIds.SetZCodeEndpointProduction:
-      await setZCodeEndpointOverride({
-        value: DEFAULT_ZCODE_ENDPOINT_ORIGIN,
-        settingService: options.settingService,
-        onZCodeEndpointChanged: options.onZCodeEndpointChanged,
-        logger: options.logger,
-      });
-      return;
     case DesktopCommandIds.SetZCodeEndpointTest:
       await setZCodeEndpointOverride({
-        value: options.zcodeEndpointEnvBaseOrigin ?? resolveRuntimeZCodeEndpointOrigin(),
+        value:
+          options.zcodeEndpointEnvBaseOrigin ??
+          resolveRuntimeZCodeEndpointOrigin() ??
+          undefined,
         settingService: options.settingService,
         onZCodeEndpointChanged: options.onZCodeEndpointChanged,
         logger: options.logger,
       });
       return;
     case DesktopCommandIds.SetZCodeEndpointCustom: {
-      const current =
-        (await options.settingService.get()).zcodeEndpointOrigin ?? DEFAULT_ZCODE_ENDPOINT_ORIGIN;
+      const current = (await options.settingService.get()).zcodeEndpointOrigin ?? "";
       const value = await promptCustomZCodeEndpoint(targetWindow, current);
       if (!value) {
         return;
@@ -567,14 +500,10 @@ export async function executeDesktopCommand(options: {
       });
       return;
     case DesktopCommandIds.ClearAllData:
-      await clearCodingPlanWebviewStorage({ logger: options.logger });
       await clearAllDataAndRelaunch({
         credentialsDir: options.credentialsDir,
         logger: options.logger,
       });
-      return;
-    case DesktopCommandIds.ClearCodingPlanWebviewStorage:
-      await clearCodingPlanWebviewStorage({ logger: options.logger });
       return;
   }
 }

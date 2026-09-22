@@ -158,6 +158,37 @@ export function createRemoteAssetManifestRequestSignal(
   return AbortSignal.timeout(timeoutMs);
 }
 
+/**
+ * 远端运行时资源无法满足时的结构化错误：把缺失的输入逐项带出，
+ * 并给出自建镜像（ZCODE_CDN_BASE_URL / ZCODE_REMOTE_ASSET_CDN_BASE_URL）的修复指引，
+ * 供上层 UI/日志直接展示可行动信息，而不是解析一段自由文本。
+ */
+export class MissingRuntimeAssetError extends Error {
+  readonly entry: string;
+  readonly assetId: string;
+  readonly missingInputs: string[];
+
+  constructor(params: {
+    entry: string;
+    assetId: string;
+    missingInputs: string[];
+    remoteCdnBaseUrls?: readonly string[];
+  }) {
+    const missing = params.missingInputs.join(", ") || "<none>";
+    super(
+      `[remote-assets] 缺少远端运行时资源 entry=${params.entry} asset=${params.assetId}; ` +
+        `未满足的输入: ${missing}. ` +
+        `请配置自建资源镜像（ZCODE_CDN_BASE_URL 或 ZCODE_REMOTE_ASSET_CDN_BASE_URL，` +
+        `并保证目录内包含对应版本的发布资源）后重试` +
+        `(remoteCdnBaseUrls=${JSON.stringify(params.remoteCdnBaseUrls ?? [])}).`,
+    );
+    this.name = "MissingRuntimeAssetError";
+    this.entry = params.entry;
+    this.assetId = params.assetId;
+    this.missingInputs = params.missingInputs;
+  }
+}
+
 export async function ensureRemoteReleaseDirFromCdn(
   options: EnsureRemoteReleaseDirOptions,
   loggers: RemoteAssetCacheLoggers,
@@ -168,10 +199,17 @@ export async function ensureRemoteReleaseDirFromCdn(
   const version = options.version?.trim();
 
   if (remoteCdnBaseUrls.length === 0 || !remoteCacheDir || !platformArch || !version) {
-    throw new Error(
-      `[deploy] production remote assets require remoteCdnBaseUrl or remoteCdnBaseUrls, remoteCacheDir and platformArch ` +
-        `(remoteCdnBaseUrl=${options.remoteCdnBaseUrl ?? "<empty>"}, remoteCdnBaseUrls=${JSON.stringify(options.remoteCdnBaseUrls ?? [])}, remoteCacheDir=${options.remoteCacheDir ?? "<empty>"}, platformArch=${options.platformArch ?? "<empty>"}).`,
-    );
+    const missingInputs: string[] = [];
+    if (remoteCdnBaseUrls.length === 0) missingInputs.push("remoteCdnBaseUrl/remoteCdnBaseUrls");
+    if (!remoteCacheDir) missingInputs.push("remoteCacheDir");
+    if (!platformArch) missingInputs.push("platformArch");
+    if (!version) missingInputs.push("version");
+    throw new MissingRuntimeAssetError({
+      entry: "ensureRemoteReleaseDirFromCdn",
+      assetId: `release:${version ?? "<empty>"}:${platformArch ?? "<empty>"}`,
+      missingInputs,
+      remoteCdnBaseUrls,
+    });
   }
 
   assertSafePathSegment(version, "appVersion");

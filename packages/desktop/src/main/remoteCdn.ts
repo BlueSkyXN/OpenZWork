@@ -1,7 +1,6 @@
 import { ZCODE_VERSION, type ZCodeEnv } from "@zcode/shared";
 
 declare const __ZCODE_CDN_BASE_URL__: string | undefined;
-const DEFAULT_CDN_BASE_URL = "https://cdn-zcode.z.ai";
 
 export interface ResolveRemoteCdnOptions {
   env?: ZCodeEnv;
@@ -19,13 +18,19 @@ function normalizeBaseUrl(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
+/**
+ * 缺配置语义：无覆盖、无 env、无构建注入时返回空数组（能力未配置）。
+ * 远端连接链必须对空列表显式报错，不再回退任何官方 CDN 域。
+ */
 export function resolveRemoteCdnBaseUrls(options: ResolveRemoteCdnOptions = {}): string[] {
   const override = options.overrideBaseUrl?.trim();
   if (override) return [normalizeBaseUrl(override)];
   const baseUrl =
     process.env.ZCODE_CDN_BASE_URL?.trim() ||
-    (typeof __ZCODE_CDN_BASE_URL__ === "undefined" ? "" : __ZCODE_CDN_BASE_URL__) ||
-    DEFAULT_CDN_BASE_URL;
+    (typeof __ZCODE_CDN_BASE_URL__ === "undefined" ? "" : __ZCODE_CDN_BASE_URL__);
+  if (!baseUrl) {
+    return [];
+  }
   return [
     `${normalizeBaseUrl(baseUrl)}/zcode/electron/releases/${options.version ?? ZCODE_VERSION}`,
   ];

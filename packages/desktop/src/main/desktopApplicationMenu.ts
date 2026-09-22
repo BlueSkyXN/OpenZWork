@@ -19,8 +19,6 @@ import {
   HELP_TOGGLE_DEV_TOOLS_MENU_ID,
 } from "./desktopCommandHandlers.js";
 
-const HELP_ZCODE_ENDPOINT_PRODUCTION_MENU_ID = "help.zcode-endpoint.production";
-
 export function getDesktopMenuLabel(
   locale: Locale,
   id: (typeof desktopMenuMessageIds)[keyof typeof desktopMenuMessageIds],
@@ -80,7 +78,6 @@ function resolveMenuAccelerator(
 
 function buildApplicationMenuTemplate(options: {
   currentApplicationLocale: Locale;
-  zcodeEndpointSelection?: "production" | "test" | "custom";
   executeDesktopCommand: (
     command: DesktopCommandId,
     senderWindow?: BrowserWindow | null,
@@ -249,11 +246,6 @@ function buildApplicationMenuTemplate(options: {
               { type: "separator" as const },
             ]
           : []),
-        {
-          label: getLabel(desktopMenuMessageIds.helpWhatsNew),
-          click: () => void options.executeDesktopCommand(DesktopCommandIds.OpenChangelog),
-        },
-        { type: "separator" as const },
         ...(isLocalDevelopmentRuntime && stdioTapState.visible
           ? [
               {
@@ -272,17 +264,6 @@ function buildApplicationMenuTemplate(options: {
               {
                 label: getLabel(desktopMenuMessageIds.helpZCodeEndpoint),
                 submenu: [
-                  {
-                    id: HELP_ZCODE_ENDPOINT_PRODUCTION_MENU_ID,
-                    label: getLabel(desktopMenuMessageIds.helpZCodeEndpointProduction),
-                    type: "radio" as const,
-                    checked: (options.zcodeEndpointSelection ?? "production") === "production",
-                    click: () =>
-                      void options.executeDesktopCommand(
-                        DesktopCommandIds.SetZCodeEndpointProduction,
-                      ),
-                  },
-                  { type: "separator" as const },
                   {
                     label: getLabel(desktopMenuMessageIds.helpZCodeEndpointCustom),
                     click: () =>
@@ -326,7 +307,6 @@ function buildApplicationMenuTemplate(options: {
 
 export function rebuildApplicationMenu(options: {
   currentApplicationLocale: Locale;
-  zcodeEndpointSelection?: "production" | "test" | "custom";
   executeDesktopCommand: (
     command: DesktopCommandId,
     senderWindow?: BrowserWindow | null,
@@ -340,7 +320,6 @@ export function rebuildApplicationMenu(options: {
     Menu.buildFromTemplate(
       buildApplicationMenuTemplate({
         currentApplicationLocale: options.currentApplicationLocale,
-        zcodeEndpointSelection: options.zcodeEndpointSelection,
         executeDesktopCommand: options.executeDesktopCommand,
         currentZoomLevel: options.currentZoomLevel,
         shortcutBindings: options.shortcutBindings,

@@ -1,6 +1,5 @@
 import { z } from "zod";
 import { modelSelectionSchema } from "./model-selection.js";
-import { providerFamilyConnectionSelectionSettingsSchema } from "./provider-family-connection-selection.js";
 
 const nonEmptyString = z.string().trim().min(1);
 
@@ -8,16 +7,12 @@ export const providerProvisioningTriggerSchema = z.enum([
   "environment-online",
   "personal-config",
   "configured-default",
-  "account-settings",
   "credential",
 ]);
 export type ProviderProvisioningTrigger = z.infer<typeof providerProvisioningTriggerSchema>;
 
 /** Provisioning 中允许跨 Environment 传输的凭据类别。 */
-export const providerProvisioningCredentialScopeSchema = z.enum([
-  "oauth-session",
-  "account-provider",
-]);
+export const providerProvisioningCredentialScopeSchema = z.enum(["account-provider"]);
 
 export type ProviderProvisioningCredentialScope = z.infer<
   typeof providerProvisioningCredentialScopeSchema
@@ -48,17 +43,6 @@ export type ProviderProvisioningPersonalConfig = z.infer<
   typeof providerProvisioningPersonalConfigSchema
 >;
 
-export const providerProvisioningAccountSettingsSchema = z
-  .object({
-    providerFamilyDomain: z.enum(["zai", "bigmodel"]).nullable(),
-    providerFamilyConnectionSelections: providerFamilyConnectionSelectionSettingsSchema,
-  })
-  .strict();
-
-export type ProviderProvisioningAccountSettings = z.infer<
-  typeof providerProvisioningAccountSettingsSchema
->;
-
 export const providerProvisioningCredentialEntrySchema = z
   .object({
     scope: providerProvisioningCredentialScopeSchema,
@@ -76,7 +60,6 @@ export const providerProvisioningEnvelopeSchema = z
     schemaVersion: z.literal(1),
     syncId: nonEmptyString,
     personalConfig: providerProvisioningPersonalConfigSchema,
-    accountSettings: providerProvisioningAccountSettingsSchema,
     credentials: z.array(providerProvisioningCredentialEntrySchema).max(256),
   })
   .strict();
