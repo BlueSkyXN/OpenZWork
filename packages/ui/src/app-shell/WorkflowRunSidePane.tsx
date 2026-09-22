@@ -42,7 +42,6 @@ import {
   workflowRunResultView,
   type WorkflowActorInstance,
 } from "@/app-shell/workflowRunPanel.js";
-import { useDynamicWorkflowAvailability } from "@/hooks/useDynamicWorkflowAvailability.js";
 import { useWorkflowRunArtifacts } from "@/hooks/useWorkflowRunArtifacts.js";
 import { createCommandEnvelope } from "@/v4/commandFactory.js";
 import {
@@ -226,7 +225,8 @@ const WorkflowRunContent = memo(function WorkflowRunContent({
   // 再叠一道灰度门：已有的 run 照常渲染
   // ——状态头、时间线、产物一件不少——唯独 Resume 收起来，因为按下去会真的起一台引擎。
   // 快照未就绪时 enabled 为 false，按未命中处理：宁可按钮晚半拍出现，也不给一个随时会消失的按钮。
-  const { enabled: dynamicWorkflowEnabled } = useDynamicWorkflowAvailability();
+  // 动态工作流：官方灰度已移除，本地默认启用（与 Host 门一致）。
+  const dynamicWorkflowEnabled = true;
   const resumable = isWorkflowRunResumable(run) && dynamicWorkflowEnabled;
   // 「配置」：与 Resume 同一道灰度门；
   // 被接受后面板跟着工作流走到新 run（useWorkflowRunPaneSettings）。

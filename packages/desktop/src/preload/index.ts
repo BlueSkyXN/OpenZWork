@@ -28,14 +28,13 @@ function parseDeviceIdFromArgs(): string {
 // 在 contextBridge 建立之前就暴露同步值，让 renderer 在 React 渲染前就能读到
 contextBridge.exposeInMainWorld("__ZCODE_DEVICE_ID__", parseDeviceIdFromArgs());
 
-import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OAuthStateRegistration, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, TelemetryRendererContext, RendererHeapSample, PostUpdateReleaseNotesPayload, RemoteSessionClosedEvent, UpdateCheckResultPayload, UpdateStatePayload, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest, OpenCuaPermissionOnboardingOptions, ConfigureFinalArmsCustomEventE2ERequest, FinalArmsCustomEventE2EEntry } from "@zcode/shared";
+import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, TelemetryRendererContext, RendererHeapSample, PostUpdateReleaseNotesPayload, RemoteSessionClosedEvent, UpdateCheckResultPayload, UpdateStatePayload, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest, OpenCuaPermissionOnboardingOptions, ConfigureFinalArmsCustomEventE2ERequest, FinalArmsCustomEventE2EEntry } from "@zcode/shared";
 import {
   InternalChannels,
   PlatformChannels,
   formatZCodeRendererProcessName,
   shouldEnableE2ETestBridge,
 } from "@zcode/shared";
-import { createOAuthCallbackHandler } from "./oauthCallbackBridge.js";
 
 if (shouldEnableE2ETestBridge(process.env)) {
   contextBridge.exposeInMainWorld("__zcodeFinalArmsCustomEventsE2E", {
@@ -542,23 +541,6 @@ contextBridge.exposeInMainWorld("zcode", {
   /** 从权限浮窗拖拽 Helper.app 到 macOS 权限列表。必须是 send —— invoke 的往返会错过手势。 */
   startCuaHelperPermissionDrag: () =>
     ipcRenderer.send(PlatformChannels.StartCuaHelperPermissionDrag),
-  /** 上报 OAuth state 用于 deep link 路由 */
-  registerOAuthState: (payload: OAuthStateRegistration) =>
-    ipcRenderer.send(PlatformChannels.OAuthRegisterState, payload),
-  /** 注册 OAuth deep link 回调，返回 disposer */
-  onOAuthCallback: (cb: (url: string) => void): (() => void) => {
-    const handler = createOAuthCallbackHandler(cb, () => {
-      ipcRenderer.send(PlatformChannels.OAuthCallbackHandled);
-    });
-    ipcRenderer.on(PlatformChannels.OAuthCallback, handler);
-    return () => ipcRenderer.removeListener(PlatformChannels.OAuthCallback, handler);
-  },
-  /** 注册支付 deep link 回调，返回 disposer */
-  onPaymentCallback: (callback: (url: string) => void): (() => void) => {
-    const handler = (_event: unknown, url: string) => callback(url);
-    ipcRenderer.on(PlatformChannels.PaymentCallback, handler);
-    return () => ipcRenderer.removeListener(PlatformChannels.PaymentCallback, handler);
-  },
   onShareImport: (callback: (payload: { shareCode: string }) => void): (() => void) => {
     shareImportCallbacks.add(callback);
     while (pendingShareImports.length > 0) {

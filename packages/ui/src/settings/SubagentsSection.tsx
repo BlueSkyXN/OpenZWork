@@ -1,6 +1,4 @@
 /* eslint-disable max-lines -- 子智能体管理页集中维护作用域列表、表单和启用状态，避免状态分散 */
-import { useStartPlanRecommendation } from "@/hooks/useStartPlanRecommendation.js";
-import { hasExplicitModelChanged } from "@/lib/startPlanRecommendation.js";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Bot, Check, Plus, Trash2 } from "lucide-react";
 import { completeNewModelSelection } from "@zcode/provider";
@@ -604,7 +602,8 @@ function SubagentModelOverrideControl({
     config: { model?: string; thoughtLevel?: string },
   ) => Promise<void>;
 }) {
-  const recommendStartPlan = useStartPlanRecommendation(modelSelectionView, "subagent");
+  // Start Plan 推荐已随官方账号链移除：原样接受用户选择。
+  const recommendStartPlan = async <T,>(selection: T) => selection;
   const { intl } = useZCodeIntl();
   const [pending, setPending] = useState(false);
   const [config, setConfig] = useState<{
@@ -812,7 +811,8 @@ function SubagentForm({
   workspaceTabs: WorkspaceTabState[];
   onScopeKeyChange: (scopeKey: string) => void;
 }) {
-  const recommendStartPlan = useStartPlanRecommendation(modelSelectionView, "subagent");
+  // Start Plan 推荐已随官方账号链移除：原样接受用户选择。
+  const recommendStartPlan = async <T,>(selection: T) => selection;
   const { intl } = useZCodeIntl();
   const initialFormStateKey = createSubagentFormInitialStateKey(initial);
   const initialFormState = useMemo(
@@ -1002,7 +1002,10 @@ function SubagentForm({
       return;
     }
     let selection = toSubagentModelSelection(persistedModel, thoughtLevel);
-    if (hasExplicitModelChanged(initial?.modelSelection, selection)) {
+    if (
+      initial?.modelSelection?.providerId !== selection?.providerId ||
+      initial?.modelSelection?.modelId !== selection?.modelId
+    ) {
       const chosen = await recommendStartPlan(selection);
       if (!chosen) return;
       selection = chosen;

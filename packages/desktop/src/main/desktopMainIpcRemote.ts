@@ -19,10 +19,8 @@ import {
 } from "@zcode/shared";
 import { dispatchTaskNotification } from "./desktopNotifications.js";
 import {
-  clearOAuthRoutesForWindow,
+  clearDeepLinkRoutesForWindow,
   deliverPendingDeepLink,
-  parseOAuthStateRegistration,
-  registerOAuthState,
 } from "./desktopOAuthDeepLink.js";
 import {
   dispatchFinalArmsCustomEvent,
@@ -151,8 +149,6 @@ export function registerRemoteIpcHandlers(options: {
     syncRendererContext(payload: { rendererId: number; context: unknown }): void;
     onOAuthCallbackHandled(payload: { rendererId: number }): void;
   };
-  /** OAuth 回调处理完成后的额外副作用（如刷新 ARMS user.id）；不影响既有 runtime 流程 */
-  onOAuthCallbackHandledSideEffect?: () => void;
   appTelemetryCore: {
     reportEvent(payload: unknown): Promise<void>;
   };
@@ -258,16 +254,6 @@ export function registerRemoteIpcHandlers(options: {
     );
   }
 
-  ipcMain.on(PlatformChannels.OAuthRegisterState, (event, payload: unknown) => {
-    const registration = parseOAuthStateRegistration(payload);
-    if (!registration) {
-      options.logger.warn("[oauth-register-state] invalid payload", payload);
-      return;
-    }
-
-    registerOAuthState(event.sender.id, registration);
-  });
-
   ipcMain.on(PlatformChannels.OpenExternal, (event, payload: unknown) => {
     const request = parseOpenExternalRequest(payload);
     if (!request) {
@@ -311,9 +297,9 @@ export function registerRemoteIpcHandlers(options: {
   );
 
   ipcMain.on(PlatformChannels.RendererReady, (event) => {
-    const hasPendingOAuthCallback = deliverPendingDeepLink(event.sender);
+    deliverPendingDeepLink(event.sender);
     options.appTelemetryRuntime.onRendererReady({
-      hasPendingOAuthCallback,
+      hasPendingOAuthCallback: false,
       rendererId: event.sender.id,
     });
   });
@@ -369,11 +355,6 @@ export function registerRemoteIpcHandlers(options: {
     }
   });
 
-  ipcMain.on(PlatformChannels.OAuthCallbackHandled, (event) => {
-    options.appTelemetryRuntime.onOAuthCallbackHandled({ rendererId: event.sender.id });
-    options.onOAuthCallbackHandledSideEffect?.();
-  });
-
   ipcMain.on(PlatformChannels.ShowTaskNotification, (event, payload: unknown) => {
     dispatchTaskNotification({ event, payload, logger: options.logger });
   });
@@ -387,7 +368,7 @@ export function registerRemoteIpcHandlers(options: {
       // BrowserWindow 的 closed 阶段里 webContents 可能已被 Electron 释放。
       // 之前这里直接读取 win.webContents.id，会把正常关窗流程变成主进程未捕获异常。
       // 提前缓存 id 后再做清理，避免访问已经销毁的对象。
-      clearOAuthRoutesForWindow(windowWebContentsId);
+      clearDeepLinkRoutesForWindow(windowWebContentsId);
     });
   });
 

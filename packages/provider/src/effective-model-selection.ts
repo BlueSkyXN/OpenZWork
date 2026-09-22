@@ -1,4 +1,3 @@
-import type { AccountProviderStates } from "./account-provider-state.js";
 import type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 export type { EffectiveModelSelectionResult } from "@zcode/shared/model-selection";
 import {
@@ -17,7 +16,6 @@ export type ModelSelectionProviderClassifier = (providerId: string) => ModelSele
 export function resolveEffectiveModelSelection(input: {
   readonly selection: ModelSelection | null;
   readonly registry: ProviderRegistryView;
-  readonly accountStates?: AccountProviderStates;
   readonly classifyProvider: ModelSelectionProviderClassifier;
   readonly resolveLegacyReasoningLevel?: (selection: ModelSelection) => string | undefined;
 }): EffectiveModelSelectionResult {
@@ -25,19 +23,7 @@ export function resolveEffectiveModelSelection(input: {
   if (!original)
     return Object.freeze({ effectiveSelection: null, selectionIssue: "selection-missing" });
   const kind = input.classifyProvider(original.providerId);
-  let providerId = original.providerId;
-  if (kind === "account-plan") {
-    const current = Object.entries(input.accountStates ?? {}).filter(
-      ([id, state]) => state.current === true && input.classifyProvider(id) === "account-plan",
-    );
-    if (current.length !== 1) {
-      return Object.freeze({
-        effectiveSelection: null,
-        selectionIssue: "account-connection-unavailable",
-      });
-    }
-    providerId = current[0]![0];
-  }
+  const providerId = original.providerId;
   const provider = input.registry.providers.find(
     (candidate) => candidate.providerId === providerId,
   );

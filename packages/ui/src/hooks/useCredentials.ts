@@ -18,49 +18,11 @@ export function useCredentials() {
   return { load, save, delete: del };
 }
 
-/** active provider access_token 专用便捷 hook */
+/** active provider access_token 专用便捷 hook（无 OAuth 链，恒 null） */
 export function useAuthToken() {
-  const { credentialService, oauthService } = useServices();
-
-  const getToken = useCallback(async () => {
-    const activeProvider = await oauthService.getActiveProvider();
-    if (!activeProvider) {
-      return null;
-    }
-
-    const namespacedToken = await credentialService.load(`oauth:${activeProvider}:access_token`);
-    if (namespacedToken) {
-      return namespacedToken;
-    }
-
-    // 升级多 provider 前的老账号只写了 auth_token。
-    // 这里补一个只针对 bigmodel 的兜底读取，避免升级后 token 读取瞬时失效。
-    if (activeProvider === "bigmodel") {
-      return credentialService.load("auth_token");
-    }
-
-    return null;
-  }, [credentialService, oauthService]);
-  const setToken = useCallback(
-    async (token: string) => {
-      const activeProvider = await oauthService.getActiveProvider();
-      if (!activeProvider) {
-        throw new Error("当前没有 active provider，无法写入 auth token");
-      }
-      await credentialService.save(`oauth:${activeProvider}:access_token`, token);
-    },
-    [credentialService, oauthService],
-  );
-  const clearToken = useCallback(async () => {
-    const activeProvider = await oauthService.getActiveProvider();
-    if (!activeProvider) {
-      return;
-    }
-    await credentialService.delete(`oauth:${activeProvider}:access_token`);
-    if (activeProvider === "bigmodel") {
-      await credentialService.delete("auth_token");
-    }
-  }, [credentialService, oauthService]);
-
-  return { getToken, setToken, clearToken };
+  const getToken = useCallback(async () => null, []);
+  const setToken = useCallback(async (_token: string) => {
+    throw new Error("当前构建无 OAuth 登录链，无法写入 auth token");
+  }, []);
+  return { getToken, setToken };
 }

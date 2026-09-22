@@ -54,7 +54,8 @@ export function OccupationOnboarding({
   const requested = useZCodeStore((state) => state.newUserOnboardingOpen);
   const setRequested = useZCodeStore((state) => state.setNewUserOnboardingOpen);
   // 登录态变化（useRootOAuthEffects 登录成功后 setUser）时按 userId 重新判定是否触发引导。
-  const userId = useZCodeStore((state) => state.user?.id) ?? null;
+  // 私有化分支：无官方账号链，onboarding 上报不带用户标识。
+  const userId: string | null = null;
   const { intl } = useZCodeIntl();
   const t = (key: string) => intl.formatMessage({ id: `occupationOnboarding.${key}` });
   const [occupation, setOccupation] = useState<OccupationValue | null>("developer");
