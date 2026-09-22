@@ -4,7 +4,6 @@ import type { McpConnectionPool, McpTelemetryTracker } from "@zcode/adapters/mcp
 import type { SqliteSessionStore } from "@zcode/adapters/storage";
 import { closeSessionStore } from "../app/session-store.js";
 import type { NodeReplBrowserBroker } from "../app/node-repl-browser-broker.js";
-import type { ZCodeProcessResourceSampler } from "../process-resource-sampler.js";
 import type { ZCodeProtocolAgentServer } from "./server.js";
 
 const DEFAULT_CLEANUP_BUDGET_MS = 1_200;
@@ -14,7 +13,6 @@ export async function cleanupProtocolRuntime(options: {
   logger: Logger;
   deadlineAt?: number;
   server?: Pick<ZCodeProtocolAgentServer, "shutdown" | "disposeProjections">;
-  processResourceSampler?: Pick<ZCodeProcessResourceSampler, "stop">;
   mcpTelemetryTracker?: Pick<McpTelemetryTracker, "stop">;
   nodeReplBrowserBroker?: Pick<NodeReplBrowserBroker, "close">;
   mcpPort?: Pick<McpPort, "close">;
@@ -46,10 +44,7 @@ export async function cleanupProtocolRuntime(options: {
       if (timeout) clearTimeout(timeout);
     }
   };
-  await Promise.all([
-    step("sampler", () => options.processResourceSampler?.stop()),
-    step("mcp_telemetry", () => options.mcpTelemetryTracker?.stop()),
-  ]);
+  await step("mcp_telemetry", () => options.mcpTelemetryTracker?.stop());
   await step("sessions", () => options.server?.shutdown());
   await step("projections", () => options.server?.disposeProjections());
   await Promise.all([

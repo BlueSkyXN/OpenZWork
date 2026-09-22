@@ -76,7 +76,8 @@ interface CreateMcpTelemetryTrackerOptions {
   arch?: ZCodeMcpTelemetryEvent["arch"];
   idSalt: string;
   now?: () => number;
-  onEvent(event: McpTelemetryEvent): void;
+  /** 事件出口；私有化分支不接线遥测，缺省即丢弃事件（进程注册表仍工作）。 */
+  onEvent?(event: McpTelemetryEvent): void;
   platform?: ZCodeMcpTelemetryEvent["platform"];
   randomId?: () => string;
   onResourceSamples?: McpResourceTelemetryOptions["onResourceSamples"];
@@ -111,7 +112,7 @@ export function createMcpTelemetryTracker(
   const connections = new Map<string, TrackedConnection>();
   const emit = (event: McpTelemetryEvent): void => {
     try {
-      options.onEvent(event);
+      options.onEvent?.(event);
     } catch {
       // 遥测为旁路，下游通知或 IPC 关闭不得改变 MCP 连接、回收或 crash 处理。
     }

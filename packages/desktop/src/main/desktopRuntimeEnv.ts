@@ -154,9 +154,8 @@ function resolveWorkspaceRootForEnvFiles(): string | null {
 
 export function loadHostProcessEnvFromLocalFiles(): Record<string, string> {
   if (isElectronAppPackaged()) {
-    // 安装包不内嵌 OTLP 端点或鉴权，避免 CI 凭据随产物公开；连接配置由运行时环境提供。
-    // 只保留打包身份元数据，缺少端点时不会启用上报。
-    return { ZCODE_TELEMETRY_RUNTIME_DISTRIBUTION: "packaged" };
+    // 安装包不内嵌运行时身份元数据或鉴权，避免 CI 凭据随产物公开；连接配置由运行时环境提供。
+    return {};
   }
 
   const desktopRoot = resolve(import.meta.dirname, "../..");

@@ -16,12 +16,17 @@ import {
 } from "@zcode/shared";
 import { logger } from "./logger.js";
 import { normalizeElectronCpuToMachinePercent } from "./electronCpuNormalization.js";
-import type { ChromiumProcessRolePids } from "./processResourceRoleClassifier.js";
 import { buildAuxiliaryRendererName } from "./resourceManagerProcessNames.js";
-import {
-  forgetHostResourceUsage,
-  requestHostResourceUsage,
-} from "./resourceManagerHostSampling.js";
+import { forgetHostResourceUsage, requestHostResourceUsage } from "./resourceManagerHostSampling.js";
+
+/** 各进程角色的 pid 快照：主窗口/guest renderer 与 host/scheduler utilityProcess 归类。 */
+interface ChromiumProcessRolePids {
+  mainPid: number;
+  mainWindowRendererPids: ReadonlySet<number>;
+  guestRendererPids: ReadonlySet<number>;
+  hostPids: ReadonlySet<number>;
+  schedulerPids: ReadonlySet<number>;
+}
 
 /**
  * 资源管理器。
@@ -169,7 +174,7 @@ function collectUtilityProcessPids(children: Iterable<ElectronUtilityProcess>): 
 }
 
 /**
- * 当前各进程角色的 pid 快照，供资源遥测按 process_role 拆分使用
+ * 当前各进程角色的 pid 快照（进程行角色标注用）。
  *
  * getAppMetrics 不直接给 renderer / host / scheduler 的角色，需结合
  * BrowserWindow / webContents / utilityProcess 注册表才能可靠归类。

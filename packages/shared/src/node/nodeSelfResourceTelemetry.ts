@@ -8,7 +8,13 @@
 
 import { availableParallelism } from "node:os";
 import { bytesToKb } from "../memoryDiagnostics.js";
-import type { NodeSelfResourceSample } from "../validation.js";
+
+/** Node 进程自采瞬时事实（原 validation schema 已随遥测链移除，形状在此内联）。 */
+export interface NodeSelfResourceSample {
+  cpuPercent: number;
+  rssKb: number;
+  heapUsedKb: number;
+}
 
 interface NodeCpuUsageSnapshot {
   user: number;
