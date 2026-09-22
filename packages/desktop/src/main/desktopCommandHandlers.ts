@@ -12,17 +12,13 @@ import {
   type Locale,
   resolveRuntimeZCodeEndpointOrigin,
   ZCODE_ENV,
-  ZCODE_PRODUCT_FLAVOR,
   buildZCodeEndpointUrls,
   getCommunityUrlFromConfigs,
-  getFeedbackUrlFromConfig,
-  resolveHelpAppConfig,
   normalizeZCodeEndpointOrigin,
   resolveZCodeEndpointOrigin,
 } from "@zcode/shared";
 import { readZCodeStdioTapDevState, setZCodeStdioTapDevEnabled } from "@zcode/services/node";
 import { showAboutDialog } from "./about.js";
-import { checkForUpdateMenuClick } from "./autoUpdater.js";
 import { exportLogs } from "./exportLogs.js";
 import { openResourceManager } from "./resourceManagerWindow.js";
 import { syncWindowControlsOverlayForZoomLevel } from "./desktopWindowButtonPosition.js";
@@ -166,41 +162,6 @@ async function readLocalAppConfig(readLocalConfig?: () => unknown): Promise<unkn
   return readLocalConfig?.() ?? JSON.parse(await readFile(localConfigPath, "utf-8"));
 }
 
-// 官方 /api/v1/client/configs 远端拉取已随官方服务移除：反馈/社区配置只读本地打包默认值。
-async function resolveLocalAppConfigValue(options: {
-  readLocalConfig?: () => unknown;
-  resolveFromConfig: (config: unknown) => string | undefined;
-  logPrefix: "feedback" | "community";
-  logger: {
-    warn: (...args: unknown[]) => void;
-  };
-}): Promise<string | undefined> {
-  try {
-    const localConfig = await readLocalAppConfig(options.readLocalConfig);
-    const localResolvedValue = options.resolveFromConfig(localConfig);
-    if (localResolvedValue) {
-      return localResolvedValue;
-    }
-  } catch (error) {
-    options.logger.warn(`[${options.logPrefix}] failed to read local config:`, error);
-  }
-
-  return undefined;
-}
-
-export async function resolveFeedbackUrl(options: {
-  readLocalConfig?: () => unknown;
-  logger: {
-    warn: (...args: unknown[]) => void;
-  };
-}): Promise<string | undefined> {
-  return resolveLocalAppConfigValue({
-    ...options,
-    logPrefix: "feedback",
-    resolveFromConfig: getFeedbackUrlFromConfig,
-  });
-}
-
 export async function resolveCommunityUrl(options: {
   locale: Locale;
   readLocalConfig?: () => unknown;
@@ -216,24 +177,6 @@ export async function resolveCommunityUrl(options: {
   }
 
   return getCommunityUrlFromConfigs(undefined, localConfig, options.locale);
-}
-
-async function openFeedback(
-  logger: { warn: (...args: unknown[]) => void; error: (...args: unknown[]) => void },
-  targetWindow?: BrowserWindow | null,
-) {
-  let localConfig: unknown;
-  try {
-    localConfig = await readLocalAppConfig();
-  } catch (error) {
-    logger.warn("[feedback] failed to read local config:", error);
-  }
-  const config = resolveHelpAppConfig(localConfig);
-  if (!config.feedback_use_external_form) {
-    resolveTargetWindow(targetWindow)?.webContents.send(PlatformChannels.OpenFeedbackDialog);
-    return;
-  }
-  if (config.feedback_url) await shell.openExternal(config.feedback_url);
 }
 
 async function openCommunity(
@@ -554,19 +497,8 @@ export async function executeDesktopCommand(options: {
         }),
       );
       return;
-    case DesktopCommandIds.CheckForUpdates:
-      // 按产品身份而不是后端环境放行：生产后端的 Preview 同样没有更新器。
-      if (ZCODE_PRODUCT_FLAVOR === "production") {
-        checkForUpdateMenuClick(targetWindow);
-      } else {
-        options.logger.info("[auto-update] Preview 已禁用手动更新检查");
-      }
-      return;
     case DesktopCommandIds.RelaunchApp:
       await options.onRelaunchApp();
-      return;
-    case DesktopCommandIds.OpenFeedback:
-      await openFeedback(options.logger, targetWindow);
       return;
     case DesktopCommandIds.OpenCommunity:
       await openCommunity(options.currentApplicationLocale, options.logger);

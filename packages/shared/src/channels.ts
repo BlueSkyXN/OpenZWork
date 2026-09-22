@@ -36,13 +36,10 @@ import type {
   SaveFileResult,
   PrintPageToPdfResult,
   OpenInEditorOptions,
-  PostUpdateReleaseNotesPayload,
   RemoteSessionClosedEvent,
   SSHConfigAliasOption,
   TaskNotificationPayload,
   WSLDistro,
-  UpdateCheckResultPayload,
-  UpdateStatePayload,
   DesktopZoomState,
   DesktopWindowChromeState,
   WindowControlsOverlayMetrics,
@@ -78,7 +75,6 @@ export const ServiceChannels = {
   /** ZCode session 应用服务 */
   ZCodeSession: "zcode-session",
   /** 会话分享发布、预览与 continuation API 编排 */
-  ConversationShare: "conversation-share",
   /** 文件系统监视服务 */
   FileWatcher: "file-watcher",
   /** OAuth 认证服务 */
@@ -116,7 +112,6 @@ export const ServiceChannels = {
   /** 首次启动设置同步服务 */
   SettingsSync: "settings-sync",
   /** 用户反馈工单服务 */
-  Feedback: "feedback",
   /** Composer 附件在 host-local 与 remote runtime 之间的预传服务 */
   PromptAttachmentTransfer: "prompt-attachment-transfer",
   /** 闲时任务管理服务（与 automation 服务面独立） */
@@ -215,10 +210,6 @@ export const PlatformChannels = {
   OpenWorkspace: "zcode:open-workspace",
   /** Main → Renderer：deep link 直接打开指定本地工作区目录 */
   OpenWorkspacePath: "zcode:open-workspace-path",
-  /** Main → Renderer：打开内置反馈对话框 */
-  OpenFeedbackDialog: "zcode:open-feedback-dialog",
-  /** Main → Renderer：打开我的工单面板 */
-  OpenTicketsPanel: "zcode:open-tickets-panel",
   /** Main → Renderer：窗口全屏状态变化 */
   WindowFullscreenChanged: "zcode:window-fullscreen-changed",
   /** Renderer → Main：读取窗口最大化状态与系统原生圆角能力 */
@@ -260,8 +251,6 @@ export const PlatformChannels = {
   OAuthCallback: "zcode:oauth-callback",
   /** Main → Renderer：转发支付 deep link URL */
   PaymentCallback: "zcode:payment-callback",
-  /** Main → Renderer：外部分享页请求导入 share code。 */
-  ShareImport: "zcode:share-import",
   /** Renderer → Main：OAuth 回调已处理完成，可继续后置启动流程 */
   OAuthCallbackHandled: "zcode:oauth-callback-handled",
   /** Renderer → Main：renderer 已就绪，可接收缓存的 deep link */
@@ -301,24 +290,6 @@ export const PlatformChannels = {
   ImportChromeBrowserData: "zcode:import-chrome-browser-data",
   /** Renderer → Main：清理内置浏览器缓存或全部站点数据。 */
   ClearEmbeddedBrowserData: "zcode:clear-embedded-browser-data",
-  /** Main → Renderer：通知有新版本已下载完毕，可以重启安装 */
-  UpdateReady: "zcode:update-ready",
-  /** Main → Renderer：用户手动点击"检查更新"后的结果反馈（toast 用） */
-  UpdateCheckResult: "zcode:update-check-result",
-  /** Main → Renderer：自动更新持续状态变化（菜单 UI 用） */
-  UpdateStateChanged: "zcode:update-state-changed",
-  /** Renderer → Main：主动获取当前自动更新状态（菜单打开时补偿事件丢失） */
-  GetUpdateState: "zcode:get-update-state",
-  /** Renderer → Main：开始下载当前已发现的自动更新 */
-  DownloadUpdate: "zcode:download-update",
-  /** Renderer → Main：取消当前正在下载的自动更新 */
-  CancelUpdateDownload: "zcode:cancel-update-download",
-  /** Renderer → Main：打开独立自动更新窗口 */
-  OpenUpdateStatusWindow: "zcode:open-update-status-window",
-  /** Renderer → Main：读取自动更新偏好 */
-  GetAutoUpdatePreferences: "zcode:get-auto-update-preferences",
-  /** Renderer → Main：写入“自动下载并安装更新”偏好 */
-  SetAutoDownloadAndInstallUpdates: "zcode:set-auto-download-and-install-updates",
   /** Renderer → Main：查询桌面端正在运行的会话数量 */
   GetDesktopSessionActivity: "zcode:get-desktop-session-activity",
   /** Renderer → Main：读取当前窗口页面缩放档位 */
@@ -333,14 +304,6 @@ export const PlatformChannels = {
   ApplicationLocaleChanged: "zcode:application-locale-changed",
   /** Renderer → Main：读取宿主系统语言 */
   GetSystemLocale: "zcode:get-system-locale",
-  /** Main → Renderer：更新安装后的版本说明 */
-  PostUpdateReleaseNotes: "zcode:post-update-release-notes",
-  /** Renderer → Main：确认版本说明已读 */
-  AcknowledgePostUpdateReleaseNotes: "zcode:ack-post-update-release-notes",
-  /** Renderer → Main：跳过当前已发现的自动更新版本 */
-  SkipUpdateVersion: "zcode:skip-update-version",
-  /** Renderer → Main：用户确认重启安装更新 */
-  QuitAndInstallUpdate: "zcode:quit-and-install-update",
   /** Renderer → Main：获取系统中已安装的编辑器/终端列表（含图标） */
   GetInstalledEditors: "zcode:get-installed-editors",
   /** Renderer → Main：按 bundle id 获取系统应用图标 */
@@ -472,8 +435,6 @@ export const HostMessageTypes = {
   SessionMessageDeliver: "session-message-deliver",
   /** main → host：把 session message 投递结果回写到源 session */
   SessionMessageDeliveryResult: "session-message-delivery-result",
-  /** main → host：反馈日志归档创建结果 */
-  FeedbackLogArchiveResult: "feedback-log-archive-result",
   /** main → host：定时任务到点派发；会话内 cron 复用 targetTaskId，历史未绑定任务才建 session */
   CronRun: "cron-run",
   /** main → host：闲时任务派发；首跑 createTask 新建 session，续跑带 conversationId/sessionId resume */
@@ -545,8 +506,6 @@ export const HostResponseTypes = {
   SessionRouteAnnounce: "session-route-announce",
   /** host → main：目标 host 完成本地 session message 投递 */
   SessionMessageDeliverResult: "session-message-deliver-result",
-  /** host → main：请求 main 复用导出日志逻辑创建反馈日志归档 */
-  FeedbackLogArchiveRequest: "feedback-log-archive-request",
   /** host → main：定时任务派发结果（成功回填 taskId/sessionId，失败带 transient/permanent） */
   CronRunResult: "cron-run-result",
   /** host → main：闲时任务派发结果（成功回填 conversationId/sessionId，失败带 transient/permanent） */
@@ -786,10 +745,6 @@ export interface PlatformChannelMap {
     request: string;
     response: void;
   };
-  [PlatformChannels.ShareImport]: {
-    request: { shareCode: string };
-    response: void;
-  };
   [PlatformChannels.OAuthCallbackHandled]: {
     request: void;
     response: void;
@@ -894,44 +849,6 @@ export interface PlatformChannelMap {
       value?: boolean;
     };
   };
-  [PlatformChannels.UpdateReady]: {
-    request: string;
-    response: void;
-  };
-  [PlatformChannels.UpdateCheckResult]: {
-    request: UpdateCheckResultPayload;
-    response: void;
-  };
-  [PlatformChannels.UpdateStateChanged]: {
-    request: UpdateStatePayload;
-    response: void;
-  };
-  [PlatformChannels.GetUpdateState]: {
-    request: void;
-    response: UpdateStatePayload;
-  };
-  [PlatformChannels.DownloadUpdate]: {
-    request: void;
-    response: void;
-  };
-  [PlatformChannels.CancelUpdateDownload]: {
-    request: void;
-    response: void;
-  };
-  [PlatformChannels.OpenUpdateStatusWindow]: {
-    request: void;
-    response: void;
-  };
-  [PlatformChannels.GetAutoUpdatePreferences]: {
-    request: void;
-    response: {
-      autoDownloadAndInstallUpdates: boolean;
-    };
-  };
-  [PlatformChannels.SetAutoDownloadAndInstallUpdates]: {
-    request: boolean;
-    response: void;
-  };
   [PlatformChannels.SettingsChanged]: {
     request: void;
     response: void;
@@ -956,22 +873,6 @@ export interface PlatformChannelMap {
   };
   [PlatformChannels.DesktopZoomLevelChanged]: {
     request: DesktopZoomState;
-    response: void;
-  };
-  [PlatformChannels.PostUpdateReleaseNotes]: {
-    request: PostUpdateReleaseNotesPayload;
-    response: void;
-  };
-  [PlatformChannels.AcknowledgePostUpdateReleaseNotes]: {
-    request: string;
-    response: void;
-  };
-  [PlatformChannels.SkipUpdateVersion]: {
-    request: string;
-    response: void;
-  };
-  [PlatformChannels.QuitAndInstallUpdate]: {
-    request: void;
     response: void;
   };
   [PlatformChannels.GetInstalledEditors]: {

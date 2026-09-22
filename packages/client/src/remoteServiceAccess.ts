@@ -13,7 +13,6 @@ import {
   IZCodeTaskService,
   IZCodeAgentService,
   IZCodeSessionService,
-  IConversationShareService,
   IFileWatcherService,
   IModelSelectionService,
   IProviderSettingsService,
@@ -29,7 +28,6 @@ import {
   IHooksService,
   IMemoryService,
   ISettingsSyncService,
-  IFeedbackService,
   IPromptAttachmentTransferService,
   IWindowControllerService,
   type IServiceAccessor,
@@ -55,7 +53,6 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly windowControllerService: IWindowControllerService;
   readonly zcodeAgentService: IZCodeAgentService;
   readonly zcodeSessionService: IZCodeSessionService;
-  readonly conversationShareService: IConversationShareService;
   readonly fileWatcherService: IFileWatcherService;
   readonly providerSettingsService: IProviderSettingsService;
   readonly modelSelectionService: IModelSelectionService;
@@ -72,7 +69,6 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly hooksService: IHooksService;
   readonly memoryService: IMemoryService;
   readonly settingsSyncService: ISettingsSyncService;
-  readonly feedbackService: IFeedbackService;
   readonly promptAttachmentTransferService: IPromptAttachmentTransferService;
 
   constructor(channelClient: IChannelClient) {
@@ -119,9 +115,6 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.zcodeSessionService = ProxyChannel.toService<IZCodeSessionService>(
       channelClient.getChannel(IZCodeSessionService.channelName),
-    );
-    this.conversationShareService = ProxyChannel.toService<IConversationShareService>(
-      channelClient.getChannel(IConversationShareService.channelName),
     );
     this.fileWatcherService = ProxyChannel.toService<IFileWatcherService>(
       channelClient.getChannel(IFileWatcherService.channelName),
@@ -170,9 +163,6 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.settingsSyncService = ProxyChannel.toService<ISettingsSyncService>(
       channelClient.getChannel(ISettingsSyncService.channelName),
-    );
-    this.feedbackService = ProxyChannel.toService<IFeedbackService>(
-      channelClient.getChannel(IFeedbackService.channelName),
     );
     this.promptAttachmentTransferService = ProxyChannel.toService<IPromptAttachmentTransferService>(
       channelClient.getChannel(IPromptAttachmentTransferService.channelName),

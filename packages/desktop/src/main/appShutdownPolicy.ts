@@ -1,4 +1,4 @@
-export type AppShutdownKind = "normal" | "update-install";
+export type AppShutdownKind = "normal";
 
 interface AppShutdownPolicy {
   forceKillDelayMs: number;
@@ -38,15 +38,11 @@ export function selectAppShutdownPolicy(
   requestedKind: AppShutdownKind,
   platform: NodeJS.Platform,
 ): AppShutdownPolicySelection {
-  // 更新安装的优先级只增不减：已创建的普通退出短 timer 不做破坏性重建，更新仍在
-  // 现有屏障后 fail-open 进入资源扫描和安装器，保证“可能残留”不会升级成“无法更新”。
-  const kind =
-    activeKind === "update-install" || requestedKind === "update-install"
-      ? "update-install"
-      : "normal";
+  // 更新安装的升级融合逻辑已随强更/更新链移除；退出策略只保留普通退出一种。
+  const kind: AppShutdownKind = "normal";
   return {
     kind,
     policy: resolveAppShutdownPolicy(kind, platform),
-    upgraded: activeKind === "normal" && kind === "update-install",
+    upgraded: false,
   };
 }

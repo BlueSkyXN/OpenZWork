@@ -36,7 +36,6 @@ export {
   appSettingsPatchSchema,
   appSettingsSchema,
   localeSchema,
-  postUpdateReleaseNotesPayloadSchema,
 } from "./validationAppSettings.js";
 
 export function formatZodError(error: z.ZodError): string {
@@ -315,15 +314,6 @@ export const hostSessionMessageDeliveryResultMessageSchema = z.object({
   result: sessionMessageDeliveryResultSchema,
 });
 
-export const hostFeedbackLogArchiveResultMessageSchema = z.object({
-  type: z.literal("feedback-log-archive-result"),
-  requestId: nonEmptyStringSchema,
-  ok: z.boolean(),
-  path: z.string().optional(),
-  size: z.number().int().nonnegative().optional(),
-  error: z.string().optional(),
-});
-
 // main → host：定时任务到点派发。会话内 cron 带 targetTaskId 时直接 sendPrompt 到当前会话；
 // 历史未绑定任务才 fallback createTask + sendPrompt 建 session。
 export const hostCronRunMessageSchema = z.object({
@@ -416,7 +406,6 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostTaskOwnerCommandResultMessageSchema,
   hostSessionMessageDeliverMessageSchema,
   hostSessionMessageDeliveryResultMessageSchema,
-  hostFeedbackLogArchiveResultMessageSchema,
   hostCronRunMessageSchema,
   hostOffPeakRunMessageSchema,
   hostBrowserExecuteResultMessageSchema,
@@ -635,12 +624,6 @@ export const hostSessionMessageDeliverResultResponseSchema = z.object({
   result: sessionMessageDeliveryResultSchema,
 });
 
-export const hostFeedbackLogArchiveRequestResponseSchema = z.object({
-  type: z.literal("feedback-log-archive-request"),
-  requestId: nonEmptyStringSchema,
-  sourceDir: nonEmptyStringSchema,
-});
-
 // host → main：定时任务派发结果。ok=已成功创建 session 且 prompt 已发出。
 export const hostCronRunResultResponseSchema = z.object({
   type: z.literal("cron-run-result"),
@@ -792,7 +775,6 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostSessionMessageSendRequestedResponseSchema,
   hostSessionRouteAnnounceResponseSchema,
   hostSessionMessageDeliverResultResponseSchema,
-  hostFeedbackLogArchiveRequestResponseSchema,
   hostBrowserExecuteRequestResponseSchema,
   hostLocalMediaPreviewPathAuthorizeRequestResponseSchema,
   hostNetworkTelemetryBatchResponseSchema,

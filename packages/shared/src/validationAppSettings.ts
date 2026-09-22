@@ -35,7 +35,6 @@ const nonEmptyStringSchema = z.string().trim().min(1);
 export const localeSchema = z.enum(["zh-CN", "en-US"]);
 const localePreferenceSchema = z.enum(["system", "zh-CN", "en-US"]);
 const zcodeInteractionBehaviorSchema = z.enum(["queue", "guide"]);
-const electronReleaseChannelSchema = z.enum(["stable", "preview"]);
 const desktopZoomLevelSchema = z.number().int().min(-3).max(5);
 const desktopWindowSizeSchema = z.object({
   width: z.number().int().min(480),
@@ -55,23 +54,6 @@ export const integratedTerminalShellSelectionSchema = z.discriminatedUnion("mode
   }),
 ]);
 const providerFamilyDomainSchema = z.enum(["zai", "bigmodel"]);
-
-export const postUpdateReleaseNotesPayloadSchema = z.object({
-  version: nonEmptyStringSchema,
-  title: nonEmptyStringSchema,
-  markdown: nonEmptyStringSchema,
-  releaseDate: nonEmptyStringSchema.optional(),
-  releaseNotesByLocale: z
-    .partialRecord(
-      localeSchema,
-      z.object({ title: nonEmptyStringSchema, markdown: nonEmptyStringSchema }),
-    )
-    .optional(),
-});
-
-const skippedElectronUpdateVersionsSchema = z
-  .partialRecord(electronReleaseChannelSchema, nonEmptyStringSchema)
-  .default({});
 
 const remoteWorkspaceTargetSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -463,10 +445,6 @@ const appSettingsObjectSchema = z.object({
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
-  pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
-  receivePreviewUpdates: z.boolean().default(false),
-  autoDownloadAndInstallUpdates: z.boolean().default(false),
-  skippedElectronUpdateVersions: skippedElectronUpdateVersionsSchema,
   settingsSyncFirstRunPromptHandled: z.boolean().optional(),
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });
@@ -547,12 +525,6 @@ export const appSettingsPatchSchema = z.object({
   lastActiveTabIndex: z.number().int().nonnegative().optional(),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
-  pendingPostUpdateReleaseNotes: postUpdateReleaseNotesPayloadSchema.optional(),
-  receivePreviewUpdates: z.boolean().optional(),
-  autoDownloadAndInstallUpdates: z.boolean().optional(),
-  skippedElectronUpdateVersions: z
-    .partialRecord(electronReleaseChannelSchema, nonEmptyStringSchema)
-    .optional(),
   settingsSyncFirstRunPromptHandled: z.boolean().optional(),
   zcodeEndpointOrigin: zcodeEndpointOriginSchema.optional(),
 });

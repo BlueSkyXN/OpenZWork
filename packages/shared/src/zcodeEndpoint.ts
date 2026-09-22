@@ -34,7 +34,6 @@ export function readProductEndpointEnv(): Record<string, string | undefined> {
 export interface ZCodeEndpointUrls {
   origin: string;
   apiBaseUrl: string;
-  webShareCallbackUrl: string;
   zcodePlanOpenAiBaseUrl: string;
   zcodePlanAnthropicBaseUrl: string;
   zcodePlanBillingCurrentUrl: string;
@@ -262,7 +261,6 @@ export function buildZCodeEndpointUrls(origin: string): ZCodeEndpointUrls {
   return {
     origin: normalizedOrigin,
     apiBaseUrl: `${normalizedOrigin}/api/v1`,
-    webShareCallbackUrl: `${normalizedOrigin}/cn/share/callback`,
     zcodePlanOpenAiBaseUrl: `${normalizedOrigin}/api/v1/zcode-plan`,
     zcodePlanAnthropicBaseUrl: `${normalizedOrigin}/api/v1/zcode-plan/anthropic`,
     zcodePlanBillingCurrentUrl: `${normalizedOrigin}/api/v1/zcode-plan/billing/current`,

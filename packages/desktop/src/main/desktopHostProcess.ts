@@ -44,7 +44,6 @@ import {
   hostModulePath,
   resolveBundledGlmBinaryPath,
 } from "./desktopRuntimeEnv.js";
-import { createFeedbackLogArchiveFromExportLogs } from "./exportLogs.js";
 import { buildHostE2ECoverageEnv } from "./e2eCoverage.js";
 
 export interface WindowBootstrapOptions {
@@ -304,29 +303,6 @@ export function spawnHostProcess(
         .catch((error) => {
           child.postMessage({
             type: HostMessageTypes.LocalMediaPreviewPathAuthorizeResult,
-            requestId: request.requestId,
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.FeedbackLogArchiveRequest) {
-      const request = result.data;
-      void createFeedbackLogArchiveFromExportLogs(request.sourceDir)
-        .then((archive) => {
-          child.postMessage({
-            type: HostMessageTypes.FeedbackLogArchiveResult,
-            requestId: request.requestId,
-            ok: true,
-            path: archive.path,
-            size: archive.size,
-          });
-        })
-        .catch((error) => {
-          child.postMessage({
-            type: HostMessageTypes.FeedbackLogArchiveResult,
             requestId: request.requestId,
             ok: false,
             error: error instanceof Error ? error.message : String(error),
