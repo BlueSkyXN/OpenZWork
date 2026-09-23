@@ -273,7 +273,6 @@ function printHelp() {
   -h, --help              查看帮助
 
 示例:
-  pnpm dep:refs packages/services/src/oauth/oauthService.ts:createOAuthService
   pnpm dep:refs --list-exports packages/services/src/oauth/oauthService.ts
 
 推荐用法:

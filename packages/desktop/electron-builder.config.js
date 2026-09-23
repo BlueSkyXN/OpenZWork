@@ -20,7 +20,6 @@ import {
   resolveDesktopArtifactSuffix,
   resolveDesktopProductIdentity,
 } from "./scripts/desktop-product-identity.mjs";
-import { verifyStagedKoffi } from "./scripts/koffi-package-assets.mjs";
 const ELECTRON_BUILDER_ARCH = {
   1: "x64",
   3: "arm64",
@@ -135,10 +134,9 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   "asn1",
   "bcrypt-pbkdf",
   "tweetnacl",
-  // electron-updater → builder-util-runtime → debug 运行时 require("ms")。
-  // pnpm hoisted 布局下 electron-builder 偶发漏拷这个叶子依赖；3.4.0(ci/cua-v0.3.17 打的)
-  // 已在线上触发安装包启动即报 Cannot find module 'ms'（Require stack: debug/src/common.js），
-  // 自动更新链路直接崩。ms 是叶子包，显式注入即可让 debug 在 app.asar 内稳定解析。
+  // pnpm hoisted 布局下 electron-builder 偶发漏拷这个叶子依赖（历史上
+  // builder-util-runtime → debug 链在 3.4.0 安装包触发过 Cannot find module 'ms'）。
+  // ms 是叶子包，显式注入即可让 debug 在 app.asar 内稳定解析，防御性保留。
   "ms",
 ];
 // pacman 依赖必须使用 Arch 官方仓库中的包名。electron-builder 的历史默认集合包含

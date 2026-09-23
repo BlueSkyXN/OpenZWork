@@ -24,7 +24,6 @@ import type {
   ApplicationIconInfo,
   ApplicationIconRequest,
   Locale,
-  OAuthStateRegistration,
   RemoteConnectionRuntimeLog,
   RemoteSessionClosedEvent,
   RemoteTarget,
@@ -172,12 +171,6 @@ declare global {
       openInFileManager(path: string): Promise<{ success: boolean; error?: string }>;
       /** 使用系统默认应用打开本地文件 */
       openExternalFile(path: string): Promise<{ success: boolean; error?: string }>;
-      /** 上报 OAuth state 用于 deep link 路由 */
-      registerOAuthState(payload: OAuthStateRegistration): void;
-      /** 注册 OAuth deep link 回调，返回 disposer */
-      onOAuthCallback(cb: (url: string) => void): () => void;
-      /** 注册支付 deep link 回调，返回 disposer */
-      onPaymentCallback(cb: (url: string) => void): () => void;
       /** 通知 main process renderer 已就绪 */
       notifyRendererReady(): void;
       /** 触发任务状态对应的系统通知 */

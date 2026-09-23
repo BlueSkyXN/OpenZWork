@@ -1,19 +1,7 @@
-import { ensureCliDeviceMid } from "../device/cli-device-mid.js";
 import type { EnvRecord } from "./model-execution.js";
 import { normalizeModelSessionIdForAttribution, type ModelStatusContext } from "./runner-status.js";
 
 const REDACTED_METADATA_USER_ID = "[REDACTED]";
-
-function createAnthropicRequestMetadataUserId(input: {
-  deviceMid: string;
-  sessionId?: ModelStatusContext["sessionId"];
-}): string {
-  return JSON.stringify({
-    device_id: input.deviceMid,
-    account_uuid: "",
-    session_id: normalizeModelSessionIdForAttribution(input.sessionId) ?? "",
-  });
-}
 
 export async function resolveAnthropicRequestMetadataUserId(input: {
   env: EnvRecord;
@@ -23,11 +11,11 @@ export async function resolveAnthropicRequestMetadataUserId(input: {
   if (input.providerKind !== "anthropic") {
     return undefined;
   }
-
-  const deviceMid = await ensureCliDeviceMid({ env: input.env });
-  return createAnthropicRequestMetadataUserId({
-    deviceMid,
-    sessionId: input.sessionId,
+  // 私有化分支：不再向 provider 端点外发持久设备标识/账号标识；仅保留会话级
+  // session_id，便于用户自建端点侧按会话排查。
+  void input.env;
+  return JSON.stringify({
+    session_id: normalizeModelSessionIdForAttribution(input.sessionId) ?? "",
   });
 }
 

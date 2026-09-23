@@ -50,7 +50,6 @@ interface QuickPickCommandHandlers {
   openMcpSettings: () => void;
   switchTheme: () => void;
   openCommunity: () => void | Promise<void>;
-  openProductDocs: () => void | Promise<void>;
   toggleSidebar: () => void;
   toggleTerminal: () => void;
   togglePreview: () => void;
@@ -231,15 +230,6 @@ export function createQuickPickCommands({
       run: handlers.openCommunity,
     });
   }
-
-  commands.push({
-    id: "product-docs",
-    sectionId: "app",
-    titleId: "quickPick.command.productDocs",
-    icon: "book",
-    keywords: ["docs", "documentation", "product docs", "文档", "产品文档"],
-    run: handlers.openProductDocs,
-  });
 
   return commands.filter(
     (command) =>

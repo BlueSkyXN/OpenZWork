@@ -294,7 +294,7 @@
     ; 不再复用 appCannotBeClosed（该文案只适用于进程占用）。
     ${if} $R0 != 0
       ; 静默自动更新无人值守，未设置 /SD 的模态框会一直等待用户点击，
-      ; 使明确的退出码无法返回 electron-updater。静默时自动采用 IDOK，交互时仍显示提示。
+      ; 使明确的退出码无法返回静默调用方。静默时自动采用 IDOK，交互时仍显示提示。
       SetDetailsPrint listonly
       DetailPrint "ZCode: cleanup-failed exit-code=$R0"
       Call ZCodeShowUninstallerCleanupDetails
