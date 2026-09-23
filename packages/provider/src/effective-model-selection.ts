@@ -6,7 +6,7 @@ import {
   type ProviderRegistryView,
 } from "./registry.js";
 
-export type ModelSelectionProviderKind = "ordinary" | "account-plan" | "account-offpeak";
+export type ModelSelectionProviderKind = "ordinary" | "account-plan";
 export type ModelSelectionProviderClassifier = (providerId: string) => ModelSelectionProviderKind;
 
 /**
@@ -22,12 +22,11 @@ export function resolveEffectiveModelSelection(input: {
   const original = input.selection;
   if (!original)
     return Object.freeze({ effectiveSelection: null, selectionIssue: "selection-missing" });
-  const kind = input.classifyProvider(original.providerId);
   const providerId = original.providerId;
   const provider = input.registry.providers.find(
     (candidate) => candidate.providerId === providerId,
   );
-  if (!provider || (provider.config.visibility === "hidden" && kind !== "account-offpeak")) {
+  if (!provider || provider.config.visibility === "hidden") {
     return Object.freeze({ effectiveSelection: null, selectionIssue: "provider-not-found" });
   }
   const model = provider.models.find((candidate) => candidate.modelId === original.modelId);

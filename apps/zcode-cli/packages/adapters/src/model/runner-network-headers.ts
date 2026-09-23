@@ -8,7 +8,6 @@ const redactedHeaderNames = new Set([
   "x-api-key",
   "api-key",
   "openai-api-key",
-  "x-off-peak-ticket-id",
 ]);
 
 export function sanitizeModelNetworkHeaders(value: unknown): Record<string, string> {

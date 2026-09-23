@@ -6,7 +6,9 @@
       "brand": "OpenRouter",
       "file": "model-provider-openrouter-light.svg",
       "darkFile": "model-provider-openrouter-dark.svg",
-      "providerIds": ["openrouter"],
+      "providerIds": [
+        "openrouter"
+      ],
       "sourceUrl": "https://openrouter.ai/brand/logos/transparent/glyph/svg/glyph-grape-square.svg",
       "darkSourceUrl": "https://openrouter.ai/brand/logos/transparent/glyph/svg/glyph-volt-square.svg",
       "sourceOwner": "OpenRouter",
@@ -16,7 +18,11 @@
       "brand": "OpenCode",
       "file": "model-provider-opencode-light.svg",
       "darkFile": "model-provider-opencode-dark.svg",
-      "providerIds": ["opencode-zen-responses", "opencode-zen-messages", "opencode-zen-chat"],
+      "providerIds": [
+        "opencode-zen-responses",
+        "opencode-zen-messages",
+        "opencode-zen-chat"
+      ],
       "sourceUrl": "https://opencode.ai/brand",
       "sourceOwner": "OpenCode",
       "normalization": "Official 300x300 square SVG downloads, unchanged. Decoded logoLightSquareSvg / logoDarkSquareSvg from brand page asset index-CmefrukV.js. Retrieved 2026-09-07."
@@ -24,7 +30,10 @@
     {
       "brand": "Start Plan",
       "file": "model-provider-start-plan.png",
-      "providerIds": ["account:zai-start-plan", "account:bigmodel-start-plan"],
+      "providerIds": [
+        "account:zai-start-plan",
+        "account:bigmodel-start-plan"
+      ],
       "sourceUrl": "user-provided:icon_512.png",
       "sourceOwner": "User-provided asset",
       "normalization": "Byte-for-byte copy of the user-provided 128x128 RGBA PNG on 2026-09-17. Shared by both Start Plans in light and dark themes."
@@ -35,8 +44,7 @@
       "providerIds": [
         "zai-api",
         "account:zai-individual-coding-plan",
-        "account:zai-team-coding-plan",
-        "account:zai-offpeak-idle-plan"
+        "account:zai-team-coding-plan"
       ],
       "sourceUrl": "repository:packages/desktop/build/icons/128x128.png",
       "sourceOwner": "Z.AI",
@@ -48,8 +56,7 @@
       "providerIds": [
         "bigmodel-api",
         "account:bigmodel-individual-coding-plan",
-        "account:bigmodel-team-coding-plan",
-        "account:bigmodel-offpeak-idle-plan"
+        "account:bigmodel-team-coding-plan"
       ],
       "sourceUrl": "repository-existing:logo-bigmodel.svg",
       "sourceOwner": "BigModel",
@@ -58,7 +65,9 @@
     {
       "brand": "Moonshot Kimi",
       "file": "model-provider-moonshot-kimi.png",
-      "providerIds": ["moonshot-kimi"],
+      "providerIds": [
+        "moonshot-kimi"
+      ],
       "sourceUrl": "https://raw.githubusercontent.com/MoonshotAI/Branding-Guide/67b20b1315f96d05f3192b24050635745abd3d90/scenarios/03-icon-without-kimi/kimi-icon-right-angle.png",
       "sourceOwner": "Moonshot AI",
       "normalization": "Official right-angle icon downsampled from 1024x1024 to 80x80 RGB."
@@ -66,7 +75,9 @@
     {
       "brand": "MiniMax",
       "file": "model-provider-minimax.png",
-      "providerIds": ["minimax"],
+      "providerIds": [
+        "minimax"
+      ],
       "sourceUrl": "https://file.cdn.minimax.io/public/MiniMax_Logo.zip",
       "sourceOwner": "MiniMax",
       "normalization": "Official 200x200 full-square SVG from the MiniMax brand package rendered at 80x80 RGB."
@@ -74,7 +85,9 @@
     {
       "brand": "DeepSeek",
       "file": "model-provider-deepseek.png",
-      "providerIds": ["deepseek"],
+      "providerIds": [
+        "deepseek"
+      ],
       "sourceUrl": "https://github.com/deepseek-ai.png?size=512",
       "sourceOwner": "DeepSeek",
       "normalization": "Official GitHub organization avatar downsampled from 460x460 to 80x80 RGB."
@@ -82,7 +95,10 @@
     {
       "brand": "Alibaba Model Studio",
       "file": "model-provider-alibaba-cloud.png",
-      "providerIds": ["qwen-alibaba-model-studio-cn", "qwen-alibaba-model-studio-intl"],
+      "providerIds": [
+        "qwen-alibaba-model-studio-cn",
+        "qwen-alibaba-model-studio-intl"
+      ],
       "sourceUrl": "https://github.com/aliyun.png?size=512",
       "sourcePage": "https://github.com/aliyun",
       "sourceOwner": "Alibaba Cloud",
@@ -91,7 +107,9 @@
     {
       "brand": "Xiaomi MiMo",
       "file": "model-provider-xiaomi-mimo.png",
-      "providerIds": ["xiaomi-mimo"],
+      "providerIds": [
+        "xiaomi-mimo"
+      ],
       "sourceUrl": "https://platform.xiaomimimo.com/static/logo.5c3d18dc51d9cbea.jpg",
       "sourceOwner": "Xiaomi MiMo",
       "normalization": "Official 256x256 embedded source image downsampled to 80x80 RGB."
@@ -99,7 +117,9 @@
     {
       "brand": "OpenAI",
       "file": "model-provider-openai.png",
-      "providerIds": ["openai"],
+      "providerIds": [
+        "openai"
+      ],
       "sourceUrl": "https://images.ctfassets.net/j22is2dtoxu1/intercom-img-d177d076c9a5453052925143/49d5d812b0a6fcc20a14faa8c629d9fb/icon-ios-1024_401x.png",
       "sourceOwner": "OpenAI",
       "normalization": "Official 1024x1024 OpenAI Help Center icon downsampled to 80x80 RGB."
@@ -107,7 +127,9 @@
     {
       "brand": "Anthropic",
       "file": "model-provider-anthropic.png",
-      "providerIds": ["anthropic"],
+      "providerIds": [
+        "anthropic"
+      ],
       "sourceUrl": "https://cdn.prod.website-files.com/67ce28cfec624e2b733f8a52/67d31dd7aa394792257596c5_webclip.png",
       "sourceOwner": "Anthropic",
       "normalization": "Official website webclip downsampled from 256x256 to 80x80 RGB."
@@ -115,7 +137,9 @@
     {
       "brand": "xAI",
       "file": "model-provider-xai.png",
-      "providerIds": ["xai"],
+      "providerIds": [
+        "xai"
+      ],
       "sourceUrl": "https://avatars.githubusercontent.com/u/130314967?v=4",
       "sourceOwner": "xAI",
       "normalization": "Official GitHub organization avatar downsampled from 460x460 to 80x80 RGB."

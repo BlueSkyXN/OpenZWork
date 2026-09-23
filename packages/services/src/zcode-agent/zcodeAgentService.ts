@@ -309,20 +309,16 @@ type SessionCreateCompatField =
   | "mcpServers"
   | "toolAllowlist"
   | "toolDenylist"
-  | "offPeakToolEnabled"
   | "dynamicWorkflowEnabled";
 type SessionResumeCompatField =
   | "thoughtLevel"
   | "mcpServers"
   | "toolAllowlist"
   | "toolDenylist"
-  | "offPeakToolEnabled"
   | "dynamicWorkflowEnabled";
 type SessionSendCompatField =
   | "browserAmbientContext"
   | "automationId"
-  | "offPeakTaskId"
-  | "offPeakRunType"
   | "toolDenylist";
 
 const SESSION_CREATE_OPTIONAL_COMPAT_FIELDS = new Set<SessionCreateCompatField>([
@@ -333,8 +329,6 @@ const SESSION_CREATE_OPTIONAL_COMPAT_FIELDS = new Set<SessionCreateCompatField>(
   // 的 .strict() schema 不认，需可降级重试而不是整个 createSession 硬失败。
   "toolAllowlist",
   "toolDenylist",
-  // Off-Peak 工具面 flag 同为可降级字段；旧 app-server 不认时省略重试（工具随之不注册，fail-closed）。
-  "offPeakToolEnabled",
   // 动态工作流灰度 flag 同理：旧 CLI 不认时
   // 省略重试，工作流工具簇随之不注册，绝不让整个 create 硬失败。
   "dynamicWorkflowEnabled",
@@ -345,14 +339,11 @@ const SESSION_RESUME_OPTIONAL_COMPAT_FIELDS = new Set<SessionResumeCompatField>(
   // 冷恢复也带工具面约束；旧 app-server 不认时降级重试而不是硬失败（与 create 一致）。
   "toolAllowlist",
   "toolDenylist",
-  "offPeakToolEnabled",
   "dynamicWorkflowEnabled",
 ]);
 const SESSION_SEND_OPTIONAL_COMPAT_FIELDS = new Set<SessionSendCompatField>([
   "browserAmbientContext",
   "automationId",
-  "offPeakTaskId",
-  "offPeakRunType",
   "toolDenylist",
 ]);
 // onDynamicSessionEvent 建立上游订阅时若 getClient / sessionSubscribe 瞬时失败
@@ -565,7 +556,6 @@ function assertV4AttachmentNdjsonEnvelope(method: string, params: unknown): void
 
 function buildSessionCreateParams(
   params: ZCodeAgentCreateSessionParams & {
-    offPeakToolEnabled?: boolean;
     dynamicWorkflowEnabled?: boolean;
   },
   omittedFields: ReadonlySet<SessionCreateCompatField> = new Set(),
@@ -602,11 +592,7 @@ function buildSessionCreateParams(
     // importedHistory 是导入历史的完整性边界，不能像 thoughtLevel/persistence
     // 那样在旧协议兼容重试里省略，否则会创建一个可切模型但没有历史内容的空 session。
     ...(params.importedHistory !== undefined ? { importedHistory: params.importedHistory } : {}),
-    // 只在灰度命中时下发 true（缺省不发字段）；旧 CLI strict schema 不认时经 compat 省略。
-    ...(params.offPeakToolEnabled === true && !omittedFields.has("offPeakToolEnabled")
-      ? { offPeakToolEnabled: true }
-      : {}),
-    // 动态工作流灰度：同 Off-Peak 的下发形状，
+    // 动态工作流灰度：
     // 关闭时不写字段——CLI 的缺省就是不注册那九个工具。
     ...(params.dynamicWorkflowEnabled === true && !omittedFields.has("dynamicWorkflowEnabled")
       ? { dynamicWorkflowEnabled: true }
@@ -616,7 +602,6 @@ function buildSessionCreateParams(
 
 function buildSessionResumeParams(
   params: ZCodeAgentResumeSessionParams & {
-    offPeakToolEnabled?: boolean;
     dynamicWorkflowEnabled?: boolean;
   },
   omittedFields: ReadonlySet<SessionResumeCompatField> = new Set(),
@@ -638,10 +623,6 @@ function buildSessionResumeParams(
       : {}),
     ...(params.toolDenylist !== undefined && !omittedFields.has("toolDenylist")
       ? { toolDenylist: params.toolDenylist }
-      : {}),
-    // resume 不带该 flag 会让冷恢复丢 Off-Peak 工具面（与 toolAllowlist 同因）。
-    ...(params.offPeakToolEnabled === true && !omittedFields.has("offPeakToolEnabled")
-      ? { offPeakToolEnabled: true }
       : {}),
     // 同因：resume 不带该 flag 会让冷恢复丢掉工作流工具簇。
     ...(params.dynamicWorkflowEnabled === true && !omittedFields.has("dynamicWorkflowEnabled")
@@ -670,12 +651,6 @@ function buildSessionSendParams(
     expectedProviderRevision: params.expectedProviderRevision,
     ...(params.automationId !== undefined && !omittedFields.has("automationId")
       ? { automationId: params.automationId }
-      : {}),
-    ...(params.offPeakTaskId !== undefined && !omittedFields.has("offPeakTaskId")
-      ? { offPeakTaskId: params.offPeakTaskId }
-      : {}),
-    ...(params.offPeakRunType !== undefined && !omittedFields.has("offPeakRunType")
-      ? { offPeakRunType: params.offPeakRunType }
       : {}),
     ...(params.toolDenylist !== undefined && !omittedFields.has("toolDenylist")
       ? { toolDenylist: params.toolDenylist }
@@ -2243,7 +2218,7 @@ export function createZCodeAgentService(
           zcodeWorkspaceUpdateDynamicWorkflowPolicyResultSchema,
         );
       } catch (error) {
-        // 与 Off-Peak 同判据：-32601 是旧 CLI 的正常降级（其 z.object 也会丢掉 session flag，
+        // -32601 是旧 CLI 的正常降级（其 z.object 也会丢掉 session flag，
         // 整体退回 disabled）；其它错误只记 warn，不阻断客户端就绪。
         if (!isProtocolMethodNotFoundError(error)) {
           logger.warn(undefined, "动态工作流策略同步失败，CLI 维持缺省关闭", {

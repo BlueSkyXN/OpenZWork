@@ -1,5 +1,5 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
-import type { BackgroundResultOriginMeta, CollaborationMode, CoordinatorResponsePort, DynamicWorkflowRunPort, DynamicWorkflowSnippetPort, ModelCatalogPort, EmbeddedSearchBackend, ExecutionPort, BrowserControlPort, ExecutionShellSelection, AutomationPort, OffPeakPort, FileSystemPort, HttpClientPort, ImageProcessorPort, PdfDocumentPort, Logger, Model, PermissionBrokerPort, SessionEvent, SessionId, SessionModePort, SessionStorePort, SkillPort, SubagentRunOptions, SubagentPort, ToolArtifactStorePort, TraceContext, TurnId, WorkflowPort, WorkflowEscalatePort, WorkflowSubmitPort } from "@zcode/contracts";
+import type { BackgroundResultOriginMeta, CollaborationMode, CoordinatorResponsePort, DynamicWorkflowRunPort, DynamicWorkflowSnippetPort, ModelCatalogPort, EmbeddedSearchBackend, ExecutionPort, BrowserControlPort, ExecutionShellSelection, AutomationPort, FileSystemPort, HttpClientPort, ImageProcessorPort, PdfDocumentPort, Logger, Model, PermissionBrokerPort, SessionEvent, SessionId, SessionModePort, SessionStorePort, SkillPort, SubagentRunOptions, SubagentPort, ToolArtifactStorePort, TraceContext, TurnId, WorkflowPort, WorkflowEscalatePort, WorkflowSubmitPort } from "@zcode/contracts";
 import type { HookRunner } from "../../hooks/index.js";
 import type { PermissionService } from "../../permission/service.js";
 import type { RuntimeTaskRegistry } from "../../runtime-task/registry.js";
@@ -69,7 +69,6 @@ export interface ToolExecutorOptions {
   workflowEscalatePort?: WorkflowEscalatePort;
   artifactStore?: ToolArtifactStorePort;
   automationPort?: AutomationPort;
-  offPeakPort?: OffPeakPort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;
@@ -129,7 +128,6 @@ export interface ToolExecutor {
 
 export interface ToolExecuteOptions {
   automationTurn?: boolean;
-  offPeakTurn?: boolean;
   signal?: AbortSignal;
   traceContext?: TraceContext;
   subagentModelOverride?: SubagentRunOptions["modelOverride"];
@@ -171,7 +169,6 @@ export interface ToolExecutorDeps {
   workflowEscalatePort?: WorkflowEscalatePort;
   artifactStore?: ToolArtifactStorePort;
   automationPort?: AutomationPort;
-  offPeakPort?: OffPeakPort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;

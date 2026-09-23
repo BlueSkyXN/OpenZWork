@@ -492,8 +492,7 @@ export function AutomationsSection({
       ? resolveWorkspaceKey({ workspacePath, workspaceIdentity })
       : null;
     const result = resolveAutomationTabNavigation({
-      // idle 深链随闲时任务移除，统一落到 scheduled。
-      requestedTab: openAutomationTab === "idle" ? "scheduled" : openAutomationTab,
+      requestedTab: openAutomationTab,
       tabsReady: currentWorkspaceKey !== null && loadedWorkspaceKey === currentWorkspaceKey,
       visibleTabs,
     });
@@ -884,7 +883,7 @@ export function AutomationsSection({
                 )}
                 onClick={() => setTab(key)}
               >
-                {intl.formatMessage({ id: `offPeak.tabs.${key}` })}
+                {intl.formatMessage({ id: `automations.tabs.${key}` })}
               </button>
             ))}
           </div>
