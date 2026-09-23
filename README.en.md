@@ -1,7 +1,7 @@
-# ZCode
+# OpenZWork
 
 <div align="center">
-  <img src="public/logo/icons/1024x1024.png" alt="ZCode" width="128" height="128" />
+  <img src="public/logo/icons/1024x1024.png" alt="OpenZWork" width="128" height="128" />
 </div>
 <p align="center">
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=47ag983c-8fcb-4d6d-814b-5395193a712c&amp;qr_code=true">Feishu community</a> ·
@@ -11,7 +11,7 @@
   <a href="README.md">简体中文</a> | English
 </p>
 
-ZCode is an AI coding workspace with desktop, browser, and terminal interfaces. This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
+OpenZWork is an AI coding workspace with desktop, browser, and terminal interfaces. This repository contains the clients, backend services, shared UI, and Agent CLI and runtime source code.
 
 | Interface                    | Purpose                                                                                   | Development command            |
 | ---------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------ |
@@ -73,7 +73,7 @@ pnpm dev:web
 ZCODE_SERVER_WORKSPACE=/path/to/project pnpm dev:web
 ```
 
-This starts both the Web development server (default: `http://localhost:5173`) and the backend (default: `http://localhost:3030`). Open the Web development server in your browser. `/ws` and general `/api` requests are proxied to the local backend; `/api/v1/oauth/token` is proxied separately to the configured product service.
+This starts both the Web development server (default: `http://localhost:5173`) and the backend (default: `http://localhost:3030`). Open the Web development server in your browser. `/ws` and general `/api` requests are proxied to the local backend.
 
 After changing Agent source code, run `pnpm --filter @zcode/cli... build` and restart the service. To validate the complete distribution, extract and run it as described under Packaging → ZCode CLI distribution below.
 
@@ -123,7 +123,7 @@ The root [.env.example](.env.example) provides sample service URLs and build con
 
 | Setting                              | Purpose                                                                                 |
 | ------------------------------------ | --------------------------------------------------------------------------------------- |
-| `ZCODE_DATA_BASE_DIR`                | Base directory for application data, stored under its `.zcode/` subdirectory            |
+| `ZCODE_DATA_BASE_DIR`                | Base directory for application data, stored under its `.openzwork/` subdirectory        |
 | `ZCODE_SERVER_WORKSPACE`             | Workspace path for the Web backend                                                      |
 | `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` | Path to a local provider configuration file; uses the built-in configuration when unset |
 | `ZCODE_DIST_BASE_URL`                | Download base URL used by the CLI distribution installer                                |
@@ -131,8 +131,6 @@ The root [.env.example](.env.example) provides sample service URLs and build con
 Runtime variables can be set explicitly in the environment of the startup command. See [config/README.md](config/README.md) for the default configuration shipped with the client.
 
 ## Packaging
-
-See [third-party/README.md](third-party/README.md) for notice generation, distribution checks, and where the notices are included in each distribution.
 
 ### Desktop
 

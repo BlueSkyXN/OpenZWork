@@ -1,7 +1,7 @@
-# ZCode
+# OpenZWork
 
 <div align="center">
-  <img src="public/logo/icons/1024x1024.png" alt="ZCode" width="128" height="128" />
+  <img src="public/logo/icons/1024x1024.png" alt="OpenZWork" width="128" height="128" />
 </div>
 <p align="center">
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=47ag983c-8fcb-4d6d-814b-5395193a712c&amp;qr_code=true">飞书社群</a> ·
@@ -11,7 +11,7 @@
   简体中文 | <a href="README.en.md">English</a>
 </p>
 
-ZCode 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
+OpenZWork 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Agent。本仓库包含客户端、后端服务、共享 UI，以及 Agent CLI 与运行时源码。
 
 | 入口                 | 用途                                                           | 开发命令                       |
 | -------------------- | -------------------------------------------------------------- | ------------------------------ |
@@ -77,7 +77,7 @@ pnpm dev:web
 ZCODE_SERVER_WORKSPACE=/path/to/project pnpm dev:web
 ```
 
-该命令同时启动 Web 开发服务器（默认 `http://localhost:5173`）和后端（默认 `http://localhost:3030`）；浏览器访问前者。`/ws` 和一般 `/api` 请求代理到本地后端，`/api/v1/oauth/token` 单独代理到当前配置的产品服务。
+该命令同时启动 Web 开发服务器（默认 `http://localhost:5173`）和后端（默认 `http://localhost:3030`）；浏览器访问前者。`/ws` 和一般 `/api` 请求代理到本地后端。
 
 Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服务。需要验证完整发行包时，按下方“ZCode 命令行版”打包章节解压运行。
 
@@ -127,7 +127,7 @@ node apps/zcode-cli/packages/cli/dist/zcode.cjs --help
 
 | 配置                                 | 用途                                             |
 | ------------------------------------ | ------------------------------------------------ |
-| `ZCODE_DATA_BASE_DIR`                | 应用数据基目录，数据写入其下的 `.zcode/`         |
+| `ZCODE_DATA_BASE_DIR`                | 应用数据基目录，数据写入其下的 `.openzwork/`     |
 | `ZCODE_SERVER_WORKSPACE`             | Web 后端的工作区路径                             |
 | `ZCODE_BUILTIN_PROVIDER_CONFIG_FILE` | 本地 Provider 配置文件路径；未设置时使用内置配置 |
 | `ZCODE_DIST_BASE_URL`                | 命令行安装脚本使用的下载根地址                   |
@@ -135,8 +135,6 @@ node apps/zcode-cli/packages/cli/dist/zcode.cjs --help
 运行时变量可在启动命令的环境中显式设置。随客户端发布的默认配置见 [config/README.md](config/README.md)。
 
 ## 打包
-
-第三方声明生成、发行校验流程及声明在发行物中的位置见 [third-party/README.md](third-party/README.md)。
 
 ### 桌面版
 
@@ -151,10 +149,10 @@ pnpm bundle:desktop -- --help
 
 默认目标为 macOS arm64，默认输出目录为 `packages/desktop/dist/`。`--os` 支持 `mac`、`win`、`linux`，`--arch` 支持 `x64`、`arm64`；实际打包与签名需要目标平台对应的工具和配置。
 
-安装：双击打开产物 DMG，将 ZCode 拖入"应用程序"。本地构建未签名，首次打开若被 macOS 拦截，执行：
+安装：双击打开产物 DMG，将 OpenZWork 拖入"应用程序"。本地构建未签名，首次打开若被 macOS 拦截，执行：
 
 ```bash
-sudo xattr -rd com.apple.quarantine /Applications/ZCode.app
+sudo xattr -rd com.apple.quarantine /Applications/OpenZWork.app
 ```
 
 ### ZCode 命令行版
