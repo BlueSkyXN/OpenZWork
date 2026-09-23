@@ -546,7 +546,7 @@ test('[structural, not runtime] WP-09: off-peak domain fully removed from source
         continue;
       }
       if (!scanExts.test(entry.name)) continue;
-      const rel = path.relative(root, full);
+      const rel = path.relative(root, full).split(path.sep).join('/');
       if (allowFiles.has(rel)) continue;
       const text = fs.readFileSync(full, 'utf8');
       const match = text.match(bannedPattern);
