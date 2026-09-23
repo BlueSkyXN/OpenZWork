@@ -2674,6 +2674,16 @@ const zhCN: Record<string, string> = {
   "settings.usage.healthProMaxDecode": "Max&Pro 高峰期平均 Decode 速度",
   "settings.usage.healthLiteDecode": "Lite 高峰期平均 Decode 速度",
   "settings.usage.refresh": "刷新",
+  "settings.usage.retry": "重试",
+  "settings.usage.localUnavailable":
+    "此环境没有可确认的本机 Desktop Host，因此无法读取本地用量统计。",
+  "settings.usage.localOnlyHint": "仅在本机查询，不会上传。",
+  "settings.usage.errorRate": "错误率",
+  "settings.usage.turns": "轮",
+  "settings.usage.modelErrorRate": "模型错误率",
+  "settings.usage.avgTimeToFirstToken": "平均首 Token 延迟",
+  "settings.usage.avgTurnDuration": "平均轮次时长",
+  "settings.usage.peakDayTokens": "单日峰值 {tokens} tokens",
   "settings.usage.loadingTitle": "正在统计中",
   "settings.usage.appUsageLoadingDescription": "正在读取本地应用会话历史，可能需要一点时间。",
   "settings.usage.codingPlanLoadingDescription":

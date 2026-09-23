@@ -8,6 +8,7 @@ import {
   GlobalDatabaseStartupLoading,
   ZCodeIntlProvider,
   registerBaseWorkspaceServices,
+  registerLocalBaseWorkspaceServices,
   registerRemoteWorkspaceSession,
   createRemoteWorkspaceDisconnectedError,
   playTaskNotificationSound,
@@ -290,6 +291,7 @@ function initializeBusinessRoot(port: MessagePort): void {
   const services = connectViaMessagePort(port);
   baseServicesForRemoteSessions = services;
   registerBaseWorkspaceServices(services);
+  registerLocalBaseWorkspaceServices(services);
   flushPendingRemoteWorkspaceServicePorts();
   const settingService = supportsSettings ? services.settingService : undefined;
 
@@ -327,4 +329,3 @@ function initializeBusinessRoot(port: MessagePort): void {
 window.addEventListener("message", handleServicePortMessage);
 renderDatabaseStartup();
 sendStartupControl({ action: "snapshot" });
-

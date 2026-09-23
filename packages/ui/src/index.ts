@@ -32,6 +32,7 @@ export {
   bindRemoteWorkspacePath,
   getRemoteWorkspaceSession,
   registerBaseWorkspaceServices,
+  registerLocalBaseWorkspaceServices,
   registerRemoteWorkspaceSession,
   unbindRemoteWorkspacePath,
   unregisterRemoteWorkspaceSession,

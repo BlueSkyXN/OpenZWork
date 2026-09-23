@@ -29,6 +29,7 @@ import type { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import type { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import type { IWindowControllerService } from "./window-controller/windowController.js";
 import type { IOnboardingRecordService } from "./onboarding/onboardingRecord.js";
+import type { IAppUsageService } from "./app-usage/appUsage.js";
 
 /** UI 层消费的统一服务接口 */
 export interface IServiceAccessor {
@@ -60,6 +61,8 @@ export interface IServiceAccessor {
   readonly pluginsService: IPluginsService;
   /** 设置页插件管理（UI 不再直触 zcodeAgentService 的 plugins/* 面） */
   readonly pluginManagementService: IPluginManagementService;
+  /** Desktop 本机 usage 只读入口；未装配或非本机 Host 时省略。 */
+  readonly appUsageService?: IAppUsageService;
   readonly subagentsService: ISubagentsService;
   readonly commandsService: ICommandsService;
   readonly hooksService: IHooksService;
