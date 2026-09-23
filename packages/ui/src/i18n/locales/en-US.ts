@@ -1,15 +1,5 @@
 /** English translations */
 const enUS: Record<string, string> = {
-  "startPlan.recommendation.subagentDescription":
-    "Your Start Plan has quota available for {model}. Switch this subagent’s model to the Start Plan?",
-  "startPlan.recommendation.preferenceSaveFailed":
-    "Could not save “Don’t ask again”. Continuing with your choice for this operation.",
-  "startPlan.recommendation.title": "Start Plan quota available",
-  "startPlan.recommendation.description":
-    "Your Start Plan still has quota for {model}. Would you like to use it?",
-  "startPlan.recommendation.switch": "Switch plan",
-  "startPlan.recommendation.decline": "Not now",
-  "startPlan.recommendation.dismiss": "Don’t show again",
   "occupationOnboarding.stepMode": "UI mode",
   "occupationOnboarding.modeTitle": "Choose your UI mode",
   "occupationOnboarding.modeDescription": "How would you like ZCode to show its work?",
@@ -153,10 +143,6 @@ const enUS: Record<string, string> = {
   "chat.composer.attachment": "Attachments",
   "chat.permission.feedback.ariaLabel": "Optional feedback for the model when denying",
   "chat.permission.feedback.placeholder": "Tell the model what to do instead...",
-  "offPeak.chatCreated.defaultTitle": "Idle-time task",
-  "offPeak.chatCreated.queued": "Queued for idle-time compute",
-  "offPeak.chatCreated.queuedAt": "#{position} in queue",
-  "offPeak.chatCreated.open": "Go to idle-time tasks",
   "settings.modelProvider.connectionUnavailableNotice": "The current plan is unavailable.",
   "settings.modelProvider.switchConnection": "Switch to “{connection}”",
   "settings.modelProvider.connectionSuggestionStale":
@@ -2159,8 +2145,6 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.codingPlan.renew": "Renew",
   "settings.modelProvider.codingPlan.currentPlan": "Current",
   "settings.modelProvider.codingPlan.purchased": "Purchased",
-  "settings.modelProvider.codingPlan.startPlan.expiredBadge": "Expired",
-  "settings.modelProvider.codingPlan.startPlan.expiredAction": "Ended",
   "settings.modelProvider.codingPlan.cancelUpgrade": "Back",
   "settings.modelProvider.codingPlan.purchase.title": "Upgrade Coding Plan",
   "settings.modelProvider.codingPlan.purchase.pricingTitle": "Pricing",
@@ -2739,36 +2723,6 @@ const enUS: Record<string, string> = {
   "settings.usage.entitlementResetTime": "Next reset",
   "settings.usage.entitlementTokenUsage": "5-hour prompt pool used {percent}",
   "settings.usage.quotaTitle": "Quota remaining",
-  "codingPlan.quotaReset.openDialog": "Get {count} reset quotas",
-  "codingPlan.quotaReset.countdown.daysHours": "{days}d {hours}h",
-  "codingPlan.quotaReset.countdown.daysOnly": "{days}d",
-  "codingPlan.quotaReset.countdown.hoursMinutes": "{hours}h {minutes}m",
-  "codingPlan.quotaReset.countdown.hoursOnly": "{hours}h",
-  "codingPlan.quotaReset.countdown.minutesSeconds": "{minutes}m {seconds}s",
-  "codingPlan.quotaReset.dialog.title": "Resettable quota",
-  "codingPlan.quotaReset.dialog.remaining": "Remaining quota",
-  "codingPlan.quotaReset.dialog.resettable": "Available resets",
-  "codingPlan.quotaReset.dialog.fiveHour": "5-hour quota reset",
-  "codingPlan.quotaReset.dialog.week": "Weekly quota reset",
-  "codingPlan.quotaReset.dialog.expiresIn": "Expires in {time}",
-  "codingPlan.quotaReset.dialog.expiresInSoonest": "Soonest expires in {time}",
-  "codingPlan.quotaReset.dialog.itemCount": "×{count}",
-  "codingPlan.quotaReset.opportunity": "{count} reset available",
-  "codingPlan.quotaReset.expiresIn": "Expires in {time}",
-  "codingPlan.quotaReset.contextReminder.available": "{count} reset available",
-  "codingPlan.quotaReset.contextReminder.expiresIn": "Reset expires in",
-  "codingPlan.quotaReset.contextReminder.dismiss": "Dismiss reminder",
-  "codingPlan.quotaReset.reset": "Reset",
-  "codingPlan.quotaReset.resetAria": "Reset 5-hour quota",
-  "codingPlan.quotaReset.resetAriaWeek": "Reset weekly quota",
-  "codingPlan.quotaReset.success": "Reset successful",
-  "codingPlan.quotaReset.failed": "Reset failed. Please try again.",
-  "codingPlan.quotaReset.processing": "Resetting 5-hour quota…",
-  "codingPlan.quotaReset.processingWeek": "Resetting weekly quota…",
-  "codingPlan.quotaReset.done": "5-hour quota reset",
-  "codingPlan.quotaReset.doneWeek": "Weekly quota reset",
-  "codingPlan.quotaReset.completed": "Reset",
-  "codingPlan.quotaReset.completedAt": "Reset at {time}",
   "settings.usage.trendsTitle": "Usage trends",
   "settings.usage.entitlementFiveHourUsage": "5-hour remaining",
   "settings.usage.entitlementWeeklyUsage": "Weekly remaining",
@@ -2834,23 +2788,6 @@ const enUS: Record<string, string> = {
   "sidebar.usage.plan.mcp": "ZCode MCP",
   "sidebar.usage.plan.zcodeMcp": "ZCode MCP",
   "sidebar.usage.plan.zcodeMcpDescription": "Daily aggregate quota for ZCode built-in plugin MCPs",
-  "chat.planUsage.title": "Plan usage",
-  "chat.planUsage.titleWithPlan": "{plan} Plan usage",
-  "chat.planUsage.providerFallback": "Current provider",
-  "chat.planUsage.open": "Details",
-  "chat.planUsage.noPlan":
-    "No active Coding Plan was found for this account. Confirm that the connected account is subscribed.",
-  "chat.planUsage.contextWindow": "Current context window",
-  "chat.planUsage.contextDetail": "{used} / {total}",
-  "chat.planUsage.promptPool": "5-hour prompt pool",
-  "chat.planUsage.promptReset": "Resets {time}",
-  "chat.planUsage.weeklyQuota": "Weekly quota",
-  "chat.planUsage.weeklyReset": "Resets {time}",
-  "chat.planUsage.toolQuota": "Monthly MCP / tool usage",
-  "chat.planUsage.toolRemaining": "{remaining} / {total} remaining · resets {time}",
-  "chat.planUsage.toolUsed": "{used} / {total} used · resets {time}",
-  "chat.planUsage.noQuotaLimits":
-    "No Coding Plan quota was found. Confirm that the connected account has an active Coding Plan.",
   "usage.error.chatPlan.credential":
     "Unable to read plan quota. Reconnect the Coding Plan account or confirm that the account has an active plan.",
   "usage.error.chatPlan.generic":
@@ -4828,7 +4765,6 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.event.concurrencyChanged": "Concurrency {previous} → {next}",
   "chat.toolCall.workflow.run.throttle.reason.rateLimited": "rate limited",
   "chat.toolCall.workflow.run.throttle.reason.overloaded": "overloaded",
-  "chat.toolCall.workflow.run.throttle.reason.offpeak": "off-peak queue",
   "chat.toolCall.workflow.run.throttle.reason.transient": "transient error",
   "chat.toolCall.workflow.run.concurrency.label": "Concurrency {cap}",
   "chat.toolCall.workflow.run.concurrency.cooldown": "cooling down until {time}",
@@ -5010,34 +4946,6 @@ const enUS: Record<string, string> = {
   "chat.error.modelSettings": "Model settings",
   "chat.error.setModels": "Set",
 
-  // Start Plan per-bucket quota reminders
-  "chat.quota.startPlan.bucketDailyLow":
-    "{model} has {percent} of its daily quota remaining ({remaining} tokens).",
-  "chat.quota.startPlan.bucketActivityLow":
-    "{model} has {percent} of its promotional quota remaining ({remaining} tokens).",
-  "chat.quota.startPlan.modelVeryLow":
-    "{model} has {percent} of its plan quota remaining ({remaining} tokens).",
-  "chat.quota.startPlan.modelExhausted":
-    "All available quota for {model} has been used up. Switch models or upgrade your plan.",
-  "chat.quota.startPlan.dailyExhausted":
-    "Your Start Plan quota has been used up. Upgrade your plan or wait for the quota to reset.",
-  "chat.quota.startPlan.concurrentLimit":
-    "The system is busy. Please switch models, upgrade your account, or try again later.",
-  "chat.quota.startPlan.concurrentLimit.retryExhausted":
-    "The system is busy, and automatic retries have reached the maximum count. Please try again later or upgrade your account.",
-  "chat.quota.startPlan.concurrentLimit.switchModel":
-    "The current model request concurrency limit has been reached. Switch models to continue your current task.",
-  "chat.quota.mcp.quotaExhausted":
-    'ZCode MCP "{server}" has used up today\'s quota. It resets tomorrow.',
-  "chat.quota.mcp.codingPlanRequired":
-    'No ZCode MCP "{server}" quota. Sign in or get a Coding Plan to use it.',
-  "chat.quota.providerLimited":
-    "The current account quota or plan limit has been reached. Upgrade or adjust the plan to continue.",
-  "chat.quota.action.upgrade": "Upgrade",
-  "chat.quota.action.renew": "Renew",
-  "chat.quota.action.switchModel": "Switch model",
-  "chat.quota.action.switchProvider": "Switch provider",
-  "chat.quota.action.refresh": "Refresh quota",
 
   // Permissions
   "chat.permission.title": "Permission required",
@@ -5200,8 +5108,6 @@ const enUS: Record<string, string> = {
     "The system is busy. Please switch models, upgrade your account, or try again later.",
   "zcode.error.providerBusiness.3010":
     "The system is busy. Please switch models, upgrade your account, or try again later.",
-  "zcode.error.providerBusiness.3102":
-    "This run exceeded the maximum single-run time. Create a new off-peak task to continue.",
   "zcode.error.modelSuspiciousEmpty":
     "The model returned no content (often caused by an expired token or plan issues). Please send again.",
   "zcode.error.providerBusiness.2007":
@@ -5259,7 +5165,6 @@ const enUS: Record<string, string> = {
   "forms.validation.fileExists": "File {fileName} already exists",
   // ---- Scheduled tasks / Automations ----
   "taskList.cronTaskLabel": "Scheduled task",
-  "taskList.offPeakTaskLabel": "Idle-time task",
   "taskList.workflowRun.ariaLabel": "Workflow run {name}: {status}",
   "taskList.workflowRun.moreRuns": "+{count} more",
   "taskList.workflowRun.moreStations": "+{count}",
@@ -5283,116 +5188,15 @@ const enUS: Record<string, string> = {
   "automations.createManually": "Create scheduled task",
   "automations.list.title": "Scheduled tasks",
   "automations.createdLabel": "Task created",
-  "offPeak.notify.completed.title": "Idle-time task finished",
-  "offPeak.notify.completed.body": '"{title}" completed successfully.',
-  "offPeak.notify.failed.title": "Idle-time task failed",
-  "offPeak.notify.failed.body": '"{title}" stopped with an error.',
-  "offPeak.sidebar.groupTitle": "Idle-time tasks",
-  "offPeak.newTask.bannerText":
-    'New feature for subscribers: Create "Idle-time task" , We will complete your assigned task for free during periods of surplus computing power.',
-  "offPeak.newTask.bannerTipText":
-    "This feature does not consume your subscription plan quota and is available exclusively to subscribers.",
-  "offPeak.newTask.carousel.goToSlide": "Go to idle-time task template {index}",
-  "offPeak.newTask.template.customize.title": "Customize",
-  "offPeak.newTask.template.customize.description":
-    "Skip the template and tell it directly what you want to do.",
-  "offPeak.tabs.scheduled": "Scheduled tasks",
-  "offPeak.tabs.idle": "Idle-time task",
   "automations.statusFilter.all": "All",
   "automations.statusFilter.inProgress": "In progress",
   "automations.statusFilter.completed": "Completed",
   "automations.statusFilter.failed": "Failed",
   "automations.statusFilter.empty": "No tasks match this filter",
-  "offPeak.keepAwakeBanner": "Keep your computer awake while ZCode is running a chat.",
-  "offPeak.sectionTitle": "Idle-time tasks",
-  "offPeak.createButton": "Create idle-time task",
-  "offPeak.templates.sectionTitle": "Idle-time task template",
-  "offPeak.list.empty":
-    "No idle-time tasks yet. Create one to run it during off-peak hours at no extra cost.",
-  "offPeak.badge.pausedPosition": "#{position} Paused",
-  "offPeak.action.pauseHint":
-    "Tasks paused beyond the queue wait time will be placed back in the queue",
-  "offPeak.action.continueHint":
-    "If the queue ticket has expired, Continue re-queues the task at the back.",
-  "offPeak.badge.queuePosition": "#{position} in queue",
-  "offPeak.status.queued": "Waiting for idle compute",
-  "offPeak.status.paused": "Paused",
-  "offPeak.status.running": "Running",
-  "offPeak.status.completed": "Succeeded",
-  "offPeak.status.failed": "Failed",
-  "offPeak.status.cancelled": "Cancelled",
-  "offPeak.goToSession": "Go to session",
-  "offPeak.boundSession.label": "Runs in: {title}",
-  "offPeak.nav.listUnavailable": "Idle-time task list failed to load. Refresh and try again.",
-  "offPeak.boundSession.hint":
-    "Runs in that session; stopping the session while the task runs cancels it.",
-  "offPeak.chatCreated.boundHint": "Runs in this session",
-  "offPeak.action.pause": "Pause",
-  "offPeak.action.continue": "Continue",
-  "offPeak.action.cancel": "Cancel task",
-  "offPeak.cancel.title": "Cancel idle-time task?",
-  "offPeak.cancel.description": '"{title}" will stop running. Files it already changed are kept.',
-  "offPeak.delete.title": "Delete this idle-time task?",
-  "offPeak.delete.description":
-    "This action can't be undone. If the task is currently queued or running, it will stop immediately.",
-  "offPeak.delete.confirm": "Delete idle-time task",
-  "offPeak.error.quota": "Free tier limit reached. Try again later.",
-  "offPeak.error.unavailable":
-    "Idle-time task service is temporarily unavailable. Try again later.",
-  "offPeak.error.generic": "Idle-time task operation failed.",
-  "offPeak.create.title": "New Idle-time task",
-  "offPeak.create.subtitle": "Configure the instructions and how this task runs during idle time.",
-  "offPeak.create.defaultTitle": "Untitled",
-  "offPeak.edit.title": "Edit Idle-time task",
-  "offPeak.edit.subtitle": "Update the instructions and how this task runs during idle time.",
-  "offPeak.modelSelection.repairRequired":
-    "The model configuration needs updating. Choose a model again and save.",
   "modelSelection.invalidated.fallback":
     "The previous model selection is no longer available. Switched to the current default; review it before continuing.",
   "modelSelection.invalidated.reselect":
     "The previous model selection is no longer available. Choose a model again.",
-  "offPeak.create.submit": "Create Idle-time task",
-  "offPeak.edit.save": "Save",
-  "offPeak.edit.peakHoursWarning":
-    "This task runs during peak hours, which may cause errors to occur.",
-  "offPeak.form.soonestAvailable": "Soonest available",
-  "offPeak.form.titleLabel": "Task title",
-  "offPeak.form.titlePlaceholder": "e.g. Nightly refactor",
-  "offPeak.form.instructionsLabel": "Instructions",
-  "offPeak.form.instructionsPlaceholder":
-    "Describe a task ZCode can work on in the background, including the expected result and any constraints…",
-  "offPeak.form.permissionWarning":
-    "Idle-time runs are unattended. Actions that need confirmation will pause the task until you respond.",
-  "offPeak.form.modelLabel": "Model",
-  "offPeak.thought.max": "Max",
-  "offPeak.thought.high": "High",
-  "offPeak.thought.low": "Low",
-  "offPeak.thought.enabled": "Enabled",
-  "offPeak.thought.off": "Off",
-  "offPeak.thought.nothink": "No thinking",
-  "offPeak.form.keepAwakeLabel": "Keep your computer running",
-  "offPeak.form.keepAwakeHint":
-    "Prevent idle sleep (desktop-wide switch; also available under Settings → General).",
-  "offPeak.tab.settings": "Settings",
-  "offPeak.tab.history": "History",
-  "offPeak.history.empty": "No history yet.",
-  "offPeak.history.col.instructions": "Instructions",
-  "offPeak.history.delete": "Delete history",
-  "offPeak.history.durationMinutes": "{count} min",
-  "offPeak.form.fullAccessHint": "Switch permissions to Full access to reduce task failures",
-  "offPeak.discard.title": "Discard Idle-time task draft?",
-  "offPeak.discard.description": "Your changes to the current idle-time task will be lost.",
-  "offPeak.discard.confirm": "Discard",
-  "offPeak.create.codingPlanOnly": "Coding plan users only",
-  "offPeak.create.availabilityUnavailable": "Could not verify availability. Refresh and try again.",
-  "offPeak.create.limitReachedAt":
-    "Free tier limit reached. You can create another task in {time}.",
-  "offPeak.create.remaining.hoursMinutes": "{hours} hr {minutes} min",
-  "offPeak.create.remaining.hours": "{hours} hr",
-  "offPeak.create.remaining.minutes": "{minutes} min",
-  "offPeak.create.remaining.lessThanMinute": "less than 1 min",
-  "offPeak.create.codingPlanToast":
-    "Idle-time tasks are available for Coding Plan subscribers only.",
   "automations.moreIdeas": "Scheduled task template",
   "automations.templates.unavailable": "No templates available",
   "automations.runNow": "Run now",

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "revision": 32,
+  "revision": 33,
   "config": {
     "providerConfigRules": {
       "templateRules": [
@@ -4100,17 +4100,6 @@
           "config": {
             "properties": {
               "supportsNativeWebSearch": true,
-              "supportsMidConversationSystem": true
-            }
-          }
-        },
-        {
-          "modelMatch": ".*",
-          "apiTypeMatch": "anthropic-messages",
-          "baseUrlMatch": "https://zcode\\.z\\.ai/api/v1/off-peak/anthropic/?",
-          "config": {
-            "properties": {
-              "supportsNativeWebSearch": false,
               "supportsMidConversationSystem": true
             }
           }

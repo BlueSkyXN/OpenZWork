@@ -208,9 +208,6 @@ export function isQuotaMessage(message: string): boolean {
 export function resolveControlledUnknownMessageAttribution(
   message: string,
 ): TelemetryEvidenceAttribution | undefined {
-  if (/off-peak-ticket-expired/iu.test(message)) {
-    return { errorSource: "runtime", failureReason: "offpeak_ticket_expired" };
-  }
   if (
     /cannot connect to api:.*(?:self-signed certificate|ssl routines:.*key_usage_bit_incorrect)/iu.test(
       message,

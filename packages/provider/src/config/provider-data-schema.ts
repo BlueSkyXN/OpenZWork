@@ -15,7 +15,6 @@ export const zhipuAccountModeDataSchema = z.enum([
   "start-plan",
   "individual-coding-plan",
   "team-coding-plan",
-  "off-peak",
 ]);
 export const providerVisibilityDataSchema = z.enum(["visible", "hidden"]);
 export const providerLogoDataSchema = z

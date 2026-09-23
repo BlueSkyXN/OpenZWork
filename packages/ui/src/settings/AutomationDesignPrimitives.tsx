@@ -87,11 +87,11 @@ export function AutomationKeepAwakeNotice({
         <AutomationInfoIcon className="size-4" />
       </span>
       <p className="min-w-0 flex-1 text-ui-base leading-5">
-        {intl.formatMessage({ id: "offPeak.keepAwakeBanner" })}
+        {intl.formatMessage({ id: "automations.keepAwakeBanner" })}
       </p>
       <AutomationSwitchToggle
         checked={checked}
-        ariaLabel={intl.formatMessage({ id: "offPeak.keepAwakeBanner" })}
+        ariaLabel={intl.formatMessage({ id: "automations.keepAwakeBanner" })}
         onChange={onChange}
         color="blue"
         size="sm"

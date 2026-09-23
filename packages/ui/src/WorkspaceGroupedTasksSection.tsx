@@ -19,7 +19,7 @@ import type {
   DropAnimation,
 } from "@dnd-kit/core";
 import type { ZCodeGroupedTaskView, ZCodeTaskGroupColor } from "@zcode/services";
-import { OFF_PEAK_DEFAULT_GROUP_ID, type ZCodeTaskMeta } from "@zcode/shared";
+import type { ZCodeTaskMeta } from "@zcode/shared";
 import { createPortal } from "react-dom";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -1494,11 +1494,7 @@ export function WorkspaceGroupedTasksSection({
         node={stickyGroupNode}
         collapsed={collapsedGroupIds.has(stickyGroupNode.group.id)}
         tooltipsDisabled={groupedTooltipsDisabled}
-        onCreateTask={() =>
-          stickyGroupNode.group.id === OFF_PEAK_DEFAULT_GROUP_ID
-            ? onOpenAutomations?.()
-            : handleCreateGroupDraftTask(stickyGroupNode.group.id)
-        }
+        onCreateTask={() => handleCreateGroupDraftTask(stickyGroupNode.group.id)}
         onToggleCollapsed={handleToggleGroupCollapsed}
         onUpdateGroupColor={handleUpdateGroupColor}
         onUngroupGroup={handleUngroupGroup}
@@ -1532,11 +1528,7 @@ export function WorkspaceGroupedTasksSection({
             onSelectTask={onSelectTask}
             onCloseTask={handleCloseTask}
             onOpenFileTree={onOpenFileTree ? handleOpenTaskFileTree : undefined}
-            onCreateTask={() =>
-              node.group.id === OFF_PEAK_DEFAULT_GROUP_ID
-                ? onOpenAutomations?.()
-                : handleCreateGroupDraftTask(node.group.id)
-            }
+            onCreateTask={() => handleCreateGroupDraftTask(node.group.id)}
             hasDraftTask={
               groupedDraftTask?.placement.type === "group" &&
               groupedDraftTask.placement.groupId === node.group.id

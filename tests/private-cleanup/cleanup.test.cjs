@@ -435,9 +435,9 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
   assert.deepEqual(violations, [], `official domains found outside exemptions:\n${violations.join('\n')}`);
 });
 
-test('[structural, not runtime] WP-08: builtin release keeps 16 third-party templates, no account plan bindings outside off-peak', () => {
+test('[structural, not runtime] WP-08: builtin release keeps 16 third-party templates, no account plan bindings', () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(root, 'config/provider/zcode-builtin.json'), 'utf8'));
-  assert.equal(cfg.revision, 32);
+  assert.equal(cfg.revision, 33);
   const pcr = cfg.config.providerConfigRules;
   assert.equal(pcr.templateRules.length, 16);
   const templateIds = new Set(pcr.templateRules.map(t => t.templateId));
@@ -520,10 +520,39 @@ test('[structural, not runtime] WP-08: retained live i18n key families stay defi
     'settings.modelProvider.connectionMode.startPlan',
     'settings.modelProvider.connectionMode.teamPlan',
     'settings.mcp.oauth.',
-    'offPeak.',
     'chat.permission.feedback.',
   ];
   for (const key of mustStay) {
     assert.ok(zh.includes(`"${key}`), key);
   }
+});
+
+test('[structural, not runtime] WP-09: off-peak domain fully removed from source and locales', () => {
+  const bannedPattern = /off[-_]peak|offpeak/i;
+  const allowFiles = new Set([
+    // DB DDL 兼容：存量 tasks-index.sqlite 已有 off_peak_tasks 表与投影列，建库语句原样保留。
+    'packages/services/src/session/tasksDatabase/schema-v1.ts',
+    'packages/services/src/session/tasksDatabase/migrations.ts',
+  ]);
+  const scanRoots = ['packages/shared/src', 'packages/services/src', 'packages/ui/src', 'packages/desktop/src', 'apps/zcode-cli/packages'];
+  const scanExts = /\.(ts|tsx|mjs)$/;
+  const violations = [];
+  const walk = dir => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'dist' || entry.name === 'node_modules') continue;
+        walk(full);
+        continue;
+      }
+      if (!scanExts.test(entry.name)) continue;
+      const rel = path.relative(root, full).split(path.sep).join('/');
+      if (allowFiles.has(rel)) continue;
+      const text = fs.readFileSync(full, 'utf8');
+      const match = text.match(bannedPattern);
+      if (match) violations.push(`${rel}: ${match[0]}`);
+    }
+  };
+  for (const rel of scanRoots) walk(path.join(root, rel));
+  assert.deepEqual(violations, [], `off-peak residue found:\n${violations.join('\n')}`);
 });

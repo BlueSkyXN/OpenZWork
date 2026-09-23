@@ -37,7 +37,6 @@ import { buildDraftSuggestedPluginMention } from "@/v4/draftSuggestedPromptPrefi
 import { resolveDraftSuggestedPromptText } from "@/v4/draftSuggestedPromptItems.js";
 import {
   DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS,
-  DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS_OFFPEAK,
 } from "@/v4/draftSuggestedPromptItems.js";
 import {
   resolveDraftSuggestedPluginFlowStage,
@@ -145,9 +144,7 @@ export function ConversationDraftSuggestedPromptsContainer({
       (proactive ? recommendedItems : allItems).filter(
         (item) =>
           !item.actions?.some(
-            (action) =>
-              action === DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS ||
-              action === DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS_OFFPEAK,
+            (action) => action === DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS,
           ) || Boolean(onOpenAutomations),
       ),
     [allItems, onOpenAutomations, proactive, recommendedItems],
@@ -530,13 +527,6 @@ export function ConversationDraftSuggestedPromptsContainer({
       const requestVersion = requestVersionRef.current + 1;
       requestVersionRef.current = requestVersion;
       const prompt = resolveDraftSuggestedPromptText(item.prompt, locale);
-      if (
-        onOpenAutomations &&
-        item.actions?.includes(DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS_OFFPEAK)
-      ) {
-        onOpenAutomations("idle");
-        return;
-      }
       if (
         onOpenAutomations &&
         item.actions?.includes(DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS)
