@@ -398,14 +398,11 @@ test('[structural, not runtime] WP-07: local log export chain is preserved', () 
 
 test('[structural, not runtime] WP-08: official product endpoints are absent outside the explicit exemption list', () => {
   // WP-08 收敛后源码树不得再携带官方产品域。允许残留的文件必须在此显式登记豁免，
-  // 并在 PR 描述里挂待办：D-2（builtin.json off-peak 规则）、D-3（productDocs 官方文档外链）。
+  // 并在 PR 描述里挂待办（当前为空：D-2 off-peak 规则与 D-3 productDocs 已于 WP-09 删除）。
   const officialDomainRe =
     /zcode\.z\.ai|open\.bigmodel\.cn|chat\.z\.ai|api\.z\.ai|cdn-zcode\.z\.ai|bigmodel\.cn|(?:^|[^a-z0-9.-])z\.ai(?:\/|[^a-z0-9.-]|$)|zcode\.ai/;
   const exemptFiles = new Set([
-    // D-2：off-peak 两条 providerRules 仍绑定官方域（路线乙过渡态，独立工作包下线 off-peak 链后收敛）。
-    'config/provider/zcode-builtin.json',
-    // D-3：帮助菜单产品文档外链去留未决，先豁免登记。
-    'packages/ui/src/lib/productDocs.ts',
+    // config/ 不在扫描根内；builtin.json 的官方域由下方专项测试守护（off-peak 规则已删）。
   ]);
   const scanRoots = [
     'packages/shared/src', 'packages/services/src', 'packages/server/src',
@@ -440,27 +437,17 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
 
 test('[structural, not runtime] WP-08: builtin release keeps 16 third-party templates, no account plan bindings outside off-peak', () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(root, 'config/provider/zcode-builtin.json'), 'utf8'));
-  assert.equal(cfg.revision, 31);
+  assert.equal(cfg.revision, 32);
   const pcr = cfg.config.providerConfigRules;
   assert.equal(pcr.templateRules.length, 16);
   const templateIds = new Set(pcr.templateRules.map(t => t.templateId));
   for (const official of ['zai-api', 'zai-standard-api', 'bigmodel-api', 'bigmodel-standard-api']) {
     assert.equal(templateIds.has(official), false, official);
   }
-  const providerIds = pcr.providerRules.map(r => r.providerId);
-  // D-2 路线乙：仅保留两条 off-peak idle plan 规则（zhipu-account 无法物化后不可达，属过渡态）。
-  assert.deepEqual(providerIds.sort(), [
-    'account:bigmodel-offpeak-idle-plan',
-    'account:zai-offpeak-idle-plan',
-  ]);
-  for (const r of pcr.providerRules) {
-    assert.match(r.config.access.type, /zhipu-account/, r.providerId);
-  }
+  // D-2 终裁：off-peak 全下线，不再保留任何账号域 providerRule（zhipu-account 规则集为空）。
+  assert.deepEqual(pcr.providerRules, []);
   const mcr = cfg.config.modelConfigRules;
-  const builtinRuleProviderIds = new Set(mcr.builtinProviderModelRules.map(r => r.providerId));
-  for (const id of builtinRuleProviderIds) {
-    assert.match(id, /offpeak-idle-plan$/, id);
-  }
+  assert.deepEqual(mcr.builtinProviderModelRules, []);
   const templateModelTemplateIds = new Set(mcr.templateModelRules.map(r => r.templateId));
   for (const official of ['zai-api', 'zai-standard-api', 'bigmodel-api', 'bigmodel-standard-api']) {
     assert.equal(templateModelTemplateIds.has(official), false, official);
