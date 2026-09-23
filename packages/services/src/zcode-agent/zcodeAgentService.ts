@@ -91,9 +91,7 @@ import {
   type ZCodeTaskMode,
 } from "@zcode/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
-import {
-  mergeAutomationMutationToolDenylist,
-} from "#src/zcode-agent/automationToolPolicy.js";
+import { mergeAutomationMutationToolDenylist } from "#src/zcode-agent/automationToolPolicy.js";
 import { ZCODE_AGENT_RUNTIME_UNAVAILABLE_CODE } from "./zcodeAgent.js";
 import type {
   ZCodeProtocolRequestId,
@@ -194,6 +192,7 @@ import type {
   ZCodeAgentSessionsIndexSubscribeParams,
   ZCodeAgentWorkspaceConfigSubscribeParams,
 } from "./zcodeAgent.js";
+import type { AppUsageStatsParams } from "../app-usage/appUsage.js";
 import {
   backgroundBashOutputResultSchema,
   v4BackgroundBashOutputParamsSchema,
@@ -239,6 +238,7 @@ import {
   v4ConversationResyncResultSchema,
   v4ConversationSubscribeResultSchema,
   v4ConversationUsageResultSchema,
+  v4UsageStatsResultSchema,
   v4SessionsIndexSubscribeResultSchema,
   v4WorkspaceConfigSubscribeResultSchema,
   workspaceConfigTopic,
@@ -316,10 +316,7 @@ type SessionResumeCompatField =
   | "toolAllowlist"
   | "toolDenylist"
   | "dynamicWorkflowEnabled";
-type SessionSendCompatField =
-  | "browserAmbientContext"
-  | "automationId"
-  | "toolDenylist";
+type SessionSendCompatField = "browserAmbientContext" | "automationId" | "toolDenylist";
 
 const SESSION_CREATE_OPTIONAL_COMPAT_FIELDS = new Set<SessionCreateCompatField>([
   "persistence",
@@ -412,7 +409,11 @@ function savedWorkflowScopeParam(params: ZCodeAgentSavedWorkflowTarget): {
 }
 
 function ensurePluginManagementWorkspacePath(): string {
-  const workspacePath = join(getDataBaseDir(), OPENZWORK_DATA_DIR_NAME, PLUGIN_MANAGEMENT_WORKSPACE_DIR_NAME);
+  const workspacePath = join(
+    getDataBaseDir(),
+    OPENZWORK_DATA_DIR_NAME,
+    PLUGIN_MANAGEMENT_WORKSPACE_DIR_NAME,
+  );
   // 插件管理是控制面能力，不能复用可能因真实 workspace 被删而 EPIPE 的会话进程。
   // 这里给它固定一个内部 cwd；真实 workspace 仍通过协议参数传给 CLI 做 workspace-scope 判定。
   mkdirSync(workspacePath, { recursive: true });
@@ -844,6 +845,7 @@ export function createZCodeAgentService(
     commandResolver: options?.commandResolver,
     presentationSurface: options?.presentationSurface,
     requestTimeoutMs: options?.requestTimeoutMs,
+    processLifecycleReporter: options?.processLifecycleReporter,
     resolveSpawnEnv: options?.resolveSpawnEnv,
     waitForSpawnAdmission: options?.waitForSpawnAdmission,
   });
@@ -1454,10 +1456,7 @@ export function createZCodeAgentService(
     emitWorkspaceEvent(workspace, { type: "state.updated", notification });
   }
 
-  function wireClient(
-    client: ZCodeProtocolClient,
-    workspace: ZCodeAgentWorkspaceTarget,
-  ): void {
+  function wireClient(client: ZCodeProtocolClient, workspace: ZCodeAgentWorkspaceTarget): void {
     if (wiredClients.has(client)) {
       return;
     }
@@ -1784,7 +1783,6 @@ export function createZCodeAgentService(
           return;
         }
 
-
         // browser-use discovery：backend 在线状态与 plugin/skill 是否暴露是两层状态。
         // executor 缺省时返回空列表，禁止 facade 伪造 IAB available。
         if (request.method === zcodeProtocolMethods.interactionBrowserList) {
@@ -1935,7 +1933,6 @@ export function createZCodeAgentService(
           })();
           return;
         }
-
 
         if (request.method === zcodeProtocolMethods.automationList) {
           const parsed = zcodeAutomationListParamsSchema.safeParse(request.params ?? {});
@@ -2645,10 +2642,7 @@ export function createZCodeAgentService(
         // 可选字段降级重试，避免 thoughtLevel/persistence 版本差阻塞首发创建。
         const snapshot = await client.request(
           zcodeProtocolMethods.sessionCreate,
-          buildSessionCreateParams(
-            { ...params, dynamicWorkflowEnabled },
-            new Set(compatFields),
-          ),
+          buildSessionCreateParams({ ...params, dynamicWorkflowEnabled }, new Set(compatFields)),
           zcodeSessionStateSnapshotSchema,
           sessionTraceId ? { trace: { traceId: sessionTraceId } } : undefined,
         );
@@ -2747,10 +2741,7 @@ export function createZCodeAgentService(
         });
         const snapshot = await client.request(
           zcodeProtocolMethods.sessionResume,
-          buildSessionResumeParams(
-            { ...params, dynamicWorkflowEnabled },
-            new Set(compatFields),
-          ),
+          buildSessionResumeParams({ ...params, dynamicWorkflowEnabled }, new Set(compatFields)),
           zcodeSessionStateSnapshotSchema,
         );
         const sessionTraceId = rememberSessionTrace(params, snapshot) ?? cachedTraceId;
@@ -2809,6 +2800,19 @@ export function createZCodeAgentService(
         V4_METHODS.conversationUsage,
         { sessionId: params.sessionId },
         v4ConversationUsageResultSchema,
+      );
+    },
+
+    async getAppUsageStats(params: AppUsageStatsParams) {
+      // 只使用 Agent service 自己的管理 process manager，不沿用活动 workspace Agent。
+      const client = await getPluginManagementClient();
+      return client.request(
+        V4_METHODS.usageStats,
+        {
+          range: params.range,
+          ...(params.timeZone ? { timeZone: params.timeZone } : {}),
+        },
+        v4UsageStatsResultSchema,
       );
     },
 

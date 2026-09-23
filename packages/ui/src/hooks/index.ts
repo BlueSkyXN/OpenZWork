@@ -8,6 +8,7 @@
 // 服务上下文
 export { ServiceProvider, useServices } from "./useServices.js";
 export { useBaseWorkspaceServices, useWorkspaceServices } from "./useWorkspaceServices.js";
+export { useAppUsageStats } from "./useAppUsageStats.js";
 
 // 平台操作上下文
 export {

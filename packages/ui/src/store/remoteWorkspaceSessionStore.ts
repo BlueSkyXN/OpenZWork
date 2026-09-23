@@ -13,12 +13,15 @@ export interface RemoteWorkspaceSession {
 
 interface RemoteWorkspaceSessionState {
   baseServices: IServiceAccessor | null;
+  /** Only registered by the Desktop renderer for its trusted local Host port. */
+  localBaseServices: IServiceAccessor | null;
   sessionsById: Record<string, RemoteWorkspaceSession>;
   sessionIdByWorkspacePath: Record<string, string>;
   // 之前只按 workspacePath 建索引，同路径不同远端会互相覆盖。
   // 这里补充 workspaceIdentity -> session 的映射，保证远程会话按“主机+路径”唯一绑定。
   sessionIdByWorkspaceIdentity: Record<string, string>;
   registerBaseServices: (services: IServiceAccessor) => void;
+  registerLocalBaseServices: (services: IServiceAccessor) => void;
   registerSession: (session: RemoteWorkspaceSession) => void;
   unregisterSession: (sessionId: string) => void;
   bindWorkspacePath: (workspacePath: string, sessionId: string) => void;
@@ -29,6 +32,7 @@ interface RemoteWorkspaceSessionState {
 
 export const useRemoteWorkspaceSessionStore = create<RemoteWorkspaceSessionState>()((set) => ({
   baseServices: null,
+  localBaseServices: null,
   sessionsById: {},
   sessionIdByWorkspacePath: {},
   sessionIdByWorkspaceIdentity: {},
@@ -36,6 +40,7 @@ export const useRemoteWorkspaceSessionStore = create<RemoteWorkspaceSessionState
     set({
       baseServices: services,
     }),
+  registerLocalBaseServices: (services) => set({ localBaseServices: services }),
   registerSession: (session) =>
     set((state) => ({
       sessionsById: {
@@ -136,6 +141,11 @@ export function registerBaseWorkspaceServices(services: IServiceAccessor): void 
   useRemoteWorkspaceSessionStore.getState().registerBaseServices(services);
 }
 
+/** Only the trusted Desktop renderer's local ServicePort calls this registration. */
+export function registerLocalBaseWorkspaceServices(services: IServiceAccessor): void {
+  useRemoteWorkspaceSessionStore.getState().registerLocalBaseServices(services);
+}
+
 export function unregisterRemoteWorkspaceSession(sessionId: string): void {
   const session = useRemoteWorkspaceSessionStore.getState().sessionsById[sessionId];
   useRemoteWorkspaceSessionStore.getState().unregisterSession(sessionId);
@@ -198,6 +208,10 @@ export function getRemoteWorkspaceServicesForIdentity(
 
 export function getRegisteredBaseWorkspaceServices(): IServiceAccessor | null {
   return useRemoteWorkspaceSessionStore.getState().baseServices;
+}
+
+export function isLocalBaseWorkspaceServices(services: IServiceAccessor): boolean {
+  return useRemoteWorkspaceSessionStore.getState().localBaseServices === services;
 }
 
 export function resolveRegisteredWorkspaceServices(params: {

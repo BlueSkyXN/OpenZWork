@@ -4,6 +4,8 @@ import type { Event, IDisposable } from "@zcode/rpc";
 import { ServiceChannels } from "@zcode/shared";
 import type { ZCodeTaskTokenUsageResult } from "@zcode/shared";
 import type { ZCodeAutomation, ZCodeAutomationRun } from "@zcode/shared";
+import type { AppUsageSnapshot } from "@zcode/shared";
+import type { AppUsageStatsParams } from "../app-usage/appUsage.js";
 import type {
   ZCodeStorageStartupState,
   ZCodeDeliveryKind,
@@ -574,6 +576,7 @@ export interface IZCodeAgentService {
     params: ZCodeAgentListSessionSubagentsParams,
   ): Promise<ZCodeSessionSubagentsResult>;
   getTaskTokenUsage(params: ZCodeAgentTaskTokenUsageParams): Promise<ZCodeTaskTokenUsageResult>;
+  getAppUsageStats(params: AppUsageStatsParams): Promise<AppUsageSnapshot>;
   readSession(params: ZCodeAgentReadSessionParams): Promise<ZCodeSessionStateSnapshot>;
   readSessionMessages(
     params: ZCodeAgentReadSessionMessagesParams,

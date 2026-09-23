@@ -75,9 +75,7 @@ export { createGitCheckpointService } from "./git/gitCheckpointService.js";
 export { createSystemService } from "./system/systemService.js";
 export { listSSHConfigAliasesFromLocalConfig } from "./system/sshConfigAlias.js";
 export { createTerminalService } from "./terminal/terminalService.js";
-export {
-  createSettingService,
-} from "./setting/settingService.js";
+export { createSettingService } from "./setting/settingService.js";
 export { createCredentialService } from "./credential/credentialService.js";
 export { createBroadcastService } from "./broadcast/broadcastService.js";
 export { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
@@ -240,6 +238,8 @@ import { createObservableSettingService } from "./setting/observableSettingServi
 import { createCredentialService } from "./credential/credentialService.js";
 import { createBroadcastService } from "./broadcast/broadcastService.js";
 import { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
+import { IAppUsageService } from "./app-usage/appUsage.js";
+import { createAppUsageService } from "./app-usage/appUsageService.js";
 import type { ZCodeAgentCommandResolver } from "./zcode-agent/zcodeAgentProcessManager.js";
 import { resolveZCodeAgentPresentationSurface } from "./zcode-agent/zcodeAgentPresentationSurface.js";
 import { createZCodeTaskServiceAdapter } from "./zcode-agent/zcodeTaskServiceAdapter.js";
@@ -294,7 +294,18 @@ import {
 } from "./runtime-tools/agentProxyEnv.js";
 import { ensureAppCaCert } from "./runtime-tools/appCaCert.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
-import { DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY, ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV, formatLogPrefix, resolveRuntimeZCodeEndpointOrigin, type BrowserBackendDescriptor, type BrowserClientMode, type BrowserCommand, type ServiceAuthorityMode, type ZCodeAutomation, type ZCodeAutomationRun } from "@zcode/shared";
+import {
+  DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
+  ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  formatLogPrefix,
+  resolveRuntimeZCodeEndpointOrigin,
+  type BrowserBackendDescriptor,
+  type BrowserClientMode,
+  type BrowserCommand,
+  type ServiceAuthorityMode,
+  type ZCodeAutomation,
+  type ZCodeAutomationRun,
+} from "@zcode/shared";
 
 interface ServiceWithDisposeAll {
   disposeAll: () => void;
@@ -697,6 +708,14 @@ export function createLocalServices(options: {
     .register(IBroadcastService, broadcastService)
     .register(IZCodeTaskService, zcodeTaskService)
     .register(IZCodeAgentService, zcodeAgentService)
+    .register(
+      IAppUsageService,
+      createAppUsageService({
+        zcodeAgentService,
+        runtimeSurface: options.agentRuntimeContext?.runtimeSurface,
+        serviceAuthorityMode: options.serviceAuthorityMode,
+      }),
+    )
     .register(IZCodeSessionService, zcodeSessionService)
     .register(IFileWatcherService, createFileWatcherService())
     .register(ISkillsService, skillsService)

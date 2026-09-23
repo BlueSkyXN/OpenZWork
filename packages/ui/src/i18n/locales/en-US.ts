@@ -2812,6 +2812,16 @@ const enUS: Record<string, string> = {
   "settings.usage.healthProMaxDecode": "Max&Pro peak average decode speed",
   "settings.usage.healthLiteDecode": "Lite peak average decode speed",
   "settings.usage.refresh": "Refresh",
+  "settings.usage.retry": "Retry",
+  "settings.usage.localUnavailable":
+    "A confirmed local Desktop Host is unavailable in this environment, so local usage statistics cannot be read.",
+  "settings.usage.localOnlyHint": "Queried on this device only; never uploaded.",
+  "settings.usage.errorRate": "Error rate",
+  "settings.usage.turns": "turns",
+  "settings.usage.modelErrorRate": "Model error rate",
+  "settings.usage.avgTimeToFirstToken": "Average time to first token",
+  "settings.usage.avgTurnDuration": "Average turn duration",
+  "settings.usage.peakDayTokens": "Peak day: {tokens} tokens",
   "settings.usage.loadingTitle": "Computing usage",
   "settings.usage.appUsageLoadingDescription":
     "Reading local app session history, so it can take a moment.",
@@ -4947,7 +4957,6 @@ const enUS: Record<string, string> = {
   "chat.error.sendFailed": "Failed to send. Try again later.",
   "chat.error.modelSettings": "Model settings",
   "chat.error.setModels": "Set",
-
 
   // Permissions
   "chat.permission.title": "Permission required",
