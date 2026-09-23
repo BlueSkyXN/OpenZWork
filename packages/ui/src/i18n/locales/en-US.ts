@@ -1453,6 +1453,8 @@ const enUS: Record<string, string> = {
   "settings.memory.workspaceMemory": "Workspace Memory",
   "settings.memoryDescription":
     "Save and reuse long-term context in workspaces. Applies to new sessions and may increase model requests and token costs.",
+  "settings.memory.migratedHint":
+    "When enabled, workspace memories saved under ~/.openzwork/cli/memories on this device will be read. Data from the previous version (~/.zcode) is migrated automatically on app startup.",
   "settings.memory.viewer.disabled": "Enable Workspace Memory to view saved memories.",
   "settings.memory.viewer.localOnly":
     "Memory details are available only in the local desktop app. Open Memory settings there to view them.",

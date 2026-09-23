@@ -1389,6 +1389,8 @@ const zhCN: Record<string, string> = {
   "settings.memory.workspaceMemory": "工作区记忆",
   "settings.memoryDescription":
     "在工作区中保存并复用长期上下文，新会话生效。开启后可能增加模型调用和 Token 成本。",
+  "settings.memory.migratedHint":
+    "开启后将读取本机 ~/.openzwork/cli/memories 下保存的工作区记忆；旧版本（~/.zcode）的数据会在应用启动时自动迁移。",
   "settings.memory.viewer.localOnly":
     "记忆详情仅支持在本地桌面端查看，请前往本地桌面端的“记忆”设置。",
   "settings.memory.viewer.title": "已保存的工作区记忆",
