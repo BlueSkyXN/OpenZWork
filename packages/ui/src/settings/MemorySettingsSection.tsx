@@ -8,6 +8,7 @@ import {
   type MemoryViewerLoadingState,
 } from "@/settings/MemorySettingsViewer.js";
 import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
+import { getMemoryMigrationHint } from "@/settings/memoryMigrationHint.js";
 
 type MemoryCatalogService = Pick<IMemoryService, "listProjectMemories">;
 
@@ -55,7 +56,7 @@ export function MemorySettingsSection({
   projectMemoryViewerAvailable: boolean;
   workspaceDisplayNames?: readonly string[];
 }) {
-  const { intl } = useZCodeIntl();
+  const { intl, locale } = useZCodeIntl();
   const catalogRequestIdRef = useRef(0);
   const [catalogState, setCatalogState] = useState<MemoryViewerLoadingState>("idle");
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -174,7 +175,15 @@ export function MemorySettingsSection({
         <div className="rounded-xl border border-dashed border-border bg-transparent px-4 py-8 text-center text-ui-base text-foreground-subtle">
           {intl.formatMessage({ id: "settings.memory.viewer.localOnly" })}
         </div>
-      ) : !memoryEnabled ? null : (
+      ) : !memoryEnabled ? (
+        // WP-E1a：开关关闭态渲染中性引导文案（spec §2.3）。静态说明、无 IPC、不读迁移标记，
+        // 把「迁移是否发生」排除在 UI 状态域之外；动态空态（如检测到 N 条记忆）归 WP-E6。
+        <SettingsGroupCard>
+          <p className="px-4 py-3 text-ui-base text-foreground-subtle">
+            {getMemoryMigrationHint(locale)}
+          </p>
+        </SettingsGroupCard>
+      ) : (
         <MemorySettingsViewer
           catalogError={catalogError}
           catalogState={catalogState}

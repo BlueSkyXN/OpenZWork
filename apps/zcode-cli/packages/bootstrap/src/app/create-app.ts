@@ -35,6 +35,7 @@ import {
   type MessageId,
 } from "@zcode/contracts";
 import { isRemoteWorkspaceIdentity, resolveZCodeRuntimeEnv } from "@zcode/shared";
+import { getLegacyProjectMemoriesRoot, migrateDefaultCliStorageMemories } from "./memory-migration-bootstrap.js";
 import {
   ZCODE_ATTACHMENT_FAULT_CODES,
   ZCodeAttachmentFaultError,
@@ -197,6 +198,13 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
   try {
     const storageRoot = resolvePath(configResult.config.storage.dir);
     const cliStorageRoot = getCliStorageRoot(storageRoot);
+    // WP-E1a：在 profiles、session 与 recall 建立前经共享 CLI 入口尝试迁移；custom storage
+    // 不得触碰默认根，迁移错误只告警、不中断启动（规则见 docs/spec/memory-migration.md）。
+    await migrateDefaultCliStorageMemories({
+      storageRoot,
+      sourceMemoriesRoot: getLegacyProjectMemoriesRoot(),
+      logger: logger.child({ module: "memoryMigration" }),
+    });
     const modelIoDir = getModelIoDir(
       cliStorageRoot,
       resolveZCodeRuntimeEnv(options.env ?? process.env) === "development",
