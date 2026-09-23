@@ -1,0 +1,65 @@
+name: Installers
+
+# M5：CI 产出 mac-arm64 / win-amd64 双平台安装包（unsigned artifact）。
+# push 触发覆盖 wp* 分支便于在 feature 分支上先行验证打包链；正式发布后续再收敛触发面。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "wp**"]
+
+concurrency:
+  group: installers-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer:
+    name: installer (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos-arm64
+            bundle-os: mac
+            bundle-arch: arm64
+          - os: windows-latest
+            platform: windows-amd64
+            bundle-os: win
+            bundle-arch: x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # 与 CI checks 不同：打包需要完整安装（Electron 二进制下载、node-pty 原生重建）。
+      - name: Install dependencies (frozen lockfile, with scripts)
+        run: pnpm install --frozen-lockfile
+
+      # bundle = prepare:runtime-assets + 生产构建 + electron-builder + 运行时依赖校验 + 体积审计。
+      # ZCODE_SKIP_REMOTE_ASSETS=1：桌面安装包不依赖跨平台 remote 预编译产物（上游 Windows job 同款开关）。
+      - name: Package installer (prepare + build + electron-builder)
+        run: pnpm --dir packages/desktop bundle --os=${{ matrix.bundle-os }} --arch=${{ matrix.bundle-arch }}
+        env:
+          ZCODE_SKIP_REMOTE_ASSETS: "1"
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: openzwork-installer-${{ matrix.platform }}
+          path: |
+            packages/desktop/dist/*.dmg
+            packages/desktop/dist/*.zip
+            packages/desktop/dist/*.exe
+            packages/desktop/dist/**/*.dmg
+            packages/desktop/dist/**/*.zip
+            packages/desktop/dist/**/*.exe
+          if-no-files-found: error
