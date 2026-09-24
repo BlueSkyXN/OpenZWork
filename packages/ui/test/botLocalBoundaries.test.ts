@@ -3,10 +3,13 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("new bots start disabled and channel registration runs only from explicit UI actions", async () => {
-  const source = await readFile(new URL("../src/BotsDialog.tsx", import.meta.url), "utf8");
-  const providerCard = await readFile(
+  // Windows CI 的 git autocrlf 检出为 CRLF；本测试对源码做字面 "\n" 定位，
+  // 先按仓库既有惯例（skillsService frontmatter 解析同款）归一为 LF 再断言。
+  const readSource = async (url: URL): Promise<string> =>
+    (await readFile(url, "utf8")).replace(/\r\n|\r/g, "\n");
+  const source = await readSource(new URL("../src/BotsDialog.tsx", import.meta.url));
+  const providerCard = await readSource(
     new URL("../src/BotsDialog/ProviderSettingsCard.tsx", import.meta.url),
-    "utf8",
   );
   assert.match(source, /provider:\s*params\.provider,[\s\S]{0,100}enabled:\s*false/u);
   assert.match(
