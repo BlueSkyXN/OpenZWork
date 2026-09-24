@@ -84,9 +84,11 @@ async function createWorkspaceWithSkills(names: string[]): Promise<string> {
   return workspacePath;
 }
 
-/** spec §2.2：持久化 key 是 SKILL.md 的 realpath 形态绝对路径。 */
+/** spec §2.2：持久化 key 是 SKILL.md 的 realpath 形态绝对路径，且经
+ * normalizeSkillConfigPath（skillsService.ts）把 "\" 归一为 "/"——Windows 上
+ * realpath/join 返回反斜杠形态，期望键必须做同样的归一才能与落盘键可比。 */
 async function realSkillKey(skillMd: string): Promise<string> {
-  return realpath(skillMd);
+  return (await realpath(skillMd)).replaceAll("\\", "/");
 }
 
 interface AgentSkillRoot {
@@ -259,7 +261,7 @@ test("A3：symlink 双路径——UI 落 realpath 目标，agent 从链接路径
 
   await service.setEnabled({ workspacePath, skillId: foo.id, enabled: false });
   const config = await readCliConfigJson();
-  assert.deepEqual(config.skills, { [await realpath(targetSkillMd)]: { enable: false } });
+  assert.deepEqual(config.skills, { [await realSkillKey(targetSkillMd)]: { enable: false } });
 
   // agent 侧从链接路径根扫描：构造期 realpath 展开 + 比对期双比对命中目标路径。
   const roots = [
@@ -306,9 +308,10 @@ test("A5：并发开关经写队列串行化，最终落盘与语义一致且文
   const workspacePath = await createWorkspaceWithSkills(["alpha", "beta", "gamma"]);
   const listed = await service.list({ workspacePath });
   const idByName = new Map(listed.skills.map((skill) => [skill.name, skill.id]));
+  // 期望键用 realSkillKey（realpath + "/" 归一），与落盘键形态一致。
   const keyByName = new Map(
     await Promise.all(
-      listed.skills.map(async (skill) => [skill.name, await realpath(skill.path)] as const),
+      listed.skills.map(async (skill) => [skill.name, await realSkillKey(skill.path)] as const),
     ),
   );
 

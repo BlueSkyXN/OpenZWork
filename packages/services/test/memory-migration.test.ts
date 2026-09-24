@@ -3,6 +3,7 @@ import { access, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } fro
 import { spawn } from "node:child_process";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { setDataBaseDir } from "../src/paths.js";
 import { runDesktopMemoryMigration } from "../../../packages/desktop/src/main/desktopMemoryMigration.js";
@@ -330,7 +331,11 @@ test("真实子进程 kill + 重启：清理未提交 tmp、补齐剩余文件�
   const sourceRoot = join(caseRoot, ".zcode", "cli", "memories");
   const targetStorageRoot = join(caseRoot, ".openzwork");
   await writeLegacySourceTree(sourceRoot);
-  const migrationModule = new URL("../../shared/src/node/memoryMigration.ts", import.meta.url).pathname;
+  // Windows 上 URL.pathname 是 "/D:/..."（前导斜杠+盘符），再经 pathToFileURL 会相对
+  // cwd 解析成 D:/D:/... 导致子进程 ERR_MODULE_NOT_FOUND；必须用 fileURLToPath 取原生路径。
+  const migrationModule = fileURLToPath(
+    new URL("../../shared/src/node/memoryMigration.ts", import.meta.url),
+  );
   const workerArgs = ["--import", "tsx", "--input-type=module", "-e", `
     import { pathToFileURL } from "node:url";
     import { open } from "node:fs/promises";
@@ -523,7 +528,10 @@ test("双 worker 并发 helper 首迁：目标无撕裂且新版竞争写入不�
   const sourceRoot = join(caseRoot, ".zcode", "cli", "memories");
   const targetStorageRoot = join(caseRoot, ".openzwork");
   await writeLegacySourceTree(sourceRoot);
-  const migrationModule = new URL("../../shared/src/node/memoryMigration.ts", import.meta.url).pathname;
+  // 同上：Windows 需 fileURLToPath，pathname 形态会被 pathToFileURL 二次拼接盘符。
+  const migrationModule = fileURLToPath(
+    new URL("../../shared/src/node/memoryMigration.ts", import.meta.url),
+  );
   const sourceData = JSON.stringify({ sourceMemoriesRoot: sourceRoot, targetStorageRoot });
   const workerArgs = ["--import", "tsx", "--input-type=module", "-e", `
     import { pathToFileURL } from "node:url";
