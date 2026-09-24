@@ -58,9 +58,8 @@ interface PendingProviderProvisioningExecution {
   readonly reject: (error: Error) => void;
 }
 
-// 恢复上游 v3.14.3 的远端目标比较工具：bots attachment（hasRemoteWorkspaceSessionForTarget /
-// createBotRemoteWorkspaceRuntimePort）按 target 精确匹配路由时依赖。buildRemoteTargetTelemetryKey
-// 仅被 ARMS 远端用量遥测链消费，属我方净化删除面，不恢复。
+// 恢复上游 v3.14.3 的远端目标比较工具，供 bots attachment 按 target 精确匹配路由。
+// 用量统计 key helper 不随净化后的远端能力恢复。
 function normalizeServerRemoteUrlForComparison(url: string): string {
   try {
     const parsed = new URL(url.trim());
@@ -903,8 +902,7 @@ export function createRemoteWorkspaceSessionManager(options: {
     bindRemoteWorkspaceSessionContext,
     confirmRendererAttachmentReady,
     reattachRemoteWorkspaceSessionsForWindow,
-    // 吸收上游 v3.14.3：bots attachment 按 target 查会话/取 runtime port；
-    // getRemoteConnectionStats 仅服务 ARMS 远端用量遥测链，属我方净化删除面，不导出。
+    // Bots attachment 按 target 查询远程 session，并复用现有 attachment runtime port。
     hasRemoteWorkspaceSessionForTarget,
     createBotRemoteWorkspaceRuntimePort,
     disposeRemoteWorkspaceSession,

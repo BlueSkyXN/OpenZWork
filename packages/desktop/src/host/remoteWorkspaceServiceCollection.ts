@@ -38,8 +38,7 @@ import {
   createHostApiNetworkTransport,
   registerHostApiNetworkTransportForDispose,
   createSettingsSyncService,
-  // 仅吸收上游 v3.14.3 的 bots 服务工厂；usageStats/mediaPreview/codingPlanSubscription/
-  // clientScenes 在远端集合内无消费点，且 codingPlan 套餐链属我方净化删除面，不引入。
+  // 远端服务集合仅吸收 bots 工厂，其他净化后的服务集合不变。
   createBotsService,
   createServiceLogger,
   createSubagentsService,

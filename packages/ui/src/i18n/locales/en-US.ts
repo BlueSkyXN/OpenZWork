@@ -420,6 +420,8 @@ const enUS: Record<string, string> = {
   "bots.channel.discord": "Discord",
   "bots.channel.wecom": "WeCom",
   "bots.channel.webhook": "Webhook",
+  "bots.regionTag.mainland": "Mainland China",
+  "bots.regionTag.international": "International",
   "bots.newBot.title": "New bot",
   "bots.newBot.chooseChannel": "Choose channel",
   "bots.newBot.description":

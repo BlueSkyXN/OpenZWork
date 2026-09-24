@@ -87,7 +87,7 @@ export async function startPromptTurn(
   if (record.persistence === "deferred") record.persistence = "immediate";
 
   const previousAutomationId = record.activeAutomationId;
-  // 吸收上游 v3.14.3：Bot 回推地址随 turn 保存/还原；offPeakTaskId 属我方 WP-09 已删链，不再引入。
+  // 吸收上游 v3.14.3：Bot 回推地址随 turn 保存/还原；WP-09 已删能力不再引入。
   const previousBotDeliveryTarget = record.activeBotDeliveryTarget;
   const activeAutomationId = resolveTurnAutomationId(params);
   const turnToolDisallowlist = buildTurnToolDisallowlist(params, activeAutomationId);

@@ -1681,7 +1681,7 @@ export const zcodeSessionSendParamsSchema = z
     expectedProviderRevision: nonEmptyString.optional(),
     automationId: nonEmptyString.optional(),
     // 吸收上游 v3.14.3：bots 回推目标（供 CronCreate 在当前 turn 持久化回推地址）。
-    // offPeakTaskId/offPeakRunType 属我方 WP-09 已删除的闲时任务链，不再引入。
+    // WP-09 已删除的闲时任务能力不随 Bot 回推目标恢复。
     botDeliveryTarget: zcodeAutomationBotDeliveryTargetSchema.optional(),
     toolDenylist: z.array(nonEmptyString).optional(),
   })

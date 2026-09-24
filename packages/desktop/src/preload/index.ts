@@ -20,10 +20,7 @@ function parseDeviceIdFromArgs(): string {
 // 在 contextBridge 建立之前就暴露同步值，让 renderer 在 React 渲染前就能读到
 contextBridge.exposeInMainWorld("__ZCODE_DEVICE_ID__", parseDeviceIdFromArgs());
 
-// 我方既有类型全量保留；吸收上游 v3.14.3 的 BotRemoteWorkspaceReconnectedEvent（bots 回推链）。
-// OAuthStateRegistration（OAuth 登录）、Telemetry*/RendererActionTrace*/RendererHeapSample（遥测）、
-// PostUpdateReleaseNotes/UpdateCheckResult/UpdateState（更新检查）、OpenCuaPermissionOnboarding（CUA）、
-// ConfigureFinalArmsCustomEvent*（ARMS）均属我方净化删除面，不引入。
+// 此处只列实际保留的类型；避免结构测试把说明文字中的历史标识误判为活接口。
 import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, RemoteSessionClosedEvent, BotRemoteWorkspaceReconnectedEvent, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest } from "@zcode/shared";
 import {
   InternalChannels,

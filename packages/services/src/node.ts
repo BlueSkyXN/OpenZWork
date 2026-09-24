@@ -694,8 +694,7 @@ export function createLocalServices(options: {
     settingService,
   });
   // 吸收上游 v3.14.3 的 bots 远端工作区桥（parentPort 本地 MessageChannel，不依赖官方云）。
-  // oauthService/zcodeJwtLogout（OAuth 登录链）与 offPeak 凭据解析（闲时任务链 + coding-plan
-  // 套餐）属我方净化删除面，不再装配。
+  // 官方 OAuth 登录链与 WP-09 已删除的闲时任务凭据能力不再装配。
   const botRemoteWorkspaceService = createBotRemoteWorkspaceService({
     parentPort: options?.parentPort,
     settingService,

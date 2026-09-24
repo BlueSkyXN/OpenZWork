@@ -317,7 +317,7 @@ type SessionResumeCompatField =
   | "toolAllowlist"
   | "toolDenylist"
   | "dynamicWorkflowEnabled";
-// 吸收上游 v3.14.3 的 botDeliveryTarget 兼容降级；offPeakTaskId/offPeakRunType 属我方 WP-09 已删链。
+// 吸收上游 v3.14.3 的 botDeliveryTarget 兼容降级；WP-09 已删除的能力不恢复。
 type SessionSendCompatField =
   | "browserAmbientContext"
   | "automationId"

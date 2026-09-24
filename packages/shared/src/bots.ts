@@ -31,6 +31,7 @@ export const botProviders = [
   "wecom",
 ] as const;
 
+// Bot 领域合同只定义第三方渠道与本地消息状态，不携带 ZCode 官方账号、套餐或云端端点。
 export type BotProvider = (typeof botProviders)[number];
 export type FeishuBotProvider = Extract<BotProvider, "feishu" | "lark">;
 

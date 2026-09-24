@@ -2378,7 +2378,7 @@ async function runPromptTurnInBackground(
   let mutationReason = "prompt_completed";
   const previousAutomationId = record.activeAutomationId;
   // 吸收上游 v3.14.3：跨 turn 保存 Bot 回推地址，finally 恢复，防止普通 turn 继承上一轮 Bot 会话。
-  // offPeakTaskId 相关变量属我方 WP-09 已删除的闲时任务链，不再引入。
+  // WP-09 已删除的闲时任务能力不随 Bot 回推地址恢复。
   const previousBotDeliveryTarget = record.activeBotDeliveryTarget;
   const activeAutomationId = resolvePromptTurnAutomationId(params);
   const turnToolDisallowlist = buildPromptTurnToolDisallowlist(params, activeAutomationId);

@@ -390,6 +390,8 @@ const zhCN: Record<string, string> = {
   "bots.channel.discord": "Discord",
   "bots.channel.wecom": "企业微信",
   "bots.channel.webhook": "Webhook",
+  "bots.regionTag.mainland": "中国大陆",
+  "bots.regionTag.international": "国际",
   "bots.newBot.title": "新建机器人",
   "bots.newBot.chooseChannel": "选择渠道",
   "bots.newBot.description":
