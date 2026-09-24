@@ -100,6 +100,8 @@ export {
   setZCodeStdioTapDevEnabled,
 } from "./zcode-agent/zcodeStdioTapDevConfig.js";
 export type { ZCodeStdioTapDevState } from "@zcode/shared";
+// 吸收上游 v3.14.3 的 bots 回推链导出；CUA helper 安装器导出属我方 D-14 已删链，不再引入。
+export { createBotsService } from "./bots/botsService.js";
 export { createFileWatcherService } from "./fileWatcher/fileWatcherService.js";
 export { ensureDeviceMid } from "./device/deviceMid.js";
 export type { EnsureDeviceMidOptions } from "./device/deviceMid.js";
@@ -211,6 +213,8 @@ import { IBroadcastService } from "./broadcast/broadcast.js";
 import { IZCodeTaskService } from "./session/zcodeTaskService.js";
 import { IZCodeAgentService } from "./zcode-agent/zcodeAgent.js";
 import { IZCodeSessionService } from "./zcode-session/zcodeSession.js";
+// conversation-share（分享链）属我方净化删除面，不引入；仅吸收上游 v3.14.3 的 bots 服务合约。
+import { IBotsService } from "./bots/bots.js";
 import { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
 import { ISkillsService } from "./skills/skills.js";
 import { ISkillSyncService } from "./skill-sync/skillSync.js";
@@ -246,6 +250,8 @@ import { createZCodeTaskServiceAdapter } from "./zcode-agent/zcodeTaskServiceAda
 import { createZCodeSessionService } from "./zcode-session/zcodeSessionService.js";
 import { createZCodeTaskIndexSyncer } from "./zcode-agent/zcodeTaskIndexSyncer.js";
 import { TaskIndexRepo } from "./session/taskIndexRepo.js";
+import { createBotsService } from "./bots/botsService.js";
+import { createBotRemoteWorkspaceService } from "./bots/botRemoteWorkspaceBridge.js";
 import type { SessionMessageSendRequested } from "#src/session/sessionMailbox.js";
 import { createFileWatcherService } from "./fileWatcher/fileWatcherService.js";
 import { readLegacyZCodeConfigProviders } from "./model-provider/legacyZCodeConfigProviderReader.js";
@@ -492,9 +498,13 @@ export function createLocalServices(options: {
       };
     });
   const systemService = createSystemService();
-  // onboarding 完成记录：无账号链，userId 恒 null。
+  // onboarding 资格与任务列表共用同一份全局 tasks-index；repo 懒加载数据库，提前构造不会
+  // 增加启动 I/O，后续 session syncer 也继续复用这一实例。（吸收上游 v3.14.3）
+  const taskIndexRepo = new TaskIndexRepo();
+  // onboarding 完成记录：无账号链，userId 恒 null（净化不变量：不引入官方登录态）。
   const onboardingRecordService = createOnboardingRecordService({
     loadUserId: async () => null,
+    hasExistingLocalTask: async () => (await taskIndexRepo.listTaskMetas({})).length > 0,
   });
 
   const providerConfigLog = createServiceLogger("provider-config");
@@ -644,7 +654,6 @@ export function createLocalServices(options: {
   // mapServiceEvent 路径，导致 task_complete 永远不会写回 sqlite，侧边栏 spinner 不停。
   // 在 services 层装配一个共享的 taskIndexRepo + syncer，session 任意入口都会唤醒
   // shadow 订阅，把 runtime 终态收敛进 sqlite。
-  const taskIndexRepo = new TaskIndexRepo();
   const zcodeTaskIndexSyncer = createZCodeTaskIndexSyncer({
     agentService: zcodeAgentService,
     taskIndexRepo,
@@ -684,6 +693,14 @@ export function createLocalServices(options: {
     taskIndexSyncer: zcodeTaskIndexSyncer,
     settingService,
   });
+  // 吸收上游 v3.14.3 的 bots 远端工作区桥（parentPort 本地 MessageChannel，不依赖官方云）。
+  // oauthService/zcodeJwtLogout（OAuth 登录链）与 offPeak 凭据解析（闲时任务链 + coding-plan
+  // 套餐）属我方净化删除面，不再装配。
+  const botRemoteWorkspaceService = createBotRemoteWorkspaceService({
+    parentPort: options?.parentPort,
+    settingService,
+    credentialService,
+  });
   const fileService = createFileService({
     workspaceFileSearchFilter: options?.workspaceFileSearchFilter,
   });
@@ -708,6 +725,23 @@ export function createLocalServices(options: {
     .register(IBroadcastService, broadcastService)
     .register(IZCodeTaskService, zcodeTaskService)
     .register(IZCodeAgentService, zcodeAgentService)
+    // 吸收上游 v3.14.3 的 bots 服务装配（IM 通道回推，本地 Automations 扩展）；
+    // CUA 两服务（D-14）、分享服务与 OAuth 服务属我方净化删除面；IZCodeSessionService/
+    // IFileWatcherService 沿用下方我方既有注册，避免重复注册。
+    .register(
+      IBotsService,
+      createBotsService({
+        credentialService,
+        zcodeTaskService,
+        broadcastService,
+        settingService,
+        modelSelectionService: providerRuntime.modelSelection,
+        remoteWorkspaceService: botRemoteWorkspaceService,
+        // 远端与本地 Bot 都读取所属 Environment 的 Model Selection View。
+        // 远端启动期不再轮询旧 Preset，避免重新制造一套模型候选事实。
+        runStartupBackgroundTasks: !isDesktopAttachedRemote,
+      }),
+    )
     .register(
       IAppUsageService,
       createAppUsageService({
@@ -790,6 +824,7 @@ export function disposeServiceResources(services: ServiceCollection): void {
     services.getOptional(IZCodeTaskService),
     services.getOptional(IZCodeAgentService),
     services.getOptional(IZCodeSessionService),
+    services.getOptional(IBotsService),
     services.getOptional(IFileWatcherService),
   ].filter((service) => service !== undefined);
 
@@ -817,6 +852,7 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
     services.getOptional(IZCodeTaskService),
     services.getOptional(IZCodeAgentService),
     services.getOptional(IZCodeSessionService),
+    services.getOptional(IBotsService),
     services.getOptional(IFileWatcherService),
   ].filter((service) => service !== undefined);
 

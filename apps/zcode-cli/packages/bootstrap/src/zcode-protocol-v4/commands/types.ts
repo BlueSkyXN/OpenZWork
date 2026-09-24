@@ -12,6 +12,7 @@ import type {
   StableForkGoalBoundaryMetadata,
   TraceContext,
 } from "@zcode/contracts";
+import type { ZCodeAutomationBotDeliveryTarget } from "@zcode/shared";
 import type {
   CommandAck,
   CommandEnvelope,
@@ -67,6 +68,8 @@ export interface V4SessionRecordView {
   residencyFinalizationCount?: number;
   /** 当前正在执行的 automation 派发 turn；只在 turn 运行期间存在。 */
   activeAutomationId?: string;
+  /** 当前 Bot 入站 turn 的稳定回推地址；turn 结束后必须恢复。（吸收上游 v3.14.3，bots 回推链） */
+  activeBotDeliveryTarget?: ZCodeAutomationBotDeliveryTarget;
   /** 恢复失败告警：存在时拒绝新 turn（历史损坏不能静默续写）。 */
   restoreWarning?: { message: string; type: string };
   taskType?: SessionTaskType;

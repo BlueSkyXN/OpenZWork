@@ -37,8 +37,28 @@ import type {
   WorkflowEscalatePort,
   WorkflowSubmitPort,
 } from "@zcode/contracts";
-import type { JsonSchema, ModelToolSideEffectScope, PermissionBrokerReasonSource, PermissionRuleBehavior, PermissionRuleValue, PermissionUpdate, ProviderNativeToolSpec, ToolExecutionMode, ToolCancellationPolicy, ToolContractDeclaration, ToolResultBudgetStrategy, ToolResultDisplayPayload, ToolTimeoutPolicy, ToolExecutionTelemetry } from "@zcode/contracts";
-import type { PersistedReadFileStateMetadata } from "./read-file-state-metadata.js";
+// 不引入上游 PermissionCapabilityGroup（仅服务已删除的 CUA 能力）及 ToolExecutionSpanWriter
+//（活工具遥测写入接口）；保留本地 read-file 状态类型扩展和历史聚合性能事实类型。
+import type {
+  JsonSchema,
+  ModelToolSideEffectScope,
+  PermissionBrokerReasonSource,
+  PermissionRuleBehavior,
+  PermissionRuleValue,
+  PermissionUpdate,
+  ProviderNativeToolSpec,
+  ToolExecutionMode,
+  ToolCancellationPolicy,
+  ToolContractDeclaration,
+  ToolResultBudgetStrategy,
+  ToolResultDisplayPayload,
+  ToolTimeoutPolicy,
+  ToolExecutionTelemetry,
+} from "@zcode/contracts";
+import type {
+  PersistedReadFileStateMetadata,
+  PersistedReadFileStateTool,
+} from "./read-file-state-metadata.js";
 import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 
 // -----------------------------------------------
@@ -184,7 +204,7 @@ export interface ReadFileStateEntry {
   limit?: number;
   isPartialView: boolean;
   readAt: Date;
-  sourceTool?: "Read" | "Write" | "Edit";
+  sourceTool?: PersistedReadFileStateTool;
   revisionId?: string;
   mtimeMs?: number;
   sizeBytes?: number;
@@ -230,6 +250,12 @@ export interface ToolInputResolutionContext {
    */
   modelCatalogPort?: ModelCatalogPort;
   sessionId?: string;
+  /**
+   * 「这个会话此刻加载着某个技能吗」的探针（handlers/workflow-skill-gate.ts）。由 runtime 用
+   * provider 可见历史回答（agent/loaded-skills.ts），所以 compaction 之后答案随历史一起变回
+   * 否。缺席 = 本会话没有 Skill 工具或调用方不参与，门不生效。
+   */
+  hasLoadedSkill?: (skillName: string) => boolean;
 }
 
 export type ToolInputResolutionResult = { result: true; input: unknown } | ToolHandlerFailure;

@@ -20,7 +20,11 @@ function parseDeviceIdFromArgs(): string {
 // 在 contextBridge 建立之前就暴露同步值，让 renderer 在 React 渲染前就能读到
 contextBridge.exposeInMainWorld("__ZCODE_DEVICE_ID__", parseDeviceIdFromArgs());
 
-import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, RemoteSessionClosedEvent, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest } from "@zcode/shared";
+// 我方既有类型全量保留；吸收上游 v3.14.3 的 BotRemoteWorkspaceReconnectedEvent（bots 回推链）。
+// OAuthStateRegistration（OAuth 登录）、Telemetry*/RendererActionTrace*/RendererHeapSample（遥测）、
+// PostUpdateReleaseNotes/UpdateCheckResult/UpdateState（更新检查）、OpenCuaPermissionOnboarding（CUA）、
+// ConfigureFinalArmsCustomEvent*（ARMS）均属我方净化删除面，不引入。
+import type { AppSettings, ApplicationIconRequest, BrowserViewOperationPayload, BrowserGuestAttachResult, BrowserViewScreenshotSurfacePreparePayload, BrowserViewScreenshotSurfaceReadyPayload, BrowserViewScreenshotSurfaceReleasePayload, BrowserViewViewportChangedPayload, BrowserViewCloseTabNotification, BrowserViewCloseTabRequest, BrowserViewResidencyReportPayload, BrowserViewResidencyTransitionPayload, BrowserViewRestoredTabShell, BrowserViewRestoreTabsRequest, BrowserViewportSize, DesktopZoomState, DesktopWindowChromeState, DesktopCommandId, DesktopTitleBarTheme, EmbeddedBrowserOpenUrlRequest, Locale, OpenInEditorOptions, RemoteTarget, TaskNotificationPayload, RemoteSessionClosedEvent, BotRemoteWorkspaceReconnectedEvent, ZCodeStdioTapDevState, LoadCliMcpFromUserDirectoryRequest, MigrateLegacyCommonMcpRequest, SaveCliMcpToUserDirectoryRequest, SaveFileRequest, SaveFileResult, PrintPageToPdfResult, SSHConfigAliasOption, RemoteConnectionRuntimeLog, WindowControlsOverlayMetrics, WindowControlsOverlayReadyPayload, CreateTempTextAttachmentRequest } from "@zcode/shared";
 import {
   InternalChannels,
   PlatformChannels,
@@ -210,6 +214,16 @@ contextBridge.exposeInMainWorld("zcode", {
       callback(payload as RemoteSessionClosedEvent);
     ipcRenderer.on(PlatformChannels.RemoteSessionClosed, handler);
     return () => ipcRenderer.removeListener(PlatformChannels.RemoteSessionClosed, handler);
+  },
+  /** 订阅 Bot 触发的远程 workspace 重连成功事件，返回 disposer */
+  onBotRemoteWorkspaceReconnected: (
+    callback: (event: BotRemoteWorkspaceReconnectedEvent) => void,
+  ) => {
+    const handler = (_event: unknown, payload: unknown) =>
+      callback(payload as BotRemoteWorkspaceReconnectedEvent);
+    ipcRenderer.on(PlatformChannels.BotRemoteWorkspaceReconnected, handler);
+    return () =>
+      ipcRenderer.removeListener(PlatformChannels.BotRemoteWorkspaceReconnected, handler);
   },
   /** 检查目录是否已在其他窗口打开 */
   activateOrSetWorkspace: (path: string): Promise<{ activated: boolean }> =>

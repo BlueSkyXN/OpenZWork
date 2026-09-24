@@ -13,6 +13,8 @@ import {
   IZCodeTaskService,
   IZCodeAgentService,
   IZCodeSessionService,
+  // 吸收上游 v3.14.3 bots 服务；CUA 与分享服务属我方净化删除面，不进远端访问面。
+  IBotsService,
   IFileWatcherService,
   IModelSelectionService,
   IProviderSettingsService,
@@ -54,6 +56,8 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly windowControllerService: IWindowControllerService;
   readonly zcodeAgentService: IZCodeAgentService;
   readonly zcodeSessionService: IZCodeSessionService;
+  // 吸收上游 v3.14.3 bots 服务；CUA 与分享服务属我方净化删除面，不进聚合面。
+  readonly botsService: IBotsService;
   readonly fileWatcherService: IFileWatcherService;
   readonly providerSettingsService: IProviderSettingsService;
   readonly modelSelectionService: IModelSelectionService;
@@ -120,6 +124,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.zcodeSessionService = ProxyChannel.toService<IZCodeSessionService>(
       channelClient.getChannel(IZCodeSessionService.channelName),
+    );
+    this.botsService = ProxyChannel.toService<IBotsService>(
+      channelClient.getChannel(IBotsService.channelName),
     );
     this.fileWatcherService = ProxyChannel.toService<IFileWatcherService>(
       channelClient.getChannel(IFileWatcherService.channelName),
