@@ -12,6 +12,8 @@ import {
   IZCodeTaskService,
   IZCodeAgentService,
   IZCodeSessionService,
+  // 吸收上游 v3.14.3 bots 服务合约；分享服务属我方净化删除面，不引入。
+  IBotsService,
   IFileWatcherService,
   IModelSelectionService,
   IProviderSettingsService,
@@ -36,6 +38,8 @@ import {
   createHostApiNetworkTransport,
   registerHostApiNetworkTransportForDispose,
   createSettingsSyncService,
+  // 远端服务集合仅吸收 bots 工厂，其他净化后的服务集合不变。
+  createBotsService,
   createServiceLogger,
   createSubagentsService,
   createMemoryService,
@@ -206,6 +210,20 @@ export function createRemoteWorkspaceServiceCollection(params: {
     .register(IZCodeTaskService, remoteZCodeTaskService)
     .register(IZCodeAgentService, params.connectionServices.zcodeAgentService)
     .register(IZCodeSessionService, remoteZCodeSessionService)
+    // 吸收上游 v3.14.3：远端 workspace 的 bots 服务装配（分享服务行删除，属净化删除面）。
+    .register(
+      IBotsService,
+      createBotsService({
+        credentialService: localCredentialService,
+        zcodeTaskService: remoteZCodeTaskService,
+        broadcastService: localBroadcastService,
+        settingService: localSettingService,
+        modelSelectionService: params.connectionServices.modelSelectionService,
+        // 修复原因：remote workspace host 首屏只需要远端文件/agent 能力；
+        // bot 启动后台任务如果立即轮询或 getAll，会重复拉本机 preset 并放大 SSH/Docker 连接耗时。
+        runStartupBackgroundTasks: false,
+      }),
+    )
     .register(IFileWatcherService, params.connectionServices.fileWatcherService)
     // Provider/Model 事实属于目标 Environment。远端 workspace 的选择和设置视图
     // 必须直接读取远端 Registry，不能继续显示 Desktop 本地 Provider。

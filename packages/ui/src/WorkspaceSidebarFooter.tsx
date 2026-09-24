@@ -38,6 +38,9 @@ import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
+// 吸收上游 v3.14.3 的手机 Web 远控入口；WorkspaceSidebarFooterUsageSummary（Plan 徽章与
+// 官方套餐用量摘要）与官方在线服务绑定，属我方净化删除面，不引入。
+import { WorkspaceWebRemoteControlTrigger } from "@/WorkspaceWebRemoteControlTrigger.js";
 
 const DESKTOP_ZOOM_MIN_LEVEL = -3;
 const DESKTOP_ZOOM_MAX_LEVEL = 5;
@@ -75,8 +78,8 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   onThemeChange,
   onSettingsButtonClick,
   settingsButtonMode = "settings",
-  workspacePath: _workspacePath,
-  workspaceIdentity: _workspaceIdentity,
+  workspacePath,
+  workspaceIdentity,
   workspaceRemoteSessionId: _workspaceRemoteSessionId,
   activeTaskId: _activeTaskId,
   isDesktop = false,
@@ -295,6 +298,13 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex shrink-0 items-center gap-1.5">
+          {isDesktop && workspacePath ? (
+            <WorkspaceWebRemoteControlTrigger
+              workspacePath={workspacePath}
+              workspaceIdentity={workspaceIdentity}
+              compact
+            />
+          ) : null}
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button
               type="button"

@@ -246,7 +246,6 @@ export function SettingsPage({
   );
   const selectDirectory = useSelectDirectory();
   const services = useServices();
-  const onboardingRecordService = services.onboardingRecordService;
   const localHostServices = useBaseWorkspaceServices();
   const { settings: sharedSettings, update: updateSharedSettings } = useSettings();
   const memoryWorkspaceDisplayNames = useMemo(() => {
@@ -422,13 +421,8 @@ export function SettingsPage({
   );
   const handleMemoryEnabledChange = useCallback(
     async (enabled: boolean) => {
+      // Memory 开关只写本地 AppSettings；不维护第二份引导偏好或同步状态。
       await updateSharedSettings({ memoryEnabled: enabled });
-      // 手动修改反向回写 record，换号同步不会复活旧值；失败不阻塞开关。
-      await onboardingRecordService
-        ?.updateRecordPreferences({ memoryEnabled: enabled })
-        .catch((cause: unknown) => {
-          console.warn("[settings] 回写引导记录失败", String(cause));
-        });
     },
     [updateSharedSettings],
   );

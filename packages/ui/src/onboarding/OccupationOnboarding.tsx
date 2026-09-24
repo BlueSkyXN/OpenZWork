@@ -3,11 +3,12 @@ import { OccupationOnboardingVisual } from "@/onboarding/OccupationOnboardingVis
 import { occupations, type OccupationValue } from "@/onboarding/occupationOptions.js";
 import { OnboardingModeSelector } from "@/onboarding/OnboardingModeSelector.js";
 import { OnboardingOccupationGrid } from "@/onboarding/OnboardingOccupationGrid.js";
-import { useOnboardingTrigger } from "@/onboarding/useOnboardingTrigger.js";
+import {
+  shouldShowOccupationOnboarding,
+  shouldWaitForOccupationOnboardingSettings,
+} from "@/onboarding/onboardingVisibility.js";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useSettings } from "@/hooks/useSettingService.js";
-import { useOnboardingRecordService } from "@/hooks/useOnboardingRecordService.js";
-import { usePlatform } from "@/hooks/usePlatform.js";
 import { useEffectiveShortcutBindings } from "@/shortcuts/useShortcutBindings.js";
 import { matchesShortcutBinding } from "@/shortcuts/bindings.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -17,19 +18,6 @@ import { useZCodeStore } from "@/store/StoreProvider.js";
 import type { InterfaceMode } from "@/lib/interfaceMode.js";
 import { logger } from "@/logger.js";
 import { DesktopWindowControls } from "@/DesktopWindowControls.js";
-import type { OnboardingRecordEntry } from "@zcode/shared";
-
-/** 追加本地引导记录（userId 由 host 补全）；channel 缺失挂起时 5 秒超时按写失败处理。 */
-async function appendOnboardingRecord(
-  service: NonNullable<ReturnType<typeof useOnboardingRecordService>>,
-  deviceMid: string,
-  entry: Parameters<typeof service.appendRecord>[1],
-): Promise<void> {
-  await Promise.race([
-    service.appendRecord(deviceMid, entry),
-    new Promise((_, reject) => setTimeout(() => reject(new Error("appendRecord timeout")), 5000)),
-  ]);
-}
 
 export function OccupationOnboarding({
   children,
@@ -47,20 +35,24 @@ export function OccupationOnboarding({
   isWindowsDesktop?: boolean;
 }) {
   const { settings, update } = useSettings();
-  const platform = usePlatform();
-  const onboardingRecord = useOnboardingRecordService();
   const shortcutBindings = useEffectiveShortcutBindings();
-  const requested = useZCodeStore((state) => state.newUserOnboardingOpen);
-  const setRequested = useZCodeStore((state) => state.setNewUserOnboardingOpen);
-  // 登录态变化（useRootOAuthEffects 登录成功后 setUser）时按 userId 重新判定是否触发引导。
-  // 私有化分支：无官方账号链，onboarding 上报不带用户标识。
-  const userId: string | null = null;
+  const storeRequested = useZCodeStore((state) => state.newUserOnboardingOpen);
+  const setStoreRequested = useZCodeStore((state) => state.setNewUserOnboardingOpen);
+  const [localRequested, setLocalRequested] = useState(false);
+  const requested = storeRequested || localRequested;
+  const setRequested = useCallback(
+    (open: boolean) => {
+      setLocalRequested(open);
+      setStoreRequested(open);
+    },
+    [setLocalRequested, setStoreRequested],
+  );
   const { intl } = useZCodeIntl();
   const t = (key: string) => intl.formatMessage({ id: `occupationOnboarding.${key}` });
   const [occupation, setOccupation] = useState<OccupationValue | null>("developer");
   const savedInterfaceMode = useZCodeStore((state) => state.interfaceMode);
   const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
-  // mode 为 null 表示模式页被"跳过"（跳过是显式答案，记录里保留 null 而非兜底值）。
+  // mode 为 null 表示模式页被跳过；落 settings 时沿用既有保守默认值。
   const [mode, setMode] = useState<InterfaceMode | null>(savedInterfaceMode);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const preferences = step === 2;
@@ -72,20 +64,23 @@ export function OccupationOnboarding({
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
   const [error, setError] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-  const [needsOnboarding, markOnboarded] = useOnboardingTrigger({
-    onboardingRecord,
-    userId,
+  const [locallyClosed, setLocallyClosed] = useState(false);
+  const onboardingVisible = shouldShowOccupationOnboarding({
+    requested,
     hasStoredOccupation: Boolean(settings?.onboardingOccupation),
-    update,
+    dismissed: settings?.occupationOnboardingDismissed === true,
+    closedThisSession: locallyClosed,
   });
-  const onboardingVisible = requested || (needsOnboarding === true && !dismissed);
   const closeOnboarding = useCallback(() => {
     if (savingRef.current) return;
     setStep(0);
-    setDismissed(true);
+    setLocallyClosed(true);
     setRequested(false);
-  }, [setRequested]);
+    // 首次引导关闭态只写本地 AppSettings 去重位，不创建设备/账户锚定的记录文件。
+    void update({ occupationOnboardingDismissed: true }).catch((cause: unknown) => {
+      logger.warn("[occupation-onboarding] 写入本地关闭状态失败", { error: String(cause) });
+    });
+  }, [setRequested, update]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (
@@ -106,8 +101,7 @@ export function OccupationOnboarding({
         return;
       }
       if (event.key === "Escape" && onboardingVisible && !saving) {
-        // 直接退出引导（设置里主动打开的场景尤其需要）：不保存、不改记录，
-        // 本次会话不再显示，下次启动按记录重新触发。
+        // 直接退出不改偏好；首次引导会持久化 dismissed，避免下次启动重复展示。
         event.preventDefault();
         event.stopImmediatePropagation();
         closeOnboarding();
@@ -120,7 +114,7 @@ export function OccupationOnboarding({
       event.preventDefault();
       event.stopImmediatePropagation();
       if (saving) return;
-      // 关闭调试引导不保存偏好，也不把首次引导标记为已完成。
+      // 手动重新打开的引导关闭时只保留本机关闭状态，不改写已保存偏好。
       if (onboardingVisible) {
         closeOnboarding();
       } else {
@@ -139,63 +133,35 @@ export function OccupationOnboarding({
     setInterfaceMode,
     mode,
   ]);
-  // 引导再次打开（换账号触发 / 快捷键手动打开）时，用该用户在 record 里的最近作答预填，
-  // 而不是每次都从写死的默认选项开始；跳过页记 null 的字段落默认值。
-  const [latestEntry, setLatestEntry] = useState<OnboardingRecordEntry | null>(null);
-  // 预填异步后到时不得覆盖用户已经做出的选择。
-  const userEditedRef = useRef(false);
-  useEffect(() => {
-    if (!onboardingRecord) return;
-    let cancelled = false;
-    onboardingRecord.getLatestEntry().then(
-      (entry) => {
-        if (!cancelled) setLatestEntry(entry);
-      },
-      (cause) => {
-        logger.warn("[occupation-onboarding] 读取预填作答失败", { error: String(cause) });
-      },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [onboardingRecord, userId]);
-  const markUserEdited = () => {
-    userEditedRef.current = true;
-  };
-
-  const applyLatestEntry = () => {
-    const entry = latestEntry;
+  const resetDraft = useCallback(() => {
     setStep(0);
+    // 手动重开只从唯一 owner AppSettings 恢复已存偏好；首次配置沿用旧的模式默认值。
+    const hasSavedPreferences =
+      Boolean(settings?.onboardingOccupation) || settings?.occupationOnboardingDismissed === true;
+    const storedOccupation = settings?.onboardingOccupation;
     setOccupation(
-      entry?.occupation && (occupations as readonly string[]).includes(entry.occupation)
-        ? (entry.occupation as OccupationValue)
+      storedOccupation && (occupations as readonly string[]).includes(storedOccupation)
+        ? (storedOccupation as OccupationValue)
         : "developer",
     );
-    const initialMode = entry?.interfaceMode ?? savedInterfaceMode;
-    setMode(initialMode);
-    // 编程模式默认关闭主动工作记忆；办公模式才恢复该用户之前的勾选。
-    setMemory(initialMode === "office" && (entry?.memoryEnabled ?? true));
-    setSuggestions(entry?.proactiveSuggestionsEnabled ?? initialMode === "office");
+    setMode(savedInterfaceMode);
+    setMemory(
+      hasSavedPreferences ? settings?.memoryEnabled === true : savedInterfaceMode === "office",
+    );
+    setSuggestions(settings?.proactiveSuggestionsEnabled ?? savedInterfaceMode === "office");
     setMigration(false);
     setError(false);
-  };
+  }, [savedInterfaceMode, settings]);
+  const markUserEdited = useCallback(() => setLocallyClosed(false), []);
   useEffect(() => {
-    if (!requested) return;
-    userEditedRef.current = false;
+    if (!onboardingVisible) return;
     suggestionsEditedRef.current = false;
-    applyLatestEntry();
-    // latestEntry 异步到达时若引导已打开，重新预填一次（用户未交互前覆盖默认值）。
-  }, [requested]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!onboardingVisible || userEditedRef.current) return;
-    applyLatestEntry();
-    // eslint-disable-line react-hooks/exhaustive-deps
-  }, [latestEntry]);
+    resetDraft();
+  }, [onboardingVisible, resetDraft]);
+  if (shouldWaitForOccupationOnboardingSettings({ settingsLoaded: settings !== null, requested })) {
+    return showChildrenWhileLoading ? <>{children}</> : null;
+  }
   if (!settings) return showChildrenWhileLoading ? <>{children}</> : null;
-  // 判定进行中先不渲染，避免引导闪现后立即消失（判定为需引导）或先闪引导再进主界面。
-  // 只有疑似首跑（settings 里也没有职业）才等待记录判定；存量用户（已有
-  // onboardingOccupation）不等 RPC 直接进主界面，杜绝黑屏。
-  if (!requested && needsOnboarding === null && !settings.onboardingOccupation) return null;
   if (!onboardingVisible) return <>{children}</>;
   const save = async (skip = false) => {
     if (savingRef.current) return;
@@ -206,37 +172,19 @@ export function OccupationOnboarding({
       if (mode) setInterfaceMode(mode);
       logger.info("[occupation-onboarding] 保存偏好", { interfaceMode: mode });
       await update({
-        // settings 侧保持既有语义：跳过落保守默认值（职业 other / 偏好关），
-        // "跳过也算答案"的区分度只体现在 onboarding-record.json 里。
+        // 跳过沿用既有保守默认值（职业 other / Memory 与主动推荐关闭）。
         onboardingOccupation: occupation ?? "other",
+        // 首次引导与显式快捷键重开走同一设置路径；完成时只写本地去重位。
+        occupationOnboardingDismissed: true,
         memoryEnabled: skip ? false : memory,
         proactiveSuggestionsEnabled: !skip && mode === "office" && suggestions,
       });
-      // 保存成功就是本次引导的终点；本地记录失败不应留下可再次上报的引导页面。
+      // AppSettings 本地写入成功就是引导完成边界；不再派生账号/设备关联记录或上报状态。
       setStep(0);
-      setDismissed(true);
+      setLocallyClosed(true);
       setRequested(false);
       if (!skip && migration) requestOnboardingDialog("migration");
       logger.info("[occupation-onboarding] 偏好保存完成", { interfaceMode: mode });
-      if (onboardingRecord) {
-        try {
-          // 追加本地引导记录（userId 由 host 按登录态补全），后续上传服务器。
-          // appendRecord 走 RPC，channel 缺失时会挂起导致保存按钮永远转圈，加超时保护。
-          // 跳过是显式答案：该页被跳过时记 null（occupation 在第 1 步跳过时已是 null，
-          // mode 在第 2 步跳过时置 null，偏好页整体跳过时两个布尔记 null）。
-          await appendOnboardingRecord(onboardingRecord, platform.getDeviceId(), {
-            occupation,
-            interfaceMode: mode,
-            memoryEnabled: skip ? null : memory,
-            proactiveSuggestionsEnabled: skip ? null : mode === "office" && suggestions,
-            completedAt: new Date().toISOString(),
-          });
-          markOnboarded();
-        } catch (cause) {
-          // 偏好已保存成功，记录写失败只留 warn 日志，不打断用户；下次启动按记录会再次触发引导。
-          logger.warn("[occupation-onboarding] 写入引导记录失败", { error: String(cause) });
-        }
-      }
     } catch (cause) {
       logger.warn("[occupation-onboarding] 保存偏好失败", { error: String(cause) });
       setError(true);

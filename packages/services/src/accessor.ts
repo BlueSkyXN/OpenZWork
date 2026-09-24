@@ -10,6 +10,8 @@ import type { IBroadcastService } from "./broadcast/broadcast.js";
 import type { IZCodeTaskService } from "./session/zcodeTaskService.js";
 import type { IZCodeAgentService } from "./zcode-agent/zcodeAgent.js";
 import type { IZCodeSessionService } from "./zcode-session/zcodeSession.js";
+// 吸收上游 v3.14.3 bots 服务合约；CUA 权限服务（D-14）不引入。
+import type { IBotsService } from "./bots/bots.js";
 import type { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
 import type {
   IModelSelectionService,
@@ -28,7 +30,6 @@ import type { IMemoryService } from "./memory/memory.js";
 import type { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import type { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import type { IWindowControllerService } from "./window-controller/windowController.js";
-import type { IOnboardingRecordService } from "./onboarding/onboardingRecord.js";
 import type { IAppUsageService } from "./app-usage/appUsage.js";
 
 /** UI 层消费的统一服务接口 */
@@ -40,8 +41,6 @@ export interface IServiceAccessor {
   readonly systemService: ISystemService;
   readonly terminalService: ITerminalService;
   readonly settingService: ISettingService;
-  /** Onboarding 完成记录（本地持久化）；旧测试 double / 不支持的 host 可不提供。 */
-  readonly onboardingRecordService?: IOnboardingRecordService;
   readonly credentialService: ICredentialService;
   readonly broadcastService: IBroadcastService;
   readonly zcodeTaskService: IZCodeTaskService;
@@ -49,6 +48,8 @@ export interface IServiceAccessor {
   readonly windowControllerService?: IWindowControllerService;
   readonly zcodeAgentService: IZCodeAgentService;
   readonly zcodeSessionService: IZCodeSessionService;
+  // 吸收上游 v3.14.3 bots 服务；CUA 与分享服务属我方净化删除面，不进聚合面。
+  readonly botsService: IBotsService;
   readonly fileWatcherService: IFileWatcherService;
   /** 当前 Environment 的 Provider 配置与设置视图。 */
   readonly providerSettingsService: IProviderSettingsService;

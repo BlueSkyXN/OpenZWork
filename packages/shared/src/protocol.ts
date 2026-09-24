@@ -319,6 +319,8 @@ export interface AppSettings {
     | "other"
     | null;
   proactiveSuggestionsEnabled?: boolean;
+  /** 本机首次引导的 UI 去重位；与远端工作区设置隔离，不包含账户/设备标识。 */
+  occupationOnboardingDismissed?: boolean;
   /** 上次关闭时的完整 workspace 会话（含本地与远端 workspace） */
   lastWorkspaceSession?: PersistedWorkspaceSessionEntry[];
   /** 上次关闭时激活的 tab 索引 */

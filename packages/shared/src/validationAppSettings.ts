@@ -10,7 +10,7 @@ import {
   embeddedBrowserViewportPreferenceSchema,
 } from "./browser-use/command-metadata.js";
 
-/** 引导职业枚举；单独导出供 onboarding 记录回填 settings 时做窄化校验。 */
+/** AppSettings 中本地职业偏好的枚举校验。 */
 const appSettingsOccupationSchema = z.enum([
   "office",
   "developer",
@@ -27,8 +27,6 @@ const appSettingsOccupationSchema = z.enum([
   "legal",
   "other",
 ]);
-export const appSettingsOccupationEnum = appSettingsOccupationSchema;
-
 const nonEmptyStringSchema = z.string().trim().min(1);
 
 export const localeSchema = z.enum(["zh-CN", "en-US"]);
@@ -433,6 +431,7 @@ const appSettingsObjectSchema = z.object({
   nativeSearchEnhancementsEnabled: z.boolean().default(true),
   onboardingOccupation: appSettingsOccupationSchema.nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
+  occupationOnboardingDismissed: z.boolean().optional(),
   memoryEnabled: z.boolean().default(false),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).default([]),
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
@@ -508,6 +507,7 @@ export const appSettingsPatchSchema = z.object({
     ])
     .nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
+  occupationOnboardingDismissed: z.boolean().optional(),
   memoryEnabled: z.boolean().optional(),
   lastWorkspaceSession: z.array(appWorkspaceSessionEntrySchema).optional(),
   lastActiveTabIndex: z.number().int().nonnegative().optional(),
