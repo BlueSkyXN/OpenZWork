@@ -76,6 +76,7 @@ export function createCredentialCipherProvider(
       ].join("");
     },
 
+
     decrypt(value: string): string {
       if (!value.startsWith(ENCRYPTED_VALUE_PREFIX)) {
         return value;

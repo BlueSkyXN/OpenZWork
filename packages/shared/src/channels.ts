@@ -108,11 +108,8 @@ export const ServiceChannels = {
   SettingsSync: "settings-sync",
   /** Bots 远程聊天控制服务 */
   Bots: "bots",
-  /** 用户反馈工单服务 */
   /** Composer 附件在 host-local 与 remote runtime 之间的预传服务 */
   PromptAttachmentTransfer: "prompt-attachment-transfer",
-  /** Onboarding 完成记录服务（本地持久化，后续上传服务器） */
-  OnboardingRecord: "onboarding-record",
 } as const;
 
 export type ServiceChannelName = (typeof ServiceChannels)[keyof typeof ServiceChannels];

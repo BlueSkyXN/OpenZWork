@@ -30,7 +30,6 @@ import type { IMemoryService } from "./memory/memory.js";
 import type { ISettingsSyncService } from "./settings-sync/settingsSync.js";
 import type { IPromptAttachmentTransferService } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
 import type { IWindowControllerService } from "./window-controller/windowController.js";
-import type { IOnboardingRecordService } from "./onboarding/onboardingRecord.js";
 import type { IAppUsageService } from "./app-usage/appUsage.js";
 
 /** UI 层消费的统一服务接口 */
@@ -42,8 +41,6 @@ export interface IServiceAccessor {
   readonly systemService: ISystemService;
   readonly terminalService: ITerminalService;
   readonly settingService: ISettingService;
-  /** Onboarding 完成记录（本地持久化）；旧测试 double / 不支持的 host 可不提供。 */
-  readonly onboardingRecordService?: IOnboardingRecordService;
   readonly credentialService: ICredentialService;
   readonly broadcastService: IBroadcastService;
   readonly zcodeTaskService: IZCodeTaskService;

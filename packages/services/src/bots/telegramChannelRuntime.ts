@@ -331,7 +331,8 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
     // Bugfix: polling 游标和微信 buf 会写入 bot-state.v3.json。
     // 启动轮询前必须先完成旧 state 迁移，否则迁移写回可能覆盖刚更新的第三方游标。
     await deps.ensureBotStorageMigrated();
-    const currentConfig = config ?? (await deps.readConfig());
+    // Bot secret prefix migration may commit a fresh config while the initial refresh is queued.
+    const currentConfig = await deps.readConfig();
     if (!isLatest()) {
       return;
     }

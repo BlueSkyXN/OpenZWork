@@ -253,7 +253,8 @@ export function createFeishuChannelRuntime(deps: FeishuChannelRuntimeDeps) {
     isLatest: () => boolean,
   ): Promise<void> {
     await deps.ensureBotStorageMigrated();
-    const currentConfig = config ?? (await deps.readConfig());
+    // Bot secret prefix migration may commit a fresh config while the initial refresh is queued.
+    const currentConfig = await deps.readConfig();
     if (!isLatest()) {
       return;
     }

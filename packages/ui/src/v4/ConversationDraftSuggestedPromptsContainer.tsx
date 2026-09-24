@@ -1,6 +1,5 @@
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { useSettings } from "@/hooks/useSettingService.js";
-import { useOnboardingRecordService } from "@/hooks/useOnboardingRecordService.js";
 import {
   advanceRecommendedPromptPane,
   getRecommendedPromptsForPane,
@@ -89,7 +88,6 @@ export function ConversationDraftSuggestedPromptsContainer({
   const platform = usePlatform();
   const isOfficeMode = useIsOfficeMode();
   const { update } = useSettings();
-  const onboardingRecordService = useOnboardingRecordService();
   const recommendationPaneId = useId();
   const recommendationMode = isOfficeMode ? "office" : "coding";
   const recommendationRevision = useSyncExternalStore(
@@ -109,14 +107,8 @@ export function ConversationDraftSuggestedPromptsContainer({
   const closeRecommendations = async () => {
     setClosing(true);
     try {
-      // 关闭按钮与引导、设置页共用持久化设置，避免另一份本地开关重新显示推荐。
+      // 关闭按钮与引导、设置页共用唯一的本地 AppSettings 偏好，避免建立第二份记录。
       await update({ proactiveSuggestionsEnabled: false });
-      // 手动修改反向回写 record，换号同步时不会把已关闭的推荐复活；失败不阻塞关闭流程。
-      await onboardingRecordService
-        ?.updateRecordPreferences({ proactiveSuggestionsEnabled: false })
-        .catch((cause: unknown) => {
-          logger.warn("[v4-suggested-prompts] 回写引导记录失败", { error: String(cause) });
-        });
     } catch (error) {
       logger.warn("[v4-suggested-prompts] 关闭推荐失败", { error: String(error) });
       toast(intl.formatMessage({ id: "chat.officeSuggestions.closeError" }));

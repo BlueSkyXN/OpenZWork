@@ -93,6 +93,8 @@ import {
 import { BOT_MENU_COMMAND_ORDER } from "./commandOrder.js";
 import { parseBotCommand } from "./commandParser.js";
 import { BotsRepo } from "./repo.js";
+import { migrateBotCredentialKeys } from "./credentialKeyMigration.js";
+import { createCredentialCipherProvider } from "../credential/providers/credentialCipherProvider.js";
 import type {
   BotProviderAdapter,
   BotStreamingReplyCardBlock,
@@ -681,6 +683,7 @@ export function createBotsService(
 ): IBotsService & { disposeAll(): void; disposeAllAndWait(): Promise<void> } {
   const runStartupBackgroundTasks = deps.runStartupBackgroundTasks !== false;
   const repo = new BotsRepo();
+  const credentialCipher = createCredentialCipherProvider();
   const bindCodes = new Map<string, BindCodeRecord>();
   const automationDeliveryWarningAtByKey = new Map<string, number>();
   const streamSubscriptions = new Map<string, IDisposable>();
@@ -1365,14 +1368,41 @@ export function createBotsService(
     return [];
   }
   async function ensureBotStorageMigrated(): Promise<void> {
-    // 单向导入已收口到 Repo；这里只等待初始化，不再读取旧模型字段或重写当前状态。
+    // Bot config/state 初始化与凭据 key 前缀迁移共用单一 promise，先完成本地引用提交再启动 provider。
     if (!botStorageMigrationPromise) {
-      botStorageMigrationPromise = Promise.all([repo.readConfig(), repo.readState()])
-        .then(() => undefined)
-        .catch((error: unknown) => {
-          botStorageMigrationPromise = null;
-          throw error;
+      botStorageMigrationPromise = (async () => {
+        const [config] = await Promise.all([repo.readConfig(), repo.readState()]);
+        const migration = await migrateBotCredentialKeys({
+          config,
+          credentialStore: deps.credentialService,
+          writeConfig: (nextConfig) => repo.writeConfig(nextConfig),
+          resolveCredentialValue: (_key, value) =>
+            value.startsWith("enc:v1:") ? credentialCipher.decrypt(value) : value,
+          buildCredentialKey: buildBotCredentialKey,
+          buildWebhookSecretKey: buildBotWebhookSecretKey,
+          warn: (message, error) => {
+            if (error === undefined) {
+              botsLogger.warn(undefined, message);
+              return;
+            }
+            botsLogger.warn(undefined, message, {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          },
         });
+        if (!migration.changed) return;
+
+        // 配置原子写成功后才进入 disabled Telegram 清理和运行时刷新。
+        const savedConfig = migration.config;
+        if (runStartupBackgroundTasks) {
+          telegramRuntime.scheduleRefresh(savedConfig);
+          weixinRuntime.scheduleRefresh(savedConfig);
+          feishuRuntime.scheduleRefresh(savedConfig);
+        }
+      })().catch((error: unknown) => {
+        botStorageMigrationPromise = null;
+        throw error;
+      });
     }
     await botStorageMigrationPromise;
   }
@@ -5174,6 +5204,7 @@ export function createBotsService(
       await deps.remoteWorkspaceService?.syncAppRuntimePreferences?.(preferences);
     },
     async getStatus() {
+      await ensureBotStorageMigrated();
       const config = await repo.readConfig();
       const state = await repo.readState();
       return {
@@ -5194,7 +5225,10 @@ export function createBotsService(
         }),
       };
     },
-    getConfig: () => repo.readConfig(),
+    async getConfig() {
+      await ensureBotStorageMigrated();
+      return repo.readConfig();
+    },
     listWorkspaceRefs,
     getUserConfigOptions: listUserConfigOptions,
     beginFeishuRegistration(params) {
@@ -5210,6 +5244,7 @@ export function createBotsService(
       return pollWeixinQrRegistration(params);
     },
     async saveConfig(config) {
+      await ensureBotStorageMigrated();
       const savedConfig = await repo.writeConfig(normalizeConfigBots(config));
       clearCandidateCaches();
       telegramRuntime.scheduleRefresh(savedConfig);
@@ -5218,9 +5253,11 @@ export function createBotsService(
       return savedConfig;
     },
     async listBots() {
+      await ensureBotStorageMigrated();
       return (await repo.readConfig()).bots;
     },
     async saveBot(params: BotSaveBotParams) {
+      await ensureBotStorageMigrated();
       const config = await repo.readConfig();
       let bot: BotConfig = {
         ...params.bot,
@@ -5281,6 +5318,7 @@ export function createBotsService(
       return bot;
     },
     async removeBotSecret(botId: string) {
+      await ensureBotStorageMigrated();
       const config = await repo.readConfig();
       const bot = findBot(config, botId);
       if (!bot) {
@@ -5325,6 +5363,7 @@ export function createBotsService(
       return nextBot;
     },
     async deleteBot(botId: string) {
+      await ensureBotStorageMigrated();
       const config = await repo.readConfig();
       const bot = findBot(config, botId);
       if (bot?.provider === "telegram") {
@@ -5354,6 +5393,7 @@ export function createBotsService(
       }
     },
     async testBot(botId: string): Promise<BotTestResult> {
+      await ensureBotStorageMigrated();
       const config = await repo.readConfig();
       const bot = findBot(config, botId);
       if (!bot) {
@@ -5370,6 +5410,7 @@ export function createBotsService(
       return { ...(await adapter.test(bot)), provider: bot.provider };
     },
     async createBindCode(params: BotCreateBindCodeParams): Promise<BotBindCodeResult> {
+      await ensureBotStorageMigrated();
       const config = await repo.readConfig();
       const botId = params.botId ?? params.botId;
       if (!botId) {
@@ -5393,15 +5434,18 @@ export function createBotsService(
       return { code, expiresAt };
     },
     async getBotStates() {
+      await ensureBotStorageMigrated();
       return Object.values((await repo.readState()).bots);
     },
     async resetBotState(contextKey: string) {
+      await ensureBotStorageMigrated();
       const state = await repo.readState();
       delete state.bots[contextKey];
       await repo.writeState(state);
     },
     watchAutomationRun,
     async handleInboundMessage(message: BotInboundMessage) {
+      await ensureBotStorageMigrated();
       return enqueueInboundProcessing(message.actor, async () => {
         if (message.elicitationResponse) {
           return handleStructuredElicitationResponse(message, message.elicitationResponse);
@@ -6295,9 +6339,11 @@ export function createBotsService(
       });
     },
     async handleProviderCallback(provider: BotProvider, payload: unknown) {
+      await ensureBotStorageMigrated();
       return (await processProviderCallback(provider, payload)).replies;
     },
     async handleProviderCallbackResponse(provider: BotProvider, payload: unknown) {
+      await ensureBotStorageMigrated();
       return processProviderCallback(provider, payload);
     },
     disposeAll() {

@@ -19,7 +19,8 @@ export const BOTS_V2_STATE_FILE = "bot-state.v2.json";
 export const BOTS_STATE_FILE = "bot-state.v3.json";
 export const BOTS_LEGACY_MODEL_CACHE_FILE = "bots-model-cache.json";
 export const BOTS_MODEL_CACHE_FILE = "bots-model-cache.v2.json";
-const BOT_CREDENTIAL_PREFIX = "bot";
+// Bot secrets 与其他 host 凭据共用本地加密文件；使用私有产品前缀便于识别与迁移审计。
+const BOT_CREDENTIAL_PREFIX = "openzwork-bot";
 
 export function createDefaultBotsConfig(): BotsConfigFile {
   return {

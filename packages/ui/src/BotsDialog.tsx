@@ -80,7 +80,8 @@ function createDraftBot(params: { provider: BotProvider }): BotConfig {
     id,
     name: "",
     provider: params.provider,
-    enabled: true,
+    // 新建渠道先以关闭态持久化；用户完成凭据配置并显式开启后才连接第三方 API。
+    enabled: false,
     allowedWorkspaces: [ALL_BOT_WORKSPACES],
     allowedCommands: createDefaultCommands(),
     currentOptions: {},
@@ -139,7 +140,6 @@ export function BotsDialog({
   } | null>(null);
   const [renamingBotId, setRenamingBotId] = useState<string | null>(null);
   const botNameCompositionActiveRef = useRef(false);
-  const autoQrStartedBotIdsRef = useRef(new Set<string>());
   const autoBindCreatingBotIdsRef = useRef(new Set<string>());
   const handledEntryProviderRef = useRef<BotProvider | null>(null);
 
@@ -924,15 +924,7 @@ export function BotsDialog({
           return;
         }
 
-        const autoKey = `${selectedBot.id}:feishu-registration`;
-        if (autoQrStartedBotIdsRef.current.has(autoKey)) {
-          return;
-        }
-
-        // Bugfix: 未配置 token 的飞书/Lark Bot 首次进入详情时只显示“扫码”按钮，
-        // 用户会误以为还需要额外展开；自动启动一次二维码流程，让缺失凭据的默认状态直接可操作。
-        autoQrStartedBotIdsRef.current.add(autoKey);
-        void handleStartFeishuRegistration();
+        // 第三方应用注册会主动访问渠道账号端点，只允许用户显式点击扫码按钮触发。
         return;
       }
 
@@ -984,15 +976,8 @@ export function BotsDialog({
       return;
     }
 
-    const autoKey = `${selectedBot.id}:weixin-registration`;
-    if (autoQrStartedBotIdsRef.current.has(autoKey)) {
-      return;
-    }
-
-    // Bugfix: 微信 Bot 没有 token/绑定状态时需要立即给出登录二维码，
-    // 否则新建后右侧默认只露出按钮，和“扫码接入”的主流程不一致。
-    autoQrStartedBotIdsRef.current.add(autoKey);
-    void handleStartWeixinRegistration();
+    // 第三方账号端点的扫码注册只由用户显式点击触发，进入 Bot 设置不自动联网。
+    return;
   }, [
     creatingBot,
     feishuRegistration,
@@ -1000,8 +985,6 @@ export function BotsDialog({
     bindCode,
     bindExpired,
     createBindCodeForBot,
-    handleStartFeishuRegistration,
-    handleStartWeixinRegistration,
     open,
     selectedBot,
     weixinRegistration,
@@ -1038,12 +1021,6 @@ export function BotsDialog({
     if (!selectedBot) return;
     try {
       const saved = await botsService.removeBotSecret(selectedBot.id);
-      autoQrStartedBotIdsRef.current.delete(
-        `${selectedBot.id}:feishu-registration`,
-      );
-      autoQrStartedBotIdsRef.current.delete(
-        `${selectedBot.id}:weixin-registration`,
-      );
       autoBindCreatingBotIdsRef.current.delete(selectedBot.id);
       setConfig((previous) => ({
         ...previous,
@@ -1321,12 +1298,8 @@ export function BotsDialog({
                   onSaveSecret={() => void handleSaveSecret()}
                   onRemoveSecret={() => void handleRemoveSecret()}
                   onOpenTelegramBotFather={handleOpenTelegramBotFather}
-                  onStartWeixinRegistration={() =>
-                    void handleStartWeixinRegistration()
-                  }
-                  onStartFeishuRegistration={() =>
-                    void handleStartFeishuRegistration()
-                  }
+                  onStartWeixinRegistration={() => void handleStartWeixinRegistration()}
+                  onStartFeishuRegistration={() => void handleStartFeishuRegistration()}
                   onCreateBindCode={() => void handleCreateBindCode()}
                   onUnbind={() => void handleUnbind()}
                   onCopyBindCommand={() => void copyBindCommand()}
