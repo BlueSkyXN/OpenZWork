@@ -4,58 +4,57 @@ TypeScript + Node.js 24.14.0 CLI starter. The default artifact is a normal Node 
 
 ## Why This Shape
 
-- Runtime code has zero production dependencies.
 - The CLI uses Node built-ins for argument parsing and terminal control.
-- `npm run build` produces `dist/zcode.cjs`, which works anywhere Node.js 24.14.0 is installed.
-- `npm run sea` attempts to turn that same bundle into a single executable.
+- `pnpm --filter @zcode/cli build` produces `packages/cli/dist/zcode.cjs`, which works anywhere Node.js 24.14.0 is installed.
+- `pnpm --filter @zcode/cli sea` attempts to turn that same bundle into a single executable.
 - If SEA breaks on a platform, the normal CLI artifact is still the fallback.
 
 ## Commands
 
+Run from the repository root:
+
 ```sh
-npm run bootstrap
-npm run dev -- --help
-npm run build
-npm run start -- doctor --json
-npm test
-npm run sea
-npm run sea -- --target linux-x64 --target win-x64
-npm run sea -- --all
+pnpm bootstrap
+pnpm --filter @zcode/cli dev -- --help
+pnpm --filter @zcode/cli build
+pnpm --filter @zcode/cli dev -- doctor --json
+pnpm --dir apps/zcode-cli typecheck
+pnpm --dir apps/zcode-cli lint
+pnpm --filter @zcode/cli sea
+pnpm --filter @zcode/cli sea -- --target linux-x64 --target win-x64
+pnpm --filter @zcode/cli sea -- --all
 ```
 
 ## Project Layout
 
 ```txt
-src/
+packages/
   cli/       command parsing and process wiring
   core/      reusable runtime logic
-  ui/        terminal UI layer
-scripts/    build and optional SEA packaging scripts
-tests/      subprocess-level CLI tests
+  tui/       terminal UI layer
+scripts/    workspace maintenance scripts
 ```
 
 ## Bootstrap
 
-Run `npm run bootstrap` after cloning the repository. It checks the local Node.js version, installs dependencies, and runs the full project check.
+Run `pnpm bootstrap` from the repository root after cloning. It installs workspace dependencies, prepares local desktop runtime assets, and builds the workspace packages.
 
 ## Plugin Development
 
 zcode plugins are local bundles that can contribute skills, custom commands, and MCP servers.
 
-Plugin state lives under `~/.zcode/cli/plugins`:
+Plugin state lives under `~/.openzwork/cli/plugins`:
 
 - `cache/`: installed marketplace plugin code and static files.
 - `data/<plugin-id>/`: persistent plugin data. MCP servers should write runtime output here, not into the plugin source directory.
 - `marketplaces/zcode-plugins-official/`: bundled and CDN partitions plus the merged metadata for the single official marketplace.
 
-This repository also ships built-in official plugins as workspace packages. The bundled Browser Use, Document Skills, Skill Creator, and ZCode Guide content plugins are default-enabled and appear as `browser-use@zcode-plugins-official`, `document-skills@zcode-plugins-official`, `skill-creator@zcode-plugins-official`, and `zcode-guide@zcode-plugins-official`. Runtime-heavy official plugins, and local-data migration plugins such as `ios-simulator@zcode-plugins-official`, `android-emulator@zcode-plugins-official`, and `restore-legacy-sessions@zcode-plugins-official`, are discovered by zcode but stay disabled until the user enables them.
+This repository also ships built-in official plugins as workspace packages. The bundled Browser Use plugin is default-enabled and appears as `browser-use@zcode-plugins-official`; `node-repl-host@zcode-plugins-official` is a default-enabled internal host that carries the Browser Use runtime and is not listed in the marketplace.
 
 ```sh
 zcode plugins list
-zcode plugins enable ios-simulator
 zcode plugins disable browser-use
-zcode plugins enable restore-legacy-sessions
-zcode plugins disable ios-simulator
+zcode plugins enable browser-use
 ```
 
 For local plugin development, put the plugin in any directory, then add it to the user config. Local plugin dirs default to enabled for that config.
@@ -138,7 +137,7 @@ For MCP servers, prefer Node's normal package build and `bin` output when target
 
 ## MCP Configuration
 
-zcode reads MCP servers from the main JSON config. The default user config path is `~/.zcode/cli/config.json`; MCP entries live under `mcp.servers`. MCP is enabled by default, so `features.mcp` only needs to be set when you want an explicit on/off switch. The current CLI does not auto-discover standalone `mcp.json` or `.mcp.json` files outside enabled plugins.
+zcode reads MCP servers from the main JSON config. The default user config path is `~/.openzwork/cli/config.json`; MCP entries live under `mcp.servers`. MCP is enabled by default, so `features.mcp` only needs to be set when you want an explicit on/off switch. The current CLI does not auto-discover standalone `mcp.json` or `.mcp.json` files outside enabled plugins.
 
 ```json
 {
@@ -181,7 +180,7 @@ MCP tools are registered before the first model request and exposed as `mcp__<se
 
 ## Hooks Configuration
 
-zcode reads hooks from the same main JSON config file as MCP, usually `~/.zcode/cli/config.json`. Hooks are disabled by default; set `hooks.enabled` to `true` and add process hooks under `hooks.events`.
+zcode reads hooks from the same main JSON config file as MCP, usually `~/.openzwork/cli/config.json`. Hooks are disabled by default; set `hooks.enabled` to `true` and add process hooks under `hooks.events`.
 
 Supported hook events:
 
