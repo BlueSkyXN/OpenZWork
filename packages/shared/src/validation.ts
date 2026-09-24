@@ -143,7 +143,6 @@ export const hostInitLocalMessageSchema = z.object({
   hostId: nonEmptyStringSchema.optional(),
   deliveryKind: taskRealtimeHostDeliveryKindSchema.optional(),
   deviceMid: z.string().optional(),
-  feedbackApiBase: z.string().url().optional(),
   workspacePath: nonEmptyStringSchema.optional(),
   workspaceIdentity: nonEmptyStringSchema.optional(),
   agentWarmupTargets: z.array(hostAgentWarmupTargetSchema).max(3).optional(),
@@ -698,26 +697,6 @@ export const hostLocalMediaPreviewPathAuthorizeRequestResponseSchema = z
   })
   .strict();
 
-export const networkObservationSchema = z.object({
-  transport: z.enum(["http", "websocket", "rpc"]),
-  interface: z.string(),
-  durationMs: z.number(),
-  ok: z.boolean(),
-  statusCode: z.number().optional(),
-  errorKind: z.string().optional(),
-  attempt: z.number().int().positive().optional(),
-  dnsMs: z.number().optional(),
-  tcpMs: z.number().optional(),
-  tlsMs: z.number().optional(),
-  ttfbMs: z.number().optional(),
-  downloadMs: z.number().optional(),
-});
-
-export const hostNetworkTelemetryBatchResponseSchema = z.object({
-  type: z.literal("network-telemetry-batch"),
-  observations: z.array(networkObservationSchema).max(500),
-});
-
 export const hostProviderProvisioningSourceChangedResponseSchema = z
   .object({
     type: z.literal("provider-provisioning-source-changed"),
@@ -794,7 +773,6 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostSessionMessageDeliverResultResponseSchema,
   hostBrowserExecuteRequestResponseSchema,
   hostLocalMediaPreviewPathAuthorizeRequestResponseSchema,
-  hostNetworkTelemetryBatchResponseSchema,
   hostProviderProvisioningSourceChangedResponseSchema,
   hostProviderProvisioningExecutionResultResponseSchema,
   hostCronRunResultResponseSchema,

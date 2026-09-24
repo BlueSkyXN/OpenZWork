@@ -61,5 +61,9 @@ jobs:
         env:
           TYPESCRIPT_MODULE_PATH: ${{ github.workspace }}/node_modules/typescript
 
+      # 包级测试：services（含 E1 记忆迁移/统计门禁/技能开关）与 ui（需显式 tsconfig 解析 @ 别名）。
+      - name: Package tests (services + ui)
+        run: pnpm test
+
       # 已知上游既有红灯（不设卡点、不静默：内层 oxlint 84 项 max-lines 类错误、
       # desktop 全工程 tsc 211/204 对称错误）按计划在后续工作包处置，暂不入 CI。

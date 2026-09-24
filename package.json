@@ -30,6 +30,7 @@
     "bundle:desktop": "pnpm --filter @zcode/desktop run bundle --",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "test": "pnpm exec tsx --test packages/services/test/*.test.ts && pnpm exec tsx --tsconfig packages/ui/tsconfig.json --test packages/ui/test/*.test.ts",
     "knip": "knip",
     "count-lines": "bash scripts/count-lines.sh",
     "prepare:remote-assets": "pnpm --filter @zcode/desktop prepare:remote-assets",
