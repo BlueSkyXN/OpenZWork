@@ -51,9 +51,19 @@ jobs:
 
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
       # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
+      # --cache-dir=.turbo + actions/cache：turbo 默认缓存在 node_modules/.cache 不随
+      # pnpm store 保留，按 commit 保存、前缀恢复后由 turbo 按 task hash 自行校验，
+      # 未触及内层包的 PR（多数外层改动）可整段跳过重编译。
+      - name: Cache turbo task outputs
+        uses: actions/cache@v4
+        with:
+          path: apps/zcode-cli/.turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
       - name: Agent workspace typecheck (turbo)
         working-directory: apps/zcode-cli
-        run: npx --yes turbo@2.9.14 run typecheck
+        run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
 
       # stage1 私有化清理的结构断言（基线 23/23）。
       - name: Stage1 cleanup structural tests

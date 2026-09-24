@@ -22,10 +22,14 @@ jobs:
             platform: macos-arm64
             bundle-os: mac
             bundle-arch: arm64
+            electron-cache: ~/Library/Caches/electron
+            builder-cache: ~/Library/Caches/electron-builder
           - os: windows-latest
             platform: windows-amd64
             bundle-os: win
             bundle-arch: x64
+            electron-cache: ~/AppData/Local/electron/Cache
+            builder-cache: ~/AppData/Local/electron-builder/Cache
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
@@ -39,6 +43,18 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      # Electron 发行包与 electron-builder 二进制（winCodeSign/NSIS 等）按 lockfile 缓存：
+      # pnpm install 的 electron postinstall 与 bundle 的 electron-builder 共用同一缓存位，
+      # 命中时省去下载+解包（镜像下载虽仅 ~7s/142MB，Windows 上重复解包仍是可观测开销）。
+      - name: Cache electron/electron-builder downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ matrix.electron-cache }}
+            ${{ matrix.builder-cache }}
+          key: electron-${{ matrix.platform }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: electron-${{ matrix.platform }}-
 
       # 与 CI checks 不同：打包需要完整安装（Electron 二进制下载、node-pty 原生重建）。
       - name: Install dependencies (frozen lockfile, with scripts)
