@@ -168,7 +168,7 @@ The version defaults to the root `package.json` version. Output is written to `d
 - `releases/<version>/sha256.txt`: checksum file.
 - `latest.json` and `install.sh`: version index and installer.
 
-Upload the entire directory to the configured download base URL. The installer downloads the runtime package from that URL, installs it to `~/.zcode/runtime` by default, and creates the `zcode` command in `~/.local/bin`. Override these directories with `ZCODE_DIST_HOME` and `ZCODE_DIST_BIN_DIR`, respectively.
+Upload the entire directory to the configured download base URL. The installer downloads the runtime package from that URL, installs it to `~/.openzwork/runtime` by default, and creates the `zcode` command in `~/.local/bin`. Override these directories with `ZCODE_DIST_HOME` and `ZCODE_DIST_BIN_DIR`, respectively.
 
 Existing Lite users should switch to the new build command, environment variables, and installer. Installation does not remove old Lite directories or migrate/delete session data.
 

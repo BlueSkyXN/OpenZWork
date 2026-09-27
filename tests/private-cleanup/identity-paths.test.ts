@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { chmodSync, existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, sep } from "node:path";
 import { test } from "node:test";
 import { buildRemoteServerCommand } from "../../packages/server/src/remote/connect.ts";
 import { buildRemoteAgentBundleWrapper } from "../../packages/server/src/remote/zcodeAgentBundleWrapper.ts";
 import { REMOTE_BASE, REMOTE_BASE_HOME_EXPR } from "../../packages/server/src/remote/deployShared.ts";
+import { serializeSavedWorkflow } from "../../apps/zcode-cli/packages/core/src/tool/handlers/saved-workflows/frontmatter.ts";
 import {
   listSavedWorkflows,
   resolveSavedWorkflow,
@@ -64,6 +65,22 @@ test("global saved workflow writes, lists, and resolves only under the OpenZWork
   const cwd = join(home, "project");
   try {
     mkdirSync(cwd);
+    // 预置旧官方根的两份**合法** workflow：一份旧根独有，一份与即将写入新根的同名。
+    // 合法性是断言强度的来源——隔离若是破的，它们必然出现在列表或解析结果里，
+    // 而不是安静地掉进 invalid。空 HOME 只能证明"不写旧根"，这里补上"不读旧根"。
+    const legacyRoot = join(home, ".zcode", "workflows");
+    mkdirSync(legacyRoot, { recursive: true });
+    const legacyOnlySource = serializeSavedWorkflow(
+      { description: "legacy root only" },
+      "return 'legacy-only';\n",
+    );
+    const legacyShadowSource = serializeSavedWorkflow(
+      { description: "legacy same-name" },
+      "return 'legacy';\n",
+    );
+    writeFileSync(join(legacyRoot, "legacy-only.dwf.ts"), legacyOnlySource);
+    writeFileSync(join(legacyRoot, "isolation-check.dwf.ts"), legacyShadowSource);
+
     const saved = saveSavedWorkflow({
       cwd,
       homeDir: home,
@@ -75,14 +92,29 @@ test("global saved workflow writes, lists, and resolves only under the OpenZWork
     assert.equal(saved.path, join(home, ".openzwork/workflows/isolation-check.dwf.ts"));
     assert.equal(saved.path, join(savedWorkflowRoot(cwd, "global", { homeDir: home }).dir, "isolation-check.dwf.ts"));
     assert.ok(readFileSync(saved.path, "utf8").includes("return 42;"));
-    assert.equal(listSavedWorkflows({ cwd, homeDir: home }).entries[0]?.name, "isolation-check");
+
+    // 列表只含新根条目：旧根独有那份不出现，同名那份不会以旧根身份挤进 entries 或 invalid。
+    const listed = listSavedWorkflows({ cwd, homeDir: home });
+    assert.deepEqual(listed.entries.map((entry) => entry.name), ["isolation-check"]);
+    assert.ok(listed.entries.every((entry) => !entry.path.includes(`${sep}.zcode${sep}`)));
+    assert.deepEqual(listed.invalid, []);
+
+    // 同名解析拿到新根内容；旧根独有名字按不存在处理——这是"不读旧根"的直接证据。
     const resolved = resolveSavedWorkflow({ cwd, homeDir: home, name: "isolation-check" });
     assert.equal(resolved.ok, true);
     if (resolved.ok) {
       assert.equal(resolved.scope, "global");
       assert.equal(resolved.script, "return 42;\n");
     }
-    assert.equal(existsSync(join(home, ".zcode")), false);
+    assert.deepEqual(resolveSavedWorkflow({ cwd, homeDir: home, name: "legacy-only" }), {
+      ok: false,
+      reason: "not_found",
+    });
+
+    // 旧根逐字节保持原样：不迁移、不改写、不新增文件。
+    assert.equal(readFileSync(join(legacyRoot, "legacy-only.dwf.ts"), "utf8"), legacyOnlySource);
+    assert.equal(readFileSync(join(legacyRoot, "isolation-check.dwf.ts"), "utf8"), legacyShadowSource);
+    assert.deepEqual(readdirSync(legacyRoot).sort(), ["isolation-check.dwf.ts", "legacy-only.dwf.ts"]);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

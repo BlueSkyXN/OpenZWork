@@ -8,6 +8,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const root = process.env.ZCODE_TEST_SOURCE_ROOT || path.resolve(__dirname, '../..');
 const ts = require(process.env.TYPESCRIPT_MODULE_PATH || 'typescript');
 const adapter = 'apps/zcode-cli/packages/adapters/src/model/';
@@ -558,37 +559,40 @@ test('[structural, not runtime] WP-09: off-peak domain fully removed from source
 });
 
 test('[structural, not runtime] WP-03: user-level data root references stay under .openzwork', () => {
-  // WP-03 A 类硬门槛：用户级 .zcode 引用清零。2026-09-26 完成度复审发现远端启动链、发行安装、
-  // 全局 workflows 根等漏改残留，补清后加入本断言防回潮。登记豁免见 docs/spec/identity-and-data-isolation.md：
-  // 项目级 <cwd>/.zcode 属用户仓库工作区（模式只匹配 ~/、$HOME 前缀，天然不命中）；
-  // WP-E1a 记忆迁移是唯一获批的旧根单向读取点，其代码与用户文案允许提及旧根。
-  const bannedPattern = /~\/\.zcode|\$HOME\/\.zcode/;
+  // WP-03 A 类硬门槛：用户级 .zcode 引用清零。2026-09-26 复审补清远端启动链、发行安装、
+  // 全局 workflows 根等代码残留；2026-09-27 PR 评审指出按目录枚举的扫描根永远追不上
+  // 新增目录（当时漏了 packages/server、scripts 与 README/NOTICE/SKILL 等 Markdown，
+  // 六处过时引用由此漏网），改为按 git 追踪清单做全仓文本扫描：新增包、.github、文档
+  // 自动入列，且与 CI 新检出看到的是同一份"全仓"（工作树的 node_modules/dist/未纳管
+  // 私目录不会混入）。模式只匹配用户级旧根字面量：~/、$HOME/ 前缀，项目级 <cwd>/.zcode
+  // 属用户仓库工作区天然不命中；(?![\w-]) 排除恰好以 .zcode 开头的其他目录名
+  // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/spec/identity-and-data-isolation.md。
+  const bannedPattern = /(?:~|\$HOME)\/\.zcode(?![\w-])/;
   const allowFiles = new Set([
+    // WP-E1a 记忆迁移链：唯一获批的旧根单向读取点——代码、用户文案与文案的测试夹具。
     'packages/shared/src/node/memoryMigration.ts',
     'packages/ui/src/settings/memoryMigrationHint.ts',
     'packages/ui/src/i18n/locales/zh-CN.ts',
     'packages/ui/src/i18n/locales/en-US.ts',
+    'packages/services/test/memory-migration.test.ts',
+    // 政策文本以旧根定义隔离边界；installer 注释引用被替换的旧默认值作为修复依据。
+    'docs/spec/identity-and-data-isolation.md',
+    'docs/spec/memory-migration.md',
+    'scripts/zcode-distribution/installer.mjs',
   ]);
-  const scanRoots = ['packages/shared/src', 'packages/services/src', 'packages/ui/src', 'packages/desktop/src', 'apps/zcode-cli/packages'];
-  const scanExts = /\.(ts|tsx|mjs)$/;
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
   const violations = [];
-  const walk = dir => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === 'dist' || entry.name === 'node_modules') continue;
-        walk(full);
-        continue;
-      }
-      if (!scanExts.test(entry.name)) continue;
-      const rel = path.relative(root, full).split(path.sep).join('/');
-      if (allowFiles.has(rel)) continue;
-      const text = fs.readFileSync(full, 'utf8');
-      const match = text.match(bannedPattern);
-      if (match) violations.push(`${rel}: ${match[0]}`);
-    }
-  };
-  for (const rel of scanRoots) walk(path.join(root, rel));
+  for (const rel of tracked) {
+    if (!scanExtensions.test(rel) || allowFiles.has(rel)) continue;
+    const file = path.join(root, rel);
+    // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。
+    if (!fs.existsSync(file)) continue;
+    const match = fs.readFileSync(file, 'utf8').match(bannedPattern);
+    if (match) violations.push(`${rel}: ${match[0]}`);
+  }
   assert.deepEqual(violations, [], `user-level .zcode residue found:\n${violations.join('\n')}`);
 });
 
@@ -610,6 +614,9 @@ test('[structural, not runtime] WP-03: remote deploy/startup and distribution de
   const savedWorkflow = fs.readFileSync(path.join(root, 'apps/zcode-cli/packages/contracts/src/tools/saved-workflow.ts'), 'utf8');
   assert.doesNotMatch(savedWorkflow, /SAVED_WORKFLOW_GLOBAL_DIR = "\.zcode\/workflows"/);
   assert.match(savedWorkflow, /SAVED_WORKFLOW_GLOBAL_DIR = `\$\{OPENZWORK_DATA_DIR_NAME\}\/workflows`/);
+  // 内置技能的全局目录说明必须与 SAVED_WORKFLOW_GLOBAL_DIR 同源（不出现旧路径由上方全仓扫描守护）。
+  const skillDoc = fs.readFileSync(path.join(root, 'apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/SKILL.md'), 'utf8');
+  assert.match(skillDoc, /~\/\.openzwork\/workflows/);
   // 上游账号域孤儿（WP-04 删除链幸存、零消费者）已物理删除。
   assert.equal(fs.existsSync(path.join(root, 'packages/shared/src/account-provider-state.ts')), false);
 });

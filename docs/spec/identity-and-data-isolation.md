@@ -40,20 +40,30 @@ OpenZWork 是 ZCode 上游的私有净化分支。产品必须在用户机器上
    （D-03）。
 2. **WP-E1a 记忆迁移**：`packages/shared/src/node/memoryMigration.ts` 及其 UI 文案
    （memoryMigrationHint、i18n locales）一次性**单向读取**旧根 `~/.zcode` 复制记忆数据，
-   是唯一获批的旧根读取点；不得反向写入。
-3. 其余如需豁免，必须在本节登记并由用户批准，不得以"注释/文案"为由绕过。
+   是唯一获批的旧根读取点；不得反向写入。其用户文案的测试夹具
+   （`packages/services/test/memory-migration.test.ts`）逐字镜像上述文案，随本条一并豁免。
+3. **政策与修复依据文本**：本 spec 与 `docs/spec/memory-migration.md` 以旧根路径定义
+   隔离边界本身；`scripts/zcode-distribution/installer.mjs` 的注释引用被替换的旧默认
+   目录（`$HOME/.zcode/runtime`）作为默认值变更的修复依据。开发态诊断/重放工具描述的
+   是本产品自身的数据位置，不豁免——必须随数据根一并迁移（2026-09-27 已修
+   README/NOTICE/shadow-replay/prompt-trajectory 六处过时引用）。
+4. 其余如需豁免，必须在本节登记并由用户批准，不得以"注释/文案"为由绕过。
 
 ## 失败语义与验收
 
 - 违反核心不变量 = 隔离破洞（设计稿 A 类），按"必须清零"处理，不算可兜底缺陷。
-- 结构断言：`tests/private-cleanup/cleanup.test.cjs` 的 WP-03 块——全仓扫描用户级
-  `.zcode` 引用（`~/.zcode`、`$HOME/.zcode`），豁免清单之外必须为 0；并正查关键落点
-  （REMOTE_BASE 同源、installer 默认目录、全局 workflows 常量派生）。内置技能的全局目录说明
-  必须与 `SAVED_WORKFLOW_GLOBAL_DIR` 一致。
+- 结构断言：`tests/private-cleanup/cleanup.test.cjs` 的 WP-03 块——按 **git 追踪清单**做
+  全仓文本扫描（`ts/tsx/js/jsx/mjs/cjs/json/md/sh/yaml`，新增目录自动入列），用户级
+  `.zcode` 引用（`~/.zcode`、`$HOME/.zcode`；`.zcode` 后不得再跟字母或连字符，排除
+  `.zcode-dev-home` 等恰好同前缀的其他目录名）在豁免清单之外必须为 0；并正查关键落点
+  （REMOTE_BASE 同源、installer 默认目录、全局 workflows 常量派生、内置技能全局目录说明
+  必须与 `SAVED_WORKFLOW_GLOBAL_DIR` 一致）。
 - CI 行为测试（`tests/private-cleanup/identity-paths.test.ts`）：在临时 HOME 下执行由
   `connect.ts` 生成的 shell 命令，核对实际可执行路径与注入的运行根；执行 wrapper 的兜底
-  分支；以临时目录保存、列出并读回全局 saved workflow，且不得读写旧用户根。测试必须
-  在内层 Agent workspace 构建之后运行，以使用实际 contracts/core 导出。
+  分支；以临时目录保存、列出并读回全局 saved workflow——HOME 内**预置旧根工作流**
+  （旧根独有 + 与新根同名各一份），验证它们不被列出、不被解析、逐字节不变，同时证明
+  不读且不写旧用户根。测试必须在内层 Agent workspace 构建之后运行，以使用实际
+  contracts/core 导出。
 - 行为断言：`packages/services/test/paths-isolation.test.ts` 断言数据根解析为
   `.openzwork` 且非 `.zcode`。上述临时 HOME 测试不等于 SSH/WSL/Docker 实机连接或安装包 UAT。
 

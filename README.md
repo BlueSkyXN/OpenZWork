@@ -178,7 +178,7 @@ pnpm build:zcode --help
 - `releases/<version>/sha256.txt`：校验摘要。
 - `latest.json`、`install.sh`：版本索引和安装脚本。
 
-完整目录可上传到配置的下载根地址。安装脚本从该地址下载运行包，默认安装到 `~/.zcode/runtime`，并在 `~/.local/bin` 创建 `zcode` 命令。安装目录可通过 `ZCODE_DIST_HOME` 修改，命令目录可通过 `ZCODE_DIST_BIN_DIR` 修改。
+完整目录可上传到配置的下载根地址。安装脚本从该地址下载运行包，默认安装到 `~/.openzwork/runtime`，并在 `~/.local/bin` 创建 `zcode` 命令。安装目录可通过 `ZCODE_DIST_HOME` 修改，命令目录可通过 `ZCODE_DIST_BIN_DIR` 修改。
 
 旧 Lite 用户需要改用上述构建命令、环境变量和新的安装脚本。新安装不会删除旧 Lite 目录，也不会迁移或删除已有会话数据。
 
