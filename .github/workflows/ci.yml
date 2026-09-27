@@ -79,6 +79,16 @@ jobs:
       - name: Identity and remote path behavior tests
         run: pnpm exec tsx --test tests/private-cleanup/identity-paths.test.ts
 
+      # WP-03 远端链路与发行安装的本地 UAT：真实 esbuild bundle + 真实启动命令/zcode-hello
+      # 握手 + 真实 installFile 上传链 + 真实 install.sh；传输层以本地 /bin/sh 后端替换
+      # SSH/WSL/Docker（测试文件头注记录了官方 App 终端的环境渗入坑与净化策略）。
+      # Windows 上三个用例自跳过（POSIX shell）；bundle 缺失时自跳过而非静默通过。
+      - name: Build remote server bundle (UAT)
+        run: pnpm --filter @zcode/server build:remote
+
+      - name: Remote chain and installer local UAT
+        run: pnpm exec tsx --test tests/private-cleanup/remote-chain-local.test.ts
+
       # 包级测试：services（含 E1 记忆迁移/统计门禁/技能开关）与 ui（需显式 tsconfig 解析 @ 别名）。
       - name: Package tests (services + ui)
         run: pnpm test

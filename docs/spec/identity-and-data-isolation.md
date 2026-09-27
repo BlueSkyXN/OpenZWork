@@ -64,6 +64,13 @@ OpenZWork 是 ZCode 上游的私有净化分支。产品必须在用户机器上
   （旧根独有 + 与新根同名各一份），验证它们不被列出、不被解析、逐字节不变，同时证明
   不读且不写旧用户根。测试必须在内层 Agent workspace 构建之后运行，以使用实际
   contracts/core 导出。
+- 本地 UAT（`tests/private-cleanup/remote-chain-local.test.ts`，CI 同跑）：真实 esbuild
+  产物 zcode-server.cjs 从部署落位启动、完成 zcode-hello/ack 握手并物化配置到
+  `.openzwork/v2`；真实 `LocalUploadAssetInstaller.installFile` 走完 staging→chmod→mv
+  链；真实 install.sh 默认装到 `.openzwork/runtime` 并接好 bin 命令。三者都断言旧根
+  `.zcode` 从未创建。传输层用本地 /bin/sh 后端替换 SSH/WSL/Docker；随包 agent 运行时
+  与发行包内真实 CLI 负载（UAT 用 stub）不在其列。子进程一律用最小净化 env，防宿主
+  （官方 App 终端）注入的 `ZCODE_DATA_BASE_DIR` 等变量把数据根吸回官方目录。
 - 行为断言：`packages/services/test/paths-isolation.test.ts` 断言数据根解析为
   `.openzwork` 且非 `.zcode`。上述临时 HOME 测试不等于 SSH/WSL/Docker 实机连接或安装包 UAT。
 
