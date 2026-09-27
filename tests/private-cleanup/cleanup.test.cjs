@@ -556,3 +556,60 @@ test('[structural, not runtime] WP-09: off-peak domain fully removed from source
   for (const rel of scanRoots) walk(path.join(root, rel));
   assert.deepEqual(violations, [], `off-peak residue found:\n${violations.join('\n')}`);
 });
+
+test('[structural, not runtime] WP-03: user-level data root references stay under .openzwork', () => {
+  // WP-03 A 类硬门槛：用户级 .zcode 引用清零。2026-09-26 完成度复审发现远端启动链、发行安装、
+  // 全局 workflows 根等漏改残留，补清后加入本断言防回潮。登记豁免见 docs/spec/identity-and-data-isolation.md：
+  // 项目级 <cwd>/.zcode 属用户仓库工作区（模式只匹配 ~/、$HOME 前缀，天然不命中）；
+  // WP-E1a 记忆迁移是唯一获批的旧根单向读取点，其代码与用户文案允许提及旧根。
+  const bannedPattern = /~\/\.zcode|\$HOME\/\.zcode/;
+  const allowFiles = new Set([
+    'packages/shared/src/node/memoryMigration.ts',
+    'packages/ui/src/settings/memoryMigrationHint.ts',
+    'packages/ui/src/i18n/locales/zh-CN.ts',
+    'packages/ui/src/i18n/locales/en-US.ts',
+  ]);
+  const scanRoots = ['packages/shared/src', 'packages/services/src', 'packages/ui/src', 'packages/desktop/src', 'apps/zcode-cli/packages'];
+  const scanExts = /\.(ts|tsx|mjs)$/;
+  const violations = [];
+  const walk = dir => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'dist' || entry.name === 'node_modules') continue;
+        walk(full);
+        continue;
+      }
+      if (!scanExts.test(entry.name)) continue;
+      const rel = path.relative(root, full).split(path.sep).join('/');
+      if (allowFiles.has(rel)) continue;
+      const text = fs.readFileSync(full, 'utf8');
+      const match = text.match(bannedPattern);
+      if (match) violations.push(`${rel}: ${match[0]}`);
+    }
+  };
+  for (const rel of scanRoots) walk(path.join(root, rel));
+  assert.deepEqual(violations, [], `user-level .zcode residue found:\n${violations.join('\n')}`);
+});
+
+test('[structural, not runtime] WP-03: remote deploy/startup and distribution defaults share the .openzwork root', () => {
+  // 远端链：部署（deploy.ts 经 REMOTE_BASE 上传）与启动（connect.ts 拼 shell 命令）必须同源，
+  // 否则首连必失败且复用官方命名空间。双引号 env 串里 ~ 不展开，用 $HOME 展开形。
+  const deployShared = fs.readFileSync(path.join(root, 'packages/server/src/remote/deployShared.ts'), 'utf8');
+  assert.match(deployShared, /export const REMOTE_BASE = "~\/\.openzwork\/server"/);
+  assert.match(deployShared, /REMOTE_BASE_HOME_EXPR = `\$HOME\$\{REMOTE_BASE\.slice\(1\)\}`/);
+  for (const file of ['packages/server/src/remote/connect.ts', 'packages/server/src/remote/zcodeAgentBundleWrapper.ts']) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.doesNotMatch(text, /~\/\.zcode|\$HOME\/\.zcode/);
+    assert.match(text, /REMOTE_BASE/);
+  }
+  // 发行安装脚本默认目录落 OpenZWork 命名空间。
+  const installer = fs.readFileSync(path.join(root, 'scripts/zcode-distribution/installer.mjs'), 'utf8');
+  assert.match(installer, /ZCODE_DIST_HOME:-\$HOME\/\.openzwork\/runtime/);
+  // 全局 saved workflows 根派生自产品身份常量，不得退回官方字面量。
+  const savedWorkflow = fs.readFileSync(path.join(root, 'apps/zcode-cli/packages/contracts/src/tools/saved-workflow.ts'), 'utf8');
+  assert.doesNotMatch(savedWorkflow, /SAVED_WORKFLOW_GLOBAL_DIR = "\.zcode\/workflows"/);
+  assert.match(savedWorkflow, /SAVED_WORKFLOW_GLOBAL_DIR = `\$\{OPENZWORK_DATA_DIR_NAME\}\/workflows`/);
+  // 上游账号域孤儿（WP-04 删除链幸存、零消费者）已物理删除。
+  assert.equal(fs.existsSync(path.join(root, 'packages/shared/src/account-provider-state.ts')), false);
+});

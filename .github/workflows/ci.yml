@@ -49,6 +49,9 @@ jobs:
       - name: Root lint
         run: pnpm lint
 
+      - name: Architecture boundaries
+        run: pnpm architecture:check
+
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
       # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
       # --cache-dir=.turbo + actions/cache：turbo 默认缓存在 node_modules/.cache 不随
@@ -70,6 +73,11 @@ jobs:
         run: node --test tests/private-cleanup/cleanup.test.cjs
         env:
           TYPESCRIPT_MODULE_PATH: ${{ github.workspace }}/node_modules/typescript
+
+      # WP-03 路径行为测试依赖内层 contracts/core 构建产物；Windows 跑跨平台的全局工作流用例，
+      # POSIX shell 启动/Agent wrapper 用例仅在 macOS 执行，真实远端与安装包 UAT 另记。
+      - name: Identity and remote path behavior tests
+        run: pnpm exec tsx --test tests/private-cleanup/identity-paths.test.ts
 
       # 包级测试：services（含 E1 记忆迁移/统计门禁/技能开关）与 ui（需显式 tsconfig 解析 @ 别名）。
       - name: Package tests (services + ui)

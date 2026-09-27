@@ -6,6 +6,14 @@ import type { RemoteAssetNetworkPort } from "@zcode/server/remote/remoteAssetNet
 
 export const REMOTE_BASE = "~/.openzwork/server";
 
+/**
+ * REMOTE_BASE 的 $HOME 展开形（`$HOME/.openzwork/server`）。启动远端 server 的 shell 命令里
+ * 给 env 赋值用双引号包裹，双引号内 `~` 不做展开，必须用 $HOME 形式；命令路径位置的 `~` 在
+ * 词首且未加引号，可以继续用 REMOTE_BASE 原样拼接。两者必须同源于 REMOTE_BASE，
+ * 否则部署目标与启动路径会再次断裂（WP-03 复审发现的残留）。
+ */
+export const REMOTE_BASE_HOME_EXPR = `$HOME${REMOTE_BASE.slice(1)}`;
+
 export interface RemoteAssetDeployOptions {
   /** 取消当前连接初始化；共享 cache 仍可独立完成，但不得继续写入远端 staging。 */
   signal?: AbortSignal;

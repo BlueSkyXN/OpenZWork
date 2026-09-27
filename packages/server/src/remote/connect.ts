@@ -19,6 +19,7 @@ import type { DeployOptions } from "./deploy.js";
 import { assertSupportedRemoteEnvironment } from "@zcode/server/remote/remotePlatformSupport.js";
 import { quotePosixShellArg } from "./posixShell.js";
 import { formatWslProxyForLog } from "./wslProxy.js";
+import { REMOTE_BASE, REMOTE_BASE_HOME_EXPR } from "./deployShared.js";
 
 const BACKEND_DISCONNECT_EXIT_CODE = -1;
 
@@ -356,13 +357,16 @@ async function resolveRemoteRuntimeNetwork(
   }
 }
 
-function buildRemoteServerCommand(
+export function buildRemoteServerCommand(
   options: ConnectOptions | undefined,
   remoteRuntimeNetwork: RemoteRuntimeNetworkOptions | undefined,
 ): string {
   const envParts = [
     `${SERVICE_AUTHORITY_MODE_ENV}="desktop-attached-remote"`,
-    'ZCODE_SERVER_RUNTIME_ROOT="$HOME/.zcode/server"',
+    // WP-03 用户级数据根隔离：远端运行根必须与 deployShared.REMOTE_BASE（部署写入 ~/.openzwork/server）
+    // 同源。旧值硬编码官方旧根，是漏改残留——部署到 .openzwork 却从官方旧目录启动，远端首连必失败，
+    // 且复用了官方命名空间，违背设计稿 §2.3「远端机器上的旧官方 .zcode/server 不被读取」不变量。
+    `ZCODE_SERVER_RUNTIME_ROOT="${REMOTE_BASE_HOME_EXPR}"`,
   ];
   for (const [key, value] of Object.entries(
     pickRemoteRuntimeEnv(options?.remoteRuntimeEnv ?? {}),
@@ -388,5 +392,6 @@ function buildRemoteServerCommand(
       );
     }
   }
-  return `${envParts.join(" ")} ~/.zcode/server/node ~/.zcode/server/zcode-server.cjs`;
+  // REMOTE_BASE（~/ 前缀）在词首且未加引号，由 shell 展开；与 deploy.ts 上传目标同源。
+  return `${envParts.join(" ")} ${REMOTE_BASE}/node ${REMOTE_BASE}/zcode-server.cjs`;
 }

@@ -1,11 +1,13 @@
 const packageDirName = "zcode";
 
+// WP-03 用户级数据根隔离：默认安装目录必须落 OpenZWork 命名空间（~/.openzwork/runtime）。
+// 旧默认 $HOME/.zcode/runtime 会把发行产物装回官方目录；ZCODE_DIST_HOME 仍可显式覆盖。
 export function installScriptSource(baseUrl) {
   return `#!/usr/bin/env sh
 set -eu
 
 BASE_URL="\${ZCODE_DIST_BASE_URL:-${baseUrl}}"
-INSTALL_DIR="\${ZCODE_DIST_HOME:-$HOME/.zcode/runtime}"
+INSTALL_DIR="\${ZCODE_DIST_HOME:-$HOME/.openzwork/runtime}"
 BIN_DIR="\${ZCODE_DIST_BIN_DIR:-$HOME/.local/bin}"
 
 need_cmd() {

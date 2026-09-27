@@ -8,6 +8,7 @@
 // 各自演化，症状是「刚保存的 workflow 列不出来」，而那是最难被单侧测试抓住的一类分叉。
 
 import { z } from "zod";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 
 /**
  * 保存文件的扩展名。`.dwf.ts` 而不是 `.ts`：编辑器按 TypeScript 高亮（frontmatter 是块注释，
@@ -25,10 +26,12 @@ export const SAVED_WORKFLOW_PROJECT_DIR = ".zcode/workflows";
 export const WORKFLOW_DRAFTS_DIR = ".zcode/workflow-drafts";
 
 /**
- * 全局作用域的存放目录（相对 agent 进程的家目录）。落点 `~/.zcode/workflows/<name>.dwf.ts`
- * ——与 legacy Workflow 工具的用户根同一处，对所有项目可见。
+ * 全局作用域的存放目录（相对 agent 进程的家目录）。落点 `~/.openzwork/workflows/<name>.dwf.ts`，
+ * 对所有项目可见。WP-03 用户级数据根隔离：本文件曾漏改保留官方 `.zcode/workflows`，使全局档
+ * 绕过隔离落回官方命名空间（与 shared 协议注释「全局档落 ~/.openzwork/workflows/」相悖），
+ * 2026-09-26 残留清理时改为派生自产品身份常量。
  */
-export const SAVED_WORKFLOW_GLOBAL_DIR = ".zcode/workflows";
+export const SAVED_WORKFLOW_GLOBAL_DIR = `${OPENZWORK_DATA_DIR_NAME}/workflows`;
 
 /**
  * 名字的合法形状。与旧 `Workflow` 工具的解析器同一条模式（script-workflow-tool-port.ts）——
@@ -42,7 +45,7 @@ export const SAVED_WORKFLOW_MAX_NAME_CHARS = 64;
 
 /**
  * 作用域。两档：`project` 落在项目的 `.zcode/workflows/`，只在那个项目里可见；`global`
- * 落在 `~/.zcode/workflows/`（agent 进程的家目录），对所有项目可见。一个文件的作用域由它所在的目录推得，frontmatter 不存。
+ * 落在 `~/.openzwork/workflows/`（agent 进程的家目录），对所有项目可见。一个文件的作用域由它所在的目录推得，frontmatter 不存。
  */
 export const SAVED_WORKFLOW_SCOPES = ["project", "global"] as const;
 
