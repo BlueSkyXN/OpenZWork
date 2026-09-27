@@ -49,6 +49,9 @@ jobs:
       - name: Root lint
         run: pnpm lint
 
+      - name: Architecture boundaries
+        run: pnpm architecture:check
+
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
       # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
       # --cache-dir=.turbo + actions/cache：turbo 默认缓存在 node_modules/.cache 不随
@@ -65,11 +68,26 @@ jobs:
         working-directory: apps/zcode-cli
         run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
 
-      # stage1 私有化清理的结构断言（基线 23/23）。
+      # stage1 私有化清理的结构断言（当前 33 个顶层用例；WP-03/08/09 扫描为 git 全仓口径）。
       - name: Stage1 cleanup structural tests
         run: node --test tests/private-cleanup/cleanup.test.cjs
         env:
           TYPESCRIPT_MODULE_PATH: ${{ github.workspace }}/node_modules/typescript
+
+      # WP-03 路径行为测试依赖内层 contracts/core 构建产物；Windows 跑跨平台的全局工作流用例，
+      # POSIX shell 启动/Agent wrapper 用例仅在 macOS 执行，真实远端与安装包 UAT 另记。
+      - name: Identity and remote path behavior tests
+        run: pnpm exec tsx --test tests/private-cleanup/identity-paths.test.ts
+
+      # WP-03 远端链路与发行安装的本地 UAT：真实 esbuild bundle + 真实启动命令/zcode-hello
+      # 握手 + 真实 installFile 上传链 + 真实 install.sh；传输层以本地 /bin/sh 后端替换
+      # SSH/WSL/Docker（测试文件头注记录了官方 App 终端的环境渗入坑与净化策略）。
+      # Windows 上三个用例自跳过（POSIX shell）；bundle 缺失时自跳过而非静默通过。
+      - name: Build remote server bundle (UAT)
+        run: pnpm --filter @zcode/server build:remote
+
+      - name: Remote chain and installer local UAT
+        run: pnpm exec tsx --test tests/private-cleanup/remote-chain-local.test.ts
 
       # 包级测试：services（含 E1 记忆迁移/统计门禁/技能开关）与 ui（需显式 tsconfig 解析 @ 别名）。
       - name: Package tests (services + ui)

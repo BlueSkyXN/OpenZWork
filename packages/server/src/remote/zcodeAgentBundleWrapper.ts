@@ -6,14 +6,18 @@
 // 这样 provider runtime resolver 不需要区分原生/JS，照旧找 zcode-agent 这个可执行文件即可。
 // 开发态与生产态共用同一份 wrapper 语义。
 
+import { REMOTE_BASE_HOME_EXPR } from "./deployShared.js";
+
 export const REMOTE_AGENT_BUNDLE_NAME = "zcode.cjs";
 
 export function buildRemoteAgentBundleWrapper(runtimeResourceDir: string): string {
   return [
     "#!/bin/sh",
     "set -eu",
-    'runtime_root="${ZCODE_SERVER_RUNTIME_ROOT:-$HOME/.zcode/server}"',
-    `exec "$runtime_root/node" "$HOME/.openzwork/server/agents/${runtimeResourceDir}/${REMOTE_AGENT_BUNDLE_NAME}" "$@"`,
+    // WP-03 用户级数据根隔离：兜底值必须落 OpenZWork 命名空间（与 deployShared.REMOTE_BASE 同源），
+    // 旧兜底硬编码官方旧根，会在 connect 未注入 ZCODE_SERVER_RUNTIME_ROOT 时退回官方目录。
+    `runtime_root="\${ZCODE_SERVER_RUNTIME_ROOT:-${REMOTE_BASE_HOME_EXPR}}"`,
+    `exec "$runtime_root/node" "${REMOTE_BASE_HOME_EXPR}/agents/${runtimeResourceDir}/${REMOTE_AGENT_BUNDLE_NAME}" "$@"`,
     "",
   ].join("\n");
 }

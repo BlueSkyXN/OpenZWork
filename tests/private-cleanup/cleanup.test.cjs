@@ -8,6 +8,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const root = process.env.ZCODE_TEST_SOURCE_ROOT || path.resolve(__dirname, '../..');
 const ts = require(process.env.TYPESCRIPT_MODULE_PATH || 'typescript');
 const adapter = 'apps/zcode-cli/packages/adapters/src/model/';
@@ -402,36 +403,23 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
   const officialDomainRe =
     /zcode\.z\.ai|open\.bigmodel\.cn|chat\.z\.ai|api\.z\.ai|cdn-zcode\.z\.ai|bigmodel\.cn|(?:^|[^a-z0-9.-])z\.ai(?:\/|[^a-z0-9.-]|$)|zcode\.ai/;
   const exemptFiles = new Set([
-    // config/ 不在扫描根内；builtin.json 的官方域由下方专项测试守护（off-peak 规则已删）。
+    // 当前为空：builtin.json 的官方域已随 WP-08 模板清理移除，全仓扫描直接覆盖该文件。
   ]);
-  const scanRoots = [
-    'packages/shared/src', 'packages/services/src', 'packages/server/src',
-    'packages/desktop/src', 'packages/ui/src', 'packages/web/src',
-    'packages/client/src', 'packages/provider/src', 'packages/provider-node/src',
-    'apps/zcode-cli/packages',
-    'scripts', 'tests',
-  ];
-  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json)$/;
-  const ignoreDirs = new Set(['node_modules', 'dist', 'out', '.git', 'mock-cdn']);
-  // 豁免表与本测试自排除串统一使用 POSIX 风格相对路径；
-  // path.relative 在 Windows 上返回反斜杠，必须先归一化再比较，否则豁免/自排除在 win32 全部失效。
-  const toPosixRelative = file => file.split(path.sep).join('/');
+  // 2026-09-27 起与 WP-03 同口径：按 git 追踪清单做全仓文本扫描（新增目录自动入列，
+  // 且不混入工作树的 node_modules/dist）；git ls-files 输出本就是 POSIX 路径，原先
+  // 为 Windows path.relative 反斜杠做的归一化不再需要。
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
   const violations = [];
-  const walk = dir => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.isDirectory()) {
-        if (!ignoreDirs.has(entry.name)) walk(path.join(dir, entry.name));
-        continue;
-      }
-      if (!scanExtensions.test(entry.name)) continue;
-      const file = toPosixRelative(path.relative(root, path.join(dir, entry.name)));
-      if (exemptFiles.has(file) || file === 'tests/private-cleanup/cleanup.test.cjs') continue;
-      const text = fs.readFileSync(path.join(dir, entry.name), 'utf8');
-      const match = text.match(officialDomainRe);
-      if (match) violations.push(`${file}: ${match[0]}`);
-    }
-  };
-  for (const rel of scanRoots) walk(path.join(root, rel));
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  for (const rel of tracked) {
+    if (!scanExtensions.test(rel) || exemptFiles.has(rel) || rel === 'tests/private-cleanup/cleanup.test.cjs') continue;
+    const file = path.join(root, rel);
+    if (!fs.existsSync(file)) continue;
+    const match = fs.readFileSync(file, 'utf8').match(officialDomainRe);
+    if (match) violations.push(`${rel}: ${match[0]}`);
+  }
   assert.deepEqual(violations, [], `official domains found outside exemptions:\n${violations.join('\n')}`);
 });
 
@@ -534,25 +522,83 @@ test('[structural, not runtime] WP-09: off-peak domain fully removed from source
     'packages/services/src/session/tasksDatabase/schema-v1.ts',
     'packages/services/src/session/tasksDatabase/migrations.ts',
   ]);
-  const scanRoots = ['packages/shared/src', 'packages/services/src', 'packages/ui/src', 'packages/desktop/src', 'apps/zcode-cli/packages'];
-  const scanExts = /\.(ts|tsx|mjs)$/;
+  // 2026-09-27 起与 WP-03 同口径：按 git 追踪清单做全仓文本扫描（原先的目录枚举漏掉
+  // packages/server、scripts、tests 之外的文档与脚本）。本测试文件自身的注释含
+  // off-peak/off_peak 字样（规则说明与豁免理由），必须自排除。
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
   const violations = [];
-  const walk = dir => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) {
-        if (entry.name === 'dist' || entry.name === 'node_modules') continue;
-        walk(full);
-        continue;
-      }
-      if (!scanExts.test(entry.name)) continue;
-      const rel = path.relative(root, full).split(path.sep).join('/');
-      if (allowFiles.has(rel)) continue;
-      const text = fs.readFileSync(full, 'utf8');
-      const match = text.match(bannedPattern);
-      if (match) violations.push(`${rel}: ${match[0]}`);
-    }
-  };
-  for (const rel of scanRoots) walk(path.join(root, rel));
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  for (const rel of tracked) {
+    if (!scanExtensions.test(rel) || allowFiles.has(rel) || rel === 'tests/private-cleanup/cleanup.test.cjs') continue;
+    const file = path.join(root, rel);
+    if (!fs.existsSync(file)) continue;
+    const match = fs.readFileSync(file, 'utf8').match(bannedPattern);
+    if (match) violations.push(`${rel}: ${match[0]}`);
+  }
   assert.deepEqual(violations, [], `off-peak residue found:\n${violations.join('\n')}`);
+});
+
+test('[structural, not runtime] WP-03: user-level data root references stay under .openzwork', () => {
+  // WP-03 A 类硬门槛：用户级 .zcode 引用清零。2026-09-26 复审补清远端启动链、发行安装、
+  // 全局 workflows 根等代码残留；2026-09-27 PR 评审指出按目录枚举的扫描根永远追不上
+  // 新增目录（当时漏了 packages/server、scripts 与 README/NOTICE/SKILL 等 Markdown，
+  // 六处过时引用由此漏网），改为按 git 追踪清单做全仓文本扫描：新增包、.github、文档
+  // 自动入列，且与 CI 新检出看到的是同一份"全仓"（工作树的 node_modules/dist/未纳管
+  // 私目录不会混入）。模式只匹配用户级旧根字面量：~/、$HOME/ 前缀，项目级 <cwd>/.zcode
+  // 属用户仓库工作区天然不命中；(?![\w-]) 排除恰好以 .zcode 开头的其他目录名
+  // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/spec/identity-and-data-isolation.md。
+  const bannedPattern = /(?:~|\$HOME)\/\.zcode(?![\w-])/;
+  const allowFiles = new Set([
+    // WP-E1a 记忆迁移链：唯一获批的旧根单向读取点——代码、用户文案与文案的测试夹具。
+    'packages/shared/src/node/memoryMigration.ts',
+    'packages/ui/src/settings/memoryMigrationHint.ts',
+    'packages/ui/src/i18n/locales/zh-CN.ts',
+    'packages/ui/src/i18n/locales/en-US.ts',
+    'packages/services/test/memory-migration.test.ts',
+    // 政策文本以旧根定义隔离边界；installer 注释引用被替换的旧默认值作为修复依据。
+    'docs/spec/identity-and-data-isolation.md',
+    'docs/spec/memory-migration.md',
+    'scripts/zcode-distribution/installer.mjs',
+  ]);
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  const violations = [];
+  for (const rel of tracked) {
+    if (!scanExtensions.test(rel) || allowFiles.has(rel)) continue;
+    const file = path.join(root, rel);
+    // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。
+    if (!fs.existsSync(file)) continue;
+    const match = fs.readFileSync(file, 'utf8').match(bannedPattern);
+    if (match) violations.push(`${rel}: ${match[0]}`);
+  }
+  assert.deepEqual(violations, [], `user-level .zcode residue found:\n${violations.join('\n')}`);
+});
+
+test('[structural, not runtime] WP-03: remote deploy/startup and distribution defaults share the .openzwork root', () => {
+  // 远端链：部署（deploy.ts 经 REMOTE_BASE 上传）与启动（connect.ts 拼 shell 命令）必须同源，
+  // 否则首连必失败且复用官方命名空间。双引号 env 串里 ~ 不展开，用 $HOME 展开形。
+  const deployShared = fs.readFileSync(path.join(root, 'packages/server/src/remote/deployShared.ts'), 'utf8');
+  assert.match(deployShared, /export const REMOTE_BASE = "~\/\.openzwork\/server"/);
+  assert.match(deployShared, /REMOTE_BASE_HOME_EXPR = `\$HOME\$\{REMOTE_BASE\.slice\(1\)\}`/);
+  for (const file of ['packages/server/src/remote/connect.ts', 'packages/server/src/remote/zcodeAgentBundleWrapper.ts']) {
+    const text = fs.readFileSync(path.join(root, file), 'utf8');
+    assert.doesNotMatch(text, /~\/\.zcode|\$HOME\/\.zcode/);
+    assert.match(text, /REMOTE_BASE/);
+  }
+  // 发行安装脚本默认目录落 OpenZWork 命名空间。
+  const installer = fs.readFileSync(path.join(root, 'scripts/zcode-distribution/installer.mjs'), 'utf8');
+  assert.match(installer, /ZCODE_DIST_HOME:-\$HOME\/\.openzwork\/runtime/);
+  // 全局 saved workflows 根派生自产品身份常量，不得退回官方字面量。
+  const savedWorkflow = fs.readFileSync(path.join(root, 'apps/zcode-cli/packages/contracts/src/tools/saved-workflow.ts'), 'utf8');
+  assert.doesNotMatch(savedWorkflow, /SAVED_WORKFLOW_GLOBAL_DIR = "\.zcode\/workflows"/);
+  assert.match(savedWorkflow, /SAVED_WORKFLOW_GLOBAL_DIR = `\$\{OPENZWORK_DATA_DIR_NAME\}\/workflows`/);
+  // 内置技能的全局目录说明必须与 SAVED_WORKFLOW_GLOBAL_DIR 同源（不出现旧路径由上方全仓扫描守护）。
+  const skillDoc = fs.readFileSync(path.join(root, 'apps/zcode-cli/packages/bundled-skills/skills/dynamic-workflows/SKILL.md'), 'utf8');
+  assert.match(skillDoc, /~\/\.openzwork\/workflows/);
+  // 上游账号域孤儿（WP-04 删除链幸存、零消费者）已物理删除。
+  assert.equal(fs.existsSync(path.join(root, 'packages/shared/src/account-provider-state.ts')), false);
 });
