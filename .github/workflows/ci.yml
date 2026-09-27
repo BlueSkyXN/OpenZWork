@@ -68,7 +68,7 @@ jobs:
         working-directory: apps/zcode-cli
         run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
 
-      # stage1 私有化清理的结构断言（基线 23/23）。
+      # stage1 私有化清理的结构断言（当前 33 个顶层用例；WP-03/08/09 扫描为 git 全仓口径）。
       - name: Stage1 cleanup structural tests
         run: node --test tests/private-cleanup/cleanup.test.cjs
         env:
