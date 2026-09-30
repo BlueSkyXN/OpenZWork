@@ -9,6 +9,7 @@ import {
   copyRuntimeNodeModules,
   patchNodePtyPrebuilds,
   stageTuiRuntime,
+  stageBundledSkills,
 } from "./zcode-distribution/assets.mjs";
 import { installScriptSource } from "./zcode-distribution/installer.mjs";
 
@@ -192,6 +193,7 @@ async function stageZCodePackage({ packageRoot, version }) {
   );
   await chmod(resolve(packageRoot, "agent", "zcode.cjs"), 0o755);
 
+  await stageBundledSkills(packageRoot);
   await stageTuiRuntime(packageRoot);
   await copyRuntimeNodeModules(packageRoot);
   await patchNodePtyPrebuilds(packageRoot);
