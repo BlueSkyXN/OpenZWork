@@ -6,10 +6,13 @@
 //   临时文件+硬链接保证目标一旦存在即为完整内容；幂等标记写在 {targetStorageRoot}/v2。
 import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
-import { chmod, copyFile, link, lstat, mkdir, readdir, readFile, rm } from "node:fs/promises";
+import { chmod, copyFile, link, lstat, readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { atomicWritePrivateTextFile } from "./privateFilePersistence.js";
+import { createMemoryMigrationBoundary } from "./memoryMigrationBoundary.js";
+
+type MigrationBoundary = Awaited<ReturnType<typeof createMemoryMigrationBoundary>>;
 
 /** 幂等标记文件名，位于 {targetStorageRoot}/v2/（与 agents-state.json 同层，不污染 CLI 数据树）。 */
 const MEMORY_MIGRATION_MARKER_FILE_NAME = "memory-migration.json";
@@ -20,7 +23,8 @@ const MEMORIES_RELATIVE_PATH = join("cli", "memories");
  * desktop/CLI 迁移进程正在写，避免并发首启把活跃临时文件当成陈旧残留删除。
  */
 // UUID 版本与变体位限制及固定标签，确保只匹配迁移器创建的临时文件。
-const tmpFilePattern = /^\..+\.memory-migration-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(\d+)\.tmp$/i;
+const tmpFilePattern =
+  /^\..+\.memory-migration-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(\d+)\.tmp$/i;
 
 /** 幂等标记 schema：标记存在即「该数据根已迁移完成」的唯一事实（spec §4）。 */
 export const memoryMigrationMarkerSchema = z.object({
@@ -100,7 +104,12 @@ async function readMarkerIfPresent(markerPath: string): Promise<unknown | null> 
 }
 
 /** 迁移开始前清理目标树内上次中断遗留的 tmp 残留（spec §2.1；硬链接提交后正常路径无残留）。 */
-async function cleanupStaleTmpFiles(root: string, logger: MemoryMigrationLogger): Promise<void> {
+async function cleanupStaleTmpFiles(
+  root: string,
+  logger: MemoryMigrationLogger,
+  boundary: MigrationBoundary,
+): Promise<void> {
+  if (!(await boundary.assertDirectory(root))) return;
   let entries;
   try {
     entries = await readdir(root, { withFileTypes: true });
@@ -115,7 +124,7 @@ async function cleanupStaleTmpFiles(root: string, logger: MemoryMigrationLogger)
   for (const entry of entries) {
     const path = join(root, entry.name);
     if (entry.isDirectory() && !entry.isSymbolicLink()) {
-      await cleanupStaleTmpFiles(path, logger);
+      await cleanupStaleTmpFiles(path, logger, boundary);
       continue;
     }
     if (!entry.isFile()) continue;
@@ -123,16 +132,11 @@ async function cleanupStaleTmpFiles(root: string, logger: MemoryMigrationLogger)
     if (!match) continue;
     // 并发启动的另一个迁移进程可能正复制至其随机 tmp；活跃 PID 的临时文件归写者清理。
     const ownerPid = Number(match[1]);
-    if (
-      ownerPid === process.pid ||
-      (ownerPid > 0 && isProcessAlive(ownerPid))
-    ) {
+    if (ownerPid === process.pid || (ownerPid > 0 && isProcessAlive(ownerPid))) {
       continue;
     }
     await rm(path, { force: true }).catch((error: unknown) => {
-      logger.warn(
-        `[memoryMigration] stale tmp cleanup failed: ${path}: ${getErrorMessage(error)}`,
-      );
+      logger.warn(`[memoryMigration] stale tmp cleanup failed: ${path}: ${getErrorMessage(error)}`);
     });
   }
 }
@@ -194,6 +198,22 @@ export async function migrateLegacyProjectMemories(input: {
     throw error;
   }
 
+  const result: MemoryMigrationResult = {
+    status: "migrated",
+    filesCopied: 0,
+    filesSkipped: 0,
+    failures: [],
+  };
+  let boundary: MigrationBoundary;
+  try {
+    // 清理和标记读取也会沿父目录链接越界，必须先验证整棵现有目标树。
+    boundary = await createMemoryMigrationBoundary(input.targetStorageRoot, sourceRoot);
+  } catch (error) {
+    result.failures.push({ path: input.targetStorageRoot, error: getErrorMessage(error) });
+    logger.warn(`[memoryMigration] target boundary rejected: ${getErrorMessage(error)}`);
+    return result;
+  }
+
   try {
     const markerRaw = await readMarkerIfPresent(markerPath);
     if (markerRaw !== null && memoryMigrationMarkerSchema.safeParse(markerRaw).success) {
@@ -207,15 +227,13 @@ export async function migrateLegacyProjectMemories(input: {
     );
   }
 
-  const result: MemoryMigrationResult = {
-    status: "migrated",
-    filesCopied: 0,
-    filesSkipped: 0,
-    failures: [],
-  };
   logger.debug(`[memoryMigration] start: ${sourceRoot} -> ${targetRoot}`);
-  await cleanupStaleTmpFiles(targetRoot, logger);
-  await copyTree(sourceRoot, targetRoot, result, logger, 0);
+  try {
+    await cleanupStaleTmpFiles(targetRoot, logger, boundary);
+    await copyTree(sourceRoot, targetRoot, result, logger, 0, boundary);
+  } catch (error) {
+    result.failures.push({ path: targetRoot, error: getErrorMessage(error) });
+  }
   logger.info(
     `[memoryMigration] copied ${result.filesCopied} file(s), skipped ${result.filesSkipped}, ` +
       `${result.failures.length} failure(s): ${sourceRoot} -> ${targetRoot}`,
@@ -236,7 +254,14 @@ export async function migrateLegacyProjectMemories(input: {
     filesCopied: result.filesCopied,
     filesSkipped: result.filesSkipped,
   };
-  await atomicWritePrivateTextFile(markerPath, JSON.stringify(marker, null, 2));
+  try {
+    await boundary.assertDirectory(join(input.targetStorageRoot, "v2"), true);
+    await boundary.assertMarker(markerPath);
+    await atomicWritePrivateTextFile(markerPath, JSON.stringify(marker, null, 2));
+  } catch (error) {
+    result.failures.push({ path: markerPath, error: getErrorMessage(error) });
+    logger.warn(`[memoryMigration] marker write rejected: ${getErrorMessage(error)}`);
+  }
   return result;
 }
 
@@ -251,6 +276,7 @@ async function copyTree(
   result: MemoryMigrationResult,
   logger: MemoryMigrationLogger,
   depth: number,
+  boundary: MigrationBoundary,
 ): Promise<void> {
   // 递归深度用于跟踪异常深树，拒绝超过系统递归上限的损坏/恶意路径。
   if (depth > 256) {
@@ -260,7 +286,7 @@ async function copyTree(
     return;
   }
   try {
-    await mkdir(targetDir, { recursive: true });
+    await boundary.assertDirectory(targetDir, true);
   } catch (error) {
     result.failures.push({ path: targetDir, error: getErrorMessage(error) });
     return;
@@ -279,7 +305,7 @@ async function copyTree(
     }
     const sourcePath = join(sourceDir, entry.name);
     if (entry.isDirectory()) {
-      await copyTree(sourcePath, join(targetDir, entry.name), result, logger, depth + 1);
+      await copyTree(sourcePath, join(targetDir, entry.name), result, logger, depth + 1, boundary);
       continue;
     }
     if (!entry.isFile()) {
