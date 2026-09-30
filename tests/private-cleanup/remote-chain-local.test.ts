@@ -32,18 +32,69 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
-import { buildRemoteServerCommand, connectRemote } from "../../packages/server/src/remote/connect.ts";
+import {
+  buildRemoteServerCommand,
+  connectRemote,
+} from "../../packages/server/src/remote/connect.ts";
 import { REMOTE_BASE } from "../../packages/server/src/remote/deployShared.ts";
 import { LocalUploadAssetInstaller } from "../../packages/server/src/remote/remoteAssetInstaller.ts";
 import { resolvePosixHomePath } from "../../packages/server/src/remote/posixShell.ts";
 import type { IRemoteBackend, StdioStream } from "../../packages/server/src/remote/backend.ts";
 import { installScriptSource } from "../../scripts/zcode-distribution/installer.mjs";
+import { assertExecutable, requireRemoteBundle } from "./remote-uat-preflight.mjs";
 
 const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const serverBundlePath = join(repositoryRoot, "packages/server/dist/remote/zcode-server.cjs");
-const zcodeVersion = (JSON.parse(readFileSync(join(repositoryRoot, "package.json"), "utf8")) as { version: string }).version;
+const zcodeVersion = (
+  JSON.parse(readFileSync(join(repositoryRoot, "package.json"), "utf8")) as { version: string }
+).version;
 
-const bundleAvailable = existsSync(serverBundlePath);
+if (process.platform !== "win32") await requireRemoteBundle(serverBundlePath);
+
+test("remote UAT preflight rejects a missing bundle with a nonzero exit", () => {
+  const fixture = mkdtempSync(join(tmpdir(), "openzwork-preflight-"));
+  try {
+    assert.throws(
+      () =>
+        execFileSync(
+          process.execPath,
+          [
+            fileURLToPath(new URL("./remote-uat-preflight.mjs", import.meta.url)),
+            join(fixture, "missing.cjs"),
+          ],
+          { env: { ...process.env, CI: "true" }, encoding: "utf8", stdio: "pipe" },
+        ),
+      (error: unknown) => {
+        const failure = error as { status: number; stderr: string };
+        assert.notEqual(failure.status, 0);
+        assert.match(String(failure.stderr), /Missing remote server bundle.*build:remote/);
+        return true;
+      },
+    );
+  } finally {
+    rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
+test(
+  "remote UAT permission check rejects a file without executable bits",
+  {
+    skip: process.platform === "win32",
+  },
+  async () => {
+    const fixture = mkdtempSync(join(tmpdir(), "openzwork-permissions-"));
+    try {
+      const file = join(fixture, "file");
+      writeFileSync(file, "fixture");
+      chmodSync(file, 0o644);
+      await assert.rejects(assertExecutable(file), /chmod \+x/);
+      chmodSync(file, 0o755);
+      await assertExecutable(file);
+    } finally {
+      rmSync(fixture, { recursive: true, force: true });
+    }
+  },
+);
 
 /** 最小净化 env：切断宿主（官方 App 终端）注入的一切 ZCODE_* 变量与数据根覆盖。 */
 function sanitizedEnv(home: string): Record<string, string> {
@@ -131,7 +182,10 @@ function waitForDirectory(path: string, timeoutMs: number): Promise<boolean> {
   });
 }
 
-async function execCapture(backend: LocalShBackend, command: string): Promise<{ code: number; stdout: string; stderr: string }> {
+async function execCapture(
+  backend: LocalShBackend,
+  command: string,
+): Promise<{ code: number; stdout: string; stderr: string }> {
   const stream = await backend.exec(command);
   let stdout = "";
   let stderr = "";
@@ -150,120 +204,163 @@ function layoutDeployedServer(home: string): string {
   return remoteRoot;
 }
 
-test("remote chain UAT: real bundle boots from the deployed .openzwork root, handshakes, and never touches .zcode", {
-  skip: process.platform === "win32" || !bundleAvailable,
-}, async () => {
-  const home = mkdtempSync(join(tmpdir(), "openzwork-remote-uat-"));
-  try {
-    layoutDeployedServer(home);
-    const backend = new LocalShBackend(home);
-
-    // 部署版本检查用的 --version 命令：真实启动命令形态（env 注入 + REMOTE_BASE 展开）。
-    const versionRun = await execCapture(backend, `${buildRemoteServerCommand(undefined, undefined)} --version`);
-    assert.equal(versionRun.code, 0, `stderr: ${versionRun.stderr}`);
-    assert.equal(versionRun.stdout.trim(), zcodeVersion);
-
-    // 真实 connectRemote：detect → exec 启动命令 → zcode-hello/ack 握手 → RPC 包装。
-    const connection = await connectRemote(backend, { skipDeploy: true, handshakeTimeout: 20_000 });
+test(
+  "remote chain UAT: real bundle boots from the deployed .openzwork root, handshakes, and never touches .zcode",
+  {
+    skip: process.platform === "win32",
+  },
+  async () => {
+    const home = mkdtempSync(join(tmpdir(), "openzwork-remote-uat-"));
     try {
-      assert.ok(connection.services, "service accessor must come back after handshake");
-      // server 侧 services 会把配置物化到数据根的 v2；等待它出现证明数据根落在 .openzwork。
-      assert.equal(await waitForDirectory(join(home, ".openzwork", "v2"), 10_000), true, "server must materialize config under .openzwork");
+      layoutDeployedServer(home);
+      const backend = new LocalShBackend(home);
+
+      // 部署版本检查用的 --version 命令：真实启动命令形态（env 注入 + REMOTE_BASE 展开）。
+      const versionRun = await execCapture(
+        backend,
+        `${buildRemoteServerCommand(undefined, undefined)} --version`,
+      );
+      assert.equal(versionRun.code, 0, `stderr: ${versionRun.stderr}`);
+      assert.equal(versionRun.stdout.trim(), zcodeVersion);
+
+      // 真实 connectRemote：detect → exec 启动命令 → zcode-hello/ack 握手 → RPC 包装。
+      const connection = await connectRemote(backend, {
+        skipDeploy: true,
+        handshakeTimeout: 20_000,
+      });
+      try {
+        assert.ok(connection.services, "service accessor must come back after handshake");
+        // server 侧 services 会把配置物化到数据根的 v2；等待它出现证明数据根落在 .openzwork。
+        assert.equal(
+          await waitForDirectory(join(home, ".openzwork", "v2"), 10_000),
+          true,
+          "server must materialize config under .openzwork",
+        );
+      } finally {
+        await connection.disposeAndWait({ timeoutMs: 10_000 });
+      }
+      backend.dispose();
+
+      // 核心隔离断言：真实 server 完整启动、握手、物化配置之后，旧官方根不存在。
+      assert.equal(
+        existsSync(join(home, ".zcode")),
+        false,
+        "booted server must never create the official root",
+      );
     } finally {
-      await connection.disposeAndWait({ timeoutMs: 10_000 });
+      rmSync(home, { recursive: true, force: true });
     }
-    backend.dispose();
+  },
+);
 
-    // 核心隔离断言：真实 server 完整启动、握手、物化配置之后，旧官方根不存在。
-    assert.equal(existsSync(join(home, ".zcode")), false, "booted server must never create the official root");
-  } finally {
-    rmSync(home, { recursive: true, force: true });
-  }
-});
+test(
+  "remote chain UAT: real installFile lands the server bundle under .openzwork with executable bit and no staging residue",
+  {
+    skip: process.platform === "win32",
+  },
+  async () => {
+    const home = mkdtempSync(join(tmpdir(), "openzwork-deploy-uat-"));
+    const releaseDir = mkdtempSync(join(tmpdir(), "openzwork-release-uat-"));
+    try {
+      mkdirSync(join(releaseDir, "server"), { recursive: true });
+      copyFileSync(serverBundlePath, join(releaseDir, "server", "zcode-server.cjs"));
 
-test("remote chain UAT: real installFile lands the server bundle under .openzwork with executable bit and no staging residue", {
-  skip: process.platform === "win32" || !bundleAvailable,
-}, async () => {
-  const home = mkdtempSync(join(tmpdir(), "openzwork-deploy-uat-"));
-  const releaseDir = mkdtempSync(join(tmpdir(), "openzwork-release-uat-"));
-  try {
-    mkdirSync(join(releaseDir, "server"), { recursive: true });
-    copyFileSync(serverBundlePath, join(releaseDir, "server", "zcode-server.cjs"));
+      const backend = new LocalShBackend(home);
+      const installer = new LocalUploadAssetInstaller(
+        backend,
+        { releaseDir, platformArch: `${process.platform}-${process.arch}` },
+        { log: () => undefined, logWarn: (message) => console.error(String(message)) },
+      );
+      // deploy.ts 对 server-bundle 的真实调用形态：REMOTE_BASE 落点 + executable 替换链。
+      await installer.installFile({
+        componentId: "server-bundle",
+        sourceRelativePath: "server/zcode-server.cjs",
+        remotePath: `${REMOTE_BASE}/zcode-server.cjs`,
+        executable: true,
+      });
 
-    const backend = new LocalShBackend(home);
-    const installer = new LocalUploadAssetInstaller(
-      backend,
-      { releaseDir, platformArch: `${process.platform}-${process.arch}` },
-      { log: () => undefined, logWarn: (message) => console.error(String(message)) },
-    );
-    // deploy.ts 对 server-bundle 的真实调用形态：REMOTE_BASE 落点 + executable 替换链。
-    await installer.installFile({
-      componentId: "server-bundle",
-      sourceRelativePath: "server/zcode-server.cjs",
-      remotePath: `${REMOTE_BASE}/zcode-server.cjs`,
-      executable: true,
-    });
+      const deployed = join(home, ".openzwork", "server", "zcode-server.cjs");
+      assert.equal(existsSync(deployed), true, "bundle must land under .openzwork/server");
+      await assertExecutable(deployed);
+      const residue = readdirSync(join(home, ".openzwork", "server")).filter((name) =>
+        name.includes(".new-"),
+      );
+      assert.deepEqual(residue, [], "staging files must be moved, not left behind");
+      assert.equal(existsSync(join(home, ".zcode")), false);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+      rmSync(releaseDir, { recursive: true, force: true });
+    }
+  },
+);
 
-    const deployed = join(home, ".openzwork", "server", "zcode-server.cjs");
-    assert.equal(existsSync(deployed), true, "bundle must land under .openzwork/server");
-    const mode = execFileSync("stat", ["-f", "%Lp", deployed], { encoding: "utf8" }).trim();
-    assert.match(mode, /^[0-7]*[1357]$/, `chmod +x must apply (got ${mode})`);
-    const residue = readdirSync(join(home, ".openzwork", "server")).filter((name) => name.includes(".new-"));
-    assert.deepEqual(residue, [], "staging files must be moved, not left behind");
-    assert.equal(existsSync(join(home, ".zcode")), false);
-  } finally {
-    rmSync(home, { recursive: true, force: true });
-    rmSync(releaseDir, { recursive: true, force: true });
-  }
-});
+test(
+  "installer UAT: real install.sh defaults to .openzwork/runtime, wires the bin command, and never touches .zcode",
+  {
+    skip: process.platform === "win32",
+  },
+  () => {
+    const version = "0.0.0-uat";
+    const home = mkdtempSync(join(tmpdir(), "openzwork-install-uat-"));
+    const distRoot = mkdtempSync(join(tmpdir(), "openzwork-dist-uat-"));
+    const stageDir = mkdtempSync(join(tmpdir(), "openzwork-stage-uat-"));
+    try {
+      // 最小发行目录：latest.json + releases/<version>/tar.gz，负载为 stub CLI（机制级 UAT，
+      // 不含真实 CLI 构建——见文件头注的覆盖声明）。
+      mkdirSync(join(stageDir, "zcode", "bin"), { recursive: true });
+      writeFileSync(
+        join(stageDir, "zcode", "bin", "zcode.mjs"),
+        'console.log(`uat-cli ${process.argv.slice(2).join(" ")}`);\n',
+      );
+      mkdirSync(join(distRoot, "releases", version), { recursive: true });
+      const tarball = `zcode-${version}.tar.gz`;
+      execFileSync("tar", [
+        "-czf",
+        join(distRoot, "releases", version, tarball),
+        "-C",
+        stageDir,
+        "zcode",
+      ]);
+      writeFileSync(join(distRoot, "latest.json"), JSON.stringify({ version, tarball }));
 
-test("installer UAT: real install.sh defaults to .openzwork/runtime, wires the bin command, and never touches .zcode", {
-  skip: process.platform === "win32",
-}, () => {
-  const version = "0.0.0-uat";
-  const home = mkdtempSync(join(tmpdir(), "openzwork-install-uat-"));
-  const distRoot = mkdtempSync(join(tmpdir(), "openzwork-dist-uat-"));
-  const stageDir = mkdtempSync(join(tmpdir(), "openzwork-stage-uat-"));
-  try {
-    // 最小发行目录：latest.json + releases/<version>/tar.gz，负载为 stub CLI（机制级 UAT，
-    // 不含真实 CLI 构建——见文件头注的覆盖声明）。
-    mkdirSync(join(stageDir, "zcode", "bin"), { recursive: true });
-    writeFileSync(
-      join(stageDir, "zcode", "bin", "zcode.mjs"),
-      'console.log(`uat-cli ${process.argv.slice(2).join(" ")}`);\n',
-    );
-    mkdirSync(join(distRoot, "releases", version), { recursive: true });
-    const tarball = `zcode-${version}.tar.gz`;
-    execFileSync("tar", ["-czf", join(distRoot, "releases", version, tarball), "-C", stageDir, "zcode"]);
-    writeFileSync(join(distRoot, "latest.json"), JSON.stringify({ version, tarball }));
+      const installScript = installScriptSource("https://example.invalid/zcode-dist");
+      const installScriptPath = join(distRoot, "install.sh");
+      writeFileSync(installScriptPath, installScript);
+      chmodSync(installScriptPath, 0o755);
 
-    const installScript = installScriptSource("https://example.invalid/zcode-dist");
-    const installScriptPath = join(distRoot, "install.sh");
-    writeFileSync(installScriptPath, installScript);
-    chmodSync(installScriptPath, 0o755);
+      const output = execFileSync("/bin/sh", [installScriptPath], {
+        encoding: "utf8",
+        env: { ...sanitizedEnv(home), ZCODE_DIST_BASE_URL: `file://${distRoot}` },
+      });
+      assert.match(output, new RegExp(`ZCode ${version} installed`));
 
-    const output = execFileSync("/bin/sh", [installScriptPath], {
-      encoding: "utf8",
-      env: { ...sanitizedEnv(home), ZCODE_DIST_BASE_URL: `file://${distRoot}` },
-    });
-    assert.match(output, new RegExp(`ZCode ${version} installed`));
+      const releaseDir = join(home, ".openzwork", "runtime", "releases", version);
+      assert.equal(
+        existsSync(join(releaseDir, "bin", "zcode.mjs")),
+        true,
+        "runtime must install under .openzwork/runtime",
+      );
+      assert.equal(
+        execFileSync("readlink", [join(home, ".openzwork", "runtime", "current")], {
+          encoding: "utf8",
+        }).trim(),
+        releaseDir,
+        "current symlink must point at the release",
+      );
 
-    const releaseDir = join(home, ".openzwork", "runtime", "releases", version);
-    assert.equal(existsSync(join(releaseDir, "bin", "zcode.mjs")), true, "runtime must install under .openzwork/runtime");
-    assert.equal(execFileSync("readlink", [join(home, ".openzwork", "runtime", "current")], { encoding: "utf8" }).trim(), releaseDir, "current symlink must point at the release");
+      const binCommand = join(home, ".local", "bin", "zcode");
+      assert.equal(existsSync(binCommand), true, "bin command must be created");
+      const runOutput = execFileSync("/bin/sh", [binCommand, "--version"], {
+        encoding: "utf8",
+        env: sanitizedEnv(home),
+      });
+      assert.equal(runOutput.trim(), "uat-cli --version");
 
-    const binCommand = join(home, ".local", "bin", "zcode");
-    assert.equal(existsSync(binCommand), true, "bin command must be created");
-    const runOutput = execFileSync("/bin/sh", [binCommand, "--version"], {
-      encoding: "utf8",
-      env: sanitizedEnv(home),
-    });
-    assert.equal(runOutput.trim(), "uat-cli --version");
-
-    assert.equal(existsSync(join(home, ".zcode")), false, "install must stay inside .openzwork");
-  } finally {
-    rmSync(home, { recursive: true, force: true });
-    rmSync(distRoot, { recursive: true, force: true });
-    rmSync(stageDir, { recursive: true, force: true });
-  }
-});
+      assert.equal(existsSync(join(home, ".zcode")), false, "install must stay inside .openzwork");
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+      rmSync(distRoot, { recursive: true, force: true });
+      rmSync(stageDir, { recursive: true, force: true });
+    }
+  },
+);
