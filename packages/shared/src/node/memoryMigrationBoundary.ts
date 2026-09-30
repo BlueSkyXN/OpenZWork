@@ -24,9 +24,15 @@ async function prospectiveRealpath(path: string): Promise<string> {
 export async function createMemoryMigrationBoundary(storageRoot: string, sourceRoot: string) {
   const root = resolve(storageRoot);
   const legacyRoot = await realpath(dirname(dirname(sourceRoot)));
+  const physicalSource = await realpath(sourceRoot);
 
   async function assertOutsideLegacy(path: string): Promise<void> {
-    if (isWithin(legacyRoot, await prospectiveRealpath(path))) {
+    const physicalTarget = await prospectiveRealpath(path);
+    // 源父目录链接可把普通 memories 叶子接到目标树；只解析旧 storage 祖先会漏过。
+    if (isWithin(physicalSource, physicalTarget) || isWithin(physicalTarget, physicalSource)) {
+      throw new Error(`Migration source and target physically overlap: ${sourceRoot}: ${path}`);
+    }
+    if (isWithin(legacyRoot, physicalTarget)) {
       throw new Error(`Migration target resolves inside legacy storage: ${path}`);
     }
   }

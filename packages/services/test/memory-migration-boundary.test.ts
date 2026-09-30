@@ -6,6 +6,7 @@ import {
   readdir,
   readFile,
   readlink,
+  realpath,
   rm,
   symlink,
   writeFile,
@@ -98,6 +99,86 @@ for (const boundary of [
     }
   });
 }
+
+for (const overlap of ["equal", "source-inside-target", "target-inside-source"]) {
+  test(`源父目录 alias 的物理重叠 ${overlap} 在清理前拒绝且源树不变`, async () => {
+    const root = await mkdtemp(join(tmpdir(), "ozw-source-alias-"));
+    try {
+      const home = join(root, "home");
+      const legacy = join(home, ".zcode");
+      const target = join(home, ".openzwork");
+      const targetMemories = join(target, "cli", "memories");
+      const physicalSource =
+        overlap === "equal"
+          ? targetMemories
+          : overlap === "source-inside-target"
+            ? join(targetMemories, "source", "memories")
+            : join(home, "source", "memories");
+      const storage = overlap === "target-inside-source" ? join(physicalSource, "current") : target;
+      await mkdir(legacy, { recursive: true });
+      await mkdir(physicalSource, { recursive: true });
+      await mkdir(join(storage, "cli", "memories"), { recursive: true });
+      await writeFile(join(physicalSource, "note.md"), "source-note\n");
+      await writeFile(join(physicalSource, staleName), "source-tmp-must-survive\n");
+      await writeFile(join(storage, "cli", "memories", staleName), "target-tmp-must-survive\n");
+      await symlink(
+        dirname(physicalSource),
+        join(legacy, "cli"),
+        process.platform === "win32" ? "junction" : "dir",
+      );
+      const source = join(legacy, "cli", "memories");
+      assert.equal((await lstat(source)).isDirectory(), true);
+      assert.equal(await realpath(source), await realpath(physicalSource));
+      const before = await snapshot(home);
+      const result = await migrateLegacyProjectMemories({
+        sourceMemoriesRoot: source,
+        targetStorageRoot: storage,
+      });
+      const after = await snapshot(home);
+      console.info(
+        JSON.stringify({
+          overlap,
+          failures: result.failures.length,
+          filesCopied: result.filesCopied,
+          sourceChanged: JSON.stringify(before) !== JSON.stringify(after),
+        }),
+      );
+      assert.deepEqual(after, before, "源父目录链接不能让清理/复制/marker 修改物理源树");
+      assert.ok(result.failures.length > 0, "物理等同和双向嵌套必须显式拒绝");
+      assert.equal(result.filesCopied, 0);
+      await assert.rejects(readFile(getMemoryMigrationMarkerPath(storage)), { code: "ENOENT" });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+}
+
+test("源与目标的正常父目录别名不重叠时仍可迁移", async () => {
+  const root = await mkdtemp(join(tmpdir(), "ozw-source-parent-"));
+  try {
+    const data = join(root, "data");
+    const alias = join(root, "alias");
+    const physicalSource = join(data, "legacy", "cli", "memories");
+    await mkdir(physicalSource, { recursive: true });
+    await symlink(data, alias, process.platform === "win32" ? "junction" : "dir");
+    await writeFile(join(physicalSource, "note.md"), "source-note\n");
+    const before = await snapshot(physicalSource);
+    const source = join(alias, "legacy", "cli", "memories");
+    const target = join(alias, "current");
+    const result = await migrateLegacyProjectMemories({
+      sourceMemoriesRoot: source,
+      targetStorageRoot: target,
+    });
+    assert.deepEqual(result.failures, []);
+    assert.deepEqual(await snapshot(physicalSource), before);
+    assert.equal(
+      await readFile(join(target, "cli", "memories", "note.md"), "utf8"),
+      "source-note\n",
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 test("普通目标父目录链接仍可用，目标文件链接按 no-clobber 保留", async () => {
   const f = await fixture();
