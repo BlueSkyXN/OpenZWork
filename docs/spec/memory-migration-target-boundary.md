@@ -1,6 +1,6 @@
 # 记忆迁移目标目录边界
 
-状态：实施中。补充 `memory-migration.md` 的旧根只读、目标 no-clobber 契约；不改变已有 Desktop 数据根对齐或独立 CLI 自定义根策略。
+状态：实现与临时合成目录回归已完成，见 `repair-acceptance-20261001.md`；真实产品及跨平台验收不由此自动关闭。补充 `memory-migration.md` 的旧根只读、目标 no-clobber 契约；不改变已有 Desktop 数据根对齐或独立 CLI 自定义根策略。
 
 ## 规则与所有者
 
