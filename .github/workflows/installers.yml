@@ -50,11 +50,19 @@ jobs:
           node-version: 24.14.0
           cache: pnpm
 
-      # Linux 打包的系统工具链：rpm target 需要 rpmbuild（Ubuntu rpm 包提供），
-      # pacman target（.pkg.tar.zst）需要 zstd；ubuntu runner 镜像不保证自带，显式声明。
+      # pacman 的 .MTREE 生成依赖 bsdtar；runner 缺失时 fpm 返回 127，必须显式安装并提前检查。
       - name: Install Linux packaging toolchain
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y rpm zstd
+        run: sudo apt-get update && sudo apt-get install -y rpm zstd libarchive-tools
+
+      - name: Verify Linux packaging toolchain
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          rpmbuild --version
+          zstd --version
+          bsdtar --version
 
       # Electron 发行包与 electron-builder 二进制（winCodeSign/NSIS 等）按 lockfile 缓存：
       # pnpm install 的 electron postinstall 与 bundle 的 electron-builder 共用同一缓存位，
