@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 
 const root = new URL("../../", import.meta.url);
@@ -121,3 +125,105 @@ test("CI runs the offline workflow regression tests without suppressing failures
   assert.equal(matches[0].if, undefined);
   assert.notEqual(matches[0]["continue-on-error"], true);
 });
+
+function linuxToolchainStep(name) {
+  const matches = installerSteps.filter((step) => step.name === name);
+  assert.equal(matches.length, 1, `${name}: exactly one step`);
+  return matches[0];
+}
+
+const linuxPackagingTools = ["rpmbuild", "zstd", "bsdtar"];
+
+test("Linux packaging declares the complete rpm and pacman toolchain before installing dependencies", () => {
+  const install = linuxToolchainStep("Install Linux packaging toolchain");
+  assert.equal(install.if, "runner.os == 'Linux'");
+  assert.equal(
+    install.run,
+    "sudo apt-get update && sudo apt-get install -y rpm zstd libarchive-tools",
+  );
+  assert.notEqual(install["continue-on-error"], true);
+  const dependencies = installerSteps.find((step) => step.run === "pnpm install --frozen-lockfile");
+  assert.ok(installerSteps.indexOf(install) < installerSteps.indexOf(dependencies));
+});
+
+test("Linux packaging verifies tool commands immediately after installation with strict Bash", () => {
+  const install = linuxToolchainStep("Install Linux packaging toolchain");
+  const verify = linuxToolchainStep("Verify Linux packaging toolchain");
+  assert.equal(verify.if, "runner.os == 'Linux'");
+  assert.equal(verify.shell, "bash");
+  assert.notEqual(verify["continue-on-error"], true);
+  assert.equal(installerSteps.indexOf(verify), installerSteps.indexOf(install) + 1);
+  assert.deepEqual(verify.run.trim().split("\n"), [
+    "set -euo pipefail",
+    ...linuxPackagingTools.map((tool) => `${tool} --version`),
+  ]);
+});
+
+const execute = promisify(execFile);
+
+async function runLinuxToolchainProbe({ missing, failing } = {}) {
+  const verify = linuxToolchainStep("Verify Linux packaging toolchain");
+  const fixture = await mkdtemp(join(tmpdir(), "ozw-linux-toolchain-"));
+  try {
+    const bin = join(fixture, "bin");
+    await mkdir(bin);
+    for (const tool of linuxPackagingTools) {
+      if (tool === missing) continue;
+      const script = `#!/bin/bash\nprintf '%s\\n' '${tool} fixture'\nexit ${tool === failing ? 17 : 0}\n`;
+      await writeFile(join(bin, tool), script, { mode: 0o755 });
+    }
+    return await execute(
+      "/bin/bash",
+      ["--noprofile", "--norc", "-e", "-o", "pipefail", "-c", verify.run],
+      {
+        env: { PATH: bin, HOME: fixture, LANG: "C" },
+      },
+    );
+  } finally {
+    await rm(fixture, { recursive: true, force: true });
+  }
+}
+
+test(
+  "Linux toolchain preflight executes every declared tool when available",
+  { skip: process.platform === "win32" },
+  async () => {
+    const result = await runLinuxToolchainProbe();
+    assert.deepEqual(
+      result.stdout.trim().split("\n"),
+      linuxPackagingTools.map((tool) => `${tool} fixture`),
+    );
+  },
+);
+
+for (const [index, tool] of linuxPackagingTools.entries()) {
+  test(
+    `Linux toolchain preflight fails immediately when ${tool} is missing`,
+    { skip: process.platform === "win32" },
+    async () => {
+      await assert.rejects(runLinuxToolchainProbe({ missing: tool }), (error) => {
+        assert.equal(error.code, 127);
+        assert.ok(error.stderr.includes(`${tool}: command not found`));
+        for (const laterTool of linuxPackagingTools.slice(index + 1)) {
+          assert.ok(!error.stdout.includes(`${laterTool} fixture`));
+        }
+        return true;
+      });
+    },
+  );
+
+  test(
+    `Linux toolchain preflight preserves ${tool} failure instead of continuing`,
+    { skip: process.platform === "win32" },
+    async () => {
+      await assert.rejects(runLinuxToolchainProbe({ failing: tool }), (error) => {
+        assert.equal(error.code, 17);
+        assert.ok(error.stdout.includes(`${tool} fixture`));
+        for (const laterTool of linuxPackagingTools.slice(index + 1)) {
+          assert.ok(!error.stdout.includes(`${laterTool} fixture`));
+        }
+        return true;
+      });
+    },
+  );
+}
