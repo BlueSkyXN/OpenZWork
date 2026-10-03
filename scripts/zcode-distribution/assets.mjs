@@ -6,6 +6,10 @@ import {
   seaTuiAssetPrefix,
 } from "../../apps/zcode-cli/packages/cli/scripts/sea-tui-assets.mjs";
 import { supportedTargets } from "../../apps/zcode-cli/packages/cli/scripts/sea-targets.mjs";
+import {
+  bundledSkillPackRequiredPaths,
+  bundledSkillPackSkillsDirectory,
+} from "../../apps/zcode-cli/packages/cli/scripts/sea-bundled-skill-assets.mjs";
 const root = resolve(import.meta.dirname, "../..");
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 
@@ -28,6 +32,30 @@ const runtimePackageNames = [
   "yauzl",
   "node-forge",
 ];
+
+export async function stageBundledSkills(
+  packageRoot,
+  sourceRoot = resolve(root, "apps/zcode-cli/packages/bundled-skills"),
+) {
+  const targetRoot = resolve(packageRoot, "agent/packages/bundled-skills");
+  async function validate(packRoot) {
+    for (const path of bundledSkillPackRequiredPaths) {
+      const asset = resolve(packRoot, path);
+      const info = await stat(asset).catch(() => undefined);
+      if (!info?.isFile()) throw new Error(`Missing bundled skill required file: ${asset}`);
+      await readFile(asset);
+    }
+  }
+  // 普通 Node 包没有 SEA 内嵌资源；必须携带完整技能及相对引用，源与目标都验证。
+  await validate(sourceRoot);
+  await mkdir(targetRoot, { recursive: true });
+  await cp(
+    resolve(sourceRoot, bundledSkillPackSkillsDirectory),
+    resolve(targetRoot, bundledSkillPackSkillsDirectory),
+    { recursive: true },
+  );
+  await validate(targetRoot);
+}
 
 export async function stageTuiRuntime(packageRoot) {
   const stagingDirectory = resolve(packageRoot, "../tui-staging");

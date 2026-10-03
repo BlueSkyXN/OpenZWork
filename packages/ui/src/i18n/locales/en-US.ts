@@ -4226,6 +4226,14 @@ const enUS: Record<string, string> = {
   "chat.reasoning.durationSeconds": "{seconds} seconds",
   "chat.contextUsage": "Context usage {used} of {total}",
   "chat.contextUsage.title": "Context windows",
+  "chat.sessionUsage.title": "Session token usage",
+  "chat.sessionUsage.total": "Total tokens",
+  "chat.sessionUsage.input": "Input",
+  "chat.sessionUsage.output": "Output",
+  "chat.sessionUsage.cacheRead": "Cache read",
+  "chat.sessionUsage.cacheWrite": "Cache write",
+  "chat.sessionUsage.description":
+    "Main conversation usage reported by the runtime, not your remaining balance. Cache tokens are already included in input. Background requests are excluded.",
   "chat.contextUsageDescription":
     "Prompt text, tool calls, and responses all share this context window.",
   "chat.contextUsage.cacheHitRate": "Average cache hit rate",

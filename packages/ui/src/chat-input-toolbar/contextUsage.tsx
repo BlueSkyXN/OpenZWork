@@ -1,5 +1,13 @@
-/* context 面板：Context windows 用量展示（Coding Plan / Start Plan 段已随官方账号链移除）。 */
-import { useCallback, useMemo, useRef, useState, type CSSProperties } from "react";
+/* context 面板：上下文容量与主会话累计用量展示。 */
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent,
+} from "react";
+import { ChartNoAxesColumnIncreasing } from "lucide-react";
 import {
   TID_CHAT_CONTEXT_USAGE_TRIGGER,
   type ZCodeContextUsageBreakdownItem,
@@ -16,6 +24,8 @@ import { Progress } from "@/components/ui/progress.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
+import { SessionUsageSummary } from "./SessionUsageSummary.js";
+import { buildSessionUsageSummary, type SessionCumulativeUsage } from "./sessionUsageModel.js";
 
 type ContextUsageBreakdownSource = ZCodeContextUsageBreakdownItem["source"];
 
@@ -180,6 +190,7 @@ export function getContextCompressionCommand(_provider: ZCodeProvider): string {
 
 export function ChatContextUsage({
   taskUsage,
+  cumulativeUsage,
   selectedProvider: _selectedProvider,
   intl,
   locale,
@@ -190,6 +201,7 @@ export function ChatContextUsage({
     cache?: { hitRate: number | null };
     breakdown?: ZCodeContextUsageBreakdownItem[];
   } | null;
+  cumulativeUsage?: SessionCumulativeUsage | null;
   selectedProvider: ZCodeProvider;
   intl: ReturnType<typeof useZCodeIntl>["intl"];
   locale: string;
@@ -198,14 +210,28 @@ export function ChatContextUsage({
 }) {
   const [contextOpen, setContextOpen] = useState(false);
   const contextUsageTriggerRef = useRef<HTMLElement | null>(null);
-  const handleContextOpenChange = useCallback(
-    (open: boolean) => {
-      setContextOpen(open);
-    },
-    [],
-  );
+  const handleContextOpenChange = useCallback((open: boolean) => {
+    setContextOpen(open);
+  }, []);
   const renderableTaskUsage = getRenderableTaskUsage(taskUsage);
-  const contextPanelWidthClass = "!w-80";
+  const cumulativeSummary = buildSessionUsageSummary(cumulativeUsage);
+  const hasCumulativeUsage =
+    cumulativeSummary !== null &&
+    (cumulativeSummary.totalTokens > 0 ||
+      cumulativeSummary.cacheReadTokens > 0 ||
+      cumulativeSummary.cacheWriteTokens > 0);
+  const contextPanelWidthClass = "!w-80 max-w-[calc(100vw-1rem)]";
+  const handleTriggerPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    // HoverCard 阻止触摸后的 click；在 pointerdown 打开，保留桌面的 hover/focus 语义。
+    if (
+      !event.defaultPrevented &&
+      event.pointerType === "touch" &&
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(hover: none)").matches
+    ) {
+      handleContextOpenChange(true);
+    }
+  };
   const numberFormatter = useMemo(() => new Intl.NumberFormat(locale), [locale]);
   const contextUsageLabel = useMemo(() => {
     if (!renderableTaskUsage) {
@@ -222,7 +248,7 @@ export function ChatContextUsage({
   }, [intl, numberFormatter, renderableTaskUsage]);
   const cacheHitRateLabel = useMemo(() => {
     return formatContextCacheHitRateLabel(renderableTaskUsage?.cache?.hitRate, locale, {
-      showBelowThreshold: import.meta.env.DEV,
+      showBelowThreshold: import.meta.env?.DEV,
     });
   }, [locale, renderableTaskUsage]);
   const breakdownSegments = useMemo(
@@ -242,7 +268,7 @@ export function ChatContextUsage({
     [locale],
   );
 
-  if (!renderableTaskUsage || !contextUsageLabel) {
+  if (!renderableTaskUsage && !hasCumulativeUsage) {
     return null;
   }
 
@@ -257,9 +283,9 @@ export function ChatContextUsage({
         used: renderableTaskUsage.used,
       })
     : null;
-  const triggerLabel = contextUsageLabel;
+  const triggerLabel = contextUsageLabel ?? intl.formatMessage({ id: "chat.sessionUsage.title" });
   const contextUsedTokens = renderableTaskUsage?.used ?? 0;
-  const contextMaxTokens = renderableTaskUsage?.size ?? 1;
+  const contextMaxTokens = renderableTaskUsage?.size ?? 0;
 
   return (
     <Context
@@ -269,35 +295,24 @@ export function ChatContextUsage({
       onOpenChange={handleContextOpenChange}
     >
       <ControlHintTooltip
-          side="top"
-          standalone
-          title={triggerLabel ?? undefined}
-          triggerRef={contextUsageTriggerRef}
-        >
-        {/* span 承载 ControlHintTooltip 的 asChild 锚点，内部 ContextTrigger 仍作为
-            HoverCard 触发器，避免两个 Radix 浮层在同一 DOM 上叠加 ref。手动核销的
-            processing 由弹层内「重置」按钮自身展示，触发器不转圈。 */}
+        side="top"
+        standalone
+        title={triggerLabel ?? undefined}
+        triggerRef={contextUsageTriggerRef}
+      >
+        {/* 独立 span 避免 ControlHintTooltip 与 HoverCard 在同一 DOM 上叠加 ref。 */}
         <span className="inline-flex shrink-0">
           <ContextTrigger
             aria-label={triggerLabel}
             className="text-foreground-subtle"
             data-chat-toolbar-popover-trigger="true"
             data-testid={TID_CHAT_CONTEXT_USAGE_TRIGGER}
-            onPointerDown={(event) => {
-              // Radix HoverCard 会在 touchstart 中阻止后续 click，手机端无法打开面板；
-              // 在触摸 pointerdown 阶段先打开，桌面端继续保持原有 hover/focus 语义。
-              if (
-                !event.defaultPrevented &&
-                event.pointerType === "touch" &&
-                typeof window !== "undefined" &&
-                window.matchMedia?.("(hover: none)").matches
-              ) {
-                // 统一走受控 open handler，确保触摸打开也会触发额度 access 刷新和刷新态反馈。
-                if (!contextOpen) {
-                  handleContextOpenChange(true);
-                }
-              }
-            }}
+            onPointerDown={handleTriggerPointerDown}
+            icon={
+              !renderableTaskUsage ? (
+                <ChartNoAxesColumnIncreasing className="size-3.5" aria-hidden="true" />
+              ) : undefined
+            }
           />
         </span>
       </ControlHintTooltip>
@@ -377,6 +392,11 @@ export function ChatContextUsage({
                 </div>
               ) : null}
             </>
+          ) : null}
+          {cumulativeSummary ? (
+            <div className={cn(renderableTaskUsage && "border-t border-border pt-3")}>
+              <SessionUsageSummary summary={cumulativeSummary} intl={intl} locale={locale} />
+            </div>
           ) : null}
         </ContextContentBody>
       </ContextContent>

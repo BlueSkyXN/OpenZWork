@@ -20,6 +20,7 @@ import {
   type ZCodeCommand,
 } from "@zcode/shared";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS, OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import { isUserHomeDirectory } from "@zcode/shared/node";
 import type { ICommandsService } from "./commands.js";
 import { CommandFileParser, type CommandFileFormat } from "./commandFileParser.js";
 import { readInstalledPluginRoots } from "#src/plugins/installedPluginRoots.js";
@@ -420,18 +421,22 @@ function getUserCommandsRootForDescriptor(descriptor: CommandAgentSourceDescript
   return join(resolveUserHomeDir(), ...descriptor.userDirectorySegments);
 }
 
-function getCommandsRootForStorage(params: {
+async function getCommandsRootForStorage(params: {
   descriptor: CommandAgentSourceDescriptor;
   storageLevel?: "user" | "project";
   workspacePath?: string;
-}): {
+}): Promise<{
   commandsRoot: string;
   scope: UserCommand["scope"];
   projectPath?: string;
-} {
+}> {
   if (params.storageLevel === "project") {
     if (!params.workspacePath) {
       throw new Error("Missing workspace path for project command");
+    }
+    // HOME 的项目目录会落入官方用户根；必须在 mkdir、读取或删除旧文件前拒绝写入。
+    if (await isUserHomeDirectory(params.workspacePath, resolveUserHomeDir())) {
+      throw new Error("User home directory cannot store project commands");
     }
     return {
       commandsRoot: join(params.workspacePath, ...params.descriptor.workspaceDirectorySegments),
@@ -531,7 +536,11 @@ export function createCommandsService(_options?: CommandsServiceOptions): IComma
           ? COMMAND_DIRECTORY_SOURCE_DESCRIPTORS
           : [getCommandSourceDescriptor(agentSource)];
 
-      if (params.workspacePath) {
+      // HOME 只能按用户作用域扫描，不能把官方用户命令误判为项目命令。
+      if (
+        params.workspacePath &&
+        !(await isUserHomeDirectory(params.workspacePath, resolveUserHomeDir()))
+      ) {
         const workspacePath = params.workspacePath;
         await discoverCommandsFromDirectorySources({
           descriptors,
@@ -570,7 +579,7 @@ export function createCommandsService(_options?: CommandsServiceOptions): IComma
   async function writeCommandFile(params: CommandCreateParams): Promise<{ command: UserCommand }> {
     const agentSource = params.agentSource ?? DEFAULT_COMMAND_AGENT_SOURCE;
     const descriptor = getCommandSourceDescriptor(agentSource);
-    const target = getCommandsRootForStorage({
+    const target = await getCommandsRootForStorage({
       descriptor,
       storageLevel: params.storageLevel,
       workspacePath: params.workspacePath,
@@ -629,7 +638,7 @@ export function createCommandsService(_options?: CommandsServiceOptions): IComma
   async function updateCommandFile(params: CommandUpdateParams): Promise<{ command: UserCommand }> {
     const agentSource = params.agentSource ?? DEFAULT_COMMAND_AGENT_SOURCE;
     const descriptor = getCommandSourceDescriptor(agentSource);
-    const target = getCommandsRootForStorage({
+    const target = await getCommandsRootForStorage({
       descriptor,
       storageLevel: params.storageLevel,
       workspacePath: params.workspacePath,

@@ -26,6 +26,7 @@ import type {
   SkillsCapability,
 } from "@zcode/shared";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS, OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import { isUserHomeDirectory } from "@zcode/shared/node";
 import type { ISkillsService } from "./skills.js";
 import { SKILL_FILE_NAME, walkSkillMarkdownPaths } from "./skillDiscoveryWalk.js";
 import { readInstalledPluginRoots } from "#src/plugins/installedPluginRoots.js";
@@ -154,6 +155,8 @@ async function resolveAncestorWorkspaceRoots(workspacePath: string): Promise<str
   }
   const roots: string[] = [];
   for (const dir of baseDirectories) {
+    // 与 Agent 同源排除 HOME，避免设置页把官方用户技能当作可管理的项目技能。
+    if (await isUserHomeDirectory(dir, resolveUserHomeDir())) continue;
     // Agent runtime 会合并扫描两个 workspace skill 根。UI 之前把 `.agents`
     // 当成 `.zcode` 的 fallback，导致同层 `.zcode` 只要有一个技能，`/`、`$` 和设置页
     // 就会整根漏掉 `.agents` 技能，形成“模型可执行但 UI 无法引用”的发现语义分裂。
