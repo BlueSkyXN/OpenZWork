@@ -206,7 +206,7 @@ export async function migrateLegacyProjectMemories(input: {
   };
   let boundary: MigrationBoundary;
   try {
-    // 清理和标记读取也会沿父目录链接越界，必须先验证整棵现有目标树。
+    // 标记读取也会沿父目录链接越界，快速跳过前仍须验证根、物理源目标关系及标记路径。
     boundary = await createMemoryMigrationBoundary(input.targetStorageRoot, sourceRoot);
   } catch (error) {
     result.failures.push({ path: input.targetStorageRoot, error: getErrorMessage(error) });
@@ -229,6 +229,8 @@ export async function migrateLegacyProjectMemories(input: {
 
   logger.debug(`[memoryMigration] start: ${sourceRoot} -> ${targetRoot}`);
   try {
+    // 有效标记已跳过；实际迁移必须先检查整棵目标树，避免先清理 tmp 再发现深层链接。
+    await boundary.assertTargetTree();
     await cleanupStaleTmpFiles(targetRoot, logger, boundary);
     await copyTree(sourceRoot, targetRoot, result, logger, 0, boundary);
   } catch (error) {

@@ -19,7 +19,7 @@ WP-03（783be9f）把用户数据根从 `~/.zcode` 改名为 `~/.openzwork`，�
 - CLI 读写根：`resolvePath(config.storage.dir)`（默认 `~/.openzwork`，apps/zcode-cli/packages/contracts/src/config/index.ts:301-303），经 `getCliStorageRoot` 拼出 `cli` 子目录（apps/zcode-cli/packages/bootstrap/src/app/paths.ts:5-7），注入 `config.memory.cliStorageRoot`（create-app.ts:198-199），recall 的 manifest 扫描以该根单根递归（core/src/memory/recall/manifest.ts，上限 200 文件）。**仓内无任何记忆 legacy 回读。**
 - 本机（2026-09-23 spec 撰写时复核）：`ls ~/.zcode/cli/memories/projects | wc -l` = **28** 个项目目录（`*/memory` 子目录 28 个均在），其中含 `MEMORY.md` 索引者 **19** 个（评估报告口径 18，差异不影响结论；spec 以 19 为准）；`ls ~/.openzwork` = **No such file or directory**。即：memoryService 的 catalog 在本机恒空，CLI recall 同样扫不到任何历史记忆。
 - `memoryEnabled` 默认 false（并列因素）：settings schema `z.boolean().default(false)`（packages/shared/src/validationAppSettings.ts:436）、onboarding 回填 `?? false`（packages/services/src/onboarding/onboardingRecordService.ts:156）、UI 读取 `=== true`（packages/ui/src/SettingsPage.tsx:265）、Host 会话偏好 `=== true`（packages/services/src/node.ts:620）；关闭时 CLI 被强制 `memory:{enabled:false}` 完全停写（apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts:3265-3267），且设置页 viewer 整块渲染 null（packages/ui/src/settings/MemorySettingsSection.tsx:177）。
-- 自定义目录分叉（并列因素）：desktop host 读根跟随 `setDataBaseDir`/`ZCODE_DATA_BASE_DIR`（paths.ts:29-40），但 desktop spawn agent 时只在 `dataBaseDir !== homedir()` 时下发 `ZCODE_DATA_BASE_DIR`（packages/desktop/src/main/desktopRuntimeEnv.ts:507），而 CLI 配置只认 `ZCODE_STORAGE_DIR`（apps/zcode-cli/packages/adapters/src/config/env-config.adapter.ts:26-28）→ 自定义 dataBaseDir 下 agent 写 `~/.openzwork`、UI 读 `<custom>/.openzwork`。
+- 自定义目录分叉（原基线并列因素，2026-09-30 修复）：原 Desktop 只下发 `ZCODE_DATA_BASE_DIR`，CLI 存储配置只认 `ZCODE_STORAGE_DIR`，导致两端分叉。现行契约见 `docs/spec/identity-and-data-isolation.md`「Desktop 子进程数据根对齐」：Main 同时下发 storage.dir 与独立 sessionDbPath 对应的环境变量，覆盖继承的冲突值；独立 CLI 的配置优先级不变。
 
 ## 2. 必答项裁决
 
@@ -45,7 +45,7 @@ WP-03（783be9f）把用户数据根从 `~/.zcode` 改名为 `~/.openzwork`，�
 
 - 位置：`{targetStorageRoot}/v2/memory-migration.json`（bootstrap/状态区，与 agents-state.json 同层，先例 bootstrap/src/subagents.ts:53；**不放** `memories/` 内，避免污染 CLI 数据树）。
 - 内容（zod schema，见 §5）：`{ version, source, target, completedAt, filesCopied, filesSkipped }`，`atomicWritePrivateTextFile`（shared/src/node/privateFilePersistence.ts:88）原子写入。
-- 判定顺序：标记存在 → 直接跳过（**性能幂等**：免每启扫描；一旦迁移完成，后续即使旧根再变化也不重迁——一次性语义，防长期双根写入歧义）；标记不存在 → 执行逐文件 no-clobber 迁移（**行为幂等**：自身可重入）→ 写标记。
+- 判定顺序：源存在后先做 storage root、v2、marker 路径与物理源目标关系的有界安全检查；标记有效 → 直接跳过（**性能幂等**：不访问 cli/memories；一旦迁移完成，后续即使旧根再变化也不重迁——一次性语义，防长期双根写入歧义）。标记不存在、损坏或读取失败 → 在清理、复制和目录创建之前完整预检目标树 → 执行逐文件 no-clobber 迁移（**行为幂等**：自身可重入）→ 复验标记路径并写标记。详细安全边界见 `memory-migration-target-boundary.md`。
 - **中断恢复**：迁移中途崩溃 → 标记未写 → 下次启动重入；已复制文件因 no-clobber 跳过、未复制文件续传；tmp 残留被清理。无需断点记录。
 - **双进程并发**（desktop main 与其 spawn 的 agent 同启）：文件级 tmp 唯一名 + 硬链接排他提交，两个写者内容同源（同一旧根文件）；遇目标 `EEXIST` 时保留先提交者，最终一致、无撕裂或覆盖；仅写者清理自己的 tmp，启动清理仅移除所属 PID 不存在的本迁移 tmp。标记原子写不撕裂。**不加进程锁**——文件提交本身满足 no-clobber，不需要串行启动。定向自动化覆盖两个独立 worker 并发 helper；实际 Desktop + spawned-agent 双触发仍待集成验收。
 
@@ -55,10 +55,10 @@ WP-03（783be9f）把用户数据根从 `~/.zcode` 改名为 `~/.openzwork`，�
 
 > 与报告建议的落点（packages/services/src/memory/）不同，原因：CLI 的 bootstrap 与 adapters 均不依赖 `@zcode/services`（apps/zcode-cli/packages/bootstrap/package.json 依赖表实测仅 `@zcode/shared` 等），迁移逻辑落 services 则 CLI 侧无法复用、必然双实现。shared/node 是 desktop main（先例 desktopDataBaseDirBootstrap.ts:5 已同时 import `@zcode/services/node` 与 `@zcode/shared`）与 CLI bootstrap 的共同最低层，且已有 subagentMarkdownMigration 先例。
 
-| 入口 | 触发点 | 目标根 | 时机保证 |
-| --- | --- | --- | --- |
-| **desktop** | `packages/desktop/src/main/index.ts`，`setDataBaseDir(bootstrapSettings.dataBaseDir)` 之后（:1061-1063，该处注释明确「在所有 host 进程启动前生效」） | `getZCodeDataRootDir()/cli/memories` | main await（try/catch，失败 warn 不阻塞启动）；赶在窗口创建与 agent spawn 之前，renderer 首次 `listProjectMemories` 必见迁移后数据 |
-| **CLI（无桌面）** | `bootstrap/src/app/create-app.ts`，`storageRoot = resolvePath(...)`（:198）之后、`loadZCodeAgentProfiles`（:204，同为「loader 前迁移」先例）之前 | `join(storageRoot, "cli", "memories")` | app 构造期 await，先于任何 session/recall。TUI、headless prompt、app-server 全部经 `createZCodeApp`（zcode-protocol-entrypoint.ts:16、cli/src/prompt-command.ts 实测），单点覆盖所有 CLI 形态 |
+| 入口              | 触发点                                                                                                                                               | 目标根                                 | 时机保证                                                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **desktop**       | `packages/desktop/src/main/index.ts`，`setDataBaseDir(bootstrapSettings.dataBaseDir)` 之后（:1061-1063，该处注释明确「在所有 host 进程启动前生效」） | `getZCodeDataRootDir()/cli/memories`   | main await（try/catch，失败 warn 不阻塞启动）；赶在窗口创建与 agent spawn 之前，renderer 首次 `listProjectMemories` 必见迁移后数据                                                            |
+| **CLI（无桌面）** | `bootstrap/src/app/create-app.ts`，`storageRoot = resolvePath(...)`（:198）之后、`loadZCodeAgentProfiles`（:204，同为「loader 前迁移」先例）之前     | `join(storageRoot, "cli", "memories")` | app 构造期 await，先于任何 session/recall。TUI、headless prompt、app-server 全部经 `createZCodeApp`（zcode-protocol-entrypoint.ts:16、cli/src/prompt-command.ts 实测），单点覆盖所有 CLI 形态 |
 
 - 双触发的幂等：默认场景（无自定义目录）两侧的标记文件是同一路径（`~/.openzwork/v2/memory-migration.json`）——先到者迁移并写标记，后到者读标记直接跳过；并发首启由 §2.1 的 no-clobber 语义兜底。
 - 迁移函数接收调用方 logger（desktop main 的 main logger / bootstrap 的 loggerFactory，module 名 `memoryMigration`），**不在 shared 内自建日志器**；UI 与服务日志纪律按 AGENTS.md（本函数属 shared 工具，非 services 服务，不引入 createServiceLogger 依赖）。
@@ -75,11 +75,11 @@ WP-03（783be9f）把用户数据根从 `~/.zcode` 改名为 `~/.openzwork`，�
 
 ### 2.4 自定义 storage.dir / dataBaseDir 在场时的优先级
 
-| 场景 | 判定 | 行为 |
-| --- | --- | --- |
-| 默认根（storage.dir 解析为 `~/.openzwork` 且 dataBaseDir = homedir） | 绝大多数用户 | 自动迁移（§2.1） |
-| **CLI 显式自定义 storage.dir**（`ZCODE_STORAGE_DIR` env 或 config 文件覆盖，解析结果 ≠ 默认根） | 用户主动选址 | **跳过自动迁移**，记一条 info（含源与目标路径）。理由：显式自定义与「改名遗留」是两类意图（如新机器复用旧 home 的场景），自动搬运可能违背用户预期；跳过是保守 fail-open——旧数据原样留在旧根，用户可手动复制。源 == 目标（显式指回 `~/.zcode`）同样跳过（no-op 防护） |
-| **desktop 自定义 dataBaseDir**（bootstrapSettings.dataBaseDir / `ZCODE_DATA_BASE_DIR`） | desktop 设置的「数据目录迁移」功能 | **照常迁移**，目标 = `{dataBaseDir}/.openzwork/cli/memories`（读哪个根就迁到哪个根，UI catalog 立即可见）。已知限制见 §8：该场景下 CLI agent 的新写入仍落 `~/.openzwork`（P0-2 分叉），完整对齐不在 E1a |
+| 场景                                                                                            | 判定                               | 行为                                                                                                                                                                                                                                                                 |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 默认根（storage.dir 解析为 `~/.openzwork` 且 dataBaseDir = homedir）                            | 绝大多数用户                       | 自动迁移（§2.1）                                                                                                                                                                                                                                                     |
+| **CLI 显式自定义 storage.dir**（`ZCODE_STORAGE_DIR` env 或 config 文件覆盖，解析结果 ≠ 默认根） | 用户主动选址                       | **跳过自动迁移**，记一条 info（含源与目标路径）。理由：显式自定义与「改名遗留」是两类意图（如新机器复用旧 home 的场景），自动搬运可能违背用户预期；跳过是保守 fail-open——旧数据原样留在旧根，用户可手动复制。源 == 目标（显式指回 `~/.zcode`）同样跳过（no-op 防护） |
+| **desktop 自定义 dataBaseDir**（bootstrapSettings.dataBaseDir / `ZCODE_DATA_BASE_DIR`）         | desktop 设置的「数据目录迁移」功能 | **照常迁移**，目标 = `{dataBaseDir}/.openzwork/cli/memories`（读哪个根就迁到哪个根，UI catalog 立即可见）。2026-09-30 后 Desktop 下发同源 `ZCODE_STORAGE_DIR` 与 `ZCODE_SESSION_DB_PATH`，Agent 新读写跟随此根；CLI 自定义根跳过迁移策略仍不变                       |
 
 判定实现：迁移函数新增「目标根是否为默认根」的判定**由调用方做**（desktop：`getDataBaseDir() === homedir()` 可直接比对 paths.ts:34-40 的输入；CLI：`resolvePath(config.storage.dir)` 与 `resolvePath(默认值 "~/.openzwork")` 字符串比对），shared 函数只收 `source`/`target` 两个显式参数保持纯函数可测性；「跳过自定义」是调用点策略，不是 shared 逻辑。
 
@@ -95,13 +95,13 @@ WP-03（783be9f）把用户数据根从 `~/.zcode` 改名为 `~/.openzwork`，�
 
 ## 4. 状态所有者与写入路径
 
-| 状态 | 唯一所有者 | 写入路径 | 说明 |
-| --- | --- | --- | --- |
-| 记忆数据文件 | CLI 进程（runtime Memory 工具链，`config.memory.cliStorageRoot` 为根） | Memory 写入链（project-root.ts 定位） | 迁移是**唯一例外**的一次性引导期写入：仅 touch 目标根 `cli/memories` 树 + `v2/memory-migration.json`；运行期无第二条写入路径 |
-| `memoryEnabled` | `{envHome}/.openzwork/v2/setting.json`（appSettings.memoryEnabled，钉在 env HOME，**不跟随 dataBaseDir**，settingService.ts:40-49 + copyDataDirectory 排除 setting.json 的注释） | UI `updateSharedSettings`（SettingsPage.tsx:424）+ onboarding record 同步（onboardingRecordService updateRecordPreferences） | 会话偏好经 node.ts:620 读取下发给 protocol 层，server-operations.ts:3265-3267 只在关闭时强制停写 |
-| 迁移幂等标记 | `{targetStorageRoot}/v2/memory-migration.json` | 仅迁移函数（shared/node），原子写 | desktop 与 CLI 双触发共写同一文件（默认场景），标记即「该数据根已迁移」的唯一事实 |
-| dataBaseDir | setting.json 的 `dataBaseDir` 字段 | `updateDataBaseDir`（settingService.ts:294-314，copy 时排除 setting.json） | 决定 desktop 侧 getZCodeDataRootDir 的根 |
-| CLI storage.dir | CLI config（env ZCODE_STORAGE_DIR > config 文件 > 默认 `~/.openzwork`） | CLI 配置体系（adapters） | 决定 CLI 侧记忆读写根 |
+| 状态            | 唯一所有者                                                                                                                                                                       | 写入路径                                                                                                                     | 说明                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 记忆数据文件    | CLI 进程（runtime Memory 工具链，`config.memory.cliStorageRoot` 为根）                                                                                                           | Memory 写入链（project-root.ts 定位）                                                                                        | 迁移是**唯一例外**的一次性引导期写入：仅 touch 目标根 `cli/memories` 树 + `v2/memory-migration.json`；运行期无第二条写入路径 |
+| `memoryEnabled` | `{envHome}/.openzwork/v2/setting.json`（appSettings.memoryEnabled，钉在 env HOME，**不跟随 dataBaseDir**，settingService.ts:40-49 + copyDataDirectory 排除 setting.json 的注释） | UI `updateSharedSettings`（SettingsPage.tsx:424）+ onboarding record 同步（onboardingRecordService updateRecordPreferences） | 会话偏好经 node.ts:620 读取下发给 protocol 层，server-operations.ts:3265-3267 只在关闭时强制停写                             |
+| 迁移幂等标记    | `{targetStorageRoot}/v2/memory-migration.json`                                                                                                                                   | 仅迁移函数（shared/node），原子写                                                                                            | desktop 与 CLI 双触发共写同一文件（默认场景），标记即「该数据根已迁移」的唯一事实                                            |
+| dataBaseDir     | setting.json 的 `dataBaseDir` 字段                                                                                                                                               | `updateDataBaseDir`（settingService.ts:294-314，copy 时排除 setting.json）                                                   | 决定 desktop 侧 getZCodeDataRootDir 的根                                                                                     |
+| CLI storage.dir | 独立 CLI：env ZCODE_STORAGE_DIR > config 文件 > 默认 `~/.openzwork`；Desktop：Main 注入选定数据根                                                                                | CLI 配置体系（adapters），Desktop 复用 buildHostProcessEnv                                                                   | 决定 CLI 侧记忆读写根；Desktop 同时对齐 sessionDbPath                                                                        |
 
 **禁止事项**：UI 不感知迁移（无迁移状态 store/IPC）；memoryService 不新增写入面；不把旧根路径引入运行时读链。
 
@@ -113,15 +113,19 @@ WP-03（783be9f）把用户数据根从 `~/.zcode` 改名为 `~/.openzwork`，�
 export interface MemoryMigrationResult {
   status: "migrated" | "noop-source-missing" | "noop-marker-present";
   filesCopied: number;
-  filesSkipped: number;   // no-clobber 跳过 + symlink 跳过
+  filesSkipped: number; // no-clobber 跳过 + symlink 跳过
   failures: Array<{ path: string; error: string }>; // 单文件失败不中断整体
 }
 
 /** 一次性单向复制迁移：source → target，逐文件 no-clobber，幂等标记在 target 的 v2 下。 */
 export async function migrateLegacyProjectMemories(input: {
-  sourceMemoriesRoot: string;   // 旧根 cli/memories（调用方拼好）
-  targetStorageRoot: string;    // 新 storageRoot（函数内部拼 cli/memories 与 v2 标记）
-  logger?: { info: (m: string, ctx?: object) => void; warn: (m: string, ctx?: object) => void; debug: (m: string, ctx?: object) => void };
+  sourceMemoriesRoot: string; // 旧根 cli/memories（调用方拼好）
+  targetStorageRoot: string; // 新 storageRoot（函数内部拼 cli/memories 与 v2 标记）
+  logger?: {
+    info: (m: string, ctx?: object) => void;
+    warn: (m: string, ctx?: object) => void;
+    debug: (m: string, ctx?: object) => void;
+  };
 }): Promise<MemoryMigrationResult>;
 ```
 
@@ -132,7 +136,7 @@ export const memoryMigrationMarkerSchema = z.object({
   version: z.literal(1),
   source: z.string(),
   target: z.string(),
-  completedAt: z.string(),   // ISO 8601
+  completedAt: z.string(), // ISO 8601
   filesCopied: z.number().int().nonnegative(),
   filesSkipped: z.number().int().nonnegative(),
 });
@@ -197,7 +201,7 @@ memoryEnabled=true 的会话：resolveEnabledProjectMemoryRoot（core project-me
 1. **旧根有数据 → 两端可见**：完整产品验收须用实际 Desktop 与 CLI 启动链（不是仅调用 helper）：Desktop 首启后 `~/.openzwork/cli/memories/projects` 与旧根项目/文件一致，设置页 catalog 列出项目；随后通过 CLI `createZCodeApp` 启动且 `memoryEnabled=true` 的实际会话，recall 注入的 manifest 包含迁移主题文件。本次定向自动化以 tmpdir 调用实际 CLI 迁移入口，确认 services catalog 与 `scanMemoryManifest` 可看到迁移项目/主题文件；不启动 Electron 或真实 `createZCodeApp`，不能替代产品级 Desktop/CLI 验收。本机原旧根样例为 28 项目/19 索引，但真实用户数据启动验收不得与 tmpdir 集成测试混称。字节一致抽查与 catalog/recall 的真实端到端通过记录须在验收日志填写。
 2. **空旧根 → no-op**：`~/.zcode/cli/memories` 不存在的机器（新用户）→ 启动不创建任何目录、不写标记、无用户可感知差异（debug 日志一条）。临时目录单测验证 helper 的 ENOENT no-op，不等同于真实 Desktop/CLI 启动验证。
 3. **自定义 storage.dir 在场**：`ZCODE_STORAGE_DIR=/custom` 经真实 CLI 启动链 → 不迁移、旧根原样、一条 info 日志含源与目标路径；默认根 `~/.openzwork` 不因此被创建。自动化实际调用 `migrateDefaultCliStorageMemories` 接线函数，断言 custom storage 不创建默认目标、不改 source 且发 info 日志；尚未在真实进程对 `createZCodeApp` 环境注入做验收。
-4. **自定义 dataBaseDir 在场（desktop）**：dataBaseDir=/custom → 实际 Desktop 启动迁移落 `/custom/.openzwork/cli/memories`，设置页 catalog 可见；标记在 `/custom/.openzwork/v2/memory-migration.json`。tmpdir 自动化调用抽取的 Desktop 启动迁移入口，再经 services `setDataBaseDir` 和真实 `createMemoryService().listProjectMemories()` 验证 catalog 可见，但没有启动 Electron Desktop；CLI agent 新写入仍落 `~/.openzwork` 为已知限制（§8）。
+4. **自定义 dataBaseDir 在场（desktop）**：dataBaseDir=/custom → 实际 Desktop 启动迁移落 `/custom/.openzwork/cli/memories`，设置页 catalog 可见；标记在 `/custom/.openzwork/v2/memory-migration.json`。tmpdir 自动化调用抽取的 Desktop 启动迁移入口，再经 services `setDataBaseDir` 和真实 `createMemoryService().listProjectMemories()` 验证 catalog 可见，但没有启动 Electron Desktop；2026-09-30 新增 Desktop 环境→CLI 配置→真实记忆文件→catalog/recall 的同根回归，Agent 新读写跟随自定义根；仍未启动 Electron Desktop。
 5. **二次启动不重复迁移**：第二次真实 Desktop/CLI 启动读标记直接返回（debug 日志、零文件复制）；手动删标记后由真实入口重跑 → 已存在文件全部 no-clobber 跳过（filesCopied=0，内容不变）。当前 tmpdir 自动化只调用 helper 验证标记与重入语义，真实入口仍待验收。
 6. **中断恢复**：通过真实子进程执行迁移并在写入中途 kill，再以新进程重启迁移；验证旧进程遗留 tmp 被清理、缺失文件补齐、已复制文件不重复且最终标记写入。本次自动化新增真实子进程：在 tmp 复制完成、原子 link 提交前暂停后 SIGKILL，再由新子进程重启 helper，确认死亡 PID tmp 已清理、缺失文件补齐、目标内容完整且标记写入；通过 `packages/services/test/memory-migration.test.ts` 的场景用例。既有 6a 构造死亡 PID 残留文件验证清理选择规则、6b 预建部分目标验证 helper 续传。
 7. **并发首启**：Desktop main 与其 spawn agent 的实际双触发链同时启动；最终目录完整、无撕裂或新文件覆盖（唯一 tmp + 排他硬链接提交）。当前双 worker 测试只并发调用 helper，不代表 Electron Desktop/agent 接线已通过。
@@ -209,7 +213,7 @@ memoryEnabled=true 的会话：resolveEnabledProjectMemoryRoot（core project-me
 
 **非目标**（明确不做）：
 
-- P0-2 完整数据根对齐（`ZCODE_DATA_BASE_DIR` 映射进 CLI `storage.dir`、或 desktop spawn 时下发 `ZCODE_STORAGE_DIR`）——涉及 `sessionDbPath` 默认值（`~/.openzwork/cli/db/db.sqlite`，contracts index.ts:303，与 storage.dir 是两个独立默认）等连锁分裂风险，属协议/配置面行为变化，移交后续工作包单独 spec；E1a 只保证「UI 读哪个根就迁到哪个根」。
+- E1a 原工作包不负责 P0-2 完整数据根对齐；2026-09-30 的独立修复已将 Desktop 的 storage.dir 与 sessionDbPath 同时对齐，现行规则与验收见 `docs/spec/identity-and-data-isolation.md`。不自动搬迁或合并此前分叉根中的新记忆、数据库。
 - `memoryEnabled` 默认值改 true（§2.3 裁决维持 false）。
 - 记忆内容查看器、嵌套 .md 可见、索引/条目计数口径、搜索增强、子代理 agent-memory 展示（WP-E6）。
 - Web/远端查看记忆（维持 localOnly）。
@@ -218,7 +222,7 @@ memoryEnabled=true 的会话：resolveEnabledProjectMemoryRoot（core project-me
 
 **已知限制**（如实记录，不掩饰）：
 
-1. 自定义 dataBaseDir 场景下 CLI agent 新写入仍落 `~/.openzwork`（P0-2 分叉残留），表现为「旧记忆可见、新记忆写入旧默认根不可见」——比现状（全部不可见）改善，完整对齐待后续包。
+1. 2026-09-30 修复自定义 dataBaseDir 下 Agent 新读写分叉；修复前已写入旧默认根的新记忆与会话数据库不自动合并到自定义根，仍保留原位。真实 Electron 启动与目录切换重启验收仍待完成。
 2. 更老 hash 算法生成的项目目录（若存在）迁移后 catalog 可见但该项目 recall 不注入（§2.1）。
 3. 旧根文件被外部进程在迁移同时修改：复制的是调用时刻快照，无一致性保证（与 copyDataDirectory 同级风险，实际窗口毫秒级）。
 

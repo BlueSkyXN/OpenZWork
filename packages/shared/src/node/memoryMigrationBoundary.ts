@@ -92,9 +92,14 @@ export async function createMemoryMigrationBoundary(storageRoot: string, sourceR
     }
   }
 
+  async function assertTargetTree(): Promise<void> {
+    await assertDirectory(join(root, "cli"));
+    await assertTree(join(root, "cli", "memories"));
+    await assertMarker(join(root, "v2", "memory-migration.json"));
+  }
+
+  // 完成标记的安全读取只依赖根与标记路径；全树检查会让已完成迁移随记忆数量拖慢启动。
   await assertDirectory(root);
-  await assertDirectory(join(root, "cli"));
-  await assertTree(join(root, "cli", "memories"));
   await assertMarker(join(root, "v2", "memory-migration.json"));
-  return { assertDirectory, assertMarker };
+  return { assertDirectory, assertMarker, assertTargetTree };
 }
