@@ -1,7 +1,6 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 /* eslint-disable max-lines -- desktop runtime/env 解析需要集中维护 main/host/remote assets 的启动边界，拆分会扩大远程连接回归面。 */
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { join, resolve, win32 } from "node:path";
 import type { ConnectOptions } from "@zcode/server/remote";
 import { listSSHConfigAliasesFromLocalConfig } from "@zcode/services/node";
@@ -31,7 +30,12 @@ import {
   resolveRemoteCdnBaseUrls as resolveOrderedRemoteCdnBaseUrls,
   type ResolveRemoteCdnOptions,
 } from "./remoteCdn.js";
-import { OPENZWORK_APP_NAME, OPENZWORK_APP_NAME_DEV, OPENZWORK_APP_NAME_PREVIEW, OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import {
+  OPENZWORK_APP_NAME,
+  OPENZWORK_APP_NAME_DEV,
+  OPENZWORK_APP_NAME_PREVIEW,
+  OPENZWORK_DATA_DIR_NAME,
+} from "@zcode/shared";
 import { getElectronAppPath, isElectronAppPackaged } from "./desktopElectronApp.js";
 
 const isLocalDevelopmentRuntime = !isElectronAppPackaged();
@@ -56,7 +60,11 @@ function isTruthyRuntimeEnvOverride(name: string): boolean {
 // 这里允许测试显式隔离运行时身份，正常桌面/远控路径保持原来的默认值。
 export const runtimeApplicationName =
   readRuntimeEnvOverride("ZCODE_DESKTOP_APPLICATION_NAME") ??
-  (isLocalDevelopmentRuntime ? OPENZWORK_APP_NAME_DEV : isPreviewPackagedRuntime ? OPENZWORK_APP_NAME_PREVIEW : OPENZWORK_APP_NAME);
+  (isLocalDevelopmentRuntime
+    ? OPENZWORK_APP_NAME_DEV
+    : isPreviewPackagedRuntime
+      ? OPENZWORK_APP_NAME_PREVIEW
+      : OPENZWORK_APP_NAME);
 // Electron 的 app.getPath("home") 不一定跟随测试进程里的 HOME 覆盖。
 // e2e 默认工作区依赖 home 路径，因此提供显式覆盖，避免测试写到开发者真实 ~/ZCodeProject。
 export const runtimeHomePath = readRuntimeEnvOverride("ZCODE_DESKTOP_HOME_DIR");
@@ -490,6 +498,9 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
   // 三层里有两层不写这个键，空对象无法覆盖 inheritedEnv，所以先无条件删掉继承值再按决策 spread 回去。
   // 少了这一行，production 包和 dev 的非法取值都会原样穿透到 Host。
   delete inheritedEnv[ZCODE_DYNAMIC_WORKFLOW_MODE_ENV];
+  // DB 旧别名若继续继承，CLI 会按环境键遍历顺序覆盖新路径，导致预备库与运行库分叉。
+  delete inheritedEnv.ZCODE_SESSION_DB;
+  const storageRoot = join(dataBaseDir, OPENZWORK_DATA_DIR_NAME);
 
   return {
     ...inheritedEnv,
@@ -504,7 +515,10 @@ export function buildHostProcessEnv(hostProcessLocalEnv: Record<string, string>)
     // 模型请求默认 header 由 agent 进程构造，过去只继承 shell env 导致桌面启动时拿不到 app 版本。
     // 这里从 main 进程显式下发，agent 子进程继承 host env 后即可稳定写入请求 header。
     [ZCODE_APP_VERSION_ENV]: ZCODE_VERSION,
-    ...(dataBaseDir !== homedir() ? { ZCODE_DATA_BASE_DIR: dataBaseDir } : {}),
+    // Main 是桌面数据根的唯一所有者；无条件覆盖继承值，Agent 与存储预备 Worker 才能同根。
+    ZCODE_DATA_BASE_DIR: dataBaseDir,
+    ZCODE_STORAGE_DIR: storageRoot,
+    ZCODE_SESSION_DB_PATH: join(storageRoot, "cli", "db", "db.sqlite"),
     ...(windowsAppInstallDir ? { [ZCODE_WINDOWS_APP_INSTALL_DIR_ENV]: windowsAppInstallDir } : {}),
     ...(resolvedGlmBinaryPath ? { GLM_BINARY_PATH: resolvedGlmBinaryPath } : {}),
     ...(resolvedLarkCliBinaryPath ? { ZCODE_LARK_CLI_BINARY: resolvedLarkCliBinaryPath } : {}),

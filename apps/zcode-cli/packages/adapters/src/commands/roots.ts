@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { CustomCommandRoot, CustomCommandSource } from "@zcode/contracts";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import { isUserHomeDirectory } from "@zcode/shared/node";
 
 const COMMANDS_DIR = "commands";
 const GIT_MARKER = ".git";
@@ -50,6 +51,8 @@ export async function resolveDefaultCustomCommandRoots(
 
   const projectDirectories = await resolveProjectDirectories(resolvedWorkingDirectory);
   for (const directory of projectDirectories) {
+    // HOME 不属于项目兼容范围，否则 cwd=HOME 或 HOME worktree 会隐式读取官方用户命令。
+    if (await isUserHomeDirectory(directory, home)) continue;
     if (includeZcode) {
       roots.push(...commandRootsForBase(directory, "project", nextPriority));
     }

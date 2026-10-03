@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { SkillRoot, SkillSource } from "@zcode/contracts";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import { isUserHomeDirectory } from "@zcode/shared/node";
 
 const GIT_MARKER = ".git";
 const HOME_PREFIX = "~/";
@@ -50,6 +51,8 @@ export async function resolveDefaultSkillRoots(
 
   const projectDirectories = await resolveProjectSkillDirectories(resolvedWorkingDirectory);
   for (const directory of projectDirectories) {
+    // HOME 不属于项目兼容范围，否则 cwd=HOME 或 HOME worktree 会隐式读取官方用户技能。
+    if (await isUserHomeDirectory(directory, home)) continue;
     if (includeZcode) {
       roots.push(...skillRootsForBase(directory, "project", nextPriority));
     }
