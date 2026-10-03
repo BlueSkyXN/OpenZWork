@@ -1,6 +1,6 @@
 name: Installers
 
-# M5：CI 产出 mac-arm64 / win-amd64 双平台安装包（unsigned artifact）。
+# M5：CI 产出 mac-arm64 / win-amd64 / linux-amd64 三平台安装包（unsigned artifact）。
 # push 触发覆盖 wp* 分支便于在 feature 分支上先行验证打包链；正式发布后续再收敛触发面。
 on:
   workflow_dispatch:
@@ -30,25 +30,37 @@ jobs:
             bundle-arch: x64
             electron-cache: ~/AppData/Local/electron/Cache
             builder-cache: ~/AppData/Local/electron-builder/Cache
+          - os: ubuntu-latest
+            platform: linux-amd64
+            bundle-os: linux
+            bundle-arch: x64
+            electron-cache: ~/.cache/electron
+            builder-cache: ~/.cache/electron-builder
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6.1.0
         with:
           version: 10.33.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      # Linux 打包的系统工具链：rpm target 需要 rpmbuild（Ubuntu rpm 包提供），
+      # pacman target（.pkg.tar.zst）需要 zstd；ubuntu runner 镜像不保证自带，显式声明。
+      - name: Install Linux packaging toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm zstd
 
       # Electron 发行包与 electron-builder 二进制（winCodeSign/NSIS 等）按 lockfile 缓存：
       # pnpm install 的 electron postinstall 与 bundle 的 electron-builder 共用同一缓存位，
       # 命中时省去下载+解包（镜像下载虽仅 ~7s/142MB，Windows 上重复解包仍是可观测开销）。
       - name: Cache electron/electron-builder downloads
-        uses: actions/cache@v4
+        uses: actions/cache@v6.1.0
         with:
           path: |
             ${{ matrix.electron-cache }}
@@ -68,14 +80,23 @@ jobs:
           ZCODE_SKIP_REMOTE_ASSETS: "1"
 
       - name: Upload installer artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: openzwork-installer-${{ matrix.platform }}
+          archive: true
           path: |
             packages/desktop/dist/*.dmg
             packages/desktop/dist/*.zip
             packages/desktop/dist/*.exe
+            packages/desktop/dist/*.AppImage
+            packages/desktop/dist/*.deb
+            packages/desktop/dist/*.rpm
+            packages/desktop/dist/*.pkg.tar.zst
             packages/desktop/dist/**/*.dmg
             packages/desktop/dist/**/*.zip
             packages/desktop/dist/**/*.exe
+            packages/desktop/dist/**/*.AppImage
+            packages/desktop/dist/**/*.deb
+            packages/desktop/dist/**/*.rpm
+            packages/desktop/dist/**/*.pkg.tar.zst
           if-no-files-found: error
