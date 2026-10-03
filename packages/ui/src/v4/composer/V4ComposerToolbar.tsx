@@ -6,7 +6,7 @@
  * ChatModeSwitchControl / ThoughtLevelCycleControl / ChatContextUsage），外观与旧
  * ChatInputToolbar 对齐；但状态编排是全新 v4 wiring，不复活旧 ChatInputToolbar 的
  * effect 链 / 旧协议写路径：
- * - 当前模型/档位来自 Composer；已运行会话的用量来自 snapshot.usage.contextWindow
+ * - 当前模型/档位来自 Composer；上下文容量与累计用量来自 snapshot.usage
  * - 模型、思考深度和模式只更新下一次 Submission 的 Composer 意图
  * - 模型静态事实来自目标 Host ModelSelectionView；workspace configOptions 只提供
  *   mode 等非模型 presentation
@@ -40,9 +40,7 @@ import {
   shouldShowManageModelsAction,
 } from "@/chat-input-toolbar/modelSelection.js";
 import { resolveV4ModelTriggerDisplay } from "@/v4/composer/modelTriggerDisplay.js";
-import {
-  setPendingSettingsSectionIntent,
-} from "@/lib/settingsNavigation.js";
+import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import type { ModelSelectionView } from "@zcode/services";
 import type { ModelSelectionState } from "@/hooks/useModelSelectionView.js";
@@ -72,8 +70,6 @@ export interface ModelSelectionSource {
   provider: string;
   model: string;
 }
-
-
 
 export interface V4ComposerToolbarProps {
   workspacePath: string;
@@ -182,7 +178,6 @@ function V4ComposerModelControlsImpl({
   const effectiveConfig = useMemo<SessionConfigState | null>(() => {
     return resolveDraftDisplayedConfig(draftConfig ?? {});
   }, [draftConfig]);
-
 
   // 高频交互排障只走 debug，避免生产日志量随每次选择增长。
   useEffect(() => {
@@ -478,6 +473,7 @@ function V4ComposerModelControlsImpl({
       />
       <ChatContextUsage
         taskUsage={taskUsage}
+        cumulativeUsage={usage?.cumulative}
         selectedProvider={displayProvider}
         intl={intl}
         locale={locale}

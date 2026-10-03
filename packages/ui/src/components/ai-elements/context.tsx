@@ -114,9 +114,15 @@ const ContextIcon = () => {
 export type ContextTriggerProps = ComponentProps<typeof Button> & {
   /** 触发器转圈：额度自动重置进行中时替换 ContextIcon（对应「正在重置」状态）。 */
   loading?: boolean;
+  icon?: ReactNode;
 };
 
-export const ContextTrigger = ({ children, loading = false, ...props }: ContextTriggerProps) => {
+export const ContextTrigger = ({
+  children,
+  icon,
+  loading = false,
+  ...props
+}: ContextTriggerProps) => {
   return (
     <HoverCardTrigger asChild>
       {children ?? (
@@ -133,7 +139,7 @@ export const ContextTrigger = ({ children, loading = false, ...props }: ContextT
               aria-hidden="true"
             />
           ) : (
-            <ContextIcon />
+            (icon ?? <ContextIcon />)
           )}
         </Button>
       )}
