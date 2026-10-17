@@ -37,13 +37,13 @@ async function fixture(name = "original") {
     workspacePath,
     command,
     original,
-    update: (newName: string, targetWorkspace = workspacePath) =>
+    update: (newName: string, targetWorkspace = workspacePath, prompt = "updated body") =>
       service.updateCommandFile({
         commandId: command.id,
         oldFilePath: command.filePath,
         workspacePath: targetWorkspace,
         storageLevel: "project",
-        config: { name: newName, description: "updated description", prompt: "updated body" },
+        config: { name: newName, description: "updated description", prompt },
       }),
   };
 }
@@ -129,8 +129,8 @@ test("同时改到同一目标只有一个成功，失败方保留原命令", as
   const second = await fixture("second");
   const targetWorkspace = await mkdtemp(join(fixtureRoot, "shared-project-"));
   const results = await Promise.allSettled([
-    first.update("shared", targetWorkspace),
-    second.update("shared", targetWorkspace),
+    first.update("shared", targetWorkspace, "first updated body"),
+    second.update("shared", targetWorkspace, "second updated body"),
   ]);
   assert.equal(results.filter((result) => result.status === "fulfilled").length, 1);
   const rejectedIndex = results.findIndex((result) => result.status === "rejected");
@@ -138,8 +138,13 @@ test("同时改到同一目标只有一个成功，失败方保留原命令", as
   const fulfilled = [first, second][1 - rejectedIndex]!;
   assert.equal(await readFile(rejected.command.filePath, "utf8"), rejected.original);
   await assert.rejects(readFile(fulfilled.command.filePath), { code: "ENOENT" });
-  assert.match(
-    await readFile(join(targetWorkspace, ".zcode", "commands", "shared.md"), "utf8"),
-    /updated body/,
+  const targetPath = join(targetWorkspace, ".zcode", "commands", "shared.md");
+  const targetContent = await readFile(targetPath, "utf8");
+  assert.ok(
+    targetContent.endsWith(rejectedIndex === 0 ? "second updated body" : "first updated body"),
   );
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.deepEqual(config.command[rejected.command.filePath], { enable: false });
+  assert.equal(config.command[fulfilled.command.filePath], undefined);
+  assert.deepEqual(config.command[targetPath], { enable: false });
 });

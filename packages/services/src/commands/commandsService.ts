@@ -1,5 +1,15 @@
 /* eslint-disable max-lines -- commandsService 需要集中处理目录来源优先级、读写和命令解析，拆分会削弱读取顺序的一致性 */
-import { access, lstat, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  access,
+  lstat,
+  mkdir,
+  readFile,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -498,6 +508,17 @@ function getCommandFileName(config: CommandConfig, agentSource: CommandAgentSour
   return `${relativeName}${descriptor.fileExtension}`;
 }
 
+async function isSameCommandFile(oldPath: string, newPath: string): Promise<boolean> {
+  const paths = await Promise.all([
+    lstat(oldPath),
+    lstat(newPath),
+    realpath(oldPath),
+    realpath(newPath),
+  ]).catch(() => undefined);
+  // 大小写不敏感的文件系统上，改名可能仍指向同一普通文件；链接不作同文件豁免。
+  return paths !== undefined && paths[0].isFile() && paths[1].isFile() && paths[2] === paths[3];
+}
+
 function getWritableCommandConfig(
   config: CommandConfig,
   descriptor: CommandAgentSourceDescriptor,
@@ -651,27 +672,11 @@ export function createCommandsService(_options?: CommandsServiceOptions): IComma
       ? await readFile(params.oldFilePath, "utf-8").catch(() => undefined)
       : undefined;
 
-    // 如果文件名变了，需要删除旧文件
-    if (params.oldFilePath && params.oldFilePath !== newFilePath) {
-      try {
-        await rm(params.oldFilePath);
-      } catch {
-        // 旧文件可能已被移除，忽略删除失败（ENOENT 属正常情况）。
-      }
-    }
-
-    // 检查新文件是否已存在（排除自己的旧路径）
-    if (newFilePath !== params.oldFilePath) {
-      try {
-        await access(newFilePath);
-        throw new Error(`Command file already exists: ${newFileName}`);
-      } catch (error) {
-        const err = error as NodeJS.ErrnoException;
-        if (err.code !== "ENOENT") {
-          throw error;
-        }
-      }
-    }
+    const pathChanged = newFilePath !== params.oldFilePath;
+    const aliasesSameFile =
+      pathChanged && params.oldFilePath
+        ? await isSameCommandFile(params.oldFilePath, newFilePath)
+        : false;
 
     const content = CommandFileParser.generateCommandFileContent(
       getWritableCommandConfig(params.config, descriptor),
@@ -679,7 +684,29 @@ export function createCommandsService(_options?: CommandsServiceOptions): IComma
       existingContent,
     );
     await mkdir(dirname(newFilePath), { recursive: true });
-    await writeFile(newFilePath, content, "utf-8");
+    try {
+      // 先删旧文件会在重名或写入失败时丢失命令；新路径用排他创建，避免检查后的竞争覆盖。
+      await writeFile(newFilePath, content, {
+        encoding: "utf-8",
+        flag: pathChanged && !aliasesSameFile ? "wx" : "w",
+      });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+        throw new Error(`Command file already exists: ${newFileName}`);
+      }
+      throw error;
+    }
+
+    if (params.oldFilePath && pathChanged) {
+      if (aliasesSameFile) {
+        // 同文件别名不能 rm，否则会删除刚保存的内容；rename 保留大小写改名行为。
+        await rename(params.oldFilePath, newFilePath);
+      } else {
+        await rm(params.oldFilePath).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== "ENOENT") throw error;
+        });
+      }
+    }
 
     if (
       params.oldFilePath &&
