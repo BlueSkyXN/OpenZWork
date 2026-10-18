@@ -12,11 +12,13 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 export function PluginAddMenu({
   onAddMarketplace,
   testId,
+  isWebRemoteControl: _isWebRemoteControl = false,
 }: {
   /** 官方 plugin-creator 入口已随官方插件定义移除；保留 prop 兼容既有挂载点。 */
   onCreateTask?: (request?: CreateTaskRequest) => void;
   onAddMarketplace: () => void;
   testId: string;
+  isWebRemoteControl?: boolean;
 }) {
   const { intl } = useZCodeIntl();
   return (

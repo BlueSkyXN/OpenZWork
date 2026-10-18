@@ -1,6 +1,6 @@
 import type { McpConnectionSnapshot, McpPort } from "@zcode/contracts";
 
-interface BorrowedSubagentMcpAccess {
+export interface BorrowedSubagentMcpAccess {
   port: McpPort;
   snapshot: McpConnectionSnapshot;
 }

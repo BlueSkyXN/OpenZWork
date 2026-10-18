@@ -16,13 +16,31 @@ export function readProductEndpointEnv(): Record<string, string | undefined> {
     ...pickProductEndpointEnv(typeof process === "undefined" ? {} : process.env),
   };
 }
+// OpenZWork 净化（WP-08）：不恢复任何官方产品域默认常量、ZAI OAuth client id 与默认 relay WS 地址；
+// relay 地址由调用方显式配置推导，v3/v4 版本门槛与 URL 拼装随官方端点推导链一并不引入。
+export interface ZCodeEndpointUrls {
+  origin: string;
+  apiBaseUrl: string;
+  remoteUrl: string;
+  webRemoteCallbackUrl: string;
+  webShareCallbackUrl: string;
+  relayWsUrl: string;
+  zcodePlanOpenAiBaseUrl: string;
+  zcodePlanAnthropicBaseUrl: string;
+  zcodePlanBillingCurrentUrl: string;
+  zcodePlanBillingBalanceUrl: string;
+}
 
 export interface RuntimeZCodeEndpointEnv {
   [key: string]: string | undefined;
   ZCODE_ENV?: string;
   ZCODE_BASE_URL?: string;
   ZCODE_ENDPOINT_ORIGIN?: string;
+  ZCODE_TEST_BASE_URL?: string;
+  ZCODE_PRODUCTION_BASE_URL?: string;
 }
+
+// OpenZWork 净化：不恢复 BigModel / ZAI 官方 provider 的 runtime env 接口与 RuntimeProductEndpointConfig。
 
 function readRuntimeEnvValue(
   env: Record<string, string | undefined>,
@@ -70,10 +88,22 @@ export function resolveRuntimeZCodeEndpointOrigin(
   env: RuntimeZCodeEndpointEnv = readProductEndpointEnv(),
   options?: { overrideOrigin?: string | null },
 ): string | undefined {
+  const zcodeEnv = resolveRuntimeZCodeEnv(env);
+  const scopedBaseOrigin =
+    zcodeEnv === "production"
+      ? readRuntimeEnvValue(env, "ZCODE_PRODUCTION_BASE_URL")
+      : readRuntimeEnvValue(env, "ZCODE_TEST_BASE_URL");
+
   return resolveZCodeEndpointOrigin({
+    env: zcodeEnv,
     envBaseOrigin:
       readRuntimeEnvValue(env, "ZCODE_BASE_URL") ??
-      readRuntimeEnvValue(env, "ZCODE_ENDPOINT_ORIGIN"),
+      readRuntimeEnvValue(env, "ZCODE_ENDPOINT_ORIGIN") ??
+      scopedBaseOrigin,
     overrideOrigin: options?.overrideOrigin,
   });
 }
+// OpenZWork 净化（WP-08）：不恢复 buildRuntimeZCodeEndpointUrls / resolveWebRemoteControlRelayWsUrl /
+// resolveBigModelApiOrigin / resolveZai* / buildZCodeEndpointUrls / rewriteZCodeEndpointUrl 等官方端点
+// 推导链——它们全部以已删除的官方默认域常量为回退。远端 relay 等保留能力经由调用方显式配置的
+// endpoint origin 推导，缺配置即未启用（undefined 语义，见上）。

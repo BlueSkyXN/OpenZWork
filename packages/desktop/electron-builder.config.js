@@ -24,6 +24,8 @@ const ELECTRON_BUILDER_ARCH = {
   1: "x64",
   3: "arm64",
 };
+// fork 净化：不导入 scripts/windows-cua-helper-assets.mjs 的官方 CUA helper 链，
+// Windows 目标解析保留 fork 本地实现（语义与上游一致，仅去掉 helper 打包耦合）。
 function resolveElectronBuilderWindowsTarget({
   electronPlatformName,
   arch,
@@ -55,8 +57,7 @@ function resolveElectronBuilderWindowsTarget({
     );
   }
   return actualTarget;
-}
-import {
+}import {
   findDesktopNativePackageViolations,
   createDesktopNativePackagePrunePatterns,
   parseAsarListWithPackState,
@@ -100,7 +101,6 @@ const requireFromConfig = createRequire(import.meta.url);
 let nsisInstallSectionPatched = false;
 let nsisInstallSectionOriginalSource = null;
 let nsisInstallSectionPath = null;
-const desktopElectronVersion = requireFromConfig("./package.json").devDependencies.electron;
 const asarCliPath = resolve(
   dirname(requireFromConfig.resolve("@electron/asar/package.json")),
   "bin",
@@ -109,7 +109,7 @@ const asarCliPath = resolve(
 const REQUIRED_ASAR_RUNTIME_MODULES = [
   "module-details-from-path",
   "pngjs",
-  // @zcode/services 的代理连通性探测会动态 require("undici") 取 ProxyAgent。
+  // Bugfix: @zcode/services 的代理连通性探测会动态 require("undici") 取 ProxyAgent。
   // tsup 虽然把 services 代码并进了主/host 产物，但不会把这个运行时 require 的包内联进去，
   // electron-builder 产物又可能漏掉 hoisted 的 undici，最终 mac 安装包启动即报 Cannot find module "undici"。
   // 这里把 undici 和其他兜底依赖一样强制注入 app.asar，避免用户在已安装应用里主进程直接崩溃。
@@ -194,6 +194,8 @@ function resolveElectronDownloadMirror(env = process.env) {
   return DEFAULT_ELECTRON_MIRROR;
 }
 
+const shouldEnableWindowsVsign =
+  process.platform === "win32" && process.env.ZCODE_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
 // 产物后缀只标记后端环境（_TEST）；身份靠 productName 区分，生产后端的 Preview 包没有后缀。
 const desktopArtifactEnvSuffix = resolveDesktopArtifactSuffix(process.env);
@@ -462,6 +464,11 @@ export default {
   // 有时无法从依赖树里稳定推导出 Electron 版本，导致 bundle 直接中断。
   // 显式写死当前桌面端使用的 Electron 版本，避免打包阶段再做不可靠的猜测。
   electronVersion: "41.0.3",
+  // 旧 Windows 协议注册可能在应用 JS 重写注册表前注入 --inspect-brk。
+  // 在签名前关闭原生 Inspector 参数，覆盖升级后首次启动；保留 Agent 所需的 RunAsNode。
+  ...(targetPlatform.os === "win32"
+    ? { electronFuses: { enableNodeCliInspectArguments: false } }
+    : {}),
   electronDownload: {
     // ELECTRON_MIRROR 是 @electron/get 的全局环境变量，会覆盖 dmg-builder 等
     // generic artifact 自己传入的 mirrorOptions，导致 builder 辅助包被错误拼到 Electron runtime 镜像目录。
@@ -652,6 +659,9 @@ export default {
     artifactName: buildDesktopArtifactName("mac"),
     extendInfo: {
       NSAppleEventsUsageDescription: `${desktopProductIdentity.productName} needs Apple Events access to coordinate local automation workflows with user-approved desktop apps.`,
+      // 缺失该 key 时 macOS 会静默拒绝 CoreBluetooth 枚举，内置浏览器 Web Bluetooth
+      // 的设备选择器列表恒为空（实测 Chrome 有蓝牙隐私权限则正常）。
+      NSBluetoothAlwaysUsageDescription: `${desktopProductIdentity.productName} needs Bluetooth access to list nearby devices when a website you open in the embedded browser requests one.`,
     },
     // 预签名脚本走的是原生 codesign，要求完整的 "Developer ID Application: ..." 身份串；
     // 但 electron-builder 的 mac.identity 在 26.x 下会拒绝带此前缀的名字。
@@ -675,6 +685,7 @@ export default {
     // CUA Helper 在独立 job 中已完成 Developer ID 签名和 notarization staple；
     // electron-builder 若再次签名嵌套 Helper 会改变 CDHash，使最终用户包中的 staple 失效。
     signIgnore: [
+      "[/\\\\]Contents[/\\\\]Resources[/\\\\]cua-helper([/\\\\]|$)",
       "[/\\\\]Contents[/\\\\]Resources[/\\\\]glm([/\\\\]|$)",
       "[/\\\\]Contents[/\\\\]Resources[/\\\\]tools([/\\\\]|$)",
     ],
@@ -682,6 +693,18 @@ export default {
   win: {
     target: ["nsis"],
     artifactName: buildDesktopArtifactName("win"),
+    signExts: [".node", ".dll"],
+    // Bugfix: Windows CI 之前完全依赖 electron-builder 内置 signtool.exe，
+    // 一旦 runner 的证书链路要求改走 vsigntool，打包阶段就会在内置签名环节卡死。
+    // 这里通过自定义 sign hook 把所有 Windows 可执行文件统一切到仓库内的 vsigntool 封装，
+    // 既保留 electron-builder 的签名时机，又和 CI 机器上的签名基础设施保持一致。
+    ...(shouldEnableWindowsVsign
+      ? {
+          signtoolOptions: {
+            sign: "./scripts/sign-windows-hook.cjs",
+          },
+        }
+      : {}),
   },
   linux: {
     target: ["AppImage", "deb", "rpm", "pacman"],

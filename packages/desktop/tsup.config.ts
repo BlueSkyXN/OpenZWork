@@ -1,21 +1,22 @@
-import { pickProductEndpointEnv } from "@zcode/shared/zcodeEndpoint";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { defineConfig } from "tsup";
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { resolveDesktopProductFlavor } from "./scripts/desktop-product-identity.mjs";
+const { copyGenUiRuntimeAssets } = await import(
+  pathToFileURL(resolve(import.meta.dirname, "scripts/gen-ui-runtime-assets.mjs")).href
+);
 // tsup 会先打包配置文件；动态加载构建工具，避免其 import.meta.dirname 被重定位到 desktop。
 const { loadBuiltinProviderConfig } = await import(
   pathToFileURL(resolve(import.meta.dirname, "../../scripts/builtin-provider-config.mjs")).href
 );
-
 const buildMetadata = getBuildMetadata();
 
 // 手动加载 .env 文件，tsup 不像 Vite 会自动读取 .env.*；这些文件只提供链接常量。
 function loadEnvFiles(): Record<string, string> {
   const vars: Record<string, string> = {};
-  const files = ["../../.env", "../../.env.local"];
+  const files = ["../../.env"];
   if (process.env.NODE_ENV === "production") {
     files.push("../../.env.production");
   } else {
@@ -42,20 +43,15 @@ function loadEnvFiles(): Record<string, string> {
   if (process.env.ZAI_BUSINESS_LOGIN_URL) {
     vars.ZAI_BUSINESS_LOGIN_URL = process.env.ZAI_BUSINESS_LOGIN_URL;
   }
+  if (process.env.CDN_DOMAIN) vars.CDN_DOMAIN = process.env.CDN_DOMAIN;
+  if (process.env.OSS_PATH_PREFIX) vars.OSS_PATH_PREFIX = process.env.OSS_PATH_PREFIX;
   if (process.env.VITE_ZAI_OAUTH_CLIENT_ID) {
     vars.VITE_ZAI_OAUTH_CLIENT_ID = process.env.VITE_ZAI_OAUTH_CLIENT_ID;
   }
   if (process.env.VITE_ZAI_OAUTH_ORIGIN) {
     vars.VITE_ZAI_OAUTH_ORIGIN = process.env.VITE_ZAI_OAUTH_ORIGIN;
   }
-  return {
-    ...vars,
-    ...Object.fromEntries(
-      Object.entries(process.env).filter(
-        (entry): entry is [string, string] => entry[1] !== undefined,
-      ),
-    ),
-  };
+  return vars;
 }
 
 const env = loadEnvFiles();
@@ -64,35 +60,6 @@ const { environment: zcodeEnv } = await loadBuiltinProviderConfig();
 const zcodeProductFlavor = resolveDesktopProductFlavor({ ...process.env, ZCODE_ENV: zcodeEnv });
 console.log(`[tsup] ZCODE_ENV=${zcodeEnv} ZCODE_PRODUCT_FLAVOR=${zcodeProductFlavor}`);
 
-export function resolveDesktopTsupBundleSecurityOptions(
-  runtimeEnv: Record<string, string | undefined> = process.env,
-) {
-  const isProduction = runtimeEnv.NODE_ENV === "production";
-  const isE2ECoverageBuild = runtimeEnv.ZCODE_E2E_COVERAGE === "1";
-  return {
-    // 发布包的 main/host/preload 之前没有随 NODE_ENV=production 压缩，
-    // 产物保留大量源码注释与格式化换行，增加逆向和内部实现暴露风险。
-    keepNames: isProduction && !isE2ECoverageBuild,
-    minify: isProduction && !isE2ECoverageBuild,
-    // 生产包不随包发布 sourcemap，继续生成 sourceMappingURL 会暴露无效映射路径。
-    // E2E coverage build 只会进入隔离 app cache，需要保留 map 才能把 V8 bundle range
-    // 还原到 TypeScript 源码；正常发布构建仍保持无 sourcemap。
-    sourcemap: isE2ECoverageBuild || !isProduction,
-  };
-}
-
-type DesktopTsupEsbuildOptions = {
-  chunkNames?: string;
-  legalComments?: "none" | "inline" | "eof" | "linked" | "external";
-};
-
-export function applyDesktopTsupEsbuildSecurityOptions(options: DesktopTsupEsbuildOptions) {
-  // 生产压缩时 esbuild 默认可能保留 license/legal 注释，
-  // 发布包不应在 main/host/preload 里留下源码注释或 sourcemap 入口注释。
-  options.legalComments = "none";
-}
-
-const desktopTsupBundleSecurityOptions = resolveDesktopTsupBundleSecurityOptions();
 
 function createSharedDefines() {
   return {
@@ -100,7 +67,6 @@ function createSharedDefines() {
     __ZCODE_COMMIT__: JSON.stringify(buildMetadata.buildCommitId),
     __ZCODE_BUILD_TIME__: JSON.stringify(buildMetadata.buildTime),
     __ZCODE_ENV__: JSON.stringify(zcodeEnv),
-    __ZCODE_ENDPOINT_ENV__: JSON.stringify(pickProductEndpointEnv(env)),
     __ZCODE_PRODUCT_FLAVOR__: JSON.stringify(zcodeProductFlavor),
     // 客户端只有一个 CDN 配置，与发布端 OSS 目标列表分离。
     __ZCODE_CDN_BASE_URL__: JSON.stringify(env.ZCODE_CDN_BASE_URL?.trim() || ""),
@@ -157,9 +123,8 @@ export default defineConfig([
       "@zcode/provider",
       "@zcode/provider-node",
     ],
-    // OTLP 端点与鉴权只在运行时读取；构建环境中的凭据不能写进公开安装包。
-    define: createSharedDefines(),
-    // main/host 同时 watch 且共享 out 根目录时，默认 chunk 命名会互相覆盖，
+    define: createMainDefines(),
+    // 修复原因：main/host 同时 watch 且共享 out 根目录时，默认 chunk 命名会互相覆盖，
     // 可能让 main 的 import 指向被 host 刚重写的 chunk，触发“缺少命名导出”的偶发启动报错。
     // 这里按目标分目录输出 chunk，确保并发构建下产物隔离。
     esbuildOptions(options) {
@@ -176,6 +141,7 @@ export default defineConfig([
       "preload/browserVideoRecorder": "src/preload/browserVideoRecorder.ts",
       "preload/index": "src/preload/index.ts",
       "preload/resourceManager": "src/preload/resourceManager.ts",
+      "preload/pluginSandbox": "src/preload/pluginSandbox/index.ts",
     },
     outDir: "out",
     format: "cjs",
@@ -189,6 +155,30 @@ export default defineConfig([
       applyDesktopTsupEsbuildSecurityOptions(options);
     },
     onSuccess: createDevReadyMarkerHook("preload"),
+    ...desktopTsupBundleSecurityOptions,
+  },
+  {
+    // 插件 iframe 内的 window.zcode / window.openai 别名脚本（官方 ext-apps `App` 上的薄封装）：IIFE、浏览器平台，
+    // 由 zcode-sandbox:// protocol handler 同源服务。
+    name: "plugin-sandbox-alias",
+    loader: { ".css": "text" },
+    entry: {
+      "plugin-sandbox-alias": "src/renderer/src/plugin-sandbox/alias.ts",
+      "gen-ui": "src/renderer/src/plugin-sandbox/genUi.ts",
+    },
+    // 不能放 out/renderer：vite renderer 构建 emptyOutDir 会把先落盘的别名脚本清掉。
+    outDir: "out/plugin-sandbox",
+    onSuccess: () => copyGenUiRuntimeAssets(resolve("out/plugin-sandbox")),
+    format: "iife",
+    platform: "browser",
+    target: "es2022",
+    // 沙箱页面没有 node_modules：SDK（ext-apps / client / core / zod）必须全部打进 IIFE。
+    noExternal: [/.*/],
+    outExtension: () => ({ js: ".js" }),
+    define: createSharedDefines(),
+    esbuildOptions(options) {
+      applyDesktopTsupEsbuildSecurityOptions(options);
+    },
     ...desktopTsupBundleSecurityOptions,
   },
   {

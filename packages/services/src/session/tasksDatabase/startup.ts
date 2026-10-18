@@ -17,7 +17,7 @@ import {
   markTasksStoragePrepared,
 } from "#src/session/tasksDatabase/prepared.js";
 
-type TasksStoragePhase =
+export type TasksStoragePhase =
   | "checking"
   | "waiting_for_lock"
   | "migrating"
@@ -38,6 +38,7 @@ export async function prepareTasksIndexStorage(
   await mkdir(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
   let failure: unknown;
+  let closeFailure: unknown;
   let migration: DatabaseMigrationFacts | undefined;
   try {
     db.exec("PRAGMA busy_timeout = 25");
@@ -88,18 +89,24 @@ export async function prepareTasksIndexStorage(
     }
     throw error;
   } finally {
+    // oxlint no-unsafe-finally：close 失败不能在 finally 内 throw 覆盖 catch 的控制流，
+    // 仅记录；是否抛出在 finally 之外决定。closeFailure 只在无首因时赋值。
     try {
       db.close();
     } catch (error) {
-      if (!failure) throw error;
+      if (!failure) closeFailure = error;
     }
   }
+  if (closeFailure !== undefined) throw closeFailure;
   markTasksStorageMigrated(path);
   const repos = [
     new TaskIndexRepo(path, LOCK_WAIT_MS),
     new AutomationRepo(path, LOCK_WAIT_MS),
   ];
   let preparationFailure: unknown;
+  // oxlint no-unsafe-finally：close 失败不能在 finally 内 throw 覆盖首因；
+  // 先只记录，finally 之后以唯一出口抛出。
+  let preparationCloseFailure: unknown;
   try {
     // 这些是原本就在初始化时执行的修复，不创建新的迁移或改变已有事务边界。
     for (const repo of repos) await repo.ensureReady();
@@ -107,16 +114,15 @@ export async function prepareTasksIndexStorage(
     preparationFailure = error;
     throw error;
   } finally {
-    let closeFailure: unknown;
     for (const repo of repos) {
       try {
         repo.close({ throwOnError: true });
       } catch (error) {
-        closeFailure ??= error;
+        preparationCloseFailure ??= error;
       }
     }
-    if (!preparationFailure && closeFailure) throw closeFailure;
   }
+  if (!preparationFailure && preparationCloseFailure) throw preparationCloseFailure;
   markTasksStoragePrepared(path);
   report("ready", migration);
 }

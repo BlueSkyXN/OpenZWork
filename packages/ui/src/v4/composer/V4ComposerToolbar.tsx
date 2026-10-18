@@ -66,6 +66,7 @@ const MODEL_SELECTION_LOADING_STATE: ModelSelectionState = { status: "loading" }
 /** 稳定空回调（热键 hook 单实例只处理本组件拥有的选项，其余动作占位）。 */
 function noop(): void {}
 
+
 export interface ModelSelectionSource {
   provider: string;
   model: string;
@@ -81,6 +82,7 @@ export interface V4ComposerToolbarProps {
   phase: SessionPhase | null;
   provider?: ZCodeProvider;
   /** 当前工具条是否运行在 Web 远控壳中。 */
+  isWebRemoteControl?: boolean;
   /** 当前视口是否为手机输入布局。 */
   isMobileViewport?: boolean;
   /** 草稿态（sessionId=null），仅区分新任务呈现，不改变选择来源。 */
@@ -89,6 +91,10 @@ export interface V4ComposerToolbarProps {
   draftConfig?: Partial<SessionConfigState>;
   usage: SessionUsageState | null;
   disabled: boolean;
+  modelLocked?: boolean;
+  /** 本次入场是否为 draw 新命中的激活动效；恢复入场的模型标识不做翻页。 */
+  /** 模型翻页完成并静置后播放一次扫光。 */
+  /** draw 响应绑定的模型；只覆盖锁定期的触发器文案。 */
   /** 单个 composer 内的配置 picker 排他 owner；只属于 renderer-local presentation。 */
   activeConfigPicker: V4ComposerConfigPicker | null;
   onConfigPickerOpenChange: (picker: V4ComposerConfigPicker, open: boolean) => void;
@@ -120,11 +126,13 @@ function V4ComposerModelControlsImpl({
   modelSelectionState = MODEL_SELECTION_LOADING_STATE,
   modelSelectionReload,
   provider,
-  isMobileViewport: _isMobileViewport = false,
+  isWebRemoteControl = false,
+  isMobileViewport = false,
   draftMode = false,
   draftConfig,
   usage,
   disabled,
+  modelLocked = false,
   activeConfigPicker,
   onConfigPickerOpenChange,
   onSelectModel,
@@ -240,7 +248,7 @@ function V4ComposerModelControlsImpl({
     return effectiveConfig.model;
   }, [effectiveConfig, modelSelectionView]);
 
-  // 触发器显示兜底——`<synthetic>`（Claude SDK 恢复合成模型）或当前模型
+  // 触发器显示兜底——`<synthetic>`（SDK 恢复时合成的占位模型）或当前模型
   // 不在可选组（失效/下线/退登）→ 回落占位/默认「选择模型」，不直显协议内部占位符或失效
   // 模型 id。复用存活的 resolveModelSelectTriggerDisplay。
   const triggerDisplay = useMemo(
@@ -280,6 +288,7 @@ function V4ComposerModelControlsImpl({
   ]);
   const handleModelValueChange = useCallback(
     (value: string) => {
+      if (modelLocked) return;
       const decoded = decodeCustomModelValue(value);
       // 草稿的点击时可见模型可能只存在于 catalog，或已经被最新 draft
       // intent 覆盖，不能让 SessionPane 再从迟到的 prewarm projection 反推。
@@ -342,6 +351,7 @@ function V4ComposerModelControlsImpl({
       effectiveConfig?.provider,
       onRecoverCustomModelSelection,
       onSelectModel,
+      modelLocked,
       modelSelectionView,
       workspaceIdentity,
       workspacePath,
@@ -430,11 +440,16 @@ function V4ComposerModelControlsImpl({
   // 模型留空是正常的待选择状态，包括已有会话；不能因为没有已选模型隐藏重选入口。
   // 有可选组时正常显示；无组但有「管理模型」入口时也显示，避免用户零模型入口。
   const modelMenuVisible = modelSelectGroups.length > 0 || showManageModelsAction;
-  const providerSubmenuClassName = undefined;
+  // Bug 根因：手机端固定宽度的二级菜单没有消费 Radix 测得的当前方向可用宽度，
+  // 共享 min-w-32 还会阻止极窄空间继续收缩。保持二级交互，同时把窗口边缘作为硬上限。
+  const providerSubmenuClassName =
+    isWebRemoteControl && isMobileViewport
+      ? "w-40 min-w-0 max-w-(--radix-dropdown-menu-content-available-width)"
+      : undefined;
   useToolbarShortcutBindings({
     hasAnyOption: Boolean(modelOption) || Boolean(thoughtOption),
     toolbarDisabled: disabled || recoveryPending,
-    modelMenuDisabled: disabled || recoveryPending || !modelMenuVisible,
+    modelMenuDisabled: disabled || recoveryPending || modelLocked || !modelMenuVisible,
     modelOption,
     thoughtOption: thoughtOption ?? undefined,
     onOpenModelMenu: handleOpenModelMenuShortcut,
@@ -446,7 +461,7 @@ function V4ComposerModelControlsImpl({
     <>
       {/*
         e2e 契约（TID_V4_MODEL_CONFIG）：Composer/usage 状态的 data-* 属性锚点。
-        跨模型切换会主动清除源模型的显式 thought；此时可见控件已按目标模型
+        Bug 原因：跨模型切换会主动清除源模型的显式 thought；此时可见控件已按目标模型
         Option Spec 展示默认档位，但旧锚点仍暴露空的原始投影。data-thought 必须与用户
         实际看到的受控值一致，不能重新引入一份草稿状态。
       */}
@@ -515,11 +530,13 @@ function V4ComposerModelControlsImpl({
           })}
           isItemLocked={isModelOptionLocked}
           onValueChange={handleModelValueChange}
-          disabled={disabled || recoveryPending || modelSelectionState.status !== "ready"}
+          disabled={
+            disabled || recoveryPending || modelLocked || modelSelectionState.status !== "ready"
+          }
           tooltipTitle={modelTriggerDisplay.fullLabel}
           shortcutLabel={modelShortcutLabel}
           triggerRef={modelTriggerRef}
-          open={activeConfigPicker === "model"}
+          open={!modelLocked && activeConfigPicker === "model"}
           onOpenChange={handleModelPickerOpenChange}
           openRequestKey={modelMenuOpenRequestKey}
           labelVisibilityClassName="hidden @sm/composer:inline-flex"

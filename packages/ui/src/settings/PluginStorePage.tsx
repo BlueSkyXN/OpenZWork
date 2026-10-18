@@ -33,7 +33,6 @@ import {
   resolvePluginDisplayName,
   type StorePluginItem,
 } from "@/settings/pluginStoreListing.js";
-import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
 import { PluginUninstallConfirmDialog } from "@/settings/PluginUninstallConfirmDialog.js";
 import { usePluginUninstall } from "@/settings/usePluginUninstall.js";
 import { consumePluginStoreOpenTarget } from "@/lib/pluginStoreNavigation.js";
@@ -44,6 +43,7 @@ import {
 } from "@/settings/pluginStoreTryPrompt.js";
 
 interface PluginStorePageProps {
+  isWebRemoteControl?: boolean;
   workspacePath?: string | null;
   workspaceIdentity?: string;
   onCreateTask?: (request?: CreateTaskRequest) => void;
@@ -53,6 +53,7 @@ interface PluginStorePageProps {
 type PluginStoreView = "store" | "detail";
 
 export function PluginStorePage({
+  isWebRemoteControl = false,
   workspacePath,
   workspaceIdentity,
   onCreateTask,
@@ -433,6 +434,7 @@ export function PluginStorePage({
             </ControlHintTooltip>
             <PluginAddMenu
               testId="plugin-store-create"
+              isWebRemoteControl={isWebRemoteControl}
               onCreateTask={onCreateTask}
               onAddMarketplace={() => {
                 setAddMarketplaceError(null);

@@ -4,11 +4,11 @@ import { join } from "node:path";
 import { setDataBaseDir } from "@zcode/services/node";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 
-function resolveBootstrapSettingsFile(homePath: string = homedir()): string {
+export function resolveBootstrapSettingsFile(homePath: string = homedir()): string {
   return join(homePath, OPENZWORK_DATA_DIR_NAME, "v2", "setting.json");
 }
 
-function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
+export function extractBootstrapDataBaseDir(rawValue: unknown): string | null {
   if (!rawValue || typeof rawValue !== "object") {
     return null;
   }

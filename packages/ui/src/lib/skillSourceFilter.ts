@@ -2,7 +2,7 @@ import type { ZCodeProvider } from "@zcode/shared";
 
 type SkillSourceType = "glm" | "unknown";
 
-function resolveSkillSourceType(skillPath: string): SkillSourceType {
+export function resolveSkillSourceType(skillPath: string): SkillSourceType {
   const normalized = skillPath.replaceAll("\\", "/").toLowerCase();
   // 项目级根保留 .zcode（D-03），用户级根为 .openzwork，两者都属于原生来源。
   if (normalized.includes("/.zcode/skills/") || normalized.includes("/.openzwork/skills/")) {

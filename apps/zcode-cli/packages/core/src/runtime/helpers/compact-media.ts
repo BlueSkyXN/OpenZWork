@@ -7,7 +7,7 @@ import type {
   TraceContext,
 } from "../deps.js";
 
-interface CompactMediaPlaceholderProjection {
+export interface CompactMediaPlaceholderProjection {
   messages: ModelInputMessage[];
   replacedMediaCount: number;
 }

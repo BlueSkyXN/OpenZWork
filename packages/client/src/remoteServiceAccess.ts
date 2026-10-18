@@ -1,3 +1,4 @@
+import { IGenUiService } from "@zcode/services";
 import { ProxyChannel, type IChannelClient } from "@zcode/rpc";
 import {
   IFileService,
@@ -12,7 +13,9 @@ import {
   IZCodeTaskService,
   IZCodeAgentService,
   IZCodeSessionService,
-  // 吸收上游 v3.14.3 bots 服务；CUA 与分享服务属我方净化删除面，不进远端访问面。
+  // 吸收上游 v3.14.3 bots 服务；CUA、分享、usage-stats、coding-plan、client-config、
+  // client-scenes、闲时任务、cloud-content、营销嵌入与加速卡属我方净化删除面，
+  // 不进远端访问面。
   IBotsService,
   IFileWatcherService,
   IModelSelectionService,
@@ -21,6 +24,9 @@ import {
   ISkillsService,
   ISkillSyncService,
   IMcpSyncService,
+  IPluginUiAppToolsService,
+  IPluginUiSamplingService,
+  IPluginUiBridgeService,
   IPluginSyncService,
   IPluginsService,
   IPluginManagementService,
@@ -28,6 +34,7 @@ import {
   ICommandsService,
   IHooksService,
   IMemoryService,
+  IOutputStyleService,
   ISettingsSyncService,
   IPromptAttachmentTransferService,
   IWindowControllerService,
@@ -54,7 +61,7 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly windowControllerService: IWindowControllerService;
   readonly zcodeAgentService: IZCodeAgentService;
   readonly zcodeSessionService: IZCodeSessionService;
-  // 吸收上游 v3.14.3 bots 服务；CUA 与分享服务属我方净化删除面，不进聚合面。
+  // 吸收上游 v3.14.3 bots 服务；CUA、分享等官方域服务属我方净化删除面，不进聚合面。
   readonly botsService: IBotsService;
   readonly fileWatcherService: IFileWatcherService;
   readonly providerSettingsService: IProviderSettingsService;
@@ -64,6 +71,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;
+  readonly genUiService: IGenUiService;
+  readonly pluginUiBridgeService: IPluginUiBridgeService;
+  readonly pluginUiSamplingService: IPluginUiSamplingService;
+  readonly pluginUiAppToolsService: IPluginUiAppToolsService;
   readonly pluginSyncService: IPluginSyncService;
   readonly pluginsService: IPluginsService;
   readonly pluginManagementService: IPluginManagementService;
@@ -71,6 +82,7 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly commandsService: ICommandsService;
   readonly hooksService: IHooksService;
   readonly memoryService: IMemoryService;
+  readonly outputStyleService: IOutputStyleService;
   readonly settingsSyncService: ISettingsSyncService;
   readonly promptAttachmentTransferService: IPromptAttachmentTransferService;
   readonly appUsageService: IAppUsageService;
@@ -147,6 +159,18 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.mcpSyncService = ProxyChannel.toService<IMcpSyncService>(
       channelClient.getChannel(IMcpSyncService.channelName),
     );
+    this.genUiService = ProxyChannel.toService<IGenUiService>(
+      channelClient.getChannel(IGenUiService.channelName),
+    );
+    this.pluginUiBridgeService = ProxyChannel.toService<IPluginUiBridgeService>(
+      channelClient.getChannel(IPluginUiBridgeService.channelName),
+    );
+    this.pluginUiSamplingService = ProxyChannel.toService<IPluginUiSamplingService>(
+      channelClient.getChannel(IPluginUiSamplingService.channelName),
+    );
+    this.pluginUiAppToolsService = ProxyChannel.toService<IPluginUiAppToolsService>(
+      channelClient.getChannel(IPluginUiAppToolsService.channelName),
+    );
     this.pluginSyncService = ProxyChannel.toService<IPluginSyncService>(
       channelClient.getChannel(IPluginSyncService.channelName),
     );
@@ -167,6 +191,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.memoryService = ProxyChannel.toService<IMemoryService>(
       channelClient.getChannel(IMemoryService.channelName),
+    );
+    this.outputStyleService = ProxyChannel.toService<IOutputStyleService>(
+      channelClient.getChannel(IOutputStyleService.channelName),
     );
     this.settingsSyncService = ProxyChannel.toService<ISettingsSyncService>(
       channelClient.getChannel(ISettingsSyncService.channelName),

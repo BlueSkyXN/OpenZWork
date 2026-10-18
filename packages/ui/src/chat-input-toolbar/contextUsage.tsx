@@ -45,7 +45,7 @@ const CONTEXT_PROGRESS_TONE_COLORS = [
 const PERCENT_MAX = 100;
 const CACHE_HIT_RATE_DISPLAY_THRESHOLD = 0.78;
 
-function formatContextUsageTokenCount(
+export function formatContextUsageTokenCount(
   value: number,
   locale: string,
   options: { maximumFractionDigits?: number } = {},
@@ -53,7 +53,7 @@ function formatContextUsageTokenCount(
   return formatCompactTokenNumber(locale, value, options);
 }
 
-function formatContextUsageSummary({
+export function formatContextUsageSummary({
   locale,
   percent,
   size,
@@ -77,7 +77,7 @@ function formatContextUsageSummary({
   )} (${percentageFormatter.format(percent)})`;
 }
 
-function formatContextCacheHitRateLabel(
+export function formatContextCacheHitRateLabel(
   hitRate: number | null | undefined,
   locale: string,
   options: { showBelowThreshold?: boolean } = {},
@@ -88,7 +88,10 @@ function formatContextCacheHitRateLabel(
 
   // 生产面板只露出明显缓存收益，避免低命中率分散对上下文容量的注意力；
   // 开发环境需要观察 provider 的真实低命中值，因此允许绕过 78% 展示阈值。
-  if (!options.showBelowThreshold && hitRate < CACHE_HIT_RATE_DISPLAY_THRESHOLD) {
+  if (
+    !options.showBelowThreshold &&
+    hitRate < CACHE_HIT_RATE_DISPLAY_THRESHOLD
+  ) {
     return null;
   }
 
@@ -101,8 +104,9 @@ function formatContextCacheHitRateLabel(
 function getBreakdownToneStyle(index: number): CSSProperties {
   return {
     backgroundColor:
-      CONTEXT_PROGRESS_TONE_COLORS[Math.min(index, CONTEXT_PROGRESS_TONE_COLORS.length - 1)] ??
-      CONTEXT_PROGRESS_TONE_COLORS[0],
+      CONTEXT_PROGRESS_TONE_COLORS[
+        Math.min(index, CONTEXT_PROGRESS_TONE_COLORS.length - 1)
+      ] ?? CONTEXT_PROGRESS_TONE_COLORS[0],
   };
 }
 
@@ -126,7 +130,7 @@ const BREAKDOWN_SOURCE_ORDER: Record<ContextUsageBreakdownSource, number> = {
   mcp_tool_schemas: 6,
 };
 
-function buildContextUsageBreakdownSegments(
+export function buildContextUsageBreakdownSegments(
   breakdown: readonly ZCodeContextUsageBreakdownItem[] | undefined,
 ): ContextUsageBreakdownSegment[] {
   const charsBySource = new Map<ContextUsageBreakdownSource, number>();
@@ -134,10 +138,16 @@ function buildContextUsageBreakdownSegments(
     if (!Number.isFinite(item.chars) || item.chars <= 0) {
       continue;
     }
-    charsBySource.set(item.source, (charsBySource.get(item.source) ?? 0) + item.chars);
+    charsBySource.set(
+      item.source,
+      (charsBySource.get(item.source) ?? 0) + item.chars,
+    );
   }
 
-  const totalChars = [...charsBySource.values()].reduce((sum, chars) => sum + chars, 0);
+  const totalChars = [...charsBySource.values()].reduce(
+    (sum, chars) => sum + chars,
+    0,
+  );
   if (totalChars <= 0) {
     return [];
   }
@@ -151,11 +161,14 @@ function buildContextUsageBreakdownSegments(
     .sort(
       (left, right) =>
         right.chars - left.chars ||
-        BREAKDOWN_SOURCE_ORDER[left.source] - BREAKDOWN_SOURCE_ORDER[right.source],
+        BREAKDOWN_SOURCE_ORDER[left.source] -
+          BREAKDOWN_SOURCE_ORDER[right.source],
     );
 }
 
-function buildContextUsageProgressSegments(segments: readonly ContextUsageBreakdownSegment[]) {
+export function buildContextUsageProgressSegments(
+  segments: readonly ContextUsageBreakdownSegment[],
+) {
   return segments.map((segment, index) => ({
     id: segment.source,
     percent: segment.percent,
@@ -163,9 +176,9 @@ function buildContextUsageProgressSegments(segments: readonly ContextUsageBreakd
   }));
 }
 
-export function getRenderableTaskUsage<T extends { used: number; size: number }>(
-  taskUsage: T | null,
-): T | null {
+export function getRenderableTaskUsage<
+  T extends { used: number; size: number },
+>(taskUsage: T | null): T | null {
   if (!taskUsage) {
     return null;
   }
@@ -273,7 +286,10 @@ export function ChatContextUsage({
   }
 
   const usagePercent = renderableTaskUsage
-    ? Math.min(Math.max(renderableTaskUsage.used / renderableTaskUsage.size, 0), 1)
+    ? Math.min(
+        Math.max(renderableTaskUsage.used / renderableTaskUsage.size, 0),
+        1,
+      )
     : 0;
   const compactTokenUsageLabel = renderableTaskUsage
     ? formatContextUsageSummary({
@@ -322,7 +338,7 @@ export function ChatContextUsage({
         sideOffset={2}
       >
         <ContextContentBody className="space-y-3">
-          {/* 默认 ai-elements Header 会硬编码标题并把摘要拆到独立头部。
+          {/* Bugfix: 默认 ai-elements Header 会硬编码标题并把摘要拆到独立头部。
           工具栏上下文 hover 只需要一块紧凑信息面板，摘要和明细统一放在 body 里。 */}
           {renderableTaskUsage && compactTokenUsageLabel ? (
             <div className="space-y-2">
@@ -342,7 +358,8 @@ export function ChatContextUsage({
               />
             </div>
           ) : null}
-          {renderableTaskUsage && (breakdownSegments.length > 0 || cacheHitRateLabel) ? (
+          {renderableTaskUsage &&
+          (breakdownSegments.length > 0 || cacheHitRateLabel) ? (
             <>
               {breakdownSegments.length > 0 ? (
                 <div
@@ -367,7 +384,7 @@ export function ChatContextUsage({
                             id: BREAKDOWN_SOURCE_LABEL_ID[segment.source],
                           })}
                         </span>
-                        {/* breakdown 行只展示占比，分项 token 数会和顶部总量口径混在一起造成误读。*/}
+                        {/* Bugfix: breakdown 行只展示占比，分项 token 数会和顶部总量口径混在一起造成误读。 */}
                         <span className="ml-auto min-w-10 shrink-0 text-right font-mono text-ui-sm tabular-nums text-foreground">
                           {percentageFormatter.format(segment.percent)}
                         </span>
@@ -380,7 +397,8 @@ export function ChatContextUsage({
                 <div
                   className={cn(
                     "flex items-center justify-between gap-3 text-ui-sm",
-                    breakdownSegments.length > 0 && "border-t border-border pt-3",
+                    breakdownSegments.length > 0 &&
+                      "border-t border-border pt-3",
                   )}
                 >
                   <span className="text-foreground-subtle">
@@ -388,7 +406,9 @@ export function ChatContextUsage({
                       id: "chat.contextUsage.cacheHitRate",
                     })}
                   </span>
-                  <span className="font-mono text-ui-sm text-foreground">{cacheHitRateLabel}</span>
+                  <span className="font-mono text-ui-sm text-foreground">
+                    {cacheHitRateLabel}
+                  </span>
                 </div>
               ) : null}
             </>

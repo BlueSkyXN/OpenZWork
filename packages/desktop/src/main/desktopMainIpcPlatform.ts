@@ -10,6 +10,8 @@ import {
   PlatformChannels,
   rendererLogPayloadSchema,
   stringArraySchema,
+  webRemoteControlTaskTargetsSchema,
+  webRemoteControlWorkspaceTargetsSchema,
   type DesktopCommandId,
   type ApplicationIconRequest,
   type Locale,
@@ -18,6 +20,9 @@ import {
   type OpenInEditorOptions,
   type SaveCliMcpToUserDirectoryRequest,
   type CreateTempTextAttachmentRequest,
+  type MaterializeWorkflowArtifactFileRequest,
+  type WebRemoteControlTaskTarget,
+  type WebRemoteControlWorkspaceTarget,
   type WindowControlsOverlayReadyPayload,
 } from "@zcode/shared";
 import { getInstalledEditors } from "./editors.js";
@@ -50,6 +55,7 @@ import {
   saveCliMcpToUserDirectory,
 } from "./mcpUserDirectory/index.js";
 import { createTempTextAttachment } from "./tempTextAttachment.js";
+import { materializeWorkflowArtifactFile } from "./workflowArtifactFile.js";
 import { registerDesktopSaveFileIpcHandler } from "./desktopSaveFile.js";
 import { registerDesktopPrintToPdfIpcHandler } from "./desktopPrintToPdf.js";
 
@@ -71,11 +77,22 @@ export function registerPlatformIpcHandlers(options: {
     senderWindow?: BrowserWindow | null,
   ) => Promise<unknown>;
   syncTaskRealtimeWorkspaceKeys: (windowId: number, workspaceKeys: Iterable<string>) => void;
+  restorePreviouslyEnabledWebRemoteControl: (
+    windowId: number,
+    contexts: Array<{ workspacePath: string }>,
+  ) => void;
+  syncWebRemoteControlWorkspaces: (
+    windowId: number,
+    workspaces: WebRemoteControlWorkspaceTarget[],
+  ) => void;
+  syncWebRemoteControlTasks: (windowId: number, tasks: WebRemoteControlTaskTarget[]) => void;
   getDesktopSessionActivity: () => {
     runningAgentSessionCount: number;
   };
   syncAppSettings: (patch: unknown) => void;
-  /** 快捷键设置页录制态开关：true 时 main 重建菜单摘除可配置 accelerator */
+  /** 关闭驻留托盘能力查询（spec：docs/desktop/linux-close-to-tray.md）；传入 monitor 的 refresh */
+  refreshCloseToTrayCapability: () => Promise<import("@zcode/shared").DesktopCloseToTrayCapability>;
+  /** 快捷键设置页录制态开关：true 时 main 重建菜单摘除可配置 accelerator（见 shortcut-settings-spec §7） */
   setShortcutRecordingActive?: (active: boolean, ownerWebContentsId?: number | null) => void;
   /** 桌面端设备标识符（基于 userData 路径的 SHA-256） */
   deviceMid: string;
@@ -128,6 +145,13 @@ export function registerPlatformIpcHandlers(options: {
     },
   );
 
+  ipcMain.handle(
+    PlatformChannels.MaterializeWorkflowArtifactFile,
+    async (_event, payload: MaterializeWorkflowArtifactFileRequest) => {
+      return materializeWorkflowArtifactFile(payload);
+    },
+  );
+
   registerDesktopBrowserIpcHandlers(
     options.attachBrowserGuest,
     options.updateBrowserGuestViewport,
@@ -161,6 +185,10 @@ export function registerPlatformIpcHandlers(options: {
 
   ipcMain.handle(PlatformChannels.GetResourceUsageSnapshot, (event) =>
     getResourceUsageSnapshot(event.sender.id),
+  );
+  // 设置页 Linux 置灰判断入口；monitor 带 stale 缓存，用户装完扩展重开设置页即可解除置灰。
+  ipcMain.handle(PlatformChannels.GetCloseToTrayCapability, () =>
+    options.refreshCloseToTrayCapability(),
   );
   ipcMain.on(PlatformChannels.SetResourceUsageSamplingActive, (event, active: unknown) => {
     if (typeof active === "boolean") setResourceUsageSamplingActive(event.sender.id, active);
@@ -236,7 +264,47 @@ export function registerPlatformIpcHandlers(options: {
     if (win) {
       options.windowWorkspaceMap.set(win.id, new Set(result.data));
       options.syncTaskRealtimeWorkspaceKeys(win.id, result.data);
+      options.restorePreviouslyEnabledWebRemoteControl(
+        win.id,
+        result.data.map((workspacePath) => ({ workspacePath })),
+      );
     }
+  });
+
+  ipcMain.on(PlatformChannels.SyncWebRemoteControlWorkspaces, (event, payload: unknown) => {
+    const result = webRemoteControlWorkspaceTargetsSchema.safeParse(payload);
+    if (!result.success) {
+      options.logger.warn(
+        "[sync-web-remote-control-workspaces] invalid payload:",
+        formatZodError(result.error),
+      );
+      return;
+    }
+
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) {
+      return;
+    }
+
+    options.syncWebRemoteControlWorkspaces(win.id, result.data);
+  });
+
+  ipcMain.on(PlatformChannels.SyncWebRemoteControlTasks, (event, payload: unknown) => {
+    const result = webRemoteControlTaskTargetsSchema.safeParse(payload);
+    if (!result.success) {
+      options.logger.warn(
+        "[sync-web-remote-control-tasks] invalid payload:",
+        formatZodError(result.error),
+      );
+      return;
+    }
+
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) {
+      return;
+    }
+
+    options.syncWebRemoteControlTasks(win.id, result.data);
   });
 
   ipcMain.on(PlatformChannels.SyncWindowUnreadCount, (event, payload: unknown) => {
@@ -285,7 +353,7 @@ export function registerPlatformIpcHandlers(options: {
     options.setShortcutRecordingActive?.(payload, event.sender.id);
   });
 
-  ipcMain.on(PlatformChannels.Log, (_event, payload: unknown) => {
+  ipcMain.on(PlatformChannels.Log, (event, payload: unknown) => {
     const result = rendererLogPayloadSchema.safeParse(payload);
     if (!result.success) {
       options.logger.warn("[renderer-log] invalid payload:", formatZodError(result.error));
@@ -293,7 +361,10 @@ export function registerPlatformIpcHandlers(options: {
     }
     (
       options.logger as unknown as { fromRenderer(level: string, args: unknown[]): void }
-    ).fromRenderer?.(result.data.level, result.data.args);
+    ).fromRenderer?.(
+      result.data.level,
+      result.data.args,
+    );
   });
 
   ipcMain.handle(PlatformChannels.OpenInFileManager, async (_event, rawPath: string) =>

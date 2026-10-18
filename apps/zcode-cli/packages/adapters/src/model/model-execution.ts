@@ -326,15 +326,15 @@ export class AiSdkModelExecution {
     }
     // Private fork: use the configured provider URL without product gateway rewriting.
     // Explicit proxy, no-proxy and CA settings remain part of the transport.
-    const transport = createProviderProxyFetch({
+    const networkTransport = createProviderProxyFetch({
       caCertFile: this.network.caCertFile,
       env: this.env,
       fetch: this.baseTransport,
       httpProxy: this.network.httpProxy,
       noProxy: this.network.noProxy,
     });
-    this.providerTransports.set(providerId, transport);
-    return transport;
+    this.providerTransports.set(providerId, networkTransport);
+    return networkTransport;
   }
 }
 
@@ -374,6 +374,7 @@ function applyModelRequestAuth(
   requestAuth: ModelRequestAuth | undefined,
 ): AiSdkProviderConfig {
   if (!requestAuth) return providerConfig;
+  // Private fork: merge only caller-supplied headers; no account dynamic-identity header stripping.
   return {
     ...providerConfig,
     ...(requestAuth.apiKey ? { apiKey: requestAuth.apiKey } : {}),

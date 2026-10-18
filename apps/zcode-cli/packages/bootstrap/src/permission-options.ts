@@ -25,6 +25,7 @@ export const SESSION_ALLOW_PERMISSION_OPTION_KIND = "allow_session";
 const SESSION_ALLOW_PERMISSION_OPTION_NAME = "Always allow in this session";
 
 interface PermissionOptionSource {
+  approvalMode?: "user-once";
   input?: unknown;
   suggestedPermissionUpdates?: PermissionUpdate[];
   optionsPolicy?: PermissionOptionsPolicy;
@@ -40,7 +41,7 @@ export function buildProtocolPermissionOptions(
   const permissionUpdates = source.suggestedPermissionUpdates?.length
     ? source.suggestedPermissionUpdates
     : defaultPermissionUpdates(source);
-  return [
+  const options: ZCodePermissionOption[] = [
     {
       kind: "allow_once",
       name: "Allow once",
@@ -92,6 +93,9 @@ export function buildProtocolPermissionOptions(
       },
     },
   ];
+  return source.approvalMode === "user-once"
+    ? options.filter((option) => option.kind === "allow_once" || option.kind === "deny")
+    : options;
 }
 
 /**

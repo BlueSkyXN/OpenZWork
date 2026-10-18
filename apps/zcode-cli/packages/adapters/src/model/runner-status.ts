@@ -383,5 +383,6 @@ function logStatusEvent(event: ModelNetworkStatusEvent, logger?: Logger): void {
         status: "completed",
       });
       return;
+
   }
 }

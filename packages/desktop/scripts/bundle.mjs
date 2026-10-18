@@ -150,9 +150,13 @@ export function createElectronRuntimeMirrorEnv(mirror) {
 }
 
 function resolveDefaultElectronBuilderBinariesMirror(env = process.env) {
-  return env.ZCODE_DEPS_BASE_URL?.trim() || env.INTRANET_MACHINE_HOST?.trim()
-    ? `${resolveIntranetDepsBaseUrl(env)}/electron-builder-binaries/`
-    : NPMMIRROR_ELECTRON_BUILDER_BINARIES_MIRROR;
+  // 修复：未配置内网依赖源时（例如开源构建）内网地址解析会抛错，打包直接失败；
+  // 此时回退到 electron-builder 官方 release 下载地址。内部构建行为不变。
+  try {
+    return `${resolveIntranetDepsBaseUrl(env)}/electron-builder-binaries/`;
+  } catch {
+    return OFFICIAL_ELECTRON_BUILDER_BINARIES_MIRROR;
+  }
 }
 
 export function resolveElectronBuilderBinariesMirror(env = process.env) {

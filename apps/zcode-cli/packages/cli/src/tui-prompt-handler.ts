@@ -5,6 +5,7 @@ import type { ZCodeAppOptions } from "@zcode/bootstrap";
 import { DEFAULT_LOCALE, type SupportedLocale } from "@zcode/i18n";
 import type { TuiRequestPermission } from "@zcode/tui";
 import type { GlobalOptions } from "@zcode/shared-types";
+import type { DynamicWorkflowMode } from "@zcode/shared";
 import { createCommandCenter, parseSlashCommand } from "./command-center.js";
 import type { CommandCenterApp } from "./command-center.js";
 import { resolveDisplayLocale } from "./locale.js";
@@ -32,6 +33,7 @@ import {
   type TuiPromptHandler,
 } from "./tui-command-state.js";
 import { withTuiMetadata } from "./tui-submit-metadata.js";
+import { DEFAULT_CLI_WORKFLOW_MODE, resolveWorkflowModeRuntimeConfig } from "./workflow-mode.js";
 import type {
   CliModeState,
   CliPermissionMode,
@@ -53,6 +55,7 @@ export function createTuiSubmitPrompt(
   forceMcs = false,
   browserUse?: GlobalOptions["browserUse"],
   browserExecutable?: GlobalOptions["browserExecutable"],
+  workflowMode: DynamicWorkflowMode = DEFAULT_CLI_WORKFLOW_MODE,
 ): TuiPromptHandler {
   let app: Awaited<ReturnType<NonNullable<RunDependencies["createZCodeApp"]>>> | undefined;
   let activeUiLocale = uiLocale;
@@ -149,6 +152,8 @@ export function createTuiSubmitPrompt(
           ...(modeState.override ? { mode: modeState.override } : {}),
           ...(toolDisallowlist ? { toolDisallowlist } : {}),
           ...(forceMcs ? { midConversationSystem: { mode: "force" as const } } : {}),
+          // 首个 app 与 /new、/resume、fork 都经这里创建，mode 因此在进程内一致。
+          ...resolveWorkflowModeRuntimeConfig(workflowMode),
           modelStreaming: "on",
           titleGeneration: TUI_TITLE_GENERATION_CONFIG,
           workingDirectory,
@@ -288,6 +293,7 @@ export function createTuiSubmitPrompt(
       };
     },
     setMode: setCliMode,
+    workflowMode,
   });
 
   const submitPrompt: TuiPromptHandler = async (input, options) => {

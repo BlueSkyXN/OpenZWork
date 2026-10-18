@@ -12,10 +12,16 @@ export const ZCODE_PLUGIN_ID_ENV_KEY = "ZCODE_PLUGIN_ID";
 /** Host 在 spawn 时注入的真实 workspace identity；只用于隔离/审计，不用于文件执行。 */
 export const ZCODE_WORKSPACE_IDENTITY_ENV = "ZCODE_WORKSPACE_IDENTITY";
 
-export type McpSource = "mcp" | "zcodeagentmcp";
+export type McpSource =
+  | "mcp"
+  | "zcodeagentmcp"
+  | "claudeclimcp"
+  | "geminiclimcp"
+  | "codexclimcp"
+  | "opencodemcp";
 export type CliMcpSource = Exclude<McpSource, "mcp">;
 export type McpScope = "common" | "user" | "workspace";
-export type McpFileFormat = "json";
+export type McpFileFormat = "json" | "toml";
 
 // Single MCP server configuration
 export interface McpServerConfig {
@@ -105,6 +111,10 @@ export interface McpConfig {
     mcpServers: Record<string, McpServerConfig>;
   };
   zcodeagentmcp: CliMcpConfig;
+  claudeclimcp: CliMcpConfig;
+  geminiclimcp: CliMcpConfig;
+  codexclimcp: CliMcpConfig;
+  opencodemcp: CliMcpConfig;
 }
 
 export interface ZCodeMcpServer {

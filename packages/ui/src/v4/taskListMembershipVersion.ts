@@ -10,19 +10,22 @@ const listeners = new Set<() => void>();
 /** task row 或 membership mutation 后调用：通知所有 sessions-index 派生列表重新拉取左表。 */
 export function bumpTaskListMembershipVersion(): void {
   version += 1;
-  for (const listener of [...listeners]) {
+  // 迭代中 listener 可能被移除，迭代进入循环前的快照（Array.from 与展开等价）。
+  for (const listener of Array.from(listeners)) {
     listener();
   }
 }
 
-function subscribeTaskListMembershipVersion(listener: () => void): () => void {
+export function subscribeTaskListMembershipVersion(
+  listener: () => void,
+): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
 }
 
-function getTaskListMembershipVersion(): number {
+export function getTaskListMembershipVersion(): number {
   return version;
 }
 
@@ -80,5 +83,8 @@ export function bumpTaskListMembershipVersionForWorkspaceEvent(
 
 /** React 绑定：版本号变化触发重渲染（subscribe/get 是模块级函数，引用稳定）。 */
 export function useTaskListMembershipVersion(): number {
-  return useSyncExternalStore(subscribeTaskListMembershipVersion, getTaskListMembershipVersion);
+  return useSyncExternalStore(
+    subscribeTaskListMembershipVersion,
+    getTaskListMembershipVersion,
+  );
 }

@@ -162,6 +162,8 @@ export class AiSdkModelAdapter {
       const selectedReasoningLevel = request.options.reasoningLevel;
       // 调用级 runtime header Port 只服务绑定完整 Account Access 的账号型 Model；
       // 普通 API-key Model 若也消费该 Port，会把静态鉴权误送到 Host 刷新并在请求前失败。
+      // 私有化分支：OpenZWork 无官方账号/套餐，闲时任务/加速卡派生鉴权链一并移除，
+      // 账号型 Model 只保留调用侧注入的刷新端口语义。
       const refreshRuntimeHeadersBeforeAttempt =
         options.providerConfig.access.type === "zhipu-account"
           ? (contextRefreshRuntimeHeadersBeforeAttempt ??

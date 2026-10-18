@@ -13,9 +13,13 @@ import {
   clearDeepLinkRoutesForWindow,
   deliverPendingDeepLink,
 } from "./desktopOAuthDeepLink.js";
+import {
+  registerWebRemoteControlIpcHandlers,
+  type WebRemoteControlIpcManager,
+} from "./desktopWebRemoteControlIpc.js";
 import { openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
 
-function isAllowedExternalOpenUrl(value: string): boolean {
+export function isAllowedExternalOpenUrl(value: string): boolean {
   try {
     const url = new URL(value);
     return url.protocol === "http:" || url.protocol === "https:" || url.protocol === "file:";
@@ -52,6 +56,7 @@ export function registerRemoteIpcHandlers(options: {
     warn: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
   };
+  webRemoteControlManager: WebRemoteControlIpcManager;
   createRemoteWorkspaceSession: (
     win: BrowserWindow,
     target: RemoteTarget,
@@ -90,6 +95,9 @@ export function registerRemoteIpcHandlers(options: {
       typeof payload.attachmentId === "string" ? payload.attachmentId.trim() : "";
     if (!sessionId || !attachmentId) return;
     options.confirmRendererAttachmentReady(event.sender.id, { sessionId, attachmentId });
+  });
+  registerWebRemoteControlIpcHandlers({
+    webRemoteControlManager: options.webRemoteControlManager,
   });
 
   ipcMain.on(PlatformChannels.OpenExternal, (event, payload: unknown) => {

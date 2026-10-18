@@ -1,11 +1,12 @@
 import type { ReactNode } from "react";
 import { PackageIcon } from "lucide-react";
 import { ProviderLogo } from "./ProviderLogo.js";
-import { type ModelProviderNavItem } from "./constants.js";
+import type { ModelProviderNavItem } from "./constants.js";
 
 export function createCustomProviderNodeKey(id: string): string {
   return `custom:${id}`;
 }
+
 
 export function resolveModelProviderNavLogo(item: ModelProviderNavItem) {
   return item.provider?.config.logo;

@@ -51,7 +51,7 @@ export const ENABLE_EXPLORE_TOOL_CALL_GROUPING = true;
 export const ENABLE_TERMINAL_TOOL_CALL_GROUPING = true;
 export const ENABLE_CHANGES_TOOL_CALL_GROUPING = false;
 
-interface ConversationAssistantWorkRenderOptions {
+export interface ConversationAssistantWorkRenderOptions {
   stageTailIsRunning?: boolean;
   enableExploreGrouping?: boolean;
   enableTerminalGrouping?: boolean;

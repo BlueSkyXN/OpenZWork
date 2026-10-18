@@ -30,7 +30,7 @@ import { renderModelProviderNavIcon } from "./utils.js";
 // 侧栏会裁切水平溢出；排序只改变纵向位置，拖动时也必须保持 x=0。
 const restrictToVerticalAxis: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
-function getSortableProviderId(
+export function getSortableProviderId(
   item: ModelProviderNavItem,
   reorderableProviderIds?: ReadonlySet<string>,
 ): string | null {
@@ -42,7 +42,7 @@ function getSortableProviderId(
   return null;
 }
 
-function resolveReorderedProviderIdsForGroup(params: {
+export function resolveReorderedProviderIdsForGroup(params: {
   activeProviderId: string;
   overProviderId: string;
   providerIds: readonly string[];
@@ -55,7 +55,7 @@ function resolveReorderedProviderIdsForGroup(params: {
   return arrayMove([...params.providerIds], activeIndex, overIndex);
 }
 
-function shouldShowModelProviderGroupLoadingIndicator(params: {
+export function shouldShowModelProviderGroupLoadingIndicator(params: {
   groupId: ModelProviderNavGroup["id"];
   presetLoading: boolean;
   customLoading: boolean;

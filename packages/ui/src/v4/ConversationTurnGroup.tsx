@@ -1,3 +1,6 @@
+import { BotTopicPreparation } from "@/v4/BotTopicPreparation.js";
+import { useBotTopicInterruption } from "@/v4/botGroupDeliveryContext.js";
+import { ConnectedBotGroupDeliveryAction } from "@/v4/BotGroupDeliveryAction.js";
 /* eslint-disable max-lines -- turn group 需要在同一处维护普通 assistant 与后台结果的严格行序，拆分会重复 actions/preview/tail 协议。 */
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
@@ -77,6 +80,8 @@ import { toolCallRowToLegacyNode } from "@/v4/toolCallRowAdapter.js";
 
 interface ConversationTurnGroupProps {
   unit: ConversationTurnRenderUnit;
+  /** Timeline 的共享 UI 时钟；用于运行态即时刷新展示。 */
+  nowMs?: number;
   /** 仅由 Timeline 注入给当前 live turn；历史 turn 永远不携带运行时 retry。 */
   apiRetry?: ApiRetryState | null;
   context: ConversationRowRenderContext;
@@ -396,11 +401,14 @@ function CronAutomationTurnCards({
 function AssistantHistoryStatus({
   segment,
   open,
+  sourceCommandIds,
 }: {
   segment: ConversationTurnWorkSegment;
   open: boolean;
+  sourceCommandIds: readonly string[];
 }) {
   const { intl, locale } = useZCodeIntl();
+  const topicInterrupted = useBotTopicInterruption(sourceCommandIds);
   const durationLabel = formatConversationWorkDuration(
     segment.workStatus?.durationMs,
     intl,
@@ -408,7 +416,9 @@ function AssistantHistoryStatus({
   );
   const label =
     segment.workStatus?.state === "interrupted"
-      ? intl.formatMessage({ id: "chat.history.stopped" })
+      ? intl.formatMessage({
+          id: topicInterrupted ? "chat.history.topicInterrupted" : "chat.history.stopped",
+        })
       : segment.workStatus?.state === "running"
         ? intl.formatMessage({ id: "chat.history.workingFor" }, { duration: durationLabel ?? "" })
         : durationLabel
@@ -416,7 +426,12 @@ function AssistantHistoryStatus({
           : intl.formatMessage({ id: "chat.history.worked" });
 
   return (
-    <div className="flex w-full border-b border-[var(--color-border)]/50 pb-2">
+    <div
+      className={cn(
+        "flex w-full flex-wrap items-center justify-between gap-2 border-b",
+        "border-[var(--color-border)]/50 pb-2",
+      )}
+    >
       <CollapsibleTrigger asChild>
         <button
           type="button"
@@ -424,7 +439,11 @@ function AssistantHistoryStatus({
           data-history-open={String(open)}
           className="group/history-message inline-flex max-w-full items-center gap-2 text-left text-ui-base text-foreground-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-input-border-focused)]"
         >
-          <span className="truncate">{label}</span>
+          <span
+            className={cn("truncate")}
+          >
+            {label}
+          </span>
           {!segment.assistantHistoryDefaultOpen ? (
             <ChevronRightIcon
               aria-hidden
@@ -442,6 +461,7 @@ function AssistantHistoryStatus({
 
 function ConversationWorkSegmentFlow({
   segment,
+  sourceCommandIds,
   context,
   onFork,
   onRetry,
@@ -456,6 +476,7 @@ function ConversationWorkSegmentFlow({
   canRetryLatestAssistant,
 }: {
   segment: ConversationTurnWorkSegment;
+  sourceCommandIds: readonly string[];
   context: ConversationRowRenderContext;
   onFork?: (target: ConversationRowTarget) => void;
   onRetry?: (target: ConversationRowTarget) => void;
@@ -555,13 +576,23 @@ function ConversationWorkSegmentFlow({
 
         return (
           <Fragment key={itemKey}>
-            {showHistoryStatus ? <AssistantHistoryStatus segment={segment} open={open} /> : null}
+            {showHistoryStatus ? (
+              <AssistantHistoryStatus
+                segment={segment}
+                open={open}
+                sourceCommandIds={sourceCommandIds}
+              />
+            ) : null}
             {content}
           </Fragment>
         );
       })}
       {shouldShowHistoryStatus && firstAssistantFlowItemIndex < 0 ? (
-        <AssistantHistoryStatus segment={segment} open={open} />
+        <AssistantHistoryStatus
+          segment={segment}
+          sourceCommandIds={sourceCommandIds}
+          open={open}
+        />
       ) : null}
     </Collapsible>
   );
@@ -607,6 +638,7 @@ function ConversationTurnFlow({
     latestAssistantTextRow: unit.latestAssistantTextRow,
     workspacePath: context.workspacePath,
     workspaceHomePath: context.workspaceHomePath,
+    compactForRemoteControl: context.compactForRemoteControl,
     fileChangesTarget: unit.header?.entityId
       ? { rowId: unit.header.rowId, entityId: unit.header.entityId }
       : null,
@@ -672,6 +704,16 @@ function ConversationTurnFlow({
         <ConversationWorkSegmentFlow
           key={segment.key}
           segment={segment}
+          sourceCommandIds={[
+            ...segment.flowItems.flatMap((item) =>
+              item.kind === "userInput" && item.row.sourceCommandId
+                ? [item.row.sourceCommandId]
+                : [],
+            ),
+            ...(segment === workSegments[0] && unit.header?.sourceCommandId
+              ? [unit.header.sourceCommandId]
+              : []),
+          ]}
           context={context}
           onFork={onFork}
           onRetry={onRetry}
@@ -774,6 +816,7 @@ function ConversationBackgroundResultWork({
     latestAssistantTextRow,
     workspacePath: context.workspacePath,
     workspaceHomePath: context.workspaceHomePath,
+    compactForRemoteControl: context.compactForRemoteControl,
     fileChangesTarget: unit.header?.entityId
       ? { rowId: unit.header.rowId, entityId: unit.header.entityId }
       : null,
@@ -846,6 +889,11 @@ function ConversationBackgroundResultWork({
           onOpenRun={openWorkflowRun}
           onOpenArtifact={openWorkflowArtifact}
           pendingQids={workflowPendingQids}
+          // 留白行的三态（docs/dynamic-workflow/transcript-and-notifications.md「The hole row's live state」）：
+          // run 在活投影里就递它的留白表（可能为空 = 已补全 / 没记录），不在场即 undefined → 中性词。
+          holes={
+            workflowRunSummary?.run === undefined ? undefined : (workflowRunSummary.run.holes ?? [])
+          }
         />
       ) : (
         <div className="flex w-full border-b border-[var(--color-border)]/50 pb-2">
@@ -895,6 +943,7 @@ function ConversationBackgroundResultWork({
 
 function ConversationTurnGroupImpl({
   unit,
+  nowMs: _nowMs = Date.now(),
   apiRetry = null,
   context,
   onFork,
@@ -928,6 +977,10 @@ function ConversationTurnGroupImpl({
   const assistantRawCopyText = useMemo(
     () => resolveAssistantCopyText(unit),
     [unit.assistantTextRows, unit.assistantWorkRows, unit.latestAssistantTextRow],
+  );
+  const assistantFileSummaryText = useMemo(
+    () => unit.assistantTextRows.map((row) => row.text).join("\n\n"),
+    [unit.assistantTextRows],
   );
   const assistantCopyText = useMemo(
     () =>
@@ -968,14 +1021,22 @@ function ConversationTurnGroupImpl({
   const workflowRunByToolCallId = context.workflowRunByToolCallId;
   const workflowRunByRunId = context.workflowRunByRunId;
   const workflowGraphByToolCallId = context.workflowGraphByToolCallId;
+  const workflowFillGraphByRunId = context.workflowFillGraphByRunId;
   const workflowTurnDigests = useMemo(
     () =>
       resolveWorkflowTurnDigests(unit, {
         byToolCallId: workflowRunByToolCallId,
         byRunId: workflowRunByRunId,
         graphByToolCallId: workflowGraphByToolCallId,
+        fillGraphByRunId: workflowFillGraphByRunId,
       }),
-    [unit, workflowGraphByToolCallId, workflowRunByRunId, workflowRunByToolCallId],
+    [
+      unit,
+      workflowFillGraphByRunId,
+      workflowGraphByToolCallId,
+      workflowRunByRunId,
+      workflowRunByToolCallId,
+    ],
   );
   // 完成卡：主代理消化 completed 通知的那一轮，轮尾落卡。
   // 同一条门（轮结束）；联接只认 byRunId——通知轮里没有 CreateWorkflow 行可按 toolCallId 联。
@@ -990,6 +1051,11 @@ function ConversationTurnGroupImpl({
     !unit.timelineOnly &&
     latestAssistantTextRow?.state === "complete" &&
     assistantCopyText !== undefined;
+  // runtime turnId 与产品轮次 ID 不同；用 CLI 行上的命令归因关联投递，包含被裁剪输入的 header。
+  const deliverySourceCommandIds = [
+    ...(unit.header?.sourceCommandId ? [unit.header.sourceCommandId] : []),
+    ...unit.visibleUserInputs.flatMap((row) => (row.sourceCommandId ? [row.sourceCommandId] : [])),
+  ];
   const hasHookActions =
     // Hook action 与 copy/feedback/fork 共用 turn eligibility；
     // timelineOnly 维护 turn（compact/modelChange marker 轮）即使带历史遗留的
@@ -1026,6 +1092,14 @@ function ConversationTurnGroupImpl({
   // workflow 通知卡开头的轮去掉轮顶 padding：卡片只贴上一轮 pb-5 的常规流内间距。
   const startsWithWorkflowNotificationCard =
     backgroundResultTitle !== undefined && resolveWorkflowNotification(unit) !== undefined;
+  // 同一条规则的另外两个来源：中枢直接启动轮与「配置」的设置轮（docs/dynamic-workflow/presentation.md
+  // 「The run card」）。它们的用户行是写给模型的规范句，conversationTurnRenderUnits 会裁掉，
+  // 卡 / 「已调整设置」那一行于是成了轮内第一个节点。
+  //
+  // Bug 根因：`pt-14` 是给用户气泡留的呼吸，判据却一直是「有没有轮」而不是「有没有气泡」；
+  // 没有气泡时这 56px 叠上一轮的 pb-5，在行上方堆出约 76px 空白（设置轮总落在对话中段，最显眼）。
+  const startsWithoutUserBubble =
+    startsWithWorkflowNotificationCard || unit.workflowLaunch !== undefined;
 
   return (
     <section
@@ -1033,7 +1107,7 @@ function ConversationTurnGroupImpl({
       data-turn-key={unit.key}
       className={cn(
         "relative mx-auto flex w-full flex-col gap-5 px-4 @md/conversation:px-6 pb-5",
-        startsWithWorkflowNotificationCard ? "pt-0" : "pt-14",
+        startsWithoutUserBubble ? "pt-0" : "pt-14",
       )}
     >
       {unit.leadingBoundaryRows.map((row) => (
@@ -1109,11 +1183,15 @@ function ConversationTurnGroupImpl({
             digests={workflowTurnDigests}
             turnKey={unit.key}
           />
-          {/* CronCreate/CronUpdate 工具本身仍按普通工具行展示；成功卡片属于整轮
+          {/* 修复原因：CronCreate/CronUpdate 工具本身仍按普通工具行展示；成功卡片属于整轮
               完成后的结果摘要，必须等回复结束再跟随最终 assistant 正文收尾。 */}
           <CronAutomationTurnCards cards={cronAutomationTurnCards} context={context} />
           {!isOfficeMode && unit.header?.fileChanges ? (
-            <ConversationFileSummaryPanel header={unit.header} context={context} />
+            <ConversationFileSummaryPanel
+              header={unit.header}
+              context={context}
+              assistantText={assistantFileSummaryText}
+            />
           ) : null}
           {unit.browserTurnEndRows.length > 0 ? (
             // 自动截图表达轮次结束时页面最终状态；放在 assistant work 内会
@@ -1132,6 +1210,7 @@ function ConversationTurnGroupImpl({
               entityId={latestAssistantTextRow.entityId}
               text={assistantCopyText}
               createdAt={latestAssistantTextRow.createdAt}
+              compactForRemoteControl={context.compactForRemoteControl}
               feedback={readAssistantFeedback(latestAssistantTextRow)}
               sessionId={context.sessionId}
               onFork={canForkLatestAssistant ? onFork : undefined}
@@ -1139,11 +1218,30 @@ function ConversationTurnGroupImpl({
               onFeedbackChange={onFeedbackChange}
               hookInvocations={unit.hookInvocations}
               turnId={unit.turnId}
-              className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100"
+              sourceCommandIds={deliverySourceCommandIds}
+              className={cn(
+                "flex items-center gap-1",
+                context.compactForRemoteControl
+                  ? "opacity-100"
+                  : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
+              )}
             />
-          ) : hasHookActions ? (
-            <MessageActions className="opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100">
-              <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
+          ) : (hasHookActions || !unit.isRunning) && !canRenderAssistantActions ? (
+            // 此兜底只与普通操作栏互斥，独立渲染。
+            <MessageActions
+              className={cn(
+                context.compactForRemoteControl
+                  ? "opacity-100"
+                  : "opacity-0 transition-opacity group-hover/assistant-turn:opacity-100 focus-within:opacity-100 has-[[data-bot-group-delivery]]:opacity-100",
+              )}
+            >
+              {hasHookActions ? (
+                <ConversationHookDetailsAction rows={unit.hookInvocations} turnId={unit.turnId} />
+              ) : null}
+              <ConnectedBotGroupDeliveryAction
+                turnId={unit.turnId}
+                sourceCommandIds={deliverySourceCommandIds}
+              />
             </MessageActions>
           ) : null}
           {unit.assistantTailRows.length > 0 ? (
@@ -1169,6 +1267,9 @@ function ConversationTurnGroupImpl({
           assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
         />
       )}
+      {unit.topicPreparations?.length ? (
+        <BotTopicPreparation items={unit.topicPreparations} />
+      ) : null}
     </section>
   );
 }

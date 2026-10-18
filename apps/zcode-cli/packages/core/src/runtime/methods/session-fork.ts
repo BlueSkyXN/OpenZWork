@@ -68,6 +68,12 @@ function stableForkError(message: string, context: Record<string, unknown> = {})
 const MODEL_SELECTION_ENTRY_SUFFIX = ":runtime-model-selection";
 
 function modelSelectionFromMessage(message: MessageWithParts): ModelSelection | undefined {
+  // 私有化裁定（highspeed 整链删除）：不再存在单轮加速 Provider 的 Selection，
+  // 历史消息的选型直接可作为分叉身份。
+  return persistedModelSelectionOfMessage(message);
+}
+
+function persistedModelSelectionOfMessage(message: MessageWithParts): ModelSelection | undefined {
   if (message.info.role === "user") {
     return message.info.modelSelection && cloneModelSelection(message.info.modelSelection);
   }
@@ -123,7 +129,7 @@ function buildModelSelectionEntry(
 }
 
 /** stable/compact-edit fork 一次性预分配的完整 child-local 身份。 */
-interface ForkIdentityMap {
+export interface ForkIdentityMap {
   parentSessionId: SessionId;
   childSessionId: SessionId;
   messageIds: Map<MessageId, MessageId>;
@@ -205,7 +211,7 @@ function collectVerifierEntryIds(
   return ids;
 }
 
-function createForkIdentityMap(options: {
+export function createForkIdentityMap(options: {
   childSessionId: SessionId;
   entries: readonly SessionEntryInfo[];
   goalSnapshots: readonly SessionGoal[];
@@ -374,7 +380,7 @@ function cloneVerifierEntryForAtomicFork(
   };
 }
 
-function buildAtomicForkNotice(
+export function buildAtomicForkNotice(
   runtime: AgentRuntimeInternal,
   options: {
     identities: ForkIdentityMap;
@@ -830,7 +836,7 @@ export async function createSelectionSideConversation(
   });
 }
 
-function selectionSideChatHistoryMessages(
+export function selectionSideChatHistoryMessages(
   activeMessages: readonly MessageWithParts[],
   activeTurnId?: TurnId,
 ): MessageWithParts[] {
@@ -1105,7 +1111,7 @@ export async function forkConversationBeforeMessage(
   });
 }
 
-function conversationHistoryBeforeInput(
+export function conversationHistoryBeforeInput(
   activeMessages: readonly MessageWithParts[],
   targetMessageId: MessageId,
 ): MessageWithParts[] {
@@ -1129,7 +1135,7 @@ function conversationHistoryBeforeInput(
  * 的 active transcript 前缀，并要求 ordered ids 在 active branch 中严格连续；不再按
  * parentID 或“同一 assistant turn”向 boundary 后扩张。
  */
-function stableForkHistoryMessages(
+export function stableForkHistoryMessages(
   activeMessages: readonly MessageWithParts[],
   target: StableConversationForkTarget,
 ): MessageWithParts[] {
@@ -1352,7 +1358,7 @@ function cloneGoalVerificationEntryForFork(
   };
 }
 
-function deriveForkedGoalStatusFromCopiedVerifications(
+export function deriveForkedGoalStatusFromCopiedVerifications(
   parentStatus: GoalStatus,
   copiedVerificationPayloads: readonly TargetCompletionVerificationPayload[],
 ): GoalStatus {
@@ -1386,7 +1392,7 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function activeForkTranscriptMessages(
+export function activeForkTranscriptMessages(
   messages: MessageWithParts[],
   options: {
     branchCutAfterMessageId?: MessageId;

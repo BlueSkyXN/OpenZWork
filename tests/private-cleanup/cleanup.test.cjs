@@ -540,6 +540,43 @@ test('[structural, not runtime] WP-09: off-peak domain fully removed from source
   assert.deepEqual(violations, [], `off-peak residue found:\n${violations.join('\n')}`);
 });
 
+test('[structural, not runtime] re-clean gate: highspeed card chain / request-security-edition / marketingTouch / rewardsEmbedded / project-access-token stay absent', () => {
+  // 本轮新官方域重净：重净清单即门禁，断言先于清理落地——红 = 待净项，清理合入后转绿。
+  // highspeed 只封加速卡整链 token：账号/providerId 的 highspeed-card、URL 段 /highspeed/、
+  // 裸字符串值 "highspeed"（如 mode 字段）与全大写 HIGHSPEED（env 变量风格）。不封裸后缀：
+  // 保留的第三方模型目录（kimi-k2.7-code-highspeed / MiniMax-M2.7-highspeed /
+  // GLM-5.1-Highspeed，由 WP-08 的 16 模板门禁与 packages/shared/src/official-glm-model-id.ts
+  // 强制保留）以 -highspeed 为模型名后缀，属上游保留域同名词——靠收窄 pattern 规避，
+  // 不逐文件登记豁免，避免豁免清单随模型目录膨胀。
+  const bannedContent =
+    /HIGHSPEED|[hH]ighspeed[-_ ]?[cC]ard|\/highspeed\/|["']highspeed["']|request[-_]security[-_]edition|[rR]equestSecurityEdition|marketing[-_]touch|[mM]arketingTouch|[rR]ewards[-_]embedded|[rR]ewardsEmbedded|project[-_]access[-_]token|[pP]rojectAccessToken/;
+  const bannedPath =
+    /highspeed[-_ ]?card|request[-_]security[-_]edition|requestsecurityedition|marketing[-_]touch|marketingtouch|rewards[-_]embedded|rewardsembedded|project[-_]access[-_]token|projectaccesstoken/i;
+  // vendored 文档豁免为上游证据（保留清单：docs vendored 文档）：docs/ 与 apps/zcode-cli/docs/
+  // （上游 CLI 设计文档，如 auth-login.md 对已删 project-access-token 规格的链接）。
+  const isVendoredDoc = rel => rel.startsWith('docs/') || rel.startsWith('apps/zcode-cli/docs/');
+  // 与 WP-03/WP-09 同口径：按 git 追踪清单做全仓扫描。git ls-files 输出本就是 POSIX 路径，
+  // 豁免与前缀判断必须用原始 rel，不做 path.sep 归一——Windows 下 path.join 产物是反斜杠，
+  // 拿归一化结果比对豁免/目录前缀会全部失配（既有门禁注释记录过的坑）。
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
+  const violations = [];
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  for (const rel of tracked) {
+    if (rel === 'tests/private-cleanup/cleanup.test.cjs') continue; // 本文件的 pattern 与注释自含禁词
+    if (isVendoredDoc(rel)) continue;
+    if (bannedPath.test(rel)) { violations.push(`path ${rel}`); continue; }
+    if (!scanExtensions.test(rel)) continue;
+    const file = path.join(root, rel);
+    // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。
+    if (!fs.existsSync(file)) continue;
+    const match = fs.readFileSync(file, 'utf8').match(bannedContent);
+    if (match) violations.push(`${rel}: ${match[0]}`);
+  }
+  assert.deepEqual(violations, [], `new official domain residue found:\n${violations.join('\n')}`);
+});
+
 test('[structural, not runtime] WP-03: user-level data root references stay under .openzwork', () => {
   // WP-03 A 类硬门槛：用户级 .zcode 引用清零。2026-09-26 复审补清远端启动链、发行安装、
   // 全局 workflows 根等代码残留；2026-09-27 PR 评审指出按目录枚举的扫描根永远追不上

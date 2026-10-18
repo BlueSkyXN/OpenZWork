@@ -31,7 +31,7 @@ export const THEME_MODES: Array<{
   { mode: "zai-light", icon: Sun },
 ];
 
-type SettingsSectionGroupId = "basics" | "agentCapabilities" | "dataAndStats";
+export type SettingsSectionGroupId = "basics" | "agentCapabilities" | "dataAndStats";
 
 interface SettingsSectionDefinition {
   id: SettingsSectionId;
@@ -155,7 +155,13 @@ export const SETTINGS_SECTIONS = BASE_SETTINGS_SECTIONS.filter((section) =>
   isSettingsSectionEnabled(section.id),
 );
 
-export function createSettingsPageConfig() {
+export interface SettingsPageConfigOptions {
+  isDesktop?: boolean;
+  isMacDesktop?: boolean;
+  isWindowsDesktop?: boolean;
+}
+
+export function createSettingsPageConfig(_options: SettingsPageConfigOptions = {}) {
   const settingsSections = BASE_SETTINGS_SECTIONS.filter((section) =>
     isSettingsSectionEnabled(section.id),
   );

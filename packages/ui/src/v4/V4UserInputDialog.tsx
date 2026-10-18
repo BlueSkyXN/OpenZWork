@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button.js";
 import { Input } from "@/components/ui/input.js";
 import type { V4UserInputViewModel } from "@/v4/pendingInteractionAdapter.js";
 
-interface V4UserInputDialogProps {
+export interface V4UserInputDialogProps {
   model: V4UserInputViewModel;
   onSubmit: (answer: { optionId?: string; freeText?: string }) => void;
 }

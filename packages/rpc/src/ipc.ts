@@ -158,6 +158,7 @@ export class IPCServer<TContext = string>
     channelName: string,
     routerOrFilter: IClientRouter<TContext> | ((client: Client<TContext>) => boolean),
   ): T {
+    // oxlint-disable-next-line typescript-eslint(no-this-alias) -- 返回的对象字面量方法内 this 指向方法接收者，必须别名捕获外层 IPCConnectionManager。
     const that = this;
     const isFilter = typeof routerOrFilter === "function";
 
@@ -216,6 +217,7 @@ export class IPCServer<TContext = string>
     eventName: string,
     arg: any,
   ): Event<T> {
+    // oxlint-disable-next-line typescript-eslint(no-this-alias) -- Emitter 回调内 this 不可用，必须别名捕获外层实例。
     const that = this;
     let disposables: DisposableStore | undefined;
 

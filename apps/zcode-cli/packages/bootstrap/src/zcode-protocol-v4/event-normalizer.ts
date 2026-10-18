@@ -9,9 +9,10 @@ import type {
   WorkflowLaunchMeta,
 } from "@zcode/contracts";
 import { SessionEventType } from "@zcode/contracts";
+import type { AttachmentRef } from "@zcode/shared/zcode-protocol-v4";
 
-type CanonicalConversationVisibility = "visible" | "modelOnly" | "stateOnly";
-type CanonicalConversationOrigin =
+export type CanonicalConversationVisibility = "visible" | "modelOnly" | "stateOnly";
+export type CanonicalConversationOrigin =
   | "realUser"
   | "backgroundResult"
   | "goalContinuation"
@@ -21,7 +22,7 @@ type CanonicalConversationOrigin =
   | "assistant"
   | "system";
 
-interface CanonicalConversationPlacement {
+export interface CanonicalConversationPlacement {
   lane: "trigger" | "assistantWork" | "stateOnly";
   relation: "withinProductTurn" | "none";
 }
@@ -46,6 +47,9 @@ interface CanonicalConversationFactBase {
 }
 
 export interface CanonicalUserIntentFact extends CanonicalConversationFactBase {
+  inputOrigin?: "desktop" | "mobile";
+  conversationQuotes?: import("@zcode/contracts").TurnInputIntentMetadata["conversationQuotes"];
+  botGroupSource?: import("@zcode/shared").BotGroupInputSource;
   semanticKind: "userIntent";
   visibility: "visible" | "modelOnly";
   origin:
@@ -93,14 +97,11 @@ export interface CanonicalUserIntentFact extends CanonicalConversationFactBase {
     queueItemId?: string;
     clientId?: string;
   };
+  source?: TurnInputIntentMetadata["source"];
 }
 
-export interface CanonicalTurnAttachment {
+export interface CanonicalTurnAttachment extends Omit<AttachmentRef, "ref"> {
   ref?: string;
-  fileName: string;
-  mime: string;
-  bytes: number;
-  previewRef?: string;
 }
 
 export interface CanonicalModelStream {
@@ -132,7 +133,7 @@ export type CanonicalConversationFact =
   | CanonicalAssistantSegmentFact
   | CanonicalPassthroughFact;
 
-interface NormalizeConversationEventContext {
+export interface NormalizeConversationEventContext {
   productTurnId?: string;
   openAssistantSegments?: Partial<Record<"text" | "reasoning", CanonicalOpenSegmentIdentity>>;
 }
@@ -285,7 +286,13 @@ function normalizeTurnStarted(
     ...(payload.intent?.planEnabled !== undefined
       ? { planEnabled: payload.intent.planEnabled }
       : {}),
+    ...(payload.intent?.inputOrigin ? { inputOrigin: payload.intent.inputOrigin } : {}),
+    ...(payload.intent?.conversationQuotes
+      ? { conversationQuotes: payload.intent.conversationQuotes }
+      : {}),
+    ...(payload.intent?.botGroupSource ? { botGroupSource: payload.intent.botGroupSource } : {}),
     ...(payload.intent?.provenance ? { provenance: payload.intent.provenance } : {}),
+    ...(payload.intent?.source ? { source: payload.intent.source } : {}),
     ...normalizeAttachments(payload),
   };
 }
