@@ -736,9 +736,6 @@ importers:
 
   packages/desktop:
     dependencies:
-      '@babel/runtime':
-        specifier: ^7.24.5
-        version: 7.29.7
       '@fiahfy/icns':
         specifier: ^0.0.7
         version: 0.0.7
