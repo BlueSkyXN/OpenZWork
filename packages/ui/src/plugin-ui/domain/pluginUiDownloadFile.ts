@@ -44,10 +44,19 @@ function lastPathSegment(uri: string): string {
   }
 }
 
-/** 去掉路径分隔与控制字符，长度限制与桌面 saveFile 的 basename 截断一致（120）。 */
+/**
+ * 去掉路径分隔与控制字符，长度限制与桌面 saveFile 的 basename 截断一致（120）。
+ * 逐字符判断控制字符：安全正则里的 `\u0000-\u001f` 会触发 no-control-regex 误报，
+ * 与 officeFilePreview.ts 的处理一致，避免行级 lint disable（disable-count 门禁为零）。
+ */
 export function sanitizePluginUiDownloadFileName(name: string): string {
-  return name
-    .replace(/[\\/\u0000-\u001f]/g, "_") // oxlint-disable-line eslint(no-control-regex) -- 刻意清洗控制字符，属于文件名净化逻辑
+  let cleaned = "";
+  for (const character of name) {
+    const codePoint = character.codePointAt(0);
+    cleaned += codePoint !== undefined && (codePoint <= 0x1f || character === "\\") ? "_" : character;
+  }
+  return cleaned
+    .replace(/\//g, "_")
     .replace(/^\.+/, "")
     .trim()
     .slice(0, 120);

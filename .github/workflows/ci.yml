@@ -48,8 +48,13 @@ jobs:
         run: node --test tests/ci/*.test.mjs
 
       # 以下三项为 WP-02 双树错误基线中全绿的门禁（两树均 rc=0）。
+      # NODE_OPTIONS：v3.15.1 同步后 tsc -b 全量构建在 macOS arm64（7GB runner）上
+      # 触发 V8 "Ineffective mark-compacts near heap limit" OOM（run 39174059794），
+      # 显式抬高老生代上限；不改代码、不拆项目，只修运行时内存配置。
       - name: Root typecheck (11 projects)
         run: pnpm typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Root lint
         run: pnpm lint
