@@ -29,14 +29,14 @@ jobs:
 
       - uses: pnpm/action-setup@v6.1.0
         with:
-          version: 10.33.2
+          version: 11.28.6
 
       - uses: actions/setup-node@v7.0.0
         with:
           node-version: 24.14.0
           cache: pnpm
 
-      # 与 mise.toml 固定版本一致（Node 24.14.0 / pnpm 10.33.2）。
+      # 与 mise.toml 固定版本一致（Node 24.14.0 / pnpm 11.28.6）。
       # --ignore-scripts：检查型 CI 不需要 Electron 下载与原生编译（见 WP-02 错误基线）。
       - name: Install dependencies (frozen lockfile, no scripts)
         run: pnpm install --frozen-lockfile --ignore-scripts

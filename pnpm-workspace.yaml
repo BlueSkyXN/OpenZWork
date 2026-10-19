@@ -1,3 +1,7 @@
+# pnpm 11 起 .npmrc 只保留 auth/registry，其余设置必须写在这里；
+# nodeLinker=hoisted 是既有布局（Electron 打包与桌面运行时依赖真实目录树），
+# 从 .npmrc 迁移而来，行为不变。
+nodeLinker: hoisted
 packages:
   - apps/dev-docs
   - packages/*
@@ -30,3 +34,13 @@ allowBuilds:
   protobufjs: true
   ssh2: true
   unsafe-pointer: true
+# pnpm 11 不再读 package.json 的 "pnpm" 字段（会静默忽略），overrides 与
+# patchedDependencies 迁到这里。内容与迁移前一一对应，无增减。
+overrides:
+  react: 19.2.7
+  react-dom: 19.2.7
+patchedDependencies:
+  vitest@4.1.7: patches/vitest@4.1.7.patch
+  wdio-electron-service@9.2.1: patches/wdio-electron-service@9.2.1.patch
+  "@ai-sdk/openai-compatible@2.0.60": patches/@ai-sdk__openai-compatible@2.0.60.patch
+  "@ai-sdk/anthropic@3.0.81": patches/@ai-sdk__anthropic@3.0.81.patch

@@ -9,18 +9,10 @@ overrides:
   react-dom: 19.2.7
 
 patchedDependencies:
-  '@ai-sdk/anthropic@3.0.81':
-    hash: d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18
-    path: patches/@ai-sdk__anthropic@3.0.81.patch
-  '@ai-sdk/openai-compatible@2.0.60':
-    hash: 9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b
-    path: patches/@ai-sdk__openai-compatible@2.0.60.patch
-  vitest@4.1.7:
-    hash: 11fdb66aa985e1d77e68752deeb7c1130ae33c9a4e2968f23aae8adaf8bc9ba0
-    path: patches/vitest@4.1.7.patch
-  wdio-electron-service@9.2.1:
-    hash: 52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f
-    path: patches/wdio-electron-service@9.2.1.patch
+  '@ai-sdk/anthropic@3.0.81': d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18
+  '@ai-sdk/openai-compatible@2.0.60': 9632fe9d821b3dc20939ae509cc35b968d90d018bbd1d812390718898182a38b
+  vitest@4.1.7: 11fdb66aa985e1d77e68752deeb7c1130ae33c9a4e2968f23aae8adaf8bc9ba0
+  wdio-electron-service@9.2.1: 52481dae5e76772fcb8c2a9ff42feb3d0e1478e28815a4b975c81b9287e3385f
 
 importers:
 

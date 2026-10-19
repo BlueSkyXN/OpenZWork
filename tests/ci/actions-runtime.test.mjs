@@ -52,7 +52,7 @@ for (const [name, steps] of [
       steps.slice(0, 3).map((step) => step.uses.split("@")[0]),
       ["actions/checkout", "pnpm/action-setup", "actions/setup-node"],
     );
-    assert.deepEqual(actionStep(steps, "pnpm/action-setup").with, { version: "10.33.2" });
+    assert.deepEqual(actionStep(steps, "pnpm/action-setup").with, { version: "11.28.6" });
     assert.deepEqual(actionStep(steps, "actions/setup-node").with, {
       "node-version": "24.14.0",
       cache: "pnpm",
