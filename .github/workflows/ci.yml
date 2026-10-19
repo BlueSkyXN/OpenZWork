@@ -41,12 +41,6 @@ jobs:
       - name: Install dependencies (frozen lockfile, no scripts)
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      # pnpm 11 hoisted 会把内层包的直接依赖挪进 node_modules/.ignored/（含 scoped
-      # .ignored_name），导致 contracts 的 zod@3 解析漂移到根的 zod@4。--ignore-scripts
-      # 跳过了根 postinstall，这里显式执行同一恢复脚本（幂等）。
-      - name: Restore inner hoisted deps from .ignored
-        run: node scripts/restore-inner-hoisted-deps.mjs
-
       - name: Workspace TypeScript version (must be 6.x, not global)
         run: pnpm exec tsc --version
 
@@ -88,6 +82,18 @@ jobs:
           PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false"
         run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
 
+      - name: Workflow child interaction regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
+
+      - name: CLI workflow option regression
+        run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts
+
+      - name: Build CLI artifact
+        run: pnpm --filter @zcode/cli build
+
+      - name: CLI artifact workflow option
+        run: node --test tests/private-cleanup/cli-artifact-workflow.test.mjs
+
       # stage1 私有化清理的结构断言（当前 33 个顶层用例；WP-03/08/09 扫描为 git 全仓口径）。
       - name: Stage1 cleanup structural tests
         run: node --test tests/private-cleanup/cleanup.test.cjs
@@ -110,9 +116,9 @@ jobs:
       - name: Remote chain and installer local UAT
         run: pnpm exec tsx --test tests/private-cleanup/remote-chain-local.test.ts
 
-      # 包级测试：services（含 E1 记忆迁移/统计门禁/技能开关）与 ui（需显式 tsconfig 解析 @ 别名）。
-      - name: Package tests (services + ui)
-        run: pnpm test
+      # 完整测试范围保持不变；红灯时先返回首个失败，避免后续进程测试的超时掩盖诊断。
+      - name: Unit tests
+        run: pnpm run test:unit --bail=1
 
       # 已知上游既有红灯（不设卡点、不静默：内层 oxlint 84 项 max-lines 类错误、
       # desktop 全工程 tsc 211/204 对称错误）按计划在后续工作包处置，暂不入 CI。

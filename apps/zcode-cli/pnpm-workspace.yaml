@@ -1,7 +1,6 @@
 # pnpm 11 在 run 前触发依赖校验安装；本内层 workspace 解析不到外层 packages/*
-# （如 @zcode/model-option-map），且 hoisted 布局下校验安装会把包内直接依赖
-# （contracts 的 zod@3.25.76）挪进 node_modules/.ignored/ 导致类型解析漂移到根的
-# zod@4.6.5。统一关闭；恢复由根 postinstall scripts/restore-inner-hoisted-deps.mjs 兜底。
+# （如 @zcode/model-option-map）。依赖统一从根 workspace 按 lockfile 安装，
+# 子 workspace 的脚本不再发起第二次安装。
 verifyDepsBeforeRun: false
 
 packages:

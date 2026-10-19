@@ -72,8 +72,7 @@
     "architecture:report": "node scripts/architecture/architecture-check.mjs report",
     "architecture:baseline:update": "node scripts/architecture/architecture-check.mjs baseline:update",
     "architecture:context": "node scripts/architecture/architecture-check.mjs context",
-    "test:architecture": "node --test scripts/test/architecture-governance.test.mjs",
-    "postinstall": "node scripts/restore-inner-hoisted-deps.mjs"
+    "test:architecture": "node --test scripts/test/architecture-governance.test.mjs"
   },
   "dependencies": {
     "border-beam": "^1.0.1",
