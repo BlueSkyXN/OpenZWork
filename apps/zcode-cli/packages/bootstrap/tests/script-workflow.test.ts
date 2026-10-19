@@ -2,6 +2,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { resolveEffectiveBashShellSelection } from "@zcode/adapters/exec";
 import { createNodeFileSystemAdapter } from "@zcode/adapters/fs";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
 import { createRootTraceContext, createSessionId, type Model } from "@zcode/contracts";
@@ -250,6 +251,10 @@ describe("script workflow runtime", () => {
     const shellDir = join(tempRoot, "bin");
     const scriptPath = join(workflowDir, "child-session.workflow.js");
     const zshPath = join(shellDir, "zsh");
+    const isWindows = process.platform === "win32";
+    const configuredShellName = isWindows ? "powershell.exe" : "fish";
+    const resolvedShellName = isWindows ? "CMD" : "zsh";
+    const env = { PATH: shellDir, SHELL: join(shellDir, configuredShellName) };
     const store = await createSqliteSessionStore({ dbPath: ":memory:" });
     await mkdir(workflowDir, { recursive: true });
     await mkdir(shellDir, { recursive: true });
@@ -284,10 +289,23 @@ describe("script workflow runtime", () => {
 
     try {
       const app = await createZCodeApp({
-        env: {
-          PATH: shellDir,
-          SHELL: join(shellDir, "fish"),
-        },
+        env,
+        // Windows 自动探测会选 Git Bash；显式选 CMD，才能区分父快照继承与默认解析。
+        ...(isWindows
+          ? {
+              resolveInitialBashShellSelection: async () =>
+                resolveEffectiveBashShellSelection({
+                  env,
+                  platform: process.platform,
+                  override: {
+                    dialect: "cmd",
+                    display: { name: "CMD" },
+                    path: "cmd.exe",
+                    source: "user-config",
+                  },
+                }).selection,
+            }
+          : {}),
         modelExecutor: {
           setModelIoFullRetentionEnabled() {},
           async generateText(request: { messages: Array<{ content: unknown }> }) {
@@ -323,9 +341,15 @@ describe("script workflow runtime", () => {
       expect(activities[0]!.childSessionId).toBeTruthy();
       const childSession = await store.getSession(activities[0]!.childSessionId!);
       expect(childSession?.taskType).toBe("workflow_child");
+      expect(app.runtime.getSessionShellSelection()).toMatchObject({
+        dialect: isWindows ? "cmd" : "posix",
+        display: { name: resolvedShellName },
+        source: isWindows ? "user-config" : "auto-detected",
+      });
       const providerText = requestTexts.join("\n");
-      expect(providerText).toContain("- Shell: zsh");
-      expect(providerText).not.toContain("- Shell: fish");
+      expect(providerText).toContain(`- Shell: ${resolvedShellName}`);
+      expect(providerText).not.toContain(`- Shell: ${configuredShellName}`);
+      if (isWindows) expect(providerText).not.toContain("- Shell: Git Bash");
     } finally {
       store.close();
       await rm(tempRoot, { force: true, recursive: true });
