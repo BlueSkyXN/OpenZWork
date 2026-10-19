@@ -1,5 +1,13 @@
 # Tool Change Chain Spec
 
+## 独立 CLI 工作流入口回归（2026-10-19）
+
+独立 CLI 只通过 `--workflow-mode disabled|onDemand|alwaysOn` 向 app 配置写入工作流模式；
+已退役的 `--enable-workflow` 在参数解析阶段拒绝，不创建 app 或会话。帮助同步使用当前入口。
+链路仍为 CLI 参数 → 既有 mode normalizer → runtime 的双字段配置 → 工作流工具注册门；
+工具 schema、权限裁决、执行和 Desktop/Web 投递语义保持既有合同。
+回归覆盖 CLI mode/headless option 两组用例与构建产物参数解析，见根目录 v3.15.1 整合验收规范。
+
 ## 工具内部模型请求的会话归因（2026-09-30）
 
 WebSearch、WebFetch processing、ReadSessionContext 的内部模型请求继承发起工具的宿主

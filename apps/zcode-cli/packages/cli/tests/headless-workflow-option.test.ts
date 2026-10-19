@@ -191,6 +191,7 @@ for (const locale of ["en-US", "zh-CN"]) {
     assert.equal(await run(h.ctx, h.deps), 0, h.stderr());
     assert.match(h.stdout(), /--workflow-mode <mode>.*disabled.*onDemand.*alwaysOn/);
     assert.doesNotMatch(h.stdout(), /--enable-workflow/);
+    assert.doesNotMatch(h.stdout(), /\n\s+(?:\/?login|\/?logout|--no-browser)\s/);
     assert.equal(h.appOptions.length, 0);
   });
 }
