@@ -16,8 +16,11 @@ export function createProtocolProcessLifecycle(
     exitProcess?: (code: number) => void;
   } = {},
 ) {
-  const source = options.input ?? process.stdin;
-  const output = options.output ?? process.stdout;
+  // process.stdin/stdout 的具体类型（ReadStream & SocketEventMap）与 NodeJS.ReadableStream
+  // 联名后 .on 的重载互不兼容（@types/node 24 的 SocketEventMap 分裂）。统一收窄到
+  // 接口类型，事件语义不变：end/close/error 在两种实现上同名同义。
+  const source: NodeJS.ReadableStream = options.input ?? process.stdin;
+  const output: NodeJS.WritableStream = options.output ?? process.stdout;
   const stderr = options.stderr ?? process.stderr;
   const input = new PassThrough();
   const controller = new AbortController();
