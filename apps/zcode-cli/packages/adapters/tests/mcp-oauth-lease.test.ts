@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createSharedZCodeCredentialStore } from "../src/auth/shared-credentials.js";
 import {
@@ -76,6 +76,23 @@ describe("MCP OAuth authorization lease", () => {
     // 直接拼进锁路径会让整个授权流程在 Windows 上失败。
     expect(leasePath).not.toContain(":");
     expect(leasePath.endsWith(".authz")).toBe(true);
+  });
+
+  it("creates the missing credentials parent before acquiring the first authorization lease", async () => {
+    const credentialsPath = join(
+      dirname(await createCredentialsPath()),
+      "uncreated",
+      "v2",
+      "credentials.json",
+    );
+    const lease = await tryAcquireAuthorizationLease({
+      credentialsFilePath: credentialsPath,
+      keyPrefix: KEY_PREFIX,
+    });
+
+    // 首次授权早于凭据首次写入，lease 必须自己准备父目录。
+    expect(lease).toBeDefined();
+    await lease?.release();
   });
 
   it("grants the lease to exactly one holder and releases it again", async () => {
