@@ -60,6 +60,15 @@ test("core CI cannot be hidden behind historical collection or optional outcomes
   assert.ok(!steps.some((step) => /vitest list|pnpm (?:run )?test:unit/.test(step.run ?? "")));
 });
 
+test("project MCP regression runs after required runtime artifacts are built", async () => {
+  const steps = (await workflow("ci.yml")).jobs.checks.steps;
+  const build = steps.findIndex((step) => step.run === "node scripts/build-desktop-agent-cli.mjs");
+  const regression = steps.findIndex((step) => step.run?.includes("tests/mcp-project-config.test.ts"));
+  assert.ok(build >= 0 && regression > build);
+  assert.equal(steps[build].if, undefined);
+  assert.equal(steps[build]["continue-on-error"], undefined);
+});
+
 test("extended checks keep real failures and run independently with Electron prepared", async () => {
   const extended = await workflow("extended-checks.yml");
   for (const job of Object.values(extended.jobs)) {

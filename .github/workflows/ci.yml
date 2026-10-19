@@ -82,6 +82,10 @@ jobs:
           PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false"
         run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
 
+      # 项目 MCP 集成测试依赖内置 node_repl 的真实 seed 入口；复用桌面 Agent 的统一构建链。
+      - name: Build CLI and required MCP runtimes
+        run: node scripts/build-desktop-agent-cli.mjs
+
       - name: Workflow child interaction regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
 
@@ -96,9 +100,6 @@ jobs:
 
       - name: CLI workflow option regression
         run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts
-
-      - name: Build CLI artifact
-        run: pnpm --filter @zcode/cli build
 
       - name: CLI artifact workflow option
         run: node --test tests/private-cleanup/cli-artifact-workflow.test.mjs

@@ -57,6 +57,12 @@ jobs:
           PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false"
         run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
 
+      - name: Build CLI and required MCP runtimes
+        run: node scripts/build-desktop-agent-cli.mjs
+
+      - name: Build remote server bundle
+        run: pnpm --filter @zcode/server build:remote
+
       - name: Full historical unit suite
         id: full_tests
         run: pnpm test:unit --reporter=default --reporter=json --outputFile=.run-logs/full-unit-tests.json
