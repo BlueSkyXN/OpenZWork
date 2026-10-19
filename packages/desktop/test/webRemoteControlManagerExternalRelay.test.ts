@@ -6,7 +6,7 @@ import type {
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
 } from "@zcode/shared";
-import { buildZCodeEndpointUrls, encodeWebRemoteControlRpcTransportMessage } from "@zcode/shared";
+import { encodeWebRemoteControlRpcTransportMessage } from "@zcode/shared";
 import { createWebRemoteControlManager } from "../src/main/webRemoteControlManager.js";
 import { createWebRemoteControlFeatureGate } from "../src/main/webRemoteControlFeatureGate.js";
 
@@ -44,9 +44,6 @@ function createManagerHarness(options?: {
   reconnectWorkspace?: (windowId: number, workspaceKey: string) => Promise<void>;
   onStatusChanged?: Parameters<typeof createWebRemoteControlManager>[0]["onStatusChanged"];
   getEndpointUrls?: Parameters<typeof createWebRemoteControlManager>[0]["getEndpointUrls"];
-  reportRemoteUsageEvent?: Parameters<
-    typeof createWebRemoteControlManager
-  >[0]["reportRemoteUsageEvent"];
 }) {
   const sentPayloads: WebRemoteControlAppPayload[] = [];
   const logger = {
@@ -70,8 +67,6 @@ function createManagerHarness(options?: {
       >[0]["onStateChange"]
     | undefined;
   const disposeTransport = vi.fn();
-  const reportRemoteUsageEvent = options?.reportRemoteUsageEvent ?? vi.fn();
-  const reportRendererTelemetryEvent = vi.fn();
   const defaultAttachWorkspaceHost = vi.fn(async () => ({
     entryId: "entry-1",
     attachmentId: "attachment-1",
@@ -85,6 +80,7 @@ function createManagerHarness(options?: {
     options?.disposeWorkspaceHostAttachmentsForRemoteSession ?? vi.fn();
   const manager = createWebRemoteControlManager({
     relayWsUrl: "ws://relay.test/ws",
+    mobileRemoteControlUrl: "https://relay.test/remote/v3",
     getEndpointUrls: options?.getEndpointUrls,
     deviceMid: "mid-1",
     deviceName: "MacBook",
@@ -135,8 +131,6 @@ function createManagerHarness(options?: {
       }),
     },
     reconnectWorkspace: options?.reconnectWorkspace ?? vi.fn(async () => undefined),
-    reportRemoteUsageEvent,
-    reportRendererTelemetryEvent,
     attachWorkspaceHost: options?.attachWorkspaceHost ?? defaultAttachWorkspaceHost,
     releaseWorkspaceHostAttachment,
     disposeWorkspaceHostAttachmentsForWindow,
@@ -191,8 +185,6 @@ function createManagerHarness(options?: {
     manager,
     logger,
     releaseWorkspaceHostAttachment,
-    reportRemoteUsageEvent,
-    reportRendererTelemetryEvent,
     sentPayloads,
     getStoredAuth: () => storedAuth,
     getStartupRestoreContext: () => startupRestoreContext,
@@ -355,41 +347,7 @@ describe("createWebRemoteControlManager external relay", () => {
     await expect(manager.startAuthorized(1, context, authorization)).rejects.toThrow("expired");
   });
 
-  it("按首次配对和重连上报低频配对成功事件", async () => {
-    const { emitTransportState, manager, reportRemoteUsageEvent } = createManagerHarness();
-
-    await manager.start(1, { workspacePath: localWorkspace.workspacePath });
-    emitTransportState("paired");
-    emitTransportState("connecting");
-    emitTransportState("paired");
-
-    expect(reportRemoteUsageEvent).toHaveBeenNthCalledWith(1, 1, {
-      elementName: "web_remote_control_pair_result",
-      eventRegion: "web_remote_control",
-      eventType: "result",
-      eventExtraDetail: {
-        result: "success",
-        pair_kind: "initial",
-        workspace_kind: "local",
-        remote_kind: "",
-        error_category: "",
-      },
-    });
-    expect(reportRemoteUsageEvent).toHaveBeenNthCalledWith(2, 1, {
-      elementName: "web_remote_control_pair_result",
-      eventRegion: "web_remote_control",
-      eventType: "result",
-      eventExtraDetail: {
-        result: "success",
-        pair_kind: "reconnect",
-        workspace_kind: "local",
-        remote_kind: "",
-        error_category: "",
-      },
-    });
-  });
-
-  it("在远程 shared-host attachment 成功后上报 bridge 实际使用", async () => {
+  it("远程 shared-host attachment 成功后发送 bridge ready", async () => {
     const attachWorkspaceHost = vi.fn(async () => ({
       entryId: "entry-remote",
       attachmentId: "attachment-remote",
@@ -397,7 +355,7 @@ describe("createWebRemoteControlManager external relay", () => {
       port: createFakePort() as never,
       remoteKind: "ssh" as const,
     }));
-    const { deliverPayload, manager, reportRemoteUsageEvent } = createManagerHarness({
+    const { deliverPayload, manager, sentPayloads } = createManagerHarness({
       attachWorkspaceHost,
     });
 
@@ -416,28 +374,27 @@ describe("createWebRemoteControlManager external relay", () => {
     });
 
     await vi.waitFor(() =>
-      expect(reportRemoteUsageEvent).toHaveBeenCalledWith(1, {
-        elementName: "web_remote_control_bridge_result",
-        eventRegion: "web_remote_control",
-        eventType: "result",
-        eventExtraDetail: {
-          result: "success",
-          workspace_kind: "remote",
-          remote_kind: "ssh",
-          entry_kind: "task",
-          error_category: "",
-        },
-      }),
+      expect(sentPayloads).toContainEqual(
+        expect.objectContaining({
+          zcode_type: "workspace-bridge-ready",
+          requestId: "bridge-request-remote",
+          bridgeSessionId: "bridge-remote",
+          bridge: expect.objectContaining({
+            kind: "remote",
+            workspaceIdentity: remoteWorkspace.workspaceIdentity,
+          }),
+        }),
+      ),
     );
   });
 
-  it("bridge 失败只上报错误分类，不泄漏原始目标信息", async () => {
+  it("bridge attachment 失败经现有错误响应返回", async () => {
     const attachWorkspaceHost = vi.fn<AttachWorkspaceHost>(async () => {
       throw Object.assign(new Error("secret-host.example.com attach failed"), {
         code: "REMOTE_SESSION_MISSING",
       });
     });
-    const { deliverPayload, manager, reportRemoteUsageEvent } = createManagerHarness({
+    const { deliverPayload, manager, sentPayloads } = createManagerHarness({
       attachWorkspaceHost,
     });
 
@@ -451,21 +408,13 @@ describe("createWebRemoteControlManager external relay", () => {
     });
 
     await vi.waitFor(() =>
-      expect(reportRemoteUsageEvent).toHaveBeenCalledWith(1, {
-        elementName: "web_remote_control_bridge_result",
-        eventRegion: "web_remote_control",
-        eventType: "result",
-        eventExtraDetail: {
-          result: "failure",
-          workspace_kind: "local",
-          remote_kind: "",
-          entry_kind: "home",
-          error_category: "attach",
-        },
-      }),
-    );
-    expect(JSON.stringify(reportRemoteUsageEvent.mock.calls)).not.toContain(
-      "secret-host.example.com",
+      expect(sentPayloads).toContainEqual(
+        expect.objectContaining({
+          zcode_type: "workspace-bridge-error",
+          requestId: "bridge-request-failed",
+          bridgeSessionId: "bridge-failed",
+        }),
+      ),
     );
   });
 
@@ -520,7 +469,12 @@ describe("createWebRemoteControlManager external relay", () => {
 
   it("uses the current endpoint resolver for relay and QR URL on each start", async () => {
     const { getLatestTransportOptions, manager } = createManagerHarness({
-      getEndpointUrls: () => buildZCodeEndpointUrls("http://localhost:3030"),
+      // 当前 resolver 由宿主提供，fixture 显式给出保留的 relay 与手机入口。
+      getEndpointUrls: () =>
+        ({
+          relayWsUrl: "ws://localhost:3030/ws",
+          remoteUrl: "http://localhost:3030/remote/v3",
+        }) as never,
     });
 
     await manager.start(1, { workspacePath: "/workspace/demo" });
@@ -1576,31 +1530,6 @@ describe("createWebRemoteControlManager external relay", () => {
         },
       },
     });
-  });
-
-  it("手机 session_create 保留来源和手机 context，宿主只转发一次", async () => {
-    const { deliverPayload, manager, reportRendererTelemetryEvent } = createManagerHarness();
-    await manager.start(1, { workspacePath: "/workspace/demo" });
-    const event = {
-      elementName: "session_create",
-      eventRegion: "app",
-      eventType: "result",
-      talkId: "s1",
-      messageId: "mobile-first-command",
-      context: {
-        clientTimezone: "Asia/Shanghai",
-        clientLanguage: "zh-CN",
-        screenResolution: "390x844",
-      },
-      eventExtraDetail: {
-        create_source: "session",
-        client_kind: "mobile",
-        workspace_kind: "remote",
-        remote_kind: "ssh",
-      },
-    } as const;
-    deliverPayload({ zcode_type: "telemetry-report", event });
-    expect(reportRendererTelemetryEvent).toHaveBeenCalledExactlyOnceWith(event);
   });
 
   it("logs mobile diagnostics as desktop log summaries", async () => {

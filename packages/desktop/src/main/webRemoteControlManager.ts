@@ -35,6 +35,7 @@ import {
   measureWebRemoteControlRpcRelayEnvelopeBytes,
 } from "@zcode/shared";
 import {
+  WebRemoteControlDeviceTransport,
   type WebRemoteControlDeviceTransportAuth,
   type WebRemoteControlDeviceTransportOptions,
   type WebRemoteControlDeviceTransportState,
@@ -279,6 +280,22 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   const startAuthorizations = new Map<string, WebRemoteControlStartAuthorization>();
   const availableWorkspacesByWindowId = new Map<number, WebRemoteControlWorkspaceTarget[]>();
 
+  // 同步修复：这些业务所有者在删除相邻遥测函数时被一起移除，启动与恢复仍依赖它们。
+  const availableTasksByWindowId = new Map<number, WebRemoteControlTaskTarget[]>();
+  const pushedWorkspaceListSignaturesByWindowId = new Map<number, string>();
+  const startupRestoreContextPromise = dependencies.startupRestoreStorageProvider
+    .load()
+    .catch((error) => {
+      dependencies.logger.warn("[web-remote-control] load startup restore context failed", error);
+      return undefined;
+    });
+  let startupRestoreClaimed = false;
+
+  function createTransport(options: WebRemoteControlDeviceTransportOptions) {
+    return dependencies.createDeviceTransport
+      ? dependencies.createDeviceTransport(options)
+      : new WebRemoteControlDeviceTransport(options);
+  }
 
   function clearStartAuthorizationsForWindow(windowId: number): void {
     for (const [token, authorization] of startAuthorizations) {

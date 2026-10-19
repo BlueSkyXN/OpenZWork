@@ -97,6 +97,9 @@ jobs:
       - name: Host UI composition regression
         run: pnpm exec vitest run packages/services/test/localServicesPluginUiComposition.test.ts packages/services/test/localServicesRemoteAuthority.test.ts packages/desktop/test/serverRemoteConnection.test.ts --bail=1
 
+      - name: Remote control regression
+        run: pnpm exec vitest run packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts packages/desktop/test/webRemoteControlTransport.test.ts packages/ui/test/useRemoteWorkspaceHistory.test.ts packages/web/test/webRemoteControlVersion.test.ts --bail=1
+
       # stage1 私有化清理的结构与协议断言（WP-03/08/09 扫描为 git 全仓口径）。
       - name: Stage1 cleanup structural tests
         run: node --test tests/private-cleanup/cleanup.test.cjs

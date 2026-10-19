@@ -20,10 +20,6 @@ import {
   type WebRemoteControlRelayOutgoingMessage,
 } from "@zcode/shared";
 import type { WebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
-import {
-  noteWebRemoteRelayConnectAttempt,
-  noteWebRemoteRelayReconnect,
-} from "./desktopNetworkTelemetry.js";
 
 export type WebRemoteControlDeviceTransportState =
   | "idle"
@@ -193,8 +189,6 @@ export class WebRemoteControlDeviceTransport {
   // Bugfix: relay message trace 在开发态也会按消息流频率写入 logs/web-remote-control。
   // 当前默认完全关闭，避免本地排查时产生高频落盘和敏感摘要残留；如需恢复必须先更新日志 spec。
   private readonly traceRelayMessages = false;
-  private connectStartedAt = 0;
-  private connectAttempt = 0;
   private socketGeneration = 0;
   private lastPairedSocketGeneration = 0;
   private readonly payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
@@ -253,9 +247,7 @@ export class WebRemoteControlDeviceTransport {
     this.clearReconnectTimer();
     this.stopHeartbeat();
     this.clearStaleWaitingRecoveryTimer();
-    this.connectAttempt += 1;
     this.socketGeneration += 1;
-    this.connectStartedAt = Date.now();
     this.setState("connecting");
     this.lastPairStatusAckAt = Date.now();
     this.options.logger.info("[web-remote-control] external relay device connecting");
@@ -279,8 +271,7 @@ export class WebRemoteControlDeviceTransport {
       if (socket !== this.socket) {
         return;
       }
-      const negotiatedExtensions =
-        typeof socket.extensions === "string" ? socket.extensions : "";
+      const negotiatedExtensions = typeof socket.extensions === "string" ? socket.extensions : "";
       this.options.logger.info("[web-remote-control] external relay negotiated extensions", {
         perMessageDeflate: negotiatedExtensions.includes("permessage-deflate"),
         extensions: negotiatedExtensions || undefined,
@@ -306,7 +297,9 @@ export class WebRemoteControlDeviceTransport {
       if (socket !== this.socket) {
         return;
       }
-      if (estimateRawDataBytes(raw) > WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes) {
+      if (
+        estimateRawDataBytes(raw) > WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes
+      ) {
         this.options.logger.warn("[web-remote-control] oversize external relay message dropped", {
           bytes: estimateRawDataBytes(raw),
           maxBytes: WEB_REMOTE_CONTROL_RPC_TRANSPORT_LIMITS.maxPhysicalFrameBytes,
@@ -336,10 +329,7 @@ export class WebRemoteControlDeviceTransport {
       this.options.logger.warn("[web-remote-control] external relay device socket error", {
         message: error.message,
       });
-      noteWebRemoteRelayConnectAttempt(Date.now() - this.connectStartedAt, false, {
-        error,
-        attempt: this.connectAttempt,
-      });
+      // 同步修复：遥测模块已退役；错误仍经本地日志和现有回调交给调用方。
       this.options.onError(error);
     });
 
@@ -354,12 +344,6 @@ export class WebRemoteControlDeviceTransport {
       }
       if (!this.manuallyClosed && !this.terminalClose) {
         this.options.logger.warn("[web-remote-control] external relay device disconnected");
-        if (this.state !== "paired") {
-          noteWebRemoteRelayConnectAttempt(Date.now() - this.connectStartedAt, false, {
-            attempt: this.connectAttempt,
-          });
-        }
-        noteWebRemoteRelayReconnect();
         this.scheduleReconnect();
       }
     });
@@ -721,13 +705,7 @@ export class WebRemoteControlDeviceTransport {
     if (this.state === state) {
       return;
     }
-    const previousState = this.state;
     this.state = state;
-    if (state === "paired" && previousState !== "paired" && this.connectStartedAt > 0) {
-      noteWebRemoteRelayConnectAttempt(Date.now() - this.connectStartedAt, true, {
-        attempt: this.connectAttempt,
-      });
-    }
     this.options.onStateChange(state);
     if (
       state === "connecting" ||
