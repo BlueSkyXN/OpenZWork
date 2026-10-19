@@ -192,6 +192,9 @@ function createRuntimeDeps(
           childSessionId,
           event,
           traceContext,
+          // 交互事件另镜像到父会话：确认窗只从父会话投影生成（与 createChildClientPorts 同一份
+          // 归属，docs/dynamic-workflow/launch.md「Permissions inside a run」）。
+          interactionOrigin: clientPortsContext,
         });
       },
     },

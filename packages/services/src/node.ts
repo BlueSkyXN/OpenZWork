@@ -281,6 +281,15 @@ import { createSkillsService } from "./skills/skillsService.js";
 import { createSkillSyncService } from "./skill-sync/skillSyncService.js";
 import { createMcpSyncService } from "./mcp-sync/mcpSyncService.js";
 import { createPluginSyncService } from "./plugin-sync/pluginSyncService.js";
+import { createGenUiService } from "./gen-ui/node.js";
+import { IGenUiService } from "./gen-ui/contract.js";
+import { createPluginUiAccountBindings } from "./plugin-ui-bridge/instanceAccounts.js";
+import { createPluginUiBridgeService } from "./plugin-ui-bridge/pluginUiBridgeService.js";
+import { createPluginUiSamplingService } from "./plugin-ui-bridge/pluginUiSamplingService.js";
+import { createPluginUiAppToolsService } from "./plugin-ui-bridge/pluginUiAppToolsService.js";
+import { IPluginUiBridgeService } from "./plugin-ui-bridge/contract.js";
+import { IPluginUiSamplingService } from "./plugin-ui-bridge/samplingContract.js";
+import { IPluginUiAppToolsService } from "./plugin-ui-bridge/appToolsContract.js";
 import { createPluginsService } from "./plugins/pluginsService.js";
 import { createPluginManagementService } from "./plugins/pluginManagementService.js";
 import { createSubagentsService } from "./subagents/subagentsService.js";
@@ -656,6 +665,44 @@ export function createLocalServices(options: {
           },
         }),
   });
+  // GenUI / MCP Apps 的 Host 装配（照上游 node.ts 收敛；OpenZWork 无官方账号，
+  // readAccount 返回 null 账号上下文——沙箱实例归属由 host 稳定性派生，不依赖官方凭据）。
+  const pluginUiAccounts = createPluginUiAccountBindings({
+    async readAccount() {
+      return null;
+    },
+    open: (params) => zcodeAgentService.openMcpUiInstance(params),
+    close: (params) => zcodeAgentService.closeMcpUiInstance(params),
+  });
+  const pluginUiBridgeService = createPluginUiBridgeService({
+    openInstance: (params) => pluginUiAccounts.open(params),
+    closeInstance: (params) => pluginUiAccounts.close(params),
+    validateInstance: (params) => zcodeAgentService.validateMcpUiInstance(params),
+    recycleInstance: (params) => zcodeAgentService.recycleMcpUiInstance(params),
+    // 插件 UI：资源读取与 UI 工具调用都发生在 session 所在的 agent 进程；host 只做校验与登记。
+    readMcpResource: (params) => zcodeAgentService.readMcpResource(params),
+    callMcpToolForUi: (params) => zcodeAgentService.callMcpToolForUi(params),
+    cancelMcpToolCallForUi: (params) => zcodeAgentService.cancelMcpToolCallForUi(params),
+    readMcpResourceForUi: (params) => zcodeAgentService.readMcpResourceForUi(params),
+    listMcpResourcesForUi: (params) => zcodeAgentService.listMcpResourcesForUi(params),
+    listMcpResourceTemplatesForUi: (params) =>
+      zcodeAgentService.listMcpResourceTemplatesForUi(params),
+    subscribeMcpResourceForUi: (params) => zcodeAgentService.subscribeMcpResourceForUi(params),
+    unsubscribeMcpResourceForUi: (params) => zcodeAgentService.unsubscribeMcpResourceForUi(params),
+    listPluginUiSurfaces: (params) => zcodeAgentService.listPluginUiSurfaces(params),
+    registerSandbox: options?.registerPluginSandbox,
+  });
+  // App-Provided Tools：页面工具登记与模型调用的认领 / 回传都发生在 session 所在的 agent 进程。
+  const pluginUiSamplingService = createPluginUiSamplingService({
+    sample: (params) => zcodeAgentService.sampleMcpApp(params),
+    cancelSampling: (params) => zcodeAgentService.cancelMcpAppSampling(params),
+  });
+  const pluginUiAppToolsService = createPluginUiAppToolsService({
+    registerAppToolsForUi: (params) => zcodeAgentService.registerAppToolsForUi(params),
+    unregisterAppToolsForUi: (params) => zcodeAgentService.unregisterAppToolsForUi(params),
+    claimAppToolCallForUi: (params) => zcodeAgentService.claimAppToolCallForUi(params),
+    resolveAppToolCallForUi: (params) => zcodeAgentService.resolveAppToolCallForUi(params),
+  });
   providerConnectivityAgentService = zcodeAgentService;
   // desktop-continuous UI 直接订阅 zcodeSessionService，绕开 ZCode task adapter 的
   // mapServiceEvent 路径，导致 task_complete 永远不会写回 sqlite，侧边栏 spinner 不停。
@@ -764,6 +811,16 @@ export function createLocalServices(options: {
     // 合并 MCP/Plugin Management 服务装配时误删了 plugin-sync 注册，
     // RemoteServiceAccess 仍会请求该频道，导致本地候选枚举超时、远端同步无法开始。
     .register(IPluginSyncService, pluginSyncService)
+    // GenUI / MCP Apps：RemoteServiceAccess 无条件创建四个服务代理，漏注册会让
+    // gen-ui/listState 等频道在 1s 超时后失败，并拖慢已有会话的消息发送（发送前
+    // 会先查 genUiService.listState）。上游同款装配见 zai-org/ZCode node.ts。
+    .register(
+      IGenUiService,
+      createGenUiService({ registerSandbox: options?.registerPluginSandbox }),
+    )
+    .register(IPluginUiBridgeService, pluginUiBridgeService)
+    .register(IPluginUiSamplingService, pluginUiSamplingService)
+    .register(IPluginUiAppToolsService, pluginUiAppToolsService)
     .register(IPluginsService, createPluginsService({ isDesktopRuntime: true }))
     // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
     .register(IPluginManagementService, createPluginManagementService({ zcodeAgentService }))
