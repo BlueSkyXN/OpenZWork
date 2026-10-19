@@ -1,3 +1,31 @@
+// 同步修复：保留版本重定向、并发、失效和销毁回归；fixture 使用显式 relay 地址。
+import { describe, expect, it, vi } from "vitest";
+import type { WebRemoteControlWindowBootstrapResult } from "@zcode/shared";
+import { createWebRemoteControlVersionGuard } from "../src/webRemoteControlVersion.js";
+
+const bootstrap = (desktopAppVersion?: string): WebRemoteControlWindowBootstrapResult => ({
+  windowControlSessionId: "device-1",
+  workspaces: [],
+  tasks: [],
+  ...(desktopAppVersion === undefined ? {} : { desktopAppVersion }),
+});
+
+function harness(options: { url?: string; ready?: boolean; version?: string } = {}) {
+  const requestBootstrap = vi.fn(async () => bootstrap(options.version));
+  const navigate = vi.fn();
+  const onMismatch = vi.fn();
+  const url =
+    options.url ??
+    "https://relay.example.test/remote/v4?sid=a&hash=x%2By&t=1&app_version=3.12.1#task";
+  const guard = createWebRemoteControlVersionGuard({
+    requestBootstrap,
+    getUrl: () => url,
+    isPageReady: () => options.ready ?? false,
+    navigate,
+    onMismatch,
+  });
+  return { guard, requestBootstrap, navigate, onMismatch, url };
+}
 
 describe("remote v4 desktop version guard", () => {
   it("corrects the first URL before allowing business bootstrap, preserving connection parameters", async () => {
@@ -12,8 +40,10 @@ describe("remote v4 desktop version guard", () => {
   });
 
   it("fills a missing version and accepts the v4 trailing slash", async () => {
+    const h = harness({ url: "https://relay.example.test/remote/v4/?sid=a", version: "3.12.2" });
     await h.guard.check();
     expect(h.navigate).toHaveBeenCalledWith(
+      "https://relay.example.test/remote/v4/?sid=a&app_version=3.12.2",
     );
   });
 

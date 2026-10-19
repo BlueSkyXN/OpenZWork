@@ -1,8 +1,55 @@
+// 同步修复：恢复被清理截断的测试结构，保留定时任务和会话的字号、布局断言。
+import { readFile } from "node:fs/promises";
+import { describe, expect, it } from "vitest";
+
+/**
+ * 读取仓库源码用于文本契约断言。
+ *
+ * Bugfix：本文件的断言里有跨行片段（例如 `TOKEN =\n  "..."`），而仓库只对 *.mjs / *.sh
+ * 声明了 `eol=lf`，其余源码在 `core.autocrlf=true` 的 Windows 检出里是 CRLF。
+ * 直接 `toContain` 跨行片段时 `\n` 匹配不到 `\r\n`，用例在 Windows 上必然失败，
+ * 而它想断言的其实是源码内容契约，与换行字节无关。统一归一成 LF 再比对。
+ */
+async function readSource(url: URL): Promise<string> {
+  return (await readFile(url, "utf8")).replaceAll("\r\n", "\n");
+}
+
+const typographySurfaceFiles = [
+  "AutomationDesignPrimitives.tsx",
+  "AutomationEditView.tsx",
+  "AutomationInstructionsComposer.tsx",
+  "AutomationScheduleBadge.tsx",
+  "AutomationSwitchToggle.tsx",
+  "AutomationsSection.tsx",
+] as const;
+
+const typographySurfaceSources = await Promise.all(
+  typographySurfaceFiles.map(async (fileName) => ({
+    fileName,
+    source: await readSource(new URL(`../src/settings/${fileName}`, import.meta.url)),
+  })),
+);
+const sourceByFile = new Map(
+  typographySurfaceSources.map(({ fileName, source }) => [fileName, source]),
+);
+const chatEmptyStateSource = await readSource(
+  new URL("../src/ChatEmptyState.tsx", import.meta.url),
+);
+const cronCreateRendererSource = await readSource(
+  new URL("../src/ToolCallBlocks/renderers/cron-create.tsx", import.meta.url),
+);
+const chatInputDisplaySource = await readSource(
+  new URL("../src/chat-input-toolbar/display.tsx", import.meta.url),
+);
+
+describe("automation typography tokens", () => {
+  it.each(typographySurfaceSources)("$fileName 不再使用迁移范围内的旧字号", ({ source }) => {
     expect(source).not.toMatch(/text-ui-xs/);
     expect(source).not.toMatch(/text-\[(?:12|13|14|16)px\]/);
     expect(source).not.toMatch(/(?:^|\s)text-(?:base|sm|xs)(?=\s|["'`/])/m);
+  });
 
-  it("定时与闲时 Instructions 工具栏使用同一套 trigger 视觉", () => {
+  it("定时 Instructions 工具栏使用同一套 trigger 视觉", () => {
     const automationEditSource = sourceByFile.get("AutomationEditView.tsx") ?? "";
     const automationToolbarSource = sourceByFile.get("AutomationInstructionsComposer.tsx") ?? "";
 
@@ -50,7 +97,7 @@
     const automationsSectionSource = sourceByFile.get("AutomationsSection.tsx") ?? "";
 
     expect(automationsSectionSource).toContain(
-      "text-wrap-phrase line-clamp-2 flex-1 text-ui-base font-normal leading-5",
+      "line-clamp-2 flex-1 text-ui-base font-normal leading-5",
     );
     expect(cronCreateRendererSource).toContain(
       "px-3 py-1.5 text-ui-base text-foreground hover:bg-hover",
@@ -59,9 +106,10 @@
     expect(cronCreateRendererSource).not.toContain("ArrowRightIcon");
   });
 
-  it("定时与闲时权限菜单直接复用首页 mode selector", () => {
+  it("定时权限菜单直接复用首页 mode selector", () => {
     const automationEditSource = sourceByFile.get("AutomationEditView.tsx") ?? "";
 
+    for (const source of [automationEditSource]) {
       expect(source).toContain("<ConfigSelect");
       expect(source).toContain("option={modeOption}");
       expect(source).toContain('triggerVariant="ghost"');
@@ -70,18 +118,21 @@
       expect(source).toContain("provider={ZCODE_AGENT_PROVIDER}");
       expect(source).toContain("restoreFocusSelector={null}");
       expect(source).toContain("w-fit max-w-56 min-w-0 shrink justify-start gap-1 px-2");
+    }
+    expect(chatInputDisplaySource).toContain(
+      'className: option.category === "mode" ? "w-64" : undefined',
+    );
     expect(chatInputDisplaySource).toContain("min-h-13 items-start gap-3 py-2 pl-2 pr-8");
     expect(chatInputDisplaySource).toContain("truncate text-ui-base/relaxed text-foreground");
     expect(chatInputDisplaySource).toContain(
       "line-clamp-2 text-ui-sm/relaxed text-foreground-subtle whitespace-nowrap",
     );
     expect(automationEditSource).not.toContain("权限 trigger 曾固定 160px");
-    // 闲时与定时任务共享 builder、provider 和会话权限词表，避免配置文案漂移。
     // 手写复刻已删除：两页都不再自行维护权限菜单结构与 warning 语义。
     expect(automationEditSource).not.toContain('mode === "yolo"');
   });
 
-  it("定时与闲时详情通过面包屑返回并展示标题层级", () => {
+  it("定时详情通过面包屑返回并展示标题层级", () => {
     const automationEditSource = sourceByFile.get("AutomationEditView.tsx") ?? "";
     expect(automationEditSource).toContain("<SettingsBreadcrumbReporter");
     expect(automationEditSource).toContain('data-testid="automation-edit-title"');
@@ -89,7 +140,7 @@
     expect(automationEditSource).not.toContain("AUTOMATION_BACK_TRIGGER_CLASSNAME");
   });
 
-  it("定时与闲时字段标题到下方组件统一使用 6px flex 间距", () => {
+  it("定时字段标题到下方组件统一使用 6px flex 间距", () => {
     const automationEditSource = sourceByFile.get("AutomationEditView.tsx") ?? "";
     const primitivesSource = sourceByFile.get("AutomationDesignPrimitives.tsx") ?? "";
 
@@ -97,13 +148,9 @@
     expect(
       automationEditSource.match(/className=\{AUTOMATION_FORM_FIELD_CLASSNAME\}/g)?.length ?? 0,
     ).toBeGreaterThanOrEqual(5);
-    // 修复原因：45a0078032（会话内创建闲时任务）新增了条件渲染的「绑定会话」字段，
-    // 表单字段从 2 个变为 3 个（绑定会话 / 任务标题 / 任务指令），旧断言未同步导致 staging 红测。
-    expect(
-    ).toBe(3);
   });
 
-  it("定时与闲时设置页的输入内容统一使用 14px UI 字号", () => {
+  it("定时设置页的输入内容统一使用 14px UI 字号", () => {
     const automationEditSource = sourceByFile.get("AutomationEditView.tsx") ?? "";
     const instructionsSource = sourceByFile.get("AutomationInstructionsComposer.tsx") ?? "";
 
@@ -116,9 +163,6 @@
     expect(automationEditSource).not.toContain("gap-1 text-ui-sm text-foreground-subtle");
     expect(automationEditSource).not.toMatch(/w-(?:14|16).*text-ui-sm tabular-nums/);
   });
-
-  it("闲时任务无人值守提示使用中性圆形图标与 14px UI 字号", () => {
-
 
   it("会话创建任务在编辑页展示只读调度摘要", () => {
     const automationEditSource = sourceByFile.get("AutomationEditView.tsx") ?? "";

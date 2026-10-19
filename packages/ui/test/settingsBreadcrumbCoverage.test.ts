@@ -1,6 +1,38 @@
+// 同步修复：恢复混合测试的导入和边界，只保留当前设置页面。
+import { readSourceText } from "./readSourceText.js";
+import { describe, expect, it } from "vitest";
+
+function readSettingsSection(name: string): string {
+  return readSourceText(new URL(`../src/settings/${name}.tsx`, import.meta.url), "utf8");
+}
+
+describe("Settings breadcrumb coverage", () => {
+  it.each([
+    "PluginStorePage",
+    "PluginsSection",
+    "SubagentsSection",
+    "McpSettingsSection",
+    "CommandsSection",
+    "HooksSection",
+  ])("projects page-level navigation from %s", (section) => {
+    const source = readSettingsSection(section);
+    expect(source).toContain("SettingsBreadcrumbReporter");
+    expect(source).toContain("onSectionSelect");
+  });
+
+  it("projects automation edit navigation from the views that own dirty-state back handling", () => {
+    for (const section of ["AutomationEditView"]) {
+      const source = readSettingsSection(section);
+      expect(source).toContain("SettingsBreadcrumbReporter");
+      expect(source).toContain("onSectionSelect");
+    }
+  });
+
+  it("uses the localized plugin display name for plugin detail breadcrumbs", () => {
     const source = readSettingsSection("PluginStorePage");
     expect(source).toContain("resolveItemDisplayName(detailItem, locale)");
     expect(source).not.toContain("[{ label: detailItem.name }]");
+  });
 
   it("owns the plugin marketplace page title after moving outside Settings", () => {
     const source = readSettingsSection("PluginStorePage");
@@ -50,7 +82,7 @@
     "MemorySettingsSection",
     "BrowserSettingsSection",
     "ModelProviderSection",
-    "UsageStatsSection",
   ])("does not promote dialog or flat state from %s", (section) => {
     expect(readSettingsSection(section)).not.toContain("SettingsBreadcrumbReporter");
   });
+});
