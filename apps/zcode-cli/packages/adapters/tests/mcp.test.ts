@@ -853,23 +853,39 @@ describe("createMcpAdapter", () => {
 
     const options = capturedStdioOptions[0] as { env?: Record<string, string> };
     expect(options.env).toMatchObject({
-      ALL_PROXY: "http://127.0.0.1:8888",
       CURL_CA_BUNDLE: "/tmp/root-ca.pem",
       GIT_SSL_CAINFO: "/tmp/root-ca.pem",
-      HTTPS_PROXY: "http://127.0.0.1:8888",
-      HTTP_PROXY: "http://127.0.0.1:8888",
       MCP_TOKEN: "secret",
       NODE_EXTRA_CA_CERTS: "/tmp/root-ca.pem",
-      NO_PROXY: "localhost,127.0.0.1",
       // MCP 会补齐 Node 目录；本测试使用已含 Node 的 PATH，避免依赖测试机的 /bin。
       PATH: dirname(process.execPath),
       REQUESTS_CA_BUNDLE: "/tmp/root-ca.pem",
       SSL_CERT_FILE: "/tmp/root-ca.pem",
-      all_proxy: "http://127.0.0.1:8888",
-      http_proxy: "http://127.0.0.1:8888",
-      https_proxy: "http://127.0.0.1:8888",
-      no_proxy: "localhost,127.0.0.1",
     });
+    const proxyValues = {
+      ALL_PROXY: "http://127.0.0.1:8888",
+      HTTPS_PROXY: "http://127.0.0.1:8888",
+      HTTP_PROXY: "http://127.0.0.1:8888",
+      NO_PROXY: "localhost,127.0.0.1",
+    };
+    if (process.platform === "win32") {
+      // Windows 环境键不区分大小写，setEnvKey 只保留一个别名；POSIX 继续提供两套键。
+      for (const [name, value] of Object.entries(proxyValues)) {
+        const aliases = Object.entries(options.env ?? {}).filter(
+          ([key]) => key.toUpperCase() === name,
+        );
+        expect(aliases, name).toHaveLength(1);
+        expect(aliases[0]?.[1], name).toBe(value);
+      }
+    } else {
+      expect(options.env).toMatchObject({
+        ...proxyValues,
+        all_proxy: "http://127.0.0.1:8888",
+        http_proxy: "http://127.0.0.1:8888",
+        https_proxy: "http://127.0.0.1:8888",
+        no_proxy: "localhost,127.0.0.1",
+      });
+    }
   });
 
   it("restores captured user network env into stdio MCP transports", async () => {
@@ -1041,7 +1057,7 @@ describe("createMcpAdapter", () => {
   });
 
   it("exposes pending OAuth authorization URL through server status", async () => {
-    const { release: resolveConnect } = stubInteractiveAuthorization(
+    const { release: resolveConnect, ready } = stubInteractiveAuthorization(
       "https://auth.example.test/authorize?state=state_test",
     );
     const adapter = createMcpAdapter();
@@ -1055,22 +1071,27 @@ describe("createMcpAdapter", () => {
       },
     });
 
-    let authorizationUrl: string | undefined;
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const status = await adapter.status();
-      authorizationUrl = status.notion?.authorization?.authorizationUrl;
-      if (authorizationUrl) break;
-      await new Promise((resolve) => setTimeout(resolve, 10));
+    try {
+      // URL 发布先等待异步凭据存储；用回调完成事件同步，避免固定 200ms 轮询提前断言。
+      await ready;
+      await expect(adapter.status()).resolves.toMatchObject({
+        notion: {
+          status: "connecting",
+          authorization: {
+            authorizationUrl: "https://auth.example.test/authorize?state=state_test",
+          },
+        },
+      });
+
+      resolveConnect();
+      await expect(connect).resolves.toMatchObject({
+        status: "connected",
+        toolCount: 0,
+      });
+    } finally {
+      resolveConnect();
+      await adapter.close();
     }
-
-    expect(authorizationUrl).toBe("https://auth.example.test/authorize?state=state_test");
-
-    resolveConnect();
-    await expect(connect).resolves.toMatchObject({
-      status: "connected",
-      toolCount: 0,
-    });
-    await adapter.close();
   });
 
   it("reuses an unchanged configured connection while OAuth authorization is pending", async () => {
