@@ -122,6 +122,9 @@ jobs:
       - name: Remote chain and installer local UAT
         run: pnpm exec tsx --test tests/private-cleanup/remote-chain-local.test.ts
 
+      - name: Unit test collection
+        run: pnpm exec vitest list --exclude "packages/desktop/test/e2e/**/*.test.ts" --json=.run-logs/unit-test-collection.json
+
       # 完整测试范围保持不变；红灯时先返回首个失败，避免后续进程测试的超时掩盖诊断。
       - name: Unit tests
         run: pnpm run test:unit --bail=1

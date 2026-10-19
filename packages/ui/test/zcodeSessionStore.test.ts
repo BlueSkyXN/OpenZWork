@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  BUILTIN_MODEL_PROVIDER_IDS,
   buildCustomSupplierKey,
   type ZCodeError,
   type ZCodeConfigOption,
@@ -187,8 +186,8 @@ describe("useZCodeSessionStore provider preference", () => {
   });
 
   it.each([
-    [BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan, "glm-5.2-pro"],
-    [BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan, "GLM-5.2"],
+    ["custom-alpha", "glm-5.2-pro"],
+    ["custom-beta", "GLM-5.2"],
     ["default-glm", "glm-0606[1m]"],
   ])("setConfigOptions 保留 %s/%s 的 high 思考强度", (providerId, modelId) => {
     const workspacePath = `/tmp/workspace-hide-high-${providerId}-${modelId}`;
@@ -582,7 +581,7 @@ describe("useZCodeSessionStore provider preference", () => {
     const workspacePath = "/tmp/workspace-new-task-inherit-active-config";
     const taskId = "task-provider-a";
     const taskModel = "provider-a/model-a";
-    const workspaceModel = "account:bigmodel-individual-coding-plan/GLM-5.2";
+    const workspaceModel = "personal:example-alpha/GLM-5.2";
 
     useZCodeSessionStore
       .getState()
@@ -1305,7 +1304,7 @@ describe("useZCodeSessionStore provider preference", () => {
 
   it("相同 workspace 配置不会重复通知订阅者", () => {
     const workspacePath = "/tmp/workspace-config-options-dedupe";
-    const modelValue = "account:zai-start-plan/GLM-5.2";
+    const modelValue = "personal:example-beta/GLM-5.2";
     let notificationCount = 0;
     const unsubscribe = useZCodeSessionStore.subscribe(() => {
       notificationCount += 1;
@@ -1327,7 +1326,7 @@ describe("useZCodeSessionStore provider preference", () => {
   it("相同 task 配置不会重复通知订阅者", () => {
     const workspacePath = "/tmp/workspace-task-config-options-dedupe";
     const taskId = "task-config-dedupe";
-    const modelValue = "account:zai-start-plan/GLM-5.2";
+    const modelValue = "personal:example-beta/GLM-5.2";
     let notificationCount = 0;
     const unsubscribe = useZCodeSessionStore.subscribe(() => {
       notificationCount += 1;
