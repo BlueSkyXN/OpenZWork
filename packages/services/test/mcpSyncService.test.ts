@@ -9,34 +9,23 @@ function makeHome() {
   return mkdtempSync(join(tmpdir(), "zcode-mcp-sync-home-"));
 }
 
-async function writeZcodeUserMcp(
-  home: string,
-  servers: Record<string, Record<string, unknown>>,
-) {
-  const configPath = join(home, ".zcode", "cli", "config.json");
-  await mkdir(join(home, ".zcode", "cli"), { recursive: true });
-  await writeFile(
-    configPath,
-    `${JSON.stringify({ mcp: { servers } }, null, 2)}\n`,
-  );
+async function writeZcodeUserMcp(home: string, servers: Record<string, Record<string, unknown>>) {
+  // 修复依据：用户级 MCP 归 OpenZWork 数据根；项目级 .zcode 仍沿用现有配置约定。
+  const configPath = join(home, ".openzwork", "cli", "config.json");
+  await mkdir(join(home, ".openzwork", "cli"), { recursive: true });
+  await writeFile(configPath, `${JSON.stringify({ mcp: { servers } }, null, 2)}\n`);
   return configPath;
 }
 
-async function writeAgentsUserMcp(
-  home: string,
-  servers: Record<string, Record<string, unknown>>,
-) {
+async function writeAgentsUserMcp(home: string, servers: Record<string, Record<string, unknown>>) {
   const configPath = join(home, ".agents", "mcp.json");
   await mkdir(join(home, ".agents"), { recursive: true });
-  await writeFile(
-    configPath,
-    `${JSON.stringify({ mcpServers: servers }, null, 2)}\n`,
-  );
+  await writeFile(configPath, `${JSON.stringify({ mcpServers: servers }, null, 2)}\n`);
   return configPath;
 }
 
 async function readRemoteZcodeServers(home: string) {
-  const raw = await readFile(join(home, ".zcode", "cli", "config.json"), "utf-8");
+  const raw = await readFile(join(home, ".openzwork", "cli", "config.json"), "utf-8");
   const parsed = JSON.parse(raw) as {
     mcp?: { servers?: Record<string, Record<string, unknown>> };
   };
@@ -74,7 +63,7 @@ describe("mcp sync service", () => {
         name: "context7",
         enabled: true,
         source: "zcode",
-        path: join(home, ".zcode", "cli", "config.json"),
+        path: join(home, ".openzwork", "cli", "config.json"),
         config: {
           command: "npx",
           args: ["-y", "@upstash/context7-mcp"],
@@ -193,8 +182,8 @@ describe("mcp sync service", () => {
     process.env.HOME = home;
     // 迁移必须幂等：没有残留字段时不能重写文件，否则每次列举候选都会动用户的配置。
     // 故意用非规范化的紧凑 JSON 落盘，任何重写都会改变字节内容。
-    const configPath = join(home, ".zcode", "cli", "config.json");
-    await mkdir(join(home, ".zcode", "cli"), { recursive: true });
+    const configPath = join(home, ".openzwork", "cli", "config.json");
+    await mkdir(join(home, ".openzwork", "cli"), { recursive: true });
     const raw = JSON.stringify({
       mcp: {
         servers: {
@@ -223,21 +212,21 @@ describe("mcp sync service", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      path: join(remoteHome, ".zcode", "cli"),
+      path: join(remoteHome, ".openzwork", "cli"),
     });
   });
 
   it("reports remote MCP write preflight failure when cli path is not a directory", async () => {
     const remoteHome = makeHome();
     process.env.HOME = remoteHome;
-    await mkdir(join(remoteHome, ".zcode"), { recursive: true });
-    await writeFile(join(remoteHome, ".zcode", "cli"), "not a directory");
+    await mkdir(join(remoteHome, ".openzwork"), { recursive: true });
+    await writeFile(join(remoteHome, ".openzwork", "cli"), "not a directory");
     const service = createMcpSyncService();
 
     const result = await service.checkRemoteUserMcpWriteAccess();
 
     expect(result.ok).toBe(false);
-    expect(result.path).toBe(join(remoteHome, ".zcode", "cli"));
+    expect(result.path).toBe(join(remoteHome, ".openzwork", "cli"));
     expect(result.error).toBeTruthy();
   });
 
@@ -328,7 +317,7 @@ describe("mcp sync service", () => {
             id: "docs-api",
             name: "docsApi",
             source: "zcode",
-            path: "/Users/local/.zcode/cli/config.json",
+            path: "/Users/local/.openzwork/cli/config.json",
             enabled: true,
             config: {
               type: "http",
@@ -341,8 +330,7 @@ describe("mcp sync service", () => {
         overwrite: false,
       });
 
-      const configMode = (await stat(join(remoteHome, ".zcode", "cli", "config.json")))
-        .mode;
+      const configMode = (await stat(join(remoteHome, ".openzwork", "cli", "config.json"))).mode;
       expect(configMode & 0o777).toBe(0o600);
     } finally {
       process.umask(previousUmask);
@@ -367,8 +355,8 @@ describe("mcp sync service", () => {
 
     const remoteHome = makeHome();
     process.env.HOME = remoteHome;
-    const invalidConfigPath = join(remoteHome, ".zcode", "cli", "config.json");
-    await mkdir(join(remoteHome, ".zcode", "cli"), { recursive: true });
+    const invalidConfigPath = join(remoteHome, ".openzwork", "cli", "config.json");
+    await mkdir(join(remoteHome, ".openzwork", "cli"), { recursive: true });
     await writeFile(invalidConfigPath, '{"mcp":');
     const remoteService = createMcpSyncService();
 
@@ -411,9 +399,7 @@ describe("mcp sync service", () => {
         },
       },
     ]);
-    expect(result.servers[0]?.file?.filePath).toBe(
-      join(home, ".zcode", "cli", "config.json"),
-    );
+    expect(result.servers[0]?.file?.filePath).toBe(join(home, ".openzwork", "cli", "config.json"));
   });
 
   it("loads workspace MCP before user MCP using the same directory precedence", async () => {
@@ -530,7 +516,7 @@ describe("mcp sync service", () => {
       {
         name: "context7",
         status: "skipped",
-        path: join(remoteHome, ".zcode", "cli", "config.json"),
+        path: join(remoteHome, ".openzwork", "cli", "config.json"),
       },
     ]);
     const remoteServers = await readRemoteZcodeServers(remoteHome);

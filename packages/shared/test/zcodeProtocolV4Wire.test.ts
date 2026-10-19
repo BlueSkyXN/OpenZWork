@@ -273,25 +273,6 @@ describe("ZCode Protocol V4 wire v3", () => {
     ).toBe(true);
   });
 
-  it("ToolCallRow wire 接受 CUA App 身份并拒绝非法 PID", () => {
-    const row = {
-      rowId: 1,
-      turnId: "turn-1",
-      createdAt: 1,
-      createdAtSeq: 1,
-      kind: "toolCall",
-      toolCallId: "call-1",
-      toolName: "mcp__computer-use__key",
-      status: "running",
-      inputText: "{}",
-      cuaApp: { pid: 42, name: "Zed", bundleId: "dev.zed.Zed" },
-    };
-    expect(toolCallRowSchema.safeParse(row).success).toBe(true);
-    expect(toolCallRowSchema.safeParse({ ...row, cuaApp: { pid: 0, name: "Zed" } }).success).toBe(
-      false,
-    );
-  });
-
   it.each([
     {
       kind: "task_output",

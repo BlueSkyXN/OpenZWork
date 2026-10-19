@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, normalize } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
 import type { McpPort, McpServerConfig } from "@zcode/contracts";
@@ -106,10 +106,13 @@ describe("project MCP config", () => {
         ["plugin:ios-dev:ios-simulator", "node_repl"],
       ]);
       expect(connectedConfigs[0]?.["plugin:ios-dev:ios-simulator"]).toMatchObject({
-        args: [join(pluginRoot, "server.js")],
         command: "node",
         type: "stdio",
       });
+      // 模板只替换根目录，Windows 上保留的正斜杠仍指向同一文件；比较规范化后的路径。
+      expect(
+        connectedConfigs[0]?.["plugin:ios-dev:ios-simulator"]?.args?.map(normalize),
+      ).toEqual([join(pluginRoot, "server.js")]);
 
       await app.close();
     } finally {
