@@ -60,7 +60,6 @@ const { environment: zcodeEnv } = await loadBuiltinProviderConfig();
 const zcodeProductFlavor = resolveDesktopProductFlavor({ ...process.env, ZCODE_ENV: zcodeEnv });
 console.log(`[tsup] ZCODE_ENV=${zcodeEnv} ZCODE_PRODUCT_FLAVOR=${zcodeProductFlavor}`);
 
-
 function createSharedDefines() {
   return {
     __ZCODE_VERSION__: JSON.stringify(buildMetadata.appVersion),
@@ -72,6 +71,25 @@ function createSharedDefines() {
     __ZCODE_CDN_BASE_URL__: JSON.stringify(env.ZCODE_CDN_BASE_URL?.trim() || ""),
   };
 }
+
+// 修复原因：清理遥测注入时连带删掉了通用构建函数，配置模块在打包前就抛 ReferenceError。
+export function resolveDesktopTsupBundleSecurityOptions(
+  runtimeEnv: Record<string, string | undefined> = process.env,
+) {
+  const isProduction = runtimeEnv.NODE_ENV === "production";
+  const isE2ECoverageBuild = runtimeEnv.ZCODE_E2E_COVERAGE === "1";
+  return {
+    keepNames: isProduction && !isE2ECoverageBuild,
+    minify: isProduction && !isE2ECoverageBuild,
+    sourcemap: isE2ECoverageBuild || !isProduction,
+  };
+}
+
+export function applyDesktopTsupEsbuildSecurityOptions(options: { legalComments?: string }) {
+  options.legalComments = "none";
+}
+
+const desktopTsupBundleSecurityOptions = resolveDesktopTsupBundleSecurityOptions();
 
 const desktopNodeRuntimeExternals = [
   "electron",
@@ -123,7 +141,7 @@ export default defineConfig([
       "@zcode/provider",
       "@zcode/provider-node",
     ],
-    define: createMainDefines(),
+    define: createSharedDefines(),
     // 修复原因：main/host 同时 watch 且共享 out 根目录时，默认 chunk 命名会互相覆盖，
     // 可能让 main 的 import 指向被 host 刚重写的 chunk，触发“缺少命名导出”的偶发启动报错。
     // 这里按目标分目录输出 chunk，确保并发构建下产物隔离。
