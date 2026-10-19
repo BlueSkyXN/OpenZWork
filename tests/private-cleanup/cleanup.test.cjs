@@ -639,3 +639,34 @@ test('[structural, not runtime] WP-03: remote deploy/startup and distribution de
   // 上游账号域孤儿（WP-04 删除链幸存、零消费者）已物理删除。
   assert.equal(fs.existsSync(path.join(root, 'packages/shared/src/account-provider-state.ts')), false);
 });
+
+test('[structural] v3.15.1 sync: GenUI/MCP Apps host services stay registered', () => {
+  // 修复原因：上游合并曾丢失 createLocalServices 的四个服务注册，RemoteServiceAccess 的
+  // 代理频道 1s 超时失败并拖慢消息发送。结构断言防止下次同步再丢。
+  const node = fs.readFileSync(path.join(root, 'packages/services/src/node.ts'), 'utf8');
+  assert.match(node, /\.register\(\s*IGenUiService/);
+  assert.match(node, /\.register\(\s*IPluginUiBridgeService/);
+  assert.match(node, /\.register\(\s*IPluginUiSamplingService/);
+  assert.match(node, /\.register\(\s*IPluginUiAppToolsService/);
+});
+
+test('[structural] v3.15.1 sync: workflow child runtime mirrors interaction events to parent', () => {
+  // 修复原因：上游 v3.15.1 给 notifyExternalChildSessionEvent 加了 interactionOrigin，
+  // 合并时丢失会让工作流子代理的提问/确认窗永不出现在父会话、任务无限等待。
+  const child = fs.readFileSync(
+    path.join(root, 'apps/zcode-cli/packages/bootstrap/src/app/script-workflow-child-runtime.ts'),
+    'utf8',
+  );
+  assert.match(child, /notifyExternalChildSessionEvent\(\{[\s\S]*?interactionOrigin: clientPortsContext/);
+});
+
+test('[structural] v3.15.1 sync: mcpUserDirectory workspace config uses OpenZWork data dir', () => {
+  // 修复原因：合并把项目级目录带回上游 .zcode；fork 身份隔离（WP-03）用户级与项目级统一
+  // .openzwork。测试路径替换暴露后修的实现侧。
+  const index = fs.readFileSync(
+    path.join(root, 'packages/desktop/src/main/mcpUserDirectory/index.ts'),
+    'utf8',
+  );
+  assert.match(index, /workspaceConfigDirSegments: \[OPENZWORK_DATA_DIR_NAME\]/);
+  assert.doesNotMatch(index, /workspaceConfigDirSegments: \["\.zcode"\]/);
+});

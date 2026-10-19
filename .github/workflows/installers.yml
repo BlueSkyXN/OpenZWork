@@ -80,6 +80,11 @@ jobs:
       - name: Install dependencies (frozen lockfile, with scripts)
         run: pnpm install --frozen-lockfile
 
+      # 同 ci.yml：恢复 pnpm 11 hoisted 布局下被挪进 .ignored/ 的内层直接依赖。
+      # （此工作流带 scripts 安装，postinstall 已跑过一次；显式再跑幂等，防御两路径漂移。）
+      - name: Restore inner hoisted deps from .ignored
+        run: node scripts/restore-inner-hoisted-deps.mjs
+
       # bundle = prepare:runtime-assets + 生产构建 + electron-builder + 运行时依赖校验 + 体积审计。
       # ZCODE_SKIP_REMOTE_ASSETS=1：桌面安装包不依赖跨平台 remote 预编译产物（上游 Windows job 同款开关）。
       - name: Package installer (prepare + build + electron-builder)

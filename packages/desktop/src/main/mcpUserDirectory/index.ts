@@ -39,7 +39,9 @@ const ZCODE_MCP_DESCRIPTOR: DirectoryMcpDescriptor = {
   source: "zcodeagentmcp",
   directorySource: "zcode",
   userConfigDirSegments: [OPENZWORK_DATA_DIR_NAME, "cli"],
-  workspaceConfigDirSegments: [".zcode"],
+  // 修复原因：v3.15.1 合并把项目级目录带回上游的 .zcode；fork 的身份隔离口径是
+  // 用户级与项目级统一 .openzwork（WP-03），此处与 desktop 其余路径解析同源。
+  workspaceConfigDirSegments: [OPENZWORK_DATA_DIR_NAME],
   fileName: "config.json",
   format: "json",
   configKeyName: "mcp.servers",

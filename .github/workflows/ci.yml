@@ -41,6 +41,12 @@ jobs:
       - name: Install dependencies (frozen lockfile, no scripts)
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      # pnpm 11 hoisted 会把内层包的直接依赖挪进 node_modules/.ignored/（含 scoped
+      # .ignored_name），导致 contracts 的 zod@3 解析漂移到根的 zod@4。--ignore-scripts
+      # 跳过了根 postinstall，这里显式执行同一恢复脚本（幂等）。
+      - name: Restore inner hoisted deps from .ignored
+        run: node scripts/restore-inner-hoisted-deps.mjs
+
       - name: Workspace TypeScript version (must be 6.x, not global)
         run: pnpm exec tsc --version
 
