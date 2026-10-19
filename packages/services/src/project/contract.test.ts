@@ -243,24 +243,29 @@ it("routes every foreign project operation to its existing owner and never falls
 
 it("browses owner directories without touching project storage or admitting a session", async () => {
   const repository = vi.fn();
-  const directories = { home: async () => "/owner", read: vi.fn(async () => []) };
+  const ownerHome = join(tmpdir(), "project-directory-owner");
+  const anotherDirectory = join(tmpdir(), "project-directory-another");
+  const directories = { home: async () => ownerHome, read: vi.fn(async () => []) };
   const service = createProjectService({
     repository,
     workspaceDirectory: "/workspace",
     directories,
   });
-  expect(await service.readDirectory()).toEqual({ path: "/owner", entries: [] });
-  expect(directories.read).toHaveBeenCalledWith({ path: "/owner" });
-  await service.readDirectory({ path: "/another", includeHidden: true });
-  expect(directories.read).toHaveBeenLastCalledWith({ path: "/another", includeHidden: true });
+  expect(await service.readDirectory()).toEqual({ path: ownerHome, entries: [] });
+  expect(directories.read).toHaveBeenCalledWith({ path: ownerHome });
+  await service.readDirectory({ path: anotherDirectory, includeHidden: true });
+  expect(directories.read).toHaveBeenLastCalledWith({
+    path: anotherDirectory,
+    includeHidden: true,
+  });
   await expect(service.readDirectory({ path: "relative" })).rejects.toThrow(
     "project.absolute-path-required",
   );
-  expect(await service.readDirectory({ path: "/owner/child/../folder" })).toEqual({
-    path: "/owner/folder",
+  expect(await service.readDirectory({ path: `${ownerHome}/child/../folder` })).toEqual({
+    path: join(ownerHome, "folder"),
     entries: [],
   });
-  expect(directories.read).toHaveBeenLastCalledWith({ path: "/owner/folder" });
+  expect(directories.read).toHaveBeenLastCalledWith({ path: join(ownerHome, "folder") });
   expect(repository).not.toHaveBeenCalled();
 });
 
