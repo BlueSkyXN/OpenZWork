@@ -4,7 +4,7 @@
 
 消除 `CI` 与 `Installers` 工作流中 JavaScript Action 声明使用 Node.js 20 的弃用提示，不依赖 GitHub runner 强制切换旧 Action 的运行时。
 
-本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml` 和对应的离线结构测试；保留已有 Linux 矩阵扩展。产品整合验收另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md)。
+本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md)。
 
 ## 所有者与边界
 
@@ -26,7 +26,7 @@
 | `pnpm/action-setup`       | `v6.1.0` |
 | `actions/upload-artifact` | `v7.0.1` |
 
-两份工作流引用相同的精确版本，不使用 `latest`、浮动主版本或运行时强制降级变量。以后更新版本时同步审查此契约与结构测试。
+三份工作流引用相同的精确版本，不使用 `latest`、浮动主版本或运行时强制降级变量。以后更新版本时同步审查此契约与结构测试。
 
 ## 行为与兼容性规则
 
@@ -39,9 +39,10 @@
 7. Node.js 24 Action 要求 Actions Runner 至少 `2.327.1`。当前使用 GitHub 托管 runner；若以后迁移到自托管 runner，必须先核对 runner 版本。checkout 的 Docker container action 认证操作另要求至少 `2.329.0`，当前工作流无此操作。
 8. checkout v7 对 `pull_request_target`/`workflow_run` 的 fork checkout 安全限制不应绕过；当前工作流不使用这两种触发器。
 9. 依赖目录由固定版本 pnpm 按 lockfile 安装。干净 runner 不从旧 `.ignored` 目录恢复依赖，不使用安装后目录搬移补救版本解析。
-10. 单元测试使用完整发现范围，首个失败后结束本轮执行以尽早返回失败日志；没有失败时执行全部用例。不得使用跳过失败或放宽断言取得绿灯。
+10. 核心 CI 执行明确列出的保留能力回归；完整历史套件由独立扩展工作流按原发现范围执行。核心清单中的文件缺失必须失败，不能动态过滤失效用例或放宽断言取得绿灯。
 11. 完整检查和安装包构建在 GitHub 托管 runner 执行。候选分支推送可在明确授权下单次跳过本地钩子的重复全量检查；不修改钩子或合并门槛。
-12. 全量单测前先按相同范围收集测试模块。加载检查列出全部语法、导入和顶层初始化错误，直接保留失败状态；加载通过后再执行原有单元测试，避免每轮 CI 只发现首批加载失败。
+12. 历史套件加载、实际断言和 Desktop Main 诊断在扩展工作流中报告；核心 CI 不等待它们。扩展检查保留失败退出码并上传日志和结果，不使用 `continue-on-error` 伪装成功。
+13. 扩展单测执行完整依赖安装，准备真实 Electron；Main 类型审计可使用无安装脚本的依赖安装。扩展任务不成为 Installers 或核心 CI 的 `needs` 依赖。
 
 ## 验收场景与验证
 

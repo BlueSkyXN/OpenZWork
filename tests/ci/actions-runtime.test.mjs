@@ -16,14 +16,14 @@ const actionVersions = {
   "actions/upload-artifact": "v7.0.1",
 };
 const workflows = await Promise.all(
-  ["ci.yml", "installers.yml"].map(async (name) => {
+  ["ci.yml", "installers.yml", "extended-checks.yml"].map(async (name) => {
     const source = await readFile(new URL(`.github/workflows/${name}`, root), "utf8");
     const document = parseDocument(source);
     assert.deepEqual(document.errors, [], `${name}: valid YAML`);
     return document.toJS();
   }),
 );
-const [ci, installers] = workflows;
+const [ci, installers, extended] = workflows;
 const ciSteps = ci.jobs.checks.steps;
 const installerSteps = installers.jobs.installer.steps;
 
@@ -36,10 +36,12 @@ function actionStep(steps, action) {
 for (const [name, steps] of [
   ["CI", ciSteps],
   ["Installers", installerSteps],
+  ["Extended tests", extended.jobs["historical-tests"].steps],
+  ["Main audit", extended.jobs["desktop-main-audit"].steps],
 ]) {
   test(`${name} uses the reviewed Node.js 24 Action releases`, () => {
     const actions = steps.filter((step) => step.uses);
-    assert.equal(actions.length, name === "CI" ? 4 : 5);
+    assert.equal(actions.length, name === "Main audit" ? 4 : 5);
     for (const step of actions) {
       const [action, version] = step.uses.split("@");
       assert.ok(Object.hasOwn(actionVersions, action), `${action}: reviewed Action`);
@@ -64,6 +66,8 @@ test("dependency installation keeps each workflow's lifecycle-script policy", ()
   for (const [steps, command] of [
     [ciSteps, "pnpm install --frozen-lockfile --ignore-scripts"],
     [installerSteps, "pnpm install --frozen-lockfile"],
+    [extended.jobs["historical-tests"].steps, "pnpm install --frozen-lockfile"],
+    [extended.jobs["desktop-main-audit"].steps, "pnpm install --frozen-lockfile --ignore-scripts"],
   ]) {
     const installs = steps.filter((step) => step.run?.startsWith("pnpm install"));
     assert.equal(installs.length, 1);

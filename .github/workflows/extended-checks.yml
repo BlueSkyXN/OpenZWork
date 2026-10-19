@@ -1,0 +1,104 @@
+name: Extended checks (non-blocking)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: extended-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  historical-tests:
+    name: full suite (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            platform: macos-arm64
+          - os: windows-latest
+            platform: windows-amd64
+          - os: ubuntu-latest
+            platform: linux-amd64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 11.28.6
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # 完整历史测试包含真实 Electron 字节码等运行时测试，执行依赖安装脚本。
+      - name: Install dependencies with runtime scripts
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace declarations
+        run: pnpm typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+
+      - name: Cache turbo task outputs
+        uses: actions/cache@v6.1.0
+        with:
+          path: apps/zcode-cli/.turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Prepare Agent workspace
+        working-directory: apps/zcode-cli
+        env:
+          PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false"
+        run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
+
+      - name: Full historical unit suite
+        id: full_tests
+        run: pnpm test:unit --reporter=default --reporter=json --outputFile=.run-logs/full-unit-tests.json
+
+      - name: Upload full suite results
+        if: always() && steps.full_tests.outcome != 'skipped'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: extended-tests-${{ matrix.platform }}
+          path: .run-logs/full-unit-tests.json
+          archive: true
+          if-no-files-found: error
+
+  desktop-main-audit:
+    name: Desktop Main baseline audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 11.28.6
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+      - name: Install dependencies without runtime scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build workspace declarations
+        run: pnpm typecheck
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+      - name: Prepare diagnostic directory
+        run: node --input-type=module -e "import { mkdir } from 'node:fs/promises'; await mkdir('.run-logs', { recursive:true });"
+      - name: Audit Desktop Main types
+        id: main_audit
+        run: pnpm exec tsc -p packages/desktop/tsconfig.main.json --noEmit --pretty false > .run-logs/desktop-main-typecheck.log 2>&1
+      - name: Upload Main diagnostics
+        if: always() && steps.main_audit.outcome != 'skipped'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-main-diagnostics
+          path: .run-logs/desktop-main-typecheck.log
+          archive: true
+          if-no-files-found: error

@@ -15,6 +15,26 @@
 - 外部 relay transport 保留握手、配对、心跳和重连状态机及本地日志，不导入已移除的网络遥测模块。远程重连测试仅传递当前平台合同中的目标和工作区身份。
 - 打开本地工作区的 deep link 保留路径规范化、编码与单实例转发；共享的路径处理不依赖已移除的官方登录回调。
 
+## CI/CD 验收口径
+
+- 本版本以核心自动化 CI 与三平台 Installers 成功为完成条件，不要求人工 UAT、试装、真实用户或历史用户数据升级验收。
+- `CI` 保留根类型检查、lint、架构检查、Agent 类型检查、CLI 真实构建产物检查、清理约束和核心功能回归。核心用例清单按保留能力维护，缺少清单中的文件直接失败，不能自动跳过。
+- 核心回归覆盖协议、会话状态和恢复、Host 装配与生命周期、标准 MCP、Browser Use、node_repl、工作流和 GenUI/MCP Apps。已损坏的核心混合测试先恢复保留场景，不通过删除测试降低门禁。
+- `Extended checks` 独立运行完整历史测试和 Desktop Main 基线诊断。失败保持真实状态、日志与产物，不作为本轮合并或发布的前置条件；发现保留能力的实际回归后，将其修复和定向回归纳入核心 CI。
+- 需要真实 Electron 的扩展测试使用完整安装环境；核心检查继续采用不执行安装脚本的轻量安装。真实 Electron 断言不能以空模拟对象代替。
+- Installers 与核心、扩展检查独立并行。当前 CI 内已有的路径、远端 bundle 和本地传输自动化测试仍保留，其结果不扩大表述为真实 SSH/WSL/Docker 人工验收。
+- 额外 Main 类型诊断作为排查输入，不自动增加新的发布条件。候选检查不会自动合并、打 tag 或发布，也不修改仓库权限或分支保护。
+
+```mermaid
+flowchart LR
+    C[同一候选提交] --> K[CI：静态检查与核心回归]
+    C --> I[Installers：三平台产物]
+    C --> E[Extended checks：历史全量与 Main 诊断]
+    K --> G[版本验收结果]
+    I --> G
+    E --> R[独立失败报告与迁移清单]
+```
+
 ## 所有者和接口
 
 - `createLocalServices` 创建并注册 GenUI、Plugin UI Bridge、Sampling 和 App Tools；调用方通过现有 RPC 服务描述符访问。
@@ -51,6 +71,6 @@ sequenceDiagram
 2. Server 连接保持 desktop-continuous 与 web-remote-replayable 两种交付语义，并验证一次性 Host capability 和资源回查归属。外部 relay 的真实 socket transport、Manager 启动恢复、bridge attachment、历史重连与手机版本处理独立进入三平台 CI。
 3. 工作流子代理提问与权限请求可在父会话显示、回答并终结；沿用 bootstrap 的行为测试，失败必须进入 CI 结果。
 4. 实际生成的 CLI 接受 `--workflow-mode`，并继续拒绝未知参数；验证入口必须使用产物或能证明产物输入来源的构建测试。
-5. Node 24.14.0 / pnpm 11.28.6 的干净安装执行根类型检查、lint、架构检查、Agent 类型检查和单元测试。安装仅依赖 lockfile，不搬回本机历史 `.ignored` 内容。
-6. 三平台安装包通过独立 Installers 工作流构建；CI、打包、安装后体验、合并和发布分别记录结果。候选验证不自动合并或发布。
+5. Node 24.14.0 / pnpm 11.28.6 的干净安装执行根类型检查、lint、架构检查、Agent 类型检查和核心单元测试；完整历史套件在独立扩展工作流中报告。安装仅依赖 lockfile，不搬回本机历史 `.ignored` 内容。
+6. 三平台安装包通过独立 Installers 工作流构建；核心 CI、扩展检查、打包、合并和发布分别记录结果。候选验证不自动合并或发布。
 7. Host 服务装配、远端权威和 Server 连接回归在全量单元测试之前独立执行，使关键连接能力的失败可直接定位。
