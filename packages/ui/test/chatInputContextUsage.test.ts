@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildContextUsageBreakdownSegments,
   formatContextCacheHitRateLabel,
   formatContextUsageSummary,
   formatContextUsageTokenCount,
@@ -7,6 +8,30 @@ import {
 import { runContextPanelActionWithClose } from "@/chat-input-toolbar/contextPanelAction.js";
 
 describe("chat input context usage formatting", () => {
+  // 修复原因：上游混合测试含套餐组件，整文件删除误带走保留的上下文统计覆盖。
+  it("aggregates positive context chars by source and sorts largest first", () => {
+    expect(
+      buildContextUsageBreakdownSegments([
+        { source: "messages", chars: 700 },
+        { source: "system_tool_schemas", chars: 200 },
+        { source: "messages", chars: 100 },
+        { source: "skills", chars: 0 },
+      ]),
+    ).toEqual([
+      { source: "messages", chars: 800, percent: 0.8 },
+      { source: "system_tool_schemas", chars: 200, percent: 0.2 },
+    ]);
+  });
+
+  it("does not invent context segments for empty or nonpositive usage", () => {
+    expect(
+      buildContextUsageBreakdownSegments([
+        { source: "messages", chars: 0 },
+        { source: "skills", chars: -1 },
+      ]),
+    ).toEqual([]);
+  });
+
   it("uses uppercase English compact units", () => {
     expect(formatContextUsageTokenCount(1_250, "en-US")).toBe("1.3K");
     expect(formatContextUsageTokenCount(1_500_000, "en-US")).toBe("1.5M");
