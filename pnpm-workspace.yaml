@@ -2,6 +2,11 @@
 # nodeLinker=hoisted 是既有布局（Electron 打包与桌面运行时依赖真实目录树），
 # 从 .npmrc 迁移而来，行为不变。
 nodeLinker: hoisted
+# pnpm 11 默认在 run 前校验依赖并触发安装；嵌套 workspace（apps/zcode-cli 是独立
+# workspace 成员）解析不到外层 packages/*（如 @zcode/model-option-map），校验必失败。
+# 与 scripts/build-desktop-agent-cli.mjs 的 PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=0 等效，
+# 但持久化在配置里，turbo 等任何子进程链路都生效。
+verifyDepsBeforeRun: false
 packages:
   - apps/dev-docs
   - packages/*

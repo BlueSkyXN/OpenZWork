@@ -76,6 +76,10 @@ jobs:
 
       - name: Agent workspace typecheck (turbo)
         working-directory: apps/zcode-cli
+        # pnpm 11 的 verify-deps-before-run 会在 run 前触发内层 install；嵌套 workspace
+        # 解析不到根的 @zcode/shared（与 build-desktop-agent-cli.mjs 同款关闭）。
+        env:
+          PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: "false"
         run: npx --yes turbo@2.9.14 run typecheck --cache-dir=.turbo
 
       # stage1 私有化清理的结构断言（当前 33 个顶层用例；WP-03/08/09 扫描为 git 全仓口径）。
