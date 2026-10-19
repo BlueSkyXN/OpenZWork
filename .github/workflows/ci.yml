@@ -103,7 +103,7 @@ jobs:
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/mcp-ui-connection-ready.test.ts tests/script-workflow.test.ts --bail=1
 
       - name: Standard MCP transport regression
-        run: pnpm --filter @zcode/adapters exec vitest run tests/mcp-stdio-transport.test.ts --bail=1
+        run: pnpm --filter @zcode/adapters exec vitest run tests/mcp-stdio-transport.test.ts tests/mcp-oauth-lease.test.ts
 
       - name: Standard MCP project configuration regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/mcp-project-config.test.ts --bail=1
