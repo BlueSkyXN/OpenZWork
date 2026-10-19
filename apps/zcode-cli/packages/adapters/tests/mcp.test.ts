@@ -1,8 +1,13 @@
-import { dirname } from "node:path";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { UnauthorizedError } from "@modelcontextprotocol/client";
 import { ZCODE_TOOL_ENV_PASSTHROUGH_ENV_KEY } from "@zcode/shared";
-import type { SharedZCodeCredentialStore } from "../src/auth/shared-credentials.js";
+import {
+  createSharedZCodeCredentialStore,
+  type SharedZCodeCredentialStore,
+} from "../src/auth/shared-credentials.js";
 
 const {
   capturedClientInfo,
@@ -108,7 +113,7 @@ vi.mock("@modelcontextprotocol/client/stdio", () => ({
   },
 }));
 
-import { createMcpAdapter } from "../src/mcp/index.js";
+import { createMcpAdapter as createAdapter } from "../src/mcp/index.js";
 import { createMcpTelemetryTracker } from "../src/mcp/telemetry.js";
 
 /**
@@ -175,7 +180,23 @@ async function observePromiseWithin<T>(
 }
 
 describe("createMcpAdapter", () => {
-  beforeEach(() => {
+  let temporaryDirectory: string;
+  let credentialStore: SharedZCodeCredentialStore;
+
+  function createMcpAdapter(options: Parameters<typeof createAdapter>[0] = {}) {
+    return createAdapter({
+      ...options,
+      mcpOAuth: { credentialStore, ...options.mcpOAuth },
+    });
+  }
+
+  beforeEach(async () => {
+    temporaryDirectory = await mkdtemp(join(tmpdir(), "zcode-mcp-adapter-"));
+    // 首次运行时父目录尚不存在；每个用例独立存储，避免本机凭据及授权 lease 掩盖错误。
+    credentialStore = createSharedZCodeCredentialStore({
+      env: { ZCODE_CREDENTIAL_SECRET: "mcp-adapter-test-secret" },
+      filePath: join(temporaryDirectory, "uncreated", "v2", "credentials.json"),
+    });
     capturedClientInfo.length = 0;
     capturedHttpOptions.length = 0;
     capturedSseOptions.length = 0;
@@ -198,6 +219,10 @@ describe("createMcpAdapter", () => {
     clientCallToolMock.mockResolvedValue({
       content: [{ type: "text", text: "ok" }],
     });
+  });
+
+  afterEach(async () => {
+    await rm(temporaryDirectory, { recursive: true, force: true });
   });
 
   it("waits for the existing App connection without exposing a premature snapshot or reconnecting", async () => {
@@ -1072,8 +1097,10 @@ describe("createMcpAdapter", () => {
     });
 
     try {
-      // URL 发布先等待异步凭据存储；用回调完成事件同步，避免固定 200ms 轮询提前断言。
-      await ready;
+      // 同时观察连接终态；Phase 2 若提前失败，应显示真实状态而不是等 ready 直到超时。
+      await expect(Promise.race([ready.then(() => "authorization-ready"), connect])).resolves.toBe(
+        "authorization-ready",
+      );
       await expect(adapter.status()).resolves.toMatchObject({
         notion: {
           status: "connecting",

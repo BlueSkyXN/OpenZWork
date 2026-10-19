@@ -97,7 +97,7 @@ jobs:
         run: pnpm --filter @zcode/core exec vitest run tests/tool-search-execution.test.ts tests/tool-search-hydration.test.ts tests/tool-search-result-budget.test.ts tests/tool-search-subagent.test.ts tests/tool-search-request-preparation.test.ts --bail=1
 
       - name: ToolSearch MCP and connection lifecycle regression
-        run: pnpm --filter @zcode/adapters exec vitest run tests/tool-search-capability.test.ts tests/tool-search-mcp.test.ts tests/tool-search-wire.test.ts tests/plugin-mcp-always-load.test.ts tests/plugin-mcp-tool-search-wire.test.ts tests/mcp-connection-pool.test.ts tests/mcp.test.ts --bail=1
+        run: pnpm --filter @zcode/adapters exec vitest run tests/tool-search-capability.test.ts tests/tool-search-mcp.test.ts tests/tool-search-wire.test.ts tests/plugin-mcp-always-load.test.ts tests/plugin-mcp-tool-search-wire.test.ts tests/mcp-connection-pool.test.ts tests/mcp.test.ts
 
       - name: MCP Apps readiness and workflow shell inheritance regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/mcp-ui-connection-ready.test.ts tests/script-workflow.test.ts --bail=1
