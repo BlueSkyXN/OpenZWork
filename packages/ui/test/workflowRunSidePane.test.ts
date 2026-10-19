@@ -85,17 +85,6 @@ vi.mock("@/hooks/useModelSelectionView.js", () => ({
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 // eslint-disable-next-line import/first
 import { WorkflowRunSidePane } from "@/app-shell/WorkflowRunSidePane.js";
-// eslint-disable-next-line import/first
-import { useDynamicWorkflowAvailabilityStore } from "@/store/dynamicWorkflowAvailabilityStore.js";
-
-/** 灰度快照（docs/dynamic-workflow/launch.md「Gray release」）：默认命中，面板与改动前一致。 */
-function setDynamicWorkflowEnabled(enabled: boolean): void {
-  useDynamicWorkflowAvailabilityStore.setState({
-    status: "ready",
-    enabled,
-    config: { mode: enabled ? "alwaysOn" : "disabled", enabled, source: "remote" },
-  });
-}
 
 const tab: WorkflowRunSidePaneTab = {
   id: "workflow-run:%2Fworkspace:parent-a:dwfrun-1",
@@ -308,7 +297,6 @@ beforeEach(() => {
   onOpenWorkflowActorSession.mockClear();
   onOpenWorkflowArtifact.mockClear();
   onOpenWorkflowWorkspace.mockClear();
-  setDynamicWorkflowEnabled(true);
   setSnapshot({ run: run() });
 });
 
@@ -1398,37 +1386,6 @@ describe("WorkflowRunSidePane Resume", () => {
     expect(view.queryByTestId("workflow-run-resume")).toBeNull();
     expect(workflowRunsQuery).not.toHaveBeenCalled();
   });
-
-  // 灰度（docs/dynamic-workflow/launch.md「Gray release」DWG-07）：Resume 会真的起一台引擎，
-  // 是这块面板上唯一被收走的动作；面板其余部分照旧渲染。
-  it("灰度关 → resumable 的 run 也不渲染 Resume，但状态头与阶段清单照旧", async () => {
-    setDynamicWorkflowEnabled(false);
-    setSnapshot({ run: run({ status: "stopped", resumable: true }) });
-    const view = renderPane();
-    await Promise.resolve();
-
-    expect(view.queryByTestId("workflow-run-resume")).toBeNull();
-    // 「只收 Resume」：Stop 那枚钮与阶段清单仍在，run 本身没有被藏起来。
-    expect(view.queryByTestId("workflow-run-cancel")).not.toBeNull();
-    expect(view.queryByTestId("workflow-run-phases")).not.toBeNull();
-  });
-
-  it("灰度快照未就绪（loading）→ 先不给 Resume；就绪且命中后再长出来", async () => {
-    useDynamicWorkflowAvailabilityStore.setState({
-      status: "loading",
-      enabled: false,
-      config: null,
-    });
-    setSnapshot({ run: run({ status: "stopped", resumable: true }) });
-    const view = renderPane();
-    await Promise.resolve();
-    expect(view.queryByTestId("workflow-run-resume")).toBeNull();
-
-    act(() => {
-      setDynamicWorkflowEnabled(true);
-    });
-    expect(await view.findByTestId("workflow-run-resume")).toBeDefined();
-  });
 });
 
 // ── 产物区（docs/dynamic-workflow/authoring.md「How the user sees them」）──
@@ -1861,7 +1818,10 @@ describe("WorkflowRunSidePane 阶段名册", () => {
     createElement(
       ZCodeIntlProvider,
       { initialLocale: "en-US" },
-      createElement(WorkflowRunSidePane, { tab: { ...tab, ...overrides }, onOpenWorkflowActorSession }),
+      createElement(WorkflowRunSidePane, {
+        tab: { ...tab, ...overrides },
+        onOpenWorkflowActorSession,
+      }),
     );
 
   it("tab 带 focusPhaseId：那一站展开、门开着、节头滚到顶并亮一下；换 openedAt 再落；不带就不落", () => {
@@ -1989,7 +1949,6 @@ describe("WorkflowRunSidePane lineage", () => {
 // 灰度门；能配置的 run 上，摘要行的模型段也是一个入口。Apply 被接受后面板原地换成新 run 的 tab。
 describe("WorkflowRunSidePane 配置", () => {
   beforeEach(() => {
-    setDynamicWorkflowEnabled(true);
     globalThis.ResizeObserver ??= class {
       observe() {}
       unobserve() {}
@@ -2046,12 +2005,6 @@ describe("WorkflowRunSidePane 配置", () => {
     const view = renderPane();
     expect(view.queryByTestId("workflow-run-configure")).toBeNull();
     expect(view.getByTestId("workflow-run-subagent-model").tagName).toBe("SPAN");
-  });
-
-  it("灰度关：没有 Configure", () => {
-    setDynamicWorkflowEnabled(false);
-    setSnapshot({ run: run() });
-    expect(renderPane().queryByTestId("workflow-run-configure")).toBeNull();
   });
 
   it("zh-CN 念「配置」；能配置时模型段是按钮，点它与点 Configure 开的是同一个弹层", () => {

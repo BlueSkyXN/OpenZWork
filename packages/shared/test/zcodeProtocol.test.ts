@@ -1,3 +1,418 @@
+import { describe, expect, it } from "vitest";
+import {
+  DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
+  ZCODE_PROTOCOL_NAME,
+  ZCODE_PROTOCOL_VERSION,
+  zcodeProviderRuntimeHeadersRequestParamsSchema,
+  zcodeProviderRuntimeHeadersResponseSchema,
+  zcodeProtocolMethods,
+  zcodeProtocolMessageSchema,
+  zcodeProcessResourceSampleSchema,
+  zcodeProtocolNotifications,
+  zcodeMcpListParamsSchema,
+  zcodeModelFormatPropertiesSchema,
+  zcodeMcpTelemetryEventSchema,
+  zcodeSessionCreateParamsSchema,
+  zcodeSessionCompactParamsSchema,
+  zcodeSessionEventSchema,
+  zcodeSessionEventsResultSchema,
+  zcodeSessionResumeParamsSchema,
+  zcodeSessionSubagentsParamsSchema,
+  zcodeSessionSubagentsResultSchema,
+  zcodeSessionSendParamsSchema,
+  zcodeSessionSetModelParamsSchema,
+  zcodeSessionSetThoughtLevelParamsSchema,
+  zcodeSessionRuntimePreferencesResultSchema,
+  zcodeSessionSettingsStateSchema,
+  zcodeSessionStateSnapshotSchema,
+  zcodeStateUpdatedNotificationSchema,
+  zcodeWorkspacePresentationSchema,
+  zcodeWorkspaceReadPresentationParamsSchema,
+  zcodeWorkspaceUpdateInteractionPreferencesParamsSchema,
+  zcodeWorkspaceUpdateInteractionPreferencesResultSchema,
+  zcodeWorkspaceUpdateModelIoPreferencesParamsSchema,
+  zcodeWorkspaceUpdateModelIoPreferencesResultSchema,
+  zcodeAutomationCreateParamsSchema,
+  zcodeAutomationCheckTaskBindingParamsSchema,
+  zcodeAutomationCheckTaskBindingResultSchema,
+  zcodeAutomationUpdateParamsSchema,
+  zcodeAutomationProtocolSchema,
+} from "../src/zcode-protocol/index.js";
+import {
+  APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL,
+  appRuntimePreferencesChangedBroadcastPayloadSchema,
+} from "../src/app-runtime-preferences.js";
+import { zcodeUserMessageInfoSchema } from "../src/zcode-protocol-legacy-types.js";
+import { conversationRowSchema, workflowLaunchMetaSchema } from "../src/zcode-protocol-v4/rows.js";
+import { errorAttributionSchema } from "../src/zcode-protocol-v4/snapshot.js";
+
+const workspace = {
+  workspacePath: "/workspace/app",
+  workspaceIdentity: "remote:ssh:dev:/workspace/app",
+  workspaceKey: "remote:ssh:dev:/workspace/app",
+};
+
+const model = {
+  providerId: "glm",
+  modelId: "glm-4.6",
+};
+
+const modelProperties = {
+  inputFormat: {
+    supportsText: true,
+    supportsImage: false,
+    supportsVideo: false,
+    supportsAudio: false,
+    supportsPdf: true,
+  },
+  outputFormat: { supportsText: true },
+};
+
+describe("ZCode Protocol", () => {
+  it("模型格式能力只接受完整的嵌套 properties 契约", () => {
+    const properties = {
+      inputFormat: {
+        supportsText: true,
+        supportsImage: false,
+        supportsVideo: false,
+        supportsAudio: false,
+        supportsPdf: true,
+      },
+      outputFormat: { supportsText: true },
+    };
+
+    expect(zcodeModelFormatPropertiesSchema.parse(properties)).toEqual(properties);
+    expect(() =>
+      zcodeModelFormatPropertiesSchema.parse({
+        supportsImages: true,
+        supportsPdf: true,
+        supportsVideo: false,
+      }),
+    ).toThrow();
+    expect(() =>
+      zcodeModelFormatPropertiesSchema.parse({
+        inputFormat: {
+          supportsText: true,
+          supportsImage: false,
+          supportsVideo: false,
+          supportsPdf: true,
+        },
+        outputFormat: { supportsText: true },
+      }),
+    ).toThrow();
+  });
+
+  it("普通 Session 命令拒绝 Host runtimeModel 快照", () => {
+    const runtimeModel = {
+      revision: "model-runtime:test",
+      generatedAt: 1,
+      model,
+      provider: {
+        providerId: model.providerId,
+        kind: "anthropic",
+        apiFormat: "anthropic-messages",
+        baseURL: "https://example.com",
+        models: [{ modelId: model.modelId }],
+      },
+    };
+
+    const payloads = [
+      [zcodeSessionCreateParamsSchema, { workspace, model, runtimeModel }],
+      [zcodeSessionResumeParamsSchema, { sessionId: "session-1", runtimeModel }],
+      [
+        zcodeSessionSendParamsSchema,
+        {
+          sessionId: "session-1",
+          content: "hello",
+          expectedModelRuntimeRevision: runtimeModel.revision,
+          runtimeModel,
+        },
+      ],
+      [zcodeSessionCompactParamsSchema, { sessionId: "session-1", runtimeModel }],
+      [zcodeSessionSetModelParamsSchema, { sessionId: "session-1", model, runtimeModel }],
+      [
+        zcodeSessionSetThoughtLevelParamsSchema,
+        { sessionId: "session-1", thoughtLevel: "high", runtimeModel },
+      ],
+    ] as const;
+
+    for (const [schema, payload] of payloads) {
+      expect(() => schema.parse(payload)).toThrow();
+    }
+  });
+
+  it("accepts only bounded process resource samples without workspace or session identity", () => {
+    const sample = {
+      arch: "arm64",
+      cpuCores: 2.5,
+      cpuPercent: 31.25,
+      intervalMs: 60_000,
+      logicalCpuCount: 8,
+      platform: "darwin",
+      rssKb: 65_536,
+    };
+
+    expect(zcodeProtocolNotifications.processResourceSample).toBe("process/resourceSample");
+    // PRT-025：旧 CLI 发来的样本没有新字段，仍必须通过校验（新增字段全部可选，握手版本不递增）。
+    expect(zcodeProcessResourceSampleSchema.parse(sample)).toEqual(sample);
+    const sampleWithTelemetryFields = {
+      ...sample,
+      heapUsedKb: 20_480,
+      uptimeMinutes: 12,
+      totalMemoryGb: 16,
+      instanceToken: "9f2c4a1b7d0e5638",
+    };
+    expect(zcodeProcessResourceSampleSchema.parse(sampleWithTelemetryFields)).toEqual(
+      sampleWithTelemetryFields,
+    );
+    // lane 由 app 侧 services 按所属进程管理器打标，CLI 不知道自己的 lane，也不允许自报。
+    expect(() => zcodeProcessResourceSampleSchema.parse({ ...sample, lane: "chat" })).toThrow();
+    // instanceToken 只用于 main 统计进程数，绝不能被拿来夹带 pid、路径或 workspace 标识。
+    expect(() =>
+      zcodeProcessResourceSampleSchema.parse({ ...sample, instanceToken: "/private/repo" }),
+    ).toThrow();
+    expect(() =>
+      zcodeProcessResourceSampleSchema.parse({ ...sample, instanceToken: "" }),
+    ).toThrow();
+    expect(() => zcodeProcessResourceSampleSchema.parse({ ...sample, heapUsedKb: -1 })).toThrow();
+    expect(() =>
+      zcodeProcessResourceSampleSchema.parse({ ...sample, uptimeMinutes: 1.5 }),
+    ).toThrow();
+    expect(() =>
+      zcodeProcessResourceSampleSchema.parse({
+        ...sample,
+        workspacePath: "/private/repo",
+      }),
+    ).toThrow();
+    expect(() =>
+      zcodeProcessResourceSampleSchema.parse({
+        ...sample,
+        cpuCores: Number.NaN,
+      }),
+    ).toThrow();
+    expect(() =>
+      zcodeProcessResourceSampleSchema.parse({
+        ...sample,
+        logicalCpuCount: 0,
+      }),
+    ).toThrow();
+  });
+
+  it("accepts only the four privacy-bounded MCP telemetry events", () => {
+    const base = {
+      arch: "arm64",
+      occurredAt: 1_000,
+      platform: "darwin",
+    } as const;
+    const events = [
+      {
+        ...base,
+        kind: "process_start",
+        mcpId: "builtin:node_repl",
+        mcpInstanceId: "mcp-instance-1",
+        mcpIsolation: "workspace",
+        mcpSource: "builtin",
+      },
+      {
+        ...base,
+        kind: "process_start",
+        mcpId: "builtin:zcode-cua:computer-use",
+        mcpInstanceId: "mcp-instance-2",
+        mcpIsolation: "session",
+        mcpSource: "builtin",
+      },
+      {
+        ...base,
+        kind: "process_start",
+        mcpId: "builtin:document-skills:image%20search%2F%E9%AB%98%E6%B8%85",
+        mcpInstanceId: "mcp-instance-3",
+        mcpIsolation: "session",
+        mcpSource: "builtin",
+      },
+      {
+        ...base,
+        affectedSessionCount: 2,
+        exitCode: 1,
+        kind: "process_crash",
+        mcpId: "builtin:node_repl",
+        mcpInstanceId: "mcp-instance-1",
+        mcpIsolation: "workspace",
+        mcpSource: "builtin",
+        signal: null,
+        uptimeMs: 10_000,
+      },
+      {
+        ...base,
+        configuredCount: 3,
+        connectedCount: 2,
+        failedCount: 1,
+        kind: "session_startup",
+        processCount: 1,
+        sessionId: "session-1",
+      },
+      {
+        ...base,
+        kind: "memory",
+        mcpId: "custom:123456789abc",
+        mcpInstanceId: "mcp-instance-2",
+        mcpIsolation: "session",
+        mcpSource: "custom",
+        memoryKb: 65_536,
+        memoryScope: "process_tree",
+        orphanSuspected: true,
+        ownerSessionCount: 0,
+        unownedSeconds: 60.001,
+      },
+    ];
+
+    expect(zcodeProtocolNotifications.mcpTelemetry).toBe("process/mcpTelemetry");
+    expect(events.map((event) => zcodeMcpTelemetryEventSchema.parse(event))).toEqual(events);
+    expect(() =>
+      zcodeMcpTelemetryEventSchema.parse({
+        ...events[0],
+        mcpServerName: "private-company-server",
+      }),
+    ).toThrow();
+  });
+
+  it("accepts a default thought level in session settings", () => {
+    expect(
+      zcodeSessionSettingsStateSchema.parse({
+        model: {
+          current: model,
+          available: [{ ref: model, label: "GLM 4.6", properties: modelProperties }],
+        },
+        thoughtLevel: {
+          enabled: true,
+          current: undefined,
+          defaultLevel: "max",
+          available: [
+            { value: "high", label: "High" },
+            { value: "max", label: "Max" },
+          ],
+        },
+        mode: {
+          current: "build",
+        },
+      }),
+    ).toMatchObject({
+      thoughtLevel: {
+        defaultLevel: "max",
+      },
+    });
+  });
+
+  it("uses reasoning presence as support and rejects removed model-option projections", () => {
+    const currentModelOption = {
+      ref: model,
+      label: "GLM 4.6",
+      properties: modelProperties,
+      reasoning: { levels: [{ value: "high", label: "High" }] },
+    };
+
+    expect(
+      zcodeSessionSettingsStateSchema.parse({
+        model: { current: model, available: [currentModelOption] },
+        thoughtLevel: { enabled: true, available: [], current: undefined },
+        mode: { current: "build" },
+      }).model.available[0]?.reasoning?.levels,
+    ).toHaveLength(1);
+
+    for (const removedField of [
+      "providerSource",
+      "providerLogoUrl",
+      "supportsTools",
+      "supportsStructuredOutput",
+      "supportsJsonSchemaOutput",
+    ]) {
+      expect(() =>
+        zcodeSessionSettingsStateSchema.parse({
+          model: {
+            current: model,
+            available: [{ ...currentModelOption, [removedField]: true }],
+          },
+          thoughtLevel: { enabled: true, available: [], current: undefined },
+          mode: { current: "build" },
+        }),
+      ).toThrow();
+    }
+
+    expect(() =>
+      zcodeSessionSettingsStateSchema.parse({
+        model: {
+          current: model,
+          available: [{ ...currentModelOption, reasoning: { enabled: true, levels: [] } }],
+        },
+        thoughtLevel: { enabled: true, available: [], current: undefined },
+        mode: { current: "build" },
+      }),
+    ).toThrow();
+  });
+
+  it("validates the dedicated app runtime preference broadcast payload", () => {
+    expect(APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL).toBe(
+      "settings:app-runtime-preferences",
+    );
+    expect(
+      appRuntimePreferencesChangedBroadcastPayloadSchema.parse({
+        askUserQuestionAutoResolutionEnabled: false,
+      }),
+    ).toEqual({
+      askUserQuestionAutoResolutionEnabled: false,
+      modelIoFullRetentionEnabled: false,
+    });
+    expect(() =>
+      appRuntimePreferencesChangedBroadcastPayloadSchema.parse({
+        askUserQuestionAutoResolutionEnabled: false,
+        ignored: true,
+      }),
+    ).toThrow();
+  });
+
+  it("accepts bounded browser ambient context on session/send while staying strict", () => {
+    expect(
+      zcodeSessionSendParamsSchema.parse({
+        sessionId: "sess_1",
+        content: "continue",
+        browserAmbientContext: {
+          tabCount: 1,
+          currentUrl: "https://example.com/current?q=1",
+        },
+      }).browserAmbientContext,
+    ).toEqual({ tabCount: 1, currentUrl: "https://example.com/current?q=1" });
+    expect(() =>
+      zcodeSessionSendParamsSchema.parse({
+        sessionId: "sess_1",
+        content: "continue",
+        browserAmbientContext: { tabCount: 0 },
+      }),
+    ).toThrow();
+    expect(() =>
+      zcodeSessionSendParamsSchema.parse({
+        sessionId: "sess_1",
+        content: "continue",
+        browserAmbientContext: { tabCount: 1, pageText: "secret" },
+      }),
+    ).toThrow();
+  });
+
+  it("session/send rejects retired Off-Peak attribution", () => {
+    for (const attribution of [
+      { offPeakTaskId: "offpeak-1" },
+      { offPeakRunType: "resume" },
+      { automationId: "automation-1", offPeakTaskId: "offpeak-1" },
+    ]) {
+      expect(() =>
+        zcodeSessionSendParamsSchema.parse({
+          sessionId: "sess_1",
+          content: "continue",
+          ...attribution,
+        }),
+      ).toThrow();
+    }
+  });
+
+  it("session/send and automation/create validate the bot delivery target strictly", () => {
     const botDeliveryTarget = {
       provider: "weixin" as const,
       botId: "bot-weixin",
@@ -25,6 +440,7 @@
         botDeliveryTarget: { ...botDeliveryTarget, provider: "discord" },
       }),
     ).toThrow();
+  });
 
   it("keeps protocol methods session-first and private", () => {
     const methods = Object.values(zcodeProtocolMethods);
@@ -42,75 +458,6 @@
     expect(methods).not.toContain("workspace/setDefaultThoughtLevel");
     expect(methods).toContain("automation/create");
     expect(methods).toContain("automation/update");
-  });
-
-  it("validates the strict Computer Use operation lifecycle notification", () => {
-    expect(zcodeProtocolMethods.computerUseOperationEvent).toBe("computer-use/operation-event");
-
-    const base = {
-      eventId: "evt-1",
-      sequenceNumber: 1,
-      sessionId: "sess-1",
-      timestamp: 1_700_000_000_000,
-    };
-    for (const event of [
-      { ...base, kind: "turn-started", turnId: "turn-1" },
-      { ...base, kind: "turn-completed", turnId: "turn-1" },
-      { ...base, kind: "turn-failed", turnId: "turn-1" },
-      {
-        ...base,
-        kind: "tool-scheduled",
-        turnId: "turn-1",
-        toolCallId: "call-1",
-        toolName: "mcp__computer-use__left_click",
-      },
-      {
-        ...base,
-        kind: "tool-scheduled",
-        turnId: "turn-1",
-        toolCallId: "call-node-repl",
-        toolName: "mcp__node_repl__js",
-        computerUse: true,
-      },
-      {
-        ...base,
-        kind: "tool-started",
-        turnId: "turn-1",
-        toolCallId: "call-1",
-      },
-      { ...base, kind: "session-closed" },
-    ]) {
-      expect(zcodeComputerUseOperationEventSchema.safeParse(event).success).toBe(true);
-    }
-
-    for (const event of [
-      { ...base, eventId: "", kind: "session-closed" },
-      { ...base, sequenceNumber: -1, kind: "session-closed" },
-      { ...base, kind: "turn-started" },
-      { ...base, kind: "tool-scheduled", turnId: "turn-1", toolCallId: "call-1" },
-      // computerUse 是布尔事实，只有 true 有意义；false 与动作名都不在契约里。
-      {
-        ...base,
-        kind: "tool-scheduled",
-        turnId: "turn-1",
-        toolCallId: "call-1",
-        toolName: "mcp__node_repl__js",
-        computerUse: false,
-      },
-      // tool-started 拿不到模型源码（ToolCallStartedPayload 无 input），不允许携带该事实。
-      {
-        ...base,
-        kind: "tool-started",
-        turnId: "turn-1",
-        toolCallId: "call-1",
-        computerUse: true,
-      },
-      { ...base, kind: "tool-started", toolCallId: "" },
-      { ...base, kind: "session-closed", toolName: "must-not-pass" },
-      { ...base, kind: "unknown-kind" },
-    ]) {
-      expect(zcodeComputerUseOperationEventSchema.safeParse(event).success).toBe(false);
-    }
   });
 
   it("workspace/readPresentation 只接受 workspace identity", () => {
@@ -589,6 +936,9 @@
     ).toThrow();
   });
 
+  it.each(["start-plan", "individual-coding-plan", "team-coding-plan"] as const)(
+    "runtime headers 直接接受 Registry zhipu access mode: %s",
+    (mode) => {
       const parsed = zcodeProviderRuntimeHeadersRequestParamsSchema.parse({
         requestId: `request-${mode}`,
         sessionId: "sess_1",
@@ -610,6 +960,27 @@
         mode,
         entitled: true,
       });
+    },
+  );
+
+  it("runtime headers 拒绝已移除的 off-peak mode", () => {
+    expect(() =>
+      zcodeProviderRuntimeHeadersRequestParamsSchema.parse({
+        requestId: "request-offpeak",
+        sessionId: "sess_1",
+        workspace,
+        modelSelection: model,
+        providerId: "account:off-peak",
+        accountAccess: {
+          type: "zhipu-account",
+          accountType: "bigmodel",
+          mode: "off-peak",
+          entitled: true,
+        },
+        reason: "model-request",
+      }),
+    ).toThrow();
+  });
 
   it("runtime headers 拒绝已经退出 Registry 的旧 planKind Access 形状", () => {
     expect(() =>
@@ -1146,9 +1517,8 @@
     });
   });
 
-  it("keeps the official MCP unavailable code in strict v4 tool rows", () => {
-    // 两个 strict schema（CLI contracts 的 display payload 与这里的 row）必须同步加字段，
-    // 少加一处整条 row 会被拒，输入框提示就永远拿不到事实。
+  it("keeps legacy MCP tool rows without retired quota presentation", () => {
+    // 官方 MCP 额度展示已移除；旧工具行仍可读，display 沿既有未知载荷降级。
     const row = conversationRowSchema.parse({
       rowId: 5,
       turnId: "turn-1",
@@ -1167,9 +1537,8 @@
       },
     });
 
-    expect(row).toMatchObject({
-      display: { kind: "mcp_tool", unavailable: { code: "quota_exceeded" } },
-    });
+    expect(row.kind).toBe("toolCall");
+    expect(row.kind === "toolCall" ? row.display : "unreachable").toBeUndefined();
     // internal_error 不在 code 枚举里：它是服务端兜底掩码，不驱动界面提示。枚举外的值因此
     // **不会被携带**——display 不设门后 row 仍然有效，但这张卡没有载荷（§4.4.5）。
     const maskedRow = conversationRowSchema.parse({
@@ -2385,6 +2754,7 @@
       }),
     ).toThrow();
   });
+});
 
 describe("v4 workflowLaunch rows (direct-launch)", () => {
   const meta = {
