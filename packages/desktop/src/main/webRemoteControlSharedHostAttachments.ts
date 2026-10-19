@@ -1,6 +1,6 @@
 import { BrowserWindow, MessageChannelMain } from "electron";
 import type { MessagePortMain, UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes, type RemoteUsageRemoteKind } from "@zcode/shared";
+import { HostMessageTypes, type RemoteWorkspaceIdentityKind } from "@zcode/shared";
 
 type WebRemoteControlSharedHostKind = "local" | "remote";
 
@@ -17,7 +17,7 @@ interface WebRemoteControlSharedHostAttachment {
   attachmentId: string;
   process: ElectronUtilityProcess;
   port: MessagePortMain;
-  remoteKind?: RemoteUsageRemoteKind;
+  remoteKind?: RemoteWorkspaceIdentityKind;
 }
 
 interface WebRemoteControlSharedHostError extends Error {
@@ -51,7 +51,7 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
   }) => {
     process: ElectronUtilityProcess;
     port: MessagePortMain;
-    remoteKind: RemoteUsageRemoteKind;
+    remoteKind: RemoteWorkspaceIdentityKind;
   };
   logger: {
     info: (...args: unknown[]) => void;

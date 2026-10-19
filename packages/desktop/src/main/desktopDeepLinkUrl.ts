@@ -5,12 +5,19 @@ const DEEP_LINK_ADDITIONAL_DATA_KEY = "deepLinkUrl";
 const OPEN_WORKSPACE_ADDITIONAL_DATA_KEY = "openWorkspacePath";
 const OPEN_WORKSPACE_ARG = "--open-workspace";
 
+// 同步修复：工作区链接也使用该规范化逻辑，不能随登录回调一起移除。
+function normalizeDeepLinkPath(pathname: string): string {
+  const withoutTrailingSlash = pathname.replace(/\/+$/, "");
+  const normalized = withoutTrailingSlash === "" ? "/" : withoutTrailingSlash;
+  return `/${normalized.replace(/^\/+/, "")}`;
+}
+
 export function isWorkspaceOpenUrl(parsedUrl: URL): boolean {
   if (parsedUrl.protocol !== `${DEEP_LINK_SCHEME}:`) {
     return false;
   }
 
-  const normalizedPath = normalizeOAuthCallbackPath(parsedUrl.pathname);
+  const normalizedPath = normalizeDeepLinkPath(parsedUrl.pathname);
   if (parsedUrl.hostname === WORKSPACE_OPEN_HOST) {
     return normalizedPath === "/open";
   }

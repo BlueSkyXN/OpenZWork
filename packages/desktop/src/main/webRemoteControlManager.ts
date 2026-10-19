@@ -1119,9 +1119,6 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       case "rpc-frame-ack":
         routeRpcTransportPayload(runtime, payload);
         break;
-      case "telemetry-report":
-        // 手机已在创建边界构造事件；Main 只转发，不维护会话事实或干预 replayable 链路。
-        break;
       case "mobile-diagnostic":
         logMobileDiagnostic(runtime, payload);
         break;
