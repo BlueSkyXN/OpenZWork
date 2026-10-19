@@ -4,10 +4,7 @@
 import { join } from "node:path";
 import type { IChannel } from "@zcode/rpc";
 import type { DynamicWorkflowMode } from "@zcode/shared";
-import type {
-  PluginSandboxHandle,
-  PluginSandboxRegisterInput,
-} from "@zcode/shared/mcp-apps";
+import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@zcode/shared/mcp-apps";
 import {
   createNodeProviderRuntimePathEnv,
   NodeModelSelectionConfigRepository,
@@ -371,6 +368,13 @@ export function getProviderProvisioningSource(
 
 const managedHostApiNetworkTransports = new WeakMap<ServiceCollection, HostApiNetworkTransport>();
 
+function disposeGenUiState(services: ServiceCollection): void {
+  const service = services.getOptional(IGenUiService);
+  // 修复原因：新增注册未进入 Host 释放链，窗口关闭后状态 watcher 和写入仍然存活。
+  // dispose 是本地实现的生命周期能力，不扩张对外 RPC 合同。
+  if (service && "dispose" in service && typeof service.dispose === "function") service.dispose();
+}
+
 export function registerHostApiNetworkTransportForDispose(
   services: ServiceCollection,
   transport: HostApiNetworkTransport,
@@ -666,7 +670,7 @@ export function createLocalServices(options: {
         }),
   });
   // GenUI / MCP Apps 的 Host 装配（照上游 node.ts 收敛；OpenZWork 无官方账号，
-  // readAccount 返回 null 账号上下文——沙箱实例归属由 host 稳定性派生，不依赖官方凭据）。
+  // readAccount 使用稳定的空账号命名空间；实例归属仍由 Agent 的运行时凭证校验）。
   const pluginUiAccounts = createPluginUiAccountBindings({
     async readAccount() {
       return null;
@@ -879,6 +883,7 @@ export function createLocalServices(options: {
 }
 
 export function disposeServiceResources(services: ServiceCollection): void {
+  disposeGenUiState(services);
   // host process 退出前以前没有统一遍历本地服务做资源回收，
   // terminal/task wrapper 这类会拉起子进程的服务只能等宿主进程自己结束，时序上可能留下短暂残留。
   // 这里集中调用各服务的本地 disposeAll 钩子，把“退出 app = 回收所有托管资源”落成机械动作。
@@ -908,6 +913,7 @@ export function disposeServiceResources(services: ServiceCollection): void {
 }
 
 export async function disposeServiceResourcesAndWait(services: ServiceCollection): Promise<void> {
+  disposeGenUiState(services);
   // app 关闭时 host 需要等 agent 进程树完成 graceful + force 清理。
   // 旧的同步 dispose 会在 host 退出时丢掉强杀 timer，导致 zcode-cli/app-server 变成孤儿进程。
   const disposableServices = [

@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createNodeFileSystemAdapter } from "@zcode/adapters/fs";
 import { createInMemorySessionEventStore, createSqliteSessionStore } from "@zcode/adapters/storage";
 import { type AgentRuntime, PermissionService, defaultPermissionConfig } from "@zcode/core";
-import { createModelTelemetry } from "@zcode/telemetry";
 import {
   createRootTraceContext,
   createSessionId,
@@ -106,7 +105,6 @@ describe("script workflow child runtime — actor transcript 直播通道", () =
 
   function makeDeps(): ScriptWorkflowAgentRuntimeDeps {
     return {
-      agentTelemetry: createModelTelemetry().agentExecution,
       appOptions: { env: process.env },
       appVersion: "0.0.0-test",
       configResult: {
@@ -356,7 +354,6 @@ describe("script workflow child runtime — 与父会话共享 model factory", (
 
   function baseDeps(parentRuntime: AgentRuntime): ScriptWorkflowAgentRuntimeDeps {
     return {
-      agentTelemetry: createModelTelemetry().agentExecution,
       appOptions: { env: {} },
       appVersion: "0.0.0-test",
       configResult: {
@@ -552,7 +549,6 @@ describe("script workflow child runtime — 对外交互端口由父 runtime 铸
 
   function makeActorRuntime(): AgentRuntime {
     const deps = {
-      agentTelemetry: createModelTelemetry().agentExecution,
       appOptions: { env: process.env },
       appVersion: "0.0.0-test",
       configResult: {
@@ -708,7 +704,6 @@ describe("script workflow child runtime — 子代理经父 broker 请求权限�
     subagentPermissionMode: WorkflowSubagentPermissionMode | undefined,
   ): AgentRuntime {
     const deps = {
-      agentTelemetry: createModelTelemetry().agentExecution,
       appOptions: { env: process.env, executionPort: { run: execute } },
       appVersion: "0.0.0-test",
       configResult: {
@@ -1024,7 +1019,6 @@ describe("script workflow child runtime — 子代理的 Browser Use", () => {
     >[0]["browserControlPort"],
   ): AgentRuntime {
     const deps = {
-      agentTelemetry: createModelTelemetry().agentExecution,
       appOptions: { env: process.env },
       appVersion: "0.0.0-test",
       configResult: {
