@@ -396,22 +396,6 @@ describe("ZCode Protocol", () => {
     ).toThrow();
   });
 
-  it("session/send rejects retired Off-Peak attribution", () => {
-    for (const attribution of [
-      { offPeakTaskId: "offpeak-1" },
-      { offPeakRunType: "resume" },
-      { automationId: "automation-1", offPeakTaskId: "offpeak-1" },
-    ]) {
-      expect(() =>
-        zcodeSessionSendParamsSchema.parse({
-          sessionId: "sess_1",
-          content: "continue",
-          ...attribution,
-        }),
-      ).toThrow();
-    }
-  });
-
   it("session/send and automation/create validate the bot delivery target strictly", () => {
     const botDeliveryTarget = {
       provider: "weixin" as const,
@@ -962,25 +946,6 @@ describe("ZCode Protocol", () => {
       });
     },
   );
-
-  it("runtime headers 拒绝已移除的 off-peak mode", () => {
-    expect(() =>
-      zcodeProviderRuntimeHeadersRequestParamsSchema.parse({
-        requestId: "request-offpeak",
-        sessionId: "sess_1",
-        workspace,
-        modelSelection: model,
-        providerId: "account:off-peak",
-        accountAccess: {
-          type: "zhipu-account",
-          accountType: "bigmodel",
-          mode: "off-peak",
-          entitled: true,
-        },
-        reason: "model-request",
-      }),
-    ).toThrow();
-  });
 
   it("runtime headers 拒绝已经退出 Registry 的旧 planKind Access 形状", () => {
     expect(() =>

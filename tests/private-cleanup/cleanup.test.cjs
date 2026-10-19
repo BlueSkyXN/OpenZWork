@@ -8,7 +8,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFile, execFileSync } = require('node:child_process');
+const { promisify } = require('node:util');
+const { pathToFileURL } = require('node:url');
+const execFileAsync = promisify(execFile);
 const root = process.env.ZCODE_TEST_SOURCE_ROOT || path.resolve(__dirname, '../..');
 const ts = require(process.env.TYPESCRIPT_MODULE_PATH || 'typescript');
 const adapter = 'apps/zcode-cli/packages/adapters/src/model/';
@@ -513,6 +516,46 @@ test('[structural, not runtime] WP-08: retained live i18n key families stay defi
   for (const key of mustStay) {
     assert.ok(zh.includes(`"${key}`), key);
   }
+});
+
+test('[behavior] WP-09: real protocol schemas reject retired off-peak inputs', async () => {
+  // 负面 fixture 集中在清理入口，既保留真实 schema 覆盖，也不向保留模块引入退役领域字面量。
+  const protocolUrl = pathToFileURL(path.join(root, 'packages/shared/src/zcode-protocol/index.ts')).href;
+  await execFileAsync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    const { zcodeSessionSendParamsSchema, zcodeProviderRuntimeHeadersRequestParamsSchema } =
+      await import(${JSON.stringify(protocolUrl)});
+    const send = { sessionId: 'sess_1', content: 'continue' };
+    assert.equal(zcodeSessionSendParamsSchema.safeParse(send).success, true);
+    for (const attribution of [
+      { offPeakTaskId: 'offpeak-1' },
+      { offPeakRunType: 'resume' },
+      { automationId: 'automation-1', offPeakTaskId: 'offpeak-1' },
+    ]) {
+      assert.equal(zcodeSessionSendParamsSchema.safeParse({ ...send, ...attribution }).success, false);
+    }
+    const headers = {
+      requestId: 'request-current',
+      sessionId: 'sess_1',
+      workspace: {
+        workspacePath: '/workspace/app',
+        workspaceIdentity: 'remote:ssh:dev:/workspace/app',
+        workspaceKey: 'remote:ssh:dev:/workspace/app',
+      },
+      modelSelection: { providerId: 'glm', modelId: 'glm-4.6' },
+      providerId: 'account:individual-coding-plan',
+      accountAccess: {
+        type: 'zhipu-account', accountType: 'bigmodel', mode: 'individual-coding-plan', entitled: true,
+      },
+      reason: 'model-request',
+    };
+    assert.equal(zcodeProviderRuntimeHeadersRequestParamsSchema.safeParse(headers).success, true);
+    assert.equal(zcodeProviderRuntimeHeadersRequestParamsSchema.safeParse({
+      ...headers,
+      providerId: 'account:off-peak',
+      accountAccess: { ...headers.accountAccess, mode: 'off-peak' },
+    }).success, false);
+  `], { cwd: root });
 });
 
 test('[structural, not runtime] WP-09: off-peak domain fully removed from source and locales', () => {
