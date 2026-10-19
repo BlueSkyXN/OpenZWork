@@ -238,7 +238,7 @@ class FakeRemoteBackend implements IRemoteBackend {
       );
     }
 
-    const versionCommand = `"${"$HOME"}"'/.zcode/server/node' "${"$HOME"}"'/.zcode/server/zcode-server.cjs' --version`;
+    const versionCommand = `"${"$HOME"}"'/.openzwork/server/node' "${"$HOME"}"'/.openzwork/server/zcode-server.cjs' --version`;
     if (command === versionCommand) {
       const versionSource =
         this.serverVersions.length > 1
@@ -1916,7 +1916,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       backend.commands.some(
         (command) =>
           command.includes(
-            `/.zcode/server/agents/${retiredProtocolPrefix}/.version`,
+            `/.openzwork/server/agents/${retiredProtocolPrefix}/.version`,
           ) &&
           command.includes(LEGACY_REMOTE_TEST_AGENT_RUNTIME.claude.version),
       ),
@@ -2008,7 +2008,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
     remoteFiles[
       `~/.openzwork/server/agents/glm/${REMOTE_AGENT_WRAPPER_FILE_NAME}`
     ] =
-      '#!/bin/sh\nset -eu\nruntime_root="/home/dev/.zcode/server"\nexec "/node" "/home/dev/.zcode/server/agents/glm/zcode.cjs" ""\n';
+      '#!/bin/sh\nset -eu\nruntime_root="/home/dev/.openzwork/server"\nexec "/node" "/home/dev/.openzwork/server/agents/glm/zcode.cjs" ""\n';
     const backend = new FakeWslRemoteBackend(remoteFiles);
     const installedFiles: string[] = [];
     const installedDirectories: string[] = [];
@@ -2112,7 +2112,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       expect.stringContaining("if [ -d "),
     );
     expect(permissionRepairCommand).toContain(
-      "/.zcode/server/agents/glm/packages",
+      "/.openzwork/server/agents/glm/packages",
     );
     expect(permissionRepairCommand).not.toContain("/.zcode/plugins");
   });
@@ -2218,7 +2218,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
     );
     expect(permissionRepairCommandIndex).toBeGreaterThanOrEqual(0);
     expect(backend.commands[permissionRepairCommandIndex]).toContain(
-      "/.zcode/server/agents/glm/packages",
+      "/.openzwork/server/agents/glm/packages",
     );
     expect(installRequests).toEqual([
       {
@@ -2472,7 +2472,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       upload.remotePath.includes("/agents/glm/packages.tar.gz-"),
     );
     expect(officialPluginUpload?.remotePath).toMatch(
-      /^~\/.zcode\/server\/agents\/glm\/packages\.tar\.gz-[\w-]+$/u,
+      /^~\/.openzwork\/server\/agents\/glm\/packages\.tar\.gz-[\w-]+$/u,
     );
     expect(
       backend.commands.some(
@@ -2728,7 +2728,8 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
         },
       ),
     ).rejects.toThrow(
-      /require remoteCdnBaseUrl or remoteCdnBaseUrls, remoteCacheDir and platformArch/,
+      // fork 文案：自建镜像指引（ZCODE_CDN_BASE_URL），语义同上游的输入缺失报错。
+      /缺少远端运行时资源|remoteCdnBaseUrl/,
     );
   });
 
@@ -3522,14 +3523,14 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       expect(
         backend.commands.some((command) =>
           command.includes(
-            `rm -rf "$HOME"'/.zcode/server/asset-cache/components/linux-x64/${retiredProtocolPrefix}-claude/${cachedComponentDir.split("/").at(-1) ?? ""}'`,
+            `rm -rf "$HOME"'/.openzwork/server/asset-cache/components/linux-x64/${retiredProtocolPrefix}-claude/${cachedComponentDir.split("/").at(-1) ?? ""}'`,
           ),
         ),
       ).toBe(false);
       expect(
         backend.commands.some((command) =>
           command.includes(
-            `test -e "$HOME"'/.zcode/server/agents/${retiredProtocolPrefix}/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude'`,
+            `test -e "$HOME"'/.openzwork/server/agents/${retiredProtocolPrefix}/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude'`,
           ),
         ),
       ).toBe(false);
@@ -4118,13 +4119,13 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       expect(backend.uploads.map((upload) => upload.remotePath)).toEqual(
         expect.arrayContaining([
           expect.stringMatching(
-            /^~\/.zcode\/server\/zcode-server\.cjs\.new-[\w-]+$/u,
+            /^~\/.openzwork\/server\/zcode-server\.cjs\.new-[\w-]+$/u,
           ),
           expect.stringMatching(
-            /^~\/.zcode\/server\/agents\/glm\/zcode\.cjs\.new-[\w-]+$/u,
+            /^~\/.openzwork\/server\/agents\/glm\/zcode\.cjs\.new-[\w-]+$/u,
           ),
           expect.stringMatching(
-            /^~\/.zcode\/server\/agents\/glm\/packages\.tar\.gz-[\w-]+$/u,
+            /^~\/.openzwork\/server\/agents\/glm\/packages\.tar\.gz-[\w-]+$/u,
           ),
         ]),
       );
@@ -4475,7 +4476,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       expect(
         backend.commands.some((command) =>
           command.includes(
-            `rm -rf "$HOME"'/.zcode/server/asset-cache/components/linux-arm64/server-bundle/${serverBundle.sha256}'`,
+            `rm -rf "$HOME"'/.openzwork/server/asset-cache/components/linux-arm64/server-bundle/${serverBundle.sha256}'`,
           ),
         ),
       ).toBe(true);
@@ -4490,7 +4491,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       expect(
         backend.commands.some((command) =>
           command.includes(
-            `rm -rf "$HOME"'/.zcode/server/asset-cache/components/linux-arm64/glm/${glm.sha256}'`,
+            `rm -rf "$HOME"'/.openzwork/server/asset-cache/components/linux-arm64/glm/${glm.sha256}'`,
           ),
         ),
       ).toBe(true);
@@ -4603,7 +4604,7 @@ describe("deployServer legacy agent node-script bundle deployment", () => {
       expect(
         backend.commands.some((command) =>
           command.includes(
-            `rm -rf "$HOME"'/.zcode/server/asset-cache/components/linux-arm64/glm/${glm.sha256}'`,
+            `rm -rf "$HOME"'/.openzwork/server/asset-cache/components/linux-arm64/glm/${glm.sha256}'`,
           ),
         ),
       ).toBe(true);
