@@ -150,6 +150,8 @@ describe("zcode-protocol-v4 command", () => {
     ).toBe(false);
   });
 
+  it("strips future additive fields while preserving the turn-scoped tool disallowlist", () => {
+    // 清理退役域用例时丢失了 it 边界；保留通用的扩展字段兼容断言，移除已退役域的互斥规则。
     expect(
       commandPayloadSchemas.sendText.parse({
         text: "resume",
@@ -160,24 +162,14 @@ describe("zcode-protocol-v4 command", () => {
       text: "resume",
       toolDisallowlist: ["CronCreate"],
     });
-    expect(() =>
-      commandPayloadSchemas.sendText.parse({
-        text: "invalid",
-      }),
-    ).toThrow();
-    expect(() =>
-      commandPayloadSchemas.sendText.parse({
-        text: "invalid",
-        automationId: "automation-1",
-      }),
-    ).toThrow();
   });
 
   it("keeps execution-scoped model context narrow and drops the legacy runtime snapshot", () => {
     const payload = commandPayloadSchemas.sendText.parse({
       text: "run with an execution-scoped model",
       modelSelection: {
-        modelId: "GLM-5.2",
+        providerId: "personal-provider",
+        modelId: "model-a",
       },
       modelExecution: {
         memoryExtraction: "skip",
@@ -198,7 +190,8 @@ describe("zcode-protocol-v4 command", () => {
     expect(payload).toEqual({
       text: "run with an execution-scoped model",
       modelSelection: {
-        modelId: "GLM-5.2",
+        providerId: "personal-provider",
+        modelId: "model-a",
       },
       modelExecution: {
         memoryExtraction: "skip",
@@ -218,12 +211,14 @@ describe("zcode-protocol-v4 command", () => {
     expect(
       commandPayloadSchemas.sendText.parse({
         text: "do not extract this turn",
+        modelSelection: { providerId: "personal-provider", modelId: "model-a" },
         modelExecution: { memoryExtraction: "skip", selectionScope: "execution" },
       }),
     ).toMatchObject({ modelExecution: { memoryExtraction: "skip" } });
     expect(
       commandPayloadSchemas.sendText.safeParse({
         text: "invalid Memory policy",
+        modelSelection: { providerId: "personal-provider", modelId: "model-a" },
         modelExecution: { memoryExtraction: "disabled", selectionScope: "execution" },
       }).success,
     ).toBe(false);
@@ -234,7 +229,8 @@ describe("zcode-protocol-v4 command", () => {
       commandPayloadSchemas.sendText.safeParse({
         text: "invalid execution context",
         modelSelection: {
-          modelId: "GLM-5.2",
+          providerId: "personal-provider",
+          modelId: "model-a",
         },
         modelExecution: {
           selectionScope: "execution",
@@ -455,8 +451,8 @@ describe("zcode-protocol-v4 command", () => {
       issuedAt: 1,
     };
     const modelSelection = {
-      providerId: "account:bigmodel-start-plan",
-      modelId: "glm-5",
+      providerId: "personal-provider",
+      modelId: "model-a",
       options: { reasoningLevel: "high" },
     };
     const result = parseCommandEnvelope({
@@ -982,3 +978,4 @@ describe("zcode-protocol-v4 command", () => {
       "fault.command.workflowRunSettingsRejected.unchanged",
     );
   });
+});

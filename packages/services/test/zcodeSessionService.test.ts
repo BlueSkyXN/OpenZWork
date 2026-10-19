@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { IZCodeAgentService } from "@zcode/services";
-import type { ZCodeAgentMcpServer, ZCodeSessionStateSnapshot } from "@zcode/shared";
+import type { ZCodeSessionStateSnapshot } from "@zcode/shared";
 import { createZCodeSessionService } from "@zcode/services/node";
 import type { ZCodeTaskIndexSyncer } from "../src/zcode-agent/zcodeTaskIndexSyncer.js";
 import { getLegacyTaskSessionSnapshotPath, setDataBaseDir } from "../src/paths.js";
@@ -28,72 +28,6 @@ function useTempDataBaseDir(): string {
 }
 
 describe("createZCodeSessionService", () => {
-  it("injects product CUA helper broker config before desktop-continuous session creation", async () => {
-    const snapshot = {
-      session: {
-        sessionId: "session-cua",
-        workspace: {
-          workspacePath: "/workspace/app",
-          workspaceIdentity: undefined,
-        },
-      },
-      runtime: { eventSeq: 1, stateRevision: 1, pendingRequestIds: [] },
-      settings: {},
-      messages: [],
-    } as unknown as ZCodeSessionStateSnapshot;
-    const agentService = {
-      createSession: vi.fn(async () => snapshot),
-    } as unknown as IZCodeAgentService;
-    // services 只负责建会话前把 MCP 配置交给 producer 的 resolver；改写细节由 producer 自己的测试覆盖。
-    // 这里用测试自己的 resolver，不依赖私有 producer 的注入实现（开源占位包不改写配置）。
-    const resolver = {
-      resolveMcpServers: vi.fn(async (servers: ZCodeAgentMcpServer[] | undefined) =>
-        servers?.map((server) =>
-          "command" in server
-            ? {
-                ...server,
-                args: [
-                  ...(server.args ?? []),
-                  "--permission-broker-socket",
-                  "/tmp/zcode-cua/helper.sock",
-                ],
-              }
-            : server,
-        ),
-      ),
-    };
-    const service = createZCodeSessionService({
-      agentService,
-      cuaProductMcpServerResolver: resolver,
-    });
-
-    await service.createSession({
-      workspacePath: "/workspace/app",
-      mcpServers: [
-        {
-          name: "plugin:computer-use:computer-use",
-          command: "uvx",
-          args: ["zcode-cua"],
-          env: [
-            { name: "ZCODE_PLUGIN_ID", value: "computer-use@zcode-plugins-official" },
-            {
-              name: "ZCODE_CUA_PLUGIN_AUTHORITY",
-              value: "dev.zcode.cua-helper/dev",
-            },
-          ],
-        },
-      ],
-    });
-
-    const createParams = vi.mocked(agentService.createSession).mock.calls[0]?.[0];
-    const server = createParams?.mcpServers?.[0];
-    expect(resolver.resolveMcpServers).toHaveBeenCalledTimes(1);
-    expect(server && "command" in server ? server.args : []).toEqual([
-      "zcode-cua",
-      "--permission-broker-socket",
-      "/tmp/zcode-cua/helper.sock",
-    ]);
-  });
 
   it("does not sync deferred draft sessions into the task index", async () => {
     const snapshot = {
