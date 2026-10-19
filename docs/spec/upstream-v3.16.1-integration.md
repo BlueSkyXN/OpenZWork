@@ -1,0 +1,48 @@
+# ZCode v3.16.1 整合验收
+
+## 基线与范围
+
+- 上游固定为 `0a1fc56d279fd1001f78387bd81aec1c26767411`（v3.16.1），从已提交的 v3.15.1 候选 `2f6ba3e8` 继续。v3.15.1 通过核心 CI 与三平台 Installers 后，才交付此上层候选；下层追加修复必须同步。
+- 版本整合保留标准 MCP、ToolSearch、node_repl、Browser Use、动态工作流、GenUI/MCP Apps、本地和远程工作区。
+- 官方账号、套餐、云端分享与反馈、遥测、原生 CUA 产品链及其专属新模块沿用既有移除范围。保留通用日志导出、MCP OAuth、浏览器页内控制、MCP App 实例隔离和第三方模型配置。
+- 用户级数据继续写入 `.openzwork`；项目级 `.zcode` 和通用 `.agents` 约定不随产品身份变更。
+
+## 保留与迁移规则
+
+- ToolSearch 使用上游标准 MCP `alwaysLoad`、native/local/deferred schemas 和 hydration 逻辑；运行偏好默认 `off`，不依赖官方套餐自动开启策略。
+- MCP Apps 首次连接等待后，重新校验 session、connection generation 和 lease。GenUI 路由保持 desktop-continuous，不能进入手机 replayable 频道。
+- 工作流子 runtime 继承父 runtime 已解析的 shell selection，继续通过父会话 broker 传递交互。
+- Browser zoom 补偿、CSS 像素截图和一致 origin 权限策略随上游升级；浏览器 `cua*` 页内操作保留。
+- Host 使用新的 Source Server 身份、连接生命周期和 Duplex 传输；远程 RPC 必需 channel 与当前 IServiceAccessor 保持一致，不要求已移除的服务。
+- 远控配对沿用无账号 HMAC 认证合同。上游依赖官方 JWT 的云端设备发现不引入；通用重连、任务展示和恢复语义按当前配对入口适配，不能伪造账号材料。
+- 新远程 project 使用单个不可变 root，task 必须属于对应 project；不恢复多 root / additionalDirectories 远程规避路径。
+- SQLite 迁移采用共享 runner 的异步 MigrationResult、备份、checksum 和 schema 账本，业务转换仍由对应持库进程执行。现存 DB DDL 兼容边界沿用原规范，退役业务的运行时、UI 和调度不得恢复。
+- 混合测试按完整声明和场景边界适配；共享辅助文件及保留能力不按关键词删除。新增上游模块同时检查生产注册、协议、构建资产及测试引用。
+
+## 所有者、接口与顺序
+
+- CLI/runtime CommandInbox 是已接纳输入的唯一 admission 所有者；Renderer 只保留草稿与 optimistic overlay。
+- Local Host / Source Server 持有相应 workspace/session 运行时；Main 与 relay 只做进程、连接和转发，不复制业务队列。
+- SQLite runner 独占迁移账本；启动 composition 在取得迁移 admission 后重读版本、备份 touchedTables、执行转换并返回完成帧，失败不能报告完成。
+
+```mermaid
+sequenceDiagram
+    participant UI as Renderer
+    participant H as Host / Source Server
+    participant R as CLI runtime / CommandInbox
+    UI->>H: workspaceIdentity + remoteSessionId + command
+    H->>R: owner / lease 校验后路由
+    R->>R: 串行 admission 和状态更新
+    R->>H: 有序事件
+    H->>UI: desktop continuous 或 mobile replayable
+```
+
+## CI/CD 验收
+
+- 核心 CI 和同一候选提交的 macOS arm64、Windows x64、Linux x64 Installers 必须通过，不要求人工 UAT、试装或真实用户。
+- 保留上游 3.16 新纳入常规 typecheck 的 Main、remote Main、shared testing；只移除已退役模块的检查目标。
+- 新 schema 合同、架构检查和受影响测试入口按当前模块与产品范围接线，不自动更新错误基线压低门禁。
+- 核心回归加入 ToolSearch、MCP Apps 连接竞争、GenUI 远端路由、工作流 shell 继承、Duplex 传输、controller identity 和 SQLite 迁移等保留的新行为。
+- 扩展历史测试继续独立运行，失败保留退出码、原始诊断与 artifact，不成为核心 CI 或 Installers 的前置依赖。
+- 依赖按新 lockfile 与固定 Node 24.14.0 / pnpm 11.28.6 安装；不复制旧依赖或 ignored 运行配置。
+- 候选提交、PR 与云端结果分别记录。完成候选不自动合并、打 tag、发布或部署。
