@@ -84,7 +84,7 @@ export function nodeDistBase(env = process.env) {
 }
 const BROWSER_USE_PLUGIN_PACKAGE_NAME = "@zcode/browser-use-plugin";
 // node_repl 宿主抽成独立包 @zcode/node-repl-host 之后，browser-use
-// 不再产出 dist/mcp/server.js，CUA 资产也已归 @zcode/zcode-cua-plugin。这是**第三份**平行清单
+// 不再产出 dist/mcp/server.js。这是**第三份**平行清单（OpenZWork：CUA 已删，D-14）
 // （另两份：packages/desktop/scripts/prepare-agent-node-bundle.mjs 的生产打包、
 // scripts/build-desktop-agent-cli.mjs 的 dev 构建），当时只改了 dev 那份，于是先后在
 // build:macos:arm64 与 build:remote:assets 上以 "missing runtime" 挂掉两次。
@@ -193,14 +193,7 @@ const remoteOfficialPluginPackages = [
     runtimeBuildScript: "scripts/build.mjs",
     stagedPath: "packages/node-repl-host",
   },
-  {
-    // CUA 远端只部署 SDK/skill/docs；runtime 仍必须 attachment 到 desktop shared host，
-    // 不在 remote workspace 安装或启动 native Helper。
-    packageName: "@zcode/zcode-cua-plugin",
-    relativePath: "apps/zcode-cli/packages/zcode-cua-plugin",
-    requiresRuntime: false,
-    stagedPath: "packages/zcode-cua-plugin",
-  },
+  // OpenZWork：zcode-cua-plugin 已随 WP-06 删除（D-14），预构建清单不再包含它。
   {
     packageName: "@zcode/ios-simulator-plugin",
     relativePath: "apps/zcode-cli/packages/ios-simulator-plugin",
@@ -276,7 +269,6 @@ function shouldCopyOfficialPluginAsset(sourcePath) {
 const remoteOfficialPluginRequiredPaths = [
   "packages/android-emulator-plugin/.zcode-plugin/plugin.json",
   "packages/browser-use-plugin/.zcode-plugin/plugin.json",
-  "packages/zcode-cua-plugin/.zcode-plugin/plugin.json",
   "packages/image-search-plugin/.zcode-plugin/plugin.json",
   "packages/image-search-plugin/.mcp.json",
   "packages/documents-plugin/.zcode-plugin/plugin.json",

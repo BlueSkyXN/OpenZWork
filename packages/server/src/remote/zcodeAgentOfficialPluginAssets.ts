@@ -5,7 +5,7 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_DIR_NAME = "packages";
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES = [
   "android-emulator-plugin",
   "browser-use-plugin",
-  "zcode-cua-plugin",
+  // OpenZWork：zcode-cua-plugin 已随 WP-06 删除（D-14），远端资产合同不再包含它。
   "documents-plugin",
   "pdf-plugin",
   "presentations-plugin",
@@ -94,9 +94,6 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
   "presentations-plugin/skills/pptx/SKILL.md",
   "spreadsheets-plugin/agents/visual-judge.md",
   "spreadsheets-plugin/skills/xlsx/SKILL.md",
-  "zcode-cua-plugin/docs/computer-use.md",
-  "zcode-cua-plugin/scripts/computer-use-client.mjs",
-  "zcode-cua-plugin/skills/computer-use/SKILL.md",
 ] as const;
 
 export function buildRemoteAgentOfficialPluginDir(

@@ -18,13 +18,11 @@ import { fileURLToPath } from "node:url";
 import { runCommand } from "../../../scripts/spawn-command.mjs";
 import { stageAgentBundle } from "./stage-agent-bundle.mjs";
 import { isSharpRequiredByComputerUse, stageSharpIntoBundledAgents } from "./sharp-package-assets.mjs";
-import { stageKoffiIntoBundledAgents } from "./koffi-package-assets.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const desktopRoot = resolve(scriptDir, "..");
 const repoRoot = resolve(desktopRoot, "..", "..");
 const cliBundlePath = resolve(repoRoot, "apps/zcode-cli/packages/cli/dist/zcode.cjs");
-const adaptersRoot = resolve(repoRoot, "apps/zcode-cli/packages/adapters");
 const pnpmRunEnv = {
   ...process.env,
   // pnpm 11 会在 apps/zcode-cli 子 workspace 执行 run 前触发 install；
@@ -33,7 +31,6 @@ const pnpmRunEnv = {
 };
 const BROWSER_USE_PLUGIN_PACKAGE_NAME = "@zcode/browser-use-plugin";
 const NODE_REPL_HOST_PACKAGE_NAME = "@zcode/node-repl-host";
-const CUA_PLUGIN_PACKAGE_NAME = "@zcode/zcode-cua-plugin";
 
 // 平台目录命名：darwin/win32/linux + x64/arm64，
 // 支持 ZCODE_TARGET_OS / ZCODE_TARGET_ARCH 覆盖（交叉打包时由 CI 注入）。
@@ -227,13 +224,7 @@ const officialPluginPackages = [
     runtimeBuildScript: "scripts/build.mjs",
     stagedPath: "packages/node-repl-host",
   },
-  {
-    // CUA 插件只携带 SDK/skill/docs；node_repl MCP runtime 归 @zcode/node-repl-host。
-    packageName: "@zcode/zcode-cua-plugin",
-    relativePath: "apps/zcode-cli/packages/zcode-cua-plugin",
-    requiresRuntime: false,
-    stagedPath: "packages/zcode-cua-plugin",
-  },
+  // OpenZWork：CUA 插件（@zcode/zcode-cua-plugin）整链已随 WP-06 删除（D-14），不再 stage。
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再 stage 它的资源。
 ];
 // 随 CLI 内置的技能包（不是插件）：bootstrap 的 resolveBundledSkillRoots 沿官方插件同款候选目录
@@ -424,7 +415,6 @@ function stageSharpForNodeReplPlugin() {
   const pluginStagedDirs = [
     [NODE_REPL_HOST_PACKAGE_NAME, resolve(glmDir, "packages", "node-repl-host")],
     [BROWSER_USE_PLUGIN_PACKAGE_NAME, resolve(glmDir, "packages", "browser-use-plugin")],
-    [CUA_PLUGIN_PACKAGE_NAME, resolve(glmDir, "packages", "zcode-cua-plugin")],
   ];
   for (const [packageName, pluginStagedDir] of pluginStagedDirs) {
     if (!existsSync(resolve(pluginStagedDir, ".zcode-plugin", "plugin.json"))) {
@@ -442,21 +432,7 @@ function stageSharpForNodeReplPlugin() {
   }
 }
 
-function stageKoffiForCuaPlugin() {
-  const cuaPluginStagedDir = resolve(glmDir, "packages", "zcode-cua-plugin");
-  if (!existsSync(resolve(cuaPluginStagedDir, ".zcode-plugin", "plugin.json"))) {
-    console.log("[prepare:agent-bundle] zcode-cua-plugin not staged, skip koffi staging");
-    return;
-  }
-  stageKoffiIntoBundledAgents({
-    koffiPackageRoot: adaptersRoot,
-    glmDir: cuaPluginStagedDir,
-    targetPlatform: { os: platform, arch },
-  });
-  console.log(
-    `[prepare:agent-bundle] staged koffi into ${resolve(cuaPluginStagedDir, "node_modules")} (${platform}-${arch})`,
-  );
-}
+// OpenZWork：koffi 依赖 CUA 插件（D-14 删除面），stageKoffiForCuaPlugin 整函数移除。
 
 // 修复原因：Electron 生产包只带 resources/glm/zcode.cjs 时，app-server 进程的
 // __dirname 附近没有官方插件目录，启动时 seed 找不到 source，用户侧不会自动得到内置插件。
@@ -469,5 +445,4 @@ buildOfficialPluginRuntimes();
 stageBundle();
 stageOfficialPlugins();
 stageBundledSkillPack();
-stageKoffiForCuaPlugin();
 stageSharpForNodeReplPlugin();

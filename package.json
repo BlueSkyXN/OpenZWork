@@ -14,8 +14,6 @@
     "dev:e2e-report": "pnpm --filter @zcode/e2e-report dev",
     "dev:desktop:remote-prod": "node scripts/dev-desktop-remote-prod.mjs",
     "dev:web-remote-control": "node scripts/build-desktop-agent-cli.mjs && concurrently -k -n web,desktop -c green,magenta \"pnpm --filter @zcode/web exec vite dev --strictPort\" \"node scripts/dev-web-remote-control-desktop.mjs\"",
-    "dev:web-share:test": "node scripts/dev-web-share-env.mjs test",
-    "dev:web-share:mock": "node scripts/dev-web-share-env.mjs mock",
     "dev:server": "pnpm --filter @zcode/server dev",
     "dev:official-mcp": "node scripts/dev-official-mcp-server.mjs",
     "prepare": "husky",
@@ -44,7 +42,6 @@
     "build:web-remote-control:v3": "pnpm --filter @zcode/web exec vite build --base=/remote/v3/",
     "build:web-remote-control:v4": "pnpm --filter @zcode/web exec vite build --base=/remote/v4/",
     "build:web-remote-control:test": "pnpm --filter @zcode/web exec vite build --base=/remote/__test__/",
-    "build:web-share": "pnpm --filter @zcode/web-share build",
     "build:zcode": "node scripts/build-zcode.mjs",
     "build:bootstrap": "pnpm -r --filter \"./packages/*\" --filter \"!@zcode/desktop\" build && pnpm --filter @zcode/desktop build:no-runtime-assets",
     "build:sea": "pnpm --dir apps/zcode-cli build:sea",
@@ -75,7 +72,8 @@
     "architecture:report": "node scripts/architecture/architecture-check.mjs report",
     "architecture:baseline:update": "node scripts/architecture/architecture-check.mjs baseline:update",
     "architecture:context": "node scripts/architecture/architecture-check.mjs context",
-    "test:architecture": "node --test scripts/test/architecture-governance.test.mjs"
+    "test:architecture": "node --test scripts/test/architecture-governance.test.mjs",
+    "postinstall": "node scripts/restore-inner-hoisted-deps.mjs"
   },
   "dependencies": {
     "border-beam": "^1.0.1",

@@ -714,10 +714,7 @@ async function writeTestOfficialPluginPackages(repoDir: string): Promise<void> {
         "plugin.json",
       );
       await mkdir(dirname(manifestPath), { recursive: true });
-      const pluginManifestName =
-        pluginName === "zcode-cua-plugin"
-          ? "computer-use"
-          : pluginName.replace(/-plugin$/u, "");
+      const pluginManifestName = pluginName.replace(/-plugin$/u, "");
       await writeFile(
         manifestPath,
         JSON.stringify({
