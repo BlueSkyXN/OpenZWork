@@ -1,5 +1,7 @@
 # Conversation Session Background E2E Coverage Matrix
 
+
+
 本文记录会话区 background runtime task 的 E2E 枚举边界。它补充主矩阵里的 `BG` 分组，只覆盖当前已经实现并确认的桌面端主链路。
 
 > **覆盖状态说明**：历史综合 spec `conversation-session-background.test.ts` 当前位于

@@ -343,7 +343,6 @@ xai
 
 - 不合并或 cherry-pick `feat/provider-ux-refactor`；
 - 不引入 Catalog 数据层；
-- 不改 Account Provider、Start Plan、Individual Plan、Team Plan 页面结构；
 - 不删除或简化套餐介绍、购买卡片、价格、Quota 与 Usage；
 - 不改变 Account entitlement、Access、Registry 完整性或模型执行语义；
 - 不移动 Model Config Rule，也不改变 Match/Template/Provider/Personal Rule 优先级；

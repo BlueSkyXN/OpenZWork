@@ -91,13 +91,7 @@ BDO03 明确展开卡片并等待预览文案；切回会话后同样先明确�
 
 ## 回归清单与边界
 
-2026-09-08 用户收窄范围：仅回归与 `9c99f9623c` 直接相关的 Bash 行为。初次按 Bash
-关键词选取的 26-spec 扩展批次范围过大，已中止，不作为本次验收集或修复范围。
-验收集为 background spec 中的 Bash 前后台/子代理/停止场景、V4 background-work 中的
-Bash cancel、Terminal 输出与终态代表，以及 BDO01–BDO06 新增用例。不运行通用
-Memory、Native Search、权限注册、fork、compact、CUA 或 subagent 配置套件。
-通用 pipe collector 的未覆盖行只由一个既有 Hook lifecycle 代表验证共享执行入口，
-不扩展到整个 Hook 功能套件；无法从 Bash 产品入口触发的分支单列。
+
 
 Windows 专属 taskkill/flags、无法通过正常产品入口触发的重复 unsubscribe、延迟回调竞态、
 系统 ENOSPC/inode 耗尽等分支不能用 macOS Desktop E2E 的数字宣称覆盖。保留相应跨平台实跑/

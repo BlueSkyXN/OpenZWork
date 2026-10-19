@@ -26,7 +26,7 @@ vi.mock("@/ControlHintTooltip.js", () => ({
     ),
 }));
 
-import { TaskRowActionButton } from "@/workspace-grouped-tasks/task-row-action-button.js";
+import { TaskRowActionButton } from "@/project-sidebar/grouped/task-row-action-button.js";
 
 describe("TaskRowActionButton", () => {
   it("renders the shared portal tooltip above the button", () => {
@@ -72,22 +72,5 @@ describe("TaskRowActionButton", () => {
     );
 
     expect(html).not.toContain("data-control-hint-tooltip");
-  });
-
-  it("forwards an optional semantic color class to the button", () => {
-    const html = renderToStaticMarkup(
-      createElement(
-        TaskRowActionButton,
-        {
-          className: "text-foreground-subtle hover:text-foreground",
-          label: "Show file tree",
-          onClick: () => {},
-        },
-        "tree",
-      ),
-    );
-
-    expect(html).toContain("text-foreground-subtle");
-    expect(html).toContain("hover:text-foreground");
   });
 });

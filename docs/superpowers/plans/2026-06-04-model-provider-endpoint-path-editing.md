@@ -118,7 +118,6 @@ Expected: all tests in that file pass.
 
 **Files:**
 
-- Modify: `packages/ui/test/modelProviderCodingPlan.test.ts`
 - Modify: `packages/ui/src/settings/model-provider-section/AddProviderCard.tsx`
 - Modify: `packages/ui/src/i18n/locales/en-US.ts`
 - Modify: `packages/ui/src/i18n/locales/zh-CN.ts`
@@ -154,10 +153,6 @@ expect(provider.endpoints).toMatchObject({
 
 Run:
 
-```bash
-pnpm exec vitest run packages/ui/test/modelProviderCodingPlan.test.ts
-```
-
 Expected: fail because custom endpoint path inputs and `endpointPaths` are not wired.
 
 - [ ] **Step 3: Implement add-provider UI**
@@ -186,17 +181,12 @@ When API formats change, retain paths for selected kinds and add defaults for ne
 
 Run:
 
-```bash
-pnpm exec vitest run packages/ui/test/modelProviderCodingPlan.test.ts
-```
-
 Expected: updated tests pass.
 
 ### Task 3: Edit Provider Path UI And Dynamic Labels
 
 **Files:**
 
-- Modify: `packages/ui/test/modelProviderCodingPlan.test.ts`
 - Modify: `packages/ui/test/providerModelMetadataDialog.test.ts`
 - Modify: `packages/ui/src/settings/model-provider-section/InlineEditableProviderCard.tsx`
 - Modify: `packages/ui/src/settings/model-provider-section/ProviderCardSections.tsx`
@@ -236,10 +226,6 @@ Update metadata dialog tests so `ProviderModelApiFormatMultiSelect` receives end
 
 Run:
 
-```bash
-pnpm exec vitest run packages/ui/test/modelProviderCodingPlan.test.ts packages/ui/test/providerModelMetadataDialog.test.ts
-```
-
 Expected: fail because API format display still uses hardcoded endpoint strings.
 
 - [ ] **Step 3: Implement dynamic display helper**
@@ -266,10 +252,6 @@ Use `titleLabelId + resolved path` instead of the old hardcoded long-label i18n 
 
 Run:
 
-```bash
-pnpm exec vitest run packages/ui/test/modelProviderCodingPlan.test.ts packages/ui/test/providerModelMetadataDialog.test.ts packages/ui/test/modelProviderDraftSave.test.ts
-```
-
 Expected: all targeted tests pass.
 
 ### Task 4: Final Verification And Commit
@@ -282,31 +264,16 @@ Expected: all targeted tests pass.
 
 Run:
 
-```bash
-pnpm exec oxfmt packages/ui/src/settings/model-provider-section/AddProviderCard.tsx packages/ui/src/settings/model-provider-section/InlineEditableProviderCard.tsx packages/ui/src/settings/model-provider-section/ProviderCardSections.tsx packages/ui/src/settings/model-provider-section/ProviderDraftSave.ts packages/ui/src/settings/model-provider-section/ProviderFormControls.tsx packages/ui/src/settings/model-provider-section/ProviderModelApiFormatTags.tsx packages/ui/src/settings/model-provider-section/ProviderModelMetadataDialog.tsx packages/ui/test/modelProviderCodingPlan.test.ts packages/ui/test/modelProviderDraftSave.test.ts packages/ui/test/providerModelMetadataDialog.test.ts packages/ui/src/i18n/locales/en-US.ts packages/ui/src/i18n/locales/zh-CN.ts
-```
-
 Expected: formatter exits 0.
 
 - [ ] **Step 2: Run required checks**
 
 Run:
 
-```bash
-pnpm exec vitest run packages/ui/test/modelProviderDraftSave.test.ts packages/ui/test/modelProviderCodingPlan.test.ts packages/ui/test/providerModelMetadataDialog.test.ts
-pnpm typecheck
-pnpm lint
-```
-
 Expected: tests pass, typecheck exits 0, lint exits 0.
 
 - [ ] **Step 3: Commit**
 
 Run:
-
-```bash
-git add docs/superpowers/plans/2026-06-04-model-provider-endpoint-path-editing.md packages/ui/src/settings/model-provider-section/AddProviderCard.tsx packages/ui/src/settings/model-provider-section/InlineEditableProviderCard.tsx packages/ui/src/settings/model-provider-section/ProviderCardSections.tsx packages/ui/src/settings/model-provider-section/ProviderDraftSave.ts packages/ui/src/settings/model-provider-section/ProviderFormControls.tsx packages/ui/src/settings/model-provider-section/ProviderModelApiFormatTags.tsx packages/ui/src/settings/model-provider-section/ProviderModelMetadataDialog.tsx packages/ui/test/modelProviderCodingPlan.test.ts packages/ui/test/modelProviderDraftSave.test.ts packages/ui/test/providerModelMetadataDialog.test.ts packages/ui/src/i18n/locales/en-US.ts packages/ui/src/i18n/locales/zh-CN.ts
-git commit -m "feat(model-provider): edit endpoint paths per api format"
-```
 
 Expected: commit succeeds.

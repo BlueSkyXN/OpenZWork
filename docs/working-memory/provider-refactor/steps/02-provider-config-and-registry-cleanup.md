@@ -138,9 +138,7 @@ Adapter 的请求设施管理，不作为 Provider 静态事实写入 Model。
 Bootstrap 中原来用于在 Registry 热更新后原地修改 Active Session 容量、再补发 ModelSelected 的死链
 已经删除。Active Session 持有自身 Model；新的 Properties 与 Option Specs 只进入以后创建的 Model。
 
-账号登出会在 OAuth 主会话清理前捕获账号身份，并删除对应账号作用域的 Personal Coding Plan Key；
-兼容窗口内同时删除旧无作用域 Key。重新登录则强制使用新 OAuth Token 重新取得并覆盖 Key。Account
-Provider 从 Registry 消失、请求鉴权失效和派生凭据清理因此遵循同一次账号生命周期。
+
 
 ## 设置页面的表单边界
 
@@ -171,9 +169,7 @@ Personal Config Overlay
 保存操作返回写入后刷新完成的新 Settings View，因此保存后的 Provider Family 修正和 Plan 同步补偿也使用
 同一份最新 Registry 结论；Renderer 不再根据 API Key、Endpoint 和模型字段复制一套启动可用性算法。
 
-套餐连接状态只读取 Account Overlay 发布的 `accessId`。Provider 表单中的旧 API Key、Endpoint 和模型
-列表不会在缺少 Account Access 时把 Coding/Start/Team Plan 重新判定为已连接；导航状态点则直接使用
-Registry `selectable`。设置页因此不再保留“未装配新 Service 时回退旧表单”的隐式模式。
+
 
 编辑会话不再复刻旧 Store 的 endpoints、kind、modalities、ProviderOptionsPatch 和时间戳字段。
 Renderer 只在正式 Config 之外附加 `providerId/modelId`、Registry 投影状态和 Personal 来源标记；
@@ -184,18 +180,13 @@ API 类型同样只属于 Provider Config。设置页使用 `ProviderApiType` �
 API kind、Endpoint Path 或多协议选择旁路。Repo Wiki 和连接探测也直接消费该正式类型，不再把当前
 Config 反向翻译成旧 Provider Store kind。
 
-Desktop E2E 的 Direct Seed 和 WDIO 全局 Provider 夹具都已退出旧物理 Store 与 CLI Provider Config。
-DeepSeek、Output Budget、Repo Wiki、Context Window 和 Provider 过滤用例只写版本化 Personal Config；
-Environment 默认模型写入独立 `model-selection.json`。CLI Config 只保留 `modelStream` timeout 等非
-Provider Harness 设置，不再复制 Provider、Model 或默认 Selection。Coding Plan 夹具也不再写 Builtin
-Provider 副本，继续由 Official 与 Account Source 构建。
+
 
 Restart E2E 使用同一边界：Replay Provider 只写 Personal Config，Environment 的冷启动默认模型只写
 版本化 Model Selection Config。测试不再通过 Project/CLI Config 复制 Provider 或 reasoning 参数，也
 不再人为制造 Host Snapshot 与 Worker CLI Catalog 不一致的旧竞态。
 
-Team Plan Usage E2E 也只写 Personal Config；Personal/Team 账号身份由场景中的 Account Source 提供，
-测试通过正式 Overlay 顺序形成可用 Provider，不再写旧 CLI Provider Config 或旧 Provider Store。
+
 
 Reasoning manual-review E2E 的 replay endpoint 发现也已经退出各用例私有的旧 Store/CLI Config 回退。
 它们使用显式 replay runtime 信息或统一的 Personal Config 测试投影；旧物理格式只留在集中迁移边界。
@@ -212,7 +203,6 @@ Bootstrap 内部的通用 `RuntimeModelOverlayManager` 也已退出。唯一保�
 以下兼容代码仍有单一、可删除的职责：
 
 - Personal Config 首次导入：新 Personal Config 尚未建立时读取旧物理文件；
-- Account Key 一次性迁移：把旧 Personal Coding Plan Key 移入 Account Credential Store；
 - Renderer 编辑会话状态：直接承载正式 Config，并隔离草稿与 Registry 运行状态；
 - `turnRuntimeModel`：闲时任务在 M4 前的 execution-scoped 输入。
 
@@ -274,11 +264,7 @@ Bootstrap 全量运行中，本轮相关的 Runtime Config 与 Telemetry Harness
 位于既有 `v4-native-boundary`、oversize V4 Gateway 时序和 Session Resident Pool 用例。本轮没有
 借 Provider 收尾改动这些独立语义。
 
-上线前最后一轮清理又完成了 Desktop E2E Provider Seed/读取边界迁移、Provider 与 Provider Node 的
-Knip 审计，以及 Account Access 额度重置作用域补全。根 `pnpm typecheck` 再次通过；根 `pnpm lint`
-保持 0 error、35 条与 M2 无关的基线 warning；Coding Plan 与 Model Selection 定向测试 205 条通过，
-Desktop E2E TypeScript 和改动文件 Lint 通过。Human in the Loop 的 16 项裁决全部确认，分支相对最新
-`origin/staging` 仍为 0 behind。
+
 
 Turn Overlay 收窄后再次执行根 `pnpm typecheck` 与 `pnpm lint`：TypeScript 通过，Lint 为 0 error、
 33 条当前 `staging` 基线 warning；Turn Overlay、Runtime Model Factory、Session Facade 与 M2 结构门禁
@@ -329,9 +315,7 @@ Shared DTO 已退出，UI 只保留由当前 View 投影的 `ProviderOrderView`�
 Bootstrap 与 Prompt CLI 中仅供文件内部使用的 Provider 迁移/Registry 辅助类型和函数不再导出。
 正式跨模块入口保持不变；Knip 复核后，这两个包中 Provider、Model、Registry 相关的无调用者导出为零。
 
-Services 中按旧 `enabled/systemDisabledReason` 推断 Coding Plan 禁用来源的两个零调用者 helper 已删除，
-Account/Request Auth/Connectivity 等模块的文件内部实现也不再作为公共扩展点导出。Account Source 当前只以
-available/unavailable/unknown 结果形成 Account Overlay。
+
 
 Services 路径模块中仅供内部复用的 workspace key 与外部 Agent 配置隔离目录 helper 也已收回导出；
 外部 Agent 的技能、插件和运行状态路径行为保持不变。

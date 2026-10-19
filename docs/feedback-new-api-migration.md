@@ -6,7 +6,7 @@
 
 - 旧接口：`https://feedback.example.invalid/v1/tickets`
 
-UI 和 RPC 服务接口暂不扩展，`IFeedbackService` 继续向 UI 暴露现有的创建、列表、详情、评论和附件上传能力。迁移只收敛在 services 层的 HTTP 协议、鉴权、字段映射和匿名票据缓存。
+
 
 默认 feedback API base 必须跟随统一的 ZCode endpoint resolver：
 
@@ -48,7 +48,6 @@ UI 和 RPC 服务接口暂不扩展，`IFeedbackService` 继续向 UI 暴露现�
 请求头规则：
 
 - 反馈请求通过统一 `ApiClient` 发送，自动携带 ZCode Server 通参，例如 `User-Agent`、`HTTP-Referer`、`X-ZCode-App-Version`、`X-Platform`、`X-Release-Channel`、`X-Client-Language`、`X-Client-Timezone`、`X-Os-Category`、`X-Os-Version` 和 `x-request-id`。
-- 如果本地凭据存在 `zcodejwttoken`，请求发送 `Authorization: Bearer <token>`。
 - 所有反馈 API 请求发送 `X-Device-Mid: <telemetry deviceMid>`，用于匿名工单归属与详情访问。
 - `POST /feedback/ticket` 请求体同时发送 `device_mid`。
 - 不再发送旧接口使用的 `X-Feedback-Client-Id` 和 `X-Feedback-Account-Id`。

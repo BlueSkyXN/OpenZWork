@@ -413,7 +413,7 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
   // 为 Windows path.relative 反斜杠做的归一化不再需要。
   const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
   const violations = [];
-  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
     .split('\n')
     .filter(Boolean);
   for (const rel of tracked) {
@@ -428,7 +428,7 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
 
 test('[structural, not runtime] WP-08: builtin release keeps 16 third-party templates, no account plan bindings', () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(root, 'config/provider/zcode-builtin.json'), 'utf8'));
-  assert.equal(cfg.revision, 33);
+  assert.equal(cfg.revision, 34);
   const pcr = cfg.config.providerConfigRules;
   assert.equal(pcr.templateRules.length, 16);
   const templateIds = new Set(pcr.templateRules.map(t => t.templateId));
@@ -570,7 +570,7 @@ test('[structural, not runtime] WP-09: off-peak domain fully removed from source
   // off-peak/off_peak 字样（规则说明与豁免理由），必须自排除。
   const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
   const violations = [];
-  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
     .split('\n')
     .filter(Boolean);
   for (const rel of tracked) {
@@ -603,7 +603,7 @@ test('[structural, not runtime] re-clean gate: highspeed card chain / request-se
   // 拿归一化结果比对豁免/目录前缀会全部失配（既有门禁注释记录过的坑）。
   const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
   const violations = [];
-  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
     .split('\n')
     .filter(Boolean);
   for (const rel of tracked) {
@@ -643,7 +643,7 @@ test('[structural, not runtime] WP-03: user-level data root references stay unde
     'scripts/zcode-distribution/installer.mjs',
   ]);
   const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
-  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 })
     .split('\n')
     .filter(Boolean);
   const violations = [];

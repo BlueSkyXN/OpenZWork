@@ -9,7 +9,15 @@ import {
   unregisterRecommendedPromptPane,
 } from "@/v4/featureSuggestedPromptRotation.js";
 /* oxlint-disable eslint(max-lines) -- 推荐 Prompt 同时收口 latest-wins、取消、可信解析、操作反馈和 Composer 收尾，拆分会打散这条状态机。 */
-import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID } from "@zcode/shared";
 import { cn } from "@/components/lib/utils.js";
 import { toast } from "@/components/ui/toast.js";
@@ -26,9 +34,7 @@ import {
 } from "@/v4/ConversationDraftSuggestedPrompts.js";
 import { buildDraftSuggestedPluginMention } from "@/v4/draftSuggestedPromptPrefill.js";
 import { resolveDraftSuggestedPromptText } from "@/v4/draftSuggestedPromptItems.js";
-import {
-  DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS,
-} from "@/v4/draftSuggestedPromptItems.js";
+import { DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS } from "@/v4/draftSuggestedPromptItems.js";
 import {
   resolveDraftSuggestedPluginFlowStage,
   resolveSuggestedPluginClientBoundary,
@@ -121,17 +127,13 @@ export function ConversationDraftSuggestedPromptsContainer({
   const [cancelling, setCancelling] = useState(false);
   const workspaceKey = workspaceIdentity?.trim() || workspacePath;
   // Client scenes 远端推荐已随官方服务移除；推荐提示词改用本地静态池。
-  const allItems = useMemo(
-    () => getRecommendedPromptPool(isOfficeMode),
-    [isOfficeMode],
-  );
+  const allItems = useMemo(() => getRecommendedPromptPool(isOfficeMode), [isOfficeMode]);
   const items = useMemo(
     () =>
       (proactive ? recommendedItems : allItems).filter(
         (item) =>
-          !item.actions?.some(
-            (action) => action === DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS,
-          ) || Boolean(onOpenAutomations),
+          !item.actions?.some((action) => action === DRAFT_SUGGESTED_PROMPT_NAVIGATE_AUTOMATIONS) ||
+          Boolean(onOpenAutomations),
       ),
     [allItems, onOpenAutomations, proactive, recommendedItems],
   );
@@ -270,7 +272,6 @@ export function ConversationDraftSuggestedPromptsContainer({
   const revalidateAndPrependPlugin = useCallback(
     async (current: DraftSuggestedPluginFlow, requestVersion: number) => {
       await invalidateDeferredDraftSessionForSkillChange({
-        zcodeSessionService: resolution.services.zcodeSessionService,
         workspacePath,
         workspaceIdentity,
         reason: "suggested-prompt-plugin-change",
@@ -291,7 +292,6 @@ export function ConversationDraftSuggestedPromptsContainer({
       isWebRemoteControl,
       prependResolvedPlugin,
       resolution.services.pluginManagementService,
-      resolution.services.zcodeSessionService,
       targetParams,
       workspaceIdentity,
       workspacePath,

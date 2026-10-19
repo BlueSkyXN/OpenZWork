@@ -70,7 +70,6 @@ parent turn 结束                      |                             |         
   子代理结束时关闭这个子会话的 session。headless 没有 UI 面板。
 - 收尾失败只记 warn，不阻断子代理结果回到父 agent。
 - 后台子代理和父会话可能同时操作同一组 tab，这一点与「共用对话 tab」的语义一致，不额外加锁。
-- Computer Use 的 subagent 限制不变（`docs/cua/2026-08-18-subagent-computer-use-unavailable-spec.md`）。
 
 ## 验收
 

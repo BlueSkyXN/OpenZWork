@@ -5,7 +5,7 @@
 import type { CommandEnvelope, CommandPayloadMap } from "@zcode/shared/zcode-protocol-v4";
 import type { mapAttachmentRefsToTurnAttachments } from "../attachment-refs.js";
 import { inputIntentMetadataFromCanonical } from "../input-intent.js";
-import { startPromptTurn } from "../prompt-turn.js";
+import { preflightPromptTurn, startPreflightedPromptTurn } from "../prompt-turn.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
 import { applyGoalCommand } from "./goal-compact.js";
 import type { ConversationEditTarget } from "../../product-projection.js";
@@ -18,16 +18,14 @@ export function stableAttachmentRefs(editTarget: ConversationEditTarget) {
   );
 }
 
-export async function startCanonicalIntent(
-  host: V4CommandCoreHost,
+function buildCanonicalIntent(
   record: V4SessionRecordView,
   envelope: CommandEnvelope,
   editTarget: ConversationEditTarget,
   text: string,
   attachmentRefs: ReturnType<typeof stableAttachmentRefs>,
-  attachments: Awaited<ReturnType<typeof mapAttachmentRefsToTurnAttachments>>,
-  options?: { requireQueue?: boolean },
-): Promise<void> {
+  requireQueue: boolean,
+) {
   const intent = inputIntentMetadataFromCanonical(
     envelope,
     {
@@ -52,12 +50,60 @@ export async function startCanonicalIntent(
     },
     text,
   );
-  const requireQueue = options?.requireQueue === true;
   if (requireQueue) {
     intent.requestedDelivery = "queue";
     intent.admittedDelivery = "queue";
     intent.fallbackReasonCode = EDIT_QUEUE_FALLBACK_REASON;
   }
+  return intent;
+}
+
+/** destructive edit/retry 在提交 branch cut 前调用；只检查模型，不接纳输入。 */
+export async function preflightCanonicalIntent(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  envelope: CommandEnvelope,
+  editTarget: ConversationEditTarget,
+  text: string,
+  attachmentRefs: ReturnType<typeof stableAttachmentRefs>,
+  attachments: Awaited<ReturnType<typeof mapAttachmentRefsToTurnAttachments>>,
+): Promise<void> {
+  if (editTarget.intent.kind === "sendGoalCommand") return;
+  const intent = buildCanonicalIntent(
+    record,
+    envelope,
+    editTarget,
+    text,
+    attachmentRefs,
+    false,
+  );
+  await preflightPromptTurn(host, record, {
+    content: text,
+    inputId: envelope.commandId,
+    intent,
+    ...(attachments ? { attachments } : {}),
+  });
+}
+
+export async function startCanonicalIntent(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  envelope: CommandEnvelope,
+  editTarget: ConversationEditTarget,
+  text: string,
+  attachmentRefs: ReturnType<typeof stableAttachmentRefs>,
+  attachments: Awaited<ReturnType<typeof mapAttachmentRefsToTurnAttachments>>,
+  options?: { requireQueue?: boolean },
+): Promise<void> {
+  const requireQueue = options?.requireQueue === true;
+  const intent = buildCanonicalIntent(
+    record,
+    envelope,
+    editTarget,
+    text,
+    attachmentRefs,
+    requireQueue,
+  );
   if (editTarget.intent.kind === "sendGoalCommand") {
     await applyGoalCommand(host, record, {
       inputId: envelope.commandId,
@@ -66,14 +112,14 @@ export async function startCanonicalIntent(
     });
     return;
   }
-  const started = await startPromptTurn(host, record, {
-    content: text,
-    inputId: envelope.commandId,
-    intent,
-    ...(requireQueue ? { requireQueue: true } : {}),
-    ...(attachments ? { attachments } : {}),
-  });
-  if (requireQueue && started.admission.kind !== "queued") {
-    throw new Error("edited input was not admitted to the queue");
-  }
+  const started = await startPreflightedPromptTurn(host, record, {
+      content: text,
+      inputId: envelope.commandId,
+      intent,
+      ...(requireQueue ? { requireQueue: true } : {}),
+      ...(attachments ? { attachments } : {}),
+    });
+    if (requireQueue && started.admission.kind !== "queued") {
+      throw new Error("edited input was not admitted to the queue");
+    }
 }

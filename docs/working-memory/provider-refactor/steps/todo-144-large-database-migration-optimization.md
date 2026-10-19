@@ -31,7 +31,6 @@ SQLite/账本继续拥有唯一迁移事实；Host/UI 只观察阶段。下方�
 - 原 migrations.ts 与 migrations/ 相对 hotfix 目标分支 diff 为空；未修改用户数据库，未执行大库性能测量或 UI E2E。
 - dep:refs 未加载 CLI adapters project；删除边界依据仓库全文引用扫描与 CLI/跨包类型检查，不声称语言服务确认零引用。
 
-## 首轮实施历史（已被上述范围修订覆盖）
 
 ## 本次 hotfix 范围裁决
 

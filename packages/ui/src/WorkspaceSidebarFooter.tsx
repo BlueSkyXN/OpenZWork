@@ -1,12 +1,9 @@
+import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 /* oxlint-disable eslint(max-lines) -- footer 聚合账户、主题、模式和快捷键菜单。 */
 import type { Locale, UserInfo } from "@zcode/shared";
 import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
-import {
-  DesktopCommandIds,
-  TID_LOGIN_TRIGGER,
-  TID_TASK_SETTINGS_BUTTON,
-} from "@zcode/shared";
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { DesktopCommandIds } from "@zcode/shared";
+import { TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
@@ -69,7 +66,6 @@ function getSidebarProfileBadge(
 
   return formatMessage({ id: "sidebar.profile.notLoggedIn" });
 }
-
 
 export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterComponent({
   theme,
@@ -174,14 +170,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
       <div className="flex min-w-0 gap-2">
         <DropdownMenu open={profileMenuOpen} onOpenChange={setProfileMenuOpen}>
           <DropdownMenuTrigger asChild>
-            {/* Bugfix: 头像和 Login 之前直接绑定到登录动作，导致用户无法从这里打开偏好设置。
-              现在把这一块改成统一的设置菜单入口，登录/退出留在菜单项里，交互职责更清晰。 */}
             <Button
               type="button"
               variant="ghost"
               size={"lg"}
               className="min-w-0 flex-1 justify-start gap-2 overflow-hidden rounded-tl-2xl rounded-bl-2xl border-0 pl-0"
-              data-testid={TID_LOGIN_TRIGGER}
+              data-testid="sidebar-preferences-trigger"
               aria-label={profileBadge}
             >
               {/* Bugfix: Button 默认 shrink-0 且带 whitespace-nowrap，超长用户名会把 footer 撑出 sidebar。

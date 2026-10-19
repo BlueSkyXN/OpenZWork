@@ -1,15 +1,22 @@
 /* oxlint-disable eslint(max-lines) -- 平台事件集中同一生命周期。 */
 import { useEffect, useRef } from "react";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-import type { IPlatformService } from "@zcode/shared";
+import type { CreateTaskOptions } from "@/app-shell/types.js";
+import { useComposerClientNamespace } from "@/hooks/useServices.js";
+import {
+  readV4ComposerDraft,
+  readComposerWorkspaceScope,
+  V4_DRAFT_SCOPE_ROOT,
+} from "@/v4/composer/composerDraftStore.js";
+import type { ZCodeTaskClientMode, IPlatformService } from "@zcode/shared";
 import { isWorkspaceTab, type WindowTabState } from "@/store/tabStore.js";
+
 import { logger } from "@/logger.js";
 import { matchesPrimaryShortcut } from "@/lib/keyboardShortcuts.js";
 import { isShortcutRecordingActive } from "@/shortcuts/bindings.js";
 import { isRendererReloadNavigation } from "@/lib/rendererNavigation.js";
 import {
-  buildConnectedRemoteWorkspaceSessionTargets,
-  buildWebRemoteControlWorkspaceTargets,
+  useWebRemoteControlWorkspaceSync,
   shouldPublishCompleteWorkspaceSnapshot,
 } from "@/root/rootPlatformWorkspaceSync.js";
 
@@ -18,6 +25,8 @@ export function useRootPlatformEffects({
   initialWorkspaceIdentity,
   initialWorkspacePurpose,
   initialTaskId,
+  initialTaskDraft,
+  clientMode = "desktop-continuous",
   canBootstrapInitialWorkspace = true,
   addTab,
   setIsBootstrappingInitialWorkspace,
@@ -34,15 +43,15 @@ export function useRootPlatformEffects({
   tabs,
   reconnectingRemoteWorkspaceKeys = [],
   remoteWorkspaceErrorByWorkspaceKey = {},
-  totalUnreadTaskCount,
   webRemoteControlFeatureEnabled = false,
-  webRemoteControlSessionActive = false,
   hasCompletedFullTabRestore = true,
 }: {
   initialWorkspaceAbsPath?: string;
   initialWorkspaceIdentity?: string;
   initialWorkspacePurpose?: import("@zcode/shared").WorkspacePurpose;
   initialTaskId?: string;
+  initialTaskDraft?: CreateTaskOptions;
+  clientMode?: ZCodeTaskClientMode;
   canBootstrapInitialWorkspace?: boolean;
   addTab: (
     workspacePath: string,
@@ -54,7 +63,11 @@ export function useRootPlatformEffects({
   setIsBootstrappingInitialWorkspace: (value: boolean) => void;
   platform: IPlatformService;
   activateTabByPath: (workspacePath: string, options?: { workspaceIdentity?: string }) => boolean;
-  startDraftInWorkspace: (workspacePath: string, workspaceIdentity?: string) => void;
+  startDraftInWorkspace: (
+    workspacePath: string,
+    workspaceIdentity?: string,
+    options?: CreateTaskOptions,
+  ) => void;
   startNewTaskFromActiveWorkspace: (source: string) => void;
   openWorkspace: () => void;
   openWorkspacePath: (workspacePath: string) => void;
@@ -65,11 +78,10 @@ export function useRootPlatformEffects({
   tabs: WindowTabState[];
   reconnectingRemoteWorkspaceKeys?: string[];
   remoteWorkspaceErrorByWorkspaceKey?: Record<string, string>;
-  totalUnreadTaskCount: number;
   webRemoteControlFeatureEnabled?: boolean;
-  webRemoteControlSessionActive?: boolean;
   hasCompletedFullTabRestore?: boolean;
 }) {
+  const composerClientNamespace = useComposerClientNamespace();
   const didBootstrapInitialWorkspaceRef = useRef(false);
 
   useEffect(() => {
@@ -81,6 +93,29 @@ export function useRootPlatformEffects({
 
     didBootstrapInitialWorkspaceRef.current = true;
     if (initialWorkspaceAbsPath) {
+      const savedScope = readComposerWorkspaceScope(
+        initialWorkspaceAbsPath,
+        initialWorkspaceIdentity,
+        composerClientNamespace,
+      );
+      // 手机重建 Root 时 bridge 只有地址；项目意图随已有浏览器草稿恢复，先于 prewarm。
+      const savedDraft =
+        clientMode === "web-remote-replayable" && !initialTaskId && !initialTaskDraft
+          ? readV4ComposerDraft(
+              initialWorkspaceAbsPath,
+              initialWorkspaceIdentity,
+              V4_DRAFT_SCOPE_ROOT,
+              savedScope,
+            )
+          : null;
+      const draftIntent =
+        initialTaskDraft ??
+        (savedScope
+          ? { projectId: savedScope.projectId, taskGroupId: savedDraft?.taskGroupId }
+          : undefined) ??
+        (savedDraft?.projectId !== undefined
+          ? { projectId: savedDraft.projectId, taskGroupId: savedDraft.taskGroupId }
+          : undefined);
       addTab(
         initialWorkspaceAbsPath,
         initialWorkspaceIdentity || initialWorkspacePurpose
@@ -94,11 +129,11 @@ export function useRootPlatformEffects({
         useZCodeSessionStore
           .getState()
           .setActiveTaskId(initialWorkspaceAbsPath, initialTaskId, initialWorkspaceIdentity);
-      } else if (!isRendererReloadNavigation()) {
-        // main 注入 initial workspace 只表达工作区入口；没有显式 taskId
+      } else if (draftIntent || !isRendererReloadNavigation()) {
+        // 修复原因：main 注入 initial workspace 只表达工作区入口；没有显式 taskId
         // 的 app 冷启动必须进入草稿，不能让 renderer-local last-session/group/pane
         // 抢回历史会话；同一 renderer reload 则保留当前 session 续流资格。
-        startDraftInWorkspace(initialWorkspaceAbsPath, initialWorkspaceIdentity);
+        startDraftInWorkspace(initialWorkspaceAbsPath, initialWorkspaceIdentity, draftIntent);
       }
     }
     // Dock 最近项目会通过 initialWorkspaceAbsPath 直达工作区。
@@ -110,6 +145,9 @@ export function useRootPlatformEffects({
     addTab,
     canBootstrapInitialWorkspace,
     initialTaskId,
+    initialTaskDraft,
+    composerClientNamespace,
+    clientMode,
     initialWorkspaceAbsPath,
     initialWorkspaceIdentity,
     initialWorkspacePurpose,
@@ -186,7 +224,7 @@ export function useRootPlatformEffects({
       disposeOpenWorkspacePath();
       disposeNotificationClick();
     };
-  }, [activateTabByPath, platform]);
+  }, [activateTabByPath, platform, tabs]);
 
   useEffect(() => {
     if (!isDesktop || !shouldPublishCompleteWorkspaceSnapshot(hasCompletedFullTabRestore)) {
@@ -203,43 +241,15 @@ export function useRootPlatformEffects({
     platform.syncWindowTabs(paths);
   }, [hasCompletedFullTabRestore, isDesktop, platform, tabs]);
 
-  useEffect(() => {
-    if (
-      !isDesktop ||
-      !shouldPublishCompleteWorkspaceSnapshot(hasCompletedFullTabRestore) ||
-      !platform.syncWebRemoteControlWorkspaces
-    ) {
-      return;
-    }
-
-    const connectedRemoteWorkspaces = buildConnectedRemoteWorkspaceSessionTargets({ tabs });
-    if (connectedRemoteWorkspaces.length > 0) {
-      // Bugfix: Bot 远端连接状态查询依赖 main 进程里 remoteSessionId -> workspaceIdentity 的绑定。
-      // 之前这条绑定复用 Web 远控 workspace 同步，Web 远控未开启时不会执行，导致 UI 已连接但 Bot 误判未连接。
-      platform.syncWebRemoteControlWorkspaces(connectedRemoteWorkspaces);
-    }
-
-    if (!webRemoteControlFeatureEnabled || !webRemoteControlSessionActive) {
-      return;
-    }
-
-    const workspaces = buildWebRemoteControlWorkspaceTargets({
-      tabs,
-      reconnectingRemoteWorkspaceKeys,
-      remoteWorkspaceErrorByWorkspaceKey,
-    });
-
-    platform.syncWebRemoteControlWorkspaces(workspaces);
-  }, [
-    hasCompletedFullTabRestore,
-    isDesktop,
+  useWebRemoteControlWorkspaceSync({
     platform,
+    tabs,
+    isDesktop: Boolean(isDesktop),
+    featureEnabled: webRemoteControlFeatureEnabled,
+    hasCompletedFullTabRestore,
     reconnectingRemoteWorkspaceKeys,
     remoteWorkspaceErrorByWorkspaceKey,
-    tabs,
-    webRemoteControlFeatureEnabled,
-    webRemoteControlSessionActive,
-  ]);
+  });
 
   useEffect(() => {
     if (isDesktop) {
@@ -299,10 +309,4 @@ export function useRootPlatformEffects({
       disposed = true;
     };
   }, [isDesktop, locale, platform]);
-
-  useEffect(() => {
-    // Dock badge 一期只统计“后台完成后还没点开”的 task 数。
-    // 失败态红点和 permission tag 仍留在各自 UI 语义里，避免把平台徽标混成泛化告警数。
-    platform.syncWindowUnreadCount(totalUnreadTaskCount);
-  }, [platform, totalUnreadTaskCount]);
 }

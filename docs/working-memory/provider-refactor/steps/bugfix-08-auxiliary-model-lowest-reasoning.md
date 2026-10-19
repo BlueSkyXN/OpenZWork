@@ -87,8 +87,6 @@ reasoningLevel.default               普通请求的默认档位（可以不是�
 - Session/Goal Title 与 Git Commit Message 都在已创建 Model 上 bind `values[0]`，不改变 Selection；
 - Memory Recall 单次请求使用最低档位，Active Model options 保持不变；
 - Provider 连接测试有 Reasoning Spec 时 bind `values[0]`，无 Spec 时不 bind；
-- Provider 连接测试继续使用 Provider-neutral 的用户消息，不恢复 Start Plan 专用请求体、Provider ID
-  分支或测试专用鉴权；
 - Memory Recall 继承 Active Model 的总输出预算，不保留“关闭 reasoning 后固定 256”的旧假设；
 - Adapter 通过普通 reasoning Mapping 发送最低档位，不再扫描隐藏关闭别名；
 - Built-in 配置评审确认 Reasoning values 按低到高排列；客户端不维护另一套已知档位或顺序校验；

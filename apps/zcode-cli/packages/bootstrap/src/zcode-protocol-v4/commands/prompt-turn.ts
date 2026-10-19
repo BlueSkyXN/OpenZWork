@@ -7,7 +7,7 @@ import { type TurnBackgroundAttribution, type TurnInputIntentMetadata } from "@z
 import type { TurnAttachment } from "@zcode/core";
 import type { ZCodeAutomationBotDeliveryTarget } from "@zcode/shared";
 import type { SendInputOptions, SendInputResult } from "../../app/types.js";
-import { runWithSessionResidencyFinalization } from "../../zcode-protocol/session-residency.js";
+import { runWithSessionResidencyFinalization } from "../../session-execution/index.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "./types.js";
 
 interface StartPromptTurnParamsBase {
@@ -25,6 +25,8 @@ interface StartPromptTurnParamsBase {
   toolDisallowlist?: readonly string[];
   /** sendQueuedNow 已持有 Core promotion lease，要求这次 admission 只能占用空闲位。 */
   requireIdle?: boolean;
+  /** 编辑重发碰到收口竞态时只能排队，交由 Core 原子裁决。 */
+  requireQueue?: boolean;
   /** Bot 入站 turn 的稳定回推地址；仅在本 turn 内暴露给 CronCreate。 */
   botDeliveryTarget?: ZCodeAutomationBotDeliveryTarget;
 }
@@ -45,7 +47,7 @@ export class V4PromptRejectedError extends Error {
   readonly turnStartUncertain = false;
 
   constructor(
-    readonly reasonCode: "restoreWarning" | "activePrompt",
+    readonly reasonCode: "restoreWarning" | "activePrompt" | "modelUnavailable",
     message: string,
   ) {
     super(message);
@@ -54,15 +56,17 @@ export class V4PromptRejectedError extends Error {
 }
 
 /**
- * 入口只做模型/持久化前置校验，然后调用 app -> Core admission。Core 返回 started 时，
- * 后台生命周期等待 completion 清理 turn 归因和广播状态；RPC 本身立即返回 admission receipt。
+ * 只执行 prompt 的模型准入检查，不接纳输入或修改 turn 生命周期。
+ * edit/retry 在提交 branch cut 前复用此入口，避免破坏性操作与普通发送使用两套目录规则。
  */
-export async function startPromptTurn(
+export async function preflightPromptTurn(
   host: V4CommandCoreHost,
   record: V4SessionRecordView,
   params: StartPromptTurnParams,
-): Promise<PromptTurnStartResult> {
-  const usesExecutionSelection = params.modelExecution?.selectionScope === "execution";
+): Promise<void> {
+  // 排队输入的 execution 只在提升边界应用，准入阶段一律按普通 Selection 预检，供卡失效后提升。
+  const usesExecutionSelection =
+    params.modelExecution?.selectionScope === "execution" && !params.requireQueue;
   if (!usesExecutionSelection && record.restoreWarning) {
     // app 重启后冷恢复可能跑在 provider registry 推送
     // 之前，record 创建时判「模型不可解析」挂上告警；registry 随后到达时 runtime
@@ -84,6 +88,58 @@ export async function startPromptTurn(
   if (!usesExecutionSelection) {
     await host.ensureModelReady?.(record);
   }
+  const requestedSelection = params.intent?.modelSelection;
+  const availableModels =
+    typeof record.app.listModels === "function" ? record.app.listModels() : undefined;
+  const isSelectionAvailable = (selection: typeof requestedSelection): boolean =>
+    selection !== undefined &&
+    availableModels?.some(
+      (model) =>
+        model.ref.providerId === selection.providerId && model.ref.modelId === selection.modelId,
+    ) === true;
+  if (
+    requestedSelection &&
+    availableModels &&
+    !isSelectionAvailable(requestedSelection)
+  ) {
+    // 普通 Selection 在 ACK 前校验；编辑重试在 branch cut 前复用同一预检。
+    throw new V4PromptRejectedError(
+      "modelUnavailable",
+      `Provider Registry 中不存在 Model: ${requestedSelection.providerId}/${requestedSelection.modelId}`,
+    );
+  }
+}
+
+/**
+ * 入口只做模型/持久化前置校验，然后调用 app -> Core admission。Core 返回 started 时，
+ * 后台生命周期等待 completion 清理 turn 归因和广播状态；RPC 本身立即返回 admission receipt。
+ */
+export async function startPromptTurn(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  params: StartPromptTurnParams,
+): Promise<PromptTurnStartResult> {
+  await preflightPromptTurn(host, record, params);
+  return startPromptTurnAfterPreflight(host, record, params);
+}
+
+/**
+ * destructive edit/retry 已在 branch cut 前完成同一份准入检查；提交后必须直接消费该结果。
+ * Bug 根因：再次读取可变 Registry 会在历史已截断后拒绝 replacement input。
+ */
+export async function startPreflightedPromptTurn(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  params: StartPromptTurnParams,
+): Promise<PromptTurnStartResult> {
+  return startPromptTurnAfterPreflight(host, record, params);
+}
+
+async function startPromptTurnAfterPreflight(
+  host: V4CommandCoreHost,
+  record: V4SessionRecordView,
+  params: StartPromptTurnParams,
+): Promise<PromptTurnStartResult> {
   if (record.persistence === "deferred") record.persistence = "immediate";
 
   const previousAutomationId = record.activeAutomationId;
@@ -121,6 +177,7 @@ export async function startPromptTurn(
         ...(params.sharedContextRefs ? { sharedContextRefs: params.sharedContextRefs } : {}),
         ...(turnToolDisallowlist ? { toolDisallowlist: turnToolDisallowlist } : {}),
         ...(params.requireIdle ? { requireIdle: true } : {}),
+        ...(params.requireQueue ? { requireQueue: true } : {}),
         queryId: params.inputId as SendInputOptions["queryId"],
       },
     );
@@ -211,5 +268,3 @@ export function turnBackgroundAttributionOf(params: {
 
 const AUTOMATION_INPUT_ID_PREFIX = "automation-";
 const AUTOMATION_MUTATION_TOOL_NAMES = ["CronCreate", "CronUpdate", "CronDelete"] as const;
-// 与 core turn-loop-state 同值——闲时轮同时隐藏 SendMessage / Workflow（两者会在本轮
-// modelExecution 之外重启子 Agent）。

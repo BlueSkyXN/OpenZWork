@@ -206,18 +206,3 @@ profile 原 Selection -> Worker 公共 Selection Facade（同一已应用账号/
 ```
 
 解析通过宿主注入的只读端口复用；不改工具参数、结果与 profile 持久化。无同模型时不回退父模型；档位失效不补默认。隐式继承和内部执行 override 不重解释。端口透传子 Runtime / workflow，独立终端 CLI 未注入时保持原行为。完整契约与验证见 `docs/working-memory/provider-refactor/steps/todo-99-worker-account-selection-repair.md`。
-
-## 闲时轮禁止 SendMessage / Workflow（D52）
-
-```text
-Host 闲时派发 -> prompt-turn.ts / server-operations.ts turn denylist（+SendMessage,+Workflow）
-  -> recoverable PermissionDenied（提示改用前台 Agent）-> 模型改走 Agent 工具（带 subagentModelOverride）
-```
-
-原因：SendMessage 续跑终态子 Agent 与 Workflow 派生脚本子会话都在闲时轮 `modelExecution` 之外重建
-模型，回落父会话常驻选择并计入用户 Coding Plan（ZCT-2099408932463325184）。三处 denylist 常量必须同值；
-#### 2026-09-08 原生验证发现的入口校验问题
-
-话题原文回查与历史附件选择均以 `conversationInputIntent` 为权威来源。仅当该字段不存在时兼容 `inputIntent`；权威字段存在但无有效话题记录时，不得从同条消息的旧字段恢复记录。相同消息上两个字段冲突时只采纳权威记录，正文与 synthetic 背景仍不能注入来源身份。
-
-真实模型显式传入 `sessionId: current` 时，工具 executor 的 JSON Schema 校验将正则字符串与字面量的联合转换为 `oneOf`，而最小校验器未应用正则，因此两个分支同时匹配，错误拒绝调用。当前话题选择器应使用单个字符串模式表达 `current | sess_*`，在 executor 入参校验与 handler 运行时解析两层验证；非话题策略仍要求明确任务 ID。不能仅直接调用 handler 的单测宣称真实工具入口可用。

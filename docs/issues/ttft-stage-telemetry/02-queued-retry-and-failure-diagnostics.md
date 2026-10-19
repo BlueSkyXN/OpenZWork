@@ -99,7 +99,7 @@ ARMS再次只读查询近1小时新service为0；可查询既有logstore，不�
 - 标签为受控低基数，未发现关联 ID 泄漏进指标标签；本次未观察到 `dropped` 序列。
 - 仍未完成：控制台界面瀑布目视确认、打包版编译注入写入路径、容量/费用/保留期核对、Windows/Linux 实机、扩大灰度。灰度开关保持默认关闭。
 
-细节见[上线清单](../../monitoring/local-ttft-rollout-checklist.md)与[平台验收证据](../../monitoring/local-ttft-platform-evidence.json)。
+
 
 ### Standards
 

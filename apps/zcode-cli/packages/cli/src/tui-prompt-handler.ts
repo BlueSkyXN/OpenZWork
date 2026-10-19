@@ -1,4 +1,5 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+import type { ToolSearchMode } from "@zcode/contracts";
 import { getDefaultConfigPath, updateUiLocaleInFileConfig } from "@zcode/adapters/config";
 import type { SessionEvent } from "@zcode/contracts";
 import type { ZCodeAppOptions } from "@zcode/bootstrap";
@@ -53,6 +54,7 @@ export function createTuiSubmitPrompt(
   startupLocale: SupportedLocale = DEFAULT_LOCALE,
   toolDisallowlist?: readonly string[],
   forceMcs = false,
+  toolsearchMode: ToolSearchMode = "off",
   browserUse?: GlobalOptions["browserUse"],
   browserExecutable?: GlobalOptions["browserExecutable"],
   workflowMode: DynamicWorkflowMode = DEFAULT_CLI_WORKFLOW_MODE,
@@ -142,6 +144,7 @@ export function createTuiSubmitPrompt(
     let createdApp: Awaited<ReturnType<NonNullable<RunDependencies["createZCodeApp"]>>>;
     try {
       createdApp = await createAppFactory({
+        modelSelectionMode: "cli-default",
         browserControlPort: browserRuntime?.browserControlPort,
         env: appEnv,
         projectConfigPath: deps.projectConfigPath,
@@ -151,6 +154,7 @@ export function createTuiSubmitPrompt(
         runtimeConfig: {
           ...(modeState.override ? { mode: modeState.override } : {}),
           ...(toolDisallowlist ? { toolDisallowlist } : {}),
+          toolSearch: { mode: toolsearchMode },
           ...(forceMcs ? { midConversationSystem: { mode: "force" as const } } : {}),
           // 首个 app 与 /new、/resume、fork 都经这里创建，mode 因此在进程内一致。
           ...resolveWorkflowModeRuntimeConfig(workflowMode),

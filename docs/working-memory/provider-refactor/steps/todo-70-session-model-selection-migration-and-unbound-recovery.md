@@ -39,10 +39,7 @@ Reasoning level is required for provider/model
 物理兼容边界，当前唯一生产改动是 Bot Config/State 文件隔离；它不再承诺各领域持续双写，也不能据此认为
 其他领域的升级迁移已经全部完成。
 
-旧 Provider 身份转换统一采用 [Todo 72](./todo-72-legacy-builtin-provider-and-model-selection-migration.md)。
-其中旧 Coding Plan 的动态身份允许按迁移时同一 Family 当前选中的个人/Team 连接转换；
-这是旧结构升级规则，不是当前 Selection 失效后的 Account-first 回退。本文继续负责 Session 的
-唯一 Decoder 与未绑定恢复，不新增平行转换入口，不用旧字段修补已有当前结构。
+
 
 ## 2.1 共同原则
 
@@ -109,11 +106,7 @@ Session 恢复
 - 当前 Decoder 返回的领域对象不暴露旧别名；
 - 单向 Decoder 的中文注释说明旧结构来源及当前字段优先规则；不新增回滚 Encoder 或通用兼容抽象。
 
-不新增数据库表迁移，不批量重写全部历史 Session。历史消息在读取和后续正常写回时逐步迁移。
-但当前 Session 选择若成功转换了旧 Coding Plan 动态身份，必须在本次恢复中通过现有保存入口固定新身份，
-不等用户再次发消息；Reasoning 无法确定仍可留空。只写当前选择，不改历史请求身份，不反写旧字段。
-写入前沿用现有串行化/并发保护，不能覆盖恢复期间用户新保存的选择；写入失败不能报告迁移已完成，
-也不能因此阻止历史打开。失败按现有存储错误日志/反馈处理，与“留空不弹提示”不是同一类错误。
+
 
 存储接入使用一个窄化的 `migrateLegacyModelSelection` 操作：Adapter 识别原始旧结构，
 身份转换由调用方注入并复用 72 的规则，Adapter 不读取账号文件或猜测 Registry 顺序。
@@ -121,12 +114,7 @@ Session 恢复
 现有当前 entry（包括不完整数据）优先于历史消息。仅当没有当前 entry、且最近的选择证据确属旧结构时，
 才允许从该旧消息导入。成功后保存为现有当前选择 entry，不修改消息和 Session 活动时间。
 
-协议宿主通过只用于升级的 `session/resolveLegacyModelProvider` 返回旧 Provider 对应的当前 ID，
-输入只有 `sessionId/providerId`，不传凭据。请求绑定产生它的 Workspace CLI/Host 连接；
-Host 用自己所在 Environment 的账号连接解释旧 Coding Plan，不转发到桌面 UI 的偏好解析链。
-Standalone 没有账号宿主时仍可转换静态旧身份，动态 Coding Plan 保持未绑定。
-这不是可供正常执行使用的 Provider 别名接口：仅真实旧结构导入会调用，固定新 entry 后不再调用。
-不改变 Desktop continuous / Mobile replayable 的订阅、owner 路由或队列，也不让手机另起 Host。
+
 
 ## 4. Session 恢复行为
 

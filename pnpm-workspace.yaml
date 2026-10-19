@@ -40,11 +40,12 @@ allowBuilds:
   ssh2: true
   unsafe-pointer: true
 # pnpm 11 不再读 package.json 的 "pnpm" 字段（会静默忽略），overrides 与
-# patchedDependencies 迁到这里。内容与迁移前一一对应，无增减。
+# patchedDependencies 迁到这里。后续上游补丁在同一入口维护。
 overrides:
   react: 19.2.7
   react-dom: 19.2.7
 patchedDependencies:
+  "@radix-ui/react-collapsible@1.1.12": patches/@radix-ui__react-collapsible@1.1.12.patch
   vitest@4.1.7: patches/vitest@4.1.7.patch
   wdio-electron-service@9.2.1: patches/wdio-electron-service@9.2.1.patch
   "@ai-sdk/openai-compatible@2.0.60": patches/@ai-sdk__openai-compatible@2.0.60.patch

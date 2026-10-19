@@ -7,9 +7,6 @@
 ```
 ```
 
-`computer-use` 复用已发布的 `assets/zcode-cua/icon.png`。插件标识从 `zcode-cua`
-改为 `computer-use` 后，CDN 资源目录仍保留原名；不能随插件标识拼接出尚未发布的
-`computer-use/icon.png`（会返回 404）。图标路径与插件标识可以独立维护。
 
 资源文件由 `zcode-plugins` 仓库的 `assets/<plugin-name>/icon.png` 提供；该仓库的
 `main` 分支发布流水线会将 assets 目录同步到 CDN。图标使用 HTTPS URL，以符合客户端

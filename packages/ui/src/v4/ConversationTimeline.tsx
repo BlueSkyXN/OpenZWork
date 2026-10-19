@@ -20,7 +20,7 @@ import {
 import { flushSync } from "react-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ArrowDownIcon } from "lucide-react";
-import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@zcode/shared";
+import { TID_V4_TIMELINE, TID_V4_TIMELINE_BOTTOM } from "@zcode/shared/test-ids";
 import type {
   ApiRetryState,
   AttachmentRef,
@@ -1770,9 +1770,7 @@ function ConversationTimelineImpl({
         renderUnits={renderUnits}
         isHydratingDirectory={loadingOlder}
         scrollOffsetPx={virtualizer.scrollOffset ?? turnNavigatorViewport.scrollOffsetPx}
-        viewportHeightPx={
-          virtualizer.scrollRect?.height ?? turnNavigatorViewport.viewportHeightPx
-        }
+        viewportHeightPx={virtualizer.scrollRect?.height ?? turnNavigatorViewport.viewportHeightPx}
         virtualItems={turnNavigatorVirtualItems}
         activeQueryRowId={turnNavigatorViewport.activeQueryRowId}
         onJumpToQuery={scrollToQuery}

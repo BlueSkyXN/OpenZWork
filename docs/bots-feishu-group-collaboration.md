@@ -279,12 +279,7 @@ Summary corrections are ordinary task input. Only failed or unknown deliveries e
 recovery controls in reply actions; do not restore BotGroupTaskNotice or composer result panels. Desktop continuous
 and mobile replayable boundaries, owner/lease and workspace identity remain unchanged.
 
-Acceptance includes two ordinary topics, dedicated topic groups, bot-result follow-up,
-plain-message silence, incremental overlap/ACK races, long-context/gap/summary conflict,
-cross-topic card attacks, disable/restart/remote disconnect, attachments and delivery.
-Run protocol/service tests, Desktop E2E/mobile regression and real pnpm dev:desktop CUA
-against Feishu; record Lark/cross-platform limitations separately. Automated fixtures
-are not evidence of real tenant permissions or native topic behavior.
+
 
 Service-level card acceptance explicitly verifies sibling-topic attacks: a queue card
 from topic A used in B, another chat, with another task or an old authorization version

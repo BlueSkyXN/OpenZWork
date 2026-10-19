@@ -13,14 +13,16 @@ import {
   IZCodeTaskService,
   IZCodeAgentService,
   IZCodeSessionService,
-  // 吸收上游 v3.14.3 bots 服务；CUA、分享、usage-stats、coding-plan、client-config、
-  // client-scenes、闲时任务、cloud-content、营销嵌入与加速卡属我方净化删除面，
-  // 不进远端访问面。
+  IProjectService,
+  ITaskGroupService,
+  IRemoteProjectService,
   IBotsService,
   IFileWatcherService,
   IModelSelectionService,
   IProviderSettingsService,
   IProviderProvisioningTargetService,
+  ISourceServerWorkspaceService,
+  ISourceServerManagementService,
   ISkillsService,
   ISkillSyncService,
   IMcpSyncService,
@@ -39,6 +41,10 @@ import {
   IPromptAttachmentTransferService,
   IWindowControllerService,
   IAppUsageService,
+  IWindowProjectService,
+  IWindowRemoteProjectService,
+  IWindowProjectChangesService,
+  type WindowProjectDirectoryServices,
   type IServiceAccessor,
 } from "@zcode/services";
 
@@ -48,6 +54,7 @@ import {
  * 新增服务只需在此添加一个 getter。
  */
 export class RemoteServiceAccess implements IServiceAccessor {
+  readonly windowProjectDirectory?: WindowProjectDirectoryServices;
   readonly fileService: IFileService;
   readonly mediaPreviewService: IMediaPreviewService;
   readonly gitService: IGitService;
@@ -61,13 +68,17 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly windowControllerService: IWindowControllerService;
   readonly zcodeAgentService: IZCodeAgentService;
   readonly zcodeSessionService: IZCodeSessionService;
-  // 吸收上游 v3.14.3 bots 服务；CUA、分享等官方域服务属我方净化删除面，不进聚合面。
+  readonly taskGroupService: ITaskGroupService;
+  readonly projectService: IProjectService;
+  readonly remoteProjectService: IRemoteProjectService;
   readonly botsService: IBotsService;
   readonly fileWatcherService: IFileWatcherService;
   readonly providerSettingsService: IProviderSettingsService;
   readonly modelSelectionService: IModelSelectionService;
   /** Host-only target proxy；不属于 IServiceAccessor，避免向 Renderer 暴露 Secret 写入接口。 */
   readonly providerProvisioningTargetService!: IProviderProvisioningTargetService;
+  readonly sourceServerWorkspaceService: ISourceServerWorkspaceService;
+  readonly sourceServerManagementService?: ISourceServerManagementService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;
@@ -87,7 +98,24 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly promptAttachmentTransferService: IPromptAttachmentTransferService;
   readonly appUsageService: IAppUsageService;
 
-  constructor(channelClient: IChannelClient) {
+  constructor(
+    channelClient: IChannelClient,
+    options: { sourceServerManagementService?: boolean; windowProjectDirectory?: boolean } = {},
+  ) {
+    // 远端工作区的 project 必须保留 Source 语义；只有显式能力才创建完整窗口目录组。
+    if (options.windowProjectDirectory) {
+      this.windowProjectDirectory = {
+        projectService: ProxyChannel.toService(
+          channelClient.getChannel(IWindowProjectService.channelName),
+        ),
+        remoteProjectService: ProxyChannel.toService(
+          channelClient.getChannel(IWindowRemoteProjectService.channelName),
+        ),
+        changesService: ProxyChannel.toService(
+          channelClient.getChannel(IWindowProjectChangesService.channelName),
+        ),
+      };
+    }
     this.fileService = ProxyChannel.toService<IFileService>(
       channelClient.getChannel(IFileService.channelName),
     );
@@ -129,6 +157,15 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.appUsageService = ProxyChannel.toService<IAppUsageService>(
       channelClient.getChannel(IAppUsageService.channelName),
     );
+    this.remoteProjectService = ProxyChannel.toService<IRemoteProjectService>(
+      channelClient.getChannel(IRemoteProjectService.channelName),
+    );
+    this.taskGroupService = ProxyChannel.toService<ITaskGroupService>(
+      channelClient.getChannel(ITaskGroupService.channelName),
+    );
+    this.projectService = ProxyChannel.toService<IProjectService>(
+      channelClient.getChannel(IProjectService.channelName),
+    );
     this.zcodeSessionService = ProxyChannel.toService<IZCodeSessionService>(
       channelClient.getChannel(IZCodeSessionService.channelName),
     );
@@ -150,6 +187,16 @@ export class RemoteServiceAccess implements IServiceAccessor {
       ),
       enumerable: false,
     });
+    this.sourceServerWorkspaceService = ProxyChannel.toService<ISourceServerWorkspaceService>(
+      channelClient.getChannel(ISourceServerWorkspaceService.channelName),
+    );
+    // Bug 原因：ProxyChannel 是惰性的，无论服务端是否注册 channel 都能构造出“看似存在”
+    // 的对象，optional 合同因此在首次调用时才失败。scope 创建时必须显式声明能力。
+    this.sourceServerManagementService = options.sourceServerManagementService
+      ? ProxyChannel.toService<ISourceServerManagementService>(
+          channelClient.getChannel(ISourceServerManagementService.channelName),
+        )
+      : undefined;
     this.skillsService = ProxyChannel.toService<ISkillsService>(
       channelClient.getChannel(ISkillsService.channelName),
     );

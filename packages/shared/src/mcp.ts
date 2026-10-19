@@ -176,6 +176,7 @@ export type ZCodeAgentMcpServer =
       command: string;
       args: string[];
       env: Array<{ name: string; value: string }>;
+      alwaysLoad?: boolean;
       isolation?: "session" | "workspace";
       protocolVersion?: "legacy" | "auto" | "2026-07-28";
       timeoutMs?: number;
@@ -184,6 +185,7 @@ export type ZCodeAgentMcpServer =
       name: string;
       type: "http" | "sse";
       url: string;
+      alwaysLoad?: boolean;
       isolation?: "session" | "workspace";
       protocolVersion?: "legacy" | "auto" | "2026-07-28";
       headers: Array<{ name: string; value: string }>;
@@ -257,6 +259,8 @@ export function convertToZCodeAgentMcpServer(
             value,
           }))
         : [],
+      // 修复原因：DTO 逐字段重建曾丢失 alwaysLoad；仅透传布尔值，保留显式 false。
+      ...(typeof config.alwaysLoad === "boolean" ? { alwaysLoad: config.alwaysLoad } : {}),
       // MCP 设置页会把 timeoutMs 写入 config；session/create 走协议 DTO 时
       // 只能透传正整数，否则 strict protocol schema 会把存量非法配置从“忽略”变成“创建失败”。
       ...(isValidMcpTimeoutMs(config.timeoutMs) ? { timeoutMs: config.timeoutMs } : {}),
@@ -279,6 +283,8 @@ export function convertToZCodeAgentMcpServer(
           }))
         : [],
       ...(isValidMcpOAuthConfig(config.oauth) ? { oauth: config.oauth } : {}),
+      // HTTP/SSE 与 stdio 使用相同规则，避免配置在进入 Agent 前丢失。
+      ...(typeof config.alwaysLoad === "boolean" ? { alwaysLoad: config.alwaysLoad } : {}),
       // HTTP/SSE MCP 与 stdio 一样需要保留超时配置，避免 UI 保存后真实 session 丢字段。
       ...(isValidMcpTimeoutMs(config.timeoutMs) ? { timeoutMs: config.timeoutMs } : {}),
       ...(isMcpIsolation(config.isolation) ? { isolation: config.isolation } : {}),

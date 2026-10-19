@@ -58,47 +58,6 @@ target model + request-local history -> normalize -> AI SDK -> provider
 The persisted assistant schema already contains provider, model, and variant fields. This behavior
 does not add a storage migration or a protocol field.
 
-### Coding Plan provider identity compatibility
-
-Bug cause: the provider refactor migrates the selected `builtin:*` Coding Plan ID to an
-`account:*` ID, while historical assistant messages correctly retain their original provider ID.
-Strict provider-ID equality then strips signed/redacted reasoning even for the same logical
-service and model. Individual/Team switches expose the same mismatch.
-
-The Adapter owns one pure provider-compatibility predicate, shared by generate and stream through
-the existing request projection. It uses only the source and target provider IDs:
-
-- Identical provider IDs remain compatible.
-- The exact IDs `builtin:zai-coding-plan`, `account:zai-individual-coding-plan`, and
-  `account:zai-team-coding-plan` form one compatible group.
-- The corresponding three BigModel IDs form a separate compatible group.
-  unknown IDs, and strings merely containing a known name do not inherit these groups.
-- Model IDs still require exact equality. Missing source identity keeps the existing unknown
-  provenance behavior; it is not inferred from the current account or Registry.
-
-```text
-live / persisted assistant providerId + modelId
-                         |
-                         v
-target identity -> Adapter compatibility predicate -> request-local projection -> SDK
-```
-
-This is a replay-only equivalence relation, not a Provider alias resolver. It does not rewrite
-selection, routing, credentials, usage attribution, canonical history, or stored bytes, and adds
-no field or configuration. Signature contents, block order, tool results, and cache metadata
-remain unchanged for compatible histories. Existing signature-rejection repair remains bounded
-to its current one-shot request-local retry.
-
-Regression coverage must include both directions between Individual/Team, legacy selection
-migration followed by real Runtime cold resume, both generate/stream HTTP serialization, and
-cross-service/model/custom-provider controls. Local HTTP fixtures prove client serialization;
-they do not establish real service cross-account signature acceptance or cache hit rates.
-
-After Todo109, cold-resume fixtures must run the versioned database migration on store open,
-not call the removed per-session migration API. Migration may append new identity fields while
-preserving every original member and reasoning part; subsequent request projection must leave
-the migrated historical rows byte-for-byte unchanged.
-
 ## Signature rejection
 
 An Anthropic request may return HTTP 400 when a signed or redacted thinking block is rejected. The
@@ -160,9 +119,6 @@ Recording must not fall back to the canonical input request after request-local 
   trailing, empty/whitespace assistant repair, rejection placeholders, tool-call, and immutability
   cases. Adjacent-user repair also covers cache-control precedence, mixed string/block content, and
   tool-result carriers on either side of a removed assistant.
-- Core tests cover live cloning, persisted execution-model provenance, resume hydration, and
-  execution-model provenance on terminal-error, partial-stream recovery, streamed-tool recovery,
-  and Start Plan admission-retry paths when the selected model changes in flight.
 - Adapter runner tests cover the exact HTTP 400 classifier, a single repaired retry outside the
   ordinary retry budget, no retry after committed output, no retry when the request does not
   change, canonical-history immutability, the failed/scheduled/started status sequence, and

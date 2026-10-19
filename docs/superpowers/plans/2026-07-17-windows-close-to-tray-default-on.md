@@ -124,4 +124,3 @@ Stage the implementation, tests, spec, and plan, then amend with:
 ```bash
 git commit --amend -m "feat(desktop): enable Windows close to tray by default"
 ```
-

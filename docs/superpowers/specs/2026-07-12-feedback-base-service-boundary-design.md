@@ -1,19 +1,12 @@
 # SSH 断连场景反馈服务边界设计
 
-## 背景
 
-反馈中心是桌面应用级能力。创建工单、读取设备信息、上传截图和打包诊断日志都由桌面本机 host process 提供的 `feedbackService` 完成，不依赖当前 workspace 的文件系统、Agent runtime 或 SSH 连接。
 
-当前 `FeedbackHost` 从 workspace-scoped `services` 读取 `feedbackService`。SSH workspace 正常连接时，renderer 会把 base services 与 remote services 合并，`feedbackService` 恰好仍来自本机 base services；但在远程 session 尚未绑定或已经断开时，workspace service resolver 会返回断连代理。提交反馈的首个 `getDeviceSnapshot()` 调用因此在 renderer 内直接抛出 `ZCODE_REMOTE_WORKSPACE_DISCONNECTED`，请求尚未到达反馈 API。
 
-## 目标
 
-- 反馈中心始终显式使用桌面启动时注册的 base `feedbackService`。
-- SSH 正常连接、连接中和断连时均可提交反馈。
-- 保持本地 workspace 和 SSH 正常连接时的现有反馈行为不变。
-- 不改变远程文件、终端、Git、Agent、task 和 session 服务的 workspace 路由。
-- 不改变桌面 `desktop-continuous`、手机 `web-remote-replayable`、snapshot、queue 或 owner/lease 语义。
-- Web 远控继续使用现有 unsupported feedback fallback；本次不为 Web 新增反馈能力。
+
+
+
 
 ## 非目标
 
@@ -24,22 +17,16 @@
 
 ## 方案
 
-`Root` 已持有桌面 renderer 启动时注入的 base `IServiceAccessor`。它将其中的 `feedbackService` 作为独立依赖传给 workspace UI，最终交给 `FeedbackHost`。
 
-`App` 继续接收 workspace-scoped `services`，供文件、任务、终端等 workspace 能力使用；反馈中心不再从该对象读取 `feedbackService`。这使依赖边界显式化：
 
-- workspace 能力依赖 `workspaceScopedServices`；
-- 应用级反馈能力依赖 `baseFeedbackService`。
+
+
+
 
 反馈中心的挂载位置、store、弹窗生命周期和当前任务/模型上下文读取方式保持不变，避免扩大 UI 行为变化。
 
-## 数据流
 
-1. Desktop renderer 收到本地 host service port，创建 base services。
-2. `Root` 接收 base services，并将 `baseServices.feedbackService` 作为独立 prop 向下传递。
-3. SSH tab 根据连接状态继续解析 workspace-scoped services：已连接时为合并 services，未连接时为断连代理。
-4. `FeedbackHost` 无论当前 workspace 状态如何，均调用第 2 步传入的 base feedback service。
-5. 设备快照、工单创建、截图上传和日志归档继续在本机 host 中完成。
+
 
 ## 错误处理
 

@@ -85,4 +85,3 @@ describe('React Component Testing', () => {
 ```
 
 You can find a full example of a WebdriverIO component test suite for React in our [example repository](https://github.com/webdriverio/component-testing-examples/tree/main/react-typescript-vite).
-

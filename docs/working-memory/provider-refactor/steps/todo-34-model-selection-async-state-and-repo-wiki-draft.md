@@ -4,15 +4,7 @@
 
 > 后续 Desktop 图形 E2E 欠测统一由 Todo 78 收口，本 Todo 不再单独排期。
 
-> 状态：已实现；核心自动化已复验，Repo Wiki Desktop WDIO 仍待具备当前提交的 macOS 环境实跑
->
-> 日期：2026-08-28
->
-> 来源：正式包 Repo Wiki 实机故障与 Model Selection Renderer 边界复核
->
-> 关联任务：[`Todo 13`](./todo-13-target-host-model-selection-authority.md)、
-> [`Todo 23`](./todo-23-provider-refactor-decision-gap-closure.md)、
-> [`Todo 32`](./todo-32-team-plan-settings-effective-provider-boundary.md)
+
 
 ## 1. 运行时证据与直接故障
 
@@ -25,7 +17,6 @@ MacBook Pro 正式包打开 Repo Wiki 后，Section Error Boundary 显示：
 同一时段的正式包日志证明目标 Host 并不缺少模型：
 
 - `model-selection.getView` 正常完成；
-- Registry 已发布 `account:bigmodel-team-coding-plan / GLM-5.3-Flash`；
 - Provider Runtime 已报告对应模型就绪。
 
 真实时序为：
@@ -51,8 +42,6 @@ Error Boundary 卸载 Repo Wiki
         `-- getView 随后成功，也无法更新已经卸载的页面
 ```
 
-反复点击 Section Retry 仍可能重复同一首次渲染时序。因此这不是 Registry、Account Team Plan 或正式配置缺少模型，
-而是 Renderer 把正常异步前置状态送入了只接受完整 Selection 的严格解析边界。
 
 ## 2. 更大范围的设计问题
 
@@ -409,7 +398,7 @@ ready-empty，不得只用 helper 单测证明。最后执行定向单测、相�
 - 根 `pnpm lint`（0 error；仓库既存 warning 不在本 Todo 范围）；
 - Feature Graph YAML 解析、增量节点/seed 存在性和 `git diff --check`。
 
-全量 `pnpm test:unit` 完成 12,683 项通过、25 项跳过；一条既存 CUA socket 关闭竞态在全量并发下偶发失败，隔离复跑 22/22 通过。全量并发还命中一次 Vitest worker heap 上限；本 Todo 的全部受影响测试已拆分复跑通过。
+
 
 Desktop E2E 已实际启动并完成 production build，但当前 Linux 执行机缺少 `xvfb-run`，Chrome 在创建 session 前退出；这是显示环境阻塞，不是用例断言失败。详细失败报告位于本次运行生成的 `.e2e-artifacts`，用例保持可在具备显示环境的 CI/macOS 上执行。
 

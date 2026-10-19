@@ -7,7 +7,7 @@
 
 本轮固定范围的恢复、适配和审计已完成。下方按时间保留的“待实施/失败/阻塞”是历史记录，以本节及功能表的最终状态为准；没有未裁决的恢复阻塞项，也没有合入后续 staging。
 
-- **直接恢复**：R01 Hook 详情、R02 消息/附件布局、R03 MCP 进程隔离及插件 UI、R04 CUA 生命周期、R05/R06 测试凭据与 mock、R07 领取卡完整行为。R11 的早期 Markdown“已保留”结论在 Todo88 二次复审发现装配遗漏；下方补充记录取代该部分结论。
+
 
 ### 2026-09-07 Todo88 二次复审纠正
 
@@ -22,7 +22,6 @@
 
 - 推送前扩大检查追加：2026-09-07，关联测试 2299 通过、4 失败，推送被拦截；定向复现仍为 4 失败。两个 Server 物化断言使用旧 Built-in `matchRules` 字节格式，stdio 装配 fixture 在 Personal 配置中写入已禁止的 `matchRules`（运行日志明确 schema 拒绝），Account Source 测试仍把非 current 的已授权 Start 当作无权益。处理约束：仅更新当前格式 fixture 和已裁决权益断言；保留不可变版本文件、损坏拒绝、远端身份贯穿及非当前连接不执行的原目标，不放宽生产 schema 或恢复旧权益门禁。完成结果在验证后追加。
 - 修正后这三个文件 **6/6**，相邻 materializer/Account resolver 扩大 **46/46**，typecheck/lint 通过。Account Source 新增同快照 `entitled=true/current=false` 断言，避免只改期望值而丢掉当前连接边界。stdio fixture 内原有未提交的 `supportsJsonSchemaOutput` 单行更名属于本例正式 schema 前提，随这次 fixture 修正一并提交；其他并行更名不纳入。仅测试/记录改动，无新增产品交互，沿用前述 Air 行为证据；推送仍须完整 pre-push 检查通过。
-- 第二次推送通过前五批关联测试后，在更大 UI 关联批次发现另两文件 16 失败（该批 9017 通过）：Subagent 15 条旧断言仍要求缺失/失效档位自动补 high/max/disabled；权益缓存 1 条断言依赖嵌套快照 JSON 的未转义字符串。定向 16 失败可复现；按照既有 Selection spec 保持未选档为空、手动选档再保存，并保留已有明确 high/max 的保存及失败回滚测试。缓存改验实际请求身份 `planKind`，Provider/Team 身份隔离断言仍保留。无生产组件或显式 Subagent 账号对应变更；按 React 规范复查只读派生与保存边界后，两文件 **41/41**、typecheck/lint 通过。提交后重新运行完整推送门禁，不将分批成功当整体通过。
 - 第三次推送：上述大批次已通过，第八批再发现 `modelThoughtOption.test.ts` 一条同类旧默认 max 断言（该批 3040 通过）。改为缺失值空，并补合法 high 保留/非法 medium 置空两条，不改公共控件实现。预先执行余下三批分别 **366/366、638/638、661/661**；typecheck/lint 通过。期间与其他批次并跑的一次 Subagent 乐观状态断言得到 high 而非 max，单文件复跑 **35/35**；保留该偶发记录，未放宽断言，也不宣称已定位原因。
 - Air 重新构建，`desktop-e2e-20260907070548318-p30080-06b6be60d739cc50`：领取/设置 4、Hook 6、附件 1、Goal 1，共 **12/12**。不是只读类型检查。
 - Air `20260907065952975-p28059-0bad7191e84258e7`：SR87 Composer/定时后台 **2/2**，后者独立准备账号，不依赖前一 case；请求与 run/原配置分别校验。
@@ -79,7 +78,6 @@
 - 公共层已独立提交 `cd6c4ff87c`，未推送。显式 Subagent 本轮保留原校验的用户裁决已同步 Todo87 和影响表，不能再按已自动对应计数。
 - Composer 独立提交 `ac00daec9c`。Air `desktop-e2e-20260907063653634-p19967-a275f6886f7e448a`：闲时管理 2/2、Wiki 生成 1/1。Wiki 档位菜单已捕获真实 option 后选择 disabled，真实生成产物通过；不是跳过门禁。Wiki 最后定向单测 75/75。
 - 2026-09-07 06:49 UTC：定时后台 SR87-06 在 Air `/tmp/todo87-automation-run-air3.log` 通过：先以 Individual/high 保存任务，切 Team 后从列表直接 Run now；SQLite 长期选择仍 Individual，同 run 固定 Team/high，真实 Agent 请求同模型/high。没有经过编辑页提前重写。该组 SR87-01 本次启动后切 Individual 未出现模型项，1 通过/1 失败，不能计为整组通过；继续调查启动恢复/手动切换时序。前两次 SR87-06 前提失败分别为错用菜单 role、未用统一 encodeCustomModelValue 转义 Account ID，已修正测试。
-- R08 追加发现：OAuth 启动/登录恢复仍用 entitled 执行身份查询套餐，漏了 pending Start 的独立查询。针对该边界测试先 2 失败/13 通过，改用 inspection access 和明确 planKind 后 18/18；此改动不等于已解释 Individual 启动变 Team，后者仍未收口。临时诊断不含密钥，结束后清理。
 - 2026-09-07 06:35 UTC：Composer/Bot/控制面隔离回归 12 文件 223/223，root typecheck、lint 通过。Air `desktop-e2e-20260907062148638-p15078-fcbb3b7c53d556ac` 再次通过含逐字段 accepted 校验的 Composer；`desktop-e2e-20260907063339125-p18513-c886f019298e39aa` 的 Automation 创建/编辑/暂停/恢复/删除通过。该表单用例此前误把会话选择当全局默认，现显式选择模型/high，不改变产品默认规则。
 - Bot 菜单补齐：`/model`、模型分组和档位菜单展示有效副本，主动修改档位时以所展示模型保存；查看菜单仍不覆盖原草稿。新回归证明当前 Team 标记和 Individual 原意图保留。原先仅状态/派发已接入，菜单属于 review 找到的实际遗漏。
 - 闲时用例补充账号控制面与 OAuth 前提后已进入表单；网关 mock 不提供 Registry 模型，不能绕过真实模型授权。空首页本来没有 tab；已有任务才分 Scheduled/Idle。旧用例仍需显式选档位和从设置返回会话，不可把这些前提失败写成调度失败。
@@ -101,7 +99,6 @@
 - 04:42 UTC：Provider/领取相邻 23 文件 568/568；root typecheck 通过、lint 40 warning/0 error。两个 revert 的 65 个唯一文件均仍在索引中；索引覆盖不代替行为 review。
 - 04:43 UTC：Air 隔离目录重新同步当前受测源码与新增 Account State 文件；保留其 Git 基点 a43049c265，因此构建元数据 SHA 不能冒充当前代码 SHA，实际受测内容为本地 5de4909268 加当前工作区变更。标准 runner 重建 Desktop/CLI，运行领取、Hook、附件、Goal 四组；新增连续领取 Electron 断言，精确迟到时序由上述受控组件测试证明。不使用真实领取接口。
 - 04:46 UTC：Air `desktop-e2e-20260907044332070-p90173-23c38c1cfe5c5b34`：领取 4/4、Hook 6/6、Goal 1/1；附件在 hover 删除按钮断言失败。04:50 单独同源码复跑 `desktop-e2e-20260907045002060-p92356-50ad667e8d5d8bf0` 附件 1/1 通过。保留偶发失败，尚无证据归因为产品、外部指针干预或驱动；未通过放宽断言掩盖。
-- 04:55 UTC review：WorkspaceSidebar 大量差异为格式化；用原 HEAD 仅补新增 imports、模型设置回调及 Banner prop/dependency，和当前文件比较转译后语法节点（忽略冗余括号）一致，没有带掉其他 Sidebar 行为。R08 当前覆盖的是非法持久连接；`resolveCodingPlanIntentProviderId` 对未知导航 ID 返回 null，调用方静默忽略且 pending prop 不消费，是另一项已有裁决的遗漏。先提交已验证的领取/账号恢复，随后补该导航错误链及 E2E。
 - R07/R08 主恢复已独立提交 `524f1ba2e5`（49 文件）；没有 push，没有带入并行迁移命名或 Todo86。
 - R08 导航补漏：未知指令只置页面错误并消费，不写连接、不清除正常页面；有效指令/用户重选清除此错误。Air `045559541-p93554` 先红于缺少错误提示；`045911831-p94914` 修复后 4/4。失败现场同时暴露测试点击未限定弹窗：背景 Settings 导航也叫“模型设置”，可能绕过领取卡主动作。已限制最上层可见 dialog/alertdialog 并断言结果关闭；最终 `desktop-e2e-20260907050155506-p96150-bc4f03dcf14068fa` 领取 4/4，确认真正关闭结果、合法/非法导航及持久连接不变。相邻 UI 208/208，root typecheck/lint（40 warning、0 error）与 E2E typecheck 通过。
 - D02/Todo87 基础层：新增纯解析、Facade 同快照解析、Service 按输入返回以及公共 hook 输入隔离。API 首轮 2 条失败、hook 首轮 2 条失败后修复，追加首读重试用例；当前 Provider/Facade/Runtime/hook 合计 204/204。未接入 Composer/任务，不能算用户体验完成。Runtime 装配测试原本没有 Configured Default 却期待自动首个模型，与 `a43049c265` 已取消该行为冲突；本次给 fixture 显式配置默认选择，保留装配断言，不恢复旧产品规则。
@@ -124,18 +121,14 @@ Family 连接偏好 + 账号查询
 Team 没有具体组织/项目身份时不得任选团队猜权益，保持未知并由既有订阅产品入口提供具体身份。
 
 - 16:43 MCP 原测试在恢复后的当前契约运行：4/4 失败，分别为卸载阻塞、缺生命周期、缺回收、重试连坐插件进程。16:52 恢复后 4/4 通过，真实子进程 fake transport，无真实模型请求。
-- 16:53 CUA 原测试：35 条中 4 失败；证实既有 producer 仍轮换 broker、调用 Agent 回收，Host 文案也是旧 recycle 语义。原测试支持恢复原行为，不降低断言。
 - 16:54 E2E 启动凭据、领取 mock、消息气泡单测：3 文件 51/51 通过。
 - 先前 Hook 定向 19/19 通过；全链类型检查被 project-memory-recall.ts 的 supportsJsonSchemaOutput 缺失阻断，尚未归因，不能标全量通过。
 - Air 当前 /Users/dev/Desktop/projects/z-code-e2e 位于 fed3705326，含 7 条未提交/未跟踪改动，不能 reset 或覆盖。需用独立验证工作树；Node 通过 /Users/dev/.local/share/mise/shims。
-- 为恢复固定 CUA producer 创建临时目录 /tmp/zcode-todo85-producer-1N45YP；不修改用户账号数据。
 - 17:06 领取/余额相关测试 146/146 通过；恢复前服务时间测试 5 失败/94 通过。不是仅改断言，生产边界现统一输出毫秒 serverTime，effectiveAt/startsAt 仍为 Unix 秒。
-- CUA producer 拉取：本机代理 HTTPS 握手失败，直连与 Air 连接超时；尚未改 pin，继续其他独立恢复。无系统网络配置变更。
 - root `pnpm typecheck` 已通过；`pnpm lint` 0 error、40 条既有 warning。先前 CLI core 检查缺 supportsJsonSchemaOutput 是待重建声明：Air 按标准构建 shared-types/contracts/core/adapters/bootstrap 后已通过，不修改正确的接口源码。
 - MCP 全文件 45/45 通过；已确认卸载/探测隔离不只是四条专项通过。
 - Air 隔离工作树：`/Users/dev/Desktop/projects/zcode-todo85-verify.ljqwZv/repo`，基于 a43049c265 加当前受测 diff；原 E2E 工作树与日常应用数据未覆盖。安装使用 `pnpm install --offline --frozen-lockfile`；源 bundle/patch 位于同级目录，本机快照在 `/tmp/zcode-todo85-air-snapshot-17aUUe`。标准构建已成功。
 - Air 首轮 `desktop-e2e-20260906-171733-561`：3 specs 失败。领取 spec 加载发现已删除的 Start 数量快捷入口常量；Hook/附件因测试仅写 Recent、当前持久草稿仍为空而无法发送。不能降低断言：恢复快捷入口上下游；公共 prepare helper 在新草稿上真实选择模型及档位，skipProvider 分支不变。第二轮验证中。
-- Start 数量快捷入口恢复：原固定 staging 的 Header、Detail、文案和测试一起被删除。已加新架构下的显式数量 props，复用现有 onSelectNavItem，不恢复 API mode 或 enabled 标签。新增显示条件测试先红后绿；完整 modelProviderCodingPlan 197/197 通过。
 - Air 第二轮 172426：7 条仍失败，Hook 首发错误进一步定位为 `fault.command.executionFailed`。第三轮隔离 HK-LC-01，Agent 日志确认 Registry 有 2 个 Provider，但新建 Runtime 强制要求 Configured Default；与当前“无默认选择也可打开空白会话、提交前显式选择”的规则冲突。R09 补齐创建/提交边界：允许未绑定 Runtime，执行校验保持，不自动补模型或 reasoning。新增测试修复前 1 失败/8 通过；正在验证修复。
 - R08 第一轮定向 6 文件 93/93 通过；包含 pending 秒时钟、独立查询、空模型、状态与 Overlay 同轮发布及设置页查看。Provider 全量 374 条中 2 条旧 Personal match 测试失败；Todo76 已明确禁止 Personal match，这两条不靠恢复旧规则修绿，另记录为测试契约债。
 - 17:52 Air `175145-973`：HK-LC-01 通过。前两轮真实失败定位并修复两道错误门禁：Runtime 强制 Configured Default；V4 创建记录后仍生成随即丢弃的旧版 snapshot。V4 改走同一初始化/清理流程的 record 投影，不修改旧协议 snapshot 契约；新会话可未绑定，实际发送仍要求有效 Selection。Runtime 44/44，V4/恢复/请求体专项 50/50 通过。
@@ -143,18 +136,14 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 - 18:00 手工标准构建缺 E2E Store Bridge，runner 在 onPrepare 正确拒绝；这次没有实际执行 case，不算产品失败。改回 WDIO 标准构建入口注入仅测试用 bridge；没有修改生产构建默认值。
 - 18:01 Account/导航 222/222 通过；设置读取失败原测试要求 null，会让详情永远 loading，已按既定兜底裁决改为明确错误与同 Family 可操作入口，不自动改变连接。补同账号 last-known-good 隔离测试：切账号/Team 后 unknown 不沿用旧权益（新增测试先红后绿）；不新增持久化。
 - R09 Side Conversation/分叉：当前命令由 CLI 创建 child，UI 保留 workspaceIdentity/remoteSessionId、父子关联、选中文本引用和首条输入；fork 继续带 revision/logEpoch CAS。没有恢复 Renderer 提前改 Runtime 模型；CLI 原生 Side/Fork、未绑定恢复及 wire 测试合跑 50/50。Desktop continuous 与 Web replayable 命令边界保持，单测不冒充手机真实交互证据。
-- CUA producer 18:00 再次只读 ls-remote 超时；仍未改 pin，R04 不标恢复完成。
 - 18:08 基线新鲜度复查被远端 fetch 连接关闭阻断；没有据此修改固定审计 SHA，也没有合入后续 staging。
 - 18:10 领取真实 E2E 发现点击“模型设置”实际落到 General。WorkspaceSidebar 合并后丢失 section intent；已恢复 modelProvider 导航意图，带当前 Start Provider ID，只查看、不更改 Family 连接。181004-765 复测已通过导航、领取余额刷新，停在后续 Subagents 的旧 Family 分组定位；将定位改为当前 Registry Provider 身份，保留套餐标记及模型候选断言。
 - 18:12 Hook 全组 6/6 通过（181201-837）。失败详情 case 隔离通过、连跑时的 10 秒清空等待却早于 Hook 执行完成；改为有上限的 60 秒条件等待，没有固定 sleep 或更改产品清空时序。全部 case 实际约 15–16 秒。
 - 本轮 Account 隔离/导航、MCP、Composer continuity 五文件合跑 276/276；root typecheck、lint 再次通过。CLI Side/Fork/未绑定创建/输出请求四文件 50/50；不把 root unit 的 CLI 排除范围当已执行证据。
-- MCP 恢复独立提交 996787bc11，未包含并行工作或未通过的 CUA producer 修改；没有 push。
 - 18:27 机械核对两个 revert 的 65 个唯一文件，全部在逐文件索引有对应功能行，无漏项；索引覆盖并不等于各功能均已验收。
-- 18:28 本地扩大复查发现三条旧断言：领取只读查询仍断言旧 access config；两条 Resolver 测试仍构造已禁用的 Personal 全局 match。前者改为正式查询的 family/planKind；后者保留 Built-in 完整字符串匹配和 Personal 精确覆盖的原测试目标，不恢复旧生产规则。之后 Provider 全包及相邻服务/UI/同步协调器 25 文件 581/581。
-- Air 181938-851 明确显示 Start 候选为 `account:bigmodel-start-plan/glm-5.3-flash`，旧测试期待大写。Start capability 与个人静态模型身份不同；修 fixture，不在生产中按显示名改写真实模型 ID。
 - Air 附件请求实际有 image/base64/png，只有原始图片文件名不在请求中（转换为 image-cache 路径）。两处回放改匹配图片载荷；界面文件名、编辑、主题、窄屏及 gallery 断言未删除。182129-016 已到最后失败图片场景，尚非整条通过。
 - Air 在北京时间 02:21:58 锁屏（IOConsoleLocked/CGSSessionScreenIsLocked 均 Yes）；182421-628 三个 worker 均未创建 WebDriver session。不能当三个产品失败，也不能因外层命令 exit 0 就当成功；没有完成报告。不尝试绕过锁屏或修改机器安全设置，停止反复启动。
-- CUA 18:26 补查 SSH 22 也超时；本地/远端无已验证的目标 producer 克隆可用于原子 bump。18:30 将本轮 node.ts 的 CUA hunk 暂撤回，避免半套新旧生命周期混用。仅保留恢复测试/spec 与明确 SHA 依据。
+
 
 ## 本轮停留点与后续动作
 
@@ -162,14 +151,11 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 
 - 02:31 UTC：Air 已解锁，Git 访问恢复，基线新鲜度检查通过；未合入后续 staging。继续使用原隔离测试目录，先核对三份 spec 和附件 fixture 的 SHA-256 与本机一致。
 - `desktop-e2e-20260907-023154-481`：附件布局整条通过（包括失败图片占位与 gallery 隔离），`/goal` 整条通过（包含首条请求 low 档位）；领取 3/4，综合 case 在轮询后找不到成功弹窗文案，继续抓取页面状态定位，不能标领取通过。
-- R04 网络阻碍已解除：使用原子 `bump:producer 95ca9ede5f308c1fcf33ea1081da4d9550bd439d` 完成 catalog、lock、provenance 和契约同步，并恢复 44da9e013d 的 Host 专属改动。脚本基线检查及 Skill 校验通过；CUA 两文件 35/35。它只恢复固定 staging 对应 producer，不升级到远端最新 HEAD。
-- CUA、消息布局和 Composer continuity 四文件合跑 76/76；root typecheck、lint（40 warning、0 error）及 desktop E2E typecheck 全部通过。CUA 配套改动后的 Air 构建和验证仍需补跑。
+
 
 ### 2026-09-07 最新结果及用户要求暂停
 
 - R02 已提交 `6f0eaeaf66`，附件布局完整 E2E 通过；R09 `/goal` 冻结提交已提交 `e406c20fbf`，真实首条请求的 low 档位断言通过。
-- R04 已提交 `b09a43f2b9`。Air 安装相同 producer 后，原生模块构建成功，CUA 两文件 35/35，并完成新的 Desktop/CLI 标准构建。Air 的 Git keychain 鉴权失败，使用官方仓库已核实 Git 对象的 bundle、本次隔离目录内 bare mirror 和单条安装命令的 URL 重写完成安装；未修改全局 Git 配置、未传送凭据、未改变依赖 pin。
-- `desktop-e2e-20260907-023559-026` 单独领取综合用例已通过之前的弹窗位置，最终失败是 count 断言仅接受英文 Start Plan、页面实际为中文“体验套餐”；调整为接受两种语言，数量仍必须为 2。首轮轮询后成功弹窗缺失未再次复现，不能宣称已定位或用这次文案修订解释它；保留失败时页面状态采集。
 - 新构建运行 `desktop-e2e-20260907-023950-099`：领取整组 **4/4**、Hook 整组 **6/6**，两个 spec 全部通过，没有重试。产物位于 Air `/Users/dev/Desktop/projects/zcode-todo85-verify.ljqwZv/repo/packages/desktop/.e2e-artifacts/desktop-e2e-20260907-023950-099/summary.md`。因此 R06/R07/R08 的前轮桌面阻塞已解除，但本次通过不等于穷尽所有账号场景。
 - 本轮 Provider/领取相邻模块实际重跑 23 文件 **567/567**；与前轮 25 文件 581/581 分开记录，不混用次数。
 - 当前未提交：R07/R08 领取、时间、账号实时状态和设置导航组；需要后续最终 review 与独立提交。D01/D02 仍待用户决定。此次三个代码提交均未 push；未合入后续 staging，未处理 Todo80/86 或原有无关工作区改动。
@@ -180,7 +166,6 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 - 已提交：996787bc11（MCP 隔离），22d5f63479（Todo/过程记录），e6d3674788（V4 未绑定创建），197dca353c（Hook 完整链路），5e5495f162（启动凭据与领取 mock）。未 push。
 - 未提交但已实施：R02 消息宽度及附件 fixture；R07/R08 领取、时间、账号实时状态与设置导航；R09 `/goal` 冻结提交。保留工作区，不能因为已实现就将其标为验收完成。
 - Air 解锁后：跑 `conversation-session-v4-attachment-layout`、`start-plan-manual-claim-experience`、`conversation-session-v4-goal` 三份 spec。Goal 已新增真实首条目标请求的 low 档位断言；异步准备期间不回读草稿的竞态由组件测试证明。不能把未运行的新断言算通过。
-- 依赖仓库恢复可访问后：原子 bump 到 `95ca9ede5f308c1fcf33ea1081da4d9550bd439d`，并移植 44da9e013d 的 CUA 专属 Host hunk，运行 35 条恢复测试及基线检查。不得手改 pin、只改 Host 或忽略失败断言。
 - D01/D02 已分析到可选择的程度，见下节；其他组不需要用户重新理解同事全部提交后逐一判决。
 - 并行工作 `todo-86-provider-source-driven-refresh-draft.md` 及原有迁移/命名清理等未提交改动未纳入本轮提交；不清理工作区既有 `.lint-staged-vitest-*.json`。
 - 18:31 最后一次 root `pnpm typecheck && pnpm lint` 通过（40 warning、0 error），`git diff --check` 通过；Hook Core/Projection 三文件 191/191、Hook UI 三文件 19/19，均另行实际执行。尚未运行全量桌面 E2E，不宣称此次合并事故已全部收口。
@@ -207,7 +192,7 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 
 建议如需要恢复，只增加现有同步协调器的目标 Environment 等待能力，不能从 Renderer 重新下发旧 RuntimeModel，也不能再按每个 Workspace 重复同步。当前 coordinator 没有公开等待某代成功的接口，且已连接后失败按降级处理；必须明确区分“等待结束”和“同步成功”。本轮没有擅自追加该行为。
 
-### D02：换账号套餐是否自动替换已有会话的模型
+
 
 原提交 6ce53c6ec4。原意是用户从已过期 Start 切到个人套餐后，旧会话不再显示/请求过期 Start；旧实现监听 Family 状态，自动向该会话发切模命令。
 
@@ -235,12 +220,9 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 | `apps/zcode-cli/packages/core/src/hooks/types.ts`                                                         | R01         |
 | `apps/zcode-cli/packages/core/tests/hook-runner-dispatch-admission.test.ts`                               | R01         |
 | `apps/zcode-cli/packages/core/tests/hook-runner-lifecycle.test.ts`                                        | R01         |
-| `apps/zcode-cli/packages/zcode-cua-plugin/upstream.json`                                                  | R04         |
 | `docs/chat/conversation-hook-turn-summary.md`                                                             | R01         |
 | `docs/chat/user-message-attachment-layout.md`                                                             | R02         |
-| `docs/cua-permission-broker/2026-09-02-helper-lifecycle-agent-runtime-isolation-spec.md`                  | R04         |
 | `docs/model-provider-family-merge.md`                                                                     | R08         |
-| `docs/superpowers/specs/2026-08-14-cua-final-raster-integrity-contract.md`                                | R04         |
 | `docs/testing/start-plan-manual-claim-e2e-coverage.md`                                                    | R07         |
 | `docs/zai-start-plan-provider.md`                                                                         | R08         |
 | `packages/desktop/test/codingPlanUpgradeMockServer.test.ts`                                               | R06         |
@@ -253,8 +235,6 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 | `packages/services/src/model-provider/zaiStartPlanBilling.ts`                                             | R07         |
 | `packages/services/test/bigmodelUsageQuotaProvider.test.ts`                                               | R07         |
 | `packages/services/test/codingPlanSubscriptionService.test.ts`                                            | R07         |
-| `packages/services/test/cuaPermissionBrokerProductAgentEnv.test.ts`                                       | R04         |
-| `packages/services/test/cuaPermissionBrokerProductMcpResolver.test.ts`                                    | R04         |
 | `packages/shared/src/coding-plan-subscription.ts`                                                         | R07         |
 | `packages/shared/src/test-ids.ts`                                                                         | R01/R06/R07 |
 | `packages/shared/src/usage-stats.ts`                                                                      | R07         |

@@ -273,7 +273,3 @@ Catalog：G01、G10
 2. 再接 queue、stop、edit、fork、compact 的 case。
 3. 最后接自动 compact，因为它需要 mock provider 支持阈值触发、重试和时间线顺序。
 4. MVP 稳定后，再把 case catalog 中其余 accepted case 批量映射到同一套 probe 模板。
-
-## Todo156 Start 后续修复
-
-验收边界使用 [Todo156 SF-01～SF-19](working-memory/provider-refactor/steps/todo-156-start-plan-followup-final-decisions.md) 的最终决策。`conversation-session-start-plan-independent` 待人工复核用例补充 SF-01/02/08/10/13：付费连接下 Start 圆环、团队下拉选中、套餐名称、带参数副屏首条的关闭／确认／不了，断言实际模型请求和主输入框草稿不变。其余缓存状态组合由 `startPlanRecommendationFreshness`、`providerFamilyConnectionVisibility` 与状态卡测试覆盖；桌面／手机视口与深浅主题另走浏览器视觉用例。此记录不是 CI 转正或全部 SF 的 E2E 覆盖声明。

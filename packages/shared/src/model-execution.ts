@@ -15,7 +15,7 @@ export const modelExecutionSchema = z
     subagents: z
       .object({
         foregroundModel: z.literal("submission"),
-        background: z.literal("deny"),
+        background: z.enum(["deny", "allow"]),
       })
       .strict()
       .optional(),

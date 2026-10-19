@@ -79,4 +79,3 @@ describe('Svelte Component Testing', () => {
 ```
 
 You can find a full example of a WebdriverIO component test suite for Svelte in our [example repository](https://github.com/webdriverio/component-testing-examples/tree/main/svelte-typescript-vite).
-

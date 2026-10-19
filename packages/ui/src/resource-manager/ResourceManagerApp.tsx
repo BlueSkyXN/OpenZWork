@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  TID_RESOURCE_MANAGER_TAB,
-  testId,
   type ResourceUsageCategory,
   type ResourceUsageSnapshot,
   type StorageManagementBridge,
 } from "@zcode/shared";
+import { TID_RESOURCE_MANAGER_TAB, testId } from "@zcode/shared/test-ids";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { useZCodeIntl } from "@/i18n/index.js";
 import { StorageSection } from "./storage/StorageSection.js";

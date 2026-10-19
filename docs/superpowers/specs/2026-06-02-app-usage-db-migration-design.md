@@ -122,9 +122,8 @@ ZCode Protocol（stdio JSON-RPC）请求数据（现有 `session/list`、`sessio
   — 真实 token。
 - i18n keys 增删（`settings.usage.range.all` 移除等）。
 
-### 不动
 
-- 编程套餐（Coding Plan）整个 tab、BigModel monitor API 那条线保持原样。
+
 
 ## 测试
 

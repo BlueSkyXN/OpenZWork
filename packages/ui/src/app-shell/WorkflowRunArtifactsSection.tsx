@@ -1,10 +1,12 @@
-import { memo, useMemo, useState } from "react";
-import { ChevronRightIcon } from "lucide-react";
 import {
   TID_WORKFLOW_ARTIFACTS_SECTION,
   TID_WORKFLOW_ARTIFACTS_TOGGLE,
   TID_WORKFLOW_ARTIFACT_CARD,
 } from "@zcode/shared";
+
+import { memo, useMemo, useState } from "react";
+import { ChevronRightIcon } from "lucide-react";
+
 import { cn } from "@/components/lib/utils.js";
 import { WorkflowArtifactIndex } from "@/components/workflow-timeline/WorkflowArtifactIndex.js";
 import { WorkflowArtifactRow } from "@/components/workflow-timeline/WorkflowArtifactRow.js";

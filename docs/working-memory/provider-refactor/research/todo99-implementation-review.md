@@ -1,6 +1,6 @@
 # Todo99 实现复审与验证账本
 
-日期：2026-09-09。基线 `86bbe157c88e8e599694afb53c39f6dac125ac08`；实施在 recovery worktree，未覆盖同时存在的其他 Provider 文档/迁移改动。范围以 [Todo99](../steps/todo-99-worker-account-selection-repair.md) 的收缩裁决为准。
+
 
 ## 1. 影响面与状态所有权
 
@@ -89,7 +89,7 @@ Resolver 现在复制本轮设置，结束时重读身份与设置；可观察�
 
 测试夹具纠正：process-provider-registry-runtime 的旧模板缺 nameMap/config 外壳、模型缺必填 reasoningLevel、Personal fixture 携带废弃 matchRules 导致4例失败。只对齐测试输入，不放宽生产 Schema，不新增未上线格式兼容；完整10例恢复通过。
 
-产品验证：Air 新建隔离目录 `/Users/dev/zcode-todo99-e2e.AurUlf`，未碰运行中的日常 App；离线安装因私有 CUA Git 依赖仍触发钥匙串 -25308 失败。用户已授权改用 Pro，管理 SSH 已可用，隔离目录 `/Users/dev/zcode-todo99-e2e.1lO3PN`。W99-E01..06 在取得对应请求/进程/跨端证据前仍保留 pending；不得凭本页集成测试直接晋级。
+
 
 ### 另外发现的既有失败
 
@@ -116,7 +116,7 @@ Codegraph 当前不可用；按实际符号/调用链审查，不声称全仓索
 - E01 使用真实 Electron、Host、Agent 工具和 child Runtime，捕获 adapter model-io：profile 原个人 Provider→实际 Team 同模型/high，父会话仍用 DeepSeek，Markdown 字节未改。
 - E02/E03/E06 是实机 Node Host→真实 stdio Worker，不伪称点了手机页面。Bot 入口复用生产 Task adapter；只有 IM 与账号上游/模型 HTTP 是隔离替身。下一轮请求 Team/high，`/model` 立即 max、`/think low` 立即保存，dispose Worker 后 resume 保留 low；附件使用 execution/high 且 FIRST/SECOND 有序，Session low 不被覆盖。
 - E04 受控保持 Worker A、Host B；原测试先暴露真实缺陷而非仅 fixture 问题：ModelFactory 在内层 Turn catch 外失败，只记录日志，没有 TurnError/V4 错误。新增 Core 红灯测试证明事件为 0；局部修复创建 Model 的 catch，复用既有 outcome 后单测及 Pro 都通过。验收包括 `turn.failed`、V4 `phase:error`、未发新模型请求、Session 原选择不变；交付 B 后重新提交实际成功。没有新增发送同步屏障。
-- 3 个新用例不直接晋级 formal。fixture check 通过但有 marker warning：Account 请求由既有独立 Coding Plan mock 数据面处理；拒绝 marker 本来不应发 HTTP；`E2E_PLAN_NON_DEFAULT_MODEL` 是常量名、PARENT_DONE 是响应文本。DeepSeek 的两次父请求在 case-local manifest 中记录为 synthetic/fast-text。后续 Docker/formal 晋级需按原人工流程收齐相应 fixture，不以当前 warning 当生产请求异常。
+
 
 最终检查：根 `pnpm typecheck` 通过；`pnpm lint` 0 errors、39 既有 warnings；Core build、Bootstrap typecheck、desktop typecheck:e2e 通过。Host/shared 定向 7 文件 **257 条通过**，Agent/Core/Bootstrap 定向 10 文件 **81 条通过**，既有 desktop/remote/web service 回归 6 文件 **42 条通过**。这些计数是各轮范围，不把重复运行累加为独立用例数。之前全协议组的既有 Cron 失败仍保留在第5节，未冒充全仓全绿。
 

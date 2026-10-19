@@ -122,7 +122,6 @@ M4 后的 Access 类型至少包括：
 | Access type     | Config 保存内容                          | 请求时行为                                       |
 | --------------- | ---------------------------------------- | ------------------------------------------------ |
 | `api-key`       | 静态 `apiKey`                            | Adapter 使用 Config 中的 Key                     |
-| `zhipu-account` | 稳定、非敏感的 `accessId`                | Account Request Auth Service 解析当前动态凭据    |
 | `request-auth`  | 不保存具体凭据，只声明请求期必须提供鉴权 | ModelRequest 执行时消费调用方提供的 Request Auth |
 
 `request-auth` 是普通 Access 类型，不与 `visibility`、闲时任务或所谓“受信执行”绑定。任何 Provider 都可以
@@ -143,62 +142,6 @@ ModelRequest 执行
 ```
 
 Hidden Provider 不再获得 `access` 或 `baseURL` 的校验豁免。
-
-## 5. 闲时 Built-in Provider
-
-
-```json
-{
-  "label": "Idle plan",
-  "visibility": "hidden",
-  "access": {
-    "type": "request-auth"
-  },
-  "api": {
-    "type": "anthropic-messages",
-  },
-  "models": ["GLM-5.2", "GLM-5-Turbo"]
-}
-```
-
-生产 Endpoint 是 Built-in Provider Config 的静态事实。测试和 mock 通过注入测试用 Built-in Config
-Source 改写整份测试配置，不把 Endpoint 重新放入单次 Turn payload。
-
-模型的 context、max output、输入输出格式、reasoning levels 和 reasoning mapping 来自 ZCode
-Built-in Model Config Rules。Host 不再按 modelId、Provider family 或远端 `builtinModels` 重新推断。
-
-模型能力或 Registry 的事实源；服务端仍可在 ticket 或模型请求边界执行自己的最终准入。
-
-## 6. 闲时 Submission
-
-闲时任务是一份带有执行期上下文的普通 Core Submission：
-
-```text
-Host / Scheduler
-├─ prompt / attachments / mode
-├─ idle ModelSelection
-├─ execution-scoped Request Auth
-└─ optional Subagent Model override
-             |
-             v
-       Core Submission
-             |
-             v
-   Registry / ModelFactory
-             |
-             v
-       Loop Active Model
-```
-
-override 是特殊执行的附加 context，不产生第二份模型绑定、Selection 或完整 Provider/Model Config。
-
-协议的最终字段形状在实施时复用现有严格 schema 和 Request Auth Port 固定，但必须满足：
-
-- 不携带 Provider/Model 静态事实；
-- 不写入 Session Selection；
-- 不进入 Personal Config、Registry View 或 Session 持久化；
-- 不进入普通用户 busy queue、Guide 或 held queue；
-- 不把 Secret、Ticket 明文写入日志、Telemetry 或 conversation event。
 
 ## 7. Session Selection 与 Active Model
 
@@ -402,13 +345,6 @@ M4 完成时通过 `dep:refs`、`rg` 和 `knip` 审计以下闲时用途：
 3. 缺少 Request Auth 返回类型化错误；动态材料不进入 Config 或 Registry。
 4. generate/stream、Retry、Usage 和 Trace 使用同一 Adapter 边界。
 
-### M4.3：切换闲时生产派发
-
-1. Host 不再构造 `turnRuntimeModel`。
-2. Core Submission 携带标准 Selection 与最小执行 context。
-3. CLI admission 直接创建 Idle Active Model，不临时 `setModel`。
-4. Automatic Compact、Foreground Subagent 和 permission continuation 使用正式 Active Model/Selection。
-
 ### M4.4：删除双轨
 
 1. 删除 Runtime Overlay、Turn 快照、临时 Registry 注入和 restore 状态机。
@@ -611,9 +547,6 @@ event、Session snapshot 或 repo sidecar。生产日志只记录命令生命周
 - `pnpm lint` 通过，仓库保留 39 条与 M4 无关的既有 warning，新增 0 error；
 - M4 focused tests：根仓 5 files / 135 tests、CLI 7 files / 109 tests 全部通过；此前 Compact
   7 files / 168 tests、Registry/Adapter 2 files / 19 tests 也已通过；
-- `test:unit:affected` 因 staging 基线包含已删除文件而自动升级为全量单测：1454 files 中 1445
-  passed，12,298 tests passed；唯一 M4 相关失败是 M2 守卫仍许可旧 Overlay，守卫收紧后已单独复跑通过。
-  其余 30 条是当前 Linux 环境缺 `zip`、macOS 公证/CUA 原生 fixture 不匹配等基线失败；
 - 全仓 `fmt:check` 仍会被既有 vendored Electron HTML 与 GB2312 fixture 阻断；本次 65 个变更文件的
   `oxfmt --check` 全部通过，`git diff --check` 通过；
   `applySubmissionExecutionState` 的 live references；旧双轨生产符号搜索为零。全仓 `knip` 与 Feature
@@ -633,9 +566,7 @@ background Child 被拒绝，闲时完成后同一 Session 的普通 Prompt 恢�
   可以引用 hidden Provider，只有无显式选择时的用户 fallback 跳过 hidden 候选；
 - Desktop main/host/scheduler bundle 内联 `@zcode/provider` 与 `@zcode/provider-node`，避免 Electron
   worker 在干净运行环境中从 TypeScript source export 解析不存在的 `.js` 文件；
-- Adapter 只有在 Active Model 绑定 `accountAccessId` 时才消费 Host 的账号 runtime-header Port；普通
-  API-key Model 直接使用 Provider Config 的静态访问材料，`request-auth` Model 使用创建时冻结的
-  request auth source。
+
 
 复现命令：
 

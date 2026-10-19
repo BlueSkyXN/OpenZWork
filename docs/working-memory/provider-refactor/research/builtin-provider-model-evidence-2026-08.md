@@ -35,7 +35,6 @@ Models API 实时成功响应（若厂商提供）
 | 厂商                  | 本轮主推/独特模型                                      | 关键官方事实                                                                                            | 本轮默认启用 | 主要保守项                                                                          |
 | --------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------- |
 | GLM / Z.ai / BigModel | `glm-5.3`、`glm-5.3-flash`、`glm-5v-turbo`             | 5.3 为文本旗舰；5.3 Flash 原生 Text/Image/Video；1M context、128K output                                | 三者         | 普通 Account API 的 5.3 不声明视觉；旧 5.x/4.x 默认关闭                             |
-| Coding Plan           | `GLM-5.3`、`GLM-5.3-Flash`、`GLM-5.2`、`GLM-5-Turbo`   | Individual/Team 静态成员；Plan 服务为成员提供 Image/Video 转写                                          | 四者         | 不推断 Audio/PDF；Start 仍由账号返回成员约束                                        |
 | Kimi                  | `kimi-k3`、`kimi-k2.7-code`、`kimi-k2.6`               | K3 1M 且支持 Image/Video；K2.7 Code 256K 且支持 Image/Video；K2.6 256K 且支持 Text/Image/Video          | 三者         | `k3` 支持 Image/Video；`k3-256k` 仅支持 Image；alias 与旧 K2.x/Moonshot V1 默认关闭 |
 | MiniMax               | `MiniMax-M3`、`MiniMax-M2.7`、`MiniMax-M2.7-highspeed` | M3 是当前最新主推，1M、Text/Image/Video，并明确支持中国区 Anthropic/OpenAI Endpoint；M2.7 为 204800     | 三者         | M3 最大输出仍取保守值；Models API 文档示例不是实时成员目录                          |
 | DeepSeek              | `deepseek-v4-flash`、`deepseek-v4-pro`                 | 1M context、384K output、Text、Tool；Anthropic/ChatCompletions 均支持；新版 Pro/Flash 支持 low/high/max | 两者         | JSON Output 不扩散为严格 Schema；Responses 的严格 Schema 按 API/Endpoint 单独处理   |
@@ -47,18 +46,6 @@ Models API 实时成功响应（若厂商提供）
 
 ## 3. Account 与套餐视觉边界
 
-普通 Account API 与 Coding Plan 必须分开：
-
-```text
-普通 Account API + glm-5.3
-└─ 原生 Text；Image/Video=false
-
-普通 Account API + glm-5.3-flash
-└─ 原生 Text/Image/Video
-
-Start / Individual / Team Plan
-└─ Provider 服务为其实际成员提供 Image/Video 转写
-```
 
 普通 Account API 接收含图片的请求但不报错，只能说明服务端容忍或忽略了内容，不能证明 `glm-5.3` 具备视觉。
 因此本轮保持它的原生视觉能力为 `false`。Plan 的视觉能力来自 ZCode 产品链路，是独立的 Provider 服务事实。

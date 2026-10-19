@@ -4,7 +4,7 @@
 
 消除 `CI` 与 `Installers` 工作流中 JavaScript Action 声明使用 Node.js 20 的弃用提示，不依赖 GitHub runner 强制切换旧 Action 的运行时。
 
-本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md)。
+本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md) 与 [v3.16.1 整合验收](upstream-v3.16.1-integration.md)。
 
 ## 所有者与边界
 
@@ -40,9 +40,10 @@
 8. checkout v7 对 `pull_request_target`/`workflow_run` 的 fork checkout 安全限制不应绕过；当前工作流不使用这两种触发器。
 9. 依赖目录由固定版本 pnpm 按 lockfile 安装。干净 runner 不从旧 `.ignored` 目录恢复依赖，不使用安装后目录搬移补救版本解析。
 10. 核心 CI 执行明确列出的保留能力回归；完整历史套件由独立扩展工作流按原发现范围执行。核心清单中的文件缺失必须失败，不能动态过滤失效用例或放宽断言取得绿灯。
-11. 完整检查和安装包构建在 GitHub 托管 runner 执行。候选分支推送可在明确授权下单次跳过本地钩子的重复全量检查；不修改钩子或合并门槛。
-12. 历史套件加载、实际断言和 Desktop Main 诊断在扩展工作流中报告；核心 CI 不等待它们。扩展检查保留失败退出码并上传日志和结果，不使用 `continue-on-error` 伪装成功。
+11. 完整检查和安装包构建在 GitHub 托管 runner 执行。本地 pre-push 共用核心测试清单，同时保留 Lint、schema 与架构检查；历史全量检查由独立扩展工作流执行，不修改仓库合并保护规则。
+12. 历史套件加载、实际断言和 E2E 类型诊断在扩展工作流中报告；核心 CI 不等待它们。扩展检查保留失败退出码并上传日志和结果，不使用 `continue-on-error` 伪装成功。
 13. 扩展单测执行完整依赖安装，准备真实 Electron；Main 类型审计可使用无安装脚本的依赖安装。扩展任务不成为 Installers 或核心 CI 的 `needs` 依赖。
+14. v3.16.1 的 Main、remote Main 和 shared testing 继续进入根应用类型检查。历史 Desktop E2E 类型审计在扩展工作流中使用现有配置独立执行，失败上传原始日志；核心工作流不等待该审计。
 
 ## 验收场景与验证
 

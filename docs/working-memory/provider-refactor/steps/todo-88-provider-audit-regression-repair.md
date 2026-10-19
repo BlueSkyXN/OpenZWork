@@ -66,7 +66,7 @@
 
 ### R06：Start 失效后的实际连接与页面展示不一致
 
-> 2026-09-08 后续产品裁决已变更：[Todo93](todo-93-account-plan-loss-manual-switch.md) 改为同连接真实失效时提示一次，用户点击具体目标按钮后才切换；启动首份只建基线，手动选未开通套餐不自动弹回。下文是旧实现/验收历史，不再作为后续自动切换的目标规范；Todo93 尚待实现。
+
 
 2026-09-08 二次复验补充：自动协调的账号查询或设置写入失败，保留当前连接且不通知成功；下一次正常 View 更新（即使账号状态相同）允许再尝试。一次协调自身引发的重复 View 在该批次内仍去重，不能形成自触发循环；不增加 timer、轮询或后台重试器。启动恢复继续容错，后续观察器必须能识别本次协调失败，不能把吞掉的异常当成功永久缓存。
 
@@ -203,7 +203,6 @@ Built-in / Template + Account + Personal
 | R09                  | 通用前后缀匹配已重做、继续整体复审              | 已移除厂商前缀枚举限制，Model / Model API 统一支持前后缀；具体变体排在通用族之后。三种 API、16 个型号及 4 类别名比较最终配置；OpenRouter GPT Messages 的 Reasoning Map 另补请求字段测试，先失败后修复。完整性与别名测试共 18 条通过；两家官方方形 Logo 已打包                                                                                              | 语义变体及其余接口的真实请求仍需核查；不得把任意后缀宣称成已确认能力                                                                            |
 | R07                  | 通用配置已补齐、待整体发布复审                  | 用户确认更大的通用初始值，本轮定 32,000。三种 API Schema 的未知模型完整性测试先失败，修复后包含真实 Registry 列表验证，Builtin 完整性共 14 条通过；发布 revision 已升至 10                                                                                                                                                                                 | 已知系列变体和聚合模型专用能力另由 R09 核查                                                                                                     |
 | R08                  | 保存与布局通过 Pro 定向验收                     | 保留 enabled=false、切回跟随后编辑、固定完整性、未保存输入物化均先复现再修复；草稿 23、弹窗 16、服务端 27、模型行 41 条通过。Pro MP-UI-06 已验证取消、双向切换、保存重开、开关底部定位及窄窗口                                                                                                                                                             | 深浅主题与中英文组合继续随整体页面复审                                                                                                          |
-| R10                  | 完整快照成员与 Pro 动态模型验收通过             | Facade 提供可信成员、来源及快照校验；ConfigService 不查询账号。编辑、排序、修改 Provider 后保留动态顺序及异步成员消失拒绝迟到写入共 47 条通过。Pro Start Plan 的仅余额返回模型已验证编辑保存重开、ID 只读、真实拖拽顺序写盘，且没有伪造 Personal modelIds                                                                                                  | 远程同步复用既有边界，不新增发送前同步                                                                                                          |
 | R11                  | 主动选模最高档与全新初始兜底已接入              | Composer、定时任务、闲时任务、Subagent、Wiki 的主动操作接入公共构造；历史恢复不补档位。选择配置/Facade/Composer 共 33 条通过；Pro I20 验证 Subagent 主动选模先落最高档，再显式改为 high 并用于真实子请求                                                                                                                                                   | 其他后端主动构造入口仍需复核；不能用 Subagent 一项代替所有界面验收                                                                              |
 | R12                  | 设置模型行与公共选择列表已恢复视觉标记          | 图片能力为真时复用既有徽标，不按型号猜；先复现缺失，模型行与列表共 42 条通过                                                                                                                                                                                                                                                                               | 主题、长名称和手机布局待 Electron/页面验收                                                                                                      |
 | R13                  | 两个容器已实现并通过 Pro 设置页验收             | 推理档位与 Mapping 同组、MFJS 独立高级组，无折叠，底部操作独立；弹窗 16 条与 Pro MP-UI-06 通过                                                                                                                                                                                                                                                             | 主题与语言整体复审继续                                                                                                                          |
@@ -212,7 +211,6 @@ Built-in / Template + Account + Personal
 
 - Air 备份：真实用户备份压缩包已完整传输，源端与 Air 的 SHA-256 均为 `e4b179c215619fc700848a51cece6fef8e77dec8c742f52ec2f8c0e33c282827`，9,787,073,272 字节。未解压、未恢复真实数据；Air 当时剩余约 12 GiB，后续测试必须控制空间。
 - 2026-09-07 用户新增授权：把该真实用户备份传到 Pro，并替换 Pro 的默认 `.zcode` 作为重复迁移测试数据。现已完成：原包 SHA-256 与 Air/源端一致；解压原件留在 `/Users/dev/.zcode-test-fixtures/real-user-20260902/pristine/.zcode`，恢复后的 `/Users/dev/.zcode` 与其全量 checksum dry-run 比较无差异。原 Pro 数据约 533 MiB 留在 `/Users/dev/.zcode.before-real-user-2026-09-07T13-18-05.536Z`，没有删除，没有启动旧版应用。桌面 `Restore-Real-User-Test-Data.command` 可在退出全部 ZCode/Agent/Host 后重复恢复，工具每次先准备副本、再改名留档。工具和敏感备份仅留测试机，不提交 Git。
-- 2026-09-07 验证环境：Air 与 Pro 的 SSH Git 凭据读取均报钥匙串 `-25308`，本机终端 Git 可用，不能据此判成账号失效。未放宽钥匙串权限；改用本机已授权取得的源码 bundle 准备 Pro 隔离工作区 `/Users/dev/zcode-todo88-pro-e2e`，CUA 仍为锁定的 `95ca9ede5f308c1fcf33ea1081da4d9550bd439d`。Electron 通过结果见下文。
 - 最新本地全量 `pnpm typecheck` 通过；`pnpm lint` 通过（40 条既有 warning，0 error）。后续修改仍需重跑，不能用本条替代最终验收。
 - 二次复审批量回归：Provider、Provider Node、Automation、Subagent、Settings、Wiki、Account 与 UI 相关 34 个测试文件、501 条通过。桌面 MP-UI-06 的真实交互断言已通过，详见产物记录。
 - Pro 环境准备：使用隔离 pnpm store 和测试机已有 HTTP 代理完成锁定依赖安装；Electron 首次安装未启用其代理选项而超时，启用进程级 `ELECTRON_GET_USE_PROXY` 后安装成功。没有改全局代理、钥匙串 ACL 或依赖版本，不把环境安装失败计为产品用例失败。
@@ -262,7 +260,7 @@ Built-in / Template + Account + Personal
 ## 与既有 Todo 的关系
 
 - 2026-09-07 执行链复审新增 R03/R04 核查：CLI `subagent/profile.ts` 仍用旧 `thoughtLevel` 覆盖新 `modelSelection`，并用 `??` 复活新字段 null；补 CLI 真正 loader 的新字段权威测试后修复。另发现 Host 的旧 built-in override 导入目前只在内存中，而 CLI 独立读取 `agents-state.json`；必须追到启动/持久化边界证明迁移真正用于运行，不能用设置页测试关闭 R03。
-- Pro 正式设置页 E2E：`desktop-e2e-20260907-135538-982` 共 7 条通过，1 条远程 SSH 场景因未配置目标跳过；MP-UI-06 覆盖底部跟随开关、取消、双向切换保存重开及两个分组。首次发现误复用 Checkbox，已改标准 Switch 后通过。Start Plan 新增编辑用例首次因中文页面使用英文 Save 定位失败，修双语定位后整组 4 条通过。
+
 
 - 本 Todo 是修复缺口和验收追踪入口，不重写旧 Todo 历史；关联项本次验收通过后再同步对应旧文档状态。
 - Todo 84 曾按 2026-09-07 用户裁决重新打开，现已由本 Todo R11 的最高档实现及后续验收收口；不是以旧“全部留空”用例通过关闭。2026-09-08 已同步其状态。

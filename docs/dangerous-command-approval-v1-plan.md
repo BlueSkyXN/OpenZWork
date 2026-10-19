@@ -29,7 +29,6 @@
 
 本轮不修以上范围外基线问题。全量门禁未通过，不宣称 production ready，不自动提交/推送；新增 E2E 待人工审核，Linux 原生执行及 Windows Desktop/手机 UI 未运行。状态与审批核心未修改。
 
-## 界面文案（2026-09-23）
 
 
 ## 审批 E2E 录屏依赖修复（2026-09-17）
@@ -81,7 +80,7 @@
 
 CLI 全包 lint 仍因 staging 已有的 `max-lines` 报错失败：contracts 的 browser-control、session-store、workflow、event-reducer、model，以及 debug 的 analyzer/App。前六个非 reducer 文件与 staging 相同，event-reducer 只增加单次审批字段，staging 本身已超过阈值；不在本次合并中拆分无关模块，本次提交不宣称 CLI 全包 lint 通过。
 
-二次核查：对照两个合并父节点及 AUTO_MERGE，独立审查未发现合并引入的回归。追加运行 51 suites / 723 tests 全部通过，覆盖独立 Plan、模式与队列保存、workflow 审批/会话授权、Full access 竞态与投影、Memory/CUA 权限、工具执行器、Guarded 九项规则及子任务/问答。根 typecheck、lint（206 warnings / 0 errors）和架构检查再次通过；本轮未修改生产逻辑，Desktop E2E 使用上述合并后 17/17 证据，Windows/真实手机/scheduler 未重跑的边界保持不变。
+
 
 改动层：validation、option-source、commit-effect、persistence/recovery 模式透传。
 
@@ -346,7 +345,6 @@ DCA-V1-01/03..08 转为 guarded 合同；02 保持 PowerShell pruned；09..12 �
 
 | 验证 | 结果与实际终点 |
 | --- | --- |
-| core 19 suites | 353 passed：guarded-*、permission service/broker/race、Memory、Plan、Bash、executor error/trace、普通子任务交互/事件、queue intent、CUA 原权限对照 |
 | bootstrap 11 suites | 160 passed：真实 V4 registry/command/projection 即时回应、问答与拒绝/取消；workflow/script child 受控执行后父仍需批准；严格配置失败、自动化透传、SQLite 冷恢复、queue promotion |
 | services + shared 3 suites | 125 passed：automationRepo、zcodeAgentService.v4、guardedMode。旧 runtime 测试是实际子进程模拟旧严格 schema，非旧版本二进制 |
 | adapters 1 suite | 19 passed：session-store-model-selection-codec 保存值与解码 |

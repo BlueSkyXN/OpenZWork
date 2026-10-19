@@ -76,8 +76,6 @@
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | AS01 | `626f939c29` 的 Markdown 选区辅助提问经 `0ed79bae571` 人工合并后，按钮及 helper 保留，SessionPane 却丢掉 reference 并强制新建；referenceBlocked 也未传入。旧恢复表 R11 的“已保留”不足以证明装配 | 已恢复：真实 SessionPane 注册测试先 2 红，再 8/8；Pro 正式 MPS01/02/06/08/09 通过 `desktop-e2e-20260907-162820-560`，真实辅助引用、主草稿、发送引用路径均验证。旧 E2E 前置 DOM focus 无法挂载行操作，改为真实 hover，不调整产品挂载策略    |
 | AS02 | 自定义 Subagent 损坏的新 modelSelection 被解析成 undefined，可能继承父模型                                                                                                                  | 用户已明确接受按继承处理，不再实施“保留展示、执行明确报配置错误”提案；接受现状不算修复通过，未上线中间格式的退役由 Todo 97 承接                                                                                                                                |
-| AS03 | CLI SEA TUI 依赖闭包测试缺 `@zcode/shared/src/index.ts`；TUI 导入 shared CUA 常量，资产打包仅含 dist/package.json，shared exports 指向 TS src                                                   | 固定 staging 的 app-approval 与 sea-tui-assets 和当前无行为差异，确认是基线同样存在的打包问题；不删测试、不临时复制 src 冒充完成，单独交付风险                                                                                             |
-| AS04 | 真实用户原备份 15 条 Automation，在内存副本导入 14 条，1 条旧 BigModel Coding Plan 待迁移；当前保存账号域为 Z.ai                                                                                 | Todo72 §3.2 明确禁止旧身份跨 Family 猜测；原记录/旧列未改，重复迁移幂等，待迁移项可后续重试。不能称全 15 条已恢复，也不能擅自改为 Z.ai 来提高通过数                                                                                        |
 | AS05 | Bot `/model` 草稿及已存在任务只写身份，未接 R11 主动选模最高档                                                                                                                                  | 新测试实证只收到身份、没有 options；两个入口接同一 completion。当前 View 不能确认目标时不写空选择、不下发 setModel。93 条服务测试通过；Pro `desktop-e2e-20260907-163541-147` synthetic 3/3，覆盖主动选择不自动建任务。不是飞书真实网络验收 |
 
 ## 近期提交与当前行为的复审归属
@@ -92,7 +90,6 @@
 | Todo83/85，`524f1ba2e5`、`5278ed453b`、`e99d1ee193` 账号/领取/导航                    | 保留当前运行时 Account State → Config Overlay，不增加持久化状态列表。R05 补 Host 装配，R06 补失效自动选择及微任务丢更新                      | Pro 最后一轮 `desktop-e2e-20260907-162115-439` 4/4；领取不自动切换，生产默认“模型设置”，不擅自开启 dormant 立即体验；pending/unknown 不冒充无权益                                   |
 | Todo87，`cd6c4ff87c`、`ac00daec9c`、`e401dbcbb4`、`f0047c4430`、`a3517b732f` 有效选择 | 保留原意图/临时有效值/已接纳执行三个边界。账号对应同模型同档位，读取不覆盖持久意图；后台首次执行才固定 run                                   | 公共解析、hook 世代/输入隔离、Composer accepted 条件提交、Automation 首次执行、Bot/Wiki 菜单与请求测试。固定 run 不重解，已有 Ticket 不跨账号重绑，显式新版 Subagent 自动对应仍排除 |
 | `626f939c29` → `0ed79bae571` → 后续 SessionPane 适配                                  | 旧 CAS/RuntimeModel 不恢复；冻结 Submission 与目标 Host 服务保留。发现 AS01 不是架构适配，而是独立 UI 行为漏接，已补回                       | /goal 冻结传递、发送错误/草稿保留、Side Chat 实际引用路由反查；未恢复 D01 发送前强制远端同步                                                                                        |
-| 两个 revert 的 MCP/插件/CUA/Hook/附件组                                               | 插件 UI、进程生命周期与独立 MCP status lane、闲置回收、Helper 不回收 Agent、Hook 生命周期和附件布局保留；不能用整个旧 zcodeAgentService 覆盖 | 对照固定 staging 的相同实现及差异 hunk；MCP 实际进程隔离/超时重试和 CUA 测试纳入 394 条。AS03 是 staging 同样存在的另一项打包失败                                                   |
 | `956f31d76f`、`f881ab29f6`、`ceb9625ebe` 测试与收口                                   | 原“全部恢复”报告遗漏 AS01；部分测试仍断言旧格式或 checkbox，已修测试前提但保留行为断言；不删除失败测试制造通过                               | CLI 181/181（原 4 项夹具错误），SEA 与 remote cron 原基线失败分别记录。pre-push 批处理不重新加回                                                                                    |
 
 ## 最后一轮验证记录
@@ -128,5 +125,4 @@
 - Account observer 微任务修复后，Pro 领取/过期连接四例 4/4；没有只靠单测宣称交互通过。
 - Settings MP-UI-06：`desktop-e2e-20260907-160913-084`，中英文、深浅主题、390px 窄窗口、长 Model ID、跟随配置草稿/保存、两个容器、设置行与选择菜单视觉标记通过。Radix 菜单需真实点击并 hover Provider 子菜单，测试不再用 DOM click 代替。
 - 根范围变更测试首次 31 文件 504/506，失败两项仍查 checkbox；按现行 Switch 可访问角色修正，最终含新增测试 33 文件 599/599。日志 `/tmp/todo88-final-changed-unit2.log`。
-- 扩大架构回归 28 文件 394/394：包含 Provider/Provider Node、Agent Service、MCP/CUA、Git 辅助生成及 SessionPane/Markdown 相邻行为。不是所有产品 E2E 的通过声明。
 - 全部真实旧备份验证只读源文件或在内存副本迁移，没有启动该用户的自动化、使用其凭据发模型请求；完整 Pro 数据替换及可恢复备份沿原操作记录保留。

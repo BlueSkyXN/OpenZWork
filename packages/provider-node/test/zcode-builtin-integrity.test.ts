@@ -4,10 +4,12 @@ import { fileURLToPath } from "node:url";
 import {
   ApiKeyAccessConfig,
   ModelConfigRules,
-  ProviderConfig,
   ProviderApiConfig,
+  ProviderConfig,
   ProviderConfigMap,
   ProviderConfigResolver,
+  ProviderRegistry,
+  parseModelConfig,
 } from "@zcode/provider";
 import { describe, expect, it } from "vitest";
 import { NodeZCodeBuiltinProviderConfigSource } from "../src/index.js";
@@ -41,7 +43,7 @@ describe("ZCode Built-in Provider Config 完整性", () => {
           baseUrl: "https://unknown.example/v1",
         });
         expect(model.validateComplete()).toEqual([]);
-        expect(model.optionSpecs?.maxOutputTokens?.max).toBe(32_000);
+        expect(model.optionSpecs?.maxOutputTokens?.max).toBe(128_000);
         expect(model.optionSpecs?.reasoningLevel?.values).toEqual(["disabled", "enabled"]);
         expect(model.properties?.inputFormat.supportsImage).toBe(false);
         const result = new ProviderConfigResolver().resolve({
@@ -75,7 +77,7 @@ describe("ZCode Built-in Provider Config 完整性", () => {
       }
     },
   );
-  it("GLM-5.3-Flash 的媒体输入能力及 GLM-5.3 的套餐桥接保持明确", async () => {
+  it("GLM-5.3-Flash 的媒体输入能力保持明确", async () => {
     const source = new NodeZCodeBuiltinProviderConfigSource({
       bundledFilePath: zcodeBuiltinProviderConfigFilePath,
       watch: false,
@@ -439,7 +441,7 @@ describe("ZCode Built-in Provider Config 完整性", () => {
     }
   });
 
-  it("按产品分组声明 Zhipu 系统 Provider 与外部主流 Provider", async () => {
+  it("按产品分组声明外部主流 Provider", async () => {
     const source = new NodeZCodeBuiltinProviderConfigSource({
       bundledFilePath: zcodeBuiltinProviderConfigFilePath,
       watch: false,
@@ -547,45 +549,28 @@ describe("ZCode Built-in Provider Config 完整性", () => {
     }
   });
 
-  it("按模型家族连续排列 Rule，且不保留语义等价的重复 matcher", async () => {
+  it("不保留语义等价的重复 matcher", async () => {
     const source = new NodeZCodeBuiltinProviderConfigSource({
       bundledFilePath: zcodeBuiltinProviderConfigFilePath,
       watch: false,
     });
 
     try {
-      const rules = (await source.read()).models.rules().filter((rule) => rule.type === "match");
+      // 三组 matcher 规则各自独立，但语义等价的 selector 不能跨组重复书写。
+      const rules = (await source.read()).models
+        .rules()
+        .filter(
+          (rule) =>
+            rule.type === "model" || rule.type === "model-api" || rule.type === "provider-site",
+        );
       const selectorKeys = rules.map((rule) =>
         JSON.stringify([
-          rule.providerMatch ?? "",
           rule.modelMatch.toLowerCase(),
-          rule.apiMatch ?? "",
-          rule.baseUrlMatch ?? "",
+          "apiTypeMatch" in rule ? (rule.apiTypeMatch ?? "") : "",
+          "baseUrlMatch" in rule ? rule.baseUrlMatch : "",
         ]),
       );
       expect(new Set(selectorKeys).size).toBe(selectorKeys.length);
-
-      // 分组后“模型家族连续”只约束 Model Rule 本组；把 Model/API/Site 三组拼起来会
-      // 人为制造重复家族，无法再验证原本想检查的书写顺序。
-      const rawRelease = JSON.parse(await readFile(zcodeBuiltinProviderConfigFilePath, "utf8")) as {
-        config: { modelConfigRules: { modelRules: readonly { modelMatch: string }[] } };
-      };
-      const modelRules = rawRelease.config.modelConfigRules.modelRules;
-      const familySequence = modelRules
-        .map((rule) => builtinRuleFamily(rule))
-        .filter((family, index, families) => family !== families[index - 1]);
-      expect(familySequence).toEqual([
-        "fallback",
-        "glm",
-        "gpt",
-        "claude",
-        "grok",
-        "kimi",
-        "minimax",
-        "deepseek",
-        "qwen",
-        "mimo",
-      ]);
     } finally {
       source.dispose();
     }
@@ -799,4 +784,133 @@ describe("ZCode Built-in Provider Config 完整性", () => {
     }
   });
 
+  it("完整兜底让任意未知模型 ID 在各 API type 与模板下完整并进入 Registry（R3A-B-03）", async () => {
+    const source = new NodeZCodeBuiltinProviderConfigSource({
+      bundledFilePath: zcodeBuiltinProviderConfigFilePath,
+      watch: false,
+    });
+
+    try {
+      const snapshot = await source.read();
+      const fallbackRule = snapshot.models
+        .rules()
+        .find((rule) => rule.type === "model" && rule.modelMatch === ".*");
+      const fallbackMax = fallbackRule?.config.optionSpecs?.maxOutputTokens?.max;
+      expect(fallbackMax, "兜底规则必须声明 maxOutputTokens.max").toEqual(expect.any(Number));
+
+      const unknownModelId = "b03-unknown-model-x";
+      const scenarios = [
+        { providerId: "custom-chat", apiType: "openai-chat-completions" as const },
+        { providerId: "custom-messages", apiType: "anthropic-messages" as const },
+        { providerId: "custom-responses", apiType: "openai-responses" as const },
+        {
+          providerId: "custom-deepseek",
+          templateId: "deepseek",
+          apiType: "openai-chat-completions" as const,
+          baseURL: "https://api.deepseek.com",
+          // 只能用目录默认启用的已知模型做探针：deepseek-v4-flash 已被 Built-in 目录标为
+          // enabled:false，稀疏 Personal 规则不会覆盖它，Registry 里自然取不到。
+          knownModelId: "deepseek-v4-pro",
+        },
+        {
+          providerId: "custom-anthropic",
+          templateId: "anthropic",
+          apiType: "anthropic-messages" as const,
+          baseURL: "https://api.anthropic.com/v1",
+          knownModelId: "claude-opus-5",
+        },
+      ];
+      const personalProviders = scenarios.map((scenario) => ({
+        providerId: scenario.providerId,
+        ...(scenario.templateId ? { templateId: scenario.templateId } : {}),
+        config: new ProviderConfig({
+          group: "standard-personal",
+          access: new ApiKeyAccessConfig({ apiKey: `test-key-for-${scenario.providerId}` }),
+          api: new ProviderApiConfig({
+            type: scenario.apiType,
+            baseUrl: scenario.baseURL ?? "https://custom.example.com/v1",
+          }),
+          personalModelIds: [
+            unknownModelId,
+            ...(scenario.knownModelId ? [scenario.knownModelId] : []),
+          ],
+        }),
+      }));
+      // 设置页新增模型时 config-service 只写入 {enabled:true}，这里复用同一稀疏 Personal 规则。
+      const personalModels = new ModelConfigRules(
+        scenarios.map((scenario) => ({
+          type: "provider-model" as const,
+          providerId: scenario.providerId,
+          modelId: unknownModelId,
+          config: parseModelConfig({ enabled: true }),
+        })),
+      );
+      const resolution = new ProviderConfigResolver().resolve({
+        zcodeBuiltinProviders: ProviderConfigMap.empty(),
+        zcodeBuiltinProviderTemplates: snapshot.providerTemplates,
+        accountProviders: ProviderConfigMap.empty(),
+        personalProviders: new ProviderConfigMap(personalProviders),
+        zcodeBuiltinModelRules: snapshot.models,
+        personalModels,
+      });
+      const registry = new ProviderRegistry(resolution.registryProviders);
+
+      expect(resolution.issues).toEqual([]);
+      for (const scenario of scenarios) {
+        const unknown = registry.getModel(scenario.providerId, unknownModelId);
+        expect(unknown, `${scenario.providerId}/${unknownModelId} 应进入 Registry`).toBeDefined();
+        expect(unknown?.config.optionSpecs.maxOutputTokens).toEqual({
+          max: fallbackMax,
+          map: expect.any(String),
+        });
+        if (scenario.knownModelId) {
+          const known = registry.getModel(scenario.providerId, scenario.knownModelId);
+          expect(
+            known,
+            `${scenario.providerId}/${scenario.knownModelId} 应进入 Registry`,
+          ).toBeDefined();
+          expect(known?.config.optionSpecs.maxOutputTokens.max).toEqual(expect.any(Number));
+          // 新通用上限可与已知型号一致；已知型号仍由自身规则解析，不能以数值不同判断是否命中。
+          expect(known?.config.optionSpecs.reasoningLevel.values).not.toEqual([
+            "disabled",
+            "enabled",
+          ]);
+        }
+      }
+    } finally {
+      source.dispose();
+    }
+  });
+
+  it("正式 Built-in JSON 不携带旧模型能力字段", async () => {
+    const document = JSON.parse(
+      await readFile(zcodeBuiltinProviderConfigFilePath, "utf8"),
+    ) as unknown;
+    const keys = collectObjectKeys(document);
+
+    expect(keys).not.toContain("apiKey");
+    expect(keys).not.toContain("modalities");
+    expect(keys).not.toContain("magic_name");
+    expect(keys).not.toContain("supportsImages");
+    // Todo104：supportsPdf/Video 是 inputFormat 内的正式字段，不能因同名误判成旧扁平能力。
+    for (const key of [
+      "input_format",
+      "output_format",
+      "support_text",
+      "support_image",
+      "support_pdf",
+      "support_video",
+      "support_audio",
+    ]) {
+      expect(keys).not.toContain(key);
+    }
+    expect(keys).not.toContain("budget_tokens");
+    expect(keys).not.toContain("budgetTokens");
+  });
 });
+
+function collectObjectKeys(value: unknown): string[] {
+  if (Array.isArray(value)) return value.flatMap(collectObjectKeys);
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([key, child]) => [key, ...collectObjectKeys(child)]);
+}

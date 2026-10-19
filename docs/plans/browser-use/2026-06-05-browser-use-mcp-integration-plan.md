@@ -1,8 +1,6 @@
 # Browser Use MCP Integration Implementation Plan
 
-> **状态：历史规划，未实现。** 本文拟议的 `automationSurface` / `browser_use` 模块在当前分支不存在，
-> 不可据此判断现行浏览器自动化能力。当前产品 CUA 权限边界见
-> [ZCode CUA Permission Broker](../../cua-permission-broker/zcode-cua-permission-broker.md)。
+
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1365,14 +1363,6 @@ Create `docs/browser-use-mcp.md` with sections:
 ```md
 # Browser Use MCP
 
-## Summary
-## Feature Switches
-## Session And Instance Isolation
-## Data Flow
-## Permission Model
-## Desktop Continuous Boundary
-## Mobile Remote Replayable Boundary
-## Provider Extension Guide
 ## Verification
 ```
 

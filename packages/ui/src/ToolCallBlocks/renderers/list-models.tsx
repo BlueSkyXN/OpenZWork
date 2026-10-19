@@ -1,8 +1,8 @@
 import { Cpu } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { resolveModelProviderFamilyLabelByProviderId } from "@zcode/shared";
-import { thoughtLevelLabelId } from "@/chat-input-toolbar/thoughtLevelOptions.js";
-import { useWorkflowSubagentModelProviderName } from "@/hooks/useWorkflowSubagentModelProviderName.js";
+import { thoughtLevelLabelId } from "@/chat-input-toolbar/thoughtLevelLabels.js";
+import { useToolPresentationCapabilities } from "@/ToolCallBlocks/presentationCapabilities.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { ToolSnapshotFieldNotice } from "@/ToolCallBlocks/ToolSnapshotFieldNotice.js";
 import { FallbackToolCallBlock } from "@/ToolCallBlocks/renderers/fallback.js";
@@ -197,10 +197,7 @@ function levelWord(level: string, formatMessage: FormatMessage): string {
  * 行的 tooltip：第一行是思考强度档位（没有档位就说没有），换行后是规范 id。规范 id 是给
  * 机器回填 `subagent_model` 用的，它只该住在这里（subagent-model-label.ts 的同款分工）。
  */
-function listModelsRowTooltip(
-  model: ListModelsEntryView,
-  formatMessage: FormatMessage,
-): string {
+function listModelsRowTooltip(model: ListModelsEntryView, formatMessage: FormatMessage): string {
   let levelsLine: string;
   if (model.reasoningLevels.length === 0) {
     levelsLine = formatMessage({ id: "chat.toolCall.workflow.models.noLevels" });
@@ -253,7 +250,7 @@ function groupModelsByProvider(models: ListModelsEntryView[]): ListModelsGroup[]
 export function ListModelsToolCallBlock(context: ToolCallBlockRenderContext) {
   const { intl } = useZCodeIntl();
   const { toolCall } = context.toolCallNode;
-  const providerName = useWorkflowSubagentModelProviderName(context.workspacePath);
+  const providerName = useToolPresentationCapabilities().modelProviderName;
 
   const result = useMemo(() => readListModelsResult(toolCall), [toolCall]);
 

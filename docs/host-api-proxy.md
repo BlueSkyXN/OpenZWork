@@ -14,16 +14,6 @@ Electron 的 Renderer、WebView 和 `electron.net` 使用 Chromium Session 代�
 - 没有显式代理时保持直连；显式代理配置失败时不回退直连；
 - 只覆盖 `NodeApiClient`，不改变 Renderer、Electron Session、Agent、Bot、telemetry 或其它裸 `fetch`。
 
-```text
-AppSettings
-    |
-    v
-Host Node transport -- final URL -> No Proxy? --+--> direct
-    |                                           `--> proxy
-    v
-NodeApiClient -> OAuth / Coding Plan / client-scenes / provider APIs
-```
-
 ## 边界与后续
 
 本次不把 CLI adapter 直接引入 services，也不设置 Host 进程全局 dispatcher。Host 与 Agent 共享 Node egress adapter 可以作为后续独立改造，避免扩大本工单的模型请求、WebFetch 和 HTTP MCP 回归范围。

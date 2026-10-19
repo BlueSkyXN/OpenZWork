@@ -14,7 +14,6 @@
 
 ## 关键约定（贯穿全计划，命名必须一致）
 
-- 新时间范围类型：`AppUsageRange = "7d" | "30d"`（App Usage 专用，**不复用** `UsageStatsRange`，后者仍服务 Coding Plan/monitor 路径）。
 - 新协议方法常量名：`usageStats`，方法字符串 `"usage/stats"`。
 - agent 侧只读聚合端口方法：`UsageStorePort.queryAppUsage(input: AppUsageQueryInput): Promise<AppUsageQueryResult>`。
 - 纯函数 builder：`buildAppUsageSnapshot(result, opts): AppUsageSnapshot`，位于 `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-stats-builder.ts`。
@@ -73,11 +72,10 @@ import { z } from "zod";
 - 接口 `UsageStatsDailyModelUsage` / `UsageStatsDailyModelUsageItem`（被新 App Usage 类型取代）
 - `AppUsageSnapshot` 旧定义（第 130-134 行）与旧 `AppUsageRequest`（第 24-27 行）
 
-> `UsageStatsSnapshot` / `UsageStatsSummary` / `UsageStatsHeatmap*` / `UsageStatsModelUsage` 等仍被 Coding Plan/monitor 与 `getSnapshot` 使用，**保留不动**。`UsageStatsRange` 保留。
+
 
 - [ ] **Step 3: 新增 App Usage 的 zod schema 与类型**
 
-在文件中（Coding Plan 段之前）插入：
 
 ```typescript
 // ── App Usage（agent 数据库真实统计）────────────────────────────────
@@ -1351,7 +1349,7 @@ export const RANGE_OPTIONS: AppUsageRange[] = ["7d", "30d"];
 
 - [ ] **Step 2: `useAppUsageStats` 形参类型改 `AppUsageRange`**
 
-`packages/ui/src/hooks/useUsageStats.ts`：把 `useAppUsageStats(range: UsageStatsRange)`（第 163 行）改为 `range: AppUsageRange`，并在顶部 import 加 `AppUsageRange`（来自 `@zcode/shared`）。`useUsageStats` / `useCodingPlanUsageStats` 保持 `UsageStatsRange` / `CodingPlanUsageRange` 不动。
+
 
 - [ ] **Step 3: 面板默认值与 tabs 类型**
 
@@ -1726,8 +1724,7 @@ Expected: PASS。
 
 - [ ] **Step 2: 残留引用扫描**
 
-Run: `grep -rn "estimateTokensFromCharacterCount\|totalEstimatedTokens\|activityScore\|readPersistedSessionFiles\|usageStatsAggregator" packages/ apps/ --include=*.ts --include=*.tsx`
-Expected: 无业务代码命中（仅 spec/plan 文档或 Coding Plan monitor 自有的 `totalEstimatedTokens` 若存在则保留判断）。
+
 
 - [ ] **Step 3: 手动联调（可选，按 verify 技能）**
 
@@ -1746,4 +1743,3 @@ Expected: 无业务代码命中（仅 spec/plan 文档或 Coding Plan monitor �
 - **可靠性指标**：Task 2/3（errorRate/TTFT/durations）+ Task 7。✓
 - **时间筛选 7d/30d 去掉「全部」**：Task 6 + Task 11（删 range.all）。✓
 - **30 天保留期 / 空态**：handler 空 sessionStore 回退 + 现有 `UsageStatsErrorNotice`/`UsageEmptyState`。✓
-- **Coding Plan / monitor 不动**：仅改 App Usage 路径，`UsageStatsRange`/`getSnapshot` 保留。✓

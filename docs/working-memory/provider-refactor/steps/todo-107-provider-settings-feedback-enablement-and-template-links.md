@@ -6,7 +6,6 @@
 
 | Todo                                                  | 范围                                                                              | 状态                       |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------- |
-| [105](./todo-105-account-provider-model-list-trim.md) | 个人／团队 Account Provider 预设名单移除 GLM-5-Turbo、GLM-5.2                     | 已实施                     |
 | [106](./todo-106-mcs-capability-rule-correction.md)   | MCS 支持范围、Opus 4.8 默认能力、Start／闲时 MCS 与原生搜索、一 URL 一条站点规则  | 已实施                     |
 | 本 Todo                                               | 删除反馈、连接测试关闭按钮、纵向拖拽、API Key 入口、Provider enabled 与统一状态灯 | 已实施；验证范围见交付复审 |
 
@@ -45,7 +44,7 @@
 
 ## 5. 补齐预设模板的“获取 API Key”入口
 
-智谱／Z.ai 的普通 API 与 Coding Plan 模板拆分、手动套餐 Key 签名及个人／团队获取入口由后续 [Todo111](./todo-111-zhipu-coding-plan-api-key-and-standard-api-templates.md) 承接。此处通用入口规则继续有效；这两家的具体模板归属与链接选择以 Todo111 为准，避免按原来两个模板的名称继续误配。
+
 
 - 仅预设模板提供此入口；任意用户自建 Provider 不猜测 URL。
 - 不根据是否已经填写 API Key 来隐藏入口：有 Key、无 Key 时均可访问模板声明的 URL。
@@ -111,5 +110,4 @@ Provider enabled + 配置完整性 + 模型可执行性 + Account 权益／当�
 ## 8. 明确排除／暂缓
 
 - **横幅裁切**：用户已要求先忽略，不是本 Todo 关闭前置；[Pro 调查记录](./investigation-provider-feedback-clipping-20260910.md)仍为“未复现、根因未确认”，不得顺手试改 blur、层级或裁切样式并宣称修复。
-- **“完全访问”后仍要求批准**、**有 Coding Plan 但闲时创建按钮灰**：用户明确忽略，不纳入本轮调查或实施。
 - 不改变套餐切换语义，不实施多 Account Provider 并存，不清理真实用户数据，不自动发布或推送。

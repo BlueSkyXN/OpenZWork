@@ -115,9 +115,7 @@ staging 的派发路径只在旧模型字段存在时使用它们，否则走自
 
 ### 2.5 Account Settings
 
-当前字段是 `providerFamilyConnectionSelections`；staging 使用
-`modelProviderFamilyModes/modelProviderFamilySelectedKeys`。冻结 staging 的 Settings Schema 非 strict，
-会忽略新字段，并把缺失旧字段缺省为空对象，整份 Settings 仍可加载。
+
 
 用户回滚后可能需要重新选择账号连接。staging 后续保存 Settings 还可能移除它不认识的新版字段，再次升级时
 需要重选。这属于可重建设置退化，不维护新旧 Family 选择的持续反向投影。
@@ -208,10 +206,7 @@ Bot 不保证体现在回滚版本中。这是明确接受的产品边界。
 首次导入可以在下一次启动补齐尚未生成的另一个 v3 文件；不得把这种一次性导入误实现为每次保存持续回写。
 各文件写入继续使用既有安全写入机制，失败不伪装为成功。
 
-导入上下文由服务组装层注入：普通 Bot 默认配置使用所属 Host 的模型与当前登录连接；带
-`workspaceIdentity` 的旧状态只能使用该远端的模型事实，不能拿本地账号解释旧 Coding Plan。
-若当时远端不可连接或没有可取得的账号上下文，无法确认的绑定留空，主体状态照常导入。
-新文件的解析/IO 错误向调用方暴露，不回读旧文件，也不把损坏文件改写为空。
+
 
 ## 4. 范围约束及与相邻 Todo 的关系
 
@@ -224,20 +219,6 @@ Bot 不保证体现在回滚版本中。这是明确接受的产品边界。
 - 通用旧版 Selection Encoder、兼容 DTO、第二份 Config/Registry 权威；
 - 整库副本、破坏性 SQLite 降级迁移；
 - 当前版本持续读取冻结旧文件修复当前数据。
-
-```text
-Todo 69：当前版本 -> staging 降级回滚
-└─ 防止整域数据被旧 Reader 拒绝；当前硬点是 Bot 文件隔离
-
-Todo 70：旧 Session -> 当前版本升级恢复
-└─ 新旧字段判定、可靠迁移、失效 Selection 与历史可打开性
-
-Todo 71：当前版本内 Composer -> Submission
-└─ 持久草稿和提交状态，不承担跨版本字段双写
-
-Todo 72：旧 Provider 配置与持久化选择 -> 当前身份
-└─ 修正内置分类、只迁 Built-in API Key、按迁移时当前连接转换旧 Coding Plan 身份
-```
 
 升级身份规则见 [Todo 72](./todo-72-legacy-builtin-provider-and-model-selection-migration.md)，
 包括 Bot 一次性导入所需的身份转换；不扩大本文的降级兼容范围，不恢复持续双写。

@@ -83,7 +83,6 @@ Target 同文件锁：确认当前仍是 A → 整份替换 B → 刷新/验证
 | 自动化/Bot/Subagent      | 共享Selection数据                    | 各自继承规则不变   | 各自现有提交边界        | 任务/绑定Session/用户MD        | 不因共享字段而共享保存时机              |
 | Wiki/Draft               | RepoWikiStorage                      | 生成设置草稿       | 新选择权威              | 既有文件锁内保存               | 不恢复手动输出上限                      |
 
-## Shared And Divergent Behavior
 
 
 ## Feature Relationships / State Owners And Commit Sinks

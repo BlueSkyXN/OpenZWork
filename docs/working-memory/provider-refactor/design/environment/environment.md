@@ -263,8 +263,3 @@ Environment B Registry
 ```
 
 Registry 使用静态选择事实，决定当前有哪些 Provider 和 Model。动态请求状态由专门 Service 管理，在 Model/Adapter 真正发起请求时提供。详细边界见 [`../registry/model-creation.md`](../registry/model-creation.md)。
-
-Start Plan、Individual Coding Plan 和 Team Plan 各自具有稳定 providerId，并共享 Account Provider 类型和
-执行基础设施；Provider Family 只用于产品分组，不替代 providerId。正常结构化连接选择只启用其中一个
-匹配 Provider，因此 Model Selection 只展示当前连接；Settings 可以同时展示这些固定 Provider 及其启停
-状态，不让同一个 Provider 在 Individual 与 Team 之间运行时变形。

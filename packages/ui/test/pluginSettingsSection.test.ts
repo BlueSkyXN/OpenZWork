@@ -1,11 +1,6 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isPluginScopeWorkspaceConnected } from "@/settings/PluginScopeMenu.js";
 import type { WorkspaceTabState } from "@/store/tabStore.js";
-
-function readSource(path: string): string {
-  return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-}
 
 describe("Plugin settings section", () => {
   it("只把可用本地项目和已连接远端项目放进 Scope", () => {

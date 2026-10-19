@@ -199,17 +199,11 @@ Endpoint 独立表达时，使用：
 providerMatch + modelMatch
 ```
 
-它仍是普通 Match Rule，不产生新的 Rule 类型。例如 Start Plan、Individual Coding Plan 和 Team Coding Plan
-会在模型 API 前使用视觉模型把 Image/Video 转成文字，因此这些 Plan Provider 的全部模型成员都可以声明：
-
 ```ts
 properties.input_format.support_image = true;
 properties.input_format.support_video = true;
 ```
 
-这里的“多模态”只指已确认的 Image/Video 视觉输入，不推断 Audio 或 PDF。该 Rule 必须精确匹配 Plan Provider，
-不能命中由 `zai-api` / `bigmodel-api` Template 创建的普通 API Provider；后者继续使用模型 API 的原生能力。系统不存在
-`zhipu-account/mode=api-key` 的“Account API Provider”。
 
 Provider-scoped Rule 只用于真正对全部成员成立的服务事实。仅对一个模型成立的差异仍放在 Model/API/Endpoint
 或 Exact Rule，不能借 `modelMatch=.*` 扩散。

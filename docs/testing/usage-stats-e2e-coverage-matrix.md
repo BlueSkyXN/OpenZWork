@@ -40,14 +40,10 @@
 | `usage-team-failures-rerun-20260817` | 9/9 pass | CTP-01..08，个人/Team credit、range、窄屏 |
 | `usage-combined-green-20260817` | 13/13 pass，四域 `complete=true` | CTP-01..10 + US-AU-01..05 |
 | `usage-team-fatal-recovery-20260817` | 12/12 pass | CTP-01..11，含 quota 致命失败恢复 |
-| `usage-final-coverage-20260817` | 14/14 pass，renderer/main/host/CLI 全部 `complete=true` | 最终 App Usage + Coding Plan 合并覆盖率 |
 | `remote-shared-host-invariant-20260817` | 3 files / 20 tests pass | D1：手机复用 Window Host、可信 `web-remote-replayable` attachment 与生命周期隔离 |
 | `usage-app-formal-20260817` | 1 formal spec / 2 tests pass | 不带 manual-review 开关执行 US-AU-01..05，证明晋升后的默认正式入口 |
 
-最终专项核心文件行覆盖率：`AppUsagePanel` 97.22%、`CodingPlanUsagePanel` 80.89%、
-`UsageHeatmap` 96.70%、`UsageHeatmapCells` 100%、`UsageStatsErrorNotice` 80%、
-`useUsageEntitlement` 91.05%、`useUsageStats` 58.53%、`CodingPlanContextUsage` 90.74%。
-未把整个 UI Renderer 的 20% 左右全仓启动覆盖率误报为本分支专项覆盖率。
+
 
 ## Coverage 采集合同
 
@@ -70,6 +66,3 @@
 | D2 BigModel 个人/Team 完整，Z.AI 只做来源隔离代表样本 | yes | answered 2026-08-17 |
 | D3 日期/mapper 极端组合以 focused tests 为主，不复制成 GUI E2E | yes | answered 2026-08-17 |
 | D4 viewport/theme/locale 各一条代表样本，不做全组合 | yes | answered 2026-08-17 |
-
-用户已确认 D1-D4；Coding Plan 与 App Usage 用例均已落入 formal spec。App Usage
-于 2026-08-17 经用户确认人工 review 后晋升，继续使用隔离 SQLite fixture，不依赖 provider replay。

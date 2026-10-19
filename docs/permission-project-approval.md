@@ -12,11 +12,7 @@
 - `allow_project`：允许本项目后续相同工具/规则，响应里携带 `permissionUpdates`。
 - `deny`：拒绝本次工具调用。
 
-可信官方 CUA 另有一个受限的项目级能力组语义：用户第一次为官方 CUA 选择
-`allow_project` 后，同一项目内后续官方 CUA 工具共享这一条授权，不再因为
-`get_app_state`、`left_click`、`key`、`drag` 的工具名不同而逐个弹窗。这个例外只扩大
-官方 CUA 工具族内部的匹配范围，不改变 `allow_once` 的一次性语义，也不扩大普通 MCP
-工具的权限。
+
 
 ## 协议约束
 
@@ -73,13 +69,7 @@ UI focus (fullAccess): [1 Allow once] <-> [2 Allow project] <-> [3 Full access]
 - `toolName` 来自权限请求。
 - 非 Bash 工具的 `ruleContent` 继续尽量从权限输入提取 URL、路径或 glob；提取不到时只记录工具名。
 - Bash 工具由 CLI 的 AST-aware rule policy 生成稳定 command prefix 或 exact rule，app、host、main、relay 和 TUI 都不得重新从 input 推导。
-- 只有通过 official plugin authority secret gate 验证的 CUA tool entry 才携带运行时
-  `permissionCapabilityGroup: "official_cua"`。其 `allow_project` 建议规则在既有
-  `{toolName, ruleContent?}` 结构中使用保留 key
-  `zcode:permission-capability:official_cua`，不增加 wire 字段，也不从可伪造的 MCP
-  server/tool 名推导。
-- 能力组保留规则不携带 `ruleContent`。它表达用户对该项目内整组官方 Computer Use
-  能力的授权，而不是某次坐标、路径或 app input 的字符串匹配。
+
 
 Bash 稳定 prefix 使用既有 `"<prefix>:*"` 编码；无法安全归一化、包含 redirect/dynamic
 结构或高风险宽 action 时保存完整命令 exact。compound command 最多返回五条独立规则，
@@ -88,53 +78,6 @@ Bash 稳定 prefix 使用既有 `"<prefix>:*"` 编码；无法安全归一化、
 `suggestedPermissionUpdates` 必须进入 `permission.requested` durable event 和 pending
 snapshot。桌面 continuous、手机 replayable、刷新恢复和 TUI 统一展示、回传这份权威数据，
 不能分别计算出不同授权范围。
-
-## 官方 CUA 能力组边界
-
-能力组匹配同时依赖“持久化规则”和“当前 tool entry 的可信 authority”：
-
-```text
-official plugin config + authority secret
-              |
-              v
-register MCP tool -- verified? -- no --> ordinary exact-tool permission
-              |
-             yes
-              v
-tool entry carries permissionCapabilityGroup=official_cua
-              |
-     first allow_project
-              v
-project ruleset stores official_cua group rule
-              |
-   later tool in same project
-              v
-stored group == current trusted tool group ?
-        | yes                         | no
-        v                             v
-      allow                      normal ask/deny policy
-```
-
-必须接受的组合：
-
-- 同一 `projectId`、同一份已验证 official CUA authority 下，第一次
-  `allow_project` 后，其他 official CUA 工具命中能力组规则。
-- 旧的 exact tool、Bash prefix/wildcard 和 tool-only 规则保持原语义。
-- 权限请求从 desktop continuous 恢复到手机 `web-remote-replayable` 时，仍回放同一份
-  option response；项目规则只由 Agent 的 session store 持久化一次。
-
-必须拒绝或回到正常询问的组合：
-
-- `allow_once` 后的下一次调用。
-- 不同 `projectId`、缺失持久化 session 或 project identity 漂移。
-- 第三方 MCP 使用相同 server/tool 名、伪造 official plugin id、同名工具覆盖，或
-  authority 验证结果发生漂移。
-- 普通 MCP、node_repl、browser-use 等非官方 CUA 工具。
-- 手工写入保留 key 但当前 tool entry 没有可信 official CUA capability；必须回到正常
-  ask/deny，不能按普通 exact toolName 兜底。
-
-禁止把能力组编码为 `mcp__computer-use__*`、server-name wildcard 或 plugin-name wildcard。
-这些字符串都可被第三方 MCP 模仿，不能作为授权 authority。
 
 ## 存储兼容
 
@@ -157,16 +100,13 @@ prefix/wildcard 改由 AST evaluator 按 invocation 安全匹配，避免旧宽�
 - 不支持完全访问能力的权限弹窗保留三项：仅允许这一次、在该项目中一直允许、拒绝；支持时使用下述四项与可选第五行反馈。
 - 点击“在该项目中一直允许”后，app 回传的 response 包含 `permissionUpdates`。
 - 后续相同规则不再重复弹出权限申请。
-- official CUA 的项目级选项明确展示“Computer Use”范围；选择后，同项目
-  `get_app_state → left_click → key → drag` 只出现第一次确认。
-- 同名第三方 MCP、不同项目和 authority drift 都不能复用 official CUA 能力组规则。
 - 权限弹窗只读展示将新增的 prefix/exact scopes，不提供可编辑 pattern input；多行或超长
   exact 仅显示有界首行摘要，完整 rule 只随 response 透传，不进入选项 DOM。
 - refresh/replay 后 scope 文案和原始 `permissionUpdates` 与首次请求一致。
 
 ## 审批框“完全访问”（Todo158）
 
-普通主任务审批在 Agent 支持完整提交能力时依次提供：允许一次、始终允许此命令、完全访问、拒绝；声明 `freeText` 时反馈为第五行。命令的项目允许保留 Agent 给出的 prefix/exact 规则；文件、网络、MCP、CUA 保留自己的范围文案。
+
 
 命令审批第 2 项说明为“项目范围内，后续相同命令不再询问”；第 3 项说明为“授予 Agent 完全访问权限，不再确认。”。该文案不改变以下授权范围和 Plan 边界。
 

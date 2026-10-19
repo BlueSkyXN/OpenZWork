@@ -19,7 +19,8 @@ import {
   type WebRemoteControlRelayIncomingMessage,
   type WebRemoteControlRelayOutgoingMessage,
 } from "@zcode/shared";
-import type { WebRemoteControlRelayAuthProvider } from "./webRemoteControlRelayAuthProvider.js";
+import { WebRemoteControlV2RetryPolicy } from "@zcode/shared/web-remote-relay";
+import type { WebRemoteControlRelayAuthProvider } from "./web-remote-relay/index.js";
 
 export type WebRemoteControlDeviceTransportState =
   | "idle"
@@ -192,6 +193,7 @@ export class WebRemoteControlDeviceTransport {
   private socketGeneration = 0;
   private lastPairedSocketGeneration = 0;
   private readonly payloadSerializer = new WebRemoteControlRelayPayloadSerializer();
+  private readonly retryPolicy = new WebRemoteControlV2RetryPolicy();
 
   constructor(private readonly options: WebRemoteControlDeviceTransportOptions) {
     this.activeAuth = options.auth;
@@ -387,7 +389,11 @@ export class WebRemoteControlDeviceTransport {
         });
         break;
       }
-      case "auth_ack":
+      case "auth_ack": {
+        this.retryPolicy.acknowledged();
+        this.applyPairStatus(message.pair_status);
+        break;
+      }
       case "pair_status_ack": {
         this.applyPairStatus(message.pair_status);
         break;
@@ -464,12 +470,23 @@ export class WebRemoteControlDeviceTransport {
     message: string,
   ): Promise<void> {
     if (code === "KICKED") {
-      // Bugfix: KICKED 的业务语义是同一远控链接只能有一个手机 terminal。
-      // desktop device 端在心跳超时后重建 socket 时也可能短暂收到该错误，不能因此关闭桌面远控 runtime。
+      // 重复 KICKED 曾无限重连、互相替换设备；沿用上游单实例窗口，只恢复一次，ACK 不清冲突记录。
+      const delayMs = this.retryPolicy.kickedDelay();
+      if (delayMs === null) {
+        this.terminalClose = true;
+        this.stopHeartbeat();
+        this.clearReconnectTimer();
+        this.clearStaleWaitingRecoveryTimer();
+        const socket = this.socket;
+        this.socket = undefined;
+        socket?.close();
+        this.setState("kicked");
+        return;
+      }
       this.options.logger.warn("[web-remote-control] external relay device KICKED, reconnecting", {
         message,
       });
-      this.socket?.close();
+      this.reconnectAfterStaleWaiting(delayMs);
       return;
     }
 

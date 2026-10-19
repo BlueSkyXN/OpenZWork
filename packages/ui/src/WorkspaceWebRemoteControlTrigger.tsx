@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Smartphone } from "lucide-react";
 import type { WebRemoteControlStatus } from "@zcode/shared";
-import {
-} from "@zcode/shared";
+import {} from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
@@ -10,7 +9,7 @@ import { useResolvedRemoteWorkspaceSessionId } from "@/hooks/useResolvedRemoteWo
 import { useWebRemoteControlStatus } from "@/hooks/useWebRemoteControlStatus.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { logger } from "@/logger.js";
-import { WebRemoteControlDialog } from "@/WebRemoteControlDialog.js";
+import { WebRemoteControlDialog } from "@/web-remote-control/index.js";
 import { useWebRemoteControlFeatureEnabled } from "@/WebRemoteControlFeatureProvider.js";
 
 type FormatMessage = ReturnType<typeof useZCodeIntl>["intl"]["formatMessage"];

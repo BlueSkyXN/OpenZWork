@@ -1,18 +1,14 @@
 # 独立客户端配置服务（首期：插件排序）
 
-## 范围
 
-用户确认新增独立 ClientConfigService，但先不迁移旧链路。首期仅把本 MR 新增的插件排序
-读取从 CodingPlanSubscriptionService 移出；套餐、安全校验、强更、闲时、帮助、Built-in、
-Desktop Main 灰度与独立 CLI 的原有请求、缓存、鉴权和失败策略保持原样。
-Nacos 的 pluginStoreOrder 格式不变，无需调整已发布配置。
+
 
 ## 职责与接口
 
 - `packages/shared/src/clientConfig.ts`：公开配置响应 schema 与裁剪后的 ClientConfigSnapshot。
 - `packages/services/src/client-config/clientConfig.ts`：IClientConfigService 契约与服务频道。
 - `packages/services/src/client-config/clientConfigService.ts`：请求、校验、缓存、刷新和并发合并。
-- `getSnapshot({ forceRefresh? })` 返回校验后的公开字段；首期只有 pluginStoreOrder。
+- `getSnapshot({ forceRefresh? })` 返回校验后的公开字段；当前包含 pluginStoreOrder、zsrcUrl 和 uiPluginRecommendations。
   不返回整个远端响应，不把账户或 provider 数据暴露到 Renderer。
 - 服务成功但缺失/撤销 pluginStoreOrder 时返回 null；格式损坏的单个模式继续按原排序契约降级。
   envelope/HTTP/网络失败拒绝本次读取，保留服务已有快照；业务端决定默认展示。
@@ -80,3 +76,9 @@ invariant-only：全部旧 client/configs 读取链路、插件生命周期、Ma
 - typecheck、lint、architecture 检查通过；lint 的 43 条既有警告保留。
 - 三个订阅源文件与分支原始基线逐字一致，本次变更不会修改目标分支已有的后续订阅逻辑。
 - 真实手机 shared-host/SSH/WSL/Docker 尚未实机联调，服务装配层的同实例复用已有单测。
+
+## UI 推荐字段
+
+`uiPluginRecommendations` 返回经过校验的 `{ pluginId, surfaceId }[]`；缺失或格式无效时返回空数组，
+不影响其它公开字段。推荐入口复用本服务，不增加请求缓存或轮询。配置和曝光规则见
+[插件市场规格](plugins/plugin-market-interactions-scope.md#side-pane-服务端推荐配置)。

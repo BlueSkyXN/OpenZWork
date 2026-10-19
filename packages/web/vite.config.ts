@@ -12,7 +12,10 @@ import { resolveRemoteFrontendVersion } from "./vite/remoteFrontendVersion.mjs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 const REPO_ROOT = resolve(HERE, "../..");
-const { version } = JSON.parse(readFileSync(resolve(REPO_ROOT, "package.json"), "utf-8"));
+const { version, zcodeCompatibility } = JSON.parse(
+  readFileSync(resolve(REPO_ROOT, "package.json"), "utf-8"),
+) as { version: string; zcodeCompatibility?: { minCompatibleVersion?: string } };
+const minCompatibleVersion = zcodeCompatibility?.minCompatibleVersion ?? version;
 
 function resolveZCodeEnv(value: string | undefined): "test" | "production" {
   return value?.trim().toLowerCase() === "production" ? "production" : "test";
@@ -65,6 +68,7 @@ export default defineConfig(({ mode }) => {
       __ZCODE_VERSION__: JSON.stringify(
         resolveRemoteFrontendVersion(version, process.env.WEB_REMOTE_FRONTEND_VERSION),
       ),
+      __ZCODE_MIN_COMPATIBLE_VERSION__: JSON.stringify(minCompatibleVersion),
       __ZCODE_COMMIT__: JSON.stringify(env.ZCODE_COMMIT || "unknown"),
       __ZCODE_ENV__: JSON.stringify(zcodeEnv),
     },

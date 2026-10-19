@@ -184,7 +184,7 @@ App 与 CLI 共用 Release、下载和刷新算法，网络能力由装配层注
 
 - 用户已确认 URL 字段、CDN 完整数据、版本化 URL 不覆盖，以及 §2 的刷新职责、周期、Account 重建与失败恢复、20 秒总超时。正文上限按用户修正为 10 MB，取代 5 MiB。当前授权是落盘，不是立刻实施或发布。
 - 维度：App／Standalone／Managed Worker；首次启动／运行更新／退出；missing／失败／低同高 revision；正常／慢正文／超 lease；单／多进程；Account 同版／滞后／失败；有效缓存／损坏缓存。
-- 剪枝：不枚举所有模型和所有账号套餐笛卡尔积。用一个普通 API 模型和一个 Account Provider 证明配置／Account 对齐；真实模型规格分别归 Todo113／116。无 UI 布局改动，不扩展主题色／布局设计。
+
 
 ### Accepted Cases / Coverage Rows
 
@@ -225,3 +225,34 @@ App 与 CLI 共用 Release、下载和刷新算法，网络能力由装配层注
 - [x] 记录真实上线限制；线上发布由有权限流程另行执行。本轮 Goal 仅授权推送工作分支，不自动发布配置。
 
 核心集成和门禁已执行；真实 UI／多端与最终 Todo113 目录更新后的发布文件在整批验收收口。以本 Todo 和现行 Design V2 为准，旧 Todo18 的内联字段示例仅作历史资料。
+
+
+## 2026-10-12：远端刷新失败与业务刷新隔离
+
+缺陷：Settings 的 refreshSources 将远端 Built-in 和 Account 刷新放在同一个
+allSettled 中，再抛出任意失败。远端下载地址校验失败时，即便 Bundled/Active 有效且
+Account 已刷新，整个 Settings RPC 仍失败，连接切换因此回滚，登录后权益刷新也被中断。
+
+唯一协调入口仍为 Services ProviderRuntime.refreshSources。远端下载错误由该入口记录
+warn 后降级；Account 刷新错误继续传播，最终 Registry 刷新仍负责验证现有 Config 与
+Account 快照的一致性和可用性。不得在 UI 中吞错、伪造权益，或另存一份可用状态。
+
+```text
+Settings 刷新
+  ├─ Built-in 远端更新 → 失败仅记录告警，保留有效本地候选
+  └─ Account 权益刷新 → 失败仍返回给调用方
+                 ↓
+       Registry 读取现有 Config + Account
+                 ↓
+       有效一致 → 返回 View；读取/解析失败 → 保留失败语义
+```
+
+本次不改变远端下载协议、HTTPS 校验、revision 顺序、退避及缓存选择，不增加配置/数据库迁移。
+并发刷新与事件顺序沿用现有 owner；仍等待本次两个来源检查完成，不新增后台任务或超时。
+桌面、Web 共享 Services 边界；不修改 Host attachment、任务队列、desktop-continuous 或
+web-remote-replayable 消息投递语义。CLI 独立下载调用继续保留原始失败语义。
+
+回归：HTTP 地址拒绝、HTTP 503、坏 JSON、取消/超时类失败时，Bundled/Active 可用应继续
+刷新 Team/Start 权益与模型目录；账号查询失败不得被远端错误掩盖；有效配置均缺失时不得
+伪装成功。UI 使用隔离控制面复现无效远端地址，断言团队选择不回滚、Start 模型仍可选；
+测试文件进入 pending，未人工复核不转正。

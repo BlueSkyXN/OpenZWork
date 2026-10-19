@@ -18,10 +18,7 @@ rebase 到最新 staging 后全量单测 **9 失败 / 12444 通过**，无崩溃
 | 跨平台漂移 | 2 | `feedbackHttpClient`、`stdioDesktopPresentationSurface`（见下） |
 | flaky（负载超时） | 1 | `appUsagePanel`，单独运行通过 |
 
-rebase 附带处理：staging 的 CUA 单包合并（broker 51 文件并入 `@zcode/zcode-cua`）
-移除了 `launchSocketPath` / `reservedTransport`（rendezvous `.pending` 让渡机制），
-本地 windowsCuaDevHelperHost / node.ts 与相关测试已对齐新 API（Windows named pipe
-无 fs 让渡语义，socketPath 即唯一事实源；caller_timeout 一律 warming up fail-closed）。
+
 
 ## 环境事实（先读这一节）
 
@@ -47,12 +44,6 @@ rebase 附带处理：staging 的 CUA 单包合并（broker 51 文件并入 `@zc
    - 产品 `stageRelease` 在 Windows 用 `tar -a` 写 zip（**真实产品 bug 修复**，
      Windows 本机没有 `zip` 命令）；POSIX 宿主保留 `zip`；
    - 测试造 zip fixture 在 Windows 用 `tar -acf`；依赖 `ditto` 的用例 win32 skip。
-4. **Unix socket / macOS 专属链路（约 50 用例）**：CUA 权限代理是 macOS/Linux 专属
-   （.app / LaunchServices / codesign / ps+SIGTERM），相关 describe/it 用
-   `describe.skipIf(process.platform === "win32")` 并注明原因；平台无关的纯逻辑
-   组保留运行。ZCode Server control channel 不属于此类：Windows 产品实现使用 named
-   pipe，测试必须用 `resolveServerLayout(...).controlEndpoint` 或等价的平台 endpoint
-   helper 覆盖。规则：skip 必须写清"产品为什么不支持 Windows"，禁止无注释 skip。
 5. **路径分隔符（约 20 用例）**：mock POSIX 风格输入的用例，期望值与产品同源构造
    （`join` / `resolve` / `path.delimiter`），验证拼接语义而非分隔符字形。
    例外：产品硬编码的 POSIX 字面量（如 flatpak 导出路径）期望保持字面量。
@@ -91,7 +82,7 @@ retry）。修完恢复原 mock 顺序作为回归。
 
 - `stdioDesktopPresentationSurface`：期望装配传 `presentationSurface: "desktop"`，
   `packages/server/src` 无该字段（services 层有）；
-- `useCodingPlanQuotaResetUi`：mock 收到 `builtin:personal-granted`，期望 `builtin:team`。
+
 
 ### 间歇性 0xC0000005
 
@@ -111,11 +102,7 @@ options 的测试都应避免把真实 env 塞进可 diff 对象。本地调试�
 - JSON 格式的 Windows service descriptor 必须先 `JSON.parse` 再断言字段，禁止对
   序列化文本直接匹配原始反斜杠路径。
 - 测试临时路径必须用 `join` 构造；fixture 中的 PATH 必须用 `path.delimiter` 构造。
-- macOS CUA 测试分为两类：可注入平台的纯逻辑测试显式传 `platform: "darwin"`；
-  依赖真实 Darwin native ABI 的测试组在 Windows 显式 skip，平台无关策略测试继续运行。
 - Repo Wiki JSON 状态必须走共享原子写入工具，避免 cancel/generate 并发读到半截 JSON。
-- Coding Plan history/read 去重必须包含 provider/organization/project scope，禁止只用
-  `usedAt`，否则同一时间戳会让不同套餐互相吞掉上报。
 - 测试通过 timer 模拟后台生命周期写入时，必须持有并在 teardown 前等待该 Promise；
   临时文件名必须唯一，禁止 fire-and-forget 写入固定 `.test.tmp`。
 - “持有只读句柄时 rename 覆盖目标文件”的原子替换场景只在 POSIX 成立；Windows

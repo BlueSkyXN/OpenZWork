@@ -161,7 +161,7 @@ Personal-only Provider 的设置页名称现在直接读取 `providerId`，名�
 
 ## 28. 连通性测试改走目标 Environment 的正式 Model
 
-设置页“测试模型”不再在 Host 中根据草稿手拼 Anthropic/OpenAI HTTP URL、鉴权头、reasoning body 和一次性请求。UI 先以完整 Effective Draft 调用 `saveEffectiveProvider`，只在返回的 Settings View 中确认 Provider 已 selectable 且 Model 已存在；随后跨 Service/Agent 协议只传目标 workspace 与 `ModelSelection`。CLI 从该 Environment 的 Registry 创建正式 `Model`，发送最小请求并完整消费 `streamText` 到 finish。API Client、Account Config、动态 Runtime Headers、Start Plan 官方版本安全校验、Provider Adapter 与错误语义因此和普通执行共用同一条链路。
+
 
 远程设置页现在通过 `workspacePath + workspaceIdentity + remoteSessionId/remoteTarget` 解析目标 Service Collection；`useModelProviders` 改读当前 `ServiceProvider`，并订阅该 Environment 的 Settings View，避免远端草稿误保存到本地 Host。Host 仍只负责账号 Overlay 同步与协议转发，不持有另一份 Provider 执行配置。
 
@@ -240,5 +240,3 @@ E2E 现在共用一条原子设置 helper：点击 `custom:add` 后等待已落�
 ## 40. 当前基线最终验收状态
 
 M3.1 至 M3.9 的当前基线实现已经收口。生产源码旧符号审计确认 `defaultModelRef`、`liteModelRef`、`liteModelProviderOptions`、`ModelRole`、`ModelRefSource` 与独立 Connectivity Probe 均已退出；`runtimeModelSelectionFromRef` 只剩 M4 明确保留的 `turnExecutionModel` execution-scoped overlay。根 `pnpm typecheck` 通过，`pnpm lint` 为 0 error、38 个与本阶段无关的既有 warning，改动文件定向格式检查通过。
-
-全量 affected 单测曾降级为全仓运行，M3 直接相关的旧夹具失败已全部修复；剩余失败集中在 CUA/平台依赖、缺失 Browser Use seed、打包公证和既有 fake-timer rejection。全仓 `fmt:check` 仍被仓库内 Electron 文档的既有非法 HTML 与 GB2312 fixture 阻断。正式 Desktop 原子设置首发 E2E 因当前环境缺少 Docker、宿主 WebDriver session 又在页面加载前退出而未获得 admission。远端 staging 拓扑继续按用户要求留待裁决。因此这里记录“当前基线实现完成”，不把整个 M3 阶段或上线门禁误记为完成。

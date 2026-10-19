@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Copy } from "lucide-react";
 import {
   TID_WORKFLOW_DETAIL,
   TID_WORKFLOW_DETAIL_SCRIPT,
   TID_WORKFLOW_DETAIL_TAB,
+} from "@zcode/shared";
+
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Copy } from "lucide-react";
+import {
   type ZCodeSavedWorkflowEntry,
   type ZCodeSavedWorkflowMeta,
   type ZCodeSavedWorkflowRun,
@@ -61,7 +64,7 @@ interface SavedWorkflowDetailViewProps {
   target: ZCodeAgentSavedWorkflowTarget;
   agentService: IZCodeAgentService;
   name: string;
-  /** 面包屑「自动化 › <项目名> › <工作流名>」里的项目一级。 */
+  /** 标题旁的归属小标：项目名，全局档为「全局」。面包屑不带这一级。 */
   projectLabel: string;
   entry: ZCodeSavedWorkflowEntry | undefined;
   runs: readonly ZCodeSavedWorkflowRun[];
@@ -267,13 +270,11 @@ export function SavedWorkflowDetailView({
       data-testid={TID_WORKFLOW_DETAIL}
       className={cn(SETTINGS_FRAME_CONTENT_CLASSNAME, "flex flex-col gap-6")}
     >
-      <SettingsBreadcrumbReporter
-        items={[{ label: projectLabel }, { label: name }]}
-        onSectionSelect={onBack}
-      />
+      <SettingsBreadcrumbReporter items={[{ label: name }]} onSectionSelect={onBack} />
 
       <SavedWorkflowDetailHeader
         name={name}
+        projectLabel={projectLabel}
         description={description}
         entry={entry}
         busy={busy}

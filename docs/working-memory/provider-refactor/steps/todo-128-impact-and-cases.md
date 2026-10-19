@@ -12,7 +12,7 @@
 
 | Scenario / entry | Shared implementation | Display/draft | Default | Guard | Commit / authority | Mode / isolation |
 | --- | --- | --- | --- | --- | --- | --- |
-| Automations 创建入口 | Store + Provider Settings 完成通知 | Store 资格；表单草稿独立 | 无资格默认 | 当前连接支持且额度 ready | getCodingPlanSupport → getTakeNumberAvailability；Host Registry/服务端 | 仅既有桌面本地范围；不影响定时任务 |
+
 
 ## Shared And Divergent Behavior
 

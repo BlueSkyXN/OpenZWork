@@ -58,7 +58,7 @@
 
 - L391: `text-xs font-medium leading-3` → `text-ui-sm font-medium leading-3`
 
-### 8. `CodingPlanBillingDiscount.tsx`
+
 
 - L147: `"gap-0.5 px-1.5 text-xs leading-3"` → `"gap-0.5 px-1.5 text-ui-sm leading-3"`
 

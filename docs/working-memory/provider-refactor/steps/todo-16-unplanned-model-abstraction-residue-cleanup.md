@@ -104,7 +104,6 @@ Option Spec 存在时创建该对象，并固定写入 `enabled: true`。是否�
 
 - 先用 `pnpm dep:refs` 逐 export 复核零引用，再直接删除 Schema、类型和只服务它们的测试；
 - 不把它们迁入另一个 Shared 文件，不新增 deprecated alias；
-- 保留当前仍在使用的 `ZCodeAccountAccess` 及其独立 Schema；不得因源文件相邻而误删；
 - 若发现某个旧 DTO 只被测试 fixture 使用，fixture 改用当前 Provider Config 契约；
 - 若发现真实 Legacy importer 消费者，只把所需最小 serialized shape 移入 importer 私有模块，不恢复公共协议。
 
@@ -250,7 +249,6 @@ label 缺失 -> providerId
 - 删除 `BUILTIN_PROVIDER_LABELS` 及按 Provider ID 查展示名的逻辑；
 - Mapper 优先使用 Registry 已提供的 Provider label，缺失时只回退 `providerId`；
 - 不在 Bootstrap、UI 或 Protocol 新建另一张 Built-in Provider label map；
-- Coding Plan 商品、购买、用量、账号 family 等产品分支继续按自己的业务 Provider ID 工作，不属于本项；
 - 本项只收口展示元数据来源，不改变 Provider ID、候选顺序、可见性、启停、鉴权或模型执行。
 
 ## 2. 与 Todo 13、14 的边界
@@ -379,7 +377,6 @@ Todo 16
 ### Step C：收紧 Protocol 与 Reasoning Projection
 
 1. 删除零引用旧 Provider Protocol DTO；
-2. 保留并回归 `ZCodeAccountAccess`；
 3. 删除 `reasoning.enabled` 的 Schema、Mapper、UI 与测试字段；
 4. 删除当前 Model Option 中零消费字段及 Bootstrap 的平铺 capability 输出；
 5. 删除 `BUILTIN_PROVIDER_LABELS`，确认 `providerLabel = config label ?? providerId`；

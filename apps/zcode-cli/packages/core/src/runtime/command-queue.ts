@@ -191,11 +191,16 @@ export function createRuntimeCommandQueue(): RuntimeCommandQueue {
       }
 
       const batch = commands.filter(
-        (command) => command.mode === "task-notification" && command.priority === selected.priority,
+        (command) =>
+          command.mode === "task-notification" &&
+          command.priority === selected.priority,
       );
       for (let commandIndex = commands.length - 1; commandIndex >= 0; commandIndex -= 1) {
         const command = commands[commandIndex];
-        if (command?.mode === "task-notification" && command.priority === selected.priority) {
+        if (
+          command?.mode === "task-notification" &&
+          command.priority === selected.priority
+        ) {
           commands.splice(commandIndex, 1);
         }
       }

@@ -30,11 +30,11 @@ Renderer 显示保存成功
 
 ## 自动保存
 
-### 账号套餐失效后的连接切换（Todo93）
+
 
 2026-09-08 裁决：同账号、同完整连接从 available/pending 变为明确 unavailable 时提示一次，并提供“切换至具体套餐”按钮；只有用户点击、重新校验并条件写入成功后才改变实际连接。持续不可用不重复提示，unknown 不当失效，恢复后再次失效是新事件。首次启动/切换身份只建立基线，不比较不同套餐的状态；手动选未开通个人套餐不自动弹回。保留首次无选择的初始化及旧连接迁移保护。
 
-观察记录只在根层内存维护，不新增持久化字段/迁移。AccountProviderState.connectionKey 是同轮账号与完整连接身份的摘要，只供观察隔离，不进入 Config Overlay。设置页手动选择仍沿用原保存入口，Start 连接入口过滤及 Provider visibility 不变，不绕过模型执行门禁。详细状态、旧建议失效和测试边界见 [Todo93](../../steps/todo-93-account-plan-loss-manual-switch.md)。它替代 Todo88 R06 的自动切换裁决；当前实现只在点击并重新验证后条件写入。
+
 
 ### 模型弹窗最终裁决（Todo90 / Todo92）
 
@@ -66,11 +66,7 @@ Provider 表单只提交被编辑的配置项，未触碰的 headers 等字段�
 冲突或失败保留输入，取消并重新打开才加载最新值。配置不完整的模型仍提供编辑修复和启停入口；
 个人成员可删除，继承成员不可删除或重命名。可编辑不代表可执行，Registry 完整性校验保持不变。
 
-模型成员和配置直接显示 Host 返回的 View，不再维护一份添加/删除失败时整表回滚的副本；
-仅拖拽保留已有乐观顺序。添加弹窗等待实际保存完成才关闭，失败在原草稿中重试；
-显式弹窗不提供脱离草稿的通知重试操作。账号与普通供应商详情共用同一组模型写入回调。
-Start Plan 已由 Account 快照确认可用时，额度/套餐卡重新查询的临时空状态不能卸载模型编辑区；
-并不因此允许未领取的 Start Plan 展示模型，也不修改权益查询缓存、切换套餐或执行门禁。
+
 
 文本输入在编辑过程中只修改组件内 Draft。连续 1200ms 没有新输入时自动提交；输入框失去焦点、
 用户按 Enter，或者切换到其他 Provider 时立即提交一次 Personal Provider Draft 更新。选择框、开关和拖动在操作完成后立即提交。
@@ -180,23 +176,6 @@ Model Config 不再具有独立 `visibility`。模型是否出现在普通选择
 ## Provider 分组、新增与删除
 
 设置页只展示真实 Provider；Template 只出现在右侧 Template 选择页：
-
-```text
-zai-family / bigmodel-family
-└─ 固定 Account Family 区域
-   ├─ Start Plan
-   ├─ Individual Coding Plan
-   └─ Team Coding Plan
-
-Provider Templates
-└─ 顶部“添加供应商”打开的创建基线
-   ├─ Z.AI API / BigModel API
-   ├─ DeepSeek / Moonshot / MiniMax
-   └─ 其他官方模板
-
-standard-personal
-└─ 已创建的普通 Personal Provider
-```
 
 Provider 不保存额外的 `builtin` 标志或顶层 `enabled`，也不靠 Provider ID 白名单推断分组。Template 不是
 Provider，没有运行时 `providerId`、可执行状态或 Settings 详情页。
@@ -344,10 +323,7 @@ Personal Model Config Rule 不决定字段是否可编辑，它只是用户明�
 字段所有权和产品交互决定；一旦允许编辑，Built-in/Personal Model 都通过同一 Personal Rule 保存覆盖。模型成员是否
 允许改名或删除则由成员来源独立决定，Builtin Model ID 只读且不能删除。
 
-账号 Individual / Team Coding Plan 是上述通用展示规则的产品例外：设置页完全隐藏 Endpoint 与 API Schema，只展示
-套餐状态和 Effective 模型配置。隐藏不代表 Config 缺少字段；Endpoint/API Schema 仍保留在 Effective Provider
-Config，并由 Registry、ModelFactory 与 Runtime 正常消费。Renderer 不为此裁剪或重建 Account Provider Config，
-也不能让套餐、额度、凭据或请求错误决定模型配置区域是否存在。
+
 
 ## Provider 与模型调序
 
@@ -399,29 +375,13 @@ Model.streamText() 发出最小真实请求
 
 Renderer 不准备安全校验 Header，不拼 Endpoint、Reasoning 参数或协议请求体。Registry 使用保存后的正式 ProviderConfig、ModelConfig 和 Model Options 创建 Model；请求 attempt 通过正式 Request Auth Service 取得 API Key、JWT、Runtime Key、一次性安全校验 Header 等动态鉴权材料。
 
-账号 Provider 的设置、权益和 Usage 入口同样只能从 Settings View 读取 Registry 的静态
-`access: { type: "zhipu-account", family, mode }`。Renderer 不用动态 Account Access Schema 解析该字段，
-也不把当前套餐或 Team scope 伪装成 Effective Provider Config：
-
-```text
-Provider Settings View.access { family, mode }
-                    |
-                    v
-Host Account Request Auth Service
-                    |
-                    v
-当前连接 { planKind, productId?, organizationId?, projectId? }
-                    |
-                    v
-Entitlement / Usage / Reset / Model Request
-```
 
 动态账号事实由目标 Environment 的账号服务在调用时解析。Team usage 列表可以把已订阅产品响应与静态
 `team-coding-plan` mode 组合成查询 scope，但不得把该 scope 写回 Personal Config、Account Overlay 或 Registry。
 
 测试使用与 Agent 相同的流式 Adapter 路径，固定发送两条消息：system `You are ZCode connectivity probe.`，user `hi`，并消费完整流。文本、角色、顺序是白名单相关契约，不添加历史、工具、额外 system 或国际化文本（Todo 91）；不影响其他辅助请求。连接测试独立使用 1 Token 输出预算，Reasoning 显式使用有序档位的首项，不复用辅助内容生成的 5,000 Token 预算（Todo144）。正常 finish（含 length）即成功，不要求正文；流异常或缺少 finish 仍失败。测试路径不依赖已经退役的 Option Default，也不假设 Model 已绑定隐式默认 Options。超时、鉴权、预算参数拒绝、模型不存在、限流、服务端错误和响应解析错误由正式 Model/Adapter 错误边界归一化，再投影为设置页结果，不自动增加预算或更换模型。
 
-测试成功表示保存后的正式 Model 能够完成一次真实请求，而不只是某个独立 HTTP Probe 收到了成功状态码。Start Plan、Coding Plan 和普通 API Provider 使用同一入口；它们的差异结束在 Provider、Request Auth 和 Adapter 内部。
+
 
 一次测试只返回一个成功/失败联合结果，不保留单元素 `results[]`、Endpoint 聚合或 Host 端 API 类型推断。
 最终准入由目标 Environment 当前 Registry 的 ModelFactory 完成；测试不修改任何模型选择或 Active Model。

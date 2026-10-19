@@ -12,7 +12,6 @@
 
 本轮收口四类已经获得实机证据的问题：
 
-1. Start Plan 与 Team Plan 的连接测试缺少必填 `reasoningLevel`；
 2. Provider Template 选择页没有完整继承产品分支中有效的视觉意图；
 3. 空的自定义 Provider 分组错误显示横杠；
 4. Provider 配置失败时，原始 Schema issue 直接铺满右侧详情区域。
@@ -47,7 +46,6 @@ Effective Provider / Model Registry
 
 ### 2.1 已确认问题
 
-MacBook Air 上 Start Plan 和 Team Plan 均能进入模型列表，但连接测试失败并返回：
 
 ```text
 Reasoning level is required for <providerId>/<modelId>
@@ -73,14 +71,13 @@ Active Model.optionSpecs.reasoningLevel
 - 不新增 `reasoningLevelPolicy` 或 Provider 特化分支；
 - ModelFactory 只校验和装配，不替调用方静默补执行 Option；
 - 连接测试显式传 `min(5000, optionSpecs.maxOutputTokens.max)`，不依赖 ModelFactory fallback；
-- `x-zcode-session-type` 等 Coding Plan 请求头继续由正式 Access/请求装配链产生，设置页不得自行复制。
+
 
 ### 2.3 测试
 
 - 有 Reasoning Spec：连接测试显式发送 `values[0]`；
 - 最低档位不是 `disabled`：仍使用首项；
 - 缺少 Reasoning Spec：作为 Effective Model Config 不完整处理，模型不得进入 Registry；
-- Start Plan、Team Plan 和普通 API Key Provider 共用同一连接测试逻辑；
 - 失败时展示正式 Model 请求的真实错误消息，不新增 Provider 专属错误分类。
 
 ## 3. Provider Template 选择页
@@ -220,8 +217,6 @@ MacBook Air 上出现的 Provider 顶层 `enabled` 属于尚未上线的开发�
 4. 创建两个相同 Template 的 Provider，确认正常去重并进入详情；
 5. 创建纯自定义 Provider；
 6. 模拟创建失败，确认右侧底部仅显示简洁错误，详细原因进入日志；
-7. 对 Start Plan 的 `glm-5.3-flash` 执行连接测试；
-8. 对 Team Plan 的 `GLM-5.3` 与 `GLM-5.3-Flash` 执行连接测试；
 9. 确认请求不再因缺少 `reasoningLevel` 失败；若仍失败，保留真实服务端错误并继续按日志定位；
 10. 检查 Light/Dark、中文/英文和窄窗口，确认卡片高度不变化、页面无横向滚动。
 
@@ -229,7 +224,6 @@ MacBook Air 验证必须记录当前提交 SHA、启动命令及关键结果。�
 
 ## 8. 完成标准
 
-- Start Plan 与 Team Plan 连接测试显式使用 Reasoning `values[0]`，不再出现缺少 Reasoning 的本地错误；
 - Template Picker 使用正式 `providerTemplates` 数据源，同时恢复已裁决的紧凑产品体验；
 - 卡片严格固定单行和固定高度，长名称不会改变网格节奏；
 - 空 Personal Provider 分组不渲染；
@@ -243,5 +237,4 @@ MacBook Air 验证必须记录当前提交 SHA、启动命令及关键结果。�
 - Provider Connectivity 统一从 Active Model 的有序 Reasoning Spec 读取 `values[0]`，并显式发送 `min(5000, maxOutputTokens.max)`；没有新增套餐、Provider ID 或模型 ID 分支。
 - Template Picker 保持正式 `providerTemplates` 为唯一数据源，完成固定 `64px` 卡片、两列布局、Logo、单行截断 Tooltip、尾部箭头和明确的顶部入口。
 - 空 Personal Provider 分组不再渲染；创建错误横幅只展示摘要，完整 issue 进入统一 UI Logger。
-- 相关 UI/Service 定向测试通过；MacBook Pro 的 Settings UI E2E 7 条和包含 Start/Team 连接面的 Coding Plan E2E 18 条均通过。MacBook Air 的旧 Personal Config 清理与人工视觉验收属于体验环境操作，不作为代码正确性的替代门禁。
 - Review 未发现 Catalog 类型、Provider 顶层 `enabled`、Provider ID 特化或第二套连接测试错误分类回流。

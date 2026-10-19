@@ -8,7 +8,7 @@
 
 调查基线：本地 `9ea22ec1f0`；已 fetch 的 `origin/staging` 为 `eb71ba51c2`。相关新任务初始化代码一致，已包含 `baef1544c5`、`18a963c078` 的最近提交模式继承修复。没有为本次调查合并新的 staging。
 
-当前缺口：`ConversationShareService.importShare()` 调用 `createSession()` 时未传模型／模式选择；导入后直接激活真实 Session。Composer 仅在 `sessionId === null` 时读取新任务偏好，已有 Session 则读取会话选择并保留明确空态。首次分享导入因而跳过新任务初始化，不会自动获得普通新建任务的选择。
+
 
 ## 已确认规则
 
@@ -42,13 +42,8 @@
 - 导入与初始化可分离；初始化延后不能因已有空 Session snapshot 先到而永久封住。具体接线在实施前写清，不能只靠“Session 没模型”判断这是首次导入。
 - 不更改 shared-host、desktop continuous／mobile replayable、CommandInbox、账号同步或执行中模型绑定；不做历史数据迁移，不批量补写旧导入会话。
 
-## 主要定位
 
-- `packages/services/src/conversation-share/conversationShareService.ts`：导入与 Session 创建。
-- `packages/ui/src/root/useRootPlatformEffects.ts`：导入完成后的工作区／Session 激活。
-- `packages/ui/src/v4/composer/useDraftConfigControl.ts`：普通新任务与已有 Session 的初始化分支。
-- `packages/ui/src/lib/composerRecent.ts`、`packages/ui/src/v4/composer/composerDraftStore.ts`：最近已接纳偏好、草稿存储与隔离。
-- [分享功能规范](../../../conversation-share-v1.md)、[Todo71](todo-71-persistent-composer-draft-and-submission-state.md)：实施前同步首次分享导入边界，不推翻已有历史空选择保护。
+
 
 ## 执行与验收
 

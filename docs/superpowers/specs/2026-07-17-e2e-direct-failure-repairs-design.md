@@ -4,7 +4,6 @@
 
 本次只修复 `summary.json` 中已确认可直接处理的 11 个失败：
 
-- I35～I39、I42 共 6 个 Turbo provider case：补齐 WDIO Coding Plan mock 的 spec 识别。
 - I25、I29 共 2 个 DeepSeek case：case-local replay 同时覆盖 seed provider 的 OpenAI `/chat/completions` 与重启窗口可能先恢复到的 Anthropic `/messages`；case 只验证 provider/model，不把传输协议竞态误纳入语义。
 - `conversation-session-v4-refresh-permission`：不再依赖已按产品设计隐藏的 exact rule 文本，通过稳定的权限 option 语义定位“始终允许”。
 - `conversation-session-v4-queue`：queue 冲突 toast 断言同时接受产品支持的中英文文案。
@@ -16,17 +15,6 @@ I27、I28 不在本次范围内；即使共享修复使其结果变化，也不�
 
 ### Provider 启动与 replay 合同
 
-拆分 Turbo spec 后，`shouldUseCodingPlanTeamMock` 仍只识别旧 spec，导致 provider registry 中没有可用 Coding Plan。DeepSeek 启动 provider 已使用 `anthropic-messages`，但两个旧 fixture 仍匹配 `/chat/completions` 并返回 OpenAI SSE。
-
-```text
-formal spec -> WDIO spec gate -> Coding Plan mock -> provider registry -> toolbar/session
-                                  ^
-                                  | 漏掉两个拆分后的 Turbo spec
-
-startup DeepSeek(apiFormat=anthropic-messages) -> POST /anthropic/v1/messages
-seeded DeepSeek(apiFormat=openai-compatible)   -> POST /chat/completions
-case-local fixture                             -> 两种稳定响应合同
-```
 
 修复只更新 E2E 基础设施和 fixture，不改变 provider 产品逻辑。
 

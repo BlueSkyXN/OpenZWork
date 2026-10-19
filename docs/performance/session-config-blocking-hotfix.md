@@ -92,8 +92,6 @@ Enter -> Host 本地能力 + 固定预算 -> CLI 接纳 -> 页面绑定/用户�
 
 ### 未通过项与边界
 
-- Bootstrap 协议测试 109/111 通过，两项失败在原基线复现：remote Cron denylist、
-  Account Config providers 的数组/对象契约。未顺带修改这些行为。
 - 全局 conversation coverage audit 9 项错误在原基线一致：I74/I75 引用、四项统计、三份生成文档陈旧。
   graph YAML 可解析且无重复 id；四条悬空边在原基线一致，本次只增加两个节点的不变量。
   不计通过。取号/落库正常路径由服务集成测试验证。

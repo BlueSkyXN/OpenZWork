@@ -537,28 +537,10 @@ Personal Config 填写实际访问材料。
 
 Z.ai/BigModel 各自保留两个不同的 API Key 产品身份：
 
-```text
-Family API Key Provider
-├─ account:zai-api-key       -> group=zai-family
-└─ account:bigmodel-api-key  -> group=bigmodel-family
-   └─ 与账号套餐一起由固定 Family UI 管理
-
-普通 API Provider
-├─ zai-api           -> group=standard-builtin
-└─ bigmodel-api      -> group=standard-builtin
-   └─ 从“添加供应商”进入，用户独立填写 API Key
-```
-
 两组 Provider 即使 Endpoint、API Schema 和推荐模型相同，也拥有不同 providerId、Personal Overlay、enabled、API Key、
 模型成员和排序。它们不能共享或静默复制凭据。重复静态模型事实继续复用 Model Rules 的 matcher；不得为这四个
 Provider 在 Runtime/Adapter 中增加 ID 特判。
 
-现有账号 Provider ID 的 `builtin:` 前缀会一次性改为 `account:`，使物理身份与产品语义一致：
-
-```text
-builtin:zai-*       -> account:zai-*
-builtin:bigmodel-*  -> account:bigmodel-*
-```
 
 当前分支未发布，不保留旧 ID alias、dual-read 或持久化 migration；测试、Family Spec、ModelSelection fixture 和精确
 Provider 常量必须原子切换。
@@ -628,7 +610,6 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 2. 调整 Config/Protocol/Repository 类型，删除 `enabledModelIds` 候选与 Model visibility；
 3. 实现 `provider-model` 专属 Rule 生命周期和普通 `match` Rule 隔离；
 4. 实现模型 enabled、三段 Model/Provider order、Builtin-wins 与保存规范化；
-5. 整理 `zcode-builtin.json` 的 Provider 和 Rules 顺序，一次性切换 `account:` ID，拆分 Family/普通
 7. 重构 Settings Facade、Mutation 与 UI，统一 Local/Remote Host 权威来源；
 8. 删除 Preset/Catalog 来源推断、旧排序 trick、死字段、死 helper 和过时测试；
 9. 根据最终实现将本 Todo 的事实逐项同步到 Design Tree、Feature Graph 和 superseded 旧文档；
@@ -665,7 +646,6 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 - 两个 Family 不参与普通排序，且 UI 不提供 Provider enabled 开关；删除 Personal Overlay 后仍留在固定 Family 区域；
 - 自定义 Provider 创建时不猜 API Schema、Endpoint 或模型；身份确认后立即创建不完整 Provider；
 - Family API Key 与普通 Z.ai/BigModel API Provider 的 Personal Config、凭据、enabled 和顺序互相隔离；
-- `account:` Provider ID 全链原子切换且无旧 alias；
 - Built-in Model 无删除按钮，Provider ID 全部只读，label 唯一；
 - Effective placeholder、明确覆盖和恢复默认；隐藏字段无损保留；
 - 上游有默认、上游无默认、Personal 覆盖和显式 clear 四种编辑状态互不混淆；

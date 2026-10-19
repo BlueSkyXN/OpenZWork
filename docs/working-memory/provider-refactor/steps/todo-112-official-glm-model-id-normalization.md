@@ -6,7 +6,6 @@
 
 用户要求统一官方 GLM 的真实 `modelId`，不是新增显示名称或只美化 UI。目标风格为 `GLM-5.3`、`GLM-5.3-Flash`、`GLM-5.2`、`GLM-5-Turbo`；新选择、保存和实际请求使用统一后的 ID。
 
-- 仅处理 Z.ai／BigModel 官方模板及官方账号模型来源；不改 OpenRouter、OpenCode、MiniMax 等第三方／聚合入口，不按模型名全局改写自定义 Provider。
 - 不涉及额度卡、余额提示、套餐宣传文案及其格式化函数。
 - 不新增显示名字段，不在 UI、Registry 通用比较或请求 Adapter 中增加全局大小写转换。
 - 不改 Provider ID、Access、协议、Base URL、推理档位或模型能力。模型增删由对应 Todo 承接，不借大小写整理恢复已裁决删除的型号。
@@ -20,7 +19,7 @@
 - 修改两个模板的 `builtinModelIds`，同时修改对应 `templateModelRules[].modelId`；后者严格匹配，不能只改名单。
 - 例如 `glm-5.3` → `GLM-5.3`，`glm-5.3-flash` → `GLM-5.3-Flash`，`glm-5-turbo` → `GLM-5-Turbo`。
 - 实施前列出所有在范围内型号的目标拼写，覆盖其余 GLM 型号及 FlashX、Air、视觉和日期后缀；不能用整体 `toUpperCase()` 猜测规范拼写，不能修改版本号、分隔结构或删掉后缀。
-- 当前名单及规则只是调查基线。与 [Todo111](./todo-111-zhipu-coding-plan-api-key-and-standard-api-templates.md) 的四模板拆分协调：按最终模板身份更新官方普通 API／Coding Plan API 的名单与精确规则，不重新引入旧模板或重复执行改名。
+
 
 ### 2.2 Start：在官方模型名单入口统一
 
@@ -68,12 +67,7 @@
 
 ## 4. 实施、测试与完成标准
 
-落地补充：Todo109 已将数据库转换冻结到带 checksum 的迁移中，不能修改历史脚本。
-在既有库级机制追加 Agent `0021` / App `0003`，仅修改 `session_entry` 当前
-`runtime/model_selection.modelSelection.modelId` 和 `automations.model_selection.modelId`。
-只接受明确官方账号 ID；不碰 Personal ID、历史 message/part、automation_runs、
-session_input、闲时 Ticket、旧字段或时间戳。迁移 SQL 冻结常量，不依赖实时推荐目录。
-非数据库的旧 Subagent / Bot / Wiki 导入继续在各自已有迁移入口做同样的已知 ID 规范化。
+
 
 实施精确拼写表（仅大小写，不改版本、分隔符及数字）：`GLM-5.3`、`GLM-5.3-Flash`、
 `GLM-5V-Turbo`、`GLM-5.2`、`GLM-5.1`、`GLM-5.1-Highspeed`、`GLM-5`、`GLM-5-Turbo`、

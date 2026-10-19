@@ -4,44 +4,16 @@
 
 > 后续 Desktop 图形 E2E 欠测统一由 Todo 78 收口，本 Todo 不再单独排期。
 
-> 状态：已完成（Desktop 实机 E2E 受当前 Linux 环境缺少 `xvfb-run` 阻塞）
->
-> 日期：2026-08-28
->
-> 来源：Provider Settings 实机体验、Team Plan 升级入口与 Automation 新建任务回归
+
 
 ## 1. 目标
 
 本 Todo 收口五个已经完成裁决的交互问题，不新增 Provider、Model 或 Automation 中间抽象：
 
-1. 恢复 Coding Plan 升级入口原有的 Family、个人/团队 Audience 与具体 Team Plan 三维意图；
 2. Provider 设置页恢复标准 `max-w-4xl`，只保留 Model Config 弹窗的标准 `max-w-2xl` 加宽；
 3. 删除把模型编辑、启停、增删和连接测试捆绑在一起的 `modelsReadOnly`；
 4. Account Provider 只隐藏 Endpoint、API Schema 与账号凭据，模型继续使用标准 Effective Model 编辑能力；
 5. Automation 不再存在 `inherit/default model` 虚拟态，新建任务直接固化具体模型和 reasoning。
-
-## 2. Coding Plan 升级意图
-
-```text
-Selected Account Provider
-├─ provider family  -> Z.ai / BigModel
-├─ plan audience    -> personal / team
-└─ team plan key    -> 具体 Team Plan（仅团队入口）
-          |
-          v
-CodingPlanUpgradeDialog
-          |
-          v
-Embedded Website URL / Bridge
-```
-
-- Team Provider ID 必须进入 Coding Plan 升级入口的规范化边界，不能在弹窗入口被归一化为 `null`；这不应把 Team Provider 加入静态套餐导航候选；
-- `providerId` 继续决定官网 Family；
-- `initialAudience` 继续决定个人或团队页；
-- `initialTeamPlanKey` 继续表达用户点击的具体团队套餐；
-- Status Card 不得把所有升级/续费入口写死为 `personal`；
-- WebView 必须显式接收购买启动意图，Telemetry 的 `purchase_audience` 不能兼任路由协议；
-- 管理入口继续使用 Family Spec 中的个人/团队管理地址，与购买 WebView 职责分离。
 
 ## 3. Provider 设置页模型行为
 
@@ -103,7 +75,6 @@ preferredSelection
 
 ## 6. 测试与完成标准
 
-- 单测证明 Team Provider 可以打开对应 Family、Audience 与 Team Plan Key 的 WebView；
 - 单测证明 Z.ai / BigModel、personal / team 的 URL 启动意图不串线；
 - Provider 单测证明 Account 模型可编辑、可启停、可测试，Builtin 模型仍不可删除或改 ID；
 - Automation 单测证明 `preferredSelection` 初始化、具体选择持久化、Workspace 切换和无可用模型失败态；
@@ -113,7 +84,6 @@ preferredSelection
 
 ## 7. 实施结果
 
-- Coding Plan 升级入口恢复 `providerId + audience + teamPlanKey`，Z.ai / BigModel 与个人/团队入口不再串线；
 - Provider 设置页恢复 `max-w-4xl`，Model Config 弹窗保持 `max-w-2xl`；
 - 删除 `modelsReadOnly` 及模型测试对表单 API Key、只读状态和 executable 的 UI 预判；
 - Account Provider 继续隐藏 Endpoint、API Schema 与账号凭据，但模型使用标准编辑、启停和测试能力；
@@ -122,7 +92,6 @@ preferredSelection
 
 ## 8. 验证记录
 
-- Provider / Coding Plan / Automation 定向单测：318 项通过；
 - 全量 Unit：1492 个测试文件、12730 项通过，另有 1 个测试文件 / 25 项既有 skip；
 - `packages/ui` TypeScript：通过；
 - Desktop E2E TypeScript：通过；

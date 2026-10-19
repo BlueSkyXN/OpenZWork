@@ -35,7 +35,6 @@ Capability Node ── semantic relationship ──> Capability Node
 ## 命名规则
 
 - 能力群、节点和 owner 统一使用“中文（English）”，中文是主要识别文本，现有英文名称保留在全角括号中。
-- MCP、OAuth、CLI、UI、CDP、CUA、ARMS 等产品缩写不强制翻译，但仍应补足中文语义。
 - 图中的名称描述产品能力，不直接复制目录名、类名或历史兼容层名称。
 
 ## 布局算法
@@ -184,13 +183,10 @@ Engineering Infrastructure
 | Renderer  | 模型与账户体验（Model & Account Experience）                        | Provider Settings、Model Selector、套餐状态/购买、套餐用量界面                                          |
 | Renderer  | 扩展体验（Extension Experience）                                    | Plugin/Skill/MCP 等扩展设置、市场与导入入口                                                             |
 | Renderer  | 浏览器与开发工作台体验（Browser & Workbench Experience）            | Browser、File、Terminal、Git/Diff 产品界面                                                              |
-| Renderer  | 办公套件与计算机操作孵化（Office Suite & Computer Use Incubation）  | PDF/Office 预览与编辑路线图、Computer Use 任务体验、人工接管与安全确认                                  |
 | Renderer  | 自动化体验（Automation Experience）                                 | 定时自动化、闲时任务与 Bot 配置/历史界面                                                                |
 | Renderer  | UI 平台（UI Platform）                                              | 设计系统、主题、国际化、响应式、Settings/Onboarding                                                     |
 | Renderer  | 数据洞察与反馈体验（Insights & Feedback Experience）                | App Usage 图表、Feedback 入口、Resource Manager（资源管理器）展示                                                     |
-| Host      | 账户与权益（Account & Entitlements）                                | OAuth/Credential、Plan Identity、Start/Coding/Team Plan、支付、远端 quota/monitor                       |
 | Host      | 扩展管理与同步（Extension Management & Sync）                       | Plugin 安装升级、资源贡献、跨本地/远程同步                                                              |
-| Host      | 浏览器与计算机操作平台（Browser & Computer Use Platform）           | BrowserView/WebContentsView、CDP backend、Computer Use Helper 生命周期、可信 broker、系统观察与输入执行 |
 | Host      | 工作区与交付（Workspace & Delivery）                                | workspace identity、Local/Remote Host、手机远控、continuous/replayable                                  |
 | Host      | 工作台服务（Workbench Services）                                    | File/Terminal/Git 服务                                                                                  |
 | Host      | 客户端平台（Client Platform）                                       | Electron 生命周期、客户端更新、Feedback ticket 与诊断包                                                 |
@@ -209,32 +205,6 @@ Engineering Infrastructure
 
 ## 套餐、App Usage 与可观测性边界
 
-```text
-Renderer
-  套餐状态/购买 UI ─────────────> Host Subscription & Billing
-  套餐用量 UI <────────────────── Host Plan Quota & Monitor <── Coding / Team Plan backend
-  Start Plan UI <──────────────── Host Start Plan balance       （不走 monitor）
-
-  App Usage Dashboard
-          ^
-          | snapshot
-Host      |
-  App Usage Protocol Bridge       Product Telemetry / ARMS / Logs
-          ^                                  |
-          | usage/stats                      `--> 外部数据与诊断后端
-ZCode CLI |
-  App Usage SQL Aggregation
-          ^
-          |
-  model_usage / turn_usage / tool_usage SQLite（30 天）
-          ^
-          |
-  Model / Turn / Tool lifecycle facts
-```
-
-- Personal Coding Plan、Team Plan、Start Plan 是三套不同 entitlement 身份，必须拆成独立节点。
-- Start Plan 使用 OAuth zcode JWT 与 balance/daily quota；它不使用 Coding Plan monitor API。
-- Team Plan 使用 organization/project/project-key 隔离，不能退化为个人 Coding Plan 的显示标签。
 - Plan Quota & Monitor 是远端商业套餐数据；失败时不得回退 App Usage。
 - App Usage 是本地产品使用统计。权威源是 ZCode CLI 默认
   `~/.openzwork/cli/db/db.sqlite` 中独立语义的 `model_usage`、`turn_usage`、`tool_usage` 表，
@@ -303,35 +273,7 @@ Conversation Runtime
 - `contextWindow - maxOutputTokens` 共同决定输入预算和 compact 阈值；模型输出上限也进入 provider adapter 请求。
 - 目录 schema 可以描述 text、image、video、audio、PDF 模态；当前 Agent 请求链已对 image、video 与 PDF 做能力 gating，audio 仍不是已交付的输入链路。能力图记录“模型目录声明”和“模型/provider wire 的有效能力”两层边界，不把目录声明误写成已经完整落地的音频运行时支持。
 - 模型选择器可以复用候选构建和 UI 组件，但各入口的草稿与提交状态必须隔离：会话选择写当前 runtime / projection，自动化写 automation record，Subagent 写 profile / override。
-- OAuth、Credential、Coding Plan、Usage 和 Quota 影响 provider 可用性与额度，但由“账户与权益（Account & Entitlements）”独立维护，通过关系边连接模型能力，不与模型目录或模型运行时共用权威状态。
 
-## Office 与 Computer Use 孵化边界
-
-Office 与 Computer Use 是跨层产品域，但不新增第四个产品运行层。Renderer 拥有预览、编辑、操作轨迹和接管体验；Host 拥有文件/转换服务与系统级 CUA 权限主体；ZCode CLI 通过 Document Skills 和 Computer Use MCP 执行 Agent 意图。
-
-```text
-Renderer
-  Office Preview / Editor（PDF、DOCX/DOC、XLSX read-only current；native editing/PPTX preview planned）
-  Computer Use Task / Takeover UX（permission entry current；control UX planned）
-                    |
-                    | intent / projection / workspace-scoped IO
-                    v
-Host
-  File Service + Office Document Service（planned）
-  Computer Use Helper Lifecycle + Trust Broker + Surface/Input Backend（macOS beta）
-                    ^
-                    | ZCode Protocol / per-server MCP broker credentials
-                    |
-ZCode CLI
-  Document Skills（DOCX/PDF/PPTX/XLSX current）
-  Computer Use MCP Integration（current beta）
-```
-
-- 当前 Office 产品基础是 PDF、DOCX/DOC、XLSX 的只读 Preview Pane 和官方 DOCX/PDF/PPTX/XLSX Document Skills；这不等于已经具备 Office 原生编辑器、批注/修订或 PPTX 原生预览。
-- 未来 Office 原生 UI 的解析、转换、保存和版本冲突处理先保留在 Host Workbench Services 边界，Renderer 不直接引用 Node、LibreOffice 或本地路径实现。
-- 当前 Computer Use 是 macOS/Windows desktop-local、显式 opt-in/kill switch 的内部 beta。签名 Helper、peer/token 校验、权限和输入执行失败时必须 fail closed。
-- 手机 Web 只能经 shared-host attachment 复用桌面已存在的 Local Host；SSH/WSL/Docker 或 mobile remote Host 不得另起本地 Computer Use Helper。
-- 能力图用节点 scope 区分“当前（Current）”“孵化（Incubating）”“规划（Planned）”；群级 LOC 和复杂度只反映当前代码与已确认语义边。
 
 ## 2026-08 当前能力事实补充
 

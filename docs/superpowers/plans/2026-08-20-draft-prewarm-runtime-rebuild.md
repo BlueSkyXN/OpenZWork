@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** CUA Helper 就绪触发 agent runtime 回收后，草稿态能自动重建预热会话并把图片重传到新会话，重建期间禁止发送。
+
 
 **Architecture:** 复用已有的 `invalidateDraftRuntime` + `invalidationVersion` 重建通道——在 runtime 换代时递增版本号，coordinator 自动 retire 旧会话并重建。门禁抽成独立 hook（对齐 `useDraftModelReadinessGate` 范式），不往已超 max-lines 的 SessionPane 堆逻辑。附件侧把「作废」与「唤醒」两条链解耦，用 `restartEpoch` 统一唤醒。
 
@@ -12,7 +12,6 @@
 
 ## Global Constraints
 
-- 分支 `fix/draft-prewarm-runtime-rebuild`，基于 `feat/cua-merge-0819`。不直接提 merge 分支。
 - 禁止 `--no-verify` 跳过 git hooks。
 - 测试从**仓库根**跑：`pnpm exec vitest run <path> -t "<用例名>"`。从 `packages/ui` 目录跑会撞上根级 workspace 配置而失败。
 - 范围只做**草稿态**（`sessionId === null`）。正式会话态（已发送后换代）是非目标，不要顺手改。
@@ -307,93 +306,6 @@ Expected: FAIL —— 无法解析 `@/v4/composer/useDraftRuntimeRebuildGate.js`
 
 创建 `packages/ui/src/v4/composer/useDraftRuntimeRebuildGate.ts`：
 
-```ts
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
-
-/**
- * 重建上限：实测 agent start→ready 约 550-650ms，createSession 再数百 ms，
- * 5s 有充分余量。超时只解除门禁，不取消重建——迟到的 binding 仍会正常生效。
- */
-export const DRAFT_RUNTIME_REBUILD_TIMEOUT_MS = 5000;
-
-export interface DraftRuntimeRebuildGate {
-  /** 预热会话正在重建；true 时必须禁止发送，避免附件还挂在已消失的会话上。 */
-  rebuilding: boolean;
-}
-
-/**
- * CUA Helper 就绪等原因会回收 agent runtime（workspace-dispose），把草稿态尚未持久化的
- * 预热会话一并冲掉。此 hook 在换代时递增 draftRuntimeInvalidationVersion 触发重建，
- * 并在重建窗口内给出 rebuilding=true 供发送门禁使用。
- */
-export function useDraftRuntimeRebuildGate(params: {
-  /** 仅草稿态（sessionId === null）启用；正式会话由 CLI cold-session-resume 负责。 */
-  enabled: boolean;
-  workspacePath: string;
-  workspaceIdentity?: string;
-  /** 当前预热会话 id；变为新的非空值即视为重建完成。 */
-  prewarmSessionId: string | null;
-  onRuntimeRestart?: (listener: () => void) => () => void;
-  timeoutMs?: number;
-}): DraftRuntimeRebuildGate {
-  const {
-    enabled,
-    onRuntimeRestart,
-    prewarmSessionId,
-    timeoutMs = DRAFT_RUNTIME_REBUILD_TIMEOUT_MS,
-    workspaceIdentity,
-    workspacePath,
-  } = params;
-  const [rebuilding, setRebuilding] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** 换代时的预热会话 id；用于判定「新的会话已到达」。 */
-  const pendingFromRef = useRef<string | null>(null);
-
-  const clearTimer = useCallback(() => {
-    if (timerRef.current === null) return;
-    clearTimeout(timerRef.current);
-    timerRef.current = null;
-  }, []);
-
-  useEffect(() => clearTimer, [clearTimer]);
-
-  useEffect(() => {
-    if (!onRuntimeRestart) return;
-    return onRuntimeRestart(() => {
-      if (!enabled) return;
-      pendingFromRef.current = prewarmSessionId;
-      setRebuilding(true);
-      clearTimer();
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        // 超时只解除门禁：重建仍在进行，迟到的 binding 会照常更新 effectiveSessionId。
-        setRebuilding(false);
-      }, timeoutMs);
-      useZCodeSessionStore.getState().invalidateDraftRuntime(workspacePath, workspaceIdentity);
-    });
-  }, [
-    clearTimer,
-    enabled,
-    onRuntimeRestart,
-    prewarmSessionId,
-    timeoutMs,
-    workspaceIdentity,
-    workspacePath,
-  ]);
-
-  useEffect(() => {
-    if (!rebuilding) return;
-    if (prewarmSessionId === null || prewarmSessionId === pendingFromRef.current) return;
-    clearTimer();
-    pendingFromRef.current = null;
-    setRebuilding(false);
-  }, [clearTimer, prewarmSessionId, rebuilding]);
-
-  return { rebuilding };
-}
-```
-
 - [ ] **Step 4: 跑测试确认通过**
 
 ```bash
@@ -441,18 +353,6 @@ git commit -m "feat(ui): 新增草稿预热会话换代重建门禁 hook"
 - [ ] **Step 2: 挂 hook**
 
 `packages/ui/src/v4/SessionPane.tsx`，在 `const prewarmSessionId = prewarmBinding?.sessionId ?? null;`（`:1483`）之后插入：
-
-```tsx
-  // runtime 换代（CUA Helper 就绪、liveness 恢复等触发 workspace-dispose）会冲掉草稿态
-  // 尚未持久化的预热会话；重建期间禁止发送，避免附件挂在已消失的会话上。
-  const { rebuilding: draftRuntimeRebuilding } = useDraftRuntimeRebuildGate({
-    enabled: sessionId === null,
-    onRuntimeRestart,
-    prewarmSessionId,
-    workspaceIdentity,
-    workspacePath,
-  });
-```
 
 并在文件顶部 import 区加入：
 
@@ -830,7 +730,6 @@ pnpm exec vitest run packages/ui/test/v4DraftSessionPrewarm.test.ts packages/ui/
 ZCODE_CUA_DEV_MODE=1 pnpm run dev:desktop
 ```
 
-冷启动后立刻在草稿态粘贴一张截图（**必须是粘贴，不能拖本地文件**——本地文件走 `localZeroCopy` 不上传，复现不出问题），等 `cua helper ready` 日志出现。预期：发送按钮短暂置灰并显示「会话正在重建，请稍候」，随后自动恢复，图片重新上传完成，点发送不再报 `sessionNotFound`。
 
 - [ ] 确认日志中不再出现 `fault.subscribe.sessionNotFound`
 

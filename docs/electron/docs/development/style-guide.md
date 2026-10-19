@@ -93,9 +93,7 @@ Using `autoUpdater` as an example:
 ```markdown
 # autoUpdater
 
-## Events
 
-### Event: 'error'
 
 ## Methods
 
@@ -126,27 +124,16 @@ Using the `Session` and `Cookies` classes as an example:
 ```markdown
 # session
 
-## Methods
 
-### session.fromPartition(partition)
 
-## Static Properties
 
-### session.defaultSession
 
-## Class: Session
 
-### Instance Events
 
-#### Event: 'will-download'
 
-### Instance Methods
 
-#### `ses.getCacheSize()`
 
-### Instance Properties
 
-#### `ses.cookies`
 
 ## Class: Cookies
 

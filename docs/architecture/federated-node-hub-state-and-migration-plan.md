@@ -589,7 +589,6 @@ Conversation lifetime        = Agent session store，不等于任何进程连接
 | Scope      | 权威数据                                                                              | 同步语义                                                            |
 | ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | account    | Provider / Model metadata、展示顺序、默认模型、全局最近显式模型元组、可选跨端分组视图 | revision 化，同一账户各 Hub / Node 收敛                             |
-| credential | API Key、OAuth token、Coding Plan key、runtime header                                 | 与 metadata 分离；按策略使用 E2E 同步、Node 本地 vault 或短期 lease |
 | hub/device | Node connection profile、连接状态、UI 布局、持久化离线目录缓存                        | 设备本地；不能成为 Task / Session 权威                              |
 | node       | Plugin 实际安装、user Skill / Subagent、工具链、Node capability、runtime cache        | 每台机器独立，可显式复制，不自动求并或覆盖                          |
 | workspace  | Repo 内 `.zcode/*` / `.agents/*`、workspace extension、项目设置                       | 位于目标 Node 的 workspace；由 Git / 文件系统自然传播               |

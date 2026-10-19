@@ -51,7 +51,6 @@ GLM-5.3 的 image 能力采用 GLM-5.2 已有的 provider-aware 判定，而不�
 
 ## 目标
 
-- 在中国模型目录的 Z.AI、BigModel 及各自 Coding Plan provider 中注册 `glm-5.3`。
 - 在 bundled models.dev catalog 的对应四个 OpenAI-compatible provider 中注册
   `glm-5.3`。
 - CLI 默认策略与 workspace dynamic overlay 使用同一 GLM-5.3 身份判断：大小写不敏感

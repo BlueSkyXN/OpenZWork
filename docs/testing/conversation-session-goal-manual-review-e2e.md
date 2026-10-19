@@ -37,7 +37,6 @@ packages/desktop/.e2e-artifacts/<run-id>/manual-review/goal-run-cases/
 
 manual review case 不应把时间花在重复登录和设置模型上。WDIO `beforeSession` 会重置 `.e2e-home` 后直接预设：
 
-- `setting.json`：写入 `providerFamilyDomain=zai`、`providerFamilyDomainMigrated=true` 和 `modelProviderFamilyModes.zai=apiKey`，避免欢迎页再次要求登录。
 - `credentials.json`：写入 e2e 专用占位 token，只用于通过本地启动守卫。
 - `model-providers.json` 与 CLI `config.json`：写入 `e2e-upstream/deepseek-v4-flash`。
 - capture 模式下的 `httpProxy`、`httpProxyCaCertPath`：通过设置页代理语义注入 agent 子进程，确保真实 DeepSeek 请求进入抓包代理。

@@ -88,7 +88,6 @@
 3. 手机端至少能完成文件浏览、基本聊天、基本终端连接
 4. Desktop 关闭Web 远程控制后，手机端连接立即失效
 
-## 2. 现状约束
 
 ## 2.1 Desktop 现状
 
@@ -128,7 +127,6 @@
 
 所以本期 relay 应视为**重新落包**，而不是在现有源码上迭代。
 
-## 3. 推荐方案
 
 ## 3.1 总体架构
 
@@ -185,7 +183,6 @@ UI 发起时必须把当前 workspace 上下文带给 main：
 
 main 再根据 `remoteSessionId` 去解析当前 mobile host 应该起 `init-local` 还是 `init-remote`。
 
-## 4. 分模块规划
 
 ## 4.1 `packages/shared`
 
@@ -411,7 +408,6 @@ GET  /r/:token
 
 有它时走 dev redirect / proxy，没有它时走本地静态资源。
 
-## 5. 协议建议
 
 ## 5.1 Desktop 开启Web 远程控制
 
@@ -457,7 +453,6 @@ desktop session ws <-> MessagePortMain <-> host ChannelServer
 3. main 清理 runtime map
 4. UI 状态回到 idle
 
-## 6. 分阶段实施计划
 
 ## 阶段 0：落包与脚手架
 

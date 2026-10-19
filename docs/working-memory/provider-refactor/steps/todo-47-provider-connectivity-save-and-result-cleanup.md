@@ -91,11 +91,8 @@ type ModelConnectivityResult = { success: true } | { success: false; error: { me
 删除 `ModelConnectivitySummary`、`resolveModelConnectivitySummary`、`noEndpointResult` 与相应旧测试。组件直接消费
 `ModelConnectivityResult`，成功显示模型身份，失败显示正式执行链返回的错误消息。
 
-### 2.5 本 Todo 不改变请求归因 Header
 
-`x-zcode-session-type` 是 Coding Plan 服务端消费的模型请求来源归因 Header。所有正式模型请求继续发送，并按来源
-使用 `main`、`subagent` 或 `other`；Provider 连接测试属于无主 Agent/Subagent 的辅助调用，继续发送 `other`。
-该 Header 不属于 Provider Config，也不在本 Todo 增加 Provider 特判。
+
 
 ## 3. 实施顺序
 

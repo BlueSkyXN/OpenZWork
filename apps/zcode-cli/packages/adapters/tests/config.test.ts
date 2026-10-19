@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConfigScope, DefaultRuntimeConfig } from "@zcode/contracts";
-import {
-  createConfig,
-  updateCodingPlanProviderInFileConfig,
-  updateModelSelectionInFileConfig,
-  updateUiLocaleInFileConfig,
-} from "../src/config/index.js";
+import { createConfig, updateUiLocaleInFileConfig } from "../src/config/index.js";
 import { parseEnvConfig } from "../src/config/env-config.adapter.js";
 import {
   addSuppressedBuiltinInFileConfig,
@@ -15,7 +9,6 @@ import {
   updatePluginEnabledInFileConfig,
   updatePluginOptionsInFileConfig,
 } from "../src/config/file-config.adapter.js";
-import { ModelCatalogService } from "../src/model/catalog.js";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -116,12 +109,11 @@ describe("config adapters", () => {
         ).suppressed,
       ).toBe(false);
       expect(
-        (
-          await removePluginFromFileConfig(configPath, "computer-use@zcode-plugins-official")
-        ).removedEnabled,
+        (await removePluginFromFileConfig(configPath, "computer-use@zcode-plugins-official"))
+          .removedEnabled,
       ).toBe(true);
       expect(JSON.parse(await readFile(configPath, "utf8"))).toEqual({
-        plugins: { enabledPlugins: {}, suppressedBuiltins: [] },
+        plugins: { enabledPlugins: {}, suppressedBuiltins: [], options: {} },
       });
     } finally {
       await rm(dir, { force: true, recursive: true });
@@ -308,11 +300,6 @@ describe("config adapters", () => {
     } finally {
       await rm(dir, { force: true, recursive: true });
     }
-  });
-
-  it("keeps Plugin scope priority aligned with User then Workspace", () => {
-    expect(ConfigScope.User).toBe("user");
-    expect(ConfigScope.Project).toBe("project");
   });
 
   it("parses the supported ZCODE environment surface", () => {
@@ -1798,28 +1785,45 @@ describe("config adapters", () => {
     }
   });
 
-  it("rejects inline model target config from file", async () => {
-    const dir = await mkdtemp(join(tmpdir(), "zcode-config-"));
-    const path = join(dir, "config.json");
+  // Provider/Model 配置已归 Registry 管理；通用配置忽略退场字段，不得重新推导模型选择。
+  it.each([
+    { model: { provider: "example", model: "example-model", apiKey: "fixture" } },
+    { model: { main: "example/main", lite: "example/lite" } },
+    { model: "example/main", modelSmall: "example/small", smallModel: "example/small" },
+    {
+      provider: {
+        example: {
+          kind: "unsupported",
+          npm: "fixture",
+          models: { tiny: { limit: { context: "invalid" } } },
+        },
+      },
+    },
+    { modelCatalog: { overrides: { "example/model": { supportsReasoning: true } } } },
+  ])(
+    "ignores retired provider config while preserving active configuration: %j",
+    async (legacy) => {
+      const dir = await mkdtemp(join(tmpdir(), "zcode-config-retired-model-"));
+      try {
+        const path = join(dir, "config.json");
+        await writeFile(path, JSON.stringify({ ...legacy, features: { memory: false } }));
+        const result = loadFileConfig(path);
+        expect(result.loaded).toBe(true);
+        expect(result.config).toMatchObject({ features: { memory: false } });
+        for (const key of ["model", "provider", "modelCatalog", "modelSmall", "smallModel"])
+          expect(result.config).not.toHaveProperty(key);
+      } finally {
+        await rm(dir, { recursive: true, force: true });
+      }
+    },
+  );
 
+  it("rejects invalid active configuration", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "zcode-config-invalid-"));
     try {
-      await writeFile(
-        path,
-        JSON.stringify({
-          model: {
-            provider: "default-deepseek",
-            model: "deepseek-V4-Pro",
-            baseURL: "https://api.deepseek.com",
-            apiKey: "secret",
-            headers: {
-              "X-Title": "Z Code",
-            },
-          },
-        }),
-      );
-
+      const path = join(dir, "config.json");
+      await writeFile(path, JSON.stringify({ network: { timeout: "invalid" } }));
       const result = loadFileConfig(path);
-
       expect(result.loaded).toBe(false);
       expect(result.config).toEqual({});
     } finally {

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist-testing",
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["src/web-remote-relay/contract.example.ts"],
+  "references": [
+    {
+      "path": "."
+    }
+  ]
+}

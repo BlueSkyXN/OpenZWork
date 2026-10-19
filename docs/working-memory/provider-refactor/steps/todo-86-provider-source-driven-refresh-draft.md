@@ -13,9 +13,7 @@
 当前发现的生产调用入口：
 
 - 领取成功：`ManualClaimPlanBanner.tsx`。
-- 登录后、启动恢复时的账号套餐查询：`oauthProviderFamilySelectionRefresh.ts`。
 - Root 公共刷新：`useRootProviderStateRefresh.ts`，供登录、启动恢复、退出登录及部分登录引导检查使用。
-- 购买完成：`CodingPlanUpgradeDialog.tsx`。
 - 设置页手动刷新：`useModelProviders.ts`。
 
 服务链定位：`packages/provider/src/facades.ts`、`packages/services/src/model-provider/providerRuntime.ts`、`packages/provider/src/account-provider-service.ts`、`packages/provider/src/registry-service.ts`。实施前重新核对调用点及并行修改后的代码，不以本清单替代最新搜索。

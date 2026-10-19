@@ -17,7 +17,7 @@
 | V4 Composer Draft | 独立 v4 key；早期仅正文 | 当前 key 的 modelSelection + mode | 规范化只读 modelSelection，不从 provider/model/thought 旧属性补值；正文/改选保存草稿，accepted 回写与 Recent 分开 | `composerDraftStore.ts`、`useDraftConfigControl.ts` 已追踪；后者 SessionConfigState 的 provider/model 是同一 effectiveSelection 的展示投影，不是读取旧磁盘字段 |
 | Recent / Default | Model Selection 重构后的独立结构化键/配置 | `composerRecent.ts`、现行 preference schema | 不解析旧套餐菜单键、不从坏值查账号修补；Recent 成功接纳写入，不是点击即改 Session | 不虚构未发现的“旧 Recent”格式做兼容；现有测试含空值及同路径不同 workspaceIdentity |
 | Personal Provider Config | 旧模型供应商结构，由 legacy reader/importer 明确列举 | Node Provider Config Runtime 在目标文件缺失时导入并落盘 | 新文件存在则严格校验；不能因网络/Schema错误回读旧 Provider 补值 | 保留已裁决的不兼容中间态 enabled/matchRules；用户已有未提交 importer 重命名不混入本轮 |
-| Account connection settings | staging family modes/selectedKeys | providerFamilyConnectionSelections；needsMigration 只在新字段不存在时判定 | 正式 AppSettings 不暴露旧键；旧字段仅保留回滚。旧 Team 组织补齐仍需 OAuth，是连接身份迁移，不是 Selection 迁移 | 96 只移除 Selection 对账号的依赖，没有删掉真实连接/OAuth迁移。已有新字段空值不回读旧键 |
+
 
 ## 本次删除 / 保留的理由
 

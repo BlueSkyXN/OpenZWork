@@ -79,7 +79,6 @@ Provider 关键 E2E 晋升
 | --------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
 | 真实 Built-in Config 完整性 | `packages/provider-node/test/zcode-builtin-integrity.test.ts`                             | 真实 JSON 的 Provider、模型成员、访问材料 Overlay、完整 Model Config、隐藏闲时模型与旧字段归零均通过 |
 | API Key 纵向链路            | `apps/zcode-cli/packages/bootstrap/tests/zcode-builtin-model-runtime-integration.test.ts` | `builtin:zai` 从 Built-in + Personal Overlay 经 Resolver/Registry/ModelFactory 原样进入 Adapter      |
-| Account 纵向链路            | 同上                                                                                      | Start Plan 的 Account 成员约束生效，Personal Provider Overlay 保持最后覆盖                           |
 | Request Auth 纵向链路       | 同上                                                                                      | 隐藏闲时 Provider 可由普通 Registry 精确创建，Request Auth Source 仅在执行期绑定                     |
 | Request Auth 缺失           | `apps/zcode-cli/packages/adapters/tests/model.test.ts`                                    | generate/stream 均在网络调用前返回 `ModelRequestAuthMissing`                                         |
 | Model 冻结                  | `apps/zcode-cli/packages/bootstrap/tests/provider-registry-model-runtime.test.ts`         | Registry 更新只影响后来创建的 Model                                                                  |

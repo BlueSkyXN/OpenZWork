@@ -18,6 +18,7 @@ describe("model selection groups", () => {
         {
           providerId: "fixture",
           config: {
+            logo: { type: "builtin", key: "deepseek" },
             access: access as ModelSelectionView["providers"][number]["config"]["access"],
             api: { type: "anthropic-messages" },
           },
@@ -29,6 +30,10 @@ describe("model selection groups", () => {
       ],
     };
     const items = buildRegistryModelSelectGroups("glm", view)[0]!.items;
+    expect(buildRegistryModelSelectGroups("glm", view)[0]!.logo).toEqual({
+      type: "builtin",
+      key: "deepseek",
+    });
     expect(items[0]!.supportsVisionInput === true).toBe(expected);
     expect(items[1]!.supportsVisionInput).toBe(true);
     expect(items[2]!.supportsVisionInput).toBe(true);
@@ -102,6 +107,7 @@ describe("model selection groups", () => {
       {
         key: "registry-provider:anthropic-api",
         label: "Anthropic API",
+        labelBadge: "API",
         items: [
           {
             key: "registry-provider:anthropic-api:claude-a",
@@ -119,6 +125,7 @@ describe("model selection groups", () => {
       {
         key: "registry-provider:openai-api",
         label: "OpenAI API",
+        labelBadge: "API",
         items: [
           {
             key: "registry-provider:openai-api:model-a",

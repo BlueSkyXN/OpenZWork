@@ -7,41 +7,34 @@
 
 ## 1. 新裁决与范围
 
-- 旧 BigModel / Z.ai Coding Plan 固定迁为**同域 Individual Provider**，不再依据迁移时当前个人/Team 连接决定身份。Individual 只是旧意图的确定性迁移落点，不表示历史请求使用过个人套餐，不开通或切换账号连接。
 - 后续由已有有效选择解析对应到当前 Account Provider 的同模型、同档位；不另造 Provider 替代机制，不让 Registry 校验偷偷替换 Provider。
 - 当前不可选的模型、档位不妨碍旧意图迁入；临时有效结果仍可以为空或缺档位。
 - 闲时任务的迁移、Provider/Ticket 绑定本轮排除，不机械迁成个人套餐。
 - 不自动修复已经被旧实现写空的新版记录，不重新从旧文件覆盖当前字段。若需要恢复存量损坏数据，另行确认精确范围。
 
-本 Todo 修改 [Todo 72](todo-72-legacy-builtin-provider-and-model-selection-migration.md) §3.2/§4 中“依赖当前已登录连接迁移旧 Coding Plan”的裁决；沿用 [Todo 87](todo-87-selection-view-unified-resolution.md) 的公共解析、原意图保护及目标 Host 权威，并补齐入口；衔接 [Todo 88](todo-88-provider-audit-regression-repair.md) 的历史恢复与 Subagent 边界。旧文档描述的是此前裁决/实现，不能将本计划标成已实现。
+
 
 ## 2. 已调查的当前问题
 
 | 入口/边界 | 当前事实 | 本项处理 |
 | --- | --- | --- |
-| 共享旧身份转换 | `legacy-model-provider-identity.ts` 的旧 Coding Plan 分支依赖 `currentAccountAccess` | 改为确定性映射，移除仅服务迁移的账号上下文 |
-| Host 装配 | `node.ts` 的 `readMigrationAccountAccess` 经过账号设置准备、登录身份；旧 Team 缺组织时还可能间接等待 OAuth 查询 | Selection 迁移不再走此链；独立连接迁移和真实鉴权仍保留 |
 | Session | 格式/身份迁移后，`create-app.ts` 恢复路径直接校验原 Selection，失败返回空 | 原意图必须到达公共解析，不能在入口前被丢掉；运行绑定仍严格校验 |
 | 定时任务 | 旧列导入不查模型名单，但旧 Built-in 回调仍依赖账号；SQL NULL 保留重试边界 | 纯导入、保留当前字段优先和 CAS；当前有效结果用于原有首次派发边界 |
 | Bot | 旧字符串必须命中当前候选名单；相同内容的结构化选择却不要求。首次导入写出 v3 后不再读旧文件 | 删除候选名单门禁，避免将暂不可用的明确意图永久写丢 |
 | Wiki/Subagent 存储 | 旧账号 ID 通过 Host 回调转换；未能确定时可保留旧意图 | 换用纯转换；实际执行接入另按第 5 节核实 |
 
-只读调查的证据：已用纯函数/内存 SQLite 和注入 resolver 复现旧 Coding Plan 随当前连接变化、Bot 候选为空时丢旧字符串选择、Automation 身份确认后不检查旧模型/档位即可导入。没有对真实用户数据做写入；这些是现状复现，不是本 Todo 的实现验收。
+
 
 ## 3. 迁移层：只转换确定的旧事实
 
 | 输入身份 | 固定输出 |
 | --- | --- |
-| `builtin:bigmodel-coding-plan` | `account:bigmodel-individual-coding-plan` |
-| `builtin:zai-coding-plan` | `account:zai-individual-coding-plan` |
 | `builtin:bigmodel` / `builtin:zai` | 沿用 `bigmodel-api` / `zai-api` |
-| 两域旧 Start Plan ID | 沿用对应的 `account:<family>-start-plan` |
 | 正式当前 ID、明确的自定义 Provider ID | 原样保留，不要求当前 Provider 存在 |
 | 无法解码、无法确认身份、退役且无对应的 ID | 保留既有未绑定/未完成边界，不猜 Provider，不回退默认 |
 
 1. 模型 ID 原样保留；只从真正旧格式中搬运可确定的推理档位。不能因当前配置不支持而删除或补默认档位。
 2. 迁移不得读取当前账号连接、登录身份、权益、Registry、Selection View 或模型候选；读取旧记录及静态身份映射是允许的。
-3. 取消迁移入口对完整 `ZCodeAccountAccess` 的依赖；静态转换不等待登录、网络、远端连通或 Provider 初始化。
 4. 保留格式校验。非法 JSON、错误字段类型不是“暂不可用模型”，不能借本项宽松解析全部吞掉。
 5. 已有当前字段优先，显式清空不复活；坏的新值不靠旁边旧字段修复。明确旧 `builtin:*` 身份即使存于结构化字段，仍按既定升级边界识别。
 6. 迁移幂等，保留旧文件/字段的既定回滚边界及原有 CAS/事务保护；不批量改写历史消息，不维护新旧持续双写。
@@ -122,13 +115,11 @@ SSH 断开 / Provider 尚未同步 / 账号状态异常
 | 用例 | 条件 / 动作 | 必须证明 | 证据 |
 | --- | --- | --- | --- |
 | SM96-01 | 同一旧选择，分别在未登录、个人、Team、Start、另一账号域及空 Provider 配置下迁移 | 新 Selection 字节级等价；账号/Registry/网络依赖未被调用 | 参数化纯转换、各 importer 单测 |
-| SM96-02 | 旧 Coding Plan 固定迁为 Individual，当前 Team 有同模型/档位 | 经 `getView` 得到 Team 的有效选择；无需 Individual 可用 | 公共解析、Session 恢复集成与 UI E2E |
 | SM96-03 | Provider/模型暂缺或档位不支持，读取并保存其他内容，再恢复配置 | 原意图保留；有效结果按层级留空并可重新恢复；没有默认执行 | 存储前后对比、UI/服务测试 |
 | SM96-04 | Bot 首次导入时候选为空；分别使用旧字符串/结构化选择 | 明确的 Provider/模型/档位都保留到 v3，重启不丢；旧文件不变 | Bot 文件导入/重启测试 |
 | SM96-05 | 定时任务、Wiki、Bot 读取与派发；已有冻结 run | 读取不产生选择写回；各提交边界正确；冻结记录不改变 | 各业务集成、代表性交互 E2E |
 | SM96-06 | SSH 断连、配置尚未同步、账号失败后恢复；本地有不同模型 | 迁移不等 SSH、不借本地；原记录不变，恢复后可重新解析 | 隔离远端 fixture、协议/存储及实际有效选择 |
 | SM96-07 | 新字段存在、显式清空、损坏字段；迁移期间用户改选 | 不回读旧字段或猜默认；CAS/事务不覆盖新编辑 | 存储并发/优先级测试 |
-| SM96-08 | 显式 Subagent 的旧 Coding Plan，当前为 Team；另测未指定模型 | 实际 Agent 执行采用统一有效结果；继承行为保持 | 接入方案裁决后补 Agent 集成，不以设置页测试代替 |
 | SM96-09 | 已有闲时任务、Ticket、历史请求 | 此轮未改身份/票据/运行记录 | 差异审阅与现有回归 |
 | SM96-10 | Composer 改选/清空但未发送，提交失败，再成功发送；期间再次编辑草稿 | 点击和失败不更新正式选择/Recent；成功接纳才保存本次实际选择，迟到结果不覆盖新草稿；Draft 保存不与正式选择混用 | 草稿/Session/Recent 分层断言与交互 E2E |
 

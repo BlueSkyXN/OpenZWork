@@ -214,6 +214,7 @@ describe("desktopRuntimeEnv resolveRemoteAssetDirs", () => {
       });
 
       expect(dirs.mockCdnDir).toMatch(/[\\/]mock-cdn$/);
+      expect(dirs.sourceServerArtifactPolicy).toBe("development-content-addressed");
       expect(dirs.remoteCdnBaseUrl).toBe("https://cdn.example.invalid/remote-assets/0.0.0-test");
       expect(dirs.remoteCdnBaseUrls).toEqual([
         "https://cdn.example.invalid/remote-assets/0.0.0-test",
@@ -222,7 +223,7 @@ describe("desktopRuntimeEnv resolveRemoteAssetDirs", () => {
     });
   });
 
-  it("开发态当前版本 mock-cdn 缺失时回退到 CDN cache", async () => {
+  it("开发态当前版本 mock-cdn 缺失时保留内容寻址策略并由连接 fail-closed", async () => {
     await withTestMockCdnReleaseDir("missing", async () => {
       const { resolveRemoteAssetDirs } = await import("../src/main/desktopRuntimeEnv.js");
       const dirs = resolveRemoteAssetDirs({
@@ -231,6 +232,7 @@ describe("desktopRuntimeEnv resolveRemoteAssetDirs", () => {
       });
 
       expect(dirs.mockCdnDir).toBeUndefined();
+      expect(dirs.sourceServerArtifactPolicy).toBe("development-content-addressed");
       expect(dirs.remoteCdnBaseUrl).toBe("https://cdn.example.invalid/remote-assets/0.0.0-test");
       expect(dirs.remoteCdnBaseUrls).toEqual([
         "https://cdn.example.invalid/remote-assets/0.0.0-test",
@@ -247,6 +249,7 @@ describe("desktopRuntimeEnv resolveRemoteAssetDirs", () => {
     });
 
     expect(dirs.mockCdnDir).toBeUndefined();
+    expect(dirs.sourceServerArtifactPolicy).toBeUndefined();
     expect(dirs.remoteCdnBaseUrl).toBe("https://cdn.example.invalid/remote-assets/0.0.0-test");
     expect(dirs.remoteCdnBaseUrls).toEqual([
       "https://cdn.example.invalid/remote-assets/0.0.0-test",
@@ -265,6 +268,7 @@ describe("desktopRuntimeEnv resolveRemoteAssetDirs", () => {
     });
 
     expect(dirs.mockCdnDir).toBeUndefined();
+    expect(dirs.sourceServerArtifactPolicy).toBeUndefined();
     expect(dirs.remoteCdnBaseUrl).toBe("https://cdn.example.com/releases");
     expect(dirs.remoteCdnBaseUrls).toEqual(["https://cdn.example.com/releases"]);
     expect(dirs.remoteCacheDir).toMatch(/[\\/]userData[\\/]remote-assets-cache$/);

@@ -58,7 +58,6 @@ Remote Provisioning 不同步 Built-in Release，不注入 Registry Snapshot，�
 
 - 完整 Personal Provider Config：`providers`、`modelConfigRules`、`providerOrder`；
 - Configured Default；
-- `providerFamilyDomain` 与 `providerFamilyConnectionSelections`；
 - Provisioning allowlist 内的完整凭据集合。
 
 同步规则：

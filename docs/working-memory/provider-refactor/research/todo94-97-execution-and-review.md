@@ -59,7 +59,6 @@ Wiki 选择 / 生成设置（无输出预算）
 
 ## Todo 96 过程记录（尚未完成）
 
-- 第一组共享身份/Bot 测试：5 文件 / 37 条通过；旧字符串即使候选为空仍保留明确身份、模型和档位。删除 BotsRepo 迁移上下文和 Host 的 readMigrationAccountAccess，不影响真实连接设置迁移/OAuth。
 - Automation/Wiki：去除仅用于迁移的注入回调，改为存储 + 静态转换；相关 2 文件 / 76 条通过（后续全量还需复跑）。保留新字段优先、SQL NULL 与 JSON null 区分、CAS、旧文件不写回。
 - Session：先补真实 SQLite 恢复测试，复现三处原意图丢失（已删除 Provider、已删除模型、失效档位）。修后 12 条通过；Runtime 仍只绑定 Registry 验证成功的选择，恢复结果返回保存意图。
 - Session Store 已去除迁移解析回调，保留事务/CAS；旧异步账号等待测试改为无账号接口的离线导入、并发幂等及新选择优先测试。

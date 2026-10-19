@@ -6,15 +6,19 @@
 - 版本整合保留标准 MCP、ToolSearch、node_repl、Browser Use、动态工作流、GenUI/MCP Apps、本地和远程工作区。
 - 官方账号、套餐、云端分享与反馈、遥测、原生 CUA 产品链及其专属新模块沿用既有移除范围。保留通用日志导出、MCP OAuth、浏览器页内控制、MCP App 实例隔离和第三方模型配置。
 - 用户级数据继续写入 `.openzwork`；项目级 `.zcode` 和通用 `.agents` 约定不随产品身份变更。
+- Built-in Provider 生产与测试配置使用同一份净化目录，保留现有 16 个第三方模板，吸收上游 Xiaomi MiMo 新模型规则；目录 revision 更新为 34，防止旧本地 revision 33 遮蔽本次内容。
 
 ## 保留与迁移规则
 
 - ToolSearch 使用上游标准 MCP `alwaysLoad`、native/local/deferred schemas 和 hydration 逻辑；运行偏好默认 `off`，不依赖官方套餐自动开启策略。
 - MCP Apps 首次连接等待后，重新校验 session、connection generation 和 lease。GenUI 路由保持 desktop-continuous，不能进入手机 replayable 频道。
 - 工作流子 runtime 继承父 runtime 已解析的 shell selection，继续通过父会话 broker 传递交互。
+- Host 下发模型相关 V4 命令前，等待 `provider/refreshRegistry` 让目标 Worker 从自己的 Personal Config Store 完成现有串行刷新；只发送 reason，失败则拒绝命令。顺序为 `Host → Worker Registry refresh 完成 → V4 command → CommandInbox admission/ACK`，桌面 continuous 与手机 replayable 共用此屏障。
 - Browser zoom 补偿、CSS 像素截图和一致 origin 权限策略随上游升级；浏览器 `cua*` 页内操作保留。
 - Host 使用新的 Source Server 身份、连接生命周期和 Duplex 传输；远程 RPC 必需 channel 与当前 IServiceAccessor 保持一致，不要求已移除的服务。
+- 共享 relay 模块统一保存 HMAC wire、证明向量与二维码合同；根协议入口继续公开同名导出。账号 V2 的 HTTP 注册/一次性 token 合同与专属 fixture 退役，通用 heartbeat、retry、不可变 payload 序列化保留；共享 testing 配置检查实际 HMAC contract example。Desktop relay 模块仅拥有凭据存取与 proof adapter，不保存任务状态。
 - 远控配对沿用无账号 HMAC 认证合同。上游依赖官方 JWT 的云端设备发现不引入；通用重连、任务展示和恢复语义按当前配对入口适配，不能伪造账号材料。
+- HMAC transport 独占 KICKED 恢复窗口，复用上游 retry policy：首次冲突在 2–5 秒内恢复一次，60 秒内再次冲突时终止连接并报告 `session-conflict`；认证 ACK 只清普通错误退避，不清冲突窗口。窗口关闭或停止会撤销待恢复任务，普通网络断开继续沿现有重连路径。
 - 新远程 project 使用单个不可变 root，task 必须属于对应 project；不恢复多 root / additionalDirectories 远程规避路径。
 - SQLite 迁移采用共享 runner 的异步 MigrationResult、备份、checksum 和 schema 账本，业务转换仍由对应持库进程执行。现存 DB DDL 兼容边界沿用原规范，退役业务的运行时、UI 和调度不得恢复。
 - 混合测试按完整声明和场景边界适配；共享辅助文件及保留能力不按关键词删除。新增上游模块同时检查生产注册、协议、构建资产及测试引用。
@@ -41,8 +45,11 @@ sequenceDiagram
 
 - 核心 CI 和同一候选提交的 macOS arm64、Windows x64、Linux x64 Installers 必须通过，不要求人工 UAT、试装或真实用户。
 - 保留上游 3.16 新纳入常规 typecheck 的 Main、remote Main、shared testing；只移除已退役模块的检查目标。
+- 根 `typecheck` 检查应用源码与共享测试基础设施。历史 E2E 脚本的类型检查使用原 `tsconfig.e2e.json` 在独立扩展工作流执行，保留错误退出码和诊断产物，不让缺失的历史 E2E 辅助文件阻断应用构建。
+- PR 架构检查显式使用真实 base SHA，checkout 保留可解析的 Git 历史；本地对照已通过的 3.15.1 基线。
 - 新 schema 合同、架构检查和受影响测试入口按当前模块与产品范围接线，不自动更新错误基线压低门禁。
 - 核心回归加入 ToolSearch、MCP Apps 连接竞争、GenUI 远端路由、工作流 shell 继承、Duplex 传输、controller identity 和 SQLite 迁移等保留的新行为。
+- 本地 pre-push 与核心 CI 使用同一核心测试清单；继续执行 Lint、SQLite schema 与架构检查，历史 affected suite 交由独立扩展任务运行。
 - 扩展历史测试继续独立运行，失败保留退出码、原始诊断与 artifact，不成为核心 CI 或 Installers 的前置依赖。
 - 依赖按新 lockfile 与固定 Node 24.14.0 / pnpm 11.28.6 安装；不复制旧依赖或 ignored 运行配置。
 - 候选提交、PR 与云端结果分别记录。完成候选不自动合并、打 tag、发布或部署。

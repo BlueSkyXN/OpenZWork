@@ -108,7 +108,12 @@ function skillTelemetryFactFields(
   const qualifiedName = optionalString(value.qualifiedName);
   const pluginId = optionalString(value.pluginId);
   const source = optionalString(value.source);
+  // 仅消费加载结果 metadata；请求参数不证明技能存在，不能进入遥测。
+
+  const name = optionalString(value.name);
+  const skillName = source && name && name.length <= 64 && /^[A-Za-z0-9][A-Za-z0-9_-]*$/u.test(name) ? name : undefined;
   return {
+    ...(skillName ? { skillName } : {}),
     ...(qualifiedName ? { skillQualifiedName: qualifiedName } : {}),
     ...(pluginId ? { skillPluginId: pluginId } : {}),
     ...(source ? { skillSource: source } : {}),
@@ -508,6 +513,9 @@ export class ConversationTelemetryFactNormalizer {
             : {}),
           ...(result?.result.error ? { errorMessage: result.result.error.message } : {}),
           ...skillTelemetryFactFields(toolName, error?.skillMetadata ?? result?.skillMetadata),
+          ...((error?.pluginId ?? result?.pluginId)
+            ? { pluginId: error?.pluginId ?? result?.pluginId, pluginComponent: "mcp" }
+            : {}),
           // subagent mirror 把父子关联放在工具事件 payload 顶层，旧 normalizer
           // 只读取 result.display，导致 agent_id 等字段在进入 agent_step 前被静默丢弃。
           ...mirroredSubagentToolFields(rawPayload, display),

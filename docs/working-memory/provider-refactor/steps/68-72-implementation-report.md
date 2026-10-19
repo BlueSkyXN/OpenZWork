@@ -15,9 +15,6 @@
   -> 72 后段：其余领域接入核对、联合验收
 ```
 
-本轮补充裁决已写回各 Todo：缺失或失效选择留空且不弹提示；旧字段只为回滚保留；Bot 不按模型名
-寻找替代 Provider；旧 Coding Plan 成功转换后在恢复保存边界固定身份；草稿上限从 50 扩到 500，
-保留原淘汰方式，不新增存储分层；已错误迁移的文件手动修复，不增加自动修复程序。
 
 ## 影响范围
 
@@ -64,11 +61,7 @@ Core 全量、Bootstrap 定向回归、Pro 首请求证据与文档/类型入口
 
 ## 72 前段：实现、定向验证与 Review
 
-- Desktop 导入先识别 `builtin:*` / `account:*` 保留身份，避免 source=custom 误分类；
-  只有两个旧 API 的非空 Key 进入当前对应 Template 实例，其余旧内置配置丢弃。
 - Standalone CLI 存在同一旁路，一并收口。真实旧配置中的空 Key 不再触发整份解析失败。
-- 新增单向身份转换：API/Start 直接映射；旧 Coding Plan 只使用当前环境已登录的同 Family 连接。
-  当前 ID 原样保留，未知旧内置返回未绑定；不扫描模型列表、不引入运行时 alias。
 - 脱敏旧文件经 Reader → Importer → Repository → 当前 Template/Resolver 的纵向测试通过：
   API 模型可执行、自定义 Context 保留、旧文件字节不变、重复读取不覆盖 Personal 修改。
 - Services/Shared 五文件 37 条及 CLI Importer 13 条通过；根 typecheck 通过。
@@ -79,8 +72,6 @@ Core 全量、Bootstrap 定向回归、Pro 首请求证据与文档/类型入口
 
 - Config / State 文件及内容均升至 v3；Repo 在目标文件锁内首次导入并立即固定结果，
   后续只读写 v3。旧文件不变；新文件损坏直接暴露，不以旧数据覆盖，也不创建旧副本。
-- 移除 Service 的 v2 重写与模型名猜测；旧字段只在 Importer 解码，新 Selection 不被旧 thoughtLevel 覆盖。
-  身份转换使用 72 的同一规则；远端失联不主动连接，不用本地账号解释远端旧 Coding Plan。
 - 新增存储测试先取得 5 条失败，再实现。最终覆盖 Config 创建/编辑/删除、State 更新、并发首读、
   部分 v3、损坏 v3、新旧字段冲突、动态身份固定与远端隔离。
   根 typecheck 通过，lint 35 个既有警告、0 错误，差异检查通过。
@@ -117,7 +108,7 @@ Core 全量、Bootstrap 定向回归、Pro 首请求证据与文档/类型入口
 - Pro 隔离目录已同步本小步代码：Core 定向四文件 **114 通过**；重建 contracts/core 后 Bootstrap
   四文件 **75 通过**（包含真实 Sqlite Session persistence 的 38 条）。首次 Bootstrap 五条失败来自
   仍加载旧 Core dist，按标准构建更新后消失。这里是 Pro 上的单元/存储集成测试，**不是 Todo 70 E2E**。
-- 72 的旧 Coding Plan 身份尚需接入 Session 恢复并在原保存边界固定；70 的未绑定 UI/继续发送 E2E 尚未跑。
+
 
 ### 70：App 入口与迁移存储小步
 
@@ -141,8 +132,6 @@ Core 全量、Bootstrap 定向回归、Pro 首请求证据与文档/类型入口
 
 ### 70：Protocol 收口与 Pro 冷恢复验证（继续执行中）
 
-- 已将一次迁移接入真实 App：旧 Coding Plan 通过所属 Host 的窄 RPC 取得同一 Environment 的账号身份，
-  固定为当前 entry。Host 本地/外部偏好授权两种配置的测试都证明不会转发给桌面偏好解析器。
 - 删除 Protocol 中从历史消息、fork 配对消息、thought hint 和默认模型补选的旁路；
   Protocol 只采用 App 恢复结果。恢复与用户选模共用现有 App 串行临界区，新的选模事件清除首次恢复种子。
 - 真实 Protocol/App/SQLite 测试先复现“high 提示写回空档位”；删除旁路后又发现投影忽略明确空值，
@@ -276,6 +265,5 @@ Pro 使用 Node 24.14.0 / pnpm 10.33.2。Electron 下载中断后复用同机旧
 
 - Session 恢复只接受当前 Model Selection；旧结构仅在明确旧身份时单向转换，缺失或失效模型/Reasoning 保持空态，不再从 Registry 第一项静默替换。此前遗留的 `ensureSessionModelAvailable` fallback 已改为无写入过渡入口，避免覆盖用户选择。
 - Composer Draft 继续保存 mode/modelSelection，空文本不删除选择；移除 scope 数量上限，长期模型选择不会被后台裁剪。
-- Built-in 迁移仅保留 BigModel/Z.ai 按量 API Key，其他内置配置不生成 Personal 副本；Coding Plan 身份按当前账号连接一次性固定，后续恢复只认新字段。
 - 阶段验证：Bootstrap 迁移/未绑定恢复 **35 tests passed**，Adapters 迁移 **12 passed**，Composer Draft/控制器 **20 passed**，Bootstrap 命令集 **71 passed**；typecheck、lint（0 error）和 diff check 通过。Pro 上已验证的 provider-refactor E2E 保持通过；超大图片旧夹具仍因调用已删除接口而单独跳过，不属于本轮产品逻辑。
 - 本轮未增加数据库表迁移；旧文件按既定单向读取边界保留，已错误生成的新配置按人工修复处理。

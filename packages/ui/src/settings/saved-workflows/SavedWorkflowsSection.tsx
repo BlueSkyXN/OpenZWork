@@ -1,21 +1,20 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Plus } from "lucide-react";
 import {
   TID_WORKFLOWS_CREATE_VIA_CHAT,
   TID_WORKFLOWS_EMPTY,
   TID_WORKFLOWS_REFRESH,
-  resolveWorkspaceKey,
 } from "@zcode/shared";
+
+import { useSavedWorkflowProjectOptions } from "@/project-sidebar/useSavedWorkflowProjectOptions.js";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Plus } from "lucide-react";
+import { resolveWorkspaceKey } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { Spinner } from "@/components/ui/spinner.js";
 import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useTabStore } from "@/store/TabStoreProvider.js";
-import {
-  buildAutomationWorkspaceOptions,
-  type AutomationWorkspaceOption,
-} from "@/settings/automationWorkspaceOptions.js";
+
+import { type AutomationWorkspaceOption } from "@/settings/automationWorkspaceOptions.js";
 import { AutomationRefreshIcon } from "@/settings/AutomationDesignPrimitives.js";
 import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
 import { buildSavedWorkflowCreatePrompt } from "@/settings/saved-workflows/savedWorkflowLaunchPrompt.js";
@@ -91,11 +90,10 @@ export function SavedWorkflowsSection({
   onOpenWorkflowConsumed,
 }: SavedWorkflowsSectionProps) {
   const { intl, locale } = useZCodeIntl();
-  const tabs = useTabStore((store) => store.tabs);
-  const projects = useMemo(() => buildAutomationWorkspaceOptions(tabs), [tabs]);
+  const projects = useSavedWorkflowProjectOptions();
   // 全局组的运行 / 移动落点只能是本机项目：过滤掉远程 workspace。
   const localProjects = useMemo(
-    () => projects.filter((project) => !project.remoteSessionId),
+    () => projects.filter((project) => !project.workspaceIdentity),
     [projects],
   );
 
@@ -175,6 +173,8 @@ export function SavedWorkflowsSection({
     const target = active ?? projects[0];
     if (!target) return null;
     return {
+      projectId: target.projectId,
+      hostId: target.hostId,
       workspacePath: target.workspacePath,
       ...(target.workspaceIdentity ? { workspaceIdentity: target.workspaceIdentity } : {}),
     };

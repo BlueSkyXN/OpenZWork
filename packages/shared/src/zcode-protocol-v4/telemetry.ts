@@ -134,8 +134,12 @@ const toolLifecycleFactSchema = z
     agentType: z.string().optional(),
     childSessionId: z.string().min(1).optional(),
     background: z.boolean().optional(),
+    // 本地协议事实只接受有界的已解析标识，不依赖已移除的网络遥测清洗链。
+    skillName: z.string().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/u).optional(),
     skillQualifiedName: z.string().min(1).optional(),
     skillPluginId: z.string().min(1).optional(),
+    pluginId: z.string().min(1).max(256).optional(),
+    pluginComponent: z.enum(["skill", "mcp"]).optional(),
     skillSource: z.enum(["agents", "zcode", "bundled", "plugin", "remote"]).optional(),
     performance: toolPerformanceFactSchema.optional(),
     automationId: z.string().min(1).optional(),

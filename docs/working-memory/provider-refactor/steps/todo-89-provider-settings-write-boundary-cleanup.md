@@ -175,7 +175,6 @@ E2E 先更新对应 catalog/matrix，按 `e2e-case-lifecycle` 维护 pending、�
 
 2026-09-08 本地：
 
-- 27 个单测文件、541 项通过：`packages/provider/test`、`packages/provider-node/test`、`providerRuntime`、`providerFacadeServices`、`modelProviderDraftSave`、`modelProviderModelRowEditor`、`providerSettingsFormBoundary`、`modelProviderCodingPlan`。
 - `pnpm typecheck`、`pnpm exec tsc --noEmit -p packages/desktop/tsconfig.e2e.json` 均通过。
 - `pnpm lint`：0 errors，40 条既有 warnings。
 - 图谱：336 个唯一节点、672 条边；4 条既有悬空边与基线相同。本项更新设置保存/持久化 seed，不扩展无关图谱内容。

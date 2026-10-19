@@ -8,11 +8,8 @@ import {
   type PointerEvent,
 } from "react";
 import { ChartNoAxesColumnIncreasing } from "lucide-react";
-import {
-  TID_CHAT_CONTEXT_USAGE_TRIGGER,
-  type ZCodeContextUsageBreakdownItem,
-  type ZCodeProvider,
-} from "@zcode/shared";
+import { type ZCodeContextUsageBreakdownItem, type ZCodeProvider } from "@zcode/shared";
+import { TID_CHAT_CONTEXT_USAGE_TRIGGER } from "@zcode/shared/test-ids";
 import {
   Context,
   ContextContentBody,
@@ -88,10 +85,7 @@ export function formatContextCacheHitRateLabel(
 
   // 生产面板只露出明显缓存收益，避免低命中率分散对上下文容量的注意力；
   // 开发环境需要观察 provider 的真实低命中值，因此允许绕过 78% 展示阈值。
-  if (
-    !options.showBelowThreshold &&
-    hitRate < CACHE_HIT_RATE_DISPLAY_THRESHOLD
-  ) {
+  if (!options.showBelowThreshold && hitRate < CACHE_HIT_RATE_DISPLAY_THRESHOLD) {
     return null;
   }
 
@@ -104,9 +98,8 @@ export function formatContextCacheHitRateLabel(
 function getBreakdownToneStyle(index: number): CSSProperties {
   return {
     backgroundColor:
-      CONTEXT_PROGRESS_TONE_COLORS[
-        Math.min(index, CONTEXT_PROGRESS_TONE_COLORS.length - 1)
-      ] ?? CONTEXT_PROGRESS_TONE_COLORS[0],
+      CONTEXT_PROGRESS_TONE_COLORS[Math.min(index, CONTEXT_PROGRESS_TONE_COLORS.length - 1)] ??
+      CONTEXT_PROGRESS_TONE_COLORS[0],
   };
 }
 
@@ -138,16 +131,10 @@ export function buildContextUsageBreakdownSegments(
     if (!Number.isFinite(item.chars) || item.chars <= 0) {
       continue;
     }
-    charsBySource.set(
-      item.source,
-      (charsBySource.get(item.source) ?? 0) + item.chars,
-    );
+    charsBySource.set(item.source, (charsBySource.get(item.source) ?? 0) + item.chars);
   }
 
-  const totalChars = [...charsBySource.values()].reduce(
-    (sum, chars) => sum + chars,
-    0,
-  );
+  const totalChars = [...charsBySource.values()].reduce((sum, chars) => sum + chars, 0);
   if (totalChars <= 0) {
     return [];
   }
@@ -161,8 +148,7 @@ export function buildContextUsageBreakdownSegments(
     .sort(
       (left, right) =>
         right.chars - left.chars ||
-        BREAKDOWN_SOURCE_ORDER[left.source] -
-          BREAKDOWN_SOURCE_ORDER[right.source],
+        BREAKDOWN_SOURCE_ORDER[left.source] - BREAKDOWN_SOURCE_ORDER[right.source],
     );
 }
 
@@ -176,9 +162,9 @@ export function buildContextUsageProgressSegments(
   }));
 }
 
-export function getRenderableTaskUsage<
-  T extends { used: number; size: number },
->(taskUsage: T | null): T | null {
+export function getRenderableTaskUsage<T extends { used: number; size: number }>(
+  taskUsage: T | null,
+): T | null {
   if (!taskUsage) {
     return null;
   }
@@ -286,10 +272,7 @@ export function ChatContextUsage({
   }
 
   const usagePercent = renderableTaskUsage
-    ? Math.min(
-        Math.max(renderableTaskUsage.used / renderableTaskUsage.size, 0),
-        1,
-      )
+    ? Math.min(Math.max(renderableTaskUsage.used / renderableTaskUsage.size, 0), 1)
     : 0;
   const compactTokenUsageLabel = renderableTaskUsage
     ? formatContextUsageSummary({
@@ -358,8 +341,7 @@ export function ChatContextUsage({
               />
             </div>
           ) : null}
-          {renderableTaskUsage &&
-          (breakdownSegments.length > 0 || cacheHitRateLabel) ? (
+          {renderableTaskUsage && (breakdownSegments.length > 0 || cacheHitRateLabel) ? (
             <>
               {breakdownSegments.length > 0 ? (
                 <div
@@ -397,8 +379,7 @@ export function ChatContextUsage({
                 <div
                   className={cn(
                     "flex items-center justify-between gap-3 text-ui-sm",
-                    breakdownSegments.length > 0 &&
-                      "border-t border-border pt-3",
+                    breakdownSegments.length > 0 && "border-t border-border pt-3",
                   )}
                 >
                   <span className="text-foreground-subtle">
@@ -406,9 +387,7 @@ export function ChatContextUsage({
                       id: "chat.contextUsage.cacheHitRate",
                     })}
                   </span>
-                  <span className="font-mono text-ui-sm text-foreground">
-                    {cacheHitRateLabel}
-                  </span>
+                  <span className="font-mono text-ui-sm text-foreground">{cacheHitRateLabel}</span>
                 </div>
               ) : null}
             </>

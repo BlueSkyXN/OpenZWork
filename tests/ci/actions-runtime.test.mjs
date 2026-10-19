@@ -41,7 +41,7 @@ for (const [name, steps] of [
 ]) {
   test(`${name} uses the reviewed Node.js 24 Action releases`, () => {
     const actions = steps.filter((step) => step.uses);
-    assert.equal(actions.length, name === "Main audit" ? 4 : 5);
+    assert.equal(actions.length, 5);
     for (const step of actions) {
       const [action, version] = step.uses.split("@");
       assert.ok(Object.hasOwn(actionVersions, action), `${action}: reviewed Action`);
@@ -231,3 +231,13 @@ for (const [index, tool] of linuxPackagingTools.entries()) {
     },
   );
 }
+
+test("architecture checks compare the actual PR base with available Git history", () => {
+  assert.equal(actionStep(ciSteps, "actions/checkout").with["fetch-depth"], 0);
+  const check = ciSteps.find((step) => step.name === "Architecture boundaries");
+  assert.equal(
+    check.env.ARCHITECTURE_BASE,
+    "${{ github.event.pull_request.base.sha || github.event.before }}",
+  );
+  assert.notEqual(check["continue-on-error"], true);
+});

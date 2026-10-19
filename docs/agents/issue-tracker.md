@@ -19,3 +19,5 @@
 ## 当前 Issue
 
 - [桌面本地消息 TTFT 分阶段遥测](../monitoring/ttft-stage-telemetry.md)
+- [远程连接（SSH / WSL / Docker）交互与视觉体验优化](../issues/remote-connection-ux/01-remote-connection-ux-optimization.md)
+  - 实施票 [02](../issues/remote-connection-ux/02-connection-log-and-error-contract.md)～[14](../issues/remote-connection-ux/14-visual-polish-and-accessibility.md)，编号按依赖先后排列，每张票写明其阻塞项

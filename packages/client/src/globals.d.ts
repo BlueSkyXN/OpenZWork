@@ -5,7 +5,6 @@ import type {
   DesktopTitleBarTheme,
   AppSettings,
   BrowserViewOperationPayload,
-  BrowserGuestAttachResult,
   BrowserViewScreenshotSurfacePreparePayload,
   BrowserViewScreenshotSurfaceReadyPayload,
   BrowserViewScreenshotSurfaceReleasePayload,
@@ -34,11 +33,9 @@ import type {
   WebRemoteControlReconnectWorkspaceResult,
   WebRemoteControlStartOperationResult,
   WebRemoteControlStatus,
-  WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
   RemoteConnectionRuntimeLog,
   RemoteSessionClosedEvent,
-  BotRemoteWorkspaceReconnectedEvent,
   RemoteTarget,
   SSHConfigAliasOption,
   TaskNotificationPayload,
@@ -57,6 +54,7 @@ declare global {
     /** 插件 UI 沙箱 preload 命名空间；旧 preload 下为 undefined。 */
     zcodePluginSandbox?: {
       supportsRetainedMove?: boolean;
+      setExecutionActive?(sandboxId: string, initId: number, active: boolean): Promise<void>;
       copyImage?(
         input: import("@zcode/shared/mcp-apps").PluginSandboxCaptureRequest,
       ): Promise<void>;
@@ -65,27 +63,27 @@ declare global {
       consumeUserGesture(sandboxId: string): Promise<boolean>;
     };
     zcode: {
-      connectRemote(
-        options: RemoteTarget,
-        requestId?: string,
-        context?: {
-          workspacePath: string;
-          workspaceIdentity?: string;
-        },
-      ): Promise<{ success: boolean; error?: string; sessionId?: string }>;
+      // 普通平台桥复用唯一 IPlatformService 签名，避免 preload 与 Renderer 各维护一套合同。
+      createTempTextAttachment: NonNullable<import("@zcode/shared").IPlatformService["createTempTextAttachment"]>;
+      onRemoteSessionReconnected: NonNullable<import("@zcode/shared").IPlatformService["onRemoteSessionReconnected"]>;
+      loadMcpFromUserDirectory: NonNullable<import("@zcode/shared").IPlatformService["loadMcpFromUserDirectory"]>;
+      saveMcpToUserDirectory: NonNullable<import("@zcode/shared").IPlatformService["saveMcpToUserDirectory"]>;
+      migrateLegacyCommonMcp: NonNullable<import("@zcode/shared").IPlatformService["migrateLegacyCommonMcp"]>;
+      setShortcutRecordingActive: NonNullable<import("@zcode/shared").IPlatformService["setShortcutRecordingActive"]>;
+      onCloseActiveContextRequest: NonNullable<import("@zcode/shared").IPlatformService["onCloseActiveContextRequest"]>;
+      getWindowControlsOverlayMetrics: NonNullable<import("@zcode/shared").IPlatformService["getWindowControlsOverlayMetrics"]>;
+      onWindowControlsOverlayChanged: NonNullable<import("@zcode/shared").IPlatformService["onWindowControlsOverlayChanged"]>;
+      getZCodeStdioTapDevState: NonNullable<import("@zcode/shared").IPlatformService["getZCodeStdioTapDevState"]>;
+      connectRemote: NonNullable<import("@zcode/shared").IPlatformService["connectRemote"]>;
+      requestSourceSettingsAttachment?(sourceServerId: string): Promise<{ attachmentId: string }>;
       /** 取消当前窗口尚未建立完成的远程连接 */
       cancelPendingRemoteConnection?(requestId?: string): Promise<void>;
       /** 绑定远程 logical session 的 canonical workspace context */
-      bindRemoteWorkspaceSessionContext?(context: {
-        remoteSessionId: string;
-        workspacePath: string;
-        workspaceIdentity?: string;
-      }): Promise<BrowserGuestAttachResult>;
+      bindRemoteWorkspaceSessionContext?: NonNullable<import("@zcode/shared").IPlatformService["bindRemoteWorkspaceSessionContext"]>;
       /** 为当前 workspace 开启 Web 远程控制 */
       startWebRemoteControl(
         context: WebRemoteControlContext,
       ): Promise<WebRemoteControlStartOperationResult>;
-      /** 清除旧配对材料并重新生成 Web 远程控制二维码 */
       refreshWebRemoteControlPairing(
         context: WebRemoteControlContext,
       ): Promise<WebRemoteControlStartOperationResult>;
@@ -111,6 +109,8 @@ declare global {
       log(level: "info" | "warn" | "error", args: unknown[]): void;
       /** 打开系统目录选择框，返回选中路径或 null */
       selectDirectory(): Promise<string | null>;
+      /** 打开系统多目录选择框；取消时返回空数组 */
+      selectDirectories(): Promise<string[]>;
       /** 打开系统文件选择框，返回选中文件路径或 null */
       selectFile(): Promise<string | null>;
       /** 打开系统多文件选择框，返回选中文件路径；取消时返回空数组 */
@@ -131,10 +131,6 @@ declare global {
       onRemoteConnectionLog(handler: (entry: RemoteConnectionRuntimeLog) => void): () => void;
       /** 订阅远程 workspace session 关闭事件，返回 disposer */
       onRemoteSessionClosed(handler: (event: RemoteSessionClosedEvent) => void): () => void;
-      /** 订阅 Bot 触发的远程 workspace 重连成功事件，返回 disposer */
-      onBotRemoteWorkspaceReconnected(
-        handler: (event: BotRemoteWorkspaceReconnectedEvent) => void,
-      ): () => void;
       /** 检查目录是否已在其他窗口打开 */
       activateOrSetWorkspace?(path: string): Promise<{ activated: boolean }>;
       /** 同步当前窗口所有 tab 的 workspace 路径到 main 进程 */
@@ -142,7 +138,6 @@ declare global {
       /** 同步当前窗口里 Web 远程控制允许切换的 workspace */
       syncWebRemoteControlWorkspaces?(workspaces: WebRemoteControlWorkspaceTarget[]): void;
       /** 同步当前窗口里 Web 远程控制可展示的 task 快照 */
-      syncWebRemoteControlTasks?(tasks: WebRemoteControlTaskTarget[]): void;
       /** 注册手机端 Web 远控请求重连 workspace 的回调 */
       onWebRemoteControlReconnectWorkspace?(
         handler: (
@@ -260,15 +255,7 @@ declare global {
         path?: string;
         error?: string;
       }>;
-      browserViewAttachGuest?(payload: {
-        key: string;
-        webContentsId: number;
-        active?: boolean;
-        workspaceKey?: string;
-        remoteSessionId?: string;
-        sessionId?: string;
-        residencyGeneration?: number;
-      }): Promise<void>;
+      browserViewAttachGuest?: NonNullable<import("@zcode/shared").IPlatformService["browserViewAttachGuest"]>;
       /** 重建 `<webview>` 前让 main 精确断开旧 guest 的 CDP。 */
       browserViewDetachGuest?(payload: { key: string; webContentsId: number }): Promise<boolean>;
       browserViewCloseTab?(payload: BrowserViewCloseTabRequest): Promise<void>;
@@ -298,7 +285,7 @@ declare global {
         runningAgentSessionCount: number;
       }>;
       /** 获取已安装的编辑器/终端列表（含图标） */
-      getInstalledEditors(): Promise<EditorInfo[]>;
+      getInstalledEditors(filePath?: string): Promise<EditorInfo[]>;
       /** 按兼容 bundle id 或结构化 locator 获取系统应用图标 */
       getApplicationIcon?(
         request: string | ApplicationIconRequest,

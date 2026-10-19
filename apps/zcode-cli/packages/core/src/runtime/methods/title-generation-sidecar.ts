@@ -16,8 +16,20 @@ import type { AgentRuntimeInternal } from "../internal.js";
 import { createRefreshRuntimeHeadersBeforeModelAttempt } from "./model-runtime-headers.js";
 import { recordModelUsageFact } from "./usage-observability.js";
 import { createRuntimeModel } from "./runtime-model.js";
+import type { ModelRequestDependencies } from "@zcode/contracts";
 import { cloneModelSelection } from "../model-selection.js";
 import { auxiliaryModelOptions } from "../../model/auxiliary-model-options.js";
+
+export interface TitleModelContext {
+  selection: ModelSelection | undefined;
+  requestDependencies?: ModelRequestDependencies;
+  release(): void;
+}
+
+export function retainTitleModelContext(runtime: AgentRuntimeInternal): TitleModelContext {
+  const selection = runtime.config.titleGeneration?.modelSelection ?? runtime.getSessionModelSelection();
+  return { selection: selection && cloneModelSelection(selection), release() {} };
+}
 
 export const SESSION_TITLE_QUERY_SOURCE = "session_title";
 export const GOAL_SUMMARY_TITLE_QUERY_SOURCE = "goal_summary_title";
@@ -56,13 +68,15 @@ export async function generateTitleCandidate(
     messageID?: MessageId;
     querySource: string;
     traceContext: TraceContext;
+    modelContext?: TitleModelContext;
   },
 ): Promise<{ modelSelection: ModelSelection; title: string; traceContext: TraceContext } | null> {
-  const requestedModelSelection =
-    this.config.titleGeneration?.modelSelection ?? this.getSessionModelSelection();
+  const context = options.modelContext ?? retainTitleModelContext(this);
+  const requestedModelSelection = context.selection;
   if (!requestedModelSelection) return null;
   const baseModel = createRuntimeModel(this, {
     selection: requestedModelSelection,
+    requestDependencies: context.requestDependencies,
   });
   const model = baseModel.bind(auxiliaryModelOptions(baseModel));
   const modelSelection = cloneModelSelection(requestedModelSelection);

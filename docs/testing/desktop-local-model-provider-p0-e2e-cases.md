@@ -9,6 +9,7 @@
 
 ## Todo95：未知型号仅配置推理档位
 
+- Todo147 扩展：同一 pending 用例在添加未知型号时检查推荐窗口 `1000000`、输出上限 `128000`；保存后确认这两项未写入 Personal。继续使用原连接测试预算，不因推荐上限提高而扩大实际探测请求。三协议、已知型号覆盖和别名顺序由配置层测试覆盖；不新增 UI 状态或主题布局。
 - Pending：`settings/manual-review/pending/provider-reasoning-fallback.test.ts`。仅本地 `desktop-continuous`；不代表手机或远端实机证明。
 - Setup：独立 loopback Chat Completions synthetic SSE 服务，空模型自定义 Provider；不写个人推理 Map，不用账号或真实额度。
 - Action：真实设置页添加未知 `E2E_T95_UNKNOWN`，仅把默认 disabled 档位改成 high，保留智能配置；保存后点击行内连接测试。
@@ -1341,12 +1342,8 @@ MR !2618 CR-01：MP-UI-06 使用真实模型保存成功反馈，分别注入长
 | Provider fixture | 无；只 seed 本地设置和 provider 文件，不发送模型请求            |
 | 当前状态         | 已人工评审并转正                                                |
 
-### 测试场景
 
-第一段从新增自定义供应商入口验证 footer：提示与 Info 图标在左，添加按钮在右，二者上方有语义分割线；
-未添加模型时按钮保持禁用。第二段 seed 一个只有单模型的自定义供应商，通过真实设置页删除最后一个模型，
-验证编辑器保留虚线空状态与 Add Model 操作。Coding Plan 的模型由登录态自动同步、设置页不可手工删除，
-其 zero-model 连接判定由 resolver 单测覆盖，不伪造不存在的 E2E 操作。
+
 
 ### 验证条目
 
@@ -1360,8 +1357,6 @@ MR !2618 CR-01：MP-UI-06 使用真实模型保存成功反馈，分别注入长
 ### 剪枝
 
 - provider 请求、聊天首发与持久化由 P0-02 覆盖，本 case 不重复发请求。
-- Z.ai/BigModel、Start/Coding 的等价 resolver 分支由单元测试做 pairwise 覆盖；Coding Plan 列表由服务端
-  同步且只读，不把自定义供应商的删除操作错误套到套餐页。
 - theme、locale 与 mobile 不改变连接判定；语义 token、双语言文案和响应式 class 由单元测试覆盖。
 
 ### 实际验证

@@ -219,8 +219,7 @@ Subagent 设置页只读取目标 Environment 的 Model Selection View。远端 
 7. 对 App metadata 未声明 reasoning 的 `claude-opus-4-8`，主输入框与 builtin/custom Subagent 都必须展示 runtime catalog 的 `low/medium/high/xhigh`，并通过 raw provider request 与 model-io 验证父子 effort 隔离。
 8. Settings 只选择 reasoning 模型但不操作 effort 控件时，核对 builtin state 不新增 thought-level key，custom Markdown frontmatter 不新增 `thoughtLevel`；同时确认控件仍展示目标模型的 catalog 默认档位。
 9. Custom 保存模型 A 与 effort 后，从模型供应商设置删除 A，再重新打开该 Subagent 编辑页；核对模型控件显示“选择模型”提示、下拉菜单不含 A、effort 控件隐藏、保存不可用，并确认原 Markdown 未被自动改写。
-10. BigModel 登录后 workspace catalog 尚缺 Coding Plan 时，先确认 effort 能由 App metadata 立即展示，再独立等待后台对账把目标模型及 `high` / `max` 写入 runtime catalog。
-11. 用户领取 Start Plan 并进入 Subagents 后，模型分组先显示 Start；用户到模型供应商设置切回 Individual，再次进入 Subagents 后，模型分组必须显示 Individual 候选。UI 单测补充验证同一连接键链路切到 Team。
+
 
 Settings CRUD 使用独立的无 provider-request E2E 验证保存产物，不与上述 child runtime 场景串成同一个用例：
 

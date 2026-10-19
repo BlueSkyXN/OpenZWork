@@ -90,7 +90,6 @@
 | --- | --- | --- |
 | Bootstrap wire、来源装配、Registry、runtime headers | 6 文件 39 项通过；含新增 20 项最终请求测试 | `/tmp/todo135-bootstrap-tests.log` |
 | Adapter Header、鉴权与绑定、模型请求 | 5 文件 55 项通过；含新增 2 项合并/绑定测试 | `/tmp/todo135-adapters-tests.log` |
-| 既有手动 Coding Plan 安全校验及端点路由 | 2 文件 47 项通过 | `/tmp/todo135-signing-tests.log` |
 | Desktop 环境、远程启动命令、OpenRouter 匹配 | 3 文件 43 项通过，4 项 macOS 专属用例在 Linux 跳过 | `/tmp/todo135-source-tests.log` |
 | 根类型、Bootstrap 类型、Adapter 构建 | 通过 | `/tmp/todo135-typecheck.log`、`/tmp/todo135-bootstrap-typecheck.log`、`/tmp/todo135-adapters-build.log` |
 | 新增/修改测试独立严格类型检查 | 通过，使用 NodeNext / ES2023 / strict | `/tmp/todo135-test-types.log`、`/tmp/todo135-adapter-test-types.log` |

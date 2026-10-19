@@ -80,7 +80,6 @@ Expected: PASS.
 - Modify: `packages/ui/src/settings/ModelProviderSection.tsx`
 - Modify: `packages/ui/src/chat-input-toolbar/modelSelection.ts`
 - Modify: `packages/ui/src/ChatInputToolbar.tsx`
-- Test: `packages/ui/test/modelProviderCodingPlan.test.ts`
 - Test: `packages/ui/test/chatInputToolbarModelGroups.test.ts`
 
 - [ ] **Step 1: Write failing UI pure tests**
@@ -89,8 +88,7 @@ Add tests for display order sorting, settings navigation order persistence input
 
 - [ ] **Step 2: Run focused UI tests and verify failure**
 
-Run: `pnpm vitest run packages/ui/test/chatInputToolbarModelGroups.test.ts packages/ui/test/modelProviderCodingPlan.test.ts`
-Expected: FAIL because UI still uses string model lists and no display order.
+
 
 - [ ] **Step 3: Implement UI changes**
 
@@ -98,8 +96,7 @@ Add display order hook state to model provider hooks, use `@dnd-kit` sortable ha
 
 - [ ] **Step 4: Run focused UI tests and verify pass**
 
-Run: `pnpm vitest run packages/ui/test/chatInputToolbarModelGroups.test.ts packages/ui/test/modelProviderCodingPlan.test.ts`
-Expected: PASS.
+
 
 ### Task 4: Documentation And Required Verification
 
@@ -113,7 +110,6 @@ Record local China catalog source, future CDN migration point, v2 store migratio
 - [ ] **Step 2: Run code verification**
 
 Run:
-- `pnpm vitest run packages/shared/test/zcodeProtocol.test.ts packages/services/test/modelProviderService.test.ts packages/ui/test/chatInputToolbarModelGroups.test.ts packages/ui/test/modelProviderCodingPlan.test.ts`
 - `pnpm typecheck`
 - `pnpm lint`
 

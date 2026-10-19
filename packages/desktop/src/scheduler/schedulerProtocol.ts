@@ -15,6 +15,9 @@ export type SchedulerToMainMessage =
       mode?: string;
       workspacePath: string;
       workspaceIdentity?: string;
+      projectId?: string | null;
+      hostId?: string;
+      additionalDirectories?: string[];
     }
   | {
       type: "scheduler-log";

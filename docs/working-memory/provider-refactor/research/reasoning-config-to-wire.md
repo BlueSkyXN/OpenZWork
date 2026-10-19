@@ -60,7 +60,6 @@ openai-responses          <-> openai
 openai-chat-completions   <-> openai-compatible
 ```
 
-内置 Provider 进入 `ModelProviderConfig` 时通常也同时填充 `apiFormat` 和 `defaultKind`。硬编码 Start Plan 直接写入这对值；远端 builtin schema 通常先给出 `primaryKind`，加载时再派生 `apiFormat`。
 
 在当前三种协议下，这些字段没有表达独立信息。运行态协议同时允许 `kind` 和 `apiFormat`，却没有从类型上排除不一致组合。拟定的演进方向是让 `apiFormat` 成为配置和协议中的单一事实；Adapter factory 内部可以继续使用自己的实现枚举，但该枚举不再进入 Provider Config 或跨进程协议。这个方向还需要在实施前验证 Standalone CLI 的 `provider.kind` 迁移，以及一个 Provider 存在多个 endpoint 时如何显式选择当前协议。
 
@@ -277,7 +276,6 @@ App 向 zcode-cli 投影当前 transport 时，只取相应 kind 的 patch。假
 }
 ```
 
-普通 App 持久配置会清掉这些 patch，但内置 Coding Plan、Start Plan 和远端 client config 可以在内存中携带完整 `ModelProviderReasoningSpec`，再经过同一个协议投影函数进入 zcode-cli。
 
 Plan 的登录态、权益判断、运行时 API Key 和一次性安全校验 Header 不参与 reasoning 方言选择。它们先形成当前可调用的 Provider；reasoning 仍由这个 Provider 的 `kind` 与模型定义决定。当前 ZCode 内置 Plan 主要按 Anthropic runtime 投影，因此 GLM 等模型会走 `anthropic.effort` / `anthropic.thinking` 路径。请求前刷新 Token 或 Header 只改变鉴权材料，不改变已经选择的 reasoning level。
 
@@ -907,28 +905,6 @@ value     = { level: "high" }
 这份全局值参与新 Runtime 或临时 Turn 模型的首选档位。Session 本身仍然持久化自己的 `thoughtLevel`。
 
 当前一次性 Prompt CLI 没有独立的 `--reasoning` / `--thought-level` 参数。调用方没有通过 Runtime config 明确提供 `modelProviderOptions` 时，启动装配会读取上面的全局值；已有 Session 的恢复链路还会用 Session 自己保存的 `thoughtLevel` 恢复当前选择。
-
-### Automation、Bot 与闲时任务
-
-
-闲时任务还携带一份完整的 `turnRuntimeModel`：
-
-```ts
-{
-  model: { providerId, modelId },
-  thoughtLevel,
-  provider: {
-    kind,
-    baseURL,
-    apiKey,
-    models: [...]
-  }
-}
-```
-
-Host 把临时 Provider 作为 turn overlay 注入，CLI 再生成 `TurnExecutionModel`，其中已经包含 `modelRef` 和 `modelProviderOptions`。这个对象是当前最接近未来 ModelBinding 输入的结构。
-
-这里存在一个值得迁移时修正的差异：`ZCodeModelRuntimeConfig.thoughtLevel` 会随闲时任务传入，但当前 `resolveTurnExecutionModel()` 解析参数时读取的是 CLI 全局 reasoning preference，并没有直接把 `runtimeModel.thoughtLevel` 作为 preferred level 传入。只有两者恰好一致，或模型默认值一致时，本轮实际档位才与 Host 指定值一致。
 
 ## Model Step 如何使用参数
 

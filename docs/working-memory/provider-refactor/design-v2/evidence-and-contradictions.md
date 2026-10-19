@@ -42,14 +42,10 @@
 
 | staging 提交                                                                         | 它证明的有效问题                                                           | 对 V2 的裁定                                                                                                                                                              |
 | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `1ccf6f906e fix(model-provider): honor selected Start Plan runtime`                  | 同一 Family 同时具备 Start 与 Coding Plan 时，用户显式选择必须进入真实执行 | 产品不变量有效；旧 `modelProviderService` 修法不可搬。新架构应由 Account Connection Resolver 把未选 Provider 置为 unavailable，并通过 Account Overlay 只启用所选 Provider |
-| `b89263389e fix(model-provider): decouple start plan selection`                      | 套餐选择、Family 导航和模型候选不应互相错误推断                            | 问题有效；归入 Account Connection、Settings View 和独立套餐投影，不恢复旧 family runtime filter                                                                           |
 | `198a013a95 fix(model-provider): avoid boundary token budget in connectivity probes` | 连通性探测使用极小 token 边界值会造成假失败                                | 连接测试产品行为有效，但旧 connectivity helper 已删除；应在正式 ModelFactory/Adapter 测试链中独立核对，不恢复旧服务                                                       |
-| `08862385c3 fix(ui): clarify pending start plan entitlements`                        | pending、unknown、unavailable 不能混为“未分配”                             | 状态语义有效；Todo 32 进一步规定套餐状态不能决定 Effective Provider/模型配置区是否存在                                                                                    |
 
-当前 `AccountProviderConnectionResolver` 已按 Family 的显式 selection 只把所选模式解析为 available；
-`resolveAccountProviderConfigs` 再将其投影为 `access.entitled`，Start Plan 同时投影账号模型集合。这个落点替代旧 Registry
-投递筛选。
+
+
 
 ## 3. 当前事实的主要代码证据
 
@@ -64,7 +60,6 @@
 | Personal 持久化、远端 Built-in 与 LKG      | `packages/provider-node/src/*`                                                    | `provider-node-runtime.test.ts`、`zcode-builtin-release.test.ts` |
 | ModelFactory 固定完整执行事实              | `apps/zcode-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts`    | Bootstrap、Core、Adapter Provider 定向测试                       |
 | Active Model 使用同结构 properties         | CLI Contracts Model 与 Adapter/Core 消费链                                        | Model input/output、媒体、Compact/Subagent 定向测试              |
-| 设置页经 Facade 读写                       | `packages/provider/src/facades.ts`、UI `useProviderSettingsView.ts`               | Provider settings / coding plan UI tests                         |
 | Built-in 正式内容                          | `config/provider/zcode-builtin.json`                                              | `packages/provider-node/test/zcode-builtin-integrity.test.ts`    |
 
 ## 4. 矛盾表述与裁定
@@ -98,30 +93,11 @@
 **当前事实**：`composeEffective()` 保持 Built-in 顺序，最后放 Personal 精确规则。
 **裁定**：有序 Overlay；Personal 只允许精确 `providerId + modelId`，具有最高优先级。
 
-### C05. Account Config 是否拥有 `accessId/productId/team scope`
 
-**历史表述**：Research、Todo 07、Todo 20 和早期架构评审曾把 `accessId` 作为 Config 或 Model 固定字段，并把商品/团队
-Scope 一并讨论。
-**后续裁决**：Todo 24 删除 `accessId`，Todo 26 又删除静态 `planKind` 和伪通用协议字段。
-**当前事实**：Account Provider Config Schema 只允许 `access.entitled` 与 `builtinModelIds`。账号协议、Subscription、Usage、
-Request Auth 中仍合法存在 `planKind/productId/organizationId/projectId`。
-**裁定**：这些字段可以属于账号/套餐/请求上下文，但不得回流 Provider Config、Registry Model 静态事实或 Selection。
 
-### C06. Account 是否应该影响 Config
 
-**历史摇摆**：讨论中一度倾向“所有账号事实都不应与 Config 有关”。多方确认后又明确 Start Plan 模型因账号而异，
-账号 Provider 权益也必须参与最终解析。
-**当前事实**：Account 是正式第三层 Provider Overlay；只投影 `access.entitled` 和账号接口明确返回的
-`builtinModelIds`。
-**裁定**：Account 必须影响 Effective Provider，但不能成为静态 Model Properties、Endpoint 或动态凭据的来源。
 
-### C07. 是否只有 Start Plan 返回模型集合
 
-**历史疑问**：早期曾假设所有账号套餐都可能返回模型，或把 `show_name` 回退成 Model ID。
-**当前事实**：Account Resolver 只消费账号接口明确返回的 `models`；没有动态成员集合时沿用 Built-in。
-Individual/Team/Start 的套餐资格统一写入 `access.entitled`，不修改顶层 `enabled`。
-Start Plan 解析只接受上游明确模型事实，不应让展示文案成为 Registry 身份。
-**裁定**：账号模型子集是 Start Plan 特例，不推广为所有 Account Provider 的通用动态成员协议。
 
 ### C08. Access 类型：`request-auth`、`execution-provided` 还是账号专用类型
 
@@ -129,11 +105,8 @@ Start Plan 解析只接受上游明确模型事实，不应让展示文案成为
 泛化。Todo 26 明确取代 Todo 24。
 **裁定**：旧两种 Access 和 `challenge/requestSigning/executionProtocol` 均为已退出中间设计。
 
-### C09. `family member`、`plan kind`、`group`、`mode`
 
-**历史冲突**：讨论中曾尝试同时保留 family member 与 plan kind，或用 Provider group 推导访问方式。
-**当前事实**：`group` 负责静态产品分组；`zhipu-account.family` 负责 Z.ai/BigModel；`mode` 负责 API Key、Start、
-**裁定**：三者正交，不能互相推导；账号运行协议可继续使用自己的 `planKind` 命名。
+
 
 ### C10. Provider 与 Model 是否都有 Visibility
 
@@ -150,12 +123,8 @@ Visibility”措辞。
 **当前事实**：`visibility=hidden` 只影响普通 View；Registry 精确查找仍可执行，但完整性要求不放宽。
 **裁定**：删除 `executionOnly` 和 trusted 概念；内部产品入口用固定 Provider ID 精确选择。
 
-### C12. Enabled、完整性、Executable、Selectable
 
-**历史混淆**：旧服务常用一个 `enabled` 或 availability 同时承担配置完整、账号可用、选择可见和执行资格。
-**当前事实**：Resolver 分开保存 `enabled`、issues、`executable`、`selectable`；Settings 保留不完整项，Registry 只收
-可执行项。
-**裁定**：四个事实正交。配置不完整可以保存但不可用；账号套餐状态不能把 Provider 配置从设置页抹掉。
+
 
 ### C13. Built-in 与 Personal 模型重名
 
@@ -208,12 +177,8 @@ PDF 继续运行 gating，Audio 尚无内容编码入口。
 精确解析；套餐状态不再控制配置区和模型列表是否存在；`not-allocated` 与 `credential-unavailable` 成为显式页面状态。
 **裁定**：这一边界已进入现行事实；套餐投影不能再反向成为 Provider 配置权威。
 
-### C20. Endpoint/API Schema 在 Account 页面是否展示
 
-**历史冲突**：通用设置设计要求 Built-in Endpoint/Schema 可见但只读；Todo 32 最新裁决规定 Individual/Team Coding Plan
-页面隐藏它们。
-**裁定**：一般 Built-in 仍展示只读连接事实；Individual/Team 是产品展示例外。字段从未从 Effective Config 删除，Runtime
-继续使用。
+
 
 ### C21. 设置反馈位置
 
@@ -247,15 +212,15 @@ PDF 继续运行 gating，Audio 尚无内容编码入口。
 
 **后续用户裁决（2026-09-16）**：保留两家 Start ID、统一名称和各自品牌 logo，放现有智谱分组；详情只去掉连接／断开。保留 current，允许 Start 与当前付费连接并存；Start 严格按原身份解析，付费间保持映射；JWT 复用登录，账号竞态沿用现状。用户明确“不迁移，加一个优化”：只在用户提交／创建保存时推荐有额度且思考兼容的同模型 Start；包括 Subagent 显式模型保存，最终排除立即运行。偏好跨入口、重启及同 Host 手机生效，不做账号云同步。失效时保留额度反馈，全局连接通知只处理付费套餐。
 
-**实施前代码／测试事实**：current、公共账号映射和 Start 请求鉴权原先有旧连接约束，设置导航有连接副作用。普通 Session 在提交开始执行时写回本次选择，草稿在 accepted 后写回；因此“所有旧会话长期残留 Start”不成立。Automation 仅固定 run，显式 Subagent 执行不改长期配置；无迁移不等于旧有效行为完全不变。I27/MP-R03 实际注入的是 Recent，断言回退 Configured Default，不能用旧矩阵的 Start→Team 描述证明普通 Session 需要迁移。详见 [调研](../research/todo154-start-plan-independence-impact.md)。
 
-**最终裁定**：目标进入 Design V2 §4.5，完整实施边界归 [Todo154](../steps/todo-154-start-plan-independent-provider.md)。保留现有数据并按新语义解析；不新增迁移机制、不重写历史、不因取消映射而偷偷选择付费模型。撤回上述扩大方案。用户随后于 2026-09-16 授权执行 Todo154 并全面 review；Todo101 其余内容继续延期。正式行为同步至 [Start 规格](../../../zai-start-plan-provider.md)。
+
+
 
 **owner 与完成条件**：Todo154 负责状态／鉴权／选模／导航、提交推荐、偏好和失效反馈的实现与桌面／手机／Worker 回归。实施前的 17 项测试只作历史证据。现已实现独立 current／JWT、Start 精确身份解析、独立导航及四类入口的提交推荐；不增加数据迁移。定向单测、Pro admin SSH Electron 实跑和 review 结果统一记录在 Todo154 §8，不把窄屏模拟等同于实体手机验证。
 
 ### C26. 审批框完全访问是否可以修改已接纳队列的权限
 
-**旧表述**：[Todo71](../steps/todo-71-persistent-composer-draft-and-submission-state.md) 和 [Todo151](../steps/todo-151-independent-plan-state-draft.md) 要求 Submission 入队后保留原配置，不因草稿或批准结果改写。
+
 
 **后续裁决（2026-09-17）**：用户明确仅权限审批框新增的“完全访问”同步当前任务、Composer 和全部待执行队列消息为 `mode=yolo`；各自 `planEnabled` 及其他字段保持。普通 Composer 菜单仍只改草稿。
 
@@ -342,9 +307,8 @@ Todo 32 已在 `e01862000f` 提交，并将文件状态更新为“已完成”�
 
 ### 6.4 非 Provider Config 的相似字段
 
-全仓仍可搜索到 `planKind`、`productId`、`modalities`、`supportsImages`、`ModelRef` 等名称。不能仅凭字符串判定回归：
 
-- 账号、Subscription、Usage 协议中的 `planKind/productId` 是合法业务字段；
+
 - legacy importer/test fixture 中的 `modalities` 是兼容输入；
 - Adapter 局部转换 helper 中的 `supportsImages` 可以是函数参数，但不得成为第二份 Active Model 能力权威；
 - CLI 历史设计/trajectory 中的 `ModelRef` 是文档残留，不是当前生产接口。

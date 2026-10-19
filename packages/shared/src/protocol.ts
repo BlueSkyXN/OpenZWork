@@ -4,6 +4,7 @@ import type { ZCodeProvider } from "./zcode-task-types-core.js";
 import type { WorkspacePurpose } from "./workspacePurpose.js";
 import type { DynamicWorkflowMode } from "./dynamic-workflow-feature.js";
 import type { EmbeddedBrowserViewportPreference } from "./browser-use/command-metadata.js";
+import type { AppToolSearchMode } from "./app-runtime-preferences.js";
 
 // ── Domain types ──
 
@@ -174,6 +175,8 @@ export type RemoteTargetSnapshot =
 export interface RemoteWorkspaceSessionSnapshot {
   /** 远程 workspace 的真实绝对路径 */
   workspacePath: string;
+  /** 用户可见的 workspace 分类；旧远端快照缺失时按 project 兼容读取。 */
+  workspacePurpose?: WorkspacePurpose;
   /** 发起远程连接时的本机 workspace 路径，仅用于 MCP filesystem 路径改写。 */
   localWorkspacePath?: string;
   /** 远程 workspace 的稳定身份键（authority + canonicalPath）。 */
@@ -274,8 +277,10 @@ export interface AppSettings {
   embeddedBrowserAllowInsecureCertificates?: boolean;
   /** 人类用户主动打开 Browser tab 时的一次性显示偏好；Agent Browser Use 不读写。 */
   embeddedBrowserViewportPreference?: EmbeddedBrowserViewportPreference;
-  /** 自动归档已完成旧任务的总开关 */
+  /** 自动归档旧会话的总开关 */
   taskAutoArchiveEnabled?: boolean;
+  /** 自动归档修复后的一次性关闭标记；只用于设置迁移，不参与归档判断。 */
+  taskAutoArchiveResetVersion?: 1;
   /** 自动归档阈值；当任务最后更新时间早于该天数时允许被归档 */
   taskAutoArchiveOlderThanDays?: number;
   /** 桌面端关闭窗口时隐藏到托盘驻留（Windows/Linux；spec：docs/desktop/linux-close-to-tray.md） */
@@ -329,6 +334,8 @@ export interface AppSettings {
   // OpenZWork 净化：不恢复 providerFamily* 四字段（官方账号/套餐域，model-provider-family 等宿主文件已删）。
   /** 新建或冷恢复 Session 是否为 Bash 注入 bfs/ugrep 增强；默认启用。 */
   nativeSearchEnhancementsEnabled?: boolean;
+  /** 新建或冷恢复时读取；已有 Runtime 保持原策略。 */
+  toolSearchMode?: AppToolSearchMode;
   /** 新建或冷恢复 Session 是否启用 Memory；默认关闭。 */
   memoryEnabled?: boolean;
   onboardingOccupation?:
@@ -348,10 +355,33 @@ export interface AppSettings {
     | "other"
     | null;
   proactiveSuggestionsEnabled?: boolean;
-  /** 本机首次引导的 UI 去重位；与远端工作区设置隔离，不包含账户/设备标识。 */
+  /** 本机首次引导的 UI 去重位；与远端工作区设置隔离。 */
   occupationOnboardingDismissed?: boolean;
-  /** 上次关闭时的完整 workspace 会话（含本地与远端 workspace） */
+  /** 新版只保存活动执行目录；不表达项目/连接成员，null 表示明确清空。 */
+  lastActiveWorkspace?: PersistedWorkspaceSessionEntry | null;
+  /** Host 从项目/本机入口派生，供旧版降级读取；新版不作为入口真相。 */
   lastWorkspaceSession?: PersistedWorkspaceSessionEntry[];
+  /** 每个 Source Server 已解析的 canonical conversation backing workspace。 */
+  remoteConversationWorkspaceBySourceServerId?: Record<
+    string,
+    {
+      workspacePath: string;
+      lastResolvedAt: number;
+    }
+  >;
+  /** R3 控制端已识别的 Source Server；运行态仍由远端 Server 权威提供。 */
+  sourceServers?: import("./source-server/contracts.js").SourceServerRecord[];
+  /** R3 到达 Source Server 的线路；只保存 credential key，不保存 secret。 */
+  connectionProfiles?: import("./source-server/contracts.js").ConnectionProfile[];
+  /** R3 workspace 打开历史；连接线路与 workspace 实体分离。 */
+  sourceServerWorkspaceHistory?: import("./source-server/contracts.js").SourceServerWorkspaceHistoryEntry[];
+  /** 桌面端启动时是否执行 Source Server 静默重连；缺失按 true 兼容旧设置。 */
+  remoteStartupAutoReconnectEnabled?: boolean;
+  sourceServerDirectoryMigrationVersion?: 1;
+  /** 旧客户端只接受 2；保留回滚兼容，新介绍不使用该字段判断已读。 */
+  remoteBoundaryOnboardingVersion?: 2;
+  /** 仅表示用户明确确认持续运行介绍。 */
+  remoteBoundaryIntroAcknowledgedVersion?: 1;
   /** 上次关闭时激活的 tab 索引 */
   lastActiveTabIndex?: number;
   /** 每个 workspace 的最后活跃 taskId，下次打开自动恢复 */

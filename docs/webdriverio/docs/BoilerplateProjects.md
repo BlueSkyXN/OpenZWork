@@ -69,7 +69,6 @@ This boilerplate project has WebdriverIO 9 mobile tests with Cucumber, TypeScrip
       - Easy platform switching
     - Example of Directory Structure for JavaScript / TypeScript. Below is for JS version, TS version has smae structure as well.
 
-## [amiya-pattnaik/wdio-testgen-from-gherkin-js](https://github.com/amiya-pattnaik/wdio-testgen-from-gherkin-js)
 ## [amiya-pattnaik/wdio-testgen-from-gherkin-ts](https://github.com/amiya-pattnaik/wdio-testgen-from-gherkin-ts)
 Automatically generate WebdriverIO Page Object classes and Mocha test specs from Gherkin .feature files — reducing manual effort, improving consistency, and speeding up QA automation. This project not only produces codes compatible with webdriver.io but also enhances all functionalities of webdriver.io. We have created two flavours one for JavaScript uses and other for TypeScript users. But both project works in the smae way.
 

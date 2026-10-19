@@ -106,7 +106,6 @@ ZCode 应把 create/update 都归入 `workspace` side effect，并显式声明�
 - `secret_detected`
 - `io_error`
 
-## ZCode 设计结论
 
 ## 实现状态（2026-05-08）
 

@@ -5,6 +5,7 @@ import { ConnectedBotGroupDeliveryAction } from "@/v4/BotGroupDeliveryAction.js"
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
+import { type ZCodeApiRetryStatus } from "@zcode/shared";
 import {
   TID_CHAT_ASSISTANT_HISTORY_CONTENT,
   TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
@@ -12,14 +13,12 @@ import {
   TID_CHAT_LOADING,
   TID_V4_ROW,
   testId,
-  type ZCodeApiRetryStatus,
-} from "@zcode/shared";
+} from "@zcode/shared/test-ids";
 import type {
   ApiRetryState,
   AttachmentRef,
   CommandAck,
   ConversationRowTarget,
-  WorkflowNotificationMeta,
 } from "@zcode/shared/zcode-protocol-v4";
 import { ChatLoading } from "@/components/ai-elements/chat-loading.js";
 import { ChatApiRetryStatus } from "@/chat-input-toolbar/display.js";
@@ -56,7 +55,11 @@ import {
 } from "@/v4/conversationAssistantWorkItems.js";
 import { ConversationAgentToolCallRow } from "@/v4/ConversationAgentToolCallRow.js";
 import { ConversationFileSummaryPanel } from "@/v4/ConversationFileSummaryPanel.js";
-import { WorkflowNotificationToolRow } from "@/v4/WorkflowNotificationToolRow.js";
+import {
+  WorkflowNotificationToolRow,
+  workflowRowNotification,
+  type WorkflowRowNotification,
+} from "@/v4/WorkflowNotificationToolRow.js";
 import { ConversationWorkflowDigests } from "@/v4/ConversationWorkflowDigests.js";
 import { ConversationWorkflowCompletion } from "@/v4/ConversationWorkflowCompletion.js";
 import { resolveWorkflowTurnDigests } from "@/v4/workflowTurnDigests.js";
@@ -181,10 +184,7 @@ function ConversationToolGroupRow({
   item,
   context,
 }: {
-  item: Extract<
-    ConversationAssistantWorkRenderItem,
-    { kind: "executeGroup" | "changesGroup" }
-  >;
+  item: Extract<ConversationAssistantWorkRenderItem, { kind: "executeGroup" | "changesGroup" }>;
   context: ConversationRowRenderContext;
 }) {
   return (
@@ -439,11 +439,7 @@ function AssistantHistoryStatus({
           data-history-open={String(open)}
           className="group/history-message inline-flex max-w-full items-center gap-2 text-left text-ui-base text-foreground-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-input-border-focused)]"
         >
-          <span
-            className={cn("truncate")}
-          >
-            {label}
-          </span>
+          <span className={cn("truncate")}>{label}</span>
           {!segment.assistantHistoryDefaultOpen ? (
             <ChevronRightIcon
               aria-hidden
@@ -588,11 +584,7 @@ function ConversationWorkSegmentFlow({
         );
       })}
       {shouldShowHistoryStatus && firstAssistantFlowItemIndex < 0 ? (
-        <AssistantHistoryStatus
-          segment={segment}
-          sourceCommandIds={sourceCommandIds}
-          open={open}
-        />
+        <AssistantHistoryStatus segment={segment} sourceCommandIds={sourceCommandIds} open={open} />
       ) : null}
     </Collapsible>
   );
@@ -771,10 +763,9 @@ function resolveBackgroundResultTitle(unit: ConversationTurnRenderUnit): string 
  */
 function resolveWorkflowNotification(
   unit: ConversationTurnRenderUnit,
-): WorkflowNotificationMeta | undefined {
+): WorkflowRowNotification | undefined {
   if (unit.header?.origin !== "backgroundResult") return undefined;
-  const originMeta = unit.header.originMeta;
-  return originMeta?.backgroundSource === "workflow" ? originMeta.workflowNotification : undefined;
+  return workflowRowNotification(unit.header.originMeta);
 }
 
 function ConversationBackgroundResultWork({

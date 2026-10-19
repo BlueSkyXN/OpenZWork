@@ -121,10 +121,8 @@ ZCode 产品下发的 Built-in 层；不能简化成会与 Account Built-in 混�
 
 旧名字出现就说明切换未完成，不是需要保护的兼容场景。
 
-### 2.4 范围排除
 
-`Official MCP`、Official Plugin/Marketplace、Official CUA、官网或产品文案中的 `official` 具有独立、正确的
-业务含义，不属于 Provider Config 命名链，不得机械替换。
+
 
 ## 3. 当前事实与影响范围
 
@@ -282,8 +280,6 @@ zcode-provider/official.json
 isOfficial（仅 Provider Settings Built-in 标记语义）
 ```
 
-验收时用限定目录和语义过滤，避免误报 Official MCP、Plugin、CUA 或普通产品文案。另执行 `dep:refs` 检查旧
-exports 没有通过 barrel 残留。
 
 ### 7.2 自动验证
 

@@ -17,9 +17,7 @@ Provider 配置体系的唯一目的，是把用户对某个模型 API 的选择
 - 一次提交最终使用哪个 Provider、Model 和 Options；
 - 配置更新、账号刷新和执行并发时，哪一份事实生效。
 
-它不是统一凭据中心，也不是最终授权方。API Key Provider 可以直接保存 API Key；账号类型的 Provider Config
-只描述静态访问类型，登录态 Token、Team Project Key、Start Plan JWT 和闲时 Ticket 等动态材料由账号与执行期服务取得。
-模型服务端仍然对每次请求作最终鉴权和授权裁决。
+
 
 ## 2. 核心原则
 
@@ -104,6 +102,12 @@ Personal Config 只允许具体 `providerId + modelId` 的精确覆盖，不再�
 
 ### Match 配置维护原则（2026-09-10 裁决）
 
+- 2026-10-14：通用 Model 基线的 `contextWindow` 为 `1000000`、`maxOutputTokens.max` 为 `128000`；后者是能力上限，不是请求默认输出长度。已知型号的明确差异继续覆盖，Personal 仍最后生效。
+- Model / Model+API 按有限维护集合使用简单前后缀通配（例如 `.*deepseek-flash.*`），不要求后缀分隔符或日期格式；保留字面量转义和有语义的型号分组。通用族在前，具体变体在后，不增加运行时自动排序。Site URL 与 Template/Provider 精确身份规则保持不变。
+- 删除仅为 `[1m]` 设置窗口和仅为预览别名设置 128000 输出上限的两条 Model 规则。与新默认值重复且没有前层差异需要覆盖的声明可省略；不得机械删除覆盖较小族基线的同值字段。
+- 验收覆盖生产/测试配置同源、未知模型三协议基线、前后缀别名、基础/具体变体的继承、Site 与 Personal 覆盖，以及显式请求输出长度保持原值。历史型号补全、推理协议策略和配置可视化工具不属于本次调整。
+- 已维护型号的真实差异仍优先于形式统一：GLM-4.6 的 Messages 映射以 `(?!v)` 排除视觉型号，避免简化时改写其既有协议基线。历史 `off/nothink` 恢复同时识别旧/新 matcher 的身份，但用旧 matcher 限定恢复范围；新放宽的后缀不因此获得历史别名资格，不修改用户文件。
+
 - Built-in Match 以主流配置和官方能力为依据，官方优先；不为了落后或不完整的第三方兼容实现，降低已知模型的默认能力。
 - 已知模型在相应 API Schema 下支持的能力，写入模型／模型 API 规则，沿用前后缀匹配。不能仅因为通过第三方代理访问就默认关闭；代理不支持时，用户通过具体模型的 Personal 配置覆盖关闭。
 - 官方优先不等于同品牌所有型号都支持：不同型号、API Schema 的明确支持边界必须保留，不能把某型号能力用宽泛品牌正则授予全部型号。
@@ -113,8 +117,13 @@ Personal Config 只允许具体 `providerId + modelId` 的精确覆盖，不再�
 
 ### 2.3 Builtin Provider 维护清单
 
-Builtin 的维护范围用一张简短的入口库存表表达，不在文档中重复抄写完整 Provider Config，具体内容见
-[`Builtin Provider 维护清单`](./builtin-provider-inventory.md)：
+日常维护统一从[内置 Provider 模板与模型维护](../../../builtin-provider-maintenance/README.md)进入；
+其中[当前状态](../../../builtin-provider-maintenance/current-state.md)按实际配置记录模板、完整成员和默认启停，
+[范围原则](../../../builtin-provider-maintenance/scope.md)与[配置规范](../../../builtin-provider-maintenance/configuration.md)
+承接持续维护。下方旧库存链接保留调查历史，不再作为实时配置清单。
+
+Builtin 的维护范围用入口库存表达，不在文档中重复抄写完整 Provider Config；实际成员见上方当前状态，
+原调查依据保留在[`历史维护清单`](./builtin-provider-inventory.md)。清单口径为：
 
 ```text
 供应商 | 类型 | templateId / providerId | Base URL | 产品维护模型
@@ -231,29 +240,13 @@ interface ProviderConfig {
 
 正式 Access 联合类型只有两种：
 
-```ts
-type ProviderAccessConfig =
-  | {
-      type: "api-key";
-      apiKey?: string | null;
-      apiKeyManagementUrl?: string | null;
-    }
-  | {
-      type: "zhipu-account";
-      accountType?: "zai" | "bigmodel" | null;
-      entitled?: boolean | null;
-    };
-```
-
 `group`、`accountType` 和 `mode` 不重复：
 
 - `group` 是 Provider 的静态产品分组；
 - `accountType` 是智谱账号体系的访问身份；
 - `mode` 是该账号 Provider 的访问模式。
 
-`entitled` 是当前账号是否具有该固定 Account Provider 产品资格的唯一配置事实。Provider 顶层不存在 `enabled`。
-`zhipu-account` Config 不保存账号连接 ID、商品 ID、组织/项目 Scope、Token 或请求安全校验协议。账号运行协议中仍可有
-`planKind`、`productId` 等字段，但它们属于账号、套餐或请求期上下文，不是 Provider Config Schema。
+
 
 ### 3.3 Model Config
 
@@ -386,15 +379,10 @@ Account Provider Config 是正式 Provider Overlay，但它只投影账号上游
 - Account Provider 由 Built-in 固定声明并进入对应 Family；
 - 当前账号明确拥有该产品时写 `access.entitled=true`，明确无资格时写 `false`；
 - Individual / Team 默认沿用 Built-in 模型成员；
-- Start Plan 的模型因账号而异，成功时使用接口返回的模型集合约束 `builtinModelIds`；
-- Start Plan 没有可靠模型集合时保留上一份可用 Account Overlay；首次无可用事实时 fail-closed；
 - 临时查询失败的 `unknown` 保留上一份 Account Overlay，避免抖动；首次无历史事实时 fail-closed；
 - 动态凭据不写入 Account Provider Config。
 
-Account State 的可选 `unavailableReason` 随同一份快照传递，Host 与 CLI 的严格协议复用 shared 原因 schema。
-个人套餐服务端明确无权益显示未开通；已登录但获取 Key 失败显示获取失败并复用手动刷新重试，不能仅凭缺 Key
-推断 OAuth 失效或强制重新登录。Z.ai 与 BigModel 使用一致分类。原因只属于运行态事实，不写 Provider Config；
-具体裁决与验证见 [Todo114](../steps/todo-114-account-status-sync-and-key-retry.md)（上游原 Todo105）。
+
 
 Account 与 Built-in revision 必须配对。Built-in 更新而 Account 仍基于旧 revision 时，Registry 继续服务上一份完整快照，
 等待 Account Source 重算后原子发布，不能发布“新 Built-in + 旧 Account”的中间态。
@@ -405,8 +393,7 @@ Account 与 Built-in revision 必须配对。Built-in 更新而 Account 仍基�
 套餐、额度、连接错误和购买状态是独立产品投影，只能控制状态卡及相应操作，不能决定 Effective Provider 配置区、
 模型列表或模型编辑入口是否存在。
 
-Individual / Team Coding Plan 可以在产品 UI 中隐藏 Endpoint 和 API Schema，但这些字段仍完整存在于 Effective
-Provider Config，并被 Registry、ModelFactory 和 Runtime 消费。隐藏是展示决策，不是删字段后的 Account DTO。
+
 
 这项页面收口已由 Todo 32 完成：Team / Individual 详情按 `providerId` 从 Provider Settings View 精确解析；套餐状态卡
 不再控制 Provider 配置区和模型列表是否存在；页面隐藏 Endpoint/API Schema 时不删减 Effective Provider Config。
@@ -427,7 +414,7 @@ Provider Config，并被 Registry、ModelFactory 和 Runtime 消费。隐藏是�
 
 普通 Session／草稿已有提交写回，Automation／显式 Subagent 长期配置不一定回写。不迁移是已确认的新行为选择，不表示所有旧配置的有效结果都不变；具体证据与撤回的全量迁移推断见 [C25](./evidence-and-contradictions.md#c25-start-独立-provider-与现行单连接语义)。
 
-本节目标已按 2026-09-16 的实施授权落地。完整按钮语义、入口矩阵、状态归属与验证证据由 [Todo154](../steps/todo-154-start-plan-independent-provider.md) 维护。Start 在共用 node facade 中按 ordinary 精确解析；推荐复用 UsageEntitlement 与 SettingService，偏好字段为 startPlanRecommendationDismissed。Built-in → Account → Personal、目标 Environment Registry、continuous／replayable 与原提交 owner 保持。
+
 
 ## 5. 选择、创建与执行
 
@@ -595,7 +582,6 @@ runtime/provider/
 允许存在的兼容只有明确的一次性边界：
 
 - 旧 Personal Config importer 可以读取已发布历史字段，并立即投影成新 Personal Overlay；
-- 历史账号、商品和 Usage 协议可以继续使用自己的 `planKind/productId`，但不得重新进入 Provider Config；
 - Adapter 内部可以使用协议局部 helper，但不得把旧 capability 类型重新暴露成 Model 事实源。
 
 正式 Config、Registry、Model 和 Runtime 中禁止重新出现：
@@ -603,7 +589,6 @@ runtime/provider/
 - `Official Config` 双轨；
 - `ProviderConfigDocument` / `ModelSelectionConfigDocument` 领域对象；
 - `request-auth` / `execution-provided` Access；
-- `accessId`、静态 `planKind`、`challenge`、`requestSigning`、`executionProtocol`；
 - `executionOnly` 或“受信执行”逃逸开关；
 - Model `visibility`；
 - `adapterCompatibility`、`reasoningReplay` 和具体模型 Runtime hardcode；
@@ -617,7 +602,6 @@ runtime/provider/
 3. Effective Model Config 必须在 Effective Provider 的 API 上下文中解析。
 4. Settings 与 Registry 来自同一次 Resolver 解析；Settings 不从 Registry 反推不完整配置。
 5. Registry 只含完整可执行项，但 hidden Provider 仍可被内部精确执行。
-6. Account Overlay 只约束 Built-in 账号 Provider；Start Plan 的模型集合可以因账号而异。
 7. 动态账号凭据不进入 Config；API Key Config 可以持有 API Key；最终授权由服务端决定。
 8. ModelFactory 只消费当前 Registry 的完整配置；Active Model 创建后冻结。
 9. Provider/Model 身份始终是 `providerId/modelId`，不能只按 modelId 路由。

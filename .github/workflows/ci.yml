@@ -26,6 +26,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6.1.0
         with:
@@ -51,7 +53,7 @@ jobs:
       # NODE_OPTIONS：v3.15.1 同步后 tsc -b 全量构建在 macOS arm64（7GB runner）上
       # 触发 V8 "Ineffective mark-compacts near heap limit" OOM（run 39174059794），
       # 显式抬高老生代上限；不改代码、不拆项目，只修运行时内存配置。
-      - name: Root typecheck (11 projects)
+      - name: Application typecheck
         run: pnpm typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=6144
@@ -61,6 +63,8 @@ jobs:
 
       - name: Architecture boundaries
         run: pnpm architecture:check
+        env:
+          ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
 
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
       # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
@@ -88,6 +92,15 @@ jobs:
 
       - name: Workflow child interaction regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
+
+      - name: ToolSearch runtime regression
+        run: pnpm --filter @zcode/core exec vitest run tests/tool-search-execution.test.ts tests/tool-search-hydration.test.ts tests/tool-search-result-budget.test.ts tests/tool-search-subagent.test.ts tests/tool-search-request-preparation.test.ts --bail=1
+
+      - name: ToolSearch MCP and connection lifecycle regression
+        run: pnpm --filter @zcode/adapters exec vitest run tests/tool-search-capability.test.ts tests/tool-search-mcp.test.ts tests/tool-search-wire.test.ts tests/plugin-mcp-always-load.test.ts tests/plugin-mcp-tool-search-wire.test.ts tests/mcp-connection-pool.test.ts tests/mcp.test.ts --bail=1
+
+      - name: MCP Apps readiness and workflow shell inheritance regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/mcp-ui-connection-ready.test.ts tests/script-workflow.test.ts --bail=1
 
       - name: Standard MCP transport regression
         run: pnpm --filter @zcode/adapters exec vitest run tests/mcp-stdio-transport.test.ts --bail=1

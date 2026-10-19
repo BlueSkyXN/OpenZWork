@@ -208,4 +208,3 @@ If you define properties or states in your Stencil component you have to manage 
 ## Examples
 
 You can find a full example of a WebdriverIO component test suite for Stencil in our [example repository](https://github.com/webdriverio/component-testing-examples/tree/main/stencil-component-starter).
-

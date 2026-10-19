@@ -1,14 +1,9 @@
+import { DesktopCommandIds } from "@zcode/shared";
 import {
-  DesktopCommandIds,
   TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER,
   TID_WORKSPACE_HELP_MENU_TRIGGER,
-} from "@zcode/shared";
-import {
-  ActivityIcon,
-  CircleHelpIcon,
-  InfoIcon,
-  UsersIcon,
-} from "lucide-react";
+} from "@zcode/shared/test-ids";
+import { ActivityIcon, CircleHelpIcon, InfoIcon, UsersIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import {
   DropdownMenu,

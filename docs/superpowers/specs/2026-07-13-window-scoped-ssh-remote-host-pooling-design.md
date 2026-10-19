@@ -484,7 +484,6 @@ cleanup Promise，直接以 `1` 退出。deadline timer 必须保持 ref，确�
 
 共享 Remote Host 中只创建一次本地混合 ServiceCollection：
 
-- 本地权威：setting、credential、OAuth、model provider、usage stats、coding plan、broadcast 等。
 - 本地 wrapper：ZCode Task、ZCode Session、Repo Wiki 等。
 - 远端实现：file、git、terminal、file watcher、Agent、skills、MCP/plugin sync 等。
 

@@ -64,7 +64,6 @@ Provider 回归组实跑
 继续以 Todo 52 的公共边界为准，不新增另一套 Effective Registry fixture：
 
 - `seedPersonalProviderConfig(...)` / 现有等价 helper：只写 Personal Provider/Overlay；
-- 正式 Coding Plan mock + Credential Store：准备账号、套餐、quota、activity、opportunity 等上游事实；
 - 原子 persisted Model Selection helper：只用于冷启动/重启 Case；
 - `waitForSelectableModel(...)`：从正式 Selection View 等待模型可选择；
 - `waitForProviderConfigPolling()`：只处理 Personal Config 热更新的 2 秒容忍；
@@ -80,7 +79,6 @@ Todo 56 另补 Remote Provisioning E2E helper 时，必须从真实连接生命�
 先选择最小且诊断价值最高的 Case，证明 MacBook Pro 标准工作目录能真正启动 Electron、连接 mock provider 并完成断言：
 
 1. 一个 Personal Provider 新增并首发 Case；
-2. 一个 Coding Plan Settings Case；
 3. 一个冷启动 Model Selection 恢复 Case；
 4. 一个 Bot Selection/Card Case。
 
@@ -207,7 +205,6 @@ Conversation replay Case 还必须：
 - Draft Model Selection 现在按“recent 有效选择 → 当前 Account Provider 首个模型 → Host preferred”解析；Account Registry 延迟发布时，Selection View revision 会使没有显式模型意图的预热 Draft 重新水合，避免早到的 DeepSeek 事实被永久冻结；
 - Provider Template 的代表 Case 使用两个 DeepSeek Template 实例，验证实例身份隔离、稀疏 Personal Model Rule、恢复默认以及 OpenAI Chat Completions 的真实请求字段；
 - OpenAI Chat Completions Fixture 从旧 `max_tokens` 修正为正式 Option Map 产生的 `max_completion_tokens`；Anthropic Fixture 继续使用 `max_tokens`；
-- Coding Plan、Upgrade WebView、Subagent、冷恢复、输出预算、Restart、Turbo 和 Bot Case 均保留原业务断言；
 - 三条已失去产品对象的 selected-key migration Case 继续按既有裁决删除，不恢复旧 Family mode/selectedKey 兼容；
 - SSH-P0-TASK-01 增加正式 Remote Environment 证明：第一个 Workspace 产生 Provisioning 状态记录，同一 SSH Environment 的第二个 Workspace 不再产生第二条首次同步记录。
 
@@ -216,7 +213,6 @@ Conversation replay Case 还必须：
 | 范围                                    |  结果 | Artifact / 状态                                                                                        |
 | --------------------------------------- | ----: | ------------------------------------------------------------------------------------------------------ |
 | Bot automation / Feishu lifecycle       |   5/5 | `desktop-e2e-20260901-123836-685`                                                                      |
-| Coding Plan Team / quota reset          | 18/18 | `desktop-e2e-20260901-134307-916`                                                                      |
 | Upgrade WebView refresh                 |   2/2 | `desktop-e2e-20260901-140456-210`                                                                      |
 | Built-in Subagent model selection       |   1/1 | `desktop-e2e-20260901-132851-878`                                                                      |
 | Context Window cold resume              |   1/1 | `desktop-e2e-20260901-134040-202`                                                                      |

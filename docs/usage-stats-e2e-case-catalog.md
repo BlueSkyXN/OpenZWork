@@ -2,9 +2,7 @@
 
 ## 目标
 
-本目录定义 `fix/usage-remaining-refresh` 分支新增或修改行为的 Desktop E2E 合同。覆盖范围包括
-App Usage、个人/团队 Coding Plan、访问刷新、Context/Footer/Provider Settings 跨入口同步，
-以及可由真实 renderer、host 和 CLI 链路稳定观察的错误恢复。
+
 
 本文只把具有独立 setup、action、assertion 的场景计为覆盖。纯映射、日期数学、图表数据清洗
 继续以 focused test 为主要证据；E2E coverage 报告只用于发现执行缺口，不替代行为断言。
@@ -13,7 +11,6 @@ App Usage、个人/团队 Coding Plan、访问刷新、Context/Footer/Provider S
 
 | 维度                  | 值                                                          | 建议决定                                               | 原因                                               |
 | --------------------- | ----------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------------- |
-| 数据域                | App Usage / Coding Plan quota / activity / credit / health  | 全部纳入                                               | 分支同时修改 UI、service 和 CLI 聚合               |
 | 套餐来源              | Z.AI 个人 / BigModel 个人 / BigModel Team                   | BigModel 个人和 Team 完整覆盖，Z.AI 做来源隔离代表样本 | 避免对共享 mapper 做品牌笛卡尔积                   |
 | 入口                  | Usage / Context / Footer / Provider Settings                | 全部纳入                                               | 共享 access freshness 和 snapshot 是本分支核心合同 |
 | 结果                  | success / empty / business error / network error / recovery | 全部纳入高价值路径                                     | 命中错误分类、缓存清理、force refresh              |
@@ -36,20 +33,6 @@ App Usage、个人/团队 Coding Plan、访问刷新、Context/Footer/Provider S
 | US-AU-04 activity modes  | seed 稀疏日期、跨月、零值周                                      | 切换每日/每周/累计并 hover        | 周日起始、52 周、月份标签、列高亮、两行 tooltip 与累计单调性正确                   | formal-green |
 | US-AU-05 chart extremes  | seed 7 个以上模型、未知模型和极端 token                          | 查看趋势与模型饼图                | 空日期补零、首尾轴不裁切、Top 模型与“其他模型”聚合正确                             | formal-green |
 
-## Coding Plan 数据与来源
-
-| Case                                | Setup                                                              | Action                      | Assertions                                                                                                                                                                                                                        | Status                 |
-| ----------------------------------- | ------------------------------------------------------------------ | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| US-CP-01 personal credit            | BigModel 个人套餐，quota + credit activity/detail/performance 成功 | 打开个人 Coding Plan        | remaining 百分比、KPI、stacked model bars、tool usage、health 均来自匹配接口；Peak tokens 正文不拼日期，悬停信息图标显示峰值日期；Token Activity hover 展示远端真实 Token 与 `mcpCalls` 工具次数，不把缺失的轮数显示为 `0 轮消息` | covered                |
-| US-CP-02 team scope                 | Team pricing 含组织/项目，所有 usage 接口成功                      | 打开 Team tab               | 请求携带 organization/project，UI 不混入个人来源                                                                                                                                                                                  | covered                |
-| US-CP-03 source switching           | 同时 seed 个人和两个团队来源                                       | 依次切换 tabs               | 每个 tab 的 quota/model/tool 独立；个人请求不携带团队 header                                                                                                                                                                      | covered                |
-| US-CP-04 range switching            | 三个 range 返回不同 marker                                         | 切换 today/7d/30d           | 请求日期与 UI range 一致；旧 range 只做局部过渡，不进入新 scope 共享缓存                                                                                                                                                          | covered                |
-| US-CP-05 legacy fallback            | credit 接口不可用，legacy monitor 成功                             | 打开 Coding Plan            | 展示 legacy trend，隐藏仅新版 credit KPI，不回退 App Usage                                                                                                                                                                        | focused-test           |
-| US-CP-06 optional failures          | quota 成功，activity/detail/performance 分别失败                   | 逐场景打开页面              | 只清空对应可选区域，其余区域保留                                                                                                                                                                                                  | covered-representative |
-| US-CP-07 fatal failures             | quota 网络失败、HTTP 200 业务失败、token 失效三场景                | 打开页面并重试              | 页面整体错误；业务错误不伪装空态或 credential generic；恢复后显示数据                                                                                                                                                             | covered-representative |
-| US-CP-08 team availability recovery | Team quota 首次网络/业务失败，随后成功                             | 重开/强制刷新               | 失败不写 24h 成功缓存；恢复后 provider/tab 同步可用                                                                                                                                                                               | proposed               |
-| US-CP-09 reset presentation         | 5h、week、MCP limit 含有/缺少 reset time                           | 查看 Usage 与 Provider Card | Usage stats 的全部额度显示月日+时间；Provider Card 保持既有紧凑格式；缺值隐藏；三色顺序正确                                                                                                                                         | covered-representative |
-
 ## 访问刷新与跨入口同步
 
 | Case                             | Setup                                  | Action                                                            | Assertions                                                    | Status   |
@@ -63,15 +46,6 @@ App Usage、个人/团队 Coding Plan、访问刷新、Context/Footer/Provider S
 | US-SY-02 context feedback        | 有缓存，access 请求依次成功/失败       | hover Context                                                     | loading→1 秒成功勾→详情；失败时保留缓存并显示 warning tooltip | proposed |
 | US-SY-03 context empty recovery  | 无缓存且首次请求失败                   | hover、点击重试                                                   | 显示 notice 与重试按钮；成功后替换为额度条                    | proposed |
 | US-SY-04 mounted synchronization | Footer、Context、Usage 同时挂载        | 任一入口强制刷新                                                  | 其它入口无需重挂载即显示同 scope 新快照                       | proposed |
-
-## Coding Plan / Start Plan 互斥
-
-| Case                               | Setup                                         | Action              | Assertions                                  | Status |
-| ---------------------------------- | --------------------------------------------- | ------------------- | ------------------------------------------- | ------ |
-| US-SP-01 coding preferred          | Coding Plan 有 quota，同时存在 Start Plan     | 打开 Context/Footer | 只查询和展示 Coding Plan，不显示 Start Plan |
-| US-SP-02 explicit no-plan fallback | Coding Plan 明确 `no_plan`，Start Plan 可用   | 打开 Context        | 允许查询并展示 Start Plan                   |
-| US-SP-03 no transient fallback     | Coding Plan pending/network/token/unavailable | 打开 Context        | 任一瞬态状态都不降级 Start Plan             |
-| US-SP-04 start access              | 仅 Start Plan，可计数 balance server          | 首次/重复 hover     | 首次请求；60 秒内复用；有缓存静默刷新不闪空 |
 
 ## 兼容性与架构不变量
 

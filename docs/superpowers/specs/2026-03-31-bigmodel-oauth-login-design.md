@@ -258,25 +258,6 @@ export class OAuthService implements IOAuthService {
 
 ### Channels
 
-```ts
-// packages/shared/src/channels.ts
-
-// OAuthService 作为 RPC 服务，使用 ServiceChannels
-export const ServiceChannels = {
-  ...existing,
-  OAuth: 'oauth',
-}
-
-// Deep link 相关的平台 channel
-export const PlatformChannels = {
-  ...existing,
-  OpenExternal: 'zcode:open-external',          // Renderer → Main：打开外部 URL
-  OAuthRegisterState: 'zcode:oauth-register-state', // Renderer → Main：上报 state 用于路由
-  OAuthCallback: 'zcode:oauth-callback',         // Main → Renderer：转发 deep link URL
-  RendererReady: 'zcode:renderer-ready',         // Renderer → Main：renderer 已就绪
-}
-```
-
 注意：不需要 `OAuthSuccess` / `OAuthError` channel。OAuth 启动通过 RPC 调用 `oauthService.startOAuth()`，回调处理通过 RPC 调用 `oauthService.handleCallback(url)`，结果直接在 renderer 侧获得，不经过 main 中转。
 
 ### Main Process 调度流程
@@ -341,12 +322,6 @@ export interface IPlatformService {
 注意：`onOAuthCallback` 返回 disposer 函数，调用时只移除当前回调，不影响其他订阅者。
 
 Desktop 实现（`packages/desktop/src/renderer/src/main.tsx`）：
-```ts
-openExternal: (url) => window.zcode.openExternal(url),
-registerOAuthState: (state) => window.zcode.registerOAuthState(state),
-onOAuthCallback: (cb) => window.zcode.onOAuthCallback(cb),
-notifyRendererReady: () => window.zcode.notifyRendererReady(),
-```
 
 Web 实现（`packages/web/src/main.tsx`）：
 ```ts
@@ -373,7 +348,7 @@ notifyRendererReady: () => ipcRenderer.send(PlatformChannels.RendererReady),
 
 类型声明（`packages/client/src/globals.d.ts`）同步更新。
 
-同步更新 AGENTS.md 中 `window.zcode` 允许列表，新增 `openExternal`、`registerOAuthState`、`onOAuthCallback`、`notifyRendererReady`。
+
 
 ## UI 层改造
 
@@ -599,7 +574,6 @@ export const BIGMODEL_OAUTH_CONFIG = {
 | `packages/services/src/index.ts` | 导出 oauth 模块 |
 | `packages/services/src/node.ts` | createLocalServices() 注册 OAuthService |
 | `packages/client/src/remoteServiceAccess.ts` | ProxyChannel 新增 oauth |
-| `packages/client/src/globals.d.ts` | window.zcode 类型新增 openExternal、registerOAuthState、onOAuthCallback、notifyRendererReady；删除 loginSuccess、logout |
 | `packages/desktop/electron-builder.config.js` | 新增 protocols 配置（macOS plist 协议声明） |
 | `packages/desktop/src/main/index.ts` | 注册 custom protocol、requestSingleInstanceLock、open-url/second-instance 监听、state→window 映射、冷启动缓存、删除 createLoginWindow、删除 hasAuthToken 分支、删除 LoginSuccess/Logout IPC 窗口切换逻辑 |
 | `packages/desktop/src/preload/index.ts` | 暴露 openExternal、registerOAuthState、onOAuthCallback、notifyRendererReady；删除 loginSuccess、logout |
@@ -607,7 +581,7 @@ export const BIGMODEL_OAUTH_CONFIG = {
 | `packages/ui/src/WelcomeScreen.tsx` | 改造为 LoginDialog |
 | `packages/ui/src/Root.tsx` | 删除 mock 登录逻辑和 useState user，改用 Zustand store；新增常驻的 OAuth 回调监听 + notifyRendererReady |
 | `packages/ui/src/store/index.ts` | 删除 MOCK_USER |
-| `AGENTS.md` | 更新 window.zcode 允许列表（新增 OAuth 方法，删除 loginSuccess），更新"包括登录窗口"描述 |
+
 
 ### 删除的内容
 

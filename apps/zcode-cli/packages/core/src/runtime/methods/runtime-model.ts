@@ -31,7 +31,7 @@ export function createRuntimeModel(
       recoverable: true,
     });
   }
-  return withRuntimeInvocationLayer(
+  const model = withRuntimeInvocationLayer(
     runtime,
     runtime.modelFactory({ ...factoryInput, selection: factoryInput.selection }),
     scope === "workspace"
@@ -39,6 +39,7 @@ export function createRuntimeModel(
       : resolveModelRequestSessionTypeFromTaskType(runtime.config.taskType),
     retryBudget,
   );
+  return model;
 }
 
 /**
@@ -79,6 +80,7 @@ export function withModelInvocationContext(
     modelId: model.modelId,
     displayName: model.displayName,
     properties: model.properties,
+    requestCapabilities: model.requestCapabilities,
     optionSpecs: model.optionSpecs,
     options: model.options,
     bind(options) {

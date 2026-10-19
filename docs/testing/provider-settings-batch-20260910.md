@@ -1,8 +1,16 @@
 # Provider 设置本批浏览器用例
 
+## MiMo 模板拆分（2026-10-14）
+
+MIMO-03（accepted，pending）：390px 中文浅色 / 1200px 英文深色，真实模板选择器分别显示 Xiaomi MiMo API 和 Xiaomi MiMo Token Plan，tooltip 和图标一致；分别点击后仅发送对应 templateId 的创建动作，详情 Base URL 分别为按量与中国 Token Plan 地址；无横向溢出、页面错误或额外写入。规格及官方核验见 [MiMo 模板](../provider-mimo-templates.md)。复用现有浏览器 fixture，不宣称原生 Electron、手机 shared-host 或真实付费请求已验证。
+
+运行：`node --test --test-name-pattern='mimo templates' packages/ui/test/browser/manual-review/pending/provider-settings-batch.test.mjs`。
+
+本轮两例通过，截图已复查：两张模板、图标、两种地址、中文浅色与英文深色正常。配置相关定向 18 项及最终 affected 17 项通过；保持 pending 身份。
+
 ## Todo148 Dock 应用图标纠正（2026-09-15）
 
-Todo150 名称补充：现有 `zai app icon` 双尺寸／语言用例同时断言两张模板卡片及 tooltip 分别为 `Z.ai Coding Plan`、`Z.ai API`，图标与协议不变。
+
 
 OpenRouter 名称回归：390 中文浅色／1200 英文深色的添加模板卡片显示 `OpenRouter`，不含 Anthropic 后缀；悬停提示沿用相同名称。配置单测同时验证生产／测试名称及协议、URL 未改变。
 
@@ -34,7 +42,6 @@ BR117-N02（accepted，pending）：隔离完整 Electron 应用通过测试 HTT
 
 ## Todo116 原生打开补充（2026-09-12）
 
-K116-N01（accepted，pending）：在隔离 Electron profile 写入两个预设模板创建的手动 Provider，分别为普通 API Key／Coding Plan API Key，并使用非空／空 Key。每个 Provider 的 `apiKeyManagementUrl` 指向测试进程本机随机端口下的唯一路径。真实设置页应只有一个获取入口；点击前服务器没有该路径请求，点击后系统默认浏览器请求精确配置的路径，配置文件字节保持不变。不开启模型请求，不访问真实账号或读取默认浏览器其他页面。纯自定义、无 templateId 的 Provider 按已有裁决不显示此入口。
 
 ```text
 隔离 Personal Config 单 URL -> Settings View -> 唯一按钮
@@ -50,11 +57,11 @@ Todo130：新增 manual editable fields and pending cancellation 两例，真实
 
 Todo122：新增 subagent selection error copy 两例，真实 ToolLayout 展示测试注入的公共错误 message，验证 390 中文浅色/1200 英文深色详情及复制完整原因和选择身份。两例通过；Core 的真实解析、投影、前后台 runner 另有 84 项测试，不将 fixture 冒充跨进程实机链路。
 
-Todo126 新增两个 coding plan vision badge 用例：相同双尺寸/主题下遍历个人、团队与手动套餐 Key，用真实 ModelConfigSelect 菜单与设置 Card 验证 GLM-5.3 无视觉标、Flash 保留；服务端桥接及图片能力原样保留。两项定向运行通过。
+
 
 2026-09-11 Todo115/132：新增两个 header name and option feedback 用例（390 中文浅色/1200 英文深色）。真实 Header/Card 的菜单焦点、停顿不保存、Esc 不保存、Enter 一次提交、长名布局、Tooltip 不覆盖开关状态和扩展热区不碰菜单；真实 Modality/Boolean 组件验证同位置点击底色有变化，文字/图标/边框/尺寸不变。六项合跑通过，保存路由隔离；不替代整页 Electron/手机 Host 链路。本轮 Linux 字库缺少中文字形，中文文案/交互可断言，但不算中文字形视觉通过。
 
-2026-09-11 Todo117 补充：390/中文/浅色与1200/英文/深色下，真实账号 Provider 卡片不显示总开关，模型开关仍在，挂载不写入 enabled；原手动 Coding Plan Key 用例继续验证启停。套餐选择与保存副作用另由真实 ModelProviderSection 回调测试覆盖，浏览器卡片 fixture 不冒充整页 Host 联调。
+
 
 同日 Todo119/124：禁用后模型测试按钮 disabled，重新开启恢复；成功提示使用 Fixture Provider 而非内部 fixture ID，语义绿色背景/文字/边框与关闭按钮同时存在。四个浏览器用例合跑通过。名称回传、成功/失败/异常及资格提示本地化由真实 React 组件事件测试补充；签名网络错误原样透传由服务测试覆盖。
 
@@ -74,7 +81,7 @@ Todo126 新增两个 coding plan vision badge 用例：相同双尺寸/主题下
 既有 Electron `settings-ui-polish` 已按最终 DeepSeek 两成员、菜单与帮助标题更新并在 Pro 实跑通过，`provider-settings-write-recovery` 也已在 Pro 合批通过。前者 SSH 分支仍跳过；二者不等于手机 shared-host 联合验证。原生控制台打开由 K116-N01 单独证明，不借此宣称官方登录态通过。
 
 
-2026-09-12 Todo137 已确认新增覆盖：现有 vision badge 浏览器用例增加 Z.ai／BigModel Start Plan。两个尺寸/语言/主题下，设置列表和模型菜单均隐藏 GLM-5.3 视觉标，Flash 仍显示；只验证共用展示组件，实际图片能力由单测验证不变。先红后绿，2项浏览器用例通过；保持 pending 分类。
+
 
 2026-09-12 Todo138 已验证：新增模型空 ID 档位为空；输入 ID 接收推荐档位、清空恢复空列表；显式编辑档位在解析回包后保留。复用真实 ProviderCard 新增入口，覆盖 390/中文/浅色和 1200/英文/深色，服务路由隔离。
 

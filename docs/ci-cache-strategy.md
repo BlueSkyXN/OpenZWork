@@ -52,7 +52,6 @@ GitLab cache 打包 node 依赖             GIT_CLEAN_FLAGS 排除 + 工作区�
 | 文件 | 改动 |
 | --- | --- |
 | `.gitlab/ci/00-workflow.yml` | 删除 `.ci:npm-cache` / `.ci:npm-cache:pull` 模板；`GIT_CLEAN_FLAGS` 追加 `-e packages/desktop/mock-cdn/` |
-| `.gitlab/ci/30-build.yml` | `build:desktop:app`、`.build:linux:template`、`build:remote:assets`（两条 cache）、macos/cua-helper/web-remote-control/windows 模板的 cache 引用全部删除 |
 | `.gitlab/ci/remote-assets-cache-key.txt` | 删除（cache key 汇总机制废弃） |
 | `scripts/ci/ci-lint-pipeline.mjs` | 新增守卫（规则见 §4） |
 | `scripts/test/ci-lint-pipeline.test.mjs` | 守卫单测（node:test） |

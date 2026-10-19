@@ -1,10 +1,12 @@
-import { Plus } from "lucide-react";
 import {
   TID_WORKFLOWS_CREATE_VIA_CHAT,
   TID_WORKFLOWS_LIST,
   TID_WORKFLOW_GLOBAL_GROUP,
-  testId,
 } from "@zcode/shared";
+
+import { Plus } from "lucide-react";
+
+import { testId } from "@zcode/shared/test-ids";
 import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";

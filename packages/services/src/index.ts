@@ -1,6 +1,6 @@
 // Descriptors & collection (browser-safe)
 export { type ServiceDescriptor, createServiceDescriptor } from "./descriptors.js";
-export { ServiceCollection } from "./collection.js";
+export { ServiceCollection, type ServiceExposurePolicy } from "./collection.js";
 export {
   IModelSelectionService,
   IProviderSettingsService,
@@ -46,6 +46,11 @@ export { ISettingService } from "./setting/setting.js";
 
 // Credential service — ICredentialService is both a type (interface) and value (descriptor)
 export { ICredentialService } from "./credential/credential.js";
+export { ISourceServerWorkspaceService } from "./source-server-workspace/sourceServerWorkspace.js";
+export {
+  ISourceServerManagementService,
+  type UpdateConnectionProfileInput,
+} from "./source-server-management/sourceServerManagement.js";
 
 // Broadcast service — IBroadcastService is both a type (interface) and value (descriptor)
 export { IBroadcastService } from "./broadcast/broadcast.js";
@@ -73,26 +78,23 @@ export type {
   ZCodeTaskListSortBy,
   ZCodeTaskListWorkspaceScope,
   ZCodeTaskReadyOutcome,
-  ZCodeGroupedTaskRef,
-  ZCodeGroupedTaskView,
-  ZCodeGroupedTaskViewNode,
-  ZCodeGroupedTaskViewOrderInput,
-  ZCodeGroupedTaskViewQuery,
-  ZCodeGroupedTaskViewStructure,
-  ZCodeGroupedTaskViewStructureMember,
-  ZCodeGroupedTaskViewStructureTopOrder,
-  ZCodeGroupedTaskViewTopLevelNodeRef,
-  ZCodeTaskGroup,
-  ZCodeTaskGroupColor,
 } from "./session/zcodeTaskService.js";
 export type { ZCodeTaskListItem } from "./session/zcodeTaskListTypes.js";
 
 export { IWindowControllerService } from "./window-controller/windowController.js";
+export {
+  IWindowProjectService,
+  IWindowRemoteProjectService,
+  IWindowProjectChangesService,
+  type WindowProjectDirectoryServices,
+} from "#src/window-project-directory/contract.js";
+export { createWindowProjectChangesService } from "#src/window-project-directory/index.js";
 export type {
   WindowHostControllerFrame,
   WindowHostControllerMutation,
   WindowHostControllerTaskListItem,
   WindowHostControllerTaskListResult,
+  WindowHostTaskUnreadSignal,
 } from "./window-controller/windowController.js";
 
 // ZCode agent service — IZCodeAgentService is both a type (interface) and value (descriptor)
@@ -161,6 +163,8 @@ export type {
 // Bots service — IBotsService is both a type (interface) and value (descriptor).
 export { IBotsService } from "./bots/bots.js";
 export type {
+  BotRemoteWorkspaceResolver,
+  BotRemoteWorkspaceResolution,
   BotBindCodeResult,
   BotCreateBindCodeParams,
   BotListWorkspaceRefsParams,
@@ -187,7 +191,8 @@ export type { SessionRealtimePort } from "./session/sessionRealtimePort.js";
 export { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
 
 // Storage（资源管理器「存储」tab）：数据类型在 @zcode/shared；这里只导出服务接口与卷分组纯函数
-export type { IStorageService } from "./storage/contract.js";
+// StorageRootSpec 随契约再导出：desktop 的 Worker 协议按 contract.ts 的口径只从 services 入口取类型。
+export type { IStorageService, StorageRootSpec } from "./storage/contract.js";
 
 export { isValidCronExpr } from "./session/automationCronValidation.js";
 // 闲时任务管理服务（与 automation 服务面独立）；接口/描述符 browser-safe。
@@ -218,6 +223,28 @@ export type {
   PromptAttachmentTransferPhase,
   PromptAttachmentTransferProgress,
 } from "./prompt-attachment-transfer/promptAttachmentTransfer.js";
+
+export { IProjectService, LEGACY_SINGLE_ROOT_PROJECT_PREFIX } from "#src/project/contract.js";
+export type {
+  ProjectTree,
+  ProjectTask,
+  ProjectTaskRef,
+  VirtualProject,
+  ProjectRoot,
+  SaveProjectInput,
+  ProjectDirectories,
+} from "#src/project/contract.js";
+
+export { IRemoteProjectService } from "#src/remote-projects/contract.js";
+export type {
+  RemoteProjectHost,
+  RemoteProjectEntry,
+  RemoteProjectCache,
+  RemoteProjectDirectory,
+} from "#src/remote-projects/contract.js";
+
+export { readProjectCatalog, projectSelectionId } from "#src/project-catalog/index.js";
+export type { ProjectCatalogPort, ProjectCatalogSnapshot } from "#src/project-catalog/contract.js";
 
 // 插件 UI 桥：描述符、参数类型与工厂；App-Provided Tools 另有独立描述符。
 export {
@@ -254,3 +281,13 @@ export {
 
 export { IGenUiService } from "./gen-ui/contract.js";
 export type { GenUiPrepareParams } from "./gen-ui/contract.js";
+
+export { ITaskGroupService } from "#src/task-groups/contract.js";
+export type {
+  TaskGroup,
+  TaskGroupColor,
+  TaskGroupStructure,
+  GroupTaskRef,
+  GroupNode,
+  MoveGroupNode,
+} from "#src/task-groups/contract.js";

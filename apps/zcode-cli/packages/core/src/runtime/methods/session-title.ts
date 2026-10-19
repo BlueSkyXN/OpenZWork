@@ -17,6 +17,8 @@ import {
   SESSION_TITLE_QUERY_SOURCE,
   generateTitleCandidate,
   normalizeTitleInput,
+  retainTitleModelContext,
+  type TitleModelContext,
 } from "./title-generation-sidecar.js";
 
 const GENERATED_TITLE_EXPECTED_SOURCES: readonly SessionTitleSource[] = [
@@ -98,9 +100,11 @@ function maybeStartSessionTitleGenerationFromSeed(
   }
   this.sessionTitleGenerationAttempted = true;
 
+  const modelContext = retainTitleModelContext(this);
   const generation = generateAndPersistSessionTitle
     .call(this, input, options.messageID, options.traceContext, {
       goalSummaryTargetID: options.goalSummaryTargetID,
+      modelContext,
     })
     .catch(async (error) => {
       this.logger?.warn("Session title generation failed", {
@@ -118,7 +122,8 @@ function maybeStartSessionTitleGenerationFromSeed(
           traceContext: options.traceContext,
         });
       }
-    });
+    })
+    .finally(() => modelContext.release());
   void this.trackResidencyBlockingWork(generation).catch((error) => {
     this.logger?.warn("Session title fallback persistence failed", {
       ...traceContextToLogContext(options.traceContext),
@@ -174,6 +179,7 @@ async function generateAndPersistSessionTitle(
   traceContext: TraceContext,
   options: {
     goalSummaryTargetID?: string;
+    modelContext?: TitleModelContext;
   } = {},
 ): Promise<void> {
   const initialSession = await this.sessionStore?.getSession(this.sessionId);

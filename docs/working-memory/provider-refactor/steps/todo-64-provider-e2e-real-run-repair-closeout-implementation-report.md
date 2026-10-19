@@ -30,7 +30,7 @@
 | I27                | 失败     | 旧期望依赖已删除的 Account-first；Configured Default 路由缺 replay                    | fixture/test        | 断言回退有效 Configured Default，并补 DeepSeek replay       | 通过     | Restart Recovery 4/4 通过      |
 | I28                | 失败     | 同 I27                                                                                | fixture/test        | 同 I27                                                      | 通过     | Restart Recovery 4/4 通过      |
 | I31                | 失败     | 重复选择当前原生 option 不保证触发事件；另有无消费者 transition state                 | test/residual state | 改为设置页往返保持；删除残余状态和伪 reconciliation         | 通过     | Settings Transition 3/3 通过   |
-| QR-E2E-09          | 失败     | 初始失败不可稳定复现，隔离及整份 spec 均通过                                          | isolation           | 不改生产语义                                                | 通过     | Coding Plan/Quota 18/18 通过   |
+
 
 ## 3. 阶段审查
 
@@ -81,7 +81,6 @@ pnpm --filter @zcode/desktop test:e2e:serial -- --spec <spec>
 - Repo Wiki：`.e2e-artifacts/desktop-e2e-20260902-174423-848/summary.md`
 - Output Token Preflight：`.e2e-artifacts/desktop-e2e-20260902-174448-752/summary.md`
 - Settings Transition：`.e2e-artifacts/desktop-e2e-20260902-174518-093/summary.md`
-- Coding Plan/Quota：`.e2e-artifacts/desktop-e2e-20260902-174556-904/summary.md`
 - I08：`.e2e-artifacts/desktop-e2e-20260902-175316-125/summary.md`
 - Bot Automation：`.e2e-artifacts/desktop-e2e-20260902-175427-109/summary.md`
 - Feishu Interactions：`.e2e-artifacts/desktop-e2e-20260902-175452-547/summary.md`

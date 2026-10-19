@@ -116,25 +116,6 @@ Persisted Task Selection
                                等待用户编辑
 ```
 
-### 6.1 旧闲时任务
-
-
-```text
-legacy model / thought_level
-          +
-          |
-          v
-解析唯一、当前有效的完整 Selection
-          |
-          +-- 成功 --> 原子写回 model_selection
-          `-- 失败 --> 保留为 repair-required
-```
-
-- Repository 必须逐条容忍缺失或非法 `model_selection`，一条旧记录不能让 `list()`、同步或其他任务调度整体失败。
-- 待修复任务仍出现在列表中；终态历史记录可以正常查看。
-- 未修复的非终态任务不能被 claim、continue 或 dispatch。
-- 不删除旧记录，不凭模型名猜账号 Provider，不把当前默认模型静默写入已创建任务。
-
 ## 7. Registry 更新与 Active Model
 
 ```text

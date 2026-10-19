@@ -6,7 +6,7 @@
 
 ## 背景与根因
 
-Air 日志显示 15:12:34 保存 Provider Overlay 后，`providerFamilyDomain` 从 `bigmodel` 被清空；随后选择团队，权益为 true，但账号域仍缺失，Account State 的 `current=false` 导致套餐模型不可选。日志未记录该次保存的完整参数，不能断言用户具体点了哪个控件。
+
 
 `ModelProviderSection.handleSave()` 根据保存后的 `executable` 主动清空账号域，混淆了配置执行资格与用户连接选择。套餐切换仅写套餐选择，无法补回账号域；设置页从登录身份兜底显示正常，也不代表 Host 的持久化选择完整。
 
@@ -21,15 +21,6 @@ Air 日志显示 15:12:34 保存 Provider Overlay 后，`providerFamilyDomain` �
 
 ### 2. 用户主动切套餐时保存完整选择
 
-```text
-用户主动选择 BigModel 团队（包括再次选择当前项）
-  → 比较账号域与完整套餐身份
-  → 有变化／账号域缺失：同一次设置更新
-       providerFamilyDomain = bigmodel
-       connectionSelections.bigmodel = 所选团队身份
-  → 复用既有 Provider 刷新与公共执行资格判断
-```
-
 - 套餐身份保留 kind、组织、项目、产品等现有字段；保留另一账号域的选择，不新造身份结构。
 - “选择未变化”必须同时检查账号域与套餐；同项重选可补回缺失账号域。两者均相同时沿用已有重试／去重语义。
 - 账号域写入沿用既有设置时间戳与迁移标记约定，不新增状态字段。
@@ -39,8 +30,6 @@ Air 日志显示 15:12:34 保存 Provider Overlay 后，`providerFamilyDomain` �
 
 ### 3. Account Provider 取消总禁用能力
 
-- 以 `access.type === "zhipu-account"` 判断，所有使用该类型的账号 Provider 在设置界面不展示 Provider 总启停入口；不按名称或硬编码 Provider ID 判断。
-- `api-key`、`zhipu-coding-plan-api-key` 保留总开关；手动 Coding Plan Key 不等于账号连接。
 - 内置账号 Provider 不允许总禁用：UI 不展示入口，公共配置写入边界拒绝新的禁用操作，公共解析将已有账号 `enabled=false` 视为不再有效，不能仅隐藏开关却留下无法恢复的禁用状态。设置视图与执行资格读取同一结果，不在 UI 单独伪装为启用。
 - 保留通用 Provider 外层 `enabled` Schema，手动 Key Provider 的启停语义不变；不新增 Family 开关、状态缓存或数据迁移。已有账号禁用值不需要批量删文件／改真实用户数据即可失去禁用效果，具体实现复用公共配置与解析边界。
 - “不能禁用”不等于可执行：当前连接、entitled、凭据、配置完整性与可用模型等公共判断继续生效，不为账号直接强制 `executable=true`。

@@ -142,7 +142,6 @@ Guide 内联当前 Turn
 
 ## P2：动态 Header 刷新仍会重新取得完整 Provider 对象
 
-Start Plan 等 Provider 需要在每个物理请求前刷新一次性 Header。当前 Adapter 在刷新后重新从 Registry resolve 同一个 `providerId/modelId`，并只检查模型身份没有改变：
 
 ```text
 已绑定 Model A
