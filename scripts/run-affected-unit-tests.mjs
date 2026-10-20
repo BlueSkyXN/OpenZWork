@@ -36,7 +36,13 @@ function resolvePnpmCliPath(env) {
     .map((entry) => entry.trim())
     .filter(Boolean);
   for (const pathEntry of pathEntries) {
-    const candidate = join(pathEntry, "node_modules", "pnpm", "bin", "pnpm.cjs");
+    const candidate = join(
+      pathEntry,
+      "node_modules",
+      "pnpm",
+      "bin",
+      "pnpm.cjs",
+    );
     if (existsSync(candidate)) {
       return candidate;
     }
@@ -70,7 +76,9 @@ function runGit(args, options = {}) {
   const result = run("git", args, options);
   if (result.status !== 0 && options.required !== false) {
     const detail = result.stderr?.trim() || result.stdout?.trim();
-    throw new Error(`git ${args.join(" ")} failed${detail ? `: ${detail}` : ""}`);
+    throw new Error(
+      `git ${args.join(" ")} failed${detail ? `: ${detail}` : ""}`,
+    );
   }
   return result.status === 0 ? result.stdout.trim() : "";
 }
@@ -110,10 +118,13 @@ function parsePrePushInput(value) {
 }
 
 function resolveDefaultBranchBase(root) {
-  const originHead = runGit(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], {
-    cwd: root,
-    required: false,
-  });
+  const originHead = runGit(
+    ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"],
+    {
+      cwd: root,
+      required: false,
+    },
+  );
 
   const ref = selectDefaultBranchRef({
     originHead,
@@ -144,8 +155,12 @@ function resolvePrePushTarget(root) {
     required: false,
   });
   const candidate =
-    entries.find((entry) => entry.localSha === headSha && !isZeroSha(entry.localSha)) ??
-    entries.find((entry) => entry.localRef === currentRef && !isZeroSha(entry.localSha)) ??
+    entries.find(
+      (entry) => entry.localSha === headSha && !isZeroSha(entry.localSha),
+    ) ??
+    entries.find(
+      (entry) => entry.localRef === currentRef && !isZeroSha(entry.localSha),
+    ) ??
     entries.find((entry) => !isZeroSha(entry.localSha));
 
   if (!candidate) {
@@ -153,11 +168,16 @@ function resolvePrePushTarget(root) {
   }
 
   if (isZeroSha(candidate.remoteSha)) {
-    print(`${candidate.remoteRef} 是新建远端分支，pre-push stdin 没有可比较的 remote sha。`);
+    print(
+      `${candidate.remoteRef} 是新建远端分支，pre-push stdin 没有可比较的 remote sha。`,
+    );
     return undefined;
   }
 
-  if (!hasCommit(root, candidate.remoteSha) || !hasCommit(root, candidate.localSha)) {
+  if (
+    !hasCommit(root, candidate.remoteSha) ||
+    !hasCommit(root, candidate.localSha)
+  ) {
     return undefined;
   }
 
@@ -170,10 +190,13 @@ function resolvePrePushTarget(root) {
 }
 
 function resolveUpstreamTarget(root) {
-  const upstream = runGit(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"], {
-    cwd: root,
-    required: false,
-  });
+  const upstream = runGit(
+    ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+    {
+      cwd: root,
+      required: false,
+    },
+  );
 
   if (!hasCommit(root, upstream)) {
     return undefined;
@@ -189,7 +212,8 @@ function resolveUpstreamTarget(root) {
 
 function resolveDiffTarget(root) {
   const explicitBase =
-    process.env.ZCODE_PRE_PUSH_BASE?.trim() || process.env.ZCODE_AFFECTED_TEST_BASE?.trim();
+    process.env.ZCODE_PRE_PUSH_BASE?.trim() ||
+    process.env.ZCODE_AFFECTED_TEST_BASE?.trim();
   if (explicitBase) {
     if (!hasCommit(root, explicitBase)) {
       throw new Error(`显式 base 不存在或不是 commit: ${explicitBase}`);
@@ -203,7 +227,9 @@ function resolveDiffTarget(root) {
   }
 
   return (
-    resolvePrePushTarget(root) ?? resolveUpstreamTarget(root) ?? resolveDefaultBranchBase(root)
+    resolvePrePushTarget(root) ??
+    resolveUpstreamTarget(root) ??
+    resolveDefaultBranchBase(root)
   );
 }
 
@@ -224,7 +250,10 @@ function isCodeLikeFile(file) {
 }
 
 function isRootVitestScope(file) {
-  return file.startsWith("packages/") && !file.startsWith("packages/desktop/test/e2e/");
+  return (
+    file.startsWith("packages/") &&
+    !file.startsWith("packages/desktop/test/e2e/")
+  );
 }
 
 function collectPaths(value) {
@@ -295,7 +324,9 @@ function main() {
   const comparisonBase = target.useMergeBase
     ? runGit(["merge-base", target.base, target.head], { cwd: root })
     : target.base;
-  print(`使用 ${target.label} 计算 affected 范围：${comparisonBase}..${target.head}`);
+  print(
+    `使用 ${target.label} 计算 affected 范围：${comparisonBase}..${target.head}`,
+  );
 
   const changedFiles = collectPaths(
     runGit(
@@ -311,13 +342,25 @@ function main() {
     ),
   );
   const deletedFiles = collectPaths(
-    runGit(["diff", "--name-only", "-z", "--diff-filter=D", comparisonBase, target.head], {
-      cwd: root,
-    }),
+    runGit(
+      [
+        "diff",
+        "--name-only",
+        "-z",
+        "--diff-filter=D",
+        comparisonBase,
+        target.head,
+      ],
+      {
+        cwd: root,
+      },
+    ),
   );
 
   if (changedFiles.length === 0 && deletedFiles.length === 0) {
-    print(`当前 ${target.head} 相对 ${comparisonBase} 没有变更，跳过 Vitest 单测。`);
+    print(
+      `当前 ${target.head} 相对 ${comparisonBase} 没有变更，跳过 Vitest 单测。`,
+    );
     return 0;
   }
 
@@ -325,13 +368,30 @@ function main() {
     (file) => isRootVitestScope(file) && isCodeLikeFile(file),
   );
   if (deletedCodeFile) {
-    return runFullUnitTests(root, `${deletedCodeFile} 已删除，无法交给 vitest related 分析`);
+    // 删除的文件本身是测试文件时，vitest related 只需要现有源码变更关联的用例：
+    // 测试文件被删不会让其它测试失去覆盖。只有删除非测试的代码文件（实现/工具）才可能
+    // 让 related 漏掉曾依赖它的用例，维持全量兜底。此前一律全量，使按规范清理孤儿
+    // 测试（如 e2eBeforeSessionSetup.test.ts）后 pre-push 永远退回 1000+ 存量失败。
+    if (!isRootUnitTestFile(deletedCodeFile)) {
+      return runFullUnitTests(
+        root,
+        `${deletedCodeFile} 已删除，无法交给 vitest related 分析`,
+      );
+    }
+    print(
+      `删除的 ${deletedCodeFile} 是测试文件，跳过全量兜底，继续 related 分析。`,
+    );
   }
 
-  const existingFiles = changedFiles.filter((file) => existsSync(resolve(root, file)));
+  const existingFiles = changedFiles.filter((file) =>
+    existsSync(resolve(root, file)),
+  );
   const testFiles = existingFiles.filter(isRootUnitTestFile);
   const relatedSourceFiles = existingFiles.filter(
-    (file) => isRootVitestScope(file) && isCodeLikeFile(file) && !isRootUnitTestFile(file),
+    (file) =>
+      isRootVitestScope(file) &&
+      isCodeLikeFile(file) &&
+      !isRootUnitTestFile(file),
   );
 
   if (testFiles.length === 0 && relatedSourceFiles.length === 0) {
