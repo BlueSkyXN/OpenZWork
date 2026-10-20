@@ -65,10 +65,14 @@ for (const group of GROUPS) {
     "--reporter=json",
     `--outputFile=${jsonPath}`,
   ];
+  // Windows 上 pnpm 是 pnpm.CMD 批处理，spawnSync 不带 shell 会直接 ENOENT（表现为
+  // 全组瞬间 failed 且 exit 为 null，2026-10-20 三个 full-suite job 均如此）；
+  // win32 走 shell 解析，POSIX 保持直接 spawn。
   const res = spawnSync("pnpm", ["exec", "vitest", ...args], {
     stdio: "inherit",
     timeout: (GROUP_MINUTES[group.name] ?? 15) * 60_000,
     env: process.env,
+    shell: process.platform === "win32",
   });
   const cancelled = res.error && res.error.code === "ETIMEDOUT";
   if (cancelled)
