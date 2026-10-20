@@ -241,9 +241,12 @@ process.stdin.on("data", (chunk) => {
       const reply = () => send({ id: msg.id, result: {} });
       if (msg.params.topic.endsWith("/delayed-unsubscribe")) setTimeout(reply, 200);
       else reply();
+      // 已处理完的请求必须 continue：链尾的 fail-fast 兜底会把同一条消息再判成未预期。
+      continue;
     }
     if (msg.method === "v4/connection/flow" && msg.id !== undefined) {
       send({ id: msg.id, result: {} });
+      continue;
     }
     if (msg.method === "v4/attachment/begin" && msg.id !== undefined) {
       send({ id: msg.id, result: { uploadId: msg.params.uploadId, state: "staging", nextChunkIndex: 0 } });
@@ -299,6 +302,8 @@ process.stdin.on("data", (chunk) => {
         process.stdout.write(JSON.stringify(response) + "\\n" + JSON.stringify(recovery) + "\\n");
       if (msg.params.topic.endsWith("/delayed-resync")) setTimeout(reply, 200);
       else reply();
+      // 已处理完的请求必须 continue：链尾的 fail-fast 兜底会把同一条消息再判成未预期。
+      continue;
     }
     if (msg.method === "v4/command" && msg.id !== undefined) {
       const status = "accepted";
@@ -609,9 +614,16 @@ describe("zcodeAgentService v4 conversation channel", () => {
           (item) => item.method === "v4/command",
         );
         // 根因：为不存在的版本错配补写 mode、补发无 revision 的模式命令，改变了原创建合同。
+        // 动态工作流收敛为本地默认启用后，Host 在 createSession 信封同源注入
+        // dynamicWorkflowEnabled/Mode（见 resolveDynamicWorkflowSessionFlags）；断言
+        // 改为「原始 payload + 注入对」，其余字段一律不得改写。
         expect(commands).toHaveLength(1);
         expect(commands[0]?.params.type).toBe("createSession");
-        expect(commands[0]?.params.payload).toEqual(payload);
+        expect(commands[0]?.params.payload).toEqual({
+          ...payload,
+          dynamicWorkflowEnabled: true,
+          dynamicWorkflowMode: "alwaysOn",
+        });
       } finally {
         await service.disposeAllAndWait();
       }
@@ -677,8 +689,10 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
 
       // Worker 已经持有进程级 Registry；Host 读取 Registry View 只用于启动门禁，
-      // 不能把完整 Registry 下发成另一份执行事实源。
+      // 不能把完整 Registry 下发成另一份执行事实源。动态工作流策略同步（本地默认启用）
+      // 是启动链路的固定前置请求，与 Registry 无关，计入白名单。
       expect(readRequests(logPath).map((entry) => entry.method)).toEqual([
+        "workspace/updateDynamicWorkflowPolicy",
         "v4/conversation/subscribe",
       ]);
       expect(
