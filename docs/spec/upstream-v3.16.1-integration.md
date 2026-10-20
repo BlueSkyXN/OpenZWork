@@ -51,5 +51,6 @@ sequenceDiagram
 - 核心回归加入 ToolSearch、MCP Apps 连接竞争、GenUI 远端路由、工作流 shell 继承、Duplex 传输、controller identity 和 SQLite 迁移等保留的新行为。
 - 本地 pre-push 与核心 CI 使用同一核心测试清单；继续执行 Lint、SQLite schema 与架构检查，历史 affected suite 交由独立扩展任务运行。
 - 扩展历史测试继续独立运行，失败保留退出码、原始诊断与 artifact，不成为核心 CI 或 Installers 的前置依赖。
+- 完整历史测试按包分组执行（`scripts/run-full-suite-groups.mjs`）：每组独立进程、独立 JSON 报告与组级时限，超时或崩溃的组标记 cancelled 后继续跑其余组，job 级超时预算覆盖分组总和加余量。任何一组的失败不再让整个 job 的诊断全部丢失。
 - 依赖按新 lockfile 与固定 Node 24.14.0 / pnpm 11.28.6 安装；不复制旧依赖或 ignored 运行配置。
 - 候选提交、PR 与云端结果分别记录。完成候选不自动合并、打 tag、发布或部署。

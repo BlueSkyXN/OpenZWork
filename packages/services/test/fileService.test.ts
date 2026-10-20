@@ -16,15 +16,23 @@ import {
   isSkippableWorkspaceFileListError,
 } from "../src/file/fileService.js";
 import { setDataBaseDir } from "../src/paths.js";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import { unpackWorkspaceFileEntries } from "@zcode/shared/workspaceFileEntriesCodec";
 import type { IFileService } from "../src/file/file.js";
 
 // 分块拉全量（测试语义等价旧单次 listWorkspaceFiles）。
-async function readAllPacked(service: IFileService, rootPath: string): Promise<string> {
+async function readAllPacked(
+  service: IFileService,
+  rootPath: string,
+): Promise<string> {
   const total = await service.listWorkspaceFilesLength({ rootPath });
   let packed = "";
   for (let offset = 0; offset < total; offset += 1000) {
-    packed += await service.listWorkspaceFilesRange({ rootPath, offset, length: 1000 });
+    packed += await service.listWorkspaceFilesRange({
+      rootPath,
+      offset,
+      length: 1000,
+    });
   }
   return packed;
 }
@@ -137,7 +145,10 @@ describe("fileService", () => {
       writeFileSync(join(rootPath, "readme.md"), "# Hello");
 
       const service = createFileService();
-      const entries = await service.readdir({ path: rootPath, includeHidden: true });
+      const entries = await service.readdir({
+        path: rootPath,
+        includeHidden: true,
+      });
 
       expect(entries).toEqual([
         {
@@ -172,7 +183,11 @@ describe("fileService", () => {
       const targetPath = join(rootPath, "target");
       const linkPath = join(rootPath, "linked-dir");
       mkdirSync(targetPath);
-      symlinkSync(targetPath, linkPath, process.platform === "win32" ? "junction" : "dir");
+      symlinkSync(
+        targetPath,
+        linkPath,
+        process.platform === "win32" ? "junction" : "dir",
+      );
 
       const service = createFileService();
       const entries = await service.readdir({ path: rootPath });
@@ -242,20 +257,20 @@ describe("fileService", () => {
       const filePath = join(rootPath, "later.pdf");
       const service = createFileService();
 
-      await expect(service.checkFilesExist({ paths: [filePath] })).resolves.toEqual([
-        { path: filePath, exists: false },
-      ]);
+      await expect(
+        service.checkFilesExist({ paths: [filePath] }),
+      ).resolves.toEqual([{ path: filePath, exists: false }]);
       writeFileSync(filePath, "created");
 
       now.mockReturnValue(60_999);
-      await expect(service.checkFilesExist({ paths: [filePath] })).resolves.toEqual([
-        { path: filePath, exists: false },
-      ]);
+      await expect(
+        service.checkFilesExist({ paths: [filePath] }),
+      ).resolves.toEqual([{ path: filePath, exists: false }]);
 
       now.mockReturnValue(61_001);
-      await expect(service.checkFilesExist({ paths: [filePath] })).resolves.toEqual([
-        { path: filePath, exists: true },
-      ]);
+      await expect(
+        service.checkFilesExist({ paths: [filePath] }),
+      ).resolves.toEqual([{ path: filePath, exists: true }]);
       now.mockRestore();
     });
 
@@ -263,7 +278,10 @@ describe("fileService", () => {
       const service = createFileService();
       await expect(
         service.checkFilesExist({
-          paths: Array.from({ length: 16 }, (_, index) => `/tmp/file-${index}.pdf`),
+          paths: Array.from(
+            { length: 16 },
+            (_, index) => `/tmp/file-${index}.pdf`,
+          ),
         }),
       ).rejects.toThrow("15");
     });
@@ -276,7 +294,12 @@ describe("fileService", () => {
       const dataBaseDir = makeTempDir("zcode-conversation-workspace-");
       setDataBaseDir(dataBaseDir);
       const service = createFileService();
-      const workspacePath = join(dataBaseDir, ".zcode", "workspace", "default");
+      const workspacePath = join(
+        dataBaseDir,
+        OPENZWORK_DATA_DIR_NAME,
+        "workspace",
+        "default",
+      );
 
       await expect(service.ensureConversationWorkspace()).resolves.toEqual({
         path: workspacePath,
@@ -297,13 +320,17 @@ describe("fileService", () => {
     it("rejects a file collision without returning a half-created workspace", async () => {
       const dataBaseDir = makeTempDir("zcode-conversation-workspace-file-");
       setDataBaseDir(dataBaseDir);
-      const workspaceRoot = join(dataBaseDir, ".zcode", "workspace");
+      const workspaceRoot = join(
+        dataBaseDir,
+        OPENZWORK_DATA_DIR_NAME,
+        "workspace",
+      );
       mkdirSync(workspaceRoot, { recursive: true });
       writeFileSync(join(workspaceRoot, "default"), "not a directory");
 
-      await expect(createFileService().ensureConversationWorkspace()).rejects.toThrow(
-        "Workspace path is not a directory",
-      );
+      await expect(
+        createFileService().ensureConversationWorkspace(),
+      ).rejects.toThrow("Workspace path is not a directory");
     });
   });
 
@@ -322,7 +349,9 @@ describe("fileService", () => {
     it("creates a missing scratch workspace directory", async () => {
       const service = createFileService();
 
-      await expect(service.createScratchWorkspace({ name: testWorkspaceName })).resolves.toEqual({
+      await expect(
+        service.createScratchWorkspace({ name: testWorkspaceName }),
+      ).resolves.toEqual({
         path: testWorkspacePath,
       });
       await expect(service.stat({ path: testWorkspacePath })).resolves.toEqual({
@@ -338,7 +367,9 @@ describe("fileService", () => {
       mkdirSync(testWorkspacePath, { recursive: true });
       const service = createFileService();
 
-      await expect(service.createScratchWorkspace({ name: testWorkspaceName })).resolves.toEqual({
+      await expect(
+        service.createScratchWorkspace({ name: testWorkspaceName }),
+      ).resolves.toEqual({
         path: testWorkspacePath,
       });
     });
@@ -350,7 +381,9 @@ describe("fileService", () => {
       writeFileSync(fileWorkspacePath, "not a directory");
       const service = createFileService();
 
-      await expect(service.createScratchWorkspace({ name: fileWorkspaceName })).rejects.toThrow();
+      await expect(
+        service.createScratchWorkspace({ name: fileWorkspaceName }),
+      ).rejects.toThrow();
     });
   });
 
@@ -379,7 +412,10 @@ describe("fileService", () => {
       writeFileSync(filePath, "abc");
 
       const service = createFileService();
-      const result = await service.readTextFile({ path: filePath, offset: 100 });
+      const result = await service.readTextFile({
+        path: filePath,
+        offset: 100,
+      });
 
       expect(result.content).toBe("");
       expect(result.bytesRead).toBe(0);
@@ -394,7 +430,11 @@ describe("fileService", () => {
       writeFileSync(filePath, "abcdefghij");
 
       const service = createFileService();
-      const result = await service.readTextFile({ path: filePath, offset: 3, length: 4 });
+      const result = await service.readTextFile({
+        path: filePath,
+        offset: 3,
+        length: 4,
+      });
 
       expect(result.content).toBe("defg");
       expect(result.offset).toBe(3);
@@ -443,7 +483,10 @@ describe("fileService", () => {
 
       const service = createFileService();
       // 请求读取 512KB，应被截断到 256KB
-      const result = await service.readTextFile({ path: filePath, length: 512 * 1024 });
+      const result = await service.readTextFile({
+        path: filePath,
+        length: 512 * 1024,
+      });
 
       expect(result.bytesRead).toBe(256 * 1024);
       expect(result.truncated).toBe(true);
@@ -453,7 +496,9 @@ describe("fileService", () => {
       const rootPath = makeTempDir("zcode-readtext-dir-");
 
       const service = createFileService();
-      await expect(service.readTextFile({ path: rootPath })).rejects.toThrow(/not a file/);
+      await expect(service.readTextFile({ path: rootPath })).rejects.toThrow(
+        /not a file/,
+      );
     });
   });
 
@@ -463,10 +508,17 @@ describe("fileService", () => {
     it("reads raw bytes at the requested offset", async () => {
       const rootPath = makeTempDir("zcode-readrange-");
       const filePath = join(rootPath, "doc.pdf");
-      writeFileSync(filePath, Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]));
+      writeFileSync(
+        filePath,
+        Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37]),
+      );
 
       const service = createFileService();
-      const result = await service.readFileRange({ path: filePath, offset: 2, length: 4 });
+      const result = await service.readFileRange({
+        path: filePath,
+        offset: 2,
+        length: 4,
+      });
 
       expect(result).toBeInstanceOf(Uint8Array);
       expect(Array.from(result)).toEqual([0x44, 0x46, 0x2d, 0x31]);
@@ -478,7 +530,11 @@ describe("fileService", () => {
       writeFileSync(filePath, Buffer.alloc(10, 7));
 
       const service = createFileService();
-      const result = await service.readFileRange({ path: filePath, offset: 6, length: 64 });
+      const result = await service.readFileRange({
+        path: filePath,
+        offset: 6,
+        length: 64,
+      });
 
       expect(result.length).toBe(4);
     });
@@ -489,7 +545,11 @@ describe("fileService", () => {
       writeFileSync(filePath, Buffer.alloc(3, 1));
 
       const service = createFileService();
-      const result = await service.readFileRange({ path: filePath, offset: 100, length: 8 });
+      const result = await service.readFileRange({
+        path: filePath,
+        offset: 100,
+        length: 8,
+      });
 
       expect(result.length).toBe(0);
     });
@@ -513,9 +573,9 @@ describe("fileService", () => {
       const rootPath = makeTempDir("zcode-readrange-dir-");
 
       const service = createFileService();
-      await expect(service.readFileRange({ path: rootPath, offset: 0, length: 8 })).rejects.toThrow(
-        /not a file/,
-      );
+      await expect(
+        service.readFileRange({ path: rootPath, offset: 0, length: 8 }),
+      ).rejects.toThrow(/not a file/);
     });
   });
 
@@ -544,9 +604,9 @@ describe("fileService", () => {
       writeFileSync(filePath, Buffer.alloc(32, 1));
 
       const service = createFileService();
-      await expect(service.readMediaPreview({ path: filePath, maxBytes: 16 })).rejects.toThrow(
-        /too large/,
-      );
+      await expect(
+        service.readMediaPreview({ path: filePath, maxBytes: 16 }),
+      ).rejects.toThrow(/too large/);
     });
 
     it.each([
@@ -566,7 +626,9 @@ describe("fileService", () => {
       const filePath = join(rootPath, filename);
       writeFileSync(filePath, Buffer.from([1, 2, 3]));
 
-      const result = await createFileService().readMediaPreview({ path: filePath });
+      const result = await createFileService().readMediaPreview({
+        path: filePath,
+      });
 
       expect(result.mediaType).toBe(mediaType);
     });
@@ -598,9 +660,9 @@ describe("fileService", () => {
 
       const service = createFileService();
 
-      await expect(service.readBinaryPreview({ path: filePath, maxBytes: 16 })).rejects.toThrow(
-        /too large/,
-      );
+      await expect(
+        service.readBinaryPreview({ path: filePath, maxBytes: 16 }),
+      ).rejects.toThrow(/too large/);
     });
 
     it("clamps custom binary preview limits to the 25 MB hard limit", async () => {
@@ -622,7 +684,9 @@ describe("fileService", () => {
       const rootPath = makeTempDir("zcode-readbinary-dir-");
       const service = createFileService();
 
-      await expect(service.readBinaryPreview({ path: rootPath })).rejects.toThrow(/not a file/);
+      await expect(
+        service.readBinaryPreview({ path: rootPath }),
+      ).rejects.toThrow(/not a file/);
     });
   });
 
@@ -651,10 +715,16 @@ describe("fileService", () => {
       writeFileSync(join(rootPath, "src", "index.ts"), "export {};");
       writeFileSync(join(rootPath, "node_modules", "ignore-me.js"), "");
       writeFileSync(join(rootPath, ".git", "HEAD"), "ref: refs/heads/main");
-      writeFileSync(join(rootPath, ".github", "workflows", "release.yml"), "name: release");
+      writeFileSync(
+        join(rootPath, ".github", "workflows", "release.yml"),
+        "name: release",
+      );
 
       const service = createFileService();
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
 
       expect(entries).toEqual([
         {
@@ -724,7 +794,10 @@ describe("fileService", () => {
       }
 
       const service = createFileService();
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
 
       expect(entries).toEqual([
         {
@@ -778,7 +851,10 @@ describe("fileService", () => {
       }
 
       const service = createFileService();
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
 
       expect(entries.map((entry) => entry.relativePath)).toEqual(["src.ts"]);
     });
@@ -809,7 +885,10 @@ describe("fileService", () => {
       }
 
       const service = createFileService();
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
       const relativePaths = entries.map((entry) => entry.relativePath);
 
       for (const directoryName of includedDirectories) {
@@ -817,7 +896,11 @@ describe("fileService", () => {
         expect(relativePaths).toContain(`${directoryName}/kept.txt`);
       }
       expect(relativePaths).toEqual(
-        expect.arrayContaining(["bundle.js.map", "app.min.js", "style.min.css"]),
+        expect.arrayContaining([
+          "bundle.js.map",
+          "app.min.js",
+          "style.min.css",
+        ]),
       );
     });
 
@@ -826,7 +909,11 @@ describe("fileService", () => {
       const targetPath = makeTempDir("zcode-file-service-symlink-target-");
       const linkPath = join(rootPath, "linked-dir");
       writeFileSync(join(targetPath, "outside.ts"), "");
-      symlinkSync(targetPath, linkPath, process.platform === "win32" ? "junction" : "dir");
+      symlinkSync(
+        targetPath,
+        linkPath,
+        process.platform === "win32" ? "junction" : "dir",
+      );
       const evaluatedTypes: string[] = [];
 
       const service = createFileService({
@@ -837,7 +924,10 @@ describe("fileService", () => {
           },
         },
       });
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
 
       expect(evaluatedTypes).toEqual(["directory"]);
       expect(entries).toEqual([
@@ -867,7 +957,10 @@ describe("fileService", () => {
           }),
         },
       });
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
 
       expect(entries.map((entry) => entry.relativePath)).toEqual([
         "node_modules",
@@ -887,9 +980,12 @@ describe("fileService", () => {
         },
       });
 
-      expect(unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath)).toEqual(
-        [],
-      );
+      expect(
+        unpackWorkspaceFileEntries(
+          await readAllPacked(service, rootPath),
+          rootPath,
+        ),
+      ).toEqual([]);
     });
 
     it("returns empty array when hidden directory descendants and env files provide no candidates", async () => {
@@ -898,7 +994,10 @@ describe("fileService", () => {
       writeFileSync(join(rootPath, ".env"), "SECRET=123");
 
       const service = createFileService();
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
 
       expect(entries).toEqual([]);
     });
@@ -912,7 +1011,10 @@ describe("fileService", () => {
       writeFileSync(join(rootPath, "root.ts"), "");
 
       const service = createFileService();
-      const entries = unpackWorkspaceFileEntries(await readAllPacked(service, rootPath), rootPath);
+      const entries = unpackWorkspaceFileEntries(
+        await readAllPacked(service, rootPath),
+        rootPath,
+      );
       const relativePaths = entries.map((e) => e.relativePath);
 
       expect(relativePaths).toEqual(["a", "b", "a/x.ts", "b/z.ts", "root.ts"]);
@@ -938,7 +1040,11 @@ describe("fileService", () => {
         );
 
         // 自动创建暂时停用，内存中的 gitignore + 默认规则仍剪枝 obj/bin。
-        expect(entries.map((e) => e.relativePath)).toEqual(["src", ".gitignore", "src/Program.cs"]);
+        expect(entries.map((e) => e.relativePath)).toEqual([
+          "src",
+          ".gitignore",
+          "src/Program.cs",
+        ]);
         // 规则文件自身是工具配置，不进入候选。
         expect(existsSync(join(rootPath, ".zcodeignore"))).toBe(false);
       });
@@ -965,14 +1071,22 @@ describe("fileService", () => {
       it("dedupes builtin defaults against gitignore rules on creation", async () => {
         const rootPath = makeTempDir("zcode-file-service-create-dedupe-");
         // .gitignore 声明了 node_modules/（含尾斜杠差异写法各测一条）。
-        writeFileSync(join(rootPath, ".gitignore"), "node_modules/\ncoverage\n");
+        writeFileSync(
+          join(rootPath, ".gitignore"),
+          "node_modules/\ncoverage\n",
+        );
         mkdirSync(join(rootPath, "node_modules"));
         writeFileSync(join(rootPath, "node_modules", "x.js"), "");
         writeFileSync(join(rootPath, "keep.ts"), "");
 
         const service = createFileService();
-        const preview = await service.readWorkspaceFileSearchIgnore({ rootPath });
-        await service.writeWorkspaceFileSearchIgnore({ rootPath, content: preview.content });
+        const preview = await service.readWorkspaceFileSearchIgnore({
+          rootPath,
+        });
+        await service.writeWorkspaceFileSearchIgnore({
+          rootPath,
+          content: preview.content,
+        });
         const entries = unpackWorkspaceFileEntries(
           await readAllPacked(service, rootPath),
           rootPath,
@@ -984,7 +1098,10 @@ describe("fileService", () => {
         expect(created.match(/^node_modules\/$/gm)).toHaveLength(1);
         expect(created.match(/^coverage\/?$/gm)).toHaveLength(1);
         // 剪枝仍然生效（gitignore 区那条在起作用）；.gitignore 自身保持可搜。
-        expect(entries.map((e) => e.relativePath)).toEqual([".gitignore", "keep.ts"]);
+        expect(entries.map((e) => e.relativePath)).toEqual([
+          ".gitignore",
+          "keep.ts",
+        ]);
       });
 
       it("uses builtin defaults without creating .zcodeignore when no .gitignore exists", async () => {
@@ -1062,14 +1179,21 @@ describe("fileService", () => {
         writeFileSync(join(rootPath, ".gitignore"), "out/\n");
 
         const service = createFileService();
-        const initial = await service.readWorkspaceFileSearchIgnore({ rootPath });
+        const initial = await service.readWorkspaceFileSearchIgnore({
+          rootPath,
+        });
         // 尚未落盘：预览初始内容（gitignore 拷贝 + 默认段）。
         expect(initial.source).toBe("template");
         expect(initial.content).toContain("out/");
         expect(existsSync(join(rootPath, ".zcodeignore"))).toBe(false);
 
-        await service.writeWorkspaceFileSearchIgnore({ rootPath, content: "custom/\n" });
-        const afterWrite = await service.readWorkspaceFileSearchIgnore({ rootPath });
+        await service.writeWorkspaceFileSearchIgnore({
+          rootPath,
+          content: "custom/\n",
+        });
+        const afterWrite = await service.readWorkspaceFileSearchIgnore({
+          rootPath,
+        });
         expect(afterWrite.source).toBe("file");
         expect(afterWrite.content).toBe("custom/\n");
 
@@ -1081,7 +1205,10 @@ describe("fileService", () => {
           rootPath,
         );
         // custom/ 被写入的规则剪枝；.gitignore 本身保持可搜（现有行为）。
-        expect(entries.map((e) => e.relativePath)).toEqual([".gitignore", "ok.txt"]);
+        expect(entries.map((e) => e.relativePath)).toEqual([
+          ".gitignore",
+          "ok.txt",
+        ]);
       });
 
       it("syncs only the gitignore section while keeping defaults and custom rules", async () => {
@@ -1089,14 +1216,22 @@ describe("fileService", () => {
         writeFileSync(join(rootPath, ".gitignore"), "out/\n");
 
         const service = createFileService();
-        const initial = await service.readWorkspaceFileSearchIgnore({ rootPath });
-        await service.writeWorkspaceFileSearchIgnore({ rootPath, content: initial.content });
+        const initial = await service.readWorkspaceFileSearchIgnore({
+          rootPath,
+        });
+        await service.writeWorkspaceFileSearchIgnore({
+          rootPath,
+          content: initial.content,
+        });
 
         // 用户在默认段里删掉 node_modules/（放开），并在自定义区追加自己的规则。
         const edited = initial.content
           .replace("node_modules/\n", "")
           .concat("my-private-assets/\n");
-        await service.writeWorkspaceFileSearchIgnore({ rootPath, content: edited });
+        await service.writeWorkspaceFileSearchIgnore({
+          rootPath,
+          content: edited,
+        });
 
         // .gitignore 更新后同步：只重写 gitignore 区。
         writeFileSync(join(rootPath, ".gitignore"), "out/\nnewdir/\n");
@@ -1115,11 +1250,16 @@ describe("fileService", () => {
         writeFileSync(join(rootPath, ".gitignore"), "out/\n");
 
         const service = createFileService();
-        const initial = await service.readWorkspaceFileSearchIgnore({ rootPath });
+        const initial = await service.readWorkspaceFileSearchIgnore({
+          rootPath,
+        });
         const edited = initial.content
           .replace("node_modules/\n", "")
           .concat("my-private-assets/\n");
-        await service.writeWorkspaceFileSearchIgnore({ rootPath, content: edited });
+        await service.writeWorkspaceFileSearchIgnore({
+          rootPath,
+          content: edited,
+        });
 
         const reset = await service.applyWorkspaceFileSearchIgnoreTransform({
           rootPath,
