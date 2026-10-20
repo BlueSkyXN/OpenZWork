@@ -52,12 +52,19 @@ export class WindowsChromeAppBoundImportError extends Error {
   }
 }
 
-function throwAppBoundDecryptionFailure(logger: BrowserDataLogger, reason: string): never {
+function throwAppBoundDecryptionFailure(
+  logger: BrowserDataLogger,
+  reason: string,
+): never {
   // helper 原本返回了稳定子错误码，但通用映射会丢失根因；这里只记录白名单值，禁止记录可能含密钥或路径的原始响应。
   logger.warn("[browser-data] Windows Chrome App-Bound helper 返回失败", {
-    reason: APP_BOUND_HELPER_FAILURE_REASONS.has(reason) ? reason : "invalid_response",
+    reason: APP_BOUND_HELPER_FAILURE_REASONS.has(reason)
+      ? reason
+      : "invalid_response",
   });
-  throw new WindowsChromeAppBoundImportError("chrome_cookie_app_bound_decryption_failed");
+  throw new WindowsChromeAppBoundImportError(
+    "chrome_cookie_app_bound_decryption_failed",
+  );
 }
 
 export type WindowsChromeAppBoundKeyReader = (options: {
@@ -76,6 +83,9 @@ interface HelperProcessResult {
 interface ReadAppBoundKeyOptions {
   appExecutablePath?: string;
   chromeExecutablePath: string;
+  // 调用方（安装器/升级器）可覆盖用于 helper 校验的版本与 commit；缺省用当前构建值。
+  expectedAppVersion?: string;
+  expectedBuildCommit?: string;
   helperPath?: string;
   isPackaged?: boolean;
   logger: BrowserDataLogger;
@@ -97,13 +107,16 @@ interface ReadAppBoundKeyOptions {
 
 function toSafeProcessError(error: unknown): { code?: string; name: string } {
   if (!(error instanceof Error)) return { name: "UnknownError" };
-  const code = "code" in error && typeof error.code === "string" ? error.code : undefined;
+  const code =
+    "code" in error && typeof error.code === "string" ? error.code : undefined;
   return { name: error.name || "Error", ...(code ? { code } : {}) };
 }
 
 function getTargetKey(processArch: string = process.arch): string {
   if (processArch !== "x64" && processArch !== "arm64") {
-    throw new WindowsChromeAppBoundImportError("chrome_cookie_helper_verification_failed");
+    throw new WindowsChromeAppBoundImportError(
+      "chrome_cookie_helper_verification_failed",
+    );
   }
   return `win32-${processArch}`;
 }
@@ -115,15 +128,27 @@ async function pathExists(path: string): Promise<boolean> {
   );
 }
 
-async function resolveHelperPath(options: ReadAppBoundKeyOptions): Promise<string> {
+async function resolveHelperPath(
+  options: ReadAppBoundKeyOptions,
+): Promise<string> {
   if (options.helperPath) return resolve(options.helperPath);
   const targetKey = getTargetKey(options.processArch);
   if (options.isPackaged ?? isElectronAppPackaged()) {
-    return join(options.resourcesPath ?? process.resourcesPath, "browser-import", HELPER_FILENAME);
+    return join(
+      options.resourcesPath ?? process.resourcesPath,
+      "browser-import",
+      HELPER_FILENAME,
+    );
   }
 
   const candidates = [
-    join(process.cwd(), "bundled-tools", targetKey, "browser-import", HELPER_FILENAME),
+    join(
+      process.cwd(),
+      "bundled-tools",
+      targetKey,
+      "browser-import",
+      HELPER_FILENAME,
+    ),
     join(
       process.cwd(),
       "packages",
@@ -185,7 +210,9 @@ function runHelperProcess(
     const timeout = setTimeout(() => {
       child.kill();
       finishReject(
-        Object.assign(new Error("browser_import_helper_timeout"), { code: "ETIMEDOUT" }),
+        Object.assign(new Error("browser_import_helper_timeout"), {
+          code: "ETIMEDOUT",
+        }),
       );
     }, HELPER_TIMEOUT_MS);
 
@@ -269,9 +296,14 @@ async function verifyAuthenticodePair(
   // powershell.exe 的 PSHOME 显式加载 Security 模块，兼容带空格路径和被污染的 PSModulePath。
   const result = await runHelperProcess(
     powershellPath,
-    createWindowsPowerShellSecurityArgs(script, [helperPath, appExecutablePath]),
+    createWindowsPowerShellSecurityArgs(script, [
+      helperPath,
+      appExecutablePath,
+    ]),
   );
-  return result.exitCode === 0 && /^[0-9a-f]{64}$/.test(result.stdout) ? result.stdout : false;
+  return result.exitCode === 0 && /^[0-9a-f]{64}$/.test(result.stdout)
+    ? result.stdout
+    : false;
 }
 
 async function runLockedPackagedHelper(options: {
@@ -283,7 +315,8 @@ async function runLockedPackagedHelper(options: {
   verifiedHelperHash: string;
 }): Promise<HelperProcessResult> {
   const powershellPath =
-    options.trustedPowerShellPath ?? (await realpath(TRUSTED_WINDOWS_POWERSHELL_ALIAS));
+    options.trustedPowerShellPath ??
+    (await realpath(TRUSTED_WINDOWS_POWERSHELL_ALIAS));
   const hashMismatchResponse =
     options.mode === "broker"
       ? `[Console]::Out.WriteLine('${HELPER_PROTOCOL}\tERR\thelper_verification_failed');return`
@@ -317,7 +350,10 @@ async function runLockedPackagedHelper(options: {
   );
 }
 
-async function verifyHelper(helperPath: string, options: ReadAppBoundKeyOptions): Promise<string> {
+async function verifyHelper(
+  helperPath: string,
+  options: ReadAppBoundKeyOptions,
+): Promise<string> {
   const packaged = options.isPackaged ?? isElectronAppPackaged();
   const expectedRoot = packaged
     ? join(options.resourcesPath ?? process.resourcesPath, "browser-import")
@@ -328,7 +364,8 @@ async function verifyHelper(helperPath: string, options: ReadAppBoundKeyOptions)
       realpath(helperPath),
       realpath(expectedRoot),
     ]);
-    if (!helperInfo.isFile() || helperInfo.isSymbolicLink()) throw new Error("invalid_helper_file");
+    if (!helperInfo.isFile() || helperInfo.isSymbolicLink())
+      throw new Error("invalid_helper_file");
     const relativePath = relative(resolvedRoot, resolvedHelper);
     if (relativePath.startsWith("..") || relativePath.includes(":")) {
       throw new Error("helper_outside_trusted_root");
@@ -345,7 +382,10 @@ async function verifyHelper(helperPath: string, options: ReadAppBoundKeyOptions)
       if (!signatureResult) {
         throw new Error("helper_signature_mismatch");
       }
-      if (typeof signatureResult === "string" && signatureResult !== verifiedHash) {
+      if (
+        typeof signatureResult === "string" &&
+        signatureResult !== verifiedHash
+      ) {
         throw new Error("helper_signature_file_mismatch");
       }
       if ((await hashHelperFile(helperPath)) !== verifiedHash) {
@@ -372,7 +412,8 @@ async function verifyHelper(helperPath: string, options: ReadAppBoundKeyOptions)
       fields[0] !== HELPER_VERSION_PROTOCOL ||
       fields[1] !== HELPER_VERSION ||
       fields[2] !== (options.processArch ?? process.arch) ||
-      (packaged && (fields[3] !== expectedAppVersion || fields[4] !== expectedBuildCommit))
+      (packaged &&
+        (fields[3] !== expectedAppVersion || fields[4] !== expectedBuildCommit))
     ) {
       throw new Error("helper_version_or_arch_mismatch");
     }
@@ -385,21 +426,30 @@ async function verifyHelper(helperPath: string, options: ReadAppBoundKeyOptions)
       "[browser-data] Windows Chrome App-Bound helper 校验失败",
       toSafeProcessError(error),
     );
-    throw new WindowsChromeAppBoundImportError("chrome_cookie_helper_verification_failed");
+    throw new WindowsChromeAppBoundImportError(
+      "chrome_cookie_helper_verification_failed",
+    );
   }
 }
 
-function parseHelperResponse(response: HelperProcessResult, logger: BrowserDataLogger): Buffer {
+function parseHelperResponse(
+  response: HelperProcessResult,
+  logger: BrowserDataLogger,
+): Buffer {
   const fields = response.stdout.split("\t");
   if (fields.length !== 3 || fields[0] !== HELPER_PROTOCOL) {
     throwAppBoundDecryptionFailure(logger, "invalid_response");
   }
   if (fields[1] === "ERR") {
     if (fields[2] === "elevation_cancelled") {
-      throw new WindowsChromeAppBoundImportError("chrome_cookie_elevation_cancelled");
+      throw new WindowsChromeAppBoundImportError(
+        "chrome_cookie_elevation_cancelled",
+      );
     }
     if (fields[2] === "helper_verification_failed") {
-      throw new WindowsChromeAppBoundImportError("chrome_cookie_helper_verification_failed");
+      throw new WindowsChromeAppBoundImportError(
+        "chrome_cookie_helper_verification_failed",
+      );
     }
     throwAppBoundDecryptionFailure(logger, fields[2]!);
   }
@@ -428,12 +478,19 @@ export async function readWindowsChromeAppBoundKey(
   };
   const encodedKey = localState.os_crypt?.app_bound_encrypted_key;
   if (!encodedKey) {
-    throw new WindowsChromeAppBoundImportError("chrome_cookie_app_bound_decryption_failed");
+    throw new WindowsChromeAppBoundImportError(
+      "chrome_cookie_app_bound_decryption_failed",
+    );
   }
   const appBoundKey = Buffer.from(encodedKey, "base64");
-  if (appBoundKey.length <= 4 || appBoundKey.subarray(0, 4).toString("ascii") !== "APPB") {
+  if (
+    appBoundKey.length <= 4 ||
+    appBoundKey.subarray(0, 4).toString("ascii") !== "APPB"
+  ) {
     appBoundKey.fill(0);
-    throw new WindowsChromeAppBoundImportError("chrome_cookie_app_bound_decryption_failed");
+    throw new WindowsChromeAppBoundImportError(
+      "chrome_cookie_app_bound_decryption_failed",
+    );
   }
 
   try {
@@ -475,7 +532,9 @@ export async function readWindowsChromeAppBoundKey(
       "[browser-data] Windows Chrome App-Bound helper 运行失败",
       toSafeProcessError(error),
     );
-    throw new WindowsChromeAppBoundImportError("chrome_cookie_app_bound_decryption_failed");
+    throw new WindowsChromeAppBoundImportError(
+      "chrome_cookie_app_bound_decryption_failed",
+    );
   } finally {
     // APPB 密文虽不是明文密钥，也不应在导入结束后继续挂在 main 的可复用 Buffer 中。
     appBoundKey.fill(0);

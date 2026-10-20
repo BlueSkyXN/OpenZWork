@@ -1,8 +1,17 @@
-import { channelReplyHostRequestSchema, type ChannelReplyHostRequest } from "@zcode/shared";
+import {
+  channelReplyHostRequestSchema,
+  type ChannelReplyHostRequest,
+} from "@zcode/shared";
 // v4 conversation 通道 host 转发面测试（M3 竖切，docs/v4-refactor/01-topology §host 通道层）。
 // 验证 host 只做透传：subscribe/unsubscribe/command 转发给 CLI v4 方法，
 // v4/conversation/frame 通知按 workspace fan-out 给 onDynamicConversationFrame 订阅者。
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -44,6 +53,15 @@ process.stdin.on("data", (chunk) => {
     if (logPath && msg.method) fs.appendFileSync(logPath, line + "\\n");
     if (msg.method === "session/debug" && msg.id !== undefined) {
       send({ id: msg.id, result: { sessionId: msg.params.sessionId, rounds: [], networkEntries: [], cache: null } });
+      continue;
+    }
+    // 动态工作流策略同步：Host 启动/重连时会主动下发；不回包会让请求挂到协议超时，
+    // 触发 stale client 回收重建，拖慢整个套件。回显 workspace + enabled 即满足 strict schema。
+    if (msg.method === "workspace/updateDynamicWorkflowPolicy" && msg.id !== undefined) {
+      send({
+        id: msg.id,
+        result: { workspace: msg.params.workspace, enabled: Boolean(msg.params.enabled) },
+      });
       continue;
     }
     if (msg.method === "v4/conversation/backgroundBashOutput" && msg.id !== undefined) {
@@ -311,12 +329,21 @@ process.stdin.on("data", (chunk) => {
           results: msg.params.commands.map((key) => ({ key, result: "unknown" })),
         },
       });
+      continue;
+    }
+    // 未预期的请求直接回错而不是静默丢弃：丢包会让调用方挂到协议超时才失败，
+    // 把一个 fixture 缺口放大成整个套件的时间黑洞。这里立即报 Method not found，
+    // 用例断言能直接看到缺失的方法名。
+    if (msg.id !== undefined) {
+      send({ id: msg.id, error: { code: -32601, message: "Method not found: " + msg.method } });
     }
   }
 });
 `;
 
-function readRequests(logPath: string): Array<{ method: string; params: Record<string, unknown> }> {
+function readRequests(
+  logPath: string,
+): Array<{ method: string; params: Record<string, unknown> }> {
   if (!existsSync(logPath)) {
     return [];
   }
@@ -324,7 +351,10 @@ function readRequests(logPath: string): Array<{ method: string; params: Record<s
     .trim()
     .split("\n")
     .filter(Boolean)
-    .map((line) => JSON.parse(line) as { method: string; params: Record<string, unknown> });
+    .map(
+      (line) =>
+        JSON.parse(line) as { method: string; params: Record<string, unknown> },
+    );
 }
 
 describe("zcodeAgentService v4 conversation channel", () => {
@@ -413,11 +443,20 @@ describe("zcodeAgentService v4 conversation channel", () => {
       const reply = vi.fn(async (value: ChannelReplyHostRequest) => {
         // 与实际 Host executor 一样执行严格校验，不能用宽松 spy 掩盖额外连接字段。
         channelReplyHostRequestSchema.parse(value);
-        return { status: "sent" as const, deliveryId: "delivery", providerMessageId: "om_sent" };
+        return {
+          status: "sent" as const,
+          deliveryId: "delivery",
+          providerMessageId: "om_sent",
+        };
       });
-      const { service, workspacePath } = setupService({ channelReplyExecutor: reply });
+      const { service, workspacePath } = setupService({
+        channelReplyExecutor: reply,
+      });
       const scope = remote
-        ? { workspaceIdentity: "ssh://host/work", remoteSessionId: "logical-session" }
+        ? {
+            workspaceIdentity: "ssh://host/work",
+            remoteSessionId: "logical-session",
+          }
         : {};
       const target = {
         workspacePath,
@@ -430,7 +469,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         await service.subscribeConversationV4(target);
         await vi.waitFor(() => expect(reply).toHaveBeenCalled());
         const received = reply.mock.calls[0]![0];
-        expect(() => channelReplyHostRequestSchema.parse(received)).not.toThrow();
+        expect(() =>
+          channelReplyHostRequestSchema.parse(received),
+        ).not.toThrow();
         expect(received).toEqual({
           workspacePath,
           workspaceIdentity: scope.workspaceIdentity,
@@ -451,7 +492,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
     const read = vi.fn(async () => {
       throw new Error("download intentionally stopped after route capture");
     });
-    const { service, workspacePath } = setupService({ topicResourceExecutor: read });
+    const { service, workspacePath } = setupService({
+      topicResourceExecutor: read,
+    });
     try {
       await service.subscribeConversationV4({
         workspacePath,
@@ -482,8 +525,12 @@ describe("zcodeAgentService v4 conversation channel", () => {
   it.each(["desktop-continuous", "web-remote-replayable"] as const)(
     "session debug remains read-only and workspace-scoped on %s",
     async (clientMode) => {
-      const { service, workspacePath, commandResolver, logPath } = setupService();
-      const scope = createZCodeAgentConnectionScope(service, { connectionId: "debug", clientMode });
+      const { service, workspacePath, commandResolver, logPath } =
+        setupService();
+      const scope = createZCodeAgentConnectionScope(service, {
+        connectionId: "debug",
+        clientMode,
+      });
       const target = {
         workspacePath,
         workspaceIdentity: "ssh://debug/workspace",
@@ -511,11 +558,15 @@ describe("zcodeAgentService v4 conversation channel", () => {
           .split("\n")
           .map((line) => JSON.parse(line));
         expect(
-          lines.filter((line) => line.method === "session/debug").map((line) => line.params),
+          lines
+            .filter((line) => line.method === "session/debug")
+            .map((line) => line.params),
         ).toEqual([{ sessionId: "debug-session" }]);
         expect(
           lines.some(
-            (line) => line.method === "session/resume" || line.method === "session/subscribe",
+            (line) =>
+              line.method === "session/resume" ||
+              line.method === "session/subscribe",
           ),
         ).toBe(false);
       } finally {
@@ -525,7 +576,11 @@ describe("zcodeAgentService v4 conversation channel", () => {
     },
   );
 
-  it.each([undefined, { text: "Guarded work" }, { text: "Guarded work", mode: "guarded" }])(
+  it.each([
+    undefined,
+    { text: "Guarded work" },
+    { text: "Guarded work", mode: "guarded" },
+  ])(
     "Guarded create forwards the original payload once (firstInput=%j)",
     async (firstInput) => {
       const { service, workspacePath, logPath } = setupService();
@@ -550,7 +605,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
           status: "accepted",
           result: { type: "createSession", sessionId: "created-session" },
         });
-        const commands = readRequests(logPath).filter((item) => item.method === "v4/command");
+        const commands = readRequests(logPath).filter(
+          (item) => item.method === "v4/command",
+        );
         // 根因：为不存在的版本错配补写 mode、补发无 revision 的模式命令，改变了原创建合同。
         expect(commands).toHaveLength(1);
         expect(commands[0]?.params.type).toBe("createSession");
@@ -566,7 +623,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
       providerReady: false,
     });
     try {
-      const sessionsIndex = await service.subscribeSessionsIndexV4({ workspacePath });
+      const sessionsIndex = await service.subscribeSessionsIndexV4({
+        workspacePath,
+      });
       const conversation = await service.subscribeConversationV4({
         workspacePath,
         sessionId: "persisted-session",
@@ -585,7 +644,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
 
       // 修复原因：只读 topic 已经登记 active client，旧 fast path 会直接返回它并绕过
       // provider/model 门禁。createSession 必须仍在写入协议前确定性拒绝。
-      await expect(service.createSession({ workspacePath })).rejects.toMatchObject({
+      await expect(
+        service.createSession({ workspacePath }),
+      ).rejects.toMatchObject({
         code: "ZCODE_AGENT_PROVIDER_NOT_READY",
         data: expect.objectContaining({ reason: "provider_not_ready" }),
       });
@@ -595,8 +656,13 @@ describe("zcodeAgentService v4 conversation channel", () => {
         requests
           .filter((entry) => entry.method === "v4/conversation/subscribe")
           .map((entry) => entry.params.topic),
-      ).toEqual([`sessions-index/${workspacePath}`, "conversation/persisted-session"]);
-      expect(requests.some((entry) => entry.method === "session/create")).toBe(false);
+      ).toEqual([
+        `sessions-index/${workspacePath}`,
+        "conversation/persisted-session",
+      ]);
+      expect(requests.some((entry) => entry.method === "session/create")).toBe(
+        false,
+      );
     } finally {
       await service.disposeAllAndWait();
     }
@@ -616,7 +682,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         "v4/conversation/subscribe",
       ]);
       expect(
-        readRequests(logPath).find((entry) => entry.method === "v4/conversation/subscribe")?.params,
+        readRequests(logPath).find(
+          (entry) => entry.method === "v4/conversation/subscribe",
+        )?.params,
       ).toMatchObject({
         workspace: {
           workspaceKey: workspacePath,
@@ -631,7 +699,8 @@ describe("zcodeAgentService v4 conversation channel", () => {
   it.each(["desktop-continuous", "web-remote-replayable"] as const)(
     "background Bash query stays existing-only on %s",
     async (clientMode) => {
-      const { service, workspacePath, commandResolver, logPath } = setupService();
+      const { service, workspacePath, commandResolver, logPath } =
+        setupService();
       const scope = createZCodeAgentConnectionScope(service, {
         connectionId: "bash-query",
         clientMode,
@@ -664,12 +733,20 @@ describe("zcodeAgentService v4 conversation channel", () => {
         const requests = readRequests(logPath);
         expect(
           requests
-            .filter((entry) => entry.method === "v4/conversation/backgroundBashOutput")
+            .filter(
+              (entry) =>
+                entry.method === "v4/conversation/backgroundBashOutput",
+            )
             .map((entry) => entry.params),
         ).toEqual([{ sessionId: "child", workId: "work" }]);
-        expect(requests.some((entry) => entry.method === "v4/command")).toBe(false);
+        expect(requests.some((entry) => entry.method === "v4/command")).toBe(
+          false,
+        );
         expect(
-          await scope.service.backgroundBashOutputV4({ ...target, workId: "unsupported" }),
+          await scope.service.backgroundBashOutputV4({
+            ...target,
+            workId: "unsupported",
+          }),
         ).toEqual({ kind: "unsupported", workId: "unsupported" });
       } finally {
         scope.dispose();
@@ -680,7 +757,10 @@ describe("zcodeAgentService v4 conversation channel", () => {
 
   it("existing-only subscriptions stay dormant until another operation starts the runtime", async () => {
     const { service, workspacePath, commandResolver } = setupService();
-    const lifecycle: Array<{ state: "available" | "unavailable"; generation: number }> = [];
+    const lifecycle: Array<{
+      state: "available" | "unavailable";
+      generation: number;
+    }> = [];
     const disposable = service.onAgentRuntimeLifecycle?.((event) => {
       lifecycle.push({
         state: event.state,
@@ -804,7 +884,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
     const { service, workspacePath, logPath } = setupService();
     try {
       const frames: ConversationTopicWireFrame[] = [];
-      const disposable = service.onDynamicConversationFrame({ workspacePath })((frame) => {
+      const disposable = service.onDynamicConversationFrame({ workspacePath })((
+        frame,
+      ) => {
         frames.push(frame);
       });
 
@@ -890,7 +972,8 @@ describe("zcodeAgentService v4 conversation channel", () => {
         },
       });
       expect(
-        readRequests(logPath).find((entry) => entry.method === "v4/command")?.params,
+        readRequests(logPath).find((entry) => entry.method === "v4/command")
+          ?.params,
       ).toMatchObject({ payload: { text: "hello", inputOrigin: "mobile" } });
     } finally {
       await scope.dispose();
@@ -929,7 +1012,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
 
       const requests = readRequests(logPath);
-      const commands = requests.filter((entry) => entry.method === "v4/command");
+      const commands = requests.filter(
+        (entry) => entry.method === "v4/command",
+      );
       expect(commands[0]?.params).toMatchObject({
         type: "createSession",
         payload: { workspaceId: workspacePath },
@@ -939,12 +1024,20 @@ describe("zcodeAgentService v4 conversation channel", () => {
         payload: { text: "continue" },
       });
       for (const command of commands) {
-        expect(command.params.payload).not.toHaveProperty("nativeSearchEnhancementsEnabled");
+        expect(command.params.payload).not.toHaveProperty(
+          "nativeSearchEnhancementsEnabled",
+        );
         expect(command.params.payload).not.toHaveProperty("memoryEnabled");
-        expect(command.params.payload).not.toHaveProperty("integratedTerminalShell");
+        expect(command.params.payload).not.toHaveProperty(
+          "integratedTerminalShell",
+        );
       }
-      const subscribe = requests.find((entry) => entry.method === "v4/conversation/subscribe");
-      expect(subscribe?.params).not.toHaveProperty("nativeSearchEnhancementsEnabled");
+      const subscribe = requests.find(
+        (entry) => entry.method === "v4/conversation/subscribe",
+      );
+      expect(subscribe?.params).not.toHaveProperty(
+        "nativeSearchEnhancementsEnabled",
+      );
       expect(subscribe?.params).not.toHaveProperty("memoryEnabled");
       expect(subscribe?.params).not.toHaveProperty("integratedTerminalShell");
     } finally {
@@ -985,7 +1078,10 @@ describe("zcodeAgentService v4 conversation channel", () => {
         },
       });
 
-      await service.subscribeSessionsIndexV4({ workspacePath, workspaceIdentity });
+      await service.subscribeSessionsIndexV4({
+        workspacePath,
+        workspaceIdentity,
+      });
 
       const subscribeRequest = readRequests(logPath).find(
         (entry) => entry.method === "v4/conversation/subscribe",
@@ -1001,9 +1097,15 @@ describe("zcodeAgentService v4 conversation channel", () => {
   });
 
   it("历史任务 allowlist 只开放 SSH 与 WSL identity", () => {
-    expect(supportsLegacyRemoteTaskAllowlist("remote:ssh:host:22:user:/repo")).toBe(true);
-    expect(supportsLegacyRemoteTaskAllowlist("remote:wsl:Ubuntu-24.04:user:/repo")).toBe(true);
-    expect(supportsLegacyRemoteTaskAllowlist("remote:docker:container:/repo")).toBe(false);
+    expect(
+      supportsLegacyRemoteTaskAllowlist("remote:ssh:host:22:user:/repo"),
+    ).toBe(true);
+    expect(
+      supportsLegacyRemoteTaskAllowlist("remote:wsl:Ubuntu-24.04:user:/repo"),
+    ).toBe(true);
+    expect(
+      supportsLegacyRemoteTaskAllowlist("remote:docker:container:/repo"),
+    ).toBe(false);
     expect(supportsLegacyRemoteTaskAllowlist("/repo")).toBe(false);
   });
 
@@ -1021,7 +1123,10 @@ describe("zcodeAgentService v4 conversation channel", () => {
         clientId: "mobile-flow-client",
         appVersion: "4.0.0",
       });
-      await scope.service.subscribeConversationV4({ workspacePath, sessionId: "s-flow" });
+      await scope.service.subscribeConversationV4({
+        workspacePath,
+        sessionId: "s-flow",
+      });
 
       await scope.setTransportFlowState("saturated");
       const flowRequest = readRequests(logPath).find(
@@ -1033,7 +1138,10 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
 
       await expect(
-        scope.service.setConnectionFlowStateV4({ workspacePath, state: "drained" }),
+        scope.service.setConnectionFlowStateV4({
+          workspacePath,
+          state: "drained",
+        }),
       ).rejects.toThrow("fault.connection.flowControlForbidden");
     } finally {
       await scope.dispose();
@@ -1067,7 +1175,11 @@ describe("zcodeAgentService v4 conversation channel", () => {
         clientId: "mobile-upload-client",
         appVersion: "4.0.0",
       });
-      const common = { workspacePath, sessionId: "s-upload", uploadId: "upload-1" };
+      const common = {
+        workspacePath,
+        sessionId: "s-upload",
+        uploadId: "upload-1",
+      };
       await scope.service.attachmentBeginV4({
         ...common,
         fileName: "big.bin",
@@ -1091,7 +1203,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         .filter((line) => line.includes('"method":"v4/attachment/'));
       expect(attachmentLines).toHaveLength(4);
       for (const line of attachmentLines) {
-        expect(Buffer.byteLength(`${line}\n`, "utf8")).toBeLessThanOrEqual(1024 * 1024);
+        expect(Buffer.byteLength(`${line}\n`, "utf8")).toBeLessThanOrEqual(
+          1024 * 1024,
+        );
         expect(JSON.parse(line).params.connectionId).toBe("mobile-upload");
       }
     } finally {
@@ -1101,7 +1215,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
   });
 
   it("only queries a local video source for Desktop local connections", async () => {
-    const authorizeLocalMediaPreviewPath = vi.fn(async () => "/real/video-cache/demo.mp4");
+    const authorizeLocalMediaPreviewPath = vi.fn(
+      async () => "/real/video-cache/demo.mp4",
+    );
     const { service, workspacePath, logPath } = setupService({
       authorizeLocalMediaPreviewPath,
     });
@@ -1133,7 +1249,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         target: { rowId: 2, entityId: "message-preview" },
         attachmentIndex: 0,
       };
-      await expect(desktop.service.attachmentPreviewSourceV4(input)).resolves.toEqual({
+      await expect(
+        desktop.service.attachmentPreviewSourceV4(input),
+      ).resolves.toEqual({
         kind: "local_path",
         path: "/real/video-cache/demo.mp4",
         mediaType: "video/mp4",
@@ -1142,7 +1260,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
       expect(authorizeLocalMediaPreviewPath).toHaveBeenCalledWith(
         "/tmp/.zcode/video-cache/demo.mp4",
       );
-      await expect(mobile.service.attachmentPreviewSourceV4(input)).resolves.toEqual({
+      await expect(
+        mobile.service.attachmentPreviewSourceV4(input),
+      ).resolves.toEqual({
         kind: "chunked",
       });
       await expect(
@@ -1153,7 +1273,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
       ).resolves.toEqual({ kind: "chunked" });
       const sourceLines = readFileSync(logPath, "utf8")
         .split("\n")
-        .filter((line) => line.includes('"method":"v4/attachment/previewSource"'));
+        .filter((line) =>
+          line.includes('"method":"v4/attachment/previewSource"'),
+        );
       expect(sourceLines).toHaveLength(1);
       expect(JSON.parse(sourceLines[0]!).params).toMatchObject({
         clientMode: "desktop-continuous",
@@ -1229,13 +1351,18 @@ describe("zcodeAgentService v4 conversation channel", () => {
           appVersion: "4.0.0",
         });
         const candidates: ConversationTopicWireCandidate[] = [];
-        const disposable = scope.service.onDynamicConversationFrame({ workspacePath })((wire) =>
-          candidates.push(wire),
-        );
-        await scope.service.subscribeConversationV4({ workspacePath, sessionId });
+        const disposable = scope.service.onDynamicConversationFrame({
+          workspacePath,
+        })((wire) => candidates.push(wire));
+        await scope.service.subscribeConversationV4({
+          workspacePath,
+          sessionId,
+        });
         await vi.waitFor(() => expect(candidates).toHaveLength(1));
 
-        const assembler = new TopicWireFrameAssembler(conversationTopicFrameSchema);
+        const assembler = new TopicWireFrameAssembler(
+          conversationTopicFrameSchema,
+        );
         expect(assembler.accept(candidates[0]!)).toMatchObject([
           { kind: "fault", fault: { reasonCode } },
         ]);
@@ -1277,10 +1404,15 @@ describe("zcodeAgentService v4 conversation channel", () => {
         workspacePath,
         sessionId: "s1",
       });
-      await service.unsubscribeConversationV4({ workspacePath, subscriptionId: "sub-1" });
+      await service.unsubscribeConversationV4({
+        workspacePath,
+        subscriptionId: "sub-1",
+      });
 
       const requests = readRequests(logPath);
-      const commandRequest = requests.find((entry) => entry.method === "v4/command");
+      const commandRequest = requests.find(
+        (entry) => entry.method === "v4/command",
+      );
       expect(commandRequest?.params).toMatchObject({
         commandId: "cmd-1",
         type: "sendText",
@@ -1332,7 +1464,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         },
       });
 
-      const commandRequest = readRequests(logPath).find((entry) => entry.method === "v4/command");
+      const commandRequest = readRequests(logPath).find(
+        (entry) => entry.method === "v4/command",
+      );
       expect(commandRequest?.params).toMatchObject({
         commandId: "cmd-followup",
         type: "sendText",
@@ -1341,7 +1475,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         },
       });
       expect(commandRequest?.params.payload).not.toHaveProperty("automationId");
-      expect(commandRequest?.params.payload).not.toHaveProperty("toolDisallowlist");
+      expect(commandRequest?.params.payload).not.toHaveProperty(
+        "toolDisallowlist",
+      );
     } finally {
       repo.close();
       await service.disposeAllAndWait();
@@ -1367,12 +1503,19 @@ describe("zcodeAgentService v4 conversation channel", () => {
         },
       });
 
-      const commandRequest = readRequests(logPath).find((entry) => entry.method === "v4/command");
+      const commandRequest = readRequests(logPath).find(
+        (entry) => entry.method === "v4/command",
+      );
       expect(commandRequest?.params.payload).toEqual({
         inputOrigin: "desktop",
         text: "执行定时任务",
         automationId: "automation-cron",
-        toolDisallowlist: ["ExistingDeniedTool", "CronCreate", "CronUpdate", "CronDelete"],
+        toolDisallowlist: [
+          "ExistingDeniedTool",
+          "CronCreate",
+          "CronUpdate",
+          "CronDelete",
+        ],
       });
     } finally {
       await service.disposeAllAndWait();
@@ -1397,7 +1540,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
         },
       });
 
-      const commandRequest = readRequests(logPath).find((entry) => entry.method === "v4/command");
+      const commandRequest = readRequests(logPath).find(
+        (entry) => entry.method === "v4/command",
+      );
       expect(commandRequest?.params).toMatchObject({
         commandId: "cmd-ownership-unknown",
         type: "sendText",
@@ -1405,7 +1550,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
           text: "继续正常对话",
         },
       });
-      expect(commandRequest?.params.payload).not.toHaveProperty("toolDisallowlist");
+      expect(commandRequest?.params.payload).not.toHaveProperty(
+        "toolDisallowlist",
+      );
       expect(getTaskMeta).not.toHaveBeenCalled();
     } finally {
       getTaskMeta.mockRestore();
@@ -1458,13 +1605,16 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
       const requests = readRequests(logPath);
       expect(
-        requests.find((entry) => entry.method === "v4/conversation/subscribe")?.params,
+        requests.find((entry) => entry.method === "v4/conversation/subscribe")
+          ?.params,
       ).toMatchObject({
         clientMode: "web-remote-replayable",
         connectionId: "mobile-rewind",
         topic: "conversation/s-mobile-rewind",
       });
-      expect(requests.find((entry) => entry.method === "v4/command")?.params).toEqual({
+      expect(
+        requests.find((entry) => entry.method === "v4/command")?.params,
+      ).toEqual({
         commandId: "cmd-mobile-rewind",
         clientId: "mobile-rewind-client",
         sessionId: "s-mobile-rewind",
@@ -1499,7 +1649,10 @@ describe("zcodeAgentService v4 conversation channel", () => {
     });
     try {
       await expect(
-        service.queryConversationCommandsV4({ workspacePath, commands: [commands[0]!] }),
+        service.queryConversationCommandsV4({
+          workspacePath,
+          commands: [commands[0]!],
+        }),
       ).rejects.toThrow("fault.command.queryConnectionUntrusted");
 
       await scope.service.helloConversationV4();
@@ -1509,11 +1662,16 @@ describe("zcodeAgentService v4 conversation channel", () => {
         clientId: "query-wire-client",
         appVersion: "4.0.0",
       });
-      const result = await scope.service.queryConversationCommandsV4({ workspacePath, commands });
+      const result = await scope.service.queryConversationCommandsV4({
+        workspacePath,
+        commands,
+      });
       expect(result.results.map((item) => item.key.commandId)).toEqual(
         commands.map((key) => key.commandId),
       );
-      expect(result.results.every((item) => item.result === "unknown")).toBe(true);
+      expect(result.results.every((item) => item.result === "unknown")).toBe(
+        true,
+      );
 
       await expect(
         scope.service.queryConversationCommandsV4({
@@ -1556,7 +1714,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
           entry.method === "v4/conversation/subscribe" &&
           entry.params.topic === "conversation/s-resync",
       );
-      const resyncRequest = requests.find((entry) => entry.method === "v4/conversation/resync");
+      const resyncRequest = requests.find(
+        (entry) => entry.method === "v4/conversation/resync",
+      );
       expect(resyncRequest?.params).toEqual({
         topic: "conversation/s-resync",
         connectionId: subscribeRequest?.params.connectionId,
@@ -1582,7 +1742,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
       await vi.waitFor(() => {
         expect(
-          readRequests(logPath).some((entry) => entry.method === "v4/conversation/unsubscribe"),
+          readRequests(logPath).some(
+            (entry) => entry.method === "v4/conversation/unsubscribe",
+          ),
         ).toBe(true);
       });
 
@@ -1599,7 +1761,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
           subscriptionId: replacement.ack.subscriptionId,
           base: { logEpoch: replacement.ack.logEpoch, seq: 0 },
         }),
-      ).resolves.toMatchObject({ ack: { subscriptionId: replacement.ack.subscriptionId } });
+      ).resolves.toMatchObject({
+        ack: { subscriptionId: replacement.ack.subscriptionId },
+      });
     } finally {
       await service.disposeAllAndWait();
     }
@@ -1619,7 +1783,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
       await vi.waitFor(() => {
         expect(
-          readRequests(logPath).some((entry) => entry.method === "v4/conversation/resync"),
+          readRequests(logPath).some(
+            (entry) => entry.method === "v4/conversation/resync",
+          ),
         ).toBe(true);
       });
 
@@ -1641,14 +1807,21 @@ describe("zcodeAgentService v4 conversation channel", () => {
       const indexFrames: SessionsIndexTopicWireCandidate[] = [];
       const configFrames: WorkspaceConfigTopicWireCandidate[] = [];
       const disposables = [
-        service.onDynamicConversationFrame({ workspacePath })((frame) => frames.push(frame)),
-        service.onDynamicSessionsIndexFrame({ workspacePath })((frame) => indexFrames.push(frame)),
+        service.onDynamicConversationFrame({ workspacePath })((frame) =>
+          frames.push(frame),
+        ),
+        service.onDynamicSessionsIndexFrame({ workspacePath })((frame) =>
+          indexFrames.push(frame),
+        ),
         service.onDynamicWorkspaceConfigFrame({ workspacePath })((frame) =>
           configFrames.push(frame),
         ),
       ];
       await Promise.all([
-        service.subscribeConversationV4({ workspacePath, sessionId: "before-restart" }),
+        service.subscribeConversationV4({
+          workspacePath,
+          sessionId: "before-restart",
+        }),
         service.subscribeSessionsIndexV4({ workspacePath }),
         service.subscribeWorkspaceConfigV4({ workspacePath }),
       ]);
@@ -1660,7 +1833,10 @@ describe("zcodeAgentService v4 conversation channel", () => {
 
       await service.disposeWorkspace({ workspacePath });
       await Promise.all([
-        service.subscribeConversationV4({ workspacePath, sessionId: "after-restart" }),
+        service.subscribeConversationV4({
+          workspacePath,
+          sessionId: "after-restart",
+        }),
         service.subscribeSessionsIndexV4({ workspacePath }),
         service.subscribeWorkspaceConfigV4({ workspacePath }),
       ]);
@@ -1673,8 +1849,14 @@ describe("zcodeAgentService v4 conversation channel", () => {
         "conversation/before-restart",
         "conversation/after-restart",
       ]);
-      expect(indexFrames.every((frame) => frame.topic.startsWith("sessions-index/"))).toBe(true);
-      expect(configFrames.every((frame) => frame.topic.startsWith("workspace-config/"))).toBe(true);
+      expect(
+        indexFrames.every((frame) => frame.topic.startsWith("sessions-index/")),
+      ).toBe(true);
+      expect(
+        configFrames.every((frame) =>
+          frame.topic.startsWith("workspace-config/"),
+        ),
+      ).toBe(true);
       for (const disposable of disposables) disposable.dispose();
     } finally {
       await service.disposeAllAndWait();
@@ -1755,7 +1937,9 @@ describe("zcodeAgentService v4 conversation channel", () => {
       } as never);
 
       expect(
-        readRequests(logPath).filter((entry) => entry.method === "v4/conversation/unsubscribe"),
+        readRequests(logPath).filter(
+          (entry) => entry.method === "v4/conversation/unsubscribe",
+        ),
       ).toHaveLength(0);
     } finally {
       await service.disposeAllAndWait();

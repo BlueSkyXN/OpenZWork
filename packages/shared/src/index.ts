@@ -132,8 +132,13 @@ export {
   createOpenInEditorRemoteTarget,
 } from "./platform.js";
 export type { LaunchMarks } from "./launchMarks.js";
-export { LAUNCH_MARKS_QUERY_KEY, parseLaunchMarks, serializeLaunchMarks } from "./launchMarks.js";
+export {
+  LAUNCH_MARKS_QUERY_KEY,
+  parseLaunchMarks,
+  serializeLaunchMarks,
+} from "./launchMarks.js";
 export type {
+  BrowserViewSurfaceScaleMode,
   CancelPendingRemoteConnectionRequest,
   BindRemoteWorkspaceSessionContextRequest,
   BotRemoteWorkspaceReconnectedEvent,
@@ -272,7 +277,10 @@ export * from "./pluginStoreOrder.js";
 export * from "./pluginStoreOrdering.js";
 export * from "./session-debug.js";
 export { redactFeedbackText } from "./feedbackPrivacy.js";
-export { API_KEY_USAGE_SCENE, type ApiKeyCreationUsageScene } from "./api-key-usage-scene.js";
+export {
+  API_KEY_USAGE_SCENE,
+  type ApiKeyCreationUsageScene,
+} from "./api-key-usage-scene.js";
 
 export * from "./conversationSelection.js";
 export * from "./attachment-source.js";
@@ -286,4 +294,3 @@ export {
   isRequestSecurityFailure,
 } from "./request-verification/policy.js";
 export * from "./request-verification/verification-policy.js";
-

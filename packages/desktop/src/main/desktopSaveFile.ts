@@ -1,5 +1,6 @@
 import { copyFile, mkdtemp, open, rm, writeFile } from "node:fs/promises";
 import { lookup } from "node:dns/promises";
+import type { LookupAddress } from "node:dns";
 import { BlockList } from "node:net";
 import type { LookupFunction } from "node:net";
 import { tmpdir } from "node:os";
@@ -59,14 +60,12 @@ function parseRemoteImageUrl(value: unknown): URL | null {
   }
 }
 
-async function resolvePublicRemoteUrl(
-  url: URL,
-): Promise<Awaited<ReturnType<typeof lookup>>> {
+async function resolvePublicRemoteUrl(url: URL): Promise<LookupAddress[]> {
   const hostname = url.hostname.replace(/^\[|\]$/g, "").toLowerCase();
   if (hostname === "localhost" || hostname.endsWith(".localhost")) {
     throw new SaveFileError("remote_address_not_allowed");
   }
-  let addresses: Awaited<ReturnType<typeof lookup>>;
+  let addresses: LookupAddress[];
   try {
     addresses = await lookup(hostname, { all: true, verbatim: true });
   } catch {
@@ -86,9 +85,16 @@ async function resolvePublicRemoteUrl(
 async function fetchPublicRemoteUrl(
   initialUrl: URL,
   signal: AbortSignal,
-): Promise<{ dispatcher: Agent; response: Awaited<ReturnType<typeof undiciFetch>> }> {
+): Promise<{
+  dispatcher: Agent;
+  response: Awaited<ReturnType<typeof undiciFetch>>;
+}> {
   let currentUrl = initialUrl;
-  for (let redirectCount = 0; redirectCount <= MAX_REMOTE_REDIRECTS; redirectCount += 1) {
+  for (
+    let redirectCount = 0;
+    redirectCount <= MAX_REMOTE_REDIRECTS;
+    redirectCount += 1
+  ) {
     const addresses = await resolvePublicRemoteUrl(currentUrl);
     const pinnedLookup: LookupFunction = (_hostname, options, callback) => {
       if (options.all) {
@@ -126,7 +132,9 @@ async function fetchPublicRemoteUrl(
     if (!location || redirectCount === MAX_REMOTE_REDIRECTS) {
       throw new SaveFileError("download_failed");
     }
-    const redirectedUrl = parseRemoteImageUrl(new URL(location, currentUrl).toString());
+    const redirectedUrl = parseRemoteImageUrl(
+      new URL(location, currentUrl).toString(),
+    );
     if (!redirectedUrl) throw new SaveFileError("download_failed");
     currentUrl = redirectedUrl;
   }
@@ -143,10 +151,16 @@ async function downloadRemoteFile(
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
   let file: Awaited<ReturnType<typeof open>> | null = null;
   let dispatcher: Agent | null = null;
-  const timeout = setTimeout(() => controller.abort(), REMOTE_DOWNLOAD_TIMEOUT_MS);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    REMOTE_DOWNLOAD_TIMEOUT_MS,
+  );
   try {
     // renderer 的 CORS 边界不能放大成 main 可访问内网；初始地址和每次重定向都先解析并拒绝非公网地址。
-    const remoteResponse = await fetchPublicRemoteUrl(sourceUrl, controller.signal);
+    const remoteResponse = await fetchPublicRemoteUrl(
+      sourceUrl,
+      controller.signal,
+    );
     dispatcher = remoteResponse.dispatcher;
     const { response } = remoteResponse;
     if (!response.ok || !response.body) {
@@ -181,27 +195,35 @@ async function downloadRemoteFile(
     await reader?.cancel().catch(() => undefined);
     await dispatcher?.close().catch(() => undefined);
     await file?.close().catch(() => undefined);
-    await rm(temporaryDirectory, { force: true, recursive: true }).catch(() => undefined);
+    await rm(temporaryDirectory, { force: true, recursive: true }).catch(
+      () => undefined,
+    );
   }
 }
 
-export function registerDesktopSaveFileIpcHandler(logger: { warn: (...args: unknown[]) => void }) {
+export function registerDesktopSaveFileIpcHandler(logger: {
+  warn: (...args: unknown[]) => void;
+}) {
   ipcMain.handle(
     PlatformChannels.SaveFile,
     async (event, payload: SaveFileRequest): Promise<SaveFileResult> => {
       if (!payload || typeof payload.suggestedName !== "string") {
         return { success: false, error: "invalid_file_payload" };
       }
-      const suggestedName = basename(payload.suggestedName.trim()).slice(0, 120);
+      const suggestedName = basename(payload.suggestedName.trim()).slice(
+        0,
+        120,
+      );
       const sourceUrl = parseRemoteImageUrl(payload.sourceUrl);
       const hasData = payload.data instanceof ArrayBuffer;
       if (!suggestedName || (sourceUrl === null && !hasData)) {
         return { success: false, error: "invalid_file_payload" };
       }
-      if (hasData && payload.data.byteLength === 0) {
+      const data = hasData ? payload.data : undefined;
+      if (data && data.byteLength === 0) {
         return { success: false, error: "invalid_file_payload" };
       }
-      if (hasData && payload.data.byteLength > MAX_SAVE_FILE_BYTES) {
+      if (data && data.byteLength > MAX_SAVE_FILE_BYTES) {
         return { success: false, error: "file_too_large" };
       }
 
@@ -217,12 +239,13 @@ export function registerDesktopSaveFileIpcHandler(logger: { warn: (...args: unkn
       try {
         if (sourceUrl) {
           await downloadRemoteFile(sourceUrl, result.filePath);
-        } else if (hasData) {
-          await writeFile(result.filePath, new Uint8Array(payload.data));
+        } else if (data) {
+          await writeFile(result.filePath, new Uint8Array(data));
         }
         return { success: true, path: result.filePath };
       } catch (error) {
-        const errorCode = error instanceof SaveFileError ? error.code : "write_failed";
+        const errorCode =
+          error instanceof SaveFileError ? error.code : "write_failed";
         logger.warn(
           `[save-file] 写入失败 path=${result.filePath} error=${
             error instanceof Error ? error.message : String(error)

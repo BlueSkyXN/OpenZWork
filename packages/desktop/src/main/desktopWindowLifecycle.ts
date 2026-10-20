@@ -1,10 +1,19 @@
+/* eslint-disable max-lines -- 窗口生命周期状态机不可拆散；InitLocal 组装签名修复后仍超 400 行，行为不变。 */
 import { getDatabaseStartupPortPayload } from "./databaseStartupRelay.js";
 import { randomUUID } from "node:crypto";
 import { app, BrowserWindow, Menu, MessageChannelMain } from "electron";
 import type { UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes, InternalChannels, PlatformChannels, type Locale } from "@zcode/shared";
+import {
+  HostMessageTypes,
+  InternalChannels,
+  PlatformChannels,
+  type Locale,
+} from "@zcode/shared";
 import { createBrowserWindow } from "./desktopWindowChrome.js";
-import type { HostInitMessage, WindowBootstrapOptions } from "./desktopHostProcess.js";
+import type {
+  HostInitMessage,
+  WindowBootstrapOptions,
+} from "./desktopHostProcess.js";
 import type { StartupWorkspaceWarmupTarget } from "./startupWorkspace.js";
 import { handleDarwinWindowCloseRequest } from "./desktopDarwinCloseBehavior.js";
 import {
@@ -12,7 +21,10 @@ import {
   sumWindowUnreadCounts,
   syncAppUnreadBadge,
 } from "./unreadBadge.js";
-import { attachDesktopWindowSizePersistence, type DesktopWindowSize } from "./desktopWindowSize.js";
+import {
+  attachDesktopWindowSizePersistence,
+  type DesktopWindowSize,
+} from "./desktopWindowSize.js";
 import {
   registerMainApplicationWindow,
   unregisterMainApplicationWindow,
@@ -23,14 +35,19 @@ const DEFAULT_RUNTIME_PROCESS_ENV_WAIT_TIMEOUT_MS = 4_500;
 export function createWindow(options: {
   iconPath: string;
   preloadPath: string;
-  logger: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void };
+  logger: {
+    info: (...args: unknown[]) => void;
+    warn: (...args: unknown[]) => void;
+  };
   forceQuitRef: { current: boolean };
   handleBeforeClose?: (win: BrowserWindow, label: string) => boolean;
   windowHostProcessMap: Map<number, ElectronUtilityProcess>;
   spawnHostProcess: (
     win: BrowserWindow,
     label: string,
-    initMessage: HostInitMessage,
+    // Main 在包装层统一注入 zcodeBuiltinProviderConfigFilePath（Electron 安装布局只有 Main 知道），
+    // 窗口生命周期只负责组装其余 InitLocal 字段。
+    initMessage: Omit<HostInitMessage, "zcodeBuiltinProviderConfigFilePath">,
   ) => ElectronUtilityProcess;
   disposeHostProcess: (
     child: ElectronUtilityProcess,
@@ -38,8 +55,14 @@ export function createWindow(options: {
     forceKillDelayMs?: number,
   ) => void;
   webRemoteControlManager: { disposeWindow(windowId: number): Promise<void> };
-  disposeRemoteWorkspaceSessionsForWindow: (windowId: number, reason: string) => void;
-  reattachRemoteWorkspaceSessionsForWindow: (win: BrowserWindow, reason: string) => void;
+  disposeRemoteWorkspaceSessionsForWindow: (
+    windowId: number,
+    reason: string,
+  ) => void;
+  reattachRemoteWorkspaceSessionsForWindow: (
+    win: BrowserWindow,
+    reason: string,
+  ) => void;
   bootstrap?: WindowBootstrapOptions;
   agentWarmupTargets?: readonly StartupWorkspaceWarmupTarget[];
   agentSpawnFallbackCwd: string;
@@ -64,7 +87,9 @@ export function createWindow(options: {
   awaitFirstHostSpawnDecision?: () => Promise<void>;
   /** Local Host map insertion completed; presentation facts can now be replayed safely. */
   onHostProcessReady?: (windowKey: number) => void;
-  resolveBrowserViewOwner?: Parameters<typeof createBrowserWindow>[0]["resolveBrowserViewOwner"];
+  resolveBrowserViewOwner?: Parameters<
+    typeof createBrowserWindow
+  >[0]["resolveBrowserViewOwner"];
 }) {
   const win = createBrowserWindow({
     iconPath: options.iconPath,
@@ -86,9 +111,16 @@ export function createWindow(options: {
   const label = `local-${win.webContents.id}`;
 
   if (options.persistWindowSize) {
-    attachDesktopWindowSizePersistence(win, options.persistWindowSize, (error) => {
-      options.logger.warn("[desktop-window] failed to persist main window size", error);
-    });
+    attachDesktopWindowSizePersistence(
+      win,
+      options.persistWindowSize,
+      (error) => {
+        options.logger.warn(
+          "[desktop-window] failed to persist main window size",
+          error,
+        );
+      },
+    );
   }
 
   if (process.platform === "darwin") {
@@ -139,7 +171,8 @@ export function createWindow(options: {
     if (oldChild && oldChild.pid !== undefined) {
       try {
         const startupPayload = getDatabaseStartupPortPayload(oldChild);
-        if (!startupPayload) throw new Error("Previous Host startup binding is unavailable");
+        if (!startupPayload)
+          throw new Error("Previous Host startup binding is unavailable");
         const { port1, port2 } = new MessageChannelMain();
         oldChild.postMessage(
           {
@@ -151,11 +184,18 @@ export function createWindow(options: {
           },
           [port2],
         );
-        win.webContents.postMessage(InternalChannels.ServicePort, startupPayload, [port1]);
+        win.webContents.postMessage(
+          InternalChannels.ServicePort,
+          startupPayload,
+          [port1],
+        );
         options.logger.info(
           `[createWindow] renderer reloaded, reattached to existing host (${label}), pid=${oldChild.pid}`,
         );
-        options.reattachRemoteWorkspaceSessionsForWindow(win, `${label}:renderer-reload`);
+        options.reattachRemoteWorkspaceSessionsForWindow(
+          win,
+          `${label}:renderer-reload`,
+        );
         return;
       } catch (error) {
         options.logger.warn(
@@ -179,7 +219,10 @@ export function createWindow(options: {
     }
 
     const spawnLocalHost = (runtimeProcessEnvPatch: Record<string, string>) => {
-      if (currentDomReadyGeneration !== domReadyGeneration || win.isDestroyed()) {
+      if (
+        currentDomReadyGeneration !== domReadyGeneration ||
+        win.isDestroyed()
+      ) {
         return;
       }
       const primaryWarmupTarget = options.agentWarmupTargets?.[0];
@@ -198,7 +241,10 @@ export function createWindow(options: {
       });
       options.windowHostProcessMap.set(wcId, child);
       options.onHostProcessReady?.(wcId);
-      options.reattachRemoteWorkspaceSessionsForWindow(win, `${label}:renderer-ready`);
+      options.reattachRemoteWorkspaceSessionsForWindow(
+        win,
+        `${label}:renderer-ready`,
+      );
     };
 
     if (!options.runtimeProcessEnvPatchPromise) {
@@ -207,7 +253,8 @@ export function createWindow(options: {
     }
     let settled = false;
     const waitTimeoutMs =
-      options.runtimeProcessEnvWaitTimeoutMs ?? DEFAULT_RUNTIME_PROCESS_ENV_WAIT_TIMEOUT_MS;
+      options.runtimeProcessEnvWaitTimeoutMs ??
+      DEFAULT_RUNTIME_PROCESS_ENV_WAIT_TIMEOUT_MS;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     const cancelWait = () => {
       if (settled) {
@@ -253,14 +300,19 @@ export function createWindow(options: {
     unregisterMainApplicationWindow(wcId);
     cancelRuntimeProcessEnvWait?.();
     cancelRuntimeProcessEnvWait = null;
-    options.logger.info(`[createWindow] window closed, killing host process (${label})`);
+    options.logger.info(
+      `[createWindow] window closed, killing host process (${label})`,
+    );
     const child = options.windowHostProcessMap.get(wcId);
     if (child) {
       options.disposeHostProcess(child, `${label}:window-closed`);
       options.windowHostProcessMap.delete(wcId);
     }
     void options.webRemoteControlManager.disposeWindow(browserWindowId);
-    options.disposeRemoteWorkspaceSessionsForWindow(wcId, `${label}:window-closed`);
+    options.disposeRemoteWorkspaceSessionsForWindow(
+      wcId,
+      `${label}:window-closed`,
+    );
   });
 
   return win;
@@ -305,7 +357,9 @@ export function focusWorkspaceInExistingWindow(
   return { activated: false };
 }
 
-export function syncApplicationUnreadBadge(windowUnreadCountMap: Map<number, number>) {
+export function syncApplicationUnreadBadge(
+  windowUnreadCountMap: Map<number, number>,
+) {
   syncAppUnreadBadge({
     platform: process.platform,
     totalUnreadCount: sumWindowUnreadCounts(windowUnreadCountMap),
@@ -340,7 +394,10 @@ export function handleWindowUnreadCountSync(
   return true;
 }
 
-export function configureDockMenu(getLabel: () => string, onShowCurrentWindow: () => void) {
+export function configureDockMenu(
+  getLabel: () => string,
+  onShowCurrentWindow: () => void,
+) {
   if (process.platform !== "darwin" || app.dock == null) {
     return;
   }
@@ -386,12 +443,18 @@ export function handleDesktopWindowCloseRequest(options: {
     !options.forceQuit &&
     !options.explicitQuitRequested
   ) {
-    options.logger.info(`[createWindow] window close hidden to tray (${options.label})`);
+    options.logger.info(
+      `[createWindow] window close hidden to tray (${options.label})`,
+    );
     options.hideWindow?.();
     return true;
   }
 
-  if (options.platform === "darwin" || options.forceQuit || !options.isLastWindow) {
+  if (
+    options.platform === "darwin" ||
+    options.forceQuit ||
+    !options.isLastWindow
+  ) {
     return false;
   }
 
@@ -404,7 +467,9 @@ export function handleDesktopWindowCloseRequest(options: {
   }
 
   if (!options.confirmQuit()) {
-    options.logger.info(`[createWindow] last window close canceled by user (${options.label})`);
+    options.logger.info(
+      `[createWindow] last window close canceled by user (${options.label})`,
+    );
     return true;
   }
 

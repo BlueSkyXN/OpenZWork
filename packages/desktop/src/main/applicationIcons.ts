@@ -12,7 +12,10 @@ import { getAppIconDataUrl } from "./editors.js";
 import { logger } from "./logger.js";
 import { readWindowsAumidIcon } from "./windowsAumidIcon.js";
 
-const applicationIconCache = new Map<string, Promise<ApplicationIconInfo | null>>();
+const applicationIconCache = new Map<
+  string,
+  Promise<ApplicationIconInfo | null>
+>();
 const SAFE_BUNDLE_ID = /^[A-Za-z0-9.-]+$/;
 const SAFE_WINDOWS_FIXED_DRIVE_PATH = /^[A-Za-z]:[\\/][^\\/]/u;
 const FALLBACK_SCAN_BUDGET_MS = 3_000;
@@ -20,7 +23,11 @@ const PLIST_READ_TIMEOUT_MS = 1_000;
 const FALLBACK_SCAN_CONCURRENCY = 8;
 
 interface ApplicationPathDependencies {
-  execute: (command: string, args: readonly string[], timeoutMs: number) => Promise<string>;
+  execute: (
+    command: string,
+    args: readonly string[],
+    timeoutMs: number,
+  ) => Promise<string>;
   listDirectory: (path: string) => Promise<string[]>;
   homeDirectory: string;
   now: () => number;
@@ -29,10 +36,15 @@ interface ApplicationPathDependencies {
 const defaultApplicationPathDependencies: ApplicationPathDependencies = {
   execute: (command, args, timeoutMs) =>
     new Promise((resolve, reject) => {
-      execFile(command, [...args], { encoding: "utf8", timeout: timeoutMs }, (error, stdout) => {
-        if (error) reject(error);
-        else resolve(stdout);
-      });
+      execFile(
+        command,
+        [...args],
+        { encoding: "utf8", timeout: timeoutMs },
+        (error, stdout) => {
+          if (error) reject(error);
+          else resolve(stdout);
+        },
+      );
     }),
   listDirectory: (path) => readdir(path),
   homeDirectory: homedir(),
@@ -78,13 +90,20 @@ async function buildApplicationPathIndex(
   const worker = async () => {
     while (cursor < appPaths.length) {
       const appPath = appPaths[cursor++];
+      // Bug 原因：并发 worker 共享 cursor，数组下标在 noUncheckedIndexedAccess 下仍可能为空；
+      // 先收窄本轮路径，避免把 undefined 传给 plist 读取与索引。
+      if (!appPath) return;
       const remainingMs = deadline - dependencies.now();
       if (remainingMs <= 0) return;
       try {
         const bundleId = (
           await dependencies.execute(
             "/usr/libexec/PlistBuddy",
-            ["-c", "Print :CFBundleIdentifier", posix.join(appPath, "Contents", "Info.plist")],
+            [
+              "-c",
+              "Print :CFBundleIdentifier",
+              posix.join(appPath, "Contents", "Info.plist"),
+            ],
             Math.min(PLIST_READ_TIMEOUT_MS, remainingMs),
           )
         ).trim();
@@ -93,14 +112,18 @@ async function buildApplicationPathIndex(
         // 大小写不敏感查询（`"..."c`），兜底索引若保持精确匹配，就会只在 Spotlight 不可用的
         // 机器上取不到图标 —— 两条路径必须同一套大小写语义。
         const key = bundleId.toLowerCase();
-        if (SAFE_BUNDLE_ID.test(bundleId) && !index.has(key)) index.set(key, appPath);
+        if (SAFE_BUNDLE_ID.test(bundleId) && !index.has(key))
+          index.set(key, appPath);
       } catch {
         // 单个损坏或超时的 plist 不能中断整个索引。
       }
     }
   };
   await Promise.all(
-    Array.from({ length: Math.min(FALLBACK_SCAN_CONCURRENCY, appPaths.length) }, worker),
+    Array.from(
+      { length: Math.min(FALLBACK_SCAN_CONCURRENCY, appPaths.length) },
+      worker,
+    ),
   );
   return index;
 }
@@ -112,9 +135,12 @@ function readFallbackApplicationPath(
   // 逐 bundle id 同步扫描会冻结 Electron main；默认链路共享一次异步索引构建。
   const indexPromise =
     dependencies === defaultApplicationPathDependencies
-      ? (defaultApplicationPathIndex ??= buildApplicationPathIndex(dependencies))
+      ? (defaultApplicationPathIndex ??=
+          buildApplicationPathIndex(dependencies))
       : buildApplicationPathIndex(dependencies);
-  return indexPromise.then((index) => index.get(bundleId.toLowerCase()) ?? null);
+  return indexPromise.then(
+    (index) => index.get(bundleId.toLowerCase()) ?? null,
+  );
 }
 
 export async function resolveDarwinApplicationPath(
@@ -124,7 +150,9 @@ export async function resolveDarwinApplicationPath(
   if (!SAFE_BUNDLE_ID.test(bundleId)) return null;
   try {
     const query = `kMDItemCFBundleIdentifier == "${bundleId}"c`;
-    const spotlightPath = (await dependencies.execute("/usr/bin/mdfind", [query], 3_000))
+    const spotlightPath = (
+      await dependencies.execute("/usr/bin/mdfind", [query], 3_000)
+    )
       .split("\n")
       .map((entry) => entry.trim())
       .find((entry) => entry.endsWith(".app"));
@@ -145,24 +173,33 @@ interface NativeImageLike {
 
 interface ApplicationIconLoaderDependencies {
   platform: NodeJS.Platform;
-  getFileIcon: (path: string, options: { size: "normal" }) => Promise<NativeImageLike>;
+  getFileIcon: (
+    path: string,
+    options: { size: "normal" },
+  ) => Promise<NativeImageLike>;
   resolveDarwinApplicationPath: (bundleId: string) => Promise<string | null>;
   readWindowsAumidIcon?: (aumid: string) => Promise<ApplicationIconInfo | null>;
 }
 
-const defaultApplicationIconLoaderDependencies: ApplicationIconLoaderDependencies = {
-  platform: process.platform,
-  getFileIcon: (path, options) => app.getFileIcon(path, options),
-  resolveDarwinApplicationPath,
-  readWindowsAumidIcon,
-};
+const defaultApplicationIconLoaderDependencies: ApplicationIconLoaderDependencies =
+  {
+    platform: process.platform,
+    getFileIcon: (path, options) => app.getFileIcon(path, options),
+    resolveDarwinApplicationPath,
+    readWindowsAumidIcon,
+  };
 
 function normalizedRequest(
   request: string | ApplicationIconRequest,
   platform: NodeJS.Platform,
 ): ApplicationIconRequest | null {
   if (typeof request !== "string") {
-    if (!request || !Array.isArray(request.locators) || request.locators.length > 3) return null;
+    if (
+      !request ||
+      !Array.isArray(request.locators) ||
+      request.locators.length > 3
+    )
+      return null;
     const locators = request.locators.flatMap((locator) => {
       if (
         !locator ||
@@ -175,12 +212,17 @@ function normalizedRequest(
         return [];
       }
       const value = locator.value.trim();
-      if (locator.kind === "windows-executable-path" && !isSafeWindowsExecutablePath(value)) {
+      if (
+        locator.kind === "windows-executable-path" &&
+        !isSafeWindowsExecutablePath(value)
+      ) {
         return [];
       }
       return [{ kind: locator.kind, value }];
     });
-    return locators.length === request.locators.length && locators.length > 0 ? { locators } : null;
+    return locators.length === request.locators.length && locators.length > 0
+      ? { locators }
+      : null;
   }
   const value = request.trim();
   if (!value) return null;
@@ -206,13 +248,18 @@ async function readFileIcon(
   return iconDataUrl ? { iconDataUrl } : null;
 }
 
-export function createApplicationIconLoader(dependencies: ApplicationIconLoaderDependencies) {
-  return async (request: string | ApplicationIconRequest): Promise<ApplicationIconInfo | null> => {
+export function createApplicationIconLoader(
+  dependencies: ApplicationIconLoaderDependencies,
+) {
+  return async (
+    request: string | ApplicationIconRequest,
+  ): Promise<ApplicationIconInfo | null> => {
     const normalized = normalizedRequest(request, dependencies.platform);
     if (!normalized) return null;
     const locators = [...normalized.locators].sort(
       (left, right) =>
-        Number(right.kind === "windows-aumid") - Number(left.kind === "windows-aumid"),
+        Number(right.kind === "windows-aumid") -
+        Number(left.kind === "windows-aumid"),
     );
     for (const locator of locators) {
       const value = locator.value.trim();
@@ -222,7 +269,8 @@ export function createApplicationIconLoader(dependencies: ApplicationIconLoaderD
           dependencies.platform === "darwin" &&
           SAFE_BUNDLE_ID.test(value)
         ) {
-          const appPath = await dependencies.resolveDarwinApplicationPath(value);
+          const appPath =
+            await dependencies.resolveDarwinApplicationPath(value);
           if (!appPath) continue;
           const iconDataUrl = await getAppIconDataUrl(value, appPath);
           if (iconDataUrl) return { iconDataUrl };
@@ -255,7 +303,9 @@ export function createApplicationIconLoader(dependencies: ApplicationIconLoaderD
   };
 }
 
-const loadApplicationIcon = createApplicationIconLoader(defaultApplicationIconLoaderDependencies);
+const loadApplicationIcon = createApplicationIconLoader(
+  defaultApplicationIconLoaderDependencies,
+);
 
 export function getApplicationIcon(
   request: string | ApplicationIconRequest,

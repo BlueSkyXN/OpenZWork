@@ -1,5 +1,8 @@
 // Descriptors & collection (browser-safe)
-export { type ServiceDescriptor, createServiceDescriptor } from "./descriptors.js";
+export {
+  type ServiceDescriptor,
+  createServiceDescriptor,
+} from "./descriptors.js";
 export { ServiceCollection } from "./collection.js";
 export {
   IModelSelectionService,
@@ -177,7 +180,10 @@ export {
   PROJECT_MEMORY_FILE_CHANGED_ERROR_CODE,
   PROJECT_MEMORY_PREVIEW_LIMIT_EXCEEDED_ERROR_CODE,
 } from "./memory/memory.js";
-export type { ProjectMemoryFileSummary, ProjectMemoryWorkspaceSummary } from "./memory/memory.js";
+export type {
+  ProjectMemoryFileSummary,
+  ProjectMemoryWorkspaceSummary,
+} from "./memory/memory.js";
 
 // OutputStyle service — IOutputStyleService is both a type (interface) and value (descriptor).
 export { IOutputStyleService } from "./output-style/outputStyle.js";
@@ -187,7 +193,7 @@ export type { SessionRealtimePort } from "./session/sessionRealtimePort.js";
 export { IFileWatcherService } from "./fileWatcher/fileWatcher.js";
 
 // Storage（资源管理器「存储」tab）：数据类型在 @zcode/shared；这里只导出服务接口与卷分组纯函数
-export type { IStorageService } from "./storage/contract.js";
+export type { IStorageService, StorageRootSpec } from "./storage/contract.js";
 
 export { isValidCronExpr } from "./session/automationCronValidation.js";
 // 闲时任务管理服务（与 automation 服务面独立）；接口/描述符 browser-safe。

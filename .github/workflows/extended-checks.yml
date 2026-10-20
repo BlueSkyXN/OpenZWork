@@ -24,7 +24,9 @@ jobs:
           - os: ubuntu-latest
             platform: linux-amd64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
+    # 组级时限合计约 111 分钟；45 分钟 job 上限会在中途硬杀导致零诊断，
+    # 放宽到 130 给失败组和上传留余量，真实卡点由组级 timeout 把住。
+    timeout-minutes: 130
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6.1.0
@@ -63,18 +65,19 @@ jobs:
       - name: Build remote server bundle
         run: pnpm --filter @zcode/server build:remote
 
-      - name: Full historical unit suite
+      - name: Full historical unit suite (grouped)
         id: full_tests
-        run: pnpm test:unit --reporter=default --reporter=json --outputFile=.run-logs/full-unit-tests.json
+        # 分组脚本内建组级时限并逐组落 JSON；失败组不阻断后续组，summary 汇总退出码。
+        run: node scripts/run-full-suite-groups.mjs
 
       - name: Upload full suite results
         if: always() && steps.full_tests.outcome != 'skipped'
         uses: actions/upload-artifact@v7.0.1
         with:
           name: extended-tests-${{ matrix.platform }}
-          path: .run-logs/full-unit-tests.json
+          path: .run-logs/full-groups/
           archive: true
-          if-no-files-found: error
+          if-no-files-found: warn
 
   desktop-main-audit:
     name: Desktop Main baseline audit
