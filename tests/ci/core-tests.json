@@ -42,7 +42,8 @@
         "packages/services/test/zcodeAgentService.v4.test.ts",
         "packages/services/test/zcodeAgentService.providerRegistry.test.ts",
         "packages/services/test/subagentsService.test.ts",
-        "packages/services/test/providerProvisioningFileIntegration.test.ts"
+        "packages/services/test/providerProvisioningFileIntegration.test.ts",
+        "packages/services/test/zcodeAgentService.test.ts"
       ]
     },
     {
