@@ -11,6 +11,7 @@ import {
   providerProvisioningResultSchema,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningEnvelope,
+  type ProviderProvisioningErrorCode,
   type ProviderProvisioningResult,
 } from "@zcode/shared";
 import type { ICredentialService } from "../credential/credential.js";
@@ -68,6 +69,7 @@ export function createProviderProvisioningTarget(
           personalConfigExpected: personalUpdate,
         };
 
+        let errorCode: ProviderProvisioningErrorCode = "target-write-failed";
         try {
           const incomingCredentials = new Map(
             envelope.credentials.map((credential) => [credential.key, credential.value]),
@@ -88,16 +90,11 @@ export function createProviderProvisioningTarget(
             return personalUpdate;
           });
 
+          errorCode = "target-refresh-failed";
           const snapshot =
             await options.providerRuntime.registryService.refresh("provider-provisioning");
-          if (
-            personalUpdate.defaultModelSelection &&
-            !options.providerRuntime.registryService.validateSelection(
-              personalUpdate.defaultModelSelection,
-            ).ok
-          ) {
-            throw new Error("同步后的远端 Registry 不支持本地默认模型");
-          }
+          // 上游 v3.15.1/v3.16.1 已将默认选择视为偏好；旧校验会因失效模型阻断正常远端连接。
+          // 原样同步后由 Host 解析推荐，实际写入/刷新失败仍走原事务与 CAS 回滚。
 
           const result = {
             syncId: envelope.syncId,
@@ -107,6 +104,7 @@ export function createProviderProvisioningTarget(
             configRevision: snapshot.sourceRevisions.config,
             rolledBack: false,
           } satisfies ProviderProvisioningResult;
+          errorCode = "target-commit-failed";
           await writeStateFile(options.stateFilePath, appendStateRecord(previousState, result));
           return result;
         } catch (error) {
@@ -120,6 +118,7 @@ export function createProviderProvisioningTarget(
               personalProviderCount: before.personal.providers.keys().length,
               credentialCount: envelope.credentials.length,
               errorMessage: `${formatError(error)}；回滚失败：${formatError(rollbackError)}`,
+              errorCode,
               rolledBack: false,
             } satisfies ProviderProvisioningResult;
           }
@@ -129,6 +128,7 @@ export function createProviderProvisioningTarget(
             personalProviderCount: before.personal.providers.keys().length,
             credentialCount: envelope.credentials.length,
             errorMessage: formatError(error),
+            errorCode,
             rolledBack: true,
           } satisfies ProviderProvisioningResult;
         }

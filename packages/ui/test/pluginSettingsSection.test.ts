@@ -265,9 +265,10 @@ describe("Plugin settings section", () => {
     expect(source).toContain("selectBuiltInPlugins(plugins, installedPlugins)");
     expect(source).toContain("visibleInstalledPlugins.length");
     expect(source).toContain('id: "settings.plugin.plugins.builtIn"');
-    expect(source).toContain("showUnavailableComputerUse");
-    expect(source).toContain('id: "settings.computerUse.unsupported.badge"');
-    expect(source).toContain("matchesComputerUseSearch(searchQuery)");
+    // 原生 CUA 已退役；保留 Scope 和通用插件配置断言。
+    expect(source).not.toContain("showUnavailableComputerUse");
+    expect(source).not.toContain('id: "settings.computerUse.unsupported.badge"');
+    expect(source).not.toContain("matchesComputerUseSearch(searchQuery)");
     expect(source).toContain('<section className="space-y-6"');
     expect(source).toContain(
       'className="flex h-7 items-center gap-1.5 text-ui-base font-medium text-foreground"',
