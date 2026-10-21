@@ -100,3 +100,38 @@ sequenceDiagram
 - WP-04/06/07 已移除的官方账号、套餐、Client Scenes、分享、云端反馈和自动更新专属回归随对应实现退役；包含性能模式、本地反馈 CAS、workspace deep link、IPC URL 验证或协议 ACK 的混合文件保留这些场景。
 
 - Provider 分发沿用上游 v2 防误删合同：新 Source 只发送 Personal Config，独立 Credential Store 不属于 OpenZWork 同步范围；新 Target 兼容接收 v1 的历史 account-provider 字段但不读取、应用或删除这些 Key。v2 非空历史凭据直接拒绝。旧 Target 必须在写入前拒绝 v2；Personal 文件的 Key、默认偏好、原子替换和 CAS 回滚保持原合同。
+
+## 保留 UI 测试合同修复
+
+- 自动化、工作流中枢、终端链接和启动门禁保留当前入口与断言；净化时截断的测试从固定上游恢复完整结构。工作流按 fork 本地开放规则验证，不恢复官方灰度状态源。
+- 内存诊断保留本地日志及采样门控；不测试已删除的外部采样上报。Provider 表单与模型选择使用 Personal Provider fixture，旧账号/套餐专用断言按既有移除范围清理。
+- 资源管理器保留 CPU/内存/存储切页与在途请求不叠加测试，网络遥测页已移除。Prompt 历史仍验证发送前持久化、失败回滚和草稿保护，使用当前 submission 合同。
+
+## Desktop 构建与保留测试
+
+- macOS Dev bundle 的来源指纹仍由既有构建脚本在副本同级写入。补齐 Node path 导入，避免首次准备和指纹校验时抛出 ReferenceError；不改写原 Electron runtime。
+- Desktop 用户日志、临时附件、工作流产物和 bootstrap setting 的测试使用 `.openzwork`；深链注册和安装包身份使用 OpenZWork 标识。
+- 自动更新、官方 OAuth/购买、远端遥测的专用用例按已有移除范围清理；保留窗口退出、附件回收、远程重连和本地导出日志能力测试。
+
+- Main 的 `OpenExternal` 对 `file:` URL 复用 `openFileUrlInDefaultApp`，解码后交给 `shell.openPath`；非法编码记录失败，不交给外部 URL launcher。HTTP(S) 仍交给 `shell.openExternal`。该分流与固定上游一致，保留共享路径入口及异步错误处理。
+
+- 深链提取与 workspace 路由使用已注册的 `openzwork:` scheme，保留编码、分隔符、冷启动与单实例转发规则；官方账号/购买/分享回调仍不注册。原 `zcode:` 属于上游产品，不作为本 fork 的注册入口。
+
+- Finder “在 OpenZWork 中打开”写入独立的 `Open in OpenZWork.workflow` 与 bundle ID，生成 `openzwork:` 工作区链接。已有 `Open in ZCode.workflow` 文件原样保留。
+- E2E 构建缓存纳入当前编译配置读取的 `ZCODE_CDN_BASE_URL`；切换自管资产地址后不能复用旧桌面产物。
+
+```mermaid
+flowchart LR
+  A[Finder 或外部工作区链接] --> B[Main 提取 openzwork URL]
+  B --> C[规范化路径与用户确认]
+  C --> D{业务窗口 ready}
+  D -->|是| E[发送打开工作区命令]
+  D -->|否| F[当前窗口待投递记录]
+  F -->|renderer ready| E
+```
+
+## E2E 基础设施入口恢复
+
+- WDIO 复用固定上游版本的 Electron service、renderer preflight、按 run/cid 隔离的应用副本、进程回收与报告流程。before 只记录 worker 身份，Mocha root hook 在 service 完成后执行实际 preflight。
+- 隔离用户根为 `.openzwork`。Provider seed 仅写当前 Personal Config，必须由显式 E2E Provider 参数提供；普通 smoke 不需要账号或真实模型调用。官方登录、套餐、遥测、远端灰度、Client Scenes fixture 不进入入口。
+- 初始化失败交由 Mocha root hook 终止用例；清理完成后保留报告，禁止将无法启动当作通过。该恢复通过类型与基础设施单测验收；实际桌面/SSH/手机全流程需单独运行已有 E2E。

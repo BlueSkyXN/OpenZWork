@@ -827,7 +827,6 @@ function builtinRuleFamily(rule: {
     model.includes("emohaa") ||
     provider.includes("zai") ||
     provider.includes("bigmodel") ||
-    provider.includes("offpeak-idle-plan") ||
     baseUrl.includes("z\\.ai") ||
     baseUrl.includes("bigmodel\\.cn")
   ) {

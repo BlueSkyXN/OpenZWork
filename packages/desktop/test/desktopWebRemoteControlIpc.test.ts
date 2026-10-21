@@ -60,7 +60,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-describe("Web Remote Control IPC telemetry", () => {
+describe("Web Remote Control IPC", () => {
   beforeEach(() => {
     h.handlers.clear();
     h.fromWebContents.mockReset();
@@ -69,7 +69,7 @@ describe("Web Remote Control IPC telemetry", () => {
     h.showMessageBox.mockResolvedValue({ response: 1 });
   });
 
-  it("显式启动成功后上报本地 workspace 终态", async () => {
+  it("显式启动向窗口所有者传递本地 workspace 并返回状态", async () => {
     const reportRemoteUsageEvent = vi.fn();
     const start = vi.fn(async () => ({ status: "running" }));
     const { registerWebRemoteControlIpcHandlers } =
@@ -92,21 +92,10 @@ describe("Web Remote Control IPC telemetry", () => {
 
     expect(result).toEqual({ status: "running" });
     expect(start).toHaveBeenCalledWith(17, context);
-    expect(reportRemoteUsageEvent).toHaveBeenCalledWith(73, {
-      elementName: "web_remote_control_start_result",
-      eventRegion: "web_remote_control",
-      eventType: "result",
-      eventExtraDetail: {
-        result: "success",
-        workspace_kind: "local",
-        remote_kind: "",
-        error_category: "",
-      },
-    });
     expect(h.showMessageBox).not.toHaveBeenCalled();
   });
 
-  it("重新配对成功后上报远程 workspace 类型", async () => {
+  it("重新配对传递远程 workspace 身份", async () => {
     const reportRemoteUsageEvent = vi.fn();
     const resetPairing = vi.fn(async () => ({ status: "running" }));
     const { registerWebRemoteControlIpcHandlers } =
@@ -133,21 +122,10 @@ describe("Web Remote Control IPC telemetry", () => {
 
     expect(result).toEqual({ status: "running" });
     expect(resetPairing).toHaveBeenCalledWith(17, context);
-    expect(reportRemoteUsageEvent).toHaveBeenCalledWith(74, {
-      elementName: "web_remote_control_start_result",
-      eventRegion: "web_remote_control",
-      eventType: "result",
-      eventExtraDetail: {
-        result: "success",
-        workspace_kind: "remote",
-        remote_kind: "wsl",
-        error_category: "",
-      },
-    });
     expect(h.showMessageBox).not.toHaveBeenCalled();
   });
 
-  it("启动失败时只上报低基数错误分类并保留原错误", async () => {
+  it("启动失败保留原错误", async () => {
     const error = Object.assign(new Error("relay websocket closed"), {
       code: "RELAY_CLOSED",
     });
@@ -172,17 +150,6 @@ describe("Web Remote Control IPC telemetry", () => {
     );
 
     await expect(operation).rejects.toBe(error);
-    expect(reportRemoteUsageEvent).toHaveBeenCalledWith(75, {
-      elementName: "web_remote_control_start_result",
-      eventRegion: "web_remote_control",
-      eventType: "result",
-      eventExtraDetail: {
-        result: "failure",
-        workspace_kind: "local",
-        remote_kind: "",
-        error_category: "relay",
-      },
-    });
   });
 
   it("埋点 reporter 抛错时不改写已经成功的启动结果", async () => {

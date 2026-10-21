@@ -17,7 +17,7 @@ import {
   registerWebRemoteControlIpcHandlers,
   type WebRemoteControlIpcManager,
 } from "./desktopWebRemoteControlIpc.js";
-import { openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
+import { openFileUrlInDefaultApp, openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
 
 export function isAllowedExternalOpenUrl(value: string): boolean {
   try {
@@ -109,6 +109,11 @@ export function registerRemoteIpcHandlers(options: {
     const { url } = request;
     if (!isAllowedExternalOpenUrl(url)) {
       options.logger.warn("[open-external] blocked unsupported url", url);
+      return;
+    }
+    // 净化购买跳转逻辑时误删了通用 file URL 分流；按上游保留路径解码和本地打开入口。
+    if (new URL(url).protocol === "file:") {
+      void openFileUrlInDefaultApp(url, options.logger);
       return;
     }
     void Promise.resolve(shell.openExternal(url)).catch((error: unknown) => {

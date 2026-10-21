@@ -16,7 +16,7 @@ describe("官方 GLM ID 边界", () => {
       "account:zai-start-plan",
     ])
       expect(migrateLegacyOfficialGlmModelId(provider, "glm-5.3-flash")).toBe("GLM-5.3-Flash");
-    for (const provider of ["openrouter", "my-provider", "zai-api", "account:zai-off-peak"])
+    for (const provider of ["openrouter", "my-provider", "zai-api"])
       expect(migrateLegacyOfficialGlmModelId(provider, "glm-5.3-flash")).toBe("glm-5.3-flash");
   });
 });

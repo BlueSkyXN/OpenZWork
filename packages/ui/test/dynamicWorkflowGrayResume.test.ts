@@ -200,8 +200,8 @@ describe("灰度关掉后工具卡页脚与摘要卡的 Resume", () => {
 });
 
 describe("SessionPane 供给点接线", () => {
-  it("Resume 回调只经 resolveWorkflowResumeHandler 进上下文，灰度从 hook 读", () => {
-    expect(sessionPaneSource).toContain("useDynamicWorkflowAvailability");
+  it("Resume 回调经过只读保护，本地工作流始终可用", () => {
+    expect(sessionPaneSource).toContain("const dynamicWorkflowEnabled = true;");
     expect(sessionPaneSource).toMatch(
       /onResumeWorkflowRun: resolveWorkflowResumeHandler\(\{\s*readOnly,\s*dynamicWorkflowEnabled,\s*handler: handleResumeWorkflowRun,\s*\}\)/,
     );

@@ -161,7 +161,7 @@ describe("OpenExternal 对 file URL 的分流", () => {
     const { listener, options } = await registerOpenExternalListener();
     const sender = { getURL: vi.fn(() => "about:blank") };
 
-    listener({ sender }, "file://server/share/page.html");
+    listener({ sender }, "file:///tmp/%2Fpage.html");
 
     await vi.waitFor(() => expect(options.logger.warn).toHaveBeenCalledTimes(1));
     expect(h.shellOpenPath).not.toHaveBeenCalled();

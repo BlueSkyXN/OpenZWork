@@ -40,13 +40,12 @@ describe("settings empty state style", () => {
     );
   });
 
-  it("keeps the shared usage empty state transparent", () => {
+  it("keeps the local usage empty state in the shared panel", () => {
     const source = readSource(
-      "packages/ui/src/settings/usage-stats/usageStatsUiParts.tsx",
+      "packages/ui/src/settings/usage-stats/AppUsageSection.tsx",
     );
 
-    expect(source).toContain(
-      'className="rounded-xl border border-dashed border-border px-4 py-10 text-center"',
-    );
+    expect(source).toContain('id: "settings.usage.emptyTitle"');
+    expect(source).toContain('id: "settings.usage.emptyDescription"');
   });
 });

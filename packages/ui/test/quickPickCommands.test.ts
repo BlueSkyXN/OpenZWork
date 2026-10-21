@@ -82,10 +82,7 @@ describe("createQuickPickCommands", () => {
       "switch-theme",
       "skills-settings",
       "mcp-settings",
-      "feedback",
       "community",
-      "product-docs",
-      "login",
     ]);
     expect(commands.find((command) => command.id === "open-workspace")).toMatchObject({
       sectionId: "suggested",
@@ -145,11 +142,7 @@ describe("createQuickPickCommands", () => {
       titleId: "quickPick.command.addReviewTab",
       icon: "diff",
     });
-    expect(commands.find((command) => command.id === "product-docs")).toMatchObject({
-      sectionId: "app",
-      titleId: "quickPick.command.productDocs",
-      icon: "book",
-    });
+
   });
 
   it("keeps unavailable workspace opening visible but disabled", () => {
@@ -230,10 +223,10 @@ describe("createQuickPickCommands", () => {
     });
 
     commands.find((item) => item.id === "skills-settings")?.run();
-    commands.find((item) => item.id === "product-docs")?.run();
+    commands.find((item) => item.id === "community")?.run();
 
     expect(handlers.openSkillsSettings).toHaveBeenCalledTimes(1);
-    expect(handlers.openProductDocs).toHaveBeenCalledTimes(1);
+    expect(handlers.openCommunity).toHaveBeenCalledTimes(1);
   });
 
   it("has locale messages for every visible command label", () => {
@@ -284,31 +277,5 @@ describe("createQuickPickCommands", () => {
       "configure",
       "app",
     ]);
-  });
-
-  it("uses logout instead of login for authenticated users", () => {
-    const commands = createQuickPickCommands({
-      allowOpenWorkspace: true,
-      canOpenCommunity: false,
-      isSidebarVisible: true,
-      isLoggedIn: true,
-      themeTarget: "dark",
-      shortcuts,
-      handlers: createHandlers(),
-    });
-
-    expect(commands.some((command) => command.id === "login")).toBe(false);
-    expect(commands.find((command) => command.id === "logout")).toMatchObject({
-      sectionId: "app",
-      titleId: "quickPick.command.logout",
-    });
-    expect(commands.some((command) => command.id === "community")).toBe(false);
-  });
-
-  it("uses connection wording for app auth commands", () => {
-    expect(zhCN["quickPick.command.login"]).toBe("连接");
-    expect(zhCN["quickPick.command.logout"]).toBe("断开连接");
-    expect(enUS["quickPick.command.login"]).toBe("Connect");
-    expect(enUS["quickPick.command.logout"]).toBe("Disconnect");
   });
 });

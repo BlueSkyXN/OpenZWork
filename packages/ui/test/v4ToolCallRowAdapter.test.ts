@@ -31,12 +31,6 @@ describe("toolCallRowToLegacyNode", () => {
     expect(node.childToolCalls).toEqual([]);
   });
 
-  it("把投影时固化的 CUA App 身份桥接给摘要 renderer", () => {
-    const cuaApp = { pid: 42, name: "Zed", bundleId: "dev.zed.Zed" };
-    const node = toolCallRowToLegacyNode(makeRow({ cuaApp }));
-    expect(node.toolCall.raw).toMatchObject({ cuaApp });
-  });
-
   it("status 全量映射到 mapToolStatus 词表", () => {
     const cases: Array<[ToolCallRow["status"], string]> = [
       ["inputStreaming", "pending"],
@@ -106,34 +100,6 @@ describe("toolCallRowToLegacyNode", () => {
         toolName: "issue_query_v2",
       },
     });
-  });
-
-  it("把 output.display 中的 CUA 截图桥接到 legacy raw", () => {
-    const node = toolCallRowToLegacyNode(
-      makeRow({
-        toolName: "mcp__computer-use__computer-use",
-        status: "success",
-        output: {
-          text: "[Attached image/jpeg: MCP image]",
-          display: {
-            kind: "cua",
-            schemaVersion: 1,
-            toolName: "computer-use",
-            status: "success",
-            input: '{"action":"screenshot"}',
-            media: [{ mimeType: "image/jpeg", data: "AAAA" }],
-          },
-        },
-      }),
-    );
-
-    expect(node.toolCall.raw).toMatchObject({
-      display: {
-        kind: "cua",
-        media: [{ mimeType: "image/jpeg", data: "AAAA" }],
-      },
-    });
-    expect(node.toolCall.raw?.display).not.toHaveProperty("input");
   });
 
   it("继续兼容顶层 Node REPL 图片 display", () => {

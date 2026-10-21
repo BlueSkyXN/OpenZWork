@@ -3,7 +3,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 import { resolveToolCallRenderer } from "@/ToolCallBlocks/resolveRenderer.js";
 import {
@@ -13,11 +12,11 @@ import {
 } from "@/ToolCallBlocks/renderers/list-models.js";
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
 
-// 团队套餐的 providerId 是一个 UUID。它是本卡最重要的负面断言：一个字符都不该上屏。
+// Provider ID 使用合成 UUID，界面应优先展示可读名称。
 const TEAM_PROVIDER_UUID = "4fc7f541-2382-4c32-be11-f021b8d7ed1d";
-const BUILTIN_BIGMODEL_PROVIDER_ID = BUILTIN_MODEL_PROVIDER_IDS.bigmodelTeamCodingPlan;
+const PERSONAL_PROVIDER_ID = "fixture-personal-provider";
 
-const CURRENT_MODEL_ID = `${BUILTIN_BIGMODEL_PROVIDER_ID}/GLM-5.3-Flash`;
+const CURRENT_MODEL_ID = `${PERSONAL_PROVIDER_ID}/GLM-5.3-Flash`;
 
 const LIST_MODELS_DISPLAY = {
   kind: "list_models",
@@ -25,15 +24,17 @@ const LIST_MODELS_DISPLAY = {
   models: [
     {
       id: CURRENT_MODEL_ID,
-      providerId: BUILTIN_BIGMODEL_PROVIDER_ID,
+      providerId: PERSONAL_PROVIDER_ID,
+      providerLabel: "BigModel",
       modelId: "GLM-5.3-Flash",
       reasoningLevels: ["low", "medium", "high"],
       defaultReasoningLevel: "high",
       contextWindow: 128_000,
     },
     {
-      id: `${BUILTIN_BIGMODEL_PROVIDER_ID}/GLM-5.3`,
-      providerId: BUILTIN_BIGMODEL_PROVIDER_ID,
+      id: `${PERSONAL_PROVIDER_ID}/GLM-5.3`,
+      providerId: PERSONAL_PROVIDER_ID,
+      providerLabel: "BigModel",
       modelId: "GLM-5.3",
       reasoningLevels: ["low", "medium", "high", "max"],
       defaultReasoningLevel: "max",
@@ -191,7 +192,7 @@ describe("ListModelsToolCallBlock", () => {
     expect(screen.getByText("glm-4.7")).toBeTruthy();
     // 本卡最重要的负面断言：UUID 与内置 providerId 一个字符都不上屏。
     expect(document.body.textContent).not.toContain(TEAM_PROVIDER_UUID);
-    expect(document.body.textContent).not.toContain(BUILTIN_BIGMODEL_PROVIDER_ID);
+    expect(document.body.textContent).not.toContain(PERSONAL_PROVIDER_ID);
     // 通用兜底会打印整包 toolCall；专用卡必须没有这些结构键。
     expect(document.body.textContent).not.toContain('"toolId"');
     expect(document.body.textContent).not.toContain("models count");

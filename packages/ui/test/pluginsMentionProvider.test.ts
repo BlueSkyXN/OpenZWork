@@ -240,28 +240,20 @@ describe("输入框复用市场排序", () => {
       enabled: false,
     }),
   ];
-  it("配置重排官方，个人随后保序；不添加目录外插件或启用禁用项", () => {
-    const result = mapPluginCatalogToMentionItemsForTest(entries, LABELS, "en-US", {
-      categoryOrder: ["utilities", "developer-tools"],
-      pluginOrder: { utilities: [`missing@${official}`, `b@${official}`] },
-    });
+  it("按本地分类排序公开源，个人随后保序；不启用禁用项", () => {
+    const result = mapPluginCatalogToMentionItemsForTest(entries, LABELS, "en-US");
     expect(result.map((x) => x.value)).toEqual([
-      `b@${official}`,
-      `a@${official}`,
       `dev@${official}`,
+      `a@${official}`,
+      `b@${official}`,
       "personal@personal",
     ]);
-    expect(result[2]?.disabled).toBe(true);
+    expect(result[0]?.disabled).toBe(true);
   });
-  it("无配置和旧 Host 没分类时保留发现顺序", () => {
-    expect(
-      mapPluginCatalogToMentionItemsForTest(entries, LABELS, "en-US").map((x) => x.value),
-    ).toEqual(entries.filter((x) => x.enabled).map((x) => x.pluginId));
+  it("旧 Host 没分类时保留发现顺序", () => {
     const old = entries.map(({ category: _category, ...item }) => item);
     expect(
-      mapPluginCatalogToMentionItemsForTest(old, LABELS, "en-US", {
-        categoryOrder: ["utilities"],
-      }).map((x) => x.value),
+      mapPluginCatalogToMentionItemsForTest(old, LABELS, "en-US").map((x) => x.value),
     ).toEqual(old.filter((x) => x.enabled).map((x) => x.pluginId));
   });
 });
@@ -278,16 +270,11 @@ it("市场和 Picker 的官方子集同序，查询同分保序且匹配度优�
       category: "developer-tools",
     }),
   ];
-  for (const categoryOrder of [
-    ["utilities", "developer-tools"],
-    ["developer-tools", "utilities"],
-  ]) {
-    const order = { categoryOrder, pluginOrder: { utilities: [`b@${official}`] } };
+  {
     const picker = mapPluginCatalogToMentionItemsForTest(
       catalog,
       { conflictReason: "conflict" },
       "zh-CN",
-      order,
     );
     const store = catalog.map(
       (x) =>
@@ -302,7 +289,7 @@ it("市场和 Picker 的官方子集同序，查询同分保序且匹配度优�
         }) satisfies StorePluginItem,
     );
     expect(picker.map((x) => x.value)).toEqual(
-      groupItemsByCategory(store, "zh-CN", order).flatMap((x) => x.items.map((y) => y.id)),
+      groupItemsByCategory(store, "zh-CN").flatMap((x) => x.items.map((y) => y.id)),
     );
     const sameScoreItems = picker.map((item) => ({
       ...item,

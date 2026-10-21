@@ -69,8 +69,8 @@ describe("AutomationsPageTitle 灰度门", () => {
 });
 
 describe("AutomationsSection 灰度接线", () => {
-  it("从 hook 读灰度，标题按灰度渲染", () => {
-    expect(source).toContain("useDynamicWorkflowAvailability");
+  it("本地开放工作流入口，标题接收可用状态", () => {
+    expect(source).toContain("const dynamicWorkflowEnabled = true;");
     expect(source).toContain("workflowTabEnabled={dynamicWorkflowEnabled}");
   });
 

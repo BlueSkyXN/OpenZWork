@@ -33,18 +33,12 @@ describe("createHomeOnlyWebRemoteControlServices", () => {
     const { createHomeOnlyWebRemoteControlServices } = await import("../src/main.js");
     const services = createHomeOnlyWebRemoteControlServices();
 
-    await expect(services.oauthService.restoreCachedSession()).resolves.toBeNull();
     await expect(services.modelSelectionService.getView()).resolves.toEqual({
       revision: 0,
       providers: [],
     });
     const selectionSubscription = services.modelSelectionService.onDidChange(() => {});
     expect(() => selectionSubscription.dispose()).not.toThrow();
-    await expect(services.clientScenesService.list()).resolves.toEqual({
-      code: 0,
-      msg: "",
-      data: [],
-    });
     await expect(
       services.skillsService.list({ workspacePath: "/remote/offline" }),
     ).resolves.toEqual({

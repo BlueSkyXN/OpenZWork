@@ -5,14 +5,14 @@ describe("desktop deep link url helpers", () => {
     const { extractWorkspaceOpenPath, isWorkspaceOpenUrl } =
       await import("../src/main/desktopDeepLinkUrl.js");
 
-    const workspaceUrl = new URL("zcode://workspace/open?path=%2FUsers%2Fdemo%2FProject%20A%26B");
+    const workspaceUrl = new URL("openzwork://workspace/open?path=%2FUsers%2Fdemo%2FProject%20A%26B");
     expect(isWorkspaceOpenUrl(workspaceUrl)).toBe(true);
     expect(extractWorkspaceOpenPath(workspaceUrl)).toBe("/Users/demo/Project A&B");
-    expect(isWorkspaceOpenUrl(new URL("zcode://workspace/other?path=%2Ftmp"))).toBe(false);
-    expect(extractWorkspaceOpenPath(new URL("zcode://workspace/open"))).toBeNull();
+    expect(isWorkspaceOpenUrl(new URL("openzwork://workspace/other?path=%2Ftmp"))).toBe(false);
+    expect(extractWorkspaceOpenPath(new URL("openzwork://workspace/open"))).toBeNull();
   });
 
-  it.each(["zcode://workspace/open/", "zcode:/workspace/open", "zcode:workspace/open"])(
+  it.each(["openzwork://workspace/open/", "openzwork:/workspace/open", "openzwork:workspace/open"])(
     "保留跨平台工作区路径规范化: %s",
     async (url) => {
       const { isWorkspaceOpenUrl, extractWorkspaceOpenPath } =
@@ -25,13 +25,13 @@ describe("desktop deep link url helpers", () => {
 
   it("extracts workspace protocol urls from desktop argv variants", async () => {
     const { extractDeepLinkUrlFromArgs } = await import("../src/main/desktopDeepLinkUrl.js");
-    const url = "zcode://workspace/open?path=%2Ftmp%2Fdemo%20A";
+    const url = "openzwork://workspace/open?path=%2Ftmp%2Fdemo%20A";
     for (const args of [
       ["/opt/ZCode/zcode", url],
       ["/opt/ZCode/zcode", "--open-url=" + url],
       ["/opt/ZCode/zcode", encodeURIComponent(url)],
       ["/opt/ZCode/zcode", encodeURIComponent(encodeURIComponent(url))],
-      ["/opt/ZCode/zcode", "zcode://workspace/open", "?path=%2Ftmp%2Fdemo%20A"],
+      ["/opt/ZCode/zcode", "openzwork://workspace/open", "?path=%2Ftmp%2Fdemo%20A"],
     ]) {
       expect(extractDeepLinkUrlFromArgs(args)).toBe(url);
     }
@@ -76,12 +76,12 @@ describe("desktop deep link url helpers", () => {
 
     const additionalData = createDeepLinkSingleInstanceData([
       "/opt/ZCode/zcode",
-      encodeURIComponent(encodeURIComponent("zcode://workspace/open?path=%2Ftmp%2Fdemo")),
+      encodeURIComponent(encodeURIComponent("openzwork://workspace/open?path=%2Ftmp%2Fdemo")),
       "--open-workspace=C:\\Users\\demo\\Project A",
     ]);
 
     expect(extractDeepLinkUrlFromSingleInstanceData(additionalData)).toBe(
-      "zcode://workspace/open?path=%2Ftmp%2Fdemo",
+      "openzwork://workspace/open?path=%2Ftmp%2Fdemo",
     );
     expect(extractOpenWorkspacePathFromSingleInstanceData(additionalData)).toBe(
       "C:\\Users\\demo\\Project A",

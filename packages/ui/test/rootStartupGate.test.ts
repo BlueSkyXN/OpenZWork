@@ -1,132 +1,35 @@
 import { describe, expect, it } from "vitest";
 import {
-  isProviderStartupSyncPending,
-  shouldEnableProviderAvailabilityLoginEntryGuard,
-  shouldResolveProviderStartupState,
   shouldBlockRootRender,
   shouldShowRootStartupLoading,
   shouldOpenFallbackWorkspaceAfterCreate,
 } from "@/lib/rootStartupGate.js";
 
+const ready = {
+  isResolvingProviderStartupState: false,
+  isRestoring: false,
+  isBootstrappingInitialWorkspace: false,
+};
+
 describe("Root startup gate", () => {
-  it("会在恢复标签页时阻塞首屏", () => {
-    expect(
-      shouldBlockRootRender({
-        isResolvingStartupAuthState: false,
-        isResolvingProviderStartupState: false,
-        isRestoring: true,
-        isBootstrappingInitialWorkspace: false,
-      }),
-    ).toBe(true);
+  it.each(Object.keys(ready))("%s 未完成时阻塞首屏", (key) => {
+    expect(shouldBlockRootRender({ ...ready, [key]: true })).toBe(true);
   });
 
-  it("会在注入初始工作区时阻塞首屏", () => {
-    expect(
-      shouldBlockRootRender({
-        isResolvingStartupAuthState: false,
-        isResolvingProviderStartupState: false,
-        isRestoring: false,
-        isBootstrappingInitialWorkspace: true,
-      }),
-    ).toBe(true);
+  it("所有保留的启动检查完成后放行首屏", () => {
+    expect(shouldBlockRootRender(ready)).toBe(false);
   });
 
-  it("会在启动鉴权状态未落定时阻塞首屏", () => {
-    expect(
-      shouldBlockRootRender({
-        isResolvingStartupAuthState: true,
-        isResolvingProviderStartupState: false,
-        isRestoring: false,
-        isBootstrappingInitialWorkspace: false,
-      }),
-    ).toBe(true);
+  it("桌面显示启动 loading，Web 使用自身连接状态", () => {
+    const pending = { ...ready, isRestoring: true };
+    expect(shouldShowRootStartupLoading({ ...pending, isDesktop: true })).toBe(true);
+    expect(shouldShowRootStartupLoading({ ...pending, isDesktop: false })).toBe(false);
+    expect(shouldShowRootStartupLoading({ ...ready, isDesktop: true })).toBe(false);
   });
 
-  it("会在 provider 登录入口判定未落定时阻塞首屏", () => {
-    expect(
-      shouldBlockRootRender({
-        isResolvingStartupAuthState: false,
-        isResolvingProviderStartupState: true,
-        isRestoring: false,
-        isBootstrappingInitialWorkspace: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("所有启动检查完成后才放行首屏", () => {
-    expect(
-      shouldBlockRootRender({
-        isResolvingStartupAuthState: false,
-        isResolvingProviderStartupState: false,
-        isRestoring: false,
-        isBootstrappingInitialWorkspace: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("provider 启动同步未完成时会延后首屏放行", () => {
-    const providerStartupSyncPending = isProviderStartupSyncPending({
-      providerFamilyDomainMigrationComplete: false,
-      modelSelectionViewHydrated: true,
-    });
-    expect(providerStartupSyncPending).toBe(true);
-    expect(
-      shouldBlockRootRender({
-        isResolvingStartupAuthState: false,
-        isResolvingProviderStartupState: providerStartupSyncPending,
-        isRestoring: false,
-        isBootstrappingInitialWorkspace: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("Web 远控 Root 不运行 provider 登录入口守卫", () => {
-    expect(
-      shouldEnableProviderAvailabilityLoginEntryGuard({
-        isWebRemoteControlRoot: true,
-      }),
-    ).toBe(false);
-  });
-
-  it("Web 远控 Root 不把 provider 启动态作为 workspace 注入门禁", () => {
-    expect(
-      shouldResolveProviderStartupState({
-        isWebRemoteControlRoot: true,
-        providerStartupSyncPending: true,
-        providerAvailabilityStartupCheckCompleted: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("桌面 Root 继续等待 provider 启动检查落定", () => {
-    expect(
-      shouldResolveProviderStartupState({
-        isWebRemoteControlRoot: false,
-        providerStartupSyncPending: false,
-        providerAvailabilityStartupCheckCompleted: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("登录入口已经打开时不应继续显示启动 loading", () => {
-    expect(
-      shouldShowRootStartupLoading({
-        isDesktop: true,
-        welcomeScreenOpen: true,
-        isResolvingStartupAuthState: false,
-        isResolvingProviderStartupState: true,
-        isRestoring: false,
-        isBootstrappingInitialWorkspace: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("兜底默认 workspace 返回时如果已经恢复出 active workspace，就不再抢占当前 tab", () => {
-    expect(
-      shouldOpenFallbackWorkspaceAfterCreate({
-        isMounted: true,
-        activeWorkspacePath: "/Users/dev/workspace/cgx-dev-web",
-      }),
-    ).toBe(false);
+  it("兜底工作区只在组件仍挂载且尚未恢复活动工作区时打开", () => {
+    expect(shouldOpenFallbackWorkspaceAfterCreate({ isMounted: true, activeWorkspacePath: null })).toBe(true);
+    expect(shouldOpenFallbackWorkspaceAfterCreate({ isMounted: true, activeWorkspacePath: "/fixture/workspace" })).toBe(false);
+    expect(shouldOpenFallbackWorkspaceAfterCreate({ isMounted: false, activeWorkspacePath: null })).toBe(false);
   });
 });

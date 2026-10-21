@@ -25,17 +25,17 @@ describe("DB109 App 库统一迁移", () => {
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
       .all();
-    expect(tables.map((row) => row.name)).toEqual([
+    // 兼容 DDL 保留历史表；这里验证当前仍使用的表全部建好。
+    expect(tables.map((row) => row.name)).toEqual(expect.arrayContaining([
       "automation_runs",
       "automations",
-      "off_peak_tasks",
       "task_group_members",
       "task_group_view_node_orders",
       "task_group_workspace_bootstraps",
       "task_groups",
       "tasks",
       "tasks_schema_migration",
-    ]);
+    ]));
     const ledger = db.prepare("SELECT * FROM tasks_schema_migration").all();
     expect(ledger).toHaveLength(3);
     runTasksDatabaseMigrations(db);

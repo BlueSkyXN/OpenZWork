@@ -7,16 +7,10 @@ import {
   resolveStartPlanConcurrentLimitBusinessCode,
   resolveStartPlanConcurrentLimitBannerReason,
   resolveStartPlanQuotaExhaustedBusinessCode,
-  shouldRefreshQuotaOnProviderBusinessRetry,
   START_PLAN_BUSY_AUTO_RETRY_EXHAUSTED_MESSAGE,
 } from "@/lib/providerBusinessError.js";
 
 describe("providerBusinessError", () => {
-  it("refreshes quota snapshot before retrying upstream failures", () => {
-    expect(shouldRefreshQuotaOnProviderBusinessRetry("2007")).toBe(true);
-    expect(shouldRefreshQuotaOnProviderBusinessRetry("1005")).toBe(true);
-    expect(shouldRefreshQuotaOnProviderBusinessRetry("3007")).toBe(false);
-  });
 
   it("只把 GLM 额度套餐类错误码归一到聊天升级横幅", () => {
     expect(resolveGlmQuotaBannerBusinessCode("1308")).toBe("1308");

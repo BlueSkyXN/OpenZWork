@@ -88,18 +88,18 @@ describe("BotsDialog config", () => {
     expect(zhCN["bots.newBot.providerDescription.dingding"]).toBeTruthy();
   });
 
-  it("uses welcome screen region tags for Feishu and Lark bot entries", () => {
+  it("uses Bot region tags for Feishu and Lark bot entries", () => {
     expect(getBotProviderRegionTagLabelId("lark")).toBe(
-      "login.oauth.regionTag.zai",
+      "bots.regionTag.international",
     );
     expect(getBotProviderRegionTagLabelId("feishu")).toBe(
-      "login.oauth.regionTag.bigmodel",
+      "bots.regionTag.mainland",
     );
     expect(getBotProviderRegionTagLabelId("telegram")).toBeNull();
-    expect(enUS["login.oauth.regionTag.zai"]).toBe("Global");
-    expect(zhCN["login.oauth.regionTag.zai"]).toBe("全球");
-    expect(enUS["login.oauth.regionTag.bigmodel"]).toBe("CN");
-    expect(zhCN["login.oauth.regionTag.bigmodel"]).toBe("中国");
+    expect(enUS["bots.regionTag.international"]).toBe("International");
+    expect(zhCN["bots.regionTag.international"]).toBe("国际");
+    expect(enUS["bots.regionTag.mainland"]).toBe("Mainland China");
+    expect(zhCN["bots.regionTag.mainland"]).toBe("中国大陆");
   });
 
   it("resolves remote-control bot entry to the first existing provider bot", () => {

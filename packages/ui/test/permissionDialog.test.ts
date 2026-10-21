@@ -1,5 +1,4 @@
 import {
-  OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME,
   type ZCodePermissionRequest,
   type ZCodeProvider,
 } from "@zcode/shared";
@@ -88,42 +87,6 @@ describe("PermissionDialog", () => {
     expect(withFeedback).toContain("overflow-y-auto");
     expect(withFeedback).toContain("focus-visible:ring-0");
     expect(withFeedback).toContain('maxLength="4096"');
-  });
-
-  it("labels an authority-verified Computer Use project grant explicitly", () => {
-    const html = renderPermissionDialog({
-      type: "permission_request",
-      taskId: "task-cua",
-      traceId: "trace-cua",
-      requestId: "request-cua",
-      description: "Control TextEdit",
-      kind: "mcp__computer-use__left_click",
-      title: "Computer Use",
-      options: [
-        {
-          optionId: "allow_project",
-          kind: "allow_always",
-          name: "Always allow Computer Use in this project",
-          response: {
-            decision: "allow",
-            permissionUpdates: [
-              {
-                behavior: "allow",
-                rules: [{ toolName: OFFICIAL_CUA_PERMISSION_RULE_TOOL_NAME }],
-                type: "addRules",
-              },
-            ],
-          },
-        },
-      ],
-      raw: { rawInput: { app_ref: { bundle_id: "com.apple.TextEdit" } } },
-    });
-
-    expect(html).toContain("始终允许本项目中的电脑控制");
-    expect(html).toContain('aria-label="始终允许本项目中的电脑控制"');
-    expect(html).toContain('aria-label="确认"');
-    expect(html).toContain("本项目后续官方电脑控制操作不再询问");
-    expect(html).not.toContain("后续相同权限请求不再询问");
   });
 
   it("renders compound prefix scopes inline without an exact-command card", () => {

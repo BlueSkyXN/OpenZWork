@@ -25,7 +25,7 @@ describe("active task recommendations", () => {
       expect(
         next.every((item) => !previous.some((shown) => shown.id === item.id)),
       ).toBe(true);
-      expect(new Set(next.map((item) => item.iconUrl)).size).toBe(3);
+      expect(new Set(next.map((item) => item.iconUrl ?? item.iconName ?? item.plugin?.stableId ?? item.id)).size).toBe(3);
     }
   });
 
@@ -37,11 +37,11 @@ describe("active task recommendations", () => {
     const second = getRecommendedPromptsForPane(paneIds[1]!, "coding");
     expect(first).toHaveLength(3);
     expect(second).toHaveLength(3);
-    expect(new Set(first.map((item) => item.iconUrl))).toHaveProperty(
+    expect(new Set(first.map((item) => item.iconUrl ?? item.iconName ?? item.plugin?.stableId ?? item.id))).toHaveProperty(
       "size",
       3,
     );
-    expect(new Set(second.map((item) => item.iconUrl))).toHaveProperty(
+    expect(new Set(second.map((item) => item.iconUrl ?? item.iconName ?? item.plugin?.stableId ?? item.id))).toHaveProperty(
       "size",
       3,
     );
@@ -51,7 +51,7 @@ describe("active task recommendations", () => {
 
     advanceRecommendedPromptPane(paneIds[0]!);
     const refreshed = getRecommendedPromptsForPane(paneIds[0]!, "coding");
-    expect(new Set(refreshed.map((item) => item.iconUrl))).toHaveProperty(
+    expect(new Set(refreshed.map((item) => item.iconUrl ?? item.iconName ?? item.plugin?.stableId ?? item.id))).toHaveProperty(
       "size",
       3,
     );

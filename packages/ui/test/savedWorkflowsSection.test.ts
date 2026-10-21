@@ -8,20 +8,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   TID_WORKFLOWS_CREATE_VIA_CHAT,
   TID_WORKFLOWS_EMPTY,
-  TID_WORKFLOWS_OPEN_SETTINGS,
   TID_WORKFLOWS_REFRESH,
-  applyDynamicWorkflowUserMode,
-  createDynamicWorkflowClientConfig,
   TID_WORKFLOW_GLOBAL_GROUP,
   TID_WORKFLOW_PROJECT_GROUP,
   resolveWorkspaceKey,
   testId,
 } from "@zcode/shared";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
-import {
-  resetDynamicWorkflowAvailabilityStoreForTests,
-  useDynamicWorkflowAvailabilityStore,
-} from "@/store/dynamicWorkflowAvailabilityStore.js";
 import type { AutomationWorkspaceOption } from "@/settings/automationWorkspaceOptions.js";
 import type {
   SavedWorkflowGroupMode,
@@ -239,7 +232,6 @@ describe("SavedWorkflowsSection（全局 + 多项目页）", () => {
   });
   afterEach(() => {
     cleanup();
-    resetDynamicWorkflowAvailabilityStoreForTests();
   });
 
   it("全局组恒置顶，位于所有项目组之上；总数=全局+各项目组条数之和", async () => {
@@ -330,40 +322,6 @@ describe("SavedWorkflowsSection（全局 + 多项目页）", () => {
     expect(screen.getByTestId(TID_WORKFLOWS_REFRESH)).toBeTruthy();
     // 无候选时空态卡不出（那是「项目全空」，此处根本没有项目组）
     expect(screen.queryByTestId(TID_WORKFLOWS_EMPTY)).toBeNull();
-  });
-
-  // launch.md「The hub page」「The user's choice」：标题行带「工作流设置」和当前生效模式，点击直达设置 › 常规。
-  it("「工作流设置」显示当前生效模式，点击打开设置并定位到常规", async () => {
-    useDynamicWorkflowAvailabilityStore.setState({
-      status: "ready",
-      enabled: true,
-      config: applyDynamicWorkflowUserMode(
-        createDynamicWorkflowClientConfig("alwaysOn", "remote"),
-        "onDemand",
-      ),
-    });
-    groupReadiness.global = { loaded: true, empty: true, count: 0 };
-    mount();
-    const button = await screen.findByTestId(TID_WORKFLOWS_OPEN_SETTINGS);
-    expect(button.textContent).toContain("工作流设置");
-    expect(button.textContent).toContain("通过命令启用");
-    fireEvent.click(button);
-    expect(settingsNavigation.setPendingSettingsSectionIntent).toHaveBeenCalledWith("general");
-    expect(tabStoreState.openSettingsTab).toHaveBeenCalledTimes(1);
-  });
-
-  it("旧 Host 的快照没有 offeredMode：不出「工作流设置」链接（它要打开的设置行不存在）", async () => {
-    useDynamicWorkflowAvailabilityStore.setState({
-      status: "ready",
-      enabled: true,
-      config: { mode: "alwaysOn", enabled: true, source: "remote" } as unknown as ReturnType<
-        typeof createDynamicWorkflowClientConfig
-      >,
-    });
-    groupReadiness.global = { loaded: true, empty: true, count: 0 };
-    mount();
-    await screen.findByTestId(TID_WORKFLOWS_REFRESH);
-    expect(screen.queryByTestId(TID_WORKFLOWS_OPEN_SETTINGS)).toBeNull();
   });
 
   it("刷新按钮把 refreshSeq 递增并广播到全局组与所有项目组", async () => {

@@ -10,12 +10,6 @@ const [
     "utf8",
   ),
   readFile(
-    "utf8",
-  ),
-  readFile(
-    "utf8",
-  ),
-  readFile(
     new URL("../src/settings/AutomationDesignPrimitives.tsx", import.meta.url),
     "utf8",
   ),
@@ -25,9 +19,6 @@ describe("automation card border tokens", () => {
   it("aligns homepage and automation cards to the Card Border semantic token", () => {
     expect(automationsSectionSource).toContain(
       "rounded-xl border border-card-border bg-background",
-    );
-    expect(automationsSectionSource).toContain(
-      "rounded-2xl border border-card-border bg-background",
     );
     expect(automationDesignPrimitivesSource).toContain(
       "rounded-xl border border-dashed border-card-border bg-background",

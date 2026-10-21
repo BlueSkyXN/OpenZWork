@@ -39,7 +39,8 @@ describe("settings list create actions", () => {
         "utf8",
       );
       expect(source).toContain("<SettingsResourceHeaderActions");
-      expect(source).toMatch(/onNew=\{/);
+      if (fileName === "SkillsSection.tsx") expect(source).toMatch(/onImport=\{/);
+      else expect(source).toMatch(/onNew=\{/);
     },
   );
 
@@ -61,7 +62,7 @@ describe("settings list create actions", () => {
 
   it.each([
     ["McpSettingsSection.tsx", "settings.mcp.import.open", "settings.mcp.create.open"],
-    ["SkillsSection.tsx", "settings.skills.import.open", "settings.skills.create.open"],
+    ["SkillsSection.tsx", "settings.skills.import.open", undefined],
     ["HooksSection.tsx", undefined, "settings.hooks.add"],
   ] as const)(
     "%s passes its action ids to the shared header actions",
@@ -73,7 +74,7 @@ describe("settings list create actions", () => {
       if (importActionId) {
         expect(source).toContain(`importActionId="${importActionId}"`);
       }
-      expect(source).toContain(`newActionId="${newActionId}"`);
+      if (newActionId) expect(source).toContain(`newActionId="${newActionId}"`);
     },
   );
 
@@ -102,13 +103,12 @@ describe("settings list create actions", () => {
     expect(source).not.toContain("SettingsResourceHeaderActions");
   });
 
-  it("shares the two-item Add menu across plugin pages", async () => {
+  it("shares the source Add menu across plugin pages", async () => {
     const menu = await readFile(
       new URL("../src/settings/PluginAddMenu.tsx", import.meta.url),
       "utf8",
     );
-    expect(menu.match(/<DropdownMenuItem[\s>]/g)).toHaveLength(2);
-    expect(menu).toContain('id: "pluginCreator.create"');
+    expect(menu.match(/<DropdownMenuItem[\s>]/g)).toHaveLength(1);
     expect(menu).toContain('id: "pluginCreator.addMarketplace"');
     for (const file of ["PluginStorePage.tsx", "PluginsSection.tsx"]) {
       const source = await readFile(new URL(`../src/settings/${file}`, import.meta.url), "utf8");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeZCodeUiError, normalizeRestoredTaskFailureError } from "@/lib/zcodeUiError.js";
+import { normalizeZCodeUiError } from "@/lib/zcodeUiError.js";
 
 describe("normalizeZCodeUiError", () => {
   it.each([
@@ -141,48 +141,5 @@ describe("normalizeZCodeUiError", () => {
       statusCode: 503,
       retryable: true,
     });
-  });
-});
-
-describe("normalizeRestoredTaskFailureError", () => {
-  it("恢复 error snapshot 时优先使用 task meta 持久化的 lastError", () => {
-    const normalized = normalizeRestoredTaskFailureError({
-      taskId: "task-1",
-      traceId: "trace-1",
-      title: "",
-      workspacePath: "/tmp/workspace",
-      createdAt: 1,
-      updatedAt: 2,
-      mode: "default",
-      status: "error",
-      lastError: {
-        code: "EMPTY_REPLY",
-        message: "Agent 未产生任何回复，请重试。",
-        traceId: "trace-empty",
-        taskId: "task-1",
-      },
-    });
-
-    expect(normalized).toMatchObject({
-      code: "EMPTY_REPLY",
-      message: "Agent 未产生任何回复，请重试。",
-      traceId: "trace-empty",
-      taskId: "task-1",
-    });
-  });
-
-  it("旧 error snapshot 缺少 lastError 时不展示错误文案", () => {
-    const normalized = normalizeRestoredTaskFailureError({
-      taskId: "task-2",
-      traceId: "trace-2",
-      title: "",
-      workspacePath: "/tmp/workspace",
-      createdAt: 1,
-      updatedAt: 2,
-      mode: "default",
-      status: "error",
-    });
-
-    expect(normalized).toBeNull();
   });
 });

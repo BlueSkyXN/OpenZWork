@@ -290,8 +290,8 @@ describe("WebRemoteControlDialog layout", () => {
     expect(html).toContain("webRemoteControl.botChannel.feishu.title");
     expect(html).toContain("webRemoteControl.botChannel.lark.title");
     expect(html).toContain("webRemoteControl.botChannel.telegram.title");
-    expect(html).toContain("login.oauth.regionTag.bigmodel");
-    expect(html).toContain("login.oauth.regionTag.zai");
+    expect(html).toContain("bots.regionTag.mainland");
+    expect(html).toContain("bots.regionTag.international");
     expect(html).not.toContain("web-remote-control-bot-channel-logo-");
     expect(html).toContain("size-12");
     expect(html).toContain("border-transparent");
@@ -299,7 +299,7 @@ describe("WebRemoteControlDialog layout", () => {
     expect(html).toContain("webRemoteControl.botChannel.manageBots");
 
     const larkIndex = html.indexOf("webRemoteControl.botChannel.lark.title");
-    const larkTagIndex = html.indexOf("login.oauth.regionTag.zai");
+    const larkTagIndex = html.indexOf("bots.regionTag.international");
     const telegramIndex = html.indexOf("webRemoteControl.botChannel.telegram.title");
     const openBotsIndex = html.indexOf('data-testid="web-remote-control-open-bots"');
     expect(larkTagIndex).toBeGreaterThan(larkIndex);

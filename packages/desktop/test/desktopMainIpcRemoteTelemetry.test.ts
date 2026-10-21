@@ -136,33 +136,6 @@ describe("remote workspace connect telemetry IPC", () => {
     h.reportRemoteConnectResultToArms.mockReset();
   });
 
-  it("注册 IPC 时配置 remote usage ARMS reporter", async () => {
-    const getRemoteConnectionStats = vi.fn(() => ({
-      activeSessionCount: 2,
-      activeTargetCount: 1,
-    }));
-    const { options } = await registerHarness({ getRemoteConnectionStats });
-
-    expect(h.configureRemoteUsageArmsTelemetry).toHaveBeenCalledOnce();
-    expect(h.configureRemoteUsageArmsTelemetry).toHaveBeenCalledWith(
-      expect.objectContaining({
-        armsCustomContext: {
-          deviceMid: "device-mid",
-          platform: "darwin",
-          appVersion: "1.0.0",
-          armsEnv: "test",
-        },
-        getRemoteConnectionStats,
-        sendCustom: expect.any(Function),
-        logger: expect.any(Object),
-      }),
-    );
-    expect(h.registerWebRemoteControlIpcHandlers).toHaveBeenCalledWith({
-      reportRemoteUsageEvent: expect.any(Function),
-      webRemoteControlManager: options.webRemoteControlManager,
-    });
-  });
-
   it("只允许 main 进程打开 http/https/file URL", async () => {
     const { registerRemoteIpcHandlers } = await import("../src/main/desktopMainIpcRemote.js");
     const options = createOptions();
@@ -181,76 +154,6 @@ describe("remote workspace connect telemetry IPC", () => {
     expect(h.shellOpenExternal).toHaveBeenCalledWith("http://localhost:3000/index.html");
     await vi.waitFor(() => expect(h.shellOpenPath).toHaveBeenCalledWith("/tmp/secret"));
     expect(options.logger.warn).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps Coding Plan PayPal callback openExternal requests in the sender webview", async () => {
-    const { registerRemoteIpcHandlers } = await import("../src/main/desktopMainIpcRemote.js");
-    const options = createOptions();
-    registerRemoteIpcHandlers(options);
-    const listener = h.listeners.get(PlatformChannels.OpenExternal);
-    expect(listener).toBeDefined();
-
-    const sender = {
-      getURL: vi.fn(() => "https://www.sandbox.paypal.com/agreements/approve"),
-      loadURL: vi.fn(() => Promise.resolve()),
-    };
-    const returnTo = encodeURIComponent(
-      "/coding-plan?provider=zai&embedded=app&lang=cn&theme=zai-dark",
-    );
-    const callbackUrl = `http://localhost:3000/coding-plan/payment/callback?channel=paypal&status=return&returnTo=${returnTo}&approval_token_id=setup-1`;
-    listener?.({ sender }, callbackUrl);
-
-    expect(sender.loadURL).toHaveBeenCalledWith(callbackUrl);
-    expect(h.shellOpenExternal).not.toHaveBeenCalled();
-  });
-
-  it("uses Coding Plan bridge sourceUrl when routing openExternal callbacks", async () => {
-    const { registerRemoteIpcHandlers } = await import("../src/main/desktopMainIpcRemote.js");
-    const options = createOptions();
-    registerRemoteIpcHandlers(options);
-    const listener = h.listeners.get(PlatformChannels.OpenExternal);
-    expect(listener).toBeDefined();
-
-    const sender = {
-      getURL: vi.fn(() => "file:///Applications/ZCode/index.html"),
-      loadURL: vi.fn(() => Promise.resolve()),
-    };
-    const returnTo = encodeURIComponent(
-      "/coding-plan?provider=zai&embedded=app&lang=cn&theme=zai-dark",
-    );
-    const callbackUrl = `http://localhost:3000/coding-plan/payment/callback?channel=paypal&status=return&returnTo=${returnTo}&approval_token_id=setup-1`;
-    listener?.(
-      {
-        sender,
-        senderFrame: { url: "https://www.sandbox.paypal.com/agreements/approve" },
-      },
-      {
-        sourceUrl: "file:///stale-host-url.html",
-        url: callbackUrl,
-      },
-    );
-
-    expect(sender.loadURL).toHaveBeenCalledWith(callbackUrl);
-    expect(h.shellOpenExternal).not.toHaveBeenCalled();
-  });
-
-  it("opens cross-origin Coding Plan callback openExternal requests externally", async () => {
-    const { registerRemoteIpcHandlers } = await import("../src/main/desktopMainIpcRemote.js");
-    const options = createOptions();
-    registerRemoteIpcHandlers(options);
-    const listener = h.listeners.get(PlatformChannels.OpenExternal);
-    expect(listener).toBeDefined();
-
-    const sender = {
-      getURL: vi.fn(() => "https://www.sandbox.paypal.com/agreements/approve"),
-      loadURL: vi.fn(() => Promise.resolve()),
-    };
-    // returnTo 与回调页不同源即应外部打开；用中性域名表达“不同源”，不依赖测试环境域名
-    //（开源导出会把测试域名改写成正式域名，回调与 returnTo 就变成同源）。
-    listener?.({ sender }, callbackUrl);
-
-    expect(sender.loadURL).not.toHaveBeenCalled();
-    expect(h.shellOpenExternal).toHaveBeenCalledWith(callbackUrl);
   });
 
   it("把 renderer attachment-ready ACK 转发给对应窗口 session manager", async () => {
@@ -275,7 +178,7 @@ describe("remote workspace connect telemetry IPC", () => {
     ["docker", { kind: "docker", container: "dev-container" }],
     ["server", { kind: "server", url: "https://studio.example.com", serverId: "studio" }],
   ] satisfies Array<[RemoteTarget["kind"], RemoteTarget]>)(
-    "上报 %s 新建连接成功终态",
+    "%s 新建连接保留工作区身份并返回结果",
     async (remoteKind, target) => {
       const reportRemoteUsageEvent = vi.fn();
       const { handler, options } = await registerHarness({ reportRemoteUsageEvent });
@@ -291,17 +194,6 @@ describe("remote workspace connect telemetry IPC", () => {
       );
 
       expect(result).toEqual({ success: true, sessionId: "remote-session-1" });
-      expect(reportRemoteUsageEvent).toHaveBeenCalledWith(73, {
-        elementName: "remote_workspace_connect_result",
-        eventRegion: "remote_workspace",
-        eventType: "result",
-        eventExtraDetail: {
-          result: "success",
-          remote_kind: remoteKind,
-          connect_trigger: "new",
-          error_category: "",
-        },
-      });
       expect(options.createRemoteWorkspaceSession).toHaveBeenCalledWith(
         expect.anything(),
         target,
@@ -310,18 +202,11 @@ describe("remote workspace connect telemetry IPC", () => {
           workspacePath: "/workspace/demo",
           workspaceIdentity: `remote:${remoteKind}:identity:/workspace/demo`,
         },
-        { remoteUsageTelemetryEligible: true },
       );
-      expect(h.reportRemoteConnectResultToArms).toHaveBeenCalledWith({
-        rendererId: 73,
-        result: "success",
-        remoteKind,
-        connectTrigger: "new",
-      });
     },
   );
 
-  it("保留 reconnect 触发来源并分类连接失败", async () => {
+  it("reconnect 连接失败保留原错误", async () => {
     const error = Object.assign(new Error("password rejected"), {
       code: "AUTH_FAILED",
     });
@@ -342,73 +227,5 @@ describe("remote workspace connect telemetry IPC", () => {
     );
 
     expect(result).toEqual({ success: false, error: "password rejected" });
-    expect(reportRemoteUsageEvent).toHaveBeenCalledWith(74, {
-      elementName: "remote_workspace_connect_result",
-      eventRegion: "remote_workspace",
-      eventType: "result",
-      eventExtraDetail: {
-        result: "failure",
-        remote_kind: "ssh",
-        connect_trigger: "reconnect",
-        error_category: "auth",
-      },
-    });
-    expect(h.reportRemoteConnectResultToArms).toHaveBeenCalledWith({
-      rendererId: 74,
-      result: "failure",
-      remoteKind: "ssh",
-      connectTrigger: "reconnect",
-      errorCategory: "auth",
-    });
-  });
-
-  it("埋点 reporter 抛错时不改写已经成功的远程连接结果", async () => {
-    const reportRemoteUsageEvent = vi.fn(() => {
-      throw new Error("telemetry reporter unavailable");
-    });
-    const logger = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    };
-    const { handler } = await registerHarness({ logger, reportRemoteUsageEvent });
-
-    const result = await handler(
-      { sender: { id: 75 } },
-      {
-        target: { kind: "docker", container: "dev-container" },
-      },
-    );
-
-    expect(result).toEqual({ success: true, sessionId: "remote-session-1" });
-    expect(logger.warn).toHaveBeenCalledWith(
-      "[remote-usage-telemetry] dispatch failed",
-      expect.objectContaining({
-        elementName: "remote_workspace_connect_result",
-      }),
-    );
-  });
-
-  it("ARMS connect reporter 抛错时不改写已经成功的远程连接结果", async () => {
-    h.reportRemoteConnectResultToArms.mockImplementationOnce(() => {
-      throw new Error("ARMS reporter unavailable");
-    });
-    const logger = {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    };
-    const { handler } = await registerHarness({ logger });
-
-    const result = await handler(
-      { sender: { id: 76 } },
-      { target: { kind: "docker", container: "dev-container" } },
-    );
-
-    expect(result).toEqual({ success: true, sessionId: "remote-session-1" });
-    expect(logger.warn).toHaveBeenCalledWith(
-      "[remote-usage-arms] connect result reporter failed",
-      expect.objectContaining({ error: expect.any(Error) }),
-    );
   });
 });

@@ -149,8 +149,8 @@ function renderComposer(overrides: Record<string, unknown> = {}) {
 }
 
 describe("ConversationComposer attachment upload progress", () => {
-  it("只让聚焦且未禁用的 composer 监听 add-to-chat，并保留 CUA 常驻入口", () => {
-    const html = renderComposer({
+  it("只让聚焦且未禁用的 composer 监听 add-to-chat", () => {
+    renderComposer({
       disabled: true,
       isWebRemoteControl: true,
       listenAddToChatEvents: false,
@@ -160,13 +160,7 @@ describe("ConversationComposer attachment upload progress", () => {
     expect(attachmentState.hookOptions.at(-1)).toMatchObject({
       listenAddToChatEvents: false,
     });
-    expect(html).toContain('data-cua-entry="true"');
-    expect(cuaEntryProps.at(-1)).toMatchObject({
-      currentSessionBusy: false,
-      isWebRemoteControl: true,
-      remoteSessionId: "remote-1",
-      workspacePath: "/workspace",
-    });
+
   });
 
   it("图片中央显示主题 token 圆环与百分比，未 ready 时发送按钮 disabled", () => {

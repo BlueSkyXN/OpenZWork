@@ -54,9 +54,11 @@ describe("terminalLinks", () => {
   });
 
   it("maps a plain http link to xterm buffer coordinates", () => {
+    const buffer = createBuffer([{ text: "see https://a.co" }], 18);
 
     expect(getHttpLinksForTerminalBufferLine(buffer, 1, 18)).toEqual([
       {
+        text: "https://a.co",
         range: {
           start: { x: 5, y: 1 },
           end: { x: 16, y: 1 },

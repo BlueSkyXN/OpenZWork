@@ -76,69 +76,6 @@ describe("startMemoryDiagnosticsLogger", () => {
     handle.stop();
   });
 
-  it("PRT-021 60s tick 的同一次读数既发 heap 样本又写本地日志；无桥时 no-op", () => {
-    vi.useFakeTimers();
-    const registry = createMemoryDiagnosticsRegistry();
-    registry.register("shiki", () => ({ tokensCache: 1 }));
-    const write = vi.fn();
-    const reportHeapSample = vi.fn();
-    const handle = startMemoryDiagnosticsLogger({
-      registry,
-      write,
-      reportHeapSample,
-      now: () => 60_000,
-      readHeap: () => ({ usedJSHeapSize: 50 * 1024 * 1024, totalJSHeapSize: 80 * 1024 * 1024 }),
-    });
-
-    vi.advanceTimersByTime(60_000);
-
-    // 一次读数两个出口：桥拿到 heap 样本，本地诊断日志照旧按门控写出。
-    expect(reportHeapSample).toHaveBeenCalledOnce();
-    expect(reportHeapSample).toHaveBeenCalledWith({ heapUsedKb: 51_200 });
-    expect(write.mock.calls[0]?.[0]).toContain("heapUsedKb=51200");
-    handle.stop();
-
-    // 无桥环境（Web 端与手机远控）：不注入 reportHeapSample 时只写日志，不抛错。
-    const webWrite = vi.fn();
-    const webHandle = startMemoryDiagnosticsLogger({
-      registry,
-      write: webWrite,
-      now: () => 120_000,
-      readHeap: () => ({ usedJSHeapSize: 50 * 1024 * 1024 }),
-    });
-    expect(() => webHandle.sampleNow()).not.toThrow();
-    expect(webWrite).toHaveBeenCalledOnce();
-    webHandle.stop();
-  });
-
-  it("PRT-021 门控不写盘的 tick 仍发 heap 样本；桥抛错不影响本地日志", () => {
-    const registry = createMemoryDiagnosticsRegistry();
-    registry.register("shiki", () => ({ tokensCache: 1 }));
-    const write = vi.fn();
-    const reportHeapSample = vi.fn(() => {
-      throw new Error("bridge gone");
-    });
-    let nowMs = 0;
-    const handle = startMemoryDiagnosticsLogger({
-      registry,
-      write,
-      reportHeapSample,
-      now: () => nowMs,
-      readHeap: () => ({ usedJSHeapSize: 50 * 1024 * 1024 }),
-    });
-
-    // 桥先失败，本地日志仍要写出：遥测出口不能反过来吃掉诊断日志。
-    expect(handle.sampleNow()).toBe(true);
-    expect(write).toHaveBeenCalledOnce();
-
-    // 第二次采样计数器无变化被门控挡住，heap 样本仍要按 60 秒节拍上报。
-    nowMs = 60_000;
-    expect(handle.sampleNow()).toBe(false);
-    expect(write).toHaveBeenCalledOnce();
-    expect(reportHeapSample).toHaveBeenCalledTimes(2);
-    handle.stop();
-  });
-
   it("performance.memory 缺失时不发 heap 样本", () => {
     const registry = createMemoryDiagnosticsRegistry();
     registry.register("xterm", () => ({ sessions: 0 }));
@@ -152,26 +89,6 @@ describe("startMemoryDiagnosticsLogger", () => {
 
     expect(handle.sampleNow()).toBe(true);
     expect(reportHeapSample).not.toHaveBeenCalled();
-    handle.stop();
-  });
-
-  it("计数器采集失败也不影响 heap 样本上报", () => {
-    const reportHeapSample = vi.fn();
-    const handle = startMemoryDiagnosticsLogger({
-      // 本地日志的计数器是附加维度；它塌了不能把已经读到的 heap 样本一起丢掉。
-      registry: {
-        register: () => ({ dispose: () => {} }),
-        collect: () => {
-          throw new Error("counters unavailable");
-        },
-      },
-      write: vi.fn(),
-      reportHeapSample,
-      readHeap: () => ({ usedJSHeapSize: 50 * 1024 * 1024 }),
-    });
-
-    expect(handle.sampleNow()).toBe(false);
-    expect(reportHeapSample).toHaveBeenCalledWith({ heapUsedKb: 51_200 });
     handle.stop();
   });
 

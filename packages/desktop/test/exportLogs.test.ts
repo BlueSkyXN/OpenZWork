@@ -399,7 +399,7 @@ describe("export logs archive", () => {
           await import("@desktop/main/exportLogs.js");
 
         const sourceDir = join(tempDir, "source");
-        const zcodeCliLogDir = join(fakeHome, ".zcode", "cli", "log");
+        const zcodeCliLogDir = join(fakeHome, ".openzwork", "cli", "log");
         await mkdir(join(sourceDir, "logs"), { recursive: true });
         await mkdir(zcodeCliLogDir, { recursive: true });
         await writeFile(join(sourceDir, "logs", "main.log"), "main-log", "utf-8");
@@ -411,7 +411,7 @@ describe("export logs archive", () => {
 
         const entries = await readZipEntries(zipPath);
         expect(entries.get("logs/main.log")).toBe("main-log");
-        expect(entries.get(".zcode/cli/log/agent.log")).toBe("zcode-cli-agent-log");
+        expect(entries.get(".openzwork/cli/log/agent.log")).toBe("zcode-cli-agent-log");
       });
     } finally {
       if (originalHome == null) {
@@ -435,7 +435,7 @@ describe("export logs archive", () => {
           await import("@desktop/main/exportLogs.js");
 
         const sourceDir = join(tempDir, "source");
-        const zcodeCliDir = join(fakeHome, ".zcode", "cli");
+        const zcodeCliDir = join(fakeHome, ".openzwork", "cli");
         const rolloutDir = join(zcodeCliDir, "rollout");
         const debugDir = join(zcodeCliDir, "debug");
         await mkdir(join(sourceDir, "logs"), { recursive: true });
@@ -454,64 +454,9 @@ describe("export logs archive", () => {
         await writeLogArchiveZip(zipPath, artifacts, createWriteZipTestOptions(tempDir));
 
         const entries = await readZipEntries(zipPath);
-        expect(entries.get(".zcode/cli/config.json")).toBe('{"model":"glm"}');
-        expect(entries.get(".zcode/cli/rollout/model-io-recent.jsonl")).toBe("rollout-recent");
-        expect(entries.has(".zcode/cli/debug/model-io-old.jsonl")).toBe(false);
-      });
-    } finally {
-      if (originalHome == null) {
-        delete process.env["HOME"];
-      } else {
-        process.env["HOME"] = originalHome;
-      }
-      vi.resetModules();
-    }
-  });
-
-  it("导出日志应带上 Computer Use Helper 诊断日志但绝不带 .tokens 凭据", async () => {
-    // Bugfix 取证：一次真实反馈日志包里 grep "background keyboard begin rejected" 命中 0，
-    // 而那次会话 begin 确实被拒两次 —— Helper 的结构化诊断写在
-    // ~/.openzwork/computer-use/run/*.sock.exit.log，既不在 app data 也不在 ~/.openzwork/cli 下。
-    const originalHome = process.env["HOME"];
-    try {
-      await withTempDir(async (tempDir) => {
-        const fakeHome = join(tempDir, "home");
-        process.env["HOME"] = fakeHome;
-        vi.resetModules();
-
-        const { createLogArchiveArtifacts, writeLogArchiveZip } =
-          await import("@desktop/main/exportLogs.js");
-
-        const sourceDir = join(tempDir, "source");
-        const runDir = join(fakeHome, ".zcode", "computer-use", "run");
-        const tokenDir = join(runDir, ".tokens");
-        await mkdir(join(sourceDir, "logs"), { recursive: true });
-        await mkdir(tokenDir, { recursive: true });
-        await writeFile(
-          join(runDir, "standalone-abc123.sock.exit.log"),
-          '{"scope":"zcode-cua-helper","level":"warn","event":"macOS background keyboard begin rejected"}',
-          "utf-8",
-        );
-        // 同目录下的 broker 凭据：反馈包会被用户转发出去，绝不能带。
-        await writeFile(join(tokenDir, "broker.token"), "super-secret-token", "utf-8");
-        // 非诊断文件不做兜底收集，避免以后目录里多出什么就跟着漏出去。
-        await writeFile(join(runDir, "standalone-abc123.sock"), "not-a-log", "utf-8");
-        // Helper 崩溃后可能隔很久才来反馈：诊断日志不该被近 3 天窗口筛掉。
-        const longAgo = new Date("2026-01-01T00:00:00Z");
-        await utimes(join(runDir, "standalone-abc123.sock.exit.log"), longAgo, longAgo);
-
-        const artifacts = await createLogArchiveArtifacts(sourceDir);
-        const zipPath = join(tempDir, "logs-with-helper-diagnostics.zip");
-        await writeLogArchiveZip(zipPath, artifacts, createWriteZipTestOptions(tempDir));
-
-        const entries = await readZipEntries(zipPath);
-        expect(entries.get(".zcode/computer-use/run/standalone-abc123.sock.exit.log")).toContain(
-          "begin rejected",
-        );
-        expect(entries.has(".zcode/computer-use/run/.tokens/broker.token")).toBe(false);
-        expect(entries.has(".zcode/computer-use/run/standalone-abc123.sock")).toBe(false);
-        // 防呆：凭据内容不得以任何路径出现在包里。
-        expect([...entries.values()].join("\n")).not.toContain("super-secret-token");
+        expect(entries.get(".openzwork/cli/config.json")).toBe('{"model":"glm"}');
+        expect(entries.get(".openzwork/cli/rollout/model-io-recent.jsonl")).toBe("rollout-recent");
+        expect(entries.has(".openzwork/cli/debug/model-io-old.jsonl")).toBe(false);
       });
     } finally {
       if (originalHome == null) {
@@ -536,7 +481,7 @@ describe("export logs archive", () => {
 
         const sourceDir = join(tempDir, "source");
         const feedbackLogDir = join(tempDir, "feedback-logs");
-        const zcodeCliDir = join(fakeHome, ".zcode", "cli");
+        const zcodeCliDir = join(fakeHome, ".openzwork", "cli");
         await mkdir(join(sourceDir, "logs"), { recursive: true });
         await mkdir(join(sourceDir, "agent-config", "codex", "workspace-a"), {
           recursive: true,
@@ -605,8 +550,8 @@ describe("export logs archive", () => {
         expect(entries.has("credentials.json")).toBe(false);
         expect(entries.has("agent-config/codex/workspace-a/config.toml")).toBe(false);
         expect(entries.has("certs/app-ca.pem")).toBe(false);
-        expect(entries.get(".zcode/cli/log/agent.log")).toBe("agent-log");
-        const configEntry = entries.get(".zcode/cli/config.json");
+        expect(entries.get(".openzwork/cli/log/agent.log")).toBe("agent-log");
+        const configEntry = entries.get(".openzwork/cli/config.json");
         expect(configEntry).toContain('"model":"glm"');
         expect(configEntry).toContain('"enabledPlugins"');
         expect(configEntry).toContain('"example-plugin@example":true');
@@ -614,9 +559,9 @@ describe("export logs archive", () => {
         expect(configEntry).not.toContain("plugin-secret");
         expect(configEntry).not.toContain('"options"');
         expect(configEntry).toContain('"locale":"zh-CN"');
-        expect(entries.get(".zcode/cli/rollout/trace.jsonl")).toBe("rollout-today");
-        expect(entries.has(".zcode/cli/rollout/old-trace.jsonl")).toBe(false);
-        expect(entries.has(".zcode/cli/debug/trace.jsonl")).toBe(false);
+        expect(entries.has(".openzwork/cli/rollout/trace.jsonl")).toBe(false);
+        expect(entries.has(".openzwork/cli/rollout/old-trace.jsonl")).toBe(false);
+        expect(entries.has(".openzwork/cli/debug/trace.jsonl")).toBe(false);
       });
     } finally {
       if (originalHome == null) {
@@ -677,12 +622,12 @@ describe("export logs archive", () => {
           oldTime,
         );
         await writeTimedFile(
-          join(fakeHome, ".zcode", "cli", "log", "recent.log"),
+          join(fakeHome, ".openzwork", "cli", "log", "recent.log"),
           "recent-zcode-cli-log",
           recentTime,
         );
         await writeTimedFile(
-          join(fakeHome, ".zcode", "cli", "log", "old.log"),
+          join(fakeHome, ".openzwork", "cli", "log", "old.log"),
           "old-zcode-cli-log",
           oldTime,
         );
@@ -693,7 +638,7 @@ describe("export logs archive", () => {
         const archivePaths = artifacts.files.map((file) => file.archivePath);
 
         expect(archivePaths).toEqual(
-          expect.arrayContaining(["logs/recent.log", ".zcode/cli/log/recent.log"]),
+          expect.arrayContaining(["logs/recent.log", ".openzwork/cli/log/recent.log"]),
         );
         expect(archivePaths).not.toContain("logs/old.log");
         expect(archivePaths).not.toContain("agent-config/codex/workspace-a/sessions/recent.jsonl");
@@ -702,7 +647,7 @@ describe("export logs archive", () => {
         expect(archivePaths).not.toContain("agent-config/claude/workspace-a/debug/old.txt");
         expect(archivePaths).not.toContain("sessions/recent.json");
         expect(archivePaths).not.toContain("sessions/old.json");
-        expect(archivePaths).not.toContain(".zcode/cli/log/old.log");
+        expect(archivePaths).not.toContain(".openzwork/cli/log/old.log");
       });
     } finally {
       if (originalHome == null) {

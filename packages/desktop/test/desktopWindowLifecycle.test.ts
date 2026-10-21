@@ -221,7 +221,6 @@ describe("desktopWindowLifecycle createWindow", () => {
       [expect.objectContaining({ id: "port-1" })],
     );
     expect(spawnHostProcess).not.toHaveBeenCalled();
-    expect(syncAutoUpdaterStateToWindow).toHaveBeenCalledWith(win);
     expect(reattachRemoteWorkspaceSessionsForWindow).toHaveBeenCalledWith(
       win,
       "local-44:renderer-reload",

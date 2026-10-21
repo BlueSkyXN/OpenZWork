@@ -16,8 +16,6 @@ describe("dialog shell radius", () => {
   }
   for (const file of [
     "ChatMediaAttachmentPreviewDialog",
-    "feedback/FeedbackScreenshotPicker",
-    "ToolCallBlocks/renderers/CuaScreenshotSection",
   ]) {
     it(`${file} explicitly preserves xl`, async () => {
       const tags = dialogTags(await read(file));

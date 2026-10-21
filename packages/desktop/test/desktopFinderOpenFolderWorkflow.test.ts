@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -26,8 +26,8 @@ describe("desktopFinderOpenFolderWorkflow", () => {
     });
 
     const infoPlist = readInfoPlist(homeDir);
-    expect(infoPlist).toContain("<string>在ZCode中打开</string>");
-    expect(infoPlist).not.toContain("<string>Open in ZCode</string>");
+    expect(infoPlist).toContain("<string>在 OpenZWork 中打开</string>");
+    expect(infoPlist).not.toContain("<string>Open in OpenZWork</string>");
     expect(refreshServicesIndex).toHaveBeenCalledTimes(1);
   });
 
@@ -44,10 +44,22 @@ describe("desktopFinderOpenFolderWorkflow", () => {
     });
 
     const infoPlist = readInfoPlist(homeDir);
-    expect(infoPlist).toContain("<string>Open in ZCode</string>");
-    expect(infoPlist).not.toContain("<string>在ZCode中打开</string>");
-    expect(infoPlist).toContain("<string>5</string>");
+    expect(infoPlist).toContain("<string>Open in OpenZWork</string>");
+    expect(infoPlist).not.toContain("<string>在 OpenZWork 中打开</string>");
+    expect(infoPlist).toContain("<string>6</string>");
     expect(refreshServicesIndex).toHaveBeenCalledTimes(1);
+  });
+
+  it("使用已注册协议，并保留原版 Finder 服务文件", () => {
+    const homeDir = createTempHome();
+    const legacy = join(homeDir, "Library", "Services", "Open in ZCode.workflow");
+    mkdirSync(legacy, { recursive: true });
+    writeFileSync(join(legacy, "sentinel"), "upstream-service");
+    installFinderOpenFolderWorkflow({ platform: "darwin", locale: "en-US", homeDir,
+      logger: { info: vi.fn(), warn: vi.fn() }, refreshServicesIndex: vi.fn() });
+    const document = readFileSync(join(homeDir, "Library", "Services", "Open in OpenZWork.workflow", "Contents", "document.wflow"), "utf8");
+    expect(document).toContain("openzwork://workspace/open");
+    expect(readFileSync(join(legacy, "sentinel"), "utf8")).toBe("upstream-service");
   });
 
   it("非 macOS 不安装 Finder 服务", () => {
@@ -74,7 +86,7 @@ function createTempHome(): string {
 
 function readInfoPlist(homeDir: string): string {
   return readFileSync(
-    join(homeDir, "Library", "Services", "Open in ZCode.workflow", "Contents", "Info.plist"),
+    join(homeDir, "Library", "Services", "Open in OpenZWork.workflow", "Contents", "Info.plist"),
     "utf8",
   );
 }

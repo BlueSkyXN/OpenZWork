@@ -51,7 +51,6 @@ describe("menu radius hierarchy", () => {
 
 describe("business menus inherit shared radius", () => {
   for (const file of [
-    "WindowsCaptionMenuButton",
     "settings/AutomationEditView",
   ]) {
     it(file, async () => {

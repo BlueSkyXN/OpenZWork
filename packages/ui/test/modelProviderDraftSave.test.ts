@@ -68,30 +68,6 @@ function createDraft(overrides: Partial<ProviderDraftValues> = {}): ProviderDraf
 }
 
 describe("Provider draft uses formal Provider Config", () => {
-  it("套餐 Key 编辑保留 Access 类型，不物化模板管理入口", () => {
-    const provider = createProvider({
-      personalConfig: {},
-      config: {
-        group: "standard-personal",
-        access: {
-          type: "zhipu-coding-plan-api-key",
-          apiKey: "old",
-        },
-      },
-    });
-    const result = resolvePendingProviderDraftSave({
-      provider,
-      draft: createDraft({
-        apiFormat: "anthropic-messages",
-        apiKeyValue: "new",
-      }),
-      now: () => 0,
-    });
-    expect(result?.personalConfig).toEqual({
-      access: { type: "zhipu-coding-plan-api-key", apiKey: "new" },
-    });
-    expect(result?.config.access).toEqual({ ...provider.config.access, apiKey: "new" });
-  });
   it("Todo89：显示用 ID 和默认 API 类型不构成用户编辑", () => {
     const provider = createProvider({
       providerName: undefined,

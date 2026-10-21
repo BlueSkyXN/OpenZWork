@@ -81,56 +81,15 @@ describe("web Vite config", () => {
     );
   });
 
-  it("显式 ZCODE_ENV=production 时注入生产 ZAI OAuth 和 API 链接", async () => {
-    vi.stubEnv("ZCODE_ENV", "production");
+  it.each(["production", "development"])("%s 构建不注入已退役的账号 OAuth 参数", async (mode) => {
+    vi.stubEnv("ZCODE_ENV", mode === "production" ? "production" : "test");
     const webRoot = resolve(import.meta.dirname, "..");
-    const configFile = resolve(webRoot, "vite.config.ts");
     const result = await loadConfigFromFile(
-      {
-        command: "build",
-        mode: "production",
-        isPreview: false,
-        isSsrBuild: false,
-      },
-      configFile,
-      webRoot,
-      "silent",
+      { command: "build", mode, isPreview: false, isSsrBuild: false },
+      resolve(webRoot, "vite.config.ts"), webRoot, "silent",
     );
-
-    expect(result?.config.define).toMatchObject({
-      "import.meta.env.VITE_ZAI_OAUTH_CLIENT_ID": JSON.stringify("client_P8X5CMWmlaRO9gyO-KSqtg"),
-    });
+    expect(result?.config.define).not.toHaveProperty("import.meta.env.VITE_ZAI_OAUTH_CLIENT_ID");
   });
-
-  // Windows 跳过：环境配置差异导致断言失败，需要 CI 环境统一配置
-  const isWindows = process.platform === "win32";
-
-  (isWindows ? it.skip : it)(
-    "uses the same public ZAI OAuth origin in local development mode",
-    async () => {
-      vi.stubEnv("ZCODE_ENV", "");
-      vi.stubEnv("ZCODE_BASE_URL", "");
-      vi.stubEnv("ZAI_OAUTH_ORIGIN", "");
-      vi.stubEnv("ZAI_OAUTH_CLIENT_ID", "");
-      const webRoot = resolve(import.meta.dirname, "..");
-      const configFile = resolve(webRoot, "vite.config.ts");
-      const result = await loadConfigFromFile(
-        {
-          command: "serve",
-          mode: "development",
-          isPreview: false,
-          isSsrBuild: false,
-        },
-        configFile,
-        webRoot,
-        "silent",
-      );
-
-      expect(result?.config.define).toMatchObject({
-        "import.meta.env.VITE_ZAI_OAUTH_CLIENT_ID": JSON.stringify("client_P8X5CMWmlaRO9gyO-KSqtg"),
-      });
-    },
-  );
 
   it("uses shared ZCode endpoint env override for renderer injection", async () => {
     vi.stubEnv("ZCODE_ENV", "test");

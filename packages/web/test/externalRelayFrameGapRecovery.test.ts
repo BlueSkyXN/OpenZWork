@@ -250,6 +250,8 @@ function setupExternalRelayGlobals(pathname = "/remote") {
     ),
     matchMedia: () => ({ matches: false }),
     location: {
+      origin: "http://localhost:5173",
+      href: `http://localhost:5173${pathname}?sid=sid-1&hash=hash-1&t=1&mid=mid-1&app_version=1.0.0`,
       pathname,
       replace: navigateMock,
       search: "?sid=sid-1&hash=hash-1&t=1&mid=mid-1&app_version=1.0.0",

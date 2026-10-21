@@ -32,7 +32,7 @@ describe("desktop renderer Vite dependency aliases", () => {
   // Windows 跳过：环境配置差异导致断言失败，需要 CI 环境统一配置
   const isWindows = process.platform === "win32";
 
-  (isWindows ? it.skip : it)("injects the selected ZCode endpoint origin into renderer env", async () => {
+  (isWindows ? it.skip : it)("production renderer 编译不暴露本地开发模式", async () => {
     vi.stubEnv("ZCODE_ENV", "test");
     vi.stubEnv("ZCODE_BASE_URL", "");
     const desktopRoot = resolve(import.meta.dirname, "..");
@@ -50,8 +50,6 @@ describe("desktop renderer Vite dependency aliases", () => {
     );
 
     expect(result?.config.define).toMatchObject({
-      "import.meta.env.VITE_ZCODE_ENDPOINT_ORIGIN": JSON.stringify(
-      ),
       __ZCODE_LOCAL_DEVELOPMENT_RUNTIME__: JSON.stringify(false),
     });
   });

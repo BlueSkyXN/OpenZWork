@@ -31,18 +31,12 @@ describe("settings secondary navigation", () => {
     }
   });
 
-  it("自动化、闲时任务、模型购买与升级返回入口保持独立", async () => {
+  it("自动化编辑页使用面包屑返回入口", async () => {
     const automation = await readFile(
       new URL("../src/settings/AutomationEditView.tsx", import.meta.url),
       "utf8",
-      new URL(
-        "../src/settings/model-provider-section/CodingPlanStatusActions.tsx",
-        import.meta.url,
-      ),
-      "utf8",
     );
     expect(automation).not.toContain("SettingsBackButton");
-    expect(upgrade).not.toContain("SettingsBackButton");
   });
 
   it("所有二级设置页返回文案不附带业务对象", () => {
