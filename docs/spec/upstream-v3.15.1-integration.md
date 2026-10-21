@@ -92,3 +92,5 @@ sequenceDiagram
 - 修复后的保留能力回归纳入核心清单；扩展套件继续保留真实失败与分组产物，不通过排除未解释失败或放宽产品 schema 消除红灯。
 
 - Provider 同步沿用上游 `aac47556` 的默认偏好语义（见 `docs/remote/provider-provisioning.md`）：默认模型、Provider 或 reasoning 失效不阻断完整配置复制，也不改写持久化偏好；目标 Host 使用现有推荐逻辑。Target 继续独占写入、Registry 刷新、幂等提交与 CAS 回滚，真实失败返回对应阶段码。账号 settings 与 OAuth 依赖保持既有净化范围。
+
+- WP-05 已移除的 telemetry/ARMS 发送、采样、上报与其 UI hook 专属测试随该领域清理；混合 IPC、URL 校验、通用协议与本地日志导出断言保留。物理删除约束继续由 `tests/private-cleanup/cleanup.test.cjs` 验证，核心清单不减少。
