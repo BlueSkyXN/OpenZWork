@@ -7,7 +7,8 @@ export const defaultWindowsTaskkillRunner: WindowsTaskkillRunner = ({ force, pid
     // 异步 runner 让进程树并发收口，并把命令完成结果交给等待式状态机观察。
     execFile(
       "taskkill",
-      ["/PID", String(pid), "/T", ...(force ? ["/F"] : [])],
+      // /T 会按历史 PPID 自行扩树，绕过调用方逐代 CreationDate 门禁；仅清理已验证的 PID。
+      ["/PID", String(pid), ...(force ? ["/F"] : [])],
       { encoding: "utf8", timeout: timeoutMs, windowsHide: true },
       (error, _stdout, stderr) => {
         resolve({ ...(error ? { error } : {}), ...(stderr ? { stderr } : {}) });

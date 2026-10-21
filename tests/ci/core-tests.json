@@ -321,7 +321,9 @@
       "files": [
         "packages/desktop/test/subagentConfigProxy.test.ts",
         "packages/zcode-server-cli/test/componentArchiveProcess.test.ts",
-        "packages/services/test/subagentRuntimeConfig.test.ts"
+        "packages/services/test/subagentRuntimeConfig.test.ts",
+        "packages/services/test/processTreeLineage.test.ts",
+        "packages/services/test/processTreeTerminator.windows.test.ts"
       ]
     }
   ]

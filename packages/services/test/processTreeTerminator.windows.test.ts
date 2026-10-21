@@ -132,7 +132,7 @@ describe("terminateProcessTree Windows", () => {
 
     expect(execFileMock).not.toHaveBeenCalledWith(
       "taskkill",
-      ["/PID", "4242", "/T", "/F"],
+      ["/PID", "4242", "/F"],
       expect.objectContaining({ windowsHide: true }),
       expect.any(Function),
     );
@@ -157,7 +157,7 @@ describe("terminateProcessTree Windows", () => {
     );
     expect(execFileMock).toHaveBeenCalledWith(
       "taskkill",
-      ["/PID", "4242", "/T", "/F"],
+      ["/PID", "4242", "/F"],
       expect.objectContaining({ windowsHide: true }),
       expect.any(Function),
     );
@@ -183,7 +183,7 @@ describe("terminateProcessTree Windows", () => {
     );
     expect(execFileMock).toHaveBeenCalledWith(
       "taskkill",
-      ["/PID", "4242", "/T", "/F"],
+      ["/PID", "4242", "/F"],
       expect.objectContaining({ windowsHide: true }),
       expect.any(Function),
     );
@@ -352,7 +352,7 @@ describe("terminateProcessTree Windows", () => {
 
     expect(execFileMock).not.toHaveBeenCalledWith(
       "taskkill",
-      ["/PID", "4242", "/T", "/F"],
+      ["/PID", "4242", "/F"],
       expect.objectContaining({ windowsHide: true }),
       expect.any(Function),
     );
@@ -401,7 +401,7 @@ describe("terminateProcessTree Windows", () => {
 
     expect(execFileMock).not.toHaveBeenCalledWith(
       "taskkill",
-      ["/PID", "4242", "/T", "/F"],
+      ["/PID", "4242", "/F"],
       expect.objectContaining({ windowsHide: true }),
       expect.any(Function),
     );
@@ -578,7 +578,7 @@ describe("terminateProcessTree Windows", () => {
     await expect(resultPromise).resolves.toEqual({ remainingPids: [] });
     expect(execFileMock).toHaveBeenCalledWith(
       "taskkill",
-      ["/PID", "5000", "/T"],
+      ["/PID", "5000"],
       expect.objectContaining({ windowsHide: true }),
       expect.any(Function),
     );

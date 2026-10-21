@@ -163,3 +163,18 @@ flowchart LR
 - 云端诊断确认快捷方式读取在原 5 秒上限被 `nsExec` 终止，直接 PowerShell COM 读取有效；读取上限调整为 15 秒，仍保留失败返回与有限等待。smoke 安装目录先通过 Windows native realpath 展开 8.3 名称，与 COM 返回的实际路径保持一致。
 - 已有 `Extended checks` 的手动 `repair` 模式在 Windows 云端执行上述高风险子进程和平台回归，并保留 JSON 与 NSIS 输出。该模式默认关闭，仅提供诊断入口；最终候选仍执行完整三平台核心、扩展和安装包验证。
 - Bundled Provider 的替换回归执行 30 轮写入，每轮与 8 次真实文件读取并发，逐次验证完整旧版或新版，并在写入完成后验证目标版本。读负载有明确结束条件，避免无限读取循环持续占用 Windows 文件句柄；生产写锁、原子替换、有限重试和失败保留旧内容的合同不变。
+
+## Windows 进程树首次归属
+
+- 既有 process snapshot 继续拥有进程归属。Windows 的 ParentProcessId 是历史创建者编号，不能单独证明当前父子关系：每条边必须同时满足子进程 CreationDate 不早于当前父进程，较旧节点及其整支后代均不进入受管快照。同步与异步入口采用相同规则；root 已退出时继续使用原生命周期上下界。
+- 清理仅向已确认身份的各 PID 发命令。禁止 `taskkill /T` 再按裸 PPID 扩展树，避免绕过快照的时间门禁；正常关闭、强制关闭和身份复核仍受原绝对 deadline 约束。身份无法确认仍报告未完成，不扩大目标或吞掉错误。
+- 回归模拟当前 root PID 被复用、较旧进程仍保留该 ParentProcessId、孙节点早于当前父节点，并同时验证真实后代仍被选择和清理。模拟测试不会向真实系统 PID 发送信号。
+
+```mermaid
+flowchart LR
+    A[Host 受管 ChildProcess] --> B[同轮进程快照]
+    B --> C[逐边核对 PPID 与 CreationDate]
+    C --> D[已确认的 PID 集合]
+    D --> E[关闭请求与逐 PID 清理]
+    E --> F[原 deadline 内观察退出或报告残留]
+```
