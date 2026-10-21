@@ -13,7 +13,6 @@ import {
   createRegistryModelConfig,
   createRegistryProviderConfig,
   parsePersonalProviderConfigMap,
-  resolveAccountProviderConfigs,
 } from "../src/index.js";
 import { createApiKeyProviderConfig } from "./provider-config-fixtures.js";
 

@@ -219,6 +219,15 @@
         "packages/services/test/providerRuntime.test.ts",
         "packages/services/test/providerConfigRuntime.test.ts"
       ]
+    },
+    {
+      "capability": "remote-user-storage-fixtures",
+      "files": [
+        "packages/server/test/dockerBackendDockerCommand.test.ts",
+        "packages/server/test/remoteAssetInstaller.test.ts",
+        "packages/server/test/sshBackend.test.ts",
+        "packages/server/test/stdioDesktopPresentationSurface.test.ts"
+      ]
     }
   ]
 }

@@ -6,7 +6,6 @@ import {
   NodeZCodeBuiltinProviderConfigSource,
   decodeZCodeBuiltinRelease,
   encodeZCodeBuiltinRelease,
-  NodePersonalProviderConfigRepository,
 } from "../src/index.js";
 
 const roots: string[] = [];

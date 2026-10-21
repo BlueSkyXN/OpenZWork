@@ -130,7 +130,7 @@ describe("DockerBackend docker command resolution", () => {
 
     expect(mocks.spawn).toHaveBeenCalledWith(
       RESOLVED_DOCKER_COMMAND,
-      ["exec", "-i", "zcode-dev", "sh", "-lc", "cat > '/root/.zcode/server/server.tgz'"],
+      ["exec", "-i", "zcode-dev", "sh", "-lc", "cat > '/root/.openzwork/server/server.tgz'"],
       expect.any(Object),
     );
     expect(mocks.execFile.mock.calls.some((call) => (call[1] as string[])[0] === "cp")).toBe(false);
@@ -180,7 +180,7 @@ describe("DockerBackend docker command resolution", () => {
 
     expect(mocks.spawn).toHaveBeenCalledWith(
       RESOLVED_DOCKER_COMMAND,
-      ["exec", "-i", "zcode-dev", "sh", "-lc", "cat > '/root/.zcode/tmp/attachment.bin'"],
+      ["exec", "-i", "zcode-dev", "sh", "-lc", "cat > '/root/.openzwork/tmp/attachment.bin'"],
       expect.any(Object),
     );
     expect(progress.at(-1)).toEqual({

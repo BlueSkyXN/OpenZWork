@@ -581,7 +581,8 @@ describe("SSHBackend", () => {
         }
 
         if (
-          command === `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server'")}`
+          command ===
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server'")}`
         ) {
           const channel = new FakeExecChannel();
           callback(null, channel);
@@ -591,7 +592,7 @@ describe("SSHBackend", () => {
 
         if (
           command ===
-          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server' && cat > '/root/.zcode/server/node.new'")}`
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server' && cat > '/root/.openzwork/server/node.new'")}`
         ) {
           callback(
             null,
@@ -638,7 +639,7 @@ describe("SSHBackend", () => {
         onProgress: (event) => secondUploadProgress.push(event),
       }),
     ).resolves.toBeUndefined();
-    expect(attemptedSftpPaths).toEqual(["/root/.zcode/server/node.new"]);
+    expect(attemptedSftpPaths).toEqual(["/root/.openzwork/server/node.new"]);
     expect(execUploadedContents).toEqual([localContent, localContent]);
     expect(secondUploadProgress.at(-1)).toEqual({
       uploadedBytes: Buffer.byteLength(localContent),
@@ -654,7 +655,7 @@ describe("SSHBackend", () => {
     expect(execUploadedContents).toEqual([localContent, localContent]);
     expect(
       executedCommands.includes(
-        `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server' && cat > '/root/.zcode/server/node.new'")}`,
+        `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server' && cat > '/root/.openzwork/server/node.new'")}`,
       ),
     ).toBe(true);
   });
@@ -685,7 +686,8 @@ describe("SSHBackend", () => {
           return;
         }
         if (
-          command === `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server'")}`
+          command ===
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server'")}`
         ) {
           const channel = new FakeExecChannel();
           callback(null, channel);
@@ -694,7 +696,7 @@ describe("SSHBackend", () => {
         }
         if (
           command ===
-          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server' && cat > '/root/.zcode/server/node.new'")}`
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server' && cat > '/root/.openzwork/server/node.new'")}`
         ) {
           callback(
             null,
@@ -765,7 +767,8 @@ describe("SSHBackend", () => {
           return;
         }
         if (
-          command === `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server'")}`
+          command ===
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server'")}`
         ) {
           emitExecResult(channel, { exitCode: 0 });
           return;
@@ -838,7 +841,8 @@ describe("SSHBackend", () => {
         }
 
         if (
-          command === `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server'")}`
+          command ===
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server'")}`
         ) {
           emitExecResult(channel, { exitCode: 0 });
           return;
@@ -857,7 +861,7 @@ describe("SSHBackend", () => {
       ) => {
         callback(null, {
           createWriteStream: (remotePath) => {
-            expect(remotePath).toBe("/root/.zcode/server/node.new");
+            expect(remotePath).toBe("/root/.openzwork/server/node.new");
             return new SuccessfulSftpWriteStream();
           },
           end: () => {},
@@ -928,7 +932,8 @@ describe("SSHBackend", () => {
         }
 
         if (
-          command === `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server'")}`
+          command ===
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server'")}`
         ) {
           const channel = new FakeExecChannel();
           callback(null, channel);
@@ -938,7 +943,7 @@ describe("SSHBackend", () => {
 
         if (
           command ===
-          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.zcode/server' && cat > '/root/.zcode/server/node.new'")}`
+          `/bin/sh -c ${quotePosixShellArgForTest("mkdir -p '/root/.openzwork/server' && cat > '/root/.openzwork/server/node.new'")}`
         ) {
           callback(null, new FakeUploadExecChannel((_content) => {}));
           return;

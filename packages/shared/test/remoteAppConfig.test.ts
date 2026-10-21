@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   getCommunityUrlFromConfig,
   getCommunityUrlFromConfigs,
-  getForceUpdateMinimalVersionFromConfig,
 } from "../src/remoteAppConfig.js";
 
 describe("remoteAppConfig", () => {
