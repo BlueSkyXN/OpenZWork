@@ -68,6 +68,18 @@ sequenceDiagram
 - Windows 保留完整的 CLI update/handoff 场景，测试 IPC 与运行入口使用同一 canonical Server root。目录权限回归沿用原平台边界，通过 Vitest 的 `skipIf` 排除不支持 POSIX 权限的环境；目录被删除的场景在所有平台继续执行。
 - 远端资产失败回归通过隔离本地 shell 执行完整脚本，Windows 夹具以 stdin 输入多行脚本，避免 `-c` 命令行传递破坏脚本。download/checksum/extract × progress 开关的错误保留、staging 清理、旧文件保留及恢复重试断言保持不变，夹具子进程设置退出时限。
 - 跨宿主平台验证使用 Node 的路径操作构造 fixture 和提取归档文件名，保持应用发现、四目标发布清单及 checksum 的完整断言。Supervisor 的 stop-failed 恢复也使用与真实 CLI 一致的 canonical IPC 身份。
+- Supervisor 客户端超时回归观察真实 update 生命周期 Promise：客户端超时后，仍等待候选失败、旧版本恢复以及更新操作结束，确认三个 Core 代次和旧版本指针后再 stop。固定 100ms 等待不能作为回滚结束证据，生产互斥与超时保持原值。
+
+```mermaid
+sequenceDiagram
+    participant C as 测试客户端
+    participant S as Supervisor
+    C->>S: apply-update
+    C->>C: 请求超时
+    S->>S: 候选未 ready，恢复旧版本
+    S-->>C: 测试观察到 update Promise 结束
+    C->>S: 核对旧版本与新代次后 stop
+```
 
 - 远端组件锁的心跳只更新锁目录时间，标准流重定向至 `/dev/null`，不能让后台 sleep 延长部署 RPC 的输出管道寿命。主命令保留下载进度和原始错误；退出时停止心跳并删除本次 staging。夹具为真实 shell 设置 15 秒退出边界，超时报告 exit/close 状态并回收所属进程树。
 

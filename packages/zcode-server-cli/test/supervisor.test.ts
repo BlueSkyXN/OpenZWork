@@ -283,13 +283,37 @@ describe("Supervisor lifecycle", () => {
     await supervisor.start();
     await waitForState(supervisor, "ready");
 
-    await expect(
-      requestControl(layout.controlEndpoint, { command: "apply-update", force: true }, 15),
-    ).rejects.toThrow(/timed out/i);
-    await waitForState(supervisor, "ready");
-    expect(supervisor.status().pid).toBe(42);
-    await new Promise<void>((resolve) => setTimeout(resolve, 100));
-    await supervisor.stop();
+    // 只观察真实生命周期 Promise，不替换实现；ready 可能是旧状态或回滚中的短暂状态。
+    const lifecycle = vi.spyOn(
+      supervisor as unknown as {
+        runLifecycleOperation(kind: string, operation: () => Promise<unknown>): Promise<unknown>;
+      },
+      "runLifecycleOperation",
+    );
+    try {
+      await expect(
+        requestControl(layout.controlEndpoint, { command: "apply-update", force: true }, 15),
+      ).rejects.toThrow(/timed out/i);
+      await vi.waitFor(() =>
+        expect(lifecycle.mock.calls.some(([kind]) => kind === "update")).toBe(true),
+      );
+      const updateIndex = lifecycle.mock.calls.findIndex(([kind]) => kind === "update");
+      const operation = lifecycle.mock.results[updateIndex]!;
+      expect(operation.type).toBe("return");
+      // 真实回滚的文件 IO 可以超过 100ms；以 owner 操作结束作为 stop 的前置条件。
+      await expect(operation.value).rejects.toThrow(/timed out/i);
+      await waitForState(supervisor, "ready");
+      expect(cores).toHaveLength(3);
+      expect(supervisor.status().pid).toBe(42);
+      await expect(releases.readCurrent()).resolves.toMatchObject({ version: "old" });
+    } finally {
+      // 断言失败时也等待已接纳的更新结束，再关闭控制端，避免清理本身与 update 争抢 owner。
+      const updateIndex = lifecycle.mock.calls.findIndex(([kind]) => kind === "update");
+      const operation = lifecycle.mock.results[updateIndex];
+      if (operation?.type === "return") await operation.value.catch(() => undefined);
+      lifecycle.mockRestore();
+      await supervisor.stop();
+    }
   });
 
   it("launches the recovered release after claiming a stale startup lock", async () => {
