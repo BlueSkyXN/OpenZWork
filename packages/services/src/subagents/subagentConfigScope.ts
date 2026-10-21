@@ -198,7 +198,9 @@ export function createSubagentConfigScope<T>(options: {
           anchor === nextAnchor &&
           !force &&
           anchorStats?.dev === stats.dev &&
-          anchorStats.ino === stats.ino
+          anchorStats.ino === stats.ino &&
+          // Linux 可复用刚释放的 inode；出生时间区分新目录，防止接纳旧代读取结果。
+          anchorStats.birthtimeMs === stats.birthtimeMs
         )
           continue;
         const previous = watcher;

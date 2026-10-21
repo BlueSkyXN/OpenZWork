@@ -5,16 +5,29 @@ import { createInterface } from "node:readline";
 import { fileURLToPath } from "node:url";
 
 // 非 CLI 进程（Electron/Host、存储准备 Worker）只加载模块，不拦截原始入口。
-if (process.argv.includes("app-server") && process.argv.includes("--stdio")) {
+if (
+  process.argv.includes("app-server") &&
+  process.argv.includes("--stdio") &&
+  process.env.ZCODE_E2E_SUBAGENT_PROXY_CHILD !== "1"
+) {
   // 仅由本组 WDIO 预加载的透明 stdio 代理。真实 Host/CLI 完成保存、解析和执行；
   // 故障位于传输边界，不修改业务对象，也不记录其他 RPC 的鉴权或模型凭据。
-  const preload = `--import=${JSON.stringify(fileURLToPath(import.meta.url))}`;
+  // 调用方改为 file URL 后，旧路径形式无法被移除，会递归启动代理。
+  // 同时清除两种已发布形式，并用子进程标记保证任何重复预加载最多只创建一层。
+  const preloads = [import.meta.url, fileURLToPath(import.meta.url)].map(
+    (value) => `--import=${JSON.stringify(value)}`,
+  );
+  const nodeOptions = preloads.reduce(
+    (value, preload) => value.replaceAll(preload, ""),
+    process.env.NODE_OPTIONS ?? "",
+  ).trim();
   const child = spawn(process.execPath, process.argv.slice(1), {
     stdio: ["pipe", "pipe", "inherit"],
     // 只移除当前代理预加载，保留覆盖采集等其他 Node 参数，防止递归启动代理。
     env: {
       ...process.env,
-      NODE_OPTIONS: (process.env.NODE_OPTIONS ?? "").replace(preload, "").trim(),
+      NODE_OPTIONS: nodeOptions,
+      ZCODE_E2E_SUBAGENT_PROXY_CHILD: "1",
     },
   });
   const root = process.env.ZCODE_E2E_ARTIFACT_DIR;
@@ -99,7 +112,7 @@ if (process.argv.includes("app-server") && process.argv.includes("--stdio")) {
       void inbound.then(() => child.stdin.end());
     });
   for (const signal of ["SIGTERM", "SIGINT"]) process.on(signal, () => child.kill(signal));
-  child.on("exit", (code) => {
+  child.on("close", (code) => {
     void Promise.all([inbound, outbound]).finally(() => process.exit(code ?? 1));
   });
   // 预加载阶段等待代理子进程退出，不能再次执行当前进程原定的 CLI 入口。

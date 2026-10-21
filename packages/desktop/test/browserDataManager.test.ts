@@ -781,7 +781,8 @@ describe("browserDataManager", () => {
 
     const result = await importChromeLocalStorage({
       profilePath,
-      platform: "aix",
+      // CI 的 CHROME_PATH 仍会覆盖非支持平台；显式空路径固定无 Chrome 的测试前提。
+      chromeExecutablePath: "",
       logger,
       targetSession: {} as Electron.Session,
     });

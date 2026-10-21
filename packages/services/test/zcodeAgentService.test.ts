@@ -16,7 +16,7 @@ import {
 } from "@zcode/shared";
 import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js";
 import { ZCodeAgentProcessManager } from "../src/zcode-agent/zcodeAgentProcessManager.js";
-import type { ZCodeProtocolClient } from "../src/zcode-agent/zcodeProtocolClient.js";
+import { ZCodeProtocolClient } from "../src/zcode-agent/zcodeProtocolClient.js";
 import { ZCODE_AGENT_MCP_STATUS_MODE_UNSUPPORTED_ERROR_CODE } from "../src/zcode-agent/zcodeAgentErrors.js";
 import type { ZCodeAgentServiceEvent } from "../src/zcode-agent/zcodeAgent.js";
 import { getTasksIndexDatabasePath, setDataBaseDir } from "../src/paths.js";
@@ -2243,9 +2243,10 @@ describe("createZCodeAgentService", () => {
     createdDirs.push(workspacePath);
     const scriptPath = join(workspacePath, "delayed-compact-agent.cjs");
     writeFileSync(scriptPath, DELAYED_COMPACT_FAKE_AGENT);
+    // 20ms 默认超时会先杀掉 CI 冷启动进程；验证真正的 compact 请求选项，不与进程调度竞速。
+    const request = vi.spyOn(ZCodeProtocolClient.prototype, "request");
     const service = createReadyZCodeAgentService({
       commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
-      requestTimeoutMs: 20,
     });
 
     try {
@@ -2255,12 +2256,19 @@ describe("createZCodeAgentService", () => {
         inputId: "input_compact_timeout",
       });
 
+      expect(request).toHaveBeenCalledWith(
+        "session/compact",
+        expect.objectContaining({ sessionId: "sess_compact_timeout" }),
+        expect.anything(),
+        { timeoutMs: 5 * 60_000 },
+      );
       expect(result.compact).toMatchObject({
         state: "accepted",
         inputId: "input_compact_timeout",
       });
     } finally {
       await service.disposeAllAndWait();
+      request.mockRestore();
     }
   });
 

@@ -87,7 +87,8 @@ async function run(
       stderr += String(chunk);
     });
     child.once("error", rejectPromise);
-    child.once("exit", (code) => {
+    // exit 可能早于 stdout 收尾；必须读完整列表后才能拒绝链接并允许解压。
+    child.once("close", (code) => {
       if (code === 0) resolvePromise(captureOutput ? stdout : "");
       else rejectPromise(new Error(`${command} failed (${code}): ${stderr}`));
     });

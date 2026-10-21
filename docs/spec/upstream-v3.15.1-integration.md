@@ -141,3 +141,22 @@ flowchart LR
 - 初始化失败交由 Mocha root hook 终止用例；清理完成后保留报告，禁止将无法启动当作通过。该恢复通过类型与基础设施单测验收；实际桌面/SSH/手机全流程需单独运行已有 E2E。
 
 - 核心 CI 提供 `workflow_dispatch`，当分支更新没有自动触发 PR checks 时，可对当前候选 head 显式执行同一套三平台门禁；验收必须回读 run 的 head SHA。
+
+- compact ACK 回归保留真实子进程响应，直接验证请求使用 5 分钟专用超时；进程启动与工作区同步使用正常超时，不把 runner 调度延迟当作 compact 行为。浏览器 LocalStorage 快照回归显式禁用可执行文件发现，避免 CI 的 `CHROME_PATH` 改变用例前提。
+
+- Subagent 配置目录被替换后，单个 scope 必须取消旧代读取并重建监听；目录身份由 `dev`、`ino` 和 `birthtimeMs` 共同判定，不能在 Linux 复用 inode 时接纳旧读取结果。普通子文件更新不改变目录出生时间，仍按原增量路径处理。
+
+```mermaid
+flowchart LR
+    A[父目录事件] --> B[现有 Subagent scope 核对目录身份]
+    B --> C[取消旧代读取并重建监听]
+    C --> D[稳定读取新目录后发布快照]
+```
+
+- 跨平台回归使用规范化临时目录，与 CLI 的 canonical Server root 保持同一 IPC 身份；文件链接和 ESM 预加载用 `file:` URL。流式下载回归保证总耗时长于单次空闲时限，同时给 Windows 建连与调度留出实际余量。
+
+- 组件归档的 tar 列表校验必须等子进程 `close`（stdout/stderr 完整结束），才判断路径和链接类型。`exit` 先于输出收尾时不能把不完整列表当作安全归档，也不能开始解压。
+
+- Subagent E2E stdio 代理只允许一层子进程。预加载自身使用 file URL，移除时同时兼容原路径形式；子进程携带显式已代理标记，任何重复预加载都不得再 spawn。代理测试的子进程有 10 秒退出上限，并在每项测试结束时回收，验证失败不能留下后台进程。
+
+- Windows NSIS 快捷方式 smoke 继续验证有效链接保留参数、失效链接修复、用户删除的链接不重建。隔离夹具编译时启用目标读取诊断，记录环境变量设置与 PowerShell 退出结果；正式安装包不启用此诊断，不能以空读取结果放宽断言。
