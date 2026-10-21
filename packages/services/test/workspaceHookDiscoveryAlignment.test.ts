@@ -110,7 +110,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"));
-    writeJson(join(home, ".zcode", "cli", "config.json"), {
+    writeJson(join(home, ".openzwork", "cli", "config.json"), {
       hooks: { enabled: true },
     });
     writeJson(join(workspace, ".zcode", "config.json"), {
@@ -132,7 +132,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
     // 修复原因：CR-01 后 trust store 使用完整 strict schema（单源在 shared 的
     // workspace-hook-trust-store-file.ts），record 必须包含全部必填字段；旧用例只写
     // identity+digest 恰好依赖了被修复的局部校验 bug，会被 fail-closed 判为 invalid。
-    writeJson(join(home, ".zcode", "security", "workspace-hook-trust-v1.json"), {
+    writeJson(join(home, ".openzwork", "security", "workspace-hook-trust-v1.json"), {
       schemaVersion: 1,
       records: [
         {
@@ -180,7 +180,7 @@ describe("workspace hook Settings/Runtime discovery alignment", () => {
       },
     });
 
-    writeJson(join(home, ".zcode", "cli", "config.json"), {
+    writeJson(join(home, ".openzwork", "cli", "config.json"), {
       hooks: { enabled: true, events: {} },
     });
     const enabled = await service.loadHooks({ workspacePath: workspace });

@@ -6,12 +6,10 @@ describe("旧 Provider 身份仅在升级边界静态转换", () => {
     expectTypeOf(migrateLegacyModelProviderId).parameters.toEqualTypeOf<[providerId: string]>();
   });
   for (const family of ["bigmodel", "zai"] as const) {
-    it(`${family} 离线转换全部旧身份，Coding Plan 固定 Individual`, () => {
-      const pairs = [
-        [`builtin:${family}`, `${family}-api`],
-        [`builtin:${family}-start-plan`, `account:${family}-start-plan`],
-        [`builtin:${family}-coding-plan`, `account:${family}-individual-coding-plan`],
-      ];
+    it(`${family} 只转换旧 API 模板，保留已退役账号身份`, () => {
+      const pairs = [[`builtin:${family}`, `${family}-api`]];
+      expect(migrateLegacyModelProviderId(`builtin:${family}-start-plan`)).toBeUndefined();
+      expect(migrateLegacyModelProviderId(`builtin:${family}-coding-plan`)).toBeUndefined();
       for (const [oldId, currentId] of pairs) {
         expect(migrateLegacyModelProviderId(oldId!)).toBe(currentId);
         expect(migrateLegacyModelProviderId(currentId!)).toBe(currentId);

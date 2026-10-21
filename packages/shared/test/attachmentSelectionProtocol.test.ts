@@ -4,6 +4,7 @@ import { commandPayloadSchemas } from "../src/zcode-protocol-v4/command.js";
 
 describe("附件与文本发送的模型合同", () => {
   const modelSelection = {
+    providerId: "personal:test",
     modelId: "model",
     options: { reasoningLevel: "high" },
   };

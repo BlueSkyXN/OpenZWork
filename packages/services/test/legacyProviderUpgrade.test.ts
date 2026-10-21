@@ -111,9 +111,9 @@ describe("Todo 72 已发布 config.json 首次升级", () => {
         expect(provider.config.api?.baseUrl).toBe(
           builtin.providerTemplates?.get(id)?.config.api?.baseUrl,
         );
-        // Todo112 规范了当前模板的官方 ID；旧配置导入仍保留 Key 与旧文件，不沿用旧名单大小写。
-        expect(provider.models.some((model) => model.modelId === "GLM-5.3")).toBe(true);
-        expect(provider.models.find((model) => model.modelId === "GLM-5.3")?.executable).toBe(true);
+        // 官方模板已移除；旧 Key 与模板引用仍保留，缺失模板不能伪造可执行模型。
+        expect(provider.models).toEqual([]);
+        expect(resolved.registryProviders.some((item) => item.providerId === id)).toBe(false);
         expect(personal.providers.get(id)?.toJSON()).toEqual({
           group: "standard-personal",
           access: { type: "api-key", apiKey: `fake-builtin:${family}` },

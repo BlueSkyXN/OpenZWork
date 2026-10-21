@@ -19,7 +19,6 @@ import {
   createNodeProviderRuntimePathEnv,
   materializeZCodeBuiltinProviderConfig,
   encodeProviderConfigFile,
-  resolveZCodeBuiltinCachePaths,
   resolveNodeProviderRuntimePaths,
   ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV,
   ZCODE_PERSONAL_PROVIDER_CONFIG_FILE_ENV,
@@ -123,8 +122,8 @@ describe("@zcode/provider-node", () => {
         apiType: "anthropic-messages",
       }).properties,
     ).toMatchObject({
-      supportsMidConversationSystem: true,
-      supportsNativeWebSearch: true,
+      supportsMidConversationSystem: false,
+      supportsNativeWebSearch: false,
     });
     expect(
       snapshot.models.resolve({
@@ -151,11 +150,7 @@ describe("@zcode/provider-node", () => {
       supportsMidConversationSystem: true,
       supportsNativeWebSearch: false,
     });
-    expect(snapshot.providers.get("account:zai-start-plan")?.access).toMatchObject({
-      type: "zhipu-account",
-      accountType: "zai",
-      mode: "start-plan",
-    });
+    expect(snapshot.providers.keys()).toEqual([]);
     expect(snapshot.providerTemplates?.get("deepseek")?.config.access).toMatchObject({
       type: "api-key",
     });
@@ -509,42 +504,6 @@ describe("@zcode/provider-node", () => {
     ]);
     first.dispose();
     second.dispose();
-  });
-
-  it("Endpoint-scoped Config Runtime 向 Agent 暴露当前 Endpoint 的 Active 路径", async () => {
-    const root = await temporaryDirectory();
-    const zcodeBuiltinFilePath = join(root, "zcodeBuiltin.json");
-    const environmentConfigRoot = join(root, "environment");
-    const personalFilePath = join(root, "config.json");
-    const endpointOrigin = "https://api.example.com";
-    await writeZCodeBuiltin(zcodeBuiltinFilePath, "zcodeBuiltin-model");
-    const runtime = new NodeProviderConfigRuntime({
-      zcodeBuiltinFilePath,
-      personalFilePath,
-      zcodeBuiltinEnvironment: {
-        environmentConfigRoot,
-        platform: "darwin-aarch64",
-        appVersion: "3.9.2",
-        resolveEndpointOrigin: () => endpointOrigin,
-        fetchRelease: async () => null,
-        watch: false,
-      },
-      watch: false,
-    });
-
-    await runtime.start();
-
-    await expect(runtime.resolveZCodeBuiltinActiveFilePath()).resolves.toBe(
-      resolveZCodeBuiltinCachePaths({
-        environmentConfigRoot,
-        platform: "darwin-aarch64",
-        appVersion: "3.9.2",
-        zcodeEndpointOrigin: endpointOrigin,
-      }).activeFilePath,
-    );
-    // start 不等待后台下载；释放临时目录前等待首轮控制文件 lease 收尾，不能和 rm 竞态。
-    await runtime.refreshZCodeBuiltin();
-    runtime.dispose();
   });
 
   it("正式 Personal Config 损坏时保留原文件且不误调 Legacy Importer", async () => {

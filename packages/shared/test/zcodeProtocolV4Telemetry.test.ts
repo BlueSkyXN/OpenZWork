@@ -55,34 +55,6 @@ describe("ConversationTelemetryFact schema", () => {
     expect(() => conversationTelemetryFactSchema.parse({ ...tool, output: "private" })).toThrow();
   });
 
-    const started = conversationTelemetryFactSchema.parse({
-      ...base,
-      kind: "turn.started",
-      sourceCommandId: "message-run-1",
-    });
-    expect(() =>
-      conversationTelemetryFactSchema.parse({
-        ...base,
-        kind: "turn.started",
-        sourceCommandId: "message-run-2",
-      }),
-    ).toThrow();
-    expect(() =>
-      conversationTelemetryFactSchema.parse({
-        ...started,
-        automationId: "automation-1",
-      }),
-    ).toThrow();
-    for (const forbidden of [
-      { prompt: "private prompt" },
-      { workspacePath: "/private/workspace" },
-      { ticketId: "private-ticket" },
-      { responseBody: "private response" },
-    ]) {
-      expect(() => conversationTelemetryFactSchema.parse({ ...started, ...forbidden })).toThrow();
-    }
-  });
-
   it("只接受 provider hostname，不允许 URL、header、prompt 或工具正文穿透", () => {
     const valid = conversationTelemetryFactSchema.parse({
       ...base,
@@ -275,6 +247,7 @@ describe("ConversationTelemetryFact schema", () => {
       }),
     ).toMatchObject({ workflowResultConsumed: true });
   });
+});
 
 describe("setAssistantFeedback command schema", () => {
   it("复用 row target CAS，feedback null 表示清除", () => {

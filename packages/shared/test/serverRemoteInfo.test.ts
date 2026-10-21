@@ -10,7 +10,7 @@ const serverInfo = {
   capabilities: { desktopContinuous: true, websocketRpc: true },
 };
 
-describe("Server 资源遥测能力协商", () => {
+describe("Server 能力边界", () => {
   it("旧 Server 缺少资源能力仍能解析，且不被误判为支持订阅", () => {
     const parsed = serverRemoteInfoSchema.parse(serverInfo);
     expect(parsed).toEqual(serverInfo);
@@ -18,20 +18,11 @@ describe("Server 资源遥测能力协商", () => {
     expect(parsed.protocolVersion).toBe(1);
   });
 
-  it.each([true, false])("保留 Server 显式声明的资源能力 %s", (supported) => {
+  it.each([true, false, "false"])("忽略已退役的资源遥测能力 %s", (supported) => {
     const parsed = serverRemoteInfoSchema.parse({
       ...serverInfo,
       capabilities: { ...serverInfo.capabilities, processResourceTelemetry: supported },
     });
-    expect(parsed.capabilities.processResourceTelemetry).toBe(supported);
-  });
-
-  it("拒绝非布尔能力值，避免把字符串 false 当成授权", () => {
-    expect(
-      serverRemoteInfoSchema.safeParse({
-        ...serverInfo,
-        capabilities: { ...serverInfo.capabilities, processResourceTelemetry: "false" },
-      }).success,
-    ).toBe(false);
+    expect(parsed.capabilities).not.toHaveProperty("processResourceTelemetry");
   });
 });

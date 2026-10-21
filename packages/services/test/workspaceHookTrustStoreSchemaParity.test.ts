@@ -33,7 +33,11 @@ function makeRoot(): string {
 
 function writeJson(path: string, value: unknown): void {
   mkdirSync(join(path, ".."), { recursive: true });
-  writeFileSync(path, typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  writeFileSync(
+    path,
+    typeof value === "string" ? value : `${JSON.stringify(value, null, 2)}\n`,
+    "utf8",
+  );
 }
 
 function setupWorkspaceWithHook(): { home: string; workspace: string } {
@@ -54,7 +58,7 @@ function setupWorkspaceWithHook(): { home: string; workspace: string } {
 }
 
 function trustStorePath(home: string): string {
-  return join(home, ".zcode", "security", "workspace-hook-trust-v1.json");
+  return join(home, ".openzwork", "security", "workspace-hook-trust-v1.json");
 }
 
 const VALID_DIGEST = "a".repeat(64);

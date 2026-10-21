@@ -63,64 +63,50 @@ function provider(
 }
 
 describe("当前有效选择只读解析", () => {
-  const classifyProvider = (id: string) =>
-    ["old-account", "new-account"].includes(id)
-      ? ("account-plan" as const)
-      : id === "idle"
+  const classifyProvider = () => "ordinary" as const;
   const original = Object.freeze({
-    providerId: "old-account",
+    providerId: "primary",
     modelId: "same",
     options: Object.freeze({ reasoningLevel: "high" }),
   });
-  const resolve = (
-    providers: Provider[],
-    selection: ModelSelection = original,
-    current = "new-account",
-  ) =>
+  const resolve = (providers: Provider[], selection: ModelSelection = original) =>
     resolveEffectiveModelSelection({
       registry: { revision: 1, providers },
       selection,
       classifyProvider,
-      accountStates: { [current]: { availability: "available", entitled: true, current: true } },
     });
 
-  it("即使旧账号仍在候选中，也按当前账号保留同模型同档位；原意图不改", () => {
-    const result = resolve([provider("old-account", "same"), provider("new-account", "same")]);
-    expect(result).toEqual({ effectiveSelection: { ...original, providerId: "new-account" } });
-    expect(original.providerId).toBe("old-account");
+  it("精确选择原供应商且复制 options，不改写原意图", () => {
+    const result = resolve([provider("primary", "same"), provider("other", "same")]);
+    expect(result).toEqual({ effectiveSelection: original });
     expect(result.effectiveSelection?.options).not.toBe(original.options);
   });
-
   it("只缺档位时保留模型，不按位置或最高值替换", () => {
-    expect(resolve([provider("new-account", "same", ["low", "max"])])).toEqual({
-      effectiveSelection: { providerId: "new-account", modelId: "same" },
+    expect(resolve([provider("primary", "same", ["low", "max"])])).toEqual({
+      effectiveSelection: { providerId: "primary", modelId: "same" },
       selectionIssue: "reasoning-level-not-supported",
     });
   });
-
   it("缺同模型时留空，不找首模型、不归一大小写", () => {
-    expect(resolve([provider("new-account", "SAME")])).toEqual({
+    expect(resolve([provider("primary", "SAME")])).toEqual({
       effectiveSelection: null,
       selectionIssue: "model-not-found",
     });
   });
-
-  it("普通供应商不会因账号切换而替换", () => {
+  it("普通供应商不会因其他连接变化而替换", () => {
     const selection = { ...original, providerId: "personal" };
-    expect(
-      resolve([provider("personal", "same"), provider("new-account", "same")], selection),
-    ).toEqual({ effectiveSelection: selection });
+    expect(resolve([provider("personal", "same"), provider("other", "same")], selection)).toEqual({
+      effectiveSelection: selection,
+    });
   });
-
   it("暂时缺模型再恢复时始终从原意图重算", () => {
     expect(resolve([]).effectiveSelection).toBeNull();
-    expect(resolve([provider("new-account", "same")]).effectiveSelection?.options).toEqual(
+    expect(resolve([provider("primary", "same")]).effectiveSelection?.options).toEqual(
       original.options,
     );
   });
-
-  it("原意图为空不采用其他模型，未知账号 ID 不猜成正式账号", () => {
-    const registry = { revision: 1, providers: [provider("new-account", "same")] };
+  it("原意图为空不采用其他模型，未知身份不猜测", () => {
+    const registry = { revision: 1, providers: [provider("primary", "same")] };
     expect(resolveEffectiveModelSelection({ registry, selection: null, classifyProvider })).toEqual(
       { effectiveSelection: null, selectionIssue: "selection-missing" },
     );
@@ -129,38 +115,18 @@ describe("当前有效选择只读解析", () => {
       selectionIssue: "provider-not-found",
     });
   });
-
-  it("当前账号不唯一时不任选一个", () => {
-    expect(
-      resolveEffectiveModelSelection({
-        registry: {
-          revision: 1,
-          providers: [provider("old-account", "same"), provider("new-account", "same")],
-        },
-        selection: original,
-        classifyProvider,
-        accountStates: {
-          "old-account": { availability: "available", entitled: true, current: true },
-          "new-account": { availability: "available", entitled: true, current: true },
-        },
-      }),
-    ).toEqual({ effectiveSelection: null, selectionIssue: "account-connection-unavailable" });
+  it("存在多个其他供应商时不任选一个", () => {
+    expect(resolve([provider("other-a", "same"), provider("other-b", "same")])).toEqual({
+      effectiveSelection: null,
+      selectionIssue: "provider-not-found",
+    });
   });
-
-  it("闲时只能解析原 hidden 身份，不切到当前普通账号；普通 hidden 仍不可选", () => {
+  it("hidden 身份不进入当前选择", () => {
     const hidden = {
-      ...provider("idle", "same"),
+      ...provider("primary", "same"),
       config: createApiKeyProviderConfig({ visibility: "hidden" }),
     };
-    const selection = { ...original, providerId: "idle" };
-    expect(
-      resolve([hidden, provider("new-account", "same")], selection).effectiveSelection,
-    ).toEqual(selection);
-    expect(resolve([provider("new-account", "same")], selection).effectiveSelection).toBeNull();
-    expect(
-      resolve([{ ...hidden, providerId: "personal" }], { ...original, providerId: "personal" })
-        .effectiveSelection,
-    ).toBeNull();
+    expect(resolve([hidden, provider("other", "same")]).effectiveSelection).toBeNull();
   });
 });
 

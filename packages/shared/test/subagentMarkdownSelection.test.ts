@@ -49,27 +49,12 @@ describe("Subagent 正式 Markdown 字段和单向文本迁移", () => {
     ).toEqual(selection);
   });
   it.each([
-    ["builtin:zai-start-plan/glm-5.3-flash", "account:zai-start-plan/GLM-5.3-Flash"],
-    [
-      "custom:builtin%3Abigmodel-coding-plan:glm-5.3",
-      "custom:account%3Abigmodel-individual-coding-plan:GLM-5.3",
-    ],
-    [
-      "builtin:bigmodel-coding-plan/glm-5.3$high",
-      "account:bigmodel-individual-coding-plan/GLM-5.3$high",
-    ],
-    [
-      "builtin:bigmodel-coding-plan/GLM/vendor",
-      "account:bigmodel-individual-coding-plan/GLM/vendor",
-    ],
-    [
-      "custom:builtin%3Azai-coding-plan:model%24variant",
-      "custom:account%3Azai-individual-coding-plan:model%24variant",
-    ],
-    [
-      "custom:builtin:bigmodel-coding-plan:GLM%2Fx",
-      "custom:account%3Abigmodel-individual-coding-plan:GLM%2Fx",
-    ],
+    ["builtin:zai/glm-5.3-flash", "zai-api/GLM-5.3-Flash"],
+    ["custom:builtin%3Abigmodel:glm-5.3", "custom:bigmodel-api:GLM-5.3"],
+    ["builtin:bigmodel/glm-5.3$high", "bigmodel-api/GLM-5.3$high"],
+    ["builtin:bigmodel/GLM/vendor", "bigmodel-api/GLM/vendor"],
+    ["custom:builtin%3Azai:model%24variant", "custom:zai-api:model%24variant"],
+    ["custom:builtin:bigmodel:GLM%2Fx", "custom:bigmodel-api:GLM%2Fx"],
   ])("迁移仅改变身份，不改正文、档位和注释：%s", (before, after) => {
     const content = `\uFEFF---\r\nname: helper\r\n# 备注\r\nmodel: '${before}' # 保留\r\nthoughtLevel: high\r\nextra: 123\r\n---\r\n正文 ${before}\r\n`;
     const expected = content.replace(`model: '${before}'`, `model: '${after}'`);

@@ -798,5 +798,40 @@ describe("ZCode Built-in Provider Config 完整性", () => {
       source.dispose();
     }
   });
-
 });
+
+function builtinRuleFamily(rule: {
+  readonly providerMatch?: string;
+  readonly modelMatch: string;
+  readonly apiMatch?: string;
+  readonly baseUrlMatch?: string;
+}): string {
+  const provider = rule.providerMatch?.toLowerCase() ?? "";
+  const baseUrl = rule.baseUrlMatch?.toLowerCase() ?? "";
+  const model = rule.modelMatch.toLowerCase();
+  if (!provider && !baseUrl && (model === ".*" || (!rule.apiMatch && model === ".*\\[1m\\]"))) {
+    return "fallback";
+  }
+  if (provider.includes("github-copilot") || model.includes("gpt")) return "gpt";
+  if (provider === "anthropic" || model.includes("claude")) return "claude";
+  if (model.includes("grok")) return "grok";
+  if (provider === "moonshot-kimi" || /(?:kimi|moonshot|k3)/.test(model)) return "kimi";
+  if (model.includes("minimax")) return "minimax";
+  if (provider === "deepseek" || model.includes("deepseek")) return "deepseek";
+  if (model.includes("qwen")) return "qwen";
+  if (model.includes("mimo")) return "mimo";
+  if (
+    model.includes("glm") ||
+    model.includes("ox-alpha") ||
+    model.includes("codegeex") ||
+    model.includes("emohaa") ||
+    provider.includes("zai") ||
+    provider.includes("bigmodel") ||
+    provider.includes("offpeak-idle-plan") ||
+    baseUrl.includes("z\\.ai") ||
+    baseUrl.includes("bigmodel\\.cn")
+  ) {
+    return "glm";
+  }
+  return "cross-model";
+}

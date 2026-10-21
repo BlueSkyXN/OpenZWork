@@ -2,20 +2,8 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_PLUGIN_MARKETPLACES, isPublicStoreMarketplaceId } from "../src/index.js";
 
 describe("DEFAULT_PLUGIN_MARKETPLACES", () => {
-  it("includes the official CDN marketplace and the Claude official marketplace", () => {
-    expect(DEFAULT_PLUGIN_MARKETPLACES).toEqual([
-      expect.objectContaining({
-        id: "zcode-plugins-official",
-        name: "zcode-plugins-official",
-        pluginCount: 0,
-      }),
-      expect.objectContaining({
-        id: "claude-plugins-official",
-        name: "claude-plugins-official",
-        pluginCount: 0,
-        source: "anthropics/claude-plugins-official",
-      }),
-    ]);
+  it("starts without implicit official marketplace sources", () => {
+    expect(DEFAULT_PLUGIN_MARKETPLACES).toEqual([]);
   });
 
   it("classifies only the ZCode-operated channels as public store marketplaces", () => {

@@ -21,11 +21,8 @@ vi.mock("node:fs/promises", async (importOriginal) => {
 });
 
 const old =
-  "---\nname: helper\ndescription: test\nmodel: builtin:bigmodel-coding-plan/GLM\nthoughtLevel: high\n---\n正文\n";
-const current = old.replace(
-  "model: builtin:bigmodel-coding-plan",
-  "model: account:bigmodel-individual-coding-plan",
-);
+  "---\nname: helper\ndescription: test\nmodel: builtin:bigmodel/GLM\nthoughtLevel: high\n---\n正文\n";
+const current = old.replace("model: builtin:bigmodel", "model: bigmodel-api");
 const dirs: string[] = [];
 beforeEach(async () => {
   const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");

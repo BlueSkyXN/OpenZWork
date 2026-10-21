@@ -2,34 +2,6 @@ import { describe, expect, it } from "vitest";
 import { appSettingsPatchSchema, appSettingsSchema } from "../src/validationAppSettings.js";
 
 describe("app settings", () => {
-  it("round-trips every structured Provider Family connection selection", () => {
-    const selections = {
-      zai: { kind: "individual-coding-plan" },
-      bigmodel: {
-        kind: "team-coding-plan",
-        productId: "product-1",
-        organizationId: "org-1",
-        projectId: "project-1",
-      },
-    } as const;
-
-    expect(
-      appSettingsSchema.parse({ providerFamilyConnectionSelections: selections })
-        .providerFamilyConnectionSelections,
-    ).toEqual(selections);
-    expect(
-      appSettingsPatchSchema.parse({ providerFamilyConnectionSelections: selections })
-        .providerFamilyConnectionSelections,
-    ).toEqual(selections);
-    expect(
-      appSettingsPatchSchema.safeParse({
-        providerFamilyConnectionSelections: {
-          zai: { kind: "team-coding-plan", productId: "p", organizationId: "o" },
-        },
-      }).success,
-    ).toBe(false);
-  });
-
   it("defaults and validates the human embedded Browser viewport preference", () => {
     expect(appSettingsSchema.parse({}).embeddedBrowserViewportPreference).toEqual({
       mode: "normal",
@@ -204,34 +176,6 @@ describe("app settings", () => {
         desktopChromiumHardwareAccelerationEnabled: "false",
       }),
     ).toThrow();
-  });
-
-  it("preserves localized pending post-update release notes", () => {
-    const payload = {
-      version: "3.1.4",
-      title: "Release v3.1.4",
-      markdown: "## 新功能\n- 中文说明",
-      releaseDate: "2026-06-23T13:48:54.438Z",
-      releaseNotesByLocale: {
-        "zh-CN": {
-          title: "ZCode v3.1.4",
-          markdown: "## 新功能\n- 中文说明",
-        },
-        "en-US": {
-          title: "ZCode v3.1.4",
-          markdown: "## New Features\n- English notes",
-        },
-      },
-    };
-
-    expect(
-      appSettingsSchema.parse({ pendingPostUpdateReleaseNotes: payload })
-        .pendingPostUpdateReleaseNotes,
-    ).toEqual(payload);
-    expect(
-      appSettingsPatchSchema.parse({ pendingPostUpdateReleaseNotes: payload })
-        .pendingPostUpdateReleaseNotes,
-    ).toEqual(payload);
   });
 
   it("persists only stable Web remote control startup context fields", () => {

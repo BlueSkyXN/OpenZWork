@@ -230,19 +230,22 @@ describe("telegram channel runtime", () => {
         });
       }),
     );
+    // Runtime 在迁移后重读持久配置；配置更新先写入唯一 reader，再通知 refresh。
+    let currentConfig = f.telegramConfig;
     const runtime = createTelegramChannelRuntime({
       credentialService,
       telegramProvider: null,
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() },
       statusSink: { getRuntimeStatus: vi.fn(), setRuntimeStatus: vi.fn() },
       ensureBotStorageMigrated: vi.fn(async () => undefined),
-      readConfig: vi.fn(async () => f.telegramConfig),
+      readConfig: vi.fn(async () => currentConfig),
       readTelegramOffset: vi.fn(async () => undefined),
       writeTelegramOffset: vi.fn(async () => undefined),
       processProviderCallback: vi.fn(async () => ({ ok: true, status: 200, replies: [] })),
       acquirePollingLock,
     });
 
+    currentConfig = f.telegramConfig;
     await runtime.refresh(f.telegramConfig);
     await vi.waitFor(() => expect(events).toContain("acquire:old-token"));
     await vi.waitFor(() => expect(events).toContain("get-updates:old-token"));
@@ -260,8 +263,10 @@ describe("telegram channel runtime", () => {
         credentialRef: "telegram-token-c",
       })),
     };
+    currentConfig = configB;
     const refreshB = runtime.refresh(configB);
     await vi.waitFor(() => expect(events).toContain("release-start:old-token"));
+    currentConfig = configC;
     const refreshC = runtime.refresh(configC);
     releaseOldLock?.();
     await Promise.all([refreshB, refreshC]);
@@ -307,13 +312,15 @@ describe("telegram channel runtime", () => {
         );
       }),
     );
+    // Runtime 在迁移后重读持久配置；配置更新先写入唯一 reader，再通知 refresh。
+    let currentConfig = f.telegramConfig;
     const runtime = createTelegramChannelRuntime({
       credentialService,
       telegramProvider: null,
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() },
       statusSink: { getRuntimeStatus: vi.fn(), setRuntimeStatus: vi.fn() },
       ensureBotStorageMigrated: vi.fn(async () => undefined),
-      readConfig: vi.fn(async () => f.telegramConfig),
+      readConfig: vi.fn(async () => currentConfig),
       readTelegramOffset: vi.fn(async () => undefined),
       writeTelegramOffset: vi.fn(async () => undefined),
       processProviderCallback: vi.fn(async () => ({
@@ -324,6 +331,7 @@ describe("telegram channel runtime", () => {
       acquirePollingLock,
     });
 
+    currentConfig = f.telegramConfig;
     await runtime.refresh(f.telegramConfig);
     await vi.waitFor(() => expect(events).toContain("acquire:old-token"));
     // Bugfix 回归：fetch 已返回 headers 但 body 永不结束时，40 秒 deadline 仍需中断读取；
@@ -338,6 +346,7 @@ describe("telegram channel runtime", () => {
         credentialRef: "telegram-token-b",
       })),
     };
+    currentConfig = refreshedConfig;
     await runtime.refresh(refreshedConfig);
     await vi.waitFor(() => expect(events).toContain("acquire:new-token"));
     runtime.dispose();
@@ -451,12 +460,14 @@ describe("weixin channel runtime", () => {
     });
     const signals: AbortSignal[] = [];
     const startedCredentialRefs: Array<string | undefined> = [];
+    // Runtime 在迁移后重读持久配置；配置更新先写入唯一 reader，再通知 refresh。
+    let currentConfig = f.weixinConfig;
     const runtime = createWeixinChannelRuntime({
       credentialService,
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() },
       statusSink: { getRuntimeStatus: vi.fn(), setRuntimeStatus: vi.fn() },
       ensureBotStorageMigrated: vi.fn(async () => undefined),
-      readConfig: vi.fn(async () => f.weixinConfig),
+      readConfig: vi.fn(async () => currentConfig),
       readWeixinGetUpdatesBuf: vi.fn(async () => undefined),
       writeWeixinGetUpdatesBuf: vi.fn(async () => undefined),
       processProviderCallback: vi.fn(async () => ({ ok: true, status: 200, replies: [] })),
@@ -479,6 +490,7 @@ describe("weixin channel runtime", () => {
       }),
     });
 
+    currentConfig = f.weixinConfig;
     await runtime.refresh(f.weixinConfig);
     await vi.waitFor(() => expect(signals).toHaveLength(1));
     const configB = {
@@ -495,8 +507,10 @@ describe("weixin channel runtime", () => {
         credentialRef: "weixin-token-c",
       })),
     };
+    currentConfig = configB;
     const refreshB = runtime.refresh(configB);
     await vi.waitFor(() => expect(signals[0]?.aborted).toBe(true));
+    currentConfig = configC;
     const refreshC = runtime.refresh(configC);
     releaseOldRequest?.();
     await Promise.all([refreshB, refreshC]);
@@ -702,12 +716,14 @@ describe("feishu channel runtime", () => {
       "feishu-secret-c": "secret-c",
     });
     const events: string[] = [];
+    // Runtime 在迁移后重读持久配置；配置更新先写入唯一 reader，再通知 refresh。
+    let currentConfig = f.feishuConfig;
     const runtime = createFeishuChannelRuntime({
       credentialService,
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn() },
       statusSink: { getRuntimeStatus: vi.fn(), setRuntimeStatus: vi.fn() },
       ensureBotStorageMigrated: vi.fn(async () => undefined),
-      readConfig: vi.fn(async () => f.feishuConfig),
+      readConfig: vi.fn(async () => currentConfig),
       summarizeCallbackPayload: vi.fn(() => "payload"),
       processProviderCallback: vi.fn(async () => ({ ok: true, status: 200, replies: [] })),
       acquireWebSocketLock: vi.fn(async (bot) => ({
@@ -725,6 +741,7 @@ describe("feishu channel runtime", () => {
       }),
     });
 
+    currentConfig = f.feishuConfig;
     await runtime.refresh(f.feishuConfig);
     await vi.waitFor(() => expect(events).toContain("start:cli_xxx"));
     const configB = {
@@ -743,8 +760,10 @@ describe("feishu channel runtime", () => {
         feishuAppId: "cli_c",
       })),
     };
+    currentConfig = configB;
     const refreshB = runtime.refresh(configB);
     await vi.waitFor(() => expect(events).toContain("release-start:cli_xxx"));
+    currentConfig = configC;
     const refreshC = runtime.refresh(configC);
     releaseOldLock?.();
     await Promise.all([refreshB, refreshC]);
@@ -829,7 +848,7 @@ describe("bot channel runtime lock", () => {
     const lockHash = createHash("sha256").update(token).digest("hex");
     const lockPath = join(
       tempDir,
-      ".zcode",
+      ".openzwork",
       "v2",
       "bots-runtime-locks",
       "telegram-polling",

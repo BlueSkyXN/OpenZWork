@@ -7,7 +7,8 @@ import {
   ProviderConfigMap,
   ProviderConfigResolver,
   ProviderConfig,
-  ZhipuAccountAccessConfig,
+  ApiKeyAccessConfig,
+  ProviderApiConfig,
   createRegistryModelConfig,
   createRegistryProviderConfig,
   type ModelSelection,
@@ -36,34 +37,26 @@ function view(modelId: string, level: string, personalModels = ModelConfigRules.
     personalRevision: "p",
     zcodeBuiltinProviders: builtin.providers,
     zcodeBuiltinProviderTemplates: builtin.templates,
-    personalProviders: ProviderConfigMap.empty(),
+    personalProviders: new ProviderConfigMap([
+      [
+        "personal",
+        new ProviderConfig({
+          group: "standard-personal",
+          access: new ApiKeyAccessConfig({ apiKey: "fixture" }),
+          api: new ProviderApiConfig({
+            type: "anthropic-messages",
+            baseUrl: "https://provider.example.test",
+          }),
+          personalModelIds: [modelId],
+        }),
+      ],
+    ]),
     zcodeBuiltinModelRules: builtin.models,
     personalModels,
   };
-  const account = {
-    revision: "a",
-    basedOnZCodeBuiltinRevision: "b",
-    providers: new ProviderConfigMap([
-      [
-        "account:bigmodel-individual-coding-plan",
-        new ProviderConfig({ access: new ZhipuAccountAccessConfig({ entitled: true }) }),
-      ],
-    ]),
-    states: {
-      "account:bigmodel-individual-coding-plan": {
-        availability: "available" as const,
-        entitled: true,
-        current: true,
-      },
-    },
-  };
-  // 真实 Built-in 规则和 Resolver；补入模型成员用于独立覆盖 GLM 的不同代际。
-  const resolution = new ProviderConfigResolver().resolve({
-    ...config,
-    accountProviders: account.providers,
-    accountStates: account.states,
-  });
-  const providerId = "account:bigmodel-individual-coding-plan";
+  // 使用自有 Provider 承载同一模型规则，历史档位迁移不依赖已退役的账号层。
+  const resolution = new ProviderConfigResolver().resolve(config);
+  const providerId = "personal";
   const providerConfig = resolution.effectiveProviders.get(providerId)!;
   const modelConfig = ModelConfigRules.composeEffective(builtin.models, personalModels).resolve({
     providerId,
@@ -89,10 +82,9 @@ function view(modelId: string, level: string, personalModels = ModelConfigRules.
   };
   const snapshot: ProviderRegistryServiceSnapshot = {
     config,
-    account,
     resolution,
     registry,
-    sourceRevisions: { config: "c", account: "a" },
+    sourceRevisions: { config: "c" },
   };
   const facade = createNodeModelSelectionFacade({
     getSnapshot: () => snapshot,
@@ -163,7 +155,7 @@ describe("Todo95C 来源限定的只读关闭档位改名", () => {
       new ModelConfigRules([
         {
           type: "provider-model",
-          providerId: "account:bigmodel-individual-coding-plan",
+          providerId: "personal",
           modelId: "GLM-5.2",
           config: new ModelConfig({
             optionSpecs: new ModelOptionSpecsConfig({ reasoningLevel: { values } }),

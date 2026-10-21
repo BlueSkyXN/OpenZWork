@@ -15,7 +15,7 @@ describe("Bot v3 单向导入与回滚文件隔离", () => {
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), "bot-v3-"));
     setDataBaseDir(root);
-    dir = join(root, ".zcode", "v2");
+    dir = join(root, ".openzwork", "v2");
     await mkdir(dir, { recursive: true });
   });
   afterEach(async () => {
@@ -39,7 +39,7 @@ describe("Bot v3 单向导入与回滚文件隔离", () => {
   const makeRepo = () => new BotsRepo();
 
   it("远端旧状态不使用本地账号转换，失联时不主动重连", async () => {
-    const raw = legacyState({ provider: "glm", model: "builtin:bigmodel-coding-plan/GLM" });
+    const raw = legacyState({ provider: "glm", model: "builtin:bigmodel/GLM" });
     await writeFile(
       join(dir, "bot-state.v2.json"),
       JSON.stringify({
@@ -61,7 +61,7 @@ describe("Bot v3 单向导入与回滚文件隔离", () => {
     try {
       const states = await service.getBotStates();
       expect(states[0]?.draftOptions?.modelSelection).toEqual({
-        providerId: "account:bigmodel-individual-coding-plan",
+        providerId: "bigmodel-api",
         modelId: "GLM",
       });
       expect(states[0]?.workspaceIdentity).toBe("ssh://remote/workspace");
@@ -138,16 +138,16 @@ describe("Bot v3 单向导入与回滚文件隔离", () => {
     expect(oldReader.parse(JSON.parse(retained))).toEqual(original);
   });
 
-  it("并发首次读取只导入一次，并在读成功时固定旧 Coding Plan 身份", async () => {
+  it("并发首次读取只导入一次，并在读成功时固定旧 API 模板身份", async () => {
     await writeFile(
       join(dir, "bot-state.v2.json"),
-      JSON.stringify(legacyState({ provider: "glm", model: "builtin:bigmodel-coding-plan/GLM" })),
+      JSON.stringify(legacyState({ provider: "glm", model: "builtin:bigmodel/GLM" })),
     );
     const repo = new BotsRepo();
     const results = await Promise.all([repo.readState(), repo.readState()]);
     expect(results[0]).toEqual(results[1]);
     expect((await makeRepo().readState()).bots.bot?.draftOptions?.modelSelection?.providerId).toBe(
-      "account:bigmodel-individual-coding-plan",
+      "bigmodel-api",
     );
   });
 

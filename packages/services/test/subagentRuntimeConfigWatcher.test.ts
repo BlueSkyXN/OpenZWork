@@ -70,7 +70,7 @@ async function sameDirectory(left: string, right: string) {
 describe("native subagent Host watchers", () => {
   it("keeps shared recovery in the background while new workspace preparations and queued saves finish", async () => {
     const f = await pair();
-    const root = join(f.homeDir, ".zcode", "agents");
+    const root = join(f.homeDir, ".openzwork", "agents");
     await rm(root, { recursive: true, force: true });
     await f.both({ kind: "ready", profiles: [] });
     const path = join(root, "researcher.md");
@@ -129,7 +129,7 @@ describe("native subagent Host watchers", () => {
       }) => {
         const f = await pair(async (home) => {
           const parent =
-            scope === "user" ? join(home, ".zcode") : join(home, "workspace", ".zcode");
+            scope === "user" ? join(home, ".openzwork") : join(home, "workspace", ".zcode");
           const actual = join(parent, "AGENTS");
           await mkdir(actual, { recursive: true });
           if (!(await sameDirectory(actual, join(parent, "agents"))))
@@ -138,7 +138,9 @@ describe("native subagent Host watchers", () => {
         });
         await f.both({ kind: "ready", profiles: [{ name: "researcher", systemPrompt: "old" }] });
         const parent =
-          scope === "user" ? join(f.homeDir, ".zcode") : join(f.workspace.workspacePath, ".zcode");
+          scope === "user"
+            ? join(f.homeDir, ".openzwork")
+            : join(f.workspace.workspacePath, ".zcode");
         const logical = join(parent, "agents", "researcher.md");
         const actual = join(parent, "AGENTS", "researcher.md");
         if (operation === "delete") await rm(logical);
@@ -203,21 +205,21 @@ describe("native subagent Host watchers", () => {
     skip,
   }) => {
     const f = await pair(async (home) => {
-      const root = join(home, ".zcode", "agents");
+      const root = join(home, ".openzwork", "agents");
       await mkdir(root, { recursive: true });
-      if (await sameDirectory(root, join(home, ".zcode", "AGENTS")))
+      if (await sameDirectory(root, join(home, ".openzwork", "AGENTS")))
         skip("Requires a case-sensitive test filesystem");
-      await mkdir(join(home, ".zcode", "AGENTS"));
+      await mkdir(join(home, ".openzwork", "AGENTS"));
       await writeFile(join(root, "researcher.md"), markdown("researcher"));
-      await writeFile(join(home, ".zcode", "AGENTS", "unrelated.md"), markdown("unrelated"));
+      await writeFile(join(home, ".openzwork", "AGENTS", "unrelated.md"), markdown("unrelated"));
     });
     await f.both({ profiles: [{ name: "researcher", systemPrompt: "old" }] });
     await writeFile(
-      join(f.homeDir, ".zcode", "AGENTS", "unrelated.md"),
+      join(f.homeDir, ".openzwork", "AGENTS", "unrelated.md"),
       markdown("unrelated", "wrong"),
     );
     await writeFile(
-      join(f.homeDir, ".zcode", "agents", "researcher.md"),
+      join(f.homeDir, ".openzwork", "agents", "researcher.md"),
       markdown("researcher", "new"),
     );
     await f.both({ profiles: [{ name: "researcher", systemPrompt: "new" }] });
@@ -225,11 +227,11 @@ describe("native subagent Host watchers", () => {
 
   it("removes the old cache entry after a filename-only case rename", async () => {
     const f = await pair(async (home) => {
-      await mkdir(join(home, ".zcode", "agents"), { recursive: true });
-      await writeFile(join(home, ".zcode", "agents", "Researcher.MD"), markdown("researcher"));
+      await mkdir(join(home, ".openzwork", "agents"), { recursive: true });
+      await writeFile(join(home, ".openzwork", "agents", "Researcher.MD"), markdown("researcher"));
     });
     await f.both({ profiles: [{ name: "researcher", systemPrompt: "old" }] });
-    const root = join(f.homeDir, ".zcode", "agents");
+    const root = join(f.homeDir, ".openzwork", "agents");
     await rename(join(root, "Researcher.MD"), join(root, "researcher.md"));
     await writeFile(join(root, "researcher.md"), markdown("researcher", "new"));
     await f.both({ profiles: [{ name: "researcher", systemPrompt: "new" }] });
@@ -245,7 +247,7 @@ describe("native subagent Host watchers", () => {
       // Windows 使用无需管理员权限的目录 junction；其余平台使用目录符号链接。
       await symlink(
         storage,
-        join(homeDir, ".zcode"),
+        join(homeDir, ".openzwork"),
         process.platform === "win32" ? "junction" : "dir",
       );
       await writeFile(
@@ -257,7 +259,7 @@ describe("native subagent Host watchers", () => {
     const agentId = "user:user:researcher";
     await f.a.updateAgent({
       agentId,
-      oldFilePath: join(f.homeDir, ".zcode", "agents", "researcher.md"),
+      oldFilePath: join(f.homeDir, ".openzwork", "agents", "researcher.md"),
       config: config("researcher", "new"),
     });
     expect(
@@ -316,8 +318,9 @@ describe("native subagent Host watchers", () => {
         if (operation === "rename") {
           expect(next).toMatchObject({ profiles: [] });
           expect(
-            JSON.parse(await readFile(join(f.homeDir, ".zcode", "v2", "agents-state.json"), "utf8"))
-              .disabledAgentIds,
+            JSON.parse(
+              await readFile(join(f.homeDir, ".openzwork", "v2", "agents-state.json"), "utf8"),
+            ).disabledAgentIds,
           ).toContain("user:user:renamed");
         }
       });
@@ -333,7 +336,7 @@ describe("native subagent Host watchers", () => {
     "keeps %s scans and native updates limited to direct files",
     async (scope) => {
       const rootFor = (home: string) =>
-        join(home, ...(scope === "project" ? ["workspace"] : []), ".zcode", "agents");
+        join(home, ...(scope === "project" ? ["workspace", ".zcode"] : [".openzwork"]), "agents");
       const md = (prompt: string) => `---\nname: external\ndescription: External\n---\n${prompt}`;
       const f = await pair(async (home) => {
         const root = rootFor(home);
@@ -413,13 +416,13 @@ describe("native subagent Host watchers", () => {
     const f = await pair();
     const { agent } = await f.a.createAgent({ config: config() });
     await f.both({ profiles: [{ name: "researcher" }] });
-    const cliRoot = join(f.homeDir, ".zcode", "cli");
+    const cliRoot = join(f.homeDir, ".openzwork", "cli");
     await mkdir(cliRoot, { recursive: true });
     await writeFile(
       join(cliRoot, "config.json"),
       JSON.stringify({ storage: { dir: join(f.homeDir, "other-storage") } }),
     );
-    const stateRoot = join(f.homeDir, ".zcode", "v2");
+    const stateRoot = join(f.homeDir, ".openzwork", "v2");
     await mkdir(stateRoot, { recursive: true });
     await writeFile(
       join(stateRoot, "agents-state.json"),
@@ -433,8 +436,8 @@ describe("native subagent Host watchers", () => {
     async () => {
       const homeDir = await mkdtemp(join(tmpdir(), "subagent-initial-state-"));
       cleanup.push(() => rm(homeDir, { recursive: true, force: true }));
-      const path = join(homeDir, ".zcode", "v2", "agents-state.json");
-      await mkdir(join(homeDir, ".zcode", "v2"), { recursive: true });
+      const path = join(homeDir, ".openzwork", "v2", "agents-state.json");
+      await mkdir(join(homeDir, ".openzwork", "v2"), { recursive: true });
       await writeFile(path, "{}");
       await chmod(path, 0o200);
       cleanup.push(() => chmod(path, 0o600));
@@ -459,8 +462,8 @@ describe("native subagent Host watchers", () => {
       await f.a.setEnabled({ agentId: agent.id, enabled: true });
       await f.both({ profiles: [{ name: "researcher" }] });
       // state 无读取权限使迁移失败；先写入的新 Markdown 是真实磁盘事实，watcher 仍会观察。
-      const statePath = join(f.homeDir, ".zcode", "v2", "agents-state.json");
-      await mkdir(join(f.homeDir, ".zcode", "v2"), { recursive: true });
+      const statePath = join(f.homeDir, ".openzwork", "v2", "agents-state.json");
+      await mkdir(join(f.homeDir, ".openzwork", "v2"), { recursive: true });
       await writeFile(statePath, JSON.stringify({ disabledAgentIds: [] }));
       await chmod(statePath, 0);
       cleanup.push(() => chmod(statePath, 0o600));

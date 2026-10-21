@@ -55,7 +55,7 @@ describe("workspace hook dual builder digest parity (D17)", () => {
     const home = makeRoot();
     const workspace = makeRoot();
     mkdirSync(join(workspace, ".git"), { recursive: true });
-    writeJson(join(home, ".zcode", "cli", "config.json"), {
+    writeJson(join(home, ".openzwork", "cli", "config.json"), {
       hooks: { enabled: true, timeoutMs: 30_000 },
     });
     writeJson(join(workspace, "zcode.json"), {
@@ -89,7 +89,7 @@ describe("workspace hook dual builder digest parity (D17)", () => {
       workingDirectory: workspace,
     });
     expect(projectSources.length).toBeGreaterThan(0);
-    const userFile = (await parseJsonIfExists(join(home, ".zcode", "cli", "config.json"))) as
+    const userFile = (await parseJsonIfExists(join(home, ".openzwork", "cli", "config.json"))) as
       | { hooks?: unknown }
       | undefined;
     const parsedUserHooks = workspaceHooksConfigSchema.safeParse(userFile?.hooks);

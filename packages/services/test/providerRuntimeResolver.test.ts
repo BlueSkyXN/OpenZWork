@@ -155,7 +155,7 @@ describe("providerRuntimeResolver workspace config dir identity", () => {
     const workspaceIdentity = "remote:ssh:localhost:2223:dev:/home/dev";
 
     expect(resolveProviderConfigDir("glm", workspacePath, workspaceIdentity)).toBe(
-      join(home, ".zcode", "cli"),
+      join(home, ".openzwork", "cli"),
     );
   });
 
@@ -168,7 +168,7 @@ describe("providerRuntimeResolver workspace config dir identity", () => {
 
     const workspacePath = "/Users/demo/project";
 
-    expect(resolveProviderConfigDir("glm", workspacePath)).toBe(join(home, ".zcode", "cli"));
+    expect(resolveProviderConfigDir("glm", workspacePath)).toBe(join(home, ".openzwork", "cli"));
   });
 });
 
@@ -199,7 +199,7 @@ describe("providerRuntimeResolver clean env", () => {
     createdDirs.push(dataBaseDir);
     setDataBaseDir(dataBaseDir);
 
-    const env = buildCleanEnv("glm", join(dataBaseDir, ".zcode", "cli"));
+    const env = buildCleanEnv("glm", join(dataBaseDir, ".openzwork", "cli"));
 
     expect(env.HOME).toBe(dataBaseDir);
     if (process.platform === "win32") {
