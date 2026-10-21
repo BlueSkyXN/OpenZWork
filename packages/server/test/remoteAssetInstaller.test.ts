@@ -107,9 +107,12 @@ class ShellInstallerBackend extends InstallerBackend {
       '"$HOME"',
       quotePosixShellArg(toLocalShellPath(this.rootDir)),
     );
-    const child = spawn(localShellCommand!, ["-c", `${this.prelude}\n${isolatedCommand}`], {
+    // Windows Git shell 经 -c 接收长脚本时在 if 块中途结束；stdin 保留完整脚本字节。
+    const child = spawn(localShellCommand!, ["-s"], {
       detached: process.platform !== "win32",
+      timeout: 15_000,
     });
+    child.stdin.end(`${this.prelude}\n${isolatedCommand}\n`);
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk: Buffer) => {

@@ -64,3 +64,6 @@ sequenceDiagram
 - 扩展测试保留当前桌面、远程连接与插件状态合同；已移除的账号、云端分享、反馈、遥测和原生 CUA 专属场景随实现清理。通用 E2E helper 按固定 3.16.1 源码恢复，并保持隔离用户目录。
 
 - WDIO 配置由 `desktop-e2e-runner` 模块登记，合同测试属于 Vitest 的 `test/runner`，不混入真实 Electron E2E。测试直接执行入口中的隔离目录初始化，验证未显式配置 Provider 时不注入凭据，普通场景与 Compact 场景的上下文配置分别保持正确。
+
+- Windows 保留完整的 CLI update/handoff 场景，测试 IPC 与运行入口使用同一 canonical Server root。目录权限回归沿用原平台边界，通过 Vitest 的 `skipIf` 排除不支持 POSIX 权限的环境；目录被删除的场景在所有平台继续执行。
+- 远端资产失败回归通过隔离本地 shell 执行完整脚本，Windows 夹具以 stdin 输入多行脚本，避免 `-c` 命令行传递破坏脚本。download/checksum/extract × progress 开关的错误保留、staging 清理、旧文件保留及恢复重试断言保持不变，夹具子进程设置退出时限。
