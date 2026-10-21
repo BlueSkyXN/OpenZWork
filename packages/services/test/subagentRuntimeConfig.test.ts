@@ -95,6 +95,67 @@ async function fixture() {
 }
 
 describe("Host incremental subagent snapshots", () => {
+  it("keeps two real directory entries whose names differ only by case", async () => {
+    const f = await fixture();
+    const upper = join(f.userRoot, "Profile.md");
+    const lower = join(f.userRoot, "profile.md");
+    const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    let prompt = "old";
+    // 在所有 runner 上模拟大小写敏感目录，不能把真实两个文件折叠成一个缓存键。
+    vi.mocked(fs.readdir).mockImplementation(async (path, options) =>
+      path === f.userRoot
+        ? ([
+            { name: "Profile.md", isFile: () => true },
+            { name: "profile.md", isFile: () => true },
+          ] as never)
+        : actual.readdir(path, options),
+    );
+    vi.mocked(fs.readFile).mockImplementation((path, options) => {
+      if (path === upper) return Promise.resolve(markdown("upper", "retained"));
+      if (path === lower) return Promise.resolve(markdown("lower", prompt));
+      return actual.readFile(path, options);
+    });
+    await f.cache.prepare(f.workspace);
+    prompt = "new";
+    f.emit(lower);
+    await until(async () => {
+      const snapshot = await f.read();
+      expect(snapshot).toMatchObject({
+        profiles: expect.arrayContaining([
+          expect.objectContaining({ path: upper, systemPrompt: "retained" }),
+          expect.objectContaining({ path: lower, systemPrompt: "new" }),
+        ]),
+      });
+      expect(snapshot.profiles).toHaveLength(2);
+    });
+  });
+
+  it("rejects a delayed old-case read after a filename-only rename without duplicating profiles", async () => {
+    const f = await fixture();
+    const oldPath = join(f.userRoot, "Researcher.MD");
+    const newPath = join(f.userRoot, "researcher.md");
+    await writeFile(oldPath, markdown("researcher", "old"));
+    await f.cache.prepare(f.workspace);
+    await fs.rename(oldPath, newPath);
+    await writeFile(newPath, markdown("researcher", "new"));
+    const actual = await vi.importActual<typeof import("node:fs/promises")>("node:fs/promises");
+    // 模拟 Windows：旧拼写仍能读到同一个文件；不能依赖 ENOENT 清掉旧缓存键。
+    vi.mocked(fs.readFile).mockImplementation((path, options) =>
+      actual.readFile(path === oldPath ? newPath : path, options),
+    );
+    vi.mocked(fs.readdir).mockClear();
+    f.emit(newPath, "add");
+    f.emit(oldPath, "change");
+    await until(async () => {
+      expect(fs.readdir).toHaveBeenCalled();
+      expect(await f.read()).toMatchObject({ profiles: [{ path: newPath, systemPrompt: "new" }] });
+    });
+    const reads = vi.mocked(fs.readdir).mock.calls.length;
+    f.emit(oldPath, "change");
+    await until(() => expect(vi.mocked(fs.readdir).mock.calls.length).toBeGreaterThan(reads));
+    expect(await f.read()).toMatchObject({ profiles: [{ path: newPath, systemPrompt: "new" }] });
+  });
+
   it("keeps the filesystem root observable when the configuration directory does not exist", async () => {
     // 使用当前平台的真实根路径，但 mock watcher，避免写入盘符根目录或监听整个文件系统。
     const volumeRoot = parse(resolve(tmpdir())).root;

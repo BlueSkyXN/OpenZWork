@@ -139,6 +139,7 @@
 !macroend
 
 !ifndef BUILD_UNINSTALLER
+  !include "Win/COM.nsh"
   Var ZCodeInstallerLogPath
   Var ZCodeInstallerLogUnavailable
   Var ZCodeInstallerProcessRole
@@ -366,43 +367,41 @@
   ; 若把函数带入卸载器，NSIS 会产生 6010 未引用告警，并在 /WX 下直接中断 Windows CI。
   Function ZCodeReadShortcutTarget
     Exch $R9
+    Push $R0
     Push $R1
     Push $R2
+    Push $R3
 
     StrCpy $R2 ""
-    System::Call 'Kernel32::SetEnvironmentVariableW(w "ZCODE_SHORTCUT_PATH", w "$R9") i.R1'
-    !ifdef ZCODE_SHORTCUT_DIAGNOSTICS
-      ; 仅隔离 smoke 启用，保留失败阶段和原始返回值，避免空字符串掩盖原因。
-      Push $R3
-      FileOpen $R3 "$INSTDIR\shortcut-read-diagnostics.txt" a
-      FileSeek $R3 0 END
-      FileWrite $R3 "set-env=$R1 shortcut=$R9 powershell=$SYSDIR\WindowsPowerShell\v1.0\powershell.exe$\r$\n"
-      FileClose $R3
-      Pop $R3
-    !endif
-    StrCmp $R1 "0" zcodeReadShortcutTargetDone 0
-
-    ; 云端确认 5 秒会在 PowerShell 初始化时返回 timeout，导致正确快捷方式被误判并覆盖参数。
-    ; 给初始化 15 秒的有限边界；保留非零退出/超时返回空值的既有失败语义。
-    nsExec::ExecToStack /TIMEOUT=15000 `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "[Console]::Out.Write(([Activator]::CreateInstance([type]::GetTypeFromProgID('WScript.Shell'))).CreateShortcut([Environment]::GetEnvironmentVariable('ZCODE_SHORTCUT_PATH')).TargetPath)"`
-    Pop $R1
-    Pop $R2
-    !ifdef ZCODE_SHORTCUT_DIAGNOSTICS
-      Push $R3
-      FileOpen $R3 "$INSTDIR\shortcut-read-diagnostics.txt" a
-      FileSeek $R3 0 END
-      FileWrite $R3 "powershell-exit=$R1 output=$R2$\r$\n"
-      FileClose $R3
-      Pop $R3
-    !endif
-    StrCmp $R1 "0" zcodeReadShortcutTargetDone 0
+    StrCpy $R0 0
+    StrCpy $R1 0
+    ; PowerShell 冷启动在全量 CI 中超过 15 秒。复用 NSIS 自带 COM 声明直接只读 .lnk。
+    !insertmacro ComHlpr_CreateInProcInstance ${CLSID_ShellLink} ${IID_IShellLink} R0 ".R3"
+    StrCmp $R3 "0" 0 zcodeReadShortcutTargetDone
+    ${IUnknown::QueryInterface} $R0 '("${IID_IPersistFile}",.R1).R3'
+    StrCmp $R3 "0" 0 zcodeReadShortcutTargetDone
+    ${IPersistFile::Load} $R1 '("$R9",0).R3'
+    StrCmp $R3 "0" 0 zcodeReadShortcutTargetDone
+    ${IShellLink::GetPath} $R0 '(.R2,${NSIS_MAX_STRLEN},0,0).R3'
+    StrCmp $R3 "0" zcodeReadShortcutTargetDone 0
     StrCpy $R2 ""
 
     zcodeReadShortcutTargetDone:
-      System::Call 'Kernel32::SetEnvironmentVariableW(w "ZCODE_SHORTCUT_PATH", p 0) i.R1'
+      !ifdef ZCODE_SHORTCUT_DIAGNOSTICS
+        Push $R4
+        FileOpen $R4 "$INSTDIR\shortcut-read-diagnostics.txt" a
+        FileSeek $R4 0 END
+        FileWrite $R4 "shell-link-result=$R3 shortcut=$R9 target=$R2$\r$\n"
+        FileClose $R4
+        Pop $R4
+      !endif
+      !insertmacro ComHlpr_SafeRelease $R1
+      !insertmacro ComHlpr_SafeRelease $R0
       StrCpy $R9 "$R2"
+      Pop $R3
       Pop $R2
       Pop $R1
+      Pop $R0
       Exch $R9
   FunctionEnd
 !endif
@@ -412,6 +411,8 @@
     Push "${SHORTCUT_PATH}"
     Call ZCodeReadShortcutTarget
     Pop $R0
+    ; 无法读取不是目标错误的证据，保留原文件及用户参数。
+    StrCmp $R0 "" ${LABEL_PREFIX}Done 0
     StrCmp $R0 "$appExe" ${LABEL_PREFIX}Done 0
 
     ; 修复原因：历史版本可能留下指向已移动 exe 的 .lnk，但无条件覆盖正确快捷方式会让
