@@ -267,5 +267,5 @@ function createMockWindow(webContentsId: number) {
 }
 
 function buildWorkspaceOpenUrl(workspacePath: string): string {
-  return `zcode://workspace/open?path=${encodeURIComponent(workspacePath)}`;
+  return `openzwork://workspace/open?path=${encodeURIComponent(workspacePath)}`;
 }

@@ -17,7 +17,7 @@ describe("Desktop E2E Provider seed boundary", () => {
 
   it("普通 WDIO fixture 不再把 Provider 复制到旧 CLI Config", () => {
     const writerStart = source.indexOf("function seedE2EWorkerModelStreamConfig");
-    const writerEnd = source.indexOf("async function seedModelOutputTokenProviders");
+    const writerEnd = source.indexOf("\n}", writerStart) + 2;
     const cliWriterSource = source.slice(writerStart, writerEnd);
 
     expect(writerStart).toBeGreaterThanOrEqual(0);

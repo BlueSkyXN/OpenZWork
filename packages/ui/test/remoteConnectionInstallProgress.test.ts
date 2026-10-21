@@ -1,7 +1,6 @@
-import { useFeedbackStore } from "@/feedback/feedbackStore.js";
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { cleanup, render, screen, within, fireEvent, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { RemoteConnectionLogEntry } from "@/hooks/useRemoteConnectionLogs.js";
 
@@ -63,24 +62,6 @@ it("replaces upload percentage with live install stages and preserves the failur
   );
   expect(screen.getByText("restart failed")).toBeTruthy();
   expect(within(screen.getByRole("list")).queryByText("remote.phaseSub.readyOnline")).toBeNull();
-});
-
-it("连接反馈只附带当前可见日志，不自动上传全量诊断文件", async () => {
-  render(
-    createElement(RemoteConnectionConnectingStep, {
-      kind: "ssh",
-      loading: false,
-      errorMessage: "连接失败",
-      onBack() {},
-      onRetry() {},
-      logs: [{ id: "1", level: "error", message: "safe connection log", timestamp: "12:00:00" }],
-    }),
-  );
-  fireEvent.click(screen.getByText("remoteConnection.feedback"));
-  await waitFor(() =>
-    expect(useFeedbackStore.getState().submitDraft?.description).toContain("safe connection log"),
-  );
-  expect(useFeedbackStore.getState().submitDraft?.includeLogs).toBe(false);
 });
 
 it("shows download progress and speed inside the installation stage with collapsed logs", () => {

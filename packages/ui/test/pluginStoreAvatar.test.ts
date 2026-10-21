@@ -24,17 +24,22 @@ describe("PluginStoreAvatar", () => {
     expect(render(`${name}@personal`)).toContain(staleIcon);
   });
 
-  it("uses the bundled creator artwork only for the official plugin, including stale listings", () => {
-    const icon = "https://cdn.example.com/old-skill-creator.png";
-    const render = (id: string) =>
-      renderToStaticMarkup(
-        createElement(PluginStoreAvatar, {
-          item: { id, name: "plugin-creator", listing: { icon } },
-        }),
-      );
-    expect(render("plugin-creator@zcode-plugins-official")).toContain("plugin-creator.png");
-    expect(render("plugin-creator@zcode-plugins-official")).not.toContain(icon);
-    expect(render("plugin-creator@personal")).toContain(icon);
+  it("uses a neutral surface icon when listing icon is missing", () => {
+    const html = renderToStaticMarkup(
+      createElement(PluginStoreAvatar, {
+        item: { name: "example-plugin" },
+        className: "size-10",
+      }),
+    );
+
+    expect(html).toContain("lucide-blocks");
+    expect(html).not.toContain("lucide-puzzle");
+    expect(html).toContain("rounded-xl");
+    expect(html).toContain("bg-surface");
+    expect(html).toContain("text-foreground-subtle");
+    expect(html).not.toContain("rounded-full");
+    expect(html).not.toContain("border-border");
+    expect(html).not.toContain("bg-gradient-to-br");
   });
 
   it("keeps a trusted listing icon ahead of the fallback", () => {

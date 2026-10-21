@@ -185,9 +185,9 @@ describe("desktopApplicationMenu endpoint submenu", () => {
     expect(resolveSystemApplicationLocale()).toBe("zh-CN");
   });
 
-  it("test 环境显示 endpoint 子菜单并标记当前 test 选项", async () => {
+  it("test 环境保留自定义 endpoint 和重置菜单", async () => {
     envMock.value = "test";
-    const { HELP_ZCODE_ENDPOINT_TEST_MENU_ID, rebuildApplicationMenu } =
+    const { rebuildApplicationMenu } =
       await import("../src/main/desktopApplicationMenu.js");
 
     rebuildApplicationMenu({
@@ -199,9 +199,8 @@ describe("desktopApplicationMenu endpoint submenu", () => {
     const template = buildFromTemplateMock.mock
       .calls[0]?.[0] as Electron.MenuItemConstructorOptions[];
     const endpointItem = findMenuItem(template, "ZCode Endpoint");
-    const testItem = findMenuItem(template, undefined, HELP_ZCODE_ENDPOINT_TEST_MENU_ID);
     expect(endpointItem).toBeTruthy();
-    expect(testItem?.checked).toBe(true);
+    expect(endpointItem?.submenu).toHaveLength(2);
   });
 
   it("production 环境隐藏 endpoint 子菜单", async () => {
@@ -217,30 +216,6 @@ describe("desktopApplicationMenu endpoint submenu", () => {
     const template = buildFromTemplateMock.mock
       .calls[0]?.[0] as Electron.MenuItemConstructorOptions[];
     expect(findMenuItem(template, "ZCode Endpoint")).toBeUndefined();
-  });
-
-  it("Preview 隐藏更新入口，生产版继续显示", async () => {
-    const { rebuildApplicationMenu } = await import("../src/main/desktopApplicationMenu.js");
-
-    envMock.value = "test";
-    rebuildApplicationMenu({
-      currentApplicationLocale: "en-US",
-      executeDesktopCommand: vi.fn(),
-    });
-    let template = buildFromTemplateMock.mock.calls.at(
-      -1,
-    )?.[0] as Electron.MenuItemConstructorOptions[];
-    expect(findMenuItem(template, undefined, "check-for-update")).toBeUndefined();
-
-    envMock.value = "production";
-    rebuildApplicationMenu({
-      currentApplicationLocale: "en-US",
-      executeDesktopCommand: vi.fn(),
-    });
-    template = buildFromTemplateMock.mock.calls.at(
-      -1,
-    )?.[0] as Electron.MenuItemConstructorOptions[];
-    expect(findMenuItem(template, undefined, "check-for-update")).toBeTruthy();
   });
 
   it("开发运行形态也隐藏已下线的压测开关", async () => {

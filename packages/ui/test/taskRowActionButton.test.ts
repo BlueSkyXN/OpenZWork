@@ -26,7 +26,7 @@ vi.mock("@/ControlHintTooltip.js", () => ({
     ),
 }));
 
-import { TaskRowActionButton } from "@/project-sidebar/grouped/task-row-action-button.js";
+import { TaskRowActionButton } from "@/workspace-grouped-tasks/task-row-action-button.js";
 
 describe("TaskRowActionButton", () => {
   it("renders the shared portal tooltip above the button", () => {

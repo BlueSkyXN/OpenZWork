@@ -48,7 +48,7 @@ it("serves refresh snapshots, scopes retry to its window, and preserves disk obs
   expect(win.webContents.send).toHaveBeenCalledTimes(2);
   expect(child.postMessage.mock.calls[0]?.[0].control.action).toBe("snapshot");
   child.emit("exit", 1);
-  expect(telemetry.mock.calls.at(-1)?.[0]).toMatchObject({
+  expect(win.webContents.send.mock.calls.at(-1)?.[1]).toMatchObject({
     phase: "failed",
     errorCode: "transport_closed",
     disk: state.disk,

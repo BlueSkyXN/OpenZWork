@@ -29,7 +29,7 @@ describe("resource manager polling", () => {
     expect(setSamplingActive).toHaveBeenLastCalledWith(false);
     await act(() => vi.advanceTimersByTimeAsync(3_000));
     expect(getSnapshot).toHaveBeenCalledTimes(1);
-    fireEvent.mouseDown(view.getByRole("tab", { name: "resourceManager.network" }), {
+    fireEvent.mouseDown(view.getByRole("tab", { name: "resourceManager.storage" }), {
       button: 0,
       ctrlKey: false,
     });

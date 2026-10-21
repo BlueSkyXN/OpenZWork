@@ -3,7 +3,9 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { HELPER_APP_NAME, HELPER_DISPLAY_NAME } from "@zcode/zcode-cua/broker/helperConstants";
+// Shell 工具的旧应用诊断 fixture 独立于已删除的 CUA runtime。
+const HELPER_APP_NAME = "ZCode Computer Use.app";
+const HELPER_DISPLAY_NAME = "ZCode Computer Use";
 import { afterEach, describe, expect, it } from "vitest";
 
 const isWindows = process.platform === "win32";

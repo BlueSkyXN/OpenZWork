@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { EventEmitter } from "node:events";
 import { join, resolve } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -81,23 +82,24 @@ describe("Windows E2E shard runner", () => {
   });
 
   it("lists the default formal specs without manual-review or live provider cases", () => {
-    const specs = listDefaultFormalE2ESpecs(resolve(process.cwd(), "packages/desktop"));
+    const root = mkdtempSync(join(tmpdir(), "e2e-spec-discovery-"));
+    const cases = ["smoke.test.ts", "upstream-provider.test.ts", "manual-review/pending/example.test.ts", "conversation-session/conversation-session-ssh-remote-connection-p0.test.ts"];
+    try {
+      for (const file of cases) {
+        const path = resolve(root, "test/e2e", file);
+        mkdirSync(resolve(path, ".."), { recursive: true });
+        writeFileSync(path, "// isolated discovery fixture");
+      }
+      const specs = listDefaultFormalE2ESpecs(root);
+      expect(specs).toEqual(["./test/e2e/smoke.test.ts"]);
+      const sshSpecs = listDefaultFormalE2ESpecs(root, {
+        ZCODE_E2E_SSH_HOST: "ssh.example.test", ZCODE_E2E_SSH_USERNAME: "fixture",
+        ZCODE_E2E_SSH_PASSWORD: "synthetic-password",
+      });
+      expect(sshSpecs).toContain("./test/e2e/conversation-session/conversation-session-ssh-remote-connection-p0.test.ts");
+      expect(sshSpecs.some((spec) => spec.includes("/manual-review/"))).toBe(false);
+    } finally { rmSync(root, { recursive: true, force: true }); }
 
-    // Bug 根因：formal case 由目录动态发现，固定总数会让新增或删除合法 case 误伤 pre-push。
-    // 用稳定的 smoke 包含关系确认发现结果非空，其余断言只校验默认集合的语义边界。
-    expect(specs).toContain("./test/e2e/smoke.test.ts");
-    expect(specs).not.toContain("./test/e2e/upstream-provider.test.ts");
-    expect(specs.some((spec) => spec.includes("/manual-review/"))).toBe(false);
-    expect(specs.some((spec) => spec.includes("conversation-session-ssh-remote"))).toBe(false);
-
-    const sshSpecs = listDefaultFormalE2ESpecs(resolve(process.cwd(), "packages/desktop"), {
-      ZCODE_E2E_SSH_HOST: "ssh.example.test",
-      ZCODE_E2E_SSH_USERNAME: "root",
-      ZCODE_E2E_SSH_PASSWORD: "secret-from-test-env",
-    });
-    expect(sshSpecs).toContain(
-      "./test/e2e/conversation-session/conversation-session-ssh-remote-connection-p0.test.ts",
-    );
   });
 
   it("uses deterministic LPT weights and a fallback for new specs", () => {

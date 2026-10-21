@@ -385,12 +385,12 @@ describe("WebRemoteControlTerminalTransport", () => {
     transport.start();
     await waitUntil(() => relay.messages.some((message) => message.type === "pair_status_query"));
 
-    expect(relay.getRequestUrl()).toBe("/ws?token=token-1&mid=mid-1");
+    expect(relay.getRequestUrl()).toBe("/ws?mid=mid-1");
     expect(relay.messages[0]).toMatchObject({
       type: "auth_init",
       device_sid: "sid-1",
     });
-    expect(relay.messages[0]).not.toHaveProperty("role");
+    expect(relay.messages[0]).toHaveProperty("role", "terminal");
     expect(relay.messages[0]).not.toHaveProperty("proof");
     expect(states).toContain("paired");
     transport.dispose();
@@ -890,7 +890,7 @@ describe("WebRemoteControlTerminalTransport", () => {
     }
   });
 
-  it("times out a stale waiting state without reloading", async () => {
+  it("times out an unmatched initial mobile connection without reloading", async () => {
     const failures: string[] = [];
     const reloadPage = vi.fn();
     const relay = await createRelayServer(({ message, socket }) => {
@@ -916,7 +916,7 @@ describe("WebRemoteControlTerminalTransport", () => {
     transport.start();
     await waitUntil(() => failures.length === 1);
 
-    expect(failures).toEqual(["desktop-disconnected"]);
+    expect(failures).toEqual(["invalid-mobile-connection"]);
     expect(reloadPage).not.toHaveBeenCalled();
     transport.dispose();
   });

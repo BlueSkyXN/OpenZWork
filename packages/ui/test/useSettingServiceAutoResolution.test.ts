@@ -56,28 +56,6 @@ describe("useSettings AskUserQuestion runtime preference", () => {
     botsService.syncAppRuntimePreferences.mockResolvedValue(undefined);
   });
 
-  it("账号 CAS 条件透传到设置 owner，冲突拒绝更新", async () => {
-    const { useSettings } = await import("@/hooks/useSettingService.js");
-    const { result } = renderHook(() => useSettings());
-    const expected = {
-      providerFamilyDomain: "bigmodel" as const,
-      providerFamilyConnectionSelections: {},
-    };
-    const patch = {
-      providerFamilyConnectionSelections: { bigmodel: { kind: "individual-coding-plan" as const } },
-    };
-    await act(async () => {
-      await result.current.update(patch, expected);
-    });
-    expect(settingService.update).toHaveBeenCalledWith(patch, expected);
-    settingService.get.mockClear();
-    settingService.update.mockRejectedValueOnce(new Error("Account connection settings changed"));
-    await expect(result.current.update(patch, expected)).rejects.toThrow(
-      "Account connection settings changed",
-    );
-    expect(settingService.get).toHaveBeenCalledOnce();
-  });
-
   it("persists, waits for the current Host ACK, then broadcasts the strict preference", async () => {
     const { useSettings } = await import("@/hooks/useSettingService.js");
     const hook = renderHook(() => useSettings());

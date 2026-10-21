@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 import tsupConfig, {
-  resolveBuildPackagedAgentTelemetryEnv,
-  resolveBuildRemoteCdnReleaseRoots,
   resolveDesktopTsupBundleSecurityOptions,
 } from "../tsup.config";
 
@@ -65,12 +63,6 @@ describe("desktop tsup chunk isolation", () => {
     expect(getExternal("host")).toContain("yaml");
   });
 
-  it("main/host/scheduler 应内联 CUA producer，安装包不能依赖被排除的 @zcode node_modules", () => {
-    for (const configName of ["main", "host", "scheduler"]) {
-      expect(getNoExternal(configName)).toContain("@zcode/zcode-cua");
-    }
-  });
-
   it("main/host/scheduler 应内联 Provider workspace 包，Electron 不能直接加载 TypeScript 源码", () => {
     for (const configName of ["main", "host", "scheduler"]) {
       expect(getNoExternal(configName)).toContain("@zcode/provider");
@@ -107,72 +99,6 @@ describe("desktop tsup chunk isolation", () => {
     });
   });
 
-  it("remote runtime CDN 根应可由 CI 的 CDN_DOMAIN/OSS_PATH_PREFIX 多值注入", () => {
-    expect(
-      resolveBuildRemoteCdnReleaseRoots({
-        OSS_PATH_PREFIX: "zcode/electron/releases",
-      }),
-    ).toEqual([
-      "https://cdn.zcode-ai.com/zcode/electron/releases",
-    ]);
-  });
-
-  it("remote runtime CDN 根的路径前缀数量不匹配时应失败", () => {
-    expect(() =>
-      resolveBuildRemoteCdnReleaseRoots({
-        OSS_PATH_PREFIX: "new-prefix,old-prefix,extra-prefix",
-      }),
-    ).toThrow("OSS_PATH_PREFIX must contain one value or match CDN_DOMAIN count");
-  });
-
-  it("正式安装包 Agent OTLP 配置应映射为 Main 使用的标准环境字段", () => {
-    expect(
-      resolveBuildPackagedAgentTelemetryEnv({
-        ZCODE_ENV: "production",
-        ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT: "https://arms.example.com/otlp",
-        ZCODE_PACKAGED_AGENT_OTEL_HEADERS: "x-arms-license-key=write-only",
-        ZCODE_PACKAGED_AGENT_OTEL_SERVICE_NAME: "zcode-cli-agent",
-      }),
-    ).toEqual({
-      OTEL_EXPORTER_OTLP_ENDPOINT: "https://arms.example.com/otlp",
-      OTEL_EXPORTER_OTLP_HEADERS: "x-arms-license-key=write-only",
-      OTEL_SERVICE_NAME: "zcode-cli-agent",
-      ZCODE_TELEMETRY_RUNTIME_DISTRIBUTION: "packaged",
-    });
-  });
-
-  it("正式安装包 Agent OTLP 配置不完整或生产环境使用 HTTP 时应阻止构建", () => {
-    expect(() =>
-      resolveBuildPackagedAgentTelemetryEnv({
-        ZCODE_ENV: "production",
-        ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT: "https://arms.example.com/otlp",
-      }),
-    ).toThrow("must be configured together");
-    expect(() =>
-      resolveBuildPackagedAgentTelemetryEnv({
-        ZCODE_ENV: "production",
-        ZCODE_PACKAGED_AGENT_OTEL_ENDPOINT: "http://arms.example.com/otlp",
-        ZCODE_PACKAGED_AGENT_OTEL_HEADERS: "x-arms-license-key=write-only",
-      }),
-    ).toThrow("must use HTTPS in production");
-  });
-
-  it("release/current 与 Tag 构建缺少 Agent OTLP 配置时应失败，普通开发构建保持 Noop", () => {
-    expect(resolveBuildPackagedAgentTelemetryEnv({})).toEqual({});
-    expect(() =>
-      resolveBuildPackagedAgentTelemetryEnv({
-        CI: "true",
-        CI_COMMIT_BRANCH: "release/current",
-      }),
-    ).toThrow("required for release builds");
-    expect(() =>
-      resolveBuildPackagedAgentTelemetryEnv({
-        CI: "true",
-        CI_COMMIT_TAG: "v3.6.0",
-      }),
-    ).toThrow("required for release builds");
-  });
-
   it("安装包身份与后端环境作为两个编译期常量注入每个 bundle", () => {
     // 打包后的应用不能依赖机器环境变量：ZCODE_PREVIEW_IDENTITY 在构建时折叠成 __ZCODE_PRODUCT_FLAVOR__。
     for (const entry of ["main", "host", "preload"] as const) {
@@ -181,12 +107,6 @@ describe("desktop tsup chunk isolation", () => {
       expect(defines).toHaveProperty("__ZCODE_PRODUCT_FLAVOR__");
       expect(["\"production\"", "\"preview\""]).toContain(defines.__ZCODE_PRODUCT_FLAVOR__);
     }
-  });
-
-  it("Agent OTLP 部署默认值只应编译进 Main bundle", () => {
-    expect(getDefines("main")).toHaveProperty("__ZCODE_PACKAGED_AGENT_TELEMETRY_ENV__");
-    expect(getDefines("host")).not.toHaveProperty("__ZCODE_PACKAGED_AGENT_TELEMETRY_ENV__");
-    expect(getDefines("preload")).not.toHaveProperty("__ZCODE_PACKAGED_AGENT_TELEMETRY_ENV__");
   });
 
   it("所有 tsup 子构建都应关闭 esbuild legal comments 输出", () => {

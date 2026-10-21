@@ -795,10 +795,16 @@ async function startBackgroundFixtureServer() {
   const tempDir = await mkdtemp(join(tmpdir(), "zcode-upstream-background-fixture-"));
   tempDirs.push(tempDir);
   const artifactPath = join(tempDir, "artifact.json");
-  const fixturePath = join(
-    import.meta.dirname,
-    "e2e/fixtures/upstream/conversation-session/conversation-session-background.json",
-  );
+  const fixturePath = join(tempDir, "background.json");
+  await writeFile(fixturePath, JSON.stringify({ version: 1, fixtures: [{
+    id: "background-direct-user-prompt-received",
+    match: {
+      method: "POST", pathIncludes: "/messages",
+      bodyIncludes: ["E2E_BACKGROUND_DIRECT_USER_PROMPT", "E2E_BACKGROUND_DIRECT_USER_PROMPT_PAYLOAD"],
+      lastUserMessageIncludes: ["E2E_BACKGROUND_DIRECT_USER_PROMPT_PAYLOAD"],
+      lastUserMessageExcludes: ["<task-notification>"],
+    }, response: { statusCode: 200, text: "background-direct-user-prompt-received-ok" },
+  }] }));
   const server = await startUpstreamReplayServer({
     artifactPath,
     fixturePaths: [fixturePath],

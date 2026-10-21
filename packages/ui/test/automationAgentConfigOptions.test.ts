@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
 import {
   buildAutomationModelSelectGroups,
   buildAutomationModelSelection,
@@ -64,11 +63,11 @@ describe("automation model/thought linkage", () => {
         revision: 1,
         providers: [
           {
-            providerId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
+            providerId: "personal-fixture",
             providerName: "BigModel Coding",
             config: {
               access: {
-                type: "zhipu-account",
+                type: "api-key", apiKey: "fixture-key",
               },
               api: {
                 type: "anthropic-messages",
@@ -131,33 +130,36 @@ describe("automation model/thought linkage", () => {
     ).toBe("Demo Provider/model-a");
   });
 
-  it("模型触发器继续遵循会话侧内置 family 的裁剪规则", () => {
-    const providerId = BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan;
-    const modelGroups: ModelSelectGroup[] = [
-      {
-        key: `provider:${providerId}`,
-        label: "BigModel Coding Plan",
-        items: [
-          {
-            key: `provider:${providerId}:glm-5.2`,
-            value: encodeCustomModelValue(providerId, "glm-5.2"),
-            name: "glm-5.2",
-          },
-        ],
-      },
-    ];
-
+  it("Registry View 已发布时使用其中的 Provider label", () => {
     expect(
       resolveAutomationModelTriggerLabel({
-        modelGroups,
-        modelValue: encodeCustomModelValue(providerId, "glm-5.2"),
+        modelGroups: groups,
+        modelSelectionView: {
+          revision: 1,
+          providers: [
+            {
+              providerId: "demo",
+              providerName: "Registry Provider",
+              config: {
+                api: {
+                  type: "openai-chat-completions",
+                  baseUrl: "https://registry.example.com/v1",
+                },
+                access: { type: "api-key", apiKey: "test-key" },
+                models: ["model-a"],
+              },
+              models: [{ modelId: "model-a", config: {} }],
+            },
+          ],
+        },
+        modelValue: "demo/model-a",
         fallbackLabel: "选择模型",
       }),
-    ).toBe("glm-5.2");
+    ).toBe("Registry Provider/model-a");
   });
 
   it("已保存模型不在当前候选中时仍回显模型名", () => {
-    const providerId = BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan;
+    const providerId = "personal-fixture";
     const staleModel = encodeCustomModelValue(providerId, "glm-5.2");
 
     expect(

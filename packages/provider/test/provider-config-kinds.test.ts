@@ -123,7 +123,7 @@ describe("ProviderConfig access / api boundaries", () => {
     ).toThrow();
   });
 
-  it("隐藏性不补齐缺失访问配置，退役闲时模式仍被拒绝", () => {
+  it("隐藏性不补齐缺失访问配置", () => {
     const config = parseProviderConfig({
       group: "standard-personal",
       visibility: "hidden",
@@ -133,11 +133,7 @@ describe("ProviderConfig access / api boundaries", () => {
     expect(config.visibility).toBe("hidden");
     expect(config.access).toBeUndefined();
     expect(config.validateComplete().length).toBeGreaterThan(0);
-    expect(() =>
-      parseProviderConfig({
-        access: { type: "zhipu-account", accountType: "zai", mode: "off-peak", entitled: true },
-      }),
-    ).toThrow();
+
   });
 
   it("hidden 不放宽 Provider 完整性，旧 executionOnly 中间格式不再接受", () => {

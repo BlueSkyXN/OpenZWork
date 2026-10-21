@@ -22,7 +22,7 @@ import {
   registerWebRemoteControlIpcHandlers,
   type WebRemoteControlIpcManager,
 } from "./desktopWebRemoteControlIpc.js";
-import { openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
+import { openFileUrlInDefaultApp, openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
 
 function isPublicRemoteReasonCode(code: string | undefined): code is string {
   // Bug 原因：前缀 OR 形成第二份公开码真源，任何内部 source-server-* 字符串都会穿透
@@ -155,6 +155,11 @@ export function registerRemoteIpcHandlers(options: {
     const { url } = request;
     if (!isAllowedExternalOpenUrl(url)) {
       options.logger.warn("[open-external] blocked unsupported url", url);
+      return;
+    }
+    // 净化购买跳转逻辑时误删了通用 file URL 分流；按上游保留路径解码和本地打开入口。
+    if (new URL(url).protocol === "file:") {
+      void openFileUrlInDefaultApp(url, options.logger);
       return;
     }
     void Promise.resolve(shell.openExternal(url)).catch((error: unknown) => {

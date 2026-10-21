@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_MODEL_PROVIDER_IDS } from "@zcode/shared";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
 import {
   resolveV4ModelTriggerDisplay,
@@ -47,29 +46,6 @@ describe("resolveV4ModelTriggerLabel", () => {
         providerId: "dev-model",
       }),
     ).toBe("dev-model/glm-5.2");
-  });
-
-  it.each([
-    [BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan, "Z.ai - Coding Plan"],
-    [BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan, "Z.ai - Start Plan"],
-    [BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan, "BigModel - Coding Plan"],
-    [BUILTIN_MODEL_PROVIDER_IDS.bigmodelStartPlan, "BigModel - Start Plan"],
-  ])("%s 内置供应商只显示模型名", (providerId, providerName) => {
-    const group = createGroup({
-      key: providerId,
-      label: providerName,
-      modelName: "GLM-5.2",
-    });
-
-    expect(
-      resolveV4ModelTriggerLabel({
-        modelGroups: [group],
-        normalizedValue: `custom:${providerId}:GLM-5.2`,
-        fallbackLabel: "选择模型",
-        providerId,
-        providerName,
-      }),
-    ).toBe("GLM-5.2");
   });
 
   it("DeepSeek 自定义 provider 收起后显示 providerName/modelName", () => {
@@ -146,27 +122,6 @@ describe("resolveV4ModelTriggerDisplay", () => {
       fullLabel: "deepseek/deepseek-v4-flash",
       providerPrefix: "deepseek/",
       modelLabel: "deepseek-v4-flash",
-    });
-  });
-
-  it("内置供应商没有可隐藏的 provider 前缀", () => {
-    const group = createGroup({
-      key: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
-      label: "Z.ai - Coding Plan",
-      modelName: "GLM-5.2",
-    });
-
-    expect(
-      resolveV4ModelTriggerDisplay({
-        modelGroups: [group],
-        normalizedValue: `custom:${BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan}:GLM-5.2`,
-        fallbackLabel: "选择模型",
-        providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiIndividualCodingPlan,
-        providerName: "Z.ai - Coding Plan",
-      }),
-    ).toEqual({
-      fullLabel: "GLM-5.2",
-      modelLabel: "GLM-5.2",
     });
   });
 });

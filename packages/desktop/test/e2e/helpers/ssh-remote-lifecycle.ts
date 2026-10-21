@@ -544,7 +544,7 @@ export async function readRemoteCoreIdentity(
   state: string;
   generation: number;
 }> {
-  const statusResult = await runSSHCommand(config, 'cat "$HOME/.zcode/server/run/status.json"');
+  const statusResult = await runSSHCommand(config, 'cat "$HOME/.openzwork/server/run/status.json"');
   if (statusResult.code !== 0) {
     throw new Error(`${caseMarker}: 读取远端 Core status 失败: ${statusResult.stderr}`);
   }

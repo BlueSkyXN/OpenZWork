@@ -3,7 +3,6 @@ import { PassThrough } from "node:stream";
 import type { IDisposable, Event } from "@zcode/rpc";
 import type { ZCodePromptAttachment } from "@zcode/shared";
 import {
-  REMOTE_PROMPT_ATTACHMENT_ROOT,
   buildRemotePromptAttachmentPath,
   materializeRemotePromptAttachments,
 } from "../src/host/remotePromptAttachments.js";
@@ -33,7 +32,7 @@ describe("remote prompt attachment materialization", () => {
       .mockResolvedValueOnce(createClosedStream("/home/tester"))
       .mockResolvedValueOnce(createClosedStream())
       .mockResolvedValueOnce(createClosedStream());
-    const hostPath = "C:\\Users\\tester\\.zcode\\tmp\\paste-attachments\\pasted-text.txt";
+    const hostPath = "C:\\Users\\tester\\.openzwork\\tmp\\paste-attachments\\pasted-text.txt";
     const attachments: ZCodePromptAttachment[] = [
       {
         kind: "file",
@@ -63,7 +62,7 @@ describe("remote prompt attachment materialization", () => {
 
     const remotePath = upload.mock.calls[0]?.[1] ?? "";
     expect(remotePath).toMatch(
-      /^\/home\/tester\/\.zcode\/tmp\/prompt-attachments\/trace-abc-123\/[A-Za-z0-9._-]+\/01-pasted-text\.txt$/,
+      /^\/home\/tester\/\.openzwork\/tmp\/prompt-attachments\/trace-abc-123\/[A-Za-z0-9._-]+\/01-pasted-text\.txt$/,
     );
     expect(upload).toHaveBeenCalledWith(hostPath, remotePath);
     expect(exec.mock.calls[0]?.[0]).toBe('printf %s "$HOME"');
@@ -84,7 +83,7 @@ describe("remote prompt attachment materialization", () => {
   it("skips attachments that already point at the remote materialization directory", async () => {
     const upload = vi.fn(async (_localPath: string, _remotePath: string) => undefined);
     const exec = vi.fn(async (_command: string) => createClosedStream());
-    const remotePath = `${REMOTE_PROMPT_ATTACHMENT_ROOT}/trace/01-image.png`;
+    const remotePath = `~/.openzwork/tmp/prompt-attachments/trace/01-image.png`;
     const attachments: ZCodePromptAttachment[] = [
       {
         kind: "image",
@@ -109,7 +108,7 @@ describe("remote prompt attachment materialization", () => {
   it("skips attachments that already point at the resolved remote materialization directory", async () => {
     const upload = vi.fn(async (_localPath: string, _remotePath: string) => undefined);
     const exec = vi.fn(async (_command: string) => createClosedStream("/home/tester"));
-    const remotePath = "/home/tester/.zcode/tmp/prompt-attachments/trace/01-image.png";
+    const remotePath = "/home/tester/.openzwork/tmp/prompt-attachments/trace/01-image.png";
     const attachments: ZCodePromptAttachment[] = [
       {
         kind: "image",
@@ -168,6 +167,6 @@ describe("remote prompt attachment materialization", () => {
         nonce: "nonce:with/slash",
         traceId: "trace/id:456",
       }),
-    ).toBe(`${REMOTE_PROMPT_ATTACHMENT_ROOT}/trace-id-456/nonce-with-slash/03-api-.txt`);
+    ).toBe(`~/.openzwork/tmp/prompt-attachments/trace-id-456/nonce-with-slash/03-api-.txt`);
   });
 });

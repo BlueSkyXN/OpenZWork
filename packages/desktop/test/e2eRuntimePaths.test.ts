@@ -70,7 +70,7 @@ describe("Desktop E2E runtime paths", () => {
     ).toBe(resolve("root", "explicit-home"));
   });
 
-  it("keeps the E2E CLI storage under the legacy .zcode directory", () => {
+  it("keeps the E2E CLI storage under the isolated .openzwork directory", () => {
     const homeDir = resolve("root", "isolated-e2e-home");
 
     expect(resolveE2EStorageRoot(homeDir)).toBe(join(homeDir, ".openzwork"));

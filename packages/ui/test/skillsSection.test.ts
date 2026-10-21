@@ -410,12 +410,6 @@ function findLinkButtonByLabel(label: string) {
   );
 }
 
-function findCreateSkillButton() {
-  return capturedButtons.find(
-    (button) => button["aria-label"] === "New" && typeof button.onClick === "function",
-  );
-}
-
 describe("SkillsSection", () => {
   beforeEach(() => {
     capturedButtons.length = 0;
@@ -558,48 +552,6 @@ describe("SkillsSection", () => {
     expect(openInFileManagerMock).toHaveBeenCalledWith(
       "/Users/dev/.agents/skills/feishu-drive-1.0.0/SKILL.md",
     );
-  });
-
-  it("新建技能通过 Root 标准链路创建带结构化 skill-creator mention 的草稿", async () => {
-    mockSkillsState = [
-      {
-        id: "glm:skill-creator@official",
-        name: "skill-creator",
-        description: "Create skills",
-        body: "",
-        path: "/tmp/workspace/.zcode/skills/skill-creator/SKILL.md",
-        scope: "workspace",
-        enabled: true,
-      },
-    ];
-
-    await renderSkillsSection();
-    const createButton = findCreateSkillButton();
-    expect(createButton).toBeTruthy();
-    (createButton?.onClick as (event: { defaultPrevented: boolean }) => void)?.({
-      defaultPrevented: false,
-    });
-
-    const markdown = "[$skill-creator](/tmp/workspace/.zcode/skills/skill-creator/SKILL.md)";
-    expect(onCreateTaskMock).toHaveBeenCalledTimes(1);
-    expect(onCreateTaskMock).toHaveBeenCalledWith({
-      provider: "glm",
-      initialPrompt: `${markdown} `,
-      initialPromptMention: {
-        id: "skill:glm:skill-creator@official",
-        category: "skills",
-        label: "skill-creator",
-        value: "skill-creator",
-        markdown,
-        description: "Create skills",
-        data: {
-          path: "/tmp/workspace/.zcode/skills/skill-creator/SKILL.md",
-          scope: "workspace",
-        },
-      },
-    });
-    expect(startDraftMock).not.toHaveBeenCalled();
-    expect(activateTabByPathMock).not.toHaveBeenCalled();
   });
 
   it("有诊断时顶部 banner 按严重级别统计，展开后列出具体条目", async () => {

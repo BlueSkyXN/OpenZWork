@@ -116,51 +116,6 @@ describe("WorkspaceHelpMenuButton", () => {
     return renderToStaticMarkup(createElement(WorkspaceHelpMenuButton, { isDesktop }));
   }
 
-  it("桌面和 Web 的漏洞入口紧跟问题上报，打开配置地址；缺失时隐藏", async () => {
-    for (const desktop of [true, false]) {
-      captured.zsrcUrl = "https://security.example.test/report";
-      captured.openExternal.mockClear();
-      try {
-        await render(desktop);
-        const index = captured.menuItems.findIndex(
-          (item) => item.label === "workspaceHeader.help.reportVulnerability",
-        );
-        expect(index).toBeGreaterThan(0);
-        expect(captured.menuItems[index - 1]?.label).toBe("workspaceHeader.help.issueReport");
-        await captured.menuItems[index]?.onSelect?.();
-        expect(captured.openExternal).toHaveBeenCalledExactlyOnceWith(captured.zsrcUrl);
-      } finally {
-        captured.zsrcUrl = null;
-      }
-      expect(await render(desktop)).not.toContain("workspaceHeader.help.reportVulnerability");
-    }
-  });
-
-  it("冷缓存加载项不可触发外链，有效配置到达时保留原位置与文案", async () => {
-    captured.loading = true;
-    captured.openExternal.mockClear();
-    try {
-      await render(true);
-      const before = captured.menuItems.map((item) => item.label);
-      const item = captured.menuItems.find(
-        (item) => item.label === "workspaceHeader.help.reportVulnerability",
-      );
-      expect(item).toMatchObject({ disabled: true, onSelect: undefined });
-      captured.loading = false;
-      captured.zsrcUrl = "https://security.example.test/report";
-      await render(true);
-      expect(captured.menuItems.map((item) => item.label)).toEqual(before);
-      expect(
-        captured.menuItems.find((item) => item.label === "workspaceHeader.help.reportVulnerability")
-          ?.disabled,
-      ).toBe(false);
-      expect(captured.openExternal).not.toHaveBeenCalled();
-    } finally {
-      captured.loading = false;
-      captured.zsrcUrl = null;
-    }
-  });
-
   it("桌面端渲染资源管理器项，点击走 OpenResourceManager 命令", async () => {
     // 原因：Windows/Linux 没有原生菜单栏，自绘箭头菜单也已下线，问号菜单是资源管理器唯一入口。
     const html = await render(true);
@@ -207,19 +162,6 @@ describe("WorkspaceHelpMenuButton", () => {
     }
   });
 
-  it("资源管理器之后显示检查更新，点击执行已有命令", async () => {
-    await render(true);
-    const index = captured.menuItems.findIndex(
-      (entry) => entry.label === "titleBar.menu.help.checkForUpdates",
-    );
-    expect(index).toBeGreaterThan(0);
-    expect(captured.menuItems[index - 1]?.testId).toBe(TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER);
-    await captured.menuItems[index]?.onSelect?.();
-    expect(captured.executeDesktopCommand).toHaveBeenCalledExactlyOnceWith(
-      DesktopCommandIds.CheckForUpdates,
-    );
-  });
-
   it("Web 与 Preview 不显示检查更新", async () => {
     expect(await render(false)).not.toContain("titleBar.menu.help.checkForUpdates");
     captured.updateMenu.visible = false;
@@ -230,20 +172,6 @@ describe("WorkspaceHelpMenuButton", () => {
     }
   });
 
-  it("桌面导出日志复用平台导出及共享提示", async () => {
-    await render(true);
-    const item = captured.menuItems.find(
-      (entry) => entry.label === "titleBar.menu.help.exportLogs",
-    );
-    expect(item).toBeDefined();
-    await item!.onSelect?.();
-    expect(captured.exportLogs).toHaveBeenCalledExactlyOnceWith();
-    expect(captured.toast).toHaveBeenCalledWith("sidebar.exportLogs.pending", {
-      durationMs: Number.POSITIVE_INFINITY,
-    });
-    expect(captured.dismissToast).toHaveBeenCalledWith(7);
-  });
-
   it("Web 和手机远控不显示本地导出日志入口", async () => {
     for (const isDesktop of [undefined, false]) {
       expect(await render(isDesktop)).not.toContain("titleBar.menu.help.exportLogs");
@@ -251,19 +179,14 @@ describe("WorkspaceHelpMenuButton", () => {
     }
   });
 
-  it("桌面两组一条分隔线，导出日志位于桌面组首项，Web 仅帮助组", async () => {
+  it("桌面分隔社区与本机工具，Web 仅显示社区", async () => {
     for (const desktop of [true, false]) {
       const html = await render(desktop);
       expect(captured.menuItems.map((item) => item.label)).toEqual([
-        "workspaceHeader.help.docs",
         "workspaceHeader.help.community",
-        "workspaceHeader.help.issueReport",
-        "workspaceHeader.help.productRequest",
         ...(desktop
           ? [
-              "titleBar.menu.help.exportLogs",
               "titleBar.menu.help.resourceManager",
-              "titleBar.menu.help.checkForUpdates",
               "titleBar.menu.help.about",
             ]
           : []),
@@ -276,10 +199,7 @@ describe("WorkspaceHelpMenuButton", () => {
     for (const isDesktop of [true, false]) {
       const html = await render(isDesktop);
       for (const id of [
-        "workspaceHeader.help.issueReport",
-        "workspaceHeader.help.productRequest",
         "workspaceHeader.help.community",
-        "workspaceHeader.help.docs",
       ]) {
         expect(html).toContain(id);
       }

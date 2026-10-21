@@ -20,18 +20,15 @@ describe("desktop E2E environment-gated formal spec admission", () => {
     expect(scheduled.some((spec) => spec.includes("/manual-review/"))).toBe(false);
   });
 
-  it.each(["bots", "settings", "feedback"])(
-    "keeps explicit %s candidates discoverable",
-    (domain) => {
-      const scheduled = resolveE2EScheduledSpecFiles({
-        baseDir: resolve("packages/desktop"),
-        specs: [`./test/e2e/${domain}/manual-review/**/*.test.ts`],
-        exclude: [],
-      });
-      expect(scheduled.length).toBeGreaterThan(0);
-      expect(scheduled.every((spec) => spec.includes(`/${domain}/manual-review/`))).toBe(true);
-    },
-  );
+  it.each(["bots"])("keeps explicit %s candidates discoverable", (domain) => {
+    const scheduled = resolveE2EScheduledSpecFiles({
+      baseDir: resolve("packages/desktop"),
+      specs: [`./test/e2e/${domain}/manual-review/**/*.test.ts`],
+      exclude: [],
+    });
+    expect(scheduled.length).toBeGreaterThan(0);
+    expect(scheduled.every((spec) => spec.includes(`/${domain}/manual-review/`))).toBe(true);
+  });
 
   it("excludes real SSH specs from default runs without complete credentials", () => {
     expect(hasRequiredSshE2EEnvironment({})).toBe(false);

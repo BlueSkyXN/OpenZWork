@@ -305,10 +305,3 @@ describe("SessionPane read-only mode", () => {
     expect(html).not.toContain('data-testid="mock-composer"');
   });
 });
-
-/**
- * 这些用例守护 SessionPane 到 timeline 的分享模式接线。
- *
- * 分享浮窗必须保留 Composer 和正文滚动，勾选期仍禁用 message 工具条。
- * 断言必须落在 SessionPane 真正传给 ConversationTimeline 的 props 上。
- */

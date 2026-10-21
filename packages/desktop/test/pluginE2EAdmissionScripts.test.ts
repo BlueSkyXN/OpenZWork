@@ -6,9 +6,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 const repoRoot = process.cwd();
 const desktopDir = resolve(repoRoot, "packages/desktop");
 const pendingSpec =
-  "./packages/desktop/test/e2e/plugins/manual-review/pending/plugin-management-personal-lifecycle.test.ts";
+  "./packages/desktop/test/e2e/plugins/manual-review/pending/plugin-admission-pending-fixture.test.ts";
 const manualOnlySpec =
-  "./packages/desktop/test/e2e/plugins/manual-review/pending/plugin-cdn-zip-official-cdn-smoke.test.ts";
+  "./packages/desktop/test/e2e/plugins/manual-review/pending/plugin-admission-never-fixture.test.ts";
 const fixtureCheckCase = "plugin-fixture-check-probe";
 const formalProbeSpec = resolve(desktopDir, "test/e2e/plugins", `${fixtureCheckCase}.test.ts`);
 const formalProbeFixture = resolve(
@@ -22,7 +22,16 @@ const formalProbeManifest = resolve(
   `${fixtureCheckCase}.json`,
 );
 
+const createdAdmissionFiles: string[] = [];
 beforeAll(() => {
+  for (const [spec, never] of [[pendingSpec, false], [manualOnlySpec, true]] as const) {
+    const caseName = spec.split("/").at(-1)!.replace(".test.ts", "");
+    const files = [resolve(repoRoot, spec), resolve(desktopDir, "test/e2e/fixtures/upstream/plugin-management", caseName + ".json"), resolve(desktopDir, "test/e2e/fixtures/cases/plugins", caseName + ".json")];
+    writeProbeFile(files[0]!, "// synthetic admission fixture");
+    writeProbeFile(files[1]!, JSON.stringify({ version: 1, fixtures: [] }));
+    writeProbeFile(files[2]!, JSON.stringify({ caseName, formalAdmission: never ? "never" : "reviewed" }));
+    createdAdmissionFiles.push(...files);
+  }
   writeProbeFile(formalProbeSpec, 'describe("E2E_PLUGIN_FIXTURE_CHECK_PROBE", () => {});\n');
   writeProbeFile(
     formalProbeFixture,
@@ -76,6 +85,7 @@ beforeAll(() => {
 });
 
 afterAll(() => {
+  for (const file of createdAdmissionFiles) rmSync(file, { force: true });
   rmSync(formalProbeSpec, { force: true });
   rmSync(formalProbeFixture, { force: true });
   rmSync(formalProbeManifest, { force: true });

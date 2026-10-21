@@ -109,7 +109,6 @@ describe("SSH 原项目重连读取最新 Profile", () => {
         {
           workspacePath: sessionEntry.workspacePath,
           workspaceIdentity: sessionEntry.workspaceIdentity,
-          connectTrigger: "reconnect",
         },
       );
       expect(params.loadCredential).toHaveBeenCalledExactlyOnceWith("profile-password");

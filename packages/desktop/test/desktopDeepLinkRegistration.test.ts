@@ -51,8 +51,8 @@ describe("Windows Deep Link 启动参数边界", () => {
     registerDeepLinkProtocol(logger);
 
     expect(mocks.register.mock.calls).toEqual([
-      ["zcode", process.execPath, ["--"]],
-      ["zcode", process.execPath, ["--"]],
+      ["openzwork", process.execPath, ["--"]],
+      ["openzwork", process.execPath, ["--"]],
     ]);
   });
 
@@ -64,7 +64,7 @@ describe("Windows Deep Link 启动参数边界", () => {
 
     registerDeepLinkProtocol(logger);
 
-    expect(mocks.register).toHaveBeenCalledWith("zcode", process.execPath, [entry, "--"]);
+    expect(mocks.register).toHaveBeenCalledWith("openzwork", process.execPath, [entry, "--"]);
   });
 
   it("安全注册失败仍记录警告", () => {
@@ -73,15 +73,12 @@ describe("Windows Deep Link 启动参数边界", () => {
 
     registerDeepLinkProtocol(logger);
 
-    expect(logger.warn).toHaveBeenCalledWith("[deep-link] 注册协议失败", { scheme: "zcode" });
+    expect(logger.warn).toHaveBeenCalledWith("[deep-link] 注册协议失败", { scheme: "openzwork" });
     expect(logger.info).not.toHaveBeenCalled();
   });
 
   it.each([
-    "zcode://oauth/callback?code=code%20value&state=state",
-    "zcode://payment/callback?provider=zai&status=return",
-    "zcode://workspace/open?path=C%3A%5CProject%20A%26B",
-    "zcode://share/import?code=abc_DEF-123",
+    "openzwork://workspace/open?path=C%3A%5CProject%20A%26B",
   ])("分隔符保留冷启动和单实例投递中的正常 URL：%s", (url) => {
     const argv = [process.execPath, "--", url];
     expect(extractDeepLinkUrlFromArgs(argv)).toBe(url);
@@ -97,7 +94,7 @@ describe("非 Windows 注册兼容性", () => {
 
     registerDeepLinkProtocol(logger);
 
-    expect(mocks.register).toHaveBeenCalledWith("zcode");
+    expect(mocks.register).toHaveBeenCalledWith("openzwork");
     expect(mocks.registerLinux).toHaveBeenCalledTimes(platform === "linux" ? 1 : 0);
   });
 
@@ -109,7 +106,7 @@ describe("非 Windows 注册兼容性", () => {
 
     registerDeepLinkProtocol(logger);
 
-    expect(mocks.register).toHaveBeenCalledWith("zcode", process.execPath, [entry]);
+    expect(mocks.register).toHaveBeenCalledWith("openzwork", process.execPath, [entry]);
     expect(mocks.registerLinux).not.toHaveBeenCalled();
   });
 });

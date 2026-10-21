@@ -759,12 +759,14 @@ describe("browserDataManager", () => {
     await writeFile(
       join(levelDbPath, "000001.ldb"),
       Buffer.from(
+        "binary\0META:https://browser.example.test\0META:http://localhost:3000\0META:chrome-extension://ignored",
         "latin1",
       ),
     );
 
     await expect(discoverChromeLocalStorageOrigins(localStoragePath)).resolves.toEqual([
       "http://localhost:3000",
+      "https://browser.example.test",
     ]);
   });
 
@@ -774,6 +776,7 @@ describe("browserDataManager", () => {
     await mkdir(levelDbPath, { recursive: true });
     await writeFile(
       join(levelDbPath, "000001.ldb"),
+      Buffer.from("binary\0META:https://browser.example.test", "latin1"),
     );
 
     const result = await importChromeLocalStorage({

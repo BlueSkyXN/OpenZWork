@@ -70,9 +70,9 @@ describe("model provider navigation loading indicator", () => {
   it("按分组返回对应 loading 状态", () => {
     expect(
       shouldShowModelProviderGroupLoadingIndicator({
-        groupId: "preset",
-        presetLoading: true,
-        customLoading: false,
+        groupId: "custom",
+        presetLoading: false,
+        customLoading: true,
       }),
     ).toBe(true);
 

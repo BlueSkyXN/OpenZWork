@@ -46,11 +46,6 @@ describe("detectArchitectureMismatch", () => {
   });
 });
 
-describe("resolveArchitectureDownloadUrl", () => {
-  it("按语言分流到官网下载页", () => {
-  });
-});
-
 describe("formatArchitectureMismatchDialogText", () => {
   const mismatch = { binaryArch: "x64", nativeArch: "arm64" } as const;
 
@@ -59,7 +54,7 @@ describe("formatArchitectureMismatchDialogText", () => {
     expect(text.title).toBe("架构不匹配");
     expect(text.detail).toContain("x64");
     expect(text.detail).toContain("arm64");
-    expect(text.downloadButton).toBe("前往下载");
+    expect(text.confirmButton).toBe("知道了");
   });
 
   it("英文文案包含运行架构与推荐架构", () => {
@@ -67,6 +62,6 @@ describe("formatArchitectureMismatchDialogText", () => {
     expect(text.title).toBe("Architecture Mismatch");
     expect(text.detail).toContain("x64");
     expect(text.detail).toContain("arm64");
-    expect(text.downloadButton).toBe("Download");
+    expect(text.confirmButton).toBe("OK");
   });
 });

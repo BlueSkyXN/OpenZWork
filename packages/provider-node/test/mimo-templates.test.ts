@@ -17,16 +17,11 @@ const apiModelIds = [...currentModelIds, "mimo-v2.5-pro", "mimo-v2.5"];
 
 const templates = [
   ["xiaomi-mimo", "Xiaomi MiMo API", "https://api.xiaomimimo.com/anthropic"],
-  [
-    "xiaomi-mimo-token-plan",
-    "Xiaomi MiMo Token Plan",
-    "https://token-plan-cn.xiaomimimo.com/anthropic",
-  ],
 ] as const;
 
-describe("MiMo API 与 Token Plan 官方模板", () => {
+describe("MiMo API 模板与用户自填地址", () => {
   it.each(["zcode-builtin.json", "zcode-builtin.test.json"])(
-    "%s 两模板复用模型规则，个人地址与旧身份不变",
+    "%s API 模板含新模型，个人地址与旧身份不变",
     async (filename) => {
       const source = new NodeZCodeBuiltinProviderConfigSource({
         bundledFilePath: fileURLToPath(
@@ -81,7 +76,7 @@ describe("MiMo API 与 Token Plan 官方模板", () => {
           }
         }
 
-        // 旧实例可能已手动填 Token Plan 地址；拆模板不能重命名、重新启用或覆盖其地址。
+        // 旧实例可能已手动填 Token Plan 地址；更新模型不能重命名、重新启用或覆盖其地址。
         const personal = new ProviderConfigMap([
           ...templates.map(([templateId]) => ({
             providerId: `new-${templateId}`,
@@ -97,13 +92,15 @@ describe("MiMo API 与 Token Plan 官方模板", () => {
             providerName: "My MiMo",
             enabled: false,
             config: new ProviderConfig({
-              api: new ProviderApiConfig({ baseUrl: templates[1][2] }),
+              api: new ProviderApiConfig({
+                baseUrl: "https://token-plan-cn.xiaomimimo.com/anthropic",
+              }),
               access: new ApiKeyAccessConfig({ apiKey: "old-test-only" }),
             }),
           },
           {
             providerId: "international-mimo",
-            templateId: "xiaomi-mimo-token-plan",
+            templateId: "xiaomi-mimo",
             config: new ProviderConfig({
               group: "standard-personal",
               api: new ProviderApiConfig({
@@ -149,14 +146,14 @@ describe("MiMo API 与 Token Plan 官方模板", () => {
           resolution.registryProviders
             .find((p) => p.providerId === "international-mimo")
             ?.models.map((m) => m.modelId),
-        ).toEqual(["mimo-v2.6-flash"]);
+        ).toEqual(["mimo-v2.6-flash", "mimo-v2.5-pro", "mimo-v2.5"]);
         expect(resolution.registryProviders.some((p) => p.providerId === "legacy-mimo")).toBe(
           false,
         );
         const legacy = resolution.resolvedProviders.find((p) => p.providerId === "legacy-mimo");
         expect(legacy?.config.access?.toJSON()).toMatchObject({ apiKey: "old-test-only" });
         expect(legacy?.providerName).toBe("My MiMo");
-        expect(legacy?.config.api?.baseUrl).toBe(templates[1][2]);
+        expect(legacy?.config.api?.baseUrl).toBe("https://token-plan-cn.xiaomimimo.com/anthropic");
         expect(personal.toJSON()).toEqual(before);
       } finally {
         source.dispose();

@@ -7,6 +7,11 @@ function toPosixPath(value: string) {
   return value.replaceAll("\\", "/");
 }
 
+// 测试通过参数提供平台状态，避免纯逻辑回归依赖本机 Electron 安装。
+vi.mock("electron", () => ({
+  app: { isPackaged: false, getAppPath: () => "/repo/packages/desktop" },
+}));
+
 describe("resolveZCodeBuiltinProviderConfigFilePath", () => {
   it("正式包读取 resources，开发态读取仓库 config", () => {
     expect(

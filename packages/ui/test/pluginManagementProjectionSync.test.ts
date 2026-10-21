@@ -3,8 +3,6 @@ import { act, createElement, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { ZCODE_CUA_OFFICIAL_PLUGIN_ID } from "@zcode/shared";
-import { useCuaComposerEntry } from "@/hooks/useCuaComposerEntry.js";
 import type { IPluginManagementService } from "@zcode/services";
 import {
   usePluginManagementStore,
@@ -246,23 +244,6 @@ it("matches Source settings user scope with its remote project projections", asy
   expect(project.getState().plugins[0]?.enabled).toBe(false);
   expect(other.getState().plugins[0]?.enabled).toBe(true);
   expect(usePluginManagementStore.getState().plugins[0]?.enabled).toBe(true);
-});
-
-it("updates the actual CUA composer entry after a scoped toggle", async () => {
-  Object.defineProperty(navigator, "userAgent", { configurable: true, value: "Macintosh" });
-  vi.mocked(service.listPlugins).mockImplementation(async () => ({
-    plugins: [{ ...plugin(), id: ZCODE_CUA_OFFICIAL_PLUGIN_ID }] as never,
-    diagnostics: [],
-  }));
-  await usePluginManagementStore.getState().refresh(service);
-  const entry = renderHook(() => useCuaComposerEntry({ workspacePath: "/project/a" }));
-  const market = await mount("market");
-  expect(entry.result.current.view.visible).toBe(true);
-  await act(() =>
-    market.getState().setEnabled(ZCODE_CUA_OFFICIAL_PLUGIN_ID, false, service, "workspace"),
-  );
-  expect(entry.result.current.view.visible).toBe(false);
-  entry.unmount();
 });
 
 it("does not let a stuck secondary project keep a successful toggle busy", async () => {

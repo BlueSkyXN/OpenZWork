@@ -1,5 +1,6 @@
 import { access, cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, posix } from "node:path";
+// 来源指纹使用平台路径 join；净化合并曾只保留 posix，导致准备 Dev 副本时报 ReferenceError。
+import { dirname, join, posix } from "node:path";
 
 export const DEV_ELECTRON_PROTOCOL_SCHEME = "openzwork";
 export const DEV_ELECTRON_APP_NAME = "OpenZWork Dev";

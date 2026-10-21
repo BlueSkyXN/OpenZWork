@@ -1,7 +1,6 @@
 import { access } from "node:fs/promises";
 import { join } from "node:path";
 import { clearAppData, DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
-import { readDynamicWorkflowGrayMockStatus } from "../../../helpers/dynamic-workflow-gray.js";
 import {
   denyV4PermissionWithFeedback,
   prepareV4ConversationE2E,
@@ -15,10 +14,7 @@ import {
 // 收起，展开只把同一个滚动区变长。保存窗只由模型调用 SaveWorkflow 打开，所以走合成回放：一次
 // 超长载荷的 tool_use。
 //
-// 文件名带 `gray-always-on`：配置 mock 网关按文件名下发 alwaysOn，工作流工具才在工具集里
-// （与 …-gray-always-on-user-choice 同一个借道）。
-// ⚠ 与本目录其余动态工作流用例一样写好即入 manual-review/pending，**没有在本机运行过**
-// （会启动 Electron，接管用户桌面）。jsdom 量不到的东西（真实高度、滚轮去向、粘性表头）都在这里量。
+// 当前 fork 由本地策略提供工作流工具；真实 SaveWorkflow 弹窗是本场景的可用性屏障。
 const MARKER = "E2E_DWF_SAVE_WINDOW_BOUNDS";
 const FINAL_MARKER = "E2E_DWF_SAVE_WINDOW_BOUNDS_DONE";
 const SAVED_FILE = join(DEFAULT_WORKSPACE, ".zcode", "workflows", "release-check-overlong.dwf.ts");
@@ -125,8 +121,6 @@ describe("动态工作流 · 保存确认窗的长内容", () => {
 
   it("DWS-01 超长说明 + 40 个实参 + 长脚本：一个滚动区、选项钉底、长内容折叠且键盘可达，滚轮只动滚动区，矮屏整窗滚动", async function () {
     this.timeout(240000);
-
-    expect((await readDynamicWorkflowGrayMockStatus()).scenario).toBe("alwaysOn");
 
     await sendV4Prompt(`${MARKER} 把刚才的工作流保存下来`);
     await waitForV4PermissionDialogInComposerDock();

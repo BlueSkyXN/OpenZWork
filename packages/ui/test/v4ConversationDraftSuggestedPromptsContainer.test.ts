@@ -157,99 +157,27 @@ async function applyPendingComposerTextInsert(workspacePath: string, workspaceId
   return request;
 }
 
-const clientScenesResponse = {
-  code: 0,
-  msg: "",
-  data: [
-    {
-      namespace: "zcode",
-      scene: "draft-suggestion",
-      options: {
-        prompts: {
-          id: "prompt",
-          type: "prompt",
-          contents: { cn: "提示词", en: "Prompt" },
-          prompts: { cn: "", en: "" },
-          items: [
-            {
-              id: "recent-commits",
-              type: "prompt",
-              contents: { cn: plainPrompt, en: "Check the workspace commits." },
-              descs: { cn: "", en: "" },
-              labels: { cn: plainLabel, en: "Check commits" },
-              on_finish: null,
-              img: null,
-              share_urls: {},
-            },
-            {
-              id: "create-pdf",
-              type: "prompt",
-              contents: {
-                cn: pluginPrompt,
-                en: "Create a PDF from the workspace.",
-              },
-              descs: { cn: "", en: "" },
-              labels: { cn: pluginLabel, en: "Create PDF" },
-              on_finish: null,
-              img: null,
-              share_urls: {},
-              defaults: { plugin: ["document-skills"] },
-            },
-            {
-              id: "open-automations",
-              type: "prompt",
-              contents: {
-                cn: automationsPrompt,
-                en: "Open Automations.",
-              },
-              descs: { cn: "", en: "" },
-              labels: { cn: automationsLabel, en: "Automations" },
-              on_finish: "UNKNOWN:ACTION, NAVIGATE:AUTOMATIONS",
-              img: null,
-              share_urls: {},
-            },
-            {
-              type: "prompt",
-              contents: {
-                en: "Open Idle-time automations.",
-              },
-              descs: { cn: "", en: "" },
-              img: null,
-              share_urls: {},
-            },
-          ],
-          refer: "",
-          cascades: {},
-        },
-        plugin: {
-          id: "plugin",
-          type: "plugin",
-          contents: { cn: "插件", en: "Plugin" },
-          prompts: { cn: "", en: "" },
-          items: [
-            {
-              id: "document-skills",
-              type: "plugin",
-              contents: {
-                cn: "document-skills@zcode-plugins-official",
-                en: "document-skills@zcode-plugins-official",
-              },
-              descs: { cn: "", en: "" },
-              labels: { cn: "文档技能", en: "Document skills" },
-              on_finish: null,
-              img: null,
-              share_urls: {},
-            },
-          ],
-          refer: "",
-          cascades: {},
-        },
-      },
-      created_at: 1,
-      updated_at: 2,
+const localPrompts = [
+  { id: "recent-commits", label: { cn: plainLabel }, prompt: { cn: plainPrompt } },
+  {
+    id: "create-pdf",
+    label: { cn: pluginLabel },
+    prompt: { cn: pluginPrompt },
+    plugin: {
+      stableId: "document-skills@zcode-plugins-official",
+      label: { cn: "文档技能", en: "Document skills" },
     },
-  ],
-};
+  },
+  {
+    id: "open-automations",
+    label: { cn: automationsLabel },
+    prompt: { cn: automationsPrompt },
+    actions: ["NAVIGATE:AUTOMATIONS"],
+  },
+];
+vi.mock("@/v4/featureSuggestedPrompts.js", () => ({
+  getRecommendedPromptPool: () => localPrompts,
+}));
 
 describe("ConversationDraftSuggestedPromptsContainer", () => {
   beforeEach(() => {
@@ -300,7 +228,6 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     invalidateDraftSession.mockReset();
     invalidateDraftSession.mockResolvedValue(undefined);
     listClientScenes.mockReset();
-    listClientScenes.mockResolvedValue(clientScenesResponse);
     loggerWarn.mockReset();
     toast.mockReset();
     let nextToastId = 1;
@@ -314,7 +241,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     cleanup();
   });
 
-  it("keeps the recommendation slot after the async list arrives", async () => {
+  it("reserves an in-flow slot for the local list below the composer", async () => {
     const view = render(
       createElement(ConversationDraftSuggestedPromptsContainer, {
         className: "mt-3",
@@ -328,8 +255,8 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     expect(slot?.getAttribute("data-v4-draft-suggested-prompts-slot")).toBe("true");
   });
 
-  it("keeps the slot mounted while the async list is pending", () => {
-    listClientScenes.mockImplementation(() => new Promise(() => {}));
+  it("keeps the in-flow slot mounted while the local list is empty", () => {
+    const originalPrompts = localPrompts.splice(0);
 
     const view = render(
       createElement(ConversationDraftSuggestedPromptsContainer, {
@@ -340,36 +267,7 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     const slot = view.container.firstElementChild;
     expect(slot?.getAttribute("data-v4-draft-suggested-prompts-slot")).toBe("true");
     expect(slot?.childElementCount).toBe(0);
-  });
-
-  it("keeps the list empty when client scenes only has the legacy ai-writing scene", async () => {
-    listClientScenes.mockResolvedValue({
-      code: 0,
-      msg: "",
-      data: [{ ...clientScenesResponse.data[0], scene: "ai-writing" }],
-    });
-
-    render(
-      createElement(ConversationDraftSuggestedPromptsContainer, {
-        workspacePath: "/tmp/suggested-prompt-scenes",
-      }),
-    );
-
-    await waitFor(() => expect(listClientScenes).toHaveBeenCalledOnce());
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
-  });
-
-  it("keeps the list empty and logs a warning when client scenes fails", async () => {
-    listClientScenes.mockRejectedValue(new Error("offline"));
-
-    render(
-      createElement(ConversationDraftSuggestedPromptsContainer, {
-        workspacePath: "/tmp/suggested-prompt-scenes-error",
-      }),
-    );
-
-    await waitFor(() => expect(loggerWarn).toHaveBeenCalledOnce());
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    localPrompts.push(...originalPrompts);
   });
 
   it("filters Automations navigation prompts when the navigation capability is absent", async () => {
@@ -402,32 +300,6 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
   });
 
-  it("reports a Desktop template click before plugin resolution", async () => {
-    const workspacePath = "/tmp/suggested-prompt-desktop-telemetry";
-    render(
-      createElement(ConversationDraftSuggestedPromptsContainer, {
-        workspacePath,
-        isDesktop: true,
-      }),
-    );
-
-    fireEvent.click(await screen.findByRole("button", { name: pluginLabel }));
-
-    expect(reportTelemetryEvent).toHaveBeenCalledOnce();
-    expect(reportTelemetryEvent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        elementName: "prompt_template_ck",
-        eventRegion: "app.session",
-        eventType: "ck",
-        eventText: pluginLabel,
-        eventExtraDetail: {
-          template_id: "create-pdf",
-          template_prompt: pluginPrompt,
-        },
-      }),
-    );
-  });
-
   it("does not report template clicks on non-Desktop surfaces", async () => {
     const workspacePath = "/tmp/suggested-prompt-web-telemetry";
     render(
@@ -446,23 +318,6 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
           ?.text,
       ).toBe(plainPrompt),
     );
-  });
-
-  it("opens the Idle-time Automations tab without prefilling or navigating twice", async () => {
-    const onOpenAutomations = vi.fn();
-    render(
-      createElement(ConversationDraftSuggestedPromptsContainer, {
-        workspacePath,
-        onOpenAutomations,
-      }),
-    );
-
-    expect(onOpenAutomations).toHaveBeenCalledOnce();
-    expect(onOpenAutomations).toHaveBeenCalledWith("idle");
-    expect(
-      useZCodeSessionStore.getState().getWorkspaceState(workspacePath).composerTextInsertRequest,
-    ).toBeNull();
-    expect(getPluginReferenceCatalog).not.toHaveBeenCalled();
   });
 
   it("replaces the workspace draft with the plain commit prompt without sending", async () => {
@@ -716,7 +571,6 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() =>
       expect(installPlugin).toHaveBeenCalledWith({
-        telemetry: { entry: "recommended_prompt", client_kind: "desktop" },
         workspacePath,
         workspaceIdentity,
         remoteSessionId: "remote-runtime",
@@ -889,7 +743,6 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     await waitFor(() =>
       expect(setPluginEnabled).toHaveBeenCalledWith({
-        telemetry: { entry: "recommended_prompt", client_kind: "desktop" },
         workspacePath,
         pluginId: "document-skills@zcode-plugins-official",
         enabled: true,

@@ -163,48 +163,6 @@ describe("node repl tool display", () => {
     expect(html).not.toContain("Attached image");
   });
 
-  it("投影 CUA App 身份，摘要保留模型标题且不重复 App 名", () => {
-    const toolCall = {
-      toolId: "tool-node-repl-cua-app",
-      toolName: "mcp__node_repl__js",
-      kind: "mcp__node_repl__js",
-      title: "在备忘录里新建一条笔记",
-      input: { code: "await app.elements(); await el.click();", title: "在备忘录里新建一条笔记" },
-      output: "clicked",
-      raw: {
-        schemaVersion: 1,
-        display: {
-          kind: "node_repl_images",
-          app: { appKey: "darwin:com.apple.notes", displayName: "Notes" },
-        },
-      },
-      status: "completed",
-    } as const;
-
-    const model = buildNodeReplDisplayModel(toolCall);
-    expect(model.app).toEqual({ appKey: "darwin:com.apple.notes", displayName: "Notes" });
-
-    const html = renderWithProviders(
-      createElement(NodeReplToolCallBlock, {
-        toolCallNode: { toolCall, childToolCalls: [] },
-        workspacePath: "/workspace",
-        displayModel,
-        viewerSource: null,
-        rawFileSummaries: [],
-        isRunning: false,
-        statusLabel: "已执行",
-        childToolList: null,
-        forceOpen: false,
-        canToggle: true,
-        showIcon: true,
-      }),
-    );
-
-    // 摘要行仍只显示模型给的 title，不额外拼 App 名（否则和 title 重复）。
-    expect(html).toContain("在备忘录里新建一条笔记");
-    expect(html).not.toContain("Notes");
-  });
-
   it("没有 App 身份时保持原有的 node_repl 图标路径", () => {
     const model = buildNodeReplDisplayModel({
       toolId: "tool-node-repl-no-app",

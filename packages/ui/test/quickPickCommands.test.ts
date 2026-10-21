@@ -82,10 +82,7 @@ describe("createQuickPickCommands", () => {
       "switch-theme",
       "skills-settings",
       "mcp-settings",
-      "feedback",
       "community",
-      "product-docs",
-      "login",
     ]);
     expect(commands.find((command) => command.id === "open-workspace")).toMatchObject({
       sectionId: "suggested",
@@ -132,9 +129,7 @@ describe("createQuickPickCommands", () => {
     expect(commands.find((command) => command.id === "add-review-tab")).toMatchObject({
       sectionId: "panels",
     });
-    expect(commands.find((command) => command.id === "product-docs")).toMatchObject({
-      sectionId: "app",
-    });
+
   });
 
   it("keeps unavailable workspace opening visible but disabled", () => {
@@ -215,10 +210,10 @@ describe("createQuickPickCommands", () => {
     });
 
     commands.find((item) => item.id === "skills-settings")?.run();
-    commands.find((item) => item.id === "product-docs")?.run();
+    commands.find((item) => item.id === "community")?.run();
 
     expect(handlers.openSkillsSettings).toHaveBeenCalledTimes(1);
-    expect(handlers.openProductDocs).toHaveBeenCalledTimes(1);
+    expect(handlers.openCommunity).toHaveBeenCalledTimes(1);
   });
 
   it("has locale messages for every visible command label", () => {
@@ -260,22 +255,14 @@ describe("createQuickPickCommands", () => {
     }
   });
 
-  it("uses logout instead of login for authenticated users", () => {
-    const commands = createQuickPickCommands({
-      allowOpenWorkspace: true,
-      canOpenCommunity: false,
-      isSidebarVisible: true,
-      isLoggedIn: true,
-      themeTarget: "dark",
-      shortcuts,
-      handlers: createHandlers(),
-    });
-
-    expect(commands.some((command) => command.id === "login")).toBe(false);
-    expect(commands.find((command) => command.id === "logout")).toMatchObject({
-      sectionId: "app",
-      titleId: "quickPick.command.logout",
-    });
-    expect(commands.some((command) => command.id === "community")).toBe(false);
+  it("keeps the command section taxonomy stable", () => {
+    expect(QUICK_PICK_SECTION_ORDER).toEqual([
+      "suggested",
+      "chat",
+      "navigation",
+      "panels",
+      "configure",
+      "app",
+    ]);
   });
 });
