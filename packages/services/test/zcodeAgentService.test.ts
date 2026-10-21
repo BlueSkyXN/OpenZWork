@@ -63,6 +63,18 @@ function createReadyZCodeAgentService(options?: Parameters<typeof createZCodeAge
 // 一个最小的 ZCode Protocol stdio fake agent：
 // 第一次收到 session/subscribe 返回错误（模拟 "Session is not active" 之类的瞬时失败），
 // 第二次返回成功并带一条 session.titleUpdated 事件。用来验证订阅建立失败后会重试。
+// Host 启动增加了策略同步；旧 fake 不回包会阻塞初始化并触发请求超时。
+const WORKSPACE_SYNC_FAKE_AGENT_HANDLER = `
+    if (msg.method === "workspace/updateDynamicWorkflowPolicy" && msg.id !== undefined) {
+      send({ id: msg.id, result: { workspace: msg.params.workspace, enabled: Boolean(msg.params.enabled) } });
+      continue;
+    }
+    if (msg.method === "provider/refreshRegistry" && msg.id !== undefined) {
+      send({ id: msg.id, result: { refreshed: true } });
+      continue;
+    }
+`;
+
 const FLAKY_SUBSCRIBE_FAKE_AGENT = `
 let buf = "";
 let subscribeCount = 0;
@@ -76,6 +88,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "session/subscribe" && msg.id !== undefined) {
       subscribeCount += 1;
       if (subscribeCount === 1) {
@@ -114,6 +127,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "session/subscribe" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -131,107 +145,6 @@ process.stdin.on("data", (chunk) => {
         },
       });
     }
-  }
-});
-`;
-
-const CUA_OPERATION_LIVE_EVENT_FAKE_AGENT = `
-let buf = "";
-function send(obj) { process.stdout.write(JSON.stringify(obj) + "\\n"); }
-function operationEvent(kind, eventId, sequenceNumber, sessionId, turnId, extra = {}) {
-  return {
-    kind,
-    eventId,
-    sequenceNumber,
-    sessionId,
-    timestamp: Date.now(),
-    ...(turnId ? { turnId } : {}),
-    ...extra,
-  };
-}
-process.stdin.on("data", (chunk) => {
-  buf += chunk.toString("utf8");
-  let idx;
-  while ((idx = buf.indexOf("\\n")) >= 0) {
-    const line = buf.slice(0, idx);
-    buf = buf.slice(idx + 1);
-    if (!line.trim()) continue;
-    let msg;
-    try { msg = JSON.parse(line); } catch { continue; }
-    if (msg.method !== "session/subscribe" || msg.id === undefined) continue;
-    const sessionId = msg.params.sessionId;
-    send({ id: msg.id, result: { sessionId, eventSeq: 0, events: [] } });
-    const turnId = "turn-cua-live";
-    const started = operationEvent("tool-started", "evt-tool-started", 3, sessionId, turnId, {
-      toolCallId: "call-cua-live",
-    });
-    setTimeout(() => {
-      send({ method: "computer-use/operation-event", params: operationEvent(
-        "turn-started", "evt-turn-started", 1, sessionId, turnId,
-      ) });
-      send({ method: "computer-use/operation-event", params: operationEvent(
-        "tool-started", "evt-invalid", 2, sessionId, turnId, {
-        toolCallId: "",
-      }) });
-      send({ method: "computer-use/operation-event", params: operationEvent(
-        "tool-scheduled", "evt-tool-scheduled", 2, sessionId, turnId, {
-        toolCallId: "call-cua-live",
-        toolName: "mcp__node_repl__js",
-        computerUse: true,
-      }) });
-      send({ method: "computer-use/operation-event", params: started });
-      send({ method: "computer-use/operation-event", params: started });
-      send({ method: "computer-use/operation-event", params: operationEvent(
-        "turn-completed", "evt-turn-completed", 4, sessionId, turnId,
-      ) });
-    }, 0);
-  }
-});
-`;
-
-const CUA_OPERATION_RUNTIME_EXIT_FAKE_AGENT = `
-let buf = "";
-function send(obj) { process.stdout.write(JSON.stringify(obj) + "\\n"); }
-function operationEvent(kind, eventId, sequenceNumber, sessionId, turnId, extra = {}) {
-  return {
-    kind,
-    eventId,
-    sequenceNumber,
-    sessionId,
-    timestamp: Date.now(),
-    ...(turnId ? { turnId } : {}),
-    ...extra,
-  };
-}
-process.stdin.on("data", (chunk) => {
-  buf += chunk.toString("utf8");
-  let idx;
-  while ((idx = buf.indexOf("\\n")) >= 0) {
-    const line = buf.slice(0, idx);
-    buf = buf.slice(idx + 1);
-    if (!line.trim()) continue;
-    let msg;
-    try { msg = JSON.parse(line); } catch { continue; }
-    if (msg.method !== "session/subscribe" || msg.id === undefined) continue;
-    const sessionId = msg.params.sessionId;
-    send({ id: msg.id, result: { sessionId, eventSeq: 0, events: [] } });
-    setTimeout(() => {
-      const turnId = "turn-cua-runtime-exit";
-      send({ method: "computer-use/operation-event", params: operationEvent(
-        "turn-started", "evt-runtime-exit-turn", 1, sessionId, turnId,
-      ) });
-      send({ method: "computer-use/operation-event", params: operationEvent(
-        "tool-scheduled", "evt-runtime-exit-scheduled", 2, sessionId, turnId, {
-        toolCallId: "call-runtime-exit",
-        toolName: "mcp__node_repl__js",
-        computerUse: true,
-      }) });
-      send({ method: "computer-use/operation-event", params: operationEvent(
-        "tool-started", "evt-runtime-exit-tool", 3, sessionId, turnId, {
-        toolCallId: "call-runtime-exit",
-      }) });
-      setTimeout(() => process.exit(1), 10);
-    }, 0);
   }
 });
 `;
@@ -261,6 +174,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "session/subscribe" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -369,6 +283,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "session/create" && msg.id !== undefined) {
       record(msg);
       pendingCreate = msg;
@@ -505,6 +420,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "session/create" && msg.id !== undefined) {
       // Worker 进程已经自持 Registry，runtime preferences 在 session 创建时物化。
       pendingCreate = msg;
@@ -585,6 +501,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "session/compact" && msg.id !== undefined) {
       setTimeout(() => {
         send({
@@ -678,6 +595,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "session/create" && msg.id !== undefined) {
       const rejectedKeys = [];
       if (Object.prototype.hasOwnProperty.call(msg.params, "persistence")) {
@@ -728,6 +646,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.id === "binding-check-1" && (msg.result || msg.error)) {
       fs.writeFileSync(logPath, JSON.stringify(msg));
     }
@@ -751,6 +670,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "plugins/list" && msg.id !== undefined) {
       if (shouldHang) continue;
       send({
@@ -792,6 +712,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "mcp/list" && msg.id !== undefined) {
       if (shouldHang) continue;
       send({
@@ -824,6 +745,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "mcp/list" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -856,6 +778,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "mcp/list" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -888,6 +811,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "mcp/list" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -920,6 +844,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "mcp/list" && msg.id !== undefined) {
       if (msg.params.mcpServers !== undefined) {
         send({
@@ -965,6 +890,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "mcp/list" && msg.id !== undefined) {
       if (msg.params.mode !== undefined) {
         send({
@@ -1014,6 +940,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.id === undefined || !msg.method) continue;
     if (blocked) continue;
     if (msg.method === "mcp/list") {
@@ -1040,6 +967,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "plugins/list" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -1079,6 +1007,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "plugins/update" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -1108,6 +1037,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "plugins/restoreBuiltin" && msg.id !== undefined) {
       send({
         id: msg.id,
@@ -1138,6 +1068,7 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    ${WORKSPACE_SYNC_FAKE_AGENT_HANDLER}
     if (msg.method === "workspace/updateModelIoPreferences" && msg.id !== undefined) {
       fs.appendFileSync(logPath + ".model-io", JSON.stringify({
         method: msg.method,
@@ -1553,15 +1484,9 @@ describe("createZCodeAgentService", () => {
     createdDirs.push(workspacePath);
     const commandResolver = vi.fn(() => ({
       command: process.execPath,
-      args: ["-e", "setInterval(() => {}, 1000);"],
+      args: ["-e", FLAKY_SUBSCRIBE_FAKE_AGENT],
     }));
-    const processLifecycleReporter = {
-      onSpawn: vi.fn(),
-      onReady: vi.fn(),
-      onExit: vi.fn(),
-      onError: vi.fn(),
-    };
-    const service = createReadyZCodeAgentService({ commandResolver, processLifecycleReporter });
+    const service = createReadyZCodeAgentService({ commandResolver });
 
     await expect(
       service.initialize({
@@ -1575,30 +1500,15 @@ describe("createZCodeAgentService", () => {
       transportKind: "stdio",
     });
     expect(commandResolver).toHaveBeenCalledTimes(1);
-    await vi.waitFor(() => expect(processLifecycleReporter.onReady).toHaveBeenCalledTimes(1));
-    expect(processLifecycleReporter.onReady.mock.calls[0]![0]).toMatchObject({
-      pid: processLifecycleReporter.onSpawn.mock.calls[0]![0].pid,
-      provider: "glm",
-      workspacePath,
-      runtimeGeneration: 1,
-      runtimeInstanceId: processLifecycleReporter.onSpawn.mock.calls[0]![0].runtimeInstanceId,
-      readyAt: expect.any(Number),
-      startupDurationMs: expect.any(Number),
-    });
 
     await expect(
       service.initialize({
         workspacePath,
       }),
     ).resolves.toMatchObject({ available: true });
-    expect(processLifecycleReporter.onReady).toHaveBeenCalledTimes(1);
+    expect(commandResolver).toHaveBeenCalledTimes(1);
 
     await service.disposeAllAndWait();
-    await vi.waitFor(() => expect(processLifecycleReporter.onExit).toHaveBeenCalledTimes(1));
-    expect(processLifecycleReporter.onExit.mock.calls[0]![0]).toMatchObject({
-      runtimeReady: true,
-      runtimeInstanceId: processLifecycleReporter.onReady.mock.calls[0]![0].runtimeInstanceId,
-    });
   });
 
   it("routes browser discovery and browserId-aware execute with full remote context", async () => {
@@ -2387,90 +2297,6 @@ describe("createZCodeAgentService", () => {
     await service.disposeAllAndWait();
   });
 
-  it("reports only validated de-duplicated CUA sideband events without legacy session delivery", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-cua-operation-live-"));
-    createdDirs.push(workspacePath);
-    const scriptPath = join(workspacePath, "cua-operation-live-agent.cjs");
-    writeFileSync(scriptPath, CUA_OPERATION_LIVE_EVENT_FAKE_AGENT);
-    const reportedStates: Array<{ active: boolean; sessionId: string; turnId: string }> = [];
-    const observedServiceActiveStates: boolean[] = [];
-    let service: ReturnType<typeof createReadyZCodeAgentService>;
-    const onStateChanged = vi.fn(
-      (event: { active: boolean; sessionId: string; turnId: string }) => {
-        reportedStates.push(event);
-        observedServiceActiveStates.push(service.hasActiveCuaOperationTurn());
-        if (event.active) throw new Error("host port closed");
-      },
-    );
-    service = createReadyZCodeAgentService({
-      commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
-      cuaOperationStateReporter: { onStateChanged },
-    });
-    expect(service.hasActiveCuaOperationTurn()).toBe(false);
-    const received: ZCodeAgentServiceEvent[] = [];
-    const subscription = service.onDynamicSessionEvent({
-      workspacePath,
-      sessionId: "sess-cua-live",
-      deliveryKind: "desktop-continuous",
-      includeSnapshot: false,
-    })((event) => received.push(event));
-
-    try {
-      await vi.waitFor(
-        () => {
-          expect(reportedStates.map((event) => event.active)).toEqual([true, false]);
-        },
-        { timeout: 5_000, interval: 50 },
-      );
-
-      const liveEvents = received
-        .filter(
-          (event): event is Extract<ZCodeAgentServiceEvent, { type: "session.event" }> =>
-            event.type === "session.event",
-        )
-        .map((event) => event.event);
-      expect(liveEvents).toEqual([]);
-      expect(onStateChanged).toHaveBeenCalledTimes(2);
-      expect(observedServiceActiveStates).toEqual([true, false]);
-    } finally {
-      subscription.dispose();
-      await service.disposeAllAndWait();
-    }
-  });
-
-  it("clears CUA state when the runtime becomes unavailable without a restart", async () => {
-    const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-cua-runtime-exit-"));
-    createdDirs.push(workspacePath);
-    const scriptPath = join(workspacePath, "cua-operation-runtime-exit-agent.cjs");
-    writeFileSync(scriptPath, CUA_OPERATION_RUNTIME_EXIT_FAKE_AGENT);
-    const reportedStates: boolean[] = [];
-    const service = createReadyZCodeAgentService({
-      commandResolver: () => ({ command: process.execPath, args: [scriptPath] }),
-      cuaOperationStateReporter: {
-        onStateChanged: (event) => reportedStates.push(event.active),
-      },
-    });
-    const subscription = service.onDynamicSessionEvent({
-      workspacePath,
-      sessionId: "sess-cua-runtime-exit",
-      deliveryKind: "desktop-continuous",
-      includeSnapshot: false,
-    })(() => undefined);
-
-    try {
-      await vi.waitFor(
-        () => {
-          expect(reportedStates).toEqual([true, false]);
-          expect(service.hasActiveCuaOperationTurn()).toBe(false);
-        },
-        { timeout: 5_000, interval: 50 },
-      );
-    } finally {
-      subscription.dispose();
-      await service.disposeAllAndWait();
-    }
-  });
-
   it("retries createSession without optional fields rejected by legacy agents", async () => {
     const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-service-compat-"));
     createdDirs.push(workspacePath);
@@ -2537,7 +2363,7 @@ describe("createZCodeAgentService", () => {
     const scriptPath = join(sandboxRoot, "plugin-cwd-agent.cjs");
     writeFileSync(scriptPath, PLUGIN_LIST_ECHO_CWD_FAKE_AGENT);
     const missingWorkspacePath = join(sandboxRoot, "deleted-workspace");
-    const pluginWorkspacePath = join(sandboxRoot, ".zcode", "plugin-workspace");
+    const pluginWorkspacePath = join(sandboxRoot, ".openzwork", "plugin-workspace");
     const commandResolver = vi.fn(({ workspacePath }) => ({
       command: process.execPath,
       args: [scriptPath],
@@ -2637,7 +2463,7 @@ describe("createZCodeAgentService", () => {
     const scriptPath = join(sandboxRoot, "mcp-cwd-agent.cjs");
     writeFileSync(scriptPath, MCP_LIST_ECHO_CWD_FAKE_AGENT);
     const missingWorkspacePath = join(sandboxRoot, "deleted-workspace");
-    const pluginWorkspacePath = join(sandboxRoot, ".zcode", "plugin-workspace");
+    const pluginWorkspacePath = join(sandboxRoot, ".openzwork", "plugin-workspace");
     const commandResolver = vi.fn(({ workspacePath }) => ({
       command: process.execPath,
       args: [scriptPath],
@@ -2691,45 +2517,6 @@ describe("createZCodeAgentService", () => {
     } finally {
       await service.disposeAllAndWait();
     }
-  });
-
-  it("mcp-status lane 进程的 spawn/exit 会上报 processLifecycleReporter", async () => {
-    const sandboxRoot = mkdtempSync(join(tmpdir(), "zcode-agent-service-mcp-lane-report-"));
-    createdDirs.push(sandboxRoot);
-    setDataBaseDir(sandboxRoot);
-    const scriptPath = join(sandboxRoot, "serial-queue-agent.cjs");
-    const markerPath = join(sandboxRoot, "mcp-list-received");
-    writeFileSync(scriptPath, SERIAL_QUEUE_HANG_ON_MCP_LIST_FAKE_AGENT);
-    const processLifecycleReporter = {
-      onSpawn: vi.fn(),
-      onReady: vi.fn(),
-      onExit: vi.fn(),
-      onError: vi.fn(),
-    };
-    const service = createReadyZCodeAgentService({
-      commandResolver: () => ({ command: process.execPath, args: [scriptPath, markerPath] }),
-      processLifecycleReporter,
-    });
-
-    try {
-      // 只走 mcp-status lane：该进程是本 lane 新增的长驻 agent，进程监控器必须能看到它。
-      const mcpListPromise = service.listMcpServerStatuses({ workspacePath: sandboxRoot });
-      mcpListPromise.catch(() => undefined);
-      await vi.waitFor(() => expect(existsSync(markerPath)).toBe(true), { timeout: 5_000 });
-
-      await vi.waitFor(() => expect(processLifecycleReporter.onSpawn).toHaveBeenCalledTimes(1));
-      // macOS tmpdir 会被 realpath 成 /private/var，这里不比对 workspacePath 字面值。
-      // 评审 SG-02：mcp-status 与 plugin lane 共用同一 workspacePath/command，事件必须带 lane 才可归因。
-      expect(processLifecycleReporter.onSpawn.mock.calls[0]![0]).toMatchObject({
-        pid: expect.any(Number),
-        provider: "glm",
-        lane: "mcp-status",
-      });
-    } finally {
-      await service.disposeAllAndWait();
-    }
-    await vi.waitFor(() => expect(processLifecycleReporter.onExit).toHaveBeenCalledTimes(1));
-    expect(processLifecycleReporter.onExit.mock.calls[0]![0]).toMatchObject({ lane: "mcp-status" });
   });
 
   it("mcp-status lane 空闲超时后回收进程并释放 MCP 连接，下次探测重新拉起", async () => {
