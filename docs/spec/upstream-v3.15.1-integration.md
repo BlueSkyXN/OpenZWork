@@ -96,3 +96,5 @@ sequenceDiagram
 - WP-05 已移除的 telemetry/ARMS 发送、采样、上报与其 UI hook 专属测试随该领域清理；混合 IPC、URL 校验、通用协议与本地日志导出断言保留。物理删除约束继续由 `tests/private-cleanup/cleanup.test.cjs` 验证，核心清单不减少。
 
 - 根单元测试统一注册到 Vitest：新增的本地路径、记忆迁移、命令改名和本地使用统计回归不再在 Vitest worker 中启动另一个 Node test runner。断言、隔离目录和平台跳过条件保留，文件系统观察改用等价的 Vitest spy。
+
+- WP-04/06/07 已移除的官方账号、套餐、Client Scenes、分享、云端反馈和自动更新专属回归随对应实现退役；包含性能模式、本地反馈 CAS、workspace deep link、IPC URL 验证或协议 ACK 的混合文件保留这些场景。
