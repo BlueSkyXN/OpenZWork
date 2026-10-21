@@ -5,7 +5,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { after, test } from "node:test";
+import { afterAll as after, test } from "vitest";
 import { build } from "esbuild";
 
 const fixtureRoot = await mkdtemp(join(tmpdir(), "ozw-desktop-storage-"));

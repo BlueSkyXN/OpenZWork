@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { test } from "node:test";
+import { test } from "vitest";
 import { stageBundledSkills } from "../../../scripts/zcode-distribution/assets.mjs";
 import { bundledSkillPackRequiredPaths } from "../../../apps/zcode-cli/packages/cli/scripts/sea-bundled-skill-assets.mjs";
 

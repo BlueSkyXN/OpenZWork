@@ -1,12 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { ProviderConfig, ProviderConfigMap, type ModelSelectionView } from "@zcode/provider";
+import { type ModelSelectionView } from "@zcode/provider";
 import { zcodeProtocolMethods } from "@zcode/shared";
 import { V4_METHODS } from "@zcode/shared/zcode-protocol-v4";
 
 // Host 初始化先同步工作流策略；mock 按协议方法回复，避免把 Command ACK 当成所有请求的结果。
 function createAgentRequestMock(handler: (method: string, params?: unknown) => Promise<unknown>) {
-  return vi
-      .fn(async (method: string, params?: unknown) => {
+  return vi.fn(async (method: string, params?: unknown) => {
     if (method === "workspace/updateDynamicWorkflowPolicy") {
       const policy = params as { workspace: unknown; enabled: boolean };
       return { workspace: policy.workspace, enabled: policy.enabled };
@@ -480,19 +479,19 @@ describe("createZCodeAgentService provider registry", () => {
         revisionAtDecision: 1,
       }));
       const getClient = vi.fn(async () => ({
-      request,
-      transportKind: "stdio" as const,
-      onNotification: () => ({ dispose() {} }),
-      onRequest: () => ({ dispose() {} }),
-      onClose: () => ({ dispose() {} }),
-    }));
+        request,
+        transportKind: "stdio" as const,
+        onNotification: () => ({ dispose() {} }),
+        onRequest: () => ({ dispose() {} }),
+        onClose: () => ({ dispose() {} }),
+      }));
       vi.resetModules();
       vi.doMock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
-      ZCodeAgentProcessManager: class extends MockProcessManagerBase {
-        getClient = getClient;
-        disposeAll() {}
-      },
-    }));
+        ZCodeAgentProcessManager: class extends MockProcessManagerBase {
+          getClient = getClient;
+          disposeAll() {}
+        },
+      }));
       const { createZCodeAgentService } = await import("../src/zcode-agent/zcodeAgentService.js");
       const service = createZCodeAgentService({ modelSelectionReadinessSource: { getView } });
       const workspace = {
@@ -521,8 +520,7 @@ describe("createZCodeAgentService provider registry", () => {
         await expect(command).resolves.toMatchObject({ status: "accepted" });
         expect(getView).toHaveBeenCalledTimes(1);
         expect(getClient).toHaveBeenCalledTimes(1);
-        expect(request.mock.calls
-      .filter(([method]) => method === V4_METHODS.command)).toEqual([
+        expect(request.mock.calls.filter(([method]) => method === V4_METHODS.command)).toEqual([
           [
             V4_METHODS.command,
             expect.objectContaining({ commandId: "first-input", type: "sendText" }),
@@ -582,8 +580,7 @@ describe("createZCodeAgentService provider registry", () => {
       onRequest: () => { dispose(): void };
       onClose: () => { dispose(): void };
     }> = [];
-    const getClient = vi
-      .fn(async () => {
+    const getClient = vi.fn(async () => {
       const request = createAgentRequestMock(async (method: string) => {
         throw new Error(`Unexpected method ${method}`);
       });
@@ -824,8 +821,7 @@ describe("createZCodeAgentService provider registry", () => {
     });
 
     expect(calls).toEqual([zcodeProtocolMethods.sessionCreate]);
-    const createCalls = request.mock.calls
-      .filter(
+    const createCalls = request.mock.calls.filter(
       ([method]) => method === zcodeProtocolMethods.sessionCreate,
     );
     expect(createCalls).toHaveLength(1);

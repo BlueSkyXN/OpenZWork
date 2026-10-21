@@ -1,10 +1,19 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { after, test } from "node:test";
+import { afterAll as after, test } from "vitest";
 import { setDataBaseDir } from "../src/paths.js";
 import { runDesktopMemoryMigration } from "../../../packages/desktop/src/main/desktopMemoryMigration.js";
 import { createMemoryService } from "../src/memory/memoryService.js";
@@ -277,8 +286,7 @@ test("场景 6a：中断进程遗留的 tmp 残留在下次迁移开始时被清
   // 使用迁移器自有 UUID/PID 命名格式，且 PID 超出系统 PID 范围，确定属于陈旧文件。
   const staleTmpName =
     ".MEMORY.md.memory-migration-00000000-0000-4000-8000-000000000001.2147483647.tmp";
-  const activeTmpName =
-    `.topic.md.memory-migration-00000000-0000-4000-8000-000000000002.${process.pid}.tmp`;
+  const activeTmpName = `.topic.md.memory-migration-00000000-0000-4000-8000-000000000002.${process.pid}.tmp`;
   await writeFile(join(staleTmpDir, staleTmpName), "partial\n", "utf8");
   await writeFile(join(staleTmpDir, activeTmpName), "in progress\n", "utf8");
 
@@ -320,8 +328,8 @@ test("Desktop 接线：dataBaseDir 下 catalog 可见且 migration marker 同根
   assert.ok(catalog.some((workspace) => workspace.id === "other-bbbbbbbbbbbbbbbb"));
   assert.ok(events.every((event) => event.level !== "warn"));
   assert.ok(
-    await readFile(getMemoryMigrationMarkerPath(targetStorageRoot), "utf8").then((raw) =>
-      memoryMigrationMarkerSchema.safeParse(JSON.parse(raw)).success,
+    await readFile(getMemoryMigrationMarkerPath(targetStorageRoot), "utf8").then(
+      (raw) => memoryMigrationMarkerSchema.safeParse(JSON.parse(raw)).success,
     ),
   );
 });
@@ -336,7 +344,12 @@ test("真实子进程 kill + 重启：清理未提交 tmp、补齐剩余文件�
   const migrationModule = fileURLToPath(
     new URL("../../shared/src/node/memoryMigration.ts", import.meta.url),
   );
-  const workerArgs = ["--import", "tsx", "--input-type=module", "-e", `
+  const workerArgs = [
+    "--import",
+    "tsx",
+    "--input-type=module",
+    "-e",
+    `
     import { pathToFileURL } from "node:url";
     import { open } from "node:fs/promises";
     const { migrateLegacyProjectMemories } = await import(pathToFileURL(process.env.MIGRATION_MODULE ?? "").href);
@@ -357,7 +370,8 @@ test("真实子进程 kill + 重启：清理未提交 tmp、补齐剩余文件�
       ...input,
       logger: process.env.MIGRATION_MODE === "pause" ? logger : undefined,
     });
-  `];
+  `,
+  ];
   const spawnWorker = (mode: "block-before-file" | "migrate") => {
     const child = spawn(process.execPath, workerArgs, {
       cwd: process.cwd(),
@@ -379,7 +393,8 @@ test("真实子进程 kill + 重启：清理未提交 tmp、补齐剩余文件�
       child.once("error", rejectExit);
       child.once("exit", (code, signal) => {
         if (code === 0 && signal === null) resolveExit();
-        else if (signal === "SIGKILL") rejectExit(new Error("migration worker killed with SIGKILL"));
+        else if (signal === "SIGKILL")
+          rejectExit(new Error("migration worker killed with SIGKILL"));
         else rejectExit(new Error(`migration worker exited ${code}/${signal}: ${stderr.trim()}`));
       });
     });
@@ -393,14 +408,22 @@ test("真实子进程 kill + 重启：清理未提交 tmp、补齐剩余文件�
       await access(blockerPath);
       break;
     } catch {
-      if (Date.now() - startedAt > 20_000) throw new Error("migration worker did not reach temp stage");
+      if (Date.now() - startedAt > 20_000)
+        throw new Error("migration worker did not reach temp stage");
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
   }
   interrupted.child.kill("SIGKILL");
   await assert.rejects(interrupted.done, /SIGKILL/);
 
-  const memoryTarget = join(targetStorageRoot, "cli", "memories", "projects", "demo-aaaaaaaaaaaaaaaa", "memory");
+  const memoryTarget = join(
+    targetStorageRoot,
+    "cli",
+    "memories",
+    "projects",
+    "demo-aaaaaaaaaaaaaaaa",
+    "memory",
+  );
   assert.ok((await readdir(memoryTarget)).some((name) => name.endsWith(".tmp")));
   const restarted = spawnWorker("migrate");
   await restarted.done;
@@ -533,7 +556,12 @@ test("双 worker 并发 helper 首迁：目标无撕裂且新版竞争写入不�
     new URL("../../shared/src/node/memoryMigration.ts", import.meta.url),
   );
   const sourceData = JSON.stringify({ sourceMemoriesRoot: sourceRoot, targetStorageRoot });
-  const workerArgs = ["--import", "tsx", "--input-type=module", "-e", `
+  const workerArgs = [
+    "--import",
+    "tsx",
+    "--input-type=module",
+    "-e",
+    `
     import { pathToFileURL } from "node:url";
     import { open } from "node:fs/promises";
     const { migrateLegacyProjectMemories } = await import(pathToFileURL(process.env.MIGRATION_MODULE ?? "").href);
@@ -547,7 +575,8 @@ test("双 worker 并发 helper 首迁：目标无撕裂且新版竞争写入不�
       ...input,
       logger: process.env.MIGRATION_PAUSE === "1" ? logger : undefined,
     });
-  `];
+  `,
+  ];
   const runWorker = () =>
     new Promise<void>((resolveExit, rejectExit) => {
       const child = spawn(process.execPath, workerArgs, {
@@ -557,26 +586,53 @@ test("双 worker 并发 helper 首迁：目标无撕裂且新版竞争写入不�
       });
       let stderr = "";
       child.stderr.setEncoding("utf8");
-      child.stderr.on("data", (chunk: string) => { stderr += chunk; });
+      child.stderr.on("data", (chunk: string) => {
+        stderr += chunk;
+      });
       child.once("error", rejectExit);
       child.once("exit", (code) =>
-        code === 0 ? resolveExit() : rejectExit(new Error(`migration worker exited ${code}: ${stderr.trim()}`)),
+        code === 0
+          ? resolveExit()
+          : rejectExit(new Error(`migration worker exited ${code}: ${stderr.trim()}`)),
       );
     });
   await Promise.all([runWorker(), runWorker()]);
 
   assert.equal(
-    await readFile(join(targetStorageRoot, "cli", "memories", "projects", "demo-aaaaaaaaaaaaaaaa", "memory", "MEMORY.md"), "utf8"),
+    await readFile(
+      join(
+        targetStorageRoot,
+        "cli",
+        "memories",
+        "projects",
+        "demo-aaaaaaaaaaaaaaaa",
+        "memory",
+        "MEMORY.md",
+      ),
+      "utf8",
+    ),
     "# Demo index\n",
     "并发迁移目标必须是完整旧文件，而不是撕裂内容",
   );
   assert.equal(
-    (await readdir(join(targetStorageRoot, "cli", "memories", "projects", "demo-aaaaaaaaaaaaaaaa", "memory"))).some((name) => name.endsWith(".tmp")),
+    (
+      await readdir(
+        join(targetStorageRoot, "cli", "memories", "projects", "demo-aaaaaaaaaaaaaaaa", "memory"),
+      )
+    ).some((name) => name.endsWith(".tmp")),
     false,
     "两个 worker 退出后不应残留临时文件",
   );
 
-  const contestedTarget = join(targetStorageRoot, "cli", "memories", "projects", "demo-aaaaaaaaaaaaaaaa", "memory", "topic.md");
+  const contestedTarget = join(
+    targetStorageRoot,
+    "cli",
+    "memories",
+    "projects",
+    "demo-aaaaaaaaaaaaaaaa",
+    "memory",
+    "topic.md",
+  );
   await writeFile(contestedTarget, "new-version writer\n", "utf8");
   await rm(getMemoryMigrationMarkerPath(targetStorageRoot), { force: true });
   await migrateLegacyProjectMemories({ sourceMemoriesRoot: sourceRoot, targetStorageRoot });
@@ -630,4 +686,3 @@ test("部分目录不可创建 → 计入 failures 不中断整体，且不写�
     /ENOENT/,
   );
 });
-

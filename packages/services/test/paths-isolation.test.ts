@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import test from "node:test";
+import { test } from "vitest";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import {
   getAppConfigDir,
@@ -25,10 +25,7 @@ test("setDataBaseDir 覆盖后根目录落在 .openzwork 下", () => {
   assert.equal(getDataBaseDir(), base);
   assert.equal(getZCodeDataRootDir(), join(base, ".openzwork"));
   assert.equal(getAppConfigDir(), join(base, ".openzwork", "v2"));
-  assert.equal(
-    getTasksIndexDatabasePath(),
-    join(base, ".openzwork", "v2", "tasks-index.sqlite"),
-  );
+  assert.equal(getTasksIndexDatabasePath(), join(base, ".openzwork", "v2", "tasks-index.sqlite"));
 });
 
 test("默认（真实 HOME）根目录同样落在 .openzwork 下", () => {
