@@ -68,3 +68,18 @@ sequenceDiagram
 - Windows 保留完整的 CLI update/handoff 场景，测试 IPC 与运行入口使用同一 canonical Server root。目录权限回归沿用原平台边界，通过 Vitest 的 `skipIf` 排除不支持 POSIX 权限的环境；目录被删除的场景在所有平台继续执行。
 - 远端资产失败回归通过隔离本地 shell 执行完整脚本，Windows 夹具以 stdin 输入多行脚本，避免 `-c` 命令行传递破坏脚本。download/checksum/extract × progress 开关的错误保留、staging 清理、旧文件保留及恢复重试断言保持不变，夹具子进程设置退出时限。
 - 跨宿主平台验证使用 Node 的路径操作构造 fixture 和提取归档文件名，保持应用发现、四目标发布清单及 checksum 的完整断言。Supervisor 的 stop-failed 恢复也使用与真实 CLI 一致的 canonical IPC 身份。
+
+- 远端组件锁的心跳只更新锁目录时间，标准流重定向至 `/dev/null`，不能让后台 sleep 延长部署 RPC 的输出管道寿命。主命令保留下载进度和原始错误；退出时停止心跳并删除本次 staging。夹具为真实 shell 设置 15 秒退出边界，超时报告 exit/close 状态并回收所属进程树。
+
+```mermaid
+sequenceDiagram
+    participant H as Host
+    participant S as 远端部署脚本
+    participant B as 无输出的锁心跳
+    H->>S: 下载及安装组件
+    S->>B: 启动心跳并隔离标准流
+    S-->>H: 主命令进度或原始错误
+    S->>B: 终止心跳
+    S->>S: 清理所属 staging
+    S-->>H: 主进程退出与输出流关闭
+```

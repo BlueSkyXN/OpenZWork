@@ -110,7 +110,6 @@ class ShellInstallerBackend extends InstallerBackend {
     // Windows Git shell 经 -c 接收长脚本时在 if 块中途结束；stdin 保留完整脚本字节。
     const child = spawn(localShellCommand!, ["-s"], {
       detached: process.platform !== "win32",
-      timeout: 15_000,
     });
     child.stdin.end(`${this.prelude}\n${isolatedCommand}\n`);
     let stdout = "";
@@ -131,8 +130,35 @@ class ShellInstallerBackend extends InstallerBackend {
       }
     });
     const code = await new Promise<number>((resolve, reject) => {
-      child.once("error", reject);
-      child.once("close", (exitCode) => resolve(exitCode ?? 1));
+      const deadline = setTimeout(() => {
+        const error = new Error(
+          `isolated shell did not close: exit=${child.exitCode}, signal=${child.signalCode}\n${stdout}\n${stderr}`,
+        );
+        // 先终止仍在运行的整棵夹具进程树，不能只杀父进程留下持有管道的 shell 子进程。
+        if (child.pid && child.exitCode === null && child.signalCode === null) {
+          if (process.platform === "win32") {
+            execFile("taskkill", ["/PID", String(child.pid), "/T", "/F"], () => undefined);
+          } else {
+            try {
+              process.kill(-child.pid, "SIGKILL");
+            } catch {
+              child.kill("SIGKILL");
+            }
+          }
+        }
+        child.stdin.destroy();
+        child.stdout.destroy();
+        child.stderr.destroy();
+        reject(error);
+      }, 15_000);
+      child.once("error", (error) => {
+        clearTimeout(deadline);
+        reject(error);
+      });
+      child.once("close", (exitCode) => {
+        clearTimeout(deadline);
+        resolve(exitCode ?? 1);
+      });
     });
     return createClosedStream([stdout], code, stderr);
   }
