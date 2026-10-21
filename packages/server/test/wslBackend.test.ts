@@ -491,7 +491,7 @@ describe("buildWslArgs", () => {
         "--exec",
         "bash",
         "-lc",
-        "mkdir -p '/home/tester/.zcode/tmp' && cat > '/home/tester/.zcode/tmp/attachment.bin'",
+        "mkdir -p '/home/tester/.openzwork/tmp' && cat > '/home/tester/.openzwork/tmp/attachment.bin'",
       ],
       expect.any(Object),
     );

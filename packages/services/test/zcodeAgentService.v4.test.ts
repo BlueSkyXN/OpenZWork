@@ -15,6 +15,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -53,6 +54,8 @@ process.stdin.on("data", (chunk) => {
     if (!line.trim()) continue;
     let msg;
     try { msg = JSON.parse(line); } catch { continue; }
+    // 反向请求的响应没有 method；响应不能再次进入未知请求分支。
+    if (typeof msg.method !== "string") continue;
     if (logPath && msg.method) fs.appendFileSync(logPath, line + "\\n");
     if (msg.method === "session/list" && msg.id !== undefined) {
       const sessions = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
@@ -249,6 +252,7 @@ process.stdin.on("data", (chunk) => {
         params,
       };
       process.stdout.write(JSON.stringify(response) + "\\n" + JSON.stringify(initial) + "\\n");
+      continue;
     }
     if (msg.method === "v4/conversation/unsubscribe" && msg.id !== undefined) {
       const reply = () => send({ id: msg.id, result: {} });
@@ -263,15 +267,19 @@ process.stdin.on("data", (chunk) => {
     }
     if (msg.method === "v4/attachment/begin" && msg.id !== undefined) {
       send({ id: msg.id, result: { uploadId: msg.params.uploadId, state: "staging", nextChunkIndex: 0 } });
+      continue;
     }
     if (msg.method === "v4/attachment/chunk" && msg.id !== undefined) {
       send({ id: msg.id, result: { uploadId: msg.params.uploadId, nextChunkIndex: msg.params.chunkIndex + 1 } });
+      continue;
     }
     if (msg.method === "v4/attachment/commit" && msg.id !== undefined) {
       send({ id: msg.id, result: { ref: "zcode-artifact://upload/one" } });
+      continue;
     }
     if (msg.method === "v4/attachment/abort" && msg.id !== undefined) {
       send({ id: msg.id, result: {} });
+      continue;
     }
     if (msg.method === "v4/attachment/previewSource" && msg.id !== undefined) {
       send({ id: msg.id, result: {
@@ -279,6 +287,7 @@ process.stdin.on("data", (chunk) => {
         path: "/tmp/.zcode/video-cache/demo.mp4",
         mediaType: "video/mp4"
       } });
+      continue;
     }
     if (msg.method === "v4/conversation/resync" && msg.id !== undefined) {
       const response = {
@@ -339,6 +348,7 @@ process.stdin.on("data", (chunk) => {
           ...createSessionResult,
         },
       });
+      continue;
     }
     if (msg.method === "v4/commands/query" && msg.id !== undefined) {
       send({
@@ -374,6 +384,116 @@ function readRequests(
         JSON.parse(line) as { method: string; params: Record<string, unknown> },
     );
 }
+
+describe("v4 fake Agent protocol", () => {
+  it("每个请求只响应一次，延迟响应不提前返回未知方法错误", async () => {
+    const requests = [
+      { id: "debug", method: "session/debug", params: { sessionId: "session" } },
+      {
+        id: "policy",
+        method: "workspace/updateDynamicWorkflowPolicy",
+        params: { workspace: {}, enabled: true },
+      },
+      {
+        id: "subscribe",
+        method: "v4/conversation/subscribe",
+        params: { topic: "conversation/probe" },
+      },
+      {
+        id: "unsubscribe",
+        method: "v4/conversation/unsubscribe",
+        params: { topic: "conversation/probe" },
+      },
+      {
+        id: "delayed-unsubscribe",
+        method: "v4/conversation/unsubscribe",
+        params: { topic: "conversation/delayed-unsubscribe" },
+      },
+      { id: "flow", method: "v4/connection/flow", params: {} },
+      { id: "begin", method: "v4/attachment/begin", params: { uploadId: "upload" } },
+      { id: "chunk", method: "v4/attachment/chunk", params: { uploadId: "upload", chunkIndex: 0 } },
+      { id: "commit", method: "v4/attachment/commit", params: {} },
+      { id: "abort", method: "v4/attachment/abort", params: {} },
+      { id: "preview", method: "v4/attachment/previewSource", params: {} },
+      {
+        id: "resync",
+        method: "v4/conversation/resync",
+        params: { topic: "conversation/probe", subscriptionId: "sub-1" },
+      },
+      {
+        id: "delayed-resync",
+        method: "v4/conversation/resync",
+        params: { topic: "conversation/delayed-resync", subscriptionId: "sub-1" },
+      },
+      { id: "command", method: "v4/command", params: { commandId: "command", type: "sendText" } },
+      { id: "query", method: "v4/commands/query", params: { commands: [] } },
+      {
+        id: "background",
+        method: "v4/conversation/backgroundBashOutput",
+        params: { workId: "work" },
+      },
+      {
+        id: "unsupported",
+        method: "v4/conversation/backgroundBashOutput",
+        params: { workId: "unsupported" },
+      },
+      { id: "unknown", method: "test/unknown", params: {} },
+    ];
+    // 直接检查真实 stdout；RPC 客户端可能忽略第二个响应，不能用业务调用成功掩盖重复包。
+    const output = await new Promise<string>((resolve, reject) => {
+      const child = spawn(process.execPath, ["-e", V4_FAKE_AGENT], {
+        stdio: ["pipe", "pipe", "pipe"],
+        signal: AbortSignal.timeout(5000),
+      });
+      let stdout = "";
+      let stderr = "";
+      child.stdout.setEncoding("utf8").on("data", (chunk: string) => {
+        stdout += chunk;
+      });
+      child.stderr.setEncoding("utf8").on("data", (chunk: string) => {
+        stderr += chunk;
+      });
+      child.once("error", reject);
+      child.once("close", (code) => {
+        if (code === 0) resolve(stdout);
+        else reject(new Error(`fake Agent exited ${code}: ${stderr}`));
+      });
+      // stdin 结束后等待进程退出，确保延迟响应全部落盘，不用固定 sleep 截断观测窗口。
+      child.stdin.end(
+        [...requests, { method: "test/notification" }, { id: "reverse-reply", result: {} }]
+          .map((request) => JSON.stringify(request))
+          .join("\n") + "\n",
+      );
+    });
+    const messages = output
+      .trim()
+      .split("\n")
+      .map(
+        (line) =>
+          JSON.parse(line) as {
+            id?: string;
+            method?: string;
+            result?: unknown;
+            error?: { code: number };
+          },
+      );
+    const responses = messages.filter((message) => message.id !== undefined && !message.method);
+    for (const request of requests) {
+      const matching = responses.filter((response) => response.id === request.id);
+      expect(matching, request.method + ": " + request.id).toHaveLength(1);
+      if (request.id === "unknown" || request.id === "unsupported") {
+        expect(matching[0]?.error?.code).toBe(-32601);
+      } else {
+        expect(matching[0]).toHaveProperty("result");
+        expect(matching[0]).not.toHaveProperty("error");
+      }
+    }
+    expect(responses).toHaveLength(requests.length);
+    expect(messages.filter((message) => message.method === "v4/conversation/frame")).toHaveLength(
+      3,
+    );
+  });
+});
 
 describe("zcodeAgentService v4 conversation channel", () => {
   const createdDirs: string[] = [];

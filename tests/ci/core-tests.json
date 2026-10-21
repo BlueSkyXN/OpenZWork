@@ -38,7 +38,11 @@
         "packages/ui/test/zcodeSessionEventOrder.test.ts",
         "packages/ui/test/agentV4ConnectionTransports.test.ts",
         "packages/desktop/test/desktopRuntimeEnv.test.ts",
-        "packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts"
+        "packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts",
+        "packages/services/test/zcodeAgentService.v4.test.ts",
+        "packages/services/test/zcodeAgentService.providerRegistry.test.ts",
+        "packages/services/test/subagentsService.test.ts",
+        "packages/services/test/providerProvisioningFileIntegration.test.ts"
       ]
     },
     {
@@ -102,14 +106,16 @@
         "packages/desktop/test/run-production-build.test.ts",
         "packages/services/test/settingsSyncService.test.ts",
         "packages/ui/test/settingsModelProviderUpgradeIntent.test.ts",
-        "packages/ui/test/appErrorBoundary.test.ts"
+        "packages/ui/test/appErrorBoundary.test.ts",
+        "packages/ui/test/pluginSettingsSection.test.ts"
       ]
     },
     {
       "capability": "remote-access",
       "files": [
         "packages/client/test/remoteServiceAccess.test.ts",
-        "packages/server/test/remoteConnect.test.ts"
+        "packages/server/test/remoteConnect.test.ts",
+        "packages/server/test/wslBackend.test.ts"
       ]
     },
     {
