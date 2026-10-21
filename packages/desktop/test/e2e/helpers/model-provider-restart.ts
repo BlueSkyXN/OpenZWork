@@ -318,4 +318,3 @@ export async function waitForSelectedModel(providerId: string, modelId: string) 
     );
   }
 }
-
