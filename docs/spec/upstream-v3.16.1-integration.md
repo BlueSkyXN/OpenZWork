@@ -69,6 +69,7 @@ sequenceDiagram
 - 远端资产失败回归通过隔离本地 shell 执行完整脚本，Windows 夹具以 stdin 输入多行脚本，避免 `-c` 命令行传递破坏脚本。download/checksum/extract × progress 开关的错误保留、staging 清理、旧文件保留及恢复重试断言保持不变，夹具子进程设置退出时限。
 - 跨宿主平台验证使用 Node 的路径操作构造 fixture 和提取归档文件名，保持应用发现、四目标发布清单及 checksum 的完整断言。Supervisor 的 stop-failed 恢复也使用与真实 CLI 一致的 canonical IPC 身份。
 - Supervisor 客户端超时回归观察真实 update 生命周期 Promise：客户端超时后，仍等待候选失败、旧版本恢复以及更新操作结束，确认三个 Core 代次和旧版本指针后再 stop。固定 100ms 等待不能作为回滚结束证据，生产互斥与超时保持原值。
+- 普通 runtime identity 与换代广播回归的空闲 Agent 遵守 stdin EOF；强杀、CIM 不可用和故障重试由专属清理用例验证。
 
 ```mermaid
 sequenceDiagram

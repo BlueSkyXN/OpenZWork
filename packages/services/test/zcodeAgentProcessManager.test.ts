@@ -512,12 +512,13 @@ require("node:readline").createInterface({ input: process.stdin }).on("line", li
   });
 
   it("重启单个 workspace 后 runtime identity 会变化", async () => {
+    // 普通身份换代使用遵守 EOF 的空闲 Agent；强杀/CIM 故障由专属清理用例验证。
     const workspacePath = mkdtempSync(join(tmpdir(), "zcode-agent-manager-runtime-"));
     createdDirs.push(workspacePath);
     const manager = new ZCodeAgentProcessManager({
       commandResolver: () => ({
         command: process.execPath,
-        args: ["-e", "setInterval(() => {}, 1000);"],
+        args: ["-e", "process.stdin.resume(); process.stdin.on('end', () => process.exit(0));"],
         cwd: workspacePath,
       }),
     });
@@ -546,7 +547,7 @@ require("node:readline").createInterface({ input: process.stdin }).on("line", li
     const manager = new ZCodeAgentProcessManager({
       commandResolver: () => ({
         command: process.execPath,
-        args: ["-e", "setInterval(() => {}, 1000);"],
+        args: ["-e", "process.stdin.resume(); process.stdin.on('end', () => process.exit(0));"],
         cwd: workspacePath,
       }),
     });
@@ -575,7 +576,7 @@ require("node:readline").createInterface({ input: process.stdin }).on("line", li
     createdDirs.push(workspacePath);
     let command: ZCodeAgentCommand = {
       command: process.execPath,
-      args: ["-e", "setInterval(() => {}, 1000);"],
+      args: ["-e", "process.stdin.resume(); process.stdin.on('end', () => process.exit(0));"],
       cwd: workspacePath,
     };
     const manager = new ZCodeAgentProcessManager({
