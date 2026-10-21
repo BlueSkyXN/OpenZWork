@@ -19,7 +19,8 @@ const originalProcessLabel = process.env.ZCODE_PROCESS_LABEL;
 const tempHomes: string[] = [];
 
 function makeTempHome(): string {
-  const home = realpathSync(mkdtempSync(join(tmpdir(), "zcode-skills-home-")));
+  // JS 版 realpathSync 仍可保留 Windows 8.3 名称；native 与服务的异步 realpath 使用同一 OS 解析。
+  const home = realpathSync.native(mkdtempSync(join(tmpdir(), "zcode-skills-home-")));
   tempHomes.push(home);
   return home;
 }

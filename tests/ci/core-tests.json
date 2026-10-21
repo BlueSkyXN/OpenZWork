@@ -320,7 +320,8 @@
       "capability": "process-lifecycle-safety",
       "files": [
         "packages/desktop/test/subagentConfigProxy.test.ts",
-        "packages/zcode-server-cli/test/componentArchiveProcess.test.ts"
+        "packages/zcode-server-cli/test/componentArchiveProcess.test.ts",
+        "packages/services/test/subagentRuntimeConfig.test.ts"
       ]
     }
   ]
