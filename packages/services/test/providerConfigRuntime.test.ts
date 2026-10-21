@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { ModelConfigRules, ProviderConfigMap, ProviderTemplateMap } from "@zcode/provider";
+import { ModelConfigRules, ProviderConfigMap } from "@zcode/provider";
 import type { ModelProviderConfig } from "../src/model-provider/legacyModelProviderSerialized.js";
 import { readLegacyZCodeConfigProviders } from "../src/model-provider/legacyZCodeConfigProviderReader.js";
 import { createProviderConfigRuntime } from "../src/model-provider/providerConfigRuntime.js";
@@ -52,7 +52,7 @@ describe("ProviderConfigRuntime", () => {
     "旧配置 %s 失败不能提交空迁移，源文件恢复后仍可导入",
     async (stage) => {
       const root = await mkdtemp(join(tmpdir(), "zcode-provider-import-failure-"));
-      const configDir = join(root, ".zcode", "v2");
+      const configDir = join(root, ".openzwork", "v2");
       const legacyFilePath = join(configDir, "config.json");
       const personalFilePath = join(configDir, "provider_config.json");
       const zcodeBuiltinFilePath = join(root, "builtin.json");
@@ -139,7 +139,7 @@ describe("ProviderConfigRuntime", () => {
       expect((await runtime.configService.read()).personalProviders.keys()).toEqual([]);
       expect(recovery).not.toHaveBeenCalled();
       await expect(
-        readFile(join(root, ".zcode/v2/provider_config.json"), "utf8"),
+        readFile(join(root, ".openzwork/v2/provider_config.json"), "utf8"),
       ).resolves.toContain('"schemaVersion": 1');
     } finally {
       runtime.dispose();
@@ -208,7 +208,7 @@ describe("ProviderConfigRuntime", () => {
   it("从旧 config.json 导入同目录 provider_config.json，不改写旧文件且不备份", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-provider-runtime-"));
     const zcodeBuiltinFilePath = join(root, "zcodeBuiltin.json");
-    const configDir = join(root, ".zcode", "v2");
+    const configDir = join(root, ".openzwork", "v2");
     const legacyFilePath = join(configDir, "config.json");
     const legacyText = JSON.stringify({
       provider: {
@@ -233,7 +233,7 @@ describe("ProviderConfigRuntime", () => {
       const snapshot = await runtime.configService.read();
 
       await expect(
-        readFile(join(root, ".zcode", "v2", "provider_config.json"), "utf8"),
+        readFile(join(root, ".openzwork", "v2", "provider_config.json"), "utf8"),
       ).resolves.toContain('"schemaVersion": 1');
       expect(snapshot.personalProviders.keys()).toEqual(["custom-provider"]);
       await expect(readFile(legacyFilePath, "utf8")).resolves.toBe(legacyText);
@@ -303,41 +303,6 @@ describe("ProviderConfigRuntime", () => {
       },
     });
 
-    runtime.dispose();
-  });
-
-  it("本地候选 ready 后后台同步远端 Release，并把 Active 路径暴露给 Worker", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-provider-runtime-"));
-    const bundledFilePath = join(root, "bundled.json");
-    const activeFilePath = join(root, "cache", "active.json");
-    await writeFile(bundledFilePath, JSON.stringify(emptyBuiltinRelease()), "utf8");
-    const fetchRelease = vi.fn(async () => ({
-      schemaVersion: 1 as const,
-      revision: 2,
-      config: {
-        providerTemplates: ProviderTemplateMap.empty(),
-        providers: ProviderConfigMap.empty(),
-        modelConfigRules: ModelConfigRules.empty(),
-      },
-    }));
-    const runtime = createProviderConfigRuntime({
-      zcodeBuiltinFilePath: bundledFilePath,
-      zcodeBuiltinActiveFilePath: activeFilePath,
-      personalFilePath: join(root, "personal.json"),
-      zcodeBuiltinRemote: {
-        controlFilePath: join(root, "cache", "refresh-control.json"),
-        resolveEndpointKey: () => "https://example.com",
-        fetchRelease,
-      },
-      watch: false,
-    });
-
-    await runtime.start();
-    const initial = await runtime.configService.read();
-    expect(initial.revision).toContain("zcode-builtin:1");
-    await expect(runtime.resolveZCodeBuiltinActiveFilePath()).resolves.toBe(activeFilePath);
-    await expect(runtime.refreshZCodeBuiltin({ force: true })).resolves.toBe("updated");
-    expect((await runtime.configService.read()).revision).toContain("zcode-builtin:2");
     runtime.dispose();
   });
 });

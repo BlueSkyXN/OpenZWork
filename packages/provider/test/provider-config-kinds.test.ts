@@ -123,31 +123,24 @@ describe("ProviderConfig access / api boundaries", () => {
     ).toThrow();
   });
 
-  it("把隐藏性与智谱闲时模式解析为正式 Provider 配置", () => {
+  it("隐藏性不补齐缺失访问配置，退役闲时模式仍被拒绝", () => {
     const config = parseProviderConfig({
-      group: "zai-family",
+      group: "standard-personal",
       visibility: "hidden",
-      api: {
-        type: "anthropic-messages",
-      },
+      api: { type: "anthropic-messages" },
       builtinModelIds: ["GLM-5.2"],
     });
-
     expect(config.visibility).toBe("hidden");
-    expect(config.access).toBeInstanceOf(ZhipuAccountAccessConfig);
-    expect(config.validateComplete()).toEqual([]);
-    expect(JSON.parse(JSON.stringify(config))).toEqual({
-      group: "zai-family",
-      visibility: "hidden",
-      api: {
-        type: "anthropic-messages",
-      },
-      builtinModelIds: ["GLM-5.2"],
-    });
+    expect(config.access).toBeUndefined();
+    expect(config.validateComplete().length).toBeGreaterThan(0);
+    expect(() =>
+      parseProviderConfig({
+        access: { type: "zhipu-account", accountType: "zai", mode: "off-peak", entitled: true },
+      }),
+    ).toThrow();
   });
 
   it("hidden 不放宽 Provider 完整性，旧 executionOnly 中间格式不再接受", () => {
-
     expect(() =>
       parseProviderConfig({
         executionOnly: true,

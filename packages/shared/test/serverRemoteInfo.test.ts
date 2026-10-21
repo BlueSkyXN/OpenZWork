@@ -25,22 +25,17 @@ describe.each([
     expect(parsed.protocolVersion).toBe(1);
   });
 
-  it.each([true, false])("保留 Server 显式声明的资源能力 %s", (supported) => {
-    const parsed = schema.parse({
-      ...serverInfo,
-      capabilities: { ...serverInfo.capabilities, processResourceTelemetry: supported },
-    });
-    expect(parsed.capabilities.processResourceTelemetry).toBe(supported);
+  it.each([true, false, "false"])("历史资源能力遵循输入/输出 schema 边界 %s", (supported) => {
+    const value = { ...serverInfo, capabilities: { ...serverInfo.capabilities, processResourceTelemetry: supported } };
+    if (schema === serverRemoteInfoSchema) {
+      expect(schema.parse(value).capabilities).not.toHaveProperty("processResourceTelemetry");
+    } else if (typeof supported === "boolean") {
+      expect(schema.parse(value).capabilities).toMatchObject({ processResourceTelemetry: supported });
+    } else {
+      expect(schema.safeParse(value).success).toBe(false);
+    }
   });
 
-  it("拒绝非布尔能力值，避免把字符串 false 当成授权", () => {
-    expect(
-      schema.safeParse({
-        ...serverInfo,
-        capabilities: { ...serverInfo.capabilities, processResourceTelemetry: "false" },
-      }).success,
-    ).toBe(false);
-  });
 });
 
 it("服务端允许已声明的资源能力但仍拒绝未知出参", () => {

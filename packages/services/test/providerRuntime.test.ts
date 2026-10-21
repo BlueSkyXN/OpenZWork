@@ -196,26 +196,6 @@ describe("ProviderRuntime", () => {
     expect(() => runtime.start()).toThrow("已 dispose");
   });
 
-  it("释放组合根拥有的 Account Source", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-provider-runtime-account-dispose-"));
-    const zcodeBuiltinFilePath = join(root, "zcode-builtin.json");
-    await writeFile(zcodeBuiltinFilePath, JSON.stringify(emptyZCodeBuiltinRelease()), "utf8");
-    const configRuntime = createProviderConfigRuntime({
-      zcodeBuiltinFilePath,
-      personalFilePath: join(root, "personal.json"),
-      watch: false,
-    });
-    const disposeAccountSource = vi.fn();
-    const runtime = createProviderRuntimeFromConfigRuntime({
-      configRuntime,
-      disposeAccountSource,
-    });
-
-    runtime.dispose();
-
-    expect(disposeAccountSource).toHaveBeenCalledTimes(1);
-  });
-
   it("首次 Facade 调用会等待 Runtime 就绪，无需 Entry 先显式 start", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-provider-runtime-ready-"));
     const zcodeBuiltinFilePath = join(root, "zcode-builtin.json");
@@ -236,7 +216,7 @@ describe("ProviderRuntime", () => {
     runtime.dispose();
   });
 
-  it("组装 Config、Account Access、Registry 与 Facade", async () => {
+  it("旧账号配置保留在 Settings，Registry 和 Facade 不发布可执行账号模型", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-provider-runtime-"));
     const zcodeBuiltinFilePath = join(root, "zcode-builtin.json");
     await writeFile(
@@ -340,63 +320,23 @@ describe("ProviderRuntime", () => {
     await runtime.start();
     const snapshot = runtime.registryService.getSnapshot()!;
 
-    expect(snapshot.registry.providers[0]).toMatchObject({
-      providerId: "account-plan",
-      config: {
-        access: {
-          type: "zhipu-account",
-        },
-        builtinModelIds: ["model-a"],
-      },
-    });
-    expect(await runtime.modelSelection.getView()).toEqual({
-      revision: 1,
-      preferredSelection: {
-        providerId: "account-plan",
-        modelId: "model-a",
-        options: { reasoningLevel: "disabled" },
-      },
-      providers: [
-        {
-          providerId: "account-plan",
-          config: {
-            access: {
-              type: "zhipu-account",
-              accountType: "zai",
-              mode: "individual-coding-plan",
-              entitled: true,
-            },
-            api: {
-              type: "anthropic-messages",
-              baseUrl: "https://plan.example.com",
-            },
-            builtinModelIds: ["model-a"],
-            group: "zai-family",
-          },
-          models: [
-            {
-              modelId: "model-a",
-              config: expect.any(Object),
-            },
-          ],
-        },
-      ],
-    });
+    expect(snapshot.registry.providers).toEqual([]);
+    expect(await runtime.modelSelection.getView()).toEqual({ revision: 1, providers: [] });
 
     const selectionListener = vi.fn();
     const subscription = runtime.modelSelection.onDidChange(selectionListener);
 
     await runtime.providerSettings.refresh("account-provider-ready");
-    expect((await runtime.modelSelection.getView()).providers).toHaveLength(1);
+    expect((await runtime.modelSelection.getView()).providers).toHaveLength(0);
     subscription.dispose();
 
     await runtime.providerSettings.refresh("purchase-complete");
-    expect(accountSource.refresh).toHaveBeenCalledWith("settings:purchase-complete");
+    expect(accountSource.refresh).not.toHaveBeenCalled();
 
     runtime.dispose();
   });
 
-  it("设置页连通性测试使用最新 Settings Provider 判断账号访问方式", async () => {
+  it("设置页不能对退役账号 Provider 发起连通性请求", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-provider-runtime-connectivity-"));
     const zcodeBuiltinFilePath = join(root, "zcode-builtin.json");
     await writeFile(
@@ -505,12 +445,7 @@ describe("ProviderRuntime", () => {
       modelId: model.modelId,
     });
 
-    expect(testConnectivity).toHaveBeenCalledWith({
-      workspacePath: "/remote/workspace",
-      workspaceIdentity: "ssh:server:/remote/workspace",
-      providerId: "account-plan",
-      modelId: "model-a",
-    });
+    expect(testConnectivity).not.toHaveBeenCalled();
     runtime.dispose();
   });
 

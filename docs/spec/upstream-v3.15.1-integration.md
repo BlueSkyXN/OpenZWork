@@ -102,3 +102,5 @@ sequenceDiagram
 - WP-04/06/07 已移除的官方账号、套餐、Client Scenes、分享、云端反馈和自动更新专属回归随对应实现退役；包含性能模式、本地反馈 CAS、workspace deep link、IPC URL 验证或协议 ACK 的混合文件保留这些场景。
 
 - Provider 分发沿用上游 v2 防误删合同：新 Source 只发送 Personal Config，独立 Credential Store 不属于 OpenZWork 同步范围；新 Target 兼容接收 v1 的历史 account-provider 字段但不读取、应用或删除这些 Key。v2 非空历史凭据直接拒绝。旧 Target 必须在写入前拒绝 v2；Personal 文件的 Key、默认偏好、原子替换和 CAS 回滚保持原合同。
+
+- 3.16.1 保留的 Skill 事实字段沿用固定上游安全标识规则：限定字符与长度，并拒绝密钥形态；只恢复协议校验，不引入已移除的遥测发送或账号依赖。

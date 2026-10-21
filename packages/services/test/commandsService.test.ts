@@ -1,11 +1,4 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,14 +13,10 @@ function makeTempRoot(): string {
   return root;
 }
 
-function officialPluginRoot(
-  home: string,
-  pluginName: string,
-  version = "0.1.0",
-): string {
+function officialPluginRoot(home: string, pluginName: string, version = "0.1.0"): string {
   return join(
     home,
-    ".zcode",
+    ".openzwork",
     "cli",
     "plugins",
     "cache",
@@ -43,22 +32,10 @@ function marketplacePluginRoot(
   pluginName: string,
   version = "0.0.0",
 ): string {
-  return join(
-    home,
-    ".zcode",
-    "cli",
-    "plugins",
-    "cache",
-    marketplace,
-    pluginName,
-    version,
-  );
+  return join(home, ".openzwork", "cli", "plugins", "cache", marketplace, pluginName, version);
 }
 
-function writePluginManifest(
-  pluginRoot: string,
-  manifest: Record<string, unknown>,
-): void {
+function writePluginManifest(pluginRoot: string, manifest: Record<string, unknown>): void {
   mkdirSync(join(pluginRoot, ".zcode-plugin"), { recursive: true });
   writeFileSync(
     join(pluginRoot, ".zcode-plugin", "plugin.json"),
@@ -67,10 +44,7 @@ function writePluginManifest(
   );
 }
 
-function writeClaudePluginManifest(
-  pluginRoot: string,
-  manifest: Record<string, unknown>,
-): void {
+function writeClaudePluginManifest(pluginRoot: string, manifest: Record<string, unknown>): void {
   mkdirSync(join(pluginRoot, ".claude-plugin"), { recursive: true });
   writeFileSync(
     join(pluginRoot, ".claude-plugin", "plugin.json"),
@@ -88,7 +62,7 @@ function writeInstalledPluginRecord(
     version?: string;
   },
 ): void {
-  const pluginsRoot = join(home, ".zcode", "cli", "plugins");
+  const pluginsRoot = join(home, ".openzwork", "cli", "plugins");
   mkdirSync(pluginsRoot, { recursive: true });
   writeFileSync(
     join(pluginsRoot, "installed_plugins.json"),
@@ -117,14 +91,12 @@ function writeInstalledPluginRecord(
 }
 
 function writeCliConfig(home: string, config: Record<string, unknown>): void {
-  const configPath = join(home, ".zcode", "cli", "config.json");
-  mkdirSync(join(home, ".zcode", "cli"), { recursive: true });
+  const configPath = join(home, ".openzwork", "cli", "config.json");
+  mkdirSync(join(home, ".openzwork", "cli"), { recursive: true });
   writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
 
-async function createCommandsServiceInEnv(
-  home: string,
-): Promise<ICommandsService> {
+async function createCommandsServiceInEnv(home: string): Promise<ICommandsService> {
   process.env.HOME = home;
   vi.resetModules();
   const mod = await import("../src/commands/commandsService.js");
@@ -146,12 +118,12 @@ describe("commandsService", () => {
   it("lists user commands and workspace project commands", async () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
-    mkdirSync(join(home, ".zcode", "commands"), { recursive: true });
+    mkdirSync(join(home, ".openzwork", "commands"), { recursive: true });
     mkdirSync(join(workspacePath, ".zcode", "commands", "ops"), {
       recursive: true,
     });
     writeFileSync(
-      join(home, ".zcode", "commands", "global.md"),
+      join(home, ".openzwork", "commands", "global.md"),
       "---\ndescription: Global command\n---\n\nRun globally",
       "utf-8",
     );
@@ -178,7 +150,7 @@ describe("commandsService", () => {
           location: expect.objectContaining({
             source: "zcode",
             scope: "user",
-            directoryPath: join(home, ".zcode", "commands"),
+            directoryPath: join(home, ".openzwork", "commands"),
           }),
         }),
         expect.objectContaining({
@@ -233,32 +205,16 @@ describe("commandsService", () => {
   it("reads .zcode command directories first and skips .agents/.claude when zcode has commands", async () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
-    mkdirSync(join(home, ".zcode", "commands"), { recursive: true });
+    mkdirSync(join(home, ".openzwork", "commands"), { recursive: true });
     mkdirSync(join(home, ".agents", "commands"), { recursive: true });
     mkdirSync(join(home, ".claude", "commands"), { recursive: true });
     mkdirSync(join(workspacePath, ".zcode", "commands"), { recursive: true });
     mkdirSync(join(workspacePath, ".agents", "commands"), { recursive: true });
     mkdirSync(join(workspacePath, ".claude", "commands"), { recursive: true });
-    writeFileSync(
-      join(home, ".zcode", "commands", "review.md"),
-      "ZCode review",
-      "utf-8",
-    );
-    writeFileSync(
-      join(home, ".agents", "commands", "agent.md"),
-      "Agents command",
-      "utf-8",
-    );
-    writeFileSync(
-      join(home, ".claude", "commands", "review.md"),
-      "Claude review",
-      "utf-8",
-    );
-    writeFileSync(
-      join(home, ".claude", "commands", "claude.md"),
-      "Claude command",
-      "utf-8",
-    );
+    writeFileSync(join(home, ".openzwork", "commands", "review.md"), "ZCode review", "utf-8");
+    writeFileSync(join(home, ".agents", "commands", "agent.md"), "Agents command", "utf-8");
+    writeFileSync(join(home, ".claude", "commands", "review.md"), "Claude review", "utf-8");
+    writeFileSync(join(home, ".claude", "commands", "claude.md"), "Claude command", "utf-8");
     writeFileSync(
       join(workspacePath, ".agents", "commands", "agent.md"),
       "Workspace agents command",
@@ -308,21 +264,19 @@ describe("commandsService", () => {
       agentSource: "zcodeAgent",
     });
 
-    expect(directory.path).toBe(join(home, ".zcode", "commands"));
+    expect(directory.path).toBe(join(home, ".openzwork", "commands"));
     expect(created.command).toMatchObject({
       agentSource: "zcodeAgent",
-      filePath: join(home, ".zcode", "commands", "ship-it.md"),
+      filePath: join(home, ".openzwork", "commands", "ship-it.md"),
       id: "zcodeAgent:zcode:global:/ship-it",
       name: "/ship-it",
       location: expect.objectContaining({
         source: "zcode",
         scope: "user",
-        directoryPath: join(home, ".zcode", "commands"),
+        directoryPath: join(home, ".openzwork", "commands"),
       }),
     });
-    expect(readFileSync(created.command.filePath, "utf-8")).toContain(
-      "Ship it",
-    );
+    expect(readFileSync(created.command.filePath, "utf-8")).toContain("Ship it");
   });
 
   it("creates the target commands directory before returning it", async () => {
@@ -331,7 +285,7 @@ describe("commandsService", () => {
 
     const directory = await service.getPrimaryUserCommandsDirectory();
 
-    expect(directory.path).toBe(join(home, ".zcode", "commands"));
+    expect(directory.path).toBe(join(home, ".openzwork", "commands"));
     expect(statSync(directory.path).isDirectory()).toBe(true);
   });
 
@@ -360,14 +314,10 @@ describe("commandsService", () => {
     const service = await createCommandsServiceInEnv(home);
     const result = await service.list({ workspacePath });
 
-    const dup = result.userCommands.filter(
-      (command) => command.name === "/dup",
-    );
+    const dup = result.userCommands.filter((command) => command.name === "/dup");
     expect(dup).toHaveLength(1);
     expect(dup[0]?.description).toBe("from zcode");
-    expect(result.userCommands.map((command) => command.name)).not.toContain(
-      "/agents-only",
-    );
+    expect(result.userCommands.map((command) => command.name)).not.toContain("/agents-only");
   });
 
   it("falls back to .agents/commands when .zcode/commands has no valid command", async () => {
@@ -402,10 +352,10 @@ describe("commandsService", () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
     const pluginRoot = officialPluginRoot(home, "ios-simulator");
-    mkdirSync(join(home, ".zcode", "commands"), { recursive: true });
+    mkdirSync(join(home, ".openzwork", "commands"), { recursive: true });
     mkdirSync(join(pluginRoot, "commands", "ios"), { recursive: true });
     writeFileSync(
-      join(home, ".zcode", "commands", "local-review.md"),
+      join(home, ".openzwork", "commands", "local-review.md"),
       "---\ndescription: Local review\n---\n\nReview locally",
       "utf-8",
     );
@@ -430,9 +380,7 @@ describe("commandsService", () => {
     const service = await createCommandsServiceInEnv(home);
     const result = await service.list({ workspacePath });
 
-    expect(result.userCommands.map((command) => command.name)).toEqual([
-      "/local-review",
-    ]);
+    expect(result.userCommands.map((command) => command.name)).toEqual(["/local-review"]);
     expect(result.pluginCommands).toEqual([
       expect.objectContaining({
         argumentHint: "<target>",
@@ -445,10 +393,7 @@ describe("commandsService", () => {
         source: "plugin",
       }),
     ]);
-    expect(result.commands.map((command) => command.name)).toEqual([
-      "/local-review",
-      "/ios/dev",
-    ]);
+    expect(result.commands.map((command) => command.name)).toEqual(["/local-review", "/ios/dev"]);
   });
 
   it("suppressed 内置插件不贡献任何命令", async () => {
@@ -490,24 +435,16 @@ describe("commandsService", () => {
     const service = await createCommandsServiceInEnv(home);
     const result = await service.list({ workspacePath });
 
-    expect(result.pluginCommands.map((command) => command.name)).toEqual([
-      "/create/new",
-    ]);
+    expect(result.pluginCommands.map((command) => command.name)).toEqual(["/create/new"]);
     expect(
-      result.pluginCommands.find(
-        (command) => command.pluginName === "document-skills",
-      ),
+      result.pluginCommands.find((command) => command.pluginName === "document-skills"),
     ).toBeUndefined();
   });
 
   it("lists commands from installed marketplace plugins", async () => {
     const home = makeTempRoot();
     const workspacePath = join(makeTempRoot(), "workspace");
-    const pluginRoot = marketplacePluginRoot(
-      home,
-      "claude-plugins-official",
-      "commit-commands",
-    );
+    const pluginRoot = marketplacePluginRoot(home, "claude-plugins-official", "commit-commands");
     mkdirSync(join(pluginRoot, "commands", "git"), { recursive: true });
     writeClaudePluginManifest(pluginRoot, {
       commands: "commands",
@@ -565,15 +502,11 @@ describe("commandsService", () => {
       enabled: false,
     });
 
-    const saved = JSON.parse(
-      readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
-    );
+    const saved = JSON.parse(readFileSync(join(home, ".openzwork", "cli", "config.json"), "utf-8"));
     expect(saved.command[created.command.filePath]).toEqual({ enable: false });
 
     const disabled = await service.list({});
-    expect(disabled.userCommands[0]).toEqual(
-      expect.objectContaining({ enabled: false }),
-    );
+    expect(disabled.userCommands[0]).toEqual(expect.objectContaining({ enabled: false }));
 
     await service.setCommandEnabled({
       commandId: created.command.id,
@@ -582,11 +515,9 @@ describe("commandsService", () => {
     });
     const enabled = await service.list({});
     const reenabledConfig = JSON.parse(
-      readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
+      readFileSync(join(home, ".openzwork", "cli", "config.json"), "utf-8"),
     ) as { command?: Record<string, { enable?: boolean }> };
-    expect(enabled.userCommands[0]).toEqual(
-      expect.objectContaining({ enabled: true }),
-    );
+    expect(enabled.userCommands[0]).toEqual(expect.objectContaining({ enabled: true }));
     expect(reenabledConfig.command?.[created.command.filePath]).toBeUndefined();
   });
 });

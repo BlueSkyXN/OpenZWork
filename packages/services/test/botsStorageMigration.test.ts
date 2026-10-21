@@ -20,12 +20,12 @@ async function migrate(options: unknown) {
 }
 describe("Bot 一次性旧身份转换", () => {
   it("官方 GLM 旧选择规范大小写，自定义同名模型不改", async () => {
-    for (const providerId of ["builtin:zai-start-plan", "personal-proxy"]) {
+    for (const providerId of ["builtin:zai", "personal-proxy"]) {
       expect(
         (await migrate({ model: `${providerId}/glm-5.3-flash`, thoughtLevel: "high" }))
           ?.modelSelection,
       ).toEqual({
-        providerId: providerId === "personal-proxy" ? providerId : "account:zai-start-plan",
+        providerId: providerId === "personal-proxy" ? providerId : "zai-api",
         modelId: providerId === "personal-proxy" ? "glm-5.3-flash" : "GLM-5.3-Flash",
         options: { reasoningLevel: "high" },
       });
@@ -66,17 +66,15 @@ describe("Bot 一次性旧身份转换", () => {
         ?.modelSelection,
     ).toBeUndefined();
   });
-  it("旧 Coding Plan 固定迁为 Individual，当前连接和候选均不参与", async () => {
-    const options = { model: "builtin:bigmodel-coding-plan/GLM", thoughtLevel: "high" };
-    expect((await migrate(options))?.modelSelection?.providerId).toBe(
-      "account:bigmodel-individual-coding-plan",
-    );
+  it("旧 API 模板迁为当前模板，当前连接和候选均不参与", async () => {
+    const options = { model: "builtin:bigmodel/GLM", thoughtLevel: "high" };
+    expect((await migrate(options))?.modelSelection?.providerId).toBe("bigmodel-api");
     expect(
       (
         await migrate({
-          modelSelection: { providerId: "builtin:bigmodel-coding-plan", modelId: "GLM" },
+          modelSelection: { providerId: "builtin:bigmodel", modelId: "GLM" },
         })
       )?.modelSelection?.providerId,
-    ).toBe("account:bigmodel-individual-coding-plan");
+    ).toBe("bigmodel-api");
   });
 });

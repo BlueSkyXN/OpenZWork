@@ -55,31 +55,6 @@ describe("R1 window Host control protocol", () => {
     expect(hostResponseMessageSchema.parse(result)).toEqual(result);
     expect(hostResponseMessageSchema.safeParse({ ...result, descriptor: { ...result.descriptor, reusedConnectionTarget: { kind: "ssh", host: "dev.internal" } } }).success).toBe(false);
   });
-
-  it("validates monotonic-shape CUA PiP focus facts", () => {
-    expect(
-      hostIncomingMessageSchema.safeParse({
-        type: "cua-pip-focus-changed",
-        event: {
-          kind: "focus-changed",
-          revision: 3,
-          sourceWindowId: "window-7",
-          sessionId: "session-a",
-        },
-      }).success,
-    ).toBe(true);
-    expect(
-      hostIncomingMessageSchema.safeParse({
-        type: "cua-pip-focus-changed",
-        event: {
-          kind: "focus-changed",
-          revision: -1,
-          sourceWindowId: "window-7",
-          sessionId: null,
-        },
-      }).success,
-    ).toBe(false);
-  });
   it("接受带 requestId 的远程连接、取消、绑定和释放请求", () => {
     expect(
       hostIncomingMessageSchema.safeParse({
@@ -310,36 +285,6 @@ describe("R1 window Host control protocol", () => {
         requestId: "provisioning-1",
         environmentKey: "ssh:dev.internal:developer",
         status: "partially-applied",
-      }).success,
-    ).toBe(false);
-  });
-
-  it("严格校验 host 自采资源样本（cpu / rss / heap 三项齐全且为数值）", () => {
-    expect(
-      hostResponseMessageSchema.safeParse({
-        type: HostResponseTypes.HostResourceSample,
-        sample: { cpuPercent: 3.5, rssKb: 380_000, heapUsedKb: 91_234 },
-      }).success,
-    ).toBe(true);
-    // 字段缺失：main 入口直接丢弃该样本。
-    expect(
-      hostResponseMessageSchema.safeParse({
-        type: HostResponseTypes.HostResourceSample,
-        sample: { cpuPercent: 3.5, rssKb: 380_000 },
-      }).success,
-    ).toBe(false);
-    // 类型错误。
-    expect(
-      hostResponseMessageSchema.safeParse({
-        type: HostResponseTypes.HostResourceSample,
-        sample: { cpuPercent: "3.5", rssKb: 380_000, heapUsedKb: 91_234 },
-      }).success,
-    ).toBe(false);
-    // 多余字段：Host 自采样本只带这三项，隐私红线不允许夹带 pid 之类的维度。
-    expect(
-      hostResponseMessageSchema.safeParse({
-        type: HostResponseTypes.HostResourceSample,
-        sample: { cpuPercent: 3.5, rssKb: 380_000, heapUsedKb: 91_234, pid: 4_321 },
       }).success,
     ).toBe(false);
   });

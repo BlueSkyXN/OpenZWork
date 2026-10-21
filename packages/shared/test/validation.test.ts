@@ -200,19 +200,6 @@ describe("hostResponseMessageSchema", () => {
     expect(exited.success).toBe(true);
   });
 
-  it("accepts a strict CUA operation state payload", () => {
-    const parsed = hostResponseMessageSchema.safeParse({
-      type: HostResponseTypes.CuaOperationState,
-      active: true,
-      sessionId: "sess-1",
-      turnId: "turn-1",
-      workspacePath: "C:\\repo",
-      workspaceIdentity: "local:test",
-    });
-
-    expect(parsed.success).toBe(true);
-  });
-
   it.each([
     { active: "true" },
     { sessionId: "" },
@@ -230,48 +217,6 @@ describe("hostResponseMessageSchema", () => {
     });
 
     expect(parsed.success).toBe(false);
-  });
-
-  it("accepts network telemetry batch payload", () => {
-    const parsed = hostResponseMessageSchema.safeParse({
-      type: HostResponseTypes.NetworkTelemetryBatch,
-      observations: [
-        {
-          transport: "rpc",
-          interface: "file.read",
-          durationMs: 12,
-          ok: true,
-        },
-      ],
-    });
-    expect(parsed.success).toBe(true);
-  });
-
-  it("accepts a strict Agent resource sample and rejects identity fields", () => {
-    const payload = {
-      type: HostResponseTypes.AgentResourceSample,
-      runtimeSurface: "remote",
-      sample: {
-        arch: "x64",
-        cpuCores: 1.5,
-        cpuPercent: 18.75,
-        intervalMs: 60_000,
-        logicalCpuCount: 8,
-        platform: "linux",
-        rssKb: 131_072,
-      },
-    };
-
-    expect(hostResponseMessageSchema.safeParse(payload).success).toBe(true);
-    expect(
-      hostResponseMessageSchema.safeParse({
-        ...payload,
-        sample: {
-          ...payload.sample,
-          workspaceIdentity: "remote:ssh:secret",
-        },
-      }).success,
-    ).toBe(false);
   });
 
   it("accepts cron scheduler wake request with a non-empty automation id", () => {
@@ -667,18 +612,6 @@ describe("hostResponseMessageSchema", () => {
     expect(patch.embeddedBrowserAllowInsecureCertificates).toBe(true);
   });
 
-  it("defaults the composer Computer Use entry to hidden and accepts patches", () => {
-    const parsed = appSettingsSchema.parse({});
-    const shown = appSettingsSchema.parse({ computerUseComposerEntryHidden: false });
-    const patch = appSettingsPatchSchema.parse({ computerUseComposerEntryHidden: false });
-
-    // 2026-08-21 产品决定输入框入口默认不展示，设置项保留、默认关闭。
-    // 显式存过 false 的用户保持展示——default 只对缺省字段生效，不覆盖既有选择。
-    expect(parsed.computerUseComposerEntryHidden).toBe(true);
-    expect(shown.computerUseComposerEntryHidden).toBe(false);
-    expect(patch.computerUseComposerEntryHidden).toBe(false);
-  });
-
   it("defaults ZCode interaction behavior to queue and accepts guide patches", () => {
     const parsed = appSettingsSchema.parse({});
     const patch = appSettingsPatchSchema.parse({
@@ -689,28 +622,6 @@ describe("hostResponseMessageSchema", () => {
     expect(patch).toMatchObject({
       zcodeInteractionBehavior: "guide",
     });
-  });
-
-  it("accepts provider family domain settings and defaults migration marker to false", () => {
-    const defaults = appSettingsSchema.parse({});
-    const parsed = appSettingsSchema.parse({
-      providerFamilyDomain: "zai",
-      providerFamilyDomainUpdatedAt: 123,
-      providerFamilyDomainMigrated: true,
-    });
-    const patch = appSettingsPatchSchema.parse({
-      providerFamilyDomain: "",
-      providerFamilyDomainUpdatedAt: 456,
-      providerFamilyDomainMigrated: true,
-    });
-
-    expect(defaults.providerFamilyDomain).toBeUndefined();
-    expect(defaults.providerFamilyDomainMigrated).toBe(false);
-    expect(parsed.providerFamilyDomain).toBe("zai");
-    expect(parsed.providerFamilyDomainUpdatedAt).toBe(123);
-    expect(parsed.providerFamilyDomainMigrated).toBe(true);
-    expect(patch.providerFamilyDomain).toBe("");
-    expect(patch.providerFamilyDomainUpdatedAt).toBe(456);
   });
 
   it("normalizes legacy enabled agent CLI providers to ZCode Agent", () => {

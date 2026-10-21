@@ -78,23 +78,4 @@ describe("remoteAppConfig", () => {
       ),
     ).toBe("https://local.example.com/discord");
   });
-
-  it("读取 forceUpdate minimalVersion", () => {
-    expect(
-      getForceUpdateMinimalVersionFromConfig({
-        forceUpdate: {
-          minimalVersion: " 4.0.0 ",
-        },
-      }),
-    ).toBe("4.0.0");
-
-    expect(getForceUpdateMinimalVersionFromConfig({})).toBeUndefined();
-    expect(
-      getForceUpdateMinimalVersionFromConfig({
-        forceUpdate: {
-          minimalVersion: "",
-        },
-      }),
-    ).toBeUndefined();
-  });
 });

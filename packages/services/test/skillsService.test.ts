@@ -50,7 +50,7 @@ function workspaceSkillRoot(workspacePath: string): string {
 }
 
 function userSkillRoot(home: string): string {
-  return join(home, ".zcode", "skills");
+  return join(home, ".openzwork", "skills");
 }
 
 function userAgentsSkillRoot(home: string): string {
@@ -60,7 +60,7 @@ function userAgentsSkillRoot(home: string): string {
 function officialPluginRoot(home: string, pluginName: string, version = "0.1.0"): string {
   return join(
     home,
-    ".zcode",
+    ".openzwork",
     "cli",
     "plugins",
     "cache",
@@ -76,7 +76,7 @@ function marketplacePluginRoot(
   pluginName: string,
   version = "0.0.0",
 ): string {
-  return join(home, ".zcode", "cli", "plugins", "cache", marketplace, pluginName, version);
+  return join(home, ".openzwork", "cli", "plugins", "cache", marketplace, pluginName, version);
 }
 
 function writePluginManifest(pluginRoot: string, manifest: Record<string, unknown>): void {
@@ -106,7 +106,7 @@ function writeInstalledPluginRecord(
     version?: string;
   },
 ): void {
-  const pluginsRoot = join(home, ".zcode", "cli", "plugins");
+  const pluginsRoot = join(home, ".openzwork", "cli", "plugins");
   mkdirSync(pluginsRoot, { recursive: true });
   writeFileSync(
     join(pluginsRoot, "installed_plugins.json"),
@@ -135,8 +135,8 @@ function writeInstalledPluginRecord(
 }
 
 function writeCliConfig(home: string, config: Record<string, unknown>): void {
-  const configPath = join(home, ".zcode", "cli", "config.json");
-  mkdirSync(join(home, ".zcode", "cli"), { recursive: true });
+  const configPath = join(home, ".openzwork", "cli", "config.json");
+  mkdirSync(join(home, ".openzwork", "cli"), { recursive: true });
   writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
 }
 
@@ -473,7 +473,7 @@ description: agents version
 agents-review-body`,
     );
     writeSkill(
-      join(home, ".zcode", "cli", "skills"),
+      join(home, ".openzwork", "cli", "skills"),
       "old-global",
       `---
 name: old-global
@@ -493,10 +493,10 @@ body`,
       "zcode-global",
     ]);
     expect(result.skills.find((skill) => skill.name === "copied-global")?.path).toContain(
-      join(home, ".zcode", "skills", "copied-global"),
+      join(home, ".openzwork", "skills", "copied-global"),
     );
     expect(result.skills.find((skill) => skill.name === "shared-review")?.path).toContain(
-      join(home, ".zcode", "skills", "current-review"),
+      join(home, ".openzwork", "skills", "current-review"),
     );
     expect(result.skills.every((skill) => skill.scope === "user")).toBe(true);
   });
@@ -611,6 +611,7 @@ android-body`,
     writeCliConfig(home, {
       plugins: {
         enabledPlugins: {
+          "documents@zcode-plugins-official": true,
           "ios-simulator@zcode-plugins-official": true,
         },
       },
@@ -910,7 +911,7 @@ body`,
         provider: "glm",
       });
       const config = JSON.parse(
-        readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
+        readFileSync(join(home, ".openzwork", "cli", "config.json"), "utf-8"),
       ) as { skills?: Record<string, { enable?: boolean }> };
       expect(disabled.skills[0]?.enabled).toBe(false);
       expect(enabled.skills[0]?.enabled).toBe(false);
@@ -931,7 +932,7 @@ body`,
         provider: "glm",
       });
       const reenabledConfig = JSON.parse(
-        readFileSync(join(home, ".zcode", "cli", "config.json"), "utf-8"),
+        readFileSync(join(home, ".openzwork", "cli", "config.json"), "utf-8"),
       ) as { skills?: Record<string, { enable?: boolean }> };
       expect(reenabled.skills[0]?.enabled).toBe(true);
       expect(reenabledConfig.skills?.[skill.path]).toBeUndefined();
@@ -942,8 +943,8 @@ body`,
     const home = makeTempHome();
     const workspacePath = join(home, "workspace");
     const legacySkillId = "workspace:legacy-skill";
-    const legacyStatePath = join(home, ".zcode", "v2", "skills-state.json");
-    mkdirSync(join(home, ".zcode", "v2"), { recursive: true });
+    const legacyStatePath = join(home, ".openzwork", "v2", "skills-state.json");
+    mkdirSync(join(home, ".openzwork", "v2"), { recursive: true });
     writeFileSync(
       legacyStatePath,
       JSON.stringify({ disabledByWorkspace: { [workspacePath]: [legacySkillId] } }),
@@ -957,7 +958,7 @@ body`,
       disabledByWorkspace?: Record<string, string[]>;
     };
     expect(state.disabledByWorkspace).toEqual({ [workspacePath]: [legacySkillId] });
-    expect(existsSync(join(home, ".zcode", "cli", "config.json"))).toBe(false);
+    expect(existsSync(join(home, ".openzwork", "cli", "config.json"))).toBe(false);
   });
 
   it("buildPromptContext 只注入启用且被提及的技能正文", async () => {
@@ -994,7 +995,7 @@ plan-body`,
     expect(context.prompt).toContain("review-body");
     expect(context.prompt).not.toContain("plan-body");
     expect(context.activatedSkillNames).toEqual(["code-review"]);
-    expect(existsSync(join(home, ".zcode", "v2", "skills-audit.log"))).toBe(true);
+    expect(existsSync(join(home, ".openzwork", "v2", "skills-audit.log"))).toBe(true);
   });
 
   it("被禁用的技能即便被提及也不会注入", async () => {

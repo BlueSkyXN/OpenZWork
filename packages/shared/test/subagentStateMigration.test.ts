@@ -4,14 +4,14 @@ import { importSubagentStateSelections } from "../src/subagent-state-migration.j
 describe("Subagent 内置 state 单向导入", () => {
   const pluginId = "plugin:document-skills@zcode-plugins-official:judge";
   const pluginLegacy = {
-    pluginAgentModelOverrides: { [pluginId]: "custom:builtin%3Azai-coding-plan:GLM" },
+    pluginAgentModelOverrides: { [pluginId]: "custom:builtin%3Azai:GLM" },
     pluginAgentThoughtLevelOverrides: { [pluginId]: "high" },
   };
   it("staging 插件双map仅在存储边界离线导入，保留来源记录且再次导入幂等", () => {
     const next = importSubagentStateSelections(pluginLegacy);
     expect(next.pluginAgentModelSelectionOverrides).toEqual({
       [pluginId]: {
-        providerId: "account:zai-individual-coding-plan",
+        providerId: "zai-api",
         modelId: "GLM",
         options: { reasoningLevel: "high" },
       },
@@ -41,7 +41,7 @@ describe("Subagent 内置 state 单向导入", () => {
   });
 
   const legacy = {
-    builtInModelOverrides: { Explore: "custom:builtin%3Azai-coding-plan:m" },
+    builtInModelOverrides: { Explore: "custom:builtin%3Azai:m" },
     builtInThoughtLevelOverrides: { Explore: "high" },
     disabledAgentIds: ["a"],
     extra: "keep",
@@ -51,7 +51,7 @@ describe("Subagent 内置 state 单向导入", () => {
     expect(next).toMatchObject(legacy);
     expect(next.builtInModelSelectionOverrides).toEqual({
       Explore: {
-        providerId: "account:zai-individual-coding-plan",
+        providerId: "zai-api",
         modelId: "m",
         options: { reasoningLevel: "high" },
       },
