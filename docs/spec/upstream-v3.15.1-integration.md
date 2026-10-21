@@ -96,3 +96,5 @@ sequenceDiagram
 - WP-05 已移除的 telemetry/ARMS 发送、采样、上报与其 UI hook 专属测试随该领域清理；混合 IPC、URL 校验、通用协议与本地日志导出断言保留。物理删除约束继续由 `tests/private-cleanup/cleanup.test.cjs` 验证，核心清单不减少。
 
 - E2E 通用依赖按各自固定上游版本恢复，用户数据根使用 `.openzwork`；工作区、ToolSearch、冷恢复与手机远控场景保留。测试准备使用当前本地职业设置、Personal Provider 和设备配对协议，不恢复官方账号、套餐连接、账号锚定引导记录或账号 relay。
+
+- 根单元测试统一注册到 Vitest：新增的本地路径、记忆迁移、命令改名和本地使用统计回归不再在 Vitest worker 中启动另一个 Node test runner。断言、隔离目录和平台跳过条件保留，文件系统观察改用等价的 Vitest spy。

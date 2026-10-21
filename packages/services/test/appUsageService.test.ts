@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import { appUsageSnapshotSchema } from "@zcode/shared";
 import { createAppUsageService } from "../src/app-usage/appUsageService.js";
 
