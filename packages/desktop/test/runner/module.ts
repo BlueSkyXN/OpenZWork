@@ -3,8 +3,5 @@ export const desktopE2ERunnerModule = {
   id: "desktop-e2e-runner",
   requires: [],
   provides: ["desktop-e2e-config"],
-  publicEntrypoints: [
-    "packages/desktop/wdio.conf.ts",
-    "packages/desktop/test/e2e/runner/contract.ts",
-  ],
+  publicEntrypoints: ["packages/desktop/wdio.conf.ts", "packages/desktop/test/runner/contract.ts"],
 } as const;

@@ -21,7 +21,7 @@
       ]
     }
   },
-  "include": ["wdio.conf.ts", "test/e2e", "src/host/botRemoteWorkspaceResolver.ts", "src/host/sourceServerDirectory.ts", "src/host/windowRemoteConnectionRegistry.ts"],
+  "include": ["wdio.conf.ts", "test/e2e", "test/runner", "src/host/botRemoteWorkspaceResolver.ts", "src/host/sourceServerDirectory.ts", "src/host/windowRemoteConnectionRegistry.ts"],
   "references": [
     { "path": "../shared" },
     { "path": "../ui" },

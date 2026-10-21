@@ -56,13 +56,13 @@ modules:
     managed: false
   - id: desktop-e2e-runner
     roots:
-      - packages/desktop/test/e2e/runner
+      - packages/desktop/test/runner
       - packages/desktop/wdio.conf.ts
     managed: true
     requires: []
     publicEntrypoints:
       - packages/desktop/wdio.conf.ts
-      - packages/desktop/test/e2e/runner/contract.ts
+      - packages/desktop/test/runner/contract.ts
     layers: { adapters: . }
     owner: desktop-testing
   - id: formal-proof

@@ -62,3 +62,5 @@ sequenceDiagram
 - Provider 真实磁盘事务继续验证 Personal 写入、Registry 刷新、ACK 重放和 CAS 回滚；独立 Credential Store 与本地 Settings 为保留哨兵，v1 历史账号凭据不应用，v2 非空历史凭据在写入前拒绝。
 - MiMo 回归按已约定的 16 模板目录验证 API 模板及新模型；用户显式填写的第三方 Token Plan 地址、禁用状态与 API Key 保留，不额外加入模板。
 - 扩展测试保留当前桌面、远程连接与插件状态合同；已移除的账号、云端分享、反馈、遥测和原生 CUA 专属场景随实现清理。通用 E2E helper 按固定 3.16.1 源码恢复，并保持隔离用户目录。
+
+- WDIO 配置由 `desktop-e2e-runner` 模块登记，合同测试属于 Vitest 的 `test/runner`，不混入真实 Electron E2E。测试直接执行入口中的隔离目录初始化，验证未显式配置 Provider 时不注入凭据，普通场景与 Compact 场景的上下文配置分别保持正确。
