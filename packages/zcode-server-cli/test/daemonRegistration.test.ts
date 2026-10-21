@@ -78,7 +78,7 @@ describe("daemon service registration", () => {
 
   it("stops and unregisters a same-root legacy service before registering the root-scoped identity", async () => {
     const root = await mkdtemp(join(process.platform === "win32" ? tmpdir() : "/tmp", "zdr-"));
-    const layout = resolveServerLayout(join(root, "server"));
+    const layout = await resolveCanonicalServerLayout(join(root, "server"));
     const platform = process.platform === "darwin" || process.platform === "linux" ? process.platform : "win32";
     const kind = platform === "darwin" ? "launchd" : platform === "linux" ? "systemd" : "task-scheduler";
     const legacyDescriptor = createServiceDescriptor({

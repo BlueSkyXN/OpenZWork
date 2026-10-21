@@ -371,11 +371,26 @@
 
     StrCpy $R2 ""
     System::Call 'Kernel32::SetEnvironmentVariableW(w "ZCODE_SHORTCUT_PATH", w "$R9") i.R1'
+    !ifdef ZCODE_SHORTCUT_DIAGNOSTICS
+      ; 仅隔离 smoke 启用，保留失败阶段和原始返回值，避免空字符串掩盖原因。
+      Push $R3
+      FileOpen $R3 "$INSTDIR\shortcut-read-diagnostics.txt" a
+      FileWrite $R3 "set-env=$R1 shortcut=$R9 powershell=$SYSDIR\WindowsPowerShell\v1.0\powershell.exe$\r$\n"
+      FileClose $R3
+      Pop $R3
+    !endif
     StrCmp $R1 "0" zcodeReadShortcutTargetDone 0
 
     nsExec::ExecToStack /TIMEOUT=5000 `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "[Console]::Out.Write(([Activator]::CreateInstance([type]::GetTypeFromProgID('WScript.Shell'))).CreateShortcut([Environment]::GetEnvironmentVariable('ZCODE_SHORTCUT_PATH')).TargetPath)"`
     Pop $R1
     Pop $R2
+    !ifdef ZCODE_SHORTCUT_DIAGNOSTICS
+      Push $R3
+      FileOpen $R3 "$INSTDIR\shortcut-read-diagnostics.txt" a
+      FileWrite $R3 "powershell-exit=$R1 output=$R2$\r$\n"
+      FileClose $R3
+      Pop $R3
+    !endif
     StrCmp $R1 "0" zcodeReadShortcutTargetDone 0
     StrCpy $R2 ""
 

@@ -254,6 +254,13 @@
         "packages/ui/test/v4SessionSubscriptionErrorPanel.test.ts",
         "packages/web/test/externalRelayFrameGapRecovery.test.ts"
       ]
+    },
+    {
+      "capability": "process-lifecycle-safety",
+      "files": [
+        "packages/desktop/test/subagentConfigProxy.test.ts",
+        "packages/zcode-server-cli/test/componentArchiveProcess.test.ts"
+      ]
     }
   ]
 }

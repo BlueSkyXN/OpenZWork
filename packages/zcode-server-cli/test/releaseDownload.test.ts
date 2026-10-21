@@ -97,7 +97,7 @@ describe("release downloader", () => {
           clearInterval(timer);
           response.end();
         }
-      }, 30);
+      }, 250);
       response.once("close", () => clearInterval(timer));
     });
     servers.push(server);
@@ -111,10 +111,12 @@ describe("release downloader", () => {
       destination: join(dir, "release.tar.gz"),
       sha256,
       expectedSizeBytes: payload.byteLength,
-      timeoutMs: 50,
-      overallTimeoutMs: 1_000,
+      // 只比较空闲与总时长；50ms 小于 Windows CI 的建连调度抖动。
+      timeoutMs: 1_000,
+      overallTimeoutMs: 10_000,
       maxAttempts: 1,
     });
+    await expect(readFile(join(dir, "release.tar.gz"))).resolves.toEqual(payload);
   });
 
   it("retries transient release HTTP failures with bounded attempts", async () => {

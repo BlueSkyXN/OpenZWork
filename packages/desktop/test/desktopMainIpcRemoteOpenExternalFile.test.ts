@@ -1,3 +1,6 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PlatformChannels } from "@zcode/shared";
 
@@ -139,7 +142,9 @@ describe("OpenExternal 对 file URL 的分流", () => {
     const { listener } = await registerOpenExternalListener();
     const sender = { getURL: vi.fn(() => "about:blank") };
 
-    listener({ sender }, "file:///tmp/report.html#section");
+    const fileUrl = pathToFileURL(join(tmpdir(), "report.html"));
+    fileUrl.hash = "section";
+    listener({ sender }, fileUrl.href);
 
     await vi.waitFor(() => expect(h.shellOpenPath).toHaveBeenCalledTimes(1));
     expect(h.shellOpenPath).not.toHaveBeenCalledWith(expect.stringContaining("#"));

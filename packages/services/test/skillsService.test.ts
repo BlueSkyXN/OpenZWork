@@ -3,6 +3,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -18,7 +19,7 @@ const originalProcessLabel = process.env.ZCODE_PROCESS_LABEL;
 const tempHomes: string[] = [];
 
 function makeTempHome(): string {
-  const home = mkdtempSync(join(tmpdir(), "zcode-skills-home-"));
+  const home = realpathSync(mkdtempSync(join(tmpdir(), "zcode-skills-home-")));
   tempHomes.push(home);
   return home;
 }

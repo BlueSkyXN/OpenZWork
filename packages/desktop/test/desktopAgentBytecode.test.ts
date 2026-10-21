@@ -17,7 +17,8 @@ afterEach(async () => {
 });
 
 async function fixture(source: string) {
-  const dir = await mkdtemp(join(tmpdir(), "zcode bytecode 中文 "));
+  // Windows TEMP 可是 8.3 短路径；输入与子进程使用同一规范目录。
+  const dir = await realpath(await mkdtemp(join(tmpdir(), "zcode bytecode 中文 ")));
   directories.push(dir);
   const entryPath = join(dir, "zcode.cjs");
   await writeFile(entryPath, source);

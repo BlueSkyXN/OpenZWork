@@ -91,6 +91,7 @@ function compileFixture({
 }) {
   const args = [
     "/V2",
+    "/DZCODE_SHORTCUT_DIAGNOSTICS",
     ...(buildUninstaller ? ["/WX", "/DBUILD_UNINSTALLER"] : []),
     `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,
     `/DELECTRON_BUILDER_NSIS_INCLUDE_DIR=${resolve(appBuilderLibDir, "templates/nsis/include")}`,
@@ -189,7 +190,9 @@ async function main() {
           normalizeWindowsPath(expectedInitialTarget)
         ) {
           throw new Error(
-            `${scenario}: installer could not read shortcut target: ${readShortcutTargetResult}`,
+            `${scenario}: installer could not read shortcut target: ${readShortcutTargetResult}\n` +
+              readInstallerLog(join(installDir, "shortcut-read-diagnostics.txt")) +
+              `\ndirect PowerShell target: ${readShortcutProperty(startMenuLink, "targetPath")}`,
           );
         }
 
