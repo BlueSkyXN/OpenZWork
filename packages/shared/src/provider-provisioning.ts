@@ -64,12 +64,10 @@ export const providerProvisioningEnvelopeSchema = z
     credentials: z.array(providerProvisioningCredentialEntrySchema).max(256),
   })
   .strict()
-  .refine(
-    (value) =>
-      value.schemaVersion === 1 ||
-      value.credentials.every((entry) => entry.scope === "account-provider"),
-    { message: "Provisioning v2 only accepts account-provider credentials", path: ["credentials"] },
-  );
+  .refine((value) => value.schemaVersion === 1 || value.credentials.length === 0, {
+    message: "Provisioning v2 does not transfer legacy credentials",
+    path: ["credentials"],
+  });
 
 export type ProviderProvisioningEnvelope = z.infer<typeof providerProvisioningEnvelopeSchema>;
 

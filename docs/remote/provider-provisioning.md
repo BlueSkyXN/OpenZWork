@@ -9,8 +9,7 @@
 
 ## 目标
 
-在 Remote Environment 上线，以及本地模型配置、默认模型、账号状态或允许同步的凭据成功
-保存后，把 Local Environment 的最新完整快照自动复制到每个在线 Remote Environment。此
+在 Remote Environment 上线，以及本地模型配置或默认模型成功保存后，把 Local Environment 的最新完整快照自动复制到每个在线 Remote Environment。此
 v0 能力不提供远程配置管理 UI；本地 Environment 是编辑权威，远端只保存可丢弃的执行镜像。
 
 ## 不变量
@@ -18,12 +17,10 @@ v0 能力不提供远程配置管理 UI；本地 Environment 是编辑权威，�
 - 远端正式 `provider_config.json`、`model-selection.json`、`setting.json` 和 Credential Store
   仍是远端 Environment 的事实源。
 - Provisioning 只写目标 Environment 的正式 Store，完成后由目标 Environment 自己重建
-  Provider Config、Account Source 和 Registry。
+  Provider Config 和 Registry。
 - 不向 Remote Worker 注入完整 Registry、Runtime Model、API Key 快照或动态 Header。
-- 不使用跨 Environment 的 `provider/updateAccountConfig`；该协议仍只属于远端 Host → 远端
-  Worker 的进程内同步。
 - Provisioning 不经过 relay，不在 Desktop Main、Renderer 或远端任务状态中持久化 Secret。
-- 本地 allowlist 凭据删除会在下一次同步中删除远端同名凭据；非 allowlist 凭据不受影响。
+- Personal Provider 的显式 Key 随 Personal Config 同步；独立 Credential Store 保持原样。
 - Desktop `continuous`、Mobile `replayable` 任务流和现有 workspace identity 路由保持不变。
 
 ## 触发与范围
@@ -35,11 +32,9 @@ v0 能力不提供远程配置管理 UI；本地 Environment 是编辑权威，�
 - 某个 Remote Environment 从零个在线连接变为至少一个在线连接；
 - Personal Provider Config 保存成功；
 - Configured Default 保存或清除成功；
-- Provisioning Envelope 允许的账号窄设置保存成功；
-- allowlist credential 保存或删除成功。
 
 每次同步都以本地最新完整快照覆盖远端对应镜像，不检查远端是否已有配置，也不比较两端
-是否相同。本地 Personal Config 为空时同样写入空值；allowlist 凭据采用 replace 语义。同步
+是否相同。本地 Personal Config 为空时同样写入空值；独立 Credential Store 不进入快照。同步
 首次连接时，只有 `applied` / `already-applied` 才能发布 Remote Workspace ready；首次返回
 `failed`、`rollback_failed` 或 `unsupported` 时沿正式连接失败通道结束请求。已经发布的
 Workspace 后续同步失败不拆除连接，只留下不含 Secret 的结构化 warning，并等待下一次真实
@@ -83,12 +78,10 @@ Active workspace (local / remote) ──仅决定工作区上下文，不改变�
 
 ### 校验边界
 
-同步必须拒绝损坏的 JSON、未知的 Envelope 结构、allowlist 凭据的格式错误、凭据解密失败和
-配置读取期间的事实变化；这些错误不能通过跳过字段或部分写入来掩盖。Personal Provider 的
+同步必须拒绝损坏的 Personal JSON、未知的 Envelope 结构和配置读取期间的事实变化；这些错误不能通过跳过字段或部分写入来掩盖。Personal Provider 的
 运行时字段（例如 `api.baseURL`）允许以字符串暂存（包括尚未完成的值）进入 Personal Layer，但无效的 Provider
 必须在 Registry 完整性校验时 fail-closed，不得阻断同一文件中其它合法 Provider 的同步或进入
-可执行 Registry。非 allowlist 的 Credential 记录不属于同步事实，即使其值损坏也不应阻断
-allowlist 凭据的读取；allowlist 条目本身仍必须是字符串且能够用 Source cipher 解密。
+可执行 Registry。独立 Credential Store 的损坏记录不属于本次同步事实。
 
 同步仍然是完整 Personal Layer 的原子替换，不静默丢弃或部分覆盖 Provider；无效 Provider
 保留在目标 Personal Config 中，并通过目标 Environment 的 Provider Settings 完整性问题呈现。
@@ -117,70 +110,38 @@ snapshot、queue、owner/lease 和 `workspaceIdentity` 边界不变。
 - `providers`；
 - `modelConfigRules`；
 - `providerOrder`；
-- `model-selection.json` 中的 Configured Default。
+- `provider_config.json` 同文件中的 Configured Default。
 
 不复制 ZCode Built-in Provider/Model Release。远端继续使用自己的 Built-in Release；两端
 候选集差异可能使默认偏好不可用，按上面的 Host 推荐规则处理，不把它当成配置复制失败。
 
-### 账号连接状态
+### 凭据与兼容版本
 
-只同步账号解析需要的窄字段：
+OpenZWork 只同步 Personal Layer 中用户显式配置的 Provider Key。不复制 `setting.json` 或独立
+`credentials.json`，不导出旧账号 Key、SSH 密码/私钥、Bot 凭据、MCP OAuth token 和插件 Secret。
 
-- `providerFamilyDomain`；
-- `providerFamilyConnectionSelections`。
-
-不复制整个 `setting.json`，避免覆盖远端代理、数据目录、locale、窗口和任务设置。
-
-### 凭据
-
-同步范围由版本化 allowlist 定义：
-
-- `oauth:active_provider`；
-- `oauth:zai:*`、`oauth:bigmodel:*` 的 access token、refresh token、user info；
-- `zcodejwttoken`。
-
-OAuth → Project Token 迁移后，`account-provider:*:api-key` 不再属于同步 allowlist。
-Source 不解密或发送旧账号 Key；Target 不读取、覆盖或删除已有旧/手工 Key。
-新 Source 固定输出 `schemaVersion=2`，表达只替换 OAuth allowlist 的语义；新 Target 接受 v1/v2，v1 旧 `account-provider` 条目校验后忽略，结果数量仅统计实际同步的 OAuth 条目。v2 不允许账号 Key 条目。
-旧 Target 仅接受 v1，会在事务和任何 Store 写入之前拒绝 v2。Host 按现有同步失败语义报告失败，不把信封降级为 v1，也不透传旧 Key；远端已有 OAuth、Key 和配置保持不动，升级 Target 后才能同步。磁盘幂等状态版本不变。
+新 Source 固定输出 `schemaVersion=2` 和空 `credentials`。新 Target 接受 v1/v2：v1 的历史
+`account-provider:*:api-key` 通过结构校验后忽略，不读取、覆盖或删除已有值；v2 拒绝非空历史凭据。
+旧 Target 仅接受 v1，必须在任何写入前拒绝 v2。Host 保留现有失败通道，不把 v2 降级为 v1。
+升级 Target 后才能同步；磁盘幂等状态版本保持不变。
 
 ```text
-新 Source v2 → 旧 Target v1 校验拒绝 → 零写入，保留旧凭据
-新 Source v2 → 新 Target → 仅替换 OAuth allowlist
-旧 Source v1 → 新 Target → 忽略历史账号 Key，保留目标已有值
+新 Source v2 → 旧 Target v1 校验拒绝 → 零写入
+新 Source v2 → 新 Target → 原子替换 Personal Config
+旧 Source v1 → 新 Target → 历史账号 Key 校验后忽略
 ```
 
-目标 Host 用同步的登录态和自己的 Key ID 缓存换 Token；短期 Token 和 ID 缓存不跨 Environment 传输。
-显式手工 Provider 的 Key 仍随 Personal Config 同步。此变更不修改现有同步 lane、事务回滚或 desktop continuous/mobile replayable 边界。
-
-不导出 SSH 密码/私钥、Bot 凭据、MCP OAuth token、插件 Secret 或其它通用 Credential key。
-
-本地和远端的 Credential cipher 可能不同，禁止直接复制 `credentials.json` 密文。Source 端
-通过 Credential Service 解密 allowlist 值，目标端通过自己的 Credential Store 重新加密落盘。
-Result 与日志只记录数量、状态和非 Secret 标识，不返回或打印凭据值。
+结果数量只统计实际写入，`credentialCount` 为 0；日志不返回凭据值。
 
 ## 事务与回滚
 
-Provisioning Envelope 包含：
+Provisioning Envelope 包含 `schemaVersion`、`syncId`、Personal Layer 和同文件 Configured Default，
+以及用于兼容解析的 `credentials` 字段。Source 使用同一版本快照构造 Personal Config。
 
-- `schemaVersion`；
-- `syncId`；
-- source config/model/settings revision（仅用于 Source 读取一致性校验）；
-- 目标端不做跨 Environment 的冲突 revision 判断；
-- Personal Layer、Configured Default、账号窄设置和 allowlist 凭据。
-
-目标端先校验整个 Envelope，再按以下顺序写入：
-
-1. 账号窄设置；
-2. 凭据（目标端重新加密）；
-3. `provider_config.json`；
-4. `model-selection.json`。
-
-每个正式文件使用现有原子写和锁。目标端在事务内暂存每个 domain 的旧值/新值，任一步骤
-失败时按记录反向恢复所有已写入 domain；恢复失败必须返回 `rollback_failed`，禁止报告成功。
-回滚后会刷新目标内存中的 Account Source/Registry，使恢复后的事实立即生效，但不会产生
-成功 Provisioning 结果。成功后目标端主动刷新 Account Source/Registry，
-再由现有远端 Host → Worker account overlay 链路同步到 Agent Worker。
+目标端校验完整信封，在现有文件锁内原子替换 `provider_config.json`，刷新 Registry 后写入幂等记录。
+真实写入、刷新或幂等提交失败时执行 Personal Config 的 CAS 回滚；如果其它写入者已修改配置，
+保留新值并返回 `rollback_failed`。独立 Credential Store 不参与读取、事务或回滚。
+成功或回滚后均刷新 Registry，使后续会话使用当前事实。
 
 运行中的 Active Model 继续遵守“创建时冻结”语义；Provisioning 影响后续新建 Model/Session，
 不静默改写正在执行的请求。
@@ -198,7 +159,7 @@ Window Host
 Remote zcode-server
   ├─ Target Store 写入与回滚
   ├─ Remote ProviderRuntime refresh
-  └─ Remote Host → Worker Account Config sync
+  └─ Remote Host 的现有 Provider Registry 读取链路
 ```
 
 Remote Target RPC 不复用 Renderer 的 `IProviderSettingsService` 写接口，避免把“跨 Environment
@@ -208,7 +169,7 @@ Remote Target RPC 不复用 Renderer 的 `IProviderSettingsService` 写接口，
 
 - Result 与 Host execution result 增加可选 `errorCode`，只接受固定枚举：
   `source-read-failed`（本地快照读取）、`target-call-failed`（远端调用抛错，含校验/预读/RPC）、
-  `target-write-failed`（目标 Store 写入）、`target-refresh-failed`（账号/Registry 刷新）、
+  `target-write-failed`（目标 Store 写入）、`target-refresh-failed`（Registry 刷新）、
   `target-commit-failed`（幂等记录写入）、`target-apply-failed`（旧目标只返回失败状态）、
   `capability-unavailable`、`session-unavailable`、`host-execution-failed`。
   `rollback_failed` 仍单独表达回滚失败，不覆盖原失败阶段。错误码不包含路径、凭据或远端自由文本。
@@ -232,10 +193,4 @@ Remote Target RPC 不复用 Renderer 的 `IProviderSettingsService` 写接口，
 
 - 聚焦测试覆盖缺失/失效 reasoning、缺失 Provider/Model、空 Registry、合法默认、写入/刷新/
   幂等提交失败与回滚，以及旧结果和未知错误码的安全处理。
-- `SSH-P0-CONN-05` 通过真实 Electron → SSH → 远端 Target 验证：损坏本地同步凭据时错误和
-  连接日志都显示 `source-read-failed`；恢复凭据后，保留失效默认也能进入远端目录和工作区。
-  用例使用既有无账号启动 fixture，避免无关的假 OAuth 触发登录过期弹窗。
-- 2026-10-09：macOS Desktop → 隔离 Ubuntu 22.04 aarch64 SSH E2E 通过，artifact
-  `desktop-e2e-20261009032604472-p1453-8bb89553244ba5cc`。用例保持 pending，未进行人工晋升。
-  Windows/WSL、其它远端系统与手机端 UI 未实测；未取得原反馈用户的现场输入，不据此宣称复现了
-  每位用户的历史事故。回滚可还原本次提交，无持久化格式迁移。
+- 隔离文件回归覆盖 v2 发送、旧 Target 在写入前拒绝、v1 历史 Key 忽略、损坏旧密文与并发凭据写入保留。
