@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -134,7 +134,8 @@ async function main() {
     getBinFromUrl("nsis-resources-3.4.1", "nsis-resources-3.4.1.7z", NSIS_RESOURCES_CHECKSUM),
   ]);
   const makensisPath = resolve(nsisDir, "makensis.exe");
-  const tempRoot = mkdtempSync(join(tmpdir(), "zcode-installer-nsh-smoke-"));
+  // WScript.Shell 返回长路径；Windows 的临时根可能使用 RUNNER~1，须在写入 .lnk 前统一。
+  const tempRoot = realpathSync.native(mkdtempSync(join(tmpdir(), "zcode-installer-nsh-smoke-")));
 
   try {
     const uninstallerFixturePath = join(tempRoot, "uninstaller-fixture.exe");

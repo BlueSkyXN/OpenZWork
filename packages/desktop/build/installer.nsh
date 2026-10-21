@@ -382,7 +382,9 @@
     !endif
     StrCmp $R1 "0" zcodeReadShortcutTargetDone 0
 
-    nsExec::ExecToStack /TIMEOUT=5000 `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "[Console]::Out.Write(([Activator]::CreateInstance([type]::GetTypeFromProgID('WScript.Shell'))).CreateShortcut([Environment]::GetEnvironmentVariable('ZCODE_SHORTCUT_PATH')).TargetPath)"`
+    ; 云端确认 5 秒会在 PowerShell 初始化时返回 timeout，导致正确快捷方式被误判并覆盖参数。
+    ; 给初始化 15 秒的有限边界；保留非零退出/超时返回空值的既有失败语义。
+    nsExec::ExecToStack /TIMEOUT=15000 `"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -Command "[Console]::Out.Write(([Activator]::CreateInstance([type]::GetTypeFromProgID('WScript.Shell'))).CreateShortcut([Environment]::GetEnvironmentVariable('ZCODE_SHORTCUT_PATH')).TargetPath)"`
     Pop $R1
     Pop $R2
     !ifdef ZCODE_SHORTCUT_DIAGNOSTICS
