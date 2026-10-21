@@ -44,7 +44,8 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
           host: "127.0.0.1",
           port: Number(url.port),
           strictPort: true,
-          proxy: { "/ws": { target: relay.wsUrl, ws: true } },
+          // target 只含 origin；http-proxy 会追加入站 /ws，否则变为 /ws/ws。
+          proxy: { "/ws": { target: relay.httpUrl, ws: true } },
         },
       });
       await web.listen();

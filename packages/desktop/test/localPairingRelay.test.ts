@@ -1,3 +1,8 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { prepareWebRemoteControlSessionEventsFixture } from "./e2e/helpers/web-remote-control-session-events-fixture.js";
 import { once } from "node:events";
 import { WebSocket } from "ws";
 import { describe, expect, it } from "vitest";
@@ -30,6 +35,34 @@ function waitFor(socket: WebSocket, type: string) {
 }
 
 describe("隔离远控配对 fixture", () => {
+  it("手机 Web 入口通过实际 Vite 代理连接隔离 relay", async () => {
+    const reservation = createServer();
+    reservation.listen(0, "127.0.0.1");
+    await once(reservation, "listening");
+    const port = (reservation.address() as { port: number }).port;
+    await new Promise<void>((resolve) => reservation.close(() => resolve()));
+    const root = await mkdtemp(join(tmpdir(), "relay-web-fixture-"));
+    const settingsFile = join(root, "settings.json");
+    await writeFile(settingsFile, "{}");
+    let close: (() => Promise<void>) | undefined;
+    let socket: WebSocket | undefined;
+    try {
+      close = await prepareWebRemoteControlSessionEventsFixture({
+        settingsFile, credentialsFile: join(root, "credentials.json"), workspacePath: root,
+        webUrl: `http://127.0.0.1:${port}/remote/v4`,
+      });
+      socket = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+      await once(socket, "open");
+      const response = waitFor(socket, "device_register_ack");
+      socket.send(JSON.stringify({ type: "device_register_init", pass_hash: "fixture-pass-hash" }));
+      expect(await response).toMatchObject({ type: "device_register_ack" });
+    } finally {
+      socket?.terminate();
+      await close?.();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it("拒绝错误证明，通过真实鉴权计算配对后转发，并保留设备重连身份", async () => {
     const relay = await createLocalPairingRelay();
     const sockets: WebSocket[] = [];

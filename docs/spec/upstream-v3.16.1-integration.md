@@ -54,3 +54,5 @@ sequenceDiagram
 - 完整历史测试按包分组执行（`scripts/run-full-suite-groups.mjs`）：每组独立进程、独立 JSON 报告与组级时限，超时或崩溃的组标记 cancelled 后继续跑其余组，job 级超时预算覆盖分组总和加余量。任何一组的失败不再让整个 job 的诊断全部丢失。
 - 依赖按新 lockfile 与固定 Node 24.14.0 / pnpm 11.28.6 安装；不复制旧依赖或 ignored 运行配置。
 - 候选提交、PR 与云端结果分别记录。完成候选不自动合并、打 tag、发布或部署。
+
+- 手机 E2E 的 Web 开发代理以隔离 relay 的 origin 为目标，入站 `/ws` 路径只转发一次；验证经实际 Vite WebSocket 代理的注册握手，避免 helper 自测通过而移动端无法连接。
