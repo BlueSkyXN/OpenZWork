@@ -1072,14 +1072,15 @@ describe("SubagentsSection", () => {
         }),
     );
 
-    await renderInteractiveSubagentsSection();
-    await waitFor(() => {
-      expect(
-        capturedModelConfigSelects.some(
-          (candidate) => candidate.normalizedValue === "custom:custom-openai:glm-5.2",
-        ),
-      ).toBe(true);
+    // 等首读及被动 effect 提交后再操作；渲染记录可能先于 DOM 提交出现，不能作为就绪信号。
+    await act(async () => {
+      await renderInteractiveSubagentsSection();
     });
+    expect(
+      screen
+        .getByTestId(testId(TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER, "Explore"))
+        .getAttribute("data-model-current-value"),
+    ).toBe("custom:custom-openai:glm-5.2");
 
     const initialPicker = capturedModelConfigSelects.findLast(
       (candidate) => candidate.normalizedValue === "custom:custom-openai:glm-5.2",
@@ -1087,7 +1088,7 @@ describe("SubagentsSection", () => {
     const onModelValueChange = initialPicker?.onValueChange;
     expect(onModelValueChange).toBeTypeOf("function");
     const beforeOptimisticRender = capturedModelConfigSelects.length;
-    act(() => {
+    await act(async () => {
       (onModelValueChange as (value: string) => void)("custom:custom-openai:gpt-5.4");
     });
     await waitFor(() => {
