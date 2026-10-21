@@ -2,14 +2,14 @@ import { once } from "node:events";
 import { createServer } from "node:http";
 import type { BrowserContext, Page } from "playwright-core";
 import { parseWebRemoteControlAppPayload, type WebRemoteControlStatus } from "@zcode/shared";
-import { parseWebRemoteControlRelayV2IncomingMessage } from "@zcode/shared/web-remote-relay";
+import type { WebRemoteControlRelayIncomingMessage } from "@zcode/shared";
 
 /** 只延迟真实回包和丢弃重申；不改 epoch、Reporter 或 Main 查看事实。 */
 export async function replayStaleBootstrapAfterReconnect(context: BrowserContext) {
   let held: string | Buffer | undefined;
   let oldEpoch: string | undefined;
   const evidence = { replayed: false, epochChanged: false, droppedRequests: 0, staleReports: 0 };
-  await context.routeWebSocket(/\/api\/v1\/remote\/ws2(?:\?|$)/u, (route) => {
+  await context.routeWebSocket(/\/ws(?:\?|$)/u, (route) => {
     const server = route.connectToServer();
     route.onMessage((message) => {
       const frame = JSON.parse(String(message)) as { type?: string; payload?: unknown };
@@ -19,7 +19,7 @@ export async function replayStaleBootstrapAfterReconnect(context: BrowserContext
       server.send(message);
     });
     server.onMessage(async (message) => {
-      const frame = parseWebRemoteControlRelayV2IncomingMessage(JSON.parse(String(message)));
+      const frame = JSON.parse(String(message)) as WebRemoteControlRelayIncomingMessage;
       const payload =
         frame?.type === "data" ? parseWebRemoteControlAppPayload(frame.payload) : null;
       if (payload?.zcode_type === "mobile-task-view-request") {
