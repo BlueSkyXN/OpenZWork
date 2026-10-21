@@ -7,7 +7,6 @@ import {
   buildZCodeToolEnvPassthroughEnv,
   readZCodeToolEnvPassthroughEnv,
   sanitizeZCodeRuntimeEnv,
-  resetCapturedZCodeAgentTelemetryEnvForTest,
 } from "../src/runtimeEnv.js";
 
 describe("runtimeEnv", () => {
