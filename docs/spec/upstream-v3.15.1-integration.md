@@ -135,3 +135,5 @@ flowchart LR
 - WDIO 复用固定上游版本的 Electron service、renderer preflight、按 run/cid 隔离的应用副本、进程回收与报告流程。before 只记录 worker 身份，Mocha root hook 在 service 完成后执行实际 preflight。
 - 隔离用户根为 `.openzwork`。Provider seed 仅写当前 Personal Config，必须由显式 E2E Provider 参数提供；普通 smoke 不需要账号或真实模型调用。官方登录、套餐、遥测、远端灰度、Client Scenes fixture 不进入入口。
 - 初始化失败交由 Mocha root hook 终止用例；清理完成后保留报告，禁止将无法启动当作通过。该恢复通过类型与基础设施单测验收；实际桌面/SSH/手机全流程需单独运行已有 E2E。
+
+- 核心 CI 提供 `workflow_dispatch`，当分支更新没有自动触发 PR checks 时，可对当前候选 head 显式执行同一套三平台门禁；验收必须回读 run 的 head SHA。

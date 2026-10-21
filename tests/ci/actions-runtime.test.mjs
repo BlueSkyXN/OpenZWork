@@ -104,7 +104,11 @@ test("installer uploads remain named multi-file archives and fail on missing fil
 });
 
 test("workflow triggers and platform matrices remain unchanged", () => {
-  assert.deepEqual(ci.on, { pull_request: null, push: { branches: ["main"] } });
+  assert.deepEqual(ci.on, {
+    pull_request: null,
+    push: { branches: ["main"] },
+    workflow_dispatch: null,
+  });
   assert.deepEqual(installers.on, {
     workflow_dispatch: null,
     push: { branches: ["main", "wp**"] },
