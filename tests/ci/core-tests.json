@@ -293,6 +293,7 @@
     {
       "capability": "retained-ui-and-desktop-repair",
       "files": [
+        "packages/ui/test/subagentsSection.test.ts",
         "packages/desktop/test/devElectronAppBundle.test.ts",
         "packages/desktop/test/desktopMainIpcRemoteOpenExternalFile.test.ts",
         "packages/desktop/test/desktopDeepLinkRegistration.test.ts",

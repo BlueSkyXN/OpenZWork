@@ -43,14 +43,14 @@ sequenceDiagram
 
 ## CI/CD 验收
 
-- 核心 CI 和同一候选提交的 macOS arm64、Windows x64、Linux x64 Installers 必须通过，不要求人工 UAT、试装或真实用户。
+- 本轮失败修复须在同一候选提交上通过 macOS arm64、Windows x64、Linux x64 的核心 CI、完整 Extended checks 与 Installers，不要求人工 UAT、试装或真实用户。
 - 保留上游 3.16 新纳入常规 typecheck 的 Main、remote Main、shared testing；只移除已退役模块的检查目标。
 - 根 `typecheck` 检查应用源码与共享测试基础设施。历史 E2E 脚本的类型检查使用原 `tsconfig.e2e.json` 在独立扩展工作流执行，保留错误退出码和诊断产物，不让缺失的历史 E2E 辅助文件阻断应用构建。
 - PR 架构检查显式使用真实 base SHA，checkout 保留可解析的 Git 历史；本地对照已通过的 3.15.1 基线。
 - 新 schema 合同、架构检查和受影响测试入口按当前模块与产品范围接线，不自动更新错误基线压低门禁。
 - 核心回归加入 ToolSearch、MCP Apps 连接竞争、GenUI 远端路由、工作流 shell 继承、Duplex 传输、controller identity 和 SQLite 迁移等保留的新行为。
 - 本地 pre-push 与核心 CI 使用同一核心测试清单；继续执行 Lint、SQLite schema 与架构检查，历史 affected suite 交由独立扩展任务运行。
-- 扩展历史测试继续独立运行，失败保留退出码、原始诊断与 artifact，不成为核心 CI 或 Installers 的前置依赖。
+- 扩展历史测试继续与核心 CI、Installers 独立运行，失败保留退出码、原始诊断与 artifact；本轮修复需全部通过后才交付候选，不能用定向 repair 运行代替完整检查。
 - 完整历史测试按包分组执行（`scripts/run-full-suite-groups.mjs`）：每组独立进程、独立 JSON 报告与组级时限，超时或崩溃的组标记 cancelled 后继续跑其余组，job 级超时预算覆盖分组总和加余量。任何一组的失败不再让整个 job 的诊断全部丢失。
 - 依赖按新 lockfile 与固定 Node 24.14.0 / pnpm 11.28.6 安装；不复制旧依赖或 ignored 运行配置。
 - 候选提交、PR 与云端结果分别记录。完成候选不自动合并、打 tag、发布或部署。

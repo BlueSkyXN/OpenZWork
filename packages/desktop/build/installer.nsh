@@ -139,7 +139,8 @@
 !macroend
 
 !ifndef BUILD_UNINSTALLER
-  !include "Win/COM.nsh"
+  ; NSIS 的 Windows include 搜索使用反斜杠，正斜杠会找不到随包提供的头文件。
+  !include "Win\COM.nsh"
   Var ZCodeInstallerLogPath
   Var ZCodeInstallerLogUnavailable
   Var ZCodeInstallerProcessRole
