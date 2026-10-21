@@ -1,5 +1,12 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -104,6 +111,7 @@ function compileFixture({
     ...(forceElevatedInner ? ["/DFORCE_ELEVATED_INNER"] : []),
     ...(shortcutState !== "deleted" ? ["/DPRECREATE_SHORTCUTS"] : []),
     ...(shortcutState === "stale" ? ["/DSTALE_SHORTCUTS"] : []),
+    ...(shortcutState === "unreadable" ? ["/DUNREADABLE_SHORTCUTS"] : []),
     fixturePath,
   ];
   execFileSync(makensisPath, args, {
@@ -155,7 +163,7 @@ async function main() {
       throw new Error("normal uninstall left the installation directory behind");
     }
 
-    for (const scenario of ["preserved", "stale", "deleted"]) {
+    for (const scenario of ["preserved", "stale", "deleted", "unreadable"]) {
       const installerPath = join(tempRoot, `${scenario}-fixture.exe`);
       const installDir = join(tempRoot, `${scenario}-install`);
       compileFixture({
@@ -179,7 +187,16 @@ async function main() {
         throw new Error(`${scenario}: launchLink did not resolve to appExe`);
       }
 
-      if (scenario !== "deleted") {
+      if (scenario === "unreadable") {
+        if (readFileSync(join(installDir, "read-shortcut-target.txt"), "utf8") !== "") {
+          throw new Error("unreadable: invalid shortcut returned a target");
+        }
+        for (const shortcutPath of [startMenuLink, desktopLink]) {
+          if (readFileSync(shortcutPath, "utf8") !== "unreadable-shortcut-canary") {
+            throw new Error("unreadable: installer overwrote an unverified shortcut");
+          }
+        }
+      } else if (scenario !== "deleted") {
         const readShortcutTargetResult = readFileSync(
           join(installDir, "read-shortcut-target.txt"),
           "utf-8",

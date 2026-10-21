@@ -72,6 +72,16 @@ Section
       CreateShortCut "$newDesktopLink" "$appExe" "--preserved"
     !endif
 
+    !ifdef UNREADABLE_SHORTCUTS
+      ; 读取失败不是目标不匹配的证据，保留无法解释的原文件。
+      FileOpen $0 "$newStartMenuLink" w
+      FileWrite $0 "unreadable-shortcut-canary"
+      FileClose $0
+      FileOpen $0 "$newDesktopLink" w
+      FileWrite $0 "unreadable-shortcut-canary"
+      FileClose $0
+    !endif
+
     !ifndef BUILD_UNINSTALLER
       Push "$newStartMenuLink"
       Call ZCodeReadShortcutTarget

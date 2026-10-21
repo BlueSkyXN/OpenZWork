@@ -50,8 +50,28 @@ async function loadDocuments(
     changes && previous
       ? new Map(previous)
       : new Map<string, ReturnType<typeof parseAgentProfileFromMarkdown>>();
-  const updates =
-    changes ?? new Map((await listDocuments(root)).map((path) => [path, "read" as const]));
+  const updates = changes
+    ? new Map(changes)
+    : new Map((await listDocuments(root)).map((path) => [path, "read" as const]));
+  if (changes && previous) {
+    const spellings = new Map<string, string>();
+    const ambiguous = new Set<string>();
+    for (const path of [...previous.keys(), ...updates.keys()]) {
+      const key = path.toLowerCase();
+      if (spellings.has(key) && spellings.get(key) !== path) ambiguous.add(key);
+      spellings.set(key, path);
+    }
+    if (ambiguous.size) {
+      // Windows 上旧拼写仍能读到改名后的文件，迟到 change 会复活旧缓存键。
+      // 仅在大小写冲突时枚举真实条目；普通内容更新仍不 readdir，也不合并真实的两个文件。
+      const present = new Set(await listDocuments(root));
+      for (const path of next.keys())
+        if (ambiguous.has(path.toLowerCase()) && !present.has(path)) next.delete(path);
+      for (const path of updates.keys())
+        if (ambiguous.has(path.toLowerCase()) && !present.has(path)) updates.delete(path);
+      for (const path of present) if (ambiguous.has(path.toLowerCase())) updates.set(path, "read");
+    }
+  }
   await Promise.all(
     [...updates].map(async ([path, action]) => {
       if (action === "remove") {
