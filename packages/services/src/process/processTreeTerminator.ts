@@ -200,7 +200,7 @@ async function forceTerminateWindowsProcessTree(
     targets.add(child.pid);
   }
   // 定向 CIM 复核超时不应让仍由 ChildProcess 句柄持有的 root 永久残留。
-  // 句柄确认 root 仍存活后，taskkill /T 只针对该 root，不会按失效快照认领新 PID。
+  // 句柄确认 root 仍存活后，只向该 root 发单 PID 命令，不按裸 PPID 扩展目标。
   if (
     deadlineSnapshotOnly &&
     !unverifiedRootOnly &&
@@ -234,12 +234,13 @@ function terminateWindowsProcessTreeWithOwnership(
     child.exitCode === null &&
     child.signalCode === null &&
     isPidAlive(pid);
-  const gracefulTargets =
-    ownership.childStillOwned && !internalOptions.unverifiedRootOnly
-      ? [pid]
-      : ownership.currentIdentities.map((identity) => identity.pid);
+  // 后代也逐 PID 处理；不能依赖 taskkill /T 绕过已验证快照重新认领历史父子关系。
+  const gracefulTargets = ownership.currentIdentities
+    .filter((identity) => !internalOptions.unverifiedRootOnly || identity.pid !== pid)
+    .map((identity) => identity.pid);
+  if (ownership.childStillOwned && !internalOptions.unverifiedRootOnly) gracefulTargets.push(pid);
   // CIM 查询在系统高负载下可能超过一次 cleanup deadline，但仍存活的
-  // ChildProcess 句柄可以证明 root 属于当前 Host。此时允许用 root /T 作为安全兜底，
+  // ChildProcess 句柄可以证明 root 属于当前 Host。此时允许只终止 root 作为安全兜底，
   // 只扩大到该句柄对应的活进程，不沿裸 PID 重新发现或认领进程树。
   if (gracefulTargets.length === 0 && childHandleOwnsLiveRoot) gracefulTargets.push(pid);
   const gracefulFlight = Promise.all(
