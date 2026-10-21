@@ -19,14 +19,21 @@ import type { ISettingService } from "../../../src/setting/setting.js";
 import type { ProviderRuntime } from "../../../src/model-provider/providerRuntime.js";
 import type { AccountProviderService } from "@zcode/provider";
 import type { IProviderProvisioningTargetService } from "../../../src/model-provider/providerProvisioning.js";
-import {
-  PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS,
-  readProvisionablePersonalConfig,
-} from "../../../src/model-provider/providerProvisioningSource.js";
+import { readProvisionablePersonalConfig } from "../../../src/model-provider/providerProvisioningSource.js";
 
 const PROVISIONING_SCHEMA_VERSION = 1 as const;
 
-const OAUTH_CREDENTIAL_KEYS = new Set<string>(PROVIDER_PROVISIONING_OAUTH_CREDENTIAL_KEYS);
+// 固定历史白名单，不能随当前产品已移除的账号 API 漂移。
+const OAUTH_CREDENTIAL_KEYS = new Set<string>([
+  "oauth:active_provider",
+  "oauth:zai:access_token",
+  "oauth:zai:refresh_token",
+  "oauth:zai:user_info",
+  "oauth:bigmodel:access_token",
+  "oauth:bigmodel:refresh_token",
+  "oauth:bigmodel:user_info",
+  "zcodejwttoken",
+]);
 
 export interface ProviderProvisioningTargetOptions {
   readonly providerRuntime: ProviderRuntime;

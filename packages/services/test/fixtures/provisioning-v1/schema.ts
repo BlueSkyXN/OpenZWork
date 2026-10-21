@@ -1,9 +1,29 @@
 // 冻结基线 0e40230d34 的旧协议/Target，防止新 schema 掩盖混版本破坏性删除回归。
 import { z } from "zod";
 import { modelSelectionSchema } from "@zcode/shared";
-import { providerFamilyConnectionSelectionSettingsSchema } from "@zcode/shared";
 
 const nonEmptyString = z.string().trim().min(1);
+
+// 从固定上游 aac47556 冻结旧账号字段，只供 v1 兼容性试验。
+export const providerFamilyConnectionSelectionSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("start-plan") }).strict(),
+  z.object({ kind: z.literal("individual-coding-plan") }).strict(),
+  z
+    .object({
+      kind: z.literal("team-coding-plan"),
+      productId: nonEmptyString,
+      organizationId: nonEmptyString,
+      projectId: nonEmptyString,
+    })
+    .strict(),
+]);
+
+export const providerFamilyConnectionSelectionSettingsSchema = z
+  .object({
+    zai: providerFamilyConnectionSelectionSchema.optional(),
+    bigmodel: providerFamilyConnectionSelectionSchema.optional(),
+  })
+  .partial();
 
 export const providerProvisioningTriggerSchema = z.enum([
   "environment-online",

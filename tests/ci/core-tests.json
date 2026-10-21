@@ -203,6 +203,14 @@
         "packages/services/test/appUsageService.test.ts",
         "packages/services/test/skills-toggle.test.ts"
       ]
+    },
+    {
+      "capability": "provider-provisioning-version-safety",
+      "files": [
+        "packages/services/test/providerProvisioningSource.test.ts",
+        "packages/services/test/providerProvisioningTarget.test.ts",
+        "packages/shared/test/providerProvisioning.test.ts"
+      ]
     }
   ]
 }

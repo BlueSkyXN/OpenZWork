@@ -35,11 +35,7 @@ function createEnvelope(overrides: Record<string, unknown> = {}) {
       providerOrder: ["custom"],
       defaultModelSelection: { providerId: "custom", modelId: "model-a" },
     },
-    accountSettings: {
-      providerFamilyDomain: "zai",
-      providerFamilyConnectionSelections: { zai: { kind: "individual-coding-plan" } },
-    },
-    credentials: [{ scope: "oauth-session", key: "oauth:zai:access_token", value: "new-token" }],
+    credentials: [],
     ...overrides,
   };
 }
@@ -128,7 +124,8 @@ describe("Provider Provisioning Target", () => {
   it.each(["write", "commit"])("%s 阶段失败保留安全错误码且回滚原数据", async (phase) => {
     const f = await createTarget();
     const before = await f.personal.read();
-    if (phase === "write") f.settingUpdate.mockRejectedValueOnce(new Error("fixture write failed"));
+    if (phase === "write")
+      f.replacePersonalConfig.mockRejectedValueOnce(new Error("fixture write failed"));
     else await mkdir(join(f.directory, "provisioning.json"));
     expect(await f.target.apply(createEnvelope() as never)).toMatchObject({
       status: "failed",
@@ -150,7 +147,9 @@ describe("Provider Provisioning Target", () => {
     });
     const envelope = await source.read("new-source");
     if (legacy) {
-      await expect(f.target.apply(envelope)).rejects.toThrow();
+      await expect(f.target.apply(envelope)).rejects.toMatchObject({
+        issues: expect.arrayContaining([expect.objectContaining({ path: ["schemaVersion"] })]),
+      });
       expect(f.settingUpdate).not.toHaveBeenCalled();
       expect(f.credentialSave).not.toHaveBeenCalled();
       expect(f.credentialDelete).not.toHaveBeenCalled();
@@ -160,7 +159,7 @@ describe("Provider Provisioning Target", () => {
       // 空配置无默认模型，避免测试 fake Registry 对未知默认的校验影响协议断言。
       delete envelope.personalConfig.defaultModelSelection;
       await expect(f.target.apply(envelope)).resolves.toMatchObject({ status: "applied" });
-      expect(f.credentialValues.get("oauth:zai:access_token")).toBeNull();
+      expect(f.credentialValues.get("oauth:zai:access_token")).toBe("old-token");
     }
     expect(f.credentialValues.get(key)).toBe("old-key");
   });
@@ -168,7 +167,16 @@ describe("Provider Provisioning Target", () => {
   it("旧 Target fixture 保留基线的缺失 Key 删除行为，防止假阳性", async () => {
     const key = "account-provider:zai:api-key";
     const f = await createTarget({ legacy: true, initialCredentials: { [key]: "old-key" } });
-    await expect(f.target.apply(createEnvelope())).resolves.toMatchObject({ status: "applied" });
+    await expect(
+      f.target.apply(
+        createEnvelope({
+          accountSettings: { providerFamilyDomain: "zai", providerFamilyConnectionSelections: {} },
+          credentials: [
+            { scope: "oauth-session", key: "oauth:zai:access_token", value: "new-token" },
+          ],
+        }),
+      ),
+    ).resolves.toMatchObject({ status: "applied" });
     expect(f.credentialDelete).toHaveBeenCalledWith(key);
   });
 
@@ -191,12 +199,12 @@ describe("Provider Provisioning Target", () => {
           ],
         }),
       ),
-    ).rejects.toThrow("Provisioning v2 only accepts OAuth credentials");
+    ).rejects.toThrow("Provisioning v2 does not transfer legacy credentials");
     expect(f.settingUpdate).not.toHaveBeenCalled();
     expect(f.credentialSave).not.toHaveBeenCalled();
   });
 
-  it("writes all target stores, refreshes the registry and is idempotent", async () => {
+  it("writes Personal Config, refreshes the registry and is idempotent", async () => {
     const { target, personal, replacePersonalConfig, settingUpdate, credentialSave } =
       await createTarget();
 
@@ -204,12 +212,12 @@ describe("Provider Provisioning Target", () => {
       status: "applied",
       syncId: "sync-1",
       personalProviderCount: 1,
-      credentialCount: 1,
+      credentialCount: 0,
       configRevision: "target-revision",
       rolledBack: false,
     });
-    expect(settingUpdate).toHaveBeenCalledOnce();
-    expect(credentialSave).toHaveBeenCalledWith("oauth:zai:access_token", "new-token");
+    expect(settingUpdate).not.toHaveBeenCalled();
+    expect(credentialSave).not.toHaveBeenCalled();
     expect(replacePersonalConfig).toHaveBeenCalledOnce();
     expect((await personal.read()).defaultModelSelection).toEqual({
       providerId: "custom",
@@ -259,7 +267,7 @@ describe("Provider Provisioning Target", () => {
     ).toBeUndefined();
   });
 
-  it("replaces allowlisted credentials and preserves credentials outside the allowlist", async () => {
+  it("preserves credentials outside the Personal Config synchronization boundary", async () => {
     const { target, credentialDelete, credentialValues } = await createTarget({
       initialCredentials: {
         "oauth:bigmodel:access_token": "stale-token",
@@ -269,12 +277,12 @@ describe("Provider Provisioning Target", () => {
 
     await expect(target.apply(createEnvelope())).resolves.toMatchObject({ status: "applied" });
 
-    expect(credentialDelete).toHaveBeenCalledWith("oauth:bigmodel:access_token");
-    expect(credentialValues.get("oauth:bigmodel:access_token")).toBeNull();
+    expect(credentialDelete).not.toHaveBeenCalled();
+    expect(credentialValues.get("oauth:bigmodel:access_token")).toBe("stale-token");
     expect(credentialValues.get("ssh:password")).toBe("keep-me");
   });
 
-  it("同步 OAuth 时不读取或删除本地坏旧 Key，兼容忽略旧信封的 Key", async () => {
+  it("同步配置不读取或删除本地坏旧 Key，兼容忽略旧信封的 Key", async () => {
     const legacyKey = "account-provider:coding-plan:provider:account:user:api-key";
     const f = await createTarget({ initialCredentials: { [legacyKey]: "enc:v1:broken" } });
     f.credentialLoad.mockImplementation(async (key) => {
@@ -291,14 +299,14 @@ describe("Provider Provisioning Target", () => {
           ],
         }),
       ),
-    ).resolves.toMatchObject({ status: "applied", credentialCount: 1 });
+    ).resolves.toMatchObject({ status: "applied", credentialCount: 0 });
     expect(f.credentialLoad).not.toHaveBeenCalledWith(legacyKey);
     expect(f.credentialValues.get(legacyKey)).toBe("enc:v1:broken");
     expect(f.credentialDelete).not.toHaveBeenCalledWith(legacyKey);
     expect(f.credentialSave).not.toHaveBeenCalledWith(legacyKey, expect.anything());
   });
 
-  it("rolls back settings, credentials and config when a later write fails", async () => {
+  it("rolls back Personal Config without touching credentials when Registry refresh fails", async () => {
     const { target, replacePersonalConfig, settingUpdate, credentialSave } = await createTarget({
       refresh: vi
         .fn()
@@ -310,32 +318,28 @@ describe("Provider Provisioning Target", () => {
       status: "failed",
       rolledBack: true,
     });
-    expect(settingUpdate).toHaveBeenCalledTimes(2);
-    expect(credentialSave).toHaveBeenCalledWith("oauth:zai:access_token", "old-token");
+    expect(settingUpdate).not.toHaveBeenCalled();
+    expect(credentialSave).not.toHaveBeenCalled();
     expect(replacePersonalConfig).toHaveBeenCalledTimes(2);
   });
 
-  it("does not delete a credential changed concurrently when rollback starts", async () => {
-    const { target, credentialSave, credentialDelete, credentialValues } = await createTarget({
+  it("配置回滚保留其他写入者修改的凭据", async () => {
+    const f = await createTarget({
       refresh: vi
         .fn()
-        .mockRejectedValueOnce(new Error("registry refresh failed"))
+        .mockImplementationOnce(async () => {
+          f.credentialValues.set("oauth:zai:access_token", "concurrent-token");
+          throw new Error("registry refresh failed");
+        })
         .mockResolvedValue(undefined),
     });
-    credentialSave.mockImplementation(async (_key: string, value: string) => {
-      if (value === "new-token") {
-        credentialValues.set("oauth:zai:access_token", "concurrent-token");
-      }
+    await expect(f.target.apply(createEnvelope())).resolves.toMatchObject({
+      status: "failed",
+      rolledBack: true,
     });
-
-    await expect(
-      target.apply(createEnvelope({ syncId: "sync-concurrent" })),
-    ).resolves.toMatchObject({
-      status: "rollback_failed",
-      rolledBack: false,
-    });
-    expect(credentialDelete).not.toHaveBeenCalledWith("oauth:zai:access_token");
-    expect(credentialValues.get("oauth:zai:access_token")).toBe("concurrent-token");
+    expect(f.credentialDelete).not.toHaveBeenCalled();
+    expect(f.credentialSave).not.toHaveBeenCalled();
+    expect(f.credentialValues.get("oauth:zai:access_token")).toBe("concurrent-token");
   });
 
   it("rejects credential keys outside the provisioning allowlist before writes", async () => {
@@ -345,7 +349,7 @@ describe("Provider Provisioning Target", () => {
       target.apply(
         createEnvelope({
           syncId: "sync-invalid",
-          credentials: [{ scope: "oauth-session", key: "ssh:password", value: "secret" }],
+          credentials: [{ scope: "account-provider", key: "ssh:password", value: "secret" }],
         }),
       ),
     ).rejects.toThrow("不允许同步");
@@ -369,28 +373,21 @@ describe("Provider Provisioning Target", () => {
   });
 });
 
-it("Host Provisioning 提交和回滚均使用完整 CAS，不能回滚同身份的新操作", async () => {
+it("Provisioning 回滚不覆盖并发写入的本地设置", async () => {
   let f: Awaited<ReturnType<typeof createTarget>>;
   f = await createTarget({
-    refresh: async () => {
-      const current = f.getSettings();
-      await f.settingUpdate({
-        ...current,
-        providerFamilyDomainUpdatedAt: (current as any).providerFamilyDomainUpdatedAt + 1,
-      });
-      throw new Error("refresh failed");
-    },
+    refresh: vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        await f.settingUpdate({ locale: "en-US" });
+        throw new Error("refresh failed");
+      })
+      .mockResolvedValue(undefined),
   });
-  await f.target.apply(createEnvelope() as never);
-  expect(f.settingUpdate).toHaveBeenNthCalledWith(
-    1,
-    expect.anything(),
-    expect.objectContaining({
-      providerFamilyDomainUpdatedAt: 0,
-      providerFamilyDomain: "bigmodel",
-      providerFamilyConnectionSelections: {},
-    }),
-  );
-  expect(f.getSettings().providerFamilyDomain).toBe("zai");
-  expect(f.settingUpdate).toHaveBeenCalledTimes(2);
+  await expect(f.target.apply(createEnvelope())).resolves.toMatchObject({
+    status: "failed",
+    rolledBack: true,
+  });
+  expect(f.getSettings()).toMatchObject({ locale: "en-US", providerFamilyDomain: "bigmodel" });
+  expect(f.settingUpdate).toHaveBeenCalledExactlyOnceWith({ locale: "en-US" });
 });

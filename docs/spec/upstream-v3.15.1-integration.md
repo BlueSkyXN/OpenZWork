@@ -100,3 +100,5 @@ sequenceDiagram
 - 根单元测试统一注册到 Vitest：新增的本地路径、记忆迁移、命令改名和本地使用统计回归不再在 Vitest worker 中启动另一个 Node test runner。断言、隔离目录和平台跳过条件保留，文件系统观察改用等价的 Vitest spy。
 
 - WP-04/06/07 已移除的官方账号、套餐、Client Scenes、分享、云端反馈和自动更新专属回归随对应实现退役；包含性能模式、本地反馈 CAS、workspace deep link、IPC URL 验证或协议 ACK 的混合文件保留这些场景。
+
+- Provider 分发沿用上游 v2 防误删合同：新 Source 只发送 Personal Config，独立 Credential Store 不属于 OpenZWork 同步范围；新 Target 兼容接收 v1 的历史 account-provider 字段但不读取、应用或删除这些 Key。v2 非空历史凭据直接拒绝。旧 Target 必须在写入前拒绝 v2；Personal 文件的 Key、默认偏好、原子替换和 CAS 回滚保持原合同。
