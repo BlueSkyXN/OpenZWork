@@ -168,9 +168,7 @@ Provider Config
 `visibility=hidden` 只隐藏普通 Settings 与 Selection；配置完整且启用的 hidden Provider 仍可由内部产品通过普通
 Registry 和 ModelFactory 精确使用。系统不保存 Provider `selectable`。
 
-Provider 顶层没有 `enabled`。Personal Provider 一旦创建，其定义就固定留在 Settings；配置不完整时仍可继续编辑，只是
-不会进入可执行 Registry。Account Provider 固定进入对应 Family，账号资格只由 `zhipu-account access.entitled`
-表达。Model 的执行开关仍由 Model Config `enabled` 表达。
+
 
 ## 5. 模型成员、启用和顺序
 
@@ -340,15 +338,6 @@ Image/Video/PDF，隐藏的 Audio 在编辑其他字段时必须原样保留。
 
 `access.type` 描述访问材料怎样取得，`api.type` 描述请求使用哪种公开协议；两者正交。
 智谱产品协议使用有限的 Access Mode：
-
-```text
-zhipu-account/start-plan
-└─ 官方版本访问安全校验
-
-zhipu-account/individual-coding-plan | team-coding-plan
-└─ ZCode V4 transport 请求证明准入；不扩散给普通 api-key Provider
-
-```
 
 不进入 Config。
 

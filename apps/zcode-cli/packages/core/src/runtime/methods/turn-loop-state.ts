@@ -4,6 +4,7 @@ import type {
   MessageId,
   ModelStreamRecoveryStatus,
   Model,
+  ModelSelection,
   OutputStylePromptConfig,
   SessionEvent,
   TraceContext,
@@ -11,7 +12,7 @@ import type {
   TurnId,
 } from "../deps.js";
 import type { ActiveTurnSteeringState } from "../types.js";
-import type { SubagentRunOptions } from "@zcode/contracts";
+import type { ModelToolContract, SubagentRunOptions } from "@zcode/contracts";
 import type { DrainedPendingInputDiagnostics, ModelExecutionContext } from "../types.js";
 import type { TurnMachineImpl } from "../deps.js";
 import type { RuntimeMessageEntry } from "../../agent/message-history.js";
@@ -45,6 +46,7 @@ export interface AutoCompactLoopContext {
   rapidRefill: RapidRefillDecision;
   model: Model;
   turnRequestState: TurnRequestState;
+  getContinuationTools?: () => readonly ModelToolContract[];
 }
 
 export interface ReactiveCompactLoopContext {
@@ -54,6 +56,7 @@ export interface ReactiveCompactLoopContext {
   model: Model;
   rapidRefillCount: number;
   turnRequestState: TurnRequestState;
+  getContinuationTools?: () => readonly ModelToolContract[];
 }
 
 export interface TurnRequestState {

@@ -4,7 +4,6 @@
 
 - 当前分支基线：`5bf148568d`；来源 `provider-settings-todos` 固定为 `d3b8b937b1`。
 - 来源的独立三笔提交未在现有远端引用中发现。原分支被另一工作区使用，保持原样；在 `provider-settings-todos-renumbered` 副本整理后做真实 merge，不重写共享 staging 历史。
-- 来源 Todo133 → Todo137（Start Plan GLM-5.3 隐藏视觉标），Todo134 → Todo138（空模型草稿与推理兜底）。同步文件名、标题、索引、交叉引用和测试描述；当前分支原 Todo133～136 不变。
 - 三笔整理后提交分别为 `6f8505bf81`、`ee416e47ef`、`2c86f975a8`；对应来源 `1a6a9dcc76`、`284d6a2ba0`、`d3b8b937b1`。提交标题包含新编号，Source-Commit trailer 保留来源追踪；整理前后差异仅为编号及对应引用。
 - 正常保留来源已合入 staging 的 Composer recent mode 修复：Renderer 仅持有草稿与最近已接纳输入的偏好，不改变 CLI 队列、模型选择持久化权威或桌面 continuous／手机 replayable 边界。
 

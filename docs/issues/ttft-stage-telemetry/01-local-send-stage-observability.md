@@ -59,7 +59,7 @@
 - 明细与聚合在 run 结束时即可查（首次轮询命中，上界 <5s），非逐条精确测量。
 - 未完成：控制台界面瀑布目视确认、打包版编译注入写入路径、保留期与费用。CLI 全量单测未通过项与 Windows/Linux 实机证据仍如上保留。
 
-细节见[上线清单](../../monitoring/local-ttft-rollout-checklist.md)与[平台验收证据](../../monitoring/local-ttft-platform-evidence.json)。
+
 
 ## Standards
 

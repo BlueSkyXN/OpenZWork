@@ -103,7 +103,19 @@ export function resolveRuntimeZCodeEndpointOrigin(
     overrideOrigin: options?.overrideOrigin,
   });
 }
-// OpenZWork 净化（WP-08）：不恢复 buildRuntimeZCodeEndpointUrls / resolveWebRemoteControlRelayWsUrl /
-// resolveBigModelApiOrigin / resolveZai* / buildZCodeEndpointUrls / rewriteZCodeEndpointUrl 等官方端点
-// 推导链——它们全部以已删除的官方默认域常量为回退。远端 relay 等保留能力经由调用方显式配置的
-// endpoint origin 推导，缺配置即未启用（undefined 语义，见上）。
+/** 无账号 relay 只从显式配置推导，不提供产品域默认值。 */
+export function resolveWebRemoteControlRelayWsUrl(options?: {
+  endpointOrigin?: string | null;
+  overrideUrl?: string | null;
+}): string {
+  const overrideUrl = options?.overrideUrl?.trim();
+  if (overrideUrl) return overrideUrl;
+  const origin = options?.endpointOrigin?.trim();
+  if (!origin) throw new Error("Web remote control relay is not configured");
+  const url = new URL(normalizeZCodeEndpointOrigin(origin));
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = "/ws";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}

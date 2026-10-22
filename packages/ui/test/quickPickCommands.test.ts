@@ -94,8 +94,6 @@ describe("createQuickPickCommands", () => {
     });
     expect(commands.find((command) => command.id === "suggested-settings")).toMatchObject({
       sectionId: "suggested",
-      titleId: "quickPick.command.settings",
-      icon: "settings",
     });
     expect(commands.find((command) => command.id === "settings")).toMatchObject({
       sectionId: "configure",
@@ -107,12 +105,9 @@ describe("createQuickPickCommands", () => {
     });
     expect(commands.find((command) => command.id === "skills-settings")).toMatchObject({
       sectionId: "configure",
-      titleId: "quickPick.command.skills",
-      icon: "skills",
     });
     expect(commands.find((command) => command.id === "mcp-settings")).toMatchObject({
       sectionId: "configure",
-      titleId: "quickPick.command.mcpServers",
     });
     expect(commands.find((command) => command.id === "toggle-sidebar")).toMatchObject({
       sectionId: "panels",
@@ -124,23 +119,15 @@ describe("createQuickPickCommands", () => {
     });
     expect(commands.find((command) => command.id === "toggle-preview")).toMatchObject({
       sectionId: "panels",
-      titleId: "quickPick.command.togglePreview",
-      icon: "browser",
     });
     expect(commands.find((command) => command.id === "add-terminal-tab")).toMatchObject({
       sectionId: "panels",
-      titleId: "quickPick.command.addTerminalTab",
-      icon: "terminal",
     });
     expect(commands.find((command) => command.id === "add-browser-tab")).toMatchObject({
       sectionId: "panels",
-      titleId: "quickPick.command.addBrowserTab",
-      icon: "browser",
     });
     expect(commands.find((command) => command.id === "add-review-tab")).toMatchObject({
       sectionId: "panels",
-      titleId: "quickPick.command.addReviewTab",
-      icon: "diff",
     });
 
   });

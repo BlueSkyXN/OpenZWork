@@ -49,6 +49,7 @@ import {
   unregisterHostAgentProcess,
   unregisterHostProcess,
 } from "./resourceManagerWindow.js";
+import type { RemoteAssetDirs } from "./desktopRuntimeEnv.js";
 import type { TaskRealtimeBus } from "./taskRealtimeBus.js";
 
 export interface WindowBootstrapOptions {
@@ -74,6 +75,7 @@ export interface HostInitMessage {
     workspaceIdentity?: string;
   }>;
   agentSpawnFallbackCwd?: string;
+  remoteAssets?: RemoteAssetDirs;
   /** Main 解析后的 ZCode Built-in Provider Config 路径；Host/Services 不感知 Electron 安装布局。 */
   zcodeBuiltinProviderConfigFilePath: string;
   /** Main 提前异步采集并过滤的本机 runtime 环境；只允许传给 InitLocal。 */
@@ -474,139 +476,6 @@ export function spawnHostProcess(
         workspaceIdentity: result.data.workspaceIdentity,
         runningTaskCount: result.data.runningTaskCount,
       });
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.BotRemoteWorkspaceReconnectRequest) {
-      const request = result.data;
-      const handler = dependencies.handleBotRemoteWorkspaceReconnectRequest;
-      if (!handler) {
-        child.postMessage({
-          type: HostMessageTypes.BotRemoteWorkspaceReconnectResult,
-          requestId: request.requestId,
-          ok: false,
-          // Bugfix: /reconnect 需要 main 侧 bridge，缺 handler 时返回明确原因，避免继续显示笼统的不可访问。
-          error: "未注入 Bot 远端 workspace 重连处理器。",
-        });
-        return;
-      }
-
-      void handler({
-        win,
-        requestId: request.requestId,
-        workspacePath: request.workspacePath,
-        workspaceIdentity: request.workspaceIdentity,
-        target: request.target,
-      })
-        .then((reconnectResult) => {
-          child.postMessage({
-            type: HostMessageTypes.BotRemoteWorkspaceReconnectResult,
-            requestId: request.requestId,
-            ok: reconnectResult?.ok === true,
-            sessionId: reconnectResult?.sessionId,
-            error: reconnectResult?.error,
-          });
-        })
-        .catch((error) => {
-          child.postMessage({
-            type: HostMessageTypes.BotRemoteWorkspaceReconnectResult,
-            requestId: request.requestId,
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.BotRemoteWorkspaceConnectionStatusRequest) {
-      const request = result.data;
-      const handler = dependencies.handleBotRemoteWorkspaceConnectionStatusRequest;
-      if (!handler) {
-        child.postMessage({
-          type: HostMessageTypes.BotRemoteWorkspaceConnectionStatusResult,
-          requestId: request.requestId,
-          ok: false,
-          error: "未注入 Bot 远端 workspace 连接状态处理器。",
-        });
-        return;
-      }
-
-      void handler({
-        win,
-        requestId: request.requestId,
-        workspacePath: request.workspacePath,
-        workspaceIdentity: request.workspaceIdentity,
-        target: request.target,
-      })
-        .then((statusResult) => {
-          child.postMessage({
-            type: HostMessageTypes.BotRemoteWorkspaceConnectionStatusResult,
-            requestId: request.requestId,
-            ok: statusResult?.ok === true,
-            connected: statusResult?.connected,
-            error: statusResult?.error,
-          });
-        })
-        .catch((error) => {
-          child.postMessage({
-            type: HostMessageTypes.BotRemoteWorkspaceConnectionStatusResult,
-            requestId: request.requestId,
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
-      return;
-    }
-
-    if (result.data.type === HostResponseTypes.BotRemoteWorkspaceRuntimePortRequest) {
-      const request = result.data;
-      const handler = dependencies.handleBotRemoteWorkspaceRuntimePortRequest;
-      if (!handler) {
-        child.postMessage({
-          type: HostMessageTypes.BotRemoteWorkspaceRuntimePort,
-          requestId: request.requestId,
-          ok: false,
-          // Bugfix: 远端 Bot 不能在缺少 runtime bridge 时回落到本地 ZCode Agent，
-          // 否则会把 remote workspace 的任务写到本地并触发错误模型。
-          error: "未注入 Bot 远端 workspace runtime 处理器。",
-        });
-        return;
-      }
-
-      void handler({
-        win,
-        requestId: request.requestId,
-        workspacePath: request.workspacePath,
-        workspaceIdentity: request.workspaceIdentity,
-        target: request.target,
-      })
-        .then((runtimeResult) => {
-          if (runtimeResult.ok && runtimeResult.port) {
-            child.postMessage(
-              {
-                type: HostMessageTypes.BotRemoteWorkspaceRuntimePort,
-                requestId: request.requestId,
-                ok: true,
-              },
-              [runtimeResult.port],
-            );
-            return;
-          }
-          child.postMessage({
-            type: HostMessageTypes.BotRemoteWorkspaceRuntimePort,
-            requestId: request.requestId,
-            ok: false,
-            error: runtimeResult.error ?? "unknown",
-          });
-        })
-        .catch((error) => {
-          child.postMessage({
-            type: HostMessageTypes.BotRemoteWorkspaceRuntimePort,
-            requestId: request.requestId,
-            ok: false,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        });
       return;
     }
   });

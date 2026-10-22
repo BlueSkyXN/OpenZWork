@@ -30,23 +30,6 @@ Submission B accepted
 
 如果 Model 无法创建，Submission 不会只更新 Session Selection。创建和启动成功后再提交对应状态变化。
 
-### 特殊 start-now：闲时任务
-
-闲时 Submission 同样携带标准 ModelSelection，但 execution context 将它标记为只作用于当前 Loop：
-
-```text
-Idle Submission accepted while Core is idle
-        |
-        +-- App Recent：不变
-        +-- Session Selection：不变
-        +-- Registry 创建闲时 Model
-        +-- Request Auth 在请求期注入
-        `-- 启动闲时 Agent Loop
-```
-
-这不是临时 Provider，也不是第二套 ModelFactory。Core 忙碌时闲时 Submission 直接拒绝，不进入普通
-Queue；它结束后也不需要“恢复”Session Selection，因为执行前从未改写该状态。
-
 ## Queue
 
 ### Todo151：提交字段保真

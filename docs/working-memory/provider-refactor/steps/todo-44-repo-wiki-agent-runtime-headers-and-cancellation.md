@@ -17,7 +17,6 @@ Wiki 模型请求超时（900000ms）
 
 这不是数据库、模型速度或 Wiki 页面投影问题。运行时证据表明：
 
-- 同一账号的 Team Plan 普通聊天、Session Title 和 Web Search 均能收到模型 SSE；
 - Repo Wiki Agent 已完成启动、Provider/Model Readiness 和 Active Model 创建；
 - Repo Wiki 请求没有对应的 Host Runtime Headers 接收日志；
 - Repo Wiki Agent 进程没有建立模型服务 TCP 连接；
@@ -56,9 +55,6 @@ Agent Adapter
 模型服务
 ```
 
-API Key Provider 可以由 Agent 从 Personal Provider Config 取得静态访问材料；Team、Individual、Start Plan 等
-账号 Provider 的执行期访问材料由 Host 账号服务提供。Host 不重新构造 Model，也不形成第二套 Provider Config；它只响应
-Agent 在正式模型请求前发出的 Runtime Headers 反向 RPC。
 
 ## 3. 已确认根因
 
@@ -184,8 +180,7 @@ Wiki 复制一份 Account Auth、Runtime Headers 或 Provider 解析逻辑。
 
 ### 4.3 父级取消是本轮主要期限边界
 
-本轮不通过随意增加 Runtime Headers 固定超时来掩盖问题。Team/Individual 的 Host 自动应答与 Start Plan 可能涉及的执行期
-交互并不具有相同耗时语义；Runtime Headers 继承父模型请求的 `AbortSignal` 可以保留，前提是父级取消能够真正送达 Agent。
+
 
 如果后续需要给自动账号 Headers 增加独立短期限，必须单独定义按 Account Access 行为区分的契约，不在本 Todo 内顺手加入。
 

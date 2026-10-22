@@ -19,18 +19,14 @@ export interface DesktopProductIdentity {
 
 export const ZCODE_PREVIEW_IDENTITY_ENV: "ZCODE_PREVIEW_IDENTITY";
 
-export function isPreviewIdentityRequested(
-  env?: Record<string, string | undefined>,
-): boolean;
+export function isPreviewIdentityRequested(env?: Record<string, string | undefined>): boolean;
 export function resolveDesktopProductFlavor(
   env?: Record<string, string | undefined>,
 ): DesktopProductFlavor;
 export function resolveDesktopProductIdentity(
   env?: Record<string, string | undefined>,
 ): DesktopProductIdentity;
-export function resolveDesktopArtifactSuffix(
-  env?: Record<string, string | undefined>,
-): string;
+export function resolveDesktopArtifactSuffix(env?: Record<string, string | undefined>): string;
 export function resolveWindowsAppUserModelIdForFlavor(
   flavor: DesktopProductFlavor,
   runtime?: { isPackaged: boolean },

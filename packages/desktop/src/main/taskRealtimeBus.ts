@@ -127,10 +127,7 @@ export class TaskRealtimeBus {
   private readonly seenEventOrder: string[] = [];
   private readonly leases = new Map<string, TaskRunLease>();
   private readonly streamBatches = new Map<string, PendingStreamBatch>();
-  private readonly pendingOwnerCommands = new Map<
-    string,
-    PendingOwnerCommandRoute
-  >();
+  private readonly pendingOwnerCommands = new Map<string, PendingOwnerCommandRoute>();
   private readonly sessionRoutes = new Map<string, string>();
   private readonly pendingSessionMessageDeliveries = new Map<
     string,
@@ -197,17 +194,10 @@ export class TaskRealtimeBus {
     this.hosts.delete(hostId);
     this.failPendingOwnerCommandsForHost(hostId, "Owner command host exited.");
     this.unregisterSessionRoutesForHost(hostId);
-    this.failPendingSessionMessagesForHost(
-      hostId,
-      "Session message host exited.",
-    );
+    this.failPendingSessionMessagesForHost(hostId, "Session message host exited.");
     const releasedLeases = this.releaseLeasesForHost(hostId);
     for (const lease of releasedLeases) {
-      this.deliverSnapshotInvalidation(
-        lease,
-        hostId,
-        "stream_mirror_owner_lost",
-      );
+      this.deliverSnapshotInvalidation(lease, hostId, "stream_mirror_owner_lost");
     }
 
     this.logger.info("[task-realtime] unregistered host", {
@@ -216,15 +206,10 @@ export class TaskRealtimeBus {
     });
   }
 
-  updateHostWorkspaceKeys(
-    hostId: string,
-    workspaceKeys: Iterable<string>,
-  ): void {
+  updateHostWorkspaceKeys(hostId: string, workspaceKeys: Iterable<string>): void {
     const registered = this.hosts.get(hostId);
     if (!registered) {
-      this.logger.warn("[task-realtime] workspace update for unknown host", {
-        hostId,
-      });
+      this.logger.warn("[task-realtime] workspace update for unknown host", { hostId });
       return;
     }
 
@@ -241,9 +226,7 @@ export class TaskRealtimeBus {
     );
   }
 
-  getHostDeliveryKindForTest(
-    hostId: string,
-  ): TaskRealtimeHostDeliveryKind | undefined {
+  getHostDeliveryKindForTest(hostId: string): TaskRealtimeHostDeliveryKind | undefined {
     return this.hosts.get(hostId)?.deliveryKind;
   }
 
@@ -265,11 +248,7 @@ export class TaskRealtimeBus {
 
     switch (parsed.data.type) {
       case HostResponseTypes.TaskRealtimePublish:
-        // 通道 schema 是运行时校验的宽松联合；这里是 Main 内部总线的强类型入口，收窄对齐。
-        this.handleRealtimePublish(
-          origin,
-          parsed.data.event as TaskRealtimeEvent,
-        );
+        this.handleRealtimePublish(origin, parsed.data.event as TaskRealtimeEvent);
         break;
       case HostResponseTypes.TaskRunLeaseAcquire:
         this.handleLeaseAcquire(origin, parsed.data.request);
@@ -313,18 +292,12 @@ export class TaskRealtimeBus {
     this.sessionRoutes.set(route.sessionId, origin.hostId);
   }
 
-  private handleRealtimePublish(
-    origin: RegisteredRealtimeHost,
-    event: TaskRealtimeEvent,
-  ): void {
+  private handleRealtimePublish(origin: RegisteredRealtimeHost, event: TaskRealtimeEvent): void {
     if (!this.rememberEventId(event.eventId)) {
       return;
     }
     this.flushMatchingStreamBatchBeforeInvalidation(event);
-    this.deliverRealtimeEvent(
-      { ...event, originHostId: origin.hostId },
-      () => true,
-    );
+    this.deliverRealtimeEvent({ ...event, originHostId: origin.hostId }, () => true);
   }
 
   private handleLeaseAcquire(
@@ -341,24 +314,14 @@ export class TaskRealtimeBus {
     return `${workspaceKey}\u0000${taskId}`;
   }
 
-  private getBatchKey(
-    workspaceKey: string,
-    taskId: string,
-    runId: string,
-  ): string {
+  private getBatchKey(workspaceKey: string, taskId: string, runId: string): string {
     return `${this.getLeaseKey(workspaceKey, taskId)}\u0000${runId}`;
   }
 
-  private acquireLease(
-    hostId: string,
-    request: TaskRunLeaseAcquireRequest,
-  ): TaskRunLeaseResult {
+  private acquireLease(hostId: string, request: TaskRunLeaseAcquireRequest): TaskRunLeaseResult {
     const key = this.getLeaseKey(request.workspaceKey, request.taskId);
     const existing = this.leases.get(key);
-    if (
-      existing &&
-      (existing.ownerHostId !== hostId || existing.runId !== request.runId)
-    ) {
+    if (existing && (existing.ownerHostId !== hostId || existing.runId !== request.runId)) {
       return {
         leaseRequestId: request.leaseRequestId,
         acquired: false,
@@ -388,11 +351,7 @@ export class TaskRealtimeBus {
       taskId: request.taskId,
       runId: request.runId,
     });
-    return {
-      leaseRequestId: request.leaseRequestId,
-      acquired: true,
-      ownerHostId: hostId,
-    };
+    return { leaseRequestId: request.leaseRequestId, acquired: true, ownerHostId: hostId };
   }
 
   /** 内存诊断计数器；只读 size。 */
@@ -407,17 +366,10 @@ export class TaskRealtimeBus {
   private releaseLease(hostId: string, target: TaskRunLeaseTarget): void {
     const key = this.getLeaseKey(target.workspaceKey, target.taskId);
     const existing = this.leases.get(key);
-    if (
-      !existing ||
-      existing.ownerHostId !== hostId ||
-      existing.runId !== target.runId
-    ) {
+    if (!existing || existing.ownerHostId !== hostId || existing.runId !== target.runId) {
       return;
     }
-    this.flushBatch(
-      this.getBatchKey(target.workspaceKey, target.taskId, target.runId),
-      true,
-    );
+    this.flushBatch(this.getBatchKey(target.workspaceKey, target.taskId, target.runId), true);
     this.leases.delete(key);
     this.logger.info("[task-realtime] task run lease released", {
       hostId,
@@ -433,10 +385,7 @@ export class TaskRealtimeBus {
       if (lease.ownerHostId !== hostId) {
         continue;
       }
-      this.flushBatch(
-        this.getBatchKey(lease.workspaceKey, lease.taskId, lease.runId),
-        true,
-      );
+      this.flushBatch(this.getBatchKey(lease.workspaceKey, lease.taskId, lease.runId), true);
       this.leases.delete(key);
       released.push(lease);
     }
@@ -448,34 +397,19 @@ export class TaskRealtimeBus {
     target: TaskRunLeaseTarget,
     op: TaskStreamMirrorPublishOp,
   ): void {
-    const lease = this.leases.get(
-      this.getLeaseKey(target.workspaceKey, target.taskId),
-    );
-    if (
-      !lease ||
-      lease.ownerHostId !== origin.hostId ||
-      lease.runId !== target.runId
-    ) {
+    const lease = this.leases.get(this.getLeaseKey(target.workspaceKey, target.taskId));
+    if (!lease || lease.ownerHostId !== origin.hostId || lease.runId !== target.runId) {
       return;
     }
 
-    const batchKey = this.getBatchKey(
-      target.workspaceKey,
-      target.taskId,
-      target.runId,
-    );
+    const batchKey = this.getBatchKey(target.workspaceKey, target.taskId, target.runId);
     const batch = this.getOrCreateBatch(batchKey, origin.hostId, target);
     batch.pendingOps.push(op);
 
     if (this.isTerminalOrImmediateOp(op)) {
       this.flushBatch(batchKey, true);
-      if (
-        op.kind === "stream_event" &&
-        this.isTerminalEventType(op.event.type)
-      ) {
-        this.leases.delete(
-          this.getLeaseKey(target.workspaceKey, target.taskId),
-        );
+      if (op.kind === "stream_event" && this.isTerminalEventType(op.event.type)) {
+        this.leases.delete(this.getLeaseKey(target.workspaceKey, target.taskId));
       }
       return;
     }
@@ -520,9 +454,7 @@ export class TaskRealtimeBus {
     return batch;
   }
 
-  private flushMatchingStreamBatchBeforeInvalidation(
-    event: TaskRealtimeEvent,
-  ): void {
+  private flushMatchingStreamBatchBeforeInvalidation(event: TaskRealtimeEvent): void {
     if (
       event.type === "task_stream_mirror_batch" ||
       !("taskId" in event) ||
@@ -533,10 +465,7 @@ export class TaskRealtimeBus {
     ) {
       return;
     }
-    this.flushBatch(
-      this.getBatchKey(event.workspaceKey, event.taskId, event.traceId),
-      true,
-    );
+    this.flushBatch(this.getBatchKey(event.workspaceKey, event.taskId, event.traceId), true);
   }
 
   private flushBatch(batchKey: string, force: boolean): void {
@@ -552,9 +481,7 @@ export class TaskRealtimeBus {
       batch.timer = null;
     }
 
-    const coalesced = this.splitLargeTextOps(
-      this.coalesceOps(batch.pendingOps),
-    );
+    const coalesced = this.splitLargeTextOps(this.coalesceOps(batch.pendingOps));
     batch.pendingOps = [];
     const ops: TaskStreamMirrorOp[] = coalesced.map((op) => ({
       ...op,
@@ -577,8 +504,7 @@ export class TaskRealtimeBus {
       toSeq: ops[ops.length - 1]?.seq ?? batch.nextOpSeq - 1,
       ops,
       terminal: ops.some(
-        (op) =>
-          op.kind === "stream_event" && this.isTerminalEventType(op.event.type),
+        (op) => op.kind === "stream_event" && this.isTerminalEventType(op.event.type),
       ),
     };
     if (JSON.stringify(event).length > STREAM_MIRROR_MAX_BATCH_BYTES) {
@@ -606,12 +532,7 @@ export class TaskRealtimeBus {
     batch.replayUnavailable = true;
     batch.replay = [];
     for (const chunk of this.splitOversizedBatchForOwner(batch, event)) {
-      this.deliverStreamBatchToHost(
-        batch.ownerHostId,
-        batch,
-        chunk,
-        "relay_owner",
-      );
+      this.deliverStreamBatchToHost(batch.ownerHostId, batch, chunk, "relay_owner");
     }
     this.deliverSnapshotInvalidation(
       this.batchToLeaseLike(batch),
@@ -643,8 +564,7 @@ export class TaskRealtimeBus {
       toSeq: ops[ops.length - 1]?.seq ?? event.toSeq,
       ops,
       terminal: ops.some(
-        (op) =>
-          op.kind === "stream_event" && this.isTerminalEventType(op.event.type),
+        (op) => op.kind === "stream_event" && this.isTerminalEventType(op.event.type),
       ),
     });
 
@@ -671,19 +591,12 @@ export class TaskRealtimeBus {
     return chunks;
   }
 
-  private coalesceOps(
-    ops: TaskStreamMirrorPublishOp[],
-  ): TaskStreamMirrorPublishOp[] {
+  private coalesceOps(ops: TaskStreamMirrorPublishOp[]): TaskStreamMirrorPublishOp[] {
     const coalesced: TaskStreamMirrorPublishOp[] = [];
     for (const op of ops) {
       const previous = coalesced[coalesced.length - 1];
       if (this.canMergeTextChunk(previous, op)) {
-        // canMergeTextChunk 已保证 previous 与 op 都是带文本 event 的 stream_event；
-        // 在 noUncheckedIndexedAccess 下用显式收窄让合并分支拿到 content 字段。
-        const current = op as Extract<
-          TaskStreamMirrorPublishOp,
-          { kind: "stream_event" }
-        > & {
+        const current = op as Extract<TaskStreamMirrorPublishOp, { kind: "stream_event" }> & {
           event: { content: string };
         };
         coalesced[coalesced.length - 1] = {
@@ -710,15 +623,12 @@ export class TaskRealtimeBus {
     return coalesced;
   }
 
-  private splitLargeTextOps(
-    ops: TaskStreamMirrorPublishOp[],
-  ): TaskStreamMirrorPublishOp[] {
+  private splitLargeTextOps(ops: TaskStreamMirrorPublishOp[]): TaskStreamMirrorPublishOp[] {
     const splitOps: TaskStreamMirrorPublishOp[] = [];
     for (const op of ops) {
       if (
         op.kind !== "stream_event" ||
-        (op.event.type !== "agent_message_chunk" &&
-          op.event.type !== "agent_thought_chunk") ||
+        (op.event.type !== "agent_message_chunk" && op.event.type !== "agent_thought_chunk") ||
         op.event.content.length <= STREAM_MIRROR_TEXT_OP_MAX_CHARS
       ) {
         splitOps.push(op);
@@ -736,10 +646,7 @@ export class TaskRealtimeBus {
           kind: "stream_event",
           event: {
             ...op.event,
-            content: op.event.content.slice(
-              offset,
-              offset + STREAM_MIRROR_TEXT_OP_MAX_CHARS,
-            ),
+            content: op.event.content.slice(offset, offset + STREAM_MIRROR_TEXT_OP_MAX_CHARS),
           },
         });
       }
@@ -750,10 +657,7 @@ export class TaskRealtimeBus {
   private canMergeTextChunk(
     previous: TaskStreamMirrorPublishOp | undefined,
     op: TaskStreamMirrorPublishOp,
-  ): previous is Extract<
-    TaskStreamMirrorPublishOp,
-    { kind: "stream_event" }
-  > & {
+  ): previous is Extract<TaskStreamMirrorPublishOp, { kind: "stream_event" }> & {
     event: {
       type: "agent_message_chunk" | "agent_thought_chunk";
       taskId: string;
@@ -764,8 +668,7 @@ export class TaskRealtimeBus {
     return (
       previous?.kind === "stream_event" &&
       op.kind === "stream_event" &&
-      (op.event.type === "agent_message_chunk" ||
-        op.event.type === "agent_thought_chunk") &&
+      (op.event.type === "agent_message_chunk" || op.event.type === "agent_thought_chunk") &&
       previous.event.type === op.event.type &&
       previous.event.taskId === op.event.taskId &&
       previous.event.traceId === op.event.traceId &&
@@ -777,11 +680,7 @@ export class TaskRealtimeBus {
   }
 
   private isRedundantStateEvent(type: string): boolean {
-    return (
-      type === "usage_update" ||
-      type === "session_info_update" ||
-      type === "plan"
-    );
+    return type === "usage_update" || type === "session_info_update" || type === "plan";
   }
 
   private isTerminalEventType(type: string): boolean {
@@ -791,15 +690,11 @@ export class TaskRealtimeBus {
   private isTerminalOrImmediateOp(op: TaskStreamMirrorPublishOp): boolean {
     return (
       op.kind === "stream_event" &&
-      (op.event.type === "permission_request" ||
-        this.isTerminalEventType(op.event.type))
+      (op.event.type === "permission_request" || this.isTerminalEventType(op.event.type))
     );
   }
 
-  private deliverStreamBatch(
-    batch: PendingStreamBatch,
-    event: TaskStreamMirrorBatchEvent,
-  ): void {
+  private deliverStreamBatch(batch: PendingStreamBatch, event: TaskStreamMirrorBatchEvent): void {
     for (const target of this.hosts.values()) {
       if (!target.workspaceKeys.has(batch.workspaceKey)) {
         continue;
@@ -812,8 +707,7 @@ export class TaskRealtimeBus {
           // owner 和 observer 以前消费两条不同事件源：owner 走不可重放 direct event，
           // observer 走 mirror batch。切换 task 或跨端 relay 时两边会因为事件丢失/乱序产生分叉。
           // 这里统一把 mirror batch 回投给 owner，让所有 renderer 都按同一条 seq 流更新 task store。
-          deliveryPurpose:
-            target.hostId === batch.ownerHostId ? "relay_owner" : "observer",
+          deliveryPurpose: target.hostId === batch.ownerHostId ? "relay_owner" : "observer",
         } satisfies TaskRealtimeDeliveredEvent,
       });
     }
@@ -839,10 +733,7 @@ export class TaskRealtimeBus {
     });
   }
 
-  private rememberReplayBatch(
-    batch: PendingStreamBatch,
-    event: TaskStreamMirrorBatchEvent,
-  ): void {
+  private rememberReplayBatch(batch: PendingStreamBatch, event: TaskStreamMirrorBatchEvent): void {
     // 无上限 replay 在长任务中会线性占用主进程内存。
     // 这里恢复批次数+字节数双阈值，超限后由 replayVisibleRunsToHost 触发 stream_mirror_gap 并走快照补齐。
     batch.replay.push(event);
@@ -855,16 +746,10 @@ export class TaskRealtimeBus {
   }
 
   private replayBytes(replay: TaskStreamMirrorBatchEvent[]): number {
-    return replay.reduce(
-      (total, replayEvent) => total + JSON.stringify(replayEvent).length,
-      0,
-    );
+    return replay.reduce((total, replayEvent) => total + JSON.stringify(replayEvent).length, 0);
   }
 
-  private replayVisibleRunsToHost(
-    hostId: string,
-    workspaceKeys: Iterable<string>,
-  ): void {
+  private replayVisibleRunsToHost(hostId: string, workspaceKeys: Iterable<string>): void {
     const host = this.hosts.get(hostId);
     if (!host) {
       return;
@@ -879,11 +764,7 @@ export class TaskRealtimeBus {
         continue;
       }
       batch.replayInitializedHostIds.add(replayKey);
-      if (
-        batch.replayUnavailable ||
-        batch.replay.length === 0 ||
-        batch.replay[0]?.fromSeq !== 1
-      ) {
+      if (batch.replayUnavailable || batch.replay.length === 0 || batch.replay[0]?.fromSeq !== 1) {
         this.deliverSnapshotInvalidation(
           this.batchToLeaseLike(batch),
           batch.ownerHostId,
@@ -896,11 +777,7 @@ export class TaskRealtimeBus {
       for (const event of batch.replay) {
         host.child.postMessage({
           type: HostMessageTypes.TaskRealtimeDeliver,
-          event: {
-            ...event,
-            originHostId: batch.ownerHostId,
-            deliveryPurpose: "observer",
-          },
+          event: { ...event, originHostId: batch.ownerHostId, deliveryPurpose: "observer" },
         });
       }
     }
@@ -944,16 +821,11 @@ export class TaskRealtimeBus {
         ...(streamWatermark ? { streamWatermark } : {}),
         originHostId,
       },
-      (target) =>
-        onlyHostId
-          ? target.hostId === onlyHostId
-          : target.hostId !== originHostId,
+      (target) => (onlyHostId ? target.hostId === onlyHostId : target.hostId !== originHostId),
     );
   }
 
-  private getReplaySnapshotWatermark(
-    batch: PendingStreamBatch,
-  ): TaskStreamWatermark {
+  private getReplaySnapshotWatermark(batch: PendingStreamBatch): TaskStreamWatermark {
     return {
       runId: batch.runId,
       opSeq: batch.replay.at(-1)?.toSeq ?? Math.max(batch.nextOpSeq - 1, 0),
@@ -965,10 +837,7 @@ export class TaskRealtimeBus {
     shouldDeliver: (target: RegisteredRealtimeHost) => boolean,
   ): void {
     for (const target of this.hosts.values()) {
-      if (
-        !shouldDeliver(target) ||
-        !target.workspaceKeys.has(delivered.workspaceKey)
-      ) {
+      if (!shouldDeliver(target) || !target.workspaceKeys.has(delivered.workspaceKey)) {
         continue;
       }
       target.child.postMessage({
@@ -982,9 +851,7 @@ export class TaskRealtimeBus {
     requester: RegisteredRealtimeHost,
     command: TaskOwnerCommandRequest,
   ): void {
-    const lease = this.leases.get(
-      this.getLeaseKey(command.workspaceKey, command.taskId),
-    );
+    const lease = this.leases.get(this.getLeaseKey(command.workspaceKey, command.taskId));
     if (!lease) {
       this.postOwnerCommandResult(requester.hostId, {
         commandRequestId: command.commandRequestId,
@@ -1033,10 +900,7 @@ export class TaskRealtimeBus {
 
     owner.child.postMessage({
       type: HostMessageTypes.TaskOwnerCommandDeliver,
-      command: {
-        ...command,
-        requesterHostId: requester.hostId,
-      } satisfies TaskOwnerCommandDelivery,
+      command: { ...command, requesterHostId: requester.hostId } satisfies TaskOwnerCommandDelivery,
     });
   }
 
@@ -1053,10 +917,7 @@ export class TaskRealtimeBus {
     this.postOwnerCommandResult(pending.requesterHostId, result);
   }
 
-  private postOwnerCommandResult(
-    hostId: string,
-    result: TaskOwnerCommandResult,
-  ): void {
+  private postOwnerCommandResult(hostId: string, result: TaskOwnerCommandResult): void {
     this.hosts.get(hostId)?.child.postMessage({
       type: HostMessageTypes.TaskOwnerCommandResult,
       result,
@@ -1092,9 +953,7 @@ export class TaskRealtimeBus {
       return;
     }
 
-    const existing = this.pendingSessionMessageDeliveries.get(
-      request.requestId,
-    );
+    const existing = this.pendingSessionMessageDeliveries.get(request.requestId);
     if (existing) {
       clearTimeout(existing.timeout);
       this.pendingSessionMessageDeliveries.delete(request.requestId);
@@ -1154,10 +1013,7 @@ export class TaskRealtimeBus {
     }
   }
 
-  private failPendingSessionMessagesForHost(
-    hostId: string,
-    error: string,
-  ): void {
+  private failPendingSessionMessagesForHost(hostId: string, error: string): void {
     const pendingDeliveries = Array.from(this.pendingSessionMessageDeliveries);
     for (const [requestId, pending] of pendingDeliveries) {
       if (pending.sourceHostId !== hostId && pending.targetHostId !== hostId) {
@@ -1180,10 +1036,7 @@ export class TaskRealtimeBus {
   private failPendingOwnerCommandsForHost(hostId: string, error: string): void {
     const pendingCommands = Array.from(this.pendingOwnerCommands);
     for (const [commandRequestId, pending] of pendingCommands) {
-      if (
-        pending.ownerHostId !== hostId &&
-        pending.requesterHostId !== hostId
-      ) {
+      if (pending.ownerHostId !== hostId && pending.requesterHostId !== hostId) {
         continue;
       }
       clearTimeout(pending.timeout);

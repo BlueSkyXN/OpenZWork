@@ -41,36 +41,10 @@ CLI Effective Provider Registry
 Host 在 Desktop 托管模式下继续拥有当前账号连接与套餐事实的权威；CLI 保存 revisioned Account Overlay 副本，用于构建自己的 Effective Registry 和 Active Model。协议不下发账号凭据，不同步完整 Registry，也不让 CLI 重新查询和解析一套账号上游事实。
 
 
-### 1.1 当前问题
-
-
-```ts
-access: {
-  type: "zhipu-account";
-  family: "zai" | "bigmodel";
-}
-```
-
-
-```text
-首次 Account 解析失败
-        |
-        v
-只关闭 zhipu-account
-        |
-        v
-        |
-        v
-```
 
 ### 1.2 目标行为
 
 Account 首次事实未知且没有 Last Known Good Snapshot 时，所有受 Account Overlay 控制的 Built-in Provider 都必须显式关闭：
-
-```text
-Account-controlled Provider =
-  access.type === "zhipu-account"
-```
 
 正常 Account Resolver 与 fail-closed 复用同一 Account-controlled 判据，不能再维护旧 Access Type 白名单。
 

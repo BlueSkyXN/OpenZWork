@@ -27,7 +27,6 @@
 - CLI 子 workspace 的 `pnpm typecheck` 因本环境缺 turbo 未启动；改用 tsc 顺序检查 adapters、bootstrap、cli，通过。
 - tsup（含任务库 Worker）、CLI `build.mjs --desktop-agent`、Vite renderer 构建通过。
 - 原迁移差分/回滚/锁/崩溃/Reader 套件 7 文件 56 用例通过；随后涉及首因保留的增量 3 文件 12 用例通过。
-- 最终全量：1710 文件通过、2 文件失败、2 跳过；14996 用例通过、2 失败、26 跳过。两项失败是未修改的 provider-node 文件监听和 CUA socket 时序断言，单独重跑 2 文件 38 用例全部通过，首轮全量这两项也通过；保留偶发失败记录，不声称全量命令全绿。本次新增启动用例全部通过。首轮 3 个旧 mock/返回值适配问题已修正并回归。
 - Node 直接运行最终 tasks Worker 和 CLI bundle Worker：任务账本 3 项；会话相对路径落到传入真实 cwd，完成帧晚于关闭，均退出 0。探针只操作隔离临时目录。
 - 额外 main/preload/renderer 分项目 tsc 仍失败：存在 rootDir/shared 导入、浏览器类型、Window.zcode 与 CSS 声明等错误；未将其计为通过。新增协调/采样/遥测文件没有该检查诊断。
 

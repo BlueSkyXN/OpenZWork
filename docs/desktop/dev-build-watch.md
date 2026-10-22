@@ -2,9 +2,7 @@
 
 ## 背景
 
-`pnpm dev:desktop` 在启动 Electron 前会并行运行 Vite 和 tsup watch。Desktop 包目录同时
-包含 E2E 缓存、远程 mock CDN、内置 Agent 和本地 CUA Helper 等生成物；这些内容不是
-TypeScript 开发源码，却会被默认的 `tsup --watch`（watch path 为 `.`）扫描。
+
 
 当这些生成目录很大时，main/host 的构建 marker 迟迟不会出现，`dev.mjs` 只能持续输出
 `Waiting for build artifacts`。这条日志是等待状态，不是 Electron 自身的错误。
@@ -30,12 +28,7 @@ dev:runtime
 以下路径相对于 `packages/desktop`，只用于本地开发 watcher 排除，不改变构建、打包或运行时
 资源准备：
 
-- `mock-cdn/**`
-- `bundled-agents/**`
-- `.e2e-cache/**`
-- `.e2e-artifacts/**`
-- `.e2e-home-*/**`（E2E 隔离 home）
-- `dist-cua-helper/**`
+
 
 这些目录可以继续由 E2E、Helper 或 runtime asset 流程写入；写入不会触发 Desktop bundle
 重建。`out`、`.git` 和 `node_modules` 继续使用 tsup 默认排除规则。

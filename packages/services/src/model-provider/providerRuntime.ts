@@ -21,6 +21,9 @@ import {
   type ModelSelectionConfiguredDefaultSource,
   type ProviderSettingsConnectivityTester,
 } from "./providerFacadeServices.js";
+import { createServiceLogger } from "#src/logger/serviceLogger.js";
+
+const log = createServiceLogger("provider-runtime");
 
 export interface ProviderRuntimeOptions extends ProviderConfigRuntimeOptions {
   readonly testConnectivity?: ProviderSettingsConnectivityTester;

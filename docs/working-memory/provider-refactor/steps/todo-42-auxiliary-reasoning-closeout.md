@@ -101,5 +101,3 @@ Telemetry 只记录请求实际选择的公开 `reasoningLevel`。不扫描档�
   与 Memory Recall 均证明不合成 Reasoning，且 Active Model/Selection 不被修改；
 - Services、Core、Adapters 定向测试共 93 条通过；Provider 全量 151 条通过；根 typecheck 与 CLI
   Contracts/Adapters/Core typecheck 通过；根 lint 为 0 error（保留 33 条与本次无关的既有 warning）；
-- Core 全量有 2109 条通过，剩余失败来自既有绝对路径 conformance fixture、CUA、I/O/模块边界和
-  stream-recovery 基线；Adapters 全量有 1370 条通过，唯一失败为与本次无关且单独复现的进程组清理测试。

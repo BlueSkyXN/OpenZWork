@@ -1,20 +1,16 @@
-/* eslint-disable max-lines -- 定时任务主视图集中维护列表、创建/编辑整页路由与启停/删除操作，集中更利于交互一致。 */
 import {
-  useCallback,
-  useEffect,
-  useState,
-  type ComponentType,
-  type SVGProps,
-} from "react";
-import { CircleCheck, RotateCcw, TriangleAlert } from "lucide-react";
-import {
-  AUTOMATION_CREATE_LIMIT,
   TID_AUTOMATION_ACTION_DELETE,
   TID_AUTOMATION_ACTION_TOGGLE,
   TID_AUTOMATION_CARD,
   TID_AUTOMATION_CARD_MENU,
   TID_AUTOMATIONS_LIST,
   TID_AUTOMATIONS_STATUS_FILTER,
+} from "@zcode/shared/test-ids";
+/* eslint-disable max-lines -- 定时任务主视图集中维护列表、创建/编辑整页路由与启停/删除操作，集中更利于交互一致。 */
+import { useCallback, useEffect, useState, type ComponentType, type SVGProps } from "react";
+import { CircleCheck, RotateCcw, TriangleAlert } from "lucide-react";
+import {
+  AUTOMATION_CREATE_LIMIT,
   isAutomationCreateLimitError,
   resolveWorkspaceKey,
   type ZCodeAutomation,

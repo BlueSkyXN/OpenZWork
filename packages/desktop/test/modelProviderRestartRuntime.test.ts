@@ -50,7 +50,9 @@ describe("model provider restart runtime", () => {
     await seedTurboAgentStartupModel("provider-a", "model-a");
 
     expect(
-      JSON.parse(await readFile(join(homeDir, ".openzwork", "v2", "provider_config.json"), "utf-8")),
+      JSON.parse(
+        await readFile(join(homeDir, ".openzwork", "v2", "provider_config.json"), "utf-8"),
+      ),
     ).toEqual({
       schemaVersion: 1,
       config: {

@@ -30,7 +30,12 @@ beforeAll(async () => {
 });
 afterAll(() => source.dispose());
 
-function view(modelId: string, level: string, personalModels = ModelConfigRules.empty()) {
+function view(
+  modelId: string,
+  level: string,
+  personalModels = ModelConfigRules.empty(),
+  modelRules = builtin.models,
+) {
   const config = {
     revision: "c",
     zcodeBuiltinRevision: "b",
@@ -51,14 +56,14 @@ function view(modelId: string, level: string, personalModels = ModelConfigRules.
         }),
       ],
     ]),
-    zcodeBuiltinModelRules: builtin.models,
+    zcodeBuiltinModelRules: modelRules,
     personalModels,
   };
   // 使用自有 Provider 承载同一模型规则，历史档位迁移不依赖已退役的账号层。
   const resolution = new ProviderConfigResolver().resolve(config);
   const providerId = "personal";
   const providerConfig = resolution.effectiveProviders.get(providerId)!;
-  const modelConfig = ModelConfigRules.composeEffective(builtin.models, personalModels).resolve({
+  const modelConfig = ModelConfigRules.composeEffective(modelRules, personalModels).resolve({
     providerId,
     modelId,
     apiType: providerConfig.api?.type,
@@ -106,7 +111,12 @@ describe("Todo95C 来源限定的只读关闭档位改名", () => {
     for (const entry of legacyReasoningLevelRenames) {
       const rule = builtin.models
         .rules()
-        .find((rule) => rule.type === "model" && rule.modelMatch === entry.modelMatch);
+        .find(
+          (rule) =>
+            rule.type === "model" &&
+            (rule.modelMatch === entry.modelMatch ||
+              rule.modelMatch === entry.simplifiedModelMatch),
+        );
       expect(rule?.config.optionSpecs?.reasoningLevel?.values).not.toContain(entry.oldLevel);
       // 仅测试生成代表型号；实际迁移从不从正则反推名字。
       const modelId = entry.modelMatch.slice(2).split("(?:")[0]!.replaceAll("\\.", ".");
@@ -142,8 +152,26 @@ describe("Todo95C 来源限定的只读关闭档位改名", () => {
     ["GLM-5.2", "off"],
     ["GLM-5.3", "none"],
     ["GLM-5.3", "typo"],
+    ["GLM-5.2_custom", "nothink"],
   ])("不猜 %s / %s", (id, old) => {
     expect(view(id!, old!).result.selectionIssue).toBe("reasoning-level-not-supported");
+  });
+  it("旧缓存仍使用原 matcher 时也能恢复历史关闭选择", () => {
+    const oldRules = new ModelConfigRules(
+      builtin.models.rules().map((rule) => {
+        const rename =
+          rule.type === "model"
+            ? legacyReasoningLevelRenames.find(
+                (entry) => entry.simplifiedModelMatch === rule.modelMatch,
+              )
+            : undefined;
+        return rename ? { ...rule, modelMatch: rename.modelMatch } : rule;
+      }),
+    );
+    expect(
+      view("GLM-5.2", "nothink", ModelConfigRules.empty(), oldRules).result.effectiveSelection
+        ?.options?.reasoningLevel,
+    ).toBe("disabled");
   });
   it("后续 Built-in values 覆盖旧规则时不恢复被覆盖的关闭值", () => {
     expect(view("GLM-5.3-Flash", "off").result.selectionIssue).toBe(

@@ -17,7 +17,10 @@ const actionVersions = {
 };
 const workflows = await Promise.all(
   ["ci.yml", "installers.yml", "extended-checks.yml"].map(async (name) => {
-    const source = await readFile(new URL(`.github/workflows/${name}`, root), "utf8");
+    const source = await readFile(
+      new URL(`.github/workflows/${name}`, root),
+      "utf8",
+    );
     const document = parseDocument(source);
     assert.deepEqual(document.errors, [], `${name}: valid YAML`);
     return document.toJS();
@@ -41,11 +44,18 @@ for (const [name, steps] of [
 ]) {
   test(`${name} uses the reviewed Node.js 24 Action releases`, () => {
     const actions = steps.filter((step) => step.uses);
-    assert.equal(actions.length, name === "Main audit" ? 4 : 5);
+    assert.equal(actions.length, 5);
     for (const step of actions) {
       const [action, version] = step.uses.split("@");
-      assert.ok(Object.hasOwn(actionVersions, action), `${action}: reviewed Action`);
-      assert.equal(version, actionVersions[action], `${action}: reviewed release`);
+      assert.ok(
+        Object.hasOwn(actionVersions, action),
+        `${action}: reviewed Action`,
+      );
+      assert.equal(
+        version,
+        actionVersions[action],
+        `${action}: reviewed release`,
+      );
     }
   });
 
@@ -54,7 +64,9 @@ for (const [name, steps] of [
       steps.slice(0, 3).map((step) => step.uses.split("@")[0]),
       ["actions/checkout", "pnpm/action-setup", "actions/setup-node"],
     );
-    assert.deepEqual(actionStep(steps, "pnpm/action-setup").with, { version: "11.28.6" });
+    assert.deepEqual(actionStep(steps, "pnpm/action-setup").with, {
+      version: "11.28.6",
+    });
     assert.deepEqual(actionStep(steps, "actions/setup-node").with, {
       "node-version": "24.14.0",
       cache: "pnpm",
@@ -67,12 +79,20 @@ test("dependency installation keeps each workflow's lifecycle-script policy", ()
     [ciSteps, "pnpm install --frozen-lockfile --ignore-scripts"],
     [installerSteps, "pnpm install --frozen-lockfile"],
     [extended.jobs["historical-tests"].steps, "pnpm install --frozen-lockfile"],
-    [extended.jobs["desktop-main-audit"].steps, "pnpm install --frozen-lockfile --ignore-scripts"],
+    [
+      extended.jobs["desktop-main-audit"].steps,
+      "pnpm install --frozen-lockfile --ignore-scripts",
+    ],
   ]) {
-    const installs = steps.filter((step) => step.run?.startsWith("pnpm install"));
+    const installs = steps.filter((step) =>
+      step.run?.startsWith("pnpm install"),
+    );
     assert.equal(installs.length, 1);
     assert.equal(installs[0].run, command);
-    assert.ok(steps.indexOf(installs[0]) > steps.indexOf(actionStep(steps, "actions/setup-node")));
+    assert.ok(
+      steps.indexOf(installs[0]) >
+        steps.indexOf(actionStep(steps, "actions/setup-node")),
+    );
     assert.notEqual(installs[0]["continue-on-error"], true);
   }
 });
@@ -96,7 +116,15 @@ test("installer uploads remain named multi-file archives and fail on missing fil
   assert.equal(upload.with.archive, true);
   assert.equal(upload.with["if-no-files-found"], "error");
   assert.notEqual(upload["continue-on-error"], true);
-  const extensions = ["dmg", "zip", "exe", "AppImage", "deb", "rpm", "pkg.tar.zst"];
+  const extensions = [
+    "dmg",
+    "zip",
+    "exe",
+    "AppImage",
+    "deb",
+    "rpm",
+    "pkg.tar.zst",
+  ];
   const expectedPaths = ["*", "**/*"].flatMap((glob) =>
     extensions.map((extension) => `packages/desktop/dist/${glob}.${extension}`),
   );
@@ -104,6 +132,8 @@ test("installer uploads remain named multi-file archives and fail on missing fil
 });
 
 test("workflow triggers and platform matrices remain unchanged", () => {
+  // 2026-10-20：核心工作流补 workflow_dispatch——stack 上层分支 push 不产生
+  // pull_request 事件时可手动派发验证（与 Extended checks 对齐）；矩阵与 push 范围不变。
   assert.deepEqual(ci.on, {
     pull_request: null,
     push: { branches: ["main"] },
@@ -128,7 +158,9 @@ test("workflow triggers and platform matrices remain unchanged", () => {
 });
 
 test("CI runs the offline workflow regression tests without suppressing failures", () => {
-  const matches = ciSteps.filter((step) => step.run === "node --test tests/ci/*.test.mjs");
+  const matches = ciSteps.filter(
+    (step) => step.run === "node --test tests/ci/*.test.mjs",
+  );
   assert.equal(matches.length, 1);
   assert.equal(matches[0].if, undefined);
   assert.notEqual(matches[0]["continue-on-error"], true);
@@ -150,8 +182,12 @@ test("Linux packaging declares the complete rpm and pacman toolchain before inst
     "sudo apt-get update && sudo apt-get install -y rpm zstd libarchive-tools",
   );
   assert.notEqual(install["continue-on-error"], true);
-  const dependencies = installerSteps.find((step) => step.run === "pnpm install --frozen-lockfile");
-  assert.ok(installerSteps.indexOf(install) < installerSteps.indexOf(dependencies));
+  const dependencies = installerSteps.find(
+    (step) => step.run === "pnpm install --frozen-lockfile",
+  );
+  assert.ok(
+    installerSteps.indexOf(install) < installerSteps.indexOf(dependencies),
+  );
 });
 
 test("Linux packaging verifies tool commands immediately after installation with strict Bash", () => {
@@ -160,7 +196,10 @@ test("Linux packaging verifies tool commands immediately after installation with
   assert.equal(verify.if, "runner.os == 'Linux'");
   assert.equal(verify.shell, "bash");
   assert.notEqual(verify["continue-on-error"], true);
-  assert.equal(installerSteps.indexOf(verify), installerSteps.indexOf(install) + 1);
+  assert.equal(
+    installerSteps.indexOf(verify),
+    installerSteps.indexOf(install) + 1,
+  );
   assert.deepEqual(verify.run.trim().split("\n"), [
     "set -euo pipefail",
     ...linuxPackagingTools.map((tool) => `${tool} --version`),
@@ -209,14 +248,17 @@ for (const [index, tool] of linuxPackagingTools.entries()) {
     `Linux toolchain preflight fails immediately when ${tool} is missing`,
     { skip: process.platform === "win32" },
     async () => {
-      await assert.rejects(runLinuxToolchainProbe({ missing: tool }), (error) => {
-        assert.equal(error.code, 127);
-        assert.ok(error.stderr.includes(`${tool}: command not found`));
-        for (const laterTool of linuxPackagingTools.slice(index + 1)) {
-          assert.ok(!error.stdout.includes(`${laterTool} fixture`));
-        }
-        return true;
-      });
+      await assert.rejects(
+        runLinuxToolchainProbe({ missing: tool }),
+        (error) => {
+          assert.equal(error.code, 127);
+          assert.ok(error.stderr.includes(`${tool}: command not found`));
+          for (const laterTool of linuxPackagingTools.slice(index + 1)) {
+            assert.ok(!error.stdout.includes(`${laterTool} fixture`));
+          }
+          return true;
+        },
+      );
     },
   );
 
@@ -224,14 +266,27 @@ for (const [index, tool] of linuxPackagingTools.entries()) {
     `Linux toolchain preflight preserves ${tool} failure instead of continuing`,
     { skip: process.platform === "win32" },
     async () => {
-      await assert.rejects(runLinuxToolchainProbe({ failing: tool }), (error) => {
-        assert.equal(error.code, 17);
-        assert.ok(error.stdout.includes(`${tool} fixture`));
-        for (const laterTool of linuxPackagingTools.slice(index + 1)) {
-          assert.ok(!error.stdout.includes(`${laterTool} fixture`));
-        }
-        return true;
-      });
+      await assert.rejects(
+        runLinuxToolchainProbe({ failing: tool }),
+        (error) => {
+          assert.equal(error.code, 17);
+          assert.ok(error.stdout.includes(`${tool} fixture`));
+          for (const laterTool of linuxPackagingTools.slice(index + 1)) {
+            assert.ok(!error.stdout.includes(`${laterTool} fixture`));
+          }
+          return true;
+        },
+      );
     },
   );
 }
+
+test("architecture checks compare the actual PR base with available Git history", () => {
+  assert.equal(actionStep(ciSteps, "actions/checkout").with["fetch-depth"], 0);
+  const check = ciSteps.find((step) => step.name === "Architecture boundaries");
+  assert.equal(
+    check.env.ARCHITECTURE_BASE,
+    "${{ github.event.pull_request.base.sha || github.event.before }}",
+  );
+  assert.notEqual(check["continue-on-error"], true);
+});

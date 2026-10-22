@@ -17,10 +17,8 @@ import {
   toolCallResumeWorkflowRunDisplaySchema,
 } from "./workflow-observation-display.js";
 
-// toolCall 终态 output 的结构化展示模型（port 自 feat）。consume-main 之前缺这个 union +
-// toolOutputSchema.display 字段——协议层 zod 校验会把 agent 下发的 display 整个 strip 掉，
-// 结构化工具调用退化成 fallback 渲染。
-const toolResultDisplaySchema = z.discriminatedUnion("kind", [
+// 工具结果的结构化显示模型，由协议校验后传入 renderer。
+export const toolResultDisplaySchema = z.discriminatedUnion("kind", [
   bashOutputDisplaySchema,
   z.object({
     kind: z.literal("file_diff"),

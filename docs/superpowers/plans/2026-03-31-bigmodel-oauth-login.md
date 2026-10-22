@@ -81,40 +81,6 @@ ServiceChannels 新增 OAuth（在 FileWatcher 之后）：
 ```
 
 PlatformChannels 删除 LoginSuccess 和 Logout，新增 OAuth 相关：
-```ts
-export const PlatformChannels = {
-  /** 打开系统目录选择框 */
-  SelectDirectory: "zcode:select-directory",
-  /** 检查目录是否已在其他窗口打开，如果是则激活该窗口 */
-  ActivateOrSetWorkspace: "zcode:activate-or-set-workspace",
-  /** 建立 SSH 远程连接 */
-  ConnectRemote: "zcode:connect-remote",
-  /** Renderer 日志转发到 main 进程统一存储 */
-  Log: "zcode:log",
-  /** Renderer → Main：同步当前窗口所有 tab 的 workspace 路径 */
-  SyncWindowTabs: "zcode:sync-window-tabs",
-  /** Main → Renderer：聚焦到指定 workspace 路径的 tab */
-  FocusTab: "zcode:focus-tab",
-  /** Main → Renderer：菜单触发新建 tab */
-  NewTab: "zcode:new-tab",
-  /** Main → Renderer：菜单触发新建任务 */
-  NewTask: "zcode:new-task",
-  /** Renderer → Main：把本地工作区加入系统最近文档 */
-  AddRecentDocument: "zcode:add-recent-document",
-  /** 获取进程指标（进程树形式） */
-  GetProcessMetrics: "zcode:get-process-metrics",
-  /** 打开进程监控窗口（其他窗口触发） */
-  OpenProcessMonitor: "zcode:open-process-monitor",
-  /** Renderer → Main：打开外部 URL（用于 OAuth 跳转浏览器） */
-  OpenExternal: "zcode:open-external",
-  /** Renderer → Main：上报 OAuth state 用于 deep link 路由 */
-  OAuthRegisterState: "zcode:oauth-register-state",
-  /** Main → Renderer：转发 deep link URL */
-  OAuthCallback: "zcode:oauth-callback",
-  /** Renderer → Main：renderer 已就绪，可接收缓存的 deep link */
-  RendererReady: "zcode:renderer-ready",
-} as const;
-```
 
 同步删除 PlatformChannelMap 中的 LoginSuccess 和 Logout 条目（删除 `channels.ts` 第 122-129 行）。
 
@@ -945,25 +911,6 @@ git commit -m "feat(desktop): add protocol registration, deep link routing; remo
 
 替换 `packages/desktop/src/renderer/src/main.tsx` 中的 `desktopPlatform` 对象和 Root 渲染：
 
-```ts
-// Desktop 平台操作实现：通过 preload bridge 调用 main 进程
-const desktopPlatform: IPlatformService = {
-  selectDirectory: () => window.zcode.selectDirectory(),
-  activateOrSetWorkspace: (path) =>
-    window.zcode.activateOrSetWorkspace?.(path) ?? Promise.resolve({ activated: false }),
-  connectRemote: (options: SSHConnectOptions) => window.zcode.connectRemote(options),
-  openExternal: (url) => window.zcode.openExternal(url),
-  registerOAuthState: (state) => window.zcode.registerOAuthState(state),
-  onOAuthCallback: (cb) => window.zcode.onOAuthCallback(cb),
-  notifyRendererReady: () => window.zcode.notifyRendererReady(),
-  syncWindowTabs: (paths) => window.zcode.syncWindowTabs(paths),
-  onFocusTab: (handler) => window.zcode.onFocusTab(handler),
-  onNewTab: (handler) => window.zcode.onNewTab(handler),
-  onNewTask: (handler) => window.zcode.onNewTask(handler),
-  addRecentDocument: (path) => window.zcode.addRecentDocument(path),
-};
-```
-
 Root 渲染中删除 `skipAuth` prop：
 ```tsx
       <Root
@@ -1173,128 +1120,6 @@ git commit -m "feat(ui): add useOAuth and useTokenRefresh hooks"
 - [ ] **Step 1: 将 WelcomeScreen.tsx 改造为 LoginDialog**
 
 替换 `packages/ui/src/WelcomeScreen.tsx` 的全部内容：
-```tsx
-/**
- * LoginDialog —— OAuth 登录弹窗
- *
- * 替代原来的用户名密码 WelcomeScreen。
- * 通过 useOAuth hook 驱动 OAuth 流程。
- */
-import { useEffect } from "react";
-import { LogInIcon, TriangleAlertIcon, Loader2Icon } from "lucide-react";
-import { TID_OAUTH_LOGIN_BUTTON, TID_OAUTH_CANCEL, TID_OAUTH_ERROR } from "@zcode/shared";
-import { useOAuth } from "./hooks/useOAuth.js";
-import { useZCodeStore } from "./store/StoreProvider.js";
-import { Alert, AlertDescription } from "./components/ui/alert.js";
-import { Button } from "./components/ui/button.js";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "./components/ui/dialog.js";
-import { useZCodeIntl } from "./i18n/IntlProvider.js";
-
-interface LoginDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export function LoginDialog({ open, onOpenChange }: LoginDialogProps) {
-  const { intl } = useZCodeIntl();
-  const { startLogin, cancel, reset, status, error } = useOAuth();
-  const user = useZCodeStore((s) => s.user);
-  const oauthError = useZCodeStore((s) => s.oauthError);
-  const setOAuthError = useZCodeStore((s) => s.setOAuthError);
-
-  // Root 层 OAuth 回调失败时写入 Zustand oauthError → 弹窗显示错误
-  useEffect(() => {
-    if (oauthError && open) {
-      reset();  // 重置 useOAuth 的 waiting 状态
-      // oauthError 已在 store 中，下方 UI 会读取并显示
-    }
-  }, [oauthError, open, reset]);
-
-  // OAuth 回调成功后 Root 层设置 user → 自动关闭弹窗
-  useEffect(() => {
-    if (user && open) {
-      reset();
-      setOAuthError(null);
-      onOpenChange(false);
-    }
-  }, [user, open, reset, onOpenChange, setOAuthError]);
-
-  const handleClose = (nextOpen: boolean) => {
-    if (!nextOpen && status === "waiting") {
-      cancel();
-    }
-    if (!nextOpen) {
-      reset();
-      setOAuthError(null);  // 清除 store 中的旧错误，避免下次打开仍显示
-    }
-    onOpenChange(nextOpen);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {intl.formatMessage({ id: "login.title" })}
-          </DialogTitle>
-          <DialogDescription>
-            {intl.formatMessage({ id: "login.description" })}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          {status === "idle" && (
-            <Button
-              className="w-full"
-              size="lg"
-              data-testid={TID_OAUTH_LOGIN_BUTTON}
-              onClick={startLogin}
-            >
-              <LogInIcon className="mr-2 size-4" />
-              {intl.formatMessage({ id: "login.oauth.button" })}
-            </Button>
-          )}
-
-          {status === "waiting" && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-center gap-2 py-4 text-sm text-muted-foreground">
-                <Loader2Icon className="size-4 animate-spin" />
-                {intl.formatMessage({ id: "login.oauth.waiting" })}
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                data-testid={TID_OAUTH_CANCEL}
-                onClick={() => handleClose(false)}
-              >
-                {intl.formatMessage({ id: "login.oauth.cancel" })}
-              </Button>
-            </div>
-          )}
-
-          {(status === "error" || oauthError) && (
-            <div className="space-y-3">
-              <Alert variant="destructive" data-testid={TID_OAUTH_ERROR}>
-                <TriangleAlertIcon className="size-4" />
-                <AlertDescription>{oauthError || error}</AlertDescription>
-              </Alert>
-              <Button className="w-full" onClick={() => { setOAuthError(null); startLogin(); }}>
-                {intl.formatMessage({ id: "login.oauth.retry" })}
-              </Button>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-```
 
 - [ ] **Step 2: 添加 i18n 消息**
 
@@ -1393,28 +1218,7 @@ git commit -m "feat(ui): replace WelcomeScreen with LoginDialog for BigModel OAu
    }, [services.credentialService, setUser]);
    ```
 7. 添加常驻的 OAuth 回调监听（在 RootInner 的 useEffect 中）：
-   ```ts
-   // 在组件顶层通过 hook 获取 setter
-   const setOAuthError = useZCodeStore((s) => s.setOAuthError);
 
-   useEffect(() => {
-     const dispose = platform.onOAuthCallback(async (url) => {
-       try {
-         const userInfo = await services.oauthService.handleCallback(url);
-         setUser(userInfo);
-         setOAuthError(null);
-         logger.info("[Root] OAuth 登录成功:", userInfo.username);
-       } catch (err) {
-         const message = err instanceof Error ? err.message : "登录失败";
-         // 写入 Zustand store，LoginDialog 监听此字段显示错误
-         setOAuthError(message);
-         logger.error("[Root] OAuth 回调处理失败:", err);
-       }
-     });
-     platform.notifyRendererReady();
-     return dispose;
-   }, [platform, services.oauthService, setUser, setOAuthError]);
-   ```
 8. 挂载 useTokenRefresh hook（当前为 stub，暴露 API 供后续 401 拦截集成）：
    ```ts
    // 注意：tryRefresh/clearCredentials 当前未被自动调用。
@@ -1599,9 +1403,6 @@ git commit -m "chore(desktop): remove login window, old login e2e tests, fix see
 在 `AGENTS.md` 第 92 行，更新"包括登录窗口"为"包括远程窗口"（删除登录窗口引用）。
 
 第 99 行更新为：
-```
-* `window.zcode` 上只剩 `selectDirectory`、`activateOrSetWorkspace`、`connectRemote`、`log`、`openExternal`、`registerOAuthState`、`onOAuthCallback`、`notifyRendererReady`，不包含 credential
-```
 
 - [ ] **Step 3: 验证**
 

@@ -69,11 +69,7 @@ function abortError(): DOMException {
   return new DOMException("Browser recording cancelled", "AbortError");
 }
 
-async function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  message: string,
-): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -245,12 +241,7 @@ function recorderHtml(): string {
 
 function asTargetFrame(value: unknown): WebFrameMain {
   const frame = value as WebFrameMain | undefined;
-  if (
-    !frame ||
-    typeof frame.isDestroyed !== "function" ||
-    frame.isDestroyed() ||
-    frame.detached
-  ) {
+  if (!frame || typeof frame.isDestroyed !== "function" || frame.isDestroyed() || frame.detached) {
     throw recorderError("target WebFrameMain is unavailable");
   }
   return frame;
@@ -292,9 +283,7 @@ export async function createElectronBrowserWebmRecorder(
     `.${randomUUID()}-browser-video-recorder.html`,
   );
 
-  const recorderSession = session.fromPartition(
-    `zcode-browser-video-recorder-${randomUUID()}`,
-  );
+  const recorderSession = session.fromPartition(`zcode-browser-video-recorder-${randomUUID()}`);
   const recorderWindow = new BrowserWindow({
     show: false,
     width: Math.max(1, input.viewport.width),
@@ -322,8 +311,7 @@ export async function createElectronBrowserWebmRecorder(
   let stopping = false;
 
   const fail = (error: unknown): void => {
-    const normalized =
-      error instanceof Error ? error : recorderError(String(error));
+    const normalized = error instanceof Error ? error : recorderError(String(error));
     ready.reject(normalized);
     started.reject(normalized);
     stopped.reject(normalized);
@@ -337,15 +325,8 @@ export async function createElectronBrowserWebmRecorder(
       return;
     }
     if (message.type === "started") {
-      if (
-        message.mimeType !== "video/webm;codecs=vp8" &&
-        message.mimeType !== "video/webm"
-      ) {
-        fail(
-          recorderError(
-            `unexpected MediaRecorder MIME type: ${String(message.mimeType)}`,
-          ),
-        );
+      if (message.mimeType !== "video/webm;codecs=vp8" && message.mimeType !== "video/webm") {
+        fail(recorderError(`unexpected MediaRecorder MIME type: ${String(message.mimeType)}`));
         return;
       }
       started.resolve();
@@ -359,9 +340,7 @@ export async function createElectronBrowserWebmRecorder(
         );
         return;
       }
-      debug?.(
-        `[browser-recording] received WebM chunk bytes=${buffer.byteLength}`,
-      );
+      debug?.(`[browser-recording] received WebM chunk bytes=${buffer.byteLength}`);
       writeChain = writeChain
         .then(async () => {
           if (!fileHandle) throw recorderError("output file is already closed");
@@ -377,13 +356,7 @@ export async function createElectronBrowserWebmRecorder(
       return;
     }
     if (message.type === "error") {
-      fail(
-        recorderError(
-          typeof message.message === "string"
-            ? message.message
-            : "unknown error",
-        ),
-      );
+      fail(recorderError(typeof message.message === "string" ? message.message : "unknown error"));
       return;
     }
     if (message.type === "diagnostic") {
@@ -392,21 +365,12 @@ export async function createElectronBrowserWebmRecorder(
   };
   mainPort.on("message", onPortMessage);
   mainPort.on("close", () => {
-    if (!closed)
-      fail(recorderError("recorder MessagePort closed unexpectedly"));
+    if (!closed) fail(recorderError("recorder MessagePort closed unexpectedly"));
   });
   mainPort.start();
 
-  const onRendererGone = (
-    _event: unknown,
-    details: { reason?: string },
-  ): void => {
-    if (!closed)
-      fail(
-        recorderError(
-          `recorder renderer exited: ${details.reason ?? "unknown"}`,
-        ),
-      );
+  const onRendererGone = (_event: unknown, details: { reason?: string }): void => {
+    if (!closed) fail(recorderError(`recorder renderer exited: ${details.reason ?? "unknown"}`));
   };
   recorderWindow.webContents.on("render-process-gone", onRendererGone);
   const onConsoleMessage = (
@@ -417,14 +381,9 @@ export async function createElectronBrowserWebmRecorder(
       `[browser-recording] recorder console level=${details.level ?? "unknown"} message=${details.message ?? ""}`,
     );
   };
-  // 新 Electron 类型把 console-message 监听签名改宽，旧精确监听器不再匹配任何重载；
-  // 该窗口是录制专用隐藏窗口，事件契约实际未变，经窄视图对齐类型。
   const recorderConsoleEvents = recorderWindow.webContents as unknown as {
     on(event: "console-message", listener: typeof onConsoleMessage): void;
-    removeListener(
-      event: "console-message",
-      listener: typeof onConsoleMessage,
-    ): void;
+    removeListener(event: "console-message", listener: typeof onConsoleMessage): void;
   };
   recorderConsoleEvents.on("console-message", onConsoleMessage);
 
@@ -446,10 +405,7 @@ export async function createElectronBrowserWebmRecorder(
     closePort(mainPort);
     closePort(rendererPort);
     clearDisplayMediaHandler(recorderSession);
-    recorderWindow.webContents.removeListener(
-      "render-process-gone",
-      onRendererGone,
-    );
+    recorderWindow.webContents.removeListener("render-process-gone", onRendererGone);
     recorderConsoleEvents.removeListener("console-message", onConsoleMessage);
     closeWindow(recorderWindow);
     await rm(recorderDocumentPath, { force: true }).catch(() => undefined);
@@ -461,10 +417,7 @@ export async function createElectronBrowserWebmRecorder(
   input.signal.addEventListener("abort", onAbort, { once: true });
 
   try {
-    await writeFile(recorderDocumentPath, recorderHtml(), {
-      encoding: "utf8",
-      mode: 0o600,
-    });
+    await writeFile(recorderDocumentPath, recorderHtml(), { encoding: "utf8", mode: 0o600 });
     recorderSession.setDisplayMediaRequestHandler((request, callback) => {
       if (
         closed ||
@@ -482,25 +435,15 @@ export async function createElectronBrowserWebmRecorder(
     fileHandle = await open(input.outputPath, "w");
     await recorderWindow.loadFile(recorderDocumentPath);
     await rm(recorderDocumentPath, { force: true }).catch(() => undefined);
-    recorderWindow.webContents.postMessage(RECORDER_PORT_CHANNEL, null, [
-      rendererPort,
-    ]);
-    await withTimeout(
-      ready.promise,
-      RECORDER_START_TIMEOUT_MS,
-      "recorder renderer did not become ready",
-    );
+    recorderWindow.webContents.postMessage(RECORDER_PORT_CHANNEL, null, [rendererPort]);
+    await withTimeout(ready.promise, RECORDER_START_TIMEOUT_MS, "recorder renderer did not become ready");
     mainPort.postMessage({
       type: "start",
       fps: input.fps,
       width: input.viewport.width,
       height: input.viewport.height,
     });
-    await withTimeout(
-      started.promise,
-      RECORDER_START_TIMEOUT_MS,
-      "MediaRecorder did not start",
-    );
+    await withTimeout(started.promise, RECORDER_START_TIMEOUT_MS, "MediaRecorder did not start");
   } catch (error) {
     fail(error);
     await cleanup(true);
@@ -511,21 +454,13 @@ export async function createElectronBrowserWebmRecorder(
     stop: async () => {
       if (closed) throw recorderError("recorder is already closed");
       if (stopping) {
-        await withTimeout(
-          stopped.promise,
-          RECORDER_STOP_TIMEOUT_MS,
-          "MediaRecorder did not stop",
-        );
+        await withTimeout(stopped.promise, RECORDER_STOP_TIMEOUT_MS, "MediaRecorder did not stop");
         return;
       }
       stopping = true;
       mainPort.postMessage({ type: "stop" });
       try {
-        await withTimeout(
-          stopped.promise,
-          RECORDER_STOP_TIMEOUT_MS,
-          "MediaRecorder did not stop",
-        );
+        await withTimeout(stopped.promise, RECORDER_STOP_TIMEOUT_MS, "MediaRecorder did not stop");
         await writeChain;
         if (writeError) throw writeError;
       } finally {

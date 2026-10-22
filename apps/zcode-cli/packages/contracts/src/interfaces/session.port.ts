@@ -259,6 +259,8 @@ export interface Session {
 }
 
 export interface TurnSteerInput {
+  /** 临时执行的选型不可成为普通 Session 续跑默认；不包含请求凭据。 */
+  modelSelectionScope?: "execution";
   input: string;
   inputId?: string;
   queryId?: QueryId;

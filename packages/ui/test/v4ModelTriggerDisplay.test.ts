@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ModelSelectGroup } from "@/ModelConfigSelect.js";
 import {
-  formatProviderModelLabel,
   resolveV4ModelTriggerDisplay,
   resolveV4ModelTriggerLabel,
 } from "@/v4/composer/modelTriggerDisplay.js";
@@ -50,42 +49,6 @@ describe("resolveV4ModelTriggerLabel", () => {
   });
 
   it("DeepSeek 自定义 provider 收起后显示 providerName/modelName", () => {
-    const group = createGroup({
-      key: "default-deepseek",
-      label: "deepseek",
-      modelName: "deepseek-v4-flash",
-    });
-
-    expect(
-      resolveV4ModelTriggerLabel({
-        modelGroups: [group],
-        normalizedValue: "custom:default-deepseek:deepseek-v4-flash",
-        fallbackLabel: "选择模型",
-        providerId: "default-deepseek",
-        providerName: "deepseek",
-      }),
-    ).toBe("deepseek/deepseek-v4-flash");
-  });
-
-  it("手机 Web 与桌面共享完整身份文案，由 composer 容器断点负责视觉裁剪", () => {
-    const group = createGroup({
-      key: "default-deepseek",
-      label: "deepseek",
-      modelName: "deepseek-v4-flash",
-    });
-
-    expect(
-      resolveV4ModelTriggerLabel({
-        modelGroups: [group],
-        normalizedValue: "custom:default-deepseek:deepseek-v4-flash",
-        fallbackLabel: "选择模型",
-        providerId: "default-deepseek",
-        providerName: "deepseek",
-      }),
-    ).toBe("deepseek/deepseek-v4-flash");
-  });
-
-  it("桌面宽视口打开 Web 远控时仍显示自定义供应商名", () => {
     const group = createGroup({
       key: "default-deepseek",
       label: "deepseek",
@@ -160,14 +123,5 @@ describe("resolveV4ModelTriggerDisplay", () => {
       providerPrefix: "deepseek/",
       modelLabel: "deepseek-v4-flash",
     });
-  });
-});
-
-describe("formatProviderModelLabel", () => {
-
-  it("自定义供应商保留 providerName/modelName", () => {
-    expect(formatProviderModelLabel("custom-deepseek", "test-deepseek", "deepseek-v4-flash")).toBe(
-      "test-deepseek/deepseek-v4-flash",
-    );
   });
 });

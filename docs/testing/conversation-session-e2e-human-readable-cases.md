@@ -159,7 +159,6 @@
 | primary/alternate provider 暴露不同模型 → 选择 alternate 并首发                         | currentValue 保留 alternate provider id；请求 body 和 URL 都命中 alternate provider 的目标模型                          | 来源：I13；已覆盖                      |
 | 分别选择 GLM、DeepSeek、Claude fixed/adaptive、GPT 模型的代表 thought 档位 → 首发或续发 | 请求字段严格使用对应 provider 协议形态，不能串入其它 provider 的 reasoning/thinking 字段                                | 来源：I14-I18；已覆盖                  |
 | 冷启动时没有任何可用 provider/model → 跳过登录进入草稿 → 随后补齐 provider              | 未配置时不启动会话 Agent，显示模型配置提示；配置变为可用后只启动一次 Agent，水合草稿并清除提示                          | 来源：I23、I24；已覆盖                 |
-| 重启前最后选择是可用外部模型或当前 Account Provider 内非首个模型 → 重启                 | 可用的完整 Provider/Model/Reasoning 选择继续保留，不能回退到模型列表首项                                                | 来源：I25-I26；已覆盖                  |
 | GLM-5-Turbo 选择 off/enabled → 重启、首发或连续切 thought                               | 始终保持 Turbo 二态能力和正确请求；迟到 workspace 配置不能注入三态选项或改变模型                                        | 来源：I35-I38；已覆盖                  |
 | Composer 快速连续切模型、thought 或 mode                                                | 控件立即显示选择并同步保存完整 Draft；最终只保留最后一次选择，迟到目录或 Session 状态不回弹旧值                         | 来源：I50、I51；已计划                 |
 | Composer 刚切到新模型/thought/mode → 立即发送首条消息                                   | 在任何等待前冻结最新选择；真实请求和 session mode 使用冻结值。选择无效时不拿旧配置静默发送，正文和选择保留              | 来源：I52；已计划                      |

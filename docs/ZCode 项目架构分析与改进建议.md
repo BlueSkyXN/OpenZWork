@@ -22,7 +22,6 @@ shared ← rpc ← services ← client ← server
 |---|---|---|
 |@zcode/rpc|VS Code 风格 7 层 IPC 框架，传输无关、类型安全|4,934|
 |@zcode/shared|共享类型 \+ zod schema \+ ZCode Protocol 契约|20,531|
-|@zcode/services|35 个业务子域服务（agent/session/git/bots/oauth…）|96,506|
 |@zcode/client|RPC 桥接（MessagePort / WebSocket → service 代理）|945|
 |@zcode/server|后端入口（Hono HTTP/WS、stdio、Remote SSH）|11,923|
 |@zcode/ui|平台无关 React 19 组件库（桌面/手机共用）|267,181|

@@ -3,8 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 async function loadSettingsNavigation(env: "test" | "production") {
   vi.resetModules();
   vi.doMock("@zcode/shared", async () => {
-    const actual =
-      await vi.importActual<typeof import("@zcode/shared")>("@zcode/shared");
+    const actual = await vi.importActual<typeof import("@zcode/shared")>("@zcode/shared");
     return {
       ...actual,
       ZCODE_ENV: env,
@@ -20,34 +19,15 @@ afterEach(() => {
 });
 
 describe("settingsNavigation", () => {
-  it("在 test 环境保留 usage 分区", async () => {
+  it("保留 usage、hooks 和 memory 分区", async () => {
     const navigation = await loadSettingsNavigation("test");
 
     expect(navigation.isSettingsSectionEnabled("usage")).toBe(true);
-    expect(navigation.resolveSettingsSection("usage", "modelProvider")).toBe(
-      "usage",
-    );
+    expect(navigation.resolveSettingsSection("usage", "modelProvider")).toBe("usage");
     expect(navigation.isSettingsSectionEnabled("hooks")).toBe(true);
-    expect(navigation.resolveSettingsSection("hooks", "modelProvider")).toBe(
-      "hooks",
-    );
+    expect(navigation.resolveSettingsSection("hooks", "modelProvider")).toBe("hooks");
     expect(navigation.isSettingsSectionEnabled("memory")).toBe(true);
-    expect(navigation.resolveSettingsSection("memory", "general")).toBe(
-      "memory",
-    );
-  });
-
-  it("在 production 环境也保留 usage 分区", async () => {
-    const navigation = await loadSettingsNavigation("production");
-
-    expect(navigation.isSettingsSectionEnabled("usage")).toBe(true);
-    expect(navigation.resolveSettingsSection("usage", "modelProvider")).toBe(
-      "usage",
-    );
-    expect(navigation.isSettingsSectionEnabled("hooks")).toBe(true);
-    expect(navigation.resolveSettingsSection("hooks", "modelProvider")).toBe(
-      "hooks",
-    );
+    expect(navigation.resolveSettingsSection("memory", "general")).toBe("memory");
   });
 
   it("通知已打开的设置页切换到新的分区意图", async () => {
@@ -200,17 +180,13 @@ describe("settingsNavigation", () => {
     });
     const navigation = await loadSettingsNavigation("test");
 
-    expect(navigation.consumePendingSettingsSection("modelProvider")).toBe(
-      "modelProvider",
-    );
+    expect(navigation.consumePendingSettingsSection("modelProvider")).toBe("modelProvider");
     expect(storage.has("zcode-settings-section-intent")).toBe(false);
   });
 
   it("保留 MCP 设置分区为独立入口", async () => {
     const sessionStorage = new Map<string, string>();
-    const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "mcp"],
-    ]);
+    const localStorage = new Map<string, string>([["zcode-settings-last-section", "mcp"]]);
     vi.stubGlobal("window", {
       sessionStorage: {
         getItem: (key: string) => sessionStorage.get(key) ?? null,
@@ -234,9 +210,7 @@ describe("settingsNavigation", () => {
   });
 
   it("把旧 Skills 一次性跳转意图迁移到独立 skill 入口", async () => {
-    const sessionStorage = new Map<string, string>([
-      ["zcode-settings-section-intent", "skills"],
-    ]);
+    const sessionStorage = new Map<string, string>([["zcode-settings-section-intent", "skills"]]);
     vi.stubGlobal("window", {
       sessionStorage: {
         getItem: (key: string) => sessionStorage.get(key) ?? null,
@@ -255,9 +229,7 @@ describe("settingsNavigation", () => {
   });
 
   it("清理不再保留的 customize 分区", async () => {
-    const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "customize"],
-    ]);
+    const localStorage = new Map<string, string>([["zcode-settings-last-section", "customize"]]);
     vi.stubGlobal("window", {
       localStorage: {
         getItem: (key: string) => localStorage.get(key) ?? null,
@@ -272,16 +244,12 @@ describe("settingsNavigation", () => {
     });
     const navigation = await loadSettingsNavigation("test");
 
-    expect(navigation.readLastSettingsSectionPreference("general")).toBe(
-      "general",
-    );
+    expect(navigation.readLastSettingsSectionPreference("general")).toBe("general");
     expect(localStorage.has("zcode-settings-last-section")).toBe(false);
   });
 
   it("把旧代码预览分区迁移到外观", async () => {
-    const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "codePreview"],
-    ]);
+    const localStorage = new Map<string, string>([["zcode-settings-last-section", "codePreview"]]);
     vi.stubGlobal("window", {
       localStorage: {
         getItem: (key: string) => localStorage.get(key) ?? null,
@@ -299,9 +267,7 @@ describe("settingsNavigation", () => {
     const sessionStorage = new Map<string, string>([
       ["zcode-settings-section-intent", "modelProvider"],
     ]);
-    const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "mcp"],
-    ]);
+    const localStorage = new Map<string, string>([["zcode-settings-last-section", "mcp"]]);
     vi.stubGlobal("window", {
       sessionStorage: {
         getItem: (key: string) => sessionStorage.get(key) ?? null,
@@ -320,9 +286,7 @@ describe("settingsNavigation", () => {
     });
     const navigation = await loadSettingsNavigation("test");
 
-    expect(navigation.consumeInitialSettingsSection("general")).toBe(
-      "modelProvider",
-    );
+    expect(navigation.consumeInitialSettingsSection("general")).toBe("modelProvider");
     expect(sessionStorage.has("zcode-settings-section-intent")).toBe(false);
   });
 
@@ -346,9 +310,7 @@ describe("settingsNavigation", () => {
     });
     const navigation = await loadSettingsNavigation("test");
 
-    expect(navigation.readLastSettingsSectionPreference("general")).toBe(
-      "general",
-    );
+    expect(navigation.readLastSettingsSectionPreference("general")).toBe("general");
     expect(localStorage.has("zcode-settings-last-section")).toBe(false);
 
     navigation.writeLastSettingsSectionPreference("plugin");
@@ -357,9 +319,7 @@ describe("settingsNavigation", () => {
   });
 
   it("保留 hooks 分区的历史偏好", async () => {
-    const localStorage = new Map<string, string>([
-      ["zcode-settings-last-section", "hooks"],
-    ]);
+    const localStorage = new Map<string, string>([["zcode-settings-last-section", "hooks"]]);
     vi.stubGlobal("window", {
       localStorage: {
         getItem: (key: string) => localStorage.get(key) ?? null,
@@ -376,12 +336,81 @@ describe("settingsNavigation", () => {
     });
     const navigation = await loadSettingsNavigation("test");
 
-    expect(navigation.readLastSettingsSectionPreference("general")).toBe(
-      "hooks",
-    );
+    expect(navigation.readLastSettingsSectionPreference("general")).toBe("hooks");
 
     navigation.writeLastSettingsSectionPreference("hooks");
 
     expect(localStorage.get("zcode-settings-last-section")).toBe("hooks");
   });
+});
+
+it("设备卡定位意图支持首次挂载和已打开设置页，并在消费后清理", async () => {
+  const events = new EventTarget();
+  const storage = new Map<string, string>();
+  vi.stubGlobal("window", {
+    addEventListener: events.addEventListener.bind(events),
+    removeEventListener: events.removeEventListener.bind(events),
+    dispatchEvent: events.dispatchEvent.bind(events),
+    sessionStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      setItem: (key: string, value: string) => storage.set(key, value),
+      removeItem: (key: string) => storage.delete(key),
+    },
+  });
+  const navigation = await loadSettingsNavigation("test");
+  navigation.setPendingSettingsSectionIntent("remoteDevices", { sourceServerId: "device-a" });
+  expect(navigation.consumePendingSettingsSourceServerId()).toBe("device-a");
+  expect(navigation.consumePendingSettingsSourceServerId()).toBeUndefined();
+  const listener = vi.fn();
+  const dispose = navigation.addPendingSettingsSectionListener(listener);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", { sourceServerId: "device-b" });
+  expect(listener).toHaveBeenCalledWith(
+    "remoteDevices",
+    expect.objectContaining({ sourceServerId: "device-b" }),
+  );
+  expect(navigation.consumePendingSettingsSourceServerId()).toBeUndefined();
+  dispose();
+});
+
+it("设备定位与失败详情保持独立意图，已挂载事件消费清除存储", async () => {
+  const eventTarget = new EventTarget();
+  const storage = new Map<string, string>();
+  vi.stubGlobal("window", {
+    addEventListener: eventTarget.addEventListener.bind(eventTarget),
+    removeEventListener: eventTarget.removeEventListener.bind(eventTarget),
+    dispatchEvent: eventTarget.dispatchEvent.bind(eventTarget),
+    sessionStorage: {
+      getItem: (key: string) => storage.get(key) ?? null,
+      removeItem: (key: string) => storage.delete(key),
+      setItem: (key: string, value: string) => storage.set(key, value),
+    },
+  });
+  const navigation = await loadSettingsNavigation("test");
+  const listener = vi.fn();
+  const dispose = navigation.addPendingSettingsSectionListener(listener);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", {
+    sourceServerId: " source ",
+    sourceServerDetails: true,
+  });
+  expect(listener).toHaveBeenLastCalledWith(
+    "remoteDevices",
+    expect.objectContaining({ sourceServerId: "source", sourceServerDetails: true }),
+  );
+  expect(storage.size).toBe(0);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", { sourceServerId: "source" });
+  expect(listener.mock.calls.at(-1)?.[1].sourceServerDetails).toBeUndefined();
+  dispose();
+  navigation.setPendingSettingsSectionIntent("remoteDevices", {
+    sourceServerId: "source",
+    sourceServerDetails: true,
+  });
+  expect(navigation.consumePendingSettingsSourceServerId()).toBe("source");
+  expect(navigation.consumePendingSettingsSourceServerDetails()).toBe(true);
+  expect(navigation.consumePendingSettingsSourceServerDetails()).toBe(false);
+  navigation.setPendingSettingsSectionIntent("remoteDevices", {
+    sourceServerId: "source",
+    sourceServerDetails: true,
+  });
+  navigation.setPendingSettingsSectionIntent("general");
+  expect(navigation.consumePendingSettingsSourceServerDetails()).toBe(false);
 });

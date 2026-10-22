@@ -1,11 +1,6 @@
 # Todo 27：Provider Settings 体验与真实执行缺口收口
 
-> 状态：已完成（自动化收口；macOS 实机复验待启动最新开发链）
->
-> 日期：2026-08-27
->
-> 前置关系：Todo 26 完成智谱 `access.type + access.mode` 契约切换后，再处理本文中的 Runtime Headers
-> Schema 收口。其余 UI 与 Team Plan 状态切片可以独立实施。
+
 
 ## 1. 目标与边界
 
@@ -14,7 +9,6 @@
 1. 用统一视觉表达 Model Config 布尔叶子的 Effective 值与 Personal Overlay 来源；
 2. 删除所有单字段恢复入口，只保留始终可见的模型级“全部恢复默认”；
 3. 将保存成功和模型连接成功统一投影到窗口底部通知区；
-4. 修复 Team Plan 的状态误判与请求期 Account Access 协议不一致；
 5. 为以上行为补齐自动化证明和实机回归。
 
 本文不处理跨进程 Personal Config / Provider Registry 更新机制。该问题涉及 Host、Agent、文件 watcher、revision
@@ -119,57 +113,10 @@ Application viewport
 通知组件必须复用现有窗口级反馈基础设施；若当前基础设施不支持堆叠与替换，应扩展同一个 store，不建立
 Provider Settings 私有的第二套 Toast 状态。
 
-## 5. Team Plan 状态必须区分未知与不可用
-
-当前 Team Plan 页面把以下两个事实合并成 `teamPlanUnavailable`：
-
-```text
-项目 API Key 被服务端明确判定 unavailable
-                         +
-Team quota 没有快照 / 正在请求 / 请求失败
-                         |
-                         v
-               “团队套餐未分配”
-```
-
-这会把“尚未得到事实”误报成“服务端已经确认不可用”。更严重的是，状态卡又用该结果阻止后续 Usage entitlement
-刷新，形成自锁：初次没有 quota -> 显示未分配 -> 不再刷新 -> 永远未分配。
-
-状态必须拆分：
-
-```text
-checking / unknown / request-failed
-└─ 不得显示“团队套餐未分配”，不得阻止重试或刷新
-
-explicit unavailable
-└─ 只有项目 API Key 或 quota 权威响应明确表示不可用时才显示“团队套餐未分配”
-
-available
-└─ 展示已连接/已购状态，并允许 Account Overlay 正常发布
-```
-
-UI 不得因为 Team quota 成功而直接强制 Provider `enabled=true`，也不得自己拼 Account Overlay。Account Resolver 仍是
-Provider 可执行状态的唯一投影者；本切片只修复展示状态机和刷新门禁。
-
 ## 6. Runtime Headers 使用 Registry Access 的正式 Schema
 
-实机 Team Plan 请求失败的直接原因不是套餐不存在，而是 Agent 发出的 Runtime Headers 请求携带 Registry 中完整的
-`providerConfig.access`，App Protocol 却使用另一份手写的严格子集 Schema。两份 Schema 漂移后，Protocol 在模型请求发出前
-拒绝参数，最终只显示 `Model request failed`。
 
-Todo 26 完成后，Runtime Headers 请求中的 `accountAccess` 必须直接复用正式 Provider Registry Access Schema 对应的
-`zhipu-account` 分支，不再维护 `{ type, family, planKind }` 或其他手写投影：
 
-```text
-Effective Provider Config.access
-          |
-          | 同一正式 Schema / 同一序列化形状
-          v
-Runtime Headers request.accountAccess
-          |
-          v
-Host 按 family + mode 取得请求期材料
-```
 
 本切片不得：
 
@@ -182,26 +129,6 @@ Runtime Headers 请求仍只携带定位和解释本次鉴权请求所需的静�
 到该次 Model Request。
 
 ## 7. 实施顺序
-
-```text
-Todo 26：Access Type/Mode 契约切换
-                 |
-                 v
-Runtime Headers Schema 复用正式 Access
-                 |
-                 v
-Team Plan 真实请求回归
-
-布尔 Overlay 样式统一
-                 |
-                 v
-模型级恢复默认
-                 |
-                 v
-窗口级成功反馈
-
-Team 状态机拆分可独立并行实施
-```
 
 每个切片先写失败测试，再最小修改生产代码。测试发现需要改变本文之外的 Config、Overlay、Registry 或模型选择语义时，
 暂停实施并请求裁决。
@@ -230,14 +157,6 @@ Team 状态机拆分可独立并行实施
 - Provider 名称、Base URL 和 API Key 连续输入时共享闲时保存定时器，失焦立即 flush，不双重提交；
 - Model Metadata Dialog 仍由显式保存/取消控制，不被闲时保存破坏事务边界。
 
-### 8.3 Team Plan
-
-- quota 缺失、loading、请求失败均不显示“团队套餐未分配”，且允许刷新；
-- 权威 unavailable 才显示未分配；available 恢复正常状态；
-- 状态切换不会由 UI 直接修改 Provider enabled；
-- `zhipu-account/team-coding-plan` 的完整 Registry Access 能通过 Protocol 严格校验；
-- Team Plan 请求在模型网络调用前成功取得请求期材料；缺失材料时返回准确鉴权错误，而不是 Schema 错误。
-
 ### 8.4 回归边界
 
 - 普通 `api-key` Provider 不进入 Runtime Headers 请求链；
@@ -252,8 +171,6 @@ Team 状态机拆分可独立并行实施
 - 只存在一个始终可见的模型级恢复默认入口；
 - 保存和连接成功反馈稳定锚定右侧 Provider 详情栏底部，模型成功消息带身份；
 - Provider 文本输入同时支持闲时保存和失焦立即保存，不制造重复写入；
-- Team Plan 不再把未知或请求失败误报为未分配，也不会自我阻断刷新；
-- Team Plan 的 Runtime Headers 请求严格复用正式 Registry Access Schema，并能完成真实模型请求；
 - 定向单测、`pnpm typecheck`、`pnpm lint`、受影响 UI E2E 和 macOS 实机回归通过；
 - 不增加第二套 Model Config、Account Access、Registry、Toast 或连接状态事实。
 
@@ -269,21 +186,12 @@ Team 状态机拆分可独立并行实施
 - Provider 名称、Base URL 和 API Key 的文本草稿在停止输入 800ms 后自动保存，失焦/Enter/切换时立即
   flush；同一 Provider 只有一个定时器且同草稿不重复提交，中文 IME 组词期间不触发闲时保存；
 - 两个复杂 JSON 编辑区去掉重复的外层边框、背景和内边距，只保留固定高度输入框；MFJS 开关归入“其他设置”分区；
-- Team Plan 状态机区分 loading、request error 与服务端明确 unavailable；详情页不再以“未分配”状态阻止
-  entitlement refresh，消除首次缺 quota 后永久自锁；
-- Runtime Headers 请求直接使用 `zcodeProviderAccountAccessSchema`。API Key、Start、Individual、Team、
-- 设置页、Usage 和登录恢复不再用动态 `zcodeAccountAccessSchema` 解析 Registry Access。UI 只传递
-  `{ type, family, mode }` 静态事实，Host 的 Account Request Auth Service 再根据当前连接解析动态
-  `planKind` 与 Team scope；Team usage source 由静态 `team-coding-plan` mode 与已订阅项目事实组合，
-  不把项目身份写回 Provider Config；
 - 模型选择分组与 Official MCP 凭证解析也已切到正式静态 Registry Access Schema。Official MCP 在
   Host 调用边界解析当前动态连接，并把前后两次 Account Access 一并纳入一致性检查；同一 Family 同时
 - Bugfix 03 的最大输出 Token 重复 JSON 入口同步删除，唯一数字入口按 inherited limit 确定性产生完整
   `LimitOptionSpec`；
 - 新增 Personal Model 的 Config Rule 预览只作为 `inheritedConfig` 和输入 placeholder，不再回填为用户输入；
   提交时 Built-in 通用规则提供的 context、输入输出格式与能力不会被误写成 Personal Overlay；
-- UI、Team Plan、Shared Protocol、Model Selection 和 Official MCP 定向测试通过；根 `pnpm typecheck`
-  与 `pnpm lint` 通过（lint 仅保留 34 条仓库既有 warning），本轮修改文件格式检查通过；
 - 全量 Unit 共 `12,463 passed / 25 skipped`；仅两个与本轮无关的 Server CLI ZIP 用例因当前宿主未安装
   `zip` 可执行文件而在启动外部命令时 `ENOENT`，Provider/Model/Account/Settings 回归没有失败；
 - Linux Desktop E2E 已完成构建，但宿主缺少 `xvfb-run`，Electron 在进入用例断言前退出。该环境阻塞和

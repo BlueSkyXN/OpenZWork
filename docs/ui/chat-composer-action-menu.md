@@ -104,4 +104,3 @@ CLI listProtocolSlashCommands
 插入 `/workflow`）；`promptMentionNode.test.ts`（图标节点）；
 `apps/zcode-cli/packages/bootstrap/tests/protocol-slash-commands.test.ts`（catalog 顺序）；
 Electron pending 用例 PLUS05。
-

@@ -51,7 +51,6 @@
 | 建组 + coding-plan 分组/badge | `lib/modelSelectionGroups.ts:810,76,537` | ✅ `buildModelSelectGroups` `V4ComposerToolbar.tsx:215-227` |
 | **entitlement 可见性门控**（未授权不显、start↔coding 互斥） | `modelSelection.ts:830-884` 应用于 `ChatInputToolbar.tsx:1123-1170` | ✗ 只过 `shouldIncludeModelProviderInSelection`；`entitlements` 只喂 start 余额 `V4ComposerToolbar.tsx:129-184` |
 | **连接方式 Select**（Start/Individual/Team/API Key） | `ModelConfigSelect.tsx:365` + `onConnectionValueChange`；选项 `modelSelectionGroups.ts:371-498` | ✗ 未传 `onConnectionValueChange` `V4ComposerToolbar.tsx:375-391` |
-| coding-plan 用量面板 | `chat-input-toolbar/CodingPlanContextUsage.tsx` + `ChatInputToolbar` ~150 行 | ✗（`m5-composer-parity §六` 二期） |
 | context-usage breakdown + cache-hit | `chat-input-toolbar/contextUsage.tsx` | ✗ `SessionUsageState` 缺字段（`m5-composer-parity §六` 一期） |
 
 ### D. CLI 写路径 provider / 凭据解析（C 的地基）— 真缺口

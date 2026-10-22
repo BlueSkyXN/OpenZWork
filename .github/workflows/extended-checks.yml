@@ -102,6 +102,7 @@ jobs:
       - name: Install dependencies without runtime scripts
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build workspace declarations
+        id: declarations
         run: pnpm typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=6144
@@ -116,6 +117,18 @@ jobs:
         with:
           name: desktop-main-diagnostics
           path: .run-logs/desktop-main-typecheck.log
+          archive: true
+          if-no-files-found: error
+      - name: Audit Desktop E2E types
+        id: e2e_audit
+        if: always() && steps.declarations.outcome == 'success'
+        run: pnpm exec tsc -p packages/desktop/tsconfig.e2e.json --noEmit --pretty false > .run-logs/desktop-e2e-typecheck.log 2>&1
+      - name: Upload E2E type diagnostics
+        if: always() && steps.e2e_audit.outcome != 'skipped'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-e2e-diagnostics
+          path: .run-logs/desktop-e2e-typecheck.log
           archive: true
           if-no-files-found: error
 

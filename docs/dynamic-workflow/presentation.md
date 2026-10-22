@@ -1224,17 +1224,7 @@ ordinary focusable controls above it, and Shift+Tab on the first option leaves t
 them, so the reading order and the focus order agree. Keys typed into a control stay in it: the
 dialog's number shortcuts belong to the option buttons, not to the dialog.
 
-When the input carries no block (an older agent), the window draws the plain lines instead,
-only for the fields the call set, in `text-ui-xs text-foreground-subtlest`: "Subagents run on
-{model}" and "At most {n} subagents at once". The model line says the **resolved label**, not
-the canonical string `resolveInput` produced: a model name, plus "· thinking {level}" /
-「· 思考 {level}」 when the choice carries a reasoning level. The canonical string keeps its
-place in that line's tooltip, under one sentence saying the main agent stays on the session
-model. One pure function decides the words for all three surfaces that name the model,
-`describeWorkflowSubagentModel` (`components/workflow-timeline/subagent-model-label.ts`): a
-builtin provider family shows the model id alone, a custom provider shows "{provider name}/{model
-id}", and a provider that cannot be resolved falls back to the model id. The provider id is
-never shown, because for a team plan it is a UUID.
+
 
 Below the settings and the saved badge comes the static timeline, built with no run, not
 collapsible, with no pill or station callbacks (nothing exists to open yet). Then the

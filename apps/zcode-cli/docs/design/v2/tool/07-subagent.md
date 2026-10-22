@@ -301,31 +301,6 @@ ZCode 建议拆成两层声明：
 
 ZCode 的权限系统应在 spawn 前生成 `SubagentPolicy` 快照，记录 agent type、allowed tools、permission mode、side effect scopes、是否允许 background、是否允许 resume、是否允许 worktree 和是否允许 user prompt。
 
-## Hooks、MCP、Skills
-
-### 官方 Computer Use 子 Agent边界
-
-子 Agent 借用 parent MCP port 时，官方 `zcode-cua` 不能通过 wildcard 继承。Core 使用冻结的
-official server authority 将其从 child snapshot、tool allowlist 和 SkillPort 中移除；profile
-显式声明官方 CUA server、tool、selector 或 Skill 时，在 child 首次模型请求前返回
-`SUBAGENT_COMPUTER_USE_UNAVAILABLE`。这条规则适用于 Explore、general-purpose、custom、
-background 和 resume。
-
-该过滤只改变 child 视图，不改变 parent snapshot、MCP lifecycle 或主 Agent 的官方 CUA 工具。
-Producer 仍需在 `runtime_scope=subagent` 时拒绝所有 CUA tool call，作为不能由 tool surface 绕过的
-执行期 backstop。完整契约见 `docs/cua/2026-08-18-subagent-computer-use-unavailable-spec.md`。
-
-subagent 不是只跑模型和工具，还会触发扩展系统：
-
-- `SubagentStart` hooks 输入包含 `agent_id` 和 `agent_type`，可返回 additional context。
-- agent frontmatter hooks 注册为 session scoped hooks，并在 agent lifecycle 结束时清理。
-- agent Stop hooks 会以 `SubagentStop` 事件执行。
-- agent frontmatter `mcpServers` 设计上可在父 MCP clients 基础上 additive 合并，inline MCP client
-  结束时 cleanup；ZCode 当前 child 只借用 parent-owned MCP 连接，不创建 inline client。
-- plugin-only policy 下，用户可控 frontmatter MCP 和 hooks 会被跳过或限制。
-- `skills` 会在 agent 启动时解析并预加载为 meta user message；plugin skills 可通过 bare name、plugin prefix 或 suffix match 解析。
-
-ZCode 应把 hook/MCP/skill 都视为外部 I/O 或扩展边界，必须带 trace、权限、timeout、cleanup 和 source trust。
 
 ## 失败路径
 

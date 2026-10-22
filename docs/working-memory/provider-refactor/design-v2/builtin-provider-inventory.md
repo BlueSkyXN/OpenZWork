@@ -1,6 +1,11 @@
-# Builtin Provider 维护清单
+# Builtin Provider 历史维护清单
 
-> 状态：Todo 76/79 已实施的 Builtin 维护基线（持续维护）
+> 本文保留原调查时点的目标清单与裁决，不代表当前配置或上游实时状态。
+> 2026-10-14 起，日常维护见[维护入口](../../../builtin-provider-maintenance/README.md)，
+> 已配置成员和默认启停见[当前状态](../../../builtin-provider-maintenance/current-state.md)。
+> 本文表格与删除段本身也有历史差异；不要直接据此恢复或删除模型。
+
+> 历史状态：Todo 76/79 当时的 Builtin 维护基线；后续库存已移到新维护目录。
 >
 > 日期：2026-09-10（Todo105/111/112/113 更新）
 
@@ -22,14 +27,10 @@ reasoning map、能力字段、请求 Header 或 Personal Provider Instance。
 
 ## 入口清单
 
-表中模型 ID 是产品维护范围。普通 API 入口使用 `templateId`；账号入口使用具体 `providerId`。
-表中的 `account:zai-*` / `account:bigmodel-*` 只是把同一供应商的套餐入口合并展示的文档简写，实际配置仍保留
-每个具体的 Account Provider ID。
+
 
 | 供应商                   | 类型             | ID                               | Base URL                                                 | 产品维护模型                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ------------------------ | ---------------- | -------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Z.ai                     | Account Provider | `account:zai-*`                  | 由套餐入口固定                                           | 个人／团队：`GLM-5.3`★、`GLM-5.3-Flash`★；Start／闲时保持各自名单                                                                                                                                                                                                                                                                                                                                                       |
-| BigModel                 | Account Provider | `account:bigmodel-*`             | 由套餐入口固定                                           | 个人／团队：`GLM-5.3`★、`GLM-5.3-Flash`★；Start／闲时保持各自名单                                                                                                                                                                                                                                                                                                                                                       |
 | Kimi                     | API Template     | `moonshot-kimi`                  | `https://api.moonshot.cn/anthropic`                      | `kimi-k3`★、`kimi-k2.7-code`★、`kimi-k2.6`★、`k3`○、`k3-256k`○、`kimi-k2.5`○、`moonshot-v1-8k`○、`moonshot-v1-32k`○、`moonshot-v1-128k`○、`moonshot-v1-8k-vision-preview`○、`moonshot-v1-32k-vision-preview`○、`moonshot-v1-128k-vision-preview`○                                                                                                                                                                       |
 | MiniMax                  | API Template     | `minimax`                        | `https://api.minimaxi.com/anthropic`                     | `MiniMax-M3`★、`MiniMax-M2.7`★、`MiniMax-M2.7-highspeed`★、`MiniMax-M2.5`○、`MiniMax-M2.5-highspeed`○、`MiniMax-M2.1`○、`MiniMax-M2.1-highspeed`○、`MiniMax-M2`○                                                                                                                                                                                                                                                        |
 | DeepSeek                 | API Template     | `deepseek`                       | `https://api.deepseek.com/anthropic`                     | `deepseek-flash`★、`deepseek-v4-pro`★、`deepseek-v4-flash`○                                                                                                                                                                                                                                                                                                                                                             |
@@ -107,8 +108,6 @@ Z.ai、BigModel、Kimi、MiniMax 和 Qwen 的“一般维护”模型以各自�
 
 ## 删除范围
 
-- Z.ai / BigModel 个人/团队 Account 和手动 Coding Plan 模板仅预设 `GLM-5.3`、`GLM-5.3-Flash`；不删除其他型号规则或用户已保存的选择。
-- 普通 Z.ai / BigModel API 模板保留维护中的其他官方 GLM 型号，非重点成员默认关闭；不把它与 Coding Plan API 混为一个入口。
 - Kimi 删除 `moonshot-v1-*`；K2.5/K2.6 只要官方 API 仍支持就一般维护，不因版本号较旧直接删除。
 - MiniMax 删除 M2.1 及更早型号；M2.7/M2.5 仍被官方发布文档列出，作为一般维护候选保留。
 - MiMo 删除 `mimo-v2-pro`、`mimo-v2-omni`、`mimo-v2-flash`；官方已公告这些旧型号于 2026-06-30 退役，迁移目标是 V2.5 系列。

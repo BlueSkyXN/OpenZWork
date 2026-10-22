@@ -342,21 +342,6 @@ GitHub Copilot 与 GPT 字符串组合。
 3. Adapter 是否允许知道具体模型 ID；如果允许，边界和集中位置是什么；
 4. 一次性 legacy importer 中的模型名推断是否作为唯一例外保留。
 
-### 5.7 闲时模型又被投影回旧 Provider Model DTO
-
-闲时任务已经可以从新的 Provider Config resolution 读取模型，但 Service 随后把每个模型重新构造成旧
-`ModelProviderModelConfig`，包括旧 `modalities` 和旧 reasoning patch 结构。Subscription Provider 和 UI
-继续消费这份 DTO。
-
-这条链不会改变 Registry 的事实来源，却让旧完整 Provider Model Schema 继续成为活跃的 Service/UI 接口，
-并可能诱导后续功能继续依赖旧字段。
-
-需要讨论：
-
-1. 闲时页面真实需要哪些字段；
-3. reasoning 展示应直接读取新的 Option Specs，还是由 Selection View 统一提供；
-4. `ModelProviderModelConfig` 是否最终只允许出现在 legacy importer。
-
 ### 5.8 动态鉴权仍通过 Core Runtime Header 兼容链刷新
 
 API Key Provider 可以由 Provider Config 直接保存静态访问材料。账号类型 Provider 的动态凭据不由 Config

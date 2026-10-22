@@ -1342,6 +1342,7 @@ class NodeMcpAdapter implements McpPort {
           name,
           tool,
           config.timeoutMs,
+          config.alwaysLoad,
         ),
       );
       const negotiatedProtocolEra = client.getProtocolEra();
@@ -1868,6 +1869,17 @@ class NodeMcpAdapter implements McpPort {
       if (!listeners.size) this.appConnectionListeners.delete(name);
     };
   }
+  async waitForAppConnection(
+    name: string,
+  ): Promise<{ identity: string; generation: number } | null> {
+    const record = this.records.get(name);
+    if (!record) return null;
+    const generation = this.connectionGenerations.get(name) ?? 0;
+    // 会话恢复先于 MCP 握手完成；复用已有连接任务，避免首次打开把 connecting 误判为失败。
+    await record.connecting;
+    return this.isCurrentConnection(name, generation) ? this.appConnectionSnapshot(name) : null;
+  }
+
   appConnectionSnapshot(name: string): { identity: string; generation: number } | null {
     const record = this.records.get(name);
     if (!record?.client || record.status.status !== "connected") return null;

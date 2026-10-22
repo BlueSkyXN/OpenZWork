@@ -1,12 +1,8 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import {
-  TID_CHAT_MODEL_SELECT_TRIGGER,
-  TID_V4_MODEL_CONFIG,
-  ZCODE_AGENT_PROVIDER,
-  encodeCustomModelValue,
-} from "@zcode/shared";
+import { ZCODE_AGENT_PROVIDER, encodeCustomModelValue } from "@zcode/shared";
+import { TID_CHAT_MODEL_SELECT_TRIGGER, TID_V4_MODEL_CONFIG } from "@zcode/shared/test-ids";
 import { getE2EAppDataPaths } from "./desktop-app.js";
 import { getUpstreamApiKey } from "./upstream-provider.js";
 import { waitForSqliteTable } from "./e2e-sqlite-readiness.js";
@@ -43,9 +39,6 @@ export async function seedReplayProvider(params: {
   const provider: PersonalProviderConfigSeed = {
     id: params.id,
     label: params.name,
-    // 内建 account provider 的模型规则按 anthropic-messages 匹配；若用 OpenAI Chat Completions
-    // 格式覆盖连接配置，GLM builtin model rules 不会命中，模型在 Registry 中
-    // 会因缺少完整 option/properties 被过滤，UI 菜单就看不到该计划模型。
     apiFormat: "openai-chat-completions",
     apiKey: params.apiKey ?? getUpstreamApiKey(),
     baseURL,
@@ -57,6 +50,8 @@ export async function seedReplayProvider(params: {
             contextWindow: input.contextWindow,
             id: input.id,
             maxOutputTokens: input.maxOutputTokens ?? input.limit?.output,
+            // 保留场景声明的档位，避免退回 disabled 后拒绝已保存的 high/max 偏好。
+            reasoningLevel: input.reasoningLevel,
           },
     ),
   };

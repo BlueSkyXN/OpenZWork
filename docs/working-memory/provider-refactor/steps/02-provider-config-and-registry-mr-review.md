@@ -22,7 +22,6 @@
 | R3 | Account Access 可能进入 Personal Config | Personal 投影忽略 Account Overlay 注入的动态 `accessId`，继续保持 Official、Personal、Account 三层事实边界 | 已修复 |
 | R4 | `reasoningMapping` 差异与整体 Overlay 语义冲突 | Mapping 变化时保存完整字段，与普通值字段的整体覆盖规则一致 | 已修复 |
 | R5 | 请求鉴权刷新重新进入 Registry | Model 创建时固定 Provider 静态执行快照；请求鉴权只覆盖该快照的 API Key 与 Header | 已修复 |
-| R6 | 登出与重新登录可能复用旧 Coding Plan Key | OAuth 清理前捕获账号身份并删除账号作用域 Key；重新登录强制根据新 Token 刷新 Key | 已修复 |
 | R7 | 设置保存可能覆盖并发 Personal Config 修改 | Effective 保存已经移入 Repository 的原子 `update()`，锁内只修改目标 Provider 与对应精确模型规则 | 已修复 |
 | R8 | Account 刷新失败可能遗留未消费的 pending reason | 失败轮释放 in-flight 后会自动继续消费期间到达的事件；上一份成功快照保持不变 | 已修复 |
 | R9 | Connectivity 测试仍调用旧 Probe 参数 | 生产“测试连接”继续保留；专项测试已迁移到正式 Provider/Model Config 请求形状 | 已修复 |
@@ -126,12 +125,6 @@ Provider Options。修复后，`bindModel()` 在 Model 创建时捕获 Provider 
 
 ## Account Credential 生命周期
 
-新 Personal Coding Plan Key 使用带账号身份的 Access ID：
-
-```text
-coding-plan:<provider>:account:<accountIdentity>
-```
-
 旧登出处理只删除无账号作用域的：
 
 ```text
@@ -148,9 +141,7 @@ Source 下线 Provider。
 `forceCredentialRefresh`，同一账号再次登录也会跳过旧缓存，使用新 OAuth Token 重新取得并覆盖 Coding
 Plan Key。历史 `oauth-callback` 刷新仍兼容。
 
-重新登录的强制刷新和登出的精确删除共同关闭了旧 Coding Plan Key 复用窗口。更长期仍可以使用结构化
-刷新参数表达 `forceRefreshCredentials`，退出对 reason 字符串的解释；这属于接口整洁度，不再影响当前
-凭据生命周期正确性。
+
 
 ## Personal Config 并发写入
 

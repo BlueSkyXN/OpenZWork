@@ -65,7 +65,6 @@ Process Provider Registry
       └-- 请求执行
 ```
 
-生产协议 Entry、Prompt CLI 和 TUI 都会启动进程级 Registry 并传入 `createZCodeApp()`。启用 Registry 时，旧模型列表明确不参与模型候选，旧 `modelCatalog` 也只作为首次迁移输入。旧 `ModelProviderService`、OAuth Preset Repo、Catalog Sources 和 Workspace Provider Catalog 的稳态职责已经删除。
 
 因此，当前主要问题不是旧 Provider Store 仍在后台决定执行，而是新事实需要经过若干旧接口形状才能到达尚未迁移的消费者。
 
@@ -140,7 +139,7 @@ AiSdkModelAdapter
 
 ### Account 身份的窄兼容
 
-旧无账号作用域 `accessId` 和旧 Coding Plan Key 保留了少量解析与首次导入逻辑，约 `50–100` 行。新 Account Source 只产生带账号身份的 scoped accessId；请求期兼容只用于识别迁移期间已存在的旧 Model/Session。
+
 
 退出条件是旧 Session 与旧 Credential Store 的兼容窗口结束。新代码不得再产生无账号作用域的 Account Access ID。
 

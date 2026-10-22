@@ -180,23 +180,6 @@ effectiveModelRules.resolve(
 
 本轮不增加 Account Model Config Rules。账号接口只影响 Provider 连接态和模型成员，不下发模型静态能力。
 
-## 7. Account 接口和 Start Plan
-
-目前账号 availability 接口的实际差异如下：
-
-| 账号类型            | availability 来源               | 是否返回动态模型 ID |
-| ------------------- | ------------------------------- | ------------------- |
-| Z.AI Start Plan     | `/billing/balance`              | 是                  |
-| BigModel Start Plan | `/billing/balance`              | 是                  |
-| Coding Plan         | `/subscription/list`            | 否，只返回可用状态  |
-| Team Plan           | customer / project / quota 接口 | 否，只返回可用状态  |
-
-Start Plan 从余额桶的 `capabilities` 中提取 `model:<id>`，做大小写无关的去重并形成 Account Provider `models[]`。接口返回的是账号当下可见的模型集合，不能据此写死“Start Plan 只能使用某一个模型”。
-
-当前旧兼容在余额桶没有 `model:` capability 时，会把 `show_name` 当作模型 ID。`show_name` 更像展示字段，但在服务端契约没有进一步澄清前，本轮先保留兼容，不把它扩大为新的模型身份规则。
-
-由于 Coding Plan 和 Team Plan 不返回动态模型集合，不能把这些 Built-in Provider 的 `models[]` 清空。Start Plan 也保留 Built-in 默认成员，以保证 availability 暂时没有返回模型 ID 时仍有明确的产品默认值；Account `models[]` 存在时再按整列表覆盖。
-
 ## 8. `/client/configs` 的所有权收口
 
 `/api/v1/client/configs` 是通用远端产品配置中心，不是认证服务。认证相关接口可能与它协作，但不能因此把其中的 Provider / Model 静态事实继续视为账号认证结果。
@@ -265,25 +248,6 @@ openai-responses        -> 暂不启用专属 reasoning
 
 这些行为写入 ZCode Built-in Model Config Rules；按模型名识别的 helper、远端 regex matcher、Default Policy 特例和 Catalog 特例删除。规则本身可以使用通用的 model match 表达式，它只是声明式匹配条件，不是业务代码中的模型特判。
 
-## 10. 闲时任务边界
-
-闲时任务的最新目标是把“模型静态事实”和“单次执行访问材料”分开：
-
-```text
-ZCode Built-in Provider Config + ZCode Built-in Model Config Rules
-
-Execution context
-└─ 单个闲时回合所需的 Request Auth / ticket / attribution 等请求输入
-```
-
-Settings 和 Model Selection Facade 隐藏；内部闲时能力按精确 `providerId/modelId` 创建普通 Model。它不改写
-
-Provider Config 必须声明完整的 `api.type`、生产 Endpoint、模型成员与静态模型事实，并使用
-`access.type = "request-auth"` 表达请求期注入动态鉴权。缺少 Request Auth 时，Model 在网络请求前明确失败。
-`visibility` 不代表受信、权限或完整性豁免。
-
-本轮将 staging 带来的静态 Provider / Model 信息纳入现有配置体系，但不顺手重写整套闲时任务状态机，也不处理 `modelContextBudget.strategy`。
-
 ## 11. staging 产品能力的吸收方式
 
 ### 11.1 Video Input
@@ -344,7 +308,6 @@ Remote Environment -> 使用远端环境自己的 Config / Registry
 | must-inspect   | `/client/configs` Provider / Model 同步                          | 旧远端事实源需要退出                      |
 | must-inspect   | CLI ModelFactory、reasoning policy、API adapters                 | Model Rules 必须生成相同最终请求          |
 | should-inspect | Provider Settings、模型选择候选                                  | 都消费 Registry，但各自保存语义不同       |
-| should-inspect | Start/Coding/Team Plan availability                              | 只有 Start Plan 返回动态模型 ID           |
 | conditional    | Video / modality 设置                                            | staging 新能力接入 Effective Model Config |
 | invariant-only | desktop continuous / mobile replayable                           | Provider 收口不能改变消息恢复语义         |
 | invariant-only | local / remote workspace                                         | 远端环境继续拥有自己的执行配置            |
@@ -381,7 +344,6 @@ M3 按以下顺序执行：
 - Provider overlay 顺序是 Built-in -> Account -> Personal；
 - Account Service 不读取 Personal Providers；
 - Model Rules 是 ZCode Built-in + Personal 数组拼接，且作用于 Effective Provider；
-- Start Plan 动态模型集合正确覆盖 Built-in 默认集合，Coding/Team Plan 仍保留 Built-in models；
 - 普通 API Key 与账号凭据走各自正确的配置/解析路径；
 - `/client/configs` 不再下发 Provider / Model Registry 静态事实；
 - 所有具体模型 reasoning hardcode 已删除；
@@ -412,7 +374,6 @@ M3 按以下顺序执行：
 | `pnpm lint`                                                 | 通过；0 error，39 条 staging 既有 warning                                                                                          |
 | CLI Video / reasoning / Registry 聚焦单测                   | 13 个文件、185 个测试通过                                                                                                          |
 | Provider 设置冲突收口聚焦单测                               | 5 个文件、93 个测试通过                                                                                                            |
-| `pnpm test:unit`                                            | 12,296 通过、25 跳过、30 失败；失败仅位于 7 个 Windows 打包、macOS 公证和 CUA 原生环境测试文件，与本轮 Provider / Model 改动无交集 |
 | 本轮 78 个修改/新增文件的 `oxfmt --check`                   | 通过                                                                                                                               |
 | `git diff --check`                                          | 通过                                                                                                                               |
 

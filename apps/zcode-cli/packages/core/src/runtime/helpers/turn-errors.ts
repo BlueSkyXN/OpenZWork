@@ -161,6 +161,7 @@ export async function appendTurnOutcomeEvent(
   const { coreError, events, traceContext, turnPhase, inputId } = params;
   const cancelled = coreError.type === CoreErrorType.TurnCancelled;
   const externalFault = findExternalTurnFault(coreError);
+  const projectedError = projectExecutionErrorPayload(coreError, params.fallbackMessage);
 
   const outcomeEvent = cancelled
     ? runtime.createEvent(
@@ -191,7 +192,7 @@ export async function appendTurnOutcomeEvent(
             type: externalFault?.code ?? coreError.type,
             // coreError.message 常是泛化文案，真实 provider/network 原因藏在 cause 链里；
             // 写入可读 payload fields 让桌面端和恢复链路都能展示根因。
-            ...projectExecutionErrorPayload(coreError, params.fallbackMessage),
+            ...projectedError,
             stack: coreError.stack,
           },
           turnPhase,

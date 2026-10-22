@@ -35,7 +35,6 @@
 - 不长期保留大正文，优先 metadata snapshot + 按需读取正文。
 - product gating、env dependency prompt、root alias 渲染作为 Phase 2+；第一版只保留字段和诊断，不实现完整依赖补全。
 
-## ZCode 设计选择
 
 ## 当前实现核对（2026-05-08）
 

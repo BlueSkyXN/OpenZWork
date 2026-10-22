@@ -96,11 +96,9 @@ MacBook Pro 使用干净运行目录和提交 `64d48f6eee`，按 spec 分组执�
 已经通过的 Provider 关键链路包括：
 
 - Bot terminal、飞书交互卡片与 streaming lifecycle；
-- Coding Plan/Team Plan 主页面、Usage、Quota、OAuth 恢复的大部分场景；
 - Context Window 冷恢复；
 - Model Output Token 主预算与两组真实多轮 smoke；
 - Turbo 恢复和切换；
-- Coding Plan Upgrade WebView 在修正运行环境后通过；
 - Automation 创建管理。
 
 因此不得重新改动这些已通过链路来迁就失败用例。
@@ -116,11 +114,8 @@ MacBook Pro 使用干净运行目录和提交 `64d48f6eee`，按 spec 分组执�
 | Repo Wiki           | Repo Wiki produces | 生成按钮仍 disabled                              | 已明确：模型选择丢失 reasoning，复用统一 Selection 补全                  |
 | Output Token        | OTB08-OTB10        | OTB09 仍断言旧的 41,665 cap                      | 已定位并修复：usage anchor 已覆盖上一轮 assistant，正确值为 41,671       |
 | Reasoning           | I20                | Helper 要求 `thinking.budget_tokens`             | 已明确：删除无契约依据的共享断言                                         |
-| Restart Selection   | I26                | 完整 Team Plan Recent 没有恢复                   | 已明确：完整 seed + Registry readiness；仍失败才修生产恢复链             |
-| Restart Fallback    | I27                | 旧 Start Plan Recent 失效后仍期待 Account 首模型 | 已修正为回退 Host Configured Default，不恢复 Renderer Account-first      |
 | Restart Fallback    | I28                | 已删除模型 Recent 失效后仍期待 Account 首模型    | 已修正为回退 Host Configured Default，不恢复 Renderer Account-first      |
-| Settings Transition | I31                | Team Plan 内非首个模型没有保持                   | 已明确：改为设置页往返保持，删除无消费者 transition state                |
-| Quota Reminder      | QR-E2E-09          | 首次 reset opportunity reminder 未显示           | 单独及整份 Coding Plan spec 已通过，属于旧运行隔离噪声，无生产改动       |
+
 
 CPUW-01/03 首次运行失败来自 WebView 运行环境，按相同代码重跑后 2 条均通过，不列入代码修复范围。若再次失败，先修运行环境或 Fixture，不恢复旧 Account API 行为。
 
@@ -181,7 +176,7 @@ Repo Wiki 模型选择必须复用该入口，不能只保存 `providerId/modelI
 
 ### 5.3 I26
 
-I26 的 Recent Selection 指向当前 Team Plan 内仍有效的非首个模型。目标不变：冷启动后保留该完整选择。
+
 
 修复步骤：
 
@@ -208,21 +203,20 @@ Configured Default = DeepSeek 且有效
              Configured Default
 ```
 
-- I27：Recent 是已失效的旧 Start Plan 选择。
 - I28：Recent 是已从 Provider 成员中移除的模型。
 
 修复 Fixture 补齐 DeepSeek replay，并按 Provider/Model 身份等待和断言真实请求；不得在 Renderer 恢复 Account-first 分支。只有 Configured Default 不存在或失效时，Registry 的发布顺序才承担最终 fallback。
 
 ### 5.5 I31
 
-当前 I31 实际做的是：已选择 Team Plan/`GLM-5.3-Flash`，打开设置页后再次选择同一个 Team Plan，再期待模型保持。
+
 
 原问题有两层：
 
 1. 原生 Select 对“再次选择当前值”不保证触发 `onValueChange`，测试不应把它当作一次连接切换。
 2. `modelProviderFamilyConnectionTransitionSeq` 目前只有生产者，没有真实消费者；它不能形成 reconciliation，只是残余状态。
 
-I31 改为验证“设置页往返不会破坏当前 Team Plan 内的有效非首个模型”：
+
 
 - Seed 完整 Team Selection；
 - 进入设置页并确认仍是同一个 Team Connection；
@@ -378,7 +372,7 @@ invalid-explicit -> Generate disabled
 
 ### 9.3 QR-E2E-09
 
-它的上游确实依赖 Account Provider、Model Selection 和 entitlement，但断言目标是 `initial` reset opportunity reminder。QR-E2E-10、QR-E2E-04 及大部分 Coding Plan/Quota 主链已经通过，因此不能先假设 Provider 整体损坏。
+
 
 先单 Case 隔离，再与整份 spec 对比：
 
@@ -479,7 +473,6 @@ invalid-explicit -> Generate disabled
 ## 13. 完成标准
 
 - Selection seed 不再默认制造缺 reasoning 的非法新数据。
-- I26 保留有效的 Team Plan 非首个模型。
 - I27/I28 通过 Host preferred 回退到有效 Configured Default，不存在 Renderer Account-first 特化。
 - I31 不依赖重复选择同一 Select option，无消费者 transition 状态被清理。
 - DeepSeek reasoning 共享 Helper 不再要求已从正式 Option Map 删除的 `budget_tokens`。

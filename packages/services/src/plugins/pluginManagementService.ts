@@ -33,6 +33,7 @@ export function createPluginManagementService(
   dependencies: PluginManagementServiceDependencies,
 ): IPluginManagementService {
   const agent = dependencies.zcodeAgentService;
+
   return {
     listPlugins: (params) => agent.listPlugins(params),
     getPluginReferenceCatalog: (params) => agent.getPluginReferenceCatalog(params),

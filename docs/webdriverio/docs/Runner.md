@@ -270,4 +270,3 @@ In such situations, WebdriverIO provides default mocks with default returned val
 ### Examples
 
 Make sure to check out the docs around [component testing](https://webdriver.io/docs/component-testing) and have a look into the [example repository](https://github.com/webdriverio/component-testing-examples) for examples using these and various other frameworks.
-

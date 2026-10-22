@@ -12,31 +12,6 @@
 
 当前正式事实链是：
 
-```text
-ZCode Built-in Provider Config
-              |
-              v
-Account Overlay
-├─ access.entitled
-├─ 当前账号 Provider 可用性
-└─ Start Plan 动态模型成员（如有）
-              |
-              v
-Personal Overlay
-├─ 用户 API Key / 自定义 Provider
-├─ 用户模型成员
-└─ Personal Model Config Rules
-              |
-              v
-Effective Provider / Model Config
-              |
-              v
-Process-owned Provider Registry
-              |
-              v
-Model Selection / Active Model
-```
-
 失败测试中仍反复使用的旧链路则是：
 
 ```text
@@ -50,7 +25,6 @@ legacy family mode / selectedKey
 旧测试认为 Provider 已可用
 ```
 
-这条旧链路已经不再存在，所以出现了大量“页面没有 Coding Plan”“实际回退 DeepSeek”“Registry revision 未应用”等级联失败。
 
 ## 2. 复现基线与产物
 
@@ -66,7 +40,6 @@ legacy family mode / selectedKey
 | 运行 | 范围                                                        | 结果                                     | Artifact                          |
 | ---- | ----------------------------------------------------------- | ---------------------------------------- | --------------------------------- |
 | A    | 4 个 Bot 目标 Case + 1 个同 spec 对照 Case                  | 1 pass / 4 fail                          | `desktop-e2e-20260831-093430-761` |
-| B    | Coding Plan、Quota Reset、Upgrade Webview                   | 1 pass / 19 fail；清单中的 15 条全部失败 | `desktop-e2e-20260831-093509-202` |
 | C    | I20、CW、OTB、I08                                           | 0 pass / 4 fail                          | `desktop-e2e-20260831-095111-677` |
 | D    | Restart、Selected-key migration、Settings transition、Turbo | 1 pass / 15 fail；清单中的 14 条全部失败 | `desktop-e2e-20260831-095400-329` |
 
@@ -101,35 +74,6 @@ getView: async () => ({ revision: 0, providers: [] });
 
 正确处理：Harness 注入一个最小但真实的 `ModelSelectionView`（含 Provider、Model 和 preferred selection），继续验证原来的 Bot 行为；不能恢复旧 fallback 或绕开正式 Model Selection。
 
-### R2. Coding Plan E2E 仍以旧 family mode / selectedKey 作为权威
-
-`coding-plan-team-usage.test.ts` 的场景准备仍写入：
-
-```ts
-modelProviderFamilyModes;
-modelProviderFamilySelectedKeys;
-```
-
-当前正式字段只有：
-
-```ts
-providerFamilyConnectionSelections;
-```
-
-其结构化 union 定义在 `packages/shared/src/provider-family-connection-selection.ts`。旧字段及其迁移在提交 `8c55290f1f refactor(provider): finish model abstraction cleanup` 中被明确删除；原因是它们尚未发布，不再背负兼容迁移。
-
-App Settings 的严格解析会丢弃旧字段。测试随后仍以旧字段断言 Team Plan identity，于是出现：
-
-- 连接方式没有个人 / Team Coding Plan；
-- Usage 页面没有 Coding Plan tab；
-- Context usage trigger 和 quota reminder 没有出现；
-- OAuth 恢复后“selectedKey 被覆盖”；
-- I29/I30 实际已经写入新的结构化 selection，但测试仍断言旧 `mode=oauth`，所以误报失败。
-
-判断：这是同一套旧设置夹具造成的级联失败。
-
-正确处理：场景输入和断言都只使用 `providerFamilyConnectionSelections`；Team Plan 直接断言完整的 `productId/organizationId/projectId`，不再生成或检查字符串 selectedKey。
-
 ### R3. E2E 把 Account Provider 当成 Personal API-Key Provider
 
 当前 Account Provider 的职责边界是：
@@ -140,12 +84,9 @@ Account Overlay：声明 access.entitled、账号动态成员/访问事实
 Personal Overlay：不拥有 Account access，也不能用 enabled 伪装 entitlement
 ```
 
-Resolver 只有在 `access.type !== zhipu-account` 或 `access.entitled === true` 时，才认为 Provider 可执行。
 
 失败测试仍采用旧注入方式：
 
-- `coding-plan-team-usage.test.ts` 为 `account:bigmodel-individual-coding-plan` 写 Personal `apiKey`、`enabled`、Endpoint 和模型；
-- Restart/Turbo helpers 用 `seedReplayProvider()` 给 `account:*` 写 Personal Provider，却没有建立 Account Overlay entitlement；
 - Upgrade Webview 测试通过 `readModelProvider()` 读取 Personal Config，并期待 Account Provider 中出现 `apiKey` 和 `enabled`。
 
 结果有两种：
@@ -218,7 +159,6 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
                          -> 新 selectedKey
 ```
 
-但当前设计不再有“新 selectedKey”；目标是结构化 `providerFamilyConnectionSelections`。旧迁移又已按“未上线，不兼容读取”裁决删除。
 
 判断：这 3 个 Case 的目标已失效，不应修生产代码使其重新通过。
 
@@ -226,7 +166,6 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
 
 ### R7. CPUW-03 的 Webview mock 假设也已过时
 
-`triggerCodingPlanWebviewPurchaseComplete()` 先读取可见 Webview origin，再把这个 origin 当作本地 upgrade mock server 调用“标记购买完成”。当前实际 Webview URL 是正式 ZCode Endpoint：
 
 ```text
 ```
@@ -246,18 +185,10 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
 |   3 | BOT-E2E-IL-01                   | completed interaction card 不存在                     | R1      | Task 尚未创建；补 Harness 后重跑 sealing                   |
 |   4 | Feishu streaming card lifecycle | callback/stream/typing/terminal 未合卡                | R1      | 同一 standalone Harness 为空；补模型后重跑                 |
 |   5 | CTP-02                          | 连接方式选项断言失败                                  | R2 + R3 | 用结构化 selection + Account entitlement 重建 fixture      |
-|   6 | CTP-04B                         | 无法进入 Coding Plan tab                              | R2 + R3 | 尚未触达 activity/detail/performance 断言                  |
-|   7 | CTP-05                          | 无法进入 Coding Plan tab                              | R2 + R3 | 尚未触达个人/团队组合展示                                  |
 |   8 | CTP-06                          | 旧 selectedKey 未保留                                 | R2      | 改断言结构化 Team identity；不恢复 selectedKey             |
-|   9 | CTP-09                          | 无法进入 Coding Plan tab                              | R2 + R3 | 尚未触达 activity failure isolation                        |
-|  10 | CTP-10                          | Context usage trigger 不存在                          | R2 + R3 | 当前没有可用 Coding Plan source；重建后再验 freshness      |
-|  11 | CTP-11                          | 无法进入 Coding Plan tab                              | R2 + R3 | 尚未触达 quota fatal/recovery                              |
-|  12 | QR-E2E-01                       | 无法进入 Coding Plan tab                              | R2 + R3 | 尚未触达 opportunity/status 权威关系                       |
-|  13 | QR-E2E-02                       | 无法进入 Coding Plan tab                              | R2 + R3 | 尚未触达多类型机会展示                                     |
 |  14 | QR-E2E-09                       | initial reminder 不存在                               | R2 + R3 | source 未成立；重建后再验常驻/hover                        |
 |  15 | QR-E2E-10                       | urgent reminder 不存在                                | R2 + R3 | source 未成立；重建后再验三分钟边界                        |
 |  16 | QR-E2E-04                       | Context usage trigger 不存在                          | R2 + R3 | 尚未触达 HoverCard/Dialog 生命周期                         |
-|  17 | QR-E2E-03                       | 无法进入 Coding Plan tab                              | R2 + R3 | 尚未触达 `used_at` 完成条件                                |
 |  18 | CPUW-01                         | Personal reader 中 Account apiKey 缺失                | R3      | 改为正式凭据/Account 刷新观察点后重跑                      |
 |  19 | CPUW-03                         | 对正式 Webview origin 调本地 mock 标记失败            | R7 + R3 | 修 mock 控制面接线，并移除 Personal enabled 断言           |
 |  20 | I20                             | 旧 `builtInThoughtLevelOverrides` 不再出现            | R4      | 改读 structured selection；随后才验证冷启动 child request  |
@@ -265,7 +196,6 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
 |  22 | OTB01-OTB03/06-07               | 等不到已删除的 workspace registry 日志                | R5      | 换 barrier 后重跑 request/compact/runtime budget           |
 |  23 | I08                             | 等不到已删除的 workspace registry 日志                | R5      | 换 barrier 后重跑设置新增、选择和首发                      |
 |  24 | I26/MP-R02                      | Account 模型不可执行，回退 DeepSeek                   | R3      | 在 Account Source seed entitlement 后验证非首模型恢复      |
-|  25 | I27/MP-R03                      | 旧模型不可执行，回到目标 Host preferredSelection      | R3      | seed 当前 Coding Plan entitlement 后验证 Host 当前有效选择 |
 |  26 | I28/MP-R04                      | Recent 选择不可用，回到目标 Host preferredSelection   | R3      | seed 当前连接 entitlement 后验证 Host 当前有效选择         |
 |  27 | I32/MP-M01                      | 旧 selectedKey 不再迁移                               | R6      | 删除；如有需要改为 structured api-key selection round-trip |
 |  28 | I33/MP-M02                      | 旧 Team selectedKey 不再迁移                          | R6      | 删除；改为 structured Team identity round-trip             |
@@ -285,7 +215,6 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
 
 1. Bot Harness 提供正式 `ModelSelectionView`。
 2. 建立统一的 Account E2E fixture：从 Account Source/账号 API mock 发布 `access.entitled` 和动态模型；禁止再把 Account access 写入 Personal Config。
-3. Coding Plan 场景全面切到 `providerFamilyConnectionSelections`。
 4. Subagent E2E 改读 `builtInModelSelectionOverrides`。
 5. 删除三个旧 selectedKey 迁移 Case，或改为结构化 round-trip。
 6. 删除三个 E2E 内对 `workspace_update_provider_registry.completed` 的依赖，使用当前正式观察点。
@@ -313,7 +242,6 @@ Case 到达原始业务断言了吗？
 1. Bot 4 条（修改最小、反馈最快）；
 2. CW / OTB / I08（只先替换 readiness barrier）；
 3. Restart / Settings Transition / Turbo（共用 Account fixture）；
-4. Coding Plan / Quota Reset（共用结构化 selection + Account fixture）；
 5. Upgrade Webview；
 6. I20 完整冷启动 child request。
 

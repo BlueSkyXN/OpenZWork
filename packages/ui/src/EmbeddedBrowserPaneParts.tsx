@@ -24,7 +24,7 @@ import {
   TID_BROWSER_OPEN_EXTERNAL_ITEM,
   TID_BROWSER_REFRESH_BUTTON,
   TID_BROWSER_RESPONSIVE_BUTTON,
-} from "@zcode/shared";
+} from "@zcode/shared/test-ids";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -75,10 +75,7 @@ export function BrowserToolbar({
   isResponsiveMode: boolean;
 }) {
   return (
-    <form
-      onSubmit={onSubmit}
-      className="flex items-center h-12 px-3 gap-2"
-    >
+    <form onSubmit={onSubmit} className="flex items-center h-12 px-3 gap-2">
       <BrowserIconButton
         icon={<ChevronLeft className="h-4 w-4" />}
         title={formatMessage({ id: "browser.back" })}

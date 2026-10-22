@@ -379,6 +379,7 @@ function prepareDesktopAppBuild() {
     return;
   }
   // 修复原因：WDIO 配置会先被 esbuild 解析，CI 可执行字符串必须保持 ASCII 引号。
+  // 官方购买页面 fixture 已移除，复用条件只保留显式构建标记。
   if (process.env.ZCODE_E2E_SKIP_BUILD === "1") {
     console.log("[e2e] ZCODE_E2E_SKIP_BUILD=1, skipping onPrepare build");
     assertDesktopE2EBuildReady("ZCODE_E2E_SKIP_BUILD=1");
@@ -424,8 +425,8 @@ async function stageDesktopE2EAppOutput() {
   // 修复原因：开发态 pre-dev/tsup watch 会重建共享 packages/desktop/out；长批次若直接
   // 从 out 启动，运行中目录被清空后后续 loadFile 会进入 chrome-error://。构建完成后
   // 按 runId 复制不可变应用产物，让 E2E 与并行开发进程彻底隔离。
-  // 修复原因：8 个 shard 同时复制同一份约 90 MiB build 会把 prepare 固定成本
-  // 放大到约 30 秒；硬链接保留 runId 隔离目录与不可变快照，并在不支持时逐文件回退 copy。
+  // 使用写时复制降低多 shard 的准备成本；不能使用共享 inode 的硬链接，否则类型检查
+  // 原地覆盖 out/host 时会同时破坏已经启动的隔离副本。
   await stageE2EAppOutput(DESKTOP_BUILD_OUTPUT_DIR, E2E_APP_OUTPUT_DIR);
   if (
     hasRequiredSshE2EEnvironment(process.env) ||
@@ -438,10 +439,15 @@ async function stageDesktopE2EAppOutput() {
     // 相通，版本 bump 后专用 runner 必然缺新版本 release，直接 fatal 会把每次升级变成
     // CI-only 失败。改为缺目录时自动跑 prepare:remote-assets（幂等），产出后仍缺失才
     // fail-closed。
+    // Bug 根因：packages/desktop 的 prepare:remote-assets 已随 legacy asset pipeline 一并删除，
+    // `pnpm --filter @zcode/desktop prepare:remote-assets` 会以 ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT
+    // 失败并让所有 SSH E2E 在 onPrepare 阶段 fatal；必须调用根 package.json 的
+    // prepare:remote-assets（→ @zcode/server-cli stage:remote-assets）。runPnpmWorkspaceCommand
+    // 的 cwd 固定为 REPO_ROOT，直接传脚本名即可命中根脚本。
     ensureSshRemoteReleaseAssets({
       releaseDir: E2E_REMOTE_RELEASE_SOURCE_DIR,
       prepareReleaseAssets: () =>
-        runPnpmWorkspaceCommand(["--filter", "@zcode/desktop", "prepare:remote-assets"], {
+        runPnpmWorkspaceCommand(["prepare:remote-assets"], {
           // 防挂死上限：冷缓存全量 prepare 约 10 分钟，给到 30 分钟只兑现在「彻底卡死」时
           // 让 onPrepare 失败退出，正常慢路径不受影响。
           timeoutMs: 30 * 60 * 1000,
@@ -501,8 +507,7 @@ function createPnpmChildEnv() {
 function prepareZCodeAgentServer() {
   if (E2E_PACKAGED_APP_BINARY_PATH) {
     // 真正的 Preview 包必须使用随包 Agent，禁止测试 runner 注入源码入口掩盖漏打包。
-    delete process.env.ZCODE_AGENT_SERVER_COMMAND;
-    delete process.env.ZCODE_AGENT_SERVER_ARGS_JSON;
+    configureZCodeAgentServerEnv();
     return;
   }
   if (process.env.ZCODE_E2E_SKIP_AGENT_BUILD === "1") {
@@ -518,7 +523,8 @@ function prepareZCodeAgentServer() {
 
   // Bugfix: e2e 还在找仓库外的旧原生 zcode-agent binary，并调用已经删除的
   // `build:agent-exe`。当前桌面端统一通过 zcode-cli 的 app-server JS bundle
-  // 暴露 ZCode Protocol，这里复用正式开发入口的构建脚本与 runtime resolver。
+  // 暴露 ZCode Protocol，这里复用正式开发入口的构建脚本，之后由 bundled resolver
+  // 选择已校验的 bundle，保留存储准备能力和正式桌面启动契约。
   execFileSync(process.execPath, [BUILD_DESKTOP_AGENT_SCRIPT], {
     cwd: REPO_ROOT,
     env: createPnpmChildEnv(),
@@ -533,10 +539,11 @@ function prepareZCodeAgentServer() {
 }
 
 function configureZCodeAgentServerEnv() {
-  // 自定义命令没有 storagePreparationEntry / supportsStorageStartup 声明，会被启动准备拒绝。
-  // 构建后由正式 resolver 找到仓库 bundle（打包 E2E 则使用随包 bundle），保留完整启动契约。
+  // 数据库准备只信任 bundled resolver 确认的入口。E2E 即使把本轮 bundle 填进自定义
+  // command，也会按 unsupported_runtime 拒绝；清除继承的覆盖，复用正式桌面解析链。
   delete process.env.ZCODE_AGENT_SERVER_COMMAND;
   delete process.env.ZCODE_AGENT_SERVER_ARGS_JSON;
+  delete process.env.ZCODE_AGENT_SERVER_CWD;
 }
 
 async function armCurrentElectronAppQuit(stage: string) {
@@ -651,6 +658,7 @@ async function cleanupE2EElectronProcesses(
 
 function listCurrentE2EProcessPids() {
   const detectedPids = listE2EProcessTreePids({
+    chromiumProfileRootDir: E2E_CHROMIUM_USER_DATA_ROOT_DIR,
     homeDir: E2E_HOME_DIR,
     runId: E2E_RUN_ID,
   });
@@ -1007,7 +1015,12 @@ function forceFinalizeE2ERunnerFromGuard() {
   void (async () => {
     try {
       await cleanupE2EElectronProcesses("finalization-guard");
-      await cleanupE2EDirectory("finalization-guard-home", E2E_HOME_DIR);
+      // 失败保留诊断现场（同 onComplete-home 条件）：guard 路径本身就是失败收尾。
+      if (process.env.ZCODE_E2E_KEEP_HOME_ON_FAIL === "1") {
+        console.warn(`[e2e] finalization guard keeping failure home: ${E2E_HOME_DIR}`);
+      } else {
+        await cleanupE2EDirectory("finalization-guard-home", E2E_HOME_DIR);
+      }
       await cleanupE2EDirectory("finalization-guard-cache", E2E_RUN_CACHE_DIR);
     } catch (error) {
       writeE2ECleanupWarning(
@@ -1026,6 +1039,22 @@ async function resetE2EHome(specs: string[]) {
   // 只写本地偏好，保留无账号产品的首次启动；具体业务 fixture 由所选 spec 设置。
   await writeFile(E2E_APP_SETTINGS_FILE, JSON.stringify({ locale: "en-US" }));
   seedE2EWorkerModelStreamConfig(specs);
+  // 小窗口只用于显式 Compact 场景；普通未读与重连用例需要完整历史。
+  const autoCompactSpec = specs.some((spec) =>
+    [
+      "conversation-session-compact-auto.test.ts",
+      "conversation-session-compact-auto-actions.test.ts",
+      "conversation-session-goal-run-cases.test.ts",
+      "conversation-session-model-switch-auto-compact.test.ts",
+    ].some((name) => spec.endsWith(name)),
+  );
+  const upstreamE2EContextWindowOverride = readPositiveIntegerEnv(
+    "ZCODE_E2E_UPSTREAM_CONTEXT_WINDOW",
+  );
+  const contextWindow = upstreamE2EContextWindowOverride ?? (autoCompactSpec ? 240 : 128000);
+  const maxOutputTokens =
+    readPositiveIntegerEnv("ZCODE_E2E_UPSTREAM_MAX_OUTPUT_TOKENS") ??
+    (autoCompactSpec ? 80 : undefined);
   const baseURL = process.env.E2E_PROVIDER_BASE_URL?.trim();
   const model = process.env.E2E_PROVIDER_MODEL?.trim();
   if (!baseURL || !model) return;
@@ -1036,7 +1065,9 @@ async function resetE2EHome(specs: string[]) {
     apiFormat: "openai-chat-completions",
     apiKey: process.env.E2E_PROVIDER_API_KEY?.trim() || "",
     baseURL,
-    models: [{ id: model }],
+    models: [
+      { id: model, contextWindow, ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }) },
+    ],
   });
   await seedPersonalDefaultModelSelection(E2E_APP_PROVIDER_CONFIG_FILE, {
     providerId: id,

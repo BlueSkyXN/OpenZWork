@@ -1,24 +1,9 @@
 /* eslint-disable max-lines -- Chrome helper、CDP 传输和 Electron 目标写入必须共享同一套敏感数据边界。 */
 import { spawn, type ChildProcessByStdio } from "node:child_process";
 import type { Readable } from "node:stream";
-import {
-  cp,
-  copyFile,
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  stat,
-} from "node:fs/promises";
+import { cp, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import {
-  dirname,
-  isAbsolute,
-  join,
-  relative,
-  sep as pathSeparator,
-} from "node:path";
+import { dirname, isAbsolute, join, relative, sep as pathSeparator } from "node:path";
 import { BrowserWindow } from "electron";
 import type { Session, WebContents } from "electron";
 import type { ChromeBrowserDataImportError } from "@zcode/shared";
@@ -31,9 +16,7 @@ const MAX_LOCAL_STORAGE_BYTES = 128 * 1024 * 1024;
 const CDP_TIMEOUT_MS = 15_000;
 const CHROME_HELPER_TEMP_CLEANUP_MAX_RETRIES = 5;
 const CHROME_HELPER_TEMP_CLEANUP_RETRY_DELAY_MS = 100;
-const BLANK_DOCUMENT_BODY = Buffer.from(
-  "<!doctype html><meta charset=utf-8>",
-).toString("base64");
+const BLANK_DOCUMENT_BODY = Buffer.from("<!doctype html><meta charset=utf-8>").toString("base64");
 
 export interface ChromeLocalStorageImportStats {
   originsImported: number;
@@ -76,31 +59,21 @@ interface LocalStorageRecord {
 }
 
 interface CdpTransport {
-  send<T = unknown>(
-    method: string,
-    params?: Record<string, unknown>,
-  ): Promise<T>;
-  onMessage(
-    listener: (method: string, params: Record<string, unknown>) => void,
-  ): () => void;
+  send<T = unknown>(method: string, params?: Record<string, unknown>): Promise<T>;
+  onMessage(listener: (method: string, params: Record<string, unknown>) => void): () => void;
   close(): void;
 }
 
 function toLocalStorageFailureReason(error: unknown): string {
   const message = error instanceof Error ? error.message : "unknown_error";
-  if (
-    message === "local_storage_origin_mismatch" ||
-    message.endsWith("_timeout")
-  ) {
+  if (message === "local_storage_origin_mismatch" || message.endsWith("_timeout")) {
     return message;
   }
   // CDP 原始错误可能包含 URL 或站点细节，日志中只保留稳定分类。
   return "cdp_command_failed";
 }
 
-function toLocalStorageImportError(
-  error: unknown,
-): ChromeBrowserDataImportError {
+function toLocalStorageImportError(error: unknown): ChromeBrowserDataImportError {
   const code =
     error instanceof Error && "code" in error && typeof error.code === "string"
       ? error.code
@@ -111,13 +84,9 @@ function toLocalStorageImportError(
   return "chrome_local_storage_import_failed";
 }
 
-function toSafeFileSystemError(error: unknown): {
-  name: string;
-  code?: string;
-} {
+function toSafeFileSystemError(error: unknown): { name: string; code?: string } {
   if (!(error instanceof Error)) return { name: "UnknownError" };
-  const code =
-    "code" in error && typeof error.code === "string" ? error.code : undefined;
+  const code = "code" in error && typeof error.code === "string" ? error.code : undefined;
   return { name: error.name || "Error", ...(code ? { code } : {}) };
 }
 
@@ -159,16 +128,9 @@ function pathExists(path: string): Promise<boolean> {
   );
 }
 
-function withTimeout<T>(
-  promise: Promise<T>,
-  timeoutMs: number,
-  label: string,
-): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error(`${label}_timeout`)),
-      timeoutMs,
-    );
+    const timeout = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
     promise.then(
       (value) => {
         clearTimeout(timeout);
@@ -192,22 +154,16 @@ export async function discoverChromeLocalStorageOrigins(
   const files = await readdir(levelDbPath, { withFileTypes: true });
   // Chrome LocalStorage LevelDB 的 metadata key 使用 `META:<origin>`。这里只提取 origin，
   // 不解析或输出任何 entry value；真实值由隔离 Chrome helper 通过同源 API 读取。
-  const originPattern =
-    /META:(https?:\/\/(?:\[[0-9a-fA-F:]+\]|[A-Za-z0-9.-]+)(?::\d{1,5})?)/g;
+  const originPattern = /META:(https?:\/\/(?:\[[0-9a-fA-F:]+\]|[A-Za-z0-9.-]+)(?::\d{1,5})?)/g;
   for (const file of files) {
     if (!file.isFile()) continue;
-    const content = (await readFile(join(levelDbPath, file.name))).toString(
-      "latin1",
-    );
+    const content = (await readFile(join(levelDbPath, file.name))).toString("latin1");
     for (const match of content.matchAll(originPattern)) {
       const candidate = match[1];
       if (!candidate) continue;
       try {
         const url = new URL(candidate);
-        if (
-          url.origin === candidate &&
-          (url.protocol === "https:" || url.protocol === "http:")
-        ) {
+        if (url.origin === candidate && (url.protocol === "https:" || url.protocol === "http:")) {
           origins.add(candidate);
         }
       } catch {
@@ -224,9 +180,7 @@ class WebSocketCdpTransport implements CdpTransport {
     number,
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
-  private readonly listeners = new Set<
-    (method: string, params: Record<string, unknown>) => void
-  >();
+  private readonly listeners = new Set<(method: string, params: Record<string, unknown>) => void>();
 
   private constructor(private readonly socket: WebSocket) {
     socket.on("message", (data: RawData) => this.handleMessage(data));
@@ -251,10 +205,7 @@ class WebSocketCdpTransport implements CdpTransport {
     return new WebSocketCdpTransport(socket);
   }
 
-  send<T = unknown>(
-    method: string,
-    params: Record<string, unknown> = {},
-  ): Promise<T> {
+  send<T = unknown>(method: string, params: Record<string, unknown> = {}): Promise<T> {
     const id = ++this.nextId;
     return withTimeout(
       new Promise<T>((resolve, reject) => {
@@ -269,9 +220,7 @@ class WebSocketCdpTransport implements CdpTransport {
     );
   }
 
-  onMessage(
-    listener: (method: string, params: Record<string, unknown>) => void,
-  ): () => void {
+  onMessage(listener: (method: string, params: Record<string, unknown>) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
@@ -293,9 +242,7 @@ class WebSocketCdpTransport implements CdpTransport {
       if (!pending) return;
       this.pending.delete(message.id);
       if (message.error) {
-        pending.reject(
-          new Error(message.error.message ?? "cdp_command_failed"),
-        );
+        pending.reject(new Error(message.error.message ?? "cdp_command_failed"));
       } else {
         pending.resolve(message.result);
       }
@@ -309,9 +256,7 @@ class WebSocketCdpTransport implements CdpTransport {
 }
 
 function createElectronCdpTransport(webContents: WebContents): CdpTransport {
-  const listeners = new Set<
-    (method: string, params: Record<string, unknown>) => void
-  >();
+  const listeners = new Set<(method: string, params: Record<string, unknown>) => void>();
   webContents.debugger.attach("1.3");
   const handleMessage = (
     _event: Electron.Event,
@@ -322,8 +267,7 @@ function createElectronCdpTransport(webContents: WebContents): CdpTransport {
   };
   webContents.debugger.on("message", handleMessage);
   return {
-    send: (method, params = {}) =>
-      webContents.debugger.sendCommand(method, params),
+    send: (method, params = {}) => webContents.debugger.sendCommand(method, params),
     onMessage: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -335,9 +279,7 @@ function createElectronCdpTransport(webContents: WebContents): CdpTransport {
   };
 }
 
-async function initializeLocalStoragePage(
-  transport: CdpTransport,
-): Promise<() => void> {
+async function initializeLocalStoragePage(transport: CdpTransport): Promise<() => void> {
   const unsubscribe = transport.onMessage((method, params) => {
     if (method !== "Fetch.requestPaused") return;
     const requestId = params.requestId;
@@ -353,10 +295,7 @@ async function initializeLocalStoragePage(
             ],
             body: BLANK_DOCUMENT_BODY,
           })
-        : transport.send("Fetch.failRequest", {
-            requestId,
-            errorReason: "Aborted",
-          });
+        : transport.send("Fetch.failRequest", { requestId, errorReason: "Aborted" });
     void command.catch(() => undefined);
   });
   await transport.send("Page.enable");
@@ -367,10 +306,7 @@ async function initializeLocalStoragePage(
   return unsubscribe;
 }
 
-async function navigateToStorageOrigin(
-  transport: CdpTransport,
-  origin: string,
-): Promise<void> {
+async function navigateToStorageOrigin(transport: CdpTransport, origin: string): Promise<void> {
   let unsubscribe = () => {};
   const loaded = new Promise<void>((resolve) => {
     unsubscribe = transport.onMessage((method) => {
@@ -395,12 +331,9 @@ async function navigateToStorageOrigin(
   }
 }
 
-// stdin 关闭的 helper 进程：stdio 三元组是 <null, Readable, Readable>，不是全非空流。
 type ChromeHelperProcess = ChildProcessByStdio<null, Readable, Readable>;
 
-async function waitForChromeDebuggerUrl(
-  child: ChromeHelperProcess,
-): Promise<string> {
+async function waitForChromeDebuggerUrl(child: ChromeHelperProcess): Promise<string> {
   return withTimeout(
     new Promise<string>((resolve, reject) => {
       let stderr = "";
@@ -434,22 +367,16 @@ async function waitForChromeDebuggerUrl(
   );
 }
 
-async function findChromePageTarget(
-  browserDebuggerUrl: string,
-): Promise<string> {
+async function findChromePageTarget(browserDebuggerUrl: string): Promise<string> {
   const browserUrl = new URL(browserDebuggerUrl);
   const listUrl = `http://${browserUrl.host}/json/list`;
   for (let attempt = 0; attempt < 30; attempt += 1) {
-    const targets = (await fetch(listUrl).then((response) =>
-      response.json(),
-    )) as Array<{
+    const targets = (await fetch(listUrl).then((response) => response.json())) as Array<{
       type?: string;
       webSocketDebuggerUrl?: string;
     }>;
     const page = targets.find(
-      (target) =>
-        target.type === "page" &&
-        typeof target.webSocketDebuggerUrl === "string",
+      (target) => target.type === "page" && typeof target.webSocketDebuggerUrl === "string",
     );
     if (page?.webSocketDebuggerUrl) return page.webSocketDebuggerUrl;
     await new Promise((resolve) => setTimeout(resolve, 100));
@@ -459,9 +386,7 @@ async function findChromePageTarget(
 
 async function stopChromeHelper(child: ChromeHelperProcess): Promise<void> {
   if (child.exitCode !== null) return;
-  const exited = new Promise<void>((resolve) =>
-    child.once("exit", () => resolve()),
-  );
+  const exited = new Promise<void>((resolve) => child.once("exit", () => resolve()));
   child.kill();
   try {
     await withTimeout(exited, 3_000, "chrome_helper_exit");
@@ -489,9 +414,7 @@ async function runChromeHelper<T>(options: {
     `--user-data-dir=${options.userDataPath}`,
     "--profile-directory=Default",
     "--remote-debugging-port=0",
-    ...(options.passwordStore
-      ? [`--password-store=${options.passwordStore}`]
-      : []),
+    ...(options.passwordStore ? [`--password-store=${options.passwordStore}`] : []),
     "about:blank",
   ];
   const child = spawn(options.executablePath, args, {
@@ -501,9 +424,7 @@ async function runChromeHelper<T>(options: {
   let transport: WebSocketCdpTransport | null = null;
   try {
     const debuggerUrl = await waitForChromeDebuggerUrl(child);
-    transport = await WebSocketCdpTransport.connect(
-      await findChromePageTarget(debuggerUrl),
-    );
+    transport = await WebSocketCdpTransport.connect(await findChromePageTarget(debuggerUrl));
     return await options.run(transport);
   } finally {
     transport?.close();
@@ -532,10 +453,7 @@ async function readChromeLocalStorage(options: {
       const failureReasons: Record<string, number> = {};
       let totalBytes = 0;
       try {
-        for (const origin of options.origins.slice(
-          0,
-          MAX_LOCAL_STORAGE_ORIGINS,
-        )) {
+        for (const origin of options.origins.slice(0, MAX_LOCAL_STORAGE_ORIGINS)) {
           try {
             await navigateToStorageOrigin(transport, origin);
             const evaluated = await transport.send<{
@@ -559,8 +477,7 @@ async function readChromeLocalStorage(options: {
               continue;
             }
             const bytes = entries.reduce(
-              (sum, [key, value]) =>
-                sum + Buffer.byteLength(key) + Buffer.byteLength(value),
+              (sum, [key, value]) => sum + Buffer.byteLength(key) + Buffer.byteLength(value),
               0,
             );
             if (totalBytes + bytes > MAX_LOCAL_STORAGE_BYTES) {
@@ -575,10 +492,7 @@ async function readChromeLocalStorage(options: {
             failureReasons[reason] = (failureReasons[reason] ?? 0) + 1;
           }
         }
-        skipped += Math.max(
-          0,
-          options.origins.length - MAX_LOCAL_STORAGE_ORIGINS,
-        );
+        skipped += Math.max(0, options.origins.length - MAX_LOCAL_STORAGE_ORIGINS);
         return { records, skipped, failed, failureReasons };
       } finally {
         unsubscribe();
@@ -587,10 +501,7 @@ async function readChromeLocalStorage(options: {
   });
 }
 
-async function copyFileIfPresent(
-  source: string,
-  target: string,
-): Promise<void> {
+async function copyFileIfPresent(source: string, target: string): Promise<void> {
   if (!(await pathExists(source))) return;
   await mkdir(dirname(target), { recursive: true });
   await copyFile(source, target);
@@ -601,10 +512,7 @@ async function copyChromeProfileMetadata(
   targetProfilePath: string,
   userDataPath: string,
 ): Promise<void> {
-  await copyFileIfPresent(
-    join(profilePath, "Preferences"),
-    join(targetProfilePath, "Preferences"),
-  );
+  await copyFileIfPresent(join(profilePath, "Preferences"), join(targetProfilePath, "Preferences"));
   await copyFileIfPresent(
     join(dirname(profilePath), "Local State"),
     join(userDataPath, "Local State"),
@@ -625,8 +533,7 @@ export async function readChromeCookiesWithHelper(options: {
   profilePath: string;
 }): Promise<ChromeHelperCookie[]> {
   const relativeDatabasePath =
-    options.cookieDatabaseRelativePath ??
-    relative(options.profilePath, options.cookieDatabasePath);
+    options.cookieDatabaseRelativePath ?? relative(options.profilePath, options.cookieDatabasePath);
   if (
     !relativeDatabasePath ||
     isAbsolute(relativeDatabasePath) ||
@@ -648,20 +555,16 @@ export async function readChromeCookiesWithHelper(options: {
         `${targetDatabasePath}${suffix}`,
       );
     }
-    await copyChromeProfileMetadata(
-      options.profilePath,
-      targetProfilePath,
-      userDataPath,
-    );
+    await copyChromeProfileMetadata(options.profilePath, targetProfilePath, userDataPath);
     return await runChromeHelper({
       executablePath: options.executablePath,
       passwordStore: options.passwordStore,
       userDataPath,
       run: async (transport) => {
         await transport.send("Network.enable");
-        const response = await transport.send<{
-          cookies?: ChromeHelperCookie[];
-        }>("Storage.getCookies");
+        const response = await transport.send<{ cookies?: ChromeHelperCookie[] }>(
+          "Storage.getCookies",
+        );
         return (response.cookies ?? []).filter(
           (cookie) =>
             typeof cookie.name === "string" &&
@@ -679,11 +582,7 @@ export async function readChromeCookiesWithHelper(options: {
 async function writeElectronLocalStorage(
   targetSession: Session,
   records: LocalStorageRecord[],
-): Promise<{
-  importedOrigins: number;
-  importedEntries: number;
-  failedOrigins: number;
-}> {
+): Promise<{ importedOrigins: number; importedEntries: number; failedOrigins: number }> {
   if (records.length === 0) {
     return { importedOrigins: 0, importedEntries: 0, failedOrigins: 0 };
   }
@@ -711,9 +610,7 @@ async function writeElectronLocalStorage(
     for (const record of records) {
       try {
         await navigateToStorageOrigin(transport, record.origin);
-        const serializedEntries = JSON.stringify(
-          JSON.stringify(record.entries),
-        );
+        const serializedEntries = JSON.stringify(JSON.stringify(record.entries));
         const evaluated = await transport.send<{
           result?: { value?: number };
         }>("Runtime.evaluate", {
@@ -771,9 +668,7 @@ export async function importChromeLocalStorage(options: {
 
     const executablePath =
       options.chromeExecutablePath ??
-      (await resolveChromeExecutablePath({
-        platform: options.platform ?? process.platform,
-      }));
+      (await resolveChromeExecutablePath({ platform: options.platform ?? process.platform }));
     if (!executablePath) {
       options.logger.warn("[browser-data] Chrome LocalStorage helper 不可用");
       return {
@@ -782,26 +677,15 @@ export async function importChromeLocalStorage(options: {
         error: "chrome_executable_not_found",
       };
     }
-    await copyChromeProfileMetadata(
-      options.profilePath,
-      targetProfilePath,
-      userDataPath,
-    );
+    await copyChromeProfileMetadata(options.profilePath, targetProfilePath, userDataPath);
 
-    const source = await readChromeLocalStorage({
-      userDataPath,
-      origins,
-      executablePath,
-    });
+    const source = await readChromeLocalStorage({ userDataPath, origins, executablePath });
     if (source.failed > 0) {
       options.logger.warn("[browser-data] Chrome LocalStorage 源读取存在失败", {
         failureReasons: source.failureReasons,
       });
     }
-    const target = await writeElectronLocalStorage(
-      options.targetSession,
-      source.records,
-    );
+    const target = await writeElectronLocalStorage(options.targetSession, source.records);
     const result: ChromeLocalStorageImportStats = {
       originsImported: target.importedOrigins,
       entriesImported: target.importedEntries,

@@ -4,7 +4,7 @@
 
 **Goal:** Keep feedback submission available when an SSH workspace session is connecting or disconnected by wiring `FeedbackHost` to the renderer's base feedback service.
 
-**Architecture:** `Root` remains the authority for the startup/base `IServiceAccessor` and passes its `feedbackService` explicitly through `RootWorkspaceContent` into `App`. Workspace-scoped services continue to drive file, task, terminal, Git, Agent, and session behavior; the disconnected remote proxy remains unchanged.
+
 
 **Tech Stack:** TypeScript, React, Vitest, Electron renderer service accessors.
 
@@ -31,43 +31,11 @@
 
 - [ ] **Step 1: Write the failing test**
 
-```ts
-import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
-
-function readSource(path: string): string {
-  return readFileSync(path, "utf8");
-}
-
-describe("feedback base service boundary", () => {
-  it("keeps feedback on the base service when workspace services are disconnected", () => {
-    const rootSource = readSource("packages/ui/src/Root.tsx");
-    const rootWorkspaceContentSource = readSource(
-      "packages/ui/src/root/RootWorkspaceContent.tsx",
-    );
-    const appSource = readSource("packages/ui/src/App.tsx");
-
-    expect(rootSource).toContain(
-      "baseFeedbackService={services.feedbackService}",
-    );
-    expect(rootWorkspaceContentSource).toContain(
-      "baseFeedbackService={baseFeedbackService}",
-    );
-    expect(appSource).toContain(
-      "<FeedbackHost feedbackService={baseFeedbackService} platform={platform} />",
-    );
-    expect(appSource).not.toContain(
-      "<FeedbackHost feedbackService={services?.feedbackService} platform={platform} />",
-    );
-  });
-});
-```
-
 - [ ] **Step 2: Run the test to verify it fails for the current bug**
 
 Run: `pnpm exec vitest run packages/ui/test/feedbackBaseServiceBoundary.test.ts --reporter=dot`
 
-Expected: FAIL because `Root` does not yet pass `baseFeedbackService` and `App` still renders `FeedbackHost` with `services?.feedbackService`.
+
 
 ### Task 2: Explicitly inject the base feedback service
 
@@ -78,51 +46,16 @@ Expected: FAIL because `Root` does not yet pass `baseFeedbackService` and `App` 
 - Modify: `packages/ui/src/App.tsx`
 - Test: `packages/ui/test/feedbackBaseServiceBoundary.test.ts`
 
-**Interfaces:**
-- Consumes: `IFeedbackService` from `@zcode/services` and `RootProps.services.feedbackService`.
-- Produces: required `AppProps.baseFeedbackService: IFeedbackService`; `WorkspaceShellLayoutProps` excludes that application-level dependency.
+
 
 - [ ] **Step 1: Add the typed application-level dependency**
 
 Change the service type import and props in `packages/ui/src/app-shell/types.ts`:
 
-```ts
-import type { IFeedbackService, IServiceAccessor } from "@zcode/services";
-
-export interface AppProps {
-  services: IServiceAccessor;
-  baseFeedbackService: IFeedbackService;
-}
-
-export interface WorkspaceShellLayoutProps extends Omit<AppProps, "baseFeedbackService"> {
-}
-```
-
-Insert `baseFeedbackService` immediately after `services`. Replace only the `extends AppProps` clause on `WorkspaceShellLayoutProps`; do not copy or remove its current members.
 
 - [ ] **Step 2: Thread the dependency through `RootWorkspaceContent`**
 
 Update the type import, prop declaration, destructuring, and `StableWorkspaceApp` invocation in `packages/ui/src/root/RootWorkspaceContent.tsx`:
-
-```ts
-import type { IFeedbackService, IServiceAccessor } from "@zcode/services";
-
-interface RootWorkspaceContentProps {
-  workspaceScopedServices: IServiceAccessor;
-  baseFeedbackService: IFeedbackService;
-}
-
-export function RootWorkspaceContent({
-  workspaceScopedServices,
-  baseFeedbackService,
-}: RootWorkspaceContentProps) {
-}
-
-<StableWorkspaceApp
-  services={workspaceScopedServices}
-  baseFeedbackService={baseFeedbackService}
-/>
-```
 
 Add the interface member after `workspaceScopedServices`, add the destructured parameter after the same field, and add the JSX prop immediately after `services`. Preserve all other current parameters and JSX props.
 
@@ -130,33 +63,11 @@ Add the interface member after `workspaceScopedServices`, add the destructured p
 
 Add the prop at the existing `RootWorkspaceContent` call in `packages/ui/src/Root.tsx`:
 
-```tsx
-<RootWorkspaceContent
-  workspaceScopedServices={workspaceScopedServices}
-  baseFeedbackService={services.feedbackService}
-/>
-```
-
 Insert the new prop immediately after `workspaceScopedServices`; preserve the remaining call-site props.
 
 - [ ] **Step 4: Make `FeedbackHost` use only the explicit base dependency**
 
 Update `App` destructuring and the feedback host in `packages/ui/src/App.tsx`:
-
-```tsx
-export function App({
-  services,
-  baseFeedbackService,
-}: AppProps) {
-  return (
-    <>
-      {/* Bugfix: 反馈是应用级能力，必须固定走本机 base host；SSH session 连接中或断开时，
-          workspace-scoped services 会切成断连代理，不能让反馈提交跟随远程 session 失效。 */}
-      <FeedbackHost feedbackService={baseFeedbackService} platform={platform} />
-    </>
-  );
-}
-```
 
 Add the destructured prop after `services`. Replace the current one-line `FeedbackHost` expression with the Chinese cause comment and the new expression; preserve the surrounding command center and workspace shell JSX.
 

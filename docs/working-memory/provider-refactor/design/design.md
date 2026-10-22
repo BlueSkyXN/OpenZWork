@@ -118,15 +118,6 @@ Model Option 值域、受限 CEL Map、原始 Request Body 注入点和唯一请
 Provider Config 是模型 API 调用的装配输入，可以保存静态访问凭据或稳定凭据引用；它不是统一凭据
 中心，不负责所有动态凭据的生命周期，也不承担服务端最终授权裁决。
 
-```text
-api-key
-└─ Config 保存静态 apiKey
-
-zhipu-account
-└─ Config 保存 family、mode
-   └─ 请求期 Account Request Auth Service 从当前兼容连接解析 scope 与动态凭据
-```
-
 Request Auth 缺失时，Model/Adapter 在网络请求前返回类型化鉴权错误。账号 Token、Runtime Key、
 Provider 仍可以由 Personal Config 保存 API Key。
 
@@ -135,10 +126,7 @@ Provider 仍可以由 Personal Config 保存 API Key。
 `productId`、`organizationId`、`projectId`、账号身份与动态凭据由 Account Connection Service 拥有，
 在请求期按静态 `family + mode` 解析，不进入 Provider Config 或 Active Model。
 
-同一 Family 的 Start、Individual Coding Plan、Team Coding Plan 是三个固定类型的独立 Built-in Provider。
-Account Overlay 分别记录每个固定 Provider 当前是否具备套餐资格，不允许同一 Coding Plan Provider 在
-Individual 与 Team 之间运行时变形，也不通过 Built-in Provider ID 字符串推断 Plan。顶层 `enabled`
-始终只表达该 Provider 定义是否参与配置解析，不承担账号资格语义。
+
 
 Provider 的 `visibility` 只控制用户是否能在 Settings 和 Model Selection 中看到它。Hidden Provider
 仍然使用普通完整性校验、Registry 和 ModelFactory；可见性不表达鉴权或安全权限。

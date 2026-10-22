@@ -21,7 +21,11 @@ import { commandAdmissionOf } from "../executor.js";
 import { hasPromptInput, V4InputAdmissionRejectedError } from "../input-admission.js";
 import { requireRecord } from "../record-access.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
-import { startCanonicalIntent, stableAttachmentRefs } from "./canonical-intent-replay.js";
+import {
+  preflightCanonicalIntent,
+  stableAttachmentRefs,
+  startCanonicalIntent,
+} from "./canonical-intent-replay.js";
 import { preemptActiveTurnAndWait } from "./session-flow.js";
 
 const CONVERSATION_COMMAND_LOG_MODULE = "bootstrap.zcode_protocol_v4.commands";
@@ -138,6 +142,15 @@ async function editUserQuery(
   }
   // 附件映射在 rewind 前完成：引用失效要在截断历史之前暴露，避免半程失败。
   const attachments = await mapAttachmentRefsToTurnAttachments(record.app, attachmentRefs);
+  await preflightCanonicalIntent(
+    host,
+    record,
+    envelope,
+    editTarget,
+    payload.newText,
+    attachmentRefs,
+    attachments,
+  );
   const runtimeHasActiveTurn =
     record.app.runtime?.getActiveTurnInfo?.() !== undefined ||
     record.app.runtime?.getActiveForegroundExecutionId?.() !== undefined;
@@ -272,7 +285,7 @@ async function editUserQuery(
 }
 
 /**
- * retryTurn：assistant target → messageId → rewind 截断 + 重发
+ * retryTurn：assistant target → canonical 输入 messageId → rewind 截断 + 重发
  * canonical user intent。intent 在 projection resolver 阶段、rewind **之前**完成解析，
  * 截断后不再回读可见文本或 transcript parent 猜测原输入。
  */
@@ -292,7 +305,18 @@ async function retryTurn(
   }
   const attachmentRefs = stableAttachmentRefs(resolution.editTarget);
   const attachments = await mapAttachmentRefsToTurnAttachments(record.app, attachmentRefs);
-  await submitConversationRewind(host, record, resolution.messageId);
+  // retry 与 edit 共用破坏性 branch cut；模型不可用时必须保留原活动分支。
+  await preflightCanonicalIntent(
+    host,
+    record,
+    envelope,
+    resolution.editTarget,
+    resolution.editTarget.intent.text,
+    attachmentRefs,
+    attachments,
+  );
+  // 从 assistant 就近回溯 user 会误选中途的合成提醒；使用已解析的原始输入边界。
+  await submitConversationRewind(host, record, resolution.editTarget.transcriptMessageId);
   await startCanonicalIntent(
     host,
     record,

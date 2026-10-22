@@ -254,7 +254,6 @@ Host 用户选择事实、Workspace 默认与产品持久化；Todo 14 只完成
 | 维度            | 代表值                                                    | 处理                     |
 | --------------- | --------------------------------------------------------- | ------------------------ |
 | 模型生命周期    | 创建前 Config 更新 / 创建后更新                           | 必测                     |
-| Access          | api-key / zhipu-account / execution-provided              | 必测                     |
 | 请求形态        | generate / stream / retry                                 | 必测                     |
 | Provider API    | Anthropic / OpenAI Responses / OpenAI-compatible          | 必测投影                 |
 | 客户端/远程模式 | desktop continuous / mobile replayable / remote workspace | 不变量回归，不展开状态积 |

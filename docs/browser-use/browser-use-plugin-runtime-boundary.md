@@ -91,7 +91,7 @@ frontend bundle、browser-client/docs/skills assets。协议桥和 desktop CDP �
   skill；不出现 `mcp__browser_use__*`，也不出现已删除的 `js_reset` / `js_add_node_module_dir`。
 - 显式禁用 `browser-use@zcode-plugins-official` 后，新会话不再提供 `control-browser` skill 或
   `agent.browsers`；宿主可保留 `js` 这一个 node_repl tool identity 用于配置兼容，但模型文案仍限于
-  Browser Use 与 Computer Use 两个官方能力，不得把它改造成通用 JavaScript 工具。
+  Browser Use，不得把它改造成通用 JavaScript 工具。
 - 即使 host 仍注入 `browserControlPort`，没有 browser-use runtime feature 时也不会注入 Browser bridge；
   node_repl identity 不因此被第三方配置接管。
 - 纯 CLI 未显式传 `--browser-use=headless` 时没有 browser host，不注入 `agent.browsers`。

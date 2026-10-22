@@ -1,4 +1,5 @@
 import {
+  Archive,
   Monitor,
   Moon,
   Settings,
@@ -16,6 +17,7 @@ import {
   Globe2,
   Cable,
   WandSparkles,
+  HardDrive,
   Keyboard,
   FileSearch,
 } from "lucide-react";
@@ -128,7 +130,14 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.browser.title",
     groupId: "basics",
   },
-  // 键盘快捷键紧跟「浏览器」：同属本机操控/效率配置，收纳在基础设置尾部。
+  // 原型导航顺序：浏览器之后才是远程设备；电脑控制继续紧随其后并受灰度门禁。
+  {
+    id: "remoteDevices",
+    icon: HardDrive,
+    titleId: "settings.remoteDevicesTitle",
+    contentTitleId: "settings.remoteDevicesTitle",
+    groupId: "basics",
+  },
   {
     id: "shortcuts",
     icon: Keyboard,
@@ -148,6 +157,18 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.usageTitle",
     groupId: "dataAndStats",
   },
+  {
+    id: "archives",
+    icon: Archive,
+    titleId: "archives.nav",
+    groupId: "dataAndStats",
+  },
+  // 暂时隐藏设置页里的 Migration 入口，只保留页面实现，后续可以直接恢复这一项。
+  // {
+  //   id: "migration",
+  //   icon: ArrowLeftRight,
+  //   titleId: "settings.migration.title",
+  // },
 ];
 
 // 兼容既有只读消费者：默认配置代表 Web 视图，桌面与 Web 共用同一份分区集合。
@@ -185,4 +206,16 @@ export function resolveSettingsSectionForPlatform(
   return visibleSections[0]?.id ?? "general";
 }
 
+export const SETTINGS_SECTION_GROUPS = BASE_SETTINGS_SECTION_GROUPS.map((group) => ({
+  ...group,
+  sections: SETTINGS_SECTIONS.filter((section) => section.groupId === group.id),
+})).filter((group) => group.sections.length > 0);
+
 export type { SettingsSectionId };
+
+export function isSettingsSectionAvailable(
+  section: SettingsSectionId,
+  isDesktop: boolean,
+): boolean {
+  return isDesktop || section !== "remoteDevices";
+}

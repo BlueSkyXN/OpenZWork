@@ -32,7 +32,7 @@ Goal Verifier 沿用验证开始时 Session 的模型与思考配置，使用该
    ```
 
 4. 不全局修改或删除 `auxiliaryModelOptions`；标题生成等其他调用的既有策略不在本轮恢复范围内。
-5. 不改变 Verifier Prompt、结果解析、失败处理、取消语义、Start Plan 重试、消息投影或 Provider 鉴权机制；不借机实施新的账号架构。
+
 
 ## 具体实现方案（2026-09-10 补充裁决）
 

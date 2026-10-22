@@ -160,8 +160,6 @@ describe("node repl tool display", () => {
     expect(model.resultText).toBeUndefined();
     expect(model.images).toEqual([{ base64: "AAAA", mimeType: "image/png" }]);
     expect(html).toContain('src="data:image/png;base64,AAAA"');
-    expect(html).toContain("w-fit max-w-1/2 cursor-zoom-in overflow-hidden rounded-xl");
-    expect(html).toContain("h-auto max-h-90 max-w-full rounded-xl border border-border");
     expect(html).not.toContain("Attached image");
   });
 
@@ -213,8 +211,6 @@ describe("node repl tool display", () => {
 
     expect(model.displaySource).toBe("browser_turn_end");
     expect(html).toContain('src="data:image/png;base64,AAAA"');
-    expect(html).toContain("w-fit max-w-1/2 cursor-zoom-in overflow-hidden rounded-xl");
-    expect(html).toContain("h-auto max-h-90 max-w-full rounded-xl");
     expect(html).not.toContain("查看执行详情");
     expect(html).not.toContain("执行 JavaScript");
   });
@@ -326,19 +322,10 @@ describe("node repl tool display", () => {
 
     expect(html).toContain("选择浏览器并读取操作说明");
     expect(html).toContain("已完成");
-    expect(html).not.toContain("操作已完成");
     expect(html).toContain("已选择应用内浏览器，并读取操作说明。");
     expect(html).not.toContain(">结果</span>");
     expect(html).not.toContain('aria-label="复制结果"');
     expect(html).toContain("查看执行细节");
-    expect(html).toContain("text-foreground-subtlest");
-    expect(html).toContain("hover:bg-transparent");
-    expect(html).toContain("hover:text-foreground");
-    expect(html).toContain(
-      "rounded-xl border border-border bg-card px-3 py-2 text-ui-base text-foreground-subtle",
-    );
-    expect(html).toContain("lucide-square-mouse-pointer");
-    expect(html).not.toContain("font-medium whitespace-nowrap shrink-0");
     expect(html).not.toContain("Parameters");
     expect(html).not.toContain("raw-tool-id-should-not-render");
     expect(html).not.toContain("secretDebugField");

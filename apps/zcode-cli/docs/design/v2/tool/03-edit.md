@@ -128,7 +128,6 @@ handler 在进入共享路径解析前返回本地稳定错误码 `13` 和既有
 这些数字码由 Edit tool contract 统一导出，handler 不再维护第二份私有映射，避免
 provider error 与公开工具契约在后续修改中漂移。
 
-## ZCode 设计结论
 
 ## 实现状态（2026-05-08）
 

@@ -6,15 +6,9 @@ import { createPluginSandboxRegistry } from "./registry.js";
 const fragment = `<html><head><!--__ZCODE_GEN_UI_STYLES__--><script src="__ZCODE_GEN_UI_RUNTIME__"></script></head><body><script>author()</script><!--__ZCODE_GEN_UI_INNER_KIT__--></body></html>`;
 function fixture(kind: "gen-ui" | "mcp-app", html = fragment, missing = false) {
   const registry = createPluginSandboxRegistry();
-  const instance = {
-    runtimeId: "a",
-    generation: 1,
-    token: "one",
-    appIdentity: "a".repeat(64),
-  };
+  const instance = { runtimeId: "a", generation: 1, token: "one", appIdentity: "a".repeat(64) };
   const handle = registry.register({
     instance,
-    // 协议收窄：contentKind 只接受 gen-ui；mcp-app 走独立 surface 字段。
     contentKind: kind === "gen-ui" ? kind : undefined,
     ownerWebContentsId: 1,
     workspacePath: "/repo",
@@ -25,22 +19,17 @@ function fixture(kind: "gen-ui" | "mcp-app", html = fragment, missing = false) {
   });
   const resources: Record<string, string> = {
     "visualize.css": "/* preset styles */",
-    "visualize.html":
-      "<!--__INLINE_VISUALIZATION_FRAGMENT__--><script>innerKit()</script>",
+    "visualize.html": "<!--__INLINE_VISUALIZATION_FRAGMENT__--><script>innerKit()</script>",
     "calendar.js": "calendar()",
     "manifest.json": JSON.stringify({
       resources: [
-        {
-          url: "https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js",
-          file: "d3-7.9.0.min.js",
-        },
+        { url: "https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js", file: "d3-7.9.0.min.js" },
       ],
     }),
     "d3-7.9.0.min.js": "/* bundled D3 */",
   };
   const readAsset = vi.fn(async (path: string) => {
-    if (missing || !resources[basename(path)])
-      throw new Error("Missing resource");
+    if (missing || !resources[basename(path)]) throw new Error("Missing resource");
     return new TextEncoder().encode(resources[basename(path)]);
   });
   const handler = createPluginSandboxProtocolHandler({
@@ -53,9 +42,7 @@ function fixture(kind: "gen-ui" | "mcp-app", html = fragment, missing = false) {
     dispose: () => registry.dispose(handle.sandboxId, handle.initId),
     request: (path = "", identity = instance.appIdentity) =>
       handler(
-        new Request(
-          `zcode-sandbox://plugin-${identity}/instance/${handle.sandboxId}/${path}`,
-        ),
+        new Request(`zcode-sandbox://plugin-${identity}/instance/${handle.sandboxId}/${path}`),
       ),
   };
 }
@@ -67,15 +54,9 @@ describe("Gen UI resource composition", () => {
     const response = await genUi.request(path);
     expect(await response.text()).toBe("/* bundled D3 */");
     expect(response.headers.get("Cache-Control")).toBe("no-store");
-    expect(response.headers.get("Content-Type")).toBe(
-      "text/javascript; charset=utf-8",
-    );
-    expect((await genUi.request("__zcode__/vendor/unknown.js")).status).toBe(
-      404,
-    );
-    expect((await genUi.request("__zcode__/vendor/manifest.json")).status).toBe(
-      404,
-    );
+    expect(response.headers.get("Content-Type")).toBe("text/javascript; charset=utf-8");
+    expect((await genUi.request("__zcode__/vendor/unknown.js")).status).toBe(404);
+    expect((await genUi.request("__zcode__/vendor/manifest.json")).status).toBe(404);
     expect((await genUi.request(path, "b".repeat(64))).status).toBe(404);
     expect((await fixture("mcp-app").request(path)).status).toBe(404);
     genUi.dispose();
@@ -85,21 +66,15 @@ describe("Gen UI resource composition", () => {
     const genUi = fixture("gen-ui");
     await genUi.request("__zcode__/vendor/unknown.js");
     genUi.readAsset.mockRejectedValue(new Error("missing vendor file"));
-    expect(
-      (await genUi.request("__zcode__/vendor/d3-7.9.0.min.js")).status,
-    ).toBe(404);
+    expect((await genUi.request("__zcode__/vendor/d3-7.9.0.min.js")).status).toBe(404);
   });
   it("loads the canonical CSS and places the bridge before authors and inner kit after them", async () => {
     const { request, readAsset } = fixture("gen-ui");
     const response = await request();
     const html = await response.text();
     expect(response.status).toBe(200);
-    expect(html.indexOf("preset styles")).toBeLessThan(
-      html.indexOf("/__zcode__/gen-ui.js"),
-    );
-    expect(html.indexOf("/__zcode__/gen-ui.js")).toBeLessThan(
-      html.indexOf("author()"),
-    );
+    expect(html.indexOf("preset styles")).toBeLessThan(html.indexOf("/__zcode__/gen-ui.js"));
+    expect(html.indexOf("/__zcode__/gen-ui.js")).toBeLessThan(html.indexOf("author()"));
     expect(html.indexOf("author()")).toBeLessThan(html.indexOf("innerKit()"));
     expect(html.indexOf("author()")).toBeLessThan(
       html.indexOf('id="zcode-gen-ui-document-scrollbar"'),
@@ -110,9 +85,10 @@ describe("Gen UI resource composition", () => {
     );
     expect(html).not.toContain("overflow-y:hidden!important");
     expect(html).not.toContain("__INLINE_VISUALIZATION_FRAGMENT__");
-    expect(readAsset.mock.calls.map(([path]) => basename(path)).sort()).toEqual(
-      ["visualize.css", "visualize.html"],
-    );
+    expect(readAsset.mock.calls.map(([path]) => basename(path)).sort()).toEqual([
+      "visualize.css",
+      "visualize.html",
+    ]);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
   });
   it("registers calendar synchronously before authors only when the fragment references it", async () => {
@@ -122,9 +98,7 @@ describe("Gen UI resource composition", () => {
     );
     const html = await (await request()).text();
     expect(html.indexOf("calendar()")).toBeLessThan(html.indexOf("author("));
-    expect(readAsset.mock.calls.map(([path]) => basename(path))).toContain(
-      "calendar.js",
-    );
+    expect(readAsset.mock.calls.map(([path]) => basename(path))).toContain("calendar.js");
   });
   it("does not inject Gen UI resources into an MCP App", async () => {
     const { request, readAsset } = fixture("mcp-app");

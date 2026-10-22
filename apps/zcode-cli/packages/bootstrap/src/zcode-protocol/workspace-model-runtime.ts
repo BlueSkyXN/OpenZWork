@@ -15,6 +15,7 @@ import {
 } from "./server-types.js";
 import { runSessionModelConfigMutation } from "../zcode-protocol-v4/model-config-mutation.js";
 import { createProviderRuntimeHeadersPort } from "./provider-runtime-headers.js";
+import { V4_NOTIFICATIONS } from "@zcode/shared/zcode-protocol-v4";
 
 export async function readWorkspacePresentation(
   context: ZCodeProtocolAgentServerContext,

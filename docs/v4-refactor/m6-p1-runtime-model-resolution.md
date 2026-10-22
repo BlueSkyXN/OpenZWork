@@ -39,13 +39,6 @@
 - **两层**：toolbar（`modelChangeActions.ts` 三条 handler：推 model-ref + 决定 restart + 推 registry）
   → service（`zcodeAgentService.ts`：`const runtimeModel = params.runtimeModel ?? await resolveRuntimeModelConfig({...})`，从 `modelProviderService.getProviderRegistrySnapshot()` 惰性解析并随 RPC 下发）。
 - **runtimeModel 解析引擎**（service，共享，**复用不重写**）：`resolveRuntimeModelConfig`（`zcodeAgentService.ts:1569`）+ `createRuntimeModelConfig`（:645）+ `modelProviderService.buildProviderRegistrySnapshot`（:803）。
-- **coding-plan/start-plan/team-plan 凭据注入全在 service 层**（⚠️ 保留）：
-  `pickResolvedFamilyProvider`（连接方式 Start/APIKey/Coding/Team 选型，:196）、
-  `buildStartPlanRuntimeAuthorizationHeaders`（Start Plan `Authorization: Bearer <jwt>`，:541）、
-  `resolveSelectedBigModelTeamPlanRuntimeApiKey`（Team Plan org/projectId + project key，:559）、
-  剥离官方版本安全校验一次性头的 helper（:516）、
-  `resolveSupportedRuntimeThoughtLevel`（目标模型不支持 thought 则丢弃，:615）、
-  Team Plan 移除守卫（provider 被过滤则抛 unavailable 不静默兜底个人 key，:1615/:855）。
 - **runtimeModel schema**（`shared/zcode-protocol/index.ts:523` `zcodeModelRuntimeConfigSchema`）：
   `{revision, generatedAt, model{providerId,modelId,variant?}, provider(providerId,kind,apiFormat?,baseURL?,apiKey?(inline/credential/env),apiKeyRequired?,headers?,providerOptions?,models[]…), thoughtLevel?}`。
 - **service 契约**：`IZCodeAgentService.setModel({..., model, runtimeModel?, modelProviderFamilySelectedKeys?})` / `updateRuntimeModelConfig({..., runtimeModel, applyModelSelection?})` / `updateProviderRegistry({..., registry})`。
@@ -126,7 +119,6 @@ workspace configOptionsStatus=error
 
 ## 4. 要保留的清单（验收对照）
 
-- **coding-plan/连接方式**（复用 service resolver 即保留）：Start Plan Authorization 头、BigModel Team Plan org/projectId+project key、官方版本安全校验一次性头（`applyModelSelection:false` 子 agent 路径，边缘，先记 TODO）、family 连接选型、thought 收窄、Team Plan 移除不静默兜底。
 - **默认兜底**：CLI resume `reconcileResumedRuntimeSettings`（两 bugfix）+ `ensureModelReady` + `DEFAULT_MODEL`/missing error（原样保留）；service `resolveRuntimeModelConfig` 三兜底（历史缺失/移除/stale 首个可用）。
 - **P4b 协同**：连接方式 Select `onConnectionValueChange` = 写 `modelProviderFamilySelectedKeys`（AppSettings）→ registry cache 失效 → re-push（1b 常态生效）/ 或解析新连接 runtimeModel 重发（1a）。**P1 做完，P4b ≈ 只补「写 family key + 触发 re-push」。**
 
@@ -134,7 +126,7 @@ workspace configOptionsStatus=error
 
 1. ~~1a/1b/1c~~ **已定：1c 混合（2026-07-07 用户裁决）**。实现顺序：先 1b 核心闭环（CLI 从 registry 解析），再叠 1a 回落（app 解析 runtimeModel + `provider.notInRegistry` 重发）。
 2. v4 命令 `runtimeModel` schema：**倾向引用共享 `zcodeModelRuntimeConfigSchema`**（DRY，共享包内非 CLI 服务桥）+ 注释溯源；实现时若发现耦合过重再改 v4 mirror。
-3. 官方版本安全校验一次性头（Start Plan 子 agent，`applyModelSelection:false`）：**本 Phase 记 TODO 不接**（边缘场景，属子 agent 安全校验路径）。
+
 
 ## 7. 实现顺序（1c）—— 进度
 

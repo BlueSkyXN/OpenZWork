@@ -14,7 +14,6 @@
 - `useChatViewGoalVerificationSummaries` 承接 goal 校验摘要缓存和 runtime/message 摘要合并，避免 `ChatView` 直接维护摘要去重细节。
 - `useChatViewSummaryPanelRoom` 承接 summary panel inline 布局的 ResizeObserver 和可用宽度判断，`ChatView` 只消费 `hasInlineRoom`。
 - 官方版本安全校验的自动恢复和重试流程由独立 hook 承接，保留 provider/workspace 依赖注入，避免把恢复副作用混在页面渲染分支里。
-- `useChatViewStartPlanQuotaBanner` 承接 Start Plan 额度/并发横幅的错误接管、dismiss key、提交阻塞和自动刷新。
 - `useChatViewRestoredHistoryPreviewCutoff` 承接历史恢复期间 preview card 禁用时间，避免恢复消息异步补高度干扰首屏。
 - `ChatBottomDock` 是聊天底部停靠区：负责 `chat-composer-region`、sticky bottom 布局、错误/额度/队列提示、权限和问答弹窗，以及 `ChatViewComposer` 的组装。
 - `ChatViewConversation` 是消息内容区：负责历史 loader、消息 turn group、查找高亮和 fork 锚点，不渲染 `overflow-y-auto` 容器，也不持有 bottom dock slot。
@@ -44,4 +43,3 @@
 3. 抽离 `ChatConversationContent`，把 turn group 渲染从滚动状态机中分离。
 4. 抽离 `useChatConversationHistory`，单独维护历史补拉和补拉后的滚动回补。
 5. 抽离 `useChatConversationScroll`，最后迁移 bottom-lock 和 scroll memory。
-6. 抽离 `ChatView` 的摘要派生、summary panel inline 宽度监听、安全校验自动恢复副作用、Start Plan quota 横幅状态和历史恢复 preview cutoff，让主组件只保留页面 wiring。

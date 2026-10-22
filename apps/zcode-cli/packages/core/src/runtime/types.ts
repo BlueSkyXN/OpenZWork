@@ -1,3 +1,4 @@
+import type { ToolSearchExecutionContext, ToolSearchMode } from "@zcode/contracts";
 import type { GetAgentDefinitions, LoadAgentDefinitions } from "../subagent/definitions.js";
 import type { RuntimeInputPresentation } from "@zcode/contracts";
 /* eslint-disable max-lines -- Runtime 类型集中承载 core/runtime 对外结构，拆分需要单独迁移。 */
@@ -99,6 +100,7 @@ import type { WorkspaceHookRuntimeAdmissionPort } from "../hooks/workspace-hook-
 // -----------------------------------------------
 
 export interface AgentRuntimeConfig {
+  toolSearch?: { mode?: ToolSearchMode };
   /** shared-host request routing metadata; desktop is the safe default. */
   clientMode?: "desktop-continuous" | "web-remote-replayable";
   deliveryKind?: "desktop-continuous" | "web-remote-replayable";
@@ -220,6 +222,8 @@ export interface AgentRuntimeConfig {
   outputStyle?: OutputStylePromptConfig;
   agentName?: string; // Default: "zcode-agent"
   workingDirectory?: string; // Required for context builder
+  /** 本次运行的附加目录，仅用于环境 prompt 展示，不参与配置发现或持久化。 */
+  additionalDirectories?: readonly string[];
   /**
    * 调用方传入的实际工作区路径表示，用于 session 持久化与本地身份恢复。
    * 文件和命令执行仍只使用规范化后的 workingDirectory。
@@ -413,14 +417,16 @@ export interface ModelExecutionContext {
   /** 仅当前 Turn 跳过自动 Project Memory Extraction；不修改 Session Memory 配置。 */
   memoryExtraction?: "skip";
   selectionScope: "execution";
+  /** 接纳加速输入前固定的 Session 候选；仅在内存中随本条命令传递。 */
   requestDependencies?: ModelRequestDependencies;
   subagents?: {
     foregroundModel: "submission";
-    background: "deny";
+    background: "deny" | "allow";
   };
 }
 
 export interface ExecuteTurnOptionsBase {
+  executionSelection?: ModelSelection;
   abortSignal?: AbortSignal;
   browserAmbientContext?: {
     tabCount: number;
@@ -715,6 +721,7 @@ export interface PermissionDecisionResult {
 }
 
 export interface ExecuteToolsOptions {
+  toolSearch?: ToolSearchExecutionContext;
   automationTurn?: boolean;
   signal?: AbortSignal;
   traceContext?: TraceContext;
@@ -801,6 +808,7 @@ export interface ProviderContextUsageSnapshot {
 }
 
 export interface RunModelTextRequestOptions {
+  toolSearchEnabled?: boolean;
   abortSignal?: AbortSignal;
   assistantMessageId: MessageId;
   events: SessionEvent[];

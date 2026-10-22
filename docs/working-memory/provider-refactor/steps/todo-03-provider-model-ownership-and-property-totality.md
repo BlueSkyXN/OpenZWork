@@ -232,9 +232,7 @@ Provider 完整性只收紧执行所需事实：合法 Access 分支、API Type 
 `visibility`、Headers 等合法可选字段继续保留原语义；成员集合已经投影为 Registry `Provider.models`，执行
 消费者不重新读取成员字段决定成员资格。
 
-Todo 03 只按开工时已经存在的 Provider Access Schema 建立这条唯一完整性边界。Todo 07 引入结构化 Account
-Connection 时，在同一个 `CompleteProviderAccessConfig` / `requireComplete` 上加强 `zhipu-account`；本任务
-不提前实现 connection，也不宣称 Account Access 已经最终收口。
+
 
 ### 3.3 Settings candidate 是分支契约
 
@@ -404,7 +402,6 @@ Desktop、Web、手机共用同一 Settings/Selection Service；本任务不改�
 
 - Account availability 的 `unknown` 与 last-known-good；
 - 账号鉴权、Request Auth 和 Credential 生命周期；
-- Todo 07 的结构化 Account Connection，以及 `zhipu-account` 最终完整性加强；
 - Telemetry、ModelRef、ModelConnectionPort 清理；
 - remote workspace 配置同步产品能力；
 - `modelContextBudget.strategy`、队列和恢复；

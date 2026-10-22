@@ -8,7 +8,7 @@
 
 ## 0. 背景与目标
 
-Todo 57 为修复 Account Registry 延迟发布和旧 Start Plan 选择失效的 E2E，在 Renderer 草稿初始化中加入了“当前 Account Provider 第一个模型优先于 Host preferredSelection”的特殊回退。该规则绕过 Configured Default，使 Renderer 开始理解 Account Family/Plan，并丢失 Configured Default 携带的 reasoning options。
+
 
 Todo 56 的首次 Remote Environment Provisioning 已经成为远程 Workspace 发布前的同步屏障，但当前收到 `failed`、`rollback_failed` 或 `unsupported` 后仍只记录 warning 并继续发布连接。这会让远端在关键模型配置没有同步成功时以旧配置或空配置继续运行。
 
@@ -45,7 +45,6 @@ Renderer 不再读取或推导当前 Account Provider，不再以 `provider.mode
 - Recent 仅在当前目标 Host 的 Selection View 中仍然有效时使用；
 - Configured Default、Registry fallback 和模型 options 的有效性由目标 Host 原子解析为 `preferredSelection`；
 - Account Config 只约束 Account Provider 的 entitlement、成员和访问材料，并通过 Registry 间接影响“哪些选择仍然有效”；
-- Renderer 不识别 Start Plan、Individual、Team，也不根据 Family Connection Selection 推断默认模型；
 - 本 Todo 与 Todo 58 的 Option Default 退役契约共同生效：目标 Host 在标准 Model Selection 解析边界把普通缺省 reasoning 补为有序 Enum 的 `values.at(-1)`；Renderer 只消费已经完整的 `preferredSelection`；ModelFactory 只校验并冻结具体 Option，不再从 Model Config `default` 补值；
 - 新写入的 Draft、Recent、Session Selection 和 Configured Default 必须携带具体 reasoning。旧稀疏选择若需要兼容，只能在 Host 的选择持久化读取边界归一化，不能把 fallback 分散回 Renderer、Service、Model 或 Adapter。
 
@@ -71,7 +70,6 @@ Account Overlay 完成，Selection View revision 更新
 ### 1.4 清理范围
 
 - 删除 `resolveDraftInitialModelSelection()` 的 `currentAccountProviderId` 参数和 Account Provider 首模型分支；
-- 删除 `useDraftConfigControl()` 中为该分支读取 `providerFamilyDomain`、`providerFamilyConnectionSelections` 并推导 Provider ID 的逻辑；
 - 删除仅服务于该分支的 import、memo、测试构造和注释；
 - 更新 Todo 57、Selection Design 和 E2E 说明，明确其“recent → Account 首项 → Host preferred”实施记录已被本 Todo 的后续裁决取代；
 - 不删除 Provider Family Connection Selection 产品能力本身，本 Todo 只禁止它进入通用 Draft 默认选择。

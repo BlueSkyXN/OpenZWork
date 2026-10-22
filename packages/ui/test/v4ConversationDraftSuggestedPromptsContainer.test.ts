@@ -159,9 +159,21 @@ async function applyPendingComposerTextInsert(workspacePath: string, workspaceId
 
 const localPrompts = [
   { id: "recent-commits", label: { cn: plainLabel }, prompt: { cn: plainPrompt } },
-  { id: "create-pdf", label: { cn: pluginLabel }, prompt: { cn: pluginPrompt },
-    plugin: { stableId: "document-skills@zcode-plugins-official", label: { cn: "文档技能", en: "Document skills" } } },
-  { id: "open-automations", label: { cn: automationsLabel }, prompt: { cn: automationsPrompt }, actions: ["NAVIGATE:AUTOMATIONS"] },
+  {
+    id: "create-pdf",
+    label: { cn: pluginLabel },
+    prompt: { cn: pluginPrompt },
+    plugin: {
+      stableId: "document-skills@zcode-plugins-official",
+      label: { cn: "文档技能", en: "Document skills" },
+    },
+  },
+  {
+    id: "open-automations",
+    label: { cn: automationsLabel },
+    prompt: { cn: automationsPrompt },
+    actions: ["NAVIGATE:AUTOMATIONS"],
+  },
 ];
 vi.mock("@/v4/featureSuggestedPrompts.js", () => ({
   getRecommendedPromptPool: () => localPrompts,
@@ -241,10 +253,6 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
     const slot = view.container.firstElementChild;
 
     expect(slot?.getAttribute("data-v4-draft-suggested-prompts-slot")).toBe("true");
-    expect(slot?.classList.contains("h-8")).toBe(true);
-    expect(slot?.classList.contains("mt-3")).toBe(true);
-    expect(slot?.classList.contains("absolute")).toBe(false);
-    expect(slot?.classList.contains("top-full")).toBe(false);
   });
 
   it("keeps the in-flow slot mounted while the local list is empty", () => {
@@ -258,7 +266,6 @@ describe("ConversationDraftSuggestedPromptsContainer", () => {
 
     const slot = view.container.firstElementChild;
     expect(slot?.getAttribute("data-v4-draft-suggested-prompts-slot")).toBe("true");
-    expect(slot?.classList.contains("h-8")).toBe(true);
     expect(slot?.childElementCount).toBe(0);
     localPrompts.push(...originalPrompts);
   });

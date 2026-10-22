@@ -8,6 +8,142 @@
 工具 schema、权限裁决、执行和 Desktop/Web 投递语义保持既有合同。
 回归覆盖 CLI mode/headless option 两组用例与构建产物参数解析，见根目录 v3.15.1 整合验收规范。
 
+## OpenZWork 3.16 工具整合
+
+编辑重发在 branch cut 前完成普通模型预检；提交后复用该结果。收口竞态的 requireQueue 经同一 prompt runner 透传 Core admission，不能在 bootstrap 重新判 busy 或直接启动。
+
+ToolSearch 默认关闭，显式 auto/native/local/off 复用上游工具发现与包装准入。保留标准 MCP OAuth、Browser 页内控制及 MCP Apps 连接/后台结果通知；按现有移除合同清理退役产品接线，工具业务与持久化由既有 owner 负责。
+
+## 自定义 Agent Memory 工具投影（2026-10-15）
+
+Runtime 从当前父轮 Agent definitions 快照派生有效工具，启动配置、注入 reader 和 Host
+每轮加载的 profiles 必须经过同一投影。Memory 启用且允许使用时，为声明 memory scope
+及显式 tools 的 profile 补齐 Write/Edit；未声明 tools 保持继承，disallowedTools 和权限过滤
+仍生效。不修改 Host 原始快照，不跨轮缓存工具，不增加延时或重试。回归检查三种配置来源、
+连续父轮、Memory 关闭和禁用工具；Desktop MEM08 验证 custom-agent 真实写入 Memory 文件。
+
+合并后登记工具结果结算、渠道回复及留白填充入口的模块边界；复用原契约与公开路径，不改变工具执行和持久化行为。
+
+上游新增的 FillWorkflowHole 与 ReplyToChannel 沿用非常驻内置工具的 deferred 分类。
+
+Local ToolSearch 描述明确搜索后的 `DeferredToolCall {name,input}` 调用方式，只用一个简短的
+TodoWrite 调用示例说明；常驻工具仍直接调用。只经既有曝光入口更新 Local description，
+不改变 Native 文案、结果格式或执行协议。校验示例参数及 CLI/PTY 冷恢复的最终 wire，
+合同见 [模型可见文案](19-tool-search.md#模型可见文案)。
+
+Local 逐项反馈与 compact 提升：引用投影按模型调用批次前可见定义去重，新展开 schema 的
+结果在 tool_result 内给出调用指引，纯重复结果给出已加载提醒。发现扫描同时读取有效 compact
+检查点；曝光、搜索、公告及包装准入
+共用提升后的分类，成功 compact 后以普通 tools 恢复已发现工具。保持真实引用持久化、
+Native/Off、执行生命周期和 Continue 记录链不变。验收详见 [ToolSearch spec](19-tool-search.md#local-逐项反馈与-compact-后提升)。
+已加载指引在 tool_result 内使用公共 `<system-reminder>` 包装；不生成 attachment，
+MCS 开关不改变其位置或角色。验证混合/纯重复/冷恢复的最终请求及模式对应的提示数量。
+首次展开的 deferred 定义在同一 tool_result 内合并追加 Loaded 调用指引，明确顶层 name/input；
+单工具使用 `Call it now`，多工具使用 `Call them now`；其余保留统一的
+`<tool name>` 占位、精确名称指引与复数结尾；
+只加强模型行动指引，不改变执行、结果成功状态或已加载提醒，不承诺定义永久有效。
+复用引用投影，Local 不再派生结果外成功提示；Native 保持原有提示。实际请求、Continue/compact
+记录共用同一投影标记，不改变常驻选择、Native/Off 或历史持久化。验证多工具去重、
+Hook 顺序、MCS、compact 提升及真实进程冷恢复的最终 wire。
+
+ToolSearch 四项补齐：Native 有效搜索结果在整批 tool_result 后派生成功提示；未发现 deferred 参数
+错误补精确 select、当前 schema 和模式调用方式；公告使用严格来源 attachment 参与 MCS 并
+保留增量 metadata；MCP select 支持原始/规范化短名。复用既有遍历、持久化和执行链，
+保持 callID、用户/媒体归属、Continue/compact 和桌面/手机交付边界。历史定义快照和
+unavailable schema 保留延期，不增加存储字段或改变引用过滤。合同见 [19-tool-search.md](19-tool-search.md)。
+Continue/compact 的请求记录重建复用本次投影的有效搜索结果 callID，避免漏掉派生成功提示；
+不增加历史扫描、深拷贝或存储字段，实际请求与执行链不变。
+未发现 deferred 工具的参数错误保留完整纠错段落：说明定义未加载与参数类型退化的关系，
+再给出精确 select 和当前 schema；仅 Local 追加包装调用说明。完整文本回归同时保护
+原始校验错误及已发现/Off/不存在工具的既有行为，不改变准入或执行。
+
+ToolSearch 删除/恢复公告仅描述当前可用性，不推断 MCP 连接状态或变化原因。
+正常与受限 turn 的增量比较、持久化、compact 及权限筛选保持原状；精确文案测试覆盖
+内置工具恢复、MCP 分组、30/31 个删除名称和混合增删，确保不附加未经证实的原因。
+
+App Settings ToolSearch 模式：配置 schema/patch -> 本地或远程 Host 偏好响应 -> Bootstrap
+runtime-materialization -> runtimeConfig.toolSearch。只在新建/冷恢复取值，热恢复及已有草稿
+不更新；fork/子 Agent 继承。CLI 参数、工具协议/执行/历史均不变。验证 Settings UI 保存到
+最终 provider wire 的真实 E2E，及旧字段缺省、主子作用域、冷恢复与 Host 权威源。
+缺省保持 Off；设置行底部显示实验性与原生模式供应商缓存支持不足时的用量风险，中英文一致，
+不覆盖用户已保存的模式。复用底部说明区域，验证默认关闭、说明可见与原有保存/恢复链路。
+
+Local ToolSearch 扩展沿用 [19-tool-search.md](19-tool-search.md) 的真实引用和发现检查点。
+`--toolsearch-mode` 替代旧 enable flag；Local 将连续引用在结果内合并展开为 functions 文本，
+两次 compact 之间的 tools 不随搜索发现增长；成功 compact 后检查点工具提升为普通 tools。DeferredToolCall 使用 `{name,input}`，仅转发当前允许的 deferred
+目标，在公共准入归一化为普通目标调用；内部历史与持久化只增加 modelCallWrapper 字面量，
+请求出口恢复原始包装，删除重复保存的 modelToolCall input。V4 scheduled 定稿目标身份；
+断流未调度时，已有 tool_call_closed 仅补齐包装工具行的目标名称与输入，不推进业务状态。
+Todo/microcompact/工具卡复用普通调用判断。重点验证原始参数隔离、调度/权限/Hook/媒体/turn-stop、
+pending 到终态重存、冷恢复/分支、六向模式切换和 Continue/compact 的原有生命周期。
+不保存 schema 快照、不新增 schema reminder、DB migration 或测试专用生产接口。
+流式预览与 Core 事件时序保持原状；展示层不从半截包装参数推测已准入目标。验证无 Scheduled
+的断流恢复、实时与冷恢复身份、普通工具及失效事件隔离、continuous/replayable 的完整行更新。
+请求内的引用过滤与 Local 展开共用一次历史投影；只复制内容实际变化的工具结果，
+同一工具定义在本次请求内只编码一次。发现集合仍先独立扫描，最终 provider render
+保留隔离拷贝；不改变公告时序、引用顺序或引入跨请求缓存。
+
+ToolSearch 的默认关闭、显式模式覆盖、结构化引用与冷恢复合同见
+[19-tool-search.md](19-tool-search.md)。发现状态仅从真实结果和有效 compact 检查点推导；
+关闭只修改请求投影，不新增数据库表列，不改变 MCP 初始化或主子权限边界。
+公共 tool metadata 同时接受既有字符串 modelContent 和 ToolSearch 结构化数组，避免失败 MCP
+工具在 V4 transcript 冷恢复时丢失 display；ToolSearch 写入与发现恢复仍严格校验数组。
+请求组装统一经 `prepareRuntimeProviderRequest` 执行一次 ToolSearch 准备，主/子 Agent、
+Goal、Memory 与 Compact 提供各自完整工具目录；消息投影不再隐式猜测启用状态。
+media 保持独立环节；公告在正常提醒阶段由原历史 owner 提交后再取请求快照，纯 max-token
+Continue 不检查或生成公告。Compact 根据保留历史与继续执行的工具作用域独立重建公告；
+请求准备只投影已有公告。公告正文与增量 metadata 随隐藏 synthetic 历史持久化，
+fork/resume/rewind 按有效历史原位恢复，不新增 session 级缓存。验证续写去重、配套 wire、Goal SQLite 状态和恢复边界。
+重试按 canonical 原始输入 ID 截断，公告及 Todo 等隐藏提醒不能成为重试边界；回归检查模型请求与冷恢复没有重复输入。
+公告 metadata 只记录 addedNames/removedNames/readdedNames 增量；从保留历史顺序推导
+当前已公告与曾完整列名集合，正文与 metadata 同源。删除按完整作用域工具池判断，
+避免 compact 保留增量尾部漏补名称、deferred 转 alwaysLoad 误报删除。内置 deferred 工具
+补齐 searchHint，不改变搜索排序、真实引用或发现检查点。
+内置工具仅 Agent/AskUserQuestion/Bash/Edit/Glob/Grep/Read/ReportFindings/Skill/ToolSearch/Write
+保留常驻资格；名单外工具在各自 metadata 声明 shouldDefer，不增加分类映射层。
+ReportFindings 尚未实现，Task 兼容入口继续对 provider 隐藏；注册、灰度、权限和执行不变。
+覆盖真实内置目录首轮曝光、搜索加载与关闭回退；MCP、provider 原生工具维持原有规则。
+Native ToolSearch 的 provider description、参数说明及增删/恢复公告文案使用默认配置。
+公告沿用 30 个删除名称阈值、
+MCP server 分组与 ambient 提示；仅修改模型文案，不扩展 MCP 生命周期或公告状态。
+ToolSearch 的 provider schema 将 query/max_results 都标为 required；执行链仍先通过
+runtime schema 补默认值 5。验证最终 wire required 和省略 max_results 的真实执行结果。
+ToolSearch 的引用块不参与普通文本截断；初次结果与 Hook 追加后的预算投影均保留引用和
+块顺序，仅限制文本。展示内容和字节统计由最终块派生，completed metadata 与冷恢复
+沿用真实结果；覆盖超过 100 KB 的搜索、批量 select、Hook 及 SQLite 恢复，不收紧输入范围。
+Compact 仅在候选工具支持实际启用 ToolSearch 时使用新策略；关闭时保留普通工具数量阈值，覆盖禁用、alwaysLoad 与 100 个工具边界的 Runtime 请求。
+插件 MCP 的 `.mcp.json`/manifest 经各 transport 配置转换时必须保留 `alwaysLoad`；
+验证插件发现到最终请求 schema 的透传，不改变 MCP 初始化、鉴权或工具权限。
+App MCP 配置转协议 DTO 同样保留布尔 `alwaysLoad`，覆盖 stdio/HTTP/SSE；
+未配置或非法值不生成字段，验证 JSON 传输与现有严格协议 schema，不扩张会话配置路径。
+
+2026-09-18 ToolSearch 测试补齐：PTY force/resume/continue 走真实终端输入；动态目录与
+尾部连续 compact 使用独立 Runtime/HTTP 集成 fixture，覆盖 streaming on/off 并检查原始历史。
+macOS 与 Windows 原生进程证据及手机待验证边界见根目录 coverage matrix；不改产品入口。
+同日补充 executor 执行边界、真实 Hook 结果 SQLite 冷恢复、搜索细分输入、开启状态空引用
+投影的单测。E2E/单测不得为测试修改生产实现或新增测试专用入口；只复用既有依赖契约。
+
+## TaskStop 查找失败提示
+
+`TaskStop` 精确查找未命中时，统一返回以下模型可见错误；不增加前缀匹配或 ID 格式校验：
+
+```text
+Invalid task ID "<id>". This lookup failure does not mean the task has completed or stopped; use the full task_id returned when the task started to stop it.
+```
+
+链路：`background_task_not_found → handler error (code: 1) → executor success: false → model isError: true`。
+查找失败不能证明目标任务已完成或停止；模型应使用启动时返回的完整 `task_id`。
+完整 ID 命中后的停止行为、其他错误、schema、权限、协议与 App 交互保持原样。
+回归覆盖短 ID、未知完整 ID 的失败文案及模型错误标记，并保留成功停止和其他失败分支断言。
+
+## 冷打开历史先显示（2026-10-09）
+
+持久化 tool 摘要由现有 V4 reducer 在 runtime 初始化前显示；工具详情、附件读取、App 交互
+与执行入口等待 runtime ready。工具声明、模型可见输入输出、权限和执行语义保持原样。
+初始化失败保留历史，显式重试复用完整 resume hook。状态与传输边界见根目录
+`docs/v4-refactor/17-cold-resume-runtime-activation.md`，桌面 continuous 与手机 replayable
+仍复用同一个 publisher，各自维持既有序号恢复语义。
+
 ## 工具内部模型请求的会话归因（2026-09-30）
 
 WebSearch、WebFetch processing、ReadSessionContext 的内部模型请求继承发起工具的宿主
@@ -106,7 +242,6 @@ interrupted 冷恢复，不保证原始输出。Desktop continuous 与手机 rep
 完整顺序见 [streaming recovery](../model/streaming-tool-execution-and-recovery.md#tool-result-settlement)。
 回归覆盖图片 Stop、真实 SQLite 锁、批次中途保存失败、媒体与 usage 失败、冷恢复和 checkpoint 取消。
 
-
 ## 目的
 
 改动 tool 不是只改一个 handler 或 schema。tool 是 NL->Code 的核心边界，任何新增、删除、重命名、字段调整、执行语义调整、权限变化、输出变化、provider-native 化、后台化或 UI 展示变化，都必须沿同一条端到端链路核对。
@@ -144,8 +279,12 @@ desktop continuous 的 live 统计不能通过手机 replayable 恢复补发。
 ## 总原则
 
 离线 prompt-trajectory 转换只影响调试产物：从相邻真实请求补全 response 摘要遗漏的
-thinking，并识别末尾 user block 追加。保留真实历史改写的分段，不改生产 tool descriptor、
-执行、缓存、权限或 UI 链路；合同见 [Model-IO trajectory](../../../plan/trajectory/model-io-to-anthropic-trajectory-tool.md)。
+thinking，并识别末尾 user block 追加。默认保留真实历史改写的分段；显式
+`--ignore-tool-search-changes` 仅在离线比较中忽略 ToolSearch 引用、占位文本、目录公告及
+成功引用结果批次后的对应 `Tool loaded.` 提示，普通同名文本仍参与比较；
+目录公告识别覆盖当前 Native／Local 文案，并保留旧日志格式的兼容性。
+输出仍保留最后真实请求并标注合成模式。不改生产 tool descriptor、执行、缓存、权限或
+UI 链路；合同见 [Model-IO trajectory](../../../plan/trajectory/model-io-to-anthropic-trajectory-tool.md)。
 
 CR-01（来源提示包装）：SendMessage、RespondToCoordinator 与后台任务产出的正文只在
 provider user reminder 包装时复用 source sanitizer 中和嵌套 `system-reminder` 标签。
@@ -164,7 +303,7 @@ canonical 载荷、工具输入/输出、权限审批与主子 Agent 身份不�
 
 ### Agent 子代理的 Browser Use
 
-2026-10-09：移除「subagent 不能用 Browser Use」的限制。工具定义、schema、权限与 node_repl MCP 进程不变；node-repl-host 的 browser bridge 与 bootstrap node_repl broker 不再按 `runtime_scope: "subagent"` 拒绝（错误 `Browser is not available in subagent` 删除），node-repl-host 随之升到 0.6.1（package、manifest、官方 seed 定义、SEA 清单、serverInfo 版本同步）。core `Agent` 子代理由父 runtime 以 `forChildSession({ childSessionId, parentSessionId, tabOwner: "parent" })` 派生子端口：协议 broker 把子会话请求的 `sessionId` 换成父会话下发（桌面按它判定 tab 归属与面板展开），子代理与当前对话共用 tab，子端口 turnEnded / closeSession 不发往桌面，子代理结束只撤销登记、不关 tab；dwf 子代理保持默认 `tabOwner: "child"`。Computer Use 的 subagent 限制不变。合同见根目录 `docs/browser-use/2026-07-16-subagent-browser-unavailable-spec.md`。
+2026-10-09：移除「subagent 不能用 Browser Use」的限制。工具定义、schema、权限与 node_repl MCP 进程不变；node-repl-host 的 browser bridge 与 bootstrap node_repl broker 不再按 `runtime_scope: "subagent"` 拒绝（错误 `Browser is not available in subagent` 删除），node-repl-host 随之升到 0.6.1（package、manifest、官方 seed 定义、SEA 清单、serverInfo 版本同步）。core `Agent` 子代理由父 runtime 以 `forChildSession({ childSessionId, parentSessionId, tabOwner: "parent" })` 派生子端口：协议 broker 把子会话请求的 `sessionId` 换成父会话下发（桌面按它判定 tab 归属与面板展开），子代理与当前对话共用 tab，子端口 turnEnded / closeSession 不发往桌面，子代理结束只撤销登记、不关 tab；dwf 子代理保持默认 `tabOwner: "child"`。合同见根目录 `docs/browser-use/2026-07-16-subagent-browser-unavailable-spec.md`。
 
 ### Guarded 危险命令单次确认
 
@@ -227,107 +366,6 @@ current turn model capability
   （`packages/dynamic-workflow/docs/execution-engine.md` § Typed `submit_result`）。
 - 结构化媒体结果必须通过真实 provider projection 与冷恢复链路验证，不能用直接调用 handler/adapter 的测试代替端到端证据。
 
-### Windows CUA 开发运行时接入（已确认）
-
-Windows 本地源码开发环境新增的仅是 Host backend 对 Windows Computer Use Helper 的
-admission / execution route。它在 `win32` 上显式校验 `ZCODE_CUA_DEV_ROOT` 的
-package、Helper entry 和 native addon，并使用 `process.execPath` 加
-`ELECTRON_RUN_AS_NODE=1` 启动 Helper；该阶段不得注入 broker token。
-
-现有 30 个 CUA MCP tools 的名称、输入/输出 schema、副作用标注、权限和
-delivery-state 语义均不变：不新增、删除或重命名 tool，不改变 provider-visible
-surface，不改变 session event、replay、compact、resume 或 UI/ZCode app-server 投影。
-非 Windows、remote、无效开发根目录或缺失产物一律 fail closed，且不得回退到
-macOS Helper。测试需覆盖平台门、稳定失败 reason、异步文件系统检查与最小诊断。
-
-显式禁用工具必须 fail closed。会话级 `toolDenylist`（ZCode Protocol
-`session/create`）不只是执行期权限规则，还必须从
-provider-visible 内置工具和 MCP 工具注册中移除对应工具。测试需要同时覆盖
-模型可见工具面和执行期权限路径，避免“禁用了但模型仍能看到/调用”的假安全状态。
-CLI 的 `--disallowed-tools` / `--disallowedTools` 通过本次 runtime 的
-`toolDisallowlist` 从可见与可执行工具集中移除整个工具，不改写 permission config。
-`Bash(git *)` 只按工具名 `Bash` 过滤，不提供命令内容匹配；help 使用 `"Bash Edit"`
-等工具名示例。CLI prompt 入口为 `-p, --prompt <text>`；未实现的 `--print`、
-`--settings`、`--permission-mode`、`--max-turns`、`--allowed-tools`、
-`--allow-main-worktree-yolo` 不得作为可用能力展示。完整语义见
-[CLI 工具可见性 Denylist](./18-cli-tool-visibility-denylist.md)。
-ZCode Protocol `session/create` 也属于同一条链路：App 或评测 harness 如果需要
-session 级工具面约束，应通过协议参数传入 `toolAllowlist` / `toolDenylist`，
-并在创建 runtime 时同步投影到 `runtimeConfig.toolAllowlist` /
-`runtimeConfig.toolDenylist`。不要依赖 prompt 文字要求模型“不要用某些工具”，
-因为 provider-visible tool surface 才是实际可调用边界。
-
-Structured-media tool-result projection is selected by `apiFormat` first.
-Anthropic Messages and OpenAI Responses (`providerKind=openai`) keep structured
-tool-result content. OpenAI Chat Completions (`apiFormat=openai-chat-completions`)
-does not have a reliable structured-media tool-result channel through the AI SDK
-chat converter: `tool-result` content is serialized into provider-visible text.
-When `apiFormat` is absent, only the known Chat-compatible provider kinds
-(`openai-compatible`、`gateway`) use that fallback; `providerKind=openai` remains
-the Responses path. Chat provider adapters must therefore keep the actual tool
-result as short text and, when the target model supports the media type, append
-supported media as a synthetic user content message after the contiguous
-tool-result block. This preserves assistant tool-call / tool-result ordering
-while preventing base64 media from being tokenized as plain text.
-
-MCP 动态 tool 还需要额外确认：
-
-- Tool advertisement 与 live execution 权限必须分离。可信官方 HTTP MCP 的 `server/discover`、
-  `initialize`、notification、`ping`、`tools/list`、GET probe 与 `tools/call` 都必须逐请求取得并注入
-  当前身份头；服务端仍只在 `tools/call` 做执行授权，catalog、connected status、cached descriptor
-  或历史成功不得充当执行授权。可信官方 stdio MCP 同样必须在 `server/discover`、`initialize`、
-  notification、`ping`、`tools/list` 与 `tools/call` 的 `params._meta["com.zcode/official-mcp-auth"]`
-  注入当前身份载荷，禁止把凭证放入进程 env。调用期无身份或无权益应返回结构化 tool error，
-  不得反向把 server 置为 failed 或移除已广告工具。普通 HTTP/stdio MCP 不得获得官方凭证通道。
-- 注册时必须保留 server 级执行策略，例如 `timeoutMs`。长任务 MCP server 不能在 core bridge 中被硬编码短超时截断；bridge 应把 descriptor 上的超时投影到 `ToolEntry.metadata.timeoutMs`、`timeout.defaultMs` 和实际 `McpPort.callTool` 选项。
-- 一次 MCP tool call 的 `timeoutMs` 是端到端 caller 预算，必须覆盖等待已有连接、第一次
-  `tools/call`、共享 OAuth 恢复、Phase 1 重连和最多一次安全重试。各阶段只能消费剩余预算，
-  禁止在重连或重试时重新获得一份完整 timeout。
-- MCP OAuth 授权/重连是 adapter 持有的共享恢复任务，不归任一 tool caller 所有。caller 的
-  timeout 或 AbortSignal 只能结束当前 waiter，不能关闭 callback listener、释放共享授权 lease
-  或取消其他 caller 正在复用的恢复；只有显式 disconnect、adapter/session shutdown 或 connection
-  generation 换代可以取消共享恢复。
-- MCP 连接与授权状态必须在所有成功、失败、取消和外部 I/O 异常路径收敛到
-  `connected`、`failed` 或 `disconnected`。`record.connecting` 不得以 rejected Promise 配合
-  `status: connecting` 留在记录中；单 server OAuth 编排失败必须先收敛自己的状态，不能让批量
-  server snapshot 因裸异常整体中断。
-- 显式 modern protocol pin 的 version probe 是唯一协商路径，必须继承 server 的完整连接 `timeoutMs`；只有允许 legacy fallback 的 `auto` 模式才可使用有界短 probe。pin probe 超时不得伪装成 legacy server 或静默丢工具。
-- MCP server 自己实施的调用超时必须与 `tools/list` 描述、输入 schema 和具体 tool spec 保持一致；修改默认值时要由同一命名常量驱动执行与模型文案，并用契约测试防止二者漂移。
-- 可选超时字段的 provider-visible 描述不能只写字段类型；必须给出模型可执行的决策规则，包括何时必须显式传值、如何为预计执行时间预留开销，以及超过上限时应拆分调用。
-- MCP server 可在 result `_meta` 中声明 namespaced 的 `zcode/errorPresentation: "message-only"`，要求通用 bridge 在 `isError: true` 时直接投影 content，不额外添加 `MCP tool returned an error:` 包装。该能力只控制模型可见文案，不得被当作失败状态本身；失败事实仍以标准 MCP `isError` 为准。`node_repl` 生产端不得声明 `message-only`：它直接把经过脱敏的结构化 `run.error.message` 写入 content，并让通用 bridge 投影稳定的 `MCP tool returned an error:` 前缀，供不读取私有 `_meta` 的分析链路区分成功与失败。错误结果不得混入错误类型、`at ...` 堆栈帧或失败前的 REPL 日志。通用 bridge 禁止按 `serverName` 分支或解析具体错误正文。本调整不修改 `ToolResultPayload`、session event、持久化、UI 或 desktop continuous / web remote replayable 链路。开发态 desktop agent 构建必须同步重建 `@zcode/browser-use-plugin` runtime，确保插件缓存 hash 能感知这类生产端变更。
-- 标准 media result 不应无条件降级成文本占位。`image` block 应进入 provider-neutral `ModelMessageContent`，让 screenshot/visual inspection 类 MCP 能力和内置 `Read` 图片路径一致；不支持的 media 再返回短占位并受 result budget 约束。
-- 官方 CUA 的最终 raster 是坐标输入的一部分，不是普通可优化媒体。只有通过 Host authority 校验的官方 `zcode-cua` descriptor 可以启用该路径；每个 image 必须紧邻精确形态的 `image_ref {frame_id,width,height,actionable}`，bridge 必须校验 canonical base64、PNG/JPEG 文件头、MIME、实际尺寸、200 KiB 上限和单结果 `frame_id` 唯一性，并保持 bytes 与 block 顺序不变。`PostToolUse` hook 只能在受保护媒体对之后追加有界文本，不能替换或重排。任一校验失败时必须原子移除本次结果中的全部 CUA image/image_ref 并返回错误，禁止只留引用、只留图片或退回 artifact/文本占位。第三方同名 MCP 仍走通用 result budget，不能获得豁免。
-- official CUA 结构化结果在 Host 内只由 `modelContentProtection=official_cua_frame_v1` 表示；不要再增加或恢复并行 preserve boolean。`returnedBytes` 是文本与真实媒体载荷的唯一 aggregate，hook 追加只增加新增文本 bytes，不能依赖第二份 `mediaBytes` 镜像状态。
-- shared `node_repl` 内的 CUA SDK 不得把 producer 的 legacy MCP 文本 envelope 原样再提交给模型。成功的纯文本 action/metadata 结果只在 Worker 中归一化为 SDK 字段；若还需向 Host 传递 app-display `_meta` 或 action-state，structured sink 必须使用空 `content` 的 sideband projection。只有错误或受保护的 image/`image_ref` 结果可以携带模型可见 `content`。这样同一 cell 末尾的 `nodeRepl.write(state.text)` 是唯一 AX 文本来源，不会与动作回执或 `content`/`text`/`message` 镜像叠加。
-- official CUA plugin-host 恢复 broker token 前只校验真实权威事实：bundled official plugin id、已捕获的 authority/token 和与捕获值完全相等的 socket。`--permission-mode product` / `--backend broker` 从未参与 producer 运行时决策，不得再注入或当作安全凭据；注入 canonical socket 时必须清掉 `--` terminator 之前的旧标签，混版本配置不能继续把伪安全状态传给 producer。任一真实凭据缺失或漂移仍必须在 import 前 fail closed。
-- official CUA 的目标应用图标不得依赖模型重复输出 `bundle_id`，也不得由 Renderer /
-  Desktop main 按 PID 反查。producer 必须在统一 tool invocation 中根据 session
-  `state_id`、frame registry `frame_id`、Helper `application_info` 或 capture 结果解析
-  权威身份，并只通过 namespaced result `_meta` 输出展示 locator。Core 仅在 official
-  authority gate 后将其投影到 versioned tool-result display；live、persisted、desktop
-  continuous 与 web-remote replayable 必须消费同一字段，禁止 UI 反向解析普通结果文本。
-  具体契约见
-  [CUA 目标应用展示元数据 Spec](../../../../../docs/cua/2026-08-19-cua-target-app-display-metadata-spec.md)。
-
-插件兼容动态 tool 还需要额外确认：
-
-- Claude/ZCode plugin 只通过现有 skill、custom command 和 MCP 投影进入
-  runtime；core 不直接读取插件 manifest 或插件目录。
-- 插件 MCP server 的变量展开、server name 规范化、timeout、trust gate 和
-  permission 声明必须在 MCP tool 注册前完成，避免 provider-visible tool
-  名称和实际 server 配置漂移。
-- 官方内置 plugin 的 MCP tool surface 由各 plugin 自己的 MCP server schema
-  声明，例如 `ios-simulator` 与 `android-emulator`。新增官方 plugin 时，
-  `.zcode-plugin/plugin.json`、缓存 seed、SEA asset manifest、skill/command
-  文案和 bootstrap/plugin tests 必须一起更新，确保模型看到的
-  `mcp__<normalized-server>__<tool>` 名称与缓存中实际启动的 server 一致。
-- 官方 Android plugin 的 target 类 tool 必须同时覆盖 USB 真机和 emulator。
-  `serial` 表示已连接 Android target，不应被当成 emulator-only 字段；
-  target 类 tool 无 `serial` 时可以选择 ready target，并且只在没有 ready
-  target 时才兜底启动 GUI emulator；`android_start_emulator` 只负责启动新的
-  GUI emulator，不负责复用既有 target；复用既有真机或 emulator 时，后续
-  target 类 tool 应直接传入已知 `serial`。
-
 ## 大内容兜底要求
 
 大内容 tool 需要在自身语义层先限制结果，再让 executor 的 `resultBudget` 作为最后保险。
@@ -363,6 +401,7 @@ MCP 动态 tool 还需要额外确认：
 - 文件保真：`Edit` 是否保持原编码和原换行风格，`Write` 是否按完整内容写入，并且所有文件 I/O 都通过 `FileSystemPort`。
 - 文件内容契约：`FileSystemPort.readTextFile` 返回给 core 的 text content 应是 LF 规范化后的 Unicode 逻辑内容，并通过 metadata 暴露原始 `encoding` 与 `lineEndings`；`Edit` / `Write` / `ApplyPatch` 需要保真写回时必须把这些 metadata 传回 adapter，而不是在 handler 中直接接触底层 bytes。
 - 文本编码边界：filesystem adapter 负责 BOM、UTF-8、UTF-16LE 以及常见中文 legacy 编码（GB2312 / GBK / GB18030）的检测、解码和写回。模型可见工具说明只表达“复制 Read 的逻辑文本即可”，不要要求模型猜测或传入编码参数。新增编码能力必须覆盖读、范围读、编辑、完整写入、结构化 patch、不可编码字符失败和二进制误判保护。
+- 大文本采样边界：`4096` 字节样本末尾的 UTF-8 候选按缺少字节数补读后再严格校验；未完成状态不能直接确认 UTF-8，非法续字节进入原有 legacy 检测。正文继续共用流式 decoder。按 [Read 文本大文件预算](01-read.md#文本大文件预算) 覆盖短读、EOF、ASCII 前缀后的 GB 字符与附件最终 provider 请求；不把有限采样视为全文件编码保证。
 - 错误契约：未读、partial read、stale file、匹配失败、多处匹配、notebook、权限拒绝和文件过大必须有稳定错误码，不能依赖英文错误文本判断流程。
 - 模型结果序列化：文件变更成功时只返回短确认文本；完整内容、diff 和 patch 留给内部 output、事件、UI projection 或 artifact。
 - Read 模型可见序列化：文本读取结果必须用专用 `formatModelContent` 输出 cat-n 风格行号文本，不得回退到 JSON 字符串化，否则 tab、换行等会被转义并污染后续 `Edit.old_string` 精确匹配。
@@ -401,9 +440,8 @@ Browser use 虽由 `js` REPL 驱动，但其 capability manifest、模型文档�
 共同组成模型可见工具契约。修改其中任一层时必须同步检查：
 
 - Node REPL 的模型可见身份必须来自真实 `node_repl` MCP server，工具名只有
-  `mcp__node_repl__js`。它是 Browser Use 与 Computer Use 共用的宿主入口，不是 browser 专属：
-  两个插件各自只携带 skill、docs、client 脚本与 native 依赖 root，宿主产物由 `node-repl-host`
-  seed 单元提供；不得再用 core 裸 `js*` tool 伪装 MCP 边界。
+  `mcp__node_repl__js`。Browser Use 插件携带 skill、docs 和 client 脚本，宿主产物由
+  `node-repl-host` seed 单元提供；不得用 core 裸 `js*` tool 伪装 MCP 边界。
 - `js_reset` 与 `js_add_node_module_dir` 已于 2026-09-18 整体删除（工具面 + handler + schema +
   moduleDirs 执行链），不得以“兼容”为由重新加回。两者实测调用量均为 0。
   `js_reset` 自 fresh-kernel 改造起就是空操作（每次 `js` 已是新 kernel），却每轮占用工具定义
@@ -429,21 +467,6 @@ Browser use 虽由 `js` REPL 驱动，但其 capability manifest、模型文档�
 - MCP tool call 必须把 session/turn/trace 放入 request `_meta`；browser bridge 必须经当前 session 的
   受认证本机 IPC broker 回到 `BrowserControlPort`。禁止 MCP child 直接引用 desktop/main/runtime 具体实现，
   也禁止按 cwd/workspacePath 猜 session 身份。
-- official plugin host 只在调用插件 `main()` 期间短暂恢复 CUA Helper 的 socket/token；`serveStdio`
-  的 server factory 则延迟到 MCP initialize 才执行。因此 `node_repl` 必须在 `main()` 返回前捕获并
-  构造 shared-host CUA runtime，factory 只能复用该 runtime，不能再次读取 `process.env`。Worker 只接收
-  runtime 创建的二跳 bridge socket/token，禁止得到 Helper 原始凭据：
-
-  ```text
-  plugin host 恢复 Helper env
-              |
-              v
-      node_repl main() -- capture --> shared-host CUA runtime
-              |
-              +-- return --> plugin host 清理 Helper env
-              |
-      MCP initialize --> deferred server factory --> captured runtime
-  ```
 
 - `tabs.list()` 返回 `TabInfo[]`，恢复控制时必须再用 `tabs.get(info.id)` 取得 `Tab`。受控列表为空
   不代表 backend 断线；若要继续控制用户可见页，再检查 `browser.user.openTabs()` 并显式 claim，
@@ -1000,48 +1023,6 @@ history。重点检查：
 
 如果改动触及共享 contract、runtime、executor、session event 或 model adapter，不能只跑单个 handler 测试；至少跑对应 package 的 typecheck 和相关 integration tests。
 
-## 提交前检查
-
-### Subagent Computer Use boundary（2026-08-18）
-
-官方 CUA 的子 Agent 限制不是 prompt 约束，而是 provider-visible surface 与 producer
-execution backstop 的双层 tool 边界。实现细节和稳定错误见
-[`docs/cua/2026-08-18-subagent-computer-use-unavailable-spec.md`](../../../../../docs/cua/2026-08-18-subagent-computer-use-unavailable-spec.md)。
-
-- Core 必须使用 `computeOfficialCuaServerNames` 的 authority 结果，不得按 server/tool 字符串匹配。
-- wildcard child 过滤 borrowed MCP snapshot；explicit CUA server/tool/selector/Skill 在模型请求前失败。
-- SkillPort 的 discover/load 都要过滤官方 `computer-use`，且保留第三方同名 Skill。
-- CUA producer 必须在 kill-switch、Broker 和 handler 前检查 namespaced `runtime_scope`。
-- 主 Agent canonical/alias、permission group、protected frame 和其他 MCP 的可见性保持不变。
-
-- spec 已更新，并指出旧行为是否保留、迁移或删除。
-- 无关脏改动没有混进同一个提交。
-- 没有直接 I/O 越过 adapter/port。
-- system prompt 不重复声明工具；provider-visible tool description / model request tools / adapter 投影三者一致。
-- permission、sideEffectScope、concurrentSafe、destructive、requiresUserInteraction 没有互相矛盾。
-- outputSchema、runtimeOutputSchema、resultBudget、artifact 和 UI projection 一致。
-- session event、message history、resume/compact/replay 没有丢失模型下一轮需要的信息。
-- tests 覆盖成功路径和关键失败路径；无法验证的跨平台行为写在剩余风险中。
-
-## 官方 CUA provider 拼写别名
-
-官方 CUA 的模型可见工具名只允许使用规范 server 段
-`mcp__computer-use__*`。模型偶发把连字符改写成下划线时，只能在同时满足以下条件后给
-`ToolEntry` 增加单向运行时别名 `mcp__computer_use__*`：
-
-- descriptor 来自已经通过 Host authority 校验的官方 `zcode-cua` server；
-- server 名精确等于官方规范名，不能从工具名反推 provenance；
-- alias 不进入 `ToolRegistry.toContracts()`、provider request、system prompt、manifest
-  或持久化事件；
-- executor 命中 alias 后必须先恢复 `entry.metadata.name`，再进入 permission、hook、
-  scheduler、event、history 和 MCP dispatch；
-- alias 与任意已注册 canonical tool 或其他 alias 冲突时必须拒绝，不能静默覆盖。
-
-禁止把该兼容扩展成全局连字符/下划线归一化。第三方 server 即使使用相同 display name，
-也不能获得官方 CUA alias、not-ready retry 或其他 trusted-origin 行为。
-
-
-完整 ModelSelection。CLI 保留闲时 turn 的防递归标记/denylist，完成、拒绝、排队、抛错均恢复
 
 ## Todo104：模型媒体能力字段统一
 
@@ -1055,6 +1036,16 @@ replayable 保持原有交付链路。验证包含协议候选严格校验、Rea
 ### 中途消息来源呈现（2026-09-11）
 
 SendMessage / RespondToCoordinator 的来源呈现遵循 `../loop/turn-steering.md`：更新 coordinator 识别提示，保留历史前缀兼容与已有回复/继续工作合同。参数、权限、执行目标、background batch 与可见性边界不扩展；child 不获得 SendMessage，parent peer 的回复目标来自绑定 agent-id。验证工具描述、真实父子 Runtime 请求、冷恢复及 BG25/O18/O19 fixture。
+
+### 2026-09-18 ToolSearch E2E 补齐
+
+仅扩展测试与文档：真实入口 → 搜索执行 → 最终 HTTP body → compact/fork/重启后的第一条请求；包含关闭请求以验证降级和恢复。产品 schema、权限、SQLite 和 App 协议均不变。验收场景见根目录 conversation-session coverage matrix 的 TS 子场景。
+
+### 2026-09-18 ToolSearch E2E 正式准入
+
+本次及此前 8 个 spec（29 项）经用户确认转正，case-local fixture 成为实际模型响应来源，
+原请求阶段、取消屏障与产品断言保持不变。只修改测试和文档；不新增生产接口或修改
+数据库、协议。正式路径与运行证据见根目录 coverage matrix，Docker 准入单独记录。
 
 ## CreateWorkflow 修订续跑的会话内免确认（2026-09-13）
 
@@ -1351,27 +1342,6 @@ gate」与 `docs/dynamic-workflow/launch.md`「When the model may call it」「W
 `tests/engine/site-phases.test.ts`、`dynamic-workflow-runtime/tests/streams.test.ts`（真沙箱：投递、
 FIFO 唤醒、ChannelClosed、死锁 / 停滞、词法阶段端到端）、`tests/facade-dts.test.ts` 重钉。
 
-## node_repl 工具卡的 CUA App 身份（2026-09-17）
-
-Computer Use 收进 `node_repl` 后，`mcp__node_repl__js` 的 display 需要额外承载目标 App 身份，
-否则工具卡只能显示通用图标。链路与判据：
-
-- `createToolResultDisplay` 的 CUA 分支按 `readCuaToolName`（要求工具名含 `computer_use`）分流，
-  对 `mcp__node_repl__js` **不成立**，不要试图靠扩大该正则来复用 `kind: "cua"`：CUA 已不是
-  独立工具，`toolName`、`structuredContent`、`errorCode` 等字段在 js 结果上都没有对应物。
-- 身份走 `node_repl_images` display 的可选 `app: { appKey, displayName? }`。该 display 的
-  `images` 因此改为可选：纯动作 cell 没有截图，但仍需要投影身份。kind 名保留（改名会让
-  已持久化的 row 整段被 strict schema 剥掉）。
-- 事实只能来自宿主：node-repl-host 的 CUA bridge 从 broker 响应读 producer `_meta`，写入
-  `NodeReplRunResult.cuaApp`，再由 `toMcpRunResult` 落到 `_meta["zcode/nodeReplCuaApp"]`。
-  沙箱可写通道送来的 producer 键必须删除（`nodeRepl.setResponseMeta` /
-  `nodeRepl.emitStructuredResult` 都在模型可见 globals 上），处置同
-  `ZCODE_MCP_BROWSER_SCREENSHOT_CONTENT_INDICES_META_KEY`。
-- 三处 strict schema 必须同集：contracts 的 `toolResultDisplayPayloadSchema`、shared 的
-  `toolCallDisplaySchema`，以及 `toProtocolToolCallDisplay` 的放行名单（`node_repl_images`
-  已在名单内，扩字段不需要改它）。
-- 完整展示合同见 `docs/cua/cua-tool-app-identity-summary.md`「node_repl 时代的身份来源」。
-
 ## 动态工作流工具面的按需注册（onDemand）
 
 灰度 mode `onDemand` 不再折叠成 `alwaysOn`：十个工作流工具（与 Agent / Task 描述里那行
@@ -1623,3 +1593,33 @@ interrupted result。修复不改变工具 schema、权限、执行时机、协�
 
 身份定位补充：conversation-quotes 将原始有序 text/mention 节点逐条映射到模型专用
 材料，保留同名手打文字与原生提及的区别，不改持久化正文或发送 ref 的授权边界。
+
+2026-10-09 子代理模型的 provider 边界：`subagent_model` 与脚本 `model` 名字的解析（core `model-reference.ts`）
+不再让裸 `modelId` 落到会话 provider 以外的条目上——裸名只在当前 provider 下找，只在别处有即
+`other_provider` 业务失败并列出全称；跨 provider 只有全称一种写法，而技能、两个工具的字段描述与
+`docs/dynamic-workflow/launch.md`「`subagent_model`」都改为：绝不自行把子代理换到用户没点名的另一个
+provider 的模型上。起因是主代理照技能示例自选「轻量」模型，把子代理送去了另一张账单。目录无
+`current` 条目时保持旧的「唯一就取、多个即 ambiguous」。全称仍能跨 provider，所以权限补上一道：
+`AmendWorkflow` 的 resolveInput 最后一步（绑定表落定之后）算出 `predecessor.introduces_providers`——
+这次将用的 provider（归一化后的 `subagent_model` 与 `model_bindings`）减去会话模型与前驱 `run-launched`
+上用过的 provider，非空才在场；契约谓词 `isAmendWorkflowOwnedPredecessor` 见它在场即不给本会话 run
+免确认，权限服务照常 ask（`tool.alwaysAsk`），Deny 不动前驱。同 provider 换模型、沿用前驱的选择仍免
+确认；只改并发的就地调整与 `not_live` 落回不引入模型，不受影响。CreateWorkflow 本来就总开窗，不变。
+schema 只多这个回填键（模型面 JSON schema 不列，带 `predecessor` 的调用照旧在校验被拒）；事件与
+UI 不变，桌面只从前驱块读 `status` / `name`，旧客户端不受新键影响。
+
+## 插件使用归属
+
+ToolEntry 的 MCP pluginId 在执行准入时捕获，沿工具成功/失败事件、V4 tool.lifecycle、既有 agent_step 传递。保持 Skill 原字段兼容；普通 MCP 和未知归属留空，不从名字解析、不复制执行事件。仅增加可选 metadata，不改变工具执行、权限、存储和 continuous/replayable 交付。
+
+## UI 插件后台首次创建
+
+成功 MCP UI 工具结果沿现有 V4 投影提交后，以 `v4/plugin-ui/tool-result` 通知本地桌面宿主，
+不依赖 conversation 订阅或工具卡片挂载。复用已校验的 display.ui 和投影输入；失败、取消、
+MCP isError 和历史 hydration 不触发创建。工具执行、权限、原始结果和持久化不变；
+手机 replayable 不消费创建副作用。测试覆盖无订阅实时结果、重复事件、历史恢复、后台建页与返回复用。
+宿主执行/保留规则见根目录 `docs/plugin-ui-background-execution.md`。
+
+### 文档插件多窗口视图修复（2026-10-16）
+
+MCP app-only report_view 增加可选 viewId，release_view 释放指定窗口；模型 get_view 可选 viewId，缺省且存在多个上报窗口时返回歧义与清单。状态唯一归属 DocumentOwner，不由页面决定其他窗口的视图；旧客户端缺省 viewId 仍走 legacy 槽。show_in_viewer 保持专用 surface 路由并明确工具描述。导入仍为 app-only workspace 副作用；串行 admission、10 分钟未活动过期与部分文件清扫归 importer，完成副本不清理。覆盖 schema 到真实 MCP/AppBridge 的多窗口回归。

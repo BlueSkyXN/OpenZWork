@@ -1,90 +1,25 @@
 # Todo 26：智谱 Access Mode 契约切换与伪通用协议字段退役
 
-> 状态：已完成
->
-> 日期：2026-08-27
->
-> 前置关系：Todo 24 已完成 `accessId`、账号创建时绑定和请求安全校验 pathname 特判的清理；本 Todo 根据后续产品裁决，
-> 取代 Todo 24 中 `api-key / zhipu-account / execution-provided` 三种 Access、`planKind` 以及
-> `challenge / requestSigning / executionProtocol` 通用字段的目标结构。Todo 24 的账号动态鉴权、Account Overlay
-> 收窄、私有 Credential 隔离和服务端最终授权等其他结论继续有效。
+
 
 ## 1. 最终裁决
 
 Provider Access 不再用一组看似正交、实际只有特定智谱产品能够执行的可选字段描述产品协议。正式结构只保留两种一级
 Access Type：
 
-```ts
-type ProviderAccessConfig = ApiKeyAccessConfig | ZhipuAccountAccessConfig;
-
-interface ApiKeyAccessConfig {
-  readonly type: "api-key";
-  readonly apiKey?: string | null;
-  readonly apiKeyManagementUrl?: string | null;
-}
-
-type ZhipuAccountMode =
-  | "api-key"
-  | "start-plan"
-  | "individual-coding-plan"
-  | "team-coding-plan"
-
-interface ZhipuAccountAccessConfig {
-  readonly type: "zhipu-account";
-  readonly family?: "zai" | "bigmodel" | null;
-  readonly mode?: ZhipuAccountMode | null;
-}
-```
-
 本轮 `mode` 只是普通枚举值，不建立二级对象、二级 Class 或二级 discriminated union：
-
-```json
-{
-  "type": "zhipu-account",
-  "family": "bigmodel",
-  "mode": "team-coding-plan"
-}
-```
 
 智谱产品专属的访问策略只由 `access.type + access.mode` 分派；`family` 继续提供访问体系参数，
 Provider API Config 继续提供 Endpoint 与 API 协议。不得再暴露或持久化以下伪通用选项：
-
-```text
-planKind
-challenge
-requestSigning
-executionProtocol
-execution-provided
-```
 
 这不是把协议事实移回 Provider ID、Model ID 或 URL，而是让有限、真实的智谱访问种类成为正式 Config 判别事实。
 
 ## 2. 设计原则
 
-### 2.1 Type 与 Mode 表达真实访问产品
 
-```text
-access.type
-├─ api-key
-│  └─ 普通模型服务的静态 API Key 访问
-│
-└─ zhipu-account
-   ├─ family = zai | bigmodel
-   └─ mode
-      ├─ api-key
-      ├─ start-plan
-      ├─ individual-coding-plan
-      ├─ team-coding-plan
-```
-
-`zhipu-account` 在这里表示智谱账号与产品访问体系，包含固定 Family 中由账号提供 API Key 的入口。
-它不表示 Provider Config 管理动态账号凭据；具体 API Key、JWT、Ticket 和 Team scope 仍由当前
-Environment 的 Account/Credential Service 解析。
 
 ### 2.2 不为单一产品行为制造通用 Config 字段
 
-- 官方版本访问安全校验只属于 `zhipu-account/start-plan`；
-- ZCode V4 静态准入只属于 `zhipu-account/api-key`、`individual-coding-plan` 和 `team-coding-plan`；
 - 普通 `api-key` 永远不因 Endpoint、Provider ID 或 Model ID 自动进入 ZCode V4；
 - 新增真实访问产品时新增 `mode` 枚举、严格 Schema 分支行为和穷举测试，不向所有 Access 塞可选字段。
 
@@ -114,10 +49,6 @@ Personal Overlay
 └─ 只覆盖其 Source Schema 允许的用户字段
 ```
 
-`family/mode` 不是 Account Service 动态状态，也不是设置页通用选项。Account Connection 只提供当前登录、当前连接、套餐、
-Team scope 和凭据状态。Personal 继续是最后一层 Overlay，但不因此获得改写 Built-in `group/family/mode` 等来源专属事实的
-权限。固定 `account:*` Provider 的 Personal Overlay 不写入 `access`；手动输入的 API Key 只属于普通
-`api-key` Provider。
 
 ## 3. Built-in Provider 精确映射
 
@@ -137,14 +68,12 @@ Team scope 和凭据状态。Personal 继续是最后一层 Overlay，但不因�
 
 | Provider ID                | Access                                           | V4  |
 | -------------------------- | ------------------------------------------------ | --- |
-| `account:zai-api-key`      | `zhipu-account / family=zai / mode=api-key`      | 是  |
-| `account:bigmodel-api-key` | `zhipu-account / family=bigmodel / mode=api-key` | 是  |
+
 
 它们属于固定 Family UI。Built-in 只声明 `type/family/mode`；实际 API Key 由当前账号体系提供，
 经 Account/Credential Service 在请求期解析，不写入 Personal Config、Account Overlay、Registry 或 Active Model。
 
-当前未发布实现把这两个 `account:*` Provider 也做成了手动输入 API Key，并将 Key 保存到 Personal
-Config。这是本 Todo 需要直接替换的中间态，不是目标产品契约。
+
 
 实现修正见 [`Bugfix 09：Account API Key 所有权漂移清理`](./bugfix-09-account-api-key-ownership-drift.md)：
 Account API 设置页、Family mode 恢复逻辑和 Welcome 手填 Key 入口不再把账号 Provider 当成普通 API Key
@@ -153,9 +82,7 @@ Provider，写边界同时机械拒绝固定 Account Provider 的 Personal `acce
 
 | 产品入口                               | Access Mode              | 静态行为                                                     |
 | -------------------------------------- | ------------------------ | ------------------------------------------------------------ |
-| Z.ai / BigModel Start Plan             | `start-plan`             | 官方版本安全校验材料链；不进入 V4                            |
-| Z.ai / BigModel Individual Coding Plan | `individual-coding-plan` | 当前连接请求鉴权；具备 V4 静态准入                           |
-| Z.ai / BigModel Team Coding Plan       | `team-coding-plan`       | 当前 Team scope 与请求鉴权；具备 V4 静态准入                 |
+
 
 每个 Provider 保留既有精确 Provider ID、`group`、`visibility`、Endpoint 和模型成员。固定 ID 继续用于 Provider 身份、
 ModelSelection 和任务持久化，不用于猜测 Mode。
@@ -168,24 +95,13 @@ ModelSelection 和任务持久化，不用于猜测 Mode。
 | --------------- | -------------------------------------------------------------------------------------------- |
 | ZCode Built-in  | 完整 `type`；智谱 Provider 的完整 `family + mode`；普通 API Provider 的 Key 管理入口         |
 | Account Overlay | 不允许写入或替换 `access`                                                                    |
-| Personal        | 只允许普通/Personal `api-key` Provider 的 API Key Access；固定 `account:*` 不允许写 `access` |
+
 
 高级布尔开关。
 
 ### 4.2 稀疏 Config 与完整 Effective
 
 本轮不建立二级 Mode 联合。稀疏 Config 仍可让允许的叶子缺省或显式 `null`，但 Effective Access 必须完整：
-
-```text
-api-key
-├─ type 完整
-└─ enabled Provider 执行前具有非空 API Key
-
-zhipu-account/所有 Mode
-├─ family 完整
-├─ mode 完整
-└─ 不存在 apiKey/apiKeyManagementUrl 配置字段
-```
 
 账号动态凭据缺失不使静态 Provider Config 结构不完整；真正请求时由 Request Auth 在网络前失败。
 
@@ -217,48 +133,15 @@ type=api-key
    └─ 普通 Transport，不进入 ZCode V4
 ```
 
-### 5.2 Family API Key
-
-```text
-type=zhipu-account, mode=api-key
-├─ 从当前 Family Account/Credential Service 解析账号提供的 API Key
-├─ 不读取 Personal Provider API Key
-└─ 具备 ZCode V4 静态准入
-```
 
 ### 5.3 Start、Individual 与 Team
-
-```text
-mode=start-plan
-└─ 当前兼容 Start 连接 + 官方版本安全校验材料
-
-mode=individual-coding-plan
-└─ 当前兼容 Individual 连接 + Coding Plan Key + V4 静态准入
-
-mode=team-coding-plan
-└─ 同一次当前连接解析 product/org/project + Team Key + V4 静态准入
-```
 
 旧 Active Model 只冻结静态 `type/family/mode`，每次请求允许账号服务按当前兼容连接及自身缓存/刷新策略解析材料。它不绑定
 创建时账号、Team project、凭据或连接版本。
 
-
-```text
-├─ family 直接来自 Access，不从 provider.group 推导
-├─ 当前兼容 Individual/Team 连接
-├─ 本次执行注入 JWT + Coding Plan Key + Ticket + Team Headers
-```
-
-
 ### 5.5 ZCode V4
 
 V4 静态准入只由以下模式集合决定：
-
-```text
-zhipu-account/api-key
-zhipu-account/individual-coding-plan
-zhipu-account/team-coding-plan
-```
 
 官方版本请求安全校验的动态发布开关与协议实现保持不变（细节只在官方版本维护）。不得恢复 URL、pathname、Provider ID 或 Model ID 推断。
 
@@ -286,12 +169,6 @@ Start 模型集合；新状态未解析成功时等待或 fail-closed。
 
 ## 6.1 实施结果（2026-08-27）
 
-- Provider Config 和 Runtime 已收口为 `api-key | zhipu-account`，静态智谱访问使用 `family + mode`。
-- Built-in、Provider Schema、Registry、Active Model、Adapter 与 Bootstrap 已删除
-  `execution-provided`、`planKind`静态字段、`challenge`、`requestSigning` 和 `executionProtocol`。
-- Account Overlay 只投影 `enabled` 与 Start 账号模型集合；固定 `account:*` Provider 的 Personal Source
-  严格拒绝 `access`。
-- 动态 `ZCodeAccountAccess.planKind` 仍表达当前账号连接解析结果，不是 Provider Config 的静态字段。
 - 已通过 Provider、Provider Node、Services、Adapter 与 Bootstrap 定向回归；Adapter 全量仅剩两个与本轮
   无关的既有失败（进程后代清理、Session Store 旧期望形状）。
 
@@ -339,16 +216,13 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 ### Slice B：Config、Schema 与 Built-in
 
 1. `ApiKeyAccessConfig` 删除通用协议字段；
-2. `ZhipuAccountAccessConfig` 使用 `family + mode enum`，删除 `planKind`；
 3. 删除 `ExecutionProvidedAccessConfig` 和 `ProviderAccessProtocolInput`；
 4. 更新 Source Schema、Overlay、序列化、Personal projection 和完整性校验；
 5. 迁移全部 Built-in Provider；`zai-api/bigmodel-api` 明确保持普通 API Key 且无 V4；
-7. `ZhipuAccountAccessConfig` 不声明 API Key 字段，Personal Source 不允许为固定 `account:*` 写入 `access`。
+
 
 ### Slice C：Account 与请求期鉴权
 
-1. Account Resolver 只处理 `zhipu-account`，按 `mode` 穷举 availability；Start 额外投影账号模型集合；
-2. Account Overlay 不再识别 `execution-provided`、`planKind` 或通用协议字段；
 3. Request Auth 按 `family + mode` 解析当前连接；`mode=api-key` 取当前账号提供的 API Key，不读 Personal Config；
 5. Account LKG 增加或保留私有账号 scope 防串态，不进入公共链。
 
@@ -361,10 +235,7 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 
 ### Slice E：Services、UI 与清理
 
-1. 官方版本安全校验 UI 改为识别 `zhipu-account/start-plan`；
 2. Family UI 只展示 Built-in Mode 对应产品入口，不提供 Mode 或 API Key 编辑控件；
-3. 现有 Family 登录 API Key 表单不再向 `account:*` 持久化 Personal API Key；手动 Key 只进入普通
-   `zai-api/bigmodel-api` Provider 的 Personal Config；
 5. Usage/Entitlement 继续读取 Account/Subscription，不从 Access 反推动态状态；
 6. 同步当前 Design、Feature Graph、步骤索引与 Todo 24 superseded 说明。
 
@@ -373,16 +244,11 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 ### 10.1 Config 与来源边界
 
 - 两种一级 Access Type 严格解析、Overlay、`null` 和 JSON round-trip；
-- `zhipu-account.mode` 五个枚举值完整解析；
-- 正式 Schema 拒绝 `planKind/challenge/requestSigning/executionProtocol/execution-provided`；
-- Account Schema 拒绝 `access`；Personal Schema 拒绝为固定 `account:*` 写入任何 `access`；
-- `zhipu-account` 的所有 Mode 都拒绝 `apiKey/apiKeyManagementUrl`；
 - Effective Access 缺少 `family/mode` 时不能进入 Registry。
 
 ### 10.2 Built-in 映射
 
 - `zai-api/bigmodel-api` 是普通 `api-key` 且不进入 V4；
-- 两个 Family API Key Provider 是 `zhipu-account/api-key`；
 - Built-in JSON 不含真实 API Key和旧协议字段。
 
 ### 10.3 运行时纵向证明
@@ -406,31 +272,12 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 
 完成时生产公共链至少满足：
 
-```text
-access.planKind                              = 0
-access.challenge                             = 0
-access.requestSigning                        = 0
-access.executionProtocol                     = 0
-Access Type execution-provided               = 0
-ProviderAccessProtocolInput                  = 0
-ExecutionProvidedAccessConfig                = 0
-生产公共链 accessId                           = 0
-生产公共链 accountConnectionVersion            = 0
-从 provider.group 推导 Access family           = 0
-按 URL/path/Provider ID/Model ID 推导 V4 或 Mode = 0
-zai-api / bigmodel-api 的 V4 准入              = 0
-ZhipuAccountAccessConfig.apiKey                   = 0
-ZhipuAccountAccessConfig.apiKeyManagementUrl      = 0
-固定 account:* 的 Personal access               = 0
-从 Personal Config 解析账号 API Key            = 0
-```
-
 允许保留：
 
 - 历史实施文档中的旧字段证据；
 - Credential Service 私有账号身份、物理 Key 和 LKG scope；
 - 官方版本请求安全校验的动态开关及内部协议状态；
-- Account Connection 自己的连接选择 `kind`，但不得重新投影为 Provider `planKind`。
+
 
 机械检查必须逐条审计例外，不能用宽泛 allowlist 隐藏生产残留。
 

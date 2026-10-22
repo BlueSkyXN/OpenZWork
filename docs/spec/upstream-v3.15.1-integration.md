@@ -95,11 +95,15 @@ sequenceDiagram
 
 - WP-05 已移除的 telemetry/ARMS 发送、采样、上报与其 UI hook 专属测试随该领域清理；混合 IPC、URL 校验、通用协议与本地日志导出断言保留。物理删除约束继续由 `tests/private-cleanup/cleanup.test.cjs` 验证，核心清单不减少。
 
+- E2E 通用依赖按各自固定上游版本恢复，用户数据根使用 `.openzwork`；工作区、ToolSearch、冷恢复与手机远控场景保留。测试准备使用当前本地职业设置、Personal Provider 和设备配对协议，不恢复官方账号、套餐连接、账号锚定引导记录或账号 relay。
+
 - 根单元测试统一注册到 Vitest：新增的本地路径、记忆迁移、命令改名和本地使用统计回归不再在 Vitest worker 中启动另一个 Node test runner。断言、隔离目录和平台跳过条件保留，文件系统观察改用等价的 Vitest spy。
 
 - WP-04/06/07 已移除的官方账号、套餐、Client Scenes、分享、云端反馈和自动更新专属回归随对应实现退役；包含性能模式、本地反馈 CAS、workspace deep link、IPC URL 验证或协议 ACK 的混合文件保留这些场景。
 
 - Provider 分发沿用上游 v2 防误删合同：新 Source 只发送 Personal Config，独立 Credential Store 不属于 OpenZWork 同步范围；新 Target 兼容接收 v1 的历史 account-provider 字段但不读取、应用或删除这些 Key。v2 非空历史凭据直接拒绝。旧 Target 必须在写入前拒绝 v2；Personal 文件的 Key、默认偏好、原子替换和 CAS 回滚保持原合同。
+
+- 3.16.1 保留的 Skill 事实字段沿用固定上游安全标识规则：限定字符与长度，并拒绝密钥形态；只恢复协议校验，不引入已移除的遥测发送或账号依赖。
 
 ## 保留 UI 测试合同修复
 

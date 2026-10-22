@@ -29,7 +29,7 @@
 - 短生命周期目录必须使用单次唯一子目录，结束后在 `finally` 中清理。
 - 失败清理不能影响主流程结果，但残留必须留在上述可控目录中，便于后续“完全清理”功能删除。
 - zcode-cli 主流程仍优先使用配置解析后的 `storageRoot`；只有 adapter 默认兜底才使用默认 `~/.openzwork/cli/exec`。
-- service / desktop 侧使用现有 data base dir 语义，默认落到 `~/.openzwork`，配置了 `ZCODE_DATA_BASE_DIR` 时落到 `{dataBaseDir}/.zcode`。
+- service / desktop 侧使用现有 data base dir 语义，默认落到 `~/.openzwork`，配置了 `ZCODE_DATA_BASE_DIR` 时落到 `{dataBaseDir}/.openzwork`。
 
 ## 非目标
 

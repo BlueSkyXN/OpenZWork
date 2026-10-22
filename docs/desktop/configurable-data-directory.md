@@ -22,9 +22,9 @@
 
 ## Bootstrap 机制
 
-`setting.json` 始终且只存在于默认 `homedir()/.zcode/v2/setting.json`，不跟随自定义目录迁移。它是整个路径切换的引导入口：
+`setting.json` 始终且只存在于默认 `homedir()/.openzwork/v2/setting.json`，不跟随自定义目录迁移。它是整个路径切换的引导入口：
 
-1. 主进程启动 → 从 `homedir()/.zcode/v2/setting.json` 读取 `dataBaseDir`
+1. 主进程启动 → 从 `homedir()/.openzwork/v2/setting.json` 读取 `dataBaseDir`
 2. 如果有值 → 调用 `setDataBaseDir(dir)` 切换后续所有数据路径
 3. 启动 host process 时通过环境变量 `ZCODE_DATA_BASE_DIR` 传递给子进程
 

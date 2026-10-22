@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rename, rm, writeFile } from "node:fs/promises";
 import * as fs from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, parse, resolve } from "node:path";
@@ -316,7 +316,8 @@ describe("Host incremental subagent snapshots", () => {
         expect(vi.mocked(fs.readFile).mock.results.at(-1)?.value).toBe(gate.promise),
       );
       const obsolete = initialWatcherFor(f.userRoot);
-      await rm(f.userRoot, { recursive: true });
+      // 保留旧目录，使普通分支的新身份确定；reused-inode 分支显式模拟 inode 复用。
+      await rename(f.userRoot, `${f.userRoot}-obsolete`);
       await mkdir(f.userRoot);
       replaced = true;
       await writeFile(path, markdown("aaa", "replacement"));

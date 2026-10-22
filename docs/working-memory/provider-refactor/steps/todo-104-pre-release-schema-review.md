@@ -168,10 +168,6 @@ type ProviderApiType = "anthropic-messages" | "openai-chat-completions" | "opena
 
 **access**：保留两种访问结构，不新增 OAuth 分支。
 
-```ts
-type ProviderAccessConfig = ApiKeyAccessConfig | ZhipuAccountAccessConfig;
-```
-
 **API Key 访问**：字段保持。
 
 ```ts
@@ -184,19 +180,10 @@ interface ApiKeyAccessConfig {
 
 **账号访问**：字段保持，包括 entitled。
 
-```ts
-interface ZhipuAccountAccessConfig {
-  type: "zhipu-account";
-  accountType?: "zai" | "bigmodel" | null;
-  entitled?: boolean | null;
-}
-```
-
 **外层规则集合**：统一见第 6.4 节，不再以 Record key 承载序列化的 Provider 身份；内部查询仍可建立 Map 索引。
 
 ### 3.2 已解释的字段背景
 
-- `group` 是产品分组：`standard-personal` 对应普通个人 Provider（包括从模板创建的 API Key Provider），`zai-family` / `bigmodel-family` 对应账号套餐 Provider。当前用于分组排序、设置导航、删除限制和保存分组校验；本轮未决定重构这些调用。
 - `logo` 已有 schema：`{ type: "builtin", key: string }`，运行时校验 key 非空，未限制为固定 key enum。UI 将 key 映射到内置图标，未知 key 有兜底；没有在本轮增加 URL、自定义上传或其他 logo 类型。
 
 ## 4. entitled 的裁决与调用背景
@@ -230,7 +217,6 @@ ZCode 本地可用性判断与请求装配
 | Account 结果解析             | `available` 生成 true，`pending` / `unavailable` 生成 false；unknown 可沿用同身份旧结果，没有旧结果则为 false。初次账号事实未到达时为 false。                   |
 | 独立 CLI                     | 根据本地账号身份及对应 API Key 是否存在生成值；配置检查判断是否存在 entitled 的账号 Provider。                                                                  |
 | Provider Resolver / Registry | 账号 Provider 的执行资格要求 entitled 为 true，同时检查 current、配置完整性等；可选择性还受 visibility 影响。                                                   |
-| 设置页                       | 参与导航项账号状态、套餐卡片、Start Plan 可见性、连接 / 重新授权完成判断和首次补同步。                                                                          |
 | 额度及套餐查询               | 侧栏、设置页、输入框和套餐身份快照，通过公共 helper 获取账号访问对象及刷新指纹。                                                                                |
 | 套餐只读查询                 | 专用 inspection helper 允许部分尚未 entitled 的状态查询权益；没有 accountState 时才回退到 entitled 判断。用于设置详情、权益 hook、手动领取横幅及 OAuth 后刷新。 |
 | 类型与投影                   | 字段出现在 Provider Access Config、AccountProviderState 投影以及协议账号访问对象；本轮不改变这些结构。                                                          |
@@ -245,7 +231,6 @@ ZCode 本地可用性判断与请求装配
 - [独立 CLI 账号配置](../../../../apps/zcode-cli/packages/bootstrap/src/app/standalone-account-provider-runtime.ts)
 - [UI Account Access helpers](../../../../packages/ui/src/lib/accountProviderAccess.ts)
 - [Provider 设置页](../../../../packages/ui/src/settings/ModelProviderSection.tsx)
-- [套餐状态计算](../../../../packages/ui/src/settings/model-provider-section/providerFamilyConnectionVisibility.ts)
 - [套餐身份快照](../../../../packages/ui/src/hooks/usePlanIdentitySnapshot.ts)
 - [购买入口埋点](../../../../packages/ui/src/lib/codingPlanFunnelTelemetry.ts)
 - [协议账号访问对象](../../../../packages/shared/src/zcode-protocol/index.ts)
@@ -556,7 +541,6 @@ Provider 精确模型规则见 6.2；内置集合只接受普通 ProviderModelCo
 
 | 原位置及条件                                                       | 覆盖内容                      | 确认后的处理                                                                                         |
 | ------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Model：账号个人 / 团队 / Start Plan Provider，modelMatch 为 `".*"` | 图片、视频输入为 true         | 改为 Endpoint 条件，移入 providerSiteRules；保留 modelMatch `".*"`                                   |
 | Model + API：anthropic，Claude 模型，Anthropic Messages            | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 Anthropic Endpoint 匹配，保留模型及 API 条件                              |
 | Model + API：moonshot-kimi，K3 系列，Anthropic Messages            | MFJS 工具 Schema 为 true      | 移入 providerSiteRules，按 Moonshot Endpoint 匹配，保留 K3 模型及 API 条件，不提升为所有站点通用规则 |
 | Model + API：deepseek，所有模型，Anthropic Messages                | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 DeepSeek Endpoint 匹配，保留 modelMatch `".*"` 及 API 条件                |
@@ -568,7 +552,7 @@ Endpoint 依据当前配置 / 模板记录，实施时按对应路径生成匹�
 - DeepSeek：`https://api.deepseek.com/anthropic`。
 
 
-已有匹配 Z.ai / BigModel 上述两个普通 Anthropic Endpoint 的站点规则保留：modelMatch 为 `".*"`、API 为 Anthropic Messages，声明 supportsNativeWebSearch 与 supportsMidConversationSystem 为 true。本次不将这条已有搜索规则无依据扩大到 Start Plan Endpoint；不要因图片 / 视频规则含 Start Plan 而把不同规则的 URL 条件混在一起。
+
 
 最终删除 providerMatch 字段及对应解析、匹配、序列化逻辑；四条原规则改为站点规则，不以兼容新格式为由保留第二套 Provider 正则匹配入口。按 providerId + modelId 的精确实例规则仍保留。
 
@@ -687,7 +671,7 @@ Provider 名称在外层 ProviderConfigRule 中叫 providerName，可选性和 n
 
 内部执行若需要合并处理，可以从所属集合补出内部类别标签；不能要求文件再保存一份类别，也不能通过 Map/API/URL 字段猜回规则所属集合而丢失其来源边界。UI 智能配置开关对应个人规则所属的普通 / 手动集合，不另存 useSmartConfig。
 
-本裁决只删除规则对象中由集合确定的 type。Provider API 的协议 type、Access 的 api-key / zhipu-account type、Logo 资源 type 保持；不要全仓机械删除 type 字段。历史先按 type 拆智能 / 手动规则，随后分两个数组，最终又去掉重复 type；最终版本以本节及 6.2 为准。
+
 
 ### 6.7 内置 / 个人配置文件包装：已确认
 
@@ -775,7 +759,7 @@ providerOrder 继续独立表达展示顺序，不用规则数组顺序代替。
 | Template | 目前提供 logo、api、builtinModelIds 及不含 apiKey 的 API Key Access 元数据；不声明个人模型。旧 label 按本轮裁决删除，模板名称只在外层 templateNameMap。                                             |
 | Built-in | group 必填且限 zai-family / bigmodel-family；允许 logo、api、access、builtinModelIds、visibility，不声明 personalModelIds / modelOrder。身份与名称按 6.4 / 6.5 移到外层。                           |
 | Personal | 不允许 builtinModelIds；group 只允许 standard-personal 的覆盖值；固定 Account Provider 的 access 不能由个人层覆盖。个人 Endpoint 目前允许保留尚未完成编辑的字符串，由最终完整性校验决定是否可执行。 |
-| Account  | 目前只提供 builtinModelIds，以及 zhipu-account Access 的 entitled 覆盖；不是任意 ProviderConfig 字段的写入口。Access 的 type 仍保留。                                                               |
+
 
 实施时保留这些已有字段限制，通过基础 schema 派生，配合已确认的改名和身份 / 名称外移；不追加来源重组或专用类型命名工程。6.4 / 6.7 用公共 ProviderConfig / ProviderConfigRule 展示共同形状，不表示各来源可无差别写入全部字段。固定 Account Provider 的个人 access 禁写等依赖 providerId 的校验，在 ID 外移后仍须保留在外层规则校验，不能只搬字段而丢失约束。
 
@@ -971,13 +955,6 @@ personalConfig 的具体层次复用 6.7；代码复用数据 schema 时保持�
 账号设置和凭据项保持；账号连接选择不在本轮继续改名或重组。
 
 ```ts
-interface ProviderProvisioningAccountSettings {
-  providerFamilyDomain: "zai" | "bigmodel" | null;
-  providerFamilyConnectionSelections: ProviderFamilyConnectionSelectionSettings;
-}
-```
-
-```ts
 interface ProviderProvisioningCredentialEntry {
   scope: "oauth-session" | "account-provider";
   key: string;
@@ -1060,7 +1037,7 @@ interface ProviderProvisioningResult {
 
 #### 6.14.2 账号连接选择：明确不调整
 
-保留现有 setting.json 内 providerFamilyConnectionSelections：zai / bigmodel 分别保存连接选择；kind 为 start-plan、individual-coding-plan 或 team-coding-plan，团队项带 productId、organizationId、projectId。用户已将此前“先忽略”明确为“不调整”，不进行 kind / mode 命名统一，也不重组字段；不再列为待讨论的命名问题。
+
 
 已有 schema 却重复手写类型的问题仍按第 1.1 节统一处理；这是实现的类型来源整理，不改变持久化格式。证据：[账号连接选择 schema 与重复类型](../../../../packages/shared/src/provider-family-connection-selection.ts)。
 
@@ -1186,21 +1163,6 @@ Endpoint A(rev 20) -> 切换到 B(rev 20，内容不同)
 
 2026-09-10 实施更新：B1c 已落实磁盘包装与旧快照保留，局部集成回归通过，完整交付验证仍跟随 B5。下文“当前迁移后”为改造前的调查示例。逻辑 SessionStorePort 沿用 ModelSelection payload，adapter 统一包装/解包；不要求 core/bootstrap 感知回滚字段。证据及边界见 [实施账本](../research/todo104-schema-implementation-ledger.md)。
 
-数据库 session_entry 中已有 type 为 runtime/model_selection 的“当前模型选择”记录。当前迁移若命中这条旧记录，会沿用其 id，改写它的 data JSON；从旧消息推导选择时则新增一条 entry。旧 message 行保持原字节。以能确定的旧 Z.ai Coding Plan 身份为例：
-
-```text
-同一条 session_entry.data（迁移前）
-  providerId: "builtin:zai-coding-plan"
-  modelId: "GLM-5.2"
-  thoughtLevel: "high"
-                 |
-                 v
-同一条 session_entry.data（当前迁移后）
-  providerId: "account:zai-individual-coding-plan"
-  modelId: "GLM-5.2"
-  options: { reasoningLevel: "high" }
-```
-
 这里有两处原位损失：thoughtLevel 被替换；providerId 虽然字段名相同，但值也改变了。仅保留 thoughtLevel 不等于保留旧版原来的模型身份。再次对照 origin/staging@790884b1ce，旧版确实已有相同 type 和稳定 id 的选择记录，不是本分支新建的记录类别。
 
 用户已确认这是遗漏，并明确要求改为新字段迁移。最终方案：保留同一条 entry 的 id / type，在 data 中新增 modelSelection；旧 providerId / modelId / thoughtLevel 保留原值，后续新版选择写入只更新新成员，不持续反向同步旧字段。不新增表、不另建 entry 类型；该裁决取代此前待讨论状态及“另存新版记录”的未定建议。
@@ -1303,7 +1265,6 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 | ModelConfig、Properties、输入输出格式、OptionSpecs | config/schema.ts 有运行时定义，model-config.ts 另手写 Input / Object 等字段                                                             | 共享 schema，推导数据类型；不把 class 删除视作前提                                                          |
 | ModelConfigRule 三种成员                           | schema 工厂定义规则结构，model-config.ts 又手写规则接口                                                                                 | 从各具体规则 schema 推导；工厂参数当前使用 ZodTypeAny，实施时需保留 config 的具体类型，不能让推导退化为 any |
 | Registry 完整配置                                  | resolver.ts 另手写 RegistryModelConfig / RegistryModelConfigObject 等完整成员；目前完整性依靠 validateComplete，而非已有独立完整 schema | 与完整 / 稀疏 / 固定配置共享字段定义，不错误声称这里已存在完整 schema 只是没 infer                          |
-| 协议 ZCodeProviderAccountAccess                    | shared/zcode-protocol/index.ts 已从 schema infer；Resolver 中仍有手写的同形 Registry 账号访问结构                                       | 保留已推导协议类型；共享数据形状时遵守包依赖方向                                                            |
 | 账号连接选择及设置                                 | shared/provider-family-connection-selection.ts 已定义两个 schema，但又手写联合类型及设置映射类型                                        | 改为从 schema 推导；不改变 kind、团队 ID 或持久化形状，用户已跳过结构调整                                   |
 
 证据：[ModelSelection](../../../../packages/shared/src/model-selection.ts)、[Registry Selection 重用](../../../../packages/provider/src/registry.ts)、[配置 schema](../../../../packages/provider/src/config/schema.ts)、[Provider 类型](../../../../packages/provider/src/config/provider-config.ts)、[Model / Rule 类型](../../../../packages/provider/src/config/model-config.ts)、[Registry 完整类型](../../../../packages/provider/src/resolver.ts)、[协议类型](../../../../packages/shared/src/zcode-protocol/index.ts)。

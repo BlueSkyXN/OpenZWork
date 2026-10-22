@@ -22,11 +22,7 @@ import {
 const DEFAULT_RESPONSE_PREVIEW_BYTES = 64 * 1024;
 const DEFAULT_RESPONSE_CHUNK_TIMELINE_BYTES = 8 * 1024 * 1024;
 const DEFAULT_REQUEST_BODY_BYTES = 512 * 1024;
-export const DEFAULT_E2E_NETWORK_CAPTURE_NO_PROXY = [
-  "localhost",
-  "127.0.0.1",
-  "::1",
-].join(",");
+export const DEFAULT_E2E_NETWORK_CAPTURE_NO_PROXY = ["localhost", "127.0.0.1", "::1"].join(",");
 export interface E2ENetworkCaptureRecord {
   completedAt?: string;
   durationMs?: number;

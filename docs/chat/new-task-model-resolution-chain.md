@@ -1,5 +1,7 @@
 # 新建 Task 的当前模型判定链路
 
+> 新建草稿、模型与权限默认值及未归类任务目录生命周期以 [统一设计](../ui/project-task-draft-lifecycle.md) 为准：按客户端、目标主机及项目 ID 隔离；首发接纳后消费未归类待发送目录。本文其他组织态与执行目录约束继续适用。
+
 更新日期：2026-07-16
 
 V4 中“新建 task”先表现为未绑定 session 的 draft pane。模型事实来自 renderer draft intent 与
@@ -22,7 +24,6 @@ last-selected 的 model 与 thought 是一个不可拆分元组：
 - thought 必须按该模型的能力过滤，不能把全局独立 thought 应用到另一模型；
 - 跨模型 intent 先清空 thought，由目标 runtime 决定实际默认/兼容档位；
 - 外部 custom provider 的上次模型仍可用时，Z.ai/BigModel family 的连接记忆不能把它覆盖；
-- 上次模型属于当前 family 时，Coding/Team Plan 只约束该 family 内的 provider 与可用模型；
 - 当前 Plan provider 暂不可用时，不退回同 family 的旧连接。
 
 所有 workspace 级隔离使用 `workspaceKey = workspaceIdentity?.trim() || workspacePath`；文件和命令

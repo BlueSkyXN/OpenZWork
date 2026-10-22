@@ -187,4 +187,3 @@ Notes:
 
 - The runner creates processes via a factory that wraps the node worker with `xvfb-run` if Xvfb is needed and available.
 - Headless browser flags (Chrome/Edge/Firefox) signal headless usage and can trigger Xvfb in environments without a `DISPLAY`.
-

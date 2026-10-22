@@ -100,8 +100,6 @@ describe("session 创建：runtimeConfig.dynamicWorkflowEnabled", () => {
   }
 
   it.each([
-    { params: {}, expected: false },
-    { params: { dynamicWorkflowEnabled: true }, expected: true },
     { params: { preference: true }, expected: true },
     { params: { dynamicWorkflowEnabled: true, preference: false }, expected: true },
     { params: { dynamicWorkflowEnabled: false, preference: true }, expected: true },

@@ -36,7 +36,6 @@
 | 合入分支原编号 | 当前编号 | 主题 |
 | --- | --- | --- |
 | Todo115 | Todo125 | 模型设置页问号说明与定稿文案 |
-| Todo116 | Todo126 | GLM-5.3-Flash PDF 与 Coding Plan API Turbo 默认配置 |
 | Todo117 | Todo127 | Built-in 配置在线发布与更新链路修复 |
 | Todo118 | Todo128 | Provider 启动契约与闲时资格刷新修复 |
 | Todo119 | Todo129 | Provider 埋点适配与 Team 套餐识别修复 |

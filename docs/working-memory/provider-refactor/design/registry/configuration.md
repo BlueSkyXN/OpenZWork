@@ -33,17 +33,6 @@ ZCode Built-in 在物理上继续使用一份完整、原子的 JSON，不拆成
 
 Built-in Release 按以下产品来源组织：
 
-```text
-providers
-├─ Z.ai / BigModel Individual、Team、Start Plan Account Provider
-
-providerTemplates
-├─ Z.AI API / BigModel API
-├─ Moonshot / MiniMax / DeepSeek
-├─ Alibaba Model Studio CN / International / Xiaomi MiMo
-└─ OpenAI / Anthropic / xAI
-```
-
 Provider Template；Template 不是 Provider，不进入 Registry，也不具备 `providerId` 或执行状态。用户从 Template
 创建 Personal Provider 后，Template 仅作为其官方继承基线。Provider 顶层没有 `enabled`；Account Provider 的动态
 套餐资格由 Account Overlay 写入 `access.entitled`，最终执行准入由资格、配置完整性和 Model `enabled` 共同决定。
@@ -138,10 +127,7 @@ ProviderConfigMap 是有序 Map：
 - Personal-only Provider 因此排在 Built-in Provider 之后；
 - Account Built-in 不改变 ZCode Built-in Provider 的基础顺序。
 
-Account Built-in 对每个账号 Provider 显式写入 `access.entitled`：有权益为 `true`，无权益为 `false`；未知状态有
-上一份成功 Overlay 时保留上一份，没有时以 `entitled=false` fail-closed。Start Plan 账号接口返回的非空
-模型集合整体覆盖 `builtinModelIds`；Individual/Team 不写该字段并继承 Built-in。Start Plan 已确认可用但
-没有解析出模型时只能保留上一份成功 Overlay，首次则禁用，不能回退到宽泛 Built-in 成员。
+
 
 示例：
 
@@ -284,24 +270,6 @@ Header。Endpoint 不能由 Model ID 推断，也不能放入普通 Turn 的 Run
 
 ### Access
 
-```ts
-type ProviderAccessConfig =
-  | {
-      type: "api-key";
-      apiKey?: string | null;
-      apiKeyManagementUrl?: string | null;
-    }
-  | {
-      type: "zhipu-account";
-      accountType: "zai" | "bigmodel";
-    };
-```
-
-`access.type` 描述访问材料的一级来源，和 `api.type` 正交。`zhipu-account.mode` 是智谱账号产品的
-BigModel API Template 创建的实例使用普通 `api-key` Access，不进入 V4，也不建立所有 Access 可填的伪通用字段。
-动态安全校验材料、
-完整执行边界见
-[`request-compatibility-and-access-protocols.md`](./request-compatibility-and-access-protocols.md)。
 
 #### api-key
 
@@ -309,7 +277,7 @@ Config 直接管理调用模型 API 所需的静态访问材料；当前正式�
 Effective Config 缺少非空 `apiKey` 时不完整；Settings 可以展示并修复，但 Provider 不进入
 Registry。它与 `api.type` 正交：`access.type` 描述访问材料来源，`api.type` 描述线路协议。
 
-#### zhipu-account
+
 
 ZCode Built-in Provider 固定声明 `accountType + mode`；Start、Individual、Team 分别是独立 Provider。Account
 Connection Resolver 使用这些字段、结构化 Settings 选择、当前账号与权益，只投影 `access.entitled` 以及 Start
@@ -319,8 +287,7 @@ Connection Resolver 使用这些字段、结构化 Settings 选择、当前账�
 Connection 取得 Team scope，并解析 JWT、Runtime Key、API Key 或一次性安全校验 Header 等材料。账号身份、
 product、organization、project 和动态凭据不进入 Provider Config 或 Active Model。
 
-Personal 对普通 `api-key` Access 使用整体替代语义；固定 `account:*` Provider 的 Personal Source
-不允许写入 `access`。当前账号是否存在兼容连接由 Request Auth 在请求期判断，服务端做最终授权。
+
 
 ### 凭据原则
 
@@ -548,11 +515,7 @@ interface ModelConfig {
 Built-in 通用 Rule 必须补齐完整的 `enabled=true` 默认值，具体 Built-in Rule 可以为淘汰或不建议继续使用的模型声明
 `enabled=false`。Personal 专属 Rule 可以后置覆盖该叶子；正常新增 Personal Model 时明确写入 `enabled=true`。
 
-Model Config 不包含通用 Compatibility 容器。历史 reasoning 统一保留 canonical 事实并交给 Adapter 标准编码；不得按
-具体模型删除真实 reasoning，也不得为 tool-call 补造 synthetic empty-thinking。OpenAI-compatible reasoning 不再使用
-独立 `openai-reasoning-content` 模式；旧 GitHub Copilot `omitMaxOutputTokens` 和 Snowflake
-`zhipu-account.mode` 的有限枚举分派，不再出现在 Model Config，也不作为伪通用 Access 字段。准确边界见
-[`request-compatibility-and-access-protocols.md`](./request-compatibility-and-access-protocols.md)。
+
 
 ### Properties
 
@@ -663,8 +626,7 @@ Settings Resolution 允许保留 disabled、incomplete 和成员问题。Registr
 跨集合重名发布 Built-in 身份，单集合重复保留第一次。Model 不具有 hidden 状态。Registry 后的消费者不得重新检查或补齐 Properties、Option Specs
 和 Provider 执行字段。
 
-最终设计中，enabled 的 `zhipu-account` 必须具有完整 `family + mode`；Team scope 不属于静态完整性。
-账号动态材料缺失时，Adapter 必须在网络前失败。
+
 
 Personal Config 不要求自身完整，可以继承 Built-in；Settings Preview 和 Registry 都在完成 Overlay 后检查。
 Hidden Provider 使用同一完整性规则。
@@ -726,11 +688,14 @@ legacy config + current Built-in baseline
              validate -> atomic create
 ```
 
-没有 Built-in 基线的 Custom Provider 整体进入 Personal；有基线的 Provider 只保存差异。动态账号凭据、
-Runtime Snapshot、Catalog enrichment 和旧 hardcode 不参与迁移。独立旧 Provider Store 及其中的 Coding Plan
-Key 不再读取。旧文件没有明确表达的 Model Property 不写 Personal Override，由 Built-in 通用 Rule 提供默认；
-Importer 不增加 `COMPATIBILITY_*`，也不按 Catalog、modelId、Provider 类型或 Endpoint 猜值。解析失败或
-Overlay 后完整校验失败时不修改原文件。
+
+Standalone CLI 为兼容评测使用的 `~/.openzwork/cli/config.json`，首次导入时还保留自定义模型的输出上限：
+按 `limit.output` → `options.max_tokens` → 模型顶层 `maxOutputTokens` 选取有限正整数，写入精确
+Personal Model Rule 的 `optionSpecs.maxOutputTokens.max`。仅有 output、没有 context 也创建规则；
+缺失时不写默认值，map 仍从正式配置规则继承。不接受字符串转换，不扩展 `extra_body` 等任意 options，
+原有 parser 对非法显式字段的拒绝行为保持不变。此例外只适用于 CLI 首次导入，不改变 Desktop 的
+context-only 迁移；已有正式 Personal 文件不补迁，修改旧文件不会覆盖新配置。实现与验收见
+[Todo161](../../steps/todo-161-cli-legacy-output-token-migration.md)。
 
 无版本 Legacy importer 是过渡发布设施。强制升级窗口结束，且最低支持版本/升级链已经保证用户经过带
 importer 的版本，或者产品明确接受更早版本用户重新配置后，删除 importer、旧 parser、Catalog 依赖、
@@ -760,8 +725,6 @@ Built-in 的管理顺序。模型拖动不修改 Model Config Rules 的优先级
 - Visibility 只控制用户 View。
 - Access 与 API type 正交。
 - API Key 可以保存在 Personal Config；账号与调用级动态凭据不进入 Config。
-- Account Connection 产生当前账号、商品与 Team scope；`zhipu-account` Access 只固定执行所需的
-  `family + mode`，请求期再验证当前连接是否兼容。
 - Hidden Provider 不获得完整性或鉴权豁免。
 - 模型能力和 Reasoning 只来自 Model Config Rules，不来自具体模型 hardcode。
 - Legacy importer 只迁移明确旧事实、不猜能力，并在强制升级兼容窗口结束后整体删除；正常版本化 migration

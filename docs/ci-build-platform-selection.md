@@ -57,7 +57,6 @@ ZCODE_BUILD_PLATFORMS=macos-arm64,windows-x64
 
 - 选择逻辑只控制六个桌面安装包 build job，不通过脚本提前退出，避免未选择的平台占用 runner。
 - 平台 build template、打包命令、产物目录、上传和发布逻辑保持不变。
-- 与 macOS 安装包绑定的 CUA Helper job 跟随对应 macOS 平台选择，避免仅选择一个 macOS 架构时仍自动构建另一架构 helper；未选择的 helper 同样保留手动入口。
 - 飞书构建通知跟随对应平台是否自动打包；未选择的平台不自动通知，后续手动执行该平台 build 时仍可按需手动执行其通知 job。
 - 平台无关的 `build:desktop:app` 和 remote assets job 不属于平台列表，保持现有调度行为。
 
@@ -66,7 +65,6 @@ ZCODE_BUILD_PLATFORMS=macos-arm64,windows-x64
 自动化测试覆盖：
 
 - 六个平台 build job 都声明相同的可选参数调度契约。
-- 两个 CUA Helper job 与对应 macOS 平台使用一致的调度契约。
 - MR workflow 默认注入 `macos-arm64,windows-x64`。
 - 变量缺失或为空时，规则回落到自动运行。
 - 变量非空且未命中时，job 为非阻塞手动执行。

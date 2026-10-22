@@ -146,7 +146,7 @@ Windows taskkill runner 是进程层依赖，默认实现仍使用异步 `execFi
 - deadline 到达且原身份 PID 仍存活时返回 remaining PID；
 - CIM 快照耗时超过 force 窗口时，taskkill/exit observation 不得把全链路 deadline 向后重置；
 - 多 workspace taskkill 并发；
-- workspace restart、App quit 和 CUA Helper 凭据轮换复用同一状态机。
+
 
 ## 诊断
 

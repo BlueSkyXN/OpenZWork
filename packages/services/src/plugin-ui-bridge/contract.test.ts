@@ -1,6 +1,7 @@
 import { ServiceChannels, hostPluginSandboxRegisterResultMessageSchema } from "@zcode/shared";
 import type { PluginSandboxHandle } from "@zcode/shared/mcp-apps";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { createPluginUiBridgeService } from "./pluginUiBridgeService.js";
 import { examplePrepareAndMount, exampleReadBlob } from "./contract.example.js";
 import { IPluginUiBridgeService } from "./contract.js";
 
@@ -77,5 +78,51 @@ describe("plugin-ui-bridge contract", () => {
       initId: 1,
     });
     await expect(exampleReadBlob(bridge)).resolves.toBe("AAAA");
+  });
+});
+
+const params = {
+  workspacePath: "/fixture",
+  workspaceIdentity: "remote:fixture",
+  sessionId: "session",
+  pluginId: "demo@market",
+  serverName: "server",
+  toolName: "tool",
+  callId: "call",
+  arguments: { input: "fixture" },
+  instance: { runtimeId: "agent", generation: 2, token: "fixture", appIdentity: "a".repeat(64) },
+};
+
+describe("MCP App tool delegation", () => {
+  it.each([false, true])(
+    "preserves the bound request, signal and result (isError=%s)",
+    async (isError) => {
+      const result = { content: [{ type: "text" as const, text: "output" }], isError };
+      const callMcpToolForUi = vi.fn(async () => result);
+      const bridge = createPluginUiBridgeService({ callMcpToolForUi });
+      const options = { signal: new AbortController().signal };
+      expect(await bridge.callTool(params, options)).toBe(result);
+      expect(callMcpToolForUi).toHaveBeenCalledExactlyOnceWith(params, options);
+    },
+  );
+
+  it("preserves aborted operation errors and forwards explicit cancellation", async () => {
+    const error = Object.assign(new Error("cancelled"), { name: "AbortError" });
+    const callMcpToolForUi = vi.fn(async () => {
+      throw error;
+    });
+    const cancelled = { cancelled: true };
+    const cancelMcpToolCallForUi = vi.fn(async () => cancelled);
+    const bridge = createPluginUiBridgeService({ callMcpToolForUi, cancelMcpToolCallForUi });
+    await expect(bridge.callTool(params)).rejects.toBe(error);
+    expect(callMcpToolForUi).toHaveBeenCalledTimes(1);
+    expect(await bridge.cancelToolCall(params)).toBe(cancelled);
+    expect(cancelMcpToolCallForUi).toHaveBeenCalledExactlyOnceWith(params);
+  });
+
+  it("keeps unsupported runtimes unavailable with best effort cancellation", async () => {
+    const bridge = createPluginUiBridgeService();
+    await expect(bridge.callTool(params)).rejects.toMatchObject({ code: "unavailable" });
+    await expect(bridge.cancelToolCall(params)).resolves.toEqual({ cancelled: false });
   });
 });

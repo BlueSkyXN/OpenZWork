@@ -33,8 +33,6 @@ Browser                  Electron Main              Window Host
 
 - `AppSettings` 是桌面端显式代理、No Proxy 和自定义 CA 的持久化权威；设置页提示重启后生效。
 - `packages/services/src/providers/api/nodeApiClient.ts` 默认调用 `globalThis.fetch`，没有 Host 网络策略。
-- `packages/services/src/node.ts` 创建本地服务集合共享的 `NodeApiClient`，OAuth、模型供应商配置、
-  Coding Plan、usage、client scenes、feedback、Repo Snapshot 元数据等服务复用它。
 - `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts` 为 desktop-attached remote 的本机全局服务
   创建第二个 `NodeApiClient`；OAuth、凭据和套餐事实仍由桌面 Host 持有。
 - Main 到 Host 的环境构造会清理 shell 的 `HTTP_PROXY`、`HTTPS_PROXY`、`ALL_PROXY`、`NO_PROXY` 和 CA
@@ -43,8 +41,6 @@ Browser                  Electron Main              Window Host
 
 ### 受证据支持的推断
 
-- 对 `NodeApiClient` 注入显式 proxy-aware fetch 足以修复工单里的 OAuth、Coding Plan 和
-  `client-scenes` 失败，而不需要修改各业务服务。
 - 进程全局 dispatcher 会同时改变 Host 中不属于本工单的第三方、内网、本地和对象上传流量，回归面明显更大。
 
 ### 已分类的后续出口
@@ -59,33 +55,6 @@ Browser                  Electron Main              Window Host
 
 ## 架构合同
 
-### 边界图
-
-```text
-setting.json
-  httpProxy / httpProxyNoProxy / httpProxyCaCertPath
-                 |
-                 | Host 首次构造网络出口时异步读取并冻结
-                 v
-       HostApiNetworkPolicySnapshot
-                 |
-                 v
-        request-scoped fetch transport
-          | final URL -> No Proxy?
-          |             | yes -> direct dispatcher + optional CA
-          |             ` no  -> proxy dispatcher + optional CA
-          v
-             NodeApiClient
-          /       |        \
-       OAuth   Coding Plan  client-scenes / provider / usage / feedback
-
-通过显式 port 复用该 transport：
-  desktop-attached remote manifest / component archive / progress HEAD
-
-不进入该边界：
-  Electron Session | Agent/CLI | Bash/stdio MCP | Bot direct fetch
-  telemetry direct fetch | object-upload fetch | RPC/WS/SSH | relay
-```
 
 ### 决策 D1：设置权威不变
 
@@ -139,8 +108,6 @@ No Proxy 和 dispatcher 选择。
 **选择**：
 
 - desktop local：本地 `createLocalServices` 的 `NodeApiClient` 使用 Host 策略。
-- desktop-attached SSH/WSL/Docker：远端 Agent/文件 IO 不变；桌面 Host 内 app-global OAuth、provider、usage、
-  Coding Plan 和 client scenes 使用同一类 Host 策略。
 - server remote：继续使用 server 权威服务，不由桌面 Host 覆盖其网络出口。
 - 手机 `/remote`：只复用已有 shared-host attachment；不新增 Agent、Host、relay 状态或网络配置协议。
 
@@ -169,7 +136,7 @@ OAuth code、token 或 header value。
 | ------------- | ----------------------------------------------------- | -------------------------------- | ------------------------ | ---------------------- | ------------------------------ | ----------------------- | --------------------- | ------------------------------------------------ | ------------------------------------ |
 | 配置代理      | Settings / General / Network                          | `GeneralSectionContent`          | SettingsPage local draft | `AppSettings`          | setting schema + normalization | `settingService.update` | `setting.json`        | desktop 设置；重启后 Host/Agent/Session 各自应用 | shell 环境隐式代理                   |
 | OAuth 登录    | provider 登录入口                                     | `OAuthService` + `NodeApiClient` | OAuth pending state      | Host policy snapshot   | state、callback、network/TLS   | token exchange          | credential repo       | local 与 desktop-attached remote 的本机身份      | server remote 身份与 remote Agent    |
-| 后台业务 API  | Coding Plan、scenes、provider、usage、feedback 等入口 | shared `NodeApiClient`           | 各业务服务               | Host policy snapshot   | URL、No Proxy、TLS、timeout    | API request             | 各业务 owner          | 不改变 desktop/mobile delivery                   | Bot、telemetry、object upload 裸出口 |
+
 
 ### Feature Relationships
 
@@ -209,7 +176,6 @@ OAuth code、token 或 header value。
 | Seed                    | Query             | Direct callers / key path                                                       | Depth | Interpretation           |
 | ----------------------- | ----------------- | ------------------------------------------------------------------------------- | ----- | ------------------------ |
 | `createNodeApiClient`   | callers           | `createLocalServices`、`createRemoteWorkspaceServiceCollection`                 | 1     | 两个必须接线点           |
-| `NodeApiClient.request` | callers/consumers | OAuth、provider、Coding Plan、usage、client scenes、feedback、snapshot metadata | 2     | 共享业务 API 出口        |
 | `settingService.get`    | key path          | AppSettings -> lazy Host policy snapshot                                        | 2     | 设置权威和重启语义       |
 
 ### Graph Drift And Delta
@@ -223,7 +189,7 @@ OAuth code、token 或 header value。
 
 | Round | Question                    | User answer                                                         | Boundary fixed                            | Follow-up needed |
 | ----- | --------------------------- | ------------------------------------------------------------------- | ----------------------------------------- | ---------------- |
-| 1     | Host 覆盖的修改量和影响范围 | 用户继续调用 `zcode-plan`；沿用已建议的 scoped `NodeApiClient` 方案 | 先修 app-managed API，不用全局 dispatcher | no               |
+
 
 ### Boundary Decisions
 
@@ -245,7 +211,6 @@ OAuth code、token 或 header value。
 | HAP-005      | custom CA, no proxy                   | HTTPS request                   | private CA endpoint           | direct TLS succeeds                                 | accepted | direct CA              |
 | HAP-006      | proxy + custom CA                     | CONNECT request                 | private CA endpoint           | tunnel TLS succeeds                                 | accepted | enterprise path        |
 | HAP-007      | settings changed during Host lifetime | later request                   | same Host                     | old snapshot until restart; new Host uses new value | accepted | restart contract       |
-| HAP-008      | desktop-attached remote               | local OAuth/Coding Plan request | desktop Host local service    | desktop policy applies                              | accepted | local authority        |
 | HAP-009      | server remote                         | remote-owned API request        | server service                | desktop Host policy does not replace it             | accepted | authority isolation    |
 | HAP-010      | explicit proxy                        | non-ApiClient direct fetch      | Bot/telemetry/object upload   | unchanged in this phase                             | accepted | scope guard            |
 | HAP-011      | endpoint override + No Proxy          | request                         | rewritten endpoint            | match final URL                                     | accepted | ordering               |

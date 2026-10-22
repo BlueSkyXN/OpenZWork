@@ -45,7 +45,6 @@
 
 codegraph 工具本次不可用，已用 rg/read 沿上述种子追踪 1～2 跳。Service 的直接调用者为 UI hook、Bot、Host automation；Composer 所有原选择写入由 useDraftConfigControl 收口。此表不冒充图查询结果。
 
-## Graph Drift Candidates / Graph Delta
 
 
 ## Unresolved Questions

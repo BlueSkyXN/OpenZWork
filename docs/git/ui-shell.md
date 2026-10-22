@@ -6,19 +6,8 @@
 
 当前阶段已经把 Git pane 的“读真实仓库改动”主链路接上，并补回顶部轻量写操作入口。当前目标是让用户在不离开当前 workspace 的前提下，既能继续浏览改动，也能通过顶部入口完成提交或推送。
 
-## 提交消息生成模型链路
 
-- 顶部“提交”弹窗采用带标准 overlay 的紧凑轻量操作面板：顶部展示当前分支和本次选择范围的 `+/-` 统计，中间是提交信息输入区，底部是提交动作列表。
-- 弹窗顶部的当前分支入口复用 `GitBranchSwitcher`，点击后只展开可切换的本地分支列表；切换成功后会重新读取当前分支的提交范围，避免继续展示旧分支的 staged / unstaged 快照。
-- 弹窗顶部 `+/-` 统计优先复用当前对话的文件修改 summary，避免当前对话只改了少量文件时被工作区里其他未提交改动放大；没有对话 summary 时才回退到当前提交范围的 Git 统计。
-- 提交信息输入区支持手动填写，也支持点击图标先生成；如果用户直接点击 `提交` / `提交并推送` 且消息为空，UI 会先生成 Conventional Commit 消息再继续执行动作。
-- 提交面板默认包含未暂存更改，用户可以关闭 `包含未暂存的更改`，此时提交、统计和生成消息都只参考已暂存更改。
-- 生成提交消息会随请求携带当前会话最近的用户 / assistant 文本上下文，用于让模型理解本轮修改意图；上下文按消息数和字符数裁剪，且生成结果不得显式写“根据对话”“按用户要求”等元叙述。
-- 生成提交消息复用当前 workspace 的当前模型选择；Git service 只负责读取 Git status/diff、构造受限 prompt、校验 Conventional Commit 输出。
-- 模型调用链路统一为 `Git service -> IZCodeAgentService -> ZCode Protocol workspace/generateText -> AgentRuntime -> modelAdapter.generateText`。
-- UI 不再为提交消息生成预取 Start Plan / zcode-plan 的请求期鉴权材料，也不向 Git service 传 scoped runtime headers。
-- Start Plan 的请求期 runtime headers 由 AgentRuntime 在 `modelAdapter.generateText` 每次真实请求前通过 `providerRuntimeHeaders.request` 自动刷新；该机制与普通对话、prompt enhance 等独立模型请求一致。
-- Git service 不再直连 OpenAI / Anthropic 兼容 HTTP endpoint，也不解析 provider response / SSE；协议层返回纯文本后由 Git service 做输出清洗和错误收敛。
+
 
 ## 已完成的 UI
 

@@ -17,13 +17,6 @@
 
 纯领域 Resolver 已经接受 Config 与 Account Access 值。运行装配层继续使用两个窄 Source：
 
-```text
-ProviderConfigSource ───────┐
-                            ├─> ProviderRegistryService
-AccountProviderAccessSource ┘       ├─ resolve
-                                    └─ publish Registry View
-```
-
 Source 负责文件、RPC、远端接口、缓存及 watcher；Registry Service 只读取不可变快照、监听失效信号并发布内存 View。每份 Source 快照携带 revision，使相同事实引发的主动通知和 watcher 通知可以自然去重。
 
 ## 2. 并发刷新使用代际守卫
@@ -56,7 +49,7 @@ Facade 暂不拥有 Renderer draft，也不直接写文件。Personal 保存、�
 
 已确认 Official Config、Personal Config 与 Account Access 是唯一事实来源，而且该收敛应高优先级完成。M2 不实现 `ZCodeProviderRegistrySnapshot -> ProviderConfigSnapshot` 适配器，也不让新 Registry 继续消费旧 ModelProviderService 已经混合完成的执行快照。
 
-后续遇到现有 Catalog/Preset/hardcode 时，仍然有效的静态定义迁入 Official Config；用户配置迁入 Personal Config；登录与套餐判断收敛为 Account Access；API Key、JWT、Team Plan Runtime Key 和一次性安全校验 Header 留在请求期鉴权。完成对应迁移后删除旧分支，不保留双事实源。
+
 
 ## 7. 设置页精确 Model Config 对正则字符转义
 
@@ -140,13 +133,13 @@ Settings Facade 的写方法接收 `ProviderConfigInput` 与 `ModelConfigObject`
 
 ## 17. Account Provider 不把动态凭据重新塞进 Registry
 
-盘点 Start Plan、Personal Coding Plan 与 Team Plan 后确认，旧 Registry Snapshot 同时承载静态定义、套餐允许范围和请求凭据。M2 的 Account Source 只投影允许发布的 Provider、模型，以及创建 Model 时需要固定的非敏感账号访问身份；JWT、复制出的 Personal/Team API Key 和一次性 Header 留在请求期鉴权 Service。
+
 
 访问身份是必要的执行稳定边界。Personal 与 Team 当前可能共用 providerId；如果 Model 每次请求只按 providerId 读取全局当前连接，用户在 Loop 中切换连接会让旧 Model 静默换凭据。领域接口将其命名为 `accessId`：Account Source 必须提供，Registry 的执行记录保留，Model Selection View 不投影。后续 ModelFactory 在创建 Model 时固定它，同时允许该身份内部的 Token 刷新。
 
 Account Provider Endpoint 当前还会根据 `process.env` 分支。Official Config 成为唯一静态事实源后，不在 Registry 或 Factory 再次改写 Endpoint；Production、Test 与开发环境应由各自注入的完整 Official Config 表达。
 
-详细现状与迁移边界见 [`../research/account-provider-facts-and-auth.md`](../research/account-provider-facts-and-auth.md)。每个 Family 发布一个当前连接还是同时发布多个连接仍是产品级裁决，当前代码未提前改变该行为。
+
 
 ## 18. ProviderRuntime 只负责进程内装配
 
@@ -380,39 +373,17 @@ Account Provider 的静态 Provider/Model 事实已经进入 `config/provider/of
 providerId + modelIds + accessId
 ```
 
-Snapshot 中的 API Key、JWT、Header、Endpoint 和模型能力不会进入新 Account Access。Team Plan 使用完整的 selected connection key 作为 `accessId`；Personal Coding Plan 与 Start Plan 使用稳定的非敏感 ID。这样 Registry 能固定 Model 创建时的连接身份，同时继续把请求凭据留在后续 Request Auth Service。
 
 Official Account Model 暂时保留旧链路实际使用的大小写形式 `GLM-5.2` 与 `GLM-5-Turbo`。ModelConfigRules 是大小写敏感的完整正则匹配，因此本次在 Official Config 中为这两个 ID 写入显式规则，没有全局改变规则匹配语义，也没有静默规范化历史 Session 的 modelId。远端 Official Config 上线后应直接发布完整 Account 模型全集；Access Source 只负责从中筛选账号当前可用的子集。
 
 ## 34. Worker Registry 接收账号访问范围，执行凭据暂留兼容投影
 
-旧 Host Registry 协议增加可选的 `accountAccessId`。它只表示当前账号连接身份，不包含 Secret。Host 在构造旧 Snapshot 时根据当前 Personal/Team/Start Plan 连接写入该字段；Worker 收到 `workspace/updateProviderRegistry` 后，先将账号条目压缩为 `AccountProviderAccessSnapshot`，再等待进程 Registry 完成刷新，最后应用旧 Workspace 执行投影。
-
-```text
-Host Account / Plan 判断
-        |
-        | providerId + modelIds + accountAccessId
-        v
-Worker Mutable Account Source
-        |
-        v
-Worker Provider Registry
-        |
-        | Account Model 静态事实
-        v
-ModelFactory
-
-旧 Workspace Snapshot
-└─ 暂时只为 Adapter 提供 API Key / JWT / Runtime Header
-```
-
 这个顺序保证 Session 创建紧随更新请求发生时，Worker Registry 已经能看到 Account Provider。Account Model 的 Properties、Option Specs、默认 Options 与 reasoningMapping 均来自 Official Config；旧 Snapshot 中同名模型的能力字段不再参与 Model 创建。
 
-请求凭据尚未完成最终迁移。当前 Adapter 在 Model 创建时解析并持有对应的 SDK Model，因此 Coding Plan 的已创建 Model 不会在 Registry 后续刷新时原地换凭据；Start Plan 每次请求前仍沿用现有一次性安全校验 Header 刷新通道。下一切片需要以固定的 `accountAccessId` 建立 Request Auth Service，随后删除旧 Workspace Snapshot 中的账号 Secret 与 `fallbackSource`。在这之前，不把旧执行投影描述为新的 Registry 事实来源。
+
 
 ## 35. Account Access 身份固定在 Model 内部并传到请求边界
 
-Account Model 创建时把 Registry 当前发布的 `accountAccessId` 写入 Adapter Model 的私有执行配置。业务调用方仍只提交通用 `ModelRequest`；它不读取账号连接，也不传递 Access ID。Adapter 在每个真实网络 attempt 调用现有 Runtime Header Port 时附加该 ID，Worker 再通过严格协议交给 Host。
 
 ```text
 Registry Account Provider(accessId = A)
@@ -430,11 +401,10 @@ Worker Runtime Header Port
 Host request-auth boundary
 ```
 
-这一步只建立稳定身份链路，没有改变现有 API Key、Coding Plan Runtime Key 或 Start Plan 一次性安全校验 Header 的解析与刷新行为。下一切片可以在 Host 端按 `accessId` 取得请求凭据，而无需根据可变的“当前连接”猜测；已创建 Model 即使跨过 Personal/Team 连接切换，也继续请求原连接的鉴权材料。
 
 ## 36. Adapter 增加 request-scoped auth material
 
-进一步调研确认，Coding Plan API Key 不只对应一个 HTTP Header。现有 Adapter 会用它初始化 Provider SDK，并在部分 Endpoint 上参与官方版本的请求安全校验。因此 Host 不能提前把所有动态鉴权统一翻译为 Authorization Header。
+
 
 Model 调用上下文增加内部 `ModelRequestAuth`，包含可选 `apiKey` 和 `headers`。Request Auth Port 可以在每个物理 attempt 返回它；Adapter 基于共享 Registry 中的静态 Provider 执行配置，为当前 attempt 临时创建 SDK Model。临时 API Key 会继续经过现有 SDK、Endpoint Routing 和请求安全校验路径，Header 则在 Provider 静态 Header 之后覆盖。共享 Registry、已绑定 Model 与并发请求都不会被修改。
 
@@ -444,33 +414,30 @@ Model 调用上下文增加内部 `ModelRequestAuth`，包含可选 `apiKey` 和
 
 Services 响应现有 Provider Runtime Headers 请求时，会把 Renderer 取得的一次性安全校验 Header 同时放入协议的 `requestAuth.headers`。Worker 新 Adapter 直接把它用于当前 attempt。旧 `session/updateRuntimeModelConfig` 仍暂时执行，以保护旧 Worker、desktop-attached remote 和尚未迁移的 Model 来源；两条路径使用同一 Header，因此不会改变当前请求结果。
 
-这一步证明了请求期鉴权材料能够沿 Renderer → Services → stdio → Worker → Adapter 完整传输。退出旧 runtimeModel 更新之前，还需要让 Host Request Auth Service 同时提供 Start Plan JWT、Personal Coding Plan Key 与按固定 org/project 解析的 Team Plan Key；不能仅凭当前选中连接从旧 Snapshot 取 Secret。
 
-## 38. Host 建立 Account Request Auth 自动应答边界
 
-ZCode Agent Service 可注入一个窄的 Account Request Auth Resolver。Resolver 按 Model 已固定的 `providerId + modelId + accountAccessId` 取得当前 attempt 的 API Key 和 Header。Personal Coding Plan 与 Team Plan 由 Host 直接应答，不再依赖 Renderer 或 session pane；Start Plan 仍等待 Renderer 产生一次性安全校验 Header，然后把它与 Resolver 返回的 JWT 合并为同一份 Request Auth Material。
 
-Worker 侧的 Runtime Auth Port 保持对所有 Model 可用，但 Adapter 只会在 Model 内部存在 `accountAccessId` 时调用它，因此普通 API Provider 不会多一次 Host 往返。当前完成的是通信、分流和合并边界；下一步把真实 Plan 鉴权解析器注入生产 Host。
+
+
+
 
 ## 39. 生产 Host 接入 Account Provider Request Auth Service
 
-Services 新增独立的 `AccountProviderRequestAuthService`，它校验 `accountAccessId` 与 providerId 的归属，并分别解析三种执行身份：
 
-- Start Plan 按 provider family 从 OAuth Token Set 读取 zcode JWT。
-- Personal Coding Plan 每次读取该 provider 的最新 API Key。
-- Team Plan 解析 accessId 中固定的 product / organization / project，再取对应项目 Key。
+
+
 
 Team Key 的远端 ensure/copy 实现暂时复用旧 Model Provider Service 中的稳定逻辑，但输入由 Request Auth Service 用固定 accessId 单独构造，不再读取 UI 当前 selected connection。测试覆盖了“Loop 持有 Team A，当前选择已切回 Personal，请求仍取 Team A Key”的时序。后续删除旧 Registry Secret 投影时，再把远端 Team Key 实现从大型 Service 中物理拆出，不影响本次已建立的对外边界。
 
 ## 40. Account Provider 退出 Workspace Secret 创建依赖
 
-Worker 的 AI SDK 执行投影现在同时包含 API 与 Account Provider。Account 投影只包含 apiFormat、baseURL 和静态 Header，初始化 SDK 时允许没有 API Key；`createModel()` 固定 `accountAccessId`，每个真实 attempt 再用 Request Auth Material 创建当次 SDK Model。
+
 
 因此 Account Model 不再以 workspace compatibility source 中是否存在同名 Model 为创建前提。旧 Snapshot 目前仍可能被 Host 为其他未迁移消费者生成，但本地新 Account Model 的鉴权正确性已不再依赖其 Secret。
 
 ## 41. 本地 Host 下发的 Account Registry 去密
 
-当 ZCode Agent Service 同时拥有本地 Provider Registry Source 和 Account Request Auth Resolver 时，它会在 Host → Worker 边界移除 Account Provider 的 `apiKey` 与请求期 Header，只保留 provider/model 静态投影和 `accountAccessId`。去密后的 revision 根据这份静态内容重新计算；Token 和 Team Key 刷新不再导致 Worker 误以为 Registry 静态事实变化。
+
 
 这个切换暂时只用于本地新 Runtime。desktop-attached SSH / WSL / Docker 目前没有本地 Provider Registry Source，仍保留旧快照兼容；它们在 M2.8 接入同样的 Registry 和 Request Auth 边界后再删除 Secret。
 
@@ -658,7 +625,7 @@ Worker Model Runtime 目前保留三类来源：长期 Process Registry、本轮
 
 ## 64. Account Access 复用 Provider Config Overlay
 
-第一次收敛尝试把旁路 `AccountProviderAccessEntry[]` 改成 `AccountProviderOverlay[]`，但仍然引入了 `{ id, allowedModelIds }` 和 `Provider.accountAccess`，没有真正复用已有 Config Overlay。人复核后确认：Account Source 应直接输出第三层稀疏 `ProviderConfigMap`，与 Official、Personal 使用同一种数据结构和 Overlay 算法。
+
 
 `AccountProviderConfig` 增加 `accessId`，Account 层通过普通字段 Overlay 提供当前 `accessId` 与 `models`；不再保留 `allowedModelIds` 和模型交集过滤。最终 Registry 成员使用 `Provider` / `ProviderModel`，ModelFactory 从 `Provider.config.accessId` 固定请求身份。
 
@@ -747,9 +714,9 @@ Provider Config 文档升级到 schemaVersion 4。v3 -> v4 相邻迁移删除 Pr
 
 ## 75. Account 权益判定退出旧 Provider 大对象
 
-Start Plan、Coding Plan 与 Team Plan 的权益判断过去直接接收旧 `ModelProviderConfig`。这个类型同时携带 endpoint、models、Catalog 痕迹和设置状态，使账号逻辑看起来依赖整套旧 Provider 事实，阻碍 Account Source 独立产生第三层 `ProviderConfigMap`。
 
-权益判断的输入已经收窄为 `providerId`、可选鉴权输入、启用状态和系统禁用原因；账号连接上下文继续由独立 Context 提供。旧 `ModelProviderService` 在自己的兼容边界完成一次适配，权益模块不再读取模型、endpoint 或 Adapter 配置。Start/Coding 的成对互斥、Team Plan 校验、断连原因和设置页连通性语义保持不变。
+
+
 
 本切片只整理 Account Provider 的领域输入。权益刷新、缓存和 Account `ProviderConfigMap` 的直接生产仍由后续切片从旧 `ModelProviderService` 中提取；这里没有增加第二套 Account 状态。
 
@@ -763,7 +730,7 @@ Start Plan、Coding Plan 与 Team Plan 的权益判断过去直接接收旧 `Mod
 
 ## 77. Account Provider Service 作为无 IO 的第三层 Config Source
 
-`@zcode/provider` 新增 `AccountProviderService`。它读取与 Registry 相同的 Config Source，把 Official 与 Personal Provider Config 先行 Overlay，再把当前 Config View 交给注入的 Account Resolver。Resolver 只返回 Account `ProviderConfigMap`；文件、网络、OAuth、套餐和团队接口均留在外围实现。
+
 
 Service 的首次 `read()` 是 ready barrier。Config Source 变化会触发后台重算，账号事件可以显式调用 `refresh()`；成功结果按内容生成稳定 revision，只有 Account Config 真正变化时才通知 Registry。刷新失败会报告错误并保留 last-known-good Snapshot；首次刷新失败则直接失败，不把网络异常伪装成“当前没有账号 Provider”。
 
@@ -771,7 +738,7 @@ Service 的首次 `read()` 是 ready barrier。Config Source 变化会触发后�
 
 ## 78. Account Connection Result 按 Provider 保留确定状态
 
-Account 远端接口并不总是同时成功：Start Plan 的 `billing/balance`、Personal Coding Plan 的 `subscription/list` 和 Team Plan 的项目接口可以分别得到 available、unavailable 或 unknown。把任一 unknown 当成整个 Source 失败，会吞掉同一轮已经确定的结果；把 unknown 当 unavailable，又会因为网络抖动删除仍然有效的模型。
+
 
 `@zcode/provider` 现在提供统一的 Connection Result 解析。available 生成 `accessId/models` Overlay，未返回专属模型集合时沿用当前 Config 的模型顺序；unavailable 明确删除该 Provider；unknown 沿用该 Provider 上一次成功的 Account Config。首次没有旧值时，unknown 项暂不发布；所有候选均 unknown 且没有上一份状态时抛出明确错误，交给 AccountProviderService 的首次失败边界处理。
 
@@ -781,15 +748,9 @@ Account 远端接口并不总是同时成功：Start Plan 的 `billing/balance`�
 
 新增 `accountProviderConnectionResolver` 作为 Services 与纯 Provider 领域之间的过渡边界。它读取当前账号域、Family 的 API Key / OAuth 连接模式、Personal/Team 选择，并调用现有 Z.ai / BigModel Start/Coding 权益校验；对外只产生按 Provider 排序的 `available / unavailable / unknown`。
 
-非当前账号域与显式 API Key 连接模式被解释为确定 `unavailable`，不再请求 Plan 接口。Coding Plan 在选中有效 Team connection key 时使用完整 key 作为 accessId，否则使用稳定 Personal accessId；Start Plan 使用稳定 Start accessId。某个 Provider 未从远端得到结论时保留 `unknown`，后续交给领域解析的按 Provider last-known-good 规则处理。
 
-适配器的 Personal Coding Plan Key 来源是窄注入端口，本切片没有把旧 `ModelProviderConfig` 存储绑死到新领域。生产组合根切换前，还需将该 Key 的物理所有权收敛到凭据边界，并保留 Start Plan 远端权威模型集合的行为。
 
-## 80. Start Plan 权益与模型成员共用 balance 响应
 
-Start Plan 原有两个消费方：权益校验只读 `plans`，Preset 构建另外读 `balances.capabilities` 生成模型列表。新 Account Connection Result 需要同时表达两者，否则切换 Source 后会退化为 Official 文件里的静态模型集合。
-
-`CodingPlanAvailabilityResult.available` 现在可选携带 `models`。Start Plan availability 在同一次 `billing/balance` 响应中校验 active plan 并提取去重后的模型成员；Services Connection Resolver 把该列表透传给领域层，Account Config 因此可以覆盖 Official 的 `models`。
 
 ## 80. 本地 Host 先退出旧 Account Registry Snapshot
 
@@ -797,15 +758,7 @@ Account Access 已经收敛为第三层 `ProviderConfigMap`，生产本地 Host 
 
 账号状态变化暂时复用旧 ModelProviderService 的 change event 作为 invalidation 信号，但事件只负责触发 `AccountProviderService.refresh()`。刷新结果不读取旧 `ZCodeProviderRegistrySnapshot`，旧 Snapshot 因而不再是本地 Host Account Provider 或模型成员的事实来源。`desktop-attached-remote` 保留原兼容 Source，等待 M2.8 的远端切片处理。
 
-Personal Coding Plan API Key 的物理迁移没有夹带进本切片：Connection Resolver 与 Request Auth 仍可从旧 Provider Store 读取它，但只能把它当作凭据兼容输入。下一切片把该 Key 迁入 Credential Service 并删除旧读取后，Account 静态事实与请求凭据两条链路才会完全摆脱旧 Provider Store。
 
-## 81. Personal Coding Plan Key 按 accessId 进入 Credential Service
-
-Personal Coding Plan 的复制 Key 属于请求凭据，不属于 Provider Config。新的 `AccountProviderCredentialStore` 使用 Model 已固定的 `accessId` 形成凭据键；Connection Resolver 的权益判断与 Request Auth 的每次 attempt 从同一 Store 读取。显式 Coding Plan 刷新取得新 Key 后写入 Store，logout / unlink 通过原清理入口删除。
-
-为兼容当前已安装用户，Store 在新键缺失时可以调用一次注入的旧 Provider Key Loader。读到非空旧值后先写入 Credential Service，再返回调用方；已有新值时不会访问旧 Store，空旧值也不会制造凭据记录。这是单向迁移，不形成 `new > old` 的长期优先级链。
-
-旧 `ModelProviderService` 在迁移期仍会维护 Provider 文件中的影子 Key，供尚未迁移的旧消费者使用；新 Connection Resolver 与 Request Auth 已不再把它当作权威。删除这份影子字段属于后续“清除旧 Provider Store 消费者”切片，届时可以连同旧写入一起移除。
 
 ## 82. Workspace 模型偏好裁决改用 Model Selection View
 
@@ -855,7 +808,7 @@ Welcome API Key 表单已经先写 Personal Config、再镜像旧 Provider，但
 
 同一切片进一步收紧 API Key 持久化边界：当 Provider Settings Service 已装配时，读取失败、目标 Provider 缺失或类型不为 API 都直接向调用方报告错误，不再静默读取或写入旧服务。只有服务本身未装配的旧 Entry 才使用旧路径。新 Personal Config 写入成功后，旧镜像写入失败仍只记录兼容告警，不反向撤销权威写入。
 
-回归测试还确认了一条现有兼容语义：balance 可能只返回 active plan，暂时没有 balances 模型明细。这种情况仍是确定的 available，Connection Result 不携带 `models`，领域解析沿用 Official/Personal Config 中的成员。把缺少明细解释为无权益会导致现有 Start Plan 恢复、连通性和入口缓存测试全部回归，因此不采用。
+
 
 ## 89. 新 Settings View 退出旧 display-order 读取
 
@@ -877,7 +830,7 @@ Repository 现在记录最近一次已知的 content revision。显式写入在�
 
 ## 92. Provider Family Domain 迁移改读 Model Selection View
 
-启动期的一次性 `providerFamilyDomain` 迁移需要在没有旧 OAuth active provider 时，判断当前是否只有一个可选的 Z.ai / BigModel Family。旧实现读取 `ModelProviderConfig[]`，再用 API Key、enabled 和 endpoint 重做一遍可用性判断；这会让迁移结果与新 Registry 的选择事实分叉。
+
 
 迁移现在直接读取 Model Selection View。View 中的 Provider 已由 Registry 完成 Config、Account Access、模型完整性与可选性解析，迁移只负责把 `providerId` 映射到 Family，并在唯一 Family 时写入历史设置。空 View 继续表示启动事实尚未恢复，本轮不标记迁移完成；OAuth active provider 的原有优先级和设置写入时序没有改变。
 
@@ -891,13 +844,12 @@ Official Source 现在与 Personal Repository 使用同一条外部语义：首�
 
 App 全局登出与设置页 Plan 解绑都需要在退出 OAuth 前决定：当前 Family 是否还有 API Key 模式可继续使用。旧实现读取完整 `ModelProviderConfig[]`，只检查内置 API Provider 的 Key 字符串；Account Provider 与 API Provider 的可选事实因而再次由旧服务解释。
 
-两个操作入口现在都在用户确认后读取最新 Model Selection View。只有当前 Family 对应的内置 API Provider 以 `kind: api` 出现在 View 中，才保留 `providerFamilyDomain`；只有 Coding/Start/Team 等 Account Provider 时会清理 Domain。Selection View 的读取位于事件处理函数内，不新增组件订阅或渲染依赖。OAuth logout、WebView 清理、设置写入和 App relaunch 时序保持不变。
 
-## 95. Family Selection 删除未参与裁决的旧 Provider Config 读取
 
-OAuth 登录后和启动恢复时，Family Selection 会按个人 Coding Plan、Team Plan、Start Plan 与 OAuth fallback 的既定优先级选择连接。两个 resolver 的输入此前包含完整 `ModelProviderConfig[]`，调用入口也因此各执行一次 `getAllCached()`；实际算法从未读取这项参数，Provider Config 既不影响优先级，也不参与 selectedKey 的生成。
 
-本轮删除了未使用的参数和两次旧 Config IO。登录后的选择只依赖当前权益与 Team Products；启动恢复还读取当前 Settings，用于保护仍然有效或暂时无法确认失效的 Team selectedKey。个人、团队、Start Plan 的优先级、Coding Plan Key 刷新和设置写入时序保持不变。边界测试将旧读取设置为失败，并确认启动恢复仍能完成，避免以后重新引入这条旁路依赖。
+
+
+
 
 ## 96. Settings Sync 的 Provider 占位项退出旧 Snapshot 刷新
 
@@ -987,10 +939,7 @@ Registry Provider 的项目追加到末尾。这种按 Provider ID 去重的兼�
 裁决：配置不完整、显式禁用或账号不可用的 Provider 已经被 Registry 排除，却会因为“新 View
 中没有它”而重新出现在模型菜单中。
 
-聚合边界现在改为 Entry 级切换。调用方传入 `ModelSelectionView` 后，菜单只投影该 View；
-`providers: []` 是 Registry 已确认无候选，不触发旧列表回落。只有尚未取得 View 的兼容 Entry
-继续走完整旧菜单构建器。该变更统一作用于 Composer、Automation、Subagent 与 Repo Wiki，
-没有改变旧 Entry 的 Family、Team Plan 或展示顺序算法。
+
 
 ## 103. Subagent 设置页停止订阅旧 Provider 快照
 
@@ -1021,10 +970,7 @@ Registry 已确认没有可选择模型。旧 `ModelProviderService` 仍以窄�
 
 ## 105. Composer 的 Provider 静态判断以 Registry 为准
 
-Composer 仍需旧 `useModelProviders()` 为 Coding Plan/Start Plan 的 Usage、Entitlement 和购买漏斗
-提供动态状态；这不意味着旧 Provider 列表可以继续参与模型静态事实裁决。原实现把旧 Provider
-与 `ModelSelectionView` 用 `OR` 合并，并优先读取旧 label。Registry 已过滤的 Provider 因而仍可能
-被识别为可恢复的自定义 Provider，配置保存失败后走旧恢复链路。
+
 
 现在只要 `ModelSelectionView` 已发布，Composer 便只从该 revision 判断 Provider 是否存在、读取
 Provider label，并以 `config.kind === "api"` 判断自定义恢复资格。空 Registry View 会拒绝旧列表中
@@ -1144,52 +1090,6 @@ Registry 兼容事件，但不会触发 Account 刷新。新增测试固定了�
 旧 `setting.json` 仍没有 watcher；该文件当前是账号连接状态的迁移输入，正式账号状态模型将继续
 收拢其持久化与跨进程更新边界。
 
-## 113. 闲时任务套餐判断改读 Account Overlay
-
-闲时任务首页原来从旧 `ModelProviderConfig[]` 判断用户是否拥有 Coding Plan。它需要同时理解
-`enabled`、`systemDisabledReason`、个人 Coding Plan Provider ID 和动态 Team Plan Provider ID，
-本质上是在 Renderer 再实现一次 Account Access 解析。旧 Provider Store 的残留条目也可能让已经
-失效的套餐继续被当作可用。
-
-现在首页与购买漏斗共同读取 `ProviderSettingsView`。Account Provider 只有在第三层 Account
-Overlay 提供非空 `accessId` 时才代表当前账号确实拥有对应连接；Coding Plan Provider 优先于
-Start Plan。Personal/Team 的差异已经编码在 `accessId` 中，不再通过另一组动态 Provider ID
-判断。用户把 Provider 设置为 `enabled: false` 时，`accessId` 仍存在，因此仍保留“关闭入口不等于
-退订”的既有产品语义。
-
-Settings View 尚未发布时状态为 unknown。首页沿用原来的加载期行为，不会在初始化过程中把 unknown
-误判为无套餐并弹出升级提示；View 发布且没有 Coding Plan access 时才进行拦截。新增测试覆盖
-Start Plan、个人/Team Coding Plan 的统一表示、用户禁用、无 access 与未水合状态。旧的
-
-## 114. 闲时任务派发退出旧完整 Registry Snapshot
-
-闲时任务派发过去调用 `getProviderRegistrySnapshot()`，再从旧 Snapshot 中寻找所选 Coding Plan
-Provider 的 API Key 与 baseURL。这样静态账号连接、动态请求凭据和旧完整 Provider 投影被绑在
-同一个输入里；即使 Account Overlay 已成为账号 Provider 的事实来源，派发仍会被旧 Snapshot 的
-缓存和成员判断控制。
-
-现在派发分成两项输入。Provider Settings View / Registry Resolution 提供 Account Provider 当前
-固定的 `accessId` 和 baseURL；`AccountRequestAuthResolver` 在真正派发时根据同一个 `accessId`
-取得当前 API Key。解析结果必须与 Settings 中的 selected connection key 完全一致，Team Plan
-继续由统一 Request Auth Service 解析 organization/project 对应的凭据。用户把 Provider 设为
-disabled 时，Account Overlay 仍保留 accessId，所以不会把“关闭模型入口”误判为“套餐连接消失”。
-
-动态凭据缺失现在由 `AccountRequestCredentialUnavailableError` 明确表达，并映射为闲时任务已有的
-`connection_unavailable`；不会因为旧 Snapshot 里残留一份 key 而继续派发。登录 JWT 仍由 Credential
-Service 读取，账号 Family 与 selection 的前后指纹检查保持不变，防止设置切换过程中拼接两代凭据。
-
-Local Host 中的 Account Request Auth 实现目前由具体 Model Provider runtime 持有。实现没有把它
-注册为 RPC Service，因为该能力会返回真实 API Key，不应为了 Host 内部复用而开放给 Renderer 或
-Remote client。Host 在本地 `createLocalServices` 组合根中取用这一运行能力；后续动态鉴权独立成
-正式内部 Service 时，可以替换这个装配点，不影响闲时任务的依赖契约。
-
-凭据。是否把动态鉴权输入进一步改成 purpose-oriented contract，留给鉴权 Service 独立设计，
-本切片不扩张范围。
-
-测试使用 Account Provider 固定字段与动态 Auth Resolver 两个独立 fixture，不再构造旧
-`ZCodeProviderRegistrySnapshot`。覆盖个人/Team 连接、跨账号拒绝、选择切换、JWT 缺失和动态 API
-Key 缺失；模块与测试均不再引用旧 Snapshot 读取接口。
-
 ## 115. Subagent 设置页删除 Legacy Provider 假兼容
 
 Subagent 设置页此前已经停止订阅旧 Provider 快照，但组件树仍逐层传递一个永远为空的
@@ -1286,50 +1186,20 @@ Subagent、Repo Wiki、Automation 和 Composer 草稿四个生产调用点都已
 设置页 Hook 共 29 条相关测试。远端 Server 尚未完整装配 Provider Runtime，Root 的无 Service 兼容
 守卫仍保留；该边界属于 M2.8，不在本切片中通过 UI fallback 隐藏。
 
-## 121. Coding Plan 权益查询改用 Account Access 身份
-
-`useCodingPlanEntitlements` 过去从旧 `ModelProviderConfig` 读取 API Key，用非空 Key 判断是否发起
-权益查询，并把 Key 的哈希作为缓存与自动刷新身份。这让 Renderer 把动态请求凭据当作套餐连接事实，
-也迫使 Composer、Automation、Provider 设置和购买弹窗继续传递完整旧 Provider 对象。
-
-本轮把 Hook 输入改为 `ProviderSettingsView`。四个调用点统一从 Account Overlay 读取非敏感
-`accessId`：存在 accessId 才发起对应 Provider 的权益查询，连接切换时 accessId 变化会形成新的
-缓存与刷新身份；真正的 API Key、JWT 和 Team Project Key 仍由 Usage Service 在请求时解析。
-Provider 静态存在但 Account Access 尚未建立时不会触发查询，也不再借旧 Key 补连接状态。
-
-迁移过程中发现生产 Account Source 会在 `enabled: false` 时跳过连接解析，这与已经确认的“关闭模型
-入口不等于断开套餐连接”冲突。领域 Resolver 与 Services Connection Resolver 现在仍为禁用的 Account
-Provider 解析并保存 accessId；最终 Registry 继续根据 Effective Config 的 `enabled: false` 排除模型，
-Settings 与 Usage 则可以保留账号连接。新增测试同时固定 Account Overlay、Registry selectable 和
-entitlement 查询三层语义。
-
-API Key 在相同 accessId 下刷新不会再改变 Renderer 指纹。认证、购买和设置操作已经显式调用权益刷新；
-后续新增凭据刷新入口也必须通过对应状态事件或显式 refresh 通知消费者，不能重新把 secret 投影回 UI
-来制造变更检测。本切片没有改变 Usage Service 的请求协议。
-
 ## 122. Session 提交的 Plan Identity 改用 Account Access
 
-`usePlanIdentitySnapshot` 会在用户提交消息时捕获当前套餐身份，交给消息遥测和 Session 历史。它此前
-单独订阅旧 `ModelProviderConfig` 快照，并再次使用 API Key 指纹决定 Coding Plan / Start Plan 的
-Entitlement 查询与缓存身份。设置页权益已经切到 Account Overlay 后，这里仍会形成第二条旧事实链路，
-并让相同套餐连接中的凭据刷新被误认为身份切换。
+
 
 本轮增加共享的 `accountProviderAccess` 投影。它只接受 `ProviderSettingsView`，按 providerId 读取
 Account Overlay 中的非敏感 `accessId`；Provider 被用户禁用时仍保留连接身份。设置页权益与 Session
 提交快照共用这一个投影，分别用 `providerId + accessId` 构造查询刷新和缓存身份。动态 API Key、JWT
 与 Team Project Key 继续由 Usage Service 在真实请求时解析，不进入 Renderer 的判断输入。
 
-`usePlanIdentitySnapshot` 不再订阅旧 Provider 快照，也不再调用基于 API Key 的 fingerprint/cache helper。
-Provider Family 仍决定应查询的 Coding Plan 和 Start Plan providerId，Start Plan fallback 与最终
-`resolvePlanIdentitySnapshot()` 语义保持不变。新增测试固定 API Provider 不会被误认成 Account Access，
-以及禁用模型入口不会删除套餐连接身份；现有权益与消息遥测回归共 43 条通过。
+
 
 ## 123. 设置页 Usage 退出旧 Provider 凭据事实
 
-设置页 Usage 过去调用 `useModelProviders()`，用旧 Provider 的 `enabled`、不可用原因和 API Key 判断
-Z.ai / BigModel Coding Plan 是否可以查询，并用 API Key 指纹构造 Entitlement Cache。随后又把完整旧
-Provider 数组传给 Usage 面板，只为再次找到相同 Provider 并生成缓存 Key。Provider 静态配置、套餐
-连接和动态请求凭据因此在一个 UI 链路中混合。
+
 
 本轮让 SettingsPage 直接消费 `ProviderSettingsView`。只有 Account Overlay 提供非空 `accessId` 时才
 查询对应 Entitlement 和 Team Products；缓存身份统一为 `providerId + accessId`。个人套餐 source 保存
@@ -1344,24 +1214,16 @@ Entitlement 与 SettingsPage 挂载共 43 条测试；全仓 typecheck 通过，
 
 ## 124. 侧栏 Usage 与公共余额状态退出 ModelProviderConfig
 
-侧栏头像菜单仍通过 `useModelProviders()` 读取旧 Provider，用 `enabled`、不可用原因和 API Key 生成
-“可查询 Coding Plan”集合，再把完整对象交给 Entitlement Cache、余额状态解析器和升级目标选择器。
-这条常驻链路与设置页 Usage 使用相同的旧事实，却有独立的过滤和缓存逻辑。
+
 
 本轮让侧栏订阅 `ProviderSettingsView`。Z.ai / BigModel 只有在 Account Overlay 提供非空 accessId 时
 进入可用来源；用户禁用模型入口不会删除连接。个人 Entitlement 与 Enterprise Products 的门禁和
 缓存身份都使用 `providerId + accessId`，动态凭据继续由 Usage Service 请求期解析。Account Access
 缺失时，侧栏不会再根据静态 Provider 或残留 API Key 猜测连接。
 
-公共 `CodingPlanUsageRemainingState` 和 `resolveSidebarCodingPlanUpgradeProviderId()` 同步收窄输入，
-把完整 `ModelProviderConfig[]` 改为只包含 `providerId` 与 `label` 的
-`CodingPlanUsageAvailableProvider[]`。余额与升级展示只需要来源身份和标签；API Key、Endpoint、模型
-集合和旧可用状态不再能够穿过这层接口。Composer 迁移期调用点把已有候选显式投影为该窄类型，执行
-语义未改变。
 
-测试改为直接提供禁用但仍含 accessId 的 Account Provider，覆盖冷启动探测、共享 freshness window、
-入口关闭与 access 缺失；公共余额、升级、个人/Team 和 Start Plan 相关 78 条测试通过。全仓 typecheck
-通过，lint 保持 35 条既有 warning。
+
+
 
 ## 125. Composer Context Usage 改用 Account Access
 
@@ -1374,17 +1236,11 @@ V4 Composer 已经订阅 `ProviderSettingsView` 供权益 Hook 使用，但 Cont
 Config。Settings View 尚未发布时，Context Usage 保持加载态。Account Access 消失后，即使旧 Provider
 和 Entitlement Snapshot 仍在，也不会保留个人套餐的 hover 刷新入口。
 
-`useModelProviders()` 暂时仍为模型菜单的旧展示和兼容逻辑服务，本切片没有把这部分职责混入 Usage
-迁移。测试显式注入 `ProviderSettingsView`，并固定“旧 Provider 有 Key、Entitlement 有快照但没有
-Account Access”时不产生 Coding Plan Usage。相关 26 条测试及全仓 typecheck 通过；lint 保持 35 条
-既有 warning。
+
 
 ## 126. Automation 退出旧 Provider Snapshot
 
-Automation 的模型表单已经在 Registry View 存在时使用新模型候选，但主页面仍订阅
-`useModelProviders()` 和 Coding Plan Entitlement。Registry 尚未发布时，它会重新使用旧 Provider、Family
-设置与 Entitlement 构造另一套模型菜单；创建、立即运行和删除遥测也继续接收完整旧 Provider 数组，
-只为识别 Personal API Provider 的 Endpoint hostname。
+
 
 本轮把 Automation 的模型候选收敛为唯一的 `ModelSelectionView`。View 尚未发布时返回空候选并等待
 Registry，而不再执行旧 entitlement 过滤。Provider 顺序、账号可用性和模型集合都由 Registry 在上游
@@ -1407,22 +1263,13 @@ Provider 存在性、补 label 和裁决 Custom Provider 恢复资格。
 但用户不能从旧事实源选择模型。Provider label、Custom 恢复资格与选中值编码也只读取 Registry View。
 Composer 的套餐 Usage 与 Team source 继续使用前几轮已经迁移的 Account Access/Entitlement 链路。
 
-测试默认显式发布 Registry View，并新增“旧 Provider 存在但 Registry 未发布时不构造菜单”的回归；
-空 Registry 也不再暴露或提交 legacy-only Provider。Composer、Coding Plan 与升级入口相关 3 个测试文件、
-221 条测试通过。
+
 
 ## 128. 设置页套餐连接状态改用 Account Overlay
 
-Provider Settings View 已经使用 Account Overlay 的 `accessId` 表达 Start Plan、Personal
-Coding Plan 和 Team Plan 的当前连接，但设置页仍然从旧 `ModelProviderConfig.apiKey`
-推断卡片登录态、登录完成、自动同步和 Start Plan 入口。这会迫使 Renderer
-继续持有 Account Provider 的请求凭据，也会让旧 Key 残留覆盖新 Account 事实。
 
-本轮在套餐导航项上增加非敏感的 `accountConnected` 投影。新 Host 明确传入
-Provider Settings View 中已发布 `accessId` 的 Provider 集合；权益状态解析、Start Plan
-可见性、Plan Card、登录完成等待、首次同步与同项重试均消费这一结论。
-`ProviderSettingsService` 存在但首份 View 尚未发布时，页面保持 `checking`，不会短暂
-借用旧 Key，也不会提前显示断开。
+
+
 
 未装配新 Provider Settings Service 的旧 Entry 仍保留 `apiKey` 兼容语义；一旦 Service
 存在，即使旧 Key 非空也不能代替缺失的 `accessId`。反向回归同时固定：旧 Key
@@ -1433,23 +1280,16 @@ lint 保持 35 条既有 warning。全量 pre-push 按当前约定留到后续�
 
 ## 129. 购买完成刷新穿透到 Account Source
 
-全局 Coding Plan 购买弹窗在完成后会先调用 `refreshCodingPlanApiKey()`，再通过
-`useModelProviders().refresh()` 重拉旧 Provider Snapshot。新 Account Source 虽然会收到
-Account Facts 事件，但该监听是后台 fire-and-forget；`refreshCodingPlanApiKey()` 返回时，
-Account Provider 重算可能仍在进行。只调用 Registry `refresh()` 也不充分，因为
-`AccountProviderService.read()` 在已有 Snapshot 时会返回当前值，不会自动等待新一轮重算。
+
 
 本轮为 Provider Settings Facade/Service 增加显式 `refresh(reason)`。Provider Runtime 将其
 组装为两段可等待链路：先调用 Account Source 的 `refresh()`，再调用 Registry
 `refresh()`。普通 Settings 写操作仍然只执行原有 Registry 刷新，不会因为一次 Personal
 API Provider 编辑而多发账号/权益网络请求。
 
-`CodingPlanUpgradeDialog` 因而删除 `useModelProviders()`。新 Host 购买完成后等待
-Provider Settings Service 贯穿刷新；未装配该 Service 的旧 Entry 直接调用旧共享 Snapshot
-刷新函数，不为一次刷新挂载长期 Hook 订阅。套餐权益和 Team Products 刷新顺序保持不变。
 
-Provider Facade/Runtime 与 Coding Plan UI 相关 4 个测试文件、211 条测试通过，
-全仓 typecheck 通过。全量 pre-push 按当前约定留到后续集中执行。
+
+
 
 ## 130. 设置页 Account Provider 退出常驻 Secret 投影
 
@@ -1469,9 +1309,7 @@ Provider 集合、协议、Endpoint、模型、Properties 和 Option Specs 全�
 和静态 Header 优先，旧对象不能把它们覆盖回去。后续 Connectivity Probe 接入 Account Request
 Auth Service 后即可删除这段按需兼容读取。
 
-新增测试固定常驻 Account 投影不含 secret，并验证显式测试只能补运行凭据/Header，不能带回
-旧静态事实。Provider 投影、设置页、Coding Plan 与订阅动作相关 4 个测试文件、228 条测试通过；
-全仓 typecheck 通过，lint 保持 35 条既有 warning。全量 pre-push 按当前约定留到后续集中执行。
+
 
 ## 131. 新设置页冷启动和刷新退出旧 Provider Snapshot
 
@@ -1484,10 +1322,7 @@ Account secret 从投影中删除后，`useModelProviders()` 仍会在新 Settin
 用户点击设置页刷新时直接调用 `ProviderSettingsService.refresh()`，由正式链路依次刷新 Account
 Source 与 Registry。未装配新 Service 的旧 Entry 继续保留原快照订阅、缓存水合和刷新行为。
 
-保存、删除和模型调序目前仍保留旧 Store 镜像及打开 Workspace 的兼容同步，它们涉及尚未完全
-退出的 Worker/Remote 运行链路，本切片没有借读取迁移一并删除。新增测试固定“Service 已存在但
-View 未发布”时不能回退旧 Provider；投影、设置页、Coding Plan 与订阅动作相关 4 个测试文件、
-229 条测试通过。全仓 typecheck 通过，lint 保持 35 条既有 warning；全量 pre-push 延后集中执行。
+
 
 ## 132. 设置页新增模型退出独立 Catalog 查询
 
@@ -1650,35 +1485,6 @@ testModelConnectivity
 的 Workspace Snapshot 兼容链路。Services 与设置页相关 3 个测试文件、343 条测试通过；全仓 typecheck
 通过，lint 为 0 error、35 条既有 warning。全量 pre-push 按当前约定留到后续集中执行。
 
-## 137. Start Plan 模型集合退出 UI 和旧 Store 硬编码
-
-Shared 曾以 `ZAI_START_PLAN_FREE_MODELS` 保存两个免费模型。输入框的旧 Provider Snapshot 投影会用这份
-常量过滤 Start Plan 模型，设置页还会用它构造一份占位 Provider；旧 Provider Store 在远端同步失败时，
-也会据此把 Z.ai 与 BigModel Start Plan 写入旧配置。这三处逻辑会覆盖或伪造正式事实：Official Config
-已经声明静态模型，Account Overlay 又会根据当前权益给出实际可用成员。
-
-本轮删除该常量及其三类消费者。正式事实链现在是：
-
-```text
-Official Provider / Model Config
-              +
-当前 Account ProviderConfigMap
-              |
-              v
-       Provider Registry View
-              |
-              v
-       设置与模型选择投影
-```
-
-兼容投影在 Registry View 尚未 hydrate 时，只转发上游旧 Provider Snapshot 已有的模型，不再根据模型名
-和 `modified` 标记二次裁决。旧 Store 的网络失败 fallback 仍可补 API Key Provider 和内部 ZAPI，但不再
-凭本地模型常量创建 Account Provider；未取得 Account 事实时，Start Plan 应保持不可用。
-
-新增回归测试先证明旧实现会过滤上游模型并伪造 Start Plan，再完成生产修改。UI 与 Services 相关
-4 个测试文件、340 条测试通过；全仓 typecheck 通过，lint 为 0 error、35 条既有 warning。全量
-pre-push 按当前约定延后集中执行。
-
 ## 138. 本地 Host 停止用旧 Snapshot 覆盖 Worker Registry
 
 调研本地 Session 创建链路时发现，Host 和 Core Worker 虽然都已经装配进程级 Provider Registry，
@@ -1798,10 +1604,6 @@ Remote Host
    └─ interaction/requestProviderRuntimeHeaders
 ```
 
-远端 server 使用 `desktop-attached-remote` authority mode 启动，当前没有装配 Official/Personal
-Provider Config Runtime，也没有 Desktop 账号的 Credential Store。远端 `ZCodeAgentService` 收到 Worker
-的鉴权请求后，只能调用远端进程自己的旧 `modelProviderService.accountRequestAuthResolver`。该 Resolver
-读取远端用户目录和远端账号状态，不能代表 Desktop Environment 的登录态。
 
 现有 UI bridge 也没有修正这个边界。`V4WorkspaceProviderRuntimeHeadersBridge` 会把 Controller 包在目标
 Workspace 的 `ServiceProvider` 中；远端 tab 因而同时取得远端 `zcodeAgentService`、远端
@@ -1856,24 +1658,9 @@ Provider Config、Credential Store、Account Source 和 Registry；`desktop-atta
 
 ## 145. Account Request Auth 提升为独立服务契约
 
-跨 Host 传输方案尚未裁决，但 Renderer 中转与 Host-to-Host Broker 都需要同一个请求期鉴权能力。原实现
-只有 `modelProviderService.accountRequestAuthResolver` 这一具体 runtime 内部属性，调用者若直接依赖它，
-会继续把动态鉴权绑在旧 Provider 服务上。
 
-本轮新增 `IAccountRequestAuthService`，接口只保留：
 
-```text
-resolve(providerId, modelId, accountAccessId, reason)
-        |
-        v
-AccountRequestAuthMaterial
-├─ apiKey
-└─ headers
-```
 
-Local Services 使用现有 Resolver 装配该服务。服务层只做委托，不读取 Config、不缓存凭据、不回退旧
-Runtime 现在都依赖这份窄契约；旧 `ModelProviderService.accountRequestAuthResolver` 只在
-`createLocalServices()` composition root 中用于产生迁移实现。
 
 实现中曾尝试把该服务注册为标准 Service Channel。全仓类型检查追到 Desktop Host 的现有装配后发现，那里
 已经明确禁止把 API Key 解析能力开放给 Renderer/Remote Client；若继续注册，会在跨 Host 方案尚未裁决时
@@ -1886,31 +1673,13 @@ Runtime 现在都依赖这份窄契约；旧 `ModelProviderService.accountReques
 
 ## 146. Account Request Auth 退出旧 Provider Service 所有权
 
-条目 145 先收窄了消费者接口，但 Local Host 最初仍然从
-`modelProviderService.accountRequestAuthResolver` 构造新服务。这使新接口在运行时仍由旧 Provider
-Service 拥有，后续删除旧服务时还会再次迁移同一条鉴权链路。
+
 
 本轮把装配移动到 `createLocalServices()`：
 
-```text
-Credential Service / OAuth Credential Repo
-Account Provider Credential Store
-Team Plan Request Key Resolver
-        |
-        v
-AccountProviderRequestAuthService
-        |
-        v
-IAccountRequestAuthService（Local Host 私有）
-```
 
-普通 Personal Coding Plan Key 先读新的 `account-provider:<accessId>:api-key`；只有新键不存在时，才通过
-闭包回读旧 Provider Store 并完成一次性迁移。Start Plan 继续从 OAuth Credential Repo 读取当前
-Token Set；Team Plan 的请求期 Key 算法保持原样。旧 `ModelProviderService` 已删除 Resolver 字段和构造，
-不再拥有动态鉴权能力。
 
-Team Plan Key 的具体实现暂时仍与旧 Registry Snapshot 共用 `modelProviderService.ts` 中的纯函数。把这段
-动态账号执行逻辑移动到独立 Account Runtime 模块是后续代码内聚清理，不影响本轮事实源和生命周期边界。
+
 
 测试先验证 Local Host 的窄服务能在旧 Resolver 被移除后从新 Credential Store 解析当前 Key；相关 4 个
 测试文件共 145 条测试通过。全仓 typecheck 通过，lint 为 0 error、35 条既有 warning。全量 pre-push
@@ -1918,51 +1687,13 @@ Team Plan Key 的具体实现暂时仍与旧 Registry Snapshot 共用 `modelProv
 
 ## 147. OAuth logout 清理新的 Account Credential Store
 
-Personal Coding Plan Key 已经从旧 Provider Store 单向迁入按 `accessId` 管理的 Account Credential Store，
-但 OAuth logout 仍只调用旧 `ModelProviderService.clearCodingPlanApiKey()`。这会让退出登录后的新请求鉴权
-事实源残留旧 Key；后续重新登录或账号状态恢复时，Request Auth 仍可能读取这份陈旧凭据。
+
 
 本轮让 logout handler 同时依赖两条明确的清理边界：
 
-```text
-OAuth logout
-├─ 旧 Provider Store
-│  └─ 清理 Start / Coding Plan 迁移期副本
-└─ Account Credential Store
-   └─ 删除 coding-plan:<providerId> Personal Key
-```
-
-Start Plan 的 JWT 随 OAuth Token Set 清理，不在 Account Credential Store 中另存一份；Team Plan Key 在请求期
-解析，也不属于本次持久凭据清理。Local Host、Remote Connection Host 和 Remote Workspace Host 都使用各自
-已经持有的 Credential Service 构造同一种 Account Credential Store，避免不同 Host 的 logout 行为再次分叉。
 
 测试先增加新 Store 删除断言，再修改实现。3 个定向测试文件共 10 条测试通过；全仓 typecheck 通过，lint
 为 0 error、35 条既有 warning。全量 pre-push 按约定延后。
-
-## 148. Team Plan Request Key 移出旧 Provider Service
-
-条目 146 留下的代码内聚问题已经收束。BigModel 与 Z.ai Team Plan 的请求期 Key 解析现在位于独立
-`accountProviderTeamPlanRequestKey` 模块：
-
-```text
-accessId + OAuth Credential Port + ApiClient
-        |
-        v
-Team Plan Request Key Resolver
-├─ 校验选中的 organization / project
-├─ 查找或创建 zcode-team-api-key
-├─ 复制 Secret
-└─ 返回本次请求使用的 Key
-```
-
-新的 Account Request Auth Service 直接依赖该模块。旧 Registry Snapshot 在退出前也调用同一实现，因此
-迁移期不会形成两套 Team Plan Key 算法。模块不读取 Provider Config、不持有 Registry，也不缓存 Key；它只
-处理请求期账号鉴权。BigModel 对陈旧 ZCode JWT 的拒绝、旧 project-only 选择的组织恢复，以及 Z.ai 的业务域
-Header 行为均保持原样。
-
-测试先建立独立模块边界，并分别覆盖 BigModel 与 Z.ai 从组织/项目取得 `apiKey.secret` 的完整流程；再移动
-实现。3 个相关测试文件共 141 条测试通过；全仓 typecheck 通过，lint 为 0 error、35 条既有 warning。
-全量 pre-push 按约定延后。
 
 ## 149. Prompt CLI / TUI 关闭 Workspace Legacy Model Source
 
@@ -2003,15 +1734,8 @@ Headless Prompt 与 TUI 的 App 装配增加模式断言，确认修复前两个
 └─ apiKey                                  请求期鉴权
 ```
 
-同时，Usage 的查询语义不完全等于当前 Registry：Team Plan 激活时，用户仍可显式查询 Personal Coding Plan；
-已经断开、当前不可选择的 Provider 也可能需要展示历史用量或明确的未配置状态。直接替换为
-`ModelSelectionView` 会把“当前可选模型集合”误当成“可查询用量来源”，直接改成 Account Request Auth 又会把
-非模型 API 的套餐监控请求塞入模型请求接口。
 
-因此该迁移需要先裁决 Usage 的领域边界。较清晰的方向是建立独立 Usage Source / Authorization 边界：静态
-Provider 信息读取新 Config/Settings 投影，Personal Key 读取 Account Credential Store，Team Key 复用已抽离
-的 Team Plan Request Key Resolver；是否允许查询非当前连接和已断开来源由 Usage 产品语义明确决定。在这项
-裁决完成前，不能用 Registry 可选性过滤替换现有行为，也不能宣称旧 Provider Service 已可删除。
+
 
 ## 151. 连通性测试退出模型名 Reasoning 硬编码
 
@@ -2040,30 +1764,6 @@ OpenAI Responses 保持原有 wire 字段；映射缺失时，不根据模型名
 测试先把旧 GLM fallback 用例改为“未配置则不发送”，确认修改前失败；随后删除 fallback 和
 Helper 的 `thoughtLevel` 翻译入口。连通性 Helper 与 Provider Service 共 148 条测试通过；
 全仓 typecheck 通过，lint 为 0 error、35 条既有 warning。全量 pre-push 按约定延后。
-
-## 152. 闲时任务编辑器退出 GLM Reasoning 名称兜底
-
-闲时任务是 execution-scoped Provider，它的可用模型和静态模型事实由 Host 从
-直接读取其 reasoning 档位，但旧 helper 在模型元数据缺失时仍会根据 `GLM-5.2`
-模型名本地补齐 `max / high / nothink`。
-
-本轮删除这条 Renderer 名称兜底。现在的行为是：
-
-```text
-allowedModelConfigs 包含目标模型与 reasoning
-        |
-        v
-展示远程配置声明的档位和缺省值
-
-allowedModelConfigs 没有目标模型或 reasoning
-        |
-        v
-不展示 reasoning 选项
-```
-
-这项改动不把闲时任务强行改成常驻 Registry Provider；它只确保 execution-scoped
-Provider 的调用方不再重建第二份模型事实。测试先新增“缺失 `allowedModelConfigs`
-与 Runtime Model 共 38 条定向测试通过。全量 pre-push 按约定延后。
 
 ## 153. Root Provider 刷新入口切换到新 Runtime
 
@@ -2136,28 +1836,6 @@ Provider Runtime、Config Runtime 与 Local Services 共 12 条定向测试通�
 Renderer 侧的旧 Connectivity Probe。这条链路保留了两个已经退出主要路径的职责：Renderer 组装模型请求，
 旧 Provider Snapshot 提供 Account 请求凭据。
 
-普通 API Provider、Coding Plan 与 Start Plan 的真实依赖并不完全相同：
-
-```text
-普通 API Provider
-Renderer: providerId + modelId
-       |
-       v
-Host: Registry 静态事实 + Personal API Key -> Connectivity Request
-
-Coding Plan
-Renderer: providerId + modelId
-       |
-       v
-Host: Registry 静态事实 + Account Request Auth -> Connectivity Request
-
-Start Plan
-Renderer: 交互取得本次一次性安全校验 Header
-       |
-       | providerId + modelId + 一次性 Header
-       v
-Host: Registry 静态事实 + Account Request Auth JWT -> Connectivity Request
-```
 
 官方版本安全校验依赖页面级交互，不能直接搬进 Host；JWT、Personal/Team Key、Endpoint、模型属性、
 Option Specs 与 reasoningMapping 又不应继续由 Renderer 或旧 Snapshot 组装。因此目标接口应只接收
@@ -2171,8 +1849,7 @@ Provider Config，否则调用方仍可绕过 Registry 制造另一份执行事�
 - 新建窄的 `IProviderConnectivityService`：Settings 继续只管理配置，Connectivity 单独依赖 Registry、
   Account Request Auth 和请求 Adapter；将来 CLI/TUI 若需要显式探测可以直接复用，但会新增一个 Service/RPC。
 
-无论选择哪一种，`@zcode/provider` 继续保持无 IO；执行实现位于 Services/Host，Renderer 只承担 Start Plan
-交互式安全校验材料的获取。
+
 
 人的裁决是 M2 暂时维持现状。连通性测试只在设置页用户显式点击时运行，结果不修改 Registry、Config 或
 模型可用状态；新 Settings View 继续提供协议、Endpoint 和模型静态事实，旧 Snapshot 只按需补充这次测试
@@ -2182,8 +1859,7 @@ Remote Provider Authority 与其余 M2 收口。
 
 ## 156. 官方版本安全校验判定退出旧 Provider Snapshot
 
-Start Plan 请求期的官方版本安全校验判定原先仍通过 `ModelProviderService.getAllCached()` 读取旧 Provider
-Endpoint。这项判断属于静态 Provider 事实，不需要 API Key、JWT 或旧 Registry Snapshot。
+
 
 本轮改为按 Entry 能力读取唯一静态来源：新 Provider Runtime 读取 `ProviderSettingsView.effectiveConfig` 的
 `apiFormat/baseURL`；仅未装配 Provider Settings Service 的旧 Entry 继续走 Legacy Provider Snapshot 兼容判断。
@@ -2199,19 +1875,9 @@ Provider Settings Service 存在时，Provider 缺失直接 fail closed，不回
 
 ## 158. Account accessId 纳入具体登录账号作用域
 
-Account Source 原先为 Personal Coding Plan 和 Start Plan 生成固定的连接种类 ID，例如
-`coding-plan:<providerId>`。同一机器切换登录账号后，该 ID 不变，使 Usage Cache、Credential Store、
-Account Config 和已创建 Model 无法区分两个账号。
+
 
 本轮在原 Plan/Team 连接 ID 后追加非敏感账号身份：
-
-```text
-<plan-connection-id>:account:<encoded-account-profile-id>
-```
-
-账号身份来自 OAuth Profile 的稳定 `id`，不包含 JWT、API Key、动态 Header，也不使用 Secret 哈希。
-同一账号刷新 Token 或 Runtime Key 时 ID 保持不变；切换账号后 ID 必须变化。Team Plan 同样增加账号
-作用域，组织与项目连接仍保留在原有基础 ID 中。
 
 Account Provider 已被权益判断为 available、但 Account Source 无法取得账号身份时，本轮选择
 fail closed：刷新抛错并由现有 AccountProviderService 保留 last-known-good，而不生成可能跨账号复用的
@@ -2240,47 +1906,18 @@ accessId 暂时跳过该检查，只服务迁移期已创建 Model 与旧 Source
 
 ## 160. Usage / Entitlement 使用 Account Access 作为请求权威
 
-Usage、Entitlement、Coding Plan Usage 和套餐重置虽然已经由 UI 选定具体来源，Host 仍会重新读取
-`ModelProviderService.getAllCached()`，从旧 `ModelProviderConfig[]` 中寻找 Provider、判断是否启用、读取
-API Key，并在 Team Plan 场景自行创建或复制项目 Key。这样同一次请求存在两套来源身份：UI 已选择的
-账号连接，以及 Usage 层从旧 Provider 数组重新猜出的连接。
+
 
 本轮把请求边界收敛为：
-
-```text
-Provider Settings / Usage Source
-├─ providerId
-├─ accessId
-├─ organizationId?
-└─ projectId?
-        |
-        v
-Usage / Entitlement / Reset Request
-        |
-        v
-Account Request Auth
-├─ 校验 accessId 属于当前登录账号
-├─ Personal Coding Plan -> Account Credential Store
-├─ Team Plan            -> Team Key Resolver
-└─ Start Plan           -> 当前 ZCode JWT
-        |
-        v
-Usage API
-```
 
 `BigModelUsageQuotaProvider` 删除了对旧 `IModelProviderService` 的直接依赖，也不再负责创建 Team API Key。
 Team Key 的取得和缓存由 Account Request Auth 保持统一；Usage 只消费本次连接对应的请求材料。套餐重置
 同样先校验 `providerId + accessId` 的账号身份，再读取当前账号的 ZCode JWT 与对应 Provider Family 的
 OAuth JWT。
 
-Shared Protocol 为 Coding Plan Usage 和 Reset 增加必填 `accessId`；Entitlement 与通用 Usage 请求在兼容
-接口上保持可选，但所有 Account Provider 生产调用都从 `ProviderSettingsView` 取得并传递该字段。UI 的
-请求缓存、in-flight 合并、Reset Coordinator 和自动播放状态也把 `accessId` 纳入 key，避免同一 Provider
-下的不同账号或 Personal/Team 连接共享结果。
 
-OAuth 登录完成和启动恢复是独立的权益请求入口。它们现在先刷新 Provider Settings View，从最新 Account
-Config 取得 Coding Plan 与 Start Plan 的 `accessId`，再读取 Entitlement；不再因为新服务拒绝无身份请求而
-把已登录账号误判为未配置。
+
+
 
 普通 API Provider 的 monitor usage 当前没有生产消费者，保留窄的 `resolveApiAuthorization` 注入点，后续由
 新 Effective API Provider Config 提供授权，不恢复旧 Provider 数组选择。Account Credential Store 内部仍可
@@ -2412,23 +2049,6 @@ Bootstrap 相关 3 个测试文件、40 条测试及类型检查通过。
 
 本轮将配置文档升级到 Schema v5，并把字段按实际职责收拢：
 
-```text
-Provider Config
-├─ access
-│  ├─ api-key
-│  └─ zhipu-account
-├─ api
-│  ├─ type
-│  ├─ baseURL
-│  └─ headers
-└─ models
-   └─ Model Config
-      └─ apiAdapter
-         ├─ reasoningMapping
-         ├─ preserveThinking
-         └─ reasoningContentField
-```
-
 Official、Personal 与 Account Access 继续使用同一份 `ProviderConfig` Overlay。配置只描述当前来源掌握的事实；
 动态请求凭据仍由执行链在请求时取得，不进入 Registry 的静态模型事实。`ModelConfigRule` 同时把
 `apiFormatMatch` 收敛为 `apiMatch`，允许同一模型的公共属性与不同 API 协议下的适配规则分层覆盖。
@@ -2481,43 +2101,6 @@ SHA-256；同一内容重复迁移可以复用已有备份，不同内容不会�
 Provider 69 条、Provider Node 12 条、Services 与 UI 定向 36 条、Bootstrap 14 条及 CLI 路径 4 条测试通过；
 全仓 TypeScript 检查通过，lint 保持 35 条既有 warning、0 error。误触发的 Bootstrap/CLI 全量测试仍暴露
 既有 MCP、Session、Telemetry、SEA 资源与测试清理问题，均不在本切片修改链路内。
-
-## 168. Account Source 直接取得账号级 Coding Plan 凭据
-
-新 Registry 已经使用 Account Config Overlay 表达账号 Provider，但登录、启动恢复、购买完成和登出仍调用旧
-`ModelProviderService.refreshCodingPlanApiKey()`。该方法除了写旧 Provider Store，还隐藏承担了一个必要职责：
-使用当前 OAuth Access Token 向业务接口创建或复制 Personal Coding Plan API Key。直接删除调用会让新登录账号
-无法进入 Coding Plan Registry。
-
-本轮把这项职责收敛为 `AccountProviderCredentialService`。它以账号级 `accessId` 读取和保存凭据；缓存缺失时，
-使用当前 OAuth Token 调用现有业务 Key 解析实现，并合并同一账号连接的并发请求：
-
-```text
-providerId + accountIdentity
-        |
-        v
-scoped coding-plan accessId
-        |
-        +-- Credential Store 命中 -> 返回
-        |
-        `-- 未命中 -> OAuth Token -> 业务 Key 接口 -> 保存 -> 返回
-```
-
-Account Source 在查询 Coding Plan 权益前先取得当前账号身份，再按该身份取得 Key；最终发布的 Account Config 与
-请求期 Credential Store 因此使用同一个 scoped `accessId`。Model 请求鉴权不再回读旧 Provider Store。OAuth
-回调会显式强制刷新账号 Key，普通启动恢复继续复用缓存；同一次 OAuth 回调中的多次 Provider 刷新共享同一
-Promise，避免为 Start/Coding/最终 selectedKey 重复复制 Key。
-
-新 Provider Runtime 下，启动恢复、登录回调、设置页鉴权变化和购买完成只刷新 Account Source。登出先清理
-迁移期无账号作用域的旧 Key，再直接刷新 Account Source；Account Source 在账号身份消失后发布不可用结果。
-旧 `refreshCodingPlanApiKey`、`clearCodingPlanApiKey` 只留给未装配 Provider Runtime 的兼容 Entry。新 Runtime
-同时停止订阅旧 `ModelProviderService` 的 Account Facts 事件，账号设置由 Settings invalidation 驱动，登录、
-登出和购买由各自业务流程主动刷新。
-
-远端业务 Key 的 HTTP 实现暂时复用 `OAuthPresetProviderRepoProviderResolvers` 中无状态的 Key 解析方法；它不读
-旧 Provider Config 或 Registry。删除旧 Preset Repo 时应把该方法移动到账号凭据领域，保持当前 Service 契约
-不变。Provider、Services 与 UI 共 12 个定向测试文件、345 条测试通过；全仓 TypeScript 检查通过，lint 保持
-35 条既有 warning、0 error。
 
 ## 169. 进程 Registry 拒绝旧 Workspace Provider 写入
 
@@ -2756,9 +2339,7 @@ Selection Service；Bots 内部为独立旧式测试保留的 `ModelProviderServ
 
 ## 179. Standalone 登录改为 Account Config 与请求期鉴权
 
-Prompt CLI 与 TUI 的 Coding Plan 登录过去把 API Key、Provider 定义和默认模型一起写入旧
-`~/.openzwork/cli/config.json`。这会让 Standalone Entry 即使已经启动进程 Registry，登录后仍重新制造一份旧
-Provider 事实源。
+
 
 本轮将 Standalone 登录收敛为两类状态：
 
@@ -2771,19 +2352,12 @@ Model Selection Config
 └─ configuredDefault
 ```
 
-进程启动时，Standalone Account Source 根据账号身份和当前可取得的 API Key 生成第三层
-`ProviderConfigMap`。它只携带 `accessId`；Provider 的模型、Properties、Option Specs 和静态 API 配置继续来自
-Official Config，秘密不进入 Registry。登录、手工 Coding Plan API Key 和退出都修改同一 Credential Store，
-同进程订阅者在写入完成后刷新 Account Source 与 Registry。
 
 Model 请求在每个真实 attempt 前使用 Model 固定的 `accessId` 读取当前 API Key。API Key 轮换因此不修改
 Registry，也不改变已经创建的 Model 身份；下一次请求直接取得新值。账号身份被删除或切换时，旧 accessId
 失效，Account Source 同时把对应 Provider 从以后创建 Model 使用的 Registry 中移除。
 
-Z.AI OAuth 使用服务端用户 ID 作为账号身份。BigModel OAuth 和手工 API Key 当前没有稳定 Profile ID，暂时使用
-API Key 的不可逆摘要形成进程内需要的稳定身份；未来 Account Service 提供正式账号 ID 后可以替换这一来源，
-`accessId` 与请求期鉴权边界不需要变化。当前只接入 Z.AI / BigModel Personal Coding Plan，不借此扩展 Start Plan、
-Team Plan 或闲时任务。
+
 
 旧 CLI Config 现在只作为 Personal Config 与 configured default 的一次性导入输入。新文件一旦生成，后续修改旧
 Provider/Model 字段不会再次进入 Registry。`createZCodeApp` 仍读取旧文件中的 MCP、Hooks、Permission 等尚未迁移
@@ -2808,9 +2382,7 @@ Settings/Selection Facade；API Key Management URL 也从 Settings View 的 Effe
 Official Config 计算稀疏 Personal Overlay。Official Provider 和 Personal-only Provider 共用这一入口，不会
 把 Official label、Endpoint 或完整模型列表复制进 Personal Config。
 
-Start Plan 的官方版本安全校验继续保留原有动态材料、request-scoped Header 与回执机制；其判定所用的
-`api.type/baseURL` 静态事实改为强制读取 Settings View，删除 `getAllCached()` fallback。购买完成后同样只刷新
-Account Source 与 Registry，不再额外调用旧 `refreshCodingPlanApiKey`。
+
 
 这一调整没有重构显式“测试连接”操作。该操作仍按用户点击临时读取兼容凭据，且不能覆盖 Settings View 的静态
 Provider/Model 事实；它已在 M2 计划中作为独立后续课题记录。
@@ -2825,10 +2397,7 @@ Provider/Model 事实；它已在 M2 计划中作为独立后续课题记录。
 `ModelSelectionView`：`null` 表示 Registry 尚未发布，空 View 表示 Registry 已确认没有可选择模型，
 两种状态都不会读取旧 Provider 数组。
 
-OAuth 链路同时收敛为一次 Provider Runtime 刷新：账号登录成功后先完成 Provider Family 的
-`selectedKey` 校正和 App Settings 快照刷新，再调用 `ProviderSettingsService.refresh()` 更新 Account Source、
-Registry、Settings View 与 Selection View。Renderer 不再按 Coding/Start/Team Provider 分别调用旧
-`refreshCodingPlanApiKey()`，也不再维护 `cachedOnly`、请求 ID 或旧快照竞态屏障。
+
 
 设置页使用的 Legacy 表单投影仍存在，但其输入只来自 `ProviderSettingsView`。显式“测试连接”仍保留按需读取
 兼容凭据的独立边界；它没有重新成为 Root 常驻状态或模型选择事实来源。
@@ -2862,20 +2431,11 @@ Bot 与 Remote Workspace Host 的 9 个定向测试文件、121 条测试通过�
 尚未保存。因此不能把 RPC 简化成 `providerId/modelId` 后让 Host 只读取 Registry，否则用户看到的配置和实际
 测试对象会不一致。
 
-本轮在 Provider Settings Service 增加连通性测试操作。Renderer 把本次静态草稿和模型名交给 Settings RPC；
-Host 等待 Provider Runtime 就绪，并从最新 Settings View 查找同 ID Provider。API Key Provider 直接使用当前
-草稿。Account Provider 则忽略草稿中可能残留的鉴权值，按 Effective Config 的 `accessId` 调用请求期鉴权服务，
-再把当前 API Key/Team Key 合并进这一次探测。Start Plan 的一次性安全校验 Header 仍由现有交互链路生成，并随
-这次草稿一起提交。
 
-既有 `ModelProviderService.testModelConnectivity` 暂时继续承担网络 Probe、Start Plan 权益检查和请求安全校验；新增
-的 `requestAuthResolved` 边界明确告诉它本次凭据已经由新 Account Request Auth Service 解析，禁止它再次读取
-旧 Provider Snapshot 或 Family 设置改写身份。这个兼容复用不再产生 Provider 事实，后续提取独立 Probe 时可以
-直接删除旧 Service 上的同名入口。
 
-Renderer 的 `getAllCached()` 读取和 `resolveLegacyConnectivityProvider()` 已删除。实现过程中还发现一条购买完成
-测试仍断言调用已退休的 `refreshCodingPlanApiKey()`；测试已改为锁定当前行为：购买完成刷新 Account Source /
-Registry，且不会重新刷新旧 Provider API Key。
+
+
+
 
 Provider Runtime、请求期鉴权、旧 Probe 隔离、设置投影、购买完成和官方版本安全校验相关的 7 个测试文件、198 条测试
 通过；全仓 TypeScript 检查通过。
@@ -2892,10 +2452,7 @@ M2 主计划中四条远端事项仍标为待实施，是计划状态落后于�
 `LegacyAccountProviderConfigSource` 的装配点。该 Source 只剩公开导出和自己的单元测试，却仍允许未来调用方
 把旧完整 Registry Snapshot 重新投影成 Account ProviderConfigMap。
 
-本轮删除 `LegacyAccountProviderConfigSource` 及其测试。旧 `ModelProviderService` 在构造尚未完全退出的兼容
-Snapshot 时仍需把 Family selected key 转换为 `accessId`，这段纯转换函数移动到独立的
-`legacyAccountAccessId.ts`，不再和 Account Config Source 混在一起。依赖引用检查确认被删除的 Class 没有生产
-调用方；新的纯函数测试与旧 Model Provider Service 的 136 条定向测试通过。
+
 
 ## 185. Repo Wiki 删除旧 Registry Source fallback
 
@@ -3052,10 +2609,6 @@ Header 投影给模型。该入口没有生产调用方，但测试仍把它描�
 一次性 Header -> 指定 request response -> 对应模型请求
 ```
 
-本轮删除 Service API、Provider 级 Map、两个已弃用 UI helper 及其测试。旧 Provider 配置中可能残留的
-官方版本安全校验 Header 仍在兼容 Snapshot 投影时被剥离；Start Plan 的静态 Authorization 继续从当前
-Credential 获取，不与一次性 Header 合并。请求级 Header 构造、并发串行化、暂存与响应逻辑保持
-不变。
 
 Provider Service、官方版本安全校验状态机与日志 helper 共 161 条定向测试通过。后续旧 Registry Snapshot 即使仍为
 少量兼容消费者存在，也不能再承载动态请求凭据。
@@ -3115,8 +2668,6 @@ Store 和 Usage 链路共同完成，原计划文字落后于实现：
   切换账号时生成新的 `accessId`。
 - `AccountProviderRequestAuthService` 在请求前校验 Provider 与 `accessId` 的匹配，并校验当前 OAuth
   账号身份；Team 的 organization/project 从同一个 `accessId` 解析并传给 Team Key 解析器。
-- Personal Coding Plan API Key 以账号作用域 `accessId` 作为 Credential Store key。旧 provider 级 key
-  只作为迁移期读取，不参与新请求事实。
 - Usage、Entitlement、Team Products 和相关缓存请求都携带账号作用域 `accessId`，Team 请求同时保留
   organization/project 上下文，没有再引入平行的账号缓存身份。
 
@@ -3196,22 +2747,13 @@ Session Facade 的 Registry 分支负责模型选择与 reasoning 档位。因�
 `requestAuthResolved: true` 阻止旧 Service 重新读取 Provider Snapshot。这个兼容开关使旧 Snapshot 继续成为
 网络探测的间接依赖。
 
-本轮把鉴权后的单次探测定义为窄 `ProviderSettingsConnectivityProbe`。组合层负责 Account 凭据和请求 Header，
-Probe 只接收当前设置草稿、模型与本次 API Key，处理 Start Plan 权益校验、请求安全校验和实际 endpoint 探测。
-生产装配直接创建 Probe，不再把旧 `ModelProviderService` 注入设置链路，也不再传递
-`requestAuthResolved`。旧 Service 的同名方法暂留给尚未删除的兼容测试与远端旧频道；它已不是新设置功能的
-生产依赖，后续可以独立删除旧方法和完整 Snapshot 构造器。
+
 
 ## 203. 删除旧连通性测试 API
 
-上一节完成后，`IModelProviderService.testModelConnectivity()` 已没有生产调用方。它原本同时承担
-Provider Snapshot 读取、Account/Team 凭据重写、Start Plan 权益判断和网络探测，保留这个公开入口会让
-设置链路之外的调用者继续依赖旧 Provider Service 的事实组合。
 
-本轮删除接口、实现和远端 Host 的兼容入口。连通性行为没有被删除：通用协议探测、模型级 reasoningMapping、
-Start Plan 可用性与请求安全校验现在由独立的 `ProviderSettingsConnectivityProbe` 覆盖。新增的 Probe 测试直接
-验证当前 apiFormat、reasoningMapping 和模型名未命中规则时的行为；Account/Team 请求凭据仍由既有
-`accountProviderRequestAuthService` 与 `accountProviderTeamPlanRequestKey` 测试覆盖。
+
+
 
 这一步收窄了旧 Provider Service 的职责，不改变设置页提交草稿、请求期鉴权或网络探测的产品语义。旧
 Registry Snapshot 的实现仍单独存在，下一步继续审计它的测试与兼容引用，再决定删除范围。
@@ -3260,25 +2802,10 @@ Registry Snapshot 的实现仍单独存在，下一步继续审计它的测试�
 远端兼容 Host 的旧凭据清理改成独立迁移服务，再删除 `IModelProviderService` 上的对应方法，避免把一次性迁移
 和长期 Provider 事实混在一次改动里。
 
-## 207. OAuth logout 退出旧 Provider Store 清理
 
-继续沿着上面的调用面检查后，OAuth logout 中对 `ModelProviderService.clearCodingPlanApiKey()` 的调用被确认
-只是在登出时改写旧 Provider Store 的派生 key。新请求鉴权读取账号作用域 Credential Store，Account Source
-负责重新发布可用性；旧 Store 的清理不会影响当前 Registry、Model 或请求凭据。
 
-本轮让 logout 只依赖 `AccountProviderCredentialStore.deleteApiKey()` 和 Account Source 刷新，移除
-`remoteWorkspaceServiceCollection`、`remoteConnectionServiceCollection` 到旧 Service 的 logout 注入，并删除
-只验证旧 Store 被改写的测试。`IModelProviderService` 自身的 `clearCodingPlanApiKey()` 实现暂时保留，供迁移期
-旧内部调用和后续单独清理使用；它已经不再是 OAuth logout 的生产依赖。
 
-## 208. 清理 UI 中已退出的 Coding Plan API mock
 
-设置页的 OAuth 测试已经验证 logout 和 Account Source 刷新，不再调用旧的
-`refreshCodingPlanApiKey` / `clearCodingPlanApiKey`。本轮删除这些 mock、重置和“不得调用”断言，保留真实的
-登录、解绑、刷新和凭据读取断言。9 条设置测试全部通过。
-
-旧 Service 方法及其专门的历史测试暂不在本轮删除；它们仍需要按 Account Provider 新流程重新归类，避免把
-权益判断测试一起误删。
 
 ## 209. 清理 V4 测试中的旧 Provider Store mock
 
@@ -3286,33 +2813,13 @@ Registry Snapshot 的实现仍单独存在，下一步继续审计它的测试�
 Selection/Settings 服务验证模型恢复、草稿预热和错误门禁，实际没有读取旧 Provider Store。本轮删除这些
 无效 mock；10 个受影响测试文件共 113 条测试通过。生产迁移入口不受影响。
 
-## 210. 删除旧 Coding Plan Key 刷新与清理 API
-
-OAuth、设置页和 Account Provider 已经分别通过 Account Credential Store、Account Source 与 Request Auth
-完成登录刷新、可用性发布和请求期鉴权。旧 `IModelProviderService.refreshCodingPlanApiKey()` 与
-`clearCodingPlanApiKey()` 已没有生产调用方；它们剩余的行为是把动态凭据和权益结果写回旧 Provider Store，
-继续保留会让已经分离的账号事实重新汇入旧静态配置。
-
-本轮删除两个公共方法、Service 实现、旧依赖注入和 29 个以旧 Store 改写结果为断言的测试。测试清理前先将
-仍然有效的产品规则迁到 `codingPlanProviderAvailability.test.ts`，直接覆盖 Z.ai Start/Coding 未登录、互斥权益、
-Coding 查询暂时失败时保留 Start 结果，以及已选 Team Project 校验暂时失败时保留上一版连接状态。权益规则
-继续由新的 Account Connection Resolver 调用，不再依赖旧 Service 的刷新副作用。随两个调用入口一同失去
-消费者的旧 Account Facts Emitter 和断开原因辅助函数也同步删除，避免继续暗示旧 Service 会发布账号事实。
-
-`ModelProviderService.getAll()` 内部的旧 Preset 同步与 Entry Status 缓存暂时保留；它们服务尚未退出的首次
-Personal Config 导入和旧兼容读取，不再对外提供主动刷新或清理入口。相关 6 个测试文件共 98 条测试通过，
-全量 TypeScript 构建通过。
-
 ## 211. 一次性旧配置迁移退出 ModelProviderService
 
 旧 Service 的两个真实消费者都只需要读取旧物理存储，不需要 Preset 同步、Entry Status、Family 过滤或任何
 运行态投影。Local Host 的 Personal Config 首次导入改为直接调用旧 Store Reader；迁移输入因而只包含旧文件
 本身的 Provider 值，不再经过 `getAllCached()` 混入账号入口状态。
 
-Remote Workspace 本机侧为历史 Personal Coding Plan Key 保留一次性迁移。该链路新增窄函数
-`loadLegacyAccountProviderApiKey(providerId)`，只读取指定 Provider 的旧 Key，交给 Account Credential Store
-写入账号作用域凭据。Remote Workspace 不再为此构造或注册一套本机旧 ModelProviderService，相关工厂和仅验证
-旧 Preset/ZAPI 行为的测试同步退出；模型选择和设置仍直接使用目标 Remote Environment 的 Registry 服务。
+
 
 新增旧 Key 窄读取测试，并回归 Account Credential Store、Remote Workspace 服务装配和 Provider Config 首次
 迁移。3 个测试文件 13 条测试通过，全量 TypeScript 构建通过。
@@ -3374,19 +2881,12 @@ CLI/TUI/评测仍依赖这些兼容入口；删除应安排在对应消费者完
 
 因此 M2.3c 与 M2.5c 均可标记完成。后续清理目标是退出兼容消费者，而不是继续修改 Registry 的生产解析链路。
 
-## 216. 删除无消费者的 OAuthPresetProviderRepo
 
-符号级引用审计确认 `OAuthPresetProviderRepo` 与 `createOAuthPresetProviderRepo()` 均没有静态消费者；仓库中也没有
-动态导入或字符串加载该模块。这个旧 Repo 曾同时读取 OAuth Token、拉取远端 Provider、拼接 Preset 模型与映射、
-解析 Coding Plan Key，并产出旧 `ModelProviderConfig`。这些职责现在分别由 Account Config Source、Account
-Credential Service、Request Auth 和 Official Model Config 承担。
 
-本轮删除整个旧 Repo，以及只为它存在的 Provider Meta、Provider 列表和依赖类型；保留仍被当前请求鉴权使用的
-Remote Client、Provider Resolver、Team Plan 类型与 shared helpers。`presetModelDefaults.ts` 和旧 Store 中仍有
-消费者的部分继续限制在一次性迁移/兼容边界，不随本轮误删。
 
-删除后 Services TypeScript 检查通过，Account Credential、Request Auth、Team Plan Key 和 Preset Shared 的
-4 个测试文件共 21 条测试通过。这个切片不改变 Account Provider 产品行为，只移除已经失去入口的第二套构建器。
+
+
+
 
 ## 217. 旧 Provider Store 退出稳态 Preset 同步
 
@@ -3403,22 +2903,12 @@ Upsert、Fallback Provider 注入以及公开写入队列均已没有调用方�
 Services TypeScript 检查和 touched-file lint 通过，旧 Store 原子迁移、Personal Config 导入与 Account Key 迁移的
 3 个测试文件共 7 条测试通过。
 
-## 218. Account Key 请求退出旧 Preset Remote Client
 
-删除旧 `OAuthPresetProviderRepo` 后，账号 Key 解析仍借用了它拆出的 Remote Client 和 Provider Resolver。调用面
-审计确认，生产代码只使用通用业务接口请求与 `resolveProviderApiKey()`；`release/latest`、`client/configs`、远端
-Provider/Model 事实转换、ZAPI Preset 构造与 Coding Plan Endpoint 构造均已没有消费者。它们继续存在会形成一条
-看似仍可工作的远端 Official Provider 事实来源，与当前版本化 Official Config 冲突。
 
-本轮将剩余能力收窄并按现职命名为 `AccountProviderApiClient` 与 `AccountProviderApiKeyResolver`。前者只解释业务
-接口的 Envelope，后者只根据账号 Token 获取或复制 Coding Plan API Key。旧 Remote Client 的 Config Version
-缓存、Client Config 拉取与 Provider 构建全部删除；只为这些能力存在的远端 Provider 类型、配置转发模块、共享
-转换函数和测试同步退出。旧 Store 迁移仍使用的 BigModel 历史 URL 修正继续留在迁移文件内部；个人项目选择与
-业务状态码判断分别收归 Account Key Resolver 和 Account API Client。
 
-这一步不改变 Account Connection、Credential Store 或请求期鉴权语义。Services TypeScript 检查和 touched-file
-lint 通过，Account Credential、Request Auth、Team Plan Key、Personal/Account 迁移等 6 个测试文件共 19 条
-测试通过。
+
+
+
 
 ## 219. Preset 模型常量收归旧文件迁移边界
 
@@ -3431,10 +2921,7 @@ Official Config、Account Access 和模型执行均无法引用这些规则。Se
 旧 Store 原子迁移、Personal Config 导入与 Account Key 迁移的 3 个测试文件共 7 条测试通过。
 
 
-旧 Preset Remote Config 退出后，仓库中仍有套餐服务请求 `client/configs`，并读取 `builtinModels`。调用链审计确认，
-这份数据不再构造普通长期 Provider，也不进入进程级 Registry：Start Plan 的 `billing/balance` 只把当前账号允许的
-Model ID 投影为 Account Provider Overlay 的 `models` 过滤；模型 Properties、Option Specs 与 Adapter 规则仍来自
-Official / Personal Config。
+
 
 `allowedModelConfigs`。它随本次任务下发 `turnRuntimeModel`，属于 execution-scoped Provider 的兼容输入，后续由
 M4 迁入统一的临时 Provider Config / ModelFactory 链路。它不应回写长期 Registry，也不应在 M2 中被误当成普通
@@ -3620,11 +3107,7 @@ Renderer 不再向本地或远端 Worker 注入 Host Registry。目标 Environme
 设置页只重新读取目标运行环境发布的模型目录。两组专项测试覆盖直接读取、过期结果丢弃、失败重试
 和 Remote Session 切换，共 9 条通过。
 
-同一次 rebase 中，新基线新增了 Start Plan 多套餐和额度桶测试。这些测试仍直接使用已经退出的
-`ModelProviderService` 构造参数，导致迁移后的 Provider 无法取得 `accountAccessId`，请求在鉴权前
-退化为未配置。本轮只把新增用例接入现有 `createProviderForTest()` Account Request Auth 装配；
-多套餐顺序、非 active 套餐过滤、额度桶 `planId` 和缺失 `expires_at` 的生产逻辑均保持新基线语义，
-没有恢复旧 Provider Config 凭据读取。Plan 与设置相关测试共 230 条通过。
+
 
 冲突处理遵循同一原则：保留新基线的产品功能和数据契约；凡是依赖旧 Host Snapshot、旧 Workspace
 Registry 注入或旧 Provider Service 的实现，都改接目标 Environment Registry 与请求期鉴权，不把
@@ -3667,13 +3150,9 @@ Bootstrap 全量测试另行暴露了已有测试债务：Session Persistence mo
 
 ## 233. 最新 Staging 的官方 MCP 与 Usage 适配
 
-最终上线 rebase 时，`staging` 新增了官方 Server MCP 身份头、MCP 额度展示和统一额度重置弹窗。
-原实现通过已经由 M2 删除的 `ModelProviderService.getProviderRegistrySnapshot()` 判断 Coding Plan
-Provider 是否存在，并在测试中直接向 Usage Provider 注入旧 Provider Config。
 
-冲突处理保留新功能的产品语义：MCP 身份头、五类身份字段、额度请求、独立 MCP 额度条、统一重置
-弹窗和动态上下文面板宽度均保留。Provider 存在性改读正式 `ModelSelectionView`，Usage 鉴权改用
-`AccountRequestAuthService` 与 `accessId`，没有恢复旧 Snapshot 或旧 Provider Service。
+
+
 
 rebase 后根 typecheck 和 lint 通过；MCP、Usage、Provider、Repo Wiki、模型选择与 UI 针对性测试
 15 个文件共 258 条通过，Bootstrap Registry/协议测试 6 个文件共 219 条通过。当前本地 Node 22
@@ -3863,9 +3342,7 @@ Account Provider Service 6 条、Connectivity Probe 3 条测试通过；Provider
 
 MR 静态审查继续发现三处实现偏离已经确认的 Config Overlay 规则。
 
-第一，设置页保存 Account Provider 的 Effective Config 时，会把 Account Overlay 动态注入的 `accessId`
-投影进 Personal Config。修复后，Official 与 Effective Access 同为 `zhipu-account` 时，Personal 投影忽略
-动态账号身份；账号可用性继续只来自 Account Provider Source。
+
 
 第二，`reasoningMapping` 在 Model Overlay 中是普通值字段，后层应整体覆盖前层，但旧投影函数会在档位
 内部继续求差异。修复后，Mapping 未变化时不写 Personal 字段，发生变化时保存完整字段，读取与写入
@@ -3894,21 +3371,6 @@ DTO，也没有改变 Official Provider 的继承与 Personal 投影规则。
 
 设置保存、Draft 与 Provider Config 相关 46 条测试通过。完整设置页退出旧 DTO 仍作为 R1 后续切片，
 新建 Provider 的上线阻断不再依赖该大范围迁移。
-
-## 246. OAuth 重登强制刷新账号级 Coding Plan Key
-
-账号级 Coding Plan Key 使用包含账号身份的 `accessId` 缓存。Resolver 原先只有在刷新 reason 包含
-`oauth-callback` 时才跳过缓存，但 Renderer 在真实登录完成链路中发出的是
-`oauth-login-entitlement`。同一账号登出后再次登录时，Account Source 因此可能直接复用旧 Key，而不是
-根据新的 OAuth Token 重新取得请求凭据。
-
-本轮先把 Config Source 测试切换到真实 Renderer 事件并复现失败，再让 Resolver 同时识别实际登录事件
-与历史 callback 事件。登录后的权益刷新现在强制跳过账号级 Key 缓存；远端取 Key 成功后覆盖原账号
-作用域凭据，失败时不会回退旧值。
-
-Account Config Source、Connection Resolver、Credential Service、Request Auth 与 OAuth Logout 共 20 条
-测试通过。登出时精确删除账号作用域 Key 仍需要 OAuth Service 在清除 Session 前传递账号身份，本轮没有
-为解决数据清理问题扩大 OAuth 生命周期接口；该剩余项继续记录在 MR 审查 R6。
 
 ## 247. 删除无消费者的旧 Services Provider 存储
 
@@ -3939,20 +3401,6 @@ Model 在一段连续执行中保持身份与静态执行配置不变的既定�
 
 Adapters Model 与 Registry 56 条测试、Adapters 独立 TypeScript 检查通过。该修复落实既有 Model 生命周期
 设计，没有新增 Human in the Loop 裁决项。
-
-## 249. OAuth 登出精确清理账号级 Coding Plan Key
-
-第 246 项已经保证重新登录后强制刷新账号级 Personal Coding Plan Key，但显式登出仍在 OAuth Session
-清空之后才通知派生 Provider 清理。此时 Logout Handler 只能删除历史无账号作用域 Key，无法构造当前
-`coding-plan:<provider>:account:<identity>`，旧账号 Key 会留在 Credential Store。
-
-本轮先修改失败测试，要求 OAuth logout 在通知中携带清理前的 Profile ID，并要求 Logout Handler 同时
-删除账号作用域与历史无作用域 Key。实现现在于 Session mutation 内、清理主会话之前捕获账号身份；显式
-logout、unlink、过期 JWT 失效和 logout-all 都把该身份传给同一 Handler。凭据损坏恢复无法可靠读取身份
-时保持原 fail-safe：清 OAuth 主事实、下线 Account Provider，并清理能确定的旧 Key。
-
-OAuth Service 与 Logout Handler 78 条测试通过。该修复补齐 MR 审查 R6 的剩余清理问题，没有改变账号
-可用性、重新登录刷新或 Team Plan 请求期解析规则，也没有新增 Human in the Loop 裁决项。
 
 ## 250. 删除孤立的旧模型覆盖 Header
 
@@ -4045,20 +3493,6 @@ P0 E2E 说明同步更新。
 Bootstrap 结构门禁 2 条与独立 TypeScript 检查通过。Human in the Loop 仍为 16 项全部确认；本项没有
 增加兼容路径或改变运行语义。
 
-## 256. Team Plan E2E 退出旧 Provider 三写
-
-上线前审计继续发现，Team Plan Usage E2E 会把同一份 BigModel Coding Plan Provider 同时写入旧 CLI
-Config、App `config.json` 的旧 Provider 字段和 `model-providers.json`。该用例测试的是 Personal/Team
-连接切换与用量展示，不是旧配置迁移；继续三写会掩盖 Official、Personal、Account 三层事实源之间的
-真实装配问题。
-
-本轮把场景准备改为只写版本化 Personal Config。Personal 层提供用例需要的 endpoint、模型静态字段和
-enabled 覆盖，测试中的账号服务响应继续通过 Account Overlay 提供 Personal/Team 连接身份。两者按照
-生产 Registry 的层次解析，不再由测试私自拼出第三份 Provider Store。
-
-Desktop E2E TypeScript 检查和改动文件 Lint 通过。Human in the Loop 仍为 16 项全部确认；这项改动只
-落实既有单一事实源裁决，没有改变 Team Plan 的用户行为。
-
 ## 257. Reasoning E2E 删除旧 Provider 读取回退
 
 四条 Reasoning manual-review E2E 在解析 replay endpoint 时，会绕过统一测试投影，分别读取旧
@@ -4072,16 +3506,10 @@ Desktop E2E TypeScript 检查和改动文件 Lint 通过。Human in the Loop 仍
 Desktop E2E TypeScript 检查和四个文件的 Lint 通过。Human in the Loop 仍为 16 项全部确认；改动不改变
 Reasoning 请求断言或设置交互。
 
-## 258. 额度重置请求补齐 Account Access 作用域
 
-最终 Lint 审计发现，设置详情已经从 Registry View 解析出当前 Personal/Team Plan 的 `accessId`，并传给
-`CodingPlanStatusPanel`；Panel 内部却没有继续把它交给额度重置 hook。`sourceKey` 可以隔离本地展示状态，
-但服务请求仍需要 `accessId` 定位账号连接。漏传会让同一 Provider 下的 Personal/Team 重置请求失去正式
-Account Access 作用域。
 
-本轮只补齐该参数传递，没有恢复 Renderer Credential 或 Provider API Key。Model Selection Repository 中
-同轮发现的无意义对象 spread 也一并消除。Coding Plan 与 Model Selection 共 205 条定向测试通过，相关
-文件 Lint 不再产生 M2 warning。Human in the Loop 仍为 16 项全部确认。
+
+
 
 ## 259. 上线前最终静态与验证收口
 
@@ -4090,9 +3518,7 @@ Account Access 作用域。
 `model-providers.json` 的剩余读取只位于 Personal Config 首次导入和 Account Key 一次性迁移，继续作为
 明确、单向、可删除的迁移边界保留。
 
-根 `pnpm typecheck` 通过；根 `pnpm lint` 为 0 error、35 条与 M2 无关的基线 warning；Coding Plan 与
-Model Selection 定向测试 205 条通过，Desktop E2E TypeScript 与改动文件 Lint 通过。Human in the Loop
-16 项全部确认，没有新的待裁决问题。
+
 
 ## 260. Runtime Model Overlay 收窄为 Turn Model Overlay
 
@@ -4160,13 +3586,9 @@ Builtin ID 和 Plan 特例决定是否进入 Agent Registry。生产调用方早
 旧字段 helper 重新判断“已配置”。生产 `ModelProviderSection` 始终显式传入 Account Access 集合，因此该
 分支只剩历史测试和兼容注释，却仍能形成第二套连接与可选性答案。
 
-本轮将缺省 Account Access 明确定义为“当前没有账号连接”，删除 API Key/Endpoint 回退与无调用方的
-表单配置判断 helper。Coding/Start/Team Plan 的状态解析、详情卡片、首次同步与补偿同步只认 Account
-Overlay `accessId`；Provider 导航是否点亮只认 Registry `selectable`。测试 fixture 同步显式声明 Account
-Access 与 Registry 可选状态，不再通过旧 API Key 暗示连接。
 
-Coding Plan、Provider Family、导航国际化与表单结构门禁共 221 条测试通过。Human in the Loop 16 项仍
-全部确认；该项落实已经确认的账号与 Registry 权威边界，没有新增产品语义。
+
+
 
 ## 265. 旧 Provider Store 收敛为只读迁移边界
 
@@ -4186,10 +3608,7 @@ Coding Plan、Provider Family、导航国际化与表单结构门禁共 221 条�
 `model-providers.json` 与 CLI Config。运行时最终会由 Personal 首次导入接管这些值，但普通 E2E 因此始终
 顺带依赖迁移路径，CLI Config 也继续表现成 Worker Provider 的并行事实源。
 
-本轮先增加结构门禁，再将 DeepSeek、Output Budget、Repo Wiki、Context Window 与 Provider 过滤夹具
-统一改为写版本化 Personal Config。Environment 默认模型写入独立 Model Selection Config；CLI Config
-只保留 `modelStream` timeout。Coding Plan 的 Builtin Provider 副本同时删除，套餐 Provider 继续由
-Official 与 Account Source 构建。专门测试旧配置导入的单元测试仍保留，不与普通 E2E 混用。
+
 
 Desktop E2E TypeScript 检查通过；结构门禁与 Provider Seed 共 4 条测试通过，改动文件 Lint 为 0 warning、
 0 error。Human in the Loop 仍为 16 项全部确认，没有新增裁决。
@@ -4337,10 +3756,7 @@ Account Runtime 与旧 Turn Runtime 装配文件公开了一批没有模块外�
 
 ## 277. 删除旧 Provider 禁用状态 helper 并收窄 Account 内部出口
 
-Services 符号审计发现，`codingPlanProviderAvailability` 仍保留
-`isSystemDisabledCodingPlanProvider()` 与 `isUserDisabledCodingPlanProvider()`。两个函数按照旧
-Provider DTO 的 `enabled/systemDisabledReason` 解释可用性，已经没有任何调用者；当前 Account Source
-直接发布 available/unavailable/unknown 结果，不再需要这层旧状态推断。
+
 
 本轮先以 M2 结构门禁证明两个 helper 仍存在，再删除实现并固定其不得回归。Account Credential、Request
 内部使用的类型和 helper 也收回导出；正式 Service/Factory 接口保持不变。Services Knip 复核后，剩余
@@ -4550,14 +3966,9 @@ affected-test 门禁再次运行 M2 结构测试并通过。分支基于最新 `
 
 ## 291. 将 M2 重放到最新 staging
 
-`provider-refactor-m2` 先 rebase 到 `origin/staging` `58cbc6065d`，随后继续重放到本轮验证时的
-最新 `3524b06c9f`。冲突处理以最新 staging 的 CUA 生命周期、动态设置页和 Team Plan 行为为基线，
-同时保留 M2 的 Process Registry、Provider Services 注册和旧 Runtime Registry 退出边界；staging
-已删除的 `packages/ax-macos` 没有被恢复。
 
-冲突后回归发现，Team Plan fallback 仍调用 `parseTeamPlanConnectionKeyByFamily()`，但 import 在重放
-期间丢失；本轮恢复该 import。锁文件则按最新 workspace 依赖重新生成并通过 frozen install，避免保留
-手工冲突结果。测试覆盖说明同步改为 M2 当前的 Registry readiness 语义。
+
+
 
 Bootstrap Runtime Config 27 条测试通过；根项目冲突相关测试 131 条通过；根 `pnpm typecheck` 通过；
 根 `pnpm lint` 为 0 error、39 条最新 staging 基线 warning。本轮没有新增产品裁决，也没有改变 Working

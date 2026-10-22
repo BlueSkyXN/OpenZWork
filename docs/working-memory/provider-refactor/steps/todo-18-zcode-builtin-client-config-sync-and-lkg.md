@@ -26,8 +26,6 @@ ZCode Built-in Provider Config 与 ZCode Built-in Model Config Rules 当前只�
 本 Todo 只做完成该目标所需的最小改动，不统一重构现有 Client Config 基础设施：
 
 - 不抽取全局 `ClientConfigService`；
-- 不改造 `BigModelCodingPlanSubscriptionProvider` 的既有 `/client/configs` 请求、TTL 或缓存；
-- 不合并 Desktop Main 的 Force Update、Computer Use、Desktop Context Prompt 请求；
 - 允许本阶段为 Built-in Config 增加一条独立的 `/client/configs` 请求；公共 Client Config 收口另立任务。
 
 本 Todo 只改变 ZCode Built-in Config 的 Source 与发布时序，不改变 Provider 领域主链：
@@ -244,12 +242,9 @@ Active Model 的 Endpoint、API Type、Properties、Option Specs 或 Reasoning M
 
 当前 `/client/configs` 仍由多条生命周期不同的链路读取：
 
-- Desktop Main 的 Computer Use 与 Desktop Context Prompt 灰度；
 - Desktop 启动前 Force Update gate。
 
-本 Todo 不重排这些 owner，不建立公共 `IClientConfigService`，也不为了消除重复请求扩大改造范围。Built-in
-同步实现可以复用现有 `ApiClient`、Endpoint 与平台参数工具，但不能依赖 Coding Plan Provider，也不能让
-Provider Config Source 反向依赖 Subscription Service。
+
 
 允许的最小新增关系是：
 
@@ -448,7 +443,6 @@ publish Source changed
 
 ### 4.5 回归
 
-- Desktop Computer Use、Desktop Context Prompt 与 Force Update 请求链不变；
 - Desktop continuous 与 Web Remote replayable 的 Session/Task 数据链不受影响；
 - `pnpm typecheck`、`pnpm lint`、受影响单测与相关 Desktop/Remote E2E 通过。
 
@@ -468,7 +462,6 @@ publish Source changed
 ## 6. 明确不做
 
 - 不建立全局或跨进程 Client Config 单例；
-- 不统一 `BigModelCodingPlanSubscriptionProvider`、Desktop Main 与 Force Update 的 Client Config 请求；
 - 不持久化整份 `/client/configs`，只持久化验证后的 `zcodeBuiltin`；
 - 不把远端、LKG、Bundled 建模为三层 Provider Overlay；
 - 不允许 Remote Provider Config 与 Bundled Model Rules 混合；

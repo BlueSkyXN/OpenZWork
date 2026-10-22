@@ -3,7 +3,7 @@
 ## 状态
 
 - 本文是 zcode-cli Anthropic 模型请求 `metadata.user_id` 的事实规范。
-- 设备身份沿用 `{dataBaseDir}/.zcode/v2/telemetry-state.json` 的 `deviceMid`。
+- 设备身份沿用 `{dataBaseDir}/.openzwork/v2/telemetry-state.json` 的 `deviceMid`。
 - metadata 的拼装与注入只发生在 zcode-cli，不修改 Desktop、Host、Web 或 app-agent 协议。
 
 ## 请求契约
@@ -21,7 +21,6 @@
 `metadata.user_id` 是 JSON 字符串，内部字段语义如下：
 
 - `device_id`：当前 Agent 运行环境的持久化 `deviceMid`，原样使用 UUID，不转换为另一种 ID。
-- `account_uuid`：当前固定为空字符串；zcode-cli 尚无对应的 Anthropic OAuth account UUID。
 - `session_id`：当前模型请求的 session id，复用 `x-session-id` 的外部归一化逻辑，剥离
   `sess_` 和 `subagent_agent_` 内部前缀；底层调用没有 session context 时使用空字符串。
 
@@ -35,7 +34,7 @@ Desktop、远端 zcode-server 和 zcode-cli 拥有彼此独立的“确保 devic
 
 ```text
 Desktop ensure（同步） ─────────┐
-远端 server ensure（启动时异步）├─> {dataBaseDir}/.zcode/v2/telemetry-state.json.deviceMid
+远端 server ensure（启动时异步）├─> {dataBaseDir}/.openzwork/v2/telemetry-state.json.deviceMid
 CLI ensure（异步） ─────────────┘                          │
                                                   v
                                   zcode-cli Anthropic metadata.device_id

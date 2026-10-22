@@ -105,7 +105,6 @@
 | `host/windowRemoteConnectionRegistry.ts:390-411` | 远端意外断开后 `handleConnectionClosed` 不调 `disposeEntry`，整套 ServiceCollection/SSH backend 持到用户关 tab |
 | `main/browserView/browserPlaywrightLocatorExecutor.ts:1114-1155` 等 | 每条 CDP 命令 `Page.createIsolatedWorld` 新建 V8 context 并全量重注入 Playwright runtime，SPA 不导航则持续累积（guest renderer 内存） |
 | `main/browserView/electronBrowserWebmRecorder.ts:286` | 每次录屏 `session.fromPartition(随机名)`，Electron partition 无销毁 API |
-| `main/cuaPermissionDragPanel.ts:128-183`、`desktopCuaPermissionIpc.ts:194-222` | `destroy()` 后迟到的 `show()` 重建 BrowserWindow + 150ms interval，无人再销毁 |
 | `main/appTelemetryRuntime.ts:34,85` | `rendererContexts` 按 webContents.id 只增不删 |
 | `main/desktopHostProcess.ts:695-731` | reload-respawn 时旧 host exit 回调按共享 key 反注册，误删新 host（正确性缺陷） |
 | `bots/botRemoteWorkspaceBridge.ts:56, 208-244, 268-276` | `runtimeServicesByWorkspaceKey` 断连/重连都不失效，pending 永不 settle，dispose 直接 clear 不 resolve |
@@ -116,7 +115,6 @@
 | `ui/feedback/feedbackSubmissionJob.ts:115, 410` | 失败的 job 永不删，持有截图 base64 ×2 |
 | `ui/v4/telemetry/ConversationTelemetryAttachment.tsx:222-240` | `useMemo` 内做 acquire 副作用，被丢弃的渲染无对应 release，refCount 永远 >0，supervisor 无法释放 |
 | `ui/terminal/sidePaneTerminalSessionRegistry.ts:58` | 常驻 xterm 实例无上限，detached 状态 PTY 输出仍写 scrollback（设计如此，但持续吃内存） |
-| `rpc/src/channelServer.ts:224-248, 270-277` | 未注册 channel 的 `pendingRequests`（含参数）超时不删；远端 host 不注册 `cuaPermissionService` 等 channel 时每次调用 +1 |
 | `rpc/src/channelClient.ts:151-178` + `proxy-channel.ts:131-132` | 事件 handler 在创建时即注册，Proxy 每次访问 `service.onXxx` 都新建；同时有「取消订阅后再订阅收不到事件」的正确性 bug |
 | `rpc/src/ipc.ts:119-145` | `IPCServer.disposables` 每连接只增不减（当前无生产调用方，潜伏） |
 | `web/src/main.tsx:1865-1881, 2200-2232` + `client/src/websocket.ts:102-105` | Web 端 bridge 切换时 ChannelClient 无句柄 dispose，in-flight RPC 永不 settle；桌面端同类问题已修（`messageport.ts:19-24` 注释），web 未同步 |
@@ -140,7 +138,6 @@
 
 ## 四、已确认干净的区域（覆盖说明）
 
-- main：窗口级 Map 在 `browser-window-created → closed` 统一删；per-host 监听随 UtilityProcess 消亡；BroadcastHub claims TTL+上限；TaskRealtimeBus 其余表有超时/上限；telemetry 族样本有上限；autoUpdater/OAuth/CUA/webRemoteControl transport timer 成对；preload 36 个 `on*` 均返回取消函数；全范围无 `setMaxListeners`、无 `fs.watch`。
 - services：`zcodeStdioTransport`/`zcodeProtocolClient` pending 全路径 delete；`zcodeAgentProcessManager` 主表清理完整；`zcodeAgentConnectionScope` 1024 帧/32MiB 双限；coalescer 有界；git/process/repo-snapshot/repo-wiki/telemetryCore/settings-sync/plugin-sync/model-provider 全部 finally 清理；`node.ts` disposeAll 覆盖完整。
 - ui：`logger.ts` 不缓冲；流式文本为字符串拼接不留 chunk 数组；`removeTaskState` 完整删除 7 个子表；时间线虚拟化 + 4000 条 LRU 行高缓存；所有 Observer 均 disconnect；createObjectURL 除 PDF 预览外均配对 revoke；streamdown 缓存 100 条；`v4` 注册表 keep-warm 后 dispose；`pendingCommandRegistry` 24h TTL。
 - cli：`SessionResidentPool` 四条删除路径完整（但 eligible 条件被 legacy subscribe 钉死，见中危表）；provider 流式不留 SSE chunk，abort listener/linked controller finally 清理；http `maxResponseBytes` + `reader.cancel`；telemetry `maxActiveCalls=1000`、OTLP 队列 2000、trace writers 5000；MCP per-session lease 归零 30s 关闭；前台 Bash 输出有界、`activeExecutions` finally 清理；subagent runner abort/watchdog 全路径 dispose。

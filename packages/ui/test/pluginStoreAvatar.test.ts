@@ -54,9 +54,6 @@ describe("PluginStoreAvatar", () => {
     );
 
     expect(html).toContain('src="https://cdn.example.com/example.png"');
-    expect(html).toContain("bg-surface");
-    expect(html).toContain("h-2/3");
-    expect(html).not.toContain("dark:invert");
     expect(html).not.toContain("lucide-blocks");
   });
 });

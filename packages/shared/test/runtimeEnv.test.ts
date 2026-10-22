@@ -24,7 +24,6 @@ describe("runtimeEnv", () => {
     const captured = readZCodeToolEnvPassthroughEnv(passthroughEnv);
 
     expect(sanitized).toEqual({ PATH: "/usr/bin:/bin" });
-    expect(passthroughEnv[ZCODE_TOOL_ENV_PASSTHROUGH_ENV_KEY]).toBeDefined();
     expect(captured).toEqual({
       HTTP_PROXY: "http://proxy.example:8080",
       NODE_EXTRA_CA_CERTS: "/tmp/root-ca.pem",

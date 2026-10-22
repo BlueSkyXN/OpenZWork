@@ -16,7 +16,7 @@
 
 - **根因 1(refresh 竞态)**:多个 CLI 进程共享 `~/.openzwork/v2/credentials.json`,`withFileLock` 只覆盖凭据读写不覆盖网络 token exchange;access token 过期时各进程并发用同一 refresh token 刷新,撞服务端 rotation reuse-detection,token family 被撤销 → SDK invalidate tokens → 需重新授权。
 - **根因 2(二次授权死循环)**:DCR 注册的 client 把 `redirect_uris` 锁死在注册当时的随机回调端口;回调服务器每次 `listen(0)` 换端口;redirect_uri 失配时授权服务器(RFC 6749 §4.1.2.1)禁止回跳就地渲染错误页(用户看到的 Exa "Server Components render error")→ 回调永不到达 → 超时,且重试永不自愈。
-- 关键代码:`apps/zcode-cli/packages/adapters/src/mcp/oauth.ts`(595 行单文件 provider)、`src/auth/localhost-callback.ts`、`src/mcp/index.ts`(连接编排,连接成功后 oauthSession 长期存活仅在 closeRecord 关闭)、`src/auth/shared-credentials.ts`。
+
 
 ## 2. v4 方案(两阶段连接,已三轮评审)
 
@@ -111,7 +111,6 @@ tryAcquire(authz-lock:<hash>, maxWaitMs≈0)          // 独立锁文件,不锁�
 
 ## 3. 执行契约
 
-1. **spec 先行**:先更新 `docs/mcp-oauth-client-auth.md`(把其中 deferred 的跨进程 OAuth leader/lease 与 refresh single-flight 两项转正为 v4 设计,补两阶段时序图;仓库规范见 apps/zcode-cli/.claude/CLAUDE.md)。新增 `docs/mcp-oauth-two-phase.md` 或并入前文,自行判断,保持文档结构一致。
 2. **每个 PR 独立提交**(conventional commits,如 `fix(adapters): ...`),提交前跑 `npm run lint` 和相关测试。工作在当前分支 `exa-oauth-analysis`(基于 staging bfc91c54a9),不要 push、不要建 MR,完成后停下报告。
 3. **测试矩阵**(各 PR 验收门槛,用生产包 client@2.0.0,现有 e2e 从 sdk@1.29 直连 import 切过来):
    - PR1:错误 state 请求先到、正确请求后到 → 仍成功;access_denied → 立即失败。

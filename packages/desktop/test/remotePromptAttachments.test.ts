@@ -4,8 +4,6 @@ import type { IDisposable, Event } from "@zcode/rpc";
 import type { ZCodePromptAttachment } from "@zcode/shared";
 import {
   buildRemotePromptAttachmentPath,
-  createRemotePromptAttachmentSessionService,
-  createRemotePromptAttachmentTaskService,
   materializeRemotePromptAttachments,
 } from "../src/host/remotePromptAttachments.js";
 
@@ -13,9 +11,7 @@ function createClosedStream(stdoutText = "") {
   const stdin = new PassThrough();
   const stdout = new PassThrough();
   const stderr = new PassThrough();
-  const onClose: Event<number> = (
-    listener: (code: number) => void,
-  ): IDisposable => {
+  const onClose: Event<number> = (listener: (code: number) => void): IDisposable => {
     queueMicrotask(() => {
       if (stdoutText) {
         stdout.write(stdoutText);
@@ -30,16 +26,13 @@ function createClosedStream(stdoutText = "") {
 
 describe("remote prompt attachment materialization", () => {
   it("uploads host localPath attachments and rewrites prompt paths", async () => {
-    const upload = vi.fn(
-      async (_localPath: string, _remotePath: string) => undefined,
-    );
+    const upload = vi.fn(async (_localPath: string, _remotePath: string) => undefined);
     const exec = vi
       .fn()
       .mockResolvedValueOnce(createClosedStream("/home/tester"))
       .mockResolvedValueOnce(createClosedStream())
       .mockResolvedValueOnce(createClosedStream());
-    const hostPath =
-      "C:\\Users\\tester\\.openzwork\\tmp\\paste-attachments\\pasted-text.txt";
+    const hostPath = "C:\\Users\\tester\\.openzwork\\tmp\\paste-attachments\\pasted-text.txt";
     const attachments: ZCodePromptAttachment[] = [
       {
         kind: "file",
@@ -88,9 +81,7 @@ describe("remote prompt attachment materialization", () => {
   });
 
   it("skips attachments that already point at the remote materialization directory", async () => {
-    const upload = vi.fn(
-      async (_localPath: string, _remotePath: string) => undefined,
-    );
+    const upload = vi.fn(async (_localPath: string, _remotePath: string) => undefined);
     const exec = vi.fn(async (_command: string) => createClosedStream());
     const remotePath = `~/.openzwork/tmp/prompt-attachments/trace/01-image.png`;
     const attachments: ZCodePromptAttachment[] = [
@@ -115,9 +106,7 @@ describe("remote prompt attachment materialization", () => {
   });
 
   it("skips attachments that already point at the resolved remote materialization directory", async () => {
-    const upload = vi.fn(
-      async (_localPath: string, _remotePath: string) => undefined,
-    );
+    const upload = vi.fn(async (_localPath: string, _remotePath: string) => undefined);
     const exec = vi.fn(async (_command: string) => createClosedStream("/home/tester"));
     const remotePath = "/home/tester/.openzwork/tmp/prompt-attachments/trace/01-image.png";
     const attachments: ZCodePromptAttachment[] = [
@@ -178,102 +167,6 @@ describe("remote prompt attachment materialization", () => {
         nonce: "nonce:with/slash",
         traceId: "trace/id:456",
       }),
-    ).toBe(
-      `~/.openzwork/tmp/prompt-attachments/trace-id-456/nonce-with-slash/03-api-.txt`,
-    );
-  });
-
-  it("materializes desktop-continuous session prompts before calling the remote session service", async () => {
-    const remoteAttachment: ZCodePromptAttachment = {
-      kind: "file",
-      filename: "pasted.txt",
-      localPath: "/home/tester/.openzwork/tmp/prompt-attachments/input/01-pasted.txt",
-      mimeType: "text/plain",
-      sizeBytes: 5,
-      sourceKind: "clipboard-text",
-    };
-    const sendPrompt = vi.fn(async () => ({ accepted: true }));
-    const service = createRemotePromptAttachmentSessionService(
-      { sendPrompt },
-      {
-        materializePromptAttachments: async (params) => ({
-          content: params.content.replace("/tmp/host-paste.txt", remoteAttachment.localPath!),
-          attachments: [remoteAttachment],
-        }),
-      },
-    );
-
-    await service.sendPrompt({
-      sessionId: "task-1",
-      inputId: "input-1",
-      content: "read /tmp/host-paste.txt",
-      attachments: [
-        {
-          kind: "file",
-          filename: "pasted.txt",
-          localPath: "/tmp/host-paste.txt",
-          mimeType: "text/plain",
-          sizeBytes: 5,
-          sourceKind: "clipboard-text",
-        },
-      ],
-    });
-
-    expect(sendPrompt).toHaveBeenCalledWith({
-      sessionId: "task-1",
-      inputId: "input-1",
-      content:
-        "read /home/tester/.openzwork/tmp/prompt-attachments/input/01-pasted.txt",
-      attachments: [remoteAttachment],
-    });
-  });
-
-  it("materializes web-remote queued task commands before calling the remote task service", async () => {
-    const remoteAttachment: ZCodePromptAttachment = {
-      kind: "file",
-      filename: "pasted.txt",
-      localPath: "/home/tester/.openzwork/tmp/prompt-attachments/input/01-pasted.txt",
-      mimeType: "text/plain",
-      sizeBytes: 5,
-      sourceKind: "clipboard-text",
-    };
-    const enqueueTaskCommand = vi.fn(async () => ({ accepted: true }));
-    const service = createRemotePromptAttachmentTaskService(
-      { enqueueTaskCommand },
-      {
-        materializePromptAttachments: async (params) => ({
-          content: params.content.replace("/tmp/host-paste.txt", remoteAttachment.localPath!),
-          attachments: [remoteAttachment],
-        }),
-      },
-    );
-
-    await service.enqueueTaskCommand({
-      taskId: "task-1",
-      commandId: "command-1",
-      traceId: "input-1",
-      type: "send_prompt",
-      content: "read /tmp/host-paste.txt",
-      attachments: [
-        {
-          kind: "file",
-          filename: "pasted.txt",
-          localPath: "/tmp/host-paste.txt",
-          mimeType: "text/plain",
-          sizeBytes: 5,
-          sourceKind: "clipboard-text",
-        },
-      ],
-    });
-
-    expect(enqueueTaskCommand).toHaveBeenCalledWith({
-      taskId: "task-1",
-      commandId: "command-1",
-      traceId: "input-1",
-      type: "send_prompt",
-      content:
-        "read /home/tester/.openzwork/tmp/prompt-attachments/input/01-pasted.txt",
-      attachments: [remoteAttachment],
-    });
+    ).toBe(`~/.openzwork/tmp/prompt-attachments/trace-id-456/nonce-with-slash/03-api-.txt`);
   });
 });

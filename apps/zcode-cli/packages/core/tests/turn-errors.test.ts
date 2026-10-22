@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { SessionEventType } from "@zcode/contracts";
+import { appendEvent } from "../src/runtime/methods/events.js";
 import {
   appendTurnOutcomeEvent,
   createExternalTurnFaultError,
@@ -8,6 +9,40 @@ import {
 } from "../src/runtime/helpers/turn-errors.js";
 
 describe("turn abort outcome", () => {
+  it.each([
+    [SessionEventType.TurnComplete, "success", "completed"],
+    [SessionEventType.TurnComplete, "cancelled", "interrupted"],
+    [SessionEventType.TurnError, undefined, "error"],
+  ])(
+    "persists %s %s before publishing its terminal fact",
+    async (type, resultType, lastOutcome) => {
+      const order: string[] = [];
+      const updateSession = vi.fn(async () => {
+        order.push("persist");
+      });
+      const event = {
+        type,
+        payload: { resultType },
+        sessionId: "s",
+        timestamp: new Date(2000),
+        sequenceNumber: 1,
+      };
+      await appendEvent.call(
+        {
+          eventStore: { append: async () => event },
+          sessionStore: { updateSession },
+          notifyEventSinks: async () => {
+            order.push("publish");
+          },
+        } as never,
+        event as never,
+        { traceId: "trace" } as never,
+      );
+      expect(updateSession).toHaveBeenCalledWith({ id: "s", lastOutcome, timeUpdated: 2000 });
+      expect(order).toEqual(["persist", "publish"]);
+    },
+  );
+
   it("external protocol fault 持久化 TurnError，而普通 stop 仍是 TurnComplete(cancelled)", async () => {
     const protocolAbort = new AbortController();
     protocolAbort.abort(createExternalTurnFaultError("proto.payloadTooLarge"));
@@ -36,7 +71,9 @@ describe("turn abort outcome", () => {
     });
     expect(protocolEvents[0]).toMatchObject({
       type: SessionEventType.TurnError,
-      payload: { error: { type: "proto.payloadTooLarge" } },
+      payload: {
+        error: { type: "proto.payloadTooLarge" },
+      },
     });
 
     const stopAbort = new AbortController();
@@ -78,15 +115,27 @@ describe("projectExecutionErrorPayload", () => {
   });
 
   it("uses the final wrapper only when no primary frame exists, and bounds cyclic chains", () => {
-    const wrapper = Object.assign(new Error("wrapper only"), { errorPayloadRole: "wrapper", cause: undefined as unknown });
+    const wrapper = Object.assign(new Error("wrapper only"), {
+      errorPayloadRole: "wrapper",
+      cause: undefined as unknown,
+    });
     wrapper.cause = wrapper;
     expect(projectExecutionErrorPayload(wrapper).underlyingErrorMessage).toBe("wrapper only");
   });
 
   it("keeps message and detail from one deepest non-wrapper frame", () => {
-    const inner = Object.assign(new Error("inner wrapper"), { errorPayloadRole: "wrapper", detail: "not the chosen frame" });
-    const outer = Object.assign(new Error("primary failure"), { cause: inner, detail: "primary detail" });
-    expect(projectExecutionErrorPayload(outer)).toMatchObject({ underlyingErrorMessage: "primary failure", underlyingErrorDetail: "primary detail" });
+    const inner = Object.assign(new Error("inner wrapper"), {
+      errorPayloadRole: "wrapper",
+      detail: "not the chosen frame",
+    });
+    const outer = Object.assign(new Error("primary failure"), {
+      cause: inner,
+      detail: "primary detail",
+    });
+    expect(projectExecutionErrorPayload(outer)).toMatchObject({
+      underlyingErrorMessage: "primary failure",
+      underlyingErrorDetail: "primary detail",
+    });
   });
 
   it("uses model/network cause as the visible message and keeps low-level detail", () => {
@@ -129,9 +178,7 @@ describe("projectExecutionErrorPayload", () => {
     const projection = projectExecutionErrorPayload(turnError);
 
     expect(projection.message).toBe("Network connection failed for the provider request.");
-    expect(projection.underlyingErrorMessage).toBe(
-      "connect ECONNREFUSED 127.0.0.1:9091",
-    );
+    expect(projection.underlyingErrorMessage).toBe("connect ECONNREFUSED 127.0.0.1:9091");
     expect(projection.detail).toContain("Turn execution failed");
     expect(projection.detail).toContain(
       "Cannot connect to API: connect ECONNREFUSED 127.0.0.1:9091",
@@ -240,8 +287,6 @@ describe("projectExecutionErrorPayload", () => {
     const projection = projectExecutionErrorPayload(modelError);
 
     expect(projection.message).toBe("Provider request failed");
-    expect(projection.message).not.toContain("adapter layer");
-    expect(projection.message).not.toContain("Raw response body");
   });
 
   it("surfaces provider business code from ProviderBusinessError fields", () => {

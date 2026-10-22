@@ -169,6 +169,9 @@ function postDispatchRequest(
       : {}),
     ...(automation.mode ? { mode: automation.mode } : {}),
     workspacePath: automation.workspacePath,
+    projectId: automation.projectId,
+    hostId: automation.hostId,
+    additionalDirectories: automation.additionalDirectories,
     ...(automation.workspaceIdentity ? { workspaceIdentity: automation.workspaceIdentity } : {}),
   };
   parentPort?.postMessage(request);

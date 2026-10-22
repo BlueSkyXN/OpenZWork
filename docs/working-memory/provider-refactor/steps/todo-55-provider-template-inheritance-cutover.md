@@ -77,20 +77,6 @@ Template 不是 Provider：它不进入 Registry、模型选择或已创建 Prov
 
 本轮保留 Z.ai/BigModel Family，但将其职责收窄为只组织 Account Provider；按量 API 与 Family 解耦：
 
-```text
-Z.ai Account Family                      BigModel Account Family
-├─ Start Plan                            ├─ Start Plan
-├─ Individual Coding Plan                ├─ Individual Coding Plan
-├─ Team Coding Plan                      ├─ Team Coding Plan
-
-普通 Provider Templates
-├─ Z.ai API
-├─ BigModel API
-├─ DeepSeek
-├─ Moonshot Kimi
-└─ ……
-```
-
 因此：
 
 - `zai-api`、`bigmodel-api` 从固定 Built-in Concrete Provider 迁入 Provider Templates；
@@ -517,7 +503,6 @@ ProviderFamilyConnectionSelection
 
 - Family Header、Account 连接方式菜单和当前选择持久化；
 - Start、Individual、Team 的切换与恢复；
-- `providerFamilyDomain` 与登录账号体系同步；
 - `ProviderFamilyConnectionSelection` 的 `api-key` variant、固定 Provider ID 与对应 App Settings 数据退出；
 - Z.ai/BigModel API Templates 进入普通“添加供应商”候选，但不出现在 Account Family 连接方式菜单；
 - 不重新建立已经删除的第二份 `oauth | apiKey` mode 状态。
@@ -705,7 +690,6 @@ createPersonalProvider({
 
 ### Family / Account 回归
 
-- `providerFamilyDomain` 切换与登录恢复正确；
 - Start、Individual、Team Connection Selection round-trip 正确；旧 `api-key` variant 零残留；
 - Z.ai API / BigModel API Template 实例不被 Family 导航或 Account Resolver 消费；
 - Start 模型成员、Individual/Team entitlement 与状态不回归；

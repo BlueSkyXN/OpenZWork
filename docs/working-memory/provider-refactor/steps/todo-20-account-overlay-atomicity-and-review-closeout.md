@@ -20,8 +20,6 @@
 
 本 Todo 收口 Provider Refactor 全分支静态审查中已经完成产品与架构裁决、但尚未进入实现的改动：
 
-1. 保留 Account Built-in Provider Config 作为正式 Overlay，并用 `enabled`、账号级 Start Plan
-   `builtinModelIds` 与结构化 Account Access 表达当前账号动态事实；
 2. 阻止 Registry 发布“新 ZCode Built-in + 旧 Account Overlay”的中间组合；
 3. 将 ZCode Built-in Environment Active/LKG 按 ZCode Endpoint 物理隔离；
 4. 修正 CLI `--help` / `--version` 不必要启动 Provider Runtime，以及 Bootstrap 漏声明 `zod`；
@@ -36,22 +34,6 @@ Built-in Release 业务完整性发布门禁。
 
 Account Overlay 不是为了形式统一而存在。当前账号会真实改变账号型 Built-in Provider 的有效配置：
 
-```text
-ZCode Built-in Provider Config
-              |
-              v
-Account Built-in Provider Config
-├─ enabled
-├─ Start Plan builtinModelIds
-└─ accessId / family / planKind / Team scope
-              |
-              v
-Personal Provider Config
-              |
-              v
-Effective Provider Config
-```
-
 顺序保持：
 
 ```ts
@@ -60,8 +42,6 @@ const effectiveBuiltinProviders = zcodeBuiltinProviders.overlay(accountBuiltinPr
 const effectiveProviders = effectiveBuiltinProviders.overlay(personalProviders);
 ```
 
-Account 只读取和约束 ZCode Built-in 中 `access.type = "zhipu-account"` 的 Provider，不读取、不约束 Personal-only
-Provider。Personal 继续作为最后一层用户覆盖。
 
 ### 1.2 账号可用性统一使用 `enabled`
 
@@ -83,34 +63,6 @@ unknown
 `enabled` 继续是 Provider 的统一执行门。Settings 可保留 disabled Provider 用于展示和诊断；Selection、Registry
 可执行 View 与 ModelFactory 均拒绝 `enabled = false`。不增加并行的 `available`、`eligible` 或新的执行状态字段。
 
-### 1.3 Start Plan 模型成员是账号级事实
-
-产品事实已经确认：不同 Start Plan 账号的可用模型集合可能不同，`billing/balance` 返回的模型集合必须进入
-Account Overlay：
-
-```text
-Start Plan balance
-└─ capabilities: model:<id>
-   （暂时保留 show_name legacy fallback）
-              |
-              v
-Account Provider Config.builtinModelIds
-              |
-              v
-ZCode Built-in Model Config Rules resolve
-```
-
-规则如下：
-
-- Start Plan available 且解析到非空模型集合：以账号集合整列表覆盖 Built-in `builtinModelIds`；
-- Individual / Team 接口不提供模型集合：Account Overlay 不写 `builtinModelIds`，继承 Built-in 默认成员；
-- Start Plan active 但本轮未解析到任何模型：有 LKG 时保留上一份成功 Overlay；无 LKG 时 fail-closed，不得回退到
-  宽泛 Built-in 默认集合；
-- `show_name` 只作为当前服务端兼容输入暂时保留；服务端保证稳定提供 `model:<id>` 后另行删除；
-- Account 只改变成员资格，不提供 Properties、Reasoning、context 或 max output；模型静态事实仍
-  由 ZCode Built-in + Personal Model Config Rules 解析；
-- Personal `modelIds` 继续在账号约束后的 Built-in Inventory 之后加入，真实请求仍由服务端最终授权。
-
 ### 1.4 Account Access 继续进入 Overlay，但不包含真实凭据
 
 `accessId` 是客户端从当前账号身份、Provider、Plan 与 Team scope 生成的稳定、非敏感访问身份。它不是服务端返回的
@@ -119,22 +71,9 @@ Secret，但当前执行语义需要它：
 - 同一账号刷新 Token、JWT、API Key 或 Header 时保持同一访问身份；
 - 切换账号、套餐或 Team scope 时访问身份变化；
 - Active Model 固定创建时的 Account Access，后续凭据刷新不能无声切换到另一个账号；
-- Individual Coding Plan Credential Store 按访问身份隔离；
-- Team Plan 的 product/organization/project 作为结构化 Access 字段参与请求期解析。
+
 
 Account Overlay 可以写入：
-
-```ts
-access: {
-  type: "zhipu-account";
-  accessId: string;
-  family: "zai" | "bigmodel";
-  planKind: "start-plan" | "individual-coding-plan" | "team-coding-plan";
-  productId?: string;
-  organizationId?: string;
-  projectId?: string;
-}
-```
 
 Token、JWT、API Key、动态 Header 与凭据刷新仍归 Request Auth/Credential Service；它们不得进入 Config、Registry 或
 Active Model 静态配置。服务端继续承担最终授权裁决。
@@ -303,7 +242,6 @@ already-created Active Model
 - availability 显式投影 `enabled`；
 - unavailable 发布 sparse `{ enabled: false }` Overlay；
 - available 发布完整结构化 Account Access；
-- Start Plan 精确投影账号 `builtinModelIds`；
 - Individual/Team 不复制 Built-in 模型成员；
 - Start 无法解析模型时执行 LKG/fail-closed，不回退宽泛 Built-in；
 - 保留当前 `show_name` compatibility，但只限 Account Source 私有解析边界。
@@ -393,7 +331,6 @@ already-created Active Model
 ## 6. 完成标准
 
 - Account Overlay 用 `enabled` 明确表达账号 Provider 可用性；
-- Start Plan 每个账号的精确模型成员进入 `builtinModelIds`，空结果安全 fail-closed；
 - Account Access 保持非敏感、完整、可冻结，真实凭据仍在请求期解析；
 - Registry 永不发布来源 Built-in revision 不匹配的 Account Overlay；
 - Personal-only 更新不被 Account 刷新阻塞；
@@ -449,8 +386,6 @@ already-created Active Model
 
 - `ProviderConfigSnapshot` 已拆分组合 revision、ZCode Built-in revision 与 Personal revision；
   `AccountProviderConfigSnapshot` 已携带 `basedOnZCodeBuiltinRevision`，且 Account revision 同时包含来源与 Overlay 内容；
-- Account Resolver 已统一投影 `enabled`：available 显式启用，unavailable 显式禁用，unknown 首次 fail-closed；
-  Start Plan 精确采用账号模型集合，空集合执行 LKG/fail-closed；Individual/Team 继承 Built-in 成员；
 - Registry 已增加 Built-in/Account revision barrier：不匹配时保留上一份完整 Snapshot，匹配后再发布；Personal-only
   revision 变化不等待 Account 重算；
 - Environment Source 已按规范化 ZCode 控制面 Origin 的 SHA-256 路径段隔离 `active.json` 与
@@ -475,8 +410,6 @@ already-created Active Model
 
 - Server CLI 全包测试中的两个 Windows ZIP 用例在当前 Linux 环境因系统命令 `zip` 不存在而报 `spawn zip ENOENT`；
   当前生产打包路径原本就直接使用该系统命令，被删除的孤儿 helper 没有任何调用方，因此这不是本 Todo 引入的回归；
-- CUA Permission Broker 的 socket close 时序用例在全量并发运行时失败一次；同一条用例随后独立复跑通过，属于与 Provider
-  无关的既有时序波动；
 - `@zcode/cli` 独立 typecheck 仍被既有 `AgentRuntimeConfig.modelSelection` 缺失挡住，报错位于
   `prompt-command.ts` 与 `tui-prompt-handler.ts`，不在本 Todo 改动面；
 - 全仓 `fmt:check` 仍会扫描 Electron vendor fiddle 的既有非法 HTML 与二进制 `gb2312.js`，因此本次以修改文件格式检查

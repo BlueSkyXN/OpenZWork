@@ -37,12 +37,6 @@ Persisted Model Selection         |
 | Catalog      | Case                                        | Setup                                                                    | Action                            | Assertions / evidence                              | Status   |
 | ------------ | ------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------- | -------------------------------------------------- | -------- |
 | I25 / MP-R01 | 重启保留可用 DeepSeek                       | 完整 persisted selection 指向可用 DeepSeek                               | 重启 App                          | toolbar、deferred draft、首发请求均为 DeepSeek     | covered  |
-| I26 / MP-R02 | 重启保留 Account Provider 内非首个模型      | Account Provider 暴露多个模型，完整 persisted selection 指向 Highspeed   | 重启 App                          | 不回退 `models[0]`；toolbar/request 均为 Highspeed | covered  |
-| I27 / MP-R03 | 旧 Start Plan 模型回退当前 Coding Plan      | Family 当前连接为 Team Plan，persisted selection 指向已不可用 Start Plan | 重启 App                          | toolbar/request 回退当前 Team Plan 默认模型        | covered  |
-| I28 / MP-R04 | 不可用 last-selected 回退当前连接           | Family 当前连接为 Team Plan，persisted selection 指向已删除模型          | 重启 App                          | toolbar/request 回退当前 Team Plan 默认模型        | covered  |
-| I29 / MP-S01 | 切换 Family 连接方式保留其它 Provider 草稿  | DeepSeek 草稿与 BigModel 按量 API 当前连接                               | 在设置页切换到 Team Plan          | DeepSeek 草稿与首发请求不变                        | covered  |
-| I30 / MP-S02 | 重选当前 Coding Plan 保留其它 Provider 草稿 | DeepSeek 草稿与 Team Plan 当前连接                                       | 再次选择同一 Team Plan            | DeepSeek 草稿与首发请求不变                        | covered  |
-| I31 / MP-S03 | Plan reconciliation 保留非首个模型          | 当前 Team Plan 选择与 Highspeed persisted selection                      | 主动重选当前 Team Plan            | toolbar/request 继续使用 Highspeed                 | covered  |
 | I35 / MP-T01 | Turbo off 重启保持二态                      | 完整 persisted selection 为 Turbo/off                                    | 重启 App                          | toolbar/draft 为 Turbo；思考选项只有 off/enabled   | accepted |
 | I36 / MP-T02 | Turbo enabled 重启并首发                    | 完整 persisted selection 为 Turbo/enabled                                | 重启并发送                        | toolbar/draft/request 均为 Turbo + enabled         | accepted |
 | I37 / MP-T03 | Turbo 二态连续切换                          | Turbo deferred draft                                                     | off→enabled→off                   | 模型不横跳；选项始终为二态                         | accepted |
@@ -56,8 +50,6 @@ Todo88 补充：此前把所有旧连接格式都当成未发布数据而删除�
 
 只删除 I32-I34。它们验证未发布的旧 `mode/selectedKey` 存储迁移，不是当前结构化 Family Selection 的产品行为：
 
-- I32：旧 api-key mode 修复旧 Coding Plan selectedKey；
-- I33：旧 Team Plan selectedKey identity 迁移；
 - I34：缺 organization 的旧 selectedKey 修复。
 
 I27-I31 验证当前连接回退、Family 切换与模型选择恢复，已按正式结构化 selection 恢复。
@@ -68,3 +60,15 @@ I27-I31 验证当前连接回退、Family 切换与模型选择恢复，已按�
 - 重启使用真实 Electron reload，证明 main/host/renderer/Agent 与磁盘状态重新水合；
 - 每个 case 至少断言 UI Selection 与真实 session/request 中的一层运行时证据；
 - Desktop 继续使用 continuous 链路，本组不引入 mobile replayable 状态。
+
+
+## BR117-F01：远端 Built-in 下载失败不阻断账号连接
+
+- Pending spec：`settings/manual-review/pending/provider-builtin-refresh-failure.test.ts`。
+- Setup：隔离本地账号控制面、有效包内配置、有效 BigModel 登录，个人套餐为初始选择；
+  case-local 控制面下发 HTTP Built-in 地址，正式下载器必须拒绝，不覆盖产品 Active。
+- Action：通过设置页切换到 Team，返回 Composer 选择 Team 模型，再选择 Start 模型。
+- Assert：配置刷新 RPC 成功且存在远端失败告警；团队选择保留完整组织/项目身份，没有
+  被回滚；Team/Start 模型仍可选；不存在对非法下载地址的访问。
+- 本用例只证明 desktop-continuous 实际交互；共享服务单测覆盖错误分类，未声称手机、
+  远程 workspace 或真实付费模型请求已验收。无外部模型请求，账号响应复用本地 mock。

@@ -66,6 +66,7 @@ async function createTarget(
   const replacePersonalConfig = vi.spyOn(personal, "update");
   let currentSettings = {
     providerFamilyDomain: "bigmodel" as const,
+    providerFamilyDomainUpdatedAt: 0,
     providerFamilyConnectionSelections: {},
   };
   const credentialValues = new Map<string, string | null>([
@@ -115,6 +116,7 @@ async function createTarget(
     credentialValues,
     personalConfigFilePath,
     directory,
+    getSettings: () => currentSettings,
   };
 }
 
@@ -369,4 +371,23 @@ describe("Provider Provisioning Target", () => {
     ).rejects.toThrow("不允许同步");
     expect(settingUpdate).not.toHaveBeenCalled();
   });
+});
+
+it("Provisioning 回滚不覆盖并发写入的本地设置", async () => {
+  let f: Awaited<ReturnType<typeof createTarget>>;
+  f = await createTarget({
+    refresh: vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        await f.settingUpdate({ locale: "en-US" });
+        throw new Error("refresh failed");
+      })
+      .mockResolvedValue(undefined),
+  });
+  await expect(f.target.apply(createEnvelope())).resolves.toMatchObject({
+    status: "failed",
+    rolledBack: true,
+  });
+  expect(f.getSettings()).toMatchObject({ locale: "en-US", providerFamilyDomain: "bigmodel" });
+  expect(f.settingUpdate).toHaveBeenCalledExactlyOnceWith({ locale: "en-US" });
 });

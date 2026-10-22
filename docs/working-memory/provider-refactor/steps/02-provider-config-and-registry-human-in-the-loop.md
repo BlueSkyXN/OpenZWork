@@ -14,7 +14,7 @@
 
 ### 背景
 
-Provider 的访问方式与公开 API 是两个独立维度：`access.type = "api-key"` 使用静态 API Key，`access.type = "zhipu-account"` 使用当前登录、套餐或团队连接；`api.type` 则描述 Anthropic Messages、OpenAI Responses 或 OpenAI Chat Completions。不同访问方式可以使用同一种 API。
+
 
 最初的新 Registry 仍把账号状态放在独立的 `AccountProviderAccessEntry[]` 中，再由 Resolver 按 `providerId` 拼接 `modelIds` 和 `accessId`。第一次调整虽然把它改称 Runtime Overlay，却又建立了 `AccountProviderOverlay`、`AccountProviderAccess` 和 `allowedModelIds`，本质上仍是第二套 Provider 数据结构。
 
@@ -45,56 +45,9 @@ Account ProviderConfigMap
 
 Account Access 是 `ProviderConfig.access` 的一种判别分支：
 
-```ts
-class ProviderConfig extends ConfigOverlay {
-  access?: ProviderAccessConfig | null;
-  api?: ProviderApiConfig | null;
-  models?: readonly ModelId[] | null;
-}
-
-class ApiKeyAccessConfig extends ConfigOverlay {
-  readonly type = "api-key";
-  apiKey?: string | null;
-}
-
-class ZhipuAccountAccessConfig extends ConfigOverlay {
-  readonly type = "zhipu-account";
-  accessId?: AccountAccessId | null;
-}
-```
-
-`accessId` 是非敏感的账号连接身份，用来区分 Start Plan、Personal Coding Plan 和具体 Team Plan。它不是 JWT、API Key 或 Header。
-
 ### Account 层提供模型成员
 
 Official Account Provider 负责 `api.type`、`api.baseURL`、静态 Header 等受管理定义，不必提前列出当前账号最终可用的模型。Account 层同时提供当前连接的账号级 `accessId` 和 `models`：
-
-```text
-Official
-A -> {
-  access: { type: zhipu-account },
-  api: { type: anthropic-messages, baseURL: ... }
-}
-
-Personal
-A -> {
-  label: "我的 Coding Plan"
-}
-
-Account
-A -> {
-  access: { type: zhipu-account, accessId: account-team-plan:... },
-  models: [A, B]
-}
-
-Final
-A -> {
-  label: "我的 Coding Plan",
-  access: { type: zhipu-account, accessId: account-team-plan:... },
-  api: { type: anthropic-messages, baseURL: ... },
-  models: [A, B]
-}
-```
 
 `models` 遵循普通字段 Overlay 规则：Account 层提供该字段时整体覆盖前层，并直接决定最终成员和顺序。不再存在 `allowedModelIds`，也不再计算“配置模型与允许模型的交集”。模型 Properties、Option Specs 和 Reasoning Mapping 继续由 ModelConfigRules 解析，与 Provider 的模型成员列表是两个问题。
 
@@ -129,7 +82,6 @@ Account Request Auth Service
         └─ 无法解析或无权限             -> 请求失败
 ```
 
-Registry 和 Model 不保存账号 Secret。账号身份内部的 Token 或 Runtime Key 可以刷新，但已经创建的 Model 不跟随全局当前连接切换到另一份 Personal 或 Team Plan。
 
 ### 最终 Provider
 
@@ -143,14 +95,11 @@ interface Provider {
 }
 ```
 
-当 `provider.config.access.type === "zhipu-account"` 时，TypeScript 将 Access Config 收窄为 `ZhipuAccountAccessConfig`，ModelFactory 直接读取 `provider.config.access.accessId`。`ProviderRegistryProvider` 改为领域名称 `Provider`。
 
 ### 对当前实施的影响
 
 - Account Source 的输出改为稀疏 `ProviderConfigMap`，不再输出 `AccountProviderAccessEntry[]` 或 `AccountProviderOverlay[]`。
 - Provider Config Snapshot 增加 Account Provider Config 层；Resolver 按 Official、Personal、Account 顺序调用同一 Overlay。
-- 删除 Registry 中的 `AccountProviderAccess`、`allowedModelIds`、`accessAllowed` 和平铺 `accountAccessId`。请求协议仍使用 `accountAccessId` 把 Model 已固定的身份传给动态鉴权 Service。
-- `ZhipuAccountAccessConfig` 包含 `accessId`；最终完整性校验要求账号 Provider 具备执行所需的 Config 字段。
 - ModelFactory 从最终 `ProviderConfig.access` 固定 `accessId`；现有请求期动态鉴权链路保持不变。
 - 该裁决落地早期曾允许旧 Snapshot 暂时投影正式的 Account `ProviderConfigMap`。M2.8 随后已经删除这条生产兼容链；当前 Account Source 直接产生正式 Config，本文不再把 Snapshot 投影视为可用实施方案。
 
@@ -414,7 +363,6 @@ M2 实施过程中，Agent 将旧 `includeUsage` 作为兼容字段纳入新的 
 
 ### 背景
 
-Usage / Entitlement 已经使用 Account Provider 的非敏感 `accessId` 构造缓存身份，不再把 API Key 或 JWT 投影到 Renderer。当前 Personal 与 Start Plan 的 `accessId` 只表达连接种类：
 
 ```text
 start-plan:<providerId>
@@ -425,7 +373,6 @@ coding-plan:<providerId>
 
 ### 裁决
 
-`accessId` 标识一份具体的账号连接，而不只是 Start Plan、Personal Coding Plan 或 Team Plan 这种连接种类。具体登录账号变化时，`accessId` 必须变化；同一账号内部的 JWT、API Key、Runtime Key 或 OAuth Token 刷新不改变 `accessId`。
 
 ```text
 账号 A 的连接
@@ -443,7 +390,6 @@ coding-plan:<providerId>
    └─ 新创建 Model 的请求身份
 ```
 
-Account Source 使用账号服务提供的非敏感稳定身份生成 `accessId`。它不能包含 JWT、API Key、动态 Header，也不使用 Secret 哈希充当 Renderer 身份。Team Plan 继续包含具体组织与项目连接；若相同组织/项目在不同账号下不应共享连接身份，则同时纳入账号作用域。
 
 登录、登出和连接切换时仍可主动清理旧 Usage 缓存，但清理只是减少陈旧数据和存储占用的辅助措施，不承担身份隔离正确性。
 
@@ -451,7 +397,6 @@ Account Source 使用账号服务提供的非敏感稳定身份生成 `accessId`
 
 - Account Source 必须在生成 Personal、Start 和 Team `accessId` 时取得非敏感账号身份。
 - Usage / Entitlement 缓存继续使用 `providerId + accessId`，不增加平行的 `accountCacheIdentity`。
-- Account Credential Store 按新的账号级 `accessId` 隔离凭据。当前 provider 级稳定 key 属于尚未发布的 M2 中间实现，不为它设计迁移；Personal Coding Plan Key 按当前账号重新取得，Team Key 按账号与 organization/project 重新取得或缓存。
 - 已创建 Model 固定旧 `accessId`。账号切换后，它不能静默使用新账号凭据；新 Agent Loop 从最新 Account Config 创建新 Model。
 - Account Provider Config、Usage Source、Credential Store 与 Model Request Auth 共用同一个连接身份。
 - Request Auth 除了按 `accessId` 查找凭据，还要核对当前凭据所属账号。旧 Model 的 `accessId(account-A)` 不能与切换后的 `credential(account-B)` 组合发起请求。
@@ -462,9 +407,7 @@ Account Source 使用账号服务提供的非敏感稳定身份生成 `accessId`
 
 ### 背景
 
-线上 `desktop-attached-remote` 由 Desktop 读取本地完整 Provider Registry Snapshot，再通过
-`workspace/updateProviderRegistry` 下发给 Remote Host/Worker。Snapshot 可以携带 API Key、JWT、
-Team Plan Key 和 Header；远端 Agent 的启动门禁也读取 Desktop base Host 的模型 View。
+
 
 M2 一度把剩余问题表述为“Remote Worker 如何跨 Host 请求 Desktop Account Request Auth”，候选是
 Renderer 中转或 Local Host 到 Remote Host 的 Auth Broker。两种方案都默认 Remote Worker 属于
@@ -518,9 +461,8 @@ Model 和请求 Header 不通过该同步链路传输。
 
 ### 当前行为
 
-设置页 Usage 会列出当前账号能够查询的 Personal Coding Plan 和所有已订阅 Team Project，允许用户分别查看；侧栏与 Composer 只展示当前模型连接对应的额度。这个产品行为保持不变。
 
-目前来源列表已经主要由 `ProviderSettingsView` 中的 Account Config、Entitlement 和 Team Products 产生，但 Host 的 `BigModelUsageQuotaProvider` 仍会读取旧 `ModelProviderService.getAllCached()`，再从 `ModelProviderConfig[]` 中重新查找 Provider、判断启用状态、读取 API Key、推断请求地址并刷新 Coding Plan Key。它使已经退出 UI 主链的旧 Provider 大对象继续成为 Usage 的执行事实源，也阻塞旧 Config 和旧 Provider Service 的删除。
+
 
 ```text
 当前 UI 已选择的 Usage Source
@@ -544,37 +486,14 @@ Usage / Entitlement 必须退出旧 `ModelProviderService`、旧 `ModelProviderC
 
 UI 已经选定 Usage Source 时，请求应携带完整、非敏感的来源身份：
 
-```text
-Usage Source
-├─ providerId
-├─ accessId
-├─ organizationId?
-└─ projectId?
-        |
-        v
-UsageStatsService
-        |
-        v
-请求期鉴权
-├─ Personal Coding Plan -> Account Credential Store
-├─ Team Plan            -> Team Plan Request Key Resolver
-└─ Start Plan           -> OAuth / ZCode JWT Store
-        |
-        v
-Usage / Entitlement API
-```
-
 Host 不再根据旧 Provider 数组重新选择来源。Provider 是否被用于模型选择、是否在 Registry 中 selectable，以及当前 Session 正在使用哪个模型，都不作为设置页 Usage Source 的过滤条件。Account Provider 被用户关闭模型入口时，只要账号连接仍然存在，Usage 仍可查询。
 
 普通 API Provider 如果仍需参加 monitor/usage 查询，只读取新的 Effective API Provider Config；Account Provider 的 Secret 始终由请求期 Credential/Account 服务取得。任何迁移适配器都只能从新的 Config、Account 和 Credential 事实投影窄输入，不能回读旧 Config 或旧 Provider Snapshot。
 
-已知 Account Plan 的 Usage 路由在本轮可以继续使用现有 providerId/family 与服务地址构造逻辑，但不再通过模型 Endpoint 猜测账号套餐类型。Usage 路由是否进一步进入 Official Config，留给 Usage 领域后续重构，不阻塞旧 Provider 事实源退出。
+
 
 ### 本轮实施边界
 
-- 为 Coding Plan Usage / Entitlement 请求补齐 `accessId`，保留现有 Team organization/project 上下文。
-- `BigModelUsageQuotaProvider` 删除 `IModelProviderService` 依赖，以及 `getAllCached()`、`refreshCodingPlanApiKey()` 和 `ModelProviderConfig[]` 读取。
-- Personal、Team、Start Plan 分别复用现有 Credential Store、Team Key Resolver 和 OAuth Token Store；不复制新的 Secret 缓存。
 - 保持设置页、侧栏、Composer、套餐重置和现有缓存刷新行为。
 - 本轮不要求先形成完美、通用的 Usage Source/Authorization 框架。打平完成后，若 `BigModelUsageQuotaProvider` 仍混合过多职责，再单独拆分。
 
@@ -591,17 +510,6 @@ Host 不再根据旧 Provider 数组重新选择来源。Provider 是否被用�
 ### 裁决
 
 Provider Config 拆成两个正交子配置：
-
-```text
-ProviderConfig
-├─ access.type
-│  ├─ api-key
-│  └─ zhipu-account
-└─ api.type
-   ├─ anthropic-messages
-   ├─ openai-responses
-   └─ openai-chat-completions
-```
 
 判别字段统一使用 `type`。`access` 表达调用资格来源，`api` 表达公开请求协议；内部 Adapter 类型仍是执行实现，不进入对外 Config。
 
@@ -746,11 +654,7 @@ Reasoning 参数映射也应由 Official Config 明确给出。运行时 Adapter
 - Reasoning 内容的解析和回放由消息模型与 Adapter 完成，不由 Config 指定字段名；
 - 历史 DeepSeek/MiMo 空 `reasoning_content` 兼容补丁继续单独审计，不通过上述字段表达。
 
-GLM-5.2 与 GLM-5.3 的 Anthropic API 使用现代 `adaptive thinking + effort`。GLM-5-Turbo
-同样使用 adaptive thinking，但不对外承诺 effort 档位；具体依据和映射见第 13 项。三者均不发送
-fixed budget。GLM-5-Turbo 已通过 BigModel Coding Plan 真实接口验证，覆盖单轮请求、当前
-AI SDK 解析、Tool Call、Thinking Block、Signature 以及 Tool Result 后的第二轮回放。因此撤回
-第 9 项中为 GLM-5-Turbo 保留 `1024 fixed budget` 的临时结论。
+
 
 ## 12. Reasoning Mapping 是必填的 AI SDK Provider Options 映射
 
@@ -854,196 +758,6 @@ Anthropic Messages API 的映射为 `adaptive` 与 `disabled`。开启时不发�
 
 GLM-5.2 与 GLM-5.3 继续按照各自官方支持范围提供 effort 档位，不受本项裁决影响。
 
-## 14. 闲时任务使用 Builtin Provider 与按 Turn 传入的鉴权材料
-
-> 裁决状态：已确认；普通 Account 鉴权与闲时任务鉴权采用不同来源边界
-
-### 背景
-
-当前闲时任务由 Host 在每次派发前组装一份 `turnRuntimeModel`。它同时包含
-Provider 与 Model 的静态配置，以及本次执行使用的 API Key、Ticket 和 Headers。
-Core Worker 把它临时加入 Registry Overlay，为当前 Turn 创建执行 Model，Turn 结束后
-再恢复先前的 Runtime Model 并清理 Overlay。
-
-这条链路已经具有“每个 Turn 使用一份固定鉴权快照”的运行语义，但它把静态
-Provider 事实与动态鉴权材料一起组装和传输，并依赖临时 `setModel`/恢复逻辑。
-
-### 裁决
-
-普通 Account Provider 的鉴权以 Core Worker / CLI 进程自己的 Account Request Auth Service
-为事实来源。Host 或其他 Entry 只提交 `ModelSelection`，不随 Submission 传入或覆盖普通
-Account Provider 的 API Key、Headers、Provider Config 或 Model Config。CLI 根据自己的
-Registry 创建 Model，并在真实请求发生时由自己的鉴权 Service 取得当前连接的动态凭据。
-
-```text
-Host / Entry
-└─ ModelSelection
-        |
-        v
-CLI Registry
-        |
-        v
-CLI Account Request Auth Service
-        |
-        v
-Model Request
-```
-
-当前 Desktop Worker 通过协议回调 Host 取得普通 Account 鉴权材料，属于需要退出的迁移期
-链路；它不构成目标架构中的第二事实来源。
-
-闲时任务的 Provider 改为 Official Config 管理的 Builtin Provider。它的 Provider 身份、
-API 类型、Base URL、模型列表、Model Properties 和 Option Specs 等静态事实进入正式
-Registry。该 Provider 供闲时任务执行使用，不出现在普通模型选择和设置交互中。
-
-Host 每次派发闲时 Turn 时，只额外传入本次执行所需的动态鉴权材料：
-
-```text
-Builtin Provider（Official Config / Worker Registry）
-├─ Provider 与 Model 静态配置
-└─ 不包含本次执行的 Secret
-
-Host 派发 Turn
-├─ ModelSelection
-├─ API Key
-└─ Headers
-   ├─ Coding Plan API Key
-   └─ 本次执行需要的其他 Header
-```
-
-Core Worker 使用 Registry 中的 Builtin Provider、本次 `ModelSelection` 和传入的鉴权材料
-创建普通 `Model`。该 Model 被显式交给当前 Agent Loop，Loop 内的 Model Step 和自动
-Compact 继续使用同一份 Model 与鉴权材料。
-
-```text
-Worker Registry 中的 Builtin Provider
-        +
-ModelSelection
-        +
-本 Turn 的 API Key / Headers
-        |
-        v
-      Model
-        |
-        v
-   Agent Loop
-```
-
-鉴权材料不写入 Official Config、Personal Config、Registry View 或 Session 持久状态。它只对
-本次 Turn 有效，Turn 结束后不得被后续执行继续使用。闲时 Model 也不修改用户的
-Session Model Selection 或 App Recent。
-
-### Ticket 过期与续跑
-
-当前 `3102` Ticket 过期语义保留：
-
-```text
-当前 Turn 收到 3102
-        |
-        v
-当前 Turn 结束
-        |
-        v
-        |
-        v
-Host 重新取得 Ticket
-        |
-        v
-在同一 Session 提交 Resume Turn
-        |
-        v
-新 Turn 使用新传入的 API Key / Headers 创建新 Model
-```
-
-这是同一闲时任务和同一 Session 中的新 Turn / Agent Loop，不是在正在运行的 Model
-内替换 Ticket。普通 JWT 或 API Key 鉴权失败不自动等同于 `3102`；其是否需要自动
-续跑不在本项裁决中。
-
-### 执行模型切换横幅
-
-模型切换横幅由相邻执行段实际使用的 Model 决定。每个 Agent Loop 持有自己的
-Execution Model；Guide 在 Loop 内切换 Model 时会形成新的执行段。新执行段开始时，
-系统将它的 `providerId/modelId` 与上一个执行段比较：身份不同则显示模型切换横幅，
-身份相同则不显示。reasoning 档位变化不单独视为模型身份变化。
-
-```text
-上一执行段的 Execution Model
-              |
-              | 比较 providerId / modelId
-              v
-当前执行段的 Execution Model
-              |
-              +-- 相同：不显示横幅
-              `-- 不同：显示模型切换横幅
-```
-
-闲时模型按照同一规则进入执行模型序列，不需要闲时任务专属的横幅状态：
-
-```text
-普通 Turn A
-    |
-    v
-闲时 Turn Idle       -> A 与 Idle 不同，显示 A -> Idle
-    |
-    v
-下一普通 Turn B      -> Idle 与 B 不同，显示 Idle -> B
-```
-
-如果闲时任务结束后尚未开始新的执行段，系统不会提前显示“恢复到 A”。此时没有 Model
-正在执行；下一轮真正创建 A 或 B 后，再根据实际 Execution Model 生成横幅。这样用户在
-闲时任务期间把 Session Selection 从 A 改为 B 时，时间线自然显示 `Idle -> B`，不会经过
-没有真正执行过的 A。
-
-Session Model Selection 只负责为后续执行创建 Model，不作为横幅的事实来源。每个 Turn
-需要持久化实际 Execution Model 身份；实时投影与冷恢复都从同一执行序列归约横幅。
-`lastExecutionModel` 只表示上一个实际执行模型，不承担 Session Selection 的持久状态。
-
-横幅使用一个明确的公共入口：
-
-```ts
-recordExecutionModelChangeMarker({
-  modelRef: activeModel.modelRef,
-  traceContext,
-});
-```
-
-该入口只比较本 Session 的当前 Execution Model 与 `lastExecutionModel`，在
-`providerId/modelId` 变化时持久化 `model_change` Marker。普通主 Agent Loop 开始、闲时
-主 Agent Loop 开始，以及 Guide 的新 Model 真正从下一 Model Step 生效时调用它。
-Subagent 若复用该入口，只写入自己的 Child Session。Title、Memory、Wiki、Verifier 等
-独立模型任务不调用它。
-
-该入口不创建或切换 Model，也不修改 Session Selection、Provider Config 或 Registry。
-
-Execution Model 在 Model 创建成功并正式进入主 Agent Loop，或在 Guide 后正式进入新的
-Model Step 时生效。此时调用 `recordExecutionModelChangeMarker()`。如果 Model 创建失败，
-或者 Submission 在进入 Agent Loop 前被 Admission、Hook 等边界阻止，则不建立新的执行
-模型基线。进入 Loop 后即使在首个 Model Request 发出前被取消，该 Model 仍然是本执行段
-已经生效的 Execution Model，可以产生横幅。
-
-`3102` 续跑是同一闲时任务的新 Turn。如果新 Turn 继续使用相同 Idle Model，执行模型
-身份没有变化，不增加中间横幅；整个闲时任务之后真正开始的下一执行段再与 Idle 比较。
-
-### 鉴权边界
-
-闲时任务不扩展普通 Account Request Auth Service 的职责。它首先复用 CLI Registry 中的
-Builtin Provider 静态事实；如果现阶段难以由 CLI 自己取得闲时服务要求的整套动态材料，
-Host 可以随本次 Turn 传入 execution-scoped Request Auth。该输入只表达这次闲时执行的
-鉴权材料和 Ticket，不携带 Provider 或 Model 静态配置。
-
-后续如果 CLI 能自然取得 JWT、Coding Plan Key 等材料，可以继续缩小 Host 输入；这项优化
-本次 Turn 传入。
-
-执行期鉴权需要满足：
-
-- 普通 Account Provider 始终使用 CLI Account Request Auth Service，不接受外部鉴权覆盖；
-- 闲时任务允许 Host 随本次 Turn 传入 API Key、Headers 与 Ticket；
-- 不同 Turn 和并发执行之间的鉴权材料必须隔离；
-- Model 在一个 Agent Loop 内使用固定的鉴权材料；
-- Turn 结束、失败或取消后，本次鉴权材料必须退出可用状态；
-- Provider 和 Model 仍然通过统一 ModelFactory 与 Adapter 链路执行，不建立闲时任务专属的
-  模型请求协议。
-
 ## 15. 进程 Registry 启用后，旧 Workspace Catalog 退出 Provider Authority
 
 > 裁决状态：已确认并完成
@@ -1117,11 +831,8 @@ Title、Git Commit Message 和 Memory Selector 在重构前已经关闭 reasonin
 reasoning 的派生 Model。此次重构不改变这些任务的产品策略，也不允许它们绕过 Model 直接修改
 Provider 参数。
 
-### Account 查询按 Provider 保留 last-known-good
 
-Start Plan、Personal Coding Plan 和 Team Plan 的远端查询分别产生 `available`、`unavailable` 或
-`unknown`。某一路为 `unknown` 时，只保留该 Provider 的上一份成功结果；其他 Provider 已经得到的
-确定结果继续发布。明确 `unavailable` 会删除对应 Provider。
+
 
 ### 目标设计不保留临时 Provider
 

@@ -304,7 +304,6 @@ Todo 02 不应自行补能力默认值，也不应重复建立 `requireCompleteP
 ### 6.2 鉴权
 
 1. api-key Model 使用创建时固定 Key；
-2. zhipu-account Model 固定 accessId，每个 attempt 可以刷新动态凭据；
 3. request-auth 无 Source/无材料时网络前失败；
 4. Retry 可取得更新后的 auth；
 5. 动态 auth 不能覆盖 baseURL、API kind、Provider options 或 properties；

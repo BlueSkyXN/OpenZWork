@@ -44,7 +44,7 @@
 - 闲时任务 3 个 spec：即使单独运行仍停在灰度创建入口前置，未进入业务断言；当前记录为 E2E fixture/Account Provider 可用性阻塞，不修改闲时业务代码。
 
 
-2026-09-05 在 Air 上补跑 `coding-plan-team-usage.test.ts`：18/18 通过，包含 CTP-01～11、QR-E2E-01/02/03/04/09/10。为使机会提醒用例反映真实用户路径，测试先通过 Composer 模型选择控件选中 BigModel Coding Plan，再重载 Renderer；同时把 urgent opportunity mock 改为每次 status 响应提供未来 120 秒，避免完整 Electron 重启/build 时间让固定起始时间的 179 秒机会过期。两项均为 E2E fixture/准备逻辑修正，没有改生产代码。
+
 
 2026-09-05 在 Air 上再次运行 Subagent spec（同步最新测试 helper 后）：
 
@@ -55,14 +55,13 @@
 2026-09-05 在 Air 上再次运行 `coding-plan-team-usage.test.ts`（补充 CTP-02B 后）：
 
 - `desktop-e2e-20260905-051133-051`：19/19 通过。
-- CTP-02B 独立确认侧栏头像旁显示当前已确认的 Team Plan 标签（`团队`）。该用例覆盖了 Todo 73 的图形验证要求；没有修改产品代码。
+
 
 ## 3. 从旧 Todo 收口的范围
 
 ### 3.1 已关闭
 
 - Todo 34：Repo Wiki 三个正式 E2E 已在本基线通过。
-- Todo 40：Provider 升级、Coding Plan 主要额度场景和 Automation 创建管理已通过；QR-E2E-09/10 仍按上表处理。
 - Todo 62、75、77：模型设置、Template 创建和推理档位相关图形 E2E 统一由 `settings-ui-polish.test.ts` 覆盖；当前只剩 `MP-UI-06` 的语言断言问题。
 
 ### 3.2 已记录的剩余环境阻塞

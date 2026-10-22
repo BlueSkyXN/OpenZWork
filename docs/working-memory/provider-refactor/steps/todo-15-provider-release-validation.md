@@ -73,7 +73,6 @@ conversation Docker preset
 #### Account
 
 - Account Built-in Overlay 只处理 ZCode Built-in 声明的账号 Provider；
-- Start、Individual、Team Plan 使用结构化 `family/planKind/accessId`，Team Scope 按既有契约补齐；
 - 权益接口确实返回模型集合时才覆盖 `builtinModelIds`；未返回时继续使用 Built-in 成员；
 - Personal Overlay 继续最后生效；
 - 动态凭据按请求解析，不写入 Provider Config，服务端继续承担最终授权裁决。
@@ -102,7 +101,7 @@ conversation Docker preset
 - 迁移、备份、解析或完整性校验失败时保留原文件，不产生半份新配置；
 - 已有正式 `schemaVersion` 文件只走相邻版本 migration，不重新进入无版本 Legacy importer；
 - 重复启动不重复迁移，旧文件残留不覆盖已经建立的 Personal Config；
-- Account Personal Coding Plan Key 的一次性 Credential Store 迁移与 Provider Config 迁移保持职责分离。
+
 
 ### 1.4 发布制品与跨平台启动
 

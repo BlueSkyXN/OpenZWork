@@ -15,9 +15,7 @@
 
 | ID  | 功能 / 来源方向                                        | 与当前重构交集、处理依据                                                                                        | 状态       |
 | --- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- | ---------- |
-| G01 | Windows 安装器、各平台发布和 preflight                 | 保留安装修复；版本保留 3.12.0，不回退 3.11.x；检查 CUA 打包、服务端能力与下载制品配套。已有85/m2恢复须证明等价  | 16条来源已裁决/实施；Windows执行验收待补，见17/18节 |
 | G02 | Help config、内部技能、仓库架构门禁                    | 非冲突功能保留；新增门禁不得隐藏重构违反项；不把未要求的 MR 创建当成自动外部写入授权                            | 已裁决/批量保留；门禁证据见 §37 |
-| G03 | CUA 生命周期、移除灰度、插件图标                       | 按当前服务边界重接；producer 升级只能使用原子工具，不手改 SHA；本地 / remote 和插件资源闭包                     | 已重接/构建及单测；见 §25/38 |
 | G04 | Subagent 可用性、插件模型覆盖                          | 插件设置功能保留意图；协议 / 内部使用 ModelSelection，显式选择复用99，隐式继承不改；不写插件 Markdown           | 两条来源已实施/复审；待最终整合回归 |
 | G05 | Bot 已删除任务恢复、飞书发送错误                       | Bot 绑定 Session 单一事实、公共命令 / 有效选择解析不回退；保留新恢复与错误提示                                  | 已实施、组内复审；见 §20 |
 | G06 | Wiki 全局默认、remote路由与lane同步                    | 94输出limit、97一次迁移、99Worker事实不回退；不恢复旧 Provider store / generationModel 正式读取或第二套发送同步 | 已重接；Pro Wiki 通过，见 §23/38 |
@@ -28,7 +26,6 @@
 | G12 | 权限拒绝反馈、路由字段、side chat / fork提醒           | continuous/replayable、CommandInbox、冻结执行及workspaceIdentity隔离；禁止老模型字段从协议回流正式运行          | 已保留/协议复核；Pro 权限 5/5，见 §41 |
 | G13 | Subagent / usage / stop / 错误遥测                     | 保留分类、首次结算、底层错误归因；model id / provider id 用当前结构；脱敏与不重复报送                           | 10条来源已实施/复审；待最终整合回归 |
 | G14 | 内存采样、Session事件保留、后台子任务释放              | 有界保留不可破坏 replayable恢复、持久历史、Subagent继承与已冻结模型；高频日志受控                               | 已保留/生命周期复核，见 §40 |
-| G15 | 浏览器恢复 / 截图 / 视口 / DPI                         | 原行为保留或证明已恢复；检查 CUA 与插件入口依赖；不能为截图改变执行归属                                         | 已保留；Mac 两项通过/一项既有失败，见 §37/39 |
 | G16 | mention选择、文件链接、插件搜索、添加菜单              | 保留交互；保留新Composer草稿与提交语义，所有入口双语 / 主题 / 手机兼容                                          | 已保留/Submission交集复核；见 §31/37/39 |
 | G17 | remoteSessionId保存、scope日志、MCP watchdog测试       | path不是identity，settings tab不能丢远端session；测试等待变化须核对真实生命周期                                 | 已实施/单测复审，真实SSH验收待环境；见22节 |
 | G18 | workspace / sidebar / terminal / settings 新布局与回归 | 分离展示与业务状态；保留当前模型设置smart配置、Map排版 / 键盘隔离；手机与各OS布局分别验收                       | 已重接；Pro 布局/编辑器通过，Windows待补，见 §39 |
@@ -283,10 +280,6 @@ JSON 中状态只有在相应来源片段全部有明确去向时才能改为完
 - Pro重新构建Desktop，Agent复用本轮已重建版本；`desktop-e2e-20260909-150213-807`
   SE-02/04 2/2通过：全新seed后首次页面出现judge、整组模型/最高档/显式high写盘、无旧map写入、
   插件行不可编辑、judge文件字节不变。没有通过放宽超时或预置已完成缓存绕过冷启动缺陷。
-- 最终Host/Skills/Commands/UI四文件111/111；CLI两个文件58/59，其中新增默认名单对照及
-  全部plugin Subagent加载测试通过。唯一失败为既有Electron packaged CUA seed断言：测试常量
-  路径0.5.13而当前wrapper0.5.14，修改前该断言/常量已如此。路由G03复核原子producer契约，
-  不在本组手改CUA版本或将CLI全包写成通过。
 - 根typecheck通过（含E2E），lint39条既有warning/0error；清理formatter对Skills/Commands
   的无关整文件排版，仅保留默认名单的导入/删除差异；diff检查通过。
 - 双向复审：缓存发现、用户页入口、双语、响应式共用控件与持久化来源均已迁接；不写插件/项目
@@ -299,7 +292,6 @@ JSON 中状态只有在相应来源片段全部有明确去向时才能改为完
 - 用户最新五项裁决已写入 Todo103 完整 Goal：只修合并回归、旧接口漏接及阻碍本次保留行为的问题；无关既有问题只记录。
 - 来源清单和逐功能裁决不缩减；低风险无架构交集项按批次实施、复审、提交，共享构建、typecheck、lint 和回归。高风险交集保留有区分力的重点验证，不再要求每个小项单独重复全套流程。
 - 测试失败先归因：合并回归／既有产品问题／过时测试／环境前置。尚无证据的失败保持待查；既有问题仅在阻碍本次保留行为或与待合来源有交集时纳入修复，不因相邻分组名称自动扩修。
-- 已有两项失败据此处理：CUA packaged seed 的 0.5.13 测试路径与当前 0.5.14 wrapper 不符，记为既有测试版本不一致，G03 仅在来源交集核验时复查；stale-revision ACK 断言在 G13 修改前已失败，记为基线既有失败、具体归因待查，G12 核验是否影响保留行为后再决定，不预设本轮修复。
 - G04 后续商店刷新及插件请求闭环按风险共同组织验证；已通过的 111 条 Host/UI 单测、SE-02/04、类型检查与 lint 可复用为对应提交的证据。发生相关代码变化后补增量或最终批次验证，不无条件重复 Pro 构建与同一用例。
 - 双向总复审、来源全部有去向、最终关键验收、真实 merge 及安全合回 recovery 的标准不变；不自动推送，不借 Todo102 转移本次关键验收。
 - Goal 工具当前只提供创建、读状态及完成／阻塞标记，不能编辑现有 objective 或恢复暂停；现有 objective 已明确引用 Todo103 全文为完整执行契约，本次通过更新该契约落实补充，不伪造完成以重建 Goal。
@@ -437,7 +429,7 @@ case-local fixture/pending 身份；没有重新设计布局或扩大正式测�
 | --- | --- | --- |
 | 65ad97769b | 桌面已删除的活动任务收到 Bot 消息后创建新任务，清旧交互并通知一次 | 保留 tombstone 判定及通知；重接当前草稿初始化、Selection View 和 V4 创建/派发，不恢复旧 model/thoughtLevel 路径 |
 | 3c53fe008f | 飞书 HTTP/业务失败保留 code、log_id、接收身份类型；独立投递错误、成功清除及弹窗状态刷新 | 保留；发送保持 open_id，卡片更新保持 message_id，不增加重试或 chat_id 降级；共用当前运行状态与 UI logger |
-| 35ba050592 | 原作者飞书真实长任务与协议验收记录 | 保留全文，显式标为历史证据；不将原租户、CUA、跨端或协议测试算成本轮实测 |
+
 
 **交集 I103-12：** 上游 Bot 测试配置和创建路径基于旧接口。本轮 fixture 保持 v3，
 已绑定且未删除任务仍以 Session 持久选择为唯一事实；仅确定 tombstone 后回到现有草稿流程。
@@ -497,11 +489,6 @@ case-local fixture/pending 身份；没有重新设计布局或扩大正式测�
 | 29b0a87dde | 用户授权 HC-01～05 转正；保留根目录正式 spec 和 8 case，不恢复两个已被移动的 pending 文件 |
 | d3bdf049dd | 清理无调用旧 CDN URL 常量/构造函数及过时测试；保留内置 default.json、有效字段 helper、旧客户端线上资源 |
 
-本批无需新产品裁决。四个核心实现文件已确认与固定 staging 逐字一致；对应现有
-文件相对 merge-base 没有 recovery 改动才采用来源内容。共享 index/main/platform 只
-接入本批 import、reader 和参数，不夹带 G03 CUA 灰度删除、G11 share 或 G14 memory。
-公开帮助读取不附用户 OAuth，不复用账号灰度响应缓存；不涉及 Provider/Selection
-持久化、会话 owner、shared-host、desktop continuous 或 mobile replayable 语义。
 
 ```text
 Desktop 原生菜单/平台动作 -----+
@@ -681,37 +668,10 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 本阶段余 **107** 个冲突路径，候选仍不可运行。计数仅是工作区状态，功能进度仍以
 裁决 / 实现 / 验证三维记录为准；实时路径清单见 `todo103-real-merge-candidate.json`。
 
-## 25. 真实候选：CUA / 共享协议 / Subagent 交集收口（2026-09-09 17:13 UTC）
-
-本节覆盖候选清单新增的 20 个已解冲突路径；另含自动合并的重复定义/测试修正。剩余 87 个冲突路径，**不代表完整候选已可运行或验收通过**。
-
-### 已裁决、已实现
-
-- Windows Host 合并时保留 ready 后的 `this.handle` 赋值。新 tuple 缓存与旧 stop epoch 的组合有确定回归：显式 stop 后迟到 ready 会重新写入旧 tuple，下一代等待新 pipe 时超时。先补测试复现，再在 onMessage 发布前检查 stopped/epoch/current generation，复用原防护、不新增 timer/Agent 状态。CUA spec 已补时序与所有权。
-- G03 producer：正常合并保留 catalog/lock/upstream 一致的 `908b247399423195d0bcb0039e1755a333c4c1ff`，`check-cua-baseline.mjs` 通过；**现有 node_modules 仍含 recycleUntilStable，不能据 wrapper 版本号相同就宣布依赖已对齐**。其旧兼容方法测试暂不裁撤，安装精确 pin 后核对；不手改 producer SHA。
-- G04：共享包自动合并重复声明 `createPluginAgentStateId`，还通过 interface merging 加回旧 `model/thoughtLevel`。移除重复函数及旧参数定义，保留一个稳定 ID 与结构化覆盖接口。
-- G04 Service 18 块逐项核对：结构化 state/正式 reader/完整组合保存、共享 Node 迁移和官方缓存扫描、安装记录与卸载抑制优先、settingsUserOnly 的插件投影均保持已验收实现。路径/排版等价处不重复 helper；保留 source 同一个稳定 ID 局部变量。清理自动合并重复 `state` 参数和空旧 map。
-- G04 Agent 5 块逐项核对：沿用已完成迁移的启动快照，先替换完整 Selection 再展开规范名/裸名别名，不在 plugin loader 二次读盘或查询账号。`create-app.ts` 继续传 `modelSelectionOverrides`；恢复旧 `storageRoot` loader、旧双 map reader 会破坏当前裁决，因此不恢复。
-- G04 两个 source 新增测试仍检查旧存储/API。保留默认/覆盖/别名一致/清除/model-only 不串档位的断言，改用结构化接口；Agent 测试旧文件先经过现有迁移再加载，不把旧字段当正式 reader。既有正式目录 Pro 证据不因重接被重新记成新晋级。
-- G04 modify/delete 两路径保持删除：`modelProviderServiceStorage.ts` 与 `modelProviderEnablement.test.ts`。固定 source 唯一新增意图是同 endpoint 下 Start/Individual 成员隔离；当前 `packages/provider/test/resolver.test.ts` 已覆盖真实 AccountResolver → ProviderResolver 及 API 隔离，见第12节。两个相关导出 unscoped dep:refs 均 0 references/0 re-exports，另做文本引用检查；不恢复整套旧服务。
-- G08 共享成功响应采用严格 union：`headersApplied=true` 必须含当前 `requestAuth` 对象（apiKey/headers），不恢复 source 裸 `runtimeProviderHeaders`/providerRevision。取消通知独立保留 request/session/workspace 标识，不混入鉴权响应。spec 顶部已写整合约束；取消/3007 重试全链尚未验收。
-- G10 claim response 使用 source 独立的 claim entitlement 类型（id/name/effectiveAt），不把 preview 才有的 grant/meter 等字段强制加到领取响应。保留当前 server_time 毫秒、effective_at 秒和 0 语义；对应服务测试已通过。
-
-### 验证与失败归因
-
-- 合批 `windowsCuaDevHelperHost` + `zcodeProtocol` + `nodeCuaInstallerExports` + `codingPlanSubscriptionService`：**4 文件 / 168 条通过**（17:06）。新增 late-ready case 修改前 1 fail / 34 pass，失败为下一代启动超时；修复后通过。
-- `subagentsService` + `subagentSelectionAuthority` + `subagentStateMigration`：**3 文件 / 49 条通过**（17:10）。首次 source 旧测试失败已明确归因为过时接口断言，按现行合同迁接，不扩修产品。
-- CLI 另用 `vitest --root apps/zcode-cli packages/bootstrap/tests/subagents.test.ts`：**1 文件 / 10 条通过**（17:11）。根 Vitest 不包含 CLI tests；不把根命令多传一个 CLI 路径当作已跑。
-- 前置失败分别是共享 index 冲突与共享包重复 export 导致解析失败，不算 CUA 运行失败。前一进程输出因句柄结束无法重取的结果未当通过，以上均为新输出证据。
-- architecture check：0 violation；services/shared/zcode-cli 仍是 unmanaged，不能把这个结果当人工边界复审的替代。新鲜度检查通过；Node 当前 24.19.0，最终 pinned 24.14.0 环境验证仍需列入候选验收。
-
-本批未提交 merge（仍有 unresolved index），未修改 recovery，未推送。后续优先清理剩余显式/自动交集，再共享 typecheck/lint/构建及跨组回归，不逐来源重复移植验收。
-
 ## 26. 真实候选：安全校验重试与绑定请求鉴权（2026-09-09）
 
 本批又解决 10 个 CLI 冲突路径，余 77 个；候选清单保留精确路径。主要是 G08，含少量同批协议类型和遥测等价冲突。**底层通过不代表 Host/UI 验证完成。**
 
-- 已裁决/实现：保留 source 官方版本安全校验的一次额外重试、取消、网络重试预算和流输出边界，身份判断重接为已绑定 Model.accountAccess.mode=start-plan，不猜旧 builtin ID，不重新读取当前连接。Invocation/Runtime 使用完整 requestAuth，不恢复裸 runtimeProviderHeaders。
 - resolveModelForAttempt 合并 source 可取消等待与当前每请求私有鉴权：传已绑定 providerId/modelId、attempt/reason，收到 requestAuth 后重新构造同一绑定请求，不改 Registry 或持久选择。保留 ModelRequestAuthMissing 类型错误，不能被新增通用包装吞掉。
 - 先跑 source 并发/HTTP 断言发现确定回归：旧小写与新大写安全校验 header 被 Headers 合成 stale, A。applyModelRequestAuth 在私有副本中按不区分大小写替换同名项，既不改静态配置，也不污染另一并发请求；已加原因注释。
 - source 测试旧 ModelRegistry/ref/adapter.generateText 接口迁至现行绑定执行 fixture；OpenCode Go 新增断言同样保留。取消测试原先在尝试前 abort 却期待一次请求，与 source 新增 early-abort 冲突，改为第一次 SDK 调用内 abort，继续验证取消不重试，而非放松断言。
@@ -720,7 +680,7 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 
 验证：17:21 五个 Adapter 测试文件（官方版本安全校验重试与 HTTP 用例、runner / runner-retry / model）**193 条通过**，包含实际本地 HTTP Server + AI SDK 的两条往返、26 条重试用例及非 Start 绑定不能触发额外重试。早先失败区分为上述合并回归、旧接口 fixture、取消时序测试；修复后共享重跑通过。尚未完成桌面弹窗/Host 取消/整体跨组验收。
 
-依赖：frozen-lockfile + ignore-scripts 安装成功（6m17s，pnpm10.33.2）；安装时等待 git 下载，未改 pin 或锁文件。CUA 精确制品应用及最终构建另验，不能将安装成功等同原生运行通过。
+
 
 ## 27. 真实候选：设置投影与协议工厂去重复（2026-09-09 17:37 UTC）
 
@@ -734,7 +694,6 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 - G03：精确安装后的 cuaWorkspaceRegistry.js/d.ts 已不含 recycleUntilStable，仅保留 setEnabled/snapshot/pruneDisabled。删除两条旧 recycle 兼容测试，来源生命周期隔离不倒退。该文件执行被 zcodeAgentService 未解标记阻塞，**无运行通过声明**。
 - G11 输入持久化/队列 metadata 合并保留 modelSelection + mode + sharedContextRefs，三者不能互相覆盖。现有 canonical goal case 增加组合保存断言；完整分享派发仍未验。
 - G12 fork 仅 import 交集合并，其余 source fork/model-only metadata 正常保留，不改变当前选择复制。G14 server-types 保留异步 createZCodeApp 与新 event store 注入点；retention spec 已阅读，完整 server/回放验收尚待。
-- G08 来源新独立 provider-runtime-headers 模块未接 current workspace-model-runtime，旧内联端口仍用 Date.now。先补真实工厂回归测试，在固定时钟下复现重复 requestId；重接 source UUID/取消/时限模块，保留 ModelSelection/accountAccess/requestAuth 和所有 Account 入口。删除旧内联副本，普通 API 仍由绑定层免于账号 RPC。
 - G08 modify/delete 的 workspace-model-catalog 保持删除：fixed source 唯一变化为提取上述 Port，已接入现行工厂，不恢复旧 overlay/default Model mutation。全仓代码 import 文本无引用，只有历史文档路径；dep:refs 因该 CLI 文件不在其 project 中失败，**不宣称工具返回零引用**。GIt 可恢复删除文件。下一步完整类型检查继续核查调用面。
 
 ### 验证 / 未完成边界
@@ -745,48 +704,7 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 - 固定 lock 安装没有产生额外 package/lock 工作区修改。新鲜度检查通过；格式化限定本批文件。未运行全候选 typecheck/lint/build，因为仍有显式冲突；最终共享验收不变。
 
 
-### G07 下一批已定位的接口漏接（历史定位；Host/存储已由第28节重接，UI/派发仍待联验）
 
-
-## 28. 真实候选：Host 闲时工具、安全校验与绑定落库（2026-09-09）
-
-本批解决 7 个冲突路径，66 → 59；已有 checkpoint/固定 MERGE_HEAD 不变，未提交 merge、未合回或推送。这里的实现/验证结论不覆盖尚未合完的 UI、CLI server 与桌面派发。
-
-### 来源、裁决与实现
-
-- G07 Repo INSERT 同时保留 model_selection 与 source session_id。Service 在现行选择校验后保留绑定预检及数据库唯一索引错误分类；取号链路和已绑定 Ticket 不改。Repo 同时保留旧选择隔离测试与 source 绑定/标题/唯一索引测试，增加绑定与完整选择同时落库断言。源版本对存量重复行无法建索引时仅保留预检的降级照常保留，本轮不清理真实数据或扩修它。
-- G08 `218102a0f8`/`74fa583639`：保留请求私有校验材料与取消，接当前 accountRequestAuthService。先用 Host 实际回调测试复现四个失败：UI 任意 header 混入鉴权、UI 失败仍解析账号、交互/非交互账号 IO 期间取消后仍发迟到应答。修复只在组装与 pending 身份边界：只接官方版本安全校验所需的请求头，保留 Host apiKey/Authorization；IO 期间可取消，结束核对原 pending 身份；同一 pending 只允许一个应答者；空鉴权不报假成功。不修改 Registry/持久选择，也不新增超时系统。
-- G06 `8423f78274`/`11230d9a1e`：此前已按 Account 快照镜像重接，Host 冲突不恢复整段旧 ProviderRegistry 同步/隐式 fallback/runtimeModel。G14 `a008e4e12c` 内存计数注册和 dispose 一并保留，未改变流传输边界。
-- 自动合并另发现 skillsService、commandsService 重复导入 DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS：source 引入 services 私有四项名单，而 checkpoint 已有 shared 单一五项名单（含已裁决默认启用的 CUA）。移除重复导入，继续使用现行 shared 权威；不改变 discovery 行为。新 source officialPluginCache 重复模块是否仍需保留归最终引用/双向审计，不以解除语法错误代替整组完成。
-
-### 验证与归因
-
-- 17:54 Host 工具桥/配置门禁/内部错误/安全校验鉴权/取消 workspace 隔离 **5 文件26条通过**；安全校验新增用例先4条实际失败，再修复转绿，追加重复 UI 应答断言通过。工具用例证明 Z.ai/BigModel 各自选 Provider、完整选择与绑定一起提交、异域模型拒绝、未选账号不取号；并非只有 helper 测试。
-- 17:57 Repo + Service + Legacy Task Adapter **3文件130条通过**，包含真实隔离 SQLite、绑定唯一约束/预检、Session 选择不被闲时覆盖及 idle turn denylist。未触碰真实数据。
-- 17:55 skillsService + commandsService **2文件46条通过**，证明移除自动合并重复导入后的发现行为；不代表所有插件/UI E2E。
-- 本批 Host/Adapter/新 fixture/测试定向 oxlint 0 warnings/0 errors；格式化限定本批。完整 typecheck/lint/build 在余下冲突解决后统一执行，不以定向 lint 替代。
-- CUA Product Agent Env 首次被 Host/TaskAdapter 冲突阻塞，后续被上述重复导入阻塞；均为候选未完成/自动合并语法问题，不是 CUA 功能失败。未继续逐个追 import 阻塞重跑；待完整服务导入闭包解完共享回归。§27 的 CUA 单文件仍**没有通过证据**。
-
-仍待：CLI server/turn flags 与 Host 桌面绑定派发联验；G08 UI/controller/真实 Port timeout；完整跨组回归与最终双向审计。spec、测试与来源清单持续保留，不把本批通过折算成合并已完成。
-
-## 29. 真实候选：CLI 派发与分享导入的交集合并（2026-09-09 18:14 UTC）
-
-本批解决 6 个索引冲突（5 个 CLI、1 个 desktop remote 装配），59 → 53。固定 MERGE_HEAD、checkpoint 不变；完整候选还未验收，不提交半成品 merge、不合回、不推送。
-
-### 已裁决 / 已实现
-
-- G08 Port 工厂与取消保留；zcode-protocol 测试把 source 请求私有校验材料的断言迁入完整 requestAuth，保留同一时钟下并发 requestId 唯一、原因透传，不恢复旧 workspace Provider 变更方法/运行期 overlay 测试。
-- G11 `84be5103f9`：分享上下文原子导入正常保留，但自动合并的新分支引用了已不存在的 providerID/modelID，实际导入抛 ReferenceError。先补有/无模型两条真实 createSessionRecordForV4 调用测试，再改为与普通导入一致的可选结构化 modelSelection；无选择不伪造来源、不要求 Registry 可执行。正文、model-only、provenance 和 resume 保留。规范补充在 conversation-share-v1。
-- G14 `3d87e89955` / `228c641268`：保留 event store 工厂注入、创建/生成/关闭/失败清理与 prune，createWorkspaceZCodeApp 仍可等待；不恢复旧 DeferredModelAdapter。`5eb47d9039` 的 child publisher 登记 parent 归属保留，更新原测试两参数断言为三参数（source 自身新增生命周期参数后的陈旧断言，不改产品行为）。
-- remoteWorkspaceServiceCollection 同时保留 source 真实分享 HTTP Client/远端 artifact source 和现行 AccountCredentialStore logout、Provider provisioning、runtime-preferences 桥；不重新引入 localModelProviderService。
-
-### 验证与失败归因
-
-- 18:07 CLI 4 文件最初 23 通过、3 失败：retention 失败是 `@zcode/contracts` 指向旧 dist，不是源实现错误。执行 `pnpm --filter @zcode/contracts build` 成功后，retention 三条通过。其他 CLI 跨包仍可能读取旧 dist；本轮局部通过不代替最终重建完整闭包。
-- 18:11 含 zcode-protocol 的共享运行 **130通过/7失败**。其中 child parent 参数断言已更新，并在18:12定向通过；5条 MCP 失败同因 adapters/dist 仍调用已删除 isCuaGrayEnabled，留到完整构建后复验；1条远程 Cron 默认 denylist 是 Todo102 既有失败，base/source 同有该行为、checkpoint 早已缺失，不在本轮额外修复。不能把这7条都写成已通过。
-- root oxlint 默认排除 CLI，本次根命令实际仅检查 remote 文件（1文件0错）。随后 CLI cwd 定向检查暴露 server 既有 max-lines 和 server-operations 的5个既有 unused 项（HEAD 对照存在）；新增 session-flow 重复计算与空 catch 已清除。最终 repo typecheck/lint 和 CLI 构建仍待，未假报全绿。
-
-下一批已定位：desktop host 新增 bound-first-run 仍读取已删除 request.thoughtLevel，并以 setConfigOption 写档位；必须按已有 idle 单次执行不覆盖 Session Selection 的裁决重接，和 resume 分支一并查清。此处尚未实施；不能因 CLI 工具测试通过就认为 D50 桌面链完成。
 
 ## 30. 文档交集按已裁决合同收口（2026-09-09）
 
@@ -794,7 +712,6 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 
 - CONTEXT：保留 source 自动刷新用户无感、手动刷新全市场且不受自动节流的定义，与当前相同；不引入另一种刷新机制。
 - conversation-protocol-declaration：把两侧表格按不变量 key/value 比对，非排版差异仅为附件说明、安全校验重试预算、queue/guide 模型规则。保留当前附件-only、queuedSubmissionPreservesSelection、acceptedGuideSwitchesAtModelStepBoundary；不恢复 source queuedPromptUsesLatestSessionConfig。安全校验切至已裁决 ModelInvocation 一次重试。处理后与 HEAD 按 key/value 比较只有该安全校验项替换，其余当前不变量全保留。
-- WSL/Start Plan bridge 文档保留 source workspace headless controller、请求私有安全校验、晚订阅补投、取消与模型内重试，但接入当前 ModelSelection/accountAccess/requestAuth，不恢复 builtin ID 猜测或旧 Runtime Model/Registry fallback。pending claim/IO/取消文案与§28实现一致。修正“整个 bridge 已废弃”的过时头注，明确只废弃旧配置改写方案。
 - staging 2026-09-08 的测试数字保留为来源证据，不冒充整合候选全绿。当前UI/controller仍有冲突、桌面完整验收仍待。
 
 
@@ -802,49 +719,25 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 
 本批11个索引冲突收口，49 → 38；只更新真实 merge 候选，不提交半成品、不合回或推送。Goal引用的最新策略不变：独立行为正常合并，交集按风险检查，共享最终验收仍待。
 
-### 已裁决 / 已实现
 
-- G08 `218102a0f8`/`74fa583639`：保留 source 请求内一次重试、校验/配置等待取消与 workspace headless controller。接当前 ProviderSettings View 的结构化 access；请求已有 accountAccess 时以该绑定事实为准，不用更新后的设置状态改写在途请求语义。UI仍只返回安全校验所需的请求头，Host通过当前requestAuth组装鉴权。scope保留workspaceIdentity/session/request隔离；先订阅取消再补投请求。
-- source删除的旧安全校验自动恢复 hook及测试按已裁决请求内重试一并移除；旧 refresh/discard/next-edit 校验材料暂存 helper和对应6个旧契约测试移除。新 source 中无人使用的全局 setProviderRuntimeHeaders helper不恢复。删除前 dep:refs与文本调用检查，删除后四个旧入口在UI零引用；Git可恢复，不涉及用户配置。
-- G11分享上下文三条发送入口保留 context_refs，同时保留当前完整Submission：已有Session、预热首发、无预热先创建再发送。合并服务入口用conversationShareService + modelSelectionService，不恢复modelProviderService或发送前Registry同步。当前prewarm admission/失败不重发/模型草稿边界全部保留。
-- SessionPane stop两侧行为等价，保留现行button/Esc/goal verifier/idle日志测试，接source稳定button回调。冲突工具把source stop断言错拼进current pending-ACK预热测试，已按两项功能分开核对：恢复预热测试，stop由已有更完整的3例覆盖，不重复制作测试。
-- Toast同时保留当前dedupeKey和source按id进度更新（含挂载前）；两处冲突逐块组合，保留当前safe-area/top-right布局。i18n两语言新增最近活动文案正常保留，套餐手动切换文案保留；Bot错误详情仅排版同义冲突。
+
 
 ### 已验证 / 仍待
 
-- 18:24 bound accountAccess两条新UI测试先失败（意外读取较新的Settings View），修后18:27官方版本安全校验相关 UI 测试 **5文件31条通过**。命令曾列出一个不存在的遥测测试名，实际执行的是5文件，未将其计入证据。
 - 18:30 SessionPane **55条通过**，含新增分享与完整Submission同行的3入口断言。首次被未解locale冲突阻塞；locale两项简单交集一起解决后运行，不把解析错误归成产品Bug。
 - 18:31 Toast/i18n **5文件15条通过**，包括真实DOM挂载前进度合并+去重共同生效；本批定向lint0警告0错误（工具实际检查11文件），限定格式化完成。完整repo检查、当前candidate桌面E2E尚未执行。
 - 已阅读 source 中官方版本安全校验重试的 pending E2E：四项场景可复用；仍待mock基础设施冲突解完和完整构建后在Pro运行，不把UI单测当成桌面端到端通过。
 
 
-## 32. 真实候选：闲时绑定派发与入口合并（2026-09-09 18:44 UTC）
-
-
-### 裁决与实现
-
-- D33来源与当前重构均要求闲时轮不污染Session选择。实际Host测试确认checkpoint仍在init createTask写隐藏idle Provider、resume另写idle档位，阻碍本次保留的“闲时结束后普通聊天”行为。此为本次交集必要修复，不扩成其他Session历史修复：init继续普通Session初始化，实际闲时sendPrompt仍用已取票时冻结的Selection，不重新读取当前连接来替换它。Ticket、迁移和账号同步机制均不变。
-- Main AUMID仅同义注释冲突；自动合并重复声明readHelpConfig已去重，保留公开帮助配置与鉴权灰度fetcher分离。Web main保留source分享路由、OAuth安全return-to/语言/主题入口和当前community/help读取，未动手机shared-host链路。
-
-### 验证
-
-- 18:42 Web分享路由/preview/OAuth + Windows product identity **4文件29条通过**。只证明这些模块，不能代替main/Web完整包或手机联验。
-- 本批8文件定向lint0警告0错误，Main/Web另2文件同样通过；限定格式化。E2E文件已按新合同更新但尚未实跑，完整构建/typecheck/lint和跨组回归继续待办。
-
-余下高风险：G10购买面板与Provider响应式状态、E2E mock/launch配置；Host providerRegistry旧测试需按source意图与当前Account镜像逐例比较，不得把整段旧测试无依据丢掉。
-
 ## 33. G10：购买入口/响应式设置与领取测试交集（UI 批次已重接，整体验收未完成）
 
 本批属于真实 merge 冲突收口，不重做独立来源提交；先补 `coding-plan-upgrade-entry-decoupling.md` 整合契约，再恢复/调整测试、实施与分组复审。
 
-- `32f6cb43eb` / `b5e8874696`：保留原生购买面板退役。删除旧 CodingPlanPurchasePanel、同名 pricingCards.tsx、专属 purchaseTelemetry 与三份原生支付测试；静态 dep:refs 显示面板零引用，并以文本检索补查。仅保留正在使用的新 pricingCards.ts、enterpriseTiers helpers；企业档位语言用例迁到独立测试，组排序已有当前测试保留。删除均可从 Git 恢复，不涉及用户数据。
-- 原生 PlanSelect、支付金额/周期/轮询遥测和私有卡片详情用例随原实现退役，不恢复已删除 hook；入口遥测、WebView bridge、购买完成刷新等活代码仍验证。Start 升级 helper 的 staging 新文件引用已删除的 Coding Plan ID，测试实际返回 undefined；改为同域具体 Individual Provider，不通过 alias 恢复旧接口。
 - `5865499161` / `85533a0c8c` / `8f08e49127`：响应式 Header、Start 数量快捷入口与 tooltip/aria 保留，计数继续由当前 Account 权益输入，不用 selected/current 代替拥有数量。保持模板创建、动态模型编辑/排序、Settings View 与手动连接切换；没有恢复旧 ModelProviderConfig/旧 family 状态。现名 useModelProviders 本身已封装 ProviderSettingsService，不因函数名相同误删。
 - `cc32e0ca98` / `3feb9299ef`：Start 入口遥测分类、同步中 Subscribe 禁用/反馈保留。移除原生面板专属 visibility/token/funnel props；保留 Team 状态卡 audience，不能因面板删除意外变为 personal。既有团队横幅传入的 Team key 保留；没有扩修状态卡以前未传 key 的另一个边界。
-- `dd73d8259f` 与领取轮询：来源轮询的空活动、隐藏恢复、并发去重、失败保留、领取后继续轮询、迟到 preview 不覆盖、claim/balance 时间隔离测试接到当前 ProviderSettings 刷新，不恢复旧 refreshCodingPlanApiKey。一个现有迟到权益测试依赖 startsAt 判断待生效，按已批准 claim entitlement.effectiveAt 契约更新 fixture；保留跨领取请求隔离断言。
 - source 旧 primary-action helper 的测试未恢复：当前正式入口固定“模型设置”，已有 DOM 测试覆盖待生效/已生效均不自动切连接；不为仅测试调用的旧开关引入可执行“开始体验”路径。本批未改变该产品裁决。
 
-验证与归因：18:50 商品源测试 1 RED（undefined vs Individual），修后通过。首次共享渲染失败为旧测试未挂 staging 新 tooltip 的 Provider，补真实上下文；领取一次失败为上述过时 startsAt fixture，不修改产品来迎合。18:54 **8 文件 278 条通过**：pricing、enterprise tiers/products、funnel、modelProviderCodingPlan、upgrade intent、embedded WebView、manualClaim interaction；增量 lint **12 文件 0 warning/0 error**，格式化完成。没有重复重跑两边所有既有产品测试。
+
 
 当前 index 未解决路径 **33 → 18**。本组已裁决/已实施；验证为组内单测部分通过，完整构建、E2E 启动/fixture、Pro 交互、入口完整库存遥测交集与候选双向验收仍需继续，不以本批通过宣布 G10 或 Goal 完成。
 
@@ -864,7 +757,6 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 
 - providerRegistry.test 两个大冲突段主要是双方共同祖先已有、当前已删除的 RuntimeModel/整份 Registry 推送测试，并非 staging 新增两千余行功能。对照固定 source 的 base→staging diff，真正增量是安全校验私有应答、禁止 runtime/registry 改写。保留当前 Account 镜像/Selection readiness/只读 workspace 测试；把该 source 不变式参数化覆盖 local、SSH、WSL、Docker 及不同模型，不恢复已废弃缓存 fallback、自动模型兜底、旧 thoughtLevel 推送。该测试参数化只证明路径隔离和应答契约，不冒充实机连接。
 - 完整 tsc 抓到 App UI 与 Agent 共用成功响应类型：当前协议成功为 requestAuth，但 UI 仅给 runtimeProviderHeaders。spec 先明确两个信任边界，Services 定义独立 UI 输入类型；Host 原有安全校验请求头白名单及账号服务合成保持，Agent 协议仍严格拒绝旧裸 headers 格式。协议测试同步调整，Renderer 不获得构造账号凭据的权限。
-- G10 新入口统计 hook 自动合并后仍调用旧无参 useModelProviders，并以 apiKey/旧 Coding Plan ID 识别套餐；会丢列表或阻断入口。先调整新架构 fixture，19:15 实际 5 RED；按当前根 Settings 只读 View + Inspection Access + 权益 hook 重接，不要求 current/enabled/executable，不新增查询缓存；Team 保留 authenticated pricing。新增 Settings 初次失败/手动 retry 不误放行测试。旧 async query 取消及 generation 守卫保留。
 - 19:14 Services 私有应答/窄订阅/取消与协议 **4 文件 24 条通过**；19:16 G10 inventory/helper/入口/funnel **4 文件 15 条通过**。UI 本批 fixtures 不再伪造旧 apiKey 字段。
 
 本批只完成显式冲突与已发现自动交集的接口收口。真实 merge 仍待关键验证后提交；完整候选的源→结果/重构→结果双向复审、CLI 重建和跨组测试、Pro 验收继续，Goal 未完成，不合回 recovery、不推送。
@@ -875,9 +767,9 @@ Todo103 已替换该执行顺序；此前提交和证据全部保留，当前 G1
 - 根目录完整单测：**1631 文件通过、2 文件失败、2 跳过；14267 条通过、2 失败、26 跳过**，日志 `/tmp/todo103-candidate-unit-20260909-1919.log`。两处是测试旧接口：share composition 初始化漏 options；Wiki lane 重新引入旧整份 Registry 推送测试。按当前完整 Account 交付语义调整，保留 SSH/WSL 覆盖，定向 **2 文件 8 条通过**。不为仅测试改动重复运行全部 14k 用例，亦不把首次结果改记全绿。
 - CLI nested `build` 缺 turbo bin 属执行环境，改用 workspace recursive build，contracts/shared-types/adapters/core/i18n/telemetry/bootstrap **7 包构建通过**。重建后宽范围 suite **395 文件通过、21 失败、2 跳过；5265 条通过、87 失败、45 跳过、2 todo**，日志 `/tmp/todo103-candidate-cli-unit-20260909-1926.log`。失败须逐类归因，不能将全部 87 条扩为本轮修复，也不能未核实便称既有问题。
 - 自动合并的官方版本安全校验 E2E fixture 仍写旧 config/cli-config 与 family 模式，会测不到当前 Account Provider。改为 isolated Built-in API override、结构化 connection 与独立 Model Selection seed；动态成员仍来自 balance。JWT 测试准入补安全校验/Wiki 两个受控 profile。先 **3 RED** 后 fixture/startup **2 文件 16 条通过**，pending fixture-check 通过；未晋级正式 E2E，未宣称安全校验交互已实跑。
-- Pro 隔离副本 `/Users/dev/zcode-todo99-e2e.1lO3PN` 已同步完整候选，原测试日志/产物保留，不触碰日常项目或真实用户数据。新 pin 的 CUA HTTPS clone 因钥匙串凭据不可访问失败；正在复用本机同一锁定 SHA 的 pnpm 内容寻址源码缓存，不修改 pin、全局凭据或钥匙串策略。桌面验收仍未完成，旧 checkpoint 结果不替代本候选。
 
-后续结果：CUA SHA `908b247399423195d0bcb0039e1755a333c4c1ff` 的 860 个源码缓存条目（约 9.8 MB）完整存在，复用后 Pro frozen/ignore-scripts 安装 1.8s 通过。没有搬运 Linux native 产物或用户凭据。完整候选桌面及 Agent 构建通过。上述 CLI 两处断言调整 **2 文件 67 条通过**。
+
+
 
 Pro 首轮 `desktop-e2e-20260909193459481-p44025-5975c43ad85e6cc3`：4 specs 中领取通过、其余三组失败。购买库存测试只匹配英文，实际为正确中文“正在查询套餐…”；响应式 setup 要求 1000px 高度但屏幕工作区限制为 876px；Wiki focus 未挂载 action 行。分别改为双语状态断言、保持 1800/480 宽度断点但使用 800px 高度、实际 hover（路径属性正确转义）。未调整产品逻辑、超时或放宽核心行为断言。重跑三组，Agent 源码未变沿用刚通过的 bundle，桌面仍为 WebView 编译期 mock origin 重建。
 
@@ -896,15 +788,8 @@ G02 发现新策略未登记重构后的 provider/provider-node：补 spec 与�
 
 本批状态区分：上述来源已裁决保留/按当前抽象重接；源码已进入真实候选；组级单测/构建证据已有，最终平台交互与跨组验收仍未完成。不得按“source 原样保留路径数”替代验证进度。
 
-## 38. Pro Account/Wiki 交集通过与 CLI 失败分类纠正
 
-- Pro 第二次响应式 CTP-12 通过（1800/480 宽度断点、tooltip、真实连接保存）。库存继续失败为空：fixture 有订阅却在付款前返回空组织/项目，且 WebView profile 的 JWT 被过滤；当前 Account 无法得到初始连接，因此并非仅文案差异。补两条测试先 **2 RED**，修当前 mock 控制面前置后 **2 文件 24 条通过**。只在受控 WebView 场景保留 JWT；普通 Personal-only case 隔离保持。
-- Wiki 默认种子没有 reasoningLevel，按现行完整性校验不会成为 configured default，随后推荐其他模型。补 GLM-5.2/max 的完整 seed，不改产品默认回退/Selection 校验、不补静态假账号。
-- Pro 第三次购买/Wiki **2 specs 全通过**，日志 `/tmp/todo103-candidate-pro-account-rerun2.log`：购买完整库存、同 funnel、购买后关闭并刷新/no Personal key 泄漏，Wiki 默认账户套餐/候选隔离/生成/新字段落盘均有实际断言。结合首轮 Start 领取、第二次 responsive 的通过，四组完成当前候选验证；不是“一次四组全绿”。安全校验 pending 已另启运行，使用显式 common+case replay，不晋级正式目录。
-- CLI 宽跑部分失败来自执行 cwd：core Browser 文档 tests 按包 cwd 定位资源，原宽跑在 apps/zcode-cli 根会读错目录。按包 cwd 重跑 **browser-client/browser-manifest 两文件全部 50 条通过**；同组 runtime-unbound-resume 仍 1 fail/1 pass，错误包装断言需单独归因，不能叫浏览器合并回归。
-- G03 CUA 灰度撤销使默认 MCP 连接新增 `plugin:computer-use:computer-use`，旧四例未更新。保留完整列表断言并增加官方 server；用户自定义 `zcode-cua` 不获得 broker 凭据的安全断言不变，禁用路径也不放宽。按包 cwd 定向 **18/18 通过**。
-- 仍保留的 CLI 失败记录：旧 runner-options/config/PDF 测试引用退役接口（测试与相关 runner 源文件相对 checkpoint 无改动）；7 条 auth/telemetry 旧 schemaVersion=2 fixture（相关测试与账号适配源相对 checkpoint 无改动）；marketplace 本地源嵌套自复制、插件 packaged sharp fixture、两处 unbound 预期及已记 Todo102 的 remote Cron/V4 ACK 问题继续分类，不自动扩为全部修复。此前宽跑的 **87 failed 不能作为本轮净新增数**，也不能被覆盖成全绿。
-- 最新完整 `pnpm typecheck` 通过；`pnpm lint` **0 errors/43 warnings**。G02 策略新增模块未启用大范围治理；最终双向复审/跨平台关键验收未完成，仍不提交合回 recovery、不推送。
+
 
 ## 39. 完整候选平台验证：安全校验、浏览器、设置编辑器
 
@@ -962,7 +847,7 @@ CLI 宽跑失败继续按来源分类，不以失败总数当作合并回归数�
 - MCP OAuth 跨进程用例在 adapters 包 cwd 重跑通过；同批 Bash 后台后代进程终止用例仍失败（1 pass/1 fail，126 skipped）。相关生产实现相对合并前 checkpoint 没有变化，不借本轮扩修进程终止。日志 `/tmp/todo103-cli-io-failure-classification.log`。
 - MCP PATH 两项预期与当前 Node 工具路径注入不同；marketplace 本地导入测试把 destination 放进 source 子目录导致自复制失败；插件 packaged fixture 依赖旧 sharp 打包位置。相关失败路径的实现未由本次合并改变，保留 §15/38 记录。
 - runner-options/config/PDF 的退役接口、auth/telemetry 的旧 schemaVersion fixture、unbound 配置默认值与错误包装预期、native-boundary 的三处旧 import 均已有 checkpoint 证据。已知 V4 ACK / remote Cron 仍归既有欠测，不新增全仓重构。
-- core Browser 包 cwd 引起的两文件 50 条已通过；CUA 默认 MCP 列表的四条过时断言已按保留行为修正并 18/18 通过。不能把“旧测试”作为跳过新增接口契约的通用理由。
+
 
 完整候选再补插件显式 Subagent 与 Composer 草稿首发的跨组回放。没有选择旧 queue-model-switch 用例来改变冻结语义：该旧例要求消息入队后再改选影响队列，不能据此回退当前冻结 Submission 合同。首轮 CLI 将两个 spec 错当一个逗号路径、第二轮 fixture 使用错误仓库相对路径，均为本次运行参数错误、没有执行行为断言；纠正后继续实跑，结果单列。
 

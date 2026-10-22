@@ -16,6 +16,11 @@ const projectionState = vi.hoisted(() => ({
   } | null,
 }));
 
+const captured = vi.hoisted(() => ({
+  onOpenModelSettings: null as (() => void) | null | undefined,
+  modelConfigTarget: null as "local" | "remote" | null,
+}));
+
 vi.mock("@/v4/useConversationProjection.js", () => ({
   useConversationProjection: () => projectionState.current,
 }));
@@ -45,11 +50,10 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 }));
 
 vi.mock("@/hooks/useServices.js", () => ({
+  useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
   useServices: () => ({
-    zcodeSessionService: {
-      updateProviderRegistry: vi.fn(),
-    },
+    zcodeSessionService: {},
     zcodeTaskService: {
       restartWorkspaceProcess: vi.fn(),
     },
@@ -79,6 +83,8 @@ vi.mock("@/v4/ConversationComposer.js", async () => {
   return {
     ConversationComposer: ({
       error,
+      onOpenModelSettings,
+      modelConfigTarget,
     }: {
       error?: {
         message: string;
@@ -86,8 +92,12 @@ vi.mock("@/v4/ConversationComposer.js", async () => {
         underlyingErrorMessage?: string;
         underlyingErrorDetail?: string;
       } | null;
-    }) =>
-      React.createElement(
+      onOpenModelSettings?: () => void;
+      modelConfigTarget?: "local" | "remote";
+    }) => {
+      captured.onOpenModelSettings = onOpenModelSettings;
+      captured.modelConfigTarget = modelConfigTarget ?? null;
+      return React.createElement(
         "div",
         {
           "data-testid": "mock-v4-composer-error",
@@ -96,7 +106,8 @@ vi.mock("@/v4/ConversationComposer.js", async () => {
           "data-underlying-error-detail": error?.underlyingErrorDetail ?? "",
         },
         error?.message ?? "no-error",
-      ),
+      );
+    },
   };
 });
 
@@ -220,7 +231,7 @@ function makeSnapshot(overrides: Partial<ConversationSnapshot> = {}): Conversati
   };
 }
 
-function renderPane(): string {
+function renderPane(workspaceIdentity?: string): string {
   return renderToStaticMarkup(
     createElement(
       ZCodeIntlProvider,
@@ -229,6 +240,7 @@ function renderPane(): string {
         paneId: "workspace-main",
         sessionId: "session-1",
         workspacePath: "/workspace",
+        workspaceIdentity,
       }),
     ),
   );
@@ -255,7 +267,7 @@ describe("SessionPane error banner wiring", () => {
     );
   });
 
-  it("renders the error and reconnect action in the subscription error state", () => {
+  it("renders reconnect action in the subscription error state", () => {
     projectionState.current = {
       status: "error",
       snapshot: null,
@@ -268,6 +280,44 @@ describe("SessionPane error banner wiring", () => {
     const html = renderPane();
 
     expect(html).toContain("EPERM: operation not permitted");
+    expect(html).not.toContain("反馈问题");
     expect(html).toContain("重新连接");
+  });
+
+  it.each([
+    "remote:server:source-a:/workspace",
+    "remote:ssh:example.com:22:dev:/workspace",
+    "remote:wsl:ubuntu:/workspace",
+    "remote:docker:dev-box:/workspace",
+  ])("远程 workspace %s 缺模型时使用远端措辞并保留本机设置入口", (workspaceIdentity) => {
+    projectionState.current = {
+      status: "live",
+      snapshot: makeSnapshot(),
+      subscriptionId: "sub-1",
+      lastError: null,
+      optimisticCommands: [],
+      loadingOlder: false,
+    };
+
+    renderPane(workspaceIdentity);
+
+    expect(typeof captured.onOpenModelSettings).toBe("function");
+    expect(captured.modelConfigTarget).toBe("remote");
+  });
+
+  it("本地 workspace 缺模型时使用本机措辞", () => {
+    projectionState.current = {
+      status: "live",
+      snapshot: makeSnapshot(),
+      subscriptionId: "sub-1",
+      lastError: null,
+      optimisticCommands: [],
+      loadingOlder: false,
+    };
+
+    renderPane();
+
+    expect(typeof captured.onOpenModelSettings).toBe("function");
+    expect(captured.modelConfigTarget).toBe("local");
   });
 });

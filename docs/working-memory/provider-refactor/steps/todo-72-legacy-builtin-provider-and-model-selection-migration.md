@@ -1,12 +1,6 @@
 # Todo 72：旧 Built-in Provider 配置与模型选择身份迁移
 
-> 状态：已完成实现与阶段验收（2026-09-04）。
->
-> 2026-09-08 后续裁决：本文按当前账号区分个人/Team 的 Selection 迁移已由 [Todo96](todo-96-selection-offline-migration-and-resolution-consolidation.md) 替代，旧 Coding Plan 离线固定落到同域 Individual，实际账号对应由有效选择解析负责。以下保留当时实施轨迹；真实连接设置迁移、OAuth/Team 组织补齐不受影响。
->
-> 更新：2026-09-03。来源：同事旧版 `config.json` 迁移后，内置套餐错误出现在自定义供应商列表。
->
-> 回滚边界以最新 Todo 69 为准：不持续双写旧字段。本文补齐升级迁移，不恢复已取消的双写方案。
+
 
 ## 1. 已确认的问题
 
@@ -16,8 +10,7 @@
 
 现有测试只覆盖 `source: "builtin"`，没有覆盖这份实际旧数据的形状。
 
-此外，部分旧 Model Selection 的转换只是搬运 Provider ID。旧版个人与 Team 共用 Coding Plan ID，
-新版已经拆成两个 Provider；只复制字符串不能保证迁移后的选择仍指向正确身份。
+
 
 ## 2. Provider 配置迁移裁决
 
@@ -55,38 +48,8 @@
 
 - `builtin:bigmodel` → `bigmodel-api`。
 - `builtin:zai` → `zai-api`。
-- `builtin:bigmodel-start-plan` → `account:bigmodel-start-plan`。
-- `builtin:zai-start-plan` → `account:zai-start-plan`。
 - 真正自定义 Provider 保持原 ID，与 Provider 配置迁移结果一致。
 - 已退役且没有当前对应身份的 `builtin:zapi` 保持未绑定，不创建自定义 Provider 来凑身份。
-
-### 3.2 旧 Coding Plan 按迁移时的当前账号连接落到具体 Provider
-
-旧 Coding Plan ID 表达的是同一 Family 当前使用的 Coding Plan，个人/Team 切换时旧选择仍可使用。
-因此这里采用用户最新裁决，**允许使用迁移时当前账号连接**，不要求还原当年的个人/Team 身份。
-
-```text
-旧 builtin:<family>-coding-plan
-                 +
-同一环境、同一 Family 当前选中的账号连接
-                 |
-                 +-- 个人 --> account:<family>-individual-coding-plan
-                 +-- Team --> account:<family>-team-coding-plan
-                 `-- 无法确定 --> 留空/未绑定，主体数据仍可打开
-```
-
-- `<family>` 仅为 `bigmodel` 或 `zai`；不能跨 Family 选择账号。
-- 使用现有账号连接的权威状态，不另写一套“有 Team 就选 Team”的优先级，也不从模型列表首项猜测。
-- Team 的组织/套餐身份继续属于 Account 连接，不把账号凭据或 Team 字段塞进 ModelSelection。
-- 这是一项旧动态身份的升级规则，不是当前运行时 Account-first 回退。迁移并保存为新身份后，正常恢复只认新字段，
-  不在每次账号切换时重新解释旧字段。
-- 账号未登录或连接尚不明确时不阻塞历史打开，不增加无限等待登录的屏障；选择控件留空、允许重新选择，不弹留空提示。
-- 不从 Configured Default、其他 Family、同名模型或任意可执行 Provider 猜出旧身份。
-
-动态身份成功转换后，在所属记录现有保存入口固定新 Selection。Session 在本次成功恢复期间保存当前选择，
-不等待下次发送；文件导入在首次写出新文件时固定。Reasoning 留空不妨碍固定已确认的 Provider/Model。
-不改写历史请求身份，不批量重写历史；写入须保护期间更新的用户选择。失败保留正常存储错误处理，
-不声称迁移完成，不阻断历史打开，也不另建迁移调度器。
 
 ### 3.3 当前字段、模型与 Reasoning
 
@@ -105,20 +68,13 @@
 先梳理各处实际旧格式，再复用小范围的身份转换函数；它只供迁移入口使用，不成为运行时别名表或第二套 Registry。
 需要账号连接的入口显式接收已解析的迁移上下文，不让底层存储直接读取全局 UI 状态。
 
-实施接口：共享迁移函数只转换旧 Provider ID，显式接收当前环境账号服务解析出的
-`ZCodeAccountAccess`（可以为空）；不读取磁盘、不等待登录、不查询或扫描 Registry。
-普通当前 ID 原样交给各领域验证，未知 `builtin:*` 返回未绑定。模型成员与 Reasoning 的有效性仍由
-所属领域使用目标 Registry 判断。账号上下文沿用现有 `resolveCurrentAccountAccess` 的身份与连接规则，
-不能把仅保存的 Family 偏好直接当作已登录账号事实。
+
 
 逐项核对以下持久化入口，记录是否已有转换、缺口与对应测试，不能只修 Provider 配置导入：
 
 - Provider Config：修正内置身份分类和 Built-in API Key 例外。
-- Account Settings：核对旧连接选择的转换，确保 Coding Plan 迁移能够取得同一 Family 的正确当前连接。
 - Session：由 Todo 70 负责唯一 Decoder、当前字段优先和未绑定恢复；本文提供身份转换规则，不再新增平行 Decoder。
 - 自动化定义和 Run：核对旧模型选择格式；旧 `provider` 可能表示 Agent 后端，不得直接当成模型 Provider ID。
-- 闲时任务：保留闲时专属 Provider/凭据语义，不把执行选择机械迁成普通 Coding Plan；无法确定时保留任务，
-  选择留空，不弹留空提示；不得将不完整选择交给模型执行。
 - 内置/自定义 Subagent：覆盖状态文件与 Markdown 中的显式旧选择，继承语义保持不变。
 - Bot Config/State：接入 Todo 69 的一次性 v3 导入，不再直接覆盖旧文件。
 - Wiki、Configured Default、Recent 及确有旧持久化格式的 Draft：核对实际 Reader，不能因共用类型就假定已自动迁移。

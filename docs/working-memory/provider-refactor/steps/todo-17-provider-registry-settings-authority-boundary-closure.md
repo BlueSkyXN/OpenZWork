@@ -84,7 +84,6 @@ Settings 读取 Resolver 已经算好的层次，只编辑 Personal；Registry �
 - 不设计或实现 Remote Settings CRUD、远程 Provisioning、远程登录、配置同步与 Remote E2E。
 - 不改变现有 Workspace/Environment 的服务路由；本 Todo 只整理一个已经装配好的 Provider Service 内部。
 - 不实施 Todo 11 的进程组合根重构，也不处理 Todo 11A 之外的生命周期问题。
-- 不改变 M4、Access 产品语义、账号套餐解析、Reasoning Mapping、模型选择持久化或任务队列。
 - 不增加 legacy importer、一次性 migration 或兼容窗口。本分支尚未上线，旧的错误内部格式直接删除。
 - 不让 Provider Config Service 扫描或改写 Session、Composer、Workspace Recent、Automation 或历史 Turn。
 - 不为 Settings 建立临时 Registry、临时 Provider Config 或第二套 Overlay/完整性算法。

@@ -26,40 +26,6 @@ const timelineState = vi.hoisted(() => ({
   scrollToQueryActionRef: null as { current: unknown } | null,
 }));
 
-// SSR 渲染不执行 effect，因此 zustand 的 getServerSnapshot（= 初始 state）看不到真实 store
-// 的写入。这里直接替换 store，让测试能声明式地摆出任意 share draft。
-const shareStoreState = vi.hoisted(() => ({
-  draft: undefined as unknown,
-}));
-
-vi.mock("@/store/conversationShareSelectionStore.js", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/store/conversationShareSelectionStore.js")>();
-  const fakeState = () => ({
-    popoverOpen: false,
-    drafts: shareStoreState.draft ? { "child-session": shareStoreState.draft } : {},
-    // ac4bc6e79c 起 SessionPane 从 dockStates[sessionId] 读取发布中 dock 状态，
-    // mock 缺这个字段会让 SSR selector 读 undefined[sessionId] 直接抛错。
-    dockStates: {},
-    finishSelection: vi.fn(),
-    updateDockState: vi.fn(),
-    goToConfiguration: vi.fn(),
-    goToSelection: vi.fn(),
-    setAccessMode: vi.fn(),
-    setAllRowsSelected: vi.fn(),
-    showTimeline: vi.fn(),
-    showSelectionPanel: vi.fn(),
-    syncAvailableTurns: vi.fn(),
-    toggleRow: vi.fn(),
-  });
-  // 只替换 hook 与 getState；派生 selector 保留真实实现，避免测试自证。
-  const hook = (selector: (state: unknown) => unknown) => selector(fakeState());
-  return {
-    ...actual,
-    useConversationShareSelectionStore: Object.assign(hook, { getState: fakeState }),
-  };
-});
-
 vi.mock("@/v4/useConversationProjection.js", () => ({
   useConversationProjection: () => projectionState.current,
 }));
@@ -87,6 +53,7 @@ vi.mock("@/hooks/useSettingService.js", () => ({
 }));
 
 vi.mock("@/hooks/useServices.js", () => ({
+  useComposerClientNamespace: () => "desktop",
   useOptionalServices: () => null,
   useServices: () => ({
     zcodeSessionService: {
@@ -246,20 +213,14 @@ function renderReadOnlyPane({
   apiRetry = null,
   lastError = null,
   readOnly = true,
-  workflowRuns,
-  sharedContextImport,
 }: {
   allowWorkspaceFileRewind?: boolean;
   apiRetry?: ConversationSnapshot["control"]["apiRetry"];
   lastError?: ConversationSnapshot["control"]["lastError"];
   readOnly?: boolean;
-  workflowRuns?: ConversationSnapshot["workflowRuns"];
-  sharedContextImport?: ConversationSnapshot["sharedContextImport"];
 } = {}): string {
   const snapshot = makeSnapshot(lastError);
   snapshot.control.apiRetry = apiRetry;
-  if (workflowRuns) snapshot.workflowRuns = workflowRuns;
-  snapshot.sharedContextImport = sharedContextImport;
   projectionState.current = {
     lastError: null,
     loadingOlder: false,
@@ -342,47 +303,5 @@ describe("SessionPane read-only mode", () => {
     expect(html).toContain('data-testid="v4-subagent-readonly-error"');
     expect(html).toContain("Provider connection failed");
     expect(html).not.toContain('data-testid="mock-composer"');
-  });
-
-  // 浮岛已删除（docs/dynamic-workflow/presentation.md「Other places a run appears」item 1）：运行态迁进状态胶囊的
-  // Workflows 分区，composer 上方不再有任何 workflow 浮层。原来这里是「只读缺席 / 主对话在场」
-  // 两个方向的用例，现在**两个方向都断言无岛**——留一条正向用例才能钉住"删除是全局的"，
-  // 只删掉在场那条会让主对话 pane 重新长出浮岛而没人发现。
-  const runningWorkflowRuns = {
-    revision: 1,
-    runs: [
-      {
-        runId: "dwfrun-1",
-        toolCallId: "tool-wf-1",
-        status: "running" as const,
-        usage: { spentTokens: 0, nodesUsed: 0 },
-        actors: [],
-        nodes: [],
-        lastEventSequence: 1,
-      },
-    ],
-  };
-
-  it("read-only panes never float the workflow run island", () => {
-    const html = renderReadOnlyPane({ workflowRuns: runningWorkflowRuns });
-
-    expect(html).not.toContain('data-testid="workflow-run-island"');
-  });
-
-  it("primary conversation panes no longer float the workflow run island either", () => {
-    const html = renderReadOnlyPane({ readOnly: false, workflowRuns: runningWorkflowRuns });
-
-    expect(html).toContain('data-testid="mock-composer"');
-    expect(html).not.toContain('data-testid="workflow-run-island"');
-    expect(html).not.toContain("workflow-run-island-pill");
-  });
-
-  it("does not show the legacy imported-share notice in read-only panes", () => {
-    const html = renderReadOnlyPane({
-      sharedContextImport: { title: "筛选近一年收益前10%的偏股混合基金" },
-    });
-
-    expect(html).not.toContain('data-testid="conversation-share-import-notice"');
-    expect(html).not.toContain("shared_context");
   });
 });

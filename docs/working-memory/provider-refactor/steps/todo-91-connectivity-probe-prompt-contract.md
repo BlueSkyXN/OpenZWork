@@ -18,7 +18,6 @@ user: hi
 ```
 
 - 保留当前正式 Model 的流式执行链路，消费完整流并沿用现有错误处理。
-- 不恢复 staging 的 Start Plan 权益探测分流，不把“查权益成功”当成模型连接成功。
 - 不向这组消息添加说明、国际化文案、历史对话、工具或另一个 system；不让普通对话、标题、Wiki、Subagent 等其他请求复用这组 Prompt。
 - 本项不恢复旧 Host HTTP Probe，不修改模型选择、账号连接、Personal Config、持久化格式或迁移。
 
@@ -26,7 +25,7 @@ user: hi
 
 当前 `core/src/runtime/methods/workspace-generate-text.ts` 的 `testModelConnectivity()` 只发送 user 消息 `Reply briefly to confirm connectivity.`；`8ea78019f7` 引入，`49e1f83710d` 后续测试固化了该文本。
 
-旧 Start Plan helper 在 `2ae01c7584` 中加入上述 system + hi；但 `3162baa586` 随后将上层正常入口改成只查 billing/balance。固定 staging `16d999f6a48b` 与本地 `origin/staging` `a311537aa6` 均保留提前返回。因此“旧 helper 仍存在”不等于“staging 当前发送这个 Prompt”，更不证明服务端白名单已经废弃。
+
 
 用户说明服务端可能按 Prompt 白名单限制账号请求。客户端仓库不能证明白名单当前内容或规则；本次裁决是采用明确的固定模板，不宣称服务端已配置或真实账号已验证通过。未确认前不得用真实账号反复试探。
 
@@ -63,7 +62,6 @@ user: hi
 
 1. 实现前更新当前有效 `design/registry/settings.md` 的连接测试描述，明确固定模板与范围，再先写失败测试。
 2. 在连接测试消息构造处维护唯一的固定模板/命名常量，不散落多份同义 Prompt；无需新增配置项、UI 输入或协议参数。
-3. 删除被替代的旧字符串和相应旧断言；不复制 staging 已不可达的 Start Plan helper，不引入 Provider ID 特判。
 4. 精确文本是硬契约；协议序列化复用现有 Adapter。最终 body 必须保留 system 角色和 user 角色，不能把 system 拼进 user。若服务端要求特定序列化结构且现有 Adapter 不满足，先明确服务端要求，再讨论最小适配，不能猜测改请求。
 5. 输出预算（当前辅助调用最多 5,000）、流式、最低 reasoning、来源头、请求安全校验、超时和重试不随本项改动。此前审计提到的其他差异没有在本轮获准恢复；来源头风险仍须另行讨论，不能以本 Todo 完成宣称已经消除全部网关拒绝风险。
 

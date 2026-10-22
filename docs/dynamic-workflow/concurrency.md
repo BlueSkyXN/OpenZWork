@@ -604,14 +604,7 @@ serialize; consumers that render "attempt n of N" special-case zero.
 
 ### The policy table
 
-The failure classifier's `retryable` flag answers "should the main conversation retry on
-its own", and for some provider codes the product answer is no: a Start Plan concurrency
-limit shows the user a banner instead. Workflow traffic asks a different question, "must a
-person fix this before the run can continue", and reads a separate table,
-`resolveWorkflowModelFailurePolicy` in `packages/adapters`
-(`model/workflow-model-failure-policy.ts`). The runner's retry gate and the driver read the
-same function, so a failure the runner retries can never reach the driver as a stop, and a
-failure the runner declines is one the driver will stop on.
+
 
 | Input, in order | Decision |
 |---|---|
@@ -823,7 +816,6 @@ carries it.
 | `bootstrap/tests/workflow-seat-gate.test.ts` | the gate alone: park on a turn step over the limit (`tryAcquire` misses → `model_request_queued` → `waiting(slot)`), seat before governor, FIFO unpark on an ask settling and on a raise, one at a time; `activeAsks = working + parked`; limit 1 keeps one subagent working and deadlocks nothing; a tool-side request never parks and a subagent with no live ask never parks; abort dequeues, rejects with the signal's reason and returns the subagent to `working`, its later settlement frees no phantom seat, an already-aborted signal never enters the FIFO, and a settle that beats the abort refuses the waiter without freeing a seat; a settle for an instance never seen started is a strict no-op; a cut inside the `ensureSession` window still parks the late subagent and counts nobody twice; two asks in a row on one subagent join idempotently; a run never lowered is a pure pass-through and the governor sees every call |
 | `bootstrap/tests/workflow-driver-seat-gate.test.ts` | the gate through the real driver: a cut parks later turn steps one by one while a subagent with a tool in flight keeps sending; the engine's `node-settled` frees a seat and unparks the FIFO head, and the event reaches the driver's `emit` hook unchanged; a settle the gate never saw started does nothing; a raise unparks; cancelling a parked ask rejects its seat wait without freeing a seat; a run never lowered never enters the gate |
 | `bootstrap/tests/workflow-run-control.test.ts` | the control handle: unbound answers false and buffers no value; an engine that says "nothing changed" leaves the gate's limit alone; an assembly with no gate still retunes (the scheduler alone); `retuneConcurrency` on an unbound or control-less entry answers `not_live` and writes nothing |
-| `bootstrap/tests/workflow-concurrency-tool-traffic.test.ts` | real governor, real runner, fake provider that refuses above a threshold: six subagents each with a turn and three tool requests; the provider never sees more than the cap; the first 429 lands at D and cuts immediately; queued and admitted arrive in pairs; a Start Plan concurrency code is a retry, not a failure |
 | `adapters/tests/runner-admission.test.ts` | generate and stream runners acquire per attempt, forward events to the ticket, release exactly once on every exit, hold no ticket during backoff, and behave identically with no port; queued/admitted only when the fast path missed |
 | `adapters/tests/retry-budget.test.ts`, `workflow-model-failure-policy.test.ts` | the budget relaxes only the two gates; the policy table row by row |
 | `core/tests/runtime-model-admission.test.ts`, `model-request-admission.test.ts`, `model-retry-budget.test.ts` | the factory binds port and budget on every handle; the runtime layer wins over the call site; a subagent runtime inherits the port |

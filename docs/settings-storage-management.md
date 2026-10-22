@@ -19,12 +19,11 @@ App 允许设置「数据存储路径」（`setting.json.dataBaseDir`），但**
 
 | 写入方 | 根目录解析 | 是否跟随「数据存储路径」 | 代码 |
 | --- | --- | --- | --- |
-| app services（host 进程） | `{dataBaseDir}/.zcode`，默认 `~/.openzwork` | 是 | `packages/services/src/paths.ts` `getZCodeDataRootDir()` |
+| app services（host 进程） | `{dataBaseDir}/.openzwork`，默认 `~/.openzwork` | 是 | `packages/services/src/paths.ts` `getZCodeDataRootDir()` |
 | 「数据存储路径」切换时的迁移 | 只复制 `.zcode/v2`，且是复制不是移动 | — | `packages/services/src/paths.ts` `copyDataDirectory()` |
 | zcode-cli（agent 进程） | `~/.openzwork/cli/config.json` 的 `storage.dir`，默认 `~/.openzwork`；app **不下发** `ZCODE_STORAGE_DIR` | 否 | `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts:184` |
-| 模型调用轨迹 model-io | 直接 `homedir()/.zcode/cli/{debug,rollout}` | 否（硬编码） | `apps/zcode-cli/packages/adapters/src/model/runner-debug.ts` `getModelIOBaseDir` |
+| 模型调用轨迹 model-io | 直接 `homedir()/.openzwork/cli/{debug,rollout}` | 否（硬编码） | `apps/zcode-cli/packages/adapters/src/model/runner-debug.ts` `getModelIOBaseDir` |
 | hooks 信任库 / subagents / skills / commands | 读 `~/.openzwork/cli/config.json` 的 `storage.dir` | 否 | `packages/services/src/hooks/hooksService.ts:153-173` 等 |
-| Computer Use Helper、日志导出对 cli 目录的引用 | `homedir()/.zcode/...` | 否（硬编码） | `packages/desktop/src/main/exportLogs.ts:34-48` |
 | `v2/setting.json` 本身 | 永远写在真实 HOME（bootstrap 文件） | 刻意不跟随 | `packages/services/src/setting/settingService.ts:36-46` |
 | GLM provider 的 workspace 配置目录 | `getDataBaseDir()/.zcode/cli/...`，与上面 CLI 读 `~/.openzwork/cli` 两套口径并存 | 是 | `packages/services/src/paths.ts:295-299, 355-362` |
 | 轨迹查看器读 model-io | 同时扫 `homedir()` 与 `dataBaseDir` 两处 | 两处都读 | `packages/services/src/zcode-agent/modelTrajectoryFileTail.ts:16-22` |
@@ -33,45 +32,43 @@ App 允许设置「数据存储路径」（`setting.json.dataBaseDir`），但**
 
 ```text
 R1 = ~/.openzwork                       （永远存在：cli/、agents/、computer-use/、旧 v2 副本……）
-R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ HOME 时存在：v2/、workspace/、export-log/、feedback/……）
+R2 = {dataBaseDir}/.openzwork           （仅在设置了数据存储路径且 ≠ HOME 时存在：v2/、workspace/、export-log/、feedback/……）
 ```
 
 本期只**如实展示**两个根，不修复分裂本身；是否让 CLI 跟随 `dataBaseDir` 是独立设计决策（见 §8）。注意现有 E2E `conversation-session-configurable-data-directory.test.ts` 明确断言「切换后 `{custom}/.zcode/cli` 不存在、`~/.openzwork/cli/db/db.sqlite` 仍在」，即这是当前有意保留的产品边界。
 
 ### 1.3 真实机器目录普查（2026-09-10，开发机，总计 25 GB）
 
-| 路径 | 大小 | 写入方 / 用途 | 分类 |
-| --- | --- | --- | --- |
-| `cli/db/backup`, `cli/db/backups`, `cli/db/*.bak`, `cli/db/*.backup-*` | ≈6 GB | CLI 库迁移前备份 | 备份 |
-| `cli/db/db.sqlite(+wal/shm)` | 0.77 GB | CLI 会话/任务库（在用） | 会话记录与数据库 |
-| `backup/*`（session-projects、before-*-restore…） | 7.2 GB | 脚本/迁移备份，含 cli-db 与 v2 全量副本 | 备份 |
-| `v2/dev/stdio-traffic` | 2.4 GB | 开发态 stdio 协议抓包（`zcodeStdioTapDevConfig.ts`） | 开发诊断抓包 |
-| `v2/migrations`, `v2/backup`, `v2/*.bak`, `v2/setting.json.corrupt-*`, `v2/config.json.pre-*` | ≈0.8 GB | 迁移前快照 / 损坏文件留档 | 备份 |
-| `v2/acp-config`, `v2/acp-traffic-proxy`, `v2/acp-auth` | ≈0.8 GB | 已退役的 ACP runtime 目录（exportLogs 已按退役目录跳过） | 开发诊断抓包 / 配置 |
-| `cli/debug`（开发态）、`cli/rollout`（生产态） | 1.35 GB | 模型调用轨迹 model-io JSONL | 模型调用轨迹 |
-| `cli/agents/sess_*` | 0.94 GB | subagent 运行产物 | 工具输出与子代理产物 |
-| `cli/exec` | 0.65 GB | Bash 工具持久化输出（tmpdir 收口规范） | 命令输出与临时缓存 |
-| `cli/plugins/{cache,data,marketplaces}` | 0.62 GB | 插件缓存与数据 | Agent 运行时与插件 |
-| `cli/artifacts`, `cli/image-cache` | 0.64 GB | 工具结果留档、图片缓存 | 工具输出与子代理产物 / 命令输出与临时缓存 |
-| `lite/releases/*`, `bundled-agents/*.tgz`, `agents/{claude-code,opencode,codex,gemini-cli}`, `computer-use/*` | ≈2.2 GB | CLI 运行时发布包、内置外部 agent、CUA Helper app | Agent 运行时与插件 |
-| `export-log`, `export-log-stage`, `feedback` | ≈1 GB | 日志导出结果 / 异常残留的 staging / 反馈包 | 导出与反馈包 |
-| `v2/logs`, `cli/log`, `logs`, `agent/logs`, `v2/crash` | ≈0.15 GB | app 日志（14 天轮转）、CLI 日志（7 天轮转）、旧版日志、崩溃捕获 | 日志与崩溃报告 |
-| `v2/sessions`, `v2/session-bindings`, `v2/checkpoints`, `agent/sessions`（旧版） | ≈0.2 GB | 会话快照 / 绑定 / checkpoint（`agent/` 为旧版残留→其他） | 会话记录与数据库 |
-| `v2/*.sqlite*`（tasks-index、automation、task-index） | ≈20 MB | app 任务索引 / 自动化库（在用） | 会话记录与数据库 |
-| `v2/*.json`, `cli/config.json`, `security`, `v2/certs`, `v2/provider`, `cli/models`, `cli/memories`, `cli/workflows`, `commands`, `skills`, `agents/*.md`, `workspace/` | 小 | 配置、凭据、记忆、默认对话工作区（含用户文件） | 配置、凭据与工作区 |
+| 路径                                                                                                                                                                    | 大小     | 写入方 / 用途                                                   | 分类                                      |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | --------------------------------------------------------------- | ----------------------------------------- |
+| `cli/db/backup`, `cli/db/backups`, `cli/db/*.bak`, `cli/db/*.backup-*`                                                                                                  | ≈6 GB    | CLI 库迁移前备份                                                | 备份                                      |
+| `cli/db/db.sqlite(+wal/shm)`                                                                                                                                            | 0.77 GB  | CLI 会话/任务库（在用）                                         | 会话记录与数据库                          |
+| `backup/*`（session-projects、before-\*-restore…）                                                                                                                      | 7.2 GB   | 脚本/迁移备份，含 cli-db 与 v2 全量副本                         | 备份                                      |
+| `v2/dev/stdio-traffic`                                                                                                                                                  | 2.4 GB   | 开发态 stdio 协议抓包（`zcodeStdioTapDevConfig.ts`）            | 开发诊断抓包                              |
+| `v2/migrations`, `v2/backup`, `v2/*.bak`, `v2/setting.json.corrupt-*`, `v2/config.json.pre-*`                                                                           | ≈0.8 GB  | 迁移前快照 / 损坏文件留档                                       | 备份                                      |
+| `v2/acp-config`, `v2/acp-traffic-proxy`, `v2/acp-auth`                                                                                                                  | ≈0.8 GB  | 已退役的 ACP runtime 目录（exportLogs 已按退役目录跳过）        | 开发诊断抓包 / 配置                       |
+| `cli/debug`（开发态）、`cli/rollout`（生产态）                                                                                                                          | 1.35 GB  | 模型调用轨迹 model-io JSONL                                     | 模型调用轨迹                              |
+| `cli/agents/sess_*`                                                                                                                                                     | 0.94 GB  | subagent 运行产物                                               | 工具输出与子代理产物                      |
+| `cli/exec`                                                                                                                                                              | 0.65 GB  | Bash 工具持久化输出（tmpdir 收口规范）                          | 命令输出与临时缓存                        |
+| `cli/plugins/{cache,data,marketplaces}`                                                                                                                                 | 0.62 GB  | 插件缓存与数据                                                  | Agent 运行时与插件                        |
+| `cli/artifacts`, `cli/image-cache`                                                                                                                                      | 0.64 GB  | 工具结果留档、图片缓存                                          | 工具输出与子代理产物 / 命令输出与临时缓存 |
+| `export-log`, `export-log-stage`, `feedback`                                                                                                                            | ≈1 GB    | 日志导出结果 / 异常残留的 staging / 反馈包                      | 导出与反馈包                              |
+| `v2/logs`, `cli/log`, `logs`, `agent/logs`, `v2/crash`                                                                                                                  | ≈0.15 GB | app 日志（14 天轮转）、CLI 日志（7 天轮转）、旧版日志、崩溃捕获 | 日志与崩溃报告                            |
+| `v2/sessions`, `v2/session-bindings`, `v2/checkpoints`, `agent/sessions`（旧版）                                                                                        | ≈0.2 GB  | 会话快照 / 绑定 / checkpoint（`agent/` 为旧版残留→其他）        | 会话记录与数据库                          |
+| `v2/*.sqlite*`（tasks-index、automation、task-index）                                                                                                                   | ≈20 MB   | app 任务索引 / 自动化库（在用）                                 | 会话记录与数据库                          |
+| `v2/*.json`, `cli/config.json`, `security`, `v2/certs`, `v2/provider`, `cli/models`, `cli/memories`, `cli/workflows`, `commands`, `skills`, `agents/*.md`, `workspace/` | 小       | 配置、凭据、记忆、默认对话工作区（含用户文件）                  | 配置、凭据与工作区                        |
 
 普查结论：真正的大头是「备份」「开发诊断抓包」「模型调用轨迹」三类，占比 > 80%，都可清理。
 
 #### 1.3.1 几个易混目录的核实结果
 
-| 目录 | 写入方 | 内容 | 是否被回读 |
-| --- | --- | --- | --- |
-| `cli/artifacts/<sess>/` | `apps/zcode-cli/packages/adapters/src/storage/index.ts` `createNodeToolArtifactStore` | **不是用户附件**。是工具结果留档：超长 Bash 输出（`.txt`）、Edit/Write 的修改前后快照与 structuredPatch（`.json`）、截图（`.png`），以 `zcode-artifact://<sess>/<id>` 引用 | 是：文件变更 checkpoint 汇总/回滚（`cold-file-change-summaries.ts`）、后续轮次引用历史媒体附件（`prompt-input.ts`）、UI 查看完整工具输出 |
-| `cli/agents/<sess>/<agent>/` | `apps/zcode-cli/packages/core/src/subagent/runner.ts` | subagent 运行产物：`metadata.json`、`output.txt`、`task.output`、`transcript.jsonl`（单文件可达 64 MB） | 仅 resume 进行中的 subagent 时按 `task.outputFile` 回读；已结束会话不再读 |
-| `cli/sessions/<sess>/workflows/` | `script-workflow-tool-port.ts` | 会话内生成的 workflow 脚本 | 会话内 |
-| `v2/sessions/<hash>/<taskId>.json` | `packages/services/src/paths.ts` `getLegacyTaskSessionSnapshotPath` | 旧格式任务快照；**仍在用**：`readLegacyTaskSnapshot` 兜底读取，Claude 原生会话导入（`persistImportedClaudeTask.ts`）仍写入这里 | 是 |
-| `agent/sessions/`、`agent/logs/` | 当前代码无写入方（2026-04/05 的 ACP 时代残留） | 旧版会话 JSON/JSONL | 否 |
-
+| 目录                               | 写入方                                                                                | 内容                                                                                                                                                                       | 是否被回读                                                                                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `cli/artifacts/<sess>/`            | `apps/zcode-cli/packages/adapters/src/storage/index.ts` `createNodeToolArtifactStore` | **不是用户附件**。是工具结果留档：超长 Bash 输出（`.txt`）、Edit/Write 的修改前后快照与 structuredPatch（`.json`）、截图（`.png`），以 `zcode-artifact://<sess>/<id>` 引用 | 是：文件变更 checkpoint 汇总/回滚（`cold-file-change-summaries.ts`）、后续轮次引用历史媒体附件（`prompt-input.ts`）、UI 查看完整工具输出 |
+| `cli/agents/<sess>/<agent>/`       | `apps/zcode-cli/packages/core/src/subagent/runner.ts`                                 | subagent 运行产物：`metadata.json`、`output.txt`、`task.output`、`transcript.jsonl`（单文件可达 64 MB）                                                                    | 仅 resume 进行中的 subagent 时按 `task.outputFile` 回读；已结束会话不再读                                                                |
+| `cli/sessions/<sess>/workflows/`   | `script-workflow-tool-port.ts`                                                        | 会话内生成的 workflow 脚本                                                                                                                                                 | 会话内                                                                                                                                   |
+| `v2/sessions/<hash>/<taskId>.json` | `packages/services/src/paths.ts` `getLegacyTaskSessionSnapshotPath`                   | 旧格式任务快照；**仍在用**：`readLegacyTaskSnapshot` 兜底读取，Claude 原生会话导入（`persistImportedClaudeTask.ts`）仍写入这里                                             | 是                                                                                                                                       |
+| `agent/sessions/`、`agent/logs/`   | 当前代码无写入方（2026-04/05 的 ACP 时代残留）                                        | 旧版会话 JSON/JSONL                                                                                                                                                        | 否                                                                                                                                       |
 
 ## 2. 目标 / 非目标
 
@@ -97,14 +94,12 @@ R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ 
 | --- | --- | --- | --- | --- |
 | `sessionStore` | 会话记录与数据库 | `v2/*.sqlite{,-wal,-shm}`, `cli/db/db.sqlite{,-wal,-shm}`, `v2/sessions`, `v2/session-bindings`, `v2/checkpoints`（除 pending/tmp） | 否 | 走任务删除 / 自动归档，不在此处清理 |
 | `subagentTranscripts` | 子代理产物 | `cli/agents/<sess>/<agent>/transcript.jsonl` | 是 | 只清理**最近 24 小时未更新**的会话目录（避免删掉进行中 subagent 的记录）；按会话目录聚合 |
-| `toolOutputs` | 工具输出与临时缓存 | `cli/artifacts`, `cli/agents`（除 transcript.jsonl）, `cli/sessions`, `cli/exec`, `cli/image-cache`, `cli/pdf-cache`, `clipboard`, `git-checkpoint-index`, `editor-icon`, `tmp`, `cache`, `v2/coding-plan-cache.json`, `v2/bots-model-cache*.json`, `v2/checkpoints/**/{pending,tmp}` | 否（2026-09-10 裁决：暂不可删，待逐项确认） | — |
 | `modelTrajectory` | 模型调用轨迹 | `cli/debug`, `cli/rollout` | 是 | 删除全部 `model-io-*.jsonl`；正在写入的文件删除失败时计入 `failures`，不阻塞 |
 | `devTraces` | 开发诊断抓包 | `v2/dev`, `v2/acp-traffic-proxy`, `v2/acp-stream-diagnostics` | 是 | 删除目录内容；保留 `v2/dev/zcode-stdio-tap.json`（开关状态） |
 | `logs` | 日志与崩溃报告 | `v2/logs`, `cli/log`, `logs`, `agent/logs`, `v2/crash`, `v2/perf`, `feedback/logs`, `computer-use/run/*.log` | 是 | 删除**非当天**日志文件；`v2/crash/live`、`computer-use/run/.tokens` 不删 |
 | `backups` | 备份 | `backup`, `v2/backup`, `v2/migrations`, `cli/db/backup`, `cli/db/backups`, `cli/db/*.bak*`, `cli/db/*.backup-*`, `v2/*.bak`, `v2/*.backup.json`, `v2/setting.json.corrupt-*`, `v2/config.json.pre-*`, `cli/config.json.bak-*` | 是（需二次确认） | 全部删除 |
 | `exports` | 导出与反馈包 | `export-log`, `export-log-stage`, `feedback` | 是 | 全部删除 |
 | `runtimes` | Agent 运行时与插件 | `agents/<runtime>/`, `bundled-agents`, `lite`, `computer-use`, `cli/plugins`（含 cache，2026-09-10 裁决不可删） | 否 | 由安装 / 更新流程管理 |
-| `config` | 配置、凭据与工作区 | `v2/*.json`, `v2/agent-config`, `v2/bots-runtime-locks`, `v2/certs`, `v2/acp-auth`, `v2/acp-config`, `v2/provider`, `cli/config.json`, `cli/models`, `cli/memories`, `cli/workflows`, `security`, `commands`, `skills`, `agents/*.md`, `workspace`, `mailbox`, `server`, `controller`, `launcher`, `dev-signing`, `cua-helper-dev-identity`, `perf-task-manifests`, `plugin-workspace` | 否 | — |
 | `other` | 其他 | 未命中的路径；启用自定义数据路径后 `~/.openzwork/v2` 整个旧副本；`agent/`（旧版残留） | 否 | 下钻可见具体路径，便于后续补规则 |
 
 约束：
@@ -119,8 +114,17 @@ R2 = {dataBaseDir}/.zcode           （仅在设置了数据存储路径且 ≠ 
 // packages/services/src/storage/storage.ts
 export type StorageRootId = "home" | "dataBaseDir";
 export type StorageCategoryId =
-  | "sessionStore" | "subagentTranscripts" | "toolOutputs" | "modelTrajectory" | "devTraces"
-  | "logs" | "backups" | "exports" | "runtimes" | "config" | "other";
+  | "sessionStore"
+  | "subagentTranscripts"
+  | "toolOutputs"
+  | "modelTrajectory"
+  | "devTraces"
+  | "logs"
+  | "backups"
+  | "exports"
+  | "runtimes"
+  | "config"
+  | "other";
 export type StorageCleanability = "none" | "safe" | "confirm";
 
 export interface StorageVolume {
@@ -133,7 +137,7 @@ export interface StorageVolume {
 }
 
 export interface StorageEntryUsage {
-  relativePath: string;   // 相对根目录
+  relativePath: string; // 相对根目录
   bytes: number;
   fileCount: number;
 }
@@ -191,7 +195,7 @@ Renderer <StorageSection>                 Host StorageService                   
   │ 进入分区                                      │                                      │
   ├─ startScan() ───────────────────────────────▶│ 新建 job(jobId, AbortController)      │
   │                                              │ 解析根：R1=~/.openzwork                    │
-  │                                              │        R2={dataBaseDir}/.zcode (可选)  │
+  │                                              │        R2={dataBaseDir}/.openzwork (可选)  │
   │                                              │ 每根：stat dev → 向上找挂载点 → statfs ─▶│
   │                                              │ readdir(withFileTypes) 有界并发(8) ────▶│
   │◀─ onScanProgress(snapshot 节流 300ms) ────────┤ 逐条 lstat → catalog.classify → 累加   │
@@ -256,7 +260,7 @@ Renderer <StorageSection>                 Host StorageService                   
 ### 6.3 多端
 
 - 桌面端：完整功能，服务注册在本地 host 的 service collection。
-- Web 端 / 手机 `/remote`：**不显示**（裁决 Q5），通过 `createSettingsPageConfig({ isDesktop })` 隐藏，与 Computer Use 同一门控方式。
+
 
 ## 7. 测试
 
@@ -268,17 +272,17 @@ Renderer <StorageSection>                 Host StorageService                   
 
 E2E（`packages/desktop/test/e2e/settings/settings-storage-management.test.ts`，隔离 HOME 内 seed fixture）：
 
-| Case | Setup | Action | Assertion |
-| --- | --- | --- | --- |
-| SM-01 scan | HOME 下 seed `cli/debug` 2 文件、`v2/logs` 昨日+今日、`backup/x` | 打开 设置 › 数据与统计 › 存储管理 | 出现扫描态；完成后总量 = fixture 总和；类别行与图例大小一致 |
-| SM-02 drill-down | 同上 | 点「模型调用轨迹」 | 明细列出 2 个文件与根目录 `~/.openzwork`；面包屑可返回 |
-| SM-03 clean safe | 同上 | 点轨迹行「清理」 | 无确认框；toast 释放大小；文件已删；行大小变 0 |
-| SM-04 clean confirm | 同上 | 点「备份」行「清理」→ 取消 / 确认 | 取消不删；确认后删除 |
-| SM-08 stop on leave | seed 大量小文件 | 扫描中切到其他分区再切回 | 切走后 host 收到 cancel（无进度事件）；切回重新开始且先显示上次结果 |
-| SM-09 tool outputs guard | seed 一个 mtime 为 1 小时前、一个 3 天前的 `cli/artifacts/sess_*` | 清理「工具输出与子代理产物」 | 只删 3 天前的目录 |
-| SM-05 logs keep today | 同上 | 清理日志 | 昨日文件删除，今日文件保留 |
-| SM-06 two roots | `setting.json.dataBaseDir` 指向另一目录并 seed `v2` | 打开分区 | 磁盘卡片列出两个根目录及各自占用；同盘时仍是一张卡片 |
-| SM-07 i18n/theme | — | 切 en + light | 文案与配色正确（代表样本） |
+| Case                     | Setup                                                                                                  | Action                            | Assertion                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------- |
+| SM-01 scan               | 等启动迁移完成，清空隔离 HOME 的 `backup/`，再 seed 4 KiB `cli/debug`、6 KiB `backup/` 与昨日/今日日志 | 打开资源管理器 › 存储             | 扫描完成后轨迹为 4.0 KB、备份为 6.0 KB；总量包含应用正常运行数据    |
+| SM-02 drill-down         | 同上                                                                                                   | 点「模型调用轨迹」                | 明细列出 2 个文件与根目录 `~/.openzwork`；面包屑可返回                  |
+| SM-03 clean safe         | 同上                                                                                                   | 点轨迹行「清理」                  | 无确认框；toast 释放大小；文件已删；行大小变 0                      |
+| SM-04 clean confirm      | 同上                                                                                                   | 点「备份」行「清理」→ 取消 / 确认 | 取消不删；确认后删除                                                |
+| SM-08 stop on leave      | seed 大量小文件                                                                                        | 扫描中切到其他分区再切回          | 切走后 host 收到 cancel（无进度事件）；切回重新开始且先显示上次结果 |
+| SM-09 tool outputs guard | seed 一个 mtime 为 1 小时前、一个 3 天前的 `cli/artifacts/sess_*`                                      | 清理「工具输出与子代理产物」      | 只删 3 天前的目录                                                   |
+| SM-05 logs keep today    | 同上                                                                                                   | 清理日志                          | 昨日文件删除，今日文件保留                                          |
+| SM-06 two roots          | `setting.json.dataBaseDir` 指向另一目录并 seed `v2`                                                    | 打开分区                          | 磁盘卡片列出两个根目录及各自占用；同盘时仍是一张卡片                |
+| SM-07 i18n/theme         | —                                                                                                      | 切 en + light                     | 文案与配色正确（代表样本）                                          |
 
 ## 8. 裁决记录（2026-09-10）
 
@@ -336,14 +340,14 @@ contracts/spec/tests: 本文 §3/§4/§5；storage/contract.ts + contract.test.t
 `architecture-policy.yaml` 新增 managed 模块（layerOrder 语义：前面的层不能 import 后面的层）：
 
 ```yaml
-  - id: storage
-    roots: [packages/services/src/storage]
-    managed: true
-    requires: [shared, rpc]          # 若 checker 对 ../descriptors.js 报 deep-import，改为在 requires 里加 services 并把 descriptor 创建放到 contract.ts；以首次 architecture:check 结果为准
-    publicEntrypoints: [packages/services/src/storage/contract.ts]
-    layers: { domain: domain, app: app, adapters: adapters }
-    layerOrder: [domain, app, adapters]
-    owner: desktop-settings
+- id: storage
+  roots: [packages/services/src/storage]
+  managed: true
+  requires: [shared, rpc] # 若 checker 对 ../descriptors.js 报 deep-import，改为在 requires 里加 services 并把 descriptor 创建放到 contract.ts；以首次 architecture:check 结果为准
+  publicEntrypoints: [packages/services/src/storage/contract.ts]
+  layers: { domain: domain, app: app, adapters: adapters }
+  layerOrder: [domain, app, adapters]
+  owner: desktop-settings
 ```
 
 ```text
@@ -392,25 +396,25 @@ desktop/src/main/zcodeDataSizeWorker.ts      改为 import services 的 fsWalker
 
 ### 10.4 接线点（改动清单）
 
-| 位置 | 改动 |
-| --- | --- |
-| `architecture-policy.yaml` | 新增 `storage` managed 模块（10.2） |
-| `packages/shared/src/channels.ts` | `ServiceChannels.Storage = "storage"` |
-| `packages/shared/src/test-ids.ts` | `TID_SETTINGS_STORAGE_*` |
-| `packages/services/src/storage/**` | 新模块（10.2） |
-| `packages/services/src/accessor.ts` | `IServiceAccessor.storageService` |
-| `packages/services/src/node.ts` | 导出 `createStorageService` 与 adapters 工厂 |
-| `packages/client/src/remoteServiceAccess.ts` | `ProxyChannel.toService<IStorageService>` |
-| `packages/desktop/src/host/index.ts` | 在 `createSettingService()` 附近组装：roots resolver、Worker scan runner、fs cleaner、volume probe |
-| `packages/desktop/src/host/remoteConnectionServiceCollection.ts` | `.register(IStorageService, ...)`（连接级，机器作用域；不注册到 workspace 级 collection） |
-| `packages/desktop/src/host/storageScanWorker.ts` + `storageScanWorkerClient.ts` | Worker 入口与 ScanRunnerPort 实现 |
-| `packages/desktop/tsup.config.ts` | host 增加 `"host/storageScanWorker"` entry |
-| `packages/desktop/src/main/zcodeDataSizeWorker.ts` / `zcodeDataSizeScanner.ts` | 遍历实现迁入 services，main 侧只保留 Worker 入口 |
-| `packages/ui/src/hooks/useStorageUsage.ts` | 订阅 `onScanProgress`，mount 时 `startScan`、unmount/失焦 60s 时 `cancelScan`，按 jobId 过滤 |
-| `packages/ui/src/settings/storage/` | `StorageSection.tsx`、`StorageDiskCard.tsx`、`StorageCategoryList.tsx`、`StorageCategoryDetail.tsx`、`StorageCleanConfirmDialog.tsx`、`storageCategoryPresentation.ts`（图标/文案 id/颜色） |
-| `packages/ui/src/settings/settingsPageConfig.ts`、`lib/settingsNavigation.ts`、`SettingsPage.tsx` | 注册 `storage` 分区（`isDesktop` 门控） |
-| `packages/ui/src/i18n/locales/{zh-CN,en-US}.ts` | `settings.storage.*` |
-| `packages/desktop/test/e2e/settings/settings-storage-management.test.ts` | §7 E2E |
+| 位置                                                                                              | 改动                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `architecture-policy.yaml`                                                                        | 新增 `storage` managed 模块（10.2）                                                                                                                                                         |
+| `packages/shared/src/channels.ts`                                                                 | `ServiceChannels.Storage = "storage"`                                                                                                                                                       |
+| `packages/shared/src/test-ids.ts`                                                                 | `TID_SETTINGS_STORAGE_*`                                                                                                                                                                    |
+| `packages/services/src/storage/**`                                                                | 新模块（10.2）                                                                                                                                                                              |
+| `packages/services/src/accessor.ts`                                                               | `IServiceAccessor.storageService`                                                                                                                                                           |
+| `packages/services/src/node.ts`                                                                   | 导出 `createStorageService` 与 adapters 工厂                                                                                                                                                |
+| `packages/client/src/remoteServiceAccess.ts`                                                      | `ProxyChannel.toService<IStorageService>`                                                                                                                                                   |
+| `packages/desktop/src/host/index.ts`                                                              | 在 `createSettingService()` 附近组装：roots resolver、Worker scan runner、fs cleaner、volume probe                                                                                          |
+| `packages/desktop/src/host/remoteConnectionServiceCollection.ts`                                  | `.register(IStorageService, ...)`（连接级，机器作用域；不注册到 workspace 级 collection）                                                                                                   |
+| `packages/desktop/src/host/storageScanWorker.ts` + `storageScanWorkerClient.ts`                   | Worker 入口与 ScanRunnerPort 实现                                                                                                                                                           |
+| `packages/desktop/tsup.config.ts`                                                                 | host 增加 `"host/storageScanWorker"` entry                                                                                                                                                  |
+| `packages/desktop/src/main/zcodeDataSizeWorker.ts` / `zcodeDataSizeScanner.ts`                    | 遍历实现迁入 services，main 侧只保留 Worker 入口                                                                                                                                            |
+| `packages/ui/src/hooks/useStorageUsage.ts`                                                        | 订阅 `onScanProgress`，mount 时 `startScan`、unmount/失焦 60s 时 `cancelScan`，按 jobId 过滤                                                                                                |
+| `packages/ui/src/settings/storage/`                                                               | `StorageSection.tsx`、`StorageDiskCard.tsx`、`StorageCategoryList.tsx`、`StorageCategoryDetail.tsx`、`StorageCleanConfirmDialog.tsx`、`storageCategoryPresentation.ts`（图标/文案 id/颜色） |
+| `packages/ui/src/settings/settingsPageConfig.ts`、`lib/settingsNavigation.ts`、`SettingsPage.tsx` | 注册 `storage` 分区（`isDesktop` 门控）                                                                                                                                                     |
+| `packages/ui/src/i18n/locales/{zh-CN,en-US}.ts`                                                   | `settings.storage.*`                                                                                                                                                                        |
+| `packages/desktop/test/e2e/settings/settings-storage-management.test.ts`                          | §7 E2E                                                                                                                                                                                      |
 
 ### 10.5 事件与类型的落点
 
@@ -422,17 +426,17 @@ desktop/src/main/zcodeDataSizeWorker.ts      改为 import services 的 fsWalker
 
 > 2026-09-10 迁入资源管理器后的差异：服务实例改由 **desktop main** 持有（不再注册为 host RPC 服务，无 ServiceDescriptor / channel），renderer 通过 preload 的 `window.resourceManager.storage`（`StorageManagementBridge`）调用；数据类型统一放在 `packages/shared/src/storage.ts`；UI 在 `packages/ui/src/resource-manager/storage/`；「在文件管理器中显示」经 `StorageRevealPath` 由 main 校验路径在数据根内后调用 `shell.showItemInFolder`。下表为迁移后的落点。
 
-| 层 | 文件 | 说明 |
-| --- | --- | --- |
-| policy | `architecture-policy.yaml` | `storage` managed 模块：`requires: [shared, rpc, services]`，layerOrder `domain → app → adapters` |
-| shared | `packages/shared/src/storage.ts`、`channels.ts`、`test-ids.ts` | 数据类型与 `StorageManagementBridge`；`PlatformChannels.Storage*`；`TID_RESOURCE_MANAGER_STORAGE_*`、`TID_RESOURCE_MANAGER_TAB` |
-| services/domain | `storage/domain/{storageCatalog,usageAggregate,cleanPlan}.ts` | 分类规则、有界聚合（每类最多 100 条 entries，其余折叠为 `…`）、清理计划；卷分组 `groupStorageRootsByVolume` 在 shared |
-| services/app | `storage/app/{ports,scanJob,storageService}.ts` | 端口、单 job 节流与终态、`IStorageService` 单 owner |
-| services/adapters | `storage/adapters/{fsWalker,volumeProbe,fsCleaner,inProcessScanRunner,rootsResolver}.ts` | 有界并发可取消遍历、statfs 卷探测、有界并发删除+空目录回收、`runStorageScan`（Worker 入口与单测共用的唯一扫描路径）、两根解析 |
-| desktop main | `main/resourceManagerStorage.ts`、`main/storageScanWorker.ts`、`storageScanWorkerClient.ts`、`storageScanWorkerProtocol.ts`、`tsup.config.ts` | ipc 面 + 唯一 StorageService 实例；Worker 入口（entry `main/storageScanWorker`）与 ScanRunnerPort 实现；abort 500ms 宽限后强制 terminate；关窗取消扫描 |
-| desktop preload | `preload/resourceManager.ts` | `window.resourceManager.storage` 桥 |
-| ui | `resource-manager/ResourceManagerApp.tsx`（tab）、`resource-manager/storage/*`（含 `useStorageUsage`）、i18n `resourceManager.storage.*` | 存储 tab、磁盘卡片、类别列表、明细、确认框 |
-| tests | `packages/services/test/storage*.test.ts`、`storage/contract.test.ts`、`packages/ui/test/resourceManagerStorage{Presentation,Usage}.test.ts`、`desktop/test/e2e/resource-manager-storage.test.ts` | 单测 + E2E SM-01~05 |
+| 层                | 文件                                                                                                                                                                                              | 说明                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| policy            | `architecture-policy.yaml`                                                                                                                                                                        | `storage` managed 模块：`requires: [shared, rpc, services]`，layerOrder `domain → app → adapters`                                                      |
+| shared            | `packages/shared/src/storage.ts`、`channels.ts`、`test-ids.ts`                                                                                                                                    | 数据类型与 `StorageManagementBridge`；`PlatformChannels.Storage*`；`TID_RESOURCE_MANAGER_STORAGE_*`、`TID_RESOURCE_MANAGER_TAB`                        |
+| services/domain   | `storage/domain/{storageCatalog,usageAggregate,cleanPlan}.ts`                                                                                                                                     | 分类规则、有界聚合（每类最多 100 条 entries，其余折叠为 `…`）、清理计划；卷分组 `groupStorageRootsByVolume` 在 shared                                  |
+| services/app      | `storage/app/{ports,scanJob,storageService}.ts`                                                                                                                                                   | 端口、单 job 节流与终态、`IStorageService` 单 owner                                                                                                    |
+| services/adapters | `storage/adapters/{fsWalker,volumeProbe,fsCleaner,inProcessScanRunner,rootsResolver}.ts`                                                                                                          | 有界并发可取消遍历、statfs 卷探测、有界并发删除+空目录回收、`runStorageScan`（Worker 入口与单测共用的唯一扫描路径）、两根解析                          |
+| desktop main      | `main/resourceManagerStorage.ts`、`main/storageScanWorker.ts`、`storageScanWorkerClient.ts`、`storageScanWorkerProtocol.ts`、`tsup.config.ts`                                                     | ipc 面 + 唯一 StorageService 实例；Worker 入口（entry `main/storageScanWorker`）与 ScanRunnerPort 实现；abort 500ms 宽限后强制 terminate；关窗取消扫描 |
+| desktop preload   | `preload/resourceManager.ts`                                                                                                                                                                      | `window.resourceManager.storage` 桥                                                                                                                    |
+| ui                | `resource-manager/ResourceManagerApp.tsx`（tab）、`resource-manager/storage/*`（含 `useStorageUsage`）、i18n `resourceManager.storage.*`                                                          | 存储 tab、磁盘卡片、类别列表、明细、确认框                                                                                                             |
+| tests             | `packages/services/test/storage*.test.ts`、`storage/contract.test.ts`、`packages/ui/test/resourceManagerStorage{Presentation,Usage}.test.ts`、`desktop/test/e2e/resource-manager-storage.test.ts` | 单测 + E2E SM-01~05                                                                                                                                    |
 
 与 §4/§10 的差异：
 

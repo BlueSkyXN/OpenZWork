@@ -58,6 +58,29 @@ manual-review/live provider，并
 每个 shard 有独立 HOME、run id、artifact、network capture 和 Chromium profile。同一
 shard 内不能直接提高 WDIO `maxInstances`，否则多个 worker 会重置同一个 HOME。
 
+### 进程身份与回收
+
+macOS 上 Electron main 的命令行可能只剩 `ZCode E2E`，不再保留 run id 和 HOME 参数。
+运行时采样确认：Chromium 子进程仍带有当前 run 的 `--user-data-dir`，但该目录位于
+run cache 而非 HOME。仅按 HOME 和 run id 扫描会漏掉 main，只命中独立的 crashpad 等
+进程，导致退出屏障失败并阻塞后续 worker。
+
+清理身份必须包含当前 run 独占的 Chromium profile 根目录，覆盖该 run 下所有 worker
+profile。路径匹配必须遵守目录边界并兼容 Windows 分隔符，不能命中相邻 run 或相似前缀。
+
+```text
+当前 run 的 profile -> Chromium 子进程 -> Electron main -> ChromeDriver
+                                            |
+                                            v
+                                      收集完整子进程树
+HOME / run id -> 独立或孤儿进程 ------------> 退出屏障 -> 下一个 worker
+```
+
+仅允许从已确认身份的子进程补齐 Electron/ChromeDriver 父链，不允许只凭进程名称清理。
+单 session reload 仍须保留 ChromeDriver。单测覆盖丢失启动参数、相邻 run 隔离和
+Windows 路径；session lifecycle E2E 使用真实进程快照验证无显式 main PID 时仍能找到
+main，并通过连续 worker 运行验证退出屏障。
+
 ```text
 pnpm test:e2e（默认）
   -> e2e-report build
@@ -120,8 +143,6 @@ spec after -> 不抢占 session 关闭所有权
 
 - `clearAppData()` 在受 WDIO 管理的 worker 收尾阶段不得调用 `app.quit()`；
 - app data 的权威删除点收敛到进程退出后的 `afterSession`；
-- 显式验证重启语义的 helper（例如 Coding Plan、provider restart）继续保留
-  `quitElectronAppGracefully()`，不能误改成无重启；
 - 失败路径仍按 run id/HOME 扫描并清理 Electron、host 和 agent，不能只看主 PID；
 - 修复原因必须以中文注释留在 helper 中。
 
@@ -192,7 +213,6 @@ build 的约 94 MiB `out` 复制到自己的 run cache；复制与其他 shard �
 
 - `conversation-session-v4-load-older` 的固定 33 秒等待；
 - `v4-vertical-slice` 和 `v4-scroll` 中成功路径真实支付的慢 replay；
-- Coding Plan 多场景和 provider restart helper 中非必要的重复 `reloadSession()`；
 - 其余约 11.65 秒固定 pause 改为事件、mock barrier 或几何稳定条件。
 
 不直接缩短成功路径不会支付的 `waitUntil` 上限，也不缩短明确验证
@@ -416,13 +436,7 @@ Mocha case 120 秒边界也不变；只有单条已经无响应的 driver 请求
 preflight 一次重建或原始 case 失败路径处理。该修改不缩短产品状态边界，也不把重试
 从产品断言层移除。先补纯函数单测覆盖默认值、覆盖值和硬上限，再执行完整全量。
 
-协议边界后的默认全量 `desktop-e2e-20260716223803360-p20200-f31e542a2ca7d888`
-产生 10 个 summary、55 spec 全覆盖，父墙钟 `1,070,573 ms`；最长 `before` 已从
-`324,643 ms` 降到 `102,683 ms`，证明坏请求边界有效，但距门槛仍差 `33,680.5 ms`。
-本轮 10 个 shard 的 worker 总量为 `8,896,556 ms`，理想平均仅 `889,656 ms`，实际
-最长 shard 却为 `1,013,174 ms`。该 shard 把 Coding Plan Team（`440,076 ms`）、
-两个 upgrade（`137,736 / 127,380 ms`）和 bash permission（`259,743 ms`）集中在一起；
-这是静态权重仍来自上轮不同失败形态造成的确定分片失衡。
+
 
 用本轮 55 个真实 worker 时长更新版本化 profile 并重新 LPT，回放桶范围为
 `858,021–919,022 ms`，理论最长桶比本轮实际最长回收约 94 秒。该轮只改调度权重，

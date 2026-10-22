@@ -15,10 +15,10 @@ Settings language coverage verifies that the General settings language selector 
 
 ## Accepted Cases
 
-| Case                                                            | Setup                                                                                                                            | Action                                      | Assertions                                                                                                      | Spec                                                                          |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| SL-01 system preferred Chinese with English app locale fallback | Mock preferred languages as `["zh-Hans-CN", "en-CN"]`, mock `app.getLocale()` as `en-US`, start from explicit English preference | Select `System default` in Settings General | UI switches to Chinese, `setting.json` keeps `localePreference: "system"` and writes resolved `locale: "zh-CN"` | `packages/desktop/test/e2e/settings/settings-language-system-default.test.ts` |
-| SL-02 explicit language labels are autonyms                     | Current locale may be English or Chinese                                                                                         | Open language selector                      | `中文简体` and `English` remain readable in their own language                                                  | Covered by UI regression `packages/ui/test/appearanceSettingsLayout.test.ts`  |
+| Case                                                            | Setup                                                                                                                            | Action                                      | Assertions                                                                                                      | Spec                                                                                    |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| SL-01 system preferred Chinese with English app locale fallback | Mock preferred languages as `["zh-Hans-CN", "en-CN"]`, mock `app.getLocale()` as `en-US`, start from explicit English preference | Select `System default` in Settings General | UI switches to Chinese, `setting.json` keeps `localePreference: "system"` and writes resolved `locale: "zh-CN"` | `packages/desktop/test/e2e/settings/settings-language-system-default.test.ts`           |
+| SL-02 explicit language labels are autonyms                     | Current locale may be English or Chinese                                                                                         | Open language selector                      | `中文简体` and `English` remain readable in their own language                                                  | Pending behavior coverage; the source-string guard was removed during unit-test cleanup |
 
 ## Pruned Cases
 
@@ -29,7 +29,6 @@ Settings language coverage verifies that the General settings language selector 
 
 ## Plan navigation labels
 
-- PN-01 (formal, reviewed 2026-09-18): BigModel/Z.ai × zh-CN/en-US. In an isolated unauthenticated profile, open Model settings; assert BigModel/Z.ai and Start Plan (unchanged across locales) by their distinct navigation keys, then click each and assert its selected state and detail heading (brand vs Start Plan).
 - PN-02 (formal, reviewed 2026-09-18): repeat at narrow renderer width; assert both accessible names and hover tooltip. Chinese/dark and English/light at wide and narrow widths cover presentation pairwise; no claim of phone remote transport coverage.
 - Existing entitlement, payment and usage cases are pruned from this label-only change. Provider IDs, selection commands, detail brand names and persistence contracts remain unchanged.
 - Spec: `packages/desktop/test/e2e/settings/provider-plan-navigation-labels.test.ts`. No model request fixture is needed: this case never sends a prompt or connects an account.
@@ -53,5 +52,4 @@ Settings language coverage verifies that the General settings language selector 
 
 ### Brand naming restored (2026-09-18)
 
-- Navigation uses BigModel/Z.ai and Start Plan in both locales again. PN-01/02 retain their formal status and now assert the restored names, including accessible labels and narrow-layout tooltips.
 - Rebuilt macOS Electron replay: 4/4 passed, `packages/desktop/.e2e-artifacts/desktop-e2e-20260918-020819-008/summary.json`. Covers Chinese/dark and English/light at wide/narrow widths. Two related UI test files passed 208 assertions; typecheck, desktop E2E typecheck, lint and architecture checks passed. Real phone remote transport and Docker were not run.

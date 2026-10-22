@@ -165,11 +165,7 @@ guide model selection / refresh、browser screenshot 和 stream recovery。
 `verification/stream-audit.log`。架构检查当前只覆盖 managed 模块，CLI 尚未纳入其范围；
 本次 CLI 内部边界依据实际调用链审查和回归测试确认。
 
-其他检查：根目录 typecheck、CLI typecheck、根 lint（61 warnings / 0 errors）、
-改动 Core 源码及新测试独立 lint、架构检查、Desktop E2E typecheck、本例 fixture check 均通过。
-CLI 全量 lint 未通过：85 项 `max-lines` 错误，逐项确认报错文件均与 HEAD 相同；本次收尾拆分后的两个模块
-分别为 289 / 283 行。全仓 conversation coverage audit 仍被既有 `conversation-session-highspeed-card`
-两项 manifest / fixture `syntheticReason` 不一致阻断，相关文件未修改。
+
 
 证据目录：`packages/desktop/.e2e-artifacts/desktop-e2e-20260924081102510-p55865-08e6cb00c4a7ad50/`。
 `summary.md` 是正式运行报告；`conversation-session-stop-tool-results/` 保存四组运行时日志、真实请求、截图、

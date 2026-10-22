@@ -90,7 +90,6 @@ Follow-up repair plan:
 
 - Add a tiny stable event callback hook for UI callbacks that only need latest values when invoked.
 - Use the stable event hook for toolbar model/config callbacks and conversation rewind callbacks.
-- Stabilize filtered Coding Plan usage entitlement arrays by semantic keys before crossing the toolbar memo boundary.
 - Add memo boundaries to workspace shell chrome and shared overlay/dialog components that do not need to rerender for every chat token batch.
 
 ## 2026-06-28 p12 Trace Follow-up

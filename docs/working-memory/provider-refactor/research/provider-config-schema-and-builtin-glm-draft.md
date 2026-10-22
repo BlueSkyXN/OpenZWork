@@ -73,25 +73,6 @@ class ProviderConfig extends ConfigOverlay {
 
 Access 描述“本次调用资格从哪里取得”。
 
-~~~ts
-type ProviderAccessConfig =
-  | ApiKeyAccessConfig
-  | ZhipuAccountAccessConfig;
-
-class ApiKeyAccessConfig extends ConfigOverlay {
-  readonly type = "api-key";
-  apiKey?: string | null;
-  apiKeyManagementUrl?: string | null;
-}
-
-class ZhipuAccountAccessConfig extends ConfigOverlay {
-  readonly type = "zhipu-account";
-  accessId?: string | null;
-}
-
-~~~
-
-当前正式范围是 api-key 与 zhipu-account。未来其他厂商 OAuth 等访问方式在出现具体需求后扩展新的 Access 分支。
 
 apiKeyManagementUrl 是设置页面跳转到厂商 Key 管理页面的产品信息。它由 Provider Config 明确提供，不根据 baseURL 推导。
 
@@ -121,20 +102,6 @@ class ProviderApiConfig extends ConfigOverlay {
 ### 2.3 完整性
 
 每层 Overlay 可以稀疏。覆盖完成后，Registry 只接收能够形成完整连接的 Provider：
-
-~~~text
-所有 Provider
-├─ access.type
-├─ api.type
-├─ api.baseURL
-└─ models
-
-api-key access
-└─ apiKey
-
-zhipu-account access
-└─ accessId
-~~~
 
 完整性由 Config Class 递归检查。设置 Facade 使用同一份检查结果展示待补字段；Registry 过滤未完成配置，不再单独复制一套判断。
 
@@ -279,91 +246,6 @@ Personal Overlay：
 ~~~
 
 
-### 4.2 Start Plan
-
-Start Plan 的 Official Config 保存静态连接：
-
-~~~json
-{
-  "builtin:zai-start-plan": {
-    "label": "Z.AI Start Plan",
-    "access": {
-      "type": "zhipu-account"
-    },
-    "api": {
-      "type": "anthropic-messages",
-    },
-    "models": ["GLM-5.3", "GLM-5.2", "GLM-5-Turbo"],
-    "enabled": true
-  }
-}
-~~~
-
-Account Access 根据登录和套餐结果生成同形 Overlay：
-
-~~~json
-{
-  "builtin:zai-start-plan": {
-    "access": {
-      "type": "zhipu-account",
-      "accessId": "zhipu-account:<account-id>:start-plan:builtin:zai-start-plan"
-    },
-    "models": ["GLM-5.2", "GLM-5-Turbo"]
-  }
-}
-~~~
-
-这里的 models 是当前账号获准使用的子集。请求时使用的 ZCode JWT 和一次性安全校验 Header 由请求鉴权服务取得。
-
-BigModel Start Plan 使用 providerId builtin:bigmodel-start-plan。它当前与 Z.AI Start Plan 共享 zcode-plan 请求语义；最终 Endpoint 和模型全集需要同远端 Official Config 再对齐。
-
-### 4.3 Personal Coding Plan
-
-Coding Plan 继续使用 zhipu-account access：
-
-~~~json
-{
-  "builtin:zai-coding-plan": {
-    "label": "Z.AI Coding Plan",
-    "access": {
-      "type": "zhipu-account"
-    },
-    "api": {
-      "type": "anthropic-messages",
-    },
-    "models": ["GLM-5.3", "GLM-5.2", "GLM-5-Turbo"],
-    "enabled": true
-  },
-  "builtin:bigmodel-coding-plan": {
-    "label": "BigModel Coding Plan",
-    "access": {
-      "type": "zhipu-account"
-    },
-    "api": {
-      "type": "anthropic-messages",
-    },
-    "models": ["GLM-5.3", "GLM-5.2", "GLM-5-Turbo"],
-    "enabled": true
-  }
-}
-~~~
-
-Account Access 决定当前 Family 中真正发布的 Coding Plan Provider，并补入 accessId 和模型子集。请求鉴权服务再用 accessId 获取当前有效的 Runtime API Key。
-
-### 4.4 Team Plan
-
-Team Plan 当前可以复用 Coding Plan providerId。Account Access 使用不同 accessId 固定组织、项目和连接身份：
-
-~~~text
-personal coding plan
-└─ zhipu-account:<account-id>:coding-plan:builtin:zai-coding-plan
-
-team plan
-└─ zhipu-account:<account-id>:team-plan:builtin:zai-coding-plan:<product>:<org>:<project>
-~~~
-
-Provider Config 和 Model Config 不复制 Team Secret。请求鉴权服务根据 accessId 获取对应 Project Runtime Key。未来若产品决定同时发布 Personal 与 Team 两个可选连接，ModelSelection 是否需要携带连接身份将成为独立设计；M2 先保持每个 Provider Family 只发布当前生效连接。
-
 ### 4.5 Temporary Provider
 
 闲时任务等 execution-scoped 场景可以在 Submission 中附加一份临时 Provider Config。它不写入 Official、Personal 或常驻 Registry：
@@ -482,7 +364,6 @@ Model
 ]
 ~~~
 
-Z.AI、BigModel 和 zcode-plan 的 Builtin 精确规则可以把 supportsNativeWebSearch 覆盖为 true。这个字段表达最终 Provider + Model 组合的可执行性质。
 
 ## 6. GLM 的 Anthropic Messages 配置
 
@@ -630,21 +511,6 @@ OpenAI Responses 协议应遵循官方 reasoning item 与 effort 语义。GLM-5.
 
 三类 Account Provider 的动态材料不同：
 
-~~~text
-Start Plan
-├─ accessId 固定当前账号的 Start Plan 连接
-├─ Request Auth 取得 ZCode JWT
-└─ 每个 attempt 按需取得一次性安全校验 Header
-
-Personal Coding Plan
-├─ accessId 固定当前账号的个人连接
-└─ Request Auth 取得当前 Runtime API Key
-
-Team Plan
-├─ accessId 固定账号 / organization / project
-└─ Request Auth 取得当前 Project Runtime API Key
-~~~
-
 Registry 只保存 Effective Provider Config 和最终模型配置。Model 保存创建时选中的 providerId、modelId、accessId、API 与 Options。每次请求可以取得更新后的同一连接凭据；凭据刷新不会修改 Model 身份。Request Auth 还要核对凭据所属账号与 accessId 一致，不能把旧 Model 与切换后的新账号凭据组合。
 
 ## 10. 与现有代码的关系
@@ -652,7 +518,6 @@ Registry 只保存 Effective Provider Config 和最终模型配置。Model 保�
 当前实现仍有多处散落事实：
 
 - Builtin Provider ID 在 packages/shared/src/model-provider-types.ts。
-- Start Plan 与 Coding Plan 的 Endpoint fallback 在 packages/services/src/model-provider。
 - GLM reasoning 档位与 model-name 判断分散在 shared、services 和 CLI Adapter。
 - reasoning_content replay 仍由 apps/zcode-cli/packages/adapters/src/model/reasoning-content-compat.ts 的模型名称列表驱动。
 - Anthropic fixed budget 的兼容边界位于 apps/zcode-cli/packages/adapters/src/model/reasoning-policy.ts。
@@ -665,7 +530,6 @@ Registry 只保存 Effective Provider Config 和最终模型配置。Model 保�
 以下问题仍保留为草案边界：
 
 1. GLM-5.3、GLM-5.2 和 Turbo 在 Official Config 中最终采用的大小写、Context、Max Output 与默认输出值。
-2. BigModel Start Plan 的最终 Endpoint、模型全集及与 Z.AI Start Plan 的关系。
 3. preserveThinking 是否对所有 GLM OpenAI Chat Provider 固定为 true，还是由特定 Builtin Provider 规则启用。
 4. GLM OpenAI Responses 的真实模型覆盖范围和精确 reasoning 参数。
 5. 未来非智谱 OAuth Access 的正式 Schema，以及是否复用同一个账号访问身份模型。

@@ -1,49 +1,23 @@
-# Model attempt 错误诊断字段
+# 模型请求错误诊断
 
-## 背景
+流式请求可能把底层网络异常包装成 `TerminalStreamChunkError`。包装器通过 `cause` 保留
+`adapterError.cause ?? adapterError`，同时保留原消息与 `adapterError` 身份，供错误分类器
+读取连接重置、DNS、TLS、HTTP 状态与重试相关事实。
 
-`model_attempt` 目前只保留归一化后的错误消息。流式请求被包装为
-`TerminalStreamChunkError` 时，真实网络异常可能位于包装错误的因果链中，导致
-ARMS 只能看到 `terminated`，无法区分连接重置、DNS、TLS 或其他传输错误。
+## 当前字段与所有者
 
-## 目标
+- `apps/zcode-cli/packages/adapters/src/model/runner-retry.ts` 持有终止流包装器和重试规则。
+- `failure-inspection.ts` 沿 `cause` 查找状态码、响应头和错误码，使用已访问对象集合防止循环。
+- `runner-telemetry.ts` 提供模型失败字段的纯转换：`errorCode`、`errorPhase`、
+  `exceptionType`、`retryAfterMs`，以及 provider 错误分类信息。
+- `modelFailureAttributionFields` 把错误映射为 `transport`、`provider_business`、
+  `api_call`、`protocol` 等有限类别，供模型状态和错误载荷使用。
 
-结束失败的 `model_attempt` span 时，继续保留现有脱敏字段，并额外写入因果链末端
-错误的诊断信息：
+诊断时先按请求阶段与错误类别定位，再结合本地日志检查底层原因。提取或导出错误内容时
+沿用现有日志脱敏处理，不加入请求正文、鉴权凭据或完整响应内容。
 
-- `error.cause.type`
-- `error.cause.code`
-- `error.cause.message`
+## 验收边界
 
-字段值必须经过现有错误脱敏器处理，长度和字符集限制与 `error.type`、
-`error.message` 相同；不得写入请求正文、鉴权凭据或完整响应内容。
-
-## 采集规则
-
-1. `TerminalStreamChunkError` 必须公开其包装错误的 `cause`，使分类器和遥测都能
-   沿因果链读取原始异常。
-2. 因果链字段只在存在嵌套错误且源错误首次被认领时写入；父级 span 不重复复制
-   错误正文。
-3. 没有因果链时保持现有行为，不能因为遥测字段失败影响模型请求。
-
-## 查询示例
-
-```sql
-json_extract_scalar(attributes, '$["error.cause.type"]')
-json_extract_scalar(attributes, '$["error.cause.code"]')
-json_extract_scalar(attributes, '$["error.cause.message"]')
-```
-
-可将这些字段与 `zcode.model_attempt.error_category`、
-`zcode.model_attempt.failure_stage`、HTTP 状态码和 request/session id 一起聚合。
-
-## Todo103 合入边界与验收
-
-- 来源 `79413e33cb`。保留上述诊断意图，不恢复旧 `registry.ts` 或嵌套 `statusContext.model`；本次不改变模型选择、重试次数、请求字段或用户可见错误文案。
-- 只在存在独立嵌套错误对象时填写 cause；普通 Error、自指 cause 不得把自身重复登记为根因。
-- 沿 cause 优先、adapterError 次之、error 最后的单条包装链遍历；保留原八层上限与循环检测，不扩大为扫描任意错误对象属性。
-- G13-A01：终止流包装器保留真实 cause；没有 cause 时保留 adapterError；message 与 adapterError 身份不改变。
-- G13-A02：嵌套原因经过脱敏，普通错误与自引用不产生虚构 cause；深链和循环有界。
-- G13-A03：真实内存 OTel exporter 中首个 span 收到脱敏根因，父级 span 不重复上报；无嵌套原因的 span 不新增 cause 属性。
-- G13-A04：流式使用量、原始 finish reason、部分工具输入和闲时重试回归。原始 finish reason 测试仍引用已删除的 AiSdkModelRegistry 时，只迁到本文件已有 TestProviderConfigFixture，不删除或放宽原断言。
-- 本子组仅有日志/遥测副作用，不改变 App 交互，无新增 UI E2E；使用实际 exporter 和 adapter 单测验证执行行为。对话错误 Banner 的其他来源提交仍由 G13 后续独立核验，不能用本子组通过代替。
+`runner-retry.test.ts` 覆盖存在和缺少底层 `cause` 的包装行为；
+`failure-classifier.test.ts` 覆盖嵌套 provider 错误与 `retry-after` 读取。
+验证应同时检查错误消息、包装对象身份和重试规则，避免诊断字段改变请求行为。

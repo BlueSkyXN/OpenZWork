@@ -1,4 +1,5 @@
-import { TID_CHAT_SESSION_USAGE_SUMMARY } from "@zcode/shared";
+import { TID_CHAT_SESSION_USAGE_SUMMARY } from "@zcode/shared/test-ids";
+
 import type { IntlInstance } from "@/i18n/IntlProvider.js";
 import type { SessionUsageSummaryModel } from "./sessionUsageModel.js";
 

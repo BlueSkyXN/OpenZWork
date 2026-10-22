@@ -620,7 +620,6 @@ interface SessionUsageState {
 }
 ```
 
-conflation 语义：值未变不下发（P-05）；A 区整体替换保证「不会把正数 used 覆盖成 0」类 bug 无处生长。计费/配额（coding plan）不在 conversation topic，归 usage 域。
 
 **模型切换窗口语义（2026-07-17）**：`usedTokens` 表示当前历史上下文占用，切换模型时不重算；
 `maxTokens` 表示当前 runtime 已应用模型的窗口，必须随 `ModelSelected.contextWindow` 立即替换，同时更新
@@ -1601,8 +1600,7 @@ type ConversationTelemetryFact = ConversationTelemetryFactBase &
   pane/SessionDataLayer 生命周期不得拥有该状态。
 - eventId 使用约 2000 条有界 LRU；terminal 与 compact 另按业务 key exactly-once。
 
-完整事件名、字段兼容和前后台矩阵见
-[`docs/monitoring/conversation-telemetry-v4.md`](../monitoring/conversation-telemetry-v4.md)。
+
 
 ---
 

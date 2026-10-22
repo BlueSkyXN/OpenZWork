@@ -12,6 +12,67 @@ import { createRefreshRuntimeHeadersBeforeModelAttempt } from "./model-runtime-h
 import { createRuntimeModel, withModelInvocationContext } from "./runtime-model.js";
 import { applyRuntimeExecutionState } from "../execution-state.js";
 
+const selectionAdmissions = new WeakMap<
+  AgentRuntimeInternal,
+  {
+    sequence: number;
+    commandId: string;
+    persisted: Promise<void>;
+  }
+>();
+// 只用于 ModelSelected 的前后展示边界，不参与选模、续跑或持久化。
+const publishedSelections = new WeakMap<AgentRuntimeInternal, ModelSelection | undefined>();
+
+export function recordPublishedModelSelection(
+  runtime: AgentRuntimeInternal,
+  selection: ModelSelection,
+): void {
+  publishedSelections.set(runtime, cloneModelSelection(selection));
+}
+
+/** 串行接纳序号决定续跑选择；队列消费只能执行自己的快照，不能倒写较新的选择。 */
+export function acceptSubmissionModelSelection(
+  runtime: AgentRuntimeInternal,
+  intent: TurnInputIntentMetadata | undefined,
+  _traceContext: TraceContext,
+  modelExecution?: Pick<
+    import("../types.js").ModelExecutionContext,
+    "selectionScope"
+  >,
+): Promise<void> {
+  const selection =
+    modelExecution?.selectionScope === "execution"
+      ? undefined
+      : intent?.modelSelection;
+  if (!selection || !intent) return Promise.resolve();
+  const previous = selectionAdmissions.get(runtime);
+  if (
+    previous &&
+    (previous.commandId === intent.sourceCommandId ||
+      (Number.isFinite(intent.admissionSeq) && intent.admissionSeq <= previous.sequence))
+  ) {
+    return previous.persisted;
+  }
+  const previousSelection = runtime.getSessionModelSelection();
+  if (!publishedSelections.has(runtime)) publishedSelections.set(runtime, previousSelection);
+  const appliedSelection = cloneModelSelection(selection);
+  runtime.setSessionModelSelection(appliedSelection);
+  // 保存串行化，防止旧异步写入在新选择之后落库；不引入另一份输入队列。
+  const persisted = (previous?.persisted ?? Promise.resolve()).then(async () => {
+    // 新 Session 的 entry 由 ensureSessionPersisted 创建时统一写入，避免先写外键失败。
+    if (runtime.sessionPersisted !== false)
+      await persistRuntimeModelSelection(runtime, appliedSelection);
+  });
+  selectionAdmissions.set(runtime, {
+    sequence: Number.isFinite(intent.admissionSeq)
+      ? intent.admissionSeq
+      : (previous?.sequence ?? 0),
+    commandId: intent.sourceCommandId,
+    persisted,
+  });
+  return persisted;
+}
+
 export function createTurnModel(
   runtime: AgentRuntimeInternal,
   options: {
@@ -45,7 +106,6 @@ export async function applySubmissionExecutionState(
   preparedModel?: Model,
 ): Promise<Model | undefined> {
   const selection = intent?.modelSelection;
-  const previousSelection = runtime.getSessionModelSelection();
   let model = preparedModel;
 
   if (selection) {
@@ -53,14 +113,15 @@ export async function applySubmissionExecutionState(
       selection,
       requestDependencies: modelExecution?.requestDependencies,
     });
+    await acceptSubmissionModelSelection(runtime, intent, traceContext, modelExecution);
     if (modelExecution?.selectionScope !== "execution") {
-      const appliedSelection = cloneModelSelection(selection);
-      runtime.setSessionModelSelection(appliedSelection);
-      await persistRuntimeModelSelection(runtime, appliedSelection);
-      if (!sameModelSelection(previousSelection, appliedSelection)) {
+      // ModelSelected 展示实际 Loop 的切换；接纳只保存意图，不提前创建可调用 Model。
+      const previousSelection = publishedSelections.get(runtime);
+      publishedSelections.set(runtime, cloneModelSelection(selection));
+      if (!sameModelSelection(previousSelection, selection)) {
         await runtime.emitModelSelected({
           model,
-          modelSelection: appliedSelection,
+          modelSelection: selection,
           effectiveReasoningLevel: model.options.reasoningLevel,
           previousModelSelection: previousSelection,
           supportedThoughtLevels: model.optionSpecs.reasoningLevel.values,

@@ -3,11 +3,11 @@
 ## 背景
 
 新版 New task 首页在 Chat composer 正下方增加「推荐提示词」入口。原有横向按钮组由
-`clientScenesService` 的 `draft-suggestion` scene 下发；主动任务推荐列表使用本地按功能维护的推荐池。
+本地 `featureSuggestedPrompts` 推荐池提供；主动任务推荐列表按面板轮换。
 
 ## 主动任务推荐
 
-- 本期主动任务推荐仅在办公模式显示。办公模式在 onboarding 第三步提供默认勾选的选项；编程模式不显示该选项，也不显示主动推荐列表，保留原有 Client Scenes 小型场景入口。设置页保留「主动任务推荐」开关，说明「仅在办公模式下支持」，编程模式下不可操作。即使旧设置里主动推荐为开启，编程模式也不能显示主动列表。
+- 本期主动任务推荐仅在办公模式显示。办公模式在 onboarding 第三步提供默认勾选的选项；编程模式不显示该选项，也不显示主动推荐列表，保留本地推荐池的小型场景入口。设置页保留「主动任务推荐」开关，说明「仅在办公模式下支持」，编程模式下不可操作。即使旧设置里主动推荐为开启，编程模式也不能显示主动列表。
 - 办公模式草稿输入框上方保留插件入口：缩略展示当前列表前三个插件图标，展开后仍列出这三个和其他插件；点击条目导航到现有插件市场，不在推荐功能中注入插件市场假数据。
 - 展示文案简短，不含 `[占位符]`；点击后填入的正文完整、可执行，可以用 `[目标对象]` 等占位符补充非必需信息。推荐任务不得以“如果当前仓库是某类项目”作为开始条件。
 - 每个可见面板展示三条。抽取时优先避免同屏重复图标与插件，并尽量避开其他分屏已显示的图标；候选不足时仍显示三条。“换一批”只重新分配当前面板，其他面板已展示的批次和插件确认锚点保持不变。轮换应让池内每条推荐在有限轮次内可达。关闭推荐复用既有设置和 onboarding record 回写。
@@ -20,11 +20,8 @@
 - 点击引用 Plugin 的推荐项时，等待目标 Host 的首次可信解析。首次本地检查仍可直接引用时不显示额外反馈，`ready` 时一次性写入结构化 Plugin 提及与 prompt；正文已有该插件引用时保留原位置，不重复前置，正文含多个插件时逐个解析为提及节点。首次检查发现不能直接引用时，当前推荐项的唯一 Plugin action Popover 立即进入 loading。其他结果或解析失败时
   一次性写入纯 prompt，避免先出现正文、稍后再跳入 chip 的两阶段更新。
 - 预填会**替换**现有草稿，不做追加或合并；用户仍可继续编辑后手动发送。
-- prompt item 的 `on_finish` 按英文逗号拆分、trim 并去重，再由显式 `switch` 白名单映射行为。
-  当前支持以下导航行为，命中后均终止本次 Composer 预填：
-  - `NAVIGATE:AUTOMATIONS`：复用 workspace 主导航打开 Automations。
-    `Idle-time` tab 实际存在时自动选中该 tab，否则保持 Automations 的默认 tab。若同一 item 同时声明
-    未知或空 action 不改变普通 prompt 的预填语义。
+- 推荐项的 `actions` 使用显式白名单。`NAVIGATE:AUTOMATIONS` 复用 workspace 主导航打开
+  Automations，结束本次预填；其他推荐项继续按 prompt 预填。
 - 手机 `/remote` 不承载 Automations；当页面没有 Automations 导航能力时，必须过滤声明了
   任一 Automations 导航 action 的推荐项，不得展示一个无效入口或绕过既有端侧边界。
 - 推荐项可以声明一个固定 Plugin stable ID。只有 Plugin 已启用且不存在同名冲突时，首次写入才在 prompt 前加入 canonical
@@ -57,24 +54,11 @@
 
 ```text
 点击推荐项
-  -> clientScenesService.list()
-  -> 找到 scene == "draft-suggestion" 的 options.prompts.items
-  -> 将 item.labels / item.contents 按当前 locale 解析为 label / prompt
-  -> item.on_finish 按 "," 拆分、trim、去重
-     -> 命中 NAVIGATE:AUTOMATIONS
-        -> 使更早的异步 Plugin 查询失效
-        -> 复用 onOpenAutomationsMain
-        -> 写入 workspace 导航历史并打开 Automations
-        -> 结束，不改写 Composer
-        -> 使更早的异步 Plugin 查询失效
-        -> 将 automationTab=idle 写入 renderer-local workspace 导航历史
-        -> 打开 Automations，等待 scheduled / idle tab 数据就绪
-        -> visibleTabs 包含 idle ------> 切换到 Idle-time 并消费 intent
-        -> visibleTabs 不包含 idle ---> 保持默认 tab 并消费 intent
-        -> 结束，不改写 Composer
-     -> 没有受支持 action
-        -> 继续 prompt 预填链路
-  -> 根据 item.defaults 的 option key + item id 反查 optional Plugin
+  -> getRecommendedPromptPool(isOfficeMode)
+  -> 主动列表使用 getRecommendedPromptsForPane 按面板轮换
+  -> 按当前 locale 解析 label / prompt
+  -> actions 命中 NAVIGATE:AUTOMATIONS 时打开 Automations，结束本次预填
+  -> 其他项继续读取本地推荐数据
   -> 读取 prompt / optional pluginStableId
   -> 无 Plugin -------------------------------> 立即一次性写入纯 prompt
   -> 有 Plugin -> 记录 Composer revision -> 订阅 operationId 进度 -> Agent 可信解析
@@ -122,13 +106,13 @@ operation A active
 <ConversationDraftSuggestedPrompts className="mt-6" onSelect={(item) => …} />
 ```
 
-| Prop                  | 说明                                                    |
-| --------------------- | ------------------------------------------------------- |
-| `className`           | 外层容器附加类名                                        |
-| `items`               | 从 `clientScenesService` 映射后的推荐项列表；默认空数组 |
-| `onSelect`            | 点击回调，参数为完整推荐项配置                          |
-| `disabled`            | 旧 operation 取消收敛期间禁用推荐项                     |
-| `pluginActionPopover` | 当前安装/开启 Popover 的锚点、阶段、文案与确认动作      |
+| Prop                  | 说明                                               |
+| --------------------- | -------------------------------------------------- |
+| `className`           | 外层容器附加类名                                   |
+| `items`               | 本地推荐池提供的推荐项列表；默认空数组             |
+| `onSelect`            | 点击回调，参数为完整推荐项配置                     |
+| `disabled`            | 旧 operation 取消收敛期间禁用推荐项                |
+| `pluginActionPopover` | 当前安装/开启 Popover 的锚点、阶段、文案与确认动作 |
 
 - 挂载点：`packages/ui/src/v4/SessionPane.tsx` 的 `conversationBottomDock` 中、`{composerNode}` 之后，
   仅草稿态（`isDraft`）渲染。草稿页按 `welcome -> composer -> suggested slot` 的顺序组织；Container
@@ -208,18 +192,18 @@ Service/cache authority 的多个推荐项或模板消费方不得重复请求�
 
 ## Impact Brief
 
-| 字段           | 结论                                                                                                                                                                                                                    |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Change layers  | `option-source`、`presentation`、`draft-default`、`validation`、`commit-effect`                                                                                                                                         |
-| UI surface     | New Task 草稿页 `ConversationDraftSuggestedPrompts`                                                                                                                                                                     |
-| Draft owner    | renderer-local Composer draft / workspace-scoped insert request                                                                                                                                                         |
-| Option source  | `clientScenesService.list()` → `draft-suggestion.options.prompts.items`                                                                                                                                                 |
-| Validation     | Client Scenes 映射边界 + 目标 Host `plugins/resolveSuggestedReference` 可信解析                                                                                                                                         |
-| Commit sink    | `requestComposerTextInsert`；不调用 `onSendText`                                                                                                                                                                        |
-| Persistence    | 既有 V4 Composer draft persistence                                                                                                                                                                                      |
-| Graph evidence | `capability.plugin-reference` + 新增 suggested-prompts surface；当前环境无 codegraph，使用 feature graph seeds 与 depth-2 精确调用点核对                                                                                |
+| 字段           | 结论                                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Change layers  | `option-source`、`presentation`、`draft-default`、`validation`、`commit-effect`                                                          |
+| UI surface     | New Task 草稿页 `ConversationDraftSuggestedPrompts`                                                                                      |
+| Draft owner    | renderer-local Composer draft / workspace-scoped insert request                                                                          |
+| Option source  | `getRecommendedPromptPool` / `getRecommendedPromptsForPane`                                                                              |
+| Validation     | 本地推荐项结构 + 目标 Host `plugins/resolveSuggestedReference` 可信解析                                                                  |
+| Commit sink    | `requestComposerTextInsert`；不调用 `onSendText`                                                                                         |
+| Persistence    | 既有 V4 Composer draft persistence                                                                                                       |
+| Graph evidence | `capability.plugin-reference` + 新增 suggested-prompts surface；当前环境无 codegraph，使用 feature graph seeds 与 depth-2 精确调用点核对 |
 
-组件继续作为纯展示和点击入口；服务端配置只提供候选与 capability hint，UI 只消费目标 Host 的可信解析结果，
+组件继续作为纯展示和点击入口；本地推荐池提供候选与 capability hint，UI 只消费目标 Host 的可信解析结果，
 不再读取 workspace catalog，并保持单行标题、隐藏 Plugin 引用、替换草稿且不自动发送的既有契约。
 
 ## Prompt 模板点击埋点
@@ -227,14 +211,14 @@ Service/cache authority 的多个推荐项或模板消费方不得重复请求�
 `reportAppTelemetryEvent()` 上报一次产品埋点。Web 和手机远控本轮只保留既有 UI 行为，不调用该埋点；
 两端真实上报链路后续单独补齐。事件固定为：
 
-| 字段 | 值 / 口径 |
-| --- | --- |
-| `elementName` | `prompt_template_ck` |
-| `eventRegion` | `app.session` |
-| `eventType` | `ck` |
-| `eventText` | 当前界面语言下用户实际看到的模板名称 |
-| `eventExtraDetail.template_id` | Client Scenes prompt item 的 `item.id`，作为跨语言和改名稳定的统计维度 |
-| `eventExtraDetail.template_prompt` | 当前界面语言解析后的完整 Prompt；不包含用户后续编辑内容 |
+| 字段                               | 值 / 口径                                                              |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| `elementName`                      | `prompt_template_ck`                                                   |
+| `eventRegion`                      | `app.session`                                                          |
+| `eventType`                        | `ck`                                                                   |
+| `eventText`                        | 当前界面语言下用户实际看到的模板名称                                   |
+| `eventExtraDetail.template_id`     | Client Scenes prompt item 的 `item.id`，作为跨语言和改名稳定的统计维度 |
+| `eventExtraDetail.template_prompt` | 当前界面语言解析后的完整 Prompt；不包含用户后续编辑内容                |
 
 `eventExtraDetail` 严格只包含 `template_id` 和 `template_prompt`，不上传 `template_name`、
 `template_action`、`talkId` 或 `messageId`。点击埋点在点击处理开始时触发，并与异步 Plugin 操作、导航

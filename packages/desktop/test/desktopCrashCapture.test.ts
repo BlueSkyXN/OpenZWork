@@ -1,7 +1,7 @@
 import { access, mkdir, mkdtemp, readFile, readdir, rm, utimes, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   archiveCrashDumps,
   resolveProcessGoneLogLevel,
@@ -9,6 +9,9 @@ import {
   type CrashCapturePaths,
 } from "../src/main/desktopCrashCapture.js";
 import { buildCrashDumpFixture, CODE_SPACE_OOM_ANNOTATIONS } from "./crashDumpFixture.js";
+
+// 测试通过参数提供平台状态，避免纯逻辑回归依赖本机 Electron 安装。
+vi.mock("electron", () => ({ app: {}, crashReporter: {} }));
 
 describe("desktopCrashCapture", () => {
   const tempDirs: string[] = [];

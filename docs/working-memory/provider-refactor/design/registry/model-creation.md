@@ -123,57 +123,11 @@ Provider Request
 API Key 是静态 Config 字段。缺少 Key 的 Effective Provider 不完整，不进入 Registry。Settings 可以展示
 问题并补齐；测试连接使用保存后的正式 Model。
 
-### zhipu-account
-
-```text
-ZCode Built-in Provider Config
-└─ access.type = zhipu-account
-   └─ family + mode
-        |
-        v
-ModelFactory 固定静态账号访问类别
-        |
-        v
-每个 request attempt
-        |
-        v
-Account Request Auth Service(current compatible connection)
-        |
-        v
-ModelRequestAuth { apiKey, headers }
-```
 
 Access 显式保存调用装配所需的 Family 和 Mode。账号身份、商品和 Team scope 由 Account Connection
 Service 拥有；每个 attempt 根据静态类别解析当前兼容连接。切换到不兼容的 Family/Plan 或退出账号时在
 网络前失败；同一 Family/Plan 的当前连接和刷新后的凭据可以被旧 Active Model 使用。
 
-Start Plan、Individual Coding Plan 和 Team Plan 可以共享 Account Provider 基础设施，但分别对应固定类型
-的独立 Built-in Provider。Account Built-in Overlay 只为当前账号投影 `access.entitled`。Account Service
-决定如何取得请求材料；服务端决定最终是否授权。
-
-Provider 顶层不存在 `enabled`；账号套餐资格通过 `zhipu-account.entitled` 表达。Start Plan 还可以用账号接口返回的
-非空 `builtinModelIds` 约束成员；Individual/Team 继承 Built-in 成员。任何这类
-Account Overlay 必须与产生它的 ZCode Built-in revision 匹配后，才允许 Registry 创建后续 Model。
-
-
-```text
-Provider Config
-└─ access.type = zhipu-account
-        |
-        v
-ModelFactory 创建普通 Model
-        |
-        v
-每个 Model request attempt
-        |
-        v
-ModelRequestDependencies.requestAuth.resolve()
-        |
-        +-- Request Auth present -> Adapter request
-        `-- missing              -> typed auth error before network
-```
-
-`zhipu-account` Mode 由 Account Request Auth Service 在调用时解析。
 
 Request Auth 是执行作用域内、按 request attempt 读取的依赖：
 
@@ -192,45 +146,6 @@ ModelRequest / Adapter options      -> protocol request fields
 
 Adapter 按固定优先级合并并保护鉴权字段。Renderer、Core 业务逻辑和 Model Config Rules 不拼 JWT、Ticket、
 一次性安全校验、organization/project 或 Provider 方言 Header。
-
-## 闲时任务
-
-Scheduler 按当前账号 Family 精确选择其中一个，Provider 本身不在执行期切换 Family：
-
-```text
-ProviderConfig
-├─ visibility = hidden
-├─ access.type = zhipu-account
-├─ api.type
-├─ api.baseURL
-├─ static headers（如有）
-└─ builtinModelIds
-
-Model Config Rules
-└─ properties / optionSpecs（含 per-option raw-body map）
-```
-
-Host/Scheduler 派发普通 ModelSelection，并为本次自动 Turn 提供 Request Auth、Ticket 和必要归因。它不
-携带 Provider/Model 静态快照，也不建立临时 Provider Source：
-
-```text
-Core Submission
-├─ idle ModelSelection
-└─ execution context
-   ├─ Request Auth
-   └─ optional Subagent override
-            |
-            v
-Registry lookup + ModelFactory
-            | 装配本轮 requestAuth source
-            |
-            v
-Idle Active Model
-```
-
-Request Auth/Ticket 只对当前有效派发生效。Ticket 过期、取消、失败、成功、抢占或进程重启后，Scheduler
-结束当前执行上下文；重新取票后用新的 Submission 创建新 Model。任务排队、续跑和 settle 不属于
-Provider/Registry。
 
 ## Active Model
 

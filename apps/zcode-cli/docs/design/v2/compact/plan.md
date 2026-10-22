@@ -207,8 +207,6 @@ active context 的裁剪、summary 生成、boundary 持久化和 resume/replay 
   原地重试仍然 context overflow 时直接抛出 `model_context_exceeded`，避免无限重试；只有同一
   product turn 的完整 sibling tool result batch 全部终态、持久化并完成 guide drain 后，才进入下一个
   model step 并重新开放一次 reactive compact。
-- no-tool stream recovery、Start Plan admission retry、Stop hook continuation、compact skipped/failed、
-  部分或中止的 tool batch 都不构成 guard 重置边界。
 - 只有实际写入 compact boundary 的成功 compact 才更新快速回填 tracker；健康 no-op 的
   `skipped` 不重置 `toolTurnsSinceCompact`，也不计入连续快速回填。
 - auto/reactive compact 共用当前 product turn 的快速回填跟踪：每次 compact 成功后从 0 统计完整

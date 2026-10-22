@@ -29,26 +29,14 @@ CR-01 修复边界：基于 Reviewer 的 5cad9f6028 快照，仅调整 SectionLa
 
 ## 2026-07-02 Provider family 与连接方式分层
 
-- 左侧导航只负责选择 provider family 或自定义 provider。Z.ai / BigModel 在左侧各自只占一个入口，不随 Start Plan、个人 Coding Plan 或团队 Coding Plan 数量变化。
-- Start Plan、个人 Coding Plan、团队 Coding Plan 和 API Key 是同一个 provider family 下的连接方式，只在右侧详情顶部的“连接方式”菜单中切换。
-- 团队 Coding Plan 可以有多个，全部作为“连接方式”菜单项展示，不生成多个左侧导航节点。
 - `selectedNodeKey` 只表示左侧导航节点；当前右侧详情项由 `selectedNodeKey` 对应 family 的连接方式设置和已保存连接方式 key 派生。
 - WelcomeScreen 初始选中会先选中对应 family，再按入口意图选择右侧连接方式。
 
-## 2026-08-15 Team Plan API Key 不可用提示
-
-- Team Plan 连接项的可用性以企业套餐返回的团队项目 API Key 预热结果为准。
-- 当团队项目 API Key 预热失败且服务端返回 `apiKeyUnavailableMessage` 时，右侧状态卡应优先展示该服务端文案，例如 `您当前暂无有效的团队套餐授权记录，无法创建API Key`。
-- 没有服务端文案时，继续回退到本地固定文案 `团队套餐未分配，请联系团队管理员。`。
-- 该文案只影响状态卡的不可用说明，不改变 Team Plan 连接键、provider family、用量查询和 runtime key 投影语义。
-
 ## 2026-09-17 个人与团队权益来源
 
-- 个人 Coding Plan 使用个人 API Key 请求 `GET /api/biz/subscription/list`，识别 Coding 订阅且同时满足 `status=VALID`、`inCurrentPeriod=true` 才判有权益。缺 Key、被采用的 Coding 条目字段缺失或请求失败保持未知；成功返回空数组为无权益。订阅列表按条目解析，无关或不可识别条目不遮蔽有效 Coding Plan；存在有效条目即确认权益。没有有效条目且疑似 Coding 条目损坏时保持未知，其余为无权益。
 - 团队入口来自 `GET /api/biz/customer/getCustomerInfo` 的组织/项目成员关系，不能由项目存在、active 或 pricing 的客户端补值推断权益。
 - 团队使用业务 access token 携带 `bigmodel-organization`、`bigmodel-project` 请求 `GET /api/biz/team/subscribe/product/querySubscribeDetail`。`hasSubscription=true`、`status=EFFECTIVE`、`memberGrantStatus=VALID` 同时成立才有权益；`hasSubscription=false`、`EXPIRED` 或 `EFFECTIVE + UNASSIGNED` 为无权益，分别保留未开通、过期或未分配语义；其他未验证状态、缺失字段保持未知。
 - BigModel 上述有效响应已于 2026-09-17 用生产账号验证。Z.ai 保持 family 域名和 Bearer 鉴权隔离，未支持接口或未识别响应保持未知，不能回退 quota 猜权益。
-- `includeSubscription` 保留兼容参数，但 Coding Plan 快照始终查询并返回订阅摘要，轻量入口也不能仅凭额度判权益。
 - 个人和团队的 `quota/limit`（包括 `type=2`）只负责额度/用量展示。额度为零、缺 data、业务失败或传输异常，都不能生成或撤销订阅。用量快照不得从 quota level 构造订阅，也不得给团队附上个人订阅。
 - 权益、调用凭据就绪和用量可用是三个独立事实；团队查询无需创建/复制 API Key。个人缺 Key 不能当成无权益，团队获取调用 Key 失败不撤销已确认权益。
 - 权益 owner 沿用现有 Account 连接服务与请求身份校验，不新增缓存；既有用量缓存升级命名空间，忽略旧版由 quota 合成的订阅。个人与团队独立查询，不因 quota 或刷新失败切换当前连接。
@@ -91,7 +79,6 @@ CR-01 修复边界：基于 Reviewer 的 5cad9f6028 快照，仅调整 SectionLa
 
 ## 2026-06-13 Plan Card 窄窗口响应
 
-- 右侧 Coding Plan / Start Plan 卡片在 `sm` 以下允许从横向布局切换为纵向布局，主信息、状态和操作按钮不再互相挤压。
 - 已开通套餐的用量摘要卡在宽屏保持横向并列；`sm` 以下改为纵向堆叠，保留每张卡的标题、模型说明、百分比和进度条。
 - 套餐购买卡的价格信息和购买按钮在 `sm` 以下上下排列，按钮宽度跟随容器，避免长文案或本地化文本撑破卡片。
 
@@ -131,16 +118,16 @@ CR-01 修复边界：基于 Reviewer 的 5cad9f6028 快照，仅调整 SectionLa
 
 个人和团队明确无权益时隐藏详情中的模型列表（含添加、编辑、测试和开关），保留模型设置页面入口、套餐状态卡和既有 banner，不删除已保存配置。个人 `notPurchased`、团队 `not-allocated` / `expired` 属于明确无权益；查询中、查询失败、取 Key 失败不能推断无权益，继续保留已有模型配置展示。套餐卡和既有 banner 规则保持不变。验收覆盖有权益、无权益、失败和查询中，以及无 Effective Provider 的无权益状态。
 
-Start Plan 详情不显示体验套餐推广 banner（包括未登录、无权益状态），保留顶部套餐状态卡和既有个人套餐 banner；个人/团队未连接时同样不显示体验套餐推广 banner，并隐藏模型列表；保留连接状态卡、个人/团队套餐 banner，不删除配置。
+
 
 BigModel 已登录但个人套餐未开通时，购买区同时展示静态目录中的个人与团队套餐 banner。团队历史订阅标记不隐藏团队购买入口；价格仍来自静态目录商品，不伪造商品或价格。
 
-Start Plan 有效期兜底：共享 balance 读取以 HTTP Date 为本次响应时间，缺失时使用有效 JSON server_time，再缺失才使用本机时间；已到 ends_at 的 active 套餐规范为 expired，并剔除仅归属过期套餐的余额桶。权益校验和用量快照消费相同结果。无有效套餐且存在过期套餐时，快照携带 startPlanExpired，UI 显示“体验套餐已过期”、隐藏余额和模型列表，保留既有升级/购买入口。多套餐中有效套餐仍展示；缺失/非法结束时间不擅自判过期。
 
-Start Plan 详情的购买 banner 还需检查同一账号平台的个人/团队有效权益：存在 status=purchased 的个人或团队连接时，隐藏个人与团队购买 banner，仍显示 Start 过期状态。历史 subscribed、过期、未分配、查询失败和其他平台权益均不能触发隐藏；个人/团队自身详情的购买规则不变。
 
-同平台已有有效个人或团队套餐时，Start Plan 卡片的“升级 · 150% 配额”按钮及其活动说明一并隐藏，复用购买 banner 的有效权益判断。有效/待生效 Start 多卡的余额与模型列表保持原展示；个人/团队详情自己的升级动作不变。
 
-设置页左侧智谱导航恢复品牌命名：BigModel / Z.ai，独立体验入口显示 Start Plan；中英文界面均保持这些名称。图标、状态点、导航 key、连接方式及右侧供应商品牌标题不变。
+
+
+
+
 
 团队连接的设置页匹配身份为平台、组织和项目。保存的商品 ID 与订阅接口当前商品 ID 不同时，同组织/项目仍保持选中；初始化权益快照和后续商品列表均不得因此显示“连接不可用”或空选项。商品 ID 继续作为套餐元数据，展示匹配不写回选择、不改变请求鉴权或执行资格；不同平台、组织、项目保持隔离。

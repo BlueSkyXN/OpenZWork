@@ -1,23 +1,9 @@
 # 07 Account Connection 选择与 Access 上下文收口
 
-> 状态：已完成
->
-> 日期：2026-08-24
->
-> 来源审查：[`../provider-implementation-architecture-conformance-review.md`](../provider-implementation-architecture-conformance-review.md)
->
-> 目标设计：[`../design/registry/configuration.md`](../design/registry/configuration.md)、
-> [`../design/registry/runtime.md`](../design/registry/runtime.md)、
-> [`../design/registry/model-creation.md`](../design/registry/model-creation.md)
->
-> 前置：[`todo-03-provider-model-ownership-and-property-totality.md`](./todo-03-provider-model-ownership-and-property-totality.md)
-> 先建立唯一 Registry 完整类型边界；本任务原位加强 `zhipu-account` 的结构化 Access 与完整性。
+
 
 ## 0. 实际交付
 
-- Settings 已只保存 `providerFamilyConnectionSelections`；旧 mode/selected-key 双状态退出正式生产链；
-- Start、Individual、Team 由 Built-in Provider 自己声明固定 `family + planKind`，Account Resolver 按结构化
-  selection 产生完整 Account Overlay，不维护 Provider ID 到套餐的运行时对照表；
 - enabled Account Provider 的完整 Access 被固定进 Registry/Active Model，请求鉴权只消费该结构，
   `accessId` 对消费方保持 opaque；
 - Account accessId、credential 缓存、账号切换失效和 Team scope 由同一 Credential/Auth 链处理；
@@ -29,55 +15,11 @@
 把 Provider Family 的用户连接选择、Account Connection 事实、Account Built-in Provider Config 和请求期
 鉴权收敛成一条结构化链路，删除 `selectedConnectionKey` 和 `accessId` 字符串解析形成的隐式协议。
 
-```text
-当前
-
-AppSettings
-├─ modelProviderFamilyModes[family]
-└─ modelProviderFamilySelectedKeys[family]
-          |
-          | preset:/coding-plan:/team-plan: 字符串
-          +--------------------+----------------------+------------------+
-          |                    |                      |                  |
-          v                    v                      v                  v
-          |                    |                      |                  |
-          `-------- 各自 parse / match / rebase / startsWith -----------'
-                               |
-                               v
-                  scoped accessId 再次编码账号身份
-
-目标
-
-AppSettings.providerFamilyConnectionSelections
-          |
-          | 结构化用户选择意图
-          v
-Account Connection Resolver
-├─ current account（内部事实）
-├─ entitlement / availability
-└─ selected structured connection
-          |
-          v
-Account Connection Result
-├─ status
-├─ resolved access { family, planKind, Team scope?, opaque accessId }
-└─ models?
-          |
-          v
-Account Built-in Provider Config
-          |
-          +--> Registry / Model 固定 Account Access
-          +--> Request Auth
-          `--> Official MCP
-```
-
 本任务不是给 `selectedConnectionKey` 改名，也不是把当前字符串 parser 集中到另一个 helper。目标是让
 Settings 只保存结构化选择意图，让 Account Connection Resolver 成为唯一解释者，并让执行消费方直接读取
 Provider Config 中已经解析完成的 Account Access。
 
-Todo 03 不提前实现本任务的结构化账号 Access，也不创建临时 Account Access DTO。Todo 03 的
-`RegistryProviderConfig` 先按当时已经存在的 Access Schema 收窄；本任务修改 `ZhipuAccountAccessConfig`
-时，同步扩充同一个 `CompleteProviderAccessConfig`、`requireComplete` 和完整序列化契约。
+
 
 ## 2. 已确认裁决
 
@@ -90,27 +32,6 @@ Todo 03 不提前实现本任务的结构化账号 Access，也不创建临时 A
 
 替换为：
 
-```ts
-type ProviderFamilyConnectionSelection =
-  | { kind: "api-key"; providerId: string }
-  | { kind: "start-plan" }
-  | { kind: "individual-coding-plan" }
-  | {
-      kind: "team-coding-plan";
-      productId: string;
-      organizationId: string;
-      projectId: string;
-    };
-
-interface AppSettings {
-  providerFamilyConnectionSelections?: Partial<
-    Record<ProviderFamilyDomain, ProviderFamilyConnectionSelection>
-  >;
-}
-```
-
-`kind` 已经包含 API Key/OAuth 与具体套餐形态，不再维护独立 mode。`providerFamilyDomain` 继续表达当前激活
-的 Provider Family，不在本任务中删除或合并。
 
 Account Plan 选择不保存 Built-in Provider ID，也不从 Built-in Provider ID 推断套餐。外层 Family、`kind`
 和 Team Scope 是 Account Connection Resolver 查找连接的结构化输入；API Key 选择保留用户实际选择的
@@ -118,19 +39,14 @@ Provider ID。当前登录账号由 Account Connection Service 内部参与解�
 
 ### 2.2 Start、Individual 与 Team 是独立 Built-in Provider
 
-同一 Family 的 Start Plan、Individual Coding Plan、Team Coding Plan 分别定义为独立 ZCode Built-in
-Provider。每个 Provider 的 `access.family` 和 `access.planKind` 固定，不允许一个 Coding Plan Provider
-在运行时于 Individual 与 Team 之间变形。
 
-正常 Settings 流程在同一 Family 的互斥账号连接中只选择一个；Account Built-in Overlay 只为匹配
-`family + planKind` 的 Provider 补齐 Access 并设为 enabled，其余账号 Provider 设为 disabled。Resolver
-扫描 Built-in Provider 自己声明的 Access，不维护 Start/Individual/Team Built-in Provider ID 对照表。
+
+
 
 Individual 与 Team 可以声明相同的模型 ID；Registry 身份仍是 `providerId + modelId`。正常选择流程只有
 一个 Provider enabled，所以 Selection 只出现当前连接下的模型。用户手工通过 Personal Config 启用多个
 Provider 时遵循普通 Config 语义，不增加来源权限校验。
 
-目标 Built-in 身份使用明确名称，不保留“一个 Coding Plan Provider 同时代表两种 Plan”的正式语义：
 
 ```text
 builtin:zai-start-plan
@@ -151,48 +67,9 @@ builtin:bigmodel-team-coding-plan
 Account Connection Resolver 读取当前 Family、结构化选择、登录账号身份、权益、Credential Port 和 Plan
 API，输出按 Provider 区分的结果：
 
-```ts
-type AccountProviderConnectionResult =
-  | {
-      providerId: string;
-      status: "available";
-      access: CompleteZhipuAccountAccessConfig;
-      models?: readonly string[];
-    }
-  | {
-      providerId: string;
-      status: "unavailable";
-    };
-```
-
-
 ### 2.4 Provider Config 固定结构化 Account Access
 
-`zhipu-account` Access 目标结构：
 
-```ts
-type ZhipuAccountAccessConfig =
-  | {
-      type: "zhipu-account";
-      accessId?: string | null;
-      family: "zai" | "bigmodel";
-      planKind: "start-plan" | "individual-coding-plan";
-    }
-  | {
-      type: "zhipu-account";
-      accessId?: string | null;
-      planKind: "team-coding-plan";
-      family: "zai" | "bigmodel";
-      productId?: string | null;
-      organizationId?: string | null;
-      projectId?: string | null;
-    };
-```
-
-ZCode Built-in Provider Config 先声明固定 `family + planKind`；Team 的具体 Scope 和所有 Plan 的
-`accessId` 可以缺省。Account Connection Resolver 使用这些字段与 Settings 选择、当前账号和权益查找连接；
-Account Built-in Provider Config 整体替换为同一 Plan 的完整 Access。Registry 要求 enabled Account
-Provider 的 `accessId` 非空，Team 还要求完整 Scope。
 
 Account Built-in Provider Config 是 Provider/Model 执行所需的不可变快照。`accessId` 是稳定、非敏感的
 连接身份，但消费方必须把它当作 opaque value，不能从中识别 Plan、Family、Team Scope 或账号身份。
@@ -291,16 +168,13 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 
 - 为 API Key、Start、Individual、Team project 选择和重启恢复先写失败测试；
 - 在 Shared 定义结构化 selection 与严格 Schema；
-- AppSettings 改为单一 `providerFamilyConnectionSelections`；
 - Provider Settings pending state、保存、OAuth 回调恢复和默认初始化一次提交完整 selection；
-- `providerFamilyDomain` 保持独立。
+
 
 ### Step B：Account Connection 与 Provider Access
 
 - 为每个 Family 分别定义 Start、Individual、Team Built-in Provider；删除 Individual/Team 共用 Provider；
-- 每个 Provider 固定声明 `access.family + access.planKind`，Team Effective Access 额外携带完整 Scope；
 - Account Resolver 按结构化 Access 和 selection 查找连接，不维护 Built-in Provider ID 对照表；
-- `AccountProviderConnectionResult.available` 返回完整 `ZhipuAccountAccessConfig`；
 - Account Connection Service 内部使用当前账号生成和失效 opaque accessId，不把 accountIdentity 投影进 Config；
 - Account Built-in Config 为选中 Provider 整体投影完整 Access、可选 builtinModelIds 和 enabled=true；同一互斥范围的其他 Account Provider 投影 enabled=false；
 - Account Resolver 成功时原子发布整份结果；外部依赖失败时由 Service 保留整份上一版 Snapshot，不做局部 LKG；
@@ -310,7 +184,6 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 
 ### Step C：Request Auth 与消费方收口
 
-- Request Auth 按 `family + planKind` 选择鉴权流程，按 opaque accessId 取得对应动态材料；
 - Team Key/Header 使用 Access 中的明确 Scope，不解析 accessId；
 - 删除 Request Auth 和 Account Resolver 中 Family/Plan 到 Built-in Provider ID 的硬编码映射；
 - Usage、Entitlement、Reset、Sidebar 和 Provider Settings 使用 Account Connection View；
@@ -351,13 +224,12 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 5. OAuth 回调只更新目标 Family，其他 Family selection 不变；
 6. Settings mount 不覆盖仍有效的已保存 selection；
 7. 用户切换连接一次写入，不出现 mode/key 半更新状态。
-8. 旧通用 Coding Plan Provider ID 根据明确 selection 迁移到 Individual 或 Team；歧义输入不猜测或双写。
+
 
 ### 6.2 Account Provider 与 Registry
 
 1. Start、Individual、Team 各自对应独立 Built-in Provider，Plan 类型不会运行时变形；
 2. Team 额外产生完整 product/organization/project；
-3. Resolver 可以根据结构化 family/planKind/Team Scope 查得 accessId，无 Built-in Provider ID 对照表；
 4. 正常选择 Individual 时仅 Individual Provider enabled，选择 Team 时仅 Team Provider enabled；
 5. Token/Runtime Key 刷新不改变 Account Access；账号或 Team project 切换产生新 Access；
 6. Account 刷新成功时整体发布，任一外部依赖失败时整份上一版 Snapshot 保持不变；
@@ -407,18 +279,6 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 ## 8. 完成条件
 
 机械归零：
-
-```text
-AppSettings.modelProviderFamilyModes                                   = 0
-AppSettings.modelProviderFamilySelectedKeys                            = 0
-生产领域/协议中的 selectedConnectionKey                                = 0
-Task/Session/Repo Wiki/workspace prepare 的 family selected keys 透传   = 0
-业务代码 create/parse/matches Team/Coding/Preset connection key         = 0
-Account Resolver / Request Auth 的 Built-in Provider ID 套餐映射          = 0
-正式 Config/Registry 中的旧通用 builtin:*-coding-plan Provider ID          = 0
-provider.accessId !== selection.selectedConnectionKey                  = 0
-enabled zhipu-account 缺少完整 family/planKind/accessId/Team Scope      = 0
-```
 
 通用 Select 组件内部仅用于 React option identity 的局部 `key` 不在归零范围；禁止的是把字符串 key 作为跨
 Settings、Services、Protocol、Runtime 的账号连接协议。

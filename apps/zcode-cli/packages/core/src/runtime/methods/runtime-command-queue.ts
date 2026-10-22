@@ -12,6 +12,7 @@ import { createTurnCancelledError } from "../helpers/index.js";
 import { executeTargetContinuationCommand } from "./target.js";
 import { runActiveTargetContinuationLoop } from "./target-continuation-loop.js";
 import { isStaleBranchRuntimeCommand } from "./runtime-command-generation.js";
+import { noteWorkflowReminderCommandStarted } from "./dynamic-workflow-blocked-reminder.js";
 import type {
   AcquireForegroundPromotionLeaseResult,
   ActiveForegroundExecutionState,
@@ -44,6 +45,7 @@ export async function drainRuntimeCommandQueue(this: AgentRuntimeInternal): Prom
     while ((commands = dequeueNextRunnableBatch.call(this)).length > 0) {
       const firstCommand = commands[0];
       if (!firstCommand) continue;
+      noteWorkflowReminderCommandStarted(this, firstCommand);
       if (firstCommand.mode === "task-notification") {
         const notificationCommands = commands.filter(
           (command): command is TaskNotificationRuntimeCommand =>
@@ -66,7 +68,11 @@ export async function drainRuntimeCommandQueue(this: AgentRuntimeInternal): Prom
 
   if (this.runtimeCommandQueue.hasPending() && this.foregroundPromotionLease === undefined) {
     await this.drainRuntimeCommandQueue();
+    return;
   }
+  // 空闲沿：队列排空，且没有任何在跑 / 排着 / 预留的回合（持着晋升租约、或 prompt 已预留未入队时不算，
+  // 那一轮自己排空时会再走到这里）。「run 还欠着决定」的提醒钟从这里起算。
+  if (!hasActiveOrQueuedTurnWork.call(this)) this.workflowBlockedReminder?.sessionIdle();
 }
 
 function dequeueNextRunnableBatch(this: AgentRuntimeInternal): readonly RuntimeCommand[] {

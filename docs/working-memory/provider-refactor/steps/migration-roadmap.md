@@ -146,23 +146,6 @@ M3 以一次大 MR 完成。阶段内按 Config/Registry、Submission、CLI admi
 Service、Settings UI、Connectivity、Model Format 和清理测试分区评审；最终没有让任一分区以长期双轨
 语义单独收尾。
 
-## M4：模型执行链、闲时任务与 Subagent
-
-正式阶段设计见 [`04-model-execution-cutover.md`](./04-model-execution-cutover.md)，长期目标语义见
-[`../design/execution/execution.md`](../design/execution/execution.md)。
-
-M4 不新增特殊 Model 类型，而是把闲时任务收口到普通模型执行链：
-
-- Provider 使用 `access.type = "request-auth"`，动态鉴权在每次请求上注入，缺失时在网络请求前失败。
-- 闲时 Submission 携带标准 ModelSelection 和窄 execution context，通过同一 Registry/ModelFactory 创建 Model。
-- 闲时执行不写 App Recent、Configured Default、Session Selection 或普通 Queue，因此没有恢复步骤。
-- 权限批准或拒绝后，同一自动回合继续使用闲时 Provider，不发生 Provider handoff。
-- 闲时前台 Child Agent 使用闲时选择与访问上下文并自行创建 Model；后台 Child Agent 被明确拒绝。
-- 普通 Subagent override、Goal、Background、Guide 与 Compact 保持各自既有 Selection 所有权。
-
-M4 删除未发布的 `executionOnly`、Runtime Provider Overlay 和临时 `setModel`；不建立特殊 Model 创建
-接口、第二份模型绑定或第二个 Registry。
-
 ## M5：Config 存储边界与 Built-in 装配
 
 Provider Refactor 已完成单个 Environment 内配置的物理存储边界和 Built-in 装配：
@@ -181,10 +164,9 @@ Provider Refactor 已完成单个 Environment 内配置的物理存储边界和 
 
 静态与动态边界见 [`../design/environment/environment.md`](../design/environment/environment.md) 和 [`../design/registry/model-creation.md`](../design/registry/model-creation.md)。
 
-本次重构已经完成 Start Plan、Individual Coding Plan 和 Team Plan 的身份与执行状态链：
+
 
 - Settings 保存结构化 connection selection；
-- Account Resolver 按 Built-in Provider 声明的 `family + planKind` 产生 Account Overlay；
 - Registry/Active Model 固定完整 Account Access；
 - Request Auth 在每次请求解析动态材料，并校验当前账号仍与 Access 匹配；
 - Account API 返回的模型成员只约束对应 Account Provider，不成为独立 Model Config 事实源。

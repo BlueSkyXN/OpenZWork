@@ -25,7 +25,6 @@ local services ready, all channels registered
 检查发现有一些原有代码的类型错误（非我们新增代码）：
 - `src/hooks/taskStreamEventHandlers.ts` 中有多处类型错误
 
-### 2. 浏览器缓存问题
 
 ## 解决方案
 

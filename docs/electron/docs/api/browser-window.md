@@ -1235,9 +1235,7 @@ bar will become gray when set to `true`.
 
 Returns `boolean` - Whether the window's document has been edited.
 
-#### `win.focusOnWebView()`
 
-#### `win.blurWebView()`
 
 #### `win.capturePage([rect, opts])`
 

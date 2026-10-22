@@ -359,4 +359,3 @@ export const config = {
     ]
 }
 ```
-

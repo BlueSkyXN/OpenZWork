@@ -78,7 +78,6 @@ Persist + Registry @ revision R2
 
 | 编号 | 当前问题                                                                                           | 目标状态                                                                         |
 | ---- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| G1   | `accessId` 同时进入 Account Overlay、Provider Config、Protocol、Credential key、Request Auth 和 UI | 由 Todo 24 删除；账号服务按静态 family/planKind 解析当前兼容连接                 |
 | G2   | `ForkModelRef { providerId, modelId, variant }` 是旧 `ModelRef` 的同形别名                         | 后续执行意图直接使用 `ModelSelection`，`variant` 退出                            |
 | G3   | `formatModelSelection()` 不能保存 `maxOutputTokens`，字符串仍被当作可逆领域格式                    | 状态、协议和持久化只传结构化 `ModelSelection`；字符串只作为 Picker/Legacy 边界值 |
 | G4   | Model 编辑提交后立即关闭，rename 与 config save 是两次 Mutation                                    | 完整 Draft 通过一次原子 Host Mutation 提交，Registry 观察成功后关闭              |
@@ -93,9 +92,7 @@ Persist + Registry @ revision R2
 本 Todo 最初提出的账号连接版本与旧 Active Model 失效设计已经撤销。Access 的唯一当前契约见
 Todo 24（该文档只在官方版本保留），要点如下：
 
-- Built-in 固定 `family + planKind`；Account Overlay 只投影 `enabled` 和 Start 账号模型成员；
 - 当前账号、商品、Team scope 与动态凭据由账号服务管理，每个请求按当前兼容连接解析；
-- 不保存账号连接 ID 或连接版本，也不因同一 `family + planKind` 下账号变化使旧 Active Model 人工失效；
 - Local、Remote 与 Standalone 各自使用所在 Environment 的账号服务，缺少兼容连接时在网络前失败。
 
 ## 3. ModelSelection 与 `ModelRef` 机械归零
@@ -299,7 +296,6 @@ Model Config Schema、Overlay、Resolver、Registry、Runtime、Built-in Config�
 | Capability       | Provider Registry、Account Request Auth、Model Selection、Provider Settings                                                           |
 | Change layer     | `draft-default`、`validation`、`commit-effect`、`persistence`、`presentation`                                                         |
 | Operating mode   | planning / implementation handoff                                                                                                     |
-| Primary seeds    | `ZhipuAccountAccessConfig`、`AccountProviderCredentialService`、`ForkModelRef`、`formatModelSelection`、`ProviderModelMetadataDialog` |
 | Out of scope     | Provider 扩容、Telemetry 重构、Conversation recovery、Client Config 公共服务                                                          |
 
 ### 7.2 UI Surface Matrix
@@ -338,7 +334,6 @@ Model Config Schema、Overlay、Resolver、Registry、Runtime、Built-in Config�
 ### 7.5 必须保持的不变量
 
 1. 账号类型 Provider Config 不保存凭据或账号身份；API Access 仍可直接保存用户填写的 API Key；
-2. 切换/退出账号后，旧 Active Model 只可使用当前兼容 family/planKind 的连接，否则网络前失败；
 3. Local 与 Remote Environment 各自解析 Provider Registry、账号连接和请求凭据；
 4. `ModelSelection` 只保存显式选择意图，缺省 option 继续由 ModelFactory 解析；
 5. Model 编辑取消不写配置，失败不关闭弹窗，成功只发布一个最终 revision；

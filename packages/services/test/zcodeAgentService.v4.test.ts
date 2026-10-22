@@ -1,3 +1,6 @@
+import { seedTaskIndex } from "./helpers/taskIndexFixture.js";
+import { fixture, port } from "#src/project-storage/test-fixture.js";
+import type { ZCodeSessionInfo } from "@zcode/shared";
 import {
   channelReplyHostRequestSchema,
   type ChannelReplyHostRequest,
@@ -54,8 +57,18 @@ process.stdin.on("data", (chunk) => {
     // 反向请求的响应没有 method；响应不能再次进入未知请求分支。
     if (typeof msg.method !== "string") continue;
     if (logPath && msg.method) fs.appendFileSync(logPath, line + "\\n");
+    if (msg.method === "session/list" && msg.id !== undefined) {
+      const sessions = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+      send({ id: msg.id, result: { sessions: sessions.filter((session) => msg.params.sessionIds.includes(session.sessionId)) } });
+      continue;
+    }
     if (msg.method === "session/debug" && msg.id !== undefined) {
       send({ id: msg.id, result: { sessionId: msg.params.sessionId, rounds: [], networkEntries: [], cache: null } });
+      continue;
+    }
+    // 模型命令 admission 前的 Registry 刷新屏障（v4_command reason）：回 refreshed:true。
+    if (msg.method === "provider/refreshRegistry" && msg.id !== undefined) {
+      send({ id: msg.id, result: { refreshed: true } });
       continue;
     }
     // 动态工作流策略同步：Host 启动/重连时会主动下发；不回包会让请求挂到协议超时，
@@ -511,6 +524,13 @@ describe("zcodeAgentService v4 conversation channel", () => {
     options: {
       providerReady?: boolean;
       authorizeLocalMediaPreviewPath?: (path: string) => Promise<string>;
+      prepareSessionCreation?: NonNullable<
+        Parameters<typeof createZCodeAgentService>[0]
+      >["prepareSessionCreation"];
+      resolveSessionDirectories?: NonNullable<
+        Parameters<typeof createZCodeAgentService>[0]
+      >["resolveSessionDirectories"];
+      storedSessions?: (workspacePath: string) => ZCodeSessionInfo[];
       channelReplyExecutor?: NonNullable<
         Parameters<typeof createZCodeAgentService>[0]
       >["channelReplyExecutor"];
@@ -524,13 +544,23 @@ describe("zcodeAgentService v4 conversation channel", () => {
     setDataBaseDir(workspacePath);
     const scriptPath = join(workspacePath, "v4-fake-agent.cjs");
     const logPath = join(workspacePath, "protocol.log");
+    const sessionsPath = join(workspacePath, "sessions.json");
     writeFileSync(scriptPath, V4_FAKE_AGENT);
+    writeFileSync(
+      sessionsPath,
+      JSON.stringify(options.storedSessions?.(workspacePath) ?? []),
+    );
     const commandResolver = vi.fn(() => ({
       command: process.execPath,
-      args: [scriptPath, logPath],
+      args: [scriptPath, logPath, sessionsPath],
     }));
     const service = createZCodeAgentService({
       commandResolver,
+      prepareSessionCreation: options.prepareSessionCreation,
+      resolveSessionDirectories: options.resolveSessionDirectories,
+      repoSnapshotCaptureIntentScheduler:
+        options.repoSnapshotCaptureIntentScheduler,
+      repoSnapshotSidecar: options.repoSnapshotSidecar,
       topicResourceExecutor: options.topicResourceExecutor,
       channelReplyExecutor: options.channelReplyExecutor,
       authorizeLocalMediaPreviewPath: options.authorizeLocalMediaPreviewPath,
@@ -561,6 +591,204 @@ describe("zcodeAgentService v4 conversation channel", () => {
     });
     return { service, workspacePath, logPath, commandResolver };
   }
+
+  const childHostId = "remote:server:subagent-view";
+  const childWorkspace = (workspacePath: string) => ({
+    workspacePath,
+    workspaceIdentity: `${childHostId}:${workspacePath}`,
+    workspaceKey: `${childHostId}:${workspacePath}`,
+  });
+  const storedSession = (
+    workspacePath: string,
+    sessionId: string,
+    parentSessionId?: string,
+  ): ZCodeSessionInfo => ({
+    sessionId,
+    workspace: childWorkspace(workspacePath),
+    ...(parentSessionId ? { parentSessionId } : {}),
+    sessionKind: parentSessionId ? "subagent_child" : "interactive",
+    title: sessionId,
+    mode: "build",
+    status: "completed",
+    createdAt: 1,
+    updatedAt: 2,
+  });
+
+  for (const clientMode of [
+    "desktop-continuous",
+    "web-remote-replayable",
+  ] as const) {
+    it.each(["running", "completed"] as const)(
+      `SAT30: remote %s child resolves its persisted parent project on ${clientMode}`,
+      async (status) => {
+        const state = await fixture();
+        await port.migrate(state.db, { ...state.context, hostId: childHostId });
+        const repo = port.repository(state.db, childHostId);
+        const resolveDirectories = vi.fn(
+          async (target: {
+            workspacePath: string;
+            workspaceIdentity?: string;
+            sessionId: string;
+          }) =>
+            repo.resolveSessionDirectories({
+              ...target,
+              taskId: target.sessionId,
+            }).additionalDirectories,
+        );
+        const env = setupService({
+          resolveSessionDirectories: resolveDirectories,
+          storedSessions: (path) => [
+            storedSession(path, "parent"),
+            { ...storedSession(path, "child", "parent"), status },
+          ],
+        });
+        const project = repo.saveProject({ roots: [env.workspacePath] });
+        repo.reserveCreatedTask({
+          task: { ...childWorkspace(env.workspacePath), taskId: "parent" },
+          projectId: project.id,
+        });
+        if (status === "running") {
+          const legacyIndex = new TaskIndexRepo();
+          try {
+            await seedTaskIndex(legacyIndex, {
+              meta: {
+                ...childWorkspace(env.workspacePath),
+                taskId: "child",
+                traceId: "trace-child",
+                title: "Legacy child index",
+                createdAt: 1,
+                updatedAt: 2,
+                mode: "build",
+                provider: "glm",
+              },
+            });
+          } finally {
+            legacyIndex.close();
+          }
+        }
+        const scope = createZCodeAgentConnectionScope(env.service, {
+          connectionId: "child-view",
+          clientMode,
+        });
+        try {
+          await scope.service.helloConversationV4();
+          await scope.service.initializeConversationV4({
+            kind: "clientHello",
+            protocolVersion: 3,
+            clientId: "child-view",
+            appVersion: "test",
+          });
+          for (let attempt = 0; attempt < 2; attempt += 1) {
+            const result = await scope.service.subscribeConversationV4({
+              ...childWorkspace(env.workspacePath),
+              sessionId: "child",
+            });
+            await scope.service.unsubscribeConversationV4({
+              ...childWorkspace(env.workspacePath),
+              subscriptionId: result.ack.subscriptionId,
+            });
+            if (attempt === 0)
+              await env.service.disposeWorkspace(
+                childWorkspace(env.workspacePath),
+              );
+          }
+          expect(resolveDirectories).toHaveBeenCalledTimes(2);
+          expect(resolveDirectories).toHaveBeenCalledWith(
+            expect.objectContaining({ sessionId: "parent" }),
+          );
+          expect(
+            state.db
+              .prepare(
+                "SELECT count(*) AS count FROM tasks WHERE task_id='child'",
+              )
+              .get()?.count,
+          ).toBe(0);
+          const subscriptions = readRequests(env.logPath).filter(
+            (entry) => entry.method === "v4/conversation/subscribe",
+          );
+          expect(subscriptions).toHaveLength(2);
+          expect(subscriptions[0]?.params).toMatchObject({
+            topic: "conversation/child",
+            clientMode,
+            additionalDirectories: [],
+          });
+        } finally {
+          await env.service.disposeAllAndWait();
+        }
+      },
+    );
+  }
+
+  it.each([
+    "missing-parent",
+    "missing-parent-id",
+    "foreign-child",
+    "foreign-parent",
+    "foreign-host",
+    "foreign-cwd",
+    "cycle",
+    "unclassified-parent",
+    "ordinary",
+  ])(
+    "SAT30: rejects remote subscription with %s without bypassing project admission",
+    async (failure) => {
+      const resolveDirectories = vi.fn(async () => {
+        throw new Error("project.remote-project-required");
+      });
+      const env = setupService({
+        resolveSessionDirectories: resolveDirectories,
+        storedSessions: (path) => {
+          const parent = storedSession(path, "parent");
+          const child = storedSession(path, "child", "parent");
+          if (failure === "missing-parent") return [child];
+          if (failure === "missing-parent-id") delete child.parentSessionId;
+          if (failure === "foreign-child")
+            child.workspace = childWorkspace(`${path}-other`);
+          if (failure === "foreign-parent")
+            parent.workspace = childWorkspace(`${path}-other`);
+          if (failure === "foreign-host") {
+            parent.workspace.workspaceIdentity = `remote:server:other:${path}`;
+            parent.workspace.workspaceKey = parent.workspace.workspaceIdentity;
+          }
+          if (failure === "foreign-cwd")
+            parent.workspace.workspacePath = `${path}-other`;
+          if (failure === "cycle") {
+            parent.sessionKind = "subagent_child";
+            parent.parentSessionId = "child";
+          }
+          if (failure === "ordinary") {
+            child.sessionKind = "interactive";
+            delete child.parentSessionId;
+          }
+          return [parent, child];
+        },
+      });
+      try {
+        await expect(
+          env.service.subscribeConversationV4({
+            ...childWorkspace(env.workspacePath),
+            sessionId: "child",
+          }),
+        ).rejects.toThrow();
+        expect(
+          readRequests(env.logPath).some(
+            (entry) => entry.method === "v4/conversation/subscribe",
+          ),
+        ).toBe(false);
+        if (failure === "ordinary")
+          expect(resolveDirectories).toHaveBeenCalledWith(
+            expect.objectContaining({ sessionId: "child" }),
+          );
+        else if (failure === "unclassified-parent")
+          expect(resolveDirectories).toHaveBeenCalledWith(
+            expect.objectContaining({ sessionId: "parent" }),
+          );
+        else expect(resolveDirectories).not.toHaveBeenCalled();
+      } finally {
+        await env.service.disposeAllAndWait();
+      }
+    },
+  );
 
   it.each([false, true])(
     "projects only channel reply scope from a live V4 connection (remote=%s)",
@@ -809,8 +1037,8 @@ describe("zcodeAgentService v4 conversation channel", () => {
       });
 
       // Worker 已经持有进程级 Registry；Host 读取 Registry View 只用于启动门禁，
-      // 不能把完整 Registry 下发成另一份执行事实源。动态工作流策略同步（本地默认启用）
-      // 是启动链路的固定前置请求，与 Registry 无关，计入白名单。
+      // 不能把完整 Registry 下发成另一份执行事实源。
+      // 动态工作流策略同步（本地默认启用）是启动链路的固定前置请求，与 Registry 无关，计入白名单。
       expect(readRequests(logPath).map((entry) => entry.method)).toEqual([
         "workspace/updateDynamicWorkflowPolicy",
         "v4/conversation/subscribe",
@@ -980,7 +1208,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     const { service, workspacePath, logPath } = setupService();
     const repo = new TaskIndexRepo();
     try {
-      await repo.syncTaskMeta({
+      await seedTaskIndex(repo, {
         meta: {
           taskId: "persisted-thought-session",
           traceId: "trace-persisted-thought-session",
@@ -1074,6 +1302,96 @@ describe("zcodeAgentService v4 conversation channel", () => {
       expect(String(subscribeRequest?.params.connectionId)).toMatch(/^host-/);
 
       disposable.dispose();
+    } finally {
+      await service.disposeAllAndWait();
+    }
+  });
+
+  it("reserves explicit NULL for legacy V4 callers that omit projectId", async () => {
+    const prepareSessionCreation = vi.fn(async () => [] as string[]);
+    const { service, workspacePath } = setupService({ prepareSessionCreation });
+    try {
+      await service.sendConversationCommandV4({
+        workspacePath,
+        envelope: {
+          commandId: "legacy-create",
+          clientId: "test",
+          sessionId: null,
+          type: "createSession",
+          payload: { workspaceId: workspacePath },
+          issuedAt: 1,
+        },
+      });
+      expect(prepareSessionCreation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          projectId: null,
+          sessionId: expect.any(String),
+        }),
+      );
+    } finally {
+      await service.disposeAllAndWait();
+    }
+  });
+
+  it("reserves project ownership before create wire and passes only directories to CLI", async () => {
+    const prepareSessionCreation = vi.fn(
+      async (_target: {
+        workspacePath: string;
+        sessionId: string;
+        projectId: string | null;
+      }) => ["/extra"],
+    );
+    const { service, workspacePath, logPath } = setupService({
+      prepareSessionCreation,
+    });
+    const envelope = {
+      commandId: "project-create",
+      clientId: "test",
+      sessionId: null,
+      type: "createSession" as const,
+      payload: { workspaceId: workspacePath },
+      issuedAt: 1,
+    };
+    try {
+      await service.sendConversationCommandV4({
+        workspacePath,
+        projectId: "project-a",
+        envelope,
+      });
+      await service.sendConversationCommandV4({
+        workspacePath,
+        projectId: "project-a",
+        envelope,
+      });
+      const creates = readRequests(logPath).filter(
+        (entry) => entry.method === "v4/command",
+      );
+      expect(prepareSessionCreation).toHaveBeenCalledTimes(2);
+      const target = prepareSessionCreation.mock.calls[0]![0];
+      expect(target).toMatchObject({
+        workspacePath,
+        projectId: "project-a",
+        sessionId: expect.any(String),
+      });
+      expect(creates[0]?.params.payload).toMatchObject({
+        sessionId: target.sessionId,
+        additionalDirectories: ["/extra"],
+      });
+      expect(creates[1]?.params.payload.sessionId).toBe(target.sessionId);
+      expect(creates[0]?.params.payload).not.toHaveProperty("projectId");
+      prepareSessionCreation.mockRejectedValueOnce(
+        new Error("database unavailable"),
+      );
+      await expect(
+        service.sendConversationCommandV4({
+          workspacePath,
+          projectId: null,
+          envelope: { ...envelope, commandId: "failed-create" },
+        }),
+      ).rejects.toThrow("database unavailable");
+      expect(
+        readRequests(logPath).filter((entry) => entry.method === "v4/command"),
+      ).toHaveLength(2);
     } finally {
       await service.disposeAllAndWait();
     }
@@ -1185,7 +1503,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     const workspaceIdentity = `remote:ssh:example.test:22:coder:${workspacePath}`;
     const foreignWorkspaceIdentity = `remote:ssh:other.example.test:22:coder:${workspacePath}`;
     try {
-      await repo.syncTaskMeta({
+      await seedTaskIndex(repo, {
         meta: {
           taskId: "legacy-current-ssh",
           traceId: "trace-legacy-current-ssh",
@@ -1198,7 +1516,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
           provider: "glm",
         },
       });
-      await repo.syncTaskMeta({
+      await seedTaskIndex(repo, {
         meta: {
           taskId: "legacy-foreign-ssh",
           traceId: "trace-legacy-foreign-ssh",
@@ -1572,7 +1890,7 @@ describe("zcodeAgentService v4 conversation channel", () => {
     const { service, workspacePath, logPath } = setupService();
     const repo = new TaskIndexRepo();
     try {
-      await repo.syncTaskMeta({
+      await seedTaskIndex(repo, {
         meta: {
           taskId: "cron-session",
           traceId: "trace-cron-session",

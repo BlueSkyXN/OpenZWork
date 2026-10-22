@@ -1,5 +1,7 @@
 # Built-in Provider 配置双环境打包
 
+模板与模型的日常维护见[维护入口](./builtin-provider-maintenance/README.md)；本文继续维护构建与环境转换合同。
+
 ## 所有权与边界
 
 构建工具单独拥有配置选择职责，读取现有 `ZCODE_ENV=test|production`。
@@ -12,32 +14,12 @@
 | test       | config/provider/zcode-builtin.test.json |
 
 两份都是完整 Release。生产文件是唯一编辑源，测试文件由
-`pnpm provider:config:sync-test` 生成并提交，revision 跟随生产文件。
-`pnpm provider:config:check-test` 只检查生成结果是否过期，不写文件；纳入单测。
-不更改 Release Schema、个人 Overlay、Registry 或账号／模型选择。
+现有配置维护流程生成并提交，revision 跟随生产文件。
+环境选择沿用同一 Release Schema、个人 Overlay 和 Registry。
 
-## 测试配置的生成规则（Todo147）
+## 环境配置与校验
 
-对照 `staging_backup@790884b1ce`，仅转换 `zhipu-account` Provider 的以下模型地址：
-
-| 生产 Base URL                                  | 测试 Base URL                                          |
-| ---------------------------------------------- | ------------------------------------------------------ |
-
-- 每次从完整生产配置重新生成，不增量修改旧测试配置，不维护第二份模型能力。
-- 手动模板、第三方地址、Key 管理链接等字段原样保留；新增未知账号地址时明确失败，要求补充映射，不偷偷请求生产。
-- 对命中上述生产地址的站点规则，保留原规则并在其后生成测试 URL 对应规则。
-  一条规则只描述一个站点，模型匹配、API 类型、能力、Map 和相对顺序全部继承。
-  保留生产规则是因为测试包里的手动 API 模板仍指向生产官方入口。
-- 完整 Release 校验后才写生成文件；无网络、无用户数据迁移、无在线发布。
-- 构建仍只读取选定文件，不在并行构建时隐式重写源文件；先同步再构建，沿用 Todo146 缓存输入。
-
-```text
-编辑生产 JSON → 同步脚本（账号 URL 映射 + 派生站点规则）→ 测试 JSON
-                       ↓ 校验生成结果
-                  原双环境打包流程
-```
-
-也不改变公共 Family 分类工具的其他消费者。与产品环境开关无关，仅依实际 URL 判断。
+两份配置均按完整 Release schema 解码。当前公开模板与模型规则由仓库配置维护；构建入口 `scripts/builtin-provider-config.mjs` 只选择和校验文件，不在线获取用户配置。
 
 ```text
 ZCODE_ENV + 对应完整 JSON
@@ -70,7 +52,7 @@ Server 保持原有 JSON 编译常量。开发态 Desktop 根据同一个编译�
 ## 缓存与时序
 
 - 普通 CLI、Desktop、Server 构建仍按原流程执行，不新增缓存层。
-- bootstrap 已有 JS 可以继续复用，但仍验证并刷新旁边的配置资源。
+- bootstrap 每次重新构建 Agent JS，并由同次 CLI 构建验证和刷新旁边的配置资源，避免 Source Server archive 带入旧 Agent。
 - Turbo 的 CLI build 与 build:desktop-agent 包含 ZCODE_ENV、相关 .env、两份配置及公共构建工具。
 - Desktop E2E 构建指纹包含公共工具与配置输入；已有环境指纹继续复用。
 - 远程 Server 已将配置嵌入 JS；现有 source hash / artifact hash 自然使配置变化触发重新打包。
@@ -83,7 +65,7 @@ Server 保持原有 JSON 编译常量。开发态 Desktop 根据同一个编译�
 ## 验证
 
 用内容不同的临时 Release 区分环境，覆盖缺失／坏 JSON／坏 Schema、环境优先级、
-复用 JS 后刷新、同环境内容更新、SEA 资源及最终嵌入产物。真实两份配置分别解码。
+已有 JS 时重新构建并刷新配置、同环境内容更新、SEA 资源及最终嵌入产物。真实两份配置分别解码。
 不以“当前两份相同所以测试通过”代替环境选择断言，不要求真实模型请求。
 
 公共构建入口测试与测试环境配置同步测试分文件维护：`builtin-provider-build.test.ts`

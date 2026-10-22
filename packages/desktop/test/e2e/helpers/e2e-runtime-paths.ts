@@ -22,7 +22,7 @@ export function resolveE2EHomeDir({
 
 export function resolveE2EStorageRoot(e2eHomeDir = resolveE2EHomeDir()): string {
   // Bug 根因：回滚 storage profile 时删除了仍被 E2E 用例依赖的路径 helper。
-  // E2E 继续隔离 HOME，但 CLI 根沿用 OpenZWork 用户数据目录 .openzwork，不再区分 dev/stable profile。
+  // E2E 继续隔离 HOME，但 CLI 根固定使用历史目录 .zcode，不再区分 dev/stable profile。
   return join(e2eHomeDir, ".openzwork");
 }
 

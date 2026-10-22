@@ -38,6 +38,7 @@
         "packages/ui/test/zcodeSessionEventOrder.test.ts",
         "packages/ui/test/agentV4ConnectionTransports.test.ts",
         "packages/desktop/test/desktopRuntimeEnv.test.ts",
+        "packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts",
         "packages/services/test/zcodeAgentService.v4.test.ts",
         "packages/services/test/zcodeAgentService.providerRegistry.test.ts",
         "packages/services/test/subagentsService.test.ts",
@@ -119,6 +120,70 @@
       ]
     },
     {
+      "capability": "source-server-projects-and-migrations",
+      "files": [
+        "packages/services/test/controllerRemoteIdentityMigration.test.ts",
+        "packages/services/test/remoteSchemaMigrations.test.ts",
+        "packages/services/test/sourceServerWorkspaceAliasRepo.concurrent.test.ts",
+        "packages/services/test/sourceServerWorkspaceAliasRepo.projections.test.ts",
+        "packages/services/test/sourceServerWorkspaceAliasRepo.test.ts",
+        "packages/services/test/tasksDatabaseMigration.test.ts",
+        "packages/services/src/project/contract.test.ts",
+        "packages/services/src/project-catalog/contract.test.ts",
+        "packages/services/src/project-storage/contract.test.ts",
+        "packages/services/src/project-workspace-navigation/contract.test.ts",
+        "packages/services/src/task-groups/contract.test.ts",
+        "packages/shared/src/sqlite-migrations/contract.test.ts",
+        "packages/services/src/project/legacy/contract.test.ts",
+        "packages/services/src/project-storage/default-workspace/contract.test.ts",
+        "packages/services/src/project-storage/downgrade/contract.test.ts",
+        "packages/services/src/project/preparation-race/contract.test.ts",
+        "packages/services/src/project-storage/migration-order/contract.test.ts",
+        "packages/services/src/project-storage/project-order/contract.test.ts",
+        "packages/services/src/project-storage/repository/contract.test.ts",
+        "packages/services/src/project-storage/legacy-provider/contract.test.ts",
+        "packages/services/src/project-storage/remote-single-root/contract.test.ts",
+        "packages/desktop/test/serverRemoteDuplexTransport.test.ts",
+        "packages/desktop/test/remoteGenUiRouting.test.ts",
+        "packages/desktop/test/windowHostControllerAttachmentIdentity.test.ts",
+        "packages/desktop/test/windowHostControllerProjection.test.ts"
+      ]
+    },
+    {
+      "capability": "project-ui-and-composer",
+      "files": [
+        "packages/ui/test/toolSearchToolCallBlock.test.ts",
+        "packages/ui/test/composerSubmissionSettlement.test.ts",
+        "packages/ui/test/projectFirstSubmitVisibility.test.ts",
+        "packages/ui/test/v4DraftSessionPrewarm.test.ts",
+        "packages/ui/test/taskGroupedView.test.ts",
+        "packages/ui/test/projectSidebarNavigation.test.ts",
+        "packages/ui/test/savedWorkflowProjectGroup.test.ts",
+        "packages/ui/test/mobileProjectDraftBootstrap.test.ts"
+      ]
+    },
+    {
+      "capability": "relay-and-source-contracts",
+      "files": [
+        "packages/shared/src/web-remote-relay/contract.test.ts",
+        "packages/desktop/src/main/web-remote-relay/contract.test.ts",
+        "packages/client/test/webRemoteControlRelayPayloadSerializer.test.ts",
+        "packages/shared/test/sourceServerContracts.test.ts",
+        "packages/server/test/sourceServerTransportAdapter.test.ts",
+        "packages/server/test/dockerBackendDockerCommand.test.ts"
+      ]
+    },
+    {
+      "capability": "e2e-fixture-contracts",
+      "files": [
+        "packages/desktop/test/localPairingRelay.test.ts",
+        "packages/desktop/test/remoteStartupProfile.test.ts",
+        "packages/desktop/test/e2eRuntimePaths.test.ts",
+        "packages/desktop/test/modelProviderRestartConfig.test.ts",
+        "packages/desktop/test/modelProviderRestartRuntime.test.ts"
+      ]
+    },
+    {
       "capability": "local-data-and-retirement-boundaries",
       "files": [
         "packages/ui/test/sessionUsageSummary.test.ts",
@@ -193,9 +258,7 @@
         "packages/shared/test/env.test.ts",
         "packages/shared/test/helpAppConfig.test.ts",
         "packages/shared/test/legacyModelProviderIdentity.test.ts",
-        "packages/shared/test/modelProviderTypes.test.ts",
         "packages/shared/test/official-glm-model-id.test.ts",
-        "packages/shared/test/pluginMarketplaces.test.ts",
         "packages/shared/test/remoteAppConfig.test.ts",
         "packages/shared/test/runtimeEnv.test.ts",
         "packages/shared/test/serverRemoteInfo.test.ts",
@@ -214,7 +277,6 @@
         "packages/services/test/settingService.test.ts",
         "packages/services/test/nodeApiNetwork.test.ts",
         "packages/services/test/storageCatalog.test.ts",
-        "packages/services/test/tasksDatabaseMigration.test.ts",
         "packages/services/test/legacyProviderUpgrade.test.ts",
         "packages/services/test/providerRuntime.test.ts",
         "packages/services/test/providerConfigRuntime.test.ts"
@@ -223,7 +285,6 @@
     {
       "capability": "remote-user-storage-fixtures",
       "files": [
-        "packages/server/test/dockerBackendDockerCommand.test.ts",
         "packages/server/test/remoteAssetInstaller.test.ts",
         "packages/server/test/sshBackend.test.ts",
         "packages/server/test/stdioDesktopPresentationSurface.test.ts"

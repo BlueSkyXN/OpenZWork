@@ -154,9 +154,6 @@ interface ModelRequest {
 }
 ```
 
-ModelRequest 描述一次模型调用。模型身份、API Key、Request Auth、Endpoint、Provider 类型和 Provider
-专属参数已经由 Model 的执行实现及其依赖确定，不出现在 Request 中。`zhipu-account`
-的动态访问材料在每个 request attempt 上由 Account Request Auth Service 解析，不改变公共 ModelRequest Schema。
 
 ## 请求检查
 

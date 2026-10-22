@@ -33,19 +33,6 @@
 
 因此 ZCode skill 不再宣称 `file://` 是可导航 local target；`getForUrl(fileUrl)` 的选择纯函数与 `goto(fileUrl)` 的导航权限是两个不同合同。
 
-### 2.2 CUA / DOM CUA
-
-| API | 冻结语义 | ZCode 实现要求 |
-| --- | --- | --- |
-| `cua.drag({path, keys})` | 非空 path；按原始点序列移动，首点按下、末点释放 | 协议保留完整 path，不再只取首尾并重新插值 |
-| `cua.scroll({x,y,scrollX,scrollY,keypress})` | 鼠标先移到 `(x,y)`，再用 `Input.synthesizeScrollGesture` 按 delta 滚动 | 锚点、delta 和 modifier 不丢失；Electron `<webview>` guest 使用等价的 CDP `mouseWheel` transport，规避 Chromium 146 静默不执行 synthesized gesture |
-| `cua.move({x,y,keys})` | 鼠标移动携带 modifiers | 保留 keys |
-| `cua.keypress({keys})` | keys 表示组合键；依次 keyDown，末键 down/up，再逆序释放 | 不再只给末键附一个 bitmask |
-| `dom_cua.scroll({node_id?,x,y})` | 有 node 时在节点中心执行 delta scroll；无 node 时在 viewport 中心执行 | 不再把 node scroll 降级为 `scrollIntoView` |
-
-IAB 动态 API 不暴露 CUA/DOM CUA `downloadMedia`。这两个 helper 在静态 manifest 中是
-`unsupportedByDefaultIn: ["iab"]` 且 `documented: false`；IAB 不能用普通 click 伪造成功。
-
 ### 2.3 Playwright
 
 - `PlaywrightLocator.downloadMedia()` 仍是当前 IAB 有效 API。它解析命中元素自身或邻近

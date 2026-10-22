@@ -20,9 +20,7 @@ TUI 的 slash command 候选列表见 [`tui-slash-command-suggestions.md`](./tui
 - `/effort [list|<level>]`: 查询或切换当前 session 的 reasoning/thinking 深度；可选 level 来自当前模型 catalog/config 的 reasoning metadata。交互式 TUI 在 composer 内用类似 `/model` 的候选 popup 选择，提交显式 `/effort <level>`。`/variant` 是输入兼容别名。
 - `/fork [latest|checkpointId]`: 从 workspace checkpoint 分叉新 session；无参数或 `latest` 使用最新 checkpoint，有参数时按 checkpoint id 分叉。
 - `/help [command]`: 本地只读展示 slash command 帮助；不创建 session、不发模型请求、不访问外部 I/O。有参数时只展示目标命令的用法，参数可带或不带开头的 `/`。
-- `/login`: 使用 ZCode/Z.AI CLI OAuth device flow 登录；命令层调用 bootstrap 登录服务，不创建普通模型 session。Init 返回授权 URL 后必须立刻通过 assistant transcript message 展示链接，避免 SSH/远程终端场景只在宿主机打开浏览器而用户看不到可复制链接。
 - `/locale [auto|en-US|zh-CN]`: 查询或切换当前 UI 语言，并把请求值持久化到配置文件；`/language` 是输入兼容别名。
-- `/logout`: 清理共享 credential store 中的 ZAI 登录态；不创建普通模型 session。
 - `/mcp [list|status|connect <server>|disconnect <server>]`: 查询或管理当前 session 可见的 MCP server 连接状态；命令层只调用 app/server 暴露的 MCP 管理接口。
 - `/mode [plan|build|edit|yolo]`: 查询或切换当前 TUI session 的 permission mode；交互式 composer 输入 `/mode` 时打开与 `/model` 同形态的本地 popup，选择项提交显式 `/mode <mode>`；`edit` 自动接受 `Write`、`Edit`、`ApplyPatch` 等文件编辑工具，其他高风险或非编辑操作仍按 build 策略确认；`auto` 可显示但暂不允许从 TUI 切入。
 - `/model [list|main|lite|provider/model]`: 查询或切换当前 session 的主模型；可选模型来自 `model.main`、`model.lite` 和所有已配置 `provider.*.models`，状态归 app/server 保存，TUI 不持有模型状态。
@@ -48,8 +46,6 @@ TUI 的 slash command 候选列表见 [`tui-slash-command-suggestions.md`](./tui
 - 全局 `--target-replace`: `--target` 的显式覆盖确认开关。若当前 session 已有 goal，而未显式提供 `--target-replace`，CLI 必须在本地返回明确错误，不得静默覆盖 goal，也不得发送模型请求。`--target-replace` 单独出现时必须报错。
 - `zcode skills list`: 只读列举当前工作目录可发现的 skills。它复用 bootstrap 的 skill discovery 接口，不启动 TUI、不创建 session、不发模型请求；`zcode skills` 等价于 `zcode skills list`。普通输出展示 name、scope/source、description 和 path；`--json` 输出结构化 skills 与 diagnostics；`--verbose` 在普通输出后追加 diagnostics。
 - `zcode commands list`: 只读列举当前工作目录可发现的自定义 prompt commands。它复用 bootstrap 的 custom command discovery 接口，不启动 TUI、不创建 session、不发模型请求；`zcode commands` 等价于 `zcode commands list`。普通输出展示 `/name`、argument hint、scope/source、description 和 path；`--json` 输出结构化 commands 与 diagnostics；`--verbose` 追加 diagnostics。
-- `zcode login`: 使用 ZCode/Z.AI CLI OAuth device flow 登录，浏览器授权后把敏感 token 写入与桌面 Z Code 共享的 `~/.openzwork/v2/credentials.json`，并只在 `~/.openzwork/cli/config.json` patch 非敏感 provider/model 默认配置。`--no-browser` 只打印授权 URL，不自动打开浏览器，仍继续轮询。
-- `zcode logout`: 清理共享 credential store 中的 ZAI 登录态；如果 `oauth:active_provider` 当前是 `zai`，同步清空 active provider。
 - `zcode doctor`: 输出运行时和打包假设检查，是 CLI 健康检查和 smoke-test 的唯一进程级入口。
 
 `zcode hello` 不再是受支持命令。CLI 不保留无业务语义的 greeting/smoke-test 命令；脚本、文档和测试需要使用 `zcode doctor` 或 `zcode --version` 表达健康检查意图。
@@ -62,6 +58,10 @@ ZCode protocol client 通过协议原生能力承载 session/config 操作，因
 - `goal`: 对应 `/goal [pause|resume|clear|replace <objective>|<objective>]`，由 bootstrap 本地读写 session goal；已有目标时 `/goal <objective>` 与 `/goal replace <objective>` 都按替换处理，并继续通过兼容 `target_changed` / `_meta.zcode.target` 投影状态；`/target` 只作为输入兼容别名，不广播给新客户端。
 - `skill`: 对应 `/skill <name> [task]`，由 bootstrap 改写成显式 `Skill` tool 调用要求；ZCode app-server 侧 skill discovery 仍由协议原生 skill UI 承载，不把 `/skill` 裸命令解释成列表。
 
+App 的「计划模式」是 Composer 本地列表操作，选中复用标准 Plan 开关；协议目录不再广播
+`/plan [task]`，CLI 不提供对应的 prompt 展开。`plan` 保持保留名，避免自定义命令接管该入口。
+App 的具体交互见 [计划模式快捷入口](../../../../../docs/plan-slash-command.md)。
+
 ZCode app-server `/help` 只展示 ZCode app-server 已广播的命令，不能把 local-only 的 `/mode`、`/model`、`/resume`、`/mcp` 等命令混入，避免 client 看到不可执行的本地 TUI 操作。
 
 `/btw` 暂不进入 ZCode app-server `available_commands_update`。ZCode app-server 客户端需要 side-result UI 后，应通过 `zcode.dev/session/sideQuestion` 扩展方法请求旁路回答，而不是把 `/btw` 作为普通 prompt command 广播或注入主会话。
@@ -70,7 +70,7 @@ ZCode app-server 的 command 广播使用 `available_commands_update` session up
 
 命令识别、参数解析和会话切换在 command 层，UI 只负责触发和显示结果。后续如果要加 command palette、自定义命令或 MCP prompt command，继续扩展 command center，不把具体命令分支塞进 TUI。
 
-成功处理的 slash command 应通过 input-history 端口 best-effort 记录原始命令文本，供 TUI `Up` 历史召回使用；例如 `/help` 召回应恢复 `/help`，而不是丢失本地命令或恢复展开后的 prompt。历史写入失败不得影响命令响应。包含 API key 等敏感参数的 `/login` 形态不得写入历史。
+成功处理的 slash command 应通过 input-history 端口 best-effort 记录原始命令文本，供 TUI `Up` 历史召回使用；例如 `/help` 召回应恢复 `/help`，而不是丢失本地命令或恢复展开后的 prompt。历史写入失败不得影响命令响应。包含凭据等敏感参数的命令不得写入历史。
 
 自定义 prompt command 的设计见 [`custom-commands.md`](./custom-commands.md)。该能力规划为 command center 的动态命令来源：markdown 文件只定义可复用 prompt 模板，发现和读取通过 adapter，TUI/ZCode app-server 只消费只读命令面，最终执行仍进入普通 runtime turn。P0 目标兼容常见的 `.claude/commands/*.md` 文件形态，同时优先支持 ZCode 原生 `.zcode/commands` 与 `.agents/commands`，并把 `allowed-tools`、`model`、动态 shell/file 展开等高风险能力纳入权限和 I/O 边界。
 
@@ -179,16 +179,3 @@ Headless `--target` 测试覆盖：
 - command center 执行 `/clear` 时复用 `/new` 的同一路径，返回同样的 session reset/session id 结果。
 - CLI TUI wiring 在 `/new` 后把后续 prompt 发送到新创建的 active app。
 - TUI transcript 合并在 session reset 且没有 `restoredMessages` 时清空旧消息，避免新 session 继续占用旧会话显示空间。
-
-## Auth Login Setup
-
-`/login`、`/logout` 与进程级 `zcode login` / `zcode logout` 共用 [`auth-login.md`](./auth-login.md) 的 bootstrap service。OAuth、打开浏览器、credential 读写、配置 patch 都放在 adapter/bootstrap 层；core 不读取环境变量、不直接网络请求、不直接写配置文件。
-
-保存 token 时复用桌面 Z Code 的 `~/.openzwork/v2/credentials.json` 加密 key-value store。`~/.openzwork/cli/config.json` 只 patch provider/model 相关非敏感字段，保留已有 `mcp`、`skills`、`permission` 等配置；新配置使用 provider-first shape，不恢复 bak 的 flat `provider/model/baseURL/apiKey` 配置。
-
-测试覆盖：
-
-- slash command parser 将 `/login`、`/logout` 识别为已知命令。
-- command center 执行 `/login`、`/logout` 时不创建 app、不发送模型 prompt。
-- 进程级 `zcode login` 能通过注入的 bootstrap login service 输出授权 URL 与登录成功用户。
-- 进程级 `zcode logout` 能通过注入的 bootstrap logout service 输出清理结果。

@@ -12,7 +12,7 @@ describe("project MCP config", () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-mcp-"));
     const cwd = join(root, "workspace");
     const connectedServerSets: string[][] = [];
-    const sessionStore = createSqliteSessionStore({ dbPath: ":memory:" });
+    const sessionStore = await createSqliteSessionStore({ dbPath: ":memory:" });
 
     try {
       await mkdir(join(root, ".git"));
@@ -63,7 +63,7 @@ describe("project MCP config", () => {
     const pluginRoot = join(root, "ios-plugin");
     const connectedServerSets: string[][] = [];
     const connectedConfigs: Record<string, McpServerConfig>[] = [];
-    const sessionStore = createSqliteSessionStore({ dbPath: ":memory:" });
+    const sessionStore = await createSqliteSessionStore({ dbPath: ":memory:" });
 
     try {
       await mkdir(join(root, ".git"));
@@ -127,7 +127,7 @@ describe("project MCP config", () => {
     const userConfigPath = join(root, "home", "config.json");
     const connectedServerSets: string[][] = [];
     const connectedConfigs: Record<string, McpServerConfig>[] = [];
-    const sessionStore = createSqliteSessionStore({ dbPath: ":memory:" });
+    const sessionStore = await createSqliteSessionStore({ dbPath: ":memory:" });
 
     try {
       await mkdir(join(root, ".git"));

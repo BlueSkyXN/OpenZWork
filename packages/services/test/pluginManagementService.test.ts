@@ -1,58 +1,66 @@
 import { describe, expect, it, vi } from "vitest";
-import { createPluginManagementService } from "../src/plugins/pluginManagementService.js";
-import type { IZCodeAgentService } from "../src/zcode-agent/zcodeAgent.js";
+import {
+  createPluginManagementService,
+  type PluginManagementServiceDependencies,
+} from "../src/plugins/pluginManagementService.js";
 
-describe("pluginManagementService suggested prompt operations", () => {
-  it("forwards trusted resolution and cancellation to the selected Agent service", async () => {
-    const progressEvent = vi.fn();
-    const onDynamicPluginOperationProgress = vi.fn(() => progressEvent);
-    const resolveSuggestedPluginReference = vi.fn(async () => ({
-      stableId: "document-skills@zcode-plugins-official",
-      status: "missing" as const,
-      marketplace: "zcode-plugins-official",
-      pluginName: "document-skills",
-      sourceTrust: "official" as const,
-      diagnostics: [],
-    }));
-    const cancelPluginOperation = vi.fn(async ({ operationId }: { operationId: string }) => ({
-      operationId,
-      cancelled: true,
-    }));
+describe("plugin management agent delegation", () => {
+  const methods = [
+    "listPlugins",
+    "getPluginReferenceCatalog",
+    "resolveSuggestedPluginReference",
+    "onDynamicPluginOperationProgress",
+    "getPluginsOverview",
+    "addPluginMarketplace",
+    "removePluginMarketplace",
+    "updatePluginMarketplace",
+    "installPlugin",
+    "cancelPluginOperation",
+    "uninstallPlugin",
+    "updatePlugin",
+    "restoreBuiltinPlugin",
+    "configurePlugin",
+    "resetPluginConfig",
+    "validatePlugin",
+    "describePlugin",
+    "setPluginEnabled",
+  ] as const;
+
+  it.each(methods)("preserves the agent input and result for %s", async (method) => {
+    const result = { diagnostics: [], marker: method };
+    const invoke = vi.fn(() => result);
+    const agent = new Proxy({}, { get: (_target, key) => (key === method ? invoke : undefined) });
+    const service = createPluginManagementService({
+      zcodeAgentService: agent as PluginManagementServiceDependencies["zcodeAgentService"],
+    });
+    const params = {
+      workspacePath: "/fixture",
+      workspaceIdentity: "remote:fixture",
+      operationId: "op",
+    };
+    const target = service[method] as (input: unknown) => unknown;
+    expect(await target(params)).toBe(result);
+    expect(invoke).toHaveBeenCalledExactlyOnceWith(params);
+    expect(invoke.mock.instances[0]).toBe(agent);
+  });
+
+  it("preserves cancellation failures and does not retry the operation", async () => {
+    const error = Object.assign(new Error("cancelled"), { name: "AbortError" });
+    const installPlugin = vi.fn(async () => {
+      throw error;
+    });
     const service = createPluginManagementService({
       zcodeAgentService: {
-        resolveSuggestedPluginReference,
-        cancelPluginOperation,
-        onDynamicPluginOperationProgress,
-      } as unknown as IZCodeAgentService,
+        installPlugin,
+      } as unknown as PluginManagementServiceDependencies["zcodeAgentService"],
     });
-
-    expect(service.onDynamicPluginOperationProgress("suggested-1")).toBe(progressEvent);
-
     await expect(
-      service.resolveSuggestedPluginReference({
-        workspacePath: "/remote/workspace",
-        workspaceIdentity: "ssh://host/remote/workspace",
-        remoteSessionId: "remote-session-1",
-        stableId: "document-skills@zcode-plugins-official",
-        operationId: "suggested-1",
-        clientMode: "web-remote-replayable",
-        deliveryKind: "web-remote-replayable",
+      service.installPlugin({
+        workspacePath: "/fixture",
+        pluginName: "demo",
+        marketplace: "market",
       }),
-    ).resolves.toMatchObject({ status: "missing" });
-    await expect(
-      service.cancelPluginOperation({ operationId: "suggested-1" }),
-    ).resolves.toEqual({ operationId: "suggested-1", cancelled: true });
-
-    expect(resolveSuggestedPluginReference).toHaveBeenCalledWith({
-      workspacePath: "/remote/workspace",
-      workspaceIdentity: "ssh://host/remote/workspace",
-      remoteSessionId: "remote-session-1",
-      stableId: "document-skills@zcode-plugins-official",
-      operationId: "suggested-1",
-      clientMode: "web-remote-replayable",
-      deliveryKind: "web-remote-replayable",
-    });
-    expect(cancelPluginOperation).toHaveBeenCalledWith({ operationId: "suggested-1" });
-    expect(onDynamicPluginOperationProgress).toHaveBeenCalledWith("suggested-1");
+    ).rejects.toBe(error);
+    expect(installPlugin).toHaveBeenCalledTimes(1);
   });
 });

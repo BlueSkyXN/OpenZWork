@@ -43,6 +43,7 @@ const memorySchema = z.object({
 });
 
 const mcpServerBaseSchema = {
+  alwaysLoad: z.boolean().optional(),
   // 设置页和 MCP adapter 已支持协议选择；配置入口漏掉该字段会因 strict 校验丢弃整个 server。
   protocolVersion: z.enum(["auto", "legacy", "2026-07-28"]).optional(),
   enabled: z.boolean().optional(),
@@ -164,10 +165,7 @@ const pluginsSchema = z.object({
   dirs: z.array(z.string().min(1)).optional(),
   enabledPlugins: z.record(z.string(), z.boolean()).optional(),
   extraKnownMarketplaces: z
-    .record(
-      z.string().min(1),
-      z.object({ source: pluginMarketplaceSourceSchema }).strict(),
-    )
+    .record(z.string().min(1), z.object({ source: pluginMarketplaceSourceSchema }).strict())
     .optional(),
   options: z.record(z.string(), z.record(z.string(), pluginOptionValueSchema)).optional(),
   suppressedBuiltins: z.array(z.string().min(1)).optional(),

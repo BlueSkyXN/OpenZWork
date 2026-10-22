@@ -5,11 +5,7 @@ through `.env.development`.
 
 The shared resolver exposes these derived URLs:
 
-- API base: `/api/v1`
-- ZCode Plan OpenAI base: `/api/v1/zcode-plan`
-- mobile remote entry: `/remote`
-- web remote OAuth callback: `/web-remote/callback`
-- relay WebSocket: `/ws`, with `https -> wss` and `http -> ws`
+
 
 `ZCODE_BASE_URL` is the canonical env variable for the origin. Production builds still ignore
 settings overrides; the resolver uses `ZCODE_BASE_URL` when present, otherwise falls back to
@@ -37,4 +33,3 @@ ZCODE_BASE_URL=http://localhost:3030 zcode auth login
 
 `ZCODE_ENDPOINT_ORIGIN` is still read as a compatibility fallback, but new configs should use
 `ZCODE_BASE_URL`.
-

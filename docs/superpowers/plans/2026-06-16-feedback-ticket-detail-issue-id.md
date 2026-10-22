@@ -30,27 +30,6 @@ Confirm the change does not alter feedback service APIs, realtime stream boundar
 
 - [x] **Step 1: Add the test**
 
-```ts
-it("shows the issue id with a copy action", () => {
-  const html = renderToStaticMarkup(
-    createElement(
-      ZCodeIntlProvider,
-      { initialLocale: "zh-CN" },
-      createElement(TicketDetailView, {
-        ticket: createTicket(),
-        feedbackService: {} as IFeedbackService,
-        onRefresh: vi.fn(),
-        onOpenProcess: vi.fn(),
-      }),
-    ),
-  );
-
-  expect(html).toContain("Issue #");
-  expect(html).toContain("ticket-1");
-  expect(html).toContain('aria-label="复制 issue 编号"');
-});
-```
-
 - [x] **Step 2: Run the focused test and verify red**
 
 Run: `pnpm vitest run packages/ui/test/feedbackTicketDetail.test.ts`

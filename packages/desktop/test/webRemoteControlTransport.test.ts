@@ -1240,6 +1240,7 @@ describe("WebRemoteControlDeviceTransport", () => {
   });
 
   it("recovers desktop device transport from relay KICKED without entering a terminal state", async () => {
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
     const states: WebRemoteControlDeviceTransportState[] = [];
     let authInitCount = 0;
     const relay = await createRelayServer(({ message, socket }) => {
@@ -1292,6 +1293,7 @@ describe("WebRemoteControlDeviceTransport", () => {
       expect(relay.getConnectionCount()).toBeGreaterThanOrEqual(2);
     } finally {
       transport.dispose();
+      random.mockRestore();
     }
   });
 
@@ -1351,4 +1353,81 @@ describe("WebRemoteControlDeviceTransport", () => {
     expect(JSON.stringify(logger.warn.mock.calls)).not.toContain("secret");
     transport.dispose();
   });
+});
+
+it.each(["repeat", "dispose"] as const)("HMAC KICKED 恢复窗口：%s", async (mode) => {
+  const random = vi.spyOn(Math, "random").mockReturnValue(0);
+  const states: WebRemoteControlDeviceTransportState[] = [];
+  const logger = createLogger();
+  let authCount = 0;
+  let recoverySocket: WebSocket | undefined;
+  const relay = await createRelayServer(({ message, socket }) => {
+    if (message.type === "auth_init") {
+      authCount += 1;
+      if (authCount === 1) {
+        socket.send(JSON.stringify({ type: "error", code: "KICKED", message: "fixture conflict" }));
+      } else {
+        recoverySocket = socket;
+        socket.send(JSON.stringify({ type: "auth_challenge", nonce: "nonce-2" }));
+      }
+    }
+    if (message.type === "auth_response") {
+      socket.send(
+        JSON.stringify({ type: "auth_ack", device_sid: "sid-1", pair_status: "waiting" }),
+      );
+    }
+  });
+  const transport = new WebRemoteControlDeviceTransport({
+    relayWsUrl: relay.url,
+    deviceMid: "mid-1",
+    auth: { mode: "persisted", deviceSid: "sid-1", passHash: "hash-1" },
+    meta: { platform: "darwin", version: "1.0.0", name: "Mac" },
+    authProvider: {
+      createPassword: () => "password",
+      createPassHash: () => "hash-1",
+      calculateProof: () => "proof",
+    },
+    reconnectDelayMs: 0,
+    logger,
+    onRegisteredAuth: () => {},
+    onStateChange: (state) => states.push(state),
+    onPayload: () => {},
+    onError: () => {},
+    onInvalidPersistedAuth: async () => {},
+  });
+  try {
+    transport.start();
+    await waitUntil(() =>
+      logger.warn.mock.calls.some(([message]) => String(message).includes("KICKED")),
+    );
+    expect(relay.getConnectionCount()).toBe(1);
+    if (mode === "dispose") {
+      transport.dispose();
+      // 首次恢复最早在两秒后触发；越过该窗口确认停止真正撤销了timer。
+      await new Promise((resolve) => setTimeout(resolve, 2100));
+      expect(relay.getConnectionCount()).toBe(1);
+      expect(states.at(-1)).toBe("idle");
+    } else {
+      await waitUntil(() => states.includes("waiting_terminal"));
+      expect(authCount).toBe(2);
+      // 已成功认证后再冲突，ACK不能清掉同一transport的替换窗口。
+      recoverySocket!.send(
+        JSON.stringify({ type: "error", code: "KICKED", message: "fixture conflict again" }),
+      );
+      await waitUntil(() => states.includes("kicked"));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(relay.getConnectionCount()).toBe(2);
+      expect(states.at(-1)).toBe("kicked");
+      expect(
+        transport.sendPayload({
+          zcode_type: "app-error",
+          reason: "unexpected-error",
+          error: "fixture",
+        }),
+      ).toBe(false);
+    }
+  } finally {
+    transport.dispose();
+    random.mockRestore();
+  }
 });
