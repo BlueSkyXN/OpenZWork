@@ -51,6 +51,7 @@
 - 正式构建显式使用 `ZCODE_ENV=production`、`ZCODE_PREVIEW_IDENTITY=0`；沿用未签名构建，不注入证书或开启公证。应用标识为 OpenZWork，不能将 Preview/_TEST 包改名后当作正式包。
 - 工作流可从主干执行并 checkout 已有版本 tag，因此工作流的 SHA 与源码 SHA 分别记录。GitHub run 的 `head_sha` 表示工作流来源，安装包来源以验证过的 `release_commit`、源码 tree 与 tag 为准。
 - 构建后生成 `RELEASE-MANIFEST.json`：记录源码 tag/SHA/tree、工作流 SHA/run、版本、平台、正式身份及实际安装文件的字节数和 SHA-256。只收集 dist 根目录的两份 macOS、一个 Windows 或四份 Linux 安装文件；不将 unpacked 目录中的辅助 exe 作为安装包发布。缺文件或空文件直接失败。
+- Linux x64 的各发行格式采用 builder 实际架构名：AppImage/rpm 为 `x86_64`、deb 为 `amd64`、pacman 为 `x64`。按版本、平台、允许的架构别名和扩展名从根目录匹配，每种格式必须恰有一个文件；歧义也直接失败。
 - GitHub Release 发布由用户授权后的交付操作执行；本工作流仅构建并上传 Actions artifact，不自动发布、移动 tag 或访问上游发布平台。
 
 ```mermaid

@@ -123,3 +123,22 @@ test("release manifest hashes the installer and excludes unpacked executables", 
   await rm(join(root, name));
   await assert.rejects(f.run("Record release installer provenance"));
 });
+
+test("Linux manifest accepts format-specific x64 aliases and rejects ambiguous installers", async (t) => {
+  const f = await fixture(t);
+  const root = join(f.cwd, "packages/desktop/dist");
+  // 实际 electron-builder 输出：AppImage/rpm=x86_64，deb=amd64，pacman=x64。
+  const names = [
+    "OpenZWork-3.15.1-linux-x86_64.AppImage",
+    "OpenZWork-3.15.1-linux-amd64.deb",
+    "OpenZWork-3.15.1-linux-x86_64.rpm",
+    "OpenZWork-3.15.1-linux-x64.pkg.tar.zst",
+  ];
+  for (const name of names) await writeFile(join(root, name), `fixture: ${name}`);
+  const env = { RELEASE_OS: "linux", RELEASE_PLATFORM: "linux-amd64" };
+  await f.run("Record release installer provenance", env);
+  const manifest = JSON.parse(await readFile(join(root, "RELEASE-MANIFEST.json"), "utf8"));
+  assert.deepEqual(manifest.assets.map(asset => asset.name), names);
+  await writeFile(join(root, "OpenZWork-3.15.1-linux-x64.AppImage"), "ambiguous");
+  await assert.rejects(f.run("Record release installer provenance", env));
+});
