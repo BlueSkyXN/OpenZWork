@@ -7,13 +7,9 @@ import { PERMISSION_FULL_ACCESS_OPTION_ID } from "@zcode/shared/zcode-protocol-v
 // 覆盖：session/turn 生命周期、流式文本/思考、tool call 状态机、
 // 权限交互、turn-steer 队列、usage、错误态、迟到终态拒收、
 // compact marker、goal 状态机、fork marker。传输外壳（TopicFrame/subscribe）在后续片。
-import {
-  projectToolActivity,
-  clearSettledOutputPreviews,
-} from "./product-projection-bash-progress.js";
 import type {
-  CompactLifecyclePayload,
   AssistantFeedbackUpdatedPayload,
+  CompactLifecyclePayload,
   DynamicWorkflowRunProgressPayload,
   HookRunLifecyclePayload,
   ModelCompletePayload,
@@ -24,6 +20,9 @@ import type {
   PermissionDeniedPayload,
   PermissionRequestedPayload,
   PermissionResolvedPayload,
+  PluginUiAppToolCallRequestedPayload,
+  PluginUiResourceListChangedPayload,
+  PluginUiResourceUpdatedPayload,
   SessionEvent,
   SessionForkedPayload,
   SessionInputPromotedPayload,
@@ -32,6 +31,7 @@ import type {
   TargetChangedPayload,
   TargetCompletionVerificationPayload,
   ToolCallErrorPayload,
+  ToolCallProgressPayload,
   ToolCallResultPayload,
   ToolCallScheduledPayload,
   ToolCallStartedPayload,
@@ -39,43 +39,47 @@ import type {
   TurnCompletePayload,
   TurnErrorPayload,
   TurnInputIntentMetadata,
-  TurnSteerDispatchChangedPayload,
-  TurnSteerDiscardedPayload,
   TurnSteerDeliveryChangedPayload,
+  TurnSteerDiscardedPayload,
+  TurnSteerDispatchChangedPayload,
   TurnSteerDrainedPayload,
   TurnSteerQueuedPayload,
   UserInputAutoResolutionUpdatedPayload,
+  WorkspaceHookAdmissionUpdatedPayload,
   WorkspaceHookReviewRequestedPayload,
   WorkspaceHookReviewSettledPayload,
   WorkspaceHookReviewSupersededPayload,
-  WorkspaceHookAdmissionUpdatedPayload,
 } from "@zcode/contracts";
 import {
-  CoreErrorType,
   AMEND_WORKFLOW_TOOL_NAME,
   CREATE_WORKFLOW_TOOL_NAME,
+  CoreErrorType,
   SessionEventType,
   getModelUsageContextTokens,
 } from "@zcode/contracts";
+import {
+  clearSettledOutputPreviews,
+  projectToolActivity,
+} from "./product-projection-bash-progress.js";
 // review 单调性裁决单一来源；projection 只实现“应用策略”（advance/no_current 接受，
 // 其余忽略；跨 flow 等 onSessionResumed 清空）。
 // （改直连 monotonicity subpath；discovery barrel 的该 re-export
 // 会在 packages/ui 的 Desktop 构建链解析失败，App 重启后打不开。）
-import { verdictWorkspaceHookReviewRequest } from "@zcode/shared/workspace-hook-review-monotonicity";
 import {
-  extractPlanStepsFromToolInput,
-  extractPlanStepsFromToolOutput,
-  isZCodeModelRetryRecoveryProgressPayload,
-  isZCodeFileStreamingToolInputPreviewTool,
-  parseZCodeBackgroundTaskNotificationText,
-  resolveZCodeBackgroundTaskControlKind,
   WORKFLOW_REFINE_PERMISSION_OPTION_ID,
   ZCODE_FILE_STREAMING_TOOL_INPUT_PREVIEW_MIN_INTERVAL_MS,
+  extractPlanStepsFromToolInput,
+  extractPlanStepsFromToolOutput,
+  isZCodeFileStreamingToolInputPreviewTool,
+  isZCodeModelRetryRecoveryProgressPayload,
+  parseZCodeBackgroundTaskNotificationText,
+  resolveZCodeBackgroundTaskControlKind,
   zcodeBackgroundTaskNotificationToolUpdateStatus,
 } from "@zcode/shared";
+import { verdictWorkspaceHookReviewRequest } from "@zcode/shared/workspace-hook-review-monotonicity";
 import type {
-  AssistantTextRow,
   ApiRetryState,
+  AssistantTextRow,
   BackgroundWorkSummary,
   ConversationDelta,
   ConversationRow,
@@ -84,24 +88,24 @@ import type {
   GoalState,
   HookExecutionProjection,
   HookInvocationRow,
+  MutableConversationSnapshotAccumulator,
   PendingInteraction,
+  QueueItem,
   ReasoningRow,
+  RunningSubagentSummary,
   SessionControl,
+  SessionUsageState,
   StatePatch,
+  SubagentProjectionState,
   SubagentRow,
   TimelineMarkerPayload,
   TimelineMarkerRow,
   ToolCallDisplay,
   ToolCallRow,
-  SessionUsageState,
-  RunningSubagentSummary,
-  SubagentProjectionState,
   TurnHeaderRow,
   TurnWorkSegment,
-  UserInputRow,
   UserInputQuestionPayload,
-  QueueItem,
-  MutableConversationSnapshotAccumulator,
+  UserInputRow,
   WorkflowRunProgressEnvelope,
 } from "@zcode/shared/zcode-protocol-v4";
 import {
@@ -113,6 +117,25 @@ import {
   reduceWorkflowRunsState,
   workspaceHookReviewRequestPayloadSchema,
 } from "@zcode/shared/zcode-protocol-v4";
+import {
+  SESSION_ALLOW_PERMISSION_OPTION_KIND,
+  buildProtocolPermissionOptions,
+} from "../permission-options.js";
+import { shouldHideInvalidToolCallFromProduct } from "../tool-call-product-visibility.js";
+import {
+  normalizeConversationEvent,
+  type CanonicalAssistantSegmentFact,
+  type CanonicalConversationFact,
+  type CanonicalModelStream,
+  type CanonicalOpenSegmentIdentity,
+  type CanonicalUserIntentFact,
+  type ConversationNormalizationDiagnostic,
+} from "./event-normalizer.js";
+import {
+  MCP_ELICITATION_INTERACTION,
+  MCP_ELICITATION_TOOL_NAME,
+  mcpElicitationQuestions,
+} from "./mcp-elicitation.js";
 import {
   buildToolOutput,
   buildTurnHeaderRow,
@@ -128,20 +151,6 @@ import {
   createInitialConversationSnapshot,
   deltaBumpsRevision,
 } from "./projection-state.js";
-import {
-  normalizeConversationEvent,
-  type CanonicalAssistantSegmentFact,
-  type CanonicalModelStream,
-  type CanonicalConversationFact,
-  type CanonicalOpenSegmentIdentity,
-  type CanonicalUserIntentFact,
-  type ConversationNormalizationDiagnostic,
-} from "./event-normalizer.js";
-import {
-  buildProtocolPermissionOptions,
-  SESSION_ALLOW_PERMISSION_OPTION_KIND,
-} from "../permission-options.js";
-import { shouldHideInvalidToolCallFromProduct } from "../tool-call-product-visibility.js";
 
 type HookInvocationRowContent = Omit<
   HookInvocationRow,
@@ -297,6 +306,9 @@ export interface ConversationEditTarget {
   transcriptMessageId: string;
   coveredByStableCompact: boolean;
   intent: {
+    inputOrigin?: "desktop" | "mobile";
+    conversationQuotes?: import("@zcode/contracts").TurnInputIntentMetadata["conversationQuotes"];
+    botGroupSource?: CanonicalUserIntentFact["botGroupSource"];
     kind: "sendText" | "sendGoalCommand";
     text: string;
     sourceCommandId?: string;
@@ -1349,8 +1361,9 @@ export class ProductProjection {
       case SessionEventType.ToolCallScheduled:
         return this.onToolCallScheduled(event);
       case SessionEventType.ToolCallStarted:
-      case SessionEventType.ToolCallProgress:
         return this.onToolCallActivity(event);
+      case SessionEventType.ToolCallProgress:
+        return this.onToolCallProgress(event);
       case SessionEventType.ToolCallResult:
         return this.onToolCallResult(event);
       case SessionEventType.ToolCallError:
@@ -1361,6 +1374,51 @@ export class ProductProjection {
         return this.onPermissionResolved(event);
       case SessionEventType.PermissionDenied:
         return this.onPermissionDenied(event);
+      case SessionEventType.PluginUiResourceUpdated: {
+        // live-only，不改快照；renderer 按 subscribers 派发给沙箱实例。
+        const payload = event.payload as PluginUiResourceUpdatedPayload;
+        return [
+          {
+            op: "pluginUi.resourceUpdated",
+            pluginId: payload.pluginId,
+            serverName: payload.serverName,
+            uri: payload.uri,
+            subscribers: payload.subscribers,
+          },
+        ];
+      }
+      case SessionEventType.PluginUiResourceListChanged: {
+        const payload = event.payload as PluginUiResourceListChangedPayload;
+        return [
+          {
+            op: "pluginUi.resourceListChanged",
+            pluginId: payload.pluginId,
+            serverName: payload.serverName,
+            subscribers: payload.subscribers,
+          },
+        ];
+      }
+      case SessionEventType.PluginUiInstanceClosed: {
+        const payload = event.payload as PluginUiResourceListChangedPayload;
+        return [{ op: "pluginUi.instanceClosed", ...payload }];
+      }
+      case SessionEventType.PluginUiAppToolCallRequested: {
+        // App-Provided Tools 信箱：live-only，投递给 subscribers 里唯一的实例。
+        const payload = event.payload as PluginUiAppToolCallRequestedPayload;
+        return [
+          {
+            op: "pluginUi.appToolCall",
+            activity: payload.activity,
+            ...(payload.cancelled ? { cancelled: true } : {}),
+            pluginId: payload.pluginId,
+            serverName: payload.serverName,
+            subscribers: payload.subscribers,
+            callId: payload.callId,
+            toolName: payload.toolName,
+            arguments: payload.arguments,
+          },
+        ];
+      }
       case SessionEventType.UserInputAutoResolutionUpdated:
         return this.onUserInputAutoResolutionUpdated(event);
       case SessionEventType.WorkspaceHookReviewRequested:
@@ -2021,14 +2079,21 @@ export class ProductProjection {
       const row: UserInputRow = {
         ...rowBase,
         kind: "userInput",
-        text: fact.input,
+        text:
+          fact.conversationQuotes || fact.botGroupSource
+            ? (fact.intentText ?? fact.input)
+            : fact.input,
         origin: fact.origin,
         ...(fact.sourceCommandId ? { sourceCommandId: fact.sourceCommandId } : {}),
         ...(rootSourceCommandId ? { rootSourceCommandId } : {}),
+        ...(fact.inputOrigin ? { inputOrigin: fact.inputOrigin } : {}),
+        ...(fact.conversationQuotes ? { conversationQuotes: fact.conversationQuotes } : {}),
+        ...(fact.botGroupSource ? { botGroupSource: fact.botGroupSource } : {}),
         ...(fact.clientId ? { clientId: fact.clientId } : {}),
         ...(fact.workflowLaunch ? { workflowLaunch: fact.workflowLaunch } : {}),
         ...(fact.epilogueStart === undefined ? {} : { epilogueStart: fact.epilogueStart }),
         ...(attachments && attachments.length > 0 ? { attachments } : {}),
+        ...(fact.source ? { source: fact.source } : {}),
       };
       // workspace checkpoint 以 user messageId 为 targetMessageId。
       // 普通 TurnStarted 也要登记 userInput row 的内部锚点，否则文件摘要 query
@@ -2046,6 +2111,9 @@ export class ProductProjection {
                 kind: fact.intentKind,
                 text: fact.intentText,
                 ...(fact.sourceCommandId ? { sourceCommandId: fact.sourceCommandId } : {}),
+                ...(fact.inputOrigin ? { inputOrigin: fact.inputOrigin } : {}),
+                ...(fact.conversationQuotes ? { conversationQuotes: fact.conversationQuotes } : {}),
+                ...(fact.botGroupSource ? { botGroupSource: fact.botGroupSource } : {}),
                 ...(fact.clientId ? { clientId: fact.clientId } : {}),
                 ...(fact.attachments ? { attachments: fact.attachments } : {}),
                 ...(fact.queueItemId ? { queueItemId: fact.queueItemId } : {}),
@@ -2083,6 +2151,8 @@ export class ProductProjection {
               ...(fact.foregroundExecutionId
                 ? { foregroundExecutionId: fact.foregroundExecutionId }
                 : {}),
+              // 自动中断必须关联实际执行输入，不能由客户端按最后一条消息猜测。
+              ...(fact.sourceCommandId ? { sourceCommandId: fact.sourceCommandId } : {}),
               startedAt: this.ms(event),
             },
           ],
@@ -2163,6 +2233,7 @@ export class ProductProjection {
           ? "completedInterrupted"
           : "error";
     const streamClose = payload.resultType === "success" ? "complete" : "interrupted";
+    const activeMs = this.activeMsForCompletion(event, payload.duration);
 
     // stopPausesActiveGoalTarget：stop 作用于任何 foreground work 时，
     // active/verifying 的 goal 强制进入 paused，等待显式 resumeGoal。
@@ -2192,12 +2263,7 @@ export class ProductProjection {
       // turn 终态一并收口在飞的 foreground tool row（收口不变量：被 profile
       // 过滤的 inputText 流必须被不可过滤的 row.upserted 蕴含，见 profiles.ts）。
       ...this.closeOpenToolRows(event, payload.resultType === "cancelled" ? "cancelled" : "error"),
-      ...this.upsertTurnHeader(
-        event,
-        headerState,
-        this.activeMsForCompletion(event, payload.duration),
-        payload.historyRoundCount,
-      ),
+      ...this.upsertTurnHeader(event, headerState, activeMs, payload.historyRoundCount),
       ...(payload.resultType === "success" ? this.markStableForkAssistant(event) : []),
       {
         op: "state.updated",
@@ -2280,7 +2346,7 @@ export class ProductProjection {
     return [
       ...this.closeStreamingRows("interrupted"),
       ...this.closeOpenToolRows(event, "error"),
-      ...this.upsertTurnHeader(event, "failed"),
+      ...this.upsertTurnHeader(event, "failed", undefined, undefined),
       {
         op: "state.updated",
         patch: this.controlPatch(
@@ -2925,6 +2991,48 @@ export class ProductProjection {
     return projectToolActivity(event, row);
   }
 
+  /**
+   * MCP `notifications/progress`（A8）→ 行上的 progress。只在 running 时写：
+   * 终态之后迟到的进度通知不能把 success/error 行重新点亮；bash 的 stdout 字节进度不在这里消费。
+   */
+  private onToolCallProgress(event: SessionEvent): ConversationDelta[] {
+    if (this.isMirroredSubagentToolEvent(event) || !this.isRunning()) return [];
+    const payload = event.payload as ToolCallProgressPayload;
+    const row = this.findToolRow(String(payload.toolCallId));
+    if (!row || row.status !== "running") return [];
+    // 两个分支共用 ToolCallProgress：Bash 尾窗与 MCP 百分比必须分别投影，避免合并后互相覆盖。
+    if (row.toolName === "Bash") return projectToolActivity(event, row);
+    const total =
+      typeof payload.total === "number" && Number.isFinite(payload.total) && payload.total > 0
+        ? payload.total
+        : undefined;
+    const fraction =
+      total !== undefined &&
+      typeof payload.progress === "number" &&
+      Number.isFinite(payload.progress)
+        ? Math.min(1, Math.max(0, payload.progress / total))
+        : undefined;
+    const message =
+      typeof payload.message === "string" && payload.message.trim().length > 0
+        ? payload.message.trim().slice(0, 200)
+        : undefined;
+    if (fraction === undefined && message === undefined && total === undefined) return [];
+    return [
+      {
+        op: "row.upserted",
+        row: {
+          ...row,
+          progress: {
+            ...(fraction !== undefined ? { fraction } : {}),
+            ...(total !== undefined ? { total } : {}),
+            ...(message !== undefined ? { message } : {}),
+            updatedAt: this.ms(event),
+          },
+        },
+      },
+    ];
+  }
+
   private onToolCallResult(event: SessionEvent): ConversationDelta[] {
     if (this.isMirroredSubagentToolEvent(event) || !this.isRunning()) return [];
     const payload = event.payload as ToolCallResultPayload;
@@ -2936,6 +3044,8 @@ export class ProductProjection {
     const next: ToolCallRow = {
       ...row,
       status: success ? "success" : "error",
+      // 终态清除运行中进度（R7）。
+      progress: undefined,
       output: buildToolOutput(payload.result, toolCallId),
       ...(display ? { display } : {}),
       endedAt: this.ms(event),
@@ -3019,6 +3129,7 @@ export class ProductProjection {
           // Stop 会先产生 tool_cancelled，再产生 cancelled turn；若先把工具
           // 终态写成 error，后续只收口 running row 的 turn reducer 无法纠正为 stopped。
           status: cancelled ? "cancelled" : "error",
+          progress: undefined,
           ...(cancelled
             ? { error: undefined }
             : { error: { code: payload.error.type, message: payload.error.message } }),
@@ -3089,6 +3200,33 @@ export class ProductProjection {
         },
       };
     }
+    if (payload.toolName === MCP_ELICITATION_TOOL_NAME) {
+      // MCP elicitation：requestedSchema → 结构化问题，
+      // 与 broker 用同一映射，v4 UI 复用 ElicitationDialog。
+      const elicitation = isPlainRecord(payload.input) ? payload.input : {};
+      return {
+        interactionId,
+        kind: "userInput",
+        anchorRowId: this.toolRowIdByCallId.get(toolCallId) ?? null,
+        createdAt: this.ms(event),
+        payload: {
+          kind: "userInput",
+          prompt: payload.reason,
+          freeText: true,
+          toolCallId,
+          toolName: payload.toolName,
+          traceId: event.traceId,
+          input: payload.input,
+          schema: {
+            interaction: MCP_ELICITATION_INTERACTION,
+            serverName: elicitation.serverName,
+            requestedSchema: elicitation.requestedSchema,
+          },
+          questions: mcpElicitationQuestions(payload.reason, elicitation.requestedSchema),
+          ...(payload.origin ? { origin: payload.origin } : {}),
+        },
+      };
+    }
     if (isExitPlanModeToolName(payload.toolName)) {
       // ExitPlanMode 复用 userInput/elicitation 通道承载计划审批反馈；
       // 普通 permission payload 无法表达 approve/custom feedback 的业务语义。
@@ -3124,7 +3262,10 @@ export class ProductProjection {
         summary: payload.reason,
         detail: payload.input,
         freeText: true,
-        ...(payload.fullAccessSupported === true && !payload.origin && !payload.optionsPolicy
+        ...(payload.approvalMode !== "user-once" &&
+        payload.fullAccessSupported === true &&
+        !payload.origin &&
+        !payload.optionsPolicy
           ? {
               fullAccessOption: {
                 optionId: PERMISSION_FULL_ACCESS_OPTION_ID,
@@ -3138,6 +3279,7 @@ export class ProductProjection {
         ...(askDisplay ? { display: askDisplay } : {}),
         options: [
           ...buildProtocolPermissionOptions({
+            approvalMode: payload.approvalMode,
             input: payload.input,
             suggestedPermissionUpdates: payload.suggestedPermissionUpdates,
             ...(payload.optionsPolicy ? { optionsPolicy: payload.optionsPolicy } : {}),
@@ -3346,6 +3488,9 @@ export class ProductProjection {
         payload.pendingInputId,
       clientId: payload.intent?.clientId ?? existing?.clientId ?? "cli",
       attachments: payload.intent?.attachmentRefs ?? existing?.attachments ?? [],
+      ...((payload.intent?.source ?? existing?.source)
+        ? { source: payload.intent?.source ?? existing?.source }
+        : {}),
       // QueueItem 同时是提升执行的输入，不只是 UI 展示；漏字段会让新 Turn 沿用旧权限／模型。
       // 旧的正文编辑事件可能没有 intent，只能保留同项原事实，不能读取当前 Session 补值。
       modelSelection: payload.intent?.modelSelection ?? existing?.modelSelection,
@@ -3353,6 +3498,16 @@ export class ProductProjection {
       planEnabled: payload.intent?.planEnabled ?? existing?.planEnabled,
       sharedContextRefs: payload.intent?.sharedContextRefs ?? existing?.sharedContextRefs,
       provenance: payload.intent?.provenance ?? existing?.provenance,
+      // 排队事件和原地编辑都必须保留可信接入来源，不能在 UI 投影时丢掉发送者。
+      ...((payload.intent?.inputOrigin ?? existing?.inputOrigin)
+        ? { inputOrigin: payload.intent?.inputOrigin ?? existing?.inputOrigin }
+        : {}),
+      ...((payload.intent?.conversationQuotes ?? existing?.conversationQuotes)
+        ? { conversationQuotes: payload.intent?.conversationQuotes ?? existing?.conversationQuotes }
+        : {}),
+      ...((payload.intent?.botGroupSource ?? existing?.botGroupSource)
+        ? { botGroupSource: payload.intent?.botGroupSource ?? existing?.botGroupSource }
+        : {}),
       delivery: {
         requested: requestedDelivery,
         admitted: admittedDelivery,
@@ -3528,13 +3683,22 @@ export class ProductProjection {
       const row = {
         ...this.rowBase(event, productTurnId, entityId),
         kind: "userInput" as const,
-        text: item.text,
+        text:
+          item.intent?.conversationQuotes || item.intent?.botGroupSource
+            ? (item.intent.text ?? item.text)
+            : item.text,
         origin: "realUser" as const,
         ...(delivery === "guide" ? { guided: true as const } : {}),
         ...(item.intent?.sourceCommandId ? { sourceCommandId: item.intent.sourceCommandId } : {}),
         ...(rootSourceCommandId ? { rootSourceCommandId } : {}),
+        ...(item.intent?.inputOrigin ? { inputOrigin: item.intent.inputOrigin } : {}),
+        ...(item.intent?.conversationQuotes
+          ? { conversationQuotes: item.intent.conversationQuotes }
+          : {}),
+        ...(item.intent?.botGroupSource ? { botGroupSource: item.intent.botGroupSource } : {}),
         ...(item.intent?.clientId ? { clientId: item.intent.clientId } : {}),
         ...(item.intent?.attachmentRefs?.length ? { attachments: item.intent.attachmentRefs } : {}),
+        ...(item.intent?.source ? { source: item.intent.source } : {}),
       };
       // queue/guide 消费后的 real-user row 与普通 TurnStarted 共用完整 canonical target；
       // 缺 messageId 的旧事件仍只可展示，不暴露无法执行的 edit action。
@@ -3552,6 +3716,13 @@ export class ProductProjection {
                 text: item.intent?.text ?? item.text,
                 ...(item.intent?.sourceCommandId
                   ? { sourceCommandId: item.intent.sourceCommandId }
+                  : {}),
+                ...(item.intent?.inputOrigin ? { inputOrigin: item.intent.inputOrigin } : {}),
+                ...(item.intent?.conversationQuotes
+                  ? { conversationQuotes: item.intent.conversationQuotes }
+                  : {}),
+                ...(item.intent?.botGroupSource
+                  ? { botGroupSource: item.intent.botGroupSource }
                   : {}),
                 ...(item.intent?.clientId ? { clientId: item.intent.clientId } : {}),
                 ...(item.intent?.attachmentRefs ? { attachments: item.intent.attachmentRefs } : {}),
@@ -3843,6 +4014,10 @@ export class ProductProjection {
             return true;
           }
           break;
+        case "pluginUi.resourceUpdated":
+        case "pluginUi.resourceListChanged":
+        case "pluginUi.instanceClosed":
+        case "pluginUi.appToolCall":
         // 非行 op：只动 workflowRuns 状态键，与 subagent 行投影的输入没有交集。
         case "workflowRun.updated":
         case "workflowRun.removed":
@@ -3990,6 +4165,10 @@ export class ProductProjection {
       switch (delta.op) {
         case "row.appended":
         case "state.updated":
+        case "pluginUi.resourceUpdated":
+        case "pluginUi.resourceListChanged":
+        case "pluginUi.instanceClosed":
+        case "pluginUi.appToolCall":
         // 非行 op：改不了这一行的 prospective 形态。
         case "workflowRun.updated":
         case "workflowRun.removed":
@@ -4295,7 +4474,7 @@ export class ProductProjection {
   // 所以持久、可回放、冷恢复免费（先例：subagents 键）。
   //
   // 归约本体在 @zcode/shared 的 workflow-runs-reducer（与状态 schema 同居）：TUI 镜像要用
-  // 同一份归约，两处各写一份就是两个时钟。
+  // 同一份归约，两处各写一份就是两个时钟（docs/dynamic-workflow/launch.md「The inline card」）。
   // 留在这里的只有投影的非纯部分——从事件信封取载荷、把新旧状态之差发成键级增量。
   private onDynamicWorkflowRunProgress(event: SessionEvent): ConversationDelta[] {
     // 先转 contracts 的有界 payload、再赋给 shared 的结构化入参：这行赋值就是"两边形状不漂移"
@@ -4308,7 +4487,7 @@ export class ProductProjection {
     if (workflowRuns === null) return [];
     // 发**差**而不是整键：一条引擎事件只动一个节点，整键重发是每事件 O(N) 字节、一条 run
     // 全程 O(N²)（workflow-runs-delta.ts 的文件头讲了这笔账怎么变成节点上界和 UI 卡死的）。
-    // `applyAll(prior, diff(prior, next))` 与 next **逐字节**一致是增量协议的契约，
+    // `applyAll(prior, diff(prior, next))` 与 next **逐字节**一致是被 property 测试钉住的契约，
     // 所以 applyEventInternal 把这串 delta 应用回去之后，this.snapshot.workflowRuns 仍是 next。
     return diffWorkflowRunsState(prior, workflowRuns);
   }
@@ -4474,28 +4653,41 @@ export class ProductProjection {
     // subagent ModelComplete 的 usage 仍不是主会话水位，但它携带的
     // fileChanges 是 child session 自己的 workspace 事实，必须独立投影到 child turn header。
     const supportsFileChangeSummary = isMainTurn || payload.querySource === "subagent";
+    const usage = payload.usage as ModelUsage;
     const deltas: ConversationDelta[] = [];
-    if (supportsFileChangeSummary && payload.fileChanges && payload.fileChanges.files > 0) {
-      const turnId = this.turnIdOf(event);
-      const headerRowId = this.turnHeaderRowIdByTurnId.get(turnId);
-      const headerRow = headerRowId !== undefined ? this.findRow(headerRowId) : undefined;
-      if (headerRow?.kind === "turnHeader") {
+    const turnId = this.turnIdOf(event);
+    const headerRowId = this.turnHeaderRowIdByTurnId.get(turnId);
+    const headerRow = headerRowId !== undefined ? this.findRow(headerRowId) : undefined;
+    if (headerRow?.kind === "turnHeader") {
+      const fileChanges =
+        supportsFileChangeSummary && payload.fileChanges && payload.fileChanges.files > 0
+          ? {
+              fileChanges: {
+                additions: payload.fileChanges.additions,
+                deletions: payload.fileChanges.deletions,
+                files: payload.fileChanges.files,
+                // Bug 根因：该条件对象随后与 headerRow 展开合并，TS 会把字面量扩宽为
+                // string，导致 CLI 启动前构建无法满足 TurnFileChangeSummary 契约。
+                state: "active" as const,
+              },
+            }
+          : {};
+      if (isMainTurn || "fileChanges" in fileChanges) {
         deltas.push({
           op: "row.upserted",
           row: {
             ...headerRow,
-            fileChanges: {
-              additions: payload.fileChanges.additions,
-              deletions: payload.fileChanges.deletions,
-              files: payload.fileChanges.files,
-              state: "active",
-            },
+            ...fileChanges,
+            // Bug 根因：Renderer 观察 running 快照的时机不可靠，continuous 可合并更新，
+            // replayable 也可能首次恢复即终态。单 Turn token 必须在权威事件投影中累计。
+            ...(isMainTurn
+              ? { outputTokens: (headerRow.outputTokens ?? 0) + (usage.outputTokens ?? 0) }
+              : {}),
           },
         });
       }
     }
     if (!isMainTurn) return [...deltas, ...retryClearDeltas];
-    const usage = payload.usage as ModelUsage;
     const usedTokens = getModelUsageContextTokens(usage) ?? 0;
     this.contextWindowState.usedTokens = usedTokens;
     const maxTokens = payload.contextWindow ?? this.contextWindowState.maxTokens;

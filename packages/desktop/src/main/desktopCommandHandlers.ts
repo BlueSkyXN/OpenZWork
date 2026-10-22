@@ -1,20 +1,21 @@
+import { getPluginSandboxHost } from "./pluginSandbox/index.js";
 /* eslint-disable max-lines -- 桌面命令分发需要共享窗口与平台上下文，集中维护更便于一致性 */
+import { readZCodeStdioTapDevState, setZCodeStdioTapDevEnabled } from "@zcode/services/node";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { app, BrowserWindow, dialog, shell } from "electron";
 import type { MessageBoxOptions } from "electron";
 import {
   DesktopCommandIds,
+  getCommunityUrlFromConfigs,
+  normalizeZCodeEndpointOrigin,
   PlatformChannels,
+  ZCODE_ENV,
   type AppSettings,
   type DesktopCommandId,
   type Locale,
   resolveRuntimeZCodeEndpointOrigin,
-  ZCODE_ENV,
-  getCommunityUrlFromConfigs,
-  normalizeZCodeEndpointOrigin,
 } from "@zcode/shared";
-import { readZCodeStdioTapDevState, setZCodeStdioTapDevEnabled } from "@zcode/services/node";
 import { showAboutDialog } from "./about.js";
 import { exportLogs } from "./exportLogs.js";
 import { openResourceManager } from "./resourceManagerWindow.js";
@@ -41,7 +42,7 @@ function resolveTargetWindow(senderWindow?: BrowserWindow | null) {
 
   return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
 }
-function updateDesktopZoomLevel(
+export function updateDesktopZoomLevel(
   targetWindow: BrowserWindow | null | undefined,
   action: "reset" | "in" | "out",
 ) {
@@ -90,6 +91,7 @@ async function clearAllDataAndRelaunch(options: {
     return;
   }
 
+  await getPluginSandboxHost()?.clearBrowserData();
   const { rm } = await import("node:fs/promises");
   try {
     await rm(options.credentialsDir, { recursive: true, force: true });
@@ -209,8 +211,8 @@ function buildZCodeEndpointPromptHtml(currentValue: string): string {
   <body>
     <form id="form">
       <label for="endpoint">ZCode endpoint origin</label>
-      <input id="endpoint" value="${value}" placeholder="https://endpoint.example.com" spellcheck="false" />
-      <div class="hint">Use an http or https origin, for example https://endpoint.example.com.</div>
+      <input id="endpoint" value="${value}" placeholder="https://your-zcode-server.example.com" spellcheck="false" />
+      <div class="hint">Use an http or https origin, for example https://your-zcode-server.example.com.</div>
       <div class="actions">
         <button id="cancel" type="button">Cancel</button>
         <button type="submit">Save</button>

@@ -3,7 +3,7 @@ import fsPromises, { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "no
 import { syncBuiltinESMExports } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import { test, type TestContext } from "node:test";
+import { test, vi } from "vitest";
 import { getMemoryMigrationMarkerPath, migrateLegacyProjectMemories } from "@zcode/shared/node";
 
 const staleName = ".note.md.memory-migration-00000000-0000-4000-8000-000000000001.2147483647.tmp";
@@ -18,22 +18,21 @@ async function fixture() {
 }
 
 async function observeMemoryIo<T>(
-  context: TestContext,
   memories: string,
   operation: () => Promise<T>,
 ): Promise<{ result: T; calls: string[] }> {
   const probes = {
-    readdir: context.mock.method(fsPromises, "readdir"),
-    lstat: context.mock.method(fsPromises, "lstat"),
-    stat: context.mock.method(fsPromises, "stat"),
-    realpath: context.mock.method(fsPromises, "realpath"),
+    readdir: vi.spyOn(fsPromises, "readdir"),
+    lstat: vi.spyOn(fsPromises, "lstat"),
+    stat: vi.spyOn(fsPromises, "stat"),
+    realpath: vi.spyOn(fsPromises, "realpath"),
   };
   syncBuiltinESMExports();
   try {
     const result = await operation();
     const calls = Object.entries(probes).flatMap(([method, probe]) =>
       probe.mock.calls.flatMap((call) => {
-        const path = String(call.arguments[0]);
+        const path = String(call[0]);
         const rel = relative(resolve(memories), resolve(path));
         return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`))
           ? [`${method}:${path}`]
@@ -42,12 +41,12 @@ async function observeMemoryIo<T>(
     );
     return { result, calls };
   } finally {
-    context.mock.restoreAll();
+    vi.restoreAllMocks();
     syncBuiltinESMExports();
   }
 }
 
-test("有效迁移标记直接跳过，增长后的 memories 子树没有文件系统检查或枚举", async (context) => {
+test("有效迁移标记直接跳过，增长后的 memories 子树没有文件系统检查或枚举", async () => {
   const f = await fixture();
   try {
     const input = { sourceMemoriesRoot: f.source, targetStorageRoot: f.target };
@@ -60,7 +59,7 @@ test("有效迁移标记直接跳过，增长后的 memories 子树没有文件�
     }
     await writeFile(join(memories, staleName), "completed-tmp\n");
     await writeFile(join(f.source, "later.md"), "later-legacy-note\n");
-    const { result, calls } = await observeMemoryIo(context, memories, () =>
+    const { result, calls } = await observeMemoryIo(memories, () =>
       migrateLegacyProjectMemories(input),
     );
     assert.equal(result.status, "noop-marker-present");

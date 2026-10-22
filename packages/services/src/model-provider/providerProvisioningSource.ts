@@ -2,9 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
-  isProviderProvisioningAccountCredentialKey,
   providerProvisioningEnvelopeSchema,
-  type ProviderProvisioningCredentialEntry,
   type ProviderProvisioningEnvelope,
 } from "@zcode/shared";
 import type {
@@ -12,10 +10,7 @@ import type {
   ProviderConfigLayerSnapshot,
 } from "@zcode/provider";
 import { decodeProviderConfigFile, encodeProviderConfigFile } from "@zcode/provider-node";
-import {
-  createCredentialCipherProvider,
-  type CredentialCipherProvider,
-} from "../credential/providers/credentialCipherProvider.js";
+import type { CredentialCipherProvider } from "../credential/providers/credentialCipherProvider.js";
 
 const CREDENTIAL_FILE_NAME = "credentials.json";
 
@@ -36,17 +31,18 @@ export function createProviderProvisioningSource(
 ): ProviderProvisioningSource {
   return {
     async read(syncId: string): Promise<ProviderProvisioningEnvelope> {
-      const [personal, credentials] = await Promise.all([
-        readProvisionablePersonalConfig(options.personalRepository, options.personalConfigFilePath),
-        readProvisioningCredentials(options.credentialFilePath, options.cipherProvider),
-      ]);
+      const personal = await readProvisionablePersonalConfig(
+        options.personalRepository,
+        options.personalConfigFilePath,
+      );
       // 默认与规则来自同一份持锁读取，不能把两次读取的值拼成不存在的配置版本。
       const personalConfig = encodeProviderConfigFile(personal).config;
       return providerProvisioningEnvelopeSchema.parse({
-        schemaVersion: 1,
+        // 上游 v2 防止旧 Target 把缺失历史账号 Key 当删除；净化版仅分发 Personal Config。
+        schemaVersion: 2,
         syncId,
         personalConfig,
-        credentials,
+        credentials: [],
       });
     },
   };
@@ -90,42 +86,6 @@ export async function readProvisionablePersonalConfig(
   }
 }
 
-async function readProvisioningCredentials(
-  credentialFilePath: string,
-  cipherProvider?: CredentialCipherProvider,
-): Promise<ProviderProvisioningCredentialEntry[]> {
-  let raw: string;
-  try {
-    raw = await readFile(credentialFilePath, "utf8");
-  } catch (error) {
-    if (isFileNotFound(error)) return [];
-    throw error;
-  }
-  const parsed = JSON.parse(raw) as unknown;
-  if (!isRecord(parsed)) {
-    throw new Error("Credential Store 必须是 JSON 对象");
-  }
-  const cipher = cipherProvider ?? createCredentialCipherProvider();
-  const entries: ProviderProvisioningCredentialEntry[] = [];
-  // Credential Store 还可能包含不属于 Provisioning allowlist 的历史记录；
-  // 这些记录不是本次同步事实，不能因为其值损坏而阻断合法账号凭据的同步。
-  // allowlist 内的条目仍保持字符串和解密校验，避免把未知内容当成 Secret 传输。
-  for (const [key, encrypted] of Object.entries(parsed)) {
-    if (!isProviderProvisioningAccountCredentialKey(key)) continue;
-    if (typeof encrypted !== "string") {
-      throw new Error(`Credential allowlist value must be a string: ${key}`);
-    }
-    const value = cipher.decrypt(encrypted);
-    if (!value.trim()) continue;
-    entries.push({ scope: "account-provider", key, value });
-  }
-  return entries;
-}
-
-function isRecord(input: unknown): input is Record<string, unknown> {
-  return typeof input === "object" && input !== null && !Array.isArray(input);
-}
-
 function isFileNotFound(error: unknown): boolean {
   return (
     typeof error === "object" &&
@@ -139,18 +99,9 @@ export function resolveCredentialFilePath(appConfigDir: string): string {
   return join(appConfigDir, CREDENTIAL_FILE_NAME);
 }
 
-/** 只枚举 Provisioning allowlist 的物理 key，供目标端实现 replace-allowlist 删除语义。 */
+/** 保留调用接口；OpenZWork 无独立凭据同步白名单，不能枚举并删除其它客户端的旧 Key。 */
 export async function listProviderProvisioningCredentialKeys(
-  credentialFilePath: string,
+  _credentialFilePath: string,
 ): Promise<readonly string[]> {
-  let raw: string;
-  try {
-    raw = await readFile(credentialFilePath, "utf8");
-  } catch (error) {
-    if (isFileNotFound(error)) return [];
-    throw error;
-  }
-  const parsed = JSON.parse(raw) as unknown;
-  if (!isRecord(parsed)) throw new Error("Credential Store 必须是 JSON 对象");
-  return Object.keys(parsed).filter((key) => isProviderProvisioningAccountCredentialKey(key));
+  return [];
 }

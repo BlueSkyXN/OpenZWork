@@ -28,6 +28,7 @@ export type ModelId = string & { readonly __brand: "ModelId" };
 export const ModelRequestSessionType = {
   Main: "main",
   Other: "other",
+  SideChat: "side_chat",
   Subagent: "subagent",
 } as const;
 

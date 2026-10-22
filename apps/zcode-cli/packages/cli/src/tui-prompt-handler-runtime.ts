@@ -68,7 +68,6 @@ export async function prepareTuiAppRuntime(
   const configuredDefaultModelSelection = providerRegistryRuntime?.modelSelectionConfigRepository
     ? await providerRegistryRuntime.modelSelectionConfigRepository.read()
     : providerRegistryRuntime?.configuredDefaultModelSelection;
-
   return {
     appEnv,
     configuredDefaultModelSelection,

@@ -3,6 +3,8 @@ import { z } from "zod";
 
 export const ESTIMATED_TOKEN_CHAR_DIVISOR = 3;
 
+// OpenZWork 净化：官方 Coding Plan 用量 / Start Plan 权益 / BigModel monitor 接口类型不随上游恢复；
+// 本文件只保留 App Usage（agent 数据库本地统计）协议面。
 // ── App Usage（agent 数据库真实统计）────────────────────────────────
 export const APP_USAGE_RANGES = ["all", "7d", "30d"] as const;
 export type AppUsageRange = (typeof APP_USAGE_RANGES)[number];

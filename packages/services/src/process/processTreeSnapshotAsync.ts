@@ -29,7 +29,9 @@ function parseWindowsCreationTimeMs(startTime: string): number | undefined {
 function collectDescendants(
   rootPid: number,
   identities: readonly ProcessIdentity[],
+  rootStartedAtMs?: number,
 ): ProcessIdentity[] {
+  const rootIdentity = identities.find((identity) => identity.pid === rootPid);
   const childrenByParentPid = new Map<number, ProcessIdentity[]>();
   for (const identity of identities) {
     const children = childrenByParentPid.get(identity.parentPid) ?? [];
@@ -38,15 +40,26 @@ function collectDescendants(
   }
   const descendants: ProcessIdentity[] = [];
   const seen = new Set<number>([rootPid]);
-  const visit = (pid: number) => {
+  const visit = (pid: number, parentStartedAtMs: number | undefined) => {
     for (const child of childrenByParentPid.get(pid) ?? []) {
       if (seen.has(child.pid)) continue;
+      const childStartedAtMs = parseWindowsCreationTimeMs(child.startTime);
+      // Windows 保留历史 PPID；较旧进程不可能由当前父进程创建，整支必须排除。
+      if (
+        parentStartedAtMs === undefined ||
+        childStartedAtMs === undefined ||
+        childStartedAtMs < parentStartedAtMs
+      )
+        continue;
       seen.add(child.pid);
       descendants.push(child);
-      visit(child.pid);
+      visit(child.pid, childStartedAtMs);
     }
   };
-  visit(rootPid);
+  visit(
+    rootPid,
+    rootIdentity ? parseWindowsCreationTimeMs(rootIdentity.startTime) : rootStartedAtMs,
+  );
   return descendants;
 }
 
@@ -121,7 +134,7 @@ function collectExitedRootDescendants(
     const createdAtMs = parseWindowsCreationTimeMs(identity.startTime);
     return createdAtMs !== undefined && createdAtMs >= startedAtMs && createdAtMs < exitedAtMs;
   });
-  return collectDescendants(rootPid, lifecycleCandidates);
+  return collectDescendants(rootPid, lifecycleCandidates, startedAtMs);
 }
 
 export async function captureExitedRootDescendantsSnapshotAsync(

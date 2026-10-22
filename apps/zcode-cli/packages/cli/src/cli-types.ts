@@ -95,7 +95,7 @@ export interface RunDependencies extends PluginsCommandOverrides {
   startProcessProviderRegistryRuntime?: typeof startProcessProviderRegistryRuntime;
 }
 
-export type CliPermissionMode = "build" | "plan" | "edit" | "yolo";
+export type CliPermissionMode = "build" | "plan" | "edit" | "yolo" | "guarded";
 export type CliRuntimeMode = CliPermissionMode | "auto";
 
 export interface CliModeState {

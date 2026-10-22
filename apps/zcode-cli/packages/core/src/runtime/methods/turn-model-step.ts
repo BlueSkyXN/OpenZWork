@@ -1,4 +1,5 @@
-// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+import { getTurnTools } from "./turn-tool-visibility.js";
+
 import { beginLocalTurnPreparation } from "@zcode/contracts";
 import {
   CompactTrigger,
@@ -752,6 +753,7 @@ async function recoverModelStepAfterContextExceeded(
     {
       activeEntries,
       modelStepIndex,
+      agentListingTools: getTurnTools(this, state),
       rapidRefillCount: rapidRefill.consecutiveRapidRefills,
       model: state.model,
       turnRequestState: state.turnRequestState,

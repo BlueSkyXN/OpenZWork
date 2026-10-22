@@ -55,7 +55,7 @@ export const providerAccessDataSchema = z.discriminatedUnion("type", [
   apiKeyAccessDataSchema,
   zhipuAccountAccessDataSchema,
 ]);
-const completeProviderAccessDataSchema = z.discriminatedUnion("type", [
+export const completeProviderAccessDataSchema = z.discriminatedUnion("type", [
   completeApiKeyAccessDataSchema,
   completeZhipuAccountAccessDataSchema,
 ]);

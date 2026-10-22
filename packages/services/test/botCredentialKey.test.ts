@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { test } from "vitest";
 import { migrateBotCredentialKeys } from "../src/bots/credentialKeyMigration.ts";
 
 const buildCredentialKey = (botId: string) => `openzwork-bot:${botId}:credential`;

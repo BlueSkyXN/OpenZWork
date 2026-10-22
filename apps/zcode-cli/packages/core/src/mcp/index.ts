@@ -2,6 +2,8 @@
 
 import {
   modelMessageContentToText,
+  resolveMcpToolVisibility,
+  SessionEventType,
   ZCODE_MCP_ERROR_PRESENTATION_MESSAGE_ONLY,
   ZCODE_MCP_ERROR_PRESENTATION_META_KEY,
   type JsonSchema,
@@ -12,10 +14,13 @@ import {
   type ModelMessageContentBlock,
   type ModelToolSideEffectScope,
   type RiskLevel,
+  type SessionEvent,
+  type ToolCallProgressPayload,
 } from "@zcode/contracts";
+import { randomUUID } from "node:crypto";
 import type { ToolRegistry } from "../tool/registry.js";
-import type { ToolEntry } from "../tool/types.js";
 import { createToolRuleNameSet } from "../tool/tool-visibility.js";
+import type { ToolEntry } from "../tool/types.js";
 import {
   asDataUrl,
   base64PayloadFromMcpImageData,
@@ -23,6 +28,12 @@ import {
 } from "./image-normalization.js";
 import { toMcpToolName } from "./name.js";
 
+export {
+  createMcpAppProvidedToolEntry,
+  MCP_APP_PROVIDED_TOOL_ENTRY_TIMEOUT_MS,
+  type McpAppProvidedToolDefinition,
+  type McpAppProvidedToolExecutor,
+} from "./app-tools.js";
 export { toMcpToolName } from "./name.js";
 
 export {
@@ -36,6 +47,11 @@ const MCP_TOOL_TIMEOUT_MS = 30_000;
 export interface RegisterMcpToolsOptions {
   allowedTools?: readonly string[];
   disallowedTools?: readonly string[];
+  /**
+   * namespaced server 名 → 插件稳定 id，来自 session 冻结的 PluginReferenceCatalog。
+   * 只用于 display.ui 的归属投影；缺失时该 server 的工具不投影 UI。
+   */
+  pluginIdByServerName?: ReadonlyMap<string, string>;
 }
 
 export function registerMcpTools(
@@ -52,20 +68,29 @@ export function registerMcpTools(
     const name = toMcpToolName(descriptor);
     if (allowed && !allowed.has(name)) continue;
     if (disallowed?.has(name)) continue;
-    registry.register(createMcpToolEntry(name, descriptor, mcpPort));
+    registry.register(
+      createMcpToolEntry(name, descriptor, mcpPort, {
+        pluginId: options.pluginIdByServerName?.get(descriptor.serverName),
+      }),
+    );
     registered.push(name);
   }
 
   return registered;
 }
 
-function createMcpToolEntry(
+export function createMcpToolEntry(
   name: string,
   descriptor: McpToolDescriptor,
   mcpPort: McpPort,
+  presentation: { pluginId?: string } = {},
 ): ToolEntry {
   const readOnly = descriptor.annotations?.readOnlyHint === true;
   const destructive = descriptor.annotations?.destructiveHint === true;
+  // 插件 UI：visibility 不含 "model" 的工具只供 UI 回调（mcp/uiCallTool），
+  // 仍进 registry 以复用元数据，但不进 provider contracts（registry.toContracts 已过滤 providerVisible=false）。
+  // 修复：之前只看 ui.visibility，没有 resourceUri 的 app-only 数据工具会被当成模型可见。
+  const providerVisible = resolveMcpToolVisibility(descriptor).includes("model");
   const isHostNodeReplExecution =
     descriptor.serverName === "node_repl" && descriptor.toolName === "js";
   // 宿主 node_repl 的 js 能执行本机 Node 代码，不能沿用普通未知 MCP 的 medium/network
@@ -110,8 +135,11 @@ function createMcpToolEntry(
         serverName: descriptor.serverName,
         toolName: descriptor.toolName,
         ...(descriptor.description ? { description: descriptor.description } : {}),
+        ...(presentation.pluginId ? { pluginId: presentation.pluginId } : {}),
+        ...(descriptor.ui ? { ui: descriptor.ui } : {}),
       },
       needsApproval,
+      ...(providerVisible ? {} : { providerVisible: false }),
       readOnly,
       riskLevel,
       sideEffectScope,
@@ -143,6 +171,7 @@ function createMcpToolEntry(
       recordOutput: "summary",
     },
     handler: async (input, context) => {
+      const startedAt = Date.now();
       const result = await mcpPort.callTool(
         {
           serverName: descriptor.serverName,
@@ -171,6 +200,16 @@ function createMcpToolEntry(
         {
           signal: context.abortSignal,
           timeoutMs,
+          // MCP 进度通知（A8）→ ToolCallProgress：与 Bash 输出进度同一事件，UI 走已有工具行进度路径。
+          ...(context.emitEvent
+            ? {
+                onProgress: (progress: { progress: number; total?: number; message?: string }) => {
+                  void context.emitEvent?.(
+                    createMcpProgressEvent(context, name, startedAt, progress),
+                  );
+                },
+              }
+            : {}),
         },
       );
       // MCP server 会返回大 base64 图片；resultBudget 只看到图片占位文本，
@@ -184,6 +223,32 @@ function createMcpToolEntry(
       });
     },
     formatModelContent: (output) => formatMcpToolResult(output),
+  };
+}
+
+function createMcpProgressEvent(
+  context: Parameters<ToolEntry["handler"]>[1],
+  toolName: string,
+  startedAt: number,
+  progress: { progress: number; total?: number; message?: string },
+): SessionEvent {
+  const payload: ToolCallProgressPayload = {
+    toolCallId: context.toolCallId as ToolCallProgressPayload["toolCallId"],
+    toolName,
+    elapsedMs: Math.max(0, Date.now() - startedAt),
+    progress: progress.progress,
+    ...(progress.total !== undefined ? { total: progress.total } : {}),
+    ...(progress.message !== undefined ? { message: progress.message } : {}),
+  };
+  return {
+    id: randomUUID() as SessionEvent["id"],
+    sessionId: context.sessionId,
+    turnId: context.turnId,
+    type: SessionEventType.ToolCallProgress,
+    timestamp: new Date(),
+    traceId: context.traceId,
+    sequenceNumber: 0,
+    payload,
   };
 }
 
@@ -238,7 +303,7 @@ function hasInformativeStructuredContent(value: unknown): boolean {
   return true;
 }
 
-function formatMcpToolResult(output: unknown): ModelMessageContent {
+export function formatMcpToolResult(output: unknown): ModelMessageContent {
   if (!isMcpToolCallResult(output)) {
     return stringify(output);
   }

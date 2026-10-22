@@ -1,5 +1,6 @@
 import { access, cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+// 来源指纹使用平台路径 join；净化合并曾只保留 posix，导致准备 Dev 副本时报 ReferenceError。
+import { dirname, join, posix } from "node:path";
 
 export const DEV_ELECTRON_PROTOCOL_SCHEME = "openzwork";
 export const DEV_ELECTRON_APP_NAME = "OpenZWork Dev";
@@ -49,7 +50,7 @@ export function patchDevElectronInfoPlist(plist) {
 }
 
 export function resolveDevElectronAppBundlePath({ runtimeRoot, electronVersion, arch }) {
-  return join(runtimeRoot, `${electronVersion}-${arch}`, `${DEV_ELECTRON_APP_NAME}.app`);
+  return posix.join(runtimeRoot, `${electronVersion}-${arch}`, `${DEV_ELECTRON_APP_NAME}.app`);
 }
 
 export async function prepareDevElectronAppBundle({
@@ -59,9 +60,9 @@ export async function prepareDevElectronAppBundle({
   arch,
 }) {
   const appPath = resolveDevElectronAppBundlePath({ runtimeRoot, electronVersion, arch });
-  const infoPlistPath = join(appPath, "Contents", "Info.plist");
-  const sourceExecutablePath = join(electronAppPath, "Contents", "MacOS", "Electron");
-  const existingExecutablePath = join(appPath, "Contents", "MacOS", "Electron");
+  const infoPlistPath = posix.join(appPath, "Contents", "Info.plist");
+  const sourceExecutablePath = posix.join(electronAppPath, "Contents", "MacOS", "Electron");
+  const existingExecutablePath = posix.join(appPath, "Contents", "MacOS", "Electron");
   // 源二进制的身份指纹，写在 .app 外面：放进 Contents 会污染 bundle 结构。
   const sourceStampPath = join(dirname(appPath), ".openzwork-dev-electron-source.json");
   // 这里原本把两个 Electron 可执行文件（各 ~100MB+）整份读进内存做 equals，
@@ -114,6 +115,6 @@ export async function prepareDevElectronAppBundle({
 
   return {
     appPath,
-    executablePath: join(appPath, "Contents", "MacOS", "Electron"),
+    executablePath: posix.join(appPath, "Contents", "MacOS", "Electron"),
   };
 }

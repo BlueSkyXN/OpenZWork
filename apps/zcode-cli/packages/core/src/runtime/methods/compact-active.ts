@@ -1,4 +1,4 @@
-// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+import { collectRuntimeAgentListing } from "../helpers/agent-listing.js";
 import {
   CompactPhase,
   CompactReason,
@@ -18,7 +18,6 @@ import {
   getUsageTotalTokens,
 } from "../deps.js";
 import type { SessionEvent, TraceContext } from "../deps.js";
-import { resolveModelRequestSessionTypeFromTaskType } from "./model-request-session-type.js";
 import {
   defaultCompactPhaseForTrigger,
   defaultCompactReasonForTrigger,
@@ -64,6 +63,7 @@ import { runCompactSummaryModelRequest } from "./compact-summary-model-request.j
 import { resolveNormalRequestMaxOutputTokens } from "./model-token-limits.js";
 import { createRefreshRuntimeHeadersBeforeModelAttempt } from "./model-runtime-headers.js";
 import { recordModelUsageFact } from "./usage-observability.js";
+import { resetProjectMemoryRecall } from "../helpers/project-memory-recall.js";
 import { createRuntimeModel } from "./runtime-model.js";
 import {
   filterOutputTokenContinuationEntries,
@@ -93,6 +93,46 @@ export async function compactActiveConversation(
     sourceCommandId?: string;
     trigger?: CompactTrigger;
     model?: Model;
+    agentListingTools?: readonly { name: string }[];
+    activeEntries?: readonly RuntimeMessageEntry[];
+  } = {},
+): Promise<{
+  displayText: string;
+  entries: readonly RuntimeMessageEntry[];
+  outcome: Extract<CompactAttemptOutcome, "compacted" | "skipped">;
+  tokenCount: number;
+}> {
+  // 私有化裁定：遥测包装层已随 WP-05 删除，保留上游拆分出的 Impl 结构直接委托。
+  return await compactActiveConversationImpl.call(
+    this,
+    customInstructions,
+    turnTraceContext,
+    events,
+    options,
+  );
+}
+
+async function compactActiveConversationImpl(
+  this: AgentRuntimeInternal,
+  customInstructions: string | undefined,
+  turnTraceContext: TraceContext,
+  events: SessionEvent[],
+  options: {
+    abortSignal?: AbortSignal;
+    compactContextTelemetry?: {
+      inputTokens: number;
+      policyContextWindowTokens: number;
+      thresholdTokens?: number;
+      tokenSource: "estimate" | "provider_usage";
+    };
+    autoCompactThreshold?: number;
+    compactReason?: CompactReason;
+    initialPromptTooLongCause?: unknown;
+    phase?: CompactPhase;
+    sourceCommandId?: string;
+    trigger?: CompactTrigger;
+    model?: Model;
+    agentListingTools?: readonly { name: string }[];
     activeEntries?: readonly RuntimeMessageEntry[];
   } = {},
 ): Promise<{
@@ -320,7 +360,6 @@ export async function compactActiveConversation(
           maxOutputTokens: compactSummaryMaxOutputTokens,
           messages: projectedRequestMessages,
           metadata: traceContextToLogContext(modelTraceContext),
-          modelRequestSessionType: resolveModelRequestSessionTypeFromTaskType(this.config.taskType),
           modelCall: {
             attributes: {
               compactionOuterAttempt: attempt,
@@ -426,7 +465,13 @@ export async function compactActiveConversation(
             workspaceRoot: this.workspaceRoot,
           })
         : undefined;
+      const agentListingEntry = collectRuntimeAgentListing(
+        this,
+        preservedEntries,
+        options.agentListingTools ?? this.getTools(options.model ?? compactModel),
+      );
       const postCompactReminderEntries = [
+        ...(agentListingEntry ? [agentListingEntry] : []),
         ...(planFileReferenceEntry ? [planFileReferenceEntry] : []),
         ...buildPostCompactReadStateReminderEntries({
           preservedEntries,
@@ -557,6 +602,8 @@ export async function compactActiveConversation(
           : recordablePostCompactEntries,
       );
       this.readFileState.clear();
+      resetProjectMemoryRecall(this);
+
       return {
         displayText: "Compacted",
         entries: postCompactEntries,

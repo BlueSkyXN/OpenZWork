@@ -4,12 +4,12 @@
 
 消除 `CI` 与 `Installers` 工作流中 JavaScript Action 声明使用 Node.js 20 的弃用提示，不依赖 GitHub runner 强制切换旧 Action 的运行时。
 
-本次只维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml` 和对应的离线结构测试。不修改产品代码、lint 规则、项目依赖或锁文件；保留已有 Linux 矩阵扩展。
+本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md)。
 
 ## 所有者与边界
 
 - Action 自身的运行时由所引用发布版本的 `action.yml` 中 `runs.using` 决定。
-- 项目命令的 Node.js 版本仍由 `mise.toml` 与工作流的 `node-version` 固定为 `24.14.0`；pnpm 仍固定为 `10.33.2`。
+- 项目命令的 Node.js 版本由 `mise.toml` 与工作流的 `node-version` 固定为 `24.14.0`；pnpm 固定为 `11.28.6`。
 - 工作流 YAML 是步骤、缓存配置和 artifact 上传配置的唯一所有者。测试只读取它们，不维护第二条执行链。
 - GitHub 托管 runner 负责执行 Action 和保存缓存、artifact；本地测试不模拟这些服务，也不声称完成真实 runner 验收。
 - 不引入或修改产品状态、协议、持久化及 Desktop/Web 同步链路。本改动位于架构策略的产品模块之外。
@@ -26,7 +26,7 @@
 | `pnpm/action-setup`       | `v6.1.0` |
 | `actions/upload-artifact` | `v7.0.1` |
 
-两份工作流引用相同的精确版本，不使用 `latest`、浮动主版本或运行时强制降级变量。以后更新版本时同步审查此契约与结构测试。
+三份工作流引用相同的精确版本，不使用 `latest`、浮动主版本或运行时强制降级变量。以后更新版本时同步审查此契约与结构测试。
 
 ## 行为与兼容性规则
 
@@ -38,6 +38,11 @@
 6. 安装包继续以 `openzwork-installer-${{ matrix.platform }}` 聚合上传多种文件，保留全部 glob 与 `if-no-files-found: error`。显式 `archive: true`，不启用 upload-artifact v7 新增的单文件直传模式。
 7. Node.js 24 Action 要求 Actions Runner 至少 `2.327.1`。当前使用 GitHub 托管 runner；若以后迁移到自托管 runner，必须先核对 runner 版本。checkout 的 Docker container action 认证操作另要求至少 `2.329.0`，当前工作流无此操作。
 8. checkout v7 对 `pull_request_target`/`workflow_run` 的 fork checkout 安全限制不应绕过；当前工作流不使用这两种触发器。
+9. 依赖目录由固定版本 pnpm 按 lockfile 安装。干净 runner 不从旧 `.ignored` 目录恢复依赖，不使用安装后目录搬移补救版本解析。
+10. 核心 CI 执行明确列出的保留能力回归；完整历史套件由独立扩展工作流按原发现范围执行。核心清单中的文件缺失必须失败，不能动态过滤失效用例或放宽断言取得绿灯。
+11. 完整检查和安装包构建在 GitHub 托管 runner 执行。候选分支推送可在明确授权下单次跳过本地钩子的重复全量检查；不修改钩子或合并门槛。
+12. 历史套件加载、实际断言和 Desktop Main 诊断在扩展工作流中报告；核心 CI 不等待它们。扩展检查保留失败退出码并上传日志和结果，不使用 `continue-on-error` 伪装成功。
+13. 扩展单测执行完整依赖安装，准备真实 Electron；Main 类型审计可使用无安装脚本的依赖安装。扩展任务不成为 Installers 或核心 CI 的 `needs` 依赖。
 
 ## 验收场景与验证
 
@@ -46,7 +51,7 @@
 - `actionlint .github/workflows/ci.yml .github/workflows/installers.yml` 校验工作流语法、表达式与 Action 输入。
 - 必须实际执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；既有 lint warning 不纳入本次清理。
 - 真实 GitHub 运行需在提交并推送后验证：各平台 Action 初始化、pnpm 缓存、turbo/Electron 缓存和 artifact 上传成功，且不再出现本次涉及的 Node.js 20 Action 弃用提示。
-- 旧运行的 Annotations 是历史记录，不因修改 YAML 而被清除。本次未授权提交、推送或远端 workflow dispatch，本地验证不能代替最后一项。
+- 旧运行的 Annotations 是历史记录，不因修改 YAML 而被清除。真实 runner 的结果必须关联当前候选提交；本地验证不能代替该证据。
 
 ## 官方依据
 

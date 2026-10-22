@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- 预算裁剪循环与 dump 遍历必须同文件维护；类型收窄修复后仍超 400 行，行为不变。 */
 import {
   copyFileSync,
   existsSync,
@@ -9,7 +10,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, join } from "node:path";
-import { app, crashReporter, type BrowserWindow, type WebContents } from "electron";
+import {
+  app,
+  crashReporter,
+  type BrowserWindow,
+  type WebContents,
+} from "electron";
 import { getAppConfigDir } from "@zcode/services/node";
 import {
   type CrashDumpV8OomSummary,
@@ -45,7 +51,7 @@ interface CrashArchiveCleanupResult {
   failedFiles: string[];
 }
 
-interface ArchivedCrashDumpRecord {
+export interface ArchivedCrashDumpRecord {
   dumpPath: string;
   archivedDumpPath: string;
   /** dump 里没有 V8 OOM 注解（例如 GPU / native 崩溃）时为 null。 */
@@ -61,11 +67,13 @@ function resolveCrashCapturePaths(): CrashCapturePaths {
   };
 }
 
-function resolveCrashReporterSourceDirs(
+export function resolveCrashReporterSourceDirs(
   stagingDir: string,
   platform: NodeJS.Platform = process.platform,
 ): string[] {
-  const dirs = [join(stagingDir, platform === "win32" ? "reports" : "completed")];
+  const dirs = [
+    join(stagingDir, platform === "win32" ? "reports" : "completed"),
+  ];
 
   if (platform === "darwin") {
     dirs.push(join(stagingDir, "pending"));
@@ -101,7 +109,10 @@ function persistArchivedCrashDump(
   utimesSync(archivedDumpPath, sourceStats.atime, sourceStats.mtime);
   // 取证目的：白屏/崩溃排查只能拿到日志包，dump 本身要靠 crashpad 注解才能分辨
   // “JS 堆撞上限”还是“JIT 代码区耗尽”。解析失败只影响取证信息，绝不阻断归档。
-  const annotations = readCrashDumpAnnotationsFromFile(archivedDumpPath, sourceStats.size);
+  const annotations = readCrashDumpAnnotationsFromFile(
+    archivedDumpPath,
+    sourceStats.size,
+  );
   const v8OomSummary = summarizeCrashDumpAnnotations(annotations);
   writeFileSync(
     join(archiveDir, `${fileName}.json`),
@@ -128,7 +139,12 @@ function pruneCrashDumpArchive(
   // 同步临界区，避免异步 IO 改变崩溃捕获引导的先后顺序。
   const deletedFiles: string[] = [];
   const failedFiles: string[] = [];
-  const dumps: Array<{ entry: string; path: string; mtimeMs: number; size: number }> = [];
+  const dumps: Array<{
+    entry: string;
+    path: string;
+    mtimeMs: number;
+    size: number;
+  }> = [];
   const dumpEntries = new Set<string>();
   const metadataFiles: Array<{ dumpEntry: string; path: string }> = [];
 
@@ -154,7 +170,12 @@ function pruneCrashDumpArchive(
       const path = join(archiveDir, entry.name);
       try {
         const stats = statSync(path);
-        dumps.push({ entry: entry.name, path, mtimeMs: stats.mtimeMs, size: stats.size });
+        dumps.push({
+          entry: entry.name,
+          path,
+          mtimeMs: stats.mtimeMs,
+          size: stats.size,
+        });
       } catch {
         failedFiles.push(path);
       }
@@ -164,7 +185,8 @@ function pruneCrashDumpArchive(
   }
 
   dumps.sort(
-    (left, right) => right.mtimeMs - left.mtimeMs || left.entry.localeCompare(right.entry),
+    (left, right) =>
+      right.mtimeMs - left.mtimeMs || left.entry.localeCompare(right.entry),
   );
 
   const maxFiles = Math.max(1, policy.maxFiles);
@@ -175,6 +197,8 @@ function pruneCrashDumpArchive(
 
   while (keptCount > 1 && (keptCount > maxFiles || keptBytes > maxTotalBytes)) {
     const dump = dumps[keptCount - 1];
+    // noUncheckedIndexedAccess：下标访问可能为空；为空说明预算循环失去不变量，直接终止。
+    if (!dump) break;
     dumpsToDelete.push(dump);
     keptCount -= 1;
     keptBytes -= dump.size;
@@ -220,7 +244,7 @@ function pruneCrashDumpArchive(
   return { deletedFiles, failedFiles };
 }
 
-function archiveCrashDumps(
+export function archiveCrashDumps(
   paths: CrashCapturePaths,
   options?: {
     platform?: NodeJS.Platform;
@@ -243,7 +267,10 @@ function archiveCrashDumps(
   const archivedDumps: ArchivedCrashDumpRecord[] = [];
   const skippedFiles: string[] = [];
 
-  for (const dir of resolveCrashReporterSourceDirs(paths.stagingDir, platform)) {
+  for (const dir of resolveCrashReporterSourceDirs(
+    paths.stagingDir,
+    platform,
+  )) {
     if (!existsSync(dir)) {
       continue;
     }
@@ -260,7 +287,11 @@ function archiveCrashDumps(
       }
 
       try {
-        const record = persistArchivedCrashDump(dumpPath, paths.archiveDir, now);
+        const record = persistArchivedCrashDump(
+          dumpPath,
+          paths.archiveDir,
+          now,
+        );
         if (record) {
           archivedFiles.push(dumpPath);
           archivedDumps.push(record);
@@ -324,7 +355,9 @@ function logArchivedCrashDumpSummaries(
         record.v8OomSummary,
       );
     } else {
-      logger.info(`[crash-capture] archived dump has no v8 oom annotations dump=${dump}`);
+      logger.info(
+        `[crash-capture] archived dump has no v8 oom annotations dump=${dump}`,
+      );
     }
   }
 }
@@ -377,7 +410,9 @@ export function initializeCrashCapture(
       uploadToServer: false,
       compress: true,
     });
-    logger.info("[crash-capture] local crashReporter started without remote upload");
+    logger.info(
+      "[crash-capture] local crashReporter started without remote upload",
+    );
   }
 
   logger.info(
@@ -386,7 +421,7 @@ export function initializeCrashCapture(
   return paths;
 }
 
-interface CrashEventMonitorHooks {
+export interface CrashEventMonitorHooks {
   onRenderProcessGone?: (
     webContents: WebContents,
     details: { reason: string; exitCode: number },
@@ -401,10 +436,10 @@ interface CrashEventMonitorHooks {
   onBrowserWindowCreated?: (win: BrowserWindow) => void;
 }
 
-function resolveProcessGoneLogLevel(reason: string): "info" | "warn" {
-  // Electron 也会为 clean-exit / killed 这类受控终止发送 gone 事件。
-  // 原始 gone 回调只记录生命周期事实，最终是否为 crash 交给稳定性分类；不能无条件打
-  // error，避免被日志采集当成异常统计。
+export function resolveProcessGoneLogLevel(reason: string): "info" | "warn" {
+  // Bug 原因：Electron 也会为 clean-exit / killed 这类受控终止发送 gone 事件。
+  // 原始 gone 回调只记录生命周期事实，最终是否为 crash 交给稳定性分类；旧实现无条件打
+  // error，随后被 ARMS console collector 当作异常，污染错误统计。
   return reason === "clean-exit" || reason === "killed" ? "info" : "warn";
 }
 
@@ -419,13 +454,16 @@ export function registerCrashEventMonitor(
   registeredCrashEventMonitor = true;
 
   app.on("render-process-gone", (_event, webContents, details) => {
-    logger[resolveProcessGoneLogLevel(details.reason)]("[crash-capture] render-process-gone:", {
-      webContentsId: webContents.id,
-      reason: details.reason,
-      exitCode: details.exitCode,
-      name: webContents.getType(),
-      url: webContents.getURL(),
-    });
+    logger[resolveProcessGoneLogLevel(details.reason)](
+      "[crash-capture] render-process-gone:",
+      {
+        webContentsId: webContents.id,
+        reason: details.reason,
+        exitCode: details.exitCode,
+        name: webContents.getType(),
+        url: webContents.getURL(),
+      },
+    );
     hooks?.onRenderProcessGone?.(webContents, details);
     // 远端 crash SDK 可能会在处理后清理 live 目录里的原始 dmp。
     // 这里在事件后补两次延迟归档，把原始 dump 复制到 ~/.openzwork/v2/crash/archive，

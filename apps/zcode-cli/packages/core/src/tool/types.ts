@@ -1,65 +1,64 @@
-// Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+import type { McpToolUiDescriptor } from "@zcode/shared/mcp-apps";
 // ============================================================
 // Tool Types - Core tool types for registry and executor
 // ============================================================
 
 import type {
-  ExecutionShellSelection,
+  CollaborationMode,
   AutomationPort,
-  EmbeddedSearchBackend,
-  ExecutionPort,
   BrowserControlPort,
-  FileSystemPort,
-  HttpClientPort,
-  ImageProcessorPort,
-  PdfDocumentPort,
-  ModelMessageContent,
-  ModelContentProtection,
-  Model,
   CoordinatorResponsePort,
   DynamicWorkflowRunPort,
   DynamicWorkflowSnippetPort,
-  ModelCatalogPort,
-  RiskLevel,
-  SessionId,
-  SessionEvent,
-  SessionModePort,
-  SessionStorePort,
-  SkillPort,
-  SkillTelemetryMetadata,
-  SubagentRunOptions,
-  SubagentPort,
-  ToolArtifactStorePort,
-  TraceContext,
-  TraceId,
-  TurnId,
-  WorkflowPort,
-  WorkflowEscalatePort,
-  WorkflowSubmitPort,
-} from "@zcode/contracts";
-// 不引入上游 PermissionCapabilityGroup（仅服务已删除的 CUA 能力）及 ToolExecutionSpanWriter
-//（活工具遥测写入接口）；保留本地 read-file 状态类型扩展和历史聚合性能事实类型。
-import type {
+  EmbeddedSearchBackend,
+  ExecutionPort,
+  ExecutionShellSelection,
+  FileSystemPort,
+  HttpClientPort,
+  ImageProcessorPort,
   JsonSchema,
+  Model,
+  ModelCatalogPort,
+  ModelContentProtection,
+  ModelMessageContent,
   ModelToolSideEffectScope,
+  TopicResourcePort,
+  PdfDocumentPort,
   PermissionBrokerReasonSource,
   PermissionRuleBehavior,
   PermissionRuleValue,
   PermissionUpdate,
   ProviderNativeToolSpec,
-  ToolExecutionMode,
+  RiskLevel,
+  SessionEvent,
+  SessionId,
+  SessionModePort,
+  SessionStorePort,
+  SkillPort,
+  SkillTelemetryMetadata,
+  SubagentPort,
+  SubagentRunOptions,
+  ToolArtifactStorePort,
   ToolCancellationPolicy,
   ToolContractDeclaration,
+  ToolExecutionMode,
+  ToolExecutionTelemetry,
   ToolResultBudgetStrategy,
   ToolResultDisplayPayload,
   ToolTimeoutPolicy,
-  ToolExecutionTelemetry,
+  TraceContext,
+  TraceId,
+  TurnId,
+  WorkflowEscalatePort,
+  WorkflowPort,
+  WorkflowSubmitPort,
 } from "@zcode/contracts";
+// 私有化：不引入上游 PermissionCapabilityGroup（仅服务已删的 CUA 能力）与 ToolExecutionSpanWriter（遥测写入接口）。
+import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 import type {
   PersistedReadFileStateMetadata,
   PersistedReadFileStateTool,
 } from "./read-file-state-metadata.js";
-import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 
 // -----------------------------------------------
 // Tool Metadata
@@ -91,6 +90,10 @@ export interface ToolMetadata {
     serverName: string;
     toolName: string;
     description?: string;
+    /** 该 server 所属插件的稳定 id（`${name}@${marketplace}`）；非插件 MCP 为空。 */
+    pluginId?: string;
+    /** 工具 `_meta` 归一化后的 MCP App 描述；存在即投影 display.ui（pluginId 缺省时用 serverName 顶替）。 */
+    ui?: McpToolUiDescriptor;
   };
 }
 
@@ -161,6 +164,7 @@ export interface ToolExecutionContext {
   workflowEscalatePort?: WorkflowEscalatePort;
   artifactStore?: ToolArtifactStorePort;
   automationPort?: AutomationPort;
+  topicResourcePort?: TopicResourcePort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;
@@ -189,6 +193,11 @@ export interface ToolExecutionContext {
   providerVisibleToolNames?: readonly string[];
   sessionId: SessionId;
   turnId?: TurnId;
+  /**
+   * 用户在确认窗里调整过、且已应用到本次入参的字段（{@link ToolEntry.applyInputAdjustments} 的
+   * `applied`）。handler 据它告诉模型「实际跑的不是你传的那个值」；缺席即没有调整。
+   */
+  inputAdjustments?: Readonly<Record<string, unknown>>;
 }
 
 export interface ToolEmbeddedSearchContext {
@@ -253,12 +262,20 @@ export interface ToolInputResolutionContext {
   /**
    * 「这个会话此刻加载着某个技能吗」的探针（handlers/workflow-skill-gate.ts）。由 runtime 用
    * provider 可见历史回答（agent/loaded-skills.ts），所以 compaction 之后答案随历史一起变回
-   * 否。缺席 = 本会话没有 Skill 工具或调用方不参与，门不生效。
+   * 否。缺席 = 本会话没有 Skill 工具或调用方不参与（单元测试直接造的 context），门不生效。
    */
   hasLoadedSkill?: (skillName: string) => boolean;
 }
 
 export type ToolInputResolutionResult = { result: true; input: unknown } | ToolHandlerFailure;
+
+/**
+ * {@link ToolEntry.applyInputAdjustments} 的结果：调整后的入参，与**实际生效**的那部分调整
+ * （键同入参字段名；与入参原值相同的改动不算）。`applied` 缺席即什么都没变。
+ */
+export type ToolInputAdjustmentResult =
+  | { result: true; input: unknown; applied?: Readonly<Record<string, unknown>> }
+  | ToolHandlerFailure;
 
 export type ToolHandler<TInput = unknown, TOutput = unknown> = (
   input: TInput,
@@ -270,6 +287,8 @@ export type ToolHandler<TInput = unknown, TOutput = unknown> = (
 // -----------------------------------------------
 
 export interface ToolEntry extends ToolContractDeclaration {
+  /** 宿主资源在审批之前固定归属；所有返回路径均释放，撤销信号进入现有取消链。 */
+  retainExecution?: (callId: string) => { signal: AbortSignal; release(): void };
   aliases?: readonly string[];
   /**
    * Host-issued atomicity policy for model content. Only an authority-verified
@@ -318,6 +337,18 @@ export interface ToolEntry extends ToolContractDeclaration {
     input: unknown,
     context: ToolInputResolutionContext,
   ) => Promise<ToolInputResolutionResult> | ToolInputResolutionResult;
+  /**
+   * 应用用户在确认窗里对入参做的调整（docs/dynamic-workflow/launch.md「Adjusting the settings in
+   * the window」）。executor 在授权之后、handler 之前调用，`adjustments` 是 broker 结果的
+   * `inputAdjustments`。返回的入参必须仍是 `resolveInput` 产出的那种形状——handler 不为调整另开
+   * 一条路；失败即工具失败，handler 不跑。同步：只读上下文里已有的端口，不做 I/O。
+   * 不声明的工具忽略一切调整。
+   */
+  applyInputAdjustments?: (
+    input: unknown,
+    adjustments: Readonly<Record<string, unknown>>,
+    context: ToolInputResolutionContext,
+  ) => ToolInputAdjustmentResult;
   formatModelContent?: (output: unknown) => ModelMessageContent;
   formatPersistedModelContent?: (
     input: ToolPersistedModelContentInput,
@@ -372,6 +403,7 @@ export interface ToolPersistedModelContentInput {
 }
 
 export interface ToolRuntimePermissionCapability {
+  userApprovalRule?: string;
   allowedInPlanMode?: boolean;
   destructive?: boolean;
   needsApproval?: boolean;
@@ -383,6 +415,8 @@ export interface ToolRuntimePermissionCapability {
 }
 
 export interface ToolRuntimePermissionCapabilityContext {
+  mode?: CollaborationMode;
+  bashShellSelection?: ExecutionShellSelection;
   runtimeScope?: ToolRuntimeScope;
   workingDirectory?: string;
   workspaceRoot?: string;

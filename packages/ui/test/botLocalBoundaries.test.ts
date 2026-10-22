@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import test from "node:test";
+import { test } from "vitest";
 
 test("new bots start disabled and channel registration runs only from explicit UI actions", async () => {
   // Windows CI 的 git autocrlf 检出为 CRLF；本测试对源码做字面 "\n" 定位，

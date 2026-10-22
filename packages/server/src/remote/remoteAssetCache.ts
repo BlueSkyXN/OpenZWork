@@ -40,9 +40,15 @@ import {
 const MANIFEST_FILE_NAME_PREFIX = "manifest-";
 const REMOTE_ASSET_READY_MARKER = ".ready";
 const LEGACY_REMOTE_ASSET_READY_MARKER = ".remote-assets-ready";
-const READY_MARKER_CANDIDATES = [REMOTE_ASSET_READY_MARKER, LEGACY_REMOTE_ASSET_READY_MARKER];
+const READY_MARKER_CANDIDATES = [
+  REMOTE_ASSET_READY_MARKER,
+  LEGACY_REMOTE_ASSET_READY_MARKER,
+];
 const remoteAssetReleaseLocks = new Map<string, Promise<string>>();
-const remoteAssetManifestLocks = new Map<string, Promise<RemoteAssetManifestFetchResult | null>>();
+const remoteAssetManifestLocks = new Map<
+  string,
+  Promise<RemoteAssetManifestFetchResult | null>
+>();
 const remoteAssetManifestRefreshLocks = new Map<
   string,
   Promise<RemoteAssetManifestFetchResult | null>
@@ -198,9 +204,15 @@ export async function ensureRemoteReleaseDirFromCdn(
   const platformArch = options.platformArch?.trim();
   const version = options.version?.trim();
 
-  if (remoteCdnBaseUrls.length === 0 || !remoteCacheDir || !platformArch || !version) {
+  if (
+    remoteCdnBaseUrls.length === 0 ||
+    !remoteCacheDir ||
+    !platformArch ||
+    !version
+  ) {
     const missingInputs: string[] = [];
-    if (remoteCdnBaseUrls.length === 0) missingInputs.push("remoteCdnBaseUrl/remoteCdnBaseUrls");
+    if (remoteCdnBaseUrls.length === 0)
+      missingInputs.push("remoteCdnBaseUrl/remoteCdnBaseUrls");
     if (!remoteCacheDir) missingInputs.push("remoteCacheDir");
     if (!platformArch) missingInputs.push("platformArch");
     if (!version) missingInputs.push("version");
@@ -215,13 +227,17 @@ export async function ensureRemoteReleaseDirFromCdn(
   assertSafePathSegment(version, "appVersion");
   assertSafePathSegment(platformArch, "platformArch");
   assertRemoteCdnBaseVersionMatches(remoteCdnBaseUrls, version);
-  const requestedComponentIds = normalizeRequestedComponentIds(options.componentIds);
+  const requestedComponentIds = normalizeRequestedComponentIds(
+    options.componentIds,
+  );
   const usesContentAddressedArtifactIdentity =
     requestedComponentIds === null ||
     Array.from(requestedComponentIds).some((componentId) =>
       usesRemoteAssetContentAddressedCacheIdentity(componentId),
     );
-  const requiredReleasePaths = normalizeRequiredReleasePaths(options.requiredReleasePaths);
+  const requiredReleasePaths = normalizeRequiredReleasePaths(
+    options.requiredReleasePaths,
+  );
 
   // 之前 cache 目录只按 version 区分，跨平台 remote 会话会互相覆盖资源。
   // 这里改成 version + platformArch 双维隔离，避免 linux/darwin 互串导致部署二进制不匹配。
@@ -229,7 +245,11 @@ export async function ensureRemoteReleaseDirFromCdn(
   if (
     !options.forceRefresh &&
     !usesContentAddressedArtifactIdentity &&
-    (await isReadyReleaseDirForRequestedPaths(releaseDir, platformArch, requiredReleasePaths))
+    (await isReadyReleaseDirForRequestedPaths(
+      releaseDir,
+      platformArch,
+      requiredReleasePaths,
+    ))
   ) {
     return releaseDir;
   }
@@ -247,7 +267,10 @@ export async function ensureRemoteReleaseDirFromCdn(
   const pinnedContentIdentity = usesContentAddressedArtifactIdentity
     ? resolveContentAddressedReleaseSegments(
         options.manifestRef
-          ? selectManifestComponents(options.manifestRef.manifest, requestedComponentIds)
+          ? selectManifestComponents(
+              options.manifestRef.manifest,
+              requestedComponentIds,
+            )
           : [],
         requestedComponentIds,
       ).join("/")
@@ -255,7 +278,9 @@ export async function ensureRemoteReleaseDirFromCdn(
   const lockKey = [
     resolve(releaseDir),
     requestedComponentLockKey,
-    options.manifestRef === null ? "<missing-manifest>" : pinnedContentIdentity || "<unpinned>",
+    options.manifestRef === null
+      ? "<missing-manifest>"
+      : pinnedContentIdentity || "<unpinned>",
     options.forceRefresh ? "force" : "reuse",
     String(options.manifestRequestTimeoutMs ?? "default"),
   ].join("::");
@@ -305,7 +330,10 @@ export async function fetchRemoteAssetManifestFromCdn(
   options: EnsureRemoteReleaseDirOptions,
   loggers: RemoteAssetCacheLoggers,
 ): Promise<RemoteAssetManifest | null> {
-  return (await fetchRemoteAssetManifestRefFromCdn(options, loggers))?.manifest ?? null;
+  return (
+    (await fetchRemoteAssetManifestRefFromCdn(options, loggers))?.manifest ??
+    null
+  );
 }
 
 export async function fetchRemoteAssetManifestRefFromCdn(
@@ -317,7 +345,12 @@ export async function fetchRemoteAssetManifestRefFromCdn(
   const platformArch = options.platformArch?.trim();
   const version = options.version?.trim();
 
-  if (remoteCdnBaseUrls.length === 0 || !remoteCacheDir || !platformArch || !version) {
+  if (
+    remoteCdnBaseUrls.length === 0 ||
+    !remoteCacheDir ||
+    !platformArch ||
+    !version
+  ) {
     return null;
   }
 
@@ -325,10 +358,15 @@ export async function fetchRemoteAssetManifestRefFromCdn(
   assertSafePathSegment(platformArch, "platformArch");
   assertRemoteCdnBaseVersionMatches(remoteCdnBaseUrls, version);
 
-  const releaseBaseCandidates = buildReleaseBaseCandidates(remoteCdnBaseUrls, version);
-  const manifestFileCandidates = buildRemoteManifestFileCandidates(platformArch);
+  const releaseBaseCandidates = buildReleaseBaseCandidates(
+    remoteCdnBaseUrls,
+    version,
+  );
+  const manifestFileCandidates =
+    buildRemoteManifestFileCandidates(platformArch);
   const manifestFileName =
-    manifestFileCandidates[0] ?? `${MANIFEST_FILE_NAME_PREFIX}${platformArch}.json`;
+    manifestFileCandidates[0] ??
+    `${MANIFEST_FILE_NAME_PREFIX}${platformArch}.json`;
   const manifestUrlCandidates = buildReleaseAssetUrlCandidates(
     releaseBaseCandidates,
     manifestFileCandidates,
@@ -394,9 +432,12 @@ async function ensureRemoteReleaseDirFromCdnInternal(
     options.remoteCdnBaseUrls,
     options.version,
   );
-  const manifestFileCandidates = buildRemoteManifestFileCandidates(options.platformArch);
+  const manifestFileCandidates = buildRemoteManifestFileCandidates(
+    options.platformArch,
+  );
   const manifestFileName =
-    manifestFileCandidates[0] ?? `${MANIFEST_FILE_NAME_PREFIX}${options.platformArch}.json`;
+    manifestFileCandidates[0] ??
+    `${MANIFEST_FILE_NAME_PREFIX}${options.platformArch}.json`;
   const manifestUrlCandidates = buildReleaseAssetUrlCandidates(
     releaseBaseCandidates,
     manifestFileCandidates,
@@ -407,7 +448,8 @@ async function ensureRemoteReleaseDirFromCdnInternal(
         remoteCacheDir: options.remoteCacheDir,
         version: options.version,
         platformArch: options.platformArch,
-        releaseBaseCandidatesForComponents: options.manifestRef.releaseBaseCandidatesForComponents,
+        releaseBaseCandidatesForComponents:
+          options.manifestRef.releaseBaseCandidatesForComponents,
         requestedComponentIds: options.requestedComponentIds,
         requiredReleasePaths: options.requiredReleasePaths,
         forceRefresh: options.forceRefresh,
@@ -469,7 +511,8 @@ async function ensureRemoteReleaseDirFromCdnInternal(
         remoteCacheDir: options.remoteCacheDir,
         version: options.version,
         platformArch: options.platformArch,
-        releaseBaseCandidatesForComponents: manifestFetchResult.releaseBaseCandidatesForComponents,
+        releaseBaseCandidatesForComponents:
+          manifestFetchResult.releaseBaseCandidatesForComponents,
         requestedComponentIds: options.requestedComponentIds,
         requiredReleasePaths: options.requiredReleasePaths,
         forceRefresh: options.forceRefresh,
@@ -500,7 +543,9 @@ async function fetchRemoteAssetManifest(
     remoteAssetNetwork?: RemoteAssetNetworkPort;
   },
   loggers: RemoteAssetCacheLoggers,
-  shouldRefreshCachedResult?: (result: RemoteAssetManifestFetchResult) => Promise<boolean>,
+  shouldRefreshCachedResult?: (
+    result: RemoteAssetManifestFetchResult,
+  ) => Promise<boolean>,
 ): Promise<RemoteAssetManifestFetchResult | null> {
   const lockKey = [
     resolve(options.remoteCacheDir),
@@ -516,17 +561,21 @@ async function fetchRemoteAssetManifest(
       return activeRefreshTask;
     }
     const cachedResult = await lockedTask;
-    const refreshStartedWhileWaiting = remoteAssetManifestRefreshLocks.get(lockKey);
+    const refreshStartedWhileWaiting =
+      remoteAssetManifestRefreshLocks.get(lockKey);
     if (refreshStartedWhileWaiting) {
       return refreshStartedWhileWaiting;
     }
     const shouldRefresh = Boolean(
-      cachedResult && shouldRefreshCachedResult && (await shouldRefreshCachedResult(cachedResult)),
+      cachedResult &&
+      shouldRefreshCachedResult &&
+      (await shouldRefreshCachedResult(cachedResult)),
     );
     if (!shouldRefresh) {
       return cachedResult;
     }
-    const refreshStartedWhileDeciding = remoteAssetManifestRefreshLocks.get(lockKey);
+    const refreshStartedWhileDeciding =
+      remoteAssetManifestRefreshLocks.get(lockKey);
     if (refreshStartedWhileDeciding) {
       return refreshStartedWhileDeciding;
     }
@@ -580,14 +629,15 @@ async function fetchRemoteAssetManifestInternal(
   },
   loggers: RemoteAssetCacheLoggers,
 ): Promise<RemoteAssetManifestFetchResult | null> {
-  const manifestFetchResult = await fetchFirstAvailableManifestOrNullWhenNotFound({
-    candidates: options.manifestUrlCandidates,
-    fileLabel: options.manifestFileName,
-    version: options.version,
-    platformArch: options.platformArch,
-    manifestRequestTimeoutMs: options.manifestRequestTimeoutMs,
-    fetch: resolveRemoteAssetFetch(options.remoteAssetNetwork),
-  });
+  const manifestFetchResult =
+    await fetchFirstAvailableManifestOrNullWhenNotFound({
+      candidates: options.manifestUrlCandidates,
+      fileLabel: options.manifestFileName,
+      version: options.version,
+      platformArch: options.platformArch,
+      manifestRequestTimeoutMs: options.manifestRequestTimeoutMs,
+      fetch: resolveRemoteAssetFetch(options.remoteAssetNetwork),
+    });
   if (!manifestFetchResult) {
     return null;
   }
@@ -602,7 +652,9 @@ async function fetchRemoteAssetManifestInternal(
   const releaseBaseCandidatesForComponents = manifestReleaseBase
     ? [
         manifestReleaseBase,
-        ...options.releaseBaseCandidates.filter((candidate) => candidate !== manifestReleaseBase),
+        ...options.releaseBaseCandidates.filter(
+          (candidate) => candidate !== manifestReleaseBase,
+        ),
       ]
     : options.releaseBaseCandidates;
 
@@ -626,13 +678,19 @@ async function ensureRemoteReleaseDirFromManifest(
   manifest: RemoteAssetManifest,
   loggers: RemoteAssetCacheLoggers,
 ): Promise<string> {
-  const selectedComponents = selectManifestComponents(manifest, options.requestedComponentIds);
+  const selectedComponents = selectManifestComponents(
+    manifest,
+    options.requestedComponentIds,
+  );
   const releaseDir = join(
     options.remoteCacheDir,
     "releases",
     options.version,
     options.platformArch,
-    ...resolveContentAddressedReleaseSegments(selectedComponents, options.requestedComponentIds),
+    ...resolveContentAddressedReleaseSegments(
+      selectedComponents,
+      options.requestedComponentIds,
+    ),
   );
   if (
     !options.forceRefresh &&
@@ -674,7 +732,10 @@ async function ensureRemoteReleaseDirFromManifest(
       );
     }
     await writeFile(
-      join(releaseDir, `${MANIFEST_FILE_NAME_PREFIX}${options.platformArch}.json`),
+      join(
+        releaseDir,
+        `${MANIFEST_FILE_NAME_PREFIX}${options.platformArch}.json`,
+      ),
       `${JSON.stringify(manifest)}\n`,
       "utf8",
     );
@@ -717,26 +778,34 @@ async function runWithReleaseMaterializeLock(
     }
   }
 }
-function normalizeRequestedComponentIds(componentIds: string[] | undefined): Set<string> | null {
+function normalizeRequestedComponentIds(
+  componentIds: string[] | undefined,
+): Set<string> | null {
   if (!componentIds) {
     return null;
   }
 
-  const normalizedIds = componentIds.map((componentId) => componentId.trim()).filter(Boolean);
+  const normalizedIds = componentIds
+    .map((componentId) => componentId.trim())
+    .filter(Boolean);
   if (normalizedIds.length === 0) {
     return null;
   }
 
   for (const componentId of normalizedIds) {
     if (!/^[a-z0-9][a-z0-9-]*$/u.test(componentId)) {
-      throw new Error(`[remote-assets] component id is invalid: ${componentId}`);
+      throw new Error(
+        `[remote-assets] component id is invalid: ${componentId}`,
+      );
     }
   }
 
   return new Set(normalizedIds);
 }
 
-function normalizeRequiredReleasePaths(requiredReleasePaths: string[] | undefined): string[] {
+function normalizeRequiredReleasePaths(
+  requiredReleasePaths: string[] | undefined,
+): string[] {
   if (!requiredReleasePaths) {
     return [];
   }
@@ -756,7 +825,10 @@ export function selectRemoteAssetManifestComponents(
   manifest: RemoteAssetManifest,
   componentIds?: string[],
 ): RemoteAssetManifestComponent[] {
-  return selectManifestComponents(manifest, normalizeRequestedComponentIds(componentIds));
+  return selectManifestComponents(
+    manifest,
+    normalizeRequestedComponentIds(componentIds),
+  );
 }
 
 function selectManifestComponents(
@@ -836,7 +908,10 @@ async function ensureRemoteComponentDirFromCdn(
   );
   if (
     !forceRefresh &&
-    (await isReadyComponentDirForRequiredPaths(componentDir, requiredRelativePaths))
+    (await isReadyComponentDirForRequiredPaths(
+      componentDir,
+      requiredRelativePaths,
+    ))
   ) {
     return componentDir;
   }
@@ -945,7 +1020,12 @@ async function ensureRemoteComponentDirFromCdnInternal(
   if (
     !forceRefresh &&
     !usesRemoteAssetContentAddressedCacheIdentity(component.id) &&
-    (await tryMigrateComponentDirFromLegacyReleaseCache(options, component, componentDir, loggers))
+    (await tryMigrateComponentDirFromLegacyReleaseCache(
+      options,
+      component,
+      componentDir,
+      loggers,
+    ))
   ) {
     const migratedMissingPaths = await findMissingReadyComponentPaths(
       componentDir,
@@ -977,11 +1057,12 @@ async function ensureRemoteComponentDirFromCdnInternal(
   await mkdir(extractRoot, { recursive: true });
 
   try {
-    const { response: artifactResponse, url: artifactUrl } = await fetchFirstAvailableUrl(
-      artifactUrlCandidates,
-      `${component.id}@${component.version}`,
-      resolveRemoteAssetFetch(options.remoteAssetNetwork),
-    );
+    const { response: artifactResponse, url: artifactUrl } =
+      await fetchFirstAvailableUrl(
+        artifactUrlCandidates,
+        `${component.id}@${component.version}`,
+        resolveRemoteAssetFetch(options.remoteAssetNetwork),
+      );
     loggers.log(`[remote-assets] downloading ${artifactUrl}`);
     await writeResponseBodyToFile(artifactResponse, archivePath, loggers);
 
@@ -1014,7 +1095,9 @@ async function tryMigrateComponentDirFromHashVersionComponentCache(
   componentDir: string,
   loggers: RemoteAssetCacheLoggers,
 ): Promise<boolean> {
-  const cacheVersion = resolveRemoteAssetComponentCacheVersion(component.version);
+  const cacheVersion = resolveRemoteAssetComponentCacheVersion(
+    component.version,
+  );
 
   const componentRootDir = resolveComponentCacheRootDir(
     options.remoteCacheDir,
@@ -1029,7 +1112,8 @@ async function tryMigrateComponentDirFromHashVersionComponentCache(
   }
 
   const legacyVersionPrefix = `${cacheVersion}+`;
-  const candidates: Array<{ dir: string; version: string; mtimeMs: number }> = [];
+  const candidates: Array<{ dir: string; version: string; mtimeMs: number }> =
+    [];
   for (const entry of entries) {
     if (!entry.isDirectory() || !entry.name.startsWith(legacyVersionPrefix)) {
       continue;
@@ -1082,7 +1166,8 @@ async function tryMigrateComponentDirFromLegacyReleaseCache(
   componentDir: string,
   loggers: RemoteAssetCacheLoggers,
 ): Promise<boolean> {
-  const expectedContentHashPrefix = extractContentHashPrefixFromComponentVersion(component.version);
+  const expectedContentHashPrefix =
+    extractContentHashPrefixFromComponentVersion(component.version);
   if (!expectedContentHashPrefix) {
     return false;
   }
@@ -1101,7 +1186,11 @@ async function tryMigrateComponentDirFromLegacyReleaseCache(
     .sort((left, right) => right.localeCompare(left));
 
   for (const legacyVersion of legacyReleaseVersions) {
-    const legacyReleaseDir = join(releasesRootDir, legacyVersion, options.platformArch);
+    const legacyReleaseDir = join(
+      releasesRootDir,
+      legacyVersion,
+      options.platformArch,
+    );
     if (!(await isReadyReleaseDir(legacyReleaseDir, options.platformArch))) {
       continue;
     }
@@ -1117,7 +1206,9 @@ async function tryMigrateComponentDirFromLegacyReleaseCache(
 
     let legacyContentHash: string;
     try {
-      legacyContentHash = await computePathContentSha256(legacyComponentSourceDir);
+      legacyContentHash = await computePathContentSha256(
+        legacyComponentSourceDir,
+      );
     } catch (error) {
       loggers.logWarn(
         `[remote-assets] skip legacy component migration for ${component.id}@${component.version} from ${legacyVersion}: ${String(error)}`,
@@ -1178,7 +1269,9 @@ async function migrateComponentSourceDir(
   }
 }
 
-export function buildRemoteAssetManifestFileCandidates(platformArch: string): string[] {
+export function buildRemoteAssetManifestFileCandidates(
+  platformArch: string,
+): string[] {
   return buildRemoteManifestFileCandidates(platformArch);
 }
 
@@ -1192,7 +1285,10 @@ function resolveReleaseBaseByAssetUrl(
 ): string | null {
   const matchedReleaseBases = releaseBaseCandidates
     .map((releaseBase) => releaseBase.replace(/\/+$/, ""))
-    .filter((releaseBase) => releaseBase.length > 0 && assetUrl.startsWith(`${releaseBase}/`))
+    .filter(
+      (releaseBase) =>
+        releaseBase.length > 0 && assetUrl.startsWith(`${releaseBase}/`),
+    )
     .sort((left, right) => right.length - left.length);
   return matchedReleaseBases[0] ?? null;
 }
@@ -1216,7 +1312,9 @@ async function fetchFirstAvailableUrl(
     }
   }
 
-  throw new Error(`[remote-assets] failed to fetch ${fileLabel}: ${errors.join("; ")}`);
+  throw new Error(
+    `[remote-assets] failed to fetch ${fileLabel}: ${errors.join("; ")}`,
+  );
 }
 
 async function fetchFirstAvailableManifestOrNullWhenNotFound(options: {
@@ -1230,7 +1328,9 @@ async function fetchFirstAvailableManifestOrNullWhenNotFound(options: {
   const errors: string[] = [];
 
   for (const candidate of options.candidates) {
-    const signal = createRemoteAssetManifestRequestSignal(options.manifestRequestTimeoutMs);
+    const signal = createRemoteAssetManifestRequestSignal(
+      options.manifestRequestTimeoutMs,
+    );
     let response: Response;
     try {
       response = await options.fetch(candidate, { signal });
@@ -1267,7 +1367,9 @@ async function fetchFirstAvailableManifestOrNullWhenNotFound(options: {
   }
 
   if (errors.length > 0) {
-    throw new Error(`[remote-assets] failed to fetch ${options.fileLabel}: ${errors.join("; ")}`);
+    throw new Error(
+      `[remote-assets] failed to fetch ${options.fileLabel}: ${errors.join("; ")}`,
+    );
   }
   return null;
 }
@@ -1283,10 +1385,14 @@ export async function parseRemoteAssetManifestFromResponse(
   try {
     parsed = JSON.parse(content);
   } catch (error) {
-    throw new Error(`[remote-assets] invalid manifest json from ${sourceUrl}: ${String(error)}`);
+    throw new Error(
+      `[remote-assets] invalid manifest json from ${sourceUrl}: ${String(error)}`,
+    );
   }
   if (!isObjectRecord(parsed)) {
-    throw new Error(`[remote-assets] invalid manifest payload from ${sourceUrl}: expect object`);
+    throw new Error(
+      `[remote-assets] invalid manifest payload from ${sourceUrl}: expect object`,
+    );
   }
 
   const schemaVersion = readRequiredNumber(parsed, "schemaVersion", "manifest");
@@ -1312,10 +1418,14 @@ export async function parseRemoteAssetManifestFromResponse(
 
   const rawComponents = parsed.components;
   if (!Array.isArray(rawComponents)) {
-    throw new Error(`[remote-assets] manifest.components must be array from ${sourceUrl}`);
+    throw new Error(
+      `[remote-assets] manifest.components must be array from ${sourceUrl}`,
+    );
   }
   if (rawComponents.length === 0) {
-    throw new Error(`[remote-assets] manifest.components is empty from ${sourceUrl}`);
+    throw new Error(
+      `[remote-assets] manifest.components is empty from ${sourceUrl}`,
+    );
   }
 
   const components: RemoteAssetManifestComponent[] = [];
@@ -1331,7 +1441,9 @@ export async function parseRemoteAssetManifestFromResponse(
       throw new Error(`[remote-assets] ${context}.id is invalid: ${id}`);
     }
     if (seenIds.has(id)) {
-      throw new Error(`[remote-assets] duplicate component id in manifest: ${id}`);
+      throw new Error(
+        `[remote-assets] duplicate component id in manifest: ${id}`,
+      );
     }
     seenIds.add(id);
 
@@ -1345,7 +1457,11 @@ export async function parseRemoteAssetManifestFromResponse(
     const version = readRequiredString(rawComponent, "version", context);
     assertSafePathSegment(version, `${context}.version`);
 
-    const sha256 = readRequiredString(rawComponent, "sha256", context).toLowerCase();
+    const sha256 = readRequiredString(
+      rawComponent,
+      "sha256",
+      context,
+    ).toLowerCase();
     if (!/^[a-f0-9]{64}$/u.test(sha256)) {
       throw new Error(`[remote-assets] ${context}.sha256 is invalid`);
     }
@@ -1398,7 +1514,9 @@ function resolveComponentCacheDir(
   );
 }
 
-export function usesRemoteAssetContentAddressedCacheIdentity(componentId: string): boolean {
+export function usesRemoteAssetContentAddressedCacheIdentity(
+  componentId: string,
+): boolean {
   return componentId in CONTENT_ADDRESSED_COMPONENT_RELEASE_DIRS;
 }
 
@@ -1407,7 +1525,9 @@ function resolveContentAddressedReleaseSegments(
   requestedComponentIds: ReadonlySet<string> | null,
 ): string[] {
   const segments: string[] = [];
-  for (const componentId of Object.keys(CONTENT_ADDRESSED_COMPONENT_RELEASE_DIRS)) {
+  for (const componentId of Object.keys(
+    CONTENT_ADDRESSED_COMPONENT_RELEASE_DIRS,
+  )) {
     // 兼容历史全量 release：未指定组件时只沿用原有 GLM 内容目录；server
     // 安装始终显式请求 server-bundle，因此仍会进入独立 SHA release。
     if (
@@ -1418,7 +1538,8 @@ function resolveContentAddressedReleaseSegments(
       continue;
     }
     const component = components.find((item) => item.id === componentId);
-    const releaseDirName = CONTENT_ADDRESSED_COMPONENT_RELEASE_DIRS[componentId];
+    const releaseDirName =
+      CONTENT_ADDRESSED_COMPONENT_RELEASE_DIRS[componentId];
     if (component && releaseDirName) {
       segments.push(releaseDirName, component.sha256);
     }
@@ -1426,8 +1547,11 @@ function resolveContentAddressedReleaseSegments(
   return segments;
 }
 
-export function resolveRemoteAssetComponentCacheVersion(version: string): string {
-  const contentHashPrefix = extractContentHashPrefixFromComponentVersion(version);
+export function resolveRemoteAssetComponentCacheVersion(
+  version: string,
+): string {
+  const contentHashPrefix =
+    extractContentHashPrefixFromComponentVersion(version);
   if (!contentHashPrefix) {
     return version;
   }
@@ -1444,7 +1568,9 @@ function resolveComponentCacheRootDir(
 ): string {
   const mountRule = REMOTE_COMPONENT_MOUNT_RULES[component.id];
   if (!mountRule) {
-    throw new Error(`[remote-assets] component id is not in local whitelist: ${component.id}`);
+    throw new Error(
+      `[remote-assets] component id is not in local whitelist: ${component.id}`,
+    );
   }
   return mountRule.platformScoped
     ? join(remoteCacheDir, "components", component.id, platformArch)
@@ -1472,7 +1598,10 @@ function resolveRequiredComponentPaths(
   return requiredComponentPaths;
 }
 
-async function materializeDirectoryContents(sourceDir: string, targetDir: string): Promise<void> {
+async function materializeDirectoryContents(
+  sourceDir: string,
+  targetDir: string,
+): Promise<void> {
   const entries = await readdir(sourceDir, { withFileTypes: true });
   for (const entry of entries) {
     if (READY_MARKER_CANDIDATES.includes(entry.name)) {
@@ -1483,7 +1612,9 @@ async function materializeDirectoryContents(sourceDir: string, targetDir: string
     const targetPath = join(targetDir, entry.name);
 
     if (entry.isSymbolicLink()) {
-      throw new Error(`[remote-assets] symlink is not allowed in component cache: ${sourcePath}`);
+      throw new Error(
+        `[remote-assets] symlink is not allowed in component cache: ${sourcePath}`,
+      );
     }
     if (entry.isDirectory()) {
       await mkdir(targetPath, { recursive: true });
@@ -1496,11 +1627,16 @@ async function materializeDirectoryContents(sourceDir: string, targetDir: string
       continue;
     }
 
-    throw new Error(`[remote-assets] unsupported component entry type: ${sourcePath}`);
+    throw new Error(
+      `[remote-assets] unsupported component entry type: ${sourcePath}`,
+    );
   }
 }
 
-async function linkOrCopyFile(sourcePath: string, targetPath: string): Promise<void> {
+async function linkOrCopyFile(
+  sourcePath: string,
+  targetPath: string,
+): Promise<void> {
   try {
     await link(sourcePath, targetPath);
     return;
@@ -1514,15 +1650,32 @@ async function linkOrCopyFile(sourcePath: string, targetPath: string): Promise<v
 
 function shouldFallbackToCopy(error: unknown): boolean {
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
-  return code === "EXDEV" || code === "EPERM" || code === "EACCES" || code === "EMLINK";
+  return (
+    code === "EXDEV" ||
+    code === "EPERM" ||
+    code === "EACCES" ||
+    code === "EMLINK"
+  );
 }
 
-function resolvePathWithinBase(baseDir: string, relativePath: string, label: string): string {
-  const normalizedRelativePath = normalizeRemoteAssetRelativePath(relativePath, label);
+function resolvePathWithinBase(
+  baseDir: string,
+  relativePath: string,
+  label: string,
+): string {
+  const normalizedRelativePath = normalizeRemoteAssetRelativePath(
+    relativePath,
+    label,
+  );
   const targetPath = resolve(baseDir, ...normalizedRelativePath.split("/"));
   const normalizedBaseDir = resolve(baseDir);
-  if (targetPath !== normalizedBaseDir && !targetPath.startsWith(`${normalizedBaseDir}${sep}`)) {
-    throw new Error(`[remote-assets] ${label} escapes base dir: ${relativePath}`);
+  if (
+    targetPath !== normalizedBaseDir &&
+    !targetPath.startsWith(`${normalizedBaseDir}${sep}`)
+  ) {
+    throw new Error(
+      `[remote-assets] ${label} escapes base dir: ${relativePath}`,
+    );
   }
   return targetPath;
 }
@@ -1534,7 +1687,9 @@ async function commitStagingDirectoryAtomically(
   await mkdir(dirname(targetDir), { recursive: true });
 
   const targetExists = await pathExists(targetDir);
-  const backupDir = targetExists ? `${targetDir}.backup-${process.pid}-${randomUUID()}` : null;
+  const backupDir = targetExists
+    ? `${targetDir}.backup-${process.pid}-${randomUUID()}`
+    : null;
 
   if (backupDir) {
     await renameRemoteAssetDirectoryWithRetry(targetDir, backupDir);
@@ -1561,14 +1716,20 @@ async function commitStagingDirectoryAtomically(
   }
 }
 
-async function removeRemoteAssetDirectoryBestEffort(path: string): Promise<void> {
+async function removeRemoteAssetDirectoryBestEffort(
+  path: string,
+): Promise<void> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       await rm(path, { recursive: true, force: true });
       return;
     } catch (error) {
-      const retryDelayMs = REMOTE_ASSET_DIRECTORY_COMMIT_RETRY_DELAYS_MS[attempt];
-      if (retryDelayMs === undefined || !isRetryableRemoteAssetDirectoryCommitError(error)) {
+      const retryDelayMs =
+        REMOTE_ASSET_DIRECTORY_COMMIT_RETRY_DELAYS_MS[attempt];
+      if (
+        retryDelayMs === undefined ||
+        !isRetryableRemoteAssetDirectoryCommitError(error)
+      ) {
         return;
       }
       await sleep(retryDelayMs);
@@ -1576,14 +1737,21 @@ async function removeRemoteAssetDirectoryBestEffort(path: string): Promise<void>
   }
 }
 
-async function renameRemoteAssetDirectoryWithRetry(from: string, to: string): Promise<void> {
+async function renameRemoteAssetDirectoryWithRetry(
+  from: string,
+  to: string,
+): Promise<void> {
   for (let attempt = 0; ; attempt += 1) {
     try {
       await rename(from, to);
       return;
     } catch (error) {
-      const retryDelayMs = REMOTE_ASSET_DIRECTORY_COMMIT_RETRY_DELAYS_MS[attempt];
-      if (retryDelayMs === undefined || !isRetryableRemoteAssetDirectoryCommitError(error)) {
+      const retryDelayMs =
+        REMOTE_ASSET_DIRECTORY_COMMIT_RETRY_DELAYS_MS[attempt];
+      if (
+        retryDelayMs === undefined ||
+        !isRetryableRemoteAssetDirectoryCommitError(error)
+      ) {
         throw error;
       }
 
@@ -1597,7 +1765,12 @@ async function renameRemoteAssetDirectoryWithRetry(from: string, to: string): Pr
 
 function isRetryableRemoteAssetDirectoryCommitError(error: unknown): boolean {
   const code = (error as NodeJS.ErrnoException | undefined)?.code;
-  return code === "EPERM" || code === "EBUSY" || code === "EACCES" || code === "ENOTEMPTY";
+  return (
+    code === "EPERM" ||
+    code === "EBUSY" ||
+    code === "EACCES" ||
+    code === "ENOTEMPTY"
+  );
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -1618,14 +1791,20 @@ async function isReadyReleaseDirForRequestedPaths(
     return false;
   }
 
-  return (await findMissingLocalRelativePaths(releaseDir, requiredReleasePaths)).length === 0;
+  return (
+    (await findMissingLocalRelativePaths(releaseDir, requiredReleasePaths))
+      .length === 0
+  );
 }
 
 async function isReadyComponentDirForRequiredPaths(
   componentDir: string,
   requiredRelativePaths: readonly string[],
 ): Promise<boolean> {
-  const missingPaths = await findMissingReadyComponentPaths(componentDir, requiredRelativePaths);
+  const missingPaths = await findMissingReadyComponentPaths(
+    componentDir,
+    requiredRelativePaths,
+  );
   return missingPaths?.length === 0;
 }
 
@@ -1683,7 +1862,13 @@ async function writeResponseBodyToFile(
     },
   });
 
-  await pipeline(Readable.fromWeb(response.body as globalThis.ReadableStream), byteMeter, output);
+  await pipeline(
+    Readable.fromWeb(
+      response.body as unknown as import("node:stream/web").ReadableStream,
+    ),
+    byteMeter,
+    output,
+  );
   reportProgress(transferredBytes, true);
 }
 
@@ -1718,11 +1903,14 @@ function createRemoteAssetProgressReporter(
     const speedMBPerSecond = bytesToMB(transferredBytes) / elapsedSeconds;
     const transferredMB = bytesToMB(transferredBytes);
     const totalMB = totalBytes ? bytesToMB(totalBytes) : null;
-    const percent = totalBytes ? Math.min((transferredBytes / totalBytes) * 100, 100) : null;
+    const percent = totalBytes
+      ? Math.min((transferredBytes / totalBytes) * 100, 100)
+      : null;
 
     const byInterval = now - lastLoggedAt >= REMOTE_ASSET_PROGRESS_INTERVAL_MS;
     const byPercent =
-      percent != null && percent - lastLoggedPercent >= REMOTE_ASSET_PROGRESS_PERCENT_STEP;
+      percent != null &&
+      percent - lastLoggedPercent >= REMOTE_ASSET_PROGRESS_PERCENT_STEP;
     const reachedEnd = percent != null && percent >= 100;
 
     if (!force && !byInterval && !byPercent && !reachedEnd) {
@@ -1760,7 +1948,9 @@ function bytesToMB(bytes: number): number {
   return bytes / (1024 * 1024);
 }
 
-function extractContentHashPrefixFromComponentVersion(version: string): string | null {
+function extractContentHashPrefixFromComponentVersion(
+  version: string,
+): string | null {
   const plusIndex = version.lastIndexOf("+");
   if (plusIndex < 0 || plusIndex === version.length - 1) {
     return null;
@@ -1801,13 +1991,15 @@ async function hashDirectoryContent(
   rootDir: string,
   relativeDir = "",
 ): Promise<void> {
-  const entries = (await readdir(rootDir, { withFileTypes: true })).sort((left, right) =>
-    left.name.localeCompare(right.name),
+  const entries = (await readdir(rootDir, { withFileTypes: true })).sort(
+    (left, right) => left.name.localeCompare(right.name),
   );
 
   for (const entry of entries) {
     const entryPath = join(rootDir, entry.name);
-    const entryRelativePath = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+    const entryRelativePath = relativeDir
+      ? `${relativeDir}/${entry.name}`
+      : entry.name;
 
     if (entry.isDirectory()) {
       const dirStat = await stat(entryPath);
@@ -1830,7 +2022,9 @@ async function hashFileContent(
   relativePath: string,
 ): Promise<void> {
   const fileStat = await stat(filePath);
-  hash.update(`file:${relativePath}:${fileStat.mode & 0o777}:${fileStat.size}\n`);
+  hash.update(
+    `file:${relativePath}:${fileStat.mode & 0o777}:${fileStat.size}\n`,
+  );
   const stream = createReadStream(filePath);
   for await (const chunk of stream) {
     hash.update(chunk as Buffer);
@@ -1856,7 +2050,10 @@ async function assertExtractedArchiveNotEmpty(
   }
 }
 
-async function isReadyReleaseDir(releaseDir: string, platformArch: string): Promise<boolean> {
+async function isReadyReleaseDir(
+  releaseDir: string,
+  platformArch: string,
+): Promise<boolean> {
   if (!(await isValidReleaseDir(releaseDir, platformArch))) {
     return false;
   }
@@ -1864,7 +2061,10 @@ async function isReadyReleaseDir(releaseDir: string, platformArch: string): Prom
   return hasReadyMarker(releaseDir);
 }
 
-async function isValidReleaseDir(releaseDir: string, platformArch: string): Promise<boolean> {
+async function isValidReleaseDir(
+  releaseDir: string,
+  platformArch: string,
+): Promise<boolean> {
   try {
     const dirStat = await stat(releaseDir);
     if (!dirStat.isDirectory()) {
@@ -1909,11 +2109,16 @@ async function hasReadyMarker(baseDir: string): Promise<boolean> {
   return false;
 }
 
-async function writeReadyMarker(baseDir: string, markerFileName: string): Promise<void> {
+async function writeReadyMarker(
+  baseDir: string,
+  markerFileName: string,
+): Promise<void> {
   await writeFile(join(baseDir, markerFileName), `${Date.now()}\n`, "utf8");
 }
 
-export async function readCachedRemoteAssetMarker(cacheDir: string): Promise<string | null> {
+export async function readCachedRemoteAssetMarker(
+  cacheDir: string,
+): Promise<string | null> {
   for (const readyMarker of READY_MARKER_CANDIDATES) {
     const markerPath = join(cacheDir, readyMarker);
     try {
@@ -1933,7 +2138,11 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function readRequiredString(value: Record<string, unknown>, key: string, context: string): string {
+function readRequiredString(
+  value: Record<string, unknown>,
+  key: string,
+  context: string,
+): string {
   const fieldValue = value[key];
   if (typeof fieldValue !== "string") {
     throw new Error(`[remote-assets] ${context}.${key} must be string`);
@@ -1945,7 +2154,11 @@ function readRequiredString(value: Record<string, unknown>, key: string, context
   return trimmed;
 }
 
-function readRequiredNumber(value: Record<string, unknown>, key: string, context: string): number {
+function readRequiredNumber(
+  value: Record<string, unknown>,
+  key: string,
+  context: string,
+): number {
   const fieldValue = value[key];
   if (typeof fieldValue !== "number" || !Number.isFinite(fieldValue)) {
     throw new Error(`[remote-assets] ${context}.${key} must be finite number`);
@@ -1958,7 +2171,9 @@ function assertSafePathSegment(value: string, label: string): void {
     throw new Error(`[remote-assets] ${label} is empty`);
   }
   if (value.includes("/") || value.includes("\\")) {
-    throw new Error(`[remote-assets] ${label} must be a single path segment: ${value}`);
+    throw new Error(
+      `[remote-assets] ${label} must be a single path segment: ${value}`,
+    );
   }
   if (value === "." || value === "..") {
     throw new Error(`[remote-assets] ${label} is invalid: ${value}`);

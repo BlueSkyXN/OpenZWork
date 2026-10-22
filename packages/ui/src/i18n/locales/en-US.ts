@@ -157,6 +157,42 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.navigationUnavailable":
     "The requested provider is unavailable. Please choose another provider.",
   "workspace.context.lastActivity": "Last active {time}",
+  "bots.privateDelivery.retry": "Resend reply",
+  "bots.privateDelivery.retryHint":
+    "Resends the full reply as text. Content already received may be duplicated.",
+  "bots.privateDelivery.retryFailed": "Sending failed. Check the error details before retrying.",
+  "bots.boundGroups.title": "Bound groups",
+  "bots.boundGroups.count": "{count} topics",
+  "bots.boundGroups.countOne": "{count} topic",
+  "bots.boundGroups.toggle": "Enable group: {name}",
+  "bots.boundGroups.loading": "Loading groups…",
+  "bots.boundGroups.empty":
+    "No bound groups. Mention the bot with /enable in a group to add it here.",
+  "bots.boundGroups.botOff": "The bot is off. Enable it to change group switches.",
+  "bots.boundGroups.loadFailed": "Could not load groups. Refresh to retry.",
+  "bots.boundGroups.saveFailed": "The group change could not be confirmed. Refresh and retry.",
+  "bots.boundGroups.refresh": "Refresh",
+  "bots.topic.open": "Open topic in Feishu / Lark",
+  "bots.topic.details": "Topic details",
+  "bots.topic.loading": "Loading context…",
+  "bots.topic.unavailable": "Context is unavailable. Try again later.",
+  "bots.topic.coverage": "{count} discussion messages archived; only the read range is covered.",
+  "bots.topic.gap": "{count} discussion messages archived; some history is not covered.",
+  "bots.topic.historyOn": "The next mention reads new topic discussion.",
+  "bots.topic.historyOff":
+    "Topic history is off; only the current request and explicit references are submitted.",
+  "bots.topic.context": "Turn background and summary",
+  "bots.topic.correction": "Submit corrections as a new request. Original records are retained.",
+  "bots.group.syncing": "Replies sync to the Feishu/Lark group",
+  "bots.group.paused": "Group sync paused",
+  "bots.group.sharedWorkspace": "Members share workspace files.",
+  "bots.group.deliveryUnknown": "Feishu delivery unconfirmed",
+  "bots.group.deliveryFailed": "Feishu delivery failed",
+  "bots.group.confirmReceived": "Checked: received",
+  "bots.group.confirmNotReceived": "Checked: not received",
+  "bots.group.resend": "Resend result",
+
+  "bots.group.provider.feishu": "Feishu",
   // Common
   "common.loading": "Loading...",
   "common.listSeparator": ", ",
@@ -605,11 +641,57 @@ const enUS: Record<string, string> = {
     "The app will restart after disconnecting. You will need to connect your account again.",
   "logout.confirm.ok": "Disconnect and restart",
   "logout.confirm.cancel": "Cancel",
-  "sidebar.profile.notLoggedIn": "Connect",
   "app.selectFile": "Select a file to get started",
   "app.workspace": "Workspace",
   "browser.title": "Browser",
   "browser.addressPlaceholder": "Enter a URL and press Enter",
+  "browser.permission.promptAriaLabel": "Site permission request",
+  "browser.permission.wantsToUse": "wants to use",
+  "browser.permission.siteInfo": "View site information",
+  "browser.permission.settings": "Site permissions",
+  "browser.permission.close": "Close",
+  "browser.permission.saved":
+    "Permissions updated. Reload the page to apply changes to active resources.",
+  "browser.permission.readError": "Could not load permissions.",
+  "browser.permission.saveError": "Could not save permission changes.",
+  "browser.permission.resetError": "Could not complete the permission reset.",
+  "browser.permission.retry": "Retry",
+  "browser.permission.unsupported": "Site permissions are available in the desktop browser.",
+  "browser.permission.reset": "Reset site permissions",
+  "browser.permission.resetDone": "Permissions reset. Reload the page to request access again.",
+  "browser.permission.allowOnce": "Allow once",
+  "browser.permission.allowAlways": "Allow on this site",
+  "browser.permission.blockAlways": "Block",
+  "browser.permission.cancel": "Cancel",
+  "browser.permission.share": "Share",
+  "browser.permission.media": "camera and microphone",
+  "browser.permission.mediaVideo": "camera",
+  "browser.permission.mediaAudio": "microphone",
+  "browser.permission.mediaBoth": "camera and microphone",
+  "browser.permission.clipboardRead": "clipboard reading",
+  "browser.permission.geolocation": "location",
+  "browser.permission.notifications": "notifications",
+  "browser.permission.midi": "MIDI devices",
+  "browser.permission.idleDetection": "idle detection",
+  "browser.permission.speakerSelection": "audio output selection",
+  "browser.permission.windowManagement": "window management",
+  "browser.permission.storageAccess": "storage access",
+  "browser.permission.keyboardLock": "keyboard lock",
+  "browser.permission.fileSystem": "file access",
+  "browser.permission.deviceHid": "HID devices",
+  "browser.permission.deviceUsb": "USB devices",
+  "browser.permission.deviceSerial": "serial devices",
+  "browser.permission.deviceBluetooth": "Bluetooth devices",
+  "browser.permission.unknownCapability": "an unknown capability",
+  "browser.permission.screenShareTitle": "{origin} wants to share your screen",
+  "browser.permission.screenShareDescription": "Choose the screen or window to share. This choice applies only to this session.",
+  "browser.permission.deviceTitle": "{origin} wants to connect a device",
+  "browser.permission.connect": "Connect",
+  "browser.permission.screenGroup.screen": "Entire Screen",
+  "browser.permission.screenGroup.window": "Window",
+  "browser.permission.stateAllow": "Allow",
+  "browser.permission.stateDeny": "Block",
+  "browser.permission.stateAsk": "Ask",
   "browser.back": "Back",
   "browser.forward": "Forward",
   "browser.reload": "Refresh",
@@ -685,6 +767,7 @@ const enUS: Record<string, string> = {
   "subagentDirectory.status.lost": "Lost",
   "chat.statusPanel.endedAgents": "Ended",
   "chat.statusPanel.endedWorkflows": "Ended workflows",
+  "chat.statusPanel.workflowsLive": "{count} running",
   "workflowDirectory.title": "Workflow runs",
   "workflowDirectory.running": "Running",
   "workflowDirectory.runningEmpty": "No workflows are running",
@@ -716,6 +799,42 @@ const enUS: Record<string, string> = {
   "sidePane.openFile.category": "Files",
   "sidePane.openFile.emptyQuery": "Type to search files",
   "sidePane.review": "Review",
+  "pluginUi.loading": "Loading plugin UI...",
+  "pluginUi.loadFailed": "Plugin UI failed to load.",
+  "pluginUi.retry": "Reload",
+  "pluginUi.pin": "Keep expanded",
+  "pluginUi.unpin": "Stop keeping expanded",
+  "pluginUi.openInSidePane": "Open in side pane",
+  "pluginUi.openedInSidePane": "Opened in side pane",
+  "genUi.copyImage": "Copy image",
+  "genUi.title": "Interactive view",
+  "genUi.desktopOnly": "Open this interactive view in the desktop app",
+  "genUi.offline": "Workspace is offline. Reconnect and retry",
+  "genUi.failed": "Unable to load interactive view",
+  "genUi.loading": "Loading interactive view…",
+  "genUi.retry": "Retry",
+  "genUi.tweak": "Adjust design",
+  "genUi.expand": "Expand",
+  "genUi.collapse": "Collapse",
+  "genUi.expanded": "Showing in expanded view",
+  "genUi.confirm": "Interactive view wants to send a message",
+  "genUi.cancel": "Cancel",
+  "genUi.send": "Send",
+  "genUi.incomplete": "This response did not finish. The interactive view was not loaded.",
+  "genUi.waiting": "Interactive view will appear when generation completes",
+  "genUi.invalid": "Invalid interactive view reference",
+  "genUi.reset": "Reset",
+  "genUi.original": "Preview original",
+  "genUi.submit": "Submit design changes",
+  "genUi.from": "From interactive view {name}",
+  "pluginUi.fromPlugin": "From plugin {name}",
+  "pluginUi.followUp.title": "A plugin wants to send a message as you",
+  "pluginUi.followUp.description": "From plugin {name}. You can edit it before sending.",
+  "pluginUi.followUp.send": "Send",
+  "pluginUi.followUp.cancel": "Cancel",
+  "pluginUi.modelContext.label": "Plugin context",
+  "pluginUi.modelContext.remove": "Remove plugin context",
+  "sidePane.pluginUi": "Plugin",
   "whiteboard.title": "Whiteboard",
   "whiteboard.defaultName": "Whiteboard",
   "whiteboard.nameLabel": "Whiteboard name",
@@ -1181,12 +1300,20 @@ const enUS: Record<string, string> = {
   "fileActions.copyAbsolutePath": "Copy absolute path",
   "fileActions.copyRelativePath": "Copy relative path",
   "appHeader.copyTaskPath": "Copy task path",
+  "appHeader.copyClaudeJsonlPath": "Copy JSONL path",
   "appHeader.copySessionId": "Copy session ID",
   "appHeader.reloadSession": "Reload session",
   "appHeader.reloadSessionSuccess": "Session reloaded",
   "appHeader.reloadSessionFailed": "Could not reload session",
   "appHeader.workspaceSessionActionLoading": "Applying session changes...",
   "appHeader.copyLogPath": "Copy log path",
+  "appHeader.goToProviderConfig": "Go to config",
+  "appHeader.goToProviderConfigPrefix": "Go to",
+  "appHeader.goToProviderConfigSuffix": "config",
+  "appHeader.openProviderConfigWithEditorPrefix": "Use",
+  "appHeader.openProviderConfigWithEditorMiddle": "to open",
+  "appHeader.openProviderConfigWithEditorSuffix": "config file",
+  "appHeader.openProviderConfigInEditorFailed": "Could not open provider config in {editor}",
   "workspaceHeader.help.menu": "Help",
   "workspaceHeader.help.community": "User community",
   "titleBar.menu.file": "File",
@@ -1221,6 +1348,8 @@ const enUS: Record<string, string> = {
   "directoryBrowser.errorSystem": "Failed to get system info",
   "directoryBrowser.errorReadDir": "Failed to read directory: {error}",
 
+  // Update ready button
+
   "projectSelector.heroTitle": "Open fast. Stay focused.",
   "projectSelector.heroDescription": "Pick a workspace, jump back in, and keep the surface clean.",
   "appError.title": "The app ran into a problem",
@@ -1250,6 +1379,8 @@ const enUS: Record<string, string> = {
     "You selected a WSL path:\n{path}\n\nWe recommend opening it through WSL connection, though you can still continue with the path.",
   "workspace.wslUncPrompt.openWsl": "Open WSL connection",
   "workspace.wslUncPrompt.continuePath": "Continue with path",
+  "taskList.codexConnectivityUnavailable":
+    "Warmup could not reach {host}. Starting a conversation may fail until the network is available.",
   "workspaceSidebar.workspaces": "Tasks",
   "workspaceSidebar.archivedTasks": "Archived",
   "workspaceSidebar.taskViewOptions": "Filter and sort",
@@ -1370,8 +1501,35 @@ const enUS: Record<string, string> = {
   "remote.connectingStepDescription":
     "We are establishing the {method} connection. You can follow the live setup progress here.",
   "webRemoteControl.trigger": "Mobile remote control",
+  "webRemoteControl.triggerStatus.idle": "Remote control is off",
+  "webRemoteControl.triggerStatus.starting": "Remote control is starting",
+  "webRemoteControl.triggerStatus.waiting": "Waiting for phone",
+  "webRemoteControl.triggerStatus.connecting": "Connecting phone",
+  "webRemoteControl.triggerStatus.connected": "Phone connected",
+  "webRemoteControl.triggerStatus.error": "Remote control failed",
   "webRemoteControl.title": "Mobile remote control",
-  "webRemoteControl.description": "Control ZCode workspaces through chat bots.",
+  "webRemoteControl.description":
+    "Scan the QR code or open the link on your phone to control this workspace.",
+  "webRemoteControl.statusLabel": "Session status",
+  "webRemoteControl.status.idle": "Idle",
+  "webRemoteControl.status.starting": "Starting",
+  "webRemoteControl.status.running": "Waiting for phone",
+  "webRemoteControl.status.connecting": "Connecting phone",
+  "webRemoteControl.status.active": "Phone connected",
+  "webRemoteControl.status.error": "Connection failed",
+  "webRemoteControl.themeMenu.trigger": "Choose theme",
+  "webRemoteControl.statusDetail.idle": "Ready to connect.",
+  "webRemoteControl.statusDetail.starting": "Starting remote control...",
+  "webRemoteControl.statusDetail.running": "Scan the QR code or open the link on your phone.",
+  "webRemoteControl.statusDetail.connecting": "Phone is connecting...",
+  "webRemoteControl.statusDetail.active": "Your phone can control this workspace.",
+  "webRemoteControl.statusDetail.error": "Could not start mobile remote control.",
+  "webRemoteControl.generating": "Preparing QR code...",
+  "webRemoteControl.qrAlt": "Web remote control QR code",
+  "webRemoteControl.mobileQr.title": "Scan from phone",
+  "webRemoteControl.mobileQr.description": "Use your phone camera to open this workspace remotely.",
+  "webRemoteControl.statusTag.phone": "Phone",
+  "webRemoteControl.statusTag.ready": "Ready",
   "webRemoteControl.botChannel.title": "Use a bot channel",
   "webRemoteControl.botChannel.description": "Connect a chat bot for longer-running mobile access.",
   "webRemoteControl.botChannel.weixin.title": "Weixin",
@@ -1384,6 +1542,84 @@ const enUS: Record<string, string> = {
   "webRemoteControl.botChannel.telegram.description": "Open this workspace from Telegram.",
   "webRemoteControl.botChannel.configure": "Configure in bot channels",
   "webRemoteControl.botChannel.manageBots": "Manage bots",
+  "webRemoteControl.linkLabel": "Remote control link",
+  "webRemoteControl.linkPending": "The remote control link will appear here once ready.",
+  "webRemoteControl.singlePageNote":
+    "This relay pairing supports one phone page at a time. If it is already open elsewhere, close the old page first.",
+  "webRemoteControl.copyLink.description": "Can't scan? Open the link on your phone.",
+  "webRemoteControl.failure.sessionNotFound":
+    "This Web remote control link is no longer valid. Start it again from desktop.",
+  "webRemoteControl.failure.sessionExpired":
+    "This Web remote control session has already ended. Generate a new link from desktop to continue.",
+  "webRemoteControl.failure.sessionConflict":
+    "This link is already being used by another page. Close the other page and scan again.",
+  "webRemoteControl.failure.kicked":
+    "The relay kicked this pairing. Close the other page and generate a new QR code from desktop.",
+  "webRemoteControl.failure.workspaceClosed":
+    "The shared desktop window has been closed. Go back to desktop and start Web remote control again.",
+  "webRemoteControl.failure.desktopDisconnected":
+    "The desktop side disconnected, so this Web remote control session can no longer continue.",
+  "webRemoteControl.failure.invalidMobileConnection":
+    "The current mobile connection is no longer valid. Reload the page and reconnect.",
+  "webRemoteControl.failure.desktopBootstrapTimeout":
+    "The desktop window did not respond in time. Make sure it is still running, then reload.",
+  "webRemoteControl.failure.connectionRecoveryTimeout":
+    "The mobile connection did not recover in time, so Web remote control cannot keep syncing yet.",
+  "webRemoteControl.failure.relayUnavailable":
+    "The external relay connection is unavailable. Make sure desktop is online, then try again.",
+  "webRemoteControl.failure.unsupportedAction":
+    "Web remote control mode can only open workspaces that are already open in the current desktop window.",
+  "webRemoteControl.failure.unexpectedError":
+    "Could not start mobile remote control. Try again from desktop.",
+  "webRemoteControl.copyLink": "Copy link",
+  "webRemoteControl.copyLink.copied": "Remote control link copied",
+  "webRemoteControl.copyLinkFailed": "Could not copy remote control link: {error}",
+  "webRemoteControl.refreshQr": "Refresh QR",
+  "webRemoteControl.refreshQr.confirmTitle": "Refresh QR code?",
+  "webRemoteControl.refreshQr.confirmDescription":
+    "Refreshing will invalidate any remote control links that were copied or scanned before. Connected phones will need to scan the new QR code.",
+  "webRemoteControl.refreshQr.success": "Remote control QR refreshed",
+  "webRemoteControl.refreshQr.failed": "Could not refresh remote control QR: {error}",
+  "webRemoteControl.stop": "Stop",
+  "webRemoteControl.switchWorkspace": "Switch workspace",
+  "webRemoteControl.expandNavigation": "Expand tasks and workspaces",
+  "webRemoteControl.collapseNavigation": "Collapse tasks and workspaces",
+  "webRemoteControl.noSwitchableWorkspaces": "No switchable workspaces",
+  "webRemoteControl.noTasks": "No tasks available in the current desktop window",
+  "webRemoteControl.openTask": "Open task {title}",
+  "webRemoteControl.taskStatus.idle": "Idle",
+  "webRemoteControl.taskStatus.running": "Running",
+  "webRemoteControl.taskStatus.completed": "Done",
+  "webRemoteControl.taskStatus.error": "Error",
+  "webRemoteControl.mobileHome.title": "ZCode remote control",
+  "webRemoteControl.mobileHome.connected": "Connected to this desktop window",
+  "webRemoteControl.mobileHome.notice":
+    "This connection can view the projects, tasks, and sessions currently open on this device. If the QR code expires, return to desktop and connect again.",
+  "webRemoteControl.mobileHome.sectionTitle": "Workspaces and tasks on this device",
+  "webRemoteControl.mobileHome.summary": "{workspaceCount} workspaces · {taskCount} tasks",
+  "webRemoteControl.mobileHome.collapseAll": "Collapse all workspaces",
+  "webRemoteControl.mobileHome.organize": "Organize tasks",
+  "webRemoteControl.mobileHome.organizeByWorkspace": "By workspace",
+  "webRemoteControl.mobileHome.organizeByTimeline": "Timeline",
+  "webRemoteControl.mobileHome.sortBy": "Sort by",
+  "webRemoteControl.mobileHome.sortByCreated": "Created time",
+  "webRemoteControl.mobileHome.sortByUpdated": "Updated time",
+  "webRemoteControl.mobileHome.refresh": "Refresh workspaces and tasks",
+  "webRemoteControl.mobileHome.workspaceKind.local": "Local",
+  "webRemoteControl.mobileHome.workspaceKind.conversation": "Conversation",
+  "webRemoteControl.mobileHome.workspaceKind.remote": "Remote",
+  "webRemoteControl.mobileHome.disconnected": "Disconnected",
+  "webRemoteControl.mobileHome.reconnect": "Reconnect",
+  "webRemoteControl.mobileHome.reconnecting": "Reconnecting",
+  "webRemoteControl.mobileHome.updatedAt": "Updated {time}",
+  "webRemoteControl.mobileHome.taskCount": "{count} tasks",
+  "webRemoteControl.mobileHome.workspaceEmpty": "No tasks in this workspace",
+  "webRemoteControl.mobileShell.backHome": "Back to task home",
+  "webRemoteControl.mobileShell.chatTitle": "Task chat",
+  "webRemoteControl.mobileShell.reconnecting": "Reconnecting automatically...",
+  "webRemoteControl.stopSuccess": "Web remote control stopped",
+  "webRemoteControl.startFailed": "Failed to start Web remote control: {error}",
+  "webRemoteControl.stopFailed": "Failed to stop Web remote control: {error}",
   "remote.title": "Connect remote environment",
   "remote.description":
     "Connect to a remote workspace over SSH, Server, WSL, or Docker, then choose a directory in the current window.",
@@ -1396,9 +1632,11 @@ const enUS: Record<string, string> = {
   "remote.selectedMethod": "Selected method",
   "remote.methods": "Connection method",
   "remote.kind.ssh": "SSH",
+  "remote.kind.server": "Server",
   "remote.kind.wsl": "WSL",
   "remote.kind.docker": "Docker",
   "remote.kind.ssh.wizardDescription": "Remote host",
+  "remote.kind.server.wizardDescription": "Running ZCode service",
   "remote.kind.wsl.wizardDescription": "Windows Subsystem for Linux",
   "remote.kind.docker.wizardDescription": "Local container",
   "remote.connect": "Connect",
@@ -1426,6 +1664,19 @@ const enUS: Record<string, string> = {
   "remote.log.requestingSession": "Requesting the host process to create a remote session...",
   "remote.log.sessionReady":
     "Remote session created successfully. You can choose a directory next.",
+  "server.description": "Connect to an already running ZCode server.",
+  "server.url": "Server URL",
+  "server.urlPlaceholder": "e.g. https://studio.example.com:3030",
+  "server.name": "Display name",
+  "server.namePlaceholder": "e.g. Studio",
+  "server.token": "Token (optional)",
+  "server.tokenPlaceholder": "Enter connection token",
+  "server.workspacePath": "Default directory (optional)",
+  "server.workspacePathPlaceholder": "e.g. /srv/project",
+  "server.workspacePathDescription":
+    "Leave empty to choose a directory on the server after connecting.",
+  "server.validation.urlRequired": "Server URL is required",
+  "server.validation.invalidUrl": "Server URL is invalid",
   "wsl.description":
     "Connect to the default distro, or choose a specific distro installed on this device.",
   "wsl.distro": "Distribution",
@@ -1486,7 +1737,12 @@ const enUS: Record<string, string> = {
   // Task list
   "taskList.newTask": "New task",
   "taskList.newThread": "New task",
+  "taskList.newTask.claude": "Claude CLI",
+  "taskList.newTask.opencode": "OpenCode CLI",
+  "taskList.newTask.gemini": "Gemini CLI",
+  "taskList.newTask.codex": "Codex CLI",
   "taskList.forkedUntitled": "New task",
+  "taskList.selectProvider": "Select agent",
   "taskList.noTasks": "No tasks yet",
   "taskList.noArchivedTasks": "No archived tasks",
   "taskList.loading": "Loading tasks...",
@@ -1858,7 +2114,11 @@ const enUS: Record<string, string> = {
   "notification.file": "File: {paths}",
   "settings.closeToTrayOnWindows": "Hide to tray when closing window",
   "settings.closeToTrayOnWindowsDescription":
-    "Windows only. The close button and close-window shortcut hide the window, while Quit from the tray still exits the app.",
+    "The close button and close-window shortcut hide the window, while Quit from the tray still exits the app. On by default on Windows; on Linux it depends on whether the desktop environment provides a system tray.",
+  "settings.closeToTrayUnavailable":
+    "Your desktop environment has no system tray, so close-to-tray cannot be enabled.",
+  "settings.closeToTrayGnomeHint":
+    "On GNOME, install an AppIndicator extension and restart the app to enable this.",
   "settings.keepAwakeWhileRunning": "Keep computer running",
   "settings.keepAwakeWhileRunningDescription":
     "Prevent the system from sleeping due to idle. You can still sleep manually or by closing the lid. Desktop only.",
@@ -1884,6 +2144,20 @@ const enUS: Record<string, string> = {
   "settings.askUserQuestionAutoResolution": "Automatically continue questions",
   "settings.askUserQuestionAutoResolutionDescription":
     "When enabled, Agent questions automatically continue after 5 minutes without an answer. When disabled, current and future questions wait for your response.",
+  "settings.dynamicWorkflow": "Dynamic workflows",
+  "settings.dynamicWorkflowDescription":
+    "Let the model orchestrate many subagents working in parallel, so it can take on complex tasks and deliver polished results.",
+  "settings.dynamicWorkflow.option.disabled": "Off",
+  "settings.dynamicWorkflow.option.disabled.description":
+    "Turn workflows off. The model cannot start new ones, and the Workflows tab leaves the Automations page. Workflows already in your conversations stay readable.",
+  "settings.dynamicWorkflow.option.onDemand": "On command",
+  "settings.dynamicWorkflow.option.onDemand.description":
+    "The model starts a workflow only when you type /workflow.",
+  "settings.dynamicWorkflow.option.alwaysOn": "Always on",
+  "settings.dynamicWorkflow.option.alwaysOn.description":
+    "You can type /workflow, and the model can also start a workflow on its own when your request calls for one.",
+  "settings.dynamicWorkflow.defaultTag": "Default",
+  "settings.dynamicWorkflow.saveError": "Could not save the dynamic workflow setting",
   "settings.modelIoFullRetention": "Keep complete model I/O",
   "settings.modelIoFullRetentionDescription":
     "Keep complete model requests and responses without compression, size limits, or automatic deletion.",
@@ -2373,7 +2647,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.modelSaveFailure": "Failed to save {provider} / {model}: {error}",
   "settings.modelProvider.cancel": "Cancel",
   "settings.modelProvider.name": "Name",
-  "settings.modelProvider.namePlaceholder": "e.g. DeepSeek",
+  "settings.modelProvider.namePlaceholder": "e.g. Z.ai GLM",
   "settings.modelProvider.addProviderTitle": "Add model provider",
   "settings.modelProvider.addProviderDescription":
     "Configure a custom API endpoint and initial model.",
@@ -2404,6 +2678,14 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.apiFormat.title.chatCompletions": "Chat completions",
   "settings.modelProvider.apiFormat.title.responses": "Responses",
   "settings.modelProvider.apiFormat.title.anthropicMessages": "Anthropic messages",
+  "settings.modelProvider.anthropicEndpoint": "Anthropic endpoint",
+  "settings.modelProvider.anthropicEndpointPlaceholder": "e.g. https://api.anthropic.com",
+  "settings.modelProvider.openaiEndpoint": "OpenAI endpoint",
+  "settings.modelProvider.openaiEndpointPlaceholder": "e.g. https://api.openai.com/v1",
+  "settings.modelProvider.geminiEndpoint": "Gemini endpoint",
+  "settings.modelProvider.geminiEndpointPlaceholder":
+    "e.g. https://generativelanguage.googleapis.com",
+  "settings.modelProvider.endpointNoMatch": "No matching endpoint",
   "settings.modelProvider.apiKey": "API key",
   "settings.modelProvider.apiKeyPlaceholder": "Enter API key",
   "settings.modelProvider.apiKeyDisabledHint": "Set an API key to enable this provider.",
@@ -2577,6 +2859,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.codingPlan.expiresAt": "Expires {date}",
   "settings.modelProvider.codingPlan.openApiKeyProvider": "Open BigModel - API key",
   "settings.modelProvider.codingPlan.plansTitle": "Coding Plan",
+  "settings.modelProvider.codingPlan.billingDiscountInfo.open": "View 150% quota campaign details",
   "settings.modelProvider.codingPlan.audience.personal": "Individuals",
   "settings.modelProvider.codingPlan.audience.enterprise": "Enterprise",
   "settings.modelProvider.codingPlan.period.monthly": "Monthly",
@@ -2875,7 +3158,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.codingPlan.product.firstPromo": "First-time subscription discount",
   "settings.modelProvider.codingPlan.product.delay": "Effective {time}",
   "settings.modelProvider.codingPlan.zai.plan.lite.name": "Lite",
-  "settings.modelProvider.codingPlan.zai.plan.lite.summary": "3x higher Claude Pro usage limits",
+  "settings.modelProvider.codingPlan.zai.plan.lite.summary": "Base usage limits",
   "settings.modelProvider.codingPlan.zai.plan.pro.name": "Pro",
   "settings.modelProvider.codingPlan.zai.plan.pro.summary":
     "Everything in Lite, plus 5x Lite usage",
@@ -2883,7 +3166,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.codingPlan.zai.plan.max.summary":
     "Everything in Pro, plus 20x Lite usage",
   "settings.modelProvider.codingPlan.bigmodel.plan.lite.name": "Lite",
-  "settings.modelProvider.codingPlan.bigmodel.plan.lite.summary": "3x Claude Pro usage quota",
+  "settings.modelProvider.codingPlan.bigmodel.plan.lite.summary": "Base usage quota",
   "settings.modelProvider.codingPlan.bigmodel.plan.pro.name": "Pro",
   "settings.modelProvider.codingPlan.bigmodel.plan.pro.summary":
     "5x Lite usage quota + all Lite benefits",
@@ -3007,6 +3290,14 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.newProviderName": "New provider",
   "settings.modelProvider.modelsPlaceholder": "One model name per line",
   "settings.modelProvider.modelsCount": "{count} models",
+  "settings.modelProvider.claudeMapping": "Claude model mapping",
+  "settings.modelProvider.claudeMappingDescription":
+    "Choose a matching model for each Claude model slot",
+  "settings.modelProvider.slot.haiku": "Haiku (light tasks)",
+  "settings.modelProvider.slot.sonnet": "Sonnet (general tasks)",
+  "settings.modelProvider.slot.opus": "Opus (complex tasks)",
+  "settings.modelProvider.slot.reasoning": "Reasoning (reasoning tasks)",
+  "settings.modelProvider.mappingNotSet": "Not set",
   "settings.modelProvider.presetTitle": "Providers",
   "settings.usage.sectionTitle": "Usage stats",
   "settings.usage.sectionDescription": "Built from local app session history.",
@@ -3137,16 +3428,16 @@ const enUS: Record<string, string> = {
   "settings.usage.healthProMaxDecode": "Max&Pro peak average decode speed",
   "settings.usage.healthLiteDecode": "Lite peak average decode speed",
   "settings.usage.refresh": "Refresh",
-  "settings.usage.retry": "Retry",
-  "settings.usage.localUnavailable":
-    "A confirmed local Desktop Host is unavailable in this environment, so local usage statistics cannot be read.",
-  "settings.usage.localOnlyHint": "Queried on this device only; never uploaded.",
-  "settings.usage.errorRate": "Error rate",
   "settings.usage.turns": "turns",
   "settings.usage.modelErrorRate": "Model error rate",
   "settings.usage.avgTimeToFirstToken": "Average time to first token",
   "settings.usage.avgTurnDuration": "Average turn duration",
   "settings.usage.peakDayTokens": "Peak day: {tokens} tokens",
+  "settings.usage.errorRate": "Error rate",
+  "settings.usage.retry": "Retry",
+  "settings.usage.localOnlyHint": "Queried on this device only; never uploaded.",
+  "settings.usage.localUnavailable":
+    "A confirmed local Desktop Host is unavailable in this environment, so local usage statistics cannot be read.",
   "settings.usage.loadingTitle": "Computing usage",
   "settings.usage.appUsageLoadingDescription":
     "Reading local app session history, so it can take a moment.",
@@ -3282,6 +3573,7 @@ const enUS: Record<string, string> = {
   "settings.resourceFilter.all": "All",
   "settings.resourceFilter.enabled": "Enabled",
   "settings.resourceFilter.disabled": "Disabled",
+  "settings.skills.agent.common": "Common",
   "settings.skills.copyToCommon": "Copy to common",
   "settings.skills.removeFromCommon": "Remove from common",
   "settings.skills.copiedToCommon": "Copied to common skills.",
@@ -3291,6 +3583,8 @@ const enUS: Record<string, string> = {
   "settings.skills.delete.title": "Delete skill",
   "settings.skills.delete.description":
     'Delete "{name}"? This removes the skill folder from disk and cannot be undone.',
+  "settings.skills.agent.glm": "ZCode Agent",
+  "settings.skills.agent.unknown": "Unknown source",
   "settings.skills.create.open": "New skill",
   "settings.skills.create.taskCreateFailed":
     "Could not create a new task for the selected agent. Check availability and try again.",
@@ -3489,7 +3783,11 @@ const enUS: Record<string, string> = {
   "settings.subagents.model.select": "Select model",
   "settings.subagents.model.main": "Main",
   "settings.subagents.model.lite": "Lite",
+  "settings.subagents.permissionMode.default": "Default",
+  "settings.subagents.permissionMode.acceptEdits": "Accept edits",
   "settings.subagents.permissionMode.auto": "Auto",
+  "settings.subagents.permissionMode.bypassPermissions": "Bypass permissions",
+  "settings.subagents.permissionMode.dontAsk": "Don't ask",
   "settings.subagents.permissionMode.plan": "Plan",
   "settings.subagents.color.blue": "Blue",
   "settings.subagents.color.cyan": "Cyan",
@@ -3635,6 +3933,7 @@ const enUS: Record<string, string> = {
   "settings.plugins.marketplacePlugins.install": "Install",
   "settings.plugins.marketplacePlugins.installed": "Installed",
   "settings.plugins.marketplace.searchPlaceholder": "Search Plugins, Skills, MCPs...",
+  "settings.plugins.marketplace.claudeCodePlugins": "Claude Code Plugins",
   "settings.plugins.marketplace.catalogLoading": "Loading plugins…",
   "settings.plugins.marketplace.sourceInfo.label": "Discover source information",
   "settings.plugins.marketplace.sourceInfo.title": "Discover uses GitHub marketplaces",
@@ -3923,6 +4222,7 @@ const enUS: Record<string, string> = {
   "settings.hooks.customJson": "Custom fields JSON",
   "settings.hooks.customJsonObjectError": "Custom fields must be a JSON object.",
   "settings.hooks.customJsonParseError": "Custom fields JSON parsing failed.",
+  "settings.plugins.zcodeOnly": "ZCode Agent only",
   "settingsSync.dialog.title": "Import Settings",
   "settingsSync.dialog.description":
     "Only missing items will be imported. Existing settings will be skipped automatically.",
@@ -4037,6 +4337,7 @@ const enUS: Record<string, string> = {
   "onboarding.finish.summary.label.skipped": "Skipped",
   "onboarding.finish.summary.label.failed": "Failed",
   "onboarding.footer.helper": "Skip anytime and resume migration from Settings later.",
+  "onboarding.footer.selection": "{count} items selected",
   "onboarding.footer.workspaceSelection": "{count} workspaces selected",
   "onboarding.action.continue": "Continue",
   "onboarding.action.beginMigration": "Begin migration",
@@ -4122,6 +4423,7 @@ const enUS: Record<string, string> = {
   "chat.send": "Send",
   "chat.scrollToBottom": "Scroll to bottom",
   "chat.message.edit": "Edit",
+  "chat.message.sentByScheduledTask": "Sent by scheduled task",
   "chat.message.restore": "Restore",
   "chat.message.copy": "Copy",
   "chat.message.copy.copied": "Copied",
@@ -4173,6 +4475,11 @@ const enUS: Record<string, string> = {
   "chat.history.workingFor": "Working for {duration}",
   "chat.history.workedFor": "Worked for {duration}",
   "chat.history.worked": "Worked",
+  "chat.topicPreparation.preparing": "Preparing materials",
+  "chat.topicPreparation.waitingStop": "Waiting for the current run to stop",
+  "chat.topicPreparation.failed": "Material preparation failed",
+  "chat.topicPreparation.retry": "Retry",
+  "chat.history.topicInterrupted": "Interrupted by a new message",
   "chat.history.stopped": "Stopped",
   "chat.history.duration.day": "d",
   "chat.history.duration.hour": "h",
@@ -4362,6 +4669,9 @@ const enUS: Record<string, string> = {
   "chat.toolbar.draftConfigWriteFailed": "Failed to update configuration. Please try again.",
   "chat.toolbar.model.description":
     "Choose the model used by this task. The shortcut opens the model menu.",
+  "chat.agentSwitch.switchTo": "{provider}",
+  "chat.agentSwitch.success": "Switched to {provider}",
+  "chat.agentSwitch.failed": "Could not switch agent",
   "chat.toolbar.model.manageModels": "Manage models",
   "chat.toolbar.model.searchPlaceholder": "Search models...",
   "chat.toolbar.model.empty": "No models found",
@@ -4390,6 +4700,7 @@ const enUS: Record<string, string> = {
   "chat.modelSwitch.contextWindowGuard.stillTooLarge":
     "After compression, the context used by this conversation is still larger than the target model's available context after reserving maximum output. Model switching was canceled.",
   "chat.toolbar.mode.label": "Switch mode",
+  // CUA composer entry button
   "chat.toolbar.mode.description":
     "Switch the task's permission and execution mode, such as default, plan, or accept edits.",
   "chat.toolbar.thoughtLevel.label": "Reasoning effort",
@@ -4468,6 +4779,8 @@ const enUS: Record<string, string> = {
   "chat.toolCall.changesGroup.tool.one": "{count} tool",
   "chat.toolCall.changesGroup.tool.other": "{count} tools",
   "chat.toolCall.execute.terminal": "Terminal",
+  "chat.toolCall.execute.expandCommand": "Show full command",
+  "chat.toolCall.execute.collapseCommand": "Collapse",
   "chat.toolCall.execute.noOutput": "No output.",
   "chat.toolCall.executeGroup.command.one": "{count} command",
   "chat.toolCall.executeGroup.command.other": "{count} commands",
@@ -4624,6 +4937,42 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.card.artifacts": "{count} artifacts",
   "chat.toolCall.workflow.digest.question": "{count} question",
   "chat.toolCall.workflow.digest.questions": "{count} questions",
+  // ── Holes (docs/dynamic-workflow/presentation.md "Holes on the timeline", transcript-and-notifications.md "The hole row's live state") ──
+  "chat.toolCall.workflow.digest.hole": "{count} hole to fill",
+  "chat.toolCall.workflow.digest.holes": "{count} holes to fill",
+  "chat.toolCall.workflow.card.hole": "{count} hole",
+  "chat.toolCall.workflow.card.holes": "{count} holes",
+  "chat.toolCall.workflow.hole.waiting": "waiting",
+  "chat.toolCall.workflow.hole.head.title": "Hole “{name}” · filled by the agent · {time}",
+  "chat.toolCall.workflow.hole.head.title.untimed": "Hole “{name}” · filled by the agent",
+  "chat.toolCall.workflow.hole.open": "Open the fill of “{name}”",
+  // Kind words of the FillWorkflowHole row (same table as CreateWorkflow / AmendWorkflow).
+  "chat.toolCall.workflow.hole.writing": "Filling hole",
+  "chat.toolCall.workflow.hole.revising": "Revising hole fill",
+  "chat.toolCall.workflow.hole.draft": "Hole draft",
+  "chat.toolCall.workflow.hole.awaitingConfirmation": "Hole fill awaiting confirmation",
+  "chat.toolCall.workflow.hole.ran": "Hole fill",
+  "chat.toolCall.workflow.hole.filled": "Hole filled",
+  "chat.toolCall.workflow.hole.phasesAdded": "{count} phases",
+  // The notification row's expanded body.
+  "chat.toolCall.workflow.hole.stands.between":
+    "The hole stands after “{before}” and before “{after}”;",
+  "chat.toolCall.workflow.hole.stands.after": "The hole stands after “{before}”;",
+  "chat.toolCall.workflow.hole.stands.before": "The hole stands before “{after}”;",
+  "chat.toolCall.workflow.hole.draftPath": "Draft",
+  "chat.toolCall.workflow.hole.waited": "Waiting · {time}",
+  "chat.backgroundResult.workflow.hole.waiting": "Workflow waiting for code",
+  "chat.backgroundResult.workflow.hole.filled": "Hole filled",
+  "chat.backgroundResult.workflow.hole.left": "Workflow left a hole",
+  // The run pane.
+  "chat.toolCall.workflow.run.hole.waitingFor": "Waiting for the agent to fill it",
+  "chat.toolCall.workflow.run.hole.filledAt": "Filled · {time}",
+  // The confirmation window.
+  "chat.permission.workflow.hole.title": "Fill this hole?",
+  "chat.permission.workflow.holes.label": "Holes",
+  "chat.permission.workflow.holes.note": "The run pauses at a hole until the agent fills it.",
+  // The sidebar run line.
+  "taskList.workflowRun.holeWaiting": "{name} · waiting",
   "chat.toolCall.workflow.digest.showAgents": "Show subagents",
   "chat.toolCall.workflow.digest.hideAgents": "Hide subagents",
   "chat.toolCall.workflow.completion.time": "time",
@@ -4639,10 +4988,13 @@ const enUS: Record<string, string> = {
   "chat.workflowLaunch.startedByYou": "Started by you from the workflows hub",
   "chat.workflowLaunch.settingsChangedByYou": "Settings changed by you",
   "chat.workflowLaunch.settings.model": "Subagent model",
-  "chat.workflowLaunch.settings.limit": "At once, at most",
+  "chat.workflowLaunch.settings.limit": "Max concurrency",
   "chat.workflowLaunch.settings.sessionModel": "session model",
-  "chat.workflowLaunch.settings.machineLimit": "this machine's limit",
-  "chat.workflowLaunch.settings.machineLimitValue": "{n} (this machine's limit)",
+  "chat.workflowLaunch.settings.defaultLimit": "default",
+  "chat.workflowLaunch.settings.defaultLimitValue": "default {n}",
+  // ── 可复用工作流（docs/dynamic-workflow/launch.md）：SaveWorkflow / ListSavedWorkflows
+  // 的聊天卡。overwrite 这个词由保存确认窗共用——同一次保存在两个面上必须同名，
+  // 照 run 卡复用 chat.toolCall.workflow.run.status.* 词汇表的同一条先例。
   "chat.toolCall.workflow.save.saving": "Saving workflow",
   "chat.toolCall.workflow.save.saved": "Saved workflow",
   "chat.toolCall.workflow.save.overwrite": "overwrite",
@@ -4680,6 +5032,7 @@ const enUS: Record<string, string> = {
     "Workflows saved in your open projects. Fill in the arguments and run them again.",
   "workflows.hub.sectionTitle": "Saved workflows",
   "workflows.hub.refresh": "Refresh",
+  "workflows.hub.openSettings": "Workflow settings",
   "workflows.hub.createViaChat": "Create in chat",
   "workflows.hub.group.current": "Current",
   "workflows.hub.global.title": "Global",
@@ -4883,7 +5236,7 @@ const enUS: Record<string, string> = {
   "chat.backgroundResult.workflow.stall.body":
     "No model request in this run has succeeded for {minutes} min. It is still running and retrying with backoff; stop it from the run card if you no longer need it.",
   "chat.backgroundResult.workflow.stall.reason": "Retry reason",
-  "chat.backgroundResult.workflow.stall.cap": "Current fan-out",
+  "chat.backgroundResult.workflow.stall.cap": "Max concurrency",
   "chat.backgroundResult.workflow.waiting": "Subagent is waiting for an answer",
   "chat.backgroundResult.workflow.answered": "Subagent question answered",
   "chat.backgroundResult.workflow.asked": "Subagent asked a question",
@@ -4924,7 +5277,7 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.usage.tokens": "{tokens} tokens",
   "chat.toolCall.workflow.run.usage.value": "{tokens} tokens · {steps} steps",
   // 实例表撞界后卡与详情页各有的那一句：停的是每一步的**详情**，不是 run，
-  // 它上面那些计数已经把表外的实例算进来了。
+  // 它上面那些计数已经把表外的实例算进来了（docs/dynamic-workflow/presentation.md）。
   "chat.toolCall.workflow.run.truncated": "Details shown for {shown} of {total} steps",
   "chat.toolCall.workflow.run.cancel": "Stop run",
   "chat.toolCall.workflow.run.cancelling": "Stopping…",
@@ -4957,6 +5310,52 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.resume": "Resume run",
   "chat.toolCall.workflow.run.resumeHint":
     "Continue from where it stopped: finished steps are reused, interrupted steps run again.",
+  // 「配置」弹层（docs/dynamic-workflow/presentation.md「The settings popover」）：改子代理模型与最大并发数，
+  // 应用即一次 GUI 修订（新 run 接着跑，旧 run 停下，已完成的步骤作缓存带过去）。
+  // 完成卡与 run 侧板上的「保存 / 再次运行」（docs/dynamic-workflow/transcript-and-notifications.md
+  // 「Saving the run, and running it again」）。两条路：交给 ZCode 提炼，或按原样直接写下去。
+  "chat.toolCall.workflow.saveRun.action": "Save",
+  "chat.toolCall.workflow.saveRun.runAgain": "Run again",
+  "chat.toolCall.workflow.saveRun.starting": "Starting…",
+  "chat.toolCall.workflow.saveRun.chip": "Saved",
+  "chat.toolCall.workflow.saveRun.chip.hint": "View in the workflow hub",
+  "chat.toolCall.workflow.saveRun.announce.project": "Saved to the project",
+  "chat.toolCall.workflow.saveRun.announce.global": "Saved as a global workflow",
+  "chat.toolCall.workflow.saveRun.title": "Save workflow",
+  "chat.toolCall.workflow.saveRun.lead": "Let ZCode refine and save it",
+  "chat.toolCall.workflow.saveRun.lead.hint":
+    "ZCode distills a reusable workflow for you, then asks you to confirm.",
+  "chat.toolCall.workflow.saveRun.lead.sending": "Handed to ZCode…",
+  "chat.toolCall.workflow.saveRun.lead.unsupported": "This agent cannot save directly.",
+  "chat.toolCall.workflow.saveRun.or": "or save it as is",
+  "chat.toolCall.workflow.saveRun.name": "Name",
+  "chat.toolCall.workflow.saveRun.name.placeholder": "pr-layered-review",
+  "chat.toolCall.workflow.saveRun.name.helper": "Letters, digits, - _ . ; 64 characters at most",
+  "chat.toolCall.workflow.saveRun.name.invalid": "Only letters, digits and - _ .",
+  "chat.toolCall.workflow.saveRun.scope.remoteOnly":
+    "A remote project can only save into the project.",
+  "chat.toolCall.workflow.saveRun.description": "Description",
+  "chat.toolCall.workflow.saveRun.description.helper":
+    "When-to-use and arguments can be added later in the workflow hub.",
+  "chat.toolCall.workflow.saveRun.consequence":
+    "Writes {path}; afterwards it runs again by name from Automations › Workflows.",
+  "chat.toolCall.workflow.saveRun.overwrite":
+    "This project already has a workflow of this name; saving overwrites it. Its run records stay.",
+  "chat.toolCall.workflow.saveRun.shadowing": "{text}.",
+  "chat.toolCall.workflow.saveRun.submit": "Save as is",
+  "chat.toolCall.workflow.saveRun.submit.overwrite": "Overwrite and save as is",
+  "chat.toolCall.workflow.saveRun.submit.saving": "Saving…",
+  "chat.toolCall.workflow.saveRun.error.invalid_name": "Only letters, digits and - _ .",
+  "chat.toolCall.workflow.saveRun.error.run_not_found":
+    "This run has no record here, so it cannot be saved directly.",
+  "chat.toolCall.workflow.saveRun.error.script_missing":
+    "This run did not keep its script, so use the path above.",
+  "chat.toolCall.workflow.saveRun.error.target_exists":
+    "A workflow of this name exists; confirm the overwrite and save again.",
+  "chat.toolCall.workflow.saveRun.error.compile_failed":
+    "The script did not pass typecheck; nothing was written.",
+  "chat.toolCall.workflow.saveRun.error.write_error": "Writing failed; nothing was saved.",
+  "chat.toolCall.workflow.saveRun.error.generic": "Saving failed.",
   "chat.toolCall.workflow.run.configure": "Configure",
   "chat.toolCall.workflow.run.settings.title": "Configure workflow",
   "chat.toolCall.workflow.run.settings.model": "Subagent model",
@@ -4965,11 +5364,11 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.settings.model.unavailable": "unavailable",
   "chat.toolCall.workflow.run.settings.model.noCatalog":
     "This agent has no model catalog; subagents stay on the session model.",
-  "chat.toolCall.workflow.run.settings.limit": "Subagents at once, at most",
-  "chat.toolCall.workflow.run.settings.limit.ceiling": "this machine allows up to {n}",
-  "chat.toolCall.workflow.run.settings.limit.atCeiling": "= this machine's limit",
-  "chat.toolCall.workflow.run.settings.limit.decrease": "Fewer at once",
-  "chat.toolCall.workflow.run.settings.limit.increase": "More at once",
+  "chat.toolCall.workflow.run.settings.limit": "Max concurrency",
+  "chat.toolCall.workflow.run.settings.limit.default": "default {n}",
+  "chat.toolCall.workflow.run.settings.limit.atDefault": "= default",
+  "chat.toolCall.workflow.run.settings.limit.decrease": "Lower max concurrency",
+  "chat.toolCall.workflow.run.settings.limit.increase": "Raise max concurrency",
   "chat.toolCall.workflow.run.settings.consequence.running":
     "Stops this run and starts a new one with these settings; finished steps are kept.",
   "chat.toolCall.workflow.run.settings.consequence.pending":
@@ -4978,7 +5377,7 @@ const enUS: Record<string, string> = {
     "Continues as a new run with these settings; finished steps are kept.",
   "chat.toolCall.workflow.run.settings.consequence.errored":
     "Retries as a new run with these settings; finished steps are kept.",
-  // 只改并发上限、而且运行正在跑：就地生效。
+  // 只改并发上限、而且运行正在跑：就地生效（docs/dynamic-workflow/concurrency.md）。
   "chat.toolCall.workflow.run.settings.consequence.concurrencyLive":
     "Applies to this run right away; no new run is started.",
   "chat.toolCall.workflow.run.settings.apply": "Apply",
@@ -5007,7 +5406,7 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.settingsChange.model": "subagents on {model}",
   "chat.toolCall.workflow.settingsChange.modelSession": "subagents back on the session model",
   "chat.toolCall.workflow.settingsChange.limit": "at most {n} at once",
-  "chat.toolCall.workflow.settingsChange.limitCeiling": "limit back to this machine's default",
+  "chat.toolCall.workflow.settingsChange.limitDefault": "limit back to the default",
   "chat.toolCall.workflow.run.result.title": "Result",
   "chat.toolCall.workflow.run.result.completedHint":
     "This run finished. Its result was delivered to the conversation as a background result message.",
@@ -5029,9 +5428,13 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.artifacts.previousVersion": "Previous version",
   "chat.toolCall.workflow.run.artifacts.nextVersion": "Next version",
   "chat.toolCall.workflow.run.artifacts.open": "Open artifact",
+  // 动作。「下载」（存到用户挑的位置）仍缺席；「作为文件打开」
+  // 落的是宿主 ~/.zcode/tmp 下的副本，不是用户挑的位置。
   "chat.toolCall.workflow.run.artifacts.reveal": "Reveal in workspace",
   "chat.toolCall.workflow.run.artifacts.copy": "Copy",
   "chat.toolCall.workflow.run.artifacts.copied": "Copied",
+  "chat.toolCall.workflow.run.artifacts.openAsFile": "Open as file",
+  "chat.toolCall.workflow.run.artifacts.openAsFileFailed": "Could not open this artifact as a file",
   "chat.toolCall.workflow.run.artifacts.openInBrowser": "Open in browser",
   "chat.toolCall.workflow.run.artifacts.openInBrowserNote":
     "Opens the copy in your workspace, not the bytes pinned to this version.",
@@ -5122,7 +5525,8 @@ const enUS: Record<string, string> = {
   "chat.toolCall.workflow.run.throttle.reason.rateLimited": "rate limited",
   "chat.toolCall.workflow.run.throttle.reason.overloaded": "overloaded",
   "chat.toolCall.workflow.run.throttle.reason.transient": "transient error",
-  "chat.toolCall.workflow.run.concurrency.label": "Concurrency {cap}",
+  // 芯片上的数是一条界（min(共享 cap, 本 run 的 limit)），不是此刻在跑的个数。
+  "chat.toolCall.workflow.run.concurrency.label": "Max concurrency {cap}",
   "chat.toolCall.workflow.run.concurrency.cooldown": "cooling down until {time}",
   "chat.toolCall.workflow.run.subagentModel.label": "Subagents {model}",
   "chat.toolCall.workflow.subagentModel.withLevel": "{model} · thinking {level}",
@@ -5202,6 +5606,8 @@ const enUS: Record<string, string> = {
   "chat.attachments.clipboardText.description": "{lineCount} lines",
   "chat.attachments.preview.open": "Open image preview",
   "chat.attachments.preview.openVideo": "Open video preview",
+  "chat.attachments.preview.openText": "Open text attachment",
+  "chat.attachments.topicHistory": "Topic history · {count} messages",
   "chat.attachments.preview.openPdf": "Open PDF preview",
   "chat.attachments.preview.title": "Image preview",
   "chat.attachments.preview.pdfLoading": "Loading PDF preview…",
@@ -5302,6 +5708,8 @@ const enUS: Record<string, string> = {
   "chat.error.modelSettings": "Model settings",
   "chat.error.setModels": "Set",
 
+  // Start Plan per-bucket quota reminders
+
   // Permissions
   "chat.permission.title": "Permission required",
   "chat.permission.awaitingApproval": "Awaiting approval",
@@ -5336,6 +5744,30 @@ const enUS: Record<string, string> = {
   "chat.permission.workflow.amends.scriptUnchanged": "script unchanged",
   "chat.permission.workflow.maxConcurrency": "At most {count} subagents at once",
   "chat.permission.workflow.subagentModel": "Subagents run on {model}",
+  // 脚本给某些子代理点名了模型时（docs/dynamic-workflow/launch.md「Models the script names」）：那些
+  // 名字不列（作者模型的选择），这一句只改口「默认」——它不再替每一个子代理说话。
+  "chat.permission.workflow.subagentModelDefault": "By default, subagents run on {model}",
+  // 确认窗里可调的两句（docs/dynamic-workflow/presentation.md「The confirmation window」）：句中的值
+  // 就是控件，所以句子被拆成控件前后的两截；改过的那一行句尾多一截「· 原为 X ↺」。
+  "chat.permission.workflow.settings.model.lead": "Subagents run on",
+  "chat.permission.workflow.settings.model.noCatalog": "Subagents stay on the session model",
+  "chat.permission.workflow.settings.model.noCatalogReason": "this agent has no model catalog",
+  "chat.permission.workflow.settings.model.leadDefault": "By default, subagents run on",
+  "chat.permission.workflow.settings.model.noCatalogDefault":
+    "By default, subagents stay on the session model",
+  "chat.permission.workflow.settings.limit.lead": "At most",
+  "chat.permission.workflow.settings.limit.trail": "subagents at once",
+  "chat.permission.workflow.settings.limit.none": "no limit of its own",
+  "chat.permission.workflow.settings.was": "was {value}",
+  "chat.permission.workflow.settings.reset": "Back to the proposed value",
+  // 改过设置后前两个选项换描述（docs/dynamic-workflow/launch.md「The options」）：会话免确认只管
+  // 「以后不再问」，调整只随这一次应答走。
+  "chat.permission.workflow.allowOnce.adjusted": "Run once with the adjusted settings",
+  "chat.permission.workflow.allowForSession.adjusted":
+    "This run with the adjusted settings; later runs are not asked and carry their own",
+  // ── 可复用工作流（docs/dynamic-workflow/launch.md）──
+  // saved 来源徽标（运行确认窗）：只说明脚本来自哪个文件、带了什么实参。
+  // 它不表达任何信任——保存不产生信任，已保存的工作流照样过完整的运行确认。
   "chat.permission.workflow.saved.badge": "Saved workflow",
   "chat.permission.workflow.saved.scope.project": "project",
   "chat.permission.workflow.saved.args": "Arguments",
@@ -5355,6 +5787,9 @@ const enUS: Record<string, string> = {
   "chat.permission.workflow.save.args.default": "Default",
   "chat.interactionOrigin.subagent": "Subagent",
   "chat.interactionOrigin.subagent.title": "Request from subagent: {agentType}",
+  "chat.interactionOrigin.subagent.named": "Subagent · {description}",
+  "chat.interactionOrigin.subagent.titleNamed":
+    "Request from subagent: {agentType} · {description}",
 
   // Elicitation
   "chat.elicitation.title": "Input required",
@@ -5399,11 +5834,17 @@ const enUS: Record<string, string> = {
   "chat.permission.fileChange.mixedMany": "Update {count} files",
 
   // Modes
+  "mode.default": "Default",
   "mode.plan": "Plan",
+  "mode.acceptEdits": "Accept edits",
+  "mode.label.glm.default": "Default",
   "mode.label.glm.build": "Ask before changes",
   "mode.label.glm.edit": "Edit automatically",
   "mode.label.glm.plan": "Plan mode",
+  "mode.label.glm.guarded": "Autonomous mode",
+  "mode.description.glm.guarded": "Ask when there’s risk",
   "mode.label.glm.yolo": "Full access",
+  "mode.description.glm.default": "Use default confirmations.",
   "mode.description.glm.build": "Ask before file changes.",
   "mode.description.glm.edit": "Edit files automatically.",
   "mode.description.glm.plan": "Plan before editing.",
@@ -5446,6 +5887,10 @@ const enUS: Record<string, string> = {
     "The current model is no longer available. Select an available model from the current model list to continue.",
   "zcode.error.ZCODE_BIGMODEL_TEAM_PLAN_MEMBER_REQUIRED":
     "The current model is unavailable. Check whether the current account has been added to the project member list.",
+  "zcode.error.CLAUDE_UNKNOWN_COMMAND":
+    "Claude Code does not recognize {command}. Check the command name, or switch to an Agent/skill that supports it and try again.",
+  "zcode.error.CLAUDE_UNKNOWN_COMMAND_WITH_ARGS":
+    "Claude Code does not recognize {command} (args: {args}). Check the command name, or switch to an Agent/skill that supports it and try again.",
   "zcode.error.providerBusiness.1006": "Your login session has expired. Please sign in again.",
   "zcode.error.providerBusiness.1005":
     "Today's free plan quota has been used up. Upgrade to continue now, or wait for the quota to reset.",
@@ -5455,16 +5900,12 @@ const enUS: Record<string, string> = {
     "You're sending requests too quickly. Please try again later.",
   "zcode.error.providerBusiness.3001":
     "The request parameters are invalid. Check the input and try again.",
-  "zcode.error.providerBusiness.3007":
-    "The request was rejected by the gateway security check. Please try again later or contact support.",
   "zcode.error.providerBusiness.3008":
     "The system is busy. Please switch models, upgrade your account, or try again later.",
   "zcode.error.providerBusiness.3009":
     "The system is busy. Please switch models, upgrade your account, or try again later.",
   "zcode.error.providerBusiness.3010":
     "The system is busy. Please switch models, upgrade your account, or try again later.",
-  "zcode.error.modelSuspiciousEmpty":
-    "The model returned no content (often caused by an expired token or plan issues). Please send again.",
   "zcode.error.providerBusiness.2007":
     "The upstream service is temporarily unavailable. Please try again later.",
   "zcode.error.providerBusiness.429":
@@ -5484,6 +5925,20 @@ const enUS: Record<string, string> = {
   "resourceManager.processCount": "{count} processes",
   "resourceManager.cpu": "CPU",
   "resourceManager.memory": "Memory",
+  "resourceManager.network": "Network",
+  "resourceManager.network.description":
+    "Records local app requests while this window is open. Keeps the latest 1,000.",
+  "resourceManager.network.filter": "Filter by URL, process, PID or method",
+  "resourceManager.network.clear": "Clear",
+  "resourceManager.network.unavailable": "Network requests are unavailable",
+  "resourceManager.network.count": "{count} requests · {dropped} evicted or dropped",
+  "resourceManager.network.previous": "Previous",
+  "resourceManager.network.next": "Next",
+  "resourceManager.network.time": "Time",
+  "resourceManager.network.process": "Process / PID",
+  "resourceManager.network.method": "Method",
+  "resourceManager.network.empty": "Waiting for new network requests…",
+  "resourceManager.network.noMatches": "No matching requests",
   "resourceManager.storage": "Storage",
   "resourceManager.appUsage": "ZCode",
   "resourceManager.systemUsage": "System",
@@ -5495,11 +5950,6 @@ const enUS: Record<string, string> = {
   "resourceManager.column.process": "Process",
   "resourceManager.column.pid": "PID",
 
-  // Copy-error info (used by ChatErrorBanner's copy error action)
-  "feedback.submit.template.section.errorSummary": "Error Summary",
-  "feedback.submit.template.section.errorDetail": "Error Details",
-  "feedback.submit.template.section.errorTraceId": "TraceID: {traceId}",
-  "feedback.submit.template.section.copyErrorHeading": "ZCode Error Info",
   // Forms
   "forms.labels.name": "Name",
   "forms.labels.description": "Description",
@@ -5712,6 +6162,7 @@ const enUS: Record<string, string> = {
   "automations.runs.delete": "Delete run",
   "automations.runs.prevPage": "Previous",
   "automations.runs.nextPage": "Next",
+  // CUA (Computer Use)
   "scheduledPreview.keepAwakeEnabled": "Keep awake enabled",
   "scheduledPreview.keepAwakeDisabled": "Keep awake disabled",
   "scheduledPreview.toast.running": "Running “{title}”…",

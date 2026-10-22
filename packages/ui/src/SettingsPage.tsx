@@ -10,6 +10,7 @@ import {
 } from "react";
 import type {
   AppSettings,
+  DesktopCloseToTrayCapability,
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
   Locale,
@@ -35,12 +36,11 @@ import {
   consumePendingSettingsPluginOrigin,
   consumePendingSettingsPluginScopeKey,
   consumePendingSettingsPluginTab,
-  consumePendingSettingsModelProviderTarget,
   resolveSettingsSection,
   writeLastSettingsSectionPreference,
-  type SettingsModelProviderTarget,
 } from "@/lib/settingsNavigation.js";
 import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
+import { AppUsageSection } from "@/settings/usage-stats/AppUsageSection.js";
 import { SubagentsSection } from "@/settings/SubagentsSection.js";
 import { AutomationsSection } from "@/settings/AutomationsSection.js";
 import { PluginsSection } from "@/settings/PluginsSection.js";
@@ -50,7 +50,6 @@ import { MemorySettingsSection } from "@/settings/MemorySettingsSection.js";
 import { BrowserSettingsSection } from "@/settings/BrowserSettingsSection.js";
 import { ShortcutSettingsSection } from "@/settings/ShortcutSettingsSection.js";
 import { MigrationSection } from "@/settings/MigrationSection.js";
-import { AppUsageSection } from "@/settings/usage-stats/AppUsageSection.js";
 import { SETTINGS_FRAME_CONTENT_CLASSNAME } from "@/settings/SettingsPageParts.js";
 import {
   SettingsBreadcrumbProvider,
@@ -62,6 +61,7 @@ import { useTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab } from "@/store/tabStore.js";
 import type { Theme } from "@/useTheme.js";
 import { WindowsTopLeftLogo } from "@/WindowsTopLeftLogo.js";
+
 import { DesktopWindowControls } from "@/DesktopWindowControls.js";
 import { WorkspaceHelpMenuButton } from "@/WorkspaceHelpMenuButton.js";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
@@ -82,6 +82,8 @@ import {
 import { AppearanceSectionContent } from "./settingsCodePreview.js";
 import type { SettingsSectionId } from "@/lib/settingsNavigation.js";
 import { requestPluginStoreOpen } from "@/lib/pluginStoreNavigation.js";
+
+
 function SettingsSidebarButton({
   icon: Icon,
   label,
@@ -121,10 +123,12 @@ function SettingsSidebarButton({
     </ControlHintTooltip>
   );
 }
+
 export function SettingsPage({
   isDesktop,
   isWindowsDesktop,
   isMacDesktop,
+  isWebRemoteControl = false,
   windowsWindowControlsRightPaddingPx: _windowsWindowControlsRightPaddingPx,
   captionWorkspacePath,
   onBack,
@@ -135,6 +139,7 @@ export function SettingsPage({
   isDesktop?: boolean;
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
+  isWebRemoteControl?: boolean;
   windowsWindowControlsRightPaddingPx?: number;
   captionWorkspacePath?: string | null;
   onBack?: () => void;
@@ -143,7 +148,15 @@ export function SettingsPage({
   allowOpenWorkspace?: boolean;
 }) {
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
-  const { settingsSectionGroups, settingsSections } = useMemo(() => createSettingsPageConfig(), []);
+  const { settingsSectionGroups, settingsSections } = useMemo(
+    () =>
+      createSettingsPageConfig({
+        isDesktop: Boolean(isDesktop),
+        isMacDesktop: Boolean(isMacDesktop),
+        isWindowsDesktop: Boolean(isWindowsDesktop),
+      }),
+    [isDesktop, isMacDesktop, isWindowsDesktop],
+  );
   const isLinuxDesktop = Boolean(isDesktop && !isMacDesktop && !isWindowsDesktop);
   const usesInlineWindowControls = Boolean(isWindowsDesktop || isLinuxDesktop);
   const platform = usePlatform();
@@ -159,6 +172,38 @@ export function SettingsPage({
     return visibleInitialSection;
   });
   const [pluginTab, setPluginTab] = useState(() => consumePendingSettingsPluginTab());
+  // Linux 关闭驻留托盘能力查询（spec：docs/desktop/linux-close-to-tray.md）：打开设置页时
+  // 经 platform IPC 触发 main 侧探测（带 stale 缓存），用户装完 AppIndicator 扩展重开
+  // 设置页即可解除置灰；Web/远控无桥不查询。
+  const [linuxCloseToTrayCapability, setLinuxCloseToTrayCapability] =
+    useState<DesktopCloseToTrayCapability | null>(null);
+  useEffect(() => {
+    if (!isLinuxDesktop) {
+      return;
+    }
+    let cancelled = false;
+    platform
+      .getCloseToTrayCapability?.()
+      .then((capability) => {
+        if (!cancelled) {
+          setLinuxCloseToTrayCapability(capability);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isLinuxDesktop, platform]);
+  const linuxCloseToTray = isLinuxDesktop
+    ? {
+        // 探测中按不可用锁定，防止查询完成前误开导致关窗失联
+        disabled: linuxCloseToTrayCapability === null || !linuxCloseToTrayCapability.supported,
+        unavailable: linuxCloseToTrayCapability?.supported === false,
+        gnomeLikeHint:
+          linuxCloseToTrayCapability?.supported === false &&
+          linuxCloseToTrayCapability.gnomeLikeWithoutTray,
+      }
+    : undefined;
   const [pluginNavigationOrigin, setPluginNavigationOrigin] = useState(() =>
     consumePendingSettingsPluginOrigin(),
   );
@@ -187,10 +232,6 @@ export function SettingsPage({
   const setNotificationEnabled = useZCodeStore((state) => state.setNotificationEnabled);
   const notificationSoundEnabled = useZCodeStore((state) => state.notificationSoundEnabled);
   const setNotificationSoundEnabled = useZCodeStore((state) => state.setNotificationSoundEnabled);
-  const [initialModelProviderTarget] = useState(() => consumePendingSettingsModelProviderTarget());
-  const [pendingModelProviderTarget, setPendingModelProviderTarget] = useState<
-    SettingsModelProviderTarget | undefined
-  >(() => initialModelProviderTarget);
   const setNewUserOnboardingOpen = useZCodeStore((state) => state.setNewUserOnboardingOpen);
   const requestOnboardingDialog = () => setNewUserOnboardingOpen(true);
   const setActiveSettingsSection = useCallback(
@@ -282,7 +323,7 @@ export function SettingsPage({
     useState(false);
   const [taskAutoArchiveEnabled, setTaskAutoArchiveEnabled] = useState(false);
   const [taskAutoArchiveOlderThanDays, setTaskAutoArchiveOlderThanDays] = useState(7);
-  const [closeToTrayOnWindows, setCloseToTrayOnWindows] = useState(true);
+  const [closeToTrayOnWindows, setCloseToTrayOnWindows] = useState(Boolean(isWindowsDesktop));
   const [
     desktopChromiumHardwareAccelerationEnabled,
     setDesktopChromiumHardwareAccelerationEnabled,
@@ -296,6 +337,7 @@ export function SettingsPage({
     useState<ZCodeInteractionBehavior>("queue");
   const [defaultHomeDir, setDefaultHomeDir] = useState("");
   const [hostPlatform, setHostPlatform] = useState("");
+
   useEffect(
     () =>
       addPendingSettingsSectionListener((section, detail) => {
@@ -312,14 +354,10 @@ export function SettingsPage({
         } else if (resolveSettingsSection(section) !== "plugin") {
           setPluginNavigationOrigin(undefined);
         }
-        if (section === "modelProvider" && detail?.modelProviderId) {
-          setPendingModelProviderTarget({
-            providerId: detail.modelProviderId,
-          });
-        }
       }),
     [activeSection, setActiveSettingsSection],
   );
+
   useEffect(() => {
     services.settingService
       .get()
@@ -336,7 +374,7 @@ export function SettingsPage({
         );
         setTaskAutoArchiveEnabled(settings.taskAutoArchiveEnabled ?? false);
         setTaskAutoArchiveOlderThanDays(settings.taskAutoArchiveOlderThanDays ?? 7);
-        setCloseToTrayOnWindows(settings.closeToTrayOnWindows ?? true);
+        setCloseToTrayOnWindows(settings.closeToTrayOnWindows ?? Boolean(isWindowsDesktop));
         setDesktopChromiumHardwareAccelerationEnabled(
           settings.desktopChromiumHardwareAccelerationEnabled ?? true,
         );
@@ -367,7 +405,8 @@ export function SettingsPage({
           });
       })
       .catch(() => {});
-  }, [localHostServices.systemService, services.settingService]);
+  }, [localHostServices.systemService, services.settingService, isWindowsDesktop]);
+
   useEffect(() => {
     if (!sharedSettings) {
       return;
@@ -421,15 +460,13 @@ export function SettingsPage({
   );
   const handleMemoryEnabledChange = useCallback(
     async (enabled: boolean) => {
-      // Memory 开关只写本地 AppSettings；不维护第二份引导偏好或同步状态。
-      await updateSharedSettings({ memoryEnabled: enabled });
-    },
+      await (async () => {      await updateSharedSettings({ memoryEnabled: enabled });})();    },
     [updateSharedSettings],
   );
   const handleHttpProxyChange = useCallback(
     async (proxy: string) => {
       const normalizedProxy = proxy.trim();
-      await services.settingService.update({
+      await       services.settingService.update({
         // Bugfix: RPC 会丢弃 undefined；清空代理必须传空串，由服务层删除旧字段。
         httpProxy: normalizedProxy,
       });
@@ -445,7 +482,7 @@ export function SettingsPage({
         .map((token) => token.trim())
         .filter(Boolean)
         .join(",");
-      await services.settingService.update({
+      await       services.settingService.update({
         // Bugfix: 清空 No Proxy 必须传空串，否则旧绕过规则会继续影响下次启动。
         httpProxyNoProxy: normalizedNoProxy,
       });
@@ -457,7 +494,7 @@ export function SettingsPage({
   const handleHttpProxyCaCertPathChange = useCallback(
     async (caCertPath: string) => {
       const normalizedCaCertPath = caCertPath.trim();
-      await services.settingService.update({
+      await       services.settingService.update({
         // Bugfix: 清空自定义 CA 必须传空串，否则旧 NODE_EXTRA_CA_CERTS 路径会残留。
         httpProxyCaCertPath: normalizedCaCertPath,
       });
@@ -598,19 +635,21 @@ export function SettingsPage({
   );
   const handleCodePreviewSettingsChange = useCallback(
     (patch: Parameters<typeof setCodePreviewSettings>[0]) => {
+      // OpenZWork 已删官方遥测：原上游在此计算 action/value 上报，现仅保留设置写入。
       return setCodePreviewSettings(patch);
     },
     [setCodePreviewSettings],
   );
   const activeSectionMeta = settingsSections.find((section) => section.id === activeSection);
-  // 分区列表静态生成：若用户停留在的 section 不在当前可见集合（如偏好迁移），
-  // 回落到第一个可见区，避免整页 return null。
+  // 灰度裁决异步到达：sections 列表可能在挂载后变化。
+  // 若用户正停留在被移除的 section，回落到第一个可见区，避免整页 return null。
   useEffect(() => {
     setActiveSection((current) => resolveSettingsSectionForPlatform(current, settingsSections));
   }, [settingsSections]);
   if (!activeSectionMeta) {
     return null;
   }
+
   const activeSectionLabel = intl.formatMessage({
     id: activeSectionMeta.contentTitleId ?? activeSectionMeta.titleId,
   });
@@ -626,6 +665,7 @@ export function SettingsPage({
   const showActiveSectionTitle =
     !hasVisibleSettingsBreadcrumb ||
     (activeSection === "plugin" && pluginNavigationOrigin === "plugin-store");
+
   return (
     <>
       <DesktopWindowFrame
@@ -642,9 +682,10 @@ export function SettingsPage({
           className="relative grid h-screen min-h-full w-full grid-cols-[68px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] lg:grid-cols-[268px_minmax(0,1fr)]"
         >
           {isWindowsDesktop ? <WindowsTopLeftLogo /> : null}
+
           {usesInlineWindowControls ? (
             <div className="absolute right-1 top-1 z-30 mt-px mr-px flex h-12 items-center gap-0.5 px-2 pointer-events-auto [app-region:no-drag]">
-              {/* Windows/Linux 设置页仍保留旧 caption 下箭头，与主界面和 macOS 的帮助入口不一致。
+              {/* Bug 原因：Windows/Linux 设置页仍保留旧 caption 下箭头，与主界面和 macOS 的帮助入口不一致。
                   统一复用问号帮助按钮，并让它在普通 flex 流中紧邻自绘窗控。
                   Settings 的独立标题层还需计入 4px 外层留白和 1px 边框，才能与 Workspace 控制组对齐。 */}
               <WorkspaceHelpMenuButton isDesktop={Boolean(isDesktop)} />
@@ -673,10 +714,11 @@ export function SettingsPage({
                       })}
                       className="m-1 w-[calc(100%-0.5rem)] justify-start gap-2 rounded-xl px-1.5 text-foreground-subtle hover:bg-surface-hover hover:text-foreground max-lg:m-1 max-lg:size-10 max-lg:justify-center max-lg:px-0"
                       onClick={() => {
-                        if (pluginNavigationOrigin === "plugin-store") {
-                          requestPluginStoreOpen("user");
-                        }
-                        onBack?.();
+                                                    if (pluginNavigationOrigin === "plugin-store") {
+                              requestPluginStoreOpen("user");
+                            }
+                            onBack?.();
+                          ;
                       }}
                     >
                       <ArrowLeft className="size-4" />
@@ -688,12 +730,14 @@ export function SettingsPage({
                     </Button>
                   </ControlHintTooltip>
                 ) : null}
+
                 {/* <div className={onBack ? "mt-5" : "pt-2"}>
                     <h1 className="flex items-center gap-2 px-2.5 text-ui-lg font-medium text-foreground-subtle">
                       {intl.formatMessage({ id: "settings.title" })}
                     </h1>
                   </div> */}
               </div>
+
               <nav
                 aria-label={intl.formatMessage({ id: "settings.navLabel" })}
                 className="flex-1 overflow-y-auto px-2 pb-3"
@@ -704,6 +748,7 @@ export function SettingsPage({
                       id: group.titleId,
                     });
                     const groupLabelId = `settings-sidebar-group-${group.id}`;
+
                     return (
                       <div
                         key={group.id}
@@ -723,6 +768,7 @@ export function SettingsPage({
                         {group.sections.map(({ id, icon: Icon, titleId }) => {
                           const isActive = activeSection === id;
                           const label = intl.formatMessage({ id: titleId });
+
                           return (
                             <SettingsSidebarButton
                               key={id}
@@ -732,9 +778,10 @@ export function SettingsPage({
                               aria-current={isActive ? "page" : undefined}
                               data-testid={testId(TID_SETTINGS_SECTION_NAV, id)}
                               onClick={() => {
-                                setPluginNavigationOrigin(undefined);
-                                setSettingsSectionNavigationVersion((version) => version + 1);
-                                setActiveSettingsSection(id);
+                                                                    setPluginNavigationOrigin(undefined);
+                                    setSettingsSectionNavigationVersion((version) => version + 1);
+                                    setActiveSettingsSection(id);
+                                  ;
                               }}
                             >
                               <span className="truncate text-ui-base text-foreground">{label}</span>
@@ -745,17 +792,21 @@ export function SettingsPage({
                     );
                   })}
                 </div>
+
                 <SettingsSidebarButton
                   icon={Rocket}
                   label={intl.formatMessage({ id: "settings.onboarding" })}
                   className="mt-4 border border-dashed border-border hover:border-border-hover"
-                  onClick={requestOnboardingDialog}
+                  onClick={() => {
+                    requestOnboardingDialog();
+                  }}
                 >
                   <span className="text-ui-base text-foreground">
                     {intl.formatMessage({ id: "settings.onboarding" })}
                   </span>
                 </SettingsSidebarButton>
               </nav>
+
               <div className="max-lg:hidden">
                 <WorkspaceSidebarFooter
                   theme={theme}
@@ -771,6 +822,7 @@ export function SettingsPage({
               </div>
             </div>
           </aside>
+
           <section
             data-settings-content-frame="true"
             className={cn(
@@ -819,6 +871,7 @@ export function SettingsPage({
                       // Electron 的 drag 区不能和右上角帮助/窗口按钮命中区域重叠；
                       // 这里把右侧按钮区域从拖拽条里让出来，避免真实鼠标点击被标题栏拖拽吞掉。
                       // Windows/Linux 设置页共同避开右上角菜单与内联窗控组。
+
                       className={cn(
                         "min-w-0 flex-1 [app-region:drag]",
                         // 四个 28px 按钮、组内 2px 间距和左右 8px padding，共 134px。
@@ -871,6 +924,8 @@ export function SettingsPage({
                             setInterfaceMode={setInterfaceMode}
                             isDesktop={isDesktop}
                             isWindowsDesktop={isWindowsDesktop}
+                            isLinuxDesktop={isLinuxDesktop}
+                            linuxCloseToTray={linuxCloseToTray}
                             platform={platform}
                             notificationEnabled={notificationEnabled}
                             notificationSoundEnabled={notificationSoundEnabled}
@@ -891,8 +946,10 @@ export function SettingsPage({
                             defaultHomeDir={defaultHomeDir}
                             showIntegratedTerminalShell={hostPlatform === "win32"}
                             setLocalePreference={handleFooterLocaleChange}
-                            setNotificationEnabled={setNotificationEnabled}
-                            setNotificationSoundEnabled={setNotificationSoundEnabled}
+                            setNotificationEnabled={(enabled) => setNotificationEnabled(enabled)
+                            }
+                            setNotificationSoundEnabled={(enabled) => setNotificationSoundEnabled(enabled)
+                            }
                             taskAutoArchiveEnabled={taskAutoArchiveEnabled}
                             taskAutoArchiveOlderThanDays={taskAutoArchiveOlderThanDays}
                             messageStreamShowReasoning={messageStreamShowReasoning}
@@ -947,7 +1004,7 @@ export function SettingsPage({
                             onAskUserQuestionAutoResolutionEnabledChange={
                               handleAskUserQuestionAutoResolutionEnabledChange
                             }
-                            onOpenOnboardingDialog={requestOnboardingDialog}
+                            onOpenOnboardingDialog={() => requestOnboardingDialog()}
                           />
                         ) : activeSection === "appearance" ? (
                           <AppearanceSectionContent
@@ -956,7 +1013,8 @@ export function SettingsPage({
                             theme={theme}
                             setTheme={(nextTheme) => handleFooterThemeChange(nextTheme)}
                             uiFontSizePx={uiFontSizePx}
-                            setUiFontSizePx={setUiFontSizePx}
+                            setUiFontSizePx={(fontSizePx) => setUiFontSizePx(fontSizePx)
+                            }
                           />
                         ) : activeSection === "shortcuts" ? (
                           <ShortcutSettingsSection isDesktop={Boolean(isDesktop)} />
@@ -969,10 +1027,6 @@ export function SettingsPage({
                                 localModelProviderConnectivityWorkspacePath
                               }
                               connectivityWorkspaceRequired={isRemoteModelProviderWorkspace}
-                              pendingModelProviderTarget={pendingModelProviderTarget}
-                              onConsumePendingModelProviderTarget={() =>
-                                setPendingModelProviderTarget(undefined)
-                              }
                             />
                           </ServiceProvider>
                         ) : activeSection === "memory" ? (
@@ -992,6 +1046,7 @@ export function SettingsPage({
                             isDesktop={Boolean(isDesktop)}
                             isMacDesktop={Boolean(isMacDesktop)}
                             isWindowsDesktop={Boolean(isWindowsDesktop)}
+                            isWebRemoteControl={isWebRemoteControl}
                             initialTab={pluginTab}
                             initialScopeKey={pluginScopeKey}
                             workspacePath={activeWorkspacePath}
@@ -1008,6 +1063,7 @@ export function SettingsPage({
                           <PluginsSection
                             key={`mcp:${settingsSectionNavigationVersion}`}
                             mode="mcp"
+                            isWebRemoteControl={isWebRemoteControl}
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             onCreateTask={onCreateTask}
@@ -1021,6 +1077,7 @@ export function SettingsPage({
                           <PluginsSection
                             key={`skill:${settingsSectionNavigationVersion}`}
                             mode="skill"
+                            isWebRemoteControl={isWebRemoteControl}
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             onCreateTask={onCreateTask}
@@ -1030,14 +1087,14 @@ export function SettingsPage({
                               onBack?.();
                             }}
                           />
-                        ) : activeSection === "usage" ? (
-                          <AppUsageSection />
                         ) : activeSection === "migration" ? (
                           <MigrationSection
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             isDesktop={isDesktop}
                           />
+                        ) : activeSection === "usage" ? (
+                          <AppUsageSection />
                         ) : activeSection === "subagents" ? (
                           <SubagentsSection
                             onManageModels={handleOpenModelProviderSettings}
@@ -1052,6 +1109,7 @@ export function SettingsPage({
                         ) : activeSection === "commands" ? (
                           <PluginsSection
                             mode="command"
+                            isWebRemoteControl={isWebRemoteControl}
                             workspacePath={activeWorkspacePath}
                             workspaceIdentity={activeWorkspaceIdentity}
                             onCreateTask={onCreateTask}

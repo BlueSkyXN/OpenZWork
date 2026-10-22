@@ -2,6 +2,12 @@
 /* eslint-disable max-lines -- host process 服务注册和启动装配需要集中维护，拆散后会更难追踪依赖注入顺序 */
 // Node.js service implementations — NOT safe to import in browser code
 import { join } from "node:path";
+import type { IChannel } from "@zcode/rpc";
+import type { DynamicWorkflowMode } from "@zcode/shared";
+import type {
+  PluginSandboxHandle,
+  PluginSandboxRegisterInput,
+} from "@zcode/shared/mcp-apps";
 import {
   createNodeProviderRuntimePathEnv,
   NodeModelSelectionConfigRepository,
@@ -139,6 +145,7 @@ export {
 } from "./model-provider/providerFacadeServices.js";
 // Storage：service 与 adapters 工厂；desktop host 负责组装（Worker runner 在 desktop 包内）
 export { createStorageService } from "./storage/app/storageService.js";
+export type { IStorageService } from "./storage/contract.js";
 export type {
   FsCleanerPort as StorageFsCleanerPort,
   RootsResolverPort as StorageRootsResolverPort,
@@ -186,7 +193,10 @@ export {
   CLAIM_STALE_MS,
   computeRetryAt,
 } from "./session/automationRepo.js";
-export { AutomationService, InvalidCronExprError } from "./session/automationService.js";
+export {
+  AutomationService,
+  InvalidCronExprError,
+} from "./session/automationService.js";
 // 闲时任务与 automation 同库不同表；类型/常量全独立。
 // host 域终态回填 files_changed 复用现有 task diff 汇总。
 export { buildTaskChangeSummary } from "./session/taskChangeSummary.js";
@@ -275,6 +285,15 @@ import { createSkillsService } from "./skills/skillsService.js";
 import { createSkillSyncService } from "./skill-sync/skillSyncService.js";
 import { createMcpSyncService } from "./mcp-sync/mcpSyncService.js";
 import { createPluginSyncService } from "./plugin-sync/pluginSyncService.js";
+import { createGenUiService } from "./gen-ui/node.js";
+import { IGenUiService } from "./gen-ui/contract.js";
+import { createPluginUiAccountBindings } from "./plugin-ui-bridge/instanceAccounts.js";
+import { createPluginUiBridgeService } from "./plugin-ui-bridge/pluginUiBridgeService.js";
+import { createPluginUiSamplingService } from "./plugin-ui-bridge/pluginUiSamplingService.js";
+import { createPluginUiAppToolsService } from "./plugin-ui-bridge/pluginUiAppToolsService.js";
+import { IPluginUiBridgeService } from "./plugin-ui-bridge/contract.js";
+import { IPluginUiSamplingService } from "./plugin-ui-bridge/samplingContract.js";
+import { IPluginUiAppToolsService } from "./plugin-ui-bridge/appToolsContract.js";
 import { createPluginsService } from "./plugins/pluginsService.js";
 import { createPluginManagementService } from "./plugins/pluginManagementService.js";
 import { createSubagentsService } from "./subagents/subagentsService.js";
@@ -328,16 +347,22 @@ function hasDisposeAll(instance: unknown): instance is ServiceWithDisposeAll {
   );
 }
 
-function hasDisposeAllAndWait(instance: unknown): instance is ServiceWithDisposeAllAndWait {
+function hasDisposeAllAndWait(
+  instance: unknown,
+): instance is ServiceWithDisposeAllAndWait {
   return (
     typeof instance === "object" &&
     instance !== null &&
-    typeof (instance as { disposeAllAndWait?: unknown }).disposeAllAndWait === "function"
+    typeof (instance as { disposeAllAndWait?: unknown }).disposeAllAndWait ===
+      "function"
   );
 }
 
 const providerRuntimes = new WeakMap<ServiceCollection, ProviderRuntime>();
-const providerProvisioningSources = new WeakMap<ServiceCollection, ProviderProvisioningSource>();
+const providerProvisioningSources = new WeakMap<
+  ServiceCollection,
+  ProviderProvisioningSource
+>();
 const providerProvisioningTriggerDisposers = new WeakMap<
   ServiceCollection,
   readonly (() => void)[]
@@ -346,7 +371,10 @@ const providerProvisioningTriggerDisposers = new WeakMap<
 // dispose 链必须统一关闭：Windows 上句柄悬着会让宿主回收后临时目录 rm 撞 EBUSY
 // （stdioDesktopPresentationSurface 单测稳定复现），Linux 的 unlink-while-open 语义掩盖了泄漏。
 // 与其它侧表一样按 ServiceCollection 登记并在 dispose 时统一 close。
-const sharedSqliteRepos = new WeakMap<ServiceCollection, ReadonlyArray<{ close(): void }>>();
+const sharedSqliteRepos = new WeakMap<
+  ServiceCollection,
+  ReadonlyArray<{ close(): void }>
+>();
 /** Local Host 进程内的 Provisioning Source；不会把凭据通过通用 RPC 暴露给 Renderer。 */
 export function getProviderProvisioningSource(
   services: ServiceCollection,
@@ -354,7 +382,18 @@ export function getProviderProvisioningSource(
   return providerProvisioningSources.get(services);
 }
 
-const managedHostApiNetworkTransports = new WeakMap<ServiceCollection, HostApiNetworkTransport>();
+const managedHostApiNetworkTransports = new WeakMap<
+  ServiceCollection,
+  HostApiNetworkTransport
+>();
+
+function disposeGenUiState(services: ServiceCollection): void {
+  const service = services.getOptional(IGenUiService);
+  // 修复原因：新增注册未进入 Host 释放链，窗口关闭后状态 watcher 和写入仍然存活。
+  // dispose 是本地实现的生命周期能力，不扩张对外 RPC 合同。
+  if (service && "dispose" in service && typeof service.dispose === "function")
+    service.dispose();
+}
 
 export function registerHostApiNetworkTransportForDispose(
   services: ServiceCollection,
@@ -370,6 +409,20 @@ export function registerHostApiNetworkTransportForDispose(
  *        用于 BroadcastService 跨窗口中转。传 null 则广播为空操作。
  */
 export function createLocalServices(options: {
+  /** 已鉴权 Desktop stdio 连接提供的私有回查频道；不作为公共 service 暴露。 */
+  topicResourceRelayChannel?: (request: unknown) => IChannel;
+  /** Host 装配层转发动态工作流用户选择；见 zcodeAgentService 的同名选项。 */
+  forwardDynamicWorkflowUserMode?: (
+    mode: DynamicWorkflowMode | undefined,
+  ) => void;
+  /** Desktop Host 请求 Main 登记已校验的插件 UI HTML，换取沙箱句柄。 */
+  registerPluginSandbox?: (
+    input: PluginSandboxRegisterInput,
+  ) => Promise<PluginSandboxHandle>;
+  agentTelemetry?: {
+    getDeviceMid?: () => string | undefined;
+    runtimeSurface?: "desktop_local_host" | "remote_workspace_host";
+  };
   parentPort?: Parameters<typeof createBroadcastService>[0];
   /** Host 装配层注入的设置权威；与网络 transport 必须来自同一 Window Host 生命周期。 */
   settingService?: ISettingService;
@@ -444,7 +497,8 @@ export function createLocalServices(options: {
     }): Promise<{ ok: boolean; [k: string]: unknown }>;
   };
 }): ServiceCollection {
-  const isDesktopAttachedRemote = options?.serviceAuthorityMode === "desktop-attached-remote";
+  const isDesktopAttachedRemote =
+    options?.serviceAuthorityMode === "desktop-attached-remote";
   // host / remote server 以前直接沿用当前进程环境启动后续服务。
   // GUI 启动的 desktop、SSH/WSL/Docker 拉起的 remote server 往往拿不到用户 login shell 里的 PATH，
   // 导致 bun 这类只在 shell profile 里追加的命令在 ZCode Agent/终端里不可见。
@@ -466,7 +520,11 @@ export function createLocalServices(options: {
   try {
     ensureAppCaCert();
   } catch (error) {
-    console.error(formatLogPrefix("appCaCert", process.pid), "ensure app CA cert failed:", error);
+    console.error(
+      formatLogPrefix("appCaCert", process.pid),
+      "ensure app CA cert failed:",
+      error,
+    );
   }
 
   const settingService = createObservableSettingService(
@@ -511,21 +569,29 @@ export function createLocalServices(options: {
     },
     onPersonalConfigPollingError: (error) => {
       // 轮询错误只在进入失败状态时回调一次；下一轮仍会自行重试，避免持续故障刷盘。
-      providerConfigLog.warn(undefined, "Personal Provider Config 轮询暂时失败，将继续重试", {
-        error,
-      });
+      providerConfigLog.warn(
+        undefined,
+        "Personal Provider Config 轮询暂时失败，将继续重试",
+        {
+          error,
+        },
+      );
     },
     // 已发布 config.json 保存的是 ZCode 用户配置；清理第三方 ACP 不能移除这条升级路径。
     // Repository 仅在新 Personal 配置不存在时导入，并保留旧文件以便回滚。
     readLegacyProviders: () => readLegacyZCodeConfigProviders(),
   });
-  const modelSelectionConfiguredDefaultSource = new NodeModelSelectionConfigRepository({
-    personalRepository: providerConfigRuntime.personalRepository,
-  });
+  const modelSelectionConfiguredDefaultSource =
+    new NodeModelSelectionConfigRepository({
+      personalRepository: providerConfigRuntime.personalRepository,
+    });
   const providerProvisioningSource = createProviderProvisioningSource({
     personalRepository: providerConfigRuntime.personalRepository,
     credentialFilePath: resolveCredentialFilePath(resolveAppConfigDir()),
-    personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
+    personalConfigFilePath: join(
+      resolveAppConfigDir(),
+      PERSONAL_PROVIDER_CONFIG_FILE_NAME,
+    ),
   });
   const providerProvisioningDisposers = [
     providerConfigRuntime.configService.onDidChange((reason) => {
@@ -557,7 +623,8 @@ export function createLocalServices(options: {
   const skillsService = createSkillsService({ isDesktopRuntime: true });
   const mcpSyncService = createMcpSyncService({
     // mcp/list 的 host 消费点收拢到 mcpSync 服务；真实状态检查仍在 agent 进程。
-    listMcpServerStatuses: (params) => zcodeAgentService.listMcpServerStatuses(params),
+    listMcpServerStatuses: (params) =>
+      zcodeAgentService.listMcpServerStatuses(params),
   });
   const pluginSyncService = createPluginSyncService();
   const subagentsService = createSubagentsService({
@@ -569,6 +636,7 @@ export function createLocalServices(options: {
   const zcodeAgentService = createZCodeAgentService({
     ...(modelSelectionReadinessSource ? { modelSelectionReadinessSource } : {}),
     authorizeLocalMediaPreviewPath: options?.authorizeLocalMediaPreviewPath,
+    forwardDynamicWorkflowUserMode: options?.forwardDynamicWorkflowUserMode,
     commandResolver: options?.zcodeAgentCommandResolver,
     presentationSurface: resolveZCodeAgentPresentationSurface({
       runtimeSurface: options?.agentRuntimeContext?.runtimeSurface,
@@ -585,8 +653,11 @@ export function createLocalServices(options: {
     browserControlExecutor: options?.browserControlExecutor,
     // 设置页的 HTTP 代理、No Proxy + 自定义 CA 按 spawn 时读取注入 agent 子进程 env，
     // 覆盖模型 API / MCP / Bash 出口流量并信任用户显式配置的证书；改动后下次启动 agent 生效。
-    resolveSpawnEnv: async (context) => {
-      const [settings] = await Promise.all([settingService.get(), providerRuntime.start()]);
+    resolveSpawnEnv: async (_context) => {
+      const [settings] = await Promise.all([
+        settingService.get(),
+        providerRuntime.start(),
+      ]);
       // 内置 Subagent 的旧覆盖必须在 CLI 独立读取之前导入，不能等待设置页操作。
       await subagentsService.prepareRuntimeState();
       const agentNetwork =
@@ -607,12 +678,18 @@ export function createLocalServices(options: {
         }),
         // 把 host 解析出的权威 origin（含 settings 覆盖）下发给 agent，否则 agent 侧只按
         // env 推导，test env + 自定义端点时两侧信任判定的输入分叉、官方 MCP 整体 fail closed。
-        ...buildAgentEndpointOriginEnv(await resolveCurrentZCodeEndpointOrigin()),
+        ...buildAgentEndpointOriginEnv(
+          await resolveCurrentZCodeEndpointOrigin(),
+        ),
         ...createNodeProviderRuntimePathEnv({
           // Built-in Active 路径按当前 Endpoint 隔离，不能通过同步的固定路径
           // getter 读取；Agent spawn 必须等待本轮 Endpoint Source 完成解析和物化。
-          zcodeBuiltinFilePath: await providerConfigRuntime.resolveZCodeBuiltinActiveFilePath(),
-          personalFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
+          zcodeBuiltinFilePath:
+            await providerConfigRuntime.resolveZCodeBuiltinActiveFilePath(),
+          personalFilePath: join(
+            resolveAppConfigDir(),
+            PERSONAL_PROVIDER_CONFIG_FILE_NAME,
+          ),
         }),
       };
     },
@@ -623,11 +700,13 @@ export function createLocalServices(options: {
           resolveSessionRuntimePreferences: async (scope) => {
             // 预算已统一，不能把可选远端配置作为本地/手机 shared-host 建会话的前置条件。
             const settings = await settingService.get();
-            const modelContextBudgetStrategy = DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY;
+            const modelContextBudgetStrategy =
+              DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY;
             return {
               askUserQuestionAutoResolutionEnabled:
                 settings.askUserQuestionAutoResolutionEnabled !== false,
-              nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
+              nativeSearchEnhancementsEnabled:
+                settings.nativeSearchEnhancementsEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
               modelContextBudgetStrategy,
               // user-execution 只消费 Shell；共享默认策略是统一 result schema 的兼容占位，
@@ -638,6 +717,55 @@ export function createLocalServices(options: {
             };
           },
         }),
+  });
+  // GenUI / MCP Apps 的 Host 装配（照上游 node.ts 收敛；OpenZWork 无官方账号，
+  // readAccount 使用稳定的空账号命名空间；实例归属仍由 Agent 的运行时凭证校验）。
+  const pluginUiAccounts = createPluginUiAccountBindings({
+    async readAccount() {
+      return null;
+    },
+    open: (params) => zcodeAgentService.openMcpUiInstance(params),
+    close: (params) => zcodeAgentService.closeMcpUiInstance(params),
+  });
+  const pluginUiBridgeService = createPluginUiBridgeService({
+    openInstance: (params) => pluginUiAccounts.open(params),
+    closeInstance: (params) => pluginUiAccounts.close(params),
+    validateInstance: (params) =>
+      zcodeAgentService.validateMcpUiInstance(params),
+    recycleInstance: (params) => zcodeAgentService.recycleMcpUiInstance(params),
+    // 插件 UI：资源读取与 UI 工具调用都发生在 session 所在的 agent 进程；host 只做校验与登记。
+    readMcpResource: (params) => zcodeAgentService.readMcpResource(params),
+    callMcpToolForUi: (params) => zcodeAgentService.callMcpToolForUi(params),
+    cancelMcpToolCallForUi: (params) =>
+      zcodeAgentService.cancelMcpToolCallForUi(params),
+    readMcpResourceForUi: (params) =>
+      zcodeAgentService.readMcpResourceForUi(params),
+    listMcpResourcesForUi: (params) =>
+      zcodeAgentService.listMcpResourcesForUi(params),
+    listMcpResourceTemplatesForUi: (params) =>
+      zcodeAgentService.listMcpResourceTemplatesForUi(params),
+    subscribeMcpResourceForUi: (params) =>
+      zcodeAgentService.subscribeMcpResourceForUi(params),
+    unsubscribeMcpResourceForUi: (params) =>
+      zcodeAgentService.unsubscribeMcpResourceForUi(params),
+    listPluginUiSurfaces: (params) =>
+      zcodeAgentService.listPluginUiSurfaces(params),
+    registerSandbox: options?.registerPluginSandbox,
+  });
+  // App-Provided Tools：页面工具登记与模型调用的认领 / 回传都发生在 session 所在的 agent 进程。
+  const pluginUiSamplingService = createPluginUiSamplingService({
+    sample: (params) => zcodeAgentService.sampleMcpApp(params),
+    cancelSampling: (params) => zcodeAgentService.cancelMcpAppSampling(params),
+  });
+  const pluginUiAppToolsService = createPluginUiAppToolsService({
+    registerAppToolsForUi: (params) =>
+      zcodeAgentService.registerAppToolsForUi(params),
+    unregisterAppToolsForUi: (params) =>
+      zcodeAgentService.unregisterAppToolsForUi(params),
+    claimAppToolCallForUi: (params) =>
+      zcodeAgentService.claimAppToolCallForUi(params),
+    resolveAppToolCallForUi: (params) =>
+      zcodeAgentService.resolveAppToolCallForUi(params),
   });
   providerConnectivityAgentService = zcodeAgentService;
   // desktop-continuous UI 直接订阅 zcodeSessionService，绕开 ZCode task adapter 的
@@ -658,14 +786,19 @@ export function createLocalServices(options: {
       async readCurrentModel() {
         // Git sidecar 属于目标 Environment；初始模型直接读取同一 Host View，
         // 不再通过临时 Agent workspace state 反推模型与 reasoning。
-        return (await providerRuntime.modelSelection.getView()).preferredSelection ?? null;
+        return (
+          (await providerRuntime.modelSelection.getView()).preferredSelection ??
+          null
+        );
       },
     },
     textGenerator: {
       async generateText(params) {
         return await zcodeAgentService.generateWorkspaceText({
           workspacePath: params.workspacePath,
-          ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+          ...(params.workspaceIdentity
+            ? { workspaceIdentity: params.workspaceIdentity }
+            : {}),
           selection: params.selection,
           prompt: params.prompt,
           querySource: params.querySource,
@@ -747,40 +880,79 @@ export function createLocalServices(options: {
     // 合并 MCP/Plugin Management 服务装配时误删了 plugin-sync 注册，
     // RemoteServiceAccess 仍会请求该频道，导致本地候选枚举超时、远端同步无法开始。
     .register(IPluginSyncService, pluginSyncService)
+    // GenUI / MCP Apps：RemoteServiceAccess 无条件创建四个服务代理，漏注册会让
+    // gen-ui/listState 等频道在 1s 超时后失败，并拖慢已有会话的消息发送（发送前
+    // 会先查 genUiService.listState）。上游同款装配见 zai-org/ZCode node.ts。
+    .register(
+      IGenUiService,
+      createGenUiService({ registerSandbox: options?.registerPluginSandbox }),
+    )
+    .register(IPluginUiBridgeService, pluginUiBridgeService)
+    .register(IPluginUiSamplingService, pluginUiSamplingService)
+    .register(IPluginUiAppToolsService, pluginUiAppToolsService)
     .register(IPluginsService, createPluginsService({ isDesktopRuntime: true }))
     // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
-    .register(IPluginManagementService, createPluginManagementService({ zcodeAgentService }))
+    .register(
+      IPluginManagementService,
+      createPluginManagementService({ zcodeAgentService }),
+    )
     .register(ISubagentsService, subagentsService)
-    .register(ICommandsService, createCommandsService({ isDesktopRuntime: true }))
+    .register(
+      ICommandsService,
+      createCommandsService({ isDesktopRuntime: true }),
+    )
     .register(
       IHooksService,
       createHooksService({
-        grantWorkspaceHookTrust: (params) => zcodeAgentService.grantWorkspaceHookTrust(params),
+        grantWorkspaceHookTrust: (params) =>
+          zcodeAgentService.grantWorkspaceHookTrust(params),
       }),
     )
     .register(IMemoryService, createMemoryService())
-    .register(ISettingsSyncService, createSettingsSyncService({ settingService }))
-    .register(IPromptAttachmentTransferService, createLocalPromptAttachmentTransferService());
+    .register(
+      ISettingsSyncService,
+      createSettingsSyncService({ settingService }),
+    )
+    .register(
+      IPromptAttachmentTransferService,
+      createLocalPromptAttachmentTransferService(),
+    );
 
   registerHostApiNetworkTransportForDispose(services, hostApiNetworkTransport);
 
   providerRuntimes.set(services, providerRuntime);
   providerProvisioningSources.set(services, providerProvisioningSource);
-  providerProvisioningTriggerDisposers.set(services, providerProvisioningDisposers);
+  providerProvisioningTriggerDisposers.set(
+    services,
+    providerProvisioningDisposers,
+  );
   services
     .register(IProviderSettingsService, providerRuntime.providerSettings)
     .register(IModelSelectionService, providerRuntime.modelSelection);
-  if (isDesktopAttachedRemote || options.providerProvisioningTargetEnabled === true) {
+  if (
+    isDesktopAttachedRemote ||
+    options.providerProvisioningTargetEnabled === true
+  ) {
     services.register(
       IProviderProvisioningTargetService,
       createProviderProvisioningTarget({
         providerRuntime,
         personalRepository: providerConfigRuntime.personalRepository,
         credentialService,
-        personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
-        stateFilePath: join(resolveAppConfigDir(), "runtime", "provider", "provisioning.json"),
+        personalConfigFilePath: join(
+          resolveAppConfigDir(),
+          PERSONAL_PROVIDER_CONFIG_FILE_NAME,
+        ),
+        stateFilePath: join(
+          resolveAppConfigDir(),
+          "runtime",
+          "provider",
+          "provisioning.json",
+        ),
         listProvisioningCredentialKeys: () =>
-          listProviderProvisioningCredentialKeys(resolveCredentialFilePath(resolveAppConfigDir())),
+          listProviderProvisioningCredentialKeys(
+            resolveCredentialFilePath(resolveAppConfigDir()),
+          ),
       }),
     );
   }
@@ -805,6 +977,7 @@ export function createLocalServices(options: {
 }
 
 export function disposeServiceResources(services: ServiceCollection): void {
+  disposeGenUiState(services);
   // host process 退出前以前没有统一遍历本地服务做资源回收，
   // terminal/task wrapper 这类会拉起子进程的服务只能等宿主进程自己结束，时序上可能留下短暂残留。
   // 这里集中调用各服务的本地 disposeAll 钩子，把“退出 app = 回收所有托管资源”落成机械动作。
@@ -827,13 +1000,18 @@ export function disposeServiceResources(services: ServiceCollection): void {
   for (const repo of sharedSqliteRepos.get(services) ?? []) repo.close();
   sharedSqliteRepos.delete(services);
   providerRuntimes.get(services)?.dispose();
-  for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
+  for (const dispose of providerProvisioningTriggerDisposers.get(services) ??
+    [])
+    dispose();
   providerProvisioningTriggerDisposers.delete(services);
   providerProvisioningSources.delete(services);
   managedHostApiNetworkTransports.get(services)?.dispose();
 }
 
-export async function disposeServiceResourcesAndWait(services: ServiceCollection): Promise<void> {
+export async function disposeServiceResourcesAndWait(
+  services: ServiceCollection,
+): Promise<void> {
+  disposeGenUiState(services);
   // app 关闭时 host 需要等 agent 进程树完成 graceful + force 清理。
   // 旧的同步 dispose 会在 host 退出时丢掉强杀 timer，导致 zcode-cli/app-server 变成孤儿进程。
   const disposableServices = [
@@ -857,7 +1035,9 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
   for (const repo of sharedSqliteRepos.get(services) ?? []) repo.close();
   sharedSqliteRepos.delete(services);
   providerRuntimes.get(services)?.dispose();
-  for (const dispose of providerProvisioningTriggerDisposers.get(services) ?? []) dispose();
+  for (const dispose of providerProvisioningTriggerDisposers.get(services) ??
+    [])
+    dispose();
   providerProvisioningTriggerDisposers.delete(services);
   providerProvisioningSources.delete(services);
   await managedHostApiNetworkTransports
@@ -865,3 +1045,8 @@ export async function disposeServiceResourcesAndWait(services: ServiceCollection
     ?.disposeAndWait()
     .catch(() => {});
 }
+export {
+  createTopicResourcePeers,
+  type TopicResourcePeers,
+} from "./zcode-agent/topicResourcePeers.js";
+export { createTopicResourceRelayChannel } from "./zcode-agent/topicResourceRelayChannel.js";

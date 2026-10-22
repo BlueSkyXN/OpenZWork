@@ -3,7 +3,7 @@ import {
   type ModelMessageContentBlock,
 } from "@zcode/contracts";
 
-interface HookStringProjection {
+export interface HookStringProjection {
   content: string;
   truncated: boolean;
 }

@@ -24,9 +24,15 @@ import {
   type BrowserViewRestoredTabShell,
   type BrowserViewportSize,
 } from "@zcode/shared";
-import { executeBrowserCommandOnView, type ControlledView } from "./browserCommandExecutor.js";
+import {
+  executeBrowserCommandOnView,
+  type ControlledView,
+} from "./browserCommandExecutor.js";
 import { executeIabPlaywrightLocator } from "./browserPlaywrightLocatorExecutor.js";
-import { recordBrowserVideo, type BrowserWebmRecorderFactory } from "./browserVideoRecorder.js";
+import {
+  recordBrowserVideo,
+  type BrowserWebmRecorderFactory,
+} from "./browserVideoRecorder.js";
 import { normalizePlaywrightTimeout } from "./browserPlaywrightTimeout.js";
 import type {
   BrowserScreenshotSurfaceCoordinator,
@@ -84,8 +90,15 @@ interface GuestWebContents {
     isAttached(): boolean;
     attach(protocolVersion?: string): void;
     detach(): void;
-    sendCommand(method: string, params?: unknown, sessionId?: string): Promise<unknown>;
-    on(event: "message", listener: (event: unknown, method: string, params: unknown) => void): void;
+    sendCommand(
+      method: string,
+      params?: unknown,
+      sessionId?: string,
+    ): Promise<unknown>;
+    on(
+      event: "message",
+      listener: (event: unknown, method: string, params: unknown) => void,
+    ): void;
     removeListener(
       event: "message",
       listener: (event: unknown, method: string, params: unknown) => void,
@@ -95,11 +108,19 @@ interface GuestWebContents {
   session?: {
     on(
       event: "will-download",
-      listener: (event: unknown, item: GuestDownloadItem, contents: GuestWebContents) => void,
+      listener: (
+        event: unknown,
+        item: GuestDownloadItem,
+        contents: GuestWebContents,
+      ) => void,
     ): void;
     removeListener(
       event: "will-download",
-      listener: (event: unknown, item: GuestDownloadItem, contents: GuestWebContents) => void,
+      listener: (
+        event: unknown,
+        item: GuestDownloadItem,
+        contents: GuestWebContents,
+      ) => void,
     ): void;
   };
 }
@@ -126,8 +147,15 @@ interface InternalExecutionContext extends BrowserGuestExecutionContext {
 }
 
 type TabLifecycle = "active" | "deliverable" | "handoff" | "closed";
-type GuestBindingLifecycle = "detached" | "attached" | "detaching" | "destroyed";
-type GuestRecoveryReason = BrowserGuestAttachRejectReason | "guest-destroyed" | "attach-timeout";
+type GuestBindingLifecycle =
+  | "detached"
+  | "attached"
+  | "detaching"
+  | "destroyed";
+type GuestRecoveryReason =
+  | BrowserGuestAttachRejectReason
+  | "guest-destroyed"
+  | "attach-timeout";
 
 const TAB_CONTEXT_RECOVERY_HINT =
   "This is pre-action stale-binding recovery, not post-action popup observation. " +
@@ -267,11 +295,16 @@ const DEFAULT_BACKGROUND_BROWSER_VIEWPORT: BrowserViewportSize = {
 
 type BrowserTabRecoveryStorePort = Pick<
   BrowserTabRecoveryStore,
-  "upsert" | "upsertPageState" | "getPageState" | "removePageState" | "remove" | "listShells"
+  | "upsert"
+  | "upsertPageState"
+  | "getPageState"
+  | "removePageState"
+  | "remove"
+  | "listShells"
 > &
   Partial<Pick<BrowserTabRecoveryStore, "whenIdle">>;
 
-interface BrowserGuestManagerResidencyOptions {
+export interface BrowserGuestManagerResidencyOptions {
   tabLimit?: number;
   suspendAckTimeoutMs?: number;
   now?: () => number;
@@ -279,7 +312,10 @@ interface BrowserGuestManagerResidencyOptions {
   onSuspendTabRequested?(payload: BrowserViewResidencyTransitionPayload): void;
   onRestoreTabRequested?(payload: BrowserViewResidencyTransitionPayload): void;
   onResidencyChanged?(payload: BrowserViewResidencyTransitionPayload): void;
-  onRecoveryOrphanCloseRequested?(payload: { tabId: string; reason: "recovery-orphan" }): void;
+  onRecoveryOrphanCloseRequested?(payload: {
+    tabId: string;
+    reason: "recovery-orphan";
+  }): void;
   warn?(message: string): void;
   recording?: {
     tempRoot?: string;
@@ -287,7 +323,9 @@ interface BrowserGuestManagerResidencyOptions {
     now?: () => number;
   };
 }
-function normalizeDesktopZoomMetricsScale(desktopZoomFactor: number | undefined): number {
+function normalizeDesktopZoomMetricsScale(
+  desktopZoomFactor: number | undefined,
+): number {
   return Number.isFinite(desktopZoomFactor) && (desktopZoomFactor ?? 1) > 1
     ? (desktopZoomFactor ?? 1)
     : 1;
@@ -327,8 +365,27 @@ function scopeKey(context: InternalExecutionContext): string {
   ].join("\u0000");
 }
 
-function sameScope(left: InternalExecutionContext, right: InternalExecutionContext): boolean {
-  return (left.legacy === true && right.legacy === true) || scopeKey(left) === scopeKey(right);
+/** tab 归属的 session 身份：不含 browserId / generation，释放回 user-tab 集合的 tab 仍然匹配。 */
+function ownedBySession(
+  owner: InternalExecutionContext,
+  context: InternalExecutionContext,
+): boolean {
+  return (
+    owner.windowId === context.windowId &&
+    owner.workspaceKey === context.workspaceKey &&
+    (owner.remoteSessionId ?? "") === (context.remoteSessionId ?? "") &&
+    owner.sessionId === context.sessionId
+  );
+}
+
+function sameScope(
+  left: InternalExecutionContext,
+  right: InternalExecutionContext,
+): boolean {
+  return (
+    (left.legacy === true && right.legacy === true) ||
+    scopeKey(left) === scopeKey(right)
+  );
 }
 
 function normalizeLegacyContext(defaultKey: string): InternalExecutionContext {
@@ -355,7 +412,9 @@ function toRestoredShell(
   return {
     tabId: record.tabId,
     workspaceKey: record.workspaceKey,
-    ...(record.remoteSessionId ? { remoteSessionId: record.remoteSessionId } : {}),
+    ...(record.remoteSessionId
+      ? { remoteSessionId: record.remoteSessionId }
+      : {}),
     sessionId: record.sessionId,
     browserId: owner.browserId,
     browserGeneration: owner.browserGeneration,
@@ -380,7 +439,8 @@ function isSideEffecting(command: BrowserCommand): boolean {
       "setChecked",
     ].includes(command.action.operation);
   }
-  if (command.method === "playwright" && command.action.name === "evaluate") return true;
+  if (command.method === "playwright" && command.action.name === "evaluate")
+    return true;
   return [
     "navigate",
     "back",
@@ -466,15 +526,27 @@ export class BrowserGuestManager {
   private readonly downloadWaiters = new Map<string, DownloadWaiter[]>();
   private readonly sessionNames = new Map<string, string>();
   private readonly visibilityByScope = new Map<string, boolean>();
-  private readonly naturalViewportByWindow = new Map<number, BrowserViewportSize>();
+  private readonly naturalViewportByWindow = new Map<
+    number,
+    BrowserViewportSize
+  >();
   private readonly residencyCoordinator: BrowserTabResidencyCoordinator;
   private readonly suspendAckWaiters = new Map<string, () => void>();
   private readonly suspendFlights = new Map<string, Promise<void>>();
-  private readonly restoreFlights = new Map<string, Promise<GuestWebContents | null>>();
+  private readonly restoreFlights = new Map<
+    string,
+    Promise<GuestWebContents | null>
+  >();
   /** guest 被销毁后重绑时，替代 guest 必须先完成原页面恢复再接收新的 browser 命令。 */
-  private readonly guestRecoveryFlights = new Map<string, Promise<GuestWebContents | null>>();
+  private readonly guestRecoveryFlights = new Map<
+    string,
+    Promise<GuestWebContents | null>
+  >();
   /** 同一 tab 的 attach/rebind 只允许一个 flight，避免并发命令各自重建 webview。 */
-  private readonly guestAttachFlights = new Map<string, Promise<GuestWebContents | null>>();
+  private readonly guestAttachFlights = new Map<
+    string,
+    Promise<GuestWebContents | null>
+  >();
   private readonly restoredTabClaims = new Map<string, number>();
 
   constructor(
@@ -532,7 +604,9 @@ export class BrowserGuestManager {
     },
   ): BrowserGuestAttachResult {
     let tab = this.tabs.get(tabId);
-    const guest = webContents.fromId(webContentsId) as GuestWebContents | undefined;
+    const guest = webContents.fromId(webContentsId) as
+      | GuestWebContents
+      | undefined;
     if (!guest || guest.isDestroyed()) {
       const recoveryRequested =
         tab && tab.lifecycle !== "closed"
@@ -557,7 +631,9 @@ export class BrowserGuestManager {
     }
 
     if (this.closedTabIds.has(tabId)) {
-      this.log?.(`[browser-use] attachGuest rejected tabId=${tabId} reason=closed`);
+      this.log?.(
+        `[browser-use] attachGuest rejected tabId=${tabId} reason=closed`,
+      );
       return { ok: false, reason: "closed", recoveryRequested: false };
     }
     // 兼容旧 renderer：未经历 create request 的 key 只进入 legacy scope。
@@ -573,7 +649,9 @@ export class BrowserGuestManager {
             // 从 user.openTabs() 枚举并接管。ownerTaskId 现在随 attach 冻结；旧 renderer
             // 未传 sessionId 时保留不可认领哨兵，宁可隐藏也不能跨对话泄漏。
             sessionId: options.sessionId?.trim() || "unscoped",
-            ...(options.remoteSessionId ? { remoteSessionId: options.remoteSessionId } : {}),
+            ...(options.remoteSessionId
+              ? { remoteSessionId: options.remoteSessionId }
+              : {}),
             clientMode: "desktop-continuous" as const,
           }
         : normalizeLegacyContext(tabId);
@@ -603,26 +681,40 @@ export class BrowserGuestManager {
       this.registerTabResidency(tab, options?.active === true);
     }
     if (tab.lifecycle === "closed") {
-      this.log?.(`[browser-use] attachGuest rejected tabId=${tabId} reason=closed`);
+      this.log?.(
+        `[browser-use] attachGuest rejected tabId=${tabId} reason=closed`,
+      );
       return { ok: false, reason: "closed", recoveryRequested: false };
     }
-    if (options?.windowId !== undefined && tab.owner.windowId !== options.windowId) {
+    if (
+      options?.windowId !== undefined &&
+      tab.owner.windowId !== options.windowId
+    ) {
       this.log?.(
         `[browser-use] attachGuest rejected tabId=${tabId} reason=window-mismatch expected=${tab.owner.windowId} actual=${options.windowId}`,
       );
       return { ok: false, reason: "window-mismatch", recoveryRequested: false };
     }
-    if (options?.workspaceKey && tab.owner.workspaceKey !== options.workspaceKey) {
-      this.log?.(`[browser-use] attachGuest rejected tabId=${tabId} reason=workspace-mismatch`);
+    if (
+      options?.workspaceKey &&
+      tab.owner.workspaceKey !== options.workspaceKey
+    ) {
+      this.log?.(
+        `[browser-use] attachGuest rejected tabId=${tabId} reason=workspace-mismatch`,
+      );
       return this.rejectGuestAttach(tab, guest, "workspace-mismatch");
     }
     if (options?.sessionId && tab.owner.sessionId !== options.sessionId) {
       // renderer 的迟到 dom-ready 不能用另一个对话的 ownership 复用既有 tabId。
       // window/workspace 相同也必须拒绝，避免 guest 被跨对话替换后绕过 openTabs 隔离。
-      this.log?.(`[browser-use] attachGuest rejected tabId=${tabId} reason=session-mismatch`);
+      this.log?.(
+        `[browser-use] attachGuest rejected tabId=${tabId} reason=session-mismatch`,
+      );
       return this.rejectGuestAttach(tab, guest, "session-mismatch");
     }
-    if ((tab.owner.remoteSessionId ?? "") !== (options?.remoteSessionId ?? "")) {
+    if (
+      (tab.owner.remoteSessionId ?? "") !== (options?.remoteSessionId ?? "")
+    ) {
       // remote owner 过去只在 renderer 主动提供 remoteSessionId 时校验，缺失值会
       // fail-open；远程重连后的旧 tab 因而可能被新 runtime attach。
       this.log?.(
@@ -634,7 +726,8 @@ export class BrowserGuestManager {
     const residency = this.residencyCoordinator.get(tabId);
     const rejectsNewGuest =
       tab.guest !== guest &&
-      (residency?.residency === "suspended" || residency?.residency === "suspend-pending");
+      (residency?.residency === "suspended" ||
+        residency?.residency === "suspend-pending");
     if (rejectsNewGuest) {
       // 恢复 timeout 已回滚后，旧 generation 的迟到 guest 原来仍会绕过 restoring
       // 校验并重新占用 tab。suspended/pending 只允许当前旧 guest 重复上报，不接受新 attach。
@@ -673,7 +766,10 @@ export class BrowserGuestManager {
       try {
         guest.stop();
       } catch (error) {
-        this.warn(`browser tab provisional navigation stop failed tabId=${tabId}`, error);
+        this.warn(
+          `browser tab provisional navigation stop failed tabId=${tabId}`,
+          error,
+        );
       }
     }
     if (tab.guest && !isSameGuest) this.detachGuest(tab);
@@ -748,9 +844,16 @@ export class BrowserGuestManager {
     if (tab.viewportOverride) {
       // Agent 可能在 renderer 完成自动打开前就发出 viewport 事件；guest attach 后重放一次，
       // 保证刚挂载的自由尺寸 UI 不会漏掉 main → renderer 的一次性同步。
-      this.onViewportChanged?.({ ...tab.viewportOverride }, tab.owner, tab.tabId);
+      this.onViewportChanged?.(
+        { ...tab.viewportOverride },
+        tab.owner,
+        tab.tabId,
+      );
     }
-    if (options?.active !== false && this.visibilityByScope.get(scopeKey(tab.owner)) === true) {
+    if (
+      options?.active !== false &&
+      this.visibilityByScope.get(scopeKey(tab.owner)) === true
+    ) {
       // visibilityByScope 表示整个 browser scope 可见，不表示本次 attach 的 tab
       // 被选中。把 inactive guest 也回放为 visible=true 会让 renderer 在用户切换后
       // 又激活旧 tab；关闭后迟到的同类事件还会复活 tab shell。只有非 inactive attach 才能
@@ -787,11 +890,14 @@ export class BrowserGuestManager {
   ): Promise<void> {
     const tab = this.tabs.get(tabId);
     if (!tab || tab.lifecycle === "closed" || tab.owner.windowId !== windowId) {
-      throw new Error(`browser tab '${tabId}' is unavailable for viewport update`);
+      throw new Error(
+        `browser tab '${tabId}' is unavailable for viewport update`,
+      );
     }
     if (viewport) {
       assertViewportOverride(viewport);
-      tab.desktopZoomFactor = normalizeDesktopZoomMetricsScale(desktopZoomFactor);
+      tab.desktopZoomFactor =
+        normalizeDesktopZoomMetricsScale(desktopZoomFactor);
       await this.setTabViewport(tab, viewport);
       return;
     }
@@ -821,14 +927,18 @@ export class BrowserGuestManager {
     const tab = this.requireRendererOwnedTab(payload);
     tab.cachedUrl = payload.restoreUrl?.trim() || tab.cachedUrl;
     if (payload.title !== undefined) tab.cachedTitle = payload.title ?? "";
-    if (payload.faviconUrl !== undefined) tab.cachedFaviconUrl = payload.faviconUrl;
+    if (payload.faviconUrl !== undefined)
+      tab.cachedFaviconUrl = payload.faviconUrl;
     tab.loading = payload.loading;
     this.residencyCoordinator.report(tab.tabId, {
       selected: payload.selected,
       visible: payload.visible,
       currentTask: payload.currentTask,
       loading: payload.loading,
-      audible: safeBool(() => tab.guest?.isCurrentlyAudible?.() ?? false, false),
+      audible: safeBool(
+        () => tab.guest?.isCurrentlyAudible?.() ?? false,
+        false,
+      ),
       mediaActive: tab.mediaActive,
       operationActive: this.hasRunningRequestForTab(tab.tabId),
       captureActive: this.isTabCaptureActive(tab),
@@ -843,13 +953,18 @@ export class BrowserGuestManager {
     } else {
       tab.active = false;
       const key = scopeKey(tab.owner);
-      if (this.activeTabByScope.get(key) === tab.tabId) this.activeTabByScope.delete(key);
+      if (this.activeTabByScope.get(key) === tab.tabId)
+        this.activeTabByScope.delete(key);
     }
     await this.persistShell(tab);
     await this.residencyCoordinator.whenIdle();
   }
 
-  acknowledgeSuspend(payload: { tabId: string; generation: number; windowId: number }): void {
+  acknowledgeSuspend(payload: {
+    tabId: string;
+    generation: number;
+    windowId: number;
+  }): void {
     const tab = this.tabs.get(payload.tabId);
     if (!tab || tab.owner.windowId !== payload.windowId) return;
     const key = suspendAckKey(payload.tabId, payload.generation);
@@ -874,7 +989,9 @@ export class BrowserGuestManager {
     // remote-session-mismatch）。attach 侧 renderer 对该字段有 workspaceRemoteSessionId 兜底、
     // close 侧没有，严格比对会让远程 human tab 永远关不掉。renderer 关闭自己看得见的 tab 不构成
     // 越权，window/workspace/session 三项仍严格校验，跨作用域越权关闭照旧拒绝。
-    const tab = this.requireRendererOwnedTab(payload, { skipRemoteSession: true });
+    const tab = this.requireRendererOwnedTab(payload, {
+      skipRemoteSession: true,
+    });
     await this.closeTabDurably(tab, false);
   }
 
@@ -899,7 +1016,9 @@ export class BrowserGuestManager {
     const records =
       (await this.residencyOptions.recoveryStore?.listShells({
         workspaceKey: payload.workspaceKey,
-        ...(payload.remoteSessionId ? { remoteSessionId: payload.remoteSessionId } : {}),
+        ...(payload.remoteSessionId
+          ? { remoteSessionId: payload.remoteSessionId }
+          : {}),
         ...(payload.sessionId ? { sessionId: payload.sessionId } : {}),
       })) ?? [];
     this.log?.(
@@ -909,7 +1028,8 @@ export class BrowserGuestManager {
     for (const record of records) {
       if (this.closedTabIds.has(record.tabId)) continue;
       const claimedWindowId = this.restoredTabClaims.get(record.tabId);
-      if (claimedWindowId !== undefined && claimedWindowId !== payload.windowId) continue;
+      if (claimedWindowId !== undefined && claimedWindowId !== payload.windowId)
+        continue;
       this.restoredTabClaims.set(record.tabId, payload.windowId);
 
       let tab = this.tabs.get(record.tabId);
@@ -917,11 +1037,14 @@ export class BrowserGuestManager {
         const owner: InternalExecutionContext = {
           requestId: `restore:${randomUUID()}`,
           browserId:
-            record.browserId ?? (record.origin === "user" ? "unclaimed-iab" : "restored-iab"),
+            record.browserId ??
+            (record.origin === "user" ? "unclaimed-iab" : "restored-iab"),
           browserGeneration: record.browserGeneration ?? 0,
           windowId: payload.windowId,
           workspaceKey: record.workspaceKey,
-          ...(record.remoteSessionId ? { remoteSessionId: record.remoteSessionId } : {}),
+          ...(record.remoteSessionId
+            ? { remoteSessionId: record.remoteSessionId }
+            : {}),
           sessionId: record.sessionId,
           clientMode: "desktop-continuous",
         };
@@ -939,7 +1062,9 @@ export class BrowserGuestManager {
           claimable: record.origin === "user",
           ...(record.origin === "user" ? { userOwner: { ...owner } } : {}),
           active: false,
-          ...(record.viewport ? { viewportOverride: { ...record.viewport } } : {}),
+          ...(record.viewport
+            ? { viewportOverride: { ...record.viewport } }
+            : {}),
           loading: false,
           mediaActive: false,
           cachedUrl: record.restoreUrl ?? "",
@@ -949,7 +1074,12 @@ export class BrowserGuestManager {
           restoredFromStore: true,
         };
         this.tabs.set(record.tabId, tab);
-        this.registerTabResidency(tab, false, "suspended", record.lastSelectedAt);
+        this.registerTabResidency(
+          tab,
+          false,
+          "suspended",
+          record.lastSelectedAt,
+        );
       } else if (tab.owner.windowId !== payload.windowId) {
         continue;
       }
@@ -964,7 +1094,9 @@ export class BrowserGuestManager {
     signal?: AbortSignal,
   ): Promise<BrowserCommandResult> {
     const context =
-      typeof contextOrKey === "string" ? normalizeLegacyContext(contextOrKey) : contextOrKey;
+      typeof contextOrKey === "string"
+        ? normalizeLegacyContext(contextOrKey)
+        : contextOrKey;
     this.log?.(
       `[browser-use] execute requestId=${context.requestId} browserId=${context.browserId} generation=${context.browserGeneration} windowId=${context.windowId} sessionId=${context.sessionId} method=${command.method}`,
     );
@@ -988,7 +1120,10 @@ export class BrowserGuestManager {
 
     if (command.method === "cancelRequest") {
       const cancelled = this.abortRequest(command.requestId, context);
-      return this.withMeta({ ok: true, value: { cancelled }, elapsedMs: 0 }, context);
+      return this.withMeta(
+        { ok: true, value: { cancelled }, elapsedMs: 0 },
+        context,
+      );
     }
     if (command.method === "turnEnded") {
       this.endTurn(context, command.turnId ?? context.turnId);
@@ -996,6 +1131,7 @@ export class BrowserGuestManager {
     }
     if (command.method === "closeSession") {
       this.closeSession(context);
+      if (command.closeTabs === true) await this.closeSessionTabs(context);
       return this.withMeta({ ok: true, elapsedMs: 0 }, context);
     }
 
@@ -1026,18 +1162,31 @@ export class BrowserGuestManager {
     }
 
     if (command.method === "list") {
-      const tabs = await Promise.all(this.ownedTabs(context).map((tab) => this.summary(tab)));
-      return this.withMeta({ ok: true, tabs, elapsedMs: Date.now() - startedAt }, context);
+      const tabs = await Promise.all(
+        this.ownedTabs(context).map((tab) => this.summary(tab)),
+      );
+      return this.withMeta(
+        { ok: true, tabs, elapsedMs: Date.now() - startedAt },
+        context,
+      );
     }
 
     if (command.method === "listUserTabs") {
-      const userTabs = this.openUserTabs(context).map((tab) => this.userTabInfo(tab));
-      return this.withMeta({ ok: true, userTabs, elapsedMs: Date.now() - startedAt }, context);
+      const userTabs = this.openUserTabs(context).map((tab) =>
+        this.userTabInfo(tab),
+      );
+      return this.withMeta(
+        { ok: true, userTabs, elapsedMs: Date.now() - startedAt },
+        context,
+      );
     }
 
     if (command.method === "nameSession") {
       this.sessionNames.set(scopeKey(context), command.name);
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+      );
     }
 
     if (command.method === "browserVisibilityGet") {
@@ -1055,30 +1204,49 @@ export class BrowserGuestManager {
       const key = scopeKey(context);
       this.visibilityByScope.set(key, command.visible);
       const active = this.activeTabByScope.get(key);
-      const selected = active ? this.tabs.get(active) : this.ownedTabs(context).at(-1);
+      const selected = active
+        ? this.tabs.get(active)
+        : this.ownedTabs(context).at(-1);
       this.onVisibilityChanged?.(command.visible, context, selected?.tabId);
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, selected);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        selected,
+      );
     }
 
     if (command.method === "browserViewportSet") {
       const tab = this.resolveTab(context, command.tabId);
-      if (!tab) return this.unavailableTabResult(context, command.tabId, startedAt);
+      if (!tab)
+        return this.unavailableTabResult(context, command.tabId, startedAt);
       const viewport = { width: command.width, height: command.height };
       await this.setTabViewport(tab, viewport);
       this.selectTab(tab, true);
       this.onViewportChanged?.(viewport, tab.owner, tab.tabId);
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, tab);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        tab,
+      );
     }
 
     if (command.method === "browserViewportReset") {
       const tab = this.resolveTab(context, command.tabId);
-      if (!tab) return this.unavailableTabResult(context, command.tabId, startedAt);
+      if (!tab)
+        return this.unavailableTabResult(context, command.tabId, startedAt);
       await this.resetTabViewport(tab);
       this.onViewportChanged?.(null, tab.owner, tab.tabId);
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, tab);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        tab,
+      );
     }
 
-    if (command.method === "recordingStatus" || command.method === "recordingCancel") {
+    if (
+      command.method === "recordingStatus" ||
+      command.method === "recordingCancel"
+    ) {
       const entry = this.recordings.get(command.recordingId);
       if (!entry || !sameScope(entry.context, context)) {
         return this.withMeta(
@@ -1094,7 +1262,11 @@ export class BrowserGuestManager {
           context,
         );
       }
-      if ("tabId" in command && command.tabId && command.tabId !== entry.tabId) {
+      if (
+        "tabId" in command &&
+        command.tabId &&
+        command.tabId !== entry.tabId
+      ) {
         return this.withMeta(
           {
             ok: false,
@@ -1109,7 +1281,9 @@ export class BrowserGuestManager {
         );
       }
       if (command.method === "recordingCancel" && entry.status === "running") {
-        entry.controller.abort(new DOMException("recording cancelled", "AbortError"));
+        entry.controller.abort(
+          new DOMException("recording cancelled", "AbortError"),
+        );
         this.setRecordingTerminal(entry, "cancelled");
       }
       return this.withMeta(
@@ -1125,7 +1299,11 @@ export class BrowserGuestManager {
 
     if (command.method === "activateTab") {
       const tab = this.tabs.get(command.tabId);
-      if (!tab || tab.lifecycle === "closed" || !sameScope(tab.owner, context)) {
+      if (
+        !tab ||
+        tab.lifecycle === "closed" ||
+        !sameScope(tab.owner, context)
+      ) {
         return this.withMeta(
           {
             ok: false,
@@ -1198,7 +1376,9 @@ export class BrowserGuestManager {
     }
 
     if (command.method === "finalizeTabs") {
-      const keep = new Map(command.keep.map((item) => [item.tabId, item.status]));
+      const keep = new Map(
+        command.keep.map((item) => [item.tabId, item.status]),
+      );
       const unknown = [...keep.keys()].filter(
         (tabId) => !this.ownedTabs(context).some((tab) => tab.tabId === tabId),
       );
@@ -1216,7 +1396,10 @@ export class BrowserGuestManager {
         );
       }
       this.finalizeTabs(context, keep);
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+      );
     }
 
     if (command.method === "newTab") {
@@ -1225,7 +1408,12 @@ export class BrowserGuestManager {
       this.refreshRuntimeProtection(tab.tabId);
       const guest = await this.ensureGuest(tab, running.controller.signal);
       if (!guest) {
-        const result = this.cancelledOrUnavailable(context, running, startedAt, tab);
+        const result = this.cancelledOrUnavailable(
+          context,
+          running,
+          startedAt,
+          tab,
+        );
         // newTab 在 ready ack 前失败时不能留下无 guest 的 provisional tab；否则后续 list/attach
         // 会把一次已取消的创建误当成仍存活的 tab。close 同时给 renderer 发卸载请求并留下 tombstone。
         await this.closeTabDurably(tab);
@@ -1242,7 +1430,10 @@ export class BrowserGuestManager {
       );
     }
 
-    const tab = this.resolveTab(context, "tabId" in command ? command.tabId : undefined);
+    const tab = this.resolveTab(
+      context,
+      "tabId" in command ? command.tabId : undefined,
+    );
     if (!tab) {
       return this.withMeta(
         {
@@ -1284,24 +1475,30 @@ export class BrowserGuestManager {
       const entry = this.createRecordingEntry(context, tab);
       this.recordings.set(entry.id, entry);
       this.refreshRuntimeProtection(tab.tabId);
-      void this.runRecording(entry, tab, command.options).catch((error: unknown) => {
-        if (entry.status !== "running") return;
-        if (
-          entry.controller.signal.aborted &&
-          entry.controller.signal.reason instanceof DOMException &&
-          entry.controller.signal.reason.name === "TimeoutError"
-        ) {
-          this.setRecordingTerminal(entry, "failed", entry.controller.signal.reason.message);
-        } else if (entry.controller.signal.aborted) {
-          this.setRecordingTerminal(entry, "cancelled");
-        } else {
-          this.setRecordingTerminal(
-            entry,
-            "failed",
-            error instanceof Error ? error.message : String(error),
-          );
-        }
-      });
+      void this.runRecording(entry, tab, command.options).catch(
+        (error: unknown) => {
+          if (entry.status !== "running") return;
+          if (
+            entry.controller.signal.aborted &&
+            entry.controller.signal.reason instanceof DOMException &&
+            entry.controller.signal.reason.name === "TimeoutError"
+          ) {
+            this.setRecordingTerminal(
+              entry,
+              "failed",
+              entry.controller.signal.reason.message,
+            );
+          } else if (entry.controller.signal.aborted) {
+            this.setRecordingTerminal(entry, "cancelled");
+          } else {
+            this.setRecordingTerminal(
+              entry,
+              "failed",
+              error instanceof Error ? error.message : String(error),
+            );
+          }
+        },
+      );
       return this.withMeta(
         {
           ok: true,
@@ -1326,33 +1523,62 @@ export class BrowserGuestManager {
     }
     if (command.method === "close") {
       await this.closeTabDurably(tab);
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, tab, "closed");
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        tab,
+        "closed",
+      );
     }
     if (command.method === "finalize") {
       tab.lifecycle = command.deliverable === false ? "active" : "deliverable";
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, tab);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        tab,
+      );
     }
     if (command.method === "markDeliverable") {
       tab.lifecycle = "deliverable";
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, tab);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        tab,
+      );
     }
     if (command.method === "markHandoff") {
       tab.lifecycle = "handoff";
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, tab);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        tab,
+      );
     }
     if (command.method === "playwrightWaitForTimeout") {
       // 固定等待前先验证 tab；等待本身不触碰页面，也不要求 guest/CDP 已 attach。
       // turn/session/request abort 必须提前结束 timer，避免已取消的 sleep 继续占住生命周期。
-      const completed = await waitForDelay(command.timeoutMs, running.controller.signal);
+      const completed = await waitForDelay(
+        command.timeoutMs,
+        running.controller.signal,
+      );
       if (!completed) {
-        return this.withMeta(this.cancelledResult(context, false, startedAt), context, tab);
+        return this.withMeta(
+          this.cancelledResult(context, false, startedAt),
+          context,
+          tab,
+        );
       }
-      return this.withMeta({ ok: true, elapsedMs: Date.now() - startedAt }, context, tab);
+      return this.withMeta(
+        { ok: true, elapsedMs: Date.now() - startedAt },
+        context,
+        tab,
+      );
     }
     if (
       command.method === "playwright" &&
       (command.action.name === "fileChooserSetFiles" ||
-        (command.action.name === "waitForEvent" && command.action.event === "filechooser"))
+        (command.action.name === "waitForEvent" &&
+          command.action.event === "filechooser"))
     ) {
       // IAB backend 不支持 filechooser；不能伪造成功或把它误当普通 DOM fill。
       return this.withMeta(
@@ -1368,7 +1594,10 @@ export class BrowserGuestManager {
         tab,
       );
     }
-    if (command.method === "playwright" && command.action.name === "downloadPath") {
+    if (
+      command.method === "playwright" &&
+      command.action.name === "downloadPath"
+    ) {
       const record = this.downloads.get(command.action.downloadId);
       if (!record || record.tabId !== tab.tabId) {
         return this.withMeta(
@@ -1392,7 +1621,11 @@ export class BrowserGuestManager {
         running.controller.signal,
       );
       if (status === "cancelled") {
-        return this.withMeta(this.cancelledResult(context, false, startedAt), context, tab);
+        return this.withMeta(
+          this.cancelledResult(context, false, startedAt),
+          context,
+          tab,
+        );
       }
       if (status === "timeout") {
         return this.withMeta(
@@ -1431,7 +1664,8 @@ export class BrowserGuestManager {
     }
 
     const guest = await this.ensureGuest(tab, running.controller.signal);
-    if (!guest) return this.cancelledOrUnavailable(context, running, startedAt, tab);
+    if (!guest)
+      return this.cancelledOrUnavailable(context, running, startedAt, tab);
     if (safeBool(() => guest.isDestroyed(), false)) {
       this.detachGuest(tab);
       return this.withMeta(
@@ -1447,7 +1681,10 @@ export class BrowserGuestManager {
         tab,
       );
     }
-    if ((tab.viewportOverride || tab.backgroundViewportFallback) && guest.getZoomFactor() !== 1)
+    if (
+      (tab.viewportOverride || tab.backgroundViewportFallback) &&
+      guest.getZoomFactor() !== 1
+    )
       guest.setZoomFactor(1);
     const guestGeneration = tab.guestGeneration;
     const assertCurrentGuest = (): void => {
@@ -1462,8 +1699,19 @@ export class BrowserGuestManager {
         throw new Error("browser guest changed before command dispatch");
       }
     };
-    const sendCdpCommand = (method: string, params?: unknown, sessionId?: string) =>
-      this.sendGuestCdpCommand(tab, guest, method, params, sessionId, assertCurrentGuest);
+    const sendCdpCommand = (
+      method: string,
+      params?: unknown,
+      sessionId?: string,
+    ) =>
+      this.sendGuestCdpCommand(
+        tab,
+        guest,
+        method,
+        params,
+        sessionId,
+        assertCurrentGuest,
+      );
 
     if (
       command.method === "playwright" &&
@@ -1521,7 +1769,9 @@ export class BrowserGuestManager {
       running.dispatched = true;
       const execution = sendCdpCommand("Page.handleJavaScriptDialog", {
         accept: command.accept,
-        ...(command.promptText !== undefined ? { promptText: command.promptText } : {}),
+        ...(command.promptText !== undefined
+          ? { promptText: command.promptText }
+          : {}),
       })
         .then<BrowserCommandResult>(() => ({
           ok: true,
@@ -1551,7 +1801,10 @@ export class BrowserGuestManager {
     const previousScreenshot = screenshotCommand
       ? this.inFlightScreenshots.get(tab.tabId)
       : undefined;
-    if (previousScreenshot && this.isInFlightScreenshotAlive(previousScreenshot)) {
+    if (
+      previousScreenshot &&
+      this.isInFlightScreenshotAlive(previousScreenshot)
+    ) {
       const elapsedMs = Date.now() - previousScreenshot.startedAt;
       this.log?.(
         `[browser-use] screenshot rejected tabId=${tab.tabId} requestId=${context.requestId} pendingRequestId=${previousScreenshot.requestId} pendingMs=${elapsedMs}`,
@@ -1575,7 +1828,10 @@ export class BrowserGuestManager {
     const abandonedCaptures = screenshotCommand
       ? (this.abandonedScreenshotCaptures.get(tab.tabId) ?? 0)
       : 0;
-    if (screenshotCommand && abandonedCaptures >= MAX_ABANDONED_SCREENSHOT_CAPTURES) {
+    if (
+      screenshotCommand &&
+      abandonedCaptures >= MAX_ABANDONED_SCREENSHOT_CAPTURES
+    ) {
       // 未结算的底层 capture 已达硬上限：不再叠加新的 pending CDP command，快速失败
       // 并提示重开 tab；旧 capture 落定后名额自动回收，无需人工干预即可恢复。
       this.log?.(
@@ -1678,7 +1934,9 @@ export class BrowserGuestManager {
     try {
       const screenshotSurfaceCoordinator = this.screenshotSurfaceCoordinator;
       if (!screenshotSurfaceCoordinator) {
-        throw new Error("browser screenshot surface coordinator is unavailable");
+        throw new Error(
+          "browser screenshot surface coordinator is unavailable",
+        );
       }
       const viewport = await this.readTabViewport(tab);
       let result: BrowserCommandResult | undefined;
@@ -1699,7 +1957,9 @@ export class BrowserGuestManager {
           viewport,
           // 自然 viewport 未安装 metrics；不能让 renderer 的临时 Fit 扩张 guest 布局并触发网页重排。
           viewportMode:
-            tab.viewportOverride || tab.backgroundViewportFallback ? "emulated" : "natural",
+            tab.viewportOverride || tab.backgroundViewportFallback
+              ? "emulated"
+              : "natural",
           signal: running.controller.signal,
         });
         if (
@@ -1708,9 +1968,13 @@ export class BrowserGuestManager {
           guest.isDestroyed() ||
           lease.webContentsId !== guest.id
         ) {
-          throw new Error("browser guest changed while preparing screenshot surface");
+          throw new Error(
+            "browser guest changed while preparing screenshot surface",
+          );
         }
-        const invalidationError = readScreenshotSurfaceInvalidation(lease.invalidated);
+        const invalidationError = readScreenshotSurfaceInvalidation(
+          lease.invalidated,
+        );
         if (invalidationError) throw invalidationError;
         // 普通 fallback 也使用临时 responsive surface，必须补偿宿主放大后的 native raster。
         // 普通模式不会回写 viewport；热态 zoom 改变时在同一 mutation 内同步，不能只等 idle 重连。
@@ -1719,13 +1983,17 @@ export class BrowserGuestManager {
           if (
             !guest.debugger.isAttached() ||
             tab.guestCdpRestoreFlight ||
-            (tab.appliedViewportScale ?? 1) !== normalizeDesktopZoomMetricsScale(desktopZoom)
+            (tab.appliedViewportScale ?? 1) !==
+              normalizeDesktopZoomMetricsScale(desktopZoom)
           ) {
             await this.sendGuestCdpCommand(
               tab,
               guest,
               "Emulation.setDeviceMetricsOverride",
-              buildViewportMetricsOverride(tab.backgroundViewportFallback, desktopZoom),
+              buildViewportMetricsOverride(
+                tab.backgroundViewportFallback,
+                desktopZoom,
+              ),
             );
           }
         }
@@ -1741,12 +2009,17 @@ export class BrowserGuestManager {
             (tab.appliedViewportScale ?? tab.desktopZoomFactor ?? 1) > 1)
             ? async (): Promise<string | undefined> => {
                 if (!this.resizeScreenshotToCssPixels) {
-                  throw new Error("browser screenshot CSS pixel normalizer is unavailable");
+                  throw new Error(
+                    "browser screenshot CSS pixel normalizer is unavailable",
+                  );
                 }
                 const surface = await guest.capturePage();
                 const surfacePng = surface.toPNG();
                 if (surfacePng.byteLength === 0) return undefined;
-                return this.resizeScreenshotToCssPixels(surfacePng.toString("base64"), viewport);
+                return this.resizeScreenshotToCssPixels(
+                  surfacePng.toString("base64"),
+                  viewport,
+                );
               }
             : undefined;
         running.dispatched = true;
@@ -1757,7 +2030,10 @@ export class BrowserGuestManager {
         // （showInactive + opacity 0，用户不可见）主动要帧；同时 capture 结算必须竞速
         // abort/有界 deadline——悬空的 execution 会把 viewport mutation 队列和 in-flight
         // 槽位一起拖死，mutation 绝不能比请求本身活得更久。
-        const capturePresentation = this.startHiddenWindowCapturePresentation(context, guest);
+        const capturePresentation = this.startHiddenWindowCapturePresentation(
+          context,
+          guest,
+        );
         try {
           // 与 activity pump 同一约束：showInactive 后 Viz surface 建立前同 turn 读回会抛
           // UnknownVizError。先等统一的有界 presentation grace 再发起 capture——归一化
@@ -1769,7 +2045,9 @@ export class BrowserGuestManager {
               running.controller.signal,
             ))
           ) {
-            throw new Error("browser screenshot capture cancelled during presentation grace");
+            throw new Error(
+              "browser screenshot capture cancelled during presentation grace",
+            );
           }
           // native capture 不经过 sendCdpCommand，也必须等待 idle detach 后的 metrics 恢复。
           if (!guest.debugger.isAttached() || tab.guestCdpRestoreFlight) {
@@ -1797,10 +2075,13 @@ export class BrowserGuestManager {
         } finally {
           capturePresentation?.release();
         }
-        const lateInvalidationError = readScreenshotSurfaceInvalidation(lease.invalidated);
+        const lateInvalidationError = readScreenshotSurfaceInvalidation(
+          lease.invalidated,
+        );
         if (lateInvalidationError) throw lateInvalidationError;
       });
-      if (!result) throw new Error("browser screenshot did not produce a result");
+      if (!result)
+        throw new Error("browser screenshot did not produce a result");
       return result;
     } catch (error) {
       const cancelled = running.controller.signal.aborted;
@@ -1922,7 +2203,10 @@ export class BrowserGuestManager {
   }
 
   /** 记一笔“已放弃等待但底层仍在执行”的 capture；真实落定后名额自动回收。 */
-  private abandonBackendCapture(tabId: string, execution: Promise<BrowserCommandResult>): void {
+  private abandonBackendCapture(
+    tabId: string,
+    execution: Promise<BrowserCommandResult>,
+  ): void {
     this.abandonedScreenshotCaptures.set(
       tabId,
       (this.abandonedScreenshotCaptures.get(tabId) ?? 0) + 1,
@@ -1950,7 +2234,7 @@ export class BrowserGuestManager {
    */
   private isInFlightScreenshotAlive(tracked: InFlightScreenshot): boolean {
     const running = this.runningRequests.get(tracked.requestId);
-    return Boolean(running) && !running.controller.signal.aborted;
+    return running !== undefined && !running.controller.signal.aborted;
   }
 
   private createRecordingEntry(
@@ -1997,7 +2281,10 @@ export class BrowserGuestManager {
 
   private setRecordingTerminal(
     entry: BrowserRecordingEntry,
-    status: Extract<BrowserRecordingJob["status"], "completed" | "failed" | "cancelled">,
+    status: Extract<
+      BrowserRecordingJob["status"],
+      "completed" | "failed" | "cancelled"
+    >,
     error?: string,
   ): void {
     entry.status = status;
@@ -2043,9 +2330,12 @@ export class BrowserGuestManager {
     assertViewportOverride(viewport);
 
     const guest = await this.ensureGuest(tab, signal);
-    if (!guest || guest.isDestroyed()) throw new Error("browser guest unavailable for recording");
+    if (!guest || guest.isDestroyed())
+      throw new Error("browser guest unavailable for recording");
     // 录制会临时改写 tab viewport override 去换取 100% surface；先记下录制前的值。
-    const previousViewport = tab.viewportOverride ? { ...tab.viewportOverride } : undefined;
+    const previousViewport = tab.viewportOverride
+      ? { ...tab.viewportOverride }
+      : undefined;
     let lease: BrowserScreenshotSurfaceLease | undefined;
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
@@ -2054,7 +2344,8 @@ export class BrowserGuestManager {
       // viewport 会继续使用旧 DOM bounds，最终要么 prepare 超时，要么从缩小表面放大而变模糊。
       this.onViewportChanged?.(viewport, tab.owner, tab.tabId);
       const coordinator = this.screenshotSurfaceCoordinator;
-      if (!coordinator) throw new Error("browser recording surface coordinator is unavailable");
+      if (!coordinator)
+        throw new Error("browser recording surface coordinator is unavailable");
       lease = await coordinator.prepare({
         requestId: `recording:${entry.id}`,
         windowId: entry.context.windowId,
@@ -2070,9 +2361,13 @@ export class BrowserGuestManager {
         activityTimeoutMs: maxDurationMs + 30_000,
       });
       if (!lease || lease.webContentsId !== guest.id) {
-        throw new Error("browser guest changed while preparing recording surface");
+        throw new Error(
+          "browser guest changed while preparing recording surface",
+        );
       }
-      const invalidationError = readScreenshotSurfaceInvalidation(lease.invalidated);
+      const invalidationError = readScreenshotSurfaceInvalidation(
+        lease.invalidated,
+      );
       if (invalidationError) throw invalidationError;
       const invalidateRecording = () =>
         entry.controller.abort(
@@ -2080,10 +2375,14 @@ export class BrowserGuestManager {
             ? lease.invalidated.reason
             : new Error("browser recording surface invalidated"),
         );
-      lease.invalidated?.addEventListener("abort", invalidateRecording, { once: true });
+      lease.invalidated?.addEventListener("abort", invalidateRecording, {
+        once: true,
+      });
       timeout = setTimeout(
         () =>
-          entry.controller.abort(new DOMException("browser recording timed out", "TimeoutError")),
+          entry.controller.abort(
+            new DOMException("browser recording timed out", "TimeoutError"),
+          ),
         maxDurationMs,
       );
       const guestGeneration = tab.guestGeneration;
@@ -2105,11 +2404,20 @@ export class BrowserGuestManager {
         undefined,
         assertCurrentGuest,
         (method, params, sessionId) =>
-          this.sendGuestCdpCommand(tab, guest, method, params, sessionId, assertCurrentGuest),
+          this.sendGuestCdpCommand(
+            tab,
+            guest,
+            method,
+            params,
+            sessionId,
+            assertCurrentGuest,
+          ),
       );
-      if (options.showCursor !== false) await this.installRecordingCursorOverlay(guest);
+      if (options.showCursor !== false)
+        await this.installRecordingCursorOverlay(guest);
       const createRecorder = this.residencyOptions.recording?.createRecorder;
-      if (!createRecorder) throw new Error("browser WebM recorder is unavailable");
+      if (!createRecorder)
+        throw new Error("browser WebM recorder is unavailable");
       entry.artifact = await recordBrowserVideo({
         targetFrame: guest.mainFrame,
         tempRoot: this.residencyOptions.recording?.tempRoot ?? tmpdir(),
@@ -2127,18 +2435,27 @@ export class BrowserGuestManager {
           lease?.release();
         },
         executeScenario: async () => {
-          if (settleMs > 0 && !(await waitForDelay(settleMs, signal))) throw abortError();
-          await this.executeRecordingActions(view, options.actions ?? [], signal, viewport);
+          if (settleMs > 0 && !(await waitForDelay(settleMs, signal)))
+            throw abortError();
+          await this.executeRecordingActions(
+            view,
+            options.actions ?? [],
+            signal,
+            viewport,
+          );
         },
         createRecorder,
       });
       this.setRecordingTerminal(entry, "completed");
     } finally {
       if (timeout) clearTimeout(timeout);
-      if (options.showCursor !== false) await this.removeRecordingCursorOverlay(guest);
+      if (options.showCursor !== false)
+        await this.removeRecordingCursorOverlay(guest);
       // lease.release() 只收回瞬时 surface 比例，tab 自己的 viewport override 会
       // 留在录制尺寸上，之后的预览与截图都按录制 viewport 走。录制是临时借用，必须还原。
-      await this.restoreRecordingViewport(tab, previousViewport).catch(() => undefined);
+      await this.restoreRecordingViewport(tab, previousViewport).catch(
+        () => undefined,
+      );
       lease?.release();
     }
   }
@@ -2168,8 +2485,10 @@ export class BrowserGuestManager {
     for (const action of actions) {
       if (signal.aborted) throw abortError();
       await this.executeRecordingAction(view, action, signal, pointer);
-      const delayAfterMs = "delayAfterMs" in action ? action.delayAfterMs : undefined;
-      if (delayAfterMs && !(await waitForDelay(delayAfterMs, signal))) throw abortError();
+      const delayAfterMs =
+        "delayAfterMs" in action ? action.delayAfterMs : undefined;
+      if (delayAfterMs && !(await waitForDelay(delayAfterMs, signal)))
+        throw abortError();
     }
   }
 
@@ -2183,14 +2502,20 @@ export class BrowserGuestManager {
       if (!(await waitForDelay(action.durationMs, signal))) throw abortError();
       return;
     }
-    if (action.type === "click" || action.type === "type" || action.type === "waitFor") {
+    if (
+      action.type === "click" ||
+      action.type === "type" ||
+      action.type === "waitFor"
+    ) {
       const locatorAction =
         action.type === "click"
           ? action.selector
             ? {
                 name: "locator" as const,
                 selector: action.selector,
-                operation: action.doubleClick ? ("dblclick" as const) : ("click" as const),
+                operation: action.doubleClick
+                  ? ("dblclick" as const)
+                  : ("click" as const),
                 ...(action.button ? { button: action.button } : {}),
               }
             : undefined
@@ -2219,6 +2544,9 @@ export class BrowserGuestManager {
           throw new Error(`recording action timed out: ${result.reason}`);
         return;
       }
+      if (action.type !== "click") {
+        throw new Error(`recording ${action.type} requires a selector`);
+      }
       if (typeof action.x !== "number" || typeof action.y !== "number") {
         throw new Error("recording click requires selector or (x,y)");
       }
@@ -2227,7 +2555,9 @@ export class BrowserGuestManager {
         x: action.x,
         y: action.y,
         ...(action.button ? { button: action.button } : {}),
-        ...(action.doubleClick !== undefined ? { doubleClick: action.doubleClick } : {}),
+        ...(action.doubleClick !== undefined
+          ? { doubleClick: action.doubleClick }
+          : {}),
       });
       pointer.x = action.x;
       pointer.y = action.y;
@@ -2235,7 +2565,11 @@ export class BrowserGuestManager {
     }
     if (action.type === "hover") {
       if (action.selector) {
-        const point = await this.resolveRecordingSelectorPoint(view, action.selector, signal);
+        const point = await this.resolveRecordingSelectorPoint(
+          view,
+          action.selector,
+          signal,
+        );
         await this.moveRecordingPointer(
           view,
           point.x,
@@ -2284,8 +2618,15 @@ export class BrowserGuestManager {
         "({ x: window.scrollX, y: window.scrollY })",
       )) as { x?: unknown; y?: unknown };
       const target = action.selector
-        ? await this.resolveRecordingSelectorScrollTarget(view, action.selector, signal)
-        : { x: action.x ?? Number(current.x ?? 0), y: action.y ?? Number(current.y ?? 0) };
+        ? await this.resolveRecordingSelectorScrollTarget(
+            view,
+            action.selector,
+            signal,
+          )
+        : {
+            x: action.x ?? Number(current.x ?? 0),
+            y: action.y ?? Number(current.y ?? 0),
+          };
       await this.animateRecordingScroll(
         view,
         target.x - Number(current.x ?? 0),
@@ -2303,7 +2644,10 @@ export class BrowserGuestManager {
           x: action.deltaX ?? 0,
           y: action.deltaY,
         });
-        if (action.intervalMs && !(await waitForDelay(action.intervalMs, signal)))
+        if (
+          action.intervalMs &&
+          !(await waitForDelay(action.intervalMs, signal))
+        )
           throw abortError();
       }
       return;
@@ -2331,7 +2675,8 @@ export class BrowserGuestManager {
           button: "left",
           buttons: 1,
         });
-        if (intervalMs > 0 && !(await waitForDelay(intervalMs, signal))) throw abortError();
+        if (intervalMs > 0 && !(await waitForDelay(intervalMs, signal)))
+          throw abortError();
       }
       const last = action.path.at(-1)!;
       await view.cdp.send("Input.dispatchMouseEvent", {
@@ -2352,7 +2697,9 @@ export class BrowserGuestManager {
   ): Promise<void> {
     const result = await executeBrowserCommandOnView(view, command);
     if (!result.ok)
-      throw new Error(result.error?.message ?? `recording action ${command.method} failed`);
+      throw new Error(
+        result.error?.message ?? `recording action ${command.method} failed`,
+      );
   }
 
   private async resolveRecordingSelectorPoint(
@@ -2422,7 +2769,11 @@ export class BrowserGuestManager {
         x: startX + (x - startX) * progress,
         y: startY + (y - startY) * progress,
       });
-      if (durationMs > 0 && index < steps && !(await waitForDelay(durationMs / steps, signal))) {
+      if (
+        durationMs > 0 &&
+        index < steps &&
+        !(await waitForDelay(durationMs / steps, signal))
+      ) {
         throw abortError();
       }
     }
@@ -2430,7 +2781,9 @@ export class BrowserGuestManager {
     pointer.y = y;
   }
 
-  private async installRecordingCursorOverlay(guest: GuestWebContents): Promise<void> {
+  private async installRecordingCursorOverlay(
+    guest: GuestWebContents,
+  ): Promise<void> {
     await guest.executeJavaScript(`(() => {
       const id = "__zcode_browser_recording_cursor";
       document.getElementById(id)?.remove();
@@ -2463,7 +2816,9 @@ export class BrowserGuestManager {
     })()`);
   }
 
-  private async removeRecordingCursorOverlay(guest: GuestWebContents): Promise<void> {
+  private async removeRecordingCursorOverlay(
+    guest: GuestWebContents,
+  ): Promise<void> {
     if (guest.isDestroyed()) return;
     await guest
       .executeJavaScript('window["__zcodeBrowserRecordingCursorCleanup"]?.()')
@@ -2500,7 +2855,11 @@ export class BrowserGuestManager {
   ): ManagedTab | undefined {
     if (explicitTabId) {
       const explicit = this.tabs.get(explicitTabId);
-      if (!explicit || explicit.lifecycle === "closed" || !sameScope(explicit.owner, context)) {
+      if (
+        !explicit ||
+        explicit.lifecycle === "closed" ||
+        !sameScope(explicit.owner, context)
+      ) {
         return undefined;
       }
       return explicit;
@@ -2508,7 +2867,12 @@ export class BrowserGuestManager {
     const key = scopeKey(context);
     const activeId = this.activeTabByScope.get(key);
     const active = activeId ? this.tabs.get(activeId) : undefined;
-    if (active && active.lifecycle !== "closed" && sameScope(active.owner, context)) return active;
+    if (
+      active &&
+      active.lifecycle !== "closed" &&
+      sameScope(active.owner, context)
+    )
+      return active;
     const defaultId = this.defaultTabByScope.get(key);
     const existingDefault = defaultId ? this.tabs.get(defaultId) : undefined;
     if (
@@ -2523,7 +2887,11 @@ export class BrowserGuestManager {
     // 凭空再开一个空 tab，也会让 tabs.list() 报的 active 与实际落点不一致。
     const recent = this.ownedTabs(context).at(-1);
     if (recent) return recent;
-    return this.createTab(context, context.legacy ? context.sessionId : undefined, true);
+    return this.createTab(
+      context,
+      context.legacy ? context.sessionId : undefined,
+      true,
+    );
   }
 
   private createTab(
@@ -2533,7 +2901,11 @@ export class BrowserGuestManager {
   ): ManagedTab {
     const tabId = preferredTabId ?? `iab-tab:${randomUUID()}`;
     const existing = this.tabs.get(tabId);
-    if (existing && existing.lifecycle !== "closed" && sameScope(existing.owner, context)) {
+    if (
+      existing &&
+      existing.lifecycle !== "closed" &&
+      sameScope(existing.owner, context)
+    ) {
       return existing;
     }
     const tab: ManagedTab = {
@@ -2579,7 +2951,10 @@ export class BrowserGuestManager {
       if (!settled.completed) return null;
     }
     const residency = this.residencyCoordinator.get(tab.tabId);
-    if (residency?.residency === "suspended" || residency?.residency === "restoring") {
+    if (
+      residency?.residency === "suspended" ||
+      residency?.residency === "restoring"
+    ) {
       return await this.restoreSuspendedGuest(tab, signal);
     }
     if (tab.guest && !safeBool(() => tab.guest!.isDestroyed(), true)) {
@@ -2617,7 +2992,9 @@ export class BrowserGuestManager {
     return settled.completed && settled.value === guest ? guest : null;
   }
 
-  private async runGuestAttachFlight(tab: ManagedTab): Promise<GuestWebContents | null> {
+  private async runGuestAttachFlight(
+    tab: ManagedTab,
+  ): Promise<GuestWebContents | null> {
     // 新 tab 的首次 ready 仍只等待一次；已有 guest 或已明确收到拒绝时允许一次有界重放。
     for (let attempt = 0; attempt < 2; attempt += 1) {
       if (tab.lifecycle === "closed") return null;
@@ -2625,10 +3002,16 @@ export class BrowserGuestManager {
       // 如果 destroyed/mismatch 已经发起过重绑，沿用该请求，避免同一 tab 重复创建 webview。
       if (!tab.rebindRequested) this.onOpenTabRequested?.(tab.tabId, tab.owner);
       // 某些测试/旧 renderer 会在 Ready 回调内同步 attach；不能在 attach 已成功后再注册 waiter。
-      if (tab.guest && !safeBool(() => tab.guest.isDestroyed(), true)) return tab.guest;
+      // Bug 原因：guest 是可变字段，进入回调后 TypeScript 会撤销属性收窄；固定本轮引用，
+      // 同时保证销毁检查与返回的是同一个 guest。
+      const attachedGuest = tab.guest;
+      if (attachedGuest && !safeBool(() => attachedGuest.isDestroyed(), true)) {
+        return attachedGuest;
+      }
       const guest = await this.waitForGuest(tab.tabId);
       if (guest && !safeBool(() => guest.isDestroyed(), true)) return guest;
-      if (attempt === 0 && !tab.hasAttachedGuest && !tab.attachFailure) return null;
+      if (attempt === 0 && !tab.hasAttachedGuest && !tab.attachFailure)
+        return null;
       if (attempt === 1) return null;
       this.requestGuestRebind(tab, tab.attachFailure ?? "attach-timeout");
     }
@@ -2641,21 +3024,25 @@ export class BrowserGuestManager {
     );
   }
 
-  private canClaimUserTab(tab: ManagedTab, context: InternalExecutionContext): boolean {
+  private canClaimUserTab(
+    tab: ManagedTab,
+    context: InternalExecutionContext,
+  ): boolean {
     return (
       tab.origin === "user" &&
       tab.claimable &&
       tab.lifecycle !== "closed" &&
-      tab.owner.windowId === context.windowId &&
-      tab.owner.workspaceKey === context.workspaceKey &&
-      (tab.owner.remoteSessionId ?? "") === (context.remoteSessionId ?? "") &&
-      tab.owner.sessionId === context.sessionId
+      ownedBySession(tab.owner, context)
     );
   }
 
   private openUserTabs(context: InternalExecutionContext): ManagedTab[] {
     return [...this.tabs.values()]
-      .filter((tab) => this.canClaimUserTab(tab, context) && this.hasDiscoverableUserPage(tab))
+      .filter(
+        (tab) =>
+          this.canClaimUserTab(tab, context) &&
+          this.hasDiscoverableUserPage(tab),
+      )
       .sort((left, right) => Number(right.active) - Number(left.active));
   }
 
@@ -2668,7 +3055,10 @@ export class BrowserGuestManager {
     return url.length > 0 && url !== "about:blank";
   }
 
-  private claimTab(tab: ManagedTab, context: InternalExecutionContext): ManagedTab {
+  private claimTab(
+    tab: ManagedTab,
+    context: InternalExecutionContext,
+  ): ManagedTab {
     if (!this.canClaimUserTab(tab, context)) return tab;
     tab.owner = { ...context };
     tab.claimable = false;
@@ -2756,7 +3146,9 @@ export class BrowserGuestManager {
    * 用户侧表现为后台会话结束时没有截图。回退到该 scope 最近存活的 tab（与 browserVisibilitySet
    * 和 CLI 侧 tabs.selected() 的 at(-1) 回退一致）后，list 报的 active 与命令落点重新一致。
    */
-  private effectiveActiveTabId(owner: InternalExecutionContext): string | undefined {
+  private effectiveActiveTabId(
+    owner: InternalExecutionContext,
+  ): string | undefined {
     const key = scopeKey(owner);
     const activeId = this.activeTabByScope.get(key);
     const activeTab = activeId ? this.tabs.get(activeId) : undefined;
@@ -2764,7 +3156,12 @@ export class BrowserGuestManager {
     // human tab 在 claim 前只置 tab.active、不进 activeTabByScope；这种自报 active 优先于回退，
     // 且一旦命中就不再往下走，保证同 scope 只有一个 active=true。
     for (const tab of this.tabs.values()) {
-      if (tab.active && tab.lifecycle !== "closed" && sameScope(tab.owner, owner)) return tab.tabId;
+      if (
+        tab.active &&
+        tab.lifecycle !== "closed" &&
+        sameScope(tab.owner, owner)
+      )
+        return tab.tabId;
     }
     return this.ownedTabs(owner).at(-1)?.tabId;
   }
@@ -2781,8 +3178,12 @@ export class BrowserGuestManager {
       url: tab.cachedUrl,
       title: tab.cachedTitle,
       viewport: await this.readTabViewport(tab),
-      ...(this.effectiveActiveTabId(tab.owner) === tab.tabId ? { active: true } : {}),
-      ...(tab.lifecycle !== "active" ? { lifecycle: tab.lifecycle } : {}),
+      ...(this.effectiveActiveTabId(tab.owner) === tab.tabId
+        ? { active: true }
+        : {}),
+      ...(tab.lifecycle === "deliverable" || tab.lifecycle === "handoff"
+        ? { lifecycle: tab.lifecycle }
+        : {}),
     };
   }
 
@@ -2813,7 +3214,8 @@ export class BrowserGuestManager {
     // tabs.new() 仍能 dom-ready/attach，却只得到 0×0 viewport。隐藏是展示状态，不能阻断
     // 后台 Browser 执行；临时复用同窗口最近自然尺寸，重新前台后再清除 CDP override。
     const fallback = normalizeBackgroundViewport(
-      this.naturalViewportByWindow.get(tab.owner.windowId) ?? DEFAULT_BACKGROUND_BROWSER_VIEWPORT,
+      this.naturalViewportByWindow.get(tab.owner.windowId) ??
+        DEFAULT_BACKGROUND_BROWSER_VIEWPORT,
     );
     await this.applyBackgroundViewportFallback(tab, fallback);
     this.log?.(
@@ -2843,7 +3245,9 @@ export class BrowserGuestManager {
     const openTabs = this.ownedTabs(context);
     const currentUrl = tab
       ? sanitizeBrowserMetaUrl(
-          tab.guest ? safeStr(() => tab.guest!.getURL(), tab.cachedUrl) : tab.cachedUrl,
+          tab.guest
+            ? safeStr(() => tab.guest!.getURL(), tab.cachedUrl)
+            : tab.cachedUrl,
         )
       : undefined;
     const meta: BrowserResponseMeta = {
@@ -2928,7 +3332,10 @@ export class BrowserGuestManager {
     };
   }
 
-  private abortRequest(requestId: string, context: InternalExecutionContext): boolean {
+  private abortRequest(
+    requestId: string,
+    context: InternalExecutionContext,
+  ): boolean {
     const request = this.runningRequests.get(requestId);
     // requestId 是 correlation id，不是授权凭证；取消也必须服从完整 IAB scope。
     if (!request || !sameScope(request.context, context)) return false;
@@ -2957,7 +3364,8 @@ export class BrowserGuestManager {
     for (const tab of this.tabs.values()) {
       if (!sameScope(tab.owner, context)) continue;
       if (tab.lifecycle === "handoff") continue;
-      if (tab.lifecycle === "deliverable" || tab.origin === "user") this.releaseToUser(tab);
+      if (tab.lifecycle === "deliverable" || tab.origin === "user")
+        this.releaseToUser(tab);
     }
     // guest WebContents 在 CDP 仍 attached 时被销毁（destroyed 直达，
     // 触发路径不可枚举：React 卸载 webview / 系统行为均可达）会让 DevToolsSession 隐式析构后在途
@@ -2975,7 +3383,10 @@ export class BrowserGuestManager {
     void (async () => {
       // 在途 CDP 命令（playwright cdp.send / viewport override / dialog 处理）结束后再断开，
       // 避免中途拆掉正在使用的管线；超时兜底与 runGuestTeardown 共用同一预算。
-      const settled = await this.waitForGuestCdpIdle(tab, DEFAULT_GUEST_CDP_TEARDOWN_TIMEOUT_MS);
+      const settled = await this.waitForGuestCdpIdle(
+        tab,
+        DEFAULT_GUEST_CDP_TEARDOWN_TIMEOUT_MS,
+      );
       if (!settled) {
         this.warn(
           `browser guest cdp release pending timeout tabId=${tab.tabId} ` +
@@ -2994,9 +3405,14 @@ export class BrowserGuestManager {
         }
         guest.debugger.detach();
         tab.cdpAttached = false;
-        this.log?.(`[browser-use] cdp released after ${reason} tabId=${tab.tabId}`);
+        this.log?.(
+          `[browser-use] cdp released after ${reason} tabId=${tab.tabId}`,
+        );
       } catch (error) {
-        this.warn(`browser guest cdp release failed tabId=${tab.tabId} reason=${reason}`, error);
+        this.warn(
+          `browser guest cdp release failed tabId=${tab.tabId} reason=${reason}`,
+          error,
+        );
       }
     })();
   }
@@ -3023,10 +3439,15 @@ export class BrowserGuestManager {
   }
 
   closeSession(context: InternalExecutionContext): void {
-    this.abortRecordings((entry) => sameScope(entry.context, context), "session closed");
+    this.abortRecordings(
+      (entry) => sameScope(entry.context, context),
+      "session closed",
+    );
     for (const request of this.runningRequests.values()) {
       if (sameScope(request.context, context)) {
-        request.controller.abort(new DOMException("session closed", "AbortError"));
+        request.controller.abort(
+          new DOMException("session closed", "AbortError"),
+        );
       }
     }
     for (const tab of this.tabs.values()) {
@@ -3043,11 +3464,32 @@ export class BrowserGuestManager {
     this.visibilityByScope.delete(scopeKey(context));
   }
 
+  /**
+   * `closeSession({ closeTabs: true })`：真正关闭该 session 名下的全部 tab。按 session 归属而非完整
+   * browser scope 匹配——finalize / deliverable 已释放回该 session 的 tab 换到了 `unclaimed-iab` scope，
+   * 仍归它。只给永不回来认领的 session 用（dwf 子代理，
+   * docs/browser-use/2026-07-14-browser-tab-conversation-isolation-spec.md §2.3）：它的 sessionId 不是任何
+   * 对话，closeSession 保留的 view 无人可见、无人可认领，只会一直挂着 guest。
+   */
+  private async closeSessionTabs(
+    context: InternalExecutionContext,
+  ): Promise<void> {
+    const owned = [...this.tabs.values()].filter(
+      (tab) => tab.lifecycle !== "closed" && ownedBySession(tab.owner, context),
+    );
+    for (const tab of owned) await this.closeTabDurably(tab);
+  }
+
   closeWindow(windowId: number): void {
-    this.abortRecordings((entry) => entry.context.windowId === windowId, "window closed");
+    this.abortRecordings(
+      (entry) => entry.context.windowId === windowId,
+      "window closed",
+    );
     for (const request of this.runningRequests.values()) {
       if (request.context.windowId === windowId) {
-        request.controller.abort(new DOMException("window closed", "AbortError"));
+        request.controller.abort(
+          new DOMException("window closed", "AbortError"),
+        );
       }
     }
     for (const tab of this.tabs.values()) {
@@ -3069,7 +3511,10 @@ export class BrowserGuestManager {
     await this.residencyOptions.recoveryStore?.remove(tab.tabId);
   }
 
-  private async closeTabDurably(tab: ManagedTab, notifyRenderer = true): Promise<void> {
+  private async closeTabDurably(
+    tab: ManagedTab,
+    notifyRenderer = true,
+  ): Promise<void> {
     if (tab.lifecycle === "closed") return;
     // 旧 close 先回命令/通知 renderer，再 fire-and-forget 删除恢复仓库；紧接着退出时
     // 已关闭 tab 会从旧 shell 复活。先完成持久删除，失败时保留当前 logical tab 供调用方重试。
@@ -3097,8 +3542,10 @@ export class BrowserGuestManager {
       waiter = this.downloadWaiters.get(tab.tabId)?.[0];
     }
     const key = scopeKey(tab.owner);
-    if (this.activeTabByScope.get(key) === tab.tabId) this.activeTabByScope.delete(key);
-    if (this.defaultTabByScope.get(key) === tab.tabId) this.defaultTabByScope.delete(key);
+    if (this.activeTabByScope.get(key) === tab.tabId)
+      this.activeTabByScope.delete(key);
+    if (this.defaultTabByScope.get(key) === tab.tabId)
+      this.defaultTabByScope.delete(key);
     if (notifyRenderer) this.onCloseTabRequested?.(tab.tabId, tab.owner);
     this.residencyCoordinator.remove(tab.tabId);
     this.restoredTabClaims.delete(tab.tabId);
@@ -3133,14 +3580,18 @@ export class BrowserGuestManager {
     const tabId = tab.tabId;
     const onRenderProcessGone = (...args: unknown[]): void => {
       const reason = safeStr(
-        () => String((args[1] as { reason?: string } | undefined)?.reason ?? "unknown"),
+        () =>
+          String(
+            (args[1] as { reason?: string } | undefined)?.reason ?? "unknown",
+          ),
         "unknown",
       );
       const guestId = safeStr(() => String(guest.id), "?");
       // 不校验 tab.guest === guest：断开一个已换代 guest 的 CDP 同样正确且必要，
       // 而漏掉它就等于把 UAF 窗口留着。
       try {
-        if (this.tabs.get(tabId)?.guest === guest) tab.guestLifecycle = "detaching";
+        if (this.tabs.get(tabId)?.guest === guest)
+          tab.guestLifecycle = "detaching";
         if (!guest.debugger.isAttached()) return;
         guest.debugger.detach();
         this.log?.(
@@ -3166,16 +3617,27 @@ export class BrowserGuestManager {
 
   private setupDialogTracking(tab: ManagedTab, guest: GuestWebContents): void {
     const tabId = tab.tabId;
-    void this.sendGuestCdpCommand(tab, guest, "Page.enable").catch((error: unknown) => {
-      this.log?.(`[browser-use] Page.enable failed tabId=${tabId}: ${String(error)}`);
-    });
-    const onMessage = (_event: unknown, method: string, params: unknown): void => {
+    void this.sendGuestCdpCommand(tab, guest, "Page.enable").catch(
+      (error: unknown) => {
+        this.log?.(
+          `[browser-use] Page.enable failed tabId=${tabId}: ${String(error)}`,
+        );
+      },
+    );
+    const onMessage = (
+      _event: unknown,
+      method: string,
+      params: unknown,
+    ): void => {
       const current = this.tabs.get(tabId);
-      if (!current || current.guest !== guest || current.lifecycle === "closed") return;
+      if (!current || current.guest !== guest || current.lifecycle === "closed")
+        return;
       if (method === "Page.javascriptDialogOpening") {
         // 打点：dialog 事件到达 main 的时刻，用于区分「事件黑洞」与「dialog 已被 detach
         // 清理」两种 getDialog=null 成因。
-        this.log?.(`[browser-use] dialog opening event received tabId=${tabId}`);
+        this.log?.(
+          `[browser-use] dialog opening event received tabId=${tabId}`,
+        );
         const data = (params ?? {}) as {
           type?: string;
           message?: string;
@@ -3184,7 +3646,9 @@ export class BrowserGuestManager {
         const dialog: BrowserDialog = {
           type: normalizeDialogType(data.type),
           message: typeof data.message === "string" ? data.message : "",
-          ...(typeof data.defaultPrompt === "string" ? { defaultPrompt: data.defaultPrompt } : {}),
+          ...(typeof data.defaultPrompt === "string"
+            ? { defaultPrompt: data.defaultPrompt }
+            : {}),
         };
         this.pendingDialogs.set(tabId, dialog);
       } else if (method === "Page.javascriptDialogClosed") {
@@ -3201,11 +3665,16 @@ export class BrowserGuestManager {
     const viewport = tab.viewportOverride;
     if (!viewport) return;
     void this.setTabViewport(tab, viewport).catch((error: unknown) => {
-      this.log?.(`[browser-use] viewport apply failed tabId=${tab.tabId}: ${String(error)}`);
+      this.log?.(
+        `[browser-use] viewport apply failed tabId=${tab.tabId}: ${String(error)}`,
+      );
     });
   }
 
-  private async setTabViewport(tab: ManagedTab, viewport: BrowserViewportSize): Promise<void> {
+  private async setTabViewport(
+    tab: ManagedTab,
+    viewport: BrowserViewportSize,
+  ): Promise<void> {
     assertViewportOverride(viewport);
     if (tab.lifecycle === "closed") return;
     tab.backgroundViewportFallback = undefined;
@@ -3232,7 +3701,11 @@ export class BrowserGuestManager {
     const guest = tab.guest;
     await this.enqueueViewportMutation(tab, async () => {
       if (tab.guest !== guest || tab.lifecycle === "closed") return;
-      await this.sendGuestCdpCommand(tab, guest, "Emulation.clearDeviceMetricsOverride");
+      await this.sendGuestCdpCommand(
+        tab,
+        guest,
+        "Emulation.clearDeviceMetricsOverride",
+      );
     });
   }
 
@@ -3260,7 +3733,10 @@ export class BrowserGuestManager {
           tab,
           guest,
           "Emulation.setDeviceMetricsOverride",
-          buildViewportMetricsOverride(fallback, guest.hostWebContents?.getZoomFactor()),
+          buildViewportMetricsOverride(
+            fallback,
+            guest.hostWebContents?.getZoomFactor(),
+          ),
         );
       });
     } catch (error) {
@@ -3296,12 +3772,18 @@ export class BrowserGuestManager {
       ) {
         return;
       }
-      await this.sendGuestCdpCommand(tab, guest, "Emulation.clearDeviceMetricsOverride");
-      if (tab.backgroundViewportFallback !== fallback || tab.viewportOverride) return;
+      await this.sendGuestCdpCommand(
+        tab,
+        guest,
+        "Emulation.clearDeviceMetricsOverride",
+      );
+      if (tab.backgroundViewportFallback !== fallback || tab.viewportOverride)
+        return;
       const value = await guest.executeJavaScript(
         "({ width: window.innerWidth, height: window.innerHeight })",
       );
-      if (tab.backgroundViewportFallback !== fallback || tab.viewportOverride) return;
+      if (tab.backgroundViewportFallback !== fallback || tab.viewportOverride)
+        return;
       if (isBrowserViewportSize(value)) {
         this.naturalViewportByWindow.set(tab.owner.windowId, { ...value });
         tab.backgroundViewportFallback = undefined;
@@ -3313,7 +3795,10 @@ export class BrowserGuestManager {
         tab,
         guest,
         "Emulation.setDeviceMetricsOverride",
-        buildViewportMetricsOverride(fallback, guest.hostWebContents?.getZoomFactor()),
+        buildViewportMetricsOverride(
+          fallback,
+          guest.hostWebContents?.getZoomFactor(),
+        ),
       );
     }).catch((error: unknown) => {
       this.log?.(
@@ -3322,7 +3807,10 @@ export class BrowserGuestManager {
     });
   }
 
-  private enqueueViewportMutation(tab: ManagedTab, mutation: () => Promise<void>): Promise<void> {
+  private enqueueViewportMutation(
+    tab: ManagedTab,
+    mutation: () => Promise<void>,
+  ): Promise<void> {
     const previous = tab.viewportMutation ?? Promise.resolve();
     const current = previous
       .catch(() => undefined)
@@ -3347,11 +3835,23 @@ export class BrowserGuestManager {
     return current;
   }
 
-  private setupDownloadTracking(tab: ManagedTab, guest: GuestWebContents): void {
+  private setupDownloadTracking(
+    tab: ManagedTab,
+    guest: GuestWebContents,
+  ): void {
     tab.downloadCleanup?.();
     if (!guest.session) return;
-    const listener = (_event: unknown, item: GuestDownloadItem, contents: GuestWebContents) => {
-      if (contents !== guest || tab.guest !== guest || tab.lifecycle === "closed") return;
+    const listener = (
+      _event: unknown,
+      item: GuestDownloadItem,
+      contents: GuestWebContents,
+    ) => {
+      if (
+        contents !== guest ||
+        tab.guest !== guest ||
+        tab.lifecycle === "closed"
+      )
+        return;
       const downloadId = `iab-download:${randomUUID()}`;
       const record: DownloadRecord = {
         tabId: tab.tabId,
@@ -3363,7 +3863,11 @@ export class BrowserGuestManager {
       item.once("done", (_event, state) => {
         record.path = safeStr(() => item.getSavePath(), "") || record.path;
         record.state =
-          state === "completed" ? "completed" : state === "cancelled" ? "cancelled" : "interrupted";
+          state === "completed"
+            ? "completed"
+            : state === "cancelled"
+              ? "cancelled"
+              : "interrupted";
         this.refreshRuntimeProtection(tab.tabId);
       });
       const waiters = this.downloadWaiters.get(tab.tabId);
@@ -3377,7 +3881,8 @@ export class BrowserGuestManager {
       }
     };
     guest.session.on("will-download", listener);
-    tab.downloadCleanup = () => guest.session?.removeListener("will-download", listener);
+    tab.downloadCleanup = () =>
+      guest.session?.removeListener("will-download", listener);
   }
 
   private waitForDownload(
@@ -3393,7 +3898,10 @@ export class BrowserGuestManager {
       const waiter = {} as DownloadWaiter;
       waiter.resolve = resolve;
       waiter.signal = signal;
-      waiter.timer = setTimeout(() => this.finishDownloadWaiter(tabId, waiter, null), timeoutMs);
+      waiter.timer = setTimeout(
+        () => this.finishDownloadWaiter(tabId, waiter, null),
+        timeoutMs,
+      );
       waiter.onAbort = () => this.finishDownloadWaiter(tabId, waiter, null);
       signal.addEventListener("abort", waiter.onAbort, { once: true });
       const waiters = this.downloadWaiters.get(tabId) ?? [];
@@ -3430,22 +3938,31 @@ export class BrowserGuestManager {
    * 失效。恢复命令经 raw 发送（不走 ensure，避免自等待）；viewport 重放走既有串行队列，
    * 队列内触发恢复时直接重放，避免二次入队与当前 flight 互相等待死锁。
    */
-  private async ensureGuestCdpAttached(tab: ManagedTab, guest: GuestWebContents): Promise<void> {
+  private async ensureGuestCdpAttached(
+    tab: ManagedTab,
+    guest: GuestWebContents,
+  ): Promise<void> {
     if (!tab.guestCdpRestoreFlight) {
       const flight = this.runGuestCdpSessionRestore(tab, guest).finally(() => {
-        if (tab.guestCdpRestoreFlight === flight) tab.guestCdpRestoreFlight = undefined;
+        if (tab.guestCdpRestoreFlight === flight)
+          tab.guestCdpRestoreFlight = undefined;
       });
       tab.guestCdpRestoreFlight = flight;
     }
     await tab.guestCdpRestoreFlight;
   }
 
-  private async runGuestCdpSessionRestore(tab: ManagedTab, guest: GuestWebContents): Promise<void> {
+  private async runGuestCdpSessionRestore(
+    tab: ManagedTab,
+    guest: GuestWebContents,
+  ): Promise<void> {
     if (!safeBool(() => guest.debugger.isAttached(), false)) {
       guest.debugger.attach("1.3");
       tab.cdpAttached = safeBool(() => guest.debugger.isAttached(), false);
       if (!tab.cdpAttached) {
-        throw new Error(`browser guest cdp restore attach failed tabId=${tab.tabId}`);
+        throw new Error(
+          `browser guest cdp restore attach failed tabId=${tab.tabId}`,
+        );
       }
     }
     // 恢复失败必须上抛：屏障契约是「Page.enable 与 viewport 状态就绪后才
@@ -3456,7 +3973,10 @@ export class BrowserGuestManager {
     try {
       await this.sendGuestCdpCommandRaw(tab, guest, "Page.enable");
     } catch (error) {
-      this.warn(`browser guest Page.enable replay failed tabId=${tab.tabId}`, error);
+      this.warn(
+        `browser guest Page.enable replay failed tabId=${tab.tabId}`,
+        error,
+      );
       this.rollbackGuestCdpRestore(tab, guest);
       throw error;
     }
@@ -3471,7 +3991,9 @@ export class BrowserGuestManager {
             "Emulation.setDeviceMetricsOverride",
             buildViewportMetricsOverride(
               viewport,
-              tab.viewportOverride ? tab.desktopZoomFactor : guest.hostWebContents?.getZoomFactor(),
+              tab.viewportOverride
+                ? tab.desktopZoomFactor
+                : guest.hostWebContents?.getZoomFactor(),
             ),
           );
         };
@@ -3481,16 +4003,24 @@ export class BrowserGuestManager {
         if (tab.insideViewportMutation) await replayViewport();
         else await this.enqueueViewportMutation(tab, replayViewport);
       } catch (error) {
-        this.warn(`browser guest viewport replay failed tabId=${tab.tabId}`, error);
+        this.warn(
+          `browser guest viewport replay failed tabId=${tab.tabId}`,
+          error,
+        );
         this.rollbackGuestCdpRestore(tab, guest);
         throw error;
       }
     }
-    this.log?.(`[browser-use] cdp session state replayed tabId=${tab.tabId} pageEnable=1`);
+    this.log?.(
+      `[browser-use] cdp session state replayed tabId=${tab.tabId} pageEnable=1`,
+    );
   }
 
   /** 恢复失败时把半途 session 还原为释放态；rollback 自身的失败不得掩盖原始错误。 */
-  private rollbackGuestCdpRestore(tab: ManagedTab, guest: GuestWebContents): void {
+  private rollbackGuestCdpRestore(
+    tab: ManagedTab,
+    guest: GuestWebContents,
+  ): void {
     try {
       if (guest.debugger.isAttached()) guest.debugger.detach();
     } catch {
@@ -3509,7 +4039,11 @@ export class BrowserGuestManager {
   ): Promise<unknown> {
     tab.pendingCdpCommands += 1;
     try {
-      const result = await guest.debugger.sendCommand(method, params, sessionId);
+      const result = await guest.debugger.sendCommand(
+        method,
+        params,
+        sessionId,
+      );
       if (!sessionId && tab.guest === guest) {
         if (method === "Emulation.setDeviceMetricsOverride") {
           tab.appliedViewportScale = normalizeDesktopZoomMetricsScale(
@@ -3544,13 +4078,21 @@ export class BrowserGuestManager {
     // turnEnded/closeSession/命令空闲后 CDP 已主动释放（防 guest
     // 销毁时的主进程 UAF），命令路径在此恢复式 re-attach 并 await 会话态重放完成（显式
     // 串行屏障：Page.enable / viewport override 先于本命令被 Chromium 处理）。
-    if (!safeBool(() => guest.debugger.isAttached(), false) || tab.guestCdpRestoreFlight) {
+    if (
+      !safeBool(() => guest.debugger.isAttached(), false) ||
+      tab.guestCdpRestoreFlight
+    ) {
       await this.ensureGuestCdpAttached(tab, guest);
     }
     // native raster 的 metrics scale 同时影响 CDP 鼠标输入。工具、locator
     // 和截图仍以 CSS px 表达，在唯一 guest 发送边界补偿位置和滚轮距离，避免各 API 重复换算。
     const scale = tab.appliedViewportScale ?? 1;
-    if (!sessionId && method === "Input.dispatchMouseEvent" && scale !== 1 && params) {
+    if (
+      !sessionId &&
+      method === "Input.dispatchMouseEvent" &&
+      scale !== 1 &&
+      params
+    ) {
       const event = { ...(params as Record<string, unknown>) };
       for (const key of ["x", "y", "deltaX", "deltaY"]) {
         if (typeof event[key] === "number") event[key] *= scale;
@@ -3563,7 +4105,9 @@ export class BrowserGuestManager {
   private toControlledView(
     guest: GuestWebContents,
     normalizeScreenshotToCssPixels = false,
-    captureViewportScreenshot: ControlledView["captureViewportScreenshot"] | undefined,
+    captureViewportScreenshot:
+      | ControlledView["captureViewportScreenshot"]
+      | undefined,
     assertCurrentGuest: () => void,
     sendCdpCommand: ControlledView["cdp"]["send"],
   ): ControlledView {
@@ -3638,7 +4182,9 @@ export class BrowserGuestManager {
       windowId: tab.owner.windowId,
       sessionId: tab.owner.sessionId,
       residency,
-      guestAttached: Boolean(tab.guest && !safeBool(() => tab.guest!.isDestroyed(), true)),
+      guestAttached: Boolean(
+        tab.guest && !safeBool(() => tab.guest!.isDestroyed(), true),
+      ),
       openedAt: tab.openedAt,
       lastActivityAt: tab.openedAt,
       lastSelectedAt,
@@ -3655,7 +4201,9 @@ export class BrowserGuestManager {
     });
   }
 
-  private async closeTabForLimit(record: BrowserTabResidencyRecord): Promise<boolean> {
+  private async closeTabForLimit(
+    record: BrowserTabResidencyRecord,
+  ): Promise<boolean> {
     const tab = this.tabs.get(record.tabId);
     if (!tab || tab.lifecycle === "closed") return true;
     try {
@@ -3682,8 +4230,12 @@ export class BrowserGuestManager {
     if (!flight) {
       // 旧 single-flight 直接采用首个 caller 的 AbortSignal；首个 command 取消会
       // 毒化所有并发 caller，并把 coordinator 留在 restoring。flight 改由 tab 生命周期拥有。
-      flight = this.runRestoreSuspendedGuest(tab, new AbortController().signal).finally(() => {
-        if (this.restoreFlights.get(tab.tabId) === flight) this.restoreFlights.delete(tab.tabId);
+      flight = this.runRestoreSuspendedGuest(
+        tab,
+        new AbortController().signal,
+      ).finally(() => {
+        if (this.restoreFlights.get(tab.tabId) === flight)
+          this.restoreFlights.delete(tab.tabId);
       });
       this.restoreFlights.set(tab.tabId, flight);
     }
@@ -3718,7 +4270,10 @@ export class BrowserGuestManager {
 
     const guest = await this.waitForGuest(tab.tabId, signal);
     if (!guest) {
-      const failed = this.residencyCoordinator.failRestore(tab.tabId, transition.generation);
+      const failed = this.residencyCoordinator.failRestore(
+        tab.tabId,
+        transition.generation,
+      );
       if (failed) {
         // 通知 renderer 回到轻量 shell；新 generation 同时让本轮迟到 attach fail closed。
         this.residencyOptions.onSuspendTabRequested?.({
@@ -3749,7 +4304,10 @@ export class BrowserGuestManager {
     if (!restored) {
       // 不能只处理“恢复事实全缺失”：history 与 URL 都失败时仍提交 live 的话，
       // bootstrap/about:blank 因而被永久当成成功页面。失败必须销毁本轮 guest 并回到可重试 shell。
-      const failed = this.residencyCoordinator.failRestore(tab.tabId, transition.generation);
+      const failed = this.residencyCoordinator.failRestore(
+        tab.tabId,
+        transition.generation,
+      );
       this.detachAndCloseGuest(tab);
       if (failed) {
         this.residencyOptions.onSuspendTabRequested?.({
@@ -3765,7 +4323,13 @@ export class BrowserGuestManager {
       }
       return null;
     }
-    if (!this.residencyCoordinator.completeRestore(tab.tabId, transition.generation)) return null;
+    if (
+      !this.residencyCoordinator.completeRestore(
+        tab.tabId,
+        transition.generation,
+      )
+    )
+      return null;
     const completed = this.residencyCoordinator.get(tab.tabId);
     if (completed) {
       // renderer 原来只收到 restoring 起点，成功后没有终态，会永久保留 restoring shell。
@@ -3777,7 +4341,10 @@ export class BrowserGuestManager {
         browserId: tab.owner.browserId,
         browserGeneration: tab.owner.browserGeneration,
         generation: completed.generation,
-        residency: completed.residency === "live-visible" ? "live-visible" : "live-background",
+        residency:
+          completed.residency === "live-visible"
+            ? "live-visible"
+            : "live-background",
       });
     }
     tab.restoredFromStore = false;
@@ -3785,8 +4352,13 @@ export class BrowserGuestManager {
     return guest;
   }
 
-  private async restoreGuestState(tab: ManagedTab, guest: GuestWebContents): Promise<boolean> {
-    const pageState = await this.residencyOptions.recoveryStore?.getPageState(tab.tabId);
+  private async restoreGuestState(
+    tab: ManagedTab,
+    guest: GuestWebContents,
+  ): Promise<boolean> {
+    const pageState = await this.residencyOptions.recoveryStore?.getPageState(
+      tab.tabId,
+    );
     if (pageState && pageState.entries.length > 0) {
       const activePageState = pageState.entries[pageState.activeIndex];
       if (tab.cachedUrl && activePageState?.url !== tab.cachedUrl) {
@@ -3821,9 +4393,12 @@ export class BrowserGuestManager {
             safeBool(() => {
               const actualEntries = guest.navigationHistory.getAllEntries();
               return (
-                guest.navigationHistory.getActiveIndex() === pageState.activeIndex &&
+                guest.navigationHistory.getActiveIndex() ===
+                  pageState.activeIndex &&
                 actualEntries.length === pageState.entries.length &&
-                actualEntries.every((entry, index) => entry.url === pageState.entries[index]?.url)
+                actualEntries.every(
+                  (entry, index) => entry.url === pageState.entries[index]?.url,
+                )
               );
             }, false);
           if (restoreAppliedDespiteAbort) {
@@ -3831,7 +4406,10 @@ export class BrowserGuestManager {
             // 以实际 navigationHistory 为准，避免误删有效 pageState 并发起第二次 URL 导航。
             return acceptRestoredPageState();
           }
-          this.warn(`browser tab page-state restore failed tabId=${tab.tabId}`, error);
+          this.warn(
+            `browser tab page-state restore failed tabId=${tab.tabId}`,
+            error,
+          );
           await this.residencyOptions.recoveryStore?.removePageState(tab.tabId);
         }
       }
@@ -3852,8 +4430,14 @@ export class BrowserGuestManager {
   ): Promise<GuestWebContents | null> {
     if (tab.lifecycle === "closed" || tab.guest !== guest) return null;
     const restored = await this.restoreGuestState(tab, guest);
-    if (!restored || tab.lifecycle === "closed" || tab.guest !== guest) {
-      if (tab.lifecycle !== "closed" && tab.guest === guest) {
+    // await 期间 tab 可能被关闭；lifecycle 是可变字段，重新读取以撤销上面的收窄。
+    const lifecycleAfterRestore = tab.lifecycle as TabLifecycle;
+    if (
+      !restored ||
+      lifecycleAfterRestore === "closed" ||
+      tab.guest !== guest
+    ) {
+      if (lifecycleAfterRestore !== "closed" && tab.guest === guest) {
         this.warn(`browser tab guest rebind restore failed tabId=${tab.tabId}`);
       }
       return null;
@@ -3865,12 +4449,17 @@ export class BrowserGuestManager {
     return guest;
   }
 
-  private async persistRecoverySnapshot(tab: ManagedTab, guest: GuestWebContents): Promise<void> {
+  private async persistRecoverySnapshot(
+    tab: ManagedTab,
+    guest: GuestWebContents,
+  ): Promise<void> {
     tab.cachedUrl = safeStr(() => guest.getURL(), tab.cachedUrl);
     tab.cachedTitle = safeStr(() => guest.getTitle(), tab.cachedTitle);
     await this.persistShell(tab);
     try {
-      const entries = guest.navigationHistory.getAllEntries().map((entry) => ({ ...entry }));
+      const entries = guest.navigationHistory
+        .getAllEntries()
+        .map((entry) => ({ ...entry }));
       if (entries.length === 0) return;
       const pageState: BrowserTabPageStateRecord = {
         schemaVersion: 1,
@@ -3882,7 +4471,10 @@ export class BrowserGuestManager {
       await this.residencyOptions.recoveryStore?.upsertPageState(pageState);
     } catch (error) {
       // 快照失败不能让资源预算永久突破；shell 的 restoreUrl 已先保存。
-      this.warn(`browser tab page-state snapshot failed tabId=${tab.tabId}`, error);
+      this.warn(
+        `browser tab page-state snapshot failed tabId=${tab.tabId}`,
+        error,
+      );
     }
   }
 
@@ -3895,7 +4487,9 @@ export class BrowserGuestManager {
       tabId: tab.tabId,
       windowBindingId: null,
       workspaceKey: tab.owner.workspaceKey,
-      ...(tab.owner.remoteSessionId ? { remoteSessionId: tab.owner.remoteSessionId } : {}),
+      ...(tab.owner.remoteSessionId
+        ? { remoteSessionId: tab.owner.remoteSessionId }
+        : {}),
       sessionId: tab.owner.sessionId,
       browserId: tab.owner.browserId,
       browserGeneration: tab.owner.browserGeneration,
@@ -3940,12 +4534,17 @@ export class BrowserGuestManager {
       (!options?.skipRemoteSession &&
         (tab.owner.remoteSessionId ?? "") !== (payload.remoteSessionId ?? ""))
     ) {
-      throw new Error(`browser tab '${payload.tabId}' is unavailable for renderer scope`);
+      throw new Error(
+        `browser tab '${payload.tabId}' is unavailable for renderer scope`,
+      );
     }
     return tab;
   }
 
-  private setupActivityTracking(tab: ManagedTab, guest: GuestWebContents): void {
+  private setupActivityTracking(
+    tab: ManagedTab,
+    guest: GuestWebContents,
+  ): void {
     tab.activityCleanup?.();
     if (!guest.on || !guest.removeListener) return;
     const onLoadingStarted = () => {
@@ -3995,14 +4594,19 @@ export class BrowserGuestManager {
       loading: tab.loading,
       operationActive: this.hasRunningRequestForTab(tabId),
       captureActive: this.isTabCaptureActive(tab),
-      audible: safeBool(() => tab.guest?.isCurrentlyAudible?.() ?? false, false),
+      audible: safeBool(
+        () => tab.guest?.isCurrentlyAudible?.() ?? false,
+        false,
+      ),
       mediaActive: tab.mediaActive,
       downloadActive: this.hasPendingDownloadForTab(tabId),
     });
   }
 
   private hasRunningRequestForTab(tabId: string): boolean {
-    return [...this.runningRequests.values()].some((request) => request.tabId === tabId);
+    return [...this.runningRequests.values()].some(
+      (request) => request.tabId === tabId,
+    );
   }
 
   private isTabCaptureActive(tab: ManagedTab): boolean {
@@ -4042,11 +4646,21 @@ export class BrowserGuestManager {
     return { ok: false, reason, recoveryRequested };
   }
 
-  private requestGuestRebind(tab: ManagedTab, reason: GuestRecoveryReason): boolean {
+  private requestGuestRebind(
+    tab: ManagedTab,
+    reason: GuestRecoveryReason,
+  ): boolean {
     tab.attachFailure = reason;
-    if (tab.lifecycle === "closed" || tab.rebindRequested || !this.onOpenTabRequested) return false;
+    if (
+      tab.lifecycle === "closed" ||
+      tab.rebindRequested ||
+      !this.onOpenTabRequested
+    )
+      return false;
     tab.rebindRequested = true;
-    this.log?.(`[browser-use] request guest rebind tabId=${tab.tabId} reason=${reason}`);
+    this.log?.(
+      `[browser-use] request guest rebind tabId=${tab.tabId} reason=${reason}`,
+    );
     this.onOpenTabRequested?.(tab.tabId, tab.owner);
     return true;
   }
@@ -4066,7 +4680,9 @@ export class BrowserGuestManager {
 
   private warn(message: string, error?: unknown): void {
     const suffix =
-      error === undefined ? "" : ` error=${error instanceof Error ? error.message : String(error)}`;
+      error === undefined
+        ? ""
+        : ` error=${error instanceof Error ? error.message : String(error)}`;
     this.residencyOptions.warn?.(`${message}${suffix}`);
     this.log?.(`[browser-use] ${message}${suffix}`);
   }
@@ -4136,7 +4752,8 @@ export class BrowserGuestManager {
     const flight = this.runGuestTeardown(tab, guest, reason);
     tab.guestTeardownFlight = flight;
     const clearFlight = () => {
-      if (tab.guestTeardownFlight === flight) tab.guestTeardownFlight = undefined;
+      if (tab.guestTeardownFlight === flight)
+        tab.guestTeardownFlight = undefined;
     };
     void flight.then(clearFlight, clearFlight);
     return flight;
@@ -4154,12 +4771,20 @@ export class BrowserGuestManager {
     // 计数保护，直到真实 Promise settle。这样外层取消不会把 native command 误判成已结束。
     for (const request of this.runningRequests.values()) {
       if (request.tabId !== tab.tabId) continue;
-      request.controller.abort(new DOMException(`browser guest ${reason}`, "AbortError"));
+      request.controller.abort(
+        new DOMException(`browser guest ${reason}`, "AbortError"),
+      );
     }
-    this.abortRecordings((entry) => entry.tabId === tab.tabId, `browser guest ${reason}`);
+    this.abortRecordings(
+      (entry) => entry.tabId === tab.tabId,
+      `browser guest ${reason}`,
+    );
 
     const pendingAtStart = tab.pendingCdpCommands;
-    const settled = await this.waitForGuestCdpIdle(tab, DEFAULT_GUEST_CDP_TEARDOWN_TIMEOUT_MS);
+    const settled = await this.waitForGuestCdpIdle(
+      tab,
+      DEFAULT_GUEST_CDP_TEARDOWN_TIMEOUT_MS,
+    );
     if (!settled) {
       this.warn(
         `browser guest teardown cdp pending timeout tabId=${tab.tabId} ` +
@@ -4214,7 +4839,10 @@ export class BrowserGuestManager {
     return true;
   }
 
-  private async waitForGuestCdpIdle(tab: ManagedTab, timeoutMs: number): Promise<boolean> {
+  private async waitForGuestCdpIdle(
+    tab: ManagedTab,
+    timeoutMs: number,
+  ): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
     while (tab.pendingCdpCommands > 0 && Date.now() < deadline) {
       await new Promise<void>((resolve) =>
@@ -4231,7 +4859,9 @@ export class BrowserGuestManager {
 
   private detachGuest(tab: ManagedTab): void {
     const guest = tab.guest;
-    const guestDestroyed = guest ? safeBool(() => guest.isDestroyed(), true) : true;
+    const guestDestroyed = guest
+      ? safeBool(() => guest.isDestroyed(), true)
+      : true;
     if (guest && !this.guestRecoveryFlights.has(tab.tabId)) {
       tab.cachedUrl = safeStr(() => guest.getURL(), tab.cachedUrl);
       tab.cachedTitle = safeStr(() => guest.getTitle(), tab.cachedTitle);
@@ -4304,7 +4934,10 @@ export class BrowserGuestManager {
         } catch (error) {
           // 这里不能静默吞掉：detach 失败与成功在日志上无法区分 —— 而「本该能主动 detach
           // 却失败了」正是需要与崩溃关联的信号。
-          this.warn(`browser guest cdp detach failed tabId=${tab.tabId} guestId=${guestId}`, error);
+          this.warn(
+            `browser guest cdp detach failed tabId=${tab.tabId} guestId=${guestId}`,
+            error,
+          );
         }
       }
     }
@@ -4327,7 +4960,9 @@ export class BrowserGuestManager {
 
   disposeAll(): void {
     for (const request of this.runningRequests.values()) {
-      request.controller.abort(new DOMException("browser manager disposed", "AbortError"));
+      request.controller.abort(
+        new DOMException("browser manager disposed", "AbortError"),
+      );
     }
     for (const tab of this.tabs.values()) this.closeTab(tab, false);
     for (const key of this.waiters.keys()) this.resolveWaiters(key, null);
@@ -4349,7 +4984,9 @@ export class BrowserGuestManager {
     this.inFlightScreenshots.clear();
     this.abandonedScreenshotCaptures.clear();
     for (const entry of this.recordings.values()) {
-      entry.controller.abort(new DOMException("browser manager disposed", "AbortError"));
+      entry.controller.abort(
+        new DOMException("browser manager disposed", "AbortError"),
+      );
       if (entry.cleanupTimer) clearTimeout(entry.cleanupTimer);
       if (entry.artifact?.path)
         void rm(entry.artifact.path, { force: true }).catch(() => undefined);
@@ -4365,7 +5002,10 @@ export class BrowserGuestManager {
     this.guestAttachFlights.clear();
   }
 
-  private waitForGuest(tabId: string, signal?: AbortSignal): Promise<GuestWebContents | null> {
+  private waitForGuest(
+    tabId: string,
+    signal?: AbortSignal,
+  ): Promise<GuestWebContents | null> {
     if (signal?.aborted) return Promise.resolve(null);
     return new Promise<GuestWebContents | null>((resolve) => {
       const waiter: PendingWaiter = {
@@ -4390,7 +5030,8 @@ export class BrowserGuestManager {
 
   private removeWaiter(tabId: string, waiter: PendingWaiter): void {
     clearTimeout(waiter.timer);
-    if (waiter.onAbort) waiter.signal?.removeEventListener("abort", waiter.onAbort);
+    if (waiter.onAbort)
+      waiter.signal?.removeEventListener("abort", waiter.onAbort);
     const list = this.waiters.get(tabId);
     if (!list) return;
     const index = list.indexOf(waiter);
@@ -4404,13 +5045,17 @@ export class BrowserGuestManager {
     this.waiters.delete(tabId);
     for (const waiter of list) {
       clearTimeout(waiter.timer);
-      if (waiter.onAbort) waiter.signal?.removeEventListener("abort", waiter.onAbort);
+      if (waiter.onAbort)
+        waiter.signal?.removeEventListener("abort", waiter.onAbort);
       waiter.resolve(guest);
     }
   }
 }
 
-function linkAbortSignal(signal: AbortSignal | undefined, controller: AbortController): () => void {
+function linkAbortSignal(
+  signal: AbortSignal | undefined,
+  controller: AbortController,
+): () => void {
   if (!signal) return () => undefined;
   const abort = () => controller.abort(signal.reason);
   if (signal.aborted) abort();
@@ -4450,7 +5095,10 @@ function waitForPromiseWithSignal<T>(
   });
 }
 
-function waitForDelay(timeoutMs: number, signal: AbortSignal): Promise<boolean> {
+function waitForDelay(
+  timeoutMs: number,
+  signal: AbortSignal,
+): Promise<boolean> {
   if (signal.aborted) return Promise.resolve(false);
   return new Promise<boolean>((resolve) => {
     let settled = false;
@@ -4478,11 +5126,14 @@ async function waitForCondition(
     if (predicate()) return "matched";
     const remaining = deadline - Date.now();
     if (remaining <= 0) return "timeout";
-    if (!(await waitForDelay(Math.min(50, remaining), signal))) return "cancelled";
+    if (!(await waitForDelay(Math.min(50, remaining), signal)))
+      return "cancelled";
   }
 }
 
-function readScreenshotSurfaceInvalidation(signal: AbortSignal | undefined): Error | undefined {
+function readScreenshotSurfaceInvalidation(
+  signal: AbortSignal | undefined,
+): Error | undefined {
   if (!signal?.aborted) return undefined;
   if (signal.reason instanceof Error) return signal.reason;
   return new Error("browser screenshot activity was invalidated");
@@ -4499,7 +5150,8 @@ async function raceBackendExecution(
       ok: false,
       error: {
         code: "cancelled",
-        message: "browser request cancelled after backend dispatch; side effects may have occurred",
+        message:
+          "browser request cancelled after backend dispatch; side effects may have occurred",
         sideEffect: isSideEffecting(command) ? "uncertain" : "none",
       },
       elapsedMs: Date.now() - startedAt,
@@ -4550,7 +5202,9 @@ function isBrowserViewportSize(value: unknown): value is BrowserViewportSize {
   );
 }
 
-function isBrowserPointValue(value: unknown): value is { x: number; y: number } {
+function isBrowserPointValue(
+  value: unknown,
+): value is { x: number; y: number } {
   if (!value || typeof value !== "object") return false;
   const point = value as Record<string, unknown>;
   return typeof point.x === "number" && typeof point.y === "number";
@@ -4560,7 +5214,9 @@ function abortError(): DOMException {
   return new DOMException("Browser recording cancelled", "AbortError");
 }
 
-function normalizeBackgroundViewport(viewport: BrowserViewportSize): BrowserViewportSize {
+function normalizeBackgroundViewport(
+  viewport: BrowserViewportSize,
+): BrowserViewportSize {
   return {
     width: Math.min(
       BROWSER_VIEWPORT_LIMITS.maxWidth,
@@ -4576,7 +5232,8 @@ function normalizeBackgroundViewport(viewport: BrowserViewportSize): BrowserView
 function isScreenshotCommand(command: BrowserCommand): boolean {
   return (
     command.method === "screenshot" ||
-    (command.method === "playwright" && command.action.name === "elementScreenshot")
+    (command.method === "playwright" &&
+      command.action.name === "elementScreenshot")
   );
 }
 
@@ -4589,7 +5246,9 @@ function assertViewportOverride(viewport: BrowserViewportSize): void {
     viewport.height < BROWSER_VIEWPORT_LIMITS.minHeight ||
     viewport.height > BROWSER_VIEWPORT_LIMITS.maxHeight
   ) {
-    throw new Error("browser viewport is outside the supported free-size range");
+    throw new Error(
+      "browser viewport is outside the supported free-size range",
+    );
   }
 }
 
@@ -4622,7 +5281,7 @@ function normalizeDialogType(type: string | undefined): BrowserDialog["type"] {
 }
 
 /** Browser response meta 会进入模型轨迹和调试日志；只保留 origin/path，绝不携带 credential/query/hash。 */
-function sanitizeBrowserMetaUrl(value: string): string | undefined {
+export function sanitizeBrowserMetaUrl(value: string): string | undefined {
   if (!value) return undefined;
   try {
     const url = new URL(value);

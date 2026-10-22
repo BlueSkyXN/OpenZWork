@@ -195,7 +195,9 @@ function refineProcessIdentities(identities: readonly ProcessIdentity[]): Proces
 function collectDescendantIdentitiesFromProcessList(
   rootPid: number,
   identities: readonly ProcessIdentity[],
+  rootStartedAtMs?: number,
 ): ProcessIdentity[] {
+  const rootIdentity = identities.find((identity) => identity.pid === rootPid);
   const childrenByParentPid = new Map<number, ProcessIdentity[]>();
   for (const identity of identities) {
     const children = childrenByParentPid.get(identity.parentPid) ?? [];
@@ -205,17 +207,30 @@ function collectDescendantIdentitiesFromProcessList(
 
   const descendants: ProcessIdentity[] = [];
   const seen = new Set<number>([rootPid]);
-  const visit = (pid: number) => {
+  const visit = (pid: number, parentStartedAtMs: number | undefined) => {
     for (const child of childrenByParentPid.get(pid) ?? []) {
       if (seen.has(child.pid)) {
         continue;
       }
+      const childStartedAtMs =
+        process.platform === "win32" ? parseWindowsCreationTimeMs(child.startTime) : undefined;
+      // 与异步快照一致：Windows 的历史 PPID 必须同时通过逐代创建时间门禁。
+      if (
+        process.platform === "win32" &&
+        (parentStartedAtMs === undefined ||
+          childStartedAtMs === undefined ||
+          childStartedAtMs < parentStartedAtMs)
+      )
+        continue;
       seen.add(child.pid);
       descendants.push(child);
-      visit(child.pid);
+      visit(child.pid, childStartedAtMs);
     }
   };
-  visit(rootPid);
+  visit(
+    rootPid,
+    rootIdentity ? parseWindowsCreationTimeMs(rootIdentity.startTime) : rootStartedAtMs,
+  );
   return descendants;
 }
 
@@ -332,7 +347,7 @@ export function captureExitedRootDescendantsSnapshot(
     const createdAtMs = parseWindowsCreationTimeMs(identity.startTime);
     return createdAtMs !== undefined && createdAtMs >= startedAtMs && createdAtMs <= exitedAtMs;
   });
-  const identities = collectDescendantIdentitiesFromProcessList(rootPid, processList);
+  const identities = collectDescendantIdentitiesFromProcessList(rootPid, processList, startedAtMs);
   if (identities.length === 0) {
     return undefined;
   }

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   APP_USAGE_MODEL_CHART_COLORS,
   getAppUsageModelChartColor,

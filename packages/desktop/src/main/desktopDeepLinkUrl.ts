@@ -1,16 +1,24 @@
-const DEEP_LINK_SCHEME = "zcode";
-const DEEP_LINK_RE = /\bzcode:(?:\/\/|\/)?[^\s"'<>]+/i;
+// 解析器必须匹配应用注册的 OpenZWork scheme，否则系统已启动窗口却无法投递工作区链接。
+const DEEP_LINK_SCHEME = "openzwork";
+const DEEP_LINK_RE = /\bopenzwork:(?:\/\/|\/)?[^\s"'<>]+/i;
 const WORKSPACE_OPEN_HOST = "workspace";
 const DEEP_LINK_ADDITIONAL_DATA_KEY = "deepLinkUrl";
 const OPEN_WORKSPACE_ADDITIONAL_DATA_KEY = "openWorkspacePath";
 const OPEN_WORKSPACE_ARG = "--open-workspace";
+
+// 同步修复：工作区链接也使用该规范化逻辑，不能随登录回调一起移除。
+function normalizeDeepLinkPath(pathname: string): string {
+  const withoutTrailingSlash = pathname.replace(/\/+$/, "");
+  const normalized = withoutTrailingSlash === "" ? "/" : withoutTrailingSlash;
+  return `/${normalized.replace(/^\/+/, "")}`;
+}
 
 export function isWorkspaceOpenUrl(parsedUrl: URL): boolean {
   if (parsedUrl.protocol !== `${DEEP_LINK_SCHEME}:`) {
     return false;
   }
 
-  const normalizedPath = normalizeOAuthCallbackPath(parsedUrl.pathname);
+  const normalizedPath = normalizeDeepLinkPath(parsedUrl.pathname);
   if (parsedUrl.hostname === WORKSPACE_OPEN_HOST) {
     return normalizedPath === "/open";
   }

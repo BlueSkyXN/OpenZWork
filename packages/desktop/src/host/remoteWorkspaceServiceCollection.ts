@@ -7,6 +7,7 @@ import {
   ISystemService,
   ITerminalService,
   ISettingService,
+  IMediaPreviewService,
   ICredentialService,
   IBroadcastService,
   IZCodeTaskService,
@@ -27,6 +28,7 @@ import {
   ICommandsService,
   IHooksService,
   IMemoryService,
+  IOutputStyleService,
   ISettingsSyncService,
   IPromptAttachmentTransferService,
   type IServiceAccessor,
@@ -242,12 +244,64 @@ export function createRemoteWorkspaceServiceCollection(params: {
     .register(ISubagentsService, createSubagentsService({ isDesktopRuntime: true }))
     .register(IHooksService, params.connectionServices.hooksService)
     .register(IMemoryService, createMemoryService())
+    .register(IOutputStyleService, params.connectionServices.outputStyleService)
     .register(
       ISettingsSyncService,
       createSettingsSyncService({ settingService: localSettingService }),
     )
     .register(IPromptAttachmentTransferService, params.promptAttachmentTransferService);
   registerHostApiNetworkTransportForDispose(services, hostApiNetworkTransport);
+  registerRemoteProviderProvisioningExecutor(services, remoteProviderProvisioningService);
+  return services;
+}
+
+export function createServerRemoteWorkspaceServiceCollection(params: {
+  connectionServices: IServiceAccessor;
+  sourceServices?: ServiceCollection;
+}): ServiceCollection {
+  assertLegacyRemoteWorkspaceRpcContract(params.connectionServices);
+  // Server remote 连接的是一个已经运行的完整 ZCode server。
+  // Host 只做 RPC 转接，不替 server 决定 workspace/runtime/model-provider 归属。
+  const remoteProviderProvisioningService =
+    createRemoteProviderProvisioningExecutorFromWorkspace(params);
+  const services = new ServiceCollection()
+    .register(IFileService, params.connectionServices.fileService)
+    .register(IGitService, params.connectionServices.gitService)
+    .register(IGitCheckpointService, params.connectionServices.gitCheckpointService)
+    .register(ISystemService, params.connectionServices.systemService)
+    .register(ITerminalService, params.connectionServices.terminalService)
+    .register(ISettingService, params.connectionServices.settingService)
+    .register(ICredentialService, params.connectionServices.credentialService)
+    .register(IBroadcastService, params.connectionServices.broadcastService)
+    .register(IZCodeTaskService, params.connectionServices.zcodeTaskService)
+    .register(IZCodeAgentService, params.connectionServices.zcodeAgentService)
+    .register(IZCodeSessionService, params.connectionServices.zcodeSessionService)
+    .register(IBotsService, params.connectionServices.botsService)
+    .register(IFileWatcherService, params.connectionServices.fileWatcherService)
+    .register(IModelSelectionService, params.connectionServices.modelSelectionService)
+    .register(IProviderSettingsService, params.connectionServices.providerSettingsService)
+    .register(ISkillsService, params.connectionServices.skillsService)
+    .register(ISkillSyncService, params.connectionServices.skillSyncService)
+    .register(IMcpSyncService, params.connectionServices.mcpSyncService)
+    .register(IPluginsService, params.connectionServices.pluginsService)
+    .register(IPluginManagementService, params.connectionServices.pluginManagementService)
+    .register(ISubagentsService, params.connectionServices.subagentsService)
+    .register(ICommandsService, params.connectionServices.commandsService)
+    .register(IHooksService, params.connectionServices.hooksService)
+    .register(IMemoryService, params.connectionServices.memoryService)
+    .register(IOutputStyleService, params.connectionServices.outputStyleService)
+    .register(ISettingsSyncService, params.connectionServices.settingsSyncService)
+    .register(
+      IPromptAttachmentTransferService,
+      params.connectionServices.promptAttachmentTransferService,
+    );
+  // 远端 server 提供 mediaPreview 时透传；未提供（旧 wire）不注册，UI 回退普通文件预览。
+  if (params.connectionServices.mediaPreviewService) {
+    services.register(
+      IMediaPreviewService,
+      params.connectionServices.mediaPreviewService,
+    );
+  }
   registerRemoteProviderProvisioningExecutor(services, remoteProviderProvisioningService);
   return services;
 }

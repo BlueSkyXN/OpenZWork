@@ -277,6 +277,7 @@ const buildTarget = async ({ nodeBinaries, nodeVersion, postjectBin, target }) =
   console.log(`[sea] building ${target} -> ${binaryPath}`);
   await copyFile(targetNodeBinary, binaryPath);
   await chmod(binaryPath, 0o755);
+
   // 同一原文既内嵌到 --licenses，也随 dist 提供，单文件上传仍可取到完整材料。
   await stageNodeNotices(dist, nodeVersion, repositoryRoot);
 

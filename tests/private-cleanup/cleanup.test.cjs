@@ -8,7 +8,10 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFile, execFileSync } = require('node:child_process');
+const { promisify } = require('node:util');
+const { pathToFileURL } = require('node:url');
+const execFileAsync = promisify(execFile);
 const root = process.env.ZCODE_TEST_SOURCE_ROOT || path.resolve(__dirname, '../..');
 const ts = require(process.env.TYPESCRIPT_MODULE_PATH || 'typescript');
 const adapter = 'apps/zcode-cli/packages/adapters/src/model/';
@@ -515,6 +518,46 @@ test('[structural, not runtime] WP-08: retained live i18n key families stay defi
   }
 });
 
+test('[behavior] WP-09: real protocol schemas reject retired off-peak inputs', async () => {
+  // 负面 fixture 集中在清理入口，既保留真实 schema 覆盖，也不向保留模块引入退役领域字面量。
+  const protocolUrl = pathToFileURL(path.join(root, 'packages/shared/src/zcode-protocol/index.ts')).href;
+  await execFileAsync(process.execPath, ['--import', 'tsx', '--input-type=module', '-e', `
+    import assert from 'node:assert/strict';
+    const { zcodeSessionSendParamsSchema, zcodeProviderRuntimeHeadersRequestParamsSchema } =
+      await import(${JSON.stringify(protocolUrl)});
+    const send = { sessionId: 'sess_1', content: 'continue' };
+    assert.equal(zcodeSessionSendParamsSchema.safeParse(send).success, true);
+    for (const attribution of [
+      { offPeakTaskId: 'offpeak-1' },
+      { offPeakRunType: 'resume' },
+      { automationId: 'automation-1', offPeakTaskId: 'offpeak-1' },
+    ]) {
+      assert.equal(zcodeSessionSendParamsSchema.safeParse({ ...send, ...attribution }).success, false);
+    }
+    const headers = {
+      requestId: 'request-current',
+      sessionId: 'sess_1',
+      workspace: {
+        workspacePath: '/workspace/app',
+        workspaceIdentity: 'remote:ssh:dev:/workspace/app',
+        workspaceKey: 'remote:ssh:dev:/workspace/app',
+      },
+      modelSelection: { providerId: 'glm', modelId: 'glm-4.6' },
+      providerId: 'account:individual-coding-plan',
+      accountAccess: {
+        type: 'zhipu-account', accountType: 'bigmodel', mode: 'individual-coding-plan', entitled: true,
+      },
+      reason: 'model-request',
+    };
+    assert.equal(zcodeProviderRuntimeHeadersRequestParamsSchema.safeParse(headers).success, true);
+    assert.equal(zcodeProviderRuntimeHeadersRequestParamsSchema.safeParse({
+      ...headers,
+      providerId: 'account:off-peak',
+      accountAccess: { ...headers.accountAccess, mode: 'off-peak' },
+    }).success, false);
+  `], { cwd: root });
+});
+
 test('[structural, not runtime] WP-09: off-peak domain fully removed from source and locales', () => {
   const bannedPattern = /off[-_]peak|offpeak/i;
   const allowFiles = new Set([
@@ -538,6 +581,43 @@ test('[structural, not runtime] WP-09: off-peak domain fully removed from source
     if (match) violations.push(`${rel}: ${match[0]}`);
   }
   assert.deepEqual(violations, [], `off-peak residue found:\n${violations.join('\n')}`);
+});
+
+test('[structural, not runtime] re-clean gate: highspeed card chain / request-security-edition / marketingTouch / rewardsEmbedded / project-access-token stay absent', () => {
+  // 本轮新官方域重净：重净清单即门禁，断言先于清理落地——红 = 待净项，清理合入后转绿。
+  // highspeed 只封加速卡整链 token：账号/providerId 的 highspeed-card、URL 段 /highspeed/、
+  // 裸字符串值 "highspeed"（如 mode 字段）与全大写 HIGHSPEED（env 变量风格）。不封裸后缀：
+  // 保留的第三方模型目录（kimi-k2.7-code-highspeed / MiniMax-M2.7-highspeed /
+  // GLM-5.1-Highspeed，由 WP-08 的 16 模板门禁与 packages/shared/src/official-glm-model-id.ts
+  // 强制保留）以 -highspeed 为模型名后缀，属上游保留域同名词——靠收窄 pattern 规避，
+  // 不逐文件登记豁免，避免豁免清单随模型目录膨胀。
+  const bannedContent =
+    /HIGHSPEED|[hH]ighspeed[-_ ]?[cC]ard|\/highspeed\/|["']highspeed["']|request[-_]security[-_]edition|[rR]equestSecurityEdition|marketing[-_]touch|[mM]arketingTouch|[rR]ewards[-_]embedded|[rR]ewardsEmbedded|project[-_]access[-_]token|[pP]rojectAccessToken/;
+  const bannedPath =
+    /highspeed[-_ ]?card|request[-_]security[-_]edition|requestsecurityedition|marketing[-_]touch|marketingtouch|rewards[-_]embedded|rewardsembedded|project[-_]access[-_]token|projectaccesstoken/i;
+  // vendored 文档豁免为上游证据（保留清单：docs vendored 文档）：docs/ 与 apps/zcode-cli/docs/
+  // （上游 CLI 设计文档，如 auth-login.md 对已删 project-access-token 规格的链接）。
+  const isVendoredDoc = rel => rel.startsWith('docs/') || rel.startsWith('apps/zcode-cli/docs/');
+  // 与 WP-03/WP-09 同口径：按 git 追踪清单做全仓扫描。git ls-files 输出本就是 POSIX 路径，
+  // 豁免与前缀判断必须用原始 rel，不做 path.sep 归一——Windows 下 path.join 产物是反斜杠，
+  // 拿归一化结果比对豁免/目录前缀会全部失配（既有门禁注释记录过的坑）。
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
+  const violations = [];
+  const tracked = execFileSync('git', ['-C', root, 'ls-files'], { encoding: 'utf8' })
+    .split('\n')
+    .filter(Boolean);
+  for (const rel of tracked) {
+    if (rel === 'tests/private-cleanup/cleanup.test.cjs') continue; // 本文件的 pattern 与注释自含禁词
+    if (isVendoredDoc(rel)) continue;
+    if (bannedPath.test(rel)) { violations.push(`path ${rel}`); continue; }
+    if (!scanExtensions.test(rel)) continue;
+    const file = path.join(root, rel);
+    // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。
+    if (!fs.existsSync(file)) continue;
+    const match = fs.readFileSync(file, 'utf8').match(bannedContent);
+    if (match) violations.push(`${rel}: ${match[0]}`);
+  }
+  assert.deepEqual(violations, [], `new official domain residue found:\n${violations.join('\n')}`);
 });
 
 test('[structural, not runtime] WP-03: user-level data root references stay under .openzwork', () => {
@@ -601,4 +681,35 @@ test('[structural, not runtime] WP-03: remote deploy/startup and distribution de
   assert.match(skillDoc, /~\/\.openzwork\/workflows/);
   // 上游账号域孤儿（WP-04 删除链幸存、零消费者）已物理删除。
   assert.equal(fs.existsSync(path.join(root, 'packages/shared/src/account-provider-state.ts')), false);
+});
+
+test('[structural] v3.15.1 sync: GenUI/MCP Apps host services stay registered', () => {
+  // 修复原因：上游合并曾丢失 createLocalServices 的四个服务注册，RemoteServiceAccess 的
+  // 代理频道 1s 超时失败并拖慢消息发送。结构断言防止下次同步再丢。
+  const node = fs.readFileSync(path.join(root, 'packages/services/src/node.ts'), 'utf8');
+  assert.match(node, /\.register\(\s*IGenUiService/);
+  assert.match(node, /\.register\(\s*IPluginUiBridgeService/);
+  assert.match(node, /\.register\(\s*IPluginUiSamplingService/);
+  assert.match(node, /\.register\(\s*IPluginUiAppToolsService/);
+});
+
+test('[structural] v3.15.1 sync: workflow child runtime mirrors interaction events to parent', () => {
+  // 修复原因：上游 v3.15.1 给 notifyExternalChildSessionEvent 加了 interactionOrigin，
+  // 合并时丢失会让工作流子代理的提问/确认窗永不出现在父会话、任务无限等待。
+  const child = fs.readFileSync(
+    path.join(root, 'apps/zcode-cli/packages/bootstrap/src/app/script-workflow-child-runtime.ts'),
+    'utf8',
+  );
+  assert.match(child, /notifyExternalChildSessionEvent\(\{[\s\S]*?interactionOrigin: clientPortsContext/);
+});
+
+test('[structural] v3.15.1 sync: mcpUserDirectory workspace config uses OpenZWork data dir', () => {
+  // 修复原因：合并把项目级目录带回上游 .zcode；fork 身份隔离（WP-03）用户级与项目级统一
+  // .openzwork。测试路径替换暴露后修的实现侧。
+  const index = fs.readFileSync(
+    path.join(root, 'packages/desktop/src/main/mcpUserDirectory/index.ts'),
+    'utf8',
+  );
+  assert.match(index, /workspaceConfigDirSegments: \[OPENZWORK_DATA_DIR_NAME\]/);
+  assert.doesNotMatch(index, /workspaceConfigDirSegments: \["\.zcode"\]/);
 });

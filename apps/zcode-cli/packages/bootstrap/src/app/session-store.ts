@@ -62,7 +62,10 @@ export async function readSessionModelSelection(
   // 不借旧 thoughtLevel/消息/default 补值。执行前仍由 Registry 严格校验。
   if (data && typeof data === "object" && !Array.isArray(data)) {
     const current = data as Record<string, unknown>;
-    return parseModelSelectionValue({ providerId: current.providerId, modelId: current.modelId });
+    return parseModelSelectionValue({
+      providerId: current.providerId,
+      modelId: current.modelId,
+    });
   }
   return undefined;
 }

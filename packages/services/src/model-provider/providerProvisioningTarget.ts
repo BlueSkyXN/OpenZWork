@@ -11,6 +11,7 @@ import {
   providerProvisioningResultSchema,
   isProviderProvisioningAccountCredentialKey,
   type ProviderProvisioningEnvelope,
+  type ProviderProvisioningErrorCode,
   type ProviderProvisioningResult,
 } from "@zcode/shared";
 import type { ICredentialService } from "../credential/credential.js";
@@ -60,25 +61,16 @@ export function createProviderProvisioningTarget(
 
         validateCredentialEntries(envelope);
         await options.providerRuntime.start();
-        const before = await captureBeforeState(envelope, options);
+        const before = await captureBeforeState(options);
         const personalUpdate = parsePersonalConfig(envelope);
         const applied: AppliedProvisioningState = {
-          credentials: [],
           personalConfig: false,
           personalConfigExpected: personalUpdate,
         };
 
+        let errorCode: ProviderProvisioningErrorCode = "target-write-failed";
         try {
-          const incomingCredentials = new Map(
-            envelope.credentials.map((credential) => [credential.key, credential.value]),
-          );
-          for (const key of before.credentials.keys()) {
-            const value = incomingCredentials.get(key);
-            applied.credentials.push({ key, value: value ?? null });
-            if (value === undefined) await options.credentialService.delete(key);
-            else await options.credentialService.save(key, value);
-          }
-
+          // v1 的历史账号 Key 只做结构校验；与上游兼容合同一致，不读写或删除目标凭据。
           applied.personalConfig = true;
           await options.personalRepository.update((current) => {
             // 其他域写入期间 Personal 可能已被编辑；检查与替换必须在同一个文件锁内。
@@ -88,25 +80,21 @@ export function createProviderProvisioningTarget(
             return personalUpdate;
           });
 
+          errorCode = "target-refresh-failed";
           const snapshot =
             await options.providerRuntime.registryService.refresh("provider-provisioning");
-          if (
-            personalUpdate.defaultModelSelection &&
-            !options.providerRuntime.registryService.validateSelection(
-              personalUpdate.defaultModelSelection,
-            ).ok
-          ) {
-            throw new Error("同步后的远端 Registry 不支持本地默认模型");
-          }
+          // 上游 v3.15.1/v3.16.1 已将默认选择视为偏好；旧校验会因失效模型阻断正常远端连接。
+          // 原样同步后由 Host 解析推荐，实际写入/刷新失败仍走原事务与 CAS 回滚。
 
           const result = {
             syncId: envelope.syncId,
             status: "applied" as const,
             personalProviderCount: personalUpdate.providers.keys().length,
-            credentialCount: envelope.credentials.length,
+            credentialCount: 0,
             configRevision: snapshot.sourceRevisions.config,
             rolledBack: false,
           } satisfies ProviderProvisioningResult;
+          errorCode = "target-commit-failed";
           await writeStateFile(options.stateFilePath, appendStateRecord(previousState, result));
           return result;
         } catch (error) {
@@ -118,8 +106,9 @@ export function createProviderProvisioningTarget(
               syncId: envelope.syncId,
               status: "rollback_failed",
               personalProviderCount: before.personal.providers.keys().length,
-              credentialCount: envelope.credentials.length,
+              credentialCount: 0,
               errorMessage: `${formatError(error)}；回滚失败：${formatError(rollbackError)}`,
+              errorCode,
               rolledBack: false,
             } satisfies ProviderProvisioningResult;
           }
@@ -127,8 +116,9 @@ export function createProviderProvisioningTarget(
             syncId: envelope.syncId,
             status: "failed",
             personalProviderCount: before.personal.providers.keys().length,
-            credentialCount: envelope.credentials.length,
+            credentialCount: 0,
             errorMessage: formatError(error),
+            errorCode,
             rolledBack: true,
           } satisfies ProviderProvisioningResult;
         }
@@ -139,11 +129,9 @@ export function createProviderProvisioningTarget(
 
 interface BeforeState {
   readonly personal: ProviderConfigLayerUpdate;
-  readonly credentials: ReadonlyMap<string, string | null>;
 }
 
 interface AppliedProvisioningState {
-  credentials: Array<{ key: string; value: string | null }>;
   personalConfig: boolean;
   personalConfigExpected: ProviderConfigLayerUpdate;
 }
@@ -154,28 +142,13 @@ function parsePersonalConfig(envelope: ProviderProvisioningEnvelope): ProviderCo
 }
 
 async function captureBeforeState(
-  envelope: ProviderProvisioningEnvelope,
   options: ProviderProvisioningTargetOptions,
 ): Promise<BeforeState> {
   const personal = await readProvisionablePersonalConfig(
     options.personalRepository,
     options.personalConfigFilePath,
   );
-  const credentials = new Map<string, string | null>();
-  const credentialKeys = new Set<string>([
-    ...((await options.listProvisioningCredentialKeys?.()) ?? []),
-    ...envelope.credentials.map((entry) => entry.key),
-  ]);
-  for (const key of credentialKeys) {
-    if (!isProviderProvisioningAccountCredentialKey(key)) {
-      continue;
-    }
-    credentials.set(key, await options.credentialService.load(key));
-  }
-  return {
-    personal,
-    credentials,
-  };
+  return { personal };
 }
 
 async function rollback(
@@ -194,26 +167,6 @@ async function rollback(
         // 默认选择与 Provider/Model 共用一份 CAS；不能分别回滚制造混合状态或覆盖新选择。
         return before.personal;
       });
-    } catch (error) {
-      errors.push(error);
-    }
-  }
-  for (const { key, value } of applied.credentials) {
-    try {
-      const previous = before.credentials.get(key) ?? null;
-      const current = await options.credentialService.load(key);
-      if (current === previous) {
-        continue;
-      }
-      if (current !== value) {
-        errors.push(new Error(`Credential ${key} 在同步期间被其它操作修改，跳过回滚`));
-        continue;
-      }
-      if (previous === null) {
-        await options.credentialService.delete(key);
-      } else {
-        await options.credentialService.save(key, previous);
-      }
     } catch (error) {
       errors.push(error);
     }

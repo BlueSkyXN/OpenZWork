@@ -38,7 +38,7 @@ import {
   useState,
 } from "react";
 import type { BundledTheme } from "shiki";
-import { defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from "streamdown";
+import { type Components as StreamdownComponents, defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from "streamdown";
 import type { Pluggable, PluggableList } from "unified";
 import { CodeBlock, CodeBlockHeader } from "@/components/ai-elements/code-block.js";
 import {
@@ -1631,7 +1631,7 @@ export const MessageResponse = memo(
           // 频繁重挂载历史消息，生产上遇到部分 markdown 会在 Streamdown 内部触发 React #185。
           // 这里重新收敛为：只有真实流式输出走 streaming 解析，完成态一律 static。
           mode={streamdownMode}
-          components={messageComponents}
+          components={messageComponents as StreamdownComponents}
           parseIncompleteMarkdown={streaming}
           // Streamdown 内置 code renderer 的 highlighted-body 会在代码高亮结果和 raw fallback
           // 之间反复 setState，部分历史消息恢复时会触发 React #185。这里保留 markdown 解析能力，

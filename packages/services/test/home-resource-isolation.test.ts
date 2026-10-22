@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { after, test } from "node:test";
+import { afterAll as after, test } from "vitest";
 
 const fixtureRoot = await mkdtemp(join(tmpdir(), "ozw-home-resources-"));
 const home = join(fixtureRoot, "home");

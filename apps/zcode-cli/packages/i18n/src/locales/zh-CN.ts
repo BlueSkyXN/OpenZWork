@@ -18,8 +18,6 @@ export const zhCN: ZCodeCopy = {
   app-server 运行 ZCode Protocol stdio app server
   commands   列出自定义 slash commands（\`commands list\`）
   doctor     检查运行时和打包假设
-  login [zai|bigmodel]  通过浏览器授权登录
-  logout     删除共享的 Z.AI 登录凭据
   plugins    管理插件与市场（\`plugins list|install|uninstall|enable|disable|update|validate|marketplace ...\`；别名 plugin）
   skills     列出本地 skills（\`skills list\`）
   tui        打开终端 UI
@@ -29,7 +27,6 @@ export const zhCN: ZCodeCopy = {
   -h, --help       显示帮助
   -v, --version    显示版本
   -p, --prompt <text>  单次运行 prompt，不打开 TUI
-  --enable-workflow  为 --prompt 或 --target 开启动态工作流（默认关闭）
   --memory-bench   配合 --prompt 开启自动 Memory 提取并等待后退出（需已开启 Memory）
   --browser-use <mode> 启用 Browser Use backend（当前支持：headless）
   --surface <surface>  设置无头 prompt/app-server 的呈现面：terminal 或 desktop
@@ -42,26 +39,24 @@ export const zhCN: ZCodeCopy = {
     "Bash(git *)" 也会移除整个 Bash，不支持按命令内容匹配。
   --force-mcs      对 Anthropic provider 强制启用 mid-conversation system 投影
   --locale <locale>  UI 语言：en-US、zh-CN 或 auto
-  --mode <mode>    prompt 权限模式：build、edit、plan 或 yolo（--prompt 默认 yolo）
+  --mode <mode>    prompt 权限模式：build、edit、plan、yolo 或 guarded（--prompt 默认 yolo）
   --resume <sessionId>  按 sessionId 恢复持久化 session（sess_...）
   --target <text>  在 headless 模式运行或设置 session goal
   --target-replace 替换 --target 已存在的 goal
+  --workflow-mode <mode>  prompt/TUI 的动态工作流：disabled、onDemand 或 alwaysOn（默认 disabled）
   -c, --continue        恢复当前目录最近的 session
   --json           在支持的命令中输出机器可读 JSON
-  --no-browser     不打开浏览器，只打印 OAuth URL
   --no-color       禁用 ANSI 颜色
   --verbose        打印更多诊断信息
 
 Slash Commands:
   /help [command]       显示 slash command 帮助
-  /login                使用 Z.AI OAuth 登录
-  /logout               删除共享的 Z.AI 登录凭据
   /compact [instructions]  压缩当前对话
   /expert [status|resume|stop|<task>]  运行或管理 expert workflow
   /dwf [list|cancel|resume]  列出、取消或恢复 dynamic workflow run
   /fork [latest|checkpointId]  从 workspace checkpoint 派生新 session
   /mcp [list|status|connect|disconnect]  查看或管理 MCP servers
-  /mode [mode]          查看或切换权限模式：build、edit、plan 或 yolo
+  /mode [mode]          查看或切换权限模式：build、edit、plan、yolo 或 guarded
   /model [id]           查看或切换当前 session 模型
   /new                  在 TUI 中开始新 session
   /resume [sessionId]   按 sessionId 恢复 session；省略时恢复当前 cwd 最新 session

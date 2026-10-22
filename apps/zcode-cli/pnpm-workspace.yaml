@@ -1,3 +1,8 @@
+# pnpm 11 在 run 前触发依赖校验安装；本内层 workspace 解析不到外层 packages/*
+# （如 @zcode/model-option-map）。依赖统一从根 workspace 按 lockfile 安装，
+# 子 workspace 的脚本不再发起第二次安装。
+verifyDepsBeforeRun: false
+
 packages:
   - "packages/*"
   - "tools/*"

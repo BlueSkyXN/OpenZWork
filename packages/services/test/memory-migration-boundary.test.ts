@@ -13,7 +13,7 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
-import { test } from "node:test";
+import { test } from "vitest";
 import { getMemoryMigrationMarkerPath, migrateLegacyProjectMemories } from "@zcode/shared/node";
 
 const staleName = ".note.md.memory-migration-00000000-0000-4000-8000-000000000001.2147483647.tmp";

@@ -1,14 +1,14 @@
 import type { BrowserWindow, NativeImage } from "electron";
 import type { Locale } from "@zcode/shared";
 
-interface ArchitectureMismatch {
+export interface ArchitectureMismatch {
   /** 当前运行的二进制架构，例如 x64。 */
   binaryArch: string;
   /** 推荐安装的原生架构，目前翻译运行只会回退到 arm64。 */
   nativeArch: string;
 }
 
-interface DetectArchitectureMismatchOptions {
+export interface DetectArchitectureMismatchOptions {
   platform?: NodeJS.Platform;
   binaryArch?: string;
   /**
@@ -26,7 +26,7 @@ interface DetectArchitectureMismatchOptions {
  * Node 在 Apple Silicon 上跑 x64 包时，os.arch() 同样会返回 "x64"（被 Rosetta 透明翻译），
  * 单纯比对两者无法发现差异。translation 标志是唯一可靠的信号。
  */
-function detectArchitectureMismatch(
+export function detectArchitectureMismatch(
   options: DetectArchitectureMismatchOptions = {},
 ): ArchitectureMismatch | null {
   const platform = options.platform ?? process.platform;
@@ -51,7 +51,7 @@ interface ArchitectureMismatchDialogText {
   confirmButton: string;
 }
 
-function formatArchitectureMismatchDialogText(
+export function formatArchitectureMismatchDialogText(
   mismatch: ArchitectureMismatch,
   locale: Locale,
 ): ArchitectureMismatchDialogText {
@@ -79,7 +79,7 @@ function formatArchitectureMismatchDialogText(
   };
 }
 
-interface ArchitectureGuardLogger {
+export interface ArchitectureGuardLogger {
   info: (...args: unknown[]) => void;
   warn: (...args: unknown[]) => void;
 }

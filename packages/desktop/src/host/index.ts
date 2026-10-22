@@ -15,6 +15,8 @@
  */
 import { createHostDatabaseStartup } from "./hostDatabaseStartup.js";
 import { randomUUID } from "node:crypto";
+import { createPluginSandboxRegistrationBridge } from "./pluginSandbox/index.js";
+import { createWindowTopicResourceRelay } from "./windowTopicResourceRelay.js";
 import {
   MessagePortProtocol,
   ChannelServer,
@@ -98,7 +100,10 @@ import {
 } from "./remoteMediaPreviewProxy.js";
 import { watchCronRunBotDelivery } from "./cronBotDelivery.js";
 import { createHostRemoteWorkspaceProxyState } from "./hostRemoteWorkspaceProxyState.js";
-import { createRemoteWorkspaceServiceCollection } from "./remoteWorkspaceServiceCollection.js";
+import {
+  createRemoteWorkspaceServiceCollection,
+  createServerRemoteWorkspaceServiceCollection,
+} from "./remoteWorkspaceServiceCollection.js";
 import { getRemoteProviderProvisioningExecutor } from "./remoteProviderProvisioningService.js";
 import { createRemotePromptAttachmentTransferService } from "./promptAttachmentTransferService.js";
 import { shouldReportHostConsoleError, stringifyHostLogArg } from "./hostLog.js";
@@ -117,19 +122,22 @@ import {
   createRemotePromptAttachmentTaskService,
   materializeRemotePromptAttachments,
 } from "./remotePromptAttachments.js";
+import { connectServerRemote, type ServerRemoteConnection } from "./serverRemoteConnection.js";
+import { bindBotGroupTaskScope } from "./botGroupTaskScope.js";
 import { createWindowHostAttachmentRegistry } from "./windowHostAttachmentRegistry.js";
 import {
   createWindowRemoteConnectionRegistry,
   type WindowRemoteConnectionCloseEvent,
   type WindowRemoteConnectionHandle,
 } from "./windowRemoteConnectionRegistry.js";
+import { pushDynamicWorkflowUserModeToRemoteHosts } from "./remoteDynamicWorkflowUserMode.js";
 import { createWindowHostControllerRuntime } from "./windowHostControllerService.js";
 import { resolveAutomationSubmissionModelSelection } from "./automationModelSelection.js";
 import { createRemoteConnectionProgressContext } from "@zcode/server/remote/remoteConnectionProgressContext.js";
 type RemoteBackendHostConnection = RemoteConnection & {
   backend: IRemoteBackend;
 };
-type HostRemoteConnection = RemoteBackendHostConnection;
+type HostRemoteConnection = RemoteBackendHostConnection | ServerRemoteConnection;
 interface HostRemoteConnectionCapabilities {
   browserRecordingUploader?: Pick<IRemoteBackend, "upload">;
   remoteMediaPreviewFactory?: (
@@ -194,6 +202,13 @@ function authorizeLocalMediaPreviewPath(path: string): Promise<string> {
     }
   });
 }
+
+const pluginSandboxRegistrationBridge = createPluginSandboxRegistrationBridge({
+  send: (message) => {
+    if (!parentPort) throw new Error("parentPort unavailable");
+    parentPort.postMessage(message);
+  },
+});
 
 // browser-use host↔main 桥：把 agent 的 browser 命令经 parentPort 转给 main（WebContentsView+CDP）。
 // parentPort 为空（不应发生于 host 进程）时 postToMain 抛错，bridge 自身返回 backend_unavailable。
@@ -525,6 +540,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       try {
         await watchCronRunBotDelivery({
           automationId: request.automationId,
+          runId: promptTraceId,
           workspaceKey,
           workspacePath: request.workspacePath,
           ...(request.workspaceIdentity ? { workspaceIdentity: request.workspaceIdentity } : {}),
@@ -1128,6 +1144,8 @@ function formatRemoteTargetForLog(target: RemoteTarget): string {
     }
     case "docker":
       return `docker:${target.container}`;
+    case "server":
+      return `server:${target.name?.trim() || target.url}`;
   }
 }
 
@@ -1200,7 +1218,11 @@ async function resolveDesktopRemoteRuntimeNetwork(
 }
 
 async function disposeHostRemoteConnection(connection: HostRemoteConnection): Promise<void> {
-  await connection.disposeAndWait({ timeoutMs: 5_000 });
+  if ("disposeAndWait" in connection) {
+    await connection.disposeAndWait({ timeoutMs: 5_000 });
+    return;
+  }
+  connection.dispose();
 }
 
 async function createWindowRemoteConnectionHandle(params: {
@@ -1209,86 +1231,134 @@ async function createWindowRemoteConnectionHandle(params: {
   signal: AbortSignal;
 }): Promise<WindowRemoteConnectionHandle<ServiceCollection, HostRemoteConnectionCapabilities>> {
   if (!activeServices) throw new Error("Local Host services are not initialized.");
+  const localSettingService = activeServices.get(ISettingService);
   if (params.signal.aborted) {
     throw new Error("远程连接已取消");
   }
   const closeListeners = new Set<(event: WindowRemoteConnectionCloseEvent) => void>();
+  let peerServices: ServiceCollection | undefined;
+  const topicResourceRelay = createWindowTopicResourceRelay({
+    getPeerServices: () => peerServices,
+    resolveServices: (scope) => windowRemoteConnectionRegistry.resolveScopedServices(scope),
+    getBots: () => activeServices?.getOptional(IBotsService),
+  });
   const notifyClose = (event: WindowRemoteConnectionCloseEvent) => {
+    topicResourceRelay?.dispose();
     for (const listener of closeListeners) {
       listener(event);
     }
   };
-  const connection = await setupRemoteConnection(
-    params.target,
-    params.remoteAssets,
-    { fetch: requireActiveHostApiNetworkTransport().fetch },
-    await resolveDesktopRemoteRuntimeNetwork(params.target),
-    (exitCode) => notifyClose({ exitCode, signal: null }),
-    params.target.kind === "ssh" ? "caller-serialized" : "remote",
-    params.target.kind === "ssh" ? params.signal : undefined,
-  );
+  let connection: HostRemoteConnection;
+  try {
+    connection =
+      params.target.kind === "server"
+        ? await connectServerRemote(params.target, {
+            topicResourceChannel: topicResourceRelay.channel,
+            onClose: ({ code, reason }) =>
+              notifyClose({ exitCode: code, signal: null, ...(reason ? { error: reason } : {}) }),
+          })
+        : await setupRemoteConnection(
+            params.target,
+            params.remoteAssets,
+            { fetch: requireActiveHostApiNetworkTransport().fetch },
+            await resolveDesktopRemoteRuntimeNetwork(params.target),
+            (exitCode) => notifyClose({ exitCode, signal: null }),
+            params.target.kind === "ssh" ? "caller-serialized" : "remote",
+            params.target.kind === "ssh" ? params.signal : undefined,
+            topicResourceRelay?.channel,
+          );
+  } catch (error) {
+    topicResourceRelay?.dispose();
+    throw error;
+  }
 
   if (params.signal.aborted) {
+    topicResourceRelay?.dispose();
     await disposeHostRemoteConnection(connection);
     throw new Error("远程连接已取消");
   }
 
-  const backendConnection = connection;
-  const materializePromptAttachments = async (request: {
-    taskId: string;
-    traceId: TraceId | string;
-    content: string;
-    attachments?: ZCodePromptAttachment[];
-  }) => {
-    const result = await materializeRemotePromptAttachments(request, {
-      backend: backendConnection.backend,
-    });
-    return { content: result.content, attachments: result.attachments };
-  };
-  const promptAttachmentTransferService = createRemotePromptAttachmentTransferService(
-    backendConnection.backend,
-    {
-      onJanitorError: (error: unknown) =>
-        logger.warn("remote prompt attachment janitor failed", error),
-    },
-  );
-  const services = createRemoteWorkspaceServiceCollection({
-    connectionServices: backendConnection.services,
-    sourceServices: activeServices ?? undefined,
-    parentPort,
-    createRemotePromptAttachmentSessionService: (service) =>
-      createRemotePromptAttachmentSessionService(service, {
-        materializePromptAttachments,
-      }),
-    createRemotePromptAttachmentTaskService: (service) =>
-      createRemotePromptAttachmentTaskService(service, {
-        materializePromptAttachments,
-      }),
-    createReportingRemoteZCodeTaskService: (service) =>
-      createReportingRemoteZCodeTaskService(service, {
-        taskRealtimePort: activeSessionRealtimePort ?? undefined,
-      }),
-    promptAttachmentTransferService,
-    runtimePreferencesBridge: {
-      onError: (error: unknown) => logger.warn("remote runtime preferences bridge failed", error),
-    },
-  });
-
-  let disposed = false;
-  const remoteMediaPreviewFactory = !remoteMediaRangePreviewEnabled
-    ? undefined
-    : (scope: Extract<WindowHostAttachmentScope, { kind: "remote" }>) =>
-        createRemoteMediaPreviewProxy({
-          fileService: services.get(IFileService),
-          logger: {
-            debug: (message, metadata) => {
-              if (process.env.NODE_ENV !== "production") logger.info(message, metadata);
+  const services =
+    params.target.kind === "server"
+      ? createServerRemoteWorkspaceServiceCollection({
+          connectionServices: connection.services,
+          sourceServices: activeServices ?? undefined,
+        })
+      : (() => {
+          const backendConnection = connection as RemoteBackendHostConnection;
+          const materializePromptAttachments = async (request: {
+            taskId: string;
+            traceId: TraceId | string;
+            content: string;
+            attachments?: ZCodePromptAttachment[];
+          }) => {
+            const result = await materializeRemotePromptAttachments(request, {
+              backend: backendConnection.backend,
+            });
+            return { content: result.content, attachments: result.attachments };
+          };
+          const promptAttachmentTransferService = createRemotePromptAttachmentTransferService(
+            backendConnection.backend,
+            {
+              onJanitorError: (error) =>
+                logger.warn("remote prompt attachment janitor failed", error),
             },
-            warn: (message, metadata) => logger.warn(message, metadata),
-          },
-          scope,
-          requestLimiter: hostRemoteMediaRequestLimiter,
-        });
+          );
+          return createRemoteWorkspaceServiceCollection({
+            connectionServices: backendConnection.services,
+            sourceServices: activeServices ?? undefined,
+            parentPort,
+            createRemotePromptAttachmentSessionService: (service) =>
+              createRemotePromptAttachmentSessionService(service, {
+                materializePromptAttachments,
+              }),
+            createRemotePromptAttachmentTaskService: (service) =>
+              createRemotePromptAttachmentTaskService(service, {
+                materializePromptAttachments,
+              }),
+            createReportingRemoteZCodeTaskService: (service) =>
+              createReportingRemoteZCodeTaskService(service, {
+                taskRealtimePort: activeSessionRealtimePort ?? undefined,
+              }),
+            promptAttachmentTransferService,
+            runtimePreferencesBridge: {
+              onError: (error: unknown) =>
+                logger.warn("remote runtime preferences bridge failed", error),
+            },
+          });
+        })();
+
+  // 动态工作流用户选择（docs/dynamic-workflow/launch.md「The user's choice」）：desktop-attached remote
+  // Host 读不到桌面设置，由这里推送。在 handle 交给 registry 之前 await，任何 workspace 请求都晚于它。
+  if (params.target.kind !== "server") {
+    const dynamicWorkflowUserMode = await localSettingService
+      .get()
+      .then((settings) => settings.dynamicWorkflowMode)
+      .catch(() => undefined);
+    await pushDynamicWorkflowUserModeToRemoteHosts(
+      [{ target: params.target, zcodeAgentService: services.get(IZCodeAgentService) }],
+      dynamicWorkflowUserMode,
+      (error) => logger.warn("remote dynamic workflow user mode push failed", error),
+    );
+  }
+
+  peerServices = services;
+  let disposed = false;
+  const remoteMediaPreviewFactory =
+    params.target.kind === "server" || !remoteMediaRangePreviewEnabled
+      ? undefined
+      : (scope: Extract<WindowHostAttachmentScope, { kind: "remote" }>) =>
+          createRemoteMediaPreviewProxy({
+            fileService: services.get(IFileService),
+            logger: {
+              debug: (message, metadata) => {
+                if (process.env.NODE_ENV !== "production") logger.info(message, metadata);
+              },
+              warn: (message, metadata) => logger.warn(message, metadata),
+            },
+            scope,
+            requestLimiter: hostRemoteMediaRequestLimiter,
+          });
   return {
     services,
     capabilities:
@@ -1307,6 +1377,7 @@ async function createWindowRemoteConnectionHandle(params: {
         return;
       }
       disposed = true;
+      topicResourceRelay?.dispose();
       closeListeners.clear();
       await disposeServiceResourcesAndWait(services);
       await disposeHostRemoteConnection(connection);
@@ -1519,6 +1590,18 @@ function createControllerRoutedTaskService(
         };
       }
       const value = Reflect.get(target, property, receiver) as unknown;
+      if (
+        typeof value === "function" &&
+        [
+          "getBotGroupTaskBlockReason",
+          "cancelBotGroupInput",
+          "submitBotGroupInput",
+          "readBotTopicSummaries",
+        ].includes(String(property))
+      ) {
+        return (params: Record<string, unknown>) =>
+          value.call(target, bindBotGroupTaskScope(params, attachmentScope));
+      }
       return typeof value === "function" ? value.bind(target) : value;
     },
   });
@@ -1669,6 +1752,7 @@ async function disposeHostResources(reason: string): Promise<HostShutdownResult>
   disposeHostResourcesInFlight = (async () => {
     logger.info(`disposing host resources, reason=${reason}`);
 
+    pluginSandboxRegistrationBridge.dispose();
     disposeLocalResourceTelemetry();
     disposeAttachedServicePorts();
     windowHostControllerRuntime.dispose();
@@ -1732,6 +1816,7 @@ function disposeHostResourcesBestEffort(reason: string): void {
   hasDisposedHostResources = true;
 
   logger.info(`disposing host resources, reason=${reason}`);
+  pluginSandboxRegistrationBridge.dispose();
   disposeLocalResourceTelemetry();
   disposeAttachedServicePorts();
   windowHostControllerRuntime.dispose();
@@ -1842,6 +1927,11 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     } else {
       pending.reject(new Error(msg.error ?? "本地视频预览路径授权失败"));
     }
+    return;
+  }
+
+  if (msg.type === HostMessageTypes.PluginSandboxRegisterResult) {
+    pluginSandboxRegistrationBridge.accept(msg);
     return;
   }
 
@@ -1967,6 +2057,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
         environmentKey: msg.environmentKey,
         status: "failed",
         error: "Remote Environment registration 已失效",
+        errorCode: "session-unavailable",
       });
       return;
     }
@@ -1995,6 +2086,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           environmentKey: msg.environmentKey,
           status: result.status,
           ...(result.errorMessage ? { error: result.errorMessage } : {}),
+          ...(result.errorCode ? { errorCode: result.errorCode } : {}),
         });
       })
       .catch((error: unknown) => {
@@ -2004,13 +2096,16 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           environmentKey: msg.environmentKey,
           status: "failed",
           error: error instanceof Error ? error.message : String(error),
+          errorCode: "host-execution-failed",
         });
       });
     return;
   }
 
   if (msg.type === HostMessageTypes.ConnectRemoteWorkspace) {
-    const workspacePath = msg.workspacePath ?? "/";
+    const workspacePath =
+      msg.workspacePath ??
+      (msg.target.kind === "server" ? msg.target.workspacePath?.trim() || "/" : "/");
     const workspaceIdentity =
       msg.workspaceIdentity ?? buildRemoteWorkspaceIdentity(workspacePath, msg.target);
     logger.info(
@@ -2290,8 +2385,22 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               settingService,
               hostApiNetworkTransport,
               authorizeLocalMediaPreviewPath,
+              // launch.md「The user's choice」：本机用户选择变化后，推给本窗口所有在线的远程 Host。
+              forwardDynamicWorkflowUserMode: (mode) => {
+                void pushDynamicWorkflowUserModeToRemoteHosts(
+                  windowRemoteConnectionRegistry
+                    .listReadyConnections()
+                    .map(({ target, services: remoteServices }) => ({
+                      target,
+                      zcodeAgentService: remoteServices.get(IZCodeAgentService),
+                    })),
+                  mode,
+                  (error) => logger.warn("remote dynamic workflow user mode forward failed", error),
+                );
+              },
+              registerPluginSandbox: pluginSandboxRegistrationBridge.register,
               runtimeProcessEnvPatch: msg.runtimeProcessEnvPatch,
-              agentRuntimeContext: {
+              agentTelemetry: {
                 getDeviceMid: () => msg.deviceMid,
                 runtimeSurface: "desktop_local_host",
               },
@@ -2345,8 +2454,8 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                   },
                 ]
               : [];
-        // Main 已按最近使用顺序把启动预热限制为 3 个；Host 必须显式消费这份
-        // 固定名单，不能让后续 task-list observer 再隐式扩大，也不能因单个失败扫描补位。
+        // Main 已把启动预热限制为 active workspace 1 个；Host 必须显式消费这份固定名单，
+        // 不能让后续 task-list observer 再隐式扩大，也不能因失败扫描补位。
         agentWarmupTargets.forEach((target, index) => {
           warmUpZCodeAgent(
             services,
@@ -2379,12 +2488,17 @@ async function setupRemoteConnection(
   onDidRemoteClose: (exitCode: number) => void,
   deployLockMode: DeployLockMode = "remote",
   signal?: AbortSignal,
+  topicResourceChannel?: ReturnType<typeof createWindowTopicResourceRelay>["channel"],
 ): Promise<HostRemoteConnection> {
+  if (target.kind === "server") {
+    throw new Error("server remote target must use the server remote connector");
+  }
   // 延迟加载 remote backend，避免 local 模式下因 ssh2 依赖链进入 asar 后崩溃
   const { createRemoteBackend, connectRemote, pickRemoteRuntimeEnv } =
     await import("@zcode/server/remote");
   const backend = await createRemoteBackend(target);
   const connection = await connectRemote(backend, {
+    topicResourceChannel,
     ...remoteAssets,
     remoteAssetNetwork,
     remoteRuntimeNetwork,
