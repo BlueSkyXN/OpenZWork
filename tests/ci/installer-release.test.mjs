@@ -27,8 +27,13 @@ async function fixture(t) {
   t.after(() => rm(cwd, { recursive: true, force: true }));
   await mkdir(join(cwd, "packages/desktop/dist"), { recursive: true });
   await writeFile(
-    join(cwd, "packages/desktop/package.json"),
+    join(cwd, "package.json"),
     JSON.stringify({ version: "3.15.1" }),
+  );
+  // Desktop 包没有独立版本；正式打包从根 package.json 取应用版本。
+  await writeFile(
+    join(cwd, "packages/desktop/package.json"),
+    JSON.stringify({ name: "@zcode/desktop", private: true }),
   );
   const git = (...args) => exec("git", [
     "-c", "core.hooksPath=", "-c", "commit.gpgsign=false",

@@ -47,7 +47,7 @@
 
 ## GitHub 正式安装包
 
-- `Installers.workflow_dispatch` 接受 `release_tag` 与 `release_commit`，必须同时为空或同时提供。为空时沿用现有 Preview 构建；正式构建要求 `v<版本>-openzwork` tag、完整 40 位提交 SHA、checkout HEAD 和 Desktop package version 一致，校验在依赖安装之前完成。
+- `Installers.workflow_dispatch` 接受 `release_tag` 与 `release_commit`，必须同时为空或同时提供。为空时沿用现有 Preview 构建；正式构建要求 `v<版本>-openzwork` tag、完整 40 位提交 SHA、checkout HEAD 和根 package version 一致（Desktop build-metadata 使用根版本），校验在依赖安装之前完成。
 - 正式构建显式使用 `ZCODE_ENV=production`、`ZCODE_PREVIEW_IDENTITY=0`；沿用未签名构建，不注入证书或开启公证。应用标识为 OpenZWork，不能将 Preview/_TEST 包改名后当作正式包。
 - 工作流可从主干执行并 checkout 已有版本 tag，因此工作流的 SHA 与源码 SHA 分别记录。GitHub run 的 `head_sha` 表示工作流来源，安装包来源以验证过的 `release_commit`、源码 tree 与 tag 为准。
 - 构建后生成 `RELEASE-MANIFEST.json`：记录源码 tag/SHA/tree、工作流 SHA/run、版本、平台、正式身份及实际安装文件的字节数和 SHA-256。只收集 dist 根目录的两份 macOS、一个 Windows 或四份 Linux 安装文件；不将 unpacked 目录中的辅助 exe 作为安装包发布。缺文件或空文件直接失败。

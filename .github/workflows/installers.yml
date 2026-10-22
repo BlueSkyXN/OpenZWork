@@ -89,7 +89,8 @@ jobs:
           const git = async (...args) => (await exec('git', args)).stdout.trim();
           const head = await git('rev-parse', 'HEAD');
           const tagged = await git('rev-parse', `refs/tags/${tag}^{commit}`);
-          const { version } = JSON.parse(await readFile('packages/desktop/package.json', 'utf8'));
+          // electron-builder 的 build-metadata 从根 package.json 取得应用版本。
+          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
           if (head !== expected || tagged !== expected || tag !== `v${version}-openzwork`) {
             throw new Error('Release tag, expected commit, checkout and package version must match');
           }
@@ -153,7 +154,7 @@ jobs:
           if (process.env.ZCODE_ENV !== 'production' || process.env.ZCODE_PREVIEW_IDENTITY !== '0') {
             throw new Error('Release manifest requires production identity');
           }
-          const { version } = JSON.parse(await readFile('packages/desktop/package.json', 'utf8'));
+          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
           const extensions = { mac: ['dmg', 'zip'], win: ['exe'], linux: ['AppImage', 'deb', 'rpm', 'pkg.tar.zst'] }[process.env.RELEASE_OS];
           if (!extensions) throw new Error('Unsupported release platform');
           const root = 'packages/desktop/dist';
