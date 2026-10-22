@@ -6,19 +6,29 @@ on:
     branches: [main]
   workflow_dispatch:
     inputs:
+      source_commit:
+        description: Immutable source commit to validate (empty uses the event commit)
+        type: string
+        default: ""
       repair:
         description: Run only the focused Windows repair regressions
         type: boolean
         default: false
 
+env:
+  SOURCE_COMMIT: ${{ inputs.source_commit }}
+
 concurrency:
-  group: extended-${{ github.workflow }}-${{ github.ref }}
+  group: extended-${{ github.workflow }}-${{ inputs.source_commit || github.ref }}
   cancel-in-progress: true
 
 jobs:
   historical-tests:
     if: inputs.repair != true
     name: full suite (${{ matrix.platform }})
+    env:
+      # 原生 SQLite/归档测试在 Windows threads 中多次零散超时，使用已有进程池模式。
+      ZCODE_TEST_POOL: ${{ matrix.platform == 'windows-amd64' && 'forks' || 'threads' }}
     strategy:
       fail-fast: false
       matrix:
@@ -35,6 +45,8 @@ jobs:
     timeout-minutes: 130
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.source_commit || github.sha }}
       - uses: pnpm/action-setup@v6.1.0
         with:
           version: 11.28.6
@@ -42,6 +54,26 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      - name: Record validation source
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          const expected = process.env.SOURCE_COMMIT || '';
+          const sourceCommit = await git('rev-parse', 'HEAD');
+          if (expected && (!/^[a-f0-9]{40}$/.test(expected) || sourceCommit !== expected)) {
+            throw new Error('Validation checkout must match the full requested source commit');
+          }
+          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null };
+          await mkdir('.run-logs/full-groups', { recursive: true });
+          await writeFile('.run-logs/full-groups/source.json', JSON.stringify(record, null, 2) + '\n');
+          console.log(JSON.stringify(record));
+          NODE
 
       # 完整历史测试包含真实 Electron 字节码等运行时测试，执行依赖安装脚本。
       - name: Install dependencies with runtime scripts
@@ -56,7 +88,7 @@ jobs:
         uses: actions/cache@v6.1.0
         with:
           path: apps/zcode-cli/.turbo
-          key: turbo-${{ runner.os }}-${{ github.sha }}
+          key: turbo-${{ runner.os }}-${{ inputs.source_commit || github.sha }}
           restore-keys: turbo-${{ runner.os }}-
 
       - name: Prepare Agent workspace
@@ -92,6 +124,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.source_commit || github.sha }}
       - uses: pnpm/action-setup@v6.1.0
         with:
           version: 11.28.6
@@ -99,6 +133,26 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      - name: Record validation source
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          const expected = process.env.SOURCE_COMMIT || '';
+          const sourceCommit = await git('rev-parse', 'HEAD');
+          if (expected && (!/^[a-f0-9]{40}$/.test(expected) || sourceCommit !== expected)) {
+            throw new Error('Validation checkout must match the full requested source commit');
+          }
+          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null };
+          await mkdir('.run-logs/full-groups', { recursive: true });
+          await writeFile('.run-logs/full-groups/source.json', JSON.stringify(record, null, 2) + '\n');
+          console.log(JSON.stringify(record));
+          NODE
       - name: Install dependencies without runtime scripts
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Build workspace declarations
@@ -138,6 +192,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.source_commit || github.sha }}
       - uses: pnpm/action-setup@v6.1.0
         with:
           version: 11.28.6
@@ -145,6 +201,26 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      - name: Record validation source
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          const expected = process.env.SOURCE_COMMIT || '';
+          const sourceCommit = await git('rev-parse', 'HEAD');
+          if (expected && (!/^[a-f0-9]{40}$/.test(expected) || sourceCommit !== expected)) {
+            throw new Error('Validation checkout must match the full requested source commit');
+          }
+          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null };
+          await mkdir('.run-logs/full-groups', { recursive: true });
+          await writeFile('.run-logs/full-groups/source.json', JSON.stringify(record, null, 2) + '\n');
+          console.log(JSON.stringify(record));
+          NODE
       - name: Install dependencies without runtime scripts
         id: install
         run: pnpm install --frozen-lockfile --ignore-scripts

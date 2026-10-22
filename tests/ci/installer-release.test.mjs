@@ -13,9 +13,12 @@ const workflow = parse(
   await readFile(new URL("../../.github/workflows/installers.yml", import.meta.url), "utf8"),
 );
 const steps = workflow.jobs.installer.steps;
+const extended = parse(
+  await readFile(new URL("../../.github/workflows/extended-checks.yml", import.meta.url), "utf8"),
+);
 
-function script(name) {
-  const step = steps.find((entry) => entry.name === name);
+function script(name, sourceSteps = steps) {
+  const step = sourceSteps.find((entry) => entry.name === name);
   assert.ok(step, name);
   const match = step.run.match(/^node --input-type=module <<'NODE'\n([\s\S]*)\nNODE\s*$/);
   assert.ok(match, `${name}: executable Node script`);
@@ -64,8 +67,8 @@ async function fixture(t) {
   return {
     cwd,
     sha,
-    run: (name, overrides = {}) => exec(
-      process.execPath, ["--input-type=module", "--eval", script(name)],
+    run: (name, overrides = {}, sourceSteps = steps) => exec(
+      process.execPath, ["--input-type=module", "--eval", script(name, sourceSteps)],
       { cwd, env: { ...env, ...overrides } },
     ),
   };
@@ -83,6 +86,28 @@ test("release source validation accepts the exact tag and rejects incomplete or 
     { RELEASE_TAG: "v3.16.1-openzwork" },
     { RELEASE_TAG: "main" },
   ]) await assert.rejects(f.run(name, overrides));
+});
+
+test("frozen-source validation records the checked commit and rejects a mismatched source", async (t) => {
+  const f = await fixture(t);
+  const name = "Record validation source";
+  const historical = extended.jobs["historical-tests"];
+  const sourceSteps = historical.steps;
+  await f.run(name, { SOURCE_COMMIT: f.sha, ZCODE_TEST_POOL: "forks" }, sourceSteps);
+  const record = JSON.parse(await readFile(join(f.cwd, ".run-logs/full-groups/source.json"), "utf8"));
+  assert.equal(record.sourceCommit, f.sha);
+  assert.match(record.sourceTree, /^[a-f0-9]{40}$/);
+  assert.equal(record.workflowCommit, "a".repeat(40));
+  assert.equal(record.testPool, "forks");
+  await assert.rejects(f.run(name, { SOURCE_COMMIT: "b".repeat(40) }, sourceSteps));
+  await assert.rejects(f.run(name, { SOURCE_COMMIT: "main" }, sourceSteps));
+  await f.run(name, { SOURCE_COMMIT: "" }, sourceSteps);
+  for (const job of Object.values(extended.jobs)) {
+    assert.equal(job.steps[0].with.ref, "${{ inputs.source_commit || github.sha }}");
+    assert.equal(script(name, job.steps), script(name, sourceSteps));
+    assert.ok(job.steps.findIndex(step => step.name === name) < job.steps.findIndex(step => step.run?.startsWith("pnpm install")));
+  }
+  assert.equal(historical.env.ZCODE_TEST_POOL, "${{ matrix.platform == 'windows-amd64' && 'forks' || 'threads' }}");
 });
 
 test("production installers use verified tag sources before installing dependencies", () => {

@@ -34,7 +34,7 @@
 2. 保留顺序：checkout、安装 pnpm、setup-node、显式安装依赖。`pnpm/action-setup` 不承担仓库依赖安装，不替换成 `pnpm/setup`。
 3. 检查型 CI 的安装仍为 `pnpm install --frozen-lockfile --ignore-scripts`；安装包工作流仍执行完整的 `pnpm install --frozen-lockfile`。
 4. setup-node 继续显式 `cache: pnpm`；pnpm/action-setup 的内置缓存保持默认关闭，不新增第二份 pnpm 缓存。
-5. turbo 与 Electron/electron-builder 的缓存路径、key、restore-keys 不变。
+5. turbo 与 Electron/electron-builder 的缓存路径与恢复前缀保持不变；固定源码复验时，Extended 的 turbo 外层缓存 key 使用源码 SHA，默认运行仍使用事件 SHA。
 6. 安装包继续以 `openzwork-installer-${{ matrix.platform }}` 聚合上传多种文件，保留全部安装包 glob 与 `if-no-files-found: error`；正式构建额外上传来源清单。显式 `archive: true`，不启用 upload-artifact v7 新增的单文件直传模式。
 7. Node.js 24 Action 要求 Actions Runner 至少 `2.327.1`。当前使用 GitHub 托管 runner；若以后迁移到自托管 runner，必须先核对 runner 版本。checkout 的 Docker container action 认证操作另要求至少 `2.329.0`，当前工作流无此操作。
 8. checkout v7 对 `pull_request_target`/`workflow_run` 的 fork checkout 安全限制不应绕过；当前工作流不使用这两种触发器。
@@ -45,6 +45,8 @@
 13. 扩展单测执行完整依赖安装，准备真实 Electron；Main 类型审计可使用无安装脚本的依赖安装。扩展任务不成为 Installers 或核心 CI 的 `needs` 依赖。
 14. v3.16.1 的 Main、remote Main 和 shared testing 继续进入根应用类型检查。历史 Desktop E2E 类型审计在扩展工作流中使用现有配置独立执行，失败上传原始日志；核心工作流不等待该审计。
 15. Server CLI 的 `releaseInstaller.test.ts` 与 `cli.test.ts` 包含真实归档创建、校验、解压及安装，应沿用 `fork-isolated` 的串行文件调度。两次 Windows 完整运行曾在这两份文件的不同归档安装用例上分别触发 30 秒超时；调整测试执行隔离，不改变产品逻辑、用例内的并发安装、断言或超时值。测试发现回归必须确认两份文件各执行一次且进入隔离组。
+16. Windows 完整套件使用现有 `ZCODE_TEST_POOL=forks` 模式（普通池最多两个进程），其余平台保留 threads。归档隔离后又出现 SQLite 原生迁移测试超时，完整 Windows 验证统一使用进程边界，避免继续逐文件调整。测试发现范围、内部并发场景、30 秒用例时限和七组时限均不改变；执行模式是否有效由真实完整报告确认。
+17. Extended 手动复验支持可选 `source_commit`：非空时必须是完整 40 位 SHA，所有 job checkout 该提交并在安装依赖前核对 HEAD。将实际源码 SHA/tree、工作流 SHA 和测试池写入结果目录的 `source.json`。该入口可以在不移动 tag 的前提下，使用更新的执行流程验证已冻结源码；发布证据必须分别记录源码与工作流提交。
 
 ## GitHub 正式安装包
 
