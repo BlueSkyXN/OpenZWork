@@ -1357,16 +1357,17 @@ describe("SubagentsSection", () => {
         }),
     );
 
-    await renderInteractiveSubagentsSection();
-    await waitFor(() => {
-      expect(capturedThoughtLevelControls.at(-1)?.option).toMatchObject({
-        currentValue: "high",
-      });
+    // 初次 effect 必须先提交，避免它在测试触发保存后把乐观值覆盖回旧配置。
+    await act(async () => {
+      await renderInteractiveSubagentsSection();
+    });
+    expect(capturedThoughtLevelControls.at(-1)?.option).toMatchObject({
+      currentValue: "high",
     });
 
     const onThoughtLevelChange = capturedThoughtLevelControls.at(-1)?.onValueChange;
     expect(onThoughtLevelChange).toBeTypeOf("function");
-    act(() => {
+    await act(async () => {
       (onThoughtLevelChange as (value: string) => void)("max");
     });
 

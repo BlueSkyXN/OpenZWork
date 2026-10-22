@@ -1,19 +1,37 @@
 name: Installers
 
-# M5：CI 产出 mac-arm64 / win-amd64 / linux-amd64 三平台安装包（unsigned artifact）。
-# push 触发覆盖 wp* 分支便于在 feature 分支上先行验证打包链；正式发布后续再收敛触发面。
+# CI 默认产出 Preview；手动指定 tag 与完整 SHA 时产出正式身份的未签名安装包。
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing v<version>-openzwork tag for a production installer
+        type: string
+        default: ""
+      release_commit:
+        description: Expected full source commit SHA of the release tag
+        type: string
+        default: ""
   push:
     branches: [main, "wp**"]
 
+permissions:
+  contents: read
+
 concurrency:
-  group: installers-${{ github.workflow }}-${{ github.ref }}
+  group: installers-${{ github.workflow }}-${{ inputs.release_tag || github.ref }}
   cancel-in-progress: true
 
 jobs:
   installer:
     name: installer (${{ matrix.platform }})
+    env:
+      ZCODE_ENV: ${{ inputs.release_tag && 'production' || '' }}
+      ZCODE_PREVIEW_IDENTITY: "0"
+      ZCODE_ENABLE_MAC_SIGN: "0"
+      ZCODE_ENABLE_WINDOWS_SIGN: "0"
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      RELEASE_COMMIT: ${{ inputs.release_commit }}
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +58,9 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6.1.0
         with:
@@ -49,6 +70,32 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      # Workflow 可以来自更新的主干，源码必须固定到已有 tag；不能把 run.head_sha 当源码 SHA。
+      - name: Verify release source
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { readFile } from 'node:fs/promises';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const tag = process.env.RELEASE_TAG || '';
+          const expected = process.env.RELEASE_COMMIT || '';
+          if (!tag && !expected) process.exit(0);
+          if (!/^v\d+\.\d+\.\d+-openzwork$/.test(tag) || !/^[0-9a-f]{40}$/.test(expected)) {
+            throw new Error('Production installers require a release tag and its full commit SHA');
+          }
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          const head = await git('rev-parse', 'HEAD');
+          const tagged = await git('rev-parse', `refs/tags/${tag}^{commit}`);
+          // electron-builder 的 build-metadata 从根 package.json 取得应用版本。
+          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+          if (head !== expected || tagged !== expected || tag !== `v${version}-openzwork`) {
+            throw new Error('Release tag, expected commit, checkout and package version must match');
+          }
+          console.log(JSON.stringify({ tag, sourceCommit: head, version }));
+          NODE
 
       # pacman 的 .MTREE 生成依赖 bsdtar；runner 缺失时 fpm 返回 127，必须显式安装并提前检查。
       - name: Install Linux packaging toolchain
@@ -87,6 +134,61 @@ jobs:
         env:
           ZCODE_SKIP_REMOTE_ASSETS: "1"
 
+      - name: Record release installer provenance
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          RELEASE_PLATFORM: ${{ matrix.platform }}
+          RELEASE_OS: ${{ matrix.bundle-os }}
+          RELEASE_ARCH: ${{ matrix.bundle-arch }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { createHash } from 'node:crypto';
+          import { createReadStream } from 'node:fs';
+          import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          if (process.env.ZCODE_ENV !== 'production' || process.env.ZCODE_PREVIEW_IDENTITY !== '0') {
+            throw new Error('Release manifest requires production identity');
+          }
+          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+          const extensions = { mac: ['dmg', 'zip'], win: ['exe'], linux: ['AppImage', 'deb', 'rpm', 'pkg.tar.zst'] }[process.env.RELEASE_OS];
+          if (!extensions) throw new Error('Unsupported release platform');
+          const root = 'packages/desktop/dist';
+          // Linux 各 target 按发行格式将 x64 映射为 x86_64 / amd64；沿用 bundle 的架构别名。
+          const arch = process.env.RELEASE_ARCH;
+          const aliases = process.env.RELEASE_OS === 'linux' && arch === 'x64' ? ['x64', 'x86_64', 'amd64'] : [arch];
+          const files = (await readdir(root, { withFileTypes: true })).filter(entry => entry.isFile()).map(entry => entry.name);
+          const assets = [];
+          for (const ext of extensions) {
+            const candidates = files.filter(name => aliases.some(alias => name === `OpenZWork-${version}-${process.env.RELEASE_OS}-${alias}.${ext}`));
+            if (candidates.length !== 1) throw new Error(`Expected one ${ext} installer, found ${candidates.length}`);
+            const [name] = candidates;
+            const path = join(root, name);
+            const info = await stat(path);
+            if (!info.isFile() || info.size === 0) throw new Error(`Missing or empty installer: ${name}`);
+            const hash = createHash('sha256');
+            for await (const chunk of createReadStream(path)) hash.update(chunk);
+            assets.push({ name, size: info.size, sha256: hash.digest('hex') });
+          }
+          const manifest = {
+            sourceTag: process.env.RELEASE_TAG,
+            sourceCommit: await git('rev-parse', 'HEAD'),
+            sourceTree: await git('rev-parse', 'HEAD^{tree}'),
+            workflowCommit: process.env.GITHUB_WORKFLOW_SHA,
+            runUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            version, platform: process.env.RELEASE_PLATFORM,
+            productName: 'OpenZWork', environment: 'production', codeSigning: 'unsigned',
+            assets,
+          };
+          if (manifest.sourceCommit !== process.env.RELEASE_COMMIT) throw new Error('Source changed during build');
+          await writeFile(join(root, 'RELEASE-MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
+          console.log(JSON.stringify(manifest, null, 2));
+          NODE
+
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v7.0.1
         with:
@@ -107,4 +209,5 @@ jobs:
             packages/desktop/dist/**/*.deb
             packages/desktop/dist/**/*.rpm
             packages/desktop/dist/**/*.pkg.tar.zst
+            packages/desktop/dist/RELEASE-MANIFEST.json
           if-no-files-found: error

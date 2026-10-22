@@ -128,6 +128,7 @@ test("installer uploads remain named multi-file archives and fail on missing fil
   const expectedPaths = ["*", "**/*"].flatMap((glob) =>
     extensions.map((extension) => `packages/desktop/dist/${glob}.${extension}`),
   );
+  expectedPaths.push("packages/desktop/dist/RELEASE-MANIFEST.json");
   assert.deepEqual(upload.with.path.trim().split("\n"), expectedPaths);
 });
 
@@ -140,7 +141,20 @@ test("workflow triggers and platform matrices remain unchanged", () => {
     workflow_dispatch: null,
   });
   assert.deepEqual(installers.on, {
-    workflow_dispatch: null,
+    workflow_dispatch: {
+      inputs: {
+        release_tag: {
+          description: "Existing v<version>-openzwork tag for a production installer",
+          type: "string",
+          default: "",
+        },
+        release_commit: {
+          description: "Expected full source commit SHA of the release tag",
+          type: "string",
+          default: "",
+        },
+      },
+    },
     push: { branches: ["main", "wp**"] },
   });
   for (const job of [ci.jobs.checks, installers.jobs.installer]) {

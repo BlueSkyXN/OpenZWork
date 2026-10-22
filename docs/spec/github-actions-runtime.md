@@ -30,12 +30,12 @@
 
 ## 行为与兼容性规则
 
-1. 保留触发条件、并发取消策略、平台矩阵、timeout、业务命令和失败传播；不加入 `continue-on-error` 或警告隐藏配置。
+1. 保留自动触发条件、平台矩阵、timeout、业务命令和失败传播；手动正式构建按下述 tag 合同执行，同 tag 的新运行取消旧运行，不同 tag 互不取消。不加入 `continue-on-error` 或警告隐藏配置。
 2. 保留顺序：checkout、安装 pnpm、setup-node、显式安装依赖。`pnpm/action-setup` 不承担仓库依赖安装，不替换成 `pnpm/setup`。
 3. 检查型 CI 的安装仍为 `pnpm install --frozen-lockfile --ignore-scripts`；安装包工作流仍执行完整的 `pnpm install --frozen-lockfile`。
 4. setup-node 继续显式 `cache: pnpm`；pnpm/action-setup 的内置缓存保持默认关闭，不新增第二份 pnpm 缓存。
 5. turbo 与 Electron/electron-builder 的缓存路径、key、restore-keys 不变。
-6. 安装包继续以 `openzwork-installer-${{ matrix.platform }}` 聚合上传多种文件，保留全部 glob 与 `if-no-files-found: error`。显式 `archive: true`，不启用 upload-artifact v7 新增的单文件直传模式。
+6. 安装包继续以 `openzwork-installer-${{ matrix.platform }}` 聚合上传多种文件，保留全部安装包 glob 与 `if-no-files-found: error`；正式构建额外上传来源清单。显式 `archive: true`，不启用 upload-artifact v7 新增的单文件直传模式。
 7. Node.js 24 Action 要求 Actions Runner 至少 `2.327.1`。当前使用 GitHub 托管 runner；若以后迁移到自托管 runner，必须先核对 runner 版本。checkout 的 Docker container action 认证操作另要求至少 `2.329.0`，当前工作流无此操作。
 8. checkout v7 对 `pull_request_target`/`workflow_run` 的 fork checkout 安全限制不应绕过；当前工作流不使用这两种触发器。
 9. 依赖目录由固定版本 pnpm 按 lockfile 安装。干净 runner 不从旧 `.ignored` 目录恢复依赖，不使用安装后目录搬移补救版本解析。
@@ -44,6 +44,25 @@
 12. 历史套件加载、实际断言和 E2E 类型诊断在扩展工作流中报告；核心 CI 不等待它们。扩展检查保留失败退出码并上传日志和结果，不使用 `continue-on-error` 伪装成功。
 13. 扩展单测执行完整依赖安装，准备真实 Electron；Main 类型审计可使用无安装脚本的依赖安装。扩展任务不成为 Installers 或核心 CI 的 `needs` 依赖。
 14. v3.16.1 的 Main、remote Main 和 shared testing 继续进入根应用类型检查。历史 Desktop E2E 类型审计在扩展工作流中使用现有配置独立执行，失败上传原始日志；核心工作流不等待该审计。
+15. Server CLI 的 `releaseInstaller.test.ts` 与 `cli.test.ts` 包含真实归档创建、校验、解压及安装，应沿用 `fork-isolated` 的串行文件调度。两次 Windows 完整运行曾在这两份文件的不同归档安装用例上分别触发 30 秒超时；调整测试执行隔离，不改变产品逻辑、用例内的并发安装、断言或超时值。测试发现回归必须确认两份文件各执行一次且进入隔离组。
+
+## GitHub 正式安装包
+
+- `Installers.workflow_dispatch` 接受 `release_tag` 与 `release_commit`，必须同时为空或同时提供。为空时沿用现有 Preview 构建；正式构建要求 `v<版本>-openzwork` tag、完整 40 位提交 SHA、checkout HEAD 和根 package version 一致（Desktop build-metadata 使用根版本），校验在依赖安装之前完成。
+- 正式构建显式使用 `ZCODE_ENV=production`、`ZCODE_PREVIEW_IDENTITY=0`；沿用未签名构建，不注入证书或开启公证。应用标识为 OpenZWork，不能将 Preview/_TEST 包改名后当作正式包。
+- 工作流可从主干执行并 checkout 已有版本 tag，因此工作流的 SHA 与源码 SHA 分别记录。GitHub run 的 `head_sha` 表示工作流来源，安装包来源以验证过的 `release_commit`、源码 tree 与 tag 为准。
+- 构建后生成 `RELEASE-MANIFEST.json`：记录源码 tag/SHA/tree、工作流 SHA/run、版本、平台、正式身份及实际安装文件的字节数和 SHA-256。只收集 dist 根目录的两份 macOS、一个 Windows 或四份 Linux 安装文件；不将 unpacked 目录中的辅助 exe 作为安装包发布。缺文件或空文件直接失败。
+- Linux x64 的各发行格式采用 builder 实际架构名：AppImage/rpm 为 `x86_64`、deb 为 `amd64`、pacman 为 `x64`。按版本、平台、允许的架构别名和扩展名从根目录匹配，每种格式必须恰有一个文件；歧义也直接失败。
+- GitHub Release 发布由用户授权后的交付操作执行；本工作流仅构建并上传 Actions artifact，不自动发布、移动 tag 或访问上游发布平台。
+
+```mermaid
+flowchart LR
+    T[tag 与预期提交] --> V[Installers 核对源码及版本]
+    V --> B[production 模式构建]
+    B --> M[安装文件与来源清单]
+    M --> A[Actions artifact]
+    A --> R[校验后发布 GitHub Release]
+```
 
 ## 验收场景与验证
 
@@ -53,6 +72,7 @@
 - 必须实际执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`；既有 lint warning 不纳入本次清理。
 - 真实 GitHub 运行需在提交并推送后验证：各平台 Action 初始化、pnpm 缓存、turbo/Electron 缓存和 artifact 上传成功，且不再出现本次涉及的 Node.js 20 Action 弃用提示。
 - 旧运行的 Annotations 是历史记录，不因修改 YAML 而被清除。真实 runner 的结果必须关联当前候选提交；本地验证不能代替该证据。
+- 正式构建回归直接执行工作流内的校验与清单脚本，验证缺少输入、错误 SHA、错误版本会拒绝，正常 tag 可通过，安装包哈希精确且排除 unpacked 文件。两版实际安装包必须在云端以正式身份重建后才发布。
 
 ## 官方依据
 
