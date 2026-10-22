@@ -72,6 +72,29 @@ test("core CI cannot be hidden behind historical collection or optional outcomes
   );
 });
 
+test("real release archive regressions remain discovered once in the isolated process pool", async () => {
+  const files = [
+    "packages/zcode-server-cli/test/releaseInstaller.test.ts",
+    "packages/zcode-server-cli/test/cli.test.ts",
+  ];
+  const dir = await mkdtemp(join(tmpdir(), "openzwork-release-scope-"));
+  try {
+    const output = join(dir, "discovered.json");
+    await promisify(execFile)(process.execPath, [
+      join(root, "node_modules/vitest/vitest.mjs"),
+      "list", ...files, "--filesOnly", `--json=${output}`,
+    ], { cwd: root });
+    const discovered = JSON.parse(await readFile(output, "utf8"));
+    assert.deepEqual(
+      discovered.map(({ file }) => relative(root, file).split(sep).join("/")).toSorted(),
+      files.toSorted(),
+    );
+    for (const entry of discovered) assert.equal(entry.projectName, "fork-isolated");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test("project MCP regression runs after required runtime artifacts are built", async () => {
   const steps = (await workflow("ci.yml")).jobs.checks.steps;
   const build = steps.findIndex(
