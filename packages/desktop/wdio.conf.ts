@@ -1232,6 +1232,9 @@ export const config: WebdriverIO.Config = {
     try {
       await measureE2ELifecyclePhase("before-session", { cid, specs }, async () => {
         await cleanupE2EElectronProcesses("beforeSession-start", { requireExit: true });
+        if (specs.some((spec) => spec.endsWith("conversation-session-r3-subagent.test.ts"))) {
+          process.env.ZCODE_DYNAMIC_WORKFLOW_MODE = "alwaysOn";
+        }
         configureZCodeAgentServerEnv();
         e2eReporter.beforeSession(cid, specs);
         await resetE2EHome(specs);

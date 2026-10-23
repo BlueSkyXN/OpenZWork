@@ -327,6 +327,18 @@
         "packages/services/test/processTreeTerminator.windows.test.ts",
         "packages/zcode-server-cli/test/supervisor.test.ts"
       ]
+    },
+    {
+      "capability": "upstream-3.16.2-and-provider-lifecycle",
+      "files": [
+        "packages/services/src/task-facts/contract.test.ts",
+        "packages/ui/src/side-pane-full-view/contract.test.ts",
+        "packages/ui/test/sidePaneFullViewModel.test.ts",
+        "packages/ui/test/useSidePaneFullView.test.ts",
+        "packages/ui/test/v4SessionPaneOwner.test.ts",
+        "packages/shared/test/dynamicWorkflowFeature.test.ts",
+        "packages/services/test/providerProvisioningRealStores.test.ts"
+      ]
     }
   ]
 }

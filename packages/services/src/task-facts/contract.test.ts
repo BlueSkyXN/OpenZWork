@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TaskFactSource, TaskFactStore, TaskFactsContract } from "#src/task-facts/contract.js";
 import { createTaskFacts } from "#src/task-facts/index.js";
+import { repairSubagentTaskIndex } from "#src/task-facts/repairSubagentTaskIndex.js";
 const target = { workspacePath: "/repo", taskId: "session" };
 const meta = {
   ...target,
@@ -27,6 +28,47 @@ function fixture() {
   return { store, source, changed, port };
 }
 describe("task-facts contract", () => {
+  it.each(["subagent_child", "workflow_child", "selection_side_chat", "nested_workflow_child"])(
+    "只清理同一 workspace 的 %s 派生索引",
+    async (sessionKind) => {
+      const workspace = { workspacePath: "/repo", workspaceIdentity: "remote:server:owner:/repo" };
+      const removeSubagentIndexRow = vi.fn(async () => {});
+      const onRemoved = vi.fn();
+      const listSessions = vi.fn(async () => [
+        { sessionId: "child", sessionKind, workspace },
+        { sessionId: "fork", sessionKind: "fork", workspace },
+        { sessionId: "parent", sessionKind: "workflow_parent", workspace },
+        { sessionId: "unknown", workspace },
+        {
+          sessionId: "foreign",
+          sessionKind,
+          workspace: { ...workspace, workspaceIdentity: "remote:server:other:/repo" },
+        },
+      ]);
+      await repairSubagentTaskIndex({
+        target: workspace,
+        visibleSessionIds: new Set(["visible"]),
+        agentService: { listSessions },
+        taskIndexRepo: {
+          listTaskMetas: async () =>
+            ["child", "fork", "parent", "unknown", "foreign", "visible"].map((taskId) => ({
+              taskId,
+            })),
+          removeSubagentIndexRow,
+        },
+        isCurrent: () => true,
+        onRemoved,
+      });
+      expect(listSessions).toHaveBeenCalledWith({
+        ...workspace,
+        sessionIds: ["child", "fork", "parent", "unknown", "foreign"],
+        runtimePolicy: "existing-only",
+      });
+      expect(removeSubagentIndexRow.mock.calls).toEqual([[{ ...workspace, taskId: "child" }]]);
+      expect(onRemoved).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it("discards a refresh response overtaken by a newer streamed fact", async () => {
     const { port, source, store } = fixture();
     let release!: () => void;
