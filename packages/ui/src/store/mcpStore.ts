@@ -66,6 +66,7 @@ interface McpStoreState {
   currentProjectPath: string;
   currentWorkspaceIdentity?: string;
   currentAuthorityKey?: string;
+  currentDirectoryService: McpDirectoryService | null;
   enabledStates: Record<string, boolean>;
   deletedPreloadMcpServers: Set<string>;
   isConfigLoaded: boolean;
@@ -166,13 +167,21 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
     directoryService?: McpDirectoryService | null,
     workspaceIdentity?: string | null,
   ): McpDirectoryService | null {
-    const effectiveWorkspaceIdentity = workspaceIdentity ?? get().currentWorkspaceIdentity;
+    const state = get();
+    // OW-P001：Source 用户级设置没有 workspace identity，目录服务必须与所选
+    // authority 一起保留；不能使用当前 workspace 的默认服务保存另一台主机的配置。
+    if (state.currentAuthorityKey?.trim()) {
+      const selectedService = directoryService ?? state.currentDirectoryService;
+      if (!selectedService) throw new Error("MCP Source 目录服务尚未就绪，请重新连接所选 Source。");
+      return selectedService;
+    }
+    const effectiveWorkspaceIdentity = workspaceIdentity ?? state.currentWorkspaceIdentity;
     if (!effectiveWorkspaceIdentity?.trim()) {
       // 本地 workspace 仍要走 desktop platform 路径，才能执行旧 common MCP
       // 到用户级 ZCode Agent MCP 的迁移；目录服务只用于远端 workspace 覆盖路由。
       return null;
     }
-    return directoryService ?? mcpDirectoryService;
+    return directoryService ?? state.currentDirectoryService ?? mcpDirectoryService;
   }
 
   function commitState(partial: {
@@ -261,6 +270,7 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
     currentProjectPath: "",
     currentWorkspaceIdentity: undefined,
     currentAuthorityKey: undefined,
+    currentDirectoryService: null,
     enabledStates: {},
     deletedPreloadMcpServers: new Set(),
     isConfigLoaded: false,
@@ -311,10 +321,16 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       }
       // 等待上一 workspace load 期间可能再次切换；目录服务必须按等待后的
       // 最新 identity 重新选择，不能拿 B 的 remote service 去读取 C 的路径。
-      const activeDirectoryService = resolveMcpDirectoryService(
-        directoryService,
-        latestWorkspaceIdentity,
-      );
+      let activeDirectoryService: McpDirectoryService | null;
+      try {
+        activeDirectoryService = resolveMcpDirectoryService(
+          directoryService,
+          latestWorkspaceIdentity,
+        );
+      } catch (error) {
+        logger.warn("[mcpStore] MCP directory unavailable", String(error));
+        return false;
+      }
       if (loadMcpPromise && loadMcpWorkspaceKey === latestWorkspaceKey) {
         return await loadMcpPromise;
       }
@@ -388,6 +404,9 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
           directoryService,
           normalizedAuthorityKey,
         );
+      } else if (directoryService !== undefined) {
+        // 同一 Source 重连会替换代理，后续保存必须跟随新服务。
+        set({ currentDirectoryService: directoryService });
       }
 
       return await get().loadMcpFromUserDirectory(
@@ -643,6 +662,7 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         currentProjectPath: path,
         currentWorkspaceIdentity: normalizedWorkspaceIdentity,
         currentAuthorityKey: normalizedAuthorityKey,
+        currentDirectoryService: directoryService ?? null,
         nativeServers: nextNativeServers,
         statusSnapshots: {},
         servers: buildServerList(

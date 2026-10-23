@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  setMcpStoreDirectoryService,
-  setMcpStorePlatform,
-  useMcpStore,
-} from "@/store/mcpStore.js";
+import { setMcpStoreDirectoryService, setMcpStorePlatform, useMcpStore } from "@/store/mcpStore.js";
 import { DEFAULT_MCP_CONFIG, MCP_CONFIG_KEY } from "@/store/mcpStoreHelpers.js";
 import { logger } from "@/logger.js";
 
@@ -33,11 +29,127 @@ describe("mcpStore", () => {
       statusSnapshots: {},
       currentProjectPath: "",
       currentWorkspaceIdentity: undefined,
+      currentAuthorityKey: undefined,
+      currentDirectoryService: null,
       enabledStates: {},
       deletedPreloadMcpServers: new Set(),
       isConfigLoaded: false,
       currentSessionId: null,
     }));
+  });
+
+  function sourceServices() {
+    const platform = {
+      loadMcpFromUserDirectory: vi.fn(async () => ({ servers: [] })),
+      saveMcpToUserDirectory: vi.fn(async () => ({ success: true })),
+      migrateLegacyCommonMcp: vi.fn(async () => ({
+        servers: {},
+        totalCount: 0,
+        importedCount: 0,
+        skippedCount: 0,
+      })),
+    };
+    const directory = () => ({
+      loadMcpFromUserDirectory: vi.fn(async () => ({ servers: [] })),
+      saveMcpToUserDirectory: vi.fn(async () => {}),
+    });
+    vi.stubGlobal("window", {});
+    setMcpStorePlatform(platform);
+    return { platform, directory };
+  }
+
+  it("OW-P001：无 workspace identity 的 Source 用户设置读写绑定所选服务", async () => {
+    const { platform, directory } = sourceServices();
+    const selected = directory();
+    const workspaceDefault = directory();
+    setMcpStoreDirectoryService(workspaceDefault);
+    const state = useMcpStore.getState();
+    expect(
+      await state.ensureLoadedForWorkspace(
+        "/same/user",
+        selected,
+        undefined,
+        "source-settings:remote",
+      ),
+    ).toBe(true);
+    // 默认 workspace 服务变化不能把 Source 设置的后续保存改路由。
+    setMcpStoreDirectoryService(directory());
+    await state.addScopedMcpServer("zcodeagentmcp", "source-only", {
+      type: "http",
+      url: "https://source.example.test/mcp",
+    });
+    const server = useMcpStore.getState().servers.find((item) => item.name === "source-only");
+    expect(server).toBeDefined();
+    await state.toggleServer(server!.id, false);
+    expect(selected.loadMcpFromUserDirectory).toHaveBeenCalledWith({ workspacePath: "/same/user" });
+    expect(selected.saveMcpToUserDirectory).toHaveBeenCalledTimes(2);
+    expect(workspaceDefault.loadMcpFromUserDirectory).not.toHaveBeenCalled();
+    expect(workspaceDefault.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(platform.loadMcpFromUserDirectory).not.toHaveBeenCalled();
+    expect(platform.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(platform.migrateLegacyCommonMcp).not.toHaveBeenCalled();
+  });
+
+  it("OW-P001：同一 Source 重连后保存使用新目录服务", async () => {
+    const { platform, directory } = sourceServices();
+    const before = directory();
+    const after = directory();
+    const state = useMcpStore.getState();
+    await state.ensureLoadedForWorkspace("/same/user", before, undefined, "source-settings:remote");
+    await state.ensureLoadedForWorkspace("/same/user", after, undefined, "source-settings:remote");
+    await state.addScopedMcpServer("zcodeagentmcp", "after-reconnect", {
+      type: "stdio",
+      command: "node",
+    });
+    expect(before.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(after.saveMcpToUserDirectory).toHaveBeenCalledOnce();
+    expect(platform.saveMcpToUserDirectory).not.toHaveBeenCalled();
+  });
+
+  it("OW-P001：同路径 Source 切换丢弃旧读取，保存绑定新 Source", async () => {
+    const { platform, directory } = sourceServices();
+    const first = directory();
+    const second = directory();
+    const pending = Promise.withResolvers<{ servers: [] }>();
+    first.loadMcpFromUserDirectory.mockImplementation(() => pending.promise);
+    const state = useMcpStore.getState();
+    const firstLoad = state.ensureLoadedForWorkspace(
+      "/same/user",
+      first,
+      undefined,
+      "source-settings:first",
+    );
+    const secondLoad = state.ensureLoadedForWorkspace(
+      "/same/user",
+      second,
+      undefined,
+      "source-settings:second",
+    );
+    pending.resolve({ servers: [] });
+    await Promise.all([firstLoad, secondLoad]);
+    await state.addScopedMcpServer("zcodeagentmcp", "second-only", {
+      type: "stdio",
+      command: "node",
+    });
+    expect(useMcpStore.getState().currentAuthorityKey).toBe("source-settings:second");
+    expect(second.loadMcpFromUserDirectory).toHaveBeenCalled();
+    expect(first.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(second.saveMcpToUserDirectory).toHaveBeenCalledOnce();
+    expect(platform.saveMcpToUserDirectory).not.toHaveBeenCalled();
+  });
+
+  it("OW-P001：Source 未提供目录服务时拒绝回落到本机", async () => {
+    const { platform, directory } = sourceServices();
+    const workspaceDefault = directory();
+    setMcpStoreDirectoryService(workspaceDefault);
+    useMcpStore.setState({
+      isConfigLoaded: true,
+      currentProjectPath: "/same/user",
+      currentAuthorityKey: "source-settings:remote",
+    });
+    await expect(useMcpStore.getState().loadMcpFromUserDirectory()).resolves.toBe(false);
+    expect(platform.loadMcpFromUserDirectory).not.toHaveBeenCalled();
+    expect(workspaceDefault.loadMcpFromUserDirectory).not.toHaveBeenCalled();
   });
 
   it("无 window 环境时，ensureLoadedForWorkspace 也不会抛错", async () => {
@@ -79,9 +191,9 @@ describe("mcpStore", () => {
       servers: [existingServer],
     });
 
-    await expect(
-      useMcpStore.getState().ensureLoadedForWorkspace("/local/workspace"),
-    ).resolves.toBe(false);
+    await expect(useMcpStore.getState().ensureLoadedForWorkspace("/local/workspace")).resolves.toBe(
+      false,
+    );
     expect(useMcpStore.getState().servers).toEqual([existingServer]);
   });
 
@@ -123,15 +235,17 @@ describe("mcpStore", () => {
 
     await useMcpStore
       .getState()
-      .ensureLoadedForWorkspace("/remote/workspace", directoryService, "ssh:host:/remote/workspace");
+      .ensureLoadedForWorkspace(
+        "/remote/workspace",
+        directoryService,
+        "ssh:host:/remote/workspace",
+      );
 
     expect(directoryService.loadMcpFromUserDirectory).toHaveBeenCalledWith({
       workspacePath: "/remote/workspace",
     });
     expect(platformLoad).not.toHaveBeenCalled();
-    expect(useMcpStore.getState().servers.map((server) => server.name)).toEqual([
-      "remote-http",
-    ]);
+    expect(useMcpStore.getState().servers.map((server) => server.name)).toEqual(["remote-http"]);
   });
 
   it("切换到远程 workspace 时立即清空本地配置并丢弃晚到的旧加载结果", async () => {
@@ -193,9 +307,7 @@ describe("mcpStore", () => {
       saveMcpToUserDirectory: vi.fn(async () => {}),
     };
 
-    const loadWorkspaceA = useMcpStore
-      .getState()
-      .ensureLoadedForWorkspace("/local/workspace-a");
+    const loadWorkspaceA = useMcpStore.getState().ensureLoadedForWorkspace("/local/workspace-a");
     expect(platformLoad).toHaveBeenCalledTimes(1);
 
     const loadWorkspaceB = useMcpStore
@@ -226,18 +338,15 @@ describe("mcpStore", () => {
     expect(directoryService.loadMcpFromUserDirectory).toHaveBeenCalledWith({
       workspacePath: "/remote/workspace-b",
     });
-    expect(useMcpStore.getState().servers.map((server) => server.name)).toEqual([
-      "remote-b",
-    ]);
+    expect(useMcpStore.getState().servers.map((server) => server.name)).toEqual(["remote-b"]);
     expect(JSON.stringify(useMcpStore.getState().servers)).not.toContain("workspace-a-");
   });
 
   it("远端 workspace attachment 绑定前不把预期断连记录成 MCP 警告", async () => {
     vi.stubGlobal("window", {});
-    const disconnectedError = Object.assign(
-      new Error("ZCODE_REMOTE_WORKSPACE_DISCONNECTED"),
-      { code: "ZCODE_REMOTE_WORKSPACE_DISCONNECTED" },
-    );
+    const disconnectedError = Object.assign(new Error("ZCODE_REMOTE_WORKSPACE_DISCONNECTED"), {
+      code: "ZCODE_REMOTE_WORKSPACE_DISCONNECTED",
+    });
     const directoryService = {
       loadMcpFromUserDirectory: vi.fn(async () => {
         throw disconnectedError;
@@ -342,9 +451,7 @@ describe("mcpStore", () => {
     };
     setMcpStoreDirectoryService(directoryService);
 
-    await useMcpStore
-      .getState()
-      .ensureLoadedForWorkspace("/local/workspace", directoryService);
+    await useMcpStore.getState().ensureLoadedForWorkspace("/local/workspace", directoryService);
 
     expect(directoryService.loadMcpFromUserDirectory).not.toHaveBeenCalled();
     expect(platformLoad).toHaveBeenCalledWith({ workspacePath: "/local/workspace" });
@@ -357,9 +464,7 @@ describe("mcpStore", () => {
         url: "https://legacy.example.test/mcp",
       },
     });
-    expect(useMcpStore.getState().servers.map((server) => server.name)).toEqual([
-      "legacyHttp",
-    ]);
+    expect(useMcpStore.getState().servers.map((server) => server.name)).toEqual(["legacyHttp"]);
   });
 
   it("批量合并只更新 ZCode Agent MCP 行且清理 changed", () => {
@@ -639,12 +744,11 @@ describe("mcpStore", () => {
     });
 
     const epoch = useMcpStore.getState().beginServerStatusListRefresh();
-    useMcpStore.getState().updateServerStatus(
-      "zcodeagentmcp-global-filesystem",
-      "connecting",
-      undefined,
-      { invalidateStatusListRequests: false },
-    );
+    useMcpStore
+      .getState()
+      .updateServerStatus("zcodeagentmcp-global-filesystem", "connecting", undefined, {
+        invalidateStatusListRequests: false,
+      });
     useMcpStore.getState().mergeServerStatusSnapshots(
       {
         filesystem: {
@@ -669,7 +773,12 @@ describe("mcpStore", () => {
         {
           id: "zcodeagentmcp-global-context7",
           name: "context7",
-          config: { type: "stdio", command: "npx", args: ["-y", "@upstash/context7-mcp"], timeoutMs: 3 },
+          config: {
+            type: "stdio",
+            command: "npx",
+            args: ["-y", "@upstash/context7-mcp"],
+            timeoutMs: 3,
+          },
           enabled: true,
           changed: true,
           status: "unknown",
@@ -692,7 +801,12 @@ describe("mcpStore", () => {
         {
           id: "claudeclimcp-global-context7",
           name: "context7",
-          config: { type: "stdio", command: "npx", args: ["-y", "@upstash/context7-mcp"], timeoutMs: 3 },
+          config: {
+            type: "stdio",
+            command: "npx",
+            args: ["-y", "@upstash/context7-mcp"],
+            timeoutMs: 3,
+          },
           enabled: true,
           changed: true,
           status: "unknown",

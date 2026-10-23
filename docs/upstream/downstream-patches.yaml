@@ -1,0 +1,68 @@
+# OpenZWork 下游补丁清单：字段、状态与维护流程见 docs/spec/downstream-patch-registry.md。
+# 由 tests/ci/downstream-patches.test.mjs 校验。
+version: 1
+patches:
+  - id: OW-P001
+    title: 远端 Source 的用户级 MCP 设置读写本机配置
+    kind: product
+    status: fixed
+    priority: P1
+    upstream:
+      since: 3.16.1
+      checked: 3.16.2
+    trigger: 在本机工作区打开设置，选择远端 Source 的用户级 MCP，读取或保存配置。
+    impact: 读取和保存都落到本机用户配置，远端 Source 的配置没有变化。
+    cause: Source 用户级目标只设置 workspacePath，没有 workspaceIdentity；mcpStore 在 identity 为空时忽略设置页显式传入的远端目录服务，回落到本机平台读写。
+    fix: MCP store 将所选目标的目录服务与 authority 一起保存；Source 用户级读写使用该服务，重连时更新引用，缺少服务时失败；普通本机工作区继续走平台和旧配置迁移。
+    evidence: 修复前，真实 mcpStore 缺少 workspaceIdentity 时只调用本机服务。修复后，Source 用户级读取、保存和启停只调用所选目录服务；同路径切换、同目标重连、缺少服务失败及原本机迁移回归通过。
+    files:
+      - packages/ui/src/store/mcpStore.ts
+    regression:
+      - packages/ui/test/mcpStore.test.ts
+    retire: 上游让 Source 用户级目标经远端目录服务读写，原触发场景只调用远端服务。
+    refs:
+      - docs/spec/maintenance-fixes-3.16.2.md
+      - https://github.com/BlueSkyXN/OpenZWork/commit/0a1fc56d279fd1001f78387bd81aec1c26767411
+
+  - id: OW-P002
+    title: 含 +、/、= 的 Web 访问令牌无法通过 Cookie 鉴权
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.14.0
+      checked: 3.16.2
+    trigger: Web 服务使用含 +、/、= 的自定义 token；首次以 URL 参数 token 访问后，后续请求携带服务端下发的 Cookie。
+    impact: 首次请求返回 200，之后的 Cookie 请求返回 401；Bearer 鉴权不受影响。
+    cause: 写入 Cookie 时对 token 调用 encodeURIComponent，读取 Cookie 后直接与原 token 比较，没有解码。
+    fix: Cookie token 在比较前只解码一次；畸形编码返回未授权，URL 参数与 Bearer 路径保持。
+    evidence: 真实回环 HTTP 回归在修复前对含 +、/、=、% 和 Unicode 的 token 返回 401；修复后这些 Cookie 请求均返回 200，错误、畸形和双重编码的 Cookie 返回 401，原 URL 与 Bearer 鉴权回归保留。
+    files:
+      - packages/server/src/http.ts
+    regression:
+      - packages/server/test/serverInfoHttp.test.ts
+    retire: 上游统一 Cookie 写入与读取的编码，含 +、/、= 的 token 经 Cookie 请求返回 200。
+    refs:
+      - docs/spec/maintenance-fixes-3.16.2.md
+      - https://github.com/BlueSkyXN/OpenZWork/commit/872ad960de7ec172591f7e1952f7849229f94521
+
+  - id: OW-P003
+    title: PRV-08 测试夹具清理与 Registry 后台刷新争用文件锁
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.16.1
+      checked: 3.16.2
+    trigger: providerProvisioningRealStores 的 PRV-08 用例在提交后注入异常、回滚也失败，随后立即清理临时目录。
+    impact: 后台 Registry 刷新仍持有 builtin.json.lock，Windows 删除临时目录时报 EPERM，用例偶发失败。
+    cause: 夹具的同步 dispose() 只取消订阅，没有等待已排入的刷新完成就删除临时目录。
+    fix: 夹具清理先 await registryService.refresh("fixture-dispose") 排空刷新队列，再释放 Runtime 与默认模型 Repository；重复清理复用同一个 Promise。
+    evidence: 回归用真实 withFileLock 持有 Built-in 锁，并用 Promise 控制后台读取；旧清理实现下失败，修复后在 macOS、Linux、Windows 核心 CI 通过。
+    files:
+      - packages/services/test/providerProvisioningRealStores.test.ts
+    regression:
+      - packages/services/test/providerProvisioningRealStores.test.ts
+    retire: 上游夹具在删除临时目录前等待 Registry 刷新完成，本条回归在上游代码上通过。
+    refs:
+      - docs/spec/provider-provisioning-test-lifecycle.md
+      - https://github.com/BlueSkyXN/OpenZWork/pull/30

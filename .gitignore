@@ -1,4 +1,6 @@
 node_modules/
+# 本地报告与归档可能包含工作材料，忽略规则随仓库分发。
+/local/
 dist/
 # zcode-server-cli 发行包 staging 输出（spec §7.1），本地组装产物不入库。
 dist-release/
