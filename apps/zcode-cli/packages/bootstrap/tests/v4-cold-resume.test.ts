@@ -76,6 +76,13 @@ import type { ZCodeApp, ZCodeAppOptions } from "../src/app/types.js";
 import { createApiKeyProviderConfig } from "./provider-config-fixtures.js";
 import { createRegistryBackedTestApp } from "./helpers/registry-backed-test-app.js";
 
+// 冷恢复覆盖真实 SQLite、协议与 binder；插件资产发现由插件 suite 单独覆盖。
+// 使用默认 seed 会让并行测试争用用户缓存，并把无关插件 I/O 算进冷恢复的 5 秒门槛。
+vi.mock("../src/app/bundled-plugins.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/app/bundled-plugins.js")>()),
+  resolveOfficialPluginRoots: () => [],
+}));
+
 // ── gateway 单元层（stub host，模式对齐 v4-gateway.test.ts）──────────────────
 
 interface ColdHostStub {
@@ -1287,12 +1294,12 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
     const store = await createSqliteSessionStore({ dbPath });
     const apps: ZCodeApp[] = [];
     const server = new ZCodeProtocolAgentServer({
-      cwd: process.cwd(),
+      cwd: tempRoot,
       sessionStore: store,
       createZCodeApp: async (options) => {
         const app = await createRegistryBackedTestApp({
           ...options,
-          env: {},
+          env: { ZCODE_STORAGE_DIR: join(tempRoot, "storage") },
           skipUserConfig: true,
           providerRegistry: registry,
         });
@@ -1316,7 +1323,9 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       server,
       apps,
       close: async () => {
-        for (const app of apps) await app.close();
+        // 协议 owner 先停止并关闭所有 App，再释放测试借出的数据库。
+        await server.shutdown();
+        server.disposeProjections();
         store.close();
       },
     };
