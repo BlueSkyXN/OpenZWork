@@ -38,6 +38,7 @@ test("core discovery keeps every declared regression and preserves process isola
       "packages/desktop/test/desktopRuntimeEnv.test.ts",
       "packages/services/test/zcodeAgentProcessManager.test.ts",
       "packages/services/test/mcpSyncService.test.ts",
+      "packages/services/test/subagentRuntimeConfigWatcher.test.ts",
     ]) {
       const entry = discovered.find(
         (item) => relative(root, item.file).split(sep).join("/") === file,

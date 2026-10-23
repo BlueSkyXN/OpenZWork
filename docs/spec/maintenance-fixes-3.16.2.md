@@ -40,5 +40,6 @@ HTTP 鉴权写 Cookie 时继续使用 `encodeURIComponent`；验证 Cookie 时�
 - 仓库根 `.gitignore` 登记 `/local/`，本地归档、报告和临时材料的忽略不依赖个人 Git 配置。
 - `verify:pre-push` 保持现有执行顺序：lint、schema、架构治理测试、架构检查、固定核心 Vitest。受影响单测保留为独立入口，文档与 hook 注释按此说明。
 - `scripts/test/` 中仍对应现有功能的 Node 测试进入三平台核心 CI，按文件串行执行以限制子进程并发。已移除 ARMS 依赖的安装补丁测试随退役功能清理；不恢复依赖以满足旧断言。
+- `subagentRuntimeConfigWatcher.test.ts` 使用真实原生文件事件，按既有 pre-push 规范进入 `fork-isolated` 串行进程池。Windows 核心 threads 池曾未观察到大小写改名后的删除，同提交 Extended forks 池通过；保留测试断言、8 秒事件等待与生产 watcher 实现，并在核心发现检查中固定其进程池归属。
 - 下游补丁清单沿用已有草稿，修复后更新 OW-P001、OW-P002，并将回归纳入核心测试清单。
 - 格式校验限定本次修改文件；历史全仓格式偏差另行处理。
