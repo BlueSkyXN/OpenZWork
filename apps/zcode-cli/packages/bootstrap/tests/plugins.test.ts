@@ -1586,7 +1586,13 @@ describe("ZCode plugins", () => {
       process.argv[1] = join(entryRoot, "zcode.cjs");
       resolveOfficialPluginRoots({ storageRoot: pluginStorageRoot });
 
-      expect((await stat(join(targetRoot, "hooks", "run-hook.cmd"))).mode & 0o111).not.toBe(0);
+      // 旧 marker 未计入 mode：所有平台都须重建缓存；Windows 没有 POSIX 执行位。
+      expect(
+        JSON.parse(await readFile(join(targetRoot, ".zcode-plugin", "plugin.json"), "utf8")),
+      ).toMatchObject({ name: "skill-creator", version: "0.1.0" });
+      if (process.platform !== "win32") {
+        expect((await stat(join(targetRoot, "hooks", "run-hook.cmd"))).mode & 0o111).not.toBe(0);
+      }
     } finally {
       process.argv[1] = originalEntrypoint;
       await rm(root, { force: true, recursive: true });

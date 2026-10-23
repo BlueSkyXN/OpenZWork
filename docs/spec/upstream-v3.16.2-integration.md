@@ -17,6 +17,7 @@
 6. 同步上游通用回归和交互场景；已退役专属用例继续移除。保留本轮真实文件锁控制的 Provider 清理回归，不通过增加时限或跳过用例消除失败。
 7. node_repl 宿主 seed 版本与仓内 package/manifest 的 0.6.1 对齐；源码、清单与缓存目录使用同一版本。
 8. 补齐现有默认名单中 `skill-creator`、`plugin-creator`、`zcode-guide`、`visualize` 的本地注册。它们使用仓内已有源码和 manifest，通过本地 bundled seed 分发；注册版本、必要文件与 Settings 默认启用集合逐项核对。用户已有启停与卸载抑制配置继续优先，恢复操作复用现有安装锁。官方远端市场、图标 CDN 和 CUA 保持退役。
+9. 插件缓存权限回归在各平台都校验旧缓存被重建，POSIX 平台另校验可执行位。Windows 文件系统不提供 POSIX 执行位，不能据此把正常 `.cmd` 缓存判为失败。
 
 ```mermaid
 sequenceDiagram
