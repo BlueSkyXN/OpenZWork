@@ -66,6 +66,8 @@
 
 ## 完整视图（SPFV，2026-10-16）
 
+- 2026-10-23 OpenZWork 3.16.2：隔离 macOS Electron 回放 UI 7/7、provider 2/2（`desktop-e2e-20261023-014148-635`）。两个 spec 显式准备项目和固定 ID 的 Personal Provider，使用恢复的只读合成 common fixture 与 case-local 响应；未调用外部模型。Windows/Linux 的桌面 E2E 与 Docker 准入仍未执行。
+
 | Case ID      | 入口/退出     | surface      | 浮窗形态               | 拖动吸附 | owner 记忆 | 阻塞交互 | Spec                                                                    |
 | ------------ | ------------- | ------------ | ---------------------- | -------- | ---------- | -------- | ----------------------------------------------------------------------- |
 | SPFV-E2E-001 | 按钮 + 快捷键 | n/a          | n/a                    | n/a      | n/a        | n/a      | `ui-shell/side-pane-full-view.test.ts`                                  |

@@ -110,6 +110,8 @@ SPT-E2E-009 补充：末标签关闭后面板收起且无补建；重新展开�
 
 ## 完整视图（SPFV，spec：`docs/ui/side-pane-full-view.md`）
 
+OpenZWork 的两个完整视图 spec 在隔离 HOME 内显式建立 `ZCodeProject` 项目夹具，写入本地项目恢复偏好后通过真实启动迁移加载。首次启动的产品仍使用未归属项目的 conversation workspace；测试不能假定产品会自动创建项目。两者均使用 `common.json` 与本用例 fixture 启动本地回放，并通过正式 Personal Config seed 写入固定 Provider ID、模型和默认选择。布局断言以已配置模型为前提；无模型提示条的展示另行验证。
+
 ### 状态维度与剪枝
 
 | 维度     | 等价类                               | 决策                                                                 |

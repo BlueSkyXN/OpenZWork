@@ -15,6 +15,7 @@ import {
   TID_WORKSPACE_HEADER,
 } from "@zcode/shared/test-ids";
 import { clearAppData } from "../helpers/desktop-app.js";
+import { startConversationModelProviderReplayServer } from "../helpers/model-provider-replay.js";
 import {
   prepareV4ConversationE2E,
   selectV4TaskById,
@@ -36,7 +37,16 @@ const ANSWER_BUBBLE_OPEN = `${ANSWER_BUBBLE} > button:first-child`;
 const STREAM_WORKING_LABEL = `${HOST} [data-testid^="chat-assistant-history-trigger"] > span`;
 
 describe("Side Pane 完整视图浮窗（SPFV provider）", () => {
+  let replay: Awaited<ReturnType<typeof startConversationModelProviderReplayServer>>;
+  before(async () => {
+    // OpenZWork 不预置官方 provider，正式用例自己启动已有回放服务并记录请求证据。
+    replay = await startConversationModelProviderReplayServer(
+      "conversation-session-side-pane-full-view",
+      { seedPersonalConfig: true },
+    );
+  });
   after(async () => {
+    await replay?.stop();
     await browser.electron.restoreAllMocks();
     await clearAppData();
   });

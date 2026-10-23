@@ -22,6 +22,7 @@ import {
 } from "@zcode/shared/test-ids";
 import { clearAppData } from "../helpers/desktop-app.js";
 import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
+import { startConversationModelProviderReplayServer } from "../helpers/model-provider-replay.js";
 
 // spec：docs/ui/side-pane-full-view.md；用例：docs/testing/side-pane-tabs-e2e-case-catalog.md（SPFV）
 const SIDE_FRAME = '[data-workspace-side-frame="true"]';
@@ -52,14 +53,21 @@ interface Rect {
 }
 
 describe("Side Pane 完整视图（SPFV）", () => {
+  let replay: Awaited<ReturnType<typeof startConversationModelProviderReplayServer>>;
   before(async () => {
-    await prepareV4ConversationE2E({ skipProvider: true });
+    // 空 provider 会出现模型配置提示，改变单行浮窗高度；使用本地回放配置完整的输入区。
+    replay = await startConversationModelProviderReplayServer(
+      "conversation-session-side-pane-full-view",
+      { seedPersonalConfig: true },
+    );
+    await prepareV4ConversationE2E();
     await browser.execute(() =>
       window.localStorage.removeItem("zcode:side-pane-full-view:floating-anchor"),
     );
   });
 
   after(async () => {
+    await replay?.stop();
     await browser.electron.restoreAllMocks();
     await clearAppData();
   });
