@@ -7,7 +7,6 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConfig } from "@zcode/adapters/config";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
-import { ZCODE_PLUGIN_HOST_COMMAND } from "@zcode/contracts";
 import type { Logger } from "@zcode/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { resolveStartupPlugins } from "../src/app/startup-marks.js";
@@ -40,8 +39,6 @@ import {
 } from "../src/plugins.js";
 import { StartupTimer } from "../src/startup-logging.js";
 
-const IOS_SIMULATOR_PLUGIN_ID = "ios-simulator@zcode-plugins-official";
-
 it("Settings 默认启用集合与 CLI 的官方插件声明一致", () => {
   expect([...DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS].sort()).toEqual(
     OFFICIAL_PLUGIN_DEFINITIONS.filter((definition) => definition.defaultEnabled)
@@ -50,23 +47,21 @@ it("Settings 默认启用集合与 CLI 的官方插件声明一致", () => {
   );
 });
 
-// 产品决策（2026-09-11）：电脑控制回退为默认关闭，首启不再注入 computer-use 工具集与
-// Helper 依赖。上面那条只保证两处名单同步，不阻止有人重新把 defaultEnabled 标回 true，
-// 所以这里单独把 CUA 的默认态钉住。
-it("computer-use 默认不启用（电脑控制需用户在设置页显式开启）", () => {
-  const cua = OFFICIAL_PLUGIN_DEFINITIONS.find((definition) => definition.name === "computer-use");
-  expect(cua).toBeDefined();
-  expect(cua?.defaultEnabled ?? false).toBe(false);
-  expect(DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has("computer-use@zcode-plugins-official")).toBe(
-    false,
-  );
+// OpenZWork 已退役这些内置插件；上游同步不得重新登记。
+it("OpenZWork 不登记已退役的官方插件", () => {
+  for (const name of [
+    "computer-use",
+    "ios-simulator",
+    "android-emulator",
+    "restore-legacy-sessions",
+  ]) {
+    expect(OFFICIAL_PLUGIN_DEFINITIONS.some((definition) => definition.name === name)).toBe(false);
+    expect(DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS.has(`${name}@zcode-plugins-official`)).toBe(false);
+  }
 });
-const ANDROID_EMULATOR_PLUGIN_ID = "android-emulator@zcode-plugins-official";
-const IOS_SIMULATOR_MCP_ID = "plugin:ios-simulator:ios-simulator";
-const ANDROID_EMULATOR_MCP_ID = "plugin:android-emulator:android-emulator";
+
 const BROWSER_USE_PLUGIN_ID = "browser-use@zcode-plugins-official";
-const DOCUMENTS_PLUGIN_ID = "documents@zcode-plugins-official";
-const RESTORE_LEGACY_SESSIONS_PLUGIN_ID = "restore-legacy-sessions@zcode-plugins-official";
+
 const SKILL_CREATOR_PLUGIN_ID = "skill-creator@zcode-plugins-official";
 
 function createNoopStartupTimer(): StartupTimer {
@@ -80,62 +75,33 @@ function createNoopStartupTimer(): StartupTimer {
   };
   return new StartupTimer(logger, {});
 }
-const OFFICIAL_PLUGIN_CACHE_PATH = join(
-  "cache",
-  "zcode-plugins-official",
-  "ios-simulator",
-  "0.1.0",
-);
-const OFFICIAL_ANDROID_PLUGIN_CACHE_PATH = join(
-  "cache",
-  "zcode-plugins-official",
-  "android-emulator",
-  "0.1.0",
-);
-const OFFICIAL_RESTORE_LEGACY_SESSIONS_PLUGIN_CACHE_PATH = join(
-  "cache",
-  "zcode-plugins-official",
-  "restore-legacy-sessions",
-  "0.1.0",
-);
+
 const OFFICIAL_SKILL_CREATOR_PLUGIN_CACHE_PATH = join(
   "cache",
   "zcode-plugins-official",
   "skill-creator",
   "0.1.0",
 );
-const BUNDLED_PLUGIN_DIST_PATH = fileURLToPath(
-  new URL("../../ios-simulator-plugin/dist/mcp/server.js", import.meta.url),
-);
-const BUNDLED_ANDROID_PLUGIN_DIST_PATH = fileURLToPath(
-  new URL("../../android-emulator-plugin/dist/mcp/server.js", import.meta.url),
-);
 
 describe("ZCode plugins", () => {
-  it("starts cached Claude icon migration without blocking overview callers", async () => {
+  it("enriches overview icons from local cache without requesting the retired CDN", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-icon-migration-"));
     const pluginStorageRoot = join(root, "plugins");
     const marketplaceRoot = join(pluginStorageRoot, "marketplaces", "claude-plugins-official");
+    const fetch = vi.fn();
+    vi.stubGlobal("fetch", fetch);
     try {
-      await mkdir(marketplaceRoot, { recursive: true });
-      await writeFile(
+      await writeTestFile(
         join(marketplaceRoot, "marketplace.json"),
         JSON.stringify({
           name: "claude-plugins-official",
           plugins: [{ name: "figma", source: "./figma" }],
         }),
       );
-      let resolveFetch!: (response: Response) => void;
-      vi.stubGlobal(
-        "fetch",
-        vi.fn(
-          () =>
-            new Promise<Response>((resolve) => {
-              resolveFetch = resolve;
-            }),
-        ),
+      await writeTestFile(
+        join(pluginStorageRoot, "icon-sources.json"),
+        JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
       );
-
       expect(
         enrichCachedClaudeMarketplaceIconsForOverview({
           env: {},
@@ -144,20 +110,11 @@ describe("ZCode plugins", () => {
           workingDirectory: root,
         }),
       ).toBeUndefined();
-
-      resolveFetch(
-        new Response(
-          JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
-          { status: 200 },
-        ),
-      );
       await vi.waitFor(async () => {
-        const saved = JSON.parse(
-          await readFile(join(marketplaceRoot, "marketplace.json"), "utf8"),
-        ) as { plugins: Array<{ icon?: string }> };
-        expect(saved.plugins[0]?.icon).toBe(
-        );
+        const saved = JSON.parse(await readFile(join(marketplaceRoot, "marketplace.json"), "utf8"));
+        expect(saved.plugins[0]?.icon).toBe("assets/figma/icon.png");
       });
+      expect(fetch).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();
       await rm(root, { force: true, recursive: true });
@@ -203,10 +160,9 @@ describe("ZCode plugins", () => {
         await readFile(join(packageRoot, ".zcode-plugin", "plugin.json"), "utf8"),
       ) as { ui?: { surfaces?: unknown[] } };
       // 卸载后的可恢复条目没有运行时信息，商店只能靠定义里的 componentTypes 归入「UI 插件」。
-      expect(
-        plugin.componentTypes?.includes("ui") ?? false,
-        plugin.name,
-      ).toBe((pluginManifest.ui?.surfaces?.length ?? 0) > 0);
+      expect(plugin.componentTypes?.includes("ui") ?? false, plugin.name).toBe(
+        (pluginManifest.ui?.surfaces?.length ?? 0) > 0,
+      );
     }
   });
 
@@ -222,14 +178,14 @@ describe("ZCode plugins", () => {
     ).toEqual([OFFICIAL_BROWSER_USE_REQUIRED_SEED_PATHS.at(-1)]);
   });
 
-  it("can disable one document plugin without disabling the other formats or search", async () => {
+  it("can disable one local content plugin without disabling the others", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-document-toggle-"));
     try {
       const userConfigPath = join(root, "config.json");
       await writeFile(
         userConfigPath,
         JSON.stringify({
-          plugins: { enabledPlugins: { "documents@zcode-plugins-official": false } },
+          plugins: { enabledPlugins: { "skill-creator@zcode-plugins-official": false } },
         }),
       );
       const outcome = resolveZCodePlugins({
@@ -238,8 +194,10 @@ describe("ZCode plugins", () => {
         userConfigPath,
         workingDirectory: root,
       });
-      expect(outcome.plugins.find((plugin) => plugin.name === "documents")?.enabled).toBe(false);
-      for (const name of ["pdf", "presentations", "spreadsheets", "image-search"])
+      expect(outcome.plugins.find((plugin) => plugin.name === "skill-creator")?.enabled).toBe(
+        false,
+      );
+      for (const name of ["plugin-creator", "zcode-guide", "visualize", "browser-use"])
         expect(outcome.plugins.find((plugin) => plugin.name === name)?.enabled).toBe(true);
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -266,9 +224,9 @@ describe("ZCode plugins", () => {
           name: "custom-marketplace",
           plugins: [
             {
-              name: "computer-use",
-              displayName: "Custom Computer Use",
-              displayName_i18n: { "zh-CN": "自定义电脑控制" },
+              name: "browser-use",
+              displayName: "Custom Browser Use",
+              displayName_i18n: { "zh-CN": "自定义浏览器操作" },
             },
           ],
         }),
@@ -281,11 +239,11 @@ describe("ZCode plugins", () => {
         workingDirectory: root,
       });
 
-      expect(outcome.pluginListingsById?.["computer-use@zcode-plugins-official"]).toMatchObject({
-        displayName: "Computer Use",
+      expect(outcome.pluginListingsById?.["browser-use@zcode-plugins-official"]).toMatchObject({
+        displayName: "Browser Use",
       });
-      expect(outcome.pluginListingsById?.["computer-use@custom-marketplace"]).toMatchObject({
-        displayName: "Custom Computer Use",
+      expect(outcome.pluginListingsById?.["browser-use@custom-marketplace"]).toMatchObject({
+        displayName: "Custom Browser Use",
       });
     } finally {
       await rm(root, { force: true, recursive: true });
@@ -567,81 +525,96 @@ describe("ZCode plugins", () => {
     }
   });
 
-  it("keeps the ui component type on a suppressed bundled document plugin", async () => {
+  it("keeps UI metadata on the catalog and restore entry of a suppressed local bundle", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-restorable-ui-"));
     const pluginStorageRoot = join(root, "plugins");
     const userConfigPath = join(root, "config.json");
-    const documentsId = "documents@zcode-plugins-official";
-
+    const entryRoot = join(root, "runtime");
+    const pluginRoot = join(entryRoot, "packages", "skill-creator-plugin");
+    const definition = OFFICIAL_PLUGIN_DEFINITIONS.find((item) => item.name === "skill-creator")!;
+    const previousTypes = definition.componentTypes;
+    const previousEntrypoint = process.argv[1];
     try {
-      await writeFile(
-        userConfigPath,
-        JSON.stringify({ plugins: { enabled: true, suppressedBuiltins: [documentsId] } }),
+      // 用独立本地包验证通用 UI 元数据投影，不依赖已退役的文档插件。
+      definition.componentTypes = ["ui"];
+      process.argv[1] = join(entryRoot, "zcode.cjs");
+      await writeTestFile(
+        join(pluginRoot, ".zcode-plugin", "plugin.json"),
+        JSON.stringify({
+          name: "skill-creator",
+          version: definition.version,
+          skills: "skills",
+          ui: {
+            surfaces: [
+              { id: "panel", title: "Panel", server: "panel", resourceUri: "ui://fixture/panel" },
+            ],
+          },
+        }),
       );
+      await writeTestFile(
+        join(pluginRoot, "skills", "skill-creator", "SKILL.md"),
+        "# fixture skill",
+      );
+      await writeTestFile(
+        userConfigPath,
+        JSON.stringify({
+          plugins: { enabled: true, suppressedBuiltins: [SKILL_CREATOR_PLUGIN_ID] },
+        }),
+      );
+      await writeKnownMarketplaces(pluginStorageRoot, [
+        {
+          id: "zcode-plugins-official",
+          name: "zcode-plugins-official",
+          source: {
+            source: "directory",
+            path: join(pluginStorageRoot, "marketplaces", "zcode-plugins-official"),
+          },
+          addedAt: "2026-01-01T00:00:00.000Z",
+          pluginCount: 1,
+        },
+      ]);
       const overview = getZCodePluginsOverview({
+        env: {},
         pluginStorageRoot,
         userConfigPath,
         workingDirectory: root,
       });
-      // UI 合并时优先保留目录条目的 summary，所以目录条目与可恢复条目都必须带 "ui"。
       expect(
-        overview.availablePlugins.find((plugin) => plugin.id === documentsId)?.componentTypes,
+        overview.availablePlugins.find((plugin) => plugin.id === SKILL_CREATOR_PLUGIN_ID)
+          ?.componentTypes,
       ).toContain("ui");
       expect(
-        overview.restorableBuiltins.find((plugin) => plugin.id === documentsId)?.componentTypes,
+        overview.restorableBuiltins.find((plugin) => plugin.id === SKILL_CREATOR_PLUGIN_ID)
+          ?.componentTypes,
       ).toEqual(["ui"]);
     } finally {
+      definition.componentTypes = previousTypes;
+      process.argv[1] = previousEntrypoint;
       await rm(root, { force: true, recursive: true });
     }
   });
 
-  it("includes the merged ZCode official marketplace and Claude marketplace for empty storage", async () => {
+  it("seeds local bundles without adding remote marketplaces to empty storage", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-default-marketplace-"));
-
+    const pluginStorageRoot = join(root, "plugins");
     try {
-      const pluginStorageRoot = join(root, "plugins");
       const overview = getZCodePluginsOverview({
         env: {},
         pluginStorageRoot,
         skipUserConfig: true,
         workingDirectory: root,
       });
-
-      expect(overview.marketplaces).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: "zcode-plugins-official",
-            isOfficial: true,
-            name: "zcode-plugins-official",
-            pluginCount: 14,
-            source: {
-              source: "url",
-            },
-          }),
-          expect.objectContaining({
-            id: "claude-plugins-official",
-            isOfficial: true,
-            name: "claude-plugins-official",
-            pluginCount: 0,
-            source: {
-              repo: "anthropics/claude-plugins-official",
-              source: "github",
-            },
-          }),
-        ]),
+      expect(overview.marketplaces).toEqual([]);
+      expect(existsSync(join(pluginStorageRoot, "known_marketplaces.json"))).toBe(false);
+      const manifest = JSON.parse(
+        await readFile(
+          join(pluginStorageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+          "utf8",
+        ),
       );
-      expect(
-        JSON.parse(await readFile(join(pluginStorageRoot, "known_marketplaces.json"), "utf8")),
-      ).toMatchObject({
-        marketplaces: [
-          expect.objectContaining({
-            id: "zcode-plugins-official",
-          }),
-          expect.objectContaining({
-            id: "claude-plugins-official",
-          }),
-        ],
-      });
+      expect(manifest.plugins.map((plugin: { name: string }) => plugin.name).sort()).toEqual(
+        OFFICIAL_PLUGIN_DEFINITIONS.map((plugin) => plugin.name).sort(),
+      );
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -1313,11 +1286,11 @@ describe("ZCode plugins", () => {
     }
   });
 
-  it("clears stale builtin suppression when an official CDN entry with the same id is installed", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-cdn-suppression-"));
+  it("clears stale builtin suppression when a local replacement with the same id is installed", async () => {
+    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-local-suppression-"));
     const pluginStorageRoot = join(root, "plugins");
     const userConfigPath = join(root, "config.json");
-    const cdnSourceRoot = join(root, "cdn-documents");
+    const replacementRoot = join(root, "replacement-plugin");
 
     try {
       await writeFile(
@@ -1325,24 +1298,24 @@ describe("ZCode plugins", () => {
         JSON.stringify({
           plugins: {
             enabled: true,
-            suppressedBuiltins: [DOCUMENTS_PLUGIN_ID],
+            suppressedBuiltins: [SKILL_CREATOR_PLUGIN_ID],
           },
         }),
       );
-      await mkdir(join(cdnSourceRoot, ".zcode-plugin"), { recursive: true });
+      await mkdir(join(replacementRoot, ".zcode-plugin"), { recursive: true });
       await writeFile(
-        join(cdnSourceRoot, ".zcode-plugin", "plugin.json"),
+        join(replacementRoot, ".zcode-plugin", "plugin.json"),
         JSON.stringify({
-          name: "documents",
+          name: "skill-creator",
           version: "1.0.0",
           skills: "skills",
         }),
       );
-      await mkdir(join(cdnSourceRoot, "skills", "documents"), {
+      await mkdir(join(replacementRoot, "skills", "skill-creator"), {
         recursive: true,
       });
       await writeFile(
-        join(cdnSourceRoot, "skills", "documents", "SKILL.md"),
+        join(replacementRoot, "skills", "skill-creator", "SKILL.md"),
         "# Document Skills\n",
       );
 
@@ -1360,15 +1333,15 @@ describe("ZCode plugins", () => {
       const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as {
         plugins: Array<Record<string, unknown>>;
       };
-      const entry = manifest.plugins.find((plugin) => plugin.name === "documents");
+      const entry = manifest.plugins.find((plugin) => plugin.name === "skill-creator");
       expect(entry).toBeDefined();
-      entry!.source = { source: "directory", path: cdnSourceRoot };
+      entry!.source = { source: "directory", path: replacementRoot };
       entry!.version = "1.0.0";
       await writeFile(manifestPath, JSON.stringify(manifest));
 
       const result = await installZCodeMarketplacePlugin({
         marketplace: "zcode-plugins-official",
-        pluginName: "documents",
+        pluginName: "skill-creator",
         pluginStorageRoot,
         userConfigPath,
         workingDirectory: root,
@@ -1378,7 +1351,7 @@ describe("ZCode plugins", () => {
       const config = JSON.parse(await readFile(userConfigPath, "utf8")) as {
         plugins?: { suppressedBuiltins?: string[] };
       };
-      expect(config.plugins?.suppressedBuiltins ?? []).not.toContain(DOCUMENTS_PLUGIN_ID);
+      expect(config.plugins?.suppressedBuiltins ?? []).not.toContain(SKILL_CREATOR_PLUGIN_ID);
       expect(existsSync(join(pluginStorageRoot, "installed_plugins.json"))).toBe(true);
     } finally {
       await rm(root, { force: true, recursive: true });
@@ -1616,241 +1589,6 @@ describe("ZCode plugins", () => {
       expect((await stat(join(targetRoot, "hooks", "run-hook.cmd"))).mode & 0o111).not.toBe(0);
     } finally {
       process.argv[1] = originalEntrypoint;
-      await rm(root, { force: true, recursive: true });
-    }
-  });
-
-  it("projects restore legacy sessions skills and commands only when enabled", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-restore-plugin-enabled-"));
-    const configPath = join(root, "config.json");
-    const pluginStorageRoot = join(root, "plugins");
-
-    try {
-      await writeFile(
-        configPath,
-        JSON.stringify({
-          plugins: {
-            enabledPlugins: {
-              [RESTORE_LEGACY_SESSIONS_PLUGIN_ID]: true,
-            },
-          },
-        }),
-      );
-
-      const outcome = resolveZCodePlugins({
-        env: {},
-        pluginStorageRoot,
-        userConfigPath: configPath,
-        workingDirectory: root,
-      });
-      const plugin = outcome.plugins.find((item) => item.id === RESTORE_LEGACY_SESSIONS_PLUGIN_ID);
-      const expectedRoot = join(
-        pluginStorageRoot,
-        OFFICIAL_RESTORE_LEGACY_SESSIONS_PLUGIN_CACHE_PATH,
-      );
-
-      expect(plugin).toMatchObject({
-        commandRootCount: 1,
-        declaredMcpServerNames: [],
-        enabled: true,
-        mcpServerNames: [],
-        name: "restore-legacy-sessions",
-        rootPath: expectedRoot,
-        skillCount: 1,
-        skillRootCount: 1,
-      });
-      expect(outcome.skillRoots).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            path: join(expectedRoot, "skills"),
-            scope: "system",
-            source: "plugin",
-          }),
-        ]),
-      );
-      expect(outcome.commandRoots).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            path: join(expectedRoot, "commands"),
-            scope: "system",
-            source: "plugin",
-          }),
-        ]),
-      );
-      expect(Object.keys(outcome.mcpServers)).not.toContain("restore-legacy-sessions");
-    } finally {
-      await rm(root, { force: true, recursive: true });
-    }
-  });
-
-  it("projects bundled iOS simulator skills, commands, and MCP when enabled", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-plugins-enabled-"));
-    const configPath = join(root, "config.json");
-    const pluginStorageRoot = join(root, "plugins");
-
-    try {
-      await writeFile(
-        configPath,
-        JSON.stringify({
-          plugins: {
-            enabledPlugins: {
-              [IOS_SIMULATOR_PLUGIN_ID]: true,
-            },
-          },
-        }),
-      );
-
-      const outcome = resolveZCodePlugins({
-        env: {},
-        pluginStorageRoot,
-        userConfigPath: configPath,
-        workingDirectory: root,
-      });
-      const plugin = outcome.plugins.find((item) => item.id === IOS_SIMULATOR_PLUGIN_ID);
-      const server = outcome.mcpServers[IOS_SIMULATOR_MCP_ID];
-      const expectedRoot = join(pluginStorageRoot, OFFICIAL_PLUGIN_CACHE_PATH);
-
-      expect(plugin).toMatchObject({
-        commandRootCount: 1,
-        declaredMcpServerNames: ["ios-simulator"],
-        enabled: true,
-        mcpServerNames: [IOS_SIMULATOR_MCP_ID],
-        rootPath: expectedRoot,
-        skillCount: 1,
-        skillRootCount: 1,
-      });
-      expect(server).toMatchObject({
-        command: process.execPath,
-        type: "stdio",
-        cwd: root,
-        env: {
-          ELECTRON_RUN_AS_NODE: "1",
-          IOS_SIM_DEFAULT_DEVICE: "iPhone 16",
-          IOS_SIM_UI_BACKEND: "auto",
-        },
-      });
-      expect(server?.args?.at(-2)).toBe(ZCODE_PLUGIN_HOST_COMMAND);
-      expect(server?.args?.at(-1)).toContain(
-        join(
-          "cache",
-          "zcode-plugins-official",
-          "ios-simulator",
-          "0.1.0",
-          "dist",
-          "mcp",
-          "server.js",
-        ),
-      );
-      await expect(
-        readFile(
-          join(pluginStorageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
-          "utf8",
-        ),
-      ).resolves.toContain(IOS_SIMULATOR_PLUGIN_ID.split("@")[0] ?? "ios-simulator");
-      expect(existsSync(join(expectedRoot, ".zcode-plugin-seed.json"))).toBe(true);
-      expect(existsSync(join(expectedRoot, "dist", "mcp", "server.js"))).toBe(
-        existsSync(BUNDLED_PLUGIN_DIST_PATH),
-      );
-      expect(outcome.diagnostics).not.toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            code: "plugin_unsupported_component",
-            pluginId: IOS_SIMULATOR_PLUGIN_ID,
-          }),
-        ]),
-      );
-    } finally {
-      await rm(root, { force: true, recursive: true });
-    }
-  });
-
-  it("projects bundled Android emulator skills, commands, and MCP when enabled", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-plugins-android-enabled-"));
-    const configPath = join(root, "config.json");
-    const pluginStorageRoot = join(root, "plugins");
-
-    try {
-      await writeFile(
-        configPath,
-        JSON.stringify({
-          plugins: {
-            enabledPlugins: {
-              [ANDROID_EMULATOR_PLUGIN_ID]: true,
-            },
-            options: {
-              [ANDROID_EMULATOR_PLUGIN_ID]: {
-                api_level: "36",
-                default_avd: "Pixel_8",
-              },
-            },
-          },
-        }),
-      );
-
-      const outcome = resolveZCodePlugins({
-        env: {},
-        pluginStorageRoot,
-        userConfigPath: configPath,
-        workingDirectory: root,
-      });
-      const plugin = outcome.plugins.find((item) => item.id === ANDROID_EMULATOR_PLUGIN_ID);
-      const server = outcome.mcpServers[ANDROID_EMULATOR_MCP_ID];
-      const expectedRoot = join(pluginStorageRoot, OFFICIAL_ANDROID_PLUGIN_CACHE_PATH);
-
-      expect(plugin).toMatchObject({
-        commandRootCount: 1,
-        declaredMcpServerNames: ["android-emulator"],
-        enabled: true,
-        mcpServerNames: [ANDROID_EMULATOR_MCP_ID],
-        rootPath: expectedRoot,
-        skillCount: 1,
-        skillRootCount: 1,
-      });
-      expect(server).toMatchObject({
-        command: process.execPath,
-        type: "stdio",
-        cwd: root,
-        env: {
-          ANDROID_PLUGIN_API_LEVEL: "36",
-          ANDROID_PLUGIN_DEFAULT_AVD: "Pixel_8",
-          ELECTRON_RUN_AS_NODE: "1",
-        },
-      });
-      for (const unusedEnv of [
-        "ANDROID_PLUGIN_ROOT",
-        "ANDROID_PLUGIN_DEFAULT_PROFILE",
-        "ANDROID_PLUGIN_WINDOWS_JDK_WINGET_PACKAGE",
-        "ANDROID_PLUGIN_CMDLINE_TOOLS_VERSION",
-        "ANDROID_PLUGIN_CMDLINE_TOOLS_CHECKSUM",
-        "ANDROID_PLUGIN_CMDLINE_TOOLS_CHECKSUM_ALGORITHM",
-      ]) {
-        expect(server?.env).not.toHaveProperty(unusedEnv);
-      }
-      expect(server?.args?.at(-2)).toBe(ZCODE_PLUGIN_HOST_COMMAND);
-      expect(server?.args?.at(-1)).toContain(
-        join(
-          "cache",
-          "zcode-plugins-official",
-          "android-emulator",
-          "0.1.0",
-          "dist",
-          "mcp",
-          "server.js",
-        ),
-      );
-      expect(existsSync(join(expectedRoot, ".zcode-plugin-seed.json"))).toBe(true);
-      expect(existsSync(join(expectedRoot, "dist", "mcp", "server.js"))).toBe(
-        existsSync(BUNDLED_ANDROID_PLUGIN_DIST_PATH),
-      );
-      expect(outcome.diagnostics).not.toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            code: "plugin_unsupported_component",
-            pluginId: ANDROID_EMULATOR_PLUGIN_ID,
-          }),
-        ]),
-      );
-    } finally {
       await rm(root, { force: true, recursive: true });
     }
   });
@@ -2195,10 +1933,8 @@ describe("ZCode plugins", () => {
         expect.arrayContaining([expect.objectContaining({ id: `${pluginName}@${marketplaceId}` })]),
       );
       expect(existsSync(join(pluginStorageRoot, "marketplaces", marketplaceId))).toBe(false);
-      const knownBeforeRefresh = JSON.parse(
-        await readFile(join(pluginStorageRoot, "known_marketplaces.json"), "utf8"),
-      ) as { marketplaces: Array<{ id: string }> };
-      expect(knownBeforeRefresh.marketplaces.some((item) => item.id === marketplaceId)).toBe(false);
+      // 没有默认远端市场，尚未物化任何市场时也不会创建 known records。
+      expect(existsSync(join(pluginStorageRoot, "known_marketplaces.json"))).toBe(false);
 
       const dryRun = await installZCodeMarketplacePlugin({
         dryRun: true,
@@ -2365,7 +2101,7 @@ describe("ZCode plugins", () => {
     }
   });
 
-  it("keeps official marketplace projection when User declares a reserved id", async () => {
+  it("rejects a User declaration that attempts to claim the bundled marketplace id", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-reserved-marketplace-"));
     const pluginStorageRoot = join(root, "plugins");
     const userConfigPath = join(root, "user-config.json");
@@ -2390,14 +2126,8 @@ describe("ZCode plugins", () => {
         workingDirectory: root,
       });
 
-      expect(
-        overview.marketplaces.find((marketplace) => marketplace.id === "zcode-plugins-official"),
-      ).toMatchObject({
-        pluginCount: 14,
-        source: {
-          source: "url",
-        },
-      });
+      expect(overview.marketplaces).toEqual([]);
+      expect(existsSync(join(root, "untrusted-official"))).toBe(false);
       expect(overview.diagnostics).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -2541,10 +2271,8 @@ describe("ZCode plugins", () => {
 
       expect(result.diagnostics).toEqual([expect.objectContaining({ severity: "error" })]);
       expect(existsSync(join(pluginStorageRoot, "marketplaces", marketplaceId))).toBe(false);
-      const known = JSON.parse(
-        await readFile(join(pluginStorageRoot, "known_marketplaces.json"), "utf8"),
-      ) as { marketplaces: Array<{ id: string }> };
-      expect(known.marketplaces.some((item) => item.id === marketplaceId)).toBe(false);
+      // 没有默认远端市场，尚未物化任何市场时也不会创建 known records。
+      expect(existsSync(join(pluginStorageRoot, "known_marketplaces.json"))).toBe(false);
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -2559,55 +2287,50 @@ describe("ZCode plugins", () => {
   // content-only official plugins (skill-creator) the same way the CLI subcommand
   // path does. Without forwarding the default-enabled set, `/skill skill-creator`
   // failed with "Skill not found" inside a session even though it was bundled.
-  it("default-enables skill-creator through the app-startup plugin discovery path", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-startup-plugins-"));
-    const pluginStorageRoot = join(root, "plugins");
+  it.each(["skill-creator", "plugin-creator", "zcode-guide", "visualize"])(
+    "default-enables %s through the app-startup plugin discovery path",
+    async (name) => {
+      const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-startup-plugins-"));
+      const pluginStorageRoot = join(root, "plugins");
 
-    try {
-      const configResult = createConfig({
-        env: {},
-        skipUserConfig: true,
-        workingDirectory: root,
-      });
-      const outcome = resolveStartupPlugins({
-        cliStorageRoot: join(root, "cli"),
-        configResult,
-        env: {},
-        options: { pluginStorageRoot } as ZCodeAppOptions,
-        startupTimer: createNoopStartupTimer(),
-        workingDirectory: root,
-      });
+      try {
+        const configResult = createConfig({
+          env: {},
+          skipUserConfig: true,
+          workingDirectory: root,
+        });
+        const outcome = resolveStartupPlugins({
+          cliStorageRoot: join(root, "cli"),
+          configResult,
+          env: {},
+          options: { pluginStorageRoot } as ZCodeAppOptions,
+          startupTimer: createNoopStartupTimer(),
+          workingDirectory: root,
+        });
 
-      const plugin = outcome.plugins.find((item) => item.id === SKILL_CREATOR_PLUGIN_ID);
-      const browserUsePlugin = outcome.plugins.find((item) => item.id === BROWSER_USE_PLUGIN_ID);
-      const documentPlugin = outcome.plugins.find((item) => item.id === DOCUMENTS_PLUGIN_ID);
-      expect(plugin).toMatchObject({
-        enabled: true,
-        name: "skill-creator",
-        skillCount: 1,
-        skillRootCount: 1,
-      });
-      // 0.2.0 起 documents 同时提供 docx 与 docx-viewer 两个 skill，并带查看面板的 MCP server。
-      expect(documentPlugin).toMatchObject({
-        enabled: true,
-        mcpServerNames: ["plugin:documents:documents"],
-        name: "documents",
-        skillCount: 2,
-        skillRootCount: 1,
-      });
-      // 回归原因：启动发现链路与 overview 使用同一份 browser-use 内置内容，
-      // web-gui-tester 加入后这里也必须稳定报告两个 skill。
-      expect(browserUsePlugin).toMatchObject({
-        enabled: true,
-        name: "browser-use",
-        skillCount: 2,
-        skillRootCount: 1,
-      });
-      expect(outcome.skillRoots.length).toBeGreaterThan(0);
-    } finally {
-      await rm(root, { force: true, recursive: true });
-    }
-  });
+        const plugin = outcome.plugins.find((item) => item.id === `${name}@zcode-plugins-official`);
+        const browserUsePlugin = outcome.plugins.find((item) => item.id === BROWSER_USE_PLUGIN_ID);
+        expect(plugin).toMatchObject({
+          enabled: true,
+          name,
+          skillCount: expect.any(Number),
+          skillRootCount: 1,
+        });
+        expect(plugin!.skillCount).toBeGreaterThan(0);
+        // 回归原因：启动发现链路与 overview 使用同一份 browser-use 内置内容，
+        // web-gui-tester 加入后这里也必须稳定报告两个 skill。
+        expect(browserUsePlugin).toMatchObject({
+          enabled: true,
+          name: "browser-use",
+          skillCount: 2,
+          skillRootCount: 1,
+        });
+        expect(outcome.skillRoots.length).toBeGreaterThan(0);
+      } finally {
+        await rm(root, { force: true, recursive: true });
+      }
+    },
+  );
 });
 
 async function startZipFixtureServer(

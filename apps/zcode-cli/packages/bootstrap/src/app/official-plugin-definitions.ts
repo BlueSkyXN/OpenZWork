@@ -121,6 +121,131 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     // package、manifest、definition 三处版本应保持一致，避免发布内容和安装版本再次分叉。
     version: "0.5.1",
   },
+  // Settings 已保留这些本地内容插件；CLI 必须同步注册，才能完成发现、抑制和恢复。
+  {
+    defaultEnabled: true,
+    listing: {
+      author: { name: "Z.ai" },
+      category: "productivity",
+      displayName: "Visualize",
+      displayName_i18n: { "zh-CN": "交互视图" },
+      description_i18n: { "zh-CN": "在对话中创建交互图表、解释和设计预览。" },
+    },
+    name: "visualize",
+    requiredSeedPaths: [
+      "skills/visualize/SKILL.md",
+      "skills/visualize/references/api.md",
+      "skills/visualize/references/styles.md",
+      "skills/visualize/tweak.md",
+      "skills/visualize/LICENSE.md",
+      "skills/visualize/scripts/render.py",
+      "skills/visualize/assets/visualize.css",
+      "skills/visualize/assets/visualize.html",
+      "skills/visualize/assets/calendar.js",
+      "skills/visualize/assets/runtime-manifest.json",
+      "skills/visualize/scripts/vendor.py",
+      "skills/visualize/assets/vendor/manifest.json",
+      "skills/visualize/assets/vendor/floating-ui-core-1.7.3.min.js",
+      "skills/visualize/assets/vendor/floating-ui-core-1.7.3.min.js.LICENSE",
+      "skills/visualize/assets/vendor/floating-ui-dom-1.7.4.min.js",
+      "skills/visualize/assets/vendor/floating-ui-dom-1.7.4.min.js.LICENSE",
+      "skills/visualize/assets/vendor/lucide-1.17.0.js",
+      "skills/visualize/assets/vendor/lucide-1.17.0.js.LICENSE",
+      "skills/visualize/assets/vendor/d3-7.9.0.min.js",
+      "skills/visualize/assets/vendor/d3-7.9.0.min.js.LICENSE",
+      "skills/visualize/widgets/calendar.md",
+      "skills/visualize/examples/calendar.html",
+      "skills/visualize/assets/standalone-host-bridge.js",
+      "skills/visualize/assets/standalone-shell.js",
+    ],
+    rootCandidates: [
+      "packages/visualize-plugin",
+      "../visualize-plugin",
+      "../../visualize-plugin",
+      "../../../visualize-plugin",
+    ],
+    version: "0.1.0",
+  },
+  {
+    defaultEnabled: true,
+    name: "plugin-creator",
+    version: "0.1.1",
+    listing: {
+      author: { name: "Z.ai" },
+      category: "utilities",
+      displayName: "Plugin Creator",
+      // 创建器使用客户端自带图标，不再借用 skill-creator 的远端图片。
+      displayName_i18n: { "zh-CN": "插件创建器" },
+      description_i18n: {
+        "zh-CN": "开发、校验 ZCode 插件，完成本地 dev 市场安装、试用与更新。",
+      },
+    },
+    rootCandidates: [
+      "packages/plugin-creator-plugin",
+      "../plugin-creator-plugin",
+      "../../plugin-creator-plugin",
+      "../../../plugin-creator-plugin",
+    ],
+    requiredSeedPaths: [
+      "skills/plugin-creator/SKILL.md",
+      "skills/plugin-creator/scripts/create-basic-plugin.mjs",
+      "skills/plugin-creator/scripts/marketplace-files.mjs",
+      "skills/plugin-creator/scripts/upsert-dev-marketplace.mjs",
+      "skills/plugin-creator/scripts/scaffold-files.mjs",
+      "skills/plugin-creator/scripts/validate-plugin.mjs",
+      "skills/plugin-creator/references/plugin-json-spec.md",
+      "skills/plugin-creator/references/installing-and-updating.md",
+    ],
+  },
+  {
+    defaultEnabled: true,
+    listing: {
+      author: { name: "Z.ai" },
+      category: "utilities",
+      displayName: "Skill Creator",
+      displayName_i18n: { "zh-CN": "技能创建器" },
+      description_i18n: { "zh-CN": "创建、编辑和验证可复用的 ZCode 技能。" },
+    },
+    name: "skill-creator",
+    requiredSeedPaths: ["skills/skill-creator/SKILL.md"],
+    rootCandidates: [
+      "packages/skill-creator-plugin",
+      "../skill-creator-plugin",
+      "../../skill-creator-plugin",
+      "../../../skill-creator-plugin",
+    ],
+    version: "0.1.0",
+  },
+  {
+    // 纯内容型插件（只有 commands + skills，无 MCP / 无系统依赖），默认启用，
+    // 让用户/agent 开箱即用地拿到 ZCode 配置指南、自诊断技能与 dynamic workflow 编写指南。
+    defaultEnabled: true,
+    listing: {
+      author: { name: "Z.ai" },
+      category: "utilities",
+      displayName: "ZCode Guide",
+      displayName_i18n: { "zh-CN": "ZCode 使用指南" },
+      description_i18n: {
+        "zh-CN": "提供 ZCode 配置指南与插件、技能、MCP、命令和钩子诊断。",
+      },
+      examplePrompts: [
+        "How do I configure MCP servers in ZCode?",
+        "Diagnose my current ZCode setup",
+      ],
+      examplePrompts_i18n: {
+        "zh-CN": ["ZCode 里怎么配置 MCP 服务器？", "帮我诊断当前的 ZCode 配置"],
+      },
+    },
+    name: "zcode-guide",
+    requiredSeedPaths: ["skills/zcode-configuration-guide/SKILL.md"],
+    rootCandidates: [
+      "packages/zcode-guide-plugin",
+      "../zcode-guide-plugin",
+      "../../zcode-guide-plugin",
+      "../../../zcode-guide-plugin",
+    ],
+    version: "0.3.0",
+  },
 ];
 
 // 在 official plugin 定义里标了 defaultEnabled: true 的, 拼成 `<name>@<marketplace>` 形式,

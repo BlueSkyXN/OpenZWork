@@ -100,6 +100,9 @@ jobs:
       - name: Workflow scheduling and auxiliary session regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/provider-registry-app-runtime.test.ts tests/v4-cold-resume.test.ts tests/workflow-concurrency-governor.test.ts tests/workflow-effective-selection.test.ts tests/workflow-fault-matrix.stop.test.ts tests/zcode-protocol-transport.test.ts --bail=1
 
+      - name: Local bundled plugins and metadata regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts tests/plugins-protocol.test.ts --bail=1
+
       - name: ToolSearch runtime regression
         run: pnpm --filter @zcode/core exec vitest run tests/tool-search-execution.test.ts tests/tool-search-hydration.test.ts tests/tool-search-result-budget.test.ts tests/tool-search-subagent.test.ts tests/tool-search-request-preparation.test.ts --bail=1
 
