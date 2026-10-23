@@ -1060,10 +1060,15 @@ describe("ZCode legacy task compat task index", () => {
     );
   });
 
-  it("SAT28: 显式恢复 child 只返回详情，不创建主列表索引", async () => {
+  it.each([
+    "subagent_child",
+    "workflow_child",
+    "selection_side_chat",
+    "nested_workflow_child",
+  ] as const)("SAT28: 显式恢复 %s 只返回详情，不创建主列表索引", async (childKind) => {
     const { agent, service, taskIndexRepo } = createService();
     const snapshot = makeSnapshot({ sessionId: "hidden-child", workspacePath: "/repo" });
-    snapshot.session.sessionKind = "subagent_child";
+    snapshot.session.sessionKind = childKind;
     vi.mocked(agent.resumeSession).mockResolvedValue(snapshot);
     await service.resumeTask({ workspacePath: "/repo", taskId: "hidden-child" });
     expect(

@@ -102,6 +102,10 @@ function initializeLegacyAutomations(db: DatabaseSync, ownerHostId?: string): vo
 export function reconcileLegacy(db: DatabaseSync, ownerHostId?: string): void {
   db.exec("BEGIN IMMEDIATE");
   try {
+    // Bug 原因：同一台机器上本机桌面与 Source Server 共用 tasks-index；0005 按库只执行一次，
+    // 只写入首个打开者的 host 行，后打开的 owner 新建项目触发 projects.host_id 外键失败。
+    // 每次启动幂等补齐当前 owner 的 host 行；不改任务 host_id 与项目归属。
+    ensureHost(db, "local", ownerHostId);
     initializeLegacyTaskIdentity(db, true, ownerHostId);
     initializeLegacyAutomations(db, ownerHostId);
     if (tableExists(db, "tasks")) {
