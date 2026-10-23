@@ -1,4 +1,5 @@
 import * as childProcess from "node:child_process";
+import { once } from "node:events";
 import { PassThrough } from "node:stream";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -18,44 +19,37 @@ describe("service manager adapters", () => {
     vi.mocked(childProcess.spawn).mockReset();
   });
 
-  it("finishes a timed-out probe while a descendant still holds its pipes", async () => {
-    const { spawn } = await vi.importActual<typeof childProcess>("node:child_process");
-    let descendantPid = 0;
-    let settled = false;
-    const exited = new Promise<void>((resolve, reject) => {
-      vi.mocked(childProcess.spawn).mockImplementationOnce((_command, _args, options) => {
-        // 模拟 D-Bus 辅助进程继承管道：探测父进程被超时杀死后，后代仍存活。
-        const child = spawn(
-          process.execPath,
-          [
-            "--eval",
-            `const { spawn } = require("node:child_process");
-             spawn(process.execPath, ["--eval", 'process.stdout.write(String(process.pid)); setInterval(() => {}, 1000);'], { stdio: ["ignore", "inherit", "inherit"] });
-             setInterval(() => {}, 1000);`,
-          ],
-          options,
-        );
-        child.stdout?.on("data", (chunk) => {
-          descendantPid = Number(String(chunk).trim());
-        });
-        child.once("error", reject);
-        child.once("exit", () => resolve());
+  it("finishes a signal-terminated probe before inherited pipes end naturally", async () => {
+    const child = new childProcess.ChildProcess();
+    const output = new PassThrough();
+    const errorOutput = new PassThrough();
+    child.stdout = output;
+    child.stderr = errorOutput;
+    const spawned = new Promise<void>((resolve) => {
+      vi.mocked(childProcess.spawn).mockImplementationOnce(() => {
+        resolve();
         return child;
       });
     });
-    const probe = isServiceManagerAvailable("linux").then((available) => {
-      settled = true;
-      return available;
-    });
+    // Windows 的真实后代在清理前可能已退出，旧夹具因此报 ESRCH 并覆盖原始断言。
+    // 保持两条管道开放，只有执行器关闭它们后才发送 ChildProcess 的 close 事件。
+    const pipesClosed = Promise.all([once(output, "close"), once(errorOutput, "close")]).then(() =>
+      child.emit("close", null, "SIGKILL"),
+    );
+    const probe = isServiceManagerAvailable("linux");
     try {
-      await exited;
-      expect(descendantPid).toBeGreaterThan(0);
-      expect(process.kill(descendantPid, 0)).toBe(true);
-      // 只等待执行器完成收口；后代退出由 finally 控制，不以延长 timeout 掩盖阻塞。
-      await vi.waitFor(() => expect(settled).toBe(true), { timeout: 500 });
-      expect(await probe).toBe(false);
+      await spawned;
+      child.emit("exit", null, "SIGKILL");
+      expect(
+        await Promise.race([
+          probe,
+          new Promise<"blocked">((resolve) => setImmediate(() => resolve("blocked"))),
+        ]),
+      ).toBe(false);
     } finally {
-      if (descendantPid > 0) process.kill(descendantPid, "SIGKILL");
+      output.destroy();
+      errorOutput.destroy();
+      await pipesClosed;
       await probe;
     }
   });
