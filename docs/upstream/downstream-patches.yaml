@@ -66,3 +66,24 @@ patches:
     refs:
       - docs/spec/provider-provisioning-test-lifecycle.md
       - https://github.com/BlueSkyXN/OpenZWork/pull/30
+
+  - id: OW-P004
+    title: Windows 显式文件清单未选中 Vitest 相关测试
+    kind: build
+    status: fixed
+    upstream:
+      since: 3.16.1
+      checked: 3.16.2
+    trigger: 在 Windows 使用 affected 的 --files 或 lint-staged manifest 入口。
+    impact: 文件路径未匹配官方依赖图，目标测试未执行；公共 setup 的全量 trigger 也未匹配。
+    cause: node:path.resolve 生成原生路径，直接赋给 Vitest config.related；反斜杠和临时目录别名与 Vitest 依赖图的实际路径不同。
+    fix: 存在的文件先解析真实路径，再统一原生路径分隔符为正斜杠；保留官方选择、缺失路径处理及 Git 基线规则。
+    evidence: Windows CI 的 manifest 回归成功退出却未生成执行标记，根公共 setup 未报告全量跳过；相同测试在 macOS 和 Linux 通过。新增相对及绝对路径执行回归，并在三平台复核。
+    files:
+      - scripts/affected-unit-tests/scope.mjs
+    regression:
+      - scripts/test/affected-unit-test-cli.test.mjs
+    retire: 上游相关文件入口统一路径后，Windows 的显式路径、manifest 和公共 setup 回归通过。
+    refs:
+      - docs/spec/maintenance-fixes-3.16.2.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/39958918968/job/120431657202

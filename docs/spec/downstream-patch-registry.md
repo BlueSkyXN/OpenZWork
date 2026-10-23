@@ -47,7 +47,7 @@ stateDiagram-v2
 
 - 编号标记写在修复处与回归断言旁的中文注释中，例如 `// OW-P003：……`。上游同步覆盖文件时，标记随修复一起消失，清单检查失败，提示重新应用修复或改为撤销。
 - 带编号标记的文件必须登记在该条目的 `files` 或 `regression` 中；`retired` 条目只在回归中保留标记。
-- 回归进入核心 CI，指文件登记在 `tests/ci/core-tests.json`，或出现在 `.github/workflows/ci.yml` 的回归步骤中；Agent CLI 包按 `--filter` 包名和包内路径识别。
+- 回归进入核心 CI，指文件登记在 `tests/ci/core-tests.json`，或出现在 `.github/workflows/ci.yml` 的回归步骤中；Agent CLI 包按 `--filter` 包名和包内路径识别。检查展开直接调用的根 package script，识别 `node --test scripts/test/*.test.mjs` 的目录覆盖。
 
 ## 日常维护
 

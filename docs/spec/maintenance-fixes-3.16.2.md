@@ -33,6 +33,10 @@ HTTP 鉴权写 Cookie 时继续使用 `encodeURIComponent`；验证 Cookie 时�
 
 ## 仓库维护
 
+### OW-P004：Windows 显式受影响测试路径
+
+三平台接入脚本回归后，Windows 的 manifest 选择未执行目标测试，公共 setup 的全量选择也未触发。`resolveScope` 将 Windows 原生反斜杠绝对路径直接赋给 Vitest 的 `config.related`；官方依赖图和 trigger 使用正斜杠路径。显式绝对路径还可能经过临时目录别名，与依赖图的实际路径不同。入口对存在的文件解析真实路径，再统一原生分隔符；不存在的文件保留解析后的路径交给官方选择器处理。保留原 Git 基线、文件去重、官方选择及全量跳过规则。回归用真实临时 Git 仓库，验证相对路径、绝对路径与 manifest 都执行目标文件，并验证根公共 setup 仍选择全量后跳过。
+
 - 仓库根 `.gitignore` 登记 `/local/`，本地归档、报告和临时材料的忽略不依赖个人 Git 配置。
 - `verify:pre-push` 保持现有执行顺序：lint、schema、架构治理测试、架构检查、固定核心 Vitest。受影响单测保留为独立入口，文档与 hook 注释按此说明。
 - `scripts/test/` 中仍对应现有功能的 Node 测试进入三平台核心 CI，按文件串行执行以限制子进程并发。已移除 ARMS 依赖的安装补丁测试随退役功能清理；不恢复依赖以满足旧断言。

@@ -1,4 +1,5 @@
-import { resolve } from "node:path";
+import { resolve, sep } from "node:path";
+import { realpath } from "node:fs/promises";
 import { git, run } from "./process.mjs";
 
 async function commit(root, ref) {
@@ -41,8 +42,22 @@ export async function resolveScope(root, options = {}, env = process.env) {
   const explicit = options.base ?? env.ZCODE_AFFECTED_TEST_BASE ?? env.ZCODE_PRE_PUSH_BASE;
   if (options.files && (options.scope === "push" || explicit))
     throw new Error("--files 不能与 push 或 --base 混用");
-  if (options.files)
-    return { files: [...new Set(options.files.map((file) => resolve(root, file)))], bases: [true] };
+  if (options.files) {
+    // OW-P004：Vitest 使用真实路径与正斜杠；原生分隔符或临时目录别名都会漏选测试。
+    const files = await Promise.all(
+      options.files.map(async (file) => {
+        let path = resolve(root, file);
+        try {
+          path = await realpath(path);
+        } catch (error) {
+          // 已删除的文件仍交给官方选择器处理，其他文件系统错误保留。
+          if (error.code !== "ENOENT") throw error;
+        }
+        return path.split(sep).join("/");
+      }),
+    );
+    return { files: [...new Set(files)], bases: [true] };
+  }
   if (options.scope !== "push") return { bases: [explicit ? await commit(root, explicit) : true] };
 
   // 脏工作区会让未提交代码掩盖推送版本的失败；先阻止，不自动 stash 或改写 index。
