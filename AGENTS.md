@@ -9,6 +9,8 @@
 
 开工前运行 `node scripts/check-workspace-freshness.mjs` 检查基线。Node 版本以 `mise.toml` 为准。
 
+新 worktree 若直接复用或 APFS 克隆依赖，在该工作区运行 `pnpm exec husky` 并确认 `.husky/_/pre-push` 可执行；具体说明见 [pre-push 说明](docs/testing/pre-push-hook.md#新工作区的-hook-入口)。
+
 以下命令从仓库根目录执行：
 
 | 用途             | 命令                                                           |

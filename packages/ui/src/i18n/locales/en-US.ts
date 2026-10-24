@@ -3129,6 +3129,8 @@ const enUS: Record<string, string> = {
   "settings.mcp.statusOnlyUnsupported":
     "This ZCode Agent cannot refresh OAuth status. Upgrade or restart ZCode, then reopen MCP settings to run a full refresh.",
   "settings.mcp.refreshFailed": "Failed to refresh MCP status: {error}",
+  "settings.mcp.loadFailed":
+    "Could not load the selected MCP configuration. Refresh or reconnect and try again.",
   "settings.mcp.status.toolCount": "{count} tools",
   "settings.mcp.status.connectedReason": "Connected and available.",
   "settings.mcp.status.connectingReason": "Connecting to the MCP runtime.",

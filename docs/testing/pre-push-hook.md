@@ -80,6 +80,13 @@ Push 要求已暂存、未暂存、未跟踪改动均为空（忽略 Git 已忽�
 
 使用临时 Git 仓库、真实 Vitest 和命令入口验证：局部选择与预览/执行一致、未选择文件不执行、任务跨 commit 与旧 WIP、新增测试、配置与公共 setup 全量跳过、共同依赖全量跳过、真实 git push 在全量跳过后成功推送、无关联成功退出、测试失败、无效基线、首次/已有分支 Push、脏工作区和非 HEAD 推送阻止、多个 ref 与删除 ref、集成合并正常参与选择、lint-staged manifest 和 Git local env 隔离。夹具移除外层 push/基线环境后再注入本场景参数，避免真实仓库 SHA 污染临时仓库。
 
+### 新工作区的 hook 入口
+
+`core.hooksPath=.husky/_` 相对各工作区解析。创建 worktree 后若直接复用或 APFS 克隆依赖，
+需要在新工作区根目录执行 `pnpm exec husky`，生成该工作区的 `.husky/_/pre-push`。
+准备完成后确认入口存在且可执行；仅复制 `node_modules` 不会运行 `prepare`。
+保留相对 hooksPath，避免其他工作区推送时执行错误 checkout 的检查脚本。
+
 ### 时序与真实子进程测试
 
 - 计时算法用受控时钟和数据事件验证先后顺序；真实 IO 接线保留独立集成覆盖，不把进程启动排队计入很短的算法测试窗口。

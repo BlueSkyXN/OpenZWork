@@ -2949,6 +2949,7 @@ const zhCN: Record<string, string> = {
   "settings.mcp.statusOnlyUnsupported":
     "当前 ZCode Agent 不支持 OAuth 状态刷新。请升级或重启 ZCode，然后重新打开 MCP 设置进行完整刷新。",
   "settings.mcp.refreshFailed": "刷新 MCP 状态失败：{error}",
+  "settings.mcp.loadFailed": "无法读取所选 MCP 配置，请刷新或重新连接后重试。",
   "settings.mcp.status.toolCount": "{count} 个工具",
   "settings.mcp.status.connectedReason": "已连接并可用。",
   "settings.mcp.status.connectingReason": "正在连接 MCP runtime。",

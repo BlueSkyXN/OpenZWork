@@ -87,3 +87,50 @@ patches:
     refs:
       - docs/spec/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/39958918968/job/120431657202
+      - https://github.com/BlueSkyXN/OpenZWork/pull/31
+
+  - id: OW-P005
+    title: MCP 写入失败仍更新界面状态
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.15.1
+      checked: 3.16.2
+    trigger: MCP 目录服务缺失或新增、修改、启停、删除请求失败。
+    impact: 新增和修改显示未保存的配置，开关错误改变，删除提前移除条目；调用方无法一致处理失败。
+    cause: store 吞掉持久化异常后更新投影，删除及预载入口没有等待写入结果。
+    fix: 所有 mutation 等待统一持久化入口，失败 reject 且保留原投影；设置页捕获错误，当前目标成功才执行完成动作。
+    evidence: 修复前受控写入回归失败，修复后新增、修改、启停、删除、缺服务及预载失败回归通过；本机平台返回失败也不更新投影。
+    files:
+      - packages/ui/src/store/mcpStore.ts
+      - packages/ui/src/settings/McpSettingsSection.tsx
+    regression:
+      - packages/ui/test/mcpStoreMutations.test.ts
+    retire: 上游所有 MCP 写入入口都向调用方返回失败，失败时原界面及持久化标记保持。
+    refs:
+      - docs/spec/maintenance-fixes-3.16.2.md
+      - https://github.com/BlueSkyXN/OpenZWork/pull/31
+
+  - id: OW-P006
+    title: MCP 迟到的保存结果污染新 Source 配置投影
+    kind: product
+    status: fixed
+    priority: P1
+    upstream:
+      since: 3.15.1
+      checked: 3.16.2
+    trigger: Source A 保存挂起期间切换 B、切走再切回 A，或更换同 Source 的目录服务。
+    impact: 原目标的配置可能写入新目标的共享 store，并进入新目标的 Agent 状态刷新请求。
+    cause: 异步写入完成后直接修改当前投影，没有核对操作开始时的目标和服务代次。
+    fix: 捕获目标服务与代次，切换或重连推进代次；读取与写回丢弃过期结果，重置旧目标开关投影；界面完成动作核对目标令牌。
+    evidence: A→B、A→B→A、同 Source 重连回归覆盖四种 mutation；状态刷新请求不含合成 A 标记，旧代理读取与批量预载不会污染新目标。
+    files:
+      - packages/ui/src/store/mcpStore.ts
+      - packages/ui/src/settings/McpSettingsSection.tsx
+    regression:
+      - packages/ui/test/mcpStoreMutations.test.ts
+    retire: 上游对 MCP 写回及界面完成动作检查目标代次，切换和重连回归不再污染配置投影。
+    refs:
+      - docs/spec/maintenance-fixes-3.16.2.md
+      - https://github.com/BlueSkyXN/OpenZWork/pull/31

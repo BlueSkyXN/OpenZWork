@@ -4,6 +4,7 @@
 # 避免还没过代码质量门槛就进入更慢的测试阶段。
 # Git 传入的 local/remote ref 与 sha 保存在 ZCODE_PRE_PUSH_STDIN 中。
 # 默认 verify:pre-push 执行固定核心套件，不按这些 ref 筛选测试。
+# architecture:check --changed 仍用这些 ref 选择推送前的比较基线。
 # 手工执行 hook 时 stdin 可能是终端，避免直接 cat 卡住调试。
 pre_push_stdin=""
 if [ ! -t 0 ]; then
