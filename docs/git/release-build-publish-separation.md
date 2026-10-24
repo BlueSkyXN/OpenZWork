@@ -1,55 +1,38 @@
-# Release 构建与发布元数据分离
+# OpenZWork 构建与发布流程
 
-## 目的
+当前入口为 [GitHub Actions](../../.github/workflows/) 与 [OpenZWork Releases](https://github.com/BlueSkyXN/OpenZWork/releases)。应用采用手动安装更新。历史上游 GitLab、OSS、CDN 灰度发布与官方自动更新链不属于本仓当前发行流程。
 
-安装包、签名、公证、blockmap 和 Electron Builder 生成的 `latest.yml` 在构建阶段完成。发布日志由 infra 通过 API 直接编辑共享目录中的更新清单；z-code CI 的人工确认只决定是否继续上传/发布，不再读取仓库 changelog 或改写更新清单。
+## 候选验证
 
-## 当前 CI 时序
+1. 固定最终分支提交，完成 `CI`、`Extended checks (non-blocking)` 与 Desktop Main/E2E 类型审计。
+2. 在同一分支触发 `Installers`，不提供 `release_tag` 或 `release_commit`：
 
-```text
-pnpm release（默认 release-it）
-   version + CHANGELOG.md + release commit/tag/push
-   |
-   v
-commit/tag
-   |
-   +--> build:macos/windows/linux
-   |      installer + blockmap + 基础 latest.yml
-   |      共享目录中的候选制品保持未注入 releaseNotes
-   |
-   v
-   release:approve  <--- infra 完成日志编辑后人工放行
-          |
-          v
-   release:validate
-      校验六个平台 update YAML、日志、安装包摘要和 remote components
-          |
-          v
-   release:upload:* (RELEASE_ARTIFACT_MODE=publish)
-          |
-          v
-   CDN preload -> gray publish -> stable publish
-```
+   ```bash
+   gh workflow run installers.yml -R BlueSkyXN/OpenZWork --ref <candidate-branch>
+   ```
 
-`release:approve` 之前不会调用正式 OSS 上传或 release API。安装包保存在 CI runner 共享目录，approve 放行后先执行 validate，校验通过后才由 upload job 读取。
+3. 回读实际 `headSha` 与各 job 结果。源码变化后，重新验证最终提交。
+4. 检查 macOS arm64、Windows x64、Linux x64 的构建日志、artifact 名称、大小、有效期和摘要。下载、解包、安装分别记录执行情况。
 
-## release-it 边界
+默认构建生成 Preview 候选，输出到 Actions artifacts。`CI` 与 `Extended` 由 PR 事件触发；Installers 自动 push 入口仅覆盖 `main` 和 `wp**`，其它候选分支需要手动触发。
 
-`pnpm release` 只运行 `.release-it.mjs` 中的默认发布能力和 `@release-it/conventional-changelog`：更新版本、维护根目录 `CHANGELOG.md`、创建 release commit/tag 并 push。仓库不再为 release-it 挂载 AI 改写、飞书评审或 `changelogs/vX.Y.Z*.md` 本地生成插件；CI 发布链路也不再消费根目录 `CHANGELOG.md`。
+## 正式包与 Release
 
-日志编辑由 infra 负责并直接落到 runner 共享目录中的 `latest.yml`。全部构建完成且 infra 完成日志编辑后，发布负责人通过 `release:approve` 人工门禁放行；随后 `release:validate` 自动统一检查六个平台的版本、非空日志、update YAML 引用、文件大小和摘要，并要求 remote manifest 精确包含 `darwin-arm64`、`darwin-x64`、`linux-arm64`、`linux-x64` 四个平台且内部 `platformArch` 与文件名一致。只有完整性检查通过，各平台 upload job 才会读取共享目录中的最新内容上传。
+正式发行由明确选定的提交、`v<version>-openzwork` tag 和根 `package.json` 版本对应。`installers.yml` 的正式构建入口要求同时提供已存在的 `release_tag` 和完整 `release_commit`，并校验 tag 格式、版本及实际 checkout SHA。
 
-`build:remote:assets` 每次收集当前版本前只清理共享发布根目录中的旧 `manifest-*.json` 和 `components/`，不触碰并行平台构建写入的 `macos-*`、`windows-*`、`linux-*` 目录。这样同版本重试不会把上一次的 remote manifest 或组件混入当前候选集合。
+正式构建使用 OpenZWork production 身份，当前工作流关闭 macOS/Windows 签名。每个平台生成 `RELEASE-MANIFEST.json`，记录 source tag、source commit/tree、workflow commit、版本、身份与安装包 SHA256。
 
-## 关键文件
+| Runner      | 目标安装格式               |
+| ----------- | -------------------------- |
+| macOS arm64 | DMG、ZIP                   |
+| Windows x64 | NSIS EXE                   |
+| Linux x64   | AppImage、DEB、RPM、pacman |
 
-- `scripts/ci-collect-artifacts.mjs`：只收集并修正基础制品，不再注入 release notes。
-- `scripts/validate-release-artifacts.mjs`：approve 放行后、upload 前校验六个平台和 remote assets 的完整性。
-- `scripts/upload-oss.sh`：正式上传使用 `RELEASE_ARTIFACT_MODE=publish`，从共享目录读取 infra 编辑后的清单；缺少顶层 `releaseNotes: |-` 时 fail-closed。
-- `.gitlab/ci/50-release.yml`：`release:approve` 确认 infra 日志已准备完成，随后 `release:validate` 提供统一完整性 gate，各平台 upload job 依赖 validate。
+Installers 只构建并上传 Actions artifacts，不创建 GitHub Release。正式发布时，将核验后的安装包和来源清单与同一 tag 的版本说明一起发布到本仓 Releases。Preview 包不能通过改名转成正式包。
 
-## 失败与重试
+## 命令边界与重试
 
-- infra 尚未向共享目录中的 `latest.yml` 写入日志：不得点击 approve；若提前放行，validate 阶段拒绝发布。
-- 版本、引用文件、size、sha512、remote manifest 四平台集合或 remote component 任一不一致：validate 阶段拒绝发布。
-- 单个平台上传失败：不需要重新构建；从同一共享候选目录重试对应 upload job。
+- `pnpm release` 沿用 [.release-it.mjs](../../.release-it.mjs)：更新版本与 CHANGELOG，创建 `v<version>` commit/tag 并 push；它不创建 GitHub Release，且默认 tag 格式不同于 OpenZWork 正式安装包要求。不要将该命令当作完整发版入口。
+- 合并、创建正式 tag、发布 Release 和部署分别执行，候选构建不包含这些动作。
+- 检查失败时保留运行编号、实际进程退出码与未完成测试数量。重跑成功只能说明该次运行通过；稳定性问题的修复需要根因及回归证据。
+- 新提交产生后，旧提交的通过记录与安装包继续作为历史记录，最终候选以新的统一 SHA 验收。

@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { encodeCustomModelValue, type BotsStateFile, type ZCodeStreamEvent } from "@zcode/shared";
 import * as f from "./botsService.fixtures.js";
 
@@ -43,7 +43,28 @@ function createDeferred<T>() {
   return { promise, resolve, reject };
 }
 
+const messageFlowServices: ReturnType<typeof f.createBotsService>[] = [];
+
+function createMessageFlowService(deps: Parameters<typeof f.createBotsService>[0]) {
+  // OW-P007：消息流 HTTP 桩会立即返回；若被后台长轮询消费，会空转并积累 mock 记录。
+  // 本文件由显式事件驱动，启动语义用例单独开启后台；runtime 生命周期由专门用例验证。
+  const service = f.createBotsService({ runStartupBackgroundTasks: false, ...deps });
+  messageFlowServices.push(service);
+  return service;
+}
+
 describe("botsService messageFlow", () => {
+  afterEach(async () => {
+    // 先等待 provider 请求和锁退出，再让外层 fixture 恢复全局 HTTP，避免跨用例竞争。
+    await Promise.all(messageFlowServices.splice(0).map((service) => service.disposeAllAndWait()));
+    if (vi.isMockFunction(globalThis.fetch)) {
+      const pollingRequests = globalThis.fetch.mock.calls.filter(([url]) =>
+        String(url).includes("/ilink/bot/getupdates"),
+      );
+      expect(pollingRequests).toEqual([]);
+    }
+  });
+
   it.each(["available", "unavailable", "missing"] as const)(
     "绑定后从 Session 原选择解析下一条输入，不读 Bot 默认或创建草稿：%s",
     async (availability) => {
@@ -60,7 +81,7 @@ describe("botsService messageFlow", () => {
         effectiveSelection: availability === "available" ? effective : null,
         preferredSelection: effective,
       }));
-      const service = f.createBotsService({
+      const service = createMessageFlowService({
         repo: repo as never,
         legacyTaskService: tasks,
         modelSelectionService: { getView } as never,
@@ -112,7 +133,10 @@ describe("botsService messageFlow", () => {
     const baseRepo = f.createMemoryRepo(f.feishuConfig);
     const readState = vi.fn(() => baseRepo.readState());
     const writeState = vi.fn((state: BotsStateFile) => baseRepo.writeState(state));
-    const service = f.createBotsService({ repo: { ...baseRepo, readState, writeState } as never });
+    const service = createMessageFlowService({
+      repo: { ...baseRepo, readState, writeState } as never,
+      runStartupBackgroundTasks: true,
+    });
     await vi.waitFor(() => expect(readState).toHaveBeenCalled());
     expect(writeState).not.toHaveBeenCalled();
     service.disposeAll();
@@ -135,7 +159,7 @@ describe("botsService messageFlow", () => {
       },
     });
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -179,7 +203,7 @@ describe("botsService messageFlow", () => {
 
   it("renders Weixin selections as plain numbered text without native selection payload", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService: f.createLegacyTaskService(),
       repo: repo as never,
@@ -214,7 +238,7 @@ describe("botsService messageFlow", () => {
 
   it("marks remote workspaces in native selection labels", async () => {
     const repo = f.createMemoryRepo(f.baseConfig);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService: f.createLegacyTaskService(),
       repo: repo as never,
@@ -234,7 +258,7 @@ describe("botsService messageFlow", () => {
 
   it("localizes Weixin text selection cancel hints", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService: f.createLegacyTaskService(),
       settingService: f.createSettingService({
@@ -263,7 +287,7 @@ describe("botsService messageFlow", () => {
 
   it("cancels a Weixin text selection with 0", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService: f.createLegacyTaskService(),
       repo: repo as never,
@@ -288,7 +312,7 @@ describe("botsService messageFlow", () => {
   it("resolves Weixin workspace/reply selections and allows draft model selection", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       modelSelectionService: f.createModelSelectionService([
@@ -383,7 +407,7 @@ describe("botsService messageFlow", () => {
         },
       ],
     });
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService: f.createLegacyTaskService(),
       repo: repo as never,
@@ -438,7 +462,7 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService: f.createLegacyTaskService(),
       settingService: f.createSettingService({
@@ -531,7 +555,7 @@ describe("botsService messageFlow", () => {
         },
       ]),
     });
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -641,7 +665,7 @@ describe("botsService messageFlow", () => {
         archived: false,
       })),
     });
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       ...projectServices,
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
@@ -704,7 +728,7 @@ describe("botsService messageFlow", () => {
         provider: "codex",
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -776,7 +800,7 @@ describe("botsService messageFlow", () => {
         provider: "codex",
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({
         "telegram-token": "token",
       }),
@@ -880,7 +904,7 @@ describe("botsService messageFlow", () => {
     const zcodeSessionService = f.createZCodeSessionService(
       f.createZCodeSessionSettingsFromConfigOptions(configOptions),
     );
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       zcodeSessionService,
@@ -1014,7 +1038,7 @@ describe("botsService messageFlow", () => {
         updateProviderRegistry: vi.fn(async () => undefined),
       },
     );
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       zcodeSessionService,
@@ -1105,7 +1129,7 @@ describe("botsService messageFlow", () => {
     vi.mocked(zcodeTaskService.setModel).mockResolvedValue(configOptions);
     const zcodeSessionService = f.createZCodeSessionService();
     const updateProviderRegistry = vi.mocked(zcodeSessionService.updateProviderRegistry);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       ...f.createBotProjectServices([{ workspacePath: "/tmp/workspace" }]),
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       zcodeTaskService,
@@ -1189,7 +1213,7 @@ describe("botsService messageFlow", () => {
         status: "completed",
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       settingService: f.createSettingService({
@@ -1245,7 +1269,7 @@ describe("botsService messageFlow", () => {
         status: "completed",
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -1316,7 +1340,7 @@ describe("botsService messageFlow", () => {
         },
       ]),
     );
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       zcodeSessionService,
@@ -1395,7 +1419,7 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService: f.createLegacyTaskService(),
       modelSelectionService: {
@@ -1467,7 +1491,7 @@ describe("botsService messageFlow", () => {
         options: [],
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       modelSelectionService: f.createModelSelectionService([
@@ -1529,7 +1553,7 @@ describe("botsService messageFlow", () => {
         },
       },
     });
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({
         "feishu-secret": "secret",
       }),
@@ -1549,7 +1573,7 @@ describe("botsService messageFlow", () => {
 
   it("uses the same compact selection text for Feishu and Telegram native buttons", async () => {
     const repo = f.createMemoryRepo(f.feishuConfig);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       legacyTaskService: f.createLegacyTaskService(),
       credentialService: f.createCredentialService({
         "feishu-secret": "secret",
@@ -1577,7 +1601,7 @@ describe("botsService messageFlow", () => {
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
     const broadcastService = f.createBroadcastService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       broadcastService,
@@ -1627,7 +1651,7 @@ describe("botsService messageFlow", () => {
     const remoteModelSelectionService = f.createModelSelectionService([
       { id: "remote-provider", name: "Remote", models: ["model-a"] },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -1669,7 +1693,7 @@ describe("botsService messageFlow", () => {
   it("injects a Feishu delivery target into the prompt that may call CronCreate", async () => {
     const repo = f.createMemoryRepo(f.feishuConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -1707,7 +1731,7 @@ describe("botsService messageFlow", () => {
         },
       ),
     };
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: f.createMemoryRepo(f.weixinConfig) as never,
@@ -1771,7 +1795,7 @@ describe("botsService messageFlow", () => {
           },
         ),
       };
-      const service = f.createBotsService({
+      const service = createMessageFlowService({
         credentialService: f.createCredentialService({ "feishu-secret": "synthetic-secret" }),
         legacyTaskService,
         repo: f.createMemoryRepo(f.feishuConfig) as never,
@@ -1859,7 +1883,7 @@ describe("botsService messageFlow", () => {
         ...f.createLegacyTaskService(),
         onDynamicTaskEvent: vi.fn(),
       };
-      const service = f.createBotsService({
+      const service = createMessageFlowService({
         legacyTaskService,
         repo: f.createMemoryRepo(config) as never,
       });
@@ -1903,7 +1927,7 @@ describe("botsService messageFlow", () => {
       ),
     };
     const broadcastService = f.createBroadcastService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       broadcastService,
@@ -2000,7 +2024,7 @@ describe("botsService messageFlow", () => {
         },
       ),
     };
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -2177,7 +2201,7 @@ describe("botsService messageFlow", () => {
       });
       vi.stubGlobal("fetch", fetchMock);
       const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
-      const service = f.createBotsService({
+      const service = createMessageFlowService({
         credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
         legacyTaskService: {
           ...f.createLegacyTaskService(),
@@ -2256,7 +2280,7 @@ describe("botsService messageFlow", () => {
       });
       vi.stubGlobal("fetch", fetchMock);
       const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
-      const service = f.createBotsService({
+      const service = createMessageFlowService({
         credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
         legacyTaskService: {
           ...f.createLegacyTaskService(),
@@ -2323,7 +2347,7 @@ describe("botsService messageFlow", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService: {
         ...f.createLegacyTaskService(),
@@ -2413,7 +2437,7 @@ describe("botsService messageFlow", () => {
       bots: [{ ...f.feishuConfig.bots[0]!, replyMode: "streaming_card" }],
     });
     const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService: {
         ...f.createLegacyTaskService(),
@@ -2557,7 +2581,7 @@ describe("botsService messageFlow", () => {
       ],
     });
     const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       runStartupBackgroundTasks: false,
       credentialService: f.createCredentialService({
         "feishu-secret": "secret",
@@ -2684,7 +2708,7 @@ describe("botsService messageFlow", () => {
       ),
     };
     const broadcastService = f.createBroadcastService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       broadcastService,
@@ -2748,7 +2772,7 @@ describe("botsService messageFlow", () => {
       ),
     };
     const broadcastService = f.createBroadcastService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       broadcastService,
@@ -2872,7 +2896,7 @@ describe("botsService messageFlow", () => {
       ),
     };
     const broadcastService = f.createBroadcastService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       broadcastService,
@@ -3010,7 +3034,7 @@ describe("botsService messageFlow", () => {
         },
       ),
     };
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({
         "feishu-secret": "secret",
       }),
@@ -3216,7 +3240,7 @@ describe("botsService messageFlow", () => {
       ),
     };
     const broadcastService = f.createBroadcastService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService,
       broadcastService,
@@ -3349,7 +3373,7 @@ describe("botsService messageFlow", () => {
         },
       ),
     };
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({
         "feishu-secret": "secret",
       }),
@@ -3455,7 +3479,7 @@ describe("botsService messageFlow", () => {
         },
       ),
     };
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -3534,7 +3558,7 @@ describe("botsService messageFlow", () => {
     vi.mocked(legacyTaskService.respondElicitation)
       .mockRejectedValueOnce(new Error("temporary v4 failure"))
       .mockResolvedValueOnce(true);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -3588,7 +3612,7 @@ describe("botsService messageFlow", () => {
     vi.mocked(legacyTaskService.respondPermission)
       .mockRejectedValueOnce(new Error("temporary permission failure"))
       .mockResolvedValueOnce(true);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "telegram-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -3652,7 +3676,7 @@ describe("botsService messageFlow", () => {
       async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({
         "telegram-token": "token",
       }),
@@ -3720,7 +3744,7 @@ describe("botsService messageFlow", () => {
       },
     });
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -3788,7 +3812,7 @@ describe("botsService messageFlow", () => {
       },
     });
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -3865,7 +3889,7 @@ describe("botsService messageFlow", () => {
       },
     });
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -3923,7 +3947,7 @@ describe("botsService messageFlow", () => {
       },
     });
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -3950,7 +3974,7 @@ describe("botsService messageFlow", () => {
     vi.stubEnv("ZCODE_DATA_BASE_DIR", `/tmp/zcode-bot-attachments-${Date.now()}`);
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -4001,7 +4025,7 @@ describe("botsService messageFlow", () => {
     vi.stubEnv("ZCODE_DATA_BASE_DIR", `/tmp/zcode-bot-files-${Date.now()}`);
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -4044,7 +4068,7 @@ describe("botsService messageFlow", () => {
     );
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -4079,7 +4103,7 @@ describe("botsService messageFlow", () => {
     const isConnected = vi.fn(async () => false);
     const ensureConnected = vi.fn(async () => ({ ok: true }));
     const getLegacyTaskService = vi.fn(async () => legacyTaskService);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4118,7 +4142,7 @@ describe("botsService messageFlow", () => {
       ok: false,
       message: "SSH 认证失败",
     }));
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4151,7 +4175,7 @@ describe("botsService messageFlow", () => {
   it("blocks remote runtime commands when reconnect service is unavailable", async () => {
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: undefined,
@@ -4177,7 +4201,7 @@ describe("botsService messageFlow", () => {
     const legacyTaskService = f.createLegacyTaskService();
     const ensureConnected = vi.fn(async () => ({ ok: true }));
     const getLegacyTaskService = vi.fn(async () => legacyTaskService);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4213,7 +4237,7 @@ describe("botsService messageFlow", () => {
   it("allows help and lightweight status when reconnect service is unavailable", async () => {
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: undefined,
@@ -4246,7 +4270,7 @@ describe("botsService messageFlow", () => {
     const legacyTaskService = f.createLegacyTaskService();
     const isConnected = vi.fn(async () => false);
     const ensureConnected = vi.fn(async () => ({ ok: true }));
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4299,7 +4323,7 @@ describe("botsService messageFlow", () => {
       return new Response("{}", { status: 200 });
     });
     vi.stubGlobal("fetch", fetchMock);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4336,7 +4360,7 @@ describe("botsService messageFlow", () => {
     const reconnectDeferred = createDeferred<{ ok: boolean }>();
     const isConnected = vi.fn(async () => false);
     const ensureConnected = vi.fn(() => reconnectDeferred.promise);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4385,7 +4409,7 @@ describe("botsService messageFlow", () => {
     const legacyTaskService = f.createLegacyTaskService();
     const isConnected = vi.fn(async () => false);
     const ensureConnected = vi.fn(async () => ({ ok: true }));
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4419,7 +4443,7 @@ describe("botsService messageFlow", () => {
   it("deduplicates replayed provider callbacks before executing messages", async () => {
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       remoteWorkspaceService: {
@@ -4482,7 +4506,7 @@ describe("botsService messageFlow", () => {
     vi.mocked(legacyTaskService.resumeTask).mockRejectedValueOnce(
       new Error(`Session not found: ${missingSessionId}`),
     );
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -4562,7 +4586,7 @@ describe("botsService messageFlow", () => {
         },
       ]),
     );
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       zcodeSessionService,
@@ -4629,7 +4653,7 @@ describe("botsService messageFlow", () => {
         options: [{ value: "max", name: "Max" }],
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -4685,7 +4709,7 @@ describe("botsService messageFlow", () => {
     vi.mocked(legacyTaskService.setMode).mockRejectedValueOnce(
       new Error("Unsupported reasoning effort: enabled"),
     );
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -4715,7 +4739,7 @@ describe("botsService messageFlow", () => {
   it("keeps the active task when /new is requested while the task is running", async () => {
     const repo = f.createMemoryRepo(f.baseConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "secret-1": "secret" }),
       legacyTaskService,
       repo: repo as never,
@@ -4751,7 +4775,7 @@ describe("botsService messageFlow", () => {
   it("blocks context and config selection lists while the current task is running", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -4842,7 +4866,7 @@ describe("botsService messageFlow", () => {
       modelId: "claude-sonnet",
       options: { reasoningLevel: "medium" },
     });
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -4946,7 +4970,7 @@ describe("botsService messageFlow", () => {
         },
       ]),
     );
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       zcodeSessionService,
@@ -5068,7 +5092,7 @@ describe("botsService messageFlow", () => {
         options: [{ value: "yolo", name: "Yolo" }],
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -5094,7 +5118,7 @@ describe("botsService messageFlow", () => {
   it("blocks task switching while the current task is running", async () => {
     const repo = f.createMemoryRepo(f.weixinConfig);
     const legacyTaskService = f.createLegacyTaskService();
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -5176,7 +5200,7 @@ describe("botsService messageFlow", () => {
         status: "completed",
       },
     ]);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       legacyTaskService,
       repo: repo as never,
@@ -5231,7 +5255,7 @@ describe("botsService messageFlow", () => {
       },
     });
     const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "feishu-secret": "secret" }),
       legacyTaskService: {
         ...f.createLegacyTaskService(),
@@ -5360,7 +5384,7 @@ describe("botsService messageFlow", () => {
         },
       });
       const streamListeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
-      const service = f.createBotsService({
+      const service = createMessageFlowService({
         credentialService: f.createCredentialService(credentials),
         legacyTaskService: {
           ...f.createLegacyTaskService(),
@@ -5439,7 +5463,7 @@ describe("botsService messageFlow", () => {
         ...(incomplete ? { selectionIssue: "model-not-found" } : {}),
       }));
       const taskService = f.createLegacyTaskService();
-      const service = f.createBotsService({
+      const service = createMessageFlowService({
         credentialService: f.createCredentialService({ "weixin-token": "token" }),
         modelSelectionService: { getView } as never,
         legacyTaskService: taskService,
@@ -5491,7 +5515,7 @@ describe("botsService messageFlow", () => {
     };
     const modelSelectionService = f.createModelSelectionService([provider]);
     const getView = vi.mocked(modelSelectionService.getView);
-    const service = f.createBotsService({
+    const service = createMessageFlowService({
       credentialService: f.createCredentialService({ "weixin-token": "token" }),
       modelSelectionService,
       repo: f.createMemoryRepo(f.weixinConfig) as never,

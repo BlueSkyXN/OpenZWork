@@ -135,3 +135,24 @@ patches:
     refs:
       - docs/spec/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/pull/31
+
+  - id: OW-P007
+    title: Bot 消息流 HTTP 测试桩被后台轮询消费
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 消息流测试创建默认启用后台任务的 Bot 服务，同时把全局 HTTP 替换为立即成功的响应。
+    impact: 微信 getupdates 可连续取得空响应并累积 mock 调用；消息流单测存在不受其断言控制的后台请求。
+    cause: 消息处理与后台渠道生命周期没有在测试夹具中隔离，且每例同步 disposeAll 后未等待异步清理完成。
+    fix: 消息流工厂默认关闭后台任务，启动用例显式开启；每例等待 disposeAllAndWait，并断言 HTTP 替身没有消费微信后台轮询。
+    evidence: 上游 3.16.2 夹具没有设置 runStartupBackgroundTasks；真实服务/provider 与临时目录的受控实验在 18ms 内产生 100 次空轮询。历史 worker OOM 无堆快照，不逐次断言均由此触发。
+    files:
+      - packages/services/test/botsService.messageFlow.test.ts
+    regression:
+      - packages/services/test/botsService.messageFlow.test.ts
+    retire: 上游消息流夹具隔离后台任务并等待服务清理，现有消息断言与无意外轮询检查全部通过。
+    refs:
+      - docs/spec/maintenance-fixes-3.16.2.md
+      - https://github.com/BlueSkyXN/OpenZWork/pull/32
