@@ -255,7 +255,15 @@ function hasValidLiteToken(c: Context, token: string): boolean {
     );
     return true;
   }
-  return parseCookieHeader(c.req.header("cookie")).get(zcodeLiteTokenCookieName) === token;
+  const cookie = parseCookieHeader(c.req.header("cookie")).get(zcodeLiteTokenCookieName);
+  if (cookie === undefined) return false;
+  try {
+    // OW-P002：与写 Cookie 时的编码对应，只解码一次，保留 token 中的字面百分号。
+    return decodeURIComponent(cookie) === token;
+  } catch {
+    // 畸形 Cookie 按鉴权失败处理，避免 URIError 让请求返回 500。
+    return false;
+  }
 }
 
 function isTokenProtectedPath(pathname: string): boolean {

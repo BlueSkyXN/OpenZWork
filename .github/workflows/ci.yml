@@ -67,6 +67,9 @@ jobs:
         env:
           ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
 
+      - name: Repository script regressions
+        run: pnpm test:repo-scripts
+
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
       # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
       # --cache-dir=.turbo + actions/cache：turbo 默认缓存在 node_modules/.cache 不随

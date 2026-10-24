@@ -251,8 +251,22 @@ test("lint-staged manifest 使用官方 related，保留用户 manifest", async 
     legacyEntry,
   );
   assert.equal(result.code, 0, result.stdout + result.stderr);
+  // OW-P004：Windows 曾成功退出但选中零文件；同时验证选择范围和实际执行结果。
+  assert.match(result.stdout, /选中 1\/2/u);
   assert.equal(await readFile(join(root, "selected"), "utf8"), "yes");
   await readFile(join(root, "user-manifest.json"));
+});
+
+test("OW-P004：显式相对与绝对路径都执行相关测试", async (t) => {
+  const { root, write, invoke } = await fixture(t);
+  await write("source.mjs", "export const value = 2;");
+  for (const file of ["source.mjs", join(root, "source.mjs")]) {
+    await rm(join(root, "selected"), { force: true });
+    const result = await invoke(["--files", file]);
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    assert.match(result.stdout, /选中 1\/2/u);
+    assert.equal(await readFile(join(root, "selected"), "utf8"), "yes");
+  }
 });
 
 test("根配置的公共 setup 通过官方 trigger 选中整个套件并成功跳过", async () => {
