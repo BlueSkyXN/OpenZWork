@@ -16,7 +16,7 @@ import {
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 
 // MCP-WR-06 / OW-P005：只将隔离 E2E HOME 的 CLI 目录设为只读，真实持久化错误经 UI 返回。
-// 目标切换代次（OW-P006）由受控 store/刷新函数回归验证；本例不依赖真实 SSH 或模型。
+// 目标切换代次由受控 store/刷新函数回归验证；本例不依赖真实 SSH 或模型。
 const name = "e2e-mcp-write-failure";
 const frame = "[data-settings-content-frame]";
 const cliDir = join(getE2EAppDataPaths().storageRoot, "cli");

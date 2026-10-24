@@ -105,6 +105,7 @@ patches:
     files:
       - packages/ui/src/store/mcpStore.ts
       - packages/ui/src/settings/McpSettingsSection.tsx
+      - packages/desktop/test/e2e/settings/manual-review/pending/mcp-mutation-errors.test.ts
     regression:
       - packages/ui/test/mcpStoreMutations.test.ts
     retire: 上游所有 MCP 写入入口都向调用方返回失败，失败时原界面及持久化标记保持。
