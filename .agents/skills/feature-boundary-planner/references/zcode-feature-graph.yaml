@@ -1055,6 +1055,8 @@ nodes:
     invariants:
       - SettingService owns saved settings; each main runtime holds its materialization snapshot.
       - Prompt customization does not change tool permissions or child agent identities.
+      - Runtime capabilities and paths remain live when editable rules are replaced or disabled.
+      - Generated context switches apply in both section and whole-rule replacement modes.
   - id: capability.project-memory
     kind: capability
     label: CLI project Memory

@@ -14,10 +14,63 @@ vi.mock("./hooks/useSystemPromptSettings.js", () => ({ useSystemPromptSettings: 
 import { SystemPromptEditor } from "./contract.js";
 
 const catalog: SystemPromptCatalog = {
-  version: 1,
+  version: 2,
   sections: [
-    { id: "role", content: "DEFAULT_ROLE", generated: false, injectionTarget: "system" },
-    { id: "env_info", content: "", generated: true, injectionTarget: "system" },
+    {
+      id: "role",
+      content: "DEFAULT_ROLE",
+      generated: false,
+      runtime: false,
+      scenarios: [],
+      injectionTarget: "system",
+    },
+    {
+      id: "env_info",
+      content: "",
+      generated: true,
+      runtime: false,
+      scenarios: [],
+      injectionTarget: "system",
+    },
+    {
+      id: "desktop_context",
+      content: "DESKTOP_RULE",
+      generated: false,
+      runtime: true,
+      injectionTarget: "system",
+      scenarios: [
+        {
+          id: "gen_ui_available",
+          template: {
+            available: true,
+            defaultContent: "AVAILABLE\nDESKTOP_RULE",
+            runtimeBefore: "AVAILABLE",
+            runtimeAfter: "",
+            variables: {},
+          },
+        },
+        {
+          id: "gen_ui_unavailable",
+          template: {
+            available: true,
+            defaultContent: "UNAVAILABLE\nDESKTOP_RULE",
+            runtimeBefore: "UNAVAILABLE",
+            runtimeAfter: "",
+            variables: {},
+          },
+        },
+        {
+          id: "terminal",
+          template: {
+            available: false,
+            defaultContent: "",
+            runtimeBefore: "",
+            runtimeAfter: "",
+            variables: {},
+          },
+        },
+      ],
+    },
   ],
 };
 const saved = (): SystemPromptSettings => ({
@@ -27,6 +80,29 @@ const saved = (): SystemPromptSettings => ({
 afterEach(cleanup);
 
 describe("system prompt editor", () => {
+  it("keeps runtime facts visible when rules are disabled", () => {
+    const settings = createDefaultSystemPromptSettings();
+    settings.sections.desktop_context = { mode: "disabled", content: "" };
+    render(createElement(SystemPromptEditor, { catalog, settings, onSave: vi.fn() }));
+    fireEvent.click(screen.getByTestId("system-prompt-chapter-desktop_context"));
+    expect(screen.getByTestId("system-prompt-preview").textContent).toBe("AVAILABLE");
+    expect(screen.getByTestId("system-prompt-runtime").textContent).toBe("AVAILABLE");
+    expect(screen.getByTestId("system-prompt-default").textContent).toBe("DESKTOP_RULE");
+  });
+  it("uses one dynamic context switch across both editing modes", () => {
+    render(createElement(SystemPromptEditor, { catalog, settings: saved(), onSave: vi.fn() }));
+    fireEvent.click(screen.getByTestId("system-prompt-mode-replace"));
+    fireEvent.click(screen.getByTestId("system-prompt-context-env_info"));
+    fireEvent.click(screen.getByTestId("system-prompt-mode-sections"));
+    fireEvent.click(screen.getByTestId("system-prompt-chapter-env_info"));
+    expect(screen.getByTestId("system-prompt-preview").textContent).toBe(
+      "settings.systemPrompt.notInjected",
+    );
+    fireEvent.click(screen.getByTestId("system-prompt-mode-replace"));
+    expect(screen.getByTestId("system-prompt-context-env_info").getAttribute("aria-checked")).toBe(
+      "false",
+    );
+  });
   it("keeps edits local, previews them and discards without saving", () => {
     const save = vi.fn();
     render(createElement(SystemPromptEditor, { catalog, settings: saved(), onSave: save }));

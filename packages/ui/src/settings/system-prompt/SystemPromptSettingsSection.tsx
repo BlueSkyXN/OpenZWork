@@ -3,6 +3,7 @@ import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import {
   createDefaultSystemPromptSettings,
   resolveSystemPromptSection,
+  resolveSystemPromptRuntimeSection,
   systemPromptSettingsSchema,
   type SystemPromptSectionId,
   type SystemPromptSectionOverride,
@@ -20,6 +21,7 @@ import { SettingsFormTextarea } from "@/settings/SettingsFormTextarea.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { SystemPromptEditorProps } from "./types.js";
 import { useSystemPromptSettings } from "./hooks/useSystemPromptSettings.js";
+import { SystemPromptContextSwitches } from "./SystemPromptContextSwitches.js";
 
 export function SystemPromptSettingsSection() {
   const state = useSystemPromptSettings();
@@ -53,6 +55,7 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
   const [baseline, setBaseline] = useState(settings);
   const [draft, setDraft] = useState(() => settings ?? createDefaultSystemPromptSettings());
   const [selected, setSelected] = useState<SystemPromptSectionId | "custom">("role");
+  const [scenarioId, setScenarioId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "failed">("idle");
   const [saveError, setSaveError] = useState("");
@@ -75,7 +78,15 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
   const mode = override?.mode ?? "default";
   const defaultsChanged =
     override?.baseContent !== undefined && override.baseContent !== entry?.content;
-  const preview = entry ? resolveSystemPromptSection(draft, entry.id, entry.content) : "";
+  const scenario = entry?.scenarios.find((item) => item.id === scenarioId) ?? entry?.scenarios[0];
+  const preview = entry
+    ? scenario
+      ? resolveSystemPromptRuntimeSection(draft, entry.id, scenario.template)
+      : resolveSystemPromptSection(draft, entry.id, entry.content)
+    : "";
+  const runtimePreview = scenario?.template.available
+    ? [scenario.template.runtimeBefore, scenario.template.runtimeAfter].filter(Boolean).join("\n\n")
+    : "";
   const changeChapter = (patch: Partial<SystemPromptSectionOverride>) => {
     if (!entry) return;
     setSaveState("idle");
@@ -180,6 +191,21 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
           <p className="text-ui-sm text-foreground-subtle">
             {t("chars", { count: draft.replacement.length })}
           </p>
+          <SystemPromptContextSwitches
+            catalog={catalog}
+            settings={draft}
+            disabled={saving}
+            onChange={(id, enabled) => {
+              setDraft((current) => ({
+                ...current,
+                sections: {
+                  ...current.sections,
+                  [id]: { mode: enabled ? "default" : "disabled", content: "" },
+                },
+              }));
+              setSaveState("idle");
+            }}
+          />
         </div>
       ) : (
         <div className="grid min-w-0 gap-5 md:grid-cols-[12rem_minmax(0,1fr)]">
@@ -198,7 +224,10 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
                   "flex min-h-8 items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-ui-base hover:bg-hover " +
                   (selected === section.id ? "bg-selected font-medium" : "")
                 }
-                onClick={() => setSelected(section.id)}
+                onClick={() => {
+                  setSelected(section.id);
+                  setScenarioId("");
+                }}
               >
                 <span>{t("chapter." + section.id)}</span>
                 {draft.sections[section.id] && draft.sections[section.id]?.mode !== "default" ? (
@@ -343,7 +372,11 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
                         : ["default", "append", "replace", "disabled"]
                       ).map((value) => (
                         <SelectItem key={value} value={value}>
-                          {t("chapterMode." + value)}
+                          {t(
+                            entry.runtime && (value === "replace" || value === "disabled")
+                              ? "ruleMode." + value
+                              : "chapterMode." + value,
+                          )}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -411,6 +444,43 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
                   </>
                 )}
                 <div className="space-y-2 border-t border-border pt-4">
+                  {entry.scenarios.length > 0 ? (
+                    <div className="space-y-2">
+                      <label className="text-ui-base font-medium" htmlFor="prompt-preview-scenario">
+                        {t("scenario")}
+                      </label>
+                      <Select value={scenario?.id} onValueChange={setScenarioId}>
+                        <SelectTrigger
+                          id="prompt-preview-scenario"
+                          data-testid="system-prompt-scenario"
+                          className="w-full"
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {entry.scenarios.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {t("scenario." + item.id)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-ui-sm text-foreground-subtle">{t("scenarioHint")}</p>
+                    </div>
+                  ) : null}
+                  {entry.runtime ? (
+                    <details className="rounded-lg border border-border">
+                      <summary className="cursor-pointer px-3 py-2 text-ui-base font-medium">
+                        {t("runtimeContent")}
+                      </summary>
+                      <pre
+                        data-testid="system-prompt-runtime"
+                        className="max-h-64 overflow-auto whitespace-pre-wrap break-words px-3 pb-3 font-mono text-ui-sm leading-relaxed"
+                      >
+                        {runtimePreview || t("notInjectedInScenario")}
+                      </pre>
+                    </details>
+                  ) : null}
                   <div className="flex flex-wrap justify-between gap-2">
                     <h4 className="text-ui-base font-medium">{t("preview")}</h4>
                     {!entry.generated ? (
@@ -421,13 +491,22 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
                   </div>
                   <pre
                     data-testid="system-prompt-preview"
+                    data-preview-state={
+                      entry.generated
+                        ? mode === "disabled"
+                          ? "excluded"
+                          : "generated"
+                        : preview
+                          ? "content"
+                          : "excluded"
+                    }
                     className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-3 font-mono text-ui-sm leading-relaxed"
                   >
-                    {mode === "disabled"
-                      ? t("notInjected")
-                      : entry.generated
-                        ? t("runtimeGenerated")
-                        : preview || t("emptyDefault")}
+                    {entry.generated
+                      ? t(mode === "disabled" ? "notInjected" : "runtimeGenerated")
+                      : scenario && !scenario.template.available
+                        ? t("notInjectedInScenario")
+                        : preview || t(mode === "disabled" ? "notInjected" : "emptyDefault")}
                   </pre>
                 </div>
               </>

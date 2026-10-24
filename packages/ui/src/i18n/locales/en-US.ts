@@ -1,22 +1,42 @@
 /** English translations */
 const enUS: Record<string, string> = {
   "settings.systemPrompt.title": "System prompts",
+  "settings.systemPrompt.scenario.style_none": "No output style selected",
+  "settings.systemPrompt.scenario.style_active": "Output style selected",
+  "settings.systemPrompt.scenario.skills_unavailable": "Skill tool or skills unavailable",
+  "settings.systemPrompt.scenario.skills_available": "Skill tool and skills available",
+  "settings.systemPrompt.scenario.memory_disabled": "Memory disabled",
+  "settings.systemPrompt.scenario.memory_enabled": "Memory enabled",
+  "settings.systemPrompt.scenario.terminal": "Terminal session",
+  "settings.systemPrompt.scenario.gen_ui_unavailable": "Desktop · visualization unavailable",
+  "settings.systemPrompt.scenario.gen_ui_available": "Desktop · visualization available",
+  "settings.systemPrompt.notInjectedInScenario": "No content is injected in this scenario.",
+  "settings.systemPrompt.scenarioHint":
+    "Uses an example environment. Scenario selections are not saved.",
+  "settings.systemPrompt.scenario": "Preview scenario",
+  "settings.systemPrompt.dynamicContext": "Dynamic context",
+  "settings.systemPrompt.runtimeContent": "Runtime content · always retained",
+  "settings.systemPrompt.ruleMode.disabled": "Disable section rules",
+  "settings.systemPrompt.ruleMode.replace": "Replace section rules",
   "settings.systemPrompt.loading": "Loading default prompts…",
   "settings.systemPrompt.loadError": "Could not load default prompts. Update the Agent and retry.",
   "settings.systemPrompt.retry": "Retry",
   "settings.systemPrompt.editingMode": "Editing mode",
   "settings.systemPrompt.mode.sections": "Customize sections",
-  "settings.systemPrompt.mode.replace": "Replace system prompt",
+  "settings.systemPrompt.mode.replace": "Replace behavior rules",
   "settings.systemPrompt.unsaved": "Unsaved changes",
   "settings.systemPrompt.savedConfig": "Saved configuration",
-  "settings.systemPrompt.scope": "Applies to main sessions when created or reloaded. Requests already running keep their current configuration.",
-  "settings.systemPrompt.replaceHint": "Replaces all default system content. Skill listings, user instructions, memory indexes and the date retain their existing injection rules.",
+  "settings.systemPrompt.scope":
+    "Applies to main sessions when created or reloaded. Requests already running keep their current configuration.",
+  "settings.systemPrompt.replaceHint":
+    "Replaces default behavior rules while keeping current capabilities, memory location and output style. Choose which dynamic context to include below.",
   "settings.systemPrompt.replacement": "Custom system prompt",
   "settings.systemPrompt.chars": "{count} characters",
   "settings.systemPrompt.chapters": "Prompt sections",
   "settings.systemPrompt.modified": "Custom",
   "settings.systemPrompt.customChapters": "Custom sections",
-  "settings.systemPrompt.customHint": "These sections are appended to the system prompt in list order.",
+  "settings.systemPrompt.customHint":
+    "These sections are appended to the system prompt in list order.",
   "settings.systemPrompt.customTitle": "Section {index} title",
   "settings.systemPrompt.customBody": "Section {index} content",
   "settings.systemPrompt.removeChapter": "Remove section",
@@ -29,9 +49,10 @@ const enUS: Record<string, string> = {
   "settings.systemPrompt.chapterMode.disabled": "Exclude section",
   "settings.systemPrompt.resetChapter": "Restore section default",
   "settings.systemPrompt.customContent": "Custom content",
-  "settings.systemPrompt.defaultContent": "Current default",
+  "settings.systemPrompt.defaultContent": "Default rules",
   "settings.systemPrompt.emptyDefault": "No additional content by default",
-  "settings.systemPrompt.defaultsChanged": "Defaults have changed · View the default saved with your edit",
+  "settings.systemPrompt.defaultsChanged":
+    "Defaults have changed · View the default saved with your edit",
   "settings.systemPrompt.preview": "Section preview",
   "settings.systemPrompt.notInjected": "This section is excluded.",
   "settings.systemPrompt.runtimeGenerated": "Generated and injected at runtime.",
@@ -42,18 +63,29 @@ const enUS: Record<string, string> = {
   "settings.systemPrompt.discard": "Discard changes",
   "settings.systemPrompt.reload": "Reload saved configuration",
   "settings.systemPrompt.saved": "Saved",
-  "settings.systemPrompt.conflict": "Another window updated this configuration. Reload it before editing.",
+  "settings.systemPrompt.conflict":
+    "Another window updated this configuration. Reload it before editing.",
   "settings.systemPrompt.saveError": "Could not save. Your edits are preserved; please retry.",
-  "settings.systemPrompt.invalid": "Complete custom content and section titles. Each section allows 32,000 characters; a replacement allows 64,000.",
-  "settings.systemPrompt.condition.memory": "Included when memory is enabled. Available variable: {variable}.",
-  "settings.systemPrompt.condition.desktop_context": "Included for desktop sessions. Variable {variable} resolves to the quoted visualization directory.",
-  "settings.systemPrompt.condition.session_guidance": "Included when skills are available and the Skill tool is enabled.",
-  "settings.systemPrompt.condition.output_style": "Additional response formatting, length and style.",
-  "settings.systemPrompt.generated.env_info": "Working directory, operating system, shell and model come from the execution environment.",
-  "settings.systemPrompt.generated.system_context": "Git branch, status and recent commits come from the workspace snapshot at session start.",
-  "settings.systemPrompt.generated.skills": "Generated by skill discovery. Manage skill content in Skills.",
-  "settings.systemPrompt.generated.request_user_context": "Loaded from user and project AGENTS.md files and memory indexes. Edit the source files or open Memory.",
-  "settings.systemPrompt.generated.current_date": "The date is supplied by the session environment.",
+  "settings.systemPrompt.invalid":
+    "Complete custom content and section titles. Each section allows 32,000 characters; a replacement allows 64,000.",
+  "settings.systemPrompt.condition.memory":
+    "Applies when memory is enabled. The runtime supplies the location and index requirements; custom rules may reference {variable}.",
+  "settings.systemPrompt.condition.desktop_context":
+    "Applies to desktop sessions. The current session supplies visualization availability and its output directory.",
+  "settings.systemPrompt.condition.session_guidance":
+    "Included when skills are available and the Skill tool is enabled.",
+  "settings.systemPrompt.condition.output_style":
+    "Customize additional rules. The currently selected output style is still injected automatically.",
+  "settings.systemPrompt.generated.env_info":
+    "Working directory, operating system, shell and model come from the execution environment.",
+  "settings.systemPrompt.generated.system_context":
+    "Git branch, status and recent commits come from the workspace snapshot at session start.",
+  "settings.systemPrompt.generated.skills":
+    "Generated by skill discovery. Manage skill content in Skills.",
+  "settings.systemPrompt.generated.request_user_context":
+    "Loaded from user and project AGENTS.md files and memory indexes. Edit the source files or open Memory.",
+  "settings.systemPrompt.generated.current_date":
+    "The date is supplied by the session environment.",
   "settings.systemPrompt.chapter.cli_prefix": "Product identity",
   "settings.systemPrompt.chapter.role": "Role and responsibilities",
   "settings.systemPrompt.chapter.security": "Security and authorization",

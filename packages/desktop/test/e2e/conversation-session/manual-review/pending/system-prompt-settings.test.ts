@@ -1,6 +1,7 @@
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import type { SystemPromptSettings } from "@zcode/shared";
 import {
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
@@ -22,7 +23,7 @@ const settingsFile = join(getE2EAppDataPaths().appDataDir, "setting.json");
 async function readSettings() {
   return JSON.parse(await readFile(settingsFile, "utf8")) as {
     memoryEnabled?: boolean;
-    systemPromptSettings?: { sections?: { role?: { mode: string; content: string } } };
+    systemPromptSettings?: SystemPromptSettings;
   };
 }
 async function openSection(section: string) {
@@ -32,7 +33,78 @@ async function openSection(section: string) {
   }
   await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, section));
 }
+async function chooseOption(trigger: string, labelPattern: string) {
+  await clickTestIdByDom(trigger);
+  await browser.waitUntil(async () => (await $$('[role="option"]').length) > 0);
+  await browser.execute((pattern) => {
+    const option = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]')).find(
+      (element) => new RegExp(pattern).test(element.textContent ?? ""),
+    );
+    if (!option) throw new Error("prompt option missing: " + pattern);
+    option.click();
+  }, labelPattern);
+}
 describe(marker + ": 系统提示词设置", () => {
+  it("SP14–SP15 动态情景不持久化，整体替换与逐章共用上下文开关", async function () {
+    this.timeout(180_000);
+    await mkdir(artifactDir, { recursive: true });
+    await skipOccupationOnboardingIfPresent();
+    await waitForTestIdByDom(TID_TASK_SETTINGS_BUTTON, { timeout: 45_000 });
+    await openSection("systemPrompt");
+    await waitForTestIdByDom("system-prompt-editor", { timeout: 45_000 });
+    await clickTestIdByDom("system-prompt-chapter-desktop_context");
+    const rules = await $('[data-testid="system-prompt-default"]').getText();
+    expect(rules).not.toContain("This Desktop host supports Gen UI");
+    expect(rules).not.toContain("/example/views");
+    await chooseOption("system-prompt-chapter-mode", "替换本章规则|Replace section rules");
+    expect(await $('[data-testid="system-prompt-chapter-content"]').getValue()).toBe(rules);
+    await chooseOption("system-prompt-scenario", "可视化不可用|visualization unavailable");
+    const preview = $('[data-testid="system-prompt-preview"]');
+    expect(await preview.getText()).toContain("Gen UI is unavailable");
+    expect(await preview.getText()).not.toContain("This Desktop host supports Gen UI");
+    await browser.saveScreenshot(join(artifactDir, "dynamic-desktop-unavailable.png"));
+    await chooseOption("system-prompt-scenario", "终端会话|Terminal session");
+    expect(await preview.getText()).not.toContain(rules);
+    await clickTestIdByDom("system-prompt-save");
+    await browser.waitUntil(
+      async () =>
+        (await readSettings()).systemPromptSettings?.sections.desktop_context?.content === rules,
+    );
+    const persisted = (await readSettings()).systemPromptSettings!;
+    expect(Object.keys(persisted).sort()).toEqual([
+      "customSections",
+      "mode",
+      "replacement",
+      "sections",
+      "version",
+    ]);
+    expect(JSON.stringify(persisted)).not.toContain("/example/views");
+    await openSection("memory");
+    await openSection("systemPrompt");
+    await clickTestIdByDom("system-prompt-chapter-desktop_context");
+    expect(await $('[data-testid="system-prompt-chapter-content"]').getValue()).toBe(rules);
+    expect(await preview.getText()).toContain("This Desktop host supports Gen UI");
+    await clickTestIdByDom("system-prompt-mode-replace");
+    await $('[data-testid="system-prompt-replacement"]').setValue(marker + "_DYNAMIC");
+    await clickTestIdByDom("system-prompt-context-env_info");
+    await clickTestIdByDom("system-prompt-save");
+    await browser.waitUntil(
+      async () =>
+        (await readSettings()).systemPromptSettings?.sections.env_info?.mode === "disabled",
+    );
+    await browser.saveScreenshot(join(artifactDir, "dynamic-whole-replacement.png"));
+    await clickTestIdByDom("system-prompt-mode-sections");
+    await clickTestIdByDom("system-prompt-chapter-env_info");
+    expect(await preview.getAttribute("data-preview-state")).toBe("excluded");
+    await clickTestIdByDom("system-prompt-reset-chapter");
+    await clickTestIdByDom("system-prompt-chapter-desktop_context");
+    await clickTestIdByDom("system-prompt-reset-chapter");
+    await clickTestIdByDom("system-prompt-save");
+    await browser.waitUntil(
+      async () => (await readSettings()).systemPromptSettings?.mode === "sections",
+    );
+    await clickTestIdByDom("system-prompt-chapter-role");
+  });
   it("SP06 保存角色定制、重新打开回读并恢复默认；SP08 窄屏和主题", async function () {
     this.timeout(180_000);
     await mkdir(artifactDir, { recursive: true });
@@ -51,6 +123,8 @@ describe(marker + ": 系统提示词设置", () => {
     await openSection("systemPrompt");
     await waitForTestIdByDom("system-prompt-editor", { timeout: 45_000 });
     const before = await readSettings();
+    await clickTestIdByDom("system-prompt-mode-sections");
+    await clickTestIdByDom("system-prompt-chapter-role");
     const defaultContent = await $('[data-testid="system-prompt-default"]').getText();
     expect(defaultContent).toContain("interactive ZCode agent");
     await clickTestIdByDom("system-prompt-chapter-mode");

@@ -3914,5 +3914,9 @@ Linux Electron 重建后 run `desktop-e2e-20261014-120739-442`，TD01/03/04 1/1 
 | SP06 | local-pass / pending-review | `conversation-session/manual-review/pending/system-prompt-settings.test.ts` | 真实设置导航、保存、文件回读、恢复默认 |
 | SP07、SP09 | local-unit | UI contract 与 SettingService 单测 | 保存失败、并发比较、默认更新 |
 | SP08 | local-pass | 同一编辑器浏览器深浅主题与窄屏证据 | 核心动作可达、文本无溢出 |
+| SP11–SP13 | local-pass | core dynamic context 回归 | 能力、路径、输出风格来自当次运行 |
+| SP14–SP15 | local-pass / pending-review | 同一 Desktop pending 候选与 UI contract | 情景不持久化、动态开关跨模式一致 |
 
-SP 本地证据（2026-10-25）：schema/UI/设置服务与导航 67 项、CLI context 51 项、protocol 4 项定向通过；macOS Desktop 候选 E2E 1 项通过（保存、回读、恢复默认、480px 窄屏）。浏览器 430px 中文深浅主题另验，无水平溢出。候选尚未经人工审阅转正；未加入 Docker/CI。运行时模板变量在本章预览中保留占位符，预览不含当前会话的所有动态消息。
+SP 首版本地证据（2026-10-25）：schema/UI/设置服务与导航 67 项、CLI context 51 项、protocol 4 项定向通过；macOS Desktop 候选 E2E 1 项通过（保存、回读、恢复默认、480px 窄屏）。
+
+动态修正验证（2026-10-25）：CLI context 64 项、schema/UI 12 项、protocol 4 项定向通过；16 组默认组装结果与修正前逐字相同。macOS Desktop 同一候选 2 项通过，包括 SP14/15 和原编辑流程；浏览器 430px 中文深浅主题无水平溢出。目录预览使用合成情景和示例路径，不含真实会话的全部动态消息。候选尚未经人工审阅转正，未加入 Docker/CI。
