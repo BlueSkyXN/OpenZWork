@@ -1,0 +1,7 @@
+{
+  "caseId": "BOT-E2E-CF-01",
+  "classification": "synthetic",
+  "syntheticReason": "An isolated E2E profile contains a bound Feishu Bot with a valid-format synthetic App ID and an absent App Secret reference. Enabling it exercises real Host status and visible Desktop error polling before any provider network connection. The remote-control entry uses a loopback pairing relay. No tenant, token or model request is used.",
+  "promptMarker": "E2E_BOT_RUNTIME_ERROR",
+  "timing": "controlled-process"
+}

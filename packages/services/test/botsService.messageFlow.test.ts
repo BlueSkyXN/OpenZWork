@@ -1751,6 +1751,88 @@ describe("botsService messageFlow", () => {
     service.disposeAll();
   });
 
+  it.each(["complete", "error"] as const)(
+    "delivers an automation %s result through the original Feishu bot channel",
+    async (outcome) => {
+      const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
+        if (url.endsWith("/tenant_access_token/internal")) {
+          return new Response(JSON.stringify({ code: 0, tenant_access_token: "synthetic-token" }));
+        }
+        return new Response(JSON.stringify({ code: 0, data: { message_id: "om_automation" } }));
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      const listeners: Array<(event: ZCodeStreamEvent) => Promise<void> | void> = [];
+      const legacyTaskService = {
+        ...f.createLegacyTaskService(),
+        onDynamicTaskEvent: vi.fn(
+          () => (listener: (event: ZCodeStreamEvent) => Promise<void> | void) => {
+            listeners.push(listener);
+            return { dispose() {} };
+          },
+        ),
+      };
+      const service = f.createBotsService({
+        credentialService: f.createCredentialService({ "feishu-secret": "synthetic-secret" }),
+        legacyTaskService,
+        repo: f.createMemoryRepo(f.feishuConfig) as never,
+        runStartupBackgroundTasks: false,
+      });
+      try {
+        // CR-01：准备完成时监听已存在；终态直接进入同一真实 provider 出站链。
+        await service.watchAutomationRun({
+          target: feishuActor,
+          taskId: "task-automation-feishu",
+          workspacePath: "/tmp/workspace",
+        });
+        expect(listeners).toHaveLength(1);
+        expect(legacyTaskService.onDynamicTaskEvent).toHaveBeenCalledWith(
+          expect.objectContaining({
+            taskId: "task-automation-feishu",
+            deliveryKind: "bot-channel-continuous",
+          }),
+        );
+        if (outcome === "complete") {
+          await listeners[0]!({
+            type: "agent_message_chunk",
+            taskId: "task-automation-feishu",
+            traceId: "automation-feishu-run",
+            content: "AUTOMATION_FEISHU_COMPLETED",
+          });
+        }
+        await listeners[0]!(
+          outcome === "complete"
+            ? {
+                type: "task_complete",
+                taskId: "task-automation-feishu",
+                traceId: "automation-feishu-run",
+                stopReason: "end_turn",
+              }
+            : {
+                type: "task_error",
+                taskId: "task-automation-feishu",
+                traceId: "automation-feishu-run",
+                error: "AUTOMATION_FEISHU_FAILED",
+              },
+        );
+        const marker =
+          outcome === "complete" ? "AUTOMATION_FEISHU_COMPLETED" : "AUTOMATION_FEISHU_FAILED";
+        const deliveries = () =>
+          fetchMock.mock.calls.filter(
+            ([url, init]) =>
+              url.includes("/open-apis/im/v1/messages?receive_id_type=open_id") &&
+              String(init?.body).includes(marker),
+          );
+        await vi.waitFor(() => expect(deliveries()).toHaveLength(1));
+        expect(JSON.parse(String(deliveries()[0]![1]?.body))).toMatchObject({
+          receive_id: feishuActor.providerUserId,
+        });
+        expect(legacyTaskService.sendPrompt).not.toHaveBeenCalled();
+      } finally {
+        await service.disposeAllAndWait();
+      }
+    },
+  );
+
   it.each([
     {
       name: "missing bot",
