@@ -26,6 +26,7 @@ import {
 } from "./test/e2e/helpers/e2e-worker-isolation.js";
 import { stageE2EAppOutput } from "./test/e2e/helpers/e2e-app-output-stage.js";
 import { ensureSshRemoteReleaseAssets } from "./test/e2e/helpers/e2e-ssh-remote-release-assets.js";
+import { createLocalPairingRelay } from "./test/e2e/helpers/local-pairing-relay.js";
 import {
   seedPersonalProviderConfig,
   seedPersonalDefaultModelSelection,
@@ -243,6 +244,8 @@ let e2eFailureArtifacts: E2EFailureArtifactCollector | null = null;
 let currentE2EWorkerSessionSpecs: string[] = [];
 
 let currentE2EChromiumUserDataDir: string | null = null;
+
+let closeBotEntryRelay: (() => Promise<void>) | undefined;
 
 const e2eWorkerLifecycleStarts = new Map<string, { specs: string[]; startedAt: Date }>();
 
@@ -1247,6 +1250,29 @@ export const config: WebdriverIO.Config = {
         configureZCodeAgentServerEnv();
         e2eReporter.beforeSession(cid, specs);
         await resetE2EHome(specs);
+        if (specs.some((spec) => spec.endsWith("feishu-runtime-error-ui.test.ts"))) {
+          // CF-01 的 Bots 入口会启动远控；在 Electron 读取 env 前提供隔离 relay，
+          // 避免无关的空 URL 错误污染该用例，也不改变其它场景的连接配置。
+          const relay = await createLocalPairingRelay();
+          const envPatch = {
+            ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL: relay.wsUrl,
+            ZCODE_WEB_REMOTE_CONTROL_URL: `${relay.httpUrl}/remote/v4`,
+          };
+          const previous = Object.fromEntries(
+            Object.keys(envPatch).map((key) => [key, process.env[key]]),
+          );
+          Object.assign(process.env, envPatch);
+          closeBotEntryRelay = async () => {
+            try {
+              await relay.close();
+            } finally {
+              for (const [key, value] of Object.entries(previous)) {
+                if (value === undefined) delete process.env[key];
+                else process.env[key] = value;
+              }
+            }
+          };
+        }
       });
     } catch (error) {
       currentE2EBeforeSessionError = error ?? new Error("beforeSession setup failed");
@@ -1366,10 +1392,16 @@ export const config: WebdriverIO.Config = {
       "after-session",
       { specs: currentE2EWorkerSessionSpecs },
       async () => {
-        await cleanupE2EElectronProcesses("afterSession", {
-          requireExit: true,
-          waitForGracefulExit: true,
-        });
+        try {
+          await cleanupE2EElectronProcesses("afterSession", {
+            requireExit: true,
+            waitForGracefulExit: true,
+          });
+        } finally {
+          const close = closeBotEntryRelay;
+          closeBotEntryRelay = undefined;
+          await close?.();
+        }
         if (currentE2EChromiumUserDataDir)
           await cleanupE2EDirectory("afterSession", currentE2EChromiumUserDataDir, true);
         e2eReporter.compactNodeCoverage();

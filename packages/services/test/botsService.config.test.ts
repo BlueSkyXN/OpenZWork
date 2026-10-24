@@ -163,37 +163,47 @@ describe("botsService config", () => {
     service.disposeAll();
   });
 
-  it("does not run remote-disabled bot background work after config changes", async () => {
-    const repo = f.createMemoryRepo(f.baseConfig);
-    const fetchImpl = vi.fn(
-      async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
-    );
-    vi.stubGlobal("fetch", fetchImpl);
-    const modelSelectionService = f.createModelSelectionService([
-      createTestProvider({
-        id: "new-provider",
-        name: "DeepSeek",
-        models: ["deepseek-v4-flash"],
-      }),
-    ]);
-    const service = f.createBotsService({
-      repo: repo as never,
-      modelSelectionService,
-      credentialService: f.createCredentialService({
-        "secret-1": "secret",
-        "telegram-token": "telegram-secret",
-      }),
-      runStartupBackgroundTasks: false,
-      warmCandidateCachesOnStartup: false,
-    });
+  it.each([
+    { provider: "telegram", config: f.telegramConfig },
+    { provider: "feishu", config: f.feishuConfig },
+  ])(
+    "does not run remote-disabled bot background work after config changes: $provider",
+    async ({ config }) => {
+      const repo = f.createMemoryRepo(f.baseConfig);
+      const fetchImpl = vi.fn(
+        async () => new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
+      vi.stubGlobal("fetch", fetchImpl);
+      const modelSelectionService = f.createModelSelectionService([
+        createTestProvider({
+          id: "new-provider",
+          name: "DeepSeek",
+          models: ["deepseek-v4-flash"],
+        }),
+      ]);
+      const service = f.createBotsService({
+        repo: repo as never,
+        modelSelectionService,
+        credentialService: f.createCredentialService({
+          "secret-1": "secret",
+          "telegram-token": "telegram-secret",
+          "feishu-secret": "feishu-secret",
+        }),
+        runStartupBackgroundTasks: false,
+        warmCandidateCachesOnStartup: false,
+      });
 
-    await service.saveConfig(f.telegramConfig);
-    await new Promise((resolve) => setTimeout(resolve, 50));
+      await service.saveConfig(config);
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-    expect(modelSelectionService.getView).not.toHaveBeenCalled();
-    expect(fetchImpl).not.toHaveBeenCalled();
-    service.disposeAll();
-  });
+      expect(modelSelectionService.getView).not.toHaveBeenCalled();
+      expect(fetchImpl).not.toHaveBeenCalled();
+      expect((await service.getStatus()).botRuntime).toEqual([
+        expect.objectContaining({ botId: config.bots[0]!.id, status: "idle" }),
+      ]);
+      await service.disposeAllAndWait();
+    },
+  );
 
   it("allows an unnamed bot so UI can show a fallback display name", async () => {
     const repo = f.createMemoryRepo(f.baseConfig);
