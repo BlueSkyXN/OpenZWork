@@ -80,3 +80,5 @@ sequenceDiagram
 动态修正的影响层为 presentation、draft-default、validation、commit-effect；唯一持久化 owner 与调用路径不变。must-inspect 为 shared 解析/目录 schema、CLI context builders、设置编辑器；should-inspect 为输出风格与 Skill/Memory 条件；工具注册、权限、压缩、fork/子代理身份为 invariant-only。没有 codegraph 工具，沿现有 seeds 通过精确源码检索核对到深度 2。真实远端、推理模型和供应商组合不改变纯文本语义，剪枝为合成数据；原有创建期快照与并发保存测试复用。图谱补充运行事实始终由 CLI 决定的不变量。
 
 多模型、费用、真实第三方 API 不改变本功能语义，使用合成数据剪枝；所有验证无推理费用。手机复用同一编辑组件的窄屏验证，远控传输复用既有服务并由 runtime preference 单测验证配置投影；不宣称真实远端主机已验收。E2E 候选保留在 manual-review/pending，不自动转正或加入 Docker/CI。
+
+CI：shared schema、UI 编辑器、加载状态和设置导航测试纳入 Core 清单；CLI context/builder 与 protocol 的目录查询、创建期快照、冷恢复、fork 场景分别作为独立 CI step，任一步失败均阻止该平台 job。桌面候选仍按人工审阅流程单独运行。

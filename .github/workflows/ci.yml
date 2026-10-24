@@ -94,6 +94,12 @@ jobs:
       - name: Workflow child interaction regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
 
+      - name: System prompt context regression
+        run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
+
+      - name: System prompt settings protocol regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts -t 'returns prompt defaults|reads materialization preferences once|reads the latest materialization preferences|forks sessions and lets selection children inherit' --bail=1
+
       - name: ToolSearch runtime regression
         run: pnpm --filter @zcode/core exec vitest run tests/tool-search-execution.test.ts tests/tool-search-hydration.test.ts tests/tool-search-result-budget.test.ts tests/tool-search-subagent.test.ts tests/tool-search-request-preparation.test.ts --bail=1
 
