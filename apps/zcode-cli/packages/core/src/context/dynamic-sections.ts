@@ -1,3 +1,4 @@
+import { resolveSystemPromptSection, type SystemPromptSettings } from "@zcode/shared";
 import type { ContextBuilderConfig, ContextSection } from "./types.js";
 import { estimateTokens } from "./utils.js";
 
@@ -73,19 +74,30 @@ export function buildSessionGuidanceSection(toolNames: readonly string[], hasSki
   return createDynamicSection("Session-specific guidance", "session_guidance", lines.join("\n"));
 }
 
-export function buildDynamicBehaviorSection(): ContextSection {
-  return createDynamicSection(
-    "Dynamic Behavior",
-    "dynamic_behavior",
-    [
-      COMMUNICATION_PROMPTS.additional.beforeDefault,
-      "",
-      COMMUNICATION_PROMPTS.default,
-      COMMUNICATION_PROMPTS.additional.afterDefault,
-      "",
-      "For actions that are hard to reverse or outward-facing, confirm first unless durably authorized or explicitly told to proceed without asking; approval in one context doesn't extend to the next. Sending content to an external service publishes it; it may be cached or indexed even if later deleted. Before deleting or overwriting, look at the target \u2014 if what you find contradicts how it was described, or you didn't create it, surface that instead of proceeding. Report outcomes faithfully: if tests fail, say so with the output; if a step was skipped, say that; when something is done and verified, state it plainly without hedging.",
-    ].join("\n"),
-  );
+export function getCommunicationPrompt(): string {
+  return [
+    COMMUNICATION_PROMPTS.additional.beforeDefault,
+    "",
+    COMMUNICATION_PROMPTS.default,
+    COMMUNICATION_PROMPTS.additional.afterDefault,
+  ].join("\n");
+}
+export function getExecutionPrompt(): string {
+  return "For actions that are hard to reverse or outward-facing, confirm first unless durably authorized or explicitly told to proceed without asking; approval in one context doesn't extend to the next. Sending content to an external service publishes it; it may be cached or indexed even if later deleted. Before deleting or overwriting, look at the target \u2014 if what you find contradicts how it was described, or you didn't create it, surface that instead of proceeding. Report outcomes faithfully: if tests fail, say so with the output; if a step was skipped, say that; when something is done and verified, state it plainly without hedging.";
+}
+export function getContextManagementPrompt(): string {
+  return CONTEXT_MANAGEMENT_PROMPTS.default;
+}
+export function getPersistencePrompt(): string {
+  return CONTEXT_MANAGEMENT_PROMPTS.additional;
+}
+
+export function buildDynamicBehaviorSection(settings?: SystemPromptSettings): ContextSection {
+  return createDynamicSection("Dynamic Behavior", "dynamic_behavior", [
+    resolveSystemPromptSection(settings, "communication", getCommunicationPrompt()),
+    "",
+    resolveSystemPromptSection(settings, "execution", getExecutionPrompt()),
+  ].join("\n"));
 }
 
 export function buildOutputStyleSection(
@@ -99,11 +111,15 @@ export function buildOutputStyleSection(
   );
 }
 
-export function buildContextManagementSection(): ContextSection {
+export function buildContextManagementSection(settings?: SystemPromptSettings): ContextSection {
   return createDynamicSection(
     "Context Management",
     "context_management",
-    [CONTEXT_MANAGEMENT_PROMPTS.default, "", CONTEXT_MANAGEMENT_PROMPTS.additional].join("\n"),
+    [
+      resolveSystemPromptSection(settings, "context_management", getContextManagementPrompt()),
+      "",
+      resolveSystemPromptSection(settings, "persistence", getPersistencePrompt()),
+    ].join("\n"),
   );
 }
 

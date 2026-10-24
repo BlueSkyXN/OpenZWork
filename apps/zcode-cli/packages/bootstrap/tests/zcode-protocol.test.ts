@@ -1,3 +1,4 @@
+import { createDefaultSystemPromptSettings, systemPromptCatalogSchema, type SystemPromptSettings } from "@zcode/shared";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -3760,11 +3761,22 @@ describe("ZCodeProtocolAgentServer", () => {
     }
   });
 
+  it("returns prompt defaults without creating a session or model request", async () => {
+    const createApp = vi.fn();
+    const server = new ZCodeProtocolAgentServer({ createZCodeApp: createApp, cwd: workspace.workspacePath });
+    const catalog = systemPromptCatalogSchema.parse(await requestResult(server, {
+      id: "prompt-catalog", method: zcodeProtocolMethods.systemPromptCatalog, params: {},
+    }));
+    expect(catalog.sections).toHaveLength(17);
+    expect(createApp).not.toHaveBeenCalled();
+  });
+
   it("reads materialization preferences once per root runtime and keeps active resumes stable", async () => {
     const createdAppOptions: ZCodeAppOptions[] = [];
     let nativeSearchEnabled = false;
     let toolSearchMode: "off" | "local" = "off";
     let memoryEnabled = false;
+    let systemPromptSettings: SystemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "FIRST_PROMPT" };
     let modelContextBudgetStrategy: "legacy" | "preflight-v1" = "legacy";
     const server = new ZCodeProtocolAgentServer({
       createZCodeApp: (options) => {
@@ -3778,6 +3790,7 @@ describe("ZCodeProtocolAgentServer", () => {
       nativeSearchEnhancementsEnabled: nativeSearchEnabled,
       toolSearchMode,
       memoryEnabled,
+      systemPromptSettings,
       modelContextBudgetStrategy,
     }));
 
@@ -3791,6 +3804,7 @@ describe("ZCodeProtocolAgentServer", () => {
     nativeSearchEnabled = true;
     toolSearchMode = "local";
     memoryEnabled = true;
+    systemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "SECOND_PROMPT" };
     modelContextBudgetStrategy = "preflight-v1";
     await requestResult(server, {
       id: 2,
@@ -3807,6 +3821,8 @@ describe("ZCodeProtocolAgentServer", () => {
       preferenceRequests.map((request) => (request.params as { scope: string }).scope),
     ).toEqual(["runtime-materialization", "runtime-materialization"]);
     expect(createdAppOptions).toHaveLength(2);
+    expect(createdAppOptions[0]?.runtimeConfig?.systemPromptSettings?.replacement).toBe("FIRST_PROMPT");
+    expect(createdAppOptions[1]?.runtimeConfig?.systemPromptSettings?.replacement).toBe("SECOND_PROMPT");
     expect(createdAppOptions[0]?.runtimeConfig?.toolSearch).toEqual({ mode: "off" });
     expect(createdAppOptions[1]?.runtimeConfig?.toolSearch).toEqual({ mode: "local" });
     expect(createdAppOptions[0]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(false);
@@ -7446,9 +7462,11 @@ describe("ZCodeProtocolAgentServer", () => {
         sessionStore: store,
       });
       let toolSearchMode: "local" | "off" = "local";
+      let systemPromptSettings: SystemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "PARENT_PROMPT" };
       const preferenceRequests = attachSessionRuntimePreferencesResponder(server, () => ({
         nativeSearchEnhancementsEnabled: false,
         toolSearchMode,
+        systemPromptSettings,
         memoryEnabled: false,
         subagentRuntimeConfigEnabled: true,
         modelContextBudgetStrategy: "preflight-v1",
@@ -7514,6 +7532,7 @@ describe("ZCodeProtocolAgentServer", () => {
       });
 
       toolSearchMode = "off";
+      systemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "NEW_GLOBAL_PROMPT" };
       const result = zcodeSessionForkResultSchema.parse(
         await requestResult(server, {
           id: 6,
@@ -7543,6 +7562,7 @@ describe("ZCodeProtocolAgentServer", () => {
       expect(createdAppOptions[1]?.readSubagentRuntimeConfig).toBeTypeOf("function");
       expect(preferenceRequests).toHaveLength(1);
       expect(createdAppOptions[1]?.runtimeConfig?.toolSearch).toEqual({ mode: "local" });
+      expect(createdAppOptions[1]?.runtimeConfig?.systemPromptSettings?.replacement).toBe("PARENT_PROMPT");
       expect(createdAppOptions[1]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(false);
       expect(createdAppOptions[1]?.runtimeConfig?.memory?.enabled).toBe(false);
       expect(createdAppOptions[1]?.runtimeConfig?.modelContextBudgetStrategy).toBe("preflight-v1");
@@ -7918,6 +7938,7 @@ function attachSessionRuntimePreferencesResponder(
     nativeSearchEnhancementsEnabled: boolean;
     toolSearchMode?: "auto" | "local" | "off";
     memoryEnabled?: boolean;
+    systemPromptSettings?: SystemPromptSettings;
     subagentRuntimeConfigEnabled?: boolean;
     modelContextBudgetStrategy?: "legacy" | "preflight-v1";
     integratedTerminalShell?:

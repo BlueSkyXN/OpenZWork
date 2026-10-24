@@ -13,6 +13,7 @@ import {
   AlarmClock,
   Anchor,
   Brain,
+  FileText,
   Blocks,
   Globe2,
   Cable,
@@ -74,6 +75,12 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     icon: Package,
     titleId: "settings.modelProviderTitle",
     groupId: "basics",
+  },
+  {
+    id: "systemPrompt",
+    icon: FileText,
+    titleId: "settings.systemPrompt.title",
+    groupId: "agentCapabilities",
   },
   {
     id: "memory",

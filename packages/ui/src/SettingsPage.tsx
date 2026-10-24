@@ -1,3 +1,4 @@
+import { SystemPromptSettingsSection } from "@/settings/system-prompt/contract.js";
 import { SettingsMachinesProvider } from "@/settings/SettingsMachine.js";
 import { getWorkspaceSourceServerId } from "@/conversation-workspace-target/sourceIdentity.js";
 import { RemoteConnectionNavigationDot } from "@/remote-connection/RemoteConnectionNavigationDot.js";
@@ -1241,6 +1242,10 @@ export function SettingsPage({
                                   setPendingModelProviderTarget(undefined)
                                 }
                               />
+                            </ServiceProvider>
+                          ) : activeSection === "systemPrompt" ? (
+                            <ServiceProvider services={localHostServices}>
+                              <SystemPromptSettingsSection />
                             </ServiceProvider>
                           ) : activeSection === "memory" ? (
                             <ServiceProvider services={localHostServices}>

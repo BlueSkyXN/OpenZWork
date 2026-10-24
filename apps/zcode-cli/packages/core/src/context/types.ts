@@ -1,3 +1,4 @@
+import type { SystemPromptSettings } from "@zcode/shared";
 // ============================================================
 // Context Builder Types
 // ============================================================
@@ -29,6 +30,7 @@ export type {
 // -----------------------------------------------
 
 export type ContextSource =
+  | "user_prompt_section"
   | "cli_prefix" // CLI / 产品身份前缀
   | "identity" // Agent 基础描述
   | "env_info" // 环境信息 (cwd, platform, git repo boolean)
@@ -117,6 +119,7 @@ export interface ContextBuilderConfig {
   embeddedSearchEnabled?: boolean;
   skillMetadataBudget?: number;
   customSystemPrompt?: string;
+  systemPromptSettings?: SystemPromptSettings;
   /**
    * 动态工作流子代理（workflow child）的身份输入。在场即走 builder 的第三条路径：
    * 基座段（CLI prefix、安全行、Harness、memory）+ 工作流子代理契约 + persona 叠加，

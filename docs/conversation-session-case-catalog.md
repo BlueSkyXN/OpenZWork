@@ -4475,3 +4475,7 @@ SPR01 是连接隔离 Electron 的独立 `node:test` / CDP E2E，保持 pending�
 - Desktop：`packages/desktop/test/e2e/ui-shell/manual-review/pending/sidebar-tooltips.test.ts`，完整应用的项目行、分区、搜索/筛选、底部及文件树入口。
 
 验证（2026-10-16）：浏览器 Tooltip 12 项及 SPT03 性能回归 4 项通过，包含桌面/手机布局、中英文、深浅主题、触屏点击和键盘 focus；新增分组操作断言复测通过。macOS 完整桌面 E2E 通过，12 个入口实测 304–309ms，覆盖相邻提示切换、提前移出、文件树菜单和清空搜索。受影响单测 285 文件 / 3671 项、typecheck、E2E typecheck、lint、架构及改动代码格式检查通过。候选保持 pending；未覆盖 Windows/Linux 整机或真实手机远控传输。
+
+## SP：系统提示词设置
+
+产品规则和 SP01–SP10 见 [系统提示词设置](spec/system-prompt-settings.md)。SP06：从设置侧栏进入，替换角色内容、检查本章预览、保存后离开并重进、读取 setting.json，恢复默认；其余章节与 Memory 开关保持不变。SP08 使用相同页面的窄屏和深浅主题验证。候选不调用模型。

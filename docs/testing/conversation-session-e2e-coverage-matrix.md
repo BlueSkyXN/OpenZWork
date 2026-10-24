@@ -3905,3 +3905,14 @@ Linux Electron 重建后 run `desktop-e2e-20261014-120739-442`，TD01/03/04 1/1 
 - Desktop：`packages/desktop/test/e2e/ui-shell/manual-review/pending/sidebar-tooltips.test.ts`，完整应用的项目行、分区、搜索/筛选、底部及文件树入口。
 
 验证（2026-10-16）：浏览器 Tooltip 12 项及 SPT03 性能回归 4 项通过，包含桌面/手机布局、中英文、深浅主题、触屏点击和键盘 focus；新增分组操作断言复测通过。macOS 完整桌面 E2E 通过，12 个入口实测 304–309ms，覆盖相邻提示切换、提前移出、文件树菜单和清空搜索。受影响单测 285 文件 / 3671 项、typecheck、E2E typecheck、lint、架构及改动代码格式检查通过。候选保持 pending；未覆盖 Windows/Linux 整机或真实手机远控传输。
+
+## SP：系统提示词设置
+
+| Case | 状态 | 证据 | 断言 |
+|---|---|---|---|
+| SP01–SP05、SP10 | local-unit | core system-prompt-settings、shared contract、bootstrap runtime preferences 单测 | 组装隔离、schema 与配置接线 |
+| SP06 | local-pass / pending-review | `conversation-session/manual-review/pending/system-prompt-settings.test.ts` | 真实设置导航、保存、文件回读、恢复默认 |
+| SP07、SP09 | local-unit | UI contract 与 SettingService 单测 | 保存失败、并发比较、默认更新 |
+| SP08 | local-pass | 同一编辑器浏览器深浅主题与窄屏证据 | 核心动作可达、文本无溢出 |
+
+SP 本地证据（2026-10-25）：schema/UI/设置服务与导航 67 项、CLI context 51 项、protocol 4 项定向通过；macOS Desktop 候选 E2E 1 项通过（保存、回读、恢复默认、480px 窄屏）。浏览器 430px 中文深浅主题另验，无水平溢出。候选尚未经人工审阅转正；未加入 Docker/CI。运行时模板变量在本章预览中保留占位符，预览不含当前会话的所有动态消息。

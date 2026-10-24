@@ -339,6 +339,8 @@ import {
   zcodeMcpUiCloseInstanceResultSchema,
   zcodeMcpUiOpenInstanceResultSchema,
 } from "@zcode/shared";
+import { systemPromptCatalogSchema } from "@zcode/shared";
+
 const logger = createServiceLogger("zcode-agent-service");
 const PLUGIN_MANAGEMENT_WORKSPACE_DIR_NAME = "plugin-workspace";
 // 状态探测完成后释放闲置的 MCP 子进程；只作用于控制面，不回收会话进程。
@@ -4005,6 +4007,11 @@ export function createZCodeAgentService(
           };
         }),
       );
+    },
+
+    async getSystemPromptCatalog() {
+      const client = await getPluginManagementClient();
+      return client.request(zcodeProtocolMethods.systemPromptCatalog, {}, systemPromptCatalogSchema);
     },
 
     async getPluginsOverview(params: ZCodeAgentPluginViewParams) {

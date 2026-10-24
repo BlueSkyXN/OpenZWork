@@ -153,6 +153,9 @@ export function createContextBuilderFromSnapshot(
     embeddedSearchEnabled: resolveRuntimeEmbeddedSearchEnabled(this),
     skillMetadataBudget: this.config.skillMetadataBudget,
     customSystemPrompt: this.config.systemPrompt,
+    systemPromptSettings: (this.config.taskType ?? "interactive") === "interactive"
+      ? this.config.systemPromptSettings
+      : undefined,
     workflowActor: this.config.workflowActor,
     language: this.config.language,
     outputStyle: this.config.outputStyle,

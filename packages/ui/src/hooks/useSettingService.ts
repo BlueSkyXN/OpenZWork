@@ -143,8 +143,8 @@ export function useSettings(options: { cacheKey?: string; services?: IServiceAcc
   }, [platform, refresh]);
 
   const update = useCallback(
-    async (patch: Partial<AppSettings>) => {
-      await settingService.update(patch);
+    async (patch: Partial<AppSettings>, options?: Parameters<ISettingService["update"]>[1]) => {
+      await settingService.update(patch, options);
       platform.syncAppSettings?.(patch);
       await refresh();
       if (

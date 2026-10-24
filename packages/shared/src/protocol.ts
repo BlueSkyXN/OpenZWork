@@ -248,6 +248,7 @@ export interface ResourceUsageSnapshot {
 }
 
 export interface AppSettings {
+  systemPromptSettings?: import("./system-prompt/contract.js").SystemPromptSettings;
   recentProjects: string[]; // 最近项目列表，最多保留 10 个
   locale: Locale; // 界面语言
   /**
