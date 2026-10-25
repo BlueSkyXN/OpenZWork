@@ -7,13 +7,13 @@ Desktop log export keeps recent runtime evidence while avoiding oversized suppor
 Runtime log-like files are filtered by file `mtime` and only exported when they were modified in the last 3 days. This applies to:
 
 - `logs/**`
-- `.zcode/cli/log/**`
+- `.openzwork/cli/log/**`
 
-Retired proxy traffic capture and provider config directories are not current ZCode runtime log sources. If they still exist on a user's machine, they are treated as legacy data rather than first-class export targets.
+Retired proxy traffic capture and provider config directories are not current OpenZWork runtime log sources. If they still exist on a user's machine, they are treated as legacy data rather than first-class export targets.
 
 ## Excluded Legacy State
 
-Legacy session snapshots, session binding files, and Git checkpoint manifests are skipped entirely. Current ZCode agent diagnostics come from logs, current configuration, sqlite-backed session metadata, and CLI runtime traces; these legacy state directories mostly add bundle size without improving support triage.
+Legacy session snapshots, session binding files, and Git checkpoint manifests are skipped entirely. Current OpenZWork agent diagnostics come from logs, current configuration, sqlite-backed session metadata, and CLI runtime traces; these legacy state directories mostly add bundle size without improving support triage.
 
 Skipped directories:
 
@@ -23,7 +23,7 @@ Skipped directories:
 
 ## Excluded Credential Stores
 
-Credential store files are skipped by file name before the archive is written. Redaction still applies to ordinary logs and configuration files, but standalone credential stores are not diagnostic material and must not be included in either manual log export or feedback full-log archives.
+Credential store files are skipped by file name before the archive is written. Redaction still applies to ordinary logs and configuration files, but standalone credential stores are not diagnostic material and must not be included in either manual log export or the retained local diagnostic archive helper.
 
 Skipped file names:
 
@@ -42,19 +42,19 @@ Skipped directories:
 - `agent-config/**`
 - `certs/**`
 
-This boundary applies to both manual desktop log export and feedback full-log archives.
+This boundary applies to both manual desktop log export and the retained local diagnostic archive helper.
 Only these top-level `~/.openzwork/v2` directories are matched; an unrelated nested directory
 with the same name in another log source is not excluded by this rule.
 
 ## Excluded Debug Directories
 
-Directories named `debug` are skipped by path segment before the archive is written. These directories usually contain verbose model/runtime traces rather than user-facing support logs, and may grow quickly or include sensitive request context. This applies to manual log export and feedback full-log archives.
+Directories named `debug` are skipped by path segment before the archive is written. These directories usually contain verbose model/runtime traces rather than user-facing support logs, and may grow quickly or include sensitive request context. This applies to manual log export and the retained local diagnostic archive helper.
 
 Examples:
 
 - `debug/**`
 - `**/debug/**`
-- `.zcode/cli/debug/**`
+- `.openzwork/cli/debug/**`
 
 ## Retired Runtime Directories
 
@@ -74,11 +74,11 @@ Generated assets, dependency installs, and runtime caches are skipped entirely b
 Examples:
 
 - `Library/Caches/**`
-- `.zcode/cli/node_modules/**`
-- `.zcode/cli/.tmp/**`
-- `.zcode/cli/tmp/**`
-- `.zcode/cli/skills/**`
-- `.zcode/cli/plugins/**`
+- `.openzwork/cli/node_modules/**`
+- `.openzwork/cli/.tmp/**`
+- `.openzwork/cli/tmp/**`
+- `.openzwork/cli/skills/**`
+- `.openzwork/cli/plugins/**`
 
 ## Preserved Files
 
@@ -87,7 +87,7 @@ Configuration and binding files are not filtered by this retention window becaus
 Examples:
 
 - `.claude.json`
-- `.zcode/cli/settings.json`
+- `.openzwork/cli/config.json`
 
 ## Redaction Allowlist
 
@@ -98,4 +98,4 @@ spellings.
 
 The allowlist must remain explicit. Credential-bearing names such as `access_tokens`,
 `refresh_tokens`, and `session_tokens` stay redacted; arbitrary `*_tokens` fields must not
-be allowlisted. Manual log export and feedback full-log archives share this boundary.
+be allowlisted. Manual log export and the retained local diagnostic archive helper share this boundary.

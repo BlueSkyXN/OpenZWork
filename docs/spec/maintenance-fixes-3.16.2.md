@@ -85,3 +85,16 @@ HTTP 鉴权写 Cookie 时继续使用 `encodeURIComponent`；验证 Cookie 时�
 - `subagentRuntimeConfigWatcher.test.ts` 使用真实原生文件事件，按既有 pre-push 规范进入 `fork-isolated` 串行进程池。Windows 核心 threads 池曾未观察到大小写改名后的删除，同提交 Extended forks 池通过；保留测试断言、8 秒事件等待与生产 watcher 实现，并在核心发现检查中固定其进程池归属。
 - 下游补丁清单沿用已有草稿，修复后更新 OW-P001、OW-P002，并将回归纳入核心测试清单。
 - 格式校验限定本次修改文件；历史全仓格式偏差另行处理。
+
+### OW-P007：Bot 消息流测试的后台任务隔离
+
+`botsService.messageFlow.test.ts` 通过显式 inbound、受控 task events 和渠道 HTTP 替身验证消息处理。共享夹具默认启动三种渠道后台任务；当立即返回成功的 HTTP 替身被微信 `getupdates` 消费时，空轮询会在 Promise 链里持续运行并累积 mock 调用。隔离诊断使用真实服务/provider 与临时锁目录，在 18 毫秒内达到 100 次轮询上限。核心检查还出现过 worker OOM、该文件未完成的失败；历史失败没有堆快照，逐次归因保留这一限制。
+
+消息流文件使用自己的 service factory，默认传入 `runStartupBackgroundTasks: false`；验证启动读取的用例显式传入 true。每例结束先等待已创建服务的 `disposeAllAndWait()`，再由共享夹具恢复全局 HTTP 替身。原消息、交互、自动化、出站与状态断言保留，并在清理后检查 HTTP 替身没有消费后台 `getupdates` 请求。
+
+```text
+显式 inbound / task event → BotsService → 受控渠道 HTTP → 消息与状态断言
+每例结束 → 等待所有 service disposeAllAndWait → 检查无意外轮询 → 恢复全局 HTTP
+```
+
+生产 runtime 与默认启用语义保持；锁接管、轮询、attached remote 禁用等后台合同继续由 `botsChannelRuntime.test.ts`、`botsService.config.test.ts` 和 `botsService.feishuRuntimeLock.test.ts` 覆盖。不得通过提高堆上限、放宽超时或跳过断言消除失败。

@@ -15,7 +15,7 @@ OpenZWork 是 AI 编程工作台，提供桌面应用、浏览器界面和终端
 
 ## 更新
 
-- **2026-10-19**：更新至 ZCode v3.16.2 版本。
+- **v3.16.2 候选**：已整合上游源码与维护修复，详见[候选版本说明](docs/upstream/v3.16.2-candidate.md)。正式版本见 [Releases](https://github.com/BlueSkyXN/OpenZWork/releases)。
 - **2026-10-16**：更新至 ZCode v3.16.1 版本。
 - 2026-10-10：更新至 ZCode v3.15.1 版本。
 - 2026-9-23：更新至 ZCode v3.14.3 版本。
