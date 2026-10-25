@@ -6,7 +6,7 @@ import type {
   WebRemoteControlStatus,
 } from "@zcode/shared";
 import type { WindowHostControllerTaskListItem } from "@zcode/services";
-import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import { useOptionalBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import { getWindowControllerTaskListRegistry } from "@/v4/windowControllerTaskListRegistry.js";
 import { logger } from "@/logger.js";
 import { isWorkspaceTab, type WindowTabState } from "@/store/tabStore.js";
@@ -170,7 +170,8 @@ export function useWebRemoteControlLegacyTaskSync({
   tabs: WindowTabState[];
   enabled: boolean;
 }): void {
-  const { windowControllerService } = useBaseWorkspaceServices();
+  // 旧目录仅为桌面附加能力；手机恢复和未挂载 base 服务的首帧无需该服务。
+  const windowControllerService = useOptionalBaseWorkspaceServices()?.windowControllerService;
   useEffect(() => {
     if (!enabled || !windowControllerService || !platform.syncWebRemoteControlLegacyTasks) return;
     const workspaces = buildWebRemoteControlWorkspaceTargets({ tabs });

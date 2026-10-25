@@ -15,7 +15,7 @@ import {
 } from "@/root/rootPlatformWorkspaceSync.js";
 const h = vi.hoisted(() => ({ list: vi.fn(), subscribe: vi.fn(), controller: {} }));
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
-  useBaseWorkspaceServices: () => ({ windowControllerService: h.controller }),
+  useOptionalBaseWorkspaceServices: () => ({ windowControllerService: h.controller }),
 }));
 vi.mock("@/v4/windowControllerTaskListRegistry.js", () => ({
   getWindowControllerTaskListRegistry: () => ({
