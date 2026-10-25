@@ -152,7 +152,7 @@ async function createFixture(root: string) {
     dispose() {
       return (disposePromise ??= (async () => {
         try {
-          // 真实提交即使随后报错也已触发后台刷新。先等同一 Registry 队列排空，
+          // OW-P003：真实提交即使随后报错也已触发后台刷新。先等同一 Registry 队列排空，
           // 再关闭 Runtime；否则临时目录清理会与 Built-in 读锁竞争并在 Windows 报 EPERM。
           await runtime.registryService.refresh("fixture-dispose");
         } finally {
@@ -268,7 +268,7 @@ describe("R3A-PRV-08/09 正式磁盘Store与Registry事务", () => {
       expect(await readFile(fixture.state, "utf8")).not.toContain("rollback-failed");
       await readEntered.promise;
 
-      // 持有真实目录锁，直接验证清理屏障；不依赖 Windows 偶发 EPERM 或固定等待。
+      // OW-P003：持有真实目录锁，直接验证清理屏障；不依赖 Windows 偶发 EPERM 或固定等待。
       let disposed = false;
       disposing = Promise.resolve(fixture.dispose()).then(() => {
         disposed = true;

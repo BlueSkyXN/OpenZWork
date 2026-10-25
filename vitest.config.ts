@@ -45,6 +45,9 @@ const forkIsolatedTests = [
   // 子进程与磁盘调度饥饿超过 30 秒，隔离串行后保持聚焦运行时的真实耗时口径。
   "packages/services/test/gitCheckpointService.test.ts",
   "packages/services/test/mcpSyncService.test.ts",
+  // 真实原生 watcher 在 Windows threads 中曾未观察到大小写改名后的删除；
+  // 按原生监听验收规范串行隔离，保留事件断言和原等待时限。
+  "packages/services/test/subagentRuntimeConfigWatcher.test.ts",
   "packages/services/test/providerRuntimeResolver.test.ts",
   "packages/services/test/runtimeToolResolver.test.ts",
   // 该集成测试会真实启动 tsx、Supervisor 与多代 Core；放在普通 threads 中时，

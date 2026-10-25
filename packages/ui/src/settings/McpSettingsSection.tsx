@@ -83,6 +83,27 @@ const MCP_OAUTH_AUTHORIZATION_STATUS_REFRESH_MS = 1_000;
 const MCP_OAUTH_AUTHORIZATION_STATUS_REFRESH_DURATION_MS = 5 * 60_000;
 const MCP_OAUTH_AUTHORIZATION_FOLLOWUP_REFRESH_ATTEMPTS = 10;
 
+/** OW-P005/OW-P006：失败留在当前编辑，过期操作不关闭新目标表单或刷新其配置。 */
+export async function runMcpSettingsMutation({
+  mutate,
+  isCurrent,
+  onApplied,
+  onError,
+}: {
+  mutate: (isCurrent: () => boolean) => Promise<boolean>;
+  isCurrent: () => boolean;
+  onApplied: () => void;
+  onError: (error: unknown) => void;
+}): Promise<void> {
+  if (!isCurrent()) return;
+  try {
+    const applied = await mutate(isCurrent);
+    if (applied && isCurrent()) onApplied();
+  } catch (error) {
+    if (isCurrent()) onError(error);
+  }
+}
+
 export function createMcpOAuthAuthorizationStatusRefreshDeadline(
   now: () => number = Date.now,
 ): number {
@@ -609,6 +630,16 @@ export function McpSettingsSection({
   const activeWorkspacePath = workspacePath ?? storeActiveWorkspacePath;
   const activeWorkspaceIdentity = workspaceIdentity ?? storeActiveWorkspaceIdentity;
   const activeWorkspaceKey = `${cacheAuthorityKey?.trim() || "workspace"}\0${activeWorkspaceIdentity?.trim() || activeWorkspacePath || ""}`;
+  const mutationTarget = useMemo(() => ({}), [activeWorkspaceKey, services.mcpSyncService]);
+  const latestMutationTargetRef = useRef<object | null>(mutationTarget);
+  latestMutationTargetRef.current = mutationTarget;
+  useEffect(() => {
+    latestMutationTargetRef.current = mutationTarget;
+    return () => {
+      if (latestMutationTargetRef.current === mutationTarget)
+        latestMutationTargetRef.current = null;
+    };
+  }, [mutationTarget]);
   const currentMcpStoreWorkspaceKey = `${currentAuthorityKey?.trim() || "workspace"}\0${currentWorkspaceIdentity?.trim() || currentProjectPath}`;
   // 修复原因：active tab 会先于异步 MCP 目录加载切换；过渡帧不能把 A 的配置和
   // snapshot 投影到 B，更不能让后续 effect 把这些敏感配置发送给 B 的 Agent。
@@ -1246,87 +1277,90 @@ export function McpSettingsSection({
     ? formatRemoteSkillSyncTarget(connectedRemoteSyncTarget, activeWorkspacePath ?? "")
     : "";
 
-  async function handleToggle(id: string, enabled: boolean) {
-    await toggleServer(id, enabled);
-
-    if (!enabled) {
-      // 禁用后的 unknown 只是本地展示态；toggleServer 已经作废旧请求，
-      // 这里不能再推进 epoch，否则刚返回的 mcp/list 会被丢弃并造成反复转圈。
-      updateServerStatus(id, "unknown", undefined, {
-        invalidateStatusListRequests: false,
-      });
-      return;
-    }
-
-    // renderer 侧浅检查无法真实启动 stdio MCP，曾把不存在的 command 误判为 connected。
-    // 打开后只展示连接中，最终绿/红状态统一等待 agent 侧 mcp/list 真实 connect/listTools 回写。
-    if (!activeWorkspacePath) {
-      updateServerStatus(id, "unknown", undefined, {
-        invalidateStatusListRequests: false,
-      });
-      return;
-    }
-    // connecting 只是等待真实 mcp/list 的临时展示态，不能作废随后发出的批量请求。
-    updateServerStatus(id, "connecting", undefined, {
-      invalidateStatusListRequests: false,
+  function runMutation(
+    mutate: (isCurrent: () => boolean) => Promise<boolean>,
+    onApplied: () => void,
+  ) {
+    return runMcpSettingsMutation({
+      mutate,
+      isCurrent: () => latestMutationTargetRef.current === mutationTarget,
+      onApplied,
+      onError: (error) =>
+        toast(error instanceof Error ? error.message : String(error), { durationMs: 8_000 }),
     });
-    void requestMcpServerStatusList();
+  }
+
+  async function handleToggle(id: string, enabled: boolean) {
+    await runMutation(
+      () => toggleServer(id, enabled),
+      () => {
+        // 保留 status request epoch；只有保存成功的当前目标才更新连接状态。
+        updateServerStatus(
+          id,
+          enabled && activeWorkspacePath ? "connecting" : "unknown",
+          undefined,
+          {
+            invalidateStatusListRequests: false,
+          },
+        );
+        if (enabled && activeWorkspacePath) void requestMcpServerStatusList();
+      },
+    );
   }
 
   async function handleSave(form: FormState, prev?: ZCodeMcpServer) {
-    if (!activeWorkspacePath) {
-      return;
-    }
-    const loaded = await ensureLoadedForWorkspace(
-      activeWorkspacePath,
-      services.mcpSyncService,
-      activeWorkspaceIdentity,
-      cacheAuthorityKey,
+    if (!activeWorkspacePath) return;
+    await runMutation(
+      async (isCurrent) => {
+        const loaded = await ensureLoadedForWorkspace(
+          activeWorkspacePath,
+          services.mcpSyncService,
+          activeWorkspaceIdentity,
+          cacheAuthorityKey,
+        );
+        if (!isCurrent()) return false;
+        if (!loaded) throw new Error(intl.formatMessage({ id: "settings.mcp.loadFailed" }));
+        const config = {
+          ...formToConfig(form),
+          ...(prev?.enabled === false ? { enable: false } : {}),
+        };
+        // 表单 Scope 可以独立切换，保存使用本次表单解析完成的目标。
+        const projectPath = formScopeKey === "user" ? undefined : activeWorkspacePath;
+        return prev
+          ? updateScopedMcpServer(DEFAULT_MCP_SOURCE, prev.name, config, projectPath)
+          : addScopedMcpServer(DEFAULT_MCP_SOURCE, form.name, config, projectPath);
+      },
+      () => {
+        setShowForm(false);
+        setEditingServer(null);
+        onFormScopeKeyChange?.(null);
+      },
     );
-    if (!loaded) {
-      return;
-    }
-    const config = {
-      ...formToConfig(form),
-      ...(prev?.enabled === false ? { enable: false } : {}),
-    };
-    // 表单 Scope 可以独立于父页面切换，不能继续读取可能仍属于旧目标的
-    // currentProjectPath；保存目标必须使用表单已解析并完成加载的 workspace props。
-    const projectPath = formScopeKey === "user" ? undefined : activeWorkspacePath;
-
-    if (prev) {
-      await updateScopedMcpServer(DEFAULT_MCP_SOURCE, prev.name, config, projectPath);
-    } else {
-      await addScopedMcpServer(DEFAULT_MCP_SOURCE, form.name, config, projectPath);
-    }
-
-    setShowForm(false);
-    setEditingServer(null);
-    onFormScopeKeyChange?.(null);
   }
 
   async function handleDelete(server: ZCodeMcpServer) {
-    const confirmed = await confirmDialog({
-      confirmVariant: "destructive",
-      title: intl.formatMessage({ id: "settings.mcp.deleteConfirmTitle" }, { name: server.name }),
-      description: intl.formatMessage({
-        id: "settings.mcp.deleteConfirmDescription",
-      }),
-      confirmLabel: intl.formatMessage({
-        id: "settings.mcp.deleteConfirmAction",
-      }),
-      cancelLabel: intl.formatMessage({ id: "common.cancel" }),
-    });
-
-    if (!confirmed) {
-      return;
-    }
-
-    await deleteScopedMcpServer(server.source, server.name, server.projectPath);
-    setEditingServer(null);
-    setShowForm(false);
-    setEditorMode("form");
-    onFormScopeKeyChange?.(null);
+    await runMutation(
+      async (isCurrent) => {
+        const confirmed = await confirmDialog({
+          confirmVariant: "destructive",
+          title: intl.formatMessage(
+            { id: "settings.mcp.deleteConfirmTitle" },
+            { name: server.name },
+          ),
+          description: intl.formatMessage({ id: "settings.mcp.deleteConfirmDescription" }),
+          confirmLabel: intl.formatMessage({ id: "settings.mcp.deleteConfirmAction" }),
+          cancelLabel: intl.formatMessage({ id: "common.cancel" }),
+        });
+        if (!confirmed || !isCurrent()) return false;
+        return deleteScopedMcpServer(server.source, server.name, server.projectPath);
+      },
+      () => {
+        setEditingServer(null);
+        setShowForm(false);
+        setEditorMode("form");
+        onFormScopeKeyChange?.(null);
+      },
+    );
   }
 
   function handleEdit(server: ZCodeMcpServer) {

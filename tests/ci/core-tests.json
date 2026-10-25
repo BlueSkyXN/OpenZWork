@@ -54,7 +54,9 @@
         "packages/services/test/mcpSyncService.test.ts",
         "packages/desktop/test/mcpZcodeAgent.test.ts",
         "packages/ui/test/mcpStore.test.ts",
-        "packages/ui/test/mcpStoreStatusList.test.ts"
+        "packages/ui/test/mcpStoreMutations.test.ts",
+        "packages/ui/test/mcpStoreStatusList.test.ts",
+        "packages/server/test/serverInfoHttp.test.ts"
       ]
     },
     {
