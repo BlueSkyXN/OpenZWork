@@ -2,6 +2,7 @@
 // Context Builder - System prompt assembly
 // ============================================================
 
+import { applySystemPromptSettings } from "./prompt-settings/contract.js";
 import type { ModelInputMessage } from "@zcode/contracts";
 import type {
   ContextMetaUserAttachment,
@@ -97,6 +98,8 @@ export class ContextBuilder {
       );
     }
     const isWorkflowActor = workflowActor !== undefined;
+    const promptSettings =
+      !isWorkflowActor && !hasCustomSystemPrompt ? this.config.systemPromptSettings : undefined;
 
     // 1. CLI / product prefix. Keep this as the short leading identity block.
     // 「You are ZCode, an interactive coding agent」对一个
@@ -119,7 +122,7 @@ export class ContextBuilder {
     } else if (workflowActor !== undefined) {
       sections.push(buildWorkflowActorIdentitySection(workflowActor));
     } else {
-      sections.push(buildIdentitySection(activeOutputStyle));
+      sections.push(buildIdentitySection(activeOutputStyle, promptSettings));
     }
 
     // 3. Dynamic system context
@@ -135,7 +138,7 @@ export class ContextBuilder {
 
       // behaviour part right after stable sp...
       if (!isWorkflowActor) {
-        sections.push(buildDynamicBehaviorSection());
+        sections.push(buildDynamicBehaviorSection(promptSettings));
       }
 
       // Session-specific guidance
@@ -168,13 +171,24 @@ export class ContextBuilder {
       );
 
       // Output Style
-      const outputStyleSection = buildOutputStyleSection(activeOutputStyle);
+      const outputStyleSection =
+        buildOutputStyleSection(activeOutputStyle) ??
+        (promptSettings?.mode === "sections" &&
+        ["append", "replace"].includes(promptSettings.sections.output_style?.mode ?? "")
+          ? createSection({
+              name: "Output Style",
+              source: "output_style",
+              injectionTarget: "system",
+              cacheHint: "dynamic",
+              content: "",
+            })
+          : null);
       if (outputStyleSection) {
         sections.push(outputStyleSection);
       }
 
       // Context Management
-      sections.push(buildContextManagementSection());
+      sections.push(buildContextManagementSection(promptSettings));
 
       const gitSystemContextSection = buildGitSystemContextSection(this.config.envInfo);
       if (gitSystemContextSection) {
@@ -214,7 +228,9 @@ export class ContextBuilder {
     // 6. Custom sections
     sections.push(...this.customSections);
 
-    const orderedSections = orderSectionsForInjection(sections);
+    const orderedSections = orderSectionsForInjection(
+      applySystemPromptSettings(sections, promptSettings, this.config),
+    );
 
     // 计算总计
     const totalChars = orderedSections.reduce((sum, s) => sum + s.chars, 0);

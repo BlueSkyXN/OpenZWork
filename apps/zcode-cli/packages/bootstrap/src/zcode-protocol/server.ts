@@ -1,3 +1,4 @@
+import { systemPromptCatalogParamsSchema } from "@zcode/shared";
 import { querySessionDebug } from "./session-debug.js";
 import { createNodeNetworkCapture } from "@zcode/shared/node";
 import { networkCaptureControlSchema, zcodeProtocolNotifications } from "@zcode/shared";
@@ -14,7 +15,7 @@ import type {
   McpServerNotification,
 } from "@zcode/contracts";
 import { requestMcpElicitation } from "./interaction-broker.js";
-import { InMemoryWorkspaceHookPolicyProvider } from "@zcode/core";
+import { getSystemPromptCatalog, InMemoryWorkspaceHookPolicyProvider } from "@zcode/core";
 import {
   V4_METHODS,
   V4_NOTIFICATIONS,
@@ -637,6 +638,9 @@ export class ZCodeProtocolAgentServer {
         return this.requireV4Gateway().queryCommands(request.params);
       case V4_METHODS.sessionsIndexReconcile:
         return this.requireV4Gateway().reconcileSessions(request.params);
+      case zcodeProtocolMethods.systemPromptCatalog:
+        systemPromptCatalogParamsSchema.parse(request.params ?? {});
+        return getSystemPromptCatalog();
       case zcodeProtocolMethods.sessionCreate:
         return await createSession(this.context, request.params, request.trace);
       case zcodeProtocolMethods.sessionResume:

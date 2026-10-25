@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AppSettings } from "@zcode/shared";
+import { createDefaultSystemPromptSettings, type AppSettings } from "@zcode/shared";
 import type { ISettingService } from "../src/setting/setting.js";
 
 const originalHome = process.env.HOME;
@@ -1284,5 +1284,34 @@ describe("settingService", () => {
       workspacePath: "/tmp/local-demo",
       workspacePurpose: "project",
     });
+  });
+});
+
+
+describe("system prompt settings persistence", () => {
+  it("serializes compare-and-save and preserves unrelated settings", async () => {
+    const taskHome = makeTempHome();
+    process.env.ZCODE_DESKTOP_HOME_DIR = taskHome;
+    const service = await createSettingServiceInHome(taskHome);
+    await service.update({ memoryEnabled: true });
+    const first = createDefaultSystemPromptSettings();
+    first.sections.role = { mode: "replace", content: "FIRST_ROLE" };
+    const second = createDefaultSystemPromptSettings();
+    second.sections.role = { mode: "replace", content: "SECOND_ROLE" };
+    const secondHost = await createSettingServiceInHome(taskHome);
+    const results = await Promise.allSettled([
+      service.update({ systemPromptSettings: first }, { expectedSystemPromptSettings: null }),
+      secondHost.update({ systemPromptSettings: second }, { expectedSystemPromptSettings: null }),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+    const winner = results[0]?.status === "fulfilled" ? first : second;
+    const readback = await service.get();
+    expect(readback.systemPromptSettings).toEqual(winner);
+    expect(readback.memoryEnabled).toBe(true);
+    const reloaded = await createSettingServiceInHome(taskHome);
+    expect((await reloaded.get()).systemPromptSettings).toEqual(winner);
+    await reloaded.update({ systemPromptSettings: second }, { expectedSystemPromptSettings: winner });
+    expect((await reloaded.get()).systemPromptSettings).toEqual(second);
   });
 });

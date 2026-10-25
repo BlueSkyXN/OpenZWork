@@ -1,3 +1,4 @@
+import type { SystemPromptSettings } from "@zcode/shared";
 import {
   createRootTraceContext,
   createTraceId,
@@ -80,6 +81,7 @@ export interface ZCodeProtocolToolInputTransmissionState {
 }
 
 export interface ZCodeProtocolSessionRecord {
+  systemPromptSettings?: SystemPromptSettings;
   app: ZCodeApp;
   memoryEnabled: boolean;
   subagentRuntimeConfigEnabled?: boolean;

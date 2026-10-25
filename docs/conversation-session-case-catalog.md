@@ -4483,6 +4483,12 @@ SPR01 是连接隔离 Electron 的独立 `node:test` / CDP E2E，保持 pending�
 
 验证（2026-10-16）：浏览器 Tooltip 12 项及 SPT03 性能回归 4 项通过，包含桌面/手机布局、中英文、深浅主题、触屏点击和键盘 focus；新增分组操作断言复测通过。macOS 完整桌面 E2E 通过，12 个入口实测 304–309ms，覆盖相邻提示切换、提前移出、文件树菜单和清空搜索。受影响单测 285 文件 / 3671 项、typecheck、E2E typecheck、lint、架构及改动代码格式检查通过。候选保持 pending；未覆盖 Windows/Linux 整机或真实手机远控传输。
 
+## SP：系统提示词设置
+
+产品规则和 SP01–SP10 见 [系统提示词设置](spec/system-prompt-settings.md)。SP06：从设置侧栏进入，替换角色内容、检查本章预览、保存后离开并重进、读取 setting.json，恢复默认；其余章节与 Memory 开关保持不变。SP08 使用相同页面的窄屏和深浅主题验证。候选不调用模型。
+
+SP11–SP15 为动态修正 accepted 场景：桌面、记忆、Skill、输出风格的启用/缺席由 CLI 单测验证；SP14 在真实设置页复制桌面默认规则，切换可视化有/无与终端情景，断言预览随条件改变，保存后重进仍为规则原文，情景不进入 setting.json。SP15 在整体替换下关闭环境注入，切回逐章断言开关一致，再恢复默认。仍用原 pending 候选和隔离 HOME，无模型请求。
+
 ## R3A-BLD-07：用户服务探测被跳过（2026-10-19）
 
 沿用 `conversation-session-r3-daemon-detached.test.ts` 的 accepted / pending 场景：独立 Linux SSH 目标首次以 detached 模式连接；桌面断开不杀 daemon。终止 daemon 后，在该目标的非交互 shell 设置 `SYSTEMD_OFFLINE=1`，确认真实 `systemctl --user show --property=Version` 退出 0 但没有属性响应，再通过桌面设备重连。必须进入 ready、`serviceRegistered=false`，Supervisor/Core 均换代，原任务可续发；最后恢复 shell 配置。禁止以替换 systemctl 或直接设置 ZCode 跳过注册开关代替该场景。

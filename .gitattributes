@@ -23,3 +23,6 @@ third-party/inventory.json linguist-generated=true
 
 # GenUI 清单按原始字节固定哈希；Windows checkout 也必须保持运行资源与许可原文一致。
 apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/vendor/** -text
+
+# 固定提示词夹具与运行时 LF 文本逐字比较，Windows autocrlf 不应改写基准。
+apps/zcode-cli/packages/core/tests/fixtures/memory/*.md text eol=lf

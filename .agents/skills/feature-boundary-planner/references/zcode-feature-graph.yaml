@@ -1040,6 +1040,25 @@ nodes:
     docs:
       - docs/ask-user-question-auto-resolution.md
       - docs/conversation-session-case-catalog.md
+  - id: capability.system-prompt-settings
+    kind: capability
+    label: Main session system prompt customization
+    aliases: [system prompt, 系统提示词, prompt sections]
+    docs: [docs/spec/system-prompt-settings.md]
+    codeSeeds:
+      - symbol: SystemPromptSettingsSection
+        file: packages/ui/src/settings/system-prompt/SystemPromptSettingsSection.tsx
+      - symbol: getSystemPromptCatalog
+        file: apps/zcode-cli/packages/core/src/context/prompt-settings/contract.ts
+      - symbol: applySystemPromptSettings
+        file: apps/zcode-cli/packages/core/src/context/prompt-settings/contract.ts
+      - symbol: systemPromptSettingsSchema
+        file: packages/shared/src/system-prompt/contract.ts
+    invariants:
+      - SettingService owns saved settings; each main runtime holds its materialization snapshot.
+      - Prompt customization does not change tool permissions or child agent identities.
+      - Runtime capabilities and paths remain live when editable rules are replaced or disabled.
+      - Generated context switches apply in both section and whole-rule replacement modes.
   - id: capability.project-memory
     kind: capability
     label: CLI project Memory

@@ -97,6 +97,12 @@ jobs:
       - name: Workflow child interaction regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
 
+      - name: System prompt context regression
+        run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
+
+      - name: CLI protocol regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts --bail=1
+
       - name: Bash output settlement and shutdown regression
         run: pnpm --filter @zcode/adapters exec vitest run tests/bash-direct-execution.test.ts tests/bash-shutdown.test.ts --bail=1
 

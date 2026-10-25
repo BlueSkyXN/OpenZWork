@@ -114,6 +114,33 @@ test("project MCP regression runs after required runtime artifacts are built", a
   assert.equal(steps[build]["continue-on-error"], undefined);
 });
 
+test("system prompt regressions run in core and independent CLI gates", async () => {
+  for (const file of [
+    "packages/shared/src/system-prompt/contract.test.ts",
+    "packages/ui/src/settings/system-prompt/contract.test.ts",
+    "packages/ui/test/systemPromptSettingsLoading.test.ts",
+    "packages/ui/test/settingsPageConfig.test.ts",
+  ])
+    assert.ok(declared.includes(file), file);
+
+  const steps = (await workflow("ci.yml")).jobs.checks.steps;
+  const context = steps.find((step) => step.name === "System prompt context regression");
+  const protocol = steps.find((step) => step.name === "CLI protocol regression");
+  // 两个命令分属独立 step，避免 Windows shell 用后一次成功掩盖前一次失败。
+  for (const step of [context, protocol]) {
+    assert.ok(step);
+    assert.equal(step.if, undefined);
+    assert.equal(step["continue-on-error"], undefined);
+    assert.ok(step.run.includes("--bail=1"));
+  }
+  assert.match(
+    context.run,
+    /@zcode\/core.*tests\/system-prompt-settings\.test\.ts.*tests\/context-builder\.test\.ts/,
+  );
+  assert.match(protocol.run, /@zcode\/bootstrap.*tests\/zcode-protocol\.test\.ts --bail=1$/);
+  assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
+});
+
 test("extended checks keep real failures and run independently with Electron prepared", async () => {
   const extended = await workflow("extended-checks.yml");
   for (const job of Object.values(extended.jobs)) {
