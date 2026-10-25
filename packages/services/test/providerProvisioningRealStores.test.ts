@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ import {
 } from "@zcode/provider";
 import { encodeProviderConfigFile, NodeModelSelectionConfigRepository } from "@zcode/provider-node";
 import type { ProviderProvisioningEnvelope } from "@zcode/shared";
+import { withFileLock } from "@zcode/shared/node";
 import { createCredentialService } from "../src/credential/credentialService.js";
 import { createCredentialCipherProvider } from "../src/credential/providers/credentialCipherProvider.js";
 import { createSettingService } from "../src/setting/settingService.js";
@@ -136,6 +137,7 @@ async function createFixture(root: string) {
   await credentials.save("ssh:r3-sentinel", "not-provisioned");
   const baseline = await target.apply(envelope("baseline", "old-value"));
   expect(baseline).toMatchObject({ status: "applied" });
+  let disposePromise: Promise<void> | undefined;
   return {
     runtime,
     defaults,
@@ -148,8 +150,16 @@ async function createFixture(root: string) {
     dir,
     builtin,
     dispose() {
-      runtime.dispose();
-      defaults.dispose();
+      return (disposePromise ??= (async () => {
+        try {
+          // OW-P003：真实提交即使随后报错也已触发后台刷新。先等同一 Registry 队列排空，
+          // 再关闭 Runtime；否则临时目录清理会与 Built-in 读锁竞争并在 Windows 报 EPERM。
+          await runtime.registryService.refresh("fixture-dispose");
+        } finally {
+          runtime.dispose();
+          defaults.dispose();
+        }
+      })());
     },
   };
 }
@@ -165,10 +175,13 @@ describe("R3A-PRV-08/09 正式磁盘Store与Registry事务", () => {
   });
   afterEach(async () => {
     vi.restoreAllMocks();
-    fixture?.dispose();
-    setDataBaseDir(previousRoot);
-    vi.unstubAllEnvs();
-    if (root) await rm(root, { recursive: true, force: true });
+    try {
+      await fixture?.dispose();
+    } finally {
+      setDataBaseDir(previousRoot);
+      vi.unstubAllEnvs();
+      if (root) await rm(root, { recursive: true, force: true });
+    }
   });
 
   it.each(["personal", "registry"] as const)(
@@ -229,6 +242,18 @@ describe("R3A-PRV-08/09 正式磁盘Store与Registry事务", () => {
   });
 
   it("PRV-08 回滚自身失败时返回rollback_failed且不登记成功", async () => {
+    const snapshot = await fixture.runtime.configService.read();
+    const readEntered = Promise.withResolvers<void>();
+    const releaseRead = Promise.withResolvers<void>();
+    let backgroundRead = Promise.resolve(snapshot);
+    vi.spyOn(fixture.runtime.configService, "read").mockImplementationOnce(() => {
+      backgroundRead = withFileLock(fixture.builtin, async () => {
+        readEntered.resolve();
+        await releaseRead.promise;
+        return snapshot;
+      });
+      return backgroundRead;
+    });
     const update = fixture.personalRepository.update.bind(fixture.personalRepository);
     vi.spyOn(fixture.personalRepository, "update")
       .mockImplementationOnce(async (mutate) => {
@@ -236,9 +261,27 @@ describe("R3A-PRV-08/09 正式磁盘Store与Registry事务", () => {
         throw Object.assign(new Error("R3_AFTER_COMMIT"), { snapshot });
       })
       .mockRejectedValue(new Error("R3_ROLLBACK_DISK_FAILURE"));
-    const result = await fixture.target.apply(envelope("rollback-failed", "new-value"));
-    expect(result).toMatchObject({ status: "rollback_failed", rolledBack: false });
-    expect(await readFile(fixture.state, "utf8")).not.toContain("rollback-failed");
+    let disposing: Promise<void> | undefined;
+    try {
+      const result = await fixture.target.apply(envelope("rollback-failed", "new-value"));
+      expect(result).toMatchObject({ status: "rollback_failed", rolledBack: false });
+      expect(await readFile(fixture.state, "utf8")).not.toContain("rollback-failed");
+      await readEntered.promise;
+
+      // OW-P003：持有真实目录锁，直接验证清理屏障；不依赖 Windows 偶发 EPERM 或固定等待。
+      let disposed = false;
+      disposing = Promise.resolve(fixture.dispose()).then(() => {
+        disposed = true;
+      });
+      await Promise.resolve();
+      expect(disposed).toBe(false);
+      expect(await readdir(`${fixture.builtin}.lock`)).toHaveLength(1);
+    } finally {
+      releaseRead.resolve();
+      await backgroundRead;
+      await disposing;
+    }
+    expect(await readdir(root)).not.toContain("builtin.json.lock");
   });
 });
 
@@ -289,10 +332,13 @@ describe("R3A-PRV-05/06/07/10/11 完整替换、凭据保留、本地设置与�
   });
   afterEach(async () => {
     vi.restoreAllMocks();
-    fixture?.dispose();
-    setDataBaseDir(previousRoot);
-    vi.unstubAllEnvs();
-    if (root) await rm(root, { recursive: true, force: true });
+    try {
+      await fixture?.dispose();
+    } finally {
+      setDataBaseDir(previousRoot);
+      vi.unstubAllEnvs();
+      if (root) await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("PRV-05 本地删除 provider 后完整替换：目标不保留被删镜像，空配置也真实写入", async () => {

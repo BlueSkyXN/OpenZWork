@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { AddressInfo } from "node:net";
+import { once } from "node:events";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -125,6 +126,47 @@ describe("server info HTTP endpoint", () => {
       capability: expect.any(String),
       expiresAt: expect.any(Number),
     });
+  });
+
+  it.each([
+    "plain-token",
+    "plus+token",
+    "slash/token",
+    "equals=token",
+    "percent%2Btoken",
+    "中文令牌",
+  ])("OW-P002: round-trips URL token through the issued cookie: %s", async (token) => {
+    const server = createHttpServer(new ServiceCollection(), 0, {
+      host: "127.0.0.1",
+      authToken: token,
+    });
+    servers.push(server);
+    if (!server.listening) await once(server, "listening");
+    const address = server.address() as AddressInfo;
+    const url = new URL(`http://127.0.0.1:${address.port}/api/server-info`);
+    url.searchParams.set("token", token);
+    const first = await fetch(url);
+    expect(first.status).toBe(200);
+    const cookie = first.headers.get("set-cookie")!.split(";")[0]!;
+    url.search = "";
+    expect((await fetch(url, { headers: { cookie } })).status).toBe(200);
+    expect((await fetch(url, { headers: { cookie: "zcode_lite_token=wrong" } })).status).toBe(401);
+  });
+
+  it("OW-P002: rejects malformed and double-encoded cookies without a server error", async () => {
+    const server = createHttpServer(new ServiceCollection(), 0, {
+      host: "127.0.0.1",
+      authToken: "plus+token",
+    });
+    servers.push(server);
+    if (!server.listening) await once(server, "listening");
+    const address = server.address() as AddressInfo;
+    const url = `http://127.0.0.1:${address.port}/api/server-info`;
+    for (const encoded of ["%", "%GG", "%E0%A4%A", "plus%252Btoken"]) {
+      expect(
+        (await fetch(url, { headers: { cookie: `zcode_lite_token=${encoded}` } })).status,
+      ).toBe(401);
+    }
   });
 
   it("does not expose either retired remote-connect route", async () => {

@@ -719,6 +719,57 @@ modules:
     layers:
       adapters: .
     owner: desktop
+  # side-pane-full-view：由 architecture:adopt 登记
+  - id: side-pane-full-view
+    roots:
+      - packages/ui/src/side-pane-full-view
+    managed: true
+    requires:
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/side-pane-full-view/index.ts
+      - packages/ui/src/side-pane-full-view/contract.ts
+    layers:
+      ui: .
+    owner: conversation
+
+  # system-prompt-contract：由 architecture:adopt 登记
+  - id: system-prompt-contract
+    roots:
+      - packages/shared/src/system-prompt
+    managed: true
+    requires: []
+    publicEntrypoints:
+      - packages/shared/src/system-prompt/index.ts
+      - packages/shared/src/system-prompt/contract.ts
+    layers:
+      contract: .
+    owner: agent
+  # system-prompt-context：由 architecture:adopt 登记
+  - id: system-prompt-context
+    roots:
+      - apps/zcode-cli/packages/core/src/context/prompt-settings
+    managed: true
+    requires: [shared, system-prompt-contract, zcode-cli]
+    publicEntrypoints:
+      - apps/zcode-cli/packages/core/src/context/prompt-settings/index.ts
+      - apps/zcode-cli/packages/core/src/context/prompt-settings/contract.ts
+    layers:
+      domain: .
+    owner: agent
+  # system-prompt-ui：由 architecture:adopt 登记
+  - id: system-prompt-ui
+    roots:
+      - packages/ui/src/settings/system-prompt
+    managed: true
+    requires: [shared, system-prompt-contract, ui]
+    publicEntrypoints:
+      - packages/ui/src/settings/system-prompt/index.ts
+      - packages/ui/src/settings/system-prompt/contract.ts
+    layers:
+      ui: .
+    owner: settings
 
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。
@@ -734,6 +785,14 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  - id: workflow-mode-user-choice-unmanaged-edit
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/dynamic-workflow-feature.ts]
+    reason: 既有模式归一化文件吸收上游用户选择优先规则及默认模式读取接口；配置来源沿用 fork 本地策略，不恢复官方设置与远端开关模块。
+  - id: side-pane-full-view-shortcut-command-edit
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/shortcutCommands.ts]
+    reason: 已准入的快捷键命令表只追加一条 toggleSidePaneFullView 命令（Side Pane 完整视图，docs/ui/side-pane-full-view.md）；命令表仍是唯一数据源，签名与模块边界不变，接管整个 shared 包不在本次范围内。
   - id: opensource-tool-search-comment-cleanup
     rule: unmanaged-new-file
     paths:

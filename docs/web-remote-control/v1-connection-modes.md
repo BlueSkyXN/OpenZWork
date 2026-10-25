@@ -116,3 +116,5 @@ location = /ws {
 自建模式使用兼容本项目 V1 合同的 relay：支持 `device_register_init`、HMAC challenge/proof、`waiting/matched`、心跳查询和双向 `data` 转发。手机页面可单独部署，构建命令为 `pnpm --filter @zcode/web exec vite build --base=/remote/`，输出在 `packages/web/dist/`。在手机连接卡片中分别填写 relay WS 地址和页面 HTTP 地址；HTTPS 页面需配套 WSS。本文提供客户端接入和静态页构建，不自动安装或部署 relay 服务。
 
 官方模式直接选择官方 V1 preset。官方服务的停用或协议变化显示为连接错误，不切换到账号登录。
+
+合并 3.16.2 后，CF-01 Bot 连接错误候选经设置卡片进入内嵌管理页，在页面保持打开时验证错误与绑定状态。该用例不启动手机 relay，也不调用真实第三方渠道。

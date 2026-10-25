@@ -54,6 +54,7 @@ import { useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 export { attachRemoteProjectWorkspace } from "@/project-sidebar/remote-navigation.js";
+export { resolveEntryProject } from "@/project-sidebar/view.js";
 export type {
   SidebarFileTreeOpenRequest,
   ProjectSidebarProps,

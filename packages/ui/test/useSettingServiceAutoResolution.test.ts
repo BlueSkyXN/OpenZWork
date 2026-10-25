@@ -2,11 +2,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { APP_RUNTIME_PREFERENCES_CHANGED_BROADCAST_CHANNEL, type AppSettings } from "@zcode/shared";
-import type { IServiceAccessor } from "@zcode/services";
+import type { IServiceAccessor, ISettingService } from "@zcode/services";
 
 const settingService = {
   get: vi.fn<() => Promise<AppSettings>>(),
-  update: vi.fn<(patch: Partial<AppSettings>) => Promise<void>>(),
+  update: vi.fn<ISettingService["update"]>(),
 };
 const broadcastService = {
   send: vi.fn<(message: { channel: string; payload: unknown }) => Promise<void>>(),
@@ -80,9 +80,12 @@ describe("useSettings AskUserQuestion runtime preference", () => {
       await updatePromise;
     });
 
-    expect(settingService.update).toHaveBeenCalledWith({
-      askUserQuestionAutoResolutionEnabled: false,
-    });
+    expect(settingService.update).toHaveBeenCalledWith(
+      {
+        askUserQuestionAutoResolutionEnabled: false,
+      },
+      undefined,
+    );
     expect(zcodeAgentService.syncAppRuntimePreferences).toHaveBeenCalledWith({
       askUserQuestionAutoResolutionEnabled: false,
       modelIoFullRetentionEnabled: false,
@@ -117,9 +120,12 @@ describe("useSettings AskUserQuestion runtime preference", () => {
       await hook.result.current.update({ modelIoFullRetentionEnabled: true });
     });
 
-    expect(settingService.update).toHaveBeenCalledWith({
-      modelIoFullRetentionEnabled: true,
-    });
+    expect(settingService.update).toHaveBeenCalledWith(
+      {
+        modelIoFullRetentionEnabled: true,
+      },
+      undefined,
+    );
     const preferences = {
       askUserQuestionAutoResolutionEnabled: true,
       modelIoFullRetentionEnabled: true,
@@ -131,6 +137,25 @@ describe("useSettings AskUserQuestion runtime preference", () => {
       payload: preferences,
     });
 
+    hook.unmount();
+  });
+
+  it("forwards the prompt concurrency comparison without changing active runtime preferences", async () => {
+    const { useSettings } = await import("@/hooks/useSettingService.js");
+    const hook = renderHook(() => useSettings());
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    const options = { expectedSystemPromptSettings: null };
+    await act(async () => {
+      await hook.result.current.update({ systemPromptSettings: undefined }, options);
+    });
+    // 并发校验必须到达 SettingService；提示词保存不应广播或热改已运行的会话。
+    expect(settingService.update).toHaveBeenCalledWith(
+      { systemPromptSettings: undefined },
+      options,
+    );
+    expect(zcodeAgentService.syncAppRuntimePreferences).not.toHaveBeenCalled();
+    expect(botsService.syncAppRuntimePreferences).not.toHaveBeenCalled();
+    expect(broadcastService.send).not.toHaveBeenCalled();
     hook.unmount();
   });
 
@@ -204,9 +229,12 @@ describe("useSettings AskUserQuestion runtime preference", () => {
       await hook.result.current.update({ locale: "en-US" });
     });
 
-    expect(controllerSettingService.update).toHaveBeenCalledWith({
-      locale: "en-US",
-    });
+    expect(controllerSettingService.update).toHaveBeenCalledWith(
+      {
+        locale: "en-US",
+      },
+      undefined,
+    );
     expect(settingService.update).not.toHaveBeenCalled();
     hook.unmount();
   });
@@ -243,7 +271,7 @@ describe("useSettings AskUserQuestion runtime preference", () => {
       await hook.result.current.update({ toolSearchMode: "local" });
     });
 
-    expect(settingService.update).toHaveBeenCalledWith({ toolSearchMode: "local" });
+    expect(settingService.update).toHaveBeenCalledWith({ toolSearchMode: "local" }, undefined);
     expect(zcodeAgentService.syncAppRuntimePreferences).not.toHaveBeenCalled();
     expect(botsService.syncAppRuntimePreferences).not.toHaveBeenCalled();
     expect(broadcastService.send).not.toHaveBeenCalled();

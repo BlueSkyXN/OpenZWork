@@ -1,5 +1,43 @@
 # Bots E2E Coverage Matrix
 
+## OpenZWork 当前覆盖与执行入口
+
+本节按当前保留的 Bot 行为维护。下方折叠区保存上游历史记录，其中的 `formal`、运行编号和已删除路径不作为当前分支的执行或通过状态。历史案例编号继续使用，便于追踪断言。
+
+覆盖层级按实际执行对象区分：服务回归使用真实 BotsService、受控 task events 和模拟渠道 HTTP；组件测试检查渲染或交互；Desktop E2E 才验证 Electron、Host/RPC 与 DOM。放在旧 `test/e2e` 目录中的服务替身测试不因此获得真实 Host/CLI 证据。
+
+| Case ID | 保留的 setup → action → assertion                                                                            | 当前入口                                                                                                                                                                                                                        | 层级与处置                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| SC-01   | 已绑定飞书 → 输入与分阶段工具/文本事件 → 单张卡片、工具折叠、按顺序完成与 typing 清理                        | `packages/services/test/botsService.messageFlow.test.ts` 的 `streams Feishu replies into one schema 2 timeline card with collapsed tool summaries`；`packages/services/test/botsFeishuProvider.test.ts` 的 typing reaction 回归 | 服务/provider；沿用，不重复恢复旧服务替身 E2E                                              |
+| AQ-01   | 待回答问题 → 多选、自定义输入及逐题回调 → 正确结构化答案、原交互卡更新、响应 ACK                             | `packages/services/test/botsService.messageFlow.test.ts` 的 multi-select/custom answer/next question 回归                                                                                                                       | 服务；沿用                                                                                 |
+| IL-01   | 流式输出中 → 进入 Plan approval 并继续 → 旧流封口、交互卡保留、新流使用新卡                                  | `packages/services/test/botsService.messageFlow.test.ts` 的 `seals the current stream, retains Plan approval, and starts a new stream card`                                                                                     | 服务；沿用                                                                                 |
+| RT-01   | 同一飞书 App 的两个 Bot 记录 → 获取锁、owner 释放、再次获取 → 同时只有一个 owner，释放后允许接管             | `packages/services/test/botsChannelRuntime.test.ts` 的 `locks the same Feishu App identity across local bot records`；`packages/services/test/botsService.feishuRuntimeLock.test.ts`                                            | 锁/服务；本次补释放后接管断言                                                              |
+| RT-02   | attached remote 关闭后台工作 → 保存 Feishu/Telegram 配置 → 不启动 provider 网络或候选预热，runtime 保持 idle | `packages/services/test/botsService.config.test.ts` 的 `does not run remote-disabled bot background work after config changes`                                                                                                  | 服务；本次把既有 Telegram 场景扩展到 Feishu                                                |
+| PV-01   | Feishu/Lark 使用相同输入 → 调用 provider → 各自 OpenAPI origin 与请求内容正确                                | `packages/services/test/botsFeishuProvider.test.ts` 的双 provider 参数化回归                                                                                                                                                    | provider；沿用                                                                             |
+| RW-01   | Bot 指向断连远端 → 收到普通消息 → 明确拒绝，不自动重连或本机派发                                             | `packages/services/test/botsService.messageFlow.test.ts` 的 `blocks a disconnected remote workspace message without reconnecting`；`packages/desktop/test/botRemoteWorkspaceResolver.test.ts`                                   | 服务/Host resolver；沿用                                                                   |
+| CR-01   | 创建并重开自动化 repo → 准备 watcher 后派发、收到完成或失败 → 原渠道收到终态，禁用/失效目标不订阅            | `packages/services/test/automationRepo.test.ts` 的 Bot 来源重开持久化；`packages/desktop/test/cronBotDelivery.test.ts` 的订阅屏障；`packages/services/test/botsService.messageFlow.test.ts` 的 automation delivery 回归         | repo/Host/service 组合；本次补 Feishu 成功、失败出站 HTTP 断言，不要求恢复重复的 repo 场景 |
+| CF-01   | 已绑定、缺凭据的 Feishu Bot → 在弹窗启用并保持弹窗打开 → 连接错误更新、绑定与 v3 配置保留                    | `packages/ui/test/botsDialogRuntimeError.test.ts`；`packages/desktop/test/e2e/bots/manual-review/pending/feishu-runtime-error-ui.test.ts`                                                                                       | 组件回归保留；Desktop 场景恢复为 pending，执行记录单独列出，不沿用上游人工转正             |
+| RW-02   | 同一个 Source 的 legacy/stable identity → Bot 调用 → 复用同一目录服务、连接和任务路由                        | `packages/desktop/test/e2e/bots/manual-review/pending/bot-r3-workspace-identity.test.ts`                                                                                                                                        | 现存 MessagePort/Host 服务集成候选；本次不改变其实现或 promotion 状态                      |
+
+### 本轮边界和验证
+
+- 复用 `BotsService`、现有 provider、Runtime lock、AutomationRepo 和 watcher 所有者。只补测试和覆盖记录，不增加业务写入路径，也不改变 Desktop continuous、Bot continuous、手机 replayable 的合同。
+- 接受 RT-01 释放后接管、RT-02 两种 provider、CR-01 Feishu 两种终态和 CF-01 可见弹窗错误作为当前已定义行为；按上述既有合同维护，无新增产品取舍。
+- SC/AQ/IL/PV/RW 的服务断言已有覆盖；不复制相同测试到 WDIO。官方账号、真实租户和真实模型请求不进入夹具。历史 topic/mention 的真实 Host/CLI 记录保留于折叠区，不据此声明当前已运行。
+- CF-01 使用独立 E2E HOME、格式有效的合成 App ID 和缺失的凭据引用，明确断言缺少 App Secret 的错误。WDIO 在 Electron 启动前仅为本用例配置本机随机端口 relay，结束时关闭并恢复环境；进入 Bots 的远控入口因此不依赖外部服务。保持 pending，人工转正或 Docker admission 另按现有生命周期处理。
+- 本次相关基线为 9 文件、313 项通过；补强后的 3 个文件为 120 项通过。8 个此前未进入固定核心清单的相关文件已加入 `retained-bot-delivery-and-runtime`，与原有 runtime lock 核心回归共同守护以上行为。
+- CF-01 在 macOS arm64、Node 24.14.0 的真实 Electron 中通过（1 项，`desktop-e2e-20261024111035063-p65228-c77bd31348e5111a`）；截图确认缺凭据详情和绑定可见，远控入口先完成本机 relay 配对准备。该结果不包含人工转正、Docker admission、手机或真实租户验收。
+- 根类型检查、Desktop E2E 类型检查通过；根 Lint 为 0 error、34 个既有 warning，架构检查 0 violation。固定核心门禁通过 244 个文件、3378 项，另有 1 项既有 skip。
+
+CF-01 的显式执行入口（保留默认构建，避免复用被类型检查改写的 Host 输出）：
+
+```bash
+ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/bots/manual-review/pending/feishu-runtime-error-ui.test.ts'
+```
+
+<details>
+<summary>上游历史案例与验收记录（保留溯源，不作为当前执行清单）</summary>
+
 ## MN-01 / MN-03 转正（2026-10-08）
 
 用户确认将 Feishu/Lark × 群/话题 4 项用例转正，正式入口为 `bots/feishu-channel-mention.test.ts`。
@@ -807,3 +845,9 @@ Provider 单测覆盖 checkpoint 前、调用后、删除和窗口内必需卡�
 
 身份投影定位回归：CLI 单测覆盖相同正文、原生 @ 前后位置交换、同一目标重复出现和多消息
 批次；TP-04 实际模型请求断言有序 text/mention 结构及自身/他人关联，不暴露 targetId。
+
+</details>
+
+## 2026-10-25 设置页入口整合
+
+当前 CF-01 从“设置 → 远程控制 → 机器人管理”进入，在内嵌管理页保持打开时检查已绑定机器人的缺凭据错误、绑定保留和 v3 配置落盘。复用设置导航 helper，不启动手机连接。历史弹窗截图保留为历史证据，候选继续位于 manual-review/pending。

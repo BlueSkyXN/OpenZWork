@@ -9,14 +9,10 @@ import { promisify } from "node:util";
 import { parseDocument } from "yaml";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
-const policy = JSON.parse(
-  await readFile(new URL("./core-tests.json", import.meta.url), "utf8"),
-);
+const policy = JSON.parse(await readFile(new URL("./core-tests.json", import.meta.url), "utf8"));
 const declared = policy.suites.flatMap((suite) => suite.files);
 const workflow = async (name) =>
-  parseDocument(
-    await readFile(join(root, ".github/workflows", name), "utf8"),
-  ).toJS();
+  parseDocument(await readFile(join(root, ".github/workflows", name), "utf8")).toJS();
 
 test("core discovery keeps every declared regression and preserves process isolation", async () => {
   const dir = await mkdtemp(join(tmpdir(), "openzwork-core-scope-"));
@@ -35,15 +31,14 @@ test("core discovery keeps every declared regression and preserves process isola
       { cwd: root },
     );
     const discovered = JSON.parse(await readFile(output, "utf8"));
-    const actual = discovered.map(({ file }) =>
-      relative(root, file).split(sep).join("/"),
-    );
+    const actual = discovered.map(({ file }) => relative(root, file).split(sep).join("/"));
     assert.equal(new Set(declared).size, declared.length);
     assert.deepEqual(actual.toSorted(), declared.toSorted());
     for (const file of [
       "packages/desktop/test/desktopRuntimeEnv.test.ts",
       "packages/services/test/zcodeAgentProcessManager.test.ts",
       "packages/services/test/mcpSyncService.test.ts",
+      "packages/services/test/subagentRuntimeConfigWatcher.test.ts",
     ]) {
       const entry = discovered.find(
         (item) => relative(root, item.file).split(sep).join("/") === file,
@@ -58,18 +53,24 @@ test("core discovery keeps every declared regression and preserves process isola
 test("core CI cannot be hidden behind historical collection or optional outcomes", async () => {
   const ci = await workflow("ci.yml");
   const steps = ci.jobs.checks.steps;
-  const core = steps.filter((step) =>
-    step.run?.startsWith("pnpm test:ci:core"),
-  );
+  const core = steps.filter((step) => step.run?.startsWith("pnpm test:ci:core"));
   assert.equal(core.length, 1);
   assert.equal(core[0].if, undefined);
   assert.equal(core[0]["continue-on-error"], undefined);
   assert.equal(ci.jobs.checks.needs, undefined);
-  assert.ok(
-    !steps.some((step) =>
-      /vitest list|pnpm (?:run )?test:unit/.test(step.run ?? ""),
-    ),
-  );
+  assert.ok(!steps.some((step) => /vitest list|pnpm (?:run )?test:unit/.test(step.run ?? "")));
+});
+
+test("repository Node regressions run in the blocking platform checks", async () => {
+  const ci = await workflow("ci.yml");
+  const steps = ci.jobs.checks.steps;
+  const scriptSteps = steps.filter((step) => step.run === "pnpm test:repo-scripts");
+  assert.equal(scriptSteps.length, 1);
+  assert.equal(scriptSteps[0].if, undefined);
+  assert.equal(scriptSteps[0]["continue-on-error"], undefined);
+  const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  assert.match(manifest.scripts["test:repo-scripts"], /scripts\/test\/\*\.test\.mjs/);
+  assert.match(manifest.scripts["test:repo-scripts"], /--test-concurrency=1/);
 });
 
 test("real release archive regressions remain discovered once in the isolated process pool", async () => {
@@ -80,10 +81,17 @@ test("real release archive regressions remain discovered once in the isolated pr
   const dir = await mkdtemp(join(tmpdir(), "openzwork-release-scope-"));
   try {
     const output = join(dir, "discovered.json");
-    await promisify(execFile)(process.execPath, [
-      join(root, "node_modules/vitest/vitest.mjs"),
-      "list", ...files, "--filesOnly", `--json=${output}`,
-    ], { cwd: root });
+    await promisify(execFile)(
+      process.execPath,
+      [
+        join(root, "node_modules/vitest/vitest.mjs"),
+        "list",
+        ...files,
+        "--filesOnly",
+        `--json=${output}`,
+      ],
+      { cwd: root },
+    );
     const discovered = JSON.parse(await readFile(output, "utf8"));
     assert.deepEqual(
       discovered.map(({ file }) => relative(root, file).split(sep).join("/")).toSorted(),
@@ -97,9 +105,7 @@ test("real release archive regressions remain discovered once in the isolated pr
 
 test("project MCP regression runs after required runtime artifacts are built", async () => {
   const steps = (await workflow("ci.yml")).jobs.checks.steps;
-  const build = steps.findIndex(
-    (step) => step.run === "node scripts/build-desktop-agent-cli.mjs",
-  );
+  const build = steps.findIndex((step) => step.run === "node scripts/build-desktop-agent-cli.mjs");
   const regression = steps.findIndex((step) =>
     step.run?.includes("tests/mcp-project-config.test.ts"),
   );
@@ -108,23 +114,42 @@ test("project MCP regression runs after required runtime artifacts are built", a
   assert.equal(steps[build]["continue-on-error"], undefined);
 });
 
+test("system prompt regressions run in core and independent CLI gates", async () => {
+  for (const file of [
+    "packages/shared/src/system-prompt/contract.test.ts",
+    "packages/ui/src/settings/system-prompt/contract.test.ts",
+    "packages/ui/test/systemPromptSettingsLoading.test.ts",
+    "packages/ui/test/settingsPageConfig.test.ts",
+  ]) assert.ok(declared.includes(file), file);
+
+  const steps = (await workflow("ci.yml")).jobs.checks.steps;
+  const context = steps.find((step) => step.name === "System prompt context regression");
+  const protocol = steps.find((step) => step.name === "CLI protocol regression");
+  // 两个命令分属独立 step，避免 Windows shell 用后一次成功掩盖前一次失败。
+  for (const step of [context, protocol]) {
+    assert.ok(step);
+    assert.equal(step.if, undefined);
+    assert.equal(step["continue-on-error"], undefined);
+    assert.ok(step.run.includes("--bail=1"));
+  }
+  assert.match(context.run, /@zcode\/core.*tests\/system-prompt-settings\.test\.ts.*tests\/context-builder\.test\.ts/);
+  assert.match(protocol.run, /@zcode\/bootstrap.*tests\/zcode-protocol\.test\.ts --bail=1$/);
+  assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
+
+});
+
 test("extended checks keep real failures and run independently with Electron prepared", async () => {
   const extended = await workflow("extended-checks.yml");
   for (const job of Object.values(extended.jobs)) {
     assert.equal(job.needs, undefined);
     assert.equal(job["continue-on-error"], undefined);
-    for (const step of job.steps)
-      assert.equal(step["continue-on-error"], undefined);
+    for (const step of job.steps) assert.equal(step["continue-on-error"], undefined);
   }
   const tests = extended.jobs["historical-tests"].steps;
-  assert.ok(
-    tests.some((step) => step.run === "pnpm install --frozen-lockfile"),
-  );
+  assert.ok(tests.some((step) => step.run === "pnpm install --frozen-lockfile"));
   // 2026-10-20：全量套件改为分组执行，脚本内建组级时限与逐组 JSON；断言从单条
   // vitest 命令改为分组入口，语义不变（真实失败仍失败、结果仍上传）。
-  assert.ok(
-    tests.some((step) => step.run === "node scripts/run-full-suite-groups.mjs"),
-  );
+  assert.ok(tests.some((step) => step.run === "node scripts/run-full-suite-groups.mjs"));
   assert.ok(
     extended.jobs["desktop-main-audit"].steps.some((step) =>
       step.run?.includes("tsc -p packages/desktop/tsconfig.main.json --noEmit"),

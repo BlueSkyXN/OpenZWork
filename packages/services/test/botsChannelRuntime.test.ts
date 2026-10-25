@@ -838,6 +838,18 @@ describe("bot channel runtime lock", () => {
     expect(owner).not.toBeNull();
     expect(contender).toBeNull();
     await owner?.release();
+
+    // RT-01：同 App 的另一条记录只能在原 owner 释放后接管，不能只验证首次互斥。
+    const replacement = await acquireFeishuWebSocketLock({
+      id: "bot-contender",
+      provider: "feishu",
+      feishuAppId: "cli_same_app",
+    });
+    try {
+      expect(replacement).not.toBeNull();
+    } finally {
+      await replacement?.release();
+    }
   });
 
   it("takes over an expired lease even when its PID is alive", async () => {

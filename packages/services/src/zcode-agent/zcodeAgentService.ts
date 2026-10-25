@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { allowRequestVerificationHeaders } from "@zcode/shared";
+import { allowRequestVerificationHeaders, isAuxiliarySessionKind } from "@zcode/shared";
 import {
   pluginUiToolResultNotificationSchema,
   type PluginUiToolResultNotification,
@@ -339,6 +339,8 @@ import {
   zcodeMcpUiCloseInstanceResultSchema,
   zcodeMcpUiOpenInstanceResultSchema,
 } from "@zcode/shared";
+import { systemPromptCatalogSchema } from "@zcode/shared";
+
 const logger = createServiceLogger("zcode-agent-service");
 const PLUGIN_MANAGEMENT_WORKSPACE_DIR_NAME = "plugin-workspace";
 // 状态探测完成后释放闲置的 MCP 子进程；只作用于控制面，不回收会话进程。
@@ -4007,6 +4009,11 @@ export function createZCodeAgentService(
       );
     },
 
+    async getSystemPromptCatalog() {
+      const client = await getPluginManagementClient();
+      return client.request(zcodeProtocolMethods.systemPromptCatalog, {}, systemPromptCatalogSchema);
+    },
+
     async getPluginsOverview(params: ZCodeAgentPluginViewParams) {
       const client = await getPluginManagementClient();
       return client.request(
@@ -5074,7 +5081,7 @@ export function createZCodeAgentService(
             session.workspace.workspacePath !== params.workspacePath
           )
             throw new Error("project.session-lineage-invalid");
-          if (session.sessionKind !== "subagent_child") break;
+          if (!isAuxiliarySessionKind(session.sessionKind)) break;
           if (!session.parentSessionId) throw new Error("project.session-lineage-invalid");
           directorySessionId = session.parentSessionId;
         }

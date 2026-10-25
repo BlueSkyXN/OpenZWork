@@ -5,6 +5,7 @@ import type { AppSettings } from "@zcode/shared";
 import {
   OPENZWORK_DATA_DIR_NAME,
   appSettingsPatchSchema,
+  systemPromptSettingsSchema,
   appSettingsSchema,
   formatLogPrefix,
   formatZodError,
@@ -168,7 +169,8 @@ async function writeSettingsAt(
   enterCommitPhase: () => void = () => undefined,
 ): Promise<void> {
   const settingsDir = dirname(settingsFile);
-  log("writing settings to:", settingsFile, JSON.stringify(settings));
+  // 提示词可能包含私人指令，普通设置日志只记录写入事件。
+  log("writing settings to:", settingsFile);
   maybeThrowInjectedFsFault({ operation: "mkdir", path: settingsDir });
   await mkdir(settingsDir, { recursive: true });
   if (!shouldCommit()) return;
@@ -282,10 +284,18 @@ export function createSettingServiceWithMigrations(): {
       return readSettings();
     },
 
-    async update(patch: Partial<AppSettings>): Promise<void> {
+    async update(patch, options): Promise<void> {
       const runUpdate = async (shouldCommit: () => boolean, enterCommitPhase: () => void) => {
         const validatedPatch = appSettingsPatchSchema.parse(normalizeSettingsPatch(patch));
         const current = await readSettings();
+        if (options) {
+          const expected = options.expectedSystemPromptSettings === null
+            ? null : systemPromptSettingsSchema.parse(options.expectedSystemPromptSettings);
+          // 比较必须在同一个文件锁内，防止两个窗口把对方已保存的提示词覆盖掉。
+          if (JSON.stringify(current.systemPromptSettings ?? null) !== JSON.stringify(expected)) {
+            throw new Error("settings.systemPrompt.conflict");
+          }
+        }
         const merged = appSettingsSchema.parse({
           ...current,
           ...validatedPatch,

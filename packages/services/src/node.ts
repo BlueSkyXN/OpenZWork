@@ -928,6 +928,9 @@ export function createLocalServices(options: {
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               toolSearchMode: settings.toolSearchMode ?? "off",
               memoryEnabled: settings.memoryEnabled === true,
+              ...(scope === "runtime-materialization" && settings.systemPromptSettings
+                ? { systemPromptSettings: settings.systemPromptSettings }
+                : {}),
               modelContextBudgetStrategy,
               // user-execution 只消费 Shell；共享默认策略是统一 result schema 的兼容占位，
               // 不会覆盖 runtime-materialization 阶段已经固定的 strategy。
@@ -949,7 +952,7 @@ export function createLocalServices(options: {
     readPolicy: async () => {
       const settings = await settingService.get();
       if (!settings.taskAutoArchiveEnabled) return null;
-      const days = Math.max(1, Math.floor(settings.taskAutoArchiveOlderThanDays ?? 7));
+      const days = Math.max(1, Math.floor(settings.taskAutoArchiveOlderThanDays ?? 30));
       return {
         cutoff: Date.now() - days * 86_400_000,
         activeTasks: zcodeTaskIndexSyncer.activeTaskRefs(),

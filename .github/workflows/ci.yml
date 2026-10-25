@@ -67,6 +67,9 @@ jobs:
         env:
           ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
 
+      - name: Repository script regressions
+        run: pnpm test:repo-scripts
+
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
       # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
       # --cache-dir=.turbo + actions/cache：turbo 默认缓存在 node_modules/.cache 不随
@@ -93,6 +96,21 @@ jobs:
 
       - name: Workflow child interaction regression
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
+
+      - name: System prompt context regression
+        run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
+
+      - name: CLI protocol regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts --bail=1
+
+      - name: Bash output settlement and shutdown regression
+        run: pnpm --filter @zcode/adapters exec vitest run tests/bash-direct-execution.test.ts tests/bash-shutdown.test.ts --bail=1
+
+      - name: Workflow scheduling and auxiliary session regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/provider-registry-app-runtime.test.ts tests/v4-cold-resume.test.ts tests/workflow-concurrency-governor.test.ts tests/workflow-effective-selection.test.ts tests/workflow-fault-matrix.stop.test.ts tests/zcode-protocol-transport.test.ts --bail=1
+
+      - name: Local bundled plugins and metadata regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts tests/plugins-protocol.test.ts --bail=1
 
       - name: ToolSearch runtime regression
         run: pnpm --filter @zcode/core exec vitest run tests/tool-search-execution.test.ts tests/tool-search-hydration.test.ts tests/tool-search-result-budget.test.ts tests/tool-search-subagent.test.ts tests/tool-search-request-preparation.test.ts --bail=1

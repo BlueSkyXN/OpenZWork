@@ -19,6 +19,8 @@ to make repository work evidence-first without mirroring runtime tool schemas.
 
 ## Stable Sections
 
+主会话的用户定制契约见根目录 `docs/spec/system-prompt-settings.md`。未配置时保持本文件描述的默认组装；用户替换/关闭规则或整体替换时，当前能力、记忆位置、检索分支和输出风格继续由运行时生成。环境、Git、技能清单、用户上下文和日期使用独立注入开关，两种编辑模式共用。目录提供合成情景，不把某次环境快照当作可编辑默认值；旧内部 `customSystemPrompt`、工作流和子代理契约保持不变。
+
 | Section              | Purpose                                                                                                                            |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Static Default Body  | ZCode role, authorized-security boundary, and compact harness guidance.                                                            |

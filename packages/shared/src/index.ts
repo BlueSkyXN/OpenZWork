@@ -3,6 +3,8 @@
 // networkCapture 净化口径修订：desktop 网络诊断面板（main handler/UI）已删，
 // 但 zcode-cli 协议观测链（bootstrap server/transport + 协议方法表 processNetworkCapture）
 // 与 adapters MCP fetch 的 withoutNetworkCapture 是保留面，恢复类型与 schema 导出。
+export * from "./system-prompt/contract.js";
+
 export * from "./networkCapture.js";
 export type {
   FileBinaryPreview,

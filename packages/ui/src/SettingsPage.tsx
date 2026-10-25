@@ -1,3 +1,4 @@
+import { SystemPromptSettingsSection } from "@/settings/system-prompt/contract.js";
 import { SettingsMachinesProvider } from "@/settings/SettingsMachine.js";
 import { getWorkspaceSourceServerId } from "@/conversation-workspace-target/sourceIdentity.js";
 import { RemoteConnectionNavigationDot } from "@/remote-connection/RemoteConnectionNavigationDot.js";
@@ -48,7 +49,8 @@ import {
   setPendingSettingsSectionIntent,
   writeLastSettingsSectionPreference,
 } from "@/lib/settingsNavigation.js";
-import { ArchiveManagement } from "@/project-sidebar/index.js";
+import { ArchiveManagement, useOptionalProjectDirectory } from "@/project-sidebar/index.js";
+import { resolveRecentRemoteProjectPreference } from "@/project-sidebar/remote-project-connection.js";
 import { ModelProviderSection } from "@/settings/ModelProviderSection.js";
 import { AppUsageSection } from "@/settings/usage-stats/AppUsageSection.js";
 import { SubagentsSection } from "@/settings/SubagentsSection.js";
@@ -326,6 +328,7 @@ export function SettingsPage({
   const selectDirectory = useSelectDirectory();
   const services = useServices();
   const localHostServices = useBaseWorkspaceServices();
+  const projectDirectory = useOptionalProjectDirectory();
   // SettingsPage 可能挂在远端 workspace 的 ServiceProvider 下；共享设置属于本机 Host，
   // 读写必须固定走本机 settingService，否则会写进远端 setting。
   const { settings: sharedSettings, update: updateSharedSettings } = useSettings({
@@ -379,7 +382,7 @@ export function SettingsPage({
   const [embeddedBrowserAllowInsecureCertificates, setEmbeddedBrowserAllowInsecureCertificates] =
     useState(false);
   const [taskAutoArchiveEnabled, setTaskAutoArchiveEnabled] = useState(false);
-  const [taskAutoArchiveOlderThanDays, setTaskAutoArchiveOlderThanDays] = useState(7);
+  const [taskAutoArchiveOlderThanDays, setTaskAutoArchiveOlderThanDays] = useState(30);
   const [closeToTrayOnWindows, setCloseToTrayOnWindows] = useState(Boolean(isWindowsDesktop));
   const [
     desktopChromiumHardwareAccelerationEnabled,
@@ -476,7 +479,7 @@ export function SettingsPage({
         setTerminalInheritSystemProfile(settings.terminalInheritSystemProfile ?? true);
         setTerminalFontFamily(settings.terminalFontFamily ?? "");
         setTaskAutoArchiveEnabled(settings.taskAutoArchiveEnabled ?? false);
-        setTaskAutoArchiveOlderThanDays(settings.taskAutoArchiveOlderThanDays ?? 7);
+        setTaskAutoArchiveOlderThanDays(settings.taskAutoArchiveOlderThanDays ?? 30);
       })
       .catch(() => {});
     return () => {
@@ -1179,15 +1182,27 @@ export function SettingsPage({
                                 onOpenProject={
                                   onOpenRemoteWorkspace
                                     ? async (sourceServerId, path, profileId) => {
-                                        // 已知项目未必已有 attachment；复用保留目录的连接意图。
+                                        // 仅传目录会被 Root 当成新建；复用侧栏唯一目录 owner，同步固定原入口。
+                                        const preference =
+                                          projectDirectory &&
+                                          resolveRecentRemoteProjectPreference(
+                                            projectDirectory.directory,
+                                            {
+                                              sourceServerId,
+                                              path,
+                                              profileId,
+                                            },
+                                          );
+                                        if (!preference) {
+                                          throw Object.assign(
+                                            new Error("remote-project.entry-not-found"),
+                                            {
+                                              code: "recent-project-unresolved",
+                                            },
+                                          );
+                                        }
                                         onBack?.();
-                                        onOpenRemoteWorkspace({
-                                          preferredSourceServerId: profileId
-                                            ? undefined
-                                            : sourceServerId,
-                                          preferredProfileId: profileId,
-                                          preferredDirectoryPath: path,
-                                        });
+                                        onOpenRemoteWorkspace(preference);
                                       }
                                     : undefined
                                 }
@@ -1264,6 +1279,10 @@ export function SettingsPage({
                                   setPendingModelProviderTarget(undefined)
                                 }
                               />
+                            </ServiceProvider>
+                          ) : activeSection === "systemPrompt" ? (
+                            <ServiceProvider services={localHostServices}>
+                              <SystemPromptSettingsSection />
                             </ServiceProvider>
                           ) : activeSection === "memory" ? (
                             <ServiceProvider services={localHostServices}>

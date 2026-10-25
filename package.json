@@ -1,6 +1,6 @@
 {
   "name": "zcode",
-  "version": "3.16.1",
+  "version": "3.16.2",
   "private": true,
   "license": "GPL-3.0",
   "type": "module",
@@ -32,6 +32,7 @@
     "test:coverage": "vitest run --coverage --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
     "test:unit": "vitest run --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
     "test:ci:core": "vitest run --config vitest.core.config.ts",
+    "test:repo-scripts": "node --test --test-concurrency=1 scripts/test/*.test.mjs",
     "test:unit:affected": "node scripts/run-affected-unit-tests.mjs",
     "test:docker:web-app-gateway": "node scripts/test-web-app-gateway-reset.mjs",
     "verify:pre-push": "pnpm run lint && pnpm run db:schema:check && pnpm run test:architecture && pnpm run architecture:check -- --changed && pnpm run test:ci:core",

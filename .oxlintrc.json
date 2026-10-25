@@ -26,10 +26,20 @@
         "**/apps/zcode-cli/packages/core/src/runtime/methods/steering.ts",
         "**/apps/zcode-cli/packages/core/src/runtime/methods/turn.ts",
         "**/apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step.ts",
+        // 3.16.2 核对时以下文件与整合前 HEAD 完全一致，登记已有行数告警。
+        "**/apps/zcode-cli/packages/adapters/src/model/runner-stream.ts",
+        "**/apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/cold-event-merge.ts",
+        "**/apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/transcript-hydration.ts",
+        "**/apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts",
+        "**/apps/zcode-cli/packages/contracts/src/model/index.ts",
+        "**/apps/zcode-cli/packages/core/src/runtime/methods/session-fork.ts",
+        "**/apps/zcode-cli/packages/core/src/tool/executor/background-tasks.ts",
         // core 包内以 --no-ignore 运行时，oxlint 按 cwd 相对路径匹配同一组存量文件。
         "src/runtime/methods/steering.ts",
         "src/runtime/methods/turn.ts",
         "src/runtime/methods/turn-model-step.ts",
+        "src/runtime/methods/session-fork.ts",
+        "src/tool/executor/background-tasks.ts",
         "**/packages/ui/src/remote-connection-flow/index.ts"
       ],
       "rules": {

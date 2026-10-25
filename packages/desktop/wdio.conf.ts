@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { config as loadDotenv } from "dotenv";
+import type { AppSettings } from "@zcode/shared";
 import {
   buildE2ERunIdArg,
   buildWindowsTaskkillArgs,
@@ -25,6 +26,7 @@ import {
 } from "./test/e2e/helpers/e2e-worker-isolation.js";
 import { stageE2EAppOutput } from "./test/e2e/helpers/e2e-app-output-stage.js";
 import { ensureSshRemoteReleaseAssets } from "./test/e2e/helpers/e2e-ssh-remote-release-assets.js";
+import { createLocalPairingRelay } from "./test/e2e/helpers/local-pairing-relay.js";
 import {
   seedPersonalProviderConfig,
   seedPersonalDefaultModelSelection,
@@ -242,6 +244,8 @@ let e2eFailureArtifacts: E2EFailureArtifactCollector | null = null;
 let currentE2EWorkerSessionSpecs: string[] = [];
 
 let currentE2EChromiumUserDataDir: string | null = null;
+
+let closeBotEntryRelay: (() => Promise<void>) | undefined;
 
 const e2eWorkerLifecycleStarts = new Map<string, { specs: string[]; startedAt: Date }>();
 
@@ -1036,8 +1040,16 @@ async function resetE2EHome(specs: string[]) {
   await removeE2EHomeWithRetry();
   await mkdir(E2E_APP_CONFIG_DIR, { recursive: true });
   await mkdir(resolve(E2E_STORAGE_ROOT, "workspace/default"), { recursive: true });
-  // 只写本地偏好，保留无账号产品的首次启动；具体业务 fixture 由所选 spec 设置。
-  await writeFile(E2E_APP_SETTINGS_FILE, JSON.stringify({ locale: "en-US" }));
+  const settings: Partial<AppSettings> = { locale: "en-US" };
+  if (specs.some((spec) => spec.endsWith("side-pane-full-view.test.ts"))) {
+    // 完整视图测试需要固定项目 cwd；产品首次启动只建立 conversation workspace，
+    // 不再隐式创建 ZCodeProject，因此由这两个 spec 的夹具显式声明恢复项目。
+    const workspacePath = resolve(E2E_HOME_DIR, "ZCodeProject");
+    await mkdir(workspacePath, { recursive: true });
+    settings.lastWorkspaceSession = [{ kind: "local", workspacePath, workspacePurpose: "project" }];
+    settings.lastActiveTabIndex = 0;
+  }
+  await writeFile(E2E_APP_SETTINGS_FILE, JSON.stringify(settings));
   if (
     process.env.ZCODE_E2E_VERIFY_OFFICIAL_V1 === "1" &&
     specs.some((spec) => spec.endsWith("web-remote-v1-connections.test.ts"))
@@ -1255,9 +1267,35 @@ export const config: WebdriverIO.Config = {
     try {
       await measureE2ELifecyclePhase("before-session", { cid, specs }, async () => {
         await cleanupE2EElectronProcesses("beforeSession-start", { requireExit: true });
+        if (specs.some((spec) => spec.endsWith("conversation-session-r3-subagent.test.ts"))) {
+          process.env.ZCODE_DYNAMIC_WORKFLOW_MODE = "alwaysOn";
+        }
         configureZCodeAgentServerEnv();
         e2eReporter.beforeSession(cid, specs);
         await resetE2EHome(specs);
+        if (specs.some((spec) => spec.endsWith("feishu-runtime-error-ui.test.ts"))) {
+          // CF-01 的 Bots 入口会启动远控；在 Electron 读取 env 前提供隔离 relay，
+          // 避免无关的空 URL 错误污染该用例，也不改变其它场景的连接配置。
+          const relay = await createLocalPairingRelay();
+          const envPatch = {
+            ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL: relay.wsUrl,
+            ZCODE_WEB_REMOTE_CONTROL_URL: `${relay.httpUrl}/remote/v4`,
+          };
+          const previous = Object.fromEntries(
+            Object.keys(envPatch).map((key) => [key, process.env[key]]),
+          );
+          Object.assign(process.env, envPatch);
+          closeBotEntryRelay = async () => {
+            try {
+              await relay.close();
+            } finally {
+              for (const [key, value] of Object.entries(previous)) {
+                if (value === undefined) delete process.env[key];
+                else process.env[key] = value;
+              }
+            }
+          };
+        }
       });
     } catch (error) {
       currentE2EBeforeSessionError = error ?? new Error("beforeSession setup failed");
@@ -1377,10 +1415,16 @@ export const config: WebdriverIO.Config = {
       "after-session",
       { specs: currentE2EWorkerSessionSpecs },
       async () => {
-        await cleanupE2EElectronProcesses("afterSession", {
-          requireExit: true,
-          waitForGracefulExit: true,
-        });
+        try {
+          await cleanupE2EElectronProcesses("afterSession", {
+            requireExit: true,
+            waitForGracefulExit: true,
+          });
+        } finally {
+          const close = closeBotEntryRelay;
+          closeBotEntryRelay = undefined;
+          await close?.();
+        }
         if (currentE2EChromiumUserDataDir)
           await cleanupE2EDirectory("afterSession", currentE2EChromiumUserDataDir, true);
         e2eReporter.compactNodeCoverage();

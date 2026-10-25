@@ -52,7 +52,7 @@ describe("settingsPageConfig", () => {
       },
       {
         id: "agentCapabilities",
-        sections: ["memory", "subagents", "plugin", "mcp", "skill", "commands", "hooks"],
+        sections: ["systemPrompt", "memory", "subagents", "plugin", "mcp", "skill", "commands", "hooks"],
       },
       { id: "dataAndStats", sections: ["usage", "archives"] },
     ]);
@@ -60,6 +60,7 @@ describe("settingsPageConfig", () => {
       "general",
       "appearance",
       "modelProvider",
+      "systemPrompt",
       "memory",
       "subagents",
       "plugin",

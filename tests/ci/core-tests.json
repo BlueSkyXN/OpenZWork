@@ -54,7 +54,9 @@
         "packages/services/test/mcpSyncService.test.ts",
         "packages/desktop/test/mcpZcodeAgent.test.ts",
         "packages/ui/test/mcpStore.test.ts",
-        "packages/ui/test/mcpStoreStatusList.test.ts"
+        "packages/ui/test/mcpStoreMutations.test.ts",
+        "packages/ui/test/mcpStoreStatusList.test.ts",
+        "packages/server/test/serverInfoHttp.test.ts"
       ]
     },
     {
@@ -283,6 +285,16 @@
       ]
     },
     {
+      "capability": "system-prompt-settings",
+      "files": [
+        "packages/shared/src/system-prompt/contract.test.ts",
+        "packages/ui/src/settings/system-prompt/contract.test.ts",
+        "packages/ui/test/systemPromptSettingsLoading.test.ts",
+        "packages/ui/test/useSettingServiceAutoResolution.test.ts",
+        "packages/ui/test/settingsPageConfig.test.ts"
+      ]
+    },
+    {
       "capability": "remote-user-storage-fixtures",
       "files": [
         "packages/server/test/remoteAssetInstaller.test.ts",
@@ -341,10 +353,34 @@
         "packages/ui/test/remoteControlSettingsSection.test.ts",
         "packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts",
         "packages/ui/test/settingsPageIntegratedTerminalShell.test.ts",
-        "packages/ui/test/settingsPageConfig.test.ts",
         "packages/ui/test/composerDraftStore.test.ts",
         "packages/ui/test/v4AttachmentUploadTransaction.test.ts",
         "packages/web/test/webRemoteControlScanPage.test.ts"
+      ]
+    },
+    {
+      "capability": "upstream-3.16.2-and-provider-lifecycle",
+      "files": [
+        "packages/services/src/task-facts/contract.test.ts",
+        "packages/ui/src/side-pane-full-view/contract.test.ts",
+        "packages/ui/test/sidePaneFullViewModel.test.ts",
+        "packages/ui/test/useSidePaneFullView.test.ts",
+        "packages/ui/test/v4SessionPaneOwner.test.ts",
+        "packages/shared/test/dynamicWorkflowFeature.test.ts",
+        "packages/services/test/providerProvisioningRealStores.test.ts"
+      ]
+    },
+    {
+      "capability": "retained-bot-delivery-and-runtime",
+      "files": [
+        "packages/services/test/botsService.config.test.ts",
+        "packages/services/test/botsService.messageFlow.test.ts",
+        "packages/services/test/botsService.feishuRuntimeLock.test.ts",
+        "packages/services/test/botsFeishuProvider.test.ts",
+        "packages/services/test/automationRepo.test.ts",
+        "packages/desktop/test/cronBotDelivery.test.ts",
+        "packages/desktop/test/botRemoteWorkspaceResolver.test.ts",
+        "packages/ui/test/botsDialogRuntimeError.test.ts"
       ]
     }
   ]
