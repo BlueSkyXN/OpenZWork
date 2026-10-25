@@ -85,7 +85,10 @@ import {
 } from "./startupWorkspaceDeepLinkGate.js";
 import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
 import { createNodeWebRemoteControlRelayAuthProvider } from "./web-remote-relay/index.js";
-import { createWebRemoteControlRelayAuthStorageProvider } from "./web-remote-relay/index.js";
+import {
+  createWebRemoteControlConnectionProvider,
+  createWebRemoteControlRelayAuthStorageProvider,
+} from "./web-remote-relay/index.js";
 import { createWebRemoteControlFeatureGate } from "./webRemoteControlFeatureGate.js";
 import { reconnectWebRemoteControlWorkspaceInRenderer } from "./webRemoteControlRendererReconnect.js";
 import { sendWebRemoteControlStatusChangedToWindow } from "./webRemoteControlStatusEvents.js";
@@ -632,8 +635,15 @@ let startupOpenWorkspaceRequest: ExplicitStartupWorkspaceRequest | null =
       : null;
 
 const webRemoteControlManager = createWebRemoteControlManager({
-  // OpenZWork 净化：官方默认 relay/remote 域已删除；relay 与 remote URL 仅接受显式 env 覆盖，
-  // 缺配置时由 manager 的 featureGate/未启用语义兜住（不做官方域回退）。
+  connectionProvider: createWebRemoteControlConnectionProvider({
+    credentialService: webRemoteControlCredentialService,
+    loadSettings: () => mainSettingService.get(),
+    patchSettings: (patch) => mainSettingService.update(patch),
+    // --app 指向 main/index.js 时 appPath 会落在 main；随构建入口定位静态页。
+    staticRoot: join(import.meta.dirname, "../web-remote"),
+    relayWsEnv: webRemoteControlRelayWsEnvOverride,
+    pageUrlEnv: webRemoteControlUrlEnvOverride,
+  }),
   relayWsUrl: webRemoteControlRelayWsEnvOverride ?? "",
   mobileRemoteControlUrl: webRemoteControlUrlEnvOverride ?? "",
   deviceMid,
@@ -650,6 +660,7 @@ const webRemoteControlManager = createWebRemoteControlManager({
     save: async (context) => {
       await mainSettingService.update({
         webRemoteControlLastEnabledContext: {
+          connection: context.connection,
           workspacePath: context.workspacePath,
           workspaceIdentity: context.workspaceIdentity,
           initialTaskId: context.initialTaskId,
@@ -1501,6 +1512,10 @@ app.whenReady().then(async () => {
     getDesktopSessionActivity: () => ({
       runningAgentSessionCount: getRunningAgentSessionCount(),
     }),
+    syncWebRemoteControlLegacyTasks: (windowId, tasks) => {
+      if (webRemoteControlManager.getStatus(windowId).connection?.mode === "official")
+        webRemoteControlManager.syncAvailableTasks(windowId, tasks);
+    },
     syncWebRemoteControlWorkspaces: (windowId, workspaces) => {
       webRemoteControlManager.syncAvailableWorkspaces(windowId, workspaces);
       void webRemoteControlManager.restorePreviouslyEnabled(windowId, workspaces);

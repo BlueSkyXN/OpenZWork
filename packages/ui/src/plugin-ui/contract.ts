@@ -1,3 +1,4 @@
+import { createUuid } from "@zcode/shared";
 import type {
   McpAppsAppToolCallRequest,
   McpAppsDisplayMode,
@@ -255,6 +256,6 @@ export interface PluginUiResourceNotificationTarget {
 /** 文档查看器手动入口创建独立窗口；工具调用继续使用原有的显式 surface 路由。 */
 export function documentViewerInstance(resourceUri: string): { instanceId?: string } {
   return /^ui:\/\/(documents|pdf|presentations|spreadsheets)\/panel\.html$/.test(resourceUri)
-    ? { instanceId: crypto.randomUUID() }
+    ? { instanceId: createUuid() }
     : {};
 }

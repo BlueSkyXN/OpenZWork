@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { createHash, webcrypto } from "node:crypto";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   addPptxElementReference,
   buildPromptWithPptxElementReferences,
@@ -11,9 +12,7 @@ import {
   type PptxElementReference,
 } from "@/lib/pptxElementReference.js";
 
-function makeReference(
-  overrides: Partial<PptxElementReference> = {},
-): PptxElementReference {
+function makeReference(overrides: Partial<PptxElementReference> = {}): PptxElementReference {
   return {
     bounds: { x: 10, y: 20, width: 300, height: 80 },
     capturedAt: 1_700_000_000_000,
@@ -36,7 +35,16 @@ function makeReference(
   };
 }
 
+afterEach(() => vi.unstubAllGlobals());
 describe("PPTX element reference", () => {
+  it("普通 HTTP 的文本及文件指纹与标准 SHA-256 一致", async () => {
+    vi.stubGlobal("crypto", { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) });
+    const text = "季度复盘";
+    const bytes = new TextEncoder().encode(text);
+    const expected = `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+    expect(await sha256Fingerprint(text)).toBe(expected);
+    expect(await sha256Fingerprint(bytes.buffer)).toBe(expected);
+  });
   it("划选子串和评论只作为上下文，完整元素文本生成引用 fingerprint", async () => {
     const elementText = "Quarterly review";
     const selectedText = "Quarterly";
@@ -56,9 +64,7 @@ describe("PPTX element reference", () => {
     expect(reference.text).toBe(elementText);
     expect(reference.selectedText).toBe(selectedText);
     expect(reference.comment).toBe("Make it more concise");
-    expect(reference.textFingerprint).toBe(
-      await sha256Fingerprint(elementText),
-    );
+    expect(reference.textFingerprint).toBe(await sha256Fingerprint(elementText));
   });
 
   it("空白评论不进入引用，也不改变元素指纹", async () => {
@@ -76,9 +82,7 @@ describe("PPTX element reference", () => {
     });
 
     expect(reference).not.toHaveProperty("comment");
-    expect(reference.textFingerprint).toBe(
-      await sha256Fingerprint(elementText),
-    );
+    expect(reference.textFingerprint).toBe(await sha256Fingerprint(elementText));
   });
 
   it("校验稳定 source、slide、node 与 table-cell 坐标", () => {
@@ -97,11 +101,9 @@ describe("PPTX element reference", () => {
         }),
       ),
     ).toBe(false);
-    expect(
-      isPptxElementReferencePayload(
-        makeReference({ sourceFingerprint: "size:42" }),
-      ),
-    ).toBe(false);
+    expect(isPptxElementReferencePayload(makeReference({ sourceFingerprint: "size:42" }))).toBe(
+      false,
+    );
     expect(
       isPptxElementReferencePayload({
         ...makeReference(),
@@ -144,10 +146,7 @@ describe("PPTX element reference", () => {
     });
 
     expect(addPptxElementReference([first], updated)).toEqual([updated]);
-    expect(addPptxElementReference([first], anotherCell)).toEqual([
-      first,
-      anotherCell,
-    ]);
+    expect(addPptxElementReference([first], anotherCell)).toEqual([first, anotherCell]);
     expect(
       addPptxElementReference(
         [first],
@@ -170,16 +169,11 @@ describe("PPTX element reference", () => {
       nodeId: "8",
       comment: "Make the subtitle shorter",
     });
-    const prompt = buildPromptWithPptxElementReferences("请执行", [
-      reference,
-      secondReference,
-    ]);
+    const prompt = buildPromptWithPptxElementReferences("请执行", [reference, secondReference]);
     const parsed = parsePromptPptxElementReferences(prompt);
 
     expect(prompt).toContain("# Presentation element comments:");
-    expect(prompt).toContain(
-      "Treat every non-empty `comment` as the user's instruction",
-    );
+    expect(prompt).toContain("Treat every non-empty `comment` as the user's instruction");
     expect(prompt).toContain('"comment": "Use sentence case"');
     expect(prompt).toContain('"comment": "Make the subtitle shorter"');
     expect(parsed.visibleContent).toBe("请执行");
@@ -203,12 +197,9 @@ describe("PPTX element reference", () => {
   it("正文自带同名标题时只消费真实尾块，不截断可见正文", () => {
     // 回归：标题与 JSON 围栏之间若按通配匹配 directive，正文里的同名标题会先命中，
     // 并把它之后的正文一起吞进尾块。
-    const visibleContent =
-      "Please read this:\n\n# Presentation element comments:\n\nblah blah";
+    const visibleContent = "Please read this:\n\n# Presentation element comments:\n\nblah blah";
     const reference = makeReference({ comment: "Shorten it" });
-    const prompt = buildPromptWithPptxElementReferences(visibleContent, [
-      reference,
-    ]);
+    const prompt = buildPromptWithPptxElementReferences(visibleContent, [reference]);
 
     expect(parsePromptPptxElementReferences(prompt)).toEqual({
       visibleContent,
@@ -218,15 +209,9 @@ describe("PPTX element reference", () => {
 
   it("允许只有引用的 context-only prompt，并保持 workspace identity fallback", () => {
     const prompt = buildPromptWithPptxElementReferences("", [makeReference()]);
-    expect(
-      parsePromptPptxElementReferences(prompt).pptxElementReferences,
-    ).toHaveLength(1);
-    expect(
-      getPptxElementReferenceWorkspaceKey("/workspace", "  remote-id  "),
-    ).toBe("remote-id");
-    expect(getPptxElementReferenceWorkspaceKey("/workspace", " ")).toBe(
-      "/workspace",
-    );
+    expect(parsePromptPptxElementReferences(prompt).pptxElementReferences).toHaveLength(1);
+    expect(getPptxElementReferenceWorkspaceKey("/workspace", "  remote-id  ")).toBe("remote-id");
+    expect(getPptxElementReferenceWorkspaceKey("/workspace", " ")).toBe("/workspace");
     expect(
       isPptxElementReferenceInWorkspaceScope(makeReference(), {
         workspacePath: "/different-mounted-path",

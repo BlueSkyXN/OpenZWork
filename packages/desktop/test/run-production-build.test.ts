@@ -21,6 +21,11 @@ describe("createDesktopProductionBuildPlan", () => {
       parallel: [
         {
           command: "pnpm",
+          args: expect.arrayContaining(["vite", "--base=/remote/", "--outDir"]),
+          env: { PATH: "/usr/bin", NODE_ENV: "production" },
+        },
+        {
+          command: "pnpm",
           args: ["exec", "tsup"],
           env: {
             PATH: "/usr/bin",
@@ -49,6 +54,7 @@ describe("createDesktopProductionBuildPlan", () => {
       "/repo/packages/desktop/out/host",
       "/repo/packages/desktop/out/preload",
       "/repo/packages/desktop/out/renderer",
+      "/repo/packages/desktop/out/web-remote",
       "/repo/packages/desktop/out/plugin-sandbox",
       "/repo/packages/desktop/out/.main-build-ready",
       "/repo/packages/desktop/out/.host-build-ready",

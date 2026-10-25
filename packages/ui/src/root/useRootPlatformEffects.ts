@@ -17,6 +17,7 @@ import { isShortcutRecordingActive } from "@/shortcuts/bindings.js";
 import { isRendererReloadNavigation } from "@/lib/rendererNavigation.js";
 import {
   useWebRemoteControlWorkspaceSync,
+  useWebRemoteControlLegacyTaskSync,
   shouldPublishCompleteWorkspaceSnapshot,
 } from "@/root/rootPlatformWorkspaceSync.js";
 
@@ -240,6 +241,12 @@ export function useRootPlatformEffects({
       .map((tab) => tab.workspacePath);
     platform.syncWindowTabs(paths);
   }, [hasCompletedFullTabRestore, isDesktop, platform, tabs]);
+
+  useWebRemoteControlLegacyTaskSync({
+    platform,
+    tabs,
+    enabled: Boolean(isDesktop && webRemoteControlFeatureEnabled && hasCompletedFullTabRestore),
+  });
 
   useWebRemoteControlWorkspaceSync({
     platform,

@@ -1,6 +1,6 @@
-# Web 远程控制与外部 Relay
+# Web 远程控制与 V1 连接
 
-手机浏览器通过外部 relay 接入桌面窗口已有的 Host attachment，复用同一 workspace 服务和 Agent runtime。手机可以浏览项目与任务、发送输入、处理会话交互，并在连接恢复后同步任务状态。
+手机浏览器通过直连网关、自建 V1 relay 或官方 V1 relay 接入桌面窗口已有的 Host attachment，复用同一 workspace 服务和 Agent runtime。手机可以浏览项目与任务、发送输入、处理会话交互，并在连接恢复后同步任务状态。
 
 ## 所有者与交付边界
 
@@ -37,15 +37,9 @@ Desktop 的 `webRemoteControlRelayAuthProvider` 与 Web adapter 使用同一证�
 HMAC-SHA256(passHash, nonce + "|" + role + "|" + deviceSid)
 ```
 
-Relay 地址必须显式配置。`resolveWebRemoteControlRelayWsUrl` 优先采用 override；否则从配置的 endpoint origin 推导 `/ws`，将 HTTPS 转为 WSS、HTTP 转为 WS。缺少配置时返回明确错误，不生成产品默认端点。
+连接方式在设置 → 远程控制的手机连接卡片中选择。Bot Channels 管理在同一分区内打开子页，使用面包屑返回；离开设置保留运行连接，只有显式停止才释放。默认直连，通过桌面提供的 HTTP 页面接入；自建模式配置 WS 与手机页面；官方模式显式使用 V1 preset。完整配置、配对和 nginx 转发见 [V1 连接方式](v1-connection-modes.md)。
 
-本地开发入口见根 `package.json`：
-
-```bash
-pnpm dev:web-remote-control
-```
-
-`ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 用于显式 relay 覆盖，`ZCODE_WEB_REMOTE_CONTROL_URL` 用于手机页面地址覆盖。调试时使用自有 relay 与本地页面地址；页面静态资源部署和 relay 服务部署分别配置。
+旧 `ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 和 `ZCODE_WEB_REMOTE_CONTROL_URL` 作为尚未保存连接配置时的自建默认值。`pnpm dev:web-remote-control` 保留自建 relay 联调入口；普通桌面开发会构建配套手机页面。
 
 ## Workspace bridge 与恢复
 
@@ -68,7 +62,7 @@ pnpm dev:web-remote-control
 
 - 共享合同与二维码：`packages/shared/src/web-remote-control.ts`。
 - Relay 端点：`packages/shared/src/zcodeEndpoint.ts`。
-- Desktop HMAC：`packages/desktop/src/main/webRemoteControlRelayAuthProvider.ts`。
+- Desktop HMAC：`packages/desktop/src/main/web-remote-relay/`。
 - Web transport 与 requester：`packages/web/src/web-remote-control/adapters/`。
 - Web 入口：`packages/web/src/main.tsx`。
 - 任务实时同步、版本接受和 bridge/frame 恢复测试位于 `packages/web/test/`。

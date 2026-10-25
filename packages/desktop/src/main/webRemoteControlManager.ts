@@ -11,6 +11,7 @@ import {
   buildWebRemoteControlExternalQrUrl,
   WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS,
   type ZCodeEndpointUrls,
+  type WebRemoteControlConnectionSettings,
   type HostPreparedProjectWorkspace,
   type HostProjectWorkspaceNavigationInput,
   resolveWebRemoteControlWorkspaceKey,
@@ -43,6 +44,7 @@ import {
   type WebRemoteControlDeviceTransportState,
   type WebRemoteControlDeviceTransportAuth,
 } from "./webRemoteControlTransport.js";
+import type { WebRemoteControlPreparedConnection } from "./web-remote-relay/index.js";
 import type { WebRemoteControlRelayAuthProvider } from "./web-remote-relay/index.js";
 import type { WebRemoteControlRelayAuthStorageProvider } from "./web-remote-relay/index.js";
 
@@ -84,6 +86,7 @@ interface WebRemoteControlDeviceTransportLike {
 }
 
 interface WebRemoteControlStartupRestoreContext {
+  connection?: WebRemoteControlConnectionSettings;
   workspacePath: string;
   workspaceIdentity?: string;
   initialTaskId?: string;
@@ -104,6 +107,7 @@ interface WindowControlLifecycle {
 }
 
 interface WindowControlRuntime {
+  connection?: WebRemoteControlPreparedConnection;
   windowId: number;
   workspacePath: string;
   workspaceIdentity?: string;
@@ -147,6 +151,15 @@ interface WindowControlRuntime {
 }
 
 interface WebRemoteControlManagerDependencies {
+  connectionProvider?: {
+    getSettings(): Promise<WebRemoteControlConnectionSettings>;
+    prepare(
+      windowId: number,
+      requested: WebRemoteControlConnectionSettings | undefined,
+      signal: AbortSignal,
+      resetPairing?: boolean,
+    ): Promise<WebRemoteControlPreparedConnection>;
+  };
   getEndpointUrls?: () => Promise<ZCodeEndpointUrls> | ZCodeEndpointUrls;
   relayWsUrl: string;
   mobileRemoteControlUrl: string;
@@ -468,6 +481,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       mobileTaskView: runtime.mobileTaskView ?? null,
       mobileDeviceInfo: runtime.mobileDeviceInfo,
       qrUrl: runtime.qrUrl,
+      connection: runtime.connection?.settings,
       connectUrl: runtime.connectUrl,
       workspacePath: target.workspacePath,
       workspaceIdentity: target.workspaceIdentity,
@@ -646,6 +660,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     clearMobileDisconnectGraceTimer(runtime);
     runtime.pendingOutboundPayloads.length = 0;
     runtime.transport.dispose();
+    void runtime.connection?.dispose();
     runtime.status = "error";
     runtime.mobileConnected = false;
     runtime.error = failure.message;
@@ -678,6 +693,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     clearMobileDisconnectGraceTimer(runtime);
     runtime.pendingOutboundPayloads.length = 0;
     runtime.transport.dispose();
+    await runtime.connection?.dispose();
     dependencies.disposeWorkspaceHostAttachmentsForWindow(windowId, reason);
 
     dependencies.logger.info(
@@ -1417,20 +1433,24 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     auth: { deviceSid: string; passHash: string },
     mobileRemoteControlUrl: string,
     theme?: WebRemoteControlContext["theme"],
+    connection?: WebRemoteControlPreparedConnection,
   ): string {
     return buildWebRemoteControlExternalQrUrl({
       baseUrl: mobileRemoteControlUrl,
+      relayWsUrl: connection?.settings.mode === "self-hosted" ? connection.relayWsUrl : undefined,
       deviceSid: auth.deviceSid,
       passHash: auth.passHash,
       timestamp: Date.now(),
       deviceMid: dependencies.deviceMid,
       deviceName: dependencies.deviceName,
-      appVersion: dependencies.appVersion,
+      // 官方入口按 app_version 分流网页；3.16 会加载 OAuth 页面，V1 使用缺省入口。
+      appVersion: connection?.settings.mode === "official" ? undefined : dependencies.appVersion,
       theme,
     });
   }
 
   return {
+    getConnectionSettings: () => dependencies.connectionProvider?.getSettings(),
     authorizeStart,
     async startAuthorized(
       windowId: number,
@@ -1443,6 +1463,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     async start(
       windowId: number,
       context: WebRemoteControlContext,
+      resetPairing = false,
     ): Promise<WebRemoteControlStartResult> {
       clearStartAuthorizationsForWindow(windowId);
       dependencies.featureGate.assertEnabled();
@@ -1453,14 +1474,28 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       const signal = controller.signal;
       const assertActive = () => signal.throwIfAborted();
       let runtime: WindowControlRuntime | undefined;
+      let connection: WebRemoteControlPreparedConnection | undefined;
       try {
         await stopped;
+        assertActive();
+        connection = await dependencies.connectionProvider?.prepare(
+          windowId,
+          context.connection,
+          signal,
+          resetPairing,
+        );
+        assertActive();
         const endpointUrls = await dependencies.getEndpointUrls?.();
         assertActive();
-        const relayWsUrl = endpointUrls?.relayWsUrl ?? dependencies.relayWsUrl;
+        const relayWsUrl =
+          connection?.relayWsUrl ?? endpointUrls?.relayWsUrl ?? dependencies.relayWsUrl;
         const mobileRemoteControlUrl =
-          endpointUrls?.remoteUrl ?? dependencies.mobileRemoteControlUrl;
-        const storedAuth = await dependencies.authStorageProvider.load();
+          connection?.mobileRemoteControlUrl ??
+          endpointUrls?.remoteUrl ??
+          dependencies.mobileRemoteControlUrl;
+        const authStorageProvider =
+          connection?.authStorageProvider ?? dependencies.authStorageProvider;
+        const storedAuth = await authStorageProvider.load();
         assertActive();
         const transportAuth: WebRemoteControlDeviceTransportAuth = storedAuth
           ? { mode: "persisted", deviceSid: storedAuth.deviceSid, passHash: storedAuth.passHash }
@@ -1549,13 +1584,14 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             onInvalidPersistedAuth: async () => {
               if (!isCurrent()) return;
               await resetExternalRelayDeviceAuth(
-                dependencies.authStorageProvider,
+                authStorageProvider,
                 dependencies.logger,
                 "auth-failed",
               );
             },
           });
           runtime = {
+            connection,
             windowId,
             workspacePath: context.workspacePath,
             workspaceIdentity: context.workspaceIdentity,
@@ -1584,22 +1620,27 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         if (!auth || !runtime)
           throw new Error("External relay auth was not available after transport became ready.");
         if (registeredAuth) {
-          await dependencies.authStorageProvider.save(registeredAuth);
+          await authStorageProvider.save(registeredAuth);
           assertActive();
         }
+        await connection?.commit();
+        assertActive();
         await dependencies.startupRestoreStorageProvider.save({
+          ...(connection ? { connection: connection.settings } : {}),
           workspacePath: context.workspacePath,
           workspaceIdentity: context.workspaceIdentity,
           initialTaskId: context.initialTaskId,
         });
         assertActive();
-        const qrUrl = createQrUrl(auth, mobileRemoteControlUrl, context.theme);
+        // 直连页面从自身 origin 解析 /ws；不能把 Main 使用的 loopback 地址发给手机。
+        const qrUrl = createQrUrl(auth, mobileRemoteControlUrl, context.theme, connection);
         runtime.deviceSid = auth.deviceSid;
         runtime.passHash = auth.passHash;
         runtime.qrUrl = runtime.connectUrl = qrUrl;
         emitRuntimeStatus(runtime);
         return {
           status: runtime.status === "active" ? "active" : "running",
+          connection: connection?.settings,
           sessionId: auth.deviceSid,
           windowControlSessionId: auth.deviceSid,
           qrUrl,
@@ -1613,6 +1654,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         // 停止或新启动可能已接管窗口；旧代失败不能关闭新代连接。
         if (windowLifecycles.get(windowId)?.controller === controller)
           await stopWindowRuntime(windowId, "start-failed");
+        await connection?.dispose();
         throw error;
       }
     },
@@ -1642,6 +1684,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       dependencies.featureGate.assertEnabled();
       // Bugfix: 二维码 URL 里携带的 sid/hash 泄露后，重启当前 runtime 仍会复用持久化配对材料。
       // 这里必须先关闭旧连接并清掉本地 relay auth，再重新注册设备，确保旧 URL 不再代表当前桌面端会话。
+      if (dependencies.connectionProvider) {
+        const connection = runtimes.get(windowId)?.connection?.settings ?? context.connection;
+        return this.start(windowId, { ...context, connection }, true);
+      }
       await stopWindowRuntime(windowId, "leaked-qr");
       await resetExternalRelayDeviceAuth(
         dependencies.authStorageProvider,
@@ -1712,6 +1758,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           workspaceIdentity: currentContext.workspaceIdentity,
           remoteSessionId: currentContext.remoteSessionId,
           initialTaskId: persistedContext.initialTaskId,
+          connection: persistedContext.connection,
         });
         return true;
       } catch (error) {

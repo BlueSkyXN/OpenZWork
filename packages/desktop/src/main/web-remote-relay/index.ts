@@ -4,3 +4,8 @@ export {
   createWebRemoteControlRelayAuthStorageProvider,
   WEB_REMOTE_CONTROL_EXTERNAL_RELAY_PASS_HASH_CREDENTIAL_KEY,
 } from "./adapters/authStorage.js";
+export { createWebRemoteControlDirectGateway } from "./adapters/directGateway.js";
+export {
+  createWebRemoteControlConnectionProvider,
+  createScopedWebRemoteControlAuthStorage,
+} from "./adapters/connectionProvider.js";

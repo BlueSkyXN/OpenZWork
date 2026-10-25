@@ -1,3 +1,4 @@
+import { openRemoteControlSettings } from "../../../helpers/web-remote-control-settings.js";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -6,9 +7,8 @@ import { createFeishuConfig, readBotSyntheticFixture } from "../../helpers/bots-
 
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 
-// CF-01：通过真实设置写入和可见弹窗轮询验证错误投影；缺凭据夹具不会连接真实渠道。
+// CF-01：通过真实设置写入和可见设置页轮询验证错误投影；缺凭据夹具不会连接真实渠道。
 const BOT_NAME = "Feishu Runtime Error E2E";
-const BOTS_DIALOG_TEXT = "机器人";
 
 describe("Feishu runtime error Desktop UI", () => {
   before(async () => {
@@ -41,27 +41,20 @@ describe("Feishu runtime error Desktop UI", () => {
     await browser.refresh();
     await skipOccupationOnboardingIfPresent();
     // 当前启动入口是 conversation workspace；Bot 设置不依赖旧 ZCodeProject 项目页。
-    // 通过实际远控按钮的可点击状态等待应用就绪，避免夹具等待一个不会打开的项目。
-    await openBotsDialog();
-    await browser.waitUntil(() => botsDialogIncludes(BOT_NAME), {
+    // 通过实际设置入口的可点击状态等待应用就绪，避免夹具等待一个不会打开的项目。
+    await openBotsSettings();
+    await browser.waitUntil(() => botsSettingsIncludes(BOT_NAME), {
       timeout: 20_000,
-      timeoutMsg: "机器人弹窗没有加载隔离的 Feishu E2E 配置",
+      timeoutMsg: "机器人设置页没有加载隔离的 Feishu E2E 配置",
     });
 
-    const enabled = await browser.execute(
-      (dialogText, botName) => {
-        const dialog = Array.from(document.querySelectorAll<HTMLElement>("[role=dialog]")).find(
-          (candidate) =>
-            candidate.textContent?.includes(dialogText) && candidate.textContent.includes(botName),
-        );
-        const toggle = dialog?.querySelector<HTMLElement>("[role=switch]");
-        if (!toggle) return false;
-        toggle.click();
-        return true;
-      },
-      BOTS_DIALOG_TEXT,
-      BOT_NAME,
-    );
+    const enabled = await browser.execute(() => {
+      const content = document.querySelector<HTMLElement>('[data-testid="bots-settings"]');
+      const toggle = content?.querySelector<HTMLElement>('[role="switch"]');
+      if (!toggle) return false;
+      toggle.click();
+      return true;
+    });
     expect(enabled).toBe(true);
 
     await waitForBoundConnectionError();
@@ -76,7 +69,7 @@ describe("Feishu runtime error Desktop UI", () => {
       providerUserId: "ou_bound_runtime_error_e2e",
     });
 
-    const dialogText = await readBotsDialogText();
+    const dialogText = await readBotsSettingsText();
     expect(dialogText).toContain("飞书连接失败");
     // App ID 格式有效，必须命中缺凭据校验，避免其它启动错误让场景假通过。
     expect(dialogText).toContain("Feishu App ID and App Secret are required.");
@@ -106,23 +99,18 @@ describe("Feishu runtime error Desktop UI", () => {
   });
 });
 
-async function openBotsDialog() {
-  const remoteControl = await $('button[aria-label="移动端远程控制"]');
-  await remoteControl.waitForClickable({ timeout: 20_000 });
-  await remoteControl.click();
-  // 先确认本机 relay 完成配对准备，避免入口启动失败混入 Bot 错误场景。
-  await $('[data-testid="web-remote-control-scan-card"] img').waitForDisplayed({
-    timeout: 20_000,
-  });
+async function openBotsSettings() {
+  await openRemoteControlSettings();
   const openBots = await $('[data-testid="web-remote-control-open-bots"]');
   await openBots.waitForClickable({ timeout: 20_000 });
   await openBots.click();
+  await $('[data-testid="bots-settings"]').waitForDisplayed({ timeout: 20_000 });
 }
 
 async function waitForBoundConnectionError() {
   await browser.waitUntil(
-    // 新增运行状态轮询应更新已打开的弹窗；关闭重开会掩盖后台刷新漏接。
-    () => botsDialogIncludes("连接中断"),
+    // 新增运行状态轮询应更新已打开的设置页；关闭重开会掩盖后台刷新漏接。
+    () => botsSettingsIncludes("连接中断"),
     {
       interval: 500,
       timeout: 20_000,
@@ -131,20 +119,13 @@ async function waitForBoundConnectionError() {
   );
 }
 
-async function botsDialogIncludes(expected: string) {
-  return (await readBotsDialogText()).includes(expected);
+async function botsSettingsIncludes(expected: string) {
+  return (await readBotsSettingsText()).includes(expected);
 }
 
-async function readBotsDialogText() {
-  return browser.execute(
-    (dialogText, botName) => {
-      const dialog = Array.from(document.querySelectorAll<HTMLElement>("[role=dialog]")).find(
-        (candidate) =>
-          candidate.textContent?.includes(dialogText) && candidate.textContent.includes(botName),
-      );
-      return dialog?.textContent ?? "";
-    },
-    BOTS_DIALOG_TEXT,
-    BOT_NAME,
-  ) as Promise<string>;
+async function readBotsSettingsText() {
+  return browser.execute((botName) => {
+    const content = document.querySelector<HTMLElement>('[data-testid="bots-settings"]');
+    return content?.textContent?.includes(botName) ? content.textContent : "";
+  }, BOT_NAME) as Promise<string>;
 }

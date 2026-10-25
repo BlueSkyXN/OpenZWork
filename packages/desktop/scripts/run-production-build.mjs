@@ -17,6 +17,7 @@ export function resolveDesktopProductionCleanPaths(cwd) {
     resolve(cwd, "out/host"),
     resolve(cwd, "out/preload"),
     resolve(cwd, "out/renderer"),
+    resolve(cwd, "out/web-remote"),
     resolve(cwd, "out/plugin-sandbox"),
     resolve(cwd, "out/.main-build-ready"),
     resolve(cwd, "out/.host-build-ready"),
@@ -48,6 +49,20 @@ export function createDesktopProductionBuildPlan({ cwd, baseEnv = process.env })
     {
       label: "desktop production bundles",
       parallel: [
+        {
+          command: "pnpm",
+          args: [
+            "exec",
+            "vite",
+            "build",
+            "--base=/remote/",
+            "--outDir",
+            resolve(cwd, "out/web-remote"),
+            "--emptyOutDir",
+          ],
+          cwd: resolve(cwd, "../web"),
+          env,
+        },
         {
           command: "pnpm",
           args: ["exec", "tsup"],

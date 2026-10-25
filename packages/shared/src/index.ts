@@ -295,3 +295,4 @@ export {
 } from "./request-verification/policy.js";
 export * from "./request-verification/verification-policy.js";
 
+export { sha256Bytes, hmacSha256Bytes } from "./web-remote-relay/index.js";

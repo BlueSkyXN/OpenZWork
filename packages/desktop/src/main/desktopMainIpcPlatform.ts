@@ -11,6 +11,7 @@ import {
   rendererLogPayloadSchema,
   stringArraySchema,
   webRemoteControlWorkspaceTargetsSchema,
+  webRemoteControlLegacyTaskTargetsSchema,
   type DesktopCommandId,
   type ApplicationIconRequest,
   type Locale,
@@ -81,6 +82,7 @@ export function registerPlatformIpcHandlers(options: {
     windowId: number,
     contexts: Array<{ workspacePath: string }>,
   ) => void;
+  syncWebRemoteControlLegacyTasks?: (windowId: number, tasks: WebRemoteControlTaskTarget[]) => void;
   syncWebRemoteControlWorkspaces: (
     windowId: number,
     workspaces: WebRemoteControlWorkspaceTarget[],
@@ -274,6 +276,12 @@ export function registerPlatformIpcHandlers(options: {
     }
   });
 
+  ipcMain.on(PlatformChannels.SyncWebRemoteControlLegacyTasks, (event, payload: unknown) => {
+    const parsed = webRemoteControlLegacyTaskTargetsSchema.safeParse(payload);
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (win && parsed.success) options.syncWebRemoteControlLegacyTasks?.(win.id, parsed.data);
+  });
+
   ipcMain.on(PlatformChannels.SyncWebRemoteControlWorkspaces, (event, payload: unknown) => {
     const result = webRemoteControlWorkspaceTargetsSchema.safeParse(payload);
     if (!result.success) {
@@ -346,10 +354,7 @@ export function registerPlatformIpcHandlers(options: {
     }
     (
       options.logger as unknown as { fromRenderer(level: string, args: unknown[]): void }
-    ).fromRenderer?.(
-      result.data.level,
-      result.data.args,
-    );
+    ).fromRenderer?.(result.data.level, result.data.args);
   });
 
   ipcMain.handle(PlatformChannels.OpenInFileManager, async (_event, rawPath: string) =>

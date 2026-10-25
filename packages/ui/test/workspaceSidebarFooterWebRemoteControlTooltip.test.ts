@@ -1,6 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import zhCN from "@/i18n/locales/zh-CN.js";
+import enUS from "@/i18n/locales/en-US.js";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
 
 const mockFooterSettings = vi.hoisted(() => ({
@@ -16,13 +18,6 @@ vi.mock("@/ControlHintTooltip.js", async (importOriginal) => ({
     createElement("span", { "data-tooltip-title": title }, children),
 }));
 
-vi.mock("@/WorkspaceWebRemoteControlTrigger.js", () => ({
-  WorkspaceWebRemoteControlTrigger: () =>
-    createElement("button", {
-      "data-testid": "web-remote-control-trigger",
-    }),
-}));
-
 vi.mock("@/hooks/usePlatform.js", () => ({
   usePlatform: () => ({
     executeDesktopCommand: vi.fn(),
@@ -36,7 +31,7 @@ vi.mock("@/i18n/IntlProvider.js", () => ({
   useZCodeIntl: () => ({
     locale: "zh-CN",
     intl: {
-      formatMessage: ({ id }: { id: string }) => id,
+      formatMessage: ({ id }: { id: string }) => zhCN[id] ?? id,
     },
   }),
 }));
@@ -86,7 +81,7 @@ describe("WorkspaceSidebarFooter web remote control tooltip", () => {
     };
   });
 
-  it("keeps long profile names constrained inside the footer row", () => {
+  it("keeps the local profile label constrained inside the footer row", () => {
     const html = renderToStaticMarkup(
       createElement(WorkspaceSidebarFooter, {
         theme: "dark",
@@ -94,21 +89,19 @@ describe("WorkspaceSidebarFooter web remote control tooltip", () => {
         onLocaleChange: () => {},
         onThemeChange: () => {},
         onSettingsButtonClick: () => {},
-        user: {
-          id: "user-long-name",
-          username: "very-very-very-very-very-very-long-user-name",
-          displayName: "VeryVeryVeryVeryVeryVeryVeryVeryLongDisplayName",
-        },
       }),
     );
 
+    expect(html).toContain("本地用户");
+    expect(html).not.toContain("sidebar.profile.");
+    expect(enUS["sidebar.profile.localUser"]).toBe("Local user");
     expect(html).toContain("min-w-0 flex-1");
     expect(html).toContain("overflow-hidden");
     expect(html).toContain("text-left");
     expect(html).toContain("truncate text-ui-base font-semibold");
   });
 
-  it("does not wrap the remote control trigger in a second tooltip", () => {
+  it("keeps remote control and bots inside settings", () => {
     const html = renderToStaticMarkup(
       createElement(WorkspaceSidebarFooter, {
         theme: "dark",
@@ -116,12 +109,12 @@ describe("WorkspaceSidebarFooter web remote control tooltip", () => {
         onLocaleChange: () => {},
         onThemeChange: () => {},
         onSettingsButtonClick: () => {},
-        workspacePath: "/tmp/project",
         isDesktop: true,
       }),
     );
 
-    expect(html).toContain('data-testid="web-remote-control-trigger"');
+    expect(html).toContain('data-testid="task-settings-button"');
+    expect(html).not.toContain("web-remote-control-trigger");
     expect(html).not.toContain('data-tooltip-title="webRemoteControl.trigger"');
   });
 });

@@ -38,7 +38,7 @@ OccupationOnboarding / SettingsPage / WorkspaceSidebarFooter
 
 ## 外部 Bot 渠道端点边界（WP-E7）
 
-- 本仓净化禁区里的“官方端点”指 ZCode 官方产品服务域及其登录、套餐、遥测、官方 MCP、商店 CDN、更新链；不含用户显式配置的第三方聊天渠道必需 API。
+- 本仓净化禁区里的“官方端点”指 ZCode 官方产品服务域及其登录、套餐、遥测、官方 MCP、商店 CDN、更新链；不含用户显式配置的第三方聊天渠道必需 API。 用户显式选择的官方 V1 无 OAuth 远控 relay 也按独立规格保留，见 `docs/web-remote-control/v1-connection-modes.md`。
 - Feishu/Lark 的 `accounts.feishu.cn`、`accounts.larksuite.com`、`open.feishu.cn`、`open.larksuite.com`，Telegram Bot API/BotFather 与微信 iLink 端点是 Bot 渠道业务流量目标。域名须在源码中清晰可见；不得混淆或构造隐藏 endpoint。它们不得夹带遥测、统计或应用偏好上报。
 - Bot token、Feishu/Lark App Secret 与 Webhook secret 只能通过 host `ICredentialService` 写入本机加密 `credentials.json`（`packages/services/src/credential/credentialService.ts`）；key 使用 `openzwork-` 前缀，Bot JSON 仅保留 secret reference。旧 Bot 引用 `bot:<id>:credential` / `bot:<id>:webhook-secret` 在本地 Bot storage 初始化时复制到新 key，先原子保存新引用，再删除旧 key；复制或 config 保存失败时旧引用仍可用并允许重试，旧 secret 缺失会记录本地 warning 并保留旧引用，旧 key 清理失败仅告警且不回滚新配置。禁止把 secret / Bot 事件上报、settings-sync 或写入 relay；runtime 锁只保存在本机 `.openzwork/v2/bots-runtime-locks`。
 - 新建 Bot 默认禁用；用户显式配置渠道凭据并启用后，provider runtime 才连接渠道 API。Bot 偏好配置加载时只调度关闭态，不发 API 请求；扫码注册必须用户显式点击，不得自动注册第三方应用。连接恢复只允许对已启用且已有凭据的 Bot。

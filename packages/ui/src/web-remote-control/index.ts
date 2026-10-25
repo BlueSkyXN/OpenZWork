@@ -1,4 +1,4 @@
-export { WebRemoteControlDialog } from "@/web-remote-control/WebRemoteControlDialog.js";
+export { RemoteControlSettingsSection } from "@/web-remote-control/RemoteControlSettingsSection.js";
 export {
   isSameWebRemoteControlTarget,
   isReusableWebRemoteControlSession,

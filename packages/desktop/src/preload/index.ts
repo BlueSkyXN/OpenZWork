@@ -68,6 +68,7 @@ import type {
   WebRemoteControlReconnectWorkspaceResult,
   WebRemoteControlStatus,
   WebRemoteControlWorkspaceTarget,
+  WebRemoteControlTaskTarget,
   RemoteConnectionRuntimeLog,
   WindowControlsOverlayMetrics,
   WindowControlsOverlayReadyPayload,
@@ -229,6 +230,8 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.invoke(PlatformChannels.ResetWebRemoteControlPairing, context),
   stopWebRemoteControl: (): Promise<void> =>
     ipcRenderer.invoke(PlatformChannels.StopWebRemoteControl),
+  getWebRemoteControlConnectionSettings: () =>
+    ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlConnectionSettings),
   getWebRemoteControlStatus: () => ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlStatus),
   onWebRemoteControlStatusChanged: (
     callback: (status: WebRemoteControlStatus) => void,
@@ -310,6 +313,8 @@ contextBridge.exposeInMainWorld("zcode", {
   /** 同步当前窗口所有 tab 的 workspace 路径到 main 进程 */
   syncWindowTabs: (paths: string[]) => ipcRenderer.send(PlatformChannels.SyncWindowTabs, paths),
   /** 同步当前窗口里 Web 远程控制允许切换的 workspace */
+  syncWebRemoteControlLegacyTasks: (tasks: WebRemoteControlTaskTarget[]) =>
+    ipcRenderer.send(PlatformChannels.SyncWebRemoteControlLegacyTasks, tasks),
   syncWebRemoteControlWorkspaces: (workspaces: WebRemoteControlWorkspaceTarget[]) =>
     ipcRenderer.send(PlatformChannels.SyncWebRemoteControlWorkspaces, workspaces),
   onWebRemoteControlReconnectWorkspace: (

@@ -401,13 +401,27 @@ test('[structural, not runtime] WP-07: local log export chain is preserved', () 
 });
 
 test('[structural, not runtime] WP-08: official product endpoints are absent outside the explicit exemption list', () => {
-  // WP-08 收敛后源码树不得再携带官方产品域。允许残留的文件必须在此显式登记豁免，
-  // 并在 PR 描述里挂待办（当前为空：D-2 off-peak 规则与 D-3 productDocs 已于 WP-09 删除）。
+  // V1 官方 relay 为用户显式选择的保留能力；只允许指定文件里的完整字面量。
+  // 不按整个文件豁免，账号、OAuth、套餐与其余官方地址继续被同一门禁拦截。
   const officialDomainRe =
     /zcode\.z\.ai|open\.bigmodel\.cn|chat\.z\.ai|api\.z\.ai|cdn-zcode\.z\.ai|bigmodel\.cn|(?:^|[^a-z0-9.-])z\.ai(?:\/|[^a-z0-9.-]|$)|zcode\.ai/;
-  const exemptFiles = new Set([
-    // 当前为空：builtin.json 的官方域已随 WP-08 模板清理移除，全仓扫描直接覆盖该文件。
+  const allowedV1Literals = new Map([
+    ['packages/shared/src/web-remote-relay/contract.ts', ['"wss://zcode.z.ai/ws"', '"https://zcode.z.ai/remote/v4"']],
+    ['docs/web-remote-control/v1-connection-modes.md', ['`wss://zcode.z.ai/ws`', '`https://zcode.z.ai/remote/v4`']],
+    ['packages/desktop/test/webRemoteControlDirectGateway.test.ts', ['"wss://zcode.z.ai/ws"']],
+    ['packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts', ['"https://zcode.z.ai/remote/v4"']],
+    ['packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts', ['"https://zcode.z.ai"']],
+    ['packages/ui/src/i18n/locales/en-US.ts', ['"Pair through zcode.z.ai using V1. No sign-in required."']],
+    ['packages/ui/src/i18n/locales/zh-CN.ts', ['"使用 zcode.z.ai 的 V1 扫码配对，无需登录。"']],
   ]);
+  const removeAllowedV1Literals = (file, text) =>
+    (allowedV1Literals.get(file) ?? []).reduce((remaining, literal) => remaining.replaceAll(literal, ''), text);
+  const contract = 'packages/shared/src/web-remote-relay/contract.ts';
+  assert.doesNotMatch(removeAllowedV1Literals(contract, '"wss://zcode.z.ai/ws"'), officialDomainRe);
+  for (const address of ['"wss://zcode.z.ai/ws/v2"', '"https://zcode.z.ai/remote/v4/oauth"', '"https://api.z.ai"']) {
+    assert.match(removeAllowedV1Literals(contract, address), officialDomainRe);
+  }
+  assert.match(removeAllowedV1Literals('unrelated.ts', '"wss://zcode.z.ai/ws"'), officialDomainRe);
   // 2026-09-27 起与 WP-03 同口径：按 git 追踪清单做全仓文本扫描（新增目录自动入列，
   // 且不混入工作树的 node_modules/dist）；git ls-files 输出本就是 POSIX 路径，原先
   // 为 Windows path.relative 反斜杠做的归一化不再需要。
@@ -417,10 +431,10 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
     .split('\n')
     .filter(Boolean);
   for (const rel of tracked) {
-    if (!scanExtensions.test(rel) || exemptFiles.has(rel) || rel === 'tests/private-cleanup/cleanup.test.cjs') continue;
+    if (!scanExtensions.test(rel) || rel === 'tests/private-cleanup/cleanup.test.cjs') continue;
     const file = path.join(root, rel);
     if (!fs.existsSync(file)) continue;
-    const match = fs.readFileSync(file, 'utf8').match(officialDomainRe);
+    const match = removeAllowedV1Literals(rel, fs.readFileSync(file, 'utf8')).match(officialDomainRe);
     if (match) violations.push(`${rel}: ${match[0]}`);
   }
   assert.deepEqual(violations, [], `official domains found outside exemptions:\n${violations.join('\n')}`);

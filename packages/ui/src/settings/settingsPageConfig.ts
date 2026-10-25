@@ -1,6 +1,7 @@
 import {
   Archive,
   Monitor,
+  MonitorSmartphone,
   Moon,
   Settings,
   Settings2,
@@ -137,12 +138,18 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "settings.browser.title",
     groupId: "basics",
   },
-  // 原型导航顺序：浏览器之后才是远程设备；电脑控制继续紧随其后并受灰度门禁。
+  // 远程设备管理与本机远控分别提供独立设置分区。
   {
     id: "remoteDevices",
     icon: HardDrive,
     titleId: "settings.remoteDevicesTitle",
     contentTitleId: "settings.remoteDevicesTitle",
+    groupId: "basics",
+  },
+  {
+    id: "remoteControl",
+    icon: MonitorSmartphone,
+    titleId: "settings.remoteControlTitle",
     groupId: "basics",
   },
   {
@@ -223,6 +230,8 @@ export type { SettingsSectionId };
 export function isSettingsSectionAvailable(
   section: SettingsSectionId,
   isDesktop: boolean,
+  remoteControlEnabled = true,
 ): boolean {
+  if (section === "remoteControl") return isDesktop && remoteControlEnabled;
   return isDesktop || section !== "remoteDevices";
 }

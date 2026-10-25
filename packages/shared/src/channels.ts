@@ -15,6 +15,7 @@ import type {
   WebRemoteControlStartOperationResult,
   WebRemoteControlStatus,
   WebRemoteControlWorkspaceTarget,
+  WebRemoteControlTaskTarget,
 } from "./web-remote-control.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { StorageCleanRequest, StorageCleanResult, StorageUsageSnapshot } from "./storage.js";
@@ -192,6 +193,7 @@ export const PlatformChannels = {
   /** Renderer → Main：绑定远程 logical session 的 canonical workspace context */
   BindRemoteWorkspaceSessionContext: "zcode:bind-remote-workspace-session-context",
   /** 为当前 workspace 开启 Web 远程控制 */
+  GetWebRemoteControlConnectionSettings: "zcode:get-web-remote-control-connection-settings",
   StartWebRemoteControl: "zcode:start-web-remote-control",
   /** 关闭当前窗口的 Web 远程控制 */
   ResetWebRemoteControlPairing: "zcode:reset-web-remote-control-pairing",
@@ -222,6 +224,7 @@ export const PlatformChannels = {
   /** Renderer → Main：同步当前窗口所有 tab 的 workspace 路径 */
   SyncWindowTabs: "zcode:sync-window-tabs",
   /** Renderer → Main：同步当前窗口可供 Web 远程控制切换的 workspace */
+  SyncWebRemoteControlLegacyTasks: "zcode:sync-web-remote-control-legacy-tasks",
   SyncWebRemoteControlWorkspaces: "zcode:sync-web-remote-control-workspaces",
   /** Main → Renderer：手机端请求重连当前窗口里的远程 workspace */
   WebRemoteControlReconnectWorkspace: "zcode:web-remote-control-reconnect-workspace",
@@ -675,6 +678,10 @@ export interface PlatformChannelMap {
     request: BindRemoteWorkspaceSessionContextRequest;
     response: import("./platform.js").BindRemoteWorkspaceSessionContextIpcResult;
   };
+  [PlatformChannels.GetWebRemoteControlConnectionSettings]: {
+    request: void;
+    response: import("./web-remote-control.js").WebRemoteControlConnectionSettings;
+  };
   [PlatformChannels.StartWebRemoteControl]: {
     request: WebRemoteControlContext;
     response: WebRemoteControlStartOperationResult;
@@ -729,6 +736,10 @@ export interface PlatformChannelMap {
   };
   [PlatformChannels.Log]: {
     request: { level: "info" | "warn" | "error"; args: unknown[] };
+    response: void;
+  };
+  [PlatformChannels.SyncWebRemoteControlLegacyTasks]: {
+    request: WebRemoteControlTaskTarget[];
     response: void;
   };
   [PlatformChannels.SyncWebRemoteControlWorkspaces]: {

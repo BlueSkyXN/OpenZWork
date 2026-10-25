@@ -27,6 +27,18 @@ const workspace = "/workspace";
 const read = (scope = "session-a") => readV4ComposerDraft(workspace, undefined, scope);
 
 describe("Composer Draft 持久选择", () => {
+  it("局域网 HTTP 无 randomUUID 时可以创建并恢复草稿", () => {
+    const crypto = globalThis.crypto;
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    try {
+      const scope = { clientNamespace: "mobile", hostId: "local", projectId: "http-test" };
+      const draft = ensurePendingTaskDraft(scope);
+      expect(readPendingTaskDraft(scope)?.draftId).toBe(draft.draftId);
+      expect(draft.draftId).toMatch(/^[0-9a-f-]{36}$/);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("关闭项目分组草稿只修改该项目，不影响同目录其他项目", () => {
     const p = { clientNamespace: "desktop", hostId: "local", projectId: "p" };
     const q = { ...p, projectId: "q" };

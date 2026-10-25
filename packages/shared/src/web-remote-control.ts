@@ -1,4 +1,10 @@
+import type { WebRemoteControlConnectionSettings } from "./web-remote-relay/contract.js";
 export * from "./web-remote-relay/contract.js";
+export {
+  resolveWebRemoteControlBrowserRelayUrl,
+  resolveWebRemoteControlRoutePathFromBaseUrl,
+  matchesWebRemoteControlRoutePath,
+} from "./web-remote-relay/index.js";
 import type {
   WebRemoteControlThemeSeed,
   WebRemoteControlMobileDeviceInfo,
@@ -38,6 +44,7 @@ export const WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS = 120_000;
 export const WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS = 5_000;
 
 export interface WebRemoteControlContext {
+  connection?: WebRemoteControlConnectionSettings;
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;
@@ -135,6 +142,7 @@ export function resolveWebRemoteControlFailureReasonFromCloseCode(
 }
 
 export interface WebRemoteControlStartResult {
+  connection?: WebRemoteControlConnectionSettings;
   status: Extract<WebRemoteControlStatusKind, "running" | "connecting" | "active">;
   sessionId: string;
   windowControlSessionId?: string;
@@ -159,6 +167,7 @@ export type WebRemoteControlStartOperationResult =
   | WebRemoteControlStartCancelledResult;
 
 export interface WebRemoteControlStatus {
+  connection?: WebRemoteControlConnectionSettings;
   status: WebRemoteControlStatusKind;
   sessionId?: string;
   windowControlSessionId?: string;

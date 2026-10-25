@@ -320,10 +320,6 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
                 onLocaleChange={changeLocale}
                 onThemeChange={changeTheme}
                 onSettingsButtonClick={openSettings}
-                workspacePath={props.workspacePath}
-                // 项目侧栏不再从 tab 反推身份；远控入口必须沿用当前 attachment 的精确 scope。
-                workspaceIdentity={props.workspaceIdentity}
-                workspaceRemoteSessionId={props.workspaceRemoteSessionId}
                 isDesktop={props.isDesktop}
               />
             </div>

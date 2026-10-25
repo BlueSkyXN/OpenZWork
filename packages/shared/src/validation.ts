@@ -40,8 +40,7 @@ import {
 import { wslUserSchema } from "./wslUserValidation.js";
 import { legacyZCodeProviderSchema } from "./zcode-agent-policy.js";
 import { errorAttributionSchema } from "./zcode-protocol-v4/snapshot.js";
-import {
-} from "./zcode-protocol/index.js";
+import {} from "./zcode-protocol/index.js";
 
 export {
   appSettingsPatchSchema,
@@ -181,7 +180,32 @@ export const webRemoteControlMobileDeviceInfoSchema = z.object({
   updatedAt: z.number().finite(),
 });
 
+/** 官方 V1 页沿用的只读任务投影。 */
+export const webRemoteControlLegacyTaskTargetsSchema = z.array(
+  z
+    .object({
+      taskId: nonEmptyStringSchema,
+      title: z.string(),
+      workspacePath: nonEmptyStringSchema,
+      workspaceIdentity: nonEmptyStringSchema.optional(),
+      remoteSessionId: nonEmptyStringSchema.optional(),
+      workspaceLabel: z.string(),
+      workspaceKind: z.enum(["local", "remote"]),
+      createdAt: z.number().finite(),
+      updatedAt: z.number().finite(),
+      provider: zcodeProviderSchema.optional(),
+      unreadAt: z.number().finite().optional(),
+      displayStatus: z.enum(["idle", "running", "completed", "error"]).optional(),
+      hasBackgroundWork: z.boolean().optional(),
+      workflowActivity: sessionWorkflowActivitySchema.optional(),
+      pinned: z.boolean().optional(),
+      archived: z.boolean().optional(),
+    })
+    .strict(),
+);
+
 export const webRemoteControlWindowBootstrapResultSchema = z.object({
+  tasks: webRemoteControlLegacyTaskTargetsSchema.optional(),
   windowControlSessionId: nonEmptyStringSchema,
   desktopAppVersion: nonEmptyStringSchema.optional(),
   workspaces: webRemoteControlWorkspaceTargetsSchema,
@@ -191,6 +215,7 @@ export const webRemoteControlWindowBootstrapResultSchema = z.object({
 });
 
 export const webRemoteControlWorkspaceListResultSchema = z.object({
+  tasks: webRemoteControlLegacyTaskTargetsSchema.optional(),
   workspaces: webRemoteControlWorkspaceTargetsSchema,
   activeWorkspaceKey: nonEmptyStringSchema.optional(),
   activeTaskId: nonEmptyStringSchema.optional(),

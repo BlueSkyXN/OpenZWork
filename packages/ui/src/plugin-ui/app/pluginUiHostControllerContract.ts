@@ -78,7 +78,7 @@ export interface PluginUiHostControllerDeps extends PluginUiInteractionCallbacks
       instance: PluginSandboxHandle["instance"],
     ): () => void;
   };
-  /** UI 发起调用的 id 生成；缺省 crypto.randomUUID。 */
+  /** UI 发起调用的 id 生成；缺省使用兼容 HTTP 的共享 UUID 生成器。 */
   createCallId?: () => string;
   /** 握手超时 / teardown 等待的计时器；缺省 setTimeout。返回取消函数。 */
   setTimer?: (callback: () => void, ms: number) => () => void;

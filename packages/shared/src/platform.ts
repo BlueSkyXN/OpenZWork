@@ -22,6 +22,7 @@ import type {
   WebRemoteControlStatus,
   WebRemoteControlReconnectWorkspaceRequest,
   WebRemoteControlWorkspaceTarget,
+  WebRemoteControlTaskTarget,
 } from "./web-remote-control.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { BrowserViewportSize } from "./browser-use/command-metadata.js";
@@ -750,6 +751,9 @@ export interface IPlatformService {
 
   /** 查询当前窗口 Web 远程控制状态 */
   getWebRemoteControlStatus(): Promise<WebRemoteControlStatus>;
+  getWebRemoteControlConnectionSettings?(): Promise<
+    import("./web-remote-control.js").WebRemoteControlConnectionSettings
+  >;
 
   /** 桌面 OAuth 会话通知；main 独立重读凭据后决定是否恢复远控。 */
 
@@ -816,6 +820,9 @@ export interface IPlatformService {
   syncWindowTabs(paths: string[]): void;
 
   /** 同步当前窗口里 Web 远程控制允许切换的 workspace；Web fallback 可忽略 */
+  /** 官方 V1 页的派生任务目录；任务事实仍归 WindowController。 */
+  syncWebRemoteControlLegacyTasks?(tasks: WebRemoteControlTaskTarget[]): void;
+
   syncWebRemoteControlWorkspaces?(workspaces: WebRemoteControlWorkspaceTarget[]): void;
 
   /** 注册 Web 远程控制手机端请求重连 workspace 的回调，返回 disposer */

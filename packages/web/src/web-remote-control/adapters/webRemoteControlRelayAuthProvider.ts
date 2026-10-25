@@ -1,3 +1,4 @@
+import { hmacSha256Bytes } from "@zcode/shared";
 import type { WebRemoteControlRelayRole } from "@zcode/shared";
 
 function base64UrlNoPadding(bytes: Uint8Array): string {
@@ -12,16 +13,8 @@ export async function calculateBrowserWebRemoteControlProof(
   deviceSid: string,
 ): Promise<string> {
   const encoder = new TextEncoder();
-  const key = await globalThis.crypto.subtle.importKey(
-    "raw",
+  const signature = await hmacSha256Bytes(
     encoder.encode(passHash),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await globalThis.crypto.subtle.sign(
-    "HMAC",
-    key,
     encoder.encode(`${nonce}|${role}|${deviceSid}`),
   );
   return base64UrlNoPadding(new Uint8Array(signature));

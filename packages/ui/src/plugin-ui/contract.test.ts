@@ -1,8 +1,10 @@
 import { createPluginUiSidePaneTab } from "./sidePane/pluginUiSidePaneTab.js";
-import { describe, expect, it } from "vitest";
+import { webcrypto } from "node:crypto";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { exampleOpenSideTab, examplePresentation } from "./contract.example.js";
 import {
   PLUGIN_UI_CARD_DEFAULT_HEIGHT_PX,
+  documentViewerInstance,
   buildPluginUiSidePaneTabId,
   buildPluginUiSurfaceKey,
   readPluginUiScopeRef,
@@ -10,7 +12,18 @@ import {
   type PluginUiSessionCommandPort,
 } from "./contract.js";
 
+afterEach(() => vi.unstubAllGlobals());
 describe("plugin-ui contract", () => {
+  it("普通 HTTP 可独立打开多个文档面板", () => {
+    vi.stubGlobal("crypto", { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) });
+    const first = documentViewerInstance("ui://pdf/panel.html");
+    const second = documentViewerInstance("ui://pdf/panel.html");
+    expect(first.instanceId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+    expect(second.instanceId).not.toBe(first.instanceId);
+    expect(documentViewerInstance("ui://custom/panel.html")).toEqual({});
+  });
   it("侧栏与渲染面同时隔离 workspace/session/plugin", () => {
     const request = {
       workspacePath: "/repo",

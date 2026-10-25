@@ -1,3 +1,7 @@
+import {
+  openRemoteControlSettings,
+  leaveRemoteControlSettings,
+} from "#e2e/helpers/web-remote-control-settings";
 import { openMobilePairingPage } from "#e2e/helpers/mobile-pairing";
 import { readV4UserMessagesInBrowser } from "#e2e/helpers/mobile-message-evidence";
 import { releaseControlledReplay } from "#e2e/helpers/controlled-replay";
@@ -78,7 +82,7 @@ async function countRemoteSshSessions(container: string): Promise<number> {
   return Number.parseInt(stdout.trim() || "0", 10);
 }
 
-/** 打开 Desktop 的“移动端远程控制”对话框并拦截剪贴板取得配对链接（含配对材料，只留内存、不落记录）。 */
+/** 打开 Desktop 的“设置 → 远程控制”页并拦截剪贴板取得配对链接（含配对材料，只留内存、不落记录）。 */
 async function obtainPairUrl(): Promise<string> {
   await browser.execute(() => {
     const clipboard = navigator.clipboard;
@@ -92,16 +96,13 @@ async function obtainPairUrl(): Promise<string> {
       (window as Window & { __r3PairUrl?: string }).__r3PairUrl = text;
     };
   });
-  const trigger = $('button[aria-label="移动端远程控制"]');
-  await trigger.waitForClickable({ timeout: 30_000 });
-  await trigger.click();
-  await $('[data-testid="web-remote-control-dialog-scroll"]').waitForDisplayed({ timeout: 30_000 });
+  await openRemoteControlSettings({ start: true });
   await browser.waitUntil(
     () =>
       browser.execute(() => {
         const button = Array.from(
           document.querySelectorAll<HTMLButtonElement>(
-            '[data-testid="web-remote-control-dialog-scroll"] button',
+            '[data-testid="remote-control-settings"] button',
           ),
         ).find((b) => b.innerText.trim() === "复制链接" && !b.disabled);
         button?.click();
@@ -140,19 +141,6 @@ async function readDesktopMobileStatus(): Promise<string> {
         ?.innerText.replace(/\s+/gu, " ")
         .slice(0, 200) ?? "",
   );
-}
-
-async function closeRemoteControlDialog(): Promise<void> {
-  await browser.keys(["Escape"]);
-  await browser
-    .waitUntil(
-      () =>
-        browser.execute(
-          () => !document.querySelector('[data-testid="web-remote-control-dialog-scroll"]'),
-        ),
-      { timeout: 10_000, timeoutMsg: `${CASE_MARKER}: 远程控制对话框没有关闭` },
-    )
-    .catch(() => undefined);
 }
 
 async function mobileText(page: PwPage): Promise<string> {
@@ -240,7 +228,7 @@ describe(`${CASE_MARKER}: 手机 viewport 经真实 relay 配对，选择 SSH ta
       timeoutMsg: `${CASE_MARKER}: Desktop 未显示手机已连接`,
     });
     facts.paired = { desktopCard: await readDesktopMobileStatus() };
-    await closeRemoteControlDialog();
+    await leaveRemoteControlSettings();
     // 手机首页列出远程 workspace 与 SSH task；点击进入。
     const homeText = await mobileText(mobile);
     const hasNewRemoteEntry = await mobile.evaluate(
@@ -629,7 +617,7 @@ PY`,
         async () => (await readDesktopMobileStatus()).includes("手机已连接"),
         { timeout: 60_000 },
       );
-      await closeRemoteControlDialog();
+      await leaveRemoteControlSettings();
       // 手机与桌面共用 ProjectSidebar；通过原项目的新建入口进入空草稿，不发送准备消息。
       const workspaceCard = mobile.locator(`[data-project-id="${projectId}"]`);
       await workspaceCard.waitFor();

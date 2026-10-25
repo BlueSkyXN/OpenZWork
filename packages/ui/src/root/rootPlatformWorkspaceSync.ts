@@ -1,5 +1,14 @@
 import { useEffect } from "react";
-import type { IPlatformService, WebRemoteControlWorkspaceTarget } from "@zcode/shared";
+import type {
+  IPlatformService,
+  WebRemoteControlWorkspaceTarget,
+  WebRemoteControlTaskTarget,
+  WebRemoteControlStatus,
+} from "@zcode/shared";
+import type { WindowHostControllerTaskListItem } from "@zcode/services";
+import { useOptionalBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import { getWindowControllerTaskListRegistry } from "@/v4/windowControllerTaskListRegistry.js";
+import { logger } from "@/logger.js";
 import { isWorkspaceTab, type WindowTabState } from "@/store/tabStore.js";
 
 export function buildWebRemoteControlWorkspaceTargets({
@@ -101,4 +110,152 @@ export function useWebRemoteControlWorkspaceSync({
     reconnectingRemoteWorkspaceKeys,
     remoteWorkspaceErrorByWorkspaceKey,
   ]);
+}
+
+/** 旧官方页使用 workspace 目录；只转换当前窗口已有 Controller 投影，不生成成员。 */
+export function buildLegacyRemoteTaskTargets(
+  workspaces: WebRemoteControlWorkspaceTarget[],
+  groups: Array<{
+    kind: "timeline" | "pinned" | "archived";
+    items: WindowHostControllerTaskListItem[];
+  }>,
+): WebRemoteControlTaskTarget[] {
+  const byKey = new Map(
+    workspaces.map((workspace) => [
+      workspace.workspaceIdentity?.trim() || workspace.workspacePath,
+      workspace,
+    ]),
+  );
+  return groups.flatMap(({ kind, items }) =>
+    items.flatMap((task): WebRemoteControlTaskTarget[] => {
+      const workspace = byKey.get(task.workspaceIdentity?.trim() || task.workspacePath);
+      if (
+        !workspace ||
+        (workspace.kind === "remote" &&
+          (!workspace.workspaceIdentity ||
+            !workspace.remoteSessionId ||
+            task.sourceAvailability !== "online"))
+      )
+        return [];
+      return [
+        {
+          taskId: task.taskId,
+          title: task.title,
+          workspacePath: task.workspacePath,
+          workspaceIdentity: task.workspaceIdentity,
+          remoteSessionId: workspace.remoteSessionId,
+          workspaceLabel: workspace.label,
+          workspaceKind: workspace.kind,
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+          provider: task.provider,
+          unreadAt: task.unreadAt,
+          displayStatus: task.liveStatus === "waiting" ? "running" : task.liveStatus,
+          hasBackgroundWork: task.activity?.hasBackgroundWork,
+          workflowActivity: task.activity?.workflowActivity,
+          pinned: kind === "pinned",
+          archived: kind === "archived",
+        },
+      ];
+    }),
+  );
+}
+
+export function useWebRemoteControlLegacyTaskSync({
+  platform,
+  tabs,
+  enabled,
+}: {
+  platform: IPlatformService;
+  tabs: WindowTabState[];
+  enabled: boolean;
+}): void {
+  // 旧目录仅为桌面附加能力；手机恢复和未挂载 base 服务的首帧无需该服务。
+  const windowControllerService = useOptionalBaseWorkspaceServices()?.windowControllerService;
+  useEffect(() => {
+    if (!enabled || !windowControllerService || !platform.syncWebRemoteControlLegacyTasks) return;
+    const workspaces = buildWebRemoteControlWorkspaceTargets({ tabs });
+    const registry = getWindowControllerTaskListRegistry(windowControllerService);
+    let disposed = false,
+      active = false,
+      serial = 0,
+      statusRevision = 0;
+    let unsubscribe: (() => void) | undefined;
+    const load = async () => {
+      const request = ++serial;
+      try {
+        const groups = await Promise.all(
+          (["timeline", "pinned", "archived"] as const).map(async (kind) => {
+            const query = {
+              kind,
+              workspaceScopes: workspaces.map(({ workspacePath, workspaceIdentity }) => ({
+                workspacePath,
+                workspaceIdentity,
+              })),
+              sortBy: "updated" as const,
+            };
+            if (!query.workspaceScopes.length) return { kind, items: [] };
+            const result = await registry.list(
+              JSON.stringify(query),
+              {
+                controllerRevision: registry.getRevision(),
+                taskListVersionSignature: "",
+                workspaceSourceGenerationSignature: JSON.stringify(
+                  workspaces.map((w) => [
+                    w.workspaceIdentity || w.workspacePath,
+                    w.remoteSessionId,
+                  ]),
+                ),
+              },
+              query,
+            );
+            return { kind, items: result.items };
+          }),
+        );
+        // 停止或 scope 换代后旧结果不能覆盖新连接；三个分组齐备才发布整快照。
+        if (!disposed && active && request === serial)
+          platform.syncWebRemoteControlLegacyTasks?.(
+            buildLegacyRemoteTaskTargets(workspaces, groups),
+          );
+      } catch (error) {
+        if (!disposed && active && request === serial)
+          logger.warn("[web-remote-control] 旧版任务目录读取失败", error);
+      }
+    };
+    const accept = (status: WebRemoteControlStatus) => {
+      if (disposed) return;
+      const next =
+        status.connection?.mode === "official" &&
+        ["running", "connecting", "active"].includes(status.status);
+      if (next === active) return;
+      active = next;
+      serial++;
+      unsubscribe?.();
+      unsubscribe = undefined;
+      if (active) {
+        unsubscribe = registry.subscribe(() => {
+          void load();
+        });
+        void load();
+      }
+    };
+    const stopStatus = platform.onWebRemoteControlStatusChanged?.((status) => {
+      statusRevision++;
+      accept(status);
+    });
+    void platform
+      .getWebRemoteControlStatus()
+      .then((status) => {
+        if (statusRevision === 0) accept(status);
+      })
+      .catch((error) => {
+        if (!disposed) logger.warn("[web-remote-control] 读取连接状态失败", error);
+      });
+    return () => {
+      disposed = true;
+      serial++;
+      unsubscribe?.();
+      stopStatus?.();
+    };
+  }, [enabled, platform, tabs, windowControllerService]);
 }
