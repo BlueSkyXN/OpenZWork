@@ -51,11 +51,14 @@
 ## GitHub 正式安装包
 
 - `Installers.workflow_dispatch` 接受 `release_tag` 与 `release_commit`，必须同时为空或同时提供。为空时沿用现有 Preview 构建；正式构建要求 `v<版本>-openzwork` tag、完整 40 位提交 SHA、checkout HEAD 和根 package version 一致（Desktop build-metadata 使用根版本），校验在依赖安装之前完成。
-- 正式构建显式使用 `ZCODE_ENV=production`、`ZCODE_PREVIEW_IDENTITY=0`；沿用未签名构建，不注入证书或开启公证。应用标识为 OpenZWork，不能将 Preview/_TEST 包改名后当作正式包。
+- 正式构建显式使用 `ZCODE_ENV=production`、`ZCODE_PREVIEW_IDENTITY=0`；沿用未签名构建，不注入证书或开启公证。应用标识为 OpenZWork，不能将 Preview/\_TEST 包改名后当作正式包。
 - 工作流可从主干执行并 checkout 已有版本 tag，因此工作流的 SHA 与源码 SHA 分别记录。GitHub run 的 `head_sha` 表示工作流来源，安装包来源以验证过的 `release_commit`、源码 tree 与 tag 为准。
 - 构建后生成 `RELEASE-MANIFEST.json`：记录源码 tag/SHA/tree、工作流 SHA/run、版本、平台、正式身份及实际安装文件的字节数和 SHA-256。只收集 dist 根目录的两份 macOS、一个 Windows 或四份 Linux 安装文件；不将 unpacked 目录中的辅助 exe 作为安装包发布。缺文件或空文件直接失败。
 - Linux x64 的各发行格式采用 builder 实际架构名：AppImage/rpm 为 `x86_64`、deb 为 `amd64`、pacman 为 `x64`。按版本、平台、允许的架构别名和扩展名从根目录匹配，每种格式必须恰有一个文件；歧义也直接失败。
-- GitHub Release 发布由用户授权后的交付操作执行；本工作流仅构建并上传 Actions artifact，不自动发布、移动 tag 或访问上游发布平台。
+- GitHub Release 发布由用户授权后的手动 `Installers` 发布模式执行：提供已有正式构建的 `publish_installer_run`、同源码的 `core_run`、`extended_run` 和 `release_notes`。普通 push 与构建模式只生成 artifacts。
+- 发布 job 使用独立并发组和最小 `actions: read`、`contents: write` 权限；在 GitHub runner 下载已有 artifacts，核对归档 SHA-256、源码 tag/SHA/tree、正式身份、每种安装格式的数量、大小和哈希，然后生成 `PROVENANCE.json` 与 `SHA256SUMS`。本机无需下载安装包。
+- 核心与 Extended 必须完整成功并指向发布源码；Extended 三平台的 `source.json`、七组退出码及测试统计必须一致。构建工作流 SHA 单独记录；发布脚本不移动 tag、不重新构建产品。
+- 先校验全部产物再写 Release。草稿可继续上传缺少的附件；同名附件仅在大小和摘要相同的情况下复用。已发布内容不覆盖、不删除；全部九个附件核验后才公开并设置 Latest。
 
 ```mermaid
 flowchart LR
@@ -63,7 +66,10 @@ flowchart LR
     V --> B[production 模式构建]
     B --> M[安装文件与来源清单]
     M --> A[Actions artifact]
-    A --> R[校验后发布 GitHub Release]
+    A --> C[手动发布 job 在 runner 校验]
+    G[同源码 Core 与 Extended 结果] --> C
+    C --> D[草稿与九个附件]
+    D --> R[回读摘要后公开 GitHub Release]
 ```
 
 ## 验收场景与验证
@@ -75,6 +81,7 @@ flowchart LR
 - 真实 GitHub 运行需在提交并推送后验证：各平台 Action 初始化、pnpm 缓存、turbo/Electron 缓存和 artifact 上传成功，且不再出现本次涉及的 Node.js 20 Action 弃用提示。
 - 旧运行的 Annotations 是历史记录，不因修改 YAML 而被清除。真实 runner 的结果必须关联当前候选提交；本地验证不能代替该证据。
 - 正式构建回归直接执行工作流内的校验与清单脚本，验证缺少输入、错误 SHA、错误版本会拒绝，正常 tag 可通过，安装包哈希精确且排除 unpacked 文件。两版实际安装包必须在云端以正式身份重建后才发布。
+- 发布回归验证错误源码/版本/身份、缺失或重复格式、无效哈希、失败或不完整测试组、同名附件内容冲突均拒绝；验证发布 job 只接受显式手动入口，构建与发布互不取消。
 
 ## 官方依据
 
