@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { allowRequestVerificationHeaders } from "@zcode/shared";
+import { allowRequestVerificationHeaders, isAuxiliarySessionKind } from "@zcode/shared";
 import {
   pluginUiToolResultNotificationSchema,
   type PluginUiToolResultNotification,
@@ -5081,7 +5081,7 @@ export function createZCodeAgentService(
             session.workspace.workspacePath !== params.workspacePath
           )
             throw new Error("project.session-lineage-invalid");
-          if (session.sessionKind !== "subagent_child") break;
+          if (!isAuxiliarySessionKind(session.sessionKind)) break;
           if (!session.parentSessionId) throw new Error("project.session-lineage-invalid");
           directorySessionId = session.parentSessionId;
         }

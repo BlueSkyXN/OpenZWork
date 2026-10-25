@@ -654,8 +654,8 @@ nodes:
         providerId, group, Registry identity, execution state, or recursive Template parent."
       - A Template-created Personal Provider has its own providerId and resolves Template -> Personal; runtime
         execution uses only the resulting Effective Provider identity, API, Access, and Model Config.
-      - Account Providers remain concrete Built-in Provider roots and are constrained by Account Config;
-        ordinary API services are Templates that create Personal Provider instances.
+      - The shipped catalog contains third-party API templates that create Personal Provider instances;
+        official account Provider roots and account-entitlement overlays remain retired.
       - ProviderTemplate is a domain shell containing localized name metadata and a Provider Config Overlay;
         Model Config Rules remain centralized so their precedence stays explicit.
       - Provider branding is declared once by Provider Config.logo; the UI logo resource table maps open
@@ -669,6 +669,7 @@ nodes:
       - 应用用量
       - 用量统计
     docs:
+      - docs/spec/app-usage-settings.md
       - apps/zcode-cli/docs/design/v2/usage-observability.md
     codeSeeds:
       - file: packages/services/src/app-usage/appUsageService.ts
@@ -682,7 +683,9 @@ nodes:
       - 本地诊断
       - 运行日志
     docs:
-      - docs/monitoring/memory-diagnostics-log.md
+      - docs/electron/resource-manager.md
+      - docs/desktop/log-export-retention.md
+      - docs/model-io-full-retention-setting.md
     codeSeeds:
       - file: packages/services/src/logger/serviceLogger.ts
         symbol: createServiceLogger
@@ -691,7 +694,7 @@ nodes:
         diagnostics use debug.
   - id: capability.resource-manager
     kind: capability
-    label: Resource Manager window (CPU / memory by base services, built-in plugins, community plugins)
+    label: Resource Manager window (CPU, memory and local storage)
     aliases:
       - 资源管理器
       - 存储管理
@@ -700,8 +703,6 @@ nodes:
       - Process Monitor
       - 进程监视器
       - CPU 内存占用
-      - 网络请求
-      - Network requests
     docs:
       - docs/electron/resource-manager.md
       - docs/electron/resource-manager-network.md
@@ -733,15 +734,16 @@ nodes:
       - Electron main never spawns an external process for sampling; external process CPU/RSS is sampled
         inside the window Host only while a snapshot request is in flight.
       - Plugin attribution comes from the CLI process/childProcesses request (pid + mcpSource + pluginName);
-        official marketplace MCP trees and browser-use guest renderers are built-in plugins, every other MCP
-        tree is a community plugin.
+        Host-owned builtin processes, builtin MCP trees and browser-use guest renderers are built-in plugins;
+        every other MCP tree is a community plugin.
       - CPU is machine-normalized (100% = all logical cores) for every row so group subtotals and the app
         total are additive.
-      - The window is desktop-only and outside conversation continuous/replayable delivery; it must not change
-        the 60s CLI resource telemetry cadence or MCP memory telemetry.
-      - Network capture runs only for the resource-manager window lifetime, records bounded metadata from
-        local Main/Host/App Renderer/CLI, and excludes MCP, subprocesses, remote CLI and external browser
-        sessions without changing proxy routing.
+      - CPU and memory pages enable one in-flight Host observation per Host; switching to storage or
+        closing the window cancels sampling and discards late results without changing Agent lifecycle.
+      - The desktop-only window exposes CPU, memory and storage. The retired network capture chain is
+        absent; conversation continuous/replayable delivery remains owned by the existing runtime.
+      - StorageService belongs to Main and scans local data roots through a Worker; UI owns only display
+        state and explicit scan, cancel and clean actions.
   - id: capability.engineering-infrastructure
     kind: capability
     label: Engineering infrastructure outside the product runtime
@@ -1409,6 +1411,8 @@ nodes:
       - 模型供应商
       - 自定义 provider
     docs:
+      - docs/spec/upstream-v3.16.1-integration.md
+      - config/README.md
       - docs/working-memory/provider-refactor/steps/03-staging-integration.md
       - docs/working-memory/provider-refactor/design/design.md
       - docs/working-memory/provider-refactor/design/registry/configuration.md
@@ -1434,6 +1438,10 @@ nodes:
       - docs/model-provider-config-overrides.md
       - docs/model-provider-catalog-metadata.md
     codeSeeds:
+      - symbol: NodeZCodeBuiltinProviderConfigSource
+        file: packages/provider-node/src/zcode-builtin-provider-config-source.ts
+      - symbol: NodeProviderConfigRuntime
+        file: packages/provider-node/src/provider-config-runtime.ts
       - file: packages/provider/src/index.ts
       - symbol: ProviderConfigResolver
         file: packages/provider/src/resolver.ts
@@ -1450,16 +1458,12 @@ nodes:
     invariants:
       - Model input/output format facts use the same properties.input_format/output_format shape in Config,
         Model, Runtime, and protocol; no parallel media capability DTO is authoritative.
-      - Project location metadata is recoverable cache, not OAuth identity. Unreadable metadata is rechecked
-        and conditionally removed under the shared credential-file lock before one bounded rebuild; valid
-        OAuth and unrelated credentials remain intact. Superseded requests cannot recover or commit cache
-        changes.
       - Provider/Model Config overlays and Personal updates may be sparse; after resolve, validateComplete
         supplies diagnostics and Provider/Model requireComplete boundaries are the only path into Registry,
         whose configs and properties are statically complete.
-      - ZCode Built-in Active/LKG and refresh control are physically isolated by normalized ZCode
-        control-plane Endpoint under platform/appVersion; revisions and fallbacks never cross Endpoint
-        directories.
+      - Built-in configuration comes from the packaged local release or an explicit local file.
+        NodeZCodeBuiltinProviderConfigSource may materialize a caller-specified local Active file;
+        source identity includes its resolved path. No official Endpoint/CDN synchronizer or LKG owner remains.
       - Personal Config cross-process observation uses one asynchronous content-revision polling loop rather
         than fs.watch; same-process saves publish immediately, other processes self-heal within one interval,
         and provider connectivity explicitly refreshes the Worker Registry before lookup without creating a
@@ -1832,7 +1836,11 @@ nodes:
   - id: surface.app-usage-dashboard
     kind: ui-surface
     label: Settings App Usage dashboard
-    codeSeeds: []
+    codeSeeds:
+      - file: packages/ui/src/settings/usage-stats/AppUsageSection.tsx
+        symbol: AppUsageSection
+      - file: packages/ui/src/hooks/useAppUsageStats.ts
+        symbol: useAppUsageStats
   - id: surface.resource-manager-window
     kind: ui-surface
     label: Help menu Resource Manager window
@@ -3007,6 +3015,22 @@ nodes:
         file: packages/desktop/src/main/appShutdownPolicy.ts
       - symbol: prepareAppQuit
         file: packages/desktop/src/main/index.ts
+  - id: persistence.desktop-user-data-root
+    kind: persistence
+    label: Desktop local data root resolved from the configured base directory
+    codeSeeds:
+      - symbol: getZCodeDataRootDir
+        file: packages/services/src/paths.ts
+      - symbol: getAppConfigDir
+        file: packages/services/src/paths.ts
+  - id: capability.mcp-oauth-authorization
+    kind: capability
+    label: User-configured MCP server OAuth authorization
+    docs:
+      - docs/mcp-oauth-two-phase.md
+    codeSeeds:
+      - symbol: McpSettingsSection
+        file: packages/ui/src/settings/McpSettingsSection.tsx
   - id: service.data-directory-setting
     kind: service
     label: Data directory validation, copy, and bootstrap pointer service

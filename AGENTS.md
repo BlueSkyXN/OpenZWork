@@ -9,22 +9,24 @@
 
 开工前运行 `node scripts/check-workspace-freshness.mjs` 检查基线。Node 版本以 `mise.toml` 为准。
 
+新 worktree 若直接复用或 APFS 克隆依赖，在该工作区运行 `pnpm exec husky` 并确认 `.husky/_/pre-push` 可执行；具体说明见 [pre-push 说明](docs/testing/pre-push-hook.md#新工作区的-hook-入口)。
+
 以下命令从仓库根目录执行：
 
-| 用途             | 命令                                                 |
-| ---------------- | ---------------------------------------------------- |
-| 类型检查         | `pnpm typecheck`                                     |
-| Lint             | `pnpm lint` / `pnpm lint:fix`                        |
-| 格式检查         | `pnpm fmt:check`                                     |
-| 桌面开发         | `pnpm dev:desktop`                                   |
-| Web 开发         | `pnpm dev:web`                                       |
-| 提交前检查       | `pnpm verify:pre-push`（Lint、架构检查与受影响单测） |
-| 架构检查         | `pnpm architecture:check --changed`                  |
-| 模块阅读包       | `pnpm architecture:context <module-id>`              |
-| 未使用依赖与导出 | `pnpm knip`                                          |
-| 导出引用查询     | `pnpm dep:refs --list-exports <file>`                |
+| 用途             | 命令                                                           |
+| ---------------- | -------------------------------------------------------------- |
+| 类型检查         | `pnpm typecheck`                                               |
+| Lint             | `pnpm lint` / `pnpm lint:fix`                                  |
+| 格式检查         | `pnpm fmt:check`                                               |
+| 桌面开发         | `pnpm dev:desktop`                                             |
+| Web 开发         | `pnpm dev:web`                                                 |
+| 提交前检查       | `pnpm verify:pre-push`（Lint、schema、架构治理与固定核心单测） |
+| 架构检查         | `pnpm architecture:check --changed`                            |
+| 模块阅读包       | `pnpm architecture:context <module-id>`                        |
+| 未使用依赖与导出 | `pnpm knip`                                                    |
+| 导出引用查询     | `pnpm dep:refs --list-exports <file>`                          |
 
-affected 使用 Vitest 官方选择，只运行选中的根 UT；选中整个套件时说明并跳过 UT，成功退出，不因此阻止 Push；不替代 CLI 测试或桌面 E2E。全量使用 `pnpm test` / `pnpm test:unit`，仅在用户明确要求时调用。范围与输出合同见 [pre-push 说明](docs/testing/pre-push-hook.md)。
+`verify:pre-push` 运行固定核心套件 `test:ci:core`。独立命令 `test:unit:affected` 使用 Vitest 官方选择；选中整个套件时说明并跳过 UT，成功退出。两者均不替代 CLI 测试或桌面 E2E。全量使用 `pnpm test` / `pnpm test:unit`，仅在用户明确要求时调用。范围与输出合同见 [pre-push 说明](docs/testing/pre-push-hook.md)。
 
 测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
 
@@ -43,6 +45,7 @@ affected 使用 Vitest 官方选择，只运行选中的根 UT；选中整个套
 - 避免重复状态和多条写入路径。明确唯一所有者、接口、依赖方向、事件顺序与幂等边界，不能用超时掩盖同步问题。
 - 有行为改动时先补充对应测试；交互改动需要 E2E 场景。检查测试与实现是否一致，并实际执行可用的验证。未执行或环境受限时如实说明。
 - 修复 bug 时用中文注释说明原因和修复依据。发现设计缺陷时先与用户对齐，不不断增加兜底分支。
+- 缺陷代码来自上游时，按 [下游补丁清单](docs/spec/downstream-patch-registry.md) 登记，修复处与回归处加编号标记；合入上游新版本时逐项复核未撤销条目。
 - PR 描述须说明背景、设计意图与修改前后行为；包含 bugfix 时逐项说明触发场景、根因证据、修复机制及回归验证，并尽量关联已有工单链接。未确认的根因或引入提交如实标注，不根据模块或时间接近推断归因。
 - 涉及状态、时序、远端或异步同步的方案，用图展示所有者及事件顺序。
 - 必须执行 `pnpm typecheck` 和 `pnpm lint`，报告真实结果，不将已有失败写成通过。

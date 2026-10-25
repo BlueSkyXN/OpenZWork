@@ -33,11 +33,127 @@ describe("mcpStore", () => {
       statusSnapshots: {},
       currentProjectPath: "",
       currentWorkspaceIdentity: undefined,
+      currentAuthorityKey: undefined,
+      currentDirectoryService: null,
       enabledStates: {},
       deletedPreloadMcpServers: new Set(),
       isConfigLoaded: false,
       currentSessionId: null,
     }));
+  });
+
+  function sourceServices() {
+    const platform = {
+      loadMcpFromUserDirectory: vi.fn(async () => ({ servers: [] })),
+      saveMcpToUserDirectory: vi.fn(async () => ({ success: true })),
+      migrateLegacyCommonMcp: vi.fn(async () => ({
+        servers: {},
+        totalCount: 0,
+        importedCount: 0,
+        skippedCount: 0,
+      })),
+    };
+    const directory = () => ({
+      loadMcpFromUserDirectory: vi.fn(async () => ({ servers: [] })),
+      saveMcpToUserDirectory: vi.fn(async () => {}),
+    });
+    vi.stubGlobal("window", {});
+    setMcpStorePlatform(platform);
+    return { platform, directory };
+  }
+
+  it("OW-P001：无 workspace identity 的 Source 用户设置读写绑定所选服务", async () => {
+    const { platform, directory } = sourceServices();
+    const selected = directory();
+    const workspaceDefault = directory();
+    setMcpStoreDirectoryService(workspaceDefault);
+    const state = useMcpStore.getState();
+    expect(
+      await state.ensureLoadedForWorkspace(
+        "/same/user",
+        selected,
+        undefined,
+        "source-settings:remote",
+      ),
+    ).toBe(true);
+    // 默认 workspace 服务变化不能把 Source 设置的后续保存改路由。
+    setMcpStoreDirectoryService(directory());
+    await state.addScopedMcpServer("zcodeagentmcp", "source-only", {
+      type: "http",
+      url: "https://source.example.test/mcp",
+    });
+    const server = useMcpStore.getState().servers.find((item) => item.name === "source-only");
+    expect(server).toBeDefined();
+    await state.toggleServer(server!.id, false);
+    expect(selected.loadMcpFromUserDirectory).toHaveBeenCalledWith({ workspacePath: "/same/user" });
+    expect(selected.saveMcpToUserDirectory).toHaveBeenCalledTimes(2);
+    expect(workspaceDefault.loadMcpFromUserDirectory).not.toHaveBeenCalled();
+    expect(workspaceDefault.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(platform.loadMcpFromUserDirectory).not.toHaveBeenCalled();
+    expect(platform.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(platform.migrateLegacyCommonMcp).not.toHaveBeenCalled();
+  });
+
+  it("OW-P001：同一 Source 重连后保存使用新目录服务", async () => {
+    const { platform, directory } = sourceServices();
+    const before = directory();
+    const after = directory();
+    const state = useMcpStore.getState();
+    await state.ensureLoadedForWorkspace("/same/user", before, undefined, "source-settings:remote");
+    await state.ensureLoadedForWorkspace("/same/user", after, undefined, "source-settings:remote");
+    await state.addScopedMcpServer("zcodeagentmcp", "after-reconnect", {
+      type: "stdio",
+      command: "node",
+    });
+    expect(before.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(after.saveMcpToUserDirectory).toHaveBeenCalledOnce();
+    expect(platform.saveMcpToUserDirectory).not.toHaveBeenCalled();
+  });
+
+  it("OW-P001：同路径 Source 切换丢弃旧读取，保存绑定新 Source", async () => {
+    const { platform, directory } = sourceServices();
+    const first = directory();
+    const second = directory();
+    const pending = Promise.withResolvers<{ servers: [] }>();
+    first.loadMcpFromUserDirectory.mockImplementation(() => pending.promise);
+    const state = useMcpStore.getState();
+    const firstLoad = state.ensureLoadedForWorkspace(
+      "/same/user",
+      first,
+      undefined,
+      "source-settings:first",
+    );
+    const secondLoad = state.ensureLoadedForWorkspace(
+      "/same/user",
+      second,
+      undefined,
+      "source-settings:second",
+    );
+    pending.resolve({ servers: [] });
+    await Promise.all([firstLoad, secondLoad]);
+    await state.addScopedMcpServer("zcodeagentmcp", "second-only", {
+      type: "stdio",
+      command: "node",
+    });
+    expect(useMcpStore.getState().currentAuthorityKey).toBe("source-settings:second");
+    expect(second.loadMcpFromUserDirectory).toHaveBeenCalled();
+    expect(first.saveMcpToUserDirectory).not.toHaveBeenCalled();
+    expect(second.saveMcpToUserDirectory).toHaveBeenCalledOnce();
+    expect(platform.saveMcpToUserDirectory).not.toHaveBeenCalled();
+  });
+
+  it("OW-P001：Source 未提供目录服务时拒绝回落到本机", async () => {
+    const { platform, directory } = sourceServices();
+    const workspaceDefault = directory();
+    setMcpStoreDirectoryService(workspaceDefault);
+    useMcpStore.setState({
+      isConfigLoaded: true,
+      currentProjectPath: "/same/user",
+      currentAuthorityKey: "source-settings:remote",
+    });
+    await expect(useMcpStore.getState().loadMcpFromUserDirectory()).resolves.toBe(false);
+    expect(platform.loadMcpFromUserDirectory).not.toHaveBeenCalled();
+    expect(workspaceDefault.loadMcpFromUserDirectory).not.toHaveBeenCalled();
   });
 
   it("无 window 环境时，ensureLoadedForWorkspace 也不会抛错", async () => {
@@ -939,6 +1055,7 @@ describe("mcpStore", () => {
   });
 
   it("更新 MCP 配置后会清理旧健康状态并重新标记 changed", async () => {
+    sourceServices();
     const server = {
       source: "zcodeagentmcp" as const,
       scope: "user" as const,

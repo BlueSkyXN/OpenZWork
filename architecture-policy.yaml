@@ -719,6 +719,20 @@ modules:
     layers:
       adapters: .
     owner: desktop
+  # side-pane-full-view：由 architecture:adopt 登记
+  - id: side-pane-full-view
+    roots:
+      - packages/ui/src/side-pane-full-view
+    managed: true
+    requires:
+      - shared
+      - ui
+    publicEntrypoints:
+      - packages/ui/src/side-pane-full-view/index.ts
+      - packages/ui/src/side-pane-full-view/contract.ts
+    layers:
+      ui: .
+    owner: conversation
 
   # system-prompt-contract：由 architecture:adopt 登记
   - id: system-prompt-contract
@@ -771,6 +785,14 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  - id: workflow-mode-user-choice-unmanaged-edit
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/dynamic-workflow-feature.ts]
+    reason: 既有模式归一化文件吸收上游用户选择优先规则及默认模式读取接口；配置来源沿用 fork 本地策略，不恢复官方设置与远端开关模块。
+  - id: side-pane-full-view-shortcut-command-edit
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/shortcutCommands.ts]
+    reason: 已准入的快捷键命令表只追加一条 toggleSidePaneFullView 命令（Side Pane 完整视图，docs/ui/side-pane-full-view.md）；命令表仍是唯一数据源，签名与模块边界不变，接管整个 shared 包不在本次范围内。
   - id: opensource-tool-search-comment-cleanup
     rule: unmanaged-new-file
     paths:

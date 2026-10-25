@@ -1,4 +1,8 @@
-import { createSqliteSessionStore } from "@zcode/adapters/storage";
+import { tmpdir } from "node:os";
+import { mkdtemp, rm } from "node:fs/promises";
+import { join } from "node:path";
+import * as executionAdapters from "@zcode/adapters/exec";
+import { createSqliteSessionStore as createSqliteSessionStoreImpl } from "@zcode/adapters/storage";
 import {
   SESSION_ENTRY_MODEL_SELECTION,
   createProjectId,
@@ -11,8 +15,8 @@ import {
   ModelPropertiesConfig,
   ProviderRegistry,
 } from "@zcode/provider";
-import { describe, expect, it, vi } from "vitest";
-import { createZCodeApp } from "../src/app/create-app.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createZCodeApp as createZCodeAppImpl } from "../src/app/create-app.js";
 import { createApiKeyProviderConfig } from "./provider-config-fixtures.js";
 
 const { createModelAdapterMock } = vi.hoisted(() => ({
@@ -24,13 +28,61 @@ vi.mock("../src/model-factory.js", async (importOriginal) => ({
   createModelAdapter: createModelAdapterMock,
 }));
 
+// 本组验证 Registry/ModelFactory 归属；插件 seed 与恢复另有真实目录回归。
+// 默认缓存由并行 suite 共享，且仓库 cwd 会读入无关技能，不能作为此夹具的环境。
+vi.mock("../src/app/bundled-plugins.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/app/bundled-plugins.js")>()),
+  resolveOfficialPluginRoots: () => [],
+}));
+
+let fixtureRoot: string;
+const appClosers = new Set<() => Promise<void>>();
+const storeClosers = new Set<() => void>();
+beforeEach(async () => {
+  fixtureRoot = await mkdtemp(join(tmpdir(), "provider-registry-app-"));
+});
+afterEach(async () => {
+  for (const close of appClosers) await close();
+  for (const close of storeClosers) close();
+  createModelAdapterMock.mockReset();
+  vi.restoreAllMocks();
+  await rm(fixtureRoot, { recursive: true, force: true });
+});
+
+async function createZCodeApp(options: Parameters<typeof createZCodeAppImpl>[0]) {
+  const app = await createZCodeAppImpl({
+    ...options,
+    env: { ...options.env, ZCODE_STORAGE_DIR: join(fixtureRoot, "storage") },
+  });
+  const close = app.close?.bind(app);
+  let closing: Promise<void> | undefined;
+  const dispose = () =>
+    (closing ??= Promise.resolve(close?.()).finally(() => appClosers.delete(dispose)));
+  app.close = dispose;
+  appClosers.add(dispose);
+  return app;
+}
+
+async function createSqliteSessionStore(
+  options: Parameters<typeof createSqliteSessionStoreImpl>[0],
+) {
+  const store = await createSqliteSessionStoreImpl(options);
+  const close = store.close.bind(store);
+  store.close = () => {
+    close();
+    storeClosers.delete(store.close);
+  };
+  storeClosers.add(store.close);
+  return store;
+}
+
 describe("ZCode App Provider Registry runtime", () => {
   it("拒绝在没有进程 Provider Registry 时构造 App", async () => {
     await expect(
       // @ts-expect-error 回归保护：运行时仍需拒绝未迁移的 JavaScript/嵌入调用方。
       createZCodeApp({
         env: {},
-        runtimeConfig: { mcp: { enabled: false }, workingDirectory: process.cwd() },
+        runtimeConfig: { mcp: { enabled: false }, workingDirectory: fixtureRoot },
         skipUserConfig: true,
       }),
     ).rejects.toThrow("createZCodeApp requires a Provider Registry");
@@ -45,12 +97,13 @@ describe("ZCode App Provider Registry runtime", () => {
       providerRegistry: registry,
       runtimeConfig: {
         mcp: { enabled: false },
-        workingDirectory: process.cwd(),
+        workingDirectory: fixtureRoot,
       },
       sessionStore,
       skipUserConfig: true,
     } as const;
 
+    const execution = vi.spyOn(executionAdapters, "createNodeExecutionAdapter");
     const configured = await createZCodeApp({
       ...common,
       configuredDefaultModelSelection: {
@@ -59,6 +112,10 @@ describe("ZCode App Provider Registry runtime", () => {
         options: { reasoningLevel: "low" },
       },
     });
+    expect(execution).toHaveBeenCalledWith(
+      expect.objectContaining({ bashOutputTempDir: tmpdir() }),
+    );
+    execution.mockRestore();
     expect(configured.getModel()).toBe("provider-a/model-b");
     expect(configured.getThoughtLevel()).toBe("low");
     await configured.close?.();
@@ -83,7 +140,7 @@ describe("ZCode App Provider Registry runtime", () => {
       id: sessionId,
       projectID: createProjectId("provider-registry-project"),
       slug: "provider-registry-resume",
-      directory: process.cwd(),
+      directory: fixtureRoot,
       title: "Registry resume",
       version: "test",
     });
@@ -109,7 +166,7 @@ describe("ZCode App Provider Registry runtime", () => {
       resume: true,
       runtimeConfig: {
         mcp: { enabled: false },
-        workingDirectory: process.cwd(),
+        workingDirectory: fixtureRoot,
       },
       sessionId,
       sessionStore,
@@ -134,7 +191,7 @@ describe("ZCode App Provider Registry runtime", () => {
       id: unavailableSessionId,
       projectID: createProjectId("provider-registry-project"),
       slug: "provider-registry-unavailable-resume",
-      directory: process.cwd(),
+      directory: fixtureRoot,
       title: "Unavailable Registry resume",
       version: "test",
     });
@@ -156,7 +213,7 @@ describe("ZCode App Provider Registry runtime", () => {
       resume: true,
       runtimeConfig: {
         mcp: { enabled: false },
-        workingDirectory: process.cwd(),
+        workingDirectory: fixtureRoot,
       },
       sessionId: unavailableSessionId,
       sessionStore,
@@ -193,7 +250,7 @@ describe("ZCode App Provider Registry runtime", () => {
       providerRegistry: source,
       runtimeConfig: {
         mcp: { enabled: false },
-        workingDirectory: process.cwd(),
+        workingDirectory: fixtureRoot,
         modelSelection: {
           providerId: "provider-a",
           modelId: "model-a",
@@ -256,7 +313,7 @@ describe("ZCode App Provider Registry runtime", () => {
       providerRegistry: registry,
       runtimeConfig: {
         mcp: { enabled: false },
-        workingDirectory: process.cwd(),
+        workingDirectory: fixtureRoot,
         modelSelection: {
           providerId: "provider-a",
           modelId: "model-a",
@@ -291,7 +348,7 @@ describe("ZCode App Provider Registry runtime", () => {
       providerRegistry: registry,
       runtimeConfig: {
         mcp: { enabled: false },
-        workingDirectory: process.cwd(),
+        workingDirectory: fixtureRoot,
         modelSelection: {
           providerId: "provider-a",
           modelId: "model-a",
@@ -323,7 +380,7 @@ describe("ZCode App Provider Registry runtime", () => {
       providerRegistry: registry,
       runtimeConfig: {
         mcp: { enabled: false },
-        workingDirectory: process.cwd(),
+        workingDirectory: fixtureRoot,
         modelSelection: {
           providerId: "provider-a",
           modelId: "model-a",

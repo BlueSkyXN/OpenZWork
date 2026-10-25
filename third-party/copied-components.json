@@ -39,7 +39,6 @@
       "packages/ui/src/components/ai-elements/message.tsx",
       "packages/ui/src/components/ai-elements/node.tsx",
       "packages/ui/src/components/ai-elements/panel.tsx",
-      "packages/ui/src/components/ai-elements/persona.tsx",
       "packages/ui/src/components/ai-elements/plan.tsx",
       "packages/ui/src/components/ai-elements/prompt-input.tsx",
       "packages/ui/src/components/ai-elements/queue.tsx",
@@ -234,11 +233,8 @@
     "sha256": "a37e0e9697144819e1d965176ac4ae5bc3fa02d11e7812036bbcadf6dafe2400",
     "importRevision": null,
     "provenance": "Original import revision is not recorded. This pinned upstream license/source reference is not asserted to be the original import version.",
-    "roots": [
-      "packages/ui/src/lib/builtinSkillI18n.ts",
-      "apps/zcode-cli/packages/superpowers-plugin/LICENSE"
-    ],
-    "scope": "Superpowers-derived skill descriptions and their translations only; unrelated descriptions from other projects in this file are not covered. The former bundled plugin implementation has been removed; only its retained license remains.",
+    "roots": ["packages/ui/src/lib/builtinSkillI18n.ts"],
+    "scope": "Superpowers-derived skill descriptions and their translations only; unrelated descriptions from other projects in this file are not covered. The former bundled plugin implementation has been removed; its license is retained in third-party/upstream.",
     "license": "MIT"
   },
   {

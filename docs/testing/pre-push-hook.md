@@ -6,7 +6,8 @@
 - `pre-push` 会执行 `pnpm run verify:pre-push`。
 - 根 `pnpm test` 现在只跑单测，不再误把桌面端 `packages/desktop/test/e2e` 当成 Vitest 用例。
 - Bugfix：单测脚本里的 E2E exclude glob 必须加引号；否则 shell 会先把 `packages/desktop/test/e2e/**/*.test.ts` 展开成真实文件列表，导致 Vitest 把多余文件当成 filters，同时又被 exclude 排除，最终报 `No test files found` 并阻止 push。
-- `verify:pre-push` 依次执行 lint、架构检查和 push 范围的受影响单测；lint、架构检查、选中测试或脚本自身失败都会阻止 push。
+- `verify:pre-push` 依次执行 `lint`、`db:schema:check`、`test:architecture`、`architecture:check -- --changed` 和固定核心套件 `test:ci:core`；任一步失败都会阻止 push。
+- 核心 CI 另通过 `test:repo-scripts` 串行执行 `scripts/test/*.test.mjs`，覆盖该目录全部现存 Node 测试。ARMS 安装补丁已随依赖退役，对应旧测试已清理。
 
 这样可以在代码推到远端前，先用更快的静态检查拦住明显问题，再把单测问题拦在本地，同时保留 `pnpm test:e2e` 作为桌面端 E2E 的独立入口。
 
@@ -20,7 +21,7 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 开发者准备 Node / pnpm（mise、nvm 或其他方式）
     → Git hook 保留 push ref 信息并清理 Git local env
     → pnpm run verify:pre-push
-    → lint / 架构检查 / 受影响单测
+    → lint → schema → 架构治理测试 → 架构检查 → 固定核心单测
 ```
 
 - 仓库负责声明工具版本和执行检查；个人环境负责让合适的 Node / pnpm 可被 Git 找到。
@@ -28,11 +29,13 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 - GUI Git 客户端若找不到 Node / pnpm，可在个人 `~/.config/husky/init.sh` 中初始化自己的
   版本管理环境，参见 [Husky 官方说明](https://typicode.github.io/husky/how-to.html#node-version-managers-and-guis)。
 - 缺少命令或检查失败仍然阻止 push；hook 不自动安装工具，不静默跳过检查。
-- 本次只解除 hook 对 mise 的依赖，不新增版本检查，也不修改现有开发、CLI/SEA 或 CI 的版本要求。
+- Node / pnpm 版本以 `mise.toml` 和 `package.json` 为准；hook 沿用调用方准备好的环境。
 
 ## Affected Unit Tests
 
-### 目标与入口
+### 独立入口
+
+以下命令供手动选择受影响单测或 lint-staged 调用；默认 `verify:pre-push` 使用前述固定核心套件。
 
 `pnpm test:unit:affected` 使用 Vitest 官方 changed/related 和 Vite 模块依赖分析。薄入口只负责 Git 基线、Push 工作区检查、全量跳过和结果说明；不维护自建依赖图、基线消费者图、来源过滤或 Node 测试选择。
 
@@ -71,11 +74,18 @@ Push 要求已暂存、未暂存、未跟踪改动均为空（忽略 Git 已忽�
 - 输出选中数量与基线；跳过全量时说明官方选中整个套件，列出官方 related 改动文件。dry-run 列精确规格，JSON 包含 runner/project/pool/path，不伪造逐文件关联原因。
 - Git/文件操作异步；保留 hook local env 清理和 lint-staged JSON manifest，Windows 不经 shell 展开文件名。不修改工作区和 index。
 
-全量跳过适用于工作区、任务结束、Push 和显式文件入口。Push 的 lint、架构、脏工作区、基线及实际局部测试失败仍会阻止推送；跳过全量只放行 affected UT 这一项，不代表测试已通过。
+全量跳过适用于 affected 命令的工作区、任务结束、`--scope push` 和显式文件模式。该入口的脏工作区、基线及实际局部测试失败仍会返回非零退出码；默认 pre-push 的固定核心套件始终执行。
 
 ### 回归验收
 
 使用临时 Git 仓库、真实 Vitest 和命令入口验证：局部选择与预览/执行一致、未选择文件不执行、任务跨 commit 与旧 WIP、新增测试、配置与公共 setup 全量跳过、共同依赖全量跳过、真实 git push 在全量跳过后成功推送、无关联成功退出、测试失败、无效基线、首次/已有分支 Push、脏工作区和非 HEAD 推送阻止、多个 ref 与删除 ref、集成合并正常参与选择、lint-staged manifest 和 Git local env 隔离。夹具移除外层 push/基线环境后再注入本场景参数，避免真实仓库 SHA 污染临时仓库。
+
+### 新工作区的 hook 入口
+
+`core.hooksPath=.husky/_` 相对各工作区解析。创建 worktree 后若直接复用或 APFS 克隆依赖，
+需要在新工作区根目录执行 `pnpm exec husky`，生成该工作区的 `.husky/_/pre-push`。
+准备完成后确认入口存在且可执行；仅复制 `node_modules` 不会运行 `prepare`。
+保留相对 hooksPath，避免其他工作区推送时执行错误 checkout 的检查脚本。
 
 ### 时序与真实子进程测试
 
@@ -92,7 +102,5 @@ Push 要求已暂存、未暂存、未跟踪改动均为空（忽略 Git 已忽�
 ```
 
 ### CLI 原生测试环境
-
-
 
 CLI 全量入口通过 pretest 构建根 workspace 的 `@zcode/model-option-map`，确保 SEA 测试从干净 checkout 也能读取运行时资源；不能依赖先前手动构建的 dist。

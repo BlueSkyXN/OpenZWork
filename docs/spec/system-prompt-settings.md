@@ -82,3 +82,5 @@ sequenceDiagram
 多模型、费用、真实第三方 API 不改变本功能语义，使用合成数据剪枝；所有验证无推理费用。手机复用同一编辑组件的窄屏验证，远控传输复用既有服务并由 runtime preference 单测验证配置投影；不宣称真实远端主机已验收。E2E 候选保留在 manual-review/pending，不自动转正或加入 Docker/CI。
 
 CI：shared schema、UI 编辑器、加载状态和设置导航测试纳入 Core 清单；CLI context/builder 与 protocol 的目录查询、创建期快照、冷恢复、fork 场景分别作为独立 CI step，任一步失败均阻止该平台 job。桌面候选仍按人工审阅流程单独运行。
+
+发布回归合同：冻结 Memory 夹具固定以 LF 检出，使 Windows autocrlf 不改变逐字比较基准；不在运行时改写提示词换行。useSettings.update 的第二参数用于并发比较，普通设置传 undefined，系统提示词保存按原样传递 expectedSystemPromptSettings；既有运行偏好 ACK 与广播顺序不变。

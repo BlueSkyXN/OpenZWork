@@ -64,7 +64,7 @@ Server remote
 
 浏览器自身 OAuth
     `-- BrowserOAuthCredentialRepo --------------------------> localStorage
-        pending nonce --------------------------------------> sessionStorage
+        pending login（nonce/provider/回调地址）-------------> localStorage
 ```
 
 - `ICredentialService` 公开 `load/save/delete`；UI 使用 `useCredentials()` 等 hook。泛用存储层不理解 OAuth provider、账号或 workspace，只接受 key/value。[接口](../../packages/services/src/credential/credential.ts#L11)、[hook](../../packages/ui/src/hooks/useCredentials.ts#L8)。
