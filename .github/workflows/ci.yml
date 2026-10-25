@@ -1,9 +1,11 @@
 name: CI
+run-name: ${{ github.ref_type == 'tag' && format('Release {0} / {1}', github.ref_name, github.workflow) || '' }}
 
 on:
   pull_request:
   push:
     branches: [main]
+    tags: ["v*-openzwork"]
   workflow_dispatch:
 
 concurrency:
@@ -65,7 +67,8 @@ jobs:
       - name: Architecture boundaries
         run: pnpm architecture:check
         env:
-          ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          # 新 tag 的 before 为零 SHA，交给检查器按默认分支发现基线。
+          ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || (github.ref_type == 'branch' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || '' }}
 
       - name: Repository script regressions
         run: pnpm test:repo-scripts
