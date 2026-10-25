@@ -1,4 +1,5 @@
 import type { Theme } from "@/useTheme.js";
+import { MetricsDisplaySettings } from "@/conversation-metrics/index.js";
 import { useState } from "react";
 import { resolveTheme } from "@/useTheme.js";
 import { Card, CardContent } from "@/components/ui/card.js";
@@ -155,6 +156,8 @@ export function AppearanceSectionContent({
           </CardContent>
         </Card>
       </div>
+
+      <MetricsDisplaySettings />
 
       <div className="space-y-6">
         <div className="min-w-0 space-y-3">

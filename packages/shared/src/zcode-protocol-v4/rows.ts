@@ -1,3 +1,4 @@
+import { conversationMetricsSchema } from "../conversation-metrics/contract.js";
 import { conversationQuotesSchema } from "../conversationSelection.js";
 import { botGroupInputSourceSchema } from "../bots.js";
 // ConversationRow：行类型自包含。
@@ -88,6 +89,9 @@ export const turnHeaderRowSchema = z.object({
   endedAt: timestampSchema.optional(),
   // 权威工时：排除权限等待/用户输入等待/verifier 等待。
   activeMs: z.number().optional(),
+  metrics: conversationMetricsSchema.optional(),
+  toolCallCount: z.number().int().nonnegative().optional(),
+  toolErrorCount: z.number().int().nonnegative().optional(),
   // 当前 product turn 内主链路 ModelComplete 的 output usage 累计；optional 兼容旧快照。
   outputTokens: z.number().int().nonnegative().optional(),
   // CLI 从运行时事件聚合的真实耗时；optional 兼容旧快照及普通 turn。

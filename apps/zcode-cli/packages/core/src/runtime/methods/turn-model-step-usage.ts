@@ -1,3 +1,6 @@
+import { metricsUsageSchema } from "@zcode/shared/conversation-metrics";
+import { buildModelStepMetrics } from "../metrics/contract.js";
+import { SessionEventType, type PartId, type ModelNetworkStatusEvent } from "@zcode/contracts";
 import { createModelUsageSummaryFromEvents } from "../deps.js";
 import type { MessageId, MessageWithParts, Model, ModelUsage, TraceContext } from "../deps.js";
 import type { MainTurnCacheHitAggregate, RuntimeModelTextResult } from "../types.js";
@@ -11,6 +14,7 @@ import {
 import { recordModelUsageFact } from "./usage-observability.js";
 
 interface RecordMainTurnModelUsageInput {
+  metricsPartId: PartId;
   assistantMessageId: MessageId;
   error?: unknown;
   model: Model;
@@ -27,6 +31,40 @@ export async function recordMainTurnModelUsage(
   state: RegularTurnLoopState,
   input: RecordMainTurnModelUsageInput,
 ): Promise<void> {
+  const mainUsage =
+    querySourceForTask(runtime.config.taskType) === "main_turn" && input.status === "completed"
+      ? metricsUsageSchema.safeParse(input.result?.usage)
+      : null;
+  const modelMetrics = {
+    ...(mainUsage?.success ? { mainUsage: mainUsage.data } : {}),
+    messageId: String(input.assistantMessageId),
+    ...buildModelStepMetrics(
+      state.events
+        .slice(input.networkEventStartIndex)
+        .filter((event) => event.type === SessionEventType.ModelNetworkStatus)
+        .map((event) => event.payload as ModelNetworkStatusEvent),
+      querySourceForTask(runtime.config.taskType),
+      input.status,
+      input.result?.usage,
+    ),
+  };
+  await runtime.persistPart(
+    {
+      id: input.metricsPartId,
+      sessionID: runtime.sessionId,
+      messageID: input.assistantMessageId,
+      type: "step-start",
+      modelMetrics,
+    },
+    input.modelTraceContext,
+  );
+  const metricsEvent = runtime.createEvent(
+    SessionEventType.ModelMetricsSettled,
+    modelMetrics,
+    input.modelTraceContext,
+  );
+  await runtime.appendEvent(metricsEvent, input.modelTraceContext);
+  state.events.push(metricsEvent);
   // 失败请求的已报告消耗在恢复前结算，成功路径仍使用原有计数。
   if (!input.result) {
     state.tokenCount +=

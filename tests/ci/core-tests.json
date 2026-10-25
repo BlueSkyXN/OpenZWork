@@ -2,6 +2,16 @@
   "version": 1,
   "suites": [
     {
+      "capability": "native-conversation-metrics",
+      "files": [
+        "packages/shared/src/conversation-metrics/contract.test.ts",
+        "packages/ui/src/conversation-metrics/contract.test.ts",
+        "packages/ui/test/conversationMetricsPreferences.test.ts",
+        "packages/ui/test/conversationMetrics.test.ts",
+        "packages/ui/test/useAppUsageStats.test.ts"
+      ]
+    },
+    {
       "capability": "rpc",
       "files": [
         "packages/rpc/test/buffer.test.ts",

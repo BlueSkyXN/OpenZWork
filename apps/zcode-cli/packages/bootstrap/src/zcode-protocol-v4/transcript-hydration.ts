@@ -1,3 +1,4 @@
+import { modelStepMetricsSchema } from "@zcode/shared/conversation-metrics";
 // Transcript → SessionEvent 合成（「reduce(transcript) ≡ reduce(events)」）。
 //
 // 动机：v4 投影是事件溯源，但部分历史突变（纯对话 fork 复制 message 不复制 event、
@@ -73,6 +74,7 @@ interface AssistantSynthesisState {
 }
 
 interface TranscriptFootprint {
+  metricsMessageIds: string[];
   userTurnCount: number;
   assistantTexts: string[];
   reasoningTexts: string[];
@@ -1226,6 +1228,17 @@ function synthesizeAssistantParts(
   let toolCallCount = 0;
   for (const part of message.parts) {
     switch (part.type) {
+      case "step-start": {
+        const metrics = modelStepMetricsSchema.safeParse(part.modelMetrics);
+        if (metrics.success)
+          push(
+            SessionEventType.ModelMetricsSettled,
+            { ...metrics.data, messageId: String(message.info.id) },
+            turnId,
+            messageEndAtMs(message),
+          );
+        break;
+      }
       case "text":
         synthesizeTextPart(
           part,
@@ -2010,6 +2023,7 @@ function transcriptFootprint(
     goalVerificationKeys.add(fact.key);
   }
   const footprint: TranscriptFootprint = {
+    metricsMessageIds: [],
     userTurnCount: 0,
     assistantTexts: [],
     reasoningTexts: [],
@@ -2043,6 +2057,8 @@ function transcriptFootprint(
       continue;
     }
     for (const part of message.parts) {
+      if (part.type === "step-start" && modelStepMetricsSchema.safeParse(part.modelMetrics).success)
+        footprint.metricsMessageIds.push(String(message.info.id));
       if (part.type === "text" && part.ignored !== true && part.text.length > 0) {
         footprint.assistantTexts.push(part.text);
         continue;
@@ -2101,6 +2117,11 @@ function projectionFootprint(
   }
   const rows = projection.getSnapshot().rows.window;
   return {
+    metricsMessageIds: events.flatMap((event) => {
+      if (event.type !== SessionEventType.ModelMetricsSettled) return [];
+      const metrics = modelStepMetricsSchema.safeParse(event.payload);
+      return metrics.success ? [metrics.data.messageId] : [];
+    }),
     userTurnCount: rows.filter((row) => row.kind === "userInput").length,
     assistantTexts: rows
       .filter((row) => row.kind === "assistantText")
@@ -2141,6 +2162,7 @@ function valuesCover(expected: readonly string[], actual: readonly string[]): bo
 
 function footprintCovered(expected: TranscriptFootprint, actual: TranscriptFootprint): boolean {
   return (
+    valuesCover(expected.metricsMessageIds, actual.metricsMessageIds) &&
     actual.userTurnCount >= expected.userTurnCount &&
     actual.compactMarkerCount >= expected.compactMarkerCount &&
     actual.subagentCount >= expected.subagentCount &&
@@ -2167,6 +2189,7 @@ export function eventsCoverTranscript(
 ): boolean {
   const expected = transcriptFootprint(messages, options.goalVerificationEntries ?? []);
   if (
+    expected.metricsMessageIds.length === 0 &&
     expected.userTurnCount === 0 &&
     expected.assistantTexts.length === 0 &&
     expected.reasoningTexts.length === 0 &&

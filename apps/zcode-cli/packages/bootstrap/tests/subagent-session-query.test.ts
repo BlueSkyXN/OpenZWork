@@ -369,3 +369,50 @@ describe("subagent session query", () => {
     expect(second.nextCursor).toBeUndefined();
   });
 });
+
+it("NCM06 直接子任务独立读取摘要、重复引用去重、旧记录保持未知", () => {
+  const child = toolMessage({ id: "child-message" });
+  child.parts = [
+    {
+      id: "step" as never,
+      sessionID: "child" as never,
+      messageID: "child-message" as never,
+      type: "step-start",
+      modelMetrics: {
+        messageId: "child-message",
+        requestCount: 1,
+        failureCount: 0,
+        unknownUsageCount: 0,
+        usage: { inputTokens: 100, outputTokens: 10 },
+      },
+    },
+  ];
+  const input = {
+    includeMetrics: true,
+    revision: 1,
+    parentSession: session("parent", "interactive"),
+    messages: [
+      toolMessage({ id: "p1", childSessionId: "child" }),
+      toolMessage({ id: "p2", childSessionId: "child" }),
+      toolMessage({ id: "p3", childSessionId: "old" }),
+    ],
+    childSessionsById: new Map([
+      ["child", session("child")],
+      ["old", session("old")],
+    ]),
+    childMessagesById: new Map([["child", [child]]]),
+    childProjectionsById: new Map(),
+  };
+  const result = projectSessionSubagents(input);
+  expect(
+    projectSessionSubagents({ ...input, includeMetrics: false }).ended.every(
+      (entry) => !("metrics" in entry),
+    ),
+  ).toBe(true);
+  expect(result.ended.filter((entry) => entry.childSessionId === "child")).toHaveLength(1);
+  expect(result.ended.find((entry) => entry.childSessionId === "child")?.metrics?.usage).toEqual({
+    inputTokens: 100,
+    outputTokens: 10,
+  });
+  expect(result.ended.find((entry) => entry.childSessionId === "old")?.metrics).toBeUndefined();
+});

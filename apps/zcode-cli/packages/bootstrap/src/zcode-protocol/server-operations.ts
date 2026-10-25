@@ -1,3 +1,4 @@
+import { mergeMetrics, type ConversationMetrics } from "@zcode/shared/conversation-metrics";
 import { isAuxiliarySessionKind, isReadonlyAgentSessionKind } from "@zcode/shared";
 /* eslint-disable max-lines -- ZCode Protocol 的 session/workspace 方法共享同一个 server context 与 snapshot helpers，迁移期先集中维护。 */
 import type { SystemPromptSettings } from "@zcode/shared";
@@ -1817,6 +1818,7 @@ export async function listSessionSubagents(
     ? await liveParent.app.runtime.getProjection().catch(() => undefined)
     : undefined;
   const projection = projectSessionSubagents({
+    includeMetrics: params.includeMetrics,
     revision: liveParent?.stateRevision ?? parentSession.time.updated,
     parentSession,
     messages,
@@ -1834,11 +1836,30 @@ export async function listSessionSubagents(
     ...(parentProjection ? { parentProjection } : {}),
     ...(parentEvents.length > 0 ? { parentEvents } : {}),
   });
+  const uniqueChildren = new Map(
+    [...projection.running, ...projection.ended].map((child) => [child.childSessionId, child]),
+  );
+  let childMetrics: ConversationMetrics | undefined;
+  let knownCount = 0;
+  for (const child of uniqueChildren.values()) {
+    if (!child.metrics) continue;
+    knownCount += 1;
+    childMetrics = mergeMetrics(childMetrics, child.metrics);
+  }
   const ended = paginateEndedSubagents(projection.ended, {
     cursor: params.endedCursor,
     limit: params.endedLimit,
   });
   return {
+    ...(params.includeMetrics
+      ? {
+          usageSummary: {
+            totalCount: uniqueChildren.size,
+            knownCount,
+            ...(childMetrics ? { metrics: childMetrics } : {}),
+          },
+        }
+      : {}),
     revision: projection.revision,
     childSessionIds: persistedChildren.map((entry) => entry.childSessionId),
     running: projection.running,

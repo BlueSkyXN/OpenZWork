@@ -3265,6 +3265,7 @@ export function createZCodeAgentService(
         zcodeProtocolMethods.sessionSubagents,
         {
           sessionId: params.sessionId,
+          ...(params.includeMetrics ? { includeMetrics: true } : {}),
           endedCursor: params.endedCursor,
           endedLimit: params.endedLimit ?? 20,
         },

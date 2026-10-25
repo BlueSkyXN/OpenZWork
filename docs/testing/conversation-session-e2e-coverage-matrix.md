@@ -1,5 +1,21 @@
 # Conversation Session E2E Coverage Matrix
 
+## 原生会话指标（NCM）
+
+NCM08–11 已实施。macOS `desktop-e2e-20261025-141253-955` 1/1 passed：真实外观设置入口、字段选择/总开关/全不选/恢复默认、两产品窗口同存储域同步、展开后从另一窗口关闭、冷重启后选择保留，以及 390px 仅选两项/20px UI 字号。更多与历史明细仍使用真实结算快照。复用同一 case-local synthetic provider，不新增模型请求场景。
+
+偏好、布局、交互及共享指标：核心入口定向 5 文件 / 14 passed；核心发现规则 7/7 passed。独立存储域隔离由 store UT 与 Electron 隔离 session 探针证明，真实手机/Web attachment 尚未验收。1200/390px × 中英文 × 深浅主题的主栏展开/收起截图保留；大字号额外校验指标栏及更多按钮位于视口内，等待桌面侧栏既有 resize-idle 自动收起完成。候选仍为 manual-review/pending，未转正或加入 Docker preset。
+
+| Case | 已有证据 | 状态 |
+| --- | --- | --- |
+| NCM01/03/07 | macOS case-local replay；本轮、缓存、更多/历史入口，重启后明细与累计一致；1200/390px、中英文、深浅主题 | 本地 1/1 passed，manual-review/pending |
+| NCM02/03 | request + attempt 去重、失败消耗、SQLite 重开、V4 重放、原子拒收、迟到终态、工具错误计数 | 定向 UT passed |
+| NCM04/05 | 组件会话 scope 透传/切换，App Usage authority 迟到拒收、本机日桶跨时区 | UI/hook UT passed；真实跨 Host 待验收 |
+| NCM06 | 直接子任务引用去重、未知值与 includeMetrics opt-in 保持旧响应 | bootstrap UT passed |
+
+最终 E2E：`desktop-e2e-20261025-122440-760`，19.1s，纯本地 synthetic provider。候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-native-metrics.test.ts`。fixture contract 通过；未正式转正/未 Docker 准入。390px 为桌面视口，不作为手机远控实机证据。更早的初始化失败保留在本机记录，最终结果不掩盖失败历史。
+
+
 ## 项目与任务草稿生命周期（PD，2026-10-16）
 
 PD01–PD12 定义及分层验证见 [统一生命周期规格](../ui/project-task-draft-lifecycle.md#本轮验证记录2026-10-16)。产品语义 accepted；自动化保持 manual-review/pending，未自动转正或加入 CI。

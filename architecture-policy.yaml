@@ -771,6 +771,42 @@ modules:
       ui: .
     owner: settings
 
+  - id: conversation-metrics
+    roots: [packages/shared/src/conversation-metrics]
+    managed: true
+    requires: []
+    publicEntrypoints:
+      [
+        packages/shared/src/conversation-metrics/index.ts,
+        packages/shared/src/conversation-metrics/contract.ts,
+      ]
+    layers: { domain: . }
+    owner: conversation
+  - id: runtime-metrics
+    roots: [apps/zcode-cli/packages/core/src/runtime/metrics]
+    managed: true
+    requires: [zcode-cli, conversation-metrics]
+    publicEntrypoints:
+      [
+        apps/zcode-cli/packages/core/src/runtime/metrics/index.ts,
+        apps/zcode-cli/packages/core/src/runtime/metrics/contract.ts,
+      ]
+    layers: { app: . }
+    owner: conversation
+  - id: conversation-metrics-ui
+    roots:
+      - packages/ui/src/conversation-metrics
+      - packages/ui/src/store/conversationMetricsPreferencesStore.ts
+    managed: true
+    requires: [ui, shared, conversation-metrics]
+    publicEntrypoints:
+      [
+        packages/ui/src/conversation-metrics/index.ts,
+        packages/ui/src/conversation-metrics/contract.ts,
+      ]
+    layers: { ui: . }
+    owner: conversation
+
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。
   # 基于领先 staging 很多的分支开工时，merge-base 之前的"新增"文件不应被追溯。

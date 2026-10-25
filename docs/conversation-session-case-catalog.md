@@ -1,5 +1,10 @@
 # Conversation Session Case Catalog
 
+## 原生会话指标（NCM）
+
+NCM01–NCM11 为 accepted，范围、设置、动作、断言与剪枝见 [指标规格](spec/native-conversation-metrics.md#验收与剪枝)。NCM08–11 增加设置选择、偏好恢复/同域同步、内容宽度折叠与展开后关闭。固定顺序与客户端独立偏好；排序、跨设备同步与今日/子任务常驻为 pruned。交互候选保持 manual-review/pending。
+
+
 ## 项目与任务草稿生命周期（2026-10-16）
 
 PD01–PD12 的前置、动作、断言与证据要求见 [统一生命周期规格](ui/project-task-draft-lifecycle.md)。产品语义 accepted；自动化保持 manual-review/pending，运行证据见 coverage matrix 与规格的验证记录，不代表已转正或发布。覆盖项目/任务新建、同目录项目隔离、接纳后默认配置、目录复用、迟到回执、手机独立恢复及旧数据认领。

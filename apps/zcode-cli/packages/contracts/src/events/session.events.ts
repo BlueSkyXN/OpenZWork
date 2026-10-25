@@ -128,6 +128,7 @@ export const SessionEventType = {
   ModelAnomalyWarning: "model_anomaly_warning",
   NetworkRequestStatus: "network_request_status",
   ModelComplete: "model_complete",
+  ModelMetricsSettled: "model_metrics_settled",
   ModelError: "model_error",
   ToolCallScheduled: "tool_call_scheduled",
   ToolCallStarted: "tool_call_started",
@@ -794,6 +795,9 @@ export interface NetworkRequestStatusPayload {
   egress?: HttpClientEgressInfo;
 }
 
+export type ModelMetricsSettledPayload =
+  import("@zcode/shared/conversation-metrics").ModelStepMetrics;
+
 export interface ModelCompletePayload {
   cacheHit?: {
     inputTokens: number;
@@ -1285,6 +1289,7 @@ export type SessionEventPayload =
   | ModelAnomalyWarningPayload
   | NetworkRequestStatusPayload
   | ModelCompletePayload
+  | ModelMetricsSettledPayload
   | TargetCompletionVerificationPayload
   | ModelErrorPayload
   | ToolCallScheduledPayload

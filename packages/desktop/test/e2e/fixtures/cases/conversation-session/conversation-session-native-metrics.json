@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-native-metrics",
+  "spec": "./test/e2e/conversation-session/conversation-session-native-metrics.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/common.json",
+    "./test/e2e/fixtures/upstream/conversation-session/conversation-session-native-metrics.json"
+  ],
+  "fileFixtures": [],
+  "requests": [
+    {
+      "id": "native-metrics-first",
+      "description": "NCM 原生请求指标",
+      "kind": "main",
+      "timingPolicy": "controlled-stream",
+      "source": "synthetic",
+      "syntheticReason": "固定 usage 与受控正文时序验证原生协议、持久化和 UI 链路，不调用真实模型。"
+    }
+  ]
+}
