@@ -37,7 +37,7 @@ Desktop 的 `webRemoteControlRelayAuthProvider` 与 Web adapter 使用同一证�
 HMAC-SHA256(passHash, nonce + "|" + role + "|" + deviceSid)
 ```
 
-连接方式在远控弹窗中选择。默认直连，通过桌面提供的 HTTP 页面接入；自建模式配置 WS 与手机页面；官方模式显式使用 V1 preset。完整配置、配对和 nginx 转发见 [V1 连接方式](v1-connection-modes.md)。
+连接方式在设置 → 远程控制的手机连接卡片中选择。Bot Channels 管理在同一分区内打开子页，使用面包屑返回；离开设置保留运行连接，只有显式停止才释放。默认直连，通过桌面提供的 HTTP 页面接入；自建模式配置 WS 与手机页面；官方模式显式使用 V1 preset。完整配置、配对和 nginx 转发见 [V1 连接方式](v1-connection-modes.md)。
 
 旧 `ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL` 和 `ZCODE_WEB_REMOTE_CONTROL_URL` 作为尚未保存连接配置时的自建默认值。`pnpm dev:web-remote-control` 保留自建 relay 联调入口；普通桌面开发会构建配套手机页面。
 

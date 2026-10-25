@@ -24,6 +24,9 @@ describe("settingsPageConfig", () => {
   it("only exposes remote device management on desktop", () => {
     expect(isSettingsSectionAvailable("remoteDevices", true)).toBe(true);
     expect(isSettingsSectionAvailable("remoteDevices", false)).toBe(false);
+    expect(isSettingsSectionAvailable("remoteControl", true)).toBe(true);
+    expect(isSettingsSectionAvailable("remoteControl", false)).toBe(false);
+    expect(isSettingsSectionAvailable("remoteControl", true, false)).toBe(false);
     expect(isSettingsSectionAvailable("general", false)).toBe(true);
   });
   it("按设置页分组与顺序展示公开分区", async () => {
@@ -43,6 +46,7 @@ describe("settingsPageConfig", () => {
           "modelProvider",
           "browser",
           "remoteDevices",
+          "remoteControl",
           "shortcuts",
         ],
       },
@@ -65,6 +69,7 @@ describe("settingsPageConfig", () => {
       "hooks",
       "browser",
       "remoteDevices",
+      "remoteControl",
       "shortcuts",
       "usage",
       "archives",

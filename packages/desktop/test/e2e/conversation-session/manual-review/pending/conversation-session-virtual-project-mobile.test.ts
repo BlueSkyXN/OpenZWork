@@ -1,3 +1,7 @@
+import {
+  openRemoteControlSettings,
+  leaveRemoteControlSettings,
+} from "#e2e/helpers/web-remote-control-settings";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { openMobilePairingPage } from "../../../helpers/mobile-pairing.js";
@@ -172,15 +176,13 @@ describe("虚拟项目手机 shared-host 导航", () => {
           await fetch(`http://127.0.0.1:${port}`, { method: "POST", body: text });
         };
       }, address.port);
-      await $(
-        'button[aria-label="移动端远程控制"], button[aria-label="Mobile remote control"]',
-      ).click();
+      await openRemoteControlSettings({ start: true });
       await browser.waitUntil(
         () =>
           browser.execute(() => {
             const button = Array.from(
               document.querySelectorAll<HTMLButtonElement>(
-                '[data-testid="web-remote-control-dialog-scroll"] button',
+                '[data-testid="remote-control-settings"] button',
               ),
             ).find(
               (node) => /^(复制链接|Copy link)$/.test(node.innerText.trim()) && !node.disabled,
@@ -526,7 +528,7 @@ describe("虚拟项目手机 shared-host 导航", () => {
       });
       await page.getByRole("button", { name: /返回任务首页|Back to task home/ }).tap();
       enterStage("project draft");
-      await browser.keys("Escape");
+      await leaveRemoteControlSettings();
       await mobileProject.getByTestId("virtual-project-create-task").click();
       const readDraft = () =>
         page.evaluate(() => {

@@ -2062,8 +2062,8 @@ nodes:
     codeSeeds:
       - symbol: WebRemoteControlConnectionForm
         file: packages/ui/src/web-remote-control/WebRemoteControlConnectionForm.tsx
-      - symbol: WebRemoteControlDialog
-        file: packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx
+      - symbol: RemoteControlSettingsSection
+        file: packages/ui/src/web-remote-control/RemoteControlSettingsSection.tsx
   - id: state.task-list-row-projection
     kind: state-owner
     label: Task list row and membership projection

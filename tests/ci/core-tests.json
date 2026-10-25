@@ -338,7 +338,10 @@
         "packages/ui/test/pptxElementReference.test.ts",
         "packages/desktop/test/webRemoteControlDirectGateway.test.ts",
         "packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts",
-        "packages/ui/test/webRemoteControlDialogLayout.test.ts",
+        "packages/ui/test/remoteControlSettingsSection.test.ts",
+        "packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts",
+        "packages/ui/test/settingsPageIntegratedTerminalShell.test.ts",
+        "packages/ui/test/settingsPageConfig.test.ts",
         "packages/ui/test/composerDraftStore.test.ts",
         "packages/ui/test/v4AttachmentUploadTransaction.test.ts",
         "packages/web/test/webRemoteControlScanPage.test.ts"

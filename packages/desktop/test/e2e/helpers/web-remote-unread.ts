@@ -1,3 +1,7 @@
+import {
+  openRemoteControlSettings,
+  leaveRemoteControlSettings,
+} from "#e2e/helpers/web-remote-control-settings";
 import { once } from "node:events";
 import { createServer } from "node:http";
 import type { BrowserContext, Page } from "playwright-core";
@@ -137,15 +141,13 @@ export async function obtainUnreadPairingUrl(): Promise<string> {
         await fetch(`http://127.0.0.1:${port}`, { method: "POST", body: url });
       };
     }, address.port);
-    await $(
-      'button[aria-label="移动端远程控制"], button[aria-label="Mobile remote control"]',
-    ).click();
+    await openRemoteControlSettings({ start: true });
     await browser.waitUntil(
       () =>
         browser.execute(() => {
           const copy = Array.from(
             document.querySelectorAll<HTMLButtonElement>(
-              '[data-testid="web-remote-control-dialog-scroll"] button',
+              '[data-testid="remote-control-settings"] button',
             ),
           ).find(
             (button) => /^(复制链接|Copy link)$/u.test(button.innerText.trim()) && !button.disabled,
@@ -158,7 +160,7 @@ export async function obtainUnreadPairingUrl(): Promise<string> {
     const url = await pairing;
     if (new URL(url).origin !== "http://127.0.0.1:5173")
       throw new Error("MRO03 requires loopback Web frontend");
-    await browser.keys("Escape");
+    await leaveRemoteControlSettings();
     return url;
   } finally {
     await browser.execute(() => {

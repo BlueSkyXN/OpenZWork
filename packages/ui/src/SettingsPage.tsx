@@ -74,6 +74,8 @@ import { WindowsTopLeftLogo } from "@/WindowsTopLeftLogo.js";
 
 import { DesktopWindowControls } from "@/DesktopWindowControls.js";
 import { WorkspaceHelpMenuButton } from "@/WorkspaceHelpMenuButton.js";
+import { RemoteControlSettingsSection } from "@/web-remote-control/index.js";
+import { useWebRemoteControlFeatureEnabled } from "@/WebRemoteControlFeatureProvider.js";
 import { WorkspaceSidebarFooter } from "@/WorkspaceSidebarFooter.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
@@ -176,12 +178,15 @@ export function SettingsPage({
   const isLinuxDesktop = Boolean(isDesktop && !isMacDesktop && !isWindowsDesktop);
   const usesInlineWindowControls = Boolean(isWindowsDesktop || isLinuxDesktop);
   const platform = usePlatform();
+  const remoteControlEnabled = useWebRemoteControlFeatureEnabled();
   const remoteWorkspaceController = useOptionalRemoteWorkspaceController();
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(() => {
     const initialSection = consumeInitialSettingsSection("general");
     const visibleInitialSection = resolveSettingsSectionForPlatform(
       initialSection,
-      settingsSections,
+      settingsSections.filter(({ id }) =>
+        isSettingsSectionAvailable(id, Boolean(isDesktop), remoteControlEnabled),
+      ),
     );
     // 设置页首次挂载时也要写入当前落点。否则用户直接打开再退出，
     // 下一次仍可能因为没有偏好记录而回到旧默认入口。
@@ -269,10 +274,10 @@ export function SettingsPage({
     [activeSection],
   );
   useEffect(() => {
-    if (!isDesktop && activeSection === "remoteDevices") {
+    if (!isSettingsSectionAvailable(activeSection, Boolean(isDesktop), remoteControlEnabled)) {
       setActiveSettingsSection("general");
     }
-  }, [activeSection, isDesktop, setActiveSettingsSection]);
+  }, [activeSection, isDesktop, remoteControlEnabled, setActiveSettingsSection]);
   const handleOpenModelProviderSettings = useCallback(() => {
     setActiveSettingsSection("modelProvider");
   }, [setActiveSettingsSection]);
@@ -850,7 +855,13 @@ export function SettingsPage({
                           {groupLabel}
                         </div>
                         {group.sections
-                          .filter(({ id }) => isSettingsSectionAvailable(id, Boolean(isDesktop)))
+                          .filter(({ id }) =>
+                            isSettingsSectionAvailable(
+                              id,
+                              Boolean(isDesktop),
+                              remoteControlEnabled,
+                            ),
+                          )
                           .map(({ id, icon: Icon, titleId }) => {
                             const isActive = activeSection === id;
                             const label = intl.formatMessage({ id: titleId });
@@ -1111,6 +1122,18 @@ export function SettingsPage({
                               }
                               onOpenOnboardingDialog={() => requestOnboardingDialog()}
                             />
+                          ) : activeSection === "remoteControl" ? (
+                            isDesktop && remoteControlEnabled ? (
+                              <ServiceProvider services={localHostServices}>
+                                <RemoteControlSettingsSection
+                                  key={`remote-control:${settingsSectionNavigationVersion}`}
+                                  workspacePath={activeWorkspacePath ?? captionWorkspacePath ?? ""}
+                                  workspaceIdentity={activeWorkspaceIdentity}
+                                  remoteSessionId={activeWorkspaceTab?.remoteSessionId}
+                                  remoteTarget={activeWorkspaceTab?.remoteTarget}
+                                />
+                              </ServiceProvider>
+                            ) : null
                           ) : activeSection === "remoteDevices" ? (
                             sharedSettings && isDesktop && sourceManagement ? (
                               <SourceServerManagementPanel

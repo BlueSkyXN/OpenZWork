@@ -1660,6 +1660,7 @@ const enUS: Record<string, string> = {
   "titleBar.menu.view.zoomIn": "Zoom in",
   "titleBar.menu.view.zoomOut": "Zoom out",
   "titleBar.menu.help.about": "About ZCode",
+  "sidebar.profile.localUser": "Local user",
   "sidebar.menu.community": "Community",
   "titleBar.menu.help.exportLogs": "Export logs",
   "titleBar.menu.help.toggleDevTools": "Toggle developer tools",
@@ -1970,13 +1971,6 @@ const enUS: Record<string, string> = {
   "remote.phaseSub.handshakeDone": "systemd --user · port {port}",
   "remote.phaseSub.readyOnline": "Device online; workspace history ready",
   "remote.sourceServerInstallCancelled": "Installation cancelled. You can retry when ready.",
-  "webRemoteControl.trigger": "Mobile remote control",
-  "webRemoteControl.triggerStatus.idle": "Remote control is off",
-  "webRemoteControl.triggerStatus.starting": "Remote control is starting",
-  "webRemoteControl.triggerStatus.waiting": "Waiting for phone",
-  "webRemoteControl.triggerStatus.connecting": "Connecting phone",
-  "webRemoteControl.triggerStatus.connected": "Phone connected",
-  "webRemoteControl.triggerStatus.error": "Remote control failed",
   "webRemoteControl.authRequired.title": "Sign in required",
   "webRemoteControl.authRequired.description":
     "Sign in to control this computer from your phone. Use the same account on both devices.",
@@ -1994,11 +1988,9 @@ const enUS: Record<string, string> = {
     "Leave the phone URL empty to use this computer’s IP and port. The phone must reach this computer; use HTTPS for a public reverse proxy.",
   "webRemoteControl.connection.officialHelp":
     "Pair through zcode.z.ai using V1. No sign-in required.",
+  "webRemoteControl.connection.workspaceRequired": "Open a workspace to start a phone connection.",
   "webRemoteControl.connection.start": "Start remote control",
   "webRemoteControl.connection.ready": "Start to show the pairing QR code",
-  "webRemoteControl.title": "Mobile remote control",
-  "webRemoteControl.description":
-    "Scan the QR code or open the link on your phone to control this workspace.",
   "webRemoteControl.statusLabel": "Session status",
   "webRemoteControl.status.idle": "Idle",
   "webRemoteControl.status.starting": "Starting",
@@ -2015,8 +2007,9 @@ const enUS: Record<string, string> = {
   "webRemoteControl.statusDetail.error": "Could not start mobile remote control.",
   "webRemoteControl.generating": "Preparing QR code...",
   "webRemoteControl.qrAlt": "Web remote control QR code",
-  "webRemoteControl.mobileQr.title": "Scan from phone",
-  "webRemoteControl.mobileQr.description": "Use your phone camera to open this workspace remotely.",
+  "webRemoteControl.mobileQr.title": "Phone connection",
+  "webRemoteControl.mobileQr.description":
+    "View tasks and continue conversations in your phone browser.",
   "webRemoteControl.statusTag.phone": "Phone",
   "webRemoteControl.statusTag.ready": "Ready",
   "webRemoteControl.botChannel.title": "Use a bot channel",
@@ -2063,8 +2056,8 @@ const enUS: Record<string, string> = {
   "webRemoteControl.copyLink": "Copy link",
   "webRemoteControl.copyLink.copied": "Remote control link copied",
   "webRemoteControl.copyLinkFailed": "Could not copy remote control link: {error}",
-  "webRemoteControl.refreshQr": "Refresh QR",
-  "webRemoteControl.refreshQr.confirmTitle": "Refresh QR code?",
+  "webRemoteControl.refreshQr": "Pair again",
+  "webRemoteControl.refreshQr.confirmTitle": "Pair again?",
   "webRemoteControl.refreshQr.confirmDescription":
     "Refreshing will invalidate any remote control links that were copied or scanned before. Connected phones will need to scan the new QR code.",
   "webRemoteControl.refreshQr.success": "Remote control QR refreshed",
@@ -2133,6 +2126,7 @@ const enUS: Record<string, string> = {
   "settings.source.versionDetails":
     "Current v{current} · Minimum compatible v{minimum} · Remote tasks pause briefly during the update",
   "settings.source.managementTitle": "Remote connections",
+  "settings.remoteControlTitle": "Remote control",
   "settings.remoteDevicesTitle": "Remote devices",
   "settings.remoteDevicesDescription":
     "Manage your servers, WSL distributions, and Docker containers.",

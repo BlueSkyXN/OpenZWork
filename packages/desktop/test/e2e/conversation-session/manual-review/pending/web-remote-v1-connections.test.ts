@@ -1,3 +1,7 @@
+import {
+  openRemoteControlSettings,
+  leaveRemoteControlSettings,
+} from "#e2e/helpers/web-remote-control-settings";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import { mkdir, writeFile, readFile } from "node:fs/promises";
@@ -34,7 +38,7 @@ async function clickButton(pattern: string) {
         (text) =>
           Array.from(
             document.querySelectorAll<HTMLButtonElement>(
-              '[data-testid="web-remote-control-dialog-scroll"] button',
+              '[data-testid="remote-control-settings"] button',
             ),
           ).some((item) => new RegExp(text).test(item.innerText.trim()) && !item.disabled),
         pattern,
@@ -44,24 +48,16 @@ async function clickButton(pattern: string) {
   await browser.execute((text) => {
     const button = Array.from(
       document.querySelectorAll<HTMLButtonElement>(
-        '[data-testid="web-remote-control-dialog-scroll"] button',
+        '[data-testid="remote-control-settings"] button',
       ),
     ).find((item) => new RegExp(text).test(item.innerText.trim()));
     if (!button || button.disabled) throw new Error("Remote control action unavailable");
     button.click();
   }, pattern);
 }
-async function openDialog() {
+async function openSettings() {
   await skipOccupationOnboardingIfPresent();
-  if (await $('[data-testid="web-remote-control-dialog-scroll"]').isExisting()) {
-    await $('[data-testid="web-remote-start"]').waitForEnabled({ timeout: 10_000 });
-    return;
-  }
-  const trigger = $(
-    'button[aria-label="移动端远程控制"], button[aria-label="Mobile remote control"]',
-  );
-  await trigger.waitForDisplayed({ timeout: 60_000 });
-  await trigger.click();
+  await openRemoteControlSettings();
   await $('[data-testid="web-remote-start"]').waitForEnabled({ timeout: 10_000 });
 }
 async function pairingLink(): Promise<string> {
@@ -143,8 +139,18 @@ describe("E2E_V1_CONNECTIONS", () => {
   });
   it("V1-01/02/04/07: HTTP entry, pairing, task draft and stop", async function () {
     this.timeout(180_000);
-    await openDialog();
+    await openSettings();
     expect((await status()).status).toBe("idle");
+    expect(
+      await $(
+        'button[aria-label="移动端远程控制"], button[aria-label="Mobile remote control"]',
+      ).isExisting(),
+    ).toBe(false);
+    await $('[data-testid="web-remote-control-open-bots"]').click();
+    await $('[data-testid="bots-settings"]').waitForDisplayed();
+    expect(await $('[role="dialog"]').isExisting()).toBe(false);
+    await $('[data-testid="settings-breadcrumb-section"]').click();
+    await $('[data-testid="remote-control-settings"]').waitForDisplayed();
     await $('[data-testid="web-remote-mode-official"]').click();
     expect((await status()).status).toBe("idle");
     await $('[data-testid="web-remote-mode-self-hosted"]').click();
@@ -154,6 +160,9 @@ describe("E2E_V1_CONNECTIONS", () => {
     await $('[data-testid="web-remote-start"]').click();
     await browser.waitUntil(async () => (await status()).status === "running", { timeout: 35_000 });
     const pairing = new URL(await pairingLink());
+    await leaveRemoteControlSettings();
+    expect((await status()).status).toBe("running");
+    await openRemoteControlSettings();
     const loopbackUrl = pairing.origin;
     pairing.hostname = "openzwork.test";
     const context = await mobile!.newContext({
@@ -234,7 +243,7 @@ describe("E2E_V1_CONNECTIONS", () => {
       assets.closeAllConnections();
       await new Promise<void>((done) => assets.close(() => done()));
     });
-    await openDialog();
+    await openSettings();
     await $('[data-testid="web-remote-mode-self-hosted"]').click();
     await $('[data-testid="web-remote-relay-url"]').setValue(relay.wsUrl);
     await $('[data-testid="web-remote-page-url"]').setValue(
@@ -268,8 +277,7 @@ describe("E2E_V1_CONNECTIONS", () => {
       return;
     }
     this.timeout(180_000);
-    await openDialog();
-    await openDialog();
+    await openSettings();
     await $('[data-testid="web-remote-mode-official"]').click();
     await $('[data-testid="web-remote-start"]').click();
     await browser.waitUntil(async () => (await status()).status === "running", { timeout: 40_000 });

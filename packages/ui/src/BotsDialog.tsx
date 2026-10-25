@@ -86,10 +86,12 @@ export function BotsDialog({
   open,
   onOpenChange,
   entryProvider,
+  embedded = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entryProvider?: BotProvider | null;
+  embedded?: boolean;
 }) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
@@ -988,12 +990,13 @@ export function BotsDialog({
     );
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex h-[calc(100vh-6rem)] max-h-168 max-w-4xl flex-col overflow-hidden rounded-2xl"
-        onEscapeKeyDown={handleDialogEscapeKeyDown}
-      >
+  const content = (
+    <>
+      {embedded ? (
+        <p className="text-ui-sm text-foreground-subtle">
+          {intl.formatMessage({ id: "bots.description" })}
+        </p>
+      ) : (
         <DialogHeader>
           <div className="flex flex-wrap items-center gap-2">
             <Bot className="size-5 text-foreground" />
@@ -1005,222 +1008,243 @@ export function BotsDialog({
             </DialogDescription>
           </div>
         </DialogHeader>
+      )}
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row">
-          <aside className="flex max-h-40 w-full shrink-0 flex-col md:max-h-none md:w-64">
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={handleBeginAddBot}
-                className="mb-3 w-full justify-start gap-2 rounded-xl"
-              >
-                <Plus className="size-4" />
-                <span className="min-w-0 truncate">
-                  {intl.formatMessage({ id: "bots.addBot" })}
-                </span>
-              </Button>
-              {config.bots.length === 0 ? (
-                <div className="p-4 text-ui-base text-foreground-subtle">
-                  {creatingBot
-                    ? intl.formatMessage({
-                        id: "bots.newBot.selectProviderHint",
-                      })
-                    : intl.formatMessage({ id: "bots.empty" })}
-                </div>
-              ) : (
-                config.bots.map((bot) => {
-                  const runtime = status?.botRuntime.find((item) => item.botId === bot.id);
-                  const selected = bot.id === selectedBotId;
-                  return (
-                    <button
-                      key={bot.id}
-                      type="button"
-                      onClick={() => {
-                        setCreatingBot(false);
-                        setSelectedBotId(bot.id);
-                      }}
-                      className={cn(
-                        "mb-1 w-full rounded-xl px-2.5 pr-4 py-3 text-left transition-colors",
-                        selected
-                          ? "bg-surface-hover text-foreground"
-                          : "text-foreground-subtle hover:bg-surface-hover hover:text-foreground",
-                      )}
-                    >
-                      <div className="flex items-center gap-2">
-                        <ProviderIcon
-                          provider={bot.provider}
-                          className="size-10 shrink-0 object-contain text-foreground-subtle"
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-foreground truncate text-ui-base font-medium">
-                            {formatBotDisplayName(bot.name, fallbackBotName)}
-                          </span>
-                          <span className="mt-0.5 flex min-w-0 text-ui-base text-foreground-subtle">
-                            {renderChannelName(bot.provider)}
-                          </span>
-                        </span>
-                        <span
-                          className={cn(
-                            "size-2 shrink-0 rounded-full",
-                            runtimeDot(runtime, bot.enabled),
-                          )}
-                        />
-                      </div>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-
-          <section className="min-w-0 flex-1 overflow-y-auto rounded-xl border border-border bg-background p-4">
-            {creatingBot ? (
-              <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-start gap-6">
-                <div className="space-y-2">
-                  <div className="text-ui-lg font-medium">
-                    {intl.formatMessage({ id: "bots.newBot.title" })}
-                  </div>
-                  <p className="max-w-2xl text-ui-base leading-6 text-foreground-subtle">
-                    {intl.formatMessage({ id: "bots.newBot.description" })}
-                  </p>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2">
-                  {BOT_PROVIDERS.filter((provider) => provider.id !== "webhook").map((provider) => {
-                    const implemented = provider.implemented;
-                    const isCreatingThisProvider = creatingProvider === provider.id;
-                    const isCreatingAnyProvider = creatingProvider !== null;
-                    return (
-                      <button
-                        key={provider.id}
-                        type="button"
-                        disabled={!implemented || isCreatingAnyProvider}
-                        aria-busy={isCreatingThisProvider}
-                        onClick={() => (implemented ? void handleAddBot(provider.id) : undefined)}
-                        className={cn(
-                          "flex items-start gap-3 rounded-lg border border-card-border bg-card py-4 px-3 text-left transition-colors",
-                          implemented && !isCreatingAnyProvider
-                            ? "hover:border-input-border-focused hover:bg-surface-hover"
-                            : "cursor-not-allowed opacity-60",
-                          isCreatingThisProvider &&
-                            "border-input-border-focused bg-surface-hover opacity-100",
-                        )}
-                      >
-                        {isCreatingThisProvider ? (
-                          <div className="flex size-10 items-center justify-center">
-                            <Loader2 className="size-6 shrink-0 animate-spin text-foreground-subtle" />
-                          </div>
-                        ) : (
-                          <ProviderIcon
-                            provider={provider.id}
-                            className="size-10 shrink-0 text-foreground"
-                          />
-                        )}
-                        <span className="min-w-0 flex-1">
-                          <span className="flex min-w-0 text-ui-lg font-medium">
-                            {renderChannelName(provider.id)}
-                          </span>
-                          <span className="mt-1 block text-ui-base text-foreground-subtle">
-                            {implemented
-                              ? intl.formatMessage({
-                                  id: `bots.newBot.providerDescription.${provider.id}`,
-                                })
-                              : intl.formatMessage({
-                                  id: "bots.newBot.comingSoon",
-                                })}
-                          </span>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : !selectedBot ? (
-              <div className="flex h-full flex-col items-center justify-center gap-3 text-ui-base text-foreground-subtle">
-                <Bot className="size-8" />
-                <div>{intl.formatMessage({ id: "bots.empty" })}</div>
-                <Button variant="outline" size="lg" onClick={handleBeginAddBot}>
-                  <Plus className="size-4" />
-                  {intl.formatMessage({ id: "bots.addBot" })}
-                </Button>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 md:flex-row">
+        <aside className="flex max-h-40 w-full shrink-0 flex-col md:max-h-none md:w-64">
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleBeginAddBot}
+              className="mb-3 w-full justify-start gap-2 rounded-xl"
+            >
+              <Plus className="size-4" />
+              <span className="min-w-0 truncate">{intl.formatMessage({ id: "bots.addBot" })}</span>
+            </Button>
+            {config.bots.length === 0 ? (
+              <div className="p-4 text-ui-base text-foreground-subtle">
+                {creatingBot
+                  ? intl.formatMessage({
+                      id: "bots.newBot.selectProviderHint",
+                    })
+                  : intl.formatMessage({ id: "bots.empty" })}
               </div>
             ) : (
-              <div className="space-y-4">
-                <BotSummaryCard
-                  bot={selectedBot}
-                  runtime={selectedRuntime}
-                  selectedBotDisplayName={selectedBotDisplayName}
-                  selectedBotName={selectedBotName}
-                  fallbackBotName={fallbackBotName}
-                  renaming={renamingBotId === selectedBot.id}
-                  onStartRename={startBotNameRename}
-                  onCommitNameDraft={commitBotNameDraft}
-                  onNameDraftChange={(value) => setBotNameDraft({ botId: selectedBot.id, value })}
-                  onNameCompositionEnd={() => {
-                    botNameCompositionActiveRef.current = false;
-                  }}
-                  onNameCompositionStart={() => {
-                    botNameCompositionActiveRef.current = true;
-                  }}
-                  onNameInputKeyDown={handleBotNameKeyDown}
-                  onPatchBot={patchSelectedBot}
-                />
+              config.bots.map((bot) => {
+                const runtime = status?.botRuntime.find((item) => item.botId === bot.id);
+                const selected = bot.id === selectedBotId;
+                return (
+                  <button
+                    key={bot.id}
+                    type="button"
+                    onClick={() => {
+                      setCreatingBot(false);
+                      setSelectedBotId(bot.id);
+                    }}
+                    className={cn(
+                      "mb-1 w-full rounded-xl px-2.5 pr-4 py-3 text-left transition-colors",
+                      selected
+                        ? "bg-surface-hover text-foreground"
+                        : "text-foreground-subtle hover:bg-surface-hover hover:text-foreground",
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      <ProviderIcon
+                        provider={bot.provider}
+                        className="size-10 shrink-0 object-contain text-foreground-subtle"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-foreground truncate text-ui-base font-medium">
+                          {formatBotDisplayName(bot.name, fallbackBotName)}
+                        </span>
+                        <span className="mt-0.5 flex min-w-0 text-ui-base text-foreground-subtle">
+                          {renderChannelName(bot.provider)}
+                        </span>
+                      </span>
+                      <span
+                        className={cn(
+                          "size-2 shrink-0 rounded-full",
+                          runtimeDot(runtime, bot.enabled),
+                        )}
+                      />
+                    </div>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </aside>
 
-                <ProviderSettingsCard
-                  bot={selectedBot}
-                  runtime={selectedRuntime}
-                  credentialValue={credentialValue}
-                  bindCode={bindCode}
-                  bindExpired={bindExpired}
-                  bindRemainingMs={bindRemainingMs}
-                  bindCountdownProgress={bindCountdownProgress}
-                  feishuRegistration={feishuRegistration}
-                  feishuRegistrationLoading={feishuRegistrationLoading}
-                  weixinRegistration={weixinRegistration}
-                  weixinRegistrationLoading={weixinRegistrationLoading}
-                  weixinActivated={Boolean(selectedBotState?.weixinActivatedAt)}
-                  secretSaving={secretSaving}
-                  onCredentialValueChange={setCredentialValue}
-                  onSaveSecret={() => void handleSaveSecret()}
-                  onRemoveSecret={() => void handleRemoveSecret()}
-                  onOpenTelegramBotFather={handleOpenTelegramBotFather}
-                  onStartWeixinRegistration={() => void handleStartWeixinRegistration()}
-                  onStartFeishuRegistration={() => void handleStartFeishuRegistration()}
-                  onCreateBindCode={() => void handleCreateBindCode()}
-                  onUnbind={() => void handleUnbind()}
-                  onCopyBindCommand={() => void copyBindCommand()}
-                />
+        <section
+          className={cn(
+            "min-w-0 flex-1 rounded-xl border border-border bg-background p-4",
+            !embedded && "overflow-y-auto",
+          )}
+        >
+          {creatingBot ? (
+            <div className="mx-auto flex min-h-full max-w-3xl flex-col justify-start gap-6">
+              <div className="space-y-2">
+                <div className="text-ui-lg font-medium">
+                  {intl.formatMessage({ id: "bots.newBot.title" })}
+                </div>
+                <p className="max-w-2xl text-ui-base leading-6 text-foreground-subtle">
+                  {intl.formatMessage({ id: "bots.newBot.description" })}
+                </p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {BOT_PROVIDERS.filter((provider) => provider.id !== "webhook").map((provider) => {
+                  const implemented = provider.implemented;
+                  const isCreatingThisProvider = creatingProvider === provider.id;
+                  const isCreatingAnyProvider = creatingProvider !== null;
+                  return (
+                    <button
+                      key={provider.id}
+                      type="button"
+                      disabled={!implemented || isCreatingAnyProvider}
+                      aria-busy={isCreatingThisProvider}
+                      onClick={() => (implemented ? void handleAddBot(provider.id) : undefined)}
+                      className={cn(
+                        "flex items-start gap-3 rounded-lg border border-card-border bg-card py-4 px-3 text-left transition-colors",
+                        implemented && !isCreatingAnyProvider
+                          ? "hover:border-input-border-focused hover:bg-surface-hover"
+                          : "cursor-not-allowed opacity-60",
+                        isCreatingThisProvider &&
+                          "border-input-border-focused bg-surface-hover opacity-100",
+                      )}
+                    >
+                      {isCreatingThisProvider ? (
+                        <div className="flex size-10 items-center justify-center">
+                          <Loader2 className="size-6 shrink-0 animate-spin text-foreground-subtle" />
+                        </div>
+                      ) : (
+                        <ProviderIcon
+                          provider={provider.id}
+                          className="size-10 shrink-0 text-foreground"
+                        />
+                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="flex min-w-0 text-ui-lg font-medium">
+                          {renderChannelName(provider.id)}
+                        </span>
+                        <span className="mt-1 block text-ui-base text-foreground-subtle">
+                          {implemented
+                            ? intl.formatMessage({
+                                id: `bots.newBot.providerDescription.${provider.id}`,
+                              })
+                            : intl.formatMessage({
+                                id: "bots.newBot.comingSoon",
+                              })}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : !selectedBot ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-ui-base text-foreground-subtle">
+              <Bot className="size-8" />
+              <div>{intl.formatMessage({ id: "bots.empty" })}</div>
+              <Button variant="outline" size="lg" onClick={handleBeginAddBot}>
+                <Plus className="size-4" />
+                {intl.formatMessage({ id: "bots.addBot" })}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <BotSummaryCard
+                bot={selectedBot}
+                runtime={selectedRuntime}
+                selectedBotDisplayName={selectedBotDisplayName}
+                selectedBotName={selectedBotName}
+                fallbackBotName={fallbackBotName}
+                renaming={renamingBotId === selectedBot.id}
+                onStartRename={startBotNameRename}
+                onCommitNameDraft={commitBotNameDraft}
+                onNameDraftChange={(value) => setBotNameDraft({ botId: selectedBot.id, value })}
+                onNameCompositionEnd={() => {
+                  botNameCompositionActiveRef.current = false;
+                }}
+                onNameCompositionStart={() => {
+                  botNameCompositionActiveRef.current = true;
+                }}
+                onNameInputKeyDown={handleBotNameKeyDown}
+                onPatchBot={patchSelectedBot}
+              />
 
-                <SettingsGroupCard>
-                  <BotReplyGranularityCard bot={selectedBot} onPatchBot={patchSelectedBot} />
+              <ProviderSettingsCard
+                bot={selectedBot}
+                runtime={selectedRuntime}
+                credentialValue={credentialValue}
+                bindCode={bindCode}
+                bindExpired={bindExpired}
+                bindRemainingMs={bindRemainingMs}
+                bindCountdownProgress={bindCountdownProgress}
+                feishuRegistration={feishuRegistration}
+                feishuRegistrationLoading={feishuRegistrationLoading}
+                weixinRegistration={weixinRegistration}
+                weixinRegistrationLoading={weixinRegistrationLoading}
+                weixinActivated={Boolean(selectedBotState?.weixinActivatedAt)}
+                secretSaving={secretSaving}
+                onCredentialValueChange={setCredentialValue}
+                onSaveSecret={() => void handleSaveSecret()}
+                onRemoveSecret={() => void handleRemoveSecret()}
+                onOpenTelegramBotFather={handleOpenTelegramBotFather}
+                onStartWeixinRegistration={() => void handleStartWeixinRegistration()}
+                onStartFeishuRegistration={() => void handleStartFeishuRegistration()}
+                onCreateBindCode={() => void handleCreateBindCode()}
+                onUnbind={() => void handleUnbind()}
+                onCopyBindCommand={() => void copyBindCommand()}
+              />
 
-                  {/*
+              <SettingsGroupCard>
+                <BotReplyGranularityCard bot={selectedBot} onPatchBot={patchSelectedBot} />
+
+                {/*
                     暂不暴露命令权限编辑入口，避免用户在 bot 可用前把关键命令关掉。
                     如果要恢复 UI，重新渲染 selectedBot.allowedCommands 的列表并用 patchSelectedBot 保存。
                   */}
 
-                  <WorkspaceAccessCard
-                    bot={selectedBot}
-                    workspaceRefs={workspaceRefs}
-                    loading={workspaceAccessSaving}
-                    onPatchAllowedWorkspaces={patchAllowedWorkspaces}
-                    onToggleWorkspaceAccess={toggleWorkspaceAccess}
-                  />
-                </SettingsGroupCard>
+                <WorkspaceAccessCard
+                  bot={selectedBot}
+                  workspaceRefs={workspaceRefs}
+                  loading={workspaceAccessSaving}
+                  onPatchAllowedWorkspaces={patchAllowedWorkspaces}
+                  onToggleWorkspaceAccess={toggleWorkspaceAccess}
+                />
+              </SettingsGroupCard>
 
-                {isFeishuBotProvider(selectedBot.provider) && (
-                  <BoundGroupsCard
-                    key={selectedBot.id + ":" + selectedBot.providerUserId}
-                    bot={selectedBot}
-                  />
-                )}
+              {isFeishuBotProvider(selectedBot.provider) && (
+                <BoundGroupsCard
+                  key={selectedBot.id + ":" + selectedBot.providerUserId}
+                  bot={selectedBot}
+                />
+              )}
 
-                <BotDangerCard onDelete={() => void handleDelete()} />
-              </div>
-            )}
-          </section>
-        </div>
+              <BotDangerCard onDelete={() => void handleDelete()} />
+            </div>
+          )}
+        </section>
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div data-testid="bots-settings" className="min-w-0 space-y-4">
+        {content}
+      </div>
+    );
+  }
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        className="flex h-[calc(100vh-6rem)] max-h-168 max-w-4xl flex-col overflow-hidden rounded-2xl"
+        onEscapeKeyDown={handleDialogEscapeKeyDown}
+      >
+        {content}
       </DialogContent>
     </Dialog>
   );

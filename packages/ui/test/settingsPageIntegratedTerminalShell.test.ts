@@ -2,6 +2,23 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const remoteSettingsCapture = vi.hoisted(() => ({
+  props: undefined as Record<string, unknown> | undefined,
+  services: [] as unknown[],
+}));
+const settingsTabState = vi.hoisted(() => ({
+  value: { activeWorkspaceIdentity: undefined, activeWorkspacePath: undefined, tabs: [] } as Record<
+    string,
+    unknown
+  >,
+}));
+vi.mock("@/web-remote-control/index.js", () => ({
+  RemoteControlSettingsSection: (props: Record<string, unknown>) => {
+    remoteSettingsCapture.props = props;
+    return createElement("div", { "data-testid": "remote-settings-capture" });
+  },
+}));
+
 const selectedSection = vi.hoisted(() => ({ value: "general" }));
 vi.mock("@/components/ui/toast.js", () => ({ toast: vi.fn() }));
 
@@ -150,7 +167,10 @@ vi.mock("@/hooks/usePlatform.js", () => ({
 }));
 
 vi.mock("@/hooks/useServices.js", () => ({
-  ServiceProvider: ({ children }: { children: unknown }) => createElement("div", null, children),
+  ServiceProvider: ({ children, services }: { children: unknown; services: unknown }) => {
+    remoteSettingsCapture.services.push(services);
+    return createElement("div", null, children);
+  },
   useOptionalServices: () => remoteServices,
   useServices: () => remoteServices,
 }));
@@ -208,11 +228,7 @@ vi.mock("@/store/StoreProvider.js", () => ({
 vi.mock("@/store/TabStoreProvider.js", () => ({
   useOptionalTabStore: () => undefined,
   useTabStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      activeWorkspaceIdentity: undefined,
-      activeWorkspacePath: undefined,
-      tabs: [],
-    }),
+    selector(settingsTabState.value),
 }));
 
 vi.mock("@/lib/settingsNavigation.js", () => ({
@@ -336,6 +352,13 @@ describe("SettingsPage integrated terminal shell", () => {
   beforeEach(() => {
     pendingEffects.length = 0;
     selectedSection.value = "general";
+    settingsTabState.value = {
+      activeWorkspacePath: undefined,
+      activeWorkspaceIdentity: undefined,
+      tabs: [],
+    };
+    remoteSettingsCapture.props = undefined;
+    remoteSettingsCapture.services.length = 0;
     stateUpdates.length = 0;
     localServices.settingService.get.mockReset().mockResolvedValue({});
     remoteServices.settingService.get.mockReset().mockResolvedValue({});
@@ -363,6 +386,53 @@ describe("SettingsPage integrated terminal shell", () => {
       platform: "darwin",
     });
     localListIntegratedTerminalShells.mockResolvedValue([]);
+  });
+
+  it("远控设置沿用最近 workspace identity，Bot 管理始终注入本机 Host 服务", async () => {
+    selectedSection.value = "remoteControl";
+    settingsTabState.value = {
+      activeTabId: "__settings__",
+      activeWorkspacePath: "/repo",
+      activeWorkspaceIdentity: "remote-b",
+      tabs: [
+        {
+          kind: "workspace",
+          id: "a",
+          label: "Remote A",
+          workspacePath: "/repo",
+          workspaceIdentity: "remote-a",
+          remoteSessionId: "session-a",
+        },
+        {
+          kind: "workspace",
+          id: "b",
+          label: "Remote B",
+          workspacePath: "/repo",
+          workspaceIdentity: "remote-b",
+          remoteSessionId: "session-b",
+          remoteTarget: { kind: "ssh" },
+        },
+        { kind: "settings", id: "__settings__" },
+      ],
+    };
+    const { SettingsPage } = await import("../src/SettingsPage.js");
+    renderToStaticMarkup(createElement(SettingsPage, { isDesktop: true }));
+    expect(remoteSettingsCapture.props).toEqual(
+      expect.objectContaining({
+        workspacePath: "/repo",
+        workspaceIdentity: "remote-b",
+        remoteSessionId: "session-b",
+      }),
+    );
+    expect(remoteSettingsCapture.services).toContain(localServices);
+    expect(remoteSettingsCapture.services).not.toContain(remoteServices);
+  }, 15_000);
+
+  it("Web 不挂载桌面远控配置", async () => {
+    selectedSection.value = "remoteControl";
+    const { SettingsPage } = await import("../src/SettingsPage.js");
+    renderToStaticMarkup(createElement(SettingsPage, { isDesktop: false }));
+    expect(remoteSettingsCapture.props).toBeUndefined();
   });
 
   // Bugfix: 本用例是该文件第一个 import SettingsPage 的测试，独吞整棵设置页模块图的
