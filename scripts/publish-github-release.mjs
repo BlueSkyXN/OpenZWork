@@ -29,6 +29,76 @@ export function validateRun(run, name, commit) {
   if (commit) assert.equal(run.head_sha, commit);
 }
 
+export function shouldMakeLatest(tag, latest) {
+  const parse = (value) => {
+    const match = /^v(\d+)\.(\d+)\.(\d+)-openzwork$/.exec(value);
+    assert.ok(match, `Cannot compare release version: ${value}`);
+    return match.slice(1).map(BigInt);
+  };
+  const version = parse(tag);
+  if (!latest) return true;
+  const previous = parse(latest.tag_name);
+  for (let i = 0; i < version.length; i++) {
+    if (version[i] !== previous[i]) return version[i] > previous[i];
+  }
+  return true;
+}
+
+export async function ensureReleaseDraft(
+  { repo, tag, version, notes, allowCreate, notesFile },
+  gh,
+) {
+  const list = async () =>
+    JSON.parse(await gh("api", "--paginate", "--slurp", `repos/${repo}/releases?per_page=100`))
+      .flat()
+      .filter((release) => release.tag_name === tag);
+  let releases = await list();
+  assert.ok(releases.length <= 1, "Duplicate release tag");
+  assert.ok(
+    releases.length === 1 || allowCreate,
+    "Create the reviewed draft release before publishing",
+  );
+  let body = notes?.trim() || releases[0]?.body?.trim();
+  if (!body) {
+    assert.ok(allowCreate, "Release notes are required");
+    const generated = JSON.parse(
+      await gh(
+        "api",
+        "--method",
+        "POST",
+        `repos/${repo}/releases/generate-notes`,
+        "-f",
+        `tag_name=${tag}`,
+      ),
+    );
+    body = `${generated.body}\n\n安装包：macOS arm64、Windows x64、Linux x64。当前为未签名构建，macOS 未公证，应用采用手动安装更新。来源与文件摘要见 PROVENANCE.json 和 SHA256SUMS。\n`;
+  }
+  await writeFile(notesFile, body);
+  if (releases.length === 0) {
+    try {
+      await gh(
+        "release",
+        "create",
+        tag,
+        "-R",
+        repo,
+        "--verify-tag",
+        "--draft",
+        "--title",
+        `OpenZWork ${version}`,
+        "--notes-file",
+        notesFile,
+      );
+    } catch (error) {
+      // 创建响应丢失后先回读，避免重试时创建第二份草稿。
+      if ((await list()).length !== 1) throw error;
+    }
+    releases = await list();
+  }
+  assert.equal(releases.length, 1);
+  return releases[0].id;
+}
+
 export function validateManifest(manifest, expected) {
   for (const key of [
     "sourceTag",
@@ -155,7 +225,8 @@ export async function publishRelease(env = process.env) {
   assert.match(commit ?? "", /^[a-f0-9]{40}$/);
   for (const key of ["INSTALLERS_RUN", "CORE_RUN", "EXTENDED_RUN"])
     assert.match(env[key] ?? "", /^\d+$/);
-  assert.ok(env.RELEASE_NOTES?.trim(), "Release notes are required");
+  const allowCreate = env.AUTO_CREATE_RELEASE === "true";
+  assert.ok(env.RELEASE_NOTES?.trim() || allowCreate, "Release notes are required");
   const version = tag.slice(1, -"-openzwork".length);
   const gh = async (...args) => (await exec("gh", args, { maxBuffer: 32 * 1024 * 1024 })).stdout;
   const api = async (path) => JSON.parse(await gh("api", `repos/${repo}/${path}`));
@@ -210,7 +281,11 @@ export async function publishRelease(env = process.env) {
   // 固定源码复验允许工作流来自更新提交；实际源码由三平台 source.json 逐份核对。
   validateRun(extendedRun, "Extended checks (non-blocking)");
   validateRun(installerRun, "Installers");
-  assert.equal(installerRun.event, "workflow_dispatch");
+  assert.ok(["workflow_dispatch", "push"].includes(installerRun.event));
+  if (installerRun.event === "push") {
+    assert.equal(installerRun.head_sha, commit);
+    assert.equal(installerRun.display_title, `Release ${tag} / Installers`);
+  }
   const validation = [];
   const manifests = [],
     archives = [];
@@ -299,15 +374,18 @@ export async function publishRelease(env = process.env) {
     sha256: await digest(join(assetsDir, "SHA256SUMS")),
   });
   const notesFile = join(root, "notes.md");
-  await writeFile(notesFile, env.RELEASE_NOTES);
-  // 草稿按列表或 ID 查询；GitHub 的按 tag 查询接口可能对未公开草稿返回 404。
-  const releases = JSON.parse(
-    await gh("api", "--paginate", "--slurp", `repos/${repo}/releases?per_page=100`),
-  )
-    .flat()
-    .filter((release) => release.tag_name === tag);
-  assert.equal(releases.length, 1, "Create the reviewed draft release before publishing");
-  const releaseId = releases[0].id;
+  // 全部测试与文件校验通过后，自动模式才允许创建草稿。
+  const releaseId = await ensureReleaseDraft(
+    {
+      repo,
+      tag,
+      version,
+      notes: env.RELEASE_NOTES,
+      allowCreate,
+      notesFile,
+    },
+    gh,
+  );
   const readRelease = async () => {
     const release = await api(`releases/${releaseId}`);
     assert.equal(release.tag_name, tag);
@@ -328,6 +406,13 @@ export async function publishRelease(env = process.env) {
   }
   validateExistingAssets((await readRelease()).assets, expected, true);
   await verifyTag();
+  let latest;
+  try {
+    latest = await api("releases/latest");
+  } catch (error) {
+    if (!error.stderr?.includes("HTTP 404")) throw error;
+  }
+  const makeLatest = shouldMakeLatest(tag, latest);
   if ((await readRelease()).draft)
     await gh(
       "release",
@@ -338,14 +423,15 @@ export async function publishRelease(env = process.env) {
       "--verify-tag",
       "--draft=false",
       "--prerelease=false",
-      "--latest",
+      `--latest=${makeLatest}`,
       "--notes-file",
       notesFile,
     );
   const published = await readRelease();
   assert.equal(published.draft, false);
   validateExistingAssets(published.assets, expected, true);
-  assert.equal((await api("releases/latest")).id, releaseId);
+  if (makeLatest) assert.equal((await api("releases/latest")).id, releaseId);
+  else assert.equal((await api("releases/latest")).id, latest.id);
   console.log(`Published ${published.html_url}: ${expected.size} verified assets`);
   return published.html_url;
 }

@@ -4,7 +4,7 @@
 
 消除 `CI` 与 `Installers` 工作流中 JavaScript Action 声明使用 Node.js 20 的弃用提示，不依赖 GitHub runner 强制切换旧 Action 的运行时。
 
-本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md) 与 [v3.16.1 整合验收](upstream-v3.16.1-integration.md)。
+本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 、`.github/workflows/release.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md) 与 [v3.16.1 整合验收](upstream-v3.16.1-integration.md)。
 
 ## 所有者与边界
 
@@ -26,18 +26,18 @@
 | `pnpm/action-setup`       | `v6.1.0` |
 | `actions/upload-artifact` | `v7.0.1` |
 
-三份工作流引用相同的精确版本，不使用 `latest`、浮动主版本或运行时强制降级变量。以后更新版本时同步审查此契约与结构测试。
+四份工作流引用相同的精确版本，不使用 `latest`、浮动主版本或运行时强制降级变量。以后更新版本时同步审查此契约与结构测试。
 
 ## 行为与兼容性规则
 
-1. 保留自动触发条件、平台矩阵、timeout、业务命令和失败传播；手动正式构建按下述 tag 合同执行，同 tag 的新运行取消旧运行，不同 tag 互不取消。不加入 `continue-on-error` 或警告隐藏配置。
+1. 保留分支触发、平台矩阵、timeout、业务命令和失败传播；正式 tag 同时触发 CI、Extended 和 production Installers。构建可取消同 ref 的旧运行；发布 job 共用仓库级并发组，不取消正在上传的运行。不加入 `continue-on-error` 或警告隐藏配置。
 2. 保留顺序：checkout、安装 pnpm、setup-node、显式安装依赖。`pnpm/action-setup` 不承担仓库依赖安装，不替换成 `pnpm/setup`。
 3. 检查型 CI 的安装仍为 `pnpm install --frozen-lockfile --ignore-scripts`；安装包工作流仍执行完整的 `pnpm install --frozen-lockfile`。
 4. setup-node 继续显式 `cache: pnpm`；pnpm/action-setup 的内置缓存保持默认关闭，不新增第二份 pnpm 缓存。
 5. turbo 与 Electron/electron-builder 的缓存路径与恢复前缀保持不变；固定源码复验时，Extended 的 turbo 外层缓存 key 使用源码 SHA，默认运行仍使用事件 SHA。
 6. 安装包继续以 `openzwork-installer-${{ matrix.platform }}` 聚合上传多种文件，保留全部安装包 glob 与 `if-no-files-found: error`；正式构建额外上传来源清单。显式 `archive: true`，不启用 upload-artifact v7 新增的单文件直传模式。
 7. Node.js 24 Action 要求 Actions Runner 至少 `2.327.1`。当前使用 GitHub 托管 runner；若以后迁移到自托管 runner，必须先核对 runner 版本。checkout 的 Docker container action 认证操作另要求至少 `2.329.0`，当前工作流无此操作。
-8. checkout v7 对 `pull_request_target`/`workflow_run` 的 fork checkout 安全限制不应绕过；当前工作流不使用这两种触发器。
+8. checkout v7 对 `pull_request_target`/`workflow_run` 的 fork checkout 安全限制不应绕过；Release 使用 `workflow_run`，只执行默认分支的协调器和发布器；不 checkout 触发者分支，不执行 artifact 中的代码。
 9. 依赖目录由固定版本 pnpm 按 lockfile 安装。干净 runner 不从旧 `.ignored` 目录恢复依赖，不使用安装后目录搬移补救版本解析。
 10. 核心 CI 执行明确列出的保留能力回归；完整历史套件由独立扩展工作流按原发现范围执行。核心清单中的文件缺失必须失败，不能动态过滤失效用例或放宽断言取得绿灯。
 11. 完整检查和安装包构建在 GitHub 托管 runner 执行。本地 pre-push 共用核心测试清单，同时保留 Lint、schema 与架构检查；历史全量检查由独立扩展工作流执行，不修改仓库合并保护规则。
@@ -50,15 +50,15 @@
 
 ## GitHub 正式安装包
 
-- `Installers.workflow_dispatch` 接受 `release_tag` 与 `release_commit`，必须同时为空或同时提供。为空时沿用现有 Preview 构建；正式构建要求 `v<版本>-openzwork` tag、完整 40 位提交 SHA、checkout HEAD 和根 package version 一致（Desktop build-metadata 使用根版本），校验在依赖安装之前完成。
+- `Installers` 在正式 tag push 时自动取得 tag 和提交；`workflow_dispatch` 接受 `release_tag` 与 `release_commit`，必须同时为空或同时提供。为空时沿用现有 Preview 构建；正式构建要求 `v<版本>-openzwork` tag、完整 40 位提交 SHA、checkout HEAD 和根 package version 一致（Desktop build-metadata 使用根版本），校验在依赖安装之前完成。
 - 正式构建显式使用 `ZCODE_ENV=production`、`ZCODE_PREVIEW_IDENTITY=0`；沿用未签名构建，不注入证书或开启公证。应用标识为 OpenZWork，不能将 Preview/\_TEST 包改名后当作正式包。
 - 工作流可从主干执行并 checkout 已有版本 tag，因此工作流的 SHA 与源码 SHA 分别记录。GitHub run 的 `head_sha` 表示工作流来源，安装包来源以验证过的 `release_commit`、源码 tree 与 tag 为准。
 - 构建后生成 `RELEASE-MANIFEST.json`：记录源码 tag/SHA/tree、工作流 SHA/run、版本、平台、正式身份及实际安装文件的字节数和 SHA-256。只收集 dist 根目录的两份 macOS、一个 Windows 或四份 Linux 安装文件；不将 unpacked 目录中的辅助 exe 作为安装包发布。缺文件或空文件直接失败。
 - Linux x64 的各发行格式采用 builder 实际架构名：AppImage/rpm 为 `x86_64`、deb 为 `amd64`、pacman 为 `x64`。按版本、平台、允许的架构别名和扩展名从根目录匹配，每种格式必须恰有一个文件；歧义也直接失败。
-- GitHub Release 发布由用户授权后的手动 `Installers` 发布模式执行：提供已有正式构建的 `publish_installer_run`、同源码的 `core_run`、`extended_run` 和 `release_notes`。普通 push 与构建模式只生成 artifacts。
-- 发布 job 使用独立并发组和最小 `actions: read`、`contents: write` 权限；在 GitHub runner 下载已有 artifacts，核对归档 SHA-256、源码 tag/SHA/tree、正式身份、每种安装格式的数量、大小和哈希，然后生成 `PROVENANCE.json` 与 `SHA256SUMS`。本机无需下载安装包。
+- 正式 tag 的 GitHub Release 由 `Release` 自动协调：三项同 tag/SHA 的最新运行成功后发布。普通分支 push 只生成 Preview artifacts。原手动 `Installers` 发布模式保留，接受 `publish_installer_run`、`core_run`、`extended_run` 和 `release_notes`。事件选择、幂等和恢复详见 [正式 tag 自动发布](automatic-github-release.md)。
+- 发布 job 共用串行并发组和最小 `actions: read`、`contents: write` 权限；在 GitHub runner 下载已有 artifacts，核对归档 SHA-256、源码 tag/SHA/tree、正式身份、每种安装格式的数量、大小和哈希，然后生成 `PROVENANCE.json` 与 `SHA256SUMS`。本机无需下载安装包。
 - 核心与 Extended 必须完整成功并指向发布源码；Extended 三平台的 `source.json`、七组退出码及测试统计必须一致。构建工作流 SHA 单独记录；发布脚本不移动 tag、不重新构建产品。
-- 先校验全部产物再写 Release。草稿可继续上传缺少的附件；同名附件仅在大小和摘要相同的情况下复用。已发布内容不覆盖、不删除；全部九个附件核验后才公开并设置 Latest。
+- 先校验全部产物再写 Release。草稿可继续上传缺少的附件；同名附件仅在大小和摘要相同的情况下复用。已发布内容不覆盖、不删除；全部九个附件核验后才公开；按语义版本比较决定 Latest，旧版补发不降低 Latest。
 
 ```mermaid
 flowchart LR
@@ -66,8 +66,8 @@ flowchart LR
     V --> B[production 模式构建]
     B --> M[安装文件与来源清单]
     M --> A[Actions artifact]
-    A --> C[手动发布 job 在 runner 校验]
-    G[同源码 Core 与 Extended 结果] --> C
+    A --> C[Release job 在 runner 校验]
+    G[同 tag/SHA 的最新 Core 与 Extended 成功结果] --> C
     C --> D[草稿与九个附件]
     D --> R[回读摘要后公开 GitHub Release]
 ```
@@ -81,7 +81,7 @@ flowchart LR
 - 真实 GitHub 运行需在提交并推送后验证：各平台 Action 初始化、pnpm 缓存、turbo/Electron 缓存和 artifact 上传成功，且不再出现本次涉及的 Node.js 20 Action 弃用提示。
 - 旧运行的 Annotations 是历史记录，不因修改 YAML 而被清除。真实 runner 的结果必须关联当前候选提交；本地验证不能代替该证据。
 - 正式构建回归直接执行工作流内的校验与清单脚本，验证缺少输入、错误 SHA、错误版本会拒绝，正常 tag 可通过，安装包哈希精确且排除 unpacked 文件。两版实际安装包必须在云端以正式身份重建后才发布。
-- 发布回归验证错误源码/版本/身份、缺失或重复格式、无效哈希、失败或不完整测试组、同名附件内容冲突均拒绝；验证发布 job 只接受显式手动入口，构建与发布互不取消。
+- 发布回归验证错误源码/版本/身份、缺失或重复格式、无效哈希、失败或不完整测试组、同名附件内容冲突均拒绝；验证自动入口只接受正式 tag 的同源完整门禁，手动入口仍需精确来源；正在上传的发布不被构建取消。
 
 ## 官方依据
 

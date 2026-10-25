@@ -1,6 +1,7 @@
 name: Installers
+run-name: ${{ github.ref_type == 'tag' && format('Release {0} / {1}', github.ref_name, github.workflow) || '' }}
 
-# CI 默认产出 Preview；手动指定 tag 与完整 SHA 时产出正式身份的未签名安装包。
+# 分支默认产出 Preview；正式 tag 或手动固定来源产出 production 未签名安装包。
 on:
   workflow_dispatch:
     inputs:
@@ -30,25 +31,26 @@ on:
         default: ""
   push:
     branches: [main, "wp**"]
+    tags: ["v*-openzwork"]
 
 permissions:
   contents: read
 
 concurrency:
   group: installers-${{ github.workflow }}-${{ inputs.release_tag || github.ref }}-${{ inputs.publish_installer_run && 'publish' || 'build' }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !inputs.publish_installer_run }}
 
 jobs:
   installer:
     if: ${{ !inputs.publish_installer_run }}
     name: installer (${{ matrix.platform }})
     env:
-      ZCODE_ENV: ${{ inputs.release_tag && 'production' || '' }}
+      ZCODE_ENV: ${{ (inputs.release_tag || github.ref_type == 'tag') && 'production' || '' }}
       ZCODE_PREVIEW_IDENTITY: "0"
       ZCODE_ENABLE_MAC_SIGN: "0"
       ZCODE_ENABLE_WINDOWS_SIGN: "0"
-      RELEASE_TAG: ${{ inputs.release_tag }}
-      RELEASE_COMMIT: ${{ inputs.release_commit }}
+      RELEASE_TAG: ${{ inputs.release_tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
+      RELEASE_COMMIT: ${{ inputs.release_commit || (github.ref_type == 'tag' && github.sha) || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -152,7 +154,7 @@ jobs:
           ZCODE_SKIP_REMOTE_ASSETS: "1"
 
       - name: Record release installer provenance
-        if: inputs.release_tag != ''
+        if: env.RELEASE_TAG != ''
         shell: bash
         env:
           RELEASE_PLATFORM: ${{ matrix.platform }}
@@ -234,6 +236,9 @@ jobs:
     name: Publish verified release
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    concurrency:
+      group: openzwork-release-publication
+      cancel-in-progress: false
     permissions:
       actions: read
       contents: write

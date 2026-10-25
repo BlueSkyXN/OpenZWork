@@ -156,3 +156,25 @@ patches:
     refs:
       - docs/spec/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/pull/32
+
+  - id: OW-P008
+    title: RPC 资源样本测试在订阅完成前发送一次性事件
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.15.1
+      checked: 3.16.2
+    trigger: RPC 初始化和 EventListen 队列传播超过测试固定等待的 20ms。
+    impact: 样本在服务端监听器注册前丢失，测试等待已丢失事件直至 30 秒超时，阻断完整检查。
+    cause: 夹具把固定睡眠当作动态事件已订阅的证据，而内存协议通过异步队列传递请求。
+    fix: 等待服务端 Emitter 首个监听器的注册信号再发送样本；覆盖即时与 50ms 队列延迟，保持完整载荷断言和原时限。
+    evidence: 上游 3.16.2 保留 20ms 固定等待；macOS Extended 该用例超时。受控 50ms 队列延迟在旧等待逻辑下复现 30 秒超时，修复后两种延迟及相邻 RPC 回归通过。
+    files:
+      - packages/services/test/zcodeAgentResourceTelemetry.rpc.test.ts
+    regression:
+      - packages/services/test/zcodeAgentResourceTelemetry.rpc.test.ts
+    retire: 上游夹具以真实订阅信号代替固定等待，即时与延迟队列下的样本载荷回归均通过。
+    refs:
+      - docs/spec/automatic-github-release.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40189299521/job/121156666989
+      - https://github.com/BlueSkyXN/OpenZWork/pull/36

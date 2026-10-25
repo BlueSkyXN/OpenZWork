@@ -1,9 +1,11 @@
 name: Extended checks (non-blocking)
+run-name: ${{ github.ref_type == 'tag' && format('Release {0} / {1}', github.ref_name, github.workflow) || '' }}
 
 on:
   pull_request:
   push:
     branches: [main]
+    tags: ["v*-openzwork"]
   workflow_dispatch:
     inputs:
       source_commit:

@@ -112,7 +112,7 @@ test("frozen-source validation records the checked commit and rejects a mismatch
 
 test("production installers use verified tag sources before installing dependencies", () => {
   const job = workflow.jobs.installer;
-  assert.equal(job.env.ZCODE_ENV, "${{ inputs.release_tag && 'production' || '' }}");
+  assert.equal(job.env.ZCODE_ENV, "${{ (inputs.release_tag || github.ref_type == 'tag') && 'production' || '' }}");
   assert.equal(job.env.ZCODE_PREVIEW_IDENTITY, "0");
   assert.equal(job.env.ZCODE_ENABLE_MAC_SIGN, "0");
   assert.equal(job.env.ZCODE_ENABLE_WINDOWS_SIGN, "0");

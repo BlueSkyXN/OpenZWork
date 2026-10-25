@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["CI", "Extended checks (non-blocking)", "Installers"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing formal tag to resume after all tag workflows succeed
+        type: string
+        required: true
+      verify_only:
+        description: Check release state and source gates without publishing
+        type: boolean
+        default: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  prepare:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       startsWith(github.event.workflow_run.display_title, 'Release v') &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      status: ${{ steps.plan.outputs.status }}
+      tag: ${{ steps.plan.outputs.tag }}
+      commit: ${{ steps.plan.outputs.commit }}
+      core: ${{ steps.plan.outputs.core }}
+      extended: ${{ steps.plan.outputs.extended }}
+      installers: ${{ steps.plan.outputs.installers }}
+    steps:
+      # workflow_run 从默认分支取执行代码，不能 checkout 上游事件提供的分支或 artifact。
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+      - name: Resolve exact tag release gates
+        id: plan
+        run: node scripts/automatic-release.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+
+  publish:
+    needs: prepare
+    if: needs.prepare.outputs.status == 'ready' && inputs.verify_only != true
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+    # 所有入口串行公开，旧版本的 Latest 判断不会覆盖同时完成的新版本。
+    concurrency:
+      group: openzwork-release-publication
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+      - name: Verify artifacts and publish release
+        run: node scripts/publish-github-release.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.prepare.outputs.commit }}
+          CORE_RUN: ${{ needs.prepare.outputs.core }}
+          EXTENDED_RUN: ${{ needs.prepare.outputs.extended }}
+          INSTALLERS_RUN: ${{ needs.prepare.outputs.installers }}
+          AUTO_CREATE_RELEASE: "true"

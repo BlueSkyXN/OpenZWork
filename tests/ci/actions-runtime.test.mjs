@@ -111,7 +111,7 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
   // pull_request 事件时可手动派发验证（与 Extended checks 对齐）；矩阵与 push 范围不变。
   assert.deepEqual(ci.on, {
     pull_request: null,
-    push: { branches: ["main"] },
+    push: { branches: ["main"], tags: ["v*-openzwork"] },
     workflow_dispatch: null,
   });
   assert.deepEqual(installers.on, {
@@ -150,7 +150,7 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
         },
       },
     },
-    push: { branches: ["main", "wp**"] },
+    push: { branches: ["main", "wp**"], tags: ["v*-openzwork"] },
   });
   for (const job of [ci.jobs.checks, installers.jobs.installer]) {
     assert.equal(job["runs-on"], "${{ matrix.os }}");
@@ -280,7 +280,7 @@ test("architecture checks compare the actual PR base with available Git history"
   const check = ciSteps.find((step) => step.name === "Architecture boundaries");
   assert.equal(
     check.env.ARCHITECTURE_BASE,
-    "${{ github.event.pull_request.base.sha || github.event.before }}",
+    "${{ github.event.pull_request.base.sha || (github.ref_type == 'branch' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || '' }}",
   );
   assert.notEqual(check["continue-on-error"], true);
 });
