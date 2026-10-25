@@ -15,6 +15,7 @@ import { taskKey } from "@/project-sidebar/grouped/ids.js";
 export function buildGroupedTaskView(
   tasks: ProjectTask[],
   structure: TaskGroupStructure,
+  options?: { hideEmptyGroups: boolean; keepGroupIds?: readonly (string | null | undefined)[] },
 ): ZCodeGroupedTaskView {
   const nodes: ZCodeGroupedTaskViewNode[] = [];
   const groups = new Map<string, Extract<ZCodeGroupedTaskViewNode, { type: "group" }>>();
@@ -28,7 +29,16 @@ export function buildGroupedTaskView(
       else nodes.push({ type: "task", task: row.task });
     }
   }
-  return { nodes };
+  return {
+    nodes: options?.hideEmptyGroups
+      ? nodes.filter(
+          (node) =>
+            node.type !== "group" ||
+            node.tasks.length > 0 ||
+            options.keepGroupIds?.includes(node.group.id),
+        )
+      : nodes,
+  };
 }
 
 function locate(view: ZCodeGroupedTaskView, source: GroupNode) {

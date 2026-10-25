@@ -1,3 +1,4 @@
+import { conversationMetricsSchema } from "../conversation-metrics/contract.js";
 import { systemPromptSettingsSchema } from "../system-prompt/contract.js";
 import { zcodeProtocolTraceSchema } from "./trace.js";
 // Bot 反向回复的名字解析/待澄清结果与 App、CLI 使用同一严格 schema。
@@ -1818,6 +1819,7 @@ export const zcodeSessionListResultSchema = z
 
 const zcodeSessionSubagentBaseSchema = z
   .object({
+    metrics: conversationMetricsSchema.optional(),
     childSessionId: nonEmptyString,
     agentId: nonEmptyString.optional(),
     toolCallId: nonEmptyString.optional(),
@@ -1841,6 +1843,13 @@ export type ZCodeSessionEndedSubagent = z.infer<typeof zcodeSessionEndedSubagent
 
 export const zcodeSessionSubagentsResultSchema = z
   .object({
+    usageSummary: z
+      .object({
+        totalCount: z.number().int().nonnegative(),
+        knownCount: z.number().int().nonnegative(),
+        metrics: conversationMetricsSchema.optional(),
+      })
+      .optional(),
     revision: z.number().int().nonnegative(),
     childSessionIds: z.array(nonEmptyString),
     running: z.array(zcodeSessionRunningSubagentSchema),
@@ -1909,6 +1918,7 @@ export type ZCodeSessionListParams = z.infer<typeof zcodeSessionListParamsSchema
 
 export const zcodeSessionSubagentsParamsSchema = z
   .object({
+    includeMetrics: z.boolean().optional(),
     sessionId: nonEmptyString,
     endedCursor: nonEmptyString.optional(),
     endedLimit: z.number().int().positive().max(100).default(20),

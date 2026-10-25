@@ -4,6 +4,7 @@ import { useBaseWorkspaceServices } from "./useWorkspaceServices.js";
 import { getLocalAppUsageService } from "./appUsageServiceAccess.js";
 
 interface AppUsageState {
+  source?: ReturnType<typeof getLocalAppUsageService>;
   loading: boolean;
   data: AppUsageSnapshot | null;
   error: string | null;
@@ -24,7 +25,11 @@ function getTimeZone(): string {
 }
 
 /** 请求版本状态归 hook；range 由页面传入，local service 不可用时不发 RPC。 */
-export function useAppUsageStats(range: AppUsageRange) {
+export function useAppUsageStats(
+  range: AppUsageRange,
+  options: { enabled?: boolean; refreshKey?: string | number } = {},
+) {
+  const enabled = options.enabled !== false;
   const services = useBaseWorkspaceServices();
   const appUsageService = getLocalAppUsageService(services);
   const [state, setState] = useState<AppUsageState>(INITIAL_STATE);
@@ -37,7 +42,7 @@ export function useAppUsageStats(range: AppUsageRange) {
 
   useEffect(() => {
     let disposed = false;
-    if (!appUsageService) {
+    if (!appUsageService || !enabled) {
       requestVersionRef.current += 1;
       setState(INITIAL_STATE);
       return () => {
@@ -52,11 +57,12 @@ export function useAppUsageStats(range: AppUsageRange) {
       .getAppUsageStats({ range, timeZone: getTimeZone() })
       .then((data) => {
         if (disposed || requestVersionRef.current !== requestVersion) return;
-        setState({ loading: false, data, error: null });
+        setState({ source: appUsageService, loading: false, data, error: null });
       })
       .catch((error: unknown) => {
         if (disposed || requestVersionRef.current !== requestVersion) return;
         setState({
+          source: appUsageService,
           loading: false,
           data: null,
           error: error instanceof Error ? error.message : String(error),
@@ -66,7 +72,12 @@ export function useAppUsageStats(range: AppUsageRange) {
     return () => {
       disposed = true;
     };
-  }, [appUsageService, range, reloadToken]);
+  }, [appUsageService, enabled, range, reloadToken, options.refreshKey]);
 
-  return { ...state, available: Boolean(appUsageService), refresh };
+  return {
+    ...(enabled && state.source === appUsageService ? state : INITIAL_STATE),
+    loading: enabled && state.loading,
+    available: Boolean(appUsageService),
+    refresh,
+  };
 }

@@ -1,3 +1,5 @@
+import { TurnMetricsAction } from "@/conversation-metrics/index.js";
+import type { TurnHeaderRow } from "@zcode/shared/zcode-protocol-v4";
 import { BotTopicPreparation } from "@/v4/BotTopicPreparation.js";
 import { useBotTopicInterruption } from "@/v4/botGroupDeliveryContext.js";
 import { ConnectedBotGroupDeliveryAction } from "@/v4/BotGroupDeliveryAction.js";
@@ -399,10 +401,12 @@ function CronAutomationTurnCards({
 }
 
 function AssistantHistoryStatus({
+  metricsHeader,
   segment,
   open,
   sourceCommandIds,
 }: {
+  metricsHeader?: TurnHeaderRow;
   segment: ConversationTurnWorkSegment;
   open: boolean;
   sourceCommandIds: readonly string[];
@@ -451,11 +455,13 @@ function AssistantHistoryStatus({
           ) : null}
         </button>
       </CollapsibleTrigger>
+      {metricsHeader ? <TurnMetricsAction header={metricsHeader} /> : null}
     </div>
   );
 }
 
 function ConversationWorkSegmentFlow({
+  metricsHeader,
   segment,
   sourceCommandIds,
   context,
@@ -471,6 +477,7 @@ function ConversationWorkSegmentFlow({
   canForkLatestAssistant,
   canRetryLatestAssistant,
 }: {
+  metricsHeader?: TurnHeaderRow;
   segment: ConversationTurnWorkSegment;
   sourceCommandIds: readonly string[];
   context: ConversationRowRenderContext;
@@ -574,6 +581,7 @@ function ConversationWorkSegmentFlow({
           <Fragment key={itemKey}>
             {showHistoryStatus ? (
               <AssistantHistoryStatus
+                metricsHeader={metricsHeader}
                 segment={segment}
                 open={open}
                 sourceCommandIds={sourceCommandIds}
@@ -695,6 +703,7 @@ function ConversationTurnFlow({
       {workSegments.map((segment) => (
         <ConversationWorkSegmentFlow
           key={segment.key}
+          metricsHeader={segment === workSegments[0] ? (unit.header ?? undefined) : undefined}
           segment={segment}
           sourceCommandIds={[
             ...segment.flowItems.flatMap((item) =>

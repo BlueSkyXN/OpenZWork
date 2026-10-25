@@ -50,6 +50,7 @@ const DEFAULT_AVAILABILITY: ProjectAvailability = { online: true };
 const EMPTY_ADDITIONAL_ACTIONS: ProjectRowAction[] = [];
 
 export type ProjectNodeProps = {
+  sortDisabled?: boolean;
   project: VirtualProject;
   remoteHost?: RemoteProjectHost;
   deviceLabel?: string;

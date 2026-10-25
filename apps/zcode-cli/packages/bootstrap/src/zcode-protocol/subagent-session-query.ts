@@ -1,3 +1,5 @@
+import { getConversationMessageProjectionPolicy } from "@zcode/shared";
+import { metricsFromParts } from "@zcode/shared/conversation-metrics";
 import { Buffer } from "node:buffer";
 import {
   createSessionId,
@@ -48,6 +50,7 @@ export interface SessionSubagentProjection {
 }
 
 export interface ProjectSessionSubagentsInput {
+  includeMetrics?: boolean;
   revision: number;
   parentSession: SessionInfo;
   messages: readonly MessageWithParts[];
@@ -403,7 +406,22 @@ export function projectSessionSubagents(
       childProjection,
       parentProjection: input.parentProjection,
     });
+    const metrics = input.includeMetrics
+      ? metricsFromParts(
+          activeBranchMessages(
+            childSession,
+            input.childMessagesById.get(candidate.childSessionId) ?? [],
+          )
+            .filter(
+              (message) =>
+                message.info.role === "assistant" &&
+                getConversationMessageProjectionPolicy(message) !== "providerContextOnly",
+            )
+            .flatMap((message) => message.parts),
+        )
+      : undefined;
     const common = {
+      ...(metrics ? { metrics } : {}),
       childSessionId: candidate.childSessionId,
       ...(candidate.agentId ? { agentId: candidate.agentId } : {}),
       toolCallId: candidate.part.callID,

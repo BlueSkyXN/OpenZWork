@@ -21,6 +21,50 @@ rules:
     - invariant-only
     - evidence-only
 nodes:
+  - id: capability.conversation-metrics
+    kind: capability
+    label: Native conversation metrics
+    aliases: [原生指标栏, 本轮统计, tok/s, 首字]
+    docs: [docs/spec/native-conversation-metrics.md]
+    codeSeeds:
+      - file: packages/shared/src/conversation-metrics/contract.ts
+        symbol: conversationMetricsSchema
+      - file: apps/zcode-cli/packages/core/src/runtime/metrics/contract.ts
+        symbol: buildModelStepMetrics
+    invariants:
+      - Core settles bounded request summaries; ProductProjection owns turn aggregation; UI never counts events.
+      - Main session, direct subagents and trusted local day are separate scopes.
+  - id: surface.conversation-metrics-composer
+    kind: ui-surface
+    label: Composer native metrics footer
+    codeSeeds:
+      - file: packages/ui/src/conversation-metrics/ConversationMetricsBar.tsx
+        symbol: ConversationMetricsBar
+      - file: packages/ui/src/prompt-editor/ChatPromptEditor.tsx
+        symbol: ChatPromptEditor
+  - id: surface.conversation-metrics-history
+    kind: ui-surface
+    label: Historical turn statistics
+    codeSeeds:
+      - file: packages/ui/src/conversation-metrics/TurnMetricsDetails.tsx
+        symbol: TurnMetricsAction
+  - id: surface.conversation-metrics-settings
+    kind: ui-surface
+    label: Native metrics display preferences and shared preview
+    codeSeeds:
+      - file: packages/ui/src/conversation-metrics/MetricsDisplaySettings.tsx
+        symbol: MetricsDisplaySettings
+      - file: packages/ui/src/settingsCodePreview.tsx
+        symbol: AppearanceSectionContent
+  - id: state.conversation-metrics-preferences
+    kind: state-owner
+    label: Renderer metrics preference store with storage-domain synchronization
+    codeSeeds:
+      - file: packages/ui/src/store/conversationMetricsPreferencesStore.ts
+        symbol: createConversationMetricsPreferencesStore
+    invariants:
+      - One store per renderer; localStorage events synchronize the same storage domain without Host broadcasts.
+      - Summary field selection does not prune historical details or change canonical metrics.
   - id: capability.tool-search
     kind: capability
     label: Provider-aware deferred ToolSearch
@@ -4576,7 +4620,47 @@ nodes:
         file: packages/ui/src/ToolCallBlocks/ToolPresentation.tsx
       - symbol: resolveToolCallRenderer
         file: packages/ui/src/ToolCallBlocks/resolveRenderer.ts
+  - id: capability.conversation-management-controls
+    kind: capability
+    label: OpenZWork conversation Markdown copy, sidebar filters and project activity order
+    aliases: [复制对话, Markdown 复制, 未读筛选, 项目活动排序]
+    docs:
+      - docs/spec/conversation-controls.md
+    codeSeeds:
+      - symbol: copyConversationMarkdown
+        file: packages/ui/src/conversation-export/index.ts
+      - symbol: TaskActionMenuContent
+        file: packages/ui/src/TaskActionMenuContent.tsx
+      - symbol: GroupedTaskContextMenuContent
+        file: packages/ui/src/project-sidebar/grouped/task-context-menu-content.tsx
+      - symbol: ProjectSidebarListHeader
+        file: packages/ui/src/project-sidebar/ProjectSidebarListHeader.tsx
+      - symbol: filterSidebarTree
+        file: packages/ui/src/project-sidebar/task-filters.ts
+      - symbol: sortProjectsByActivity
+        file: packages/ui/src/project-sidebar/task-filters.ts
+
 edges:
+  - from: capability.conversation-metrics
+    to: surface.conversation-metrics-settings
+    type: renders-in
+    rank: must-inspect
+  - from: surface.conversation-metrics-settings
+    to: state.conversation-metrics-preferences
+    type: commits-to
+    rank: must-inspect
+  - from: surface.conversation-metrics-composer
+    to: state.conversation-metrics-preferences
+    type: inherits-from
+    rank: must-inspect
+  - from: capability.conversation-metrics
+    to: surface.conversation-metrics-composer
+    type: renders-in
+    rank: must-inspect
+  - from: capability.conversation-metrics
+    to: surface.conversation-metrics-history
+    type: renders-in
+    rank: must-inspect
   - from: capability.tool-search
     to: surface.tool-search-settings
     type: renders-in
@@ -8290,3 +8374,14 @@ edges:
     type: must-remain-isolated-from
     rank: invariant-only
     condition: Bot output stays bot-channel-continuous; mobile input and recovery retain replayable semantics.
+
+  - from: capability.conversation-management-controls
+    to: state.sidebar-view-preference
+    type: commits-display-preference-to
+    rank: must-inspect
+    condition: Filters and project sort extend the existing preference owner; original manual order remains intact.
+  - from: capability.conversation-management-controls
+    to: surface.project-task-list
+    type: renders-in
+    rank: must-inspect
+    condition: Filters derive visible rows only; full project activity and composer candidates retain the authoritative directory.

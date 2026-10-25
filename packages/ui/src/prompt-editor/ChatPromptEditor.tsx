@@ -61,6 +61,7 @@ export function ChatPromptEditor({
   isDraggingOver = false,
   dragAttachmentHint,
   topContent,
+  footerContent,
   inputLeadingContent,
   leadingActions,
   attachmentAction,
@@ -115,6 +116,8 @@ export function ChatPromptEditor({
   isDraggingOver?: boolean;
   dragAttachmentHint?: string;
   topContent?: ReactNode;
+  /** 正式会话的只读指标；历史编辑器保持缺省。 */
+  footerContent?: ReactNode;
   /** 与输入正文同一行的前置内容；紧凑标签场景（如加速提示）使用。 */
   inputLeadingContent?: ReactNode;
   leadingActions?: ReactNode;
@@ -489,6 +492,9 @@ export function ChatPromptEditor({
             )}
           </div>
         </div>
+        {footerContent ? (
+          <div className={isInline ? "basis-full min-w-0" : "min-w-0"}>{footerContent}</div>
+        ) : null}
       </div>
     </form>
   );

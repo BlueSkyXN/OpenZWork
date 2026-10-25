@@ -8,6 +8,8 @@ const MAX_PAGE_SIZE = 100;
 
 export interface SessionSubagentsViewState {
   revision: number;
+  running: ZCodeSessionSubagentsResult["running"];
+  usageSummary?: ZCodeSessionSubagentsResult["usageSummary"];
   ended: ZCodeSessionSubagentsResult["ended"];
   error: string | null;
   loading: boolean;
@@ -16,6 +18,7 @@ export interface SessionSubagentsViewState {
 function emptyState(): SessionSubagentsViewState {
   return {
     revision: 0,
+    running: [],
     ended: { total: 0, items: [] },
     error: null,
     loading: false,
@@ -37,13 +40,12 @@ export function resolveEndedSubagentRefreshTargetCount(options: {
   requestedCount: number;
 }): number {
   if (options.loadedItemCount === 0) return options.requestedCount;
-  return (
-    options.requestedCount + Math.max(0, options.nextTotal - options.previousTotal)
-  );
+  return options.requestedCount + Math.max(0, options.nextTotal - options.previousTotal);
 }
 
 export function useSessionSubagents(options: {
   enabled?: boolean;
+  includeMetrics?: boolean;
   refreshKey?: string | number | null;
   remoteSessionId?: string;
   sessionId?: string | null;
@@ -76,11 +78,13 @@ export function useSessionSubagents(options: {
         ...(options.workspaceIdentity ? { workspaceIdentity: options.workspaceIdentity } : {}),
         ...(options.remoteSessionId ? { remoteSessionId: options.remoteSessionId } : {}),
         sessionId: options.sessionId,
+        ...(options.includeMetrics ? { includeMetrics: true } : {}),
         endedLimit,
         ...(endedCursor ? { endedCursor } : {}),
       });
     },
     [
+      options.includeMetrics,
       options.remoteSessionId,
       options.sessionId,
       options.workspaceIdentity,
@@ -122,6 +126,8 @@ export function useSessionSubagents(options: {
       loadedEndedCountRef.current = Math.max(PAGE_SIZE, items.length);
       setState({
         revision: response.revision,
+        running: response.running,
+        usageSummary: response.usageSummary,
         ended: {
           total: response.ended.total,
           items,
@@ -166,6 +172,8 @@ export function useSessionSubagents(options: {
       loadedEndedCountRef.current = Math.max(PAGE_SIZE, items.length);
       setState({
         revision: response.revision,
+        running: response.running,
+        usageSummary: response.usageSummary,
         ended: {
           total: response.ended.total,
           items,

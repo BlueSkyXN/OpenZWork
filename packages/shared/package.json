@@ -29,7 +29,8 @@
     "./workspace-hook-trust-store-file": "./src/workspace-hook-trust-store-file.ts",
     "./gen-ui": "./src/gen-ui/index.ts",
     "./request-security": "./src/request-verification/index.ts",
-    "./web-remote-relay": "./src/web-remote-relay/index.ts"
+    "./web-remote-relay": "./src/web-remote-relay/index.ts",
+    "./conversation-metrics": "./src/conversation-metrics/index.ts"
   },
   "scripts": {
     "lint": "oxlint",

@@ -676,6 +676,8 @@ export interface RetryPart {
 }
 
 export interface StepStartPart {
+  /** 有界原生指标摘要，按消息身份恢复；旧记录可缺失。 */
+  modelMetrics?: import("@zcode/shared/conversation-metrics").ModelStepMetrics;
   id: PartId;
   sessionID: SessionId;
   messageID: MessageId;

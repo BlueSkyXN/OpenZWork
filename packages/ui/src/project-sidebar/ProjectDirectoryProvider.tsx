@@ -21,11 +21,18 @@ function useDirectoryState(isDesktop: boolean) {
     sortedProjects,
     result.loading,
     result.availability,
+    result.tree.tasks,
   );
   const projects = useMemo(() => {
     const sorted = preferences.sort(sortedProjects);
     return [...sorted.filter((p) => p.pinned), ...sorted.filter((p) => !p.pinned)];
-  }, [sortedProjects, preferences.order]);
+  }, [
+    sortedProjects,
+    preferences.order,
+    preferences.projectSort,
+    result.tree.tasks,
+    result.availability,
+  ]);
   // Context 不受消费方 memo 保护；父级更新 children 时，等价目录不能再次广播。
   return useMemo(
     () => ({ ...result, preferences, projects, groups, deviceNames }),

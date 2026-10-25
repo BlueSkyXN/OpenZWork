@@ -31,6 +31,10 @@ vi.mock("@/hooks/usePlatform.js", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useWorkspaceServices.js", () => ({
+  useWorkspaceServicesResolution: () => ({ services: {}, remoteSessionId: null, rpcReady: true }),
+}));
+
 vi.mock("@/hooks/useTaskSessionFilePath.js", () => ({
   useTaskSessionFilePath: () => ({
     path: null,

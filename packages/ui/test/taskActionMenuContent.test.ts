@@ -14,7 +14,7 @@ const TASK_LOG_PATH_ITEM_INDEX = 7;
 const PROVIDER_CONFIG_ITEM_INDEX = 8;
 
 function renderMenu(overrides: Partial<React.ComponentProps<typeof TaskActionMenuContent>> = {}) {
-  const itemStates: Array<{ disabled?: boolean }> = [];
+  const itemStates: Array<{ disabled?: boolean; variant?: string; onSelect?: () => void }> = [];
 
   const html = renderToStaticMarkup(
     createElement(TaskActionMenuContent, {
@@ -42,12 +42,16 @@ function renderMenu(overrides: Partial<React.ComponentProps<typeof TaskActionMen
         children,
         title,
         disabled,
+        variant,
+        onSelect,
       }: {
         children: React.ReactNode;
         title?: string;
         disabled?: boolean;
+        variant?: "default" | "destructive";
+        onSelect?: () => void;
       }) => {
-        itemStates.push({ disabled });
+        itemStates.push({ disabled, variant, onSelect });
         return createElement("button", { title, disabled }, children);
       },
       Separator: () => createElement("hr"),
@@ -71,6 +75,33 @@ function renderMenu(overrides: Partial<React.ComponentProps<typeof TaskActionMen
 }
 
 describe("TaskActionMenuContent", () => {
+  it("OCC01/06：复制入口独立读取能力，归档和取消归档使用各自语义颜色", () => {
+    const copy = vi.fn();
+    const result = renderMenu({
+      onCopyConversationMarkdown: copy,
+      activeSessionId: "session",
+      disableTaskActions: true,
+    });
+    expect(result.html).toContain("conversationExport.copy");
+    expect(result.itemStates[0]?.disabled).toBe(false);
+    result.itemStates[0]?.onSelect?.();
+    expect(copy).toHaveBeenCalledOnce();
+    expect(renderMenu().itemStates[ARCHIVE_ITEM_INDEX]?.variant).toBe("destructive");
+    expect(renderMenu({ isArchived: true }).itemStates[ARCHIVE_ITEM_INDEX]?.variant).toBe(
+      "default",
+    );
+    expect(
+      renderMenu({
+        onCopyConversationMarkdown: copy,
+        activeSessionId: "session",
+        copyingConversation: true,
+      }).itemStates[0]?.disabled,
+    ).toBe(true);
+    expect(
+      renderMenu({ onCopyConversationMarkdown: copy, disableCopyConversation: true }).itemStates[0]
+        ?.disabled,
+    ).toBe(true);
+  });
   it("provider 配置文件未落盘但路径已知时仍保留入口", () => {
     const { itemStates } = renderMenu({
       providerConfigFile: {

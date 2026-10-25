@@ -157,9 +157,10 @@ async function runModelBackedTurnStepImpl(
     modelTraceContext,
     model,
   );
+  const metricsPartId = createPartId();
   await this.persistPart(
     {
-      id: createPartId(),
+      id: metricsPartId,
       sessionID: this.sessionId,
       messageID: assistantMessageId,
       type: "step-start",
@@ -243,6 +244,7 @@ async function runModelBackedTurnStepImpl(
   } catch (error) {
     let finalError = error;
     await recordMainTurnModelUsage(this, state, {
+      metricsPartId,
       assistantMessageId,
       error: finalError,
       model,
@@ -597,6 +599,7 @@ async function runModelBackedTurnStepImpl(
   state.events.push(modelCompleteEvent);
   this.lastAssistantCompletedAtMs = Date.now();
   await recordMainTurnModelUsage(this, state, {
+    metricsPartId,
     assistantMessageId,
     model,
     modelTraceContext,

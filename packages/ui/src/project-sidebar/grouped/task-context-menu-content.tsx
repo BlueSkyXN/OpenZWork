@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/context-menu.js";
 import { TaskGroupColorDot } from "@/project-sidebar/grouped/colors.js";
 import type { TaskGroupMenuItem } from "@/project-sidebar/grouped/types.js";
+import { TaskCopyMarkdownMenuItem } from "@/TaskActionMenuContent.js";
 
 export function GroupedTaskContextMenuContent({
   task,
@@ -29,6 +30,9 @@ export function GroupedTaskContextMenuContent({
   onOpenTaskPathInFileManager,
   onCopyText,
   onOpenProviderConfig,
+  onCopyConversationMarkdown,
+  copyingConversation,
+  disableCopyConversation,
   disabledReason,
 }: {
   task: ZCodeTaskMeta;
@@ -49,10 +53,26 @@ export function GroupedTaskContextMenuContent({
   onOpenTaskPathInFileManager: () => void;
   onCopyText: (label: string, text: string | null) => void;
   onOpenProviderConfig: () => void;
+  onCopyConversationMarkdown?: () => void;
+  copyingConversation?: boolean;
+  disableCopyConversation?: boolean;
   disabledReason?: string;
 }) {
   return (
     <ContextMenuContent className="w-56">
+      {onCopyConversationMarkdown ? (
+        <>
+          <TaskCopyMarkdownMenuItem
+            intl={intl}
+            Item={ContextMenuItem}
+            activeSessionId={task.taskId}
+            copyingConversation={copyingConversation}
+            disableCopyConversation={disableCopyConversation}
+            onCopyConversationMarkdown={onCopyConversationMarkdown}
+          />
+          <ContextMenuSeparator />
+        </>
+      ) : null}
       <ContextMenuSub>
         <SidebarNativeTooltip>
           <ContextMenuSubTrigger
@@ -127,6 +147,7 @@ export function GroupedTaskContextMenuContent({
       </SidebarNativeTooltip>
       <SidebarNativeTooltip>
         <ContextMenuItem
+          variant="destructive"
           disabled={Boolean(disabledReason)}
           title={disabledReason}
           onSelect={() => {

@@ -18,6 +18,10 @@ vi.mock("@/hooks/useSourceServerDisplayNames.js", () => ({
 afterEach(cleanup);
 it("SBV04：两个消费者共用目录，视图切换不改变手动项目顺序", () => {
   localStorage.clear();
+  localStorage.setItem(
+    "zcode-project-sidebar-preferences",
+    JSON.stringify({ projectSort: "manual" }),
+  );
   const base = {
     hostId: "local",
     name: "name",

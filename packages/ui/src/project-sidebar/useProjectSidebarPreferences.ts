@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ProjectAvailability,
+  ProjectTask,
   ProjectSidebarView,
   VirtualProject,
 } from "@/project-sidebar/contract.js";
@@ -11,13 +12,25 @@ import { readWorkspaceExpansionState } from "@/lib/workspaceExpansionPreference.
 import { reconcileProjectOrder, moveProjectOrder } from "@/project-sidebar/projectOrder.js";
 
 import { readProjectSidebarView } from "@/project-sidebar/view-preference.js";
+import {
+  readSidebarTaskFilters,
+  readSidebarProjectSort,
+  sortProjectsByActivity,
+  type SidebarProjectSort,
+  type SidebarTaskFilters,
+  type SidebarTaskStatus,
+} from "@/project-sidebar/task-filters.js";
 
 const KEY = "zcode-project-sidebar-preferences";
 const EMPTY_AVAILABILITY: ReadonlyMap<string, ProjectAvailability> = new Map();
+const EMPTY_TASKS: readonly ProjectTask[] = [];
 interface Preferences {
   order: string[];
   view: ProjectSidebarView;
   expanded: Record<string, boolean>;
+  unreadOnly: boolean;
+  taskStatus: SidebarTaskStatus;
+  projectSort: SidebarProjectSort;
 }
 function read(key: string): Record<string, unknown> {
   try {
@@ -37,6 +50,7 @@ export function useProjectSidebarPreferences(
   projects: VirtualProject[],
   loading: boolean,
   availability: ReadonlyMap<string, ProjectAvailability> = EMPTY_AVAILABILITY,
+  tasks: readonly ProjectTask[] = EMPTY_TASKS,
 ) {
   const upgradeKeys = useMemo(
     () =>
@@ -50,7 +64,11 @@ export function useProjectSidebarPreferences(
   const [legacyExpansion] = useState(readWorkspaceExpansionState);
   const [preferences, setPreferences] = useState<Preferences>(() => {
     const saved = read(KEY);
+    const filters = readSidebarTaskFilters(saved);
     return {
+      unreadOnly: filters.unreadOnly,
+      taskStatus: filters.status,
+      projectSort: readSidebarProjectSort(saved),
       order: reconcileProjectOrder(
         Array.isArray(saved.order)
           ? saved.order.filter((key): key is string => typeof key === "string")
@@ -80,6 +98,9 @@ export function useProjectSidebarPreferences(
           ...previous,
           order: [...new Set(value.order)],
           view: value.view === "timeline" || value.view === "grouped" ? value.view : "projects",
+          unreadOnly: readSidebarTaskFilters(value).unreadOnly,
+          taskStatus: readSidebarTaskFilters(value).status,
+          projectSort: readSidebarProjectSort(value),
           expanded:
             value.expanded && typeof value.expanded === "object"
               ? Object.fromEntries(
@@ -138,9 +159,32 @@ export function useProjectSidebarPreferences(
     [],
   );
   const setView = useCallback((view: ProjectSidebarView) => update({ view }), [update]);
+  const setFilters = useCallback(
+    (filters: SidebarTaskFilters) =>
+      update({
+        unreadOnly: filters.unreadOnly,
+        taskStatus: filters.status,
+      }),
+    [update],
+  );
+  const setProjectSort = useCallback(
+    (projectSort: SidebarProjectSort) => update({ projectSort }),
+    [update],
+  );
+  const filters = useMemo(
+    () => ({
+      unreadOnly: preferences.unreadOnly,
+      status: preferences.taskStatus,
+    }),
+    [preferences.unreadOnly, preferences.taskStatus],
+  );
   return useMemo(
     () => ({
       order: preferences.order,
+      filters,
+      setFilters,
+      projectSort: preferences.projectSort,
+      setProjectSort,
       prepend: (project: VirtualProject) =>
         changeOrder((order) => [
           projectKey(project),
@@ -150,9 +194,12 @@ export function useProjectSidebarPreferences(
         // 删除只由权威目录移除行；提前清理排序键会把刷新前的旧行追加到末尾，造成跳动。
         const order = reconcileProjectOrder(preferences.order, items.map(projectKey), upgradeKeys);
         const positions = new Map(order.map((key, index) => [key, index]));
-        return [...items].sort(
+        const manual = [...items].sort(
           (a, b) => positions.get(projectKey(a))! - positions.get(projectKey(b))!,
         );
+        return preferences.projectSort === "activity"
+          ? sortProjectsByActivity(manual, tasks, availability)
+          : manual;
       },
       reorder: (section: VirtualProject[], active: string, over: string) =>
         changeOrder((order) => moveProjectOrder(order, section.map(projectKey), active, over)),
@@ -187,6 +234,17 @@ export function useProjectSidebarPreferences(
           return next;
         }),
     }),
-    [preferences, changeOrder, setView, legacyExpansion, upgradeKeys],
+    [
+      preferences,
+      changeOrder,
+      setView,
+      legacyExpansion,
+      upgradeKeys,
+      filters,
+      setFilters,
+      setProjectSort,
+      tasks,
+      availability,
+    ],
   );
 }

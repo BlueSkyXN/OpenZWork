@@ -242,6 +242,7 @@ export interface ZCodeAgentListSessionsParams extends ZCodeAgentWorkspaceTarget 
 }
 
 export interface ZCodeAgentListSessionSubagentsParams extends ZCodeAgentSessionTarget {
+  includeMetrics?: boolean;
   endedCursor?: string;
   endedLimit?: number;
   /** 远程 workspace 的宿主连接身份；只用于选择现有 Host，不进入 CLI wire query。 */

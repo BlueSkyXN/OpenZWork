@@ -1,3 +1,7 @@
+import {
+  ConversationMetricsBar,
+  useConversationMetricsPreferences,
+} from "@/conversation-metrics/index.js";
 import { ComposerSubmissionPendingContext } from "@/project-sidebar/index.js";
 /* oxlint-disable eslint(max-lines) -- composer 集中收口输入区 wiring（附件/草稿/历史/mention），拆分会打散收口粒度。 */
 import { useRemoteProjectReconnect } from "@/hooks/RemoteProjectPresentationContext.js";
@@ -573,6 +577,7 @@ function ConversationComposerImpl({
   appSlashCommands,
   onDropTargetControllerChange,
 }: ConversationComposerProps) {
+  const metricsPreferences = useConversationMetricsPreferences();
   const remoteAvailable = useRemoteConversationAvailable();
   const remoteController = useOptionalRemoteWorkspaceController();
   const reconnectProject = useRemoteProjectReconnect();
@@ -2395,6 +2400,20 @@ function ConversationComposerImpl({
           // 仍由 MentionPlugin 保留兼容触发，但不在 + 菜单重复展示。
           showMentionButton
           topContent={topContentNode}
+          footerContent={
+            metricsPreferences.enabled &&
+            metricsPreferences.visibleFields.length > 0 &&
+            snapshot &&
+            sessionId === snapshot.sessionId ? (
+              <ConversationMetricsBar
+                displayPreferences={metricsPreferences}
+                snapshot={snapshot}
+                workspacePath={workspacePath}
+                workspaceIdentity={workspaceIdentity}
+                remoteSessionId={remoteSessionId}
+              />
+            ) : undefined
+          }
           attachmentAction={runtimeBlocked ? undefined : attachmentAction}
           inputTestId={TID_V4_COMPOSER_INPUT}
           inputApiRef={inputApiRef}

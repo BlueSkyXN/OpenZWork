@@ -1,3 +1,4 @@
+import { mergeMetrics, modelStepMetricsSchema } from "@zcode/shared/conversation-metrics";
 import { PERMISSION_FULL_ACCESS_OPTION_ID } from "@zcode/shared/zcode-protocol-v4";
 // ProductProjection —— CLI 权威投影第二 reducer。
 // 输入：CLI 事件日志（SessionEvent，权威事实源）；输出：ConversationDelta[]。
@@ -414,6 +415,7 @@ type TurnModelBaseline =
   | { kind: "known"; provider: string; model: string; thought: string };
 
 export class ProductProjection {
+  private metricsMessageIds = new Set<string>();
   private snapshot: ConversationSnapshot;
   // reducer 内部的 rowId 查找必须与 rows.window 同步；冷恢复过去每次 find 都扫描全表，
   // tool/turn 终态越多退化越明显。普通归约增量维护，rewind 才重建。
@@ -1040,7 +1042,11 @@ export class ProductProjection {
     const subagentDeltas = this.shouldMaterializeSubagentProjection(reduced)
       ? this.materializeSubagentProjection(reduced)
       : [];
-    const reducedWithSubagents = [...reduced, ...subagentDeltas];
+    const reducedWithSubagents = [
+      ...reduced,
+      ...subagentDeltas,
+      ...this.materializeToolCounts(reduced),
+    ];
     // row、命令 target 与 actions 必须属于同一个 materialization transaction。
     // 旧实现只维护 side-map/最新行判断，UI action 由别处推断，cold/tool-only/failed
     // 轮会出现“入口可见但 target 不可解析”，新目标出现后旧入口也不会撤销。
@@ -1090,6 +1096,7 @@ export class ProductProjection {
   private cloneProjection(): ProductProjection {
     const clone = Object.create(ProductProjection.prototype) as ProductProjection;
     clone.snapshot = this.snapshot;
+    clone.metricsMessageIds = new Set(this.metricsMessageIds);
     clone.rowIndexById = new Map(this.rowIndexById);
     clone.hydrationAccumulator = null;
     clone.nextRowId = this.nextRowId;
@@ -1150,6 +1157,7 @@ export class ProductProjection {
 
   private adoptProjection(candidate: ProductProjection): void {
     this.snapshot = candidate.snapshot;
+    this.metricsMessageIds = candidate.metricsMessageIds;
     this.rowIndexById = candidate.rowIndexById;
     this.hydrationAccumulator = null;
     this.nextRowId = candidate.nextRowId;
@@ -1187,6 +1195,39 @@ export class ProductProjection {
     this.configModeTouchedByEvent = candidate.configModeTouchedByEvent;
     this.droppedContentStreamEventCount = candidate.droppedContentStreamEventCount;
     this.normalizationDiagnostics = candidate.normalizationDiagnostics;
+  }
+
+  /** 工具生命周期变更时更新计数；流式进度不触发全轮重算。 */
+  private materializeToolCounts(reduced: readonly ConversationDelta[]): ConversationDelta[] {
+    const changedTurns = new Set<string>();
+    for (const delta of reduced) {
+      if (delta.op !== "row.upserted" || delta.row.kind !== "toolCall") continue;
+      const previous = this.findRow(delta.row.rowId);
+      if (previous?.kind !== "toolCall" || previous.status !== delta.row.status)
+        changedTurns.add(delta.row.turnId);
+    }
+    if (changedTurns.size === 0) return [];
+    const prospective = applyConversationDeltas(this.snapshot, reduced);
+    const result: ConversationDelta[] = [];
+    for (const turnId of changedTurns) {
+      const header = prospective.rows.window.find(
+        (row) => row.kind === "turnHeader" && row.turnId === turnId,
+      );
+      if (header?.kind !== "turnHeader") continue;
+      const tools = prospective.rows.window.filter(
+        (row) => row.kind === "toolCall" && row.turnId === turnId,
+      );
+      result.push({
+        op: "row.upserted",
+        row: {
+          ...header,
+          toolCallCount: tools.length,
+          toolErrorCount: tools.filter((row) => row.kind === "toolCall" && row.status === "error")
+            .length,
+        },
+      });
+    }
+    return result;
   }
 
   /**
@@ -1372,6 +1413,42 @@ export class ProductProjection {
         return this.onStreamRecoveryRetryStarted(event);
       case SessionEventType.ModelSelected:
         return this.onModelSelected(event);
+      case SessionEventType.ModelMetricsSettled: {
+        const parsed = modelStepMetricsSchema.safeParse(event.payload);
+        const row = this.turnHeaderForEvent(event);
+        if (
+          !parsed.success ||
+          !row ||
+          row.state !== "running" ||
+          this.metricsMessageIds.has(parsed.data.messageId)
+        )
+          return [];
+        this.metricsMessageIds.add(parsed.data.messageId);
+        const deltas: ConversationDelta[] = [
+          { op: "row.upserted", row: { ...row, metrics: mergeMetrics(row.metrics, parsed.data) } },
+        ];
+        // Live 累计仍由 ModelComplete 更新；cold 的合成 ModelComplete 使用零用量，
+        // 仅从本步骤持久化的主链成功事实恢复，不能把失败/子任务摘要加进去。
+        if (String(event.traceId) === HYDRATION_TRACE_ID && parsed.data.mainUsage) {
+          const usage = parsed.data.mainUsage;
+          const cumulative = this.snapshot.usage.cumulative;
+          deltas.push({
+            op: "state.updated",
+            patch: {
+              usage: {
+                ...this.snapshot.usage,
+                cumulative: {
+                  inputTokens: cumulative.inputTokens + usage.inputTokens,
+                  outputTokens: cumulative.outputTokens + usage.outputTokens,
+                  cacheReadTokens: cumulative.cacheReadTokens + (usage.cacheReadTokens ?? 0),
+                  cacheWriteTokens: cumulative.cacheWriteTokens + (usage.cacheWriteTokens ?? 0),
+                },
+              },
+            },
+          });
+        }
+        return deltas;
+      }
       case SessionEventType.ModelComplete:
         return this.onModelComplete(event);
       case SessionEventType.ToolCallScheduled:
@@ -5333,6 +5410,8 @@ export class ProductProjection {
           ...row,
           state,
           endedAt,
+          toolCallCount: row.toolCallCount ?? 0,
+          toolErrorCount: row.toolErrorCount ?? 0,
           ...(activeMs !== undefined ? { activeMs } : {}),
           ...(historyRoundCount !== undefined ? { historyRoundCount } : {}),
           ...(row.workSegments

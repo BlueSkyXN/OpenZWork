@@ -56,7 +56,7 @@ export function ProjectNode(props: ProjectNodeProps) {
   } = useSortable({
     id: projectKey(project),
     // 修复原因：共享项目行曾在手机注册排序手势，滑动列表会误拖；由入口统一禁用。
-    disabled: isWebRemoteControl,
+    disabled: isWebRemoteControl || props.sortDisabled,
     data,
   });
   // 原因：仅有排序位移无法明确落点；直接读取同一拖拽状态，避免提示与提交目标分叉。
@@ -151,7 +151,7 @@ export function ProjectNode(props: ProjectNodeProps) {
         <ProjectNodeContent
           {...props}
           editable={editable}
-          dragEnabled={!isWebRemoteControl}
+          dragEnabled={!isWebRemoteControl && !props.sortDisabled}
           canOpen={canOpen}
           isOpen={isOpen}
           attributes={attributes}
