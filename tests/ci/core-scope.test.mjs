@@ -120,7 +120,8 @@ test("system prompt regressions run in core and independent CLI gates", async ()
     "packages/ui/src/settings/system-prompt/contract.test.ts",
     "packages/ui/test/systemPromptSettingsLoading.test.ts",
     "packages/ui/test/settingsPageConfig.test.ts",
-  ]) assert.ok(declared.includes(file), file);
+  ])
+    assert.ok(declared.includes(file), file);
 
   const steps = (await workflow("ci.yml")).jobs.checks.steps;
   const context = steps.find((step) => step.name === "System prompt context regression");
@@ -132,10 +133,12 @@ test("system prompt regressions run in core and independent CLI gates", async ()
     assert.equal(step["continue-on-error"], undefined);
     assert.ok(step.run.includes("--bail=1"));
   }
-  assert.match(context.run, /@zcode\/core.*tests\/system-prompt-settings\.test\.ts.*tests\/context-builder\.test\.ts/);
+  assert.match(
+    context.run,
+    /@zcode\/core.*tests\/system-prompt-settings\.test\.ts.*tests\/context-builder\.test\.ts/,
+  );
   assert.match(protocol.run, /@zcode\/bootstrap.*tests\/zcode-protocol\.test\.ts --bail=1$/);
   assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
-
 });
 
 test("extended checks keep real failures and run independently with Electron prepared", async () => {
