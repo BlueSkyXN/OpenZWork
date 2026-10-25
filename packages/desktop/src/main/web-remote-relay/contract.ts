@@ -22,3 +22,20 @@ export interface WebRemoteControlRelayAuthStorageProvider {
   clear(): Promise<void>;
   rotate(auth: WebRemoteControlRelayStoredAuth): Promise<void>;
 }
+
+export interface WebRemoteControlDirectGatewayOptions {
+  listenHost: string;
+  port: number;
+  staticRoot: string;
+  signal: AbortSignal;
+  auth: WebRemoteControlRelayStoredAuth;
+}
+
+export interface WebRemoteControlPreparedConnection {
+  relayWsUrl: string;
+  mobileRemoteControlUrl: string;
+  settings: import("@zcode/shared").WebRemoteControlConnectionSettings;
+  authStorageProvider: WebRemoteControlRelayAuthStorageProvider;
+  commit(): Promise<void>;
+  dispose(): Promise<void>;
+}

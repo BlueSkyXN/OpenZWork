@@ -1981,6 +1981,21 @@ const enUS: Record<string, string> = {
   "webRemoteControl.authRequired.description":
     "Sign in to control this computer from your phone. Use the same account on both devices.",
   "webRemoteControl.authRequired.login": "Sign in",
+  "webRemoteControl.connection.mode": "Connection mode",
+  "webRemoteControl.connection.direct": "Direct access",
+  "webRemoteControl.connection.self-hosted": "Self-hosted relay",
+  "webRemoteControl.connection.official": "Official relay",
+  "webRemoteControl.connection.listenHost": "Listen address",
+  "webRemoteControl.connection.port": "Port (0: auto)",
+  "webRemoteControl.connection.publicUrl": "Phone URL (optional)",
+  "webRemoteControl.connection.relayUrl": "V1 WebSocket URL",
+  "webRemoteControl.connection.pageUrl": "Mobile page URL",
+  "webRemoteControl.connection.directHelp":
+    "Leave the phone URL empty to use this computer’s IP and port. The phone must reach this computer; use HTTPS for a public reverse proxy.",
+  "webRemoteControl.connection.officialHelp":
+    "Pair through zcode.z.ai using V1. No sign-in required.",
+  "webRemoteControl.connection.start": "Start remote control",
+  "webRemoteControl.connection.ready": "Start to show the pairing QR code",
   "webRemoteControl.title": "Mobile remote control",
   "webRemoteControl.description":
     "Scan the QR code or open the link on your phone to control this workspace.",

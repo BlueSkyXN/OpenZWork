@@ -1,5 +1,10 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
+import {
+  DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+  type WebRemoteControlConnectionSettings,
+} from "@zcode/shared";
+import { WebRemoteControlConnectionForm } from "./WebRemoteControlConnectionForm.js";
 import type { BotProvider, WebRemoteControlStatus } from "@zcode/shared";
 import {
   isSameWebRemoteControlTarget,
@@ -71,6 +76,11 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
     status: "idle",
   });
   const [loading, setLoading] = useState(false);
+  const [connection, setConnection] = useState<WebRemoteControlConnectionSettings>(() =>
+    structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+  );
+  const [operationError, setOperationError] = useState<string>();
+  const running = ["starting", "running", "connecting", "active"].includes(status.status);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [botsDialogOpen, setBotsDialogOpen] = useState(false);
   const [botEntryProvider, setBotEntryProvider] = useState<RemoteControlBotProvider | null>(null);
@@ -104,33 +114,18 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
       setLoading(true);
 
       try {
-        const currentStatus = await platform.getWebRemoteControlStatus();
-        let nextStatus: WebRemoteControlStatus;
-        if (
-          isSameWebRemoteControlTarget(
-            currentStatus,
-            workspacePath,
-            workspaceIdentity,
-            remoteSessionId,
-          ) ||
-          isReusableWebRemoteControlSession(currentStatus)
-        ) {
-          nextStatus = currentStatus;
-        } else {
-          const startResult = await platform.startWebRemoteControl({
-            workspacePath,
-            workspaceIdentity,
-            remoteSessionId,
-            initialTaskId,
-          });
-          // 兼容仍可返回 cancelled 的平台实现；当前 Desktop 不再叠加原生确认。
-          nextStatus = startResult.status === "cancelled" ? { status: "idle" } : startResult;
-        }
-        // Bugfix: 手机端默认主题已统一收敛到 dark，不再依赖二维码 URL 透传 theme。
-        // 这里去掉启动参数里的 theme，避免桌面端主题无意义地参与远控链路。
-
+        const [nextStatus, savedConnection] = await Promise.all([
+          platform.getWebRemoteControlStatus(),
+          platform.getWebRemoteControlConnectionSettings?.(),
+        ]);
         if (!cancelled) {
           setStatus(nextStatus);
+          setConnection(
+            nextStatus.connection ??
+              savedConnection ??
+              structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+          );
+          setOperationError(undefined);
           logger.info("[WebRemoteControlDialog] Web 远程控制状态已同步", {
             workspacePath,
             workspaceIdentity: workspaceIdentity ?? "none",
@@ -248,6 +243,28 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
     };
   }, [status.qrUrl]);
 
+  const handleStart = async () => {
+    setLoading(true);
+    setOperationError(undefined);
+    try {
+      const result = await platform.startWebRemoteControl({
+        workspacePath,
+        workspaceIdentity,
+        remoteSessionId,
+        initialTaskId,
+        connection,
+      });
+      if (result.status !== "cancelled") {
+        setStatus(result);
+        setConnection(result.connection ?? connection);
+      }
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCopyLink = async () => {
     if (!status.connectUrl) {
       return;
@@ -285,6 +302,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
     setLoading(true);
     try {
       const nextStatus = await platform.refreshWebRemoteControlPairing({
+        connection,
         workspacePath,
         workspaceIdentity,
         remoteSessionId,
@@ -325,7 +343,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
     try {
       await platform.stopWebRemoteControl();
       setStatus({ status: "idle" });
-      onOpenChange(false);
+      setOperationError(undefined);
       toast(intl.formatMessage({ id: "webRemoteControl.stopSuccess" }));
       logger.info("[WebRemoteControlDialog] 已关闭 Web 远程控制", {
         workspacePath,
@@ -443,6 +461,34 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                     </p>
                   </div>
                 </div>
+                {running ? (
+                  <p className="mb-3 text-ui-caption text-foreground-subtle">
+                    {intl.formatMessage({ id: "webRemoteControl.connection.mode" })}:{" "}
+                    {intl.formatMessage({ id: `webRemoteControl.connection.${connection.mode}` })}
+                  </p>
+                ) : (
+                  <WebRemoteControlConnectionForm
+                    value={connection}
+                    onChange={setConnection}
+                    disabled={loading}
+                  />
+                )}
+                {!running ? (
+                  <Button
+                    type="button"
+                    data-testid="web-remote-start"
+                    className="mb-3"
+                    disabled={loading}
+                    onClick={() => void handleStart()}
+                  >
+                    {intl.formatMessage({ id: "webRemoteControl.connection.start" })}
+                  </Button>
+                ) : null}
+                {operationError ? (
+                  <p role="alert" className="mb-3 text-ui-base text-destructive">
+                    {operationError}
+                  </p>
+                ) : null}
                 <div
                   data-testid="web-remote-control-connection-card"
                   className="mb-3 rounded-lg bg-surface px-3 py-2"
@@ -507,7 +553,7 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                       size="default"
                       className="shrink-0 gap-2 enabled:cursor-pointer"
                       onClick={() => void handleRefreshQr()}
-                      disabled={loading}
+                      disabled={loading || !running}
                     >
                       <RefreshCw className="size-3.5" />
                       {intl.formatMessage({ id: "webRemoteControl.refreshQr" })}
@@ -534,10 +580,16 @@ export const WebRemoteControlDialog = memo(function WebRemoteControlDialogCompon
                     />
                   ) : (
                     <div className="flex flex-col items-center gap-3 text-center text-ui-base text-foreground-subtle">
-                      <LoaderCircle className="size-5 animate-spin" />
+                      {loading ? (
+                        <LoaderCircle className="size-5 animate-spin" />
+                      ) : (
+                        <Smartphone className="size-5" />
+                      )}
                       <span>
                         {intl.formatMessage({
-                          id: "webRemoteControl.generating",
+                          id: loading
+                            ? "webRemoteControl.generating"
+                            : "webRemoteControl.connection.ready",
                         })}
                       </span>
                     </div>

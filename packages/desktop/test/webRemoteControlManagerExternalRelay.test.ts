@@ -31,6 +31,7 @@ type AttachWorkspaceHost = Parameters<
 >[0]["attachWorkspaceHost"];
 
 function createManagerHarness(options?: {
+  connectionProvider?: Parameters<typeof createWebRemoteControlManager>[0]["connectionProvider"];
   featureEnabled?: boolean;
   delayReadyMs?: number;
   canSendPayload?: () => boolean;
@@ -92,6 +93,7 @@ function createManagerHarness(options?: {
   const disposeWorkspaceHostAttachmentsForRemoteSession =
     options?.disposeWorkspaceHostAttachmentsForRemoteSession ?? vi.fn();
   const manager = createWebRemoteControlManager({
+    connectionProvider: options?.connectionProvider,
     relayWsUrl: "ws://relay.test/ws",
     mobileRemoteControlUrl: "https://relay.test/remote/v3",
     getEndpointUrls: options?.getEndpointUrls,
@@ -2252,4 +2254,126 @@ it("transport明确报告kicked时保留session-conflict终态", async () => {
     failure: { reason: "session-conflict" },
   });
   await f.manager.disposeWindow(1);
+});
+
+describe("V1 prepared connection lifecycle", () => {
+  function provider() {
+    const settings = {
+      mode: "direct" as const,
+      direct: { listenHost: "127.0.0.1", port: 0, publicUrl: "" },
+      relay: { wsUrl: "", pageUrl: "" },
+    };
+    const connection = {
+      relayWsUrl: "ws://127.0.0.1:12345/ws",
+      mobileRemoteControlUrl: "http://phone.example/remote/",
+      settings,
+      authStorageProvider: {
+        load: vi.fn(async () => ({ deviceSid: "direct-id", passHash: "direct-hash" })),
+        save: vi.fn(async () => {}),
+        clear: vi.fn(async () => {}),
+        rotate: vi.fn(async () => {}),
+      },
+      commit: vi.fn(async () => {}),
+      dispose: vi.fn(async () => {}),
+    };
+    return {
+      connection,
+      getSettings: vi.fn(async () => settings),
+      prepare: vi.fn(async () => connection),
+    };
+  }
+  it("uses scoped auth, never exposes loopback in the QR, and releases on stop", async () => {
+    const p = provider();
+    const h = createManagerHarness({ connectionProvider: p });
+    const result = await h.manager.start(1, { workspacePath: "/workspace/demo" });
+    expect(result.connection?.mode).toBe("direct");
+    expect(new URL(result.qrUrl).searchParams.has("relay")).toBe(false);
+    expect(h.getLatestTransportOptions()?.auth).toMatchObject({
+      mode: "persisted",
+      deviceSid: "direct-id",
+    });
+    expect(p.connection.commit).toHaveBeenCalledOnce();
+    await h.manager.stop(1);
+    expect(p.connection.dispose).toHaveBeenCalledOnce();
+  });
+  it("official V1 QR omits the page version selector while keeping the real device version", async () => {
+    const p = provider();
+    const official = {
+      ...p.connection,
+      settings: { ...p.connection.settings, mode: "official" as const },
+      mobileRemoteControlUrl: "https://zcode.z.ai/remote/v4",
+    };
+    const h = createManagerHarness({
+      connectionProvider: {
+        getSettings: async () => official.settings,
+        prepare: async () => official,
+      },
+    });
+    const result = await h.manager.start(1, { workspacePath: "/workspace/demo" });
+    expect(new URL(result.qrUrl).searchParams.has("app_version")).toBe(false);
+    expect(h.getLatestTransportOptions()?.meta.version).toBe("1.5.0");
+    await h.manager.stop(1);
+  });
+  it("refresh preserves the running connection mode and rotates only that scope", async () => {
+    const p = provider();
+    const h = createManagerHarness({ connectionProvider: p });
+    await h.manager.start(1, { workspacePath: "/workspace/demo" });
+    await h.manager.resetPairing(1, { workspacePath: "/workspace/demo" });
+    expect(p.prepare).toHaveBeenLastCalledWith(
+      1,
+      p.connection.settings,
+      expect.any(AbortSignal),
+      true,
+    );
+    await h.manager.stop(1);
+  });
+  it("startup restores the saved target together with its own connection settings", async () => {
+    const p = provider();
+    const h = createManagerHarness({
+      connectionProvider: p,
+      startupRestoreContext: {
+        workspacePath: "/workspace/demo",
+        connection: p.connection.settings,
+      },
+    });
+    expect(
+      await h.manager.restorePreviouslyEnabled(1, [{ workspacePath: "/workspace/demo" }]),
+    ).toBe(true);
+    expect(p.prepare).toHaveBeenCalledWith(
+      1,
+      p.connection.settings,
+      expect.any(AbortSignal),
+      false,
+    );
+    expect(h.getStartupRestoreContext()?.connection).toEqual(p.connection.settings);
+    await h.manager.stop(1);
+  });
+  it("a failed settings commit disposes the active connection", async () => {
+    const p = provider();
+    p.connection.commit.mockRejectedValueOnce(new Error("disk failed"));
+    const h = createManagerHarness({ connectionProvider: p });
+    await expect(h.manager.start(1, { workspacePath: "/workspace/demo" })).rejects.toThrow(
+      "disk failed",
+    );
+    expect(p.connection.dispose).toHaveBeenCalled();
+    expect(h.manager.getStatus(1).status).toBe("idle");
+  });
+  it("cancellation during preparation releases a late listener without starting transport", async () => {
+    const p = provider();
+    let release!: (value: typeof p.connection) => void;
+    p.prepare.mockReturnValueOnce(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+    const h = createManagerHarness({ connectionProvider: p });
+    const starting = h.manager.start(1, { workspacePath: "/workspace/demo" });
+    const rejected = expect(starting).rejects.toThrow();
+    await vi.waitFor(() => expect(p.prepare).toHaveBeenCalledOnce());
+    await h.manager.stop(1);
+    release(p.connection);
+    await rejected;
+    expect(p.connection.dispose).toHaveBeenCalledOnce();
+    expect(h.getLatestTransportOptions()).toBeUndefined();
+  });
 });

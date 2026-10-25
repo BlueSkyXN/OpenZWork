@@ -69,7 +69,7 @@ describe("Web Remote Control HMAC pairing IPC", () => {
     expect(manager.startAuthorized).toHaveBeenCalledWith(17, context, authorization);
     expect(manager.resetPairingAuthorized).not.toHaveBeenCalled();
   });
-  it("注册 start/resetPairing/stop/status 四个操作", async () => {
+  it("注册连接配置和 start/resetPairing/stop/status 操作", async () => {
     const { registerWebRemoteControlIpcHandlers } =
       await import("../src/main/desktopWebRemoteControlIpc.js");
     registerWebRemoteControlIpcHandlers({ webRemoteControlManager: fixture().manager });
@@ -79,6 +79,7 @@ describe("Web Remote Control HMAC pairing IPC", () => {
         PlatformChannels.ResetWebRemoteControlPairing,
         PlatformChannels.StopWebRemoteControl,
         PlatformChannels.GetWebRemoteControlStatus,
+        PlatformChannels.GetWebRemoteControlConnectionSettings,
       ].sort(),
     );
   });

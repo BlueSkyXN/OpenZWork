@@ -39,6 +39,22 @@ function agent(overrides: Partial<AttachmentUploadAgent> = {}): AttachmentUpload
 }
 
 describe("v4 attachment upload transaction", () => {
+  it("HTTP 无 subtle 时仍能完成附件校验和上传", async () => {
+    vi.stubGlobal("crypto", { getRandomValues: webcrypto.getRandomValues.bind(webcrypto) });
+    try {
+      const service = agent();
+      const bytes = new TextEncoder().encode("http attachment");
+      await uploadAttachmentTransaction(service, { workspacePath: "/workspace" }, input(bytes));
+      expect(service.attachmentBeginV4).toHaveBeenCalledWith(
+        expect.objectContaining({
+          checksum: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+        }),
+      );
+      expect(service.attachmentCommitV4).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("20MiB exactly 分片成功，所有真实 Channel request <=1MiB", async () => {
     const bytes = new Uint8Array(PROTOCOL_V4_LIMITS.attachmentMaxBytes);
     const service = agent();

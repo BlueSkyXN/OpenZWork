@@ -36,6 +36,7 @@
     "lint:fix": "oxlint --fix"
   },
   "dependencies": {
+    "@noble/hashes": "2.2.0",
     "@zcode/model-option-map": "workspace:*",
     "zod": "4.6.5"
   },

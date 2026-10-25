@@ -1038,6 +1038,29 @@ async function resetE2EHome(specs: string[]) {
   await mkdir(resolve(E2E_STORAGE_ROOT, "workspace/default"), { recursive: true });
   // 只写本地偏好，保留无账号产品的首次启动；具体业务 fixture 由所选 spec 设置。
   await writeFile(E2E_APP_SETTINGS_FILE, JSON.stringify({ locale: "en-US" }));
+  if (
+    process.env.ZCODE_E2E_VERIFY_OFFICIAL_V1 === "1" &&
+    specs.some((spec) => spec.endsWith("web-remote-v1-connections.test.ts"))
+  ) {
+    const { seedProviderReadinessHistoryFixture } =
+      await import("./test/e2e/helpers/provider-readiness-history-fixture.js");
+    await seedProviderReadinessHistoryFixture({
+      cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
+      e2eHomeDir: E2E_HOME_DIR,
+      workspacePath: resolve(E2E_STORAGE_ROOT, "workspace/default"),
+      history: {
+        sessionId: "sess_e2e_v1_official",
+        title: "E2E_V1_OFFICIAL_TASK",
+        userText: "E2E_V1_PERSISTED_USER",
+        assistantText: "E2E_V1_PERSISTED_ASSISTANT",
+        assistantInputTokens: 0,
+        assistantOutputTokens: 0,
+        modelId: "synthetic-model",
+        runtimeProviderId: "synthetic",
+        taskProviderId: "glm",
+      },
+    });
+  }
   seedE2EWorkerModelStreamConfig(specs);
   // 小窗口只用于显式 Compact 场景；普通未读与重连用例需要完整历史。
   const autoCompactSpec = specs.some((spec) =>

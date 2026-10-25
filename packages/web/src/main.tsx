@@ -1,8 +1,8 @@
+import { resolveWebRemoteControlBrowserRelayUrl } from "@zcode/shared";
 import {
   WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS,
   parseWebRemoteControlExternalQrParams,
   createWebRemoteControlConnectionRecoveryTimeoutFailure,
-  resolveWebRemoteControlRelayWsUrl,
   matchesWebRemoteControlRoutePath,
   resolveWebRemoteControlInitialWorkspaceSelection,
   resolveWebRemoteControlWorkspaceKey,
@@ -79,6 +79,7 @@ import {
 
 import {
   WebRemoteControlLoadingScreen,
+  WebRemoteControlScanPage,
   type WebRemoteControlConnectingDevice,
   WebRemoteControlFailureScreen,
   resolveWebRemoteControlScreenLocale,
@@ -760,8 +761,8 @@ export function createHomeOnlyWebRemoteControlServices(): RootServices {
   };
 }
 
-function resolveExternalRelayWsUrl(): string {
-  return resolveWebRemoteControlRelayWsUrl({ endpointOrigin: window.location.origin });
+function resolveExternalRelayWsUrl(override?: string): string {
+  return resolveWebRemoteControlBrowserRelayUrl(window.location.origin, override);
 }
 
 function renderWebRemoteControlLoading(
@@ -780,6 +781,22 @@ function renderWebRemoteControlLoading(
 
 async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): Promise<void> {
   const relayParams = parseWebRemoteControlExternalQrParams(params);
+  if (!relayParams && !params.has("sid") && !params.has("hash")) {
+    root.render(
+      <WebRemoteControlScanPage
+        locale={resolveWebRemoteControlScreenLocale(navigator.language)}
+        onConnect={(pairing) => {
+          window.history.replaceState(
+            null,
+            "",
+            `${window.location.pathname}?${pairing.toString()}`,
+          );
+          void bootstrapExternalRelayWebRemoteControl(pairing);
+        }}
+      />,
+    );
+    return;
+  }
   if (!relayParams) {
     renderWebRemoteControlFailure(
       toWebRemoteControlFailure(
@@ -1069,7 +1086,7 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     (payload) => !terminated && !versionGuard.isBlocked() && transport.sendPayload(payload),
   );
   const transport = new WebRemoteControlTerminalTransport({
-    relayWsUrl: resolveExternalRelayWsUrl(),
+    relayWsUrl: resolveExternalRelayWsUrl(relayParams.relayWsUrl),
     deviceSid: relayParams.deviceSid,
     deviceMid: relayParams.deviceMid,
     appVersion: relayParams.appVersion,

@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render, waitFor, fireEvent } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   WebRemoteControlDialog,
@@ -85,12 +84,6 @@ vi.mock("@/logger.js", () => ({
   },
 }));
 
-function readWebRemoteControlDialogSource() {
-  // Bugfix: WebRemoteControlDialog 经过 React.memo 包装后，组件 toString() 只会返回 [object Object]。
-  // 源码结构守卫需要读取真实文件，才能继续校验复用顺序和确认弹窗保护没有被性能优化绕开。
-  return readFileSync("packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx", "utf8");
-}
-
 describe("WebRemoteControlDialog layout", () => {
   afterEach(() => {
     cleanup();
@@ -113,6 +106,11 @@ describe("WebRemoteControlDialog layout", () => {
       }),
     );
 
+    await waitFor(() =>
+      expect(view.getByTestId("web-remote-start").hasAttribute("disabled")).toBe(false),
+    );
+    expect(platformMock.startWebRemoteControl).not.toHaveBeenCalled();
+    fireEvent.click(view.getByTestId("web-remote-start"));
     await waitFor(() => expect(platformMock.startWebRemoteControl).toHaveBeenCalledOnce());
     expect(view.container.textContent).toContain("webRemoteControl.statusDetail.idle");
     expect(feedbackMocks.toast).not.toHaveBeenCalled();
@@ -196,16 +194,25 @@ describe("WebRemoteControlDialog layout", () => {
     ).toBe(false);
   });
 
-  it("打开弹层时先复用已连接手机的 window 会话再考虑重新 start", () => {
-    const source = readWebRemoteControlDialogSource();
-    const reuseIndex = source.indexOf("isReusableWebRemoteControlSession(currentStatus)");
-    const startIndex = source.indexOf("platform.startWebRemoteControl");
-    const pollReuseIndex = source.indexOf("isReusableWebRemoteControlSession(nextStatus)");
-
-    expect(reuseIndex).toBeGreaterThan(-1);
-    expect(startIndex).toBeGreaterThan(-1);
-    expect(reuseIndex).toBeLessThan(startIndex);
-    expect(pollReuseIndex).toBeGreaterThan(-1);
+  it("只在用户点击开启后连接，并提交所选模式", async () => {
+    const view = render(
+      createElement(WebRemoteControlDialog, {
+        open: true,
+        onOpenChange: vi.fn(),
+        workspacePath: "/tmp/project",
+      }),
+    );
+    await waitFor(() =>
+      expect(view.getByTestId("web-remote-start").hasAttribute("disabled")).toBe(false),
+    );
+    expect(platformMock.startWebRemoteControl).not.toHaveBeenCalled();
+    fireEvent.click(view.getByTestId("web-remote-mode-official"));
+    fireEvent.click(view.getByTestId("web-remote-start"));
+    await waitFor(() =>
+      expect(platformMock.startWebRemoteControl).toHaveBeenCalledWith(
+        expect.objectContaining({ connection: expect.objectContaining({ mode: "official" }) }),
+      ),
+    );
   });
 
   it("renders phone QR and bot channel entry cards in the remote control dialog", () => {

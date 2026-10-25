@@ -1,3 +1,53 @@
+import { z } from "zod";
+
+/** 用户显式选择官方 V1 时才使用这些地址。 */
+export const OFFICIAL_WEB_REMOTE_CONTROL_V1 = {
+  relayWsUrl: "wss://zcode.z.ai/ws",
+  remoteUrl: "https://zcode.z.ai/remote/v4",
+} as const;
+
+export const webRemoteControlConnectionSettingsSchema = z
+  .object({
+    mode: z.enum(["direct", "self-hosted", "official"]),
+    direct: z
+      .object({
+        listenHost: z.string().trim().min(1).max(253),
+        port: z.number().int().min(0).max(65535),
+        publicUrl: z.string().trim().max(2048),
+      })
+      .strict(),
+    relay: z
+      .object({
+        wsUrl: z.string().trim().max(2048),
+        pageUrl: z.string().trim().max(2048),
+      })
+      .strict(),
+  })
+  .strict();
+
+export type WebRemoteControlConnectionSettings = z.infer<
+  typeof webRemoteControlConnectionSettingsSchema
+>;
+
+export const DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS: WebRemoteControlConnectionSettings = {
+  mode: "direct",
+  direct: { listenHost: "0.0.0.0", port: 0, publicUrl: "" },
+  relay: { wsUrl: "", pageUrl: "" },
+};
+
+export function validateWebRemoteControlUrl(value: string, kind: "page" | "relay"): string {
+  const url = new URL(value);
+  const protocols = kind === "page" ? ["http:", "https:"] : ["ws:", "wss:"];
+  if (!protocols.includes(url.protocol) || url.username || url.password || url.hash || url.search) {
+    throw new Error(
+      kind === "page"
+        ? "请输入不含账号、查询参数或片段的 HTTP/HTTPS 页面地址"
+        : "请输入不含账号、查询参数或片段的 WS/WSS relay 地址",
+    );
+  }
+  return url.toString();
+}
+
 export type WebRemoteControlThemeSeed = "light" | "dark" | "zai-light" | "zai-dark" | "system";
 
 export interface WebRemoteControlRelayDeviceMeta {
@@ -142,6 +192,7 @@ export interface WebRemoteControlExternalQrParams {
   deviceName?: string;
   appVersion?: string;
   theme?: WebRemoteControlThemeSeed;
+  relayWsUrl?: string;
 }
 
 export interface BuildWebRemoteControlExternalQrUrlOptions extends WebRemoteControlExternalQrParams {
@@ -163,30 +214,6 @@ export function isWebRemoteControlThemeSeed(value: unknown): value is WebRemoteC
   );
 }
 
-export function resolveWebRemoteControlRoutePathFromBaseUrl(baseUrl: string): string {
-  const rawBaseUrl = baseUrl.trim() || "/";
-  let pathname = "/";
-
-  try {
-    pathname = new URL(rawBaseUrl, "https://zcode.invalid").pathname;
-  } catch {
-    pathname = rawBaseUrl.startsWith("/") ? rawBaseUrl : `/${rawBaseUrl}`;
-  }
-
-  const normalizedPathname = pathname.replace(/\/+$/, "") || "/";
-  if (normalizedPathname === "/") {
-    return "/remote";
-  }
-  return normalizedPathname;
-}
-
-export function matchesWebRemoteControlRoutePath(pathname: string, routePath: string): boolean {
-  // Bugfix: dev / production 入口可能带 /remote/ 尾斜杠；
-  // 路由判断需要接受 /remote 与 /remote/，但不能把 /remote/favicon.ico 当成应用入口。
-  const normalizeRoutePath = (value: string) => value.replace(/\/+$/, "") || "/";
-  return normalizeRoutePath(pathname) === normalizeRoutePath(routePath);
-}
-
 export function buildWebRemoteControlExternalQrUrl({
   baseUrl,
   deviceSid,
@@ -196,8 +223,10 @@ export function buildWebRemoteControlExternalQrUrl({
   deviceName,
   appVersion,
   theme,
+  relayWsUrl,
 }: BuildWebRemoteControlExternalQrUrlOptions): string {
   const url = new URL(baseUrl);
+  if (relayWsUrl) url.searchParams.set("relay", validateWebRemoteControlUrl(relayWsUrl, "relay"));
   url.searchParams.set("sid", deviceSid);
   url.searchParams.set("hash", passHash);
   url.searchParams.set("t", String(timestamp));
@@ -227,6 +256,12 @@ export function parseWebRemoteControlExternalQrParams(
   const rawTimestamp = readNonEmptySearchParam(params, "t");
   const timestamp = rawTimestamp ? Number(rawTimestamp) : Number.NaN;
   const theme = readNonEmptySearchParam(params, "theme");
+  const relayWsUrl = readNonEmptySearchParam(params, "relay");
+  try {
+    if (relayWsUrl) validateWebRemoteControlUrl(relayWsUrl, "relay");
+  } catch {
+    return null;
+  }
 
   if (!deviceSid || !passHash || !Number.isFinite(timestamp)) {
     return null;
@@ -236,6 +271,7 @@ export function parseWebRemoteControlExternalQrParams(
     deviceSid,
     passHash,
     timestamp,
+    ...(relayWsUrl ? { relayWsUrl } : {}),
     ...(readNonEmptySearchParam(params, "mid")
       ? { deviceMid: readNonEmptySearchParam(params, "mid") }
       : {}),

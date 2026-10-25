@@ -390,12 +390,15 @@ export interface AppSettings {
   dataBaseDir?: string;
   /** 首次启动设置同步提示是否已消费；只表示弹窗不再出现，不代表导入成功。 */
   settingsSyncFirstRunPromptHandled?: boolean;
-  /** 外部 Web 远控 relay 的非敏感设备身份；passHash 必须存 credentialService。 */
+  /** Desktop Main 保存的 V1 连接设置；不包含配对秘密。 */
+  webRemoteControlConnection?: import("./web-remote-control.js").WebRemoteControlConnectionSettings;
+  /** 旧外部 relay 身份；新入口使用按端点和窗口隔离的 CredentialService 记录。 */
   webRemoteControlExternalRelayDevice?: {
     deviceSid: string;
   };
   /** 上次成功开启 Web 远控时的目标；缺失表示用户已明确关闭，不自动恢复。 */
   webRemoteControlLastEnabledContext?: {
+    connection?: import("./web-remote-control.js").WebRemoteControlConnectionSettings;
     workspacePath: string;
     workspaceIdentity?: string;
     initialTaskId?: string;

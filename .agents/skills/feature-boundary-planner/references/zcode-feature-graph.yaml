@@ -1563,10 +1563,14 @@ nodes:
     aliases:
       - mobile remote
       - replayable
+      - direct HTTP remote control
+      - self-hosted V1 relay
+      - official V1 relay
       - remote control
       - 手机远控
       - 重连恢复
     docs:
+      - docs/web-remote-control/v1-connection-modes.md
       - docs/web-remote-control/web-remote-control-architecture.md
       - docs/web-remote-control/task-realtime-sync.md
       - docs/web-remote-control-task-command-queue.md
@@ -2053,8 +2057,11 @@ nodes:
       - Web Remote Control QR dialog
       - 手机远控二维码弹窗
     docs:
+      - docs/web-remote-control/v1-connection-modes.md
       - docs/web-remote-control/web-remote-control-architecture.md
     codeSeeds:
+      - symbol: WebRemoteControlConnectionForm
+        file: packages/ui/src/web-remote-control/WebRemoteControlConnectionForm.tsx
       - symbol: WebRemoteControlDialog
         file: packages/ui/src/web-remote-control/WebRemoteControlDialog.tsx
   - id: state.task-list-row-projection

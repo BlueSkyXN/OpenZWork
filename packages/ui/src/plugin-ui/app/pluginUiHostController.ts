@@ -1,3 +1,4 @@
+import { createUuid } from "@zcode/shared";
 import { createPluginUiSampling } from "./pluginUiSampling.js";
 import type { CallToolResult, Transport } from "@modelcontextprotocol/client";
 import type { McpUiHostContext } from "@modelcontextprotocol/ext-apps/app-bridge";
@@ -54,7 +55,7 @@ export function createPluginUiHostController(
   // 进行中的页面工具调用 id，dispose 时逐个取消到 agent。
   const activeCalls = new Set<string>();
   let unregisterNotifications: (() => void) | null = null;
-  const createCallId = deps.createCallId ?? (() => crypto.randomUUID());
+  const createCallId = deps.createCallId ?? (() => createUuid());
   const setTimer =
     deps.setTimer ??
     ((callback: () => void, ms: number) => {

@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from "electron";
 import type { WebContents } from "electron";
 import {
   PlatformChannels,
+  DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
   type WebRemoteControlContext,
   type WebRemoteControlStartResult,
   type WebRemoteControlStatus,
@@ -9,6 +10,9 @@ import {
 import type { WebRemoteControlStartAuthorization } from "./webRemoteControlManager.js";
 
 export interface WebRemoteControlIpcManager {
+  getConnectionSettings?():
+    | Promise<import("@zcode/shared").WebRemoteControlConnectionSettings>
+    | undefined;
   authorizeStart: (
     windowId: number,
     context: WebRemoteControlContext,
@@ -46,6 +50,12 @@ async function runStartOperation(input: {
 export function registerWebRemoteControlIpcHandlers(
   dependencies: WebRemoteControlIpcDependencies,
 ): void {
+  ipcMain.handle(
+    PlatformChannels.GetWebRemoteControlConnectionSettings,
+    async () =>
+      (await dependencies.webRemoteControlManager.getConnectionSettings?.()) ??
+      structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+  );
   ipcMain.handle(
     PlatformChannels.StartWebRemoteControl,
     async (event, context: WebRemoteControlContext) =>

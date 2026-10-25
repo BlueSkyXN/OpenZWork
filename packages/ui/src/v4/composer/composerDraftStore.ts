@@ -11,6 +11,7 @@
 import { logger } from "@/logger.js";
 import {
   modelSelectionSchema,
+  createUuid,
   remoteHostIdFromWorkspaceIdentity,
   type ModelSelection,
 } from "@zcode/shared";
@@ -84,7 +85,8 @@ function writePendingTaskDraft(scope: ComposerScope, value: PendingTaskDraft | n
 export function ensurePendingTaskDraft(scope: ComposerScope): PendingTaskDraft {
   const current = readPendingTaskDraft(scope);
   if (current) return current;
-  const next = { draftId: crypto.randomUUID() };
+  // 局域网 HTTP 的 WebCrypto 没有 randomUUID，复用共享 UUID 生成器。
+  const next = { draftId: createUuid() };
   writePendingTaskDraft(scope, next);
   return next;
 }

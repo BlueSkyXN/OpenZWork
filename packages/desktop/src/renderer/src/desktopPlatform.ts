@@ -41,6 +41,8 @@ export function createDesktopPlatform(options: {
     refreshWebRemoteControlPairing: (context) =>
       window.zcode.refreshWebRemoteControlPairing(context),
     stopWebRemoteControl: () => window.zcode.stopWebRemoteControl(),
+    getWebRemoteControlConnectionSettings: () =>
+      window.zcode.getWebRemoteControlConnectionSettings!(),
     getWebRemoteControlStatus: () => window.zcode.getWebRemoteControlStatus(),
     onWebRemoteControlStatusChanged: (handler) =>
       window.zcode.onWebRemoteControlStatusChanged?.(handler) ?? (() => {}),
@@ -60,6 +62,8 @@ export function createDesktopPlatform(options: {
     notifyRendererReady: () => window.zcode.notifyRendererReady(),
     showTaskNotification: (payload) => window.zcode.showTaskNotification(payload),
     syncWindowTabs: (paths) => window.zcode.syncWindowTabs(paths),
+    syncWebRemoteControlLegacyTasks: (tasks) =>
+      window.zcode.syncWebRemoteControlLegacyTasks?.(tasks),
     syncWebRemoteControlWorkspaces: (workspaces) =>
       window.zcode.syncWebRemoteControlWorkspaces?.(workspaces),
     onWebRemoteControlReconnectWorkspace: (handler) =>
