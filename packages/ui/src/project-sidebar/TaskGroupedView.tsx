@@ -76,6 +76,7 @@ export function TaskGroupedView({
   toolbarTarget,
   stickyTarget,
   scrollRef,
+  filtersActive = false,
 }: {
   tasks: ProjectTask[];
   onSelect: ProjectSidebarProps["onSelectTask"];
@@ -87,6 +88,7 @@ export function TaskGroupedView({
   toolbarTarget: HTMLElement | null;
   stickyTarget: HTMLElement | null;
   scrollRef: RefObject<HTMLDivElement | null>;
+  filtersActive?: boolean;
 }) {
   const { groups: organization, loading } = useProjectDirectory();
   const { intl } = useZCodeIntl();
@@ -151,8 +153,13 @@ export function TaskGroupedView({
     [remoteState],
   );
   const authoritativeView = useMemo(
-    () => buildGroupedTaskView(tasks, organization.structure),
-    [tasks, organization.structure],
+    () =>
+      buildGroupedTaskView(tasks, organization.structure, {
+        hideEmptyGroups: filtersActive,
+        // 新建中的空组和编辑中的草稿仍由原 UI owner 显示，不能因过滤而失去编辑入口。
+        keepGroupIds: [draftGroupId, newGroupSetupId],
+      }),
+    [tasks, organization.structure, filtersActive, draftGroupId, newGroupSetupId],
   );
   const report = (error: unknown, messageId = "taskGroup.updateFailed") => {
     logger.error("[task-groups] 分组操作失败", error);
@@ -241,7 +248,8 @@ export function TaskGroupedView({
       ? intl.formatMessage({ id: "workspaceSidebar.conversationsSection" })
       : task.workspacePath.split(/[\\/]/).filter(Boolean).at(-1) || task.workspacePath;
   const rowCallbacks = {
-    groups,
+    // 筛选只隐藏列表；移动目标仍来自完整目录，空组也必须可选。
+    groups: organization.structure.groups,
     activeWorkspacePath: workspacePath,
     activeWorkspaceIdentity: workspaceIdentity,
     activeTaskId,

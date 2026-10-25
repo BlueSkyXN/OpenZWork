@@ -243,6 +243,9 @@ function GroupedTaskRowComponent({
     handleCopyText,
     handleOpenTaskPathInFileManager,
     handleOpenProviderConfig,
+    handleCopyConversationMarkdown,
+    copyingConversation,
+    canCopyConversation,
   } = useTaskListItemContextActions({
     workspacePath: task.workspacePath,
     remoteSessionId,
@@ -478,6 +481,9 @@ function GroupedTaskRowComponent({
           onOpenTaskPathInFileManager={() => void handleOpenTaskPathInFileManager()}
           onCopyText={(label, text) => void handleCopyText(label, text)}
           onOpenProviderConfig={() => void handleOpenProviderConfig()}
+          onCopyConversationMarkdown={() => void handleCopyConversationMarkdown(taskTitle)}
+          copyingConversation={copyingConversation}
+          disableCopyConversation={!canCopyConversation}
           disabledReason={workspaceActionsDisabledReason}
         />
       ) : null}

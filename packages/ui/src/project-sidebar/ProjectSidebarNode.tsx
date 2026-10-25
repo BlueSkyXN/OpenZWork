@@ -28,6 +28,7 @@ export function runProjectAction(body: () => Promise<void>) {
 
 type Props = Pick<
   ProjectNodeProps,
+  | "sortDisabled"
   | "project"
   | "remoteHost"
   | "deviceLabel"

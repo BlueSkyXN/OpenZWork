@@ -825,6 +825,9 @@ export function TaskListItemContextMenuContent({
     handleCopyText,
     handleOpenTaskPathInFileManager,
     handleOpenProviderConfig,
+    handleCopyConversationMarkdown,
+    copyingConversation,
+    canCopyConversation,
   } = useTaskListItemContextActions({
     workspacePath,
     remoteSessionId,
@@ -854,6 +857,9 @@ export function TaskListItemContextMenuContent({
       activeSessionId={task.taskId}
       taskNativeSessionLogFile={taskNativeSessionLogFile}
       providerConfigFile={providerConfigFile}
+      onCopyConversationMarkdown={() => void handleCopyConversationMarkdown(taskTitle)}
+      copyingConversation={copyingConversation}
+      disableCopyConversation={!canCopyConversation}
       disableTaskActions={workspaceActionsDisabled}
       disabledReason={workspaceActionsDisabledReason}
       onTogglePinTask={() => {

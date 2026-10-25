@@ -4576,6 +4576,26 @@ nodes:
         file: packages/ui/src/ToolCallBlocks/ToolPresentation.tsx
       - symbol: resolveToolCallRenderer
         file: packages/ui/src/ToolCallBlocks/resolveRenderer.ts
+  - id: capability.conversation-management-controls
+    kind: capability
+    label: OpenZWork conversation Markdown copy, sidebar filters and project activity order
+    aliases: [复制对话, Markdown 复制, 未读筛选, 项目活动排序]
+    docs:
+      - docs/spec/conversation-controls.md
+    codeSeeds:
+      - symbol: copyConversationMarkdown
+        file: packages/ui/src/conversation-export/index.ts
+      - symbol: TaskActionMenuContent
+        file: packages/ui/src/TaskActionMenuContent.tsx
+      - symbol: GroupedTaskContextMenuContent
+        file: packages/ui/src/project-sidebar/grouped/task-context-menu-content.tsx
+      - symbol: ProjectSidebarListHeader
+        file: packages/ui/src/project-sidebar/ProjectSidebarListHeader.tsx
+      - symbol: filterSidebarTree
+        file: packages/ui/src/project-sidebar/task-filters.ts
+      - symbol: sortProjectsByActivity
+        file: packages/ui/src/project-sidebar/task-filters.ts
+
 edges:
   - from: capability.tool-search
     to: surface.tool-search-settings
@@ -8290,3 +8310,14 @@ edges:
     type: must-remain-isolated-from
     rank: invariant-only
     condition: Bot output stays bot-channel-continuous; mobile input and recovery retain replayable semantics.
+
+  - from: capability.conversation-management-controls
+    to: state.sidebar-view-preference
+    type: commits-display-preference-to
+    rank: must-inspect
+    condition: Filters and project sort extend the existing preference owner; original manual order remains intact.
+  - from: capability.conversation-management-controls
+    to: surface.project-task-list
+    type: renders-in
+    rank: must-inspect
+    condition: Filters derive visible rows only; full project activity and composer candidates retain the authoritative directory.

@@ -35,6 +35,10 @@ const headerManagement = vi.hoisted(() => ({
   onDidChangeDirectory: () => ({ dispose() {} }),
 }));
 const capturedGitBranchSwitcherProps = vi.hoisted(() => [] as Array<Record<string, unknown>>);
+const conversationCopy = vi.hoisted(() => ({
+  copy: vi.fn(async (_title: string) => {}),
+  menuProps: [] as Array<Record<string, unknown>>,
+}));
 
 vi.mock("lucide-react", async (importOriginal) => {
   const actual = await importOriginal<typeof import("lucide-react")>();
@@ -120,7 +124,10 @@ vi.mock("@/GitBranchSwitcher.js", () => ({
 }));
 
 vi.mock("@/TaskActionMenuContent.js", () => ({
-  TaskActionMenuContent: () => createElement("div", { "data-testid": "task-action-menu" }),
+  TaskActionMenuContent: (props: Record<string, unknown>) => {
+    conversationCopy.menuProps.push(props);
+    return createElement("div", { "data-testid": "task-action-menu" });
+  },
 }));
 
 vi.mock("@/settings/RemoteSkillSyncDialog.js", () => ({
@@ -179,6 +186,9 @@ vi.mock("@/useTaskListItemContextActions.js", () => ({
     handleCopyText: vi.fn(),
     handleOpenTaskPathInFileManager: vi.fn(),
     handleOpenProviderConfig: vi.fn(),
+    handleCopyConversationMarkdown: conversationCopy.copy,
+    copyingConversation: false,
+    canCopyConversation: true,
   }),
 }));
 
@@ -256,6 +266,8 @@ describe("WorkspaceHeaderTitleSection", () => {
 
   it("places the workspace icon before the title and removes the inline branch in mobile mode", async () => {
     capturedGitBranchSwitcherProps.length = 0;
+    conversationCopy.menuProps.length = 0;
+    conversationCopy.copy.mockClear();
     const { WorkspaceHeaderTitleSection } = await import("@/WorkspaceHeaderSections.js");
 
     const html = renderToStaticMarkup(
@@ -298,6 +310,12 @@ describe("WorkspaceHeaderTitleSection", () => {
     expect(html.indexOf(`data-testid="${TID_WORKSPACE_PATH}"`)).toBeLessThan(
       html.indexOf(`data-testid="${TID_WORKSPACE_TITLE}"`),
     );
+    // OCC01：官方 Header 改版时仍需把当前标题和只读能力接到共享复制菜单。
+    const menu = conversationCopy.menuProps.at(-1)!;
+    expect(menu.disableCopyConversation).toBe(false);
+    expect(menu.copyingConversation).toBe(false);
+    (menu.onCopyConversationMarkdown as () => void)();
+    expect(conversationCopy.copy).toHaveBeenCalledWith("hello");
   });
 
   it.each(["task", "draft"] as const)(

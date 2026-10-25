@@ -2,6 +2,21 @@
   "version": 1,
   "suites": [
     {
+      "capability": "conversation-controls",
+      "files": [
+        "packages/ui/src/conversation-export/contract.test.ts",
+        "packages/ui/test/conversationCopyHook.test.ts",
+        "packages/ui/test/groupedConversationMenu.test.ts",
+        "packages/ui/test/taskActionMenuContent.test.ts",
+        "packages/ui/test/useTaskListItemContextActions.test.ts",
+        "packages/ui/test/workspaceHeaderTitleSection.test.ts",
+        "packages/ui/test/sidebarTaskFilters.test.ts",
+        "packages/ui/test/sidebarFilterPreferences.test.ts",
+        "packages/ui/test/sidebarFiltersInteraction.test.ts",
+        "packages/ui/test/projectDirectoryProvider.test.ts"
+      ]
+    },
+    {
       "capability": "rpc",
       "files": [
         "packages/rpc/test/buffer.test.ts",

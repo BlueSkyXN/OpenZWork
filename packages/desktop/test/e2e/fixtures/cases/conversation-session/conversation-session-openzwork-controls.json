@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-openzwork-controls",
+  "spec": "./test/e2e/conversation-session/conversation-session-openzwork-controls.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/conversation-session/conversation-session-openzwork-controls.json"
+  ],
+  "fileFixtures": [],
+  "providerRequestPolicy": "none",
+  "noProviderRequests": true,
+  "requests": []
+}

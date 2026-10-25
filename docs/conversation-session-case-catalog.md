@@ -1,5 +1,11 @@
 # Conversation Session Case Catalog
 
+## OpenZWork 对话管理增强（OCC，2026-10-25）
+
+OCC01–OCC06 的设置、动作、断言与剪枝边界见 [对话管理规格](spec/conversation-controls.md#验收与边界)。本轮按已确认的维护边界实现：完整 Markdown 复制、未读/状态筛选、项目活动排序、共享归档样式。保留既有菜单顺序与归档执行流程；不扩展 CLI 协议或数据库。交互自动化保持 manual-review/pending，不能据此声明已发布或人工验收通过。
+
+分页一致性、迟到复制、旧偏好、离线/同名跨 Host 与筛选组合由定向单测覆盖；桌面候选覆盖共享菜单、筛选反馈、排序切换与读回。实际运行证据见 coverage matrix。
+
 ## 项目与任务草稿生命周期（2026-10-16）
 
 PD01–PD12 的前置、动作、断言与证据要求见 [统一生命周期规格](ui/project-task-draft-lifecycle.md)。产品语义 accepted；自动化保持 manual-review/pending，运行证据见 coverage matrix 与规格的验证记录，不代表已转正或发布。覆盖项目/任务新建、同目录项目隔离、接纳后默认配置、目录复用、迟到回执、手机独立恢复及旧数据认领。

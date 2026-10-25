@@ -1,4 +1,11 @@
 import { SidebarTooltipProvider } from "@/ControlHintTooltip.js";
+import { Button } from "@/components/ui/button.js";
+import {
+  DEFAULT_SIDEBAR_TASK_FILTERS,
+  filterSidebarTree,
+  hasSidebarTaskFilters,
+  hasVisibleSidebarTasks,
+} from "@/project-sidebar/task-filters.js";
 export { readProjectSidebarView } from "@/project-sidebar/view-preference.js";
 import { SortableProjects } from "@/project-sidebar/SortableProjects.js";
 export { ArchiveManagement } from "@/project-sidebar/ArchiveManagement.js";
@@ -75,10 +82,13 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
     groups,
     deviceNames,
   } = useProjectDirectory();
-  const { tree, pin } = useProjectPinIntent(authoritativeTree);
+  const { tree: unfilteredTree, pin } = useProjectPinIntent(authoritativeTree);
+  const filters = preferences.filters;
+  const filtering = hasSidebarTaskFilters(filters);
+  const tree = useMemo(() => filterSidebarTree(unfilteredTree, filters), [unfilteredTree, filters]);
   const remoteSync = useProjectRemoteSync(props, directory);
   const diagnostics = useProjectConnectionDiagnostics(directory, props);
-  const onSelectTask = useProjectTaskNavigation(props, tree, remoteService);
+  const onSelectTask = useProjectTaskNavigation(props, unfilteredTree, remoteService);
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
   const tabStore = useTabStoreApi();
   const setTheme = useZCodeStore((state) => state.setTheme);
@@ -158,6 +168,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
     const source = projects.find((item) => projectKey(item) === active);
     const target = projects.find((item) => projectKey(item) === over);
     if (!source || !target || source.pinned !== target.pinned) return;
+    if (!source.pinned && preferences.projectSort === "activity") return;
     preferences.reorder(
       projects.filter((item) => item.pinned === source.pinned),
       active,
@@ -168,6 +179,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
     <ProjectSidebarNode
       key={projectKey(project)}
       project={project}
+      sortDisabled={!project.pinned && preferences.projectSort === "activity"}
       deviceLabel={deviceNames.get(projectSourceServerId(project) ?? "")}
       remoteHost={directory.hosts.find((host) => host.id === project.hostId)}
       diagnostics={diagnostics.get(project.hostId)}
@@ -203,6 +215,22 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
   const changeTheme = useCallback((value: string) => setTheme(value as Theme), [setTheme]);
   // 手机远控 home-only 没有 base attachment，也就没有项目契约；改用 relay 层工作区列表与重连入口。
   const homeOnlySwitcher = service ? undefined : props.webRemoteControlWorkspaceSwitcher;
+  const filterEmptyState =
+    filtering && !loading && !hasVisibleSidebarTasks(tree, view) ? (
+      <div
+        data-testid="sidebar-filter-empty"
+        className="space-y-2 px-4 py-5 text-ui-base text-foreground-subtle"
+      >
+        <p>{intl.formatMessage({ id: "sidebarFilters.empty" })}</p>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => preferences.setFilters(DEFAULT_SIDEBAR_TASK_FILTERS)}
+        >
+          {intl.formatMessage({ id: "sidebarFilters.clear" })}
+        </Button>
+      </div>
+    ) : null;
   return (
     <ProjectTaskListContext.Provider value={taskPresentation}>
       <SidebarTooltipProvider>
@@ -227,6 +255,10 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
                   view={view}
                   onViewChange={setView}
                   groupedActionsRef={setGroupedToolbar}
+                  filters={homeOnlySwitcher ? undefined : filters}
+                  onFiltersChange={preferences.setFilters}
+                  projectSort={preferences.projectSort}
+                  onProjectSortChange={preferences.setProjectSort}
                 />
                 {/* 原因：仅设 overflow-y:auto 会让拖拽位移打开水平滚动；列表始终只允许纵向滚动。 */}
                 {/* 原因：项目侧栏迁移后普通滚动容器遗漏边缘渐隐；复用统一 mask，随实际滚动边界更新。 */}
@@ -236,6 +268,8 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
                     <div className="flex flex-col gap-3 pb-3">
                       {homeOnlySwitcher ? (
                         <HomeOnlyWorkspaceRows switcher={homeOnlySwitcher} />
+                      ) : filterEmptyState && view !== "grouped" ? (
+                        filterEmptyState
                       ) : view === "projects" ? (
                         <>
                           <ProjectTaskRows
@@ -269,6 +303,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
                         </>
                       ) : view === "grouped" ? (
                         <>
+                          {filterEmptyState}
                           <ProjectTaskRows
                             kind="pinned"
                             tasks={selectProjectRows(tree, { kind: "pinned" })}
@@ -277,6 +312,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
                           />
                           <TaskGroupedView
                             tasks={tree.tasks}
+                            filtersActive={filtering}
                             onSelect={onSelectTask}
                             refresh={refresh}
                             scrollRef={scrollRef}
