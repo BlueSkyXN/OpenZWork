@@ -10,7 +10,8 @@
         "packages/rpc/test/channels.test.ts",
         "packages/rpc/test/proxy-channel.test.ts",
         "packages/rpc/test/ipc.test.ts",
-        "packages/rpc/test/foundation.test.ts"
+        "packages/rpc/test/foundation.test.ts",
+        "packages/services/test/zcodeAgentResourceTelemetry.rpc.test.ts"
       ]
     },
     {
