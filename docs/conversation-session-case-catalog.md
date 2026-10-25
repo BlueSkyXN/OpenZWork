@@ -1,5 +1,11 @@
 # Conversation Session Case Catalog
 
+## OpenZWork 对话管理增强（OCC，2026-10-25）
+
+OCC01–OCC06 的设置、动作、断言与剪枝边界见 [对话管理规格](spec/conversation-controls.md#验收与边界)。本轮按已确认的维护边界实现：完整 Markdown 复制、未读/状态筛选、项目活动排序、共享归档样式。保留既有菜单顺序与归档执行流程；不扩展 CLI 协议或数据库。交互自动化保持 manual-review/pending，不能据此声明已发布或人工验收通过。
+
+分页一致性、迟到复制、旧偏好、离线/同名跨 Host 与筛选组合由定向单测覆盖；桌面候选覆盖共享菜单、筛选反馈、排序切换与读回。实际运行证据见 coverage matrix。
+
 ## 原生会话指标（NCM）
 
 NCM01–NCM11 为 accepted，范围、设置、动作、断言与剪枝见 [指标规格](spec/native-conversation-metrics.md#验收与剪枝)。NCM08–11 增加设置选择、偏好恢复/同域同步、内容宽度折叠与展开后关闭。固定顺序与客户端独立偏好；排序、跨设备同步与今日/子任务常驻为 pruned。交互候选保持 manual-review/pending。

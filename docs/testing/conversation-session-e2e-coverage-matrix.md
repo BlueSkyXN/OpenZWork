@@ -1,5 +1,20 @@
 # Conversation Session E2E Coverage Matrix
 
+## OpenZWork 对话管理增强（OCC，2026-10-25）
+
+规格与验收：[对话管理](../spec/conversation-controls.md)。
+
+| 用例 | 证据层 | 当前状态 |
+| --- | --- | --- |
+| OCC01–02 完整导出、分页一致性与复制意图 | 转换/读取、共享菜单、分组菜单、Header 与 hook 单测 | 单测通过；macOS 候选验证三点和三视图右键、220 条历史的首尾与数量；重试、迟到结果和失败由单测覆盖 |
+| OCC03 三视图筛选与空态 | 选择器、偏好与真实 Radix 交互单测，桌面候选 | 单测通过；macOS 验证三视图未读、未读与进行中组合、零匹配和清除 |
+| OCC04–05 活动排序、完整身份与偏好兼容 | 选择器/偏好/provider 单测，桌面候选 | 单测通过；macOS 验证最近活动、重载读回及切回手动顺序；远端身份和离线排序由单测覆盖 |
+| OCC06 归档样式与原操作链 | 共享/分组菜单单测，深浅主题与窄窗口候选 | 单测通过；macOS 验证归档 destructive、深浅主题、800px 窗口；取消归档 default 由单测覆盖，归档执行流程未改 |
+
+候选：[conversation-session-openzwork-controls.test.ts](../../packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openzwork-controls.test.ts)，macOS 本地 6/6 通过。测试使用隔离 HOME、合成历史、真实 Host/CLI 查询；只替换 renderer 剪贴板写入端口，不调用模型。默认 ChromeDriver 启动在本机阻塞，使用 ignored 的直接启动后 attach 适配运行原 WDIO 断言；这不是默认启动器修复或正式 CI E2E 准入。
+
+功能单测已纳入 `tests/ci/core-tests.json`。候选保持 `manual-review/pending`；手机真实 attachment、真实 SSH/WSL 重连和安装包 UAT 单独记录，不从桌面回放推断。
+
 ## 原生会话指标（NCM）
 
 NCM08–11 已实施。macOS `desktop-e2e-20261025-141253-955` 1/1 passed：真实外观设置入口、字段选择/总开关/全不选/恢复默认、两产品窗口同存储域同步、展开后从另一窗口关闭、冷重启后选择保留，以及 390px 仅选两项/20px UI 字号。更多与历史明细仍使用真实结算快照。复用同一 case-local synthetic provider，不新增模型请求场景。

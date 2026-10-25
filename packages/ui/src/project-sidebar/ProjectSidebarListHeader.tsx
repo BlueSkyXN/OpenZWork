@@ -12,6 +12,15 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import {
+  SidebarTaskFilterChips,
+  SidebarTaskFilterMenu,
+} from "@/project-sidebar/SidebarTaskFilters.js";
+import {
+  hasSidebarTaskFilters,
+  type SidebarProjectSort,
+  type SidebarTaskFilters,
+} from "@/project-sidebar/task-filters.js";
 
 /** 列表头部独立于导航和滚动内容，搜索与视图仍使用现有 owner。 */
 export function ProjectSidebarListHeader({
@@ -19,81 +28,114 @@ export function ProjectSidebarListHeader({
   view,
   onViewChange,
   groupedActionsRef,
+  filters,
+  onFiltersChange,
+  projectSort,
+  onProjectSortChange,
 }: {
   onOpenCommandCenter: ProjectSidebarProps["onOpenCommandCenter"];
   view: ProjectSidebarView;
   onViewChange(view: ProjectSidebarView): void;
   groupedActionsRef?: Ref<HTMLDivElement>;
+  filters?: SidebarTaskFilters;
+  onFiltersChange?(value: SidebarTaskFilters): void;
+  projectSort?: SidebarProjectSort;
+  onProjectSortChange?(value: SidebarProjectSort): void;
 }) {
   const { intl } = useZCodeIntl();
   return (
-    <div
-      className="flex min-w-0 shrink-0 items-center gap-1 px-2 pb-2"
-      data-testid="sidebar-search-toolbar"
-    >
-      <span
-        data-testid="sidebar-list-title"
-        className="min-w-0 flex-1 truncate px-2.5 text-ui-base font-medium text-foreground-subtle"
-      >
-        {intl.formatMessage({ id: "taskList.title" })}
-      </span>
+    <>
       <div
-        ref={groupedActionsRef}
-        className={view === "grouped" ? "flex items-center gap-1" : "hidden"}
-      />
-      <ControlHintTooltip
-        // 原因：快捷键拼入标题会继承标题样式；用独立 shortcut 复用标准键帽。
-        title={intl.formatMessage({ id: "commandCenter.open" })}
-        shortcut={formatCommandShortcutLabel("k")}
+        className="flex min-w-0 shrink-0 items-center gap-1 px-2 pb-2"
+        data-testid="sidebar-search-toolbar"
       >
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="shrink-0 text-foreground-subtle hover:text-foreground"
-          data-testid="sidebar-search-open"
-          aria-label={intl.formatMessage({ id: "commandCenter.open" })}
-          onClick={onOpenCommandCenter}
+        <span
+          data-testid="sidebar-list-title"
+          className="min-w-0 flex-1 truncate px-2.5 text-ui-base font-medium text-foreground-subtle"
         >
-          <Search className="size-3.5" />
-        </Button>
-      </ControlHintTooltip>
-      <DropdownMenu>
-        <ControlHintTooltip title={intl.formatMessage({ id: "project.view" })}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 text-foreground-subtle hover:text-foreground"
-              data-testid="sidebar-view-menu"
-              aria-label={intl.formatMessage({ id: "project.view" })}
-            >
-              <ListFilter className="size-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-        </ControlHintTooltip>
-        <DropdownMenuContent align="end">
-          <DropdownMenuRadioGroup
-            value={view}
-            onValueChange={(value) => {
-              if (value === "projects" || value === "grouped" || value === "timeline")
-                onViewChange(value);
-            }}
+          {intl.formatMessage({ id: "taskList.title" })}
+        </span>
+        <div
+          ref={groupedActionsRef}
+          className={view === "grouped" ? "flex items-center gap-1" : "hidden"}
+        />
+        <ControlHintTooltip
+          // 原因：快捷键拼入标题会继承标题样式；用独立 shortcut 复用标准键帽。
+          title={intl.formatMessage({ id: "commandCenter.open" })}
+          shortcut={formatCommandShortcutLabel("k")}
+        >
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="shrink-0 text-foreground-subtle hover:text-foreground"
+            data-testid="sidebar-search-open"
+            aria-label={intl.formatMessage({ id: "commandCenter.open" })}
+            onClick={onOpenCommandCenter}
           >
-            <DropdownMenuRadioItem data-testid="sidebar-view-projects" value="projects">
-              <Folder className="size-4 text-foreground-subtle" aria-hidden="true" />
-              {intl.formatMessage({ id: "project.viewByProject" })}
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem data-testid="sidebar-view-grouped" value="grouped">
-              <Hash className="size-4 text-foreground-subtle" aria-hidden="true" />
-              {intl.formatMessage({ id: "taskGroup.view" })}
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem data-testid="sidebar-view-timeline" value="timeline">
-              <Clock className="size-4 text-foreground-subtle" aria-hidden="true" />
-              {intl.formatMessage({ id: "project.viewRecentlyUpdated" })}
-            </DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+            <Search className="size-3.5" />
+          </Button>
+        </ControlHintTooltip>
+        <DropdownMenu>
+          <ControlHintTooltip
+            title={intl.formatMessage({ id: filters ? "sidebarFilters.menu" : "project.view" })}
+          >
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="relative shrink-0 text-foreground-subtle hover:text-foreground"
+                data-testid="sidebar-view-menu"
+                aria-label={intl.formatMessage({
+                  id: filters ? "sidebarFilters.menu" : "project.view",
+                })}
+              >
+                <ListFilter className="size-3.5" />
+                {filters && hasSidebarTaskFilters(filters) ? (
+                  <span
+                    data-testid="sidebar-filter-count"
+                    className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-ui-xs text-primary-foreground"
+                  >
+                    {Number(filters.unreadOnly) + Number(filters.status !== "all")}
+                  </span>
+                ) : null}
+              </Button>
+            </DropdownMenuTrigger>
+          </ControlHintTooltip>
+          <DropdownMenuContent align="end">
+            <DropdownMenuRadioGroup
+              value={view}
+              onValueChange={(value) => {
+                if (value === "projects" || value === "grouped" || value === "timeline")
+                  onViewChange(value);
+              }}
+            >
+              <DropdownMenuRadioItem data-testid="sidebar-view-projects" value="projects">
+                <Folder className="size-4 text-foreground-subtle" aria-hidden="true" />
+                {intl.formatMessage({ id: "project.viewByProject" })}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem data-testid="sidebar-view-grouped" value="grouped">
+                <Hash className="size-4 text-foreground-subtle" aria-hidden="true" />
+                {intl.formatMessage({ id: "taskGroup.view" })}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem data-testid="sidebar-view-timeline" value="timeline">
+                <Clock className="size-4 text-foreground-subtle" aria-hidden="true" />
+                {intl.formatMessage({ id: "project.viewRecentlyUpdated" })}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            {filters && onFiltersChange ? (
+              <SidebarTaskFilterMenu
+                filters={filters}
+                onChange={onFiltersChange}
+                projectSort={view === "projects" ? projectSort : undefined}
+                onProjectSortChange={onProjectSortChange}
+              />
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {filters && onFiltersChange ? (
+        <SidebarTaskFilterChips filters={filters} onChange={onFiltersChange} />
+      ) : null}
+    </>
   );
 }

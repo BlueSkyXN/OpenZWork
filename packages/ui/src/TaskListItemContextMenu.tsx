@@ -26,6 +26,9 @@ export function TaskListItemContextMenu({
   onCopySessionId,
   onViewModelTrajectory,
   onOpenProviderConfig,
+  onCopyConversationMarkdown,
+  copyingConversation,
+  disableCopyConversation,
   disableTaskActions = false,
   disabledReason,
 }: {
@@ -55,6 +58,9 @@ export function TaskListItemContextMenu({
   onCopySessionId?: () => void;
   onViewModelTrajectory?: () => void;
   onOpenProviderConfig: () => void;
+  onCopyConversationMarkdown?: () => void;
+  copyingConversation?: boolean;
+  disableCopyConversation?: boolean;
   disableTaskActions?: boolean;
   disabledReason?: string;
 }) {
@@ -83,6 +89,9 @@ export function TaskListItemContextMenu({
         onCopySessionId={onCopySessionId}
         onViewModelTrajectory={onViewModelTrajectory}
         onOpenProviderConfig={onOpenProviderConfig}
+        onCopyConversationMarkdown={onCopyConversationMarkdown}
+        copyingConversation={copyingConversation}
+        disableCopyConversation={disableCopyConversation}
         disableTaskActions={disableTaskActions}
         disabledReason={disabledReason}
       />

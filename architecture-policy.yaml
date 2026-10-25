@@ -807,6 +807,17 @@ modules:
     layers: { ui: . }
     owner: conversation
 
+  # conversation-export：共享任务菜单的只读 Markdown 导出。
+  - id: conversation-export
+    roots: [packages/ui/src/conversation-export]
+    managed: true
+    requires: [shared, ui]
+    publicEntrypoints:
+      - packages/ui/src/conversation-export/index.ts
+      - packages/ui/src/conversation-export/contract.ts
+    layers: { ui: . }
+    owner: conversation
+
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。
   # 基于领先 staging 很多的分支开工时，merge-base 之前的"新增"文件不应被追溯。

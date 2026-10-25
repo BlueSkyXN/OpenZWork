@@ -187,6 +187,9 @@ export function WorkspaceHeaderTitleSection({
     handleCopyText,
     handleOpenTaskPathInFileManager,
     handleOpenProviderConfig,
+    handleCopyConversationMarkdown,
+    copyingConversation,
+    canCopyConversation,
   } = useTaskListItemContextActions({
     workspacePath: workspaceAbsPath,
     remoteSessionId,
@@ -563,6 +566,11 @@ export function WorkspaceHeaderTitleSection({
                 activeSessionId={activeSessionId}
                 taskNativeSessionLogFile={taskNativeSessionLogFile}
                 providerConfigFile={providerConfigFile}
+                onCopyConversationMarkdown={() =>
+                  void handleCopyConversationMarkdown(activeTaskTitle)
+                }
+                copyingConversation={copyingConversation}
+                disableCopyConversation={!canCopyConversation}
                 disableTaskTargetActions={disableTaskTargetActions || taskMenuMembershipLoading}
                 disableTaskActions={Boolean(readOnlyReason)}
                 disabledReason={readOnlyReason}

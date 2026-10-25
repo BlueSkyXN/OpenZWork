@@ -4,10 +4,40 @@ interface TaskActionMenuItemProps {
   disabled?: boolean;
   onSelect?: () => void;
   title?: string;
+  variant?: "default" | "destructive";
 }
 
 interface TaskActionMenuSeparatorProps {
   key?: string;
+}
+
+/** 普通列表、分组列表和 Header 使用同一个只读复制入口。 */
+export function TaskCopyMarkdownMenuItem({
+  intl,
+  Item,
+  activeSessionId,
+  copyingConversation = false,
+  disableCopyConversation = false,
+  onCopyConversationMarkdown,
+}: {
+  intl: { formatMessage(desc: { id: string }): string };
+  Item: React.ComponentType<TaskActionMenuItemProps>;
+  activeSessionId?: string | null;
+  copyingConversation?: boolean;
+  disableCopyConversation?: boolean;
+  onCopyConversationMarkdown: () => void;
+}) {
+  return (
+    <Item
+      data-testid="task-copy-markdown"
+      disabled={!activeSessionId || copyingConversation || disableCopyConversation}
+      onSelect={onCopyConversationMarkdown}
+    >
+      {intl.formatMessage({
+        id: copyingConversation ? "conversationExport.copying" : "conversationExport.copy",
+      })}
+    </Item>
+  );
 }
 
 export function TaskActionMenuContent({
@@ -37,6 +67,9 @@ export function TaskActionMenuContent({
   onCopySessionId,
   onViewModelTrajectory,
   onOpenProviderConfig,
+  onCopyConversationMarkdown,
+  copyingConversation = false,
+  disableCopyConversation = false,
 }: {
   intl: {
     formatMessage: (desc: { id: string }, values?: Record<string, string>) => string;
@@ -70,11 +103,27 @@ export function TaskActionMenuContent({
   onCopySessionId?: () => void;
   onViewModelTrajectory?: () => void;
   onOpenProviderConfig: () => void;
+  onCopyConversationMarkdown?: () => void;
+  copyingConversation?: boolean;
+  disableCopyConversation?: boolean;
 }) {
   const taskTargetActionsDisabled = disableTaskActions || disableTaskTargetActions;
 
   return (
     <>
+      {onCopyConversationMarkdown ? (
+        <>
+          <TaskCopyMarkdownMenuItem
+            intl={intl}
+            Item={Item}
+            activeSessionId={activeSessionId}
+            copyingConversation={copyingConversation}
+            disableCopyConversation={disableCopyConversation}
+            onCopyConversationMarkdown={onCopyConversationMarkdown}
+          />
+          <Separator />
+        </>
+      ) : null}
       <Item
         disabled={taskTargetActionsDisabled || disablePinTaskAction}
         title={taskTargetActionsDisabled ? disabledReason : undefined}
@@ -98,6 +147,7 @@ export function TaskActionMenuContent({
         {intl.formatMessage({ id: "taskList.rename" })}
       </Item>
       <Item
+        variant={isArchived ? "default" : "destructive"}
         disabled={taskTargetActionsDisabled}
         title={disabledReason}
         onSelect={() => {

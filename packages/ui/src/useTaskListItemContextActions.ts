@@ -1,5 +1,8 @@
 import type { ZCodeProvider } from "@zcode/shared";
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
+import { copyConversationMarkdown, ConversationExportError } from "@/conversation-export/index.js";
+import { dismissToast, toast, updateToast } from "@/components/ui/toast.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useTaskNativeSessionLogFile } from "@/hooks/useTaskNativeSessionLogFile.js";
 import { useTaskSessionFilePath } from "@/hooks/useTaskSessionFilePath.js";
@@ -23,6 +26,9 @@ interface TaskListItemContextActionsResult {
   handleCopyText: (label: string, value: string | null) => Promise<void>;
   handleOpenTaskPathInFileManager: () => Promise<void>;
   handleOpenProviderConfig: () => Promise<void>;
+  handleCopyConversationMarkdown: (title: string) => Promise<void>;
+  copyingConversation: boolean;
+  canCopyConversation: boolean;
 }
 
 export function resolveProviderConfigOpenTargetPath(
@@ -74,15 +80,86 @@ export function useTaskListItemContextActions({
   taskId: string;
   provider?: ZCodeProvider;
   intl: {
-    formatMessage: (
-      desc: { id: string },
-      values?: Record<string, string>,
-    ) => string;
+    formatMessage: (desc: { id: string }, values?: Record<string, string>) => string;
   };
   loadTaskPaths?: boolean;
   loadProviderConfig?: boolean;
 }): TaskListItemContextActionsResult {
   const platform = usePlatform();
+  const exportTarget = useWorkspaceServicesResolution(
+    workspacePath,
+    remoteSessionId,
+    workspaceIdentity,
+  );
+  const [copyingConversation, setCopyingConversation] = useState(false);
+  const copying = useRef(false);
+  const handleCopyConversationMarkdown = useCallback(
+    async (title: string) => {
+      if (!taskId || !exportTarget.rpcReady || copying.current) return;
+      copying.current = true;
+      setCopyingConversation(true);
+      const progress = toast(intl.formatMessage({ id: "conversationExport.copying" }), {
+        durationMs: 0,
+        dedupeKey: "conversation-markdown-copy",
+      });
+      try {
+        const result = await copyConversationMarkdown({
+          title,
+          labels: {
+            user: intl.formatMessage({ id: "conversationExport.user" }),
+            assistant: intl.formatMessage({ id: "conversationExport.assistant" }),
+            attachment: intl.formatMessage({ id: "conversationExport.attachment" }),
+          },
+          // 菜单收起会卸载列表菜单组件；操作仍使用点击时捕获的目标，不读取后来选中的会话。
+          readPage: (range) =>
+            exportTarget.services.zcodeAgentService.conversationRowsRangeV4({
+              workspacePath,
+              workspaceIdentity,
+              remoteSessionId: exportTarget.remoteSessionId ?? undefined,
+              sessionId: taskId,
+              ...range,
+            }),
+          writeText: (text) => navigator.clipboard.writeText(text),
+          ...(typeof ClipboardItem !== "undefined" && navigator.clipboard?.write
+            ? {
+                writeDeferredText: (text: Promise<string>) =>
+                  navigator.clipboard.write([
+                    new ClipboardItem({
+                      "text/plain": text.then((value) => new Blob([value], { type: "text/plain" })),
+                    }),
+                  ]),
+              }
+            : {}),
+        });
+        if (result === "superseded") {
+          dismissToast(progress);
+        } else {
+          updateToast(progress, {
+            message: intl.formatMessage({ id: "conversationExport.copied" }),
+            durationMs: 3000,
+          });
+        }
+      } catch (error) {
+        updateToast(progress, {
+          message: intl.formatMessage({
+            id:
+              error instanceof ConversationExportError && error.code === "changed"
+                ? "conversationExport.changed"
+                : "conversationExport.failed",
+          }),
+          durationMs: 5000,
+        });
+        // 会话正文、查询参数和上游错误载荷可能含用户内容，复制失败只记录错误类别。
+        logger.warn("[conversation-export] 复制失败", {
+          kind: error instanceof ConversationExportError ? error.code : "read-or-clipboard",
+        });
+      } finally {
+        copying.current = false;
+        setCopyingConversation(false);
+      }
+    },
+    [exportTarget, intl, taskId, workspaceIdentity, workspacePath],
+  );
   const workspaceOpenTarget = useWorkspaceOpenInEditorTarget({
     workspacePath,
     workspaceIdentity,
@@ -269,6 +346,9 @@ export function useTaskListItemContextActions({
     handleCopyText,
     handleOpenTaskPathInFileManager,
     handleOpenProviderConfig,
+    handleCopyConversationMarkdown,
+    copyingConversation,
+    canCopyConversation: Boolean(taskId) && exportTarget.rpcReady,
   };
 }
 
