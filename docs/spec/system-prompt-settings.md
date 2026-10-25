@@ -41,41 +41,41 @@ sequenceDiagram
 
 ## Impact Brief
 
-| 字段 | 决定 |
-|---|---|
-| 模式/层级 | implementation-handoff；presentation、validation、persistence、commit-effect |
-| 输入与授权 | 用户“你认为最该怎么做，做出来看看”；按推荐交付可用首版 |
-| UI surface | SettingsPage 的 local Host 上下文；共享桌面/Web 响应式编辑器 |
-| 草稿/默认 | React 草稿；默认来自 CLI catalog，持久配置来自 useSettings |
-| 校验/提交 | shared schema；useSettings → SettingService.update → setting.json |
-| runtime owner | 每个 AgentRuntime 保存创建时快照；ContextBuilder 唯一组装 |
-| must-inspect | shared settings/schema、node runtime-preferences、CLI bootstrap、ContextBuilder、设置导航 |
-| should-inspect | 用户指令、Memory、Skill 条件、输出风格、fork/子代理隔离、Web 同步 |
-| invariant-only | 工具权限、原生操作、队列/stream、owner/lease、workspace identity |
-| evidence-only | builder UT、Host 回调 UT、设置交互和文件回读 E2E |
-| graph drift | 现有图没有主会话提示词能力；新增节点和公开 code seeds |
-| 调用链证据 | codegraph 不可用；精确 rg + 源码读取，展开至 Host → bootstrap → runtime |
-| 开放问题 | 无阻塞项；运行中热更、每项目/模型配置后续独立设计 |
+| 字段           | 决定                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| 模式/层级      | implementation-handoff；presentation、validation、persistence、commit-effect              |
+| 输入与授权     | 用户“你认为最该怎么做，做出来看看”；按推荐交付可用首版                                    |
+| UI surface     | SettingsPage 的 local Host 上下文；共享桌面/Web 响应式编辑器                              |
+| 草稿/默认      | React 草稿；默认来自 CLI catalog，持久配置来自 useSettings                                |
+| 校验/提交      | shared schema；useSettings → SettingService.update → setting.json                         |
+| runtime owner  | 每个 AgentRuntime 保存创建时快照；ContextBuilder 唯一组装                                 |
+| must-inspect   | shared settings/schema、node runtime-preferences、CLI bootstrap、ContextBuilder、设置导航 |
+| should-inspect | 用户指令、Memory、Skill 条件、输出风格、fork/子代理隔离、Web 同步                         |
+| invariant-only | 工具权限、原生操作、队列/stream、owner/lease、workspace identity                          |
+| evidence-only  | builder UT、Host 回调 UT、设置交互和文件回读 E2E                                          |
+| graph drift    | 现有图没有主会话提示词能力；新增节点和公开 code seeds                                     |
+| 调用链证据     | codegraph 不可用；精确 rg + 源码读取，展开至 Host → bootstrap → runtime                   |
+| 开放问题       | 无阻塞项；运行中热更、每项目/模型配置后续独立设计                                         |
 
 ## 验收与剪枝
 
-| ID | 场景与动作 | 断言 | 层级 |
-|---|---|---|---|
-| SP01 | 默认配置/空配置 | 默认 system/meta-user 内容逐字不变 | core UT |
-| SP02 | 追加、替换、关闭一个章节 | 仅本章改变；其他章及原注入角色不变 | core UT |
-| SP03 | 整体替换 | 固定规则退出，实时能力与动态数据保留，数据开关生效；切回逐章配置仍在 | core/UI |
-| SP04 | 关闭 Memory/Skill 条件后配置对应章 | 定制不启用缺席的功能；生成数据不可伪装为静态事实 | core UT |
-| SP05 | 新建主会话/父子/工作流/fork/重新物化 | 主会话采用 Host 快照，子代理不继承定制，fork 继承快照 | bootstrap/core |
-| SP06 | UI 编辑、取消、保存、重新打开 | 草稿隔离，文件回读相符，默认恢复生效 | pending E2E |
-| SP07 | 保存失败/跨窗口刷新 | 保留草稿；失败可重试；不覆盖迟到快照 | UI UT |
-| SP08 | 手机宽度、深浅主题、中英文 | 章节切换、编辑、保存及预览可用 | UI/browser |
-| SP09 | 保存模板后默认更新 | 显示保存时默认和当前默认，用户覆盖保留 | UI UT |
-| SP10 | 非法章节/非法模式/过大文本 | 保存/协议解析拒绝；无默认值静默吞错 | schema UT |
-| SP11 | 桌面默认原文替换；切换 Gen UI 有/无、终端 | 动态事实由当次运行决定，无空目录支持声明 | core UT |
-| SP12 | Memory 默认/追加/替换/关闭 × 根目录有/无 | 规则可改，位置和索引策略保留，无根目录不出现章节 | core UT |
-| SP13 | 输出风格规则替换后切换风格 | 新风格来自当次配置，旧风格不固定进规则 | core UT |
-| SP14 | 切换本章情景；替换默认；保存与重进 | 预览显示当次合成条件，情景不持久化，规则保存 | UI / pending E2E |
-| SP15 | 整体替换时关闭环境/用户上下文后切回 | 两模式共用同一数据开关；规则草稿保留 | core/UI |
+| ID   | 场景与动作                                | 断言                                                                 | 层级             |
+| ---- | ----------------------------------------- | -------------------------------------------------------------------- | ---------------- |
+| SP01 | 默认配置/空配置                           | 默认 system/meta-user 内容逐字不变                                   | core UT          |
+| SP02 | 追加、替换、关闭一个章节                  | 仅本章改变；其他章及原注入角色不变                                   | core UT          |
+| SP03 | 整体替换                                  | 固定规则退出，实时能力与动态数据保留，数据开关生效；切回逐章配置仍在 | core/UI          |
+| SP04 | 关闭 Memory/Skill 条件后配置对应章        | 定制不启用缺席的功能；生成数据不可伪装为静态事实                     | core UT          |
+| SP05 | 新建主会话/父子/工作流/fork/重新物化      | 主会话采用 Host 快照，子代理不继承定制，fork 继承快照                | bootstrap/core   |
+| SP06 | UI 编辑、取消、保存、重新打开             | 草稿隔离，文件回读相符，默认恢复生效                                 | pending E2E      |
+| SP07 | 保存失败/跨窗口刷新                       | 保留草稿；失败可重试；不覆盖迟到快照                                 | UI UT            |
+| SP08 | 手机宽度、深浅主题、中英文                | 章节切换、编辑、保存及预览可用                                       | UI/browser       |
+| SP09 | 保存模板后默认更新                        | 显示保存时默认和当前默认，用户覆盖保留                               | UI UT            |
+| SP10 | 非法章节/非法模式/过大文本                | 保存/协议解析拒绝；无默认值静默吞错                                  | schema UT        |
+| SP11 | 桌面默认原文替换；切换 Gen UI 有/无、终端 | 动态事实由当次运行决定，无空目录支持声明                             | core UT          |
+| SP12 | Memory 默认/追加/替换/关闭 × 根目录有/无  | 规则可改，位置和索引策略保留，无根目录不出现章节                     | core UT          |
+| SP13 | 输出风格规则替换后切换风格                | 新风格来自当次配置，旧风格不固定进规则                               | core UT          |
+| SP14 | 切换本章情景；替换默认；保存与重进        | 预览显示当次合成条件，情景不持久化，规则保存                         | UI / pending E2E |
+| SP15 | 整体替换时关闭环境/用户上下文后切回       | 两模式共用同一数据开关；规则草稿保留                                 | core/UI          |
 
 动态修正的影响层为 presentation、draft-default、validation、commit-effect；唯一持久化 owner 与调用路径不变。must-inspect 为 shared 解析/目录 schema、CLI context builders、设置编辑器；should-inspect 为输出风格与 Skill/Memory 条件；工具注册、权限、压缩、fork/子代理身份为 invariant-only。没有 codegraph 工具，沿现有 seeds 通过精确源码检索核对到深度 2。真实远端、推理模型和供应商组合不改变纯文本语义，剪枝为合成数据；原有创建期快照与并发保存测试复用。图谱补充运行事实始终由 CLI 决定的不变量。
 
