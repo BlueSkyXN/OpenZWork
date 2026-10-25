@@ -7,7 +7,6 @@ import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
 import {
-  BUILTIN_MODEL_PROVIDER_IDS,
   ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS,
   zcodeProtocolMethods,
   zcodeMessagePartSchema,
@@ -872,7 +871,7 @@ describe("ZCodeProtocolAgentServer", () => {
     expect(snapshot.session.updatedAt).toBe(9_000);
   });
 
-  it("emits Computer Use lifecycle metadata without a legacy deliveryKind", () => {
+  it("forwards tool lifecycle events through v4 after native Computer Use retirement", () => {
     const ingest = vi.fn();
     const notify = vi.fn<(notification: ZCodeProtocolNotification) => void>();
     const record = {
@@ -929,53 +928,9 @@ describe("ZCodeProtocolAgentServer", () => {
 
     for (const sessionEvent of events) onSessionEvent(context, record, sessionEvent);
 
-    expect(notify.mock.calls.map(([notification]) => notification.method)).toEqual(
-      Array.from({ length: 5 }, () => "computer-use/operation-event"),
-    );
-    const params = notify.mock.calls.map(
-      ([notification]) => notification.params as Record<string, unknown>,
-    );
-    expect(params.map((value) => value.kind)).toEqual([
-      "turn-started",
-      "tool-scheduled",
-      "tool-started",
-      "turn-completed",
-      "session-closed",
-    ]);
-    expect(params[1]).not.toHaveProperty("input");
-    expect(params[2]).not.toHaveProperty("result");
-    expect(ingest).toHaveBeenCalledTimes(events.length);
-  });
-
-  it("keeps v4 ingestion alive when the Computer Use lifecycle sideband throws", () => {
-    const ingest = vi.fn();
-    const warn = vi.fn();
-    const record = {
-      app: { sessionId: "sess_cua_sideband_failure" },
-      updatedAt: 1_700,
-      workspace,
-    } as unknown as Parameters<typeof onSessionEvent>[1];
-    const context = {
-      logger: { warn },
-      notify: vi.fn(() => {
-        throw new Error("transport closed");
-      }),
-      v4Gateway: { ingest },
-    } as unknown as Parameters<typeof onSessionEvent>[0];
-    const event = {
-      id: "evt-cua-sideband-failure" as SessionEvent["id"],
-      payload: { turnNumber: 1, input: "control" },
-      sequenceNumber: 1,
-      sessionId: "sess_cua_sideband_failure" as SessionId,
-      timestamp: new Date(1_800),
-      traceId: "trace_cua_sideband_failure" as SessionEvent["traceId"],
-      turnId: "turn-1" as SessionEvent["turnId"],
-      type: SessionEventType.TurnStarted,
-    } satisfies SessionEvent;
-
-    expect(() => onSessionEvent(context, record, event)).not.toThrow();
-    expect(ingest).toHaveBeenCalledWith("sess_cua_sideband_failure", event);
-    expect(warn).toHaveBeenCalledTimes(1);
+    // 原生 CUA 已退役；生命周期只走已有 V4 投影，不再发送独立 sideband。
+    expect(notify).not.toHaveBeenCalled();
+    expect(ingest.mock.calls).toEqual(events.map((sessionEvent) => ["sess_cua_sideband", sessionEvent]));
   });
 
   it("promotes a deferred record to immediate once the runtime reports the session persisted", () => {
@@ -3479,7 +3434,7 @@ describe("ZCodeProtocolAgentServer", () => {
     );
   });
 
-  it("preserves unapplied zcode-plan runtime headers original failure", async () => {
+  it("preserves unapplied provider runtime headers original failure", async () => {
     const createdAppOptions: ZCodeAppOptions[] = [];
     const requestClient = vi.fn(async () => ({
       headersApplied: false,
@@ -3509,19 +3464,14 @@ describe("ZCodeProtocolAgentServer", () => {
     const runtimeHeadersPort = createdAppOptions[0]?.providerRuntimeHeadersPort;
     expect(
       runtimeHeadersPort?.shouldRefreshBeforeModelRequest?.({
-        providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
+        providerId: "personal:runtime-headers",
         modelId: "glm-5.1",
       }),
     ).toBe(true);
 
     await expect(
       runtimeHeadersPort?.refreshBeforeModelRequest({
-        accountAccess: {
-          type: "zhipu-account",
-          family: "zai",
-          mode: "start-plan",
-        },
-        providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
+        providerId: "personal:runtime-headers",
         modelId: "glm-5.1",
         reason: "model-request",
         sessionId: "sess_test" as never,
@@ -3531,9 +3481,8 @@ describe("ZCodeProtocolAgentServer", () => {
     expect(requestClient).toHaveBeenCalledWith(
       zcodeProtocolMethods.interactionRequestProviderRuntimeHeaders,
       expect.objectContaining({
-        accountAccess: expect.objectContaining({
-          mode: "start-plan",
-        }),
+        providerId: "personal:runtime-headers",
+        reason: "model-request",
       }),
       expect.anything(),
       expect.anything(),
@@ -3573,7 +3522,7 @@ describe("ZCodeProtocolAgentServer", () => {
 
     await expect(
       createdAppOptions[0]?.providerRuntimeHeadersPort?.refreshBeforeModelRequest({
-        providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
+        providerId: "personal:runtime-headers",
         modelId: "glm-5.1",
         reason: "model-request",
         sessionId: "sess_test" as never,
@@ -3591,7 +3540,7 @@ describe("ZCodeProtocolAgentServer", () => {
     try {
       const port = createdAppOptions[0]!.providerRuntimeHeadersPort!;
       const input = {
-        providerId: BUILTIN_MODEL_PROVIDER_IDS.zaiStartPlan,
+        providerId: "personal:runtime-headers",
         modelId: "glm-5.1",
         reason: "model-request" as const,
         sessionId: "sess_test" as never,
@@ -4855,50 +4804,16 @@ describe("ZCodeProtocolAgentServer", () => {
     expect("settings" in presentation).toBe(false);
   });
 
-  it("通过独立协议同步 Account Config，不再从 Workspace Snapshot 反向投影", async () => {
-    const syncAccountProviderConfig = vi.fn(async () => true);
-    const server = new ZCodeProtocolAgentServer({
-      createZCodeApp: () => createFakeApp(),
-      cwd: workspace.workspacePath,
-      syncAccountProviderConfig,
+  it("rejects the retired official account configuration protocol", async () => {
+    const createApp = vi.fn(() => createFakeApp());
+    const server = new ZCodeProtocolAgentServer({ createZCodeApp: createApp, cwd: workspace.workspacePath });
+    // 保留普通 Provider Registry；退役账号配置不能重新进入创建或更新路径。
+    const response = await server.handleMessage({ id: "retired-account-config", method: "provider/updateAccountConfig", params: {} });
+    expect(response).toMatchObject({
+      id: "retired-account-config", error: { code: -32601, message: "Method not found: provider/updateAccountConfig" },
     });
-
-    const result = await requestResult(server, {
-      id: 1,
-      method: zcodeProtocolMethods.providerUpdateAccountConfig,
-      params: {
-        revision: "account-1",
-        basedOnZCodeBuiltinRevision: "zcode-builtin:1",
-        states: {
-          "account:zai-individual-coding-plan": {
-            availability: "available",
-            entitled: true,
-            current: false,
-          },
-        },
-        providers: {
-          "account:zai-individual-coding-plan": {
-            access: { type: "zhipu-account", entitled: true },
-            builtinModelIds: ["GLM-5.2"],
-          },
-        },
-      },
-    });
-
-    expect(result).toEqual({
-      receivedRevision: "account-1",
-      providerCount: 1,
-      status: "received",
-    });
-    expect(syncAccountProviderConfig).toHaveBeenCalledTimes(1);
-    const snapshot = syncAccountProviderConfig.mock.calls[0]?.[0];
-    expect(snapshot?.revision).toBe("account-1");
-    expect(snapshot?.basedOnZCodeBuiltinRevision).toBe("zcode-builtin:1");
-    expect(snapshot?.states?.["account:zai-individual-coding-plan"].current).toBe(false);
-    expect(snapshot?.providers.get("account:zai-individual-coding-plan")?.toJSON()).toEqual({
-      access: { type: "zhipu-account", entitled: true },
-      builtinModelIds: ["GLM-5.2"],
-    });
+    expect(createApp).not.toHaveBeenCalled();
+    expect(zcodeProtocolMethods).not.toHaveProperty("providerUpdateAccountConfig");
   });
 
   it("在执行前刷新 Worker 自己的 Provider Registry，不接收 Desktop 快照", async () => {

@@ -100,8 +100,8 @@ jobs:
       - name: System prompt context regression
         run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
 
-      - name: System prompt settings protocol regression
-        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts -t 'returns prompt defaults|reads materialization preferences once|reads the latest materialization preferences|forks sessions and lets selection children inherit' --bail=1
+      - name: CLI protocol regression
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts --bail=1
 
       - name: Bash output settlement and shutdown regression
         run: pnpm --filter @zcode/adapters exec vitest run tests/bash-direct-execution.test.ts tests/bash-shutdown.test.ts --bail=1

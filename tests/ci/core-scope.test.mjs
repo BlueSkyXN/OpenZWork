@@ -124,7 +124,7 @@ test("system prompt regressions run in core and independent CLI gates", async ()
 
   const steps = (await workflow("ci.yml")).jobs.checks.steps;
   const context = steps.find((step) => step.name === "System prompt context regression");
-  const protocol = steps.find((step) => step.name === "System prompt settings protocol regression");
+  const protocol = steps.find((step) => step.name === "CLI protocol regression");
   // 两个命令分属独立 step，避免 Windows shell 用后一次成功掩盖前一次失败。
   for (const step of [context, protocol]) {
     assert.ok(step);
@@ -133,10 +133,9 @@ test("system prompt regressions run in core and independent CLI gates", async ()
     assert.ok(step.run.includes("--bail=1"));
   }
   assert.match(context.run, /@zcode\/core.*tests\/system-prompt-settings\.test\.ts.*tests\/context-builder\.test\.ts/);
-  assert.match(protocol.run, /@zcode\/bootstrap.*tests\/zcode-protocol\.test\.ts -t /);
-  for (const scenario of ["returns prompt defaults", "reads materialization preferences once", "reads the latest materialization preferences", "forks sessions and lets selection children inherit"]) {
-    assert.ok(protocol.run.includes(scenario), scenario);
-  }
+  assert.match(protocol.run, /@zcode\/bootstrap.*tests\/zcode-protocol\.test\.ts --bail=1$/);
+  assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
+
 });
 
 test("extended checks keep real failures and run independently with Electron prepared", async () => {
