@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import * as childProcess from "node:child_process";
+import { once } from "node:events";
+import { PassThrough } from "node:stream";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createServiceDescriptor,
   isServiceManagerAvailable,
@@ -6,7 +9,82 @@ import {
   unregisterService,
 } from "../src/platform/serviceManager.js";
 
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof childProcess>();
+  return { ...actual, spawn: vi.fn(actual.spawn) };
+});
+
 describe("service manager adapters", () => {
+  afterEach(() => {
+    vi.mocked(childProcess.spawn).mockReset();
+  });
+
+  it("finishes a signal-terminated probe before inherited pipes end naturally", async () => {
+    const child = new childProcess.ChildProcess();
+    const output = new PassThrough();
+    const errorOutput = new PassThrough();
+    child.stdout = output;
+    child.stderr = errorOutput;
+    const spawned = new Promise<void>((resolve) => {
+      vi.mocked(childProcess.spawn).mockImplementationOnce(() => {
+        resolve();
+        return child;
+      });
+    });
+    // Windows 的真实后代在清理前可能已退出，旧夹具因此报 ESRCH 并覆盖原始断言。
+    // 保持两条管道开放，只有执行器关闭它们后才发送 ChildProcess 的 close 事件。
+    const pipesClosed = Promise.all([once(output, "close"), once(errorOutput, "close")]).then(() =>
+      child.emit("close", null, "SIGKILL"),
+    );
+    const probe = isServiceManagerAvailable("linux");
+    try {
+      await spawned;
+      child.emit("exit", null, "SIGKILL");
+      expect(
+        await Promise.race([
+          probe,
+          new Promise<"blocked">((resolve) => setImmediate(() => resolve("blocked"))),
+        ]),
+      ).toBe(false);
+    } finally {
+      output.destroy();
+      errorOutput.destroy();
+      await pipesClosed;
+      await probe;
+    }
+  });
+
+  it("keeps reading a successful probe until its inherited stdout closes", async () => {
+    const child = new childProcess.ChildProcess();
+    const output = new PassThrough();
+    child.stdout = output;
+    let settled = false;
+    const spawned = new Promise<void>((resolve) => {
+      vi.mocked(childProcess.spawn).mockImplementationOnce(() => {
+        resolve();
+        return child;
+      });
+    });
+    const probe = isServiceManagerAvailable("linux").then((available) => {
+      settled = true;
+      return available;
+    });
+    try {
+      await spawned;
+      // 固定 exit 先于剩余输出的事件顺序，不依赖真实后代进程的启动速度。
+      child.emit("exit", 0, null);
+      await new Promise<void>((resolve) => setImmediate(resolve));
+      expect(settled).toBe(false);
+      output.end("Version=252\n");
+      child.emit("close", 0, null);
+      expect(await probe).toBe(true);
+    } finally {
+      output.destroy();
+      child.emit("close", 1, null);
+      await probe;
+    }
+  });
+
   it("probes the Linux user service manager without registering a unit", async () => {
     const calls: Array<{
       command: string;
@@ -18,14 +96,14 @@ describe("service manager adapters", () => {
         run: async () => undefined,
         runResult: async (command, args, options) => {
           calls.push({ command, args, timeoutMs: options?.timeoutMs });
-          return { exitCode: 0, stderr: "" };
+          return { exitCode: 0, stdout: "Version=249.11-0ubuntu3.22\n", stderr: "" };
         },
       }),
     ).resolves.toBe(true);
     expect(calls).toEqual([
       {
         command: "systemctl",
-        args: ["--user", "show-environment"],
+        args: ["--user", "show", "--property=Version"],
         timeoutMs: 2_000,
       },
     ]);
@@ -37,10 +115,49 @@ describe("service manager adapters", () => {
         run: async () => undefined,
         runResult: async () => ({
           exitCode: 1,
+          stdout: "",
           stderr: "Failed to connect to bus",
         }),
       }),
     ).resolves.toBe(false);
+  });
+
+  it("does not register against a skipped Linux probe that exits successfully", async () => {
+    await expect(
+      isServiceManagerAvailable("linux", {
+        run: async () => undefined,
+        runResult: async () => ({
+          exitCode: 0,
+          stdout: "",
+          stderr: "Running in chroot, ignoring command 'show'\n",
+        }),
+      }),
+    ).resolves.toBe(false);
+  });
+
+  it.each(["", "Version=\n", "Welcome to the server\n"])(
+    "requires a manager response even when stderr is empty (stdout: %j)",
+    async (stdout) => {
+      await expect(
+        isServiceManagerAvailable("linux", {
+          run: async () => undefined,
+          runResult: async () => ({ exitCode: 0, stdout, stderr: "" }),
+        }),
+      ).resolves.toBe(false);
+    },
+  );
+
+  it("keeps a responding Linux manager available despite an unrelated warning", async () => {
+    await expect(
+      isServiceManagerAvailable("linux", {
+        run: async () => undefined,
+        runResult: async () => ({
+          exitCode: 0,
+          stdout: "Version=252\n",
+          stderr: "A diagnostic warning\n",
+        }),
+      }),
+    ).resolves.toBe(true);
   });
 
   it("maps all supported platforms to their native registration commands", async () => {
@@ -141,7 +258,7 @@ describe("service manager adapters", () => {
         },
         runResult: async (_command, args) => {
           calls.push([...args]);
-          return { exitCode: 0x80070002, stderr: "" };
+          return { exitCode: 0x80070002, stdout: "", stderr: "" };
         },
       }),
     ).resolves.toBeUndefined();
@@ -158,6 +275,7 @@ describe("service manager adapters", () => {
         run: async () => undefined,
         runResult: async () => ({
           exitCode: 0x80070005,
+          stdout: "",
           stderr: "Access is denied.",
         }),
       }),
