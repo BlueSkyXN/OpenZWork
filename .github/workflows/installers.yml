@@ -12,6 +12,22 @@ on:
         description: Expected full source commit SHA of the release tag
         type: string
         default: ""
+      publish_installer_run:
+        description: Publish existing production artifacts from this successful run (empty builds installers)
+        type: string
+        default: ""
+      core_run:
+        description: Successful CI run for the exact release commit
+        type: string
+        default: ""
+      extended_run:
+        description: Successful complete Extended run for the exact release commit
+        type: string
+        default: ""
+      release_notes:
+        description: Markdown release notes for publishing the reviewed draft
+        type: string
+        default: ""
   push:
     branches: [main, "wp**"]
 
@@ -19,11 +35,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: installers-${{ github.workflow }}-${{ inputs.release_tag || github.ref }}
+  group: installers-${{ github.workflow }}-${{ inputs.release_tag || github.ref }}-${{ inputs.publish_installer_run && 'publish' || 'build' }}
   cancel-in-progress: true
 
 jobs:
   installer:
+    if: ${{ !inputs.publish_installer_run }}
     name: installer (${{ matrix.platform }})
     env:
       ZCODE_ENV: ${{ inputs.release_tag && 'production' || '' }}
@@ -211,3 +228,30 @@ jobs:
             packages/desktop/dist/**/*.pkg.tar.zst
             packages/desktop/dist/RELEASE-MANIFEST.json
           if-no-files-found: error
+
+  publish:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_installer_run != '' }}
+    name: Publish verified release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+      - name: Verify and publish existing installers
+        run: node scripts/publish-github-release.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          RELEASE_COMMIT: ${{ inputs.release_commit }}
+          INSTALLERS_RUN: ${{ inputs.publish_installer_run }}
+          CORE_RUN: ${{ inputs.core_run }}
+          EXTENDED_RUN: ${{ inputs.extended_run }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}

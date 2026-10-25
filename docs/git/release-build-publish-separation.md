@@ -28,7 +28,9 @@
 | Windows x64 | NSIS EXE                   |
 | Linux x64   | AppImage、DEB、RPM、pacman |
 
-Installers 只构建并上传 Actions artifacts，不创建 GitHub Release。正式发布时，将核验后的安装包和来源清单与同一 tag 的版本说明一起发布到本仓 Releases。Preview 包不能通过改名转成正式包。
+普通 Installers 构建只上传 Actions artifacts。正式包构建完成后，先为已有 tag 创建待发布的 Release 草稿，再在同一工作流的手动发布模式填写 `release_tag`、`release_commit`、`publish_installer_run`、`core_run`、`extended_run` 与 `release_notes`。runner 复用已有安装包，校验来源、完整测试报告及文件摘要后上传 Release；本机无需下载大文件。Preview 包不能通过改名转成正式包。
+
+发布模式支持继续上传草稿中缺失的附件；同名文件的大小或摘要不符时直接失败。全部七个安装文件、`PROVENANCE.json`、`SHA256SUMS` 回读一致后才公开并设为 Latest。发布模式与构建使用独立并发组。
 
 ## 命令边界与重试
 
