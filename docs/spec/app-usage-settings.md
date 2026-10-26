@@ -147,3 +147,7 @@ UI 不调用 active remote services / useWorkspaceServices；仍只调用 Base/l
 - 页面分派缺口与保留导航：`packages/ui/src/SettingsPage.tsx:982-1089`；`packages/ui/src/settings/settingsPageConfig.ts:145-149`。色板：`packages/ui/src/settings/usage-stats/appUsageChartPalette.ts:1-14`。本次评审补充的 Host/workspace 路由证据：`packages/services/src/zcode-agent/zcodeAgentPluginParams.ts:7-12`、`packages/ui/src/hooks/useWorkspaceServices.tsx:127-145`、`packages/ui/src/hooks/useServices.tsx:20-26`，以及本地 management carrier 模式 `packages/services/src/zcode-agent/zcodeAgentService.ts:414-420,2351-2385`。
 - i18n 现存键及 143/143、无不成对 key：`packages/ui/src/i18n/locales/zh-CN.ts:2551-2752`、`packages/ui/src/i18n/locales/en-US.ts:2684-2894`；计数与集合差异以本次对两 locale 的 `settings.usage.*` key 集合检查为准。
 - 设计约束：`DESIGN.md:6-17,19-49,164-175,187-233,262-280,484-507`。
+
+## 概览与空态呈现
+
+紧凑概览、空快照和无样本比率的呈现见[设置页布局规格](settings-visual-polish.md)。查询来源与聚合字段保持不变。

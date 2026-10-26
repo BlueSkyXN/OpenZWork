@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "caseName": "settings-visual-polish",
+  "spec": "./test/e2e/conversation-session/settings-visual-polish.test.ts",
+  "fixtures": []
+}

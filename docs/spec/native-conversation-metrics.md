@@ -144,3 +144,7 @@ accepted：NCM01–NCM11。pruned：额度/费用/壁纸/云遥测；递归后�
 - 既有 `transcript-hydration.test.ts` 的 CUA 图片 `output.display` 断言单独失败，在基线原 projection/hydration 文件上复现；本功能未改该图片链路。
 
 限制：供应商响应为本地 synthetic fixture，未消费真实模型；390px 是 Desktop Chromium 视口验证，不替代实体手机与真实 replayable 连接。Windows/Linux 安装包、跨 Host 真机与大规模子任务性能尚未验收。旧 part 缺少新摘要时不推测回填。E2E 尚未人工转正或加入 Docker preset。
+
+## 设置页布局
+
+字段分组、预览区与现有偏好不变量见[设置页布局规格](settings-visual-polish.md)。

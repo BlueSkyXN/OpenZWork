@@ -26,6 +26,14 @@ async function readSettings() {
     systemPromptSettings?: SystemPromptSettings;
   };
 }
+async function readDefaultRules() {
+  // 默认原文改为折叠对照后，先按用户入口展开，再读取真实可见正文。
+  const source = $('[data-testid="system-prompt-default-source"]');
+  if ((await source.getAttribute("open")) === null) {
+    await clickTestIdByDom("system-prompt-default-toggle");
+  }
+  return $('[data-testid="system-prompt-default"]').getText();
+}
 async function openSection(section: string) {
   if (!(await $('[data-testid="' + TID_SETTINGS_PAGE + '"]').isExisting())) {
     await clickTestIdByDom(TID_TASK_SETTINGS_BUTTON);
@@ -53,7 +61,7 @@ describe(marker + ": 系统提示词设置", () => {
     await openSection("systemPrompt");
     await waitForTestIdByDom("system-prompt-editor", { timeout: 45_000 });
     await clickTestIdByDom("system-prompt-chapter-desktop_context");
-    const rules = await $('[data-testid="system-prompt-default"]').getText();
+    const rules = await readDefaultRules();
     expect(rules).not.toContain("This Desktop host supports Gen UI");
     expect(rules).not.toContain("/example/views");
     await chooseOption("system-prompt-chapter-mode", "替换本章规则|Replace section rules");
@@ -125,7 +133,7 @@ describe(marker + ": 系统提示词设置", () => {
     const before = await readSettings();
     await clickTestIdByDom("system-prompt-mode-sections");
     await clickTestIdByDom("system-prompt-chapter-role");
-    const defaultContent = await $('[data-testid="system-prompt-default"]').getText();
+    const defaultContent = await readDefaultRules();
     expect(defaultContent).toContain("interactive ZCode agent");
     await clickTestIdByDom("system-prompt-chapter-mode");
     await browser.waitUntil(async () => (await $$('[role="option"]').length) > 0);
