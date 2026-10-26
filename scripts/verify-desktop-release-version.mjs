@@ -10,6 +10,14 @@ import { resolveDesktopProductIdentity } from "../packages/desktop/scripts/deskt
 
 const exec = promisify(execFile);
 
+export function readPackagedVersionMetadata(archive, extractFile) {
+  // ASAR 按 path.sep 拆分目录；Windows 上写死斜杠会把存在的嵌套条目误报为缺失。
+  return {
+    pkg: JSON.parse(extractFile(archive, "package.json").toString()),
+    metadata: JSON.parse(extractFile(archive, join("out", "metadata", "build-meta.json")).toString()),
+  };
+}
+
 export function validatePackagedVersion(record, version) {
   const expected = getDesktopVersion(version);
   assert.equal(record.version, expected.appVersion);
@@ -46,8 +54,7 @@ export async function verifyPackagedVersion({ platform, version, root = process.
   const require = createRequire(join(root, "packages/desktop/package.json"));
   const { extractFile } = await import(pathToFileURL(require.resolve("@electron/asar")).href);
   const archive = join(resources, "app.asar");
-  const pkg = JSON.parse(extractFile(archive, "package.json").toString());
-  const metadata = JSON.parse(extractFile(archive, "out/metadata/build-meta.json").toString());
+  const { pkg, metadata } = readPackagedVersionMetadata(archive, extractFile);
   assert.equal(pkg.zcodeProductFlavor, identity.flavor);
   const record = {
     platform,

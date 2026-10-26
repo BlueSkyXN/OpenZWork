@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { validatePackagedVersion } from "../verify-desktop-release-version.mjs";
+import { readPackagedVersionMetadata, validatePackagedVersion } from "../verify-desktop-release-version.mjs";
 
 const version = "3.16.2+openzwork.1";
 const common = {
@@ -22,6 +27,22 @@ const records = [
     pacmanVersion: `${version}-1`,
   },
 ];
+
+test("真实 ASAR 归档可按本机路径读取嵌套版本元数据", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "openzwork-version-asar-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const source = join(root, "input");
+  await mkdir(join(source, "out", "metadata"), { recursive: true });
+  const pkg = { version, zcodeProductFlavor: "production" };
+  const metadata = { appVersion: version, upstreamVersion: "3.16.2", releaseRevision: "1" };
+  await writeFile(join(source, "package.json"), JSON.stringify(pkg));
+  await writeFile(join(source, "out", "metadata", "build-meta.json"), JSON.stringify(metadata));
+  const require = createRequire(new URL("../../packages/desktop/package.json", import.meta.url));
+  const { createPackage, extractFile } = await import(pathToFileURL(require.resolve("@electron/asar")).href);
+  const archive = join(root, "app.asar");
+  await createPackage(source, archive);
+  assert.deepEqual(readPackagedVersionMetadata(archive, extractFile), { pkg, metadata });
+});
 
 test("三平台安装包版本保留修订号，任一版本字段丢失或错配都会拒绝", () => {
   for (const record of records) {

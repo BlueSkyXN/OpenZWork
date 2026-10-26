@@ -2,7 +2,7 @@
 
 ## 编号与事实源
 
-根 `package.json.version` 是完整发行号的唯一事实源。格式为 `X.Y.Z` 或 `X.Y.Z+openzwork.N`：前三段记录官方基准，N 是该基准下的 OpenZWork 正整数修订号。不带后缀时修订号为 0；数字不得有前导零。同步官方基准后可先发行不带后缀的版本，再从修订号 1 开始迭代。
+根 `package.json.version` 是完整发行号的唯一事实源，根 `package-lock.json` 的根版本字段同步更新。格式为 `X.Y.Z` 或 `X.Y.Z+openzwork.N`：前三段记录官方基准，N 是该基准下的 OpenZWork 正整数修订号。不带后缀时修订号为 0；数字不得有前导零。同步官方基准后可先发行不带后缀的版本，再从修订号 1 开始迭代。
 
 构建和发布共用 `scripts/openzwork-version.mjs`，从完整发行号解析出官方基准与修订号，避免另存两个可漂移的版本字段。CLI 子包的独立版本规则不变。
 
@@ -46,5 +46,5 @@ flowchart LR
 1. 混合无后缀/有后缀版本按上述顺序比较，包括数字 2/10 与跨官方基准。
 2. 拒绝四段应用版本、预发布标识、未知构建信息、零或带前导零的修订号；发布 tag 与源码发行号不一致时失败。
 3. 两类正式标签均触发同源三项门禁；手动恢复与自动事件使用同一解析入口。
-4. 完整发行号贯穿构建元数据、关于窗口、安装文件、manifest 和 Release；旧版发布与 Latest 防倒退继续有效。Preview 候选与正式构建都核对包内版本，生成 `VERSION-VERIFICATION.json`；发布器只接受 production 核验。
+4. 完整发行号贯穿构建元数据、关于窗口、安装文件、manifest 和 Release；旧版发布与 Latest 防倒退继续有效。Preview 候选与正式构建都核对包内版本，生成 `VERSION-VERIFICATION.json`；发布器只接受 production 核验。ASAR 嵌套条目按运行平台的路径分隔符读取，以真实归档夹具覆盖 Windows 路径。
 5. 本次正式发行 `3.16.2+openzwork.1` 包含已合并的原生会话指标栏、自选指标、对话 Markdown 复制、筛选与项目活动排序。

@@ -3,7 +3,10 @@
   "suites": [
     {
       "capability": "release-version-display",
-      "files": ["packages/desktop/test/about.test.ts"]
+      "files": [
+        "packages/desktop/test/about.test.ts",
+        "packages/desktop/test/desktopProductIdentity.test.ts"
+      ]
     },
     {
       "capability": "conversation-controls",
