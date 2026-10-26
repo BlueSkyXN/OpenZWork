@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "caseName": "settings-visual-polish",
+  "spec": "./test/e2e/conversation-session/settings-visual-polish.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/common.json",
+    "./test/e2e/fixtures/upstream/conversation-session/settings-visual-polish.json"
+  ],
+  "providerRequestPolicy": "none",
+  "fileFixtures": [],
+  "requests": []
+}
