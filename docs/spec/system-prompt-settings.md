@@ -86,3 +86,7 @@ CI：shared schema、UI 编辑器、加载状态和设置导航测试纳入 Core
 发布回归合同：冻结 Memory 夹具固定以 LF 检出，使 Windows autocrlf 不改变逐字比较基准；不在运行时改写提示词换行。useSettings.update 的第二参数用于并发比较，普通设置传 undefined，系统提示词保存按原样传递 expectedSystemPromptSettings；既有运行偏好 ACK 与广播顺序不变。
 
 完整协议回归保留 V4 事件投递、通用请求级 runtime headers、创建期快照与 fork 断言。已退役原生 CUA 不发送 operation-event sideband，官方账号配置方法返回 Method not found；通用 headers 测试使用合成 Personal Provider，不依赖已删除的官方套餐常量。
+
+## 编辑器布局
+
+默认原文折叠、窄屏章节选择与保存操作区见[设置页布局规格](settings-visual-polish.md)。目录内容与保存/冲突合同保持不变。

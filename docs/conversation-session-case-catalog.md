@@ -4507,3 +4507,7 @@ SP11–SP15 为动态修正 accepted 场景：桌面、记忆、Skill、输出�
 ## OpenZWork 3.16.2 交互候选
 
 CPE03：配置选择器打开后，选择另一模型或重复选择当前模型，菜单保持打开且当前值更新；Escape 显式关闭。只配置模型，不发送请求。状态 accepted，执行文件为 `conversation-session/manual-review/pending/conversation-session-model-menu-selection.test.ts`。
+
+## SVP 设置页布局与首页远控入口（accepted）
+
+[规格](spec/settings-visual-polish.md)定义 SVP01–SVP06 的 setup、action 和 assertion。范围仅为呈现与导航，不改变连接/统计/提示词运行时。候选：settings-visual-polish.test.ts；复用 NCM08、SP06/SP14、V1-11/V1-12 语义。

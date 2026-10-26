@@ -64,25 +64,36 @@ export function MetricsDisplaySettings() {
               data-testid="metrics-display-enabled"
             />
           </div>
-          <fieldset className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-            <legend className="mb-3 text-ui-sm text-foreground-subtle">{t("fields")}</legend>
-            {METRICS_DISPLAY_FIELDS.map((field) => (
-              <label key={field.id} className="flex cursor-pointer items-center gap-2 text-ui-base">
-                <Checkbox
-                  checked={preferences.visibleFields.includes(field.id)}
-                  aria-label={t(`field.${field.id}`)}
-                  data-testid={`metrics-display-field-${field.id}`}
-                  onCheckedChange={(checked) =>
-                    update({
-                      visibleFields:
-                        checked === true
-                          ? [...preferences.visibleFields, field.id]
-                          : preferences.visibleFields.filter((id) => id !== field.id),
-                    })
-                  }
-                />
-                {t(`field.${field.id}`)}
-              </label>
+          <fieldset className="grid min-w-0 max-w-xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+            <legend className="sr-only">{t("fields")}</legend>
+            {[
+              { title: t("group.performance"), fields: METRICS_DISPLAY_FIELDS.slice(0, 3) },
+              { title: t("group.usage"), fields: METRICS_DISPLAY_FIELDS.slice(3) },
+            ].map((group) => (
+              <div key={group.title} className="min-w-0 space-y-2">
+                <p className="text-ui-sm text-foreground-subtle">{group.title}</p>
+                {group.fields.map((field) => (
+                  <label
+                    key={field.id}
+                    className="flex cursor-pointer items-center gap-2 text-ui-base"
+                  >
+                    <Checkbox
+                      checked={preferences.visibleFields.includes(field.id)}
+                      aria-label={t(`field.${field.id}`)}
+                      data-testid={`metrics-display-field-${field.id}`}
+                      onCheckedChange={(checked) =>
+                        update({
+                          visibleFields:
+                            checked === true
+                              ? [...preferences.visibleFields, field.id]
+                              : preferences.visibleFields.filter((id) => id !== field.id),
+                        })
+                      }
+                    />
+                    {t(`field.${field.id}`)}
+                  </label>
+                ))}
+              </div>
             ))}
           </fieldset>
           <div
@@ -90,17 +101,19 @@ export function MetricsDisplaySettings() {
             data-testid="metrics-display-preview"
           >
             <p className="text-ui-sm text-foreground-subtle">{t("preview")}</p>
-            {preferences.enabled && preferences.visibleFields.length > 0 ? (
-              <MetricsSummaryRow
-                header={PREVIEW_HEADER}
-                cumulative={PREVIEW_CUMULATIVE}
-                fields={preferences.visibleFields}
-              />
-            ) : (
-              <p className="text-ui-sm text-foreground-subtle">
-                {t(preferences.enabled ? "empty" : "hidden")}
-              </p>
-            )}
+            <div className="min-w-0 rounded-lg bg-surface px-3 py-2">
+              {preferences.enabled && preferences.visibleFields.length > 0 ? (
+                <MetricsSummaryRow
+                  header={PREVIEW_HEADER}
+                  cumulative={PREVIEW_CUMULATIVE}
+                  fields={preferences.visibleFields}
+                />
+              ) : (
+                <p className="text-ui-sm text-foreground-subtle">
+                  {t(preferences.enabled ? "empty" : "hidden")}
+                </p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

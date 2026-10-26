@@ -22,6 +22,7 @@ import {
   LoaderCircle,
   RefreshCw,
   Smartphone,
+  ChevronRight,
   Unplug,
 } from "lucide-react";
 import { BotsDialog } from "@/BotsDialog.js";
@@ -390,7 +391,7 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
     <div data-testid="remote-control-settings" className="min-w-0">
       <div
         data-testid="web-remote-control-main-grid"
-        className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
+        className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]"
       >
         <section
           data-testid="web-remote-control-scan-card"
@@ -427,7 +428,7 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
             <Button
               type="button"
               data-testid="web-remote-start"
-              className="mb-3"
+              className="mb-3 w-full self-end sm:w-auto"
               disabled={loading || !canStart}
               onClick={() => void handleStart()}
             >
@@ -570,7 +571,7 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
               </p>
             </div>
           </div>
-          <div className="grid gap-2">
+          <div className="grid divide-y divide-border">
             {REMOTE_CONTROL_BOT_ENTRIES.map((entry) => {
               const regionTagLabelId = getBotProviderRegionTagLabelId(entry.provider);
 
@@ -579,13 +580,13 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
                   key={entry.provider}
                   data-testid={`web-remote-bot-${entry.provider}`}
                   type="button"
-                  className="flex min-h-0 cursor-pointer items-start gap-3 rounded-lg border border-transparent bg-surface px-3 py-3 text-left transition-colors hover:border-input-border-focused hover:bg-surface-hover focus-visible:border-input-border-focused"
+                  className="flex min-w-0 cursor-pointer items-center gap-3 rounded-md px-2 py-3 text-left transition-colors hover:bg-surface-hover"
                   onClick={() => handleOpenBotEntry(entry.provider)}
                 >
                   {/* Bugfix: 远控 Bot Channel 入口原来用通用 lucide 图标，用户无法一眼区分微信、飞书和 Telegram。
                             这里直接复用 BotsDialog 的渠道 logo，不再额外包裹容器，保证品牌图标本身作为视觉识别。 */}
-                  <ProviderIcon provider={entry.provider} className="size-8 shrink-0" />
-                  <span className="min-w-0 flex-1 space-y-1">
+                  <ProviderIcon provider={entry.provider} className="size-6 shrink-0" />
+                  <span className="min-w-0 flex-1">
                     <span className="flex min-w-0 items-center gap-1.5 text-ui-base font-medium text-foreground">
                       <span className="min-w-0 truncate">
                         {intl.formatMessage({
@@ -598,17 +599,18 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
                         </span>
                       ) : null}
                     </span>
-                    <span className="block text-ui-base/relaxed text-foreground-subtle">
+                    <span className="sr-only">
                       {intl.formatMessage({
                         id: `webRemoteControl.botChannel.${entry.provider}.description`,
                       })}
                     </span>
-                    <span className="block text-ui-base font-medium text-primary">
-                      {intl.formatMessage({
-                        id: "webRemoteControl.botChannel.configure",
-                      })}
-                    </span>
                   </span>
+                  <span className="shrink-0 text-ui-base text-foreground-subtle">
+                    {intl.formatMessage({
+                      id: "webRemoteControl.botChannel.configure",
+                    })}
+                  </span>
+                  <ChevronRight className="size-3.5 shrink-0 text-foreground-subtle" />
                 </button>
               );
             })}
@@ -617,9 +619,9 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
             <Button
               type="button"
               variant="outline"
-              size="lg"
+              size="default"
               data-testid="web-remote-control-open-bots"
-              className="w-full justify-center gap-2 enabled:cursor-pointer"
+              className="justify-start gap-2 enabled:cursor-pointer"
               onClick={handleOpenBotsPage}
             >
               <BotIcon className="size-3.5" />

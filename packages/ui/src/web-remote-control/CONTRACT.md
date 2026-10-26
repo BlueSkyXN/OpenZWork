@@ -6,4 +6,4 @@ Main 负责配对和既有 Host attachment 的调度；页面只持有 UI 投影
 
 官方 V1 旧页的任务索引由 root 平台同步桥读取已有 WindowController registry，只有运行的官方模式才订阅；Main 仅转发完整派生快照，停止和作用域变化丢弃迟到读取。
 
-Bot 管理作为设置内子页，沿用设置面包屑返回；配置读写通过 SettingsPage 注入的本机 Host services。最近工作区的 identity 与存活 remote session 由现有 resolver 传入；无目标时仅禁止开启手机连接。独立 Footer trigger 与远控配置弹窗退休。
+Bot 管理作为设置内子页，沿用设置面包屑返回；配置读写通过 SettingsPage 注入的本机 Host services。最近工作区的 identity 与存活 remote session 由现有 resolver 传入；无目标时仅禁止开启手机连接。工作区 Footer 仅提供设置导航快捷入口，不持有连接状态、不传递工作区目标、不启动连接；设置 back 模式隐藏该入口。独立远控配置弹窗保持退役。

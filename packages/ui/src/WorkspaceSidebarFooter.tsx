@@ -25,6 +25,7 @@ import {
   Maximize,
   Palette,
   Settings,
+  Smartphone,
   User,
   ZoomIn,
   ZoomOut,
@@ -35,6 +36,8 @@ import { useShortcutCommandLabel } from "@/shortcuts/useShortcutBindings.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
 import { normalizeInterfaceMode } from "@/lib/interfaceMode.js";
 import type { Theme } from "@/useTheme.js";
+import { useWebRemoteControlFeatureEnabled } from "@/WebRemoteControlFeatureProvider.js";
+import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
 
 const DESKTOP_ZOOM_MIN_LEVEL = -3;
 const DESKTOP_ZOOM_MAX_LEVEL = 5;
@@ -88,6 +91,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
 }) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
+  const remoteControlEnabled = useWebRemoteControlFeatureEnabled();
   const interfaceMode = useZCodeStore((state) => state.interfaceMode);
   const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
   const zoomInShortcutLabel = useShortcutCommandLabel("zoomIn");
@@ -291,6 +295,25 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex shrink-0 items-center gap-1.5">
+          {isDesktop && remoteControlEnabled && settingsButtonMode === "settings" ? (
+            <ControlHintTooltip title={intl.formatMessage({ id: "settings.remoteControlTitle" })}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-lg"
+                data-testid="sidebar-remote-control-button"
+                aria-label={intl.formatMessage({ id: "settings.remoteControlTitle" })}
+                disabled={!onSettingsButtonClick}
+                onClick={() => {
+                  // 配置迁入设置后仍需首页快捷入口；只复用导航意图，不恢复旧弹窗或启动连接。
+                  setPendingSettingsSectionIntent("remoteControl");
+                  onSettingsButtonClick?.();
+                }}
+              >
+                <Smartphone className="size-4" />
+              </Button>
+            </ControlHintTooltip>
+          ) : null}
           <ControlHintTooltip title={settingsButtonLabel}>
             <Button
               type="button"
