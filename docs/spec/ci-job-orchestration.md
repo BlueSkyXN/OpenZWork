@@ -7,7 +7,7 @@ Core 原先在每个平台串行执行检查、CLI 回归和核心单测；Windo
 - regressions 保留工作流回归、Lint、架构、仓库脚本和全部 CLI、协议、远控专项检查。
 - unit 执行原有固定核心单测，上传原有 core-tests-<platform>。
 - 两条路径各自安装依赖、生成根声明、准备 Agent workspace、构建 CLI/MCP runtime 和 remote bundle。不存在跨 runner 的 node_modules 共享或隐含构建前置。
-- 所有命令、用例、pool、worker、超时和失败退出策略保持。SQLite 冷恢复与插件回归继续单 worker、文件串行。
+- 所有命令、用例、pool、worker、超时和失败退出策略保持。SQLite 冷恢复、插件与 ToolSearch runtime 回归采用单 worker、文件串行。ToolSearch hydration 会真实创建、写入并重开 SQLite；PR 实跑中五文件并行触发该用例默认 5 秒超时（测试阶段 6.81 秒、累计 transform 22.10 秒）。保留全部断言与期限，只收紧此步骤的文件并发；具体主机慢因未确认。
 - 六个执行 job 的名字为 core <lane> (<platform>)。完成后用 Ubuntu 轻量汇总保留 checks (<platform>)；汇总 always 执行，任何执行路径失败、跳过或取消均令门禁失败。GitHub 的矩阵 needs 结果按整个矩阵聚合，因此三个平台门禁共同验证六个 job 全部成功。
 
 ## 所有者和顺序

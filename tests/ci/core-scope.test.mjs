@@ -156,6 +156,17 @@ for (const [name, stepName, files] of [
     ],
   ],
   [
+    "ToolSearch SQLite hydration",
+    "ToolSearch runtime regression",
+    [
+      "tests/tool-search-execution.test.ts",
+      "tests/tool-search-hydration.test.ts",
+      "tests/tool-search-result-budget.test.ts",
+      "tests/tool-search-subagent.test.ts",
+      "tests/tool-search-request-preparation.test.ts",
+    ],
+  ],
+  [
     "bundled plugin",
     "Local bundled plugins and metadata regression",
     ["tests/plugins.test.ts", "tests/plugins-protocol.test.ts"],
