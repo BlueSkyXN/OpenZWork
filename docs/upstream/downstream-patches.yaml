@@ -262,3 +262,24 @@ patches:
       - docs/spec/ci-cold-resume-fixtures.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40391057695/job/121811837803
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40395050403
+
+  - id: OW-P013
+    title: Supervisor 最终状态在原子替换暂时失败后丢失
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: Windows 读取状态文件期间，Supervisor 原子替换最终 stopped 快照返回 EPERM、EBUSY 或 EACCES。
+    impact: Supervisor 已停止并释放锁，但持久化快照仍是旧状态，要求新 stopped 快照的等待方持续等待并超时。
+    cause: status persister 只做一次 rename，错误记录后继续结束生命周期，最终状态没有后续写入机会。
+    fix: 既有串行队列复用 shared/node 的 atomicWritePrivateTextFile，针对共享占用有界重试并清理失败临时文件；保留旧快照、永久错误上报、状态格式及全部停机期限。
+    evidence: Windows Extended 日志在 slow SIGKILL reap 用例记录最终 status rename EPERM，随后 20000ms 超时；上游 3.16.2 的 3c5b2276 同样只尝试一次 rename。六项故障注入回归在原实现下失败，覆盖短暂占用、持续占用、不可重试错误、旧快照保护和后续队列恢复。
+    files:
+      - packages/zcode-server-cli/src/runtime/statusSnapshot.ts
+    regression:
+      - packages/zcode-server-cli/test/supervisor.test.ts
+    retire: 上游状态原子替换采用等效有界共享占用处理，最终快照可被停机等待方观测，永久失败与队列顺序回归仍保留。
+    refs:
+      - docs/spec/source-server-status-persistence.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40398952165/job/121839361291
