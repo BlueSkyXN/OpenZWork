@@ -2,6 +2,13 @@
   "version": 1,
   "suites": [
     {
+      "capability": "desktop-product-name",
+      "files": [
+        "packages/desktop/test/desktopTray.test.ts",
+        "packages/desktop/test/desktopWindowChrome.test.ts"
+      ]
+    },
+    {
       "capability": "release-version-display",
       "files": [
         "packages/desktop/test/about.test.ts",

@@ -11,7 +11,8 @@ Windows close-to-tray behavior is enabled by default. Users can disable `closeTo
 - On Windows, the tray is created after `app.whenReady()`. Linux creation follows the capability checks in [Linux close-to-tray](desktop/linux-close-to-tray.md).
 - The tray instance is held by `packages/desktop/src/main/desktopTray.ts` module state so Electron does not garbage collect it.
 - Left-click and double-click call `primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window")`, reusing the current window restore/create logic.
-- The context menu exposes Open ZCode, New Task, Open Workspace, Check for Updates (production only), About, Export Logs, and Quit. Export Logs replaces Clear All Data in the same position; the tray no longer exposes data deletion.
+- The context menu exposes Open OpenZWork, New Task, Open Workspace, About OpenZWork, Export Logs, and Quit. Export Logs replaces Clear All Data in the same position; the tray no longer exposes data deletion.
+- The tooltip and product labels use the shared OpenZWork brand name. See [Desktop display names](spec/identity-and-data-isolation.md#desktop-显示名称) for window-title ownership and locale-refresh acceptance cases.
 - Task and workspace commands reuse `executeDesktopCommandForApp` and existing `DesktopCommandIds`; no new IPC protocol is introduced.
 - Quit calls the existing `app.quit()` path, so `before-quit` confirmation and host process cleanup stay centralized.
 - Export Logs reuses `DesktopCommandIds.ExportLogs`, matching the desktop application menu's archive creation and system file reveal. The existing tray command flow restores the primary window before exporting. Labels follow the current application locale through the existing desktop menu translations.
@@ -47,7 +48,7 @@ When enabled:
 - Clicking the Windows close button hides the current window instead of closing it.
 - The close-window command and shortcut follow the same `BrowserWindow.close()` path, so they also hide the window.
 - The handler does not check whether this is the last window because the current desktop product is single-window.
-- Tray left-click, tray double-click, and Open ZCode call `primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window")`, which restores hidden or minimized windows before focusing them.
+- Tray left-click, tray double-click, and Open OpenZWork call `primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window")`, which restores hidden or minimized windows before focusing them.
 - Launching a second Windows instance also calls `show()` for an existing hidden window before focusing it.
 - Explicit quit paths still exit the app. Tray Quit marks an explicit quit request before `app.quit()`, so the close handler does not convert that quit into a hide.
 - Auto-update install and relaunch paths keep using the existing force-quit preparation flow and are not affected by the hide setting.

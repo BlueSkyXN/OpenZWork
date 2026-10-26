@@ -1,4 +1,6 @@
 /** 中文翻译 */
+import { desktopMenuMessages } from "@zcode/shared";
+
 const zhCN: Record<string, string> = {
   "metrics.turn": "本轮",
   "metrics.input": "输入",
@@ -1725,7 +1727,8 @@ const zhCN: Record<string, string> = {
   "titleBar.menu.view.actualSize": "实际大小",
   "titleBar.menu.view.zoomIn": "放大",
   "titleBar.menu.view.zoomOut": "缩小",
-  "titleBar.menu.help.about": "关于 ZCode",
+  // 帮助按钮与原生菜单共用产品文案，避免桌面改名后仍显示旧品牌。
+  "titleBar.menu.help.about": desktopMenuMessages["zh-CN"]["titleBar.menu.help.about"],
   "sidebar.profile.localUser": "本地用户",
   "sidebar.menu.community": "用户社群",
   "titleBar.menu.help.exportLogs": "导出日志",
