@@ -1,6 +1,8 @@
 name: Cold resume diagnostics
 on:
   workflow_dispatch: null
+  push:
+    branches: [codex/ci-cold-resume-fixtures]
 jobs:
   diagnostics:
     runs-on: windows-latest
