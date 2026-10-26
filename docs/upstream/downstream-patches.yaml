@@ -283,3 +283,24 @@ patches:
     refs:
       - docs/spec/source-server-status-persistence.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40398952165/job/121839361291
+
+  - id: OW-P014
+    title: 数据目录锁的初始化空文件被竞争者回收
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 多进程取得同一数据目录锁，首次 open(wx) 已创建文件但 owner 尚未写入，或陈旧锁恢复与首次取得交错。
+    impact: 两个进程可能同时认为自己持有数据目录锁，真实八进程竞争回归出现两个 success。
+    cause: 首次取得不受 recovery 门闩保护，空记录被当作损坏锁回收；旧单文件 recovery 门闩自身也存在创建与写入分离的窗口。
+    fix: 首次取得和陈旧恢复统一在 shared/node 的 acquireFileLock 门闩内完成，保留原 server.lock 格式、ownerToken 校验和公开接口，门闩保持 5ms 重试间隔与 500ms 等待预算。
+    evidence: Linux Extended 的八进程竞争报告两个 success；上游 3.16.2 的 3c5b2276 包含相同代码。精确暂停首次 open 后，原实现允许第二个 owner 成功；修复后拒绝竞争者，放行后首个 owner 正常取得。原陈旧恢复和真实多进程回归保留。
+    files:
+      - packages/zcode-server-cli/src/runtime/lock.ts
+    regression:
+      - packages/zcode-server-cli/test/lock.test.ts
+    retire: 上游对首次取得与陈旧恢复提供等效互斥，初始化中的记录不会被误回收，真实多进程竞争及 ownerToken 保护回归保留。
+    refs:
+      - docs/spec/source-server-lock-acquisition.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40410464216/job/121879570233

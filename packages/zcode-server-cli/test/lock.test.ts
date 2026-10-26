@@ -1,14 +1,63 @@
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { DataRootLock } from "../src/runtime/lock.js";
+
+const lockIo = vi.hoisted(() => ({ afterCreate: vi.fn() }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    open: async (...args: Parameters<typeof actual.open>) => {
+      const handle = await actual.open(...args);
+      await lockIo.afterCreate(...args);
+      return handle;
+    },
+  };
+});
+afterEach(() => lockIo.afterCreate.mockReset());
 
 // 超出常见平台 pid 上限的值：process.kill(pid, 0) 必然 ESRCH，模拟已死的持锁进程。
 const DEAD_PID = 2 ** 30;
 
 describe("DataRootLock", () => {
+  for (const stale of [false, true]) {
+    it(`OW-P014: protects initializing ownership during ${stale ? "stale recovery" : "first acquisition"}`, async () => {
+      const root = await mkdtemp(join(tmpdir(), "zcode-lock-initializing-"));
+      const lockFile = join(root, "server.lock");
+      if (stale) await writeFile(lockFile, JSON.stringify({ pid: DEAD_PID }));
+      let signalCreated!: () => void;
+      let resume!: () => void;
+      const created = new Promise<void>((resolve) => { signalCreated = resolve; });
+      const paused = new Promise<void>((resolve) => { resume = resolve; });
+      lockIo.afterCreate.mockImplementation(async (path) => {
+        if (String(path) !== lockFile) return;
+        lockIo.afterCreate.mockReset();
+        signalCreated();
+        await paused;
+      });
+      const first = new DataRootLock(lockFile);
+      const second = new DataRootLock(lockFile);
+      const acquiring = first.acquire();
+      try {
+        await created;
+        // OW-P014：精确暂停 open(wx) 后的空文件窗口，旧实现会让第二个 owner 回收并成功占用。
+        await expect(second.acquire()).rejects.toThrow(/already running/);
+        resume();
+        await acquiring;
+        expect(JSON.parse(await readFile(lockFile, "utf8"))).toMatchObject({ pid: process.pid });
+      } finally {
+        resume();
+        await acquiring.catch(() => undefined);
+        await second.release();
+        await first.release();
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+  }
+
   it("recovers a stale lock left behind by a dead process", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-r2-lock-stale-"));
     const lockFile = join(root, "run", "server.lock");
