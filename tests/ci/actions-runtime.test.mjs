@@ -41,7 +41,7 @@ for (const [name, steps] of [
 ]) {
   test(`${name} uses the reviewed Node.js 24 Action releases`, () => {
     const actions = steps.filter((step) => step.uses);
-    assert.equal(actions.length, 5);
+    assert.equal(actions.length, name === "Extended tests" ? 6 : 5);
     for (const step of actions) {
       const [action, version] = step.uses.split("@");
       assert.ok(Object.hasOwn(actionVersions, action), `${action}: reviewed Action`);

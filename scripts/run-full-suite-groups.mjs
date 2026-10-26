@@ -1,94 +1,70 @@
 #!/usr/bin/env node
-// 全量历史套件按包分组执行：任一组超时或崩溃，其余组的 JSON 仍完整落盘。
-// 修复原因：原单条 vitest 命令跑全部包时，被取消/超时后 --reporter=json 不落任何文件，
-// 扩展检查只剩 Actions 日志可用（2026-10-19 两个候选的六个 full-suite job 均如此）。
-// 分组后每组独立进程、独立 JSON、独立时限；组间串行，超时组记录 cancelled 标记后继续。
-
+// 每组独立进程、JSON 和期限；分片之间由 Actions 并行，分片内部保持串行。
 import { spawnSync } from "node:child_process";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { selectFullSuiteGroups } from "./full-suite-plan.mjs";
 
-const GROUPS = [
-  {
-    name: "shared-and-rpc",
-    filter: [
-      "packages/shared",
-      "packages/rpc",
-      "packages/client",
-      "packages/model-option-map",
-    ],
-  },
-  { name: "services", filter: ["packages/services"] },
-  { name: "provider", filter: ["packages/provider", "packages/provider-node"] },
-  { name: "server", filter: ["packages/server", "packages/zcode-server-cli"] },
-  // desktop 传 test 与 src：test 覆盖大多数用例，src 覆盖架构治理放在模块目录内的
-  // contract.test.ts 与源码旁回归（config include 的第二条）。
-  {
-    name: "desktop",
-    filter: ["packages/desktop/test", "packages/desktop/src"],
-  },
-  { name: "ui-and-web", filter: ["packages/ui", "packages/web"] },
-  // 根配置 unit include 里还有源码旁的 GenUI 用例（config 另列的两个 .test.mjs 文件
-  // 在净化后已不存在，vitest 对缺失 include 是 no-op，无需分组）。补进末组保证分组
-  // 全集等于原全量命令的发现范围。
-  {
-    name: "root-scripts",
-    filter: [
-      "packages/shared/src/node/genUiPaths.test.ts",
-      "packages/services/src/gen-ui",
-    ],
-  },
-];
-
-// 每组给足包体量对应的时限（分钟）；到点 SIGTERM，JSON 写不出时以组级 cancelled 标记兜底。
-const GROUP_MINUTES = {
-  "shared-and-rpc": 12,
-  services: 20,
-  provider: 12,
-  server: 12,
-  desktop: 30,
-  "ui-and-web": 30,
-  "root-scripts": 10,
-};
-
-const outDir = resolve(process.cwd(), ".run-logs/full-groups");
-mkdirSync(outDir, { recursive: true });
-
-const summary = { groups: [], anyFailed: false };
-for (const group of GROUPS) {
-  const jsonPath = resolve(outDir, `${group.name}.json`);
-  const args = [
-    "run",
-    // 位置参数是路径过滤器，与根配置 projects 的 include 取交集，e2e 始终不会进组。
-    ...group.filter,
-    "--reporter=default",
-    "--reporter=json",
-    `--outputFile=${jsonPath}`,
-  ];
-  // Windows 上 pnpm 是 pnpm.CMD 批处理，spawnSync 不带 shell 会直接 ENOENT（表现为
-  // 全组瞬间 failed 且 exit 为 null，2026-10-20 三个 full-suite job 均如此）；
-  // win32 走 shell 解析，POSIX 保持直接 spawn。
-  const res = spawnSync("pnpm", ["exec", "vitest", ...args], {
-    stdio: "inherit",
-    timeout: (GROUP_MINUTES[group.name] ?? 15) * 60_000,
-    env: process.env,
-    shell: process.platform === "win32",
-  });
-  const cancelled = res.error && res.error.code === "ETIMEDOUT";
-  if (cancelled)
-    writeFileSync(`${jsonPath}.cancelled`, new Date().toISOString());
-  const failed = res.status !== 0;
-  summary.groups.push({
-    group: group.name,
-    status: cancelled ? "cancelled" : failed ? "failed" : "passed",
-    exit: res.status,
-  });
-  if (failed || cancelled) summary.anyFailed = true;
+export function parseShardArgs(args) {
+  if (args.length === 0) return undefined;
+  if (args.length !== 1 || !args[0].startsWith("--shard=")) {
+    throw new Error("Usage: node scripts/run-full-suite-groups.mjs [--shard=<name>]");
+  }
+  const shard = args[0].slice("--shard=".length);
+  selectFullSuiteGroups(shard);
+  return shard;
 }
 
-writeFileSync(
-  resolve(outDir, "summary.json"),
-  JSON.stringify(summary, null, 2),
-);
-console.log("\nfull suite groups:", JSON.stringify(summary, null, 2));
-process.exitCode = summary.anyFailed ? 1 : 0;
+export async function runFullSuiteGroups({
+  shard,
+  cwd = process.cwd(),
+  env = process.env,
+  execute = spawnSync,
+} = {}) {
+  const groups = selectFullSuiteGroups(shard);
+  const outDir = resolve(cwd, ".run-logs/full-groups");
+  await mkdir(outDir, { recursive: true });
+  // 本地重复执行或 job 重跑不能把上一次成功报告当成本次结果；source.json 由 checkout 记录。
+  await rm(resolve(outDir, "summary.json"), { force: true });
+  const summary = { groups: [], anyFailed: false };
+  for (const group of groups) {
+    const jsonPath = resolve(outDir, `${group.name}.json`);
+    await rm(jsonPath, { force: true });
+    await rm(`${jsonPath}.cancelled`, { force: true });
+    const args = [
+      "exec",
+      "vitest",
+      "run",
+      ...group.filter,
+      "--reporter=default",
+      "--reporter=json",
+      `--outputFile=${jsonPath}`,
+    ];
+    // Windows 的 pnpm.CMD 需要 shell；位置参数仍由原 Vitest projects include 过滤。
+    const result = execute("pnpm", args, {
+      cwd,
+      stdio: "inherit",
+      timeout: group.minutes * 60_000,
+      env,
+      shell: process.platform === "win32",
+    });
+    const cancelled = result.error?.code === "ETIMEDOUT";
+    if (cancelled) await writeFile(`${jsonPath}.cancelled`, new Date().toISOString());
+    const failed = result.status !== 0 || Boolean(result.error) || Boolean(result.signal);
+    summary.groups.push({
+      group: group.name,
+      status: cancelled ? "cancelled" : failed ? "failed" : "passed",
+      exit: result.status,
+    });
+    if (failed || cancelled) summary.anyFailed = true;
+  }
+  await writeFile(resolve(outDir, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
+  console.log("\nfull suite groups:", JSON.stringify(summary, null, 2));
+  return summary;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  const summary = await runFullSuiteGroups({ shard: parseShardArgs(process.argv.slice(2)) });
+  process.exitCode = summary.anyFailed ? 1 : 0;
+}

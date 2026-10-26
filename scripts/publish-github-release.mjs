@@ -11,18 +11,13 @@ import { promisify } from "node:util";
 import { compareOpenZWorkVersions, parseOpenZWorkTag, parseOpenZWorkVersion } from "./openzwork-version.mjs";
 import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
 import { matchesReleaseWorkflow } from "./release-workflows.mjs";
+import { FULL_SUITE_GROUPS } from "./full-suite-plan.mjs";
+import { validateSummary, validateTests } from "./test-report-validation.mjs";
+export { validateSummary, validateTests } from "./test-report-validation.mjs";
 
 const exec = promisify(execFile);
 const platforms = ["macos-arm64", "windows-amd64", "linux-amd64"];
-const groups = [
-  "shared-and-rpc",
-  "services",
-  "provider",
-  "server",
-  "desktop",
-  "ui-and-web",
-  "root-scripts",
-];
+const groups = FULL_SUITE_GROUPS.map((group) => group.name);
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
 export function validateRun(run, name, commit, tag) {
@@ -135,39 +130,6 @@ export function validateManifest(manifest, expected) {
     assert.ok(!asset.name.includes("\\"));
     assert.ok(Number.isSafeInteger(asset.size) && asset.size > 0);
     assert.match(asset.sha256, sha256Pattern);
-  }
-}
-
-export function validateTests(report) {
-  assert.equal(report.success, true);
-  assert.equal(report.numFailedTests, 0);
-  assert.equal(report.numFailedTestSuites, 0);
-  assert.equal(report.numRuntimeErrorTestSuites ?? 0, 0);
-  assert.ok(report.numTotalTests > 0);
-  let passed = 0,
-    skipped = 0;
-  for (const file of report.testResults) {
-    assert.equal(file.status, "passed", file.name);
-    for (const test of file.assertionResults) {
-      if (test.status === "passed") passed++;
-      else {
-        assert.ok(["skipped", "pending", "todo", "disabled"].includes(test.status), test.fullName);
-        skipped++;
-      }
-    }
-  }
-  assert.equal(passed, report.numPassedTests);
-  assert.equal(passed + skipped, report.numTotalTests);
-  return { files: report.testResults.length, passed, skipped, failed: 0 };
-}
-
-export function validateSummary(summary) {
-  assert.equal(summary.anyFailed, false);
-  assert.equal(summary.groups.length, groups.length);
-  assert.deepEqual(summary.groups.map((group) => group.group).sort(), [...groups].sort());
-  for (const group of summary.groups) {
-    assert.equal(group.status, "passed");
-    assert.equal(group.exit, 0);
   }
 }
 

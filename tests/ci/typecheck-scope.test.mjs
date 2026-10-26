@@ -56,7 +56,7 @@ test("pre-push uses the core suite while historical tests remain an independent 
   // 2026-10-20：全量套件改为分组执行（组级时限 + 逐组 JSON），入口不再是单条 vitest 命令。
   assert.ok(
     historical.steps.some(
-      (step) => step.run === "node scripts/run-full-suite-groups.mjs",
+      (step) => step.run === "node .ci-tools/scripts/run-full-suite-groups.mjs --shard=${{ matrix.shard }}",
     ),
   );
 });

@@ -144,7 +144,7 @@ test("system prompt regressions run in core and independent CLI gates", async ()
 test("extended checks keep real failures and run independently with Electron prepared", async () => {
   const extended = await workflow("extended-checks.yml");
   for (const job of Object.values(extended.jobs)) {
-    assert.equal(job.needs, undefined);
+    assert.equal(job.needs, job === extended.jobs["historical-results"] ? "historical-tests" : undefined);
     assert.equal(job["continue-on-error"], undefined);
     for (const step of job.steps) assert.equal(step["continue-on-error"], undefined);
   }
@@ -152,7 +152,7 @@ test("extended checks keep real failures and run independently with Electron pre
   assert.ok(tests.some((step) => step.run === "pnpm install --frozen-lockfile"));
   // 2026-10-20：全量套件改为分组执行，脚本内建组级时限与逐组 JSON；断言从单条
   // vitest 命令改为分组入口，语义不变（真实失败仍失败、结果仍上传）。
-  assert.ok(tests.some((step) => step.run === "node scripts/run-full-suite-groups.mjs"));
+  assert.ok(tests.some((step) => step.run === "node .ci-tools/scripts/run-full-suite-groups.mjs --shard=${{ matrix.shard }}"));
   assert.ok(
     extended.jobs["desktop-main-audit"].steps.some((step) =>
       step.run?.includes("tsc -p packages/desktop/tsconfig.main.json --noEmit"),

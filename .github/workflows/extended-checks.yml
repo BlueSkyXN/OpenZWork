@@ -27,13 +27,17 @@ concurrency:
 jobs:
   historical-tests:
     if: inputs.repair != true
-    name: full suite (${{ matrix.platform }})
+    name: full suite shard (${{ matrix.platform }}, ${{ matrix.shard }})
     env:
+      EXTENDED_TEST_PLATFORM: ${{ matrix.platform }}
+      EXTENDED_TEST_SHARD: ${{ matrix.shard }}
       # 原生 SQLite/归档测试在 Windows threads 中多次零散超时，使用已有进程池模式。
       ZCODE_TEST_POOL: ${{ matrix.platform == 'windows-amd64' && 'forks' || 'threads' }}
     strategy:
       fail-fast: false
       matrix:
+        platform: [macos-arm64, windows-amd64, linux-amd64]
+        shard: [services, ui-and-web, supporting]
         include:
           - os: macos-14
             platform: macos-arm64
@@ -42,9 +46,8 @@ jobs:
           - os: ubuntu-latest
             platform: linux-amd64
     runs-on: ${{ matrix.os }}
-    # 组级时限合计约 111 分钟；45 分钟 job 上限会在中途硬杀导致零诊断，
-    # 放宽到 130 给失败组和上传留余量，真实卡点由组级 timeout 把住。
-    timeout-minutes: 130
+    # supporting 的组级预算合计 76 分钟；为准备和诊断上传留余量。
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -56,6 +59,15 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      # 固定旧源码复验时，调度器仍使用本次工作流版本。
+      - name: Checkout workflow tools
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ci-tools
+          sparse-checkout: scripts
+          persist-credentials: false
 
       - name: Record validation source
         shell: bash
@@ -71,7 +83,7 @@ jobs:
           if (expected && (!/^[a-f0-9]{40}$/.test(expected) || sourceCommit !== expected)) {
             throw new Error('Validation checkout must match the full requested source commit');
           }
-          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null };
+          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null, platform: process.env.EXTENDED_TEST_PLATFORM || null, shard: process.env.EXTENDED_TEST_SHARD || null, runId: process.env.GITHUB_RUN_ID || null };
           await mkdir('.run-logs/full-groups', { recursive: true });
           await writeFile('.run-logs/full-groups/source.json', JSON.stringify(record, null, 2) + '\n');
           console.log(JSON.stringify(record));
@@ -107,17 +119,87 @@ jobs:
 
       - name: Full historical unit suite (grouped)
         id: full_tests
-        # 分组脚本内建组级时限并逐组落 JSON；失败组不阻断后续组，summary 汇总退出码。
-        run: node scripts/run-full-suite-groups.mjs
+        # 分片内部保留组级时限与串行执行；独立 runner 提供并行。
+        run: node .ci-tools/scripts/run-full-suite-groups.mjs --shard=${{ matrix.shard }}
 
       - name: Upload full suite results
         if: always() && steps.full_tests.outcome != 'skipped'
         uses: actions/upload-artifact@v7.0.1
         with:
+          name: extended-shard-${{ matrix.platform }}-${{ matrix.shard }}
+          path: .run-logs/full-groups/
+          archive: true
+          overwrite: true
+          if-no-files-found: error
+
+  historical-results:
+    if: always() && inputs.repair != true
+    needs: historical-tests
+    name: full suite (${{ matrix.platform }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      EXTENDED_TEST_PLATFORM: ${{ matrix.platform }}
+      ZCODE_TEST_POOL: ${{ matrix.platform == 'windows-amd64' && 'forks' || 'threads' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-arm64, windows-amd64, linux-amd64]
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.source_commit || github.sha }}
+      - name: Checkout workflow tools
+        id: tools
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: .ci-tools
+          sparse-checkout: scripts
+          persist-credentials: false
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+
+      - name: Record validation source
+        id: source
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { mkdir, writeFile } from 'node:fs/promises';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          const expected = process.env.SOURCE_COMMIT || '';
+          const sourceCommit = await git('rev-parse', 'HEAD');
+          if (expected && (!/^[a-f0-9]{40}$/.test(expected) || sourceCommit !== expected)) {
+            throw new Error('Validation checkout must match the full requested source commit');
+          }
+          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null, platform: process.env.EXTENDED_TEST_PLATFORM || null, shard: process.env.EXTENDED_TEST_SHARD || null, runId: process.env.GITHUB_RUN_ID || null };
+          await mkdir('.run-logs/full-groups', { recursive: true });
+          await writeFile('.run-logs/full-groups/source.json', JSON.stringify(record, null, 2) + '\n');
+          console.log(JSON.stringify(record));
+          NODE
+      - name: Download platform shards
+        uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: extended-shard-${{ matrix.platform }}-*
+          path: .run-logs/extended-shards
+          merge-multiple: false
+      - name: Validate and merge full suite reports
+        id: merge
+        if: always() && steps.source.outcome == 'success' && steps.tools.outcome == 'success'
+        run: node .ci-tools/scripts/merge-full-suite-reports.mjs
+      - name: Upload full suite results
+        if: always() && steps.merge.outcome != 'skipped'
+        uses: actions/upload-artifact@v7.0.1
+        with:
           name: extended-tests-${{ matrix.platform }}
           path: .run-logs/full-groups/
           archive: true
-          if-no-files-found: warn
+          overwrite: true
+          if-no-files-found: error
 
   desktop-main-audit:
     if: inputs.repair != true
@@ -150,7 +232,7 @@ jobs:
           if (expected && (!/^[a-f0-9]{40}$/.test(expected) || sourceCommit !== expected)) {
             throw new Error('Validation checkout must match the full requested source commit');
           }
-          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null };
+          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null, platform: process.env.EXTENDED_TEST_PLATFORM || null, shard: process.env.EXTENDED_TEST_SHARD || null, runId: process.env.GITHUB_RUN_ID || null };
           await mkdir('.run-logs/full-groups', { recursive: true });
           await writeFile('.run-logs/full-groups/source.json', JSON.stringify(record, null, 2) + '\n');
           console.log(JSON.stringify(record));
@@ -218,7 +300,7 @@ jobs:
           if (expected && (!/^[a-f0-9]{40}$/.test(expected) || sourceCommit !== expected)) {
             throw new Error('Validation checkout must match the full requested source commit');
           }
-          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null };
+          const record = { sourceCommit, sourceTree: await git('rev-parse', 'HEAD^{tree}'), workflowCommit: process.env.GITHUB_WORKFLOW_SHA, testPool: process.env.ZCODE_TEST_POOL || null, platform: process.env.EXTENDED_TEST_PLATFORM || null, shard: process.env.EXTENDED_TEST_SHARD || null, runId: process.env.GITHUB_RUN_ID || null };
           await mkdir('.run-logs/full-groups', { recursive: true });
           await writeFile('.run-logs/full-groups/source.json', JSON.stringify(record, null, 2) + '\n');
           console.log(JSON.stringify(record));
