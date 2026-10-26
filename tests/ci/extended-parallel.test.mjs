@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { createVitest } from "vitest/node";
 import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
@@ -10,6 +12,7 @@ import { parse } from "yaml";
 import {
   FULL_SUITE_GROUPS,
   FULL_SUITE_SHARDS,
+  fullSuiteShardsForPlatform,
   selectFullSuiteGroups,
 } from "../../scripts/full-suite-plan.mjs";
 import { parseShardArgs, runFullSuiteGroups } from "../../scripts/run-full-suite-groups.mjs";
@@ -30,15 +33,24 @@ async function temp(t) {
   return realpath(dir);
 }
 
-test("the three runner shards assign all seven historical groups once", () => {
-  assert.deepEqual(FULL_SUITE_SHARDS, {
-    services: ["services"],
-    "ui-and-web": ["ui-and-web"],
-    supporting: ["shared-and-rpc", "provider", "server", "desktop", "root-scripts"],
-  });
-  const assigned = Object.values(FULL_SUITE_SHARDS).flat();
-  assert.equal(new Set(assigned).size, 7);
-  assert.deepEqual(assigned.sort(), FULL_SUITE_GROUPS.map((group) => group.name).sort());
+test("platform plans retain seven groups within nine runners and five macOS slots", () => {
+  const expected = {
+    "macos-arm64": ["ui-and-web", "services-and-supporting"],
+    "windows-amd64": ["services", "supporting", "ui-and-web-1", "ui-and-web-2"],
+    "linux-amd64": ["services", "ui-and-web", "supporting"],
+  };
+  for (const platform of platforms) {
+    const shards = fullSuiteShardsForPlatform(platform);
+    assert.deepEqual(shards, expected[platform]);
+    const groups = shards.flatMap((shard) => selectFullSuiteGroups(shard, platform));
+    assert.deepEqual(
+      [...new Set(groups.map((group) => group.name))].sort(),
+      FULL_SUITE_GROUPS.map((group) => group.name).sort(),
+    );
+    assert.equal(groups.length, platform === "windows-amd64" ? 8 : 7);
+  }
+  assert.throws(() => fullSuiteShardsForPlatform("unknown"));
+  assert.throws(() => selectFullSuiteGroups("ui-and-web-1", "macos-arm64"));
   assert.equal(selectFullSuiteGroups().length, 7);
   for (const shard of Object.keys(FULL_SUITE_SHARDS)) {
     assert.equal(parseShardArgs([`--shard=${shard}`]), shard);
@@ -53,9 +65,8 @@ test("the three runner shards assign all seven historical groups once", () => {
     ["--shard=constructor"],
     ["--shard=services", "extra"],
     ["--unknown"],
-  ]) {
+  ])
     assert.throws(() => parseShardArgs(args));
-  }
 });
 
 test("shard discovery retains the complete root test scope and isolated project", async (t) => {
@@ -79,7 +90,7 @@ test("shard discovery retains the complete root test scope and isolated project"
   };
   const expected = await discover("all", []);
   const actual = [];
-  for (const shard of Object.keys(FULL_SUITE_SHARDS)) {
+  for (const shard of fullSuiteShardsForPlatform("linux-amd64")) {
     actual.push(
       ...(await discover(
         shard,
@@ -145,24 +156,54 @@ async function fixture(t, platform = "windows-amd64") {
   const shardDir = (shard) => join(inputDir, `extended-shard-${platform}-${shard}`);
   await mkdir(outputDir, { recursive: true });
   await writeJson(join(outputDir, "source.json"), expectedSource);
-  for (const [shard, groups] of Object.entries(FULL_SUITE_SHARDS)) {
+  for (const shard of fullSuiteShardsForPlatform(platform)) {
+    const groups = selectFullSuiteGroups(shard);
     const dir = shardDir(shard);
     await mkdir(dir, { recursive: true });
     await writeJson(join(dir, "source.json"), { ...expectedSource, shard });
     await writeJson(join(dir, "summary.json"), {
       anyFailed: false,
-      groups: groups.map((group) => ({ group, status: "passed", exit: 0 })),
+      groups: groups.map(({ name, vitestShard }) => ({
+        group: name,
+        status: "passed",
+        exit: 0,
+        ...(vitestShard
+          ? { vitestShard, scope: { root: cwd, all: ["ui-1.test.ts", "ui-2.test.ts"] } }
+          : {}),
+      })),
     });
-    for (const group of groups) {
+    for (const { name: group, vitestShard } of groups) {
       await writeJson(join(dir, `${group}.json`), {
         success: true,
         numFailedTests: 0,
         numFailedTestSuites: 0,
+        numTotalTestSuites: 1,
+        numPassedTestSuites: 1,
+        numPendingTestSuites: 0,
+        numPendingTests: 0,
+        numTodoTests: 0,
+        startTime: 100,
+        snapshot: {
+          added: 0,
+          failure: false,
+          filesAdded: 0,
+          filesRemoved: 0,
+          filesRemovedList: [],
+          filesUnmatched: 0,
+          filesUpdated: 0,
+          matched: 1,
+          total: 1,
+          unchecked: 0,
+          uncheckedKeysByFile: [],
+          unmatched: 0,
+          updated: 0,
+          didUpdate: false,
+        },
         numTotalTests: 1,
         numPassedTests: 1,
         testResults: [
           {
-            name: `${group}.test.ts`,
+            name: join(cwd, vitestShard ? `ui-${vitestShard[0]}.test.ts` : `${group}.test.ts`),
             status: "passed",
             assertionResults: [{ fullName: group, status: "passed" }],
           },
@@ -266,14 +307,21 @@ test("sparse workflow tools merge reports without application files or node_modu
 
 test("workflow expands to nine isolated runners and preserves the platform release reports", () => {
   const tests = workflow.jobs["historical-tests"];
-  assert.deepEqual(tests.strategy.matrix.platform, platforms);
-  assert.deepEqual(tests.strategy.matrix.shard, Object.keys(FULL_SUITE_SHARDS));
-  assert.equal(tests.strategy.matrix.platform.length * tests.strategy.matrix.shard.length, 9);
-  assert.deepEqual(tests.strategy.matrix.include, [
-    { os: "macos-14", platform: "macos-arm64" },
-    { os: "windows-latest", platform: "windows-amd64" },
-    { os: "ubuntu-latest", platform: "linux-amd64" },
-  ]);
+  const os = {
+    "macos-arm64": "macos-14",
+    "windows-amd64": "windows-latest",
+    "linux-amd64": "ubuntu-latest",
+  };
+  assert.deepEqual(tests.strategy.matrix, {
+    include: platforms.flatMap((platform) =>
+      fullSuiteShardsForPlatform(platform).map((shard) => ({ os: os[platform], platform, shard })),
+    ),
+  });
+  assert.equal(tests.strategy.matrix.include.length, 9);
+  assert.equal(
+    tests.strategy.matrix.include.filter((item) => item.platform === "macos-arm64").length + 2 + 1,
+    5,
+  );
   assert.equal(tests.strategy["fail-fast"], false);
   assert.equal(tests.env.EXTENDED_TEST_SHARD, "${{ matrix.shard }}");
   assert.equal(
@@ -322,4 +370,156 @@ test("workflow expands to nine isolated runners and preserves the platform relea
     assert.equal(tools.with["persist-credentials"], false);
     for (const step of job.steps) assert.equal(step["continue-on-error"], undefined);
   }
+});
+
+test("native Vitest sequencer partitions the UI discovery without changing projects", async () => {
+  const ctx = await createVitest("test", { root, run: true, watch: false, shard: "1/2" });
+  try {
+    const all = await ctx.getRelevantTestSpecifications(["packages/ui", "packages/web"]);
+    const key = (spec) => `${spec.project.name}:${spec.moduleId}`;
+    const sequencer = new ctx.config.sequence.sequencer(ctx);
+    const a = await sequencer.shard([...all]);
+    ctx.config.shard = { index: 2, count: 2 };
+    const b = await sequencer.shard([...all]);
+    assert.ok(a.length > 0 && b.length > 0);
+    const actual = [...a, ...b].map(key);
+    assert.equal(new Set(actual).size, actual.length);
+    assert.deepEqual(actual.sort(), all.map(key).sort());
+  } finally {
+    await ctx.close();
+  }
+});
+
+for (const [shard, part] of [
+  ["ui-and-web-1", "1/2"],
+  ["ui-and-web-2", "2/2"],
+]) {
+  test(`${shard} forwards the native shard flag and records complete discovery`, async (t) => {
+    const cwd = await temp(t);
+    const calls = [];
+    const summary = await runFullSuiteGroups({
+      cwd,
+      shard,
+      env: { EXTENDED_TEST_PLATFORM: "windows-amd64" },
+      execute(command, args, options) {
+        calls.push({ command, args, options });
+        if (args[2] === "list") {
+          const file = args.find((arg) => arg.startsWith("--json=")).slice(7);
+          // 同步执行器夹具模拟 Vitest 写入 discovery；生产路径使用异步文件 IO。
+          writeFileSync(
+            file,
+            JSON.stringify([
+              { file: join(cwd, "ui-a.test.ts") },
+              { file: join(cwd, "ui-b.test.ts") },
+            ]),
+          );
+        }
+        return { status: 0 };
+      },
+    });
+    assert.equal(calls.length, 2);
+    assert.ok(!calls[0].args.some((arg) => arg.startsWith("--shard=")));
+    assert.ok(calls[1].args.includes(`--shard=${part}`));
+    assert.ok(
+      calls.every(
+        (call) => !call.args.some((arg) => /maxWorkers|pool|retry|testTimeout/.test(arg)),
+      ),
+    );
+    assert.equal(summary.groups[0].vitestShard, part);
+    assert.deepEqual(summary.groups[0].scope, { root: cwd, all: ["ui-a.test.ts", "ui-b.test.ts"] });
+    assert.equal(summary.anyFailed, false);
+  });
+}
+
+for (const kind of [
+  "missing-half",
+  "wrong-half",
+  "overlap",
+  "missing-file",
+  "extra-file",
+  "different-discovery",
+  "count-mismatch",
+  "snapshot-failure",
+]) {
+  test(`UI aggregation rejects ${kind}`, async (t) => {
+    const f = await fixture(t);
+    const dir = f.shardDir("ui-and-web-2");
+    if (kind === "missing-half") await rm(dir, { recursive: true });
+    else {
+      const summaryFile = join(dir, "summary.json");
+      const partial = await readJson(summaryFile);
+      const group = partial.groups[0];
+      const reportFile = join(dir, "ui-and-web.json");
+      const report = await readJson(reportFile);
+      if (kind === "wrong-half") group.vitestShard = "1/2";
+      if (kind === "overlap") {
+        report.testResults[0].name = join(f.cwd, "ui-1.test.ts");
+      }
+      if (kind === "missing-file") {
+        group.scope.all.push("missing.test.ts");
+        const otherFile = join(f.shardDir("ui-and-web-1"), "summary.json");
+        const other = await readJson(otherFile);
+        other.groups[0].scope.all.push("missing.test.ts");
+        await writeJson(otherFile, other);
+      }
+      if (kind === "extra-file") report.testResults[0].name = join(f.cwd, "extra.test.ts");
+      if (kind === "different-discovery") group.scope.all[0] = "different.test.ts";
+      if (kind === "count-mismatch") report.numPassedTests = 2;
+      if (kind === "snapshot-failure") report.snapshot.failure = true;
+      await writeJson(summaryFile, partial);
+      await writeJson(reportFile, report);
+    }
+    const summary = await mergeFullSuiteReports(f);
+    assert.equal(summary.anyFailed, true);
+    assert.ok(summary.errors.length > 0);
+  });
+}
+
+test("UI aggregate combines both reports and snapshot counters once", async (t) => {
+  const f = await fixture(t);
+  validateSummary(await mergeFullSuiteReports(f));
+  const ui = await readJson(join(f.outputDir, "ui-and-web.json"));
+  assert.deepEqual(validateTests(ui), { files: 2, passed: 2, skipped: 0, failed: 0 });
+  assert.equal(ui.numTotalTestSuites, 2);
+  assert.equal(ui.snapshot.matched, 2);
+  assert.equal(ui.snapshot.total, 2);
+});
+
+test("Ubuntu aggregation accepts Windows report paths from different checkout roots", async (t) => {
+  const f = await fixture(t);
+  for (const [index, drive] of [
+    [1, "D"],
+    [2, "E"],
+  ]) {
+    const dir = f.shardDir(`ui-and-web-${index}`);
+    const summary = await readJson(join(dir, "summary.json"));
+    const root = `${drive}:\\a\\repo\\repo`;
+    summary.groups[0].scope.root = root;
+    const report = await readJson(join(dir, "ui-and-web.json"));
+    report.testResults[0].name = `${root.replaceAll("\\", "/")}/ui-${index}.test.ts`;
+    await writeJson(join(dir, "summary.json"), summary);
+    await writeJson(join(dir, "ui-and-web.json"), report);
+  }
+  validateSummary(await mergeFullSuiteReports(f));
+});
+
+test("failed discovery cannot reuse a previous successful summary", async (t) => {
+  const cwd = await temp(t);
+  const dir = join(cwd, ".run-logs/full-groups");
+  await mkdir(dir, { recursive: true });
+  await writeJson(join(dir, "summary.json"), { anyFailed: false });
+  let calls = 0;
+  await assert.rejects(
+    runFullSuiteGroups({
+      cwd,
+      shard: "ui-and-web-1",
+      execute() {
+        calls++;
+        return { status: 1 };
+      },
+    }),
+    /discovery failed/,
+  );
+  assert.equal(calls, 1);
+  await assert.rejects(readFile(join(dir, "summary.json")), { code: "ENOENT" });
 });

@@ -8,7 +8,7 @@
 
 CI、Extended 和 Installers 在 tag 上各运行一次。Release 工作流由这三者的完成事件触发，只有同一 tag、同一源码 SHA 的三项最新运行全部成功，才调用既有发布器。Extended 的 non-blocking 名称只描述日常核心检查的独立性；它是正式发布的必需门禁，包括完整单测和 Main/E2E 类型审计。
 
-Extended 的七组单测按[平台与分片并行规范](extended-ci-parallel.md)执行。每个平台汇总三个分片后仍输出 `extended-tests-<platform>`；发布器继续验证同源码来源、完整七组 summary 和逐组 JSON。缺失、失败或来源不一致的分片会使汇总及工作流失败。
+Extended 的七组单测按[平台与分片并行规范](extended-ci-parallel.md)执行。每个平台汇总其全部分片（macOS 两个、Linux 三个、Windows 四个）后仍输出 `extended-tests-<platform>`；发布器继续验证同源码来源、完整七组 summary 和逐组 JSON。缺失、失败或来源不一致的分片会使汇总及工作流失败。
 
 安装文件下载、校验、上传全部在 GitHub runner 完成。自动流程沿用 production 身份、七个安装文件、来源清单和校验和；未签名构建、手动安装更新的产品规则不变。
 

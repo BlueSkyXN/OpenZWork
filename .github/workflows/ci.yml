@@ -14,10 +14,12 @@ concurrency:
 
 jobs:
   checks:
-    name: checks (${{ matrix.platform }})
+    name: core ${{ matrix.lane }} (${{ matrix.platform }})
     strategy:
       fail-fast: false
       matrix:
+        platform: [macos-arm64, windows-amd64, linux-amd64]
+        lane: [regressions, unit]
         include:
           - os: macos-14
             platform: macos-arm64
@@ -47,9 +49,11 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Workspace TypeScript version (must be 6.x, not global)
+        if: matrix.lane == 'regressions'
         run: pnpm exec tsc --version
 
       - name: Workflow configuration regression tests
+        if: matrix.lane == 'regressions'
         run: node --test tests/ci/*.test.mjs
 
       # 以下三项为 WP-02 双树错误基线中全绿的门禁（两树均 rc=0）。
@@ -62,15 +66,18 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
 
       - name: Root lint
+        if: matrix.lane == 'regressions'
         run: pnpm lint
 
       - name: Architecture boundaries
+        if: matrix.lane == 'regressions'
         run: pnpm architecture:check
         env:
           # 新 tag 的 before 为零 SHA，交给检查器按默认分支发现基线。
           ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || (github.ref_type == 'branch' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || '' }}
 
       - name: Repository script regressions
+        if: matrix.lane == 'regressions'
         run: pnpm test:repo-scripts
 
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
@@ -98,64 +105,83 @@ jobs:
         run: node scripts/build-desktop-agent-cli.mjs
 
       - name: Workflow child interaction regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
 
       - name: System prompt context regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
 
       - name: CLI protocol regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts --bail=1
 
       - name: Bash output settlement and shutdown regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/bash-direct-execution.test.ts tests/bash-shutdown.test.ts --bail=1
 
       - name: Workflow scheduling and auxiliary session regression
+        if: matrix.lane == 'regressions'
         # 真实 SQLite 冷恢复在多文件同时转换和启动运行时时重复触发默认 5 秒期限。
         # 保留用例与期限，限制这个集成步骤的文件并发；平台和 Extended runner 仍并行。
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/provider-registry-app-runtime.test.ts tests/v4-cold-resume.test.ts tests/workflow-concurrency-governor.test.ts tests/workflow-effective-selection.test.ts tests/workflow-fault-matrix.stop.test.ts tests/zcode-protocol-transport.test.ts --no-file-parallelism --maxWorkers=1 --bail=1
 
       - name: Local bundled plugins and metadata regression
+        if: matrix.lane == 'regressions'
         # 两份测试都会播种真实插件缓存；沿用上面的单 worker 集成隔离，保留默认期限。
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts tests/plugins-protocol.test.ts --no-file-parallelism --maxWorkers=1 --bail=1
 
       - name: ToolSearch runtime regression
-        run: pnpm --filter @zcode/core exec vitest run tests/tool-search-execution.test.ts tests/tool-search-hydration.test.ts tests/tool-search-result-budget.test.ts tests/tool-search-subagent.test.ts tests/tool-search-request-preparation.test.ts --bail=1
+        if: matrix.lane == 'regressions'
+        # hydration 会真实写入并重开 SQLite；五文件并行触发 5 秒期限，沿用集成隔离。
+        run: pnpm --filter @zcode/core exec vitest run tests/tool-search-execution.test.ts tests/tool-search-hydration.test.ts tests/tool-search-result-budget.test.ts tests/tool-search-subagent.test.ts tests/tool-search-request-preparation.test.ts --no-file-parallelism --maxWorkers=1 --bail=1
 
       - name: ToolSearch MCP and connection lifecycle regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/tool-search-capability.test.ts tests/tool-search-mcp.test.ts tests/tool-search-wire.test.ts tests/plugin-mcp-always-load.test.ts tests/plugin-mcp-tool-search-wire.test.ts tests/mcp-connection-pool.test.ts tests/mcp.test.ts
 
       - name: MCP Apps readiness and workflow shell inheritance regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/mcp-ui-connection-ready.test.ts tests/script-workflow.test.ts --bail=1
 
       - name: Standard MCP transport regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/mcp-stdio-transport.test.ts tests/mcp-oauth-lease.test.ts
 
       - name: Standard MCP project configuration regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/mcp-project-config.test.ts --bail=1
 
       - name: Node REPL MCP regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/node-repl-host exec vitest run test/mcp-server.test.ts --bail=1
 
       - name: CLI workflow option regression
+        if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts
 
       - name: CLI artifact workflow option
+        if: matrix.lane == 'regressions'
         run: node --test tests/private-cleanup/cli-artifact-workflow.test.mjs
 
       - name: Host UI composition regression
+        if: matrix.lane == 'regressions'
         run: pnpm exec vitest run packages/services/test/localServicesPluginUiComposition.test.ts packages/services/test/localServicesRemoteAuthority.test.ts packages/desktop/test/serverRemoteConnection.test.ts --bail=1
 
       - name: Remote control regression
+        if: matrix.lane == 'regressions'
         run: pnpm exec vitest run packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts packages/desktop/test/webRemoteControlTransport.test.ts packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts packages/desktop/test/desktopDeepLinkUrl.test.ts packages/ui/test/useRemoteWorkspaceHistory.test.ts packages/web/test/webRemoteControlVersion.test.ts --bail=1
 
       # stage1 私有化清理的结构与协议断言（WP-03/08/09 扫描为 git 全仓口径）。
       - name: Stage1 cleanup structural tests
+        if: matrix.lane == 'regressions'
         run: node --test tests/private-cleanup/cleanup.test.cjs
         env:
           TYPESCRIPT_MODULE_PATH: ${{ github.workspace }}/node_modules/typescript
 
       # Windows 执行跨平台的全局工作流用例；POSIX shell 用例在 macOS/Linux 执行。
       - name: Identity and remote path behavior tests
+        if: matrix.lane == 'regressions'
         run: pnpm exec tsx --test tests/private-cleanup/identity-paths.test.ts
 
       # 自动化 bundle/握手/安装脚本冒烟；传输使用本地 shell，覆盖范围由测试结果记录。
@@ -163,17 +189,37 @@ jobs:
         run: pnpm --filter @zcode/server build:remote
 
       - name: Remote chain smoke tests
+        if: matrix.lane == 'regressions'
         run: pnpm exec tsx --test tests/private-cleanup/remote-chain-local.test.ts
 
       - name: Core unit regression
+        if: matrix.lane == 'unit'
         id: core_tests
         run: pnpm test:ci:core --reporter=default --reporter=json --outputFile=.run-logs/core-tests.json
 
       - name: Upload core test results
-        if: always() && steps.core_tests.outcome != 'skipped'
+        if: always() && matrix.lane == 'unit' && steps.core_tests.outcome != 'skipped'
         uses: actions/upload-artifact@v7.0.1
         with:
           name: core-tests-${{ matrix.platform }}
           path: .run-logs/core-tests.json
           archive: true
           if-no-files-found: error
+
+  check-results:
+    name: checks (${{ matrix.platform }})
+    if: always()
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-arm64, windows-amd64, linux-amd64]
+    steps:
+      # needs.checks.result 覆盖整个矩阵；任一路径跳过、取消或失败都不能放行。
+      - name: Require every core lane to succeed
+        shell: bash
+        env:
+          CHECKS_RESULT: ${{ needs.checks.result }}
+        run: test "$CHECKS_RESULT" = success
