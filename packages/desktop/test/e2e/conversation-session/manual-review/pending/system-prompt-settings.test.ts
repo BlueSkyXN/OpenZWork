@@ -12,8 +12,12 @@ import {
   clickTestIdByDom,
   getE2EAppDataPaths,
   waitForTestIdByDom,
-  setCurrentElectronRendererContentSize,
 } from "../../../helpers/desktop-app.js";
+
+import {
+  setCurrentRendererViewport,
+  clearCurrentRendererViewport,
+} from "../../../helpers/renderer-viewport.js";
 
 const marker = "E2E_SYSTEM_PROMPT_SETTINGS";
 const artifactDir = resolve(
@@ -53,6 +57,7 @@ async function chooseOption(trigger: string, labelPattern: string) {
   }, labelPattern);
 }
 describe(marker + ": 系统提示词设置", () => {
+  afterEach(clearCurrentRendererViewport);
   it("SP14–SP15 动态情景不持久化，整体替换与逐章共用上下文开关", async function () {
     this.timeout(180_000);
     await mkdir(artifactDir, { recursive: true });
@@ -161,14 +166,14 @@ describe(marker + ": 系统提示词设置", () => {
     expect((await readSettings()).memoryEnabled).toBe(before.memoryEnabled);
     await browser.saveScreenshot(join(artifactDir, "prompt-settings-desktop.png"));
 
-    await setCurrentElectronRendererContentSize(480, 900);
+    await setCurrentRendererViewport(480, 900);
     await browser.saveScreenshot(join(artifactDir, "prompt-settings-narrow.png"));
     const overflow = await browser.execute(() => {
       const page = document.querySelector('[data-testid="system-prompt-editor"]');
       return page ? page.scrollWidth > page.clientWidth + 1 : true;
     });
     expect(overflow).toBe(false);
-    await setCurrentElectronRendererContentSize(1400, 980);
+    await setCurrentRendererViewport(1400, 980);
     await browser.execute(() => {
       document.documentElement.classList.remove("theme-zai-light", "light");
       document.documentElement.classList.add("theme-zai-dark", "dark");
