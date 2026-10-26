@@ -1,0 +1,99 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
+import { getDesktopVersion } from "./openzwork-version.mjs";
+
+const exec = promisify(execFile);
+
+export function validatePackagedVersion(record, version) {
+  const expected = getDesktopVersion(version);
+  assert.equal(record.version, expected.appVersion);
+  assert.equal(record.packageVersion, expected.appVersion);
+  assert.equal(record.metadataVersion, expected.appVersion);
+  assert.equal(record.upstreamVersion, expected.upstreamVersion);
+  assert.equal(record.releaseRevision, expected.releaseRevision);
+  if (record.platform === "macos-arm64") {
+    assert.equal(record.shortVersion, expected.upstreamVersion);
+    assert.equal(record.nativeBuildVersion, expected.nativeBuildVersion);
+  } else if (record.platform === "windows-amd64") {
+    assert.equal(record.nativeBuildVersion, expected.nativeBuildVersion);
+    assert.equal(record.productVersion, expected.nativeBuildVersion);
+  } else {
+    assert.equal(record.platform, "linux-amd64");
+    assert.equal(record.debVersion, `${version}-${expected.releaseRevision}`);
+    assert.equal(record.rpmVersion, `${version}|${expected.releaseRevision}`);
+    assert.equal(record.pacmanVersion, `${version}-${expected.releaseRevision}`);
+  }
+}
+
+export async function verifyPackagedVersion({ platform, version, root = process.cwd() }) {
+  const expected = getDesktopVersion(version);
+  const dist = resolve(root, "packages/desktop/dist");
+  const unpacked = {
+    "macos-arm64": "mac-arm64/OpenZWork.app/Contents",
+    "windows-amd64": "win-unpacked",
+    "linux-amd64": "linux-unpacked",
+  }[platform];
+  assert.ok(unpacked, `Unsupported release platform: ${platform}`);
+  const resources = join(dist, unpacked, platform === "macos-arm64" ? "Resources" : "resources");
+  const require = createRequire(join(root, "packages/desktop/package.json"));
+  const { extractFile } = await import(pathToFileURL(require.resolve("@electron/asar")).href);
+  const archive = join(resources, "app.asar");
+  const pkg = JSON.parse(extractFile(archive, "package.json").toString());
+  const metadata = JSON.parse(extractFile(archive, "out/metadata/build-meta.json").toString());
+  const record = {
+    platform,
+    version,
+    packageVersion: pkg.version,
+    metadataVersion: metadata.appVersion,
+    upstreamVersion: metadata.upstreamVersion,
+    releaseRevision: metadata.releaseRevision,
+  };
+  if (platform === "macos-arm64") {
+    const plist = join(dist, unpacked, "Info.plist");
+    const value = async (key) =>
+      (await exec("plutil", ["-extract", key, "raw", "-o", "-", plist])).stdout.trim();
+    record.shortVersion = await value("CFBundleShortVersionString");
+    record.nativeBuildVersion = await value("CFBundleVersion");
+  } else if (platform === "windows-amd64") {
+    const executable = join(dist, unpacked, "OpenZWork.exe").replaceAll("'", "''");
+    const { stdout } = await exec("powershell.exe", [
+      "-NoProfile",
+      "-NonInteractive",
+      "-Command",
+      `(Get-Item -LiteralPath '${executable}').VersionInfo | Select-Object FileVersion,ProductVersion | ConvertTo-Json -Compress`,
+    ]);
+    const info = JSON.parse(stdout.replace(/^\uFEFF/, ""));
+    record.nativeBuildVersion = info.FileVersion;
+    record.productVersion = info.ProductVersion;
+  } else {
+    const asset = (arch, extension) =>
+      join(dist, `OpenZWork-${version}-linux-${arch}.${extension}`);
+    record.debVersion = (
+      await exec("dpkg-deb", ["--field", asset("amd64", "deb"), "Version"])
+    ).stdout.trim();
+    record.rpmVersion = (
+      await exec("rpm", ["-qp", "--queryformat", "%{VERSION}|%{RELEASE}", asset("x86_64", "rpm")])
+    ).stdout.trim();
+    const { stdout } = await exec("tar", ["-xOf", asset("x64", "pkg.tar.zst"), ".PKGINFO"]);
+    record.pacmanVersion = /^pkgver = (.+)$/m.exec(stdout)?.[1];
+  }
+  validatePackagedVersion(record, expected.appVersion);
+  await writeFile(join(dist, "VERSION-VERIFICATION.json"), JSON.stringify(record, null, 2) + "\n");
+  return record;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  const { version } = JSON.parse(await readFile("package.json", "utf8"));
+  console.log(
+    JSON.stringify(
+      await verifyPackagedVersion({ platform: process.env.RELEASE_PLATFORM, version }),
+      null,
+      2,
+    ),
+  );
+}

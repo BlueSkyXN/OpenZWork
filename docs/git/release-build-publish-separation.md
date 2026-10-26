@@ -18,9 +18,9 @@
 
 ## 正式包与 Release
 
-推送 `v<version>-openzwork` tag 后，CI、Extended 和 Installers 自动验证同一提交，全部成功后由 Release 工作流公开版本。tag、实际 checkout SHA 和根 `package.json` 版本必须一致。
+推送正式 tag 后，CI、Extended 和 Installers 自动验证同一提交，全部成功后由 Release 工作流公开版本。无修订号沿用 `vX.Y.Z-openzwork`；修订版使用 `vX.Y.Z+openzwork.N`。tag、实际 checkout SHA 和根 `package.json` 完整版本必须一致。编号与 Latest 比较见 [发行版本规则](../spec/openzwork-release-version.md)。
 
-根目录 `pnpm release <version>` 负责更新版本与 CHANGELOG、创建 commit 和 `v<version>-openzwork` tag 并 push；已经准备好版本提交时，也可以推送对应的正式 tag。使用用户自己的 Git 凭据推送；GitHub `GITHUB_TOKEN` 创建的事件通常不会再次触发其它工作流。
+根目录 release-it 负责 CHANGELOG、commit/tag/push。修订版先将完整发行号写入 `package.json.version` 并完成验证，再执行 `pnpm release --no-increment`，保留 `+openzwork.N`；已经准备好版本提交时，也可以直接推送对应的正式 tag。无修订号的官方基准升级仍可使用 `pnpm release <version>`。自有修订不使用 `patch` 自动增加官方基准。使用用户自己的 Git 凭据推送；GitHub `GITHUB_TOKEN` 创建的事件通常不会再次触发其它工作流。
 
 正式构建使用 OpenZWork production 身份，当前工作流关闭 macOS/Windows 签名。每个平台生成 `RELEASE-MANIFEST.json`，记录 source tag、source commit/tree、workflow commit、版本、身份与安装包 SHA256。
 
@@ -50,7 +50,7 @@ flowchart LR
 失败时重跑原检查的失败 job，成功后的完成事件会再次触发发布。协调器失败或待发布任务被 GitHub 并发队列替换时，可手动恢复：
 
 ```bash
-gh workflow run release.yml -R BlueSkyXN/OpenZWork -f release_tag=v<version>-openzwork
+gh workflow run release.yml -R BlueSkyXN/OpenZWork -f release_tag=v3.16.2+openzwork.1
 ```
 
 只读取门禁与发布状态时，额外传 `-F verify_only=true`。已公开版本重放直接返回完成；同名附件有冲突则失败，不覆盖或删除。不同版本的发布串行执行；GitHub 并发组最多保留一个待运行任务。

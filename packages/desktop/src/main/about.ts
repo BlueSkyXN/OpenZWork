@@ -154,7 +154,8 @@ export function createAboutSnapshot(options: AboutSnapshotOptions = {}): AboutSn
   };
 
   return {
-    appVersion: normalizeValue(options.appVersion ?? buildMetadata?.appVersion ?? ZCODE_VERSION),
+    // macOS 系统短版本只保存官方基准；构建元数据保留完整的 OpenZWork 修订号。
+    appVersion: normalizeValue(buildMetadata?.appVersion ?? options.appVersion ?? ZCODE_VERSION),
     buildCommitId: normalizeValue(buildMetadata?.buildCommitId ?? ZCODE_COMMIT),
     buildTime: normalizeValue(buildMetadata?.buildTime ?? ZCODE_BUILD_TIME),
     environment: normalizeValue(options.environment ?? ZCODE_ENV),

@@ -8,6 +8,8 @@ import { basename, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { compareOpenZWorkVersions, parseOpenZWorkTag, parseOpenZWorkVersion } from "./openzwork-version.mjs";
+import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
 
 const exec = promisify(execFile);
 const platforms = ["macos-arm64", "windows-amd64", "linux-amd64"];
@@ -30,18 +32,9 @@ export function validateRun(run, name, commit) {
 }
 
 export function shouldMakeLatest(tag, latest) {
-  const parse = (value) => {
-    const match = /^v(\d+)\.(\d+)\.(\d+)-openzwork$/.exec(value);
-    assert.ok(match, `Cannot compare release version: ${value}`);
-    return match.slice(1).map(BigInt);
-  };
-  const version = parse(tag);
+  const { version } = parseOpenZWorkTag(tag);
   if (!latest) return true;
-  const previous = parse(latest.tag_name);
-  for (let i = 0; i < version.length; i++) {
-    if (version[i] !== previous[i]) return version[i] > previous[i];
-  }
-  return true;
+  return compareOpenZWorkVersions(version, parseOpenZWorkTag(latest.tag_name).version) >= 0;
 }
 
 export async function ensureReleaseDraft(
@@ -113,6 +106,13 @@ export function validateManifest(manifest, expected) {
   assert.equal(manifest.productName, "OpenZWork");
   assert.equal(manifest.environment, "production");
   assert.equal(manifest.codeSigning, "unsigned");
+  const parsed = parseOpenZWorkVersion(expected.version);
+  if (parsed.revision !== "0") {
+    assert.equal(manifest.upstreamVersion, parsed.upstreamVersion);
+    assert.equal(manifest.releaseRevision, parsed.revision);
+    assert.equal(manifest.versionVerification?.platform, expected.platform);
+    validatePackagedVersion(manifest.versionVerification, expected.version);
+  }
   const formats = {
     "macos-arm64": ["mac", ["arm64"], ["dmg", "zip"]],
     "windows-amd64": ["win", ["x64"], ["exe"]],
@@ -221,13 +221,13 @@ export async function publishRelease(env = process.env) {
     tag = env.RELEASE_TAG,
     commit = env.RELEASE_COMMIT;
   assert.match(repo ?? "", /^[\w.-]+\/[\w.-]+$/);
-  assert.match(tag ?? "", /^v\d+\.\d+\.\d+-openzwork$/);
+  const releaseVersion = parseOpenZWorkTag(tag);
   assert.match(commit ?? "", /^[a-f0-9]{40}$/);
   for (const key of ["INSTALLERS_RUN", "CORE_RUN", "EXTENDED_RUN"])
     assert.match(env[key] ?? "", /^\d+$/);
   const allowCreate = env.AUTO_CREATE_RELEASE === "true";
   assert.ok(env.RELEASE_NOTES?.trim() || allowCreate, "Release notes are required");
-  const version = tag.slice(1, -"-openzwork".length);
+  const { version, upstreamVersion, revision } = releaseVersion;
   const gh = async (...args) => (await exec("gh", args, { maxBuffer: 32 * 1024 * 1024 })).stdout;
   const api = async (path) => JSON.parse(await gh("api", `repos/${repo}/${path}`));
   const verifyTag = async () => {
@@ -240,7 +240,7 @@ export async function publishRelease(env = process.env) {
   const tree = (await api(`git/commits/${commit}`)).tree.sha;
   const readSourceJson = async (path) =>
     JSON.parse(Buffer.from((await api(`contents/${path}?ref=${commit}`)).content, "base64"));
-  assert.equal((await readSourceJson("package.json")).version, version);
+  assert.equal(parseOpenZWorkVersion((await readSourceJson("package.json")).version).version, version);
   const policy = await readSourceJson("tests/ci/core-tests.json");
   const declared = policy.suites.flatMap((suite) => suite.files);
   const root = await mkdtemp(join(env.RUNNER_TEMP || tmpdir(), "openzwork-publish-"));
@@ -340,6 +340,8 @@ export async function publishRelease(env = process.env) {
   const provenance = {
     repository: repo,
     version,
+    upstreamVersion,
+    releaseRevision: revision,
     tag,
     sourceCommit: commit,
     sourceTree: tree,

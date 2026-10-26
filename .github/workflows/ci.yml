@@ -5,7 +5,7 @@ on:
   pull_request:
   push:
     branches: [main]
-    tags: ["v*-openzwork"]
+    tags: ["v*-openzwork", "v*openzwork.*"]
   workflow_dispatch:
 
 concurrency:

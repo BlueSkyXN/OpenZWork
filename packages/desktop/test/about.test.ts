@@ -8,6 +8,16 @@ import {
 } from "../src/main/about.js";
 
 describe("about", () => {
+  it("保留构建元数据中的 OpenZWork 修订号，不被系统短版本覆盖", () => {
+    const snapshot = createAboutSnapshot({
+      appVersion: "3.16.2",
+      buildMetadata: { appVersion: "3.16.2+openzwork.1" },
+    });
+    expect(snapshot.appVersion).toBe("3.16.2+openzwork.1");
+    expect(formatAboutDetail(snapshot)).toContain("Version: 3.16.2+openzwork.1");
+    expect(createSystemAboutPanelOptions(snapshot).applicationVersion).toContain("3.16.2+openzwork.1");
+  });
+
   const appleSiliconSnapshot = createAboutSnapshot({
     appVersion: "0.1.7",
     environment: "production",

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getDesktopVersion } from "../../../scripts/openzwork-version.mjs";
 
 const require = createRequire(import.meta.url);
 const moduleDir = import.meta.dirname;
@@ -82,11 +83,12 @@ function resolveCommitId() {
 export function collectBuildMetadata() {
   const rootPackageJson = readJson(resolve(workspaceDir, "package.json"));
   const desktopPackageJson = readJson(resolve(desktopDir, "package.json"));
+  const version = getDesktopVersion(rootPackageJson.version);
 
   return {
-    appVersion: normalizeVersion(rootPackageJson.version),
+    ...version,
     minCompatibleVersion: normalizeVersion(
-      rootPackageJson.zcodeCompatibility?.minCompatibleVersion ?? rootPackageJson.version,
+      rootPackageJson.zcodeCompatibility?.minCompatibleVersion ?? version.upstreamVersion,
     ),
     buildCommitId: resolveCommitId(),
     buildTime: new Date().toISOString(),

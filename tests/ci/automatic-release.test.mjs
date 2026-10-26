@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
 import releaseConfig from "../../.release-it.mjs";
+import { Eta } from "eta";
 
 const load = async (file) =>
   parse(await readFile(new URL(`../../.github/workflows/${file}`, import.meta.url), "utf8"));
@@ -12,13 +13,18 @@ const [ci, extended, installers, release] = await Promise.all(
 
 test("formal tags run all three existing gates and carry a common release identity", () => {
   for (const workflow of [ci, extended, installers]) {
-    assert.deepEqual(workflow.on.push.tags, ["v*-openzwork"]);
+    assert.deepEqual(workflow.on.push.tags, ["v*-openzwork", "v*openzwork.*"]);
     assert.equal(
       workflow["run-name"],
       "${{ github.ref_type == 'tag' && format('Release {0} / {1}', github.ref_name, github.workflow) || '' }}",
     );
   }
-  assert.equal(releaseConfig.git.tagName, "v${version}-openzwork");
+  const template = new Eta({ autoEscape: false, useWith: true, tags: ["${", "}"], parse: { interpolate: "" } });
+  for (const [version, expected] of [
+    ["3.16.3", "v3.16.3-openzwork"],
+    ["3.16.2+openzwork.1", "v3.16.2+openzwork.1"],
+    ["3.16.3+openzwork.1", "v3.16.3+openzwork.1"],
+  ]) assert.equal(template.renderString(releaseConfig.git.tagName, { version }), expected);
   assert.equal(releaseConfig.github.release, false);
   assert.equal(releaseConfig.npm.publish, false);
   const env = installers.jobs.installer.env;
