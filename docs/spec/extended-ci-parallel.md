@@ -21,6 +21,7 @@ Extended 保留 macOS arm64、Windows amd64、Linux amd64 三个平台，将每�
 - 调度与汇总脚本来自 `github.workflow_sha`，通过独立的稀疏 checkout 获取；被测工作区来自 `inputs.source_commit || github.sha`。固定旧源码复验无需旧提交支持新的分片命令。
 - 每个分片独立写入组 JSON、`summary.json` 和 `source.json`，上传 `extended-shard-<platform>-<shard>`。重新运行同一 job 时替换其自身 artifact，其他分片不共享写入位置。
 - 三个平台的汇总 job 等待全部测试 job 结束，失败时也运行，以便保存诊断。汇总不安装应用依赖、不重复构建，只读取本次运行的三个分片 artifact。
+- 报告校验由只依赖 Node 标准库的共享模块负责，发布器和汇总器调用同一实现；汇总器不能通过发布器引入桌面打包或应用源码依赖。稀疏工具 checkout 必须可独立执行。
 - 汇总验证通过后生成原有 `extended-tests-<platform>` artifact。正式发布继续读取该名称、七份组 JSON、完整 `summary.json` 与 `source.json`。
 
 ```mermaid

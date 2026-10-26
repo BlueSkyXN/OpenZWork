@@ -3,7 +3,7 @@ import { copyFile, mkdir, readFile, readdir, writeFile } from "node:fs/promises"
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { FULL_SUITE_GROUPS, FULL_SUITE_SHARDS } from "./full-suite-plan.mjs";
-import { validateSummary, validateTests } from "./publish-github-release.mjs";
+import { validateSummary, validateTests } from "./test-report-validation.mjs";
 
 const readJson = async (path) => JSON.parse(await readFile(path, "utf8"));
 

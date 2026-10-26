@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import test from "node:test";
@@ -26,7 +26,8 @@ const readJson = async (path) => JSON.parse(await readFile(path, "utf8"));
 async function temp(t) {
   const dir = await mkdtemp(join(tmpdir(), "openzwork-extended-"));
   t.after(() => rm(dir, { force: true, recursive: true }));
-  return dir;
+  // macOS 的 /var 临时目录是符号链接；使用实际路径匹配 runner 的规范 checkout 路径。
+  return realpath(dir);
 }
 
 test("the three runner shards assign all seven historical groups once", () => {
@@ -252,6 +253,15 @@ test("aggregate CLI exits nonzero for missing shards and succeeds with complete 
     }),
     { code: 1 },
   );
+});
+
+test("sparse workflow tools merge reports without application files or node_modules", async (t) => {
+  const f = await fixture(t);
+  // CI 的工具 checkout 只有 scripts；完整工作区导入会掩盖发布器的桌面打包依赖。
+  const tools = join(f.cwd, ".ci-tools/scripts");
+  await cp(join(root, "scripts"), tools, { recursive: true });
+  await exec(process.execPath, [join(tools, "merge-full-suite-reports.mjs")], { cwd: f.cwd });
+  validateSummary(await readJson(join(f.outputDir, "summary.json")));
 });
 
 test("workflow expands to nine isolated runners and preserves the platform release reports", () => {
