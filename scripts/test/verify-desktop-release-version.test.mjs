@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { finished } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
 import { readPackagedVersionMetadata, validatePackagedVersion } from "../verify-desktop-release-version.mjs";
@@ -40,7 +41,8 @@ test("真实 ASAR 归档可按本机路径读取嵌套版本元数据", async (t
   const require = createRequire(new URL("../../packages/desktop/package.json", import.meta.url));
   const { createPackage, extractFile } = await import(pathToFileURL(require.resolve("@electron/asar")).href);
   const archive = join(root, "app.asar");
-  await createPackage(source, archive);
+  // 当前 ASAR API 返回已调用 end 的写入流；等待 finish 后再读，避免 Windows 读到空 payload。
+  await finished(await createPackage(source, archive));
   assert.deepEqual(readPackagedVersionMetadata(archive, extractFile), { pkg, metadata });
 });
 
