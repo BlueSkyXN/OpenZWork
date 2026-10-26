@@ -33,6 +33,9 @@ const shells: ExecutionShellSelection[] =
       ]
     : [{ dialect: "posix", path: "/bin/bash", display: { name: "bash" }, source: "user-config" }];
 const cleanup: Array<() => Promise<void>> = [];
+// OW-P010：编码用例执行真实 shell，命令允许 10 秒；外层 5 秒会先中止 Windows Git Bash。
+// 20 秒仅覆盖夹具与结果读取，命令自己的 10 秒期限和成功完成断言保持独立。
+const encodingTestTimeoutMs = 20_000;
 afterEach(async () => {
   for (const dispose of cleanup.splice(0).reverse()) await dispose();
   vi.restoreAllMocks();
@@ -116,7 +119,11 @@ const timer = setInterval(() => {
           mode: "auto_on_timeout",
         });
         expect(outcome.kind).toBe("foreground");
-        if (outcome.kind === "foreground") expect(outcome.result.stdout.text).toBe("中文中文");
+        if (outcome.kind === "foreground") {
+          // OW-P010：超时转后台、取消或失败退出都不能凭输出相同被判为编码回归通过。
+          expect(outcome.result).toMatchObject({ status: "completed", exitCode: 0 });
+          expect(outcome.result.stdout.text).toBe("中文中文");
+        }
       } else {
         request.timeoutMs = mode === "auto_on_timeout" ? 20 : 10_000;
         const outcome =
@@ -136,6 +143,7 @@ const timer = setInterval(() => {
         });
         await writeFile(release, "release");
         const completed = await adapter.waitForBackgroundTask(id);
+        expect(completed?.result).toMatchObject({ status: "completed", exitCode: 0 });
         expect(completed?.result?.stdout.text).toBe("中文中文");
         expect(await adapter.readBackgroundBashOutput(id, "probe")).toMatchObject({
           kind: "output",
@@ -145,6 +153,7 @@ const timer = setInterval(() => {
       }
       expect(resolveEncoding.mock.calls.length).toBe(1);
     },
+    encodingTestTimeoutMs,
   );
 
   it("does not probe output encoding when cancelled before preparation", async () => {
