@@ -764,18 +764,8 @@ const remoteWorkspace = {
 };
 type TestSessionStore = Awaited<ReturnType<typeof createSqliteSessionStore>>;
 
-type ColdPhase = { phase: string; start: number; elapsedMs?: number };
-let coldPhases: ColdPhase[] | undefined;
-let coldCaseStarted = 0;
-async function traceColdPhase<T>(phase: string, operation: () => Promise<T>): Promise<T> {
-  const entry: ColdPhase = { phase, start: performance.now() };
-  coldPhases?.push(entry);
-  try { return await operation(); }
-  finally { entry.elapsedMs = performance.now() - entry.start; }
-}
-
 async function requestResult(server: ZCodeProtocolAgentServer, message: ZCodeProtocolMessage) {
-  const response = await traceColdPhase(`request:${"method" in message ? message.method : "response"}`, () => server.handleMessage(message));
+  const response = await server.handleMessage(message);
   if (!response || !("result" in response)) {
     throw new Error(`Expected protocol success response: ${JSON.stringify(response)}`);
   }
@@ -1143,46 +1133,37 @@ function createColdProviderRegistry(): ProviderRegistry {
 
 describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   let tempRoot: string;
-  let schemaRoot: string;
-  let schemaPath: string;
+  let fixtureRoot: string;
+  let fixturePath: string;
 
   beforeAll(async () => {
-    // OW-P012：新库完整迁移与冷恢复断言无关；先真实生成并关库，避免每例重复建表挤占 5 秒期限。
-    schemaRoot = await mkdtemp(join(tmpdir(), "zcode-cold-resume-schema-"));
-    schemaPath = join(schemaRoot, "empty.db");
-    const template = await createSqliteSessionStore({ dbPath: schemaPath });
-    template.close();
+    // OW-P012：schema 和固定 transcript 只通过真实 Store 准备一次；每例从已关闭的独立副本冷恢复。
+    fixtureRoot = await mkdtemp(join(tmpdir(), "zcode-cold-resume-fixture-"));
+    fixturePath = join(fixtureRoot, "history.db");
+    await writeBaselineSession(fixturePath);
+    const checkpoint = new DatabaseSync(fixturePath);
+    try {
+      // 复制主文件前确认 WAL 已完整落盘，避免把尚在 WAL 中的历史遗漏到副本之外。
+      expect(checkpoint.prepare("pragma wal_checkpoint(truncate)").get()?.busy).toBe(0);
+    } finally {
+      checkpoint.close();
+    }
   });
 
   afterAll(async () => {
-    await rm(schemaRoot, { force: true, recursive: true });
+    await rm(fixtureRoot, { force: true, recursive: true });
   });
 
   beforeEach(async () => {
-    coldPhases = [];
-    coldCaseStarted = performance.now();
-    tempRoot = await traceColdPhase("case-dir", () => mkdtemp(join(tmpdir(), "zcode-v4-cold-resume-")));
+    tempRoot = await mkdtemp(join(tmpdir(), "zcode-v4-cold-resume-"));
   });
 
-  afterEach(async ({ task }) => {
-    if (process.env.COLD_RESUME_DIAGNOSTICS === "1" || task.result?.state === "fail") {
-      console.error("cold-resume-phases", JSON.stringify({
-        case: task.name, totalMs: performance.now() - coldCaseStarted,
-        phases: coldPhases?.map(({ phase, start, elapsedMs }) => ({
-          phase, ms: elapsedMs ?? performance.now() - start, pending: elapsedMs === undefined,
-        })),
-      }));
-    }
+  afterEach(async () => {
     await rm(tempRoot, { force: true, recursive: true });
-    coldPhases = undefined;
   });
 
-  /** 第一段人生：往 store 写入一段 user/assistant transcript 后关库（模拟 CLI 退出）。 */
-  function seedPersistedSession(...args: Parameters<typeof seedSessionFixture>) {
-    return traceColdPhase("seed-history", () => seedSessionFixture(...args));
-  }
-
-  async function seedSessionFixture(
+  /** 每例复制同一基准历史，但拥有独立数据库和 Runtime。 */
+  async function seedPersistedSession(
     dbPath: string,
     workspaceIdentity?: WorkspaceId,
     taskType:
@@ -1193,24 +1174,43 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       | "nested_workflow_child"
       | "selection_side_chat" = "interactive",
   ): Promise<void> {
-    // OW-P012：只复制已关闭的空模板；每例仍拥有独立文件和真实 SQLite 连接，不能覆盖既有夹具。
-    await traceColdPhase("copy-schema", () => copyFile(schemaPath, dbPath, fsConstants.COPYFILE_EXCL));
-    const store = await traceColdPhase("seed-open", () => createSqliteSessionStore({ dbPath }));
+    // OW-P012：复制当前代码写出的完整固定历史；默认副本无需再次执行逐条 fixture 写入。
+    await copyFile(fixturePath, dbPath, fsConstants.COPYFILE_EXCL);
+    const store = await createSqliteSessionStore({ dbPath });
     try {
       expect(store.migrationResult.applied).toEqual([]);
-      await store.createSession({
-        id: SESSION_ID,
-        parentID: PARENT_SESSION_ID,
-        taskType,
-        projectID: "project_cold_resume" as ProjectId,
-        ...(workspaceIdentity ? { workspaceID: workspaceIdentity } : {}),
-        slug: "cold-resume-session",
-        directory: WORKSPACE_PATH,
-        path: WORKSPACE_PATH,
-        title: "Cold resume session",
-        version: "test-version",
-        time: { created: 1, updated: 4 },
-      });
+      expect(await store.messages({ sessionID: SESSION_ID })).toHaveLength(4);
+      if (workspaceIdentity !== undefined || taskType !== "interactive") {
+        await store.createSession(seedSessionInput(workspaceIdentity, taskType));
+      }
+    } finally {
+      store.close();
+    }
+  }
+
+  function seedSessionInput(
+    workspaceIdentity?: WorkspaceId,
+    taskType: NonNullable<Parameters<typeof seedPersistedSession>[2]> = "interactive",
+  ) {
+    return {
+      id: SESSION_ID,
+      parentID: PARENT_SESSION_ID,
+      taskType,
+      projectID: "project_cold_resume" as ProjectId,
+      ...(workspaceIdentity ? { workspaceID: workspaceIdentity } : {}),
+      slug: "cold-resume-session",
+      directory: WORKSPACE_PATH,
+      path: WORKSPACE_PATH,
+      title: "Cold resume session",
+      version: "test-version",
+      time: { created: 1, updated: 4 },
+    };
+  }
+
+  async function writeBaselineSession(dbPath: string): Promise<void> {
+    const store = await createSqliteSessionStore({ dbPath });
+    try {
+      await store.createSession(seedSessionInput());
       await saveUserTextMessage(store, SESSION_ID, "msg_cold_user_1" as MessageId, "历史问题一", 1);
       await saveAssistantTextMessage(
         store,
@@ -1334,18 +1334,18 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   }
 
   async function bootRealRestartedServer(dbPath: string, registry = createColdProviderRegistry()) {
-    const store = await traceColdPhase("boot-store", () => createSqliteSessionStore({ dbPath }));
+    const store = await createSqliteSessionStore({ dbPath });
     const apps: ZCodeApp[] = [];
     const server = new ZCodeProtocolAgentServer({
       cwd: tempRoot,
       sessionStore: store,
       createZCodeApp: async (options) => {
-        const app = await traceColdPhase("create-app", () => createRegistryBackedTestApp({
+        const app = await createRegistryBackedTestApp({
           ...options,
           env: { ZCODE_STORAGE_DIR: join(tempRoot, "storage") },
           skipUserConfig: true,
           providerRegistry: registry,
-        }));
+        });
         apps.push(app);
         return app;
       },
@@ -1367,23 +1367,23 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       apps,
       close: async () => {
         // 协议 owner 先停止并关闭所有 App，再释放测试借出的数据库。
-        await traceColdPhase("shutdown", () => server.shutdown());
+        await server.shutdown();
         server.disposeProjections();
-        await traceColdPhase("close-store", async () => store.close());
+        store.close();
       },
     };
   }
 
-  it("OW-P012: schema copies retain real history and isolate each case from the empty template", async () => {
+  it("OW-P012: history copies isolate data and preserve per-case identity", async () => {
     const firstPath = join(tempRoot, "first.db");
     const secondPath = join(tempRoot, "second.db");
     await seedPersistedSession(firstPath);
-    await seedPersistedSession(secondPath);
+    await seedPersistedSession(secondPath, REMOTE_WORKSPACE_IDENTITY, "workflow_child");
     const first = await createSqliteSessionStore({ dbPath: firstPath });
     const second = await createSqliteSessionStore({ dbPath: secondPath });
-    const template = await createSqliteSessionStore({ dbPath: schemaPath });
+    const template = await createSqliteSessionStore({ dbPath: fixturePath });
     try {
-      // OW-P012：复用的是空 schema，副本仍能独立写入；模板和另一副本不得出现该会话。
+      // OW-P012：副本可独立修改，模板保留固定历史；远程身份和 taskType 只写入目标副本。
       const onlyFirst = "fixture_only_first" as SessionId;
       await first.createSession({
         id: onlyFirst,
@@ -1395,7 +1395,17 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       });
       expect(await first.getSession(onlyFirst)).toMatchObject({ id: onlyFirst });
       expect(await second.getSession(onlyFirst)).toBeNull();
-      expect(await template.getSession(SESSION_ID)).toBeNull();
+      await first.updateSession({ id: SESSION_ID, title: "Changed only first" });
+      expect(await second.getSession(SESSION_ID)).toMatchObject({
+        title: "Cold resume session",
+        workspaceID: REMOTE_WORKSPACE_IDENTITY,
+        taskType: "workflow_child",
+      });
+      expect(await template.getSession(SESSION_ID)).toMatchObject({
+        title: "Cold resume session",
+        taskType: "interactive",
+      });
+      expect((await template.getSession(SESSION_ID))?.workspaceID).toBeUndefined();
       expect(await template.getSession(onlyFirst)).toBeNull();
       expect((await second.messages({ sessionID: SESSION_ID })).length).toBe(4);
       for (const store of [first, second, template]) {
@@ -1431,7 +1441,7 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
         params: command("rename-1", "renameSession", { title: "Renamed offline" }),
       });
       expect(rename).toMatchObject({ status: "accepted" });
-      const check = await traceColdPhase("check-store", () => createSqliteSessionStore({ dbPath }));
+      const check = await createSqliteSessionStore({ dbPath });
       try {
         expect(await check.getSession(SESSION_ID)).toMatchObject({
           title: "Renamed offline",
