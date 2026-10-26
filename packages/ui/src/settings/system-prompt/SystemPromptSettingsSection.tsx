@@ -139,8 +139,9 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
   return (
     <section data-testid="system-prompt-editor" className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* 窄屏大字号下两种模式可能超出一行，允许换行以保留完整选项。 */}
         <div
-          className="flex items-center gap-1 rounded-lg border border-border p-1"
+          className="flex min-w-0 max-w-full flex-wrap items-center gap-1 rounded-lg border border-border p-1"
           aria-label={t("editingMode")}
         >
           {(["sections", "replace"] as const).map((value) => (
@@ -159,9 +160,6 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
             </Button>
           ))}
         </div>
-        <span className="text-ui-sm text-foreground-subtle">
-          {t(dirty ? "unsaved" : "savedConfig")}
-        </span>
       </div>
       <p className="text-ui-base text-foreground-subtle">{t("scope")}</p>
       {conflict && dirty && !saving ? (
@@ -169,372 +167,427 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
           {t("conflict")}
         </p>
       ) : null}
-      {draft.mode === "replace" ? (
-        <div className="space-y-3">
-          <p className="text-ui-base text-foreground-subtle">{t("replaceHint")}</p>
-          <label htmlFor="system-prompt-replacement" className="block text-ui-base font-medium">
-            {t("replacement")}
-          </label>
-          <SettingsFormTextarea
-            id="system-prompt-replacement"
-            data-testid="system-prompt-replacement"
-            value={draft.replacement}
-            maxLength={64_000}
-            disabled={saving}
-            className="min-h-80 font-mono text-mobile-input-safe md:text-ui-base"
-            onChange={(event) => {
-              const replacement = event.target.value;
-              setDraft((current) => ({ ...current, replacement }));
-              setSaveState("idle");
-            }}
-          />
-          <p className="text-ui-sm text-foreground-subtle">
-            {t("chars", { count: draft.replacement.length })}
-          </p>
-          <SystemPromptContextSwitches
-            catalog={catalog}
-            settings={draft}
-            disabled={saving}
-            onChange={(id, enabled) => {
-              setDraft((current) => ({
-                ...current,
-                sections: {
-                  ...current.sections,
-                  [id]: { mode: enabled ? "default" : "disabled", content: "" },
-                },
-              }));
-              setSaveState("idle");
-            }}
-          />
-        </div>
-      ) : (
-        <div className="grid min-w-0 gap-5 md:grid-cols-[12rem_minmax(0,1fr)]">
-          <nav
-            aria-label={t("chapters")}
-            className="flex max-h-52 flex-col gap-0.5 overflow-y-auto rounded-lg border border-border p-1 md:max-h-none md:self-start"
-          >
-            {catalog.sections.map((section) => (
-              <button
-                key={section.id}
-                type="button"
+      <div className="overflow-clip rounded-xl border border-border bg-card">
+        {draft.mode === "replace" ? (
+          <div className="space-y-3 p-4">
+            <p className="text-ui-base text-foreground-subtle">{t("replaceHint")}</p>
+            <label htmlFor="system-prompt-replacement" className="block text-ui-base font-medium">
+              {t("replacement")}
+            </label>
+            <SettingsFormTextarea
+              id="system-prompt-replacement"
+              data-testid="system-prompt-replacement"
+              value={draft.replacement}
+              maxLength={64_000}
+              disabled={saving}
+              className="min-h-80 font-mono text-mobile-input-safe md:text-ui-base"
+              onChange={(event) => {
+                const replacement = event.target.value;
+                setDraft((current) => ({ ...current, replacement }));
+                setSaveState("idle");
+              }}
+            />
+            <p className="text-ui-sm text-foreground-subtle">
+              {t("chars", { count: draft.replacement.length })}
+            </p>
+            <SystemPromptContextSwitches
+              catalog={catalog}
+              settings={draft}
+              disabled={saving}
+              onChange={(id, enabled) => {
+                setDraft((current) => ({
+                  ...current,
+                  sections: {
+                    ...current.sections,
+                    [id]: { mode: enabled ? "default" : "disabled", content: "" },
+                  },
+                }));
+                setSaveState("idle");
+              }}
+            />
+          </div>
+        ) : (
+          <div className="grid min-w-0 md:grid-cols-[12rem_minmax(0,1fr)]">
+            <div className="border-b border-border p-3 md:hidden">
+              <Select
+                value={selected}
                 disabled={saving}
-                data-testid={"system-prompt-chapter-" + section.id}
-                aria-current={selected === section.id ? "true" : undefined}
-                className={
-                  "flex min-h-8 items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-ui-base hover:bg-hover " +
-                  (selected === section.id ? "bg-selected font-medium" : "")
-                }
-                onClick={() => {
-                  setSelected(section.id);
+                onValueChange={(value) => {
+                  setSelected(value as SystemPromptSectionId | "custom");
                   setScenarioId("");
                 }}
               >
-                <span>{t("chapter." + section.id)}</span>
-                {draft.sections[section.id] && draft.sections[section.id]?.mode !== "default" ? (
-                  <span className="text-ui-xs text-foreground-subtle">{t("modified")}</span>
-                ) : null}
-              </button>
-            ))}
-            <button
-              type="button"
-              data-testid="system-prompt-chapter-custom"
-              disabled={saving}
-              aria-current={selected === "custom" ? "true" : undefined}
-              className={
-                "mt-1 flex min-h-8 items-center gap-2 rounded-md border-t border-border px-2 py-1.5 text-left text-ui-base hover:bg-hover " +
-                (selected === "custom" ? "bg-selected font-medium" : "")
-              }
-              onClick={() => setSelected("custom")}
+                <SelectTrigger
+                  aria-label={t("chapters")}
+                  data-testid="system-prompt-chapter-select"
+                  className="w-full"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {catalog.sections.map((section) => (
+                    <SelectItem key={section.id} value={section.id}>
+                      {t("chapter." + section.id)}
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="custom">{t("customChapters")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <nav
+              aria-label={t("chapters")}
+              data-testid="system-prompt-chapter-list"
+              className="hidden max-h-128 flex-col gap-0.5 overflow-y-auto border-r border-border bg-background p-2 md:flex md:self-start"
             >
-              <Plus className="size-4" />
-              {t("customChapters")}
-            </button>
-          </nav>
-          <div className="min-w-0 space-y-4">
-            {selected === "custom" ? (
-              <div className="space-y-4">
-                <h3 className="text-ui-lg font-medium">{t("customChapters")}</h3>
-                <p className="text-ui-base text-foreground-subtle">{t("customHint")}</p>
-                {draft.customSections.map((custom, index) => (
-                  <div key={custom.id} className="space-y-2 rounded-lg border border-border p-3">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        aria-label={t("customTitle", { index: index + 1 })}
-                        value={custom.title}
+              {catalog.sections.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  disabled={saving}
+                  data-testid={"system-prompt-chapter-" + section.id}
+                  aria-current={selected === section.id ? "true" : undefined}
+                  className={
+                    "flex min-h-8 shrink-0 items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-ui-base hover:bg-hover " +
+                    (selected === section.id ? "bg-selected font-medium" : "")
+                  }
+                  onClick={() => {
+                    setSelected(section.id);
+                    setScenarioId("");
+                  }}
+                >
+                  {/* 限高目录必须保留条目内容高度，长翻译不能被 flex 压缩后覆盖相邻章节。 */}
+                  <span className="min-w-0 flex-1 break-words">{t("chapter." + section.id)}</span>
+                  {draft.sections[section.id] && draft.sections[section.id]?.mode !== "default" ? (
+                    <span className="shrink-0 text-ui-xs text-foreground-subtle">
+                      {t("modified")}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+              <button
+                type="button"
+                data-testid="system-prompt-chapter-custom"
+                disabled={saving}
+                aria-current={selected === "custom" ? "true" : undefined}
+                className={
+                  "mt-1 flex min-h-8 shrink-0 items-center gap-2 rounded-md border-t border-border px-2 py-1.5 text-left text-ui-base hover:bg-hover " +
+                  (selected === "custom" ? "bg-selected font-medium" : "")
+                }
+                onClick={() => setSelected("custom")}
+              >
+                <Plus className="size-4" />
+                {t("customChapters")}
+              </button>
+            </nav>
+            <div className="min-w-0 space-y-4 p-4">
+              {selected === "custom" ? (
+                <div className="space-y-4">
+                  <h3 className="text-ui-lg font-medium">{t("customChapters")}</h3>
+                  <p className="text-ui-base text-foreground-subtle">{t("customHint")}</p>
+                  {draft.customSections.map((custom, index) => (
+                    <div key={custom.id} className="space-y-2 rounded-lg border border-border p-3">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          aria-label={t("customTitle", { index: index + 1 })}
+                          value={custom.title}
+                          disabled={saving}
+                          maxLength={80}
+                          className="text-mobile-input-safe md:text-ui-base"
+                          onChange={(event) => {
+                            const title = event.target.value;
+                            setDraft((current) => ({
+                              ...current,
+                              customSections: current.customSections.map((item) =>
+                                item.id === custom.id ? { ...item, title } : item,
+                              ),
+                            }));
+                          }}
+                        />
+                        <Button
+                          variant="ghost"
+                          disabled={saving}
+                          aria-label={t("removeChapter")}
+                          onClick={() =>
+                            setDraft((current) => ({
+                              ...current,
+                              customSections: current.customSections.filter(
+                                (item) => item.id !== custom.id,
+                              ),
+                            }))
+                          }
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </div>
+                      <SettingsFormTextarea
+                        aria-label={t("customBody", { index: index + 1 })}
+                        value={custom.content}
                         disabled={saving}
-                        maxLength={80}
-                        className="text-mobile-input-safe md:text-ui-base"
+                        maxLength={32_000}
+                        className="min-h-40 font-mono text-mobile-input-safe md:text-ui-base"
                         onChange={(event) => {
-                          const title = event.target.value;
+                          const content = event.target.value;
                           setDraft((current) => ({
                             ...current,
                             customSections: current.customSections.map((item) =>
-                              item.id === custom.id ? { ...item, title } : item,
+                              item.id === custom.id ? { ...item, content } : item,
                             ),
                           }));
                         }}
                       />
-                      <Button
-                        variant="ghost"
-                        disabled={saving}
-                        aria-label={t("removeChapter")}
-                        onClick={() =>
-                          setDraft((current) => ({
-                            ...current,
-                            customSections: current.customSections.filter(
-                              (item) => item.id !== custom.id,
-                            ),
-                          }))
-                        }
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
                     </div>
-                    <SettingsFormTextarea
-                      aria-label={t("customBody", { index: index + 1 })}
-                      value={custom.content}
-                      disabled={saving}
-                      maxLength={32_000}
-                      className="min-h-40 font-mono text-mobile-input-safe md:text-ui-base"
-                      onChange={(event) => {
-                        const content = event.target.value;
-                        setDraft((current) => ({
-                          ...current,
-                          customSections: current.customSections.map((item) =>
-                            item.id === custom.id ? { ...item, content } : item,
-                          ),
-                        }));
-                      }}
-                    />
-                  </div>
-                ))}
-                <Button
-                  variant="outline"
-                  disabled={saving || draft.customSections.length >= 12}
-                  onClick={() =>
-                    setDraft((current) => ({
-                      ...current,
-                      customSections: [
-                        ...current.customSections,
-                        { id: crypto.randomUUID(), title: t("newChapter"), content: "" },
-                      ],
-                    }))
-                  }
-                >
-                  <Plus className="size-4" />
-                  {t("addChapter")}
-                </Button>
-              </div>
-            ) : entry ? (
-              <>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-ui-lg font-medium">{t("chapter." + entry.id)}</h3>
+                  ))}
                   <Button
-                    variant="ghost"
-                    disabled={saving || !override}
-                    data-testid="system-prompt-reset-chapter"
+                    variant="outline"
+                    disabled={saving || draft.customSections.length >= 12}
                     onClick={() =>
-                      setDraft((current) => {
-                        const sections = { ...current.sections };
-                        delete sections[entry.id];
-                        return { ...current, sections };
-                      })
+                      setDraft((current) => ({
+                        ...current,
+                        customSections: [
+                          ...current.customSections,
+                          { id: crypto.randomUUID(), title: t("newChapter"), content: "" },
+                        ],
+                      }))
                     }
                   >
-                    <RotateCcw className="size-4" />
-                    {t("resetChapter")}
+                    <Plus className="size-4" />
+                    {t("addChapter")}
                   </Button>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Select
-                    value={mode}
-                    disabled={saving}
-                    onValueChange={(value) => {
-                      const nextMode = value as SystemPromptSectionOverride["mode"];
-                      changeChapter({
-                        mode: nextMode,
-                        ...(nextMode === "replace" && !override?.content
-                          ? { content: entry.content }
-                          : {}),
-                      });
-                    }}
-                  >
-                    <SelectTrigger
-                      aria-label={t("chapterMode")}
-                      data-testid="system-prompt-chapter-mode"
-                      className="w-40"
+              ) : entry ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-ui-lg font-medium">{t("chapter." + entry.id)}</h3>
+                    <Button
+                      variant="ghost"
+                      disabled={saving || !override}
+                      data-testid="system-prompt-reset-chapter"
+                      onClick={() =>
+                        setDraft((current) => {
+                          const sections = { ...current.sections };
+                          delete sections[entry.id];
+                          return { ...current, sections };
+                        })
+                      }
                     >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(entry.generated
-                        ? ["default", "disabled"]
-                        : ["default", "append", "replace", "disabled"]
-                      ).map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {t(
-                            entry.runtime && (value === "replace" || value === "disabled")
-                              ? "ruleMode." + value
-                              : "chapterMode." + value,
-                          )}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-ui-sm text-foreground-subtle">
-                    {t(entry.injectionTarget === "system" ? "systemLayer" : "userContextLayer")}
-                  </span>
-                </div>
-                {entry.generated ? (
-                  <p className="text-ui-base text-foreground-subtle">
-                    {t("generated." + entry.id)}
-                  </p>
-                ) : (
-                  <>
-                    {["memory", "desktop_context", "session_guidance", "output_style"].includes(
-                      entry.id,
-                    ) ? (
-                      <p className="text-ui-sm text-foreground-subtle">
-                        {t("condition." + entry.id, {
-                          variable:
-                            entry.id === "memory" ? "{{memoryRoot}}" : "{{genUiOutputDirectory}}",
-                        })}
-                      </p>
-                    ) : null}
-                    {mode === "append" || mode === "replace" ? (
+                      <RotateCcw className="size-4" />
+                      {t("resetChapter")}
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Select
+                      value={mode}
+                      disabled={saving}
+                      onValueChange={(value) => {
+                        const nextMode = value as SystemPromptSectionOverride["mode"];
+                        changeChapter({
+                          mode: nextMode,
+                          ...(nextMode === "replace" && !override?.content
+                            ? { content: entry.content }
+                            : {}),
+                        });
+                      }}
+                    >
+                      <SelectTrigger
+                        aria-label={t("chapterMode")}
+                        data-testid="system-prompt-chapter-mode"
+                        className="w-40"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(entry.generated
+                          ? ["default", "disabled"]
+                          : ["default", "append", "replace", "disabled"]
+                        ).map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {t(
+                              entry.runtime && (value === "replace" || value === "disabled")
+                                ? "ruleMode." + value
+                                : "chapterMode." + value,
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="text-ui-sm text-foreground-subtle">
+                      {t(entry.injectionTarget === "system" ? "systemLayer" : "userContextLayer")}
+                    </span>
+                  </div>
+                  {entry.generated ? (
+                    <p className="text-ui-base text-foreground-subtle">
+                      {t("generated." + entry.id)}
+                    </p>
+                  ) : (
+                    <>
+                      {["memory", "desktop_context", "session_guidance", "output_style"].includes(
+                        entry.id,
+                      ) ? (
+                        <p className="text-ui-sm text-foreground-subtle">
+                          {t("condition." + entry.id, {
+                            variable:
+                              entry.id === "memory" ? "{{memoryRoot}}" : "{{genUiOutputDirectory}}",
+                          })}
+                        </p>
+                      ) : null}
+                      {mode === "append" || mode === "replace" ? (
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="system-prompt-chapter-content"
+                            className="block text-ui-base font-medium"
+                          >
+                            {t("customContent")}
+                          </label>
+                          <SettingsFormTextarea
+                            id="system-prompt-chapter-content"
+                            data-testid="system-prompt-chapter-content"
+                            value={override?.content ?? ""}
+                            maxLength={32_000}
+                            disabled={saving}
+                            className="min-h-64 font-mono text-mobile-input-safe md:text-ui-base"
+                            onChange={(event) => changeChapter({ content: event.target.value })}
+                          />
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                  <div className="space-y-3">
+                    {entry.scenarios.length > 0 ? (
                       <div className="space-y-2">
                         <label
-                          htmlFor="system-prompt-chapter-content"
-                          className="block text-ui-base font-medium"
+                          className="text-ui-base font-medium"
+                          htmlFor="prompt-preview-scenario"
                         >
-                          {t("customContent")}
+                          {t("scenario")}
                         </label>
-                        <SettingsFormTextarea
-                          id="system-prompt-chapter-content"
-                          data-testid="system-prompt-chapter-content"
-                          value={override?.content ?? ""}
-                          maxLength={32_000}
-                          disabled={saving}
-                          className="min-h-64 font-mono text-mobile-input-safe md:text-ui-base"
-                          onChange={(event) => changeChapter({ content: event.target.value })}
-                        />
+                        <Select value={scenario?.id} onValueChange={setScenarioId}>
+                          <SelectTrigger
+                            id="prompt-preview-scenario"
+                            data-testid="system-prompt-scenario"
+                            className="w-full sm:w-64"
+                          >
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {entry.scenarios.map((item) => (
+                              <SelectItem key={item.id} value={item.id}>
+                                {t("scenario." + item.id)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-ui-sm text-foreground-subtle">{t("scenarioHint")}</p>
                       </div>
                     ) : null}
-                    <details open={mode === "default"} className="rounded-lg border border-border">
-                      <summary className="cursor-pointer px-3 py-2 text-ui-base font-medium">
-                        {t("defaultContent")}
-                      </summary>
-                      <pre
-                        data-testid="system-prompt-default"
-                        className="max-h-80 overflow-auto whitespace-pre-wrap break-words px-3 pb-3 font-mono text-ui-sm leading-relaxed"
-                      >
-                        {entry.content || t("emptyDefault")}
-                      </pre>
-                    </details>
-                    {defaultsChanged ? (
+                    {entry.runtime ? (
                       <details className="rounded-lg border border-border">
-                        <summary className="cursor-pointer px-3 py-2 text-ui-base text-warning">
-                          {t("defaultsChanged")}
+                        <summary className="cursor-pointer px-3 py-2 text-ui-base font-medium">
+                          {t("runtimeContent")}
                         </summary>
-                        <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words px-3 pb-3 font-mono text-ui-sm">
-                          {override?.baseContent}
+                        <pre
+                          data-testid="system-prompt-runtime"
+                          className="max-h-64 overflow-auto whitespace-pre-wrap break-words px-3 pb-3 font-mono text-ui-sm leading-relaxed"
+                        >
+                          {runtimePreview || t("notInjectedInScenario")}
                         </pre>
                       </details>
                     ) : null}
-                  </>
-                )}
-                <div className="space-y-2 border-t border-border pt-4">
-                  {entry.scenarios.length > 0 ? (
-                    <div className="space-y-2">
-                      <label className="text-ui-base font-medium" htmlFor="prompt-preview-scenario">
-                        {t("scenario")}
-                      </label>
-                      <Select value={scenario?.id} onValueChange={setScenarioId}>
-                        <SelectTrigger
-                          id="prompt-preview-scenario"
-                          data-testid="system-prompt-scenario"
-                          className="w-full"
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {entry.scenarios.map((item) => (
-                            <SelectItem key={item.id} value={item.id}>
-                              {t("scenario." + item.id)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-ui-sm text-foreground-subtle">{t("scenarioHint")}</p>
+                    <div className="flex flex-wrap justify-between gap-2">
+                      <h4 className="text-ui-base font-medium">{t("preview")}</h4>
+                      {!entry.generated ? (
+                        <span className="text-ui-sm text-foreground-subtle">
+                          {t("chars", { count: preview.length })}
+                        </span>
+                      ) : null}
                     </div>
-                  ) : null}
-                  {entry.runtime ? (
-                    <details className="rounded-lg border border-border">
-                      <summary className="cursor-pointer px-3 py-2 text-ui-base font-medium">
-                        {t("runtimeContent")}
-                      </summary>
-                      <pre
-                        data-testid="system-prompt-runtime"
-                        className="max-h-64 overflow-auto whitespace-pre-wrap break-words px-3 pb-3 font-mono text-ui-sm leading-relaxed"
-                      >
-                        {runtimePreview || t("notInjectedInScenario")}
-                      </pre>
-                    </details>
-                  ) : null}
-                  <div className="flex flex-wrap justify-between gap-2">
-                    <h4 className="text-ui-base font-medium">{t("preview")}</h4>
-                    {!entry.generated ? (
-                      <span className="text-ui-sm text-foreground-subtle">
-                        {t("chars", { count: preview.length })}
-                      </span>
-                    ) : null}
+                    <pre
+                      data-testid="system-prompt-preview"
+                      data-preview-state={
+                        entry.generated
+                          ? mode === "disabled"
+                            ? "excluded"
+                            : "generated"
+                          : preview
+                            ? "content"
+                            : "excluded"
+                      }
+                      className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-3 font-mono text-ui-sm leading-relaxed"
+                    >
+                      {entry.generated
+                        ? t(mode === "disabled" ? "notInjected" : "runtimeGenerated")
+                        : scenario && !scenario.template.available
+                          ? t("notInjectedInScenario")
+                          : preview || t(mode === "disabled" ? "notInjected" : "emptyDefault")}
+                    </pre>
                   </div>
-                  <pre
-                    data-testid="system-prompt-preview"
-                    data-preview-state={
-                      entry.generated
-                        ? mode === "disabled"
-                          ? "excluded"
-                          : "generated"
-                        : preview
-                          ? "content"
-                          : "excluded"
-                    }
-                    className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface p-3 font-mono text-ui-sm leading-relaxed"
-                  >
-                    {entry.generated
-                      ? t(mode === "disabled" ? "notInjected" : "runtimeGenerated")
-                      : scenario && !scenario.template.available
-                        ? t("notInjectedInScenario")
-                        : preview || t(mode === "disabled" ? "notInjected" : "emptyDefault")}
-                  </pre>
-                </div>
-              </>
-            ) : null}
+                  {!entry.generated ? (
+                    <>
+                      {/* 默认状态曾同时展开两份相同正文；原文作为按需对照，切章后恢复折叠。 */}
+                      <details
+                        key={entry.id}
+                        data-testid="system-prompt-default-source"
+                        className="rounded-lg border border-border"
+                      >
+                        <summary
+                          data-testid="system-prompt-default-toggle"
+                          className="cursor-pointer px-3 py-2 text-ui-base font-medium"
+                        >
+                          {t("defaultContent")}
+                        </summary>
+                        <pre
+                          data-testid="system-prompt-default"
+                          className="max-h-80 overflow-auto whitespace-pre-wrap break-words px-3 pb-3 font-mono text-ui-sm leading-relaxed"
+                        >
+                          {entry.content || t("emptyDefault")}
+                        </pre>
+                      </details>
+                      {defaultsChanged ? (
+                        <details className="rounded-lg border border-border">
+                          <summary className="cursor-pointer px-3 py-2 text-ui-base text-warning">
+                            {t("defaultsChanged")}
+                          </summary>
+                          <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words px-3 pb-3 font-mono text-ui-sm">
+                            {override?.baseContent}
+                          </pre>
+                        </details>
+                      ) : null}
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
           </div>
+        )}
+        <div className="sticky bottom-0 flex flex-wrap items-center justify-end gap-2 border-t border-border bg-card px-4 py-3">
+          <div className="mr-auto min-w-0">
+            {saveState === "failed" ? (
+              <span role="alert" className="text-ui-sm text-destructive">
+                {saveError}
+              </span>
+            ) : (
+              <span
+                role="status"
+                className={
+                  saveState === "saved" && !dirty
+                    ? "text-ui-sm text-success"
+                    : "text-ui-sm text-foreground-subtle"
+                }
+              >
+                {t(dirty ? "unsaved" : saveState === "saved" ? "saved" : "savedConfig")}
+              </span>
+            )}
+          </div>
+          <Button variant="outline" disabled={saving || (!dirty && !conflict)} onClick={discard}>
+            {t(conflict ? "reload" : "discard")}
+          </Button>
+          <Button
+            disabled={saving || !dirty || conflict}
+            data-testid="system-prompt-save"
+            onClick={() => void save()}
+          >
+            {t(saving ? "saving" : "save")}
+          </Button>
         </div>
-      )}
-      <div className="sticky bottom-0 flex flex-wrap items-center gap-2 border-t border-border bg-background py-3">
-        <Button
-          disabled={saving || !dirty || conflict}
-          data-testid="system-prompt-save"
-          onClick={() => void save()}
-        >
-          {t(saving ? "saving" : "save")}
-        </Button>
-        <Button variant="outline" disabled={saving || (!dirty && !conflict)} onClick={discard}>
-          {t(conflict ? "reload" : "discard")}
-        </Button>
-        {saveState === "saved" && !dirty ? (
-          <span role="status" className="text-ui-sm text-success">
-            {t("saved")}
-          </span>
-        ) : null}
-        {saveState === "failed" ? (
-          <span role="alert" className="text-ui-sm text-destructive">
-            {saveError}
-          </span>
-        ) : null}
       </div>
     </section>
   );

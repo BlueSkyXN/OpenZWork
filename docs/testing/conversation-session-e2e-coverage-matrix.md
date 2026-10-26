@@ -3972,3 +3972,14 @@ SP 首版本地证据（2026-10-25）：schema/UI/设置服务与导航 67 项�
 ## OpenZWork 3.16.2 候选覆盖
 
 CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-menu-selection.test.ts`，保持 pending。文件导航显隐与重启偏好对应 `workspace-file-tree/manual-review/pending/workspace-file-tree-shared-search.test.ts`，保持 pending；未将历史缺席的 composer-toolbar 文件计入本轮覆盖。
+
+### SVP 设置页布局与首页远控入口（accepted，pending）
+
+| Case                     | 断言                                                                       | 候选入口                                             |
+| ------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------- |
+| SVP01–SVP03、SVP05–SVP06 | 首页直达但不连接、指标预览、默认原文折叠、窄屏切章保留草稿、页面布局及主题 | manual-review/pending/settings-visual-polish.test.ts |
+| SVP04                    | 合法空态、无样本与真实 0% 区分、仅模型请求仍有数据                         | packages/ui/test/appUsagePanel.test.ts               |
+
+具体步骤见[设置页布局规格](../spec/settings-visual-polish.md)。候选尚未人工转正；桌面 390px 不替代实体手机验收。
+
+2026-10-26 本地验证：五个 UI 测试文件共 38 项通过；上述候选与 system-prompt-settings 候选合跑 3/3 通过。覆盖 1400px / 390px、中英文、Zai Light / Dark 的 32 组页面布局，另验证提示词 18px 大字号下模式按钮完整可达。无模型请求的 case-local fixture 合同检查通过。E2E 证据 run：`desktop-e2e-20261026093808866-p59790-0734934cc08e16a2`；Windows/Linux 原生窗口、实体手机和真实 Bot/relay 连接未在本轮重验。

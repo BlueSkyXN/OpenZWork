@@ -2123,7 +2123,7 @@ nodes:
     codeSeeds: []
   - id: surface.desktop-web-remote-control-dialog
     kind: ui-surface
-    label: Desktop Web Remote Control dialog
+    label: Desktop Web Remote Control settings
     aliases:
       - Web Remote Control QR dialog
       - 手机远控二维码弹窗
@@ -2135,6 +2135,20 @@ nodes:
         file: packages/ui/src/web-remote-control/WebRemoteControlConnectionForm.tsx
       - symbol: RemoteControlSettingsSection
         file: packages/ui/src/web-remote-control/RemoteControlSettingsSection.tsx
+  - id: surface.workspace-remote-control-shortcut
+    kind: ui-surface
+    label: Workspace footer shortcut to Remote Control settings
+    docs:
+      - docs/spec/settings-visual-polish.md
+      - docs/web-remote-control/v1-connection-modes.md
+    codeSeeds:
+      - symbol: WorkspaceSidebarFooter
+        file: packages/ui/src/WorkspaceSidebarFooter.tsx
+      - symbol: setPendingSettingsSectionIntent
+        file: packages/ui/src/lib/settingsNavigation.ts
+    invariants:
+      - Desktop feature gating and footer settings mode govern visibility.
+      - The shortcut only navigates; existing settings own target resolution and explicit connection.
   - id: state.task-list-row-projection
     kind: state-owner
     label: Task list row and membership projection
@@ -6694,6 +6708,15 @@ edges:
   - from: capability.remote-delivery
     to: surface.desktop-web-remote-control-dialog
     type: renders-in
+    rank: must-inspect
+  - from: capability.remote-delivery
+    to: surface.workspace-remote-control-shortcut
+    type: renders-in
+    rank: must-inspect
+    condition: Desktop feature enabled; workspace footer settings mode only.
+  - from: surface.workspace-remote-control-shortcut
+    to: surface.desktop-web-remote-control-dialog
+    type: navigates-to
     rank: must-inspect
   - from: surface.desktop-web-remote-control-dialog
     to: service.desktop-web-remote-control-authorization

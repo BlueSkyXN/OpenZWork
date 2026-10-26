@@ -21,12 +21,16 @@ export function WebRemoteControlConnectionForm({
       className="mb-4 min-w-0 space-y-3"
     >
       <legend className="mb-2 text-ui-base font-medium">{text("mode")}</legend>
-      <div className="flex flex-wrap gap-2" role="group" aria-label={text("mode")}>
+      <div
+        className="inline-flex max-w-full flex-wrap gap-0.5 rounded-lg border border-border p-0.5"
+        role="group"
+        aria-label={text("mode")}
+      >
         {(["direct", "self-hosted", "official"] as const).map((mode) => (
           <Button
             key={mode}
             type="button"
-            variant={value.mode === mode ? "secondary" : "outline"}
+            variant={value.mode === mode ? "secondary" : "ghost"}
             size="sm"
             aria-pressed={value.mode === mode}
             data-testid={`web-remote-mode-${mode}`}

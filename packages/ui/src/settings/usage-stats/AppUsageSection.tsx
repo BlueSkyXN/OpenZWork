@@ -44,17 +44,27 @@ function SummaryMetric({
   label,
   value,
   detail,
+  prominent = false,
 }: {
   label: string;
   value: string;
   detail?: string;
+  prominent?: boolean;
 }) {
   return (
-    <Card className="gap-2 p-4 shadow-none">
+    <div role="group" aria-label={label} className="min-w-0 space-y-2 p-4">
       <div className="text-ui-sm text-foreground-subtle">{label}</div>
-      <div className="break-words text-ui-lg font-semibold text-foreground">{value}</div>
+      <div
+        className={
+          prominent
+            ? "break-words text-ui-xl font-semibold tabular-nums text-foreground"
+            : "break-words text-ui-lg font-medium tabular-nums text-foreground"
+        }
+      >
+        {value}
+      </div>
       {detail ? <div className="text-ui-sm text-foreground-subtle">{detail}</div> : null}
-    </Card>
+    </div>
   );
 }
 
@@ -64,6 +74,14 @@ export function AppUsageSection() {
   const { available, loading, data, error, refresh } = useAppUsageStats(range);
   const numberLocale = locale === "zh-CN" ? "zh-CN" : "en-US";
   const summary = data?.summary;
+  const modelRequestCount =
+    data?.models.reduce((count, model) => count + model.requestCount, 0) ?? 0;
+  // 无样本时比率没有定义；仅有失败请求的零 Token 快照仍包含真实用量事实。
+  const empty =
+    summary?.totalTokens === 0 &&
+    summary.totalSessions === 0 &&
+    summary.toolCallCount === 0 &&
+    modelRequestCount === 0;
   const metrics = summary
     ? [
         {
@@ -83,9 +101,10 @@ export function AppUsageSection() {
         },
         {
           label: intl.formatMessage({ id: "settings.usage.favoriteModel" }),
-          value:
-            summary.favoriteModel?.modelId ??
-            intl.formatMessage({ id: "settings.usage.unknownModel" }),
+          value: summary.favoriteModel
+            ? summary.favoriteModel.modelId?.trim() ||
+              intl.formatMessage({ id: "settings.usage.unknownModel" })
+            : intl.formatMessage({ id: "settings.usage.noData" }),
           detail: summary.favoriteModel
             ? intl.formatMessage(
                 { id: "settings.usage.favoriteModelShare" },
@@ -95,19 +114,19 @@ export function AppUsageSection() {
         },
         {
           label: intl.formatMessage({ id: "settings.usage.cacheHitRate" }),
-          value: formatPercent(summary.cacheHitRate, numberLocale),
+          value: summary.inputTokens > 0 ? formatPercent(summary.cacheHitRate, numberLocale) : "—",
           detail: `${intl.formatMessage({ id: "settings.usage.modelChart.cachedInput" })} ${formatInteger(summary.cacheReadTokens, numberLocale)} · ${intl.formatMessage({ id: "settings.usage.modelChart.uncachedInput" })} ${formatInteger(Math.max(0, summary.inputTokens - summary.cacheReadTokens), numberLocale)}`,
         },
         {
           label: intl.formatMessage({ id: "settings.usage.toolCallsTotal" }),
           value: formatInteger(summary.toolCallCount, numberLocale),
-          detail: `${intl.formatMessage({ id: "settings.usage.errorRate" })} ${formatPercent(summary.toolErrorRate, numberLocale)}`,
+          detail: `${intl.formatMessage({ id: "settings.usage.errorRate" })} ${summary.toolCallCount > 0 ? formatPercent(summary.toolErrorRate, numberLocale) : "—"}`,
         },
         {
           label: intl.formatMessage({ id: "settings.usage.modelErrorRate" }),
-          value: formatPercent(summary.modelErrorRate, numberLocale),
+          value: modelRequestCount > 0 ? formatPercent(summary.modelErrorRate, numberLocale) : "—",
           detail: `${formatInteger(
-            data.models.reduce((count, model) => count + model.requestCount, 0),
+            modelRequestCount,
             numberLocale,
           )} ${intl.formatMessage({ id: "settings.usage.calls" })}`,
         },
@@ -118,7 +137,7 @@ export function AppUsageSection() {
         },
         {
           label: intl.formatMessage({ id: "settings.usage.longestSession" }),
-          value: formatDuration(summary.longestSessionMs, intl),
+          value: empty ? "—" : formatDuration(summary.longestSessionMs, intl),
           detail: intl.formatMessage(
             { id: "settings.usage.peakDayTokens" },
             { tokens: formatInteger(summary.peakDayTokens, numberLocale) },
@@ -207,14 +226,12 @@ export function AppUsageSection() {
       ) : null}
       {available && data && !loading && !error ? (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {metrics.map((metric) => (
-              <SummaryMetric {...metric} key={metric.label} />
+          <Card className="grid min-w-0 grid-cols-1 gap-0 divide-y divide-border py-0 shadow-none sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+            {metrics.slice(0, 3).map((metric) => (
+              <SummaryMetric {...metric} prominent key={metric.label} />
             ))}
-          </div>
-          {summary?.totalTokens === 0 &&
-          summary.totalSessions === 0 &&
-          summary.toolCallCount === 0 ? (
+          </Card>
+          {empty ? (
             <div className="rounded-xl border border-border bg-surface p-4" role="status">
               <div className="font-medium text-ui-base text-foreground">
                 {intl.formatMessage({ id: "settings.usage.emptyTitle" })}
@@ -224,12 +241,23 @@ export function AppUsageSection() {
               </p>
             </div>
           ) : null}
-          <UsageHeatmap locale={numberLocale} snapshot={data} />
-          <DailyModelTrend locale={numberLocale} snapshot={data} />
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            <ModelRanking locale={numberLocale} snapshot={data} />
-            <ToolRanking locale={numberLocale} snapshot={data} />
+          <div className="grid min-w-0 grid-cols-1 gap-x-3 sm:grid-cols-2 lg:grid-cols-3">
+            {metrics.slice(3).map((metric) => (
+              <div key={metric.label} className="min-w-0 border-b border-border">
+                <SummaryMetric {...metric} />
+              </div>
+            ))}
           </div>
+          {!empty ? (
+            <div data-testid="app-usage-charts" className="space-y-4">
+              <UsageHeatmap locale={numberLocale} snapshot={data} />
+              <DailyModelTrend locale={numberLocale} snapshot={data} />
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <ModelRanking locale={numberLocale} snapshot={data} />
+                <ToolRanking locale={numberLocale} snapshot={data} />
+              </div>
+            </div>
+          ) : null}
           <p className="text-right text-ui-xs text-foreground-subtle">
             {intl.formatMessage(
               { id: "settings.usage.lastRefreshTime" },

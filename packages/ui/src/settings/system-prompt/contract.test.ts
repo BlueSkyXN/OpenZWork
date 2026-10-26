@@ -80,6 +80,25 @@ const saved = (): SystemPromptSettings => ({
 afterEach(cleanup);
 
 describe("system prompt editor", () => {
+  it("默认原文折叠，生效预览保持完整；切章不沿用原文展开状态", () => {
+    render(
+      createElement(SystemPromptEditor, {
+        catalog,
+        settings: createDefaultSystemPromptSettings(),
+        onSave: vi.fn(),
+      }),
+    );
+    const source = screen.getByTestId("system-prompt-default-source") as HTMLDetailsElement;
+    expect(source.open).toBe(false);
+    expect(screen.getByTestId("system-prompt-preview").textContent).toBe("DEFAULT_ROLE");
+    source.open = true;
+    fireEvent.click(screen.getByTestId("system-prompt-chapter-desktop_context"));
+    expect((screen.getByTestId("system-prompt-default-source") as HTMLDetailsElement).open).toBe(
+      false,
+    );
+    expect(screen.getByTestId("system-prompt-preview").textContent).toContain("AVAILABLE");
+  });
+
   it("keeps runtime facts visible when rules are disabled", () => {
     const settings = createDefaultSystemPromptSettings();
     settings.sections.desktop_context = { mode: "disabled", content: "" };
