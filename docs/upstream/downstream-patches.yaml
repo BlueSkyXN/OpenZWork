@@ -198,3 +198,24 @@ patches:
     retire: 官方 V1 兼容路径采用包含时间字段的等效去重实现，或该旧协议支持经产品决定撤销；保留重复快照及 bootstrap 一致性回归。
     refs:
       - docs/web-remote-control/v1-connection-modes.md
+
+  - id: OW-P010
+    title: Bash 编码集成测试外层期限短于真实命令执行期限
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: Windows Git Bash 编码回归的夹具准备、真实进程启动和结果读取合计超过默认 5 秒。
+    impact: 命令自身 10 秒期限尚未结束，Vitest 已先中止测试，主分支 Windows CI 失败。
+    cause: 上游编码回归未声明外层期限，继承 Vitest 默认 5 秒，而其真实执行请求配置为 10 秒。
+    fix: 仅为四种编码执行方式设置 20 秒外层预算，保留命令期限、编码解析次数与输出断言，并明确断言正常完成和成功退出。
+    evidence: 主分支 Windows CI 在 Git Bash foreground 用例报告 5000ms 超时；上游 3.16.2 的测试源码同时保留 10000ms 执行请求。外层预算修复后继续用真实 shell 回归，超时转后台、取消和失败退出仍会被断言拒绝。
+    files:
+      - apps/zcode-cli/packages/adapters/tests/bash-direct-execution.test.ts
+    regression:
+      - apps/zcode-cli/packages/adapters/tests/bash-direct-execution.test.ts
+    retire: 上游明确区分真实 shell 集成测试预算与命令执行期限，并保留成功状态、退出码、完整输出和编码解析次数断言。
+    refs:
+      - docs/testing/pre-push-hook.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40314941762/job/121545062554
