@@ -764,8 +764,18 @@ const remoteWorkspace = {
 };
 type TestSessionStore = Awaited<ReturnType<typeof createSqliteSessionStore>>;
 
+type ColdPhase = { phase: string; start: number; elapsedMs?: number };
+let coldPhases: ColdPhase[] | undefined;
+let coldCaseStarted = 0;
+async function traceColdPhase<T>(phase: string, operation: () => Promise<T>): Promise<T> {
+  const entry: ColdPhase = { phase, start: performance.now() };
+  coldPhases?.push(entry);
+  try { return await operation(); }
+  finally { entry.elapsedMs = performance.now() - entry.start; }
+}
+
 async function requestResult(server: ZCodeProtocolAgentServer, message: ZCodeProtocolMessage) {
-  const response = await server.handleMessage(message);
+  const response = await traceColdPhase(`request:${"method" in message ? message.method : "response"}`, () => server.handleMessage(message));
   if (!response || !("result" in response)) {
     throw new Error(`Expected protocol success response: ${JSON.stringify(response)}`);
   }
@@ -1149,15 +1159,30 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   });
 
   beforeEach(async () => {
-    tempRoot = await mkdtemp(join(tmpdir(), "zcode-v4-cold-resume-"));
+    coldPhases = [];
+    coldCaseStarted = performance.now();
+    tempRoot = await traceColdPhase("case-dir", () => mkdtemp(join(tmpdir(), "zcode-v4-cold-resume-")));
   });
 
-  afterEach(async () => {
+  afterEach(async ({ task }) => {
+    if (process.env.COLD_RESUME_DIAGNOSTICS === "1" || task.result?.state === "fail") {
+      console.error("cold-resume-phases", JSON.stringify({
+        case: task.name, totalMs: performance.now() - coldCaseStarted,
+        phases: coldPhases?.map(({ phase, start, elapsedMs }) => ({
+          phase, ms: elapsedMs ?? performance.now() - start, pending: elapsedMs === undefined,
+        })),
+      }));
+    }
     await rm(tempRoot, { force: true, recursive: true });
+    coldPhases = undefined;
   });
 
   /** 第一段人生：往 store 写入一段 user/assistant transcript 后关库（模拟 CLI 退出）。 */
-  async function seedPersistedSession(
+  function seedPersistedSession(...args: Parameters<typeof seedSessionFixture>) {
+    return traceColdPhase("seed-history", () => seedSessionFixture(...args));
+  }
+
+  async function seedSessionFixture(
     dbPath: string,
     workspaceIdentity?: WorkspaceId,
     taskType:
@@ -1169,8 +1194,8 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       | "selection_side_chat" = "interactive",
   ): Promise<void> {
     // OW-P012：只复制已关闭的空模板；每例仍拥有独立文件和真实 SQLite 连接，不能覆盖既有夹具。
-    await copyFile(schemaPath, dbPath, fsConstants.COPYFILE_EXCL);
-    const store = await createSqliteSessionStore({ dbPath });
+    await traceColdPhase("copy-schema", () => copyFile(schemaPath, dbPath, fsConstants.COPYFILE_EXCL));
+    const store = await traceColdPhase("seed-open", () => createSqliteSessionStore({ dbPath }));
     try {
       expect(store.migrationResult.applied).toEqual([]);
       await store.createSession({
@@ -1309,18 +1334,18 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   }
 
   async function bootRealRestartedServer(dbPath: string, registry = createColdProviderRegistry()) {
-    const store = await createSqliteSessionStore({ dbPath });
+    const store = await traceColdPhase("boot-store", () => createSqliteSessionStore({ dbPath }));
     const apps: ZCodeApp[] = [];
     const server = new ZCodeProtocolAgentServer({
       cwd: tempRoot,
       sessionStore: store,
       createZCodeApp: async (options) => {
-        const app = await createRegistryBackedTestApp({
+        const app = await traceColdPhase("create-app", () => createRegistryBackedTestApp({
           ...options,
           env: { ZCODE_STORAGE_DIR: join(tempRoot, "storage") },
           skipUserConfig: true,
           providerRegistry: registry,
-        });
+        }));
         apps.push(app);
         return app;
       },
@@ -1342,9 +1367,9 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       apps,
       close: async () => {
         // 协议 owner 先停止并关闭所有 App，再释放测试借出的数据库。
-        await server.shutdown();
+        await traceColdPhase("shutdown", () => server.shutdown());
         server.disposeProjections();
-        store.close();
+        await traceColdPhase("close-store", async () => store.close());
       },
     };
   }
@@ -1406,7 +1431,7 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
         params: command("rename-1", "renameSession", { title: "Renamed offline" }),
       });
       expect(rename).toMatchObject({ status: "accepted" });
-      const check = await createSqliteSessionStore({ dbPath });
+      const check = await traceColdPhase("check-store", () => createSqliteSessionStore({ dbPath }));
       try {
         expect(await check.getSession(SESSION_ID)).toMatchObject({
           title: "Renamed offline",

@@ -122,6 +122,8 @@ jobs:
 
       - name: Workflow scheduling and auxiliary session regression
         if: matrix.lane == 'regressions'
+        env:
+          COLD_RESUME_DIAGNOSTICS: "1"
         # 真实 SQLite 冷恢复在多文件同时转换和启动运行时时重复触发默认 5 秒期限。
         # 保留用例与期限，限制这个集成步骤的文件并发；平台和 Extended runner 仍并行。
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/provider-registry-app-runtime.test.ts tests/v4-cold-resume.test.ts tests/workflow-concurrency-governor.test.ts tests/workflow-effective-selection.test.ts tests/workflow-fault-matrix.stop.test.ts tests/zcode-protocol-transport.test.ts --no-file-parallelism --maxWorkers=1 --bail=1
