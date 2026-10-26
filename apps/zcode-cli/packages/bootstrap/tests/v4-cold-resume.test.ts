@@ -11,10 +11,11 @@ import { DatabaseSync } from "node:sqlite";
 //   v4 subscribe → snapshot 含历史行（transcript 合成路径）→ sendText 再发一轮成功；
 //   restoreWarning 语义保真（workspace 无可用模型时 sendText 被拒）；
 //   store 无此会话 → fault.subscribe.sessionNotFound。
-import { mkdtemp, rm } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
 import {
   zcodeProtocolMethods,
@@ -1132,6 +1133,26 @@ function createColdProviderRegistry(): ProviderRegistry {
 
 describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   let tempRoot: string;
+  let fixtureRoot: string;
+  let fixturePath: string;
+
+  beforeAll(async () => {
+    // OW-P012：schema 和固定 transcript 只通过真实 Store 准备一次；每例从已关闭的独立副本冷恢复。
+    fixtureRoot = await mkdtemp(join(tmpdir(), "zcode-cold-resume-fixture-"));
+    fixturePath = join(fixtureRoot, "history.db");
+    await writeBaselineSession(fixturePath);
+    const checkpoint = new DatabaseSync(fixturePath);
+    try {
+      // 复制主文件前确认 WAL 已完整落盘，避免把尚在 WAL 中的历史遗漏到副本之外。
+      expect(checkpoint.prepare("pragma wal_checkpoint(truncate)").get()?.busy).toBe(0);
+    } finally {
+      checkpoint.close();
+    }
+  });
+
+  afterAll(async () => {
+    await rm(fixtureRoot, { force: true, recursive: true });
+  });
 
   beforeEach(async () => {
     tempRoot = await mkdtemp(join(tmpdir(), "zcode-v4-cold-resume-"));
@@ -1141,7 +1162,7 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
     await rm(tempRoot, { force: true, recursive: true });
   });
 
-  /** 第一段人生：往 store 写入一段 user/assistant transcript 后关库（模拟 CLI 退出）。 */
+  /** 每例复制同一基准历史，但拥有独立数据库和 Runtime。 */
   async function seedPersistedSession(
     dbPath: string,
     workspaceIdentity?: WorkspaceId,
@@ -1153,21 +1174,43 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       | "nested_workflow_child"
       | "selection_side_chat" = "interactive",
   ): Promise<void> {
+    // OW-P012：复制当前代码写出的完整固定历史；默认副本无需再次执行逐条 fixture 写入。
+    await copyFile(fixturePath, dbPath, fsConstants.COPYFILE_EXCL);
     const store = await createSqliteSessionStore({ dbPath });
     try {
-      await store.createSession({
-        id: SESSION_ID,
-        parentID: PARENT_SESSION_ID,
-        taskType,
-        projectID: "project_cold_resume" as ProjectId,
-        ...(workspaceIdentity ? { workspaceID: workspaceIdentity } : {}),
-        slug: "cold-resume-session",
-        directory: WORKSPACE_PATH,
-        path: WORKSPACE_PATH,
-        title: "Cold resume session",
-        version: "test-version",
-        time: { created: 1, updated: 4 },
-      });
+      expect(store.migrationResult.applied).toEqual([]);
+      expect(await store.messages({ sessionID: SESSION_ID })).toHaveLength(4);
+      if (workspaceIdentity !== undefined || taskType !== "interactive") {
+        await store.createSession(seedSessionInput(workspaceIdentity, taskType));
+      }
+    } finally {
+      store.close();
+    }
+  }
+
+  function seedSessionInput(
+    workspaceIdentity?: WorkspaceId,
+    taskType: NonNullable<Parameters<typeof seedPersistedSession>[2]> = "interactive",
+  ) {
+    return {
+      id: SESSION_ID,
+      parentID: PARENT_SESSION_ID,
+      taskType,
+      projectID: "project_cold_resume" as ProjectId,
+      ...(workspaceIdentity ? { workspaceID: workspaceIdentity } : {}),
+      slug: "cold-resume-session",
+      directory: WORKSPACE_PATH,
+      path: WORKSPACE_PATH,
+      title: "Cold resume session",
+      version: "test-version",
+      time: { created: 1, updated: 4 },
+    };
+  }
+
+  async function writeBaselineSession(dbPath: string): Promise<void> {
+    const store = await createSqliteSessionStore({ dbPath });
+    try {
+      await store.createSession(seedSessionInput());
       await saveUserTextMessage(store, SESSION_ID, "msg_cold_user_1" as MessageId, "历史问题一", 1);
       await saveAssistantTextMessage(
         store,
@@ -1330,6 +1373,50 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       },
     };
   }
+
+  it("OW-P012: history copies isolate data and preserve per-case identity", async () => {
+    const firstPath = join(tempRoot, "first.db");
+    const secondPath = join(tempRoot, "second.db");
+    await seedPersistedSession(firstPath);
+    await seedPersistedSession(secondPath, REMOTE_WORKSPACE_IDENTITY, "workflow_child");
+    const first = await createSqliteSessionStore({ dbPath: firstPath });
+    const second = await createSqliteSessionStore({ dbPath: secondPath });
+    const template = await createSqliteSessionStore({ dbPath: fixturePath });
+    try {
+      // OW-P012：副本可独立修改，模板保留固定历史；远程身份和 taskType 只写入目标副本。
+      const onlyFirst = "fixture_only_first" as SessionId;
+      await first.createSession({
+        id: onlyFirst,
+        projectID: "fixture" as ProjectId,
+        slug: "fixture",
+        directory: WORKSPACE_PATH,
+        title: "Only first",
+        version: "test",
+      });
+      expect(await first.getSession(onlyFirst)).toMatchObject({ id: onlyFirst });
+      expect(await second.getSession(onlyFirst)).toBeNull();
+      await first.updateSession({ id: SESSION_ID, title: "Changed only first" });
+      expect(await second.getSession(SESSION_ID)).toMatchObject({
+        title: "Cold resume session",
+        workspaceID: REMOTE_WORKSPACE_IDENTITY,
+        taskType: "workflow_child",
+      });
+      expect(await template.getSession(SESSION_ID)).toMatchObject({
+        title: "Cold resume session",
+        taskType: "interactive",
+      });
+      expect((await template.getSession(SESSION_ID))?.workspaceID).toBeUndefined();
+      expect(await template.getSession(onlyFirst)).toBeNull();
+      expect((await second.messages({ sessionID: SESSION_ID })).length).toBe(4);
+      for (const store of [first, second, template]) {
+        expect(store.migrationResult.applied).toEqual([]);
+      }
+    } finally {
+      first.close();
+      second.close();
+      template.close();
+    }
+  });
 
   it("cold rename/delete persist before acknowledgement and duplicate delete does not resume again", async () => {
     const dbPath = join(tempRoot, "metadata.db");

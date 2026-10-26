@@ -1,6 +1,6 @@
 import { EventEmitter } from "node:events";
 import { fork, type ChildProcess } from "node:child_process";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,8 +10,22 @@ import { DataRootLock } from "../src/runtime/lock.js";
 import { resolveServerLayout } from "../src/runtime/paths.js";
 import { ReleaseManager } from "../src/runtime/releaseManager.js";
 import { waitForServerStopped } from "../src/runtime/shutdownWait.js";
-import { readPersistedStatus } from "../src/runtime/statusSnapshot.js";
+import { createStatusPersister, readPersistedStatus } from "../src/runtime/statusSnapshot.js";
 import { Supervisor } from "../src/supervisor/supervisor.js";
+
+const statusIo = vi.hoisted(() => ({ rename: vi.fn() }));
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:fs/promises")>();
+  return {
+    ...actual,
+    rename: async (...args: Parameters<typeof actual.rename>) => {
+      const error = await statusIo.rename(...args);
+      if (error) throw error;
+      return actual.rename(...args);
+    },
+  };
+});
+afterEach(() => statusIo.rename.mockReset());
 
 class FakeCore extends EventEmitter {
   public readonly pid = 42;
@@ -997,5 +1011,108 @@ describe("Supervisor lifecycle", () => {
 
     vi.useRealTimers();
     await supervisor.stop();
+  });
+});
+
+describe("Supervisor status snapshots", () => {
+  for (const code of ["EPERM", "EBUSY", "EACCES"]) {
+    it(`OW-P013: persists stopped after transient ${code} replacement failure`, async () => {
+      const root = await mkdtemp(join(tmpdir(), "zstatus-"));
+      const path = join(root, "status.json");
+      const onError = vi.fn();
+      try {
+        await writeFile(path, JSON.stringify({ state: "ready" }));
+        // OW-P013：精确注入 Windows 原子替换的共享占用，旧实现会丢失最终 stopped 快照。
+        statusIo.rename.mockReturnValueOnce(Object.assign(new Error("shared file"), { code }));
+        await createStatusPersister(path, () => ({ state: "stopped" }), onError)();
+        expect(JSON.parse(await readFile(path, "utf8"))).toEqual({ state: "stopped" });
+        expect(onError).not.toHaveBeenCalled();
+        expect(statusIo.rename).toHaveBeenCalledTimes(2);
+        expect(await readdir(root)).toEqual(["status.json"]);
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    });
+  }
+
+  it("OW-P013: persistent sharing failure preserves the snapshot and later writes recover", async () => {
+    const root = await mkdtemp(join(tmpdir(), "zstatus-"));
+    const path = join(root, "status.json");
+    const onError = vi.fn();
+    const error = Object.assign(new Error("still shared"), { code: "EPERM" });
+    const persist = createStatusPersister(path, () => ({ state: "stopped" }), onError);
+    try {
+      await writeFile(path, JSON.stringify({ state: "ready" }));
+      statusIo.rename.mockReturnValue(error);
+      await persist();
+      expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+      expect(statusIo.rename).toHaveBeenCalledTimes(6);
+      expect(JSON.parse(await readFile(path, "utf8"))).toEqual({ state: "ready" });
+      expect(await readdir(root)).toEqual(["status.json"]);
+      statusIo.rename.mockReset();
+      await persist();
+      expect(JSON.parse(await readFile(path, "utf8"))).toEqual({ state: "stopped" });
+      expect(onError).toHaveBeenCalledTimes(1);
+    } finally {
+      statusIo.rename.mockReset();
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("OW-P013: non-retryable failure reports once and cleans the temporary file", async () => {
+    const root = await mkdtemp(join(tmpdir(), "zstatus-"));
+    const path = join(root, "status.json");
+    const onError = vi.fn();
+    const error = Object.assign(new Error("IO failure"), { code: "EIO" });
+    try {
+      await writeFile(path, JSON.stringify({ state: "ready" }));
+      statusIo.rename.mockReturnValueOnce(error);
+      await createStatusPersister(path, () => ({ state: "stopped" }), onError)();
+      expect(onError).toHaveBeenCalledExactlyOnceWith(error);
+      expect(statusIo.rename).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(await readFile(path, "utf8"))).toEqual({ state: "ready" });
+      expect(await readdir(root)).toEqual(["status.json"]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it("OW-P013: queued writes sample the next state only after the blocked replacement completes", async () => {
+    const root = await mkdtemp(join(tmpdir(), "zstatus-"));
+    const path = join(root, "status.json");
+    const onError = vi.fn();
+    let signalEntered!: () => void;
+    let release!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      signalEntered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let revision = 0;
+    const getStatus = vi.fn(() => ({ revision: ++revision }));
+    const persist = createStatusPersister(path, getStatus, onError);
+    statusIo.rename.mockImplementationOnce(async () => {
+      signalEntered();
+      await gate;
+      return Object.assign(new Error("shared file"), { code: "EBUSY" });
+    });
+    const first = persist();
+    await entered;
+    const second = persist();
+    try {
+      expect(getStatus).toHaveBeenCalledTimes(1);
+      release();
+      await Promise.all([first, second]);
+      expect(getStatus).toHaveBeenCalledTimes(2);
+      expect(statusIo.rename).toHaveBeenCalledTimes(3);
+      expect(onError).not.toHaveBeenCalled();
+      expect(JSON.parse(await readFile(path, "utf8"))).toEqual({ revision: 2 });
+      expect(await readdir(root)).toEqual(["status.json"]);
+    } finally {
+      release();
+      await Promise.allSettled([first, second]);
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

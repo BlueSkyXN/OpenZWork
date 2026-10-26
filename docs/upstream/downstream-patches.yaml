@@ -240,3 +240,67 @@ patches:
     refs:
       - docs/testing/pre-push-hook.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40363690020/job/121715543138
+
+  - id: OW-P012
+    title: 冷恢复夹具每例重复建库和固定历史播种
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 真实 SQLite 冷恢复用例的完整建库、重复固定历史播种与恢复共用默认 5 秒预算，Windows 文件准备发生波动。
+    impact: 单 worker 下仍出现用例超时，随后 afterEach 删除尚未释放的数据库时报 EBUSY。
+    cause: 每例重复准备相同 schema 和 transcript，固定数据写入与被测恢复语义耦合；原超时的具体慢点未记录，完整链采样确认历史播种是主要准备成本。
+    fix: beforeAll 通过当前 Store 和迁移生成固定历史库，checkpoint 后关库，每例排他复制并按需写入身份和 taskType；保留真实关库重开、App/协议恢复、默认 5 秒期限和显式旧格式迁移。
+    evidence: 上游 3.16.2 的 3c5b2276 每例重复建库和固定历史播种。Windows 完整链采样 83 个集成用例通过，75 次播种中位 199ms、最大 1025ms，命令最大 85ms、订阅最大 23ms。回归验证完整历史、副本及模板隔离和身份覆盖；缺历史的模板会被回归拒绝。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts
+    retire: 上游采用已关闭的基准历史模板或等效隔离准备，恢复断言继续使用真实持久化与原期限，并保留模板隔离和本例身份覆盖回归。
+    refs:
+      - docs/spec/ci-cold-resume-fixtures.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40391057695/job/121811837803
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40395050403
+
+  - id: OW-P013
+    title: Supervisor 最终状态在原子替换暂时失败后丢失
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: Windows 读取状态文件期间，Supervisor 原子替换最终 stopped 快照返回 EPERM、EBUSY 或 EACCES。
+    impact: Supervisor 已停止并释放锁，但持久化快照仍是旧状态，要求新 stopped 快照的等待方持续等待并超时。
+    cause: status persister 只做一次 rename，错误记录后继续结束生命周期，最终状态没有后续写入机会。
+    fix: 既有串行队列复用 shared/node 的 atomicWritePrivateTextFile，针对共享占用有界重试并清理失败临时文件；保留旧快照、永久错误上报、状态格式及全部停机期限。
+    evidence: Windows Extended 日志在 slow SIGKILL reap 用例记录最终 status rename EPERM，随后 20000ms 超时；上游 3.16.2 的 3c5b2276 同样只尝试一次 rename。六项故障注入回归在原实现下失败，覆盖短暂占用、持续占用、不可重试错误、旧快照保护和后续队列恢复。
+    files:
+      - packages/zcode-server-cli/src/runtime/statusSnapshot.ts
+    regression:
+      - packages/zcode-server-cli/test/supervisor.test.ts
+    retire: 上游状态原子替换采用等效有界共享占用处理，最终快照可被停机等待方观测，永久失败与队列顺序回归仍保留。
+    refs:
+      - docs/spec/source-server-status-persistence.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40398952165/job/121839361291
+
+  - id: OW-P014
+    title: 数据目录锁的初始化空文件被竞争者回收
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 多进程取得同一数据目录锁，首次 open(wx) 已创建文件但 owner 尚未写入，或陈旧锁恢复与首次取得交错。
+    impact: 两个进程可能同时认为自己持有数据目录锁，真实八进程竞争回归出现两个 success。
+    cause: 首次取得不受 recovery 门闩保护，空记录被当作损坏锁回收；旧单文件 recovery 门闩自身也存在创建与写入分离的窗口。
+    fix: 首次取得和陈旧恢复统一在 shared/node 的 acquireFileLock 门闩内完成，保留原 server.lock 格式、ownerToken 校验和公开接口，门闩保持 5ms 重试间隔与 500ms 等待预算。
+    evidence: Linux Extended 的八进程竞争报告两个 success；上游 3.16.2 的 3c5b2276 包含相同代码。精确暂停首次 open 后，原实现允许第二个 owner 成功；修复后拒绝竞争者，放行后首个 owner 正常取得。原陈旧恢复和真实多进程回归保留。
+    files:
+      - packages/zcode-server-cli/src/runtime/lock.ts
+    regression:
+      - packages/zcode-server-cli/test/lock.test.ts
+    retire: 上游对首次取得与陈旧恢复提供等效互斥，初始化中的记录不会被误回收，真实多进程竞争及 ownerToken 保护回归保留。
+    refs:
+      - docs/spec/source-server-lock-acquisition.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40410464216/job/121879570233

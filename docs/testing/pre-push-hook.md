@@ -129,3 +129,7 @@ flowchart LR
 ```
 
 CLI 全量入口通过 pretest 构建根 workspace 的 `@zcode/model-option-map`，确保 SEA 测试从干净 checkout 也能读取运行时资源；不能依赖先前手动构建的 dist。
+
+冷恢复集成夹具通过当前迁移和 Store 一次生成基准历史库，checkpoint 并关闭后每例复制为独立数据库，按需设置本例身份，再关库重开并执行原断言；默认 5 秒期限与显式旧格式升级回归保留。见 [OW-P012 夹具规范](../spec/ci-cold-resume-fixtures.md)。
+
+数据目录锁的完整回归纳入核心套件，包含暂停 owner 写入的受控竞争和八个真实进程的陈旧锁竞争；首次取得与恢复必须使用同一门闩，保留唯一 owner 断言。见 [OW-P014 取得顺序](../spec/source-server-lock-acquisition.md)。
