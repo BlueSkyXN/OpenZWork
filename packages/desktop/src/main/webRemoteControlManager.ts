@@ -9,6 +9,7 @@ import {
 } from "@zcode/client";
 import {
   buildWebRemoteControlExternalQrUrl,
+  OFFICIAL_WEB_REMOTE_CONTROL_V1,
   WEB_REMOTE_CONTROL_OUTBOUND_PAYLOAD_BUFFER_TIMEOUT_MS,
   type ZCodeEndpointUrls,
   type WebRemoteControlConnectionSettings,
@@ -805,7 +806,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   ): WebRemoteControlWindowBootstrapResult {
     return {
       windowControlSessionId: runtime.deviceSid,
-      desktopAppVersion: dependencies.appVersion,
+      // 官方旧页会按此字段重定向；省略可选字段以保留固定网页，设备握手仍报告真实版本。
+      ...(runtime.connection?.settings.mode === "official"
+        ? {}
+        : { desktopAppVersion: dependencies.appVersion }),
       workspaces: getAvailableWorkspaces(runtime),
       tasks: getAvailableTasks(runtime),
       initialViewState: getRuntimeInitialViewState(runtime),
@@ -857,6 +861,9 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           // Bugfix：自动标题和用户重命名不会改变 task identity/membership；标题本身必须参与
           // 首页快照去重，否则手机会一直保留旧文案。
           task.title,
+          // OW-P009：活动时间决定列表时间与排序；运行状态不变也要发布，创建时间参与同值排序。
+          task.updatedAt,
+          task.createdAt,
           // Bugfix：远程 workspace 重连后 workspaceKey 可以保持不变，但 task target 绑定的
           // remoteSessionId 会轮换；手机必须采用新连接身份，不能把它当成重复任务。
           task.remoteSessionId ?? "",
@@ -1443,8 +1450,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       timestamp: Date.now(),
       deviceMid: dependencies.deviceMid,
       deviceName: dependencies.deviceName,
-      // 官方入口按 app_version 分流网页；3.16 会加载 OAuth 页面，V1 使用缺省入口。
-      appVersion: connection?.settings.mode === "official" ? undefined : dependencies.appVersion,
+      // 官方缺省入口仍提供旧网页；显式选择 V1 页面，避免与桌面版本绑定到 OAuth 页面。
+      appVersion:
+        connection?.settings.mode === "official"
+          ? OFFICIAL_WEB_REMOTE_CONTROL_V1.pageVersion
+          : dependencies.appVersion,
       theme,
     });
   }

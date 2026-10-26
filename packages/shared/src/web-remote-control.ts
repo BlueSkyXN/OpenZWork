@@ -634,7 +634,7 @@ export type WebRemoteControlWorkspaceBridge =
 export interface WebRemoteControlWindowBootstrapResult {
   tasks?: WebRemoteControlTaskTarget[];
   windowControlSessionId: string;
-  /** 当前连接的桌面实际版本；旧桌面缺失时手机保留原 URL。 */
+  /** 当前连接的真实桌面版本；省略时手机保留所选网页版本。 */
   desktopAppVersion?: string;
   workspaces: WebRemoteControlWorkspaceTarget[];
   initialViewState?: WebRemoteControlMobileViewState;

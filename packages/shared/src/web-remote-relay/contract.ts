@@ -4,6 +4,8 @@ import { z } from "zod";
 export const OFFICIAL_WEB_REMOTE_CONTROL_V1 = {
   relayWsUrl: "wss://zcode.z.ai/ws",
   remoteUrl: "https://zcode.z.ai/remote/v4",
+  /** 官方网页资源选择器，与设备握手中的真实桌面版本分开。 */
+  pageVersion: "3.14.3",
 } as const;
 
 export const webRemoteControlConnectionSettingsSchema = z

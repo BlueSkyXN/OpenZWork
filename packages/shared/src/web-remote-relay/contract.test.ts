@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   buildWebRemoteControlExternalQrUrl,
+  OFFICIAL_WEB_REMOTE_CONTROL_V1,
   parseWebRemoteControlExternalQrParams,
   WebRemoteControlV2Heartbeat,
   WebRemoteControlV2RetryPolicy,
@@ -8,19 +9,25 @@ import {
 
 afterEach(() => vi.useRealTimers());
 describe("relay public boundary", () => {
-  it("keeps HMAC pairing material across the public QR contract", () => {
+  it("keeps HMAC pairing material and the selected official page across the public QR contract", () => {
     const pairing = {
       deviceSid: "device-1",
       passHash: "hash+value/with=padding",
       timestamp: 1700000000000,
+      appVersion: OFFICIAL_WEB_REMOTE_CONTROL_V1.pageVersion,
     };
     const url = new URL(
       buildWebRemoteControlExternalQrUrl({
-        baseUrl: "https://relay.example.invalid/remote",
+        baseUrl: OFFICIAL_WEB_REMOTE_CONTROL_V1.remoteUrl,
         ...pairing,
       }),
     );
-    expect(parseWebRemoteControlExternalQrParams(url.searchParams)).toEqual(pairing);
+    expect(url.origin).toBe("https://zcode.z.ai");
+    expect(url.pathname).toBe("/remote/v4");
+    expect(parseWebRemoteControlExternalQrParams(url.searchParams)).toEqual({
+      ...pairing,
+      appVersion: "3.14.3",
+    });
     url.searchParams.delete("hash");
     expect(parseWebRemoteControlExternalQrParams(url.searchParams)).toBeNull();
   });
