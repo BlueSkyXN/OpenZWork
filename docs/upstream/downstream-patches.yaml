@@ -240,3 +240,25 @@ patches:
     refs:
       - docs/testing/pre-push-hook.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40363690020/job/121715543138
+
+  - id: OW-P012
+    title: 冷恢复夹具每例重复完整建库迁移
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 真实 SQLite 冷恢复用例的完整建库、播种历史与恢复共用默认 5 秒预算，Windows 文件准备发生波动。
+    impact: 单 worker 下仍出现用例超时，随后 afterEach 删除尚未释放的数据库时报 EBUSY。
+    cause: 每例从空文件执行全部 schema 迁移，重复准备与被测恢复语义耦合；原超时日志没有细分阶段，具体该次慢点未确认。
+    fix: beforeAll 通过当前迁移生成并关闭空库模板，每例排他复制独立数据库，保留真实写入、关库重开、App 与协议恢复、默认 5 秒期限和显式旧格式迁移。
+    evidence: 上游 3.16.2 的 3c5b2276 保留每例新建完整数据库。Windows 定向 20 轮共 60 个目标用例通过，建库中位 66ms、最大 1177ms；40 次订阅最大 30ms，App 创建最大 33ms。回归要求副本不重跑完整迁移且各副本与空模板数据隔离，恢复旧建库方式时因仍执行完整迁移而失败。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts
+    retire: 上游采用已关闭模板或等效隔离准备，恢复断言继续使用真实持久化与原期限，并保留空模板和副本隔离回归。
+    refs:
+      - docs/spec/ci-cold-resume-fixtures.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40391057695/job/121811837803
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40395050403

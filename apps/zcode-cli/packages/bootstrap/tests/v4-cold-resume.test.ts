@@ -11,10 +11,11 @@ import { DatabaseSync } from "node:sqlite";
 //   v4 subscribe → snapshot 含历史行（transcript 合成路径）→ sendText 再发一轮成功；
 //   restoreWarning 语义保真（workspace 无可用模型时 sendText 被拒）；
 //   store 无此会话 → fault.subscribe.sessionNotFound。
-import { mkdtemp, rm } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import { copyFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
 import {
   zcodeProtocolMethods,
@@ -764,10 +765,7 @@ const remoteWorkspace = {
 type TestSessionStore = Awaited<ReturnType<typeof createSqliteSessionStore>>;
 
 async function requestResult(server: ZCodeProtocolAgentServer, message: ZCodeProtocolMessage) {
-  const stamp = performance.now();
-  console.error("cold-profile request started", message.method);
   const response = await server.handleMessage(message);
-  console.error("cold-profile request done", message.method, performance.now() - stamp);
   if (!response || !("result" in response)) {
     throw new Error(`Expected protocol success response: ${JSON.stringify(response)}`);
   }
@@ -1135,6 +1133,20 @@ function createColdProviderRegistry(): ProviderRegistry {
 
 describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   let tempRoot: string;
+  let schemaRoot: string;
+  let schemaPath: string;
+
+  beforeAll(async () => {
+    // OW-P012：新库完整迁移与冷恢复断言无关；先真实生成并关库，避免每例重复建表挤占 5 秒期限。
+    schemaRoot = await mkdtemp(join(tmpdir(), "zcode-cold-resume-schema-"));
+    schemaPath = join(schemaRoot, "empty.db");
+    const template = await createSqliteSessionStore({ dbPath: schemaPath });
+    template.close();
+  });
+
+  afterAll(async () => {
+    await rm(schemaRoot, { force: true, recursive: true });
+  });
 
   beforeEach(async () => {
     tempRoot = await mkdtemp(join(tmpdir(), "zcode-v4-cold-resume-"));
@@ -1156,11 +1168,11 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       | "nested_workflow_child"
       | "selection_side_chat" = "interactive",
   ): Promise<void> {
-    const stamp = performance.now();
-    console.error("cold-profile seed schema started");
+    // OW-P012：只复制已关闭的空模板；每例仍拥有独立文件和真实 SQLite 连接，不能覆盖既有夹具。
+    await copyFile(schemaPath, dbPath, fsConstants.COPYFILE_EXCL);
     const store = await createSqliteSessionStore({ dbPath });
-    console.error("cold-profile seed schema done", performance.now() - stamp);
     try {
+      expect(store.migrationResult.applied).toEqual([]);
       await store.createSession({
         id: SESSION_ID,
         parentID: PARENT_SESSION_ID,
@@ -1297,24 +1309,18 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   }
 
   async function bootRealRestartedServer(dbPath: string, registry = createColdProviderRegistry()) {
-    const stamp = performance.now();
-    console.error("cold-profile boot store started");
     const store = await createSqliteSessionStore({ dbPath });
-    console.error("cold-profile boot store done", performance.now() - stamp);
     const apps: ZCodeApp[] = [];
     const server = new ZCodeProtocolAgentServer({
       cwd: tempRoot,
       sessionStore: store,
       createZCodeApp: async (options) => {
-        const stamp = performance.now();
-        console.error("cold-profile app started");
         const app = await createRegistryBackedTestApp({
           ...options,
           env: { ZCODE_STORAGE_DIR: join(tempRoot, "storage") },
           skipUserConfig: true,
           providerRegistry: registry,
         });
-        console.error("cold-profile app done", performance.now() - stamp);
         apps.push(app);
         return app;
       },
@@ -1336,15 +1342,46 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       apps,
       close: async () => {
         // 协议 owner 先停止并关闭所有 App，再释放测试借出的数据库。
-        const stamp = performance.now();
-        console.error("cold-profile close started");
         await server.shutdown();
         server.disposeProjections();
         store.close();
-        console.error("cold-profile close done", performance.now() - stamp);
       },
     };
   }
+
+  it("OW-P012: schema copies retain real history and isolate each case from the empty template", async () => {
+    const firstPath = join(tempRoot, "first.db");
+    const secondPath = join(tempRoot, "second.db");
+    await seedPersistedSession(firstPath);
+    await seedPersistedSession(secondPath);
+    const first = await createSqliteSessionStore({ dbPath: firstPath });
+    const second = await createSqliteSessionStore({ dbPath: secondPath });
+    const template = await createSqliteSessionStore({ dbPath: schemaPath });
+    try {
+      // OW-P012：复用的是空 schema，副本仍能独立写入；模板和另一副本不得出现该会话。
+      const onlyFirst = "fixture_only_first" as SessionId;
+      await first.createSession({
+        id: onlyFirst,
+        projectID: "fixture" as ProjectId,
+        slug: "fixture",
+        directory: WORKSPACE_PATH,
+        title: "Only first",
+        version: "test",
+      });
+      expect(await first.getSession(onlyFirst)).toMatchObject({ id: onlyFirst });
+      expect(await second.getSession(onlyFirst)).toBeNull();
+      expect(await template.getSession(SESSION_ID)).toBeNull();
+      expect(await template.getSession(onlyFirst)).toBeNull();
+      expect((await second.messages({ sessionID: SESSION_ID })).length).toBe(4);
+      for (const store of [first, second, template]) {
+        expect(store.migrationResult.applied).toEqual([]);
+      }
+    } finally {
+      first.close();
+      second.close();
+      template.close();
+    }
+  });
 
   it("cold rename/delete persist before acknowledgement and duplicate delete does not resume again", async () => {
     const dbPath = join(tempRoot, "metadata.db");
