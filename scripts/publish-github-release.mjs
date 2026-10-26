@@ -10,6 +10,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { compareOpenZWorkVersions, parseOpenZWorkTag, parseOpenZWorkVersion } from "./openzwork-version.mjs";
 import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
+import { matchesReleaseWorkflow } from "./release-workflows.mjs";
 
 const exec = promisify(execFile);
 const platforms = ["macos-arm64", "windows-amd64", "linux-amd64"];
@@ -24,8 +25,8 @@ const groups = [
 ];
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
-export function validateRun(run, name, commit) {
-  assert.equal(run.name, name);
+export function validateRun(run, name, commit, tag) {
+  assert.ok(matchesReleaseWorkflow(run, name, tag), `Unexpected workflow identity: ${run.name}`);
   assert.equal(run.status, "completed");
   assert.equal(run.conclusion, "success");
   if (commit) assert.equal(run.head_sha, commit);
@@ -278,10 +279,10 @@ export async function publishRelease(env = process.env) {
   const coreRun = await api(`actions/runs/${env.CORE_RUN}`);
   const extendedRun = await api(`actions/runs/${env.EXTENDED_RUN}`);
   const installerRun = await api(`actions/runs/${env.INSTALLERS_RUN}`);
-  validateRun(coreRun, "CI", commit);
+  validateRun(coreRun, "CI", commit, tag);
   // 固定源码复验允许工作流来自更新提交；实际源码由三平台 source.json 逐份核对。
-  validateRun(extendedRun, "Extended checks (non-blocking)");
-  validateRun(installerRun, "Installers");
+  validateRun(extendedRun, "Extended checks (non-blocking)", undefined, tag);
+  validateRun(installerRun, "Installers", undefined, tag);
   assert.ok(["workflow_dispatch", "push"].includes(installerRun.event));
   if (installerRun.event === "push") {
     assert.equal(installerRun.head_sha, commit);

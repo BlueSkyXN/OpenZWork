@@ -56,6 +56,7 @@ const summary = () => ({
 test("publisher requires successful exact-source test runs", () => {
   const run = {
     name: "CI",
+    path: ".github/workflows/ci.yml",
     status: "completed",
     conclusion: "success",
     head_sha: expected.sourceCommit,
@@ -63,11 +64,32 @@ test("publisher requires successful exact-source test runs", () => {
   validateRun(run, "CI", expected.sourceCommit);
   for (const patch of [
     { name: "Installers" },
+    { path: ".github/workflows/unrelated.yml" },
     { status: "in_progress" },
     { conclusion: "failure" },
     { head_sha: "f".repeat(40) },
   ])
     assert.throws(() => validateRun({ ...run, ...patch }, "CI", expected.sourceCommit));
+});
+
+test("发布器接受同一正式标签的动态运行名，并拒绝其它标签或 workflow", () => {
+  const tag = "v3.16.2+openzwork.1";
+  for (const [name, file] of [
+    ["CI", "ci.yml"],
+    ["Extended checks (non-blocking)", "extended-checks.yml"],
+    ["Installers", "installers.yml"],
+  ]) {
+    const run = {
+      name: `Release ${tag} / ${name}`,
+      display_title: `Release ${tag} / ${name}`,
+      path: `.github/workflows/${file}`,
+      status: "completed", conclusion: "success", head_sha: expected.sourceCommit,
+    };
+    validateRun(run, name, expected.sourceCommit, tag);
+    assert.throws(() => validateRun(run, name, expected.sourceCommit, "v3.16.2-openzwork"));
+    assert.throws(() => validateRun({ ...run, path: ".github/workflows/other.yml" }, name, expected.sourceCommit, tag));
+    assert.throws(() => validateRun({ ...run, display_title: "branch Preview" }, name, expected.sourceCommit, tag));
+  }
 });
 
 test("publisher rejects wrong installer provenance and Preview identity", () => {
