@@ -111,6 +111,7 @@ export function validateManifest(manifest, expected) {
     assert.equal(manifest.upstreamVersion, parsed.upstreamVersion);
     assert.equal(manifest.releaseRevision, parsed.revision);
     assert.equal(manifest.versionVerification?.platform, expected.platform);
+    assert.equal(manifest.versionVerification?.productFlavor, "production");
     validatePackagedVersion(manifest.versionVerification, expected.version);
   }
   const formats = {

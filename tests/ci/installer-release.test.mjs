@@ -34,6 +34,7 @@ async function fixture(t, version = "3.15.1") {
     await mkdir(join(cwd, "scripts"));
     await writeFile(join(cwd, "scripts/verify-desktop-release-version.mjs"),
       'export async function verifyPackagedVersion({ version }) { return { version, fixture: true }; }\n');
+    await writeFile(join(cwd, "packages/desktop/dist/VERSION-VERIFICATION.json"), JSON.stringify({ version, fixture: true }));
   }
   await writeFile(
     join(cwd, "package.json"),
@@ -99,6 +100,7 @@ test("修订版完整版本贯穿源码校验、安装文件名与来源清单",
   const version = "3.16.2+openzwork.1";
   const f = await fixture(t, version);
   await f.run("Verify release source");
+  await f.run("Verify packaged release version");
   await assert.rejects(f.run("Verify release source", { RELEASE_TAG: "v3.15.1-openzwork" }));
   const name = `OpenZWork-${version}-win-x64.exe`;
   await writeFile(join(f.cwd, "packages/desktop/dist", name), "installer fixture");

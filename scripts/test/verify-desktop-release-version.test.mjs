@@ -9,6 +9,7 @@ const common = {
   metadataVersion: version,
   upstreamVersion: "3.16.2",
   releaseRevision: "1",
+  productFlavor: "production",
 };
 const records = [
   { ...common, platform: "macos-arm64", shortVersion: "3.16.2", nativeBuildVersion: "3.16.2.1" },

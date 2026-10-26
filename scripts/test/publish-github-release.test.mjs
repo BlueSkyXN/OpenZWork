@@ -91,12 +91,13 @@ test("修订版发布必须附带与平台及完整版本一致的包内核验",
     versionVerification: {
       platform: "windows-amd64", version, packageVersion: version, metadataVersion: version,
       upstreamVersion: "3.16.2", releaseRevision: "1", nativeBuildVersion: "3.16.2.1", productVersion: "3.16.2.1",
+      productFlavor: "production",
     },
     assets: [{ name: `OpenZWork-${version}-win-x64.exe`, size: 123, sha256: "d".repeat(64) }],
   };
   validateManifest(value, input);
   assert.throws(() => validateManifest({ ...value, versionVerification: undefined }, input));
-  for (const patch of [{ platform: "linux-amd64" }, { packageVersion: "3.16.2" }, { nativeBuildVersion: "3.16.2.0" }])
+  for (const patch of [{ platform: "linux-amd64" }, { productFlavor: "preview" }, { packageVersion: "3.16.2" }, { nativeBuildVersion: "3.16.2.0" }])
     assert.throws(() => validateManifest({ ...value, versionVerification: { ...value.versionVerification, ...patch } }, input));
 });
 

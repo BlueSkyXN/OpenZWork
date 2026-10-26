@@ -103,6 +103,7 @@ test("installer uploads remain named multi-file archives and fail on missing fil
     extensions.map((extension) => `packages/desktop/dist/${glob}.${extension}`),
   );
   expectedPaths.push("packages/desktop/dist/RELEASE-MANIFEST.json");
+  expectedPaths.push("packages/desktop/dist/VERSION-VERIFICATION.json");
   assert.deepEqual(upload.with.path.trim().split("\n"), expectedPaths);
 });
 
