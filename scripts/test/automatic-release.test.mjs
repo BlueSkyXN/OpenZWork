@@ -40,6 +40,22 @@ test("release selection requires all three exact tag runs regardless of completi
   assert.equal(selectReleaseRuns(runs().slice(0, 2), { repo, tag, commit }).status, "waiting");
 });
 
+test("GitHub 将 run name 返回为动态标题时仍按 workflow 路径识别同源门禁", async () => {
+  const source = runs().map((run) => ({ ...run, name: run.display_title }));
+  assert.equal(selectReleaseRuns(source, { repo, tag, commit }).status, "ready");
+  const { input } = planner({ event: { workflow_run: source[2] }, listRuns: async () => source });
+  assert.equal((await planAutomaticRelease(input)).status, "ready");
+  for (const corrupt of [
+    { path: ".github/workflows/unrelated.yml" },
+    { name: "Release v9.0.0-openzwork / Installers" },
+    { display_title: "Release v9.0.0-openzwork / Installers" },
+  ]) {
+    const invalid = source.map((run) => ({ ...run }));
+    Object.assign(invalid[2], corrupt);
+    assert.equal(selectReleaseRuns(invalid, { repo, tag, commit }).status, "waiting");
+  }
+});
+
 test("branch Preview, PR, foreign repository, wrong source and wrong workflow cannot supply release gates", () => {
   for (const patch of [
     { display_title: "normal main push" },

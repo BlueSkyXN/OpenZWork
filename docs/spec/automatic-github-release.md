@@ -13,6 +13,7 @@ CI、Extended 和 Installers 在 tag 上各运行一次。Release 工作流由�
 ## 所有者与事件顺序
 
 - 三份原工作流拥有测试和构建步骤；通过明确的运行标题 `Release <tag> / <workflow>` 标识 tag 运行，不复用同提交的分支 Preview。
+- 工作流身份按固定的 workflow 文件路径核对。GitHub 的 run `name` 可能返回静态工作流名，也可能返回完整运行标题；两种均可接受，但 tag 选择仍须同时匹配完整 `display_title`、源码 SHA、仓库与 push 事件。
 - `Release` 的只读准备 job 从事件或手动输入解析 tag，回读当前 tag SHA、根版本与最新运行，输出唯一一组来源编号。普通分支、PR、外仓运行不进入发布选择。
 - 发布 job 仅执行受信工作流提交中的脚本，不执行下载 artifact 中的代码。`workflow_run` 使用默认分支上的工作流，checkout 保持事件工作流来源，不 checkout 触发者提供的分支。
 - 所有发布入口共用仓库级并发组且不取消正在上传的任务。最终写入仍由 `publish-github-release.mjs` 负责；读取运行、逐份验证报告、归档和安装文件后，才创建或续传草稿。

@@ -4,23 +4,19 @@ import { appendFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { OPENZWORK_TAG_PATTERN, formatOpenZWorkTag, parseOpenZWorkTag } from "./openzwork-version.mjs";
+import { RELEASE_WORKFLOWS, matchesReleaseWorkflow } from "./release-workflows.mjs";
 
-const definitions = [
-  ["core", "CI", "ci.yml"],
-  ["extended", "Extended checks (non-blocking)", "extended-checks.yml"],
-  ["installers", "Installers", "installers.yml"],
-];
+const definitions = RELEASE_WORKFLOWS;
 
 export function selectReleaseRuns(runs, { repo, tag, commit }) {
   const selected = {};
   let waiting = false;
-  for (const [key, name, file] of definitions) {
+  for (const [key, name] of definitions) {
     // 同一提交的 main 构建仍是 Preview；只接受由正式 tag 生成的明确运行标题。
     const [run] = runs
       .filter(
         (entry) =>
-          entry.path === `.github/workflows/${file}` &&
-          entry.name === name &&
+          matchesReleaseWorkflow(entry, name, tag) &&
           entry.event === "push" &&
           entry.head_sha === commit &&
           entry.head_repository?.full_name === repo &&
@@ -53,8 +49,7 @@ export async function planAutomaticRelease({ repo, eventName, event, tag, api, l
       !match ||
       !OPENZWORK_TAG_PATTERN.test(match[1]) ||
       !definitions.some(
-        ([, name, file]) =>
-          name === match[2] && name === run.name && run.path === `.github/workflows/${file}`,
+        ([, name]) => name === match[2] && matchesReleaseWorkflow(run, name, match[1]),
       )
     )
       return { status: "ignored" };
