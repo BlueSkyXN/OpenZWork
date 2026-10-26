@@ -1,4 +1,6 @@
 /** English translations */
+import { desktopMenuMessages } from "@zcode/shared";
+
 const enUS: Record<string, string> = {
   "metrics.turn": "Turn",
   "metrics.input": "Input",
@@ -1844,7 +1846,8 @@ const enUS: Record<string, string> = {
   "titleBar.menu.view.actualSize": "Actual size",
   "titleBar.menu.view.zoomIn": "Zoom in",
   "titleBar.menu.view.zoomOut": "Zoom out",
-  "titleBar.menu.help.about": "About ZCode",
+  // 帮助按钮与原生菜单共用产品文案，避免桌面改名后仍显示旧品牌。
+  "titleBar.menu.help.about": desktopMenuMessages["en-US"]["titleBar.menu.help.about"],
   "sidebar.profile.localUser": "Local user",
   "sidebar.menu.community": "Community",
   "titleBar.menu.help.exportLogs": "Export logs",

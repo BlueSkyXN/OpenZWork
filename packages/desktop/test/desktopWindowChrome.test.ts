@@ -160,6 +160,26 @@ describe("desktopWindowChrome", () => {
     );
   });
 
+  it("uses the product title before page load and preserves an explicit window title", async () => {
+    const { createBrowserWindow } = await import("../src/main/desktopWindowChrome.js");
+    const options = {
+      iconPath: "icon.png",
+      preloadPath: "preload.js",
+      logger: { warn: vi.fn() },
+    };
+
+    // DPN-02：主窗口调用方不传 title，创建阶段也必须有产品名，不能依赖 HTML 随后覆盖。
+    createBrowserWindow(options);
+    expect(electronMocks.browserWindowConstructor).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "OpenZWork" }),
+    );
+
+    createBrowserWindow({ ...options, title: "Explicit window title" });
+    expect(electronMocks.browserWindowConstructor).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "Explicit window title" }),
+    );
+  });
+
   it("restores the persisted normal size before restoring maximized state", async () => {
     const { createBrowserWindow } = await import("../src/main/desktopWindowChrome.js");
 

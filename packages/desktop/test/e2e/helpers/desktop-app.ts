@@ -1421,10 +1421,10 @@ export async function clickAboutMenuItem() {
     const menu = electron.Menu.getApplicationMenu();
     const topMenuLabel = process.platform === "darwin" ? electron.app.name : "Help";
     const topMenu = menu?.items.find((item) => item.label === topMenuLabel);
-    const menuItem = topMenu?.submenu?.items.find((item) => item.label === "About ZCode");
+    const menuItem = topMenu?.submenu?.items.find((item) => item.label === "About OpenZWork");
 
     if (!menuItem) {
-      throw new Error(`未找到 About ZCode 菜单项: ${topMenuLabel}`);
+      throw new Error(`未找到 About OpenZWork 菜单项: ${topMenuLabel}`);
     }
 
     menuItem.click(undefined as never, undefined, undefined as never);
