@@ -8,11 +8,11 @@ import {
   TID_TASK_SETTINGS_BUTTON,
   testId,
 } from "@zcode/shared/test-ids";
+import { clickTestIdByDom, waitForTestIdByDom } from "../../../helpers/desktop-app.js";
 import {
-  clickTestIdByDom,
-  setCurrentElectronRendererContentSize,
-  waitForTestIdByDom,
-} from "../../../helpers/desktop-app.js";
+  setCurrentRendererViewport,
+  clearCurrentRendererViewport,
+} from "../../../helpers/renderer-viewport.js";
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 
 const marker = "E2E_SETTINGS_VISUAL_POLISH";
@@ -75,41 +75,11 @@ async function appearance(locale: string, theme: string) {
 }
 
 async function setViewport(width: number) {
-  const targetUrl = await browser.getUrl();
-  await browser.electron.execute(async (electron, targetUrl) => {
-    const window = electron.BrowserWindow.getAllWindows().find(
-      (candidate) => !candidate.isDestroyed() && candidate.webContents.getURL() === targetUrl,
-    );
-    if (!window) throw new Error("Current renderer window missing");
-    if (window.webContents.debugger.isAttached()) {
-      await window.webContents.debugger.sendCommand("Emulation.clearDeviceMetricsOverride");
-    }
-  }, targetUrl);
-  // 原生窗口有 480px 下限；390px 只模拟 renderer viewport，不修改产品窗口限制。
-  await setCurrentElectronRendererContentSize(Math.max(480, width), 800);
-  if (width < 480) {
-    await browser.electron.execute(
-      async (electron, targetUrl, width) => {
-        const window = electron.BrowserWindow.getAllWindows().find(
-          (candidate) => !candidate.isDestroyed() && candidate.webContents.getURL() === targetUrl,
-        );
-        if (!window) throw new Error("Current renderer window missing");
-        if (!window.webContents.debugger.isAttached()) window.webContents.debugger.attach("1.3");
-        await window.webContents.debugger.sendCommand("Emulation.setDeviceMetricsOverride", {
-          width,
-          height: 800,
-          deviceScaleFactor: 1,
-          mobile: false,
-        });
-      },
-      targetUrl,
-      width,
-    );
-  }
-  await browser.waitUntil(() => browser.execute((width) => innerWidth === width, width));
+  await setCurrentRendererViewport(width, 800);
 }
 
 describe(marker, () => {
+  afterEach(clearCurrentRendererViewport);
   it("SVP01–03/05–06 原有设置风格、首页导航和窄屏交互", async function () {
     this.timeout(240_000);
     await mkdir(artifacts, { recursive: true });
@@ -278,7 +248,7 @@ describe(marker, () => {
       );
     } finally {
       await browser.execute(() => document.documentElement.style.removeProperty("--ui-font-size"));
-      await setViewport(1400);
+      await clearCurrentRendererViewport();
       await appearance("zh-CN", "zai-light");
       await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON);
       await waitForTestIdByDom("sidebar-remote-control-button");

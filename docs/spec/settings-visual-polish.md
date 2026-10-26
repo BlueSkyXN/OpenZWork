@@ -64,6 +64,8 @@ sequenceDiagram
 
 剪枝：真实模型、真实第三方 Bot/relay、SSH/WSL/Docker 传输矩阵不因本次呈现与导航改变，复用既有合同；不修改连接安全边界或提示词物化行为。跨平台原生窗口和实体手机另记未验证范围。候选不自动转正或准入 Docker。
 
+布局候选通过 CDP 固定 renderer 的宽高，并回读 innerWidth / innerHeight；不依赖宿主显示器允许的原生窗口尺寸。macOS 工作区可能将内容高度限制为 795px，不能把要求 800px / 900px 的测试准备失败当成页面溢出。每个用例结束清除视口覆盖，原生窗口尺寸测试继续使用既有严格窗口 helper。
+
 ## 交接
 
 各功能 spec 链接本规则；catalog / coverage matrix 登记 SVP01–SVP06。交互候选为 settings-visual-polish.test.ts，不需要模型请求；case-local fixture 与 manifest 使用 canonical formal target，并声明 providerRequestPolicy 为 none，候选文件仍保留 pending。测试配置使用隔离应用目录，禁止生产配置或真实凭据。
