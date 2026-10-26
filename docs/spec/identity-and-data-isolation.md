@@ -7,7 +7,8 @@
 
 OpenZWork 是 ZCode 上游的私有净化分支。产品必须在用户机器上与官方 ZCode 的用户级数据
 （`~/.zcode`）完全隔离：不读取、不写入、不复用其目录与命名空间，避免隐式继承官方账号、
-凭据、配置与运行状态。本 spec 约束**用户级数据根**的解析与引用；项目仓库内部目录不在其列。
+凭据、配置与运行状态。本 spec 约束**用户级数据根**的解析与引用，以及 Desktop 显示名称；
+项目仓库内部目录不在数据根隔离范围内。
 
 ## 唯一事实源与核心不变量
 
@@ -136,3 +137,45 @@ Desktop setting.json → Main getDataBaseDir（唯一所有者）
 
 产品未正式发布，无既有用户数据兼容义务；官方旧数据不自动迁移（WP-E1a 记忆迁移的单向
 复制除外）。远端机上的旧官方 `~/.zcode/server` 不被读取、不被复用、不被覆盖。
+
+## Desktop 显示名称
+
+桌面壳的通用品牌名为 `OpenZWork`，由 `packages/shared/src/productIdentity.ts` 的
+`OPENZWORK_APP_NAME` 提供。托盘悬停提示、打开菜单、关于菜单及主窗口默认标题使用该名称。
+中文动作显示为“打开 OpenZWork”“关于 OpenZWork”，英文为“Open OpenZWork”“About OpenZWork”。
+Windows 与支持托盘的 Linux 共用文案，语言切换后重新构建菜单时仍使用该品牌名。
+桌面工作区帮助按钮中的关于菜单复用同一份中英文文案，避免 Renderer 与原生菜单分别维护品牌。
+
+Main 的 `createBrowserWindow` 负责页面加载前的默认原生窗口标题，并保留调用方显式传入
+`title` 的接口。桌面入口 HTML 的 `<title>` 同样为 `OpenZWork`：Electron 在加载和重载
+页面时会采用页面标题，单独修改安装包的 `productName` 或 Main 的初始标题无法覆盖此阶段。
+静态 HTML 不能直接读取 TypeScript 常量，由真实 Electron 用例校验两者一致。
+
+```mermaid
+flowchart LR
+    Brand[OPENZWORK_APP_NAME] --> Menu[托盘与关于菜单]
+    Brand --> Initial[Main 创建窗口时的默认标题]
+    Initial --> Native[原生窗口标题 / Windows 任务栏预览]
+    HTML[桌面 HTML title: OpenZWork] -->|加载 / 重载| Native
+```
+
+验收场景：
+
+| 编号   | 场景                               | 预期                                                               |
+| ------ | ---------------------------------- | ------------------------------------------------------------------ |
+| DPN-01 | Windows / Linux 托盘从中文切到英文 | tooltip 为 OpenZWork；打开与关于菜单采用对应语言，原有命令仍可执行 |
+| DPN-02 | 创建桌面主窗口                     | 页面加载前默认标题为 OpenZWork；显式指定的标题仍被透传             |
+| DPN-03 | 启动、重载桌面页面                 | document.title 与原生窗口标题均为 OpenZWork                        |
+| DPN-04 | 打开桌面工作区帮助菜单             | 关于菜单使用对应语言的 OpenZWork 文案                              |
+
+自动化位置：`packages/desktop/test/desktopTray.test.ts`、`desktopWindowChrome.test.ts`，以及
+`packages/desktop/test/e2e/desktop-shell/manual-review/pending/desktop-product-name.test.ts`。Windows 通知区域、
+任务栏缩略图与已有固定快捷方式的实际显示仍需 Windows 安装包验收。
+
+该候选用例不发送模型请求，使用共享 replay fixture 定向运行：
+
+```bash
+ZCODE_E2E_MANUAL_REVIEW=1 \
+E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json \
+  pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/desktop-shell/manual-review/pending/desktop-product-name.test.ts
+```

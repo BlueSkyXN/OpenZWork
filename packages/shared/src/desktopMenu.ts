@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, type Locale } from "./protocol.js";
+import { OPENZWORK_APP_NAME } from "./productIdentity.js";
 
 export const desktopMenuMessageIds = {
   file: "titleBar.menu.file",
@@ -78,7 +79,8 @@ export const desktopMenuMessages: Record<Locale, DesktopMenuLocaleMessages> = {
     "titleBar.menu.app.hideOthers": "隐藏其他",
     "titleBar.menu.app.showAll": "全部显示",
     "titleBar.menu.app.quit": "退出 {appName}",
-    "titleBar.menu.help.about": "关于 ZCode",
+    // 原生菜单和托盘不会自动继承安装包产品名，统一从产品身份读取品牌文案。
+    "titleBar.menu.help.about": `关于 ${OPENZWORK_APP_NAME}`,
     "titleBar.menu.help.toggleDevTools": "切换开发者工具",
     "titleBar.menu.help.resourceManager": "资源管理器",
     "titleBar.menu.help.toggleZCodeStdioTap": "抓取 Agent stdio 通信",
@@ -89,8 +91,8 @@ export const desktopMenuMessages: Record<Locale, DesktopMenuLocaleMessages> = {
     "titleBar.menu.help.exportLogs": "导出日志",
     "titleBar.menu.help.clearAllData": "清除所有数据",
     "dock.menu.showCurrentWindow": "显示当前窗口",
-    "tray.tooltip": "ZCode",
-    "tray.menu.openZCode": "打开 ZCode",
+    "tray.tooltip": OPENZWORK_APP_NAME,
+    "tray.menu.openZCode": `打开 ${OPENZWORK_APP_NAME}`,
     "tray.menu.quit": "退出",
   },
   "en-US": {
@@ -121,7 +123,7 @@ export const desktopMenuMessages: Record<Locale, DesktopMenuLocaleMessages> = {
     "titleBar.menu.app.hideOthers": "Hide others",
     "titleBar.menu.app.showAll": "Show all",
     "titleBar.menu.app.quit": "Quit {appName}",
-    "titleBar.menu.help.about": "About ZCode",
+    "titleBar.menu.help.about": `About ${OPENZWORK_APP_NAME}`,
     "titleBar.menu.help.toggleDevTools": "Toggle developer tools",
     "titleBar.menu.help.resourceManager": "Resource manager",
     "titleBar.menu.help.toggleZCodeStdioTap": "Capture agent stdio traffic",
@@ -132,8 +134,8 @@ export const desktopMenuMessages: Record<Locale, DesktopMenuLocaleMessages> = {
     "titleBar.menu.help.exportLogs": "Export logs",
     "titleBar.menu.help.clearAllData": "Clear all data",
     "dock.menu.showCurrentWindow": "Show current window",
-    "tray.tooltip": "ZCode",
-    "tray.menu.openZCode": "Open ZCode",
+    "tray.tooltip": OPENZWORK_APP_NAME,
+    "tray.menu.openZCode": `Open ${OPENZWORK_APP_NAME}`,
     "tray.menu.quit": "Quit",
   },
 };

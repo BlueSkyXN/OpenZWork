@@ -13,6 +13,7 @@ import {
   DEFAULT_LOCALE,
   desktopMenuMessageIds,
   getDesktopMenuMessage,
+  OPENZWORK_APP_NAME,
   PlatformChannels,
 } from "@zcode/shared";
 import { loadWindow, type WindowBootstrapOptions } from "./desktopHostProcess.js";
@@ -400,7 +401,8 @@ export function createBrowserWindow(options: {
     minWidth: MIN_DESKTOP_WINDOW_WIDTH,
     // 1280x720 桌面环境的可用高度通常低于 768，过高的最小高度会导致用户无法继续缩小窗口。
     minHeight: MIN_DESKTOP_WINDOW_HEIGHT,
-    title: options.title,
+    // 主窗口未传 title 时先使用产品名，避免页面加载前任务栏显示 Electron 默认标题。
+    title: options.title ?? OPENZWORK_APP_NAME,
     icon: options.iconPath,
     // Linux frameless 后部分桌面环境仍可能显示 Electron 原生菜单栏，自动隐藏避免顶部出现两套菜单。
     autoHideMenuBar: isLinuxDesktopWindow(),
