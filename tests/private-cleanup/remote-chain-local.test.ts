@@ -32,13 +32,17 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "node:test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import {
   buildRemoteServerCommand,
   connectRemote,
 } from "../../packages/server/src/remote/connect.ts";
 import { REMOTE_BASE } from "../../packages/server/src/remote/deployShared.ts";
 import { LocalUploadAssetInstaller } from "../../packages/server/src/remote/remoteAssetInstaller.ts";
-import { resolvePosixHomePath } from "../../packages/server/src/remote/posixShell.ts";
+import {
+  quotePosixPathArg,
+  resolvePosixHomePath,
+} from "../../packages/server/src/remote/posixShell.ts";
 import type { IRemoteBackend, StdioStream } from "../../packages/server/src/remote/backend.ts";
 import { installScriptSource } from "../../scripts/zcode-distribution/installer.mjs";
 import { assertExecutable, requireRemoteBundle } from "./remote-uat-preflight.mjs";
@@ -111,8 +115,12 @@ function sanitizedEnv(home: string): Record<string, string> {
  * $HOME 展开语义一致（quotePosixPathArg 生成的命令在两边等价）。
  */
 class LocalShBackend implements IRemoteBackend {
-  private readonly children = new Set<{ kill(): void }>();
+  private readonly children = new Set<{
+    child: ReturnType<typeof execFileSyncSh>;
+    closed: Promise<void>;
+  }>();
   private closed = false;
+  private disposal: Promise<void> | undefined;
 
   constructor(private readonly home: string) {}
 
@@ -125,11 +133,20 @@ class LocalShBackend implements IRemoteBackend {
   }
 
   async exec(command: string): Promise<StdioStream> {
+    if (this.closed) throw new Error("Local remote backend is disposed");
     const child = execFileSyncSh(command, this.home);
-    this.children.add(child);
+    let resolveClosed!: () => void;
+    const owned = {
+      child,
+      closed: new Promise<void>((resolve) => {
+        resolveClosed = resolve;
+      }),
+    };
+    this.children.add(owned);
     const listeners = new Set<(code: number) => void>();
     child.on("close", (code) => {
-      this.children.delete(child);
+      this.children.delete(owned);
+      resolveClosed();
       for (const listener of listeners) listener(code ?? -1);
     });
     return {
@@ -160,14 +177,64 @@ class LocalShBackend implements IRemoteBackend {
   dispose(): void {
     if (this.closed) return;
     this.closed = true;
-    for (const child of this.children) child.kill();
-    this.children.clear();
+    // 正常 stdio 关闭超时后只杀 shell 会遗留 Node 后代；只终止本夹具创建的独立进程组。
+    for (const { child } of this.children) signalLocalProcessGroup(child.pid, "SIGTERM");
+  }
+
+  disposeAndWait(
+    options: { graceTimeoutMs?: number; killWaitTimeoutMs?: number } = {},
+  ): Promise<void> {
+    if (this.disposal) return this.disposal;
+    const owned = [...this.children];
+    this.dispose();
+    this.disposal = Promise.all(
+      owned.map(async ({ child, closed }) => {
+        if (await waitForLocalProcessClose(closed, options.graceTimeoutMs ?? 1_000)) return;
+        signalLocalProcessGroup(child.pid, "SIGKILL");
+        if (!(await waitForLocalProcessClose(closed, options.killWaitTimeoutMs ?? 2_000))) {
+          throw new Error("Local remote process pipes remained open after process-group cleanup");
+        }
+      }),
+    ).then(() => undefined);
+    return this.disposal;
+  }
+}
+
+function signalLocalProcessGroup(pid: number | undefined, signal: NodeJS.Signals): void {
+  if (!pid) return;
+  try {
+    process.kill(-pid, signal);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+  }
+}
+
+async function waitForLocalProcessClose(
+  closed: Promise<void>,
+  timeoutMs: number,
+): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      closed.then(() => true),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 /** 后端 exec 的底层实现：/bin/sh -c，净化 env，cwd 落在临时 HOME。 */
 function execFileSyncSh(command: string, home: string) {
-  return spawn("/bin/sh", ["-c", command], { env: sanitizedEnv(home), cwd: home, stdio: "pipe" });
+  // POSIX 专用夹具使用独立组，使强制清理覆盖 shell 后代且不触及测试 runner。
+  return spawn("/bin/sh", ["-c", command], {
+    env: sanitizedEnv(home),
+    cwd: home,
+    stdio: "pipe",
+    detached: true,
+  });
 }
 
 function waitForDirectory(path: string, timeoutMs: number): Promise<boolean> {
@@ -204,6 +271,74 @@ function layoutDeployedServer(home: string): string {
   return remoteRoot;
 }
 
+async function disposeLocalBackend(backend: IRemoteBackend): Promise<void> {
+  if (backend.disposeAndWait) await backend.disposeAndWait();
+  else backend.dispose();
+}
+
+test(
+  "local remote backend waits for TERM-resistant shell descendants before cleaning HOME",
+  { skip: process.platform === "win32", timeout: 15_000 },
+  async (context) => {
+    const home = await mkdtemp(join(tmpdir(), "openzwork-remote-cleanup-"));
+    const backend = new LocalShBackend(home);
+    const script = join(home, "hold-open.cjs");
+    let pid: number | undefined;
+    let stream: StdioStream | undefined;
+    let closed: Promise<number> | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    context.after(async () => {
+      clearTimeout(timer);
+      // 即使回归失败也只回收本用例报告的完整 PID，避免把抵抗 TERM 的夹具留在宿主。
+      if (pid) {
+        try {
+          process.kill(pid, "SIGKILL");
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+        }
+      }
+      await disposeLocalBackend(backend);
+      await closed;
+      await rm(home, { recursive: true, force: true });
+    });
+    await writeFile(
+      script,
+      `process.on('SIGTERM', () => process.stdout.write('term-ignored\\n'));
+process.stdout.write('ready:' + process.pid + '\\n');
+setInterval(() => {}, 1000);
+`,
+    );
+    stream = await backend.exec(
+      `${quotePosixPathArg(process.execPath)} ${quotePosixPathArg(script)} & wait`,
+    );
+    const ready = Promise.withResolvers<number>();
+    let output = "";
+    let didClose = false;
+    stream.stdout.on("data", (chunk: Buffer) => {
+      output += chunk.toString();
+      const match = /ready:(\d+)\n/.exec(output);
+      if (match) ready.resolve(Number(match[1]));
+    });
+    stream.stderr.resume();
+    closed = new Promise((resolve) =>
+      stream!.onClose((code) => {
+        didClose = true;
+        resolve(code);
+      }),
+    );
+    timer = setTimeout(
+      () => ready.reject(new Error("cleanup fixture did not become ready")),
+      5_000,
+    );
+    pid = await ready.promise;
+    clearTimeout(timer);
+    // 旧夹具只 kill 外层 shell，后代仍持有 stdout/stderr，close 永远不能完成。
+    await disposeLocalBackend(backend);
+    assert.equal(didClose, true, "backend cleanup must wait until descendant-held pipes close");
+    assert.match(output, /term-ignored/, "TERM must reach the owned descendant before KILL");
+  },
+);
+
 test(
   "remote chain UAT: real bundle boots from the deployed .openzwork root, handshakes, and never touches .zcode",
   {
@@ -211,9 +346,9 @@ test(
   },
   async () => {
     const home = mkdtempSync(join(tmpdir(), "openzwork-remote-uat-"));
+    const backend = new LocalShBackend(home);
     try {
       layoutDeployedServer(home);
-      const backend = new LocalShBackend(home);
 
       // 部署版本检查用的 --version 命令：真实启动命令形态（env 注入 + REMOTE_BASE 展开）。
       const versionRun = await execCapture(
@@ -239,7 +374,6 @@ test(
       } finally {
         await connection.disposeAndWait({ timeoutMs: 10_000 });
       }
-      backend.dispose();
 
       // 核心隔离断言：真实 server 完整启动、握手、物化配置之后，旧官方根不存在。
       assert.equal(
@@ -248,6 +382,7 @@ test(
         "booted server must never create the official root",
       );
     } finally {
+      await disposeLocalBackend(backend);
       rmSync(home, { recursive: true, force: true });
     }
   },
@@ -261,11 +396,11 @@ test(
   async () => {
     const home = mkdtempSync(join(tmpdir(), "openzwork-deploy-uat-"));
     const releaseDir = mkdtempSync(join(tmpdir(), "openzwork-release-uat-"));
+    const backend = new LocalShBackend(home);
     try {
       mkdirSync(join(releaseDir, "server"), { recursive: true });
       copyFileSync(serverBundlePath, join(releaseDir, "server", "zcode-server.cjs"));
 
-      const backend = new LocalShBackend(home);
       const installer = new LocalUploadAssetInstaller(
         backend,
         { releaseDir, platformArch: `${process.platform}-${process.arch}` },
@@ -288,6 +423,7 @@ test(
       assert.deepEqual(residue, [], "staging files must be moved, not left behind");
       assert.equal(existsSync(join(home, ".zcode")), false);
     } finally {
+      await disposeLocalBackend(backend);
       rmSync(home, { recursive: true, force: true });
       rmSync(releaseDir, { recursive: true, force: true });
     }
