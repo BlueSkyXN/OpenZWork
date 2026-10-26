@@ -764,7 +764,10 @@ const remoteWorkspace = {
 type TestSessionStore = Awaited<ReturnType<typeof createSqliteSessionStore>>;
 
 async function requestResult(server: ZCodeProtocolAgentServer, message: ZCodeProtocolMessage) {
+  const stamp = performance.now();
+  console.error("cold-profile request started", message.method);
   const response = await server.handleMessage(message);
+  console.error("cold-profile request done", message.method, performance.now() - stamp);
   if (!response || !("result" in response)) {
     throw new Error(`Expected protocol success response: ${JSON.stringify(response)}`);
   }
@@ -1153,7 +1156,10 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       | "nested_workflow_child"
       | "selection_side_chat" = "interactive",
   ): Promise<void> {
+    const stamp = performance.now();
+    console.error("cold-profile seed schema started");
     const store = await createSqliteSessionStore({ dbPath });
+    console.error("cold-profile seed schema done", performance.now() - stamp);
     try {
       await store.createSession({
         id: SESSION_ID,
@@ -1291,18 +1297,24 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
   }
 
   async function bootRealRestartedServer(dbPath: string, registry = createColdProviderRegistry()) {
+    const stamp = performance.now();
+    console.error("cold-profile boot store started");
     const store = await createSqliteSessionStore({ dbPath });
+    console.error("cold-profile boot store done", performance.now() - stamp);
     const apps: ZCodeApp[] = [];
     const server = new ZCodeProtocolAgentServer({
       cwd: tempRoot,
       sessionStore: store,
       createZCodeApp: async (options) => {
+        const stamp = performance.now();
+        console.error("cold-profile app started");
         const app = await createRegistryBackedTestApp({
           ...options,
           env: { ZCODE_STORAGE_DIR: join(tempRoot, "storage") },
           skipUserConfig: true,
           providerRegistry: registry,
         });
+        console.error("cold-profile app done", performance.now() - stamp);
         apps.push(app);
         return app;
       },
@@ -1324,9 +1336,12 @@ describe("v4 冷恢复（集成：真 sqlite + server + binder）", () => {
       apps,
       close: async () => {
         // 协议 owner 先停止并关闭所有 App，再释放测试借出的数据库。
+        const stamp = performance.now();
+        console.error("cold-profile close started");
         await server.shutdown();
         server.disposeProjections();
         store.close();
+        console.error("cold-profile close done", performance.now() - stamp);
       },
     };
   }
