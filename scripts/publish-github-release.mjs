@@ -11,18 +11,11 @@ import { promisify } from "node:util";
 import { compareOpenZWorkVersions, parseOpenZWorkTag, parseOpenZWorkVersion } from "./openzwork-version.mjs";
 import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
 import { matchesReleaseWorkflow } from "./release-workflows.mjs";
+import { FULL_SUITE_GROUPS } from "./full-suite-plan.mjs";
 
 const exec = promisify(execFile);
 const platforms = ["macos-arm64", "windows-amd64", "linux-amd64"];
-const groups = [
-  "shared-and-rpc",
-  "services",
-  "provider",
-  "server",
-  "desktop",
-  "ui-and-web",
-  "root-scripts",
-];
+const groups = FULL_SUITE_GROUPS.map((group) => group.name);
 const sha256Pattern = /^[a-f0-9]{64}$/;
 
 export function validateRun(run, name, commit, tag) {

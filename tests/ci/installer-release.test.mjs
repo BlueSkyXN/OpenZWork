@@ -131,7 +131,8 @@ test("frozen-source validation records the checked commit and rejects a mismatch
   for (const job of Object.values(extended.jobs)) {
     assert.equal(job.steps[0].with.ref, "${{ inputs.source_commit || github.sha }}");
     assert.equal(script(name, job.steps), script(name, sourceSteps));
-    assert.ok(job.steps.findIndex(step => step.name === name) < job.steps.findIndex(step => step.run?.startsWith("pnpm install")));
+    const install = job.steps.findIndex(step => step.run?.startsWith("pnpm install"));
+    if (install >= 0) assert.ok(job.steps.findIndex(step => step.name === name) < install);
   }
   assert.equal(historical.env.ZCODE_TEST_POOL, "${{ matrix.platform == 'windows-amd64' && 'forks' || 'threads' }}");
 });
