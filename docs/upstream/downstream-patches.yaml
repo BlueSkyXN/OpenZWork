@@ -179,6 +179,26 @@ patches:
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40189299521/job/121156666989
       - https://github.com/BlueSkyXN/OpenZWork/pull/36
 
+  - id: OW-P009
+    title: 旧版手机任务目录吞掉仅时间变化的更新
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.15.1
+      checked: 3.16.2
+    trigger: 任务标题、状态和未读等字段不变，仅活动时间变化，或同活动时间的创建时间变化。
+    impact: 手机保留旧任务时间和排序，直到其他已比较字段变化或重新获取完整目录。
+    cause: 旧协议目录按 updatedAt 和 createdAt 排序，但推送签名遗漏两个时间字段，且签名排序会消除输入数组的顺序变化。
+    fix: 把两个时间字段加入现有任务签名，保持完整投影推送与重复快照去重，bootstrap 读取同一最新投影。
+    evidence: 上游 3.15.1 快照 aac475566 包含该去重逻辑；3.16.2 快照 3c5b2276 已移除旧任务目录，OpenZWork 为官方 V1 网页兼容保留此路径。两项真实 manager 载荷回归在修复前因没有推送而失败，修复后通过，覆盖时间变化未重排、发生重排、重复投影和随后 bootstrap。
+    files:
+      - packages/desktop/src/main/webRemoteControlManager.ts
+    regression:
+      - packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
+    retire: 官方 V1 兼容路径采用包含时间字段的等效去重实现，或该旧协议支持经产品决定撤销；保留重复快照及 bootstrap 一致性回归。
+    refs:
+      - docs/web-remote-control/v1-connection-modes.md
+
   - id: OW-P010
     title: Bash 编码集成测试外层期限短于真实命令执行期限
     kind: test

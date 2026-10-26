@@ -283,12 +283,39 @@ describe("E2E_V1_CONNECTIONS", () => {
     await browser.waitUntil(async () => (await status()).status === "running", { timeout: 40_000 });
     const link = await pairingLink();
     expect(new URL(link).origin).toBe("https://zcode.z.ai");
+    expect(new URL(link).searchParams.get("app_version")).toBe("3.14.3");
     const context = await mobile!.newContext({
       viewport: { width: 390, height: 844 },
       isMobile: true,
       locale: "zh-CN",
     });
     const page = await context.newPage();
+    const loadedAssetVersions = new Set<string>();
+    const bootstrapVersionsProvided: boolean[] = [];
+    page.on("response", (response) => {
+      const path = new URL(response.url()).pathname;
+      const match = path.match(/^\/remote\/v4\/([^/]+)\/assets\/[^/]+\.js$/u);
+      if (match) loadedAssetVersions.add(match[1]!);
+    });
+    page.on("websocket", (socket) => {
+      socket.on("framereceived", (frame) => {
+        // 只记录可选版本字段是否存在，配对材料和完整会话载荷不进入测试记录。
+        try {
+          const message = JSON.parse(frame.payload.toString());
+          if (
+            message.type === "data" &&
+            message.payload?.zcode_type === "bootstrap-response" &&
+            message.payload.success === true
+          ) {
+            bootstrapVersionsProvided.push(
+              Object.hasOwn(message.payload.result, "desktopAppVersion"),
+            );
+          }
+        } catch {
+          /* 二进制 RPC 帧不参与 bootstrap 字段核对。 */
+        }
+      });
+    });
     await openMobilePairingPage(page, link, {
       artifactDir: artifacts,
       caseMarker: "E2E_V1_CONNECTIONS",
@@ -303,12 +330,36 @@ describe("E2E_V1_CONNECTIONS", () => {
       .getByText("E2E_V1_PERSISTED_ASSISTANT", { exact: false })
       .first()
       .waitFor({ timeout: 30_000 });
+    // 刷新会重新配对并 bootstrap；必须恢复已打开的历史正文，连接灯亮不足以证明可用。
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page
+      .getByText("E2E_V1_PERSISTED_ASSISTANT", { exact: false })
+      .first()
+      .waitFor({ timeout: 30_000 });
+    await browser.waitUntil(async () => (await status()).mobileConnected === true);
     await page.locator('[contenteditable="true"]').first().fill("E2E_V1_OFFICIAL_DRAFT");
     expect(await page.locator('[contenteditable="true"]').first().innerText()).toContain(
       "E2E_V1_OFFICIAL_DRAFT",
     );
+    expect(new URL(page.url()).searchParams.get("app_version")).toBe("3.14.3");
+    expect([...loadedAssetVersions]).toEqual(["3.14.3"]);
+    expect(bootstrapVersionsProvided.length).toBeGreaterThanOrEqual(2);
+    expect(bootstrapVersionsProvided.every((provided) => !provided)).toBe(true);
     await page.screenshot({ path: join(artifacts, "official-mobile.png") });
     await maskedDesktopScreenshot("official-connected.png");
+    await writeFile(
+      join(artifacts, "official-result.json"),
+      JSON.stringify({
+        paired: true,
+        historyListed: true,
+        historyRead: true,
+        reload: true,
+        draft: true,
+        pageVersion: new URL(page.url()).searchParams.get("app_version"),
+        loadedAssetVersions: [...loadedAssetVersions],
+        bootstrapVersionOmitted: bootstrapVersionsProvided.every((provided) => !provided),
+      }),
+    );
     await clickButton("^(关闭远程控制|停止|Stop.*)$");
     await context.close();
   });

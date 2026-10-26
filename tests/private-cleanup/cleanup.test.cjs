@@ -407,6 +407,8 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
     /zcode\.z\.ai|open\.bigmodel\.cn|chat\.z\.ai|api\.z\.ai|cdn-zcode\.z\.ai|bigmodel\.cn|(?:^|[^a-z0-9.-])z\.ai(?:\/|[^a-z0-9.-]|$)|zcode\.ai/;
   const allowedV1Literals = new Map([
     ['packages/shared/src/web-remote-relay/contract.ts', ['"wss://zcode.z.ai/ws"', '"https://zcode.z.ai/remote/v4"']],
+    // 官方二维码合同新增了 origin 断言；仅登记这一完整字面量，保留其余地址扫描。
+    ['packages/shared/src/web-remote-relay/contract.test.ts', ['"https://zcode.z.ai"']],
     ['docs/web-remote-control/v1-connection-modes.md', ['`wss://zcode.z.ai/ws`', '`https://zcode.z.ai/remote/v4`']],
     ['packages/desktop/test/webRemoteControlDirectGateway.test.ts', ['"wss://zcode.z.ai/ws"']],
     ['packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts', ['"https://zcode.z.ai/remote/v4"']],
@@ -422,6 +424,12 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
     assert.match(removeAllowedV1Literals(contract, address), officialDomainRe);
   }
   assert.match(removeAllowedV1Literals('unrelated.ts', '"wss://zcode.z.ai/ws"'), officialDomainRe);
+  const contractTest = 'packages/shared/src/web-remote-relay/contract.test.ts';
+  assert.doesNotMatch(removeAllowedV1Literals(contractTest, '"https://zcode.z.ai"'), officialDomainRe);
+  for (const address of ['"https://zcode.z.ai/oauth"', '"https://api.z.ai"']) {
+    assert.match(removeAllowedV1Literals(contractTest, address), officialDomainRe);
+  }
+  assert.match(removeAllowedV1Literals('unrelated.test.ts', '"https://zcode.z.ai"'), officialDomainRe);
   // 2026-09-27 起与 WP-03 同口径：按 git 追踪清单做全仓文本扫描（新增目录自动入列，
   // 且不混入工作树的 node_modules/dist）；git ls-files 输出本就是 POSIX 路径，原先
   // 为 Windows path.relative 反斜杠做的归一化不再需要。

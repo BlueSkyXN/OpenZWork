@@ -5,6 +5,7 @@ import type {
   HostPreparedProjectWorkspace,
   HostProjectWorkspaceNavigationInput,
   WebRemoteControlAppPayload,
+  WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
 } from "@zcode/shared";
 import {
@@ -253,6 +254,67 @@ async function createPrimedWorkspaceSyncHarness(
 }
 
 describe("createWebRemoteControlManager external relay", () => {
+  it.each(["updatedAt", "createdAt"] as const)(
+    "仅 %s 变化时推送最新任务时间与排序，重复投影仍去重",
+    async (timeField) => {
+      const h = createManagerHarness();
+      await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
+      try {
+        const taskA: WebRemoteControlTaskTarget = {
+          taskId: "task-a",
+          title: "任务 A",
+          workspacePath: localWorkspace.workspacePath,
+          workspaceLabel: localWorkspace.label,
+          workspaceKind: "local",
+          createdAt: 1,
+          updatedAt: 100,
+          displayStatus: "running",
+          [timeField]: 20,
+        };
+        const taskB = { ...taskA, taskId: "task-b", title: "任务 B", [timeField]: 10 };
+        h.manager.syncAvailableTasks(1, [taskB, taskA]);
+        expect(h.sentPayloads).toContainEqual({
+          zcode_type: "workspace-list-updated",
+          result: expect.objectContaining({ tasks: [taskA, taskB] }),
+        });
+        h.sentPayloads.length = 0;
+
+        // OW-P009：状态仍为 running 时仅时间变化，旧签名会吞掉这次真实活动。
+        const activeB = { ...taskB, [timeField]: 15 };
+        h.manager.syncAvailableTasks(1, [activeB, taskA]);
+        expect([...h.sentPayloads]).toEqual([
+          {
+            zcode_type: "workspace-list-updated",
+            result: expect.objectContaining({ tasks: [taskA, activeB] }),
+          },
+        ]);
+        h.sentPayloads.length = 0;
+
+        const latestB = { ...taskB, [timeField]: 30 };
+        h.manager.syncAvailableTasks(1, [taskA, latestB]);
+        expect([...h.sentPayloads]).toEqual([
+          {
+            zcode_type: "workspace-list-updated",
+            result: expect.objectContaining({ tasks: [latestB, taskA] }),
+          },
+        ]);
+        h.sentPayloads.length = 0;
+        h.manager.syncAvailableTasks(1, [latestB, { ...taskA }]);
+        expect(h.sentPayloads).toEqual([]);
+
+        h.deliverPayload({ zcode_type: "bootstrap-request", requestId: "latest-task-times" });
+        expect([...h.sentPayloads]).toContainEqual({
+          zcode_type: "bootstrap-response",
+          requestId: "latest-task-times",
+          success: true,
+          result: expect.objectContaining({ tasks: [latestB, taskA] }),
+        });
+      } finally {
+        await h.manager.disposeWindow(1);
+      }
+    },
+  );
+
   it("returns the desktop's own version before a workspace bridge is attached", async () => {
     const h = createManagerHarness();
     await h.manager.start(1, { workspacePath: localWorkspace.workspacePath });
@@ -2296,24 +2358,46 @@ describe("V1 prepared connection lifecycle", () => {
     await h.manager.stop(1);
     expect(p.connection.dispose).toHaveBeenCalledOnce();
   });
-  it("official V1 QR omits the page version selector while keeping the real device version", async () => {
-    const p = provider();
-    const official = {
-      ...p.connection,
-      settings: { ...p.connection.settings, mode: "official" as const },
-      mobileRemoteControlUrl: "https://zcode.z.ai/remote/v4",
-    };
-    const h = createManagerHarness({
-      connectionProvider: {
-        getSettings: async () => official.settings,
-        prepare: async () => official,
-      },
-    });
-    const result = await h.manager.start(1, { workspacePath: "/workspace/demo" });
-    expect(new URL(result.qrUrl).searchParams.has("app_version")).toBe(false);
-    expect(h.getLatestTransportOptions()?.meta.version).toBe("1.5.0");
-    await h.manager.stop(1);
-  });
+  it.each(["direct", "self-hosted", "official"] as const)(
+    "%s 模式分别处理网页选择与真实桌面版本，官方旧页不被 bootstrap 重定向",
+    async (mode) => {
+      const p = provider();
+      const connection = {
+        ...p.connection,
+        settings: { ...p.connection.settings, mode },
+        mobileRemoteControlUrl:
+          mode === "official"
+            ? "https://zcode.z.ai/remote/v4"
+            : p.connection.mobileRemoteControlUrl,
+      };
+      const h = createManagerHarness({
+        connectionProvider: {
+          getSettings: async () => connection.settings,
+          prepare: async () => connection,
+        },
+      });
+      try {
+        const result = await h.manager.start(1, { workspacePath: "/workspace/demo" });
+        expect(new URL(result.qrUrl).searchParams.get("app_version")).toBe(
+          mode === "official" ? "3.14.3" : "1.5.0",
+        );
+        expect(h.getLatestTransportOptions()?.meta.version).toBe("1.5.0");
+        h.deliverPayload({ zcode_type: "bootstrap-request", requestId: "page-version" });
+        const response = h.sentPayloads.find(
+          (payload) => payload.zcode_type === "bootstrap-response",
+        );
+        expect(response).toMatchObject({ success: true, result: { tasks: [] } });
+        if (mode === "official") {
+          // 旧页允许版本缺失；填入真实版本会跳到新版页面，填网页版本又会误报桌面身份。
+          expect(response).not.toHaveProperty("result.desktopAppVersion");
+        } else {
+          expect(response).toHaveProperty("result.desktopAppVersion", "1.5.0");
+        }
+      } finally {
+        await h.manager.stop(1);
+      }
+    },
+  );
   it("refresh preserves the running connection mode and rotates only that scope", async () => {
     const p = provider();
     const h = createManagerHarness({ connectionProvider: p });

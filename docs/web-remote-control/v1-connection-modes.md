@@ -2,7 +2,11 @@
 
 ## 产品规则
 
-设置 → 远程控制中的手机连接卡片提供直接访问、自建 relay、官方 relay 三种方式。三者均使用 V1 `auth_init → auth_challenge → auth_response` 的 HMAC 配对，共用现有手机页面、Desktop transport 和窗口 Host attachment。官方预设为 `wss://zcode.z.ai/ws` 与 `https://zcode.z.ai/remote/v4`，仅在用户选择后连接；不接入 OAuth、V2 注册或云端设备发现。官方入口的 `app_version` 是网页分流参数，传入 3.16 会选中登录页面；官方模式省略这个可选参数以进入当前公开的 V1 页面。transport 和 bootstrap 继续报告真实桌面版本。
+设置 → 远程控制中的手机连接卡片提供直接访问、自建 relay、官方 relay 三种方式。三者均使用 V1 `auth_init → auth_challenge → auth_response` 的 HMAC 配对，共用现有 Desktop transport 和窗口 Host attachment。官方预设为 `wss://zcode.z.ai/ws` 与 `https://zcode.z.ai/remote/v4`，仅在用户选择后连接；不接入 OAuth、V2 注册或云端设备发现。
+
+官方模式的二维码固定 `app_version=3.14.3`，选择已支持 V1 的手机网页。`OFFICIAL_WEB_REMOTE_CONTROL_V1.pageVersion` 是网页资源版本，设备握手的 `meta.version` 仍为真实桌面版本。该网页会按 bootstrap 的 `desktopAppVersion` 重定向；仅官方模式省略这个可选字段，让它保留已选网页，不以网页版本代替真实桌面版本。直连和自建模式继续在链接及 bootstrap 中使用真实桌面版本。此策略按当前运行连接选择，离开官方模式后不保留兼容状态。
+
+官方域名清理检查按文件与完整字面量登记保留的 V1 地址，公共二维码合同测试的 origin 断言纳入同一规则。该登记不豁免整个测试文件；新增路径、其他官方服务地址与无关文件仍由原检查拒绝。
 
 首次打开只读取状态和连接配置，点击“开启远程控制”才连接。默认直接访问；已有环境变量成对配置时默认自建 relay。成功开启后保存配置，重新打开显示当前运行方式；运行时折叠配置并显示当前方式，留出二维码空间；修改配置需要先停止。离开设置或切换到 Bot 子页保留连接，“停止”释放连接及监听端口。刷新配对沿用当前连接方式并废弃旧配对材料。
 
@@ -13,6 +17,22 @@
 手机页面随 Desktop 产物打包；开发时亦可单独构建。普通 HTTP 的浏览器通过已有密码库完成 HMAC/SHA-256，通过共享 UUID 工具生成草稿、Hook 和文档面板标识，文档指纹与面板状态键也使用同一 SHA-256 兼容实现，不依赖仅安全上下文提供的 API。
 
 官方旧 V1 页仍读取 bootstrap 的任务快照。仅官方模式运行时，Renderer 从已有 WindowController 列表 registry 读取当前窗口工作区的 timeline、pinned、archived 三组投影，合并完整结果后经 platform IPC 交给 Main 的旧协议输出。Main 只保留可丢弃的展示投影；任务成员、标题和活动事实仍由 Host / CLI 管理。停止、切换模式或窗口作用域变化使在途读取失效，远端任务保留 workspaceIdentity 和当前 remoteSessionId，未完成的分组读取不发布部分列表。
+
+任务目录按 `updatedAt`、`createdAt`、taskId 降序排列。即使任务仍在运行、标题和未读状态均不变，活动时间变化也必须推送完整的新目录；活动时间相同时，创建时间变化也应更新排序。相同字段值的输入列表仅改变数组顺序时仍去重。bootstrap 与后续目录推送从同一展示投影生成，手机重新连接后读取当前排序。
+
+```mermaid
+sequenceDiagram
+    participant H as Host / CLI 任务事实
+    participant C as WindowController registry
+    participant D as Desktop Main 展示投影
+    participant P as 官方 V1 手机页
+    H->>C: 任务活动时间变化
+    C->>D: 当前作用域完整任务列表
+    D->>D: 更新投影、排序，比较含时间字段的签名
+    D-->>P: workspace-list-updated
+    P->>D: 重连后的 bootstrap-request
+    D-->>P: 同一投影的当前完整列表
+```
 
 ## 设置页与导航
 
@@ -56,6 +76,12 @@ sequenceDiagram
     R->>M: 配对后的载荷
     M->>H: 既有 attachment 路由
     H-->>P: snapshot / stream / gap recovery
+    P->>M: bootstrap-request
+    alt 官方 3.14.3 网页
+        M-->>P: 当前任务目录，省略可选 desktopAppVersion
+    else 直连或自建网页
+        M-->>P: 当前任务目录及真实 desktopAppVersion
+    end
     Note over U,M: 切换 Bot 子页或离开设置仅卸载 UI，连接保持
     U->>M: 用户显式 stop
     M->>C: abort、关闭 socket / HTTP listener
@@ -82,11 +108,21 @@ sequenceDiagram
 | V1-11 | 设置入口、首页快捷按钮、手机与 Bot 卡片、Bot 子页返回                       | 首页直达设置且不连接；页内导航不出现配置弹窗；Bot 使用本机服务        | UI 单测、Desktop E2E    |
 | V1-12 | 进入 / 离开设置、同路径远端、失效 session、无工作区                         | 不自动连接或停止；identity 不丢失；失效 session 不透传；Bot 仍可管理  | UI 单测、Desktop E2E    |
 
-V1-08 另验证官方旧页可列出并打开预置的桌面历史任务，且列表更新只来自现有 Controller。
+V1-08 另验证实际加载的脚本来自 `/remote/v4/3.14.3/assets/`，bootstrap 未改报桌面版本，页面刷新后仍保持 `app_version=3.14.3`；该页可列出并打开预置的桌面历史任务，列表更新只来自现有 Controller。
+
+任务目录回归须检查实际发出的 `workspace-list-updated`：仅时间变化时更新载荷与顺序，重复投影不重复推送，随后 bootstrap 返回相同的最新目录。官方网页验收显式设置 `ZCODE_E2E_VERIFY_OFFICIAL_V1=1`，同时检查打开历史会话和刷新恢复；未开启该开关的跳过结果不作为官方模式通过依据。
 
 V2/OAuth 用例不进入此功能矩阵；真实公网部署、手机硬件与不同网络运营商的可达性另行验收。候选 E2E 放入 manual-review/pending，不自动提升为正式套件。
 
 候选交互用例：`packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts`。隔离 HOME、合成 relay、真实桌面与浏览器；不依赖真实模型请求。
+
+从仓库根目录运行三种连接方式的候选验收（包含真实官方中继与网页）：
+
+```bash
+ZCODE_E2E_VERIFY_OFFICIAL_V1=1 pnpm --filter @zcode/desktop test:e2e:serial --spec ./test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts
+```
+
+官方用例读取合成历史会话，刷新网页后再次核对正文，并输入草稿；不发送模型请求。查看报告时确认三项用例全部执行，官方项没有跳过。
 
 ## 使用方式
 
