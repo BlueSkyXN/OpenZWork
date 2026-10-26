@@ -2,9 +2,9 @@
 
 ## 产品规则
 
-推送 `v<major>.<minor>.<patch>-openzwork` tag 表示启动该版本发行。tag 必须与根 `package.json` 版本一致。日常 PR、main 和 wp 分支继续按原规则检查或构建 Preview。
+推送正式 tag 表示启动该版本发行：无修订号沿用 `vX.Y.Z-openzwork`，带修订号使用 `vX.Y.Z+openzwork.N`。tag 必须与根 `package.json` 完整版本一致，解析与排序遵循 [OpenZWork 发行版本](openzwork-release-version.md)。日常 PR、main 和 wp 分支继续按原规则检查或构建 Preview。
 
-根 `pnpm release` 沿用 release-it 的版本与 CHANGELOG 更新、commit/tag/push，将 tag 格式对齐为 `v${version}-openzwork`；GitHub Release 仍由 CI/CD 创建。CLI 子包的独立版本入口不变。tag push 的 `before` 为零 SHA，核心工作流不将其传入显式架构基线，沿用检查器的默认分支基线发现。
+根 `pnpm release` 沿用 release-it 的版本与 CHANGELOG 更新、commit/tag/push，按完整发行号选择对应 tag；GitHub Release 仍由 CI/CD 创建。CLI 子包的独立版本入口不变。tag push 的 `before` 为零 SHA，核心工作流不将其传入显式架构基线，沿用检查器的默认分支基线发现。
 
 CI、Extended 和 Installers 在 tag 上各运行一次。Release 工作流由这三者的完成事件触发，只有同一 tag、同一源码 SHA 的三项最新运行全部成功，才调用既有发布器。Extended 的 non-blocking 名称只描述日常核心检查的独立性；它是正式发布的必需门禁，包括完整单测和 Main/E2E 类型审计。
 
@@ -41,7 +41,7 @@ flowchart TD
 2. `Release.workflow_dispatch` 接受已有 `release_tag`，用于恢复协调器；`verify_only` 只验证选择和状态，不创建草稿、不上传或公开。它不重建产品，也不自动重跑失败检查。
 3. 自动模式在全部产物验证后创建草稿。版本说明优先保留已有草稿正文；没有正文时使用 GitHub 按 tag 生成的合并记录，并补充安装格式、未签名和更新方式。显式手动发布仍可传入自定义说明。
 4. 草稿缺失的附件可以补传；同名不同大小或摘要立即失败。公开版本不补传或覆盖附件。已公开且九附件完整的版本在协调器中返回已完成；重放事件不重复发布。
-5. 自动发布只将更新的正式版本设为 Latest。旧 tag 的补发不会降低 Latest；同版本重复运行也不改变更高版本的状态。该决策在公开前读取当前 Latest，所有发布 job 串行，避免不同版本同时结束造成倒退。GitHub 并发组只保留一个待运行 job；多个版本同时排队时，被替换的待运行版本可通过手动入口重放，已有草稿和附件可复用。
+5. 自动发布先比较官方基准，再比较 OpenZWork 修订号；无修订后缀按 0 处理，只将更新的正式版本设为 Latest。旧 tag 的补发不会降低 Latest；同版本重复运行也不改变更高版本的状态。该决策在公开前读取当前 Latest，所有发布 job 串行，避免不同版本同时结束造成倒退。GitHub 并发组只保留一个待运行 job；多个版本同时排队时，被替换的待运行版本可通过手动入口重放，已有草稿和附件可复用。
 6. 三份测试/构建工作流仍可手动独立运行；原 Installers 的精确运行编号发布入口保留，供旧版本和固定源码复验使用。
 
 ## 验收

@@ -17,7 +17,7 @@
 | `status`                       | `open`、`fixed` 或 `retired`，见下节                                          |
 | `priority`                     | `open` 条目必填，取 `P1`–`P3`                                                 |
 | `upstream.since`               | 最早确认存在缺陷的上游版本                                                    |
-| `upstream.checked`             | 未撤销条目最近一次核对的上游版本，须等于根 `package.json` 的 `version`        |
+| `upstream.checked`             | 未撤销条目最近一次核对的上游版本，须等于根 `package.json.version` 解析出的官方基准        |
 | `upstream.fixedIn`             | `retired` 条目必填：上游提供等效修复的版本                                    |
 | `trigger` / `impact` / `cause` | 触发条件、错误表现与影响、根因                                                |
 | `evidence`                     | 确认依据：复现方式与结果，或回归在修复前后的结果                              |
@@ -57,7 +57,7 @@ stateDiagram-v2
 
 ## 上游同步复核
 
-OpenZWork 根版本号跟随上游。合入上游新版本会改变 `version`；未撤销条目全部复核前，清单检查保持失败。上游以相同版本号重推时检查不会提示，同样按以下步骤复核。逐项处理：
+OpenZWork 根版本号的前三段跟随上游，`+openzwork.N` 表示本项目修订。合入上游新版本会改变官方基准；未撤销条目全部复核前，清单检查保持失败。仅增加 OpenZWork 修订号保持原有 `upstream.checked`。上游以相同版本号重推时检查不会提示，同样按以下步骤复核。逐项处理：
 
 1. 以原触发场景的实际行为或上游源码为依据，核对新版本是否仍有缺陷。
 2. 上游仍有缺陷：保留或适配修复，解决冲突时保住编号标记和回归，再把 `upstream.checked` 更新为新版本。

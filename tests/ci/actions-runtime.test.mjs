@@ -103,6 +103,7 @@ test("installer uploads remain named multi-file archives and fail on missing fil
     extensions.map((extension) => `packages/desktop/dist/${glob}.${extension}`),
   );
   expectedPaths.push("packages/desktop/dist/RELEASE-MANIFEST.json");
+  expectedPaths.push("packages/desktop/dist/VERSION-VERIFICATION.json");
   assert.deepEqual(upload.with.path.trim().split("\n"), expectedPaths);
 });
 
@@ -111,14 +112,14 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
   // pull_request 事件时可手动派发验证（与 Extended checks 对齐）；矩阵与 push 范围不变。
   assert.deepEqual(ci.on, {
     pull_request: null,
-    push: { branches: ["main"], tags: ["v*-openzwork"] },
+    push: { branches: ["main"], tags: ["v*-openzwork", "v*openzwork.*"] },
     workflow_dispatch: null,
   });
   assert.deepEqual(installers.on, {
     workflow_dispatch: {
       inputs: {
         release_tag: {
-          description: "Existing v<version>-openzwork tag for a production installer",
+          description: "Existing formal OpenZWork tag for a production installer",
           type: "string",
           default: "",
         },
@@ -150,7 +151,7 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
         },
       },
     },
-    push: { branches: ["main", "wp**"], tags: ["v*-openzwork"] },
+    push: { branches: ["main", "wp**"], tags: ["v*-openzwork", "v*openzwork.*"] },
   });
   for (const job of [ci.jobs.checks, installers.jobs.installer]) {
     assert.equal(job["runs-on"], "${{ matrix.os }}");

@@ -2,6 +2,13 @@
   "version": 1,
   "suites": [
     {
+      "capability": "release-version-display",
+      "files": [
+        "packages/desktop/test/about.test.ts",
+        "packages/desktop/test/desktopProductIdentity.test.ts"
+      ]
+    },
+    {
       "capability": "conversation-controls",
       "files": [
         "packages/ui/src/conversation-export/contract.test.ts",

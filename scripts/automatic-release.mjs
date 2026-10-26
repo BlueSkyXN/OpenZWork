@@ -3,13 +3,13 @@ import { execFile } from "node:child_process";
 import { appendFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
+import { OPENZWORK_TAG_PATTERN, formatOpenZWorkTag, parseOpenZWorkTag } from "./openzwork-version.mjs";
 
 const definitions = [
   ["core", "CI", "ci.yml"],
   ["extended", "Extended checks (non-blocking)", "extended-checks.yml"],
   ["installers", "Installers", "installers.yml"],
 ];
-const tagPattern = /^v\d+\.\d+\.\d+-openzwork$/;
 
 export function selectReleaseRuns(runs, { repo, tag, commit }) {
   const selected = {};
@@ -48,9 +48,10 @@ export async function planAutomaticRelease({ repo, eventName, event, tag, api, l
       run.head_repository?.full_name !== repo
     )
       return { status: "ignored" };
-    const match = /^Release (v\d+\.\d+\.\d+-openzwork) \/ (.+)$/.exec(run.display_title);
+    const match = /^Release (\S+) \/ (.+)$/.exec(run.display_title);
     if (
       !match ||
+      !OPENZWORK_TAG_PATTERN.test(match[1]) ||
       !definitions.some(
         ([, name, file]) =>
           name === match[2] && name === run.name && run.path === `.github/workflows/${file}`,
@@ -60,7 +61,7 @@ export async function planAutomaticRelease({ repo, eventName, event, tag, api, l
     tag = match[1];
     triggeringCommit = run.head_sha;
   } else assert.equal(eventName, "workflow_dispatch");
-  assert.match(tag ?? "", tagPattern);
+  parseOpenZWorkTag(tag);
   let object = (await api(`git/ref/tags/${tag}`)).object;
   if (object.type === "tag") object = (await api(`git/tags/${object.sha}`)).object;
   assert.equal(object.type, "commit");
@@ -70,7 +71,7 @@ export async function planAutomaticRelease({ repo, eventName, event, tag, api, l
     assert.equal(commit, triggeringCommit, "Release tag changed after the triggering run");
   const metadata = await api(`contents/package.json?ref=${commit}`);
   const { version } = JSON.parse(Buffer.from(metadata.content, "base64"));
-  assert.equal(tag, `v${version}-openzwork`);
+  assert.equal(tag, formatOpenZWorkTag(version));
   const release = await api(`releases/tags/${tag}`);
   if (release && !release.draft) {
     assert.equal(release.tag_name, tag);

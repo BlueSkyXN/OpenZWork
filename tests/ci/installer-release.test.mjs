@@ -25,13 +25,20 @@ function script(name, sourceSteps = steps) {
   return match[1];
 }
 
-async function fixture(t) {
+async function fixture(t, version = "3.15.1") {
   const cwd = await mkdtemp(join(tmpdir(), "openzwork-release-"));
   t.after(() => rm(cwd, { recursive: true, force: true }));
   await mkdir(join(cwd, "packages/desktop/dist"), { recursive: true });
+  if (version.includes("+openzwork.")) {
+    // 此测试只执行 workflow 编排；真实包字段验证由独立校验器与三平台构建负责。
+    await mkdir(join(cwd, "scripts"));
+    await writeFile(join(cwd, "scripts/verify-desktop-release-version.mjs"),
+      'export async function verifyPackagedVersion({ version }) { return { version, fixture: true }; }\n');
+    await writeFile(join(cwd, "packages/desktop/dist/VERSION-VERIFICATION.json"), JSON.stringify({ version, fixture: true }));
+  }
   await writeFile(
     join(cwd, "package.json"),
-    JSON.stringify({ version: "3.15.1" }),
+    JSON.stringify({ version }),
   );
   // Desktop 包没有独立版本；正式打包从根 package.json 取应用版本。
   await writeFile(
@@ -51,9 +58,10 @@ async function fixture(t) {
   const sha = (await git("rev-parse", "HEAD")).stdout.trim();
   await git("tag", "v3.15.1-openzwork");
   await git("tag", "v3.16.1-openzwork");
+  if (version.includes("+openzwork.")) await git("tag", `v${version}`);
   const env = {
     ...process.env,
-    RELEASE_TAG: "v3.15.1-openzwork",
+    RELEASE_TAG: version.includes("+openzwork.") ? `v${version}` : "v3.15.1-openzwork",
     RELEASE_COMMIT: sha,
     RELEASE_OS: "win",
     RELEASE_ARCH: "x64",
@@ -86,6 +94,24 @@ test("release source validation accepts the exact tag and rejects incomplete or 
     { RELEASE_TAG: "v3.16.1-openzwork" },
     { RELEASE_TAG: "main" },
   ]) await assert.rejects(f.run(name, overrides));
+});
+
+test("修订版完整版本贯穿源码校验、安装文件名与来源清单", async (t) => {
+  const version = "3.16.2+openzwork.1";
+  const f = await fixture(t, version);
+  await f.run("Verify release source");
+  await f.run("Verify packaged release version");
+  await assert.rejects(f.run("Verify release source", { RELEASE_TAG: "v3.15.1-openzwork" }));
+  const name = `OpenZWork-${version}-win-x64.exe`;
+  await writeFile(join(f.cwd, "packages/desktop/dist", name), "installer fixture");
+  await f.run("Record release installer provenance");
+  const manifest = JSON.parse(await readFile(join(f.cwd, "packages/desktop/dist/RELEASE-MANIFEST.json"), "utf8"));
+  assert.equal(manifest.version, version);
+  assert.equal(manifest.sourceTag, `v${version}`);
+  assert.equal(manifest.upstreamVersion, "3.16.2");
+  assert.equal(manifest.releaseRevision, "1");
+  assert.equal(manifest.nativeBuildVersion, "3.16.2.1");
+  assert.equal(manifest.assets[0].name, name);
 });
 
 test("frozen-source validation records the checked commit and rejects a mismatched source", async (t) => {

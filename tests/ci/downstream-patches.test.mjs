@@ -5,6 +5,7 @@ import { posix } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 import { parseDocument } from "yaml";
+import { parseOpenZWorkVersion } from "../../scripts/openzwork-version.mjs";
 
 const root = new URL("../../", import.meta.url);
 const registryFile = "docs/upstream/downstream-patches.yaml";
@@ -232,7 +233,7 @@ test("downstream patch registry matches the current tree", async () => {
   }
   const { version } = JSON.parse(await readText("package.json"));
   const problems = registryProblems(registry, {
-    version,
+    version: parseOpenZWorkVersion(version).upstreamVersion,
     texts,
     covered: (file) => covered.has(file),
     markers: await trackedMarkers(),

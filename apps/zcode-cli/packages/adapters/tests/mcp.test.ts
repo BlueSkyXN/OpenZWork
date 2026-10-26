@@ -154,6 +154,13 @@ function stubInteractiveAuthorization(
   return { release, ready };
 }
 
+// Windows 凭据写入可能超过旧的 200ms 轮询；等待授权已发布或连接终止，避免断言早于事实。
+async function expectAuthorizationReady(ready: Promise<void>, connecting: Promise<unknown>) {
+  await expect(Promise.race([ready.then(() => "authorization-ready"), connecting])).resolves.toBe(
+    "authorization-ready",
+  );
+}
+
 async function observePromiseWithin<T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -1121,66 +1128,70 @@ describe("createMcpAdapter", () => {
     }
   });
 
-  it("reuses an unchanged configured connection while OAuth authorization is pending", async () => {
-    const { release: resolveConnect } = stubInteractiveAuthorization(
-      "https://auth.example.test/authorize?state=stable_state",
-    );
-    const adapter = createMcpAdapter();
-    const firstConnect = adapter.connectConfiguredServers({
-      notion: {
-        type: "http",
-        url: "https://mcp.example.test/mcp",
-        oauth: {
-          type: "authorization_code",
-          clientName: "ZCode",
+  it.each([0, 300])(
+    "reuses an unchanged configured connection while OAuth authorization is pending (delay=%i ms)",
+    async (delayMs) => {
+      const { release: resolveConnect, ready } = stubInteractiveAuthorization(
+        "https://auth.example.test/authorize?state=stable_state",
+        new Promise((resolve) => setTimeout(resolve, delayMs)),
+      );
+      const adapter = createMcpAdapter();
+      const firstConnect = adapter.connectConfiguredServers({
+        notion: {
+          type: "http",
+          url: "https://mcp.example.test/mcp",
+          oauth: {
+            type: "authorization_code",
+            clientName: "ZCode",
+          },
         },
-      },
-    });
+      });
 
-    let authorizationUrl: string | undefined;
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const status = await adapter.status();
-      authorizationUrl = status.notion?.authorization?.authorizationUrl;
-      if (authorizationUrl) break;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
+      const connects = [firstConnect];
+      try {
+        await expectAuthorizationReady(ready, firstConnect);
 
-    const secondConnect = adapter.connectConfiguredServers({
-      notion: {
-        type: "http",
-        url: "https://mcp.example.test/mcp",
-        oauth: {
-          type: "authorization_code",
-          clientName: "ZCode",
-        },
-      },
-    });
-    await Promise.resolve();
+        const secondConnect = adapter.connectConfiguredServers({
+          notion: {
+            type: "http",
+            url: "https://mcp.example.test/mcp",
+            oauth: {
+              type: "authorization_code",
+              clientName: "ZCode",
+            },
+          },
+        });
+        connects.push(secondConnect);
+        await Promise.resolve();
 
-    expect(authorizationUrl).toBe("https://auth.example.test/authorize?state=stable_state");
-    expect(clientConnectMock).toHaveBeenCalledTimes(1);
-    // Phase 1 的探测 transport 在进入 Phase 2 前一定会被关闭（negotiation 失败后不可复用），
-    // 所以这里断言的是「第二个 caller 没有另起一条连接」，而不是 transport 从未关闭。
-    expect(capturedHttpOptions).toHaveLength(1);
-    await expect(adapter.status()).resolves.toMatchObject({
-      notion: {
-        authorization: {
-          authorizationUrl: "https://auth.example.test/authorize?state=stable_state",
-        },
-        status: "connecting",
-      },
-    });
+        expect(clientConnectMock).toHaveBeenCalledTimes(1);
+        // Phase 1 的探测 transport 在进入 Phase 2 前一定会被关闭（negotiation 失败后不可复用），
+        // 所以这里断言的是「第二个 caller 没有另起一条连接」，而不是 transport 从未关闭。
+        expect(capturedHttpOptions).toHaveLength(1);
+        await expect(adapter.status()).resolves.toMatchObject({
+          notion: {
+            authorization: {
+              authorizationUrl: "https://auth.example.test/authorize?state=stable_state",
+            },
+            status: "connecting",
+          },
+        });
 
-    resolveConnect();
-    await expect(Promise.all([firstConnect, secondConnect])).resolves.toMatchObject([
-      { statuses: { notion: { status: "connected" } } },
-      { statuses: { notion: { status: "connected" } } },
-    ]);
-    await adapter.close();
-  });
+        resolveConnect();
+        await expect(Promise.all([firstConnect, secondConnect])).resolves.toMatchObject([
+          { statuses: { notion: { status: "connected" } } },
+          { statuses: { notion: { status: "connected" } } },
+        ]);
+      } finally {
+        resolveConnect();
+        await Promise.allSettled(connects);
+        await adapter.close();
+      }
+    },
+  );
 
   it("keeps a reused OAuth connection alive when a bounded caller times out", async () => {
-    const { release: resolveConnect } = stubInteractiveAuthorization(
+    const { release: resolveConnect, ready } = stubInteractiveAuthorization(
       "https://auth.example.test/authorize?state=shared_timeout_state",
     );
     const adapter = createMcpAdapter();
@@ -1196,36 +1207,37 @@ describe("createMcpAdapter", () => {
     };
     const settingsConnect = adapter.connectConfiguredServers(servers);
 
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const status = await adapter.status();
-      if (status.notion?.authorization?.authorizationUrl) break;
-      await new Promise((resolve) => setTimeout(resolve, 10));
+    try {
+      await expectAuthorizationReady(ready, settingsConnect);
+
+      const sessionConnect = await adapter.connectConfiguredServers(servers, {
+        oauthAuthorizationTimeoutMs: 20,
+      });
+
+      expect(sessionConnect.statuses.notion).toMatchObject({
+        authorization: {
+          authorizationUrl: "https://auth.example.test/authorize?state=shared_timeout_state",
+        },
+        status: "connecting",
+      });
+      expect(clientConnectMock).toHaveBeenCalledTimes(1);
+      // Phase 1 的探测 transport 在进入 Phase 2 前一定会被关闭（negotiation 失败后不可复用），
+      // 所以这里断言的是「第二个 caller 没有另起一条连接」，而不是 transport 从未关闭。
+      expect(capturedHttpOptions).toHaveLength(1);
+
+      resolveConnect();
+      await expect(settingsConnect).resolves.toMatchObject({
+        statuses: { notion: { status: "connected" } },
+      });
+    } finally {
+      resolveConnect();
+      await Promise.allSettled([settingsConnect]);
+      await adapter.close();
     }
-
-    const sessionConnect = await adapter.connectConfiguredServers(servers, {
-      oauthAuthorizationTimeoutMs: 20,
-    });
-
-    expect(sessionConnect.statuses.notion).toMatchObject({
-      authorization: {
-        authorizationUrl: "https://auth.example.test/authorize?state=shared_timeout_state",
-      },
-      status: "connecting",
-    });
-    expect(clientConnectMock).toHaveBeenCalledTimes(1);
-    // Phase 1 的探测 transport 在进入 Phase 2 前一定会被关闭（negotiation 失败后不可复用），
-    // 所以这里断言的是「第二个 caller 没有另起一条连接」，而不是 transport 从未关闭。
-    expect(capturedHttpOptions).toHaveLength(1);
-
-    resolveConnect();
-    await expect(settingsConnect).resolves.toMatchObject({
-      statuses: { notion: { status: "connected" } },
-    });
-    await adapter.close();
   });
 
   it("only cancels the caller waiter when a reused OAuth connection is aborted", async () => {
-    const { release: resolveConnect } = stubInteractiveAuthorization(
+    const { release: resolveConnect, ready } = stubInteractiveAuthorization(
       "https://auth.example.test/authorize?state=shared_abort_state",
     );
     const adapter = createMcpAdapter();
@@ -1241,38 +1253,39 @@ describe("createMcpAdapter", () => {
     };
     const settingsConnect = adapter.connectConfiguredServers(servers);
 
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const status = await adapter.status();
-      if (status.notion?.authorization?.authorizationUrl) break;
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    }
+    try {
+      await expectAuthorizationReady(ready, settingsConnect);
 
-    const abortController = new AbortController();
-    const sessionConnect = adapter.connectConfiguredServers(servers, {
-      signal: abortController.signal,
-    });
-    abortController.abort(new Error("session stopped"));
+      const abortController = new AbortController();
+      const sessionConnect = adapter.connectConfiguredServers(servers, {
+        signal: abortController.signal,
+      });
+      abortController.abort(new Error("session stopped"));
 
-    await expect(sessionConnect).resolves.toMatchObject({
-      statuses: {
-        notion: {
-          authorization: {
-            authorizationUrl: "https://auth.example.test/authorize?state=shared_abort_state",
+      await expect(sessionConnect).resolves.toMatchObject({
+        statuses: {
+          notion: {
+            authorization: {
+              authorizationUrl: "https://auth.example.test/authorize?state=shared_abort_state",
+            },
+            status: "connecting",
           },
-          status: "connecting",
         },
-      },
-    });
-    expect(clientConnectMock).toHaveBeenCalledTimes(1);
-    // Phase 1 的探测 transport 在进入 Phase 2 前一定会被关闭（negotiation 失败后不可复用），
-    // 所以这里断言的是「第二个 caller 没有另起一条连接」，而不是 transport 从未关闭。
-    expect(capturedHttpOptions).toHaveLength(1);
+      });
+      expect(clientConnectMock).toHaveBeenCalledTimes(1);
+      // Phase 1 的探测 transport 在进入 Phase 2 前一定会被关闭（negotiation 失败后不可复用），
+      // 所以这里断言的是「第二个 caller 没有另起一条连接」，而不是 transport 从未关闭。
+      expect(capturedHttpOptions).toHaveLength(1);
 
-    resolveConnect();
-    await expect(settingsConnect).resolves.toMatchObject({
-      statuses: { notion: { status: "connected" } },
-    });
-    await adapter.close();
+      resolveConnect();
+      await expect(settingsConnect).resolves.toMatchObject({
+        statuses: { notion: { status: "connected" } },
+      });
+    } finally {
+      resolveConnect();
+      await Promise.allSettled([settingsConnect]);
+      await adapter.close();
+    }
   });
 
   it("treats per-connect OAuth authorization timeout as a caller budget, not a transaction kill", async () => {
@@ -1649,7 +1662,7 @@ describe("createMcpAdapter", () => {
 
   it("only opens OAuth authorization URL when an opener is injected", async () => {
     const openAuthorizationUrl = vi.fn(async () => {});
-    const { release: resolveConnect } = stubInteractiveAuthorization(
+    const { release: resolveConnect, ready } = stubInteractiveAuthorization(
       "https://auth.example.test/authorize?state=state_test",
     );
     const adapter = createMcpAdapter({
@@ -1667,24 +1680,25 @@ describe("createMcpAdapter", () => {
       },
     });
 
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      const status = await adapter.status();
-      if (status.notion?.authorization?.authorizationUrl) break;
-      await new Promise((resolve) => setTimeout(resolve, 10));
+    try {
+      await expectAuthorizationReady(ready, connect);
+
+      expect(openAuthorizationUrl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authorizationUrl: "https://auth.example.test/authorize?state=state_test",
+          serverName: "notion",
+        }),
+      );
+
+      resolveConnect();
+      await expect(connect).resolves.toMatchObject({
+        status: "connected",
+        toolCount: 0,
+      });
+    } finally {
+      resolveConnect();
+      await Promise.allSettled([connect]);
+      await adapter.close();
     }
-
-    expect(openAuthorizationUrl).toHaveBeenCalledWith(
-      expect.objectContaining({
-        authorizationUrl: "https://auth.example.test/authorize?state=state_test",
-        serverName: "notion",
-      }),
-    );
-
-    resolveConnect();
-    await expect(connect).resolves.toMatchObject({
-      status: "connected",
-      toolCount: 0,
-    });
-    await adapter.close();
   });
 });

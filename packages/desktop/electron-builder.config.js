@@ -8,6 +8,7 @@ import { runCommand, runCommandAndReadStdout } from "../../scripts/spawn-command
 import { loadBuiltinProviderConfig } from "../../scripts/builtin-provider-config.mjs";
 import { noticesFileName, stageElectronNotices } from "../../scripts/third-party-notices.mjs";
 import { resolveNativeSearchReleasePlan } from "../../scripts/native-search-tools-config.mjs";
+import { getDesktopVersion } from "../../scripts/openzwork-version.mjs";
 import { getBuildMetadata } from "./scripts/build-metadata.mjs";
 import { collectRuntimeModuleClosureEntries } from "./scripts/runtime-dependency-closure.mjs";
 import {
@@ -69,6 +70,7 @@ import {
 } from "./scripts/patch-nsis-install-section.mjs";
 
 const buildMetadata = getBuildMetadata();
+const desktopVersion = getDesktopVersion(buildMetadata.appVersion);
 const targetPlatform = getTargetPlatform();
 const builtinProviderConfig = await loadBuiltinProviderConfig();
 const desktopProductIdentity = resolveDesktopProductIdentity({
@@ -445,6 +447,9 @@ function assertPackagedNodePtyPrebuild(context) {
 /** @type {import("electron-builder").Configuration} */
 export default {
   appId: desktopProductIdentity.appId,
+  // 修订号必须来自发行号，避免 CI 的 BUILD_NUMBER 改写同一 tag 的安装包身份。
+  buildNumber: desktopVersion.releaseRevision,
+  buildVersion: desktopVersion.nativeBuildVersion,
   // Linux deb 打包（fpm）会校验 package metadata 中的 homepage、author.email、maintainer。
   // CI 环境下若这些字段缺失会在产物阶段直接失败。这里统一在构建配置补齐，避免依赖外部注入。
   extraMetadata: {
@@ -654,6 +659,8 @@ export default {
     },
   ],
   mac: {
+    bundleShortVersion: desktopVersion.upstreamVersion,
+    bundleVersion: desktopVersion.nativeBuildVersion,
     target: ["dmg", "zip"],
     category: "public.app-category.developer-tools",
     artifactName: buildDesktopArtifactName("mac"),

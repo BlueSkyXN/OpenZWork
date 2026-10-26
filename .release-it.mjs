@@ -7,7 +7,7 @@ import {
 export default {
   git: {
     commitMessage: "chore: release v${version}",
-    tagName: "v${version}-openzwork",
+    tagName: "v${version}${version.includes('+openzwork.') ? '' : '-openzwork'}",
     tagAnnotation: "Release v${version}",
     push: true,
   },

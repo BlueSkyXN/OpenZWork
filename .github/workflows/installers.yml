@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: Existing v<version>-openzwork tag for a production installer
+        description: Existing formal OpenZWork tag for a production installer
         type: string
         default: ""
       release_commit:
@@ -31,7 +31,7 @@ on:
         default: ""
   push:
     branches: [main, "wp**"]
-    tags: ["v*-openzwork"]
+    tags: ["v*-openzwork", "v*openzwork.*"]
 
 permissions:
   contents: read
@@ -102,7 +102,7 @@ jobs:
           const tag = process.env.RELEASE_TAG || '';
           const expected = process.env.RELEASE_COMMIT || '';
           if (!tag && !expected) process.exit(0);
-          if (!/^v\d+\.\d+\.\d+-openzwork$/.test(tag) || !/^[0-9a-f]{40}$/.test(expected)) {
+          if (!/^[0-9a-f]{40}$/.test(expected)) {
             throw new Error('Production installers require a release tag and its full commit SHA');
           }
           const git = async (...args) => (await exec('git', args)).stdout.trim();
@@ -110,7 +110,10 @@ jobs:
           const tagged = await git('rev-parse', `refs/tags/${tag}^{commit}`);
           // electron-builder 的 build-metadata 从根 package.json 取得应用版本。
           const { version } = JSON.parse(await readFile('package.json', 'utf8'));
-          if (head !== expected || tagged !== expected || tag !== `v${version}-openzwork`) {
+          // 手动复验旧 tag 时源码不含新 helper；此处保留可在历史源码上执行的格式校验。
+          const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+openzwork\.([1-9]\d*))?$/.exec(version);
+          const expectedTag = `v${version}${match?.[4] ? '' : '-openzwork'}`;
+          if (!match || match[0] !== version || head !== expected || tagged !== expected || tag !== expectedTag) {
             throw new Error('Release tag, expected commit, checkout and package version must match');
           }
           console.log(JSON.stringify({ tag, sourceCommit: head, version }));
@@ -153,6 +156,20 @@ jobs:
         env:
           ZCODE_SKIP_REMOTE_ASSETS: "1"
 
+      - name: Verify packaged release version
+        shell: bash
+        env:
+          RELEASE_PLATFORM: ${{ matrix.platform }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+          if (version.includes('+openzwork.')) {
+            const { verifyPackagedVersion } = await import('./scripts/verify-desktop-release-version.mjs');
+            console.log(JSON.stringify(await verifyPackagedVersion({ platform: process.env.RELEASE_PLATFORM, version }), null, 2));
+          }
+          NODE
+
       - name: Record release installer provenance
         if: env.RELEASE_TAG != ''
         shell: bash
@@ -174,6 +191,12 @@ jobs:
             throw new Error('Release manifest requires production identity');
           }
           const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+          const [upstreamVersion, revision] = version.split('+openzwork.');
+          const releaseRevision = revision ?? '0';
+          let versionVerification;
+          if (revision) {
+            versionVerification = JSON.parse(await readFile('packages/desktop/dist/VERSION-VERIFICATION.json', 'utf8'));
+          }
           const extensions = { mac: ['dmg', 'zip'], win: ['exe'], linux: ['AppImage', 'deb', 'rpm', 'pkg.tar.zst'] }[process.env.RELEASE_OS];
           if (!extensions) throw new Error('Unsupported release platform');
           const root = 'packages/desktop/dist';
@@ -199,7 +222,10 @@ jobs:
             sourceTree: await git('rev-parse', 'HEAD^{tree}'),
             workflowCommit: process.env.GITHUB_WORKFLOW_SHA,
             runUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
-            version, platform: process.env.RELEASE_PLATFORM,
+            version, upstreamVersion, releaseRevision,
+            nativeBuildVersion: `${upstreamVersion}.${releaseRevision}`,
+            ...(versionVerification ? { versionVerification } : {}),
+            platform: process.env.RELEASE_PLATFORM,
             productName: 'OpenZWork', environment: 'production', codeSigning: 'unsigned',
             assets,
           };
@@ -229,6 +255,7 @@ jobs:
             packages/desktop/dist/**/*.rpm
             packages/desktop/dist/**/*.pkg.tar.zst
             packages/desktop/dist/RELEASE-MANIFEST.json
+            packages/desktop/dist/VERSION-VERIFICATION.json
           if-no-files-found: error
 
   publish:
