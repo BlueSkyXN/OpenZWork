@@ -36,6 +36,7 @@ test("core discovery keeps every declared regression and preserves process isola
     assert.deepEqual(actual.toSorted(), declared.toSorted());
     for (const file of [
       "packages/desktop/test/desktopRuntimeEnv.test.ts",
+      "packages/desktop/test/e2eElectronWindowRecorder.test.ts",
       "packages/services/test/zcodeAgentProcessManager.test.ts",
       "packages/services/test/mcpSyncService.test.ts",
       "packages/services/test/subagentRuntimeConfigWatcher.test.ts",
@@ -140,6 +141,33 @@ test("system prompt regressions run in core and independent CLI gates", async ()
   assert.match(protocol.run, /@zcode\/bootstrap.*tests\/zcode-protocol\.test\.ts --bail=1$/);
   assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
 });
+
+for (const [name, stepName, files] of [
+  ["SQLite cold resume", "Workflow scheduling and auxiliary session regression", [
+    "tests/provider-registry-app-runtime.test.ts",
+    "tests/v4-cold-resume.test.ts",
+    "tests/workflow-concurrency-governor.test.ts",
+    "tests/workflow-effective-selection.test.ts",
+    "tests/workflow-fault-matrix.stop.test.ts",
+    "tests/zcode-protocol-transport.test.ts",
+  ]],
+  ["bundled plugin", "Local bundled plugins and metadata regression", [
+    "tests/plugins.test.ts", "tests/plugins-protocol.test.ts",
+  ]],
+]) {
+  test(`${name} regressions retain every file with one worker and original deadlines`, async () => {
+    const steps = (await workflow("ci.yml")).jobs.checks.steps;
+    const step = steps.find((entry) => entry.name === stepName);
+    assert.ok(step);
+    assert.equal(step.if, undefined);
+    assert.equal(step["continue-on-error"], undefined);
+    assert.deepEqual(step.run.match(/tests\/[^ ]+\.test\.ts/g), files);
+    assert.match(step.run, /--no-file-parallelism(?: |$)/);
+    assert.match(step.run, /--maxWorkers=1(?: |$)/);
+    assert.match(step.run, /--bail=1$/);
+    assert.doesNotMatch(step.run, /--(?:testTimeout|test-timeout|retry|testNamePattern)| -t /);
+  });
+}
 
 test("extended checks keep real failures and run independently with Electron prepared", async () => {
   const extended = await workflow("extended-checks.yml");
