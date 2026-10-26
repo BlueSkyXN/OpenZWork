@@ -22,6 +22,8 @@ const forkIsolatedTests = [
   "packages/desktop/test/desktopRuntimeEnv.test.ts",
   "packages/desktop/test/e2eDesktopBuildCache.test.ts",
   "packages/desktop/test/e2eSummarySpecCoverage.test.ts",
+  // 录屏回归包含真实 Node 子进程终止，沿用进程集成测试的串行隔离。
+  "packages/desktop/test/e2eElectronWindowRecorder.test.ts",
   "packages/desktop/test/migrateStableFeedScript.test.ts",
   "packages/desktop/test/pluginE2EAdmissionScripts.test.ts",
   "packages/desktop/test/uploadOssScript.test.ts",

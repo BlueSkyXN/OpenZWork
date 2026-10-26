@@ -219,3 +219,24 @@ patches:
     refs:
       - docs/testing/pre-push-hook.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40314941762/job/121545062554
+
+  - id: OW-P011
+    title: 录屏编码超时单测将真实帧准备时间计入竞争期限
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.15.1
+      checked: 3.16.2
+    trigger: 自定义编码器永不结束的单测中，抓帧、写文件和整理帧序列消耗 stop 总预算，编码器的 30ms 期限尚未先到。
+    impact: Windows Extended 期望编码超时，却收到 stop 在 100ms 到期的错误；正常的总预算保护被误报为编码器测试失败。
+    cause: 上游夹具同时使用真实文件 IO、30ms 编码期限与 100ms stop 总期限，未在编码器实际进入后控制时钟。
+    fix: 使用受控时钟并等待编码器进入信号，断言 29ms 尚未结束、30ms 报编码超时且取消信号；保留原期限及独立的 stop 总预算和真实子进程回归，加入核心套件。
+    evidence: 3.15.1 和 3.16.2 源码均保留竞争期限。Windows 日志报告 stop100ms 先于 encode30ms；阻塞第二帧捕获的控制实验在编码器尚未调用时稳定复现 stop100ms，修复后的编码边界回归以受控时钟执行。
+    files:
+      - packages/desktop/test/e2eElectronWindowRecorder.test.ts
+    regression:
+      - packages/desktop/test/e2eElectronWindowRecorder.test.ts
+    retire: 上游编码超时夹具等待真实编码阶段并独立控制时钟，编码、stop 与真实命令终止回归均保留。
+    refs:
+      - docs/testing/pre-push-hook.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40363690020/job/121715543138

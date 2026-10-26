@@ -125,16 +125,44 @@ describe("Electron window recorder", () => {
   it("bounds a custom encoder that never settles", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "zcode-electron-recorder-"));
     tempDirs.push(tempDir);
-    const session = await startElectronWindowRecording({
-      captureFrame: async () => Buffer.from("fake-png-frame"),
-      encodeTimeoutMs: 30,
-      encodeVideo: () => new Promise<void>(() => undefined),
-      frameIntervalMs: 60_000,
-      outputPath: join(tempDir, "electron-repro.webm"),
-      stopTimeoutMs: 100,
-    });
-
-    await expect(session.stop()).rejects.toThrow("video encoding timed out after 30ms");
+    // OW-P011：stop 总预算还包含抓帧与文件准备；真实 IO 变慢时可能先于编码期限到期。
+    // 等编码器确实进入后再推进时钟，单独验证编码边界，不把主机 IO 延迟当作算法失败。
+    vi.useFakeTimers();
+    try {
+      let notifyEncoding!: () => void;
+      const encodingStarted = new Promise<void>((resolve) => {
+        notifyEncoding = resolve;
+      });
+      let encodeSignal: AbortSignal | undefined;
+      const encodeVideo = vi.fn(({ signal }: { signal?: AbortSignal }) => {
+        encodeSignal = signal;
+        notifyEncoding();
+        return new Promise<void>(() => undefined);
+      });
+      const session = await startElectronWindowRecording({
+        captureFrame: async () => Buffer.from("fake-png-frame"),
+        encodeTimeoutMs: 30,
+        encodeVideo,
+        frameDir: join(tempDir, "frames"),
+        frameIntervalMs: 60_000,
+        outputPath: join(tempDir, "electron-repro.webm"),
+        stopTimeoutMs: 100,
+      });
+      const stopped = session.stop();
+      const settled = vi.fn();
+      void stopped.then(settled, settled);
+      const rejection = expect(stopped).rejects.toThrow("video encoding timed out after 30ms");
+      await encodingStarted;
+      await vi.advanceTimersByTimeAsync(29);
+      expect(settled).not.toHaveBeenCalled();
+      expect(encodeSignal?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      await rejection;
+      expect(encodeVideo).toHaveBeenCalledOnce();
+      expect(encodeSignal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("bounds the complete stop path even while tail recording", async () => {

@@ -2,6 +2,10 @@
   "version": 1,
   "suites": [
     {
+      "capability": "desktop-recording-timeouts",
+      "files": ["packages/desktop/test/e2eElectronWindowRecorder.test.ts"]
+    },
+    {
       "capability": "desktop-product-name",
       "files": [
         "packages/desktop/test/desktopTray.test.ts",
