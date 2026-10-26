@@ -36,17 +36,36 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-arm64, windows-amd64, linux-amd64]
-        shard: [services, ui-and-web, supporting]
         include:
           - os: macos-14
             platform: macos-arm64
+            shard: ui-and-web
+          - os: macos-14
+            platform: macos-arm64
+            shard: services-and-supporting
           - os: windows-latest
             platform: windows-amd64
+            shard: services
+          - os: windows-latest
+            platform: windows-amd64
+            shard: supporting
+          - os: windows-latest
+            platform: windows-amd64
+            shard: ui-and-web-1
+          - os: windows-latest
+            platform: windows-amd64
+            shard: ui-and-web-2
           - os: ubuntu-latest
             platform: linux-amd64
+            shard: services
+          - os: ubuntu-latest
+            platform: linux-amd64
+            shard: ui-and-web
+          - os: ubuntu-latest
+            platform: linux-amd64
+            shard: supporting
     runs-on: ${{ matrix.os }}
-    # supporting 的组级预算合计 76 分钟；为准备和诊断上传留余量。
+    # 最长的 macOS 六组合并保持各组原期限；正常耗时与上限均由实跑监控。
     timeout-minutes: 100
     steps:
       - uses: actions/checkout@v7.0.1

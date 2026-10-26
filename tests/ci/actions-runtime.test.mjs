@@ -170,7 +170,7 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
 test("CI runs the offline workflow regression tests without suppressing failures", () => {
   const matches = ciSteps.filter((step) => step.run === "node --test tests/ci/*.test.mjs");
   assert.equal(matches.length, 1);
-  assert.equal(matches[0].if, undefined);
+  assert.equal(matches[0].if, "matrix.lane == 'regressions'");
   assert.notEqual(matches[0]["continue-on-error"], true);
 });
 
