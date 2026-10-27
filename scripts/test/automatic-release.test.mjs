@@ -21,6 +21,7 @@ const runs = () =>
     name,
     path: `.github/workflows/${file}`,
     event: "push",
+    head_branch: tag,
     display_title: `Release ${tag} / ${name}`,
     head_sha: commit,
     head_repository: { full_name: repo },
@@ -70,6 +71,25 @@ test("branch Preview, PR, foreign repository, wrong source and wrong workflow ca
   }
 });
 
+test("release-like titles and matching source cannot substitute a different or missing tag ref", () => {
+  for (const head_branch of ["main", "v9.0.0-openzwork", undefined]) {
+    const source = runs();
+    source[2].head_branch = head_branch;
+    // 标题和 SHA 相同仍不能把分支构建或缺少 ref 的记录当作正式 tag 门禁。
+    assert.equal(selectReleaseRuns(source, { repo, tag, commit }).status, "waiting");
+  }
+});
+
+test("a newer unrelated branch run does not supersede the real tag gate", () => {
+  const source = [...runs(), { ...runs()[0], id: 200, head_branch: "main", conclusion: "failure" }];
+  assert.deepEqual(selectReleaseRuns(source, { repo, tag, commit }), {
+    status: "ready",
+    core: "100",
+    extended: "101",
+    installers: "102",
+  });
+});
+
 test("new failed, cancelled or unfinished runs supersede older success; rerunning the same run can unblock", () => {
   for (const conclusion of ["failure", "cancelled", "timed_out", "skipped"]) {
     const source = [...runs(), { ...runs()[0], id: 200, conclusion }];
@@ -107,6 +127,9 @@ test("automatic coordinator ignores ordinary events before reading release state
     { workflow_run: { ...runs()[2], event: "pull_request" } },
     { workflow_run: { ...runs()[2], display_title: "main" } },
     { workflow_run: { ...runs()[2], head_repository: { full_name: "external/fork" } } },
+    ...["main", "v9.0.0-openzwork", undefined].map((head_branch) => ({
+      workflow_run: { ...runs()[2], head_branch },
+    })),
   ]) {
     const { calls, input } = planner({ event });
     assert.equal((await planAutomaticRelease(input)).status, "ignored");
@@ -188,7 +211,11 @@ test("Latest 在官方基准与 OpenZWork 修订号之间正确前进且拒绝�
 
 test("修订版协调器接受同源正式事件，版本后缀不一致时拒绝发布", async () => {
   const revisionTag = "v3.16.2+openzwork.1";
-  const revisionRuns = runs().map((run) => ({ ...run, display_title: `Release ${revisionTag} / ${run.name}` }));
+  const revisionRuns = runs().map((run) => ({
+    ...run,
+    head_branch: revisionTag,
+    display_title: `Release ${revisionTag} / ${run.name}`,
+  }));
   for (const sourceVersion of ["3.16.2+openzwork.1", "3.16.2", "3.16.2+openzwork.2"]) {
     const { input } = planner({
       event: { workflow_run: revisionRuns[2] },

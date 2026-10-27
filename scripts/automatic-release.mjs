@@ -12,12 +12,13 @@ export function selectReleaseRuns(runs, { repo, tag, commit }) {
   const selected = {};
   let waiting = false;
   for (const [key, name] of definitions) {
-    // 同一提交的 main 构建仍是 Preview；只接受由正式 tag 生成的明确运行标题。
+    // 分支提交标题可能与发行标题重合；同时核对实际 tag ref，缺失时不作为发行门禁。
     const [run] = runs
       .filter(
         (entry) =>
           matchesReleaseWorkflow(entry, name, tag) &&
           entry.event === "push" &&
+          entry.head_branch === tag &&
           entry.head_sha === commit &&
           entry.head_repository?.full_name === repo &&
           entry.display_title === `Release ${tag} / ${name}`,
@@ -47,6 +48,7 @@ export async function planAutomaticRelease({ repo, eventName, event, tag, api, l
     const match = /^Release (\S+) \/ (.+)$/.exec(run.display_title);
     if (
       !match ||
+      run.head_branch !== match[1] ||
       !OPENZWORK_TAG_PATTERN.test(match[1]) ||
       !definitions.some(
         ([, name]) => name === match[2] && matchesReleaseWorkflow(run, name, match[1]),
