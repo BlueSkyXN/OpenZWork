@@ -43,6 +43,8 @@ function DropdownMenuContent({
           // （Radix popper 外层是 min-width:max-content），只保留 min-w-32 下限，并用可用宽度
           // 变量做上限，窄屏 Web 端长文案才回退折行而不是撑出视口。
           "z-[60] flex flex-col gap-0.5 max-h-(--radix-dropdown-menu-content-available-height) max-w-(--radix-dropdown-menu-content-available-width) min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-lg border border-popover-border bg-menu p-1 text-foreground !shadow-md focus:!shadow-md focus-visible:!shadow-md duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:overflow-hidden data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          // OW-P015：Portal 覆盖标题栏时仍会命中原生拖拽区，内容根须显式排除。
+          "[app-region:no-drag]",
           className,
         )}
         {...props}
@@ -251,6 +253,8 @@ function DropdownMenuSubContent({
       data-slot="dropdown-menu-sub-content"
       className={cn(
         "z-[60] flex flex-col gap-0.5 min-w-32 origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-lg border border-popover-border bg-menu p-1 text-foreground !shadow-md focus:!shadow-md focus-visible:!shadow-md duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+        // OW-P015：子菜单有独立浮层位置，也需排除原生窗口拖拽。
+        "[app-region:no-drag]",
         className,
       )}
       {...props}

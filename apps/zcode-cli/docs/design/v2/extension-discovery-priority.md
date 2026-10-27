@@ -32,7 +32,7 @@ Same-name skills from different paths remain discoverable because path is the in
 Default custom command roots use the same source order as skills:
 
 1. configured roots
-2. user `.zcode/commands`
+2. user `.openzwork/commands`
 3. user `.agents/commands`
 4. project `.zcode/commands`
 5. project `.agents/commands`
@@ -50,6 +50,10 @@ MCP server maps are merged by server name with extension-specific precedence:
 4. runtime/CLI MCP overrides
 
 User MCP servers therefore override project MCP servers with the same name. This is implemented only for `mcp.servers`; it does not change global config precedence for unrelated sections.
+
+Within one project directory, native config files are read in order: `zcode.json`, `.zcode/config.json`, then legacy OpenZWork `.openzwork/config.json`. A later same-name MCP server replaces the complete definition; connection parameters from different sources are not mixed. The existing ancestor-to-nearest directory ordering and explicit configuration override remain unchanged. Both native config directories resolve relative MCP cwd against their project directory.
+
+The user's HOME, including a symlink to it, is excluded from implicit project discovery. User resources continue to use OpenZWork's user directory and the supported `.agents` conventions; an explicit file path retains its existing semantics. Desktop and Host share the MCP directory service, preserving each entry's source location for editing, disabling and deleting.
 
 Project-origin MCP servers remain untrusted by default and are visible in `/mcp list` without startup auto-connect. If a project server is shadowed by a user server with the same name, the effective server is treated as user-origin and may auto-connect like any other user-configured MCP server.
 

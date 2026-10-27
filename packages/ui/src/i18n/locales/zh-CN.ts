@@ -487,18 +487,18 @@ const zhCN: Record<string, string> = {
   "occupationOnboarding.suggestions": "开启主动任务推荐",
   "occupationOnboarding.suggestionsDescription": "在新对话中显示任务建议，点击后填入输入框。",
   "occupationOnboarding.close": "退出引导",
-  "startup.global.silent": "正在启动 ZCode",
+  "startup.global.silent": "正在启动 OpenZWork",
   "startup.global.upgrading": "正在升级本地数据",
   "startup.global.initializing": "正在初始化本地数据",
   "startup.global.waiting": "正在等待数据库准备",
   "startup.global.saving": "正在保存更新",
   "startup.global.finishing": "正在完成启动",
   "startup.global.servicesFailed":
-    "本地数据准备已完成，但应用服务启动失败。请复制诊断信息，退出并重新打开 ZCode。",
+    "本地数据准备已完成，但应用服务启动失败。请复制诊断信息，退出并重新打开 OpenZWork。",
   "startup.global.starting": "正在准备本地数据",
   "startup.global.preparing_host_storage": "正在更新任务索引",
   "startup.global.preparing_session_storage": "正在更新聊天记录",
-  "startup.global.starting_services": "正在启动 ZCode",
+  "startup.global.starting_services": "正在启动 OpenZWork",
   "startup.global.ready": "本地数据已就绪",
   "startup.global.failed": "无法完成启动准备",
   "startup.global.help":
@@ -525,11 +525,11 @@ const zhCN: Record<string, string> = {
   "startup.global.error.sql_failed":
     "准备过程未完成。请复制诊断信息查看日志，排除问题后手动重试。应用不会自动重试。",
   "startup.global.error.startup_status_timeout":
-    "未能收到启动状态。请退出并重新打开 ZCode；如果仍失败，请提供诊断信息。",
+    "未能收到启动状态。请退出并重新打开 OpenZWork；如果仍失败，请提供诊断信息。",
   "startup.global.error.transport_closed":
-    "数据准备进程意外退出或连接中断。请退出并重新打开 ZCode，应用会重新检查迁移记录。",
+    "数据准备进程意外退出或连接中断。请退出并重新打开 OpenZWork，应用会重新检查迁移记录。",
   "startup.global.error.unsupported_runtime":
-    "当前配置的 Agent 不支持独立存储准备。请恢复配套的 Agent 后重新打开 ZCode。",
+    "当前配置的 Agent 不支持独立存储准备。请恢复配套的 Agent 后重新打开 OpenZWork。",
 
   "startup.database.checking": "正在检查历史数据",
   "startup.database.waiting_for_lock": "数据库正被其他进程使用，正在等待",
@@ -1008,7 +1008,7 @@ const zhCN: Record<string, string> = {
   "bots.deleteFailed": "删除机器人失败：{error}",
 
   // 登录
-  "welcome.title": "Welcome to ZCode",
+  "welcome.title": "Welcome to OpenZWork",
   "welcome.username": "用户名",
   "welcome.password": "密码",
   "welcome.loggingIn": "登录中...",
@@ -1020,7 +1020,7 @@ const zhCN: Record<string, string> = {
   // 应用头部
   "app.currentTheme": "当前: {theme}",
   "app.logout": "断开连接",
-  "logout.confirm.title": "断开连接并重启 ZCode？",
+  "logout.confirm.title": "断开连接并重启 OpenZWork？",
   "logout.confirm.descriptionWithRunningSessions":
     "检测到 {count} 个会话正在运行。断开连接会中断这些会话并重启 App。",
   "logout.confirm.descriptionDefault": "断开连接后会重启 App，之后需要重新连接账号。",
@@ -1851,7 +1851,7 @@ const zhCN: Record<string, string> = {
   "remote.error.retryableHint": "你可以稍后重试。",
   "remote.error.connectionClosed": "远程连接已断开",
   "workspaceSidebar.unavailableLocalDirectory":
-    "工作区目录不存在或无法访问，当前仅可查看历史记录。恢复该目录后重启 ZCode 即可继续使用。",
+    "工作区目录不存在或无法访问，当前仅可查看历史记录。恢复该目录后重启 OpenZWork 即可继续使用。",
   "workspaceSidebar.toggleSidebar": "切换侧边栏",
   "workspaceSidebar.resizeSidebar": "调整侧边栏宽度",
   "workspaceSidebar.showFileTree": "查看文件",
@@ -2160,7 +2160,7 @@ const zhCN: Record<string, string> = {
   "remote.connectingConfirmTitle": "要中止当前连接吗？",
   "remote.sourceServerInstallTitle": "需要安装 ZCode Server",
   "remote.sourceServerInstallDescription":
-    "ZCode 将上传匹配的发行包，安装到 ~/.zcode/server 并启动后台 daemon；现有旧远程文件会保留。",
+    "ZCode 将上传匹配的发行包，安装到 ~/.openzwork/server 并启动后台 daemon；现有旧远程文件会保留。",
   "remote.sourceServerInstallConfirm": "安装并继续",
   "remote.installTarget": "目标账号",
   "remote.installVersion": "安装版本",
@@ -2238,8 +2238,8 @@ const zhCN: Record<string, string> = {
   "settings.source.online": "已连接",
   "settings.source.unknownDevice": "远程设备",
   "settings.source.updateAvailable": "ZCode Server 有可用更新。",
-  "settings.source.updateRequired": "连接前需要更新 ZCode Server。",
-  "settings.source.updateInProgress": "正在更新 ZCode Server…",
+  "settings.source.updateRequired": "连接前需要更新 OpenZWork Server。",
+  "settings.source.updateInProgress": "正在更新 OpenZWork Server…",
   "settings.source.updateProgress": "ZCode Server 更新进度",
   "settings.source.updatePhase.preparing": "正在准备更新",
   "settings.source.updatePhase.checking": "正在检查设备和更新资源",
@@ -2298,7 +2298,7 @@ const zhCN: Record<string, string> = {
   "sourceServer.updateCompletedToast": "{source} 已更新并重新连接。",
   "sourceServer.updateFailedToast": "{source} 更新失败，请在远程设备中查看日志并重试。",
   "sourceServer.controllerUpdateAvailableToast":
-    "{source} 需要更新 ZCode\nDesktop {current} → {available}，请更新 ZCode 后重新连接。",
+    "{source} 需要更新 OpenZWork\nDesktop {current} → {available}，请更新 OpenZWork 后重新连接。",
   "settings.source.forceUpdate": "强制更新",
   "settings.source.forceUpdateTitle": "强制更新此设备？",
   "settings.source.forceUpdateDescription":
@@ -2823,15 +2823,16 @@ const zhCN: Record<string, string> = {
   "settings.taskAutoArchiveDays.option.30": "30 天后归档",
   "settings.dataBaseDir": "数据存储路径",
   "settings.dataBaseDirDescription":
-    "应用数据的根目录（默认为用户主目录），修改后会将现有数据复制到新位置。路径后缀 .openzwork/v2 不可更改。",
+    "选择数据存储的基础目录。重启后会将数据复制到该目录下的 .openzwork，原数据保留。",
   "settings.dataBaseDirPlaceholder": "默认：用户主目录",
   "settings.dataBaseDirBrowse": "选择文件夹",
   "settings.dataBaseDirSave": "保存",
-  "settings.dataBaseDirCopying": "正在复制数据，请勿关闭应用…",
-  "settings.dataBaseDirCopyFailed": "数据复制失败，路径未更改。",
+  "settings.dataBaseDirCopying": "正在保存迁移计划…",
+  "settings.dataBaseDirCopyFailed":
+    "无法保存迁移计划，请选择不含 OpenZWork 数据的文件夹，并检查访问权限。",
   "settings.dataBaseDirForbiddenInstallDir":
-    "不能选择 ZCode 安装目录作为数据存储路径。请选择安装目录之外的文件夹。",
-  "settings.dataBaseDirRestartRequired": "数据已保存，重启应用后生效。",
+    "不能选择 OpenZWork 安装目录作为数据存储路径。请选择安装目录之外的文件夹。",
+  "settings.dataBaseDirRestartRequired": "迁移计划已保存，重启 OpenZWork 后复制数据。",
   "settings.locale.system": "系统默认",
   "settings.locale.zh-CN": "中文简体",
   "settings.locale.en-US": "English",
@@ -2898,14 +2899,14 @@ const zhCN: Record<string, string> = {
     "源会话不存在，或已经不匹配当前 workspace 筛选。",
   "settings.usageTitle": "使用统计",
   "settings.usageDescription": "查看会话活跃度与模型用量的粗略统计。",
-  "resourceManager.storage.summaryTotal": "ZCode 总占用",
+  "resourceManager.storage.summaryTotal": "OpenZWork 总占用",
   "resourceManager.storage.scanning": "正在计算…",
   "resourceManager.storage.lastScanned": "上次计算 {time}",
   "resourceManager.storage.idle": "尚未计算",
   "resourceManager.storage.failed": "计算失败",
   "resourceManager.storage.rescan": "重新计算",
   "resourceManager.storage.disk": "磁盘",
-  "resourceManager.storage.diskUsage": "ZCode 占用 {used}",
+  "resourceManager.storage.diskUsage": "OpenZWork 占用 {used}",
   "resourceManager.storage.diskFree": "剩余 {free} / 共 {total}",
   "resourceManager.storage.diskUnknown": "无法读取磁盘容量",
   "resourceManager.storage.roots": "数据目录",
@@ -2968,7 +2969,7 @@ const zhCN: Record<string, string> = {
   "settings.embeddedBrowserAllowInsecureCertificatesSavedHint":
     "证书校验设置已保存，重启应用后生效",
   "settings.browser.data.section": "浏览器数据",
-  "settings.browser.desktopOnly": "浏览器数据只能在 ZCode 桌面端管理。",
+  "settings.browser.desktopOnly": "浏览器数据只能在 OpenZWork 桌面端管理。",
   "settings.browser.import.title": "导入 Chrome 登录状态",
   "settings.browser.import.description":
     "一次性把 Chrome 登录状态带到内置浏览器，AI 就能直接打开你已经登录的网站，操作更流畅。",
@@ -2984,7 +2985,7 @@ const zhCN: Record<string, string> = {
     "需要确认管理员授权后才能导入受 App-Bound 保护的 Chrome Cookie。",
   "settings.browser.import.elevationCancelled": "已取消 Windows 管理员授权，Cookie 未导入。",
   "settings.browser.import.helperVerificationFailed":
-    "ZCode 的 Windows 安全导入组件校验失败，Cookie 未导入。请重新安装或更新 ZCode。",
+    "ZCode 的 Windows 安全导入组件校验失败，Cookie 未导入。请重新安装或更新 OpenZWork。",
   "settings.browser.import.appBoundFailed":
     "Windows 未能解开 Chrome 的 App-Bound Cookie，Cookie 未导入。",
   "settings.browser.import.adminConfirmTitle": "允许管理员权限导入 Chrome Cookie？",
@@ -3128,7 +3129,7 @@ const zhCN: Record<string, string> = {
     "打开授权后即可完成该插件 MCP 服务器连接。",
   "settings.mcp.oauth.openAuthorization": "打开授权",
   "settings.mcp.statusOnlyUnsupported":
-    "当前 ZCode Agent 不支持 OAuth 状态刷新。请升级或重启 ZCode，然后重新打开 MCP 设置进行完整刷新。",
+    "当前 ZCode Agent 不支持 OAuth 状态刷新。请升级或重启 OpenZWork，然后重新打开 MCP 设置进行完整刷新。",
   "settings.mcp.refreshFailed": "刷新 MCP 状态失败：{error}",
   "settings.mcp.loadFailed": "无法读取所选 MCP 配置，请刷新或重新连接后重试。",
   "settings.mcp.status.toolCount": "{count} 个工具",
@@ -4805,12 +4806,12 @@ const zhCN: Record<string, string> = {
   "settingsSync.discovery.categoryCount": "发现分类：{count}",
   "settingsSync.discovery.error": "检测失败：{error}",
   "settingsSync.discovery.continue": "继续选择",
-  "onboarding.dialog.title": "欢迎使用 ZCode",
+  "onboarding.dialog.title": "欢迎使用 OpenZWork",
   "onboarding.dialog.description": "选择如何开始第一次会话。",
   "onboarding.wizard.label": "迁移向导",
   "onboarding.welcome.eyebrow": "首次启动设置",
-  "onboarding.welcome.title": "欢迎使用 ZCode",
-  "onboarding.welcome.start": "开始使用 ZCode",
+  "onboarding.welcome.title": "欢迎使用 OpenZWork",
+  "onboarding.welcome.start": "开始使用 OpenZWork",
   "onboarding.welcome.migrate": "数据迁移向导",
   "onboarding.welcome.helper": "可立即导入旧工具设置，或先跳过，稍后在设置中继续迁移。",
   "onboarding.step.session": "会话",
@@ -4922,8 +4923,8 @@ const zhCN: Record<string, string> = {
   "chat.empty.createWorkspace.error.createFailed": "创建工作区失败。",
   "chat.emptyResult.title": "没有可展示内容",
   "chat.emptyResult.description": "这个任务没有生成聊天内容，可能是在模型返回正文前被停止了。",
-  "chat.placeholder.newTask": "向 ZCode 提问，使用 @ 添加上下文，使用 / 选择命令或能力",
-  "chat.placeholder.newTaskMobile": "向 ZCode 提问…",
+  "chat.placeholder.newTask": "向 OpenZWork 提问，使用 @ 添加上下文，使用 / 选择命令或能力",
+  "chat.placeholder.newTaskMobile": "向 OpenZWork 提问…",
   "chat.placeholder.followUpAsk": "提出后续修改要求",
   "chat.placeholder.followUpQueue": "继续输入以排队后续修改",
   "chat.placeholder.loading": "初始化任务中",
@@ -6504,7 +6505,7 @@ const zhCN: Record<string, string> = {
   "resourceManager.network.empty": "等待新的网络请求…",
   "resourceManager.network.noMatches": "没有匹配的请求",
   "resourceManager.storage": "存储",
-  "resourceManager.appUsage": "ZCode",
+  "resourceManager.appUsage": "OpenZWork",
   "resourceManager.systemUsage": "整机",
   "resourceManager.category.base": "基础服务",
   "resourceManager.category.builtinPlugin": "内置插件",

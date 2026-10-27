@@ -304,3 +304,49 @@ patches:
     refs:
       - docs/spec/source-server-lock-acquisition.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40410464216/job/121879570233
+
+  - id: OW-P015
+    title: 交互浮层重叠窗口拖拽区时无法点击
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 项目搜索菜单向上展开，或其他交互浮层、子菜单覆盖桌面窗口的标题栏拖拽区。
+    impact: 搜索框无法通过鼠标聚焦，浮层内按钮和菜单项的点击可能被当成拖动窗口。
+    cause: DropdownMenu、ContextMenu、Popover 和 HoverCard 的共享内容根缺少 no-drag；Portal 的视觉层级不能排除 Electron 原生拖拽命中。
+    fix: 在四个共享组件的六处内容根声明 no-drag，覆盖主浮层与子菜单；调用方继续保留布局、搜索、焦点和选择逻辑，窗口其余拖拽区域不变。
+    evidence: 上游 3.16.2 的 3c5b2276 保留相同缺口。四组共享组件回归在原实现下失败；原生鼠标复现中，输入框重叠拖拽区时按 x 只会选中菜单项。修复后的共享 DropdownMenu 在隔离 Electron 中可通过鼠标聚焦并连续输入 xrag；六类浮层的 24 个浏览器场景验证实际 CSS、输入过滤和动作选择。
+    files:
+      - packages/ui/src/components/ui/dropdown-menu.tsx
+      - packages/ui/src/components/ui/context-menu.tsx
+      - packages/ui/src/components/ui/popover.tsx
+      - packages/ui/src/components/ui/hover-card.tsx
+    regression:
+      - packages/ui/test/floatingLayerHitRegions.test.ts
+    retire: 上游在共享交互浮层及子菜单中提供等效原生非拖拽区域，重叠标题栏时的输入与动作回归通过。
+    refs:
+      - DESIGN.md
+      - packages/ui/test/browser/manual-review/pending/floating-layer-hit-regions.test.mjs
+
+  - id: OW-P016
+    title: 高优先级项目 MCP 配置丢弃前一层的不同名 server
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 用户与项目、父项目与子项目或兼容配置文件分别声明 MCP server。
+    impact: 后一份 mcp 对象覆盖前一层，未被同名覆盖的 server 也从有效配置中消失。
+    cause: mergeConfigs 先 Object.assign(result, config)，随后才读取 result.mcp.servers 作为旧层，实际读取的已是新层。
+    fix: 在 Object.assign 前保留 previousMcp，合并不同名 server；同名项按高优先级整份替换，不拼接 command、args 或 env。
+    evidence: 上游 3.16.2 的 3c5b2276 含相同先覆盖后读取代码；真实临时项目配置回归验证不同名保留、同名完整替换、禁用状态及源文件不变。
+    files:
+      - apps/zcode-cli/packages/adapters/src/config/config-merger.ts
+    regression:
+      - apps/zcode-cli/packages/adapters/tests/project-config-compatibility.test.ts
+    retire: 上游在覆盖前保留旧 MCP 层，项目叠加回归中不同名 server 均可见且同名定义不混合。
+    refs:
+      - docs/spec/identity-and-data-isolation.md

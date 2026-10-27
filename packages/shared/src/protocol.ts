@@ -389,6 +389,8 @@ export interface AppSettings {
   lastActiveTaskByWorkspace?: Record<string, string>;
   /** 数据目录的根路径（替代 homedir），默认为 os.homedir()；.openzwork/v2 后缀不变 */
   dataBaseDir?: string;
+  /** 设置服务保存，完整重启且业务进程启动前完成后清除。 */
+  pendingDataBaseDirMigration?: { id: string; sourceBaseDir: string; targetBaseDir: string };
   /** 首次启动设置同步提示是否已消费；只表示弹窗不再出现，不代表导入成功。 */
   settingsSyncFirstRunPromptHandled?: boolean;
   /** Desktop Main 保存的 V1 连接设置；不包含配对秘密。 */

@@ -2,6 +2,15 @@
   "version": 1,
   "suites": [
     {
+      "capability": "business-data-directory-relocation",
+      "files": [
+        "packages/services/test/dataDirectoryTrueMigration.test.ts",
+        "packages/shared/src/data-directory/contract.test.ts",
+        "packages/services/src/project-storage/relocation/contract.test.ts",
+        "packages/services/src/startup-storage/contract.test.ts"
+      ]
+    },
+    {
       "capability": "desktop-recording-timeouts",
       "files": ["packages/desktop/test/e2eElectronWindowRecorder.test.ts"]
     },
@@ -198,6 +207,7 @@
     {
       "capability": "project-ui-and-composer",
       "files": [
+        "packages/ui/test/floatingLayerHitRegions.test.ts",
         "packages/ui/test/toolSearchToolCallBlock.test.ts",
         "packages/ui/test/composerSubmissionSettlement.test.ts",
         "packages/ui/test/projectFirstSubmitVisibility.test.ts",
@@ -288,6 +298,7 @@
         "packages/services/test/legacyZCodeConfigProviderReader.test.ts",
         "packages/services/test/modelTrajectory.test.ts",
         "packages/services/test/paths.test.ts",
+        "packages/services/test/dataDirectoryMigration.test.ts",
         "packages/services/test/pluginSyncService.test.ts",
         "packages/services/test/providerRuntimeResolver.test.ts",
         "packages/services/test/skillSyncService.test.ts",

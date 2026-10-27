@@ -2,12 +2,16 @@ import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 import type { Locale } from "@zcode/shared";
 
-const MENU_KEY_NAME = "ZCode.OpenInZCode";
-const DIRECTORY_MENU_KEY = `HKCU\\Software\\Classes\\Directory\\shell\\${MENU_KEY_NAME}`;
-const DRIVE_MENU_KEY = `HKCU\\Software\\Classes\\Drive\\shell\\${MENU_KEY_NAME}`;
-const MENU_LABELS: Record<Locale, string> = {
-  "zh-CN": "在ZCode中打开",
-  "en-US": "Open in ZCode",
+type ProductFlavor = "production" | "preview" | "development";
+const PRODUCT_NAMES: Record<ProductFlavor, string> = {
+  production: "OpenZWork",
+  preview: "OpenZWork Preview",
+  development: "OpenZWork Dev",
+};
+const MENU_KEY_NAMES: Record<ProductFlavor, string> = {
+  production: "OpenZWork.OpenInOpenZWork",
+  preview: "OpenZWork.Preview.OpenInOpenZWork",
+  development: "OpenZWork.Dev.OpenInOpenZWork",
 };
 
 type Logger = {
@@ -19,8 +23,12 @@ export interface WindowsOpenFolderRegistryOperation {
   args: string[];
 }
 
-export function getWindowsOpenFolderMenuName(locale: Locale): string {
-  return MENU_LABELS[locale] ?? MENU_LABELS["en-US"];
+export function getWindowsOpenFolderMenuName(
+  locale: Locale,
+  productFlavor: ProductFlavor = "production",
+): string {
+  const productName = PRODUCT_NAMES[productFlavor];
+  return locale === "zh-CN" ? `在 ${productName} 中打开` : `Open in ${productName}`;
 }
 
 function quoteWindowsCommandArg(value: string): string {
@@ -43,10 +51,15 @@ export function buildWindowsOpenFolderRegistryOperations(options: {
   executablePath: string;
   appArgs?: readonly string[];
   locale: Locale;
+  productFlavor?: ProductFlavor;
 }): WindowsOpenFolderRegistryOperation[] {
   const command = buildWindowsOpenFolderCommand(options.executablePath, options.appArgs ?? []);
-  const menuName = getWindowsOpenFolderMenuName(options.locale);
-  const menuKeys = [DIRECTORY_MENU_KEY, DRIVE_MENU_KEY];
+  const flavor = options.productFlavor ?? "production";
+  const menuName = getWindowsOpenFolderMenuName(options.locale, flavor);
+  // 原版和正式/Preview 曾共用同一键并用 /f 覆盖命令；独立键保护并存安装，旧键保持原样。
+  const menuKeys = ["Directory", "Drive"].map(
+    (kind) => `HKCU\\Software\\Classes\\${kind}\\shell\\${MENU_KEY_NAMES[flavor]}`,
+  );
 
   return menuKeys.flatMap((menuKey) => [
     { args: ["add", menuKey, "/ve", "/d", menuName, "/f"] },
@@ -82,6 +95,7 @@ export async function installWindowsOpenFolderContextMenu(options: {
   isDefaultApp: boolean;
   locale: Locale;
   logger: Logger;
+  productFlavor?: ProductFlavor;
 }): Promise<void> {
   if (options.platform !== "win32") {
     return;
@@ -95,6 +109,7 @@ export async function installWindowsOpenFolderContextMenu(options: {
     executablePath: options.executablePath,
     appArgs,
     locale: options.locale,
+    productFlavor: options.productFlavor,
   });
 
   try {

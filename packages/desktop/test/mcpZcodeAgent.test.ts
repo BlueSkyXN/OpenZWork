@@ -448,3 +448,97 @@ describe("MCP enabled state", () => {
     });
   });
 });
+
+describe("OpenZWork project MCP compatibility", () => {
+  it("Desktop saves a new project entry where the real CLI loader discovers it", async () => {
+    process.env.HOME = makeTempRoot();
+    const workspacePath = makeTempRoot();
+    await saveCliMcpToUserDirectory({
+      action: "upsert",
+      source: "zcodeagentmcp",
+      projectPath: workspacePath,
+      name: "fixture",
+      config: { type: "stdio", command: "fixture-command", enabled: false },
+    });
+    const { loadProjectConfigs } =
+      await import("../../../apps/zcode-cli/packages/adapters/src/config/project-config.adapter.js");
+    const loaded = loadProjectConfigs(workspacePath);
+    expect(loaded.paths).toEqual([join(workspacePath, ".zcode", "config.json")]);
+    expect(loaded.files[0]?.config.mcp?.servers?.fixture).toMatchObject({
+      command: "fixture-command",
+      enabled: false,
+    });
+  });
+
+  it("retains both project files, resolves collisions, and edits the actual source", async () => {
+    process.env.HOME = makeTempRoot();
+    const workspacePath = makeTempRoot();
+    for (const name of [".zcode", ".openzwork"]) mkdirSync(join(workspacePath, name));
+    const original = JSON.stringify({
+      custom: "keep",
+      mcp: {
+        servers: {
+          shared: { type: "stdio", command: "upstream", env: { UPSTREAM: "only" } },
+          other: { type: "stdio", command: "other" },
+        },
+      },
+    });
+    const base = join(workspacePath, ".zcode/config.json");
+    const own = join(workspacePath, ".openzwork/config.json");
+    writeFileSync(base, original);
+    writeFileSync(
+      own,
+      JSON.stringify({
+        custom: "fork",
+        mcp: {
+          servers: {
+            shared: { type: "stdio", command: "fork", enabled: false },
+          },
+        },
+      }),
+    );
+    const loaded = await loadCliMcpFromUserDirectory({ workspacePath });
+    const shared = loaded.servers.find((item) => item.name === "shared")!;
+    expect(loaded.servers.map((item) => item.name).sort()).toEqual(["other", "shared"]);
+    expect(shared.config).toEqual({ type: "stdio", command: "fork", enabled: false });
+    expect(shared.file?.filePath).toBe(own);
+    await saveCliMcpToUserDirectory({
+      action: "upsert",
+      source: "zcodeagentmcp",
+      projectPath: workspacePath,
+      name: "shared",
+      location: shared.location,
+      config: { type: "stdio", command: "edited" },
+    });
+    expect(JSON.parse(readFileSync(own, "utf8"))).toMatchObject({
+      custom: "fork",
+      mcp: {
+        servers: {
+          shared: { command: "edited", enabled: false },
+        },
+      },
+    });
+    expect(readFileSync(base, "utf8")).toBe(original);
+    const { loadProjectConfigs } =
+      await import("../../../apps/zcode-cli/packages/adapters/src/config/project-config.adapter.js");
+    const files = loadProjectConfigs(workspacePath).files;
+    expect(files.at(-1)?.baseDir).toBe(workspacePath);
+    expect(files.at(-1)?.config.mcp?.servers?.shared).toMatchObject({
+      command: "edited",
+      enabled: false,
+    });
+    await saveCliMcpToUserDirectory({
+      action: "delete",
+      source: "zcodeagentmcp",
+      projectPath: workspacePath,
+      name: "shared",
+      location: shared.location,
+    });
+    expect(
+      (await loadCliMcpFromUserDirectory({ workspacePath })).servers.find(
+        (item) => item.name === "shared",
+      )?.config.command,
+    ).toBe("upstream");
+    expect(readFileSync(base, "utf8")).toBe(original);
+  });
+});

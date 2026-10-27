@@ -23,7 +23,7 @@ import type {
   UpdateConnectionProfileInput,
 } from "@zcode/services";
 import {
-  getDataBaseDir,
+  getAppConfigDir,
   migrateControllerRemoteWorkspaceIdentity,
   type ControllerRemoteIdentityMigrationReport,
 } from "@zcode/services/node";
@@ -167,7 +167,7 @@ export class SourceServerDirectory {
       options.migrateControllerIdentity ??
       (async (input) =>
         await migrateControllerRemoteWorkspaceIdentity({
-          dbPath: join(getDataBaseDir(), ".zcode", "v2", "tasks-index.sqlite"),
+          dbPath: join(getAppConfigDir(), "tasks-index.sqlite"),
           ...input,
         }));
   }

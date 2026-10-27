@@ -43,6 +43,10 @@ import { join } from "node:path";
 import { homedir, hostname } from "node:os";
 import {
   createSettingService,
+  applyPendingDataBaseDirMigration,
+  cancelPendingDataBaseDirMigration,
+  resolveDefaultZCodeAgentCommand,
+  startupStorage,
   buildRuntimeProcessEnvPatch,
   captureLoginShellEnvSnapshot,
   getConversationWorkspaceDir,
@@ -66,6 +70,7 @@ import {
   InternalChannels,
 } from "@zcode/shared";
 import { runDesktopMemoryMigration } from "./desktopMemoryMigration.js";
+import { dataDirectory } from "@zcode/shared/data-directory";
 import { logger, webRemoteControlRelayLogger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
 import { BroadcastHub } from "./broadcastHub.js";
@@ -803,6 +808,8 @@ function syncImmediateAppSettings(patch: ReturnType<typeof appSettingsPatchSchem
   }
 }
 
+let releaseBusinessDataRoot: (() => Promise<void>) | undefined;
+
 async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"): Promise<void> {
   const selection = selectAppShutdownPolicy(activeAppShutdownKind, kind, process.platform);
   activeAppShutdownKind = selection.kind;
@@ -856,8 +863,10 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
       ),
     ),
   ])
-    .then(() => {
+    .then(async () => {
       logger.info(`[app-quit] host process cleanup completed (${reason})`);
+      await releaseBusinessDataRoot?.();
+      releaseBusinessDataRoot = undefined;
     })
     .catch((error) => {
       logger.error(`[app-quit] host process cleanup failed (${reason}):`, error);
@@ -1235,6 +1244,52 @@ app.whenReady().then(async () => {
   installBrowserRestoreBootstrapProtocol(
     session.fromPartition(EMBEDDED_BROWSER_PARTITION).protocol,
   );
+  // 在任何业务 Host/Agent/调度器打开库前执行计划；失败不能被下方普通设置读取的兜底吞掉。
+  for (;;) {
+    try {
+      await applyPendingDataBaseDirMigration(async (plan) => {
+        const workspacePath = app.getPath("home");
+        const command = resolveDefaultZCodeAgentCommand({
+          workspacePath,
+          workspaceKey: workspacePath,
+        });
+        if (!command)
+          throw new Error(
+            "The bundled CLI is unavailable; restore the application and retry migration.",
+          );
+        await startupStorage.relocateAgent({ command, plan });
+      });
+      break;
+    } catch (error) {
+      const locale = (await mainSettingService.get()).locale;
+      const chinese = locale !== "en-US";
+      const choice = await dialog.showMessageBox({
+        type: "error",
+        title: chinese ? "OpenZWork 数据迁移失败" : "OpenZWork data migration failed",
+        message: chinese
+          ? "请选择重试，或取消迁移并继续使用原数据目录。"
+          : "Retry, or cancel the migration to keep using the original data directory.",
+        detail: error instanceof Error ? error.message : String(error),
+        buttons: chinese ? ["重试", "取消迁移", "退出"] : ["Retry", "Cancel migration", "Exit"],
+        defaultId: 0,
+        cancelId: 2,
+      });
+      if (choice.response === 0) continue;
+      if (choice.response === 1) {
+        try {
+          await cancelPendingDataBaseDirMigration();
+          break;
+        } catch (cancelError) {
+          dialog.showErrorBox(
+            "OpenZWork",
+            cancelError instanceof Error ? cancelError.message : String(cancelError),
+          );
+        }
+      }
+      app.quit();
+      return;
+    }
+  }
   // Bootstrap: 从设置文件读取自定义数据目录，在所有 host 进程启动前生效
   let loadedBootstrapLocale = false;
   let bootstrapSettings: AppSettings | undefined;
@@ -1286,6 +1341,13 @@ app.whenReady().then(async () => {
     // 读取失败不影响启动，使用默认 homedir
   }
 
+  try {
+    releaseBusinessDataRoot = await dataDirectory.acquireUse(getZCodeDataRootDir());
+  } catch (error) {
+    dialog.showErrorBox("OpenZWork", error instanceof Error ? error.message : String(error));
+    app.quit();
+    return;
+  }
   await runDesktopMemoryMigration({
     sourceMemoriesRoot: join(homedir(), ".zcode", "cli", "memories"),
     targetStorageRoot: getZCodeDataRootDir(),
@@ -1338,6 +1400,7 @@ app.whenReady().then(async () => {
     platform: process.platform,
     executablePath: process.execPath,
     argv: process.argv,
+    productFlavor: app.isPackaged ? ZCODE_PRODUCT_FLAVOR : "development",
     isDefaultApp: Boolean(process.defaultApp),
     locale: currentApplicationLocale,
     logger,
@@ -1481,6 +1544,7 @@ app.whenReady().then(async () => {
         platform: process.platform,
         executablePath: process.execPath,
         argv: process.argv,
+        productFlavor: app.isPackaged ? ZCODE_PRODUCT_FLAVOR : "development",
         isDefaultApp: Boolean(process.defaultApp),
         locale: currentApplicationLocale,
         logger,

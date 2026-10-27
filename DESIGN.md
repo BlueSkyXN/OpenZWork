@@ -518,6 +518,8 @@ Overlay rules:
 
 - Floating UI should feel precise and compact.
 - Interactive overlays such as dropdown menus, context menus, selects, and popovers must render above passive tooltips when both are open. Tooltips must never cover options or controls in an active interactive overlay.
+- Interactive floating surfaces, including submenu and HoverCard content, must declare `[app-region:no-drag]` in the shared content component. Electron may otherwise treat clicks as window dragging when a portal overlaps the titlebar, regardless of z-index. Keep the surrounding titlebar draggable; ordinary Web ignores this property.
+- Verify input and action controls with the floating surface overlapping a desktop drag region. Check the rendered `app-region` as well as input and selection behavior; DOM-driven clicks alone do not exercise native window hit testing.
 - Dropdown menu surfaces must keep their overlay shadow from the first open frame through keyboard focus and pointer hover. Global focus-reset rules must not clear the menu shadow while the content root owns focus.
 - Keep menu rows dense and highly scannable.
 - Avoid giant popovers with loose spacing unless the task genuinely needs it.

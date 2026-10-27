@@ -430,7 +430,9 @@ export function SettingsPage({
       .get()
       .then((settings: AppSettings) => {
         if (!active) return;
-        setDataBaseDir(settings.dataBaseDir ?? "");
+        setDataBaseDir(
+          settings.pendingDataBaseDirMigration?.targetBaseDir ?? settings.dataBaseDir ?? "",
+        );
         setIntegratedTerminalShell(settings.integratedTerminalShell ?? { mode: "auto" });
         setHttpProxy(settings.httpProxy ?? "");
         setHttpProxyNoProxy(settings.httpProxyNoProxy ?? "");
@@ -595,7 +597,7 @@ export function SettingsPage({
   const handleDataBaseDirChange = useCallback(
     async (dir: string) => {
       await localHostServices.settingService.updateDataBaseDir(dir || undefined);
-      // Bugfix: 迁移失败时不能先把本地状态改成失败路径，否则设置页会误显示为已切换。
+      // 计划保存失败时保留原展示；实际 dataBaseDir 在完整重启迁移成功后才提交。
       setDataBaseDir(dir);
     },
     [localHostServices.settingService],

@@ -5,7 +5,9 @@ describe("desktop deep link url helpers", () => {
     const { extractWorkspaceOpenPath, isWorkspaceOpenUrl } =
       await import("../src/main/desktopDeepLinkUrl.js");
 
-    const workspaceUrl = new URL("openzwork://workspace/open?path=%2FUsers%2Fdemo%2FProject%20A%26B");
+    const workspaceUrl = new URL(
+      "openzwork://workspace/open?path=%2FUsers%2Fdemo%2FProject%20A%26B",
+    );
     expect(isWorkspaceOpenUrl(workspaceUrl)).toBe(true);
     expect(extractWorkspaceOpenPath(workspaceUrl)).toBe("/Users/demo/Project A&B");
     expect(isWorkspaceOpenUrl(new URL("openzwork://workspace/other?path=%2Ftmp"))).toBe(false);
@@ -110,7 +112,7 @@ describe("desktop deep link url helpers", () => {
     expect(operations).toContainEqual({
       args: [
         "add",
-        "HKCU\\Software\\Classes\\Directory\\shell\\ZCode.OpenInZCode\\command",
+        "HKCU\\Software\\Classes\\Directory\\shell\\OpenZWork.OpenInOpenZWork\\command",
         "/ve",
         "/d",
         '"C:\\Program Files\\ZCode\\ZCode.exe" --open-workspace "%1"',
@@ -120,7 +122,7 @@ describe("desktop deep link url helpers", () => {
     expect(operations).toContainEqual({
       args: [
         "add",
-        "HKCU\\Software\\Classes\\Drive\\shell\\ZCode.OpenInZCode\\command",
+        "HKCU\\Software\\Classes\\Drive\\shell\\OpenZWork.OpenInOpenZWork\\command",
         "/ve",
         "/d",
         '"C:\\Program Files\\ZCode\\ZCode.exe" --open-workspace "%1"',
@@ -133,8 +135,8 @@ describe("desktop deep link url helpers", () => {
     const { buildWindowsOpenFolderRegistryOperations, getWindowsOpenFolderMenuName } =
       await import("../src/main/desktopWindowsOpenFolderContextMenu.js");
 
-    expect(getWindowsOpenFolderMenuName("zh-CN")).toBe("在ZCode中打开");
-    expect(getWindowsOpenFolderMenuName("en-US")).toBe("Open in ZCode");
+    expect(getWindowsOpenFolderMenuName("zh-CN")).toBe("在 OpenZWork 中打开");
+    expect(getWindowsOpenFolderMenuName("en-US")).toBe("Open in OpenZWork");
 
     const operations = buildWindowsOpenFolderRegistryOperations({
       executablePath: "C:\\Program Files\\ZCode\\ZCode.exe",
@@ -144,25 +146,39 @@ describe("desktop deep link url helpers", () => {
     expect(operations).toContainEqual({
       args: [
         "add",
-        "HKCU\\Software\\Classes\\Directory\\shell\\ZCode.OpenInZCode",
+        "HKCU\\Software\\Classes\\Directory\\shell\\OpenZWork.OpenInOpenZWork",
         "/ve",
         "/d",
-        "在ZCode中打开",
+        "在 OpenZWork 中打开",
         "/f",
       ],
     });
     expect(operations).toContainEqual({
       args: [
         "add",
-        "HKCU\\Software\\Classes\\Directory\\shell\\ZCode.OpenInZCode",
+        "HKCU\\Software\\Classes\\Directory\\shell\\OpenZWork.OpenInOpenZWork",
         "/v",
         "MUIVerb",
         "/t",
         "REG_SZ",
         "/d",
-        "在ZCode中打开",
+        "在 OpenZWork 中打开",
         "/f",
       ],
     });
+  });
+  it("keeps production, Preview and Dev menu registrations separate from upstream", async () => {
+    const { buildWindowsOpenFolderRegistryOperations, getWindowsOpenFolderMenuName } =
+      await import("../src/main/desktopWindowsOpenFolderContextMenu.js");
+    const keys = ["production", "preview", "development"].map((productFlavor) =>
+      buildWindowsOpenFolderRegistryOperations({
+        executablePath: "C:\\Apps\\OpenZWork.exe",
+        locale: "en-US",
+        productFlavor: productFlavor as "production" | "preview" | "development",
+      }).map(({ args }) => args[1]),
+    );
+    expect(new Set(keys.flat()).size).toBe(12);
+    expect(keys.flat().some((key) => key?.includes("ZCode.OpenInZCode"))).toBe(false);
+    expect(getWindowsOpenFolderMenuName("zh-CN", "preview")).toBe("在 OpenZWork Preview 中打开");
   });
 });
