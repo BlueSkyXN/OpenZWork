@@ -76,26 +76,11 @@ describe("standard provider built-in config", () => {
     },
   );
 
-  it("does not embed retired vendor endpoints", async () => {
+  it("does not embed endpoint URLs", async () => {
     const raw = await readFile(
       new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
       "utf8",
     );
-    for (const endpoint of [
-      "api.moonshot.cn",
-      "api.minimaxi.com",
-      "api.deepseek.com",
-      "dashscope.aliyuncs.com",
-      "api.xiaomimimo.com",
-      "api.openai.com",
-      "api.anthropic.com",
-      "api.x.ai",
-      "openrouter.ai",
-      "opencode.ai",
-      "api.z.ai",
-      "open.bigmodel.cn",
-    ]) {
-      expect(raw).not.toContain(endpoint);
-    }
+    expect(raw).not.toMatch(/https?:\/\//i);
   });
 });

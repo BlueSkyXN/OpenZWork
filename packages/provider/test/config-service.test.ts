@@ -750,6 +750,63 @@ describe("ProviderConfigService", () => {
     expect(snapshot.zcodeBuiltinProviderTemplates.get("deepseek")).toBeUndefined();
   });
 
+  it("移除旧模板后，完整 Personal Provider 仍进入执行注册表且原记录不变", async () => {
+    const zcodeBuiltin = new MutableSource({
+      ...layerSnapshot(
+        "zcodeBuiltin-standard",
+        ProviderConfigMap.empty(),
+        new ModelConfigRules([
+          {
+            type: "model",
+            modelMatch: ".*",
+            config: completeModelConfig().overlay(new ModelConfig({ enabled: true })),
+          },
+        ]),
+      ),
+      providerTemplates: ProviderTemplateMap.empty(),
+    });
+    const personal = new MemoryPersonalRepository(
+      layerSnapshot(
+        "personal-1",
+        new ProviderConfigMap([
+          {
+            providerId: "old-instance",
+            templateId: "removed-template",
+            providerName: "Saved connection",
+            config: personalProvider(["user-model"]),
+          },
+        ]),
+        ModelConfigRules.empty(),
+        ["old-instance"],
+      ),
+    );
+    const original = personal.current;
+    const service = new ProviderConfigService({
+      zcodeBuiltinSource: zcodeBuiltin,
+      personalRepository: personal,
+    });
+    const registry = new ProviderRegistryService({ configSource: service });
+    try {
+      await registry.start();
+      expect(registry.listProviders().map((provider) => provider.providerId)).toEqual([
+        "old-instance",
+      ]);
+      expect(
+        registry.validateSelection({
+          providerId: "old-instance",
+          modelId: "user-model",
+          options: { reasoningLevel: "disabled" },
+        }),
+      ).toMatchObject({ ok: true });
+      expect(personal.current).toBe(original);
+      expect(personal.current.providers.getRule("old-instance")?.templateId).toBe(
+        "removed-template",
+      );
+    } finally {
+      registry.dispose();
+    }
+  });
+
   it("写入 Provider 顺序使用未排序 Built-in、请求顺序、未排序 Personal 三段语义", async () => {
     const zcodeBuiltin = new MutableSource(
       layerSnapshot(
