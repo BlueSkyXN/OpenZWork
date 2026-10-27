@@ -253,7 +253,8 @@ it("recovers sessions, tool output, attachments and both memory scopes after A�
           command: process.execPath,
           args: [
             "--import",
-            fileURLToPath(import.meta.resolve("tsx")),
+            // Node 的 ESM loader 在 Windows 也要求 file URL，不能传盘符路径。
+            import.meta.resolve("tsx"),
             fileURLToPath(
               new URL("../../../apps/zcode-cli/packages/cli/src/main.ts", import.meta.url),
             ),
@@ -298,15 +299,13 @@ it("recovers sessions, tool output, attachments and both memory scopes after A�
     const reference = parts.find((part) => part.id === "local-reference-part")!;
     if (reference.type !== "file") throw new Error("missing local reference");
     const hydrated = await filePartToContentBlock(reference, artifactStore(target));
-    expect
-      .soft(hydrated)
-      .toEqual({
-        type: "text",
-        text: localReference.metadata!.pathReferenceText!.replace(
-          `Attached application/octet-stream: ${attachmentPath}\n`,
-          `Attached application/octet-stream: ${join(target, "clipboard/image.png")}\n`,
-        ),
-      });
+    expect.soft(hydrated).toEqual({
+      type: "text",
+      text: localReference.metadata!.pathReferenceText!.replace(
+        `Attached application/octet-stream: ${attachmentPath}\n`,
+        `Attached application/octet-stream: ${join(target, "clipboard/image.png")}\n`,
+      ),
+    });
     const tool = parts.find((part) => part.id === "tool-part")!;
     expect(tool.type).toBe("tool");
     if (tool.type !== "tool" || tool.state.status !== "completed")

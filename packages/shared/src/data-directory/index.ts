@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, realpath, rm } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { acquireFileLock } from "@zcode/shared/node";
+import { acquireFileLock, atomicWritePrivateTextFile } from "@zcode/shared/node";
 import { BUSINESS_DATA_ENTRIES, DATA_ROOT_RELOCATED_MARKER } from "./contract.js";
 import type { DataDirectoryContract, DataRelocationPlan } from "./contract.js";
 export * from "./contract.js";
@@ -55,6 +55,23 @@ function alive(pid: number): boolean {
   }
 }
 
+function leaseOwner(name: string, raw: string): number | undefined {
+  const match =
+    /^user-([1-9]\d*)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.json$/i.exec(
+      name,
+    );
+  if (!match) return undefined;
+  const pid = Number(match[1]);
+  if (!Number.isSafeInteger(pid)) return undefined;
+  try {
+    const record = JSON.parse(raw) as { pid?: unknown } | null;
+    return record?.pid === pid ? pid : undefined;
+  } catch {
+    // 旧写法在崩溃时可能留下半份 JSON；只凭正式文件名找 owner，仍须确认其 PID 已退出。
+    return pid;
+  }
+}
+
 export const dataDirectory: DataDirectoryContract = {
   async acquireUse(root) {
     const gate = await gateDirectory(root);
@@ -70,7 +87,8 @@ export const dataDirectory: DataDirectoryContract = {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
       const file = join(gate, `user-${process.pid}-${randomUUID()}.json`);
-      await writeFile(file, JSON.stringify({ pid: process.pid }), { flag: "wx", mode: 0o600 });
+      // 在 admission 锁内原子发布，避免新租约以残缺正文进入下一次迁移扫描。
+      await atomicWritePrivateTextFile(file, JSON.stringify({ pid: process.pid }));
       return async () => {
         await rm(file, { force: true });
       };
@@ -90,8 +108,8 @@ export const dataDirectory: DataDirectoryContract = {
           throw error;
         });
         if (raw === undefined) continue;
-        const { pid } = JSON.parse(raw) as { pid: number };
-        if (!Number.isSafeInteger(pid) || pid <= 0 || alive(pid)) {
+        const pid = leaseOwner(name, raw);
+        if (pid === undefined || alive(pid)) {
           throw Object.assign(
             new Error(
               "Close other OpenZWork or CLI processes using this data directory, then retry.",

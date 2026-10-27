@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
+import { once } from "node:events";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { pathToFileURL } from "node:url";
@@ -51,6 +54,48 @@ describe("business data root admission", () => {
     await (
       await dataDirectory.acquireUse(sourceRoot)
     )();
+  });
+  it.each(["", '{"pid":', "complete"])(
+    "reclaims a crashed process lease with content %j after its PID exits",
+    async (content) => {
+      const { sourceRoot } = await fixture();
+      const child = spawn(process.execPath, ["-e", ""], { stdio: "ignore" });
+      expect(await once(child, "exit")).toEqual([0, null]);
+      expect(child.pid).toBeGreaterThan(0);
+      const gate = `${sourceRoot}.data-access`;
+      await mkdir(gate);
+      const lease = join(gate, `user-${child.pid}-${randomUUID()}.json`);
+      await writeFile(lease, content === "complete" ? JSON.stringify({ pid: child.pid }) : content);
+      await expect(dataDirectory.exclusive(sourceRoot, async () => "ready")).resolves.toBe("ready");
+      await expect(readFile(lease)).rejects.toMatchObject({ code: "ENOENT" });
+    },
+  );
+  it.each(["", '{"pid":', "conflicting owner", "unknown owner"])(
+    "preserves an uncertain or live lease with content %j",
+    async (content) => {
+      const { sourceRoot } = await fixture();
+      const gate = `${sourceRoot}.data-access`;
+      await mkdir(gate);
+      const name =
+        content === "unknown owner"
+          ? "user-unknown.json"
+          : `user-${process.pid}-${randomUUID()}.json`;
+      const lease = join(gate, name);
+      const raw =
+        content === "conflicting owner" ? JSON.stringify({ pid: process.pid + 1 }) : content;
+      await writeFile(lease, raw);
+      await expect(dataDirectory.exclusive(sourceRoot, async () => "ready")).rejects.toMatchObject({
+        code: "DATA_DIRECTORY_IN_USE",
+      });
+      expect(await readFile(lease, "utf8")).toBe(raw);
+    },
+  );
+  it("ignores an unpublished atomic-write temporary file", async () => {
+    const { sourceRoot } = await fixture();
+    const gate = `${sourceRoot}.data-access`;
+    await mkdir(gate);
+    await writeFile(join(gate, `.user-${process.pid}-${randomUUID()}.json.partial.tmp`), "");
+    await expect(dataDirectory.exclusive(sourceRoot, async () => "ready")).resolves.toBe("ready");
   });
   it("refuses a retired root instead of reopening its old snapshot", async () => {
     const { sourceRoot } = await fixture();
