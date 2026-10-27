@@ -21,6 +21,28 @@ need_cmd node
 need_cmd curl
 need_cmd tar
 
+check_bin_owner() {
+  # 同名 zcode 可能属于原版或其他安装；只更新本安装根生成的完整 wrapper，不能仅凭文件名覆盖。
+  node --input-type=commonjs - "$BIN_DIR/zcode" "$INSTALL_DIR" <<'NODE'
+const fs = require('node:fs');
+const [file, root] = process.argv.slice(2);
+let entry;
+try { entry = fs.lstatSync(file); } catch (error) {
+  if (error.code === 'ENOENT') process.exit(0);
+  throw error;
+}
+const command = 'exec node "' + root + '/current/bin/zcode.mjs" "$@"\\n';
+const previous = '#!/usr/bin/env sh\\n' + command;
+const current = '#!/usr/bin/env sh\\n# Managed by OpenZWork\\n' + command;
+const content = entry.isFile() ? fs.readFileSync(file, 'utf8') : '';
+if (content !== previous && content !== current) {
+  console.error('Existing zcode command belongs to another installation. Choose a different ZCODE_DIST_BIN_DIR.');
+  process.exit(1);
+}
+NODE
+}
+check_bin_owner
+
 LATEST_JSON="$(curl -fsSL "\${BASE_URL%/}/latest.json")"
 VERSION="$(printf '%s' "$LATEST_JSON" | node -e "let data='';process.stdin.on('data',c=>data+=c);process.stdin.on('end',()=>process.stdout.write(JSON.parse(data).version))")"
 TARBALL="$(printf '%s' "$LATEST_JSON" | node -e "let data='';process.stdin.on('data',c=>data+=c);process.stdin.on('end',()=>process.stdout.write(JSON.parse(data).tarball))")"
@@ -44,13 +66,16 @@ mv "$TARGET.new/${packageDirName}" "$TARGET"
 rm -rf "$TARGET.new"
 ln -sfn "$TARGET" "$INSTALL_DIR/current"
 
-cat > "$BIN_DIR/zcode" <<SH
+check_bin_owner
+cat > "$BIN_DIR/.zcode-openzwork-$$.tmp" <<SH
 #!/usr/bin/env sh
+# Managed by OpenZWork
 exec node "$INSTALL_DIR/current/bin/zcode.mjs" "\\$@"
 SH
-chmod +x "$BIN_DIR/zcode"
+chmod +x "$BIN_DIR/.zcode-openzwork-$$.tmp"
+mv "$BIN_DIR/.zcode-openzwork-$$.tmp" "$BIN_DIR/zcode"
 
-echo "ZCode $VERSION installed."
+echo "OpenZWork $VERSION installed."
 echo "Run: zcode (TUI) or zcode --web (Web)"
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;

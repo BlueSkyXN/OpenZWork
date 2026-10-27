@@ -1,4 +1,5 @@
 import type { MigrationResult } from "@zcode/shared/sqlite-migrations";
+import type { DataRelocationPlan } from "@zcode/shared/data-directory";
 
 export interface AgentStorageMigrationInput {
   /** 复用已有 Agent executable resolver 的结果；协议命令前的 runtime 参数原样保留。 */
@@ -13,4 +14,6 @@ export interface AgentStorageMigrationInput {
 export interface StartupStorageContract {
   /** 等待同一 CLI 迁移结束并关闭连接；非零退出/非法结果拒绝，不启动业务 runtime。 */
   migrateAgent(input: AgentStorageMigrationInput): Promise<MigrationResult>;
+  /** 等待 CLI owner 转换未发布副本，失败不得发布目录。 */
+  relocateAgent(input: AgentStorageMigrationInput & { plan: DataRelocationPlan }): Promise<void>;
 }

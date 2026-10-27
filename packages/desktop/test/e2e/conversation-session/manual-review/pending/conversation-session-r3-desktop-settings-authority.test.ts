@@ -74,7 +74,7 @@ describe(`${CASE_MARKER}: 远端激活时桌面设置仍属于本机`, () => {
     await writeFile(join(artifactDir, "settings-authority.json"), JSON.stringify(facts, null, 2));
     await browser.electron.restoreAllMocks();
     await clearAppData();
-    await rm(customRoot, { recursive: true, force: true });
+    // customRoot 位于隔离 HOME；由 runner 停止进程后统一清理。
     await rm(join(paths.appDataDir, canary), { force: true });
   });
 
@@ -162,8 +162,12 @@ describe(`${CASE_MARKER}: 远端激活时桌面设置仍属于本机`, () => {
         )) === "saved",
       { timeout: 60_000 },
     );
-    expect((await localSettings()).dataBaseDir).toBe(customRoot);
-    expect(await readFile(join(customRoot, ".zcode/v2", canary), "utf8")).toBe(CASE_MARKER);
+    expect((await localSettings()).pendingDataBaseDirMigration).toMatchObject({
+      targetBaseDir: customRoot,
+    });
+    await expect(stat(join(customRoot, ".openzwork/v2", canary))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
     const sourceAfter = await readSourceSettings();
     for (const field of [
       "dataBaseDir",
@@ -173,8 +177,8 @@ describe(`${CASE_MARKER}: 远端激活时桌面设置仍属于本机`, () => {
       expect(sourceAfter[field]).toEqual(sourceBefore[field]);
     }
     facts.sourceDesktopSettingsUnchanged = true;
-    facts.localCanaryCopied = true;
-    const startupCwd = join(customRoot, ".zcode", "workspace", "default");
+    facts.localMigrationScheduled = true;
+    const startupCwd = join(customRoot, ".openzwork", "workspace", "default");
     // 根因回归：复制 v2 不会创建新根下的存储 cwd，必须由启动 owner 在启动 Worker 前准备。
     await expect(stat(startupCwd)).rejects.toMatchObject({ code: "ENOENT" });
     facts.startupCwdAbsentBeforeRestart = true;
@@ -185,6 +189,9 @@ describe(`${CASE_MARKER}: 远端激活时桌面设置仍属于本机`, () => {
     expect(await browser.electron.execute(() => process.pid)).not.toBe(oldPid);
     expect((await stat(startupCwd)).isDirectory()).toBe(true);
     facts.startupCwdReadyAfterRestart = true;
+    expect((await localSettings()).dataBaseDir).toBe(customRoot);
+    expect(await readFile(join(customRoot, ".openzwork/v2", canary), "utf8")).toBe(CASE_MARKER);
+    facts.localCanaryCopied = true;
     await openSection("general");
     await browser.waitUntil(
       async () =>

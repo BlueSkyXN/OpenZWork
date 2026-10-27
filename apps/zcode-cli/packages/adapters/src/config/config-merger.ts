@@ -42,6 +42,7 @@ export function mergeConfigs(...configs: PrioritizedConfig[]): RuntimeConfigPatc
         : inputConfig;
     const previousHooks = result.hooks;
     const previousPlugins = result.plugins;
+    const previousMcp = result.mcp;
     Object.assign(result, config);
 
     // Deep merge nested objects
@@ -64,11 +65,12 @@ export function mergeConfigs(...configs: PrioritizedConfig[]): RuntimeConfigPatc
       result.memory = { ...result.memory, ...config.memory };
     }
     if (config.mcp) {
+      // OW-P016：Object.assign 已替换当前 mcp；保留上一层 map，避免后续项目配置吞掉其他 server。
       result.mcp = {
-        ...result.mcp,
+        ...previousMcp,
         ...config.mcp,
         servers: {
-          ...result.mcp?.servers,
+          ...previousMcp?.servers,
           ...config.mcp.servers,
         },
       };

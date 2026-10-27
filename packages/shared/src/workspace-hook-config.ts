@@ -1,7 +1,9 @@
-import { existsSync, statSync } from "node:fs";
-import { access, readFile, stat } from "node:fs/promises";
+import { existsSync, realpathSync, statSync } from "node:fs";
+import { access, readFile, realpath, stat } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import { z } from "zod";
+import { homedir } from "node:os";
+import { isUserHomeDirectory } from "./node/userHomeBoundary.js";
 
 export const WORKSPACE_HOOK_DIGEST_SCHEMA_VERSION = 1 as const;
 export const DEFAULT_WORKSPACE_HOOK_TIMEOUT_MS = 60_000;
@@ -17,7 +19,11 @@ export const WORKSPACE_HOOK_EVENT_NAMES = [
 ] as const;
 
 export type WorkspaceHookEventName = (typeof WORKSPACE_HOOK_EVENT_NAMES)[number];
-export type WorkspaceHookConfigFileKind = "zcode.json" | ".zcode/config.json" | "explicit";
+export type WorkspaceHookConfigFileKind =
+  | "zcode.json"
+  | ".zcode/config.json"
+  | ".openzwork/config.json"
+  | "explicit";
 
 const positiveNumberSchema = z.number().finite().positive();
 
@@ -175,6 +181,7 @@ function buildWorkspaceHookCandidatePaths(directories: readonly string[]): strin
   return directories.flatMap((directory) => [
     join(directory, "zcode.json"),
     join(directory, ".zcode", "config.json"),
+    join(directory, ".openzwork", "config.json"),
   ]);
 }
 
@@ -192,11 +199,12 @@ function buildWorkspaceHookCandidatePaths(directories: readonly string[]): strin
  */
 function deduplicateWorkspaceHookConfigRefs(
   refs: readonly WorkspaceHookConfigPathRef[],
+  identities: ReadonlyMap<string, string> = new Map(),
 ): WorkspaceHookConfigPathRef[] {
   const seen = new Set<string>();
   const result: WorkspaceHookConfigPathRef[] = [];
   for (const ref of refs) {
-    const resolved = resolve(ref.path);
+    const resolved = identities.get(ref.path) ?? resolve(ref.path);
     if (seen.has(resolved)) continue;
     seen.add(resolved);
     result.push(ref);
@@ -204,12 +212,32 @@ function deduplicateWorkspaceHookConfigRefs(
   return result;
 }
 
+function projectConfigFileIdentity(path: string, canonicalPath: string): string {
+  const directory = dirname(resolve(path));
+  const scope = [".zcode", ".openzwork"].includes(basename(directory))
+    ? dirname(directory)
+    : directory;
+  return `${scope}\0${canonicalPath}`;
+}
+
 export function discoverWorkspaceHookConfigPaths(input: {
   workingDirectory: string;
   explicitProjectConfigPath?: string;
 }): WorkspaceHookConfigPathRef[] {
   const start = resolve(input.workingDirectory);
-  const refs = buildWorkspaceHookCandidatePaths(getProjectConfigDirectories(start))
+  const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || homedir();
+  const canonical = (path: string) => {
+    try {
+      return realpathSync(path);
+    } catch {
+      return resolve(path);
+    }
+  };
+  // 沿用 CLI 的同步发现契约；HOME 的 .git 或符号链接不能使原版用户目录成为项目配置。
+  const directories = getProjectConfigDirectories(start).filter(
+    (directory) => canonical(directory) !== canonical(home),
+  );
+  const refs = buildWorkspaceHookCandidatePaths(directories)
     .filter((path) => existsSync(path))
     .map((path) => ({ path, explicitProjectConfig: false }));
 
@@ -217,7 +245,13 @@ export function discoverWorkspaceHookConfigPaths(input: {
     const explicitPath = resolve(input.explicitProjectConfigPath);
     if (existsSync(explicitPath)) refs.push({ path: explicitPath, explicitProjectConfig: true });
   }
-  return deduplicateWorkspaceHookConfigRefs(refs);
+  // 旧 fork 目录可能是项目 .zcode 的链接；不能因此重复生成 Hook 候选。
+  return deduplicateWorkspaceHookConfigRefs(
+    refs,
+    new Map(
+      refs.map((ref) => [ref.path, projectConfigFileIdentity(ref.path, canonical(ref.path))]),
+    ),
+  );
 }
 
 export function createWorkspaceHookSourceInput(input: {
@@ -232,13 +266,17 @@ export function createWorkspaceHookSourceInput(input: {
   const configDirectory = dirname(canonicalPath);
   return {
     canonicalPath,
-    baseDir: basename(configDirectory) === ".zcode" ? dirname(configDirectory) : configDirectory,
+    baseDir: [".zcode", ".openzwork"].includes(basename(configDirectory))
+      ? dirname(configDirectory)
+      : configDirectory,
     discoveryOrder: input.discoveryOrder,
     configFileKind: explicitProjectConfig
       ? "explicit"
       : basename(canonicalPath) === "zcode.json"
         ? "zcode.json"
-        : ".zcode/config.json",
+        : basename(configDirectory) === ".openzwork"
+          ? ".openzwork/config.json"
+          : ".zcode/config.json",
     explicitProjectConfig,
     editable:
       !explicitProjectConfig &&
@@ -280,9 +318,12 @@ async function discoverWorkspaceHookConfigPathsAsync(input: {
   explicitProjectConfigPath?: string;
 }): Promise<WorkspaceHookConfigPathRef[]> {
   const start = resolve(input.workingDirectory);
-  const candidates = buildWorkspaceHookCandidatePaths(
-    await getProjectConfigDirectoriesAsync(start),
-  );
+  const home = process.env.HOME?.trim() || process.env.USERPROFILE?.trim() || homedir();
+  const directories: string[] = [];
+  for (const directory of await getProjectConfigDirectoriesAsync(start)) {
+    if (!(await isUserHomeDirectory(directory, home))) directories.push(directory);
+  }
+  const candidates = buildWorkspaceHookCandidatePaths(directories);
   const refs: WorkspaceHookConfigPathRef[] = [];
   for (const path of candidates) {
     if (await pathExists(path)) refs.push({ path, explicitProjectConfig: false });
@@ -293,7 +334,19 @@ async function discoverWorkspaceHookConfigPathsAsync(input: {
       refs.push({ path: explicitPath, explicitProjectConfig: true });
     }
   }
-  return deduplicateWorkspaceHookConfigRefs(refs);
+  const identities = await Promise.all(
+    refs.map(
+      async (ref) =>
+        [
+          ref.path,
+          projectConfigFileIdentity(
+            ref.path,
+            await realpath(ref.path).catch(() => resolve(ref.path)),
+          ),
+        ] as const,
+    ),
+  );
+  return deduplicateWorkspaceHookConfigRefs(refs, new Map(identities));
 }
 
 async function getProjectConfigDirectoriesAsync(start: string): Promise<string[]> {

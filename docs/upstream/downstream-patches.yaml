@@ -329,3 +329,24 @@ patches:
     refs:
       - DESIGN.md
       - packages/ui/test/browser/manual-review/pending/floating-layer-hit-regions.test.mjs
+
+  - id: OW-P016
+    title: 高优先级项目 MCP 配置丢弃前一层的不同名 server
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 用户与项目、父项目与子项目或兼容配置文件分别声明 MCP server。
+    impact: 后一份 mcp 对象覆盖前一层，未被同名覆盖的 server 也从有效配置中消失。
+    cause: mergeConfigs 先 Object.assign(result, config)，随后才读取 result.mcp.servers 作为旧层，实际读取的已是新层。
+    fix: 在 Object.assign 前保留 previousMcp，合并不同名 server；同名项按高优先级整份替换，不拼接 command、args 或 env。
+    evidence: 上游 3.16.2 的 3c5b2276 含相同先覆盖后读取代码；真实临时项目配置回归验证不同名保留、同名完整替换、禁用状态及源文件不变。
+    files:
+      - apps/zcode-cli/packages/adapters/src/config/config-merger.ts
+    regression:
+      - apps/zcode-cli/packages/adapters/tests/project-config-compatibility.test.ts
+    retire: 上游在覆盖前保留旧 MCP 层，项目叠加回归中不同名 server 均可见且同名定义不混合。
+    refs:
+      - docs/spec/identity-and-data-isolation.md

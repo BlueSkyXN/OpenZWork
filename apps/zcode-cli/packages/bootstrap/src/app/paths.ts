@@ -2,6 +2,7 @@ import { basename, join } from "node:path";
 import { resolvePath } from "@zcode/adapters/config";
 import { createProjectId, DefaultRuntimeConfig, type ProjectId } from "@zcode/contracts";
 import { resolveProjectMemoryRoot } from "@zcode/core";
+import { localProjectId } from "@zcode/shared/data-directory";
 
 export function getCliStorageRoot(storageRoot: string): string {
   return basename(storageRoot) === "cli" ? storageRoot : join(storageRoot, "cli");
@@ -38,11 +39,5 @@ export function getProjectMemoryRoot(
 }
 
 export function projectIdFromDirectory(directory: string): ProjectId {
-  return createProjectId(
-    directory
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 80) || "default",
-  );
+  return createProjectId(localProjectId(directory));
 }

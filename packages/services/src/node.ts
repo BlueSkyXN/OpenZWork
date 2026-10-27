@@ -97,6 +97,7 @@ export {
   getFeedbackLogArchiveDir,
   getGitCheckpointIndexRootDir,
   copyDataDirectory,
+  validateDataDirectoryMigration,
   validateDataBaseDirTarget,
   ZCODE_WINDOWS_APP_INSTALL_DIR_ENV,
 } from "./paths.js";
@@ -107,6 +108,8 @@ export { createSystemService } from "./system/systemService.js";
 export { listSSHConfigAliasesFromLocalConfig } from "./system/sshConfigAlias.js";
 export { createTerminalService } from "./terminal/terminalService.js";
 export {
+  applyPendingDataBaseDirMigration,
+  cancelPendingDataBaseDirMigration,
   createSettingService,
   createSettingServiceWithMigrations,
 } from "./setting/settingService.js";

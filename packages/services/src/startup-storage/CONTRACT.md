@@ -1,5 +1,9 @@
 # 启动存储屏障
 
+`relocateAgent` 复用已解析的 executable 及 runtime 参数，执行离线 `storage-relocate`，
+传入共享严格 schema 的 staging 计划；只有零退出与合法完成回执才返回。
+此命令不运行 Agent，不读取默认 profile 来替换调用方传入的路径。
+
 main 只调度启动，由此 adapter 调用现有 resolver 定位的 CLI 执行 `storage-migrate`。数据库路径和迁移 SQL 归 CLI；此模块不打开数据库，也不启动 app-server、模型、MCP 或 session。
 
 保留 executable/runtime 前缀参数（含有空格的 bundle 路径），移除 app-server/agent-server 及其运行参数，使用参数数组执行，禁止 shell 拼接。环境由启动入口与 resolver 注入，保留自定义 dataBaseDir。命令不符合原 Agent 约定时拒绝，不猜测 wrapper 行为。

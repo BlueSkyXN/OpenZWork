@@ -22,6 +22,20 @@ import type {
 import { maybeThrowStorageFsFault } from "./fs-fault-injection.js";
 
 export * from "./session-store.js";
+import { cliStorageRelocation as relocation } from "../storage-relocation/index.js";
+import type { DataRelocationPlan } from "@zcode/shared/data-directory";
+
+export const cliStorageRelocation = {
+  async relocate(plan: DataRelocationPlan): Promise<void> {
+    const root = join(plan.stageRoot, "cli");
+    const artifacts = new NodeToolArtifactStore({
+      rootDir: join(root, "artifacts"),
+      imageCacheRootDir: join(root, "image-cache"),
+      videoCacheRootDir: join(root, "video-cache"),
+    });
+    await relocation.relocate(plan, (uri) => artifacts.readToolResultArtifact({ uri }));
+  },
+};
 
 // 内存 event store 实现已下沉到 @zcode/contracts，
 // 这里保持 `@zcode/adapters/storage` 的导出路径不变，避免调用方改 import。

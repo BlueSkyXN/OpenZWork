@@ -4,7 +4,7 @@
  */
 export const startupStorageModule = {
   id: "startup-storage",
-  requires: ["sqlite-migrations"],
+  requires: ["sqlite-migrations", "data-directory"],
   provides: ["startup-storage"],
   publicEntrypoints: ["index.ts", "contract.ts"],
 } as const;

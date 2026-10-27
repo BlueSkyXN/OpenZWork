@@ -480,6 +480,14 @@ function migrateLegacyWorkspaceSession(value: unknown): unknown {
   return migrated;
 }
 
+const dataBaseDirMigrationSchema = z
+  .object({
+    id: z.string().uuid(),
+    sourceBaseDir: z.string().trim().min(1),
+    targetBaseDir: z.string().trim().min(1),
+  })
+  .strict();
+
 const appSettingsObjectSchema = z.object({
   recentProjects: z.array(z.string()).default([]),
   locale: localeSchema.default("zh-CN"),
@@ -544,6 +552,7 @@ const appSettingsObjectSchema = z.object({
   lastActiveTabIndex: z.number().int().nonnegative().default(0),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
+  pendingDataBaseDirMigration: dataBaseDirMigrationSchema.optional(),
   settingsSyncFirstRunPromptHandled: z.boolean().optional(),
   webRemoteControlConnection: webRemoteControlConnectionSettingsSchema.optional(),
   webRemoteControlExternalRelayDevice: webRemoteControlExternalRelayDeviceSchema.optional(),
@@ -646,6 +655,7 @@ export const appSettingsPatchSchema = z.object({
   lastActiveTabIndex: z.number().int().nonnegative().optional(),
   lastActiveTaskByWorkspace: z.record(z.string(), z.string()).optional(),
   dataBaseDir: z.string().trim().min(1).optional(),
+  pendingDataBaseDirMigration: dataBaseDirMigrationSchema.optional(),
   settingsSyncFirstRunPromptHandled: z.boolean().optional(),
   webRemoteControlConnection: webRemoteControlConnectionSettingsSchema.optional(),
   webRemoteControlExternalRelayDevice: webRemoteControlExternalRelayDeviceSchema.optional(),

@@ -735,13 +735,18 @@ test('[structural] v3.15.1 sync: workflow child runtime mirrors interaction even
   assert.match(child, /notifyExternalChildSessionEvent\(\{[\s\S]*?interactionOrigin: clientPortsContext/);
 });
 
-test('[structural] v3.15.1 sync: mcpUserDirectory workspace config uses OpenZWork data dir', () => {
-  // 修复原因：合并把项目级目录带回上游 .zcode；fork 身份隔离（WP-03）用户级与项目级统一
-  // .openzwork。测试路径替换暴露后修的实现侧。
+test('[structural] MCP directory IO has one owner and keeps user/project boundaries separate', () => {
+  // 原断言把用户根隔离扩大到项目，导致 Desktop 与 CLI 路径分叉。
+  // Desktop 只转发到共同 owner；具体旧项目读写由真实文件回归覆盖。
   const index = fs.readFileSync(
     path.join(root, 'packages/desktop/src/main/mcpUserDirectory/index.ts'),
     'utf8',
   );
-  assert.match(index, /workspaceConfigDirSegments: \[OPENZWORK_DATA_DIR_NAME\]/);
-  assert.doesNotMatch(index, /workspaceConfigDirSegments: \["\.zcode"\]/);
+  assert.match(index, /createMcpSyncService/);
+  assert.match(index, /directoryService\.saveMcpToUserDirectory\(payload\)/);
+  assert.doesNotMatch(index, /workspaceConfigDirSegments/);
+  const owner = fs.readFileSync(path.join(root, 'packages/services/src/mcp-sync/mcpSyncService.ts'), 'utf8');
+  assert.match(owner, /userConfigDirSegments: \[OPENZWORK_DATA_DIR_NAME, "cli"\]/);
+  assert.match(owner, /workspaceConfigDirSegments: \["\.zcode"\]/);
+  assert.match(owner, /workspaceConfigDirSegments: \[OPENZWORK_DATA_DIR_NAME\]/);
 });

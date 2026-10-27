@@ -50,3 +50,17 @@ it("does not guess an executable command that lacks the Agent subcommand", async
     startupStorage.migrateAgent({ command: { command: process.execPath, args: ["wrapper.cjs"] } }),
   ).rejects.toThrow(/command/);
 });
+it("runs relocation through the real child process and validates its strict report", async () => {
+  const child = await command(`
+    const args = process.argv.slice(2);
+    const plan = JSON.parse(args[1]);
+    if (args[0] !== 'storage-relocate' || !plan.stageRoot || args.length !== 2) process.exit(2);
+    process.stdout.write(JSON.stringify({version:1,kind:'storage-relocated'}));
+  `);
+  const plan = {
+    sourceRoot: join(directory!, "source"),
+    targetRoot: join(directory!, "target"),
+    stageRoot: join(directory!, "stage"),
+  };
+  await expect(startupStorage.relocateAgent({ command: child, plan })).resolves.toBeUndefined();
+});
