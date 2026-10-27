@@ -350,3 +350,43 @@ patches:
     retire: 上游在覆盖前保留旧 MCP 层，项目叠加回归中不同名 server 均可见且同名定义不混合。
     refs:
       - docs/spec/identity-and-data-isolation.md
+
+  - id: OW-P017
+    title: 本地远控新建在目录失效时仍交付 Host attachment
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 手机通过旧 workspace 入口在已删除、不可访问或已变成文件的本地目录中新建任务。
+    impact: 新建入口绕过原生项目目录检查，错误继续到会话初始化，目录缺失原因无法在 admission 时反馈。
+    cause: attachWorkspaceHost 的 local 分支不读取 cwd，直接交付窗口 Host port。
+    fix: 新草稿在创建 port 前异步检查目录及访问权限，失败时明确提示恢复或选择目录；历史 initialTaskId 保留读取能力，不创建或修补旧目录。
+    evidence: 上游 3.16.2 的 3c5b2276 含相同直接 attachment 分支。真实临时目录回归在原实现下收到成功 attachment，修复后拒绝缺目录与文件路径，未产生 port 或 mkdir，目录恢复后可重试。
+    files:
+      - packages/desktop/src/main/webRemoteControlSharedHostAttachments.ts
+    regression:
+      - packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts
+    retire: 上游新草稿 admission 执行等效目录检查，历史读取与目录恢复回归保持通过。
+    refs:
+      - docs/web-remote-control/v1-connection-modes.md
+
+  - id: OW-P018
+    title: 远控工作区改名被目录推送去重吞掉
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 工作区身份与连接状态不变，仅修改项目名称或工作区展示用途。
+    impact: 手机保留旧名称，重新获取 bootstrap 才看到新值。
+    cause: 工作区推送签名遗漏 label、workspacePath 与 workspacePurpose 等展示字段。
+    fix: 在既有签名中加入工作区展示字段及任务的 workspaceLabel，保留时间排序和等价快照去重。
+    evidence: 上游 3.16.2 的 3c5b2276 签名只包含 key、kind 与连接字段。名称变更回归在修复前未收到推送，修复后名称和用途变化分别推送，重复快照去重。
+    files:
+      - packages/desktop/src/main/webRemoteControlManager.ts
+    regression:
+      - packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
+    retire: 上游签名覆盖相同展示字段，单字段变化和重复快照回归通过。
+    refs:
+      - docs/web-remote-control/v1-connection-modes.md

@@ -405,6 +405,7 @@
         "packages/ui/test/pptxElementReference.test.ts",
         "packages/desktop/test/webRemoteControlDirectGateway.test.ts",
         "packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts",
+        "packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts",
         "packages/ui/test/remoteControlSettingsSection.test.ts",
         "packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts",
         "packages/ui/test/settingsPageIntegratedTerminalShell.test.ts",

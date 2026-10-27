@@ -32,6 +32,7 @@ import {
   type WebRemoteControlRpcTransportPayload,
   type WebRemoteControlStartResult,
   type WebRemoteControlTaskTarget,
+  type WebRemoteControlLegacyDirectory,
   type WebRemoteControlStatus,
   type WebRemoteControlWindowBootstrapResult,
   type WebRemoteControlWorkspaceBridgeOpenPayload,
@@ -329,6 +330,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
 
   // 同步修复：这些业务所有者在删除相邻遥测函数时被一起移除，启动与恢复仍依赖它们。
   const availableTasksByWindowId = new Map<number, WebRemoteControlTaskTarget[]>();
+  const legacyDirectoriesByWindowId = new Map<number, WebRemoteControlLegacyDirectory>();
   const pushedWorkspaceListSignaturesByWindowId = new Map<number, string>();
   let startupRestoreClaimed = false;
   let lifecycleRevision = 0;
@@ -674,6 +676,8 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   }
 
   async function stopWindowRuntime(windowId: number, reason: string): Promise<void> {
+    legacyDirectoriesByWindowId.delete(windowId);
+    availableTasksByWindowId.delete(windowId);
     windowLifecycles.get(windowId)?.controller.abort();
     windowLifecycles.delete(windowId);
     const runtime = runtimes.get(windowId);
@@ -749,6 +753,14 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       // Bugfix: 手机端 workspace 列表需要和桌面端一致展示已断开的 SSH 项目。
       // 这里仅保留列表项；真正创建 bridge 时仍会校验 remoteSessionId，避免未连接项目被直接打开聊天。
       workspaceByKey.set(resolveWebRemoteControlWorkspaceKey(workspace), workspace);
+    }
+
+    if (runtime.connection?.settings.mode === "official") {
+      for (const workspace of legacyDirectoriesByWindowId.get(runtime.windowId)?.workspaces ?? []) {
+        // 仅补全本地目录；远端仍以当前窗口的 identity/session 快照为准。
+        if (workspace.kind === "local")
+          workspaceByKey.set(resolveWebRemoteControlWorkspaceKey(workspace), workspace);
+      }
     }
 
     const currentTarget = getRuntimeWorkspaceTarget(runtime);
@@ -844,6 +856,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         return JSON.stringify([
           workspaceKey,
           workspace.kind,
+          // OW-P018：项目改名不改变身份；显示字段必须参与完整目录去重。
+          workspace.label,
+          workspace.workspacePath,
+          workspace.workspacePurpose ?? "project",
           workspace.connectionState ?? "connected",
           workspace.remoteSessionId ?? "",
           // Bugfix：连接状态不只包含枚举值；同一 disconnected 状态下错误原因也会变化，
@@ -861,6 +877,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           // Bugfix：自动标题和用户重命名不会改变 task identity/membership；标题本身必须参与
           // 首页快照去重，否则手机会一直保留旧文案。
           task.title,
+          task.workspaceLabel,
           // OW-P009：活动时间决定列表时间与排序；运行状态不变也要发布，创建时间参与同值排序。
           task.updatedAt,
           task.createdAt,
@@ -990,7 +1007,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     pending: NonNullable<WindowControlRuntime["bridgeOpen"]>,
   ): Promise<WebRemoteControlExternalWorkspaceBridge> {
     let target: WebRemoteControlWorkspaceTarget | undefined;
-    const intent: HostProjectWorkspaceNavigationInput | undefined =
+    let intent: HostProjectWorkspaceNavigationInput | undefined =
       request.project ??
       ((request.fileTreeTaskId || request.taskId) && request.taskHostId
         ? {
@@ -1001,9 +1018,32 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             },
           }
         : undefined);
+    if (!intent && runtime.connection?.settings.mode === "official") {
+      const directory = legacyDirectoriesByWindowId.get(runtime.windowId);
+      const workspace = directory?.workspaces.find(
+        (item) =>
+          item.kind === "local" &&
+          resolveWebRemoteControlWorkspaceKey(item) === request.workspaceKey,
+      );
+      if (workspace) {
+        const taskId = request.fileTreeTaskId ?? request.taskId;
+        if (taskId) {
+          // 历史沿真实 cwd 查询 Host；不得为了打开任务而 prepare 新草稿或复活目录。
+          intent = { hostId: "local", task: { taskId, workspaceKey: request.workspaceKey } };
+        } else {
+          const projectIds = directory?.projects.find(
+            (p) => p.workspaceKey === request.workspaceKey,
+          )?.projectIds;
+          if (projectIds && projectIds.length > 1)
+            throw new Error("此目录属于多个项目，请在桌面选择项目后新建任务。");
+          if (projectIds?.length === 1) intent = { hostId: "local", projectId: projectIds[0]! };
+        }
+      }
+    }
     if (intent) {
       if ((request.project && request.taskId) || !dependencies.prepareProjectWorkspace)
         throw new Error("Project navigation is unavailable.");
+      pending.preparingProject = true;
       try {
         const prepared = await dependencies.prepareProjectWorkspace(
           runtime.windowId,
@@ -1018,6 +1058,16 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           label: prepared.workspacePath,
           ...(prepared.remote ? { connectionState: "connected" as const } : {}),
         };
+      } catch (error) {
+        // 官方旧页没有原生项目错误翻译；在兼容入口给出可执行的目录恢复提示。
+        if (
+          runtime.connection?.settings.mode === "official" &&
+          !request.project &&
+          error instanceof Error &&
+          ["project.primaryRootMissing", "project.primaryRootUnavailable"].includes(error.message)
+        )
+          throw new Error("工作区目录不可用。请恢复目录或在桌面选择有效目录后新建任务。");
+        throw error;
       } finally {
         pending.preparingProject = false;
       }
@@ -1080,7 +1130,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         workspacePath: target.workspacePath,
         workspaceIdentity: target.workspaceIdentity,
         remoteSessionId: target.remoteSessionId,
-        initialTaskId: request.taskId,
+        initialTaskId: request.fileTreeTaskId ?? request.taskId,
         kind: target.kind,
       });
       if (!isCurrentBridgeRuntime(runtime, bridgeRuntime) || runtime.bridgeOpen !== pending) {
@@ -1809,10 +1859,23 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       pushWorkspaceListUpdated(runtime);
     },
 
-    syncAvailableTasks(windowId: number, tasks: WebRemoteControlTaskTarget[]): void {
+    syncAvailableTasks(
+      windowId: number,
+      tasks: WebRemoteControlTaskTarget[],
+      directory?: WebRemoteControlLegacyDirectory,
+    ): void {
       const runtime = runtimes.get(windowId);
       if (!runtime) {
         return;
+      }
+      if (directory) {
+        if (
+          runtime.connection?.settings.mode !== "official" ||
+          !["running", "connecting", "active"].includes(runtime.status) ||
+          directory.windowControlSessionId !== runtime.deviceSid
+        )
+          return;
+        legacyDirectoriesByWindowId.set(windowId, directory);
       }
       availableTasksByWindowId.set(windowId, tasks);
       pushWorkspaceListUpdated(runtime);

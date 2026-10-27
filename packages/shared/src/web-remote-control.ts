@@ -576,6 +576,13 @@ export interface WebRemoteControlTaskTarget {
   archived?: boolean;
 }
 
+/** 官方旧页的窗口展示投影；项目寻址映射只供 Main 转发原生导航，不发送给网页。 */
+export interface WebRemoteControlLegacyDirectory {
+  windowControlSessionId: string;
+  workspaces: WebRemoteControlWorkspaceTarget[];
+  projects: Array<{ workspaceKey: string; projectIds: string[] }>;
+}
+
 export interface WebRemoteControlWorkspaceListResult {
   tasks?: WebRemoteControlTaskTarget[];
   workspaces: WebRemoteControlWorkspaceTarget[];

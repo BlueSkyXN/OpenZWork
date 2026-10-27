@@ -1072,6 +1072,25 @@ async function resetE2EHome(specs: string[]) {
         taskProviderId: "glm",
       },
     });
+    // 官方旧页目录回归：该 cwd 不加入恢复 tabs，也不先在桌面打开。
+    const closedPath = resolve(E2E_STORAGE_ROOT, "workspace/closed-history");
+    await mkdir(closedPath, { recursive: true });
+    await seedProviderReadinessHistoryFixture({
+      cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
+      e2eHomeDir: E2E_HOME_DIR,
+      workspacePath: closedPath,
+      history: {
+        sessionId: "sess_e2e_v1_closed",
+        title: "E2E_V1_CLOSED_HISTORY",
+        userText: "E2E_V1_CLOSED_USER",
+        assistantText: "E2E_V1_CLOSED_REPLY",
+        assistantInputTokens: 0,
+        assistantOutputTokens: 0,
+        modelId: "synthetic-model",
+        runtimeProviderId: "synthetic",
+        taskProviderId: "glm",
+      },
+    });
   }
   seedE2EWorkerModelStreamConfig(specs);
   // 小窗口只用于显式 Compact 场景；普通未读与重连用例需要完整历史。

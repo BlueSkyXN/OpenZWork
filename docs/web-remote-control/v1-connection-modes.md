@@ -16,22 +16,33 @@
 
 手机页面随 Desktop 产物打包；开发时亦可单独构建。普通 HTTP 的浏览器通过已有密码库完成 HMAC/SHA-256，通过共享 UUID 工具生成草稿、Hook 和文档面板标识，文档指纹与面板状态键也使用同一 SHA-256 兼容实现，不依赖仅安全上下文提供的 API。
 
-官方旧 V1 页仍读取 bootstrap 的任务快照。仅官方模式运行时，Renderer 从已有 WindowController 列表 registry 读取当前窗口工作区的 timeline、pinned、archived 三组投影，合并完整结果后经 platform IPC 交给 Main 的旧协议输出。Main 只保留可丢弃的展示投影；任务成员、标题和活动事实仍由 Host / CLI 管理。停止、切换模式或窗口作用域变化使在途读取失效，远端任务保留 workspaceIdentity 和当前 remoteSessionId，未完成的分组读取不发布部分列表。
+官方旧 V1 页仍读取 workspace / task 快照。仅官方模式运行时，Renderer 从常驻的 `ProjectDirectoryProvider` 读取与侧栏相同的完整项目树和活动投影，不另发受 tabs 限制的任务查询。目录包含未打开的本地项目、无任务项目和历史任务的实际 cwd；删除的任务不出现，软删项目的历史任务仍可读取。远端继续限定在当前窗口已有的 workspace identity / session 中，未连接或未保留的远端不能借本地目录扩展获得 attachment。
 
-任务目录按 `updatedAt`、`createdAt`、taskId 降序排列。即使任务仍在运行、标题和未读状态均不变，活动时间变化也必须推送完整的新目录；活动时间相同时，创建时间变化也应更新排序。相同字段值的输入列表仅改变数组顺序时仍去重。bootstrap 与后续目录推送从同一展示投影生成，手机重新连接后读取当前排序。
+项目与任务事实由 Host / CLI 管理，Provider 是窗口唯一目录读取者。既有 `syncWebRemoteControlLegacyTasks` IPC 一次提交 tasks 和可选 directory（workspaces、workspaceKey 到本地 projectIds 的映射、windowControlSessionId）。Main 原子替换可丢弃投影后推送，不持久化项目映射。停止、窗口关闭、切换模式清除兼容快照；非官方连接及不匹配的会话快照不接收目录扩展。UI 的初始异步状态查询不能覆盖后到的连接事件。
+
+旧页以 cwd 为工作区单位：有 root 的本地项目使用主目录，历史任务保留原 cwd；同一主目录的多个项目合并显示名称，新建遇到多个项目归属时提示从桌面选择项目，不能任意选第一个。无 root 项目使用 `JSON.stringify(["openzwork-local-project", projectId])` 作为临时目录寻址 identity，路径栏显示本地化“项目尚未添加源文件夹”。该键只存在于兼容投影，不能传给 Host、文件操作或持久化。Main 从当前快照解析 projectId，经既有 `prepareProjectWorkspace` / `prepareSession` 取得真实 cwd 后才建立本地 bridge。历史 task 导航经 Host 按真实 taskId / workspaceKey 解析，不初始化或重建目录。
+
+已存在的本地目录在新建 attachment 前执行异步只读检查，目录不存在、路径是文件或无法访问均拒绝新草稿；修复目录后再次尝试可恢复。此检查不拦截带 initialTaskId 的历史恢复，保留已有历史只读语义。空项目首次分配目录仍由原生项目服务负责；旧目录失效不能通过 mkdir 自动复活。新建准备沿用现有 bridge generation、取消和迟到结果释放规则。
+
+任务目录按 `updatedAt`、`createdAt`、taskId 降序排列。即使任务仍在运行、标题和未读状态均不变，活动时间变化也必须推送完整的新目录；活动时间相同时，创建时间变化也应更新排序。workspace 的 label、path、purpose 及 task 的 workspaceLabel 变化也必须推送。相同字段值的输入列表仅改变数组顺序时仍去重。bootstrap 与后续目录推送从同一展示投影生成，手机重新连接后读取当前排序。
 
 ```mermaid
 sequenceDiagram
     participant H as Host / CLI 任务事实
-    participant C as WindowController registry
+    participant C as ProjectDirectoryProvider
     participant D as Desktop Main 展示投影
     participant P as 官方 V1 手机页
-    H->>C: 任务活动时间变化
-    C->>D: 当前作用域完整任务列表
-    D->>D: 更新投影、排序，比较含时间字段的签名
+    H->>C: 项目/任务事实及 Controller 活动事件
+    C->>D: 同一完整树转换的 workspace、task、项目寻址映射
+    D->>D: 官方连接原子更新投影，比较含名称与时间的签名
     D-->>P: workspace-list-updated
     P->>D: 重连后的 bootstrap-request
     D-->>P: 同一投影的当前完整列表
+    P->>D: workspace-bridge-open(workspaceKey)
+    D->>H: 既有 prepareProjectWorkspace(projectId) 或 task 导航
+    H-->>D: 当前有效目录 descriptor
+    D->>D: 校验请求代次，新草稿检查本地目录
+    D-->>P: 真实 cwd / identity 的既有 Host attachment
 ```
 
 ## 设置页与导航
@@ -110,7 +121,7 @@ sequenceDiagram
 | V1-11 | 设置入口、首页快捷按钮、手机与 Bot 卡片、Bot 子页返回                       | 首页直达设置且不连接；页内导航不出现配置弹窗；Bot 使用本机服务        | UI 单测、Desktop E2E    |
 | V1-12 | 进入 / 离开设置、同路径远端、失效 session、无工作区                         | 不自动连接或停止；identity 不丢失；失效 session 不透传；Bot 仍可管理  | UI 单测、Desktop E2E    |
 
-V1-08 另验证实际加载的脚本来自 `/remote/v4/3.15.2/assets/`，bootstrap 未改报桌面版本，页面刷新后仍保持 `app_version=3.15.2`；该页可列出并打开预置的桌面历史任务，列表更新只来自现有 Controller。使用合成模型回放，让任务保持 running 后从手机发送排队消息；桌面确认入队、手机刷新后仍能读到队列、释放当前回合后收到排队回复、再次刷新保留正文，整个流程无 `fault.subscription.contentRejected`。
+V1-08 另验证实际加载的脚本来自 `/remote/v4/3.15.2/assets/`，bootstrap 未改报桌面版本，页面刷新后仍保持 `app_version=3.15.2`；该页可列出并打开未在桌面 tab 中的本地历史任务，显示无任务及无 root 项目，项目改名实时同步，失效目录新建失败且没有创建目录。列表来自共享 Provider。使用合成模型回放，让任务保持 running 后从手机发送排队消息；桌面确认入队、手机刷新后仍能读到队列、释放当前回合后收到排队回复、再次刷新保留正文，整个流程无 `fault.subscription.contentRejected`。
 
 V1-01 同时覆盖三种说明随选择切换，官方网页版本与共享常量一致；在中英文、Zai Light / Zai Dark、1400px / 390px 下检查说明和表单无水平溢出。
 

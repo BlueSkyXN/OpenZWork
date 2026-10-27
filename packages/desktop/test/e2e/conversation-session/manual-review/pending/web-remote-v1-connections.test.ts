@@ -4,14 +4,25 @@ import {
 } from "#e2e/helpers/web-remote-control-settings";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve, extname, sep } from "node:path";
 import { chromium, type Browser } from "playwright-core";
 import { createLocalPairingRelay } from "../../../helpers/local-pairing-relay.js";
 import { openMobilePairingPage } from "../../../helpers/mobile-pairing.js";
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 import type { WebRemoteControlStatus, IPlatformService } from "@zcode/shared";
-import { OFFICIAL_WEB_REMOTE_CONTROL_V1, encodeCustomModelValue } from "@zcode/shared";
+import {
+  OFFICIAL_WEB_REMOTE_CONTROL_V1,
+  encodeCustomModelValue,
+  ServiceChannels,
+} from "@zcode/shared";
+import type { VirtualProject } from "@zcode/services";
+import {
+  callHandoffHost,
+  installHandoffRpcProbe,
+  restoreHandoffProbes,
+} from "../../../helpers/remote-project-handoff-probe.js";
+import { resolveE2EStorageRoot } from "../../../helpers/e2e-runtime-paths.js";
 import {
   TID_CHAT_MODEL_SELECT_TRIGGER,
   TID_CHAT_MODEL_SELECT_GROUP,
@@ -396,6 +407,22 @@ describe("E2E_V1_CONNECTIONS", () => {
     await refreshSeededOpenAIProvidersThroughSettings([UPSTREAM_PROVIDER_NAME]);
     await selectUpstreamModel();
     await selectUpstreamThoughtLevelValue("disabled");
+    await installHandoffRpcProbe();
+    closes.push(restoreHandoffProbes);
+    const emptyPath = join(resolveE2EStorageRoot(), "workspace/empty-project");
+    const missingPath = join(resolveE2EStorageRoot(), "workspace/missing-project");
+    await mkdir(emptyPath, { recursive: true });
+    await mkdir(missingPath, { recursive: true });
+    const empty = await callHandoffHost<VirtualProject>(ServiceChannels.Project, "saveProject", [
+      { name: "E2E_V1_EMPTY_PROJECT", roots: [emptyPath], primaryRoot: emptyPath },
+    ]);
+    const rootless = await callHandoffHost<VirtualProject>(ServiceChannels.Project, "saveProject", [
+      { name: "E2E_V1_ROOTLESS_PROJECT", roots: [] },
+    ]);
+    await callHandoffHost(ServiceChannels.Project, "saveProject", [
+      { name: "E2E_V1_MISSING_PROJECT", roots: [missingPath], primaryRoot: missingPath },
+    ]);
+    await rm(missingPath, { recursive: true });
     await openSettings();
     await $('[data-testid="web-remote-mode-official"]').click();
     await $('[data-testid="web-remote-start"]').click();
@@ -455,6 +482,62 @@ describe("E2E_V1_CONNECTIONS", () => {
     });
     await browser.waitUntil(async () => (await status()).mobileConnected === true);
     expect((await status()).mode).toBe("official");
+    await page.getByRole("button", { name: /^(整理任务|Organize tasks)$/ }).click();
+    await page.getByRole("menuitemradio", { name: /^(按工作区|By workspace)$/ }).click();
+    for (const name of [
+      "E2E_V1_EMPTY_PROJECT",
+      "E2E_V1_ROOTLESS_PROJECT",
+      "E2E_V1_MISSING_PROJECT",
+    ])
+      await page.getByText(name, { exact: true }).waitFor({ timeout: 30_000 });
+    await callHandoffHost(ServiceChannels.Project, "saveProject", [
+      { id: empty.id, name: "E2E_V1_RENAMED_PROJECT" },
+    ]);
+    // 不刷新页面验证纯名称事件；工作区与任务身份均保持不变。
+    await page.getByText("E2E_V1_RENAMED_PROJECT", { exact: true }).waitFor({ timeout: 30_000 });
+    const card = (name: string) =>
+      page
+        .locator("li")
+        .filter({ has: page.getByText(name, { exact: true }) })
+        .last();
+    const backHome = () =>
+      page.getByRole("button", { name: /^(返回任务首页|Back to task home)$/ }).click();
+    const closedCard = card("closed-history");
+    await closedCard.locator("button[aria-expanded]").click();
+    await page.getByText("E2E_V1_CLOSED_HISTORY", { exact: true }).click();
+    await page
+      .getByText("E2E_V1_CLOSED_REPLY", { exact: false })
+      .first()
+      .waitFor({ timeout: 30_000 });
+    await backHome();
+    for (const name of ["E2E_V1_RENAMED_PROJECT", "E2E_V1_ROOTLESS_PROJECT"]) {
+      await card(name).locator("button").nth(1).click();
+      await page.locator('[contenteditable="true"]').first().waitFor({ timeout: 30_000 });
+      await page.locator('[contenteditable="true"]').first().fill("E2E_V1_DIRECTORY_DRAFT");
+      await backHome();
+    }
+    const roots = await callHandoffHost<VirtualProject[]>(ServiceChannels.Project, "readProjects");
+    const initialized = roots.find((project) => project.id === rootless.id)?.roots[0]?.rootPath;
+    expect(initialized).toBeTruthy();
+    expect((await stat(initialized!)).isDirectory()).toBe(true);
+    await card("E2E_V1_MISSING_PROJECT").locator("button").nth(1).click();
+    await page
+      .getByText(/project.primaryRootMissing|工作区目录不可用/)
+      .waitFor({ timeout: 30_000 });
+    await expect(stat(missingPath)).rejects.toMatchObject({ code: "ENOENT" });
+    await page.screenshot({ path: join(artifacts, "official-directory.png") });
+    // 回到已有队列兼容验收，保留历史/刷新/运行中排队断言。
+    const historyButton = page.getByText("E2E_V1_OFFICIAL_TASK", { exact: true });
+    if (!(await historyButton.isVisible())) {
+      // 按目标 cwd 展开一组；展开后 locator 索引会变化，不能遍历所有折叠按钮。
+      const historyWorkspace = page
+        .locator("li")
+        .filter({
+          has: page.getByText(join(resolveE2EStorageRoot(), "workspace/default"), { exact: true }),
+        })
+        .last();
+      await historyWorkspace.locator('button[aria-expanded="false"]').click();
+    }
     await page.getByText("E2E_V1_OFFICIAL_TASK", { exact: true }).click();
     await page.locator('[contenteditable="true"]').first().waitFor({ timeout: 30_000 });
     await page
@@ -548,6 +631,11 @@ describe("E2E_V1_CONNECTIONS", () => {
       JSON.stringify({
         paired: true,
         historyListed: true,
+        closedHistoryRead: true,
+        emptyProjectDraft: true,
+        rootlessProjectInitialized: true,
+        renamePushed: true,
+        missingDirectoryRejected: true,
         historyRead: true,
         reload: true,
         draft: true,

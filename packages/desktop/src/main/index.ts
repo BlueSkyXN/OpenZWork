@@ -1576,9 +1576,9 @@ app.whenReady().then(async () => {
     getDesktopSessionActivity: () => ({
       runningAgentSessionCount: getRunningAgentSessionCount(),
     }),
-    syncWebRemoteControlLegacyTasks: (windowId, tasks) => {
+    syncWebRemoteControlLegacyTasks: (windowId, tasks, directory) => {
       if (webRemoteControlManager.getStatus(windowId).connection?.mode === "official")
-        webRemoteControlManager.syncAvailableTasks(windowId, tasks);
+        webRemoteControlManager.syncAvailableTasks(windowId, tasks, directory);
     },
     syncWebRemoteControlWorkspaces: (windowId, workspaces) => {
       webRemoteControlManager.syncAvailableWorkspaces(windowId, workspaces);

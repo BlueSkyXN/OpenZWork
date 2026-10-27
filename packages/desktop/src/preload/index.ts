@@ -313,8 +313,10 @@ contextBridge.exposeInMainWorld("zcode", {
   /** 同步当前窗口所有 tab 的 workspace 路径到 main 进程 */
   syncWindowTabs: (paths: string[]) => ipcRenderer.send(PlatformChannels.SyncWindowTabs, paths),
   /** 同步当前窗口里 Web 远程控制允许切换的 workspace */
-  syncWebRemoteControlLegacyTasks: (tasks: WebRemoteControlTaskTarget[]) =>
-    ipcRenderer.send(PlatformChannels.SyncWebRemoteControlLegacyTasks, tasks),
+  syncWebRemoteControlLegacyTasks: (
+    tasks: WebRemoteControlTaskTarget[],
+    directory?: import("@zcode/shared").WebRemoteControlLegacyDirectory,
+  ) => ipcRenderer.send(PlatformChannels.SyncWebRemoteControlLegacyTasks, { tasks, directory }),
   syncWebRemoteControlWorkspaces: (workspaces: WebRemoteControlWorkspaceTarget[]) =>
     ipcRenderer.send(PlatformChannels.SyncWebRemoteControlWorkspaces, workspaces),
   onWebRemoteControlReconnectWorkspace: (

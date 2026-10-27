@@ -23,6 +23,7 @@ import type {
   WebRemoteControlReconnectWorkspaceRequest,
   WebRemoteControlWorkspaceTarget,
   WebRemoteControlTaskTarget,
+  WebRemoteControlLegacyDirectory,
 } from "./web-remote-control.js";
 import type { AppSettings, Locale } from "./protocol.js";
 import type { BrowserViewportSize } from "./browser-use/command-metadata.js";
@@ -821,7 +822,10 @@ export interface IPlatformService {
 
   /** 同步当前窗口里 Web 远程控制允许切换的 workspace；Web fallback 可忽略 */
   /** 官方 V1 页的派生任务目录；任务事实仍归 WindowController。 */
-  syncWebRemoteControlLegacyTasks?(tasks: WebRemoteControlTaskTarget[]): void;
+  syncWebRemoteControlLegacyTasks?(
+    tasks: WebRemoteControlTaskTarget[],
+    directory?: WebRemoteControlLegacyDirectory,
+  ): void;
 
   syncWebRemoteControlWorkspaces?(workspaces: WebRemoteControlWorkspaceTarget[]): void;
 

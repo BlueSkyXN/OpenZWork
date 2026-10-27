@@ -204,6 +204,28 @@ export const webRemoteControlLegacyTaskTargetsSchema = z.array(
     .strict(),
 );
 
+/** 一个 IPC 提交同代目录和任务，避免列表已扩大但导航映射尚未更新。 */
+export const webRemoteControlLegacyTaskSyncSchema = z
+  .object({
+    tasks: webRemoteControlLegacyTaskTargetsSchema,
+    directory: z
+      .object({
+        windowControlSessionId: nonEmptyStringSchema,
+        workspaces: webRemoteControlWorkspaceTargetsSchema,
+        projects: z.array(
+          z
+            .object({
+              workspaceKey: nonEmptyStringSchema,
+              projectIds: z.array(nonEmptyStringSchema).min(1),
+            })
+            .strict(),
+        ),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+
 export const webRemoteControlWindowBootstrapResultSchema = z.object({
   tasks: webRemoteControlLegacyTaskTargetsSchema.optional(),
   windowControlSessionId: nonEmptyStringSchema,
