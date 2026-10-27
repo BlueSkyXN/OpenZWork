@@ -390,3 +390,25 @@ patches:
     retire: 上游签名覆盖相同展示字段，单字段变化和重复快照回归通过。
     refs:
       - docs/web-remote-control/v1-connection-modes.md
+
+  - id: OW-P019
+    title: Windows 创建共享锁目录的短暂 EPERM 中断配置写入
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 两个真实 Node 进程并发修改个人 Provider 配置，创建 provider_config.json.lock 时返回 EPERM。
+    impact: 申请者尚未取得锁便退出，配置更新失败；Windows Extended 的双进程持久化回归失败。
+    cause: acquireFileLock 只重试 EEXIST 或已建锁后丢失目录的 ENOENT，创建阶段的 EPERM 被直接抛出。
+    fix: 仅对 Windows 未成功 mkdir 的 EPERM 在原等待预算内重试，不读取或回收其他 owner；持续失败保留原错误，零预算、其他平台和 owner 写入失败保持原失败语义。
+    evidence: 上游 3.16.2 的 3c5b2276 含相同错误分类。Windows CI 堆栈定位到共享工具的 mkdir；四项受控故障回归在原实现下失败，覆盖短暂恢复、持续失败预算及活 owner 保护，真实双进程写入回归保持完整更新断言。
+    files:
+      - packages/shared/src/node/atomicFileLock.ts
+    regression:
+      - packages/shared/test/atomicFileLockWindows.test.ts
+      - packages/provider-node/test/personal-rule-persistence.test.ts
+    retire: 上游在同一预算内处理 Windows 创建阶段的临时占用，永久错误与 owner 隔离回归保留，真实双进程写入通过。
+    refs:
+      - docs/spec/shared-file-lock-acquisition.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40525930576/job/122265384951

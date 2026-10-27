@@ -223,6 +223,16 @@ export async function acquireFileLock(
         });
       };
     } catch (error) {
+      // OW-P019：Windows 的 mkdir 竞争可能返回 EPERM；未取得锁时只等待重试，
+      // 不据此回收其他 owner。持续失败保留原错误，并共用调用方的等待预算。
+      if (!createdLock && process.platform === "win32" && getErrorCode(error) === "EPERM") {
+        const remainingMs = Math.max(maxWaitMs - (Date.now() - startedAt), 0);
+        const delayMs = retryDelaysMs[Math.min(attempt, retryDelaysMs.length - 1)];
+        if (delayMs === undefined || remainingMs === 0) throw error;
+        await sleep(Math.min(delayMs, remainingMs));
+        if (Date.now() - startedAt >= maxWaitMs) throw error;
+        continue;
+      }
       if (createdLock) {
         await rm(ownerFile, { force: true }).catch(() => {});
         await rmdir(lockFile).catch(() => {});
