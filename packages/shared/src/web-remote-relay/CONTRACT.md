@@ -6,4 +6,4 @@
 
 连接模式为 direct、self-hosted、official，均用 V1 HMAC。二维码 relay 参数可指定独立 WS 地址；缺省按页面 origin 推导。HTTP 浏览器通过相同 SHA-256/HMAC 算法生成 proof 与摘要。官方地址只供显式选择的 V1 preset 使用。
 
-官方 preset 的 `pageVersion` 固定手机网页资源版本 `3.14.3`，与设备握手中的真实桌面版本分开。Main 只在该模式省略 bootstrap 的可选 `desktopAppVersion`，让旧网页保留已选择的资源；直连和自建模式继续报告真实桌面版本。
+官方 preset 的 `pageVersion` 固定手机网页资源版本 `3.15.2`，使含 `inputOrigin` 的排队投影通过网页校验；中继地址和设备握手中的真实桌面版本保持原语义。Main 只在该模式省略 bootstrap 的可选 `desktopAppVersion`，让 V1 网页保留已选择的资源；直连和自建模式继续报告真实桌面版本。设置页从同一常量显示官方网页版本。

@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "caseName": "web-remote-v1-connections",
+  "spec": "./test/e2e/conversation-session/web-remote-v1-connections.test.ts",
+  "fixtures": [
+    {
+      "id": "v1-official-title",
+      "description": "合成任务标题",
+      "metadata": {
+        "kind": "common",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "标题用于识别测试任务"
+      },
+      "maxMatches": 8,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "bodyIncludes": ["Generate a concise title", "E2E_V1_OFFICIAL"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "v1-official-title",
+          "inputTokens": 64,
+          "outputTokens": 8,
+          "text": "{\"title\":\"E2E_V1_OFFICIAL_TASK\"}"
+        }
+      }
+    },
+    {
+      "id": "v1-official-slow",
+      "description": "保持 running 直到手机排队与刷新完成",
+      "metadata": {
+        "kind": "main",
+        "timingPolicy": "controlled-stream",
+        "source": "synthetic",
+        "syntheticReason": "受控流用于检查排队投影兼容性"
+      },
+      "maxMatches": 1,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_SLOW"],
+        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+      },
+      "response": {
+        "statusCode": 200,
+        "headers": {
+          "content-type": "text/event-stream; charset=utf-8"
+        },
+        "releaseAfterChunks": 3,
+        "chunks": [
+          {
+            "offsetMs": 0,
+            "text": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"v1-official-slow\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"deepseek-v4-flash\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":80,\"output_tokens\":0}}}\n\n"
+          },
+          {
+            "offsetMs": 10,
+            "text": "event: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}\n\n"
+          },
+          {
+            "offsetMs": 20,
+            "text": "event: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"E2E_V1_RUNNING_REPLY\"}}\n\n"
+          },
+          {
+            "offsetMs": 30,
+            "text": "event: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0}\n\n"
+          },
+          {
+            "offsetMs": 40,
+            "text": "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":8}}\n\n"
+          },
+          {
+            "offsetMs": 50,
+            "text": "event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
+          }
+        ],
+        "text": {
+          "id": "v1-official-slow",
+          "inputTokens": 80,
+          "outputTokens": 8,
+          "text": "E2E_V1_RUNNING_REPLY"
+        }
+      }
+    },
+    {
+      "id": "v1-official-queued",
+      "description": "手机已接受队列的执行结果",
+      "metadata": {
+        "kind": "main",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "仅验证排队后正常执行和正文恢复"
+      },
+      "maxMatches": 1,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_QUEUED"],
+        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "v1-official-queued",
+          "inputTokens": 80,
+          "outputTokens": 8,
+          "text": "E2E_V1_QUEUED_REPLY"
+        }
+      }
+    }
+  ]
+}

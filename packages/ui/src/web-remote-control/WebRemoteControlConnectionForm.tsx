@@ -1,7 +1,27 @@
-import type { WebRemoteControlConnectionSettings } from "@zcode/shared";
+import {
+  OFFICIAL_WEB_REMOTE_CONTROL_V1,
+  type WebRemoteControlConnectionSettings,
+} from "@zcode/shared";
 import { Input } from "@/components/ui/input.js";
 import { Button } from "@/components/ui/button.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+
+export function WebRemoteControlConnectionHelp({
+  mode,
+}: {
+  mode: WebRemoteControlConnectionSettings["mode"];
+}) {
+  const { intl } = useZCodeIntl();
+  const key = mode === "self-hosted" ? "selfHostedHelp" : `${mode}Help`;
+  return (
+    <p data-testid="web-remote-mode-help" className="text-ui-caption text-foreground-subtle">
+      {intl.formatMessage(
+        { id: `webRemoteControl.connection.${key}` },
+        { version: OFFICIAL_WEB_REMOTE_CONTROL_V1.pageVersion },
+      )}
+    </p>
+  );
+}
 
 export function WebRemoteControlConnectionForm({
   value,
@@ -41,6 +61,7 @@ export function WebRemoteControlConnectionForm({
           </Button>
         ))}
       </div>
+      <WebRemoteControlConnectionHelp mode={value.mode} />
       {value.mode === "direct" ? (
         <>
           <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
@@ -85,7 +106,7 @@ export function WebRemoteControlConnectionForm({
               }
             />
           </label>
-          <p className="text-ui-caption text-foreground-subtle">{text("directHelp")}</p>
+          <p className="text-ui-caption text-foreground-subtle">{text("publicUrlHelp")}</p>
         </>
       ) : value.mode === "self-hosted" ? (
         <>
@@ -112,9 +133,7 @@ export function WebRemoteControlConnectionForm({
             />
           </label>
         </>
-      ) : (
-        <p className="text-ui-caption text-foreground-subtle">{text("officialHelp")}</p>
-      )}
+      ) : null}
     </fieldset>
   );
 }

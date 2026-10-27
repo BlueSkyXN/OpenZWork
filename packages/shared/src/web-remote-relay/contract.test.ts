@@ -26,7 +26,7 @@ describe("relay public boundary", () => {
     expect(url.pathname).toBe("/remote/v4");
     expect(parseWebRemoteControlExternalQrParams(url.searchParams)).toEqual({
       ...pairing,
-      appVersion: "3.14.3",
+      appVersion: "3.15.2",
     });
     url.searchParams.delete("hash");
     expect(parseWebRemoteControlExternalQrParams(url.searchParams)).toBeNull();

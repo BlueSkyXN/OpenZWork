@@ -413,8 +413,9 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
     ['packages/desktop/test/webRemoteControlDirectGateway.test.ts', ['"wss://zcode.z.ai/ws"']],
     ['packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts', ['"https://zcode.z.ai/remote/v4"']],
     ['packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts', ['"https://zcode.z.ai"']],
-    ['packages/ui/src/i18n/locales/en-US.ts', ['"Pair through zcode.z.ai using V1. No sign-in required."']],
-    ['packages/ui/src/i18n/locales/zh-CN.ts', ['"使用 zcode.z.ai 的 V1 扫码配对，无需登录。"']],
+    // 官方连接说明改写后，旧整句许可已失效；仅同步这两句，继续检查同文件内的其他地址。
+    ['packages/ui/src/i18n/locales/en-US.ts', ['"Uses the ZCode official relay and official V1 page {version}. Both devices must reach zcode.z.ai. Scan to pair without signing in."']],
+    ['packages/ui/src/i18n/locales/zh-CN.ts', ['"通过 ZCode 官方中继连接，使用官方 V1 网页 {version}。手机和电脑都需能访问 zcode.z.ai；扫码配对无需登录。"']],
   ]);
   const removeAllowedV1Literals = (file, text) =>
     (allowedV1Literals.get(file) ?? []).reduce((remaining, literal) => remaining.replaceAll(literal, ''), text);
@@ -430,6 +431,15 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
     assert.match(removeAllowedV1Literals(contractTest, address), officialDomainRe);
   }
   assert.match(removeAllowedV1Literals('unrelated.test.ts', '"https://zcode.z.ai"'), officialDomainRe);
+  for (const locale of ['en-US', 'zh-CN']) {
+    const file = `packages/ui/src/i18n/locales/${locale}.ts`;
+    const [help] = allowedV1Literals.get(file);
+    assert.doesNotMatch(removeAllowedV1Literals(file, help), officialDomainRe);
+    for (const address of ['"https://zcode.z.ai/oauth"', '"https://api.z.ai"']) {
+      assert.match(removeAllowedV1Literals(file, `${help}\n${address}`), officialDomainRe);
+    }
+    assert.match(removeAllowedV1Literals('unrelated.ts', help), officialDomainRe);
+  }
   // 2026-09-27 起与 WP-03 同口径：按 git 追踪清单做全仓文本扫描（新增目录自动入列，
   // 且不混入工作树的 node_modules/dist）；git ls-files 输出本就是 POSIX 路径，原先
   // 为 Windows path.relative 反斜杠做的归一化不再需要。

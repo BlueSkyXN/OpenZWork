@@ -2032,16 +2032,21 @@ const zhCN: Record<string, string> = {
   "webRemoteControl.authRequired.login": "登录",
   "webRemoteControl.connection.mode": "连接方式",
   "webRemoteControl.connection.direct": "直接访问",
-  "webRemoteControl.connection.self-hosted": "自建 relay",
-  "webRemoteControl.connection.official": "官方 relay",
+  "webRemoteControl.connection.self-hosted": "自建中继",
+  "webRemoteControl.connection.official": "官方中继",
   "webRemoteControl.connection.listenHost": "监听地址",
   "webRemoteControl.connection.port": "端口（0 自动）",
   "webRemoteControl.connection.publicUrl": "手机访问地址（可选）",
   "webRemoteControl.connection.relayUrl": "V1 WebSocket 地址",
   "webRemoteControl.connection.pageUrl": "手机页面地址",
   "webRemoteControl.connection.directHelp":
-    "留空访问地址时自动使用本机 IP 和端口。手机需能访问此电脑；公网反向代理使用 HTTPS。",
-  "webRemoteControl.connection.officialHelp": "使用 zcode.z.ai 的 V1 扫码配对，无需登录。",
+    "使用随桌面更新的 OpenZWork 网页。手机需通过局域网、VPN 或反向代理访问此电脑。",
+  "webRemoteControl.connection.publicUrlHelp":
+    "访问地址留空时使用本机 IP 和端口；公网反向代理使用 HTTPS。",
+  "webRemoteControl.connection.selfHostedHelp":
+    "使用填写的 V1 中继和手机网页。手机需能打开网页，两端都需能连接中继；HTTPS 网页需配套 WSS 中继。",
+  "webRemoteControl.connection.officialHelp":
+    "通过 ZCode 官方中继连接，使用官方 V1 网页 {version}。手机和电脑都需能访问 zcode.z.ai；扫码配对无需登录。",
   "webRemoteControl.connection.workspaceRequired": "打开一个工作区后即可开启手机连接。",
   "webRemoteControl.connection.start": "开启远程控制",
   "webRemoteControl.connection.ready": "开启后显示配对二维码",

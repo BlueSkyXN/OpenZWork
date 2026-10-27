@@ -2173,9 +2173,13 @@ const enUS: Record<string, string> = {
   "webRemoteControl.connection.relayUrl": "V1 WebSocket URL",
   "webRemoteControl.connection.pageUrl": "Mobile page URL",
   "webRemoteControl.connection.directHelp":
-    "Leave the phone URL empty to use this computer’s IP and port. The phone must reach this computer; use HTTPS for a public reverse proxy.",
+    "Uses the OpenZWork page bundled with your desktop app. Your phone must reach this computer over a local network, VPN, or reverse proxy.",
+  "webRemoteControl.connection.publicUrlHelp":
+    "Leave the phone URL empty to use this computer’s IP and port. Use HTTPS for a public reverse proxy.",
+  "webRemoteControl.connection.selfHostedHelp":
+    "Uses the V1 relay and mobile page you specify. Your phone must reach the page, and both devices must reach the relay. An HTTPS page requires a WSS relay.",
   "webRemoteControl.connection.officialHelp":
-    "Pair through zcode.z.ai using V1. No sign-in required.",
+    "Uses the ZCode official relay and official V1 page {version}. Both devices must reach zcode.z.ai. Scan to pair without signing in.",
   "webRemoteControl.connection.workspaceRequired": "Open a workspace to start a phone connection.",
   "webRemoteControl.connection.start": "Start remote control",
   "webRemoteControl.connection.ready": "Start to show the pairing QR code",
