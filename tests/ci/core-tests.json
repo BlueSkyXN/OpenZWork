@@ -198,6 +198,7 @@
     {
       "capability": "project-ui-and-composer",
       "files": [
+        "packages/ui/test/floatingLayerHitRegions.test.ts",
         "packages/ui/test/toolSearchToolCallBlock.test.ts",
         "packages/ui/test/composerSubmissionSettlement.test.ts",
         "packages/ui/test/projectFirstSubmitVisibility.test.ts",
