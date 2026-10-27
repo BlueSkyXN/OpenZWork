@@ -304,3 +304,28 @@ patches:
     refs:
       - docs/spec/source-server-lock-acquisition.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40410464216/job/121879570233
+
+  - id: OW-P015
+    title: 交互浮层重叠窗口拖拽区时无法点击
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 项目搜索菜单向上展开，或其他交互浮层、子菜单覆盖桌面窗口的标题栏拖拽区。
+    impact: 搜索框无法通过鼠标聚焦，浮层内按钮和菜单项的点击可能被当成拖动窗口。
+    cause: DropdownMenu、ContextMenu、Popover 和 HoverCard 的共享内容根缺少 no-drag；Portal 的视觉层级不能排除 Electron 原生拖拽命中。
+    fix: 在四个共享组件的六处内容根声明 no-drag，覆盖主浮层与子菜单；调用方继续保留布局、搜索、焦点和选择逻辑，窗口其余拖拽区域不变。
+    evidence: 上游 3.16.2 的 3c5b2276 保留相同缺口。四组共享组件回归在原实现下失败；原生鼠标复现中，输入框重叠拖拽区时按 x 只会选中菜单项。修复后的共享 DropdownMenu 在隔离 Electron 中可通过鼠标聚焦并连续输入 xrag；六类浮层的 24 个浏览器场景验证实际 CSS、输入过滤和动作选择。
+    files:
+      - packages/ui/src/components/ui/dropdown-menu.tsx
+      - packages/ui/src/components/ui/context-menu.tsx
+      - packages/ui/src/components/ui/popover.tsx
+      - packages/ui/src/components/ui/hover-card.tsx
+    regression:
+      - packages/ui/test/floatingLayerHitRegions.test.ts
+    retire: 上游在共享交互浮层及子菜单中提供等效原生非拖拽区域，重叠标题栏时的输入与动作回归通过。
+    refs:
+      - DESIGN.md
+      - packages/ui/test/browser/manual-review/pending/floating-layer-hit-regions.test.mjs
