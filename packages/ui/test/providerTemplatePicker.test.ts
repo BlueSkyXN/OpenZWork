@@ -47,13 +47,13 @@ describe("ProviderTemplatePicker", () => {
         createElement(ProviderTemplatePicker, {
           templates: [
             {
-              templateId: "deepseek",
-              templateNameMap: { "zh-CN": "深度求索", "en-US": "DeepSeek" },
-              config: { logo: { type: "builtin", key: "deepseek" } },
+              templateId: "standard-anthropic-messages",
+              templateNameMap: { "zh-CN": "Anthropic Messages", "en-US": "Anthropic Messages" },
+              config: { api: { type: "anthropic-messages" } },
             },
             {
-              templateId: "long-name",
-              templateNameMap: { "en-US": "Alibaba Model Studio (International)" },
+              templateId: "standard-openai-chat-completions",
+              templateNameMap: { "en-US": "OpenAI Chat Completions" },
               config: {},
             },
           ],
@@ -68,12 +68,14 @@ describe("ProviderTemplatePicker", () => {
     expect(html).toContain("添加供应商");
     expect(html).toContain(`data-testid="${TID_MODEL_PROVIDER_TEMPLATE_PICKER}"`);
     expect(html).toContain(`data-testid="${testId(TID_MODEL_PROVIDER_TEMPLATE_ITEM, "custom")}"`);
-    expect(html).toContain(`data-testid="${testId(TID_MODEL_PROVIDER_TEMPLATE_ITEM, "deepseek")}"`);
+    expect(html).toContain(
+      `data-testid="${testId(TID_MODEL_PROVIDER_TEMPLATE_ITEM, "standard-anthropic-messages")}"`,
+    );
     expect(html).toContain("创建自定义供应商");
-    expect(html).toContain("深度求索");
-    expect(html).toContain("Alibaba Model Studio (International)");
-    expect(html.indexOf("深度求索")).toBeLessThan(
-      html.indexOf("Alibaba Model Studio (International)"),
+    expect(html).toContain("Anthropic Messages");
+    expect(html).toContain("OpenAI Chat Completions");
+    expect(html.indexOf("Anthropic Messages")).toBeLessThan(
+      html.indexOf("OpenAI Chat Completions"),
     );
   });
 
@@ -93,9 +95,9 @@ describe("ProviderTemplatePicker", () => {
           createElement(ProviderTemplatePicker, {
             templates: [
               {
-                templateId: "deepseek",
-                templateNameMap: { "zh-CN": "DeepSeek" },
-                config: { logo: { type: "builtin", key: "deepseek" } },
+                templateId: "standard-anthropic-messages",
+                templateNameMap: { "zh-CN": "Anthropic Messages" },
+                config: { api: { type: "anthropic-messages" } },
               },
             ],
             onBack: vi.fn(),
@@ -107,7 +109,7 @@ describe("ProviderTemplatePicker", () => {
       ),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "DeepSeek" }));
+    fireEvent.click(screen.getByRole("button", { name: "Anthropic Messages" }));
     expect((await screen.findByRole("alert")).textContent).toContain(
       "创建供应商失败：个人供应商配置格式无效",
     );
@@ -118,6 +120,6 @@ describe("ProviderTemplatePicker", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() => expect(onCreateFromTemplate).toHaveBeenCalledTimes(2));
-    expect(onCreateFromTemplate).toHaveBeenLastCalledWith("deepseek");
+    expect(onCreateFromTemplate).toHaveBeenLastCalledWith("standard-anthropic-messages");
   });
 });

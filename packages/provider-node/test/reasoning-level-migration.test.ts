@@ -1,14 +1,14 @@
 import { fileURLToPath } from "node:url";
-import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
-  ModelConfigRules,
+  ApiKeyAccessConfig,
   ModelConfig,
+  ModelConfigRules,
   ModelOptionSpecsConfig,
+  ProviderApiConfig,
+  ProviderConfig,
   ProviderConfigMap,
   ProviderConfigResolver,
-  ProviderConfig,
-  ApiKeyAccessConfig,
-  ProviderApiConfig,
   createRegistryModelConfig,
   createRegistryProviderConfig,
   type ModelSelection,
@@ -30,18 +30,33 @@ beforeAll(async () => {
 });
 afterAll(() => source.dispose());
 
+function renameRules(values: readonly string[] = ["disabled", "enabled"]) {
+  return new ModelConfigRules([
+    ...builtin.models.rules(),
+    ...legacyReasoningLevelRenames.map((entry) => ({
+      type: "model" as const,
+      modelMatch: entry.simplifiedModelMatch,
+      config: new ModelConfig({
+        optionSpecs: new ModelOptionSpecsConfig({
+          reasoningLevel: { values: [...values] },
+        }),
+      }),
+    })),
+  ]);
+}
+
 function view(
   modelId: string,
   level: string,
   personalModels = ModelConfigRules.empty(),
-  modelRules = builtin.models,
+  modelRules = renameRules(),
 ) {
   const config = {
     revision: "c",
     zcodeBuiltinRevision: "b",
     personalRevision: "p",
     zcodeBuiltinProviders: builtin.providers,
-    zcodeBuiltinProviderTemplates: builtin.templates,
+    zcodeBuiltinProviderTemplates: builtin.providerTemplates,
     personalProviders: new ProviderConfigMap([
       [
         "personal",
@@ -59,7 +74,6 @@ function view(
     zcodeBuiltinModelRules: modelRules,
     personalModels,
   };
-  // 使用自有 Provider 承载同一模型规则，历史档位迁移不依赖已退役的账号层。
   const resolution = new ProviderConfigResolver().resolve(config);
   const providerId = "personal";
   const providerConfig = resolution.effectiveProviders.get(providerId)!;
@@ -71,10 +85,11 @@ function view(
   });
   const checkedModel = createRegistryModelConfig(modelConfig);
   const checkedProvider = createRegistryProviderConfig(providerConfig);
-  if (!checkedModel.ok || !checkedProvider.ok)
+  if (!checkedModel.ok || !checkedProvider.ok) {
     throw new Error(
       `fixture must be complete: ${JSON.stringify({ checkedModel, checkedProvider })}`,
     );
+  }
   const registry = {
     revision: 1,
     providers: [
@@ -105,79 +120,45 @@ function view(
   return { result: facade.getView(undefined, undefined, { selection }), selection, facade };
 }
 
-describe("Todo95C 来源限定的只读关闭档位改名", () => {
-  it("保留 25 条历史来源，只恢复当前规则仍合法的关闭值", () => {
+describe("历史关闭档位改名", () => {
+  it("只在当前规则仍允许 disabled 时恢复旧值", () => {
     expect(legacyReasoningLevelRenames).toHaveLength(25);
     for (const entry of legacyReasoningLevelRenames) {
-      const rule = builtin.models
-        .rules()
-        .find(
-          (rule) =>
-            rule.type === "model" &&
-            (rule.modelMatch === entry.modelMatch ||
-              rule.modelMatch === entry.simplifiedModelMatch),
-        );
-      expect(rule?.config.optionSpecs?.reasoningLevel?.values).not.toContain(entry.oldLevel);
-      // 仅测试生成代表型号；实际迁移从不从正则反推名字。
-      const modelId = entry.modelMatch.slice(2).split("(?:")[0]!.replaceAll("\\.", ".");
-      // Todo113 核实 K2.7 Code 不支持关闭；旧改名表不能越过当前值域重新启用关闭档。
-      if (modelId === "kimi-k2.7-code") {
-        expect(rule?.config.optionSpecs?.reasoningLevel?.values).toEqual(["enabled"]);
-        expect(view(modelId, entry.oldLevel).result.selectionIssue).toBe(
-          "reasoning-level-not-supported",
-        );
-        continue;
-      }
-      expect(rule?.config.optionSpecs?.reasoningLevel?.values).toContain("disabled");
-      expect(
-        view(modelId, entry.oldLevel).result.effectiveSelection?.options?.reasoningLevel,
-        modelId,
-      ).toBe("disabled");
+      expect(renameRules().rules()).toContainEqual(
+        expect.objectContaining({ modelMatch: entry.simplifiedModelMatch }),
+      );
     }
+    expect(view("GLM-5.2", "nothink").result.effectiveSelection?.options?.reasoningLevel).toBe(
+      "disabled",
+    );
+    expect(view("GLM-5-Turbo", "off").result.effectiveSelection?.options?.reasoningLevel).toBe(
+      "disabled",
+    );
   });
-  it.each([
-    ["GLM-5-Turbo", "off"],
-    ["GLM-5.2", "nothink"],
-    ["vendor/GLM-5.2:free", "nothink"],
-  ])("%s / %s", (id, old) => {
-    const { result, selection, facade } = view(id!, old!);
-    expect(result.selectionIssue).toBeUndefined();
-    expect(result.effectiveSelection?.options?.reasoningLevel).toBe("disabled");
-    expect(selection.options?.reasoningLevel).toBe(old);
-    expect(facade.getView(selection).preferredSelection?.options?.reasoningLevel).toBe("disabled");
+
+  it("当前值域没有 disabled 时不恢复旧值", () => {
+    expect(
+      view("GLM-5.2", "nothink", undefined, renameRules(["enabled"])).result.selectionIssue,
+    ).toBe("reasoning-level-not-supported");
   });
-  it.each([
-    ["unknown-future", "off"],
-    ["GLM-5.3", "nothink"],
-    ["GLM-5.2", "off"],
-    ["GLM-5.3", "none"],
-    ["GLM-5.3", "typo"],
-    ["GLM-5.2_custom", "nothink"],
-  ])("不猜 %s / %s", (id, old) => {
-    expect(view(id!, old!).result.selectionIssue).toBe("reasoning-level-not-supported");
-  });
-  it("旧缓存仍使用原 matcher 时也能恢复历史关闭选择", () => {
+
+  it("旧缓存仍使用精确历史 matcher 时也能恢复关闭选择", () => {
     const oldRules = new ModelConfigRules(
-      builtin.models.rules().map((rule) => {
-        const rename =
-          rule.type === "model"
-            ? legacyReasoningLevelRenames.find(
-                (entry) => entry.simplifiedModelMatch === rule.modelMatch,
-              )
-            : undefined;
-        return rename ? { ...rule, modelMatch: rename.modelMatch } : rule;
-      }),
+      renameRules()
+        .rules()
+        .map((rule) => {
+          const rename = legacyReasoningLevelRenames.find(
+            (entry) => entry.simplifiedModelMatch === rule.modelMatch,
+          );
+          return rename ? { ...rule, modelMatch: rename.modelMatch } : rule;
+        }),
     );
     expect(
       view("GLM-5.2", "nothink", ModelConfigRules.empty(), oldRules).result.effectiveSelection
         ?.options?.reasoningLevel,
     ).toBe("disabled");
   });
-  it("后续 Built-in values 覆盖旧规则时不恢复被覆盖的关闭值", () => {
-    expect(view("GLM-5.3-Flash", "off").result.selectionIssue).toBe(
-      "reasoning-level-not-supported",
-    );
-  });
+
   it("Personal 原值合法则保留；自定义值域不套用内置别名", () => {
     const personal = (values: string[]) =>
       new ModelConfigRules([

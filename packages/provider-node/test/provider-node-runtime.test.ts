@@ -41,119 +41,88 @@ afterEach(async () => {
 });
 
 describe("@zcode/provider-node", () => {
-  it("从 Built-in Model Config Rules 解析 ox-alpha 同策略别名和 API-specific reasoning", async () => {
+  it("从 Built-in Model Config Rules 解析三种标准 API 的通用 reasoning 映射", async () => {
     const source = new NodeZCodeBuiltinProviderConfigSource({
       bundledFilePath: zcodeBuiltinProviderConfigFilePath,
       watch: false,
     });
     const snapshot = await source.read();
 
-    for (const modelId of [
-      "ox-alpha",
-      "OPENROUTER/OX-ALPHA",
-      "GLM-x-preview-f",
-      "x-preview-f-free",
-    ]) {
-      const anthropic = snapshot.models.resolve({
-        providerId: "custom",
-        modelId,
-        apiType: "anthropic-messages",
-      });
-      expect(anthropic.optionSpecs?.reasoningLevel).toMatchObject({
-        values: ["low", "high", "max"],
-      });
-      expect(anthropic.optionSpecs?.reasoningLevel?.map).toContain("reasoningLevel");
-      expect(
-        compileModelOptionMap(
-          anthropic.optionSpecs!.reasoningLevel!.map!,
-          "reasoningLevel",
-        ).evaluate("max"),
-      ).toEqual({ thinking: { type: "adaptive" }, output_config: { effort: "max" } });
+    const model = snapshot.models.resolve({
+      providerId: "custom",
+      modelId: "user-configured-model",
+      apiType: "anthropic-messages",
+    });
+    expect(model.optionSpecs?.reasoningLevel?.toJSON()).toMatchObject({
+      values: ["disabled", "enabled"],
+    });
+    expect(
+      compileModelOptionMap(model.optionSpecs!.reasoningLevel!.map!, "reasoningLevel").evaluate(
+        "enabled",
+      ),
+    ).toEqual({ thinking: { type: "adaptive" }, output_config: { effort: "high" } });
 
-      const openAiCompatible = snapshot.models.resolve({
-        providerId: "custom",
-        modelId,
-        apiType: "openai-chat-completions",
-      });
-      expect(
-        compileModelOptionMap(
-          openAiCompatible.optionSpecs!.reasoningLevel!.map!,
-          "reasoningLevel",
-        ).evaluate("high"),
-      ).toEqual({ reasoning_effort: "high" });
+    const openAiCompatible = snapshot.models.resolve({
+      providerId: "custom",
+      modelId: "user-configured-model",
+      apiType: "openai-chat-completions",
+    });
+    expect(
+      compileModelOptionMap(
+        openAiCompatible.optionSpecs!.reasoningLevel!.map!,
+        "reasoningLevel",
+      ).evaluate("high"),
+    ).toEqual({
+      thinking: { type: "enabled" },
+      enable_thinking: true,
+      reasoning_effort: "high",
+      reasoning: { effort: "high" },
+    });
 
-      const responses = snapshot.models.resolve({
-        providerId: "custom",
-        modelId,
-        apiType: "openai-responses",
-      });
-      // Todo138 已把通用兜底改为两档；Responses 没有 ox-alpha 专用值域，应继承该结果。
-      expect(responses.optionSpecs?.reasoningLevel?.toJSON()).toMatchObject({
-        values: ["disabled", "enabled"],
-      });
-      expect(
-        compileModelOptionMap(
-          responses.optionSpecs!.reasoningLevel!.map!,
-          "reasoningLevel",
-        ).evaluate("disabled"),
-      ).toEqual({ reasoning: { effort: "none" } });
-      expect(
-        compileModelOptionMap(
-          responses.optionSpecs!.reasoningLevel!.map!,
-          "reasoningLevel",
-        ).evaluate("enabled"),
-      ).toEqual({ reasoning: { effort: "high" } });
-    }
+    const responses = snapshot.models.resolve({
+      providerId: "custom",
+      modelId: "user-configured-model",
+      apiType: "openai-responses",
+    });
+    expect(responses.optionSpecs?.reasoningLevel?.toJSON()).toMatchObject({
+      values: ["disabled", "enabled"],
+    });
+    expect(
+      compileModelOptionMap(responses.optionSpecs!.reasoningLevel!.map!, "reasoningLevel").evaluate(
+        "disabled",
+      ),
+    ).toEqual({ reasoning: { effort: "none" } });
     source.dispose();
   });
 
-  it("从 Built-in Config 解析模型能力、Access 协议和 Tool Schema 兼容事实", async () => {
+  it("从 Built-in Config 解析标准模板与通用模型能力", async () => {
     const source = new NodeZCodeBuiltinProviderConfigSource({
       bundledFilePath: zcodeBuiltinProviderConfigFilePath,
       watch: false,
     });
     const snapshot = await source.read();
 
-    expect(
-      snapshot.models.resolve({
-        providerId: "personal-zai-api",
-        templateId: "zai-api",
-        modelId: "glm-5.3",
-        apiType: "anthropic-messages",
-      }).properties,
-    ).toMatchObject({
+    const model = snapshot.models.resolve({
+      providerId: "personal",
+      modelId: "user-configured-model",
+      apiType: "anthropic-messages",
+    });
+    expect(model.properties).toMatchObject({
       supportsMidConversationSystem: false,
       supportsNativeWebSearch: false,
-    });
-    expect(
-      snapshot.models.resolve({
-        providerId: "moonshot-kimi",
-        modelId: "kimi-k3",
-        apiType: "anthropic-messages",
-        baseUrl: "https://api.moonshot.cn/anthropic",
-      }),
-    ).toMatchObject({ properties: { requiresMfjsToolSchema: true } });
-    expect(
-      snapshot.models.resolve({
-        providerId: "moonshot-kimi",
-        modelId: "kimi-k2.6",
-        apiType: "anthropic-messages",
-      }),
-    ).toMatchObject({ properties: { requiresMfjsToolSchema: false } });
-    expect(
-      snapshot.models.resolve({
-        providerId: "personal",
-        modelId: "claude-opus-4-8",
-        apiType: "anthropic-messages",
-      }).properties,
-    ).toMatchObject({
-      supportsMidConversationSystem: true,
-      supportsNativeWebSearch: false,
+      requiresMfjsToolSchema: false,
     });
     expect(snapshot.providers.keys()).toEqual([]);
-    expect(snapshot.providerTemplates?.get("deepseek")?.config.access).toMatchObject({
-      type: "api-key",
-    });
+    expect(snapshot.providerTemplates?.keys()).toEqual([
+      "standard-anthropic-messages",
+      "standard-openai-chat-completions",
+      "standard-openai-responses",
+    ]);
+    for (const [, template] of snapshot.providerTemplates?.entries() ?? []) {
+      expect(template.config.access?.type).toBe("api-key");
+      expect(template.config.api?.baseUrl).toBeUndefined();
+      expect(template.config.builtinModelIds).toEqual([]);
+    }
     source.dispose();
   });
 

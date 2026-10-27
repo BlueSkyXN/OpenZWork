@@ -14,7 +14,7 @@
 
 ## 文档入口
 
-- [内置 Provider 模板与模型日常维护](../../builtin-provider-maintenance/README.md)：2026-10-14 整理，包含范围、原理、正式/测试配置、当前库存、官方资料跟踪、人工 Key 验证和交付流程。重构历史留在本目录，实时维护从新入口展开。
+- [标准 Provider 模板维护](../../builtin-provider-maintenance/README.md)：2026-10-27 起只保留三个中性协议模板。重构历史留在本目录，实时维护从新入口展开。
 
 ```text
 provider-refactor/

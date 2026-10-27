@@ -8,6 +8,8 @@ import {
   ProviderConfigMap,
   ProviderConfigService,
   ProviderRegistryService,
+  ApiKeyAccessConfig,
+  ProviderApiConfig,
   ProviderTemplate,
   ProviderTemplateMap,
   extractManualModelConfig,
@@ -676,6 +678,76 @@ describe("ProviderConfigService", () => {
         initialConfig: new ProviderConfig({ group: "zai-family" }),
       }),
     ).rejects.toThrow();
+  });
+
+  it("标准协议模板创建待填写 endpoint 的 Personal Provider", async () => {
+    const template = new ProviderTemplate({
+      templateId: "standard-openai-responses",
+      templateNameMap: { "zh-CN": "OpenAI Responses", "en-US": "OpenAI Responses" },
+      config: new ProviderConfig({
+        access: new ApiKeyAccessConfig(),
+        api: new ProviderApiConfig({ type: "openai-responses" }),
+        builtinModelIds: [],
+      }),
+    });
+    const zcodeBuiltin = new MutableSource({
+      ...layerSnapshot("zcodeBuiltin-1"),
+      providerTemplates: new ProviderTemplateMap([[template.templateId, template]]),
+    });
+    const personal = new MemoryPersonalRepository(layerSnapshot("personal-1"));
+    const service = new ProviderConfigService({
+      zcodeBuiltinSource: zcodeBuiltin,
+      personalRepository: personal,
+    });
+
+    const created = await service.createPersonalProvider({
+      templateId: template.templateId,
+      locale: "zh-CN",
+    });
+
+    expect(personal.current.providers.getRule(created.providerId)).toMatchObject({
+      templateId: template.templateId,
+      providerName: "OpenAI Responses",
+    });
+    // Personal 文件只保存稀疏身份；协议和 Access 从标准模板基线叠加。
+    expect(personal.current.providers.get(created.providerId)?.toJSON()).toEqual({
+      group: "standard-personal",
+      personalModelIds: [],
+      modelOrder: [],
+    });
+  });
+
+  it("移除旧厂商模板不删除既有 Personal Provider 记录", async () => {
+    const zcodeBuiltin = new MutableSource({
+      ...layerSnapshot("zcodeBuiltin-1"),
+      providerTemplates: new ProviderTemplateMap(),
+    });
+    const personal = new MemoryPersonalRepository(
+      layerSnapshot(
+        "personal-1",
+        new ProviderConfigMap([
+          {
+            providerId: "old-vendor-instance",
+            templateId: "deepseek",
+            providerName: "旧厂商实例",
+            config: new ProviderConfig({
+              group: "standard-personal",
+              personalModelIds: ["user-model"],
+            }),
+          },
+        ]),
+      ),
+    );
+    const service = new ProviderConfigService({
+      zcodeBuiltinSource: zcodeBuiltin,
+      personalRepository: personal,
+    });
+
+    const snapshot = await service.read();
+
+    expect(snapshot.personalProviders.keys()).toEqual(["old-vendor-instance"]);
+    expect(snapshot.personalProviders.getRule("old-vendor-instance")?.templateId).toBe("deepseek");
+    expect(snapshot.zcodeBuiltinProviderTemplates.get("deepseek")).toBeUndefined();
   });
 
   it("写入 Provider 顺序使用未排序 Built-in、请求顺序、未排序 Personal 三段语义", async () => {

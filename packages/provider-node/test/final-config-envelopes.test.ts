@@ -80,7 +80,11 @@ describe("Todo104 最终文件外壳", () => {
     const parsed = decodeZCodeBuiltinRelease(raw);
     expect(encodeZCodeBuiltinRelease(parsed)).toEqual(raw);
     expect(parsed.config.providers.keys()).toEqual([]);
-    expect(parsed.config.providerTemplates.keys()).toHaveLength(16);
+    expect(parsed.config.providerTemplates.keys()).toEqual([
+      "standard-anthropic-messages",
+      "standard-openai-chat-completions",
+      "standard-openai-responses",
+    ]);
     for (const rule of parsed.config.providers.toJSON()) {
       expect(rule.config).not.toHaveProperty("templateId");
       expect(rule.config).not.toHaveProperty("label");
