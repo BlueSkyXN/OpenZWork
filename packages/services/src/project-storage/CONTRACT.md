@@ -1,5 +1,10 @@
 # project-storage
 
+业务目录搬迁由 `relocateHostStorage` 转换未发布副本：仅本机任务、项目 roots、定时定义及
+其 workspace key/旧快照目录；远端 identity/Host 行、正文、任务 ID 和项目 ID 保持原值。
+设置中的本地路径经 `relocateWorkspaceSettings` 与启动指针一起提交。任何冲突抛错，
+调用方保留原根，不合并同名索引或记忆。此操作不改变 SQL schema 或既有 migration checksum。
+
 Host 项目组织态的持久化升级。调用者持有 app SQLite 连接，CLI 通过协议交接事实，不导入此模块。
 
 - `0005_projects`（旧 ID `0001_projects`）首次迁移旧 settings 中保留的 workspace；不删除或改写旧列语义、不移动目录。

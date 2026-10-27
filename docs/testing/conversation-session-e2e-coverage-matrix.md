@@ -3983,3 +3983,10 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 具体步骤见[设置页布局规格](../spec/settings-visual-polish.md)。候选尚未人工转正；桌面 390px 不替代实体手机验收。
 
 2026-10-26 本地验证：五个 UI 测试文件共 38 项通过；上述候选与 system-prompt-settings 候选合跑 3/3 通过。覆盖 1400px / 390px、中英文、Zai Light / Dark 的 32 组页面布局，另验证提示词 18px 大字号下模式按钮完整可达。无模型请求的 case-local fixture 合同检查通过。E2E 证据 run：`desktop-e2e-20261026093808866-p59790-0734934cc08e16a2`；Windows/Linux 原生窗口、实体手机和真实 Bot/relay 连接未在本轮重验。
+
+## OpenZWork 数据目录迁移补充（2026-10-24）
+
+- `CDD01/03`：`packages/desktop/test/e2e/conversation-session/manual-review/pending/openzwork-data-directory.test.ts`，隔离 HOME，真实目录选择、计划保存、保存后文件写入、完整 Electron 重启和新根读取。状态 pending，未作人工评审或 CI 转正。
+- `CDD02/04/05`：`packages/services/test/dataDirectoryMigration.test.ts`，真实 SQLite/WAL、新进程重开读写、工作文件、非空/嵌套目标、失败保留原根及指针提交重试。
+- `CDD02/06/07`：`dataDirectoryTrueMigration.test.ts` 与 data-directory/host-storage-relocation 契约测试，隔离旧根后的会话、工具输出、附件、默认工作区和用户子代理记忆；同根使用门禁、远端/正文保护及连续迁移。
+- 旧 `R3A-DEV-06-desktop-authority` 的保存即复制断言改为计划保存、重启后复制，保持本机/Source 设置归属断言；真实 SSH 另行验收。

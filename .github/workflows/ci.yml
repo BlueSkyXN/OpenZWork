@@ -108,6 +108,10 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/script-workflow-child-runtime.test.ts --bail=1
 
+      - name: Project configuration and storage relocation regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/adapters exec vitest run tests/project-config-compatibility.test.ts tests/storage-relocation.test.ts --bail=1
+
       - name: System prompt context regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1

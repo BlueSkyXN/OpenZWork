@@ -1,5 +1,6 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
-import { createConfig } from "@zcode/adapters/config";
+import { createConfig, resolvePath } from "@zcode/adapters/config";
+import { dataDirectory } from "@zcode/shared/data-directory";
 import { createNodeModelSelectionFacade } from "@zcode/provider-node";
 import { createNodeLoggerFactory } from "@zcode/adapters/logging";
 import {
@@ -67,11 +68,16 @@ export async function runZCodeProtocolAgent(
 ): Promise<void> {
   if (options.prepareStorageOnly) {
     const config = createConfig({ env: options.env });
-    await prepareProtocolStartupStorage({
-      dbPath: getSessionDbPath(config, options.cwd),
-      input: options.input ?? process.stdin,
-      output: options.output ?? process.stdout,
-    });
+    const release = await dataDirectory.acquireUse(resolvePath(config.config.storage.dir));
+    try {
+      await prepareProtocolStartupStorage({
+        dbPath: getSessionDbPath(config, options.cwd),
+        input: options.input ?? process.stdin,
+        output: options.output ?? process.stdout,
+      });
+    } finally {
+      await release();
+    }
     return;
   }
   const startupStartedAt = startupNow();
@@ -105,6 +111,7 @@ export async function runZCodeProtocolAgent(
   });
 
   let sessionStore: SqliteSessionStore | undefined;
+  let releaseDataRoot: (() => Promise<void>) | undefined;
   let serverForCleanup: ZCodeProtocolAgentServer | undefined;
   let nodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let mcpConnectionPool: McpConnectionPool | undefined;
@@ -116,6 +123,7 @@ export async function runZCodeProtocolAgent(
   try {
     // 数据库准备先于账号、Registry 和遥测，不把远端材料等待混进迁移门禁。
     const configResult = createConfig({ env: options.env });
+    releaseDataRoot = await dataDirectory.acquireUse(resolvePath(configResult.config.storage.dir));
     sessionStore = await acquireProtocolStartupResource({
       signal: options.lifecycle?.signal,
       logger,
@@ -270,6 +278,7 @@ export async function runZCodeProtocolAgent(
       sessionStore,
       providerRegistryRuntime,
     });
+    await releaseDataRoot?.();
     logger.info("ZCode Protocol agent shutdown completed", {
       ...traceContextToLogContext(traceContext),
       event: "zcode_protocol.shutdown.completed",

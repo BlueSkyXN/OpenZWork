@@ -1,6 +1,14 @@
-import { readFile, mkdir, rename } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { readFile, mkdir, rename, rm } from "node:fs/promises";
+import { atomicWritePrivateTextFile } from "@zcode/shared/node";
+import {
+  dataDirectory,
+  DATA_ROOT_RELOCATED_MARKER,
+  type DataRelocationPlan,
+} from "@zcode/shared/data-directory";
+import { relocateWorkspaceSettings } from "../project-storage/relocation/index.js";
+import { dirname, join, resolve } from "node:path";
 import { homedir } from "node:os";
+import { randomUUID } from "node:crypto";
 import type { AppSettings } from "@zcode/shared";
 import {
   OPENZWORK_DATA_DIR_NAME,
@@ -12,7 +20,12 @@ import {
 } from "@zcode/shared";
 import type { ISettingService, WorkspaceSettingsProjection } from "./setting.js";
 import { normalizeSettingsPatch } from "#src/setting/normalizeSettingsPatch.js";
-import { copyDataDirectory, getDataBaseDir, validateDataBaseDirTarget } from "../paths.js";
+import {
+  copyDataDirectory,
+  getDataBaseDir,
+  validateDataBaseDirTarget,
+  validateDataDirectoryMigration,
+} from "../paths.js";
 import { isEffectiveDevelopmentNodeEnv } from "../runtime-tools/nodeEnv.js";
 import { maybeThrowInjectedFsFault } from "../fs/fsFaultInjection.js";
 import { atomicWriteText, withAtomicFileLock } from "../fs/atomicFileUtils.js";
@@ -289,8 +302,10 @@ export function createSettingServiceWithMigrations(): {
         const validatedPatch = appSettingsPatchSchema.parse(normalizeSettingsPatch(patch));
         const current = await readSettings();
         if (options) {
-          const expected = options.expectedSystemPromptSettings === null
-            ? null : systemPromptSettingsSchema.parse(options.expectedSystemPromptSettings);
+          const expected =
+            options.expectedSystemPromptSettings === null
+              ? null
+              : systemPromptSettingsSchema.parse(options.expectedSystemPromptSettings);
           // 比较必须在同一个文件锁内，防止两个窗口把对方已保存的提示词覆盖掉。
           if (JSON.stringify(current.systemPromptSettings ?? null) !== JSON.stringify(expected)) {
             throw new Error("settings.systemPrompt.conflict");
@@ -317,7 +332,7 @@ export function createSettingServiceWithMigrations(): {
 
     async updateDataBaseDir(newDir: string | undefined): Promise<void> {
       const currentBaseDir = getDataBaseDir();
-      const targetBaseDir = newDir?.trim() || homedir();
+      const targetBaseDir = resolve(newDir?.trim() || resolveUserHomeDir());
       const validation = validateDataBaseDirTarget(targetBaseDir);
       if (!validation.ok) {
         // Windows 安装目录由安装器/自动更新管理，把 .openzwork/v2 放进去可能在升级时被覆盖。
@@ -327,13 +342,19 @@ export function createSettingServiceWithMigrations(): {
         throw error;
       }
 
-      if (currentBaseDir !== targetBaseDir) {
-        log("copying data directory from", currentBaseDir, "to", targetBaseDir);
-        await copyDataDirectory(currentBaseDir, targetBaseDir);
-        log("data directory copy done");
+      if (resolve(currentBaseDir) === targetBaseDir) {
+        await this.update({ pendingDataBaseDirMigration: undefined });
+        return;
       }
-
-      await this.update({ dataBaseDir: newDir });
+      await validateDataDirectoryMigration(currentBaseDir, targetBaseDir);
+      // 运行中复制会遗漏后续写入；只保存计划，完整重启的启动门禁负责复制与指针提交。
+      await this.update({
+        pendingDataBaseDirMigration: {
+          id: randomUUID(),
+          sourceBaseDir: resolve(currentBaseDir),
+          targetBaseDir,
+        },
+      });
     },
   };
 
@@ -344,4 +365,57 @@ export function createSettingServiceWithMigrations(): {
       workspaceProjection = reader;
     },
   };
+}
+
+/** 仅由 Desktop 在所有业务 Host/Agent 启动前调用，不暴露为运行中 RPC。 */
+export async function applyPendingDataBaseDirMigration(
+  relocateAgent?: (plan: DataRelocationPlan) => Promise<void>,
+): Promise<void> {
+  const settingsFile = join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "v2", "setting.json");
+  const initial = (await readSettingsWithMetaAt(settingsFile)).settings;
+  if (!initial.pendingDataBaseDirMigration) return;
+  await withAtomicFileLock(settingsFile, async () => {
+    const settings = (await readSettingsWithMetaAt(settingsFile)).settings;
+    const pending = settings.pendingDataBaseDirMigration;
+    if (!pending) return;
+    await copyDataDirectory(pending.sourceBaseDir, pending.targetBaseDir, pending.id, {
+      relocateAgent,
+      commit: async (plan) =>
+        writeSettingsAt(settingsFile, {
+          ...relocateWorkspaceSettings(settings, plan),
+          dataBaseDir: dirname(plan.targetRoot),
+          pendingDataBaseDirMigration: undefined,
+        }),
+    });
+  });
+}
+
+/** 仅取消本计划对源根的封存，已发布的副本保留供核对，不自动删除。 */
+export async function cancelPendingDataBaseDirMigration(): Promise<void> {
+  const settingsFile = join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "v2", "setting.json");
+  await withAtomicFileLock(settingsFile, async () => {
+    const settings = (await readSettingsWithMetaAt(settingsFile)).settings;
+    const pending = settings.pendingDataBaseDirMigration;
+    if (!pending) return;
+    const root = join(pending.sourceBaseDir, OPENZWORK_DATA_DIR_NAME);
+    await dataDirectory.exclusive(root, async () => {
+      const markerPath = join(root, DATA_ROOT_RELOCATED_MARKER);
+      let frozenMarker: string | undefined;
+      try {
+        frozenMarker = await readFile(markerPath, "utf8");
+        const marker = JSON.parse(frozenMarker);
+        if (marker.id !== pending.id) throw new Error("The source data directory belongs to another relocation plan");
+        await rm(markerPath);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+      try {
+        await writeSettingsAt(settingsFile, { ...settings, pendingDataBaseDirMigration: undefined });
+      } catch (error) {
+        // 取消指针没提交时恢复封存，不能让后续重试采用已经过时的目标快照。
+        if (frozenMarker !== undefined) await atomicWritePrivateTextFile(markerPath, frozenMarker);
+        throw error;
+      }
+    });
+  });
 }

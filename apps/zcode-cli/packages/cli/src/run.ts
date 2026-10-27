@@ -1,5 +1,10 @@
 import { ToolSearchModeSchema } from "@zcode/contracts";
 import {
+  dataDirectory,
+  dataRelocationPlanSchema,
+  STORAGE_RELOCATION_COMMAND,
+} from "@zcode/shared/data-directory";
+import {
   STORAGE_MIGRATION_COMMAND,
   storageMigrationReportSchema,
 } from "@zcode/shared/sqlite-migrations";
@@ -302,6 +307,19 @@ const runZCodeProtocolCommand = async (
 };
 
 export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<number> => {
+  if (ctx.argv[0] === STORAGE_RELOCATION_COMMAND) {
+    try {
+      if (ctx.argv.length !== 2) throw new Error("storage-relocate requires one relocation plan");
+      const plan = dataRelocationPlanSchema.parse(JSON.parse(ctx.argv[1]!));
+      const { cliStorageRelocation } = await import("@zcode/adapters/storage");
+      await cliStorageRelocation.relocate(plan);
+      ctx.stdout.write(`${JSON.stringify({ version: 1, kind: "storage-relocated" })}\n`);
+      return 0;
+    } catch (error) {
+      ctx.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+      return 1;
+    }
+  }
   if (ctx.argv[0] === STORAGE_MIGRATION_COMMAND) {
     try {
       if (ctx.argv.length !== 1) throw new Error("storage-migrate accepts no arguments");
@@ -312,13 +330,20 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
           const { createConfig, resolvePath } = await import("@zcode/adapters/config");
           const { openStartupSqliteSessionStore } = await import("@zcode/adapters/storage");
           const config = createConfig({ env: deps.env ?? process.env });
-          const store = await openStartupSqliteSessionStore({
-            dbPath: resolvePath(config.config.storage.sessionDbPath),
-          });
+          const releaseDataRoot = await dataDirectory.acquireUse(
+            resolvePath(config.config.storage.dir),
+          );
           try {
-            return store.migrationResult;
+            const store = await openStartupSqliteSessionStore({
+              dbPath: resolvePath(config.config.storage.sessionDbPath),
+            });
+            try {
+              return store.migrationResult;
+            } finally {
+              store.close();
+            }
           } finally {
-            store.close();
+            await releaseDataRoot();
           }
         });
       const report = storageMigrationReportSchema.parse({

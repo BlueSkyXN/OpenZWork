@@ -1,14 +1,39 @@
 /* path 规则集中维护：旧 task 快照与 provider 配置路径仍在这里收口。 */
-import { lstatSync } from "node:fs";
-import { cp } from "node:fs/promises";
-import { createHash } from "node:crypto";
-import { basename, join, win32 } from "node:path";
+import {
+  cp,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readlink,
+  readdir,
+  realpath,
+  rename,
+  rm,
+  rmdir,
+  stat,
+  symlink,
+  unlink,
+  writeFile,
+} from "node:fs/promises";
+import { DatabaseSync, backup } from "node:sqlite";
+import { createHash, randomUUID } from "node:crypto";
+import { dirname, isAbsolute, join, relative, sep, win32 } from "node:path";
 import { homedir } from "node:os";
 import {
   DATA_BASE_DIR_FORBIDDEN_WINDOWS_INSTALL_DIR_ERROR_CODE,
   OPENZWORK_DATA_DIR_NAME,
   ZCODE_AGENT_RUNTIME,
 } from "@zcode/shared";
+import {
+  BUSINESS_DATA_ENTRIES,
+  DATA_ROOT_RELOCATED_MARKER,
+  dataDirectory,
+  relocateDataPath,
+  type DataRelocationPlan,
+} from "@zcode/shared/data-directory";
+import { atomicWritePrivateTextFile } from "@zcode/shared/node";
+import { relocateHostStorage } from "./project-storage/relocation/index.js";
 
 let _dataBaseDir: string | null = null;
 export const ZCODE_WINDOWS_APP_INSTALL_DIR_ENV = "ZCODE_WINDOWS_APP_INSTALL_DIR";
@@ -117,6 +142,12 @@ function collectWindowsForbiddenAppInstallDirs(
   const candidates = [
     options.appInstallDir,
     readEnvValue(env, ZCODE_WINDOWS_APP_INSTALL_DIR_ENV),
+    ...[programFiles, programFilesX86, programW6432].flatMap((root) =>
+      root ? ["OpenZWork", "OpenZWork Preview"].map((name) => win32.join(root, name)) : [],
+    ),
+    ...(localAppData
+      ? ["OpenZWork", "OpenZWork Preview"].map((name) => win32.join(localAppData, "Programs", name))
+      : []),
     programFiles ? win32.join(programFiles, "ZCode") : null,
     programFilesX86 ? win32.join(programFilesX86, "ZCode") : null,
     programW6432 ? win32.join(programW6432, "ZCode") : null,
@@ -234,33 +265,274 @@ export function getProviderWorkspaceConfigDir(): string {
     : join(getDataBaseDir(), ".openzwork", "cli");
 }
 
-/**
- * Copy the .openzwork/v2 data directory from one base dir to another.
- * Excludes setting.json and its transient atomic-write siblings — bootstrap
- * state must only live at the default homedir location.
- */
-export async function copyDataDirectory(oldBaseDir: string, newBaseDir: string): Promise<void> {
-  const oldDir = join(oldBaseDir, OPENZWORK_DATA_DIR_NAME, "v2");
-  const newDir = join(newBaseDir, OPENZWORK_DATA_DIR_NAME, "v2");
-  await cp(oldDir, newDir, {
-    recursive: true,
-    force: false,
-    filter: (source) => {
-      const sourceName = basename(source);
-      if (sourceName === "setting.json" || sourceName.startsWith("setting.json.")) {
-        // setting.json.lock 和 setting.json.*.tmp 由原子写入短暂创建/删除，
-        // 复制过程中扫描到已消失的 lock 会触发 ENOENT，并让数据目录迁移失败。
-        // 这些文件都属于 bootstrap 写入中间态，不能迁移到新数据根。
-        return false;
-      }
-      // Windows 非提权环境下 fs.cp 无法复制符号链接（EPERM）。
-      // 跳过符号链接可避免 Windows 非提权环境下 fs.cp 报 EPERM。
-      try {
-        if (lstatSync(source).isSymbolicLink()) return false;
-      } catch {
-        // lstat 失败时放行，让 cp 自行处理
-      }
-      return true;
-    },
+const MIGRATION_CONTENTS = BUSINESS_DATA_ENTRIES;
+const MIGRATION_MARKER = ".data-directory-migration.json";
+// 只对产品拥有的会话/索引库做快照；工作区的同名文件和外部数据库属于用户文件。
+const MIGRATION_DATABASE_PATTERN = /^(?:v2\/[^/]+\.sqlite|cli\/db\/db\.sqlite)$/;
+
+function migrationError(code: string, message: string): Error {
+  return Object.assign(new Error(message), { code });
+}
+
+async function directoryEntries(path: string): Promise<string[]> {
+  try {
+    return await readdir(path);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function resolveMigrationSourceRoot(baseDir: string): Promise<string> {
+  const root = join(await realpath(baseDir), OPENZWORK_DATA_DIR_NAME);
+  try {
+    return await realpath(root);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return root;
+    throw error;
+  }
+}
+
+/** 校验实际路径，不能把目标放进源数据树或借符号链接覆盖原目录。 */
+export async function validateDataDirectoryMigration(
+  oldBaseDir: string,
+  newBaseDir: string,
+): Promise<void> {
+  const source = await resolveMigrationSourceRoot(oldBaseDir);
+  const target = join(await realpath(newBaseDir), OPENZWORK_DATA_DIR_NAME);
+  const isWithin = (parent: string, child: string) => {
+    const rel = relative(parent, child);
+    return rel === "" || (rel !== ".." && !rel.startsWith(`..${sep}`) && !isAbsolute(rel));
+  };
+  if (isWithin(source, target) || isWithin(target, source)) {
+    throw migrationError(
+      "DATA_DIRECTORY_OVERLAP",
+      "Source and target data directories must be separate",
+    );
+  }
+  try {
+    const targetInfo = await lstat(target);
+    if (
+      targetInfo.isSymbolicLink() ||
+      !targetInfo.isDirectory() ||
+      (await directoryEntries(target)).length > 0
+    ) {
+      throw migrationError(
+        "DATA_DIRECTORY_NOT_EMPTY",
+        "Choose a folder without existing OpenZWork data",
+      );
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+}
+
+/** 在业务进程启动前复制完整存储快照；旧数据不动，目标非空时不做逐文件合并。 */
+export async function copyDataDirectory(
+  oldBaseDir: string,
+  newBaseDir: string,
+  migrationId: string = randomUUID(),
+  options: {
+    relocateAgent?: (plan: DataRelocationPlan) => Promise<void>;
+    commit?: (plan: DataRelocationPlan) => Promise<void>;
+  } = {},
+): Promise<void> {
+  const sourceRoot = await resolveMigrationSourceRoot(oldBaseDir);
+  const targetBase = await realpath(newBaseDir);
+  const targetRoot = join(targetBase, OPENZWORK_DATA_DIR_NAME);
+  if (sourceRoot === targetRoot)
+    throw migrationError(
+      "DATA_DIRECTORY_OVERLAP",
+      "Source and target data directories must be separate",
+    );
+  // 两根按稳定顺序锁定，避免 A→B 与 B→A 的并发准入互等。
+  const roots = [sourceRoot, targetRoot].sort();
+  await dataDirectory.exclusive(roots[0]!, () =>
+    dataDirectory.exclusive(roots[1]!, () =>
+      copyExclusiveDataDirectory(
+        sourceRoot,
+        targetBase,
+        targetRoot,
+        oldBaseDir,
+        newBaseDir,
+        migrationId,
+        options,
+      ),
+    ),
+  );
+}
+
+async function copyExclusiveDataDirectory(
+  sourceRoot: string,
+  targetBase: string,
+  targetRoot: string,
+  oldBaseDir: string,
+  newBaseDir: string,
+  migrationId: string,
+  options: {
+    relocateAgent?: (plan: DataRelocationPlan) => Promise<void>;
+    commit?: (plan: DataRelocationPlan) => Promise<void>;
+  },
+): Promise<void> {
+  const marker = { version: 2, id: migrationId, sourceRoot, targetRoot };
+  const sourceMarker = join(sourceRoot, DATA_ROOT_RELOCATED_MARKER);
+  const plan = (stageRoot: string): DataRelocationPlan => ({
+    sourceRoot,
+    targetRoot,
+    stageRoot,
+    sourceAliases: [join(oldBaseDir, OPENZWORK_DATA_DIR_NAME)],
   });
+  try {
+    const retired = JSON.parse(await readFile(sourceMarker, "utf8"));
+    if (retired.id !== migrationId || retired.targetRoot !== targetRoot)
+      throw migrationError(
+        "DATA_DIRECTORY_RELOCATED",
+        "The source data directory belongs to another relocation plan",
+      );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  try {
+    const published = JSON.parse(await readFile(join(targetRoot, MIGRATION_MARKER), "utf8"));
+    if (
+      published.version === marker.version &&
+      published.id === marker.id &&
+      published.sourceRoot === sourceRoot
+    ) {
+      await options.commit?.(plan(targetRoot));
+      return;
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  await validateDataDirectoryMigration(oldBaseDir, newBaseDir);
+  try {
+    if (!(await lstat(sourceRoot)).isDirectory()) throw new Error("Expected a source data directory");
+  } catch (cause) {
+    throw Object.assign(new Error("The original data directory is unavailable. Restore access before retrying relocation.", { cause }), { code: "DATA_DIRECTORY_SOURCE_UNAVAILABLE" });
+  }
+  const stage = await mkdtemp(join(targetBase, ".openzwork-migration-"));
+  let published = false;
+  try {
+    await mkdir(sourceRoot, { recursive: true });
+    // 先封住源根重入；进程崩溃后只允许相同计划重试或显式取消。
+    // 封存记录参与下次启动的重试判断，写到一半退出时不能留下不可解析的正式文件。
+    await atomicWritePrivateTextFile(sourceMarker, JSON.stringify(marker));
+    const databases: string[] = [];
+    for (const entry of MIGRATION_CONTENTS) {
+      const source = join(sourceRoot, entry);
+      try {
+        await lstat(source);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") continue;
+        throw error;
+      }
+      await cp(source, join(stage, entry), {
+        recursive: true,
+        force: false,
+        errorOnExist: true,
+        verbatimSymlinks: true,
+        filter: async (path) => {
+          const rel = relative(sourceRoot, path).split(sep).join("/");
+          if (rel === "v2/setting.json" || rel.startsWith("v2/setting.json.")) return false;
+          if (rel === "cli/config.json" || rel.startsWith("cli/config.json.")) return false;
+          const info = await lstat(path);
+          if (MIGRATION_DATABASE_PATTERN.test(rel)) {
+            if (!info.isFile() && !info.isSymbolicLink()) {
+              throw migrationError(
+                "DATA_DIRECTORY_DATABASE_INVALID",
+                "Expected an application database file",
+              );
+            }
+            databases.push(rel);
+            return false;
+          }
+          // 历史 agent-config 共享链接由运行时重建；真实工作区链接必须保留或明确失败。
+          if (info.isSymbolicLink()) {
+            if (rel.startsWith("v2/agent-config/")) return false;
+            // 转换器只写副本；这些目录若保留链接会把离线 SQL/快照改写指回源目录。
+            if (
+              [
+                "v2",
+                "v2/sessions",
+                "cli",
+                "cli/db",
+                "cli/memories",
+                "cli/memories/projects",
+              ].includes(rel)
+            )
+              throw migrationError(
+                "DATA_DIRECTORY_SOURCE_LINK",
+                "Application database and index directories must be real directories before relocation",
+              );
+            return true;
+          }
+          return !MIGRATION_DATABASE_PATTERN.test(rel.replace(/-(?:wal|shm|journal)$/, ""));
+        },
+      });
+    }
+    for (const rel of databases) {
+      const destination = join(stage, rel);
+      await mkdir(dirname(destination), { recursive: true });
+      // 普通 cp 会拆开 WAL 与主库；SQLite backup 读取同一个已提交快照。
+      const sourceDb = new DatabaseSync(join(sourceRoot, rel), { readOnly: true });
+      try {
+        await backup(sourceDb, destination);
+      } finally {
+        sourceDb.close();
+      }
+      const copiedDb = new DatabaseSync(destination, { readOnly: true });
+      try {
+        const check = copiedDb.prepare("PRAGMA quick_check").all();
+        if (check.length !== 1 || Object.values(check[0] ?? {})[0] !== "ok") {
+          throw migrationError(
+            "DATA_DIRECTORY_DATABASE_INVALID",
+            "Copied database failed integrity validation",
+          );
+        }
+      } finally {
+        copiedDb.close();
+      }
+    }
+    const relocation = plan(stage);
+    await relocateHostStorage(relocation);
+    const cliEntries = await directoryEntries(join(stage, "cli"));
+    if (cliEntries.length) {
+      if (!options.relocateAgent)
+        throw migrationError(
+          "DATA_DIRECTORY_AGENT_REQUIRED",
+          "The bundled CLI is required to migrate session references",
+        );
+      await options.relocateAgent(relocation);
+    }
+    await relocateCopiedLinks(stage, relocation);
+    await writeFile(join(stage, MIGRATION_MARKER), JSON.stringify(marker), { mode: 0o600 });
+    // rename 仅能替换空目录；目标被其他进程写入时失败，不覆盖其业务数据。
+    try {
+      await rmdir(targetRoot);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+    await rename(stage, targetRoot);
+    published = true;
+    await options.commit?.(relocation);
+  } finally {
+    if (!published) await rm(sourceMarker, { force: true });
+    await rm(stage, { recursive: true, force: true });
+  }
+}
+
+async function relocateCopiedLinks(directory: string, plan: DataRelocationPlan): Promise<void> {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) await relocateCopiedLinks(path, plan);
+    else if (entry.isSymbolicLink()) {
+      const target = await readlink(path);
+      const next = relocateDataPath(target, plan);
+      if (target === next) continue;
+      const type = (await stat(path)).isDirectory() ? "dir" : "file";
+      await unlink(path);
+      await symlink(next, path, type);
+    }
+  }
 }

@@ -1631,3 +1631,18 @@ MCP isError 和历史 hydration 不触发创建。工具执行、权限、原始
 ### 文档插件多窗口视图修复（2026-10-16）
 
 MCP app-only report_view 增加可选 viewId，release_view 释放指定窗口；模型 get_view 可选 viewId，缺省且存在多个上报窗口时返回歧义与清单。状态唯一归属 DocumentOwner，不由页面决定其他窗口的视图；旧客户端缺省 viewId 仍走 legacy 槽。show_in_viewer 保持专用 surface 路由并明确工具描述。导入仍为 app-only workspace 副作用；串行 admission、10 分钟未活动过期与部分文件清扫归 importer，完成副本不清理。覆盖 schema 到真实 MCP/AppBridge 的多窗口回归。
+
+## 业务数据目录迁移
+
+Desktop 冷启动在排他门禁内复制业务目录，然后调用 CLI 的离线 `storage-relocate`
+端口转换 staging 内本机 session cwd、附件引用及 tool metadata 的输出路径。
+运行任务注册表只存在于内存，不伪造进程恢复；历史输出通过持久化引用读取。
+转换完成才发布目录并提交启动指针。
+CLI adapter 拥有其 SQL 和持久化格式，Host 不直接改写 CLI 表。
+
+工具历史只修正结构化引用及由 serializer 生成、且与该引用精确匹配的输出提示；
+用户输入、工具 input、命令、脚本和普通文本保留。外部项目和远端身份不跟随迁移。
+回归必须经过真实持久化/恢复、TaskOutput 和附件 reader，隔离旧目录后验证输出可读；
+默认工作区记忆使用迁移后的 key，用户级子代理记忆随业务根复制。
+`local_ref` 的 `pathReferenceText` 只更新与附件路径一致的生成说明首行；后台 Bash 的
+serialization 引用与生成的输出提示一起转换，恢复后的模型内容也必须指向新根。

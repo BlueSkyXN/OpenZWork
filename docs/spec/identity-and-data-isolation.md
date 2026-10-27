@@ -5,7 +5,7 @@
 
 ## 目的与范围
 
-OpenZWork 是 ZCode 上游的私有净化分支。产品必须在用户机器上与官方 ZCode 的用户级数据
+OpenZWork 是 ZCode 开源版本的净化＋特调版。产品必须在用户机器上与官方 ZCode 的用户级数据
 （`~/.zcode`）完全隔离：不读取、不写入、不复用其目录与命名空间，避免隐式继承官方账号、
 凭据、配置与运行状态。本 spec 约束**用户级数据根**的解析与引用，以及 Desktop 显示名称；
 项目仓库内部目录不在数据根隔离范围内。
@@ -135,8 +135,8 @@ Desktop setting.json → Main getDataBaseDir（唯一所有者）
 
 ## 迁移边界
 
-产品未正式发布，无既有用户数据兼容义务；官方旧数据不自动迁移（WP-E1a 记忆迁移的单向
-复制除外）。远端机上的旧官方 `~/.zcode/server` 不被读取、不被复用、不被覆盖。
+产品已经发布，必须保护现有 OpenZWork 用户的配置、数据与升级连续性。官方旧数据不自动迁移
+（WP-E1a 记忆迁移的单向复制除外）。远端机上的旧官方 `~/.zcode/server` 不被读取、不被复用、不被覆盖。
 
 ## Desktop 显示名称
 
@@ -179,3 +179,19 @@ ZCODE_E2E_MANUAL_REVIEW=1 \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json \
   pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/desktop-shell/manual-review/pending/desktop-product-name.test.ts
 ```
+## 2026-10-24 兼容性收口
+
+- 用户配置、全局 AGENTS.md、特调和运行数据继续使用 OpenZWork 自有目录。不增加以官方用户
+  配置为基础的 fallback、跨产品 override 或双向同步。内部 `zcode` 命令、`ZCODE_*`、协议与
+  migration ID 保留；本产品显示名称使用 OpenZWork。
+- 项目配置按已有目录链从外到内读取，同一目录按 `zcode.json`、`.zcode/config.json`、
+  `.openzwork/config.json` 顺序叠加；后者保留已发布 fork 的项目配置。同名 MCP 使用最后一份
+  完整 server 定义，不拼接来自不同文件的 command/env/headers。同一项目内指向同一实际文件的兼容路径去重，避免重复 Hook 候选。用户 HOME 本身不作为隐式项目来源。
+- Desktop 与服务端 MCP 使用相同优先级，保留来源 location。编辑、启停、删除只写回选定来源，
+  新建项目条目默认使用 `.zcode/config.json`；已有旧 fork 同名项继续写原文件。删除覆盖项后可见
+  其下层原条目，不将删除扩散到其他文件。未知 JSON 字段和 `enabled:false` 必须保留。
+- Windows Shell 使用 OpenZWork 正式、Preview、Dev 各自的注册键与名称；不修改或删除旧
+  `ZCode.OpenInZCode` 键，避免误伤原版。独立 CLI 仍叫 `zcode`，安装器只替换可确认属于本安装根
+  的入口；其他文件或符号链接必须保留并报错，用户可选择已有 `ZCODE_DIST_BIN_DIR` 安装位置。
+- 数据根迁移由设置服务保存计划，完整重启后、Host/Agent/调度器启动前执行。复制范围、失败恢复
+  和验收见 [数据目录说明](../desktop/configurable-data-directory.md)。Main 只编排启动，不修改会话事实。

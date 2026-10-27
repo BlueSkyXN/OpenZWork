@@ -468,7 +468,7 @@ test(
         encoding: "utf8",
         env: { ...sanitizedEnv(home), ZCODE_DIST_BASE_URL: `file://${distRoot}` },
       });
-      assert.match(output, new RegExp(`ZCode ${version} installed`));
+      assert.match(output, new RegExp(`OpenZWork ${version} installed`));
 
       const releaseDir = join(home, ".openzwork", "runtime", "releases", version);
       assert.equal(

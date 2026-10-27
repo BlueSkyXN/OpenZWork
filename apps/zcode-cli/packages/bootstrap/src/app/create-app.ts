@@ -1,4 +1,5 @@
 import { subagentProfilesFromSnapshot } from "../runtime-subagents/index.js";
+import { dataDirectory } from "@zcode/shared/data-directory";
 import { CliDefaultSelection } from "./cli-default-selection.js";
 import { isAbsolute, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
@@ -39,7 +40,10 @@ import {
   type MessageId,
 } from "@zcode/contracts";
 import { isRemoteWorkspaceIdentity, resolveZCodeRuntimeEnv } from "@zcode/shared";
-import { getLegacyProjectMemoriesRoot, migrateDefaultCliStorageMemories } from "./memory-migration-bootstrap.js";
+import {
+  getLegacyProjectMemoriesRoot,
+  migrateDefaultCliStorageMemories,
+} from "./memory-migration-bootstrap.js";
 import {
   ZCODE_ATTACHMENT_FAULT_CODES,
   ZCodeAttachmentFaultError,
@@ -211,8 +215,10 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
   let nodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let ownedNodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let providerModelRuntime: ApiProviderModelRuntime | undefined;
+  let releaseDataRoot: (() => Promise<void>) | undefined;
   try {
     const storageRoot = resolvePath(configResult.config.storage.dir);
+    releaseDataRoot = await dataDirectory.acquireUse(storageRoot);
     const cliStorageRoot = getCliStorageRoot(storageRoot);
     // WP-E1a：在 profiles、session 与 recall 建立前经共享 CLI 入口尝试迁移；custom storage
     // 不得触碰默认根，迁移错误只告警、不中断启动（规则见 docs/spec/memory-migration.md）。
@@ -1224,6 +1230,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
           await closeSession?.();
         } finally {
           providerModelRuntime?.dispose();
+          await releaseDataRoot?.();
         }
       },
       ...workflowFacade,
@@ -1393,6 +1400,7 @@ export async function createZCodeApp(options: ZCodeAppOptions): Promise<ZCodeApp
       ...inputFacade,
     };
   } catch (error) {
+    await releaseDataRoot?.();
     providerModelRuntime?.dispose();
     void ownedNodeReplBrowserBroker?.close();
     startupTimer.fail("ZCode app startup failed", error, {

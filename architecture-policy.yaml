@@ -177,6 +177,7 @@ modules:
     managed: true
     requires:
       - sqlite-migrations
+      - data-directory
     publicEntrypoints:
       - packages/services/src/startup-storage/index.ts
       - packages/services/src/startup-storage/contract.ts
@@ -816,6 +817,45 @@ modules:
       - packages/ui/src/conversation-export/index.ts
       - packages/ui/src/conversation-export/contract.ts
     layers: { ui: . }
+    owner: conversation
+
+  # data-directory：由 architecture:adopt 登记
+  - id: data-directory
+    roots:
+      - packages/shared/src/data-directory
+    managed: true
+    requires: [ shared ]
+    publicEntrypoints:
+      - packages/shared/src/data-directory/index.ts
+      - packages/shared/src/data-directory/contract.ts
+    layers:
+      adapters: .
+    owner: persistence
+  # cli-storage-relocation：由 architecture:adopt 登记
+  - id: cli-storage-relocation
+    roots:
+      - apps/zcode-cli/packages/adapters/src/storage-relocation
+    managed: true
+    requires: [ shared, data-directory, zcode-cli ]
+    publicEntrypoints:
+      - apps/zcode-cli/packages/adapters/src/storage-relocation/index.ts
+      - apps/zcode-cli/packages/adapters/src/storage-relocation/contract.ts
+    layers:
+      adapters: .
+    owner: persistence
+  # host-storage-relocation：由 architecture:adopt 登记
+  - id: host-storage-relocation
+    roots:
+      - packages/services/src/project-storage/relocation
+    managed: true
+    requires:
+      - data-directory
+      - shared
+    publicEntrypoints:
+      - packages/services/src/project-storage/relocation/index.ts
+      - packages/services/src/project-storage/relocation/contract.ts
+    layers:
+      adapters: .
     owner: conversation
 
 global:
