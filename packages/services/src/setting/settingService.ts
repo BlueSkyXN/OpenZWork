@@ -1,4 +1,5 @@
-import { readFile, mkdir, rename, rm, writeFile } from "node:fs/promises";
+import { readFile, mkdir, rename, rm } from "node:fs/promises";
+import { atomicWritePrivateTextFile } from "@zcode/shared/node";
 import {
   dataDirectory,
   DATA_ROOT_RELOCATED_MARKER,
@@ -412,7 +413,7 @@ export async function cancelPendingDataBaseDirMigration(): Promise<void> {
         await writeSettingsAt(settingsFile, { ...settings, pendingDataBaseDirMigration: undefined });
       } catch (error) {
         // 取消指针没提交时恢复封存，不能让后续重试采用已经过时的目标快照。
-        if (frozenMarker !== undefined) await writeFile(markerPath, frozenMarker, { mode: 0o600 });
+        if (frozenMarker !== undefined) await atomicWritePrivateTextFile(markerPath, frozenMarker);
         throw error;
       }
     });

@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cliStorageRelocation } from "@zcode/adapters/storage";
 import { dataDirectory, DATA_ROOT_RELOCATED_MARKER } from "@zcode/shared/data-directory";
@@ -56,12 +57,71 @@ afterEach(async () => {
 });
 
 describe("data directory migration", () => {
+  it.each([false, true])(
+    "retries after a process exits during marker write (previous marker: %s)",
+    async (retry) => {
+      const context = await runtime();
+      const target = await temp();
+      await fixture(context.home, "v2/item.txt", "original");
+      const service = context.createSettingService();
+      await service.updateDataBaseDir(target);
+      const pending = (await service.get()).pendingDataBaseDirMigration!;
+      const markerPath = join(context.home, ".openzwork", DATA_ROOT_RELOCATED_MARKER);
+      const previous = JSON.stringify({
+        version: 2,
+        id: pending.id,
+        sourceRoot: join(context.home, ".openzwork"),
+        targetRoot: join(target, ".openzwork"),
+      });
+      if (retry) await writeFile(markerPath, previous);
+      // 在真实子进程写出半份封存记录后退出，覆盖普通 catch/finally 无法执行的崩溃边界。
+      await expect(
+        runFile(process.execPath, [
+          "--import",
+          import.meta.resolve("tsx"),
+          "--input-type=module",
+          "-e",
+          `
+      import fs from 'node:fs';
+      import { syncBuiltinESMExports } from 'node:module';
+      import { basename } from 'node:path';
+      import { pathToFileURL } from 'node:url';
+      const write = fs.promises.writeFile;
+      fs.promises.writeFile = async (path, content, ...options) => {
+        if (basename(String(path)).includes(process.argv[5])) {
+          await write(path, String(content).slice(0, 12), ...options);
+          process.exit(71);
+        }
+        return write(path, content, ...options);
+      };
+      syncBuiltinESMExports();
+      const { copyDataDirectory } = await import(pathToFileURL(process.argv[1]).href);
+      await copyDataDirectory(process.argv[2], process.argv[3], process.argv[4]);
+    `,
+          fileURLToPath(new URL("../src/paths.ts", import.meta.url)),
+          context.home,
+          target,
+          pending.id,
+          DATA_ROOT_RELOCATED_MARKER,
+        ]),
+      ).rejects.toMatchObject({ code: 71 });
+      if (retry) expect(await readFile(markerPath, "utf8")).toBe(previous);
+      else await expect(readFile(markerPath)).rejects.toMatchObject({ code: "ENOENT" });
+      await context.applyPendingDataBaseDirMigration();
+      expect((await service.get()).dataBaseDir).toBe(target);
+      expect(await readFile(join(target, ".openzwork/v2/item.txt"), "utf8")).toBe("original");
+    },
+  );
   it("does not replace an unavailable original root with an empty published directory", async () => {
     const context = await runtime();
     const source = await temp();
     const target = await temp();
-    await expect(context.copyDataDirectory(source, target)).rejects.toMatchObject({ code: "DATA_DIRECTORY_SOURCE_UNAVAILABLE" });
-    await expect(readFile(join(target, ".openzwork/.data-directory-migration.json"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(context.copyDataDirectory(source, target)).rejects.toMatchObject({
+      code: "DATA_DIRECTORY_SOURCE_UNAVAILABLE",
+    });
+    await expect(
+      readFile(join(target, ".openzwork/.data-directory-migration.json")),
+    ).rejects.toMatchObject({ code: "ENOENT" });
   });
   it("retains a completed snapshot after pointer failure and allows explicit cancellation", async () => {
     const context = await runtime();

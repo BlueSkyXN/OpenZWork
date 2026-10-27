@@ -32,6 +32,7 @@ import {
   relocateDataPath,
   type DataRelocationPlan,
 } from "@zcode/shared/data-directory";
+import { atomicWritePrivateTextFile } from "@zcode/shared/node";
 import { relocateHostStorage } from "./project-storage/relocation/index.js";
 
 let _dataBaseDir: string | null = null;
@@ -415,7 +416,8 @@ async function copyExclusiveDataDirectory(
   try {
     await mkdir(sourceRoot, { recursive: true });
     // 先封住源根重入；进程崩溃后只允许相同计划重试或显式取消。
-    await writeFile(sourceMarker, JSON.stringify(marker), { mode: 0o600 });
+    // 封存记录参与下次启动的重试判断，写到一半退出时不能留下不可解析的正式文件。
+    await atomicWritePrivateTextFile(sourceMarker, JSON.stringify(marker));
     const databases: string[] = [];
     for (const entry of MIGRATION_CONTENTS) {
       const source = join(sourceRoot, entry);
