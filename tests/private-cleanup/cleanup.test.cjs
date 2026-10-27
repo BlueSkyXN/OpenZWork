@@ -458,23 +458,39 @@ test('[structural, not runtime] WP-08: official product endpoints are absent out
   assert.deepEqual(violations, [], `official domains found outside exemptions:\n${violations.join('\n')}`);
 });
 
-test('[structural, not runtime] WP-08: builtin release keeps 16 third-party templates, no account plan bindings', () => {
+test('[structural, not runtime] WP-08: builtin release keeps only three standard protocol templates', () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(root, 'config/provider/zcode-builtin.json'), 'utf8'));
-  assert.equal(cfg.revision, 34);
+  assert.equal(cfg.revision, 35);
   const pcr = cfg.config.providerConfigRules;
-  assert.equal(pcr.templateRules.length, 16);
-  const templateIds = new Set(pcr.templateRules.map(t => t.templateId));
-  for (const official of ['zai-api', 'zai-standard-api', 'bigmodel-api', 'bigmodel-standard-api']) {
-    assert.equal(templateIds.has(official), false, official);
+  assert.deepEqual(
+    pcr.templateRules.map(t => t.templateId),
+    [
+      'standard-anthropic-messages',
+      'standard-openai-chat-completions',
+      'standard-openai-responses',
+    ],
+  );
+  for (const template of pcr.templateRules) {
+    assert.equal(template.config.api.baseUrl, undefined);
+    assert.equal(template.config.logo, undefined);
+    assert.deepEqual(template.config.builtinModelIds, []);
   }
   // D-2 终裁：off-peak 全下线，不再保留任何账号域 providerRule（zhipu-account 规则集为空）。
   assert.deepEqual(pcr.providerRules, []);
   const mcr = cfg.config.modelConfigRules;
   assert.deepEqual(mcr.builtinProviderModelRules, []);
-  const templateModelTemplateIds = new Set(mcr.templateModelRules.map(r => r.templateId));
-  for (const official of ['zai-api', 'zai-standard-api', 'bigmodel-api', 'bigmodel-standard-api']) {
-    assert.equal(templateModelTemplateIds.has(official), false, official);
-  }
+  assert.deepEqual(mcr.templateModelRules, []);
+  assert.deepEqual(mcr.providerSiteRules, []);
+  assert.equal(mcr.modelRules.length, 1);
+  assert.equal(mcr.modelRules[0].modelMatch, '.*');
+  assert.deepEqual(
+    mcr.modelApiRules.map(rule => [rule.modelMatch, rule.apiTypeMatch]),
+    [
+      ['.*', 'anthropic-messages'],
+      ['.*', 'openai-chat-completions'],
+      ['.*', 'openai-responses'],
+    ],
+  );
 });
 
 test('[behavior, not runtime] WP-08: endpoint resolver returns undefined without configuration and never invents official origins', async () => {

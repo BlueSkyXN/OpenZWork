@@ -477,9 +477,6 @@ export const TID_SUBAGENT_ROW = "subagent-row";
 export const TID_SUBAGENT_BUILT_IN_MODEL_TRIGGER = "subagent-built-in-model-trigger";
 /** 设置页使用统计顶层 tab（动态后缀为 usage tab id） */
 export const TID_SETTINGS_USAGE_TAB = "settings-usage-tab";
-/** 侧边栏头像菜单使用统计入口 */
-export const TID_SIDEBAR_CODING_PLAN_USAGE_BUTTON = "sidebar-coding-plan-usage-button";
-
 // Model Provider Settings
 /** 模型供应商顶部添加按钮 */
 export const TID_MODEL_PROVIDER_ADD_PROVIDER_BUTTON = "model-provider-add-provider-button";
@@ -493,11 +490,6 @@ export const TID_MODEL_PROVIDER_TEMPLATE_BACK_BUTTON = "model-provider-template-
 export const TID_MODEL_PROVIDER_NAV_ITEM = "model-provider-nav-item";
 /** 模型供应商连接方式下拉触发器 */
 export const TID_MODEL_PROVIDER_CONNECTION_MODE_TRIGGER = "model-provider-connection-mode-trigger";
-/** 设置页已有 Start Plan 的数量快捷入口。 */
-export const TID_MODEL_PROVIDER_START_PLAN_COUNT_SHORTCUT =
-  "model-provider-start-plan-count-shortcut";
-export const TID_MODEL_PROVIDER_START_PLAN_SWITCH_PREFIX =
-  "model-provider-start-plan-switch-prefix";
 /** 模型供应商连接方式下拉项（动态后缀为连接方式 key） */
 export const TID_MODEL_PROVIDER_CONNECTION_MODE_ITEM = "model-provider-connection-mode-item";
 /** 模型供应商详情 API Key 输入框 */

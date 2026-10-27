@@ -272,11 +272,10 @@
       "capability": "retained-provider-protocol-and-user-storage",
       "files": [
         "packages/provider-node/test/final-config-envelopes.test.ts",
-        "packages/provider-node/test/glm-flash-pdf-turbo-defaults.test.ts",
         "packages/provider-node/test/provider-node-runtime.test.ts",
         "packages/provider-node/test/reasoning-level-migration.test.ts",
+        "packages/provider-node/test/standard-provider-config.test.ts",
         "packages/provider-node/test/zcode-builtin-consumption.test.ts",
-        "packages/provider-node/test/zcode-builtin-integrity.test.ts",
         "packages/provider-node/test/zcode-builtin-process.test.ts",
         "packages/provider-node/test/zcode-builtin-release.test.ts",
         "packages/provider/test/config-service.test.ts",

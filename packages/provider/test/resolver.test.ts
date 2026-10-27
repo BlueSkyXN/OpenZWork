@@ -221,6 +221,31 @@ describe("ProviderConfigResolver", () => {
     });
   });
 
+  it("完整内置 Provider 引用缺失模板时仍拒绝执行", () => {
+    const result = new ProviderConfigResolver().resolve({
+      zcodeBuiltinProviders: new ProviderConfigMap([
+        {
+          providerId: "broken-builtin",
+          templateId: "missing-template",
+          config: createApiKeyProviderConfig({
+            apiFormat: "anthropic-messages",
+            baseURL: "https://example.com",
+            apiKey: "fixture",
+            models: ["model-a"],
+          }),
+        },
+      ]),
+      personalProviders: ProviderConfigMap.empty(),
+      zcodeBuiltinProviderTemplates: ProviderTemplateMap.empty(),
+      zcodeBuiltinModelRules: new ModelConfigRules([
+        { type: "model", modelMatch: ".*", config: completeModelConfig() },
+      ]),
+      personalModels: ModelConfigRules.empty(),
+    });
+    expect(result.registryProviders).toEqual([]);
+    expect(result.issues).toEqual([expect.objectContaining({ code: "missing-template" })]);
+  });
+
   it("隐藏 Provider 的启用模型仍进入 Registry，禁用模型只保留在 Settings Resolution", () => {
     const result = new ProviderConfigResolver().resolve({
       zcodeBuiltinProviders: new ProviderConfigMap([

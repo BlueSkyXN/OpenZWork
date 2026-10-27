@@ -216,7 +216,11 @@ export class ProviderConfigResolver {
         : [...registryProviderResult.issues];
       const templateId = rule.templateId ?? undefined;
       const templateConfig = templateId ? providerTemplates?.get(templateId)?.config : undefined;
-      if (templateId && !templateConfig) {
+      // 模板退役后，完整的个人配置已能独立执行；旧 templateId 只保留来源，不再阻断注册。
+      // 内置目录引用错误或仍依赖模板补字段的记录继续报告缺失，不能放宽配置完整性校验。
+      const completePersonalProvider =
+        !effectiveBuiltinProviders.has(providerId) && registryProviderResult.ok;
+      if (templateId && !templateConfig && !completePersonalProvider) {
         providerIssues.push({
           code: "missing-template",
           path: [...providerPath, "templateId"],

@@ -259,11 +259,11 @@ describe("composer combined model and thinking picker", () => {
     expect(trigger.textContent).toContain("GLM-5.3-Flash");
     expect(trigger.textContent).toContain("Medium");
   });
-  it("shows the provider logo and access badges, with management only inside the provider submenu", () => {
+  it("shows a neutral provider icon and access badges, with management only inside the provider submenu", () => {
     const manage = vi.fn();
     render(createElement(Harness, { onManageModels: manage }));
     const trigger = screen.getByTestId("composer-provider-trigger");
-    expect(trigger.querySelector("img")?.getAttribute("src")).toContain("deepseek");
+    expect(trigger.querySelector("svg")).toBeTruthy();
     expect(trigger.textContent).toBe("Provider AIndividual");
     expect(screen.queryByText("Manage models")).toBeNull();
     fireEvent.keyDown(trigger, { key: "ArrowRight" });
