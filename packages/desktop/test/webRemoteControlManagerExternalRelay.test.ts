@@ -2379,7 +2379,7 @@ describe("V1 prepared connection lifecycle", () => {
       try {
         const result = await h.manager.start(1, { workspacePath: "/workspace/demo" });
         expect(new URL(result.qrUrl).searchParams.get("app_version")).toBe(
-          mode === "official" ? "3.14.3" : "1.5.0",
+          mode === "official" ? "3.15.2" : "1.5.0",
         );
         expect(h.getLatestTransportOptions()?.meta.version).toBe("1.5.0");
         h.deliverPayload({ zcode_type: "bootstrap-request", requestId: "page-version" });

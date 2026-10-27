@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "caseName": "web-remote-v1-connections",
+  "spec": "./test/e2e/conversation-session/web-remote-v1-connections.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/common.json",
+    "./test/e2e/fixtures/upstream/conversation-session/web-remote-v1-connections.json"
+  ],
+  "fileFixtures": [],
+  "requests": [
+    {
+      "id": "v1-official-title",
+      "description": "合成任务标题",
+      "kind": "common",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "标题用于识别测试任务"
+    },
+    {
+      "id": "v1-official-slow",
+      "description": "保持 running 直到手机排队与刷新完成",
+      "kind": "main",
+      "timingPolicy": "controlled-stream",
+      "source": "synthetic",
+      "syntheticReason": "受控流用于检查排队投影兼容性"
+    },
+    {
+      "id": "v1-official-queued",
+      "description": "手机已接受队列的执行结果",
+      "kind": "main",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "仅验证排队后正常执行和正文恢复"
+    }
+  ]
+}

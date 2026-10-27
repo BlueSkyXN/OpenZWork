@@ -4,7 +4,7 @@
 
 设置 → 远程控制中的手机连接卡片提供直接访问、自建 relay、官方 relay 三种方式。三者均使用 V1 `auth_init → auth_challenge → auth_response` 的 HMAC 配对，共用现有 Desktop transport 和窗口 Host attachment。官方预设为 `wss://zcode.z.ai/ws` 与 `https://zcode.z.ai/remote/v4`，仅在用户选择后连接；不接入 OAuth、V2 注册或云端设备发现。
 
-官方模式的二维码固定 `app_version=3.14.3`，选择已支持 V1 的手机网页。`OFFICIAL_WEB_REMOTE_CONTROL_V1.pageVersion` 是网页资源版本，设备握手的 `meta.version` 仍为真实桌面版本。该网页会按 bootstrap 的 `desktopAppVersion` 重定向；仅官方模式省略这个可选字段，让它保留已选网页，不以网页版本代替真实桌面版本。直连和自建模式继续在链接及 bootstrap 中使用真实桌面版本。此策略按当前运行连接选择，离开官方模式后不保留兼容状态。
+官方模式的二维码固定 `app_version=3.15.2`，选择支持 V1 及当前排队输入字段的手机网页。3.14.3 的 strict 输入校验会拒绝含 `inputOrigin` 的队列投影，造成 `fault.subscription.contentRejected`；重新获取相同快照无法解除拒收。切换网页资源版本，不改中继地址、不裁剪已接受的输入。`OFFICIAL_WEB_REMOTE_CONTROL_V1.pageVersion` 是网页资源版本，设备握手的 `meta.version` 仍为真实桌面版本。该网页会按 bootstrap 的 `desktopAppVersion` 重定向；仅官方模式省略这个可选字段，让它保留已选网页，不以网页版本代替真实桌面版本。直连和自建模式继续在链接及 bootstrap 中使用真实桌面版本。此策略按当前运行连接选择，离开官方模式后不保留兼容状态。
 
 官方域名清理检查按文件与完整字面量登记保留的 V1 地址，公共二维码合同测试的 origin 断言纳入同一规则。该登记不豁免整个测试文件；新增路径、其他官方服务地址与无关文件仍由原检查拒绝。
 
@@ -39,6 +39,8 @@ sequenceDiagram
 桌面侧统一配置页为“设置 → 远程控制”。详情页并列展示“手机连接”和“Bot Channels”卡片；较窄窗口改为纵向排列。主工作区侧栏底部提供远控快捷按钮，先设置 remoteControl section intent，再调用既有打开设置动作；设置侧栏的 back 模式不重复提供入口。快捷按钮不打开独立配置弹窗、不启动连接。底部保留个人菜单和设置按钮，默认名称显示本地用户。布局与入口验收见[设置页布局规格](../spec/settings-visual-polish.md)。
 
 手机卡片保留三种 V1 连接方式、显式开启、状态、停止、复制链接和重新配对。未开启时仅展示配置和开启动作，运行后展示二维码与连接操作。重新配对需确认旧链接失效，并沿用当前运行连接的完整工作区目标，不能混入最近浏览的另一个工作区身份。导航返回、切换设置分区和关闭设置仅卸载 UI，不调用 stop。
+
+连接方式下显示所选模式的网页来源与网络要求，运行后仍保留该说明。直接访问使用随桌面打包的 OpenZWork 网页，手机需通过局域网、VPN 或 HTTPS 反向代理访问电脑；自建模式使用用户填写的 V1 中继与手机网页，手机需能打开网页、两端需能连接中继；官方模式使用 ZCode 官方 V1 网页并显示 `pageVersion`，两端需能访问官方服务，扫码配对无需账号登录。版本号从共享常量传入中英文文案，不能在语言包中另存版本。
 
 Bot 卡片的渠道入口和“管理机器人”在当前设置分区内打开管理子页，使用设置面包屑返回卡片页。复用现有 Bot 配置与注册流程，服务始终由本机 Host 提供；打开管理页不会主动启动第三方登录。渠道入口可按既有规则选择已有 Bot 或创建关闭态草稿。
 
@@ -77,7 +79,7 @@ sequenceDiagram
     M->>H: 既有 attachment 路由
     H-->>P: snapshot / stream / gap recovery
     P->>M: bootstrap-request
-    alt 官方 3.14.3 网页
+    alt 官方 3.15.2 网页
         M-->>P: 当前任务目录，省略可选 desktopAppVersion
     else 直连或自建网页
         M-->>P: 当前任务目录及真实 desktopAppVersion
@@ -108,7 +110,9 @@ sequenceDiagram
 | V1-11 | 设置入口、首页快捷按钮、手机与 Bot 卡片、Bot 子页返回                       | 首页直达设置且不连接；页内导航不出现配置弹窗；Bot 使用本机服务        | UI 单测、Desktop E2E    |
 | V1-12 | 进入 / 离开设置、同路径远端、失效 session、无工作区                         | 不自动连接或停止；identity 不丢失；失效 session 不透传；Bot 仍可管理  | UI 单测、Desktop E2E    |
 
-V1-08 另验证实际加载的脚本来自 `/remote/v4/3.14.3/assets/`，bootstrap 未改报桌面版本，页面刷新后仍保持 `app_version=3.14.3`；该页可列出并打开预置的桌面历史任务，列表更新只来自现有 Controller。
+V1-08 另验证实际加载的脚本来自 `/remote/v4/3.15.2/assets/`，bootstrap 未改报桌面版本，页面刷新后仍保持 `app_version=3.15.2`；该页可列出并打开预置的桌面历史任务，列表更新只来自现有 Controller。使用合成模型回放，让任务保持 running 后从手机发送排队消息；桌面确认入队、手机刷新后仍能读到队列、释放当前回合后收到排队回复、再次刷新保留正文，整个流程无 `fault.subscription.contentRejected`。
+
+V1-01 同时覆盖三种说明随选择切换，官方网页版本与共享常量一致；在中英文、Zai Light / Zai Dark、1400px / 390px 下检查说明和表单无水平溢出。
 
 任务目录回归须检查实际发出的 `workspace-list-updated`：仅时间变化时更新载荷与顺序，重复投影不重复推送，随后 bootstrap 返回相同的最新目录。官方网页验收显式设置 `ZCODE_E2E_VERIFY_OFFICIAL_V1=1`，同时检查打开历史会话和刷新恢复；未开启该开关的跳过结果不作为官方模式通过依据。
 
@@ -122,7 +126,7 @@ V2/OAuth 用例不进入此功能矩阵；真实公网部署、手机硬件与�
 ZCODE_E2E_VERIFY_OFFICIAL_V1=1 pnpm --filter @zcode/desktop test:e2e:serial --spec ./test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts
 ```
 
-官方用例读取合成历史会话，刷新网页后再次核对正文，并输入草稿；不发送模型请求。查看报告时确认三项用例全部执行，官方项没有跳过。
+官方用例读取合成历史会话，并向本地受控模型回放发送运行及排队消息；不请求付费模型。查看报告时确认三种连接方式全部执行，官方项没有跳过。
 
 ## 使用方式
 

@@ -4,7 +4,10 @@ import {
   DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
   type WebRemoteControlConnectionSettings,
 } from "@zcode/shared";
-import { WebRemoteControlConnectionForm } from "./WebRemoteControlConnectionForm.js";
+import {
+  WebRemoteControlConnectionForm,
+  WebRemoteControlConnectionHelp,
+} from "./WebRemoteControlConnectionForm.js";
 import type { BotProvider, WebRemoteControlStatus } from "@zcode/shared";
 import {
   isSameWebRemoteControlTarget,
@@ -413,10 +416,13 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
             </div>
           </div>
           {running ? (
-            <p className="mb-3 text-ui-caption text-foreground-subtle">
-              {intl.formatMessage({ id: "webRemoteControl.connection.mode" })}:{" "}
-              {intl.formatMessage({ id: `webRemoteControl.connection.${connection.mode}` })}
-            </p>
+            <div className="mb-3 space-y-2">
+              <p className="text-ui-caption text-foreground-subtle">
+                {intl.formatMessage({ id: "webRemoteControl.connection.mode" })}:{" "}
+                {intl.formatMessage({ id: `webRemoteControl.connection.${connection.mode}` })}
+              </p>
+              <WebRemoteControlConnectionHelp mode={connection.mode} />
+            </div>
           ) : (
             <WebRemoteControlConnectionForm
               value={connection}

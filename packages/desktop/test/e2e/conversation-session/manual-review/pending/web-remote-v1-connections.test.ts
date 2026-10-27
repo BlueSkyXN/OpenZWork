@@ -11,6 +11,32 @@ import { createLocalPairingRelay } from "../../../helpers/local-pairing-relay.js
 import { openMobilePairingPage } from "../../../helpers/mobile-pairing.js";
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 import type { WebRemoteControlStatus, IPlatformService } from "@zcode/shared";
+import { OFFICIAL_WEB_REMOTE_CONTROL_V1, encodeCustomModelValue } from "@zcode/shared";
+import {
+  TID_CHAT_MODEL_SELECT_TRIGGER,
+  TID_CHAT_MODEL_SELECT_GROUP,
+  TID_CHAT_MODEL_SELECT_ITEM,
+  testId,
+} from "@zcode/shared/test-ids";
+import {
+  setCurrentRendererViewport,
+  clearCurrentRendererViewport,
+} from "../../../helpers/renderer-viewport.js";
+import {
+  UPSTREAM_PROVIDER_NAME,
+  UPSTREAM_PROVIDER_ID,
+  UPSTREAM_MODEL,
+  selectUpstreamModel,
+  selectUpstreamThoughtLevelValue,
+} from "../../../helpers/upstream-provider.js";
+import {
+  selectV4TaskById,
+  sendV4Prompt,
+  waitForV4ConversationState,
+} from "../../../helpers/v4-conversation.js";
+import { releaseControlledReplay } from "../../../helpers/controlled-replay.js";
+import { startConversationModelProviderReplayServer } from "../../../helpers/model-provider-replay.js";
+import { refreshSeededOpenAIProvidersThroughSettings } from "../../../helpers/custom-openai-provider.js";
 
 const artifacts = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/v1-connections");
 let mobile: Browser | undefined;
@@ -57,8 +83,19 @@ async function clickButton(pattern: string) {
 }
 async function openSettings() {
   await skipOccupationOnboardingIfPresent();
-  await openRemoteControlSettings();
+  await showRemoteSettings();
   await $('[data-testid="web-remote-start"]').waitForEnabled({ timeout: 10_000 });
+}
+async function ensureSidebarOpen() {
+  // 窄屏布局会收起工作区侧栏；恢复视口后通过真实按钮展开，再访问设置与任务。
+  if (!(await $('[data-testid="task-settings-button"]').isDisplayed())) {
+    await $('button[aria-label="Toggle sidebar"], button[aria-label="切换侧边栏"]').click();
+    await $('[data-testid="task-settings-button"]').waitForDisplayed();
+  }
+}
+async function showRemoteSettings() {
+  if (!(await $('[data-testid="settings-page"]').isExisting())) await ensureSidebarOpen();
+  await openRemoteControlSettings();
 }
 async function pairingLink(): Promise<string> {
   let receive!: (url: string) => void;
@@ -124,6 +161,7 @@ describe("E2E_V1_CONNECTIONS", () => {
     });
   });
   afterEach(async () => {
+    await clearCurrentRendererViewport();
     await browser.execute(async () => {
       await (window as unknown as { zcode: IPlatformService }).zcode.stopWebRemoteControl();
     });
@@ -136,6 +174,77 @@ describe("E2E_V1_CONNECTIONS", () => {
       .catch(() => {});
     await mobile?.close();
     for (const close of closes.reverse()) await close();
+  });
+  it("V1-01: mode guidance in both languages, themes and viewport sizes", async function () {
+    this.timeout(120_000);
+    await openSettings();
+    const layouts: Array<{ width: number; locale: string; theme: string; mode: string }> = [];
+    try {
+      for (const width of [1400, 390]) {
+        await setCurrentRendererViewport(width, 844);
+        for (const locale of ["zh-CN", "en-US"]) {
+          for (const theme of ["zai-light", "zai-dark"]) {
+            await browser.execute(
+              (locale, theme) => {
+                const actions = (
+                  window as unknown as {
+                    __testActions: {
+                      setLocale(value: string): void;
+                      setTheme(value: string): void;
+                    };
+                  }
+                ).__testActions;
+                actions.setLocale(locale);
+                actions.setTheme(theme);
+              },
+              locale,
+              theme,
+            );
+            await browser.waitUntil(() =>
+              browser.execute(
+                (theme) => document.documentElement.classList.contains("theme-" + theme),
+                theme,
+              ),
+            );
+            for (const mode of ["direct", "self-hosted", "official"]) {
+              await $(`[data-testid="web-remote-mode-${mode}"]`).click();
+              const help = $('[data-testid="web-remote-mode-help"]');
+              await help.waitForDisplayed();
+              const content = await help.getText();
+              expect(content).toContain(mode === "direct" ? "OpenZWork" : "V1");
+              if (mode === "official")
+                expect(content).toContain(OFFICIAL_WEB_REMOTE_CONTROL_V1.pageVersion);
+              expect(
+                await browser.execute(() => {
+                  const card = document.querySelector<HTMLElement>(
+                    '[data-testid="web-remote-control-scan-card"]',
+                  )!;
+                  return card.scrollWidth <= card.clientWidth + 1;
+                }),
+              ).toBe(true);
+              expect((await status()).status).toBe("idle");
+              layouts.push({ width, locale, theme, mode });
+              await browser.saveScreenshot(
+                join(artifacts, `mode-${mode}-${width}-${locale}-${theme}.png`),
+              );
+            }
+          }
+        }
+      }
+      await writeFile(join(artifacts, "mode-layouts.json"), JSON.stringify(layouts, null, 2));
+    } finally {
+      await clearCurrentRendererViewport();
+      await browser.execute(() => {
+        const actions = (
+          window as unknown as {
+            __testActions: { setLocale(value: string): void; setTheme(value: string): void };
+          }
+        ).__testActions;
+        actions.setLocale("en-US");
+        actions.setTheme("zai-light");
+      });
+      await $('[data-testid="web-remote-mode-direct"]').click();
+    }
   });
   it("V1-01/02/04/07: HTTP entry, pairing, task draft and stop", async function () {
     this.timeout(180_000);
@@ -162,7 +271,7 @@ describe("E2E_V1_CONNECTIONS", () => {
     const pairing = new URL(await pairingLink());
     await leaveRemoteControlSettings();
     expect((await status()).status).toBe("running");
-    await openRemoteControlSettings();
+    await showRemoteSettings();
     const loopbackUrl = pairing.origin;
     pairing.hostname = "openzwork.test";
     const context = await mobile!.newContext({
@@ -276,14 +385,25 @@ describe("E2E_V1_CONNECTIONS", () => {
       this.skip();
       return;
     }
-    this.timeout(180_000);
+    this.timeout(300_000);
+    await leaveRemoteControlSettings();
+    await ensureSidebarOpen();
+    const replay = await startConversationModelProviderReplayServer("web-remote-v1-connections", {
+      seedPersonalConfig: true,
+    });
+    closes.push(() => replay.stop());
+    await selectV4TaskById("sess_e2e_v1_official", 30_000);
+    await refreshSeededOpenAIProvidersThroughSettings([UPSTREAM_PROVIDER_NAME]);
+    await selectUpstreamModel();
+    await selectUpstreamThoughtLevelValue("disabled");
     await openSettings();
     await $('[data-testid="web-remote-mode-official"]').click();
     await $('[data-testid="web-remote-start"]').click();
     await browser.waitUntil(async () => (await status()).status === "running", { timeout: 40_000 });
     const link = await pairingLink();
     expect(new URL(link).origin).toBe("https://zcode.z.ai");
-    expect(new URL(link).searchParams.get("app_version")).toBe("3.14.3");
+    expect(new URL(link).searchParams.get("app_version")).toBe("3.15.2");
+    expect(await $('[data-testid="web-remote-mode-help"]').getText()).toContain("3.15.2");
     const context = await mobile!.newContext({
       viewport: { width: 390, height: 844 },
       isMobile: true,
@@ -292,12 +412,23 @@ describe("E2E_V1_CONNECTIONS", () => {
     const page = await context.newPage();
     const loadedAssetVersions = new Set<string>();
     const bootstrapVersionsProvided: boolean[] = [];
+    let contentRejectedCount = 0;
+    let pageErrorCount = 0;
+    page.on("pageerror", () => {
+      pageErrorCount += 1;
+    });
     page.on("response", (response) => {
       const path = new URL(response.url()).pathname;
       const match = path.match(/^\/remote\/v4\/([^/]+)\/assets\/[^/]+\.js$/u);
       if (match) loadedAssetVersions.add(match[1]!);
     });
     page.on("websocket", (socket) => {
+      const checkContentRejected = (frame: { payload: string | Buffer }) => {
+        if (frame.payload.toString().includes("fault.subscription.contentRejected"))
+          contentRejectedCount += 1;
+      };
+      socket.on("framesent", checkContentRejected);
+      socket.on("framereceived", checkContentRejected);
       socket.on("framereceived", (frame) => {
         // 只记录可选版本字段是否存在，配对材料和完整会话载荷不进入测试记录。
         try {
@@ -337,15 +468,80 @@ describe("E2E_V1_CONNECTIONS", () => {
       .first()
       .waitFor({ timeout: 30_000 });
     await browser.waitUntil(async () => (await status()).mobileConnected === true);
+    // 历史夹具故意没有可执行模型；手机从真实目录选择本地回放模型后才能发送。
+    await page.getByTestId(TID_CHAT_MODEL_SELECT_TRIGGER).click();
+    await page.screenshot({ path: join(artifacts, "official-model-picker.png") });
+    const modelItem = page.getByTestId(
+      testId(
+        TID_CHAT_MODEL_SELECT_ITEM,
+        encodeCustomModelValue(UPSTREAM_PROVIDER_ID, UPSTREAM_MODEL),
+      ),
+    );
+    if (!(await modelItem.isVisible())) {
+      const group = page.getByTestId(
+        testId(TID_CHAT_MODEL_SELECT_GROUP, `registry-provider:${UPSTREAM_PROVIDER_ID}`),
+      );
+      await group.hover();
+      await group.click();
+    }
+    await modelItem.click();
+    // 受控流保持 running，手机提交后以桌面已接受队列为准，避免只验证乐观消息。
+    await leaveRemoteControlSettings();
+    await selectV4TaskById("sess_e2e_v1_official", 30_000);
+    await sendV4Prompt("E2E_V1_OFFICIAL_SLOW");
+    await page
+      .getByText("E2E_V1_RUNNING_REPLY", { exact: false })
+      .first()
+      .waitFor({ timeout: 45_000 });
+    const input = page.locator('[contenteditable="true"]').first();
+    await input.click();
+    await page.keyboard.type("E2E_V1_OFFICIAL_QUEUED");
+    await page.screenshot({ path: join(artifacts, "official-before-queue.png") });
+    // 手机输入的换行键不作为发送依据，点击与用户一致的发送控件。
+    await page.getByTestId("v4-composer-send").click();
+    await waitForV4ConversationState(
+      (state) => state.taskId === "sess_e2e_v1_official" && state.queueCount > 0,
+      "官方网页发送的消息未进入桌面已接受队列",
+      30_000,
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page
+      .getByText("E2E_V1_OFFICIAL_QUEUED", { exact: false })
+      .first()
+      .waitFor({ timeout: 30_000 });
+    expect(contentRejectedCount).toBe(0);
+    await releaseControlledReplay("v1-official-slow");
+    await page
+      .getByText("E2E_V1_QUEUED_REPLY", { exact: false })
+      .first()
+      .waitFor({ timeout: 45_000 });
+    await waitForV4ConversationState(
+      (state) =>
+        state.taskId === "sess_e2e_v1_official" && state.queueCount === 0 && state.state === "idle",
+      "官方网页排队回合未完成",
+      30_000,
+    );
+    await page.reload({ waitUntil: "domcontentloaded" });
+    for (const marker of [
+      "E2E_V1_PERSISTED_ASSISTANT",
+      "E2E_V1_OFFICIAL_QUEUED",
+      "E2E_V1_RUNNING_REPLY",
+      "E2E_V1_QUEUED_REPLY",
+    ]) {
+      await page.getByText(marker, { exact: false }).first().waitFor({ timeout: 30_000 });
+    }
     await page.locator('[contenteditable="true"]').first().fill("E2E_V1_OFFICIAL_DRAFT");
     expect(await page.locator('[contenteditable="true"]').first().innerText()).toContain(
       "E2E_V1_OFFICIAL_DRAFT",
     );
-    expect(new URL(page.url()).searchParams.get("app_version")).toBe("3.14.3");
-    expect([...loadedAssetVersions]).toEqual(["3.14.3"]);
+    expect(new URL(page.url()).searchParams.get("app_version")).toBe("3.15.2");
+    expect([...loadedAssetVersions]).toEqual(["3.15.2"]);
+    expect(contentRejectedCount).toBe(0);
+    expect(pageErrorCount).toBe(0);
     expect(bootstrapVersionsProvided.length).toBeGreaterThanOrEqual(2);
     expect(bootstrapVersionsProvided.every((provided) => !provided)).toBe(true);
     await page.screenshot({ path: join(artifacts, "official-mobile.png") });
+    await showRemoteSettings();
     await maskedDesktopScreenshot("official-connected.png");
     await writeFile(
       join(artifacts, "official-result.json"),
@@ -355,6 +551,11 @@ describe("E2E_V1_CONNECTIONS", () => {
         historyRead: true,
         reload: true,
         draft: true,
+        queueAccepted: true,
+        queueReload: true,
+        queueDrained: true,
+        contentRejectedCount,
+        pageErrorCount,
         pageVersion: new URL(page.url()).searchParams.get("app_version"),
         loadedAssetVersions: [...loadedAssetVersions],
         bootstrapVersionOmitted: bootstrapVersionsProvided.every((provided) => !provided),
