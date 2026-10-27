@@ -1,4 +1,6 @@
 import { BrowserWindow, MessageChannelMain } from "electron";
+import { stat, access } from "node:fs/promises";
+import { constants } from "node:fs";
 import type { MessagePortMain, UtilityProcess as ElectronUtilityProcess } from "electron";
 import { HostMessageTypes, type RemoteWorkspaceIdentityKind } from "@zcode/shared";
 
@@ -23,6 +25,7 @@ interface WebRemoteControlSharedHostAttachment {
 interface WebRemoteControlSharedHostError extends Error {
   code:
     | "DESKTOP_HOST_MISSING"
+    | "LOCAL_WORKSPACE_UNAVAILABLE"
     | "REMOTE_WORKSPACE_IDENTITY_MISSING"
     | "REMOTE_WORKSPACE_IDENTITY_MISMATCH"
     | "REMOTE_SESSION_MISSING"
@@ -109,6 +112,18 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
     context: WebRemoteControlSharedHostAttachContext,
   ): Promise<WebRemoteControlSharedHostAttachment> {
     if (context.kind === "local") {
+      // OW-P017：旧入口直接交付 Host port，失效 cwd 仍可新建；历史恢复保留只读访问。
+      if (!context.initialTaskId) {
+        try {
+          if (!(await stat(context.workspacePath)).isDirectory()) throw new Error("not-directory");
+          await access(context.workspacePath, constants.R_OK | constants.X_OK);
+        } catch {
+          throw createSharedHostError(
+            "LOCAL_WORKSPACE_UNAVAILABLE",
+            "工作区目录不可用。请恢复目录或在桌面选择有效目录后新建任务。",
+          );
+        }
+      }
       return attachLocalHost(windowId);
     }
     if (!context.remoteSessionId) {

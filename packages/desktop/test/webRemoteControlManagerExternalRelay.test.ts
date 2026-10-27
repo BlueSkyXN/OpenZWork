@@ -7,6 +7,7 @@ import type {
   WebRemoteControlAppPayload,
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
+  WebRemoteControlLegacyDirectory,
 } from "@zcode/shared";
 import {
   parseWebRemoteControlAppPayload,
@@ -254,6 +255,25 @@ async function createPrimedWorkspaceSyncHarness(
 }
 
 describe("createWebRemoteControlManager external relay", () => {
+  it("OW-P018：仅工作区名称或用途变化也推送，重复快照仍去重", async () => {
+    const h = await createPrimedWorkspaceSyncHarness();
+    try {
+      // OW-P018：身份、连接和任务不变时，旧签名遗漏 label / purpose。
+      const renamed = { ...h.workspace, label: "Renamed project" };
+      h.manager.syncAvailableWorkspaces(1, [renamed]);
+      expect(h.sentPayloads).toContainEqual({
+        zcode_type: "workspace-list-updated",
+        result: expect.objectContaining({ workspaces: expect.arrayContaining([renamed]) }),
+      });
+      h.sentPayloads.length = 0;
+      h.manager.syncAvailableWorkspaces(1, [{ ...renamed }]);
+      expect(h.sentPayloads).toEqual([]);
+      h.manager.syncAvailableWorkspaces(1, [{ ...renamed, workspacePurpose: "conversation" }]);
+      expect(h.sentPayloads).toHaveLength(1);
+    } finally {
+      await h.manager.disposeWindow(1);
+    }
+  });
   it.each(["updatedAt", "createdAt"] as const)(
     "仅 %s 变化时推送最新任务时间与排序，重复投影仍去重",
     async (timeField) => {
@@ -2319,9 +2339,9 @@ it("transport明确报告kicked时保留session-conflict终态", async () => {
 });
 
 describe("V1 prepared connection lifecycle", () => {
-  function provider() {
+  function provider(mode: "direct" | "self-hosted" | "official" = "direct") {
     const settings = {
-      mode: "direct" as const,
+      mode,
       direct: { listenHost: "127.0.0.1", port: 0, publicUrl: "" },
       relay: { wsUrl: "", pageUrl: "" },
     };
@@ -2344,6 +2364,179 @@ describe("V1 prepared connection lifecycle", () => {
       prepare: vi.fn(async () => connection),
     };
   }
+  it("官方完整目录可打开未在 tab 中的项目、历史和无 root 项目，原子发布并清理", async () => {
+    const p = provider("official");
+    const prepared: HostPreparedProjectWorkspace = {
+      workspacePath: "/prepared",
+      projectId: "empty",
+      hostId: "local",
+      additionalDirectories: [],
+    };
+    const prepareProjectWorkspace = vi.fn(async () => prepared);
+    const h = createManagerHarness({ connectionProvider: p, prepareProjectWorkspace });
+    const key = JSON.stringify(["openzwork-local-project", "empty"]);
+    const directory: WebRemoteControlLegacyDirectory = {
+      windowControlSessionId: "direct-id",
+      workspaces: [
+        { workspacePath: "No folders", workspaceIdentity: key, kind: "local", label: "Empty" },
+        { workspacePath: "/closed", kind: "local", label: "Closed" },
+      ],
+      projects: [
+        { workspaceKey: key, projectIds: ["empty"] },
+        { workspaceKey: "/closed", projectIds: ["closed"] },
+      ],
+    };
+    const history: WebRemoteControlTaskTarget = {
+      taskId: "history",
+      title: "History",
+      workspacePath: "/closed",
+      workspaceKind: "local",
+      workspaceLabel: "Closed",
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    try {
+      await h.manager.start(1, { workspacePath: "/open" });
+      h.sentPayloads.length = 0;
+      h.manager.syncAvailableTasks(1, [history], { ...directory, windowControlSessionId: "stale" });
+      expect(h.sentPayloads).toEqual([]);
+      h.manager.syncAvailableTasks(1, [history], directory);
+      expect(h.sentPayloads).toEqual([
+        expect.objectContaining({
+          zcode_type: "workspace-list-updated",
+          result: expect.objectContaining({
+            tasks: [history],
+            workspaces: expect.arrayContaining(directory.workspaces),
+          }),
+        }),
+      ]);
+      for (const [index, workspaceKey, taskId] of [
+        [0, key, undefined],
+        [1, "/closed", undefined],
+        [2, "/closed", "history"],
+      ] as const) {
+        h.deliverPayload({
+          zcode_type: "workspace-bridge-open",
+          requestId: `open-${index}`,
+          bridgeSessionId: `bridge-${index}`,
+          workspaceKey,
+          ...(taskId ? { taskId } : {}),
+        });
+        await vi.waitFor(() =>
+          expect(h.defaultAttachWorkspaceHost).toHaveBeenCalledTimes(index + 1),
+        );
+        expect(h.defaultAttachWorkspaceHost).toHaveBeenLastCalledWith(
+          1,
+          expect.objectContaining({
+            kind: "local",
+            workspacePath: "/prepared",
+            workspaceIdentity: undefined,
+          }),
+        );
+      }
+      expect(prepareProjectWorkspace.mock.calls.map((call) => call[1])).toEqual([
+        { hostId: "local", projectId: "empty" },
+        { hostId: "local", projectId: "closed" },
+        { hostId: "local", task: { taskId: "history", workspaceKey: "/closed" } },
+      ]);
+      await h.manager.stop(1);
+      await h.manager.start(1, { workspacePath: "/open" });
+      h.sentPayloads.length = 0;
+      h.deliverPayload({ zcode_type: "bootstrap-request", requestId: "clean-restart" });
+      expect(h.sentPayloads).toContainEqual(
+        expect.objectContaining({
+          zcode_type: "bootstrap-response",
+          result: expect.objectContaining({
+            tasks: [],
+            workspaces: [expect.objectContaining({ workspacePath: "/open" })],
+          }),
+        }),
+      );
+    } finally {
+      await h.manager.disposeWindow(1);
+    }
+  });
+
+  it.each(["direct", "self-hosted"] as const)("%s 不接收官方目录扩展", async (mode) => {
+    const h = createManagerHarness({ connectionProvider: provider(mode) });
+    try {
+      await h.manager.start(1, { workspacePath: "/open" });
+      h.sentPayloads.length = 0;
+      h.manager.syncAvailableTasks(1, [], {
+        windowControlSessionId: "direct-id",
+        workspaces: [{ workspacePath: "/closed", label: "Closed", kind: "local" }],
+        projects: [],
+      });
+      expect(h.sentPayloads).toEqual([]);
+      h.deliverPayload({
+        zcode_type: "workspace-bridge-open",
+        requestId: "unlisted",
+        bridgeSessionId: "bridge",
+        workspaceKey: "/closed",
+      });
+      await vi.waitFor(() =>
+        expect(h.sentPayloads).toContainEqual(
+          expect.objectContaining({
+            zcode_type: "workspace-bridge-error",
+            requestId: "unlisted",
+          }),
+        ),
+      );
+      expect(h.defaultAttachWorkspaceHost).not.toHaveBeenCalled();
+    } finally {
+      await h.manager.disposeWindow(1);
+    }
+  });
+
+  it("官方旧页同目录多个项目新建不猜归属，Host 拒绝目录时没有 attachment", async () => {
+    const prepareProjectWorkspace = vi.fn(async () => {
+      throw new Error("project.primary-root-missing");
+    });
+    const h = createManagerHarness({
+      connectionProvider: provider("official"),
+      prepareProjectWorkspace,
+    });
+    try {
+      await h.manager.start(1, { workspacePath: "/open" });
+      const directory: WebRemoteControlLegacyDirectory = {
+        windowControlSessionId: "direct-id",
+        workspaces: [{ workspacePath: "/same", kind: "local", label: "A / B" }],
+        projects: [{ workspaceKey: "/same", projectIds: ["A", "B"] }],
+      };
+      h.manager.syncAvailableTasks(1, [], directory);
+      h.deliverPayload({
+        zcode_type: "workspace-bridge-open",
+        requestId: "ambiguous",
+        bridgeSessionId: "one",
+        workspaceKey: "/same",
+      });
+      await vi.waitFor(() =>
+        expect(h.sentPayloads).toContainEqual(
+          expect.objectContaining({
+            zcode_type: "workspace-bridge-error",
+            requestId: "ambiguous",
+            error: expect.stringContaining("多个项目"),
+          }),
+        ),
+      );
+      expect(prepareProjectWorkspace).not.toHaveBeenCalled();
+      h.manager.syncAvailableTasks(1, [], {
+        ...directory,
+        projects: [{ workspaceKey: "/same", projectIds: ["A"] }],
+      });
+      h.deliverPayload({
+        zcode_type: "workspace-bridge-open",
+        requestId: "missing",
+        bridgeSessionId: "two",
+        workspaceKey: "/same",
+      });
+      await vi.waitFor(() => expect(prepareProjectWorkspace).toHaveBeenCalledOnce());
+      expect(h.defaultAttachWorkspaceHost).not.toHaveBeenCalled();
+    } finally {
+      await h.manager.disposeWindow(1);
+    }
+  });
+
   it("uses scoped auth, never exposes loopback in the QR, and releases on stop", async () => {
     const p = provider();
     const h = createManagerHarness({ connectionProvider: p });

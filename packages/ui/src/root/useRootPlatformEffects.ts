@@ -41,6 +41,7 @@ export function useRootPlatformEffects({
   allowOpenWorkspace = true,
   isDesktop,
   locale,
+  rootlessLabel,
   tabs,
   reconnectingRemoteWorkspaceKeys = [],
   remoteWorkspaceErrorByWorkspaceKey = {},
@@ -76,6 +77,7 @@ export function useRootPlatformEffects({
   allowOpenWorkspace?: boolean;
   isDesktop?: boolean;
   locale: ReturnType<typeof import("@/i18n/IntlProvider.js").useZCodeIntl>["locale"];
+  rootlessLabel: string;
   tabs: WindowTabState[];
   reconnectingRemoteWorkspaceKeys?: string[];
   remoteWorkspaceErrorByWorkspaceKey?: Record<string, string>;
@@ -245,6 +247,7 @@ export function useRootPlatformEffects({
   useWebRemoteControlLegacyTaskSync({
     platform,
     tabs,
+    rootlessLabel,
     enabled: Boolean(isDesktop && webRemoteControlFeatureEnabled && hasCompletedFullTabRestore),
   });
 

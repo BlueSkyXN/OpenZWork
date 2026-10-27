@@ -11,7 +11,7 @@ import {
   rendererLogPayloadSchema,
   stringArraySchema,
   webRemoteControlWorkspaceTargetsSchema,
-  webRemoteControlLegacyTaskTargetsSchema,
+  webRemoteControlLegacyTaskSyncSchema,
   type DesktopCommandId,
   type ApplicationIconRequest,
   type Locale,
@@ -22,6 +22,7 @@ import {
   type CreateTempTextAttachmentRequest,
   type MaterializeWorkflowArtifactFileRequest,
   type WebRemoteControlTaskTarget,
+  type WebRemoteControlLegacyDirectory,
   type WebRemoteControlWorkspaceTarget,
   type WindowControlsOverlayReadyPayload,
 } from "@zcode/shared";
@@ -82,7 +83,11 @@ export function registerPlatformIpcHandlers(options: {
     windowId: number,
     contexts: Array<{ workspacePath: string }>,
   ) => void;
-  syncWebRemoteControlLegacyTasks?: (windowId: number, tasks: WebRemoteControlTaskTarget[]) => void;
+  syncWebRemoteControlLegacyTasks?: (
+    windowId: number,
+    tasks: WebRemoteControlTaskTarget[],
+    directory?: WebRemoteControlLegacyDirectory,
+  ) => void;
   syncWebRemoteControlWorkspaces: (
     windowId: number,
     workspaces: WebRemoteControlWorkspaceTarget[],
@@ -277,9 +282,10 @@ export function registerPlatformIpcHandlers(options: {
   });
 
   ipcMain.on(PlatformChannels.SyncWebRemoteControlLegacyTasks, (event, payload: unknown) => {
-    const parsed = webRemoteControlLegacyTaskTargetsSchema.safeParse(payload);
+    const parsed = webRemoteControlLegacyTaskSyncSchema.safeParse(payload);
     const win = BrowserWindow.fromWebContents(event.sender);
-    if (win && parsed.success) options.syncWebRemoteControlLegacyTasks?.(win.id, parsed.data);
+    if (win && parsed.success)
+      options.syncWebRemoteControlLegacyTasks?.(win.id, parsed.data.tasks, parsed.data.directory);
   });
 
   ipcMain.on(PlatformChannels.SyncWebRemoteControlWorkspaces, (event, payload: unknown) => {

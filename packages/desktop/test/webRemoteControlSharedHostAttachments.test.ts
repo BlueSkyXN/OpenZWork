@@ -1,4 +1,7 @@
 import { EventEmitter } from "node:events";
+import { mkdtemp, mkdir, rm, writeFile, stat } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { HostMessageTypes } from "@zcode/shared";
 import { createWebRemoteControlSharedHostAttachments } from "../src/main/webRemoteControlSharedHostAttachments.js";
@@ -42,7 +45,7 @@ describe("createWebRemoteControlSharedHostAttachments", () => {
 
     const attachment = await manager.attachWorkspaceHost(7, {
       kind: "local",
-      workspacePath: "/repo/demo",
+      workspacePath: tmpdir(),
     });
 
     expect(attachment.entryId).toBe("desktop-host:7");
@@ -75,7 +78,7 @@ describe("createWebRemoteControlSharedHostAttachments", () => {
     await expect(
       manager.attachWorkspaceHost(7, {
         kind: "local",
-        workspacePath: "/repo/demo",
+        workspacePath: tmpdir(),
       }),
     ).rejects.toMatchObject({ code: "DESKTOP_HOST_MISSING" });
   });
@@ -97,6 +100,49 @@ describe("createWebRemoteControlSharedHostAttachments", () => {
       }),
     ).rejects.toMatchObject({ code: "REMOTE_WORKSPACE_IDENTITY_MISSING" });
     expect(attachRemoteWorkspaceSessionHost).not.toHaveBeenCalled();
+  });
+
+  it("OW-P017：失效目录拒绝新建且不产生 attachment，历史可读，目录恢复后可重试", async () => {
+    const root = await mkdtemp(join(tmpdir(), "remote-directory-"));
+    const path = join(root, "workspace");
+    const child = new MockUtilityProcess();
+    const createMessageChannel = vi.fn(createPortPair);
+    const manager = createWebRemoteControlSharedHostAttachments({
+      windowHostProcessMap: new Map([[7, child as never]]),
+      createMessageChannel: createMessageChannel as never,
+      attachRemoteWorkspaceSessionHost: vi.fn(),
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+    });
+    try {
+      // OW-P017：过去 local 分支忽略 cwd，会在目录不存在时仍交付可新建的 Host port。
+      await expect(
+        manager.attachWorkspaceHost(7, { kind: "local", workspacePath: path }),
+      ).rejects.toMatchObject({ code: "LOCAL_WORKSPACE_UNAVAILABLE" });
+      expect(createMessageChannel).not.toHaveBeenCalled();
+      expect(child.postMessage).not.toHaveBeenCalled();
+      await expect(stat(path)).rejects.toMatchObject({ code: "ENOENT" });
+      const history = await manager.attachWorkspaceHost(7, {
+        kind: "local",
+        workspacePath: path,
+        initialTaskId: "history",
+      });
+      manager.releaseAttachment(history.attachmentId);
+      await writeFile(path, "file, not directory");
+      await expect(
+        manager.attachWorkspaceHost(7, { kind: "local", workspacePath: path }),
+      ).rejects.toMatchObject({ code: "LOCAL_WORKSPACE_UNAVAILABLE" });
+      await rm(path);
+      await mkdir(path);
+      const recovered = await manager.attachWorkspaceHost(7, {
+        kind: "local",
+        workspacePath: path,
+      });
+      expect(recovered.entryId).toBe("desktop-host:7");
+      manager.releaseAttachment(recovered.attachmentId);
+    } finally {
+      manager.disposeWindow(7);
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it("WPL-012 reuses one remote Window Host and releases only the mobile attachment port", async () => {

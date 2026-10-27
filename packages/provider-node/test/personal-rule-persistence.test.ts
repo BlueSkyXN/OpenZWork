@@ -116,6 +116,7 @@ describe("Todo104 个人规则原子落盘", () => {
     expect(await readFile(path, "utf8")).toBe(raw);
   });
   it("两个真实 Node 进程同时写 Provider 与默认选择，完整保留双方所有更新", async () => {
+    // OW-P019：Windows 原生 mkdir EPERM 曾中断子进程；保留真实竞争及双方完整更新断言。
     const personal = repository();
     await personal.read();
     const script = fileURLToPath(new URL("./fixtures/personal-config-writer.ts", import.meta.url));

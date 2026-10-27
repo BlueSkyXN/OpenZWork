@@ -62,8 +62,8 @@ export function createDesktopPlatform(options: {
     notifyRendererReady: () => window.zcode.notifyRendererReady(),
     showTaskNotification: (payload) => window.zcode.showTaskNotification(payload),
     syncWindowTabs: (paths) => window.zcode.syncWindowTabs(paths),
-    syncWebRemoteControlLegacyTasks: (tasks) =>
-      window.zcode.syncWebRemoteControlLegacyTasks?.(tasks),
+    syncWebRemoteControlLegacyTasks: (tasks, directory) =>
+      window.zcode.syncWebRemoteControlLegacyTasks?.(tasks, directory),
     syncWebRemoteControlWorkspaces: (workspaces) =>
       window.zcode.syncWebRemoteControlWorkspaces?.(workspaces),
     onWebRemoteControlReconnectWorkspace: (handler) =>

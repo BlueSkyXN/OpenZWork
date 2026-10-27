@@ -350,3 +350,65 @@ patches:
     retire: 上游在覆盖前保留旧 MCP 层，项目叠加回归中不同名 server 均可见且同名定义不混合。
     refs:
       - docs/spec/identity-and-data-isolation.md
+
+  - id: OW-P017
+    title: 本地远控新建在目录失效时仍交付 Host attachment
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 手机通过旧 workspace 入口在已删除、不可访问或已变成文件的本地目录中新建任务。
+    impact: 新建入口绕过原生项目目录检查，错误继续到会话初始化，目录缺失原因无法在 admission 时反馈。
+    cause: attachWorkspaceHost 的 local 分支不读取 cwd，直接交付窗口 Host port。
+    fix: 新草稿在创建 port 前异步检查目录及访问权限，失败时明确提示恢复或选择目录；历史 initialTaskId 保留读取能力，不创建或修补旧目录。
+    evidence: 上游 3.16.2 的 3c5b2276 含相同直接 attachment 分支。真实临时目录回归在原实现下收到成功 attachment，修复后拒绝缺目录与文件路径，未产生 port 或 mkdir，目录恢复后可重试。
+    files:
+      - packages/desktop/src/main/webRemoteControlSharedHostAttachments.ts
+    regression:
+      - packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts
+    retire: 上游新草稿 admission 执行等效目录检查，历史读取与目录恢复回归保持通过。
+    refs:
+      - docs/web-remote-control/v1-connection-modes.md
+
+  - id: OW-P018
+    title: 远控工作区改名被目录推送去重吞掉
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 工作区身份与连接状态不变，仅修改项目名称或工作区展示用途。
+    impact: 手机保留旧名称，重新获取 bootstrap 才看到新值。
+    cause: 工作区推送签名遗漏 label、workspacePath 与 workspacePurpose 等展示字段。
+    fix: 在既有签名中加入工作区展示字段及任务的 workspaceLabel，保留时间排序和等价快照去重。
+    evidence: 上游 3.16.2 的 3c5b2276 签名只包含 key、kind 与连接字段。名称变更回归在修复前未收到推送，修复后名称和用途变化分别推送，重复快照去重。
+    files:
+      - packages/desktop/src/main/webRemoteControlManager.ts
+    regression:
+      - packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
+    retire: 上游签名覆盖相同展示字段，单字段变化和重复快照回归通过。
+    refs:
+      - docs/web-remote-control/v1-connection-modes.md
+
+  - id: OW-P019
+    title: Windows 创建共享锁目录的短暂 EPERM 中断配置写入
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.16.2
+      checked: 3.16.2
+    trigger: 两个真实 Node 进程并发修改个人 Provider 配置，创建 provider_config.json.lock 时返回 EPERM。
+    impact: 申请者尚未取得锁便退出，配置更新失败；Windows Extended 的双进程持久化回归失败。
+    cause: acquireFileLock 只重试 EEXIST 或已建锁后丢失目录的 ENOENT，创建阶段的 EPERM 被直接抛出。
+    fix: 仅对 Windows 未成功 mkdir 的 EPERM 在原等待预算内重试，不读取或回收其他 owner；持续失败保留原错误，零预算、其他平台和 owner 写入失败保持原失败语义。
+    evidence: 上游 3.16.2 的 3c5b2276 含相同错误分类。Windows CI 堆栈定位到共享工具的 mkdir；四项受控故障回归在原实现下失败，覆盖短暂恢复、持续失败预算及活 owner 保护，真实双进程写入回归保持完整更新断言。
+    files:
+      - packages/shared/src/node/atomicFileLock.ts
+    regression:
+      - packages/shared/test/atomicFileLockWindows.test.ts
+      - packages/provider-node/test/personal-rule-persistence.test.ts
+    retire: 上游在同一预算内处理 Windows 创建阶段的临时占用，永久错误与 owner 隔离回归保留，真实双进程写入通过。
+    refs:
+      - docs/spec/shared-file-lock-acquisition.md
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40525930576/job/122265384951

@@ -396,6 +396,15 @@
       ]
     },
     {
+      "capability": "shared-file-lock-acquisition",
+      "files": [
+        "packages/shared/test/atomicFileLockWindows.test.ts",
+        "packages/services/test/atomicFileUtils.test.ts",
+        "packages/provider-node/test/personal-rule-persistence.test.ts",
+        "packages/provider-node/test/personal-config-read-lock.test.ts"
+      ]
+    },
+    {
       "capability": "remote-v1-connection-modes",
       "files": [
         "packages/ui/test/webRemoteControlLegacyTasks.test.ts",
@@ -405,6 +414,7 @@
         "packages/ui/test/pptxElementReference.test.ts",
         "packages/desktop/test/webRemoteControlDirectGateway.test.ts",
         "packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts",
+        "packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts",
         "packages/ui/test/remoteControlSettingsSection.test.ts",
         "packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts",
         "packages/ui/test/settingsPageIntegratedTerminalShell.test.ts",

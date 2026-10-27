@@ -804,6 +804,7 @@ function RootInner({
     remoteWorkspaceErrorByWorkspaceKey,
     webRemoteControlFeatureEnabled,
     hasCompletedFullTabRestore: hasCompletedFullRestore,
+    rootlessLabel: intl.formatMessage({ id: "project.noFolders" }),
   });
 
   useEffect(() => {

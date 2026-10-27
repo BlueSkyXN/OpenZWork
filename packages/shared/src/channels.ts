@@ -739,7 +739,10 @@ export interface PlatformChannelMap {
     response: void;
   };
   [PlatformChannels.SyncWebRemoteControlLegacyTasks]: {
-    request: WebRemoteControlTaskTarget[];
+    request: {
+      tasks: WebRemoteControlTaskTarget[];
+      directory?: import("./web-remote-control.js").WebRemoteControlLegacyDirectory;
+    };
     response: void;
   };
   [PlatformChannels.SyncWebRemoteControlWorkspaces]: {

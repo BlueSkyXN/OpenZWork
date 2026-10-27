@@ -46,6 +46,7 @@ function mount(options: Partial<Parameters<typeof useRootPlatformEffects>[0]> = 
       setWorkspaceActionError: vi.fn(),
       isDesktop: false,
       locale: "en-US",
+      rootlessLabel: "No folders",
       tabs: [],
       totalUnreadTaskCount: 0,
       intl: { formatMessage: ({ id }: { id: string }) => id } as never,
