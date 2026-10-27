@@ -14,6 +14,9 @@ import {
 import { resolveProjectMemoryRoot } from "../../../apps/zcode-cli/packages/core/src/memory/project-root.js";
 import { resolvePersistentAgentMemoryRoot } from "../../../apps/zcode-cli/packages/core/src/subagent/persistent-memory.js";
 import { projectTask } from "../../../apps/zcode-cli/packages/core/src/tool/handlers/task-output-projection.js";
+import { formatBashModelContent } from "../../../apps/zcode-cli/packages/core/src/tool/handlers/bash-model-content.js";
+import { resolvedPathReferenceAttachment } from "../../../apps/zcode-cli/packages/core/src/runtime/helpers/attachment-path-reference.js";
+import { filePartToContentBlock } from "../../../apps/zcode-cli/packages/core/src/agent/file-part-hydration.js";
 import { copyDataDirectory } from "../src/paths.js";
 import { startupStorage } from "../src/startup-storage/index.js";
 
@@ -120,6 +123,37 @@ it("recovers sessions, tool output, attachments and both memory scopes after Aâ†
       time: { start: 1, end: 2 },
     },
   };
+  const localReference = resolvedPathReferenceAttachment(
+    { type: "file", path: attachmentPath },
+    attachmentPath,
+    { mime: "application/octet-stream", reason: "binary_file" },
+  );
+  const backgroundText = formatBashModelContent({
+    status: "backgrounded",
+    stdout: "",
+    stderr: "",
+    interrupted: false,
+    backgroundTaskId: "background-1",
+    rawOutputPath: bashPath,
+  });
+  expect(backgroundText).toContain("Command running in background");
+  const backgroundPart = {
+    ...toolData,
+    state: {
+      ...toolData.state,
+      output: backgroundText,
+      metadata: {
+        schemaVersion: 1,
+        serialization: {
+          ...toolData.state.metadata.serialization,
+          artifactPath: bashPath,
+          truncated: false,
+          budgetStrategy: "inline",
+        },
+        modelContent: backgroundText,
+      },
+    },
+  };
   const db = new DatabaseSync(dbPath);
   const remoteId = buildServerRemoteWorkspaceIdentity({
     serverId: "synthetic-remote",
@@ -162,6 +196,16 @@ it("recovers sessions, tool output, attachments and both memory scopes after Aâ†
     );
     for (const [id, data] of [
       ["tool-part", toolData],
+      ["background-part", backgroundPart],
+      [
+        "local-reference-part",
+        {
+          type: "file",
+          mime: localReference.mime,
+          url: localReference.url,
+          metadata: localReference.metadata,
+        },
+      ],
       ["text-part", { type: "text", text: userText }],
       [
         "file-part",
@@ -244,6 +288,25 @@ it("recovers sessions, tool output, attachments and both memory scopes after Aâ†
       sessionID: "session-local" as Parameters<SqliteSessionStore["messages"]>[0]["sessionID"],
     });
     const parts = messages[0]!.parts;
+    const background = parts.find((part) => part.id === "background-part")!;
+    if (background.type !== "tool" || background.state.status !== "completed")
+      throw new Error("missing background tool");
+    expect
+      .soft(background.state.output)
+      .toContain(`Output is being written to: ${join(target, "cli/exec/session-local/bash.log")}.`);
+    expect(background.state.metadata.modelContent).toBe(background.state.output);
+    const reference = parts.find((part) => part.id === "local-reference-part")!;
+    if (reference.type !== "file") throw new Error("missing local reference");
+    const hydrated = await filePartToContentBlock(reference, artifactStore(target));
+    expect
+      .soft(hydrated)
+      .toEqual({
+        type: "text",
+        text: localReference.metadata!.pathReferenceText!.replace(
+          `Attached application/octet-stream: ${attachmentPath}\n`,
+          `Attached application/octet-stream: ${join(target, "clipboard/image.png")}\n`,
+        ),
+      });
     const tool = parts.find((part) => part.id === "tool-part")!;
     expect(tool.type).toBe("tool");
     if (tool.type !== "tool" || tool.state.status !== "completed")
@@ -258,7 +321,7 @@ it("recovers sessions, tool output, attachments and both memory scopes after Aâ†
     expect(tool.state.output).toContain(`Preview: ${artifact.path}`);
     expect(tool.state.input.command).toBe(userText);
     expect(parts.find((part) => part.type === "text")).toMatchObject({ text: userText });
-    const file = parts.find((part) => part.type === "file")!;
+    const file = parts.find((part) => part.id === "file-part")!;
     if (file.type !== "file") throw new Error("missing file");
     expect(await readFile(new URL(file.url), "utf8")).toBe("synthetic image bytes");
     const output = await projectTask(

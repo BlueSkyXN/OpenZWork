@@ -72,7 +72,8 @@ export async function relocateHostStorage(plan: DataRelocationPlan): Promise<voi
     const db = new DatabaseSync(join(v2, filename));
     try {
       db.exec("BEGIN IMMEDIATE");
-      for (const table of ["tasks", "automations", "off_peak_tasks", "task_group_members"])
+      // 已移除功能的历史表原样保留，只转换当前 Host 支持的组织态。
+      for (const table of ["tasks", "automations", "task_group_members"])
         updateRows(db, table, (row) => {
           if (!isLocal(row)) return;
           const previous = String(row.workspace_key);

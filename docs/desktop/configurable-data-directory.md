@@ -41,6 +41,7 @@ flowchart LR
 - 在 staging 中转换本机业务数据的结构化路径：Host 任务/项目/定时定义的本地目录，CLI 会话 cwd、附件、本应用工具输出与运行快照。只转换迁移清单内的旧根路径，不替换用户消息、命令、脚本或任意 JSON 字符串；外部项目、远端 workspaceIdentity 与远端目录保持原值。路径派生的本地 workspace key、project ID、旧会话文件 hash 和项目记忆目录同步转换；会话 ID、消息 ID 和业务内容保持原值。
 - CLI 存储转换由 CLI adapter 的离线 `storage-relocate` 命令执行，services 通过既有 startup-storage 子进程入口等待严格完成回执；Host 组织态由 project-storage 转换。共享路径映射与租约模块不拥有业务 SQL。所有转换针对目标副本，出错不发布目标。没有 CLI 转换端口而存在 CLI 数据时明确失败。
 - 完成后新根独立承载业务读取和写入。源根保留为快照，并登记迁移去向，参与门禁的旧根写者拒绝继续启动；重试仅接受同一迁移计划。固定 HOME 设置中的本地工作区引用与数据根指针一起提交。连续 A→B→C 以当前根为源，不依赖 A 或 B 可访问。
+- 冷恢复给模型的本地附件说明和后台 Bash 输出提示同步转换：只改与结构化引用一致的应用生成路径行，保留降级原因、读取提示、预览与用户内容。验收调用真实生成器与 file-part hydration，避免只证明磁盘文件可读却仍把旧地址交给模型。
 - 此功能保持 Desktop 数据根同源：`ZCODE_DATA_BASE_DIR`、`ZCODE_STORAGE_DIR`、`ZCODE_SESSION_DB_PATH` 同时由 Main 下发。固定 HOME 用户资源、独立 CLI 的显式配置优先级和远端 authority 保留。
 
 ## Windows 安装目录保护

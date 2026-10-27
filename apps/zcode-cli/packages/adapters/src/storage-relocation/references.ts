@@ -19,8 +19,33 @@ export function mapFields(value: unknown, keys: readonly string[], plan: DataRel
 export function mapAttachments(value: unknown, plan: DataRelocationPlan): void {
   if (!Array.isArray(value)) return;
   for (const item of value) {
-    mapFields(item, ["path", "url", "artifactUri"], plan);
     const attachment = record(item);
+    const metadata = record(attachment?.metadata);
+    const referenceText = metadata?.pathReferenceText;
+    if (
+      metadata?.storageKind === "local_ref" &&
+      typeof referenceText === "string" &&
+      typeof attachment?.mime === "string"
+    ) {
+      // 冷恢复直接使用此生成说明；只改与结构化附件引用相符的首行，保留原因和正文。
+      for (const previous of [
+        attachment.path,
+        attachment.url,
+        metadata.originalUrl,
+        record(attachment.source)?.path,
+      ]) {
+        if (typeof previous !== "string") continue;
+        const prefix = `Attached ${attachment.mime}: ${previous}\n`;
+        if (
+          referenceText.startsWith(prefix) &&
+          referenceText.slice(prefix.length).startsWith("The file was sent by local path because ")
+        ) {
+          metadata.pathReferenceText = `Attached ${attachment.mime}: ${relocateFileReference(previous, plan)}\n${referenceText.slice(prefix.length)}`;
+          break;
+        }
+      }
+    }
+    mapFields(item, ["path", "url", "artifactUri"], plan);
     mapFields(attachment?.source, ["path", "uri"], plan);
     mapFields(attachment?.metadata, ["artifactUri", "originalUrl"], plan);
   }
@@ -37,7 +62,9 @@ function generatedHint(value: unknown, previous: string, next: string, tool?: st
         /^Command (?:running in background|was manually backgrounded by user|exceeded the assistant-mode blocking budget)/.test(
           line,
         ) &&
-        line.includes(` Output is being written to: ${previous}`)
+        (line.includes(` Output is being written to: ${previous}. `) ||
+          line.endsWith(` Output is being written to: ${previous}`) ||
+          line.endsWith(` Output is being written to: ${previous}.`))
       ) {
         lines[index] = line.replace(
           ` Output is being written to: ${previous}`,
@@ -131,12 +158,18 @@ export function mapPart(value: unknown, plan: DataRelocationPlan): void {
   const previous = serialization?.artifactPath;
   mapFields(serialization, ["artifactPath"], plan);
   if (typeof previous === "string" && typeof serialization?.artifactPath === "string") {
-    state.output = generatedHint(state.output, previous, serialization.artifactPath);
+    state.output = generatedHint(
+      state.output,
+      previous,
+      serialization.artifactPath,
+      String(part.tool),
+    );
     if (metadata && typeof metadata.modelContent === "string") {
       metadata.modelContent = generatedHint(
         metadata.modelContent,
         previous,
         serialization.artifactPath,
+        String(part.tool),
       );
     }
   }

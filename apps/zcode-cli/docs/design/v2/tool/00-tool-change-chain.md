@@ -1644,3 +1644,5 @@ CLI adapter 拥有其 SQL 和持久化格式，Host 不直接改写 CLI 表。
 用户输入、工具 input、命令、脚本和普通文本保留。外部项目和远端身份不跟随迁移。
 回归必须经过真实持久化/恢复、TaskOutput 和附件 reader，隔离旧目录后验证输出可读；
 默认工作区记忆使用迁移后的 key，用户级子代理记忆随业务根复制。
+`local_ref` 的 `pathReferenceText` 只更新与附件路径一致的生成说明首行；后台 Bash 的
+serialization 引用与生成的输出提示一起转换，恢复后的模型内容也必须指向新根。
