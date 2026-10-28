@@ -1,6 +1,6 @@
 {
   "name": "zcode",
-  "version": "3.16.2+openzwork.1",
+  "version": "3.16.2+openzwork.2",
   "zcodeCompatibility": {
     "minCompatibleVersion": "3.16.2"
   },
