@@ -15,10 +15,16 @@ OpenZWork 是 AI 编程工作台，提供桌面应用、浏览器界面和终端
 
 ## 更新
 
-- **v3.16.2 候选**：已整合上游源码与维护修复，详见[候选版本说明](docs/upstream/v3.16.2-candidate.md)。正式版本见 [Releases](https://github.com/BlueSkyXN/OpenZWork/releases)。
+- **2026-10-28 · v3.16.2+openzwork.2**：模型入口收敛为三种标准协议模板，完善业务数据目录迁移、浮层点击与 V1 远控目录。安装包见[正式版本](https://github.com/BlueSkyXN/OpenZWork/releases/tag/v3.16.2%2Bopenzwork.2)。
 - **2026-10-16**：更新至 ZCode v3.16.1 版本。
 - 2026-10-10：更新至 ZCode v3.15.1 版本。
 - 2026-9-23：更新至 ZCode v3.14.3 版本。
+
+## 自定义功能与维护
+
+系统提示词、会话指标、对话复制、筛选排序等功能的规格、关键接入点、回归入口和上游同步流程见[OpenZWork 维护索引](docs/openzwork-maintenance.md)。
+
+升级至三种标准协议模板后，旧 Personal Provider 若依赖已移除的厂商模板，需要补齐协议、endpoint 和模型等缺失配置；已有显式配置保留。详见[Provider 兼容规则](docs/spec/standard-provider-templates.md#兼容边界)。
 
 ## 初始化
 

@@ -15,14 +15,20 @@ OpenZWork is an AI coding workspace with desktop, browser, and terminal interfac
 
 ## Updates
 
-- **v3.16.2 candidate**: Upstream integration and maintenance fixes are described in the [candidate notes](docs/upstream/v3.16.2-candidate.md). Published versions are listed in [Releases](https://github.com/BlueSkyXN/OpenZWork/releases).
+- **2026-10-28 · v3.16.2+openzwork.2**: Provider setup now uses three standard protocol templates. This release also improves business data directory relocation, floating-layer clicks, and the V1 remote-control directory. Installers are available in the [release](https://github.com/BlueSkyXN/OpenZWork/releases/tag/v3.16.2%2Bopenzwork.2).
 - **2026-10-16**: Updated to ZCode v3.16.1.
 - 2026-10-10: Updated to ZCode v3.15.1.
 - 2026-9-23: Updated to ZCode v3.14.3.
 
+## Custom features and maintenance
+
+The [OpenZWork maintenance index](docs/openzwork-maintenance.md) links the specifications, integration points, regression tests, and upstream update process for system prompts, conversation metrics, Markdown copying, sidebar filters, and project sorting.
+
+After upgrading to the three standard protocol templates, existing Personal Providers that inherited settings from a removed vendor template may need their protocol, endpoint, and models completed. Explicitly saved settings are retained. See the [Provider compatibility rules](docs/spec/standard-provider-templates.md#兼容边界).
+
 ## Setup
 
-Install Git, Node.js **24.14.0**, and pnpm **10.33.2**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.
+Install Git, Node.js **24.14.0**, and pnpm **11.28.6**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.
 
 ```bash
 pnpm bootstrap
