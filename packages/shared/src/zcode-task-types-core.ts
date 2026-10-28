@@ -57,8 +57,16 @@ export interface ZCodeGlmAgentModelStateUpdatePayload {
     tokens: number;
   };
 }
-/** 外部历史迁移来源。当前只落 Claude Code，后续其它来源继续在这里扩展。 */
-export type ZCodeTaskMigrationSource = "claudeCode";
+/** 外部历史迁移来源。claudeCode=Claude Code 原生 jsonl；codexCli=Codex rollout jsonl；qoder=Qoder/Qoder CN 原生 jsonl。 */
+export type ZCodeTaskMigrationSource = "claudeCode" | "codexCli" | "qoder";
+
+/** 外部会话导入指纹：记录来源文件身份，用于幂等重导判断（spec external-session-import §2.4）。 */
+export interface ZCodeTaskExternalImportFingerprint {
+  provider: "claude" | "codex" | "qoder";
+  sessionId: string;
+  sourceContentSha256: string;
+  sourceMtime?: number;
+}
 export type ZCodeTaskGoalStatus = "active" | "paused" | "budget_limited" | "complete";
 export type ZCodeTaskTargetChangedAction =
   | "set"
@@ -316,8 +324,10 @@ export interface ZCodeTaskMeta {
   runtimeEpoch?: number;
   /** 创建此 task 时使用的 agent provider，缺省视为 "glm"（旧数据兼容） */
   provider?: ZCodeProvider;
-  /** 迁移来源；普通新建任务为空，用于识别 Claude Code 原生历史导入。 */
+  /** 迁移来源；普通新建任务为空，用于识别外部客户端原生历史导入（Claude Code / Codex / Qoder）。 */
   migrationSource?: ZCodeTaskMigrationSource;
+  /** 外部会话导入指纹（spec docs/spec/external-session-import.md §2.4）；来源哈希未变时重导按幂等跳过。 */
+  externalImport?: ZCodeTaskExternalImportFingerprint;
   /**
    * cron 身份标记：该 session 属于哪条 automation。
    *

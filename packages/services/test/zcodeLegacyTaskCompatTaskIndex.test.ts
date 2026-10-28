@@ -5,6 +5,7 @@ import {
   waitBotGroupExecutionEnd,
 } from "#src/zcode-agent/groupRuntimeSnapshot.js";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -23,6 +24,7 @@ import {
 import { createZCodeTaskServiceAdapter } from "../src/zcode-agent/zcodeTaskServiceAdapter.js";
 import { createZCodeTaskIndexSyncer } from "../src/zcode-agent/zcodeTaskIndexSyncer.js";
 import { TaskIndexRepo } from "../src/session/taskIndexRepo.js";
+import { externalSessionImportRepo } from "../src/session/external-import/index.js";
 import type {
   IZCodeAgentService,
   ZCodeAgentCreateSessionParams,
@@ -638,6 +640,120 @@ async function seedLegacyAcpSessionId(
   repo.close();
   await repo.ensureReady();
 }
+
+describe("external import task index persistence", () => {
+  it.each(["codex", "qoder"] as const)(
+    "%s 指纹落库后支持重开、多个内容版本与删除后的幂等重导",
+    async (provider) => {
+      const { agent, service, taskIndexRepo } = createService();
+      const workspacePath = tempDirs.at(-1)!;
+      const sessionId = "11111111-1111-4111-8111-111111111111";
+      const sourcePath =
+        provider === "codex"
+          ? join(
+              workspacePath,
+              ".codex",
+              "sessions",
+              "2026",
+              "10",
+              "28",
+              `rollout-2026-10-28T09-00-00-${sessionId}.jsonl`,
+            )
+          : join(workspacePath, ".qoder-cn", "projects", "synthetic-project", `${sessionId}.jsonl`);
+      mkdirSync(dirname(sourcePath), { recursive: true });
+      const writeSource = (version: string): string => {
+        const records =
+          provider === "codex"
+            ? [
+                { type: "session_meta", payload: { id: sessionId, cwd: workspacePath } },
+                {
+                  type: "response_item",
+                  timestamp: "2026-10-28T01:00:00Z",
+                  payload: {
+                    type: "message",
+                    role: "user",
+                    content: [{ type: "input_text", text: `合成问题 ${version}` }],
+                  },
+                },
+                {
+                  type: "response_item",
+                  timestamp: "2026-10-28T01:01:00Z",
+                  payload: {
+                    type: "message",
+                    role: "assistant",
+                    content: [{ type: "output_text", text: "合成回答" }],
+                  },
+                },
+              ]
+            : [
+                {
+                  type: "user",
+                  uuid: "user-1",
+                  cwd: workspacePath,
+                  timestamp: "2026-10-28T01:00:00Z",
+                  message: {
+                    role: "user",
+                    content: [{ type: "text", text: `合成问题 ${version}` }],
+                  },
+                },
+                {
+                  type: "assistant",
+                  uuid: "assistant-1",
+                  parentUuid: "user-1",
+                  timestamp: "2026-10-28T01:01:00Z",
+                  message: { role: "assistant", content: [{ type: "text", text: "合成回答" }] },
+                },
+              ];
+        const content = records.map((record) => JSON.stringify(record)).join("\n") + "\n";
+        writeFileSync(sourcePath, content);
+        return createHash("sha256").update(content).digest("hex");
+      };
+      const firstHash = writeSource("A");
+      // 只替换外部文件发现，备份、parser、adapter、syncer 和 SQLite 都走真实实现。
+      const find = vi.spyOn(externalSessionImportRepo, "findImportableSession").mockResolvedValue({
+        provider,
+        sessionId,
+        workspacePath,
+        sourcePath,
+        updatedAt: 1,
+      });
+      const run = () =>
+        service.importExternalSessions({ provider, workspacePath, sessionIds: [sessionId] });
+      try {
+        const first = await run();
+        expect(first.failed).toEqual([]);
+        expect(first.imported).toHaveLength(1);
+        const firstTaskId = first.imported[0]!.taskId;
+        taskIndexRepo.close({ throwOnError: true });
+        // 幂等字段曾在 adapter 的展示字段白名单中丢失，不能用假指纹替代落库回读。
+        await expect(
+          taskIndexRepo.getTaskMeta({ workspacePath, taskId: firstTaskId }),
+        ).resolves.toMatchObject({
+          externalImport: { provider, sessionId, sourceContentSha256: firstHash },
+        });
+        expect((await run()).skipped).toEqual([
+          expect.objectContaining({ reason: "already_imported_unchanged" }),
+        ]);
+
+        const secondHash = writeSource("B");
+        expect(secondHash).not.toBe(firstHash);
+        const changed = await run();
+        expect(changed.failed).toEqual([]);
+        expect(changed.imported).toHaveLength(1);
+        expect((await run()).skipped).toHaveLength(1);
+        expect(writeSource("A")).toBe(firstHash);
+        // 同一 sessionId 已有多个内容版本时，不能只比较排序后的第一条记录。
+        expect((await run()).skipped).toHaveLength(1);
+        await taskIndexRepo.applyCliDeletion({ workspacePath, taskId: firstTaskId });
+        expect((await run()).skipped).toHaveLength(1);
+        expect(agent.createSession).toHaveBeenCalledTimes(2);
+        expect(await taskIndexRepo.listTaskMetas({ includeDeleted: true })).toHaveLength(2);
+      } finally {
+        find.mockRestore();
+      }
+    },
+  );
+});
 
 describe("ZCode legacy task compat task index", () => {
   it("各夹具的迟到写入保持在自己的数据库中", async () => {
