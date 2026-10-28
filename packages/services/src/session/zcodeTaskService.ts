@@ -6,6 +6,7 @@ import { createServiceDescriptor } from "#src/descriptors.js";
 import type {
   ZCodeImportSessionsResult,
   ZCodeImportableSessionCandidate,
+  ZCodeImportSessionSourceProvider,
   ZCodeSessionCompactResult,
   ZCodeSessionGoalAction,
   ZCodeSessionGoalResult,
@@ -573,6 +574,29 @@ export interface IZCodeTaskService {
 
   /** 导入选中的 Claude 原生 session，并反向生成最小 task snapshot；不传 workspacePath 时按原始 workspace 导入。 */
   importClaudeSessions(params: {
+    workspacePath?: string;
+    workspaceIdentity?: string;
+    sessionIds: string[];
+  }): Promise<ZCodeImportSessionsResult>;
+
+  /**
+   * 扫描可导入的外部客户端原生 session（claude/codex/qoder，spec external-session-import）。
+   * claude 等价 scanImportableClaudeSessions；codex 扫 ~/.codex/sessions，qoder 扫 ~/.qoder[-cn]/projects。
+   */
+  scanImportableExternalSessions(params: {
+    provider: ZCodeImportSessionSourceProvider;
+    workspacePath?: string;
+    workspaceIdentity?: string;
+    modifiedSince?: number;
+    limit?: number;
+  }): Promise<ZCodeImportableSessionCandidate[]>;
+
+  /**
+   * 导入选中的外部客户端原生 session；同 provider+sessionId 且来源哈希未变时按幂等跳过。
+   * 不传 workspacePath 时按原始 workspace 导入。
+   */
+  importExternalSessions(params: {
+    provider: ZCodeImportSessionSourceProvider;
     workspacePath?: string;
     workspaceIdentity?: string;
     sessionIds: string[];

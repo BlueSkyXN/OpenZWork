@@ -1043,7 +1043,7 @@ export const hostLogResponseSchema = z.object({
 
 export { zcodeProviderSchema };
 
-export const zcodeTaskMigrationSourceSchema = z.enum(["claudeCode"]);
+export const zcodeTaskMigrationSourceSchema = z.enum(["claudeCode", "codexCli", "qoder"]);
 
 export const hostAgentProcessSpawnedResponseSchema = z.object({
   type: z.literal("agent-process-spawned"),
@@ -1575,6 +1575,16 @@ export const zcodeTaskMetaSchema = z.object({
   // meta 直接解析自 tasks-index/旧 session 文件；历史 provider 值在此归一为 glm。
   provider: legacyZCodeProviderSchema.optional(),
   migrationSource: zcodeTaskMigrationSourceSchema.optional(),
+  // 外部会话导入指纹（docs/spec/external-session-import.md §2.4）：来源哈希未变时重导按幂等跳过。
+  externalImport: z
+    .object({
+      provider: z.enum(["claude", "codex", "qoder"]),
+      sessionId: z.string().min(1),
+      sourceContentSha256: z.string().regex(/^[0-9a-f]{64}$/u),
+      sourceMtime: z.number().int().nonnegative().optional(),
+    })
+    .strict()
+    .optional(),
   forkedFromTaskId: nonEmptyStringSchema.optional(),
   // cron automation 身份：随 meta_json 一起持久化（单一来源），同时在写入时投影到 tasks 表
   // cron_automation_id 索引列，供按 automation 反查 session。runId 属于 automation_runs /
