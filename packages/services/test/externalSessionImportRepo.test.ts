@@ -104,6 +104,42 @@ async function loadRepo() {
   return await import("#src/session/external-import/externalSessionImportRepo.js");
 }
 
+describe("external session backup path", () => {
+  it.each([
+    ["codex", "/home/example/.codex/sessions/2026/10/28/rollout.jsonl", "2026/10/28/rollout.jsonl"],
+    [
+      "codex",
+      String.raw`C:\Users\example\.codex\sessions\2026\10\28\rollout.jsonl`,
+      String.raw`2026\10\28\rollout.jsonl`,
+    ],
+    [
+      "codex",
+      "C:/Users/example/.codex/sessions/2026/10/28/rollout.jsonl",
+      String.raw`2026\10\28\rollout.jsonl`,
+    ],
+    [
+      "qoder",
+      String.raw`C:\Users\example\.qoder-cn\projects\project\session.jsonl`,
+      String.raw`project\session.jsonl`,
+    ],
+    [
+      "qoder",
+      String.raw`\\host\share\.qoder\projects\project\session.jsonl`,
+      String.raw`project\session.jsonl`,
+    ],
+    ["qoder", "/home/example/.qoder/projects/project/session.jsonl", "project/session.jsonl"],
+    [
+      "qoder",
+      String.raw`/home/example/.qoder/projects/project/with\slash.jsonl`,
+      String.raw`project/with\slash.jsonl`,
+    ],
+  ] as const)("%s backup path: %s", async (provider, sourcePath, expected) => {
+    const { relativeSourcePathForProvider } = await loadRepo();
+    // 扫描产生平台原生路径；仅查找正斜杠曾让 Windows 在复制备份前失败。
+    expect(relativeSourcePathForProvider(provider, sourcePath)).toBe(expected);
+  });
+});
+
 describe("ExternalSessionImportRepo (codex)", () => {
   it("扫描 ~/.codex/sessions rollout 文件并提取 session_meta.cwd 候选", async () => {
     const home = makeTempDir("zcode-external-codex-home-");

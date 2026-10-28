@@ -1,6 +1,6 @@
 import { copyFile, mkdir, readdir, rename, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, join, normalize, resolve } from "node:path";
+import { basename, dirname, join, normalize, posix, resolve, win32 } from "node:path";
 import type { ZCodeImportableSessionCandidate } from "@zcode/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { getAppConfigDir, getDataBaseDir, getWorkspaceHash } from "#src/paths.js";
@@ -296,10 +296,14 @@ export function relativeSourcePathForProvider(
   provider: "codex" | "qoder",
   sourcePath: string,
 ): string {
-  const marker = provider === "codex" ? "/sessions/" : "/projects/";
-  const markerIndex = sourcePath.lastIndexOf(marker);
+  // 扫描返回原生路径；只找正斜杠会拒绝 Windows。按来源路径选语义，保留 POSIX 文件名中的反斜杠。
+  const pathApi = /^[a-z]:[\\/]|^\\\\/iu.test(sourcePath) ? win32 : posix;
+  const normalizedSource = pathApi.normalize(sourcePath);
+  const marker = `${pathApi.sep}${provider === "codex" ? "sessions" : "projects"}${pathApi.sep}`;
+  const markerIndex = normalizedSource.lastIndexOf(marker);
   if (markerIndex < 0) {
     throw new Error(`[external-import] 外部 session 路径非法: ${sourcePath}`);
   }
-  return sourcePath.slice(markerIndex + marker.length);
+  const sourceRoot = normalizedSource.slice(0, markerIndex + marker.length - 1);
+  return pathApi.relative(sourceRoot, normalizedSource);
 }

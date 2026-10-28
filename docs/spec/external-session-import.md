@@ -45,7 +45,7 @@ importExternalSessions(params: {
 }): Promise<ZCodeImportSessionsResult>;
 ```
 
-旧方法在 adapter 内部委托新方法（provider 固定 "claude"）。
+新方法遇到 provider "claude" 时复用既有 Claude 扫描和导入路径；旧方法继续保留。
 
 ### 2.3 导入编排（services/session/external-import）
 
@@ -60,14 +60,33 @@ importExternalSessions(params: {
 复用规则：
 
 - **Qoder jsonl 与 Claude Code 同构**（uuid/parentUuid/message.content[]），parser 复用 `claude-native` 的 `readJsonLinesFileHead`/`jsonLineRecord` 与可见消息提取（通过参数化 provider 的提取函数实现，Claude 的解析函数不复制粘贴）。
-- **Codex rollout** 独立 parser：头采样取 `session_meta.payload.cwd`；正文取 `response_item.payload.type === "message"` 的 user/assistant，user 侧过滤 `role === "developer"` 与 `<environment_instructions>`/`<app-context>` 等注入块；`token_usage_record`/`event_msg`/`turn_context`/`world_state`/`compacted` 不参与导入（天然不产生我方 usage）。
-- 复制备份沿用 tmp+rename 原子写与 `createdOutputPaths` 清理边界。
+- **Codex rollout** 独立 parser：头采样取 `session_meta.payload.cwd`；正文只取 `response_item.payload.type === "message"` 的 user/assistant，忽略 developer/system 角色。用户消息开头的 AGENTS.md 标题及连续的 `INSTRUCTIONS`、`user_instructions`、`environment_instructions`、`environment_context`、`app-context` 注入块被移除；移除后为空的消息不参与正文、标题和轮次计算。用户普通正文中的标签引用、代码块与 assistant 原文保留。`token_usage_record`/`event_msg`/`turn_context`/`world_state`/`compacted` 不参与导入（天然不产生我方 usage）。
+- 复制备份沿用 tmp+rename 原子写与 `createdOutputPaths` 清理边界。备份相对路径按来源路径的 Windows/POSIX 语义解析，支持盘符、UNC 和正反斜杠；POSIX 文件名中的反斜杠保持原义。
 
 ### 2.4 幂等重导（PR-1 语义：跳过，不追加）
 
-- 导入时对来源文件全文计算 `sha256`，连同 `sourcePath/sourceMtime` 存入任务 `meta_json`（`externalImport: { provider, sourceContentSha256, sourceMtime }`）。
-- 重导入同一 sessionId 且哈希未变 → `skipped: reason "already_imported_unchanged"`；来源变化后重导仍走"新建会话"路径（与 Claude 现语义一致——显式重新导入产生新会话，不覆盖已删除/已续聊记录）。
+- 导入时对来源文件全文计算 `sha256`，将 `externalImport: { provider, sessionId, sourceContentSha256 }` 经 adapter 的展示字段写入入口保存到 Host 任务 `meta_json`。沿用既有字段和表；CLI 继续独占会话事实写入。
+- 顺序重导按 `provider + sessionId + sourceContentSha256` 查全部已导入记录，包含已删除任务；命中时返回 `skipped: reason "already_imported_unchanged"`。同一来源的多个历史版本都参与匹配，查询结果顺序不影响判定。
+- 来源出现尚未导入的内容版本时新建会话，保留已删除/已续聊记录；来源恢复到已导入过的内容版本时跳过。增量追加和已有任务恢复仍不在本次范围。
 - 增量 append 留待后续 PR（spec 预留，不在本次实现）。
+
+```mermaid
+sequenceDiagram
+    participant Import as 导入编排
+    participant Host as Host 任务索引
+    participant CLI as CLI 会话所有者
+    Import->>Import: 解析来源并计算内容哈希
+    Import->>Host: 查询来源、sessionId、内容哈希
+    alt 已导入相同内容
+        Host-->>Import: 已有任务，跳过
+    else 新内容版本
+        Import->>Import: 复制来源备份
+        Import->>CLI: 创建导入会话
+        CLI-->>Host: 会话事实镜像
+        Import->>Host: 经展示字段入口保存来源指纹
+        Host-->>Import: 回读已保存的任务
+    end
+```
 
 ## 3. 不变量
 
@@ -80,10 +99,11 @@ importExternalSessions(params: {
 
 1. Codex rollout fixture（session_meta + user input_text + assistant message）scan 出候选（provider "codex"、cwd 正确）；导入后任务 `migrationSource === "codexCli"`、消息可见、meta 无 mode/model/provider。
 2. Qoder fixture（Claude 同构 jsonl）scan 候选；导入后 `migrationSource === "qoder"`。
-3. developer/environment_instructions 注入块不出现在导入消息里。
-4. 同一来源文件未变化时重导 → skipped（already_imported_unchanged）；变化后重导 → 新建会话。
+3. developer 消息和用户消息前缀中的环境注入块不出现在正文、标题或轮次中；AGENTS.md 与 environment_context 连续出现时也过滤；普通用户引用和 assistant 原文保留。
+4. 真实 adapter 与临时 SQLite 覆盖首次导入、关闭重开索引、未变重导跳过、内容变化新建、再次重导跳过及恢复旧内容跳过；确认指纹实际落库，删除后的相同内容不复活。
 5. Claude 旧路径回归：`scanImportableClaudeSessions`/`importClaudeSessions` 行为与基线一致（既有测试不改动仍通过）。
 6. `~/.qoder` 与 `~/.qoder-cn` 双根扫描互不重复。
+7. Codex/Qoder 备份路径覆盖 POSIX、Windows 盘符与 UNC 路径；真实复制入口使用当前平台原生路径验证输出位置和文件内容。
 
 ## 5. 决策记录
 

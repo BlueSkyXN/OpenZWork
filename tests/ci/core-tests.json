@@ -2,6 +2,14 @@
   "version": 1,
   "suites": [
     {
+      "capability": "external-session-import",
+      "files": [
+        "packages/services/src/session/external-import/contract.test.ts",
+        "packages/services/test/externalSessionImportFlow.test.ts",
+        "packages/services/test/externalSessionImportRepo.test.ts"
+      ]
+    },
+    {
       "capability": "business-data-directory-relocation",
       "files": [
         "packages/services/test/dataDirectoryTrueMigration.test.ts",

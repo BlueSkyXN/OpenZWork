@@ -159,8 +159,11 @@ import {
 import { claudeNativeSessionImportRepo } from "#src/session/claude-native/claudeNativeSessionImportRepo.js";
 import { importClaudeNativeSessions } from "#src/session/claude-native/claudeNativeSessionImportService.js";
 import { repairImportedClaudeSessionSnapshot } from "#src/session/claude-native/importedClaudeHistoryRepair.js";
-import { externalSessionImportRepo } from "#src/session/external-import/externalSessionImportRepo.js";
-import { importExternalSessions } from "#src/session/external-import/externalSessionImportService.js";
+import {
+  externalSessionImportRepo,
+  importExternalSessions,
+  migrationSourceForProvider,
+} from "#src/session/external-import/index.js";
 import { safeParseLegacyTaskSessionFile } from "#src/session/legacyTaskSessionFile.js";
 import {
   MODEL_CONFIG_ID,
@@ -1371,8 +1374,17 @@ export function createZCodeTaskServiceAdapter(
   }
 
   async function updateIndexedPresentation(meta: ZCodeTaskMeta): Promise<ZCodeTaskMeta> {
-    const { mode, model, thoughtLevel, lastError, target, migrationSource, cronAutomationId } =
-      meta;
+    // 导入指纹归 Host；曾只传在 meta 顶层而未进入 presentation，导致落库后重导无法去重。
+    const {
+      mode,
+      model,
+      thoughtLevel,
+      lastError,
+      target,
+      migrationSource,
+      externalImport,
+      cronAutomationId,
+    } = meta;
     const presentation = Object.fromEntries(
       Object.entries({
         mode,
@@ -1381,6 +1393,7 @@ export function createZCodeTaskServiceAdapter(
         lastError,
         target,
         migrationSource,
+        externalImport,
         cronAutomationId,
       }).filter(([, value]) => value !== undefined),
     );
@@ -2799,12 +2812,14 @@ export function createZCodeTaskServiceAdapter(
             // 幂等指纹查 tasks 全量（不按 workspace 过滤）：sessionId 已含来源身份，
             // 且导入可能落在原始 workspace 而非当前 tab 的 workspace。
             const metas = await taskIndexRepo.listTaskMetas({ includeDeleted: true });
-            const migrationSource = request.provider === "codex" ? "codexCli" : "qoder";
+            const migrationSource = migrationSourceForProvider(request.provider);
+            // 同一来源可能保留多个内容版本，按完整指纹匹配，不能任取排序后的第一条。
             const matched = metas.find(
               (meta) =>
                 meta.migrationSource === migrationSource &&
                 meta.externalImport?.provider === request.provider &&
-                meta.externalImport?.sessionId === request.sessionId,
+                meta.externalImport?.sessionId === request.sessionId &&
+                meta.externalImport?.sourceContentSha256 === request.sourceContentSha256,
             );
             return matched
               ? {

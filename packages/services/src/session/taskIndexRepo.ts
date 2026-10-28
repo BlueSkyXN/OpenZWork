@@ -409,7 +409,6 @@ export class TaskIndexRepo {
     return columns.some((item) => item.name === column);
   }
 
-
   private migrateLegacyAcpTaskIds(): void {
     if (!this.hasColumn("tasks", "acp_session_id")) {
       return;
@@ -1107,6 +1106,7 @@ export class TaskIndexRepo {
         | "lastError"
         | "target"
         | "migrationSource"
+        | "externalImport"
         | "cronAutomationId"
       >
     >;
