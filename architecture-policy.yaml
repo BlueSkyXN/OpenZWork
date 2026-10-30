@@ -1393,6 +1393,10 @@ exceptions:
     reason:
       净化重建的最小事件形态壳（上游 telemetry.ts 属 ARMS 域不引入）；仅 conversation-telemetry
       远端链消费的四个符号，ARMS 上报面不导出。随本次同步准入。
+  - id: v3171-sync-semver-compare
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/semverCompare.ts]
+    reason: 上游 forceUpdate.ts（自动更新域）不整文件引入；data-sync 与 Source Server 更新提示只消费纯语义版本比较，独立成文件。随本次同步准入。
   - id: v3171-sync-relay-contract-lines
     rule: max-contract-lines
     paths: [packages/shared/src/web-remote-relay/contract.ts]
