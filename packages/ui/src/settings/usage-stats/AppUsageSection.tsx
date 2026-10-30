@@ -1,5 +1,9 @@
-import { RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { ProjectUsageFilter, SessionUsageView } from "@/project-usage/index.js";
+import { RefreshCw, ChevronRight, ChevronLeft } from "lucide-react";
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
+import { APP_USAGE_PROJECT_NOT_FOUND } from "@zcode/shared";
+import { useAppUsageSessions } from "@/hooks/useAppUsageSessions.js";
+import { SettingsBreadcrumbReporter } from "@/settings/SettingsHeaderBreadcrumb.js";
 import type { AppUsageRange } from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { Card } from "@/components/ui/card.js";
@@ -45,15 +49,22 @@ function SummaryMetric({
   value,
   detail,
   prominent = false,
+  action,
 }: {
   label: string;
   value: string;
   detail?: string;
   prominent?: boolean;
+  action?: ReactNode;
 }) {
   return (
     <div role="group" aria-label={label} className="min-w-0 space-y-2 p-4">
-      <div className="text-ui-sm text-foreground-subtle">{label}</div>
+      <div className="relative text-ui-sm text-foreground-subtle">
+        {label}
+        {action ? (
+          <span className="absolute inset-y-0 right-0 flex items-center">{action}</span>
+        ) : null}
+      </div>
       <div
         className={
           prominent
@@ -71,7 +82,88 @@ function SummaryMetric({
 export function AppUsageSection() {
   const { intl, locale } = useZCodeIntl();
   const [range, setRange] = useState<AppUsageRange>("30d");
-  const { available, loading, data, error, refresh } = useAppUsageStats(range);
+  const [projectId, setProjectId] = useState<string | null | undefined>(undefined);
+  const [view, setView] = useState<"overview" | "sessions">("overview");
+  const [offset, setOffset] = useState(0);
+  const [until, setUntil] = useState<number | undefined>();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [projectRemoved, setProjectRemoved] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const detailsTitleRef = useRef<HTMLHeadingElement>(null);
+  const overviewTitleRef = useRef<HTMLHeadingElement>(null);
+  const detailsButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreScroll = useRef(0);
+  const focusTransition = useRef<"enter" | "return" | null>(null);
+  const overview = useAppUsageStats(range, {
+    projectId,
+    includeProjects: true,
+    until,
+    refreshKey,
+    enabled: view === "overview",
+  });
+  const details = useAppUsageSessions(range, {
+    projectId,
+    offset,
+    limit: 50,
+    until,
+    refreshKey,
+    enabled: view === "sessions",
+  });
+  const { available, loading, data, error } = overview;
+  const projects = details.data?.projects ?? overview.projects;
+  const active = view === "overview" ? overview : details;
+  const updateProject = (value: string | null | undefined) => {
+    setProjectId(value);
+    setOffset(0);
+    setUntil(Date.now());
+    setProjectRemoved(false);
+  };
+  const updateRange = (value: AppUsageRange) => {
+    setRange(value);
+    setOffset(0);
+    setUntil(Date.now());
+  };
+  const refresh = () => {
+    setOffset(0);
+    setUntil(Date.now());
+    setRefreshKey((value) => value + 1);
+  };
+  const returnToOverview = useCallback(() => {
+    focusTransition.current = "return";
+    setView("overview");
+  }, []);
+  const openDetails = () => {
+    restoreScroll.current = sectionRef.current?.closest("main")?.scrollTop ?? 0;
+    setUntil(data?.generatedAt ?? Date.now());
+    setOffset(0);
+    focusTransition.current = "enter";
+    setView("sessions");
+  };
+  useEffect(() => {
+    if (active.errorCode !== APP_USAGE_PROJECT_NOT_FOUND) return;
+    setProjectId(undefined);
+    setOffset(0);
+    setUntil(Date.now());
+    setProjectRemoved(true);
+  }, [active.errorCode]);
+  useEffect(() => {
+    const page = details.data;
+    if (page && offset > 0 && offset >= page.totalCount)
+      setOffset(Math.max(0, Math.ceil(page.totalCount / page.limit) - 1) * page.limit);
+  }, [details.data, offset]);
+  useLayoutEffect(() => {
+    const main = sectionRef.current?.closest("main");
+    if (focusTransition.current === "enter" && view === "sessions") {
+      if (main) main.scrollTop = 0;
+      detailsTitleRef.current?.focus({ preventScroll: true });
+      focusTransition.current = null;
+    } else if (focusTransition.current === "return" && view === "overview" && !loading && data) {
+      if (main) main.scrollTop = restoreScroll.current;
+      // 空项目返回时入口已隐藏，焦点回到概览标题并结束本次恢复，避免之后抢焦点。
+      (detailsButtonRef.current ?? overviewTitleRef.current)?.focus({ preventScroll: true });
+      focusTransition.current = null;
+    }
+  });
   const numberLocale = locale === "zh-CN" ? "zh-CN" : "en-US";
   const summary = data?.summary;
   const modelRequestCount =
@@ -146,53 +238,179 @@ export function AppUsageSection() {
       ]
     : [];
 
+  const controls = (
+    <div className="flex w-full flex-col items-stretch gap-2 @min-[520px]/usage:w-auto @min-[520px]/usage:flex-row @min-[520px]/usage:items-center">
+      <ProjectUsageFilter
+        projectId={projectId}
+        projects={projects}
+        onChange={updateProject}
+        disabled={!active.available}
+      />
+      <div className="flex items-center gap-2">
+        <span className="text-ui-sm text-foreground-subtle">
+          {intl.formatMessage({ id: "settings.usage.appUsageRangeTitle" })}
+        </span>
+        <div
+          className="flex rounded-lg border border-border p-0.5"
+          role="group"
+          aria-label={intl.formatMessage({ id: "settings.usage.appUsageRangeTitle" })}
+        >
+          {RANGE_OPTIONS.map((option) => (
+            <button
+              aria-pressed={range === option}
+              className={`${
+                range === option
+                  ? "rounded-md bg-selected px-2 py-1 text-ui-sm text-foreground"
+                  : "rounded-md px-2 py-1 text-ui-sm text-foreground-subtle hover:bg-hover hover:text-foreground"
+              } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused`}
+              key={option}
+              onClick={() => updateRange(option)}
+              type="button"
+            >
+              {intl.formatMessage({ id: `settings.usage.range.${option}` })}
+            </button>
+          ))}
+        </div>
+        <Button
+          aria-label={intl.formatMessage({ id: "settings.usage.refresh" })}
+          disabled={!active.available || active.loading}
+          onClick={refresh}
+          size="sm"
+          variant="outline"
+        >
+          <RefreshCw
+            className={active.loading ? "size-3 animate-spin" : "size-3"}
+            aria-hidden="true"
+          />
+          <span className="hidden @min-[520px]/usage:inline">
+            {intl.formatMessage({ id: "settings.usage.refresh" })}
+          </span>
+        </Button>
+      </div>
+    </div>
+  );
+  const removedNotice = projectRemoved ? (
+    <p role="status" className="text-ui-sm text-foreground-subtle">
+      {intl.formatMessage({ id: "settings.usage.projectRemoved" })}
+    </p>
+  ) : null;
+  if (view === "sessions") {
+    const page = details.data;
+    const scope =
+      projectId === undefined
+        ? intl.formatMessage({ id: "settings.usage.allProjects" })
+        : projectId === null
+          ? intl.formatMessage({ id: "settings.usage.unassigned" })
+          : (projects.find((project) => project.id === projectId)?.name ?? "");
+    return (
+      <section ref={sectionRef} className="@container/usage min-w-0 space-y-4">
+        <SettingsBreadcrumbReporter
+          items={[{ label: intl.formatMessage({ id: "settings.usage.sessionDetails.title" }) }]}
+          onSectionSelect={returnToOverview}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={returnToOverview}
+          data-testid="usage-details-back"
+        >
+          <ChevronLeft aria-hidden="true" />
+          {intl.formatMessage({ id: "settings.usageTitle" })}
+        </Button>
+        <div className="flex flex-col gap-3 @min-[760px]/usage:flex-row @min-[760px]/usage:flex-wrap @min-[760px]/usage:items-center @min-[760px]/usage:justify-between">
+          <h2
+            tabIndex={-1}
+            ref={detailsTitleRef}
+            className="text-ui-lg font-medium text-foreground outline-none"
+          >
+            {intl.formatMessage({ id: "settings.usage.sessionDetails.title" })}
+          </h2>
+          {controls}
+        </div>
+        {page ? (
+          <p className="text-ui-sm text-foreground-subtle">
+            {intl.formatMessage(
+              { id: "settings.usage.sessionDetails.summary" },
+              {
+                scope,
+                range: intl.formatMessage({ id: `settings.usage.range.${range}` }),
+                count: new Intl.NumberFormat(numberLocale).format(page.totalCount),
+              },
+            )}
+          </p>
+        ) : null}
+        {removedNotice}
+        {details.loading ? (
+          <div
+            role="status"
+            className="rounded-xl border border-border bg-surface p-4 text-ui-base"
+          >
+            {intl.formatMessage({ id: "settings.usage.loadingTitle" })}
+          </div>
+        ) : null}
+        {details.error ? (
+          <div
+            role="alert"
+            className="flex items-center justify-between gap-3 rounded-xl border border-destructive/40 p-4 text-ui-base"
+          >
+            <span>{intl.formatMessage({ id: "settings.usage.error" })}</span>
+            <Button variant="outline" size="sm" onClick={refresh}>
+              {intl.formatMessage({ id: "settings.usage.retry" })}
+            </Button>
+          </div>
+        ) : null}
+        {!details.loading && !details.error && page ? (
+          page.totalCount ? (
+            <SessionUsageView
+              page={page}
+              allProjects={projectId === undefined}
+              onPageChange={(value) => {
+                setOffset(value);
+                focusTransition.current = "enter";
+              }}
+            />
+          ) : (
+            <div
+              role="status"
+              className="rounded-xl border border-border bg-surface p-4 text-ui-base"
+            >
+              {intl.formatMessage({
+                id:
+                  projectId === undefined
+                    ? "settings.usage.emptyDescription"
+                    : "settings.usage.projectEmpty",
+              })}
+            </div>
+          )
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <section
-      className="min-w-0 space-y-4"
+      ref={sectionRef}
+      className="@container/usage min-w-0 space-y-4"
       aria-label={intl.formatMessage({ id: "settings.usage.tab.appUsage" })}
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="text-ui-lg font-medium text-foreground">
+      <div className="flex flex-col gap-3 @min-[760px]/usage:flex-row @min-[760px]/usage:flex-wrap @min-[760px]/usage:items-center @min-[760px]/usage:justify-between">
+        {/* 宽屏标题区按剩余空间排版，避免英文说明的自然宽度把整组筛选挤到下一行。 */}
+        <div className="min-w-0 @min-[760px]/usage:flex-1">
+          <h2
+            ref={overviewTitleRef}
+            tabIndex={-1}
+            className="text-ui-lg font-medium text-foreground outline-none"
+          >
             {intl.formatMessage({ id: "settings.usage.tab.appUsage" })}
           </h2>
           <p className="mt-1 text-ui-sm text-foreground-subtle">
-            {intl.formatMessage({ id: "settings.usage.sectionDescription" })}{" "}
-            {intl.formatMessage({ id: "settings.usage.localOnlyHint" })}
+            {intl.formatMessage({ id: "settings.usage.sectionDescription" })}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-ui-sm text-foreground-subtle">
-            {intl.formatMessage({ id: "settings.usage.appUsageRangeTitle" })}
-          </span>
-          <div
-            className="flex rounded-lg border border-border p-0.5"
-            role="group"
-            aria-label={intl.formatMessage({ id: "settings.usage.appUsageRangeTitle" })}
-          >
-            {RANGE_OPTIONS.map((option) => (
-              <button
-                aria-pressed={range === option}
-                className={`${
-                  range === option
-                    ? "rounded-md bg-selected px-2 py-1 text-ui-sm text-foreground"
-                    : "rounded-md px-2 py-1 text-ui-sm text-foreground-subtle hover:bg-hover hover:text-foreground"
-                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused`}
-                key={option}
-                onClick={() => setRange(option)}
-                type="button"
-              >
-                {intl.formatMessage({ id: `settings.usage.range.${option}` })}
-              </button>
-            ))}
-          </div>
-          <Button disabled={!available || loading} onClick={refresh} size="sm" variant="outline">
-            <RefreshCw className={loading ? "size-3 animate-spin" : "size-3"} aria-hidden="true" />
-            {intl.formatMessage({ id: "settings.usage.refresh" })}
-          </Button>
-        </div>
+        {controls}
       </div>
 
+      {removedNotice}
       {!available ? (
         <div
           className="rounded-xl border border-border bg-surface p-4 text-ui-base text-foreground-subtle"
@@ -228,7 +446,30 @@ export function AppUsageSection() {
         <>
           <Card className="grid min-w-0 grid-cols-1 gap-0 divide-y divide-border py-0 shadow-none sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {metrics.slice(0, 3).map((metric) => (
-              <SummaryMetric {...metric} prominent key={metric.label} />
+              <SummaryMetric
+                {...metric}
+                prominent
+                key={metric.label}
+                action={
+                  metric.label === intl.formatMessage({ id: "settings.usage.sessions" }) &&
+                  summary!.totalSessions > 0 ? (
+                    <Button
+                      ref={detailsButtonRef}
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 shrink-0 px-1 py-0 text-ui-sm"
+                      aria-label={intl.formatMessage({
+                        id: "settings.usage.sessionDetails.openAria",
+                      })}
+                      onClick={openDetails}
+                      data-testid="usage-details-open"
+                    >
+                      {intl.formatMessage({ id: "settings.usage.sessionDetails.open" })}
+                      <ChevronRight className="size-3" aria-hidden="true" />
+                    </Button>
+                  ) : undefined
+                }
+              />
             ))}
           </Card>
           {empty ? (
@@ -237,7 +478,12 @@ export function AppUsageSection() {
                 {intl.formatMessage({ id: "settings.usage.emptyTitle" })}
               </div>
               <p className="mt-1 text-ui-sm text-foreground-subtle">
-                {intl.formatMessage({ id: "settings.usage.emptyDescription" })}
+                {intl.formatMessage({
+                  id:
+                    projectId === undefined
+                      ? "settings.usage.emptyDescription"
+                      : "settings.usage.projectEmpty",
+                })}
               </p>
             </div>
           ) : null}

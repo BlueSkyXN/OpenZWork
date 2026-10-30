@@ -1,6 +1,7 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import {
   NodeModelSelectionConfigRepository,
+  createProviderModelDiscovery,
   createNodeModelSelectionFacade,
 } from "@zcode/provider-node";
 import {
@@ -63,6 +64,7 @@ export class ProviderRuntime {
       settingsFacade,
       ensureReady,
       dependencies.testConnectivity,
+      createProviderModelDiscovery().discover,
     );
     this.#modelSelectionRuntime = createModelSelectionService(
       createNodeModelSelectionFacade(this.registryService),

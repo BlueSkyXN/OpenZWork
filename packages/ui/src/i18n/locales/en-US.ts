@@ -3068,6 +3068,28 @@ const enUS: Record<string, string> = {
   "settings.migration.failedTitle": "Failures",
   "settings.migration.reason.session_not_found_or_workspace_mismatch":
     "The source session was not found, or it no longer matches the current workspace filter.",
+  "settings.usage.project": "Project",
+  "settings.usage.allProjects": "All projects",
+  "settings.usage.unassigned": "Unassigned",
+  "settings.usage.sessionDetails.open": "Details",
+  "settings.usage.sessionDetails.openAria": "View session details",
+  "settings.usage.sessionDetails.title": "Session details",
+  "settings.usage.sessionDetails.summary": "{scope} · {range} · {count} main sessions; subtask usage counts toward its main session",
+  "settings.usage.sessionDetails.project": "Project",
+  "settings.usage.sessionDetails.untitled": "Untitled session",
+  "settings.usage.sessionDetails.notInTaskList": "No longer in task list",
+  "settings.usage.sessionDetails.totalRow": "Total for {count} main sessions",
+  "settings.usage.sessionDetails.pageStatus": "{from}–{to} of {total}",
+  "settings.usage.sessionDetails.prevPage": "Previous",
+  "settings.usage.sessionDetails.nextPage": "Next",
+  "settings.usage.sessionDetails.mainShort": "Main",
+  "settings.usage.sessionDetails.childrenShort": "Subtasks",
+  "settings.usage.projectEmpty": "This project has no usage in the selected range.",
+  "settings.usage.projectRemoved": "The selected project was deleted. Showing all projects.",
+  "settings.usage.sessionDetails.session": "Session",
+  "settings.usage.sessionDetails.main": "Main tokens",
+  "settings.usage.sessionDetails.children": "Subtask tokens",
+  "settings.usage.sessionDetails.total": "Total tokens",
   "settings.usageTitle": "Usage stats",
   "settings.usageDescription":
     "Review rough activity and model usage aggregated from local sessions.",
@@ -4064,6 +4086,37 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.modelConfigIncomplete": "Model configuration is incomplete",
   "settings.modelProvider.models": "Model list",
   "settings.modelProvider.modelsEmpty": "No models are configured. Add a model to use it in chat.",
+  "settings.modelProvider.discovery.title": "Fetch models",
+  "settings.modelProvider.discovery.loading": "Loading models…",
+  "settings.modelProvider.discovery.retry": "Retry",
+  "settings.modelProvider.discovery.empty":
+    "No models returned. Use Add model to configure one manually.",
+  "settings.modelProvider.discovery.added": "Added",
+  "settings.modelProvider.discovery.incomplete": "Configuration required",
+  "settings.modelProvider.discovery.ready": "Recommended configuration available",
+  "settings.modelProvider.discovery.saveFailed": "Could not save. Retry adding this model.",
+  "settings.modelProvider.discovery.configure": "Configure",
+  "settings.modelProvider.discovery.truncated":
+    "The list reached its limit. Add other models manually.",
+  "settings.modelProvider.discovery.cancel": "Cancel",
+  "settings.modelProvider.discovery.saving": "Adding…",
+  "settings.modelProvider.discovery.addSelected": "Add selected ({count})",
+  "settings.modelProvider.discovery.error.invalid-connection":
+    "Save a valid endpoint and connection first.",
+  "settings.modelProvider.discovery.error.authentication":
+    "Authentication failed. Check the provider API key.",
+  "settings.modelProvider.discovery.error.unsupported":
+    "This endpoint does not provide a model list. Add models manually.",
+  "settings.modelProvider.discovery.error.rate-limited": "Too many requests. Try again later.",
+  "settings.modelProvider.discovery.error.http-error":
+    "The provider returned an error. Try again later.",
+  "settings.modelProvider.discovery.error.request-failed":
+    "Could not fetch models. Check the connection and retry.",
+  "settings.modelProvider.discovery.error.timeout": "Fetching models timed out. Try again.",
+  "settings.modelProvider.discovery.error.invalid-response":
+    "The model list format is unsupported. Add models manually.",
+  "settings.modelProvider.discovery.error.response-too-large":
+    "The model list is too large. Add the models you need manually.",
   "settings.modelProvider.addModel": "Add model",
   "settings.modelProvider.modelId": "Model ID",
   "settings.modelProvider.modelDisplayName": "Display name",
@@ -4121,7 +4174,8 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.mappingNotSet": "Not set",
   "settings.modelProvider.presetTitle": "Providers",
   "settings.usage.sectionTitle": "Usage stats",
-  "settings.usage.sectionDescription": "Built from local app session history.",
+  "settings.usage.sectionDescription":
+    "Usage recorded on this device. Detailed records are retained for 30 days.",
   "settings.usage.tab.appUsage": "App usage",
   "settings.usage.tab.codingPlan": "Individual Plan",
   "settings.usage.sectionDescriptionRemote":
@@ -4256,7 +4310,6 @@ const enUS: Record<string, string> = {
   "settings.usage.peakDayTokens": "Peak day: {tokens} tokens",
   "settings.usage.errorRate": "Error rate",
   "settings.usage.retry": "Retry",
-  "settings.usage.localOnlyHint": "Queried on this device only; never uploaded.",
   "settings.usage.localUnavailable":
     "A confirmed local Desktop Host is unavailable in this environment, so local usage statistics cannot be read.",
   "settings.usage.loadingTitle": "Computing usage",

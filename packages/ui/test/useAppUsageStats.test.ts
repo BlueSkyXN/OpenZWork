@@ -39,3 +39,25 @@ it("未展开不查询，换本地 authority 后拒收旧响应", async () => {
   expect(hook.result.current.available).toBe(false);
   expect(hook.result.current.data).toBeNull();
 });
+it("switching projects hides old metrics immediately and rejects old responses", async () => {
+  let settleA!: (value: ReturnType<typeof createSnapshot>) => void;
+  const b = { ...createSnapshot(), generatedAt: 22, projects: [{ id: "b", name: "B" }] };
+  source.service = {
+    getAppUsageStats: vi.fn((params: { projectId?: string }) =>
+      params.projectId === "a"
+        ? new Promise((resolve) => {
+            settleA = resolve;
+          })
+        : Promise.resolve(b),
+    ),
+  };
+  const hook = renderHook(
+    ({ projectId }) => useAppUsageStats("7d", { projectId, includeProjects: true }),
+    { initialProps: { projectId: "a" } },
+  );
+  hook.rerender({ projectId: "b" });
+  expect(hook.result.current.data).toBeNull();
+  await waitFor(() => expect(hook.result.current.data?.generatedAt).toBe(22));
+  await act(async () => settleA({ ...createSnapshot(), generatedAt: 11 }));
+  expect(hook.result.current.data?.generatedAt).toBe(22);
+});

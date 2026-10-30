@@ -3990,3 +3990,14 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 - `CDD02/04/05`：`packages/services/test/dataDirectoryMigration.test.ts`，真实 SQLite/WAL、新进程重开读写、工作文件、非空/嵌套目标、失败保留原根及指针提交重试。
 - `CDD02/06/07`：`dataDirectoryTrueMigration.test.ts` 与 data-directory/host-storage-relocation 契约测试，隔离旧根后的会话、工具输出、附件、默认工作区和用户子代理记忆；同根使用门禁、远端/正文保护及连续迁移。
 - 旧 `R3A-DEV-06-desktop-authority` 的保存即复制断言改为计划保存、重启后复制，保持本机/Source 设置归属断言；真实 SSH 另行验收。
+
+## MD / PU（2026-10-30）
+
+| Case | Candidate | Evidence | State |
+| --- | --- | --- | --- |
+| MD01 / PU03 / PU04 / UX01 | `conversation-session/manual-review/pending/conversation-session-model-discovery-usage.test.ts` | 真实设置点击与持久化、项目筛选、二级明细页与面包屑、返回滚动和焦点、480px 列表、QueryUsage 协议往返；真实 fork 进入独立任务列表；合成回放，不访问供应商 | macOS passed / manual-review pending |
+| MD02 / MD03 / PU01 / PU02 | model-discovery contracts/hooks、appUsageService、adapters usage-query、useAppUsageSessions、SAT28 | 配置补全交接、部分保存失败、迟到页、同 cwd 不同归属、fork/侧聊/子任务分类、缺失任务注记、分页全量合计、子 runtime 写库及零会话返回焦点 | focused tests |
+
+2026-10-30 最终重建回放 1/1 通过，run：`desktop-e2e-20261030055350041-p33610-c05b0898b2a191f6`，case 11.298 秒。真实 UI 验证 Messages 根地址拉取、重复 ID 去重、已有模型禁选、保存配置，以及概览移除页尾表、明细入口和面包屑、120 Token 合计、返回滚动误差 ≤1px 与焦点、未归类筛选保留、QueryUsage 工具结果进入下一轮请求。英文 480px 深色明细为列表，页面无横向溢出；UI 分叉后的 Host `Project.readTree` 确认父/分叉为两个独立任务。
+
+定向测试 51 项通过（UI/service/Provider 33、CLI 14、Host SAT28 4），含 UTF-8 报告裁剪不改总量。多数据布局由 ignored local 对照台验证：128 个聚合主会话行，1280px 中英文深浅、900px 中文浅、480px 中文深浅共 7 组，50 行分页及末页断言、9 项状态检查通过；真实导航由上述 Electron 回放覆盖。此前一次 WebDriver 会话创建超时后重试通过，首次根因未确认。Windows/Linux 原生窗口、真实供应商请求与 Docker 准入未覆盖；使用统计仍限定 Desktop 本机，480px 验收不扩展为手机支持。

@@ -2,6 +2,7 @@ import type { Event } from "@zcode/rpc";
 import { ServiceChannels } from "@zcode/shared";
 import {
   type ModelConfigObject,
+  type ProviderModelDiscoveryResult,
   type ModelId,
   type ModelSelection,
   type ModelSelectionFacade,
@@ -35,6 +36,7 @@ export interface IProviderSettingsService {
     input?: Parameters<ProviderSettingsFacade["createPersonalProvider"]>[0],
   ): Promise<ProviderSettingsCreationResult>;
   resolveModelConfig(input: ResolveModelConfigInput): Promise<ModelConfigResolution>;
+  discoverModels(providerId: ProviderId): Promise<ProviderModelDiscoveryResult>;
   savePersonalProviderOverlay(
     providerId: ProviderId,
     config: ProviderConfigObject,
@@ -110,6 +112,7 @@ export function createProviderSettingsService(
   facade: ProviderSettingsFacade,
   ensureReady: () => Promise<void> = async () => {},
   testConnectivity?: ProviderSettingsConnectivityTester,
+  discoverModels?: (config: ProviderConfigObject) => Promise<ProviderModelDiscoveryResult>,
 ): IProviderSettingsService {
   return {
     onDidChange: toEvent((listener) => facade.onDidChange(listener)),
@@ -124,6 +127,23 @@ export function createProviderSettingsService(
     createPersonalProvider: async (input) => {
       await ensureReady();
       return facade.createPersonalProvider(input);
+    },
+    discoverModels: async (providerId) => {
+      await ensureReady();
+      await facade.waitForProviderOperations(providerId);
+      const provider = facade.getView().providers.find((item) => item.providerId === providerId);
+      if (!provider || !provider.enabled || !discoverModels)
+        return { ok: false, error: "invalid-connection" };
+      const result = await discoverModels(provider.effectiveConfig);
+      if (!result.ok) return result;
+      return {
+        ...result,
+        models: result.models.map((item) => ({
+          modelId: item.modelId,
+          configComplete:
+            facade.resolveModelConfig({ providerId, modelId: item.modelId }).issues.length === 0,
+        })),
+      };
     },
     resolveModelConfig: async (input) => {
       await ensureReady();

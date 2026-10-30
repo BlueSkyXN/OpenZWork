@@ -117,6 +117,24 @@ export interface ProviderSettingsModelCandidateView {
   readonly issues: readonly ConfigValidationIssue[];
 }
 
+export type ProviderModelDiscoveryError =
+  | "invalid-connection"
+  | "authentication"
+  | "unsupported"
+  | "rate-limited"
+  | "http-error"
+  | "request-failed"
+  | "timeout"
+  | "invalid-response"
+  | "response-too-large";
+export type ProviderModelDiscoveryResult =
+  | {
+      readonly ok: true;
+      readonly models: readonly { modelId: string; configComplete?: boolean }[];
+      readonly truncated: boolean;
+    }
+  | { readonly ok: false; readonly error: ProviderModelDiscoveryError; readonly status?: number };
+
 export type ProviderSettingsModelView = ProviderSettingsModelCandidateView;
 
 export interface ModelConfigResolution {

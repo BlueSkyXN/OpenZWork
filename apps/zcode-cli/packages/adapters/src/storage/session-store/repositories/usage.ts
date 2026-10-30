@@ -1,3 +1,4 @@
+import { buildUsageQueryScope } from "../usage-query/index.js";
 import type { DatabaseSync, SQLInputValue } from "node:sqlite";
 import type {
   AppUsageDayModelRow,
@@ -389,10 +390,11 @@ export async function queryAppUsage(
 ): Promise<AppUsageQueryResult> {
   const { since, until, tzOffsetMs } = input;
   const DAY_MS = 86_400_000;
+  const scope = buildUsageQueryScope(input.sessionIds);
+  const prepare = (sql: string) => db.prepare(scope.cte + sql);
 
-  const totals = db
-    .prepare(
-      `select
+  const totals = prepare(
+    `select
          coalesce(sum(computed_total_tokens), 0) as totalTokens,
          coalesce(sum(input_tokens), 0) as inputTokens,
          coalesce(sum(output_tokens), 0) as outputTokens,
@@ -403,100 +405,92 @@ export async function queryAppUsage(
          coalesce(sum(case when status = 'error' then 1 else 0 end), 0) as modelErrorCount,
          avg(time_to_first_token_ms) as avgTimeToFirstTokenMs
        from model_usage
-       where started_at >= ? and started_at <= ?`,
-    )
-    .get(since, until) as Record<string, number | null>;
+       where started_at >= ? and started_at <= ?${scope.condition}`,
+  ).get(...scope.parameters, since, until) as Record<string, number | null>;
 
-  const turnTotals = db
-    .prepare(
-      `select
+  const turnTotals = prepare(
+    `select
          count(distinct session_id) as totalSessions,
          count(*) as totalTurns,
          avg(case when status = 'completed' then duration_ms else null end) as avgTurnDurationMs
        from turn_usage
-       where started_at >= ? and started_at <= ?`,
-    )
-    .get(since, until) as Record<string, number | null>;
-  const longestSession = db
-    .prepare(
-      `select coalesce(max(sessionDurationMs), 0) as longestSessionMs
+       where started_at >= ? and started_at <= ?${scope.condition}`,
+  ).get(...scope.parameters, since, until) as Record<string, number | null>;
+  const longestSession = prepare(
+    `select coalesce(max(sessionDurationMs), 0) as longestSessionMs
        from (
          select coalesce(sum(case when status = 'completed' then duration_ms else 0 end), 0)
            as sessionDurationMs
          from turn_usage
-         where started_at >= ? and started_at <= ?
+         where started_at >= ? and started_at <= ?${scope.condition}
          group by session_id
        )`,
-    )
-    .get(since, until) as Record<string, number | null>;
+  ).get(...scope.parameters, since, until) as Record<string, number | null>;
 
-  const toolTotals = db
-    .prepare(
-      `select
+  const toolTotals = prepare(
+    `select
          count(*) as toolCallCount,
          coalesce(sum(case when status = 'error' then 1 else 0 end), 0) as toolErrorCount
        from tool_usage
-       where started_at >= ? and started_at <= ?`,
-    )
-    .get(since, until) as Record<string, number>;
+       where started_at >= ? and started_at <= ?${scope.condition}`,
+  ).get(...scope.parameters, since, until) as Record<string, number>;
 
-  const models = db
-    .prepare(
-      `select
+  const models = prepare(
+    `select
          model_id as modelId,
          coalesce(sum(computed_total_tokens), 0) as totalTokens,
          coalesce(sum(input_tokens), 0) as inputTokens,
          coalesce(sum(output_tokens), 0) as outputTokens,
          count(*) as requestCount
        from model_usage
-       where started_at >= ? and started_at <= ?
+       where started_at >= ? and started_at <= ?${scope.condition}
        group by model_id
        order by totalTokens desc`,
-    )
-    .all(since, until) as unknown as AppUsageModelRow[];
+  ).all(...scope.parameters, since, until) as unknown as AppUsageModelRow[];
 
-  const tools = db
-    .prepare(
-      `select
+  const tools = prepare(
+    `select
          tool_name as toolName,
          count(*) as callCount,
          coalesce(sum(case when status = 'error' then 1 else 0 end), 0) as errorCount,
          avg(duration_ms) as avgDurationMs
        from tool_usage
-       where started_at >= ? and started_at <= ?
+       where started_at >= ? and started_at <= ?${scope.condition}
        group by tool_name
        order by callCount desc`,
-    )
-    .all(since, until) as unknown as AppUsageToolRow[];
+  ).all(...scope.parameters, since, until) as unknown as AppUsageToolRow[];
 
-  const days = db
-    .prepare(
-      `select
+  const days = prepare(
+    `select
          cast((started_at + ?) / ? as integer) as dayIndex,
          coalesce(sum(computed_total_tokens), 0) as totalTokens
        from model_usage
-       where started_at >= ? and started_at <= ?
+       where started_at >= ? and started_at <= ?${scope.condition}
        group by dayIndex`,
-    )
-    .all(tzOffsetMs, DAY_MS, since, until) as Array<{ dayIndex: number; totalTokens: number }>;
+  ).all(...scope.parameters, tzOffsetMs, DAY_MS, since, until) as Array<{
+    dayIndex: number;
+    totalTokens: number;
+  }>;
 
-  const turnDays = db
-    .prepare(
-      `select cast((started_at + ?) / ? as integer) as dayIndex, count(*) as turnCount
+  const turnDays = prepare(
+    `select cast((started_at + ?) / ? as integer) as dayIndex, count(*) as turnCount
        from turn_usage
-       where started_at >= ? and started_at <= ?
+       where started_at >= ? and started_at <= ?${scope.condition}
        group by dayIndex`,
-    )
-    .all(tzOffsetMs, DAY_MS, since, until) as Array<{ dayIndex: number; turnCount: number }>;
+  ).all(...scope.parameters, tzOffsetMs, DAY_MS, since, until) as Array<{
+    dayIndex: number;
+    turnCount: number;
+  }>;
 
-  const toolDays = db
-    .prepare(
-      `select cast((started_at + ?) / ? as integer) as dayIndex, count(*) as toolCallCount
+  const toolDays = prepare(
+    `select cast((started_at + ?) / ? as integer) as dayIndex, count(*) as toolCallCount
        from tool_usage
-       where started_at >= ? and started_at <= ?
+       where started_at >= ? and started_at <= ?${scope.condition}
        group by dayIndex`,
-    )
-    .all(tzOffsetMs, DAY_MS, since, until) as Array<{ dayIndex: number; toolCallCount: number }>;
+  ).all(...scope.parameters, tzOffsetMs, DAY_MS, since, until) as Array<{
+    dayIndex: number;
+    toolCallCount: number;
+  }>;
 
   // 合并三类按日统计到同一 dayIndex
   const dayMap = new Map<number, AppUsageDayRow>();
@@ -529,17 +523,15 @@ export async function queryAppUsage(
     dayMap.set(row.dayIndex, existing);
   }
 
-  const dayModels = db
-    .prepare(
-      `select
+  const dayModels = prepare(
+    `select
          cast((started_at + ?) / ? as integer) as dayIndex,
          model_id as modelId,
          coalesce(sum(computed_total_tokens), 0) as totalTokens
        from model_usage
-       where started_at >= ? and started_at <= ?
+       where started_at >= ? and started_at <= ?${scope.condition}
        group by dayIndex, model_id`,
-    )
-    .all(tzOffsetMs, DAY_MS, since, until) as unknown as AppUsageDayModelRow[];
+  ).all(...scope.parameters, tzOffsetMs, DAY_MS, since, until) as unknown as AppUsageDayModelRow[];
 
   return {
     totals: {

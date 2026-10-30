@@ -1,3 +1,4 @@
+import type { UsageQueryPort } from "@zcode/contracts";
 import type { ToolSearchExecutionContext } from "@zcode/contracts";
 import type {
   AutomationPort,
@@ -103,6 +104,7 @@ export interface ToolExecutorOptions {
   artifactStore?: ToolArtifactStorePort;
   automationPort?: AutomationPort;
   topicResourcePort?: TopicResourcePort;
+  usageQueryPort?: UsageQueryPort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;
@@ -214,6 +216,7 @@ export interface ToolExecutorDeps {
   artifactStore?: ToolArtifactStorePort;
   automationPort?: AutomationPort;
   topicResourcePort?: TopicResourcePort;
+  usageQueryPort?: UsageQueryPort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;
