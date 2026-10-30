@@ -1,3 +1,4 @@
+import type { UsageQueryPort } from "@zcode/contracts";
 import type { ToolSearchExecutionContext, ModelCallWrapper } from "@zcode/contracts";
 import type { McpToolUiDescriptor } from "@zcode/shared/mcp-apps";
 // ============================================================
@@ -170,6 +171,7 @@ export interface ToolExecutionContext {
   artifactStore?: ToolArtifactStorePort;
   automationPort?: AutomationPort;
   topicResourcePort?: TopicResourcePort;
+  usageQueryPort?: UsageQueryPort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;

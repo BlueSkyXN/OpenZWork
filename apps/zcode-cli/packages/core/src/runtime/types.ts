@@ -1,3 +1,4 @@
+import type { UsageQueryPort } from "@zcode/contracts";
 import type { SystemPromptSettings } from "@zcode/shared";
 import type { ToolSearchExecutionContext, ToolSearchMode } from "@zcode/contracts";
 import type { GetAgentDefinitions, LoadAgentDefinitions } from "../subagent/definitions.js";
@@ -360,6 +361,7 @@ export interface AgentRuntimeDeps {
   artifactStore?: ToolArtifactStorePort;
   automationPort?: AutomationPort;
   topicResourcePort?: TopicResourcePort;
+  usageQueryPort?: UsageQueryPort;
   contextSourcePort?: ContextSourcePort;
   eventSink?: SessionEventSink;
   logger?: Logger;

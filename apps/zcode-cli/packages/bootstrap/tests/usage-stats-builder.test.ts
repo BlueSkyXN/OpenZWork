@@ -1,3 +1,4 @@
+import { test } from "vitest";
 import { describe, expect, it } from "vitest";
 import type { AppUsageQueryResult } from "@zcode/contracts";
 import {
@@ -150,4 +151,18 @@ describe("buildAppUsageSnapshot", () => {
     expect(off).toBe(0);
     expect(Number.isFinite(resolveTzOffsetMs("America/New_York", 0))).toBe(true);
   });
+});
+
+test("overview and session details share a fixed query window and strict pagination schema", async () => {
+  const { resolveAppUsageWindow } = await import("../src/zcode-protocol/usage-stats-builder.js");
+  const { appUsageSessionsParamsSchema } = await import("@zcode/shared");
+  const until = 1_900_000_000_000;
+  const query = { range: "7d" as const, timeZone: "Asia/Shanghai", until };
+  expect(resolveAppUsageWindow(query, until + 1)).toEqual(
+    resolveAppUsageWindow(query, until + 999),
+  );
+  expect(appUsageSessionsParamsSchema.parse(query)).toMatchObject({ offset: 0, limit: 50 });
+  expect(() => appUsageSessionsParamsSchema.parse({ ...query, limit: 101 })).toThrow();
+  expect(() => appUsageSessionsParamsSchema.parse({ ...query, offset: -1 })).toThrow();
+  expect(() => appUsageSessionsParamsSchema.parse({ ...query, includeSessions: true })).toThrow();
 });

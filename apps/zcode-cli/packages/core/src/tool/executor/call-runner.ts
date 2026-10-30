@@ -473,6 +473,7 @@ async function executeToolCallImpl(
         artifactStore: deps.artifactStore,
         automationPort: deps.automationPort,
         topicResourcePort: deps.topicResourcePort,
+    usageQueryPort: deps.usageQueryPort,
         sessionStore: deps.sessionStore,
         sessionModePort: deps.sessionModePort,
         workflowPort: deps.workflowPort,

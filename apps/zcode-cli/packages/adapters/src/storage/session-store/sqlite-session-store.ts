@@ -1,3 +1,5 @@
+import { queryUsageSessions, buildUsageQueryScope } from "./usage-query/index.js";
+import type { AppUsageSessionsQueryInput, AppUsageSessionsQueryResult } from "@zcode/contracts";
 import type { MigrationResult } from "@zcode/shared/sqlite-migrations";
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
@@ -848,6 +850,10 @@ export class SqliteSessionStore
 
   async queryAppUsage(input: AppUsageQueryInput): Promise<AppUsageQueryResult> {
     return usageRepository.queryAppUsage(this.db, input);
+  }
+
+  async queryAppUsageSessions(input: AppUsageSessionsQueryInput): Promise<AppUsageSessionsQueryResult> {
+    return queryUsageSessions(this.db, input, buildUsageQueryScope(input.sessionIds));
   }
 
   async queryTaskUsage(input: TaskUsageQueryInput): Promise<TaskUsageQueryResult> {

@@ -36,6 +36,37 @@ nodes:
     invariants:
       - Only model IDs are discovered; configuration completeness uses the existing resolver.
       - Selection is dialog-local; additions use the existing Provider settings save path.
+  - id: capability.project-usage
+    kind: capability
+    label: Project and session usage in Settings and QueryUsage
+    aliases: [项目用量, 会话用量, QueryUsage]
+    docs:
+      - docs/spec/model-discovery-project-usage.md
+      - apps/zcode-cli/docs/design/v2/tool/00-tool-change-chain.md
+    codeSeeds:
+      - file: packages/ui/src/project-usage/ProjectUsageDetails.tsx
+        symbol: ProjectUsageFilter
+      - file: packages/ui/src/project-usage/ProjectUsageDetails.tsx
+        symbol: SessionUsageView
+      - file: packages/services/src/app-usage/appUsageService.ts
+        symbol: createAppUsageService
+      - file: apps/zcode-cli/packages/adapters/src/storage/session-store/usage-query/scope.ts
+        symbol: buildUsageQueryScope
+      - file: apps/zcode-cli/packages/core/src/tool/usage-query/query.ts
+        symbol: queryUsageToolEntry
+      - file: apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-query/port.ts
+        symbol: createProtocolUsageQueryPort
+    invariants:
+      - The local Host resolves project membership; CLI receives session IDs and includes auxiliary descendants once; forks keep independent membership.
+      - Settings and the read-only tool share AppUsageService and the existing 30-day usage facts.
+  - id: state.host-project-membership
+    kind: state-owner
+    label: Host project repository membership snapshot
+    codeSeeds:
+      - file: packages/services/src/project-storage/project-repository.ts
+        symbol: ProjectRepository
+    invariants:
+      - Project and task rows are filtered to the repository Host; cwd is not project identity.
   - id: capability.conversation-metrics
     kind: capability
     label: Native conversation metrics
@@ -4681,6 +4712,22 @@ edges:
   - from: capability.provider-model-discovery
     to: persistence.model-provider-config
     type: commits-selected-models-through-existing-owner
+    rank: must-inspect
+  - from: capability.project-usage
+    to: surface.app-usage-dashboard
+    type: adds-project-filter-and-session-breakdown
+    rank: must-inspect
+  - from: capability.project-usage
+    to: service.usage-stats-bridge
+    type: shares-host-query-with-read-only-tool
+    rank: must-inspect
+  - from: capability.project-usage
+    to: state.host-project-membership
+    type: resolves-session-scope-from-current-membership
+    rank: must-inspect
+  - from: capability.project-usage
+    to: persistence.usage-observability-db
+    type: filters-existing-usage-without-schema-migration
     rank: must-inspect
   - from: capability.conversation-metrics
     to: surface.conversation-metrics-settings

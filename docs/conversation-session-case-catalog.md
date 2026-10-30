@@ -4504,3 +4504,9 @@ CPE03：配置选择器打开后，选择另一模型或重复选择当前模型
 ## SVP 设置页布局与首页远控入口（accepted）
 
 [规格](spec/settings-visual-polish.md)定义 SVP01–SVP06 的 setup、action 和 assertion。范围仅为呈现与导航，不改变连接/统计/提示词运行时。候选：settings-visual-polish.test.ts；复用 NCM08、SP06/SP14、V1-11/V1-12 语义。
+
+## MD / PU 模型拉取与项目用量（2026-10-30）
+
+用户已确认按界面示意实现。规则见 [功能规格](spec/model-discovery-project-usage.md)。候选 `conversation-session/manual-review/pending/conversation-session-model-discovery-usage.test.ts`：独立本机回放返回模型列表和固定用量；真实设置页拉取、勾选、保存、切换项目筛选、查看会话明细；随后主会话通过 QueryUsage 往返 Host 查询，回放必须收到带 retentionDays 的真实工具结果才返回终态标记。MD01/PU03/PU04/UX01 为本候选 accepted 场景；MD02/MD03/PU01/PU02 的数据及竞态组合由对应 UI/service/SQLite 单测覆盖。本次不转正、不新增 Docker admission，不扩展远端账户/额度。
+
+2026-10-30 PU 二级页修订 accepted：原概览无页尾表；卡片内明细入口；二级面包屑、同一筛选、返回滚动误差不超过 1px 与入口焦点；480px 列表布局；真实 fork 后 Host readTree 包含独立任务。分页与全量合计由 SQLite/UI 和真实组件对照台验证。

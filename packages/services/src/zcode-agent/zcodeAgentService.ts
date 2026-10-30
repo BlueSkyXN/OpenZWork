@@ -1,3 +1,6 @@
+import { appUsageSessionsResultSchema } from "@zcode/shared";
+import type { AppUsageSessionsParams } from "../app-usage/appUsage.js";
+import { appUsageToolParamsSchema, appUsageToolResultSchema } from "@zcode/shared";
 import { createHash } from "node:crypto";
 import { allowRequestVerificationHeaders, isAuxiliarySessionKind } from "@zcode/shared";
 import {
@@ -923,6 +926,7 @@ interface CreateZCodeAgentServiceOptions extends Omit<
 > {
   /** 仅供 MCP 状态探测进程使用，不能把空闲回收传给 chat。 */
   mcpStatusIdleTimeoutMs?: number;
+  readAppUsageReport?: (params: AppUsageStatsParams) => Promise<string>;
   /** Desktop Host 请求 Main 登记 Agent 已授权的精确本地视频路径。 */
   authorizeLocalMediaPreviewPath?: (path: string) => Promise<string>;
   modelSelectionReadinessSource?: ModelSelectionReadinessSource;
@@ -2226,6 +2230,30 @@ export function createZCodeAgentService(
           return;
         }
 
+        if (request.method === zcodeProtocolMethods.appUsageQuery) {
+          const parsed = appUsageToolParamsSchema.safeParse(request.params);
+          if (!parsed.success || !options?.readAppUsageReport) {
+            void client.respondError(request.id, {
+              code: -32602,
+              message: "App usage query unavailable or invalid parameters",
+            });
+            return;
+          }
+          void options
+            .readAppUsageReport({ ...parsed.data, includeProjects: true })
+            .then((report) => {
+              return client.respond(request.id, appUsageToolResultSchema.parse({ report }));
+            })
+            .catch(() => {
+              void client.respondError(request.id, {
+                code: -32000,
+                message:
+                  "Could not read local app usage. Check the project and Host connection, then retry.",
+              });
+            });
+          return;
+        }
+
         if (request.method === zcodeProtocolMethods.automationCreate) {
           const parsed = zcodeAutomationCreateParamsSchema.safeParse(request.params);
           if (!parsed.success) {
@@ -3292,9 +3320,21 @@ export function createZCodeAgentService(
         {
           range: params.range,
           ...(params.timeZone ? { timeZone: params.timeZone } : {}),
+          ...(params.sessionIds !== undefined ? { sessionIds: params.sessionIds } : {}),
+          ...(params.until !== undefined ? { until: params.until } : {}),
         },
         v4UsageStatsResultSchema,
       );
+    },
+
+    async getAppUsageSessions(params: AppUsageSessionsParams) {
+      const client = await getPluginManagementClient();
+      return client.request(V4_METHODS.usageSessions, {
+        range: params.range, ...(params.timeZone ? {timeZone: params.timeZone} : {}),
+        ...(params.until !== undefined ? {until: params.until} : {}),
+        ...(params.sessionIds !== undefined ? {sessionIds: params.sessionIds} : {}),
+        offset: params.offset, limit: params.limit,
+      }, appUsageSessionsResultSchema);
     },
 
     async readSession(params: ZCodeAgentReadSessionParams) {

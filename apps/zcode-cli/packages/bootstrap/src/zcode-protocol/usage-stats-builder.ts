@@ -239,3 +239,21 @@ export function buildAppUsageSnapshot(
     tools,
   };
 }
+
+/** 概览和分页明细共享同一时间窗口；调用方可固定 until 进行同口径核对。 */
+export function resolveAppUsageWindow(
+  params: { range: AppUsageRange; timeZone?: string; until?: number },
+  now = Date.now(),
+): BuildAppUsageOptions {
+  const timeZone = params.timeZone ?? "UTC";
+  const until = params.until ?? now;
+  const days = params.range === "7d" ? 7 : 30;
+  return {
+    range: params.range,
+    timeZone,
+    until,
+    since: params.range === "all" ? 0 : until - days * DAY_MS,
+    tzOffsetMs: resolveTzOffsetMs(timeZone, until),
+    generatedAt: until,
+  };
+}

@@ -1,3 +1,5 @@
+import type { AppUsageSessionsResult } from "@zcode/shared";
+import type { AppUsageSessionsParams } from "../app-usage/appUsage.js";
 import type { SystemPromptCatalog } from "@zcode/shared";
 import type { PluginUiToolResultNotification } from "@zcode/shared/mcp-apps";
 import type {
@@ -639,6 +641,7 @@ export interface IZCodeAgentService {
   ): Promise<ZCodeSessionSubagentsResult>;
   getTaskTokenUsage(params: ZCodeAgentTaskTokenUsageParams): Promise<ZCodeTaskTokenUsageResult>;
   getAppUsageStats(params: AppUsageStatsParams): Promise<AppUsageSnapshot>;
+  getAppUsageSessions(params: AppUsageSessionsParams): Promise<AppUsageSessionsResult>;
   readSession(params: ZCodeAgentReadSessionParams): Promise<ZCodeSessionStateSnapshot>;
   readSessionMessages(
     params: ZCodeAgentReadSessionMessagesParams,

@@ -1,3 +1,4 @@
+import type { UsageQueryPort } from "@zcode/contracts";
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import type { AiSdkModelAdapter } from "@zcode/adapters/model";
 import type {
@@ -201,6 +202,7 @@ export interface ZCodeAppOptions {
   onWorkflowEvent?: (event: WorkflowEvent) => void | Promise<void>;
   automationPort?: AutomationPort;
   topicResourcePort?: TopicResourcePort;
+  usageQueryPort?: UsageQueryPort;
   /** 首次真实用户执行或 cold-resume fallback 时解析一次，之后由 app 生命周期缓存。 */
   resolveInitialBashShellSelection?: () => Promise<ExecutionShellSelection | undefined>;
   /** Trusted embedder policy; workspace/project files cannot populate this field. */
