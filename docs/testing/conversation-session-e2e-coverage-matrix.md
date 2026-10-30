@@ -1301,10 +1301,10 @@ staging 的 BG45 历史 focused replay artifact 为 `desktop-e2e-20260903-111126
 | `AML`  | `packages/desktop/test/e2e/automations-custom-monthly-interval.test.ts`                                                                                                                                                                                                                                                            |
 | `OI`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-oversized-inline-image-attachment.test.ts`                                                                                                                                                                                              |
 | `VA`   | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-attachment.test.ts`                                                                                                                                                                                                                                        |
-| `TU`   | `packages/ui/test/zcodeSessionProjection.test.ts`、`packages/ui/test/v4ConversationTurnRenderUnits.test.ts`、`packages/ui/test/v4ConversationTurnGroup.test.ts`、`packages/ui/test/v4ConversationRowViewTimelineMarker.test.ts`、`packages/shared/test/zcodeSessionVisibleContent.test.ts`、`packages/ui/test/chatLoading.test.ts` |
-| `AI`   | `packages/ui/test/v4SessionDataLayer.test.ts`                                                                                                                                                                                                                                                                                      |
+| `TU`   | `retired:packages/ui/test/zcodeSessionProjection.test.ts`、`retired:packages/ui/test/v4ConversationTurnRenderUnits.test.ts`、`retired:packages/ui/test/v4ConversationTurnGroup.test.ts`、`retired:packages/ui/test/v4ConversationRowViewTimelineMarker.test.ts`、`retired:packages/shared/test/zcodeSessionVisibleContent.test.ts`、`retired:packages/ui/test/chatLoading.test.ts` |
+| `AI`   | `retired:packages/ui/test/v4SessionDataLayer.test.ts`                                                                                                                                                                                                                                                                                      |
 | `ER`   | `packages/desktop/test/e2e/conversation-session/conversation-session-empty-completion-retry.test.ts`                                                                                                                                                                                                                               |
-| `VR`   | `packages/ui/test/v4ConversationTurnRenderUnits.test.ts`                                                                                                                                                                                                                                                                           |
+| `VR`   | `retired:packages/ui/test/v4ConversationTurnRenderUnits.test.ts`                                                                                                                                                                                                                                                                           |
 | `BP`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-node-repl-stateless-browser-multisession.test.ts`                                                                                                                                                                                       |
 | `RT`   | `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts`                                                                                                                                                                                                                                                                       |
 | `PD`   | `apps/zcode-cli/packages/core/tests/prompt-admission.test.ts`                                                                                                                                                                                                                                                                      |
@@ -4749,7 +4749,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 | Case                     | 断言                                                                       | 候选入口                                             |
 | ------------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------- |
 | SVP01–SVP03、SVP05–SVP06 | 首页直达但不连接、指标预览、默认原文折叠、窄屏切章保留草稿、页面布局及主题 | manual-review/pending/settings-visual-polish.test.ts |
-| SVP04                    | 合法空态、无样本与真实 0% 区分、仅模型请求仍有数据                         | packages/ui/test/appUsagePanel.test.ts               |
+| SVP04                    | 合法空态、无样本与真实 0% 区分、仅模型请求仍有数据                         | `retired:packages/ui/test/appUsagePanel.test.ts`               |
 
 具体步骤见[设置页布局规格](../spec/settings-visual-polish.md)。候选尚未人工转正；桌面 390px 不替代实体手机验收。
 
@@ -4758,7 +4758,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 ## OpenZWork 数据目录迁移补充（2026-10-24）
 
 - `CDD01/03`：`packages/desktop/test/e2e/conversation-session/manual-review/pending/openzwork-data-directory.test.ts`，隔离 HOME，真实目录选择、计划保存、保存后文件写入、完整 Electron 重启和新根读取。状态 pending，未作人工评审或 CI 转正。
-- `CDD02/04/05`：`packages/services/test/dataDirectoryMigration.test.ts`，真实 SQLite/WAL、新进程重开读写、工作文件、非空/嵌套目标、失败保留原根及指针提交重试。
+- `CDD02/04/05`：`retired:packages/services/test/dataDirectoryMigration.test.ts`，真实 SQLite/WAL、新进程重开读写、工作文件、非空/嵌套目标、失败保留原根及指针提交重试。
 - `CDD02/06/07`：`dataDirectoryTrueMigration.test.ts` 与 data-directory/host-storage-relocation 契约测试，隔离旧根后的会话、工具输出、附件、默认工作区和用户子代理记忆；同根使用门禁、远端/正文保护及连续迁移。
 - 旧 `R3A-DEV-06-desktop-authority` 的保存即复制断言改为计划保存、重启后复制，保持本机/Source 设置归属断言；真实 SSH 另行验收。
 
