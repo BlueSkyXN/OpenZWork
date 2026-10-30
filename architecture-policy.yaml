@@ -857,6 +857,32 @@ modules:
     layers:
       adapters: .
     owner: conversation
+  # provider-model-discovery：由 architecture:adopt 登记
+  - id: provider-model-discovery
+    roots:
+      - packages/provider-node/src/model-discovery
+    managed: true
+    requires: [provider]
+    publicEntrypoints:
+      - packages/provider-node/src/model-discovery/index.ts
+      - packages/provider-node/src/model-discovery/contract.ts
+    layers:
+      adapters: .
+    owner: model-settings
+  # provider-model-discovery-ui：由 architecture:adopt 登记
+  - id: provider-model-discovery-ui
+    roots:
+      - packages/ui/src/model-discovery
+      - packages/ui/src/hooks/useProviderModelDiscovery.ts
+    managed: true
+    requires: [ui, services, provider]
+    publicEntrypoints:
+      - packages/ui/src/model-discovery/index.ts
+      - packages/ui/src/model-discovery/contract.ts
+      - packages/ui/src/hooks/useProviderModelDiscovery.ts
+    layers:
+      ui: .
+    owner: model-settings
 
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。

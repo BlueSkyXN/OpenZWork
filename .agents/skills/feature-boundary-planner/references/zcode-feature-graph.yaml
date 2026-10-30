@@ -21,6 +21,21 @@ rules:
     - invariant-only
     - evidence-only
 nodes:
+  - id: capability.provider-model-discovery
+    kind: capability
+    label: Discover models from the saved Provider connection
+    aliases: [拉取模型, 模型发现, Fetch models]
+    docs: [docs/spec/model-discovery-project-usage.md]
+    codeSeeds:
+      - file: packages/ui/src/model-discovery/ProviderModelDiscoveryDialog.tsx
+        symbol: ProviderModelDiscoveryDialog
+      - file: packages/ui/src/hooks/useProviderModelDiscovery.ts
+        symbol: useProviderModelDiscovery
+      - file: packages/provider-node/src/model-discovery/discovery.ts
+        symbol: createProviderModelDiscovery
+    invariants:
+      - Only model IDs are discovered; configuration completeness uses the existing resolver.
+      - Selection is dialog-local; additions use the existing Provider settings save path.
   - id: capability.conversation-metrics
     kind: capability
     label: Native conversation metrics
@@ -4655,6 +4670,18 @@ nodes:
         file: packages/ui/src/project-sidebar/task-filters.ts
 
 edges:
+  - from: capability.provider-model-discovery
+    to: surface.provider-settings
+    type: adds-model-selection-dialog-to
+    rank: must-inspect
+  - from: capability.provider-model-discovery
+    to: service.provider-settings
+    type: reads-saved-connection-and-reuses-model-save
+    rank: must-inspect
+  - from: capability.provider-model-discovery
+    to: persistence.model-provider-config
+    type: commits-selected-models-through-existing-owner
+    rank: must-inspect
   - from: capability.conversation-metrics
     to: surface.conversation-metrics-settings
     type: renders-in

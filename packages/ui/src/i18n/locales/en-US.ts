@@ -4064,6 +4064,37 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.modelConfigIncomplete": "Model configuration is incomplete",
   "settings.modelProvider.models": "Model list",
   "settings.modelProvider.modelsEmpty": "No models are configured. Add a model to use it in chat.",
+  "settings.modelProvider.discovery.title": "Fetch models",
+  "settings.modelProvider.discovery.loading": "Loading models…",
+  "settings.modelProvider.discovery.retry": "Retry",
+  "settings.modelProvider.discovery.empty":
+    "No models returned. Use Add model to configure one manually.",
+  "settings.modelProvider.discovery.added": "Added",
+  "settings.modelProvider.discovery.incomplete": "Configuration required",
+  "settings.modelProvider.discovery.ready": "Recommended configuration available",
+  "settings.modelProvider.discovery.saveFailed": "Could not save. Retry adding this model.",
+  "settings.modelProvider.discovery.configure": "Configure",
+  "settings.modelProvider.discovery.truncated":
+    "The list reached its limit. Add other models manually.",
+  "settings.modelProvider.discovery.cancel": "Cancel",
+  "settings.modelProvider.discovery.saving": "Adding…",
+  "settings.modelProvider.discovery.addSelected": "Add selected ({count})",
+  "settings.modelProvider.discovery.error.invalid-connection":
+    "Save a valid endpoint and connection first.",
+  "settings.modelProvider.discovery.error.authentication":
+    "Authentication failed. Check the provider API key.",
+  "settings.modelProvider.discovery.error.unsupported":
+    "This endpoint does not provide a model list. Add models manually.",
+  "settings.modelProvider.discovery.error.rate-limited": "Too many requests. Try again later.",
+  "settings.modelProvider.discovery.error.http-error":
+    "The provider returned an error. Try again later.",
+  "settings.modelProvider.discovery.error.request-failed":
+    "Could not fetch models. Check the connection and retry.",
+  "settings.modelProvider.discovery.error.timeout": "Fetching models timed out. Try again.",
+  "settings.modelProvider.discovery.error.invalid-response":
+    "The model list format is unsupported. Add models manually.",
+  "settings.modelProvider.discovery.error.response-too-large":
+    "The model list is too large. Add the models you need manually.",
   "settings.modelProvider.addModel": "Add model",
   "settings.modelProvider.modelId": "Model ID",
   "settings.modelProvider.modelDisplayName": "Display name",
