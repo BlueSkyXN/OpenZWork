@@ -171,33 +171,10 @@ export class ContextBuilder {
         }
       }
 
-      sections.push(
-        buildEnvInfoSection(
-          this.config.envInfo,
-          this.config.model,
-          this.config.additionalDirectories,
-        ),
-      );
-
-      // Output Style
-      const outputStyleSection =
-        buildOutputStyleSection(activeOutputStyle) ??
-        (promptSettings?.mode === "sections" &&
-        ["append", "replace"].includes(promptSettings.sections.output_style?.mode ?? "")
-          ? createSection({
-              name: "Output Style",
-              source: "output_style",
-              injectionTarget: "system",
-              cacheHint: "dynamic",
-              content: "",
-            })
-          : null);
-      if (outputStyleSection) {
-        sections.push(outputStyleSection);
-      }
-
-
-      // Context Management
+      // OpenZWork 净化：上游将 environmentSections 拆分为 buildEnvInfoSection /
+      // buildOutputStyleSection（含 output_style section source）以支持 prompt settings
+      // 分段注入；我方未合入 prompt-settings 分段体系，沿用整段 environmentSections 注入。
+      sections.push(...environmentSections);
       sections.push(buildContextManagementSection(promptSettings));
 
       const gitSystemContextSection = buildGitSystemContextSection(this.config.envInfo);

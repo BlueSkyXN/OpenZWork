@@ -7,6 +7,7 @@ settings:
 overrides:
   react: 19.2.7
   react-dom: 19.2.7
+  '@electron/rebuild>node-abi': 4.40.0
 
 patchedDependencies:
   '@ai-sdk/anthropic@3.0.81': d3a7c381eba7f5157f765a0528003af17cf84544911dfb7412c7800168e01c18
@@ -10102,8 +10103,8 @@ packages:
     resolution: {integrity: sha512-NHDDGYudnvRutt/VhKFlX26IotXe1w0cmkDm6JGquh5bz/bDTw0LufSmH/GxTjEdpHEO+bVKFTwdrcGa/9XlKQ==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
-  node-abi@4.28.0:
-    resolution: {integrity: sha512-Qfp5XZL1cJDOabOT8H5gnqMTmM4NjvYzHp4I/Kt/Sl76OVkOBBHRFlPspGV0hYvMoqQsypFjT/Yp7Km0beXW9g==}
+  node-abi@4.40.0:
+    resolution: {integrity: sha512-GuvqvtrOk+AC27RidBxBsMzVNkwNl7PjHgc4NXbmdvSVLgIUjpaqcG1FjNRYnt2Yn9Ytq+Ln37XsBaglUcte/w==}
     engines: {node: '>=22.12.0'}
 
   node-addon-api@7.1.1:
@@ -13506,7 +13507,7 @@ snapshots:
       detect-libc: 2.1.2
       got: 11.8.6
       graceful-fs: 4.2.11
-      node-abi: 4.28.0
+      node-abi: 4.40.0
       node-api-version: 0.2.1
       node-gyp: 11.5.0(supports-color@8.1.1)
       ora: 5.4.1
@@ -13521,7 +13522,7 @@ snapshots:
     dependencies:
       '@malept/cross-spawn-promise': 2.0.0
       debug: 4.4.3(supports-color@8.1.1)
-      node-abi: 4.28.0
+      node-abi: 4.40.0
       node-api-version: 0.2.1
       node-gyp: 12.4.0
       read-binary-file-arch: 1.0.6(supports-color@8.1.1)
@@ -22050,7 +22051,7 @@ snapshots:
     dependencies:
       type-fest: 2.19.0
 
-  node-abi@4.28.0:
+  node-abi@4.40.0:
     dependencies:
       semver: 7.7.4
 

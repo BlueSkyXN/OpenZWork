@@ -299,8 +299,9 @@ export async function runZCodeProtocolAgent(
     });
     throw error;
   } finally {
+    // OpenZWork 净化：上游在 shutdown 时先关闭 officialCommandEndpoint（官方命令网关
+    // zcode.z.ai 的 SSE 端点）；该域已净化，端点未创建，直接进入通用清理。
     options.lifecycle?.requestShutdown();
-    });
     await cleanupProtocolRuntime({
       logger,
       deadlineAt: options.lifecycle?.deadlineAt,

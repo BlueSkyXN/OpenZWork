@@ -1,6 +1,6 @@
 
 import { resolveSystemPromptSection, type SystemPromptSettings } from "@zcode/shared";
-import type { ContextBuilderConfig, ContextSection } from "./types.js";
+import type { ContextSection } from "./types.js";
 import { estimateTokens } from "./utils.js";
 
 const COMMUNICATION_PROMPTS = {
@@ -107,17 +107,8 @@ export function buildDynamicBehaviorSection(settings?: SystemPromptSettings): Co
   ].join("\n"));
 }
 
-export function buildOutputStyleSection(
-  style: ContextBuilderConfig["outputStyle"],
-): ContextSection | null {
-  if (!style || style.prompt.trim().length === 0) return null;
-  return createDynamicSection(
-    "Output Style",
-    "output_style",
-    [`# Output Style: ${style.name}`, style.prompt.trim()].join("\n"),
-
-  );
-}
+// OpenZWork 净化：output_style section source 属于上游 prompt-settings 分段注入体系，
+// 我方未合入该体系（见 context/builder.ts 同款注释），此构建器一并移除。
 
 export function buildContextManagementSection(settings?: SystemPromptSettings): ContextSection {
   return createDynamicSection(

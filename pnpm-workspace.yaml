@@ -44,6 +44,8 @@ allowBuilds:
 overrides:
   react: 19.2.7
   react-dom: 19.2.7
+  # Electron 44.7.0 的 ABI 映射需要新版 node-abi（desktop postinstall electron-rebuild 检测用）。
+  "@electron/rebuild>node-abi": "4.40.0"
 patchedDependencies:
   "@radix-ui/react-collapsible@1.1.12": patches/@radix-ui__react-collapsible@1.1.12.patch
   vitest@4.1.7: patches/vitest@4.1.7.patch

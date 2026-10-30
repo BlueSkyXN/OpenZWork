@@ -19,6 +19,10 @@ export interface OfficialPluginListingSeed {
 }
 
 const OFFICIAL_BROWSER_USE_PLUGIN_NAME = "browser-use";
+
+// 合成修复：上游侧本有此常量（line 62），合并时其定义段被裁掉但下方 listing 引用保留；
+// 内置插件 listing 属我方保留域（plugins/skills），恢复常量而非删条目。
+const ZAI_AUTHOR = { name: "Z.ai", url: "https://z.ai" } as const;
 export const OFFICIAL_BROWSER_USE_PLUGIN_ID = `${OFFICIAL_BROWSER_USE_PLUGIN_NAME}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`;
 /**
  * node_repl 宿主。它不是面向用户的插件：没有 skill、没有 listing、不进市场，唯一职责是

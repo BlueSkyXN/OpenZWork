@@ -9,14 +9,16 @@ import {
 
 
 import type { ToolEntry, ToolResultSerialization } from "../types.js";
-import { formatGenericPersistedOutputContent } from "../result-persistence-format.js";
+import {
+  formatGenericPersistedOutputContent,
+  isPersistedOutputContent,
+} from "../result-persistence-format.js";
 import {
 
   appendHookToPersistedArtifactPreview,
   appendHookToStringContent,
   fitContentWithSuffix,
   isEmptyModelContent,
-  isPersistedArtifactPreview,
   projectHookAugmentedModelContent,
 
   projectToolReferenceContent,
@@ -182,8 +184,7 @@ export function appendHookAdditionalContexts(
   entry: ToolEntry,
 ): ToolResultSerialization {
   if (additionalContexts.length === 0) return serialization;
-  const hookContext = formatHookAdditionalContexts(additionalContexts);
-  const suffix = `\n\n${hookContext}`;
+  const hookContext = formatHookAdditionalContexts(additionalContexts);  const suffix = `\n\n${hookContext}`;
   const maxModelBytes = resolveMaxModelBytes(entry);
   const previewDirection = entry.resultBudget?.preview?.direction ?? "head";
   const modelContent = serialization.modelContent ?? serialization.content;
@@ -290,4 +291,29 @@ function findArtifactPath(output: unknown): string | undefined {
     }
   }
   return undefined;
+}
+
+// OpenZWork 净化：以下三个辅助（Hook 附加上下文格式化、resultBudget 解析、artifact 预览
+// 判定）原散落在 CUA 帧保护逻辑之间；官方 CUA 分支已删，中性辅助保留在此。
+
+function formatHookAdditionalContexts(additionalContexts: string[]): string {
+  return [
+    "[Hook additional context]",
+    ...additionalContexts.map((context, index) => `#${index + 1}\n${context}`),
+  ].join("\n");
+}
+
+function resolveMaxModelBytes(entry: ToolEntry): number {
+  const budget = entry.resultBudget ?? DEFAULT_RESULT_BUDGET;
+  return Math.max(0, Math.min(budget.maxModelBytes, budget.maxInlineBytes));
+}
+
+function isPersistedArtifactPreview(serialization: ToolResultSerialization): boolean {
+  return (
+    serialization.budgetStrategy === "artifact" &&
+    serialization.truncated &&
+    typeof serialization.artifactPath === "string" &&
+    serialization.artifactPath.length > 0 &&
+    isPersistedOutputContent(serialization.content)
+  );
 }

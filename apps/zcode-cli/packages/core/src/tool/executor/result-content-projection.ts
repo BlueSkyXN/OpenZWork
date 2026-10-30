@@ -5,6 +5,11 @@ import {
 } from "@zcode/contracts";
 import type { ToolEntry, ToolResultSerialization } from "../types.js";
 
+interface HookStringProjection {
+  content: string;
+  truncated: boolean;
+}
+
 const TOOL_REFERENCE_TEXT_TRUNCATION_MARKER = "[Tool result text truncated by resultBudget]";
 
 export function projectToolReferenceContent(
@@ -135,6 +140,42 @@ function joinTextBlocks(content: ModelMessageContentBlock[]): string {
         block.type === "text",
     )
     .map((block) => block.text)
+    .filter((text) => text.length > 0)
+    .join("\n\n");
+}
+
+// OpenZWork 净化：以下 Hook 投影辅助（appendHookContextToModelContent 等）原与官方 CUA
+// 帧 contract 共存于本文件；@zcode/zcode-cua 已净化删除，这些中性辅助保留。
+
+function appendHookContextToModelContent(
+  content: ModelMessageContent,
+  hookContext: string,
+): ModelMessageContent {
+  if (typeof content === "string") return `${content}\n\n${hookContext}`;
+  return [...content, { type: "text", text: hookContext }];
+}
+
+function hasPreservedStructuredBlocks(
+  content: ModelMessageContent,
+): content is ModelMessageContentBlock[] {
+  return Array.isArray(content) && content.some(shouldPreserveStructuredBlock);
+}
+
+function shouldPreserveStructuredBlock(block: ModelMessageContentBlock): boolean {
+  if (block.type === "text") return false;
+  if (block.type === "file" && typeof block.text === "string" && block.text.length > 0) {
+    return false;
+  }
+  return true;
+}
+
+function budgetedTextFromStructuredContent(content: ModelMessageContentBlock[]): string {
+  return content
+    .map((block) => {
+      if (block.type === "text") return block.text;
+      if (block.type === "file" && typeof block.text === "string") return block.text;
+      return "";
+    })
     .filter((text) => text.length > 0)
     .join("\n\n");
 }

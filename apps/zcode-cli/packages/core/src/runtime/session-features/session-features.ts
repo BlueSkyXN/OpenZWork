@@ -11,7 +11,6 @@
 import {
   CREATE_WORKFLOW_TOOL_NAME,
   ModelRequestSessionFeature,
-  PermissionCapabilityGroup,
   SESSION_ENTRY_SESSION_FEATURES,
   ZCODE_MCP_NODE_REPL_BROWSER_USE_META_KEY,
   ZCODE_MCP_NODE_REPL_COMPUTER_USE_META_KEY,
@@ -23,7 +22,6 @@ import {
   type ToolSearchExecutionContext,
 } from "@zcode/contracts";
 import { traceContextToLogContext, type ToolExecutionResult, type TraceContext } from "../deps.js";
-import type { ToolEntry } from "../../tool/types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
 import { WORKFLOW_COMMAND_TEXT_PATTERN } from "../methods/dynamic-workflow-activation.js";
 
@@ -68,8 +66,7 @@ export function recordSessionFeaturesFromToolResults(
   traceContext?: TraceContext,
 ): void {
   for (const result of results) {
-    const tool = this.registry.get(result.toolName);
-    for (const feature of sessionFeaturesFromToolResult(result, tool ?? {})) {
+    for (const feature of sessionFeaturesFromToolResult(result)) {
       recordSessionFeature.call(this, { feature, traceContext });
     }
   }
@@ -143,12 +140,10 @@ export function writeSessionFeaturesEntryAfterFirstPersist(
 }
 
 /**
- * 一次结算结果对应的标签。tool 是结果所属工具在 registry 里的 entry（只读认证组）；
- * 工具已不在 registry 时传空对象。
+ * 一次结算结果对应的标签。
  */
 export function sessionFeaturesFromToolResult(
   result: Pick<ToolExecutionResult, "output" | "success" | "toolName">,
-  tool: Pick<ToolEntry, "permissionCapabilityGroup"> = {},
 ): ModelRequestSessionFeature[] {
   // 只认真正启动了后台 run 的调用：编译失败（ok:false）和宿主没有 run 端口时也返回 success，
   // 但输出里没有 backgrounded。
@@ -179,12 +174,10 @@ export function sessionFeaturesFromToolResult(
         : []),
     ];
   }
-  // 旧版 computer-use MCP 工具只认官方 CUA 认证：认证组只在不可伪造的官方 authority 门成立时写入
-  // （core/src/mcp/index.ts）。修复原因（MR !3207 评审 SG-02）：最初按工具名前缀判断，而官方 CUA 自
-  // 2026-09-18 起改走 node_repl、插件不再声明 MCP server，带这个前缀的工具多半来自第三方同名 server。
-  if (tool.permissionCapabilityGroup === PermissionCapabilityGroup.OfficialCua) {
-    return [ModelRequestSessionFeature.ComputerUse];
-  }
+  // OpenZWork 净化：上游按 ToolEntry.permissionCapabilityGroup（contracts 的
+  // PermissionCapabilityGroup.OfficialCua，官方 CUA 认证组）给旧版 computer-use MCP 工具
+  // 打 ComputerUse 标签；官方 CUA 属净化域（见 core/src/mcp/index.ts 同款裁决），
+  // 该字段与认证组未合入，此处一并移除。
   return [];
 }
 

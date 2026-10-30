@@ -6,7 +6,18 @@
 // 主线程，只由真正收到调用请求的 broker 写入，Worker 发来的任何消息都改不了它。
 
 import { randomBytes } from "node:crypto";
-import type { NodeReplCuaAppIdentity, NodeReplImage, NodeReplRequestMeta } from "@zcode/core/repl";
+import type { NodeReplImage, NodeReplRequestMeta } from "@zcode/core/repl";
+
+/**
+ * 官方 CUA broker 记入账本的目标应用身份。上游该接口由 @zcode/core/repl 导出、
+ * 由 cua-broker 写入；OpenZWork 净化：官方 CUA/computer-use 域已删（WP-06 D-14 路线甲），
+ * 本地保留最小中性形状（appKey 标识），账本不再有写入方，仅为既有 facts 结构与
+ * contract 示例保留读取面。
+ */
+export interface NodeReplCuaAppIdentity {
+  appKey: string;
+  displayName?: string;
+}
 
 /** 一次 js 调用里由 broker 记下的可信事实。 */
 export interface NodeReplCallFacts {

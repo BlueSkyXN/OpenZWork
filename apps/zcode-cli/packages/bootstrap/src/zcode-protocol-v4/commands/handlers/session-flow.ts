@@ -42,7 +42,9 @@ async function sendText(
   envelope: CommandEnvelope,
 ): Promise<CommandResult | undefined> {
   const originalPayload = envelope.payload as CommandPayloadMap["sendText"];
-  const rawPayload = {
+  // OpenZWork 净化：上游在此用 automationId 优先裁决并剥除 highspeedMeta/加速执行材料
+  // （Highspeed 加速卡域）；该域已净化，净荷不再变形，canonical intent 与 admission 共用同一份。
+  const payload: CommandPayloadMap["sendText"] = {
     ...originalPayload,
     ...normalizeGenUiInput(originalPayload.text, originalPayload.genUiContext),
   };
@@ -52,9 +54,6 @@ async function sendText(
   if (!hasPromptInput(payload.text, payload.attachments) && !payload.conversationQuotes?.length) {
     throw new V4InputAdmissionRejectedError("proto.invalidPayload", "input must not be empty");
   }
-  // OpenZWork 净化：上游在此用 automationId 优先裁决并剥除 highspeedMeta/加速执行材料
-  // （Highspeed 加速卡域）；该域已净化，净荷不再变形，canonical intent 与 admission 共用同一份。
-  const payload: CommandPayloadMap["sendText"] = rawPayload;
   // canonical intent 必须和 admission 看同一份净荷，否则 transcript 会留下不一致的执行标记。
   const intentEnvelope = { ...envelope, payload } as CommandEnvelope;
   const attachments = await mapAttachmentRefsToTurnAttachments(record.app, payload.attachments);
