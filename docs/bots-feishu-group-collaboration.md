@@ -283,8 +283,6 @@ Summary corrections are ordinary task input. Only failed or unknown deliveries e
 recovery controls in reply actions; do not restore BotGroupTaskNotice or composer result panels. Desktop continuous
 and mobile replayable boundaries, owner/lease and workspace identity remain unchanged.
 
-
-
 Service-level card acceptance explicitly verifies sibling-topic attacks: a queue card
 from topic A used in B, another chat, with another task or an old authorization version
 must return a toast-only rejection before calling CLI cancellation. An unrelated member

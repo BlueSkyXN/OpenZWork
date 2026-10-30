@@ -7,8 +7,6 @@
 
 本轮固定范围的恢复、适配和审计已完成。下方按时间保留的“待实施/失败/阻塞”是历史记录，以本节及功能表的最终状态为准；没有未裁决的恢复阻塞项，也没有合入后续 staging。
 
-
-
 ### 2026-09-07 Todo88 二次复审纠正
 
 `626f939c29` 的 Markdown 引用 helper / 面板虽仍在，`0ed79bae571` 人工合并却漏接 SessionPane 的 reference 参数和阻塞状态。此前仅凭文件相同不足以证明完整行为。现已补回，保留当前 Submission/Side Chat 架构；真实组件测试先红后 8/8，Pro 正式 MPS01/02/06/08/09 验证引用、主草稿和实际发送路径通过（`desktop-e2e-20260907-162820-560`）。下文 R11 与“未发现新缺口”是当时审查记录，不再作为当前完整性结论。详见 [Todo88 复审 AS01](../research/todo88-completion-and-commit-audit.md)。
@@ -48,21 +46,21 @@
 
 ## 功能裁决与实施
 
-| 编号 | 原意／来源                                                                                                           | 当前结果及裁决                                                                                                                                    | 实施／证据／下一步                                                                                                                                                                                                                                                                                                                                                                       |
-| ---- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R01  | Hook 阻断原因与详情：52287597d0、8bf8aa2715；7016 撤销                                                               | 无 Provider 冲突，直接保留                                                                                                                        | 已恢复 Core 生命周期、Bootstrap 投影、协议和 UI；19 条定向测试通过；Air 181201-837 整组 6/6 通过，包含阻断、失败详情、Stop 上限和 compact 首轮隔离                                                                                                                                                                                                                                       |
-| R02  | 主会话和侧栏短消息自适应宽度：7016 撤销                                                                              | 无产品冲突，直接保留                                                                                                                              | 已提交 6f0eaeaf66；Air 023154 附件布局完整通过，包含 gallery 与失败图片占位。本轮随领取组重新构建复测，旧“待 Air 解锁”已解除                                                                                                                                                                                                                                                             |
-| R03  | MCP 探测不阻塞插件卸载；空闲回收和进程归因：b9118cc192、原始 17abce059e；cb16 撤销                       | UI 后补并未恢复服务进程隔离。当前 mcp/list 与 plugins/uninstall 共用串行连接，是真实遗漏；直接保留                                                | 从原提交只恢复 MCP 专用 manager、请求归零事件、5 分钟空闲回收、lane 协议/监控字段及释放；不导回混合提交中的旧 Provider 实现。4 条子进程测试先红后绿，完整 service 45/45；已独立提交 996787bc11                                                                                                                                                                                           |
+| 编号 | 原意／来源                                                                                            | 当前结果及裁决                                                                                                                                    | 实施／证据／下一步                                                                                                                                                                                                                                                                                                                                                                       |
+| ---- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R01  | Hook 阻断原因与详情：52287597d0、8bf8aa2715；7016 撤销                                                | 无 Provider 冲突，直接保留                                                                                                                        | 已恢复 Core 生命周期、Bootstrap 投影、协议和 UI；19 条定向测试通过；Air 181201-837 整组 6/6 通过，包含阻断、失败详情、Stop 上限和 compact 首轮隔离                                                                                                                                                                                                                                       |
+| R02  | 主会话和侧栏短消息自适应宽度：7016 撤销                                                               | 无产品冲突，直接保留                                                                                                                              | 已提交 6f0eaeaf66；Air 023154 附件布局完整通过，包含 gallery 与失败图片占位。本轮随领取组重新构建复测，旧“待 Air 解锁”已解除                                                                                                                                                                                                                                                             |
+| R03  | MCP 探测不阻塞插件卸载；空闲回收和进程归因：b9118cc192、原始 17abce059e；cb16 撤销                    | UI 后补并未恢复服务进程隔离。当前 mcp/list 与 plugins/uninstall 共用串行连接，是真实遗漏；直接保留                                                | 从原提交只恢复 MCP 专用 manager、请求归零事件、5 分钟空闲回收、lane 协议/监控字段及释放；不导回混合提交中的旧 Provider 实现。4 条子进程测试先红后绿，完整 service 45/45；已独立提交 996787bc11                                                                                                                                                                                           |
 | R04  | Helper 恢复不能重启普通 Agent：44da9e013d 和 producer 95ca9ede；7016 撤销 pin/测试，Host 人工移植漏接 | 与 Provider 无冲突，已恢复 Helper/Agent 生命周期隔离                                                                                              | 已提交 b09a43f2b9；原子 bump 到固定 producer，Host 配套恢复。Linux/Air 各 35/35；Air 原生模块及 Desktop/CLI 构建通过。旧网络阻碍已解除，不再保留为当前阻塞                                                                                                                                                                                                                               |
-| R05  | 普通 E2E 不注入触发真实 401 的假 JWT；专项保留 JWT：7016 撤销                                                        | 保留；兼容当前 Personal-only 无账号 fixture                                                                                                       | 已恢复普通 OAuth 展示态的 JWT 过滤，保留当前无账号用例；恢复专项测试；与 R02/R06 合跑 51 条通过                                                                                                                                                                                                                                                                                          |
-| R06  | 领取 mock 支持失败、下轮活动和服务端时间：7016 撤销                                                                  | 直接保留，避免成功/失败状态泄漏                                                                                                                   | 已恢复并提交 5e5495f162；与 R02/R05 合跑 51 条通过；Air 023950 领取 4/4，本轮扩展连续领取再验证                                                                                                                                                                                                                                                                                          |
-| R07  | 领取卡轮询、结果动作、复制分享、server_time：固定 staging 的 Banner/Dialog/helper                                    | 固定 SHA 中“立即体验”代码存在但默认 false，默认“模型设置”；当前额外启用它不应保留。staging 分享为直接复制文字，当前恢复成旧图片菜单也属于反向回退 | 已恢复默认模型设置入口、直接复制、预览请求代次/过期回包隔离、失败后下一活动窗口、登录刷新与秒/毫秒边界。修复 Sidebar 丢失 section intent 和连续领取迟到回包竞态。提交 `524f1ba2e5`；Air 领取 4/4，相邻单测 568/568；`e99d1ee193` 进一步收紧弹窗点击范围，最终 Air 领取仍 4/4                                                                                                             |
-| R08  | Account/Start 独立权益、设置入口和非法导航：Todo83 与旧 family 文档                                                  | **不能按 Todo83 标题“已实施”认定完成**；其末尾只完成领取门禁，收缩了原方案。接续原裁决，不恢复旧 Provider Store                                   | `524f1ba2e5`：Account State/Overlay 同 revision；独立 Start/个人查询、具体 Team 身份；pending 可查看无执行资格，current 仅约束账号 Registry；空模型白名单及同身份快照隔离。`e99d1ee193`：未知导航显错并消费，保持页面可操作、不写连接偏好。Air 最终领取/导航 4/4；相邻 UI 208/208、typecheck/lint/E2E typecheck 通过                                                                     |
-| R09  | SessionPane 发送时模型/mode/附件一致，切换最新值、草稿持久化：0ed79bae57                                             | 旧 config CAS 的发送目的已由原子 Submission 取代，不能整段导回旧 scheduler；查到 `/goal` 独立遗漏                                                 | sendText、预热、firstInput、附件和队列保留冻结的 Submission；但 slash goal 在等待后重读 Composer。新增用例先失败（low 被 high 覆盖），再把同一 Submission 传入 slash 分发；continuity 8/8 通过。Side Conversation/分叉及 D01/D02 另列核实，不扩大自动选模                                                                                                                                |
-| D01  | 发送前强制远端 Registry 同步及 notInRegistry 重试：f0edfd69cf、0ed79 删除                                            | **已裁决：不恢复**                                                                                                                                | 保留连接/保存触发的现有同步；发送不等待最新配置，不新增 Renderer 同步或 notInRegistry 重试                                                                                                                                                                                                                                                                                               |
-| D02  | 账号切换后自动改已有会话模型：6ce53c6ec4、0ed79 删除                                                                 | **已完成：Todo 87 统一有效选择解析**                                                                                                              | 普通账号按当前连接匹配同模型/同档位；有效结果临时派生，原意图不随读取改写。公共层/Composer/Automation/Bot/Wiki 已分别提交及验证；闲时仅保护原意图。不恢复旧批量切模或 Account-first，显式 Subagent 按本轮裁决排除；证据见最终审阅入口                                                                                                                                                    |
-| R10  | Output token 相关请求与测试                                                                                          | 当前是等价架构替换，不恢复旧字段二次改写                                                                                                          | 正式 Built-in Map 在 zcode-builtin.json:1802/1814 分别为 Anthropic max_tokens、OpenAI Chat max_completion_tokens。OTB fixture 是 OpenAI Chat，断言与其 Map 一致；adapter 的 model-output-tokens-wire 测试证明不会按 Snowflake 名称偷偷改写 body。本轮与 Session 测试合跑 50/50 通过；不展开 Todo80                                                                                       |
-| R11  | Markdown 选择/来源、浏览器隔离、插件 UI、配额标题等已移植功能                                                        | 固定范围的独立生产实现已保留；未发现应再整文件还原的差异                                                                                          | 检查 70a2e4d5dc、39f4f614ce、b30c53df5d、626f939c29、dad6ad8856、52684e5fa0、c4bd934a37、24f6e1e191、ec9b6d05bd、b12864b981 的最终文件。Markdown 引用/面板、browserGuestManager/弹窗隔离、opencode-session、空 reasoning blocks 与固定 staging 相同；插件 UI 与 2ee9 恢复后相同。StatusCards 配额字号保留，变化为新 access/Team 身份等适配。13 文件 234/234 通过；不以此冒充桌面行为验收 |
+| R05  | 普通 E2E 不注入触发真实 401 的假 JWT；专项保留 JWT：7016 撤销                                         | 保留；兼容当前 Personal-only 无账号 fixture                                                                                                       | 已恢复普通 OAuth 展示态的 JWT 过滤，保留当前无账号用例；恢复专项测试；与 R02/R06 合跑 51 条通过                                                                                                                                                                                                                                                                                          |
+| R06  | 领取 mock 支持失败、下轮活动和服务端时间：7016 撤销                                                   | 直接保留，避免成功/失败状态泄漏                                                                                                                   | 已恢复并提交 5e5495f162；与 R02/R05 合跑 51 条通过；Air 023950 领取 4/4，本轮扩展连续领取再验证                                                                                                                                                                                                                                                                                          |
+| R07  | 领取卡轮询、结果动作、复制分享、server_time：固定 staging 的 Banner/Dialog/helper                     | 固定 SHA 中“立即体验”代码存在但默认 false，默认“模型设置”；当前额外启用它不应保留。staging 分享为直接复制文字，当前恢复成旧图片菜单也属于反向回退 | 已恢复默认模型设置入口、直接复制、预览请求代次/过期回包隔离、失败后下一活动窗口、登录刷新与秒/毫秒边界。修复 Sidebar 丢失 section intent 和连续领取迟到回包竞态。提交 `524f1ba2e5`；Air 领取 4/4，相邻单测 568/568；`e99d1ee193` 进一步收紧弹窗点击范围，最终 Air 领取仍 4/4                                                                                                             |
+| R08  | Account/Start 独立权益、设置入口和非法导航：Todo83 与旧 family 文档                                   | **不能按 Todo83 标题“已实施”认定完成**；其末尾只完成领取门禁，收缩了原方案。接续原裁决，不恢复旧 Provider Store                                   | `524f1ba2e5`：Account State/Overlay 同 revision；独立 Start/个人查询、具体 Team 身份；pending 可查看无执行资格，current 仅约束账号 Registry；空模型白名单及同身份快照隔离。`e99d1ee193`：未知导航显错并消费，保持页面可操作、不写连接偏好。Air 最终领取/导航 4/4；相邻 UI 208/208、typecheck/lint/E2E typecheck 通过                                                                     |
+| R09  | SessionPane 发送时模型/mode/附件一致，切换最新值、草稿持久化：0ed79bae57                              | 旧 config CAS 的发送目的已由原子 Submission 取代，不能整段导回旧 scheduler；查到 `/goal` 独立遗漏                                                 | sendText、预热、firstInput、附件和队列保留冻结的 Submission；但 slash goal 在等待后重读 Composer。新增用例先失败（low 被 high 覆盖），再把同一 Submission 传入 slash 分发；continuity 8/8 通过。Side Conversation/分叉及 D01/D02 另列核实，不扩大自动选模                                                                                                                                |
+| D01  | 发送前强制远端 Registry 同步及 notInRegistry 重试：f0edfd69cf、0ed79 删除                             | **已裁决：不恢复**                                                                                                                                | 保留连接/保存触发的现有同步；发送不等待最新配置，不新增 Renderer 同步或 notInRegistry 重试                                                                                                                                                                                                                                                                                               |
+| D02  | 账号切换后自动改已有会话模型：6ce53c6ec4、0ed79 删除                                                  | **已完成：Todo 87 统一有效选择解析**                                                                                                              | 普通账号按当前连接匹配同模型/同档位；有效结果临时派生，原意图不随读取改写。公共层/Composer/Automation/Bot/Wiki 已分别提交及验证；闲时仅保护原意图。不恢复旧批量切模或 Account-first，显式 Subagent 按本轮裁决排除；证据见最终审阅入口                                                                                                                                                    |
+| R10  | Output token 相关请求与测试                                                                           | 当前是等价架构替换，不恢复旧字段二次改写                                                                                                          | 正式 Built-in Map 在 zcode-builtin.json:1802/1814 分别为 Anthropic max_tokens、OpenAI Chat max_completion_tokens。OTB fixture 是 OpenAI Chat，断言与其 Map 一致；adapter 的 model-output-tokens-wire 测试证明不会按 Snowflake 名称偷偷改写 body。本轮与 Session 测试合跑 50/50 通过；不展开 Todo80                                                                                       |
+| R11  | Markdown 选择/来源、浏览器隔离、插件 UI、配额标题等已移植功能                                         | 固定范围的独立生产实现已保留；未发现应再整文件还原的差异                                                                                          | 检查 70a2e4d5dc、39f4f614ce、b30c53df5d、626f939c29、dad6ad8856、52684e5fa0、c4bd934a37、24f6e1e191、ec9b6d05bd、b12864b981 的最终文件。Markdown 引用/面板、browserGuestManager/弹窗隔离、opencode-session、空 reasoning blocks 与固定 staging 相同；插件 UI 与 2ee9 恢复后相同。StatusCards 配额字号保留，变化为新 access/Team 身份等适配。13 文件 234/234 通过；不以此冒充桌面行为验收 |
 
 ## 每次验证与工程决策
 
@@ -144,14 +142,12 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 - Air 附件请求实际有 image/base64/png，只有原始图片文件名不在请求中（转换为 image-cache 路径）。两处回放改匹配图片载荷；界面文件名、编辑、主题、窄屏及 gallery 断言未删除。182129-016 已到最后失败图片场景，尚非整条通过。
 - Air 在北京时间 02:21:58 锁屏（IOConsoleLocked/CGSSessionScreenIsLocked 均 Yes）；182421-628 三个 worker 均未创建 WebDriver session。不能当三个产品失败，也不能因外层命令 exit 0 就当成功；没有完成报告。不尝试绕过锁屏或修改机器安全设置，停止反复启动。
 
-
 ## 本轮停留点与后续动作
 
 ### 2026-09-07 恢复执行
 
 - 02:31 UTC：Air 已解锁，Git 访问恢复，基线新鲜度检查通过；未合入后续 staging。继续使用原隔离测试目录，先核对三份 spec 和附件 fixture 的 SHA-256 与本机一致。
 - `desktop-e2e-20260907-023154-481`：附件布局整条通过（包括失败图片占位与 gallery 隔离），`/goal` 整条通过（包含首条请求 low 档位）；领取 3/4，综合 case 在轮询后找不到成功弹窗文案，继续抓取页面状态定位，不能标领取通过。
-
 
 ### 2026-09-07 最新结果及用户要求暂停
 
@@ -192,8 +188,6 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 
 建议如需要恢复，只增加现有同步协调器的目标 Environment 等待能力，不能从 Renderer 重新下发旧 RuntimeModel，也不能再按每个 Workspace 重复同步。当前 coordinator 没有公开等待某代成功的接口，且已连接后失败按降级处理；必须明确区分“等待结束”和“同步成功”。本轮没有擅自追加该行为。
 
-
-
 原提交 6ce53c6ec4。原意是用户从已过期 Start 切到个人套餐后，旧会话不再显示/请求过期 Start；旧实现监听 Family 状态，自动向该会话发切模命令。
 
 ```text
@@ -209,65 +203,65 @@ Team 没有具体组织/项目身份时不得任选团队猜权益，保持未�
 
 下列 65 个文件覆盖两个 revert 的并集。对应功能行负责原意、当前结果、恢复及验证；标待核实的组不能认为文件已收口。SessionPane 与 node.ts 的人工处理另见 R09/R12/R04。
 
-| 文件                                                                                                      | 所属功能    |
-| --------------------------------------------------------------------------------------------------------- | ----------- |
-| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts`                           | R01         |
-| `apps/zcode-cli/packages/bootstrap/tests/product-projection.test.ts`                                      | R01         |
-| `apps/zcode-cli/packages/contracts/src/hooks/index.ts`                                                    | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/configured-runner-callback.ts`                                    | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/index.ts`                                                         | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/runner.ts`                                                        | R01         |
-| `apps/zcode-cli/packages/core/src/hooks/types.ts`                                                         | R01         |
-| `apps/zcode-cli/packages/core/tests/hook-runner-dispatch-admission.test.ts`                               | R01         |
-| `apps/zcode-cli/packages/core/tests/hook-runner-lifecycle.test.ts`                                        | R01         |
-| `docs/chat/conversation-hook-turn-summary.md`                                                             | R01         |
-| `docs/chat/user-message-attachment-layout.md`                                                             | R02         |
-| `docs/model-provider-family-merge.md`                                                                     | R08         |
-| `docs/testing/start-plan-manual-claim-e2e-coverage.md`                                                    | R07         |
-| `docs/zai-start-plan-provider.md`                                                                         | R08         |
-| `packages/desktop/test/codingPlanUpgradeMockServer.test.ts`                                               | R06         |
-| `packages/desktop/test/e2e/conversation-session/conversation-session-hooks-lifecycle.test.ts`             | R01         |
-| `packages/desktop/test/e2e/conversation-session/conversation-session-v4-attachment-layout.test.ts`        | R02         |
-| `packages/desktop/test/e2e/helpers/coding-plan-upgrade-mock-server.ts`                                    | R06         |
-| `packages/desktop/test/e2e/helpers/hooks-lifecycle-fixture.ts`                                            | R01         |
-| `packages/desktop/test/e2eStartupCredentials.test.ts`                                                     | R05         |
-| `packages/services/src/coding-plan-subscription/codingPlanSubscription.ts`                                | R07         |
-| `packages/services/src/model-provider/zaiStartPlanBilling.ts`                                             | R07         |
-| `packages/services/test/bigmodelUsageQuotaProvider.test.ts`                                               | R07         |
-| `packages/services/test/codingPlanSubscriptionService.test.ts`                                            | R07         |
-| `packages/shared/src/coding-plan-subscription.ts`                                                         | R07         |
-| `packages/shared/src/test-ids.ts`                                                                         | R01/R06/R07 |
-| `packages/shared/src/usage-stats.ts`                                                                      | R07         |
-| `packages/shared/src/zcode-protocol-v4/rows.ts`                                                           | R01         |
-| `packages/ui/src/ChatErrorBanner.tsx`                                                                     | R01         |
-| `packages/ui/src/WorkspaceSidebar.tsx`                                                                    | R07         |
-| `packages/ui/src/components/manual-claim-plan/ManualClaimPlanResultActions.tsx`                           | R07         |
-| `packages/ui/src/components/manual-claim-plan/ManualClaimPlanResultDialog.tsx`                            | R07         |
-| `packages/ui/src/components/manual-claim-plan/manualClaimPlanResultDialogTypes.ts`                        | R07         |
-| `packages/ui/src/components/manual-claim-plan/manualClaimPlanResultPrimaryAction.ts`                      | R07         |
-| `packages/ui/src/i18n/locales/en-US.ts`                                                                   | R01/R06/R07 |
-| `packages/ui/src/i18n/locales/zh-CN.ts`                                                                   | R01/R06/R07 |
-| `packages/ui/src/v4/ConversationHookDetailsAction.tsx`                                                    | R01         |
-| `packages/ui/src/v4/ConversationRowView.tsx`                                                              | R02         |
-| `packages/ui/test/chatErrorBannerHook.test.ts`                                                            | R01         |
-| `packages/ui/test/manualClaimPlanBanner.test.ts`                                                          | R07         |
-| `packages/ui/test/v4ConversationComposerErrorBanner.test.ts`                                              | R01         |
-| `packages/ui/test/v4ConversationHookDetailsAction.test.ts`                                                | R01         |
-| `packages/ui/test/v4ConversationRowViewUserEdit.test.ts`                                                  | R02         |
-| `pnpm-lock.yaml`                                                                                          | R04         |
-| `pnpm-workspace.yaml`                                                                                     | R04         |
-| `docs/plugin-management-lifecycle-case-catalog.md`                                                        | R03         |
-| `docs/runtime-tools/mcp-status-list-control-plane.md`                                                     | R03         |
-| `docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md`                                         | R03         |
-| `packages/desktop/src/main/desktopStabilityTelemetry.ts`                                                  | R03         |
-| `packages/desktop/test/e2e/plugins/plugin-management-installed-menu-layout.test.ts` | R03         |
-| `packages/services/src/process/runtimeProcessLifecycle.ts`                                                | R03         |
-| `packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`                                           | R03         |
-| `packages/services/src/zcode-agent/zcodeAgentService.ts`                                                  | R03         |
-| `packages/services/src/zcode-agent/zcodeProtocolClient.ts`                                                | R03         |
-| `packages/services/test/zcodeAgentService.test.ts`                                                        | R03         |
-| `packages/shared/src/validation.ts`                                                                       | R03         |
-| `packages/ui/src/components/ui/dropdown-menu.tsx`                                                         | R03         |
-| `packages/ui/src/settings/PluginStoreCard.tsx`                                                            | R03         |
-| `packages/ui/test/dropdownMenuContentWidth.test.ts`                                                       | R03         |
-| `packages/ui/test/pluginStoreItemMenuSeparator.test.ts`                                                   | R03         |
+| 文件                                                                                               | 所属功能    |
+| -------------------------------------------------------------------------------------------------- | ----------- |
+| `apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts`                    | R01         |
+| `apps/zcode-cli/packages/bootstrap/tests/product-projection.test.ts`                               | R01         |
+| `apps/zcode-cli/packages/contracts/src/hooks/index.ts`                                             | R01         |
+| `apps/zcode-cli/packages/core/src/hooks/configured-runner-callback.ts`                             | R01         |
+| `apps/zcode-cli/packages/core/src/hooks/index.ts`                                                  | R01         |
+| `apps/zcode-cli/packages/core/src/hooks/runner.ts`                                                 | R01         |
+| `apps/zcode-cli/packages/core/src/hooks/types.ts`                                                  | R01         |
+| `apps/zcode-cli/packages/core/tests/hook-runner-dispatch-admission.test.ts`                        | R01         |
+| `apps/zcode-cli/packages/core/tests/hook-runner-lifecycle.test.ts`                                 | R01         |
+| `docs/chat/conversation-hook-turn-summary.md`                                                      | R01         |
+| `docs/chat/user-message-attachment-layout.md`                                                      | R02         |
+| `docs/model-provider-family-merge.md`                                                              | R08         |
+| `docs/testing/start-plan-manual-claim-e2e-coverage.md`                                             | R07         |
+| `docs/zai-start-plan-provider.md`                                                                  | R08         |
+| `packages/desktop/test/codingPlanUpgradeMockServer.test.ts`                                        | R06         |
+| `packages/desktop/test/e2e/conversation-session/conversation-session-hooks-lifecycle.test.ts`      | R01         |
+| `packages/desktop/test/e2e/conversation-session/conversation-session-v4-attachment-layout.test.ts` | R02         |
+| `packages/desktop/test/e2e/helpers/coding-plan-upgrade-mock-server.ts`                             | R06         |
+| `packages/desktop/test/e2e/helpers/hooks-lifecycle-fixture.ts`                                     | R01         |
+| `packages/desktop/test/e2eStartupCredentials.test.ts`                                              | R05         |
+| `packages/services/src/coding-plan-subscription/codingPlanSubscription.ts`                         | R07         |
+| `packages/services/src/model-provider/zaiStartPlanBilling.ts`                                      | R07         |
+| `packages/services/test/bigmodelUsageQuotaProvider.test.ts`                                        | R07         |
+| `packages/services/test/codingPlanSubscriptionService.test.ts`                                     | R07         |
+| `packages/shared/src/coding-plan-subscription.ts`                                                  | R07         |
+| `packages/shared/src/test-ids.ts`                                                                  | R01/R06/R07 |
+| `packages/shared/src/usage-stats.ts`                                                               | R07         |
+| `packages/shared/src/zcode-protocol-v4/rows.ts`                                                    | R01         |
+| `packages/ui/src/ChatErrorBanner.tsx`                                                              | R01         |
+| `packages/ui/src/WorkspaceSidebar.tsx`                                                             | R07         |
+| `packages/ui/src/components/manual-claim-plan/ManualClaimPlanResultActions.tsx`                    | R07         |
+| `packages/ui/src/components/manual-claim-plan/ManualClaimPlanResultDialog.tsx`                     | R07         |
+| `packages/ui/src/components/manual-claim-plan/manualClaimPlanResultDialogTypes.ts`                 | R07         |
+| `packages/ui/src/components/manual-claim-plan/manualClaimPlanResultPrimaryAction.ts`               | R07         |
+| `packages/ui/src/i18n/locales/en-US.ts`                                                            | R01/R06/R07 |
+| `packages/ui/src/i18n/locales/zh-CN.ts`                                                            | R01/R06/R07 |
+| `packages/ui/src/v4/ConversationHookDetailsAction.tsx`                                             | R01         |
+| `packages/ui/src/v4/ConversationRowView.tsx`                                                       | R02         |
+| `packages/ui/test/chatErrorBannerHook.test.ts`                                                     | R01         |
+| `packages/ui/test/manualClaimPlanBanner.test.ts`                                                   | R07         |
+| `packages/ui/test/v4ConversationComposerErrorBanner.test.ts`                                       | R01         |
+| `packages/ui/test/v4ConversationHookDetailsAction.test.ts`                                         | R01         |
+| `packages/ui/test/v4ConversationRowViewUserEdit.test.ts`                                           | R02         |
+| `pnpm-lock.yaml`                                                                                   | R04         |
+| `pnpm-workspace.yaml`                                                                              | R04         |
+| `docs/plugin-management-lifecycle-case-catalog.md`                                                 | R03         |
+| `docs/runtime-tools/mcp-status-list-control-plane.md`                                              | R03         |
+| `docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md`                                  | R03         |
+| `packages/desktop/src/main/desktopStabilityTelemetry.ts`                                           | R03         |
+| `packages/desktop/test/e2e/plugins/plugin-management-installed-menu-layout.test.ts`                | R03         |
+| `packages/services/src/process/runtimeProcessLifecycle.ts`                                         | R03         |
+| `packages/services/src/zcode-agent/zcodeAgentProcessManager.ts`                                    | R03         |
+| `packages/services/src/zcode-agent/zcodeAgentService.ts`                                           | R03         |
+| `packages/services/src/zcode-agent/zcodeProtocolClient.ts`                                         | R03         |
+| `packages/services/test/zcodeAgentService.test.ts`                                                 | R03         |
+| `packages/shared/src/validation.ts`                                                                | R03         |
+| `packages/ui/src/components/ui/dropdown-menu.tsx`                                                  | R03         |
+| `packages/ui/src/settings/PluginStoreCard.tsx`                                                     | R03         |
+| `packages/ui/test/dropdownMenuContentWidth.test.ts`                                                | R03         |
+| `packages/ui/test/pluginStoreItemMenuSeparator.test.ts`                                            | R03         |

@@ -295,8 +295,6 @@ memoryEnabled`，推荐区内容随之切换。约定：
 
 ## 7. 上传预留（待服务端接口确定后实现）
 
-
-
 - payload = 文件内 `uploadState === "pending"` 的 entries + deviceMid；`decisions` 不上传；
 - 上传成功后将对应 entry 置为 `uploaded`；
 - 触发时机待定（启动补报 / 登录后上报）。

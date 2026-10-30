@@ -392,7 +392,7 @@ import {
 import { ensureAppCaCert } from "./runtime-tools/appCaCert.js";
 // OpenZWork：deviceMid 生成函数（保留域：独立 Server 补 X-Device-Mid）。
 import { ensureDeviceMid } from "./device/deviceMid.js";
-import { createServiceLogger, type ServiceLogger } from "#src/logger/serviceLogger.js";
+import { createServiceLogger } from "#src/logger/serviceLogger.js";
 // OpenZWork 净化：上游侧 off-peak/Highspeed/official-mcp/CUA import 属删除面（目录未引入）。
 import {
   DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
@@ -476,6 +476,10 @@ export function registerHostApiNetworkTransportForDispose(
 export function createLocalServices(options: {
   /** 已鉴权 Desktop stdio 连接提供的私有回查频道；不作为公共 service 暴露。 */
   topicResourceRelayChannel?: (request: unknown) => IChannel;
+  /** data-sync 保留域：远端 Provider 配置下发快照源（zcodeAgentService 消费）。 */
+  accountProviderConfigSource?: import("@zcode/provider").ProviderSource<
+    import("@zcode/provider").AccountProviderConfigSnapshot
+  >;
   /** Host 装配层转发动态工作流用户选择；见 zcodeAgentService 的同名选项。 */
   forwardDynamicWorkflowUserMode?: (mode: DynamicWorkflowMode | undefined) => void;
   /** Desktop Host 请求 Main 登记已校验的插件 UI HTML，换取沙箱句柄。 */
@@ -744,7 +748,8 @@ export function createLocalServices(options: {
   const modelSelectionReadinessSource = providerRuntime.modelSelection;
   // OpenZWork 净化：上游 Computer Use Helper（CUA）生命周期段属删除面，整段不引入；
   // 仅保留 accountProviderConfigSource 别名（zcodeAgentService 的 data-sync 域选项仍消费）。
-  const agentAccountProviderConfigSource = accountProviderConfigSource;
+  // 上游形参名 accountProviderConfigSource 在本函数签名中被净化重命名；保留别名供 data-sync 域消费。
+  const agentAccountProviderConfigSource = options.accountProviderConfigSource;
   const resolveDynamicWorkflowUserMode = isDesktopAttachedRemote
     ? undefined
     : async () => (await settingService.get()).dynamicWorkflowMode;
@@ -847,10 +852,10 @@ export function createLocalServices(options: {
     // OpenZWork：readAppUsageReport（我方 usage 只读入口）与上游 useSharedTaskRuntime（共享
     // runtime 路由）都保留，二者互不冲突。
     readAppUsageReport: async (params) => {
-      const query = {...params, until: Date.now(), includeProjects: true};
+      const query = { ...params, until: Date.now(), includeProjects: true };
       const [snapshot, page] = await Promise.all([
         appUsageService.getAppUsageStats(query),
-        appUsageService.getAppUsageSessions({...query, offset: 0, limit: 50}),
+        appUsageService.getAppUsageSessions({ ...query, offset: 0, limit: 50 }),
       ]);
       return buildAppUsageToolReport(snapshot, page);
     },
@@ -943,7 +948,7 @@ export function createLocalServices(options: {
     },
     // 设置页的 HTTP 代理、No Proxy + 自定义 CA 按 spawn 时读取注入 agent 子进程 env，
     // 覆盖模型 API / MCP / Bash 出口流量并信任用户显式配置的证书；改动后下次启动 agent 生效。
-    resolveSpawnEnv: async (context) => {
+    resolveSpawnEnv: async (_context) => {
       const [settings] = await Promise.all([settingService.get(), providerRuntime.start()]);
       const agentNetwork =
         isDesktopAttachedRemote && options?.remoteAgentNetwork

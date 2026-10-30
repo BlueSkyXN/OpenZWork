@@ -15,7 +15,6 @@ I27、I28 不在本次范围内；即使共享修复使其结果变化，也不�
 
 ### Provider 启动与 replay 合同
 
-
 修复只更新 E2E 基础设施和 fixture，不改变 provider 产品逻辑。
 
 ### 权限 option 定位

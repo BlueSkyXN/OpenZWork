@@ -1,4 +1,10 @@
-import type { WebRemoteControlConnectionSettings } from "./web-remote-relay/contract.js";
+import type { WebRemoteControlConnectionSettings } from "./web-remote-relay/index.js";
+// OpenZWork 拆分：连接设置域移至 web-remote-relay/domain/connectionSettings，经 barrel 转出口。
+export type { WebRemoteControlConnectionSettings } from "./web-remote-relay/index.js";
+export {
+  webRemoteControlConnectionSettingsSchema,
+  DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+} from "./web-remote-relay/index.js";
 export * from "./web-remote-relay/contract.js";
 export {
   resolveWebRemoteControlBrowserRelayUrl,
@@ -19,7 +25,7 @@ import type {
   WebRemoteControlRelayPairStatusAck,
   WebRemoteControlRelayDataMessage,
   WebRemoteControlRelayError,
-} from "./web-remote-relay/contract.js";
+} from "./web-remote-relay/index.js";
 import type {
   DockerContainerInfo,
   SSHConfigAliasOption,

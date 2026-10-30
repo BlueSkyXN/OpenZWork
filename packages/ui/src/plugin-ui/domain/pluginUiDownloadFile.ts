@@ -53,13 +53,10 @@ export function sanitizePluginUiDownloadFileName(name: string): string {
   let cleaned = "";
   for (const character of name) {
     const codePoint = character.codePointAt(0);
-    cleaned += codePoint !== undefined && (codePoint <= 0x1f || character === "\\") ? "_" : character;
+    cleaned +=
+      codePoint !== undefined && (codePoint <= 0x1f || character === "\\") ? "_" : character;
   }
-  return cleaned
-    .replace(/\//g, "_")
-    .replace(/^\.+/, "")
-    .trim()
-    .slice(0, 120);
+  return cleaned.replace(/\//g, "_").replace(/^\.+/, "").trim().slice(0, 120);
 }
 
 export function resolvePluginUiDownloadFileName(

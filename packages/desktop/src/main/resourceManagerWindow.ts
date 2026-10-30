@@ -17,7 +17,10 @@ import {
 import { logger } from "./logger.js";
 import { normalizeElectronCpuToMachinePercent } from "./electronCpuNormalization.js";
 import { buildAuxiliaryRendererName } from "./resourceManagerProcessNames.js";
-import { forgetHostResourceUsage, requestHostResourceUsage } from "./resourceManagerHostSampling.js";
+import {
+  forgetHostResourceUsage,
+  requestHostResourceUsage,
+} from "./resourceManagerHostSampling.js";
 
 /** 各进程角色的 pid 快照：主窗口/guest renderer 与 host/scheduler utilityProcess 归类。 */
 interface ChromiumProcessRolePids {

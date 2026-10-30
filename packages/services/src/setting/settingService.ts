@@ -20,13 +20,12 @@ import {
   USER_INSTRUCTIONS_MAX_BYTES,
   USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
 } from "@zcode/shared";
-import { atomicWritePrivateTextFile } from "@zcode/shared/node";
 import type { ISettingService, WorkspaceSettingsProjection } from "./setting.js";
 import { normalizeSettingsPatch } from "#src/setting/normalizeSettingsPatch.js";
 import {
   copyDataDirectory,
-// OpenZWork：validateDataDirectoryMigration（我方数据目录迁移校验）与上游
-// getAgentUserInstructionsFilePath（个性化指令同源读写）都保留。
+  // OpenZWork：validateDataDirectoryMigration（我方数据目录迁移校验）与上游
+  // getAgentUserInstructionsFilePath（个性化指令同源读写）都保留。
   getAgentUserInstructionsFilePath,
   getDataBaseDir,
   validateDataBaseDirTarget,
@@ -222,8 +221,8 @@ export function createSettingServiceWithMigrations(): {
     reader: (settings: AppSettings) => Promise<WorkspaceSettingsProjection>,
   ) => void;
 } {
-// OpenZWork：采用上游实例创建时取值的结构（防旧异步投影写错目录）+ 我方 OpenZWork 数据根；
-// 个性化指令（AGENTS.md）走上游 FIFO 写队列机制，一并保留。
+  // OpenZWork：采用上游实例创建时取值的结构（防旧异步投影写错目录）+ 我方 OpenZWork 数据根；
+  // 个性化指令（AGENTS.md）走上游 FIFO 写队列机制，一并保留。
   const settingsFile = join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "v2", "setting.json");
   // 个性化指令文件与 settingsFile 同理：实例创建时取值，读取与写入始终同源。
   const userInstructionsFile = getAgentUserInstructionsFilePath();
@@ -468,13 +467,17 @@ export async function cancelPendingDataBaseDirMigration(): Promise<void> {
       try {
         frozenMarker = await readFile(markerPath, "utf8");
         const marker = JSON.parse(frozenMarker);
-        if (marker.id !== pending.id) throw new Error("The source data directory belongs to another relocation plan");
+        if (marker.id !== pending.id)
+          throw new Error("The source data directory belongs to another relocation plan");
         await rm(markerPath);
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
       try {
-        await writeSettingsAt(settingsFile, { ...settings, pendingDataBaseDirMigration: undefined });
+        await writeSettingsAt(settingsFile, {
+          ...settings,
+          pendingDataBaseDirMigration: undefined,
+        });
       } catch (error) {
         // 取消指针没提交时恢复封存，不能让后续重试采用已经过时的目标快照。
         if (frozenMarker !== undefined) await atomicWritePrivateTextFile(markerPath, frozenMarker);

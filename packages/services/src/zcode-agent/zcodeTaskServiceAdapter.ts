@@ -127,9 +127,7 @@ import type {
   ZCodeTaskTerminalOutcome,
 } from "../session/zcodeTaskService.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
-import {
-  AUTOMATION_MUTATION_TOOL_NAMES,
-} from "#src/zcode-agent/automationToolPolicy.js";
+import { AUTOMATION_MUTATION_TOOL_NAMES } from "#src/zcode-agent/automationToolPolicy.js";
 import type { ISettingService } from "#src/setting/setting.js";
 import type {
   SessionMessageDeliveryResult,
@@ -1278,7 +1276,8 @@ export function createZCodeTaskServiceAdapter(
         `ZCode Protocol session 缺失，已按 legacy task snapshot 恢复 taskId=${params.taskId}`,
         error,
       );
-      return { kind: "legacy", snapshot: legacySnapshot };    }
+      return { kind: "legacy", snapshot: legacySnapshot };
+    }
   }
 
   function snapshotToMeta(snapshot: ZCodeSessionStateSnapshot): ZCodeTaskMeta {
@@ -1370,15 +1369,8 @@ export function createZCodeTaskServiceAdapter(
   }
 
   async function updateIndexedPresentation(meta: ZCodeTaskMeta): Promise<ZCodeTaskMeta> {
-    const {
-      mode,
-      model,
-      thoughtLevel,
-      lastError,
-      target,
-      migrationSource,
-      cronAutomationId,
-    } = meta;
+    const { mode, model, thoughtLevel, lastError, target, migrationSource, cronAutomationId } =
+      meta;
     const presentation = Object.fromEntries(
       Object.entries({
         mode,
@@ -2438,7 +2430,10 @@ export function createZCodeTaskServiceAdapter(
       emitWorkspaceConfig(params, snapshot.settings);
       const snapshotMeta = await syncTaskIndexSnapshot(snapshot);
       const meta = params.automationId
-        ? await updateIndexedPresentation({ ...snapshotMeta, cronAutomationId: params.automationId })
+        ? await updateIndexedPresentation({
+            ...snapshotMeta,
+            cronAutomationId: params.automationId,
+          })
         : snapshotMeta;
       notifySyncerSession({
         taskId: meta.taskId,

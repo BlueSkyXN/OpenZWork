@@ -22,7 +22,6 @@ Main 创建窗口 + window-scoped Host
 
 Host 是启动状态和重试的唯一所有者；SQLite 账本是持久化完成事实。Main 只保存可丢弃的通知镜像、透传控制消息、记录遥测和调度进程。状态通过独立 IPC 控制面建立，不能依赖普通服务已发布。Renderer reload 读取当前快照，不重新启动迁移。服务端口早到时保留，ready 前不构建业务服务消费者。
 
-
 会话库由 Agent 的 `createConfig` / `getSessionDbPath` 解析，存储专用入口在 Provider Registry、登录、MCP、遥测及业务 runtime 之前返回。执行 cwd 是已有实际目录，不创建/绑定虚构 workspace。相对 `sessionDbPath` 按 Main 提供的本地启动恢复/预热目录（最多三个）逐一解析和准备；无目录时使用真实 fallback cwd。目录去重，短生命周期 Worker 串行，避免同时迁移多个大库。之后新增的不同物理库仍受正常 Agent 协议准入保护。私有准备协议先公布解析后的路径供 Host 采样；路径不进入 ARMS。正常 Agent 仍保留按实际物理库的协议准入，覆盖之后更换配置或新增库。
 
 Host 同步 SQLite 放在所属 Worker，Host 事件循环可持续采样和应答。Main scheduler 延后至本地准备成功，避免抢先迁移同库。Host 必需服务装配成功前不发布正常 RPC；预热、bot、Wiki 和 scheduler 不提前访问未准备库。

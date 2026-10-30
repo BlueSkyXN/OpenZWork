@@ -177,31 +177,31 @@ Engineering Infrastructure
 
 ## 能力群
 
-| 顶层区域  | 能力群                                                              | 维护边界                                                                                                |
-| --------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Renderer  | 对话与任务体验（Conversation & Task Experience）                    | Composer、Projection Store、Timeline、会话动作、任务导航、附件体验                                      |
-| Renderer  | 模型与账户体验（Model & Account Experience）                        | Provider Settings、Model Selector、套餐状态/购买、套餐用量界面                                          |
-| Renderer  | 扩展体验（Extension Experience）                                    | Plugin/Skill/MCP 等扩展设置、市场与导入入口                                                             |
-| Renderer  | 浏览器与开发工作台体验（Browser & Workbench Experience）            | Browser、File、Terminal、Git/Diff 产品界面                                                              |
-| Renderer  | 自动化体验（Automation Experience）                                 | 定时自动化、闲时任务与 Bot 配置/历史界面                                                                |
-| Renderer  | UI 平台（UI Platform）                                              | 设计系统、主题、国际化、响应式、Settings/Onboarding                                                     |
-| Renderer  | 数据洞察与反馈体验（Insights & Feedback Experience）                | App Usage 图表、Feedback 入口、Resource Manager（资源管理器）展示                                                     |
-| Host      | 扩展管理与同步（Extension Management & Sync）                       | Plugin 安装升级、资源贡献、跨本地/远程同步                                                              |
-| Host      | 工作区与交付（Workspace & Delivery）                                | workspace identity、Local/Remote Host、手机远控、continuous/replayable                                  |
-| Host      | 工作台服务（Workbench Services）                                    | File/Terminal/Git 服务                                                                                  |
-| Host      | 客户端平台（Client Platform）                                       | Electron 生命周期、客户端更新、Feedback ticket 与诊断包                                                 |
-| Host      | 数据与可观测性（Data & Observability）                              | App Usage bridge、产品埋点、Conversation telemetry、ARMS、性能可靠性、日志与进程监控                    |
-| ZCode CLI | 智能体核心（Agent Core）                                            | runtime 装配、turn 状态机、上下文、memory、compact、stream recovery、goal/target、故障收口              |
-| ZCode CLI | 对话运行时（Conversation Runtime）                                  | session lifecycle、input admission、CLI queue、event journal、ProductProjection、fork/rewind            |
-| ZCode CLI | 模型能力（Model Capabilities）                                      | provider runtime、目录能力、token 预算、多模态、推理与工具能力                                          |
-| ZCode CLI | 工具运行时与安全（Tool Runtime & Safety）                           | 内置工具、调度、权限、模式策略、工具产物                                                                |
-| ZCode CLI | 多智能体（Multi-Agent）                                             | Subagent profile、child runtime、交互协调与后台任务                                                     |
-| ZCode CLI | 扩展运行时（Extension Runtime）                                     | MCP、Skill、Hooks、Commands、Memory resources                                                           |
-| ZCode CLI | 浏览器运行时（Browser Runtime）                                     | Browser Use Plugin、Node REPL/Playwright、Headless backend                                              |
-| ZCode CLI | 用量可观测存储（Usage Observability）                               | model/turn/tool usage 事实、SQLite 30 天保留与 App Usage SQL 聚合                                       |
-| 基础设施  | 构建与发布工程（Build & Release Engineering）                       | GitLab pipeline、跨平台构建、打包签名、公证、制品、CDN、灰度/稳定发布                                   |
-| 基础设施  | 测试自动化平台（Test Automation Platform）                          | Desktop/CLI E2E harness、capture/replay、跨平台执行、故障注入、用例准入与晋级                           |
-| 基础设施  | 质量数据与工程治理（Quality Intelligence & Engineering Governance） | E2E 报告、覆盖率、质量趋势、静态门禁、工程性能与失败制品                                                |
+| 顶层区域  | 能力群                                                              | 维护边界                                                                                     |
+| --------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Renderer  | 对话与任务体验（Conversation & Task Experience）                    | Composer、Projection Store、Timeline、会话动作、任务导航、附件体验                           |
+| Renderer  | 模型与账户体验（Model & Account Experience）                        | Provider Settings、Model Selector、套餐状态/购买、套餐用量界面                               |
+| Renderer  | 扩展体验（Extension Experience）                                    | Plugin/Skill/MCP 等扩展设置、市场与导入入口                                                  |
+| Renderer  | 浏览器与开发工作台体验（Browser & Workbench Experience）            | Browser、File、Terminal、Git/Diff 产品界面                                                   |
+| Renderer  | 自动化体验（Automation Experience）                                 | 定时自动化、闲时任务与 Bot 配置/历史界面                                                     |
+| Renderer  | UI 平台（UI Platform）                                              | 设计系统、主题、国际化、响应式、Settings/Onboarding                                          |
+| Renderer  | 数据洞察与反馈体验（Insights & Feedback Experience）                | App Usage 图表、Feedback 入口、Resource Manager（资源管理器）展示                            |
+| Host      | 扩展管理与同步（Extension Management & Sync）                       | Plugin 安装升级、资源贡献、跨本地/远程同步                                                   |
+| Host      | 工作区与交付（Workspace & Delivery）                                | workspace identity、Local/Remote Host、手机远控、continuous/replayable                       |
+| Host      | 工作台服务（Workbench Services）                                    | File/Terminal/Git 服务                                                                       |
+| Host      | 客户端平台（Client Platform）                                       | Electron 生命周期、客户端更新、Feedback ticket 与诊断包                                      |
+| Host      | 数据与可观测性（Data & Observability）                              | App Usage bridge、产品埋点、Conversation telemetry、ARMS、性能可靠性、日志与进程监控         |
+| ZCode CLI | 智能体核心（Agent Core）                                            | runtime 装配、turn 状态机、上下文、memory、compact、stream recovery、goal/target、故障收口   |
+| ZCode CLI | 对话运行时（Conversation Runtime）                                  | session lifecycle、input admission、CLI queue、event journal、ProductProjection、fork/rewind |
+| ZCode CLI | 模型能力（Model Capabilities）                                      | provider runtime、目录能力、token 预算、多模态、推理与工具能力                               |
+| ZCode CLI | 工具运行时与安全（Tool Runtime & Safety）                           | 内置工具、调度、权限、模式策略、工具产物                                                     |
+| ZCode CLI | 多智能体（Multi-Agent）                                             | Subagent profile、child runtime、交互协调与后台任务                                          |
+| ZCode CLI | 扩展运行时（Extension Runtime）                                     | MCP、Skill、Hooks、Commands、Memory resources                                                |
+| ZCode CLI | 浏览器运行时（Browser Runtime）                                     | Browser Use Plugin、Node REPL/Playwright、Headless backend                                   |
+| ZCode CLI | 用量可观测存储（Usage Observability）                               | model/turn/tool usage 事实、SQLite 30 天保留与 App Usage SQL 聚合                            |
+| 基础设施  | 构建与发布工程（Build & Release Engineering）                       | GitLab pipeline、跨平台构建、打包签名、公证、制品、CDN、灰度/稳定发布                        |
+| 基础设施  | 测试自动化平台（Test Automation Platform）                          | Desktop/CLI E2E harness、capture/replay、跨平台执行、故障注入、用例准入与晋级                |
+| 基础设施  | 质量数据与工程治理（Quality Intelligence & Engineering Governance） | E2E 报告、覆盖率、质量趋势、静态门禁、工程性能与失败制品                                     |
 
 ## 套餐、App Usage 与可观测性边界
 
@@ -273,7 +273,6 @@ Conversation Runtime
 - `contextWindow - maxOutputTokens` 共同决定输入预算和 compact 阈值；模型输出上限也进入 provider adapter 请求。
 - 目录 schema 可以描述 text、image、video、audio、PDF 模态；当前 Agent 请求链已对 image、video 与 PDF 做能力 gating，audio 仍不是已交付的输入链路。能力图记录“模型目录声明”和“模型/provider wire 的有效能力”两层边界，不把目录声明误写成已经完整落地的音频运行时支持。
 - 模型选择器可以复用候选构建和 UI 组件，但各入口的草稿与提交状态必须隔离：会话选择写当前 runtime / projection，自动化写 automation record，Subagent 写 profile / override。
-
 
 ## 2026-08 当前能力事实补充
 

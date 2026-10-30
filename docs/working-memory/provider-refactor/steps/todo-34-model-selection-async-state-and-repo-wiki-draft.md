@@ -4,8 +4,6 @@
 
 > 后续 Desktop 图形 E2E 欠测统一由 Todo 78 收口，本 Todo 不再单独排期。
 
-
-
 ## 1. 运行时证据与直接故障
 
 MacBook Pro 正式包打开 Repo Wiki 后，Section Error Boundary 显示：
@@ -41,7 +39,6 @@ Error Boundary 卸载 Repo Wiki
         |
         `-- getView 随后成功，也无法更新已经卸载的页面
 ```
-
 
 ## 2. 更大范围的设计问题
 
@@ -397,8 +394,6 @@ ready-empty，不得只用 helper 单测证明。最后执行定向单测、相�
 - `pnpm --filter @zcode/desktop typecheck:e2e`；
 - 根 `pnpm lint`（0 error；仓库既存 warning 不在本 Todo 范围）；
 - Feature Graph YAML 解析、增量节点/seed 存在性和 `git diff --check`。
-
-
 
 Desktop E2E 已实际启动并完成 production build，但当前 Linux 执行机缺少 `xvfb-run`，Chrome 在创建 session 前退出；这是显示环境阻塞，不是用例断言失败。详细失败报告位于本次运行生成的 `.e2e-artifacts`，用例保持可在具备显示环境的 CI/macOS 上执行。
 

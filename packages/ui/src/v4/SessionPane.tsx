@@ -474,7 +474,7 @@ export function SessionPane({
   sessionId,
   rootSessionId,
   readOnly = false,
-  readOnlyReason,
+  readOnlyReason: _readOnlyReason,
   allowWorkspaceFileRewind = false,
   selectionSideChat = false,
   activeSelectionSideChatSessionId = null,
@@ -1118,6 +1118,10 @@ export function SessionPane({
       targetSessionId: string | null,
       baseRevision?: number,
       baseLogEpoch?: string,
+      // OpenZWork 净化：上游 telemetrySeed/highspeedCard 两参属遥测与加速卡域，不引入；
+      // 保留参数位次对齐（占位为兼容调用点索引），值恒为 undefined。
+      _purifiedTelemetrySeed?: never,
+      _purifiedHighspeedCard?: never,
       onEnvelopeCreated?: (envelope: CommandEnvelope) => void,
       creationProjectId?: string | null,
       sessionCreateSource?: SessionCreateSource,
@@ -1309,7 +1313,12 @@ export function SessionPane({
           commandLease?.store?.recoverFromStaleAuthority();
         }
         // rejected/stale/failed 时若不 settle，optimistic overlay 会永久残留。
-        if (commandLease && type !== "createSession" && ack.status !== "accepted" && ack.status !== "duplicate") {
+        if (
+          commandLease &&
+          type !== "createSession" &&
+          ack.status !== "accepted" &&
+          ack.status !== "duplicate"
+        ) {
           commandLease.store.settleCommand(envelope.commandId);
         }
         return ack;
@@ -2606,6 +2615,9 @@ export function SessionPane({
         targetSessionId,
         undefined,
         undefined,
+        // 净化占位（telemetrySeed/highspeedCard）恒 undefined，见 dispatchCommand 签名注释。
+        undefined,
+        undefined,
         options?.onCommandCreated
           ? (envelope) => {
               if (envelope.type === "sendText") options.onCommandCreated?.(envelope.commandId);
@@ -3654,7 +3666,8 @@ export function SessionPane({
   // 与模型额度是两条独立信息通道，这里只做投影。
   // 净化保留：上游 quota banner（useV4SessionQuotaBanner/mcpUnavailableNotice）属官方额度域，
   // retry-config-read 链依赖已删除的请求校验域模块，均不并入。
-  const composerError = draftModelReadinessError ?? sendSubmissionError ?? projectedComposerError;  useEffect(() => {
+  const composerError = draftModelReadinessError ?? sendSubmissionError ?? projectedComposerError;
+  useEffect(() => {
     setSendSubmissionError(null);
   }, [sessionId]);
   const handleDismissComposerError = useCallback(() => {
@@ -3710,11 +3723,14 @@ export function SessionPane({
       replay.payload,
       replay.sessionId,
       replay.baseRevision,
+      undefined, // baseLogEpoch
+      // 净化占位（telemetrySeed/highspeedCard）恒 undefined。
       undefined,
       undefined,
+      undefined, // onEnvelopeCreated
       replay.clientContext?.projectId,
       replay.clientContext?.sessionCreateSource,
-      undefined,
+      undefined, // recentSubmissionOverride
       replay.clientContext?.taskGroupId,
     )
       .then((ack) => {
@@ -3833,7 +3849,8 @@ export function SessionPane({
   );
   const pendingGuideProjection = snapshot ? projectPendingGuideQueue(snapshot.queue) : null;
   // 净化保留：上游 share 弹层与 readOnly 提示变体中分享相关分支不并入（share 净化域）。
-  const conversationBottomDockContent = readOnly ? null : (    <>
+  const conversationBottomDockContent = readOnly ? null : (
+    <>
       {recoverableCommand ? (
         <PendingCommandRecoveryBanner
           entry={recoverableCommand}

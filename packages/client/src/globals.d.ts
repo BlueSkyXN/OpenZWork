@@ -66,16 +66,36 @@ declare global {
     };
     zcode: {
       // 普通平台桥复用唯一 IPlatformService 签名，避免 preload 与 Renderer 各维护一套合同。
-      createTempTextAttachment: NonNullable<import("@zcode/shared").IPlatformService["createTempTextAttachment"]>;
-      onRemoteSessionReconnected: NonNullable<import("@zcode/shared").IPlatformService["onRemoteSessionReconnected"]>;
-      loadMcpFromUserDirectory: NonNullable<import("@zcode/shared").IPlatformService["loadMcpFromUserDirectory"]>;
-      saveMcpToUserDirectory: NonNullable<import("@zcode/shared").IPlatformService["saveMcpToUserDirectory"]>;
-      migrateLegacyCommonMcp: NonNullable<import("@zcode/shared").IPlatformService["migrateLegacyCommonMcp"]>;
-      setShortcutRecordingActive: NonNullable<import("@zcode/shared").IPlatformService["setShortcutRecordingActive"]>;
-      onCloseActiveContextRequest: NonNullable<import("@zcode/shared").IPlatformService["onCloseActiveContextRequest"]>;
-      getWindowControlsOverlayMetrics: NonNullable<import("@zcode/shared").IPlatformService["getWindowControlsOverlayMetrics"]>;
-      onWindowControlsOverlayChanged: NonNullable<import("@zcode/shared").IPlatformService["onWindowControlsOverlayChanged"]>;
-      getZCodeStdioTapDevState: NonNullable<import("@zcode/shared").IPlatformService["getZCodeStdioTapDevState"]>;
+      createTempTextAttachment: NonNullable<
+        import("@zcode/shared").IPlatformService["createTempTextAttachment"]
+      >;
+      onRemoteSessionReconnected: NonNullable<
+        import("@zcode/shared").IPlatformService["onRemoteSessionReconnected"]
+      >;
+      loadMcpFromUserDirectory: NonNullable<
+        import("@zcode/shared").IPlatformService["loadMcpFromUserDirectory"]
+      >;
+      saveMcpToUserDirectory: NonNullable<
+        import("@zcode/shared").IPlatformService["saveMcpToUserDirectory"]
+      >;
+      migrateLegacyCommonMcp: NonNullable<
+        import("@zcode/shared").IPlatformService["migrateLegacyCommonMcp"]
+      >;
+      setShortcutRecordingActive: NonNullable<
+        import("@zcode/shared").IPlatformService["setShortcutRecordingActive"]
+      >;
+      onCloseActiveContextRequest: NonNullable<
+        import("@zcode/shared").IPlatformService["onCloseActiveContextRequest"]
+      >;
+      getWindowControlsOverlayMetrics: NonNullable<
+        import("@zcode/shared").IPlatformService["getWindowControlsOverlayMetrics"]
+      >;
+      onWindowControlsOverlayChanged: NonNullable<
+        import("@zcode/shared").IPlatformService["onWindowControlsOverlayChanged"]
+      >;
+      getZCodeStdioTapDevState: NonNullable<
+        import("@zcode/shared").IPlatformService["getZCodeStdioTapDevState"]
+      >;
       connectRemote: NonNullable<import("@zcode/shared").IPlatformService["connectRemote"]>;
       requestSourceSettingsAttachment?(sourceServerId: string): Promise<{ attachmentId: string }>;
       /** 取消当前窗口尚未建立完成的远程连接 */
@@ -273,7 +293,9 @@ declare global {
         path?: string;
         error?: string;
       }>;
-      browserViewAttachGuest?: NonNullable<import("@zcode/shared").IPlatformService["browserViewAttachGuest"]>;
+      browserViewAttachGuest?: NonNullable<
+        import("@zcode/shared").IPlatformService["browserViewAttachGuest"]
+      >;
       /** 重建 `<webview>` 前让 main 精确断开旧 guest 的 CDP。 */
       browserViewDetachGuest?(payload: { key: string; webContentsId: number }): Promise<boolean>;
       browserViewCloseTab?(payload: BrowserViewCloseTabRequest): Promise<void>;

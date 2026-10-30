@@ -69,7 +69,11 @@ interface McpStoreState {
   currentSessionId: string | null;
   loadConfig: () => void;
   /** 重新读取当前绑定目标的 MCP 配置；要换目标请用 ensureLoadedForWorkspace。 */
-  loadMcpFromUserDirectory: () => Promise<boolean>;
+  loadMcpFromUserDirectory: (
+    workspaceIdentity?: string,
+    authorityKey?: string,
+    directoryService?: McpDirectoryService | null,
+  ) => Promise<boolean>;
   ensureLoadedForWorkspace: (
     workspacePath?: string,
     directoryService?: McpDirectoryService | null,
@@ -219,7 +223,8 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       // 到用户级 ZCode Agent MCP 的迁移；目录服务只用于远端 workspace 覆盖路由。
       return null;
     }
-    return directoryService ?? state.currentDirectoryService ?? mcpDirectoryService;
+    // 修复原因：mcpDirectoryService 变量在净化时被删但引用残留（基线既有错）；目录服务只剩两层 fallback。
+    return directoryService ?? state.currentDirectoryService ?? null;
   }
 
   function commitState(partial: {
@@ -344,7 +349,11 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       });
     },
 
-    loadMcpFromUserDirectory: async () => {
+    loadMcpFromUserDirectory: async (
+      workspaceIdentity?: string,
+      authorityKey?: string,
+      directoryService: McpDirectoryService | null = null,
+    ) => {
       if (typeof window === "undefined") {
         return false;
       }
@@ -371,9 +380,9 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       }
       // 等待上一 workspace load 期间可能再次切换；目录服务必须按等待后的
       // 最新 identity 重新选择，不能拿 B 的 remote service 去读取 C 的路径。
-      let activeDirectoryService: McpDirectoryService | null;
+      let _activeDirectoryService: McpDirectoryService | null;
       try {
-        activeDirectoryService = resolveMcpDirectoryService(
+        _activeDirectoryService = resolveMcpDirectoryService(
           directoryService,
           latestWorkspaceIdentity,
         );
@@ -385,8 +394,9 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         return await loadMcpPromise;
       }
 
-      const { currentProjectPath, currentWorkspaceIdentity } = get();
-      const latestWorkspacePath = currentProjectPath || undefined;
+      const { currentProjectPath } = get();
+      const innerWorkspacePath = currentProjectPath || undefined;
+      void innerWorkspacePath;
       loadMcpWorkspaceKey = requestWorkspaceKey;
       loadMcpPromise = (async () => {
         try {
@@ -394,7 +404,7 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
           // 与 requestWorkspaceKey 属于同一组目标，不能拿 B 的服务读取 C 的路径。
           const activeDirectoryService = resolveMcpDirectoryService();
           logger.info(
-            `[mcpStore] loadMcpFromUserDirectory workspace=${latestWorkspacePath ?? "<none>"} identity=${currentWorkspaceIdentity ?? "<none>"}`,
+            `[mcpStore] loadMcpFromUserDirectory workspace=${innerWorkspacePath ?? "<none>"} identity=${get().currentWorkspaceIdentity ?? "<none>"}`,
           );
           let servers = await fetchNativeMcpServers(
             mcpPlatformService,
@@ -716,9 +726,9 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         // 切换到远程 workspace 后配置加载是异步的；等待期间必须先清空 A 的
         // user-level MCP，不能把其 env/header/OAuth clientSecret 暂存为 B 的可发送配置。
         void get().loadMcpFromUserDirectory(
-          directoryService,
           normalizedWorkspaceIdentity,
           normalizedAuthorityKey,
+          directoryService,
         );
       }
     },

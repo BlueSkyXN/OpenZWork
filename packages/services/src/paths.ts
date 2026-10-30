@@ -424,9 +424,16 @@ async function copyExclusiveDataDirectory(
   }
   await validateDataDirectoryMigration(oldBaseDir, newBaseDir);
   try {
-    if (!(await lstat(sourceRoot)).isDirectory()) throw new Error("Expected a source data directory");
+    if (!(await lstat(sourceRoot)).isDirectory())
+      throw new Error("Expected a source data directory");
   } catch (cause) {
-    throw Object.assign(new Error("The original data directory is unavailable. Restore access before retrying relocation.", { cause }), { code: "DATA_DIRECTORY_SOURCE_UNAVAILABLE" });
+    throw Object.assign(
+      new Error(
+        "The original data directory is unavailable. Restore access before retrying relocation.",
+        { cause },
+      ),
+      { code: "DATA_DIRECTORY_SOURCE_UNAVAILABLE" },
+    );
   }
   const stage = await mkdtemp(join(targetBase, ".openzwork-migration-"));
   let published = false;

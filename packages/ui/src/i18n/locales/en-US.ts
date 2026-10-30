@@ -3319,7 +3319,8 @@ const enUS: Record<string, string> = {
   "settings.usage.sessionDetails.open": "Details",
   "settings.usage.sessionDetails.openAria": "View session details",
   "settings.usage.sessionDetails.title": "Session details",
-  "settings.usage.sessionDetails.summary": "{scope} · {range} · {count} main sessions; subtask usage counts toward its main session",
+  "settings.usage.sessionDetails.summary":
+    "{scope} · {range} · {count} main sessions; subtask usage counts toward its main session",
   "settings.usage.sessionDetails.project": "Project",
   "settings.usage.sessionDetails.untitled": "Untitled session",
   "settings.usage.sessionDetails.notInTaskList": "No longer in task list",
@@ -7428,6 +7429,7 @@ const enUS: Record<string, string> = {
     "The remote version does not support model configuration sync",
   "remoteSync.providers.error.sessionUnavailable": "The remote connection is no longer available",
   "remoteSync.providers.error.hostExecutionFailed": "The sync could not run on this device",
-  "remoteSync.providers.error.unknown": "Unknown error",};
+  "remoteSync.providers.error.unknown": "Unknown error",
+};
 
 export default enUS;

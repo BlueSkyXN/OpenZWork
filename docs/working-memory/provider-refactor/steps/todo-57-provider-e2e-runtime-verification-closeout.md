@@ -79,8 +79,8 @@ Todo 56 另补 Remote Provisioning E2E helper 时，必须从真实连接生命�
 先选择最小且诊断价值最高的 Case，证明 MacBook Pro 标准工作目录能真正启动 Electron、连接 mock provider 并完成断言：
 
 1. 一个 Personal Provider 新增并首发 Case；
-3. 一个冷启动 Model Selection 恢复 Case；
-4. 一个 Bot Selection/Card Case。
+2. 一个冷启动 Model Selection 恢复 Case；
+3. 一个 Bot Selection/Card Case。
 
 若 Smoke 无法启动，先修 E2E harness、构建产物或测试环境；不得因此修改 Provider 生产语义。
 
@@ -210,22 +210,22 @@ Conversation replay Case 还必须：
 
 ### 9.1 macOS Electron/WDIO 实跑证据
 
-| 范围                                    |  结果 | Artifact / 状态                                                                                        |
-| --------------------------------------- | ----: | ------------------------------------------------------------------------------------------------------ |
-| Bot automation / Feishu lifecycle       |   5/5 | `desktop-e2e-20260901-123836-685`                                                                      |
-| Upgrade WebView refresh                 |   2/2 | `desktop-e2e-20260901-140456-210`                                                                      |
-| Built-in Subagent model selection       |   1/1 | `desktop-e2e-20260901-132851-878`                                                                      |
-| Context Window cold resume              |   1/1 | `desktop-e2e-20260901-134040-202`                                                                      |
-| Model output token budget               |   1/1 | `desktop-e2e-20260901-134123-921`                                                                      |
-| Provider settings transition            |   3/3 | `desktop-e2e-20260901-134207-163`                                                                      |
-| Provider restart recovery               |   4/4 | `desktop-e2e-20260901-133355-002`                                                                      |
-| Turbo recovery                          |   3/3 | `desktop-e2e-20260901-133648-823`                                                                      |
-| Turbo switch                            |   3/3 | `desktop-e2e-20260901-133743-135`                                                                      |
-| Output-token preflight                  |   1/1 | `desktop-e2e-20260901-134931-393`                                                                      |
-| Output-token preflight smoke            |   2/2 | `desktop-e2e-20260901-135009-362`                                                                      |
-| Provider Template add/edit/restore/send |   1/1 | `desktop-e2e-20260901-140409-625`                                                                      |
-| selected-key migration                  |     — | `deleted-by-decision`                                                                                  |
-| SSH Remote Environment Provisioning     |     — | `blocked-environment`：MacBook Pro 未配置 `ZCODE_E2E_SSH_HOST/USERNAME/PASSWORD`，未将静态检查记作通过 |
+| 范围                                    | 结果 | Artifact / 状态                                                                                        |
+| --------------------------------------- | ---: | ------------------------------------------------------------------------------------------------------ |
+| Bot automation / Feishu lifecycle       |  5/5 | `desktop-e2e-20260901-123836-685`                                                                      |
+| Upgrade WebView refresh                 |  2/2 | `desktop-e2e-20260901-140456-210`                                                                      |
+| Built-in Subagent model selection       |  1/1 | `desktop-e2e-20260901-132851-878`                                                                      |
+| Context Window cold resume              |  1/1 | `desktop-e2e-20260901-134040-202`                                                                      |
+| Model output token budget               |  1/1 | `desktop-e2e-20260901-134123-921`                                                                      |
+| Provider settings transition            |  3/3 | `desktop-e2e-20260901-134207-163`                                                                      |
+| Provider restart recovery               |  4/4 | `desktop-e2e-20260901-133355-002`                                                                      |
+| Turbo recovery                          |  3/3 | `desktop-e2e-20260901-133648-823`                                                                      |
+| Turbo switch                            |  3/3 | `desktop-e2e-20260901-133743-135`                                                                      |
+| Output-token preflight                  |  1/1 | `desktop-e2e-20260901-134931-393`                                                                      |
+| Output-token preflight smoke            |  2/2 | `desktop-e2e-20260901-135009-362`                                                                      |
+| Provider Template add/edit/restore/send |  1/1 | `desktop-e2e-20260901-140409-625`                                                                      |
+| selected-key migration                  |    — | `deleted-by-decision`                                                                                  |
+| SSH Remote Environment Provisioning     |    — | `blocked-environment`：MacBook Pro 未配置 `ZCODE_E2E_SSH_HOST/USERNAME/PASSWORD`，未将静态检查记作通过 |
 
 上述运行都在 MacBook Pro 的独立干净 runtime clone 中使用同一提交和标准 `mise`/WDIO 链路完成，没有复用工作区旧 Electron 产物。
 

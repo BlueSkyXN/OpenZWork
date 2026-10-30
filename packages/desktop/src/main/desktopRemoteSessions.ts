@@ -508,7 +508,8 @@ export function createRemoteWorkspaceSessionManager(options: {
           () => pending.resolve(descriptor.remoteSessionId),
           (error: unknown) =>
             pending.reject(error instanceof Error ? error : new Error(String(error))),
-        );        return;
+        );
+        return;
       }
       // Bug 原因：显式 conversation bind 与 Source 自动恢复可能 join 到同一个 Host
       // logical session。过去这里覆盖 routesBySessionId，旧 candidate 的 ready ACK 会被

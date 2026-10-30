@@ -210,7 +210,6 @@ Host admission automationId（仅接受调度派发显式注入；inputId/runId 
 
 SSH、WSL、Docker 和 Server workspace 使用 `remote:*` workspace identity。此类 session 在创建或恢复时将 CronCreate、CronList、CronUpdate、CronDelete、CronPauseSelf 加入 session 级 denylist，避免远程 Agent 暴露无法由远程调度边界可靠承载的定时任务能力。本地 workspace 不继承该限制。
 
-
 ```text
 当前 modelExecution + sharedContextRefs -> Core admission -> 完成时清理 turn attribution
 ```

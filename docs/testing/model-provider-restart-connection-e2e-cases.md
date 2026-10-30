@@ -34,15 +34,15 @@ Persisted Model Selection         |
 
 2026-09-07 Todo88 R05 补充：I26 在完整旧 Team 键之外，再从仅含产品/项目的旧键重启。使用隔离 OAuth mock 的真实 `getCustomerInfo` 响应补组织；断言完整新版连接持久化、旧字段保留、原非首个模型不变并实际发送。查询失败/歧义、不创建 API Key、普通设置不等网络和并发保存由服务测试覆盖。
 
-| Catalog      | Case                                        | Setup                                                                    | Action                            | Assertions / evidence                              | Status   |
-| ------------ | ------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------- | -------------------------------------------------- | -------- |
-| I25 / MP-R01 | 重启保留可用 DeepSeek                       | 完整 persisted selection 指向可用 DeepSeek                               | 重启 App                          | toolbar、deferred draft、首发请求均为 DeepSeek     | covered  |
-| I35 / MP-T01 | Turbo off 重启保持二态                      | 完整 persisted selection 为 Turbo/off                                    | 重启 App                          | toolbar/draft 为 Turbo；思考选项只有 off/enabled   | accepted |
-| I36 / MP-T02 | Turbo enabled 重启并首发                    | 完整 persisted selection 为 Turbo/enabled                                | 重启并发送                        | toolbar/draft/request 均为 Turbo + enabled         | accepted |
-| I37 / MP-T03 | Turbo 二态连续切换                          | Turbo deferred draft                                                     | off→enabled→off                   | 模型不横跳；选项始终为二态                         | accepted |
-| I38 / MP-T04 | 隔离 workspace default 迟到回包             | Turbo deferred draft                                                     | 切换 reasoning 后等待异步配置同步 | draft 能力不被其它模型污染                         | accepted |
-| I39 / MP-T05 | GLM-5.2 切 Turbo 原子更新能力               | 当前 GLM-5.2 三态草稿                                                    | 选择 Turbo                        | model 与 reasoning options 一次性收敛到 Turbo 二态 | accepted |
-| I42 / MP-T06 | Turbo 切 GLM-5.2 丢弃源档位                 | 当前 Turbo/enabled                                                       | 选择 GLM-5.2                      | 使用目标模型默认档位，不继承 Turbo/enabled         | accepted |
+| Catalog      | Case                            | Setup                                      | Action                            | Assertions / evidence                              | Status   |
+| ------------ | ------------------------------- | ------------------------------------------ | --------------------------------- | -------------------------------------------------- | -------- |
+| I25 / MP-R01 | 重启保留可用 DeepSeek           | 完整 persisted selection 指向可用 DeepSeek | 重启 App                          | toolbar、deferred draft、首发请求均为 DeepSeek     | covered  |
+| I35 / MP-T01 | Turbo off 重启保持二态          | 完整 persisted selection 为 Turbo/off      | 重启 App                          | toolbar/draft 为 Turbo；思考选项只有 off/enabled   | accepted |
+| I36 / MP-T02 | Turbo enabled 重启并首发        | 完整 persisted selection 为 Turbo/enabled  | 重启并发送                        | toolbar/draft/request 均为 Turbo + enabled         | accepted |
+| I37 / MP-T03 | Turbo 二态连续切换              | Turbo deferred draft                       | off→enabled→off                   | 模型不横跳；选项始终为二态                         | accepted |
+| I38 / MP-T04 | 隔离 workspace default 迟到回包 | Turbo deferred draft                       | 切换 reasoning 后等待异步配置同步 | draft 能力不被其它模型污染                         | accepted |
+| I39 / MP-T05 | GLM-5.2 切 Turbo 原子更新能力   | 当前 GLM-5.2 三态草稿                      | 选择 Turbo                        | model 与 reasoning options 一次性收敛到 Turbo 二态 | accepted |
+| I42 / MP-T06 | Turbo 切 GLM-5.2 丢弃源档位     | 当前 Turbo/enabled                         | 选择 GLM-5.2                      | 使用目标模型默认档位，不继承 Turbo/enabled         | accepted |
 
 ## Removed legacy cases
 
@@ -60,7 +60,6 @@ I27-I31 验证当前连接回退、Family 切换与模型选择恢复，已按�
 - 重启使用真实 Electron reload，证明 main/host/renderer/Agent 与磁盘状态重新水合；
 - 每个 case 至少断言 UI Selection 与真实 session/request 中的一层运行时证据；
 - Desktop 继续使用 continuous 链路，本组不引入 mobile replayable 状态。
-
 
 ## BR117-F01：远端 Built-in 下载失败不阻断账号连接
 

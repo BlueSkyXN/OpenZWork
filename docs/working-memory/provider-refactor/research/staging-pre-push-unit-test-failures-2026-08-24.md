@@ -1,7 +1,5 @@
 # staging pre-push 单测基线失败报告（2026-08-24）
 
-
-
 ## 摘要
 
 在 Linux 本地环境对最新 `origin/staging` 做独立 detached worktree 验证：
@@ -24,7 +22,6 @@ pnpm: 10.33.2
 Vitest: 4.1.4
 staging: 0e867f1323
 ```
-
 
 ## staging 的 30 条失败
 
@@ -104,12 +101,7 @@ pnpm verify:pre-push
 
 只运行 staging 仍失败的 7 个文件：
 
-
-
-
 ## 修复设计
-
-
 
 - Windows ZIP 归档改用仓库内的异步 Node 实现，不再要求测试机或发布机构建机预装 `zip` 命令；
 - notarize 脚本的 mtime 读取同时兼容 BSD/macOS 与 GNU/Linux `stat`；

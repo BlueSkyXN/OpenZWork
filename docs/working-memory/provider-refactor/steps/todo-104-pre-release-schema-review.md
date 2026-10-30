@@ -539,20 +539,17 @@ Provider 精确模型规则见 6.2；内置集合只接受普通 ProviderModelCo
 
 本轮通过实际配置及提交记录核查发现：Model 层有一条账号 Provider 通配规则，Model + API 层有三条 Provider 条件规则。此前以“当前已有用法”为由建议保留 providerMatch，用户明确否决；schema 应按层职责约束，不能为越层规则放宽。
 
-| 原位置及条件                                                       | 覆盖内容                      | 确认后的处理                                                                                         |
-| ------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Model + API：anthropic，Claude 模型，Anthropic Messages            | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 Anthropic Endpoint 匹配，保留模型及 API 条件                              |
-| Model + API：moonshot-kimi，K3 系列，Anthropic Messages            | MFJS 工具 Schema 为 true      | 移入 providerSiteRules，按 Moonshot Endpoint 匹配，保留 K3 模型及 API 条件，不提升为所有站点通用规则 |
-| Model + API：deepseek，所有模型，Anthropic Messages                | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 DeepSeek Endpoint 匹配，保留 modelMatch `".*"` 及 API 条件                |
+| 原位置及条件                                            | 覆盖内容                      | 确认后的处理                                                                                         |
+| ------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Model + API：anthropic，Claude 模型，Anthropic Messages | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 Anthropic Endpoint 匹配，保留模型及 API 条件                              |
+| Model + API：moonshot-kimi，K3 系列，Anthropic Messages | MFJS 工具 Schema 为 true      | 移入 providerSiteRules，按 Moonshot Endpoint 匹配，保留 K3 模型及 API 条件，不提升为所有站点通用规则 |
+| Model + API：deepseek，所有模型，Anthropic Messages     | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 DeepSeek Endpoint 匹配，保留 modelMatch `".*"` 及 API 条件                |
 
 Endpoint 依据当前配置 / 模板记录，实施时按对应路径生成匹配条件，不因转换成 Site 规则随意放大到整个域名：
 
 - Anthropic：`https://api.anthropic.com/v1`。
 - Moonshot：`https://api.moonshot.cn/anthropic`。
 - DeepSeek：`https://api.deepseek.com/anthropic`。
-
-
-
 
 最终删除 providerMatch 字段及对应解析、匹配、序列化逻辑；四条原规则改为站点规则，不以兼容新格式为由保留第二套 Provider 正则匹配入口。按 providerId + modelId 的精确实例规则仍保留。
 
@@ -671,8 +668,6 @@ Provider 名称在外层 ProviderConfigRule 中叫 providerName，可选性和 n
 
 内部执行若需要合并处理，可以从所属集合补出内部类别标签；不能要求文件再保存一份类别，也不能通过 Map/API/URL 字段猜回规则所属集合而丢失其来源边界。UI 智能配置开关对应个人规则所属的普通 / 手动集合，不另存 useSmartConfig。
 
-
-
 ### 6.7 内置 / 个人配置文件包装：已确认
 
 内置文件层：保留版本、发布 revision 和 config 内容层。用户已确认本分支新增、未发布的内置格式从当前 schemaVersion: 3 收口为 schemaVersion: 1；发布 revision 的规则及 review 见 6.12。
@@ -760,7 +755,6 @@ providerOrder 继续独立表达展示顺序，不用规则数组顺序代替。
 | Built-in | group 必填且限 zai-family / bigmodel-family；允许 logo、api、access、builtinModelIds、visibility，不声明 personalModelIds / modelOrder。身份与名称按 6.4 / 6.5 移到外层。                           |
 | Personal | 不允许 builtinModelIds；group 只允许 standard-personal 的覆盖值；固定 Account Provider 的 access 不能由个人层覆盖。个人 Endpoint 目前允许保留尚未完成编辑的字符串，由最终完整性校验决定是否可执行。 |
 
-
 实施时保留这些已有字段限制，通过基础 schema 派生，配合已确认的改名和身份 / 名称外移；不追加来源重组或专用类型命名工程。6.4 / 6.7 用公共 ProviderConfig / ProviderConfigRule 展示共同形状，不表示各来源可无差别写入全部字段。固定 Account Provider 的个人 access 禁写等依赖 providerId 的校验，在 ID 外移后仍须保留在外层规则校验，不能只搬字段而丢失约束。
 
 验证依据：provider-config-kinds、config-overlay、config-service、todo21-source-contracts 四个现有测试文件共 66 个用例通过。此处验证的是当前限制和合并行为，不代表目标结构已经实现；产品代码未修改。
@@ -814,7 +808,6 @@ Provider / Model / 排序修改 --+
 证据：[当前默认选择文件 codec](../../../../packages/provider-node/src/model-selection-config-file-codec.ts)、[当前默认选择 Repository](../../../../packages/provider-node/src/model-selection-config-repository.ts)、[当前独立文件装配](../../../../packages/services/src/node.ts)。
 
 ### 6.10 新增文件取舍与程序维护目录：已确认
-
 
 用户配置层：保留 provider_config.json，集中保存个人 Provider / Model 配置、排序及 6.9 的默认模型选择。旧综合 config.json 仍承担其他配置，旧 Provider 内容仅作升级输入。尚未确认全局文件命名风格，不顺带将 provider_config.json 改为中划线。
 
@@ -1021,8 +1014,6 @@ interface ProviderProvisioningResult {
 
 #### 6.14.1 既有结构接入 ModelSelection：统一通过
 
-
-
 本轮数据库改动清单补正如下；三列均位于既有 tasks-index.sqlite，不新增数据库或表：
 
 | 既有表          | 新增列               | 本轮裁决                  |
@@ -1034,10 +1025,7 @@ interface ProviderProvisioningResult {
 
 通过的是 schema 设计，不豁免 staging 数据迁移验证；例如 SQL NULL、JSON null 和明确选择的既有区别，实施时仍需保留其上层语义。
 
-
 #### 6.14.2 账号连接选择：明确不调整
-
-
 
 已有 schema 却重复手写类型的问题仍按第 1.1 节统一处理；这是实现的类型来源整理，不改变持久化格式。证据：[账号连接选择 schema 与重复类型](../../../../packages/shared/src/provider-family-connection-selection.ts)。
 
@@ -1135,7 +1123,6 @@ Endpoint A(rev 20) -> 切换到 B(rev 20，内容不同)
 
 用户倾向新增字段 / 新增文件，方便实用回滚，并进一步明确“字段就是不能删除”。旧值保留供旧版使用，新版只更新自身字段，不要求把新版值持续反向同步成旧格式。该约束针对本 Todo 修改的 staging 已发布存储；本分支未发布的新 Provider 格式仍按前文裁决改名、分组和合并，不能把这两类“旧字段”混为一谈。Subagent Markdown 已在 Todo 97 明确采用原字段身份迁移，用户要求尊重其可读性取舍，本 Todo 不推翻该方案，见 6.19.2。
 
-
 现有表已新增 model_selection，但 updateEditableFields 保存时还会将 model / thought_level 置为 NULL。用户要求修复为：只更新新选择和本次业务编辑字段，旧模型列保留现存值，不清空，也不按新选择反向改写。新建记录没有旧值时，无须捏造旧版选择。
 
 实现范围：从当前 UPDATE 中去掉 model = NULL / thought_level = NULL 两个赋值；沿用已有字段更新、校验和保存入口，不新增保存机制。
@@ -1195,7 +1182,6 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 
 旧版行为核查仅为当前静态证据：上述 staging 的桌面 / Web 恢复链路能读陌生 ID，但将对应模型判为不可用；有可用模型时有回退路径，无可用模型时历史可打开、发送受阻。旧版不读取 options.reasoningLevel。因此本裁决解决的是原选择快照丢失，不应声称旧版必然打不开整个会话；也未宣称已完成旧 App 实机回滚。
 
-
 #### 6.18.4 仍需留意的具体边界
 
 - Session 新字段迁移已经裁决，待实施；ModelSelection 通用结构和其他 pass 保持。6.19 只列本 Todo 要改的项目，用户已认可收紧后的范围。
@@ -1205,7 +1191,6 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 本轮仅落盘上述裁决及待讨论点。此前误开始的两处实现和测试已全部撤回，没有保留产品修改；未来须待用户明确开始实施后再落实，并重新按测试先行验证。
 
 ### 6.19 本 Todo 核心 schema 之外的修改清单：范围已收紧、已认可
-
 
 #### 6.19.1 本 Todo 要修改的 13 项配套内容
 
@@ -1252,7 +1237,6 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 分发写入 B -> 用户又保存 C -> 分发失败
                                `-> 不把用户的 C 覆盖成分发前的 A
 ```
-
 
 ## 7. Schema / 手写类型定向核查
 

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, rm, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -25,17 +25,28 @@ const formalProbeManifest = resolve(
 // fork 保留我方 beforeAll：同时合成 pending 与 manual-only 两个准入探针（上游 manual-only 探针
 // plugin-cdn-zip-official-cdn-smoke 依赖官方 CDN 域，我方树中不存在，须由测试自行合成）。
 const createdAdmissionFiles: string[] = [];
-beforeAll(() => {
-  for (const [spec, never] of [[pendingSpec, false], [manualOnlySpec, true]] as const) {
+beforeAll(async () => {
+  for (const [spec, never] of [
+    [pendingSpec, false],
+    [manualOnlySpec, true],
+  ] as const) {
     const caseName = spec.split("/").at(-1)!.replace(".test.ts", "");
-    const files = [resolve(repoRoot, spec), resolve(desktopDir, "test/e2e/fixtures/upstream/plugin-management", caseName + ".json"), resolve(desktopDir, "test/e2e/fixtures/cases/plugins", caseName + ".json")];
+    const files = [
+      resolve(repoRoot, spec),
+      resolve(desktopDir, "test/e2e/fixtures/upstream/plugin-management", caseName + ".json"),
+      resolve(desktopDir, "test/e2e/fixtures/cases/plugins", caseName + ".json"),
+    ];
     writeProbeFile(files[0]!, "// synthetic admission fixture");
     writeProbeFile(files[1]!, JSON.stringify({ version: 1, fixtures: [] }));
-    writeProbeFile(files[2]!, JSON.stringify({ caseName, formalAdmission: never ? "never" : "reviewed" }));
+    writeProbeFile(
+      files[2]!,
+      JSON.stringify({ caseName, formalAdmission: never ? "never" : "reviewed" }),
+    );
     createdAdmissionFiles.push(...files);
   }
   writeProbeFile(formalProbeSpec, 'describe("E2E_PLUGIN_FIXTURE_CHECK_PROBE", () => {});\n');
-  writeProbeFile(    formalProbeFixture,
+  writeProbeFile(
+    formalProbeFixture,
     `${JSON.stringify(
       {
         version: 1,
@@ -100,7 +111,8 @@ afterAll(() => {
   for (const file of createdAdmissionFiles) rmSync(file, { force: true });
   rmSync(formalProbeSpec, { force: true });
   rmSync(formalProbeFixture, { force: true });
-  rmSync(formalProbeManifest, { force: true });});
+  rmSync(formalProbeManifest, { force: true });
+});
 
 describe("plugin lifecycle E2E admission scripts", () => {
   it("dry-runs promotion but requires explicit human review before applying", () => {

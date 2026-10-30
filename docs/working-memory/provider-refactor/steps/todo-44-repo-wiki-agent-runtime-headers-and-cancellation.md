@@ -55,7 +55,6 @@ Agent Adapter
 模型服务
 ```
 
-
 ## 3. 已确认根因
 
 ### 3.1 Repo Wiki Client 没有安装 Host Protocol Handlers
@@ -179,8 +178,6 @@ Wiki 复制一份 Account Auth、Runtime Headers 或 Provider 解析逻辑。
 该请求的异步等待。取消请求不能排在被取消操作完成之后。
 
 ### 4.3 父级取消是本轮主要期限边界
-
-
 
 如果后续需要给自动账号 Headers 增加独立短期限，必须单独定义按 Account Access 行为区分的契约，不在本 Todo 内顺手加入。
 

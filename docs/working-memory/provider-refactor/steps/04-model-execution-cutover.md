@@ -119,10 +119,10 @@ Provider Config 是模型 API 调用的装配输入。它可以保存静态凭�
 
 M4 后的 Access 类型至少包括：
 
-| Access type     | Config 保存内容                          | 请求时行为                                       |
-| --------------- | ---------------------------------------- | ------------------------------------------------ |
-| `api-key`       | 静态 `apiKey`                            | Adapter 使用 Config 中的 Key                     |
-| `request-auth`  | 不保存具体凭据，只声明请求期必须提供鉴权 | ModelRequest 执行时消费调用方提供的 Request Auth |
+| Access type    | Config 保存内容                          | 请求时行为                                       |
+| -------------- | ---------------------------------------- | ------------------------------------------------ |
+| `api-key`      | 静态 `apiKey`                            | Adapter 使用 Config 中的 Key                     |
+| `request-auth` | 不保存具体凭据，只声明请求期必须提供鉴权 | ModelRequest 执行时消费调用方提供的 Request Auth |
 
 `request-auth` 是普通 Access 类型，不与 `visibility`、闲时任务或所谓“受信执行”绑定。任何 Provider 都可以
 采用这种访问方式。执行 context 在创建 Model 时把本次作用域的 Request Auth Source 装配进
@@ -224,7 +224,6 @@ M4 不增加 `awaiting_approval` 闲时状态，不在批准后切用户 Provide
 
 ## 10. Ticket 过期、取消和重新派发
 
-
 ```text
 Idle Model Request
       |
@@ -281,21 +280,21 @@ modelId    = 本轮实际 idle model
 
 ## 13. 状态所有权
 
-| 状态或事实                    | 权威 Owner                                            | 生命周期           | 不得写入                                      |
-| ----------------------------- | ----------------------------------------------------- | ------------------ | --------------------------------------------- |
-| Provider 静态事实             | Effective Provider Config                             | Config revision    | Turn payload 的静态快照                       |
-| Model 静态事实                | Effective Model Config                                | Config revision    | Host hardcode、modelId 特判                   |
-| 用户后续主模型                | Session Selection                                     | Session            | 闲时执行 context                              |
-| 当前执行模型                  | Loop Active Model                                     | Loop               | Session 持久偏好                              |
-| Account 连接身份              | Account Provider Config `accessId`                    | Account connection | API Key/JWT/Header                            |
-| Account 动态凭据              | Account Request Auth Service                          | Request attempt    | Provider Config                               |
+| 状态或事实        | 权威 Owner                         | 生命周期           | 不得写入                    |
+| ----------------- | ---------------------------------- | ------------------ | --------------------------- |
+| Provider 静态事实 | Effective Provider Config          | Config revision    | Turn payload 的静态快照     |
+| Model 静态事实    | Effective Model Config             | Config revision    | Host hardcode、modelId 特判 |
+| 用户后续主模型    | Session Selection                  | Session            | 闲时执行 context            |
+| 当前执行模型      | Loop Active Model                  | Loop               | Session 持久偏好            |
+| Account 连接身份  | Account Provider Config `accessId` | Account connection | API Key/JWT/Header          |
+| Account 动态凭据  | Account Request Auth Service       | Request attempt    | Provider Config             |
 
 ## 14. UI Surface Matrix
 
-| 场景                      | 候选/配置来源                         | 可见性与校验                      | 提交/执行 Owner              | 必须隔离                              |
-| ------------------------- | ------------------------------------- | --------------------------------- | ---------------------------- | ------------------------------------- |
-| Provider Settings         | Settings Facade                       | 只显示 `visibility=visible`       | Personal Config Repository   | hidden Provider、Session Selection    |
-| Conversation Model Picker | Selection Facade                      | 只显示完整、enabled、visible 模型 | Composer/Submission          | hidden Provider、Active Model         |
+| 场景                      | 候选/配置来源    | 可见性与校验                      | 提交/执行 Owner            | 必须隔离                           |
+| ------------------------- | ---------------- | --------------------------------- | -------------------------- | ---------------------------------- |
+| Provider Settings         | Settings Facade  | 只显示 `visibility=visible`       | Personal Config Repository | hidden Provider、Session Selection |
+| Conversation Model Picker | Selection Facade | 只显示完整、enabled、visible 模型 | Composer/Submission        | hidden Provider、Active Model      |
 
 ## 15. 必须保持的不变量
 
@@ -336,7 +335,7 @@ M4 完成时通过 `dep:refs`、`rg` 和 `knip` 审计以下闲时用途：
 1. 先写失败测试。
 2. `executionOnly` 迁移为 `visibility`，Facade 负责 visible/hidden 过滤。
 3. 新增 `request-auth` Access 及完整性校验。
-5. Registry 收录完整 hidden Provider，普通 Settings/Selection View 不投影。
+4. Registry 收录完整 hidden Provider，普通 Settings/Selection View 不投影。
 
 ### M4.2：标准 Model 创建与请求鉴权
 
@@ -394,12 +393,12 @@ M4 只有同时满足以下条件才完成：
 
 ### 21.1 Feature Summary
 
-| Field            | Value                                                                                      |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| Developer intent | 删除闲时 Runtime Model 双轨，使特殊执行复用正式 Provider/Model 链                          |
-| Change layer     | option-source、validation、commit-effect、persistence、recovery invariant                  |
-| Operating mode   | implementation                                                                             |
-| Out of scope     | Remote Provisioning、Account 产品重构、普通 Queue/恢复语义、Agent 参数灰度                 |
+| Field            | Value                                                                      |
+| ---------------- | -------------------------------------------------------------------------- |
+| Developer intent | 删除闲时 Runtime Model 双轨，使特殊执行复用正式 Provider/Model 链          |
+| Change layer     | option-source、validation、commit-effect、persistence、recovery invariant  |
+| Operating mode   | implementation                                                             |
+| Out of scope     | Remote Provisioning、Account 产品重构、普通 Queue/恢复语义、Agent 参数灰度 |
 
 ### 21.2 Shared And Divergent Behavior
 
@@ -413,26 +412,26 @@ M4 只有同时满足以下条件才完成：
 
 ### 21.3 Feature Relationships
 
-| Rank           | From                     | Semantic edge                  | To                      | Why inspect it                              | Evidence                                    |
-| -------------- | ------------------------ | ------------------------------ | ----------------------- | ------------------------------------------- | ------------------------------------------- |
-| must-inspect   | hidden Built-in Provider | creates through                | Registry/ModelFactory   | 可见性只属于 Facade                         | Registry Design §§3、11                     |
-| must-inspect   | idle Active Model        | inherited by                   | Automatic Compact       | Compact 不能回退 Session Selection          | Execution Design §8.1                       |
-| must-inspect   | idle execution context   | overrides                      | Foreground Child        | Child 自建 Model 但共享本轮访问边界         | OP10、Execution Design §8.2                 |
-| must-inspect   | permission response      | continues                      | same idle Turn          | D44 禁止 Provider handoff                   | OP03、Execution Design §9                   |
-| should-inspect | Request Auth             | validates before               | Adapter network I/O     | 缺凭据必须 fail-closed                      | Model Creation Design                       |
-| invariant-only | M4                       | must not mutate                | desktop/mobile delivery | 不改变 continuous/replayable                | AGENTS、Feature Graph                       |
-| invariant-only | M4                       | must not own                   | Remote Provisioning     | 远程配置同步是独立产品能力                  | Environment Design                          |
+| Rank           | From                     | Semantic edge    | To                      | Why inspect it                      | Evidence                    |
+| -------------- | ------------------------ | ---------------- | ----------------------- | ----------------------------------- | --------------------------- |
+| must-inspect   | hidden Built-in Provider | creates through  | Registry/ModelFactory   | 可见性只属于 Facade                 | Registry Design §§3、11     |
+| must-inspect   | idle Active Model        | inherited by     | Automatic Compact       | Compact 不能回退 Session Selection  | Execution Design §8.1       |
+| must-inspect   | idle execution context   | overrides        | Foreground Child        | Child 自建 Model 但共享本轮访问边界 | OP10、Execution Design §8.2 |
+| must-inspect   | permission response      | continues        | same idle Turn          | D44 禁止 Provider handoff           | OP03、Execution Design §9   |
+| should-inspect | Request Auth             | validates before | Adapter network I/O     | 缺凭据必须 fail-closed              | Model Creation Design       |
+| invariant-only | M4                       | must not mutate  | desktop/mobile delivery | 不改变 continuous/replayable        | AGENTS、Feature Graph       |
+| invariant-only | M4                       | must not own     | Remote Provisioning     | 远程配置同步是独立产品能力          | Environment Design          |
 
 ### 21.4 Code Evidence And Graph Drift
 
 当前工具集没有可调用的 codegraph，因此本轮以功能图已声明 seed、`rg` 精确引用和深度 2 的人工调用链
 核对替代；完成门禁使用 `dep:refs`、`knip` 和受影响测试补齐符号级删除证明。
 
-| Seed                      | Key path                                                      | Depth | Interpretation                          |
-| ------------------------- | ------------------------------------------------------------- | ----- | --------------------------------------- |
-| `sessionFlowHandlers`     | admission → Core Submission → Active Model                    | 2     | 单次执行 Selection 不改 Session         |
-| `agentHandler`            | override → Child runtime → child ModelFactory                 | 2     | 普通 override 与 idle override 的汇合点 |
-| `ProviderConfigResolver`  | Built-in → Account → Personal → Registry                      | 2     | M4 静态事实的唯一来源                   |
+| Seed                     | Key path                                      | Depth | Interpretation                          |
+| ------------------------ | --------------------------------------------- | ----- | --------------------------------------- |
+| `sessionFlowHandlers`    | admission → Core Submission → Active Model    | 2     | 单次执行 Selection 不改 Session         |
+| `agentHandler`           | override → Child runtime → child ModelFactory | 2     | 普通 override 与 idle override 的汇合点 |
+| `ProviderConfigResolver` | Built-in → Account → Personal → Registry      | 2     | M4 静态事实的唯一来源                   |
 
 | Candidate                                            | Live-code evidence                          | Graph action                                                                  |
 | ---------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -566,7 +565,6 @@ background Child 被拒绝，闲时完成后同一 Session 的普通 Prompt 恢�
   可以引用 hidden Provider，只有无显式选择时的用户 fallback 跳过 hidden 候选；
 - Desktop main/host/scheduler bundle 内联 `@zcode/provider` 与 `@zcode/provider-node`，避免 Electron
   worker 在干净运行环境中从 TypeScript source export 解析不存在的 `.js` 文件；
-
 
 复现命令：
 

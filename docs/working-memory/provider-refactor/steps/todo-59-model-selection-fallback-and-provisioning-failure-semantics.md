@@ -8,8 +8,6 @@
 
 ## 0. 背景与目标
 
-
-
 Todo 56 的首次 Remote Environment Provisioning 已经成为远程 Workspace 发布前的同步屏障，但当前收到 `failed`、`rollback_failed` 或 `unsupported` 后仍只记录 warning 并继续发布连接。这会让远端在关键模型配置没有同步成功时以旧配置或空配置继续运行。
 
 本 Todo 收口为两条唯一规则：

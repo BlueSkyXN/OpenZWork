@@ -21,16 +21,16 @@
 
 App 允许设置「数据存储路径」（`setting.json.dataBaseDir`），但**只有 app 侧的 `v2` 跟着走**，agent 侧数据始终留在用户家目录。当前事实：
 
-| 写入方 | 根目录解析 | 是否跟随「数据存储路径」 | 代码 |
-| --- | --- | --- | --- |
-| app services（host 进程） | `{dataBaseDir}/.openzwork`，默认 `~/.openzwork` | 是 | `packages/services/src/paths.ts` `getZCodeDataRootDir()` |
-| 「数据存储路径」切换时的迁移 | 只复制 `.zcode/v2`，且是复制不是移动 | — | `packages/services/src/paths.ts` `copyDataDirectory()` |
-| zcode-cli（agent 进程） | `~/.openzwork/cli/config.json` 的 `storage.dir`，默认 `~/.openzwork`；app **不下发** `ZCODE_STORAGE_DIR` | 否 | `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts:184` |
-| 模型调用轨迹 model-io | 直接 `homedir()/.openzwork/cli/{debug,rollout}` | 否（硬编码） | `apps/zcode-cli/packages/adapters/src/model/runner-debug.ts` `getModelIOBaseDir` |
-| hooks 信任库 / subagents / skills / commands | 读 `~/.openzwork/cli/config.json` 的 `storage.dir` | 否 | `packages/services/src/hooks/hooksService.ts:153-173` 等 |
-| `v2/setting.json` 本身 | 永远写在真实 HOME（bootstrap 文件） | 刻意不跟随 | `packages/services/src/setting/settingService.ts:36-46` |
-| GLM provider 的 workspace 配置目录 | `getDataBaseDir()/.zcode/cli/...`，与上面 CLI 读 `~/.openzwork/cli` 两套口径并存 | 是 | `packages/services/src/paths.ts:295-299, 355-362` |
-| 轨迹查看器读 model-io | 同时扫 `homedir()` 与 `dataBaseDir` 两处 | 两处都读 | `packages/services/src/zcode-agent/modelTrajectoryFileTail.ts:16-22` |
+| 写入方                                       | 根目录解析                                                                                               | 是否跟随「数据存储路径」 | 代码                                                                             |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------- |
+| app services（host 进程）                    | `{dataBaseDir}/.openzwork`，默认 `~/.openzwork`                                                          | 是                       | `packages/services/src/paths.ts` `getZCodeDataRootDir()`                         |
+| 「数据存储路径」切换时的迁移                 | 只复制 `.zcode/v2`，且是复制不是移动                                                                     | —                        | `packages/services/src/paths.ts` `copyDataDirectory()`                           |
+| zcode-cli（agent 进程）                      | `~/.openzwork/cli/config.json` 的 `storage.dir`，默认 `~/.openzwork`；app **不下发** `ZCODE_STORAGE_DIR` | 否                       | `apps/zcode-cli/packages/bootstrap/src/app/create-app.ts:184`                    |
+| 模型调用轨迹 model-io                        | 直接 `homedir()/.openzwork/cli/{debug,rollout}`                                                          | 否（硬编码）             | `apps/zcode-cli/packages/adapters/src/model/runner-debug.ts` `getModelIOBaseDir` |
+| hooks 信任库 / subagents / skills / commands | 读 `~/.openzwork/cli/config.json` 的 `storage.dir`                                                       | 否                       | `packages/services/src/hooks/hooksService.ts:153-173` 等                         |
+| `v2/setting.json` 本身                       | 永远写在真实 HOME（bootstrap 文件）                                                                      | 刻意不跟随               | `packages/services/src/setting/settingService.ts:36-46`                          |
+| GLM provider 的 workspace 配置目录           | `getDataBaseDir()/.zcode/cli/...`，与上面 CLI 读 `~/.openzwork/cli` 两套口径并存                         | 是                       | `packages/services/src/paths.ts:295-299, 355-362`                                |
+| 轨迹查看器读 model-io                        | 同时扫 `homedir()` 与 `dataBaseDir` 两处                                                                 | 两处都读                 | `packages/services/src/zcode-agent/modelTrajectoryFileTail.ts:16-22`             |
 
 结论：存储管理必须同时扫描两个根：
 
@@ -94,17 +94,17 @@ R2 = {dataBaseDir}/.openzwork           （仅在设置了数据存储路径且 
 
 分类是 services 层的静态表 `storageCatalog.ts`：每条规则 = `{ categoryId, root?: "home" | "dataBaseDir", pattern(相对根的路径匹配), cleanable, protect?: [...] }`。匹配按**最长前缀优先**，未命中的条目归入「其他」。
 
-| id | 名称 | 匹配路径（相对根） | 可清理 | 清理规则 |
-| --- | --- | --- | --- | --- |
-| `sessionStore` | 会话记录与数据库 | `v2/*.sqlite{,-wal,-shm}`, `cli/db/db.sqlite{,-wal,-shm}`, `v2/sessions`, `v2/session-bindings`, `v2/checkpoints`（除 pending/tmp） | 否 | 走任务删除 / 自动归档，不在此处清理 |
-| `subagentTranscripts` | 子代理产物 | `cli/agents/<sess>/<agent>/transcript.jsonl` | 是 | 只清理**最近 24 小时未更新**的会话目录（避免删掉进行中 subagent 的记录）；按会话目录聚合 |
-| `modelTrajectory` | 模型调用轨迹 | `cli/debug`, `cli/rollout` | 是 | 删除全部 `model-io-*.jsonl`；正在写入的文件删除失败时计入 `failures`，不阻塞 |
-| `devTraces` | 开发诊断抓包 | `v2/dev`, `v2/acp-traffic-proxy`, `v2/acp-stream-diagnostics` | 是 | 删除目录内容；保留 `v2/dev/zcode-stdio-tap.json`（开关状态） |
-| `logs` | 日志与崩溃报告 | `v2/logs`, `cli/log`, `logs`, `agent/logs`, `v2/crash`, `v2/perf`, `feedback/logs`, `computer-use/run/*.log` | 是 | 删除**非当天**日志文件；`v2/crash/live`、`computer-use/run/.tokens` 不删 |
-| `backups` | 备份 | `backup`, `v2/backup`, `v2/migrations`, `cli/db/backup`, `cli/db/backups`, `cli/db/*.bak*`, `cli/db/*.backup-*`, `v2/*.bak`, `v2/*.backup.json`, `v2/setting.json.corrupt-*`, `v2/config.json.pre-*`, `cli/config.json.bak-*` | 是（需二次确认） | 全部删除 |
-| `exports` | 导出与反馈包 | `export-log`, `export-log-stage`, `feedback` | 是 | 全部删除 |
-| `runtimes` | Agent 运行时与插件 | `agents/<runtime>/`, `bundled-agents`, `lite`, `computer-use`, `cli/plugins`（含 cache，2026-09-10 裁决不可删） | 否 | 由安装 / 更新流程管理 |
-| `other` | 其他 | 未命中的路径；启用自定义数据路径后 `~/.openzwork/v2` 整个旧副本；`agent/`（旧版残留） | 否 | 下钻可见具体路径，便于后续补规则 |
+| id                    | 名称               | 匹配路径（相对根）                                                                                                                                                                                                            | 可清理           | 清理规则                                                                                 |
+| --------------------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------------------------------------------------------------------------------------- |
+| `sessionStore`        | 会话记录与数据库   | `v2/*.sqlite{,-wal,-shm}`, `cli/db/db.sqlite{,-wal,-shm}`, `v2/sessions`, `v2/session-bindings`, `v2/checkpoints`（除 pending/tmp）                                                                                           | 否               | 走任务删除 / 自动归档，不在此处清理                                                      |
+| `subagentTranscripts` | 子代理产物         | `cli/agents/<sess>/<agent>/transcript.jsonl`                                                                                                                                                                                  | 是               | 只清理**最近 24 小时未更新**的会话目录（避免删掉进行中 subagent 的记录）；按会话目录聚合 |
+| `modelTrajectory`     | 模型调用轨迹       | `cli/debug`, `cli/rollout`                                                                                                                                                                                                    | 是               | 删除全部 `model-io-*.jsonl`；正在写入的文件删除失败时计入 `failures`，不阻塞             |
+| `devTraces`           | 开发诊断抓包       | `v2/dev`, `v2/acp-traffic-proxy`, `v2/acp-stream-diagnostics`                                                                                                                                                                 | 是               | 删除目录内容；保留 `v2/dev/zcode-stdio-tap.json`（开关状态）                             |
+| `logs`                | 日志与崩溃报告     | `v2/logs`, `cli/log`, `logs`, `agent/logs`, `v2/crash`, `v2/perf`, `feedback/logs`, `computer-use/run/*.log`                                                                                                                  | 是               | 删除**非当天**日志文件；`v2/crash/live`、`computer-use/run/.tokens` 不删                 |
+| `backups`             | 备份               | `backup`, `v2/backup`, `v2/migrations`, `cli/db/backup`, `cli/db/backups`, `cli/db/*.bak*`, `cli/db/*.backup-*`, `v2/*.bak`, `v2/*.backup.json`, `v2/setting.json.corrupt-*`, `v2/config.json.pre-*`, `cli/config.json.bak-*` | 是（需二次确认） | 全部删除                                                                                 |
+| `exports`             | 导出与反馈包       | `export-log`, `export-log-stage`, `feedback`                                                                                                                                                                                  | 是               | 全部删除                                                                                 |
+| `runtimes`            | Agent 运行时与插件 | `agents/<runtime>/`, `bundled-agents`, `lite`, `computer-use`, `cli/plugins`（含 cache，2026-09-10 裁决不可删）                                                                                                               | 否               | 由安装 / 更新流程管理                                                                    |
+| `other`               | 其他               | 未命中的路径；启用自定义数据路径后 `~/.openzwork/v2` 整个旧副本；`agent/`（旧版残留）                                                                                                                                         | 否               | 下钻可见具体路径，便于后续补规则                                                         |
 
 约束：
 
@@ -265,7 +265,6 @@ Renderer <StorageSection>                 Host StorageService                   
 
 - 桌面端：完整功能，服务注册在本地 host 的 service collection。
 
-
 ## 7. 测试
 
 单测（`packages/services/src/storage/*.test.ts`）：
@@ -279,7 +278,7 @@ E2E（`packages/desktop/test/e2e/settings/settings-storage-management.test.ts`�
 | Case                     | Setup                                                                                                  | Action                            | Assertion                                                           |
 | ------------------------ | ------------------------------------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------- |
 | SM-01 scan               | 等启动迁移完成，清空隔离 HOME 的 `backup/`，再 seed 4 KiB `cli/debug`、6 KiB `backup/` 与昨日/今日日志 | 打开资源管理器 › 存储             | 扫描完成后轨迹为 4.0 KB、备份为 6.0 KB；总量包含应用正常运行数据    |
-| SM-02 drill-down         | 同上                                                                                                   | 点「模型调用轨迹」                | 明细列出 2 个文件与根目录 `~/.openzwork`；面包屑可返回                  |
+| SM-02 drill-down         | 同上                                                                                                   | 点「模型调用轨迹」                | 明细列出 2 个文件与根目录 `~/.openzwork`；面包屑可返回              |
 | SM-03 clean safe         | 同上                                                                                                   | 点轨迹行「清理」                  | 无确认框；toast 释放大小；文件已删；行大小变 0                      |
 | SM-04 clean confirm      | 同上                                                                                                   | 点「备份」行「清理」→ 取消 / 确认 | 取消不删；确认后删除                                                |
 | SM-08 stop on leave      | seed 大量小文件                                                                                        | 扫描中切到其他分区再切回          | 切走后 host 收到 cancel（无进度事件）；切回重新开始且先显示上次结果 |
@@ -290,16 +289,16 @@ E2E（`packages/desktop/test/e2e/settings/settings-storage-management.test.ts`�
 
 ## 8. 裁决记录（2026-09-10）
 
-| # | 问题 | 裁决 |
-| --- | --- | --- |
-| 1 | 分类粒度 | 「数据库」与旧「会话与任务数据」合并为 **会话记录与数据库**（不可清理）；`cli/artifacts`、`cli/agents`、`cli/sessions` 独立为 **工具输出与子代理产物**（需确认可清理，24h 保护）。核实结果见 §1.3.1：artifacts 不是用户附件，是工具结果留档 |
-| 2 | 命令输出与临时缓存是否可清理 | 可清理，`confirm` 并说明后果 |
-| 3 | 备份与迁移残留 | 可清理（`confirm`），类别改名为 **备份** |
-| 4 | 启用自定义路径后的 `~/.openzwork/v2` 旧副本 | 归入 **其他**，不提供清理 |
-| 5 | 端范围 | 只做桌面端 |
-| 6 | CLI 不跟随数据存储路径的根因 | 本次不修，只做管理（修了也仍有残留问题） |
-| 7 | 进度 | 实时刷新；切走即停、进来再算；异步 IO、性能优先（见 §5 性能约束） |
-| 8 | 工具输出 / 缓存到底能不能删（2026-09-10 追加） | 拆成两类：**子代理产物** = `cli/agents/**/transcript.jsonl`，可直接清理（保留 24h 内活动会话）；**工具输出与临时缓存** = 原「工具输出与子代理产物」其余 + 原「命令输出与临时缓存」，暂不可删，待逐项确认 |
+| #   | 问题                                           | 裁决                                                                                                                                                                                                                                        |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 分类粒度                                       | 「数据库」与旧「会话与任务数据」合并为 **会话记录与数据库**（不可清理）；`cli/artifacts`、`cli/agents`、`cli/sessions` 独立为 **工具输出与子代理产物**（需确认可清理，24h 保护）。核实结果见 §1.3.1：artifacts 不是用户附件，是工具结果留档 |
+| 2   | 命令输出与临时缓存是否可清理                   | 可清理，`confirm` 并说明后果                                                                                                                                                                                                                |
+| 3   | 备份与迁移残留                                 | 可清理（`confirm`），类别改名为 **备份**                                                                                                                                                                                                    |
+| 4   | 启用自定义路径后的 `~/.openzwork/v2` 旧副本    | 归入 **其他**，不提供清理                                                                                                                                                                                                                   |
+| 5   | 端范围                                         | 只做桌面端                                                                                                                                                                                                                                  |
+| 6   | CLI 不跟随数据存储路径的根因                   | 本次不修，只做管理（修了也仍有残留问题）                                                                                                                                                                                                    |
+| 7   | 进度                                           | 实时刷新；切走即停、进来再算；异步 IO、性能优先（见 §5 性能约束）                                                                                                                                                                           |
+| 8   | 工具输出 / 缓存到底能不能删（2026-09-10 追加） | 拆成两类：**子代理产物** = `cli/agents/**/transcript.jsonl`，可直接清理（保留 24h 内活动会话）；**工具输出与临时缓存** = 原「工具输出与子代理产物」其余 + 原「命令输出与临时缓存」，暂不可删，待逐项确认                                    |
 
 ## 9. 实施拆分（裁决后）
 

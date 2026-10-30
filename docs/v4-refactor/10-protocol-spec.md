@@ -620,7 +620,6 @@ interface SessionUsageState {
 }
 ```
 
-
 **模型切换窗口语义（2026-07-17）**：`usedTokens` 表示当前历史上下文占用，切换模型时不重算；
 `maxTokens` 表示当前 runtime 已应用模型的窗口，必须随 `ModelSelected.contextWindow` 立即替换，同时更新
 投影内部供后续 `ModelComplete` 回退使用的 `contextWindowMax`。旧持久化事件允许缺少该字段，此时保持
@@ -1611,8 +1610,6 @@ type ConversationTelemetryFact = ConversationTelemetryFactBase &
   `endpoint + remoteSessionId + (workspaceIdentity?.trim() || workspacePath) + serviceGeneration`；
   pane/SessionDataLayer 生命周期不得拥有该状态。
 - eventId 使用约 2000 条有界 LRU；terminal 与 compact 另按业务 key exactly-once。
-
-
 
 ---
 

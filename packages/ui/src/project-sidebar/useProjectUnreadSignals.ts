@@ -125,7 +125,7 @@ export function useProjectUnreadSignals(
       return Promise.all(writes);
     };
     const clearOnFocus = () => {
-      for (const [key, entry] of [...foregroundCompletions]) {
+      for (const [key, entry] of foregroundCompletions) {
         // 只清「已补写且用户回到窗口时任务仍在面前」的记录；
         // 未补写的（还没离开过）保持记录，等真正的离开事件。
         if (!entry.written || entry.marker == null) continue;

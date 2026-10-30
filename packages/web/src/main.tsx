@@ -16,6 +16,7 @@ import {
   ZCodeIntlProvider,
   generateMobileDeviceFingerprint,
   installDocumentHiddenMotionPause,
+  playTaskNotificationSound,
   setStreamClientId,
   setWebRemoteControlTerminalTransportState,
   type Theme,
@@ -42,6 +43,9 @@ import type {
   WebRemoteControlMobileNavigationIntent,
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceSwitchOptions,
+  IPlatformService,
+  RemoteTarget,
+  WebRemoteControlStatus,
   WebRemoteControlAppPayload,
   WebRemoteControlExternalWorkspaceBridge,
   ServerRemoteInfo,
@@ -818,6 +822,8 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
   let bridgeRecoveryRetryAttempt = 0;
   let bridgeRecoveryRetryTimer: ReturnType<typeof setTimeout> | undefined;
   let nextBridgeGeneration = 0;
+  // 终端页会话身份：bootstrap 与 workspace-bridge 请求都携带，供 desktop 侧区分重连。
+  const terminalClientSessionId = createWebRemoteControlRequestId("terminal-page");
   const checkVersionOnRecovery = window.location.pathname.replace(/\/+$/, "") === "/remote/v4";
   let disposeVersionNotice: (() => void) | undefined;
   const versionGuard = createWebRemoteControlVersionGuard({

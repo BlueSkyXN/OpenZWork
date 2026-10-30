@@ -5,7 +5,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { waitForWorkspaceApp, DEFAULT_WORKSPACE } from "../../../helpers/desktop-app.js";
 // fork 净化：登录兜底在我方无登录页构建下恒不触发；写库前 restart 快照语义按上游。
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
-import { loginWithApiKey } from "#e2e/helpers/conversation-session";import { TID_AUTOMATIONS_OPEN } from "@zcode/shared/test-ids";
+import { loginWithApiKey } from "#e2e/helpers/conversation-session";
+import { TID_AUTOMATIONS_OPEN } from "@zcode/shared/test-ids";
 import { ServiceChannels } from "@zcode/shared";
 import {
   installHandoffRpcProbe,
@@ -66,7 +67,7 @@ describe("虚拟项目旧产品体验", () => {
     const taskRoot = join(root, "task-cwd");
     await mkdir(taskRoot, { recursive: true });
     await writeFile(join(taskRoot, "E2E_PINNED_TASK_FILES.txt"), "task cwd file");
-// fork 采纳上游：tasks 表新增 meta_json 列（shared schema 已含），写库前 restart 避免运行中快照不发布。
+    // fork 采纳上游：tasks 表新增 meta_json 列（shared schema 已含），写库前 restart 避免运行中快照不发布。
     // 运行中写库不发布 Host 快照；非法 meta 还会让归档/置顶命令读不到任务。
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
@@ -126,7 +127,8 @@ describe("虚拟项目旧产品体验", () => {
           db.close();
         }
       },
-    });    await $(rowSelector).waitForDisplayed({ timeout: 45_000 });
+    });
+    await $(rowSelector).waitForDisplayed({ timeout: 45_000 });
   });
 
   it("D3：快捷键菜单命令和左上角继承项目，任务分区显式未归类", async () => {

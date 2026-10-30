@@ -40,10 +40,10 @@ Provider 顶层保留 `enabled`，但只表达“这份 Provider 配置是否已
 
 2. Account Source Schema 只允许账号 Provider 写 `access.entitled`，拒绝 `type/family/mode`；
 3. Account Resolver 从写 Provider 顶层 `enabled` 改为写 `access.entitled`；
-5. Registry Resolver 分别检查 Provider `enabled` 与 Account `access.entitled`；
-6. Settings View 直接按 `enabled` 将普通 Built-in 放入主列表或添加菜单，entitlement 不改变 Settings placement；
-7. 删除把 Provider `enabled` 当成套餐权益的判断、命名和注释；
-8. Model Config `enabled` 不变。
+4. Registry Resolver 分别检查 Provider `enabled` 与 Account `access.entitled`；
+5. Settings View 直接按 `enabled` 将普通 Built-in 放入主列表或添加菜单，entitlement 不改变 Settings placement；
+6. 删除把 Provider `enabled` 当成套餐权益的判断、命名和注释；
+7. Model Config `enabled` 不变。
 
 ## 5. 测试与完成标准
 

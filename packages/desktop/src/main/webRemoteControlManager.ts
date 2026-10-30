@@ -129,8 +129,9 @@ interface WindowControlLifecycle {
 }
 
 interface WindowControlRuntime {
-  // fork 净化：远控保留本地 HMAC/directGateway 通道，prepared connection 由我方 connectionProvider 提供；
-  // 上游此处的 terminalOwner 已在共同区（terminalOwner 行存在），不需要从上游侧重复引入。
+  // fork 净化：远控保留本地 HMAC/directGateway 通道，prepared connection 由我方 connectionProvider 提供。
+  // terminalOwner 来自上游共享 CLI 会话归属（terminal_owner_id），随共享进程特性一并保留。
+  terminalOwner?: { clientSessionId: string; id: string };
   connection?: WebRemoteControlPreparedConnection;
   windowId: number;
   workspacePath: string;
@@ -369,7 +370,8 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
 
   // 同步修复：这些业务所有者在删除相邻遥测函数时被一起移除，启动与恢复仍依赖它们。
   const availableTasksByWindowId = new Map<number, WebRemoteControlTaskTarget[]>();
-  const legacyDirectoriesByWindowId = new Map<number, WebRemoteControlLegacyDirectory[]>();
+  // 修复原因：值语义是每窗口一份目录投影，误声明为数组导致既有 6 处访问错位。
+  const legacyDirectoriesByWindowId = new Map<number, WebRemoteControlLegacyDirectory>();
   const pushedWorkspaceListSignaturesByWindowId = new Map<number, string>();
   let startupRestoreClaimed = false;
   let lifecycleRevision = 0;
@@ -1756,7 +1758,8 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             : undefined;
         let registeredAuth: { deviceSid: string; passHash: string } | undefined;
         const isCurrent = () =>
-          !signal.aborted && runtime !== undefined && runtimes.get(windowId) === runtime;        const readyPromise = new Promise<void>((resolve, reject) => {
+          !signal.aborted && runtime !== undefined && runtimes.get(windowId) === runtime;
+        const readyPromise = new Promise<void>((resolve, reject) => {
           let settled = false;
           const finish = (error?: Error) => {
             if (settled) return;
@@ -1815,7 +1818,8 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
               sendPendingBridgeInvalidation(runtime);
               const isFirstSendReadyForPairing = !runtime.hasObservedSendReadyForPairing;
               runtime.hasObservedSendReadyForPairing = true;
-              if (event.kind === "reconnected-socket" || isFirstSendReadyForPairing) {                requestMobileTaskView(runtime);
+              if (event.kind === "reconnected-socket" || isFirstSendReadyForPairing) {
+                requestMobileTaskView(runtime);
               }
               const relayProtocol = runtime.currentBridge?.relayProtocol;
               if (relayProtocol && !relayProtocol.isDegraded())
@@ -1934,7 +1938,8 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       // 这里必须先关闭旧连接并清掉本地 relay auth，再重新注册设备，确保旧 URL 不再代表当前桌面端会话。
       if (dependencies.connectionProvider) {
         const connection = runtimes.get(windowId)?.connection?.settings ?? context.connection;
-        return this.start(windowId, { ...context, connection }, true);      }
+        return this.start(windowId, { ...context, connection }, true);
+      }
       await stopWindowRuntime(windowId, "leaked-qr");
       await resetExternalRelayDeviceAuth(
         dependencies.authStorageProvider,

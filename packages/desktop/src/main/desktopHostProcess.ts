@@ -202,7 +202,11 @@ export function spawnHostProcess(
       workspacePath: string;
       workspaceIdentity: string;
       target: RemoteTarget;
-    }) => Promise<{ ok: boolean; port?: MessagePortMain; error?: string }>;    /** host → main：定时任务派发结果，转交给 cron scheduler 结算调度状态机。 */
+    }) => Promise<{
+      ok: boolean;
+      port?: MessagePortMain;
+      error?: string;
+    }> /** host → main：定时任务派发结果，转交给 cron scheduler 结算调度状态机。 */;
     onCronRunResult?: (result: {
       runId: string;
       ok: boolean;

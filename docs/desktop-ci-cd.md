@@ -28,14 +28,15 @@
 <!-- 以下上游 GitLab 发布链路章节（release job 表、MR 手动 Job、发布链路对比、触发规则、CUA Helper 发布 job）依赖官方 OSS/CDN/灰度 API 与飞书发布通知基础设施，属净化域：OpenZWork 无 .gitlab-ci.yml，发布走自有 GitHub Actions release.yml，整段不随上游引入 -->
 
 ## MR 手动 Job 命名
-| `release:validate`                   | approve 后自动             | 校验共享目录中六个平台安装包、更新清单、日志和 Source Server descriptor/archive，失败时不开放 upload                                |
-| `release:upload:<platform>:<arch>`   | 自动                       | 上传版本化安装包、Source Server descriptor/archive，生成 `release-meta-*.json` 和版本化 CDN 预热清单                                |
-| `release:upload:sandbox:macos:arm64` | sandbox 手动流水线自动运行 | 验证 sandbox 上传链路，不触达正式发布路径                                                                                           |
-| `release:preload:cdn`                | approve 后自动             | 预热版本化平台/架构安装包、更新清单、blockmap 和 Source Server CDN URL                                                              |
-| `release:preload:cdn:sandbox`        | 手动                       | 预热 sandbox 版本化产物 CDN URL                                                                                                     |
-| `release:publish:gray`               | approve 后自动             | 等 `release:preload:cdn` 成功后，先关闭灰度开关并把比例重置为 `0`，再调后端 release API 发布灰度状态 `status=3`                     |
-| `release:publish:stable`             | 灰度确认后手动             | 复用 upload 元数据调后端 release API 发布全量状态 `status=1`，不上传 stable feed；`ci*` 分支默认被脚本拦截，避免验证包写正式 stable |
-| `release:notify:feishu`              | 手动                       | 发送正式发版飞书通知                                                                                                                |
+
+| `release:validate` | approve 后自动 | 校验共享目录中六个平台安装包、更新清单、日志和 Source Server descriptor/archive，失败时不开放 upload |
+| `release:upload:<platform>:<arch>` | 自动 | 上传版本化安装包、Source Server descriptor/archive，生成 `release-meta-*.json` 和版本化 CDN 预热清单 |
+| `release:upload:sandbox:macos:arm64` | sandbox 手动流水线自动运行 | 验证 sandbox 上传链路，不触达正式发布路径 |
+| `release:preload:cdn` | approve 后自动 | 预热版本化平台/架构安装包、更新清单、blockmap 和 Source Server CDN URL |
+| `release:preload:cdn:sandbox` | 手动 | 预热 sandbox 版本化产物 CDN URL |
+| `release:publish:gray` | approve 后自动 | 等 `release:preload:cdn` 成功后，先关闭灰度开关并把比例重置为 `0`，再调后端 release API 发布灰度状态 `status=3` |
+| `release:publish:stable` | 灰度确认后手动 | 复用 upload 元数据调后端 release API 发布全量状态 `status=1`，不上传 stable feed；`ci*` 分支默认被脚本拦截，避免验证包写正式 stable |
+| `release:notify:feishu` | 手动 | 发送正式发版飞书通知 |
 
 ## MR 手动 Job 命名
 

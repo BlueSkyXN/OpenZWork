@@ -73,7 +73,6 @@ ModelFactory 构建 Model
 - 每个新创建的根执行 Model 都经过同一个 ModelFactory 边界；`Model.bind()` 和复用当前 Active Model 的
   Automatic Compact 继承已经校验并冻结的事实，不重新查询 Registry。
 
-
 - 不新增 Registry Service、RPC 或拥有状态的通用 Validation Service；
 - 创建阶段在 `takeTicket()` 前校验，编辑阶段在持久化前校验，派发阶段在启动 Agent turn 前重新校验；
 - 提前校验通过后，真正构建闲时 Model 时仍再次执行最终校验，防止派发等待期间 Registry 已变化。
@@ -88,30 +87,30 @@ ModelFactory 构建 Model
 
 ## 3. Impact Brief
 
-| 字段             | 结论                                                                                                           |
-| ---------------- | -------------------------------------------------------------------------------------------------------------- |
-| Developer intent | 删除用户 Facade 的内部执行校验语义，把权威校验归位到 Model 构建边界                                            |
-| Change layer     | `validation`、`commit-effect`                                                                                  |
-| Operating mode   | planning / implementation-handoff                                                                              |
-| Out of scope     | 候选 UI、选择状态、持久化、Access/Auth、Runtime composition、Telemetry                                         |
+| 字段             | 结论                                                                   |
+| ---------------- | ---------------------------------------------------------------------- |
+| Developer intent | 删除用户 Facade 的内部执行校验语义，把权威校验归位到 Model 构建边界    |
+| Change layer     | `validation`、`commit-effect`                                          |
+| Operating mode   | planning / implementation-handoff                                      |
+| Out of scope     | 候选 UI、选择状态、持久化、Access/Auth、Runtime composition、Telemetry |
 
 ### 3.1 UI Surface Matrix
 
-| 用户场景                      | 候选来源                          | 提交落点              | 最终校验                                   | 本 Todo 可见变化 |
-| ----------------------------- | --------------------------------- | --------------------- | ------------------------------------------ | ---------------- |
-| 普通对话选择模型              | `ModelSelectionFacade.getView()`  | Submission / Session  | Agent Registry + ModelFactory              | 无               |
-| Automation/Subagent/Repo Wiki | 同一候选 View，各自保持独立 Draft | 各自既有配置/提交命令 | 真正创建 Model 时                          | 无               |
+| 用户场景                      | 候选来源                          | 提交落点              | 最终校验                      | 本 Todo 可见变化 |
+| ----------------------------- | --------------------------------- | --------------------- | ----------------------------- | ---------------- |
+| 普通对话选择模型              | `ModelSelectionFacade.getView()`  | Submission / Session  | Agent Registry + ModelFactory | 无               |
+| Automation/Subagent/Repo Wiki | 同一候选 View，各自保持独立 Draft | 各自既有配置/提交命令 | 真正创建 Model 时             | 无               |
 
 ### 3.2 关系与 owner
 
-| 等级           | 关系                          | 要求                                                 |
-| -------------- | ----------------------------- | ---------------------------------------------------- |
-| must-inspect   | Facade -> Services/RPC/mocks  | `validate()` 全链删除，不留空实现                    |
-| must-inspect   | ModelFactory -> Registry      | 构建前执行完整 Selection 校验，共用错误映射          |
-| should-inspect | Client/Remote service proxy   | 接口收窄后代理、Bot 和 remote workspace 装配继续成立 |
-| should-inspect | Configured Default/fallback   | 既有提前解析不替代最终校验，行为不变                 |
-| invariant-only | 所有模型选择 UI               | 候选、Draft、commit sink 和持久化不变                |
-| invariant-only | Desktop/Mobile/Remote         | delivery、Queue、Recovery 和 workspace identity 不变 |
+| 等级           | 关系                         | 要求                                                 |
+| -------------- | ---------------------------- | ---------------------------------------------------- |
+| must-inspect   | Facade -> Services/RPC/mocks | `validate()` 全链删除，不留空实现                    |
+| must-inspect   | ModelFactory -> Registry     | 构建前执行完整 Selection 校验，共用错误映射          |
+| should-inspect | Client/Remote service proxy  | 接口收窄后代理、Bot 和 remote workspace 装配继续成立 |
+| should-inspect | Configured Default/fallback  | 既有提前解析不替代最终校验，行为不变                 |
+| invariant-only | 所有模型选择 UI              | 候选、Draft、commit sink 和持久化不变                |
+| invariant-only | Desktop/Mobile/Remote        | delivery、Queue、Recovery 和 workspace identity 不变 |
 
 当前环境没有可调用的 codegraph 接口。影响面以 Feature Graph、`dep:refs`、精确调用扫描和目标源码为证据；
 实现前重新执行引用归零和受影响测试发现。
@@ -132,9 +131,9 @@ ModelFactory 构建 Model
 
 1. 先更新正式 Design 中 Facade 与 ModelFactory 的校验职责；
    failure 测试；
-3. 提取共享 Validation -> Protocol Error 映射，并补齐 ModelFactory 最终校验；
-5. 删除 Facade/Service `validate()`、`ProviderRegistryFacadeSource.validateSelection()` 和全部占位实现；
-6. 用 `rg`、`dep:refs` 确认以下生产引用归零：
+2. 提取共享 Validation -> Protocol Error 映射，并补齐 ModelFactory 最终校验；
+3. 删除 Facade/Service `validate()`、`ProviderRegistryFacadeSource.validateSelection()` 和全部占位实现；
+4. 用 `rg`、`dep:refs` 确认以下生产引用归零：
 
 ```text
 ModelSelectionFacade.validate

@@ -18,8 +18,6 @@
 
 ## 范围与已对齐规则
 
-
-
 据此，删除旧 JWT 本身不是问题。检查点是旧登录是否清理完整、新凭据是否来自同一次登录、退出后是否还有 active provider 或登录凭据残留。取消流程也不能未经确认就按“恢复旧 JWT”修复。
 
 ```text
@@ -41,7 +39,7 @@
 
 | 入口                   | 路径规则                                                                                                                              | 代码依据                                                                                            |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Desktop / Node service | `{dataBaseDir}/.openzwork/v2/credentials.json`                                                                                            | [credentialService.ts](../../packages/services/src/credential/credentialService.ts#L27)             |
+| Desktop / Node service | `{dataBaseDir}/.openzwork/v2/credentials.json`                                                                                        | [credentialService.ts](../../packages/services/src/credential/credentialService.ts#L27)             |
 | service 的 dataBaseDir | `setDataBaseDir()` 覆盖值 > 模块初始化时读取的 `ZCODE_DATA_BASE_DIR` > `HOME` > `os.homedir()`；前三项去除首尾空白                    | [paths.ts](../../packages/services/src/paths.ts#L57)                                                |
 | CLI / MCP shared store | 显式 `filePath` 优先；否则 `{baseDir ?? env.ZCODE_DATA_BASE_DIR ?? os.homedir()}/.zcode/v2/credentials.json`；支持 `~`、`~/` 和绝对化 | [shared-credentials.ts](../../apps/zcode-cli/packages/adapters/src/auth/shared-credentials.ts#L257) |
 
@@ -120,8 +118,6 @@ Server remote
 | Desktop OAuth mutation queue | 串行同一个 OAuthService 实例的登录完成、退出等操作                     | 不是多个窗口、多个 Host、CLI 共享的登录级队列                        |
 | 读取                         | 原子替换使读者通常看到某次完整文件；CLI `loadMany` 同次读取多个 key    | 多次独立 `load` 仍可能跨过其它进程的写入，不能自动认为是同一会话快照 |
 
-
-
 CLI 还导出 `loadSharedZCodeCredentialSync`：同步读取中发生任何错误都返回 `undefined`，不会按异步读取路径保留损坏证据。本次检索未发现生产调用者，不能将它描述为当前所有 CLI 读取的行为。[同步兼容入口](../../apps/zcode-cli/packages/adapters/src/auth/shared-credentials.ts#L234)。
 
 ### 整个文件的删除与数据目录迁移
@@ -176,60 +172,30 @@ CLI 还导出 `loadSharedZCodeCredentialSync`：同步读取中发生任何错�
 
 依据：[oauth.ts:56](../../packages/shared/src/oauth.ts#L56)、`:132`；[oauthCredentialRepo.ts:13](../../packages/services/src/oauth/repo/oauthCredentialRepo.ts#L13)、`:36`。
 
-| key                            | 实际语义 / 数据来源                                                                          | 正常写入                                                                | 正常读取 / 清理                                                                                                                                                                                           |
-| ------------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `oauth:active_provider`        | 当前 App 平台身份，内置值为 `zai` / `bigmodel`；不是 token                                   | 登录最后一步写入；由 `saveActiveProvider` 管理                          | 决定缓存恢复、模型/官方 MCP/空闲套餐使用哪个平台；active logout、all logout、损坏恢复删除                                                                                                                 |
-| `oauth:login_attribution`      | JSON：`channel_id`、`utm_source`、`utm_campaign`；不是 token                                 | 归因回调 / 带归因授权回调写入；只保存非空字符串                         | 读时只接受这三个字段，兼容旧 `{params, expiresAt}`；当前无 TTL，logout 不清理；无法解析或有效字段为空则删除                                                                                               |
-| `auth_token`                   | 旧 BigModel access token key                                                                 | 当前 OAuth 正常登录不写；只保留历史兼容读取                             | `BigModelProviderAdapter.loadLegacyTokenSet` 与 `useAuthToken.getToken` 读取；`restoreSession` 回填命名空间 key；当前 OAuth logout / corrupt 清理不删除，`useAuthToken.clearToken` 对 BigModel 会特殊删除 |
-| `refresh_token`                | 旧 BigModel refresh token key                                                                | 当前正常 OAuth 登录不写                                                 | BigModel legacy loader 兼容读取；正常 OAuth 清理及 useAuthToken.clearToken 都不删除它；不是当前命名空间字段的别名写入                                                                                     |
-
-
-
-
-
-
+| key                       | 实际语义 / 数据来源                                          | 正常写入                                        | 正常读取 / 清理                                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------ | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `oauth:active_provider`   | 当前 App 平台身份，内置值为 `zai` / `bigmodel`；不是 token   | 登录最后一步写入；由 `saveActiveProvider` 管理  | 决定缓存恢复、模型/官方 MCP/空闲套餐使用哪个平台；active logout、all logout、损坏恢复删除                                                                                                                 |
+| `oauth:login_attribution` | JSON：`channel_id`、`utm_source`、`utm_campaign`；不是 token | 归因回调 / 带归因授权回调写入；只保存非空字符串 | 读时只接受这三个字段，兼容旧 `{params, expiresAt}`；当前无 TTL，logout 不清理；无法解析或有效字段为空则删除                                                                                               |
+| `auth_token`              | 旧 BigModel access token key                                 | 当前 OAuth 正常登录不写；只保留历史兼容读取     | `BigModelProviderAdapter.loadLegacyTokenSet` 与 `useAuthToken.getToken` 读取；`restoreSession` 回填命名空间 key；当前 OAuth logout / corrupt 清理不删除，`useAuthToken.clearToken` 对 BigModel 会特殊删除 |
+| `refresh_token`           | 旧 BigModel refresh token key                                | 当前正常 OAuth 登录不写                         | BigModel legacy loader 兼容读取；正常 OAuth 清理及 useAuthToken.clearToken 都不删除它；不是当前命名空间字段的别名写入                                                                                     |
 
 ### 三种凭据不能混用
 
 2. **平台业务 token / MaaS JWT**：`oauth:<platform>:access_token`，标识对应平台的业务登录身份，用于业务接口和套餐身份校验。
 
-
-
-
-
-
-
-
 依据：[modelProviderServiceStorage.ts:93](../../packages/services/src/model-provider/modelProviderServiceStorage.ts#L93)、`:942`、`:1137`；[oauthPresetProviderRepo.ts:535](../../packages/services/src/model-provider/repo/oauthPresetProviderRepo.ts#L535)。
-
-
-
-
-
 
 ### 主要消费者和真实认证头
 
-| 消费场景                                        | 使用的凭据                                                               | 真实头 / 边界                                                                                                                                             | 代码依据                                                                                                                                                                                                                                                                                |
-| ----------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Repo snapshot 上传                              | 当前 active tokenSet；优先 ZCode JWT，当前代码缺失时回退平台 accessToken | 最终 `Authorization: Bearer <token>`；这是现存 fallback，是否允许须依据后端契约判断，不能仅凭 token 类型不同直接定为 bug                                  | [node.ts:1288](../../packages/services/src/node.ts#L1288)；[repoSnapshotUploadClient.ts:117](../../packages/services/src/repo-snapshot/repoSnapshotUploadClient.ts#L117)                                                                                                                |
-
-
-
+| 消费场景           | 使用的凭据                                                               | 真实头 / 边界                                                                                                            | 代码依据                                                                                                                                                                 |
+| ------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Repo snapshot 上传 | 当前 active tokenSet；优先 ZCode JWT，当前代码缺失时回退平台 accessToken | 最终 `Authorization: Bearer <token>`；这是现存 fallback，是否允许须依据后端契约判断，不能仅凭 token 类型不同直接定为 bug | [node.ts:1288](../../packages/services/src/node.ts#L1288)；[repoSnapshotUploadClient.ts:117](../../packages/services/src/repo-snapshot/repoSnapshotUploadClient.ts#L117) |
 
 ### Renderer 读取入口、购买鉴权与 WebView 副本
 
-
-
 依据：[useCredentials.ts:28](../../packages/ui/src/hooks/useCredentials.ts#L28)；[index.ts:43](../../packages/ui/src/hooks/index.ts#L43)；[index.ts:70](../../packages/ui/src/index.ts#L70)。
 
-
-
 依据：[codingPlanPurchaseAuth.ts:25](../../packages/ui/src/settings/model-provider-section/codingPlanPurchaseAuth.ts#L25)；[ModelProviderSection.tsx:648](../../packages/ui/src/settings/ModelProviderSection.tsx#L648)。
-
-
-
-
-
 
 **legacy 清理的边界必须单列。** 当前正常 login 切换、`clearProvider`、OAuth logout、corrupt 恢复不删除磁盘旧 `auth_token/refresh_token`；只有 `useAuthToken.clearToken` 对 BigModel 的特殊逻辑会删除 `auth_token`，仍不删除旧 `refresh_token`。WebView 的三 key 清理也不是磁盘 legacy 清理。用户要求“清所有旧 JWT”时，应核定这些历史兼容字段的清理策略；不能只看到命名空间切换正确就宣称 legacy 已全清。
 
@@ -241,19 +207,13 @@ CLI 还导出 `loadSharedZCodeCredentialSync`：同步读取中发生任何错�
 
 依据：[oauth.ts:164](../../packages/shared/src/oauth.ts#L164)；[oauthService.ts:177](../../packages/services/src/oauth/oauthService.ts#L177)、`:253`、`:266`。
 
-
-
 依据：[oauthService.ts:913](../../packages/services/src/oauth/oauthService.ts#L913)；[providerAdapter.ts:31](../../packages/services/src/oauth/providers/providerAdapter.ts#L31)；[zaiBusinessTokenResolver.ts:4](../../packages/services/src/providers/zaiBusinessTokenResolver.ts#L4)、`:44`、`:99`。
-
-
 
 `restoreSession` 是另一条主动联网校验路径：调用 provider userinfo；错误文本匹配 401/403/unauthorized/forbidden 时 logout，其它错误继续抛出。
 
 依据：[nodeApiClient.ts:134](../../packages/services/src/providers/api/nodeApiClient.ts#L134)；[node.ts:1226](../../packages/services/src/node.ts#L1226)、`:1872`；[oauthService.ts:518](../../packages/services/src/oauth/oauthService.ts#L518)、`:1061`。
 
 **解密损坏。** OAuthCredentialRepo 在 active provider、tokenSet、user_info 读取时捕获稳定 `CredentialDecryptError`：清两内置平台及其它注册平台的 access/refresh/user_info、共享 JWT、active provider，再通知清理派生模型 key；派生清理异常只记录 warn。该路径不删除 SSH、bot 等非 OAuth key，也不删除旧 `auth_token/refresh_token`、归因 key。model-provider 的 OAuth-aware 包装读取也复用此 Repo 行为。
-
-
 
 依据：[oauthCredentialRepo.ts:159](../../packages/services/src/oauth/repo/oauthCredentialRepo.ts#L159)、`:241`、`:292`、`:346`、`:432`；[modelProviderService.ts:136](../../packages/services/src/model-provider/modelProviderService.ts#L136)；[oauthService.ts:206](../../packages/services/src/oauth/oauthService.ts#L206)。
 
@@ -272,34 +232,22 @@ CLI 还导出 `loadSharedZCodeCredentialSync`：同步读取中发生任何错�
 
 依据：[oauthService.ts:367](../../packages/services/src/oauth/oauthService.ts#L367)、`:374`、`:431`、`:554`、`:630`、`:791`、`:948`、`:980`、`:990`；[oauthCredentialRepo.ts:284](../../packages/services/src/oauth/repo/oauthCredentialRepo.ts#L284)、`:424`。
 
-
-
-
-
-
-
-
-
-
 ### 当前偏差与后续检查项
 
 以下包含已确认实现问题、当前兼容残留和需要明确的边界；不把尚未决定的清理时机列为既定 bug。本章没有修改实现。
 
-| 项目                                                        | 证据 / 当前结果                                                                                                                                             | 归类与边界                                                                                                                                                                              |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 登录清旧的提交时点和取消语义待明确                          | `oauthService.ts:554`、`:791` 只换 flow；`:390` rollback 写回旧两域会话                                                                                     | **待明确边界**。用户确认的是清旧结果和单平台身份，不是点击时立即清理；不得把另一平台 JWT 设计成正常并存登录，也不能未经确认改变取消行为                                                 |
-| BigModel 缺 JWT 仍能恢复 authenticated                      | cached restore `oauthService.ts:253` 的缺 JWT 检查仅限 ZAI，`:262` 统一返回成功                                                                             | **当前两平台恢复条件不一致**。新单平台完整会话规则需要明确消除残缺态                                                                                                                    |
-| 旧 BigModel `auth_token/refresh_token` 正常切平台后仍可残留 | `oauthCredentialRepo.ts:415` 不删除 legacy；`bigmodelProviderAdapter.ts:274` 仍读取；`useCredentials.ts:63` 仅特殊删除 `auth_token`                         | **静态确认的兼容残留，清理边界待核定**。正常切换合成成功只证明命名空间 key 清理，不证明 legacy 全清；用户要求清所有旧 JWT 时必须单列核对这两项，而不能扩大为删除全部 credentials.json   |
-| 孤立 OAuth 字段和 adapter 清理集合不一致                    | logout 只清 active；all 清理取 adapters 列表；corrupt 清理总包含两内置平台                                                                                  | **需要明确清理集合**。active 缺失或 adapter 禁用/未注册时的遗留字段应独立覆盖                                                                                                           |
-| 泛型 refresh 缺 generation / mutation queue 防护            | `oauthService.ts:936` 异步交换后 `:945` 按最新 active 保存                                                                                                  | **扩展接口隐患**。内置 adapter 当前无 refresh，不能把它描述成当前内置自动刷新串写已经在发生                                                                                             |
-| `expiresAt` 未落盘，业务 JWT 无自动刷新链路                 | Repo 只保存 access/refresh/JWT；官方 MCP 注释也明确业务 JWT 无刷新链路                                                                                      | **能力边界**。当前依赖重新登录或服务端拒绝；是否新增刷新属于后续设计选择                                                                                                                |
-
+| 项目                                                        | 证据 / 当前结果                                                                                                                     | 归类与边界                                                                                                                                                                            |
+| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 登录清旧的提交时点和取消语义待明确                          | `oauthService.ts:554`、`:791` 只换 flow；`:390` rollback 写回旧两域会话                                                             | **待明确边界**。用户确认的是清旧结果和单平台身份，不是点击时立即清理；不得把另一平台 JWT 设计成正常并存登录，也不能未经确认改变取消行为                                               |
+| BigModel 缺 JWT 仍能恢复 authenticated                      | cached restore `oauthService.ts:253` 的缺 JWT 检查仅限 ZAI，`:262` 统一返回成功                                                     | **当前两平台恢复条件不一致**。新单平台完整会话规则需要明确消除残缺态                                                                                                                  |
+| 旧 BigModel `auth_token/refresh_token` 正常切平台后仍可残留 | `oauthCredentialRepo.ts:415` 不删除 legacy；`bigmodelProviderAdapter.ts:274` 仍读取；`useCredentials.ts:63` 仅特殊删除 `auth_token` | **静态确认的兼容残留，清理边界待核定**。正常切换合成成功只证明命名空间 key 清理，不证明 legacy 全清；用户要求清所有旧 JWT 时必须单列核对这两项，而不能扩大为删除全部 credentials.json |
+| 孤立 OAuth 字段和 adapter 清理集合不一致                    | logout 只清 active；all 清理取 adapters 列表；corrupt 清理总包含两内置平台                                                          | **需要明确清理集合**。active 缺失或 adapter 禁用/未注册时的遗留字段应独立覆盖                                                                                                         |
+| 泛型 refresh 缺 generation / mutation queue 防护            | `oauthService.ts:936` 异步交换后 `:945` 按最新 active 保存                                                                          | **扩展接口隐患**。内置 adapter 当前无 refresh，不能把它描述成当前内置自动刷新串写已经在发生                                                                                           |
+| `expiresAt` 未落盘，业务 JWT 无自动刷新链路                 | Repo 只保存 access/refresh/JWT；官方 MCP 注释也明确业务 JWT 无刷新链路                                                              | **能力边界**。当前依赖重新登录或服务端拒绝；是否新增刷新属于后续设计选择                                                                                                              |
 
 本轮前序运行时证据只使用内存 fixture 与从当前源码加载的函数，没有读取真实 token；本章不重复运行。正式修复仍需按仓库要求先补测试/spec，覆盖登录清旧、取消/失败、两平台切换、独立 JWT 损坏、派生 key 清理以及 desktop / web 远控边界。
 
 ## CLI 与 MCP 的 credentials.json 使用情况
-
-
 
 存储路径、加密和文件锁见前文；以下聚焦 CLI 与 MCP 的业务行为。
 
@@ -307,18 +255,12 @@ CLI 还导出 `loadSharedZCodeCredentialSync`：同步读取中发生任何错�
 
 字段常量及 CLI 写入入口见 [shared-credentials.ts:11](../../apps/zcode-cli/packages/adapters/src/auth/shared-credentials.ts#L11)、[shared-credentials.ts:215](../../apps/zcode-cli/packages/adapters/src/auth/shared-credentials.ts#L215)。下表描述的是**解密后的值**。
 
-| 完整 key                  | 值结构/语义                                                                                                      | 当前 CLI 行为                          | 状态                                          |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------- |
-| `oauth:active_provider`   | provider 字符串；CLI ZAI 登录写 `zai`。是身份选择标记，不是 token                                                | 登录覆盖；logout 仅在值为 `zai` 时删除 | 当前主链路                                    |
+| 完整 key                | 值结构/语义                                                       | 当前 CLI 行为                          | 状态       |
+| ----------------------- | ----------------------------------------------------------------- | -------------------------------------- | ---------- |
+| `oauth:active_provider` | provider 字符串；CLI ZAI 登录写 `zai`。是身份选择标记，不是 token | 登录覆盖；logout 仅在值为 `zai` 时删除 | 当前主链路 |
 
-
-
-
-
-
-| 完整 key                       | 解密后的值                     | 代码依据                                                                                       |
-| ------------------------------ | ------------------------------ | ---------------------------------------------------------------------------------------------- |
-
+| 完整 key | 解密后的值 | 代码依据 |
+| -------- | ---------- | -------- |
 
 ### CLI 登录、退出与模型 Key 的生命周期
 
@@ -332,14 +274,11 @@ CLI 还导出 `loadSharedZCodeCredentialSync`：同步读取中发生任何错�
 
 #### CLI logout
 
-
-
 该 CLI logout 路径没有删除 `~/.openzwork/cli/config.json` 中的模型 API Key，也没有遍历或删除 `mcp:oauth:*`。应用账号登出、CLI 模型调用凭据、第三方 MCP 授权是当前代码中的三个不同生命周期。
 
 ### MCP OAuth 命名空间与隔离范围
 
 只有 MCP authorization-code OAuth 使用本共享 store。当前运行期入口 `createOAuthClientProvider()` 对 HTTP/SSE authorization-code 返回 `createMcpOAuthTokenProvider()`；stdio 和官方鉴权不走此 provider；client-credentials 模式直接创建 SDK `ClientCredentialsProvider`，没有把本 store 注入给它。[mcp/index.ts:1527](../../apps/zcode-cli/packages/adapters/src/mcp/index.ts#L1527)。
-
 
 ```text
 serverName
@@ -374,8 +313,6 @@ config.redirectPath 或 ""
 | `P:pending_authorization`      | `{attempt_id, authorization_url, baseline_generation?, expires_at, state}` JSON                                                | 当前授权事务共享状态，不是长期 refresh/access token |
 | `P:code_verifier:<state>`      | PKCE verifier 原始字符串                                                                                                       | 旧 provider 的持久化形态；当前 Phase 2 只放内存     |
 
-
-
 `authorization_credentials` 的完整本地包装结构：
 
 | 字段                 | 含义                                                                                                        |
@@ -388,8 +325,6 @@ config.redirectPath 或 ""
 | `obtained_at?`       | 获取 token 的毫秒 epoch                                                                                     |
 | `expires_at?`        | `obtained_at + expires_in * 1000`；服务器未返回可用 `expires_in` 时缺省                                     |
 | `issuer?`            | 授权服务器 issuer/URL，用于发现元数据一致性，不改变 key                                                     |
-
-
 
 ### MCP OAuth 授权、刷新、失效与历史兼容
 
@@ -415,12 +350,7 @@ Phase 2：交互授权事务
                      -> 关闭 listener、按 attempt 删除 pending、释放 lease
 ```
 
-
-
-
 #### 刷新与 token 删除
-
-
 
 | 触发条件                                                                        | 当前处理                                                                                       |
 | ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
@@ -430,16 +360,9 @@ Phase 2：交互授权事务
 | 网络/5xx/discovery 临时错误                                                     | 不当作 grant 确定失效；proactive 可继续现 token，reactive 抛临时刷新错误                       |
 | legacy-only pair，没有 canonical `raw`                                          | 上述 canonical 删除 helper 不执行；仍按错误分类进入交互授权/配置错误                           |
 
-
-
 #### metadata、pending 和锁文件
 
 - 本轮在当前 CLI/MCP adapter、bootstrap 和 service MCP/plugin 代码中没有找到按整个 `mcp:oauth:<hash>` namespace 遍历删除的业务入口。不能声称断连、停用或移除 MCP 一定会清除全部授权材料；当前明确可见的是成功覆盖、确定失效 CAS 和 pending/verifier 清理。
-
-
-
-
-
 
 ### 官方 MCP 读取的 token 与实际请求承载
 
@@ -447,11 +370,11 @@ Phase 2：交互授权事务
 
 Host 要求 `oauth:active_provider` 与当前 setting family 一致且有 ZCode JWT，不能跨 family 回退找另一把 MaaS token；完整套餐路径还会前后比较 MaaS JWT。缺套餐时存在 identity-only 分支，可以只带 ZCode JWT，让服务端决定权益；有套餐 provider 却缺 MaaS JWT 时返回不可用。[officialMcpCredentials.ts:216](../../packages/services/src/official-mcp/officialMcpCredentials.ts#L216)、[officialMcpCredentials.ts:283](../../packages/services/src/official-mcp/officialMcpCredentials.ts#L283)、[officialMcpCredentials.ts:330](../../packages/services/src/official-mcp/officialMcpCredentials.ts#L330)。
 
-| Header                     | 来源                                                | 何时发送                                                       |
-| -------------------------- | --------------------------------------------------- | -------------------------------------------------------------- |
-| `Bigmodel-Target-Type`     | `PERSONAL` / `TEAM`                                 | wire scope 存在时                                              |
-| `Bigmodel-Organization`    | 选中 Team 连接的 organization ID                    | TEAM scope 且组织/项目能成对确定时                             |
-| `Bigmodel-Project`         | 选中 Team 连接的 project ID                         | 同上                                                           |
+| Header                  | 来源                             | 何时发送                           |
+| ----------------------- | -------------------------------- | ---------------------------------- |
+| `Bigmodel-Target-Type`  | `PERSONAL` / `TEAM`              | wire scope 存在时                  |
+| `Bigmodel-Organization` | 选中 Team 连接的 organization ID | TEAM scope 且组织/项目能成对确定时 |
+| `Bigmodel-Project`      | 选中 Team 连接的 project ID      | 同上                               |
 
 常量与构造：[official-mcp-auth.ts:22](../../packages/shared/src/official-mcp-auth.ts#L22)、[officialMcpCredentials.ts:382](../../packages/services/src/official-mcp/officialMcpCredentials.ts#L382)。`X-Coding-Plan-Api-Key` 是旧服务端兼容通道，当前客户端不再发，且仍禁止插件用静态 headers 注入：[official-mcp-auth.ts:41](../../packages/shared/src/official-mcp-auth.ts#L41)。
 
@@ -463,16 +386,16 @@ Standalone CLI 不因为本地有 credentials 文件就自动构造官方 MCP �
 
 ### 相关秘密中哪些不由这条路径写入 credentials.json
 
-| 秘密/字段                                                           | 当前保存或传递位置                                                                                            | 依据与边界                                                                                                                                                                                                                                                                                                   |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| CLI 最终模型 API Key                                                | `~/.openzwork/cli/config.json` 的 provider 配置                                                                   | [file-config.adapter.ts:331](../../apps/zcode-cli/packages/adapters/src/config/file-config.adapter.ts#L331)；桌面 provider 存储另见总文档，不把 CLI 规则泛化到桌面                                                                                                                                           |
-| 模型环境变量 API Key                                                | 运行期读取 provider `apiKeyEnv` 或默认 env 名                                                                 | [registry.ts:493](../../apps/zcode-cli/packages/adapters/src/model/registry.ts#L493)；优先显式 provider `apiKey`，无 shared credential fallback                                                                                                                                                              |
-| app-server 模型 `session-secret`                                    | 按 `workspace.workspaceKey` 隔离的 `catalog.secrets` 内存 Map，key 形如 `model-provider:<providerId>:api-key` | [workspace-model-catalog.ts:1275](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L1275)、[workspace-model-catalog.ts:1446](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L1446)；这个像 credential key 的名字不是本文件的 key |
-| app-server 模型 `env` secret reference                              | 保留 env 引用，解析时从传入 env 读取                                                                          | [workspace-model-catalog.ts:1523](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L1523)                                                                                                                                                                               |
-| CLI BigModel setup 中间 access token                                | 回调兑换之后的内存变量，用来取最终模型 API Key                                                                | [auth-login.ts:254](../../apps/zcode-cli/packages/bootstrap/src/auth-login.ts#L254)                                                                                                                                                                                                                          |
-| MCP client-credentials 配置 `clientId/clientSecret`                 | MCP 配置对象传给 SDK `ClientCredentialsProvider`                                                              | [mcp/index.ts:1547](../../apps/zcode-cli/packages/adapters/src/mcp/index.ts#L1547)；本分支不注入 shared store，不能声称写了 `P:tokens`                                                                                                                                                                       |
-| MCP 静态 headers / stdio env                                        | MCP 配置/进程启动环境直接传递                                                                                 | [mcp/index.ts:1423](../../apps/zcode-cli/packages/adapters/src/mcp/index.ts#L1423)；不是从 shared store 自动展开的凭据                                                                                                                                                                                       |
-| `ZCODE_CREDENTIAL_SECRET`                                           | 环境中的本地加密 key material                                                                                 | [credential-cipher.ts:87](../../apps/zcode-cli/packages/adapters/src/auth/credential-cipher.ts#L87)；不是业务 JWT                                                                                                                                                                                            |
+| 秘密/字段                                           | 当前保存或传递位置                                                                                            | 依据与边界                                                                                                                                                                                                                                                                                                   |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CLI 最终模型 API Key                                | `~/.openzwork/cli/config.json` 的 provider 配置                                                               | [file-config.adapter.ts:331](../../apps/zcode-cli/packages/adapters/src/config/file-config.adapter.ts#L331)；桌面 provider 存储另见总文档，不把 CLI 规则泛化到桌面                                                                                                                                           |
+| 模型环境变量 API Key                                | 运行期读取 provider `apiKeyEnv` 或默认 env 名                                                                 | [registry.ts:493](../../apps/zcode-cli/packages/adapters/src/model/registry.ts#L493)；优先显式 provider `apiKey`，无 shared credential fallback                                                                                                                                                              |
+| app-server 模型 `session-secret`                    | 按 `workspace.workspaceKey` 隔离的 `catalog.secrets` 内存 Map，key 形如 `model-provider:<providerId>:api-key` | [workspace-model-catalog.ts:1275](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L1275)、[workspace-model-catalog.ts:1446](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L1446)；这个像 credential key 的名字不是本文件的 key |
+| app-server 模型 `env` secret reference              | 保留 env 引用，解析时从传入 env 读取                                                                          | [workspace-model-catalog.ts:1523](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L1523)                                                                                                                                                                               |
+| CLI BigModel setup 中间 access token                | 回调兑换之后的内存变量，用来取最终模型 API Key                                                                | [auth-login.ts:254](../../apps/zcode-cli/packages/bootstrap/src/auth-login.ts#L254)                                                                                                                                                                                                                          |
+| MCP client-credentials 配置 `clientId/clientSecret` | MCP 配置对象传给 SDK `ClientCredentialsProvider`                                                              | [mcp/index.ts:1547](../../apps/zcode-cli/packages/adapters/src/mcp/index.ts#L1547)；本分支不注入 shared store，不能声称写了 `P:tokens`                                                                                                                                                                       |
+| MCP 静态 headers / stdio env                        | MCP 配置/进程启动环境直接传递                                                                                 | [mcp/index.ts:1423](../../apps/zcode-cli/packages/adapters/src/mcp/index.ts#L1423)；不是从 shared store 自动展开的凭据                                                                                                                                                                                       |
+| `ZCODE_CREDENTIAL_SECRET`                           | 环境中的本地加密 key material                                                                                 | [credential-cipher.ts:87](../../apps/zcode-cli/packages/adapters/src/auth/credential-cipher.ts#L87)；不是业务 JWT                                                                                                                                                                                            |
 
 模型 registry 替换会清旧 `model-provider:*` 内存 secrets，移除 provider 会删对应 secret：[workspace-model-catalog.ts:245](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L245)、[workspace-model-catalog.ts:370](../../apps/zcode-cli/packages/bootstrap/src/zcode-protocol/workspace-model-catalog.ts#L370)。这不等于修改 credentials 文件。
 
@@ -480,11 +403,7 @@ Standalone CLI 不因为本地有 credentials 文件就自动构造官方 MCP �
 
 #### CLI-1：同一 ZAI access key 的 token 类型分裂
 
-
-
 本轮合成 harness 执行真实 CLI login、OAuth adapter、API Key resolver、加密存储和锁，注入合成 HTTP 响应，最终 config writer 为仅记录参数的 stub；结果：业务请求使用 MaaS JWT=true，shared store 存原始 OAuth token=true，shared store 存 MaaS JWT=false，最终模型 API Key 配置成功=true。未进行真实网络登录。
-
-
 
 #### CLI-2：成功登录未整体替换旧平台会话
 
@@ -496,10 +415,9 @@ Standalone CLI 不因为本地有 credentials 文件就自动构造官方 MCP �
 
 CLI-2/3 已使用两个独立临时文件、真实共享存储源码与真实加密/锁执行。只输出 active provider 与 key 存在性：
 
-| key / marker                   | BigModel -> CLI ZAI 登录发布后 | BigModel -> CLI logout 后 |
-| ------------------------------ | ------------------------------ | ------------------------- |
-| `oauth:active_provider`        | `zai`                          | `bigmodel` 残留           |
-
+| key / marker            | BigModel -> CLI ZAI 登录发布后 | BigModel -> CLI logout 后 |
+| ----------------------- | ------------------------------ | ------------------------- |
+| `oauth:active_provider` | `zai`                          | `bigmodel` 残留           |
 
 **确定问题与待决时机分开：** 成功发布必须保证单一平台凭据集合一致、登出必须完整清除当前应用会话，已经能由规则和运行结果确认。“点击开始登录就先退出旧会话”“用户取消是否仍保持退出”“API Key/config 更新失败是否回滚应用登录”则是清理时机和事务边界，不能从单平台规则独自推导。本轮不擅自确定这些行为，也不将第三方 MCP OAuth 和独立模型 Key 纳入应用登录 JWT 清理集合。
 
@@ -655,14 +573,14 @@ Desktop Main external relay auth ------------------> 本机 credentialService
 
 ### 已取得合成运行证据
 
-| 场景                                            | 结果                                                                                | 结论范围                                                                                                 |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| CLI 从旧 BigModel 会话登录 ZAI                  | active 变为 zai，新 JWT 覆盖；旧 BigModel access/refresh/user 与旧 ZAI refresh 保留 | CLI-2 已确认：旧凭据清理不完整；不能把残留字段直接表述为两个 active provider 同时生效                    |
-| BigModel 会话执行 CLI logout                    | JWT 消失，active=bigmodel 与 BigModel namespace 保留                                | CLI-3 已确认：会话只清一半；正确问题不是删除了应保留的旧 JWT                                             |
-| Desktop cached restore 单独遇到 JWT 解密错误    | 抛错，active marker 未通过 Repo 的统一恢复逻辑清理                                  | 真实 restore 方法配合错误注入；需要补对应损坏恢复用例                                                    |
-| Desktop 同平台重新登录落盘中取消                | rollback 写回旧 access/profile，曾恢复的旧 JWT 随后又被另一域 clearProvider 删除    | 确认的是当前回滚状态不一致。最终应保留旧会话还是保持登出取决于提交/取消契约，不能直接以补回旧 JWT 为修复 |
-| Desktop/CLI 加密环境变量含空白                  | 普通值可双向解密；首尾空白、全空白两种情况均双向失败                                | 真正 cipher 的合成互操作验证，无真实 token 或密钥                                                        |
-| inbound-only Webhook 的 test                    | ref 存在但不调用 loadCredential 就返回成功                                          | 只验证 test 分支；没有把它冒充为完整 callback 服务的验密复现                                             |
+| 场景                                         | 结果                                                                                | 结论范围                                                                                                 |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| CLI 从旧 BigModel 会话登录 ZAI               | active 变为 zai，新 JWT 覆盖；旧 BigModel access/refresh/user 与旧 ZAI refresh 保留 | CLI-2 已确认：旧凭据清理不完整；不能把残留字段直接表述为两个 active provider 同时生效                    |
+| BigModel 会话执行 CLI logout                 | JWT 消失，active=bigmodel 与 BigModel namespace 保留                                | CLI-3 已确认：会话只清一半；正确问题不是删除了应保留的旧 JWT                                             |
+| Desktop cached restore 单独遇到 JWT 解密错误 | 抛错，active marker 未通过 Repo 的统一恢复逻辑清理                                  | 真实 restore 方法配合错误注入；需要补对应损坏恢复用例                                                    |
+| Desktop 同平台重新登录落盘中取消             | rollback 写回旧 access/profile，曾恢复的旧 JWT 随后又被另一域 clearProvider 删除    | 确认的是当前回滚状态不一致。最终应保留旧会话还是保持登出取决于提交/取消契约，不能直接以补回旧 JWT 为修复 |
+| Desktop/CLI 加密环境变量含空白               | 普通值可双向解密；首尾空白、全空白两种情况均双向失败                                | 真正 cipher 的合成互操作验证，无真实 token 或密钥                                                        |
+| inbound-only Webhook 的 test                 | ref 存在但不调用 loadCredential 就返回成功                                          | 只验证 test 分支；没有把它冒充为完整 callback 服务的验密复现                                             |
 
 上表使用 Node 24 执行当前源码或从源码提取的实际方法；HTTP、配置写入或外围依赖按各场景注入 fixture。它们能证明对应函数路径的结果，不能代替桌面、手机、真实服务器和跨操作系统端到端验证。
 
@@ -677,14 +595,11 @@ Desktop Main external relay auth ------------------> 本机 credentialService
 
 ### 现有测试与文档核对入口
 
-| 覆盖方向                                | 当前可检查的测试文件                                                                                                                                                                                                         |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 通用存储加密、并发写、损坏 JSON 保留    | [credentialService.test.ts](../../packages/services/test/credentialService.test.ts)、[CLI auth.test.ts](../../apps/zcode-cli/packages/adapters/tests/auth.test.ts)                                                           |
-| Desktop 登录切平台、过期/损坏恢复、取消 | [oauthService.test.ts](../../packages/services/test/oauthService.test.ts)                                                                                                                                                    |
-| 官方 MCP 的身份选择                     | [officialMcpCredentials.test.ts](../../packages/services/test/officialMcpCredentials.test.ts)                                                                                                                                |
-| 浏览器独立登录存储                      | [browserOAuthCredentialRepo.test.ts](../../packages/web/test/browserOAuthCredentialRepo.test.ts)                                                                                                                             |
-
-
-
+| 覆盖方向                                | 当前可检查的测试文件                                                                                                                                               |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 通用存储加密、并发写、损坏 JSON 保留    | [credentialService.test.ts](../../packages/services/test/credentialService.test.ts)、[CLI auth.test.ts](../../apps/zcode-cli/packages/adapters/tests/auth.test.ts) |
+| Desktop 登录切平台、过期/损坏恢复、取消 | [oauthService.test.ts](../../packages/services/test/oauthService.test.ts)                                                                                          |
+| 官方 MCP 的身份选择                     | [officialMcpCredentials.test.ts](../../packages/services/test/officialMcpCredentials.test.ts)                                                                      |
+| 浏览器独立登录存储                      | [browserOAuthCredentialRepo.test.ts](../../packages/web/test/browserOAuthCredentialRepo.test.ts)                                                                   |
 
 本次仅新增梳理文档，没有实现修复。基线新鲜度检查通过；`pnpm typecheck` 和 `pnpm lint` 已执行，但当前 worktree 无 node_modules，分别因 tsc / oxlint 不存在而未能运行。未声明 Vitest、Desktop E2E、手机远控 E2E、Windows/Linux 回归通过。

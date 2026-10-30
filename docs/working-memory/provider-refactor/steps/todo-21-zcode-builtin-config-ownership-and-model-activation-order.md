@@ -541,10 +541,8 @@ Z.ai/BigModel 各自保留两个不同的 API Key 产品身份：
 模型成员和排序。它们不能共享或静默复制凭据。重复静态模型事实继续复用 Model Rules 的 matcher；不得为这四个
 Provider 在 Runtime/Adapter 中增加 ID 特判。
 
-
 当前分支未发布，不保留旧 ID alias、dual-read 或持久化 migration；测试、Family Spec、ModelSelection fixture 和精确
 Provider 常量必须原子切换。
-
 
 ```text
 ├─ group=zai-family
@@ -582,6 +580,7 @@ Reasoning、MFJS 是否已由 Rules 承接；不恢复严格历史对照表。
 以下事实归 Provider Access：
 
 ```text
+
 ```
 
 官方版本请求安全校验的准入同样归 Provider Access，并在 Adapter 最终 HTTP transport 边界执行（具体字段与实现只在官方版本维护）。
@@ -610,10 +609,10 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 2. 调整 Config/Protocol/Repository 类型，删除 `enabledModelIds` 候选与 Model visibility；
 3. 实现 `provider-model` 专属 Rule 生命周期和普通 `match` Rule 隔离；
 4. 实现模型 enabled、三段 Model/Provider order、Builtin-wins 与保存规范化；
-7. 重构 Settings Facade、Mutation 与 UI，统一 Local/Remote Host 权威来源；
-8. 删除 Preset/Catalog 来源推断、旧排序 trick、死字段、死 helper 和过时测试；
-9. 根据最终实现将本 Todo 的事实逐项同步到 Design Tree、Feature Graph 和 superseded 旧文档；
-10. 执行单测、类型检查、Lint、格式检查和受影响 E2E，提交 Conventional Commit。
+5. 重构 Settings Facade、Mutation 与 UI，统一 Local/Remote Host 权威来源；
+6. 删除 Preset/Catalog 来源推断、旧排序 trick、死字段、死 helper 和过时测试；
+7. 根据最终实现将本 Todo 的事实逐项同步到 Design Tree、Feature Graph 和 superseded 旧文档；
+8. 执行单测、类型检查、Lint、格式检查和受影响 E2E，提交 Conventional Commit。
 
 ## 14. 测试计划
 

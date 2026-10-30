@@ -151,7 +151,6 @@ Workflow 通知格式转换移到既有 workflow-artifact 模块，tracker 保�
 不是远端归档链接；可复现入口为对应 pending E2E、fixture 和上述 CLI 测试。
 未验证 Windows/macOS 实机、实体手机、跨机断线、分屏、Workflow GUI；pending 不自动转正或加入 CI。
 
-
 ## 浏览器释放与展示修正（2026-10-29）
 
 目标基线为 release/v3.17.0 的 99ef6b1ec8；先更新 spec 和回归，再修改实现。

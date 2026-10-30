@@ -688,8 +688,8 @@ export function createZCodeAgentConnectionScope(
             for (const entry of owned.values()) {
               if (workspaceKey(entry.target) === key && entry.topic === topic) forget(entry);
             }
-            for (const group of [...pendingByOwnership.values()]) {
-              for (const pending of [...group]) {
+            for (const group of pendingByOwnership.values()) {
+              for (const pending of group) {
                 if (workspaceKey(pending.target) !== key || pending.topic !== topic) continue;
                 pending.invalidatedByRuntimeRestart = true;
                 removePendingOwnership(pending);

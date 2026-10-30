@@ -190,7 +190,7 @@ export async function collectEffectiveUserMcpRecords(): Promise<UserMcpRecord[]>
     return sortMcpRecords(zcodeRecords);
   }
   return sortMcpRecords(await readUserMcpRecordsFromFile(AGENTS_MCP_DESCRIPTOR));
-// OpenZWork：collectEffectiveUserMcpRecordByName 仅被已删除的候选枚举面使用，随上游删除。
+  // OpenZWork：collectEffectiveUserMcpRecordByName 仅被已删除的候选枚举面使用，随上游删除。
 }
 
 async function loadMcpFromUserDirectory(
@@ -207,9 +207,9 @@ async function loadMcpFromUserDirectory(
 }
 
 async function saveMcpToUserDirectory(payload: SaveCliMcpToUserDirectoryRequest): Promise<void> {
-// OpenZWork：保留我方 saveMcpToUserDirectory 实现（location 解析 + 原子锁 + 全 action 单路径），
-// 上游拆分的 writeServerEnabledToFile/writeZCodeServersToFile 不引入（其 data-sync 用途由
-// readZcodeServerMap/writeZcodeServerMap 导出满足）。
+  // OpenZWork：保留我方 saveMcpToUserDirectory 实现（location 解析 + 原子锁 + 全 action 单路径），
+  // 上游拆分的 writeServerEnabledToFile/writeZCodeServersToFile 不引入（其 data-sync 用途由
+  // readZcodeServerMap/writeZcodeServerMap 导出满足）。
   const scope = payload.projectPath ? "workspace" : "user";
   if (
     payload.projectPath &&

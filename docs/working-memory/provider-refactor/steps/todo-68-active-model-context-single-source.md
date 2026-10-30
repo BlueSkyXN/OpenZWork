@@ -104,11 +104,11 @@ Subagent 继承父 Model 时，child Selection、child prompt 中的模型身份
 先增加会在旧实现失败的回归测试：
 
 1. 普通显式切模：请求使用新 Model，Context 也立即显示同一 Provider/Model；
-3. Turn 已开始后外部修改 Session Selection：当前 Active Model 与 Context 不变；
-4. Guide 切模：下一 model step 的 Context、工具和请求同时切到 Guide Model；
-5. SessionStart Hook：首轮收到 admission 时已经选定的 Model；
-6. Subagent 继承：即使父 Session Selection 与父 Active Model 不同，child 仍完整继承 Active Model；
-7. Registry/Selection 后续变化只影响后来创建的 Model。
+2. Turn 已开始后外部修改 Session Selection：当前 Active Model 与 Context 不变；
+3. Guide 切模：下一 model step 的 Context、工具和请求同时切到 Guide Model；
+4. SessionStart Hook：首轮收到 admission 时已经选定的 Model；
+5. Subagent 继承：即使父 Session Selection 与父 Active Model 不同，child 仍完整继承 Active Model；
+6. Registry/Selection 后续变化只影响后来创建的 Model。
 
 ## 5. 完成标准
 

@@ -5,7 +5,11 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { classifyLintDiagnostics, parseLintCommand, resolvePnpmInvocation } from "../cli-lint-admission.mjs";
+import {
+  classifyLintDiagnostics,
+  parseLintCommand,
+  resolvePnpmInvocation,
+} from "../cli-lint-admission.mjs";
 
 test("原生可执行入口不会被当成 JavaScript，脚本路径与空格参数原样传递", async () => {
   const execute = async (entry, args) => {

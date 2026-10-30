@@ -14,10 +14,7 @@ import {
   type BindRemoteWorkspaceSessionContextResult,
 } from "@zcode/shared";
 import { dispatchTaskNotification } from "./desktopNotifications.js";
-import {
-  clearDeepLinkRoutesForWindow,
-  deliverPendingDeepLink,
-} from "./desktopOAuthDeepLink.js";
+import { clearDeepLinkRoutesForWindow, deliverPendingDeepLink } from "./desktopOAuthDeepLink.js";
 import {
   registerWebRemoteControlIpcHandlers,
   type WebRemoteControlIpcManager,

@@ -855,7 +855,7 @@ export interface IPlatformService {
   /** 触发任务状态对应的系统通知，由宿主环境决定是否真正展示 */
   showTaskNotification(payload: TaskNotificationPayload): void;
 
-// OpenZWork 净化：renderer 遥测上报 / 操作 Trace / heap 采样成员（ARMS-OTel 域）不引入。
+  // OpenZWork 净化：renderer 遥测上报 / 操作 Trace / heap 采样成员（ARMS-OTel 域）不引入。
   /** 同步当前窗口所有 tab 的 workspace 路径到 main 进程（用于跨窗口去重） */
   syncWindowTabs(paths: string[]): void;
 

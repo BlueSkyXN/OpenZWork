@@ -12,8 +12,6 @@
 - `allow_project`：允许本项目后续相同工具/规则，响应里携带 `permissionUpdates`。
 - `deny`：拒绝本次工具调用。
 
-
-
 ## 协议约束
 
 `interaction/requestPermission`、`permission.requested` 事件和 pending permission snapshot 都必须携带 `options`。每个 option 必须包含：
@@ -70,7 +68,6 @@ UI focus (fullAccess): [1 Allow once] <-> [2 Allow project] <-> [3 Full access]
 - 非 Bash 工具的 `ruleContent` 继续尽量从权限输入提取 URL、路径或 glob；提取不到时只记录工具名。
 - Bash 工具由 CLI 的 AST-aware rule policy 生成稳定 command prefix 或 exact rule，app、host、main、relay 和 TUI 都不得重新从 input 推导。
 
-
 Bash 稳定 prefix 使用既有 `"<prefix>:*"` 编码；无法安全归一化、包含 redirect/dynamic
 结构或高风险宽 action 时保存完整命令 exact。compound command 最多返回五条独立规则，
 超过上限回退整串 exact。只读 invocation 由 Bash readonly policy 自动允许，不写冗余规则。
@@ -105,8 +102,6 @@ prefix/wildcard 改由 AST evaluator 按 invocation 安全匹配，避免旧宽�
 - refresh/replay 后 scope 文案和原始 `permissionUpdates` 与首次请求一致。
 
 ## 审批框“完全访问”（Todo158）
-
-
 
 命令审批第 2 项说明为“项目范围内，后续相同命令不再询问”；第 3 项说明为“授予 Agent 完全访问权限，不再确认。”。该文案不改变以下授权范围和 Plan 边界。
 
@@ -149,6 +144,7 @@ resolveInteraction(fullAccess) → session FIFO → registry + broker claim（Ho
 `$` 起始标记与命令正文放在同一滚动视口内，滚动离开首行后一起消失，回到顶部后重新出现；不得固定在命令中段旁。
 
 键盘路径：存在长命令展开按钮时，默认第一项权限选项按 Shift+Tab 返回命令按钮，按钮按 Tab 回到第一项；展开后继续 Shift+Tab 可进入命令滚动视口。展开/滚动不得提交授权。短命令没有按钮时，既有选项循环保持不变。
+
 ## Group task scope
 
 Feishu/Lark group tasks use `SessionInfo.permission.scope = "session"` before tool execution. The first trusted group input initializes an empty session ruleset; later inputs retain only that task's explicit approvals. Session-scoped tasks do not read or write project approval memory. Existing private/Desktop tasks without this marker retain project semantics. An explicit owner mode change remains session configuration; message text and model output never set the marker or grant permissions.

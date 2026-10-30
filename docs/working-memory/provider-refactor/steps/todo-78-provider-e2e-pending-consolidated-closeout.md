@@ -43,9 +43,6 @@
 - Subagent `settings-subagent-create-edit-persistence.test.ts`：原测试使用了旧的 `model`/`thoughtLevel` Markdown 快照。已按当前 `modelSelection` 序列化契约更新测试，并取消错误的 `skipProvider` 前置；SE-01 已通过。SE-02 原预期与当前设计相反：切换模型会物化该模型的 catalog 默认 reasoning（本轮验证得到 `max`），已改为验证这一语义；SE-03 在独立运行时仍因模型删除入口未找到目标模型而阻塞，需后续补充 UI 诊断后再决定是否是定位器问题。
 - 闲时任务 3 个 spec：即使单独运行仍停在灰度创建入口前置，未进入业务断言；当前记录为 E2E fixture/Account Provider 可用性阻塞，不修改闲时业务代码。
 
-
-
-
 2026-09-05 在 Air 上再次运行 Subagent spec（同步最新测试 helper 后）：
 
 - `settings-subagent-create-edit-persistence.test.ts`：3/3 通过。
@@ -55,7 +52,6 @@
 2026-09-05 在 Air 上再次运行 `coding-plan-team-usage.test.ts`（补充 CTP-02B 后）：
 
 - `desktop-e2e-20260905-051133-051`：19/19 通过。
-
 
 ## 3. 从旧 Todo 收口的范围
 

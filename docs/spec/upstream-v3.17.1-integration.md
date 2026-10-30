@@ -18,7 +18,7 @@
 3. engineering 测试框架与 pre-push 门禁重构（`test:engineering`、worktree 检查、stale-doc-phrases）：吸收框架；与我们 `.husky` 既有钩子的接线以最小改动适配。
 4. 内置模型模板扩充（kimi-k3-1-pro、minimax-m31-flash 等 `docs/builtin-provider-maintenance/`）：属第三方模型配置域，保留。
 5. 会话流、subagent 迁移、provider regression 工具、native-search 修正：按上游吸收。
-6. CUA Windows 输入系列（docs/cua/*、9 个新增文件）：CUA 属已退役域（D-14），不吸收实现，spec 与测试不引入。
+6. CUA Windows 输入系列（docs/cua/\*、9 个新增文件）：CUA 属已退役域（D-14），不吸收实现，spec 与测试不引入。
 7. 上游对保留域的重构（mcp/plugins/tool-search/runner 既有文件的双修改冲突）：以「上游结构 + 我方净化语义」合成，官方端点与鉴权引用剥离。
 
 ## 冲突解决规则

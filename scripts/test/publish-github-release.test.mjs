@@ -83,12 +83,23 @@ test("发布器接受同一正式标签的动态运行名，并拒绝其它标�
       name: `Release ${tag} / ${name}`,
       display_title: `Release ${tag} / ${name}`,
       path: `.github/workflows/${file}`,
-      status: "completed", conclusion: "success", head_sha: expected.sourceCommit,
+      status: "completed",
+      conclusion: "success",
+      head_sha: expected.sourceCommit,
     };
     validateRun(run, name, expected.sourceCommit, tag);
     assert.throws(() => validateRun(run, name, expected.sourceCommit, "v3.16.2-openzwork"));
-    assert.throws(() => validateRun({ ...run, path: ".github/workflows/other.yml" }, name, expected.sourceCommit, tag));
-    assert.throws(() => validateRun({ ...run, display_title: "branch Preview" }, name, expected.sourceCommit, tag));
+    assert.throws(() =>
+      validateRun(
+        { ...run, path: ".github/workflows/other.yml" },
+        name,
+        expected.sourceCommit,
+        tag,
+      ),
+    );
+    assert.throws(() =>
+      validateRun({ ...run, display_title: "branch Preview" }, name, expected.sourceCommit, tag),
+    );
   }
 });
 
@@ -108,19 +119,37 @@ test("修订版发布必须附带与平台及完整版本一致的包内核验",
   const version = "3.16.2+openzwork.1";
   const input = { ...expected, sourceTag: `v${version}`, version };
   const value = {
-    ...manifest(), ...input,
-    upstreamVersion: "3.16.2", releaseRevision: "1",
+    ...manifest(),
+    ...input,
+    upstreamVersion: "3.16.2",
+    releaseRevision: "1",
     versionVerification: {
-      platform: "windows-amd64", version, packageVersion: version, metadataVersion: version,
-      upstreamVersion: "3.16.2", releaseRevision: "1", nativeBuildVersion: "3.16.2.1", productVersion: "3.16.2.1",
+      platform: "windows-amd64",
+      version,
+      packageVersion: version,
+      metadataVersion: version,
+      upstreamVersion: "3.16.2",
+      releaseRevision: "1",
+      nativeBuildVersion: "3.16.2.1",
+      productVersion: "3.16.2.1",
       productFlavor: "production",
     },
     assets: [{ name: `OpenZWork-${version}-win-x64.exe`, size: 123, sha256: "d".repeat(64) }],
   };
   validateManifest(value, input);
   assert.throws(() => validateManifest({ ...value, versionVerification: undefined }, input));
-  for (const patch of [{ platform: "linux-amd64" }, { productFlavor: "preview" }, { packageVersion: "3.16.2" }, { nativeBuildVersion: "3.16.2.0" }])
-    assert.throws(() => validateManifest({ ...value, versionVerification: { ...value.versionVerification, ...patch } }, input));
+  for (const patch of [
+    { platform: "linux-amd64" },
+    { productFlavor: "preview" },
+    { packageVersion: "3.16.2" },
+    { nativeBuildVersion: "3.16.2.0" },
+  ])
+    assert.throws(() =>
+      validateManifest(
+        { ...value, versionVerification: { ...value.versionVerification, ...patch } },
+        input,
+      ),
+    );
 });
 
 test("publisher rejects duplicate formats, unsafe names, empty files and invalid hashes", () => {

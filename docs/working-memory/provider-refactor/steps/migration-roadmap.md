@@ -164,8 +164,6 @@ Provider Refactor 已完成单个 Environment 内配置的物理存储边界和 
 
 静态与动态边界见 [`../design/environment/environment.md`](../design/environment/environment.md) 和 [`../design/registry/model-creation.md`](../design/registry/model-creation.md)。
 
-
-
 - Settings 保存结构化 connection selection；
 - Registry/Active Model 固定完整 Account Access；
 - Request Auth 在每次请求解析动态材料，并校验当前账号仍与 Access 匹配；

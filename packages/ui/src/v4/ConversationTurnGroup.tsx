@@ -10,10 +10,7 @@ import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
 // 属净化域；仅保留中性的重试错误码。
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
-import {
-  zcodeProviderRuntimeHeadersErrorCode,
-  type ZCodeApiRetryStatus,
-} from "@zcode/shared";
+import { zcodeProviderRuntimeHeadersErrorCode, type ZCodeApiRetryStatus } from "@zcode/shared";
 import {
   TID_CHAT_ASSISTANT_HISTORY_CONTENT,
   TID_CHAT_ASSISTANT_HISTORY_TRIGGER,

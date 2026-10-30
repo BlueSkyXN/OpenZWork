@@ -303,3 +303,12 @@ export {
 export * from "./request-security-edition/verification-policy.js";
 
 export { sha256Bytes, hmacSha256Bytes } from "./web-remote-relay/index.js";
+export { compareSemverVersions } from "./semverCompare.js";
+// OpenZWork 净化保留：telemetry.ts 为远端会话事件链（用户自建远端 server）保留最小事件形态；
+// ARMS/产品上报面不导出。
+export type { TelemetryEventPayload, PlanIdentitySnapshot } from "./telemetry.js";
+export {
+  normalizeTelemetryUiMode,
+  sanitizeTelemetryEventDetail,
+  sanitizeTelemetrySkillName,
+} from "./telemetry.js";

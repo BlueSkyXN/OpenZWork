@@ -127,8 +127,6 @@ passed); its 36-test file passed in isolation, then the entire pre-push command
 passed without concurrent E2E. No unrelated test or implementation was changed.
 Changed-file formatting and `git diff --check` passed.
 
-
-
 - `/history on` returned the native opt-in confirmation. An ordinary root message
   and an ordinary topic reply created no task before the first explicit bot mention.
 - Topic A (`omt_19fae40ad30fdbe5`, root
@@ -180,8 +178,6 @@ The real private group `ZCode 专用话题验证`
 `chat_mode: topic`, Ryan Bot and the bound user as its only participants. Computer
 Use confirmed the native topic-group page and its create-topic entry.
 
-
-
 - Publishing an owner mention `/enable` as a topic root enabled the parent group
   and returned the native enablement card inside that topic. The parent group's
   default task remained absent.
@@ -191,7 +187,6 @@ Use confirmed the native topic-group page and its create-topic entry.
   `sess_895438b4-d7d0-4136-bc07-878ec258476d`; accepted input
   `om_x100b66c3057900a4dd82aa5adb6242a` completed and its saved delivery was
   `sent` (`om_x100b66c303bf28b4c102b2c7b21c42f`).
-
 
 Dedicated-group history, attachment/card-control races, long history and remaining
 cross-platform cases are still pending; the broader TP-02 case is not promoted.
@@ -411,10 +406,6 @@ Final local gates for this revision: `pnpm typecheck`, `pnpm lint` (43 existing
 warnings, no errors), and `pnpm verify:pre-push` passed. The latest wording omits
 the generic member label and shows only the last six ID characters on fallback.
 
-
-
-
-
 Spacing regression passed in isolated Desktop run
 `desktop-e2e-20260907114650611-p68251-40a284ddf131f45c`, including the rendered
 8-12px gap assertion. Root typecheck and lint also passed.
@@ -428,8 +419,6 @@ The isolated Desktop run
 `desktop-e2e-20260907115618260-p20788-6275e395b82d51f7` passed. Root typecheck,
 lint, and 30 group service tests passed.
 
-
-
 GR-05 reaction revision (2026-09-07): 94 focused provider/service/lifecycle tests
 pass, including monotonic transitions, cancelled/failed/completed states,
 Feishu/Lark operator isolation and compact queue-card payload. The prior
@@ -438,8 +427,6 @@ GR-02/04 passed in `desktop-e2e-20260907121550738-p28948-c52d61fb6862ae03` with
 the updated queue acknowledgement; it does not prove external reaction rendering.
 Root typecheck and lint passed. The real bot can list message reactions (HTTP
 200 / code 0) and reports its operator as the application's app ID.
-
-
 
 GR-05 queue-card lifecycle correction (2026-09-07): the previous live test
 cancelled the queued input and did not cover normal promotion/completion. Queue
@@ -452,8 +439,6 @@ completion before admission returns and the persisted-target/cancel/stop/discard
 cases. Root typecheck, lint and pre-push passed. Desktop GR-02/04 passed in
 `desktop-e2e-20260907123427883-p5094-a2e438fea8ec6398`, including persisted stopped
 status from the real CLI.
-
-
 
 ## Mention-only and explicit-reference correction (2026-09-08)
 
@@ -477,8 +462,6 @@ with zero queued inputs, and explicit quoted text enters the real CLI queue with
 the existing input/attachment and can be cancelled without stopping the task.
 The candidate remains pending; it uses the existing controlled provider fixture.
 
-
-
 A subsequent native quote-only request was accepted into the original task after
 cold start (`om_x100b66c39fb070acc34a8c8d2ab2180`), exposing the companion failure:
 the startup continuous result subscription had exhausted retries before runtime
@@ -486,8 +469,6 @@ activation, so the completed result did not reach Feishu. Group stream setup now
 waits for the same authoritative snapshot before subscribing, and rechecks the
 subscription map after the await to avoid duplicate startup/input listeners.
 The lifecycle test covers this ordering without resubmitting old inputs.
-
-
 
 TP-01 passed again with the cold-subscription fix in
 `desktop-e2e-20260908031650082-p95172-4bf16d8330951c84` (one case, one spec).
@@ -497,8 +478,6 @@ The final three unit suites passed 212 tests. A broad pre-push run had one unrel
 unverified for this correction; earlier platform coverage is not relabelled.
 
 ### Native long-background summary verification (2026-09-08)
-
-
 
 - The editor received 27,860 characters of synthetic discussion. A subsequent
   read-only native message API check returned exactly 19,999 text characters for
@@ -515,7 +494,6 @@ unverified for this correction; earlier platform coverage is not relabelled.
   earlier-discussion summary and the recent confirmation verbatim. The summary
   labeled Friday as an unconfirmed proposal and retained its original message ID.
   This was a real configured model invocation, not a summary fixture.
-
 
 The focused Agent background/archive tests also passed (11 tests, two files).
 This run does not establish the 200-message cap, missing-history recovery,
@@ -539,10 +517,6 @@ regressions, not a real phone, native attachment upload or native card race test
 
 ### Native dedicated-topic file boundary (2026-09-08, incomplete)
 
-
-
-
-
 Code inspection then confirmed a real implementation gap: historical files become
 text placeholders in provider history and the topic archive tool cannot fetch their
 resources. The remaining retrieval contract is now explicit in the feature spec;
@@ -564,8 +538,6 @@ original synthetic file. This establishes native resource API permission/content
 the file has not yet been admitted as history by a subsequent mention, so it is not
 evidence of the complete Agent on-demand retrieval flow.
 
-
-
 # 2026-09-08 原生单独 @ 与令牌有效期回归
 
 - `pnpm dev:desktop` 实际运行时，12:37 的主聊天单独 @ 收到原生事件，但发送补充需求提示失败，飞书返回 `99991663`。代码原先忽略 `expire` 并固定缓存 90 分钟。
@@ -578,9 +550,6 @@ evidence of the complete Agent on-demand retrieval flow.
 运行 `pnpm dev:desktop`，在真实专用群「ZCode 专用话题验证」的 CEDAR 话题使用原生 @Ryan Bot 发起纯文字请求。消息 `om_x100b66cde75330b0c3e499c124d58c0` 被 CLI 接收并显示 OnIt；模型选择了正确的历史文件消息 `om_x100b66ccd1ebe0a8c22a536e7f67b07`，但 `ReadSessionContext(sessionId=current, strategy=topic, attachment=...)` 被 executor 的 JSON Schema 校验错误拒绝（oneOf 同时匹配两个分支）。模型随后查询本机会话目录，不能作为附件读取成功证据。已补 executor 边界失败测试，再改为单字符串模式；12 条工具测试通过。
 
 13:11 的另一条测试消息意外带入剪贴板图片，触发真实 Bot 附件 admission 的 `fault.attachment.connectionUntrusted`，未被 CLI 接收。13:17 已在原生界面撤回该测试消息并确认撤回状态。该入口现补接既有可信 connection scope，91 条 task adapter 测试通过；修复后的真实富文本上传仍待重测。
-
-
-
 
 <!-- 上游「本地检查」段（122 条测试通过记录、CUA conformance 失败清单）已随 5aba47d9 净化删除，不随上游恢复 -->
 

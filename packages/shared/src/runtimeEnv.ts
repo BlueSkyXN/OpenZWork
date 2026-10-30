@@ -35,7 +35,7 @@ const SANITIZED_RUNTIME_ENV_KEYS = [
   ZCODE_REMOTE_RUNTIME_NETWORK_AUTHORITY_ENV_KEY,
   ZCODE_REMOTE_HTTP_PROXY_ENV_KEY,
   ZCODE_REMOTE_NO_PROXY_ENV_KEY,
-// OpenZWork：CUA broker 与官方端点的键常量已随净化删除，但用户机上可能残留旧值；
+  // OpenZWork：CUA broker 与官方端点的键常量已随净化删除，但用户机上可能残留旧值；
   // 以字面量保留剔除，维持子进程 env 的防泄漏边界（语义与 WP-05 runtimeEnv 修订一致）。
   "ZCODE_CUA_PERMISSION_BROKER_SOCKET",
   "ZCODE_CUA_PERMISSION_BROKER_TOKEN",

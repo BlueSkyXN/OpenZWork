@@ -27,8 +27,6 @@ Configured、Plugin MCP 共用一套失败展示：按 `failureKind` 国际化�
 服务端 request id 已作为 ` - <requestId>` 后缀合并到这段可选择复制的详情文本，不再单独展示或提供第二个复制按钮。不得从 error 文本反解业务分类。
 连接成功、重新连接或 workspace 切换必须清除旧诊断。
 
-
-
 MCP、Skills、Commands 共用 `SettingsResourceGroupHeader` 与 `SettingsResourceList`：分组间
 `space-y-6`、组内 `space-y-4`、标题 `h-7 text-ui-base`、数量 `text-ui-sm`、列表
 `rounded-xl bg-surface`，行间使用独立 `h-px bg-border/50`。

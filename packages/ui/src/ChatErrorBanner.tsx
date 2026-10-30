@@ -234,11 +234,7 @@ export function ChatErrorBanner({
         )}
       >
         {/* 配置恢复需要可操作的完整提示；手机横幅若与按钮挤在同一行，正文会只剩省略号。 */}
-        <div
-          className={cn(
-            "flex min-w-0 flex-1 items-center gap-2 text-ui-base text-foreground",
-          )}
-        >
+        <div className={cn("flex min-w-0 flex-1 items-center gap-2 text-ui-base text-foreground")}>
           {hookBlocked ? (
             <AnchorIcon
               aria-hidden="true"
@@ -248,13 +244,7 @@ export function ChatErrorBanner({
           ) : (
             <InfoIcon aria-hidden="true" className="size-4 shrink-0" />
           )}
-          <div
-            className={cn(
-              "min-w-0 font-medium truncate",
-            )}
-          >
-            {localizedErrorMessage}
-          </div>
+          <div className={cn("min-w-0 font-medium truncate")}>{localizedErrorMessage}</div>
         </div>
 
         {modelConfigMissing ? (

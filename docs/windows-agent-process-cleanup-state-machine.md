@@ -147,7 +147,6 @@ Windows taskkill runner 是进程层依赖，默认实现仍使用异步 `execFi
 - CIM 快照耗时超过 force 窗口时，taskkill/exit observation 不得把全链路 deadline 向后重置；
 - 多 workspace taskkill 并发；
 
-
 ## 诊断
 
 低频清理日志应记录 taskkill started/completed/failed、identity verification 结果、force

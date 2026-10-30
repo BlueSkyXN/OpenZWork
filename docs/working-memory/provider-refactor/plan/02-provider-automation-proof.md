@@ -28,7 +28,7 @@ Provider 关键 E2E 晋升
 
 1. 直接读取真实 `config/provider/zcode-builtin.json`，为 API Key、Account 与 Request Auth Provider 补入各自最小执行期访问材料，证明每个 Built-in Provider 和模型成员都能解析成完整 Registry Config。
 2. 使用真实 Built-in Config 贯通 Overlay、Resolver、Registry、ModelFactory 与 Adapter，证明最终 Provider/Model Config 不被重新推断。
-4. 对 Provider 身份、Registry 冷启动、闲时子 Agent 与候选过滤四个 pending E2E 完成 fixture、replay 和人工 review 门禁；未经人工确认不得晋升。
+3. 对 Provider 身份、Registry 冷启动、闲时子 Agent 与候选过滤四个 pending E2E 完成 fixture、replay 和人工 review 门禁；未经人工确认不得晋升。
 
 ## 3. 测试边界
 
@@ -88,12 +88,12 @@ Provider snapshot 或测试专用生产 API。
 
 ### 6.2 Runtime 分支覆盖审计
 
-| Runtime 分支 | 直接证据                                                                                                                                                                 |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 普通请求     | `packages/adapters/tests/model.test.ts`、`packages/core/tests/runtime-model-lifecycle.test.ts`                                                                           |
-| Compact      | `packages/core/tests/compact-media-capability.test.ts`、`packages/core/tests/compact-summary-model-request.test.ts`                                                      |
-| Memory       | `packages/core/tests/memory-agent-loop.test.ts`、`packages/core/tests/runtime-memory-extraction.test.ts`                                                                 |
-| Subagent     | `packages/core/tests/subagent-inherited-model-factory.test.ts`                                                                                                           |
+| Runtime 分支 | 直接证据                                                                                                            |
+| ------------ | ------------------------------------------------------------------------------------------------------------------- |
+| 普通请求     | `packages/adapters/tests/model.test.ts`、`packages/core/tests/runtime-model-lifecycle.test.ts`                      |
+| Compact      | `packages/core/tests/compact-media-capability.test.ts`、`packages/core/tests/compact-summary-model-request.test.ts` |
+| Memory       | `packages/core/tests/memory-agent-loop.test.ts`、`packages/core/tests/runtime-memory-extraction.test.ts`            |
+| Subagent     | `packages/core/tests/subagent-inherited-model-factory.test.ts`                                                      |
 
 上述测试已经直接读取同一个 Active Model 或 ModelFactory，没有发现需要新增生产分支或第二套模型事实的缺口。
 相关 CLI 定向集合共 9 个文件、203 个测试通过。

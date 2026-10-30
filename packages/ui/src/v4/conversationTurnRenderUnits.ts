@@ -425,24 +425,6 @@ export function sameItems<T>(a: readonly T[], b: readonly T[]): boolean {
   return true;
 }
 
-/** 与 shallow 的对象语义一致：自有字段集合相同且逐字段 Object.is；可忽略一个字段。 */
-function sameFields(a: object | undefined, b: object | undefined, ignoredKey?: string): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  const left = a as Record<string, unknown>;
-  const right = b as Record<string, unknown>;
-  let fieldCount = 0;
-  for (const key in left) {
-    if (key === ignoredKey) continue;
-    if (!Object.hasOwn(right, key) || !Object.is(left[key], right[key])) return false;
-    fieldCount += 1;
-  }
-  for (const key in right) {
-    if (key !== ignoredKey) fieldCount -= 1;
-  }
-  return fieldCount === 0;
-}
-
 function groupDraftUnits(rows: readonly ConversationRow[]): DraftTurnRenderUnit[] {
   const units: DraftTurnRenderUnit[] = [];
   const unitByTurnId = new Map<string, DraftTurnRenderUnit>();

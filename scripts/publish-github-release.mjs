@@ -8,7 +8,11 @@ import { basename, join } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { compareOpenZWorkVersions, parseOpenZWorkTag, parseOpenZWorkVersion } from "./openzwork-version.mjs";
+import {
+  compareOpenZWorkVersions,
+  parseOpenZWorkTag,
+  parseOpenZWorkVersion,
+} from "./openzwork-version.mjs";
 import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
 import { matchesReleaseWorkflow } from "./release-workflows.mjs";
 import { FULL_SUITE_GROUPS } from "./full-suite-plan.mjs";
@@ -204,7 +208,10 @@ export async function publishRelease(env = process.env) {
   const tree = (await api(`git/commits/${commit}`)).tree.sha;
   const readSourceJson = async (path) =>
     JSON.parse(Buffer.from((await api(`contents/${path}?ref=${commit}`)).content, "base64"));
-  assert.equal(parseOpenZWorkVersion((await readSourceJson("package.json")).version).version, version);
+  assert.equal(
+    parseOpenZWorkVersion((await readSourceJson("package.json")).version).version,
+    version,
+  );
   const policy = await readSourceJson("tests/ci/core-tests.json");
   const declared = policy.suites.flatMap((suite) => suite.files);
   const root = await mkdtemp(join(env.RUNNER_TEMP || tmpdir(), "openzwork-publish-"));

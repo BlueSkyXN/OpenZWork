@@ -1,9 +1,8 @@
-import { webRemoteControlConnectionSettingsSchema } from "./web-remote-relay/contract.js";
+import { webRemoteControlConnectionSettingsSchema } from "./web-remote-relay/index.js";
 /* oxlint-disable eslint(max-lines) -- AppSettings schema 聚合历史迁移、默认值和 patch 校验，拆分会削弱设置迁移的单一入口。 */
 import { systemPromptSettingsSchema } from "./system-prompt/contract.js";
 import { z } from "zod";
 import { appToolSearchModeSchema } from "./app-runtime-preferences.js";
-import type { AppSettings } from "./protocol.js";
 import { REMOTE_ASSET_INSTALL_MODES } from "./remoteAssetInstallMode.js";
 import { isKnownRemoteResourcePackageId } from "./remoteResourcePackages.js";
 import { wslUserSchema } from "./wslUserValidation.js";

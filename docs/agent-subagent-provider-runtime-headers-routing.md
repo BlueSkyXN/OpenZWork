@@ -4,8 +4,6 @@
 
 桌面端通过父 task 的 sessionId 订阅动态 session event。Explore 子 agent 在 CLI 内部会创建独立的子 sessionId，用于子会话事件、持久化和 trace 归档。
 
-
-
 ## 问题
 
 修复前，Explore 子 agent 复用父 runtime 的 `providerRuntimeHeadersPort`，但刷新请求由子 runtime 发起，因此请求里带的是子 sessionId。
@@ -23,8 +21,6 @@ Explore 子 agent 的子 sessionId 仍然保留，用于 CLI 内部账本：
 只在子 agent 对外调用 `providerRuntimeHeadersPort.refreshBeforeModelRequest` 时，把请求 sessionId 改成父 task 的 sessionId。这样 runtime headers 请求会路由到桌面 UI 已订阅的父 task 通道，符合现有 `mirrorSubagentToolEvent` 的对外语义：子 agent 对用户可见的阻塞交互归属父 task。
 
 ## 影响范围
-
-
 
 如果以后新增子 agent 的其他独立阻塞协议请求，也需要显式判断它应该路由到子 session 还是父 task session，不能假设 eventSink 镜像会覆盖协议请求。
 

@@ -60,7 +60,9 @@ export function useModelProviderNavigation({
     [navigationItems],
   );
 
-  const selectedNavItem = selectedNodeKey ? (navigationItemByKey.get(selectedNodeKey) ?? null) : null;
+  const selectedNavItem = selectedNodeKey
+    ? (navigationItemByKey.get(selectedNodeKey) ?? null)
+    : null;
 
   // 初始化只在没有有效选中项时发生；如果当前用户选择仍有效，不抢焦点。
   const fallbackNodeKey = navigationItems[0]?.key ?? null;

@@ -6,17 +6,13 @@ import {
   type DataSyncListResult,
   type PluginDataSyncPayload,
   type PluginOptionSyncValue,
-  type IPlatformService,
-  type RemoteTarget,
   type ZCodePluginsInstallResult,
 } from "@zcode/shared";
 import {
-  withPluginTelemetry,
   type IDataSyncCategoryService,
   type IPluginManagementService,
   type IServiceAccessor,
 } from "@zcode/services";
-import { reportAppTelemetryEvent } from "@/lib/appTelemetry.js";
 import { logger } from "@/logger.js";
 import {
   buildMarketplacePluginSyncItems,
@@ -52,49 +48,6 @@ export interface DataSyncPushControl {
 
 /** 按行停止后该项的错误标记，弹窗显示为「已停止」。 */
 export const DATA_SYNC_STOPPED_ERROR = "stopped";
-
-function toPluginSyncTelemetryResult(item: DataSyncImportResultItem): string {
-  if (item.status === "created" || item.status === "updated") return "success";
-  if (item.status === "skipped") return "noop";
-  if (item.error === DATA_SYNC_STOPPED_ERROR) return "cancelled";
-  return "failure";
-}
-
-/**
- * 逐插件 sync 终态埋点（docs/monitoring/plugin-lifecycle-telemetry.md）。
- * 修复原因：旧插件同步弹窗删除后，逐插件「同步最终结果」的上报一起被删除，没有替代；
- * 底层 install / enable 的 trigger=sync 事件表达不了安装后版本核验、options 失败这类终态。
- * 只上报白名单字段，不带原始错误或路径；上报失败不影响同步结果。
- */
-export function createPluginSyncResultReporter(
-  platform: Pick<IPlatformService, "reportTelemetryEvent">,
-  remoteKind: RemoteTarget["kind"] | undefined,
-): (outcome: PluginSyncOutcome) => void {
-  return ({ pluginId, marketplace, result, durationMs }) => {
-    void reportAppTelemetryEvent(
-      platform,
-      {
-        elementName: "plugin_lifecycle",
-        eventRegion: "app",
-        eventType: "result",
-        eventExtraDetail: {
-          schema_version: "1",
-          action: "sync",
-          trigger: "sync",
-          scope: USER_SCOPE,
-          plugin_id: pluginId,
-          marketplace,
-          client_kind: "desktop",
-          workspace_kind: "remote",
-          ...(remoteKind ? { remote_kind: remoteKind } : {}),
-          result: toPluginSyncTelemetryResult(result),
-          duration_ms: String(Math.max(0, Math.round(durationMs))),
-        },
-      },
-      "DataSync",
-    );
-  };
-}
 
 type MarketplaceSourcePayload =
   | { kind: "official" }
@@ -289,10 +242,8 @@ export function createMarketplacePluginDataSyncService(
     },
 
     async importSyncItems({ payload, items }): Promise<DataSyncImportResult> {
-      const management: IPluginManagementService = withPluginTelemetry(
-        services.pluginManagementService,
-        { trigger: "sync", client_kind: "desktop" },
-      );
+      // OpenZWork 净化：插件遥测包裹（withPluginTelemetry）不引入，直接取管理服务。
+      const management: IPluginManagementService = services.pluginManagementService;
       const { homedir } = await services.systemService.info();
       const workspace = { workspacePath: homedir };
       const overview = await management.getPluginsOverview({

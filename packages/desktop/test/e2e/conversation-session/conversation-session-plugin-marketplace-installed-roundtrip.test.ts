@@ -59,7 +59,9 @@ describe("WPL-015 Marketplace installed roundtrip E2E", () => {
 
     await clickPluginControl("plugin-store-segment-personal");
     await waitForPluginCard(PLUGIN_LIFECYCLE_ID);
-    expect(await hasPluginControl("plugin-store-enabled-switch", { pluginId: PLUGIN_LIFECYCLE_ID })).toBe(false);
+    expect(
+      await hasPluginControl("plugin-store-enabled-switch", { pluginId: PLUGIN_LIFECYCLE_ID }),
+    ).toBe(false);
     await openPluginCard(PLUGIN_LIFECYCLE_ID);
     await installPluginThroughUi(PLUGIN_LIFECYCLE_ID);
     await clickPluginControl("plugin-store-detail-back");

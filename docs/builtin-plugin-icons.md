@@ -5,8 +5,8 @@
 `listing.icon` 使用官方插件资源 CDN：
 
 ```
-```
 
+```
 
 资源文件由 `zcode-plugins` 仓库的 `assets/<plugin-name>/icon.png` 提供；该仓库的
 `main` 分支发布流水线会将 assets 目录同步到 CDN。图标使用 HTTPS URL，以符合客户端

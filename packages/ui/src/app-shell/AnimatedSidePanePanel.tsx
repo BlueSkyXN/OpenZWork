@@ -16,7 +16,6 @@ import {
 } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import {
-  isRemoteWorkspaceIdentity,
   type BrowserViewScreenshotSurfacePreparePayload,
   type GitChangeSourceId,
 } from "@zcode/shared";

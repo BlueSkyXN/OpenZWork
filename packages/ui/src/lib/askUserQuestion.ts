@@ -65,8 +65,7 @@ function normalizeOption(value: unknown, index: number): AskUserQuestionOption |
   }
 
   const label =
-    readString(value, ["label", "name", "title", "text", "value"]) ??
-    JSON.stringify(value);
+    readString(value, ["label", "name", "title", "text", "value"]) ?? JSON.stringify(value);
   const id = readString(value, ["id", "optionId", "value", "key"]) ?? label;
   const placeholder = readString(value, [
     "placeholder",
@@ -81,8 +80,7 @@ function normalizeOption(value: unknown, index: number): AskUserQuestionOption |
     description: readString(value, ["description", "detail", "help", "hint"]),
     placeholder,
     requiresInput:
-      readBoolean(value, CUSTOM_INPUT_FLAGS) ||
-      (index >= 0 && placeholder !== undefined),
+      readBoolean(value, CUSTOM_INPUT_FLAGS) || (index >= 0 && placeholder !== undefined),
   };
 }
 
@@ -104,9 +102,7 @@ function readQuestions(input: unknown): unknown[] {
   // Bugfix: ZCode Agent 的 AskUserQuestion 工具输入是单题结构：
   // { header, question, options }，不是多题结构 { questions: [...] }。
   // 这里把单题结构归一化成同一条 questions 管线，避免消息流工具块显示“没有可回答的问题”。
-  return typeof input.question === "string" && Array.isArray(input.options)
-    ? [input]
-    : [];
+  return typeof input.question === "string" && Array.isArray(input.options) ? [input] : [];
 }
 
 function readAnswers(input: unknown): ZCodeUserQuestionAnswers | undefined {
@@ -262,8 +258,7 @@ function normalizeQuestion(value: unknown, index: number): AskUserQuestionItem |
             requiresInput: true,
           }
         : undefined;
-  const normalizedOptions =
-    lastOptionIsCustomInput ? options.slice(0, -1) : options;
+  const normalizedOptions = lastOptionIsCustomInput ? options.slice(0, -1) : options;
   const type =
     value.multiple === true ||
     value.multiSelect === true ||
@@ -381,9 +376,7 @@ export function getAskUserQuestionAnswerText(
 ) {
   const value = answers?.[question.question] ?? answers?.[question.id];
   if (Array.isArray(value)) {
-    const values = value
-      .map((item) => String(item).trim())
-      .filter((item) => item.length > 0);
+    const values = value.map((item) => String(item).trim()).filter((item) => item.length > 0);
     return values.length > 0 ? values.join("，") : noAnswerText;
   }
   if (typeof value === "string") {

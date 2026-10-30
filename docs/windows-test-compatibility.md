@@ -11,26 +11,24 @@ Windows 开发机上 `pnpm test` 曾大面积失败（56 文件 / 161 用例）�
 
 rebase 到最新 staging 后全量单测 **9 失败 / 12444 通过**，无崩溃。剩余构成：
 
-| 类别 | 数量 | 说明 |
-| --- | --- | --- |
-| Windows 进程树回收残余 | 3 | `zcodeAgentProcessManager`；lifecycle fixtures 工作已把该项从 8 修到 3 |
-| staging 存量漂移（任何平台都挂） | 3 | settings MCP/skill/subagent scope badge 的 `formatCanonicalPluginName` 断言；`a9263f3d03` 从列表组件移除该调用但未同步测试，需业务定性 |
-| 跨平台漂移 | 2 | `feedbackHttpClient`、`stdioDesktopPresentationSurface`（见下） |
-| flaky（负载超时） | 1 | `appUsagePanel`，单独运行通过 |
-
-
+| 类别                             | 数量 | 说明                                                                                                                                   |
+| -------------------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Windows 进程树回收残余           | 3    | `zcodeAgentProcessManager`；lifecycle fixtures 工作已把该项从 8 修到 3                                                                 |
+| staging 存量漂移（任何平台都挂） | 3    | settings MCP/skill/subagent scope badge 的 `formatCanonicalPluginName` 断言；`a9263f3d03` 从列表组件移除该调用但未同步测试，需业务定性 |
+| 跨平台漂移                       | 2    | `feedbackHttpClient`、`stdioDesktopPresentationSurface`（见下）                                                                        |
+| flaky（负载超时）                | 1    | `appUsagePanel`，单独运行通过                                                                                                          |
 
 ## 环境事实（先读这一节）
 
-| 事实 | 影响 |
-| --- | --- |
-| 仓库 `core.autocrlf=true`，工作区文本为 CRLF | 所有"读源码断言片段"的测试必须换行归一化 |
-| Git Bash 把 `/usr/bin`（GNU tar 1.35）注入 PATH 最前 | GNU tar 把归档参数里的 `C:` 当远程主机；`zip`/`ditto` 等 macOS/Linux 命令缺失 |
-| Windows 真实用户 PATH 中 System32 靠前（bsdtar） | 产品在用户机上用的是 bsdtar；测试环境需在 vitest.setup.ts 恢复同序 |
-| NTFS 不保留 POSIX exec 位（0o111 恒 0） | exec 位断言仅在 POSIX 宿主生效 |
-| Windows 无法删除任何进程 cwd 所在目录；持打开句柄期间 rename 同一目标 EPERM | 子进程生命周期类测试的 teardown 顺序有硬约束 |
-| `node:fs` globSync 在 Windows 返回反斜杠路径 | glob 结果必须归一化后再做前缀过滤 |
-| 产品 control endpoint 在 Windows 使用 `\\\\.\\pipe\\...` named pipe | IPC 测试必须按平台构造 endpoint，禁止因 POSIX socket fixture 在 Windows 报 EACCES 而跳过产品链路 |
+| 事实                                                                        | 影响                                                                                             |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 仓库 `core.autocrlf=true`，工作区文本为 CRLF                                | 所有"读源码断言片段"的测试必须换行归一化                                                         |
+| Git Bash 把 `/usr/bin`（GNU tar 1.35）注入 PATH 最前                        | GNU tar 把归档参数里的 `C:` 当远程主机；`zip`/`ditto` 等 macOS/Linux 命令缺失                    |
+| Windows 真实用户 PATH 中 System32 靠前（bsdtar）                            | 产品在用户机上用的是 bsdtar；测试环境需在 vitest.setup.ts 恢复同序                               |
+| NTFS 不保留 POSIX exec 位（0o111 恒 0）                                     | exec 位断言仅在 POSIX 宿主生效                                                                   |
+| Windows 无法删除任何进程 cwd 所在目录；持打开句柄期间 rename 同一目标 EPERM | 子进程生命周期类测试的 teardown 顺序有硬约束                                                     |
+| `node:fs` globSync 在 Windows 返回反斜杠路径                                | glob 结果必须归一化后再做前缀过滤                                                                |
+| 产品 control endpoint 在 Windows 使用 `\\\\.\\pipe\\...` named pipe         | IPC 测试必须按平台构造 endpoint，禁止因 POSIX socket fixture 在 Windows 报 EACCES 而跳过产品链路 |
 
 ## 已修复的 8 类根因与规则
 
@@ -44,14 +42,14 @@ rebase 到最新 staging 后全量单测 **9 失败 / 12444 通过**，无崩溃
    - 产品 `stageRelease` 在 Windows 用 `tar -a` 写 zip（**真实产品 bug 修复**，
      Windows 本机没有 `zip` 命令）；POSIX 宿主保留 `zip`；
    - 测试造 zip fixture 在 Windows 用 `tar -acf`；依赖 `ditto` 的用例 win32 skip。
-5. **路径分隔符（约 20 用例）**：mock POSIX 风格输入的用例，期望值与产品同源构造
+4. **路径分隔符（约 20 用例）**：mock POSIX 风格输入的用例，期望值与产品同源构造
    （`join` / `resolve` / `path.delimiter`），验证拼接语义而非分隔符字形。
    例外：产品硬编码的 POSIX 字面量（如 flatpak 导出路径）期望保持字面量。
-6. **exec 位断言（3 处）**：`if (process.platform !== "win32")` 包裹。
-7. **pdfjs cMapUrl（1 用例，兼 0xC0000005 可疑源头）**：Node factory 用 fs.readFile
+5. **exec 位断言（3 处）**：`if (process.platform !== "win32")` 包裹。
+6. **pdfjs cMapUrl（1 用例，兼 0xC0000005 可疑源头）**：Node factory 用 fs.readFile
    读取 cMapUrl 拼接路径；跨平台唯一可行形态是"正斜杠 fs 路径 + /"。
    `file://` URL 与反斜杠路径均不可用（已实测）。
-8. **teardown EPERM**：测试 teardown 的 rm 加 `maxRetries/retryDelay`（Node 官方
+7. **teardown EPERM**：测试 teardown 的 rm 加 `maxRetries/retryDelay`（Node 官方
    Windows 文件锁机制）。注意：**retry 救不了长持句柄**（见下）。
 
 ## 已知未修复（需专项，勿盲目兜底）
@@ -82,7 +80,6 @@ retry）。修完恢复原 mock 顺序作为回归。
 
 - `stdioDesktopPresentationSurface`：期望装配传 `presentationSurface: "desktop"`，
   `packages/server/src` 无该字段（services 层有）；
-
 
 ### 间歇性 0xC0000005
 

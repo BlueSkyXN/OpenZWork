@@ -14,8 +14,6 @@
 
 ### 背景
 
-
-
 最初的新 Registry 仍把账号状态放在独立的 `AccountProviderAccessEntry[]` 中，再由 Resolver 按 `providerId` 拼接 `modelIds` 和 `accessId`。第一次调整虽然把它改称 Runtime Overlay，却又建立了 `AccountProviderOverlay`、`AccountProviderAccess` 和 `allowedModelIds`，本质上仍是第二套 Provider 数据结构。
 
 这与 Config Overlay 的目标相冲突：Official、Personal 和账号状态都在为同一个 Provider 补充字段，不需要三套形态和一条特殊过滤算法。
@@ -82,7 +80,6 @@ Account Request Auth Service
         └─ 无法解析或无权限             -> 请求失败
 ```
 
-
 ### 最终 Provider
 
 最终 Provider 不再嵌套另一份 Account Access 对象：
@@ -94,7 +91,6 @@ interface Provider {
   readonly models: readonly ProviderModel[];
 }
 ```
-
 
 ### 对当前实施的影响
 
@@ -363,7 +359,6 @@ M2 实施过程中，Agent 将旧 `includeUsage` 作为兼容字段纳入新的 
 
 ### 背景
 
-
 ```text
 start-plan:<providerId>
 coding-plan:<providerId>
@@ -372,7 +367,6 @@ coding-plan:<providerId>
 它不包含具体账号身份。同一台机器先后登录两个账号时，两者会得到相同缓存键。Usage 页面会先显示十分钟短 TTL 缓存，再静默刷新；若新账号刷新失败，为避免网络抖动清空页面，现有 Hook 会继续保留已经显示的旧缓存。因此单靠后台刷新不能保证账号隔离。
 
 ### 裁决
-
 
 ```text
 账号 A 的连接
@@ -390,7 +384,6 @@ coding-plan:<providerId>
    └─ 新创建 Model 的请求身份
 ```
 
-
 登录、登出和连接切换时仍可主动清理旧 Usage 缓存，但清理只是减少陈旧数据和存储占用的辅助措施，不承担身份隔离正确性。
 
 ### 实施影响
@@ -406,8 +399,6 @@ coding-plan:<providerId>
 > 裁决状态：已确认；第一步纳入 M2.8，持续同步与远程设置操作分别作为后续功能
 
 ### 背景
-
-
 
 M2 一度把剩余问题表述为“Remote Worker 如何跨 Host 请求 Desktop Account Request Auth”，候选是
 Renderer 中转或 Local Host 到 Remote Host 的 Auth Broker。两种方案都默认 Remote Worker 属于
@@ -461,9 +452,6 @@ Model 和请求 Header 不通过该同步链路传输。
 
 ### 当前行为
 
-
-
-
 ```text
 当前 UI 已选择的 Usage Source
 ├─ providerId
@@ -489,8 +477,6 @@ UI 已经选定 Usage Source 时，请求应携带完整、非敏感的来源身
 Host 不再根据旧 Provider 数组重新选择来源。Provider 是否被用于模型选择、是否在 Registry 中 selectable，以及当前 Session 正在使用哪个模型，都不作为设置页 Usage Source 的过滤条件。Account Provider 被用户关闭模型入口时，只要账号连接仍然存在，Usage 仍可查询。
 
 普通 API Provider 如果仍需参加 monitor/usage 查询，只读取新的 Effective API Provider Config；Account Provider 的 Secret 始终由请求期 Credential/Account 服务取得。任何迁移适配器都只能从新的 Config、Account 和 Credential 事实投影窄输入，不能回读旧 Config 或旧 Provider Snapshot。
-
-
 
 ### 本轮实施边界
 
@@ -653,8 +639,6 @@ Reasoning 参数映射也应由 Official Config 明确给出。运行时 Adapter
 - GLM OpenAI Chat 需要的 `clear_thinking` 直接写入对应档位的 `reasoningMapping`；
 - Reasoning 内容的解析和回放由消息模型与 Adapter 完成，不由 Config 指定字段名；
 - 历史 DeepSeek/MiMo 空 `reasoning_content` 兼容补丁继续单独审计，不通过上述字段表达。
-
-
 
 ## 12. Reasoning Mapping 是必填的 AI SDK Provider Options 映射
 
@@ -830,9 +814,6 @@ Host 随旧协议携带的 `runtimeModel` 在 Registry 进程中不再写入 Wor
 Title、Git Commit Message 和 Memory Selector 在重构前已经关闭 reasoning，因此继续使用关闭
 reasoning 的派生 Model。此次重构不改变这些任务的产品策略，也不允许它们绕过 Model 直接修改
 Provider 参数。
-
-
-
 
 ### 目标设计不保留临时 Provider
 

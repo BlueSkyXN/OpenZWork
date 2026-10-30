@@ -1,4 +1,3 @@
-import { useInterfaceModeTelemetry } from "@/lib/appTelemetry.js";
 import { ProjectDirectoryProvider } from "@/project-sidebar/ProjectDirectoryProvider.js";
 import { RemoteProjectPicker } from "@/project-sidebar/RemoteProjectPicker.js";
 import {
@@ -172,7 +171,7 @@ function RootInner({
   webRemoteControlTerminalTransportState,
   initialWorkspaceLoadingFallback,
 }: RootProps) {
-  useInterfaceModeTelemetry(platform, isDesktop === true);
+  // OpenZWork 净化：接口模式遥测上报（appTelemetry 域）不引入。
   useEffect(() => {
     setMcpStorePlatform(platform);
     return () => {

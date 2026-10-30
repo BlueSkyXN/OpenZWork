@@ -10,7 +10,10 @@ export type WorkspaceSettingsProjection = Pick<
 
 export interface ISettingService {
   get(): Promise<AppSettings>;
-  update(patch: Partial<AppSettings>, options?: { expectedSystemPromptSettings: SystemPromptSettings | null }): Promise<void>;
+  update(
+    patch: Partial<AppSettings>,
+    options?: { expectedSystemPromptSettings: SystemPromptSettings | null },
+  ): Promise<void>;
   /** Change the data base directory: copy data from old → new location, then persist the setting. */
   updateDataBaseDir(newDir: string | undefined): Promise<void>;
   /**

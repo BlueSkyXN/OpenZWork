@@ -1279,7 +1279,7 @@ const zhCN: Record<string, string> = {
   "sidePane.subagent": "子智能体",
   "sidePane.subagentDirectory": "子智能体目录",
   "sidePane.selectionChat": "辅助对话",
-    "sidePane.workflowRun": "工作流实例",
+  "sidePane.workflowRun": "工作流实例",
   "sidePane.workflowDirectory": "工作流目录",
   "sidePane.workflowActor": "工作流子代理",
   "sidePane.workflowScript": "脚本步骤",
@@ -1326,7 +1326,7 @@ const zhCN: Record<string, string> = {
   "chat.selections.limit.count": "最多可添加 8 条对话引用。",
   "chat.selections.limit.total": "对话引用总计最多 16,000 个字符。",
   "sidePane.launcher.selection-side-conversation": "在侧边面板中继续对话。",
-    "sidePane.launcher.review": "查看代码变更与差异。",
+  "sidePane.launcher.review": "查看代码变更与差异。",
   "sidePane.launcher.terminal": "运行命令和查看输出。",
   "sidePane.launcher.browser": "浏览网页和预览应用。",
   "sidePane.launcher.developer-tools": "检查和调试应用。",
@@ -3129,7 +3129,8 @@ const zhCN: Record<string, string> = {
   "settings.usage.sessionDetails.open": "明细",
   "settings.usage.sessionDetails.openAria": "查看会话明细",
   "settings.usage.sessionDetails.title": "会话明细",
-  "settings.usage.sessionDetails.summary": "{scope} · {range} · {count} 个主会话，子任务用量计入所属主会话",
+  "settings.usage.sessionDetails.summary":
+    "{scope} · {range} · {count} 个主会话，子任务用量计入所属主会话",
   "settings.usage.sessionDetails.project": "项目",
   "settings.usage.sessionDetails.untitled": "未命名会话",
   "settings.usage.sessionDetails.notInTaskList": "已不在任务列表",
@@ -7074,6 +7075,7 @@ const zhCN: Record<string, string> = {
   "remoteSync.providers.error.capabilityUnavailable": "远端版本不支持模型配置同步",
   "remoteSync.providers.error.sessionUnavailable": "远端连接已失效",
   "remoteSync.providers.error.hostExecutionFailed": "本机执行同步失败",
-  "remoteSync.providers.error.unknown": "未知错误",};
+  "remoteSync.providers.error.unknown": "未知错误",
+};
 
 export default zhCN;

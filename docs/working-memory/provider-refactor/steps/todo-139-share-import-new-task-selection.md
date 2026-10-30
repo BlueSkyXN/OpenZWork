@@ -8,8 +8,6 @@
 
 调查基线：本地 `9ea22ec1f0`；已 fetch 的 `origin/staging` 为 `eb71ba51c2`。相关新任务初始化代码一致，已包含 `baef1544c5`、`18a963c078` 的最近提交模式继承修复。没有为本次调查合并新的 staging。
 
-
-
 ## 已确认规则
 
 | 项目                     | 优先顺序                                                                            |
@@ -41,9 +39,6 @@
 - 初始化只发生一次；Registry 回包、导入重试、迟到结果不得覆盖用户已编辑的草稿，不能串到后来切换的工作区／Session。沿用现有 scope 与初始化机制，不加超时补丁或第二套同步状态。
 - 导入与初始化可分离；初始化延后不能因已有空 Session snapshot 先到而永久封住。具体接线在实施前写清，不能只靠“Session 没模型”判断这是首次导入。
 - 不更改 shared-host、desktop continuous／mobile replayable、CommandInbox、账号同步或执行中模型绑定；不做历史数据迁移，不批量补写旧导入会话。
-
-
-
 
 ## 执行与验收
 

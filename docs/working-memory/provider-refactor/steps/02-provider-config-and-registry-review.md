@@ -35,13 +35,13 @@ M2 已经基本完成 Provider 事实来源切换。Official、Personal 与 Acco
 
 以下数字来自 `git diff origin/staging...HEAD`。统计排除了 `pnpm-lock.yaml`；文件分类按生产源码、测试和 Markdown 文档计算，因重命名检测和少量非 Markdown 配置文件，分类总数与 Git 总数可能相差数行。
 
-| 内容 | 新增 | 删除 |
-| --- | ---: | ---: |
-| 全部分支差异 | 42,805 | 54,206 |
-| 排除 lockfile | 42,754 | 54,205 |
+| 内容               |   新增 |   删除 |
+| ------------------ | -----: | -----: |
+| 全部分支差异       | 42,805 | 54,206 |
+| 排除 lockfile      | 42,754 | 54,205 |
 | 生产源码与运行配置 | 17,275 | 24,915 |
-| 测试 | 15,441 | 28,237 |
-| Markdown 文档 | 10,036 | 1,053 |
+| 测试               | 15,441 | 28,237 |
+| Markdown 文档      | 10,036 |  1,053 |
 
 新增生产内容中，`@zcode/provider`、`@zcode/provider-node` 与 Official Config 共 `6,436` 行，其中纯领域与 Node Source/Repository 实现为 `4,120` 行，Official Config 为 `2,316` 行。这部分构成 M2 最集中的新设计骨架。
 
@@ -64,7 +64,6 @@ Process Provider Registry
       +-- Model 创建
       └-- 请求执行
 ```
-
 
 因此，当前主要问题不是旧 Provider Store 仍在后台决定执行，而是新事实需要经过若干旧接口形状才能到达尚未迁移的消费者。
 
@@ -138,8 +137,6 @@ AiSdkModelAdapter
 这层可以跟随 Adapter/Reasoning 专题继续演进，不阻塞 M2 的 Config 与 Registry 上线。若把“过渡代码”定义为所有未来需要替换的实现，它应计入；若只审计双事实源，它不构成失败项。
 
 ### Account 身份的窄兼容
-
-
 
 退出条件是旧 Session 与旧 Credential Store 的兼容窗口结束。新代码不得再产生无账号作用域的 Account Access ID。
 

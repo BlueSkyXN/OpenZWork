@@ -197,8 +197,13 @@ test("numeric semantic version comparison never makes a late older release Lates
 
 test("Latest 在官方基准与 OpenZWork 修订号之间正确前进且拒绝倒退", () => {
   const tags = [
-    "v3.16.2-openzwork", "v3.16.2+openzwork.1", "v3.16.2+openzwork.999",
-    "v3.16.3-openzwork", "v3.16.3+openzwork.1", "v3.16.3+openzwork.2", "v3.16.3+openzwork.10",
+    "v3.16.2-openzwork",
+    "v3.16.2+openzwork.1",
+    "v3.16.2+openzwork.999",
+    "v3.16.3-openzwork",
+    "v3.16.3+openzwork.1",
+    "v3.16.3+openzwork.2",
+    "v3.16.3+openzwork.10",
   ];
   for (let i = 0; i < tags.length; i++) {
     assert.equal(shouldMakeLatest(tags[i], { tag_name: tags[i] }), true);
@@ -221,16 +226,23 @@ test("修订版协调器接受同源正式事件，版本后缀不一致时拒�
       event: { workflow_run: revisionRuns[2] },
       listRuns: async () => revisionRuns,
       api: async (path) => {
-        if (path === `git/ref/tags/${revisionTag}`) return { object: { type: "commit", sha: commit } };
+        if (path === `git/ref/tags/${revisionTag}`)
+          return { object: { type: "commit", sha: commit } };
         if (path.startsWith("contents/package.json"))
-          return { content: Buffer.from(JSON.stringify({ version: sourceVersion })).toString("base64") };
+          return {
+            content: Buffer.from(JSON.stringify({ version: sourceVersion })).toString("base64"),
+          };
         if (path === `releases/tags/${revisionTag}`) return null;
         throw new Error(`Unexpected API: ${path}`);
       },
     });
     if (sourceVersion === "3.16.2+openzwork.1") {
       assert.equal((await planAutomaticRelease(input)).status, "ready");
-      assert.equal((await planAutomaticRelease({ ...input, eventName: "workflow_dispatch", tag: revisionTag })).status, "ready");
+      assert.equal(
+        (await planAutomaticRelease({ ...input, eventName: "workflow_dispatch", tag: revisionTag }))
+          .status,
+        "ready",
+      );
     } else await assert.rejects(planAutomaticRelease(input));
   }
 });

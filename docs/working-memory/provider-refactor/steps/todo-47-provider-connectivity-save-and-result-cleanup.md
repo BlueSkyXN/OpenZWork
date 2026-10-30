@@ -91,9 +91,6 @@ type ModelConnectivityResult = { success: true } | { success: false; error: { me
 删除 `ModelConnectivitySummary`、`resolveModelConnectivitySummary`、`noEndpointResult` 与相应旧测试。组件直接消费
 `ModelConnectivityResult`，成功显示模型身份，失败显示正式执行链返回的错误消息。
 
-
-
-
 ## 3. 实施顺序
 
 1. 先补失败测试，证明连接测试会 flush 尚未进入 Service 队列的 Provider debounce，并等待保存完成后才测试；

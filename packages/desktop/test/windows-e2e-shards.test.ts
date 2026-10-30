@@ -83,7 +83,12 @@ describe("Windows E2E shard runner", () => {
 
   it("lists the default formal specs without manual-review or live provider cases", () => {
     const root = mkdtempSync(join(tmpdir(), "e2e-spec-discovery-"));
-    const cases = ["smoke.test.ts", "upstream-provider.test.ts", "manual-review/pending/example.test.ts", "conversation-session/conversation-session-ssh-remote-connection-p0.test.ts"];
+    const cases = [
+      "smoke.test.ts",
+      "upstream-provider.test.ts",
+      "manual-review/pending/example.test.ts",
+      "conversation-session/conversation-session-ssh-remote-connection-p0.test.ts",
+    ];
     try {
       for (const file of cases) {
         const path = resolve(root, "test/e2e", file);
@@ -93,13 +98,17 @@ describe("Windows E2E shard runner", () => {
       const specs = listDefaultFormalE2ESpecs(root);
       expect(specs).toEqual(["./test/e2e/smoke.test.ts"]);
       const sshSpecs = listDefaultFormalE2ESpecs(root, {
-        ZCODE_E2E_SSH_HOST: "ssh.example.test", ZCODE_E2E_SSH_USERNAME: "fixture",
+        ZCODE_E2E_SSH_HOST: "ssh.example.test",
+        ZCODE_E2E_SSH_USERNAME: "fixture",
         ZCODE_E2E_SSH_PASSWORD: "synthetic-password",
       });
-      expect(sshSpecs).toContain("./test/e2e/conversation-session/conversation-session-ssh-remote-connection-p0.test.ts");
+      expect(sshSpecs).toContain(
+        "./test/e2e/conversation-session/conversation-session-ssh-remote-connection-p0.test.ts",
+      );
       expect(sshSpecs.some((spec) => spec.includes("/manual-review/"))).toBe(false);
-    } finally { rmSync(root, { recursive: true, force: true }); }
-
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it("uses deterministic LPT weights and a fallback for new specs", () => {

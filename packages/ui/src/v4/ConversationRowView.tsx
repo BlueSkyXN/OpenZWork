@@ -1,4 +1,3 @@
-import { getLocalTtftObserver } from "@/v4/telemetry/local-ttft/contract.js";
 import { GenUiMessageResponse } from "@/gen-ui/index.js";
 import { ConversationUserInputBubble } from "@/v4/ConversationUserInputBubble.js";
 import { expandTopicInputMessages } from "@/v4/topicInputMessages.js";
@@ -10,7 +9,6 @@ import {
   memo,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1663,48 +1661,7 @@ const AssistantTextRowView = memo(function AssistantTextRowView({
     },
     [],
   );
-  useLayoutEffect(() => {
-    if (context.workspaceIdentity || !context.sessionId) return;
-    const observer = getLocalTtftObserver();
-    const args = [context.workspacePath, context.sessionId, row.turnId, row.rowId] as const;
-    if (!observer?.needsTextRender(...args)) return;
-    const element = textElement.current;
-    if (!element?.textContent?.trim()) return;
-    const visible = () => {
-      if (
-        !element.isConnected ||
-        document.visibilityState !== "visible" ||
-        !element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
-      )
-        return false;
-      const rect = element.getBoundingClientRect();
-      return (
-        rect.bottom > 0 &&
-        rect.right > 0 &&
-        rect.top < window.innerHeight &&
-        rect.left < window.innerWidth
-      );
-    };
-    if (!observer.textRendered(...args, "committed", visible())) return;
-    // 接收帧早于 React 提交；两次 rAF 只代表经过绘制机会，不能声称像素已上屏。
-    // 流式文本更新不能取消首帧观察，仅组件卸载取消，避免高频更新把计时拖到整轮结束。
-    paintFrames.current.push(
-      requestAnimationFrame(() => {
-        paintFrames.current.push(
-          requestAnimationFrame(() => {
-            observer.textRendered(...args, "paint_estimate", visible());
-          }),
-        );
-      }),
-    );
-  }, [
-    context.workspaceIdentity,
-    context.workspacePath,
-    context.sessionId,
-    row.turnId,
-    row.rowId,
-    visibleText,
-  ]);
+  // OpenZWork 净化：local-ttft 文本渲染测量（ARMS 出口域）不引入。
   return (
     <RowShell rowId={row.rowId} className="group/assistant-row">
       {/* M5④ 阶段2：assistant 文本走 streamdown（MessageResponse），

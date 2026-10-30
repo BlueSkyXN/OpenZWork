@@ -11,8 +11,6 @@ MCP 2025-11-25 Authorization 规范把授权定义在 HTTP-based transport 上�
 - stdio MCP 不走该规范，仍从进程环境变量读取凭据。
 - access token 禁止进入 URL query，必须通过 `Authorization: Bearer <access-token>` 发送。
 
-
-
 ## 目标
 
 把 OAuth 完整接入现有 MCP client 能力：

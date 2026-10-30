@@ -246,8 +246,7 @@ export function useRootPlatformEffects({
     };
     // 采用上游 deps（onNewTask 回调依赖 startNewTaskFromActiveWorkspace）；上游紧随其后的
     // conversationShare Deep Link 导入 effect 属 share 净化域，整段不并入。
-  }, [activeWorkspaceIdentity, activeWorkspacePath, platform, startNewTaskFromActiveWorkspace, tabs]);
-
+  }, [platform, startNewTaskFromActiveWorkspace, tabs]);
 
   useEffect(() => {
     if (!isDesktop || !shouldPublishCompleteWorkspaceSnapshot(hasCompletedFullTabRestore)) {

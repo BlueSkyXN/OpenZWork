@@ -80,8 +80,8 @@ Provider/Model 无效       Provider/Model 有效
 1. 恢复用户主动选模时取最高 Reasoning 的公共构造入口及调用，补充与历史恢复留空的区别测试；不将补值下沉至执行层。
 2. 保证所有普通 Selection 进入执行前都要求有效 Reasoning；禁止 ModelFactory 或其他下层静默补档位。
 3. 保留并统一“Provider/Model 无效整份置空、Reasoning 无效只清空 Reasoning”的恢复语义。
-5. 明确辅助请求的调用点和测试边界，尤其确认 Goal 主执行不会误走 `auxiliaryModelOptions`，Goal Completion Verification 才使用最低档位。
-6. 清理与旧“最高档默认补齐”规则相关的命名、注释、文档和测试，避免保留桥接逻辑。
+4. 明确辅助请求的调用点和测试边界，尤其确认 Goal 主执行不会误走 `auxiliaryModelOptions`，Goal Completion Verification 才使用最低档位。
+5. 清理与旧“最高档默认补齐”规则相关的命名、注释、文档和测试，避免保留桥接逻辑。
 
 ## 验收标准
 

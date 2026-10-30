@@ -94,19 +94,19 @@ must-inspect：runtime 结算、消息 part、cold hydration、V4 row schema、C
 
 ## 验收与剪枝
 
-| Case  | 前置 / 动作                                    | 断言                                             | 证据                          |
-| ----- | ---------------------------------------------- | ------------------------------------------------ | ----------------------------- |
-| NCM01 | 模型 success + reasoning + tool，打开更多/本轮 | 正确 token/cache/TPS/首正文，工具等待不计速度    | domain + projection + UI/E2E  |
-| NCM02 | retry、重复 terminal、已报告 usage 的失败/取消 | 不重复计数，失败单列，未知与 0 分离              | Core + projection             |
-| NCM03 | 重建进程/首帧终态/旧记录                       | 新摘要冷恢复一致，旧值未知，重复 snapshot 不增加 | SQLite + hydration + V4 apply |
-| NCM04 | 会话 A→B，同路径不同 identity，迟到查询        | 清空旧数据，拒绝迟到响应；展开不发送对话         | hook + UI                     |
-| NCM05 | 本地/无本地 base，日界线与时区                 | 本机今日来自正确日期；不可用无 fallback          | hook + model                  |
-| NCM06 | 直接子任务重复引用/后台跨轮/孙任务             | 直接子去重、主链独立、只读不激活子 runtime       | bootstrap query               |
-| NCM07 | 390px 与桌面、中文英文、深浅主题               | 关键值/更多/统计可达、无横向溢出、编辑不挂指标   | UI + browser/E2E              |
-| NCM08 | 外观页修改字段、总开关、全不选、恢复默认 | 主栏即时变化、无残留 footer；预览不查询；历史明细完整 | UI + 真实设置入口 E2E |
-| NCM09 | 保存偏好、重载、同域另一窗口、独立存储域 | 恢复选择；同域同步无回写；独立域隔离；未知/重复/损坏值归一化 | store UT + 产品多窗口 E2E |
-| NCM10 | 只选速度/本轮与全选；390px/1200px、大字号、两语言主题 | 已选字段按实际空间显示；未选字段不恢复；无横向溢出或测量抖动 | 布局 UT + 截图 E2E |
-| NCM11 | 展开后从另一窗口关闭指标栏 | 今日/子任务组件卸载、主栏隐藏，重新启用读取同一 snapshot | UI + 多窗口 E2E |
+| Case  | 前置 / 动作                                           | 断言                                                         | 证据                          |
+| ----- | ----------------------------------------------------- | ------------------------------------------------------------ | ----------------------------- |
+| NCM01 | 模型 success + reasoning + tool，打开更多/本轮        | 正确 token/cache/TPS/首正文，工具等待不计速度                | domain + projection + UI/E2E  |
+| NCM02 | retry、重复 terminal、已报告 usage 的失败/取消        | 不重复计数，失败单列，未知与 0 分离                          | Core + projection             |
+| NCM03 | 重建进程/首帧终态/旧记录                              | 新摘要冷恢复一致，旧值未知，重复 snapshot 不增加             | SQLite + hydration + V4 apply |
+| NCM04 | 会话 A→B，同路径不同 identity，迟到查询               | 清空旧数据，拒绝迟到响应；展开不发送对话                     | hook + UI                     |
+| NCM05 | 本地/无本地 base，日界线与时区                        | 本机今日来自正确日期；不可用无 fallback                      | hook + model                  |
+| NCM06 | 直接子任务重复引用/后台跨轮/孙任务                    | 直接子去重、主链独立、只读不激活子 runtime                   | bootstrap query               |
+| NCM07 | 390px 与桌面、中文英文、深浅主题                      | 关键值/更多/统计可达、无横向溢出、编辑不挂指标               | UI + browser/E2E              |
+| NCM08 | 外观页修改字段、总开关、全不选、恢复默认              | 主栏即时变化、无残留 footer；预览不查询；历史明细完整        | UI + 真实设置入口 E2E         |
+| NCM09 | 保存偏好、重载、同域另一窗口、独立存储域              | 恢复选择；同域同步无回写；独立域隔离；未知/重复/损坏值归一化 | store UT + 产品多窗口 E2E     |
+| NCM10 | 只选速度/本轮与全选；390px/1200px、大字号、两语言主题 | 已选字段按实际空间显示；未选字段不恢复；无横向溢出或测量抖动 | 布局 UT + 截图 E2E            |
+| NCM11 | 展开后从另一窗口关闭指标栏                            | 今日/子任务组件卸载、主栏隐藏，重新启用读取同一 snapshot     | UI + 多窗口 E2E               |
 
 accepted：NCM01–NCM11。pruned：额度/费用/壁纸/云遥测；递归后代合计；改调度/权限；旧数据推算补全。具体实现沿既有合同。E2E 保持 manual-review/pending；人工 review、正式转正和 Docker/跨平台安装验收分别记录。
 
@@ -120,16 +120,15 @@ accepted：NCM01–NCM11。pruned：额度/费用/壁纸/云遥测；递归后�
 
 官方升级记录版本及 commit SHA（含同版本重推），按下表复核并记录保留/适配结论。本功能属于自有能力，不登记 OW-P 缺陷编号。
 
-| 接点 | 必须保持的行为 | 验证 |
-| --- | --- | --- |
-| 外观设置分组 / Composer footer | 真实入口存在，勾选立即影响主栏，关闭无占位，历史明细完整 | native metrics pending E2E + conversationMetrics.test.ts |
-| 偏好 key / 窗口 URL 与 session | 旧偏好恢复、同存储域同步、独立域隔离，事件不回写 | conversationMetricsPreferences.test.ts + 产品多窗口 E2E |
-| 请求结算 / usage 归一化 | 重试失败、旁路与重复终态口径保持 | Core native-metrics 定向测试 |
-| part JSON / ProductProjection / hydration | 可选字段保留、live/cold 一致、累计不双计 | bootstrap native-conversation-metrics + 冷恢复 E2E |
-| 子任务 includeMetrics / scope | opt-in 兼容，查询只读，主链和子任务分开 | subagent-session-query 定向测试 |
+| 接点                                      | 必须保持的行为                                           | 验证                                                     |
+| ----------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| 外观设置分组 / Composer footer            | 真实入口存在，勾选立即影响主栏，关闭无占位，历史明细完整 | native metrics pending E2E + conversationMetrics.test.ts |
+| 偏好 key / 窗口 URL 与 session            | 旧偏好恢复、同存储域同步、独立域隔离，事件不回写         | conversationMetricsPreferences.test.ts + 产品多窗口 E2E  |
+| 请求结算 / usage 归一化                   | 重试失败、旁路与重复终态口径保持                         | Core native-metrics 定向测试                             |
+| part JSON / ProductProjection / hydration | 可选字段保留、live/cold 一致、累计不双计                 | bootstrap native-conversation-metrics + 冷恢复 E2E       |
+| 子任务 includeMetrics / scope             | opt-in 兼容，查询只读，主链和子任务分开                  | subagent-session-query 定向测试                          |
 
 稳定 UI/偏好/共享指标 UT 登记在 `tests/ci/core-tests.json`。模块测试不能替代真实入口 E2E；候选未人工转正时，官方升级仍显式运行该 case。官方出现同类能力时先比较指标口径、失败与恢复语义、偏好范围，再提出复用或迁移方案。
-
 
 ## 2026-10-25 验证记录
 

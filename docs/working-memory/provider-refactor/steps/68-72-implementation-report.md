@@ -15,7 +15,6 @@
   -> 72 后段：其余领域接入核对、联合验收
 ```
 
-
 ## 影响范围
 
 - 68：主 Agent、Guide、Subagent、闲时执行、Context 与模型工具投影；不修改 UI 和远控传输。
@@ -108,7 +107,6 @@ Core 全量、Bootstrap 定向回归、Pro 首请求证据与文档/类型入口
 - Pro 隔离目录已同步本小步代码：Core 定向四文件 **114 通过**；重建 contracts/core 后 Bootstrap
   四文件 **75 通过**（包含真实 Sqlite Session persistence 的 38 条）。首次 Bootstrap 五条失败来自
   仍加载旧 Core dist，按标准构建更新后消失。这里是 Pro 上的单元/存储集成测试，**不是 Todo 70 E2E**。
-
 
 ### 70：App 入口与迁移存储小步
 

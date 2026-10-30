@@ -20,8 +20,6 @@ MIMO-03（accepted，pending）：390px 中文浅色 / 1200px 英文深色，真
 
 ## Todo148 Dock 应用图标纠正（2026-09-15）
 
-
-
 OpenRouter 名称回归：390 中文浅色／1200 英文深色的添加模板卡片显示 `OpenRouter`，不含 Anthropic 后缀；悬停提示沿用相同名称。配置单测同时验证生产／测试名称及协议、URL 未改变。
 
 新增 `zai app icon` 两例：390 中文浅色／1200 英文深色。真实模板选择器中两家 Z.AI 模板、选中后的导航和详情使用同一 128px 应用 PNG，图片实际解码成功、保持正方形、不反色；纯展示不写入，点击模板仅触发原有创建动作，无额外保存或页面异常。截图供视觉复审，仍属浏览器 pending，不代替手机 shared-host 或完整 Electron 验收。
@@ -52,7 +50,6 @@ BR117-N02（accepted，pending）：隔离完整 Electron 应用通过测试 HTT
 
 ## Todo116 原生打开补充（2026-09-12）
 
-
 ```text
 隔离 Personal Config 单 URL -> Settings View -> 唯一按钮
     -> IPlatformService -> preload / IPC -> shell.openExternal
@@ -67,11 +64,7 @@ Todo130：新增 manual editable fields and pending cancellation 两例，真实
 
 Todo122：新增 subagent selection error copy 两例，真实 ToolLayout 展示测试注入的公共错误 message，验证 390 中文浅色/1200 英文深色详情及复制完整原因和选择身份。两例通过；Core 的真实解析、投影、前后台 runner 另有 84 项测试，不将 fixture 冒充跨进程实机链路。
 
-
-
 2026-09-11 Todo115/132：新增两个 header name and option feedback 用例（390 中文浅色/1200 英文深色）。真实 Header/Card 的菜单焦点、停顿不保存、Esc 不保存、Enter 一次提交、长名布局、Tooltip 不覆盖开关状态和扩展热区不碰菜单；真实 Modality/Boolean 组件验证同位置点击底色有变化，文字/图标/边框/尺寸不变。六项合跑通过，保存路由隔离；不替代整页 Electron/手机 Host 链路。本轮 Linux 字库缺少中文字形，中文文案/交互可断言，但不算中文字形视觉通过。
-
-
 
 同日 Todo119/124：禁用后模型测试按钮 disabled，重新开启恢复；成功提示使用 Fixture Provider 而非内部 fixture ID，语义绿色背景/文字/边框与关闭按钮同时存在。四个浏览器用例合跑通过。名称回传、成功/失败/异常及资格提示本地化由真实 React 组件事件测试补充；签名网络错误原样透传由服务测试覆盖。
 

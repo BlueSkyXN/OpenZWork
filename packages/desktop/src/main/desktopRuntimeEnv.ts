@@ -37,7 +37,6 @@ import {
 } from "@zcode/shared";
 import { getElectronAppPath, isElectronAppPackaged } from "./desktopElectronApp.js";
 
-
 const isLocalDevelopmentRuntime = !isElectronAppPackaged();
 export const desktopRuntimeEnv: ZCodeRuntimeEnv = isLocalDevelopmentRuntime
   ? "development"

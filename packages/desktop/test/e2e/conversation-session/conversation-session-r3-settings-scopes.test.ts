@@ -89,7 +89,7 @@ async function readScopeOptions(): Promise<{ current: string; options: string[] 
   const current = (await trigger.getText()).trim();
   await trigger.click();
   await browser.waitUntil(
-  // fork 采纳上游：scope 菜单读取统一走 helpers/settings-scope-menu 的 readOpenScopeMenuOptions。
+    // fork 采纳上游：scope 菜单读取统一走 helpers/settings-scope-menu 的 readOpenScopeMenuOptions。
     () => browser.execute(() => document.querySelectorAll('[role="menuitemradio"]').length > 0),
     { timeout: 10_000, timeoutMsg: "scope-menu" },
   );

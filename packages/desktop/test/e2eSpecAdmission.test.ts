@@ -55,26 +55,23 @@ describe("desktop E2E environment-gated formal spec admission", () => {
 
   // fork 净化：上游 discovery 用例改用独立 fixture（更稳），采纳；
   // 域列表去掉 feedback（WP-07 已删反馈域，test/e2e/feedback 不存在）。
-  it.each(["bots", "settings"])(
-    "keeps explicit %s candidates discoverable",
-    async (domain) => {
-      const fixture = await mkdtemp(join(tmpdir(), "e2e-spec-discovery-"));
-      try {
-        // 转正后领域可以没有候选；发现规则必须使用独立 fixture，不能依赖仓库一直留有 pending。
-        const directory = join(fixture, "test/e2e", domain, "manual-review/pending");
-        await mkdir(directory, { recursive: true });
-        await writeFile(join(directory, "example.test.ts"), "");
-        const scheduled = resolveE2EScheduledSpecFiles({
-          baseDir: fixture,
-          specs: [`./test/e2e/${domain}/manual-review/**/*.test.ts`],
-          exclude: [],
-        });
-        expect(scheduled).toEqual([`test/e2e/${domain}/manual-review/pending/example.test.ts`]);
-      } finally {
-        await rm(fixture, { recursive: true, force: true });
-      }
-    },
-  );
+  it.each(["bots", "settings"])("keeps explicit %s candidates discoverable", async (domain) => {
+    const fixture = await mkdtemp(join(tmpdir(), "e2e-spec-discovery-"));
+    try {
+      // 转正后领域可以没有候选；发现规则必须使用独立 fixture，不能依赖仓库一直留有 pending。
+      const directory = join(fixture, "test/e2e", domain, "manual-review/pending");
+      await mkdir(directory, { recursive: true });
+      await writeFile(join(directory, "example.test.ts"), "");
+      const scheduled = resolveE2EScheduledSpecFiles({
+        baseDir: fixture,
+        specs: [`./test/e2e/${domain}/manual-review/**/*.test.ts`],
+        exclude: [],
+      });
+      expect(scheduled).toEqual([`test/e2e/${domain}/manual-review/pending/example.test.ts`]);
+    } finally {
+      await rm(fixture, { recursive: true, force: true });
+    }
+  });
   it("applies environment gates to formal globs but keeps exact-file runs fail-closed", () => {
     const glob = ["./test/e2e/conversation-session/*.test.ts"];
     // 此处验证 canonical 正式目标；实际候选可以暂留 pending，不能随目录回退改掉门禁输入。

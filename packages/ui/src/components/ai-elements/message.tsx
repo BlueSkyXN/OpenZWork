@@ -45,7 +45,12 @@ import {
   useState,
 } from "react";
 import type { BundledTheme } from "shiki";
-import { type Components as StreamdownComponents, defaultRehypePlugins, defaultRemarkPlugins, Streamdown } from "streamdown";
+import {
+  type Components as StreamdownComponents,
+  defaultRehypePlugins,
+  defaultRemarkPlugins,
+  Streamdown,
+} from "streamdown";
 import type { Pluggable, PluggableList } from "unified";
 import { CodeBlock, CodeBlockHeader } from "@/components/ai-elements/code-block.js";
 import {

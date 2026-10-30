@@ -478,10 +478,9 @@ describe("虚拟项目", () => {
     }
     await browser.refresh();
     // fork 净化：我方无登录页；直接等 workspace shell 并从侧栏恢复工作区，不放宽离线项目断言。
-    await browser.waitUntil(
-      async () => (await $('[data-workspace-shell="true"]').isDisplayed()),
-      { timeout: 45_000 },
-    );
+    await browser.waitUntil(async () => await $('[data-workspace-shell="true"]').isDisplayed(), {
+      timeout: 45_000,
+    });
     await openWorkspaceDraftFromSidebar(DEFAULT_WORKSPACE);
     const offline = $('[data-project-name="E2E_VP08_Offline"]');
     try {

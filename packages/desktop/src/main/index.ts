@@ -5,6 +5,7 @@
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
 import { powerSaveBlocker } from "electron";
+import { getExportLogDir } from "@zcode/services/node";
 import "./appCrashCaptureBootstrap.js";
 import {
   onLocalDatabaseStartupReady,
@@ -36,6 +37,7 @@ import {
   nativeImage,
   protocol,
   session,
+  shell,
   webContents,
 } from "electron";
 import { randomUUID } from "node:crypto";
@@ -611,7 +613,8 @@ const webRemoteControlCredentialService = createCredentialService();
 // fork 净化：上游此处为 appLaunchGate/appTelemetryCore(appTelemetryCredentialService)/ARMS 上下文
 // 同步/desktopContextPromptRollout 官方灰度链（WP-05 遥测与官方账号域），不随入；保留我方本地 HMAC 认证装配。
 const webRemoteControlAuthProvider = createNodeWebRemoteControlRelayAuthProvider();
-app.on("browser-window-focus", () => {  rebuildMenu();
+app.on("browser-window-focus", () => {
+  rebuildMenu();
 });
 
 const remoteSessionManager = createRemoteWorkspaceSessionManager({

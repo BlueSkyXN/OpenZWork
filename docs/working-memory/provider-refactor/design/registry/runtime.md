@@ -292,11 +292,7 @@ Local Host -> Local Worker           Remote Host -> Remote Worker
 上图只定义 Environment 所有权边界。远程 Provisioning、远程设置操作、登录和配置同步是独立产品能力，
 不属于 Provider Refactor 或 M4 的实施范围。
 
-
-
 Request Auth 时，Model 在发出网络请求前返回明确的缺凭据错误；Registry 不为它保存临时 Secret。
-
-
 
 Account Source 每次发布都记录 `basedOnZCodeBuiltinRevision`。Registry 收到 Built-in change 时，在对应
 Account 刷新完成前继续保留上一份完整 Registry，不能发布新 Built-in 与旧 Account 的组合；即使 Overlay

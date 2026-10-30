@@ -210,7 +210,8 @@ export default defineConfig(({ command, mode }) => {
       __ZCODE_LOCAL_DEVELOPMENT_RUNTIME__: JSON.stringify(mode !== "production"),
       // fork 净化：上游 define 注入 VITE_ZCODE_BASE_URL/VITE_ZCODE_ENDPOINT_ORIGIN（官方端点解析）
       // 与 VITE_CODING_PLAN_WEBVIEW_ORIGIN/VITE_REWARDS_WEBVIEW_ORIGIN（套餐/奖励 webview 域），不随入。
-      // E2E store bridge 只能由 WDIO 专用变量打开，避免把 ZCODE_ENV=test 产品环境误当成测试运行态。      "import.meta.env.VITE_ZCODE_E2E_STORE_BRIDGE": JSON.stringify(
+      // E2E store bridge 只能由 WDIO 专用变量打开，避免把 ZCODE_ENV=test 产品环境误当成测试运行态。
+      "import.meta.env.VITE_ZCODE_E2E_STORE_BRIDGE": JSON.stringify(
         e2eStoreBridgeEnabled ? "1" : "",
       ),
     },

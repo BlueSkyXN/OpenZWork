@@ -27,7 +27,13 @@ export const AGENT_BUNDLE_SOURCE_RELATIVE = "apps/zcode-cli/packages/cli/dist/zc
  * 打包链（prepare-agent-node-bundle.mjs）随后会用更完整的 officialPluginPackages
  * 逻辑重 stage 同一目录，这里重复暂存同源内容无害。
  */
-const STAGED_NODE_REPL_HOST_ENTRIES = ["dist", ".zcode-plugin", "package.json", "README.md", "scripts"];
+const STAGED_NODE_REPL_HOST_ENTRIES = [
+  "dist",
+  ".zcode-plugin",
+  "package.json",
+  "README.md",
+  "scripts",
+];
 
 export function resolveAgentBundlePaths({ repoRoot, platformKey }) {
   const glmDir = resolve(repoRoot, "packages", "desktop", "bundled-agents", platformKey, "glm");

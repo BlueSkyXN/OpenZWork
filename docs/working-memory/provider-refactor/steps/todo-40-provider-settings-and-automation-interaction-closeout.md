@@ -4,8 +4,6 @@
 
 > 后续 Desktop 图形 E2E 欠测统一由 Todo 78 收口，本 Todo 不再单独排期。
 
-
-
 ## 1. 目标
 
 本 Todo 收口五个已经完成裁决的交互问题，不新增 Provider、Model 或 Automation 中间抽象：

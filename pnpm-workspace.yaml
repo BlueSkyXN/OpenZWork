@@ -50,3 +50,5 @@ patchedDependencies:
   wdio-electron-service@9.2.1: patches/wdio-electron-service@9.2.1.patch
   "@ai-sdk/openai-compatible@2.0.60": patches/@ai-sdk__openai-compatible@2.0.60.patch
   "@ai-sdk/anthropic@3.0.81": patches/@ai-sdk__anthropic@3.0.81.patch
+  "@aiden0z/pptx-renderer@1.2.4": patches/@aiden0z__pptx-renderer@1.2.4.patch
+  "@extend-ai/react-xlsx@0.16.0": patches/@extend-ai__react-xlsx@0.16.0.patch

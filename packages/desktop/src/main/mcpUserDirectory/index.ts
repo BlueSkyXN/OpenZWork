@@ -14,11 +14,13 @@ const directoryService = createMcpSyncService();
 export async function loadCliMcpFromUserDirectory(
   request?: LoadCliMcpFromUserDirectoryRequest,
 ): Promise<LoadCliMcpFromUserDirectoryResult> {
-  return directoryService.loadMcpFromUserDirectory(request);}
+  return directoryService.loadMcpFromUserDirectory(request);
+}
 
 export async function saveCliMcpToUserDirectory(
   payload: SaveCliMcpToUserDirectoryRequest,
 ): Promise<void> {
   // fork 保留：MCP 文件 owner 委托 services 层 createMcpSyncService（含 data-sync 域导入导出），
   // 上游在本文件内联目录读写实现（b36db2f6 已把该实现收敛进 services 层），不回退。
-  await directoryService.saveMcpToUserDirectory(payload);}
+  await directoryService.saveMcpToUserDirectory(payload);
+}

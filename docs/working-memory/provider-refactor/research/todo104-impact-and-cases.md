@@ -68,33 +68,31 @@ Target 同文件锁：确认当前仍是 A → 整份替换 B → 刷新/验证
 
 ## Feature Summary
 
-| 字段       | 内容                                                                                                                                     |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| 意图／能力 | 保留既有 Provider 与 Selection 产品语义，落实最终持久化 Schema                                                                           |
-| 层级／模式 | persistence、validation、draft-default、option-source；planning                                                                          |
-| 不做       | 多账号同时连接、CLI账号装配重构、发送同步门禁、Subagent Markdown重新定格式、旧预算功能                                                   |
+| 字段       | 内容                                                                                   |
+| ---------- | -------------------------------------------------------------------------------------- |
+| 意图／能力 | 保留既有 Provider 与 Selection 产品语义，落实最终持久化 Schema                         |
+| 层级／模式 | persistence、validation、draft-default、option-source；planning                        |
+| 不做       | 多账号同时连接、CLI账号装配重构、发送同步门禁、Subagent Markdown重新定格式、旧预算功能 |
 
 ## UI Surface Matrix
 
-| 场景／入口               | 共享实现                             | 草稿／默认         | 校验                    | 提交／权威落点                 | 模式及隔离                              |
-| ------------------------ | ------------------------------------ | ------------------ | ----------------------- | ------------------------------ | --------------------------------------- |
-| Provider设置             | SettingsFacade/ConfigService         | 表单草稿、推荐规则 | 来源schema/完整性       | PersonalRepository单次更新     | 本地/远程注入服务；不能写Session        |
-| Composer                 | SelectionFacade                      | 草稿/Recent/默认   | 有效选择/最终Factory    | 成功提交后的Session选择        | 不提前持久化、不改已冻结运行            |
-| 自动化/Bot/Subagent      | 共享Selection数据                    | 各自继承规则不变   | 各自现有提交边界        | 任务/绑定Session/用户MD        | 不因共享字段而共享保存时机              |
-| Wiki/Draft               | RepoWikiStorage                      | 生成设置草稿       | 新选择权威              | 既有文件锁内保存               | 不恢复手动输出上限                      |
-
-
+| 场景／入口          | 共享实现                     | 草稿／默认         | 校验                 | 提交／权威落点             | 模式及隔离                       |
+| ------------------- | ---------------------------- | ------------------ | -------------------- | -------------------------- | -------------------------------- |
+| Provider设置        | SettingsFacade/ConfigService | 表单草稿、推荐规则 | 来源schema/完整性    | PersonalRepository单次更新 | 本地/远程注入服务；不能写Session |
+| Composer            | SelectionFacade              | 草稿/Recent/默认   | 有效选择/最终Factory | 成功提交后的Session选择    | 不提前持久化、不改已冻结运行     |
+| 自动化/Bot/Subagent | 共享Selection数据            | 各自继承规则不变   | 各自现有提交边界     | 任务/绑定Session/用户MD    | 不因共享字段而共享保存时机       |
+| Wiki/Draft          | RepoWikiStorage              | 生成设置草稿       | 新选择权威           | 既有文件锁内保存           | 不恢复手动输出上限               |
 
 ## Feature Relationships / State Owners And Commit Sinks
 
-| 优先级         | 关系                           | Owner／落点              | 证据与原因                                                    |
-| -------------- | ------------------------------ | ------------------------ | ------------------------------------------------------------- |
-| must-inspect   | Wiki保存 → 文件原子更新        | RepoWikiStorage          | 运行对象不能携带旧值成为第二权威；保存层保留原值              |
-| must-inspect   | Session选择 → entry.data       | Agent SessionRepository  | 恢复/更新/fork必须一致识别新包装                              |
-| must-inspect   | 配置来源 → Resolver → Registry | Provider层；Node层负责IO | 单向schema依赖、完整配置准入、相同source快照                  |
-| must-inspect   | 默认选择/Provider更新 → 同文件 | PersonalRepository       | 不能相互覆盖，分发失败只回滚本次未被并发替换的结果            |
-| conditional    | 新路径 → 打包/宿主启动         | 各宿主注入Node层路径     | Desktop/CLI/Server均需要实际产物验证                          |
-| invariant-only | 手机/桌面消息交付              | 同一Session owner        | 不改continuous/replayable与workspaceIdentity隔离              |
+| 优先级         | 关系                           | Owner／落点              | 证据与原因                                         |
+| -------------- | ------------------------------ | ------------------------ | -------------------------------------------------- |
+| must-inspect   | Wiki保存 → 文件原子更新        | RepoWikiStorage          | 运行对象不能携带旧值成为第二权威；保存层保留原值   |
+| must-inspect   | Session选择 → entry.data       | Agent SessionRepository  | 恢复/更新/fork必须一致识别新包装                   |
+| must-inspect   | 配置来源 → Resolver → Registry | Provider层；Node层负责IO | 单向schema依赖、完整配置准入、相同source快照       |
+| must-inspect   | 默认选择/Provider更新 → 同文件 | PersonalRepository       | 不能相互覆盖，分发失败只回滚本次未被并发替换的结果 |
+| conditional    | 新路径 → 打包/宿主启动         | 各宿主注入Node层路径     | Desktop/CLI/Server均需要实际产物验证               |
+| invariant-only | 手机/桌面消息交付              | 同一Session owner        | 不改continuous/replayable与workspaceIdentity隔离   |
 
 ## Must-Preserve Invariants
 
@@ -109,7 +107,6 @@ Target 同文件锁：确认当前仍是 A → 整份替换 B → 刷新/验证
 ```
 
 ## Codegraph Evidence / Graph Drift / Graph Delta
-
 
 图谱中若干 Provider字段及旧分层描述将由B2修改后更新；当前不把未来字段写成已实现事实。B1a仅补保留旧列的不变量，其余现有产品边不变。
 
@@ -146,7 +143,6 @@ B1b补充：当前Wiki已有Todo97的一次落盘迁移及null空标记，Todo10
 
 无新UI交互或生成规则，B1b不新增E2E；已有Service模型Limit断言随组回归。涉及的私有存储类型不泄漏到协议和UI。
 
-
 ## B1c Session 存储边界（实施前确认）
 
 唯一持久化 owner 为 SQLite SessionStore adapter。`SessionEntryInfo.data` 是 port 的逻辑 payload：模型选择仍为公共 ModelSelection（fork 无选择沿用 null）；磁盘 `session_entry.data` 才是保留旧快照的包装。沿用现有 codec 边界完成包装/解包，不让 core/bootstrap 为 SQLite 回滚字段各写一套处理。普通保存、runtime 保存、原子 fork bundle 共用 `saveSessionEntry`，恢复统一经 `decodeSessionEntryRow`。不改变 table/schema、提交时机、协议或消息行。
@@ -170,7 +166,6 @@ UPSERT 在数据库内部只替换新成员，避免应用层 read-modify-write 
 | B1c-P1 | UI/网络/主题/queue 全排列                      | 不改 interaction、continuous/replayable 或输入 admission，以现有运行层回归代表 | pruned                                    |
 
 补充架构工具事实：`architecture:check --changed` 无违规；`cli-adapters` 尚非 architecture-policy 托管模块，context 命令返回未知模块，改用现有 SessionStorePort 和 CLI AGENTS 作为边界依据，不为此扩建治理模块。
-
 
 ## B2a Model 数据 Schema 单一来源
 

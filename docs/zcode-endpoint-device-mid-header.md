@@ -1,16 +1,8 @@
 # ZCode Endpoint DeviceMid Header
 
-
-
-
 <!-- 头部要点段绑定 Start Plan 权益查询（/api/v1/zcode-plan/billing，官方套餐净化域）与官方端点 header 规则，保持我方净化删除口径，不随上游恢复 -->
 
-
-
-
-
 ## 远端 server 的设备身份
-
 
 ```text
 桌面端                                   远端主机 / 独立 Server

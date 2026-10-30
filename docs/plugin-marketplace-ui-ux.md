@@ -334,7 +334,6 @@ existing catalog after upgrade
   （需要付费套餐才好用），不代表插件本身是收费商品——它是纯展示标记，不参与安装门禁
   与计费。命名刻意不绑定具体套餐商品名，套餐改名或文案换口径时字段不用跟着改。
 
-
 - 图片字段：CDN 条目用绝对 https URL；**内置插件**在仓内 `official-plugin-definitions.ts`
   补齐同构 listing 元数据。需要覆盖旧缓存或尚未发布 CDN 素材的官方内置插件，可由共享
   图标解析器按完整官方插件 id 选择客户端打包图标；当前 Documents、PDF、

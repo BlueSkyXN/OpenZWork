@@ -6,7 +6,10 @@ import { join } from "node:path";
 import { finished } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
-import { readPackagedVersionMetadata, validatePackagedVersion } from "../verify-desktop-release-version.mjs";
+import {
+  readPackagedVersionMetadata,
+  validatePackagedVersion,
+} from "../verify-desktop-release-version.mjs";
 
 const version = "3.16.2+openzwork.1";
 const common = {
@@ -19,7 +22,12 @@ const common = {
 };
 const records = [
   { ...common, platform: "macos-arm64", shortVersion: "3.16.2", nativeBuildVersion: "3.16.2.1" },
-  { ...common, platform: "windows-amd64", productVersion: "3.16.2.1", nativeBuildVersion: "3.16.2.1" },
+  {
+    ...common,
+    platform: "windows-amd64",
+    productVersion: "3.16.2.1",
+    nativeBuildVersion: "3.16.2.1",
+  },
   {
     ...common,
     platform: "linux-amd64",
@@ -39,7 +47,9 @@ test("真实 ASAR 归档可按本机路径读取嵌套版本元数据", async (t
   await writeFile(join(source, "package.json"), JSON.stringify(pkg));
   await writeFile(join(source, "out", "metadata", "build-meta.json"), JSON.stringify(metadata));
   const require = createRequire(new URL("../../packages/desktop/package.json", import.meta.url));
-  const { createPackage, extractFile } = await import(pathToFileURL(require.resolve("@electron/asar")).href);
+  const { createPackage, extractFile } = await import(
+    pathToFileURL(require.resolve("@electron/asar")).href
+  );
   const archive = join(root, "app.asar");
   // 当前 ASAR API 返回已调用 end 的写入流；等待 finish 后再读，避免 Windows 读到空 payload。
   await finished(await createPackage(source, archive));

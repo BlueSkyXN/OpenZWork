@@ -154,7 +154,6 @@ interface ModelRequest {
 }
 ```
 
-
 ## 请求检查
 
 Model 在调用 Adapter 前执行统一检查：

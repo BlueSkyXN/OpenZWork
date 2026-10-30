@@ -44,9 +44,6 @@
 
 UI 在 `useGroupedTaskView` / `useWorkspaceTaskLists` 里做客户端 join：`listGroupedTaskViewStructure` + `listTasks/listPinned/listArchived/...` + v4 `sessions-index` 实时帧 → 内存拼装。这就是 bug 多的根源。
 
-
-
-
 ### 2.3 现有迁移基础设施
 
 - app 侧：**没有** schema 版本号、没有「上次运行版本」记录。sqlite 用 `CREATE TABLE IF NOT EXISTS + ensureColumn`，setting.json 用 zod preprocess 链就地迁移。
@@ -56,19 +53,19 @@ UI 在 `useGroupedTaskView` / `useWorkspaceTaskLists` 里做客户端 join：`li
 
 ### 2.4 agent 侧「按目录解析」的配置清单（当前根规则）
 
-| 配置                                    | 用户级                                    | 项目级路径                                                                  | 解析根                                  | 多层合并规则                                                                                   |
-| --------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| 配置                                    | 用户级                                        | 项目级路径                                                                  | 解析根                                  | 多层合并规则                                                                                   |
+| --------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | settings（model/permission/ui/storage） | `~/.openzwork/cli/config.json`                | `<dir>/zcode.json`、`<dir>/.zcode/config.json`                              | cwd 向上到 git root，根在前 cwd 在后    | 深合并，后者覆盖                                                                               |
-| MCP servers                             | 同上 `mcp.servers`                        | 同上                                                                        | 同上                                    | 按 name：system → project → **user** → env → cli（用户级覆盖项目级）；project 来源标 untrusted |
-| hooks                                   | `config.json.hooks` 直接可执行            | 同上                                                                        | 同上                                    | 项目级只生成 hookCandidate，走 workspace hook trust                                            |
+| MCP servers                             | 同上 `mcp.servers`                            | 同上                                                                        | 同上                                    | 按 name：system → project → **user** → env → cli（用户级覆盖项目级）；project 来源标 untrusted |
+| hooks                                   | `config.json.hooks` 直接可执行                | 同上                                                                        | 同上                                    | 项目级只生成 hookCandidate，走 workspace hook trust                                            |
 | skills                                  | `~/.openzwork/skills`、`~/.agents/skills`     | `<dir>/.zcode/skills`、`<dir>/.agents/skills`                               | cwd 向上到 git root 每一级              | 全部可见；同名先发现者胜（用户级 shadow 项目级）                                               |
 | commands                                | `~/.openzwork/commands`、`~/.agents/commands` | `<dir>/.zcode/commands`、`<dir>/.agents/commands`                           | 同 skills                               | 同名先到先赢 + duplicate diagnostic                                                            |
 | subagents                               | `~/.openzwork/cli/agents/*.md`                | `<cwd>/.zcode/agents/*.md`                                                  | **仅 cwd 本级，不向上**                 | Map 按 name，后加载覆盖（项目级覆盖用户级）                                                    |
 | AGENTS.md                               | `~/.openzwork/AGENTS.md`                      | `<dir>/AGENTS.md`                                                           | cwd 向上到 git root，**只取第一个命中** | user + workspace 两段拼接                                                                      |
-| agent 自写 memory                       | —                                         | `~/.openzwork/cli/memories/projects/<slug>-<sha(identity‖path)>/memory`         | 按 workspaceKey hash                    | 一目录一份                                                                                     |
-| permissions ruleset                     | —                                         | sqlite `local_setting(scope=project, scope_id=projectIdFromDirectory(cwd))` | cwd 精确目录                            | 一目录一份                                                                                     |
+| agent 自写 memory                       | —                                             | `~/.openzwork/cli/memories/projects/<slug>-<sha(identity‖path)>/memory`     | 按 workspaceKey hash                    | 一目录一份                                                                                     |
+| permissions ruleset                     | —                                             | sqlite `local_setting(scope=project, scope_id=projectIdFromDirectory(cwd))` | cwd 精确目录                            | 一目录一份                                                                                     |
 | plugins                                 | `~/.openzwork/cli/plugins` + `config.json`    | 项目 config 的 plugin 段                                                    | 同 settings                             | `resolvePluginConfigSources`                                                                   |
-| workspace-config topic（设置页）        | —                                         | —                                                                           | key = `workspace-config/<workspaceId>`  | 一 workspace 一份                                                                              |
+| workspace-config topic（设置页）        | —                                             | —                                                                           | key = `workspace-config/<workspaceId>`  | 一 workspace 一份                                                                              |
 
 CLI 侧已有一份多工作区草案 `apps/zcode-cli/docs/design/v2/multi-workspace.md`（`WorkspaceScope{primaryRoot, additionalRoots}`、`--add-dir`、roots 存 `local_setting(scope=workspace)`），尚未实现，可作为本次 agent 侧改动的落点。
 
@@ -84,9 +81,9 @@ CLI 侧已有一份多工作区草案 `apps/zcode-cli/docs/design/v2/multi-works
 | A2  | 真实目录是否作为可见节点  | 不作为节点，只是项目的 root 属性                                                                                                                                                                                |
 | A3  | 公共管理移除              | 移除 Group/Project 视图切换器、group 管理菜单与新建 group 入口、集中管理页；图 7 工具栏整体移除，排序（按时间 / 按项目）放入「项目」标题右键菜单；时间线保留实现但隐藏入口，归档入口与展开/折叠全部图标不再保留 |
 | A4  | 视图模式                  | 只保留项目树 + 时间线                                                                                                                                                                                           |
-| A5  | 「任务」区                | 未归类 session 的分类：`project_id IS NULL`，不限制绑定目录；session 一定有 workspace，全局新建任务默认创建 `~/.openzwork/workspace/<唯一目录>` 作为 cwd；项目里的 session 只能拖到另一个项目，不能拖到项目外       |
+| A5  | 「任务」区                | 未归类 session 的分类：`project_id IS NULL`，不限制绑定目录；session 一定有 workspace，全局新建任务默认创建 `~/.openzwork/workspace/<唯一目录>` 作为 cwd；项目里的 session 只能拖到另一个项目，不能拖到项目外   |
 | A6  | 同一真实目录属于多个项目  | 允许                                                                                                                                                                                                            |
-| A7  | 0 root 项目新建 session   | 自动创建 `~/.openzwork/workspace/<时间戳>`，并把它加为该项目的 root 且设为主要目录                                                                                                                                  |
+| A7  | 0 root 项目新建 session   | 自动创建 `~/.openzwork/workspace/<时间戳>`，并把它加为该项目的 root 且设为主要目录                                                                                                                              |
 | A8  | session 绑定目录（cwd）   | 创建后永远不变                                                                                                                                                                                                  |
 | A9  | 项目内新建 session 的 cwd | 固定为主要目录，不提供选择                                                                                                                                                                                      |
 
@@ -115,14 +112,14 @@ CLI 侧已有一份多工作区草案 `apps/zcode-cli/docs/design/v2/multi-works
 
 ### 3.3 列表与交互
 
-| #   | 问题                      | 裁决                                                                                                                                                                             |
-| --- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | 置顶                      | 保留全局置顶 session 区；项目也可置顶，置顶到全局置顶区并排在 session 之下；远程 session 也可置顶                                                                                |
-| D2  | 拖拽                      | session 跨项目、从「任务」区拖入项目、项目排序；不做项目内手动排序与多选拖拽；目标项目不含该 session 的真实工作区时弹窗确认加入                                                  |
+| #   | 问题                      | 裁决                                                                                                                                                                                 |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D1  | 置顶                      | 保留全局置顶 session 区；项目也可置顶，置顶到全局置顶区并排在 session 之下；远程 session 也可置顶                                                                                    |
+| D2  | 拖拽                      | session 跨项目、从「任务」区拖入项目、项目排序；不做项目内手动排序与多选拖拽；目标项目不含该 session 的真实工作区时弹窗确认加入                                                      |
 | D3  | 新建任务入口              | 项目行在该项目主要目录建草稿；Cmd/Ctrl+N 与左上角新建继承当前会话或草稿的项目，无项目才在自动创建的 `~/.openzwork/workspace/<唯一目录>` 建未归类草稿；任务分区新建显式创建未归类草稿 |
-| D4  | 项目右键菜单              | 编辑项目、置顶、删除项目；可编辑的远程项目与本地项目一致，不显示「从本机移除」「添加远程项目」；「从本机移除」只在不可编辑（离线 / error、legacy 单 root）时显示（2026-10-16）   |
-| D5  | Web / 手机远控侧栏        | 都显示项目层级                                                                                                                                                                   |
-| D6  | 右侧 workbench 分屏 group | 与本次无关，不动                                                                                                                                                                 |
+| D4  | 项目右键菜单              | 编辑项目、置顶、删除项目；可编辑的远程项目与本地项目一致，不显示「从本机移除」「添加远程项目」；「从本机移除」只在不可编辑（离线 / error、legacy 单 root）时显示（2026-10-16）       |
+| D5  | Web / 手机远控侧栏        | 都显示项目层级                                                                                                                                                                       |
+| D6  | 右侧 workbench 分屏 group | 与本次无关，不动                                                                                                                                                                     |
 
 2026-10-15 侧栏新建与展开规则：
 
@@ -195,7 +192,7 @@ PRO01 验证：`desktop-e2e-20260915130441227-p90013-a508c06fba08fa3a` 1/1 通�
 | F4  | 降级期 group 增删改                                                              | 忽略；group→项目只在首次升级迁移一次                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | F5  | setting.json                                                                     | 继续双写 lastWorkspaceSession / recentProjects；远程条目从本机仍保留的远程项目入口派生，移除入口后清理对应旧条目，不从远端全量项目列表重新生成                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | F6  | 执行位置                                                                         | main whenReady 后、起 Host 前同步执行；失败 fail-closed（重试 / 打开备份目录），不做第二套实现                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| F7  | 备份                                                                             | 定位：只保证「迁移失败 / 迁移把库写坏」时能恢复到升级前，不作为降级机制，也不作为通用数据保险；正常流程只产生不消费。做法：通用表级备份（见 7.1），仅在有待执行 migration 时、事务前，把这些 migration 声明的 `touchedTables` 在同一读事务里逐表导出到 `~/.openzwork/backup/<版本>-<时间>/<库名>.sqlite`，写 backup.json，保留 2 份；不做整库快照（本机实测整库 770MB/12s，gzip 160MB/19s；表级 CLI 1.9MB/70ms、tasks-index 14MB/165ms）。当前卷不足依次试其他可写卷，都不足则跳过并提示，不删轨迹                                                                                                     |
+| F7  | 备份                                                                             | 定位：只保证「迁移失败 / 迁移把库写坏」时能恢复到升级前，不作为降级机制，也不作为通用数据保险；正常流程只产生不消费。做法：通用表级备份（见 7.1），仅在有待执行 migration 时、事务前，把这些 migration 声明的 `touchedTables` 在同一读事务里逐表导出到 `~/.openzwork/backup/<版本>-<时间>/<库名>.sqlite`，写 backup.json，保留 2 份；不做整库快照（本机实测整库 770MB/12s，gzip 160MB/19s；表级 CLI 1.9MB/70ms、tasks-index 14MB/165ms）。当前卷不足依次试其他可写卷，都不足则跳过并提示，不删轨迹                                                                                                 |
 | F8  | 老 workspace                                                                     | 本地及远端各自仅将旧 lastWorkspaceSession 中保留的项目 workspace → 同名单 root 项目，其下全部 session 归入；仅历史 tasks 或 recentProjects 中的目录不建项目，其任务保留原 cwd 与组织态，无匹配项目时保持未归类；本机 lastWorkspaceSession 中的 remote 条目只在首次迁移时导入本机远程项目入口及基础信息缓存，不在本机创建远端权威项目。远端例外（2026-10-15）：持库 owner 不是 local 时，首次迁移另把仍有未删除任务、不在 `*/.zcode/workspace/*` 系统目录下、且未被 settings 标为 conversation 的历史任务 root 建为同名单 root 项目并归入；远端项目只经本机入口进入桌面侧栏，推断不会复活已移除入口 |
 | F9  | 手建 group                                                                       | 仅迁移包含未删除 session 的手建 group（归档成员有效），空/悬空/仅已删成员跳过；roots = 有效成员目录去重，主要 = 成员最多的目录；名字沿用并标 name_overridden；颜色丢弃                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | F10 | 混合 host 的 group                                                               | 按 host 拆成多个项目，名字后缀 host 名                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -523,7 +520,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_host_task ON tasks(host_id, task_id)
 CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id, archived, cli_updated_at DESC) WHERE deleted = 0;
 ```
 
-
 运行时删除接受整份 `TaskMeta` 的通用持久化入口。恢复快照只更新模型、目标、错误详情和搜索正文；标题、时间、存在性和结果必须先经 CLI reconcile 摄入。无持久事实的草稿只返回临时展示值，不插入列表。Claude 导入必须先创建真实 CLI session，再通过同一事实入口摄入；备份 JSON 不承担索引写入或复活删除会话的职责。显式再次导入创建新的 CLI 会话 ID，不按外部来源 hash 覆盖已有或已删除会话；旧确定性 ID 只用于已有备份的读取与修复。回归测试人为污染旧事实列与 `meta_json`，验证所有列表排序、搜索和展示仍只读镜像。
 
 旧 `session/create` 与 V4 创建也共用归属预留：Host 在 wire 请求前生成会话 ID，并原子保存 project_id（未指定时为 NULL）；CLI 接受尚不存在的分配 ID，统一拒绝覆盖内存、持久化或正在创建的同 ID。创建期间只保留短期 ID 占用，失败即释放；它不接收用户输入，不构成第二个命令队列。V4 幂等结果仍由 CommandInbox 保存。旧 native 创建的附加目录由 Host 归属解析，定时/闲时等已固化配置沿显式参数传递。
@@ -707,17 +703,17 @@ desktop continuous / mobile replayable -> original attachment, no new runtime
 
 定时/闲时的项目选择复用 readProjects，只读取目录与项目，不为展示候选加载 task tree 或触发自动归档。此处将原“已打开的本地 workspace”改为“所有未删除的本地虚拟项目”，保留既有产品 spec 的本地新建范围、创建后目录固定及旧远端任务管理能力；开放远端新建需要独立明确裁决。
 
-| 场景                                                                            | 预期                                                                         |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| 场景                                                                            | 预期                                                                             |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | 全局新建任务                                                                    | 在 `~/.openzwork/workspace/<唯一目录>` 下创建，`project_id = NULL`，显示在任务区 |
-| 首次发现默认目录之外的历史 session，绑定目录匹配同 host 下唯一一个未删除项目    | 归入该项目，cwd 不变                                                         |
-| 首次发现默认目录之外的历史 session，绑定目录匹配多个未删除项目                  | 保持未归类，显示在任务区；不按主要目录优先选择，不新建项目                   |
-| 首次发现默认目录之外的历史 session，绑定目录不匹配任何未删除项目                | 保持未归类，显示在任务区，不新建项目                                         |
-| 同目录仅匹配已删除项目或其他 host 的项目                                        | 不作为有效匹配，保持未归类，不恢复已删项目、不跨 host 归入                   |
-| 未归类 session 已完成首次判定（bit 8），之后新增包含其 cwd 的项目，再启动或对账 | 仍在任务区，不因目录变成唯一匹配而自动归入                                   |
-| 时间线中的空归属 session 拖入同 host 项目，目标缺该目录                         | 弹窗确认加入真实绑定目录；确认后移动，拒绝则目录与归属均不变                 |
-| 空归属 session 满足 F12 自动归档条件                                            | 同样触发自动归档，不因无项目归属而遗漏                                       |
-| 删除本地项目或在线远端权威项目                                                  | session 保留原 `project_id`，时间线仍可见，不转入任务区                      |
+| 首次发现默认目录之外的历史 session，绑定目录匹配同 host 下唯一一个未删除项目    | 归入该项目，cwd 不变                                                             |
+| 首次发现默认目录之外的历史 session，绑定目录匹配多个未删除项目                  | 保持未归类，显示在任务区；不按主要目录优先选择，不新建项目                       |
+| 首次发现默认目录之外的历史 session，绑定目录不匹配任何未删除项目                | 保持未归类，显示在任务区，不新建项目                                             |
+| 同目录仅匹配已删除项目或其他 host 的项目                                        | 不作为有效匹配，保持未归类，不恢复已删项目、不跨 host 归入                       |
+| 未归类 session 已完成首次判定（bit 8），之后新增包含其 cwd 的项目，再启动或对账 | 仍在任务区，不因目录变成唯一匹配而自动归入                                       |
+| 时间线中的空归属 session 拖入同 host 项目，目标缺该目录                         | 弹窗确认加入真实绑定目录；确认后移动，拒绝则目录与归属均不变                     |
+| 空归属 session 满足 F12 自动归档条件                                            | 同样触发自动归档，不因无项目归属而遗漏                                           |
+| 删除本地项目或在线远端权威项目                                                  | session 保留原 `project_id`，时间线仍可见，不转入任务区                          |
 
 以上场景在桌面与手机 Web 远控中保持一致；涉及远程时沿用同 host 限制及 workspaceIdentity 隔离，不改变桌面 continuous 与手机 replayable 的恢复边界。
 
@@ -770,7 +766,6 @@ runner（备份只为迁移失败恢复；未触及的表迁移前后是同一�
   schema.baseline.sql + CI diff：只允许新增表 / 列 / 索引
 ```
 
-
 ### 7.2 步骤
 
 2026-10-19 首次升级排序补充：从 3.15 尚未执行项目迁移的控制端升级时，保留旧
@@ -790,7 +785,6 @@ runner（备份只为迁移失败恢复；未触及的表迁移前后是同一�
 VP28 补充验证：真实冷启动迁移本地/remote 混排与离线刷新；SQLite 和 React 回归覆盖
 连接后身份替换、同路径不同 Host、手动排序、旧 ledger 不回填与迁移幂等。沿用 shared-host
 手机目录及同一排序逻辑，不改 CLI、会话归属、continuous/replayable 或连接调度。
-
 
 ### 7.4 对账与交接（每次启动 + 每次 workspace CLI 可用时）
 

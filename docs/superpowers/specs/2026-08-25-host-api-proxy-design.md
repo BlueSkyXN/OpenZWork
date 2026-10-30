@@ -55,7 +55,6 @@ Browser                  Electron Main              Window Host
 
 ## 架构合同
 
-
 ### 决策 D1：设置权威不变
 
 **选择**：Host 只读取 `AppSettings.httpProxy`、`httpProxyNoProxy`、`httpProxyCaCertPath`；空值表示直连或默认
@@ -132,11 +131,10 @@ OAuth code、token 或 header value。
 
 ### UI Surface Matrix
 
-| User scenario | UI entry                                              | Shared implementation            | Display/draft owner      | Default/inherit source | Validation/gating              | Commit action           | Authority/persistence | Mode boundary                                    | Must remain isolated from            |
-| ------------- | ----------------------------------------------------- | -------------------------------- | ------------------------ | ---------------------- | ------------------------------ | ----------------------- | --------------------- | ------------------------------------------------ | ------------------------------------ |
-| 配置代理      | Settings / General / Network                          | `GeneralSectionContent`          | SettingsPage local draft | `AppSettings`          | setting schema + normalization | `settingService.update` | `setting.json`        | desktop 设置；重启后 Host/Agent/Session 各自应用 | shell 环境隐式代理                   |
-| OAuth 登录    | provider 登录入口                                     | `OAuthService` + `NodeApiClient` | OAuth pending state      | Host policy snapshot   | state、callback、network/TLS   | token exchange          | credential repo       | local 与 desktop-attached remote 的本机身份      | server remote 身份与 remote Agent    |
-
+| User scenario | UI entry                     | Shared implementation            | Display/draft owner      | Default/inherit source | Validation/gating              | Commit action           | Authority/persistence | Mode boundary                                    | Must remain isolated from         |
+| ------------- | ---------------------------- | -------------------------------- | ------------------------ | ---------------------- | ------------------------------ | ----------------------- | --------------------- | ------------------------------------------------ | --------------------------------- |
+| 配置代理      | Settings / General / Network | `GeneralSectionContent`          | SettingsPage local draft | `AppSettings`          | setting schema + normalization | `settingService.update` | `setting.json`        | desktop 设置；重启后 Host/Agent/Session 各自应用 | shell 环境隐式代理                |
+| OAuth 登录    | provider 登录入口            | `OAuthService` + `NodeApiClient` | OAuth pending state      | Host policy snapshot   | state、callback、network/TLS   | token exchange          | credential repo       | local 与 desktop-attached remote 的本机身份      | server remote 身份与 remote Agent |
 
 ### Feature Relationships
 
@@ -173,10 +171,10 @@ OAuth code、token 或 header value。
 
 当前环境没有可调用的 codegraph 工具；按 skill 的 fallback 使用精确 symbol/text 跟踪，展开深度 2。
 
-| Seed                    | Query             | Direct callers / key path                                                       | Depth | Interpretation           |
-| ----------------------- | ----------------- | ------------------------------------------------------------------------------- | ----- | ------------------------ |
-| `createNodeApiClient`   | callers           | `createLocalServices`、`createRemoteWorkspaceServiceCollection`                 | 1     | 两个必须接线点           |
-| `settingService.get`    | key path          | AppSettings -> lazy Host policy snapshot                                        | 2     | 设置权威和重启语义       |
+| Seed                  | Query    | Direct callers / key path                                       | Depth | Interpretation     |
+| --------------------- | -------- | --------------------------------------------------------------- | ----- | ------------------ |
+| `createNodeApiClient` | callers  | `createLocalServices`、`createRemoteWorkspaceServiceCollection` | 1     | 两个必须接线点     |
+| `settingService.get`  | key path | AppSettings -> lazy Host policy snapshot                        | 2     | 设置权威和重启语义 |
 
 ### Graph Drift And Delta
 
@@ -187,9 +185,8 @@ OAuth code、token 或 header value。
 
 ### Clarification Log
 
-| Round | Question                    | User answer                                                         | Boundary fixed                            | Follow-up needed |
-| ----- | --------------------------- | ------------------------------------------------------------------- | ----------------------------------------- | ---------------- |
-
+| Round | Question | User answer | Boundary fixed | Follow-up needed |
+| ----- | -------- | ----------- | -------------- | ---------------- |
 
 ### Boundary Decisions
 
@@ -202,20 +199,20 @@ OAuth code、token 或 header value。
 
 ### Dimensions And Candidate Combinations
 
-| Candidate ID | State                                 | Event                           | Target/surface                | Expected guard/effect                               | Status   | Notes                  |
-| ------------ | ------------------------------------- | ------------------------------- | ----------------------------- | --------------------------------------------------- | -------- | ---------------------- |
-| HAP-001      | no explicit policy                    | API request                     | ZCode endpoint                | direct, existing behavior                           | accepted | baseline               |
-| HAP-002      | explicit proxy                        | OAuth callback                  | final token URL               | exactly one proxied request                         | accepted | core ticket            |
-| HAP-003      | proxy + matching No Proxy             | API request                     | exact/suffix/host:port target | direct, CA still applies                            | accepted | bypass semantics       |
-| HAP-004      | unreachable proxy                     | API request                     | external endpoint             | structured failure, zero direct fallback            | accepted | security invariant     |
-| HAP-005      | custom CA, no proxy                   | HTTPS request                   | private CA endpoint           | direct TLS succeeds                                 | accepted | direct CA              |
-| HAP-006      | proxy + custom CA                     | CONNECT request                 | private CA endpoint           | tunnel TLS succeeds                                 | accepted | enterprise path        |
-| HAP-007      | settings changed during Host lifetime | later request                   | same Host                     | old snapshot until restart; new Host uses new value | accepted | restart contract       |
-| HAP-009      | server remote                         | remote-owned API request        | server service                | desktop Host policy does not replace it             | accepted | authority isolation    |
-| HAP-010      | explicit proxy                        | non-ApiClient direct fetch      | Bot/telemetry/object upload   | unchanged in this phase                             | accepted | scope guard            |
-| HAP-011      | endpoint override + No Proxy          | request                         | rewritten endpoint            | match final URL                                     | accepted | ordering               |
-| HAP-012      | timeout/abort                         | proxied streamed response       | ApiClient                     | existing abort/timeout/stream behavior preserved    | accepted | transport parity       |
-| HAP-013      | system/shell proxy only               | API request                     | Host                          | ignored; direct                                     | accepted | sanitization invariant |
+| Candidate ID | State                                 | Event                      | Target/surface                | Expected guard/effect                               | Status   | Notes                  |
+| ------------ | ------------------------------------- | -------------------------- | ----------------------------- | --------------------------------------------------- | -------- | ---------------------- |
+| HAP-001      | no explicit policy                    | API request                | ZCode endpoint                | direct, existing behavior                           | accepted | baseline               |
+| HAP-002      | explicit proxy                        | OAuth callback             | final token URL               | exactly one proxied request                         | accepted | core ticket            |
+| HAP-003      | proxy + matching No Proxy             | API request                | exact/suffix/host:port target | direct, CA still applies                            | accepted | bypass semantics       |
+| HAP-004      | unreachable proxy                     | API request                | external endpoint             | structured failure, zero direct fallback            | accepted | security invariant     |
+| HAP-005      | custom CA, no proxy                   | HTTPS request              | private CA endpoint           | direct TLS succeeds                                 | accepted | direct CA              |
+| HAP-006      | proxy + custom CA                     | CONNECT request            | private CA endpoint           | tunnel TLS succeeds                                 | accepted | enterprise path        |
+| HAP-007      | settings changed during Host lifetime | later request              | same Host                     | old snapshot until restart; new Host uses new value | accepted | restart contract       |
+| HAP-009      | server remote                         | remote-owned API request   | server service                | desktop Host policy does not replace it             | accepted | authority isolation    |
+| HAP-010      | explicit proxy                        | non-ApiClient direct fetch | Bot/telemetry/object upload   | unchanged in this phase                             | accepted | scope guard            |
+| HAP-011      | endpoint override + No Proxy          | request                    | rewritten endpoint            | match final URL                                     | accepted | ordering               |
+| HAP-012      | timeout/abort                         | proxied streamed response  | ApiClient                     | existing abort/timeout/stream behavior preserved    | accepted | transport parity       |
+| HAP-013      | system/shell proxy only               | API request                | Host                          | ignored; direct                                     | accepted | sanitization invariant |
 
 ### Pruning Decisions
 

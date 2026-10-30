@@ -1,7 +1,5 @@
 # Todo 26：智谱 Access Mode 契约切换与伪通用协议字段退役
 
-
-
 ## 1. 最终裁决
 
 Provider Access 不再用一组看似正交、实际只有特定智谱产品能够执行的可选字段描述产品协议。正式结构只保留两种一级
@@ -15,8 +13,6 @@ Provider API Config 继续提供 Endpoint 与 API 协议。不得再暴露或持
 这不是把协议事实移回 Provider ID、Model ID 或 URL，而是让有限、真实的智谱访问种类成为正式 Config 判别事实。
 
 ## 2. 设计原则
-
-
 
 ### 2.2 不为单一产品行为制造通用 Config 字段
 
@@ -49,7 +45,6 @@ Personal Overlay
 └─ 只覆盖其 Source Schema 允许的用户字段
 ```
 
-
 ## 3. Built-in Provider 精确映射
 
 ### 3.1 普通 API Provider
@@ -66,23 +61,18 @@ Personal Overlay
 
 ### 3.2 Family API Key Provider
 
-| Provider ID                | Access                                           | V4  |
-| -------------------------- | ------------------------------------------------ | --- |
-
+| Provider ID | Access | V4  |
+| ----------- | ------ | --- |
 
 它们属于固定 Family UI。Built-in 只声明 `type/family/mode`；实际 API Key 由当前账号体系提供，
 经 Account/Credential Service 在请求期解析，不写入 Personal Config、Account Overlay、Registry 或 Active Model。
-
-
 
 实现修正见 [`Bugfix 09：Account API Key 所有权漂移清理`](./bugfix-09-account-api-key-ownership-drift.md)：
 Account API 设置页、Family mode 恢复逻辑和 Welcome 手填 Key 入口不再把账号 Provider 当成普通 API Key
 Provider，写边界同时机械拒绝固定 Account Provider 的 Personal `access`。
 
-
-| 产品入口                               | Access Mode              | 静态行为                                                     |
-| -------------------------------------- | ------------------------ | ------------------------------------------------------------ |
-
+| 产品入口 | Access Mode | 静态行为 |
+| -------- | ----------- | -------- |
 
 每个 Provider 保留既有精确 Provider ID、`group`、`visibility`、Endpoint 和模型成员。固定 ID 继续用于 Provider 身份、
 ModelSelection 和任务持久化，不用于猜测 Mode。
@@ -91,11 +81,10 @@ ModelSelection 和任务持久化，不用于猜测 Mode。
 
 ### 4.1 Source Schema 所有权
 
-| Source          | 可以写入的 Access 事实                                                                       |
-| --------------- | -------------------------------------------------------------------------------------------- |
-| ZCode Built-in  | 完整 `type`；智谱 Provider 的完整 `family + mode`；普通 API Provider 的 Key 管理入口         |
-| Account Overlay | 不允许写入或替换 `access`                                                                    |
-
+| Source          | 可以写入的 Access 事实                                                               |
+| --------------- | ------------------------------------------------------------------------------------ |
+| ZCode Built-in  | 完整 `type`；智谱 Provider 的完整 `family + mode`；普通 API Provider 的 Key 管理入口 |
+| Account Overlay | 不允许写入或替换 `access`                                                            |
 
 高级布尔开关。
 
@@ -132,7 +121,6 @@ type=api-key
 └─ 使用 Config 中的静态 API Key
    └─ 普通 Transport，不进入 ZCode V4
 ```
-
 
 ### 5.3 Start、Individual 与 Team
 
@@ -196,13 +184,13 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 
 ## 8. UI Surface Matrix
 
-| 用户场景                     | 展示/草稿来源                      | 提交或运行 Owner                  | 本 Todo 行为                                   | 必须隔离                     |
-| ---------------------------- | ---------------------------------- | --------------------------------- | ---------------------------------------------- | ---------------------------- |
-| 普通 Provider 设置           | Personal API Key Draft             | Provider Settings Service         | `zai-api/bigmodel-api` 保持普通 API Key、无 V4 | 不进入 Family Account 流程   |
-| Z.ai/BigModel Family API Key | Account Connection 与凭据状态      | Account/Credential + Request Auth | Built-in Mode 固定为 `api-key`，不提供手填 Key | 不写 Personal access         |
-| Start 登录与请求             | Account Connection + 安全校验 UI   | Account/Request Auth              | 只按 `mode=start-plan` 进入安全校验            | 不影响普通 API Key           |
-| Individual/Team 请求         | Account Connection                 | Request Auth + Adapter            | 按 Mode 解析当前 Key，具备 V4 准入             | 不冻结账号或 Team scope      |
-| Usage/Entitlement            | Account/Subscription Service       | Usage Services                    | 不从 Effective Access 反推动态产品状态         | 不改变刷新与计费策略         |
+| 用户场景                     | 展示/草稿来源                    | 提交或运行 Owner                  | 本 Todo 行为                                   | 必须隔离                   |
+| ---------------------------- | -------------------------------- | --------------------------------- | ---------------------------------------------- | -------------------------- |
+| 普通 Provider 设置           | Personal API Key Draft           | Provider Settings Service         | `zai-api/bigmodel-api` 保持普通 API Key、无 V4 | 不进入 Family Account 流程 |
+| Z.ai/BigModel Family API Key | Account Connection 与凭据状态    | Account/Credential + Request Auth | Built-in Mode 固定为 `api-key`，不提供手填 Key | 不写 Personal access       |
+| Start 登录与请求             | Account Connection + 安全校验 UI | Account/Request Auth              | 只按 `mode=start-plan` 进入安全校验            | 不影响普通 API Key         |
+| Individual/Team 请求         | Account Connection               | Request Auth + Adapter            | 按 Mode 解析当前 Key，具备 V4 准入             | 不冻结账号或 Team scope    |
+| Usage/Entitlement            | Account/Subscription Service     | Usage Services                    | 不从 Effective Access 反推动态产品状态         | 不改变刷新与计费策略       |
 
 ## 9. 实施切片
 
@@ -216,28 +204,27 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 ### Slice B：Config、Schema 与 Built-in
 
 1. `ApiKeyAccessConfig` 删除通用协议字段；
-3. 删除 `ExecutionProvidedAccessConfig` 和 `ProviderAccessProtocolInput`；
-4. 更新 Source Schema、Overlay、序列化、Personal projection 和完整性校验；
-5. 迁移全部 Built-in Provider；`zai-api/bigmodel-api` 明确保持普通 API Key 且无 V4；
-
+2. 删除 `ExecutionProvidedAccessConfig` 和 `ProviderAccessProtocolInput`；
+3. 更新 Source Schema、Overlay、序列化、Personal projection 和完整性校验；
+4. 迁移全部 Built-in Provider；`zai-api/bigmodel-api` 明确保持普通 API Key 且无 V4；
 
 ### Slice C：Account 与请求期鉴权
 
 3. Request Auth 按 `family + mode` 解析当前连接；`mode=api-key` 取当前账号提供的 API Key，不读 Personal Config；
-5. Account LKG 增加或保留私有账号 scope 防串态，不进入公共链。
+4. Account LKG 增加或保留私有账号 scope 防串态，不进入公共链。
 
 ### Slice D：Protocol、Active Model 与 Adapter
 
 1. Shared/Agent Protocol 使用相同的 `type/family/mode` 结构；
 2. Active Model 原样冻结完整 Effective Access，不创建 capability DTO；
-4. 删除 `requestSigning`、`challenge`、`executionProtocol`、`execution-provided` 的运行时消费；
-5. 保留 V4 动态 rollout 和 Signer 协议实现，不恢复任何 URL/ID/path 业务判断。
+3. 删除 `requestSigning`、`challenge`、`executionProtocol`、`execution-provided` 的运行时消费；
+4. 保留 V4 动态 rollout 和 Signer 协议实现，不恢复任何 URL/ID/path 业务判断。
 
 ### Slice E：Services、UI 与清理
 
 2. Family UI 只展示 Built-in Mode 对应产品入口，不提供 Mode 或 API Key 编辑控件；
-5. Usage/Entitlement 继续读取 Account/Subscription，不从 Access 反推动态状态；
-6. 同步当前 Design、Feature Graph、步骤索引与 Todo 24 superseded 说明。
+3. Usage/Entitlement 继续读取 Account/Subscription，不从 Access 反推动态状态；
+4. 同步当前 Design、Feature Graph、步骤索引与 Todo 24 superseded 说明。
 
 ## 10. 测试计划与接受用例
 
@@ -278,7 +265,6 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 - Credential Service 私有账号身份、物理 Key 和 LKG scope；
 - 官方版本请求安全校验的动态开关及内部协议状态；
 
-
 机械检查必须逐条审计例外，不能用宽泛 allowlist 隐藏生产残留。
 
 ## 12. 非目标与不变量
@@ -300,7 +286,7 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 5. Active Model 静态事实不可变，请求期账号材料允许按当前兼容连接解析；
 6. `provider.group` 只负责展示分类，`access.family` 只负责智谱访问体系；
 7. 普通 `zai-api/bigmodel-api` 保存手动 Key 且无 V4；Family API Key Provider 只使用账号提供的 Key 且可进入 V4；
-9. 不新增第二套 Registry、Access capability DTO、凭据中心或执行专用 Model。
+8. 不新增第二套 Registry、Access capability DTO、凭据中心或执行专用 Model。
 
 ## 13. 完成定义
 
@@ -309,10 +295,10 @@ replayable、Session/Task Queue、Snapshot 或恢复语义。
 1. 两种一级 Access Type 与智谱 Mode 枚举进入正式 Config、Schema、Registry、Protocol 和 Adapter；
 2. Built-in Provider 全部迁入正确类型和 Mode，普通 Z.ai/BigModel API 明确退出 V4，Family API Key
    明确改为账号凭据来源；
-4. 旧通用协议字段与 `execution-provided` 完成生产机械归零；
-5. Account 私有 LKG scope 防止跨账号复用，但没有公共账号绑定重新进入模型链；
-6. Environment-local Provider/Account 权威和已有 Overlay 原子性保持不变；
-7. 当前 Design、Feature Graph、Todo 24 superseded 说明和实现事实一致；
-8. Provider、Provider Node、Services、Shared、Adapter、Bootstrap、UI 定向测试通过；
-9. `pnpm typecheck`、`pnpm lint`、相关格式检查、`pnpm knip` 与机械残留检查通过；
-    并使用 Conventional Commit 提交。
+3. 旧通用协议字段与 `execution-provided` 完成生产机械归零；
+4. Account 私有 LKG scope 防止跨账号复用，但没有公共账号绑定重新进入模型链；
+5. Environment-local Provider/Account 权威和已有 Overlay 原子性保持不变；
+6. 当前 Design、Feature Graph、Todo 24 superseded 说明和实现事实一致；
+7. Provider、Provider Node、Services、Shared、Adapter、Bootstrap、UI 定向测试通过；
+8. `pnpm typecheck`、`pnpm lint`、相关格式检查、`pnpm knip` 与机械残留检查通过；
+   并使用 Conventional Commit 提交。

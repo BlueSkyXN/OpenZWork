@@ -166,10 +166,7 @@ entries:
     question: "用户切到跨 model 后，原先的 thought override 是否清空、迁移、还是保留并在新 model 上校验？"
     options: ["跨 model 清空 thought override", "保留并校验，不兼容时阻止", "按同名 thought 迁移"]
     recommendation: "跨 model 清空 thought override；这是当前 composer 事实，但需统一所有 surface。"
-    evidence:
-      [
-        "runtime: useDraftConfigControl cross-model clears thought",
-      ]
+    evidence: ["runtime: useDraftConfigControl cross-model clears thought"]
     blockingCases: [MSR-REASON-007, MSR-SURFACE-009]
 
   - id: DEC-011
@@ -393,10 +390,7 @@ entries:
     options:
       ["历史保留；未来执行阻止并提示", "全部迁移到可用 preferred", "清理所有不可用 selection"]
     recommendation: "历史和记录保留 intent，未来执行按 scope fail closed；自动迁移需要显式产品契约。"
-    evidence:
-      [
-        "risk: saved explicit models must not silently change",
-      ]
+    evidence: ["risk: saved explicit models must not silently change"]
     blockingCases: [MSR-AUTH-005, MSR-QUEUE-005, MSR-SURFACE-002]
 
   - id: DEC-026
@@ -1003,10 +997,7 @@ entries:
         "全部更新 Session Selection",
       ]
     recommendation: "按 source/surface 隔离副作用；只有契约明确的普通 Chat Submission 更新 Chat Recent。"
-    evidence:
-      [
-        "planning: downstream consumers have isolated persistence",
-      ]
+    evidence: ["planning: downstream consumers have isolated persistence"]
     blockingCases: [MSR-SURFACE-003, MSR-SIDE-004]
 
   - id: DEC-064
@@ -1078,9 +1069,7 @@ entries:
     options:
       ["保留隐藏 exact model 并显示不可用状态", "打开编辑时自动切 preferred", "拒绝加载该 task"]
     recommendation: "保留 record intent，保存/执行前做 entitlement 和 Registry 校验。"
-    evidence:
-      [
-      ]
+    evidence: []
     blockingCases: [MSR-OFF-001, MSR-AUTH-005]
 
   - id: DEC-069
@@ -1215,10 +1204,7 @@ entries:
         "可以 fallback 但不记录",
       ]
     recommendation: "不能跨 operation fallback；失败和 provenance 必须局部可审计。"
-    evidence:
-      [
-        "planning: separate downstream consumers and persistence",
-      ]
+    evidence: ["planning: separate downstream consumers and persistence"]
     blockingCases: [MSR-OFF-001, MSR-SURFACE-003, MSR-SIDE-001]
 
   - id: DEC-077

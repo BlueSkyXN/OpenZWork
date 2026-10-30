@@ -1690,9 +1690,9 @@ export function SourceServerManagementPanel({
                             );
                             if (serverState.upgradeTarget === "controller")
                               void run("desktop-update", async () => {
-                                await platform?.executeDesktopCommand(
-                                  DesktopCommandIds.CheckForUpdates,
-                                );
+                                // OpenZWork 净化：自动更新链（CheckForUpdates 命令）已移除；
+                                // controller 升级提示保留展示，动作改为打开关于页供人工确认版本。
+                                await platform?.executeDesktopCommand(DesktopCommandIds.ShowAbout);
                               });
                             else if (profile) void updateProfile(profile);
                           }}

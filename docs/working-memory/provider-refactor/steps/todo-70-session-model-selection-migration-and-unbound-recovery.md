@@ -39,8 +39,6 @@ Reasoning level is required for provider/model
 物理兼容边界，当前唯一生产改动是 Bot Config/State 文件隔离；它不再承诺各领域持续双写，也不能据此认为
 其他领域的升级迁移已经全部完成。
 
-
-
 ## 2.1 共同原则
 
 本 Todo 与 Todo 69 共同遵守以下原则：
@@ -106,15 +104,11 @@ Session 恢复
 - 当前 Decoder 返回的领域对象不暴露旧别名；
 - 单向 Decoder 的中文注释说明旧结构来源及当前字段优先规则；不新增回滚 Encoder 或通用兼容抽象。
 
-
-
 存储接入使用一个窄化的 `migrateLegacyModelSelection` 操作：Adapter 识别原始旧结构，
 身份转换由调用方注入并复用 72 的规则，Adapter 不读取账号文件或猜测 Registry 顺序。
 先读候选，再异步取得身份转换结果；写入事务内重新核对候选及当前选择，若已发生变化就放弃本次旧结果。
 现有当前 entry（包括不完整数据）优先于历史消息。仅当没有当前 entry、且最近的选择证据确属旧结构时，
 才允许从该旧消息导入。成功后保存为现有当前选择 entry，不修改消息和 Session 活动时间。
-
-
 
 ## 4. Session 恢复行为
 

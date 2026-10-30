@@ -20,7 +20,6 @@
 - 例如 `glm-5.3` → `GLM-5.3`，`glm-5.3-flash` → `GLM-5.3-Flash`，`glm-5-turbo` → `GLM-5-Turbo`。
 - 实施前列出所有在范围内型号的目标拼写，覆盖其余 GLM 型号及 FlashX、Air、视觉和日期后缀；不能用整体 `toUpperCase()` 猜测规范拼写，不能修改版本号、分隔结构或删掉后缀。
 
-
 ### 2.2 Start：在官方模型名单入口统一
 
 `packages/services/src/model-provider/zaiStartPlanBilling.ts` 的 `resolveZaiStartPlanBalanceModelIds()` 从余额 `capabilities` 提取 `model:<id>`，没有时使用 `show_name`；目前仅大小写无关去重，输出保留原始拼写。
@@ -66,8 +65,6 @@
 - 此项证据为用户确认，不写成已由本轮实机请求验证；若实施出现相反的真实证据，再记录具体问题，不预先扩大第三方兼容范围。
 
 ## 4. 实施、测试与完成标准
-
-
 
 实施精确拼写表（仅大小写，不改版本、分隔符及数字）：`GLM-5.3`、`GLM-5.3-Flash`、
 `GLM-5V-Turbo`、`GLM-5.2`、`GLM-5.1`、`GLM-5.1-Highspeed`、`GLM-5`、`GLM-5-Turbo`、

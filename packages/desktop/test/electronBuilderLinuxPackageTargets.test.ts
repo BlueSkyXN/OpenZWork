@@ -6,7 +6,6 @@ import { resolveDesktopProductIdentity } from "../scripts/desktop-product-identi
 // latest.yml / electron-updater 在 Linux 上固定以 AppImage 作为更新产物，
 // scripts/upload-oss.sh 也按 AppImage 解析更新元数据，因此 AppImage 必须保留。
 describe("electron-builder Linux 打包目标", () => {
-
   it("Linux 同时产出 AppImage、deb、rpm 与 pacman 安装包", () => {
     const targets = desktopBuilderConfig.linux?.target ?? [];
 

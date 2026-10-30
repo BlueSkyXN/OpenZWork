@@ -1,9 +1,6 @@
 {
   "name": "zcode",
   "version": "3.17.1+openzwork.1",
-  "zcodeCompatibility": {
-    "minCompatibleVersion": "3.17.1"
-  },
   "private": true,
   "license": "GPL-3.0",
   "type": "module",
@@ -138,5 +135,8 @@
       "@aiden0z/pptx-renderer@1.2.4": "patches/@aiden0z__pptx-renderer@1.2.4.patch",
       "@extend-ai/react-xlsx@0.16.0": "patches/@extend-ai__react-xlsx@0.16.0.patch"
     }
+  },
+  "zcodeCompatibility": {
+    "minCompatibleVersion": "3.17.1"
   }
 }

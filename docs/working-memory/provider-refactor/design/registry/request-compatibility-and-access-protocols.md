@@ -104,8 +104,6 @@ Anthropic 的真实 thinking block、空 thinking、signature 和 redacted think
 任何 Anthropic-compatible Provider 都统一执行 canonical replay：服务端返回真实 thinking/signature 时原样保存和
 回放；服务端没有返回时不补造 block 或 signature。该行为不接受 Model ID、Provider ID 或配置开关分流。
 
-
-
 ### 3.4 Z.ai text/tool block signature：候选实现不采用
 
 当前 HEAD 与 `origin/staging` 没有 text/tool block signature replay；相关实现只存在于未合入候选分支。本次重构不采用、
@@ -146,12 +144,7 @@ Copilot 时按当时接口重新设计，不能恢复旧规则作为默认。
 
 ## 5. Provider Access 产品协议
 
-
-
-
 ### 5.2 官方版本请求安全校验
-
-
 
 - 两种手动 Access 的 type 在覆盖、序列化、编辑 Key 和绑定 Model 时原样保留；不能在保存时降回普通 `api-key`；
 - 准入判断使用本次 Model 已绑定的配置快照，不读取实时 Registry，不修改保存的 Access、Template 或 Model Selection，
@@ -161,8 +154,6 @@ Copilot 时按当时接口重新设计，不能恢复旧规则作为默认。
   或 Host/Worker 状态所有权；
 - 获取 Key 仅使用 `apiKeyManagementUrl` 展示元数据，个人／团队共用模板的单一入口，不新增身份专用链接字段，
   也不由链接推断鉴权（Todo116）。
-
-
 
 本轮保持等价，不因为配置归属迁移而顺手改成结构化错误。
 
@@ -188,10 +179,10 @@ Copilot 时按当时接口重新设计，不能恢复旧规则作为默认。
 
 1. 先用最终 HTTP request body 测试证明当前 OpenAI-compatible SDK 能原生回放非空 reasoning，再删除 ZCode helper；
 2. 删除 GitHub Copilot omit 字段和规则，不保留兼容读取；
-5. DeepSeek 统一执行 canonical replay，不保留 synthetic empty-thinking 或 Compatibility Config；
-6. Z.ai text/tool signature 候选实现不采用；真实 wire 测试作为独立证据任务；
-7. 删除 Snowflake 字段和专属请求改写，当前不支持 Snowflake；
-8. Adapter 不恢复通用 Compatibility Config、Registry 查询或 ID hardcode。
+3. DeepSeek 统一执行 canonical replay，不保留 synthetic empty-thinking 或 Compatibility Config；
+4. Z.ai text/tool signature 候选实现不采用；真实 wire 测试作为独立证据任务；
+5. 删除 Snowflake 字段和专属请求改写，当前不支持 Snowflake；
+6. Adapter 不恢复通用 Compatibility Config、Registry 查询或 ID hardcode。
 
 ## 8. 当前证据记录
 

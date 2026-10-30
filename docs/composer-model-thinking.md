@@ -26,8 +26,6 @@ Think 滑杆采用胶囊轨道、离散档位圆点和白色圆形滑块。低�
 
 Provider 行左侧依次为当前供应商图标、名称、接入方式标识，子菜单箭头靠右，不再显示 Provider 标题。图标复用供应商配置中的 logo 和已有深浅主题资源，无 logo 时使用通用模型图标。供应商子菜单中的接入方式标识紧跟名称（间距 8px），不推到行尾；当前选中标记保留在右侧，末尾分割线下放置 Manage models；合并弹层底部不重复显示此入口。空目录时仍可打开子菜单进入模型管理。其他使用 ModelConfigSelect 的界面保持原布局。
 
-
-
 子菜单使用 Portal 避免父菜单裁切。窄屏侧向空间不足时，子菜单允许覆盖父菜单并避开 Provider 触发器行，保持高于父菜单的层级；不改变 Provider 选择和模型切换逻辑。
 
 切换 Provider 立即选择该分组按目录顺序的第一个未锁定模型，沿用已有 onSelectModel 更新 Composer，Think 由既有模型切换逻辑同步为有效档位，弹层保持打开。重复选择当前 Provider 保留其当前可用模型。没有可用模型的 Provider 仍可浏览和配置，但不覆盖当前模型，Think 禁用。滑杆按 Option Spec 的原始顺序逐格选择，不排序、不转换成 Token Budget。仅 Off 单档隐藏整个 Effort 区域及分割线；其他单档禁用滑杆但显示档位；无模型／无有效档位不制造默认选择。选择档位保持弹层打开，点击外部或 Escape 收起。桌面关闭后恢复输入焦点；手机不主动弹出软键盘。
@@ -103,8 +101,6 @@ ModelSelectionView（支持的模型与档位）
 - accepted：鼠标置于菜单外、通过键盘聚焦滑杆后，打开态缩窄再恢复，保留同一按钮、菜单、range 节点和滑杆焦点；模型/Provider/档位不被 resize 改写；窄态继续按 End 调档，思考条与 config 同步；关闭再打开仍是图标＋思考条。
 - pruned：主题/语言/全部宽度不与 desktop E2E 全量叉乘；共享 CSS 的浏览器视觉证据单列，不能算作手机 `/remote` 真机或原生侧栏拖拽覆盖。当前 E2E 设置工具栏容器宽度以确定性触发真实 ResizeObserver，不伪造 compact 属性。
 - 已有覆盖保留：Provider 自动选模型、模型/Provider 切换不清空目录、Tooltip 操作文案、最高档渐变与气泡、模式菜单互斥、管理模型、scope reset。
-
-
 
 复核结果：增强后的工具栏 Electron E2E 11 项通过，case-local fixture 校验、typecheck:e2e、全仓 typecheck、lint（62 条既有 warning、0 error）和 architecture check 通过。全仓 conversation coverage audit 被未修改的 Highspeed card fixture 两条 syntheticReason 与 manifest 不一致阻断（REQUEST_LEDGER_METADATA_MISMATCH），不计为本次工具栏测试失败；未执行 Docker admission 或手机远控真机验证。
 
@@ -194,8 +190,6 @@ CR-01 刷新边界：已有模型选择但 groups=[] 的目录未就绪状态保
 CR-01 验证：新增测试先复现空 Effort；修复后 51 项组件测试、11 项 Electron 工具栏 E2E、typecheck、lint（62 条既有 warning，0 error）、architecture check 通过。真实 Chrome 390/1200px 验证无能力隐藏及模型选择正常。远端 fetch 两次因自动审批超时未执行，尚未提交/推送或调用 Ready；当前旧图快照不作为修复后影响面证据。
 
 ## Composer 供应商列表中的团队入口（2026-10-08）
-
-
 
 团队入口来自已有企业 pricing 的 subscribed 产品，使用真实组织名，身份包含 family/productId/organizationId/projectId；身份不完整或无组织名不制造入口，同名不同身份不得去重。未选团队额度 unknown 不等于未购买；入口以已购目录为准，执行模型在选择后校验。
 

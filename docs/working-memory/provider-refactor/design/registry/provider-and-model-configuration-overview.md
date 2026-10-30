@@ -168,8 +168,6 @@ Provider Config
 `visibility=hidden` 只隐藏普通 Settings 与 Selection；配置完整且启用的 hidden Provider 仍可由内部产品通过普通
 Registry 和 ModelFactory 精确使用。系统不保存 Provider `selectable`。
 
-
-
 ## 5. 模型成员、启用和顺序
 
 Provider 中的三个模型数组各自只有一个含义：

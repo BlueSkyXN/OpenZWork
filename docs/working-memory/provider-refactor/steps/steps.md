@@ -12,14 +12,6 @@
 
 - [Todo158：权限审批框完全访问与待执行队列权限同步](todo-158-permission-dialog-full-access-and-queued-mode.md)：已实现，验收尚未全部收口。仅审批框同步当前任务、Composer 和固定待执行队列为 yolo，各自 Plan 保留；包含事务、幂等与投影恢复。必要验证的基线失败、跨端未验证项见 Todo 第 9 节。
 
-
-
-
-
-
-
-
-
 - [Todo153：思考档位展示映射与配置顺序对齐](todo-153-thought-level-display-mapping.md)：已实现；关闭文案合并、minimal 独立为“极低 / Minimal”、新增“极致 / Ultra”，保留 extra-high／extra_high，取消模糊别名强制归类并尊重配置顺序。192 项单测、八组浏览器交互及类型／lint／架构检查通过；完整原生／手机远控未重跑，不改原始值或请求映射。
 
 - [Todo147：Builtin Config 简化与默认基线调整](todo-147-builtin-config-simplification-feedback.md)：已实施简单前后缀匹配、具体规则后置，删除两条特殊 Model 规则，通用 context/output 上限调整为 1000000 / 128000；保留历史关闭档位只读恢复，Builtin revision 32。
@@ -30,7 +22,6 @@
 
 - [Todo141：模型编辑弹窗布局与高级配置体验对齐](todo-141-model-editor-product-ux-alignment.md)：**已完成**；2026-09-12 重新授权后实施、逐项复审，浏览器 26/26、相关单测 51/51、类型/lint/架构检查通过；原生实机未重跑，保留 Todo134 的草稿与校验边界。
 
-
 - [Todo139：分享导入复用普通新任务的模型与模式初始化](todo-139-share-import-new-task-selection.md)：已实现，本地单测／浏览器与 review 完成；完整分享服务端→原生首条 RPC 联合验收仍待补，未宣称全部验收完成。
 
 - Todo136：官方版本请求安全校验的准入调整（文档仅官方版本保留）：已实现；Start／闲时的 JWT 漏测与错误准入由 Todo142 纠正。
@@ -38,8 +29,6 @@
 - [Todo135：恢复模型请求默认 Header 与 OpenRouter 归因](todo-135-model-default-headers-and-openrouter-attribution.md)：实现与本地验证完成；真实多端验证限制见正文。
 
 - [Todo138：空模型草稿与 Model 层推理档位兜底](./todo-138-reasoning-level-ui-and-api-defaults.md)：已完成；空 UI 草稿不预填档位，Model 通用兜底 disabled/enabled，三种 API 通用 map 将 enabled 转为 high；保留层级及专用规则。来源 revision 23，合并版为 24。
-
-
 
 - [Todo117：保留账号域、补齐套餐选择并取消账号禁用](todo-117-preserve-account-domain-on-provider-save.md)／[Todo118：首次迁移保留手动 Provider 启停](todo-118-preserve-legacy-provider-enabled.md)：最新裁决已收口，待实施。内置账号 Provider 不允许禁用，已有 false 不再生效，旧账号禁用不导入；模板创建的手动 Key 实例仍可启停。当前连接、权益、凭据与模型资格不放宽，不批量改真实用户数据。
 
@@ -49,14 +38,9 @@
 
 - [Todo130：智能配置开关与手动配置字段边界修正](todo-130-manual-model-config-editable-field-boundary.md)：**待执行，方案已确认**。统一可编辑字段契约，修改手动 schema、系统字段合成、草稿保存与开关条件；排除旧模型回退，不让隐藏字段阻止表单保存。预计未正式发布，不预设复杂迁移；M120 验证计划已列，本轮仅落盘。
 
-
-
-
 - [Todo127：Built-in 配置在线发布与更新链路修复](todo-127-builtin-online-release.md)：**待执行，详细方案已确认**。版本化 CDN URL；两阶段下载合计 20 秒、正文 10 MB；每分钟检查、正常每小时下载；Account 串行重建与未对齐恢复复用同一检查入口。已列实施顺序与验收，本轮仅落盘，不新增客户端业务完整性门禁。
 
 - [Todo113：近期新模型目录与智能配置更新](todo-113-new-model-catalog-refresh.md)：**第二轮待执行**。补 GPT-5.4 基础版／Pro／Mini／Nano 智能配置、聚合 DeepSeek V4.1 Flash、Qwen Omni／3.7／3.6 配置、Kimi 高速版，核实并移除下线内置成员；所有新增型号必须核查聚合支持，已确定项也须深度研究。第一轮已完成证据保留，本次仅落盘。
-
-
 
 - [Todo125：模型设置页问号说明与定稿文案](todo-125-model-settings-help-copy.md)：裁决已确认，待实施。本次只落盘；后续严格按逐字文案及交互要求执行，不自行改布局、配置行为或扩大范围。
 
@@ -140,7 +124,6 @@
 - [`todo-81-selection-migration-notice-scope-cleanup.md`](./todo-81-selection-migration-notice-scope-cleanup.md) 已完成：普通会话 Composer 失效选择不弹提示；已结束闲时任务不显示修复错误；仍可能执行的闲时任务和定时任务继续保留提示与保护。
 - [`todo-82-model-config-follow-recommended-draft.md`](./todo-82-model-config-follow-recommended-draft.md) 已完成：删除模型编辑弹窗重复的启用入口，以 Draft-only 的“跟随推荐配置”开关取代“全部恢复默认”，并在保存时原子物化或清空 Personal Model Config Overlay。
 
-
 Todo 68–72 联合执行：68 收尾 → 72 身份转换基础 → 69 Bot 文件隔离及正确首次导入 →
 70 Session → 71 Composer → 72 其余持久化入口与联合验证。详细分工见 Todo 72。
 统一裁决：已有模型/Reasoning 缺失或失效时留空，不自动切默认模型，不弹留空提示；
@@ -155,7 +138,6 @@ Todo 68–72 联合执行：68 收尾 → 72 身份转换基础 → 69 Bot 文�
 ## 文档关系
 
 - [`todo-98-builtin-option-map-formatting-regression.md`](./todo-98-builtin-option-map-formatting-regression.md) 待实施：恢复 Built-in Map 对象结构换行与缩进，简单三目同行；只修排版，保留当前逻辑，独立于 Todo95C 的档位改名。
-
 
 - [`todo-87-selection-view-unified-resolution.md`](./todo-87-selection-view-unified-resolution.md) 已实现：账号及 Personal/Built-in 更新后，统一解析原意图，覆盖 Composer、定时后台、Bot、Wiki；闲时只读保护，不跨账号换票。显式 Subagent 本轮按裁决保留原校验。承接 Todo85 D02；无发送前同步或存储迁移，与 Todo86 上游刷新职责分开。
 
@@ -179,8 +161,6 @@ Research 不是目标设计。实施中发现新事实时，先记录证据，�
 更新待办：[Todo113：近期新模型目录与智能配置更新](./todo-113-new-model-catalog-refresh.md)。首批已完成；2026-09-11 第二轮目录补漏、智能配置深查、聚合支持核实及下线清理为待执行，当前范围以该文档第 0 节为准，不改用户历史选择或账号架构。
 
 新增待办：[Todo112：官方 GLM 真实 Model ID 大小写统一](./todo-112-official-glm-model-id-normalization.md)。官方模板名单／精确规则及 Start 动态模型名单统一命名；已有选择迁移补充官方 GLM 大小写归一，与 Todo111 协调，不涉及第三方、额度卡或历史统计，不额外扩展个人覆盖迁移。全部待确认项已收口，官方端点接受目标大小写由用户确认，待实施。
-
-
 
 阶段文档至少要让读者能够确认四件事：阶段目标、当前状态、实际交付和剩余问题。具体结构由阶段内容决定，不要求统一套用模板。
 

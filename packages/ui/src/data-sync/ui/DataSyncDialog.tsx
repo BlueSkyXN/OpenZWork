@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   Check,
@@ -21,17 +21,13 @@ import {
 } from "@/components/ui/dialog.js";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import {
   DATA_SYNC_CATEGORIES,
   DATA_SYNC_OVERVIEW_ICON,
   type DataSyncCategoryAdapter,
 } from "@/data-sync/app/categories.js";
 import type { DataSyncCategoryId, DataSyncDialogProps } from "@/data-sync/contract.js";
-import {
-  DATA_SYNC_STOPPED_ERROR,
-  createPluginSyncResultReporter,
-} from "@/data-sync/app/marketplacePluginSync.js";
+import { DATA_SYNC_STOPPED_ERROR } from "@/data-sync/app/marketplacePluginSync.js";
 import {
   findMissingDataSyncDependencies,
   resolveDataSyncCheckState,
@@ -137,12 +133,8 @@ function readyDependencyKeys(
 export function DataSyncDialog(props: DataSyncDialogProps) {
   const { intl } = useZCodeIntl();
   const [activeTab, setActiveTab] = useState<ActiveTab>(props.initialCategory ?? "overview");
-  const platform = useOptionalPlatform();
-  const remoteKind = props.device.remoteKind;
-  const reportPluginSyncResult = useMemo(
-    () => (platform ? createPluginSyncResultReporter(platform, remoteKind) : undefined),
-    [platform, remoteKind],
-  );
+  // OpenZWork 净化：逐插件 sync 终态上报（appTelemetry 域）不引入；platform/remoteKind 随之不再消费。
+  const reportPluginSyncResult = undefined;
   const state = useDataSyncDialog({
     categories: DATA_SYNC_CATEGORIES,
     sourceServerId: props.device.sourceServerId,

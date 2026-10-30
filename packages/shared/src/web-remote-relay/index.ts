@@ -12,6 +12,9 @@ export { WebRemoteControlV2Heartbeat } from "#src/web-remote-relay/adapters/hear
 export { sha256Bytes, hmacSha256Bytes } from "./adapters/browserCrypto.js";
 
 export * from "./domain/connection.js";
+// OpenZWork 拆分：连接设置域从 contract.ts 拆出（行数上限），导出面不变。
+export * from "./domain/connectionSettings.js";
+export { OFFICIAL_WEB_REMOTE_CONTROL_V1 } from "./v1Endpoint.js";
 export {
   collectMobilePushEvents,
   type MobilePushObservation,

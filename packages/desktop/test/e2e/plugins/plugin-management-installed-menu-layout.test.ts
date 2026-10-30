@@ -45,7 +45,13 @@ describe("PLM-LC-017 已安装列表行内菜单布局 E2E", () => {
           const row = Array.from(
             document.querySelectorAll<HTMLElement>('[data-testid="plugin-settings-plugin-row"]'),
           ).find((candidate) => candidate.dataset.pluginId === pluginId);
-          return Boolean(row?.querySelector('[data-testid="plugin-settings-enabled-switch"][data-state="checked"]')) && !row?.querySelector("[data-settings-scope]");
+          return (
+            Boolean(
+              row?.querySelector(
+                '[data-testid="plugin-settings-enabled-switch"][data-state="checked"]',
+              ),
+            ) && !row?.querySelector("[data-settings-scope]")
+          );
         }, BUILTIN_ID),
       { timeout: 30000, timeoutMsg: "已安装列表未展示启用开关或仍显示配置来源标签" },
     );

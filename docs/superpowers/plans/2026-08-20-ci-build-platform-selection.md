@@ -4,8 +4,6 @@
 
 **Goal:** 让 GitLab pipeline 可通过可选的 `ZCODE_BUILD_PLATFORMS` 完整 token 列表选择自动打包平台，未传时保持六个平台全自动，未选平台保留为非阻塞手动 job。
 
-
-
 **Tech Stack:** GitLab CI YAML、Vitest、TypeScript 文本契约测试。
 
 ---

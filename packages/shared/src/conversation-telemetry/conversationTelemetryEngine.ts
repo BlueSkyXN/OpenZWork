@@ -1,17 +1,16 @@
-import { normalizeTelemetryUiMode } from "@zcode/shared";
 /* oxlint-disable eslint(max-lines) -- 旧 message/ARMS builders 共用同一 prompt 生命周期与时钟；拆散 fact 状态机会增加跨模块同步漂移。 */
 import {
   legacyTelemetryModelValue,
   legacyTelemetryProviderId,
 } from "./providerTelemetryIdentity.js";
 import type {
-  IPlatformService,
   TelemetryEventPayload,
   RemoteWorkspaceIdentityKind,
   ZCodeContextCompactionTimelineMeta,
   ZCodeStreamEvent,
   ZCodeUsage,
 } from "@zcode/shared";
+import { normalizeTelemetryUiMode } from "@zcode/shared";
 import type { ConversationTelemetryFact } from "@zcode/shared/zcode-protocol-v4";
 import {
   activatePromptTelemetry,
@@ -69,10 +68,11 @@ const MAX_DEDUPE_KEYS = 2_000;
 const MAX_BUFFERED_FACTS_PER_COMMAND = 128;
 const MAX_BUFFERED_COMMANDS = 200;
 
-export type TelemetryPlatform = Pick<
-  IPlatformService,
-  "reportArmsCustomEvent" | "reportTelemetryEvent"
->;
+// OpenZWork 净化：platform 只剩结构性 no-op 上报位（ARMS 成员已从 IPlatformService 剥离）。
+export type TelemetryPlatform = {
+  reportTelemetryEvent?: (event: unknown) => Promise<void> | void;
+  reportArmsCustomEvent?: (event: unknown) => Promise<void> | void;
+};
 
 export interface ConversationPromptTelemetrySeed {
   localTtft?: import("@zcode/shared").LocalTtftContext;
@@ -157,18 +157,7 @@ function backgroundSeedFromTurnStarted(
   fact: Extract<ConversationTelemetryFact, { kind: "turn.started" }>,
 ): AcceptedConversationPromptTelemetrySeed | null {
   if (!fact.sourceCommandId) return null;
-  if (fact.offPeakTaskId) {
-    return {
-      sessionId: fact.sessionId,
-      sourceCommandId: fact.sourceCommandId,
-      sendTime: fact.occurredAt,
-      extraDetail: {
-        message_source: "off_peak_task",
-        off_peak_task_id: fact.offPeakTaskId,
-        ...(fact.offPeakRunType ? { off_peak_run_type: fact.offPeakRunType } : {}),
-      },
-    };
-  }
+  // OpenZWork 净化：off-peak 后台归因分支（idle plan 票据域）已删，只保留 automation/background 归因。
   if (!fact.automationId || !fact.taskTrigger) {
     if (fact.inputSource !== "background_task") return null;
     return {

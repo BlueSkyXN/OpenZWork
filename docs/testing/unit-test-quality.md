@@ -147,7 +147,6 @@ App 单测路径属于退役前证据，不表示当前仍有该覆盖；历史�
 | `packages/ui/test/workspaceShellSidebarResizePerformance.test.ts`   | 只检查 useCallback 体中 DOM/状态调用名字；没有性能或 render 验证；还含已下线 skip 用例。       |
 | `packages/web/test/homeOnlyMediaPreviewService.test.ts`             | 只验证服务字段及泛型装配写法，没有执行 unsupported service。                                   |
 
-
 #### 混合文件精简
 
 | 文件                                                                       | 删除范围与保留边界                                                                               |
@@ -191,11 +190,11 @@ App 单测路径属于退役前证据，不表示当前仍有该覆盖；历史�
 索引排除 E2E 与夹具目录后有 3678 个文件；其中仍含命名式 E2E 和构建副本，不能视为活跃单测数。
 根 Vitest 官方实际列出 2587 个 specifications；CLI、文档站、Node 原生测试和源码旁未注册测试分别核对入口。
 
-| 审查组                               | 结构扫描文件 | 深读候选及对照文件 | 范围                                                   |
-| ------------------------------------ | ------------ | ------------------ | ------------------------------------------------------ |
-| UI                                   | 1193         | 100                | 排除 browser 验收目录；包含源码旁测试，保留 contract   |
-| 服务、共享、Provider、Client、RPC    | 590          | 70                 | 七个包的测试命名文件                                   |
-| CLI                                  | 917          | 11                 | 全部命名文件结构扫描；按包与原生 Node 测试入口分开收集 |
+| 审查组                            | 结构扫描文件 | 深读候选及对照文件 | 范围                                                   |
+| --------------------------------- | ------------ | ------------------ | ------------------------------------------------------ |
+| UI                                | 1193         | 100                | 排除 browser 验收目录；包含源码旁测试，保留 contract   |
+| 服务、共享、Provider、Client、RPC | 590          | 70                 | 七个包的测试命名文件                                   |
+| CLI                               | 917          | 11                 | 全部命名文件结构扫描；按包与原生 Node 测试入口分开收集 |
 
 结构扫描包括 imports、测试声明、mock、文件读取和逐 token 完全相同的回调检查。
 深读列表只记录实际裁决范围；混合文件只保证相关用例及其对照已审查，不表示文件内每条用例均读完。
@@ -215,8 +214,6 @@ App 单测路径属于退役前证据，不表示当前仍有该覆盖；历史�
 按各自真实入口收集和执行，本轮已注册用例从 1104 条降到 829 条，删除 275 条。
 另清理两个未注册文件中的 7 个静态声明，未把它们计入上述执行数量。
 两轮累计删除 123 个测试文件、594 条已注册用例（含第一轮原有的 1 条 skipped），测试代码净减 8305 行。
-
-
 
 删除文件的位置记录如下，不作为当前文件链接或运行入口。
 
@@ -276,62 +273,60 @@ App 单测路径属于退役前证据，不表示当前仍有该覆盖；历史�
 | `packages/ui/test/zcodeProviders.test.ts`                                      | 源函数忽略 provider 永远返回 true，另一函数仅取反；十条期望只是常量重复，真实 fork task 状态与目标 guard 未触及。                                                                             |
 | `packages/web/test/webRemoteControlFailures.test.ts`                           | 只照抄固定reason加message的DTO构造；实际连接恢复耗尽后使用connection-recovery-timeout的回归仍由 externalRelayFrameGapRecovery 真实恢复调度测试验证。                                          |
 
-
-| 精简文件                                                                 | 删除范围与保留边界                                                                                                                                                                         |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `apps/dev-docs/test/capabilityMapComplexity.test.ts`                     | 删除固定文档图度数快照；保留统计规则，改用固定小图验证跨群、同群、缺失节点及分组的独立期望。                                                                                               |
-| `apps/zcode-cli/packages/adapters/tests/model-transform.test.ts`         | 与保留的无签名推理块协议投影用例逐 token 相同，保留后一条完整回归。                                                                                                                        |
-| `apps/zcode-cli/packages/i18n/tests/i18n.test.ts`                        | 删除固定中文文案复制；保留locale推导、无效值、目录形状兼容规则。                                                                                                                           |
-| `apps/zcode-cli/packages/office-runtime/ui/profile.test.ts`              | 只复制各profile文案和例子；保留真正的资源寻址和文件种类隔离用例。                                                                                                                          |
-| `apps/zcode-cli/packages/tui/tests/tui-theme.test.ts`                    | 删除对四个颜色字段的直接复制；保留主题优先级、终端背景推断和真实组件随主题改变的验证。                                                                                                     |
-| `apps/zcode-cli/packages/tui/tests/tui.unit.test.ts`                     | 只检查固定标签、flex样式和颜色字面值；保留实际内容显隐、渲染、交互和恢复测试。                                                                                                             |
-| `packages/client/test/remoteServiceAccess.test.ts`                       | 只测构造时getChannel名称与getter存在；同文件配置实际RPC调用/可选频道隔离/窗口目录选择仍保留。                                                                                              |
-| `packages/rpc/test/buffer.test.ts`                                       | 仅重测new Uint8Array的长度和零初始化；保留零拷贝wrap、UTF8、拼接、offset与BE字节运算测试。                                                                                                 |
-| `packages/rpc/test/foundation.test.ts`                                   | 普通dispose/单收件者/relay首次投递场景分别被幂等dispose、多listener+Event.map、切换source后旧源隔离的更强测试覆盖。保留清理和取消生命周期边界。                                            |
-| `packages/rpc/test/protocol.test.ts`                                     | 单向队列投递被紧邻的双向投递测试包含；保留双向、分片/ACK/拥塞/超时及释放边界。                                                                                                             |
-| `packages/rpc/test/serialization.test.ts`                                | 逐个复述reader游标和writer拼接happy path，已被同文件多帧连续serialize/deserialize和类型roundtrip共同执行覆盖。保留全部实际序列化协议测试。                                                 |
-| `packages/services/test/pluginManagementService.test.ts`                 | 三个代理方法都是直接委托；测试只复述参数并断言自造mock结果，不能验证信任、目标隔离或取消执行。保留生命周期遥测变换、取消分类、并发耗时等真实规则测试。                                     |
-| `packages/services/test/subagentSelectionAuthority.test.ts`              | 重复shared/subagentMarkdownSelection中同一helper的编码/解码往返；保留本文件实际Markdown解析、中间字段忽略的集成验证。                                                                      |
-| `packages/services/test/zcodeAgentPresentationSurface.test.ts`           | 显式true只是!=false的重复正常路径；相同remote authority的缺省开启及显式false关闭、非Desktop拒绝仍保留。                                                                                    |
-| `packages/shared/test/dynamicWorkflowFeature.test.ts`                    | 直接比较mode!=disabled结果，已被同文件三个远端合法mode生成配置的enabled断言完整覆盖；保留灰度fail-closed/用户覆盖/旧Host兼容测试。                                                         |
-| `packages/shared/test/launchMarks.test.ts`                               | 仅复写LAUNCH_MARKS_QUERY_KEY字符串；保留序列化往返、非法JSON、字段类型边界。                                                                                                               |
-| `packages/shared/test/remoteResourcePackages.test.ts`                    | normalize实现完全忽略输入并返回active列表；两个历史值场景重复已有ignores historical selections和缺省列表用例。保留平台工具集合、schema合法与拒绝未知包。                                   |
-| `packages/shared/test/shortcutCommands.test.ts`                          | getter测试逐字复制命令表中两条defaultBindings；保留表内ID唯一/绑定合法性、解析边界、composer scope与通道分类规则。                                                                         |
-| `packages/ui/test/animatedSidePanePanelLayout.test.ts`                   | 与保留的 keeps active media mounted... callback 完全相同；输入只有 isMediaPreview=true，没有音频类型参数，未覆盖独有场景。                                                                 |
-| `packages/ui/test/automationInstructionsComposer.test.ts`                | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/automationsPageTabs.test.ts`                           | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/changesGroupToolCallBlock.test.ts`                     | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/codingPlanQuotaResetAction.test.ts`                    | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/codingPlanQuotaResetOpportunity.test.ts`               | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/commandCenterTypography.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/contextAttachmentPill.test.ts`                         | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/controlHintTooltip.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/conversationShareImportNotice.test.ts`                 | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/desktopLogoStyle.test.ts`                              | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/editToolCallBlock.test.ts`                             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/featureRequestDialog.test.ts`                          | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/feedbackStatusMeta.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/feedbackSubmitForm.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/mentionPanel.test.ts`                                  | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/modelProviderModelRowEditor.test.ts`                   | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/modelProviderSectionLayoutLoading.test.ts`             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/modelTrajectoryPaneParts.test.ts`                      | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/pluginStoreAvatar.test.ts`                             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/previewPaneImageContent.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/providerLogo.test.ts`                                  | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/rollingToolbarLabel.test.ts`                           | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/settingsSearchInput.test.ts`                           | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/sidePaneTabTrigger.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/usageStatsHeatmap.test.ts`                             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/useWorkspaceServices.test.ts`                          | 与前一条 没有 registeredBaseServices... 同样传 null，callback 完全相同；保留首条与真实服务生命周期测试。                                                                                   |
-| `packages/ui/test/v4ConversationStatusPanel.test.ts`                     | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/v4ConversationTurnGroup.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/v4ModelTriggerDisplay.test.ts`                         | 与保留的自定义 provider 名称用例 callback 完全相同；三个用例都没有平台或 viewport 输入，标题变化未增加覆盖。                                                                               |
-| `packages/ui/test/windowsCaptionMenuButton.test.ts`                      | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/workspaceHeader.test.ts`                               | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/workspacePurposeSection.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-| `packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts` | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                                                     |
-
+| 精简文件                                                                 | 删除范围与保留边界                                                                                                                                       |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/dev-docs/test/capabilityMapComplexity.test.ts`                     | 删除固定文档图度数快照；保留统计规则，改用固定小图验证跨群、同群、缺失节点及分组的独立期望。                                                             |
+| `apps/zcode-cli/packages/adapters/tests/model-transform.test.ts`         | 与保留的无签名推理块协议投影用例逐 token 相同，保留后一条完整回归。                                                                                      |
+| `apps/zcode-cli/packages/i18n/tests/i18n.test.ts`                        | 删除固定中文文案复制；保留locale推导、无效值、目录形状兼容规则。                                                                                         |
+| `apps/zcode-cli/packages/office-runtime/ui/profile.test.ts`              | 只复制各profile文案和例子；保留真正的资源寻址和文件种类隔离用例。                                                                                        |
+| `apps/zcode-cli/packages/tui/tests/tui-theme.test.ts`                    | 删除对四个颜色字段的直接复制；保留主题优先级、终端背景推断和真实组件随主题改变的验证。                                                                   |
+| `apps/zcode-cli/packages/tui/tests/tui.unit.test.ts`                     | 只检查固定标签、flex样式和颜色字面值；保留实际内容显隐、渲染、交互和恢复测试。                                                                           |
+| `packages/client/test/remoteServiceAccess.test.ts`                       | 只测构造时getChannel名称与getter存在；同文件配置实际RPC调用/可选频道隔离/窗口目录选择仍保留。                                                            |
+| `packages/rpc/test/buffer.test.ts`                                       | 仅重测new Uint8Array的长度和零初始化；保留零拷贝wrap、UTF8、拼接、offset与BE字节运算测试。                                                               |
+| `packages/rpc/test/foundation.test.ts`                                   | 普通dispose/单收件者/relay首次投递场景分别被幂等dispose、多listener+Event.map、切换source后旧源隔离的更强测试覆盖。保留清理和取消生命周期边界。          |
+| `packages/rpc/test/protocol.test.ts`                                     | 单向队列投递被紧邻的双向投递测试包含；保留双向、分片/ACK/拥塞/超时及释放边界。                                                                           |
+| `packages/rpc/test/serialization.test.ts`                                | 逐个复述reader游标和writer拼接happy path，已被同文件多帧连续serialize/deserialize和类型roundtrip共同执行覆盖。保留全部实际序列化协议测试。               |
+| `packages/services/test/pluginManagementService.test.ts`                 | 三个代理方法都是直接委托；测试只复述参数并断言自造mock结果，不能验证信任、目标隔离或取消执行。保留生命周期遥测变换、取消分类、并发耗时等真实规则测试。   |
+| `packages/services/test/subagentSelectionAuthority.test.ts`              | 重复shared/subagentMarkdownSelection中同一helper的编码/解码往返；保留本文件实际Markdown解析、中间字段忽略的集成验证。                                    |
+| `packages/services/test/zcodeAgentPresentationSurface.test.ts`           | 显式true只是!=false的重复正常路径；相同remote authority的缺省开启及显式false关闭、非Desktop拒绝仍保留。                                                  |
+| `packages/shared/test/dynamicWorkflowFeature.test.ts`                    | 直接比较mode!=disabled结果，已被同文件三个远端合法mode生成配置的enabled断言完整覆盖；保留灰度fail-closed/用户覆盖/旧Host兼容测试。                       |
+| `packages/shared/test/launchMarks.test.ts`                               | 仅复写LAUNCH_MARKS_QUERY_KEY字符串；保留序列化往返、非法JSON、字段类型边界。                                                                             |
+| `packages/shared/test/remoteResourcePackages.test.ts`                    | normalize实现完全忽略输入并返回active列表；两个历史值场景重复已有ignores historical selections和缺省列表用例。保留平台工具集合、schema合法与拒绝未知包。 |
+| `packages/shared/test/shortcutCommands.test.ts`                          | getter测试逐字复制命令表中两条defaultBindings；保留表内ID唯一/绑定合法性、解析边界、composer scope与通道分类规则。                                       |
+| `packages/ui/test/animatedSidePanePanelLayout.test.ts`                   | 与保留的 keeps active media mounted... callback 完全相同；输入只有 isMediaPreview=true，没有音频类型参数，未覆盖独有场景。                               |
+| `packages/ui/test/automationInstructionsComposer.test.ts`                | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/automationsPageTabs.test.ts`                           | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/changesGroupToolCallBlock.test.ts`                     | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/codingPlanQuotaResetAction.test.ts`                    | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/codingPlanQuotaResetOpportunity.test.ts`               | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/commandCenterTypography.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/contextAttachmentPill.test.ts`                         | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/controlHintTooltip.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/conversationShareImportNotice.test.ts`                 | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/desktopLogoStyle.test.ts`                              | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/editToolCallBlock.test.ts`                             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/featureRequestDialog.test.ts`                          | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/feedbackStatusMeta.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/feedbackSubmitForm.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/mentionPanel.test.ts`                                  | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/modelProviderModelRowEditor.test.ts`                   | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/modelProviderSectionLayoutLoading.test.ts`             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/modelTrajectoryPaneParts.test.ts`                      | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/pluginStoreAvatar.test.ts`                             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/previewPaneImageContent.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/providerLogo.test.ts`                                  | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/rollingToolbarLabel.test.ts`                           | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/settingsSearchInput.test.ts`                           | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/sidePaneTabTrigger.test.ts`                            | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/usageStatsHeatmap.test.ts`                             | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/useWorkspaceServices.test.ts`                          | 与前一条 没有 registeredBaseServices... 同样传 null，callback 完全相同；保留首条与真实服务生命周期测试。                                                 |
+| `packages/ui/test/v4ConversationStatusPanel.test.ts`                     | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/v4ConversationTurnGroup.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/v4ModelTriggerDisplay.test.ts`                         | 与保留的自定义 provider 名称用例 callback 完全相同；三个用例都没有平台或 viewport 输入，标题变化未增加覆盖。                                             |
+| `packages/ui/test/windowsCaptionMenuButton.test.ts`                      | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/workspaceHeader.test.ts`                               | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/workspacePurposeSection.test.ts`                       | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
+| `packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts` | 仅移除复述固定 CSS、图标/label 映射或无计算 props 展示的用例；本文件真实交互、边界和状态转换用例保留。                                                   |
 
 ### 第三轮：全库存语义审读
 
@@ -414,4 +409,5 @@ Android 只删除模板算术测试，因环境无 Java Runtime，Gradle 收集�
 UI 冲突定向验证 131 条、CLI 定向验证 79 条通过。
 根 affected 选择 1360/2484 个规格，执行中按要求停止，未完成整轮验证；
 交付按要求跳过 push hook，不将中断的执行记为通过。
+
 <!-- 上游改写为“App 单测退役规格”并删除历史清理记录；OpenZWork 保留单测质量审查规则与本次清理记录，整块沿用我方版本 -->

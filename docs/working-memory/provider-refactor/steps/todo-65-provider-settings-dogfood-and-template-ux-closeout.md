@@ -46,7 +46,6 @@ Effective Provider / Model Registry
 
 ### 2.1 已确认问题
 
-
 ```text
 Reasoning level is required for <providerId>/<modelId>
 ```
@@ -71,7 +70,6 @@ Active Model.optionSpecs.reasoningLevel
 - 不新增 `reasoningLevelPolicy` 或 Provider 特化分支；
 - ModelFactory 只校验和装配，不替调用方静默补执行 Option；
 - 连接测试显式传 `min(5000, optionSpecs.maxOutputTokens.max)`，不依赖 ModelFactory fallback；
-
 
 ### 2.3 测试
 
@@ -217,8 +215,8 @@ MacBook Air 上出现的 Provider 顶层 `enabled` 属于尚未上线的开发�
 4. 创建两个相同 Template 的 Provider，确认正常去重并进入详情；
 5. 创建纯自定义 Provider；
 6. 模拟创建失败，确认右侧底部仅显示简洁错误，详细原因进入日志；
-9. 确认请求不再因缺少 `reasoningLevel` 失败；若仍失败，保留真实服务端错误并继续按日志定位；
-10. 检查 Light/Dark、中文/英文和窄窗口，确认卡片高度不变化、页面无横向滚动。
+7. 确认请求不再因缺少 `reasoningLevel` 失败；若仍失败，保留真实服务端错误并继续按日志定位；
+8. 检查 Light/Dark、中文/英文和窄窗口，确认卡片高度不变化、页面无横向滚动。
 
 MacBook Air 验证必须记录当前提交 SHA、启动命令及关键结果。静态测试通过不能替代上述实机验收。
 

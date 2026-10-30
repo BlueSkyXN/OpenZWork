@@ -1,4 +1,5 @@
 import { toast } from "@/components/ui/toast.js";
+/* oxlint-disable eslint(max-lines) -- 远程连接 flow 是 selection/wizard/history/重连编排放到的单文件竖切聚合层，被 Root/SSHDialog/侧栏多入口复用；HEAD 已超限（2178 行计数），拆散会把共享的连接状态机散落多文件。 */
 import { RemoteConnectionSelection } from "@/remote-connection/RemoteConnectionSelection.js";
 import type { RemoteConnectionOpenPreference } from "@/app-shell/types.js";
 import { profileMatchesRemoteTarget } from "@/lib/remoteConnectionWizard.js";
@@ -911,7 +912,6 @@ export function useRemoteConnectionFlow(options: RemoteConnectionFlowOptions) {
                   formatMessage: intl.formatMessage,
                 }),
               );
-              finishTrace((action) => action.fail({ failureStage: "remote_connect" }));
               return;
             }
             // 历史目录可能已被删除或权限变化；保留连接并回退目录浏览器，不能把快速入口变成死路。

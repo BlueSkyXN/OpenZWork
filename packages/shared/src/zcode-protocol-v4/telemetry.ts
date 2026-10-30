@@ -138,15 +138,23 @@ const toolLifecycleFactSchema = z
     childSessionId: z.string().min(1).optional(),
     background: z.boolean().optional(),
     // 本地协议事实只接受有界的已解析标识，不依赖已移除的网络遥测清洗链。
-    skillName: z.string().min(1).max(64).regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/u)
+    skillName: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9_-]*$/u)
       // 移除上报模块时丢失了原版 redactTelemetryText 的密钥拒绝规则；字段校验仍需保留。
       // 其余 URL/路径/空白模式已由上面的标识字符合同拒绝。
-      .refine((value) => ![
-        /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/iu,
-        /\bgh[pousr]_[A-Za-z0-9]{20,}\b/u,
-        /\bAKIA[A-Z0-9]{16}\b/u,
-        /\bAIza[0-9A-Za-z_-]{30,}\b/u,
-      ].some((pattern) => pattern.test(value)), "skillName must be a bounded, safe resolved Skill identifier")
+      .refine(
+        (value) =>
+          ![
+            /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/iu,
+            /\bgh[pousr]_[A-Za-z0-9]{20,}\b/u,
+            /\bAKIA[A-Z0-9]{16}\b/u,
+            /\bAIza[0-9A-Za-z_-]{30,}\b/u,
+          ].some((pattern) => pattern.test(value)),
+        "skillName must be a bounded, safe resolved Skill identifier",
+      )
       .optional(),
     skillQualifiedName: z.string().min(1).optional(),
     skillPluginId: z.string().min(1).optional(),

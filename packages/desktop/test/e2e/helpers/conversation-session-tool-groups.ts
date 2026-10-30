@@ -60,7 +60,8 @@ export async function waitForConversationToolGroup(
   } catch (cause) {
     // waitUntil 的 options 在轮询前构造；失败后再读取 latest 才能保留真实现场。
     throw new Error(`${failureMessage}; latest=${JSON.stringify(latest)}`, { cause });
-  }  if (!latest) throw new Error(`${failureMessage}; group missing`);
+  }
+  if (!latest) throw new Error(`${failureMessage}; group missing`);
   return latest;
 }
 

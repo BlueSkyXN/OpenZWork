@@ -165,8 +165,6 @@ guide model selection / refresh、browser screenshot 和 stream recovery。
 `verification/stream-audit.log`。架构检查当前只覆盖 managed 模块，CLI 尚未纳入其范围；
 本次 CLI 内部边界依据实际调用链审查和回归测试确认。
 
-
-
 证据目录：`packages/desktop/.e2e-artifacts/desktop-e2e-20260924081102510-p55865-08e6cb00c4a7ad50/`。
 `summary.md` 是正式运行报告；`conversation-session-stop-tool-results/` 保存四组运行时日志、真实请求、截图、
 model-io；`verification/` 保存 Core 红绿回归、类型/lint/架构/fixture 检查记录及 lint 基线比对。

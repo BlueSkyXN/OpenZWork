@@ -133,9 +133,7 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": [
-          "E2E_MODIFIED_TOOL_BASE_"
-        ],
+        "bodyIncludes": ["E2E_MODIFIED_TOOL_BASE_"],
         "bodyExcludes": [
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
@@ -168,10 +166,7 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": [
-          "E2E_MODIFIED_TOOL_BASE_",
-          "E2E_READONLY_TOOL_FILE_CONTENT"
-        ],
+        "bodyIncludes": ["E2E_MODIFIED_TOOL_BASE_", "E2E_READONLY_TOOL_FILE_CONTENT"],
         "bodyExcludes": [
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",

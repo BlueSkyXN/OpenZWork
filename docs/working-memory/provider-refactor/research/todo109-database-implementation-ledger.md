@@ -37,17 +37,13 @@
 
 ## B. App 库
 
-
 实施边界：统一入口由 services/session 的任务库模块拥有，三个 Repo 都在开放读写前调用；不跨域复用 Agent 的具体 adapter。建表、补列、索引归入 0001（接管已有/部分表），Provider 数据转换归入 0002。IMMEDIATE 事务内核查库级账本，失败回滚。声明式 SQL/列清单参与 checksum；TS 数据转换采用冻结语义版本标识，不能用 function.toString() 作 checksum（打包会改写函数文本），已发布转换实现不得原位编辑。
-
 
 旧 ACP ID 整理属于本轮之前已有的迁移，不借机改变其历史产品裁决；闲时标记/归组和已删除引用清理由索引 Repo 维护，属于可重复的关联投影维护，不作为 Provider 数据转换。实施时记录保留理由。
 
 最小兼容写入已定位：旧版模型切换 Reader 无条件访问 toModel.providerID，因此新增 timeline 保留一个旧 toModel 对象；更新时不覆盖旧快照。User 的旧 hydration 虽有空值保护，但协议 mapper 的 modelRefFromInternal 无条件读取 user.model，所以新增 User 也保留最小旧 model 对象。Assistant 旧协议 mapper 构造来源对象，即使字段缺失仍可读，不普遍双写。
 
 复制边界：逻辑 Reader 不携带旧模型字段，fork 不能靠它重新生成旧快照。存储写入接受可选的原记录坐标（sessionID/id），adapter 在复制时保留原记录的旧字段；Core 只传原/目标 ID，不解析旧配置。原子 fork bundle 一并携带消息/Part 的坐标映射，在既有事务内执行；不另建迁移服务或读取 fallback。
-
-
 
 ## C. 调用链、完整性复审与范围
 

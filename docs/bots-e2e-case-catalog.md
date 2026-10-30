@@ -6,7 +6,6 @@
   source and attachments survive cancellation; resolving its saved delivery through
   the reply action bar targets that topic and works at narrow viewport widths.
 
-
 本文记录 Bot 渠道的端到端行为合同。Bot 用例独立于 conversation-session：它们复用 ZCode task stream，但入口、状态所有者和外部证据位于 `BotsService` 与 provider API。
 
 ## 范围决策

@@ -1,5 +1,4 @@
 import type { SessionLifecycleSnapshot } from "@zcode/shared";
-import { getLocalTtftObserver } from "@/v4/telemetry/local-ttft/contract.js";
 /* eslint-disable max-lines -- projection/base/recovery/optimistic 必须共享一个原子 store 状态机，拆分会重新引入跨对象竞态。 */
 // Per-session projection store（只读 projection store）。
 // 唯一写入方是订阅推送；UI 只读。客户端遵守三条规则：
@@ -960,7 +959,6 @@ export class ConversationProjectionStore {
     this.reconcileOptimistic(next);
     this.reconcileAcceptedInputProjection(next);
     this.observeModelTransition(next, context.online);
-    if (context.online && !context.recovery) getLocalTtftObserver()?.projected(frame);
     if (context.recovery) this.markRecoveryFrameSeen();
     for (const listener of this.liveDeltaListeners) listener(frame.payload.deltas);
   }

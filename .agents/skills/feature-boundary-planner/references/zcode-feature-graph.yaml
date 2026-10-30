@@ -9261,7 +9261,6 @@ edges:
       - symbol: "ConversationShareReadonlyTimeline"
         file: "packages/ui/src/v4/ConversationShareReadonlyTimeline.tsx"
 
-edges:
   - from: "capability.shared-task-cli"
     to: "capability.workspace-identity"
     type: "preserves"

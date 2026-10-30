@@ -1,7 +1,5 @@
 # Todo 27：Provider Settings 体验与真实执行缺口收口
 
-
-
 ## 1. 目标与边界
 
 本文收口 Provider Refactor 首轮 macOS 实机体验后仍未完成、且已经裁决的问题：
@@ -9,7 +7,7 @@
 1. 用统一视觉表达 Model Config 布尔叶子的 Effective 值与 Personal Overlay 来源；
 2. 删除所有单字段恢复入口，只保留始终可见的模型级“全部恢复默认”；
 3. 将保存成功和模型连接成功统一投影到窗口底部通知区；
-5. 为以上行为补齐自动化证明和实机回归。
+4. 为以上行为补齐自动化证明和实机回归。
 
 本文不处理跨进程 Personal Config / Provider Registry 更新机制。该问题涉及 Host、Agent、文件 watcher、revision
 确认和执行前一致性，应在独立研究与 Todo 中完成，不得借连接测试增加临时轮询或 UI 兜底。
@@ -114,9 +112,6 @@ Application viewport
 Provider Settings 私有的第二套 Toast 状态。
 
 ## 6. Runtime Headers 使用 Registry Access 的正式 Schema
-
-
-
 
 本切片不得：
 

@@ -467,9 +467,7 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.SetZCodeEndpointTest:
       await setZCodeEndpointOverride({
         value:
-          options.zcodeEndpointEnvBaseOrigin ??
-          resolveRuntimeZCodeEndpointOrigin() ??
-          undefined,
+          options.zcodeEndpointEnvBaseOrigin ?? resolveRuntimeZCodeEndpointOrigin() ?? undefined,
         settingService: options.settingService,
         onZCodeEndpointChanged: options.onZCodeEndpointChanged,
         logger: options.logger,

@@ -3933,6 +3933,38 @@ export type ZCodeAutomationPauseProtocolParams = z.infer<typeof zcodeAutomationP
 export const zcodeAutomationPauseResultSchema = z.object({ paused: z.boolean() }).strict();
 export type ZCodeAutomationPauseProtocolResult = z.infer<typeof zcodeAutomationPauseResultSchema>;
 
+// Session 运行实例生命周期；不同于 session/stop（停止生成）。
+export const sessionLifecycleParamsSchema = z.object({ sessionId: z.string().min(1) }).strict();
+export const sessionLifecycleStateSchema = z.enum([
+  "unloaded",
+  "starting",
+  "ready",
+  "stopping",
+  "faulted",
+]);
+export const sessionLifecycleOperationSchema = z.enum(["ensureReady", "stop", "restart"]);
+export const sessionLifecycleFailureSchema = z
+  .object({
+    operation: sessionLifecycleOperationSchema,
+    code: z.string(),
+    message: z.string(),
+  })
+  .strict();
+export const sessionLifecycleSnapshotSchema = z
+  .object({
+    sessionId: z.string().min(1),
+    state: sessionLifecycleStateSchema,
+    generation: z.number().int().nonnegative().default(0),
+    revision: z.number().int().nonnegative().default(0),
+    lastError: sessionLifecycleFailureSchema.nullable(),
+  })
+  .strict();
+export const sessionLifecycleResultSchema = z.object({ completed: z.literal(true) }).strict();
+export type SessionLifecycleState = z.infer<typeof sessionLifecycleStateSchema>;
+export type SessionLifecycleOperation = z.infer<typeof sessionLifecycleOperationSchema>;
+export type SessionLifecycleFailure = z.infer<typeof sessionLifecycleFailureSchema>;
+export type SessionLifecycleSnapshot = z.infer<typeof sessionLifecycleSnapshotSchema>;
+
 export const zcodeProtocolMethods = {
   sessionLifecycleChanged: "session/lifecycle/changed",
   sessionLifecycleGetState: "session/lifecycle/getState",

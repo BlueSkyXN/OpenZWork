@@ -133,8 +133,6 @@ ProviderConfigMap 是有序 Map：
 - Personal-only Provider 因此排在 Built-in Provider 之后；
 - Account Built-in 不改变 ZCode Built-in Provider 的基础顺序。
 
-
-
 示例：
 
 ```text
@@ -276,14 +274,11 @@ Header。Endpoint 不能由 Model ID 推断，也不能放入普通 Turn 的 Run
 
 ### Access
 
-
 #### api-key
 
 Config 直接管理调用模型 API 所需的静态访问材料；当前正式字段是 API Key。
 Effective Config 缺少非空 `apiKey` 时不完整；Settings 可以展示并修复，但 Provider 不进入
 Registry。它与 `api.type` 正交：`access.type` 描述访问材料来源，`api.type` 描述线路协议。
-
-
 
 ZCode Built-in Provider 固定声明 `accountType + mode`；Start、Individual、Team 分别是独立 Provider。Account
 Connection Resolver 使用这些字段、结构化 Settings 选择、当前账号与权益，只投影 `access.entitled` 以及 Start
@@ -292,8 +287,6 @@ Connection Resolver 使用这些字段、结构化 Settings 选择、当前账�
 每个请求 attempt 由 Account Request Auth Service 按静态 `family + mode` 检查当前兼容连接，再从当前
 Connection 取得 Team scope，并解析 JWT、Runtime Key、API Key 或一次性安全校验 Header 等材料。账号身份、
 product、organization、project 和动态凭据不进入 Provider Config 或 Active Model。
-
-
 
 ### 凭据原则
 
@@ -521,8 +514,6 @@ interface ModelConfig {
 Built-in 通用 Rule 必须补齐完整的 `enabled=true` 默认值，具体 Built-in Rule 可以为淘汰或不建议继续使用的模型声明
 `enabled=false`。Personal 专属 Rule 可以后置覆盖该叶子；正常新增 Personal Model 时明确写入 `enabled=true`。
 
-
-
 ### Properties
 
 ```ts
@@ -632,8 +623,6 @@ Settings Resolution 允许保留 disabled、incomplete 和成员问题。Registr
 跨集合重名发布 Built-in 身份，单集合重复保留第一次。Model 不具有 hidden 状态。Registry 后的消费者不得重新检查或补齐 Properties、Option Specs
 和 Provider 执行字段。
 
-
-
 Personal Config 不要求自身完整，可以继承 Built-in；Settings Preview 和 Registry 都在完成 Overlay 后检查。
 Hidden Provider 使用同一完整性规则。
 
@@ -693,7 +682,6 @@ legacy config + current Built-in baseline
                   v
              validate -> atomic create
 ```
-
 
 Standalone CLI 为兼容评测使用的 `~/.openzwork/cli/config.json`，首次导入时还保留自定义模型的输出上限：
 按 `limit.output` → `options.max_tokens` → 模型顶层 `maxOutputTokens` 选取有限正整数，写入精确

@@ -1,4 +1,13 @@
 import { databaseStartupControlSchema, databaseStartupStateSchema } from "./database-startup.js";
+import {
+  zcodeProcessResourceSampleSchema,
+  zcodeMcpResourceSamplesSchema,
+  zcodeToolExecResourceSchema,
+  zcodeMcpTelemetryEventSchema,
+} from "./zcode-protocol/index.js";
+import { PROCESS_RESOURCE_CLI_LANES } from "./processResourceTelemetry.js";
+import { remoteConversationTelemetryEventSchema } from "./conversation-telemetry/remoteTelemetryEvent.js";
+
 import { mcpAppInstanceSchema } from "./mcp-apps/instance.js";
 /* eslint-disable max-lines -- 运行时 schema 当前集中在共享包入口，外部 relay payload 校验加入后先保持单一导出面。 */
 import { z } from "zod";
@@ -1366,16 +1375,6 @@ export type HostRemoteConversationTelemetryResponse = z.infer<
   typeof hostRemoteConversationTelemetryResponseSchema
 >;
 
-export const hostSessionCreateTelemetryResponseSchema = z
-  .object({
-    type: z.literal("session-create-telemetry"),
-    event: automationSessionCreateTelemetrySchema,
-  })
-  .strict();
-export type HostSessionCreateTelemetryResponse = z.infer<
-  typeof hostSessionCreateTelemetryResponseSchema
->;
-
 export const hostAgentRunningTaskCountChangedResponseSchema = z.object({
   type: z.literal("agent-running-task-count-changed"),
   runningTaskCount: z.number().int().nonnegative(),
@@ -1629,9 +1628,7 @@ export const hostResponseMessageSchema = z.discriminatedUnion("type", [
   hostMcpTelemetryResponseSchema,
   hostMcpResourceSamplesResponseSchema,
   hostToolExecResourceResponseSchema,
-  hostSessionCreateTelemetryResponseSchema,
   hostRemoteConversationTelemetryResponseSchema,
-  hostPluginTelemetryResponseSchema,
   hostAgentRunningTaskCountChangedResponseSchema,
   hostWorkspaceRunningTaskCountChangedResponseSchema,
   hostBroadcastEnvelopeSchema,

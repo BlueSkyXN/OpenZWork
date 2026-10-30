@@ -88,7 +88,7 @@ modules:
       - packages/shared/src/conversation-telemetry/messageTelemetry.ts
       - packages/shared/src/conversation-telemetry/providerTelemetryIdentity.ts
       - packages/shared/src/conversation-telemetry/remoteTelemetryEvent.ts
-    layers: {app: "."}
+    layers: { app: "." }
     owner: conversation
   - id: conversation-telemetry-service
     roots: [packages/services/src/conversation-telemetry]
@@ -97,7 +97,7 @@ modules:
     publicEntrypoints:
       - packages/services/src/conversation-telemetry/remoteConversationTelemetry.ts
       - packages/services/src/conversation-telemetry/contract.ts
-    layers: {app: "."}
+    layers: { app: "." }
     owner: conversation
   - id: sqlite-migrations
     roots:
@@ -653,7 +653,7 @@ modules:
       - packages/services/src/zcode-agent/inputPredictionSwitch.ts
       - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/input-prediction-handler.ts
       - apps/zcode-cli/packages/core/src/runtime/methods/input-prediction-sidecar.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: remote
   # remote-resident-rows-range：rowsRange 只读热会话（residency="resident-only"）的 Host 侧执行端能力确认，
   # 供手机任务列表预加载；旧 CLI 不认识该参数时 Host 直接拒绝，不触发冷恢复。
@@ -664,7 +664,7 @@ modules:
     requires: [shared, services]
     publicEntrypoints:
       - packages/services/src/zcode-agent/resident-rows-range/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: remote
   - id: tool-discovery
     roots:
@@ -685,7 +685,7 @@ modules:
       - apps/zcode-cli/packages/core/src/tool/handlers/tool-search.ts
       - apps/zcode-cli/packages/core/src/tool/handlers/deferred-tool-call.ts
       - apps/zcode-cli/packages/contracts/src/tools/tool-search.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
   # node-repl-call-ledger：node_repl 结果里可信事实的唯一来源（apps/zcode-cli/docs/design/v2/tool/20-node-repl-call-ledger.md）
   - id: node-repl-call-ledger
@@ -696,7 +696,7 @@ modules:
     requires: [zcode-cli]
     publicEntrypoints:
       - apps/zcode-cli/packages/node-repl-host/src/call-ledger/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: agent
   - id: session-features
     roots:
@@ -706,7 +706,7 @@ modules:
     requires: [zcode-cli]
     publicEntrypoints:
       - apps/zcode-cli/packages/core/src/runtime/session-features/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
   - id: provider-tool-rounds
     roots:
@@ -716,7 +716,7 @@ modules:
     requires: [zcode-cli]
     publicEntrypoints:
       - apps/zcode-cli/packages/core/src/runtime/provider-tool-rounds/contract.ts
-    layers: {app: .}
+    layers: { app: . }
     owner: agent
   - id: provider-builtin-tool-compat
     roots:
@@ -726,7 +726,7 @@ modules:
     requires: []
     publicEntrypoints:
       - apps/zcode-cli/packages/adapters/src/model/provider-builtin-tool-compat/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: agent
   - id: conversation-quote-context
     roots:
@@ -738,7 +738,7 @@ modules:
     publicEntrypoints:
       - apps/zcode-cli/packages/core/src/runtime/conversation-quote-context/contract.ts
       - apps/zcode-cli/packages/core/src/runtime/helpers/conversation-quotes.ts
-    layers: {domain: .}
+    layers: { domain: . }
     owner: agent
   - id: tool-search-comparison
     roots:
@@ -750,7 +750,7 @@ modules:
     publicEntrypoints:
       - apps/zcode-cli/tools/prompt-trajectory/src/tool-search-comparison-contract/contract.ts
       - apps/zcode-cli/tools/prompt-trajectory/src/tool-search-comparison.ts
-    layers: {domain: .}
+    layers: { domain: . }
     owner: agent
   - id: window-topic-resource-relay
     roots:
@@ -762,7 +762,7 @@ modules:
     publicEntrypoints:
       - packages/desktop/src/host/topic-resource-relay/contract.ts
       - packages/desktop/src/host/windowTopicResourceRelay.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: desktop
   - id: channel-reply-tool
     roots:
@@ -1043,7 +1043,7 @@ modules:
     roots:
       - packages/shared/src/data-directory
     managed: true
-    requires: [ shared ]
+    requires: [shared]
     publicEntrypoints:
       - packages/shared/src/data-directory/index.ts
       - packages/shared/src/data-directory/contract.ts
@@ -1055,7 +1055,7 @@ modules:
     roots:
       - apps/zcode-cli/packages/adapters/src/storage-relocation
     managed: true
-    requires: [ shared, data-directory, zcode-cli ]
+    requires: [shared, data-directory, zcode-cli]
     publicEntrypoints:
       - apps/zcode-cli/packages/adapters/src/storage-relocation/index.ts
       - apps/zcode-cli/packages/adapters/src/storage-relocation/contract.ts
@@ -1162,7 +1162,7 @@ modules:
       - packages/shared/src/request-security-edition/policy.ts
       - packages/shared/src/request-security-edition/verification-policy.ts
       - packages/shared/src/request-security-edition/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: request-security
 
   # local-ttft-contract：由 architecture:adopt 登记
@@ -1338,7 +1338,7 @@ modules:
     publicEntrypoints:
       - apps/zcode-cli/tools/provider-regression/index.ts
       - apps/zcode-cli/tools/provider-regression/contract.ts
-    layers: {adapters: .}
+    layers: { adapters: . }
     owner: agent
   # session-lifecycle：由 architecture:adopt 登记
   - id: session-lifecycle
@@ -1380,6 +1380,28 @@ global:
   acceptedUpstreamSnapshot: scripts/architecture/upstream-snapshot.json
 
 exceptions:
+  # OpenZWork v3.17.1 同步豁免：上游本次合入的净化保留面新文件与超限契约，
+  # 与上游 admission 清单同批登记，不作为长期豁免。
+  - id: v3171-sync-process-resource-telemetry
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/processResourceTelemetry.ts]
+    reason: 上游 v3.17.1 进程资源观测契约文件原样移植（保留域：本地诊断与远端心跳共用常量与校验）；
+      上游侧该文件位于 shared 根，随本次同步准入，接管整个 shared 目录不在同步范围内。
+  - id: v3171-sync-telemetry-shell
+    rule: unmanaged-new-file
+    paths: [packages/shared/src/telemetry.ts]
+    reason:
+      净化重建的最小事件形态壳（上游 telemetry.ts 属 ARMS 域不引入）；仅 conversation-telemetry
+      远端链消费的四个符号，ARMS 上报面不导出。随本次同步准入。
+  - id: v3171-sync-relay-contract-lines
+    rule: max-contract-lines
+    paths: [packages/shared/src/web-remote-relay/contract.ts]
+    reason: 上游 v3.17.1 该契约扩至 411 行（V2 通知域合并入同一契约文件）；行数与上游一致，
+      拆分上游契约属上游架构决策，fork 侧不同步拆。
+  - id: v3171-sync-remote-connection-disable
+    rule: disable-count
+    paths: [packages/ui/src/remote-connection-flow/index.ts]
+    reason: max-lines 文件头豁免注释（上游 v3.17.1 引入同款 disable），随同步保留。
   - id: workflow-mode-user-choice-unmanaged-edit
     rule: unmanaged-new-file
     paths: [packages/shared/src/dynamic-workflow-feature.ts]
@@ -1419,13 +1441,6 @@ exceptions:
   - id: project-location-cache-recovery-existing-edit
     rule: unmanaged-new-file
     paths:
-  - id: zcode-site-deploy-runtime-template
-    rule: unmanaged-new-file
-    paths: [apps/zcode-cli/packages/zcode-site-plugin/skills/site-deploy/templates/static-server.mjs]
-    reason: site-deploy 技能复制进用户部署包的静态站服务器模板，只在 Sites runner 的容器里由 start.sh 执行；仓库代码不 import 它，也不属于任何运行时模块。同目录的 start.sh 模板是 shell，不受本规则约束。
-  - id: project-location-cache-recovery-existing-edit
-    rule: unmanaged-new-file
-    paths:
       - packages/shared/src/project-access-token.ts
       - packages/shared/src/project-access-token-client.ts
       - packages/services/src/model-provider/accountProjectTokenClient.ts
@@ -1437,9 +1452,6 @@ exceptions:
       - packages/ui/src/browser-use/EmbeddedBrowserPermissionPrompts.tsx
     reason: 已准入的存量文件只把 TID 导入从 @zcode/shared 根入口改为 @zcode/shared/test-ids
       子路径（根入口不再导出 test-ids，以收窄受影响单测范围）；行为与模块边界不变，接管 ui 目录不在本次范围内。
-      - packages/ui/src/hooks/useStartPlanRecommendation.ts
-      - packages/ui/src/settings/DynamicWorkflowModeSetting.tsx
-    reason: 已准入的存量文件只把 TID 导入从 @zcode/shared 根入口改为 @zcode/shared/test-ids 子路径（根入口不再导出 test-ids，以收窄受影响单测范围）；行为与模块边界不变，接管 ui 目录不在本次范围内。
   - id: settings-personalization-section-new-file
     rule: unmanaged-new-file
     paths: [packages/ui/src/settings/PersonalizationSection.tsx]
@@ -1465,9 +1477,6 @@ exceptions:
   - id: connection-errors-econnreset-unmanaged-edit
     rule: unmanaged-new-file
     paths: [packages/shared/src/source-server/connectionErrors.ts]
-    reason: 已存在的连接错误归一化码表补一项 ECONNRESET →
-      remote-host-unreachable，修复在线断连恢复失败被误报为预检失败；签名与模块边界不变，接管整个 shared
-      包不在本次修复范围内。
     reason: 已存在的连接错误归一化码表补一项 ECONNRESET → remote-host-unreachable，修复在线断连恢复失败被误报为预检失败；签名与模块边界不变，接管整个 shared 包不在本次修复范围内。
   - id: remote-authentication-unsupported-presentation-unmanaged-edit
     rule: unmanaged-new-file
@@ -1574,7 +1583,6 @@ exceptions:
     paths: [packages/ui/src/settings/SettingsMachine.tsx]
     reason: Admitted upstream file edited only to remove settings notices; adopting
       packages/ui/src/settings needs a separate module boundary refactor.
-    reason: Allow the control-character validation regex and the single-file parameter-control runtime.
   - id: workflow-amend-provider-boundary-unmanaged-edit
     rule: unmanaged-new-file
     paths:
@@ -1583,7 +1591,6 @@ exceptions:
     reason: Admitted upstream files edited only to make an own-run AmendWorkflow
       that brings in a new provider ask the user; adopting the zcode-cli
       contracts and core handlers needs a separate module boundary refactor.
-    reason: Admitted upstream files edited only to make an own-run AmendWorkflow that brings in a new provider ask the user; adopting the zcode-cli contracts and core handlers needs a separate module boundary refactor.
   - id: remote-device-list-unmanaged-new-files
     rule: unmanaged-new-file
     paths:
@@ -1630,20 +1637,12 @@ exceptions:
     reason: Composer model, provider and toolbar files reached staging without the
       MR architecture gate running; adopting the packages/ui composer toolbar
       needs a separate module boundary refactor.
-    reason: Composer model, provider and toolbar files reached staging without the MR architecture gate running; adopting the packages/ui composer toolbar needs a separate module boundary refactor.
   - id: provider-endpoint-routing-unmanaged-edit
     rule: unmanaged-new-file
     paths:
       - apps/zcode-cli/packages/adapters/src/model/endpoint-routing-edition/index.ts
       - apps/zcode-cli/packages/adapters/src/model/provider-endpoint-routing-options.ts
     reason: Existing upstream routing assembly files gain the endpoint origin and injected JWT reader; adopting the full CLI model adapter directory needs a separate module boundary refactor.
-  - id: workflow-mode-user-choice-unmanaged-edit
-    rule: unmanaged-new-file
-    paths:
-      - packages/shared/src/dynamic-workflow-feature.ts
-      - packages/ui/src/settings/DynamicWorkflowModeSetting.tsx
-      - packages/ui/src/store/dynamicWorkflowAvailabilityStore.ts
-    reason: Admitted upstream files edited only to let the user's dynamic workflow mode choice always win and keep the settings row visible; adopting packages/shared/src and packages/ui/src needs a separate module boundary refactor.
   - id: workflow-source-error-hint-unmanaged-edit
     rule: unmanaged-new-file
     paths:

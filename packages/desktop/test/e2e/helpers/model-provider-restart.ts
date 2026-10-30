@@ -20,8 +20,8 @@ import {
 import { getV4DraftThoughtState } from "./v4-conversation.js";
 
 const paths = getE2EAppDataPaths();
-const SETTINGS_FILE = join(paths.appDataDir, "setting.json");
-const CREDENTIALS_FILE = paths.credentialsFile;
+const _SETTINGS_FILE = join(paths.appDataDir, "setting.json");
+const _CREDENTIALS_FILE = paths.credentialsFile;
 async function currentComposerRecentKey(): Promise<string> {
   return browser.execute((workspacePath) => {
     // 首次草稿可能尚无导航缓存；直接读当前草稿 owner，不能用旧 workspace 键或猜测项目。
@@ -59,7 +59,8 @@ export async function seedReplayProvider(params: {
     // 会因缺少完整 option/properties 被过滤，UI 菜单就看不到该计划模型。
     apiFormat:
       params.apiFormat ??
-      (params.id.startsWith("account:") ? "anthropic-messages" : "openai-chat-completions"),    apiKey: params.apiKey ?? getUpstreamApiKey(),
+      (params.id.startsWith("account:") ? "anthropic-messages" : "openai-chat-completions"),
+    apiKey: params.apiKey ?? getUpstreamApiKey(),
     baseURL,
     enabled: params.enabled ?? true,
     models: params.models.map((input) =>

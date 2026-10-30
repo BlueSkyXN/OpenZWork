@@ -1,8 +1,4 @@
-
-
 ## 基线与范围
-
-
 
 新 staging 的 `workspace/readPresentation` 只返回 mode/slash commands，不再创建临时 App。
 模型候选由 Host ModelSelectionView 提供，Composer draft intent 与 session 执行配置保持原 owner。
@@ -32,7 +28,6 @@
 - 优化后：a6 为 721/766/862/628/819ms；6951 为 1483/1390/2361/1272/1476ms。
   10 次均得到目标会话可见 row，snapshot row count 前后分别稳定为 295 / 25。
 
-
 ### 中位数对照（ms）
 
 | --- | ---: | ---: | ---: |
@@ -44,24 +39,22 @@
 | 6951 session restore（request → ACK 子阶段） | 343 | 330 | -13 |
 | 6951 ACK → 可见 row（残差，含埋点间隙） | 225 | 115 | -110 |
 
-
-
 ### 同一轮 interval / cumulative 对照（ms）
 
 取首个可见 row 恰好处于各组中位数的运行：baseline 6951 round3、optimized 6951 round5。
 累计为同一轮已测阶段的算术累计，埋点之间未覆盖的时间单列；可见 row 使用独立 DOM 终点，
 不把 interactive 终点冒充可见终点。
 
-| 阶段 | staging interval | staging cumulative | optimized interval | optimized cumulative |
-| --- | ---: | ---: | ---: | ---: |
-| click → acquire | 55 | 55 | 52 | 52 |
-| Renderer prepare | 0 | 55 | 0 | 52 |
-| Host prepare | 1775 | 1830 | 770 | 822 |
-| CLI request → ACK | 644 | 2474 | 526 | 1348 |
-| initial frame transport + snapshot apply | 5 | 2479 | 2 | 1350 |
-| React render | 92 | 2571 | 56 | 1406 |
-| paint → interactive | 134 | 2705 | 35 | 1441 |
-| 未分配的埋点间隙（补齐独立 click → interactive） | 11 | 2716 | 41 | 1482 |
+| 阶段                                             | staging interval | staging cumulative | optimized interval | optimized cumulative |
+| ------------------------------------------------ | ---------------: | -----------------: | -----------------: | -------------------: |
+| click → acquire                                  |               55 |                 55 |                 52 |                   52 |
+| Renderer prepare                                 |                0 |                 55 |                  0 |                   52 |
+| Host prepare                                     |             1775 |               1830 |                770 |                  822 |
+| CLI request → ACK                                |              644 |               2474 |                526 |                 1348 |
+| initial frame transport + snapshot apply         |                5 |               2479 |                  2 |                 1350 |
+| React render                                     |               92 |               2571 |                 56 |                 1406 |
+| paint → interactive                              |              134 |               2705 |                 35 |                 1441 |
+| 未分配的埋点间隙（补齐独立 click → interactive） |               11 |               2716 |                 41 |                 1482 |
 
 独立 DOM 可见终点分别为 2704 / 1476ms。其他轮的 interval/cumulative 保存在各自
 `runs/<variant>-<session>-roundN/profile.md`；原始样本与汇总在 `results.json`。

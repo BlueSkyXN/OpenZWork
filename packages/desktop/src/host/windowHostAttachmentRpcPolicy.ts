@@ -9,7 +9,6 @@ import {
   IWindowRemoteProjectService,
   IWindowProjectChangesService,
   IMcpSyncService,
-  IFeedbackService,
   IGenUiService,
   createWindowProjectChangesService,
   type ServiceExposurePolicy,
@@ -153,13 +152,8 @@ export function exposeWindowHostAttachmentServices(params: {
   if (params.clientMode === "web-remote-replayable") {
     const controllerServices =
       params.attachmentScope?.kind === "remote" ? params.windowServices! : params.services;
-    if (params.attachmentScope?.kind === "remote") {
-      // Source 集合不拥有反馈服务；手机切到远端后仍须复用控制端账号、设备和诊断日志。
-      params.server.registerChannel(
-        IFeedbackService.channelName,
-        ProxyChannel.fromService(controllerServices.get(IFeedbackService)),
-      );
-    }
+    // OpenZWork 净化：官方反馈工单服务（IFeedbackService，云端反馈链）已随 WP-07 移除，
+    // 手机回放通道不再注册该代理；本地导出日志走 ExportLogs 通道。
     const genUi = controllerServices.getOptional(IGenUiService);
     if (genUi) {
       // 发送前 listState 曾因整频道被拒而固定等待超时。只发布控制端的只读上下文接口，

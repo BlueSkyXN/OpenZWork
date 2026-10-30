@@ -200,31 +200,31 @@ feature-scoped token family:
 
 ### Specialized color tokens
 
-| Token | Purpose |
-| --- | --- |
-| `--color-markdown-inline-code` | Markdown 行内代码背景，沿用 tag / label 胶囊层级 |
-| `--color-popover-header` | Popover header |
-| `--color-tab` | Tab 默认背景 |
-| `--color-tab-active` | 当前激活 tab |
-| `--color-tab-border` | Tab 分隔线 |
-| `--color-feedback-privacy-hint` | 反馈截图隐私提醒文字及叹号图标；独立一行，使用辅助说明字号 |
-| `--color-git-none` | Git 无变更状态，沿用普通文件名颜色 |
-| `--color-git-modified` | Git modified，表示已跟踪文件有未提交修改 |
-| `--color-git-added` | Git added，表示新增文件已进入工作树 / 暂存区 |
-| `--color-git-deleted` | Git deleted，表示已跟踪文件被删除 |
-| `--color-git-renamed` | Git renamed，表示已跟踪文件移动或重命名 |
-| `--color-git-untracked` | Git untracked，表示 Git 尚未跟踪的新文件 |
-| `--color-git-ignored` | Git ignored，继承弱化文本层级 |
-| `--color-git-descendant` | Git descendant，表示目录后代包含变更 |
-| `--color-file-node` | 文件 mention node 背景 |
-| `--color-file-node-hover` | 文件 mention node hover 背景 |
-| `--color-file-node-foreground` | 文件 mention node 文字 / 图标 |
-| `--color-skill-node` | Skill mention node 背景 |
-| `--color-skill-node-hover` | Skill mention node hover 背景 |
-| `--color-skill-node-foreground` | Skill mention node 文字 / 图标 |
-| `--color-command-node` | Command mention node 背景 |
-| `--color-command-node-hover` | Command mention node hover 背景 |
-| `--color-command-node-foreground` | Command mention node 文字 / 图标 |
+| Token                             | Purpose                                                    |
+| --------------------------------- | ---------------------------------------------------------- |
+| `--color-markdown-inline-code`    | Markdown 行内代码背景，沿用 tag / label 胶囊层级           |
+| `--color-popover-header`          | Popover header                                             |
+| `--color-tab`                     | Tab 默认背景                                               |
+| `--color-tab-active`              | 当前激活 tab                                               |
+| `--color-tab-border`              | Tab 分隔线                                                 |
+| `--color-feedback-privacy-hint`   | 反馈截图隐私提醒文字及叹号图标；独立一行，使用辅助说明字号 |
+| `--color-git-none`                | Git 无变更状态，沿用普通文件名颜色                         |
+| `--color-git-modified`            | Git modified，表示已跟踪文件有未提交修改                   |
+| `--color-git-added`               | Git added，表示新增文件已进入工作树 / 暂存区               |
+| `--color-git-deleted`             | Git deleted，表示已跟踪文件被删除                          |
+| `--color-git-renamed`             | Git renamed，表示已跟踪文件移动或重命名                    |
+| `--color-git-untracked`           | Git untracked，表示 Git 尚未跟踪的新文件                   |
+| `--color-git-ignored`             | Git ignored，继承弱化文本层级                              |
+| `--color-git-descendant`          | Git descendant，表示目录后代包含变更                       |
+| `--color-file-node`               | 文件 mention node 背景                                     |
+| `--color-file-node-hover`         | 文件 mention node hover 背景                               |
+| `--color-file-node-foreground`    | 文件 mention node 文字 / 图标                              |
+| `--color-skill-node`              | Skill mention node 背景                                    |
+| `--color-skill-node-hover`        | Skill mention node hover 背景                              |
+| `--color-skill-node-foreground`   | Skill mention node 文字 / 图标                             |
+| `--color-command-node`            | Command mention node 背景                                  |
+| `--color-command-node-hover`      | Command mention node hover 背景                            |
+| `--color-command-node-foreground` | Command mention node 文字 / 图标                           |
 
 Git file statuses must use `text-git-*` / `bg-git-*`, rather than borrowing diff or warning tokens.
 Mention tokens belong to prompt-editor and UserPrompt mention nodes; their background, hover,
@@ -595,13 +595,13 @@ Rules:
 
 ### Breakpoint roles
 
-| Breakpoint | Preferred use |
-| --- | --- |
-| `sm:` | Dialog width, button arrangement, small-screen layout corrections |
-| `md:` | Grid columns and form layout expansion |
-| `lg:` | Desktop toolbar visibility and secondary information density |
-| `xl:` | Chat and complex content arrangements |
-| `2xl:` | Wide-screen reading-width caps, not ordinary page behavior |
+| Breakpoint | Preferred use                                                     |
+| ---------- | ----------------------------------------------------------------- |
+| `sm:`      | Dialog width, button arrangement, small-screen layout corrections |
+| `md:`      | Grid columns and form layout expansion                            |
+| `lg:`      | Desktop toolbar visibility and secondary information density      |
+| `xl:`      | Chat and complex content arrangements                             |
+| `2xl:`     | Wide-screen reading-width caps, not ordinary page behavior        |
 
 Start with the unprefixed layout, then add the fewest breakpoints needed. Prefer changing
 layout, `max-width`, and visibility to repeatedly switching fixed dimensions or semantic

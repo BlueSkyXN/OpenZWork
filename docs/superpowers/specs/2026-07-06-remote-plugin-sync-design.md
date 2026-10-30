@@ -180,7 +180,7 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 
 | ID             | 场景                                                                                              | 断言                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| RPS-INLINE-01  | 本机 `plugins.dirs` 有合法 inline plugin，远端缺失                                                | 导入到远端 `~/.openzwork/plugins/<dir>`，远端 config 追加路径                                                                    |
+| RPS-INLINE-01  | 本机 `plugins.dirs` 有合法 inline plugin，远端缺失                                                | 导入到远端 `~/.openzwork/plugins/<dir>`，远端 config 追加路径                                                                |
 | RPS-INLINE-02  | 远端已有同 inline plugin id                                                                       | 返回 skipped，不覆盖目录，不重复写 config                                                                                    |
 | RPS-INLINE-03  | 远端目标目录存在                                                                                  | 返回 skipped，不覆盖目录                                                                                                     |
 | RPS-INLINE-04  | 本机 inline plugin 含 symlink                                                                     | 导出失败，避免把任意宿主路径打包进远端                                                                                       |
@@ -203,10 +203,10 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 | RPS-UX-03      | 同步完成页展示失败项                                                                              | 右侧结果状态使用紧凑状态徽标，不使用高窄按钮状容器                                                                           |
 | RPS-UX-04      | 同步日志较长                                                                                      | 日志浮层可滚动，不使用非交互 tooltip 承载长日志                                                                              |
 | RPS-BUILTIN-01 | 生产远端资源包构建                                                                                | `glm/<platform>` 同时包含 `zcode.cjs` 和 `packages/*-plugin/.zcode-plugin/plugin.json`                                       |
-| RPS-BUILTIN-02 | 远端已有同版本 `zcode.cjs` 但缺 builtin packages                                                  | 部署不能跳过 ZCode Agent；必须补齐 `~/.openzwork/server/agents/glm/packages/*-plugin`                                            |
+| RPS-BUILTIN-02 | 远端已有同版本 `zcode.cjs` 但缺 builtin packages                                                  | 部署不能跳过 ZCode Agent；必须补齐 `~/.openzwork/server/agents/glm/packages/*-plugin`                                        |
 | RPS-BUILTIN-03 | 开发态 SSH 部署本地 `zcode.cjs`                                                                   | 同步上传本地官方插件 packages，远端 `plugins list` 能发现 `source:"official"` 插件                                           |
-| RPS-BUILTIN-04 | Windows / macOS / Linux 桌面侧为 SSH 本地上传重打 builtin packages tar                            | tar 中所有目录条目均为 `0755`；远端解包后 `rm -rf ~/.openzwork/server/agents/glm/packages` 可正常更新资源                        |
-| RPS-BUILTIN-05 | 远端遗留不可遍历的 `~/.openzwork/server/agents/glm/packages`，builtin manifest 检查失败               | 部署先执行 owner `rwX` 修复，再进入正常 packages 刷新，用户无需手工 chmod                                                    |
+| RPS-BUILTIN-04 | Windows / macOS / Linux 桌面侧为 SSH 本地上传重打 builtin packages tar                            | tar 中所有目录条目均为 `0755`；远端解包后 `rm -rf ~/.openzwork/server/agents/glm/packages` 可正常更新资源                    |
+| RPS-BUILTIN-05 | 远端遗留不可遍历的 `~/.openzwork/server/agents/glm/packages`，builtin manifest 检查失败           | 部署先执行 owner `rwX` 修复，再进入正常 packages 刷新，用户无需手工 chmod                                                    |
 
 ## 测试计划
 

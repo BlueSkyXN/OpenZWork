@@ -411,7 +411,7 @@ function finalizeAgentStep(input: {
           }
         : {}),
       ...(isToolCall && input.step.toolName === "Skill"
-        ? { skill_name: sanitizeTelemetrySkillName(input.step.skillMetadata?.name) }
+        ? { skill_name: sanitizeTelemetrySkillName(input.step.skillMetadata?.name ?? "") }
         : {}),
       ...(isToolCall && input.step.toolName === "Skill" && input.step.skillMetadata?.qualifiedName
         ? { skill_qualified_name: input.step.skillMetadata.qualifiedName }

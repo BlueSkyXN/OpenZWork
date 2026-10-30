@@ -137,8 +137,8 @@ body portal 更新 fixed left
 - 卡片的「下次运行」时间在 1 个月内展示相对时间；超过 1 个月展示本地绝对时间，避免远期任务出现难读的超大天数。
 - 已创建任务区与下方「更多灵感」之间使用整宽分割线区分内容层级；分割线使用与 Card 描边一致的 `card-border` 语义颜色，保证 Light / Dark 下层级清晰。
 
-
 <!-- 闲时任务按钮/名额与首页 Client Scenes 云端模板（scheduled-task scene，营销触达域）属净化域，相关条目不随上游引入；其余 Automations UI 规则随上游 -->
+
 - 模板图标把远程 prompt item 的 `img` 解释为 Lucide canonical 名称并按名动态加载，不再发起图片 URL 请求。SVG 使用 `currentColor` 继承图标槽字色；空白值、未知名称或模块加载失败都进入本地回退。回退图标继续按远程 item id 的已知任务语义映射为 Lucide：morning/standup 使用 `Target`、risk/CI 使用 `Activity`、release/file 使用 `FileText`，其它动态模板统一回退 `List`；`imgs` 不参与图标选择，也不得为未知服务端模板临时引入页面内近似图标。
 - Settings 页当前仍通过 `settingsPageConfig.ts` 暴露 Automations 分区，并直接渲染 `AutomationsSection`；该入口没有工作区主视图的 Automations `main` 锚点，因此其 Toast 必须走全窗口居中回退。若未来移除此兼容入口，再同步删除本条事实说明。
 - 定时任务主视图不渲染 `WorkspaceHeader` 或草稿标题栏占位，避免出现聊天 / 项目顶部栏。

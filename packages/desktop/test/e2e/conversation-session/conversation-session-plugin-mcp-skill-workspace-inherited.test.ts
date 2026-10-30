@@ -45,7 +45,8 @@ describe("WPL-002 Workspace Plugin User inheritance and cold-start reload E2E", 
           checked:
             row?.querySelector<HTMLElement>('[data-testid="plugin-settings-enabled-switch"]')
               ?.dataset.state === "checked",
-          source: row?.querySelector<HTMLElement>("[data-settings-scope]")?.dataset.settingsScope ?? null,
+          source:
+            row?.querySelector<HTMLElement>("[data-settings-scope]")?.dataset.settingsScope ?? null,
         };
       }, PLUGIN_MCP_PLUGIN_ID),
     ).toEqual({ checked: true, source: null });

@@ -586,13 +586,13 @@ Conversation lifetime        = Agent session store，不等于任何进程连接
 
 ## 状态作用域
 
-| Scope      | 权威数据                                                                              | 同步语义                                                            |
-| ---------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| account    | Provider / Model metadata、展示顺序、默认模型、全局最近显式模型元组、可选跨端分组视图 | revision 化，同一账户各 Hub / Node 收敛                             |
-| hub/device | Node connection profile、连接状态、UI 布局、持久化离线目录缓存                        | 设备本地；不能成为 Task / Session 权威                              |
-| node       | Plugin 实际安装、user Skill / Subagent、工具链、Node capability、runtime cache        | 每台机器独立，可显式复制，不自动求并或覆盖                          |
-| workspace  | Repo 内 `.zcode/*` / `.agents/*`、workspace extension、项目设置                       | 位于目标 Node 的 workspace；由 Git / 文件系统自然传播               |
-| session    | 当前 provider / model / thought / mode、消息、queue、owner、stream、permission        | 只在执行该 Session 的 Node runtime                                  |
+| Scope      | 权威数据                                                                              | 同步语义                                              |
+| ---------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| account    | Provider / Model metadata、展示顺序、默认模型、全局最近显式模型元组、可选跨端分组视图 | revision 化，同一账户各 Hub / Node 收敛               |
+| hub/device | Node connection profile、连接状态、UI 布局、持久化离线目录缓存                        | 设备本地；不能成为 Task / Session 权威                |
+| node       | Plugin 实际安装、user Skill / Subagent、工具链、Node capability、runtime cache        | 每台机器独立，可显式复制，不自动求并或覆盖            |
+| workspace  | Repo 内 `.zcode/*` / `.agents/*`、workspace extension、项目设置                       | 位于目标 Node 的 workspace；由 Git / 文件系统自然传播 |
+| session    | 当前 provider / model / thought / mode、消息、queue、owner、stream、permission        | 只在执行该 Session 的 Node runtime                    |
 
 ## 模型配置
 

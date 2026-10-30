@@ -32,7 +32,6 @@ import {
 import {
   getV4Messages,
   sendV4PromptAndWaitAccepted,
-  waitForV4AssistantMessageContaining,
   waitForV4ConversationState,
 } from "../../../helpers/v4-conversation.js";
 

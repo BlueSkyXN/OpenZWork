@@ -102,7 +102,6 @@ conversation Docker preset
 - 已有正式 `schemaVersion` 文件只走相邻版本 migration，不重新进入无版本 Legacy importer；
 - 重复启动不重复迁移，旧文件残留不覆盖已经建立的 Personal Config；
 
-
 ### 1.4 发布制品与跨平台启动
 
 - Desktop 开发环境和发布包都能定位 `config/provider/zcode-builtin.json`；

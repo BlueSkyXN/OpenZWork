@@ -6,8 +6,6 @@
 
 - 旧接口：`https://feedback.example.invalid/v1/tickets`
 
-
-
 默认 feedback API base 必须跟随统一的 ZCode endpoint resolver：
 
 - `ZCODE_BASE_URL`、`ZCODE_TEST_BASE_URL`、`ZCODE_PRODUCTION_BASE_URL` 等统一 endpoint 覆盖继续生效。

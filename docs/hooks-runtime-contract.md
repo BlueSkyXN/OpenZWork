@@ -58,7 +58,7 @@ HooksService / conversation projection
 
 | 来源                           | Runtime 执行 | 设置页编辑 | 生效规则                                               |
 | ------------------------------ | ------------ | ---------- | ------------------------------------------------------ |
-| `~/.openzwork/cli/config.json`     | 是           | 是         | user hooks 先执行                                      |
+| `~/.openzwork/cli/config.json` | 是           | 是         | user hooks 先执行                                      |
 | workspace `.zcode/config.json` | 条件执行     | 是         | rollout 开启且 exact Trust/policy admission 通过后执行 |
 | 已启用插件 hooks               | 是           | 否         | 按现有 plugin 来源规则执行                             |
 | `.agents/settings.json`        | 否           | 否         | 只读展示，可显式导入 `.zcode`                          |

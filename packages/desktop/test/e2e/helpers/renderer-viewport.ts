@@ -7,7 +7,8 @@ export async function setRendererViewport(width: number, height: number) {
     mobile: false,
   });
   await browser.waitUntil(
-    () => browser.execute((w, h) => window.innerWidth === w && window.innerHeight === h, width, height),
+    () =>
+      browser.execute((w, h) => window.innerWidth === w && window.innerHeight === h, width, height),
     { timeout: 10000, timeoutMsg: `renderer viewport 没有应用 ${width}x${height}` },
   );
 }
@@ -18,15 +19,20 @@ export async function clearRendererViewport() {
 
 async function sendViewportCommand(command: string, parameters: Record<string, unknown>) {
   const targetUrl = await browser.getUrl();
-  await browser.electron.execute(async (electron, targetUrl, command, parameters) => {
-    const target = electron.BrowserWindow.getAllWindows().find(
-      (candidate) => !candidate.isDestroyed() && candidate.webContents.getURL() === targetUrl,
-    );
-    if (!target) throw new Error("当前 renderer 没有对应的 Electron 窗口");
-    if (!target.webContents.debugger.isAttached()) target.webContents.debugger.attach("1.3");
-    await target.webContents.debugger.sendCommand(command, parameters);
-    target.webContents.debugger.detach();
-  }, targetUrl, command, parameters);
+  await browser.electron.execute(
+    async (electron, targetUrl, command, parameters) => {
+      const target = electron.BrowserWindow.getAllWindows().find(
+        (candidate) => !candidate.isDestroyed() && candidate.webContents.getURL() === targetUrl,
+      );
+      if (!target) throw new Error("当前 renderer 没有对应的 Electron 窗口");
+      if (!target.webContents.debugger.isAttached()) target.webContents.debugger.attach("1.3");
+      await target.webContents.debugger.sendCommand(command, parameters);
+      target.webContents.debugger.detach();
+    },
+    targetUrl,
+    command,
+    parameters,
+  );
 }
 
 // OpenZWork 净化口径：上游 v3.17.1 改名为 setRendererViewport/clearRendererViewport；

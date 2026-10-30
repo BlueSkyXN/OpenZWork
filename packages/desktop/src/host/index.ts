@@ -2202,7 +2202,8 @@ function exposeServicesOnMessagePort(
   }
   const webRemoteProjectTreeRetention = isWebRemoteAttachment
     ? webRemoteProjectTreeActivity.retain()
-    : undefined;  exposeWindowHostAttachmentServices({
+    : undefined;
+  exposeWindowHostAttachmentServices({
     server,
     services,
     overrides,
@@ -3548,7 +3549,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           IProviderProvisioningStatusService,
           hostProviderProvisioningStatus.service,
         );
-        wireLocalResourceTelemetry(services);        // fork 净化：上游此处还调用 wireLocalResourceTelemetry（WP-05 已删本地资源遥测链），不随入。
+        // fork 净化：上游此处还调用 wireLocalResourceTelemetry（WP-05 已删本地资源遥测链），不随入。
         hasDisposedHostResources = false;
         disposeHostResourcesInFlight = null;
         const agentWarmupTargets =

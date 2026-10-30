@@ -244,8 +244,6 @@ Active Model 的 Endpoint、API Type、Properties、Option Specs 或 Reasoning M
 
 - Desktop 启动前 Force Update gate。
 
-
-
 允许的最小新增关系是：
 
 ```text

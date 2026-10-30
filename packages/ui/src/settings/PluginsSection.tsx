@@ -9,7 +9,7 @@ import { PluginAddMenu } from "@/conversation-workspace-target/PluginAddMenu.js"
 // 合成：react hooks 用上游（useLayoutEffect/useRef 供全部更新批次 abort）；图标行保留本仓
 // Loader2（更新中 spinner），Monitor 属上游 computer-use 不可用卡片（净化域），不并入。
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Plus, UploadCloud } from "lucide-react";
+import { Plus, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";

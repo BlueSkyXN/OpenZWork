@@ -221,7 +221,6 @@ Subagent 设置页只读取目标 Environment 的 Model Selection View。远端 
 8. Settings 只选择 reasoning 模型但不操作 effort 控件时，核对 builtin state 不新增 thought-level key，custom Markdown frontmatter 不新增 `thoughtLevel`；同时确认控件仍展示目标模型的 catalog 默认档位。
 9. Custom 保存模型 A 与 effort 后，从模型供应商设置删除 A，再重新打开该 Subagent 编辑页；核对模型控件显示“选择模型”提示、下拉菜单不含 A、effort 控件隐藏、保存不可用，并确认原 Markdown 未被自动改写。
 
-
 Settings CRUD 使用独立的无 provider-request E2E 验证保存产物，不与上述 child runtime 场景串成同一个用例：
 
 | Scope / 类型              | 创建             | 编辑             | 保存后验收产物                                                                        |

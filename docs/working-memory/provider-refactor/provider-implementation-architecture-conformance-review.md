@@ -136,7 +136,6 @@ saveEffectiveProvider()
 - `packages/ui/src/lib/providerPersonalSave.ts` 将完整 Draft 交给 `saveEffectiveProvider()`。
 - `packages/provider/src/config-service.ts` 保存时只读取 Built-in/Official Source。
 
-
 风险：
 
 - Account 返回的 Built-in 模型成员可能在用户修改无关字段时被固化进 Personal。
@@ -215,8 +214,6 @@ Repository Boundary
 - organization/project；
 - Credential key；
 - UI 分组、标签和 Badge。
-
-
 
 这使 accessId 从 opaque identity 变成了没有集中类型定义的跨层字符串协议。
 
