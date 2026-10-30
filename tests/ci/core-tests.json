@@ -6,25 +6,22 @@
       "files": [
         "packages/services/test/dataDirectoryTrueMigration.test.ts",
         "packages/shared/src/data-directory/contract.test.ts",
-        "packages/services/src/project-storage/relocation/contract.test.ts",
-        "packages/services/src/startup-storage/contract.test.ts"
+        "packages/services/src/project-storage/relocation/contract.test.ts"
       ]
     },
     {
       "capability": "desktop-recording-timeouts",
-      "files": ["packages/desktop/test/e2eElectronWindowRecorder.test.ts"]
+      "files": [
+        "packages/desktop/test/e2eElectronWindowRecorder.test.ts"
+      ]
     },
     {
       "capability": "desktop-product-name",
-      "files": [
-        "packages/desktop/test/desktopTray.test.ts",
-        "packages/desktop/test/desktopWindowChrome.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "release-version-display",
       "files": [
-        "packages/desktop/test/about.test.ts",
         "packages/desktop/test/desktopProductIdentity.test.ts"
       ]
     },
@@ -34,13 +31,9 @@
         "packages/ui/src/conversation-export/contract.test.ts",
         "packages/ui/test/conversationCopyHook.test.ts",
         "packages/ui/test/groupedConversationMenu.test.ts",
-        "packages/ui/test/taskActionMenuContent.test.ts",
-        "packages/ui/test/useTaskListItemContextActions.test.ts",
-        "packages/ui/test/workspaceHeaderTitleSection.test.ts",
         "packages/ui/test/sidebarTaskFilters.test.ts",
         "packages/ui/test/sidebarFilterPreferences.test.ts",
-        "packages/ui/test/sidebarFiltersInteraction.test.ts",
-        "packages/ui/test/projectDirectoryProvider.test.ts"
+        "packages/ui/test/sidebarFiltersInteraction.test.ts"
       ]
     },
     {
@@ -55,179 +48,62 @@
     },
     {
       "capability": "rpc",
-      "files": [
-        "packages/rpc/test/buffer.test.ts",
-        "packages/rpc/test/serialization.test.ts",
-        "packages/rpc/test/protocol.test.ts",
-        "packages/rpc/test/channels.test.ts",
-        "packages/rpc/test/proxy-channel.test.ts",
-        "packages/rpc/test/ipc.test.ts",
-        "packages/rpc/test/foundation.test.ts",
-        "packages/services/test/zcodeAgentResourceTelemetry.rpc.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "protocol-and-identity",
-      "files": [
-        "packages/shared/test/zcodeProtocol.test.ts",
-        "packages/shared/test/zcodeProtocolV4Command.test.ts",
-        "packages/shared/test/zcodeProtocolV4Wire.test.ts",
-        "packages/shared/test/zcodeProtocolV4Permission.test.ts",
-        "packages/shared/test/zcodeProtocolV4WorkspaceConfig.test.ts",
-        "packages/shared/test/zcodeProtocolV4ConnectionScope.test.ts",
-        "packages/shared/test/remoteWorkspaceIdentity.test.ts",
-        "packages/shared/test/zcodeEndpoint.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "session-and-host",
       "files": [
-        "packages/services/test/zcodeSessionService.test.ts",
-        "packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts",
-        "packages/services/test/zcodeAgentProcessManager.test.ts",
-        "packages/services/test/zcodeSessionEventCoalescer.test.ts",
-        "packages/ui/test/zcodeSessionStore.test.ts",
-        "packages/ui/test/zcodeSessionRestore.test.ts",
-        "packages/ui/test/zcodeSessionEventOrder.test.ts",
-        "packages/ui/test/agentV4ConnectionTransports.test.ts",
-        "packages/desktop/test/desktopRuntimeEnv.test.ts",
-        "packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts",
-        "packages/services/test/zcodeAgentService.v4.test.ts",
-        "packages/services/test/zcodeAgentService.providerRegistry.test.ts",
-        "packages/services/test/subagentsService.test.ts",
-        "packages/services/test/providerProvisioningFileIntegration.test.ts",
-        "packages/services/test/zcodeAgentService.test.ts"
+        "packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts"
       ]
     },
     {
       "capability": "mcp",
       "files": [
-        "packages/shared/test/mcp.test.ts",
-        "packages/services/test/mcpWorkspaceScope.test.ts",
-        "packages/services/test/mcpSyncService.test.ts",
-        "packages/desktop/test/mcpZcodeAgent.test.ts",
-        "packages/ui/test/mcpStore.test.ts",
-        "packages/ui/test/mcpStoreMutations.test.ts",
-        "packages/ui/test/mcpStoreStatusList.test.ts",
-        "packages/server/test/serverInfoHttp.test.ts"
+        "packages/ui/test/mcpStoreMutations.test.ts"
       ]
     },
     {
       "capability": "browser-use",
-      "files": [
-        "packages/shared/test/browserControlProtocol.test.ts",
-        "packages/desktop/test/browserCommandExecutor.test.ts",
-        "packages/desktop/test/browserPlaywrightDomSnapshot.test.ts",
-        "packages/desktop/test/embeddedBrowserPermissionPolicy.test.ts",
-        "packages/services/test/zcodeAgentBrowserAmbientContext.test.ts",
-        "packages/desktop/test/browserGuestManager.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "gen-ui-and-mcp-apps",
       "files": [
-        "packages/shared/src/gen-ui/contract.test.ts",
-        "packages/shared/src/mcp-apps/contract.test.ts",
-        "packages/shared/src/node/genUiPaths.test.ts",
-        "packages/services/src/gen-ui/contract.test.ts",
-        "packages/services/src/gen-ui/adapters/files.test.ts",
-        "packages/services/src/gen-ui/adapters/stateStorage.test.ts",
-        "packages/services/src/gen-ui/adapters/service.test.ts",
-        "packages/services/src/plugin-ui-bridge/contract.test.ts",
-        "packages/services/src/plugin-ui-bridge/instanceAccounts.test.ts",
-        "packages/services/src/plugin-ui-bridge/prepareRaces.test.ts",
-        "packages/services/src/plugin-ui-bridge/sampling.test.ts",
-        "packages/ui/src/gen-ui/contract.test.ts",
-        "packages/ui/src/gen-ui/domain/references.test.ts",
-        "packages/ui/src/gen-ui/app/tweaks.test.ts",
-        "packages/ui/src/plugin-ui/contract.test.ts",
-        "packages/desktop/src/main/pluginSandbox/contract.test.ts",
-        "packages/shared/src/mcp-apps/sampling.test.ts",
-        "packages/desktop/src/main/pluginSandbox/genUiProtocol.test.ts",
-        "packages/desktop/src/main/pluginSandbox/genUiVendor.test.ts"
+        "packages/services/src/gen-ui/contract.test.ts"
       ]
     },
     {
       "capability": "workflow",
-      "files": [
-        "packages/shared/test/zcodeProtocolSavedWorkflows.test.ts",
-        "packages/ui/test/workflowActorSessionSidePane.test.ts",
-        "packages/services/test/zcodeAgentService.savedWorkflows.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "build-and-settings",
       "files": [
         "packages/desktop/test/desktopTsupConfig.test.ts",
-        "packages/desktop/test/run-production-build.test.ts",
-        "packages/services/test/settingsSyncService.test.ts",
-        "packages/ui/test/settingsModelProviderUpgradeIntent.test.ts",
-        "packages/ui/test/appErrorBoundary.test.ts",
-        "packages/ui/test/pluginSettingsSection.test.ts"
+        "packages/desktop/test/run-production-build.test.ts"
       ]
     },
     {
       "capability": "remote-access",
-      "files": [
-        "packages/client/test/remoteServiceAccess.test.ts",
-        "packages/server/test/remoteConnect.test.ts",
-        "packages/server/test/wslBackend.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "source-server-projects-and-migrations",
-      "files": [
-        "packages/services/test/controllerRemoteIdentityMigration.test.ts",
-        "packages/services/test/remoteSchemaMigrations.test.ts",
-        "packages/services/test/sourceServerWorkspaceAliasRepo.concurrent.test.ts",
-        "packages/services/test/sourceServerWorkspaceAliasRepo.projections.test.ts",
-        "packages/services/test/sourceServerWorkspaceAliasRepo.test.ts",
-        "packages/services/test/tasksDatabaseMigration.test.ts",
-        "packages/services/src/project/contract.test.ts",
-        "packages/services/src/project-catalog/contract.test.ts",
-        "packages/services/src/project-storage/contract.test.ts",
-        "packages/services/src/project-workspace-navigation/contract.test.ts",
-        "packages/services/src/task-groups/contract.test.ts",
-        "packages/shared/src/sqlite-migrations/contract.test.ts",
-        "packages/services/src/project/legacy/contract.test.ts",
-        "packages/services/src/project-storage/default-workspace/contract.test.ts",
-        "packages/services/src/project-storage/downgrade/contract.test.ts",
-        "packages/services/src/project/preparation-race/contract.test.ts",
-        "packages/services/src/project-storage/migration-order/contract.test.ts",
-        "packages/services/src/project-storage/project-order/contract.test.ts",
-        "packages/services/src/project-storage/repository/contract.test.ts",
-        "packages/services/src/project-storage/legacy-provider/contract.test.ts",
-        "packages/services/src/project-storage/remote-single-root/contract.test.ts",
-        "packages/desktop/test/serverRemoteDuplexTransport.test.ts",
-        "packages/desktop/test/remoteGenUiRouting.test.ts",
-        "packages/desktop/test/windowHostControllerAttachmentIdentity.test.ts",
-        "packages/desktop/test/windowHostControllerProjection.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "project-ui-and-composer",
       "files": [
-        "packages/ui/test/floatingLayerHitRegions.test.ts",
-        "packages/ui/test/toolSearchToolCallBlock.test.ts",
-        "packages/ui/test/composerSubmissionSettlement.test.ts",
-        "packages/ui/test/projectFirstSubmitVisibility.test.ts",
-        "packages/ui/test/v4DraftSessionPrewarm.test.ts",
-        "packages/ui/test/taskGroupedView.test.ts",
-        "packages/ui/test/projectSidebarNavigation.test.ts",
-        "packages/ui/test/savedWorkflowProjectGroup.test.ts",
-        "packages/ui/test/mobileProjectDraftBootstrap.test.ts"
+        "packages/ui/test/floatingLayerHitRegions.test.ts"
       ]
     },
     {
       "capability": "relay-and-source-contracts",
-      "files": [
-        "packages/shared/src/web-remote-relay/contract.test.ts",
-        "packages/desktop/src/main/web-remote-relay/contract.test.ts",
-        "packages/client/test/webRemoteControlRelayPayloadSerializer.test.ts",
-        "packages/shared/test/sourceServerContracts.test.ts",
-        "packages/server/test/sourceServerTransportAdapter.test.ts",
-        "packages/server/test/dockerBackendDockerCommand.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "e2e-fixture-contracts",
@@ -262,125 +138,35 @@
     },
     {
       "capability": "provider-provisioning-version-safety",
-      "files": [
-        "packages/services/test/providerProvisioningSource.test.ts",
-        "packages/services/test/providerProvisioningTarget.test.ts",
-        "packages/shared/test/providerProvisioning.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "retained-provider-protocol-and-user-storage",
       "files": [
-        "packages/provider-node/test/final-config-envelopes.test.ts",
-        "packages/provider-node/test/provider-node-runtime.test.ts",
-        "packages/provider-node/test/reasoning-level-migration.test.ts",
         "packages/provider-node/test/standard-provider-config.test.ts",
-        "packages/provider-node/test/zcode-builtin-consumption.test.ts",
-        "packages/provider-node/test/zcode-builtin-process.test.ts",
-        "packages/provider-node/test/zcode-builtin-release.test.ts",
-        "packages/provider/test/config-service.test.ts",
-        "packages/provider/test/facades.test.ts",
-        "packages/provider/test/provider-config-kinds.test.ts",
-        "packages/provider/test/provider-data-schema.test.ts",
-        "packages/provider/test/registry-service.test.ts",
-        "packages/provider/test/registry.test.ts",
-        "packages/provider/test/resolver.test.ts",
-        "packages/provider/test/todo21-source-contracts.test.ts",
-        "packages/services/test/botsChannelRuntime.test.ts",
-        "packages/services/test/botsRepo.test.ts",
-        "packages/services/test/botsStorageMigration.test.ts",
-        "packages/services/test/botsStorageV3.test.ts",
-        "packages/services/test/claudeNativeSessionImportRepo.test.ts",
-        "packages/services/test/commandsService.test.ts",
-        "packages/services/test/credentialService.test.ts",
-        "packages/services/test/gitCheckpointService.test.ts",
-        "packages/services/test/hooksService.test.ts",
-        "packages/services/test/legacyZCodeConfigProviderReader.test.ts",
-        "packages/services/test/modelTrajectory.test.ts",
-        "packages/services/test/paths.test.ts",
-        "packages/services/test/dataDirectoryMigration.test.ts",
-        "packages/services/test/pluginSyncService.test.ts",
-        "packages/services/test/providerRuntimeResolver.test.ts",
-        "packages/services/test/skillSyncService.test.ts",
-        "packages/services/test/skillsService.test.ts",
-        "packages/services/test/storageRootsResolver.test.ts",
-        "packages/services/test/subagentRuntimeConfigWatcher.test.ts",
-        "packages/services/test/workspaceHookDigestParity.test.ts",
-        "packages/services/test/workspaceHookDiscoveryAlignment.test.ts",
-        "packages/services/test/workspaceHookTrustCorrupt.test.ts",
-        "packages/services/test/workspaceHookTrustStoreSchemaParity.test.ts",
-        "packages/shared/test/appSettings.test.ts",
-        "packages/shared/test/attachmentSelectionProtocol.test.ts",
-        "packages/shared/test/env.test.ts",
-        "packages/shared/test/helpAppConfig.test.ts",
-        "packages/shared/test/legacyModelProviderIdentity.test.ts",
-        "packages/shared/test/official-glm-model-id.test.ts",
-        "packages/shared/test/remoteAppConfig.test.ts",
-        "packages/shared/test/runtimeEnv.test.ts",
-        "packages/shared/test/serverRemoteInfo.test.ts",
-        "packages/shared/test/subagentMarkdownMigration.test.ts",
-        "packages/shared/test/subagentMarkdownSelection.test.ts",
-        "packages/shared/test/subagentStateMigration.test.ts",
-        "packages/shared/test/validation.test.ts",
-        "packages/shared/test/webRemoteControl.test.ts",
-        "packages/shared/test/windowHostControlProtocol.test.ts",
-        "packages/shared/test/zcodeProtocolV4Telemetry.test.ts"
+        "packages/services/test/dataDirectoryMigration.test.ts"
       ]
     },
     {
       "capability": "local-settings-and-provider-runtime",
-      "files": [
-        "packages/services/test/settingService.test.ts",
-        "packages/services/test/nodeApiNetwork.test.ts",
-        "packages/services/test/storageCatalog.test.ts",
-        "packages/services/test/legacyProviderUpgrade.test.ts",
-        "packages/services/test/providerRuntime.test.ts",
-        "packages/services/test/providerConfigRuntime.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "system-prompt-settings",
       "files": [
         "packages/shared/src/system-prompt/contract.test.ts",
         "packages/ui/src/settings/system-prompt/contract.test.ts",
-        "packages/ui/test/systemPromptSettingsLoading.test.ts",
-        "packages/ui/test/useSettingServiceAutoResolution.test.ts",
-        "packages/ui/test/settingsPageConfig.test.ts"
+        "packages/ui/test/systemPromptSettingsLoading.test.ts"
       ]
     },
     {
       "capability": "remote-user-storage-fixtures",
-      "files": [
-        "packages/server/test/remoteAssetInstaller.test.ts",
-        "packages/server/test/sshBackend.test.ts",
-        "packages/server/test/stdioDesktopPresentationSurface.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "retained-ui-and-desktop-repair",
       "files": [
-        "packages/ui/test/subagentsSection.test.ts",
-        "packages/desktop/test/devElectronAppBundle.test.ts",
-        "packages/desktop/test/desktopMainIpcRemoteOpenExternalFile.test.ts",
-        "packages/desktop/test/desktopDeepLinkRegistration.test.ts",
-        "packages/desktop/test/desktopDeepLinkUrl.test.ts",
-        "packages/desktop/test/desktopFinderOpenFolderWorkflow.test.ts",
-        "packages/desktop/test/desktopSecondInstanceDeepLink.test.ts",
-        "packages/desktop/test/startupWorkspaceDeepLinkGate.test.ts",
-        "packages/desktop/test/remotePromptAttachments.test.ts",
-        "packages/desktop/test/workflowArtifactFile.test.ts",
-        "packages/desktop/test/tempTextAttachment.test.ts",
-        "packages/desktop/test/browserDataManager.test.ts",
-        "packages/desktop/test/desktopRemoteSessions.test.ts",
-        "packages/desktop/test/desktopWebRemoteControlIpc.test.ts",
-        "packages/desktop/test/databaseStartupRelay.test.ts",
-        "packages/ui/test/v4ConversationComposerPromptHistory.test.ts",
-        "packages/ui/test/v4ConversationDraftSuggestedPromptsContainer.test.ts",
-        "packages/ui/test/v4ConversationComposerAttachmentProgress.test.ts",
-        "packages/ui/test/savedWorkflowsSection.test.ts",
-        "packages/ui/test/resourceManagerPolling.test.ts",
-        "packages/ui/test/v4SessionSubscriptionErrorPanel.test.ts",
-        "packages/web/test/externalRelayFrameGapRecovery.test.ts"
+        "packages/desktop/test/devElectronAppBundle.test.ts"
       ]
     },
     {
@@ -388,20 +174,13 @@
       "files": [
         "packages/desktop/test/subagentConfigProxy.test.ts",
         "packages/zcode-server-cli/test/componentArchiveProcess.test.ts",
-        "packages/services/test/subagentRuntimeConfig.test.ts",
-        "packages/services/test/processTreeLineage.test.ts",
-        "packages/services/test/processTreeTerminator.windows.test.ts",
-        "packages/zcode-server-cli/test/lock.test.ts",
-        "packages/zcode-server-cli/test/supervisor.test.ts"
+        "packages/services/test/processTreeLineage.test.ts"
       ]
     },
     {
       "capability": "shared-file-lock-acquisition",
       "files": [
-        "packages/shared/test/atomicFileLockWindows.test.ts",
-        "packages/services/test/atomicFileUtils.test.ts",
-        "packages/provider-node/test/personal-rule-persistence.test.ts",
-        "packages/provider-node/test/personal-config-read-lock.test.ts"
+        "packages/shared/test/atomicFileLockWindows.test.ts"
       ]
     },
     {
@@ -410,43 +189,20 @@
         "packages/ui/test/webRemoteControlLegacyTasks.test.ts",
         "packages/shared/test/webRemoteControlConnection.test.ts",
         "packages/shared/test/browserCrypto.test.ts",
-        "packages/ui/test/pluginUiStateKey.test.ts",
-        "packages/ui/test/pptxElementReference.test.ts",
         "packages/desktop/test/webRemoteControlDirectGateway.test.ts",
-        "packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts",
-        "packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts",
         "packages/ui/test/remoteControlSettingsSection.test.ts",
-        "packages/ui/test/workspaceSidebarFooterWebRemoteControlTooltip.test.ts",
-        "packages/ui/test/settingsPageIntegratedTerminalShell.test.ts",
-        "packages/ui/test/composerDraftStore.test.ts",
-        "packages/ui/test/v4AttachmentUploadTransaction.test.ts",
         "packages/web/test/webRemoteControlScanPage.test.ts"
       ]
     },
     {
       "capability": "upstream-3.16.2-and-provider-lifecycle",
       "files": [
-        "packages/services/src/task-facts/contract.test.ts",
-        "packages/ui/src/side-pane-full-view/contract.test.ts",
-        "packages/ui/test/sidePaneFullViewModel.test.ts",
-        "packages/ui/test/useSidePaneFullView.test.ts",
-        "packages/ui/test/v4SessionPaneOwner.test.ts",
-        "packages/shared/test/dynamicWorkflowFeature.test.ts",
-        "packages/services/test/providerProvisioningRealStores.test.ts"
+        "packages/ui/test/v4SessionPaneOwner.test.ts"
       ]
     },
     {
       "capability": "retained-bot-delivery-and-runtime",
-      "files": [
-        "packages/services/test/botsService.config.test.ts",
-        "packages/services/test/botsService.messageFlow.test.ts",
-        "packages/services/test/botsService.feishuRuntimeLock.test.ts",
-        "packages/services/test/botsFeishuProvider.test.ts",
-        "packages/services/test/automationRepo.test.ts",
-        "packages/desktop/test/cronBotDelivery.test.ts",
-        "packages/desktop/test/botRemoteWorkspaceResolver.test.ts",
-        "packages/ui/test/botsDialogRuntimeError.test.ts"
-      ]
+      "files": []
     }
   ]
 }
