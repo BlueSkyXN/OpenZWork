@@ -46,6 +46,13 @@ import { mergeMcpServerStatusSnapshots } from "@/store/mcpStoreStatusList.js";
 
 let mcpPlatformService: McpPlatformService | null = null;
 
+// OpenZWork 保留：目录服务由宿主注入（上游改为 options 传参，我方测试与装配仍用 setter）。
+let mcpDirectoryService: McpDirectoryService | null = null;
+
+export function setMcpStoreDirectoryService(service: McpDirectoryService | null): void {
+  mcpDirectoryService = service;
+}
+
 export function setMcpStorePlatform(platform: McpPlatformService | null): void {
   mcpPlatformService = platform;
 }
@@ -223,8 +230,7 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       // 到用户级 ZCode Agent MCP 的迁移；目录服务只用于远端 workspace 覆盖路由。
       return null;
     }
-    // 修复原因：mcpDirectoryService 变量在净化时被删但引用残留（基线既有错）；目录服务只剩两层 fallback。
-    return directoryService ?? state.currentDirectoryService ?? null;
+    return directoryService ?? state.currentDirectoryService ?? mcpDirectoryService;
   }
 
   function commitState(partial: {

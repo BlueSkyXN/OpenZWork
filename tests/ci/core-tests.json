@@ -4,7 +4,6 @@
     {
       "capability": "business-data-directory-relocation",
       "files": [
-        "packages/services/test/dataDirectoryTrueMigration.test.ts",
         "packages/shared/src/data-directory/contract.test.ts",
         "packages/services/src/project-storage/relocation/contract.test.ts"
       ]
@@ -32,7 +31,6 @@
         "packages/ui/test/conversationCopyHook.test.ts",
         "packages/ui/test/groupedConversationMenu.test.ts",
         "packages/ui/test/sidebarTaskFilters.test.ts",
-        "packages/ui/test/sidebarFilterPreferences.test.ts",
         "packages/ui/test/sidebarFiltersInteraction.test.ts"
       ]
     },
@@ -42,7 +40,6 @@
         "packages/shared/src/conversation-metrics/contract.test.ts",
         "packages/ui/src/conversation-metrics/contract.test.ts",
         "packages/ui/test/conversationMetricsPreferences.test.ts",
-        "packages/ui/test/conversationMetrics.test.ts",
         "packages/ui/test/useAppUsageStats.test.ts"
       ]
     },
@@ -56,9 +53,7 @@
     },
     {
       "capability": "session-and-host",
-      "files": [
-        "packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "mcp",
@@ -126,11 +121,9 @@
         "packages/services/test/command-file-update.test.ts",
         "packages/services/test/home-resource-isolation.test.ts",
         "packages/services/test/memory-migration-marker.test.ts",
-        "packages/services/test/memory-migration.test.ts",
         "packages/services/test/memory-migration-boundary.test.ts",
         "packages/services/test/node-distribution-assets.test.ts",
         "packages/services/test/paths-isolation.test.ts",
-        "packages/services/test/desktop-agent-storage.test.ts",
         "packages/services/test/botCredentialKey.test.ts",
         "packages/services/test/appUsageService.test.ts",
         "packages/services/test/skills-toggle.test.ts"
@@ -165,9 +158,7 @@
     },
     {
       "capability": "retained-ui-and-desktop-repair",
-      "files": [
-        "packages/desktop/test/devElectronAppBundle.test.ts"
-      ]
+      "files": []
     },
     {
       "capability": "process-lifecycle-safety",

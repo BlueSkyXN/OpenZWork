@@ -1,4 +1,4 @@
-import { useTabStore } from "@/store/TabStoreProvider.js";
+import { useOptionalTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
 import { useRemoteWorkspaceSessionStore } from "@/store/remoteWorkspaceSessionStore.js";
 import {
@@ -56,7 +56,8 @@ export function useResolvedRemoteWorkspaceSessionId(
   workspaceIdentity?: string | null,
   remoteTarget?: unknown,
 ): string | null {
-  const activeWorkspaceTab = useTabStore((state) => {
+  // OpenZWork：挂载环境（单测/预览）可能没有 TabStoreProvider；无 Provider 时视为无活动工作区 tab。
+  const activeWorkspaceTab = useOptionalTabStore((state) => {
     if (!workspacePath || !state.activeTabId) {
       return null;
     }
