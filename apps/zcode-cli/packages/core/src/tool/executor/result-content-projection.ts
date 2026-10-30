@@ -4,12 +4,6 @@ import {
   type ModelMessageContentBlock,
 } from "@zcode/contracts";
 import type { ToolEntry, ToolResultSerialization } from "../types.js";
-import { isPersistedOutputContent } from "../result-persistence-format.js";
-
-export interface HookStringProjection {
-  content: string;
-  truncated: boolean;
-}
 
 const TOOL_REFERENCE_TEXT_TRUNCATION_MARKER = "[Tool result text truncated by resultBudget]";
 
@@ -59,6 +53,9 @@ export function projectToolReferenceContent(
   };
 }
 
+// OpenZWork 净化：上游此处导出 Official CUA 截断标记/错误与 projectOfficialCuaStructuredContent
+// （@zcode/zcode-cua 帧 contract 域）；该域已净化，保留我方 Hook 附加投影。
+
 export function appendHookToStringContent(
   content: string,
   suffix: string,
@@ -71,9 +68,11 @@ export function appendHookToStringContent(
   }
   return {
     content: fitContentWithSuffix(content, maxBytes, suffix, previewDirection),
+
     truncated: true,
   };
 }
+
 
 export function appendHookToPersistedArtifactPreview(
   content: string,
@@ -114,6 +113,7 @@ export function projectHookAugmentedModelContent(input: {
     ...(budgetedText.length > 0 ? [{ type: "text" as const, text: budgetedText }] : []),
   ];
 }
+
 
 export function fitContentWithSuffix(
   content: string,
@@ -162,49 +162,6 @@ export function stringifyOutputForModel(output: unknown, entry: ToolEntry): Mode
   } catch {
     return String(output);
   }
-}
-
-export function isPersistedArtifactPreview(serialization: ToolResultSerialization): boolean {
-  return (
-    serialization.budgetStrategy === "artifact" &&
-    serialization.truncated &&
-    typeof serialization.artifactPath === "string" &&
-    serialization.artifactPath.length > 0 &&
-    isPersistedOutputContent(serialization.content)
-  );
-}
-
-function appendHookContextToModelContent(
-  content: ModelMessageContent,
-  hookContext: string,
-): ModelMessageContent {
-  if (typeof content === "string") return `${content}\n\n${hookContext}`;
-  return [...content, { type: "text", text: hookContext }];
-}
-
-function hasPreservedStructuredBlocks(
-  content: ModelMessageContent,
-): content is ModelMessageContentBlock[] {
-  return Array.isArray(content) && content.some(shouldPreserveStructuredBlock);
-}
-
-function shouldPreserveStructuredBlock(block: ModelMessageContentBlock): boolean {
-  if (block.type === "text") return false;
-  if (block.type === "file" && typeof block.text === "string" && block.text.length > 0) {
-    return false;
-  }
-  return true;
-}
-
-function budgetedTextFromStructuredContent(content: ModelMessageContentBlock[]): string {
-  return content
-    .map((block) => {
-      if (block.type === "text") return block.text;
-      if (block.type === "file" && typeof block.text === "string") return block.text;
-      return "";
-    })
-    .filter((text) => text.length > 0)
-    .join("\n\n");
 }
 
 function fitStringToBytes(value: string, maxBytes: number, direction: "head" | "tail"): string {

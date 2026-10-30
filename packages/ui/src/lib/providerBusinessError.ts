@@ -12,6 +12,7 @@
  * | 请求过频       | 3002/429 | 429 | 限流提示，稍后重试 |
  * | 上游 HTTP 异常 | 2007 | 500  | 可重试；刷新配额，勿本地扣额度 |
  */
+// 净化保留：上游 3102/3106（闲时票据过期/运行超时）属闲时任务域，WP-09 全仓封禁，不入码表。
 
 const PROVIDER_BUSINESS_ERROR_CODES = [
   "1006",
@@ -79,6 +80,7 @@ export function isProviderBusinessErrorCode(
 }
 
 export function getProviderBusinessErrorMessageId(code: string | undefined): string | undefined {
+  // 净化保留：上游闲时票据过期标记分支依赖已删除的闲时域符号，不并入。
   if (!isProviderBusinessErrorCode(code)) {
     return undefined;
   }
@@ -229,6 +231,13 @@ export function resolveStartPlanConcurrentLimitBannerReason(
 /** 与 core `model-errors.ts` 中 anomaly guard 文案保持一致。 */
 export const SUSPICIOUS_EMPTY_MODEL_RESULT_MESSAGE =
   "Model returned no text, no tool calls, and no usage before completing the turn.";
+
+/** 上游 500 类错误：重试前建议刷新配额快照，避免 UI 本地误扣额度。 */
+export function shouldRefreshQuotaOnProviderBusinessRetry(code: string | undefined): boolean {
+  return code === "2007" || code === "1005";
+}
+// 净化保留：上游闲时票据解析函数及 3102/3106 解析链属闲时任务域，
+// 且其依赖的 @zcode/shared 闲时错误判定在本仓已随 WP-09 删除，整段不并入。
 
 export function isSuspiciousEmptyModelResultMessage(message: string | undefined): boolean {
   if (!message) {

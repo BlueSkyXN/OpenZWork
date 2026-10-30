@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdir, rm, writeFile, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -22,6 +22,8 @@ const formalProbeManifest = resolve(
   `${fixtureCheckCase}.json`,
 );
 
+// fork 保留我方 beforeAll：同时合成 pending 与 manual-only 两个准入探针（上游 manual-only 探针
+// plugin-cdn-zip-official-cdn-smoke 依赖官方 CDN 域，我方树中不存在，须由测试自行合成）。
 const createdAdmissionFiles: string[] = [];
 beforeAll(() => {
   for (const [spec, never] of [[pendingSpec, false], [manualOnlySpec, true]] as const) {
@@ -33,8 +35,7 @@ beforeAll(() => {
     createdAdmissionFiles.push(...files);
   }
   writeProbeFile(formalProbeSpec, 'describe("E2E_PLUGIN_FIXTURE_CHECK_PROBE", () => {});\n');
-  writeProbeFile(
-    formalProbeFixture,
+  writeProbeFile(    formalProbeFixture,
     `${JSON.stringify(
       {
         version: 1,
@@ -57,7 +58,7 @@ beforeAll(() => {
       2,
     )}\n`,
   );
-  writeProbeFile(
+  await writeProbeFile(
     formalProbeManifest,
     `${JSON.stringify(
       {
@@ -82,14 +83,24 @@ beforeAll(() => {
       2,
     )}\n`,
   );
+  // 候选已经转正时，准入测试仍使用自己的 pending fixture，不能依赖产品文件的审核状态。
+  await writeProbeFile(
+    resolve(repoRoot, pendingSpec),
+    'describe("E2E_PLUGIN_FIXTURE_CHECK_PROBE", () => {});\n',
+  );
+  for (const file of [formalProbeFixture, formalProbeManifest]) {
+    await writeProbeFile(
+      file.replace(fixtureCheckCase, "plugin-promotion-check-probe"),
+      (await readFile(file, "utf8")).replaceAll(fixtureCheckCase, "plugin-promotion-check-probe"),
+    );
+  }
 });
 
 afterAll(() => {
   for (const file of createdAdmissionFiles) rmSync(file, { force: true });
   rmSync(formalProbeSpec, { force: true });
   rmSync(formalProbeFixture, { force: true });
-  rmSync(formalProbeManifest, { force: true });
-});
+  rmSync(formalProbeManifest, { force: true });});
 
 describe("plugin lifecycle E2E admission scripts", () => {
   it("dry-runs promotion but requires explicit human review before applying", () => {
@@ -133,7 +144,7 @@ function runScript(scriptName: string, args: string[]) {
   );
 }
 
-function writeProbeFile(path: string, content: string): void {
-  mkdirSync(resolve(path, ".."), { recursive: true });
-  writeFileSync(path, content, "utf-8");
+async function writeProbeFile(path: string, content: string): Promise<void> {
+  await mkdir(resolve(path, ".."), { recursive: true });
+  await writeFile(path, content, "utf-8");
 }

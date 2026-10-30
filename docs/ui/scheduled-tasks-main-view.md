@@ -39,13 +39,16 @@
 - UI 手动创建且未绑定会话的任务，执行时新建的空 session 必须使用 deferred persistence；首条 `sendText` admission 先持久化 session 主记录，再写带外键的 `session_input`，禁止用延时规避创建/首发提交顺序。
 - automation 派发创建或恢复带 `automationId` 的执行 task 时，必须通过 session
   `toolDenylist: ["CronCreate", "CronUpdate", "CronDelete"]` 在 runtime 工具注册边界隐藏
-  automation 写工具，只保留只读 CronList。不要把 runId 写入 task meta：
+  automation 写工具，只保留只读 CronList 与只作用于本轮 automation 的 CronPauseSelf。不要把
+  runId 写入 task meta：
   runId 属于 `automation_runs` 台账，写进 task meta 会污染 UI 立即执行和绑定会话恢复路径。
 - 对已经 active 的绑定会话，`session/resume` 不会重建 runtime；host 派发 prompt 时还必须把
-  `automationId` 随本轮 `sendText/sessionSend` 透传。CLI 在该 turn 的 provider 请求中临时移除
+  `automationId` 随本轮 `sendText/sessionSend` 透传。该字段必须来自 Host 调度派发，`inputId`/runId
+  只用于追踪和幂等，不能恢复或替代授权身份。CLI 在该 turn 的 provider 请求中临时移除
   `CronCreate/CronUpdate/CronDelete`，让模型无法递归创建、自改或自删；`activeAutomationId` 与
   `automation-port` 的 CronCreate 拒绝逻辑继续作为伪造创建调用的兜底，命中时不得调用
-  `automation/create`。turn 结束后恢复原工具面，普通用户输入不受影响。
+  `automation/create`。同一个 `automationId` 也是 `CronPauseSelf` 的唯一目标来源，普通用户轮
+  不暴露该工具，规则见 `docs/automation-edit-status.md`。turn 结束后恢复原工具面，普通用户输入不受影响。
 - Highspeed 期间仍允许用户调用 `CronCreate`；创建记录保存会话稳定 `modelSelection`，不保存当前 Turn
   指向加速卡内建 Provider 的临时选型。后续定时执行以 `automationId` 为最终门禁，使用记录中保存的
   provider/model，并忽略误传的加速 `modelSelection` / `modelExecution`，因此不会抽取、复用或安装
@@ -77,7 +80,8 @@ busy session
   -> enqueueDeferredInput(toolDisallowlist=[CronCreate,CronUpdate,CronDelete])
   -> queue replay / drain
   -> startPromptTurn(toolDisallowlist=[CronCreate,CronUpdate,CronDelete])
-  -> provider automation tools 只保留 CronList
+  -> 保留 Host 显式注入的本轮 automationId（不从 inputId/runId 推导）
+  -> provider automation tools 只保留 CronList + CronPauseSelf
 
 第二次 Run Now（首个 run 未终态）
   -> repo.runNow 看到 running=1
@@ -117,6 +121,24 @@ body portal 更新 fixed left
 路径执行语义：workspacePath
 ```
 
+- 自动化主视图与编辑页复用共享菜单规则：Dropdown Menu、Context Menu 与 Select 浮层中的相邻选项统一保留 2px 纵向间距；创建方式、任务操作、工具栏和调度选择不得再各自覆盖为无间距列表。
+- 新建表单既没有 canonical conversation workspace、也没有有效本地项目候选时，工作区选择必须收敛为 `null`，以普通弱提示引导用户先打开可用项目，并禁用创建；模型预览和提交边界均不得回退到 `defaultWorkspacePath` 或不可用目录。候选恢复后优先保留仍有效的当前选择，其次选择仍在候选中的默认目标，最后选择首个有效目标。编辑已有任务不受当前候选过滤影响，继续使用任务已持久化的 `workspacePath` / `workspaceIdentity`。
+- 桌面远程 workspace 的「通过对话创建」不得绕过本地项目限制；手机 `/remote` 完全隐藏 Automations 导航和路由，陈旧路由回退聊天。
+- 「通过对话创建」切回当前 workspace 的会话草稿时，输入框预填可直接发送的 Showcase“每个工作日 9 点，汇总当前项目的代码变更和待跟进事项。”，用一句话示范“周期 + 项目范围 + 任务目标”，但不得自动发送；用户可继续修改。桌面 continuous 与普通 Web 草稿使用同一预填语义，手机 `/remote` 不暴露该入口。
+- 工作区选择器必须传递完整 workspace 身份，选中态、模型预览、保存和派发统一按 `workspaceIdentity?.trim() || workspacePath` 判定，禁止只传 `workspacePath` 后反查候选。它复用普通会话的工作区菜单时，定时任务项目 chip 不显示脱离项目的 `X`，但下拉菜单必须保留一个「不在项目中工作」固定项，并复用会话侧文案、`MessageCircle` 图标和选中态；conversation backing workspace 不得再作为普通项目行渲染。进入已有任务详情时也必须按 automation 的 workspaceKey 与当前 canonical conversation workspace 候选匹配恢复 purpose：匹配成功后锁定的项目字段继续展示「不在项目中工作」和 `MessageCircle`，不得退化为 `default` 与项目文件夹图标；无法匹配的历史目标才回退到普通路径名称。普通会话草稿仍保留 `X` 与「不在项目中工作」，不得为了定时任务修改全局 hover/focus 交互。
+- 会话轮尾的定时任务创建卡片是本轮工具结果的最终状态投影，不是所有成功 `CronCreate` 的历史列表。
+  UI 必须按 `automationId` 顺序归并成功的 `CronCreate` / `CronDelete`：后续成功删除会移除对应创建卡片，
+  删除失败或取消不影响卡片；普通工具历史仍完整展示。多个未被删除的创建结果继续按创建顺序展示。
+  `CronPauseSelf` 只出现在 automation 执行轮，以通用工具行展示，不生成也不移除卡片；暂停后的状态
+  在列表挂载或手动刷新时读取。
+- 会话内 `CronCreate` 成功卡片点击「去到定时任务」时，必须携带结果中的 `automationId` 进入定时任务主视图；列表数据就绪后直接打开对应任务详情，而不是停留在列表。导航目标是 renderer-local 一次性状态：成功定位后立即消费；列表加载完成仍找不到目标时提示任务不存在、消费意图并停留列表，避免失效意图长期保留。该状态不得进入 relay、main 或 session realtime 状态。
+- 已创建任务区最多同时展示 8 张卡片；桌面双列展示 4 行，手机单列展示 8 行，超出部分在卡片区内纵向滚动查看，不改变任务的数据加载和排序。
+- 已创建任务卡片不展示所属项目名称或文件夹图标，保持标题、指令、运行状态与次数为主要信息；任务的 workspacePath / workspaceIdentity 仍保留用于编辑、执行和隔离。
+- 卡片的「下次运行」时间在 1 个月内展示相对时间；超过 1 个月展示本地绝对时间，避免远期任务出现难读的超大天数。
+- 已创建任务区与下方「更多灵感」之间使用整宽分割线区分内容层级；分割线使用与 Card 描边一致的 `card-border` 语义颜色，保证 Light / Dark 下层级清晰。
+
+
+<!-- 闲时任务按钮/名额与首页 Client Scenes 云端模板（scheduled-task scene，营销触达域）属净化域，相关条目不随上游引入；其余 Automations UI 规则随上游 -->
 - 模板图标把远程 prompt item 的 `img` 解释为 Lucide canonical 名称并按名动态加载，不再发起图片 URL 请求。SVG 使用 `currentColor` 继承图标槽字色；空白值、未知名称或模块加载失败都进入本地回退。回退图标继续按远程 item id 的已知任务语义映射为 Lucide：morning/standup 使用 `Target`、risk/CI 使用 `Activity`、release/file 使用 `FileText`，其它动态模板统一回退 `List`；`imgs` 不参与图标选择，也不得为未知服务端模板临时引入页面内近似图标。
 - Settings 页当前仍通过 `settingsPageConfig.ts` 暴露 Automations 分区，并直接渲染 `AutomationsSection`；该入口没有工作区主视图的 Automations `main` 锚点，因此其 Toast 必须走全窗口居中回退。若未来移除此兼容入口，再同步删除本条事实说明。
 - 定时任务主视图不渲染 `WorkspaceHeader` 或草稿标题栏占位，避免出现聊天 / 项目顶部栏。

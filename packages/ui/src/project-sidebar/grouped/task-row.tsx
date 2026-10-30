@@ -40,10 +40,8 @@ function GroupedTaskRowComponent({
   currentGroupId,
   groups,
   remoteSessionId,
-  activeWorkspacePath,
-  activeWorkspaceIdentity,
-  activeTaskId,
-  mobileActiveTaskKey,
+  isActive,
+  isMobileActive,
   workspaceLabel,
   onSelectTask,
   onCloseTask,
@@ -62,10 +60,8 @@ function GroupedTaskRowComponent({
   currentGroupId?: string;
   groups: TaskGroupMenuItem[];
   remoteSessionId?: string;
-  activeWorkspacePath: string;
-  activeWorkspaceIdentity?: string;
-  activeTaskId: string | null;
-  mobileActiveTaskKey?: string | null;
+  isActive: boolean;
+  isMobileActive: boolean;
   workspaceLabel: string;
   onSelectTask: (workspacePath: string, taskId: string, workspaceIdentity?: string) => void;
   onCloseTask: (task: ZCodeTaskMeta) => void;
@@ -124,12 +120,8 @@ function GroupedTaskRowComponent({
   const taskChangeParts = formatGroupedTaskHoverChangeParts(getTaskChangeSummary(task));
   const taskTimeLabel = formatTaskRelativeTime(task.updatedAt, intl);
   const isTaskCron = isCronTask(task);
-  // cron 身份按持久 meta 标记判断
-  // 会话溯源，且让每一行多背一个全局 store 订阅。
-  const isActive =
-    buildTaskWorkspaceKey(activeWorkspacePath, activeWorkspaceIdentity) === workspaceKey &&
-    activeTaskId === task.taskId;
-  const isMobileActive = mobileActiveTaskKey === `${workspaceKey}:${task.taskId}`;
+  // 净化保留：上游闲时任务角标判定属闲时任务域（WP-09）；选中态已由父级
+  // rowSelection 以 props 传入，旧的本地重算与 isTaskOffPeak 一并删除。
   const statusDotClassName =
     leadingIndicator === "error"
       ? "bg-destructive"

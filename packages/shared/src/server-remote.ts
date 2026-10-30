@@ -40,6 +40,10 @@ export const serverRemoteInfoSchema = z.object({
     desktopContinuous: z.literal(true),
     websocketRpc: z.literal(true),
     virtualProjects: z.literal(true).optional(),
+    // OpenZWork：conversation-telemetry 与进程资源观测为保留域，能力声明随上游恢复。
+    // 旧 Server 缺少新增 dynamic event，必须先声明能力再订阅，避免异常打进对端读循环。
+    processResourceTelemetry: z.boolean().optional(),
+    remoteConversationTelemetry: z.boolean().optional(),
   }),
 });
 
@@ -63,6 +67,7 @@ export const serverRemoteInfoOutputSchema = z
         virtualProjects: z.literal(true).optional(),
         // 输入和严格输出保持同一能力合同，否则新 Server 会在监听前被自身 schema 拒绝。
         processResourceTelemetry: z.boolean().optional(),
+        remoteConversationTelemetry: z.boolean().optional(),
       })
       .strict(),
   })

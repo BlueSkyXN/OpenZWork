@@ -45,14 +45,9 @@ import { isRemoteWorkspaceDisconnectedError } from "@/lib/remoteWorkspaceService
 import { mergeMcpServerStatusSnapshots } from "@/store/mcpStoreStatusList.js";
 
 let mcpPlatformService: McpPlatformService | null = null;
-let mcpDirectoryService: McpDirectoryService | null = null;
 
 export function setMcpStorePlatform(platform: McpPlatformService | null): void {
   mcpPlatformService = platform;
-}
-
-export function setMcpStoreDirectoryService(service: McpDirectoryService | null): void {
-  mcpDirectoryService = service;
 }
 
 interface UpdateServerStatusOptions {
@@ -73,11 +68,8 @@ interface McpStoreState {
   isConfigLoaded: boolean;
   currentSessionId: string | null;
   loadConfig: () => void;
-  loadMcpFromUserDirectory: (
-    directoryService?: McpDirectoryService | null,
-    workspaceIdentity?: string,
-    authorityKey?: string,
-  ) => Promise<boolean>;
+  /** 重新读取当前绑定目标的 MCP 配置；要换目标请用 ensureLoadedForWorkspace。 */
+  loadMcpFromUserDirectory: () => Promise<boolean>;
   ensureLoadedForWorkspace: (
     workspacePath?: string,
     directoryService?: McpDirectoryService | null,
@@ -352,7 +344,7 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       });
     },
 
-    loadMcpFromUserDirectory: async (directoryService, workspaceIdentity, authorityKey) => {
+    loadMcpFromUserDirectory: async () => {
       if (typeof window === "undefined") {
         return false;
       }
@@ -393,11 +385,16 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         return await loadMcpPromise;
       }
 
-      loadMcpWorkspaceKey = latestWorkspaceKey;
+      const { currentProjectPath, currentWorkspaceIdentity } = get();
+      const latestWorkspacePath = currentProjectPath || undefined;
+      loadMcpWorkspaceKey = requestWorkspaceKey;
       loadMcpPromise = (async () => {
         try {
+          // 等待上一目标 load 期间可能再次切换；目录服务取等待后的最新绑定，
+          // 与 requestWorkspaceKey 属于同一组目标，不能拿 B 的服务读取 C 的路径。
+          const activeDirectoryService = resolveMcpDirectoryService();
           logger.info(
-            `[mcpStore] loadMcpFromUserDirectory workspace=${latestWorkspacePath ?? "<none>"} identity=${latestWorkspaceIdentity ?? "<none>"}`,
+            `[mcpStore] loadMcpFromUserDirectory workspace=${latestWorkspacePath ?? "<none>"} identity=${currentWorkspaceIdentity ?? "<none>"}`,
           );
           let servers = await fetchNativeMcpServers(
             mcpPlatformService,
@@ -475,11 +472,7 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         );
       }
 
-      return await get().loadMcpFromUserDirectory(
-        directoryService,
-        normalizedWorkspaceIdentity,
-        normalizedAuthorityKey,
-      );
+      return await get().loadMcpFromUserDirectory();
     },
 
     saveConfig: () => {
@@ -748,7 +741,11 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
 
       const result: ZCodeAgentMcpServer[] = [];
       for (const server of candidates.values()) {
-        const zcodeAgentServer = convertToZCodeAgentMcpServer(server.name, server.config);
+        const zcodeAgentServer = convertToZCodeAgentMcpServer(
+          server.name,
+          server.config,
+          server.scope === "workspace" ? "workspace" : "user",
+        );
         if (zcodeAgentServer) result.push(zcodeAgentServer);
       }
       return result;

@@ -39,6 +39,8 @@ export function createStatusPersister<T>(
   statusFile: string,
   getStatus: () => T,
   onError: (error: unknown) => void,
+  /** status.json 只能由持有 data-root lock 的 Supervisor 写；返回 false 时跳过本次写入。 */
+  canWrite: () => Promise<boolean>,
 ): () => Promise<void> {
   let inFlight: Promise<void> = Promise.resolve();
   return async () => {
@@ -46,7 +48,9 @@ export function createStatusPersister<T>(
     // 会全部丢失；status.json 只是观测快照，失败时记录告警并继续服务生命周期。
     inFlight = inFlight
       .then(async () => {
-        // OW-P013：Windows 读者的短暂共享占用会让最终 stopped 替换失败；复用有界重试，保留原串行队列。
+        // OpenZWork：保留 OW-P013 有界重试写盘（Windows 读者短暂共享占用不再让 stopped 替换失败），
+        // 同时保留上游 canWrite() 预检（只读文件系统时静默跳过观测快照）。
+        if (!(await canWrite())) return;
         await atomicWritePrivateTextFile(statusFile, `${JSON.stringify(getStatus(), null, 2)}\n`);
       })
       .catch((error: unknown) => onError(error));

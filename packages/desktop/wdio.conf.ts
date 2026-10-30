@@ -1,4 +1,9 @@
 /* eslint-disable max-lines -- 沿用上游 WDIO 单入口，集中维护隔离启动、窗口屏障、进程回收和报告顺序。 */
+// fork 净化（3.17.1 合并）：上游 wdio 重构为 coding-plan/highspeed/entitlement/ttft-otlp/request-security/
+// conversationShare/oauth 401 mock 簇 + E2E_PROVIDER_PRESETS fixture-replay 基建（166 处引用，对应 helper
+// 均在我方 stage1 净化中删除、文件不存在），无法部分采纳；本文件保留我方 3.16.2 收敛版（本地配对 relay、
+// personal provider seed、SSH release 资产）。上游中性改进（chromedriver server、desktop build lock、
+// spec 过滤、beforeSession 统一入口）作为后续增量单独评估。
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";

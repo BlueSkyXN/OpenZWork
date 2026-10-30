@@ -1,3 +1,4 @@
+// 双保留：本仓会话指标（TurnMetricsAction）保留；上游 useShallow 供 highspeed 订阅（净化域）不并入。
 import { TurnMetricsAction } from "@/conversation-metrics/index.js";
 import type { TurnHeaderRow } from "@zcode/shared/zcode-protocol-v4";
 import { BotTopicPreparation } from "@/v4/BotTopicPreparation.js";
@@ -5,9 +6,14 @@ import { useBotTopicInterruption } from "@/v4/botGroupDeliveryContext.js";
 import { ConnectedBotGroupDeliveryAction } from "@/v4/BotGroupDeliveryAction.js";
 /* eslint-disable max-lines -- turn group 需要在同一处维护普通 assistant 与后台结果的严格行序，拆分会重复 actions/preview/tail 协议。 */
 import { useIsOfficeMode } from "@/hooks/useInterfaceMode.js";
+// 净化保留：上游 Highspeed 加速卡 UI 链（HighspeedMessageMeta/EyeIcon/useSyncExternalStore 订阅）
+// 属净化域；仅保留中性的重试错误码。
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
-import { type ZCodeApiRetryStatus } from "@zcode/shared";
+import {
+  zcodeProviderRuntimeHeadersErrorCode,
+  type ZCodeApiRetryStatus,
+} from "@zcode/shared";
 import {
   TID_CHAT_ASSISTANT_HISTORY_CONTENT,
   TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
@@ -39,6 +45,7 @@ import {
   type CronCreateAutomationSummary,
 } from "@/ToolCallBlocks/renderers/cron-create.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+// 净化保留：上游加速分享卡/turn store 订阅链（专用模块目录）属净化域，模块不存在，不并入。
 import type { AssistantPreviewCard } from "@/lib/assistantPreviewCards.js";
 import { useAssistantCodeCommentFeatureEnabled } from "@/AssistantCodeCommentFeatureProvider.js";
 import {
@@ -99,6 +106,8 @@ interface ConversationTurnGroupProps {
     attachments?: readonly AttachmentRef[],
     workspaceMode?: "preserve" | "rewind",
   ) => Promise<CommandAck | boolean | void> | CommandAck | boolean | void;
+  /** 会话首轮：顶部留白由 Timeline 的状态胶囊 inset 提供，本轮不再留顶部 padding。 */
+  topClearedByTimeline?: boolean;
 }
 
 interface CronAutomationTurnCard {
@@ -127,17 +136,24 @@ function toRetryStatus(apiRetry: ApiRetryState): ZCodeApiRetryStatus {
 function TurnChatLoadingSlot({
   apiRetry,
   eligible,
+  initialElapsedMs,
 }: {
   apiRetry: ApiRetryState | null;
   eligible: boolean;
+  initialElapsedMs: number;
 }) {
   const { intl, locale } = useZCodeIntl();
   const retryStatus = useMemo(() => (apiRetry ? toRetryStatus(apiRetry) : null), [apiRetry]);
-  // 前两次短暂恢复对用户等价于普通加载；保留 apiRetry 运行态，但只在
+  // 配置读取尚未发出模型请求，首次恢复就显示进度，避免用户误以为消息已发送。
+  // 其余前两次短暂恢复对用户等价于普通加载；保留 apiRetry 运行态，但只在
   // 第三次重试开始后显示计数。必须在 retry/loading 分支前收敛，否则会留下空 slot，
   // 而不是回退到 ChatLoading。
   const visibleRetryStatus =
-    retryStatus && retryStatus.attempt >= MIN_VISIBLE_API_RETRY_ATTEMPT ? retryStatus : null;
+    retryStatus &&
+    (apiRetry?.reasonCode === zcodeProviderRuntimeHeadersErrorCode.configNetwork ||
+      retryStatus.attempt >= MIN_VISIBLE_API_RETRY_ATTEMPT)
+      ? retryStatus
+      : null;
   if (!visibleRetryStatus && !eligible) return null;
   return (
     <div data-zcode-chat-loading-slot="true" className="min-h-5">
@@ -146,7 +162,7 @@ function TurnChatLoadingSlot({
       ) : (
         // running 是 ChatLoading 的权威事实；额外静默计时会让 projection
         // 更新反复重启可见性，并使 UI 晚于真实状态。
-        <ChatLoading loading data-testid={TID_CHAT_LOADING} size="sm" />
+        <ChatLoading loading data-testid={TID_CHAT_LOADING} initialElapsedMs={initialElapsedMs} />
       )}
     </div>
   );
@@ -463,6 +479,7 @@ function AssistantHistoryStatus({
 function ConversationWorkSegmentFlow({
   metricsHeader,
   segment,
+  turnRunning,
   sourceCommandIds,
   context,
   onFork,
@@ -479,6 +496,7 @@ function ConversationWorkSegmentFlow({
 }: {
   metricsHeader?: TurnHeaderRow;
   segment: ConversationTurnWorkSegment;
+  turnRunning: boolean;
   sourceCommandIds: readonly string[];
   context: ConversationRowRenderContext;
   onFork?: (target: ConversationRowTarget) => void;
@@ -498,17 +516,18 @@ function ConversationWorkSegmentFlow({
     setHistoryOpen(segment.assistantHistoryDefaultOpen);
   }, [segment.assistantHistoryDefaultOpen, segment.key]);
 
-  const shouldShowHistoryStatus = segment.workStatus !== undefined;
+  const shouldShowHistoryStatus =
+    !turnRunning && segment.workStatus !== undefined && segment.workStatus.state !== "running";
   const firstAssistantFlowItemIndex = segment.flowItems.findIndex(
     (item) => item.kind !== "userInput",
   );
   let historyChunkIndex = 0;
-  const open = segment.assistantHistoryDefaultOpen ? true : historyOpen;
+  const open = turnRunning || segment.assistantHistoryDefaultOpen || historyOpen;
 
   return (
     <Collapsible
       open={open}
-      onOpenChange={segment.assistantHistoryDefaultOpen ? undefined : setHistoryOpen}
+      onOpenChange={turnRunning || segment.assistantHistoryDefaultOpen ? undefined : setHistoryOpen}
       // 外层 flex gap 不属于 Radix 测量的 content 高度，收起到 0 后会在
       // display:none 的最后一帧再少 20px。普通兄弟用外边距保持原盒模型，history
       // 的间距则放进动画层。
@@ -655,7 +674,11 @@ function ConversationTurnFlow({
           stageTailIsRunning={unit.isRunning}
           assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
         />
-        <TurnChatLoadingSlot apiRetry={apiRetry} eligible={showLoading} />
+        <TurnChatLoadingSlot
+          apiRetry={apiRetry}
+          eligible={showLoading}
+          initialElapsedMs={unit.workStatus?.durationMs ?? 0}
+        />
       </div>
     );
   }
@@ -699,12 +722,13 @@ function ConversationTurnFlow({
   // 即使恢复了 guide 的 row 全序，也不能让所有 history chunk 共享同一个
   // Collapsible。accepted guide 现在由 CLI workSegments 定界，每段组件自行维护折叠状态。
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 [&>[data-zcode-chat-loading-slot]:not(:first-child)]:-mt-2">
       {workSegments.map((segment) => (
         <ConversationWorkSegmentFlow
           key={segment.key}
           metricsHeader={segment === workSegments[0] ? (unit.header ?? undefined) : undefined}
           segment={segment}
+          turnRunning={unit.isRunning}
           sourceCommandIds={[
             ...segment.flowItems.flatMap((item) =>
               item.kind === "userInput" && item.row.sourceCommandId
@@ -729,7 +753,11 @@ function ConversationTurnFlow({
           canRetryLatestAssistant={canRetryLatestAssistant}
         />
       ))}
-      <TurnChatLoadingSlot apiRetry={apiRetry} eligible={showLoading} />
+      <TurnChatLoadingSlot
+        apiRetry={apiRetry}
+        eligible={showLoading}
+        initialElapsedMs={unit.workStatus?.durationMs ?? 0}
+      />
     </div>
   );
 }
@@ -800,6 +828,21 @@ function ConversationBackgroundResultWork({
   assistantCodeCommentProjectionEnabled: boolean;
   assistantPreviewCardsAutoOpenKey?: string;
 }) {
+  const [historyOpen, setHistoryOpen] = useState(unit.assistantHistoryDefaultOpen);
+  useEffect(() => {
+    setHistoryOpen(unit.assistantHistoryDefaultOpen);
+  }, [unit.assistantHistoryDefaultOpen, unit.key]);
+  const open =
+    !unit.workStatus || unit.isRunning || unit.assistantHistoryDefaultOpen || historyOpen;
+  const historySegment: ConversationTurnWorkSegment = {
+    key: unit.key,
+    flowItems: unit.flowItems,
+    assistantWorkRows: unit.assistantWorkRows,
+    assistantHistoryRows: unit.assistantHistoryRows,
+    assistantFollowingRows: unit.assistantFollowingRows,
+    assistantHistoryDefaultOpen: unit.assistantHistoryDefaultOpen,
+    ...(unit.workStatus ? { workStatus: unit.workStatus } : {}),
+  };
   const hasHistory = unit.assistantHistoryRows.length > 0;
   const hasFollowing = unit.assistantFollowingRows.length > 0;
   const showLoading = shouldShowTurnChatLoading({
@@ -824,8 +867,7 @@ function ConversationBackgroundResultWork({
     fetchFileChanges: context.fetchFileChanges,
   });
 
-  // 后台结果已经由独立唤醒轮总结过；复用普通 assistant 的工时折叠
-  // 会显示不准确的分段耗时，并让一段短总结产生没有意义的收起状态。
+  // 后台唤醒轮与普通回复使用相同的完成态折叠；耗时只统计本次唤醒轮。
   //
   // workflow run 的 workflow 通知带结构化载荷时改渲染既有工具卡语法的通知行（替换裸标题行）；
   // 载荷缺席（批量轮、旧 transcript、bash/subagent）→ 原样退回标题行。
@@ -879,7 +921,19 @@ function ConversationBackgroundResultWork({
       : undefined;
 
   return (
-    <div className="flex flex-col gap-5">
+    <Collapsible
+      open={open}
+      onOpenChange={setHistoryOpen}
+      className="flex flex-col gap-5 [&>[data-zcode-chat-loading-slot]:not(:first-child)]:-mt-2"
+    >
+      {!unit.isRunning && unit.workStatus ? (
+        <AssistantHistoryStatus
+          segment={historySegment}
+          open={open}
+          // 净化保留：上游 highspeed 角标参数属净化域，组件签名不携带。
+          sourceCommandIds={unit.header?.sourceCommandId ? [unit.header.sourceCommandId] : []}
+        />
+      ) : null}
       {workflowNotification ? (
         <WorkflowNotificationToolRow
           notification={workflowNotification}
@@ -896,7 +950,7 @@ function ConversationBackgroundResultWork({
           }
         />
       ) : (
-        <div className="flex w-full border-b border-[var(--color-border)]/50 pb-2">
+        <div className="flex w-full">
           <div
             data-testid={testId(TID_CHAT_BACKGROUND_RESULT_TITLE, unit.key)}
             className="min-w-0 whitespace-pre-wrap break-words text-left text-ui-base text-[var(--color-foreground-subtle)]"
@@ -905,15 +959,19 @@ function ConversationBackgroundResultWork({
           </div>
         </div>
       )}
-      {hasHistory ? (
-        <div className="flex flex-col gap-2">
-          <ConversationAssistantWorkItems
-            rows={unit.assistantHistoryRows}
-            context={context}
-            assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
-          />
+      <CollapsibleContent data-testid={testId(TID_CHAT_ASSISTANT_HISTORY_CONTENT, unit.key)}>
+        <div className="flex flex-col gap-5">
+          {hasHistory ? (
+            <div className="flex flex-col gap-2">
+              <ConversationAssistantWorkItems
+                rows={unit.assistantHistoryRows}
+                context={context}
+                assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
+              />
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </CollapsibleContent>
       {latestAssistantTextRow ? (
         <ConversationTurnRow
           key={`${latestAssistantTextRow.rowId}:${latestAssistantTextRow.entityId ?? ""}`}
@@ -936,8 +994,12 @@ function ConversationBackgroundResultWork({
           assistantCodeCommentProjectionEnabled={assistantCodeCommentProjectionEnabled}
         />
       ) : null}
-      <TurnChatLoadingSlot apiRetry={apiRetry} eligible={showLoading} />
-    </div>
+      <TurnChatLoadingSlot
+        apiRetry={apiRetry}
+        eligible={showLoading}
+        initialElapsedMs={unit.workStatus?.durationMs ?? 0}
+      />
+    </Collapsible>
   );
 }
 
@@ -950,6 +1012,7 @@ function ConversationTurnGroupImpl({
   onRetry,
   onFeedbackChange,
   onEdit,
+  topClearedByTimeline = false,
 }: ConversationTurnGroupProps) {
   const isOfficeMode = useIsOfficeMode();
   const visibleUserRows = useMemo(() => unit.visibleUserInputs, [unit.visibleUserInputs]);
@@ -1107,7 +1170,8 @@ function ConversationTurnGroupImpl({
       data-turn-key={unit.key}
       className={cn(
         "relative mx-auto flex w-full flex-col gap-5 px-4 @md/conversation:px-6 pb-5",
-        startsWithoutUserBubble ? "pt-0" : "pt-14",
+        // 采用上游 topClearedByTimeline 顶距修正；highspeed 紫色流光属净化域，不并入。
+        startsWithoutUserBubble || topClearedByTimeline ? "pt-0" : "pt-14",
       )}
     >
       {unit.leadingBoundaryRows.map((row) => (

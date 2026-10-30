@@ -223,6 +223,10 @@ export interface PluginUiToolCallViewProps {
   surface?: string;
   preferredDisplayMode: McpAppsDisplayMode;
   sidePaneActive: boolean;
+  inlineAllowed: boolean;
+  pluginId: string;
+  pluginName: string;
+  pluginIcon?: string;
   host: PluginUiSidePaneViewProps["host"];
   prefersBorder: boolean;
   /** 被同一逻辑 UI 的较新成功结果替代；只留普通工具结果，不建沙箱或自动开侧栏。 */
@@ -237,6 +241,7 @@ export interface PluginUiToolCallViewProps {
   retryLabel: string;
   openedLabel: string;
   openLabel: string;
+  openButtonLabel: string;
   onWidthChange(width: number): void;
   onOpenSidePane?: () => void;
 }

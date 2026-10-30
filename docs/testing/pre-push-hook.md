@@ -6,8 +6,11 @@
 - `pre-push` 会执行 `pnpm run verify:pre-push`。
 - 根 `pnpm test` 现在只跑单测，不再误把桌面端 `packages/desktop/test/e2e` 当成 Vitest 用例。
 - Bugfix：单测脚本里的 E2E exclude glob 必须加引号；否则 shell 会先把 `packages/desktop/test/e2e/**/*.test.ts` 展开成真实文件列表，导致 Vitest 把多余文件当成 filters，同时又被 exclude 排除，最终报 `No test files found` 并阻止 push。
-- `verify:pre-push` 依次执行 `lint`、`db:schema:check`、`test:architecture`、`architecture:check -- --changed` 和固定核心套件 `test:ci:core`；任一步失败都会阻止 push。
+- `verify:pre-push` 依次执行工作区检查（`scripts/check-push-worktree.mjs`，已吸收自上游）、`lint`、`db:schema:check`、`test:architecture`、`architecture:check -- --changed` 和固定核心套件 `test:ci:core`；任一步失败都会阻止 push。
 - 核心 CI 另通过 `test:repo-scripts` 串行执行 `scripts/test/*.test.mjs`，覆盖该目录全部现存 Node 测试。ARMS 安装补丁已随依赖退役，对应旧测试已清理。
+- 上游 v3.17.1 在同一链路新增两道门禁，OpenZWork 暂未纳入 `verify:pre-push`，按需独立执行：
+  - 过时文档措辞检查（`pnpm docs:stale-phrases:check`，`scripts/check-stale-doc-phrases.mjs`）：脚本登记已作废的说法，扫描 `docs/` 与 `apps/zcode-cli/docs/` 的 Markdown，出现即失败并指向现行规则；`docs/plans/`、`docs/v4-refactor/` 是历史记录，不检查。改规则时把旧说法加进登记表。
+  - 工程 Vitest（engineering project）：`pnpm test:engineering <文件>`（精确清单 `scripts/engineering-test-files.json`）与 `pnpm test:engineering:affected --base <任务起点>`（`--scope push` 用于 push 基线，`--dry-run` 预览选中清单）；独立进程串行执行真实 IO 测试，未执行、零收集、平台跳过或环境失败均不代表测试通过。
 
 这样可以在代码推到远端前，先用更快的静态检查拦住明显问题，再把单测问题拦在本地，同时保留 `pnpm test:e2e` 作为桌面端 E2E 的独立入口。
 
@@ -21,7 +24,7 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 开发者准备 Node / pnpm（mise、nvm 或其他方式）
     → Git hook 保留 push ref 信息并清理 Git local env
     → pnpm run verify:pre-push
-    → lint → schema → 架构治理测试 → 架构检查 → 固定核心单测
+    → 工作区检查 → lint → schema → 架构治理测试 → 架构检查 → 固定核心单测
 ```
 
 - 仓库负责声明工具版本和执行检查；个人环境负责让合适的 Node / pnpm 可被 Git 找到。
@@ -31,13 +34,21 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 - 缺少命令或检查失败仍然阻止 push；hook 不自动安装工具，不静默跳过检查。
 - Node / pnpm 版本以 `mise.toml` 和 `package.json` 为准；hook 沿用调用方准备好的环境。
 
-## Affected Unit Tests
+## 测试边界
 
 ### 独立入口
 
 以下命令供手动选择受影响单测或 lint-staged 调用；默认 `verify:pre-push` 使用前述固定核心套件。
 
-`pnpm test:unit:affected` 使用 Vitest 官方 changed/related 和 Vite 模块依赖分析。薄入口只负责 Git 基线、Push 工作区检查、全量跳过和结果说明；不维护自建依赖图、基线消费者图、来源过滤或 Node 测试选择。
+- 工程 Vitest：pnpm test:engineering <文件>，精确清单见 scripts/engineering-test-files.json。
+- 工程增量：pnpm test:engineering:affected --base <任务起点>；--dry-run 可预览官方依赖图选中清单。
+  pre-push 使用 --scope push；仅选择 engineering 项目，CLI/CUA 仍走独立入口。
+  全量选择按既有规则报告跳过，不把跳过当通过；显式全量使用 pnpm test:engineering。
+- 工程执行工具回归：pnpm test:engineering-tools。
+- 架构及推送工具：pnpm test:architecture；schema：pnpm db:schema:check。
+- Node 工程测试：按受影响文件执行 node --test。
+- CUA：pnpm --filter @zcode/zcode-cua test；Agent CLI 按 apps/zcode-cli/AGENTS.md 执行。
+- 桌面与浏览器验收保留既有入口及生命周期，不由工程检查代替。
 
 | 入口                                         | 官方选择范围                                                                          |
 | -------------------------------------------- | ------------------------------------------------------------------------------------- |

@@ -1,4 +1,5 @@
 import { normalizeRemoteConnectionError, sanitizeRemoteConnectionLog } from "@zcode/shared";
+import { join } from "node:path";
 /* eslint-disable max-lines -- Host 入口集中编排 local/remote service wiring，本次退出保护需要在同一处桥接 host 上报。 */
 /* eslint-disable max-lines -- host process 入口集中维护 local/remote 初始化和资源回收，realtime bridge 接入后先保持同文件收口。 */
 /**
@@ -41,6 +42,9 @@ import {
   IModelSelectionService,
   ISettingService,
   ISourceServerManagementService,
+  ITerminalService,
+  IDeviceSyncStateService,
+  IProviderProvisioningStatusService,
   IWindowControllerService,
   IPromptAttachmentTransferService,
   IZCodeAgentService,
@@ -48,6 +52,9 @@ import {
   IZCodeSessionService,
   createZCodeAgentConnectionScope,
   type ZCodeAgentV4ClientMode,
+  // fork 净化：上游同处 import 的 collectServiceMemoryDiagnostics 仅供 WP-05 已删的
+  // Host 资源自采样链（hostSelfResourceTelemetry），不随入；手机 project tree activity bridge 保留。
+  createWebRemoteProjectTreeActivityBridge,
 } from "@zcode/services";
 import {
   createLocalServices,
@@ -57,12 +64,17 @@ import {
   remoteProjectHostIdForTarget,
   prepareRemoteServerConnection,
   bindRemoteProjectIdentities,
+  createRemoteIdentityRegistrationCache,
   disposeServiceResources,
   disposeServiceResourcesAndWait,
   AutomationRepo,
   createServiceLogger,
   createHostApiNetworkTransport,
   createSettingServiceWithMigrations,
+  // data-sync 域（本机配置推送远端设备）保留；上游同处的 OffPeak* 错误类型属闲时任务净化域，不随入。
+  createDeviceSyncStateService,
+  createHostProviderProvisioningStatus,
+  getAppConfigDir,
   type BotProjectConnection,
   type HostApiNetworkTransport,
 } from "@zcode/services/node";
@@ -139,7 +151,13 @@ import {
 import { connectServerRemote, type ServerRemoteConnection } from "./serverRemoteConnection.js";
 import { bindBotGroupTaskScope } from "./botGroupTaskScope.js";
 import { createWindowHostAttachmentRegistry } from "./windowHostAttachmentRegistry.js";
-import { exposeWindowHostAttachmentServices } from "./windowHostAttachmentRpcPolicy.js";
+// fork 净化：上游同处的 conversationShare attachment scoping 属 WP-07 已删分享域，不随入；
+// terminal owner scope（远控终端独占隔离）保留。
+import {
+  exposeWindowHostAttachmentServices,
+  createWindowHostTerminalOwners,
+  createTerminalScope,
+} from "./windowHostAttachmentRpcPolicy.js";
 import {
   createWindowRemoteConnectionRegistry,
   type WindowRemoteConnectionCloseEvent,
@@ -254,6 +272,12 @@ function authorizeLocalMediaPreviewPath(path: string): Promise<string> {
   });
 }
 
+// 数据同步页「模型提供商」分类读取 / 重试 Main 协调器的 Provisioning lane（只在本机 Host）。
+const hostProviderProvisioningStatus = createHostProviderProvisioningStatus((message) => {
+  if (!parentPort) throw new Error("parentPort unavailable");
+  parentPort.postMessage(message);
+});
+
 const pluginSandboxRegistrationBridge = createPluginSandboxRegistrationBridge({
   send: (message) => {
     if (!parentPort) throw new Error("parentPort unavailable");
@@ -263,7 +287,9 @@ const pluginSandboxRegistrationBridge = createPluginSandboxRegistrationBridge({
 
 // browser-use host↔main 桥：把 agent 的 browser 命令经 parentPort 转给 main（WebContentsView+CDP）。
 // parentPort 为空（不应发生于 host 进程）时 postToMain 抛错，bridge 自身返回 backend_unavailable。
+let browserBackendIdentity: { id: string; generation: number } | undefined;
 const browserControlMainBridge = createBrowserControlMainBridge({
+  getBackendIdentity: () => browserBackendIdentity,
   postToMain: (message) => {
     if (!parentPort) {
       throw new Error("parentPort unavailable");
@@ -1390,6 +1416,8 @@ async function createWindowRemoteConnectionHandle(params: {
   let managerConnectionInvalidatedSubscription: { dispose(): void } | undefined;
   let managerReconnectSubscription: { dispose(): void } | undefined;
   let services: ServiceCollection;
+  // fork 净化：上游远端 Source 重连后的 registerHostServiceResourceTelemetry 重挂链（WP-05 已删遥测链，
+  // hostServiceResourceTelemetry.ts 文件不存在）不随入。
   let lastNotifiedRecoveryAttempt = 0;
   let disposed = false;
   let sourceClosed = false;
@@ -1514,11 +1542,12 @@ async function createWindowRemoteConnectionHandle(params: {
       if (event.sourceServerId !== managed.sourceServerId || disposed) return;
       // Bug 原因：物理 Source connection 被更新或其当前 Profile 被删除时，若不先按
       // Source 通知 Registry，已有 logical workspace 会继续以 online 状态持有失效 services。
-      // 更新允许恢复；删除当前 Profile 属于用户显式断开，必须发布 terminal close。
+      // 只有显式列出的原因可恢复：更新与重启远端服务完成后由 reconnect 换代。删除当前 Profile
+      // 属于用户显式断开，必须发布 terminal close；未来新增的原因默认不可恢复，需在此显式声明。
       notifyClose({
         exitCode: null,
         signal: null,
-        recoverable: event.reason === "update",
+        recoverable: event.reason === "update" || event.reason === "restart",
       });
     });
     managerReconnectSubscription = manager.onDidReconnect((reconnected) => {
@@ -1670,6 +1699,12 @@ async function createWindowRemoteConnectionHandle(params: {
   };
 }
 
+// 项目树/发送前目录解析的远端身份登记，按物理连接去重（见 createRemoteIdentityRegistrationCache）。
+// Registry 路径带 Host 目录的 legacy hint，Manager 路径不带；两者分开缓存，各自的首次登记请求保持不变。
+// 工作区打开（prepareWorkspaceIdentity）不走这里，打开时仍按 R3 §9.2 惰性合并旧变体。
+const registryProjectIdentityRegistrations = createRemoteIdentityRegistrationCache();
+const managerProjectIdentityRegistrations = createRemoteIdentityRegistrationCache();
+
 const windowRemoteConnectionRegistry = createWindowRemoteConnectionRegistry<
   ServiceCollection,
   HostRemoteConnectionCapabilities
@@ -1680,11 +1715,24 @@ const windowRemoteConnectionRegistry = createWindowRemoteConnectionRegistry<
   resolveSourceServerId: (handle) => handle.capabilities?.sourceServerId,
   shouldKeepConnectionAlive: (handle) => handle.capabilities?.persistentSourceConnection === true,
   prepareWorkspaceIdentity: async (handle, input) => {
-    await prepareRemoteWorkspaceIdentity(
-      handle.services.get(IFileService),
-      input,
-      handle.capabilities?.bindWorkspaceIdentity,
-    );
+    // 连接向导据此显示“打开项目目录”这一步；失败（含超时）时同一步标红。只在连接请求的上下文内上报。
+    remoteConnectionProgressContext.report("info", [
+      `[source-server:workspace] Preparing ${input.workspacePath}`,
+    ]);
+    try {
+      await prepareRemoteWorkspaceIdentity(
+        handle.services.get(IFileService),
+        input,
+        handle.capabilities?.bindWorkspaceIdentity,
+      );
+    } catch (error) {
+      if (!input.signal?.aborted) {
+        remoteConnectionProgressContext.report("error", [
+          `[source-server:workspace] ${error instanceof Error ? error.message : String(error)}`,
+        ]);
+      }
+      throw error;
+    }
   },
   releaseWorkspace: async (services, context) => {
     await services.get(IZCodeTaskService).releaseWorkspacePreparation({
@@ -1810,7 +1858,21 @@ const windowRemoteConnectionRegistry = createWindowRemoteConnectionRegistry<
 });
 
 const windowHostControllerRuntime = createWindowHostControllerRuntime({
+  onRunStarted: (run) =>
+    parentPort?.postMessage({
+      type: HostResponseTypes.Broadcast,
+      message: { channel: "mobile-push:run", payload: run },
+    }),
+  onNotification: (event) =>
+    parentPort?.postMessage({
+      type: HostResponseTypes.Broadcast,
+      message: { channel: "mobile-push:event", payload: event },
+    }),
   createId: randomUUID,
+  readHostTaskList: (query) => {
+    if (!activeServices) throw new Error("Window Host services unavailable");
+    return activeServices.get(IZCodeTaskService).listTaskList(query);
+  },
   onSourceError: (scope, operation, error) => {
     logger.warn(
       `window Controller source ${operation} failed, scope=${scope.kind}, workspaceKey=${scope.workspaceIdentity?.trim() || scope.workspacePath}`,
@@ -1897,6 +1959,14 @@ const windowHostControllerRuntime = createWindowHostControllerRuntime({
   },
 });
 
+// 手机 project.readTree 叠加实时待处理交互；只有手机 attachment 存在时才监听投影并广播。
+const webRemoteProjectTreeActivity = createWebRemoteProjectTreeActivityBridge({
+  readRows: () => windowHostControllerRuntime.readTaskRows(),
+  subscribeRows: (onChange) => windowHostControllerRuntime.subscribeTaskRows(onChange),
+  notifyProjectChange,
+});
+
+// fork 净化：上游此处另有 wireLocalResourceTelemetry/disposeLocalResourceTelemetry（WP-05 已删本地资源遥测链），不随入。
 type ExposedServicePortHandle = {
   server: IChannelServer & { ready(): void };
   dispose(): void;
@@ -2022,6 +2092,10 @@ function createControllerRoutedTaskService(
   });
 }
 
+const terminalOwners = createWindowHostTerminalOwners((error) => {
+  logger.warn("failed to dispose mobile terminal owner", error);
+});
+
 function exposeServicesOnMessagePort(
   port: Electron.MessagePortMain,
   services: ServiceCollection,
@@ -2029,7 +2103,27 @@ function exposeServicesOnMessagePort(
   clientMode: ZCodeAgentV4ClientMode = "desktop-continuous",
   attachmentScope: WindowHostAttachmentScope = { kind: "local" },
   capabilities?: HostRemoteConnectionCapabilities,
+  terminalOwnerId?: string,
 ): ExposedServicePortHandle {
+  const terminal = services.getOptional(ITerminalService);
+  const legacyTerminalScope =
+    clientMode === "web-remote-replayable" && terminal && !terminalOwnerId
+      ? createTerminalScope(terminal, (error) =>
+          logger.warn("failed to dispose mobile attachment terminal", error),
+        )
+      : undefined;
+  const scopedTerminal =
+    clientMode === "web-remote-replayable" && terminal
+      ? terminalOwnerId
+        ? terminalOwners.bind(
+            terminalOwnerId,
+            attachmentScope.kind === "remote"
+              ? `remote:${attachmentScope.remoteSessionId}`
+              : "local",
+            terminal,
+          )
+        : legacyTerminalScope!.service
+      : undefined;
   const wrappedPort = wrapElectronPort(port);
   const protocol = new MessagePortProtocol(wrappedPort);
   // remote 模式延迟发送 Initialize：远程建连需要时间，如果构造时就发 Initialize，
@@ -2092,13 +2186,32 @@ function exposeServicesOnMessagePort(
   if (connectionScope) {
     overrides.set(IZCodeAgentService.channelName, connectionScope.service);
   }
-  exposeWindowHostAttachmentServices({
+  // fork 净化：上游此处另有 conversationShare attachment scoping（WP-07 已删分享域）；
+  // scopedTerminal 与手机 project tree activity decorate（远控域）保留。
+  if (scopedTerminal) overrides.set(ITerminalService.channelName, scopedTerminal);
+  const isWebRemoteAttachment = clientMode === "web-remote-replayable";
+  const baseProjectService = isWebRemoteAttachment
+    ? ((overrides.get(IProjectService.channelName) as IProjectService | undefined) ??
+      services.getOptional(IProjectService))
+    : undefined;
+  if (baseProjectService) {
+    overrides.set(
+      IProjectService.channelName,
+      webRemoteProjectTreeActivity.decorate(baseProjectService),
+    );
+  }
+  const webRemoteProjectTreeRetention = isWebRemoteAttachment
+    ? webRemoteProjectTreeActivity.retain()
+    : undefined;  exposeWindowHostAttachmentServices({
     server,
     services,
     overrides,
     clientMode,
     attachmentScope,
     windowServices: activeServices ?? undefined,
+    ...(isWebRemoteAttachment
+      ? { decorateWindowProjectService: webRemoteProjectTreeActivity.decorate }
+      : {}),
   });
   let disposed = false;
   let flowUpdateChain = Promise.resolve();
@@ -2126,6 +2239,8 @@ function exposeServicesOnMessagePort(
       disposed = true;
       flowStateDisposable.dispose();
       controllerAttachment.dispose();
+      legacyTerminalScope?.dispose();
+      webRemoteProjectTreeRetention?.dispose();
       void disposePromptAttachmentTransfer?.().catch((error: unknown) => {
         logger.warn("failed to dispose remote attachment transfer", error);
       });
@@ -2183,8 +2298,16 @@ const windowHostAttachmentRegistry = createWindowHostAttachmentRegistry<
       capabilities: windowRemoteConnectionRegistry.resolveScopedCapabilities(scope),
     };
   },
-  expose: ({ port, services, clientMode, scope, capabilities }) =>
-    exposeServicesOnMessagePort(port, services, false, clientMode, scope, capabilities),
+  expose: ({ port, services, clientMode, scope, capabilities, terminalOwnerId }) =>
+    exposeServicesOnMessagePort(
+      port,
+      services,
+      false,
+      clientMode,
+      scope,
+      capabilities,
+      terminalOwnerId,
+    ),
 });
 
 function logWindowHostTopology(reason: string): void {
@@ -2195,6 +2318,7 @@ function logWindowHostTopology(reason: string): void {
 }
 
 function disposeAttachedServicePorts(): void {
+  terminalOwners.setOwner(null);
   windowHostAttachmentRegistry.dispose();
 }
 
@@ -2483,6 +2607,12 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     return;
   }
 
+  // data-sync 域：Provisioning lane 结果回传 data-sync 页协调器，保留；
+  // 上游同处的 FeedbackLogArchiveResult（WP-07 反馈云端链）不随入。
+  if (msg.type === HostMessageTypes.ProviderProvisioningLaneResult) {
+    hostProviderProvisioningStatus.handleResult(msg);
+    return;
+  }
   if (msg.type === HostMessageTypes.LocalMediaPreviewPathAuthorizeResult) {
     const pending = pendingLocalMediaPreviewPathAuthorizations.get(msg.requestId);
     if (!pending) return;
@@ -2992,6 +3122,11 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
     return;
   }
 
+  if (msg.type === HostMessageTypes.SetTerminalOwner) {
+    terminalOwners.setOwner(msg.ownerId);
+    return;
+  }
+
   if (msg.type === HostMessageTypes.AttachServicePort) {
     if (!port) {
       logger.error("attach-service-port message missing MessagePort");
@@ -3018,6 +3153,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
         requestId: msg.requestId,
         attachmentId: msg.attachmentId,
         clientMode: msg.clientMode,
+        terminalOwnerId: msg.terminalOwnerId,
         scope: msg.scope,
         port,
       });
@@ -3047,6 +3183,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   }
 
   if (msg.type === HostMessageTypes.InitLocal) {
+    browserBackendIdentity = msg.browserBackendIdentity;
     if (!port) {
       logger.error("init-local message missing MessagePort");
       return;
@@ -3210,21 +3347,30 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                 const registered = serverId
                   ? windowRemoteConnectionRegistry.getOnlineSource(serverId)
                   : undefined;
-                if (registered && serverId)
+                if (registered && serverId) {
+                  // Registry handle 跨 Source 重连不换代；必须按物理连接去重，Core 重启后才会重新登记。
+                  const physicalConnection =
+                    registered.capabilities?.physicalOwner?.() ?? registered.services;
                   return bindRemoteProjectIdentities(
                     registered.services.get(IProjectService),
-                    async (workspacePath) => {
-                      const workspaceIdentity = buildServerRemoteWorkspaceIdentity({
-                        serverId,
+                    (workspacePath) =>
+                      registryProjectIdentityRegistrations(
+                        physicalConnection,
                         workspacePath,
-                      });
-                      await registered.capabilities?.bindWorkspaceIdentity?.({
-                        workspacePath,
-                        stableWorkspaceIdentity: workspaceIdentity,
-                      });
-                      return workspaceIdentity;
-                    },
+                        async () => {
+                          const workspaceIdentity = buildServerRemoteWorkspaceIdentity({
+                            serverId,
+                            workspacePath,
+                          });
+                          await registered.capabilities?.bindWorkspaceIdentity?.({
+                            workspacePath,
+                            stableWorkspaceIdentity: workspaceIdentity,
+                          });
+                          return workspaceIdentity;
+                        },
+                      ),
                   );
+                }
                 const source = sourceServerConnectionManager?.listStates().find(
                   (state) =>
                     state.sourceServerId &&
@@ -3247,15 +3393,20 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
                     virtualProjects: connection.serverInfo.capabilities.virtualProjects,
                     sourceServices: activeServices ?? undefined,
                   }),
-                  async (workspacePath) => {
-                    await connection.services.sourceServerWorkspaceService.resolveWorkspace({
+                  (workspacePath) =>
+                    managerProjectIdentityRegistrations(
+                      connection.services,
                       workspacePath,
-                    });
-                    return buildServerRemoteWorkspaceIdentity({
-                      serverId: sourceServerId,
-                      workspacePath,
-                    });
-                  },
+                      async () => {
+                        await connection.services.sourceServerWorkspaceService.resolveWorkspace({
+                          workspacePath,
+                        });
+                        return buildServerRemoteWorkspaceIdentity({
+                          serverId: sourceServerId,
+                          workspacePath,
+                        });
+                      },
+                    ),
                 );
               },
               parentPort,
@@ -3326,6 +3477,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           logDebug: (message) => {
             if (process.env.NODE_ENV !== "production") logger.info(message);
           },
+          logWarn: (message) => logger.warn(message),
         });
         sourceServerArtifactPolicy =
           msg.remoteAssets?.sourceServerArtifactPolicy ?? "release-versioned";
@@ -3384,6 +3536,19 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           },
         );
         services.register(ISourceServerManagementService, sourceServerManagementService);
+        // 数据同步页的设备同步状态只属于本机 Host：不进入远程 workspace RPC 合同、
+        // source-settings 服务集合，也不在手机 attachment 白名单中。
+        services.register(
+          IDeviceSyncStateService,
+          createDeviceSyncStateService({
+            filePath: join(getAppConfigDir(), "data-sync-state.json"),
+          }),
+        );
+        services.register(
+          IProviderProvisioningStatusService,
+          hostProviderProvisioningStatus.service,
+        );
+        wireLocalResourceTelemetry(services);        // fork 净化：上游此处还调用 wireLocalResourceTelemetry（WP-05 已删本地资源遥测链），不随入。
         hasDisposedHostResources = false;
         disposeHostResourcesInFlight = null;
         const agentWarmupTargets =

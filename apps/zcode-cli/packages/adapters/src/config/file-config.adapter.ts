@@ -14,6 +14,7 @@ import {
 interface FileConfigOptions {
   baseDir?: string;
   configFileName?: string;
+  scope?: "user" | "project";
 }
 
 export interface LoadedConfig {
@@ -84,7 +85,13 @@ export function loadFileConfig(filePath?: string, options: FileConfigOptions = {
   try {
     const content = readFileSync(resolvedPath, "utf-8");
     const parsed = JSON.parse(content);
-    const result = parseConfigFileToRuntimePatchWithDiagnostics(parsed);
+    // 采用上游：插件配置迁移与 scope 诊断随上游引入，属于中性装载逻辑，无官方域依赖。
+    const migrated = migratePluginConfigInFile(parsed);
+    if (migrated) {
+      // 仅装载态归一化会让旧 key 永久留在磁盘，后续版本无法安全删除迁移逻辑。
+      persistPluginConfigMigration(resolvedPath, migrated);
+    }
+    const result = parseConfigFileToRuntimePatchWithDiagnostics(parsed, options.scope);
 
     return {
       config: result.config,

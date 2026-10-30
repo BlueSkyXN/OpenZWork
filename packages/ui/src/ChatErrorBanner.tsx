@@ -127,6 +127,8 @@ export function resolveChatErrorBannerDisplayMessage(
         );
   }
 
+  // 净化保留：上游此处还有两条解析链——请求安全校验码与闲时票据码；前者属已删除的
+  // 校验域模块（banned path 域），后者属闲时任务域（WP-09 全仓封禁），均不并入。
   const providerBusinessCode = error.code;
   const providerBusinessMessageId = getProviderBusinessErrorMessageId(providerBusinessCode);
   if (providerBusinessMessageId) {
@@ -231,7 +233,12 @@ export function ChatErrorBanner({
           "w-full flex flex-wrap items-center gap-2 rounded-xl bg-surface backdrop-blur-md border border-border px-3 py-2",
         )}
       >
-        <div className="flex min-w-0 flex-1 items-center gap-2 text-ui-base text-foreground">
+        {/* 配置恢复需要可操作的完整提示；手机横幅若与按钮挤在同一行，正文会只剩省略号。 */}
+        <div
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-2 text-ui-base text-foreground",
+          )}
+        >
           {hookBlocked ? (
             <AnchorIcon
               aria-hidden="true"
@@ -241,7 +248,13 @@ export function ChatErrorBanner({
           ) : (
             <InfoIcon aria-hidden="true" className="size-4 shrink-0" />
           )}
-          <div className="min-w-0 truncate font-medium">{localizedErrorMessage}</div>
+          <div
+            className={cn(
+              "min-w-0 font-medium truncate",
+            )}
+          >
+            {localizedErrorMessage}
+          </div>
         </div>
 
         {modelConfigMissing ? (

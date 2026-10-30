@@ -3,7 +3,6 @@ import { createTestModelSelection } from "./test-model-selection.js";
 import {
   CoreErrorType,
   ModelErrorCode,
-  ModelProtocolError,
   ModelRetryBudget,
   SessionEventType,
   createModelId,
@@ -205,7 +204,10 @@ describe("AgentRuntime model selection event", () => {
     expect(requests[0]?.text).not.toContain("provider-b/model-b");
     expect(requests[1]).toMatchObject({ providerId: "provider-b", modelId: "model-b" });
     expect(requests[1]?.text).toContain("provider-b/model-b");
-    expect(requests[1]?.text).not.toContain("provider-a/model-a");
+    expect(requests[1]?.text).toContain("provider-a/model-a");
+    expect(requests[1]?.text.indexOf("provider-a/model-a")).toBeLessThan(
+      requests[1]?.text.indexOf("provider-b/model-b") ?? -1,
+    );
   });
 
   it("uses structured ModelSelection as the current Session model fact", () => {
@@ -564,6 +566,9 @@ describe("AgentRuntime model selection event", () => {
       );
     },
   );
+
+  // OpenZWork 净化：上游在此新增 13 个执行选型（Highspeed 加速卡）失败回退用例；
+  // 依赖 TurnExecutionModelFallback 事件与加速执行域，该域已净化，整块不保留。
 
   it("preserves an explicit source-less model boundary in ModelSelected", async () => {
     const sessionId = createSessionId("runtime-model-selection-source-less-boundary");

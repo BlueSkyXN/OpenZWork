@@ -604,6 +604,7 @@ describe("ZCode plugins", () => {
         skipUserConfig: true,
         workingDirectory: root,
       });
+
       expect(overview.marketplaces).toEqual([]);
       expect(existsSync(join(pluginStorageRoot, "known_marketplaces.json"))).toBe(false);
       const manifest = JSON.parse(
@@ -614,6 +615,7 @@ describe("ZCode plugins", () => {
       );
       expect(manifest.plugins.map((plugin: { name: string }) => plugin.name).sort()).toEqual(
         OFFICIAL_PLUGIN_DEFINITIONS.map((plugin) => plugin.name).sort(),
+
       );
     } finally {
       await rm(root, { force: true, recursive: true });
@@ -2132,8 +2134,10 @@ describe("ZCode plugins", () => {
         workingDirectory: root,
       });
 
+
       expect(overview.marketplaces).toEqual([]);
       expect(existsSync(join(root, "untrusted-official"))).toBe(false);
+
       expect(overview.diagnostics).toEqual(
         expect.arrayContaining([
           expect.objectContaining({

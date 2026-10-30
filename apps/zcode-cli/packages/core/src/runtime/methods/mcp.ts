@@ -5,6 +5,25 @@ import type { McpToolDescriptor, PluginReferenceCatalog } from "@zcode/contracts
 
 const MCP_SESSION_OAUTH_AUTHORIZATION_TIMEOUT_MS = 15_000;
 
+
+export async function refreshWorkspaceTrustAdmission(
+  runtime: AgentRuntimeInternal,
+  traceContext: TraceContext,
+): Promise<void> {
+  try {
+    await runtime.mcpPort?.refreshWorkspaceTrustAdmission?.();
+  } catch (error) {
+    // 提示发布失败不能阻断普通聊天；执行权限仍由 MCP gate 独立检查。
+    runtime.logger?.warn("MCP trust admission publication failed", {
+      ...traceContextToLogContext(traceContext),
+      event: "mcp.trust.admission.failed",
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+// OpenZWork 净化：上游另有 computeOfficialCuaServerNames（官方 CUA 共享授权判定）；该域已净化。
+
 export function startMcpStartup(
   this: AgentRuntimeInternal,
   traceContext: TraceContext,
@@ -40,6 +59,7 @@ export function startMcpStartup(
     .connectConfiguredServers(servers, {
       // authorization_code MCP 无人完成浏览器授权时，session 启动过去会等默认 5 分钟，
       // 导致模型请求迟迟不发出；session 只等 15s，授权入口由设置页 mcp/list 展示。
+      signal: this.shutdownSignal,
       oauthAuthorizationTimeoutMs: MCP_SESSION_OAUTH_AUTHORIZATION_TIMEOUT_MS,
       trace: traceContext,
       workingDirectory: this.workingDirectory,
@@ -102,7 +122,9 @@ export async function initializeMcp(
   const serverCount = Object.keys(this.config.mcp?.servers ?? {}).length;
 
   try {
+    await refreshWorkspaceTrustAdmission(this, traceContext);
     const snapshot = await startup;
+    this.shutdownSignal.throwIfAborted();
     const registered = registerMcpTools(this.registry, mcpPort, snapshot.tools, {
       allowedTools: this.config.toolAllowlist,
       disallowedTools: this.config.toolDisallowlist,

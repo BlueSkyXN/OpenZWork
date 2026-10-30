@@ -81,6 +81,7 @@ const requiredDevPluginRuntimeBuilds = [
     packageName: `@zcode/${name}-plugin`,
     artifactPath: `${name}-plugin/dist/server.mjs`,
   })),
+  // Sites 面板的 MCP server 由插件自己构建；不构建时面板入口可见但 MCP 启动失败。
 ];
 const defaultBuildFilters = [
   ...cliWorkspaceBuilds.map(({ packageName }) => packageName),

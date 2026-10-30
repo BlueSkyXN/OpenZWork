@@ -4,6 +4,10 @@
 
 配对使用 sid/hash/t 和 nonce proof；设备注册、认证挑战与认证应答按同一 HMAC 合同执行。通用 retry/heartbeat 保留原公开名称，避免与本轮无关的调用迁移。
 
-连接模式为 direct、self-hosted、official，均用 V1 HMAC。二维码 relay 参数可指定独立 WS 地址；缺省按页面 origin 推导。HTTP 浏览器通过相同 SHA-256/HMAC 算法生成 proof 与摘要。官方地址只供显式选择的 V1 preset 使用。
+<!-- OpenZWork 净化：官方 V1 preset（zcode.z.ai 官方网关）段落删除；保留域为 direct/self-hosted 的本地 HMAC 配对与上游 V2 契约。 -->
 
-官方 preset 的 `pageVersion` 固定手机网页资源版本 `3.15.2`，使含 `inputOrigin` 的排队投影通过网页校验；中继地址和设备握手中的真实桌面版本保持原语义。Main 只在该模式省略 bootstrap 的可选 `desktopAppVersion`，让 V1 网页保留已选择的资源；直连和自建模式继续报告真实桌面版本。设置页从同一常量显示官方网页版本。
+完整语义见 [Relay V2 spec](../../../../docs/web-remote-control/relay-v2-pairing.md)。
+
+## 移动通知
+
+mobilePushEventSchema / mobilePushRunSchema 只描述 HTTP 通知载荷，不进入 Relay WebSocket 消息。collectMobilePushEvents 只分类已接纳的在线状态变化，不处理 initial/recovery 或 IO。

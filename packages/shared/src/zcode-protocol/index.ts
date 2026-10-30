@@ -112,7 +112,7 @@ import {
   zcodeWorkspaceRefSchema,
 } from "../zcode-protocol-legacy-types.js";
 
-export * from "../localTtft.js";
+export * from "../local-ttft/contract.js";
 export {
   hookExecutionProjectionSchema,
   hookInvocationRowSchema,
@@ -132,9 +132,25 @@ export const ZCODE_PROTOCOL_VERSION = 1 as const;
 // V4 wire 与 legacy 主协议并存；禁止为了 V4 physical framing 改写 legacy 版本。
 export const ZCODE_PROTOCOL_V4_WIRE_VERSION = 3 as const;
 export const zcodeRuntimeCapabilitiesSchema = z.object({
+  sessionDirectorySource: z.boolean().optional(),
+  sessionWorkspaceRouting: z.boolean().optional(),
+  genUiContext: z.boolean().optional(),
   historyFirst: z.boolean().optional(),
   independentPlanState: z.boolean().optional(),
+  /** CLI 认识 rowsRange 的 residency 参数；旧 CLI 会剥掉它并冷恢复，Host 据此拒绝转发。 */
+  residentRowsRange: z.boolean().optional(),
 });
+export const zcodeRuntimeCapabilitiesParamsSchema = z
+  .object({
+    hostCapabilities: z
+      .object({
+        sessionDirectorySource: z.boolean().optional(),
+        sessionWorkspaceRouting: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 export const zcodeProtocolErrorCodes = {
   sessionUnavailable: -32004,
 } as const;
@@ -755,7 +771,9 @@ export const zcodeProtocolMcpServerSchema = z.union([
   z
     .object({
       name: nonEmptyString,
+      scope: z.enum(["user", "workspace"]).optional(),
       command: nonEmptyString,
+      cwd: nonEmptyString.optional(),
       args: z.array(z.string()),
       env: z.array(zcodeProtocolMcpEntrySchema),
       isolation: z.enum(["session", "workspace"]).optional(),
@@ -767,6 +785,7 @@ export const zcodeProtocolMcpServerSchema = z.union([
   z
     .object({
       name: nonEmptyString,
+      scope: z.enum(["user", "workspace"]).optional(),
       type: z.enum(["http", "sse"]),
       url: nonEmptyString,
       headers: z.array(zcodeProtocolMcpEntrySchema),
@@ -811,9 +830,38 @@ export const MCP_SERVER_FAILURE_KINDS = [
 ] as const;
 export const mcpServerFailureKindSchema = z.enum(MCP_SERVER_FAILURE_KINDS);
 export type McpServerFailureKind = z.infer<typeof mcpServerFailureKindSchema>;
+export const workspaceMcpTrustReviewSchema = z
+  .object({
+    declarationDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    sourcePaths: z.array(nonEmptyString),
+    display: z.string(),
+    trusted: z.boolean(),
+    configuredEnabled: z.boolean(),
+    transport: z.enum(["stdio", "http", "sse"]),
+  })
+  .strict();
+export type WorkspaceMcpTrustReview = z.infer<typeof workspaceMcpTrustReviewSchema>;
+export const zcodeWorkspaceMcpTrustParamsSchema = z
+  .object({
+    workspace: zcodeWorkspaceRefSchema,
+    serverName: nonEmptyString,
+    declarationDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    trusted: z.boolean(),
+  })
+  .strict();
+export const zcodeWorkspaceMcpTrustResultSchema = z
+  .object({
+    accepted: z.boolean(),
+    reasonCode: z
+      .enum(["workspace_mcp_declaration_changed", "workspace_mcp_trust_unavailable"])
+      .optional(),
+  })
+  .strict();
+export type ZCodeWorkspaceMcpTrustResult = z.infer<typeof zcodeWorkspaceMcpTrustResultSchema>;
 export const zcodeMcpServerStatusSnapshotSchema = z
   .object({
     status: zcodeMcpServerStatusKindSchema,
+    workspaceTrust: workspaceMcpTrustReviewSchema.optional(),
     transport: z.enum(["stdio", "http", "sse"]),
     toolCount: z.number().int().nonnegative(),
     updatedAt: nonEmptyString,
@@ -1475,6 +1523,9 @@ export const zcodeTurnStartedEventPayloadSchema = z
     input: z.string(),
     inputId: nonEmptyString.optional(),
     queryId: nonEmptyString.optional(),
+    // Bugfix：CLI 会把 Host 准入的后台执行归因写入 turn.started。这里漏声明时，
+    // strict 校验会丢弃整条开始事件，复用中的 Bot 私聊订阅就无法切换到新轮次。
+    automationId: nonEmptyString.optional(),
     inputSource: zcodeTurnInputSourceSchema.optional(),
     inputVisibility: zcodeMessageVisibilitySchema.optional(),
     executionKind: z.enum(["agent", "controlOnly"]).optional(),
@@ -2001,7 +2052,7 @@ export {
   type SubagentRuntimeConfig,
 } from "../subagent-runtime-config.js";
 export const zcodeSubagentsReadRuntimeConfigParamsSchema = z
-  .object({ sessionId: nonEmptyString })
+  .object({ sessionId: nonEmptyString, workspace: zcodeWorkspaceRefSchema.optional() })
   .strict();
 
 export const ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS = 15_000;
@@ -2010,6 +2061,9 @@ export const zcodeSessionRequestRuntimePreferencesParamsSchema = z
   .object({
     sessionId: nonEmptyString,
     scope: zcodeSessionRuntimePreferencesScopeSchema,
+    workspace: zcodeWorkspaceRefSchema.optional(),
+    // CLI 依据持久化父链给出目录来源；目标 sessionId 仍保留 child 身份。
+    directorySessionId: nonEmptyString.optional(),
   })
   .strict();
 export type ZCodeSessionRequestRuntimePreferencesParams = z.infer<
@@ -2591,6 +2645,7 @@ export type ZCodeBrowserListResult = z.infer<typeof zcodeBrowserListResultSchema
 /** Agent 把一条 browser-use 命令发送给 app 执行。 */
 export const zcodeBrowserExecuteParamsSchema = z
   .object({
+    controlScopeId: nonEmptyString.optional(),
     requestId: nonEmptyString,
     sessionId: nonEmptyString,
     turnId: nonEmptyString.optional(),
@@ -2683,6 +2738,14 @@ export const zcodeProviderRuntimeHeadersCancelledSchema = z
 export type ZCodeProviderRuntimeHeadersCancelled = z.infer<
   typeof zcodeProviderRuntimeHeadersCancelledSchema
 >;
+
+// 标准 JSON-RPC error 保留旧版 schema 兼容，不向严格校验的 response 增加字段。
+export const ZCODE_PROVIDER_CONFIG_NETWORK_ERROR = -32032;
+
+export const zcodeProviderRuntimeHeadersErrorCode = {
+  configNetwork: "request_verification_config_network",
+  configInvalid: "request_verification_config_invalid",
+} as const;
 
 export const zcodeProviderRuntimeHeadersResponseSchema = z.discriminatedUnion("headersApplied", [
   z
@@ -3732,6 +3795,7 @@ export type ZCodeAutomationProtocol = z.infer<typeof zcodeAutomationProtocolSche
 
 export const zcodeAutomationCreateParamsSchema = z
   .object({
+    workspace: zcodeWorkspaceRefSchema.optional(),
     title: z.string().optional(),
     cronExpr: nonEmptyString,
     relativeDelayMinutes: z.number().int().positive().max(525_600).optional(),
@@ -3775,6 +3839,7 @@ export type ZCodeAutomationCreateProtocolResult = z.infer<typeof zcodeAutomation
 
 export const zcodeAutomationUpdateParamsSchema = z
   .object({
+    workspace: zcodeWorkspaceRefSchema.optional(),
     automationId: nonEmptyString,
     title: nonEmptyString.optional(),
     cronExpr: nonEmptyString.optional(),
@@ -3830,7 +3895,9 @@ export const zcodeAutomationUpdateResultSchema = z
   .strict();
 export type ZCodeAutomationUpdateProtocolResult = z.infer<typeof zcodeAutomationUpdateResultSchema>;
 
-export const zcodeAutomationListParamsSchema = z.object({}).strict();
+export const zcodeAutomationListParamsSchema = z
+  .object({ workspace: zcodeWorkspaceRefSchema.optional() })
+  .strict();
 export type ZCodeAutomationListProtocolParams = z.infer<typeof zcodeAutomationListParamsSchema>;
 export const zcodeAutomationListResultSchema = z
   .object({ automations: z.array(zcodeAutomationProtocolSchema) })
@@ -3838,7 +3905,7 @@ export const zcodeAutomationListResultSchema = z
 export type ZCodeAutomationListProtocolResult = z.infer<typeof zcodeAutomationListResultSchema>;
 
 export const zcodeAutomationCheckTaskBindingParamsSchema = z
-  .object({ targetTaskId: nonEmptyString })
+  .object({ workspace: zcodeWorkspaceRefSchema.optional(), targetTaskId: nonEmptyString })
   .strict();
 export type ZCodeAutomationCheckTaskBindingProtocolParams = z.infer<
   typeof zcodeAutomationCheckTaskBindingParamsSchema
@@ -3851,13 +3918,27 @@ export type ZCodeAutomationCheckTaskBindingProtocolResult = z.infer<
 >;
 
 export const zcodeAutomationDeleteParamsSchema = z
-  .object({ automationId: nonEmptyString })
+  .object({ workspace: zcodeWorkspaceRefSchema.optional(), automationId: nonEmptyString })
   .strict();
 export type ZCodeAutomationDeleteProtocolParams = z.infer<typeof zcodeAutomationDeleteParamsSchema>;
 export const zcodeAutomationDeleteResultSchema = z.object({ deleted: z.boolean() }).strict();
 export type ZCodeAutomationDeleteProtocolResult = z.infer<typeof zcodeAutomationDeleteResultSchema>;
 
+// 执行轮自暂停（CronPauseSelf）：automationId 来自 CLI loop state，Host 只在当前 workspace
+// 内做条件暂停（active 且 enabled 才转 paused）并回报是否生效。
+export const zcodeAutomationPauseParamsSchema = z
+  .object({ workspace: zcodeWorkspaceRefSchema.optional(), automationId: nonEmptyString })
+  .strict();
+export type ZCodeAutomationPauseProtocolParams = z.infer<typeof zcodeAutomationPauseParamsSchema>;
+export const zcodeAutomationPauseResultSchema = z.object({ paused: z.boolean() }).strict();
+export type ZCodeAutomationPauseProtocolResult = z.infer<typeof zcodeAutomationPauseResultSchema>;
+
 export const zcodeProtocolMethods = {
+  sessionLifecycleChanged: "session/lifecycle/changed",
+  sessionLifecycleGetState: "session/lifecycle/getState",
+  sessionLifecycleEnsureReady: "session/lifecycle/ensureReady",
+  sessionLifecycleStop: "session/lifecycle/stop",
+  sessionLifecycleRestart: "session/lifecycle/restart",
   runtimeCapabilities: "runtime/capabilities",
   sessionCreate: "session/create",
   sessionResume: "session/resume",
@@ -3908,6 +3989,7 @@ export const zcodeProtocolMethods = {
   workspaceCancelGenerateText: "workspace/cancelGenerateText",
   providerTestModelConnectivity: "provider/testModelConnectivity",
   mcpList: "mcp/list",
+  workspaceMcpTrust: "workspace/mcp/trust",
   mcpReadResource: "mcp/readResource",
   mcpUiOpenInstance: "mcp/uiOpenInstance",
   mcpUiCloseInstance: "mcp/uiCloseInstance",
@@ -3966,6 +4048,8 @@ export const zcodeProtocolMethods = {
   automationCheckTaskBinding: "automation/checkTaskBinding",
   automationList: "automation/list",
   automationDelete: "automation/delete",
+  automationPause: "automation/pause",
+  // Off-Peak 会话内创建：与 automation 兄弟并列的独立方法族。
   // @deprecated：host 消费已清零（zcodeAgentService 改走 v4/usage/stats）。
   // 仅剩 CLI server 的 wire 兼容 case；随旧词整体删除时一并移除。
   usageStats: "usage/stats",
@@ -4007,6 +4091,10 @@ export const zcodeProtocolSessionMethodContracts = {
   [zcodeProtocolMethods.workspaceHookTrustGrant]: {
     params: zcodeWorkspaceHookTrustGrantParamsSchema,
     result: zcodeWorkspaceHookTrustGrantResultSchema,
+  },
+  [zcodeProtocolMethods.workspaceMcpTrust]: {
+    params: zcodeWorkspaceMcpTrustParamsSchema,
+    result: zcodeWorkspaceMcpTrustResultSchema,
   },
   [zcodeProtocolMethods.mcpList]: {
     params: zcodeMcpListParamsSchema,
@@ -4109,7 +4197,7 @@ export const zcodeStoragePathReadySchema = z
   .strict();
 
 // 桌面本地 TTFT 的严格事实合同；检查点不能替代实际内容帧。
-export { localTtftFactsSchema } from "../localTtft.js";
+export { localTtftFactsSchema } from "../local-ttft/contract.js";
 // 群来源由可信 Host 注入，V4 命令与持久化输入使用相同运行时校验。
 export {
   botIdentitySchema,

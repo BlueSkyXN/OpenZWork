@@ -40,6 +40,8 @@ export async function executeToolBatch(
       batch.map((tc) =>
         executeOne(tc, {
           automationTurn: options?.automationTurn,
+          automationId: options?.automationId,
+
           signal: options?.signal,
           traceContext: options?.traceContext,
           subagentModelOverride: options?.subagentModelOverride,
@@ -79,6 +81,7 @@ export async function* executeToolSchedule(
 
     const groupResults = await executeBatch(groupTools, {
       automationTurn: options?.automationTurn,
+      automationId: options?.automationId,
       signal: options?.signal,
       traceContext: options?.traceContext,
       subagentModelOverride: options?.subagentModelOverride,

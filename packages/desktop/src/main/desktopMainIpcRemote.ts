@@ -47,6 +47,23 @@ function toBindIpcFailure(error: unknown): BindRemoteWorkspaceSessionContextIpcR
   };
 }
 
+/**
+ * Bug 原因：Error 的 message/stack 不可枚举，直接交给 logger 会序列化成 `{}`，现场日志只剩
+ * "detect failed: {}"，看不到 wsl.exe / docker 的退出码与输出。展开成普通对象再记录。
+ */
+function describeDiscoveryError(error: unknown): Record<string, unknown> {
+  const normalized = normalizeUnknownError(error);
+  const exitCode =
+    error && typeof error === "object" && "exitCode" in error ? error.exitCode : undefined;
+  return {
+    name: error instanceof Error ? error.name : undefined,
+    message: normalized.message,
+    code: normalized.code,
+    exitCode,
+    stack: error instanceof Error ? error.stack : undefined,
+  };
+}
+
 export function isAllowedExternalOpenUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -175,6 +192,8 @@ export function registerRemoteIpcHandlers(options: {
   );
 
   ipcMain.on(PlatformChannels.RendererReady, (event) => {
+    // fork 净化：上游在 RendererReady 处接入 appTelemetryRuntime 上下文同步、
+    // Renderer→Main 遥测/ARMS 自定义事件上报与 OAuth 回调遥测（WP-05/WP-08 净化域），不随入。
     deliverPendingDeepLink(event.sender);
   });
 
@@ -397,7 +416,7 @@ export function registerRemoteIpcHandlers(options: {
     try {
       return await options.isDockerDaemonAvailable();
     } catch (error) {
-      options.logger.warn("[is-docker-available] detect failed:", error);
+      options.logger.warn("[is-docker-available] detect failed:", describeDiscoveryError(error));
       return false;
     }
   });
@@ -406,7 +425,7 @@ export function registerRemoteIpcHandlers(options: {
     try {
       return await options.listAvailableWSLDistros();
     } catch (error) {
-      options.logger.warn("[list-wsl-distros] detect failed:", error);
+      options.logger.warn("[list-wsl-distros] detect failed:", describeDiscoveryError(error));
       return [];
     }
   });
@@ -415,7 +434,7 @@ export function registerRemoteIpcHandlers(options: {
     try {
       return await options.listAvailableDockerContainers();
     } catch (error) {
-      options.logger.warn("[list-docker-containers] detect failed:", error);
+      options.logger.warn("[list-docker-containers] detect failed:", describeDiscoveryError(error));
       return [];
     }
   });

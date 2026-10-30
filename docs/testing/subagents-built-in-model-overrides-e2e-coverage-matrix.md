@@ -1,19 +1,23 @@
 # Subagent 模型与 Reasoning Effort E2E 覆盖矩阵
 
+> `retired:` 逐处标记已退役 App 单测，仅供追溯；原通过记录不代表现行覆盖。独立断言缺口需由后续验收补齐。
+
+> 2026-10-26：App 业务单测已按[测试规格](unit-test-quality.md)退役。本文中的相关单测路径和历史通过记录不再代表现行覆盖；CLI/CUA、工程测试、E2E 与浏览器验收证据仍按各自状态解释。未补验收的场景不得自动视为已覆盖。
+
 本文记录内置 `general-purpose` / `Explore` 模型覆盖的自动化验收范围。该功能的产品语义见 [内置 Subagent 模型覆盖](../subagents-built-in-model-overrides.md)。
 
 ## 缩写
 
 | 缩写 | Spec                                                                                                                                   |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `SB` | `packages/desktop/test/e2e/conversation-session/conversation-session-built-in-subagent-model-overrides.test.ts`  |
+| `SB` | `packages/desktop/test/e2e/conversation-session/conversation-session-built-in-subagent-model-overrides.test.ts`                        |
 | `SX` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-subagent-runtime-catalog-reasoning.test.ts` |
 | `SL` | `packages/desktop/test/e2e/subagent-coding-plan-login-catalog-stale.test.ts`                                                           |
 | `SM` | `packages/desktop/test/e2e/start-plan-manual-claim-experience.test.ts`                                                                 |
 | `SE` | `packages/desktop/test/e2e/settings/settings-subagent-create-edit-persistence.test.ts`                                                 |
-| `SS` | `packages/services/test/subagentsService.test.ts`                                                                                      |
-| `SU` | `packages/ui/test/subagentsSection.test.ts`                                                                                            |
-| `TC` | `packages/ui/test/thoughtLevelCycleControlSelectionValue.test.ts`                                                                      |
+| `SS` | `retired:packages/services/test/subagentsService.test.ts`                                                                              |
+| `SU` | `retired:packages/ui/test/subagentsSection.test.ts`                                                                                    |
+| `TC` | `retired:packages/ui/test/thoughtLevelCycleControlSelectionValue.test.ts`                                                              |
 | `SC` | `apps/zcode-cli/packages/core/tests/subagent-explore.test.ts`、`apps/zcode-cli/packages/core/tests/subagent-profile.test.ts`           |
 | `BT` | `apps/zcode-cli/packages/bootstrap/tests/subagents.test.ts`、`apps/zcode-cli/packages/bootstrap/tests/runtime-config.test.ts`          |
 | `RM` | `apps/zcode-cli/packages/bootstrap/tests/runtime-model-metadata.test.ts`                                                               |
@@ -24,7 +28,7 @@
 
 - BSM-18/SE-03：保留不可用选择但编辑触发器显示“选择模型”；不恢复旧候选、不写原文件。Pro `desktop-e2e-20260909-143258-266` SE-03通过。
 - 候选新鲜度：公共 `useModelSelectionServiceView` 首读/通知/重挂载；不恢复旧 Family/store 强刷。
-- 同 endpoint 的 Start/Individual/API Key 成员隔离：`packages/provider/test/resolver.test.ts`；
+- 同 endpoint 的 Start/Individual/API Key 成员隔离：`retired:packages/provider/test/resolver.test.ts`；（retired: 为退役历史证据，不计现行覆盖。）
   该测试替代已删除的旧 modelProviderServiceStorage 归并测试，不恢复其旧数据源。
 
 ### Todo103 G04-B 插件覆盖接续验收
@@ -33,8 +37,8 @@
   行内主动选模写完整 `pluginAgentModelSelectionOverrides` 并取最高档，再改 high 验证不是只重复默认值；
   插件行仍不可进入编辑表单，插件 Markdown 字节不变。Pro `desktop-e2e-20260909-150213-807`
   SE-02/04 2/2通过；同时覆盖全新缓存的首次进入，不要求用户手动刷新。
-- SU：内置/插件共用控件，插件按稳定 agentId 调用结构化保存；不使用旧双字段。
-- SS/BT：无安装记录的官方默认发现、安装/禁用/抑制优先、稳定 ID、规范名/别名同覆盖、
+- SU 已退役：内置/插件共用控件及稳定 agentId 保存的独立单测证据不再计入覆盖。
+- SS 已退役，保留 BT 的 CLI 证据；以下原联合范围中的 App 独立断言待补：无安装记录的官方默认发现、安装/禁用/抑制优先、稳定 ID、规范名/别名同覆盖、
   model-only 不继承原 effort、清除回到插件默认、冷加载导入均由实际临时文件测试验收。
 - 不扩大运行中热更新或 remote/replayable 语义；既有 profile 的 Todo99 有效选择入口保持不变。
 - PLM-LC-020：在 SE-04 的 UI 保存证据之外补官方 judge 冷启动请求闭环；父 primary/max、child alternate/high，避免错误继承或默认档位回退蒙混通过。新 pending case 的本地 fixture 与请求证据独立留存，不声称手机或热更新覆盖。
@@ -67,6 +71,7 @@
 | BSM-17 | covered | SE             | 只选择 reasoning 模型但不操作 effort 控件时，控件展示 catalog 默认档位，但 builtin state 不新增 thought-level key、custom Markdown 不新增 `thoughtLevel`                                                                                                                                                                                                                |
 | BSM-18 | covered | SE             | Custom 保存模型 A 与 effort 后从模型供应商设置删除 A；重新打开编辑页模型触发器显示“选择模型”，下拉菜单不含 A；effort 隐藏、保存禁用，且原 Markdown 保持不变                                                                                                                                                                                                                 |
 | BSM-20 | covered | SU、SL、SM     | Start、Individual、Team 同属 OAuth mode 时，Subagents 按最新 `modelProviderFamilySelectedKeys` 选择连接。SM 真实领取 Start 后，Builtin 绑定 Start 模型再切回 Individual 时，模型触发器显示“选择模型”且菜单只展示新连接候选；SL 覆盖 Individual 切 Team 且已有模型与 reasoning 继续可用；SU 覆盖 Start → Individual → Team 的分组重建。整个链路不依赖远端 catalog 强刷。 |
+<!-- 上游 unit-retired 改写（单测退役口径）与 BSM-19（BigModel 登录/Coding Plan effort 门禁）不适用：我方保留单测覆盖口径且官方登录/套餐域已净化，表体沿用我方版本 -->
 
 ## 剪枝
 
@@ -82,6 +87,6 @@
 - 不新增 workspace 级覆盖；`Explore` 无覆盖默认继承主模型，不再默认使用 lite。
 - 不增加 `Agent` tool 调用级 model / effort 参数，不覆盖热更新、multi-session 或 remote/mobile 状态组合。
 - 不迁移或改写历史 transcript 中已有的 `Agent.model`；只保证它不再参与新一次 child runtime 的模型选择。
-- Claude runtime-catalog parity 已确认采用完整重复矩阵，不以现有 DeepSeek `I20` 代表覆盖；catalog 首次 loading 使用受控 UI 测试，不为 E2E 添加生产测试开关。
+- Claude 模型的 runtime catalog 验证采用完整矩阵，不以现有 DeepSeek `I20` 代表覆盖；catalog 首次 loading 使用受控 UI 测试，不为 E2E 添加生产测试开关。
 - Settings CRUD E2E 不发送 prompt，不验证冷启动 child、provider request 或 model-io；这些行为继续由 SB/SX 负责，避免 UI 保存回归扩大到 CLI/runtime。
 - SL 是登录后 App provider 快照与 desktop continuous workspace runtime catalog 的双阶段回归门禁：App metadata 保证控件立即可用，后台对账保证 runtime catalog 最终一致；runtime 已有明确能力声明时仍优先。remote workspace、手机 `/remote` replayable、task queue 与 provider request 均剪枝。

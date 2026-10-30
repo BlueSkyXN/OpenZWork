@@ -79,6 +79,10 @@ export {
 export * from "./errors.js";
 export type { SessionCreateSource } from "./sessionCreateSource.js";
 export * from "./productIdentity.js";
+export {
+  USER_INSTRUCTIONS_MAX_BYTES,
+  USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
+} from "./userInstructions.js";
 export * from "./validation.js";
 export * from "./api.js";
 export * from "./zcode-protocol/index.js";
@@ -132,6 +136,7 @@ export {
   DesktopCommandIds,
   buildLocalMediaPreviewUrl,
   createOpenInEditorRemoteTarget,
+  unwrapRemoteWorkspaceBindResult,
 } from "./platform.js";
 export type { LaunchMarks } from "./launchMarks.js";
 export { LAUNCH_MARKS_QUERY_KEY, parseLaunchMarks, serializeLaunchMarks } from "./launchMarks.js";
@@ -157,6 +162,8 @@ export type {
   ChromeBrowserDataImportOptions,
   ChromeBrowserDataImportResult,
   ConnectRemoteRequest,
+  FileApplicationInfo,
+  FileApplicationTarget,
   CreateTempTextAttachmentRequest,
   CreateTempTextAttachmentResult,
   MaterializeWorkflowArtifactFileRequest,
@@ -275,7 +282,7 @@ export * from "./subagent-runtime-config.js";
 export * from "./subagent-profile.js";
 export { parseAgentProfileFromMarkdown } from "./subagent-profile-parser.js";
 
-export * from "./localTtft.js";
+export * from "./local-ttft/contract.js";
 export * from "./pluginStoreOrder.js";
 export * from "./pluginStoreOrdering.js";
 export * from "./session-debug.js";
@@ -287,12 +294,12 @@ export * from "./attachment-source.js";
 
 export * from "./channel-mention.js";
 
-// OpenZWork 净化口径：request-verification（上游原名已随官方域净化重命名）保留 no-op 实现，
-// 供上游 zcodeAgentService 等新文件编译；导出面与 fork 基线 aac47556 完全一致。
+// OpenZWork 净化口径：request-security-edition（上游 v3.17.1 开源同款空壳发行策略）保留 no-op 实现，
+// 目录名随上游回归 request-security-edition，不再是 fork 侧的 request-verification 改名。
 export {
   requestSecuritySensitiveHeaders,
   isRequestSecurityFailure,
-} from "./request-verification/policy.js";
-export * from "./request-verification/verification-policy.js";
+} from "./request-security-edition/policy.js";
+export * from "./request-security-edition/verification-policy.js";
 
 export { sha256Bytes, hmacSha256Bytes } from "./web-remote-relay/index.js";

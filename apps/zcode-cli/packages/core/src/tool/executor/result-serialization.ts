@@ -6,16 +6,19 @@ import {
   type ToolResultBudget,
   type TraceContext,
 } from "@zcode/contracts";
+
+
 import type { ToolEntry, ToolResultSerialization } from "../types.js";
-import { formatHookAdditionalContexts } from "./hook-flow.js";
 import { formatGenericPersistedOutputContent } from "../result-persistence-format.js";
 import {
+
   appendHookToPersistedArtifactPreview,
   appendHookToStringContent,
   fitContentWithSuffix,
   isEmptyModelContent,
   isPersistedArtifactPreview,
   projectHookAugmentedModelContent,
+
   projectToolReferenceContent,
   stringifyModelContentForSerialization,
   stringifyOutputForModel,
@@ -69,6 +72,19 @@ export async function serializeOutput(
     Math.min(effectiveBudget.maxModelBytes, effectiveBudget.maxInlineBytes),
   );
   const artifactPath = findArtifactPath(output);
+  if (entry.isModelContentBounded?.(output) === true) {
+    // 修复原因：Bash 失败结果已按字符保留采集段的头尾（约 1 万字符），中文等多字节文本仍会超过
+    // 30000 字节预算，被再次落盘成只有 2KB 开头的预览，模型看不到头尾截断后保留的结尾部分。
+    return {
+      content,
+      modelContent,
+      originalBytes,
+      returnedBytes: originalBytes,
+      truncated: false,
+      budgetStrategy: effectiveBudget.strategy,
+      artifactPath,
+    };
+  }
   const referenceProjection = projectToolReferenceContent(
     modelContent,
     maxModelBytes,
@@ -159,6 +175,7 @@ export async function serializeOutput(
   };
 }
 
+
 export function appendHookAdditionalContexts(
   serialization: ToolResultSerialization,
   additionalContexts: string[],
@@ -204,11 +221,7 @@ export function appendHookAdditionalContexts(
     returnedBytes: Buffer.byteLength(contentProjection.content, "utf8"),
     truncated: serialization.truncated || contentProjection.truncated,
   };
-}
 
-function resolveMaxModelBytes(entry: ToolEntry): number {
-  const budget = entry.resultBudget ?? DEFAULT_RESULT_BUDGET;
-  return Math.max(0, Math.min(budget.maxModelBytes, budget.maxInlineBytes));
 }
 
 async function tryWriteToolArtifact(

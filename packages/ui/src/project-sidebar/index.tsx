@@ -9,6 +9,8 @@ import {
 export { readProjectSidebarView } from "@/project-sidebar/view-preference.js";
 import { SortableProjects } from "@/project-sidebar/SortableProjects.js";
 export { ArchiveManagement } from "@/project-sidebar/ArchiveManagement.js";
+export { useWebRemoteControlRendererActions } from "@/project-sidebar/useWebRemoteControlRendererActions.js";
+export { ProjectManagement } from "@/project-sidebar/ProjectManagement.js";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { ScrollFadeViewport } from "@/components/ui/scroll-fade-viewport.js";
 import { TID_SIDEBAR } from "@zcode/shared/test-ids";
@@ -30,6 +32,7 @@ import { useProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.
 export {
   ProjectDirectoryProvider,
   useOptionalProjectDirectory,
+  useOptionalProjectDirectoryActions,
 } from "@/project-sidebar/ProjectDirectoryProvider.js";
 export { ProjectComposerMenu } from "@/project-sidebar/ProjectComposerMenu.js";
 import { useProjectTaskNavigation } from "@/project-sidebar/useProjectTaskNavigation.js";
@@ -75,6 +78,7 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
     service,
     remoteService,
     availability,
+    hostReadErrors,
     refresh,
     error,
     loading,
@@ -82,12 +86,14 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
     groups,
     deviceNames,
   } = useProjectDirectory();
+  // 合成：本方 sidebar filters 域（过滤树 + 未过滤目录给导航/移动目标）保留；
+  // 上游 hook 签名更新（remoteSync 收窄、diiagnostics 增加 hostReadErrors）采纳。
   const { tree: unfilteredTree, pin } = useProjectPinIntent(authoritativeTree);
   const filters = preferences.filters;
   const filtering = hasSidebarTaskFilters(filters);
   const tree = useMemo(() => filterSidebarTree(unfilteredTree, filters), [unfilteredTree, filters]);
-  const remoteSync = useProjectRemoteSync(props, directory);
-  const diagnostics = useProjectConnectionDiagnostics(directory, props);
+  const remoteSync = useProjectRemoteSync(directory);
+  const diagnostics = useProjectConnectionDiagnostics(directory, props, hostReadErrors);
   const onSelectTask = useProjectTaskNavigation(props, unfilteredTree, remoteService);
   const { intl, localePreference, setLocalePreference } = useZCodeIntl();
   const tabStore = useTabStoreApi();
@@ -328,9 +334,11 @@ export const ProjectSidebar = memo(function ProjectSidebar(props: ProjectSidebar
                         </>
                       ) : (
                         <ProjectTaskRows
-                          key="timeline"
-                          kind="timeline"
-                          tasks={selectProjectRows(tree, { kind: view })}
+                          key={view}
+                          kind={view}
+                          tasks={selectProjectRows(view === "unread" ? authoritativeTree : tree, {
+                            kind: view,
+                          })}
                           onSelect={onSelectTask}
                           refresh={refresh}
                         />

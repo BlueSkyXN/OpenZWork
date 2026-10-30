@@ -96,11 +96,27 @@ export function resolveAppRuntimeConfig(input: {
     ...(options.runtimeConfig?.mcp?.servers ?? configResult.config.mcp.servers),
     ...builtInMcpServers,
   };
+
   // 产品决定 workspace MCP 开箱即用：project 作用域 MCP 默认 trusted，并自动连接。
+
   const untrustedProjectMcpServers = new Set<string>();
+  for (const [name, config] of Object.entries(configuredMcpServers)) {
+    if (
+      config.source?.kind === "workspace" ||
+      (!config.source && configResult.sources.mcp.serverSources[name] === "project")
+    ) {
+      configuredMcpServers[name] = { ...config, source: { kind: "workspace" } };
+      untrustedProjectMcpServers.add(name);
+    } else if (!config.source && configResult.sources.mcp.serverSources[name] === "user") {
+      // headless 配置也保留用户来源，项目文件损坏不能把用户 MCP 当成待信任声明。
+      configuredMcpServers[name] = { ...config, source: { kind: "user" } };
+    }
+  }
   const autoConnectMcpServers = omitMcpServers(
     configuredMcpServers,
+
     untrustedProjectMcpServers,
+
   );
   const runtimeBuiltInModelSelectionOverrides =
     options.runtimeConfig?.subagents?.builtInModelSelectionOverrides ?? {};

@@ -29,9 +29,12 @@
     "./workspace-hook-review-monotonicity": "./src/workspace-hook-review-monotonicity.ts",
     "./workspace-hook-trust-store-file": "./src/workspace-hook-trust-store-file.ts",
     "./gen-ui": "./src/gen-ui/index.ts",
-    "./request-security": "./src/request-verification/index.ts",
+    "./request-security": "./src/request-security-edition/index.ts",
     "./web-remote-relay": "./src/web-remote-relay/index.ts",
-    "./conversation-metrics": "./src/conversation-metrics/index.ts"
+    "./conversation-metrics": "./src/conversation-metrics/index.ts",
+    "./conversation-telemetry": "./src/conversation-telemetry/index.ts",
+    "./conversation-telemetry/messageTelemetry": "./src/conversation-telemetry/messageTelemetry.ts",
+    "./conversation-telemetry/providerTelemetryIdentity": "./src/conversation-telemetry/providerTelemetryIdentity.ts"
   },
   "scripts": {
     "lint": "oxlint",

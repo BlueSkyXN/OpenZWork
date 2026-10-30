@@ -1,3 +1,6 @@
+// fork 净化：上游在此 import ARMS 资源遥测落盘（desktopResourceTelemetry/processResourceMcpTelemetrySource，
+// WP-05 已删面，文件不存在），连同 onMcpTelemetry/onSessionCreateTelemetry（官方遥测链）与
+// onCuaOperationState*（D-14 CUA 链）一并剥离；data-sync 与 bots 回调保留。
 /* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、ZCode Agent，拆分前先保持跨进程消息收口。 */
 import {
   type HostAgentProcessErrorResponse,
@@ -5,6 +8,8 @@ import {
   type HostAgentProcessExitedResponse,
   type HostAgentProcessReadyResponse,
   type HostAgentProcessSpawnedResponse,
+  // data-sync 域：Provisioning lane 状态类型（本机配置推送远端设备的协调器协议）。
+  type ProviderProvisioningLaneStatus,
   type RemoteTarget,
   type TaskRealtimeHostDeliveryKind,
   type WorkspacePurpose,
@@ -63,6 +68,7 @@ export interface WindowBootstrapOptions {
 }
 
 export interface HostInitMessage {
+  browserBackendIdentity?: { id: string; generation: number };
   type: typeof HostMessageTypes.InitLocal;
   hostId?: string;
   databaseStartupId?: string;
@@ -196,8 +202,7 @@ export function spawnHostProcess(
       workspacePath: string;
       workspaceIdentity: string;
       target: RemoteTarget;
-    }) => Promise<{ ok: boolean; port?: MessagePortMain; error?: string }>;
-    /** host → main：定时任务派发结果，转交给 cron scheduler 结算调度状态机。 */
+    }) => Promise<{ ok: boolean; port?: MessagePortMain; error?: string }>;    /** host → main：定时任务派发结果，转交给 cron scheduler 结算调度状态机。 */
     onCronRunResult?: (result: {
       runId: string;
       ok: boolean;
@@ -214,6 +219,7 @@ export function spawnHostProcess(
       requestId: string;
       browserId?: string;
       browserGeneration?: number;
+      controlScopeId?: string;
       sessionId: string;
       turnId?: string;
       workspaceKey?: string;
@@ -230,6 +236,14 @@ export function spawnHostProcess(
     registerPluginSandbox?: (
       input: PluginSandboxRegisterRequestPayload,
     ) => PluginSandboxHandle | Promise<PluginSandboxHandle>;
+    /** 数据同步页经本机 Host 读取 / 重试 Main 协调器的 Provisioning lane（按 sourceServerId）。 */
+    providerProvisioningLanes?: {
+      getStatus(
+        sourceServerId: string,
+        options: { waitForIdle: boolean },
+      ): Promise<ProviderProvisioningLaneStatus>;
+      retry(sourceServerId: string): Promise<ProviderProvisioningLaneStatus>;
+    };
   },
   options?: SpawnHostProcessOptions,
 ): ElectronUtilityProcess {
@@ -301,6 +315,8 @@ export function spawnHostProcess(
       return;
     }
 
+    // fork 净化：上游 ToolExecResource/McpResourceSamples/McpTelemetry/PluginTelemetry/RemoteConversationTelemetry/
+    // SessionCreateTelemetry 六类 host→main 遥测路由随官方遥测链剥离（详见文件头注释）。
     if (result.data.type === HostResponseTypes.LocalMediaPreviewPathAuthorizeRequest) {
       const request = result.data;
       const authorize = dependencies.authorizeLocalMediaPreviewPath;
@@ -359,6 +375,36 @@ export function spawnHostProcess(
       return;
     }
 
+    // fork 净化：上游 CuaOperationState 投影（D-14 CUA 链）与 FeedbackLogArchive 委托
+    // （WP-07 反馈云端链）不随入；ProviderProvisioningLane 属 data-sync 域（本机配置推送远端设备），保留。
+    if (result.data.type === HostResponseTypes.ProviderProvisioningLaneRequest) {
+      const request = result.data;
+      const lanes = dependencies.providerProvisioningLanes;
+      const reply = (status: ProviderProvisioningLaneStatus) =>
+        child.postMessage({
+          type: HostMessageTypes.ProviderProvisioningLaneResult,
+          requestId: request.requestId,
+          status,
+        });
+      // 没有协调器（例如未接线的测试宿主）时回「无 lane」：Host 请求总有应答，不靠超时收尾。
+      if (!lanes) {
+        reply({ lane: "none" });
+        return;
+      }
+      void (
+        request.action === "retry"
+          ? lanes.retry(request.sourceServerId)
+          : lanes.getStatus(request.sourceServerId, { waitForIdle: request.action === "wait" })
+      ).then(reply, (error: unknown) => {
+        // 协调器的查询与重试不会抛出；万一抛出也要应答，避免 Renderer 一直停在「同步中」。
+        dependencies.logger.warn("[provider-provisioning] lane request failed", {
+          action: request.action,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        reply({ lane: "none" });
+      });
+      return;
+    }
     if (result.data.type === HostResponseTypes.BrowserExecuteRequest) {
       // browser-use：main 用 WebContentsView+CDP 执行命令（handleBrowserExecuteRequest）。
       // 缺省实现时返回 backend_unavailable，保证通道打通但不阻塞。
@@ -377,6 +423,7 @@ export function spawnHostProcess(
           ? handler({
               win,
               requestId,
+              controlScopeId: result.data.controlScopeId,
               browserId: result.data.browserId,
               browserGeneration: result.data.browserGeneration,
               sessionId: result.data.sessionId,
