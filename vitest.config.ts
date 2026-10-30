@@ -3,6 +3,8 @@ import { configDefaults, defineConfig } from "vitest/config";
 
 import engineeringTestFiles from "./scripts/engineering-test-files.json";
 
+export { engineeringTestFiles };
+
 // 以下串行隔离数组与 unit/fork-isolated 双 project 为 OpenZWork 保留配置：
 // 上游 engineering project 只收 157 个构建/工程测试文件，未覆盖我方真实进程串行隔离清单（gitService、pdfJs、webRemoteControlTransport 等），
 // 且我方根单测仍需 exclude 桌面 E2E 与 zcode-cua；故与 engineering 并存。
@@ -13,7 +15,7 @@ const processLifecycleTests = [
   "packages/services/test/zcodeAgentProcessManager.test.ts",
   "packages/services/test/zcodeStdioTransport.test.ts",
 ];
-const forkIsolatedTests = [
+export const forkIsolatedTests = [
   ...processLifecycleTests,
   // 真实显示进程树和独立配置读者都在 5 秒内等待启动；并发调度延迟曾触发截止。
   // 放入串行组保留真实进程和原时限，避免把启动排队误判为资源隔离或读锁失败。
@@ -145,7 +147,14 @@ export default defineConfig({
             "scripts/assert-safe-cua-helper-zip.test.mjs",
             "scripts/ci/ci-telemetry-keyword-guard.test.mjs",
           ],
-          exclude: ["packages/desktop/test/e2e/**", "packages/zcode-cua/**", ...forkIsolatedTests],
+          // OpenZWork：engineering project 已收编的文件（上游 157 清单）不重复入 unit，避免双 project 双计。
+          // exclude 需绝对路径才能压过 project 解析后的绝对 include（见 affected 图同款先例）。
+          exclude: [
+            "packages/desktop/test/e2e/**",
+            "packages/zcode-cua/**",
+            ...forkIsolatedTests.map((file) => resolve(__dirname, file)),
+            ...engineeringTestFiles.map((file) => resolve(__dirname, file)),
+          ],
           // Node 24/macOS 的 threads 全量运行可触发 V8 SIGSEGV；诊断时切换进程隔离，测试范围不变。
           pool: process.env.ZCODE_TEST_POOL === "forks" ? "forks" : "threads",
           maxWorkers: process.env.ZCODE_TEST_POOL === "forks" ? 2 : 4,
