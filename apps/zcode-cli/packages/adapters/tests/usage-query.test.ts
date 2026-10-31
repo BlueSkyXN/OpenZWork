@@ -406,3 +406,149 @@ describe("queryTaskUsage", () => {
     }
   });
 });
+
+describe("project session scope", () => {
+  it("uses the same recursive identity set for totals, charts, tools and details", async () => {
+    const tempRoot = await mkdtemp(join(tmpdir(), "usage-project-scope-"));
+    const store = await createSqliteSessionStore({ dbPath: join(tempRoot, "session.sqlite") });
+    const now = 1_900_000_000_000;
+    const ids = ["main-a", "main-b", "child-a", "grandchild-a"].map(createSessionId);
+    try {
+      for (let index = 0; index < ids.length; index++) {
+        await store.createSession({
+          id: ids[index]!,
+          projectID: createProjectId("same-directory"),
+          directory: tempRoot,
+          slug: String(index),
+          taskType: index < 2 ? "interactive" : "subagent_child",
+          title: String(index),
+          version: "test",
+          ...(index === 2 ? { parentID: ids[0] } : index === 3 ? { parentID: ids[2] } : {}),
+        });
+        await store.recordModelUsage({
+          id: `scope-${index}`,
+          logicalRequestId: `scope-${index}`,
+          sessionID: ids[index]!,
+          querySource: index < 2 ? "main_turn" : "subagent",
+          providerId: "fixture",
+          modelId: `model-${index}`,
+          status: index === 2 ? "error" : "completed",
+          startedAt: now,
+          inputTokens: 10,
+          outputTokens: index,
+          computedTotalTokens: 10 + index,
+        });
+        await store.upsertToolUsage({
+          id: `tool-${index}`,
+          sessionID: ids[index]!,
+          toolCallID: createToolCallId(`tool-${index}`),
+          toolName: `tool-${index}`,
+          status: "completed",
+          startedAt: now,
+        });
+        await store.upsertTurnUsage({
+          sessionID: ids[index]!,
+          turnID: createTurnId(`turn-${index}`),
+          status: "completed",
+          startedAt: now,
+          durationMs: 100 * (index + 1),
+          computedTotalTokens: 10 + index,
+        });
+      }
+      const input = { since: now - DAY, until: now + 1, tzOffsetMs: 0 };
+      const filtered = await store.queryAppUsage({
+        ...input,
+        sessionIds: [ids[0]!, ids[2]!, ids[0]!],
+      });
+      expect(filtered.totals.totalTokens).toBe(35);
+      expect(filtered.totals.modelErrorCount).toBe(1);
+      expect(filtered.turnTotals).toMatchObject({
+        totalSessions: 3,
+        totalTurns: 3,
+        longestSessionMs: 400,
+      });
+      expect(filtered.days.reduce((sum, row) => sum + row.turnCount, 0)).toBe(3);
+      expect(filtered.models.map((row) => row.modelId).sort()).toEqual([
+        "model-0",
+        "model-2",
+        "model-3",
+      ]);
+      expect(filtered.tools.map((row) => row.toolName).sort()).toEqual([
+        "tool-0",
+        "tool-2",
+        "tool-3",
+      ]);
+      expect(filtered.days.reduce((sum, row) => sum + row.totalTokens, 0)).toBe(35);
+      expect(filtered.dayModels.reduce((sum, row) => sum + row.totalTokens, 0)).toBe(35);
+      const detail = await store.queryAppUsageSessions({
+        ...input,
+        sessionIds: [ids[0]!],
+        offset: 0,
+        limit: 50,
+      });
+      expect(detail.totals.totalTokens).toBe(filtered.totals.totalTokens);
+      expect(detail.rows).toEqual([
+        {
+          sessionId: ids[0],
+          title: "0",
+          mainTokens: 10,
+          subagentTokens: 25,
+          totalTokens: 35,
+          requestCount: 3,
+          childSessionCount: 2,
+        },
+      ]);
+      const empty = await store.queryAppUsage({ ...input, sessionIds: [] });
+      expect(empty.totals.totalTokens).toBe(0);
+      expect(empty.tools).toEqual([]);
+      expect(
+        (await store.queryAppUsageSessions({ ...input, sessionIds: [], offset: 0, limit: 50 }))
+          .rows,
+      ).toEqual([]);
+      const all = await store.queryAppUsage(input);
+      expect(all.totals.totalTokens).toBe(46);
+      expect(
+        (await store.queryAppUsageSessions({ ...input, offset: 0, limit: 50 })).totals.totalTokens,
+      ).toBe(all.totals.totalTokens);
+    } finally {
+      await store.close();
+      await rm(tempRoot, { recursive: true, force: true });
+    }
+  });
+});
+
+it("a real subagent child runtime persists a turn counted by the existing overview", async () => {
+  const { createRuntime, stopResult } =
+    await import("../../core/tests/runtime-output-token-continuation-test-helpers.js");
+  const root = await mkdtemp(join(tmpdir(), "usage-child-runtime-"));
+  const store = await createSqliteSessionStore({ dbPath: join(root, "session.sqlite") });
+  const id = createSessionId("usage-child-runtime");
+  try {
+    await store.createSession({
+      id,
+      projectID: createProjectId("fixture"),
+      directory: root,
+      slug: "child",
+      title: "fixture",
+      version: "test",
+      taskType: "subagent_child",
+    });
+    const runtime = createRuntime({
+      id: "usage-child-runtime",
+      config: { taskType: "subagent_child" },
+      deps: { sessionStore: store },
+      modelAdapter: {
+        async generateText() {
+          return stopResult("done", 10);
+        },
+      },
+    });
+    await runtime.executeTurn("synthetic usage check");
+    const usage = await store.queryAppUsage({ since: 0, until: Date.now() + 1, tzOffsetMs: 0 });
+    expect(usage.turnTotals.totalSessions).toBe(1);
+    expect(usage.turnTotals.totalTurns).toBe(1);
+  } finally {
+    store.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

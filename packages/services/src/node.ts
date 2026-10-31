@@ -304,7 +304,7 @@ import { createCredentialService } from "./credential/credentialService.js";
 import { createBroadcastService } from "./broadcast/broadcastService.js";
 import { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
 import { IAppUsageService } from "./app-usage/appUsage.js";
-import { createAppUsageService } from "./app-usage/appUsageService.js";
+import { buildAppUsageToolReport, createAppUsageService } from "./app-usage/appUsageService.js";
 import type { ZCodeAgentCommandResolver } from "./zcode-agent/zcodeAgentProcessManager.js";
 import { resolveZCodeAgentPresentationSurface } from "./zcode-agent/zcodeAgentPresentationSurface.js";
 import { createZCodeTaskServiceAdapter } from "./zcode-agent/zcodeTaskServiceAdapter.js";
@@ -807,6 +807,14 @@ export function createLocalServices(options: {
     workspaceIdentity: undefined,
   });
   const zcodeAgentService = createZCodeAgentService({
+    readAppUsageReport: async (params) => {
+      const query = {...params, until: Date.now(), includeProjects: true};
+      const [snapshot, page] = await Promise.all([
+        appUsageService.getAppUsageStats(query),
+        appUsageService.getAppUsageSessions({...query, offset: 0, limit: 50}),
+      ]);
+      return buildAppUsageToolReport(snapshot, page);
+    },
     prepareProjectExecution,
     prepareSessionCreation: async (target) =>
       (await taskIndexRepo.getProjectRepository()).reserveCreatedTask({
@@ -945,6 +953,12 @@ export function createLocalServices(options: {
         }),
   });
   providerConnectivityAgentService = zcodeAgentService;
+  const appUsageService = createAppUsageService({
+    zcodeAgentService,
+    readProjectTree: async () => (await taskIndexRepo.getProjectRepository()).readTree(),
+    runtimeSurface: options.agentRuntimeContext?.runtimeSurface,
+    serviceAuthorityMode: options.serviceAuthorityMode,
+  });
   const zcodeTaskIndexSyncer = createZCodeTaskIndexSyncer({
     agentService: zcodeAgentService,
     taskIndexRepo,
@@ -1081,14 +1095,7 @@ export function createLocalServices(options: {
     )
     .register(IFileWatcherService, createFileWatcherService())
     .register(ISourceServerWorkspaceService, sourceServerWorkspaceService)
-    .register(
-      IAppUsageService,
-      createAppUsageService({
-        zcodeAgentService,
-        runtimeSurface: options.agentRuntimeContext?.runtimeSurface,
-        serviceAuthorityMode: options.serviceAuthorityMode,
-      }),
-    )
+    .register(IAppUsageService, appUsageService)
     .register(ISkillsService, skillsService)
     .register(ISkillSyncService, createSkillSyncService())
     .register(IMcpSyncService, mcpSyncService)

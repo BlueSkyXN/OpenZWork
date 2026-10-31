@@ -992,6 +992,8 @@ export interface ToolUsageRecord {
 }
 
 export interface AppUsageQueryInput {
+  /** Host 已解析的会话身份；省略表示全库，空数组表示空范围。 */
+  sessionIds?: readonly string[];
   /** 含 (since, until] 的下界（unix ms）。 */
   since: number;
   /** 上界（unix ms），通常为 now。 */
@@ -1052,6 +1054,24 @@ export interface AppUsageDayModelRow {
   totalTokens: number;
 }
 
+export interface AppUsageSessionsQueryInput extends AppUsageQueryInput { offset: number; limit: number; }
+
+export interface AppUsageSessionRow {
+  sessionId: string;
+  title: string | null;
+  mainTokens: number;
+  subagentTokens: number;
+  totalTokens: number;
+  requestCount: number;
+  childSessionCount: number;
+}
+
+export interface AppUsageSessionsQueryResult {
+  rows: AppUsageSessionRow[];
+  totalCount: number; childSessionCount: number;
+  totals: { mainTokens: number; subagentTokens: number; totalTokens: number };
+}
+
 export interface AppUsageQueryResult {
   totals: AppUsageTotalsRow;
   turnTotals: AppUsageTurnTotalsRow;
@@ -1085,6 +1105,7 @@ export interface UsageStorePort {
   upsertToolUsage(input: ToolUsageRecord): Promise<void>;
   pruneUsage(input?: { beforeTime?: number }): Promise<void>;
   queryAppUsage(input: AppUsageQueryInput): Promise<AppUsageQueryResult>;
+  queryAppUsageSessions(input: AppUsageSessionsQueryInput): Promise<AppUsageSessionsQueryResult>;
   queryTaskUsage(input: TaskUsageQueryInput): Promise<TaskUsageQueryResult>;
 }
 
@@ -1272,4 +1293,12 @@ export interface SessionStorePort {
     summary?: { additions: number; deletions: number; files: number; diffs?: FileDiff[] };
   }): Promise<void>;
   clearRevert(sessionID: SessionId): Promise<void>;
+}
+
+/** Host 项目组织态的只读查询端口；实现不得让 CLI 直接读取应用数据库。 */
+export interface UsageQueryPort {
+  query(
+    input: { range: "all" | "7d" | "30d"; projectId?: string | null; timeZone?: string },
+    signal: AbortSignal,
+  ): Promise<string>;
 }

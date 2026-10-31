@@ -39,7 +39,12 @@ import { executionOutputPreviewSchema } from "../execution-output-preview.js";
 import { completeModelPropertiesDataSchema } from "../model-config.js";
 import { modelExecutionSchema } from "../model-execution.js";
 import { modelSelectionSchema } from "../model-selection.js";
-import { APP_USAGE_RANGES, appUsageSnapshotSchema } from "../usage-stats.js";
+import {
+  appUsageSnapshotSchema,
+  appUsageQueryParamsSchema,
+  appUsageSessionsParamsSchema,
+  appUsageSessionsResultSchema,
+} from "../usage-stats.js";
 import { DYNAMIC_WORKFLOW_MODES } from "../dynamic-workflow-feature.js";
 import { errorAttributionSchema } from "../zcode-protocol-v4/snapshot.js";
 // 后台详情共享精简的只读响应 schema，不携带命令或计时元数据。
@@ -1946,12 +1951,9 @@ export const zcodeSessionSubagentsParamsSchema = z
   .strict();
 export type ZCodeSessionSubagentsParams = z.infer<typeof zcodeSessionSubagentsParamsSchema>;
 
-export const zcodeUsageStatsParamsSchema = z
-  .object({
-    range: z.enum(APP_USAGE_RANGES),
-    timeZone: z.string().optional(),
-  })
-  .strict();
+export const zcodeUsageStatsParamsSchema = appUsageQueryParamsSchema;
+export const zcodeUsageSessionsParamsSchema = appUsageSessionsParamsSchema;
+export const zcodeUsageSessionsResultSchema = appUsageSessionsResultSchema;
 export const zcodeUsageStatsResultSchema = appUsageSnapshotSchema;
 export const zcodeTaskTokenUsageParamsSchema = z
   .object({
@@ -3987,6 +3989,8 @@ export const zcodeProtocolMethods = {
   // @deprecated：host 消费已清零（zcodeAgentService 改走 v4/usage/stats）。
   // 仅剩 CLI server 的 wire 兼容 case；随旧词整体删除时一并移除。
   usageStats: "usage/stats",
+  usageSessions: "usage/sessions",
+  appUsageQuery: "app/usage/query",
   // ZCode Protocol 对 agent 只暴露 session-first 方法；task 是 UI 投影概念，不能泄露进协议方法名。
   // @deprecated：host 已改走 v4/conversation/usage；后续与 usage/stats 一并移除。
   sessionUsage: "session/usage",

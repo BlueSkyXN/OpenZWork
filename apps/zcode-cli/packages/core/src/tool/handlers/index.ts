@@ -1,3 +1,4 @@
+import { queryUsageToolEntry } from "../usage-query/contract.js";
 import { replyToChannelToolEntry } from "./reply-to-channel.js";
 // ============================================================
 // Built-in Tool Handlers
@@ -77,6 +78,7 @@ import { createToolRuleNameSet } from "../tool-visibility.js";
 // 统一隐藏 Glob/Grep，并通过 Bash find/grep 接管搜索。
 
 export const builtInTools: ToolEntry[] = [
+  queryUsageToolEntry,
   toolSearchToolEntry,
   deferredToolCallEntry,
   readToolEntry,
@@ -187,6 +189,7 @@ interface RegisterBuiltInToolsOptions {
   includeEscalate?: boolean;
   includeWorkflow?: boolean;
   includeAutomation?: boolean;
+  includeUsageQuery?: boolean;
   /**
    * 动态工作流灰度门。**只有显式 false
    * 才下架** DYNAMIC_WORKFLOW_TOOL_NAMES：缺席代表调用方不参与灰度（TUI、headless、
@@ -214,6 +217,7 @@ export function registerBuiltInTools(
   const disallowedTools = createToolRuleNameSet(options.disallowedTools);
 
   for (const entry of builtInTools) {
+    if (entry.metadata.name === "QueryUsage" && options.includeUsageQuery !== true) continue;
     if (
       options.embeddedSearchEnabled === true &&
       (entry.metadata.name === "Glob" || entry.metadata.name === "Grep")

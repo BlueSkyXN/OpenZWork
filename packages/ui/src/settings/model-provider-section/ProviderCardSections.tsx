@@ -1,3 +1,4 @@
+import { ProviderModelDiscoveryDialog } from "@/model-discovery/index.js";
 /* eslint-disable max-lines -- 模型供应商卡片仍在迁移期集中维护多个紧耦合区块，后续拆分时再移除。 */
 import {
   useCallback,
@@ -384,6 +385,7 @@ export function ProviderModelsSection({
   const { intl } = useZCodeIntl();
   const { providerSettingsService } = useServices();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [discoveryOpen, setDiscoveryOpen] = useState(false);
   const [addSaving, setAddSaving] = useState(false);
   const addSavingRef = useRef(false);
   const [addCommitError, setAddCommitError] = useState<string | null>(null);
@@ -409,12 +411,15 @@ export function ProviderModelsSection({
   });
   const { draft: addDraft } = editor;
 
-  const openAddDialog = useCallback(() => {
-    editor.reset(createEmptyModel());
-    setAddDraftErrorField(null);
-    setAddCommitError(null);
-    setAddDialogOpen(true);
-  }, [editor.reset]);
+  const openAddDialog = useCallback(
+    (modelId = "") => {
+      editor.reset({ ...createEmptyModel(), modelId });
+      setAddDraftErrorField(null);
+      setAddCommitError(null);
+      setAddDialogOpen(true);
+    },
+    [editor.reset],
+  );
 
   const updateAddDraft = (patch: Partial<ProviderModelDraftValues>) => {
     editor.change(patch);
@@ -477,17 +482,28 @@ export function ProviderModelsSection({
         <span className="text-ui-base text-foreground-subtle">
           {intl.formatMessage({ id: "settings.modelProvider.models" })}
         </span>
-        <Button
-          type="button"
-          variant="secondary"
-          size="default"
-          className="rounded-lg"
-          data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
-          onClick={openAddDialog}
-        >
-          <Plus data-icon="inline-start" aria-hidden="true" />
-          {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!providerEnabled}
+            onClick={() => setDiscoveryOpen(true)}
+            data-testid="provider-model-discovery-open"
+          >
+            {intl.formatMessage({ id: "settings.modelProvider.discovery.title" })}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="default"
+            className="rounded-lg"
+            data-testid={TID_MODEL_PROVIDER_ADD_MODEL_BUTTON}
+            onClick={() => openAddDialog()}
+          >
+            <Plus data-icon="inline-start" aria-hidden="true" />
+            {intl.formatMessage({ id: "settings.modelProvider.addModel" })}
+          </Button>
+        </div>
       </div>
       {models.length > 0 ? (
         <div className="overflow-hidden rounded-lg border border-input-border bg-input">
@@ -556,6 +572,15 @@ export function ProviderModelsSection({
         </div>
       )}
       <>
+        <ProviderModelDiscoveryDialog
+          providerId={providerId}
+          providerName={providerName}
+          models={models}
+          open={discoveryOpen}
+          onOpenChange={setDiscoveryOpen}
+          onAddModel={onAddModel}
+          onConfigure={openAddDialog}
+        />
         <ProviderModelMetadataDialog
           onRestore={() => {
             setAddDraftErrorField(null);

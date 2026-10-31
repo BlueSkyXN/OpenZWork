@@ -1,3 +1,5 @@
+import { appUsageSessionsParamsSchema, appUsageSessionsResultSchema } from "@zcode/shared";
+import { createProtocolUsageQueryPort } from "./usage-query/contract.js";
 import { mergeMetrics, type ConversationMetrics } from "@zcode/shared/conversation-metrics";
 import { isAuxiliarySessionKind, isReadonlyAgentSessionKind } from "@zcode/shared";
 /* eslint-disable max-lines -- ZCode Protocol 的 session/workspace 方法共享同一个 server context 与 snapshot helpers，迁移期先集中维护。 */
@@ -114,7 +116,7 @@ import {
   type ZCodeProtocolToolInputTransmissionState,
 } from "./server-types.js";
 import { createWorkspaceZCodeApp, ensureSessionModelAvailable } from "./workspace-model-runtime.js";
-import { buildAppUsageSnapshot, resolveTzOffsetMs } from "./usage-stats-builder.js";
+import { buildAppUsageSnapshot, resolveAppUsageWindow } from "./usage-stats-builder.js";
 import { createProtocolInteractionBroker } from "./interaction-broker.js";
 import { createProtocolAutomationPort } from "./automation-port.js";
 import { createProtocolTopicResourcePort } from "./topic-resource-port.js";
@@ -1871,23 +1873,11 @@ export async function listSessionSubagents(
   };
 }
 
-const APP_USAGE_RANGE_DAYS: Record<string, number> = { "7d": 7, "30d": 30 };
 
 export async function getUsageStats(context: ZCodeProtocolAgentServerContext, rawParams: unknown) {
   const params = parseParams(zcodeUsageStatsParamsSchema, rawParams ?? {});
-  const timeZone = params.timeZone ?? "UTC";
-  const until = Date.now();
-  const tzOffsetMs = resolveTzOffsetMs(timeZone, until);
-  const rangeDays = APP_USAGE_RANGE_DAYS[params.range] ?? 30;
-  const since = params.range === "all" ? 0 : until - rangeDays * 86_400_000;
-  const buildOptions = {
-    range: params.range,
-    timeZone,
-    tzOffsetMs,
-    generatedAt: until,
-    since,
-    until,
-  };
+  const buildOptions = resolveAppUsageWindow(params);
+  const { since, until, tzOffsetMs } = buildOptions;
 
   // SessionStorePort 与 UsageStorePort 是分离接口，但实际 store 同时实现两者；
   // 沿用 core/usage-observability 的运行时收窄方式访问只读聚合方法。
@@ -1923,8 +1913,19 @@ export async function getUsageStats(context: ZCodeProtocolAgentServerContext, ra
     );
   }
 
-  const result = await usageStore.queryAppUsage({ since, until, tzOffsetMs });
+  const result = await usageStore.queryAppUsage({ since, until, tzOffsetMs, ...(params.sessionIds !== undefined ? { sessionIds: params.sessionIds } : {}) });
   return buildAppUsageSnapshot(result, buildOptions);
+}
+
+export async function getUsageSessions(context: ZCodeProtocolAgentServerContext, rawParams: unknown) {
+  const params = parseParams(appUsageSessionsParamsSchema, rawParams ?? {});
+  const window = resolveAppUsageWindow(params);
+  const store = context.deps.sessionStore as Partial<UsageStorePort> | undefined;
+  if (!store?.queryAppUsageSessions) throw new Error("Session usage query is unavailable");
+  const result = await store.queryAppUsageSessions({ since: window.since, until: window.until, tzOffsetMs: window.tzOffsetMs,
+    ...(params.sessionIds !== undefined ? {sessionIds: params.sessionIds} : {}), offset: params.offset, limit: params.limit });
+  return appUsageSessionsResultSchema.parse({ ...result, range: window.range, generatedAt: window.until, timeZone: window.timeZone,
+    source: "agent-db", offset: params.offset, limit: params.limit });
 }
 
 export async function readSession(context: ZCodeProtocolAgentServerContext, rawParams: unknown) {
@@ -3460,6 +3461,7 @@ async function createRecord(
     permissionBroker: createProtocolInteractionBroker(context),
     automationPort: createProtocolAutomationPort(context, () => ownSessionRecord),
     topicResourcePort: createProtocolTopicResourcePort(context),
+    usageQueryPort: createProtocolUsageQueryPort(context),
     resolveInitialBashShellSelection: startupPreferences.resolveInitialBashShellSelection,
     ...(startupPreferences.subagentRuntimeConfigEnabled &&
     !(workspace.workspaceIdentity && isRemoteWorkspaceIdentity(workspace.workspaceIdentity))

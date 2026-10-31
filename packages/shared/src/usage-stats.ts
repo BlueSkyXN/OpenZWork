@@ -85,11 +85,72 @@ export const appUsageToolUsageSchema = z.object({
   avgDurationMs: z.number().nullable(),
 });
 
+export const appUsageProjectSchema = z.object({ id: z.string(), name: z.string() });
+export const appUsageSessionSchema = z.object({
+  sessionId: z.string(),
+  title: z.string().nullable(),
+  mainTokens: z.number().nonnegative(),
+  subagentTokens: z.number().nonnegative(),
+  totalTokens: z.number().nonnegative(),
+  requestCount: z.number().int().nonnegative(),
+  childSessionCount: z.number().int().nonnegative(),
+});
+export type AppUsageSession = z.infer<typeof appUsageSessionSchema>;
+export const appUsageSessionTotalsSchema = z.object({
+  mainTokens: z.number().nonnegative(),
+  subagentTokens: z.number().nonnegative(),
+  totalTokens: z.number().nonnegative(),
+});
+export const appUsageQueryParamsSchema = z
+  .object({
+    range: z.enum(APP_USAGE_RANGES),
+    timeZone: z.string().optional(),
+    until: z.number().int().nonnegative().optional(),
+    sessionIds: z.array(z.string().min(1).max(512)).max(100000).optional(),
+  })
+  .strict();
+export const appUsageSessionsParamsSchema = appUsageQueryParamsSchema
+  .extend({
+    offset: z.number().int().min(0).default(0),
+    limit: z.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+export const appUsageSessionsResultSchema = z
+  .object({
+    range: z.enum(APP_USAGE_RANGES),
+    generatedAt: z.number(),
+    timeZone: z.string(),
+    source: z.literal("agent-db"),
+    offset: z.number().int().nonnegative(),
+    limit: z.number().int().min(1).max(100),
+    rows: z.array(appUsageSessionSchema),
+    totalCount: z.number().int().nonnegative(),
+    childSessionCount: z.number().int().nonnegative(),
+    totals: appUsageSessionTotalsSchema,
+  })
+  .strict();
+export type AppUsageSessionsResult = z.infer<typeof appUsageSessionsResultSchema>;
+export const appUsageSessionsPageSchema = appUsageSessionsResultSchema.extend({
+  rows: z.array(
+    appUsageSessionSchema.extend({
+      membership: z.enum(["project", "unassigned", "not-in-task-list"]),
+      projectId: z.string().nullable(),
+      projectName: z.string().nullable(),
+    }),
+  ),
+  projects: z.array(appUsageProjectSchema),
+  projectId: z.string().nullable().optional(),
+});
+export type AppUsageSessionsPage = z.infer<typeof appUsageSessionsPageSchema>;
+export const APP_USAGE_PROJECT_NOT_FOUND = "project-not-found";
+
 export const appUsageSnapshotSchema = z.object({
   range: z.enum(APP_USAGE_RANGES),
   generatedAt: z.number(),
   timeZone: z.string(),
   source: z.literal("agent-db"),
+  projects: z.array(appUsageProjectSchema).optional(),
+  projectId: z.string().nullable().optional(),
   summary: appUsageSummarySchema,
   heatmap: appUsageHeatmapSchema,
   dailyModelUsage: z.array(appUsageDailyModelUsageSchema),
@@ -107,3 +168,13 @@ export type AppUsageModelUsage = z.infer<typeof appUsageModelUsageSchema>;
 export type AppUsageToolUsage = z.infer<typeof appUsageToolUsageSchema>;
 export type AppUsageFavoriteModel = z.infer<typeof appUsageFavoriteModelSchema>;
 export type AppUsageSnapshot = z.infer<typeof appUsageSnapshotSchema>;
+
+/** AI 只读查询使用与统计页相同的 Host 服务；项目 ID 只由 Host 解释。 */
+export const appUsageToolParamsSchema = z
+  .object({
+    range: z.enum(APP_USAGE_RANGES).default("30d"),
+    projectId: z.string().min(1).max(512).nullable().optional(),
+    timeZone: z.string().max(100).optional(),
+  })
+  .strict();
+export const appUsageToolResultSchema = z.object({ report: z.string().max(128000) }).strict();

@@ -3,7 +3,12 @@ import { localTtftFactsSchema } from "../localTtft.js";
 // 传输外壳：连接握手 / 订阅 / 帧信封。
 // 阶段为类型占位（后半接通道层时启用），数据形状已按规范定稿。
 import { z } from "zod";
-import { APP_USAGE_RANGES, appUsageSnapshotSchema } from "../usage-stats.js";
+import {
+  appUsageSnapshotSchema,
+  appUsageQueryParamsSchema,
+  appUsageSessionsParamsSchema,
+  appUsageSessionsResultSchema,
+} from "../usage-stats.js";
 import { zcodeWorkspaceRefSchema } from "../zcode-protocol-legacy-types.js";
 import {
   PROTOCOL_V4_LIMITS,
@@ -370,6 +375,7 @@ export const V4_METHODS = {
   // usage 事实源在 CLI 的 session 库（model_usage/turn_usage 聚合），host 侧无副本，
   // 故收敛为 v4 query 而非 host 直连；旧词 usage/stats、session/usage 就此消费清零。
   usageStats: "v4/usage/stats",
+  usageSessions: "v4/usage/sessions",
   conversationUsage: "v4/conversation/usage",
   // 附件事务：禁止 full-data RPC。每个 chunk 的 decoded bytes <=512KiB，
   // renderer->host Channel 与 host->CLI NDJSON 都必须逐 request 证明 <=1MiB。
@@ -788,12 +794,9 @@ export type V4ConversationFileRewindPreviewResult = z.infer<
 // ── usage query──
 // app 级用量聚合：range/timeZone 入参与旧 usage/stats 同形（消费者语义不变），
 // 结果 = AppUsageSnapshot（形状归属中性模块 usage-stats.ts，不与旧词表文件耦合）。
-export const v4UsageStatsParamsSchema = z
-  .object({
-    range: z.enum(APP_USAGE_RANGES),
-    timeZone: z.string().optional(),
-  })
-  .strict();
+export const v4UsageStatsParamsSchema = appUsageQueryParamsSchema;
+export const v4UsageSessionsParamsSchema = appUsageSessionsParamsSchema;
+export const v4UsageSessionsResultSchema = appUsageSessionsResultSchema;
 export type V4UsageStatsParams = z.infer<typeof v4UsageStatsParamsSchema>;
 export const v4UsageStatsResultSchema = appUsageSnapshotSchema;
 export type V4UsageStatsResult = z.infer<typeof v4UsageStatsResultSchema>;

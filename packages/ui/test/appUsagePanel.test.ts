@@ -10,16 +10,26 @@ import { createSnapshot } from "./fixtures/appUsageSnapshot.js";
 
 const state = vi.hoisted(() => ({
   data: null as AppUsageSnapshot | null,
+  projects: [],
   available: true,
   loading: false,
   error: null as string | null,
   refresh: vi.fn(),
   ranges: vi.fn(),
+  detailsOptions: vi.fn(),
+  overviewOptions: vi.fn(),
 }));
 vi.mock("@/hooks/useAppUsageStats.js", () => ({
-  useAppUsageStats: (range: string) => {
+  useAppUsageStats: (range: string, options: unknown) => {
+    state.overviewOptions(options);
     state.ranges(range);
     return state;
+  },
+}));
+vi.mock("@/hooks/useAppUsageSessions.js", () => ({
+  useAppUsageSessions: (_range: string, options: unknown) => {
+    state.detailsOptions(options);
+    return { data: null, available: true, loading: false, error: null };
   },
 }));
 afterEach(cleanup);
@@ -112,7 +122,9 @@ describe("本地 App Usage 页面", () => {
     fireEvent.click(screen.getByRole("button", { name: en["settings.usage.range.7d"] }));
     expect(state.ranges).toHaveBeenLastCalledWith("7d");
     fireEvent.click(screen.getByRole("button", { name: en["settings.usage.refresh"] }));
-    expect(state.refresh).toHaveBeenCalledOnce();
+    expect(state.overviewOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ refreshKey: 1 }),
+    );
   });
   it("没有本地服务时禁止刷新且不展示旧统计", () => {
     Object.assign(state, { available: false, data: null });
@@ -129,7 +141,9 @@ describe("本地 App Usage 页面", () => {
     renderUsage();
     expect(screen.getByRole("alert")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: en["settings.usage.retry"] }));
-    expect(state.refresh).toHaveBeenCalledOnce();
+    expect(state.overviewOptions).toHaveBeenLastCalledWith(
+      expect.objectContaining({ refreshKey: 1 }),
+    );
   });
   it("加载状态显示进度并禁用刷新", () => {
     Object.assign(state, { loading: true, data: null });
@@ -140,4 +154,42 @@ describe("本地 App Usage 页面", () => {
         .disabled,
     ).toBe(true);
   });
+});
+
+it("opens a secondary detail view, keeps the range and restores focus on return", () => {
+  state.data = createSnapshot();
+  state.data.summary.totalSessions = 2;
+  const { container } = renderUsage();
+  const entry = screen.getByRole("button", { name: "View session details" });
+  expect(container.querySelector('[data-testid="usage-session-details"]')).toBeNull();
+  fireEvent.click(entry);
+  expect(screen.getByRole("heading", { name: "Session details" })).toBe(document.activeElement);
+  fireEvent.click(screen.getByRole("button", { name: "Last 7 days" }));
+  fireEvent.click(screen.getByTestId("usage-details-back"));
+  expect(document.activeElement).toBe(screen.getByRole("button", { name: "View session details" }));
+  expect(screen.getByRole("button", { name: "Last 7 days" }).getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+  expect(state.detailsOptions).toHaveBeenCalledWith(
+    expect.objectContaining({ enabled: true, offset: 0, limit: 50 }),
+  );
+});
+it("hides the detail entry when the original session count is zero", () => {
+  renderUsage();
+  expect(screen.queryByRole("button", { name: "View session details" })).toBeNull();
+});
+
+it("returning from an empty detail scope focuses the overview heading and finishes restoration", () => {
+  state.data = createSnapshot();
+  state.data.summary.totalSessions = 2;
+  renderUsage();
+  fireEvent.click(screen.getByRole("button", { name: "View session details" }));
+  state.data = { ...createSnapshot(), summary: { ...createSnapshot().summary, totalSessions: 0 } };
+  fireEvent.click(screen.getByTestId("usage-details-back"));
+  expect(document.activeElement).toBe(screen.getByRole("heading", { name: "App usage" }));
+  state.data.summary.totalSessions = 2;
+  fireEvent.click(screen.getByRole("button", { name: "Last 7 days" }));
+  expect(document.activeElement).not.toBe(
+    screen.getByRole("button", { name: "View session details" }),
+  );
 });

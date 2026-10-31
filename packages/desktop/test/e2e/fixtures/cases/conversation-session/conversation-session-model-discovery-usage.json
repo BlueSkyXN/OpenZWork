@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "caseName": "conversation-session-model-discovery-usage",
+  "spec": "./test/e2e/conversation-session/conversation-session-model-discovery-usage.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/common.json",
+    "./test/e2e/fixtures/upstream/conversation-session/conversation-session-model-discovery-usage.json"
+  ],
+  "fileFixtures": [],
+  "requests": [
+    {
+      "id": "usage-initial",
+      "description": "MD/PU 本地固定用量",
+      "kind": "main",
+      "timingPolicy": "controlled-stream",
+      "source": "synthetic",
+      "syntheticReason": "本机固定响应验证模型列表与用量往返，不请求外部模型。"
+    },
+    {
+      "id": "discovery-list",
+      "description": "去重模型列表",
+      "kind": "main",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "本机固定响应验证模型列表与用量往返，不请求外部模型。"
+    },
+    {
+      "id": "usage-tool-result",
+      "description": "收到真实 Host 用量结果",
+      "kind": "main",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "本机固定响应验证模型列表与用量往返，不请求外部模型。"
+    },
+    {
+      "id": "usage-tool-call",
+      "description": "调用 QueryUsage",
+      "kind": "main",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "本机固定响应验证模型列表与用量往返，不请求外部模型。"
+    }
+  ]
+}

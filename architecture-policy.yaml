@@ -838,6 +838,82 @@ modules:
     layers:
       app: .
     owner: conversation
+  # provider-model-discovery：由 architecture:adopt 登记
+  - id: provider-model-discovery
+    roots:
+      - packages/provider-node/src/model-discovery
+    managed: true
+    requires: [provider]
+    publicEntrypoints:
+      - packages/provider-node/src/model-discovery/index.ts
+      - packages/provider-node/src/model-discovery/contract.ts
+    layers:
+      adapters: .
+    owner: model-settings
+  # provider-model-discovery-ui：由 architecture:adopt 登记
+  - id: provider-model-discovery-ui
+    roots:
+      - packages/ui/src/model-discovery
+      - packages/ui/src/hooks/useProviderModelDiscovery.ts
+    managed: true
+    requires: [ui, services, provider]
+    publicEntrypoints:
+      - packages/ui/src/model-discovery/index.ts
+      - packages/ui/src/model-discovery/contract.ts
+      - packages/ui/src/hooks/useProviderModelDiscovery.ts
+    layers:
+      ui: .
+    owner: model-settings
+  # project-usage-query：由 architecture:adopt 登记
+  - id: project-usage-query
+    roots:
+      - apps/zcode-cli/packages/adapters/src/storage/session-store/usage-query
+    managed: true
+    requires: [zcode-cli]
+    publicEntrypoints:
+      - apps/zcode-cli/packages/adapters/src/storage/session-store/usage-query/index.ts
+      - apps/zcode-cli/packages/adapters/src/storage/session-store/usage-query/contract.ts
+    layers:
+      adapters: .
+    owner: usage
+  # project-usage-ui：由 architecture:adopt 登记
+  - id: project-usage-ui
+    roots:
+      - packages/ui/src/project-usage
+      - packages/ui/src/hooks/useAppUsageSessions.ts
+    managed: true
+    requires: [ui, shared]
+    publicEntrypoints:
+      - packages/ui/src/project-usage/index.ts
+      - packages/ui/src/project-usage/contract.ts
+      - packages/ui/src/hooks/useAppUsageSessions.ts
+    layers:
+      ui: .
+    owner: usage
+  # usage-query-tool：由 architecture:adopt 登记
+  - id: usage-query-tool
+    roots:
+      - apps/zcode-cli/packages/core/src/tool/usage-query
+    managed: true
+    requires: [shared, zcode-cli]
+    publicEntrypoints:
+      - apps/zcode-cli/packages/core/src/tool/usage-query/index.ts
+      - apps/zcode-cli/packages/core/src/tool/usage-query/contract.ts
+    layers:
+      app: .
+    owner: usage
+  # usage-query-protocol：由 architecture:adopt 登记
+  - id: usage-query-protocol
+    roots:
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-query
+    managed: true
+    requires: [shared, zcode-cli]
+    publicEntrypoints:
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-query/index.ts
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-query/contract.ts
+    layers:
+      adapters: .
+    owner: usage
 
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。

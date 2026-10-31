@@ -1,5 +1,23 @@
 # Tool Change Chain Spec
 
+## QueryUsage 本机项目用量（2026-10-30）
+
+仅在 Host 注入 `UsageQueryPort` 时注册只读 deferred 工具 `QueryUsage`。严格输入 schema
+支持 `range`（默认 30d）、`projectId`（省略为全部、null 为未归类）和 `timeZone`；项目 ID
+来自查询返回的项目选项。Bootstrap 经现有 `requestClient` 请求 `app/usage/query`，Host
+复用统计页的 App Usage Service 解析项目归属，再以 session ID 集合查询 CLI usage SQLite。
+工具沿既有 executor、权限、事件、持久化与下一轮模型请求链路投递，无文件或网络写入。
+
+查询支持取消和 30 秒超时；无本地 Host、项目不存在和读取失败均返回错误。报告保留
+查询时间、30 天保留范围、完整汇总、列表总数和截断标志，按 UTF-8 字节裁剪列表到
+120,000 字节以内；工具结果预算为 128,000 字节。
+QueryUsage 汇总与分页明细共用同一 until，返回第一页 50 行、全量 totals 和 totalCount；
+fork 独立归属，侧聊计入主会话，三类 Agent 子会话归入子任务。独立 CLI 不暴露此工具，桌面 continuous
+与手机 replayable 的传递语义保持现有合同。详见根目录
+[功能规格](../../../../../../docs/spec/model-discovery-project-usage.md)。
+验收包含 schema/取消、Host 归属与 SQLite 聚合回归，以及真实 Electron 的
+模型 tool call → Host → tool result → 下一轮模型请求闭环。
+
 ## 独立 CLI 工作流入口回归（2026-10-19）
 
 独立 CLI 只通过 `--workflow-mode disabled|onDemand|alwaysOn` 向 app 配置写入工作流模式；

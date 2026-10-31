@@ -19,7 +19,7 @@ export {
 // Accessor
 export type { IServiceAccessor } from "./accessor.js";
 export { IAppUsageService } from "./app-usage/appUsage.js";
-export type { AppUsageStatsParams } from "./app-usage/appUsage.js";
+export type { AppUsageStatsParams, AppUsageSessionsParams } from "./app-usage/appUsage.js";
 export {
   createConversationTelemetryService,
   type ConversationTelemetryWorkspaceTarget,
