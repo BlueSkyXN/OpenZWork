@@ -103,6 +103,9 @@ const DEFAULT_ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/";
 // Linux CI（pnpm hoisted）往往解析不到该二进制，`asar list` 未运行即 exit 1。
 // 显式依赖 @electron/asar 并用 Node 直接执行 CLI，避免跨平台找不齐 shim。
 const requireFromConfig = createRequire(import.meta.url);
+// OpenZWork v3.17.1：上游桌面包从自身 package.json 读取 electron 版本（44.7.0），
+// mac/linux 语言的 electronLanguages 与 asar 打包都消费该常量。
+const desktopElectronVersion = requireFromConfig("./package.json").devDependencies.electron;
 let nsisInstallSectionPatched = false;
 let nsisInstallSectionOriginalSource = null;
 let nsisInstallSectionPath = null;
