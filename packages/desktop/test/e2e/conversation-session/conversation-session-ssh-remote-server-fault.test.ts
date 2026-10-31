@@ -71,7 +71,7 @@ describe(`${CASE_MARKER}: SSH zcode-server fault and grouped reconnect`, () => {
         (
           await runSSHCommand(
             prepared.config,
-            'cat "$HOME/.zcode/server/run/status.json" 2>/dev/null | tr -d "\\n " | cut -c1-200',
+            'cat "$HOME/.openzwork/server/run/status.json" 2>/dev/null | tr -d "\\n " | cut -c1-200',
           ).catch(() => null)
         )?.stdout.trim() ?? null,
     });

@@ -2541,7 +2541,7 @@ async function runPromptTurnInBackground(
         inputId: params.inputId,
         queryId: params.queryId,
         // 只透传 Host 显式注入的任务身份；inputId 只用于追踪和幂等。
-        // OpenZWork 净化：上游另有 activeOffPeakTaskId（闲时任务域）分支；该域已净化，不透传。
+        // OpenZWork 净化：上游另有闲时任务归因 id（闲时任务域）分支；该域已净化，不透传。
         ...(activeAutomationId ? { automationId: activeAutomationId } : {}),
 
         // legacy session/send 同样可能复用 active runtime；只做 port 拒绝时模型仍看得到

@@ -4,7 +4,7 @@
 
 - 上游固定为 `a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`（镜像仓 `Program/ZCode` main，官方 tag v3.17.1，Source-Commit `73158b64`）；从 OpenZWork `3a6f31bd`（PR#57 后的 main）继续，以 merge commit 保留上游历史。合并基 `3c5b2276`（v3.16.2 sync 提交）。
 - 延续 [3.16.2 的产品边界](upstream-v3.16.2-integration.md)：标准 MCP、ToolSearch、node_repl、Browser Use、动态工作流、GenUI/MCP Apps、本地/远程工作区和第三方模型配置继续保留；用户级目录 `.openzwork`、项目 `.zcode`、无账号 HMAC 配对、owner/lease 与 stale run 防护不变。
-- 官方账号、套餐（codingPlan/startPlan/off-peak/Highspeed）、云端分享与反馈、遥测（ARMS/OTel）、自动更新、原生 CUA、官方网关路由与签名层、`zcode_official` 鉴权依赖官方 JWT 的内置插件（zcode-site/image-search 等 `auth.type=zcode_official`）保持移除；上游对已退役文件的修改逐项审查，不恢复整文件。
+- 官方账号、套餐（codingPlan/startPlan/闲时任务/Highspeed）、云端分享与反馈、遥测（ARMS/OTel）、自动更新、原生 CUA、官方网关路由与签名层、`zcode_official` 鉴权依赖官方 JWT 的内置插件（zcode-site/image-search 等 `auth.type=zcode_official`）保持移除；上游对已退役文件的修改逐项审查，不恢复整文件。
 
 ## 上游变更规模与结构
 
@@ -26,11 +26,11 @@
 1. delete/modify（我方已删、上游有改）：一律保持删除；但需比对上游改动是否含保留域修复（如既有 MCP 文件的安全修复），若有则把修复移植到存活的等价文件。
 2. both-modified：先取上游版本，再重放我方净化语义（`.zcode`→`.openzwork` 身份、官方端点移除、遥测剥离）；无法机械合成的文件逐个人工审查。
 3. `pnpm-lock.yaml`：依赖清单实际改变后按获准口径官方重算（`pnpm install --lockfile-only --ignore-scripts`），禁手编。
-4. 上游新增文件中的官方域（off-peak runtime、highspeed、`@arms/rum-electron`、official-coding-plan-gateway、cua、zcode_official auth）：同步后统一剥离，不留死代码。
+4. 上游新增文件中的官方域（闲时任务 runtime、highspeed、`@arms/rum-electron`、official-coding-plan-gateway、cua、zcode_official auth）：同步后统一剥离，不留死代码。
 
 ## 验证与交付
 
 - 必须执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、`pnpm db:schema:check`；新 scripts 门禁（stale-phrases、e2e-remote-targets）如被 pre-push 引用则一并跑通。
-- 净化残留扫描：全仓 off-peak/codingPlan/ARMS/highspeed/official-gateway 引用为零（豁免清单除外）；`stage1` 升级检查同步更新。
+- 净化残留扫描：全仓闲时任务/codingPlan/ARMS/highspeed/official-gateway 引用为零（豁免清单除外）；`stage1` 升级检查同步更新。
 - 上游来源缺陷按 [下游补丁清单](downstream-patch-registry.md) 对 v3.17.1 逐项复核未撤销条目。
 - 交付可审查的 PR（含冲突解决策略与净化复检证据）；合并、正式 tag、Release 按用户明确授权执行，不移动现有发布 tag。

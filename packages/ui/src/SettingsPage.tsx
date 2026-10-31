@@ -1314,7 +1314,7 @@ export function SettingsPage({
                               />
                             </ServiceProvider>
                           ) : activeSection === "personalization" ? (
-                            // 个性化指令编辑的是本机 ~/.zcode/AGENTS.md（Agent 实际读取的文件）。
+                            // 个性化指令编辑的是本机 ~/.openzwork/AGENTS.md（Agent 实际读取的文件）。
                             // 仅桌面本地入口可编辑：手机远控的 base services 可能归属远程
                             // Source（remoteWorkspaceServiceCollection 注册的是远端 settingService），
                             // 编辑会写错机器；Web 端只显示本地桌面端指引。

@@ -1,6 +1,7 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
-// fork 净化：上游在此 import conversation-telemetry dispatcher、request-security-edition（官方版
-// 请求诊断）与 localTtftExporter（TTFT 遥测），均属官方遥测/账号域，不随入。
+// fork 净化：上游在此 import conversation-telemetry dispatcher、官方版请求安全域校验模块
+// （发行策略空壳，fork 侧以 request-verification no-op 承接）与 localTtftExporter（TTFT 遥测），
+// 官方遥测/账号域部分不随入。
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";

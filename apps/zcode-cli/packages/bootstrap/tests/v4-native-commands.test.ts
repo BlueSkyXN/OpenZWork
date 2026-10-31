@@ -650,7 +650,7 @@ describe("v4 原生 sendText", () => {
 
   it("automation runId inputId 漏传 automationId 时也隐藏全部写工具", async () => {
 
-  // OpenZWork 净化：上游此处另有 off-peak sendText 归因用例（闲时任务域），不保留。
+  // OpenZWork 净化：上游此处另有闲时 sendText 归因用例（闲时任务域），不保留。
   it("调用方伪造 automation inputId 时不恢复任务身份", async () => {
 
     const app = makeApp();

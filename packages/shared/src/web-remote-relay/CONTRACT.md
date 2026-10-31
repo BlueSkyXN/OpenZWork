@@ -4,7 +4,7 @@
 
 配对使用 sid/hash/t 和 nonce proof；设备注册、认证挑战与认证应答按同一 HMAC 合同执行。通用 retry/heartbeat 保留原公开名称，避免与本轮无关的调用迁移。
 
-<!-- OpenZWork 净化：官方 V1 preset（zcode.z.ai 官方网关）段落删除；保留域为 direct/self-hosted 的本地 HMAC 配对与上游 V2 契约。 -->
+<!-- OpenZWork 净化：官方 V1 preset（官方网关域）段落删除；保留域为 direct/self-hosted 的本地 HMAC 配对与上游 V2 契约。 -->
 
 完整语义见 [Relay V2 spec](../../../../docs/web-remote-control/relay-v2-pairing.md)。
 

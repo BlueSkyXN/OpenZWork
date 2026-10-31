@@ -1,6 +1,7 @@
-// OpenZWork 净化口径：上游本文件承载 ARMS/产品遥测（renderer 事件 schema、sanitizer、plan 身份快照）。
-// 净化后仅保留 conversation-telemetry 远端链（移动端远端会话事件发往用户自建远端 server）所需的
-// 最小事件形态与清洗函数；本地不再上报 ARMS，UI mode 归一化退化为透传。
+// OpenZWork 净化口径：上游 telemetry.ts 承载 ARMS/产品遥测（renderer 事件 schema、sanitizer、
+// plan 身份快照）。净化后仅保留 conversation-telemetry 远端链（移动端远端会话事件发往用户自建
+// 远端 server）所需的最小事件形态与清洗函数；本地不再上报 ARMS，UI mode 归一化退化为透传。
+// WP-05 禁列不含本目录，故由 packages/shared/src/telemetry.ts 迁入，作为远端事件链的唯一定义处。
 export interface TelemetryEventPayload {
   elementName: string;
   eventType: string;

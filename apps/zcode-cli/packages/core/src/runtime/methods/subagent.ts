@@ -106,7 +106,7 @@ export function createDefaultSubagentPort(
       });
     },
     runExploreAgent: async (request, options) => {
-      // OpenZWork 净化：上游此处注入闲时子绑定（off-peak 域，getOffPeakExecution）；该域已净化。
+      // OpenZWork 净化：上游此处注入闲时子绑定（闲时任务域执行包装）；该域已净化。
       try {
         request.reportActivity?.();
         const builtInExplore = isBuiltInExploreAgentProfile(request.profile);
@@ -402,7 +402,7 @@ export function createDefaultSubagentPort(
         ownedRuntimes.add(childRuntime);
         try {
           const resumesExistingChild = request.resumeFromStore === true;
-          // OpenZWork 净化：上游在恢复前用 childBinding/offPeak 标记临时选型（闲时域）；该域已净化。
+          // OpenZWork 净化：上游在恢复前用 childBinding 与闲时标记记录临时选型（闲时域）；该域已净化。
           let previousSelection: ModelSelection | undefined;
           if (resumesExistingChild) {
             const persistedMessages = await this.sessionStore?.messages({
@@ -462,7 +462,7 @@ export function createDefaultSubagentPort(
           }
           request.registerMessageSink?.(createSubagentMessageSink(childRuntime, request));
           return await childRuntime.executeTurn(request.prompt, undefined, {
-            // OpenZWork 净化：上游按 childBinding 透传 offPeakTaskId/执行材料（闲时域）；该域已净化。
+            // OpenZWork 净化：上游按 childBinding 透传闲时任务归因/执行材料（闲时域）；该域已净化。
             abortSignal: options?.signal,
             // 子 Runtime 的首轮输入来自父 Agent，而不是真实用户直接输入；保留源事实，避免
             // Subagent Turn 在 Trace 和成功率报表里被误归类为 user。
@@ -492,7 +492,7 @@ export function createDefaultSubagentPort(
           if (cancelled || !childRuntime.hasResidencyBlockingWork()) await release;
         }
       } finally {
-        // OpenZWork 净化：上游此处释放 childBinding（off-peak 临时绑定域）；该域已净化，无需释放。
+        // OpenZWork 净化：上游此处释放 childBinding（闲时临时绑定域）；该域已净化，无需释放。
       }
     },
   });

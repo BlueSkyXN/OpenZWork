@@ -1,5 +1,5 @@
 // 「拉取手机日志」：向已配对手机发 mobile-log-pull-request，分片逐片写入
-// ~/.zcode/export-log/mobile-logs-<设备>-<时间>.jsonl，结束后弹框给出路径。
+// ~/.openzwork/export-log/mobile-logs-<设备>-<时间>.jsonl，结束后弹框给出路径。
 // 入口：帮助菜单、远控面板连接卡片。
 // 文件结构：首行 header（kind=mobile-log-pull）、中间每行一条日志、末行 summary。
 // 文件在首片到达（或成功结束）时才创建，并以 wx 独占打开：busy 等「还没开始就失败」的情况

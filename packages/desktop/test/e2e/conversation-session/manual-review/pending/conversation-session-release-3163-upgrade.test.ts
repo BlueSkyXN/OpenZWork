@@ -64,7 +64,7 @@ async function replaceRunApplication(root: string): Promise<void> {
 }
 
 async function readRelease(config: SSHConnectionConfig): Promise<Record<string, unknown>> {
-  const result = await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"');
+  const result = await runSSHCommand(config, 'cat "$HOME/.openzwork/server/current.json"');
   expect(result.code).toBe(0);
   return JSON.parse(result.stdout);
 }

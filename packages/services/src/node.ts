@@ -393,7 +393,7 @@ import { ensureAppCaCert } from "./runtime-tools/appCaCert.js";
 // OpenZWork：deviceMid 生成函数（保留域：独立 Server 补 X-Device-Mid）。
 import { ensureDeviceMid } from "./device/deviceMid.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
-// OpenZWork 净化：上游侧 off-peak/Highspeed/official-mcp/CUA import 属删除面（目录未引入）。
+// OpenZWork 净化：上游侧闲时任务/Highspeed/official-mcp/CUA import 属删除面（目录未引入）。
 import {
   DEFAULT_ZCODE_MODEL_CONTEXT_BUDGET_STRATEGY,
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,

@@ -90,7 +90,7 @@ async function fifoHasReader(container: string): Promise<boolean> {
   const result = await execInRemoteContainer(container, [
     "sh",
     "-c",
-    'pid=$(sed -nE \'s/.*"pid": *([0-9]+).*/\\1/p\' "$HOME/.zcode/server/run/status.json" | head -n1); for file in /proc/"$pid"/fd/*; do if [ "$(readlink "$file" 2>/dev/null)" = "$1" ]; then printf yes; break; fi; done',
+    'pid=$(sed -nE \'s/.*"pid": *([0-9]+).*/\\1/p\' "$HOME/.openzwork/server/run/status.json" | head -n1); for file in /proc/"$pid"/fd/*; do if [ "$(readlink "$file" 2>/dev/null)" = "$1" ]; then printf yes; break; fi; done',
     "sh",
     FIFO,
   ]);

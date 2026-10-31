@@ -39,7 +39,7 @@ import {
 const PLUGIN_STABLE_ID = "skill-creator@zcode-plugins-official";
 const STORE_TRY_PLUGIN_STABLE_ID = "zcode-guide@zcode-plugins-official";
 const STORE_TRY_PLUGIN_ICON =
-  // 净化裁决：上游官方 CDN（cdn-zcode.z.ai）地址按净化口径替换为内网占位域，仅保留断言语义。
+  // 净化裁决：上游官方插件 CDN 地址按净化口径替换为内网占位域，仅保留断言语义。
   "https://mirror.internal.invalid/zcode/official-plugin/assets/zcode-guide/icon.png";
 const PROMPT_MARKER = "E2E_PLUGIN_REFERENCE";
 const REPLY_MARKER = "PLUGIN_REFERENCE_REPLY_OK";

@@ -26,7 +26,7 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-11：设置 → 数据同步 → 设备 → 推送钩子（docs/remote/data-sync.md「钩子」）。
-// 只同步本机 ~/.zcode/cli/config.json 的 hooks；写入时合并到远端 events[事件] 中 matcher 相同的分组，
+// 只同步本机 ~/.openzwork/cli/config.json 的 hooks；写入时合并到远端 events[事件] 中 matcher 相同的分组，
 // 远端已有钩子和其他配置原样保留，根级 enabled 只开不关。远端断言用 docker exec 读容器内 config.json。
 const CASE_MARKER = "E2E_DSYNC_11_HOOK_PUSH";
 const REMOTE_CLI_CONFIG = "/home/dev/.zcode/cli/config.json";

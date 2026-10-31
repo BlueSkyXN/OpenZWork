@@ -31,7 +31,7 @@ function buildTurnDisallowedTools(state: RegularTurnLoopState): Set<string> | nu
     tools.add(AUTOMATION_SELF_PAUSE_TOOL_NAME);
   }
 
-  // OpenZWork 净化：上游另有闲时执行轮隐藏 OffPeakCreate 的分支（闲时任务域）；该域已净化。
+  // OpenZWork 净化：上游另有闲时执行轮隐藏闲时创建方法的分支（闲时任务域）；该域已净化。
 
   return tools.size > 0 ? tools : null;
 }

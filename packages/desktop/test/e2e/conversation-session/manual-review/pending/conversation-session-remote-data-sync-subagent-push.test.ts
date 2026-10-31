@@ -29,7 +29,7 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-09：设置 → 数据同步 → 设备 → 推送子智能体（docs/remote/data-sync.md「子智能体」）。
-// 子智能体经新同步通道 user-config-sync 按原文件字节推送；远端断言用 docker exec 读容器内 ~/.zcode/agents。
+// 子智能体经新同步通道 user-config-sync 按原文件字节推送；远端断言用 docker exec 读容器内 ~/.openzwork/agents。
 const CASE_MARKER = "E2E_DSYNC_09_SUBAGENT_PUSH";
 const AGENT_NAME = "E2E-DSync-Agent";
 const AGENT_KEY = AGENT_NAME.toLowerCase();

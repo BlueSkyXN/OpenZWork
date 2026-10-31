@@ -282,7 +282,7 @@ export async function readJsonObjectFileForUpdate(
 }
 
 /**
- * `~/.zcode/cli/config.json` 有多个写入方（命令、钩子、技能、MCP、插件、同步导入，以及 CLI 自身），彼此不加锁。
+ * `~/.openzwork/cli/config.json` 有多个写入方（命令、钩子、技能、MCP、插件、同步导入，以及 CLI 自身），彼此不加锁。
  * 每个写入方都按「写前重读 → 只改自己的字段 → 原子替换」执行：
  * - update 拿到的是读取那一刻磁盘上的内容，只能改自己负责的字段；
  * - 临时文件 + rename 替换，写入中途失败不会留下半截文件；

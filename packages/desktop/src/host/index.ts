@@ -71,7 +71,7 @@ import {
   createServiceLogger,
   createHostApiNetworkTransport,
   createSettingServiceWithMigrations,
-  // data-sync 域（本机配置推送远端设备）保留；上游同处的 OffPeak* 错误类型属闲时任务净化域，不随入。
+  // data-sync 域（本机配置推送远端设备）保留；上游同处的闲时任务错误类型属闲时任务净化域，不随入。
   createDeviceSyncStateService,
   createHostProviderProvisioningStatus,
   getAppConfigDir,

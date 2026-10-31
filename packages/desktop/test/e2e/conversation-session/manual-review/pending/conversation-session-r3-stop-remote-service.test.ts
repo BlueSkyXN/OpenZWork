@@ -40,8 +40,8 @@ async function readRemoteDaemon(config: SSHConnectionConfig): Promise<RemoteDaem
     [
       // pgrep -f 会匹配承载模式串的 shell 自身；用 glob 括号切断字面匹配。
       'n=0; for d in /proc/[0-9]*; do c=$(tr "\\0" " " < "$d/cmdline" 2>/dev/null) || continue; case "$c" in *runtime/server-cor[e].js*|*"serve --superviso"[r]*) n=$((n+1));; esac; done; echo "alive=$n"',
-      'echo "lock=$(cat "$HOME/.zcode/server/run/server.lock" 2>/dev/null | tr -d "\\n")"',
-      'echo "status=$(cat "$HOME/.zcode/server/run/status.json" 2>/dev/null | tr -d "\\n")"',
+      'echo "lock=$(cat "$HOME/.openzwork/server/run/server.lock" 2>/dev/null | tr -d "\\n")"',
+      'echo "status=$(cat "$HOME/.openzwork/server/run/status.json" 2>/dev/null | tr -d "\\n")"',
     ].join("; "),
   );
   const line = (key: string) =>
@@ -88,7 +88,7 @@ async function countOtherSSHSessions(config: SSHConnectionConfig): Promise<numbe
 async function readRemoteRunningTasksOutput(config: SSHConnectionConfig): Promise<string> {
   const result = await runSSHCommand(
     config,
-    '"$HOME/.zcode/server/bin/zcode" running-tasks --json --server-root "$HOME/.zcode/server"',
+    '"$HOME/.openzwork/server/bin/zcode" running-tasks --json --server-root "$HOME/.openzwork/server"',
   );
   return `exit=${result.code} ${result.stdout.trim()}`;
 }

@@ -84,7 +84,7 @@ export interface ConversationPromptTelemetrySeed {
   inputTiming?: ComposerInputTimingSnapshot;
   /**
    * 发送漏斗关联 ID，配对 send_click ↔ send_result。仅 composer 真实点击产生；
-   * 后台任务（off_peak / automation）seed 无此字段，落定时直接跳过不报。
+   * 后台任务（闲时 / automation）seed 无此字段，落定时直接跳过不报。
    */
   sendClickId?: string;
   /** 是否中途经过队列二次确认弹窗（该子集的 send_cost_ms 含用户停留时间）。 */
@@ -157,7 +157,7 @@ function backgroundSeedFromTurnStarted(
   fact: Extract<ConversationTelemetryFact, { kind: "turn.started" }>,
 ): AcceptedConversationPromptTelemetrySeed | null {
   if (!fact.sourceCommandId) return null;
-  // OpenZWork 净化：off-peak 后台归因分支（idle plan 票据域）已删，只保留 automation/background 归因。
+  // OpenZWork 净化：闲时后台归因分支（idle plan 票据域）已删，只保留 automation/background 归因。
   if (!fact.automationId || !fact.taskTrigger) {
     if (fact.inputSource !== "background_task") return null;
     return {
@@ -201,8 +201,6 @@ const STEP_SOURCE_DETAIL_KEYS = [
   "message_source",
   "task_trigger",
   "automation_id",
-  "off_peak_task_id",
-  "off_peak_run_type",
 ] as const;
 
 function stepSourceDetailOf(extraDetail: Record<string, string>): Record<string, string> {

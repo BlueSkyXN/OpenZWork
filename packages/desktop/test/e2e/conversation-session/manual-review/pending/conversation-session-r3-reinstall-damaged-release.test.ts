@@ -41,7 +41,7 @@ async function readRemoteRelease(config: SSHConnectionConfig): Promise<RemoteRel
   const result = await runSSHCommand(
     config,
     [
-      'R="$HOME/.zcode/server"',
+      'R="$HOME/.openzwork/server"',
       'id=$(sed -n \'s/^[[:space:]]*"releaseId"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p\' "$R/current.json" | head -n 1)',
       'echo "release=$id"',
       'echo "package=$(wc -c < "$R/releases/$id/runtime/package.json" | tr -d " ") $(sha256sum "$R/releases/$id/runtime/package.json" | cut -d " " -f 1)"',
@@ -69,7 +69,7 @@ async function damageCurrentRelease(config: SSHConnectionConfig): Promise<string
   const result = await runSSHCommand(
     config,
     [
-      'R="$HOME/.zcode/server"',
+      'R="$HOME/.openzwork/server"',
       '"$R/bin/zcode" stop --wait --server-root "$R" --json >/dev/null 2>&1 || true',
       'id=$(sed -n \'s/^[[:space:]]*"releaseId"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p\' "$R/current.json" | head -n 1)',
       ': > "$R/releases/$id/runtime/package.json"',

@@ -362,7 +362,7 @@ export interface AgentRuntimeDeps {
    * 缺席时子 runtime 沿用父的 `modelRequestAdmission`。
    */
   subagentModelRequestAdmission?: (parentSessionId: string) => ModelRequestAdmission;
-  // OpenZWork 净化：上游另有 onOffPeakLifecycleEvent（off-peak 闲时任务域）；该域已净化。
+  // OpenZWork 净化：上游另有闲时生命周期事件（闲时任务域）；该域已净化。
 
   workflowPort?: WorkflowPort;
   /** workflow run 的提交/观察/取消端口；存在即 CreateWorkflow 真启动，缺席则回占位诊断。 */

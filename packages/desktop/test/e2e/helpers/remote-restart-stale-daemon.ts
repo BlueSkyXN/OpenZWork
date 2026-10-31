@@ -47,15 +47,15 @@ export async function installAndStartRemoteDaemon(
       "set -eu",
       ...(options.nodeOptions
         ? [
-            `"$HOME/.zcode/server/bin/zcode" stop --wait --server-root "$HOME/.zcode/server" --json >/dev/null`,
+            `"$HOME/.openzwork/server/bin/zcode" stop --wait --server-root "$HOME/.openzwork/server" --json >/dev/null`,
           ]
         : []),
-      `${options.nodeOptions ? `NODE_OPTIONS='${options.nodeOptions}' ` : ""}ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 "$HOME/.zcode/server/bin/zcode" serve --daemon --server-root "$HOME/.zcode/server" --json >/dev/null`,
+      `${options.nodeOptions ? `NODE_OPTIONS='${options.nodeOptions}' ` : ""}ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 "$HOME/.openzwork/server/bin/zcode" serve --daemon --server-root "$HOME/.openzwork/server" --json >/dev/null`,
     ].join("; "),
   );
 }
 
-/** 用 Desktop 将要安装的同一份 archive 安装到远端 `~/.zcode/server`，不启动 daemon。 */
+/** 用 Desktop 将要安装的同一份 archive 安装到远端 `~/.openzwork/server`，不启动 daemon。 */
 export async function installRemoteServerArchive(
   container: string,
   account: RemoteAccount,
@@ -81,12 +81,12 @@ export async function installRemoteServerArchive(
     account,
     [
       "set -eu",
-      'b="$HOME/.zcode/server/.e2e-bootstrap"',
+      'b="$HOME/.openzwork/server/.e2e-bootstrap"',
       'rm -rf "$b"',
       'mkdir -p "$b"',
       `tar -xzf ${remoteArchive} -C "$b" --strip-components=1`,
       // WSL/Docker 的 daemon 不注册 OS service，与 Desktop 的 Docker transport 一致。
-      `ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 "$b/bin/zcode" update --from-archive ${remoteArchive} --server-root "$HOME/.zcode/server" --json >/dev/null`,
+      `ZCODE_SERVER_SKIP_SERVICE_REGISTRATION=1 "$b/bin/zcode" update --from-archive ${remoteArchive} --server-root "$HOME/.openzwork/server" --json >/dev/null`,
       `rm -rf "$b" ${remoteArchive}`,
     ].join("; "),
   );
@@ -99,7 +99,7 @@ export async function readRemoteDaemonFiles(
   const read = async (name: string): Promise<Record<string, unknown> | null> => {
     try {
       return JSON.parse(
-        await shAs(container, account, `cat "$HOME/.zcode/server/run/${name}"`),
+        await shAs(container, account, `cat "$HOME/.openzwork/server/run/${name}"`),
       ) as Record<string, unknown>;
     } catch {
       return null;
@@ -159,7 +159,7 @@ export async function pointStaleDaemonFilesAt(
   pids: { lockPid: number; statusPid: number },
 ): Promise<void> {
   const replacePid = (file: string, pid: number) =>
-    `sed -i -E '0,/"pid"[[:space:]]*:[[:space:]]*[0-9]+/s//"pid":${pid}/' "$HOME/.zcode/server/run/${file}"`;
+    `sed -i -E '0,/"pid"[[:space:]]*:[[:space:]]*[0-9]+/s//"pid":${pid}/' "$HOME/.openzwork/server/run/${file}"`;
   await shAs(
     container,
     account,

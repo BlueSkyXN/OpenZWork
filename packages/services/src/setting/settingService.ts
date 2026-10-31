@@ -405,7 +405,7 @@ export function createSettingServiceWithMigrations(): {
       }
       await enqueueUserInstructionsWrite(async () => {
         // 修复原因（评审 CR-01 回归）：acquireFileLock 以不带 recursive 的 mkdir(lockFile)
-        // 创建锁文件，父目录 ~/.zcode 不存在时会 ENOENT 抛出——建目录必须发生在取锁之前，
+        // 创建锁文件，父目录 ~/.openzwork 不存在时会 ENOENT 抛出——建目录必须发生在取锁之前，
         // 否则首次保存（目录尚不存在）永远失败。
         maybeThrowInjectedFsFault({ operation: "mkdir", path: dirname(userInstructionsFile) });
         await mkdir(dirname(userInstructionsFile), { recursive: true });

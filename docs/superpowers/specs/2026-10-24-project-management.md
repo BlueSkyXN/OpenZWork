@@ -62,7 +62,7 @@
 | 文件检查点                                         | `v2/checkpoints/<workspaceHash>`                                                                                              | Host（git checkpoint store） |
 | 任务索引行                                         | `tasks`、`task_group_members`、`task_group_admissions` 中这些会话的行；无引用时连同 `projects`/`project_roots` 行             | Host                         |
 
-不删除：用户的项目文件夹（包括 ZCode 自建的 `~/.zcode/workspace/<id>`）、应用与 CLI 日志（已有 14 天 / 7 天轮转）、git 仓库里的检查点引用、远程设备上的数据。
+不删除：用户的项目文件夹（包括 ZCode 自建的 `~/.openzwork/workspace/<id>`）、应用与 CLI 日志（已有 14 天 / 7 天轮转）、git 仓库里的检查点引用、远程设备上的数据。
 
 项目的会话 = Host 树中该项目的全部任务（含已归档、已软删除）。目录集合 = 项目 roots ∪ 这些会话的 cwd，减去仍被范围外的项目作为 root（**含已软删除的项目**：它们可以恢复，2026-10-25 裁决宁可保留不删）、或被不在本次删除范围内的会话作为 cwd 使用的目录（共享目录的记忆与检查点保留）。「范围外的会话」= 本 Host 上 `tasks.deleted=0` 的任务行：移除项目只软删除项目行，其任务行保持 `deleted=0`，因此已移除项目的会话 cwd 照样受保护；`deleted=1` 只表示会话本身已删除（用户删除会话，或本流程目录失败时标记的行），已删除的会话无法恢复，其 cwd 不再保护。目录集合在删除任务索引行**之前**计算，否则已删任务曾用的 cwd（如项目 roots 变更前的旧目录）会漏删。
 

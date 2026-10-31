@@ -730,7 +730,7 @@ export async function* runStreamText(input: {
         classified.message = error.message;
         classified.retryable = error.retryable;
       }
-      // OpenZWork 净化：off-peak 特判链路（idle plan 票据）已删，失败直接走通用分类。
+      // OpenZWork 净化：闲时特判链路（idle plan 票据）已删，失败直接走通用分类。
       const failure: ClassifiedModelFailure = classified;
       countUnrecognizedCode(failure, error);
       const errorPhase =
@@ -1234,7 +1234,7 @@ async function handleStreamErrorEvent(
       }
     : input.statusContext;
   const classified = classifyModelFailure(error, input.input.request.abortSignal);
-  // OpenZWork 净化：off-peak 特判链路（idle plan 票据）已删，失败直接走通用分类。
+  // OpenZWork 净化：闲时特判链路（idle plan 票据）已删，失败直接走通用分类。
   const failure: ClassifiedModelFailure = classified;
   const unrecognizedCodeStreak = input.countUnrecognizedCode(failure, error);
   const responseHeaders = sanitizeModelNetworkHeaders(getResponseHeaders(unwrapRetryError(error)));

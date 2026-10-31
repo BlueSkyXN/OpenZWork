@@ -218,7 +218,7 @@ produced for the turn input or the last tool batch therefore belong to the
 history that compaction keeps or summarizes. The other loop iterations send the
 same input again and do not collect: Stop hook continuation, model fallback,
 stream recovery without settled tool results, Start Plan admission wait,
-context-exceeded recovery, off-peak request replacement and output-token
+context-exceeded recovery, retired idle-task request replacement and output-token
 recovery. `silent_turn_reminder` is only collected after a model step.
 `output_style` is produced on every collection without deduplication and
 persisted, so a resumed session keeps the same prefix.

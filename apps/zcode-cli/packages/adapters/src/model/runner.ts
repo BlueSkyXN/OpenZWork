@@ -100,7 +100,7 @@ export class AiSdkModelAdapter {
         ...(options.env ? { env: options.env } : {}),
       },
       {
-        // OpenZWork 净化：requestSecurityState（request-security-edition，官方请求校验域）不接入；
+        // OpenZWork 净化：官方请求安全域的请求校验状态注入不接入（请求安全域，fork 侧为 no-op 承接）；
         // transport/observeTransport 为中性观测注入，随上游保留。
         ...(options.transport ? { transport: options.transport } : {}),
         ...(options.observeTransport ? { observeTransport: options.observeTransport } : {}),

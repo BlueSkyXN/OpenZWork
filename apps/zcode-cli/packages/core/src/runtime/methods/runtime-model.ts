@@ -19,7 +19,7 @@ import {
   resolveModelRetryBudgetFromTaskType,
 } from "./model-request-session-type.js";
 import { readSessionFeatures } from "../session-features/contract.js";
-// OpenZWork 净化：上游另导入 getOffPeakModelBinding（off-peak 闲时任务域）包装模型句柄；该域已净化。
+// OpenZWork 净化：上游另导入闲时模型绑定包装（闲时任务域）包装模型句柄；该域已净化。
 
 
 export function createRuntimeModel(
@@ -99,7 +99,7 @@ function withRuntimeInvocationLayer(
  * 外层已生效时内层原样透传；runtime 层压过调用层这一条不变。
  *
  * 标记放在调用上下文本身里（模块私有 Symbol 键），而不是另一个 AsyncLocalStorage：内层可能被
- * **延后**调用——off-peak 包装的 streamText 是 async generator，要到第一次 next()、await 换票之后
+ * **延后**调用——闲时包装的 streamText 是 async generator，要到第一次 next()、await 换票之后
  * 才调用内层。只有调用上下文会经 `runWithModelInvocationContext` 的迭代器包装跨过 next() 边界；
  * 单独的 ALS 在那一刻已经为空，父层会重新盖掉子层（MR !3127 评审 CR-01）。其余包装层都以
  * `{ ...current, ...own }` 合并上下文，对象展开会带上 Symbol 键，标记因此一路传到内层。

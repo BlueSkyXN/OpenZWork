@@ -24,8 +24,8 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-10：设置 → 数据同步 → 设备 → 推送命令（docs/remote/data-sync.md「命令」）。
-// 本机来源合并 ~/.zcode/commands 与 ~/.agents/commands，统一写入远端 ~/.zcode/commands；
-// 远端断言用 docker exec 读容器内文件与 ~/.zcode/cli/config.json 的启用覆盖。
+// 本机来源合并 ~/.openzwork/commands 与 ~/.agents/commands，统一写入远端 ~/.openzwork/commands；
+// 远端断言用 docker exec 读容器内文件与 ~/.openzwork/cli/config.json 的启用覆盖。
 const CASE_MARKER = "E2E_DSYNC_10_COMMAND_PUSH";
 const NESTED_KEY = "/e2e-dsync/commit";
 const AGENTS_KEY = "/e2e-dsync-review";
@@ -92,7 +92,7 @@ describe(`${CASE_MARKER}: 数据同步页推送命令`, () => {
     await clearAppData();
   });
 
-  it("DSYNC-10-01 推送子目录下的禁用命令与 ~/.agents 来源的命令，远端写入 ~/.zcode/commands 且保持禁用", async function () {
+  it("DSYNC-10-01 推送子目录下的禁用命令与 ~/.agents 来源的命令，远端写入 ~/.openzwork/commands 且保持禁用", async function () {
     this.timeout(20 * 60_000);
     const config = readSSHRuntimeConfig(CASE_MARKER);
     const container = readRemoteDockerContainer(CASE_MARKER);

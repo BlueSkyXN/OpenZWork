@@ -125,7 +125,7 @@ const usePersonalizationDraftStore = create<PersonalizationDraftState>((set, get
 
 /**
  * 个性化（用户自定义指令）编辑页，单层直达：标题（框架渲染）→ 说明 → 直接铺在页面上的编辑器。
- * 唯一事实源是 `~/.zcode/AGENTS.md`（CLI 用户级默认指令，注入所有会话）。
+ * 唯一事实源是 `~/.openzwork/AGENTS.md`（CLI 用户级默认指令，注入所有会话）。
  * 仅桌面本地入口渲染编辑器（Web 远控给本地端指引，不发起任何读写）。
  * 显式「保存/取消」：保存仅脏态且未超限可用，取消丢弃修改恢复基线；Ctrl/Cmd+S 等价保存。
  * 表单状态在模块级 store，保存中切走分区后写入失败草稿仍可恢复重试。

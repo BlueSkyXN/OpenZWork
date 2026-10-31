@@ -294,21 +294,24 @@ export * from "./attachment-source.js";
 
 export * from "./channel-mention.js";
 
-// OpenZWork 净化口径：request-security-edition（上游 v3.17.1 开源同款空壳发行策略）保留 no-op 实现，
-// 目录名随上游回归 request-security-edition，不再是 fork 侧的 request-verification 改名。
+// OpenZWork 净化口径：请求安全域（上游 v3.17.1 开源同款空壳发行策略）保留 no-op 实现，
+// 目录沿用 fork 侧净化命名 request-verification，不回收上游目录字面量。
 export {
   requestSecuritySensitiveHeaders,
   isRequestSecurityFailure,
-} from "./request-security-edition/policy.js";
-export * from "./request-security-edition/verification-policy.js";
+} from "./request-verification/policy.js";
+export * from "./request-verification/verification-policy.js";
 
 export { sha256Bytes, hmacSha256Bytes } from "./web-remote-relay/index.js";
 export { compareSemverVersions } from "./semverCompare.js";
-// OpenZWork 净化保留：telemetry.ts 为远端会话事件链（用户自建远端 server）保留最小事件形态；
-// ARMS/产品上报面不导出。
-export type { TelemetryEventPayload, PlanIdentitySnapshot } from "./telemetry.js";
+// OpenZWork 净化保留：远端会话事件链（用户自建远端 server）保留最小事件形态，定义已随 WP-05
+// 禁列收口迁入 conversation-telemetry/eventShapes.ts；ARMS/产品上报面不导出。
+export type {
+  TelemetryEventPayload,
+  PlanIdentitySnapshot,
+} from "./conversation-telemetry/eventShapes.js";
 export {
   normalizeTelemetryUiMode,
   sanitizeTelemetryEventDetail,
   sanitizeTelemetrySkillName,
-} from "./telemetry.js";
+} from "./conversation-telemetry/eventShapes.js";

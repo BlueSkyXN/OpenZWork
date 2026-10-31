@@ -77,7 +77,7 @@ async function collectCommandFiles(
 }
 
 /**
- * 本端用户命令：`~/.zcode/commands` 与 `~/.agents/commands` 合并，与 CLI 运行时一致，
+ * 本端用户命令：`~/.openzwork/commands` 与 `~/.agents/commands` 合并，与 CLI 运行时一致，
  * 同 key 时 `.zcode` 优先（先扫描者胜出）。
  */
 async function resolveUserCommands(): Promise<Map<string, ResolvedUserCommand>> {

@@ -50,7 +50,7 @@ is the same `shouldUseMidConversationSystem` flag that drives provider MCS
 projection (`midConversationSystem.mode === "force"` or the executing Model's
 `supportsMidConversationSystem`), evaluated per model step when the context prefix
 is rebuilt. A model change inside a turn (a guide that switches the model, the
-execution-model fallback, an off-peak user takeover) rebuilds the prefix with the
+execution-model fallback, a retired idle-task user takeover) rebuilds the prefix with the
 new model before the next request. Requests outside the turn loop that reuse the
 session history (the goal completion verifier) rebuild the prefix with their own
 request model first; a

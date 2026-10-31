@@ -16,7 +16,7 @@ SSH 新连接 → connectSourceServerTarget（host/index.ts:1970）
      └─ admitConnection（:826-831）→ intent=add → service.saveHost（remote-projects/connection-membership.ts）
          └─ SQLite 写 hosts → await changed()（remote-projects/index.ts:162-181）
              └─ publishProjectChange → settingService.update({})（services/src/node.ts:2162-2166）
-                 └─ withAtomicFileLock(~/.zcode/v2/setting.json)（setting/settingService.ts:228）
+                 └─ withAtomicFileLock(~/.openzwork/v2/setting.json)（setting/settingService.ts:228）
                      └─ acquireFileLock 最多等 8s（fs/atomicFileUtils.ts:10）→ owner PID 被判“存活” → 超时
  └─ 文案含 “Timed out” → remote-connection-timeout → UI “连接超时”；阶段标签停在默认值 probe
 ```

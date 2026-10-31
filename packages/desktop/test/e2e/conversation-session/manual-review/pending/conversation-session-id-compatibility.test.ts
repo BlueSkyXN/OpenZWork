@@ -531,14 +531,14 @@ async function withRetryProxy<T>(run: () => Promise<T>): Promise<T> {
     caDir: join(paths.homeDir, "session-retry-ca"),
     requestRedirects: [
       {
-        host: "open.bigmodel.cn",
+        host: "builtin-provider-endpoint.example.test",
         path: "/api/anthropic/v1/messages",
         targetUrl: `${replay.baseUrl}/messages`,
       },
     ],
     responseMocks: [
       {
-        host: "open.bigmodel.cn",
+        host: "builtin-provider-endpoint.example.test",
         method: "POST",
         path: "/api/paas/c1f3a7e2/v2/client",
         body: JSON.stringify({ code: 500, msg: "E2E handshake unavailable" }),

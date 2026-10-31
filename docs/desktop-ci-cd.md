@@ -125,7 +125,7 @@ glab ci list --ref "${CI_BRANCH}" --sha "$(git rev-parse HEAD)"
 release 的产物验收（`scripts/notarize-macos.sh` → `doctor-macos-release-app.sh`，`ZCODE_CUA_REQUIRE_HELPER=1`）
 会定位最终 `ZCode.app/Contents/Resources/cua-helper/ZCode Computer Use.app` 并设
 `ZCODE_CUA_HELPER_APP_PATH`，因此校验的是实际随 DMG 交付的内嵌副本，而不是中间 artifact 或 runner 上
-`${ZCODE_HOME:-$HOME/.zcode}` 的残留状态。包内 Helper 缺失会 fail-closed。
+`${ZCODE_HOME:-$HOME/.openzwork}` 的残留状态。包内 Helper 缺失会 fail-closed。
 
 成功后固定下载入口如下，其中 `<slug>` 是 GitLab 的 `$CI_COMMIT_REF_SLUG`：
 
@@ -168,7 +168,7 @@ glab api 'projects/:fullpath/jobs/<helper-job-id>/trace' \
 ```
 
 For release-quality CUA validation, do not stop at package production. Install the
-standalone Helper under `${ZCODE_HOME:-$HOME/.zcode}/computer-use/ZCode Computer Use.app`,
+standalone Helper under `${ZCODE_HOME:-$HOME/.openzwork}/computer-use/ZCode Computer Use.app`,
 launch the matching ZCode.app, and run the zcode-cua consumer gates. Product broker
 sockets are minted as random `broker-<hex>.sock` files; do not hard-code
 `broker.sock` in new validation scripts.
@@ -235,13 +235,11 @@ rpm Requires 在 electron-builder 默认集（gtk3、nss、libnotify、libXScrnS
 - `ZCODE_NATIVE_SEARCH_DEPS_ROOT`：`ci:ensure-native-search-deps` 使用的共享 deps 根。平台 job 分别从上述 macOS、Linux container 与 Windows 根自动推导，通常不需要单独配置
 - `ZCODE_NATIVE_SEARCH_ALLOW_PUBLISH`：显式补产开关。三个平台打包 template 已设为 `1`；其他调用方只应在确认具有共享 deps 写入职责时设置。protected ref 即使未设置也可补齐缺失的自产归档
 - `LINUX_SHARED_OUTPUT_ROOT`（可选，仅 Linux Docker）：覆盖容器内产物收集根目录
-- `OSS_BUCKET` / `OSS_PATH_PREFIX` / `CDN_DOMAIN`：OSS 上传与主 CDN URL 生成所需变量（仓库 `.gitlab-ci.yml` 默认：`cgx-public`、`zcode/electron/releases`、`cdn-zcode.z.ai`；可在 GitLab CI/CD 设置中覆盖）。CI URL 校验、upload 和 preload 脚本的域名兜底也统一为 `cdn-zcode.z.ai`。`CDN_DOMAIN` 和 `OSS_BUCKET` 支持逗号列表并按顺序对应；`OSS_PATH_PREFIX` 支持单值复用，也可配置同样数量的逗号列表。upload/publish 阶段会展开全部目标；桌面包不再把这些变量写入可配置的旧 generic feed。
 - `OSS_CONFIG_FILE`：可选，控制每组 OSS 目标调用 `ossutil` 时使用的配置文件。支持单值复用，或配置为与 `CDN_DOMAIN` 等长的逗号列表；为空时使用 runner 默认 ossutil 配置。新旧 OSS AK/SK 或 region 不一致时，应把 AK/SK 和 region 写入对应配置文件，并按 `CDN_DOMAIN` 顺序配置文件路径。
 - `CDN_PRELOAD_PROFILE` / `ALIYUN_CDN_PROFILE`：可选，控制 `cdn-preload.sh` 调用阿里云 CDN OpenAPI 时使用的 aliyun CLI profile。`CDN_PRELOAD_PROFILE` 优先级更高；支持单值复用，或配置为与 `CDN_DOMAIN` 等长的逗号列表。预热脚本不显式传 `--region`，region 由对应 profile 或 aliyun CLI 默认配置决定，避免覆盖多账号迁移时每个 profile 自带的 endpoint 配置。
 - `CDN_PRELOAD_DOMAINS`：历史兼容变量；当前 upload/preload 链路不再读取，新 OSS/CDN 迁移通过 `CDN_DOMAIN` 列表展开预热域名。
 - `ZCODE_UPDATE_FEED_URL`：仅限未打包开发态的可选诊断变量，用完整服务端 manifest 接口 URL 覆盖默认更新检查接口；打包应用忽略该变量及 `--zcode-update-feed-url` 启动参数，继续使用既有服务端 manifest 入口。开发态覆盖时仍会写入当前 `platform` / `device_mid` / `channel` 查询参数和对应 header，不切换到旧 generic feed。
 - Windows 签名与换证：更新授权依赖官方 HTTPS 清单，下载文件须通过清单哈希和有效 Authenticode 签名校验；不按历史发布者 DN 限制新签名者，也不需要用户预装换证过渡版。包内 `publisherName` 仅用于激活自定义校验并保留签名诊断信息，详见[Windows 更新信任边界与换证](desktop/auto-update-service-manifest.md#windows-更新信任边界与换证)。
-- `ZCODE_ENV`：可选，`production` 打正式包，`test` 打测试包。测试包文件名会追加 `_TEST`，构建产物飞书通知会把环境标识放进卡片标题；测试环境标题背景色使用红色，正式环境使用默认蓝色。`publish-release.sh` 会拒绝 `ZCODE_ENV=test` 调用正式 release API。
 - `APPLE_ID` / `APPLE_PASSWORD` / `APPLE_TEAM_ID`：macOS notarytool 公证凭据
 - `APPLE_SIGNING_IDENTITY` 或 `CSC_NAME`：macOS 签名身份
 - `APPLE_DEVELOPER_ID_APPLICATION_P12_BASE64` / `APPLE_DEVELOPER_ID_APPLICATION_P12_PASSWORD`：macOS Developer ID Application p12。配置后 macOS build job 会为当前 job 创建一次性 keychain 并导入 p12，runtime 预签名和 electron-builder 最终签名都显式使用该 keychain，避免多个 job 共享 runner login keychain 时触发 `errSecInternalComponent`
@@ -249,7 +247,6 @@ rpm Requires 在 electron-builder 默认集（gtk3、nss、libnotify、libXScrnS
 - `ZCODE_FEISHU_NOTIFY_TOKEN`：必配，构建产物 Card 2.0 通知经 zcode-internal 通用飞书通知服务发送所需的服务令牌，需与服务端配置同值；可选 `ZCODE_FEISHU_NOTIFY_BASE_URL` 覆盖服务地址（默认 `http://intranet.example.invalid:3011`）
 - `FEISHU_RECEIVE_ID` / `FEISHU_RECEIVE_ID_TYPE`：构建产物通知的接收方，作为显式收件人传给通知服务；未配置时回落到服务端配置的场景默认收件人
 - `ZARA_RELEASE_NOTIFY_*`：发版成功通知的 Zara/飞书发送配置，仅在正式 tag 发布并通过 `release:approve` 放行后的 `release:notify:feishu` 中使用；CI 默认配置接收群和远端发送目录
-- `RELEASE_API_KEY` / `RELEASE_API_URL` / `RELEASE_API_KEY_TEST` / `RELEASE_API_URL_TEST` / `RELEASE_API_IDEMPOTENCY_KEY` / `RELEASE_API_CONNECT_TIMEOUT` / `RELEASE_API_MAX_TIME` / `RELEASE_API_TEST_RETRY_ATTEMPTS` / `RELEASE_API_RETRY_DELAY_SECONDS` / `RELEASE_STATUS`：`publish-release.sh` 调用后端发版接口所需变量（`RELEASE_API_URL` 默认 `https://zcode.z.ai/api/v1/releases`，`RELEASE_STATUS` 默认 `3`）。`release:publish:gray` 在调用发版接口前还会执行 `reset-release-rollout.sh`，该脚本需要受保护、masked 的 `ROLLOUT_ADMIN_TOKEN`，默认调用 `https://zcode-api.z.ai/api-admin/v1/releases/gray`，也可通过 `ROLLOUT_API_URL` 或 `ZCODE_RELEASE_GRAY_API_URL` 覆盖；该请求必须走 HTTPS 受保护后端入口并发送 `Authorization: Bearer $ROLLOUT_ADMIN_TOKEN`。脚本会先读取当前灰度配置，再提交完整 `{ disabled: true, percentage: 0, device_mid_allowlist? }`，避免后端灰度接口拒绝 partial payload。配置 `RELEASE_API_URL_TEST` 时必须同时配置受保护、masked 的 `RELEASE_API_KEY_TEST`；脚本不会把生产 `RELEASE_API_KEY` 发送到测试域名。同一份 release request body 会在主 `RELEASE_API_URL` 成功后继续尽力 POST 到测试 release API；两个 endpoint 使用相同 `Idempotency-Key` header，默认值由 release body 与 status 派生，也可通过 `RELEASE_API_IDEMPOTENCY_KEY` 覆盖。测试接口默认重试 `3` 次，重试间隔按 `RELEASE_API_RETRY_DELAY_SECONDS`（默认 `5` 秒）指数退避。脚本会在第一次网络请求前校验纯配置错误：`RELEASE_API_TEST_RETRY_ATTEMPTS` 允许 `1..5`，`RELEASE_API_RETRY_DELAY_SECONDS` 允许 `0..300`，`RELEASE_API_CONNECT_TIMEOUT` 允许 `1..60`，`RELEASE_API_MAX_TIME` 允许 `1..600`。任一接口最终返回非 2xx 或 curl 传输失败都会让 publish job 失败并阻断后续 CI，但脚本不会自动回滚已经成功的主 release API，发布负责人需要按同一份 release metadata 和幂等键做人工补偿。每次 POST 默认连接超时 `10` 秒、总耗时上限 `60` 秒；响应体写入每次脚本执行独占的 `mktemp -d` 临时目录并在退出时清理，避免共享 runner 上并发 publish job 互相删除或串读响应文件。`RELEASE_STATUS` 只允许单个数字状态，灰度 job 固定传 `3`，全量 job 固定传 `1`，禁止通过列表在同一个 publish job 内同时发布多个状态。`CI_RELEASE_BRANCH=1` 且 `RELEASE_STATUS=1` 默认失败；仅在明确批准的 release rehearsal 中设置 `ALLOW_CI_RELEASE_STABLE_PUBLISH=1`。
 
 ## 关键脚本
 
@@ -263,7 +260,6 @@ rpm Requires 在 electron-builder 默认集（gtk3、nss、libnotify、libXScrnS
   - Linux upload 手动执行时必须存在有效的 `latest.yml`，并基于其中的 AppImage `path` / `sha512` 生成发版元数据。
   - 通过 `EXTRA_UPLOAD_SOURCE_DIR` 与 `EXTRA_UPLOAD_FILES` 附带上传 `source-server-release.json` 与 `zcode-server-*.tar.gz`，并写入 `CDN_URLS_OUT` 参与预热
 - `scripts/cdn-preload.sh`：对上传后的 CDN URL 执行预热。`upload-oss.sh` 会保留第一组 CDN URL 用于 release metadata，同时按 `CDN_DOMAIN` 目标列表把所有域名写入 `cdn-urls-*.txt`；`release:preload:cdn` 消费版本化平台/架构产物和 Source Server URL 并执行预热。脚本默认处理清单中所有带有效 size 的 URL，不再按体积跳过小文件；`PRELOAD_MIN_BYTES` 仅作为人工调试开关，显式设置为大于 0 时才按记录的文件大小筛选。阿里云 OpenAPI region 与 CDN 预热范围由 aliyun profile 和域名自身配置管理，脚本不显式传 `--region` 或 `--Area`。
-- `scripts/publish-release.sh`：读取 `release-meta-*.json` 组装 `{ releases: [...] }` 请求体并调用后端 release API。灰度 job 发送 `status=3`，全量 job 发送 `status=1`；配置 `RELEASE_API_URL_TEST` 时同步双写测试 release API。脚本不执行任何 OSS feed 上传。
 - `scripts/notify-release-feishu.js`：读取共享目录 `macos-arm64/latest.yml` 中的 `releaseNotes`，校验清单版本与通知版本一致后，通过 Zara 飞书发送 Card 2.0 交互卡片；Tag pipeline 使用 `CI_COMMIT_TAG`，非 Tag release 演练必须显式设置 `ZARA_RELEASE_NOTIFY_VERSION`。支持逗号分隔的多群接收配置、接收方级稳定 `uuid`、失败群继续发送及 `ZARA_RELEASE_NOTIFY_RETRY_RECEIVE_ID` 精确补发。`ZARA_RELEASE_NOTIFY_DRY_RUN=1` 只输出卡片 JSON 和 payload 大小，不调用飞书 API
 - `scripts/notify-feishu.mjs`：构建阶段产物通知，发送自组装的 Feishu Card 2.0；标题展示构建状态、环境、架构和分支，正文展示提交人及提交信息，底部按钮打开产物或失败 Job 地址，卡片失败由 CI 包装脚本吞掉，不阻断主流水线
 

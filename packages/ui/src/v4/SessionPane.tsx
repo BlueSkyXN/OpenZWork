@@ -1118,10 +1118,10 @@ export function SessionPane({
       targetSessionId: string | null,
       baseRevision?: number,
       baseLogEpoch?: string,
-      // OpenZWork 净化：上游 telemetrySeed/highspeedCard 两参属遥测与加速卡域，不引入；
+      // OpenZWork 净化：上游 telemetrySeed 与加速卡两参属遥测与加速卡域，不引入；
       // 保留参数位次对齐（占位为兼容调用点索引），值恒为 undefined。
       _purifiedTelemetrySeed?: never,
-      _purifiedHighspeedCard?: never,
+      _purifiedMeterCardSlot?: never,
       onEnvelopeCreated?: (envelope: CommandEnvelope) => void,
       creationProjectId?: string | null,
       sessionCreateSource?: SessionCreateSource,
@@ -2615,7 +2615,7 @@ export function SessionPane({
         targetSessionId,
         undefined,
         undefined,
-        // 净化占位（telemetrySeed/highspeedCard）恒 undefined，见 dispatchCommand 签名注释。
+        // 净化占位（telemetrySeed 与加速卡位）恒 undefined，见 dispatchCommand 签名注释。
         undefined,
         undefined,
         options?.onCommandCreated
@@ -3724,7 +3724,7 @@ export function SessionPane({
       replay.sessionId,
       replay.baseRevision,
       undefined, // baseLogEpoch
-      // 净化占位（telemetrySeed/highspeedCard）恒 undefined。
+      // 净化占位（telemetrySeed 与加速卡位）恒 undefined。
       undefined,
       undefined,
       undefined, // onEnvelopeCreated

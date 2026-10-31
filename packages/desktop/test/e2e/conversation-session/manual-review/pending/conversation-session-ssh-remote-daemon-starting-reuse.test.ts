@@ -68,13 +68,13 @@ async function preinstallRemoteRelease(container: string, appVersion: string): P
     container,
     [
       "set -eu",
-      'b="$HOME/.zcode/server/.e2e-bootstrap"',
+      'b="$HOME/.openzwork/server/.e2e-bootstrap"',
       'rm -rf "$b"',
       'mkdir -p "$b"',
       'tar -xzf /tmp/e2e-zcode-server.tar.gz -C "$b" --strip-components=1',
-      '"$b/bin/zcode" update --from-archive /tmp/e2e-zcode-server.tar.gz --server-root "$HOME/.zcode/server" --json',
+      '"$b/bin/zcode" update --from-archive /tmp/e2e-zcode-server.tar.gz --server-root "$HOME/.openzwork/server" --json',
       // update 会拉起 daemon；停掉后由本用例按需制造 starting 窗口。
-      '"$HOME/.zcode/server/bin/zcode" stop --wait --server-root "$HOME/.zcode/server" --json',
+      '"$HOME/.openzwork/server/bin/zcode" stop --wait --server-root "$HOME/.openzwork/server" --json',
       'rm -rf "$b" /tmp/e2e-zcode-server.tar.gz',
     ].join("; "),
   );
@@ -137,7 +137,7 @@ async function startDaemonInStartingWindow(container: string): Promise<number> {
     container,
     "sh",
     "-c",
-    `"$HOME/.zcode/server/bin/zcode" serve --daemon --server-root "$HOME/.zcode/server" > /tmp/e2e-background-serve.log 2>&1`,
+    `"$HOME/.openzwork/server/bin/zcode" serve --daemon --server-root "$HOME/.openzwork/server" > /tmp/e2e-background-serve.log 2>&1`,
   ]);
   let snapshot: DaemonSnapshot = { lockPid: null, state: null };
   await browser.waitUntil(

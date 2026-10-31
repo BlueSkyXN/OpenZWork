@@ -6,7 +6,7 @@
 
 交互只有一层：点击侧栏「个性化」直接进入编辑器，不经过列表入口 → 二级编辑页的跳转。
 
-## 单一事实源：`~/.zcode/AGENTS.md`
+## 单一事实源：`~/.openzwork/AGENTS.md`
 
 编辑器读写的文件就是 CLI 已有的用户级默认指令文件 `{home}/.zcode/AGENTS.md`，不新增存储：
 
@@ -17,9 +17,9 @@
 
 ## 服务边界
 
-- 能力挂在 `ISettingService`：`getUserInstructions()` 返回 `{ content, filePath }`（文件缺失时 `content` 为空串）；`saveUserInstructions(content)` 原子写回并按需创建 `~/.zcode` 目录。
+- 能力挂在 `ISettingService`：`getUserInstructions()` 返回 `{ content, filePath }`（文件缺失时 `content` 为空串）；`saveUserInstructions(content)` 原子写回并按需创建 `~/.openzwork` 目录。
 - **写入顺序由服务端保证（CR-01）**：`saveUserInstructions` 进程内 FIFO 排队并持有该文件的原子锁——`atomicWriteText` 只保证单次替换完整，慢 IO 下旧写的 rename 晚到会用旧内容覆盖新内容；排队后队尾写入即最新草稿。`getUserInstructions` 先排空写队列再读，保存后立即重开不会读到旧内容。多 Host 跨实例并发写本文件尚无版本仲裁（当前桌面为单 Host，不构成现实路径）。
-- **建目录在取锁之前（CR-01 回归修复）**：`acquireFileLock` 以不带 recursive 的 `mkdir` 创建锁文件，`~/.zcode` 不存在时取锁直接 ENOENT 失败；因此「按需创建目录」必须发生在取锁前。桌面 Host 启动即写 `~/.zcode/v2`，实际很难遇到目录缺失，但该顺序保证任何环境（如 CLI 从未运行过的 home）首次保存仍能成功。UI 级 E2E 无法构造「应用已启动但 `~/.zcode` 缺失」（启动本身会创建目录），该分支由顺序结构保证。
+- **建目录在取锁之前（CR-01 回归修复）**：`acquireFileLock` 以不带 recursive 的 `mkdir` 创建锁文件，`~/.openzwork` 不存在时取锁直接 ENOENT 失败；因此「按需创建目录」必须发生在取锁前。桌面 Host 启动即写 `~/.openzwork/v2`，实际很难遇到目录缺失，但该顺序保证任何环境（如 CLI 从未运行过的 home）首次保存仍能成功。UI 级 E2E 无法构造「应用已启动但 `~/.openzwork` 缺失」（启动本身会创建目录），该分支由顺序结构保证。
 - **文件权限固定私有（CR-01 权限）**：写入用 `atomicWritePrivateTextFile`（临时文件 `0600` 后 rename）。不能用不带 mode 的 `atomicWriteText`：rename 换 inode 后既有 `0600` 文件会放宽为 umask 默认（常见 `0644`），同机其他账号可读用户指令。固定 `0600` 只会收紧、不会放宽既有权限。
 - **字节上限与 Agent 读取一致（SG-01）**：共享常量 `USER_INSTRUCTIONS_MAX_BYTES`（`packages/shared/src/userInstructions.ts`，100KB，与 CLI adapter 的 DEFAULT_MAX_BYTES 对齐、两侧改动须同步）。服务端 `saveUserInstructions` 超限抛 `user_instructions_too_large`（最终防线，防其他 RPC 调用方绕过 UI）；UI 显示 UTF-8 字节计数（`x KB / 100 KB`），超限阻断保存并提示，防止「保存成功但 Agent 静默截断」的误判。
 - UI **仅桌面本地入口**渲染编辑器（`isDesktop`）：手机远控的 base services 可能归属远程 Source——`remoteWorkspaceServiceCollection` 把远程 Source 的 `settingService` 注册进该 workspace 的服务集合，文件路径不是跨机器身份，编辑会写错机器。Web 端只显示「前往本地桌面端设置」的指引（同 Memory 分区 localOnly 先例），不发起任何读写。桌面端激活远程 workspace 时编辑的仍是本机文件（远程 agent 的指令文件属于远端机器，本功能不覆盖）。界面文案明确「应用到你本机 Agent 的后续会话；远程设备需单独配置」。

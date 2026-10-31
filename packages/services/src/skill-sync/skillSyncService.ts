@@ -46,7 +46,7 @@ function getUserAgentsSkillRoot(): string {
 }
 
 /**
- * 用户级技能候选：`~/.zcode/skills` 优先，`~/.agents/skills` 中同目录名或同 name 的项剔除，再按 realpath 去重。
+ * 用户级技能候选：`~/.openzwork/skills` 优先，`~/.agents/skills` 中同目录名或同 name 的项剔除，再按 realpath 去重。
  * 文件数与字节签名由数据同步的 list 自己计算。
  */
 export async function collectUserSkillCandidates(): Promise<UserSkillCandidate[]> {

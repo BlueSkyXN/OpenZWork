@@ -269,7 +269,7 @@ async function seedRemoteWorkspace(
   const command = [
     "set -eu",
     // 远端用户不一定是 root（服务器上是 dev），配置目录一律走 $HOME 展开。
-    `rm -rf -- "$HOME/.zcode" ${quoteShell(workspacePath)}`,
+    `rm -rf -- "$HOME/.openzwork" ${quoteShell(workspacePath)}`,
     `mkdir -p -- ${quoteShell(posix.join(workspacePath, ".zcode"))}`,
     writeBase64Command(
       posix.join(workspacePath, ".zcode", "config.json"),
@@ -298,11 +298,11 @@ async function readRemotePluginStorageState(target: SSHConnectionConfig): Promis
 }> {
   const command = [
     "installed=false",
-    `if test -f "$HOME/.zcode/cli/plugins/installed_plugins.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_ID)} "$HOME/.zcode/cli/plugins/installed_plugins.json"; then installed=true; fi`,
+    `if test -f "$HOME/.openzwork/cli/plugins/installed_plugins.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_ID)} "$HOME/.openzwork/cli/plugins/installed_plugins.json"; then installed=true; fi`,
     "cached=false",
-    `if test -d "$HOME/.zcode/cli/plugins/cache" && find "$HOME/.zcode/cli/plugins/cache" -path ${quoteShell(`*${PLUGIN_LIFECYCLE_NAME}*`)} -print -quit | grep -q .; then cached=true; fi`,
+    `if test -d "$HOME/.openzwork/cli/plugins/cache" && find "$HOME/.openzwork/cli/plugins/cache" -path ${quoteShell(`*${PLUGIN_LIFECYCLE_NAME}*`)} -print -quit | grep -q .; then cached=true; fi`,
     "marketplace=false",
-    `if test -f "$HOME/.zcode/cli/plugins/known_marketplaces.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_MARKETPLACE_ID)} "$HOME/.zcode/cli/plugins/known_marketplaces.json"; then marketplace=true; fi`,
+    `if test -f "$HOME/.openzwork/cli/plugins/known_marketplaces.json" && grep -Fq -- ${quoteShell(PLUGIN_LIFECYCLE_MARKETPLACE_ID)} "$HOME/.openzwork/cli/plugins/known_marketplaces.json"; then marketplace=true; fi`,
     "printf '%s\\n' \"$installed $cached $marketplace\"",
   ].join("; ");
   const result = await runSSHCommand(target, command);

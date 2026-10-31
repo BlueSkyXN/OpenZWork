@@ -166,7 +166,7 @@ export function createNodeReplMcpRuntime(
   const executeJs = input.executeJs ?? executeJsInWorker;
   const writeStderr = input.writeStderr ?? ((text: string) => void process.stderr.write(text));
   const noProgressGuard = createNoProgressGuard();
-  // OpenZWork 净化：上游在此按环境捕获 ComputerUseRuntime 并创建 CUA broker（官方 CUA 域）；已净化。
+  // OpenZWork 净化：上游在此按环境捕获桌面自动化运行时并创建官方 CUA broker（官方 CUA 域）；已净化。
   // 本次调用的可信事实只由主线程的 browser broker 记进账本（20-node-repl-call-ledger.md）。
   const ledger = createNodeReplCallLedger();
   const browserBrokerUpstream =

@@ -28,7 +28,7 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-07：设置 → 数据同步 → 设备 → 推送 inline 插件（docs/remote/data-sync.md「插件」）。
-// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.zcode。
+// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.openzwork。
 const CASE_MARKER = "E2E_DSYNC_07_PLUGIN_PUSH";
 const PLUGIN_NAME = "e2e-dsync-plugin";
 const PLUGIN_KEY = `${PLUGIN_NAME}@inline`;

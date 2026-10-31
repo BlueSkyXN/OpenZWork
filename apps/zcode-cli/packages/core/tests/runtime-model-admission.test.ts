@@ -223,10 +223,10 @@ describe("runtime model factory binds admission and retry budget (v3 决策 42)"
     ]);
   });
 
-  // 修复原因（MR !3127 评审 CR-01）：off-peak 包装的 streamText 是 async generator，要到第一次
+  // 修复原因（MR !3127 评审 CR-01）：闲时包装的 streamText 是 async generator，要到第一次
   // next()、await 换票之后才调用内层的父 runtime 层。外层优先的标记若不随调用上下文跨过
   // next() 边界，父层会在那一刻重新盖掉子层。
-  it("外层优先跨过 async generator 边界：父句柄外有先 await 再调内层的流式包装（如 off-peak）", async () => {
+  it("外层优先跨过 async generator 边界：父句柄外有先 await 再调内层的流式包装（如闲时包装）", async () => {
     const parentAdmission = admissionStub();
     const childAdmission = admissionStub();
     const seen: unknown[] = [];
@@ -250,7 +250,7 @@ describe("runtime model factory binds admission and retry budget (v3 决策 42)"
       },
     );
     const parentModel = createRuntimeModel(parent as never, { selection: modelSelection });
-    // 与 off-peak 的 wrap 同构：async generator，先 await，再在 next() 里调用内层。
+    // 与闲时的 wrap 同构：async generator，先 await，再在 next() 里调用内层。
     const deferredParent: Model = Object.freeze({
       ...parentModel,
       async *streamText(request: ModelRequest) {

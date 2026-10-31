@@ -11,8 +11,6 @@ const legacyProviderIds: Readonly<Record<string, string>> = Object.freeze({
   "account:bigmodel-team-coding-plan": "builtin:bigmodel-coding-plan",
   "account:zai-start-plan": "builtin:zai-start-plan",
   "account:bigmodel-start-plan": "builtin:bigmodel-start-plan",
-  "account:zai-offpeak-idle-plan": "offpeak-idle-plan",
-  "account:bigmodel-offpeak-idle-plan": "offpeak-idle-plan",
 });
 
 export function legacyTelemetryProviderId(providerId: string): string {

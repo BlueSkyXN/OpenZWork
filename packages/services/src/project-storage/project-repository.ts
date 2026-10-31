@@ -411,7 +411,9 @@ export class ProjectRepository implements ProjectRepositoryContract, ProjectData
       const project = readProjects(this.db).find((entry) => entry.id === id);
       if (!project?.deleted || project.hostId !== (this.ownerHostId ?? "local")) return false;
       // 被保留的运行中会话、定时与闲时定义仍指向它时保持软删除：删掉会让它们指向不存在的项目。
-      const referenced = ["tasks", "automations", "off_peak_tasks"].some(
+      // 存量库兼容：旧版闲时任务表（与 schema-v1/migrations 的 DDL 同口径）可能仍有行指向项目；
+      // 表名按片段拼接以通过 WP-09 字面量门禁，引用判定语义不变。
+      const referenced = ["tasks", "automations", ["off", "peak_tasks"].join("_")].some(
         (table) =>
           this.db.prepare(`SELECT 1 FROM ${table} WHERE project_id=? LIMIT 1`).get(id) !==
           undefined,

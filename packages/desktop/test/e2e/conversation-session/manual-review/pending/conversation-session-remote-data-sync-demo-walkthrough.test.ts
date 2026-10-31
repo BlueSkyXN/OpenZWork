@@ -1208,7 +1208,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await point(rowSelector(SKILL.push), "绿色「推送」：只在本机，默认勾选");
         await point(
           rowSelector(SKILL.agentsDir),
-          "兼容目录 ~/.agents/skills 的技能也会同步，统一写入远端 ~/.zcode/skills",
+          "兼容目录 ~/.agents/skills 的技能也会同步，统一写入远端 ~/.openzwork/skills",
         );
         await point(
           rowSelector(SKILL.update),
@@ -1299,7 +1299,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await point(rowSelector(COMMAND.nested), "命令按相对路径对齐，子目录结构保持不变");
         await point(
           rowSelector(COMMAND.agentsDir),
-          "兼容目录 ~/.agents/commands 的命令统一写入远端 ~/.zcode/commands",
+          "兼容目录 ~/.agents/commands 的命令统一写入远端 ~/.openzwork/commands",
         );
         await openTab("hooks", "切到「钩子」");
         await browser.waitUntil(async () => await spotlight(ANY_ROW, HOOK.push), {
@@ -1602,7 +1602,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       bullets: [
         "「本机」下是用户和本机项目；每台在线远端设备下是用户和该设备的项目",
         "触发器显示「设备 · 用户」或「设备 · 项目」",
-        "不打开远程项目也能直接编辑远端 ~/.zcode；插件、MCP、技能、子智能体、命令、钩子同一规则",
+        "不打开远程项目也能直接编辑远端 ~/.openzwork；插件、MCP、技能、子智能体、命令、钩子同一规则",
       ],
       setup: async () => {
         await openSettingsSection("skill");
@@ -1624,7 +1624,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await browser.keys("Escape");
         await point(
           "*",
-          "列表就是远端 ~/.zcode/skills：远端独有的 remote-only-notes 仍在，推送从不删除远端条目",
+          "列表就是远端 ~/.openzwork/skills：远端独有的 remote-only-notes 仍在，推送从不删除远端条目",
           { match: SKILL.remoteOnly, ms: LONG_BEAT_MS },
         );
         await caption("切到「本机 · 用户」");

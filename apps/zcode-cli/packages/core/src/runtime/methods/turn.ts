@@ -9,7 +9,7 @@ import {
   telemetryInputOrigin,
   TELEMETRY_INPUT_ORIGIN_ATTRIBUTE,
 } from "./input-intent-persistence.js";
-// OpenZWork Purification: upstream also imports prepareOffPeakTurn (off-peak idle task domain); this domain has been purified.
+// OpenZWork Purification: upstream also imports the idle-task turn preparation hook (retired idle task domain); this domain has been purified.
 
 import {
   CoreErrorType,

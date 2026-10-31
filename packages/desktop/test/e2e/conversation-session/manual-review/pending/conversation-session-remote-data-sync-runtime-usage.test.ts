@@ -505,12 +505,12 @@ describe(`${CASE_MARKER}: 推送内容在远端会话中的可用时机`, () => 
 
   after(async () => {
     await mkdir(artifactDir, { recursive: true });
-    // 诊断：结束时容器会被删除，先把远端 ~/.zcode 下的日志尾部拷进工件。
+    // 诊断：结束时容器会被删除，先把远端 ~/.openzwork 下的日志尾部拷进工件。
     if (container) {
       const logs = await execInRemoteContainer(container, [
         "sh",
         "-c",
-        'find "$HOME/.zcode" -maxdepth 5 \\( -name "*.jsonl" -o -name "*.log" -o -name "*.ndjson" \\) -size -50M | while read -r f; do echo "=== $f"; tail -n 2000 "$f"; done',
+        'find "$HOME/.openzwork" -maxdepth 5 \\( -name "*.jsonl" -o -name "*.log" -o -name "*.ndjson" \\) -size -50M | while read -r f; do echo "=== $f"; tail -n 2000 "$f"; done',
       ]).catch((error: unknown) => ({ stdout: String(error) }));
       await writeFile(join(artifactDir, "remote-logs.txt"), logs.stdout);
     }

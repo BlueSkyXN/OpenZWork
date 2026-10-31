@@ -1,6 +1,5 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
-import { useShallow } from "zustand/react/shallow";
 import { shallow } from "zustand/shallow";
 import type { ConversationRow, ToolCallRow } from "@zcode/shared/zcode-protocol-v4";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
@@ -31,7 +30,6 @@ import {
 } from "@/plugin-ui/app/pluginUiDisclosureStore.js";
 import { deriveLogicalUiInstances } from "@/plugin-ui/index.js";
 import { toolCallCreateWorkflowDisplaySchema } from "@zcode/shared/zcode-protocol-v4";
-import * as highspeed from "@/highspeed/highspeedTurnStore.js";
 import "@/styles.css";
 
 const query = new URLSearchParams(location.search);
@@ -151,29 +149,8 @@ function boundaryChecks() {
     recentThree[0] !== outsideRecentThree[0],
     "recent-three plugin boundary updates historical unit",
   );
-  const cardMeta = {
-    schemaVersion: 1 as const,
-    cardId: "persisted",
-    taskId: "fixture",
-    provider: "fixture",
-    model: "fixture",
-    issuedAt: start,
-    expiresAt: start + 6000,
-    outputTokens: 100,
-    regularTps: 10,
-    highspeedTps: 50,
-  };
-  const cardRows = initial.map((r) => (r.kind === "userInput" ? { ...r, highspeed: cardMeta } : r));
-  compare(cardRows);
-  const expired = compare(cardRows, { nowMs: start + 7000 });
-  check(
-    expired.filter((u) => u.showHighspeedOutputFooter).length === 1 &&
-      expired.at(-1)?.showHighspeedOutputFooter,
-    "one footer at last card turn",
-  );
-  compare(cardRows.slice(0, 6), { nowMs: start + 8000 });
   evidence.push(
-    "turn parity, completion, interruption, missing header, prepend, trim, pin, footer expiry and movement",
+    "turn parity, completion, interruption, missing header, prepend, trim, pin and movement",
   );
 
   const graph = {
@@ -276,120 +253,34 @@ function boundaryChecks() {
   return evidence;
 }
 let scopeRenders = 0;
+// OpenZWork 净化：上游该消费者同时订阅已退役的加速卡 turn store；fork 只保留
+// plugin-ui pin 的 scope 隔离断言。
 function ScopeConsumer() {
   scopeRenders++;
-  const select = useShallow(highspeed.getHighspeedSessionDependencies);
-  const data = useSyncExternalStore(highspeed.subscribeHighspeedTurns, () => select("current"));
   const pins = useSyncExternalStore(subscribePluginUiDisclosure, () =>
     getPluginUiDisclosureSnapshot("current"),
   );
-  return (
-    <output data-testid="scope">
-      {data.length}:{pins.size}
-    </output>
-  );
+  return <output data-testid="scope">{pins.size}</output>;
 }
 async function scopeChecks() {
   const settle = () =>
     new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
-  const record = (sessionId: string, sourceCommandId: string, cardId: string) =>
-    highspeed.recordHighspeedTurn({
-      sessionId,
-      sourceCommandId,
-      createdAt: start,
-      card: {
-        cardId,
-        taskId: sessionId,
-        provider: "fixture",
-        model: "fixture",
-        issuedAt: start,
-        expiresAt: start + 1000,
-        regularTps: 10,
-      },
-    });
-  const groupCounts = () => ({
+  const initialGroups = () => ({
     ...(window as unknown as { __turnRenders: Record<string, number> }).__turnRenders,
   });
-  const initialGroups = groupCounts();
+  const beforeGroups = initialGroups();
   let before = scopeRenders;
   setPluginUiManualPin("other", "tool", true);
-  record("other", "other", "other-card");
   await settle();
   check(scopeRenders === before, "unrelated stores skip");
-  equal(groupCounts(), initialGroups, "unrelated Highspeed update skips real turn groups");
   setPluginUiManualPin("current", "tool", true);
   await settle();
   check(scopeRenders > before, "current pin updates");
-  record("current", "history-1-command", "shared");
-  await settle();
-  before = scopeRenders;
-  record("other", "shared-other", "shared");
-  await settle();
-  check(scopeRenders > before, "same card across sessions updates");
-  before = scopeRenders;
-  highspeed.completeHighspeedTurn({
-    sourceCommandId: "shared-other",
-    outputTokens: 250,
-    durationMs: 1000,
-  });
-  await settle();
   check(
-    scopeRenders > before && highspeed.aggregateHighspeedCardMetrics("shared").outputTokens === 250,
-    "same card completion",
+    JSON.stringify(initialGroups()) === JSON.stringify(beforeGroups),
+    "pin scope updates skip real turn groups",
   );
-  before = scopeRenders;
-  highspeed.setHighspeedCardTps("shared", 80);
-  await settle();
-  check(
-    scopeRenders > before && highspeed.aggregateHighspeedCardMetrics("shared").highspeedTps === 80,
-    "TPS updates",
-  );
-  check(
-    (groupCounts()["history-1"] ?? 0) > (initialGroups["history-1"] ?? 0),
-    "related real group receives Highspeed changes",
-  );
-  before = scopeRenders;
-  highspeed.hydrateHighspeedTurnsFromTranscript("current", [
-    {
-      sourceCommandId: "history-1-command",
-      createdAt: start,
-      highspeed: {
-        schemaVersion: 1,
-        cardId: "shared",
-        taskId: "current",
-        provider: "fixture",
-        model: "fixture",
-        issuedAt: start,
-        expiresAt: start + 1000,
-        outputTokens: 50,
-        durationMs: 500,
-        regularTps: 10,
-        highspeedTps: 80,
-        savedDurationMs: 4500,
-      },
-    },
-  ]);
-  await settle();
-  check(
-    scopeRenders > before &&
-      highspeed.getHighspeedTurnByCommandId("history-1-command")?.metricsPersistedAt !== undefined,
-    "hydration and persisted metrics update",
-  );
-  before = scopeRenders;
-  highspeed.discardHighspeedTurn("shared-other");
-  await settle();
-  check(
-    scopeRenders > before && highspeed.aggregateHighspeedCardMetrics("shared").outputTokens === 50,
-    "removal updates",
-  );
-  before = scopeRenders;
-  for (let i = 0; i < 301; i++) record("other", `evict-${i}`, "other-card");
-  await settle();
-  check(
-    scopeRenders > before && !highspeed.getHighspeedTurnByCommandId("history-1-command"),
-    "bounded store eviction updates",
-  );
-  return "scoped subscriptions: unrelated skip, current pin, shared card completion, TPS, hydration, removal, eviction";
+  return "scoped subscriptions: unrelated skip, current pin";
 }
 function Fixture() {
   const [rows, setRows] = useState(initial);

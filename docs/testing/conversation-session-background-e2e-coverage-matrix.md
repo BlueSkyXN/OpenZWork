@@ -1,6 +1,6 @@
 # Conversation Session Background E2E Coverage Matrix
 
-<!-- 上游 retired 单测退役横幅不适用 OpenZWork 单测保留口径；闲时后台修订（off-peak background-lifecycle-plan）属净化域，均不随上游引入 -->
+<!-- 上游 retired 单测退役横幅不适用 OpenZWork 单测保留口径；闲时后台修订（retired background-lifecycle-plan）属净化域，均不随上游引入 -->
 
 本文记录会话区 background runtime task 的 E2E 枚举边界。它补充主矩阵里的 `BG` 分组，只覆盖当前已经实现并确认的桌面端主链路。
 

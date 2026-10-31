@@ -25,9 +25,8 @@ export const GEN_UI_STATIC_DOMAINS = [
   "fonts.googleapis.com",
   "fonts.gstatic.com",
   "fonts.bunny.net",
-  // 自有 CDN：visualize/gen-ui 页面引用 zcode.z.ai 上的图片等静态资源（与上面公共 CDN 同走 resourceDomains，
-  // 会同时进 img/script/style/media/font 五类 src，可控性高于公共 CDN）
-  "zcode.z.ai",
+  // OpenZWork 净化：上游在此追加官方静态资源域（官方图片 CDN，与公共 CDN 同走 resourceDomains）；
+  // fork 不使用该域，条目不保留。
 ] as const;
 
 /** This is a wire-format check. The executor owns normalization and filesystem authorization. */

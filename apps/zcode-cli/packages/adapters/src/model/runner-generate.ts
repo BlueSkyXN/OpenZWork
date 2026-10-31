@@ -359,7 +359,7 @@ export async function runGenerateText(input: {
         classified.retryable = error.retryable;
       }
 
-      // OpenZWork 净化：off-peak 特判（offpeak-retry.ts，官方闲时套餐域）整体移除；
+      // OpenZWork 净化：闲时任务特判（官方闲时套餐域重试链）整体移除；
       // 仅保留上游中性的未知业务码连击统计，供 workflow 失败策略表使用。
       const failure: ClassifiedModelFailure = classified;
       const providerCode = inspectProviderFailure(error).providerErrorCode;

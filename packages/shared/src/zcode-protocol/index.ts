@@ -4081,7 +4081,7 @@ export const zcodeProtocolMethods = {
   automationList: "automation/list",
   automationDelete: "automation/delete",
   automationPause: "automation/pause",
-  // Off-Peak 会话内创建：与 automation 兄弟并列的独立方法族。
+  // 闲时会话内创建：与 automation 兄弟并列的独立方法族。
   // @deprecated：host 消费已清零（zcodeAgentService 改走 v4/usage/stats）。
   // 仅剩 CLI server 的 wire 兼容 case；随旧词整体删除时一并移除。
   usageStats: "usage/stats",

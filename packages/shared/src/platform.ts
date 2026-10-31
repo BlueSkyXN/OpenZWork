@@ -30,8 +30,8 @@ import type {
   WebRemoteControlRendererActionResult,
 } from "#src/web-remote-relay/index.js";
 import type { AppSettings, Locale } from "./protocol.js";
-// OpenZWork 净化：ARMS/OTel renderer 遥测、Renderer Action Trace 与 CUA 设置类型
-// （telemetry.js / rendererActionTrace.js / cuaAccessibilitySettings.ts 均未随合并引入）不 import。
+// OpenZWork 净化：ARMS/OTel renderer 遥测、Renderer Action Trace 与桌面自动化设置类型
+// （telemetry.js / rendererActionTrace.js 与对应设置类型文件均未随合并引入）不 import。
 import type { BrowserViewportSize } from "./browser-use/command-metadata.js";
 export interface TaskNotificationPayload {
   taskId: string;

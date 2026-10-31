@@ -43,7 +43,7 @@
 ### 落盘位置
 
 ```
-~/.zcode/v2/logs/mobile/<设备>/<YYYY-MM-DD>_<会话>.jsonl
+~/.openzwork/v2/logs/mobile/<设备>/<YYYY-MM-DD>_<会话>.jsonl
                                  <YYYY-MM-DD>_<会话>.1.jsonl   # 滚动分片
 ```
 
@@ -147,7 +147,7 @@
 
 - 远控面板：手机已连接时，连接卡片（设备行）上有「拉取手机日志」按钮，走桌面命令 `DesktopCommandIds.PullMobileLogs`。2026-10-28 起这是唯一用户入口，帮助菜单（macOS 原生菜单栏、Windows/Linux 工作区帮助按钮）里的同名项已移除。
 - 目标连接：优先当前窗口已配对的远控连接，其次任一已配对窗口。没有已配对连接时弹框说明。
-- 导出文件：`~/.zcode/export-log/mobile-logs-<设备>-<YYYYMMDD-HHmmss>.jsonl`。完成后弹框给出文件路径和实时日志目录，可「打开所在文件夹」。
+- 导出文件：`~/.openzwork/export-log/mobile-logs-<设备>-<YYYYMMDD-HHmmss>.jsonl`。完成后弹框给出文件路径和实时日志目录，可「打开所在文件夹」。
 - 文件在收到第一片有效数据（或成功结束）时才创建，并以独占方式打开，绝不覆盖已有文件。
 - 中途失败时：已经写入了条目，就保留这份部分文件，并在弹框里说明；一条都没写，就删除文件。
 

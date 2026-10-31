@@ -23,7 +23,7 @@ import { prepareV4ConversationE2E } from "../helpers/v4-conversation.js";
 
 const PERSONALIZATION_INSTRUCTIONS = "E2E_PZ_INSTRUCTIONS 永远用中文回复，先给结论。";
 
-/** 个性化编辑的文件就是 Agent 读取的 ~/.zcode/AGENTS.md；e2e 的 HOME 已指向隔离目录。 */
+/** 个性化编辑的文件就是 Agent 读取的 ~/.openzwork/AGENTS.md；e2e 的 HOME 已指向隔离目录。 */
 function personalizationAgentsFile(): string {
   return join(getE2EAppDataPaths().storageRoot, "AGENTS.md");
 }
@@ -120,7 +120,7 @@ describe("设置页个性化（自定义指令）E2E", () => {
     });
     await browser.waitUntil(async () => (await readAgentsFile()) === PERSONALIZATION_INSTRUCTIONS, {
       timeout: 15000,
-      timeoutMsg: "保存后没有把内容写入 ~/.zcode/AGENTS.md",
+      timeoutMsg: "保存后没有把内容写入 ~/.openzwork/AGENTS.md",
     });
   });
 

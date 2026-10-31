@@ -28,8 +28,8 @@ import {
   pluginUiToolResultNotificationSchema,
   type PluginUiToolResultNotification,
 } from "@zcode/shared/mcp-apps";
-// OpenZWork 净化：offPeak* schema（闲时任务域）与 request-verification import 均不引入
-// （验证链已净化为 no-op 恒 false，见 shared request-security-edition）。
+// OpenZWork 净化：闲时任务域 schema 与请求安全域校验 import 均不引入
+// （验证链已净化为 no-op 恒 false，见 shared 的 request-verification 模块）。
 import { supportsHistoryFirst, ensureGenUiContextSupport } from "./independentPlanSupport.js";
 import { supportsResidentRowsRange } from "./resident-rows-range/contract.js";
 import { zcodeMcpUiSamplingResultSchema } from "@zcode/shared";
@@ -2978,9 +2978,9 @@ export function createZCodeAgentService(
       }
     })();
     // OpenZWork：上游 directorySourceReady（session 目录来源协商）为中性改进，保留；
-    // Off-Peak 工具策略同步属删除面，已剔除。
-    // OpenZWork 净化：Off-Peak 工具策略同步（闲时任务域）不引入。
-    // 动态工作流灰度门禁：与 Off-Peak 同一
+    // 闲时工具策略同步属删除面，已剔除。
+    // OpenZWork 净化：闲时工具策略同步（闲时任务域）不引入。
+    // 动态工作流灰度门禁：与闲时任务同一
     // 模式的 workspace 级事实，在允许任何 session 工作前同步给 CLI，v4 冷恢复也才拿得到工具面。
     // 生效模式为关闭时不发请求（CLI 缺省即关闭，对旧 CLI/测试假客户端零打扰）；之后用户改选择时
     // 经同一条 workspace 串行链重发（launch.md「The user's choice」）。
@@ -3260,7 +3260,7 @@ export function createZCodeAgentService(
       emitter.dispose();
     }
     conversationTelemetryFactEmitters.clear();
-    // conversation-telemetry（保留域）collector 随 dispose 收口；offPeak 生命周期 emitters 属删除面。
+    // conversation-telemetry（保留域）collector 随 dispose 收口；闲时生命周期 emitters 属删除面。
     for (const collector of remoteConversationTelemetry.values()) collector.dispose();
     remoteConversationTelemetry.clear();
     remoteConversationTelemetryEmitter.dispose();
@@ -3377,7 +3377,7 @@ export function createZCodeAgentService(
       const payload = commandPayloadSchemas.createSession.parse(envelope.payload);
       if (params.projectId !== undefined && !options?.prepareSessionCreation)
         throw new Error("project.creation-unavailable");
-      // OpenZWork：采用上游持库 Host 原子分配 sessionId（中性改进）；offPeakToolEnabled
+      // OpenZWork：采用上游持库 Host 原子分配 sessionId（中性改进）；闲时工具开关
       // （闲时任务域）不引入。
       const prepared = await options?.prepareSessionCreation?.({
         ...params,

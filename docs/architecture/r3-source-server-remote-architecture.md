@@ -844,7 +844,7 @@ Active workspace（local / remote）──只决定工作区上下文，不改�
 - 对话区、Subagents、Automation 的模型目录来自**目标 Host**：`useModelSelectionView(workspacePath, remoteSessionId, workspaceIdentity)` 经 `useWorkspaceServicesResolution` 解析到该 workspace 的服务集合，再读其 `modelSelectionService`（ssh/wsl/docker/server 全部远端一致）；等待远端 attachment 期间保持 `remote-waiting`，绝不回落本机 Local Host 目录。首次 bind/rekey 期间即使 tab 仍短暂携带 legacy `remote:ssh|wsl|docker:*` identity，也不得读取本机目录。
 - 远端 workspace 缺模型时 `ChatErrorBanner` 的 `modelConfigTarget: "remote"` 只切换措辞（`chat.error.remoteNoAvailableModel`：「此远程设备尚无可用模型，请先在本机配置模型，保存后会自动同步到远程设备」），按钮仍是「配置」（打开本机模型设置）/「升级」；「去同步」入口已删除。
 - Renderer 收到远端 scoped service port 时，是否采用 Source Server 全权威服务集合仍以 Host 注入的 `sourceServerId` 为准；SSH/WSL/Docker 只描述 transport，不能据此回落 legacy mixed services。已识别 Source 即使通过 SSH 连接，`settingService`、credential、usage 与 `modelSelectionService` 也必须来自远端。
-- 例外：高速卡与闲时任务只在本地生效（2026-10-21 产品决定），远端合同不含这两个频道。所有远程 workspace 的服务集合中，`highspeedCardService` 使用「远程不支持」实现（立即 fallback，不 draw），`offPeakTaskService` 固定取本地 Desktop Host；任何一个都不得路由到远端。见 [Highspeed §8](../highspeed/highspeed-card-spec.md#8-多端与恢复边界)、[闲时任务 §多端](../off-peak-task/spec.md)。
+- 例外：高速卡与闲时任务只在本地生效（2026-10-21 产品决定），远端合同不含这两个频道。所有远程 workspace 的服务集合中，`highspeedCardService` 使用「远程不支持」实现（立即 fallback，不 draw），闲时任务服务固定取本地 Desktop Host；任何一个都不得路由到远端。见 [Highspeed §8](../highspeed/highspeed-card-spec.md#8-多端与恢复边界)、闲时任务 §多端（该域已随净化移除，规格文档不再保留）。
 
 ### 8.3 Provider Provisioning 接入 R3 主链
 
@@ -1111,7 +1111,7 @@ Repo 不再独立建表/补列。旧 schema、未完成计划与回退兼容规�
 | `automations.workspace_key/workspace_identity`               | 控制端 cron 定义                                | 保留记录并重写身份，`location_kind` 不改                           | R3 remote automation 不开放执行入口；迁移只防止记录失联，不改变调度能力边界      |
 | `automation_runs.workspace_key`                              | cron run 对账/历史                              | 随 automation identity 重写                                        | `run_id` 是主键，不会因 workspace key 更新合并                                   |
 
-<!-- off_peak_tasks 属闲时任务净化域，OpenZWork 无该表，删除该迁移行；session_creation_commands 为保留域，采用上游 -->
+<!-- 闲时任务表属闲时任务净化域，OpenZWork 无该表，删除该迁移行；session_creation_commands 为保留域，采用上游 -->
 
 | `session_creation_commands.workspace_key` | 创建命令的持久分配回执（含删除后的保护记录） | 与 task 同事务 rekey；相同回执合并，不同 session ID 冲突整笔回滚 | 新 key 重试原命令仍返回原 ID；仅有回执也必须迁移 |
 | `workspace_alias` / `workspace_migration_*` | 远端 Server 专用 canonical/ledger | 控制端不创建、不读取 | 这些表只属于 Source Server tasks-index，禁止与控制端迁移混用 |

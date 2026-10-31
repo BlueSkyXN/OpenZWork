@@ -160,12 +160,10 @@ describe(`${CASE_MARKER}: SSH remote workspace P0`, () => {
     await assertTaskRow(taskA, { active: false, running: false });
     await assertTaskRow(taskB, { active: true, running: false });
     expect(await readHostProcesses()).toEqual(initialHosts);
-    // Bug 回归（3.16.2 远程发送卡顿）：远程 workspace 曾把高速卡与闲时任务请求发到远端，
-    // 远端没有这两个频道，每次发送先等满 Host ChannelServer 的 1000ms 未知频道超时。
-    // 两者只在本地生效后，四次远程发送与期间的闲时轮询都不得再出现这两条超时。
-    expect(
-      await runtimeLogCursor.newLines(/Unknown channel: (?:highspeed-card|off-peak-task)\b/u),
-    ).toEqual([]);
+    // Bug 回归（3.16.2 远程发送卡顿）：远程 workspace 曾把已随净化移除的本地专用频道请求发到远端，
+    // 远端没有这些频道，每次发送先等满 Host ChannelServer 的 1000ms 未知频道超时。
+    // 本地专用频道全部移除后，四次远程发送不得再出现任何未知频道超时。
+    expect(await runtimeLogCursor.newLines(/Unknown channel: /u)).toEqual([]);
 
     const reports = await waitForConversationReportInventory(telemetryCapture, {
       agent_step: 4,
@@ -235,7 +233,7 @@ async function captureRuntimeLogCursor() {
 async function readProvisioningRecordCount(config: SSHRuntimeConfig): Promise<number> {
   const result = await runSSHCommand(
     config,
-    'if [ -f "$HOME/.zcode/v2/runtime/provider/provisioning.json" ]; then cat "$HOME/.zcode/v2/runtime/provider/provisioning.json"; else printf \'{"records":[]}\'; fi',
+    'if [ -f "$HOME/.openzwork/v2/runtime/provider/provisioning.json" ]; then cat "$HOME/.openzwork/v2/runtime/provider/provisioning.json"; else printf \'{"records":[]}\'; fi',
   );
   if (result.code !== 0) {
     throw new Error(`${CASE_MARKER}: 读取远端 Provisioning 状态失败：${result.stderr}`);

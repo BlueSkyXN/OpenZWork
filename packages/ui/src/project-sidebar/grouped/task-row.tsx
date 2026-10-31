@@ -121,7 +121,7 @@ function GroupedTaskRowComponent({
   const taskTimeLabel = formatTaskRelativeTime(task.updatedAt, intl);
   const isTaskCron = isCronTask(task);
   // 净化保留：上游闲时任务角标判定属闲时任务域（WP-09）；选中态已由父级
-  // rowSelection 以 props 传入，旧的本地重算与 isTaskOffPeak 一并删除。
+  // rowSelection 以 props 传入，旧的本地重算与闲时判定一并删除。
   const statusDotClassName =
     leadingIndicator === "error"
       ? "bg-destructive"

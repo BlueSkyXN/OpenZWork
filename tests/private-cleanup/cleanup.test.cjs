@@ -409,11 +409,15 @@ test("[structural, not runtime] WP-05 telemetry full-chain sources are physicall
     "packages/desktop/src/host/hostResourceTelemetryEnvironment.ts",
     "packages/services/src/telemetry/telemetryCore.ts",
     "packages/services/src/oauth/repo/oauthCredentialRepo.ts",
+    // packages/shared/src/telemetry.ts 已随 WP-05 禁列收口迁入
+    // conversation-telemetry/eventShapes.ts（远端事件链的最小事件形态定义），
+    // 原路径不得再出现；其余远端遥测 shim 同样保持物理缺席。
     "packages/shared/src/telemetry.ts",
     "packages/shared/src/remoteUsageTelemetry.ts",
     "packages/shared/src/sessionCreateTelemetry.ts",
     "packages/shared/src/rendererActionTrace.ts",
-    "packages/shared/src/processResourceTelemetry.ts",
+    // v3.17.1 边界更新：processResourceTelemetry 自本轮合并起是被采纳的保留观测链
+    // （远端心跳 lane/样本契约，validation.ts 消费），不再列入禁列。
     "packages/shared/src/telemetryRedaction.ts",
     "packages/ui/src/lib/appTelemetry.ts",
     "packages/ui/src/lib/sessionCreateTelemetry.ts",
@@ -449,8 +453,10 @@ test("[structural, not runtime] build configs no longer validate or inject telem
     path.join(root, "packages/desktop/electron-builder.config.js"),
     "utf8",
   );
-  assert.doesNotMatch(bundle, /@opentelemetry|@arms\/|@babel\/runtime/);
-  assert.doesNotMatch(builder, /@opentelemetry|@arms\/|@babel\/runtime/);
+  // v3.17.1 边界更新：@babel/runtime 是上游 Electron 44 升级的通用 polyfill 处理（非遥测），
+  // 不再纳入本结构断言；遥测运行时注入面仍只封 @opentelemetry 与 @arms。
+  assert.doesNotMatch(bundle, /@opentelemetry|@arms\//);
+  assert.doesNotMatch(builder, /@opentelemetry|@arms\//);
 });
 test("[structural, not runtime] shared telemetry env constants and channels are removed", () => {
   const env = fs.readFileSync(path.join(root, "packages/shared/src/env.ts"), "utf8");
@@ -711,6 +717,17 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
     [
       "packages/shared/src/web-remote-relay/contract.ts",
       ['"wss://zcode.z.ai/ws"', '"https://zcode.z.ai/remote/v4"'],
+    ],
+    // 官方 V1 中继端点常量在 v3.17.1 起拆到独立文件，登记同一组完整字面量（保留口径与 contract.ts 一致）。
+    [
+      "packages/shared/src/web-remote-relay/v1Endpoint.ts",
+      ['"wss://zcode.z.ai/ws"', '"https://zcode.z.ai/remote/v4"'],
+    ],
+    // 内置插件商店 listing 的作者署名保留域（ZAI_AUTHOR 常量）：登记 name 与 url 完整字面量，
+    // 其余官方地址仍被扫描。
+    [
+      "apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts",
+      ['author: { name: "Z.ai"', '"https://z.ai"'],
     ],
     // 官方二维码合同新增了 origin 断言；仅登记这一完整字面量，保留其余地址扫描。
     ["packages/shared/src/web-remote-relay/contract.test.ts", ['"https://zcode.z.ai"']],

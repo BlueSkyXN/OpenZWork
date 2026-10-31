@@ -201,7 +201,7 @@ describe(`${CASE_MARKER}: 迁移入口移到数据同步页`, () => {
     await $('[data-testid="onboarding-page"]').waitForExist({ reverse: true, timeout: 15_000 });
   });
 
-  it("DSYNC-16-02 没有打开的项目时从「迁移」导入用户级技能：完成页显示已导入，文件写入本机 ~/.zcode/skills", async function () {
+  it("DSYNC-16-02 没有打开的项目时从「迁移」导入用户级技能：完成页显示已导入，文件写入本机 ~/.openzwork/skills", async function () {
     this.timeout(5 * 60_000);
     const { homeDir } = getE2EAppDataPaths();
     const sourceDir = join(homeDir, ".claude", "skills", SKILL_NAME);

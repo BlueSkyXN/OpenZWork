@@ -24,7 +24,7 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 // 3.16.2 远端超时工单的真实 SSH 验证（本机 Docker runner）：远端 Core 启动失败时，连接错误只有
 // "Timed out waiting for Server ready" / "exited before ready"，Core 自己报告的原因被丢掉，工单
 // 无从判断 Core 为什么起不来。修复后连接错误必须带出 Core 的 fatal 原因。
-// 注入方式：预装 release 并停掉 daemon，再把 ~/.zcode/v2 换成 dev 不可写的目录，Core 启动时
+// 注入方式：预装 release 并停掉 daemon，再把 ~/.openzwork/v2 换成 dev 不可写的目录，Core 启动时
 // 物化内置 Provider 配置失败（EACCES）并退出。
 const MARKER = "E2E_SSH_REMOTE_CORE_START_FAILURE";
 const DEV: RemoteAccount = { user: "dev", home: "/home/dev" };
@@ -77,7 +77,7 @@ describe(`${MARKER}: 远端 Core 启动失败时连接错误带出原因`, () =>
         `HOME=${DEV.home}`,
         "sh",
         "-c",
-        '"$HOME/.zcode/server/bin/zcode" stop --wait --server-root "$HOME/.zcode/server" --json',
+        '"$HOME/.openzwork/server/bin/zcode" stop --wait --server-root "$HOME/.openzwork/server" --json',
       ],
       { user: DEV.user },
     );

@@ -57,7 +57,7 @@ Desktop
 - 复现（已复现，真实模块边界）：本机 Docker、`debian:bookworm-slim` arm64、3.16.2 官方 linux-arm64 包、fallback 模式。
   - uid 10001 无 passwd 条目：CLI 10.4s 后只报超时；`status.json` 最终为 `state: stopped`、
     `lastExitReason: core exited code=1 signal=none`，Core 报告的 `uv_os_get_passwd returned ENOENT` 不在任何地方。
-  - 普通用户、`~/.zcode/v2` 不可写：同样的形状。
+  - 普通用户、`~/.openzwork/v2` 不可写：同样的形状。
   - Supervisor 与等待代码从 3.16.2 到修复前的本分支没有变化，复现结论适用于修复前的本分支。
 
 ### 修复

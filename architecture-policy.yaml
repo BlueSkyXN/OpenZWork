@@ -1152,16 +1152,16 @@ modules:
     layers:
       adapters: .
     owner: usage
-  # 发行策略使用独立目录；修改后的文件由本模块承担边界检查。
-  - id: request-security-edition
-    roots: [packages/shared/src/request-security-edition]
+  # 发行策略使用独立目录（fork 净化命名 request-verification）；修改后的文件由本模块承担边界检查。
+  - id: request-verification
+    roots: [packages/shared/src/request-verification]
     managed: true
     requires: [shared]
     publicEntrypoints:
-      - packages/shared/src/request-security-edition/index.ts
-      - packages/shared/src/request-security-edition/policy.ts
-      - packages/shared/src/request-security-edition/verification-policy.ts
-      - packages/shared/src/request-security-edition/contract.ts
+      - packages/shared/src/request-verification/index.ts
+      - packages/shared/src/request-verification/policy.ts
+      - packages/shared/src/request-verification/verification-policy.ts
+      - packages/shared/src/request-verification/contract.ts
     layers: { adapters: . }
     owner: request-security
 
@@ -1362,10 +1362,6 @@ exceptions:
     rule: unmanaged-new-file
     paths: [apps/zcode-cli/packages/node-repl-host/src/result.ts]
     reason: 已准入的 node_repl 结果组装改为只从账本 facts 取可信 key，忽略 Worker 结果消息里的同名字段（20-node-repl-call-ledger.md「结果组装」）；MR !3207 按同样处置追加 zcode/nodeReplBrowserUse、zcode/nodeReplComputerUse 两个 key（docs/design/v2/model/session-features-header.md）；结果内容与其他 meta 处置不变。
-  - id: offpeak-expiration-codes-existing-edit
-    rule: unmanaged-new-file
-    paths: [apps/zcode-cli/packages/core/src/runtime/off-peak/model-binding.ts]
-    reason: 已准入的闲时请求包装器仅复用共享错误码判断，补齐 3106 运行超时的既有生命周期通知；不改变 owner、控制协议或模块边界，不扩展为整个 CLI runtime 目录接管。
   - id: multi-cursor-badge-title-passthrough-edit
     rule: unmanaged-new-file
     paths:
@@ -1385,11 +1381,8 @@ exceptions:
   - id: project-location-cache-recovery-existing-edit
     rule: unmanaged-new-file
     paths:
-      - packages/shared/src/project-access-token.ts
-      - packages/shared/src/project-access-token-client.ts
-      - packages/services/src/model-provider/accountProjectTokenClient.ts
       - packages/services/src/credential/credentialService.ts
-    reason: 已有项目 Token 与凭据存储增加派生缓存的局部恢复端口，并把换证请求失败按固定类别分码（ZCT-2111046389485834240）；保持原有 owner 和共享文件锁，不接管全目录。
+    reason: 已有项目 Token 与凭据存储增加派生缓存的局部恢复端口，并把换证请求失败按固定类别分码（ZCT-2111046389485834240）；保持原有 owner 和共享文件锁，不接管全目录。已随净化退役的 shared 项目令牌两文件与 model-provider 账号项目令牌客户端文件路径不再登记。
   - id: test-ids-subpath-import-unmanaged-edit
     rule: unmanaged-new-file
     paths:
@@ -1632,7 +1625,7 @@ exceptions:
   - id: request-verification-config-recovery-presentation
     rule: unmanaged-new-file
     paths:
-      - packages/ui/src/request-security-edition/errors.ts
+      - packages/ui/src/request-security.ts
     reason: 在现有官方版本安全校验展示入口补充配置读取失败的分类与本地化，不改变状态 owner 或模块边界；公共 errors.ts 入口及其开源占位实现承接同一契约，沿用本条精确路径准入；接管整个 UI 安全校验目录不属于本次网络恢复修复。
   - id: node-repl-no-progress-hint-unmanaged-edit
     rule: unmanaged-new-file

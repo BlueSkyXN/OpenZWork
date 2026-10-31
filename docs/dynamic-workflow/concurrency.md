@@ -316,7 +316,7 @@ the parent's port, retry budget and session type (`main`, which also reached the
 the session-type header). An inner runtime layer now passes through when an outer one has
 already applied; a runtime layer still overrides the call site. The "already applied" marker
 travels inside the invocation context itself, because an inner layer can be reached late: the
-off-peak wrapper's `streamText` is an async generator that calls the handle inside it only on
+retired idle-task wrapper's `streamText` is an async generator that calls the handle inside it only on
 the first `next()`, after it has waited for a ticket, and only the invocation context is carried
 across that boundary (`runWithModelInvocationContext` re-enters it for every `next()`).
 

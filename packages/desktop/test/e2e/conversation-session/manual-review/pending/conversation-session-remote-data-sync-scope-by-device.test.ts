@@ -554,7 +554,7 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     }, SCOPE_TRIGGER);
     expect(triggerText).toBe(`${menu.headings[1]!.replace(/\s+/gu, "")}·用户`);
 
-    // 远端「用户」：新建写入远端 ~/.zcode/agents，本机不变。
+    // 远端「用户」：新建写入远端 ~/.openzwork/agents，本机不变。
     await createSubagent(REMOTE_AGENT);
     await waitForRemotePath(container, `${REMOTE_HOME}/.zcode/agents/${REMOTE_AGENT}.md`);
     expect(

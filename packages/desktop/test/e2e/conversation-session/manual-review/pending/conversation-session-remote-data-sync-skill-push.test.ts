@@ -27,7 +27,7 @@ import {
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 // DSYNC-04：设置 → 数据同步 → 设备 → 推送技能（docs/remote/data-sync.md）。
-// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.zcode。
+// 远端为本机 Docker runner（或服务器队列）提供的真实 Linux 容器；远端断言用 docker exec 读容器内 ~/.openzwork。
 const CASE_MARKER = "E2E_DSYNC_04_SKILL_PUSH";
 const NEW_SKILL = "e2e-dsync-new";
 const DIFF_SKILL = "e2e-dsync-diff";

@@ -156,7 +156,7 @@ describe(`${MARKER}: 版本兼容策略`, () => {
     expect(synthetic.version).toBe(version);
     facts.syntheticVersion = { version, minimum, archiveSha256: synthetic.archiveSha256 };
     const readDowngradeMarker = async () => {
-      const marker = await runSSHCommand(config, 'cat "$HOME/.zcode/server/downgrade.json"');
+      const marker = await runSSHCommand(config, 'cat "$HOME/.openzwork/server/downgrade.json"');
       return marker.code === 0
         ? (JSON.parse(marker.stdout) as { releaseId?: string; fromVersion?: string })
         : null;
@@ -169,9 +169,9 @@ describe(`${MARKER}: 版本兼容策略`, () => {
       });
     } else if (requiredOld) {
       // 其他旧版本场景代表从未升级过的远端，不能带降级标记，否则向导不会自动更新。
-      expect((await runSSHCommand(config, 'rm -f "$HOME/.zcode/server/downgrade.json"')).code).toBe(
-        0,
-      );
+      expect(
+        (await runSSHCommand(config, 'rm -f "$HOME/.openzwork/server/downgrade.json"')).code,
+      ).toBe(0);
     }
 
     if (scenario === "automatic-required") {
@@ -246,8 +246,9 @@ describe(`${MARKER}: 版本兼容策略`, () => {
         timeout: 30_000,
       });
       expect(
-        JSON.parse((await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout)
-          .archiveSha256,
+        JSON.parse(
+          (await runSSHCommand(config, 'cat "$HOME/.openzwork/server/current.json"')).stdout,
+        ).archiveSha256,
       ).toBe(synthetic.archiveSha256);
       await mkdir(artifactDir, { recursive: true });
       await browser.saveScreenshot(resolve(artifactDir, "controller-downgrade-confirm.png"));
@@ -265,8 +266,9 @@ describe(`${MARKER}: 版本兼容策略`, () => {
       );
       // 等待确认期间不得自动升级被切回的远端。
       expect(
-        JSON.parse((await runSSHCommand(config, 'cat "$HOME/.zcode/server/current.json"')).stdout)
-          .version,
+        JSON.parse(
+          (await runSSHCommand(config, 'cat "$HOME/.openzwork/server/current.json"')).stdout,
+        ).version,
       ).toBe(version);
       await mkdir(artifactDir, { recursive: true });
       await browser.saveScreenshot(resolve(artifactDir, "downgraded-confirm-wait.png"));

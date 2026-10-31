@@ -32,7 +32,7 @@ describe("desktop renderer Vite dependency aliases", () => {
   // Windows 跳过：环境配置差异导致断言失败，需要 CI 环境统一配置
   const isWindows = process.platform === "win32";
 
-  // fork 净化：上游断言注入官方端点 https://zcode.z.ai 的 define（净化域不随入），保留我方本地开发模式断言。
+  // fork 净化：上游断言注入官方端点域的 define（净化域不随入），保留我方本地开发模式断言。
   (isWindows ? it.skip : it)("production renderer 编译不暴露本地开发模式", async () => {
     vi.stubEnv("ZCODE_ENV", "test");
     vi.stubEnv("ZCODE_BASE_URL", "");

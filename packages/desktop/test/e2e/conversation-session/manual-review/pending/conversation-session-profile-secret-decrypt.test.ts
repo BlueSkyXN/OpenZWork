@@ -1,4 +1,4 @@
-// LRCD-02：已有 SSH Profile 的保存密码在本机无法解密（~/.zcode 换机 / 换用户）。
+// LRCD-02：已有 SSH Profile 的保存密码在本机无法解密（~/.openzwork 换机 / 换用户）。
 // 冷启动后从侧栏项目菜单点“连接”：连接屏要求补充密码，补充后连上原项目，并覆盖原凭据。
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -78,7 +78,7 @@ describe(`${MARKER}: Profile 密码在本机无法解密`, () => {
     const key = await readPasswordCredentialKey(config.port);
     expect(key).toBeTruthy();
 
-    // 退出应用后把这条密码换成本机解不开的密文，等同把 ~/.zcode 带到另一台机器。
+    // 退出应用后把这条密码换成本机解不开的密文，等同把 ~/.openzwork 带到另一台机器。
     await reloadElectronSessionPreservingBrowserProfile(browser, {
       afterElectronProcessExit: async () => {
         const credentials = JSON.parse(await readFile(credentialsFile, "utf-8")) as Record<

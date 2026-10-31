@@ -214,7 +214,7 @@ export function createMarketplacePluginDataSyncService(
       return { hashes: {} };
     },
 
-    // marketplace 镜像写入 ~/.zcode/plugins，安装与配置写入 ~/.zcode/cli，与 inline 插件的预检目录相同。
+    // marketplace 镜像写入 ~/.openzwork/plugins，安装与配置写入 ~/.openzwork/cli，与 inline 插件的预检目录相同。
     checkSyncWriteAccess: () => services.pluginSyncService.checkSyncWriteAccess(),
 
     async exportSyncItems({ keys }) {

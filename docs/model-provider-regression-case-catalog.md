@@ -143,7 +143,7 @@
 | F-INTERNAL-003   | P0     | 内部操作进行中切换计划或模型。                                                     | 在 Compact/Title/Memory/Verify/Git 任一操作等待时切换连接。     | 已发出的操作保持原快照；后续操作才使用新连接；失败能定位到具体功能。                                | 在途内部请求被半途换凭证或重发。                    |
 | F-INTERNAL-004   | P0     | 某个内部功能的专用模型在服务端失效。                                               | 触发该功能，再继续普通聊天、Subagent 和 Automation。            | 失败只影响该内部功能，原会话和其他功能仍按各自规则运行；无全局静默降级。                            | 一个内部模型失效导致所有功能都换模型或不可用。      |
 
-<!-- F-OFFPEAK-001～006、F-PLAN-001/004/006/007、F-AUTOMATION-004/005、F-SUBAGENT-013～015 属 codingPlan/套餐 entitlement 与闲时任务净化域，随 5aba47d9 净化删除，不随上游恢复；F-SUBAGENT-018 采用上游 2026-10 递归边界语义 -->
+<!-- 闲时任务 F-001～006、F-PLAN-001/004/006/007、F-AUTOMATION-004/005、F-SUBAGENT-013～015 属 codingPlan/套餐 entitlement 与闲时任务净化域，随 5aba47d9 净化删除，不随上游恢复；F-SUBAGENT-018 采用上游 2026-10 递归边界语义 -->
 
 F-SUBAGENT-013 的回放分别断言在途 child 的创建时模型，以及父会话完成后新发送输入的当前模型。父会话消费 child 结果仍属于原输入的执行过程，不能用这一次 continuation 代替“切换后新输入”的模型断言；F-SUBAGENT-016 还需要目录/计划刷新动作，不能仅凭切换模型菜单宣称覆盖。
 
@@ -163,5 +163,5 @@ Subagent 模型边界回放按父子请求身份及实际 `tool_result` 阶段�
 
 SR87-06 的旧自动化 fixture 在 Electron/Host 退出后同时回退该记录的旧字段与 `0002_provider_selection` 迁移记录，再冷启动验证真实迁移；只写 NULL 而保留完成日志并不代表旧版本前置。
 
-F-OFFPEAK-002 使用隔离网关的确定性文本响应与请求记录场景：真实表单创建、取票和 scheduler 仍完整执行，验证 Team headers、ticket 与模型身份，不依赖真实上游或管理场景的排队窗口。
-此例不能开启 `ZCODE_OFFPEAK_MOCK`：该开关会固定返回个人假凭证。网关由测试 launcher 独立启动，控制面代理票据请求并给出闲时曝光配置，Host 仍通过真实账号选择解析 Team 身份。
+闲时 F-002 使用隔离网关的确定性文本响应与请求记录场景：真实表单创建、取票和 scheduler 仍完整执行，验证 Team headers、ticket 与模型身份，不依赖真实上游或管理场景的排队窗口。
+此例不能开启官方闲时 mock 开关：该开关会固定返回个人假凭证。网关由测试 launcher 独立启动，控制面代理票据请求并给出闲时曝光配置，Host 仍通过真实账号选择解析 Team 身份。

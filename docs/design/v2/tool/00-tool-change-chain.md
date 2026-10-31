@@ -227,7 +227,7 @@ profile 原 Selection -> Worker 公共 Selection Facade（同一已应用账号/
 
 解析通过宿主注入的只读端口复用；不改工具参数、结果与 profile 持久化。无同模型时不回退父模型；档位失效不补默认。隐式继承和内部执行 override 不重解释。端口透传子 Runtime / workflow，独立终端 CLI 未注入时保持原行为。完整契约与验证见 `docs/working-memory/provider-refactor/steps/todo-99-worker-account-selection-repair.md`。
 
-<!-- 闲时轮禁止 SendMessage/Workflow（D52）属 off-peak 净化域，已随 5aba47d9 净化删除，不随上游恢复 -->
+<!-- 闲时轮禁止 SendMessage/Workflow（D52）属闲时任务净化域，已随 5aba47d9 净化删除，不随上游恢复 -->
 
 #### 2026-09-08 原生验证发现的入口校验问题
 

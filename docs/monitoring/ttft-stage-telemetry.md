@@ -49,8 +49,8 @@ Issue-Tracker: local-markdown
 
 ### 本地排查入口
 
-App 日志默认在 `~/.zcode/v2/logs/YYYY-MM-DD.log`，CLI 日志默认在
-`~/.zcode/cli/log/zcode-YYYY-MM-DD.jsonl`；自定义数据目录和测试环境沿用已有路径配置。
+App 日志默认在 `~/.openzwork/v2/logs/YYYY-MM-DD.log`，CLI 日志默认在
+`~/.openzwork/cli/log/zcode-YYYY-MM-DD.jsonl`；自定义数据目录和测试环境沿用已有路径配置。
 先搜索 App 的 `[ttft]`，按 `observationId` 找到一次发送，再用其 `requestId`
 查询 CLI 的 `ttft.model.*`。同一输入的重试保持 observationId，通过 commandId 和
 requestId/attempt 区分命令与物理请求。关联到日志后按 `at` 查看事件发生时间。

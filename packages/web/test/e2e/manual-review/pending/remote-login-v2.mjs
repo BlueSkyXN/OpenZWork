@@ -328,7 +328,7 @@ try {
             if (provider === "bigmodel") {
               assert.equal(
                 login.traffic.authorize.origin,
-                process.env.REMOTE_LOGIN_E2E_BIGMODEL_ORIGIN || "https://bigmodel.cn",
+                process.env.REMOTE_LOGIN_E2E_BIGMODEL_ORIGIN || "https://bigmodel.example.test",
               );
               assert.equal(login.traffic.authorize.pathname, "/login");
               assert.equal(login.traffic.authorize.searchParams.get("appId"), "zcode");

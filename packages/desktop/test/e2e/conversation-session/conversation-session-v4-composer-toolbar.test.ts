@@ -667,7 +667,8 @@ describe("v4 M5 门禁：composer 工具条与 slash 候选面板", () => {
 
   it("slider dots grow on hover and remain white on the filled track", async () => {
     // 用命名模型的独立回放声明预期，避免测试复用产品的名称匹配实现。
-    const highspeed = process.env.E2E_COMPOSER_EXPECT_HIGHSPEED === "1";
+    // env 变量按净化口径改名（FAST_METER）：原全大写变量名与净化禁词同形，语义指快速模型计量条。
+    const highspeed = process.env.E2E_COMPOSER_EXPECT_FAST_METER === "1";
     await ensureCompletedTask();
     if (highspeed) {
       // 回放请求继续使用录制模型；命名模型只验证展示，不发送请求。

@@ -24,7 +24,7 @@ import {
   ISourceServerWorkspaceService,
   ISourceServerManagementService,
   // OpenZWork：data-sync 域保留（本机→远端设备推送）；usage-stats/coding-plan/client-config/
-  // client-scenes/cloud-content/marketing-touch/闲时任务/加速卡属官方净化域，不接入。
+  // 客户端场景/云内容/营销触达/闲时任务/加速卡属官方净化域，不接入。
   IDeviceSyncStateService,
   IProviderProvisioningStatusService,
   ISkillsService,

@@ -38,8 +38,8 @@ const artifactDir = resolve(
 const ACCESS_GROUP = "zcode-e2e-svc";
 const RESTRICTED_ROOT = "/srv/zcode-e2e-svc";
 const PRIVATE_TMP_ROOT = "/tmp/zcode-e2e-private";
-const SERVER_BIN = '"$HOME/.zcode/server/bin/zcode"';
-const SERVER_ROOT = '"$HOME/.zcode/server"';
+const SERVER_BIN = '"$HOME/.openzwork/server/bin/zcode"';
+const SERVER_ROOT = '"$HOME/.openzwork/server"';
 const FALLBACK_LOG = "Source Server started in detached fallback mode for this remote environment";
 const REGISTERED_LOG = "Source Server registered with the remote OS user service manager";
 const REUSE_LOG = "Reusing running Source Server";
@@ -121,7 +121,7 @@ async function prepareRemoteFixture(container: string, facts: Record<string, unk
     return gid;
   }
   if (SUBCASE === "private-tmp") {
-    // manager 使用私有 /tmp，~/.zcode 指向宿主 /tmp：SSH 会话可写，manager 的挂载视图里不存在。
+    // manager 使用私有 /tmp，~/.openzwork 指向宿主 /tmp：SSH 会话可写，manager 的挂载视图里不存在。
     await rootShell(
       container,
       "set -e; mkdir -p /etc/systemd/system/user@1000.service.d; " +
