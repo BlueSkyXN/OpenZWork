@@ -68,7 +68,10 @@ export async function main(argv = process.argv.slice(2)) {
       all = await vitest.globTestSpecifications();
       for (const base of scope.bases) {
         vitest.config.changed = scope.files ? false : base;
-        vitest.config.related = scope.files;
+        // OpenZWork 修复：Windows 上 Vitest 模块图的节点是绝对原生分隔符路径，而 --files
+        // 传入的是仓库相对正斜杠路径；不归一化会让 config 引用的触发文件（如
+        // engineering-test-files.json）匹配不到任何图节点，全量选择退化为零选中。
+        vitest.config.related = scope.files?.map((file) => resolve(root, file));
         for (const spec of await vitest.getRelevantTestSpecifications())
           selected.set(specKey(spec), spec);
         for (const file of vitest.config.related ?? []) related.add(file);
