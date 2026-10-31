@@ -3,7 +3,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { resolveEffectiveBashShellSelection } from "@zcode/adapters/exec";
 
 import { createNodeFileSystemAdapter } from "@zcode/adapters/fs";

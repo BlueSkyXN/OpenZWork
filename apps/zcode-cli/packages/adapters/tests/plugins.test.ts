@@ -112,6 +112,7 @@ describe("NodePluginAdapter", () => {
       { name: "svg", icon: "svg/icon.svg", mimeType: "image/svg+xml" },
     ]);
     expect(icons.get("figma")).toBe(
+      "assets/figma/icon.png",
     );
     expect(icons.has("unsafe")).toBe(false);
     expect(icons.has("svg")).toBe(false);
@@ -132,6 +133,7 @@ describe("NodePluginAdapter", () => {
     expect(enriched.plugins).toEqual([
       {
         name: "figma",
+        icon: "assets/figma/icon.png",
         source: "./figma",
       },
       { name: "existing", icon: "https://example.com/existing.png", source: "./existing" },
@@ -235,44 +237,21 @@ describe("NodePluginAdapter", () => {
     }
   });
 
-  it("fetches and persists optional icons while refreshing the Claude official marketplace", async () => {
+  it("enriches the manifest from the local icon cache while refreshing the Claude official marketplace", async () => {
+    // OpenZWork 净化：官方 CDN 图标拉取（WP-08）不接入；刷新时的图标增强只消费本地缓存，
+    // 且不回写缓存文件。网络不被触碰是净化合同的组成部分。
     const dir = await mkdtemp(join(tmpdir(), "zcode-plugin-claude-icons-"));
     const storageRoot = join(dir, "storage");
     const sourceDir = join(dir, "claude-marketplace");
+    const cachePayload = [{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }];
     try {
       await writeMarketplaceManifest(sourceDir, {
         name: "claude-plugins-official",
         plugins: [{ name: "figma", source: "./figma" }],
       });
+      await mkdir(storageRoot, { recursive: true });
+      await writeFile(join(storageRoot, "icon-sources.json"), JSON.stringify(cachePayload));
       await writeKnownMarketplaces(storageRoot, [
-        {
-          id: "zcode-plugins-official",
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "zcode-plugins-official",
-              plugins: [],
-              raw: { name: "zcode-plugins-official", plugins: [] },
-            },
-          },
-          name: "zcode-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          pluginCount: 0,
-        },
-        {
-          id: "claude-plugins-official",
-          source: {
-            source: "settings",
-            marketplace: {
-              name: "claude-plugins-official",
-              plugins: [],
-              raw: { name: "claude-plugins-official", plugins: [] },
-            },
-          },
-          name: "claude-plugins-official",
-          addedAt: "2026-01-01T00:00:00.000Z",
-          pluginCount: 0,
-        },
         {
           id: "claude-plugins-official",
           source: { source: "directory", path: sourceDir },
@@ -281,33 +260,26 @@ describe("NodePluginAdapter", () => {
           pluginCount: 1,
         },
       ]);
-      vi.stubGlobal(
-        "fetch",
-        vi
-          .fn()
-          .mockResolvedValue(
-            new Response(
-              JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
-              { status: 200 },
-            ),
-          ),
-      );
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
 
       await updateMarketplace({ marketplace: "claude-plugins-official", storageRoot });
 
+      expect(fetchMock).not.toHaveBeenCalled();
       expect(
         loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.raw,
       ).toMatchObject({
         plugins: [
           {
             name: "figma",
+            icon: "assets/figma/icon.png",
           },
         ],
       });
-      const cached = JSON.parse(
-        await readFile(join(storageRoot, "icon-sources.json"), "utf8"),
-      ) as unknown;
-      expect(cached).toEqual([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]);
+      // 缓存文件只读不回写。
+      expect(
+        JSON.parse(await readFile(join(storageRoot, "icon-sources.json"), "utf8")),
+      ).toEqual(cachePayload);
     } finally {
       await rm(dir, { force: true, recursive: true });
     }
@@ -336,33 +308,23 @@ describe("NodePluginAdapter", () => {
           pluginCount: 1,
         },
       ]);
-      let resolveFetch!: (response: Response) => void;
-      const fetchMock = vi.fn(
-        () =>
-          new Promise<Response>((resolve) => {
-            resolveFetch = resolve;
-          }),
+      // OpenZWork 净化：图标增强只读本地缓存（无网络等待），写锁只在缓存命中时获取一次；
+      // 同一 storageRoot 的重复迁移按 attemptKey 去重。
+      await writeFile(
+        join(storageRoot, "icon-sources.json"),
+        JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
       );
+      const fetchMock = vi.fn();
       vi.stubGlobal("fetch", fetchMock);
       let writeLockCalls = 0;
-      const migration = enrichCachedClaudeMarketplaceIcons(storageRoot, async (write) => {
+      await enrichCachedClaudeMarketplaceIcons(storageRoot, async (write) => {
         writeLockCalls += 1;
         await write();
       });
 
-      await Promise.resolve();
-      expect(writeLockCalls).toBe(0);
-      resolveFetch(
-        new Response(
-          JSON.stringify([{ name: "figma", icon: "figma/icon.png", mimeType: "image/png" }]),
-          { status: 200 },
-        ),
-      );
-      await migration;
-
       await enrichCachedClaudeMarketplaceIcons(storageRoot);
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).not.toHaveBeenCalled();
       expect(writeLockCalls).toBe(1);
       expect(
         loadMarketplaceManifestSync(storageRoot, "claude-plugins-official")?.raw,
@@ -370,6 +332,7 @@ describe("NodePluginAdapter", () => {
         plugins: [
           {
             name: "figma",
+            icon: "assets/figma/icon.png",
           },
         ],
       });
@@ -416,6 +379,7 @@ describe("NodePluginAdapter", () => {
         plugins: [
           {
             name: "figma",
+            icon: "assets/figma/icon.png",
           },
         ],
       });
@@ -701,9 +665,8 @@ describe("NodePluginAdapter", () => {
 
       const known = ensureDefaultPluginMarketplaces(storageRoot);
 
-      // 默认市场现在有两个：claude-plugins-official（已有记录不被覆盖）+ 唯一 ZCode
-      // 官方市场 zcode-plugins-official（缺失时补种）。
-      expect(known).toHaveLength(2);
+      // OpenZWork 净化：默认市场清单已清空（不自动注册官方/第三方市场），已有记录原样保留。
+      expect(known).toHaveLength(1);
       const claude = known.find((record) => record.id === "claude-plugins-official");
       expect(claude).toMatchObject({
         description: "Custom Claude mirror",
@@ -711,6 +674,7 @@ describe("NodePluginAdapter", () => {
         pluginCount: 123,
         source: { source: "directory", path: join(dir, "custom-claude") },
       });
+      // OpenZWork 净化：默认市场清单已清空，不补种 zcode-plugins-official；文件仅保留已有记录。
       expect(
         JSON.parse(await readFile(join(storageRoot, "known_marketplaces.json"), "utf8")),
       ).toMatchObject({
@@ -718,9 +682,6 @@ describe("NodePluginAdapter", () => {
           {
             description: "Custom Claude mirror",
             pluginCount: 123,
-          },
-          {
-            id: "zcode-plugins-official",
           },
         ],
       });

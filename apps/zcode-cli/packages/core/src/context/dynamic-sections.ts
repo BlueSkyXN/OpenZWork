@@ -1,6 +1,5 @@
-
 import { resolveSystemPromptSection, type SystemPromptSettings } from "@zcode/shared";
-import type { ContextSection } from "./types.js";
+import type { ContextBuilderConfig, ContextSection } from "./types.js";
 import { estimateTokens } from "./utils.js";
 
 const COMMUNICATION_PROMPTS = {
@@ -43,10 +42,7 @@ const CONTEXT_MANAGEMENT_PROMPTS = {
   ].join("\n"),
 } as const;
 
-export function buildSessionGuidanceSection(
-  toolNames: readonly string[],
-  hasSkills = false,
-): ContextSection | null {
+export function buildSessionGuidanceSection(toolNames: readonly string[], hasSkills = false): ContextSection | null {
   const tools = new Set(toolNames);
   const lines = ["# Session-specific guidance"];
 
@@ -63,9 +59,7 @@ export function buildSessionGuidanceSection(
   // }
 
   if (tools.has("Skill") && hasSkills) {
-    lines.push(
-      " - When the user types `/<skill-name>`, invoke it via Skill. Only use skills listed in the user-invocable skills section \u2014 don't guess.",
-    );
+    lines.push("- When the user types `/<skill-name>`, invoke it via Skill. Only use skills listed in the user-invocable skills section \u2014 don't guess.");
   }
 
   // if (tools.has("AskUserQuestion")) {
@@ -79,7 +73,6 @@ export function buildSessionGuidanceSection(
   // 只有存在实际 session guidance 时才输出本段，避免向 simple branch 注入空标题。
   return createDynamicSection("Session-specific guidance", "session_guidance", lines.join("\n"));
 }
-
 
 export function getCommunicationPrompt(): string {
   return [
@@ -107,20 +100,26 @@ export function buildDynamicBehaviorSection(settings?: SystemPromptSettings): Co
   ].join("\n"));
 }
 
-// OpenZWork 净化：output_style section source 属于上游 prompt-settings 分段注入体系，
-// 我方未合入该体系（见 context/builder.ts 同款注释），此构建器一并移除。
+export function buildOutputStyleSection(
+  style: ContextBuilderConfig["outputStyle"],
+): ContextSection | null {
+  if (!style || style.prompt.trim().length === 0) return null;
+  return createDynamicSection(
+    "Output Style",
+    "output_style",
+    [`# Output Style: ${style.name}`, style.prompt.trim()].join("\n"),
+  );
+}
 
 export function buildContextManagementSection(settings?: SystemPromptSettings): ContextSection {
   return createDynamicSection(
     "Context Management",
     "context_management",
-
     [
       resolveSystemPromptSection(settings, "context_management", getContextManagementPrompt()),
       "",
       resolveSystemPromptSection(settings, "persistence", getPersistencePrompt()),
     ].join("\n"),
-
   );
 }
 
