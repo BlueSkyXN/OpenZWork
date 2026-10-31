@@ -239,7 +239,12 @@ describe("ZCodeProtocolAgentServer", () => {
     });
   });
 
-  it("injects the same Host managed policy provider into session Runtime", async () => {
+  // OpenZWork：registry-backed 装配含 sqlite 会话存储与信任门初始化，Windows CI
+  // 慢盘上实测 5.6s，超出默认 5s 上限；放宽到 20s（与本文件 v4-cold-resume 同策）。
+  it(
+    "injects the same Host managed policy provider into session Runtime",
+    { timeout: 20_000 },
+    async () => {
     const policyProvider = new InMemoryWorkspaceHookPolicyProvider({
       mode: "user_decides",
       policyRevision: "test:user-decides:v1",
@@ -262,7 +267,8 @@ describe("ZCodeProtocolAgentServer", () => {
     });
 
     expect(createdOptions?.workspaceHookPolicyProvider).toBe(policyProvider);
-  });
+    },
+  );
 
   it("applies strict workspace interaction preferences without creating a session", async () => {
     const server = new ZCodeProtocolAgentServer({
