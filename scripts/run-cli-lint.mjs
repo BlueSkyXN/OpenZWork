@@ -6,7 +6,11 @@ import { dirname, resolve, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadPolicy } from "./architecture/policy.mjs";
 import { pristineUpstreamFiles } from "./architecture/upstream-admission.mjs";
-import { classifyLintDiagnostics, parseLintCommand, resolvePnpmInvocation } from "./cli-lint-admission.mjs";
+import {
+  classifyLintDiagnostics,
+  parseLintCommand,
+  resolvePnpmInvocation,
+} from "./cli-lint-admission.mjs";
 import { resolveSpawnRuntimeOptions, quoteArgsForWindowsShell } from "./spawn-command.mjs";
 
 const exec = promisify(execFile);

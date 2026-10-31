@@ -15,8 +15,6 @@
 综合配置使用，导致正式 Personal 文件、Legacy Importer 输入和其他产品配置在物理命名上发生冲突。Repository 为了
 在同一文件上原地改写旧格式，还引入了 `pre-provider-v1` 备份与损坏恢复覆盖。
 
-
-
 ## 2. 最终裁决
 
 Personal Provider Config 与 Personal Model Config Rules 统一保存在所属 Environment 配置目录下的：

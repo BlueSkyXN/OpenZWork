@@ -33,6 +33,8 @@ export interface WebRemoteControlDirectGatewayOptions {
 
 export interface WebRemoteControlPreparedConnection {
   relayWsUrl: string;
+  // fork 净化：上游此接口承载官方 V2 通道字段（deviceMid/meta/getToken/resolveDeviceSid 等
+  // JWT 注册与 token 获取回调），随官方账号通道剥离；本地 HMAC/directGateway 变体保留下列字段。
   mobileRemoteControlUrl: string;
   settings: import("@zcode/shared").WebRemoteControlConnectionSettings;
   authStorageProvider: WebRemoteControlRelayAuthStorageProvider;

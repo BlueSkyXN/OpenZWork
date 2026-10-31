@@ -9,12 +9,16 @@ export type SettingsSectionId =
   | "modelProvider"
   | "remoteControl"
   | "remoteDevices"
+  // 双保留：systemPrompt 为本仓特有；dataSync（data-sync 域保留）与 personalization 为上游中性新增。
   | "systemPrompt"
+  | "dataSync"
+  | "personalization"
   | "memory"
   | "plugin"
   | "mcp"
   | "skill"
   | "plugins"
+  | "projects"
   | "archives"
   | "usage"
   | "subagents"
@@ -71,11 +75,14 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "remoteControl" ||
     value === "remoteDevices" ||
     value === "systemPrompt" ||
+    value === "dataSync" ||
+    value === "personalization" ||
     value === "memory" ||
     value === "plugin" ||
     value === "mcp" ||
     value === "skill" ||
     value === "plugins" ||
+    value === "projects" ||
     value === "archives" ||
     value === "usage" ||
     value === "subagents" ||

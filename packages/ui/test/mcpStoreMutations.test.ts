@@ -35,6 +35,9 @@ async function select(service: ReturnType<typeof directory>, name = "a") {
     `source:${name}`,
   );
 }
+// v3.17.1 同步复核：上游退役了原 mcpStore.test.ts 全文件，OW-P001（Source 用户级
+// 读写必须走所选目录服务、缺服务时拒绝本机 fallback）的回归迁入本文件：
+// 下方「缺少 Source 服务时拒绝本机 fallback」等用例即该触发场景的存活载体。
 const operations = {
   add: () => current().addScopedMcpServer("zcodeagentmcp", "new-entry", aConfig),
   update: () => current().updateScopedMcpServer("zcodeagentmcp", "same-name", aConfig),
@@ -81,6 +84,8 @@ describe("OW-P005：MCP 写入成功后才更新投影", () => {
   it.each(Object.entries(operations))(
     "%s 缺少 Source 服务时拒绝本机 fallback",
     async (_name, mutate) => {
+      // OW-P001：Source 用户级目标（有 authority、无 identity）必须走所选目录服务，
+      // 缺服务时失败，不能回落到本机平台读写另一台主机的配置。
       await select(directory());
       current().setCurrentProjectPath("/same/workspace", undefined, null, "source:a");
       const platform = {

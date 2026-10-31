@@ -2,8 +2,6 @@
 
 ## 目标
 
-
-
 本文只把具有独立 setup、action、assertion 的场景计为覆盖。纯映射、日期数学、图表数据清洗
 继续以 focused test 为主要证据；E2E coverage 报告只用于发现执行缺口，不替代行为断言。
 

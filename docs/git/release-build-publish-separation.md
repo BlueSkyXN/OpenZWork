@@ -53,6 +53,8 @@ flowchart LR
 gh workflow run release.yml -R BlueSkyXN/OpenZWork -f release_tag=v3.16.2+openzwork.1
 ```
 
+<!-- 上游「预发布版本边界」节绑定 GitLab release:approve/validate/CDN/灰度发布链路，属官方发布基础设施净化域；OpenZWork 走 GitHub Actions 草稿发布，该节不随上游引入 -->
+
 只读取门禁与发布状态时，额外传 `-F verify_only=true`。已公开版本重放直接返回完成；同名附件有冲突则失败，不覆盖或删除。不同版本的发布串行执行；GitHub 并发组最多保留一个待运行任务。
 
 旧版本可以继续使用 Installers 的手动正式构建与精确运行编号发布入口。`release_tag`、`release_commit` 固定来源；`publish_installer_run`、`core_run`、`extended_run` 与 `release_notes` 指定既有证据和说明。手动发布仍要求已有草稿。Preview 包不能通过改名转成正式包。

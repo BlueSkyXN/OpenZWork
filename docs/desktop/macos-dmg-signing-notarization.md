@@ -14,8 +14,6 @@ macOS release DMG 是用户从浏览器下载后直接交给 Gatekeeper 评估�
 
 ## CI 流程
 
-
-
 ### 临时 keychain 搜索列表约束
 
 同一 macOS 用户下的 shell runner 共享用户级搜索列表。每个 job 的 keychain 文件独立，
@@ -39,8 +37,6 @@ macOS release DMG 是用户从浏览器下载后直接交给 Gatekeeper 评估�
 不按目录年龄自动删除临时 keychain，避免误删仍在构建的 job 资源。
 
 ## 本地无 Developer ID 的 Helper 调试
-
-
 
 2. 从终端启动 ZCode App，并只在该进程环境里设置：
    `ZCODE_CUA_HELPER_ALLOW_UNSIGNED_LOCAL=1`。产品 Helper resolver 正式版与本地/dist 构建默认启用；
@@ -71,8 +67,6 @@ ZCODE_CUA_REQUIRE_HELPER=1 pnpm run doctor:macos-release -- "/Applications/ZCode
 ```
 
 该命令会依次执行：
-
-
 
 脚本在成功路径捕获上述命令输出，只在失败时打印原始诊断，避免 `codesign` / `spctl`
 的 verbose 内部属性明细污染正式打包日志。

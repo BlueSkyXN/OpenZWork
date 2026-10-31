@@ -1,7 +1,5 @@
 # 07 Account Connection 选择与 Access 上下文收口
 
-
-
 ## 0. 实际交付
 
 - enabled Account Provider 的完整 Access 被固定进 Registry/Active Model，请求鉴权只消费该结构，
@@ -19,8 +17,6 @@
 Settings 只保存结构化选择意图，让 Account Connection Resolver 成为唯一解释者，并让执行消费方直接读取
 Provider Config 中已经解析完成的 Account Access。
 
-
-
 ## 2. 已确认裁决
 
 ### 2.1 用户选择使用结构化单字段
@@ -32,21 +28,15 @@ Provider Config 中已经解析完成的 Account Access。
 
 替换为：
 
-
 Account Plan 选择不保存 Built-in Provider ID，也不从 Built-in Provider ID 推断套餐。外层 Family、`kind`
 和 Team Scope 是 Account Connection Resolver 查找连接的结构化输入；API Key 选择保留用户实际选择的
 Provider ID。当前登录账号由 Account Connection Service 内部参与解析，不进入 Settings 或 Provider Config。
 
 ### 2.2 Start、Individual 与 Team 是独立 Built-in Provider
 
-
-
-
-
 Individual 与 Team 可以声明相同的模型 ID；Registry 身份仍是 `providerId + modelId`。正常选择流程只有
 一个 Provider enabled，所以 Selection 只出现当前连接下的模型。用户手工通过 Personal Config 启用多个
 Provider 时遵循普通 Config 语义，不增加来源权限校验。
-
 
 ```text
 builtin:zai-start-plan
@@ -68,8 +58,6 @@ Account Connection Resolver 读取当前 Family、结构化选择、登录账号
 API，输出按 Provider 区分的结果：
 
 ### 2.4 Provider Config 固定结构化 Account Access
-
-
 
 Account Built-in Provider Config 是 Provider/Model 执行所需的不可变快照。`accessId` 是稳定、非敏感的
 连接身份，但消费方必须把它当作 opaque value，不能从中识别 Plan、Family、Team Scope 或账号身份。
@@ -94,7 +82,6 @@ Personal Schema 禁止表达 Account Access
 Schema 和 Registry 只检查结构、discriminant 与 Effective Config 完整性，不检查 `accessId` 或账号
 Access 字段是否由 Account Built-in Source 产生。用户手工写入结构完整但业务无效的连接时，由 Request
 Auth 或服务端鉴权失败，不增加 Source 权限系统。
-
 
 Account Connection / Effective Account Access，不留给 M4 或其他任务。
 
@@ -141,12 +128,12 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 
 ## 4. Impact Brief
 
-| 字段             | 结论                                                                                                             |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Developer intent | 删除账号连接字符串协议与跨层透传，统一选择、Provider Access 和请求鉴权                                           |
-| Change layer     | `persistence`、`option-source`、`validation`、`commit-effect`                                                    |
-| Operating mode   | implementation-handoff                                                                                           |
-| Out of scope     | 套餐产品逻辑重做、远程 Provisioning、凭据中心重构、Queue/Recovery、Model 选择生命周期                            |
+| 字段             | 结论                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| Developer intent | 删除账号连接字符串协议与跨层透传，统一选择、Provider Access 和请求鉴权                |
+| Change layer     | `persistence`、`option-source`、`validation`、`commit-effect`                         |
+| Operating mode   | implementation-handoff                                                                |
+| Out of scope     | 套餐产品逻辑重做、远程 Provisioning、凭据中心重构、Queue/Recovery、Model 选择生命周期 |
 
 | 等级           | 关系                                                    | 原因                                           |
 | -------------- | ------------------------------------------------------- | ---------------------------------------------- |
@@ -169,7 +156,6 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 - 为 API Key、Start、Individual、Team project 选择和重启恢复先写失败测试；
 - 在 Shared 定义结构化 selection 与严格 Schema；
 - Provider Settings pending state、保存、OAuth 回调恢复和默认初始化一次提交完整 selection；
-
 
 ### Step B：Account Connection 与 Provider Access
 
@@ -196,7 +182,6 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 - Runtime 只通过 Registry 中的 Provider/Model 取得执行 Access；
 - Renderer 只在 Provider Settings 修改 selection，不把它塞进 ModelSelection 或 Session state；
 - Remote Workspace 继续由目标 Environment 的 Account Source 产生 Account Built-in Config。
-
 
 - 删除 scoped accessId 与 unscoped selected key 的直接比较；
 - Official MCP 使用同一 Account Access 判断 Individual/Team scope；
@@ -225,25 +210,23 @@ Automation、Subagent 与 Repo Wiki 只共享 Registry 模型候选，不拥有 
 6. Settings mount 不覆盖仍有效的已保存 selection；
 7. 用户切换连接一次写入，不出现 mode/key 半更新状态。
 
-
 ### 6.2 Account Provider 与 Registry
 
 1. Start、Individual、Team 各自对应独立 Built-in Provider，Plan 类型不会运行时变形；
 2. Team 额外产生完整 product/organization/project；
-4. 正常选择 Individual 时仅 Individual Provider enabled，选择 Team 时仅 Team Provider enabled；
-5. Token/Runtime Key 刷新不改变 Account Access；账号或 Team project 切换产生新 Access；
-6. Account 刷新成功时整体发布，任一外部依赖失败时整份上一版 Snapshot 保持不变；
-7. Personal 可以整体覆盖 access，不做来源资格校验；
-8. 手工 fake access 结构完整时通过 Config 完整性，Request Auth 或服务端失败；
-9. enabled Account Provider 缺 accessId，或 Team 缺 Scope 时不能进入 Registry。
+3. 正常选择 Individual 时仅 Individual Provider enabled，选择 Team 时仅 Team Provider enabled；
+4. Token/Runtime Key 刷新不改变 Account Access；账号或 Team project 切换产生新 Access；
+5. Account 刷新成功时整体发布，任一外部依赖失败时整份上一版 Snapshot 保持不变；
+6. Personal 可以整体覆盖 access，不做来源资格校验；
+7. 手工 fake access 结构完整时通过 Config 完整性，Request Auth 或服务端失败；
+8. enabled Account Provider 缺 accessId，或 Team 缺 Scope 时不能进入 Registry。
 
-
-1. Start、Individual、Team Request Auth 不解析 accessId 字符串；
-2. 账号切换后旧 accessId 无法取得新账号凭据并在网络前失败；
-3. Team Header/Key 使用 Access 中的明确 Scope；
-5. 选择切换发生在凭据解析过程中时整轮重试，不混用两代凭据；
-6. Official MCP 的 Individual/Team scope 与 Account Access 一致；
-8. Renderer 可见 support/outcome 不包含 Secret。
+9. Start、Individual、Team Request Auth 不解析 accessId 字符串；
+10. 账号切换后旧 accessId 无法取得新账号凭据并在网络前失败；
+11. Team Header/Key 使用 Access 中的明确 Scope；
+12. 选择切换发生在凭据解析过程中时整轮重试，不混用两代凭据；
+13. Official MCP 的 Individual/Team scope 与 Account Access 一致；
+14. Renderer 可见 support/outcome 不包含 Secret。
 
 ### 6.4 多端与回归
 

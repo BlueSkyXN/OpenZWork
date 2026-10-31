@@ -3,7 +3,7 @@ import {
   TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER,
   TID_WORKSPACE_HELP_MENU_TRIGGER,
 } from "@zcode/shared/test-ids";
-import { ActivityIcon, CircleHelpIcon, InfoIcon, UsersIcon } from "lucide-react";
+import { ActivityIcon, CircleHelpIcon, DownloadIcon, InfoIcon, UsersIcon } from "lucide-react";
 import { Button } from "@/components/ui/button.js";
 import {
   DropdownMenu,
@@ -16,6 +16,8 @@ import { cn } from "@/components/lib/utils.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { usePlatform } from "@/hooks/usePlatform.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+// 净化保留：上游 helpMenuActions 依赖官方反馈表单（feedback 域）与 productDocs 出口，
+// 该模块未随合并落地；导出日志直接走本地 platform.exportLogs，与桌面原生菜单一致。
 
 export function WorkspaceHelpMenuButton({
   className,
@@ -40,6 +42,13 @@ export function WorkspaceHelpMenuButton({
 
   const handleShowAbout = () => {
     void platform.executeDesktopCommand(DesktopCommandIds.ShowAbout);
+  };
+
+  // 净化保留：上游 handleCopyDeviceMid（复制设备 MID）属 OAuth/deviceMid 净化域，不并入。
+
+  const handleExportLogs = () => {
+    // 复用桌面原生菜单同一动作（DesktopCommandIds.ExportLogs → 本地打包导出），不引入官方反馈链路。
+    void platform.executeDesktopCommand(DesktopCommandIds.ExportLogs);
   };
 
   return (
@@ -76,6 +85,11 @@ export function WorkspaceHelpMenuButton({
         {isDesktop ? (
           <>
             <DropdownMenuSeparator />
+            {/* 独立导出入口曾被移除；复用原菜单动作，保持打包、系统定位与提示一致。 */}
+            <DropdownMenuItem onSelect={handleExportLogs}>
+              <DownloadIcon className="size-4" />
+              {intl.formatMessage({ id: "titleBar.menu.help.exportLogs" })}
+            </DropdownMenuItem>
             <DropdownMenuItem
               data-testid={TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER}
               onSelect={handleOpenResourceManager}

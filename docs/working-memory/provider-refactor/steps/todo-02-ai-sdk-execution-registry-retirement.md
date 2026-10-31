@@ -304,10 +304,10 @@ Todo 02 不应自行补能力默认值，也不应重复建立 `requireCompleteP
 ### 6.2 鉴权
 
 1. api-key Model 使用创建时固定 Key；
-3. request-auth 无 Source/无材料时网络前失败；
-4. Retry 可取得更新后的 auth；
-5. 动态 auth 不能覆盖 baseURL、API kind、Provider options 或 properties；
-6. Secret 不进入 ModelSelection、Session event、日志或 Registry View。
+2. request-auth 无 Source/无材料时网络前失败；
+3. Retry 可取得更新后的 auth；
+4. 动态 auth 不能覆盖 baseURL、API kind、Provider options 或 properties；
+5. Secret 不进入 ModelSelection、Session event、日志或 Registry View。
 
 ### 6.3 Provider 执行能力
 

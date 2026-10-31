@@ -179,6 +179,7 @@ ZCODE_E2E_MANUAL_REVIEW=1 \
 E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json \
   pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/desktop-shell/manual-review/pending/desktop-product-name.test.ts
 ```
+
 ## 2026-10-24 兼容性收口
 
 - 用户配置、全局 AGENTS.md、特调和运行数据继续使用 OpenZWork 自有目录。不增加以官方用户

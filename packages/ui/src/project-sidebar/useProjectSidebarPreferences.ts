@@ -97,7 +97,11 @@ export function useProjectSidebarPreferences(
         setPreferences((previous) => ({
           ...previous,
           order: [...new Set(value.order)],
-          view: value.view === "timeline" || value.view === "grouped" ? value.view : "projects",
+          // 合成：view 白名单吸收上游 unread 视图；过滤器字段保留本方 sidebar filters 域。
+          view:
+            value.view === "timeline" || value.view === "grouped" || value.view === "unread"
+              ? value.view
+              : "projects",
           unreadOnly: readSidebarTaskFilters(value).unreadOnly,
           taskStatus: readSidebarTaskFilters(value).status,
           projectSort: readSidebarProjectSort(value),

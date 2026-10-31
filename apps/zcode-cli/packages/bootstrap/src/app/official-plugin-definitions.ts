@@ -19,6 +19,10 @@ export interface OfficialPluginListingSeed {
 }
 
 const OFFICIAL_BROWSER_USE_PLUGIN_NAME = "browser-use";
+
+// 合成修复：上游侧本有此常量（line 62），合并时其定义段被裁掉但下方 listing 引用保留；
+// 内置插件 listing 属我方保留域（plugins/skills），恢复常量而非删条目。
+const ZAI_AUTHOR = { name: "Z.ai", url: "https://z.ai" } as const;
 export const OFFICIAL_BROWSER_USE_PLUGIN_ID = `${OFFICIAL_BROWSER_USE_PLUGIN_NAME}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`;
 /**
  * node_repl 宿主。它不是面向用户的插件：没有 skill、没有 listing、不进市场，唯一职责是
@@ -96,31 +100,6 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     // seed 版本与现有 package/manifest 的 0.6.1 一致，避免继续复用旧宿主缓存。
     version: "0.6.1",
   },
-  {
-    // manifest 只声明 browser-use skill；宿主 node_repl MCP 独立注入，package 另外携带其 server/client
-    // runtime 资产。默认启用仅控制「何时/如何用内置浏览器」的 skill 与 browser bridge。
-    defaultEnabled: true,
-    hostMcpServerNames: ["node_repl"],
-    listing: {
-      category: "productivity",
-      displayName: "Browser Use",
-      displayName_i18n: { "zh-CN": "浏览器操作" },
-      description_i18n: {
-        "zh-CN": "操作 ZCode 内置浏览器，检查网页并验证交互。",
-      },
-    },
-    name: OFFICIAL_BROWSER_USE_PLUGIN_NAME,
-    requiredSeedPaths: OFFICIAL_BROWSER_USE_REQUIRED_SEED_PATHS,
-    rootCandidates: [
-      "packages/browser-use-plugin",
-      "../browser-use-plugin",
-      "../../browser-use-plugin",
-      "../../../browser-use-plugin",
-    ],
-    // 插件 package/manifest 升版时遗漏官方 seed 版本，会继续加载旧缓存目录。
-    // package、manifest、definition 三处版本应保持一致，避免发布内容和安装版本再次分叉。
-    version: "0.5.1",
-  },
   // Settings 已保留这些本地内容插件；CLI 必须同步注册，才能完成发现、抑制和恢复。
   {
     defaultEnabled: true,
@@ -164,9 +143,96 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       "../../visualize-plugin",
       "../../../visualize-plugin",
     ],
-    version: "0.1.0",
+    version: "0.1.1",
+  },
+  // OpenZWork：node-repl-host seed 注册沿用上方我方条目（版本 0.6.1，随 node-repl-host 净化线维护），
+  // 上游 0.7.0 的 Computer Use 域描述与 browser-use 重复条目不吸收。
+  {
+    // manifest 只声明 browser-use skill；宿主 node_repl MCP 独立注入，package 另外携带其 server/client
+    // runtime 资产。默认启用仅控制「何时/如何用内置浏览器」的 skill 与 browser bridge。
+    defaultEnabled: true,
+    hostMcpServerNames: ["node_repl"],
+    listing: {
+      author: ZAI_AUTHOR,
+      category: "productivity",
+      displayName: "Browser Use",
+      displayName_i18n: { "zh-CN": "浏览器操作" },
+      description_i18n: {
+        "zh-CN": "操作 ZCode 内置浏览器，检查网页并验证交互。",
+      },
+    },
+    name: OFFICIAL_BROWSER_USE_PLUGIN_NAME,
+    requiredSeedPaths: OFFICIAL_BROWSER_USE_REQUIRED_SEED_PATHS,
+    rootCandidates: [
+      "packages/browser-use-plugin",
+      "../browser-use-plugin",
+      "../../browser-use-plugin",
+      "../../../browser-use-plugin",
+    ],
+    // 插件 package/manifest 升版时遗漏官方 seed 版本，会继续加载旧缓存目录。
+    // package、manifest、definition 三处版本应保持一致，避免发布内容和安装版本再次分叉。
+    version: "0.5.1",
+  },
+  ...(
+    [
+      // 版本按插件各自升，换新缓存目录：pdf 0.2.1 起面板带中日韩字体回退；0.2.1（pdf 0.2.2）起
+      // server 由工作区内各 session 共享，旧缓存的 server 不区分 session，不能沿用。
+      ["documents", "docx", "Documents", "Word文档", "0.2.1"],
+      ["pdf", "pdf", "PDF", "PDF", "0.2.2"],
+      ["presentations", "pptx", "Presentations", "演示文档", "0.2.1"],
+      ["spreadsheets", "xlsx", "Spreadsheets", "电子表格", "0.2.1"],
+    ] as const
+  ).map(
+    ([name, skill, displayName, chineseName, version]): OfficialPluginDefinition => ({
+      componentTypes: ["ui"],
+      // OpenZWork：componentTypes=["ui"] 保留（与 plugin.json 的 ui.surfaces 声明一致，
+      // 设置页据此归入 UI 插件）；office-runtime 面板资产由 workspace build 产出。
+      // 不默认启用——首启即拉起面板依赖的 runtime 资产，保守交给用户手动开启。
+      listing: {
+        author: ZAI_AUTHOR,
+        category: "productivity",
+        displayName,
+        displayName_i18n: { "zh-CN": chineseName },
+        description_i18n: { "zh-CN": `创建、编辑与审阅${chineseName}（${skill.toUpperCase()}）。` },
+      },
+      name,
+      // 0.2.0 起文档插件同时提供查看面板：MCP server 与面板资源由 office-runtime 构建进 dist/，
+      // 缺任一项都会 seed 出能看到面板入口却无法启动的残缺插件。
+      requiredSeedPaths: [
+        "agents/visual-judge.md",
+        `skills/${skill}/SKILL.md`,
+        `skills/${skill}-viewer/SKILL.md`,
+      ],
+      rootCandidates: [
+        `packages/${name}-plugin`,
+        `../${name}-plugin`,
+        `../../${name}-plugin`,
+        `../../../${name}-plugin`,
+      ],
+      version,
+    }),
+  ),
+  {
+    // OpenZWork：image-search 保留 seed 注册（运行时对官方鉴权 fail-fast 拒绝）；不默认启用。
+    listing: {
+      author: ZAI_AUTHOR,
+      category: "productivity",
+      displayName: "Image Search",
+      displayName_i18n: { "zh-CN": "搜图" },
+      description_i18n: { "zh-CN": "查找插图与参考配图。" },
+    },
+    name: "image-search",
+    requiredSeedPaths: [".mcp.json"],
+    rootCandidates: [
+      "packages/image-search-plugin",
+      "../image-search-plugin",
+      "../../image-search-plugin",
+      "../../../image-search-plugin",
+    ],
+    version: "0.1.1",
   },
   {
+
     defaultEnabled: true,
     name: "plugin-creator",
     version: "0.1.1",
@@ -246,6 +312,10 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     ],
     version: "0.3.0",
   },
+  // OpenZWork 净化：上游在此新增 computer-use（@zcode/zcode-cua 官方 CUA 域）与
+  // zcode-site（zcode_official JWT 端点域）两个 seed 注册；两者包目录已随本次合并删除，
+  // 官方 CDN 图标与 zcode_official 鉴权的内置插件不注册，保持删除。
+
 ];
 
 // 在 official plugin 定义里标了 defaultEnabled: true 的, 拼成 `<name>@<marketplace>` 形式,

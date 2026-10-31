@@ -1,9 +1,8 @@
 import { EventEmitter } from "node:events";
-import { mkdtemp, mkdir, rm, writeFile, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { HostMessageTypes } from "@zcode/shared";
 import { createWebRemoteControlSharedHostAttachments } from "../src/main/webRemoteControlSharedHostAttachments.js";
 
 const { browserWindowMock } = vi.hoisted(() => ({
@@ -28,85 +27,15 @@ function createPortPair() {
   return { port1, port2 };
 }
 
-describe("createWebRemoteControlSharedHostAttachments", () => {
-  it("attaches a local bridge to the existing desktop host process", async () => {
-    const child = new MockUtilityProcess();
-    const ports = createPortPair();
-    browserWindowMock.fromId.mockReturnValueOnce({
-      id: 7,
-      webContents: { id: 99 },
-    });
-    const manager = createWebRemoteControlSharedHostAttachments({
-      windowHostProcessMap: new Map([[99, child as never]]),
-      createMessageChannel: () => ports as never,
-      attachRemoteWorkspaceSessionHost: vi.fn(),
-      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    });
-
-    const attachment = await manager.attachWorkspaceHost(7, {
-      kind: "local",
-      workspacePath: tmpdir(),
-    });
-
-    expect(attachment.entryId).toBe("desktop-host:7");
-    expect(attachment.attachmentId).toMatch(/^shared-host-attachment-/);
-    expect(attachment.process).toBe(child);
-    expect(attachment.port).toBe(ports.port1);
-    expect(child.postMessage).toHaveBeenCalledWith(
-      {
-        type: HostMessageTypes.AttachServicePort,
-        requestId: expect.any(String),
-        attachmentId: attachment.attachmentId,
-        clientMode: "web-remote-replayable",
-        scope: { kind: "local" },
-      },
-      [ports.port2],
-    );
-
-    manager.releaseAttachment(attachment.attachmentId);
-    expect(ports.port1.close).toHaveBeenCalledTimes(1);
-  });
-
-  it("throws desktop-disconnected when the desktop host is missing", async () => {
-    const manager = createWebRemoteControlSharedHostAttachments({
-      windowHostProcessMap: new Map(),
-      createMessageChannel: createPortPair as never,
-      attachRemoteWorkspaceSessionHost: vi.fn(),
-      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    });
-
-    await expect(
-      manager.attachWorkspaceHost(7, {
-        kind: "local",
-        workspacePath: tmpdir(),
-      }),
-    ).rejects.toMatchObject({ code: "DESKTOP_HOST_MISSING" });
-  });
-
-  it("rejects remote attach without workspaceIdentity", async () => {
-    const attachRemoteWorkspaceSessionHost = vi.fn();
-    const manager = createWebRemoteControlSharedHostAttachments({
-      windowHostProcessMap: new Map(),
-      createMessageChannel: createPortPair as never,
-      attachRemoteWorkspaceSessionHost,
-      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    });
-
-    await expect(
-      manager.attachWorkspaceHost(7, {
-        kind: "remote",
-        workspacePath: "/repo/demo",
-        remoteSessionId: "remote-session-1",
-      }),
-    ).rejects.toMatchObject({ code: "REMOTE_WORKSPACE_IDENTITY_MISSING" });
-    expect(attachRemoteWorkspaceSessionHost).not.toHaveBeenCalled();
-  });
-
-  it("OW-P017：失效目录拒绝新建且不产生 attachment，历史可读，目录恢复后可重试", async () => {
+// v3.17.1 同步复核：上游退役了原 webRemoteControlSharedHostAttachments.test.ts 全文件，
+// 本文件按 OW-P017 原触发场景（本地目录失效仍交付 Host attachment）重建回归。
+describe("OW-P017：本地远控新建在目录失效时拒绝交付 Host attachment", () => {
+  it("失效目录拒绝新建且不产生 attachment，历史可读，目录恢复后可重试", async () => {
     const root = await mkdtemp(join(tmpdir(), "remote-directory-"));
     const path = join(root, "workspace");
     const child = new MockUtilityProcess();
     const createMessageChannel = vi.fn(createPortPair);
+    browserWindowMock.fromId.mockReturnValue({ id: 7, webContents: { id: 7 } });
     const manager = createWebRemoteControlSharedHostAttachments({
       windowHostProcessMap: new Map([[7, child as never]]),
       createMessageChannel: createMessageChannel as never,
@@ -143,49 +72,5 @@ describe("createWebRemoteControlSharedHostAttachments", () => {
       manager.disposeWindow(7);
       await rm(root, { recursive: true, force: true });
     }
-  });
-
-  it("WPL-012 reuses one remote Window Host and releases only the mobile attachment port", async () => {
-    const child = new MockUtilityProcess();
-    const ports = createPortPair();
-    const attachRemoteWorkspaceSessionHost = vi.fn(() => ({
-      process: child as never,
-      port: ports.port1 as never,
-      remoteKind: "ssh" as const,
-    }));
-    const manager = createWebRemoteControlSharedHostAttachments({
-      windowHostProcessMap: new Map(),
-      createMessageChannel: createPortPair as never,
-      attachRemoteWorkspaceSessionHost,
-      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    });
-
-    const attachment = await manager.attachWorkspaceHost(7, {
-      kind: "remote",
-      workspacePath: "/workspace",
-      workspaceIdentity: "remote:ssh:host:22:user:/workspace",
-      remoteSessionId: "remote-session-1",
-      initialTaskId: "task-1",
-    });
-
-    expect(attachRemoteWorkspaceSessionHost).toHaveBeenCalledTimes(1);
-    expect(attachRemoteWorkspaceSessionHost).toHaveBeenCalledWith({
-      windowId: 7,
-      remoteSessionId: "remote-session-1",
-      workspacePath: "/workspace",
-      workspaceIdentity: "remote:ssh:host:22:user:/workspace",
-      workspaceKey: "remote:ssh:host:22:user:/workspace",
-      clientMode: "web-remote-replayable",
-    });
-    expect(attachment).toMatchObject({
-      entryId: "remote-session-host:remote-session-1",
-      process: child,
-      port: ports.port1,
-      remoteKind: "ssh",
-    });
-
-    manager.releaseAttachment(attachment.attachmentId);
-    expect(ports.port1.close).toHaveBeenCalledTimes(1);
-    expect(child.kill).not.toHaveBeenCalled();
   });
 });

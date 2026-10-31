@@ -79,6 +79,10 @@ export {
 export * from "./errors.js";
 export type { SessionCreateSource } from "./sessionCreateSource.js";
 export * from "./productIdentity.js";
+export {
+  USER_INSTRUCTIONS_MAX_BYTES,
+  USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
+} from "./userInstructions.js";
 export * from "./validation.js";
 export * from "./api.js";
 export * from "./zcode-protocol/index.js";
@@ -132,6 +136,7 @@ export {
   DesktopCommandIds,
   buildLocalMediaPreviewUrl,
   createOpenInEditorRemoteTarget,
+  unwrapRemoteWorkspaceBindResult,
 } from "./platform.js";
 export type { LaunchMarks } from "./launchMarks.js";
 export { LAUNCH_MARKS_QUERY_KEY, parseLaunchMarks, serializeLaunchMarks } from "./launchMarks.js";
@@ -157,6 +162,8 @@ export type {
   ChromeBrowserDataImportOptions,
   ChromeBrowserDataImportResult,
   ConnectRemoteRequest,
+  FileApplicationInfo,
+  FileApplicationTarget,
   CreateTempTextAttachmentRequest,
   CreateTempTextAttachmentResult,
   MaterializeWorkflowArtifactFileRequest,
@@ -275,7 +282,7 @@ export * from "./subagent-runtime-config.js";
 export * from "./subagent-profile.js";
 export { parseAgentProfileFromMarkdown } from "./subagent-profile-parser.js";
 
-export * from "./localTtft.js";
+export * from "./local-ttft/contract.js";
 export * from "./pluginStoreOrder.js";
 export * from "./pluginStoreOrdering.js";
 export * from "./session-debug.js";
@@ -287,8 +294,8 @@ export * from "./attachment-source.js";
 
 export * from "./channel-mention.js";
 
-// OpenZWork 净化口径：request-verification（上游原名已随官方域净化重命名）保留 no-op 实现，
-// 供上游 zcodeAgentService 等新文件编译；导出面与 fork 基线 aac47556 完全一致。
+// OpenZWork 净化口径：请求安全域（上游 v3.17.1 开源同款空壳发行策略）保留 no-op 实现，
+// 目录沿用 fork 侧净化命名 request-verification，不回收上游目录字面量。
 export {
   requestSecuritySensitiveHeaders,
   isRequestSecurityFailure,
@@ -296,3 +303,15 @@ export {
 export * from "./request-verification/verification-policy.js";
 
 export { sha256Bytes, hmacSha256Bytes } from "./web-remote-relay/index.js";
+export { compareSemverVersions } from "./semverCompare.js";
+// OpenZWork 净化保留：远端会话事件链（用户自建远端 server）保留最小事件形态，定义已随 WP-05
+// 禁列收口迁入 conversation-telemetry/eventShapes.ts；ARMS/产品上报面不导出。
+export type {
+  TelemetryEventPayload,
+  PlanIdentitySnapshot,
+} from "./conversation-telemetry/eventShapes.js";
+export {
+  normalizeTelemetryUiMode,
+  sanitizeTelemetryEventDetail,
+  sanitizeTelemetrySkillName,
+} from "./conversation-telemetry/eventShapes.js";

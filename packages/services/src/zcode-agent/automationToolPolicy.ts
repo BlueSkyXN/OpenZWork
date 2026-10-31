@@ -9,4 +9,3 @@ export function mergeAutomationMutationToolDenylist(
   }
   return [...merged];
 }
-

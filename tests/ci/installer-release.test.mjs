@@ -32,28 +32,37 @@ async function fixture(t, version = "3.15.1") {
   if (version.includes("+openzwork.")) {
     // 此测试只执行 workflow 编排；真实包字段验证由独立校验器与三平台构建负责。
     await mkdir(join(cwd, "scripts"));
-    await writeFile(join(cwd, "scripts/verify-desktop-release-version.mjs"),
-      'export async function verifyPackagedVersion({ version }) { return { version, fixture: true }; }\n');
-    await writeFile(join(cwd, "packages/desktop/dist/VERSION-VERIFICATION.json"), JSON.stringify({ version, fixture: true }));
+    await writeFile(
+      join(cwd, "scripts/verify-desktop-release-version.mjs"),
+      "export async function verifyPackagedVersion({ version }) { return { version, fixture: true }; }\n",
+    );
+    await writeFile(
+      join(cwd, "packages/desktop/dist/VERSION-VERIFICATION.json"),
+      JSON.stringify({ version, fixture: true }),
+    );
   }
-  await writeFile(
-    join(cwd, "package.json"),
-    JSON.stringify({ version }),
-  );
+  await writeFile(join(cwd, "package.json"), JSON.stringify({ version }));
   // Desktop 包没有独立版本；正式打包从根 package.json 取应用版本。
   await writeFile(
     join(cwd, "packages/desktop/package.json"),
     JSON.stringify({ name: "@zcode/desktop", private: true }),
   );
-  const git = (...args) => exec("git", [
-    "-c", "core.hooksPath=", "-c", "commit.gpgsign=false",
-    "-c", "tag.gpgsign=false", ...args,
-  ], { cwd });
+  const git = (...args) =>
+    exec(
+      "git",
+      ["-c", "core.hooksPath=", "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", ...args],
+      { cwd },
+    );
   await git("init");
   await git("add", ".");
   await git(
-    "-c", "user.name=Release fixture", "-c", "user.email=release@example.invalid",
-    "commit", "-m", "fixture",
+    "-c",
+    "user.name=Release fixture",
+    "-c",
+    "user.email=release@example.invalid",
+    "commit",
+    "-m",
+    "fixture",
   );
   const sha = (await git("rev-parse", "HEAD")).stdout.trim();
   await git("tag", "v3.15.1-openzwork");
@@ -75,10 +84,11 @@ async function fixture(t, version = "3.15.1") {
   return {
     cwd,
     sha,
-    run: (name, overrides = {}, sourceSteps = steps) => exec(
-      process.execPath, ["--input-type=module", "--eval", script(name, sourceSteps)],
-      { cwd, env: { ...env, ...overrides } },
-    ),
+    run: (name, overrides = {}, sourceSteps = steps) =>
+      exec(process.execPath, ["--input-type=module", "--eval", script(name, sourceSteps)], {
+        cwd,
+        env: { ...env, ...overrides },
+      }),
   };
 }
 
@@ -93,7 +103,8 @@ test("release source validation accepts the exact tag and rejects incomplete or 
     { RELEASE_COMMIT: "b".repeat(40) },
     { RELEASE_TAG: "v3.16.1-openzwork" },
     { RELEASE_TAG: "main" },
-  ]) await assert.rejects(f.run(name, overrides));
+  ])
+    await assert.rejects(f.run(name, overrides));
 });
 
 test("修订版完整版本贯穿源码校验、安装文件名与来源清单", async (t) => {
@@ -105,7 +116,9 @@ test("修订版完整版本贯穿源码校验、安装文件名与来源清单",
   const name = `OpenZWork-${version}-win-x64.exe`;
   await writeFile(join(f.cwd, "packages/desktop/dist", name), "installer fixture");
   await f.run("Record release installer provenance");
-  const manifest = JSON.parse(await readFile(join(f.cwd, "packages/desktop/dist/RELEASE-MANIFEST.json"), "utf8"));
+  const manifest = JSON.parse(
+    await readFile(join(f.cwd, "packages/desktop/dist/RELEASE-MANIFEST.json"), "utf8"),
+  );
   assert.equal(manifest.version, version);
   assert.equal(manifest.sourceTag, `v${version}`);
   assert.equal(manifest.upstreamVersion, "3.16.2");
@@ -120,7 +133,9 @@ test("frozen-source validation records the checked commit and rejects a mismatch
   const historical = extended.jobs["historical-tests"];
   const sourceSteps = historical.steps;
   await f.run(name, { SOURCE_COMMIT: f.sha, ZCODE_TEST_POOL: "forks" }, sourceSteps);
-  const record = JSON.parse(await readFile(join(f.cwd, ".run-logs/full-groups/source.json"), "utf8"));
+  const record = JSON.parse(
+    await readFile(join(f.cwd, ".run-logs/full-groups/source.json"), "utf8"),
+  );
   assert.equal(record.sourceCommit, f.sha);
   assert.match(record.sourceTree, /^[a-f0-9]{40}$/);
   assert.equal(record.workflowCommit, "a".repeat(40));
@@ -131,15 +146,21 @@ test("frozen-source validation records the checked commit and rejects a mismatch
   for (const job of Object.values(extended.jobs)) {
     assert.equal(job.steps[0].with.ref, "${{ inputs.source_commit || github.sha }}");
     assert.equal(script(name, job.steps), script(name, sourceSteps));
-    const install = job.steps.findIndex(step => step.run?.startsWith("pnpm install"));
-    if (install >= 0) assert.ok(job.steps.findIndex(step => step.name === name) < install);
+    const install = job.steps.findIndex((step) => step.run?.startsWith("pnpm install"));
+    if (install >= 0) assert.ok(job.steps.findIndex((step) => step.name === name) < install);
   }
-  assert.equal(historical.env.ZCODE_TEST_POOL, "${{ matrix.platform == 'windows-amd64' && 'forks' || 'threads' }}");
+  assert.equal(
+    historical.env.ZCODE_TEST_POOL,
+    "${{ matrix.platform == 'windows-amd64' && 'forks' || 'threads' }}",
+  );
 });
 
 test("production installers use verified tag sources before installing dependencies", () => {
   const job = workflow.jobs.installer;
-  assert.equal(job.env.ZCODE_ENV, "${{ (inputs.release_tag || github.ref_type == 'tag') && 'production' || '' }}");
+  assert.equal(
+    job.env.ZCODE_ENV,
+    "${{ (inputs.release_tag || github.ref_type == 'tag') && 'production' || '' }}",
+  );
   assert.equal(job.env.ZCODE_PREVIEW_IDENTITY, "0");
   assert.equal(job.env.ZCODE_ENABLE_MAC_SIGN, "0");
   assert.equal(job.env.ZCODE_ENABLE_WINDOWS_SIGN, "0");
@@ -166,9 +187,13 @@ test("release manifest hashes the installer and excludes unpacked executables", 
   assert.equal(manifest.workflowCommit, "a".repeat(40));
   assert.equal(manifest.productName, "OpenZWork");
   assert.equal(manifest.environment, "production");
-  assert.deepEqual(manifest.assets, [{
-    name, size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"),
-  }]);
+  assert.deepEqual(manifest.assets, [
+    {
+      name,
+      size: bytes.length,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+    },
+  ]);
   await assert.rejects(f.run("Record release installer provenance", { ZCODE_ENV: "test" }));
   await writeFile(join(root, name), "");
   await assert.rejects(f.run("Record release installer provenance"));
@@ -190,7 +215,10 @@ test("Linux manifest accepts format-specific x64 aliases and rejects ambiguous i
   const env = { RELEASE_OS: "linux", RELEASE_PLATFORM: "linux-amd64" };
   await f.run("Record release installer provenance", env);
   const manifest = JSON.parse(await readFile(join(root, "RELEASE-MANIFEST.json"), "utf8"));
-  assert.deepEqual(manifest.assets.map(asset => asset.name), names);
+  assert.deepEqual(
+    manifest.assets.map((asset) => asset.name),
+    names,
+  );
   await writeFile(join(root, "OpenZWork-3.15.1-linux-x64.AppImage"), "ambiguous");
   await assert.rejects(f.run("Record release installer provenance", env));
 });

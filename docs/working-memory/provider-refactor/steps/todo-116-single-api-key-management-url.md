@@ -40,8 +40,6 @@
 
 ## Pro 原生链验收（2026-09-12）
 
-
-
 日志 `/tmp/provider-20260912-pro-native-key2.log`，产物 `/Users/dev/provider-stabilization-pro.euQzIZ/packages/desktop/.e2e-artifacts/provider-20260912-pro-native-key2/summary.md`。复用上一轮从 `fc757c0ec9` 构建的 App；本轮无产品代码变更，新增测试及 manifest 单独同步。首次测试未写 templateId 而没有按钮，核对产品“仅模板显示入口”规则后修正夹具，不放宽 UI 或 Schema。未擅自晋级正式回归。
 
 复审：canary 只能从真实点击后的系统浏览器抵达，非 Renderer 回调 stub 或测试主动 fetch；两类 Access 同一测试路径，未新增生产状态／同步／签名分支。手机宽度双主题真实组件点击已有通过证据，真实手机登录控制台仍不在本次证明范围。

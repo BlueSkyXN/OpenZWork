@@ -98,6 +98,8 @@ function compileFixture({
 }) {
   const args = [
     "/V2",
+    // fork 净化：上游 /INPUTCHARSET UTF8 配套其 PowerShell 版快捷方式读取（含中文路径处理），
+    // 该 installer.nsh 重写未随入；本地 COM 版读取保留快捷方式诊断开关。
     "/DZCODE_SHORTCUT_DIAGNOSTICS",
     ...(buildUninstaller ? ["/WX", "/DBUILD_UNINSTALLER"] : []),
     `/DNSIS_INCLUDE_DIR=${resolve(nsisDir, "Include")}`,

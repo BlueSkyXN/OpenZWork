@@ -123,11 +123,9 @@ Provider Request
 API Key 是静态 Config 字段。缺少 Key 的 Effective Provider 不完整，不进入 Registry。Settings 可以展示
 问题并补齐；测试连接使用保存后的正式 Model。
 
-
 Access 显式保存调用装配所需的 Family 和 Mode。账号身份、商品和 Team scope 由 Account Connection
 Service 拥有；每个 attempt 根据静态类别解析当前兼容连接。切换到不兼容的 Family/Plan 或退出账号时在
 网络前失败；同一 Family/Plan 的当前连接和刷新后的凭据可以被旧 Active Model 使用。
-
 
 Request Auth 是执行作用域内、按 request attempt 读取的依赖：
 

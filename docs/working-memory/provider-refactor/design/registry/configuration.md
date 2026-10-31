@@ -79,6 +79,12 @@ Active。Active 是可丢弃的缓存/LKG，不是启动前提：Active 缺失�
 再用 Bundled 重建 Active。只有 Bundled 本身也无法通过 Release Schema 与现有 Provider/Rule Parser 时才允许
 启动失败。客户端不增加发布者业务完整性规则；未来如需发布门禁，另立基于最终发布流程的新任务。
 
+Bundled 在进程生命周期内不可变（升级以退出旧进程为前提）。进程运行中 Bundled 文件被删除（ENOENT）时，
+继续使用本进程最近一次成功解析的同一 Bundled 路径内容作为基线，并照常用选中的候选重建 Active；不需要重启
+进程，也不向 Bundled 路径回写（Desktop 的 Bundled 位于只读安装资源内）。Bundled 存在但无效时仍按上文失败。
+本进程从未成功读取 Bundled 且两份文件都不可用时，错误必须携带具体原因（含缺失文件路径），不能产生空的
+AggregateError：锁内读取保留 Bundled 与 Active 两份原因；绕过 Active 边界的回退读取至少保留 Bundled 的原因。
+
 不同 Endpoint 的 Active/LKG 和 revision 互不比较、互不回退。切换到没有 Active 的 Endpoint 时先使用
 Bundled 完成 ready，再后台刷新该 Endpoint；切回旧 Endpoint 可以复用它自己的 LKG。旧的未分区缓存尚未
 形成正式发布兼容，不提供 dual-read。
@@ -126,8 +132,6 @@ ProviderConfigMap 是有序 Map：
 - 后层新增 providerId 时按后层顺序追加；
 - Personal-only Provider 因此排在 Built-in Provider 之后；
 - Account Built-in 不改变 ZCode Built-in Provider 的基础顺序。
-
-
 
 示例：
 
@@ -270,14 +274,11 @@ Header。Endpoint 不能由 Model ID 推断，也不能放入普通 Turn 的 Run
 
 ### Access
 
-
 #### api-key
 
 Config 直接管理调用模型 API 所需的静态访问材料；当前正式字段是 API Key。
 Effective Config 缺少非空 `apiKey` 时不完整；Settings 可以展示并修复，但 Provider 不进入
 Registry。它与 `api.type` 正交：`access.type` 描述访问材料来源，`api.type` 描述线路协议。
-
-
 
 ZCode Built-in Provider 固定声明 `accountType + mode`；Start、Individual、Team 分别是独立 Provider。Account
 Connection Resolver 使用这些字段、结构化 Settings 选择、当前账号与权益，只投影 `access.entitled` 以及 Start
@@ -286,8 +287,6 @@ Connection Resolver 使用这些字段、结构化 Settings 选择、当前账�
 每个请求 attempt 由 Account Request Auth Service 按静态 `family + mode` 检查当前兼容连接，再从当前
 Connection 取得 Team scope，并解析 JWT、Runtime Key、API Key 或一次性安全校验 Header 等材料。账号身份、
 product、organization、project 和动态凭据不进入 Provider Config 或 Active Model。
-
-
 
 ### 凭据原则
 
@@ -515,8 +514,6 @@ interface ModelConfig {
 Built-in 通用 Rule 必须补齐完整的 `enabled=true` 默认值，具体 Built-in Rule 可以为淘汰或不建议继续使用的模型声明
 `enabled=false`。Personal 专属 Rule 可以后置覆盖该叶子；正常新增 Personal Model 时明确写入 `enabled=true`。
 
-
-
 ### Properties
 
 ```ts
@@ -626,8 +623,6 @@ Settings Resolution 允许保留 disabled、incomplete 和成员问题。Registr
 跨集合重名发布 Built-in 身份，单集合重复保留第一次。Model 不具有 hidden 状态。Registry 后的消费者不得重新检查或补齐 Properties、Option Specs
 和 Provider 执行字段。
 
-
-
 Personal Config 不要求自身完整，可以继承 Built-in；Settings Preview 和 Registry 都在完成 Overlay 后检查。
 Hidden Provider 使用同一完整性规则。
 
@@ -687,7 +682,6 @@ legacy config + current Built-in baseline
                   v
              validate -> atomic create
 ```
-
 
 Standalone CLI 为兼容评测使用的 `~/.openzwork/cli/config.json`，首次导入时还保留自定义模型的输出上限：
 按 `limit.output` → `options.max_tokens` → 模型顶层 `maxOutputTokens` 选取有限正整数，写入精确

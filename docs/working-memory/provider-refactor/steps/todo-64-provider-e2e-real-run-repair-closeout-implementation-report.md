@@ -31,7 +31,6 @@
 | I28                | 失败     | 同 I27                                                                                | fixture/test        | 同 I27                                                      | 通过     | Restart Recovery 4/4 通过      |
 | I31                | 失败     | 重复选择当前原生 option 不保证触发事件；另有无消费者 transition state                 | test/residual state | 改为设置页往返保持；删除残余状态和伪 reconciliation         | 通过     | Settings Transition 3/3 通过   |
 
-
 ## 3. 阶段审查
 
 ### 阶段 A：共性基础设施

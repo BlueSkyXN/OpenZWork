@@ -53,7 +53,7 @@ export const officialSeaPlugins = [
       "skills/visualize/assets/standalone-shell.js",
     ],
     rootPath: join("packages", "visualize-plugin"),
-    version: "0.1.0",
+    version: "0.1.1",
   },
   {
     // node_repl 宿主：Browser Use 与 Computer Use 共用的运行时产物，自己不是面向用户的插件
@@ -64,7 +64,7 @@ export const officialSeaPlugins = [
     requiresRuntime: true,
     requiredRuntimePaths: ["dist/mcp/server.js"],
     rootPath: join("packages", "node-repl-host"),
-    version: "0.6.1",
+    version: "0.7.0",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -89,7 +89,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "documents-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.0",
+    version: "0.2.1",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -115,7 +115,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "pdf-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.1",
+    version: "0.2.2",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -131,7 +131,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "presentations-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.0",
+    version: "0.2.1",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -147,7 +147,7 @@ export const officialSeaPlugins = [
     ],
     rootPath: join("packages", "spreadsheets-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.0",
+    version: "0.2.1",
   },
   {
     // browser-use 使用真实 node_repl MCP runtime，SEA 必须校验并嵌入 server.js。

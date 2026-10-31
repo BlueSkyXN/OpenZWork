@@ -387,9 +387,6 @@ D48/D51 验证回写：统一 Host 装配、普通 HTTP 能力声明、首次 UR
 - 竞态：目录读取前后验证 membership/入口；绑定返回只对原目录与 attachment 生效。手机无 Source settings 权限时仍保持原 shared-host workspace 边界。
 - 验证：Catalog 3 例、真实 React binding 2 例（先红后绿）、Source attachment 与原设置表单定向回归；VP11 GUI 已写入 pending，正在执行。未宣称手机未打开 root 的导航已实现。
 
-
-
-
 ### D54：菜单动画开始时 getElementText 返回空文本，GUI 断言读取过早
 
 - 证据：VP11 的 Commands 目录去重/未打开 root 选择已经通过；Hooks 菜单找到 4 个 radio item，但同一毫秒内 getElementText 都返回空字符串，断言得到 0 个匹配。run `desktop-e2e-20260910230329344-p70290-54b2a0a4f04adf9d` 为 6 pass / 1 fail。
@@ -760,7 +757,6 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 
 用户截图发现侧栏与 composer 项目候选不一致。运行时 CDP 读取确认侧栏 44 项而旧 ChatEmptyWorkspacePreviewMenu 仅收到已打开的 z-m tab；旧筛选还截断前 5 项，以 cwd 判等并显示目录叶名。原因是重构漏接这个入口。按 spec 共用项目目录/排序，菜单改为项目身份、名称和 roots 搜索；搜索文案改“搜索项目”。无需修改数据库或迁移。
 
-
 菜单完整展示后，桌面截图暴露原固定菜单高度会裁掉底部入口：改为候选列表独立滚动、footer 不收缩。验证中 WebDriver 的 clearValue 未触发 React input，改用真实键盘清空搜索；布局 Emulation 后的原生右键坐标不稳定，将布局检查置于正常交互验证之后。最终 VP30 E2E 1/1、单测 54 项及架构/类型/lint 通过，详见 coverage matrix。`pnpm knip` 全仓扫描仍报既有大量未使用项，未借此删除无关代码。
 
 ### 同名历史任务的未读错觉与详情标题缺失（2026-09-11，只读排查）
@@ -776,7 +772,6 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 ### 归档管理实施记录
 
 设置层与 WorkspaceShellLayout 是兄弟节点，原 ProjectDirectoryProvider 只覆盖侧栏/composer，直接给设置另包一次会产生两个读取 owner。本次提升到共同 RootWorkspaceContent 并让嵌套 Provider 复用，独立壳层仍可挂载。codegraph 两次报 no such table: unresolved_refs，限定源码检查替代，未修工具索引。TaskService deleteTask 接口旧注释声称仅列表隐藏，当前实现已委托 CLI mutateSessionFacts(delete)；实现沿用当前 CLI 软删除事实，不新增本机 tombstone。
-
 
 首轮 Electron 1/3：归档与删除落库断言已经通过，后续误以为 browser.refresh 会恢复设置页，因此等不到归档页面。运行日志确认应用回到工作区；测试改为重新打开设置，再断言已删除任务不复活。该修正没有改动应用导航。用户随后明确中间下拉是排序方式，已去掉任务类型分类，仅保留更新时间/创建时间。
 
@@ -794,8 +789,7 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 
 开发中额外发现：仅以 service 对象 + workspaceKey + taskId 判定标题请求资格，无法覆盖 attachment 重建但复用 service 的情形。先补失败单测，再将 remoteSessionId 加入读取身份；同任务刷新乱序与切任务首帧清理均已覆盖。
 
-运行证据：首次隔离 E2E 在 15:35:09.849 完成 getTaskMeta（0.6ms），15:35:12.339 才完成 V4 subscribe（2484.8ms），真实历史正文及 E2E_AMT_COLD_TITLE 正常显示；没有标题 readSession 请求。首次第二项失败为测试使用了不存在的 sidebar-settings ID，改为公共 TID_TASK_SETTINGS_BUTTON 后桌面两项均通过。全部 fixture 写入 zcode-active-task-e2e-* 隔离 HOME，未修改用户数据库。最终验证与产物见 AMT coverage matrix。
-
+运行证据：首次隔离 E2E 在 15:35:09.849 完成 getTaskMeta（0.6ms），15:35:12.339 才完成 V4 subscribe（2484.8ms），真实历史正文及 E2E_AMT_COLD_TITLE 正常显示；没有标题 readSession 请求。首次第二项失败为测试使用了不存在的 sidebar-settings ID，改为公共 TID_TASK_SETTINGS_BUTTON 后桌面两项均通过。全部 fixture 写入 zcode-active-task-e2e-\* 隔离 HOME，未修改用户数据库。最终验证与产物见 AMT coverage matrix。
 
 ### 用户追加要求恢复 CLI 原始库（2026-09-11）
 

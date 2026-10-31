@@ -50,8 +50,12 @@ describe("gen-ui-service contract", () => {
     };
     await expect(service.readDocument(target)).resolves.toMatchObject({ path: target.path });
     await expect(service.getState(target)).resolves.toBeNull();
-    await expect(service.setState({ target, state: { modelContent: null, privateContent: {} } })).resolves.toBeUndefined();
-    await expect(service.listState({ workspacePath: target.workspacePath, sessionId: target.sessionId })).resolves.toEqual([]);
+    await expect(
+      service.setState({ target, state: { modelContent: null, privateContent: {} } }),
+    ).resolves.toBeUndefined();
+    await expect(
+      service.listState({ workspacePath: target.workspacePath, sessionId: target.sessionId }),
+    ).resolves.toEqual([]);
     expect(calls).toEqual(["readDocument", "getState", "setState", "listState"]);
   });
 });

@@ -1,9 +1,11 @@
 # Web Remote Control Relay Message Logging (Disabled)
 
 ## 目的
+
 记录远控 relay 消息链路的历史设计与当前关闭策略，避免高频消息摘要继续落盘到 `~/.openzwork/v2/logs/web-remote-control`。
 
 ## 生效环境
+
 桌面端当前在开发环境和生产环境都不启用 relay message trace，不再写入 `~/.openzwork/v2/logs/web-remote-control/web-remote-control-relay-YYYY-MM-DD.log`。
 
 普通 Web 远控生命周期日志不受影响，仍写入主日志 `~/.openzwork/v2/logs/YYYY-MM-DD.log`。

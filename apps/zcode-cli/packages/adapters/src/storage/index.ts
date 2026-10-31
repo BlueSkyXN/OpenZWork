@@ -22,6 +22,7 @@ import type {
 import { maybeThrowStorageFsFault } from "./fs-fault-injection.js";
 
 export * from "./session-store.js";
+
 import { cliStorageRelocation as relocation } from "../storage-relocation/index.js";
 import type { DataRelocationPlan } from "@zcode/shared/data-directory";
 
@@ -36,6 +37,9 @@ export const cliStorageRelocation = {
     await relocation.relocate(plan, (uri) => artifacts.readToolResultArtifact({ uri }));
   },
 };
+
+export * from "./session-data-files/index.js";
+
 
 // 内存 event store 实现已下沉到 @zcode/contracts，
 // 这里保持 `@zcode/adapters/storage` 的导出路径不变，避免调用方改 import。

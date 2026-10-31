@@ -27,9 +27,6 @@
 - `ZAI_TEST_BUSINESS_BASE_URL`
 - `ZAI_PRODUCTION_BUSINESS_BASE_URL`
 
-
-
-
 ## Endpoint resolver
 
 `packages/shared/src/zcodeEndpoint.ts` 是产品环境域名的唯一事实源。运行时调用方必须把
@@ -40,8 +37,6 @@
 | --- | --- | --- | --- | --- |
 
 覆盖优先级：
-
-
 
 `.env.development` 只保存本地开发常用的测试环境链接常量；它本身不选择产品环境。
 桌面启动脚本按所选命令显式注入 `ZCODE_ENV`；默认 `pnpm dev:desktop` 当前指向正式环境，

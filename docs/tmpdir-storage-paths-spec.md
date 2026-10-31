@@ -16,12 +16,12 @@
 | 场景                      | 新路径                                                                                             | 生命周期                                       |
 | ------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
 | zcode-cli Bash 持久化输出 | `<os.tmpdir()>/zcode-bash-<随机标识>/<session>/<tool>-stdout.log`；降级到 `<storageRoot>/cli/exec` | 具名临时文件，沿用前后台保留规则，接受系统清理 |
-| zcode-cli 剪贴板图片      | `~/.openzwork/clipboard`                                                                               | 单次读取后删除                                 |
-| 日志导出 staging          | `~/.openzwork/export-log-stage`                                                                        | 打包完成后删除，异常退出允许残留               |
-| 日志导出结果              | `~/.openzwork/export-log`                                                                              | 用户可见导出结果，默认保留                     |
-| feedback 附件和日志包     | `~/.openzwork/feedback`                                                                                | 上传完成后删除                                 |
-| Git checkpoint 临时 index | `~/.openzwork/git-checkpoint-index`                                                                    | checkpoint 构建完成后删除                      |
-| Desktop 编辑器图标转换    | `~/.openzwork/editor-icon`                                                                             | 单次转换后删除                                 |
+| zcode-cli 剪贴板图片      | `~/.openzwork/clipboard`                                                                           | 单次读取后删除                                 |
+| 日志导出 staging          | `~/.openzwork/export-log-stage`                                                                    | 打包完成后删除，异常退出允许残留               |
+| 日志导出结果              | `~/.openzwork/export-log`                                                                          | 用户可见导出结果，默认保留                     |
+| feedback 附件和日志包     | `~/.openzwork/feedback`                                                                            | 上传完成后删除                                 |
+| Git checkpoint 临时 index | `~/.openzwork/git-checkpoint-index`                                                                | checkpoint 构建完成后删除                      |
+| Desktop 编辑器图标转换    | `~/.openzwork/editor-icon`                                                                         | 单次转换后删除                                 |
 
 ## 约束
 

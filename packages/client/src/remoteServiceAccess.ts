@@ -23,8 +23,13 @@ import {
   IProviderProvisioningTargetService,
   ISourceServerWorkspaceService,
   ISourceServerManagementService,
+  // OpenZWork：data-sync 域保留（本机→远端设备推送）；usage-stats/coding-plan/client-config/
+  // 客户端场景/云内容/营销触达/闲时任务/加速卡属官方净化域，不接入。
+  IDeviceSyncStateService,
+  IProviderProvisioningStatusService,
   ISkillsService,
   ISkillSyncService,
+  IUserConfigSyncService,
   IMcpSyncService,
   IPluginUiAppToolsService,
   IPluginUiSamplingService,
@@ -79,6 +84,10 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly providerProvisioningTargetService!: IProviderProvisioningTargetService;
   readonly sourceServerWorkspaceService: ISourceServerWorkspaceService;
   readonly sourceServerManagementService?: ISourceServerManagementService;
+  // OpenZWork：数据同步页两个 Host-only 服务（同属 data-sync 保留域）；其余官方服务不接入。
+  /** 仅 desktop base attachment 注册：数据同步页的设备同步状态。 */
+  readonly deviceSyncStateService?: IDeviceSyncStateService;
+  readonly providerProvisioningStatusService?: IProviderProvisioningStatusService;
   readonly skillsService: ISkillsService;
   readonly skillSyncService: ISkillSyncService;
   readonly mcpSyncService: IMcpSyncService;
@@ -87,6 +96,7 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly pluginUiSamplingService: IPluginUiSamplingService;
   readonly pluginUiAppToolsService: IPluginUiAppToolsService;
   readonly pluginSyncService: IPluginSyncService;
+  readonly userConfigSyncService: IUserConfigSyncService;
   readonly pluginsService: IPluginsService;
   readonly pluginManagementService: IPluginManagementService;
   readonly subagentsService: ISubagentsService;
@@ -100,7 +110,11 @@ export class RemoteServiceAccess implements IServiceAccessor {
 
   constructor(
     channelClient: IChannelClient,
-    options: { sourceServerManagementService?: boolean; windowProjectDirectory?: boolean } = {},
+    options: {
+      sourceServerManagementService?: boolean;
+      deviceSyncStateService?: boolean;
+      windowProjectDirectory?: boolean;
+    } = {},
   ) {
     // 远端工作区的 project 必须保留 Source 语义；只有显式能力才创建完整窗口目录组。
     if (options.windowProjectDirectory) {
@@ -197,6 +211,18 @@ export class RemoteServiceAccess implements IServiceAccessor {
           channelClient.getChannel(ISourceServerManagementService.channelName),
         )
       : undefined;
+    // OpenZWork：数据同步页服务与设备同步状态共用开关（只在桌面 base 连接打开）。
+    this.deviceSyncStateService = options.deviceSyncStateService
+      ? ProxyChannel.toService<IDeviceSyncStateService>(
+          channelClient.getChannel(IDeviceSyncStateService.channelName),
+        )
+      : undefined;
+    // 与设备同步状态同属数据同步页的本机 Host 服务：同一开关（只在桌面 base 连接打开）。
+    this.providerProvisioningStatusService = options.deviceSyncStateService
+      ? ProxyChannel.toService<IProviderProvisioningStatusService>(
+          channelClient.getChannel(IProviderProvisioningStatusService.channelName),
+        )
+      : undefined;
     this.skillsService = ProxyChannel.toService<ISkillsService>(
       channelClient.getChannel(ISkillsService.channelName),
     );
@@ -220,6 +246,9 @@ export class RemoteServiceAccess implements IServiceAccessor {
     );
     this.pluginSyncService = ProxyChannel.toService<IPluginSyncService>(
       channelClient.getChannel(IPluginSyncService.channelName),
+    );
+    this.userConfigSyncService = ProxyChannel.toService<IUserConfigSyncService>(
+      channelClient.getChannel(IUserConfigSyncService.channelName),
     );
     this.pluginsService = ProxyChannel.toService<IPluginsService>(
       channelClient.getChannel(IPluginsService.channelName),

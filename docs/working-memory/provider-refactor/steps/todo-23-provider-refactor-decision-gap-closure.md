@@ -76,16 +76,16 @@ Persist + Registry @ revision R2
 
 ## 1. 已确认问题与目标状态
 
-| 编号 | 当前问题                                                                                           | 目标状态                                                                         |
-| ---- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| G2   | `ForkModelRef { providerId, modelId, variant }` 是旧 `ModelRef` 的同形别名                         | 后续执行意图直接使用 `ModelSelection`，`variant` 退出                            |
-| G3   | `formatModelSelection()` 不能保存 `maxOutputTokens`，字符串仍被当作可逆领域格式                    | 状态、协议和持久化只传结构化 `ModelSelection`；字符串只作为 Picker/Legacy 边界值 |
-| G4   | Model 编辑提交后立即关闭，rename 与 config save 是两次 Mutation                                    | 完整 Draft 通过一次原子 Host Mutation 提交，Registry 观察成功后关闭              |
-| G5   | 修改 Model ID 时没有先移动 Personal 专属 Rule 并重新预览 Effective Config                          | Host 提供无持久化 Preview；新 ID 立即刷新继承结果，Personal 显式值不变           |
-| G6   | UI 把 Effective 值复制进 Personal Draft，继承、未设置和明确覆盖混淆                                | Draft 分离 Personal 值与 Effective Preview，四态语义可观察、可编辑、可恢复       |
-| G7   | 普通 Built-in Provider 和 Personal-only Provider 复用完整编辑器                                    | “添加供应商”进入简化编辑器；“创建自定义供应商”保留完整编辑器                     |
-| G8   | `adapterCompatibility.reasoningReplay` 把历史模型特例保留成正式 Config 维度                        | 删除整个 Compatibility 容器；所有 Adapter 只执行 canonical replay                |
-| G9   | Adapter 执行文件和注释继续使用旧 Registry 命名，旧 Todo 完成声明与代码事实不符                     | 命名机械归零；历史 Todo 增加纠正说明，路线图与 Feature Graph 在实现后同步        |
+| 编号 | 当前问题                                                                        | 目标状态                                                                         |
+| ---- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| G2   | `ForkModelRef { providerId, modelId, variant }` 是旧 `ModelRef` 的同形别名      | 后续执行意图直接使用 `ModelSelection`，`variant` 退出                            |
+| G3   | `formatModelSelection()` 不能保存 `maxOutputTokens`，字符串仍被当作可逆领域格式 | 状态、协议和持久化只传结构化 `ModelSelection`；字符串只作为 Picker/Legacy 边界值 |
+| G4   | Model 编辑提交后立即关闭，rename 与 config save 是两次 Mutation                 | 完整 Draft 通过一次原子 Host Mutation 提交，Registry 观察成功后关闭              |
+| G5   | 修改 Model ID 时没有先移动 Personal 专属 Rule 并重新预览 Effective Config       | Host 提供无持久化 Preview；新 ID 立即刷新继承结果，Personal 显式值不变           |
+| G6   | UI 把 Effective 值复制进 Personal Draft，继承、未设置和明确覆盖混淆             | Draft 分离 Personal 值与 Effective Preview，四态语义可观察、可编辑、可恢复       |
+| G7   | 普通 Built-in Provider 和 Personal-only Provider 复用完整编辑器                 | “添加供应商”进入简化编辑器；“创建自定义供应商”保留完整编辑器                     |
+| G8   | `adapterCompatibility.reasoningReplay` 把历史模型特例保留成正式 Config 维度     | 删除整个 Compatibility 容器；所有 Adapter 只执行 canonical replay                |
+| G9   | Adapter 执行文件和注释继续使用旧 Registry 命名，旧 Todo 完成声明与代码事实不符  | 命名机械归零；历史 Todo 增加纠正说明，路线图与 Feature Graph 在实现后同步        |
 
 ## 2. Access：由 Todo 24 取代
 
@@ -290,13 +290,13 @@ Model Config Schema、Overlay、Resolver、Registry、Runtime、Built-in Config�
 
 ### 7.1 功能摘要
 
-| 字段             | 结论                                                                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Developer intent | 收口 Provider Refactor 已裁决但未实现的公共 access、ModelSelection 和 Settings 事务缺口                                               |
-| Capability       | Provider Registry、Account Request Auth、Model Selection、Provider Settings                                                           |
-| Change layer     | `draft-default`、`validation`、`commit-effect`、`persistence`、`presentation`                                                         |
-| Operating mode   | planning / implementation handoff                                                                                                     |
-| Out of scope     | Provider 扩容、Telemetry 重构、Conversation recovery、Client Config 公共服务                                                          |
+| 字段             | 结论                                                                                    |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| Developer intent | 收口 Provider Refactor 已裁决但未实现的公共 access、ModelSelection 和 Settings 事务缺口 |
+| Capability       | Provider Registry、Account Request Auth、Model Selection、Provider Settings             |
+| Change layer     | `draft-default`、`validation`、`commit-effect`、`persistence`、`presentation`           |
+| Operating mode   | planning / implementation handoff                                                       |
+| Out of scope     | Provider 扩容、Telemetry 重构、Conversation recovery、Client Config 公共服务            |
 
 ### 7.2 UI Surface Matrix
 
@@ -310,15 +310,15 @@ Model Config Schema、Overlay、Resolver、Registry、Runtime、Built-in Config�
 
 ### 7.3 分级关系
 
-| 等级           | 关系                                                      | 原因                                                           |
-| -------------- | --------------------------------------------------------- | -------------------------------------------------------------- |
-| must-inspect   | Account Connection -> Account Overlay -> Request Auth     | 删除连接 ID 后仍须按当前兼容连接解析且缺失时 fail-closed       |
-| must-inspect   | Model editor -> Host Mutation -> Personal Config/Registry | 当前分步保存会丢 Draft 并产生非原子状态                        |
-| must-inspect   | Fork/Protocol/Persistence -> ModelSelection               | `ForkModelRef` 和字符串会继续制造第二种选择表示                |
-| should-inspect | Usage/Telemetry/Family UI -> Account status               | 当前部分展示通过 `accessId` presence 推断连接                  |
-| should-inspect | Automation/Subagent/Repo Wiki/Conversation picker         | 共享 Picker Value，但状态和提交落点必须继续分离                |
-| conditional    | Standalone/Remote Host Request Auth                       | 每个 Environment 必须使用自己的账号服务                        |
-| invariant-only | desktop continuous / mobile replayable                    | 本轮不改变 stream、snapshot、queue 或恢复语义                  |
+| 等级           | 关系                                                      | 原因                                                     |
+| -------------- | --------------------------------------------------------- | -------------------------------------------------------- |
+| must-inspect   | Account Connection -> Account Overlay -> Request Auth     | 删除连接 ID 后仍须按当前兼容连接解析且缺失时 fail-closed |
+| must-inspect   | Model editor -> Host Mutation -> Personal Config/Registry | 当前分步保存会丢 Draft 并产生非原子状态                  |
+| must-inspect   | Fork/Protocol/Persistence -> ModelSelection               | `ForkModelRef` 和字符串会继续制造第二种选择表示          |
+| should-inspect | Usage/Telemetry/Family UI -> Account status               | 当前部分展示通过 `accessId` presence 推断连接            |
+| should-inspect | Automation/Subagent/Repo Wiki/Conversation picker         | 共享 Picker Value，但状态和提交落点必须继续分离          |
+| conditional    | Standalone/Remote Host Request Auth                       | 每个 Environment 必须使用自己的账号服务                  |
+| invariant-only | desktop continuous / mobile replayable                    | 本轮不改变 stream、snapshot、queue 或恢复语义            |
 
 ### 7.4 State owner 与 Commit sink
 
@@ -334,13 +334,13 @@ Model Config Schema、Overlay、Resolver、Registry、Runtime、Built-in Config�
 ### 7.5 必须保持的不变量
 
 1. 账号类型 Provider Config 不保存凭据或账号身份；API Access 仍可直接保存用户填写的 API Key；
-3. Local 与 Remote Environment 各自解析 Provider Registry、账号连接和请求凭据；
-4. `ModelSelection` 只保存显式选择意图，缺省 option 继续由 ModelFactory 解析；
-5. Model 编辑取消不写配置，失败不关闭弹窗，成功只发布一个最终 revision；
-6. Built-in Model 不能删除，Provider ID 不能修改，Builtin Config 永远不被 Settings 删除；
-7. UI 隐藏字段 PDF/Audio 和未编辑 Personal JSON 槽位无损保留；
-9. 不恢复 ModelRef、ModelIdentity、公共 connection key 或第二个 Registry；
-10. 不因为清理旧命名把旧 Registry 的配置职责搬进新 execution/factory 抽象。
+2. Local 与 Remote Environment 各自解析 Provider Registry、账号连接和请求凭据；
+3. `ModelSelection` 只保存显式选择意图，缺省 option 继续由 ModelFactory 解析；
+4. Model 编辑取消不写配置，失败不关闭弹窗，成功只发布一个最终 revision；
+5. Built-in Model 不能删除，Provider ID 不能修改，Builtin Config 永远不被 Settings 删除；
+6. UI 隐藏字段 PDF/Audio 和未编辑 Personal JSON 槽位无损保留；
+7. 不恢复 ModelRef、ModelIdentity、公共 connection key 或第二个 Registry；
+8. 不因为清理旧命名把旧 Registry 的配置职责搬进新 execution/factory 抽象。
 
 ### 7.6 Graph drift 审查与同步结果
 

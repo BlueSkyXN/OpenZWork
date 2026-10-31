@@ -21,6 +21,9 @@ import {
   resolveDesktopArtifactSuffix,
   resolveDesktopProductIdentity,
 } from "./scripts/desktop-product-identity.mjs";
+// fork 净化：上游在此引入 CUA helper（windows-cua-helper-assets）、computer-use
+// （sharp/koffi/computer-use-producer）与自动更新发布器（windows-update-publisher、
+// powershell-command）等 import，均属净化域，全部剥离；Windows 目标解析保留下方 fork 本地实现。
 const ELECTRON_BUILDER_ARCH = {
   1: "x64",
   3: "arm64",
@@ -58,8 +61,8 @@ function resolveElectronBuilderWindowsTarget({
     );
   }
   return actualTarget;
-}import {
-  findDesktopNativePackageViolations,
+}
+import {
   createDesktopNativePackagePrunePatterns,
   parseAsarListWithPackState,
 } from "./scripts/desktop-native-package-policy.mjs";
@@ -100,6 +103,9 @@ const DEFAULT_ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/";
 // Linux CI（pnpm hoisted）往往解析不到该二进制，`asar list` 未运行即 exit 1。
 // 显式依赖 @electron/asar 并用 Node 直接执行 CLI，避免跨平台找不齐 shim。
 const requireFromConfig = createRequire(import.meta.url);
+// OpenZWork v3.17.1：上游桌面包从自身 package.json 读取 electron 版本（44.7.0），
+// mac/linux 语言的 electronLanguages 与 asar 打包都消费该常量。
+const desktopElectronVersion = requireFromConfig("./package.json").devDependencies.electron;
 let nsisInstallSectionPatched = false;
 let nsisInstallSectionOriginalSource = null;
 let nsisInstallSectionPath = null;
@@ -142,6 +148,7 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   // pnpm hoisted 布局下 electron-builder 偶发漏拷这个叶子依赖（历史上
   // builder-util-runtime → debug 链在 3.4.0 安装包触发过 Cannot find module 'ms'）。
   // ms 是叶子包，显式注入即可让 debug 在 app.asar 内稳定解析，防御性保留。
+  // fork 净化：上游在此追加 electron-updater 闭包注入（自动更新链路），已随 updater 一并移除。
   "ms",
 ];
 // pacman 依赖必须使用 Arch 官方仓库中的包名。electron-builder 的历史默认集合包含
@@ -227,6 +234,25 @@ const PACKAGING_PRUNE_PATTERNS = [
   "!**/CONTRIBUTING*",
   "!**/CODE_OF_CONDUCT*",
   "!**/SECURITY*",
+  // 26.17 的 pnpm 收集器按 lockfile 全平台图收包，会把纯构建期依赖带进 app.asar
+  // （2026-10-26 与 26.8.1 产物 asar 逐包对账 +24MB 未压缩）。以下均已核实零运行时引用：
+  // - shadcn 是 @zcode/ui 误声明在生产位的组件脚手架 CLI，连带 @ts-morph/ts-morph、
+  //   @babel 生态与 caniuse-lite/browserslist/baseline-browser-mapping 数据包；
+  // - node-gyp/node-addon-api 是 CUA 原生模块构建工具链；
+  // - cpu-features/nan 是 ssh2 的可选原生加速，缺失时 ssh2 自动降级。
+  // @babel/runtime 可能被在包库运行时 require，紧随整目录排除后重新包含。
+  "!node_modules/shadcn/**",
+  "!node_modules/@ts-morph/**",
+  "!node_modules/ts-morph/**",
+  "!node_modules/@babel/**",
+  "node_modules/@babel/runtime/**",
+  "!node_modules/caniuse-lite/**",
+  "!node_modules/browserslist/**",
+  "!node_modules/baseline-browser-mapping/**",
+  "!node_modules/node-gyp/**",
+  "!node_modules/node-addon-api/**",
+  "!node_modules/cpu-features/**",
+  "!node_modules/nan/**",
 ];
 
 function buildDesktopArtifactName(platformName, extension = "${ext}") {
@@ -464,11 +490,10 @@ export default {
   // macOS 签名阶段会对 Electron Framework 下每个语言包逐个 codesign。
   // 默认全量语言会产生大量 locale.pak 签名调用，显著拉长打包时长。
   // 这里仅保留当前产品必需语言，减少签名文件数并缩短 CI 总耗时。
+  // builder 按语言包文件名精确匹配：Windows/Linux 是 locales/en-US.pak，macOS 见 mac.electronLanguages。
   electronLanguages: ["en-US", "zh-CN"],
-  // pnpm workspace + semver range（如 ^41.0.3）下，electron-builder
-  // 有时无法从依赖树里稳定推导出 Electron 版本，导致 bundle 直接中断。
-  // 显式写死当前桌面端使用的 Electron 版本，避免打包阶段再做不可靠的猜测。
-  electronVersion: "41.0.3",
+  // builder 的依赖树推导不稳定；显式读取 package.json，避免开发与安装包版本分叉。
+  electronVersion: desktopElectronVersion,
   // 旧 Windows 协议注册可能在应用 JS 重写注册表前注入 --inspect-brk。
   // 在签名前关闭原生 Inspector 参数，覆盖升级后首次启动；保留 Agent 所需的 RunAsNode。
   ...(targetPlatform.os === "win32"
@@ -540,7 +565,12 @@ export default {
       context.electronPlatformName === "darwin"
         ? resolve(context.appOutDir, framework.distMacOsAppName, "Contents", "Resources")
         : resolve(context.appOutDir, "resources");
-    await stageElectronNotices(context.appOutDir, resources, framework.version);
+    // 26.17.0 在 afterExtract 前已将 macOS 的 LICENSE/Chromium 声明移动到 app Resources；
+    // Windows/Linux 仍把许可文件保留在 appOutDir 根目录。源目录必须跟随 Builder 的平台布局，
+    // 否则 macOS 会继续读取已经被移动的 LICENSE.electron.txt 并在签名前失败。
+    const extractedLicenseRoot =
+      context.electronPlatformName === "darwin" ? resources : context.appOutDir;
+    await stageElectronNotices(extractedLicenseRoot, resources, framework.version);
   },
   afterPack: async (context) => {
     const actualWindowsTarget =
@@ -569,6 +599,8 @@ export default {
       );
     }
   },
+  // fork 净化：上游新增 afterSign 钩子做 Windows 浏览器导入 helper 签名断言与
+  // 自动更新发布器（writeWindowsUpdatePublisher）写入，属 CUA/updater 净化域，不随入。
   extraResources: [
     { from: resolve(workspaceRoot, noticesFileName), to: noticesFileName },
     ...(targetPlatform.os === "darwin"
@@ -646,6 +678,9 @@ export default {
       filter: ["**/*"],
     })),
   ],
+  // pnpm 依赖图不完整时禁止仅记录警告并继续生成安装包；afterPack 只能补齐可解析依赖，
+  // collector 已确认缺失的生产依赖必须在打包阶段停止。
+  allowMissingDependencies: false,
   // postinstall 会先优先复用 node-pty 自带的 Windows 预编译产物，其他平台再按需 electron-rebuild。
   // 打包阶段统一复用安装时准备好的原生文件，避免 electron-builder 再触发一轮不受控的本地编译。
   npmRebuild: false,
@@ -661,9 +696,14 @@ export default {
   mac: {
     bundleShortVersion: desktopVersion.upstreamVersion,
     bundleVersion: desktopVersion.nativeBuildVersion,
+    // Electron 44 起系统要求提升，跟随上游声明 macOS 13 最低版本。
+    minimumSystemVersion: "13.0.0",
     target: ["dmg", "zip"],
     category: "public.app-category.developer-tools",
     artifactName: buildDesktopArtifactName("mac"),
+    // macOS 语言包是 en.lproj / zh_CN.lproj，沿用顶层 "en-US" 会一个都匹配不上被全部删掉，
+    // Chromium 自带文案随之丢失（视频控件菜单只剩图标、播放速度子菜单空白）。
+    electronLanguages: ["en", "zh_CN"],
     extendInfo: {
       NSAppleEventsUsageDescription: `${desktopProductIdentity.productName} needs Apple Events access to coordinate local automation workflows with user-approved desktop apps.`,
       // 缺失该 key 时 macOS 会静默拒绝 CoreBluetooth 枚举，内置浏览器 Web Bluetooth
@@ -700,6 +740,7 @@ export default {
   win: {
     target: ["nsis"],
     artifactName: buildDesktopArtifactName("win"),
+    verifyUpdateCodeSignature: true,
     signExts: [".node", ".dll"],
     // Bugfix: Windows CI 之前完全依赖 electron-builder 内置 signtool.exe，
     // 一旦 runner 的证书链路要求改走 vsigntool，打包阶段就会在内置签名环节卡死。
@@ -759,9 +800,11 @@ export default {
     // 安装盘图标统一使用安装专用素材，避免复用应用图标导致安装识别度不足。
     icon: "build/icon_installer.icns",
     contents: [
-      // 实验性调整：为隐藏资源文件显式指定图标坐标，尽量把它们移到角落区域。
-      { x: 640, y: 56, type: "file", path: ".background.tiff" },
-      { x: 640, y: 56, type: "file", path: ".VolumeIcon.icns" },
+      // dmg-builder@1.2.5 的 dmgbuild 会对每个 type:"file" 条目执行 ditto <path>，
+      // path 被当作真实源文件解析。.background.tiff / .VolumeIcon.icns 是 dmgbuild
+      // 在镜像内自行生成的隐藏文件，不是源文件；把它们列进 contents 在旧 dmgbuild
+      // 上被容忍，在新 dmgbuild 上直接 ditto 报 "Cannot get the real path"（2026-10-23
+      // CI x64 DMG 实况）。隐藏文件坐标交给 dmgbuild 默认摆放，不再显式列举。
       { x: 130, y: 220 },
       { x: 410, y: 220, type: "link", path: "/Applications" },
     ],

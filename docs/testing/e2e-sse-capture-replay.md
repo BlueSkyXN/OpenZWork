@@ -36,9 +36,7 @@
     "statusCode": 200,
     "headers": { "content-type": "text/event-stream; charset=utf-8" },
     "closeMode": "end",
-    "events": [
-      { "sequence": 0, "offsetMs": 0, "byteLength": 100, "text": "event: ...\n\n" }
-    ],
+    "events": [{ "sequence": 0, "offsetMs": 0, "byteLength": 100, "text": "event: ...\n\n" }],
     "body": "event: ...\n\n"
   }
 }
@@ -87,7 +85,7 @@ replay server 还会把命中的 fixture 写进抓包 artifact：
 
 ```bash
 E2E_NETWORK_MODE=replay-isolated \
-E2E_SPEC=./test/e2e/conversation-session/manual-review/pending/conversation-session-compact.test.ts \
+E2E_SPEC=./test/e2e/conversation-session/conversation-session-compact.test.ts \
 pnpm test:e2e:container
 ```
 
@@ -106,7 +104,7 @@ DeepSeek capture/replay JSON 会挂载到本次报告目录的 `network-capture/
 ```bash
 E2E_NETWORK_MODE=capture \
 E2E_PROVIDER_API_KEY=sk-... \
-E2E_SPEC=./test/e2e/conversation-session/manual-review/pending/conversation-session-compact.test.ts \
+E2E_SPEC=./test/e2e/conversation-session/conversation-session-compact.test.ts \
 pnpm test:e2e:container
 ```
 

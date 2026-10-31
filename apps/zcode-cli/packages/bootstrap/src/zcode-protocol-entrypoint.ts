@@ -1,6 +1,8 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import { createConfig, resolvePath } from "@zcode/adapters/config";
 import { dataDirectory } from "@zcode/shared/data-directory";
+import type { McpElicitationPort, McpNotificationPort } from "@zcode/contracts";
+
 import { createNodeModelSelectionFacade } from "@zcode/provider-node";
 import { createNodeLoggerFactory } from "@zcode/adapters/logging";
 import {
@@ -9,7 +11,9 @@ import {
   type McpConnectionPool,
   type McpTelemetryTracker,
 } from "@zcode/adapters/mcp";
-import type { SqliteSessionStore } from "@zcode/adapters/storage";
+import { zcodeProtocolNotifications } from "@zcode/shared";
+import { createNodeSessionDataFiles, type SqliteSessionStore } from "@zcode/adapters/storage";
+
 import { traceContextToLogContext, createRootTraceContext } from "@zcode/contracts";
 import type { McpPort, ModelSelection } from "@zcode/contracts";
 import type { PresentationSurface } from "@zcode/core";
@@ -24,10 +28,15 @@ import {
   prepareProtocolStartupStorage,
 } from "./zcode-protocol/storage-startup.js";
 import { closeSessionStore, getSessionDbPath } from "./app/session-store.js";
+import { resolveMcpNodeFallbackProvider } from "./app/mcp-node-fallback.js";
+import { getCliStorageRoot, getProjectMemoryRoot } from "./app/paths.js";
 import { startProcessProviderRegistryRuntime } from "./app/process-provider-registry-runtime.js";
 import { scheduleStartupLogRetentionCleanup } from "./log-retention.js";
 import { StartupTimer, startupNow } from "./startup-logging.js";
 import { installZCodeProtocolAiSdkWarningLogger } from "./zcode-protocol/ai-sdk-warning-logger.js";
+// OpenZWork 净化：official-mcp-auth-port、official-command-endpoint 与 trusted-origin registry
+// 均属官方鉴权域（官方标识常量与官方端点域），不接入。
+
 import { ZCodeProtocolAgentServer } from "./zcode-protocol/server.js";
 import { ZCodeProtocolNdjsonConnection } from "./zcode-protocol/transport.js";
 import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
@@ -162,6 +171,14 @@ export async function runZCodeProtocolAgent(
         : createMcpTelemetryTracker({
             idSalt: traceContext.traceId,
           });
+    // OpenZWork 净化：providerEndpointRoutingPort（官方 endpoint-routing-edition 路由）、
+    // officialMcpAuth（官方 MCP 身份头）与 officialCommandEndpoint（zcode_official JWT 端点）不接入。
+    // MCP elicitation 归属到协议 server 的会话；pool 先于 server 创建，端口延迟绑定。
+    let elicitationServer: {
+      requestMcpElicitation: McpElicitationPort["requestElicitation"];
+      handleMcpNotification: McpNotificationPort["onNotification"];
+    } | null = null;
+
     mcpConnectionPool =
       configResult.config.features.mcp === false
         ? undefined
@@ -174,11 +191,17 @@ export async function runZCodeProtocolAgent(
               noProxy: configResult.config.network.noProxy,
               caCertFile: configResult.config.network.caCertFile,
             },
+            nodeFallback: resolveMcpNodeFallbackProvider({
+              cliStorageRoot: getCliStorageRoot(resolvePath(configResult.config.storage.dir)),
+              logger,
+            }),
+
             telemetry: mcpTelemetryTracker,
             workingDirectory: options.cwd,
           });
     mcpPort = mcpConnectionPool?.acquireLease({ leaseId: "protocol-settings" });
     const activeProviderRegistryRuntime = providerRegistryRuntime;
+    const protocolCliStorageRoot = getCliStorageRoot(resolvePath(configResult.config.storage.dir));
     const modelSelectionFacade = createNodeModelSelectionFacade(
       activeProviderRegistryRuntime.runtime.registryService,
     );
@@ -213,6 +236,9 @@ export async function runZCodeProtocolAgent(
                   }),
               }
             : {}),
+          onToolExecResource: (params) =>
+            connection.send({ method: zcodeProtocolNotifications.toolExecResource, params }),
+
         }),
       cwd: options.cwd,
       env: options.env,
@@ -220,6 +246,13 @@ export async function runZCodeProtocolAgent(
       mcpPort,
       mcpTelemetry: mcpTelemetryTracker,
       sessionStore,
+      sessionDataFiles: createNodeSessionDataFiles({
+        cliStorageRoot: protocolCliStorageRoot,
+        // 与会话运行时的记忆解析同一函数，删除的正是 CLI 读写的那个目录。
+        memoryRoot: ({ workspacePath, workspaceIdentity }) =>
+          getProjectMemoryRoot(protocolCliStorageRoot, workspacePath, workspaceIdentity),
+      }),
+
       refreshProviderRegistry: async (reason) => {
         await activeProviderRegistryRuntime.runtime.registryService.refresh(reason);
       },
@@ -266,6 +299,8 @@ export async function runZCodeProtocolAgent(
     });
     throw error;
   } finally {
+    // OpenZWork 净化：上游在 shutdown 时先关闭 officialCommandEndpoint（官方命令网关的
+    // SSE 端点）；该域已净化，端点未创建，直接进入通用清理。
     options.lifecycle?.requestShutdown();
     await cleanupProtocolRuntime({
       logger,

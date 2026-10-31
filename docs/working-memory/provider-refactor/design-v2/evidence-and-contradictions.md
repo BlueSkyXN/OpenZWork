@@ -40,12 +40,9 @@
 
 ### 2.1 staging 独有 Provider 修复的判定
 
-| staging 提交                                                                         | 它证明的有效问题                                                           | 对 V2 的裁定                                                                                                                                                              |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `198a013a95 fix(model-provider): avoid boundary token budget in connectivity probes` | 连通性探测使用极小 token 边界值会造成假失败                                | 连接测试产品行为有效，但旧 connectivity helper 已删除；应在正式 ModelFactory/Adapter 测试链中独立核对，不恢复旧服务                                                       |
-
-
-
+| staging 提交                                                                         | 它证明的有效问题                            | 对 V2 的裁定                                                                                                        |
+| ------------------------------------------------------------------------------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `198a013a95 fix(model-provider): avoid boundary token budget in connectivity probes` | 连通性探测使用极小 token 边界值会造成假失败 | 连接测试产品行为有效，但旧 connectivity helper 已删除；应在正式 ModelFactory/Adapter 测试链中独立核对，不恢复旧服务 |
 
 ## 3. 当前事实的主要代码证据
 
@@ -93,20 +90,11 @@
 **当前事实**：`composeEffective()` 保持 Built-in 顺序，最后放 Personal 精确规则。
 **裁定**：有序 Overlay；Personal 只允许精确 `providerId + modelId`，具有最高优先级。
 
-
-
-
-
-
-
 ### C08. Access 类型：`request-auth`、`execution-provided` 还是账号专用类型
 
 **历史演进**：M4 使用 `request-auth`；Todo 24 改为通用 `execution-provided` 并增加请求协议字段；用户随后认为它过度
 泛化。Todo 26 明确取代 Todo 24。
 **裁定**：旧两种 Access 和 `challenge/requestSigning/executionProtocol` 均为已退出中间设计。
-
-
-
 
 ### C10. Provider 与 Model 是否都有 Visibility
 
@@ -122,9 +110,6 @@ Visibility”措辞。
 **明确裁决**：用户要求只是通用可见性，不与“受信”绑定；Provider Config 层也不负责限制用户能否通过其它接口使用。
 **当前事实**：`visibility=hidden` 只影响普通 View；Registry 精确查找仍可执行，但完整性要求不放宽。
 **裁定**：删除 `executionOnly` 和 trusted 概念；内部产品入口用固定 Provider ID 精确选择。
-
-
-
 
 ### C13. Built-in 与 Personal 模型重名
 
@@ -177,9 +162,6 @@ PDF 继续运行 gating，Audio 尚无内容编码入口。
 精确解析；套餐状态不再控制配置区和模型列表是否存在；`not-allocated` 与 `credential-unavailable` 成为显式页面状态。
 **裁定**：这一边界已进入现行事实；套餐投影不能再反向成为 Provider 配置权威。
 
-
-
-
 ### C21. 设置反馈位置
 
 **历史冲突**：旧 `settings.md` 一度写成页面/viewport 最底部全局 Toast；后续实机反馈明确要求位于右侧 Provider 详情列底部，
@@ -212,15 +194,9 @@ PDF 继续运行 gating，Audio 尚无内容编码入口。
 
 **后续用户裁决（2026-09-16）**：保留两家 Start ID、统一名称和各自品牌 logo，放现有智谱分组；详情只去掉连接／断开。保留 current，允许 Start 与当前付费连接并存；Start 严格按原身份解析，付费间保持映射；JWT 复用登录，账号竞态沿用现状。用户明确“不迁移，加一个优化”：只在用户提交／创建保存时推荐有额度且思考兼容的同模型 Start；包括 Subagent 显式模型保存，最终排除立即运行。偏好跨入口、重启及同 Host 手机生效，不做账号云同步。失效时保留额度反馈，全局连接通知只处理付费套餐。
 
-
-
-
-
 **owner 与完成条件**：Todo154 负责状态／鉴权／选模／导航、提交推荐、偏好和失效反馈的实现与桌面／手机／Worker 回归。实施前的 17 项测试只作历史证据。现已实现独立 current／JWT、Start 精确身份解析、独立导航及四类入口的提交推荐；不增加数据迁移。定向单测、Pro admin SSH Electron 实跑和 review 结果统一记录在 Todo154 §8，不把窄屏模拟等同于实体手机验证。
 
 ### C26. 审批框完全访问是否可以修改已接纳队列的权限
-
-
 
 **后续裁决（2026-09-17）**：用户明确仅权限审批框新增的“完全访问”同步当前任务、Composer 和全部待执行队列消息为 `mode=yolo`；各自 `planEnabled` 及其他字段保持。普通 Composer 菜单仍只改草稿。
 
@@ -306,8 +282,6 @@ Todo 32 已在 `e01862000f` 提交，并将文件状态更新为“已完成”�
 - 延后的人工 E2E 与容器环境门禁。
 
 ### 6.4 非 Provider Config 的相似字段
-
-
 
 - legacy importer/test fixture 中的 `modalities` 是兼容输入；
 - Adapter 局部转换 helper 中的 `supportsImages` 可以是函数参数，但不得成为第二份 Active Model 能力权威；

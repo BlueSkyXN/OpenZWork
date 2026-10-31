@@ -25,7 +25,6 @@ legacy family mode / selectedKey
 旧测试认为 Provider 已可用
 ```
 
-
 ## 2. 复现基线与产物
 
 ### 2.1 基线
@@ -83,7 +82,6 @@ Built-in：声明 Provider 静态身份、API、模型成员
 Account Overlay：声明 access.entitled、账号动态成员/访问事实
 Personal Overlay：不拥有 Account access，也不能用 enabled 伪装 entitlement
 ```
-
 
 失败测试仍采用旧注入方式：
 
@@ -159,15 +157,14 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
                          -> 新 selectedKey
 ```
 
-
 判断：这 3 个 Case 的目标已失效，不应修生产代码使其重新通过。
 
 正确处理：删除这三个旧迁移 Case。若仍需启动恢复覆盖，替换为“结构化 selection JSON round-trip 后 identity 不变”，不要测试旧字符串修复。
 
 ### R7. CPUW-03 的 Webview mock 假设也已过时
 
-
 ```text
+
 ```
 
 它不是本地 mock server，所以 CPUW-03 在触发 bridge 以前就失败。该 Case 同时还在购买后读取 Personal Provider 的 `enabled`，与 R3 相同。
@@ -215,10 +212,10 @@ modelProviderFamilyModes + modelProviderFamilySelectedKeys
 
 1. Bot Harness 提供正式 `ModelSelectionView`。
 2. 建立统一的 Account E2E fixture：从 Account Source/账号 API mock 发布 `access.entitled` 和动态模型；禁止再把 Account access 写入 Personal Config。
-4. Subagent E2E 改读 `builtInModelSelectionOverrides`。
-5. 删除三个旧 selectedKey 迁移 Case，或改为结构化 round-trip。
-6. 删除三个 E2E 内对 `workspace_update_provider_registry.completed` 的依赖，使用当前正式观察点。
-7. 修正 Upgrade Webview mock 控制面与状态观察点。
+3. Subagent E2E 改读 `builtInModelSelectionOverrides`。
+4. 删除三个旧 selectedKey 迁移 Case，或改为结构化 round-trip。
+5. 删除三个 E2E 内对 `workspace_update_provider_registry.completed` 的依赖，使用当前正式观察点。
+6. 修正 Upgrade Webview mock 控制面与状态观察点。
 
 ### 阶段 2：逐组重跑，才裁定产品 Bug
 
@@ -242,8 +239,8 @@ Case 到达原始业务断言了吗？
 1. Bot 4 条（修改最小、反馈最快）；
 2. CW / OTB / I08（只先替换 readiness barrier）；
 3. Restart / Settings Transition / Turbo（共用 Account fixture）；
-5. Upgrade Webview；
-6. I20 完整冷启动 child request。
+4. Upgrade Webview；
+5. I20 完整冷启动 child request。
 
 ## 6. 本轮未做事项
 

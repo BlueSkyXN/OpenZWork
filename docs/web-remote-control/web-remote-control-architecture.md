@@ -68,3 +68,5 @@ HMAC-SHA256(passHash, nonce + "|" + role + "|" + deviceSid)
 - 任务实时同步、版本接受和 bridge/frame 恢复测试位于 `packages/web/test/`。
 
 联调应覆盖配对、错误凭据、掉线恢复、workspace 换代、帧序号缺口，以及同一任务桌面 continuous 与手机 replayable 并存。单元测试通过记录与真实 relay/手机验收分别报告。
+
+<!-- 上游把本架构重写为 Relay V2（账号 JWT 注册设备 + 一次性 token + 手机 OAuth 登录门禁，属 OAuth/官方端点净化域）；OpenZWork 保留本地 HMAC 配对变体（adapters/authProvider、directGateway），整段保持我方版本，不随上游引入 V2/OSS 网关部署链路 -->

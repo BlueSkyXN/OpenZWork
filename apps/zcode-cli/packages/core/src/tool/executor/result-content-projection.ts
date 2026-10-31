@@ -4,9 +4,8 @@ import {
   type ModelMessageContentBlock,
 } from "@zcode/contracts";
 import type { ToolEntry, ToolResultSerialization } from "../types.js";
-import { isPersistedOutputContent } from "../result-persistence-format.js";
 
-export interface HookStringProjection {
+interface HookStringProjection {
   content: string;
   truncated: boolean;
 }
@@ -59,6 +58,9 @@ export function projectToolReferenceContent(
   };
 }
 
+// OpenZWork 净化：上游此处导出 Official CUA 截断标记/错误与 projectOfficialCuaStructuredContent
+// （@zcode/zcode-cua 帧 contract 域）；该域已净化，保留我方 Hook 附加投影。
+
 export function appendHookToStringContent(
   content: string,
   suffix: string,
@@ -71,9 +73,11 @@ export function appendHookToStringContent(
   }
   return {
     content: fitContentWithSuffix(content, maxBytes, suffix, previewDirection),
+
     truncated: true,
   };
 }
+
 
 export function appendHookToPersistedArtifactPreview(
   content: string,
@@ -115,6 +119,7 @@ export function projectHookAugmentedModelContent(input: {
   ];
 }
 
+
 export function fitContentWithSuffix(
   content: string,
   maxBytes: number,
@@ -139,40 +144,8 @@ function joinTextBlocks(content: ModelMessageContentBlock[]): string {
     .join("\n\n");
 }
 
-export function stringifyModelContentForSerialization(content: ModelMessageContent): string {
-  return typeof content === "string" ? content : modelMessageContentToText(content);
-}
-
-export function isEmptyModelContent(content: ModelMessageContent): boolean {
-  if (typeof content === "string") return content.trim() === "";
-  if (content.length === 0) return true;
-  return content.every((block) => {
-    if (block.type !== "text") return false;
-    return typeof block.text !== "string" || block.text.trim() === "";
-  });
-}
-
-export function stringifyOutputForModel(output: unknown, entry: ToolEntry): ModelMessageContent {
-  if (entry.formatModelContent) return entry.formatModelContent(output);
-  if (typeof output === "string") return output;
-  if (output === undefined) return "";
-
-  try {
-    return JSON.stringify(output) ?? "";
-  } catch {
-    return String(output);
-  }
-}
-
-export function isPersistedArtifactPreview(serialization: ToolResultSerialization): boolean {
-  return (
-    serialization.budgetStrategy === "artifact" &&
-    serialization.truncated &&
-    typeof serialization.artifactPath === "string" &&
-    serialization.artifactPath.length > 0 &&
-    isPersistedOutputContent(serialization.content)
-  );
-}
+// OpenZWork 净化：以下 Hook 投影辅助（appendHookContextToModelContent 等）原与官方 CUA
+// 帧 contract 共存于本文件；@zcode/zcode-cua 已净化删除，这些中性辅助保留。
 
 function appendHookContextToModelContent(
   content: ModelMessageContent,
@@ -205,6 +178,31 @@ function budgetedTextFromStructuredContent(content: ModelMessageContentBlock[]):
     })
     .filter((text) => text.length > 0)
     .join("\n\n");
+}
+
+export function stringifyModelContentForSerialization(content: ModelMessageContent): string {
+  return typeof content === "string" ? content : modelMessageContentToText(content);
+}
+
+export function isEmptyModelContent(content: ModelMessageContent): boolean {
+  if (typeof content === "string") return content.trim() === "";
+  if (content.length === 0) return true;
+  return content.every((block) => {
+    if (block.type !== "text") return false;
+    return typeof block.text !== "string" || block.text.trim() === "";
+  });
+}
+
+export function stringifyOutputForModel(output: unknown, entry: ToolEntry): ModelMessageContent {
+  if (entry.formatModelContent) return entry.formatModelContent(output);
+  if (typeof output === "string") return output;
+  if (output === undefined) return "";
+
+  try {
+    return JSON.stringify(output) ?? "";
+  } catch {
+    return String(output);
+  }
 }
 
 function fitStringToBytes(value: string, maxBytes: number, direction: "head" | "tail"): string {

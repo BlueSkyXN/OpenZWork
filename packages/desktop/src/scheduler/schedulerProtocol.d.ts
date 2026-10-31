@@ -16,7 +16,7 @@ export type SchedulerToMainMessage =
       type: "scheduler-log";
       level: "info" | "warn" | "error";
       message: string;
-    }
+    };
 /** main → scheduler */
 export type MainToSchedulerMessage =
   | {

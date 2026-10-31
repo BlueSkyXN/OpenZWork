@@ -1,4 +1,5 @@
-import { validateWebRemoteControlUrl } from "../contract.js";
+// OpenZWork 拆分：validateWebRemoteControlUrl 随设置域移至 connectionSettings。
+import { validateWebRemoteControlUrl } from "./connectionSettings.js";
 
 export function resolveWebRemoteControlBrowserRelayUrl(origin: string, override?: string): string {
   const page = new URL(origin);

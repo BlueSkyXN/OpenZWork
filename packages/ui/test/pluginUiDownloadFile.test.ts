@@ -35,9 +35,9 @@ describe("plugin ui download file naming", () => {
   });
 
   it("falls back to the last uri segment, then to a numbered default", () => {
-    expect(resolvePluginUiDownloadFileName({ uri: "https://example.test/a/report.pdf?q=1" }, 2)).toBe(
-      "report.pdf",
-    );
+    expect(
+      resolvePluginUiDownloadFileName({ uri: "https://example.test/a/report.pdf?q=1" }, 2),
+    ).toBe("report.pdf");
     // 尾斜杠 uri 的最后非空段是 host；只有完全无名字可用时才落到 download-<序号>。
     expect(resolvePluginUiDownloadFileName({ uri: "https://example.test/" }, 4)).toBe(
       "example.test",
@@ -54,19 +54,28 @@ describe("plugin ui download file naming", () => {
     ).toMatchObject({ source: { kind: "uri", uri: "ui://app/x.png" } });
     expect(
       planPluginUiDownload(
-        { type: "resource", resource: { name: "notes", uri: "", mimeType: "text/plain", text: "hello" } },
+        {
+          type: "resource",
+          resource: { name: "notes", uri: "", mimeType: "text/plain", text: "hello" },
+        },
         0,
       ),
     ).toMatchObject({ name: "notes.txt", source: { kind: "text", text: "hello" } });
     expect(
       planPluginUiDownload(
-        { type: "resource", resource: { name: "blob.bin", uri: "", mimeType: undefined, blob: "AAAA" } },
+        {
+          type: "resource",
+          resource: { name: "blob.bin", uri: "", mimeType: undefined, blob: "AAAA" },
+        },
         0,
       ),
     ).toMatchObject({ source: { kind: "blob", blob: "AAAA" } });
     expect(
       planPluginUiDownload(
-        { type: "resource", resource: { name: "linked", uri: "ui://app/linked", mimeType: undefined } },
+        {
+          type: "resource",
+          resource: { name: "linked", uri: "ui://app/linked", mimeType: undefined },
+        },
         0,
       ),
     ).toMatchObject({ source: { kind: "uri", uri: "ui://app/linked" } });

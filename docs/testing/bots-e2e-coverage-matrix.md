@@ -6,18 +6,20 @@
 
 覆盖层级按实际执行对象区分：服务回归使用真实 BotsService、受控 task events 和模拟渠道 HTTP；组件测试检查渲染或交互；Desktop E2E 才验证 Electron、Host/RPC 与 DOM。放在旧 `test/e2e` 目录中的服务替身测试不因此获得真实 Host/CLI 证据。
 
-| Case ID | 保留的 setup → action → assertion                                                                            | 当前入口                                                                                                                                                                                                                        | 层级与处置                                                                                 |
-| ------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| SC-01   | 已绑定飞书 → 输入与分阶段工具/文本事件 → 单张卡片、工具折叠、按顺序完成与 typing 清理                        | `packages/services/test/botsService.messageFlow.test.ts` 的 `streams Feishu replies into one schema 2 timeline card with collapsed tool summaries`；`packages/services/test/botsFeishuProvider.test.ts` 的 typing reaction 回归 | 服务/provider；沿用，不重复恢复旧服务替身 E2E                                              |
-| AQ-01   | 待回答问题 → 多选、自定义输入及逐题回调 → 正确结构化答案、原交互卡更新、响应 ACK                             | `packages/services/test/botsService.messageFlow.test.ts` 的 multi-select/custom answer/next question 回归                                                                                                                       | 服务；沿用                                                                                 |
-| IL-01   | 流式输出中 → 进入 Plan approval 并继续 → 旧流封口、交互卡保留、新流使用新卡                                  | `packages/services/test/botsService.messageFlow.test.ts` 的 `seals the current stream, retains Plan approval, and starts a new stream card`                                                                                     | 服务；沿用                                                                                 |
-| RT-01   | 同一飞书 App 的两个 Bot 记录 → 获取锁、owner 释放、再次获取 → 同时只有一个 owner，释放后允许接管             | `packages/services/test/botsChannelRuntime.test.ts` 的 `locks the same Feishu App identity across local bot records`；`packages/services/test/botsService.feishuRuntimeLock.test.ts`                                            | 锁/服务；本次补释放后接管断言                                                              |
-| RT-02   | attached remote 关闭后台工作 → 保存 Feishu/Telegram 配置 → 不启动 provider 网络或候选预热，runtime 保持 idle | `packages/services/test/botsService.config.test.ts` 的 `does not run remote-disabled bot background work after config changes`                                                                                                  | 服务；本次把既有 Telegram 场景扩展到 Feishu                                                |
-| PV-01   | Feishu/Lark 使用相同输入 → 调用 provider → 各自 OpenAPI origin 与请求内容正确                                | `packages/services/test/botsFeishuProvider.test.ts` 的双 provider 参数化回归                                                                                                                                                    | provider；沿用                                                                             |
-| RW-01   | Bot 指向断连远端 → 收到普通消息 → 明确拒绝，不自动重连或本机派发                                             | `packages/services/test/botsService.messageFlow.test.ts` 的 `blocks a disconnected remote workspace message without reconnecting`；`packages/desktop/test/botRemoteWorkspaceResolver.test.ts`                                   | 服务/Host resolver；沿用                                                                   |
-| CR-01   | 创建并重开自动化 repo → 准备 watcher 后派发、收到完成或失败 → 原渠道收到终态，禁用/失效目标不订阅            | `packages/services/test/automationRepo.test.ts` 的 Bot 来源重开持久化；`packages/desktop/test/cronBotDelivery.test.ts` 的订阅屏障；`packages/services/test/botsService.messageFlow.test.ts` 的 automation delivery 回归         | repo/Host/service 组合；本次补 Feishu 成功、失败出站 HTTP 断言，不要求恢复重复的 repo 场景 |
-| CF-01   | 已绑定、缺凭据的 Feishu Bot → 在弹窗启用并保持弹窗打开 → 连接错误更新、绑定与 v3 配置保留                    | `packages/ui/test/botsDialogRuntimeError.test.ts`；`packages/desktop/test/e2e/bots/manual-review/pending/feishu-runtime-error-ui.test.ts`                                                                                       | 组件回归保留；Desktop 场景恢复为 pending，执行记录单独列出，不沿用上游人工转正             |
-| RW-02   | 同一个 Source 的 legacy/stable identity → Bot 调用 → 复用同一目录服务、连接和任务路由                        | `packages/desktop/test/e2e/bots/manual-review/pending/bot-r3-workspace-identity.test.ts`                                                                                                                                        | 现存 MessagePort/Host 服务集成候选；本次不改变其实现或 promotion 状态                      |
+<!-- 上游 2026-10-26「App 业务单测退役」retired: 标记体系与 2026-10-21 默认渠道工具暂停、2026-10-19 人工复核通过项两批记录不适用于 OpenZWork：我方保留 BotsService/provider/组件级单测与自有执行入口，故不引入该横幅与上游验收批次 -->
+
+| Case ID | 保留的 setup → action → assertion                                                                            | 当前入口                                                                                                                                                                                                                                        | 层级与处置                                                                                 |
+| ------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| SC-01   | 已绑定飞书 → 输入与分阶段工具/文本事件 → 单张卡片、工具折叠、按顺序完成与 typing 清理                        | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 `streams Feishu replies into one schema 2 timeline card with collapsed tool summaries`；`retired:packages/services/test/botsFeishuProvider.test.ts` 的 typing reaction 回归 | 服务/provider；沿用，不重复恢复旧服务替身 E2E                                              |
+| AQ-01   | 待回答问题 → 多选、自定义输入及逐题回调 → 正确结构化答案、原交互卡更新、响应 ACK                             | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 multi-select/custom answer/next question 回归                                                                                                                               | 服务；沿用                                                                                 |
+| IL-01   | 流式输出中 → 进入 Plan approval 并继续 → 旧流封口、交互卡保留、新流使用新卡                                  | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 `seals the current stream, retains Plan approval, and starts a new stream card`                                                                                             | 服务；沿用                                                                                 |
+| RT-01   | 同一飞书 App 的两个 Bot 记录 → 获取锁、owner 释放、再次获取 → 同时只有一个 owner，释放后允许接管             | `retired:packages/services/test/botsChannelRuntime.test.ts` 的 `locks the same Feishu App identity across local bot records`；`retired:packages/services/test/botsService.feishuRuntimeLock.test.ts`                                            | 锁/服务；本次补释放后接管断言                                                              |
+| RT-02   | attached remote 关闭后台工作 → 保存 Feishu/Telegram 配置 → 不启动 provider 网络或候选预热，runtime 保持 idle | `retired:packages/services/test/botsService.config.test.ts` 的 `does not run remote-disabled bot background work after config changes`                                                                                                          | 服务；本次把既有 Telegram 场景扩展到 Feishu                                                |
+| PV-01   | Feishu/Lark 使用相同输入 → 调用 provider → 各自 OpenAPI origin 与请求内容正确                                | `retired:packages/services/test/botsFeishuProvider.test.ts` 的双 provider 参数化回归                                                                                                                                                            | provider；沿用                                                                             |
+| RW-01   | Bot 指向断连远端 → 收到普通消息 → 明确拒绝，不自动重连或本机派发                                             | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 `blocks a disconnected remote workspace message without reconnecting`；`retired:packages/desktop/test/botRemoteWorkspaceResolver.test.ts`                                   | 服务/Host resolver；沿用                                                                   |
+| CR-01   | 创建并重开自动化 repo → 准备 watcher 后派发、收到完成或失败 → 原渠道收到终态，禁用/失效目标不订阅            | `retired:packages/services/test/automationRepo.test.ts` 的 Bot 来源重开持久化；`retired:packages/desktop/test/cronBotDelivery.test.ts` 的订阅屏障；`retired:packages/services/test/botsService.messageFlow.test.ts` 的 automation delivery 回归 | repo/Host/service 组合；本次补 Feishu 成功、失败出站 HTTP 断言，不要求恢复重复的 repo 场景 |
+| CF-01   | 已绑定、缺凭据的 Feishu Bot → 在弹窗启用并保持弹窗打开 → 连接错误更新、绑定与 v3 配置保留                    | `retired:packages/ui/test/botsDialogRuntimeError.test.ts`；`packages/desktop/test/e2e/bots/manual-review/pending/feishu-runtime-error-ui.test.ts`                                                                                               | 组件回归保留；Desktop 场景恢复为 pending，执行记录单独列出，不沿用上游人工转正             |
+| RW-02   | 同一个 Source 的 legacy/stable identity → Bot 调用 → 复用同一目录服务、连接和任务路由                        | `packages/desktop/test/e2e/bots/manual-review/pending/bot-r3-workspace-identity.test.ts`                                                                                                                                                        | 现存 MessagePort/Host 服务集成候选；本次不改变其实现或 promotion 状态                      |
 
 ### 本轮边界和验证
 
@@ -65,7 +67,6 @@ ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './tes
 - 平台与模型网络为替身；真实租户机器人事件权限及 live 通知仍需验证。群启用消息已补充 include_bot 权限说明。
 - 未更改桌面 continuous、手机 replayable、远程工作区身份隔离、投递 owner 或输入队列；未实测手机及 Windows/Linux。
 
-
 ## MN-03 按名字解析原生提及（2026-10-08）
 
 包含查找更新：唯一包含候选或唯一完整名字匹配直接发送，所有未解决名字一起返回。
@@ -98,10 +99,10 @@ TP-01 now covers topic start-now admission and original-message presentation thr
 
 ## Topic collaboration (in progress)
 
-| Case          | Status  | Evidence boundary                                                                                                                                                 |
-| ------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| BOT-E2E-TP-01 | pending | `bots/manual-review/pending/feishu-topic-runtime.test.ts`; real Host/CLI and DOM, synthetic topic batch/materials; reuses group-runtime controlled-stream fixture |
-| BOT-E2E-TP-02 | pending | partial native verification: ordinary/dedicated routing, incremental history, long-background summary; remaining native cases below                               |
+| Case          | Status  | Evidence boundary                                                                                                                           |
+| ------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| BOT-E2E-TP-01 | pending | `bots/feishu-topic-runtime.test.ts`; real Host/CLI and DOM, synthetic topic batch/materials; reuses group-runtime controlled-stream fixture |
+| BOT-E2E-TP-02 | pending | partial native verification: ordinary/dedicated routing, incremental history, long-background summary; remaining native cases below         |
 
 Provider/service/Agent unit tests cover topic isolation, owner opt-in, message
 boundaries, bounded summary and native API payloads. They do not establish real
@@ -125,8 +126,6 @@ unrelated `SubagentsSection` optimistic-render assertion failure (9,800 tests
 passed); its 36-test file passed in isolation, then the entire pre-push command
 passed without concurrent E2E. No unrelated test or implementation was changed.
 Changed-file formatting and `git diff --check` passed.
-
-
 
 - `/history on` returned the native opt-in confirmation. An ordinary root message
   and an ordinary topic reply created no task before the first explicit bot mention.
@@ -168,7 +167,7 @@ card-control scenarios, Lark, physical mobile remote control and
 Windows/Linux remain unverified. TP-02 stays pending.
 
 The 2026-09-08 evidence-update pre-push attempt stopped with `ENOSPC` while loading
-`zcodeAgentService.v4.test.ts` (22 files / 339 tests passed before the failed suite;
+`retired:packages/services/test/zcodeAgentService.v4.test.ts` (22 files / 339 tests passed before the failed suite;（retired: 为退役历史证据，不计现行覆盖。）
 no tests ran in that suite). Only about 159 MiB remained on the system volume.
 This is an environment failure, not a passing gate or a confirmed implementation
 regression. After disk space recovered to 12 GiB, the complete
@@ -179,8 +178,6 @@ The real private group `ZCode 专用话题验证`
 `chat_mode: topic`, Ryan Bot and the bound user as its only participants. Computer
 Use confirmed the native topic-group page and its create-topic entry.
 
-
-
 - Publishing an owner mention `/enable` as a topic root enabled the parent group
   and returned the native enablement card inside that topic. The parent group's
   default task remained absent.
@@ -190,7 +187,6 @@ Use confirmed the native topic-group page and its create-topic entry.
   `sess_895438b4-d7d0-4136-bc07-878ec258476d`; accepted input
   `om_x100b66c3057900a4dd82aa5adb6242a` completed and its saved delivery was
   `sent` (`om_x100b66c303bf28b4c102b2c7b21c42f`).
-
 
 Dedicated-group history, attachment/card-control races, long history and remaining
 cross-platform cases are still pending; the broader TP-02 case is not promoted.
@@ -229,19 +225,19 @@ cross-platform cases are still pending; the broader TP-02 case is not promoted.
 
 ## Fixture 合同
 
-BOT-E2E-SR87 位于 `bots/manual-review/pending/bot-effective-selection.test.ts`；synthetic、fast-text。验证菜单/首次派发使用同一有效选择，且查看菜单和无效提交不改原意图。Todo99 追加 BOT-E2E-SR99：绑定后从 Session 原选择解析下一次空闲输入，不重解释已固定执行。共用该 pending spec，未晋级；conversation W99-E03/E06 另在 Pro 验证 Bot→生产 Task adapter→实际 Worker 请求、完整 setter 与冷恢复。证据不覆盖真实 IM 网络或手机/SSH 联合环境。
+BOT-E2E-SR87/BOT-E2E-SR99 原 `bots/bot-effective-selection.test.ts`（synthetic、fast-text）在 v3.17.1 同步净化中随官方套餐账号域退役（合成选择使用 account:\* coding-plan provider id）；Bot 派发/绑定执行链由 BOT-E2E-TP-04/05 真实 topic worker spec 覆盖。历史口径：验证菜单/首次派发使用同一有效选择，且查看菜单和无效提交不改原意图；Todo99 曾追加绑定后从 Session 原选择解析下一次空闲输入，不重解释已固定执行。conversation W99-E03/E06 另在 Pro 验证 Bot→生产 Task adapter→实际 Worker 请求、完整 setter 与冷恢复。证据不覆盖真实 IM 网络或手机/SSH 联合环境。
 
 - `feishu-streaming-card-lifecycle.json` 是 case-local synthetic stream fixture。
 - 其余 5 个用例分别使用 `fixtures/bots/` 下同语义命名的 case-local synthetic metadata；所有 fixture 都声明 `syntheticReason` 与 timing 分类。
 - 分类为 `synthetic`，原因：外部 provider replay 只能提供模型 SSE，不能稳定控制 Bot 消费 task event 的逐步观察窗口；该夹具明确生成确定性的 ZCode stream events。
 - Mock Feishu API 必须记录请求而不是只返回成功，以请求次数、URL、method、reaction id 和 Card JSON 作为证据。
-- `bot-automation-result-delivery` 记录 mock Feishu 请求，并用受控 task stream 证明 scheduler 监听早于 prompt 派发；不允许用固定 sleep 代替事件闸门。Weixin `/sendmessage` 由 `packages/services/test/botsService.messageFlow.test.ts` 的共享 watcher/provider service integration test 覆盖，不虚报为 Desktop E2E。
+- `bot-automation-result-delivery` 记录 mock Feishu 请求，并用受控 task stream 证明 scheduler 监听早于 prompt 派发；不允许用固定 sleep 代替事件闸门。Weixin `/sendmessage` 由 `retired:packages/services/test/botsService.messageFlow.test.ts` 的共享 watcher/provider service integration test 覆盖，不虚报为 Desktop E2E。（retired: 为退役历史证据，不计现行覆盖。）
 - 用例已通过人工 review 并移出 `manual-review/pending/`；Bot 域当前没有独立 Docker preset，默认 Desktop WDIO 是正式执行入口。
 - CF-01 使用 case-local synthetic metadata；缺失 credential 只用于确定性触发 runtime error，`syntheticReason` 必须说明它替代真实飞书故障注入；该用例已通过 Desktop 人工验收。
 
 ## BOT-E2E-DT-01 已删除任务自动新建（ZCT-2096089929570893824）
 
-- Status: pending；用例 `packages/desktop/test/e2e/bots/manual-review/pending/bot-deleted-task-recovery.test.ts`。
+- Status: pending；用例 `packages/desktop/test/e2e/bots/bot-deleted-task-recovery.test.ts`。
 - Setup: 已绑定 Feishu Bot 指向删除 tombstone 中的旧 task，保留旧交互状态；mock provider 记录通知请求。
 - Action: 普通消息进入 provider callback，随后重投相同 message id。
 - Assert: 不恢复旧 task；同工作区只新建并绑定一个 task；清理旧交互；一次提示说明已删除、新建和上下文不继承；只派发一次原消息；Desktop created 广播指向新 task；订阅仍为 bot-channel-continuous。
@@ -257,7 +253,7 @@ Todo103 补充验收：DT-01 的替代任务使用当前 Model Selection View �
 等待后台连接状态投影，不依赖关闭重开来刷新，用于验证新增可见期串行状态轮询。
 下方 2026-09-07 记录是固定 staging 历史证据；本轮运行结果另记 Todo103 账本。
 
-- Status: pending. Spec: `packages/desktop/test/e2e/bots/manual-review/pending/feishu-delivery-error.test.ts`.
+- Status: pending. Spec: `packages/desktop/test/e2e/bots/feishu-delivery-error.test.ts`.
 - Setup: bound private Feishu bot; synthetic HTTP business failure with code/msg/log_id.
 - Action: private command reply fails, then a subsequent reply succeeds; group input is rejected.
 - Assert: status exposes deliveryError without misreporting a WebSocket failure; error clears after successful delivery; private outbound uses open_id; group creates no task.
@@ -280,7 +276,7 @@ DF-01 verification (2026-09-07): macOS Desktop WDIO passed (`desktop-e2e-2026090
 
 Cases remain pending manual review; automated execution evidence is recorded below, without promotion. Continuous Desktop, replayable mobile and independent Bot subscriptions keep their existing delivery boundaries.
 
-2026-09-07 GR-01 provider/service evidence: macOS Desktop WDIO passed both Feishu and Lark cases in `desktop-e2e-20260907080816019-p64763-2c57d53b14b98617`. Pending spec `bots/manual-review/pending/feishu-group-collaboration.test.ts` uses synthetic provider HTTP and controlled task admission; it verifies group routing, independent tasks, owner-only activation/new, exact mention filtering, event deduplication, source metadata and post-admission reactions. Real CLI FIFO and renderer evidence remain separate required checks; no promotion or live tenant validation is claimed.
+2026-09-07 GR-01 provider/service evidence: macOS Desktop WDIO passed both Feishu and Lark cases in `desktop-e2e-20260907080816019-p64763-2c57d53b14b98617`. Pending spec `bots/feishu-group-collaboration.test.ts` uses synthetic provider HTTP and controlled task admission; it verifies group routing, independent tasks, owner-only activation/new, exact mention filtering, event deduplication, source metadata and post-admission reactions. Real CLI FIFO and renderer evidence remain separate required checks; no promotion or live tenant validation is claimed.
 
 GR-02/04 runtime evidence will use the existing E2E-only `window.__testActions` bridge to submit a group message through the real Host BotsService into the real CLI, while Desktop renders its canonical queue. Synthetic bot configuration/group association is seeded only in the isolated E2E data directory; no live bot credentials or tenant messages are used. The bridge remains gated by `shouldExposeE2EStoreBridge` in production builds.
 
@@ -410,10 +406,6 @@ Final local gates for this revision: `pnpm typecheck`, `pnpm lint` (43 existing
 warnings, no errors), and `pnpm verify:pre-push` passed. The latest wording omits
 the generic member label and shows only the last six ID characters on fallback.
 
-
-
-
-
 Spacing regression passed in isolated Desktop run
 `desktop-e2e-20260907114650611-p68251-40a284ddf131f45c`, including the rendered
 8-12px gap assertion. Root typecheck and lint also passed.
@@ -427,8 +419,6 @@ The isolated Desktop run
 `desktop-e2e-20260907115618260-p20788-6275e395b82d51f7` passed. Root typecheck,
 lint, and 30 group service tests passed.
 
-
-
 GR-05 reaction revision (2026-09-07): 94 focused provider/service/lifecycle tests
 pass, including monotonic transitions, cancelled/failed/completed states,
 Feishu/Lark operator isolation and compact queue-card payload. The prior
@@ -437,8 +427,6 @@ GR-02/04 passed in `desktop-e2e-20260907121550738-p28948-c52d61fb6862ae03` with
 the updated queue acknowledgement; it does not prove external reaction rendering.
 Root typecheck and lint passed. The real bot can list message reactions (HTTP
 200 / code 0) and reports its operator as the application's app ID.
-
-
 
 GR-05 queue-card lifecycle correction (2026-09-07): the previous live test
 cancelled the queued input and did not cover normal promotion/completion. Queue
@@ -451,8 +439,6 @@ completion before admission returns and the persisted-target/cancel/stop/discard
 cases. Root typecheck, lint and pre-push passed. Desktop GR-02/04 passed in
 `desktop-e2e-20260907123427883-p5094-a2e438fea8ec6398`, including persisted stopped
 status from the real CLI.
-
-
 
 ## Mention-only and explicit-reference correction (2026-09-08)
 
@@ -476,8 +462,6 @@ with zero queued inputs, and explicit quoted text enters the real CLI queue with
 the existing input/attachment and can be cancelled without stopping the task.
 The candidate remains pending; it uses the existing controlled provider fixture.
 
-
-
 A subsequent native quote-only request was accepted into the original task after
 cold start (`om_x100b66c39fb070acc34a8c8d2ab2180`), exposing the companion failure:
 the startup continuous result subscription had exhausted retries before runtime
@@ -486,18 +470,14 @@ waits for the same authoritative snapshot before subscribing, and rechecks the
 subscription map after the await to avoid duplicate startup/input listeners.
 The lifecycle test covers this ordering without resubmitting old inputs.
 
-
-
 TP-01 passed again with the cold-subscription fix in
 `desktop-e2e-20260908031650082-p95172-4bf16d8330951c84` (one case, one spec).
 The final three unit suites passed 212 tests. A broad pre-push run had one unrelated
-20 ms timing assertion fail in `v4SessionPaneModelSwitchRecovery.test.ts`, with
+20 ms timing assertion fail in `retired:packages/ui/test/v4SessionPaneModelSwitchRecovery.test.ts`, with（retired: 为退役历史证据，不计现行覆盖。）
 9,818 tests passing; its isolated rerun passed all 53 tests. The full `pnpm verify:pre-push` rerun passed before commit. Native Lark, mobile Web and other OS coverage remain
 unverified for this correction; earlier platform coverage is not relabelled.
 
 ### Native long-background summary verification (2026-09-08)
-
-
 
 - The editor received 27,860 characters of synthetic discussion. A subsequent
   read-only native message API check returned exactly 19,999 text characters for
@@ -514,7 +494,6 @@ unverified for this correction; earlier platform coverage is not relabelled.
   earlier-discussion summary and the recent confirmation verbatim. The summary
   labeled Friday as an unconfirmed proposal and retained its original message ID.
   This was a real configured model invocation, not a summary fixture.
-
 
 The focused Agent background/archive tests also passed (11 tests, two files).
 This run does not establish the 200-message cap, missing-history recovery,
@@ -538,10 +517,6 @@ regressions, not a real phone, native attachment upload or native card race test
 
 ### Native dedicated-topic file boundary (2026-09-08, incomplete)
 
-
-
-
-
 Code inspection then confirmed a real implementation gap: historical files become
 text placeholders in provider history and the topic archive tool cannot fetch their
 resources. The remaining retrieval contract is now explicit in the feature spec;
@@ -563,8 +538,6 @@ original synthetic file. This establishes native resource API permission/content
 the file has not yet been admitted as history by a subsequent mention, so it is not
 evidence of the complete Agent on-demand retrieval flow.
 
-
-
 # 2026-09-08 原生单独 @ 与令牌有效期回归
 
 - `pnpm dev:desktop` 实际运行时，12:37 的主聊天单独 @ 收到原生事件，但发送补充需求提示失败，飞书返回 `99991663`。代码原先忽略 `expire` 并固定缓存 90 分钟。
@@ -578,9 +551,7 @@ evidence of the complete Agent on-demand retrieval flow.
 
 13:11 的另一条测试消息意外带入剪贴板图片，触发真实 Bot 附件 admission 的 `fault.attachment.connectionUntrusted`，未被 CLI 接收。13:17 已在原生界面撤回该测试消息并确认撤回状态。该入口现补接既有可信 connection scope，91 条 task adapter 测试通过；修复后的真实富文本上传仍待重测。
 
-
-
-
+<!-- 上游「本地检查」段（122 条测试通过记录、CUA conformance 失败清单）已随 5aba47d9 净化删除，不随上游恢复 -->
 
 ### 2026-09-08 后续代码与受控远程链路检查
 
@@ -593,7 +564,7 @@ evidence of the complete Agent on-demand retrieval flow.
 
 ### BOT-E2E-TP-03 话题交互卡（pending）
 
-- 用例：`bots/manual-review/pending/feishu-topic-interactions.test.ts`，case-local synthetic metadata。
+- 用例：`bots/feishu-topic-interactions.test.ts`，case-local synthetic metadata。
 - Setup：启用群并提交话题输入，使用受控 task service 与记录式 Feishu/Lark HTTP。
 - Action：发出权限与普通问答事件。
 - Assert：卡片只 POST 原话题根消息的 reply，携带 reply_in_thread；回调保留群、话题、任务和授权版本。
@@ -623,7 +594,7 @@ pnpm dev:desktop。修复后原生读取、返回文件内容及最终表情仍�
 
 ### Standalone Core WebSocket resource routing regression
 
-`coreHttp.test.ts` now exercises two real loopback WebSocket Desktop peers through
+`retired:packages/zcode-server-cli/test/coreHttp.test.ts` now exercises two real loopback WebSocket Desktop peers through（retired: 为退役历史证据，不计现行覆盖。）
 capability-authenticated `/ws/host`. Reverse requests reach only the matching
 workspaceIdentity + remoteSessionId; closing one peer removes only that route. A normal
 `/ws` connection does not attach a private resource peer. All 7 Core HTTP tests passed.
@@ -679,7 +650,7 @@ Desktop 与手机远控分别验证（窄 Desktop 不代替手机）；窄屏机
 ## BOT-UI-TP-PREPARATION：准备态消息气泡
 
 - 候选：`packages/ui/test/browser/manual-review/pending/topic-preparation.test.mjs`，同目录 case-local fixture。
-- 单测：`packages/ui/test/v4BotTopicPreparation.test.ts`；覆盖原始消息 ID 去重、合批 ID、同正文不同 ID 保留、空白正文无气泡、来源行加载图标及 hover/focus tooltip。
+- 单测：`retired:packages/ui/test/v4BotTopicPreparation.test.ts`；覆盖原始消息 ID 去重、合批 ID、同正文不同 ID 保留、空白正文无气泡、来源行加载图标及 hover/focus tooltip。（retired: 为退役历史证据，不计现行覆盖。）
 - 浏览器：桌面/手机宽度 × 中英文 × 深浅主题，真实组件和样式；准备、等待、失败移除及接收重叠；正文沿用正式消息折叠/展开，loading 位于渠道/姓名旁。
 - 真实 Desktop/手机远控/飞书 E2E 待验证，不将窄屏 Chrome 计为真实手机验收。
 
@@ -693,9 +664,9 @@ Desktop 与手机远控分别验证（窄 Desktop 不代替手机）；窄屏机
 
 ## 单聊持续回传
 
-| Case          | 状态    | 用例                                                                                 | 证据边界                                                                                   |
-| ------------- | ------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| BOT-E2E-PS-01 | pending | `packages/desktop/test/e2e/bots/manual-review/pending/bot-private-task-sync.test.ts` | controlled-stream，三渠道出站 HTTP、连续 desktop/mobile 来源轮次与停用；真实 IM/手机未验证 |
+| Case          | 状态    | 用例                                                           | 证据边界                                                                                   |
+| ------------- | ------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| BOT-E2E-PS-01 | pending | `packages/desktop/test/e2e/bots/bot-private-task-sync.test.ts` | controlled-stream，三渠道出站 HTTP、连续 desktop/mobile 来源轮次与停用；真实 IM/手机未验证 |
 
 服务补充：多目标共享订阅、自动任务去重、微信 token 更新/重启读取/显式重试、换绑隔离。UI 补充：重试按钮仅显式触发、发送中禁用、成功隐藏及错误可见。均不替代真实渠道人工验收。
 

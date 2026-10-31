@@ -51,8 +51,6 @@ Provider Config 链的别名，也不保留兼容入口。实施切换见
 
 ### Account Built-in Provider Config
 
-
-
 Provider Config Snapshot 必须分别携带 `zcodeBuiltinRevision` 与 `personalRevision`；Account Snapshot 必须
 携带 `basedOnZCodeBuiltinRevision`。Registry 只有在二者相等时才能解析和发布：
 
@@ -187,10 +185,9 @@ Settings 保存相关 Provider 时规范化，不建立冲突对象或暂停的�
 
 Access-specific 要求：
 
-| Access type     | Config 完整性要求    | 请求期要求                                      |
-| --------------- | -------------------- | ----------------------------------------------- |
-| `api-key`       | 非空 `apiKey`        | 使用 Config 中的静态 Key                        |
-
+| Access type | Config 完整性要求 | 请求期要求               |
+| ----------- | ----------------- | ------------------------ |
+| `api-key`   | 非空 `apiKey`     | 使用 Config 中的静态 Key |
 
 账号动态材料缺失不是 Config 不完整，而是请求期鉴权错误；Adapter 必须在发网络请求前失败。
 网络不可达、Token 过期、余额不足、限流和服务商错误也不属于静态 Registry 过滤。
@@ -285,9 +282,6 @@ Selection Facade 只投影 visible candidates 和 revision/change event，不提
 可以据此展示 unavailable，但不能复制权威 option validator。真正开始执行时，当前 Agent 的 ModelFactory
 必须用完整 Registry 重新校验 Selection；内部产品能力可以在保存或派发前按精确 ID 做窄检查。内部产品按精确 ID 直接使用
 Registry。这个差异是 View/调用场景差异，不是安全授权边界。
-
-
-
 
 ## Access 与 API 正交
 

@@ -28,6 +28,8 @@
 
 `verify:pre-push` 运行固定核心套件 `test:ci:core`。独立命令 `test:unit:affected` 使用 Vitest 官方选择；选中整个套件时说明并跳过 UT，成功退出。两者均不替代 CLI 测试或桌面 E2E。全量使用 `pnpm test` / `pnpm test:unit`，仅在用户明确要求时调用。范围与输出合同见 [pre-push 说明](docs/testing/pre-push-hook.md)。
 
+上游 v3.17.1 引入工程测试框架：`pnpm test:engineering <文件>` 与 `pnpm test:engineering:affected`（App 业务单测执行链已退役，不新增或恢复 App 业务单测 test/spec 或 `contract.test.ts`；保留 CLI、E2E、浏览器验收和工程门禁测试）。OpenZWork 的 `verify:pre-push` 在上游链基础上保留固定核心套件 `test:ci:core`。
+
 测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
 
 - `packages/desktop`：Electron main、host、renderer。
@@ -43,7 +45,7 @@
 
 - 代码改动使用 `.agents/skills/architecture-governance/SKILL.md`，先运行架构检查，再读取目标模块的受控上下文。
 - 避免重复状态和多条写入路径。明确唯一所有者、接口、依赖方向、事件顺序与幂等边界，不能用超时掩盖同步问题。
-- 有行为改动时先补充对应测试；交互改动需要 E2E 场景。检查测试与实现是否一致，并实际执行可用的验证。未执行或环境受限时如实说明。
+- App 行为改动先更新 spec，确定 E2E、浏览器验收或可重复运行时场景；交互改动先维护 E2E 再改实现。工程工具、CLI/CUA 先补其回归测试。实际执行必要验证，未执行或环境受限时如实说明。
 - 修复 bug 时用中文注释说明原因和修复依据。发现设计缺陷时先与用户对齐，不不断增加兜底分支。
 - 缺陷代码来自上游时，按 [下游补丁清单](docs/spec/downstream-patch-registry.md) 登记，修复处与回归处加编号标记；合入上游新版本时逐项复核未撤销条目。
 - PR 描述须说明背景、设计意图与修改前后行为；包含 bugfix 时逐项说明触发场景、根因证据、修复机制及回归验证，并尽量关联已有工单链接。未确认的根因或引入提交如实标注，不根据模块或时间接近推断归因。

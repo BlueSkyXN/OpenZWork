@@ -210,9 +210,9 @@ Adapter Provider 请求装配边界。删除 `isKimiK3ModelId()` 和所有按具
 ### 5.3 Reasoning Selection View
 
 1. 有 Option Spec 的候选项发布 values/default；无 Option Spec 时不发布 reasoning 选择；
-3. 提交只写 `ModelSelection.options.reasoningLevel`；
-4. Protocol/UI 中无 `enabled` 和 `providerOptionsByLevel`；
-5. Adapter 仍按 `reasoningMapping[level]` 产生 Provider 请求参数。
+2. 提交只写 `ModelSelection.options.reasoningLevel`；
+3. Protocol/UI 中无 `enabled` 和 `providerOptionsByLevel`；
+4. Adapter 仍按 `reasoningMapping[level]` 产生 Provider 请求参数。
 
 ### 5.4 Tool Schema 投影
 

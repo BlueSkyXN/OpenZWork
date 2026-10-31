@@ -6,12 +6,12 @@
 
 输入框左侧 `+` 打开与输入框等宽的 Popover，复用 MentionPanel 和候选行组件。
 
-| 顺序 | 分类 | 内容与选择行为                                                                           |
-| ---- | ---- | ---------------------------------------------------------------------------------------- |
+| 顺序 | 分类 | 内容与选择行为                                                                                                                                                                                           |
+| ---- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1    | 添加 | 附件调用既有 attachmentAction；目标仅在新会话空输入时出现，插入与 `/goal` 相同的命令标签；工作流紧随目标之后，任意会话空输入且 CLI slash catalog 含 `workflow` 时出现，插入与 `/workflow` 相同的命令标签 |
-| 2    | 插件 | 与空 `@` 使用同一 catalog、排序和 enabled 过滤；冲突项仍禁选                             |
-| 3    | 文件 | 当前 workspace，文件优先、同类按相对路径排序，空查询最多 10 项                           |
-| 4    | 会话 | 当前 workspace，updatedAt 降序、createdAt 降序、标题排序；不扩展到 `#` 的跨项目范围      |
+| 2    | 插件 | 与空 `@` 使用同一 catalog、排序和 enabled 过滤；冲突项仍禁选                                                                                                                                             |
+| 3    | 文件 | 当前 workspace，文件优先、同类按相对路径排序，空查询最多 10 项                                                                                                                                           |
+| 4    | 会话 | 当前 workspace，updatedAt 降序、createdAt 降序、标题排序；不扩展到 `#` 的跨项目范围                                                                                                                      |
 
 文件、会话无候选且没有加载/错误状态时隐藏分类。插件保留空态。画板不加入本菜单。
 新草稿读 workspace 当前插件 catalog，已有 session 读 session-owned catalog，沿用 `@` 的生命周期。
@@ -48,7 +48,7 @@
 - PLUS05：工作流位于目标之后；空草稿可见、非空草稿隐藏；选择后插入 `/workflow` 并保持在消息开头。
 
 组件测试：`packages/ui/test/chatPromptActionMenuInteraction.test.ts`。
-Electron 候选用例：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plus-menu.test.ts`。
+Electron 候选用例：`packages/desktop/test/e2e/conversation-session/conversation-session-plus-menu.test.ts`。
 新用例未经过人工验收与正式 promotion，不宣称已进入 Docker/CI suite。
 
 ## 提交前验证（2026-09-08）

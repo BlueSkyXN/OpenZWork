@@ -38,7 +38,7 @@ sequenceDiagram
 ```sh
 ZCODE_E2E_MANUAL_REVIEW=1 ZCODE_E2E_DEEPSEEK_CONTEXT_WINDOW=128000 \
 pnpm --filter @zcode/desktop test:e2e -- --spec \
-'./test/e2e/conversation-session/manual-review/pending/conversation-session-stop-tool-results.test.ts'
+'./test/e2e/conversation-session/conversation-session-stop-tool-results.test.ts'
 ```
 
 ## 非媒体路径：SQLite 写入失败
@@ -164,8 +164,6 @@ guide model selection / refresh、browser screenshot 和 stream recovery。
 与上述 12 个套件合计 18 个套件、377 条通过；日志见 `verification/boundary-audit.log` 与
 `verification/stream-audit.log`。架构检查当前只覆盖 managed 模块，CLI 尚未纳入其范围；
 本次 CLI 内部边界依据实际调用链审查和回归测试确认。
-
-
 
 证据目录：`packages/desktop/.e2e-artifacts/desktop-e2e-20260924081102510-p55865-08e6cb00c4a7ad50/`。
 `summary.md` 是正式运行报告；`conversation-session-stop-tool-results/` 保存四组运行时日志、真实请求、截图、

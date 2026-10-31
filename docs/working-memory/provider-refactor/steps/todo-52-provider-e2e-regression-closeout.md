@@ -27,7 +27,6 @@ Z.ai / BigModel Family、结构化 Connection Selection 和 Family 内连接切�
                 └── 按独立 Provider 身份修复
 ```
 
-
 ## 2. 已确认的共性根因
 
 | 根因                                                    | 影响范围                                  | 处理方向                                                                         |
@@ -79,8 +78,6 @@ E2E 场景输入
 产品行为晋升或 Family 展平时单独迁移，不能作为恢复旧兼容的理由。
 
 ### 4.2 Account 场景 fixture
-
-
 
 职责：
 
@@ -205,8 +202,8 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 4. 修复 Bot 4 条与 CTP/QR 保留场景；
 5. 修复 CW、OTB、I08、I26、Turbo Recovery 与 Turbo Switch；
 6. 修复 2 条 Upgrade WebView Case；
-8. 清除已删除 catalog mock / fixture 对应的 unit contract 残余；
-9. 在 macOS 实机逐组运行正式 Desktop E2E，再运行根 typecheck、lint、unit 与覆盖审计。
+7. 清除已删除 catalog mock / fixture 对应的 unit contract 残余；
+8. 在 macOS 实机逐组运行正式 Desktop E2E，再运行根 typecheck、lint、unit 与覆盖审计。
 
 ## 8. 测试与验收
 
@@ -259,15 +256,15 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 
 macOS 原生 Desktop E2E：
 
-| 范围                              |  结果 | Artifact                          |
-| --------------------------------- | ----: | --------------------------------- |
-| Bot automation / Feishu lifecycle |   5/5 | 分组运行通过                      |
-| Built-in Subagent model selection |   1/1 | `desktop-e2e-20260831-173054-696` |
-| Provider restart recovery         |   2/2 | `desktop-e2e-20260831-174125-075` |
-| Turbo recovery                    |   3/3 | `desktop-e2e-20260831-175604-388` |
-| Turbo switch                      |   3/3 | `desktop-e2e-20260831-180819-116` |
-| Upgrade WebView refresh           |   2/2 | `desktop-e2e-20260831-180913-613` |
-| Custom Provider add/send          |   1/1 | `desktop-e2e-20260831-152917-333` |
+| 范围                              | 结果 | Artifact                          |
+| --------------------------------- | ---: | --------------------------------- |
+| Bot automation / Feishu lifecycle |  5/5 | 分组运行通过                      |
+| Built-in Subagent model selection |  1/1 | `desktop-e2e-20260831-173054-696` |
+| Provider restart recovery         |  2/2 | `desktop-e2e-20260831-174125-075` |
+| Turbo recovery                    |  3/3 | `desktop-e2e-20260831-175604-388` |
+| Turbo switch                      |  3/3 | `desktop-e2e-20260831-180819-116` |
+| Upgrade WebView refresh           |  2/2 | `desktop-e2e-20260831-180913-613` |
+| Custom Provider add/send          |  1/1 | `desktop-e2e-20260831-152917-333` |
 
 仓库验证：
 

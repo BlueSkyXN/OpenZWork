@@ -7,7 +7,6 @@ export function createCustomProviderNodeKey(id: string): string {
   return `custom:${id}`;
 }
 
-
 export function resolveModelProviderNavLogo(item: ModelProviderNavItem) {
   return item.provider?.config.logo;
 }

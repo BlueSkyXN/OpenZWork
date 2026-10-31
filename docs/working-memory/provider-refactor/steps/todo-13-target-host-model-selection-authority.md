@@ -338,13 +338,13 @@ Automation。
 
 ### 3.1 Feature Summary
 
-| 字段             | 结论                                                                                                          |
-| ---------------- | ------------------------------------------------------------------------------------------------------------- |
-| Developer intent | 模型选择读取目标 Host，统一稀疏结构化意图，删除 Base Host 全局候选、临时 App 目录和字符串选择旁路             |
-| Change layer     | `option-source`、`draft-default`、`validation`、`persistence`、`recovery`                                     |
-| Operating mode   | planning / implementation-handoff                                                                             |
-| Primary seeds    | `IModelSelectionService`、`useModelSelectionView`、`workspace/readState`、`ModelConfigSelect`                 |
-| Out of scope     | Provider Provisioning、Access/Auth、模型请求编码、Queue/Goal 状态机、远程 Subagent 配置管理                   |
+| 字段             | 结论                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------- |
+| Developer intent | 模型选择读取目标 Host，统一稀疏结构化意图，删除 Base Host 全局候选、临时 App 目录和字符串选择旁路 |
+| Change layer     | `option-source`、`draft-default`、`validation`、`persistence`、`recovery`                         |
+| Operating mode   | planning / implementation-handoff                                                                 |
+| Primary seeds    | `IModelSelectionService`、`useModelSelectionView`、`workspace/readState`、`ModelConfigSelect`     |
+| Out of scope     | Provider Provisioning、Access/Auth、模型请求编码、Queue/Goal 状态机、远程 Subagent 配置管理       |
 
 ### 3.2 UI Surface Matrix
 
@@ -533,14 +533,13 @@ Snapshot/cache 按 target service 实例与 `workspaceKey` 隔离。切换 targe
 5. 切换 provider/model 时不无脑继承源模型 options；新模型只接收用户针对它显式确认且通过 Option Specs 的值；
 6. execution history 需要实际 option 时读取/保存 Active Model facts，不物化 Selection 默认值。
 
-
-1. 按各自 target 切换 Host View；
-2. reasoning/output options 直接读取 View Model Config；
-3. 删除 Automation/Repo Wiki deferred Session preview；
-4. 将产品 Service/Repo 改为结构化 Selection；
-5. Automation 表单把目标 Host preferred 解析成具体 Selection；没有 preferred 时明确不可提交，不引入
-   `inherit`、空字符串或“默认模型”伪 ID；
-6. 保持各产品 Draft、取消、保存、调度和执行 owner 不变。
+7. 按各自 target 切换 Host View；
+8. reasoning/output options 直接读取 View Model Config；
+9. 删除 Automation/Repo Wiki deferred Session preview；
+10. 将产品 Service/Repo 改为结构化 Selection；
+11. Automation 表单把目标 Host preferred 解析成具体 Selection；没有 preferred 时明确不可提交，不引入
+    `inherit`、空字符串或“默认模型”伪 ID；
+12. 保持各产品 Draft、取消、保存、调度和执行 owner 不变。
 
 ### Step G：Subagent 本地配置边界
 
@@ -658,13 +657,13 @@ importer、非模型业务字段可能合法存在。必须逐消费者确认它
 4. Configured Default 与 fallback 由目标 Host 解析并随同一 View 返回 `preferredSelection`，不增加第二个
    resolver RPC；Prompt CLI/TUI 复用同一纯 domain 解析；
    `ModelSelection`，并只持久化显式 option；
-6. Subagent 配置由各 Environment 独立落盘，本轮 Settings 只管理 Local Environment；
-7. `workspace/readState`、临时 App 和 `configOptions` 不再承担模型目录、模型能力或模型默认值；
-8. Todo 12 的 ModelFactory 最终校验边界保持成立，不恢复通用用户 Facade validator；
-9. local/remote、重连和跨 workspaceKey 缓存不存在 Local fallback 或身份串用；
-10. Desktop continuous、Mobile replayable、Queue、Goal、Session 恢复与 Provider Provisioning 不变；
-11. 相关 Design、Feature Graph、测试、实现日志与删除审计已经回写；
-12. `pnpm typecheck`、`pnpm lint`、`pnpm fmt:check` 和相关测试全部通过，并完成 Conventional Commit。
+5. Subagent 配置由各 Environment 独立落盘，本轮 Settings 只管理 Local Environment；
+6. `workspace/readState`、临时 App 和 `configOptions` 不再承担模型目录、模型能力或模型默认值；
+7. Todo 12 的 ModelFactory 最终校验边界保持成立，不恢复通用用户 Facade validator；
+8. local/remote、重连和跨 workspaceKey 缓存不存在 Local fallback 或身份串用；
+9. Desktop continuous、Mobile replayable、Queue、Goal、Session 恢复与 Provider Provisioning 不变；
+10. 相关 Design、Feature Graph、测试、实现日志与删除审计已经回写；
+11. `pnpm typecheck`、`pnpm lint`、`pnpm fmt:check` 和相关测试全部通过，并完成 Conventional Commit。
 
 ## 10. 非目标
 

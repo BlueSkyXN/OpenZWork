@@ -166,12 +166,12 @@ packages/services/src/model-provider/legacy-*
 
 ### 3.2 UI Surface Matrix
 
-| 用户场景          | UI 入口             | 状态 owner                  | 本 Todo 变化                     | 必须隔离                        |
-| ----------------- | ------------------- | --------------------------- | -------------------------------- | ------------------------------- |
-| 普通对话请求      | Composer/Session    | 当前 Loop Active Model      | 无 UI 变化；MCS 公式保持既有行为 | Draft/Selection 不改变          |
-| Full/Auto Compact | Conversation        | 当前 Compact + Active Model | `force` 与普通请求一致           | Queue/Timeline/恢复语义不改变   |
-| Provider 设置     | Settings            | 当前 Provider Config        | 不再依赖 Legacy Shared DTO       | 当前表单与保存结构不改变        |
-| 启动后旧配置迁移  | 无直接 UI           | Legacy importer             | 私有类型单向导入                 | 已发布旧配置继续可读            |
+| 用户场景          | UI 入口          | 状态 owner                  | 本 Todo 变化                     | 必须隔离                      |
+| ----------------- | ---------------- | --------------------------- | -------------------------------- | ----------------------------- |
+| 普通对话请求      | Composer/Session | 当前 Loop Active Model      | 无 UI 变化；MCS 公式保持既有行为 | Draft/Selection 不改变        |
+| Full/Auto Compact | Conversation     | 当前 Compact + Active Model | `force` 与普通请求一致           | Queue/Timeline/恢复语义不改变 |
+| Provider 设置     | Settings         | 当前 Provider Config        | 不再依赖 Legacy Shared DTO       | 当前表单与保存结构不改变      |
+| 启动后旧配置迁移  | 无直接 UI        | Legacy importer             | 私有类型单向导入                 | 已发布旧配置继续可读          |
 
 ### 3.3 Shared And Divergent Behavior
 

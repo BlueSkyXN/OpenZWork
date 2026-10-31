@@ -30,11 +30,7 @@ Renderer 显示保存成功
 
 ## 自动保存
 
-
-
 2026-09-08 裁决：同账号、同完整连接从 available/pending 变为明确 unavailable 时提示一次，并提供“切换至具体套餐”按钮；只有用户点击、重新校验并条件写入成功后才改变实际连接。持续不可用不重复提示，unknown 不当失效，恢复后再次失效是新事件。首次启动/切换身份只建立基线，不比较不同套餐的状态；手动选未开通个人套餐不自动弹回。保留首次无选择的初始化及旧连接迁移保护。
-
-
 
 ### 模型弹窗最终裁决（Todo90 / Todo92）
 
@@ -65,8 +61,6 @@ Provider 表单只提交被编辑的配置项，未触碰的 headers 等字段�
 模型弹窗打开时固定本次编辑的原模型、草稿和 revision。外部 View 更新不覆盖这份草稿，保存仍检查版本；
 冲突或失败保留输入，取消并重新打开才加载最新值。配置不完整的模型仍提供编辑修复和启停入口；
 个人成员可删除，继承成员不可删除或重命名。可编辑不代表可执行，Registry 完整性校验保持不变。
-
-
 
 文本输入在编辑过程中只修改组件内 Draft。连续 1200ms 没有新输入时自动提交；输入框失去焦点、
 用户按 Enter，或者切换到其他 Provider 时立即提交一次 Personal Provider Draft 更新。选择框、开关和拖动在操作完成后立即提交。
@@ -323,8 +317,6 @@ Personal Model Config Rule 不决定字段是否可编辑，它只是用户明�
 字段所有权和产品交互决定；一旦允许编辑，Built-in/Personal Model 都通过同一 Personal Rule 保存覆盖。模型成员是否
 允许改名或删除则由成员来源独立决定，Builtin Model ID 只读且不能删除。
 
-
-
 ## Provider 与模型调序
 
 Provider 和 Model 都使用显式 Personal 顺序字段，不依赖 Map 插入顺序。Family Provider 固定在最前且不参与
@@ -375,13 +367,10 @@ Model.streamText() 发出最小真实请求
 
 Renderer 不准备安全校验 Header，不拼 Endpoint、Reasoning 参数或协议请求体。Registry 使用保存后的正式 ProviderConfig、ModelConfig 和 Model Options 创建 Model；请求 attempt 通过正式 Request Auth Service 取得 API Key、JWT、Runtime Key、一次性安全校验 Header 等动态鉴权材料。
 
-
 动态账号事实由目标 Environment 的账号服务在调用时解析。Team usage 列表可以把已订阅产品响应与静态
 `team-coding-plan` mode 组合成查询 scope，但不得把该 scope 写回 Personal Config、Account Overlay 或 Registry。
 
 测试使用与 Agent 相同的流式 Adapter 路径，固定发送两条消息：system `You are ZCode connectivity probe.`，user `hi`，并消费完整流。文本、角色、顺序是白名单相关契约，不添加历史、工具、额外 system 或国际化文本（Todo 91）；不影响其他辅助请求。连接测试独立使用 1 Token 输出预算，Reasoning 显式使用有序档位的首项，不复用辅助内容生成的 5,000 Token 预算（Todo144）。正常 finish（含 length）即成功，不要求正文；流异常或缺少 finish 仍失败。测试路径不依赖已经退役的 Option Default，也不假设 Model 已绑定隐式默认 Options。超时、鉴权、预算参数拒绝、模型不存在、限流、服务端错误和响应解析错误由正式 Model/Adapter 错误边界归一化，再投影为设置页结果，不自动增加预算或更换模型。
-
-
 
 一次测试只返回一个成功/失败联合结果，不保留单元素 `results[]`、Endpoint 聚合或 Host 端 API 类型推断。
 最终准入由目标 Environment 当前 Registry 的 ModelFactory 完成；测试不修改任何模型选择或 Active Model。

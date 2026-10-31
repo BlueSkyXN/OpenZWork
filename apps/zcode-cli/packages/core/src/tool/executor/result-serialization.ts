@@ -6,16 +6,21 @@ import {
   type ToolResultBudget,
   type TraceContext,
 } from "@zcode/contracts";
+
+
 import type { ToolEntry, ToolResultSerialization } from "../types.js";
-import { formatHookAdditionalContexts } from "./hook-flow.js";
-import { formatGenericPersistedOutputContent } from "../result-persistence-format.js";
 import {
+  formatGenericPersistedOutputContent,
+  isPersistedOutputContent,
+} from "../result-persistence-format.js";
+import {
+
   appendHookToPersistedArtifactPreview,
   appendHookToStringContent,
   fitContentWithSuffix,
   isEmptyModelContent,
-  isPersistedArtifactPreview,
   projectHookAugmentedModelContent,
+
   projectToolReferenceContent,
   stringifyModelContentForSerialization,
   stringifyOutputForModel,
@@ -69,6 +74,19 @@ export async function serializeOutput(
     Math.min(effectiveBudget.maxModelBytes, effectiveBudget.maxInlineBytes),
   );
   const artifactPath = findArtifactPath(output);
+  if (entry.isModelContentBounded?.(output) === true) {
+    // 修复原因：Bash 失败结果已按字符保留采集段的头尾（约 1 万字符），中文等多字节文本仍会超过
+    // 30000 字节预算，被再次落盘成只有 2KB 开头的预览，模型看不到头尾截断后保留的结尾部分。
+    return {
+      content,
+      modelContent,
+      originalBytes,
+      returnedBytes: originalBytes,
+      truncated: false,
+      budgetStrategy: effectiveBudget.strategy,
+      artifactPath,
+    };
+  }
   const referenceProjection = projectToolReferenceContent(
     modelContent,
     maxModelBytes,
@@ -159,14 +177,14 @@ export async function serializeOutput(
   };
 }
 
+
 export function appendHookAdditionalContexts(
   serialization: ToolResultSerialization,
   additionalContexts: string[],
   entry: ToolEntry,
 ): ToolResultSerialization {
   if (additionalContexts.length === 0) return serialization;
-  const hookContext = formatHookAdditionalContexts(additionalContexts);
-  const suffix = `\n\n${hookContext}`;
+  const hookContext = formatHookAdditionalContexts(additionalContexts);  const suffix = `\n\n${hookContext}`;
   const maxModelBytes = resolveMaxModelBytes(entry);
   const previewDirection = entry.resultBudget?.preview?.direction ?? "head";
   const modelContent = serialization.modelContent ?? serialization.content;
@@ -204,11 +222,7 @@ export function appendHookAdditionalContexts(
     returnedBytes: Buffer.byteLength(contentProjection.content, "utf8"),
     truncated: serialization.truncated || contentProjection.truncated,
   };
-}
 
-function resolveMaxModelBytes(entry: ToolEntry): number {
-  const budget = entry.resultBudget ?? DEFAULT_RESULT_BUDGET;
-  return Math.max(0, Math.min(budget.maxModelBytes, budget.maxInlineBytes));
 }
 
 async function tryWriteToolArtifact(
@@ -277,4 +291,29 @@ function findArtifactPath(output: unknown): string | undefined {
     }
   }
   return undefined;
+}
+
+// OpenZWork 净化：以下三个辅助（Hook 附加上下文格式化、resultBudget 解析、artifact 预览
+// 判定）原散落在 CUA 帧保护逻辑之间；官方 CUA 分支已删，中性辅助保留在此。
+
+function formatHookAdditionalContexts(additionalContexts: string[]): string {
+  return [
+    "[Hook additional context]",
+    ...additionalContexts.map((context, index) => `#${index + 1}\n${context}`),
+  ].join("\n");
+}
+
+function resolveMaxModelBytes(entry: ToolEntry): number {
+  const budget = entry.resultBudget ?? DEFAULT_RESULT_BUDGET;
+  return Math.max(0, Math.min(budget.maxModelBytes, budget.maxInlineBytes));
+}
+
+function isPersistedArtifactPreview(serialization: ToolResultSerialization): boolean {
+  return (
+    serialization.budgetStrategy === "artifact" &&
+    serialization.truncated &&
+    typeof serialization.artifactPath === "string" &&
+    serialization.artifactPath.length > 0 &&
+    isPersistedOutputContent(serialization.content)
+  );
 }

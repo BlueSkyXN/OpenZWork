@@ -1,8 +1,5 @@
 # Chat Context Usage Refresh Action
 
-
-
-
 ## Behavior
 
 - 当额度远端刷新正在进行时，操作位隐藏“更多/详情”按钮，显示 loading 图标。

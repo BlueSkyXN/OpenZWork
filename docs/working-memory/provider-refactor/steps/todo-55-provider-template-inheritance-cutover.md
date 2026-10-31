@@ -593,10 +593,10 @@ createPersonalProvider({
 2. 增加独立 Template Map 与严格 Template Source Schema，Map 值复用 `ProviderConfigOverlay`，并执行字段
    白名单；
 3. Built-in Release 版本提升并原子贯穿 Bundled/Remote/Active/LKG；
-5. Z.ai API、BigModel API 与其他普通第三方 Provider 全部移入 `providerTemplates`；
-6. 不新增 `family = zhipu | others`，保留现有 Family 与设置分组；
-7. 删除 Provider 顶层 `enabled`，保留 `access.entitled` 和 Model `enabled`；
-8. 将 Account Access 的 `family` 改名为 `accountType`，但不删除 Provider Family 产品结构。
+4. Z.ai API、BigModel API 与其他普通第三方 Provider 全部移入 `providerTemplates`；
+5. 不新增 `family = zhipu | others`，保留现有 Family 与设置分组；
+6. 删除 Provider 顶层 `enabled`，保留 `access.entitled` 和 Model `enabled`；
+7. 将 Account Access 的 `family` 改名为 `accountType`，但不删除 Provider Family 产品结构。
 
 ### B. Model Rules 与 Resolver
 

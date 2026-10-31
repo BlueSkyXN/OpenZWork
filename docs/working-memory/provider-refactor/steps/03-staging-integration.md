@@ -196,16 +196,16 @@ effectiveModelRules.resolve(
 
 ### 8.2 字段迁移裁决
 
-| 远端配置                      | 当前作用                                             | M3 目标                                                     |
-| ----------------------------- | ---------------------------------------------------- | ----------------------------------------------------------- |
-| `builtinProviders`            | Provider ID、名称、模型成员、Endpoint、API Schema    | 迁入 ZCode Built-in Provider Config 后删除远端入口          |
-| `providers`                   | 旧协议下的 Provider + Model 混合配置                 | 迁入现有体系后删除兼容入口                                  |
-| `builtinModels`               | context、max output、modalities、reasoning、priority | 迁入 ZCode Built-in Model Config Rules                      |
-| `magic_name`                  | 按模型名匹配 reasoning 策略                          | 删除远端 matcher；有效行为写成通用 Model Config Rules       |
-| `modelContextBudget.strategy` | Agent 上下文预算灰度                                 | 与模型配置无关，本轮不动                                    |
-| 商品、套餐、折扣              | SKU、展示和商业配置                                  | 继续由独立远端产品配置管理                                  |
-| 安全校验开关、forceUpdate     | 风控和发布策略                                       | 继续远端管理                                                |
-| computerUse、功能开关         | 产品灰度                                             | 继续远端管理                                                |
+| 远端配置                      | 当前作用                                             | M3 目标                                               |
+| ----------------------------- | ---------------------------------------------------- | ----------------------------------------------------- |
+| `builtinProviders`            | Provider ID、名称、模型成员、Endpoint、API Schema    | 迁入 ZCode Built-in Provider Config 后删除远端入口    |
+| `providers`                   | 旧协议下的 Provider + Model 混合配置                 | 迁入现有体系后删除兼容入口                            |
+| `builtinModels`               | context、max output、modalities、reasoning、priority | 迁入 ZCode Built-in Model Config Rules                |
+| `magic_name`                  | 按模型名匹配 reasoning 策略                          | 删除远端 matcher；有效行为写成通用 Model Config Rules |
+| `modelContextBudget.strategy` | Agent 上下文预算灰度                                 | 与模型配置无关，本轮不动                              |
+| 商品、套餐、折扣              | SKU、展示和商业配置                                  | 继续由独立远端产品配置管理                            |
+| 安全校验开关、forceUpdate     | 风控和发布策略                                       | 继续远端管理                                          |
+| computerUse、功能开关         | 产品灰度                                             | 继续远端管理                                          |
 
 旧远端 Provider 类型里的 `apiKey` 字段不需要另做迁移设计：真实访问方式已经由现有访问体系负责；删除旧协议时一并删除该遗留字段。
 
@@ -334,8 +334,8 @@ M3 按以下顺序执行：
 3. 将 staging 的 Provider / Model 静态事实翻译到 Built-in Config 和 Model Rules；
 4. 接入 Video 与 input/output format UI，但不恢复旧 Store、Catalog 或 Snapshot；
 5. 删除 `/client/configs` 的 Provider/Model 同步、旧协议 fallback 和具体模型 hardcode；
-7. 用引用审计确认旧入口和模型特判已经退出；
-8. 更新仍使用旧层级顺序的架构文档。
+6. 用引用审计确认旧入口和模型特判已经退出；
+7. 更新仍使用旧层级顺序的架构文档。
 
 ## 15. 验收
 
@@ -367,15 +367,15 @@ M3 按以下顺序执行：
 
 ### 16.1 验证结果
 
-| 验证范围                                                    | 结果                                                                                                                               |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm typecheck`                                            | 通过                                                                                                                               |
-| `pnpm --dir apps/zcode-cli -r --if-present typecheck`       | 通过；具有 typecheck script 的 CLI workspace package 全部通过                                                                      |
-| `pnpm lint`                                                 | 通过；0 error，39 条 staging 既有 warning                                                                                          |
-| CLI Video / reasoning / Registry 聚焦单测                   | 13 个文件、185 个测试通过                                                                                                          |
-| Provider 设置冲突收口聚焦单测                               | 5 个文件、93 个测试通过                                                                                                            |
-| 本轮 78 个修改/新增文件的 `oxfmt --check`                   | 通过                                                                                                                               |
-| `git diff --check`                                          | 通过                                                                                                                               |
+| 验证范围                                              | 结果                                                          |
+| ----------------------------------------------------- | ------------------------------------------------------------- |
+| `pnpm typecheck`                                      | 通过                                                          |
+| `pnpm --dir apps/zcode-cli -r --if-present typecheck` | 通过；具有 typecheck script 的 CLI workspace package 全部通过 |
+| `pnpm lint`                                           | 通过；0 error，39 条 staging 既有 warning                     |
+| CLI Video / reasoning / Registry 聚焦单测             | 13 个文件、185 个测试通过                                     |
+| Provider 设置冲突收口聚焦单测                         | 5 个文件、93 个测试通过                                       |
+| 本轮 78 个修改/新增文件的 `oxfmt --check`             | 通过                                                          |
+| `git diff --check`                                    | 通过                                                          |
 
 仓库级 `pnpm fmt:check` 仍会被既有的二进制 `apps/zcode-cli/tests/gb2312.js` 和用于测试解析失败的 Electron HTML fixture 阻断，因此本轮以实际修改/新增文件的格式检查作为变更门禁，没有改写这些无关 fixture。
 

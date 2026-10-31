@@ -2,6 +2,10 @@
 
 状态：**已确认，按本 spec 实现**
 
+运行实例的统一状态、查询和变更接口见
+[Session runtime 生命周期](../apps/zcode-cli/docs/design/v2/session-runtime-lifecycle.md)。
+本文中的 protected/idle/LRU 分类只表达回收策略，不是第二套生命周期状态。
+
 ## 问题
 
 每个 workspace runtime 对应一个常驻 `zcode-cli app-server --stdio` 进程。进程内每个已加载
@@ -141,20 +145,20 @@ record/runtime 的异步 owner”：
 
 ### 用户操作与功能场景
 
-| 场景                                             | 可否释放                               | 边界说明                                                                             |
-| ------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------ |
-| 前台 prompt / 模型 streaming / 工具执行          | 不可                                   | active turn 或 runtime work 持有 owner                                               |
-| background Bash / subagent / Workflow            | 运行中不可                             | 不能只看前台 turn；task terminal 且完成通知 drain 后才可能变为空闲                   |
-| goal 长任务 / verifier / continuation            | 运行或收尾中不可                       | active/runtime 与 finalization 连续覆盖；paused/completed 且无 continuation 时可以   |
-| compact / memory extraction / recall prefetch    | pending、running 或收尾中不可          | 全部 settled 后可以，不沿用工作开始前的旧 idle 时间                                  |
-| browser use                                      | turn/tool await 或 cleanup 中不可      | 只保留空闲 browser 连接不构成永久 owner；session 回收时随 app/runtime 关闭           |
-| MCP                                              | startup 或 monitor running 时不可      | server 已连接但空闲时可以；后续 cold resume 会重新建立连接                           |
-| permission / AskUserQuestion                     | 不可                                   | 回收会丢失只存在内存里的交互状态                                                     |
-| queued prompt / command inbox pin                | 不可                                   | 即使尚未开始模型调用也属于待执行工作                                                 |
-| renderer 可见 pane / mobile 在线订阅             | 不可                                   | subscriber 是保护 owner                                                              |
-| renderer pane 已关闭并完成 keep-warm/unsubscribe | 可以                                   | renderer projection 已先释放，CLI 才开始自己的 idle TTL                              |
-| SSH / WSL / Docker session                       | 与本地规则相同                         | 判断发生在实际承载 session 的远端 CLI；网络连接或 workspace 类型本身不是额外特判     |
-| 已完成的历史后台任务                             | 可以                                   | task index / 持久历史仍保留，但 terminal 历史本身不占 runtime owner                  |
+| 场景                                             | 可否释放                          | 边界说明                                                                           |
+| ------------------------------------------------ | --------------------------------- | ---------------------------------------------------------------------------------- |
+| 前台 prompt / 模型 streaming / 工具执行          | 不可                              | active turn 或 runtime work 持有 owner                                             |
+| background Bash / subagent / Workflow            | 运行中不可                        | 不能只看前台 turn；task terminal 且完成通知 drain 后才可能变为空闲                 |
+| goal 长任务 / verifier / continuation            | 运行或收尾中不可                  | active/runtime 与 finalization 连续覆盖；paused/completed 且无 continuation 时可以 |
+| compact / memory extraction / recall prefetch    | pending、running 或收尾中不可     | 全部 settled 后可以，不沿用工作开始前的旧 idle 时间                                |
+| browser use                                      | turn/tool await 或 cleanup 中不可 | 只保留空闲 browser 连接不构成永久 owner；session 回收时随 app/runtime 关闭         |
+| MCP                                              | startup 或 monitor running 时不可 | server 已连接但空闲时可以；后续 cold resume 会重新建立连接                         |
+| permission / AskUserQuestion                     | 不可                              | 回收会丢失只存在内存里的交互状态                                                   |
+| queued prompt / command inbox pin                | 不可                              | 即使尚未开始模型调用也属于待执行工作                                               |
+| renderer 可见 pane / mobile 在线订阅             | 不可                              | subscriber 是保护 owner                                                            |
+| renderer pane 已关闭并完成 keep-warm/unsubscribe | 可以                              | renderer projection 已先释放，CLI 才开始自己的 idle TTL                            |
+| SSH / WSL / Docker session                       | 与本地规则相同                    | 判断发生在实际承载 session 的远端 CLI；网络连接或 workspace 类型本身不是额外特判   |
+| 已完成的历史后台任务                             | 可以                              | task index / 持久历史仍保留，但 terminal 历史本身不占 runtime owner                |
 
 对所有“可以”仍需满足下一节的全部权威保护事实，并在真正摘除 record 前同步二次校验。任何新请求、
 新订阅或新 owner 都会把 `IDLE_WARM` 重新推进到 `ACTIVE_PROTECTED`，同时重置 idle TTL。
@@ -213,7 +217,8 @@ finalization lease 不能用延迟释放 `activeAbortController` 代替，否则
 
 场景映射遵循同一 owner 规则，不再各自增加 pool 特判：
 
-  事实保护，ready 收尾由 protocol finalization lease 保护；
+事实保护，ready 收尾由 protocol finalization lease 保护；
+
 - background Bash、subagent、Workflow、MCP monitor 以 task registry 为权威，terminal
   notification 入 runtime queue 后继续由 queue/drain 与 detached ledger write 保护；
 - browser use 在 turn/tool await 期间属于 active work，turn/session browser cleanup 仍在 runner
@@ -276,8 +281,8 @@ explicit close/delete
 纯安全校验必须位于第一个副作用之前；校验拒绝时，record、runtime event subscription 和 gateway
 运行态全部保持可用。校验通过后的 `unsubscribe`、gateway 清理和 `sessions.delete` 在同一个同步
 执行片中完成。新请求要么先取得 operation lease 而阻止回收，要么看到 DEACTIVATING 并等待，
-然后走 cold resume；不会命中半拆除 record。`app.close()` 属于摘除后的异步收尾，其失败由 pool
-隔离和记录，不属于可回滚的同步预检事务。
+释放成功后走 cold resume；不会命中半拆除 record。`app.close()` 属于摘除后的异步收尾，失败后
+生命周期 owner 保留 faulted，禁止冷恢复创建替代实例；pool 记录错误并继续其他候选。
 
 ## Renderer 内存边界
 

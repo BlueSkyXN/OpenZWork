@@ -7,7 +7,7 @@ import {
   buildMemoryIndexGuidance,
 } from "../sections/memory.js";
 import { buildRolePrompt } from "../sections/identity.js";
-import { buildSessionGuidanceSection, buildOutputStyleSection } from "../dynamic-sections.js";
+import { buildSessionGuidanceSection } from "../dynamic-sections.js";
 import { ACTIVE_PROJECT_MEMORY_RETRIEVAL_BRANCH } from "../../memory/project-memory-retrieval-branch.js";
 
 type RuntimePromptContext = Pick<
@@ -65,7 +65,12 @@ export function getRuntimePromptTemplate(
       return { ...template, available: guidance !== null, defaultContent: guidance?.content ?? "" };
     }
     case "output_style": {
-      const style = buildOutputStyleSection(context.outputStyle)?.content ?? "";
+      // OpenZWork 净化：上游经 buildOutputStyleSection（output_style section source）预览
+      // 该段；我方未合入上游 prompt-settings 的 output_style 分段注入体系，输出样式正文仍由
+      // buildIdentitySection 拼进 role 段，这里只保留空预览占位。
+      const style = context.outputStyle?.prompt.trim()
+        ? `# Output Style: ${context.outputStyle.name}\n${context.outputStyle.prompt.trim()}`
+        : "";
       return { ...template, defaultContent: style, runtimeAfter: style };
     }
     case "role":

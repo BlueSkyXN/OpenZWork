@@ -32,7 +32,6 @@ packages/desktop/.e2e-artifacts/<run-id>/manual-review/goal-run-cases/
 
 抓包代理默认把 CA 和 capture 文件放在 `packages/desktop/.e2e-network-capture/`。这个目录不能放进 `.e2e-home`，因为 WDIO 每个 session 启动前都会清空 `.e2e-home` 来保证测试隔离；如果 CA 被 reset 删除，agent 子进程读取 `httpProxyCaCertPath` 时会直接报 `ENOENT`。
 
-
 ## 预设启动态
 
 manual review case 不应把时间花在重复登录和设置模型上。WDIO `beforeSession` 会重置 `.e2e-home` 后直接预设：

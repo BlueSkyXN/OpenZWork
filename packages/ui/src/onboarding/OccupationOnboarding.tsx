@@ -183,7 +183,7 @@ export function OccupationOnboarding({
       setStep(0);
       setLocallyClosed(true);
       setRequested(false);
-      if (!skip && migration) requestOnboardingDialog("migration");
+      if (!skip && migration) requestOnboardingDialog();
       logger.info("[occupation-onboarding] 偏好保存完成", { interfaceMode: mode });
     } catch (cause) {
       logger.warn("[occupation-onboarding] 保存偏好失败", { error: String(cause) });

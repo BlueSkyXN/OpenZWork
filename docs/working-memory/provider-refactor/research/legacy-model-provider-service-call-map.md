@@ -10,22 +10,18 @@
 
 ## 结论
 
-
-
-| 旧方法                                                        | 当前主要用途                                         | 目标归属                                                                                               |
-| ------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `getAll` / `getAllCached`                                     | 设置页、模型选择、用量 UI、旧执行同步                | Settings View 或 Selection View；不再区分“触发远端同步”和“只读缓存”                                    |
-| `save` / `delete`                                             | 设置页与 API Key 登录表单写 Provider                 | `ProviderSettingsService` 写 Personal Config                                                           |
-| `getDisplayOrder` / `saveDisplayOrder`                        | 设置页与选择器排序                                   | ProviderConfig / ModelConfig 自身有序 Overlay；旧独立 Preference 退出                                  |
-| `resolveWorkspaceModelSelection`                              | 旧 Provider、Workspace Preference 和配置文件混合解析 | 已删除；统一 ZCode Agent 的回显只使用 prepare 回包、App Recent 与 Model Selection View                  |
-| `getEndpointSuggestions` / `getModelsByEndpoint`              | 旧 Add Provider 表单的 Endpoint 建议与远端模型探测   | 当前设置表单已改为显式填写 Provider Config；两个无生产调用方的旧接口及 `client/configs` 查询实现已删除 |
-| `getCatalogProviders`                                         | 设置页读取旧 Catalog                                 | Official Config 取代 Catalog 后退出                                                                    |
-| `testModelConnectivity`                                       | 设置页显式连通性测试                                 | 独立 Connectivity Service，结果不进入 Registry                                                         |
-| `refreshPresetProviders`                                      | 同步远端 Builtin/Preset 并改写旧 Store               | Official Config Source / Account Access Source 各自刷新后退出                                          |
-| `getProviderRegistrySnapshot`                         | 设置连通性测试及少量旧兼容调用                     | 本地启动门禁和模型选择已改读 Selection View；完整 Snapshot 仅保留剩余执行兼容，最终退出            |
-| `applyToProvider`                                             | 把旧选择与完整 Provider 配置同步给 Agent             | 已删除；Submission 携带 Selection、Worker 自建 Registry                                                  |
-
-
+| 旧方法                                           | 当前主要用途                                         | 目标归属                                                                                               |
+| ------------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `getAll` / `getAllCached`                        | 设置页、模型选择、用量 UI、旧执行同步                | Settings View 或 Selection View；不再区分“触发远端同步”和“只读缓存”                                    |
+| `save` / `delete`                                | 设置页与 API Key 登录表单写 Provider                 | `ProviderSettingsService` 写 Personal Config                                                           |
+| `getDisplayOrder` / `saveDisplayOrder`           | 设置页与选择器排序                                   | ProviderConfig / ModelConfig 自身有序 Overlay；旧独立 Preference 退出                                  |
+| `resolveWorkspaceModelSelection`                 | 旧 Provider、Workspace Preference 和配置文件混合解析 | 已删除；统一 ZCode Agent 的回显只使用 prepare 回包、App Recent 与 Model Selection View                 |
+| `getEndpointSuggestions` / `getModelsByEndpoint` | 旧 Add Provider 表单的 Endpoint 建议与远端模型探测   | 当前设置表单已改为显式填写 Provider Config；两个无生产调用方的旧接口及 `client/configs` 查询实现已删除 |
+| `getCatalogProviders`                            | 设置页读取旧 Catalog                                 | Official Config 取代 Catalog 后退出                                                                    |
+| `testModelConnectivity`                          | 设置页显式连通性测试                                 | 独立 Connectivity Service，结果不进入 Registry                                                         |
+| `refreshPresetProviders`                         | 同步远端 Builtin/Preset 并改写旧 Store               | Official Config Source / Account Access Source 各自刷新后退出                                          |
+| `getProviderRegistrySnapshot`                    | 设置连通性测试及少量旧兼容调用                       | 本地启动门禁和模型选择已改读 Selection View；完整 Snapshot 仅保留剩余执行兼容，最终退出                |
+| `applyToProvider`                                | 把旧选择与完整 Provider 配置同步给 Agent             | 已删除；Submission 携带 Selection、Worker 自建 Registry                                                |
 
 ## 新 Host 服务面
 
@@ -50,11 +46,11 @@ ModelSelectionService
 
 `ModelProviderSection` 与 `useModelProviders` 目前把四类不同工作编排在同一个页面和 Hook 中。迁移时按职责拆开，比按组件文件逐个替换更安全。
 
-| 职责                      | 当前入口                                              | 目标边界                                                                    |
-| ------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------- |
-| Provider / Model 配置编辑 | `getAll`、`save`、`delete`、独立 display order        | `ProviderSettingsService`                                                   |
-| 连接测试                  | connectivity test                                     | 独立设置辅助服务；结果不进入 Registry；旧 Endpoint 建议与远端模型发现已删除 |
-| 运行时同步                | 保存后向已打开 Workspace 推完整 Registry Snapshot     | Worker 自建 Registry 后删除                                                 |
+| 职责                      | 当前入口                                          | 目标边界                                                                    |
+| ------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------- |
+| Provider / Model 配置编辑 | `getAll`、`save`、`delete`、独立 display order    | `ProviderSettingsService`                                                   |
+| 连接测试                  | connectivity test                                 | 独立设置辅助服务；结果不进入 Registry；旧 Endpoint 建议与远端模型发现已删除 |
+| 运行时同步                | 保存后向已打开 Workspace 推完整 Registry Snapshot | Worker 自建 Registry 后删除                                                 |
 
 设置页的 Config 部分可以先按新 View 重写，账号卡片和连通性操作继续调用各自现有服务。迁移过程中不能让账号状态反向写入 Personal Provider Config，也不能因为保留连通性测试而继续使用旧 `save/getAll` 作为事实来源。
 

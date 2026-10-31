@@ -257,8 +257,6 @@ export interface SteerTurnOptions {
 
 export type SendInputOptions = SubmitPromptOptions & {
   inputId?: string;
-  /** 可信消费入口确定的呈现标记；不改变原始用户内容或调度语义。 */
-  inputPresentation?: ExecuteTurnOptions["inputPresentation"];
   delivery?: InputDelivery;
   /** sendText 的产品 guide/queue 意图；是否 busy 仍由 Core admission 判断。 */
   queueDelivery?: "guide" | "queue";
@@ -337,6 +335,8 @@ export interface ZCodeApp {
    * coordinator 并重发 admission 状态，否则已信任 Hook 继续被拒、banner 不刷新。
    */
   reloadWorkspaceHookTrust(): Promise<void>;
+  /** 设置授权落盘后更新同工作区会话的提示；不自动连接。 */
+  reloadWorkspaceMcpTrust?(): Promise<void>;
   close?(): Promise<void>;
   getMode(): CollaborationMode;
   getModel(): string;

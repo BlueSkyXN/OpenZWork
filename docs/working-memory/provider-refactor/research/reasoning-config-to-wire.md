@@ -60,7 +60,6 @@ openai-responses          <-> openai
 openai-chat-completions   <-> openai-compatible
 ```
 
-
 在当前三种协议下，这些字段没有表达独立信息。运行态协议同时允许 `kind` 和 `apiFormat`，却没有从类型上排除不一致组合。拟定的演进方向是让 `apiFormat` 成为配置和协议中的单一事实；Adapter factory 内部可以继续使用自己的实现枚举，但该枚举不再进入 Provider Config 或跨进程协议。这个方向还需要在实施前验证 Standalone CLI 的 `provider.kind` 迁移，以及一个 Provider 存在多个 endpoint 时如何显式选择当前协议。
 
 ## 一条完整链路
@@ -275,7 +274,6 @@ App 向 zcode-cli 投影当前 transport 时，只取相应 kind 的 patch。假
   }
 }
 ```
-
 
 Plan 的登录态、权益判断、运行时 API Key 和一次性安全校验 Header 不参与 reasoning 方言选择。它们先形成当前可调用的 Provider；reasoning 仍由这个 Provider 的 `kind` 与模型定义决定。当前 ZCode 内置 Plan 主要按 Anthropic runtime 投影，因此 GLM 等模型会走 `anthropic.effort` / `anthropic.thinking` 路径。请求前刷新 Token 或 Header 只改变鉴权材料，不改变已经选择的 reasoning level。
 

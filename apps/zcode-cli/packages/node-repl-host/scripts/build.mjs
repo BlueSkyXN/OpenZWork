@@ -14,6 +14,9 @@ const require = __zcodeCreateRequire(import.meta.url);`;
 
 export const buildNodeReplHostBundle = async ({
   outfile = resolve(packageRoot, "dist", "mcp", "server.js"),
+  // OpenZWork 净化：CUA Helper 构建身份（cuaHelperBuildId）随 CUA 域净化不再参与 define，
+  // 参数位保留以兼容 bundle-smoke 守卫签名；恒为空串。
+  cuaHelperBuildId = "",
 } = {}) => {
   await mkdir(dirname(outfile), { recursive: true });
   await build({
@@ -27,7 +30,8 @@ export const buildNodeReplHostBundle = async ({
     target: "node24",
     external: ["sharp"],
   });
-  return { outfile };
+  // OpenZWork v3.17.1：bundle-smoke 守卫消费 cuaHelperBuildId（CUA 域已净化，dev 空串透传）。
+  return { outfile, cuaHelperBuildId: cuaHelperBuildId ?? "" };
 };
 
 // 这里原先写成 `file://${process.argv[1]}`。

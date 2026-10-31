@@ -39,4 +39,3 @@ export function materializeScheduledTemplateDraft(
     prompt: resolveAutomationTemplateText(template.prompt, locale),
   };
 }
-

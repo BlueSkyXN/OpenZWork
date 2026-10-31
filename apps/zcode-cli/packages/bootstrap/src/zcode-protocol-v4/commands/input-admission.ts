@@ -159,3 +159,11 @@ export function resolveSubmittedExecutionState(
     planEnabled: state.planEnabled,
   };
 }
+
+// 合成修复：queue promotion 的 compact 分支经此取会话常驻 Selection 兜底（上游位于
+// Highspeed resolver 旁）。上游的 Highspeed 退回语义属净化域（Highspeed 加速卡），
+// 但「旧发送端固定 Session 当前 Selection」的中性兜底行为保留，供无显式 Selection 的
+// 队列提升使用；只读会话当前值，不改写 session 常驻模型。
+export function resolveSessionFallbackModelSelection(record: V4SessionRecordView): ModelSelection {
+  return resolveSubmittedExecutionState(record, {}).modelSelection;
+}

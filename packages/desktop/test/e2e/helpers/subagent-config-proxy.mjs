@@ -17,10 +17,9 @@ if (
   const preloads = [import.meta.url, fileURLToPath(import.meta.url)].map(
     (value) => `--import=${JSON.stringify(value)}`,
   );
-  const nodeOptions = preloads.reduce(
-    (value, preload) => value.replaceAll(preload, ""),
-    process.env.NODE_OPTIONS ?? "",
-  ).trim();
+  const nodeOptions = preloads
+    .reduce((value, preload) => value.replaceAll(preload, ""), process.env.NODE_OPTIONS ?? "")
+    .trim();
   const child = spawn(process.execPath, process.argv.slice(1), {
     stdio: ["pipe", "pipe", "inherit"],
     // 只移除当前代理预加载，保留覆盖采集等其他 Node 参数，防止递归启动代理。

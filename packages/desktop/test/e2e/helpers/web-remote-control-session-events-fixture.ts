@@ -7,12 +7,17 @@ import { createLocalPairingRelay } from "./local-pairing-relay.js";
 export const WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS: Record<string, string> = {};
 
 /** 真实 Main/Host/renderer 链路只替换外部 relay，仍执行设备挑战应答。 */
+// fork 净化：远控保留本地 HMAC 配对链路（createLocalPairingRelay）。
+// 上游改用官方 V2 fake relay（@zcode/shared/testing/fake-relay-v2 + JWT/notification http 桩），
+// 属官方账号/通知通道净化域，不随入；mobilePush 选项保留为兼容入参（无 V2 relay 时无副作用）。
 export async function prepareWebRemoteControlSessionEventsFixture(options: {
   credentialsFile: string;
   settingsFile: string;
   workspacePath: string;
   webUrl?: string;
+  mobilePush?: boolean;
 }): Promise<() => Promise<void>> {
+  void options.mobilePush;
   const relay = await createLocalPairingRelay();
   const envPatch = {
     ...(options.webUrl ? { VITE_ZCODE_E2E_STORE_BRIDGE: "1" } : {}),

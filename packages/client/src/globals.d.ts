@@ -31,6 +31,8 @@ import type {
   WebRemoteControlContext,
   WebRemoteControlReconnectWorkspaceRequest,
   WebRemoteControlReconnectWorkspaceResult,
+  WebRemoteControlRendererActionRequest,
+  WebRemoteControlRendererActionResult,
   WebRemoteControlStartOperationResult,
   WebRemoteControlStatus,
   WebRemoteControlWorkspaceTarget,
@@ -64,22 +66,52 @@ declare global {
     };
     zcode: {
       // 普通平台桥复用唯一 IPlatformService 签名，避免 preload 与 Renderer 各维护一套合同。
-      createTempTextAttachment: NonNullable<import("@zcode/shared").IPlatformService["createTempTextAttachment"]>;
-      onRemoteSessionReconnected: NonNullable<import("@zcode/shared").IPlatformService["onRemoteSessionReconnected"]>;
-      loadMcpFromUserDirectory: NonNullable<import("@zcode/shared").IPlatformService["loadMcpFromUserDirectory"]>;
-      saveMcpToUserDirectory: NonNullable<import("@zcode/shared").IPlatformService["saveMcpToUserDirectory"]>;
-      migrateLegacyCommonMcp: NonNullable<import("@zcode/shared").IPlatformService["migrateLegacyCommonMcp"]>;
-      setShortcutRecordingActive: NonNullable<import("@zcode/shared").IPlatformService["setShortcutRecordingActive"]>;
-      onCloseActiveContextRequest: NonNullable<import("@zcode/shared").IPlatformService["onCloseActiveContextRequest"]>;
-      getWindowControlsOverlayMetrics: NonNullable<import("@zcode/shared").IPlatformService["getWindowControlsOverlayMetrics"]>;
-      onWindowControlsOverlayChanged: NonNullable<import("@zcode/shared").IPlatformService["onWindowControlsOverlayChanged"]>;
-      getZCodeStdioTapDevState: NonNullable<import("@zcode/shared").IPlatformService["getZCodeStdioTapDevState"]>;
+      createTempTextAttachment: NonNullable<
+        import("@zcode/shared").IPlatformService["createTempTextAttachment"]
+      >;
+      onRemoteSessionReconnected: NonNullable<
+        import("@zcode/shared").IPlatformService["onRemoteSessionReconnected"]
+      >;
+      loadMcpFromUserDirectory: NonNullable<
+        import("@zcode/shared").IPlatformService["loadMcpFromUserDirectory"]
+      >;
+      saveMcpToUserDirectory: NonNullable<
+        import("@zcode/shared").IPlatformService["saveMcpToUserDirectory"]
+      >;
+      migrateLegacyCommonMcp: NonNullable<
+        import("@zcode/shared").IPlatformService["migrateLegacyCommonMcp"]
+      >;
+      setShortcutRecordingActive: NonNullable<
+        import("@zcode/shared").IPlatformService["setShortcutRecordingActive"]
+      >;
+      onCloseActiveContextRequest: NonNullable<
+        import("@zcode/shared").IPlatformService["onCloseActiveContextRequest"]
+      >;
+      getWindowControlsOverlayMetrics: NonNullable<
+        import("@zcode/shared").IPlatformService["getWindowControlsOverlayMetrics"]
+      >;
+      onWindowControlsOverlayChanged: NonNullable<
+        import("@zcode/shared").IPlatformService["onWindowControlsOverlayChanged"]
+      >;
+      getZCodeStdioTapDevState: NonNullable<
+        import("@zcode/shared").IPlatformService["getZCodeStdioTapDevState"]
+      >;
       connectRemote: NonNullable<import("@zcode/shared").IPlatformService["connectRemote"]>;
       requestSourceSettingsAttachment?(sourceServerId: string): Promise<{ attachmentId: string }>;
       /** 取消当前窗口尚未建立完成的远程连接 */
       cancelPendingRemoteConnection?(requestId?: string): Promise<void>;
-      /** 绑定远程 logical session 的 canonical workspace context */
-      bindRemoteWorkspaceSessionContext?: NonNullable<import("@zcode/shared").IPlatformService["bindRemoteWorkspaceSessionContext"]>;
+      // OpenZWork：bind IPC 采用上游结构化结果签名（contextBridge 会丢 Error 自定义属性），
+      // 与 platform.ts 的 BindRemoteWorkspaceSessionContextIpcResult/unwrapRemoteWorkspaceBindResult 对齐。
+      /**
+       * 绑定远程 logical session 的 canonical workspace context。
+       * 失败时不 reject，而是返回 `{ success: false, reasonCode }`：preload 抛出的 Error 跨
+       * contextBridge 会丢失 code/retryable。调用方必须用 `unwrapRemoteWorkspaceBindResult` 还原。
+       */
+      bindRemoteWorkspaceSessionContext?(context: {
+        remoteSessionId: string;
+        workspacePath: string;
+        workspaceIdentity?: string;
+      }): Promise<import("@zcode/shared").BindRemoteWorkspaceSessionContextIpcResult>;
       /** 为当前 workspace 开启 Web 远程控制 */
       startWebRemoteControl(
         context: WebRemoteControlContext,
@@ -143,6 +175,12 @@ declare global {
         handler: (
           request: WebRemoteControlReconnectWorkspaceRequest,
         ) => Promise<WebRemoteControlReconnectWorkspaceResult>,
+      ): () => void;
+      /** 注册手机远控动作（置顶/归档/新建本地项目）的回调 */
+      onWebRemoteControlRendererAction?(
+        handler: (
+          request: WebRemoteControlRendererActionRequest,
+        ) => Promise<WebRemoteControlRendererActionResult>,
       ): () => void;
       /** 同步当前窗口的未读 task 数到 main 进程 */
       syncWindowUnreadCount(count: number): void;
@@ -255,7 +293,9 @@ declare global {
         path?: string;
         error?: string;
       }>;
-      browserViewAttachGuest?: NonNullable<import("@zcode/shared").IPlatformService["browserViewAttachGuest"]>;
+      browserViewAttachGuest?: NonNullable<
+        import("@zcode/shared").IPlatformService["browserViewAttachGuest"]
+      >;
       /** 重建 `<webview>` 前让 main 精确断开旧 guest 的 CDP。 */
       browserViewDetachGuest?(payload: { key: string; webContentsId: number }): Promise<boolean>;
       browserViewCloseTab?(payload: BrowserViewCloseTabRequest): Promise<void>;

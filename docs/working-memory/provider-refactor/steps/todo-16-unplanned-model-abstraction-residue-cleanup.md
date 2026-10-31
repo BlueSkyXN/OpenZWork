@@ -377,10 +377,10 @@ Todo 16
 ### Step C：收紧 Protocol 与 Reasoning Projection
 
 1. 删除零引用旧 Provider Protocol DTO；
-3. 删除 `reasoning.enabled` 的 Schema、Mapper、UI 与测试字段；
-4. 删除当前 Model Option 中零消费字段及 Bootstrap 的平铺 capability 输出；
-5. 删除 `BUILTIN_PROVIDER_LABELS`，确认 `providerLabel = config label ?? providerId`；
-6. 验证 Desktop、Web/Remote 与 Agent 严格协议解析一致。
+2. 删除 `reasoning.enabled` 的 Schema、Mapper、UI 与测试字段；
+3. 删除当前 Model Option 中零消费字段及 Bootstrap 的平铺 capability 输出；
+4. 删除 `BUILTIN_PROVIDER_LABELS`，确认 `providerLabel = config label ?? providerId`；
+5. 验证 Desktop、Web/Remote 与 Agent 严格协议解析一致。
 
 ### Step D：私有化 Legacy CLI Config
 

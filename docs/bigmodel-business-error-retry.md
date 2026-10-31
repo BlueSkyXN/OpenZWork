@@ -8,7 +8,6 @@ BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误�
 
 这次是保守改动：不重构 retry 目录，不新增协议字段，只补充 BigModel 业务码到现有分类表，并复用已有的失败事件、重试事件和日志。若 SSE error chunk 没有结构化 `code` 字段、只在 message 里返回 `[1302][...][request_id]` 这类 BigModel 强格式前缀，adapter 也会先提取四位业务码再进入同一张分类表。
 
-
 ## 实现位置
 
 - `apps/zcode-cli/packages/adapters/src/model/failure-provider-business-codes.ts`
@@ -24,21 +23,23 @@ BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误�
 
 ## 会重试的 BigModel 业务码
 
-| 业务码 | 语义 | ZCode 分类 | retry reason |
-| --- | --- | --- | --- |
-| `1120` | 临时账号访问异常，文档建议稍后重试 | `model_request_failed` | `server_error` |
-| `1230` | API 调用流程异常 | `model_request_failed` | `server_error` |
-| `1234` | 网络错误 | `model_request_failed` | `network_error` |
-| `1302` | 并发过高 | `model_rate_limited` | `rate_limited` |
-| `1303` | 调用频率过高 | `model_rate_limited` | `rate_limited` |
-| `1305` | 平台流量限制或过载 | `model_rate_limited` | `rate_limited` |
-| `1312` | 模型访问负载过高 | `model_request_failed` | `provider_overloaded` |
+| 业务码 | 语义                               | ZCode 分类             | retry reason          |
+| ------ | ---------------------------------- | ---------------------- | --------------------- |
+| `1120` | 临时账号访问异常，文档建议稍后重试 | `model_request_failed` | `server_error`        |
+| `1230` | API 调用流程异常                   | `model_request_failed` | `server_error`        |
+| `1234` | 网络错误                           | `model_request_failed` | `network_error`       |
+| `1302` | 并发过高                           | `model_rate_limited`   | `rate_limited`        |
+| `1303` | 调用频率过高                       | `model_rate_limited`   | `rate_limited`        |
+| `1305` | 平台流量限制或过载                 | `model_rate_limited`   | `rate_limited`        |
+| `1312` | 模型访问负载过高                   | `model_request_failed` | `provider_overloaded` |
 
 这些错误只在还没有向上游产出已提交模型事件时自动重试。流式请求如果已经产出 `text_delta`、`tool_call` 或 `finish`，仍然不会自动重放，避免重复文本或重复工具调用。
 
 ## Retry-After Header
 
 当 provider 返回 `retry-after-ms` 或 `retry-after` 时，adapter 会优先使用 provider 指定的等待时间；合理上限是 5 分钟。若同一响应带有 `x-should-retry: false` 或 `x-should-retry: 0`，则不使用 `retry-after` 驱动等待，只保留本地 retry 判断。
+
+使用 provider 指定的等待时间时，开启 jitter（默认开启）的情况下再**往后**加一段随机抖动：`[0, min(retry-after × 20%, 5 秒)]`，等待时间绝不短于 provider 要求的值。原因：同一时刻被限流的一批请求拿到的是同一个 `retry-after`，不加抖动就会在同一毫秒一起醒来、再一起撞上限流（2026-10 线上 1302 风暴的成因之一）。`jitter: false` 时保持精确等于 `retry-after`，便于测试。
 
 响应头必须贯穿三条路径：fetch 层直接抛出的 `ProviderBusinessError`、AI SDK error chunk / finish metadata 重建出的 `ProviderBusinessError`、以及被 `APICallError.cause` 包住的业务错误。否则 adapter 会把 `retry-after` 误判为缺失，并退回本地指数退避。
 
@@ -50,14 +51,14 @@ BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误�
 
 ## 不重试的 BigModel 业务码
 
-| 业务码 | 原因 |
-| --- | --- |
+| 业务码 | 原因                                                       |
+| ------ | ---------------------------------------------------------- |
 | `1113` | provider 明确返回的终止型业务错误，自动 retry 不会改变结果 |
-| `1304` | 日调用限制，短时间 retry 不会改变结果 |
-| `1308` | 使用量上限，需要等重置时间 |
-| `1310` | 周/月额度上限，需要等重置时间 |
-| `1311` | 套餐没有模型权限 |
-| `1313` | fair usage restriction，继续 retry 容易放大异常流量 |
+| `1304` | 日调用限制，短时间 retry 不会改变结果                      |
+| `1308` | 使用量上限，需要等重置时间                                 |
+| `1310` | 周/月额度上限，需要等重置时间                              |
+| `1311` | 套餐没有模型权限                                           |
+| `1313` | fair usage restriction，继续 retry 容易放大异常流量        |
 
 这类错误即使由 HTTP 429 携带，也保持非重试。原因是它们不是瞬时并发或平台负载问题，自动 retry 会浪费预算，也可能加重 provider 侧的限流。
 
@@ -77,6 +78,7 @@ BigModel / Z.AI 兼容接口会把一部分可恢复失败包装成业务错误�
 - `failure-classifier.test.ts` 覆盖 error chunk 重建和 `APICallError.cause` 包装后仍保留 `retry-after`。
 - `runner-provider-business-network.test.ts` 覆盖 SSE 中的 `1305` 业务错误在可安全重放时会发布失败事件、重试调度事件，并在下一次请求成功。
 - `runner-provider-business-network.test.ts` 覆盖 SSE error chunk 中的 `retry-after` 会决定下一次物理请求的等待时间。
+- `runner-retry.test.ts` 覆盖开启 jitter 时，基于 `retry-after` 的等待时间落在 `[retry-after, retry-after + min(20%, 5 秒)]` 内，从不提前。
 - `runner-provider-business-network.test.ts` 覆盖 SSE error chunk 调度 retry 后，下一次物理请求必须等待上一轮 abort、`iterator.return()` 和 tee 保留分支的有界清理。
 
 ## 后续方向

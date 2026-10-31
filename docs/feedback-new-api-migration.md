@@ -6,8 +6,6 @@
 
 - 旧接口：`https://feedback.example.invalid/v1/tickets`
 
-
-
 默认 feedback API base 必须跟随统一的 ZCode endpoint resolver：
 
 - `ZCODE_BASE_URL`、`ZCODE_TEST_BASE_URL`、`ZCODE_PRODUCTION_BASE_URL` 等统一 endpoint 覆盖继续生效。
@@ -145,6 +143,10 @@
 - main process、relay 或 remote host attachment 逻辑。
 
 桌面本地与远程窗口都通过 host process 中的同一反馈服务访问新接口；Web/mobile 远控链路不新增独立 Agent runtime 或业务状态。
+
+Web/mobile 切到远端 workspace 后，attachment 必须显式发布控制端 Window Host 的反馈服务，
+因为 Source 工作区集合不拥有反馈账号、设备身份和本机诊断包。不能用延长 channel 超时修复
+漏注册，也不能将反馈路由到 Source 凭据。回归见远控架构的 MRS01。
 
 ## 验证
 

@@ -1,4 +1,6 @@
 import { documentViewerInstance } from "@/plugin-ui/contract.js";
+// 净化保留：上游推荐插件入口（useRecommendedUiPlugins + PluginStoreAvatar 展示链）依赖
+// 官方商店推荐目录，本仓未随合并落地；继续走本方已安装 UI 插件 surface 枚举。
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
   resolvePluginUiSurfaceTitle,
@@ -78,6 +80,7 @@ export function SidePaneLauncherRow({
   avatar,
   label,
   description,
+  descriptionTag,
   actionLabel,
   loading,
   disabled,
@@ -88,6 +91,7 @@ export function SidePaneLauncherRow({
   avatar?: ReactNode;
   label: string;
   description?: string;
+  descriptionTag?: string;
   actionLabel?: string;
   loading?: boolean;
   disabled?: boolean;
@@ -111,12 +115,18 @@ export function SidePaneLauncherRow({
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-ui-base font-semibold text-foreground">{label}</span>
-        {description ? (
-          <span
-            className="mt-0.5 block truncate text-ui-sm text-foreground-subtle"
-            title={description}
-          >
-            {description}
+        {description || descriptionTag ? (
+          <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-ui-sm text-foreground-subtle">
+            {descriptionTag ? (
+              <span className="inline-flex h-4 shrink-0 items-center rounded-sm bg-tag px-1 text-ui-xs font-medium">
+                {descriptionTag}
+              </span>
+            ) : null}
+            {description ? (
+              <span className="truncate" title={description}>
+                {description}
+              </span>
+            ) : null}
           </span>
         ) : null}
       </span>

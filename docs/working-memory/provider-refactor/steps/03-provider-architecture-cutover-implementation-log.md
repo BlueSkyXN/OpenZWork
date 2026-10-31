@@ -62,7 +62,6 @@ Agent Runtime 只持有 `sessionModelSelection`，并通过 `getSessionModelSele
 
 Bootstrap 的 Registry `setModel`、reasoning level 修改和冷恢复统一调用 `setSessionModelSelection()`，不再通过 `updateConfig({ modelRef })` 改写 Session 模型事实。Session entry 从 Runtime 读取并保存完整 Selection，因此 reasoning level 与默认或显式 max output tokens 一起恢复。Turn Overlay 返回的执行期兼容配置暂留，归入后续 M3.5 Adapter 清理。
 
-
 ## 12. 删除 Runtime Config 的 ModelRef 写入口
 
 全局引用审计确认生产调用方已经离开 `updateConfig({ modelRef })` 后，Core 从 `updateConfig` 的公开类型和实现中删除该字段。运行参数更新与 Session Selection 写入由此形成机械边界：context window、max output tokens 等运行参数更新不能隐式改写 Selection，模型意图只能经 `setSessionModelSelection()` 或 Submission admission 进入。
@@ -160,8 +159,6 @@ Personal-only Provider 的设置页名称现在直接读取 `providerId`，名�
 模型编辑对 Model ID 的修改先调用 `renamePersonalModel(providerId, oldId, newId)`，等待有序模型列表与精确 Model Config 原子迁移完成后，才保存同一编辑动作中的 Properties / Option Specs。先行测试锁定 rename-before-save 顺序以及 Personal label 清理；实现后 Provider 117 项、Settings/UI/Runtime 相关 233 项、根 workspace typecheck 通过。保存反馈的 revision 状态仍待下一切片接入。
 
 ## 28. 连通性测试改走目标 Environment 的正式 Model
-
-
 
 远程设置页现在通过 `workspacePath + workspaceIdentity + remoteSessionId/remoteTarget` 解析目标 Service Collection；`useModelProviders` 改读当前 `ServiceProvider`，并订阅该 Environment 的 Settings View，避免远端草稿误保存到本地 Host。Host 仍只负责账号 Overlay 同步与协议转发，不持有另一份 Provider 执行配置。
 

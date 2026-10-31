@@ -9,7 +9,7 @@ patches:
     priority: P1
     upstream:
       since: 3.16.1
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 在本机工作区打开设置，选择远端 Source 的用户级 MCP，读取或保存配置。
     impact: 读取和保存都落到本机用户配置，远端 Source 的配置没有变化。
     cause: Source 用户级目标只设置 workspacePath，没有 workspaceIdentity；mcpStore 在 identity 为空时忽略设置页显式传入的远端目录服务，回落到本机平台读写。
@@ -18,7 +18,7 @@ patches:
     files:
       - packages/ui/src/store/mcpStore.ts
     regression:
-      - packages/ui/test/mcpStore.test.ts
+      - packages/ui/test/mcpStoreMutations.test.ts
     retire: 上游让 Source 用户级目标经远端目录服务读写，原触发场景只调用远端服务。
     refs:
       - docs/spec/maintenance-fixes-3.16.2.md
@@ -31,7 +31,7 @@ patches:
     priority: P2
     upstream:
       since: 3.14.0
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: Web 服务使用含 +、/、= 的自定义 token；首次以 URL 参数 token 访问后，后续请求携带服务端下发的 Cookie。
     impact: 首次请求返回 200，之后的 Cookie 请求返回 401；Bearer 鉴权不受影响。
     cause: 写入 Cookie 时对 token 调用 encodeURIComponent，读取 Cookie 后直接与原 token 比较，没有解码。
@@ -40,7 +40,7 @@ patches:
     files:
       - packages/server/src/http.ts
     regression:
-      - packages/server/test/serverInfoHttp.test.ts
+      - packages/server/test/liteTokenCookie.test.ts
     retire: 上游统一 Cookie 写入与读取的编码，含 +、/、= 的 token 经 Cookie 请求返回 200。
     refs:
       - docs/spec/maintenance-fixes-3.16.2.md
@@ -49,23 +49,23 @@ patches:
   - id: OW-P003
     title: PRV-08 测试夹具清理与 Registry 后台刷新争用文件锁
     kind: test
-    status: fixed
+    status: retired
     upstream:
       since: 3.16.1
-      checked: 3.16.2
+      checked: 3.17.1
+      fixedIn: 3.17.1
     trigger: providerProvisioningRealStores 的 PRV-08 用例在提交后注入异常、回滚也失败，随后立即清理临时目录。
     impact: 后台 Registry 刷新仍持有 builtin.json.lock，Windows 删除临时目录时报 EPERM，用例偶发失败。
     cause: 夹具的同步 dispose() 只取消订阅，没有等待已排入的刷新完成就删除临时目录。
-    fix: 夹具清理先 await registryService.refresh("fixture-dispose") 排空刷新队列，再释放 Runtime 与默认模型 Repository；重复清理复用同一个 Promise。
-    evidence: 回归用真实 withFileLock 持有 Built-in 锁，并用 Promise 控制后台读取；旧清理实现下失败，修复后在 macOS、Linux、Windows 核心 CI 通过。
+    fix: 3.17.1 同步复核时上游已整体退役 providerProvisioningRealStores.test.ts 与 providerProvisioning* 全部相关单测（Provider 配置真实 Store 生命周期域随 v3.17.1 单测退役），原争用场景的宿主文件不复存在，缺陷域已随测试退役净化。
+    evidence: 上游 sync 提交 a60ba6a7 删除 packages/services/test/providerProvisioning*.test.ts 全组；当前树无该夹具及 PRV-08 用例，Registry 刷新（registryService.refresh）仍在 providerRuntime 中但原争用夹具已不存在。
     files:
-      - packages/services/test/providerProvisioningRealStores.test.ts
+      - packages/services/src/model-provider/providerRuntime.ts
     regression:
-      - packages/services/test/providerProvisioningRealStores.test.ts
-    retire: 上游夹具在删除临时目录前等待 Registry 刷新完成，本条回归在上游代码上通过。
+      - packages/services/test/upstreamRetiredPatchHosts.test.ts
+    retire: 上游退役该夹具域即视为撤销；若后续恢复真实 Store 生命周期单测，需保留 dispose 前排空刷新队列的语义。
     refs:
       - docs/spec/provider-provisioning-test-lifecycle.md
-      - https://github.com/BlueSkyXN/OpenZWork/pull/30
 
   - id: OW-P004
     title: Windows 显式文件清单未选中 Vitest 相关测试
@@ -73,16 +73,16 @@ patches:
     status: fixed
     upstream:
       since: 3.16.1
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 在 Windows 使用 affected 的 --files 或 lint-staged manifest 入口。
     impact: 文件路径未匹配官方依赖图，目标测试未执行；公共 setup 的全量 trigger 也未匹配。
     cause: node:path.resolve 生成原生路径，直接赋给 Vitest config.related；反斜杠和临时目录别名与 Vitest 依赖图的实际路径不同。
-    fix: 存在的文件先解析真实路径，再统一原生路径分隔符为正斜杠；保留官方选择、缺失路径处理及 Git 基线规则。
+    fix: 存在的文件先解析真实路径，再统一原生路径分隔符为正斜杠；保留官方选择、缺失路径处理及 Git 基线规则。v3.17.1 同步复核：上游把 affected-unit-tests 改名为 engineering-tests（scripts/engineering-tests/scope.mjs），路径归一化逻辑与 OW-P004 标记随改名保留。
     evidence: Windows CI 的 manifest 回归成功退出却未生成执行标记，根公共 setup 未报告全量跳过；相同测试在 macOS 和 Linux 通过。新增相对及绝对路径执行回归，并在三平台复核。
     files:
-      - scripts/affected-unit-tests/scope.mjs
+      - scripts/engineering-tests/scope.mjs
     regression:
-      - scripts/test/affected-unit-test-cli.test.mjs
+      - scripts/test/affected-engineering-test-cli.test.mjs
     retire: 上游相关文件入口统一路径后，Windows 的显式路径、manifest 和公共 setup 回归通过。
     refs:
       - docs/spec/maintenance-fixes-3.16.2.md
@@ -96,7 +96,7 @@ patches:
     priority: P2
     upstream:
       since: 3.15.1
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: MCP 目录服务缺失或新增、修改、启停、删除请求失败。
     impact: 新增和修改显示未保存的配置，开关错误改变，删除提前移除条目；调用方无法一致处理失败。
     cause: store 吞掉持久化异常后更新投影，删除及预载入口没有等待写入结果。
@@ -105,7 +105,7 @@ patches:
     files:
       - packages/ui/src/store/mcpStore.ts
       - packages/ui/src/settings/McpSettingsSection.tsx
-      - packages/desktop/test/e2e/settings/manual-review/pending/mcp-mutation-errors.test.ts
+      - packages/desktop/test/e2e/settings/mcp-mutation-errors.test.ts
     regression:
       - packages/ui/test/mcpStoreMutations.test.ts
     retire: 上游所有 MCP 写入入口都向调用方返回失败，失败时原界面及持久化标记保持。
@@ -120,7 +120,7 @@ patches:
     priority: P1
     upstream:
       since: 3.15.1
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: Source A 保存挂起期间切换 B、切走再切回 A，或更换同 Source 的目录服务。
     impact: 原目标的配置可能写入新目标的共享 store，并进入新目标的 Agent 状态刷新请求。
     cause: 异步写入完成后直接修改当前投影，没有核对操作开始时的目标和服务代次。
@@ -139,20 +139,21 @@ patches:
   - id: OW-P007
     title: Bot 消息流 HTTP 测试桩被后台轮询消费
     kind: test
-    status: fixed
+    status: retired
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
+      fixedIn: 3.17.1
     trigger: 消息流测试创建默认启用后台任务的 Bot 服务，同时把全局 HTTP 替换为立即成功的响应。
     impact: 微信 getupdates 可连续取得空响应并累积 mock 调用；消息流单测存在不受其断言控制的后台请求。
     cause: 消息处理与后台渠道生命周期没有在测试夹具中隔离，且每例同步 disposeAll 后未等待异步清理完成。
-    fix: 消息流工厂默认关闭后台任务，启动用例显式开启；每例等待 disposeAllAndWait，并断言 HTTP 替身没有消费微信后台轮询。
-    evidence: 上游 3.16.2 夹具没有设置 runStartupBackgroundTasks；真实服务/provider 与临时目录的受控实验在 18ms 内产生 100 次空轮询。历史 worker OOM 无堆快照，不逐次断言均由此触发。
+    fix: 3.17.1 同步复核：上游退役了 botsService.messageFlow.test.ts 与 botsService.fixtures.ts 全部消息流单测；runStartupBackgroundTasks 开关与 disposeAllAndWait 生命周期接口仍保留在 botsService（当前树 v3.17.1 版本），原缺陷域（消息流夹具后台轮询）随测试退役消失。
+    evidence: 上游 sync 提交 a60ba6a7 删除 packages/services/test/botsService.*.test.ts 全组；当前 botsService.ts 仍含 runStartupBackgroundTasks !== false 默认开关与 disposeAllAndWait 返回类型，受控开关语义未变。
     files:
-      - packages/services/test/botsService.messageFlow.test.ts
+      - packages/services/src/bots/botsService.ts
     regression:
-      - packages/services/test/botsService.messageFlow.test.ts
-    retire: 上游消息流夹具隔离后台任务并等待服务清理，现有消息断言与无意外轮询检查全部通过。
+      - packages/services/test/upstreamRetiredPatchHosts.test.ts
+    retire: 上游退役消息流单测域即视为撤销；若恢复 Bot 消息流单测，夹具需默认关闭后台任务并逐例等待 disposeAllAndWait。
     refs:
       - docs/spec/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/pull/32
@@ -160,20 +161,21 @@ patches:
   - id: OW-P008
     title: RPC 资源样本测试在订阅完成前发送一次性事件
     kind: test
-    status: fixed
+    status: retired
     upstream:
       since: 3.15.1
-      checked: 3.16.2
+      checked: 3.17.1
+      fixedIn: 3.17.1
     trigger: RPC 初始化和 EventListen 队列传播超过测试固定等待的 20ms。
     impact: 样本在服务端监听器注册前丢失，测试等待已丢失事件直至 30 秒超时，阻断完整检查。
     cause: 夹具把固定睡眠当作动态事件已订阅的证据，而内存协议通过异步队列传递请求。
-    fix: 等待服务端 Emitter 首个监听器的注册信号再发送样本；覆盖即时与 50ms 队列延迟，保持完整载荷断言和原时限。
-    evidence: 上游 3.16.2 保留 20ms 固定等待；macOS Extended 该用例超时。受控 50ms 队列延迟在旧等待逻辑下复现 30 秒超时，修复后两种延迟及相邻 RPC 回归通过。
+    fix: 3.17.1 同步复核：上游退役了 zcodeAgentResourceTelemetry.rpc.test.ts 与全部 resourceTelemetry 相关单测（进程资源观测测试域随 v3.17.1 退役），固定睡眠夹具不复存在；观测 emitter/分发面在 services 中由 v3.17.1 同步移植维护。
+    evidence: 上游 sync 提交 a60ba6a7 删除 packages/services/test/zcodeAgentResourceTelemetry.rpc.test.ts、zcodeAgentService.resourceTelemetry 等全部遥测单测；当前 test/ 目录无同名或同主题存活文件。
     files:
-      - packages/services/test/zcodeAgentResourceTelemetry.rpc.test.ts
+      - packages/services/src/zcode-agent/zcodeAgentService.ts
     regression:
-      - packages/services/test/zcodeAgentResourceTelemetry.rpc.test.ts
-    retire: 上游夹具以真实订阅信号代替固定等待，即时与延迟队列下的样本载荷回归均通过。
+      - packages/services/test/upstreamRetiredPatchHosts.test.ts
+    retire: 上游退役资源遥测单测域即视为撤销；若恢复该 RPC 遥测单测，夹具必须等待服务端首个监听器注册信号而非固定睡眠。
     refs:
       - docs/spec/automatic-github-release.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40189299521/job/121156666989
@@ -185,16 +187,16 @@ patches:
     status: fixed
     upstream:
       since: 3.15.1
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 任务标题、状态和未读等字段不变，仅活动时间变化，或同活动时间的创建时间变化。
     impact: 手机保留旧任务时间和排序，直到其他已比较字段变化或重新获取完整目录。
     cause: 旧协议目录按 updatedAt 和 createdAt 排序，但推送签名遗漏两个时间字段，且签名排序会消除输入数组的顺序变化。
-    fix: 把两个时间字段加入现有任务签名，保持完整投影推送与重复快照去重，bootstrap 读取同一最新投影。
+    fix: 把两个时间字段加入现有任务签名，保持完整投影推送与重复快照去重，bootstrap 读取同一最新投影。v3.17.1 同步复核：上游退役了原回归宿主 webRemoteControlManagerExternalRelay.test.ts，签名实现仍在 webRemoteControlManager.ts（含 OW-P009 标记），回归迁至 webRemoteControlManagerDirectoryPush.test.ts 重建。
     evidence: 上游 3.15.1 快照 aac475566 包含该去重逻辑；3.16.2 快照 3c5b2276 已移除旧任务目录，OpenZWork 为官方 V1 网页兼容保留此路径。两项真实 manager 载荷回归在修复前因没有推送而失败，修复后通过，覆盖时间变化未重排、发生重排、重复投影和随后 bootstrap。
     files:
       - packages/desktop/src/main/webRemoteControlManager.ts
     regression:
-      - packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
+      - packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts
     retire: 官方 V1 兼容路径采用包含时间字段的等效去重实现，或该旧协议支持经产品决定撤销；保留重复快照及 bootstrap 一致性回归。
     refs:
       - docs/web-remote-control/v1-connection-modes.md
@@ -205,7 +207,7 @@ patches:
     status: fixed
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: Windows Git Bash 编码回归的夹具准备、真实进程启动和结果读取合计超过默认 5 秒。
     impact: 命令自身 10 秒期限尚未结束，Vitest 已先中止测试，主分支 Windows CI 失败。
     cause: 上游编码回归未声明外层期限，继承 Vitest 默认 5 秒，而其真实执行请求配置为 10 秒。
@@ -226,7 +228,7 @@ patches:
     status: fixed
     upstream:
       since: 3.15.1
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 自定义编码器永不结束的单测中，抓帧、写文件和整理帧序列消耗 stop 总预算，编码器的 30ms 期限尚未先到。
     impact: Windows Extended 期望编码超时，却收到 stop 在 100ms 到期的错误；正常的总预算保护被误报为编码器测试失败。
     cause: 上游夹具同时使用真实文件 IO、30ms 编码期限与 100ms stop 总期限，未在编码器实际进入后控制时钟。
@@ -247,7 +249,7 @@ patches:
     status: fixed
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 真实 SQLite 冷恢复用例的完整建库、重复固定历史播种与恢复共用默认 5 秒预算，Windows 文件准备发生波动。
     impact: 单 worker 下仍出现用例超时，随后 afterEach 删除尚未释放的数据库时报 EBUSY。
     cause: 每例重复准备相同 schema 和 transcript，固定数据写入与被测恢复语义耦合；原超时的具体慢点未记录，完整链采样确认历史播种是主要准备成本。
@@ -269,16 +271,16 @@ patches:
     status: fixed
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: Windows 读取状态文件期间，Supervisor 原子替换最终 stopped 快照返回 EPERM、EBUSY 或 EACCES。
     impact: Supervisor 已停止并释放锁，但持久化快照仍是旧状态，要求新 stopped 快照的等待方持续等待并超时。
     cause: status persister 只做一次 rename，错误记录后继续结束生命周期，最终状态没有后续写入机会。
-    fix: 既有串行队列复用 shared/node 的 atomicWritePrivateTextFile，针对共享占用有界重试并清理失败临时文件；保留旧快照、永久错误上报、状态格式及全部停机期限。
+    fix: 既有串行队列复用 shared/node 的 atomicWritePrivateTextFile，针对共享占用有界重试并清理失败临时文件；保留旧快照、永久错误上报、状态格式及全部停机期限。v3.17.1 同步复核：上游为 persister 新增 canWrite() 预检，我方有界重试与 OW-P013 标记保留；上游退役了原回归宿主 supervisor.test.ts，回归迁至 statusSnapshotPersistence.test.ts 重建。
     evidence: Windows Extended 日志在 slow SIGKILL reap 用例记录最终 status rename EPERM，随后 20000ms 超时；上游 3.16.2 的 3c5b2276 同样只尝试一次 rename。六项故障注入回归在原实现下失败，覆盖短暂占用、持续占用、不可重试错误、旧快照保护和后续队列恢复。
     files:
       - packages/zcode-server-cli/src/runtime/statusSnapshot.ts
     regression:
-      - packages/zcode-server-cli/test/supervisor.test.ts
+      - packages/zcode-server-cli/test/statusSnapshotPersistence.test.ts
     retire: 上游状态原子替换采用等效有界共享占用处理，最终快照可被停机等待方观测，永久失败与队列顺序回归仍保留。
     refs:
       - docs/spec/source-server-status-persistence.md
@@ -290,16 +292,16 @@ patches:
     status: fixed
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 多进程取得同一数据目录锁，首次 open(wx) 已创建文件但 owner 尚未写入，或陈旧锁恢复与首次取得交错。
     impact: 两个进程可能同时认为自己持有数据目录锁，真实八进程竞争回归出现两个 success。
     cause: 首次取得不受 recovery 门闩保护，空记录被当作损坏锁回收；旧单文件 recovery 门闩自身也存在创建与写入分离的窗口。
-    fix: 首次取得和陈旧恢复统一在 shared/node 的 acquireFileLock 门闩内完成，保留原 server.lock 格式、ownerToken 校验和公开接口，门闩保持 5ms 重试间隔与 500ms 等待预算。
+    fix: 首次取得和陈旧恢复统一在 shared/node 的 acquireFileLock 门闩内完成，保留原 server.lock 格式、ownerToken 校验和公开接口，门闩保持 5ms 重试间隔与 500ms 等待预算。v3.17.1 同步复核：上游 sync 回退为无门闩的循环实现，本同步重套门闩修复并保留上游新增的进程身份判活、heldOwnerTokens 与 readLoss；上游退役了原回归宿主 lock.test.ts，回归迁至 dataRootLockInitialization.test.ts 重建。
     evidence: Linux Extended 的八进程竞争报告两个 success；上游 3.16.2 的 3c5b2276 包含相同代码。精确暂停首次 open 后，原实现允许第二个 owner 成功；修复后拒绝竞争者，放行后首个 owner 正常取得。原陈旧恢复和真实多进程回归保留。
     files:
       - packages/zcode-server-cli/src/runtime/lock.ts
     regression:
-      - packages/zcode-server-cli/test/lock.test.ts
+      - packages/zcode-server-cli/test/dataRootLockInitialization.test.ts
     retire: 上游对首次取得与陈旧恢复提供等效互斥，初始化中的记录不会被误回收，真实多进程竞争及 ownerToken 保护回归保留。
     refs:
       - docs/spec/source-server-lock-acquisition.md
@@ -312,7 +314,7 @@ patches:
     priority: P2
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 项目搜索菜单向上展开，或其他交互浮层、子菜单覆盖桌面窗口的标题栏拖拽区。
     impact: 搜索框无法通过鼠标聚焦，浮层内按钮和菜单项的点击可能被当成拖动窗口。
     cause: DropdownMenu、ContextMenu、Popover 和 HoverCard 的共享内容根缺少 no-drag；Portal 的视觉层级不能排除 Electron 原生拖拽命中。
@@ -337,7 +339,7 @@ patches:
     priority: P2
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 用户与项目、父项目与子项目或兼容配置文件分别声明 MCP server。
     impact: 后一份 mcp 对象覆盖前一层，未被同名覆盖的 server 也从有效配置中消失。
     cause: mergeConfigs 先 Object.assign(result, config)，随后才读取 result.mcp.servers 作为旧层，实际读取的已是新层。
@@ -357,11 +359,11 @@ patches:
     status: fixed
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 手机通过旧 workspace 入口在已删除、不可访问或已变成文件的本地目录中新建任务。
     impact: 新建入口绕过原生项目目录检查，错误继续到会话初始化，目录缺失原因无法在 admission 时反馈。
     cause: attachWorkspaceHost 的 local 分支不读取 cwd，直接交付窗口 Host port。
-    fix: 新草稿在创建 port 前异步检查目录及访问权限，失败时明确提示恢复或选择目录；历史 initialTaskId 保留读取能力，不创建或修补旧目录。
+    fix: 新草稿在创建 port 前异步检查目录及访问权限，失败时明确提示恢复或选择目录；历史 initialTaskId 保留读取能力，不创建或修补旧目录。v3.17.1 同步复核：修复仍在 webRemoteControlSharedHostAttachments.ts 并与上游新增 terminalOwnerId 隔离合并；上游退役了原回归宿主全文件，回归迁至 webRemoteControlSharedHostAttachments.test.ts 按原场景重建。
     evidence: 上游 3.16.2 的 3c5b2276 含相同直接 attachment 分支。真实临时目录回归在原实现下收到成功 attachment，修复后拒绝缺目录与文件路径，未产生 port 或 mkdir，目录恢复后可重试。
     files:
       - packages/desktop/src/main/webRemoteControlSharedHostAttachments.ts
@@ -377,16 +379,16 @@ patches:
     status: fixed
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 工作区身份与连接状态不变，仅修改项目名称或工作区展示用途。
     impact: 手机保留旧名称，重新获取 bootstrap 才看到新值。
     cause: 工作区推送签名遗漏 label、workspacePath 与 workspacePurpose 等展示字段。
-    fix: 在既有签名中加入工作区展示字段及任务的 workspaceLabel，保留时间排序和等价快照去重。
+    fix: 在既有签名中加入工作区展示字段及任务的 workspaceLabel，保留时间排序和等价快照去重。v3.17.1 同步复核：签名实现仍在 webRemoteControlManager.ts（含 OW-P018 标记）；上游退役了原回归宿主 webRemoteControlManagerExternalRelay.test.ts，回归迁至 webRemoteControlManagerDirectoryPush.test.ts 重建。
     evidence: 上游 3.16.2 的 3c5b2276 签名只包含 key、kind 与连接字段。名称变更回归在修复前未收到推送，修复后名称和用途变化分别推送，重复快照去重。
     files:
       - packages/desktop/src/main/webRemoteControlManager.ts
     regression:
-      - packages/desktop/test/webRemoteControlManagerExternalRelay.test.ts
+      - packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts
     retire: 上游签名覆盖相同展示字段，单字段变化和重复快照回归通过。
     refs:
       - docs/web-remote-control/v1-connection-modes.md
@@ -397,17 +399,17 @@ patches:
     status: fixed
     upstream:
       since: 3.16.2
-      checked: 3.16.2
+      checked: 3.17.1
     trigger: 两个真实 Node 进程并发修改个人 Provider 配置，创建 provider_config.json.lock 时返回 EPERM。
     impact: 申请者尚未取得锁便退出，配置更新失败；Windows Extended 的双进程持久化回归失败。
     cause: acquireFileLock 只重试 EEXIST 或已建锁后丢失目录的 ENOENT，创建阶段的 EPERM 被直接抛出。
-    fix: 仅对 Windows 未成功 mkdir 的 EPERM 在原等待预算内重试，不读取或回收其他 owner；持续失败保留原错误，零预算、其他平台和 owner 写入失败保持原失败语义。
+    fix: 仅对 Windows 未成功 mkdir 的 EPERM 在原等待预算内重试，不读取或回收其他 owner；持续失败保留原错误，零预算、其他平台和 owner 写入失败保持原失败语义。v3.17.1 同步复核：修复仍在 atomicFileLock.ts 并含 OW-P019 标记；上游退役了双进程回归宿主 personal-rule-persistence.test.ts，标准配置读写回归由存活的 standard-provider-config.test.ts 承载（EPERM 分支为 Windows 平台代码，macOS/Linux 以单元故障注入回归覆盖）。
     evidence: 上游 3.16.2 的 3c5b2276 含相同错误分类。Windows CI 堆栈定位到共享工具的 mkdir；四项受控故障回归在原实现下失败，覆盖短暂恢复、持续失败预算及活 owner 保护，真实双进程写入回归保持完整更新断言。
     files:
       - packages/shared/src/node/atomicFileLock.ts
     regression:
       - packages/shared/test/atomicFileLockWindows.test.ts
-      - packages/provider-node/test/personal-rule-persistence.test.ts
+      - packages/provider-node/test/standard-provider-config.test.ts
     retire: 上游在同一预算内处理 Windows 创建阶段的临时占用，永久错误与 owner 隔离回归保留，真实双进程写入通过。
     refs:
       - docs/spec/shared-file-lock-acquisition.md

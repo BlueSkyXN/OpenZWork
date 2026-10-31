@@ -15,7 +15,10 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
-import type { BrowserViewScreenshotSurfacePreparePayload, GitChangeSourceId } from "@zcode/shared";
+import {
+  type BrowserViewScreenshotSurfacePreparePayload,
+  type GitChangeSourceId,
+} from "@zcode/shared";
 import { FileManagerPane } from "@/WorkspaceFileTree.js";
 import type { FileManagerTarget } from "@/lib/workspaceSidePane.js";
 import { useZCodeSessionStore } from "@/store/zcodeSessionStore.js";
@@ -534,6 +537,7 @@ export function AnimatedSidePanePanel({
     isMobileTextInputViewport,
     mobileOverlay,
   });
+  // OpenZWork 净化：Sites 面板依赖官方 zcode-site 插件（zcode_official JWT 鉴权），已随净化移除。
   const tabDragSensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -981,6 +985,7 @@ export function AnimatedSidePanePanel({
         // 独立外框放在内容层：关闭仍保留 Browser Guest 和 tab 实例，不改变面板持久化边界。
         "h-full overflow-hidden bg-background",
         !mobileOverlay && frameClassName,
+        !mobileOverlay && "border-[0.5px] shadow-xs",
         mobileStacked && "max-md:rounded-none max-md:border-0",
         mobileOverlay && "min-w-0",
         mobileStacked && "max-md:!w-full",
@@ -1451,6 +1456,9 @@ export function AnimatedSidePanePanel({
                             faviconUrl={tab.faviconUrl}
                             workspacePath={workspaceAbsPath}
                             workspaceIdentity={workspaceIdentity}
+                            // 切换 workspace 的那次 commit 里 props 已是新 workspace，tabs 仍是旧的；
+                            // 读当前 workspace 会以错误 scope attach，触发 workspace-mismatch。
+                            workspaceKey={tab.workspaceKey ?? workspaceKey}
                             remoteSessionId={tab.remoteSessionId ?? workspaceRemoteSessionId}
                             residencyGeneration={tab.residencyGeneration}
                             sessionId={tab.ownerTaskId ?? "unscoped"}
@@ -1510,6 +1518,7 @@ export function AnimatedSidePanePanel({
           data-workspace-side-pane-resize-handle="true"
           className={cn(
             WORKSPACE_VERTICAL_RESIZE_HANDLE_CLASS_NAME,
+            "aria-[orientation=vertical]:w-[3px] after:left-px",
             mobileStacked && "max-md:hidden",
           )}
         />

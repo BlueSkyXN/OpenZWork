@@ -127,7 +127,6 @@ workspace configOptionsStatus=error
 1. ~~1a/1b/1c~~ **已定：1c 混合（2026-07-07 用户裁决）**。实现顺序：先 1b 核心闭环（CLI 从 registry 解析），再叠 1a 回落（app 解析 runtimeModel + `provider.notInRegistry` 重发）。
 2. v4 命令 `runtimeModel` schema：**倾向引用共享 `zcodeModelRuntimeConfigSchema`**（DRY，共享包内非 CLI 服务桥）+ 注释溯源；实现时若发现耦合过重再改 v4 mirror。
 
-
 ## 7. 实现顺序（1c）—— 进度
 
 1. ✅ **v4 协议 additive**（`command.ts` runtimeModel?，引用共享 schema）— commit `c9c67b061`。

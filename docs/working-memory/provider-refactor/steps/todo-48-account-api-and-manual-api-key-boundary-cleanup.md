@@ -8,9 +8,6 @@
 
 ## 1. 问题
 
-
-
-
 错误不是“Account API 页面漏隐藏输入框”，而是不存在产品依据的 Account API Provider 本身进入了正式 Config、Resolver、
 Runtime 和 UI。
 
@@ -62,9 +59,6 @@ getCustomerInfo
 copy secret
 ```
 
-
-
-
 因此“存在自动取 Key 的底层能力”和“存在账号按量 API 产品入口”是两件事。前者存在，后者在 staging 没有证据。
 
 ### 2.3 目标访问边界
@@ -92,9 +86,6 @@ Provider 设置页直接读取 Effective Provider Config 的 `access` 判别联�
 Family 连接选择中的内部 `kind: "api-key"` 可以保留，但用户界面统一显示为“按量 API”。它明确表示使用标准按量
 模型 API，进入详情后由用户手填 Key。
 
-
-
-
 ## 3. 已裁决的实施范围
 
 以下内容由 [`todo-49-manual-api-key-and-coding-plan-credential-boundary-cutover.md`](./todo-49-manual-api-key-and-coding-plan-credential-boundary-cutover.md)
@@ -105,9 +96,9 @@ Family 连接选择中的内部 `kind: "api-key"` 可以保留，但用户界面
    `access.type=api-key` 展示手填表单，普通“添加供应商”不再列出它们；
 3. Welcome 手填 Key 更新对应 Built-in API Provider 的 Personal Overlay，不写 Account Access；
 4. 删除 `restoreFamilyApiKeyProviderForApiKeyMode` 及重复 API Key persistence/helper；
-6. Config Service 继续拒绝真正 Account Provider 的 Personal `access`；
-7. Family API Key 用户文案改为“按量 API”；
-8. 更新 Provider Settings Design、Access Protocol Design、Feature Graph 与 Todo 26，撤销错误的 Account API 结论。
+5. Config Service 继续拒绝真正 Account Provider 的 Personal `access`；
+6. Family API Key 用户文案改为“按量 API”；
+7. 更新 Provider Settings Design、Access Protocol Design、Feature Graph 与 Todo 26，撤销错误的 Account API 结论。
 
 ## 4. 验证
 

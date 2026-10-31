@@ -1653,6 +1653,15 @@ const AssistantTextRowView = memo(function AssistantTextRowView({
     [projectsCodeComments, row.text, streaming],
   );
   const visiblePreviewCards = previewCards && previewCards.length > 0 ? previewCards : null;
+  const textElement = useRef<HTMLDivElement>(null);
+  const paintFrames = useRef<number[]>([]);
+  useEffect(
+    () => () => {
+      for (const frame of paintFrames.current) cancelAnimationFrame(frame);
+    },
+    [],
+  );
+  // OpenZWork 净化：local-ttft 文本渲染测量（ARMS 出口域）不引入。
   return (
     <RowShell rowId={row.rowId} className="group/assistant-row">
       {/* M5④ 阶段2：assistant 文本走 streamdown（MessageResponse），
@@ -1660,7 +1669,7 @@ const AssistantTextRowView = memo(function AssistantTextRowView({
       {/* Bugfix：MessageResponse 只消费自身声明的 props，不会把 data-* 透传到真实 DOM，
           导致 assistant 正文虽然在 JSX 上标了 selectable，框选逻辑却永远找不到该区域。
           selectable 语义必须放在稳定的 DOM 包装层上，完成态和 streaming 共用同一路径。 */}
-      <div data-conversation-selectable="true" className="w-full text-ui-base">
+      <div ref={textElement} data-conversation-selectable="true" className="w-full text-ui-base">
         <GenUiMessageResponse
           completed={row.state === "complete"}
           messageKey={`${row.rowId}:${row.entityId ?? ""}`}

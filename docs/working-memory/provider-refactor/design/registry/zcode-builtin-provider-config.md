@@ -204,7 +204,6 @@ properties.input_format.support_image = true;
 properties.input_format.support_video = true;
 ```
 
-
 Provider-scoped Rule 只用于真正对全部成员成立的服务事实。仅对一个模型成立的差异仍放在 Model/API/Endpoint
 或 Exact Rule，不能借 `modelMatch=.*` 扩散。
 

@@ -135,7 +135,7 @@ Desktop continuous 与 Mobile replayable 只共享 Selection 校验结果；本 
 3. Agent Runtime：ModelFactory 不绑定输出预算；普通 Turn 显式传 `spec.max`；所有其他执行链在 Executor 前都有明确预算。
 4. UI unit：Recent/当前草稿失效后回到 Host preferred，并暴露“发生过失效”的结果；新草稿正常缺省不误报。
 5. UI E2E：Registry revision 使当前草稿选择失效后，工具条切换到有效默认值并显示一次通知；无可用模型时要求重选。
-7. 回归：Session、Subagent、Automation、Repo Wiki、Title、Goal、Memory、Compact、Connectivity 的 Selection 和 Request Options 不混用。
+6. 回归：Session、Subagent、Automation、Repo Wiki、Title、Goal、Memory、Compact、Connectivity 的 Selection 和 Request Options 不混用。
 
 ## 9. 完成门禁
 

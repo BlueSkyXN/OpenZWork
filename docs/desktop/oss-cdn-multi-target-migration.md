@@ -37,7 +37,6 @@ OSS_BUCKET=new-bucket,old-bucket-a,old-bucket-b
 OSS_CONFIG_FILE=/etc/ossutil/new,/etc/ossutil/old-a,/etc/ossutil/old-b
 ```
 
-
 ### 3.1.4 切新
 
 配置单组目标：

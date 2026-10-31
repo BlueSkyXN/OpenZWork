@@ -2,6 +2,11 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { decodeZCodeBuiltinRelease } from "../src/zcode-builtin-release.js";
 
+// v3.17.1 同步复核：上游退役了 personal-rule-persistence.test.ts（OW-P019 真实双进程
+// 回归宿主）；本文件作为该条目在 provider-node 域的存活回归载体，持续守护个人 Provider
+// 配置的标准模板面（provider_config.json 的并发写入经 shared/node 文件锁，Windows mkdir
+// EPERM 分支由 packages/shared/test/atomicFileLockWindows.test.ts 的 OW-P019 单元回归覆盖）。
+
 const standardTemplateIds = [
   "standard-anthropic-messages",
   "standard-openai-chat-completions",

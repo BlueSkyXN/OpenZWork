@@ -232,8 +232,6 @@ Provider 完整性只收紧执行所需事实：合法 Access 分支、API Type 
 `visibility`、Headers 等合法可选字段继续保留原语义；成员集合已经投影为 Registry `Provider.models`，执行
 消费者不重新读取成员字段决定成员资格。
 
-
-
 ### 3.3 Settings candidate 是分支契约
 
 ```ts

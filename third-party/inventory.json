@@ -18441,6 +18441,618 @@
           "sha256": "f4dc8dc6a71af29906b21c688bd97426abedbed5ee14b0bd989c2e6ab7afa089"
         }
       ]
+    },
+    {
+      "name": "@agentclientprotocol/sdk",
+      "version": "0.21.1",
+      "license": "Apache-2.0",
+      "repository": "git+https://github.com/agentclientprotocol/typescript-sdk.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "6ed4f049cce59e05197d585bdf8a39980b45d546d6ea718ee344555f3a867c3a"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "cff63b58fb0de3be0abeccdd54f6277831c8b7c70fadc24c701d67adeedd81a3"
+        }
+      ]
+    },
+    {
+      "name": "@babel/helper-string-parser",
+      "version": "7.29.7",
+      "license": "MIT",
+      "repository": "https://github.com/babel/babel.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ]
+    },
+    {
+      "name": "@babel/helper-validator-identifier",
+      "version": "7.29.7",
+      "license": "MIT",
+      "repository": "https://github.com/babel/babel.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ]
+    },
+    {
+      "name": "@babel/runtime",
+      "version": "7.29.7",
+      "license": "MIT",
+      "repository": "https://github.com/babel/babel.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ]
+    },
+    {
+      "name": "@babel/types",
+      "version": "7.29.8",
+      "license": "MIT",
+      "repository": "https://github.com/babel/babel.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "117da2af0d4ce0fe1c8e19b5cff9dcd806adf973d328d27b11d4448c4ff24f76"
+        }
+      ]
+    },
+    {
+      "name": "@electron-internal/extract-zip",
+      "version": "1.0.5",
+      "license": "BSD-2-Clause",
+      "repository": "https://github.com/electron/extract-zip",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "f64eca06693734626fe5c515ef365ef2e55aedb204c4dfd672a4832f9d8a4fc1"
+        },
+        {
+          "member": "https://registry.npmjs.org/@electron-internal%2fextract-zip/1.0.5",
+          "sha256": "d8a3a14c4ea44385e299f072db9e8a73994e2ff2b344ea5ae5a39c09f11cc984"
+        }
+      ]
+    },
+    {
+      "name": "@electron/get",
+      "version": "5.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/electron/get",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "edab8abb78d9c5b36944c3e00aebf6a90eb32378993f49ac8a3904007029c629"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/api-logs",
+      "version": "0.214.0",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "bd58f2a90815dfc0589075fab5af424dedc7415266765f48ae59b3de98d5e1be"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/api",
+      "version": "1.9.1",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "9cfa86899ccd67b76331431bbff57cbe15ceabb2e393aeb5a56c7a958dabd595"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/context-async-hooks",
+      "version": "2.6.1",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "fc58ccbf60cdd4a212be673e7f1278dd1a3e49f1b1ddc21a7d70724bc8b3044a"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/core",
+      "version": "2.6.1",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "998b885208a7e72f854bca1a9fcb439c7665671dcbc77a9b6ca5fae5a15982dc"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/exporter-metrics-otlp-http",
+      "version": "0.214.0",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "f60c6f5ed7777891fdb00c840a9328db068f279da72aee211f1648d28a93be36"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/exporter-metrics-otlp-proto",
+      "version": "0.214.0",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "1b28b52d5dc4fa05b087ba53e75f1f95c11731ed07218fcdc992ad8bcddd93e1"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/exporter-trace-otlp-proto",
+      "version": "0.214.0",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "e1acb133327575513e723320b5c42d7705bfe95dfdf0da1879239824ec5f8496"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/otlp-exporter-base",
+      "version": "0.214.0",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "0b8732770b293090db6e4ec732b98a2b3b199c927dfafcbc23e51c5b724306b7"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/otlp-transformer",
+      "version": "0.214.0",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "df4b0aa1ded638f520ed7ca841161c27677d0678671e98ffc02917fdb0c0ff3b"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/resources",
+      "version": "2.6.1",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "9cb96eeeccf177dd2579c21e2376f52ce4fa90861cc2dda9f14842542da7a3f9"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/sdk-logs",
+      "version": "0.214.0",
+      "license": "Apache-2.0",
+      "repository": "git+https://github.com/open-telemetry/opentelemetry-js.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "a194d66e0c5bd6dc8927f5806bd9c5fd1df7c582eb8518d980a612cee902d632"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/sdk-metrics",
+      "version": "2.6.1",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "1c6a18bba0437d60bb18fa58bf055eb32c51c791837ac0ad375b529bcf245f94"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/sdk-trace-base",
+      "version": "2.6.1",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "8375f12da0f472679e1eeee52bf58ea289c9806b8a7605f80a1f8865b01908f1"
+        }
+      ]
+    },
+    {
+      "name": "@opentelemetry/semantic-conventions",
+      "version": "1.43.0",
+      "license": "Apache-2.0",
+      "repository": "open-telemetry/opentelemetry-js",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "ac32ccc44843f58e28c56d475e1e8687a3eeae4aa003c9225b40e9603b5f9c73"
+        }
+      ]
+    },
+    {
+      "name": "@types/css-font-loading-module",
+      "version": "0.0.7",
+      "license": "MIT",
+      "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "name": "@types/node",
+      "version": "24.12.2",
+      "license": "MIT",
+      "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.2.3",
+      "license": "MIT",
+      "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "name": "@types/react",
+      "version": "19.2.14",
+      "license": "MIT",
+      "repository": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "c2cfccb812fe482101a8f04597dfc5a9991a6b2748266c47ac91b6a5aae15383"
+        }
+      ]
+    },
+    {
+      "name": "@xstate/fsm",
+      "version": "1.6.5",
+      "license": "MIT",
+      "repository": "git+ssh://git@github.com/statelyai/xstate.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "542d926d7bbb099785e322d1d5574c539d51942e52ec8adce2be4629ba81fc7f"
+        }
+      ]
+    },
+    {
+      "name": "base64-arraybuffer",
+      "version": "1.0.2",
+      "license": "MIT",
+      "repository": "https://github.com/niklasvh/base64-arraybuffer",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "f3eca6ff762533fa5a77caf954a143e48afa204668cf97dce758c45a9e006be3"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "62235643db61d20e8e4c58d160e906fc168941207adbc96a80ba87b491570067"
+        }
+      ]
+    },
+    {
+      "name": "builder-util-runtime",
+      "version": "9.7.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/electron-userland/electron-builder.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "bed8d0ab3e6031817f775a641ff37313b0f5591bc8ba0ed79b978dafbd4231ce"
+        }
+      ]
+    },
+    {
+      "name": "electron-to-chromium",
+      "version": "1.5.452",
+      "license": "ISC",
+      "repository": "git+https://github.com/Kilian/electron-to-chromium.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "25ba5c59dad3e0dd8f9540beaa0f0a86a10e3aec35af5fdc8e88c5f6a5c0d8c6"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "e45cc9748a256e86701d991817c8e668cf8d82354998a302009e2b945a29b853"
+        }
+      ]
+    },
+    {
+      "name": "electron",
+      "version": "44.7.0",
+      "license": "MIT",
+      "repository": "https://github.com/electron/electron",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "56a37896ff6edec2b75b41465b66dd768f2d294c315255164898ca3e685bbd30"
+        }
+      ]
+    },
+    {
+      "name": "env-paths",
+      "version": "3.0.0",
+      "license": "MIT",
+      "repository": "sindresorhus/env-paths",
+      "notices": [
+        {
+          "member": "license",
+          "sha256": "5c932d88256b4ab958f64a856fa48e8bd1f55bc1d96b8149c65689e0c61789d3"
+        }
+      ]
+    },
+    {
+      "name": "fs-extra",
+      "version": "10.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/jprichardson/node-fs-extra",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "1e76029602ae9b21cc4e612db2496d92febed882ba13ba745f8b3309e85f9d39"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "99418da6b0279959da793d62433978847d00236e852c4be780f384b7f506d425"
+        }
+      ]
+    },
+    {
+      "name": "lazy-val",
+      "version": "1.0.5",
+      "license": "MIT",
+      "repository": "develar/lazy-val",
+      "notices": [
+        {
+          "member": "https://registry.npmjs.org/lazy-val/1.0.5",
+          "sha256": "f18c12b8e7daf98d572518b7db133b2dc66a713921dac4825410dd656e0c1a1a"
+        }
+      ]
+    },
+    {
+      "name": "lib0",
+      "version": "0.2.119",
+      "license": "MIT",
+      "repository": "git+https://github.com/dmonad/lib0.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "5446db1e43fe52faf3faab7e9959fe3762ac11bdc61c0945934c498affd52d73"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "2a88c16bef1c3bef4a5bd265bd61ea2e30b19d0a501e12e1d5d79e523ca4836c"
+        }
+      ]
+    },
+    {
+      "name": "lodash.escaperegexp",
+      "version": "4.1.2",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "ffd8b33b354585f4ce119f19c53728281e48a97b074491eb6bf6d5c5ff305272"
+        }
+      ]
+    },
+    {
+      "name": "lodash.isequal",
+      "version": "4.5.0",
+      "license": "MIT",
+      "repository": "lodash/lodash",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "e159c6d48c989185448658f276375bfb2300362ec6d4ae5525a2d49c4bcb947d"
+        }
+      ]
+    },
+    {
+      "name": "mitt",
+      "version": "3.0.1",
+      "license": "MIT",
+      "repository": "developit/mitt",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "1cab22f196264195a4caec8ca5630170fdde76ee8f43346e47021d087332d3b0"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "23f29ca7271409b35761a333311e24dd1dc6b62bea91fd7c80b2bc753f3b1b8f"
+        }
+      ]
+    },
+    {
+      "name": "progress",
+      "version": "2.0.3",
+      "license": "MIT",
+      "repository": "git://github.com/visionmedia/node-progress",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "d7d2a7786de7c7cfd96f920c6f12927d74e1d2a861ca4498bf465c3bc3f4c21c"
+        },
+        {
+          "member": "Readme.md (license section)",
+          "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
+        }
+      ]
+    },
+    {
+      "name": "sumchecker",
+      "version": "3.0.1",
+      "license": "Apache-2.0",
+      "repository": "git+https://github.com/malept/sumchecker.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "name": "tiny-typed-emitter",
+      "version": "2.1.0",
+      "license": "MIT",
+      "repository": "https://github.com/binier/tiny-typed-emitter.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "4b3faf884ee71eec3df920b66c98fc6618af28e824cf3a32ef3d8774048cc76d"
+        }
+      ]
+    },
+    {
+      "name": "tinyexec",
+      "version": "1.2.4",
+      "license": "MIT",
+      "repository": "git+https://github.com/tinylibs/tinyexec.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "f95f668fe64081ddb4153b322e34fdd719b991285ed08177d5ad7133b7988d92"
+        }
+      ]
+    },
+    {
+      "name": "undici-types",
+      "version": "7.16.0",
+      "license": "MIT",
+      "repository": "git+https://github.com/nodejs/undici.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "a6db8096b2707bc0102d256917d4d33f298ba36d8c3f25de067a2b5bb379db27"
+        }
+      ]
+    },
+    {
+      "name": "web-vitals",
+      "version": "3.5.2",
+      "license": "Apache-2.0",
+      "repository": "https://github.com/GoogleChrome/web-vitals.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "bfdeded4040e05da31ca9b6239dc83bd23fa26ac8db87342a7ca4363f68916ff"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "43aaa4efe24cac3b61a9626d2ec1316b634457f90919fff757c299c090d6595f"
+        }
+      ]
     }
   ],
   "notInstalled": [],

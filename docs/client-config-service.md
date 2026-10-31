@@ -1,8 +1,5 @@
 # 独立客户端配置服务（首期：插件排序）
 
-
-
-
 ## 职责与接口
 
 - `packages/shared/src/clientConfig.ts`：公开配置响应 schema 与裁剪后的 ClientConfigSnapshot。

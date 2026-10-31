@@ -116,11 +116,11 @@ Selection 必须原样进入正式 Model 创建边界。Core 仍在实际 Git �
 
 1. 使用正式 Provider Registry 与 ModelFactory，向连接测试输入仅含 Provider/Model 身份，证明
    Adapter 最终收到 `values[0]` 和受限输出预算；
-3. Git 生成器保留完整输入 Selection，同时正式请求最终使用 `values[0]`；
-4. Subagent 切换模型后不操作 Reasoning 控件也会保存界面显示的合法档位；
-5. Session Create 在 App 构造前合并分裂的 Model/Thought；
-6. 显式 Title Override 若保留，使用正式 Registry-backed 测试验证；
-7. Desktop Provider Settings E2E 必须真正点击连接测试按钮，不能只检查 Account 页面和模型列表。
+2. Git 生成器保留完整输入 Selection，同时正式请求最终使用 `values[0]`；
+3. Subagent 切换模型后不操作 Reasoning 控件也会保存界面显示的合法档位；
+4. Session Create 在 App 构造前合并分裂的 Model/Thought；
+5. 显式 Title Override 若保留，使用正式 Registry-backed 测试验证；
+6. Desktop Provider Settings E2E 必须真正点击连接测试按钮，不能只检查 Account 页面和模型列表。
 
 Core 的假 ModelFactory 单测可以保留用于验证 bind 行为，但不能再被视为 Registry 纵向证明。
 

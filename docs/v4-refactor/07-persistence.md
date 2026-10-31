@@ -10,16 +10,37 @@ projection、topic event log、subscription、CommandInbox LRU 和 active runtim
 CLI session store 位于 `~/.openzwork/cli/db/db.sqlite`。迁移入口是
 `apps/zcode-cli/packages/adapters/src/storage/session-store/migrations.ts`，当前迁移到 `0018`：
 
-| 迁移 | 当前作用 |
-| --- | --- |
-| `0014_message_part_sequence` | 为 message/part 建立稳定顺序 |
+| 迁移                                            | 当前作用                                   |
+| ----------------------------------------------- | ------------------------------------------ |
+| `0014_message_part_sequence`                    | 为 message/part 建立稳定顺序               |
 | `0015_message_part_sequence_backfill_and_guard` | 修复空 sequence，并用 trigger 保证后续写入 |
-| `0016_session_input_ledger` | 新增 durable input lifecycle ledger |
-| `0017_session_input_start_now_delivery` | 将 `startNow` 纳入输入 admission 账本 |
-| `0018_session_input_failed_status` | 区分 accepted 后运行时启动失败的终态 |
+| `0016_session_input_ledger`                     | 新增 durable input lifecycle ledger        |
+| `0017_session_input_start_now_delivery`         | 将 `startNow` 纳入输入 admission 账本      |
+| `0018_session_input_failed_status`              | 区分 accepted 后运行时启动失败的终态       |
 
 message/part 仍采用索引列加 JSON data 的 additive 演进。可选锚点缺失时读侧宽容兼容；需要查询、唯一性
 或事务约束的结构才通过 append-only migration 增加。
+
+### SQLite 事务的执行边界
+
+`SqliteSessionStore` 的运行时写入共用一个 `DatabaseSync` 连接。事务属于连接，不属于某个
+session 或 Promise。fork、shared context import/transition、input promotion 必须从 `BEGIN`
+到 `COMMIT` / `ROLLBACK` 在同一次同步调用中完成，内部 SQL repository 不得用 `await` 让出执行。
+对外 `SessionStorePort` 继续返回 Promise；不增加队列、锁或重试定时器。
+
+失败事务只回滚本次写入。并发创建的其他会话、已确认的消息和已有会话更新必须独立提交，
+不能因 fork 失败消失；两个同时发起的事务不能发生嵌套 `BEGIN`。
+
+```text
+fork BEGIN → 写 child/history → COMMIT 或 ROLLBACK
+                                                ↓
+其他会话 create/update/message → 独立提交 → 进程退出
+                                                ↓
+新进程从 SQLite 恢复 → 正确 session id 与完整历史
+```
+
+回归证据包括失败 fork 与独立写入交错、同时成功的 fork、共用连接的其他事务入口，以及
+独立进程和桌面重启后打开会话。desktop continuous 与 mobile replayable 共用该持久化边界。
 
 ## Transcript 与 timeline anchor
 

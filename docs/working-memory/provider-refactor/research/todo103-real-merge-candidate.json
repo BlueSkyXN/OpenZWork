@@ -247,29 +247,19 @@
       "verificationStatus": "partial"
     },
     {
-      "paths": [
-        "package.json",
-        "package-lock.json"
-      ],
+      "paths": ["package.json", "package-lock.json"],
       "decision": "3.12.0优先，其余自动合并变更保留待复审"
     },
     {
-      "paths": [
-        "packages/services/src/repo-wiki/repoWikiModelClient.ts"
-      ],
+      "paths": ["packages/services/src/repo-wiki/repoWikiModelClient.ts"],
       "decision": "同义注释冲突；保留数字协议错误码和当前安全诊断"
     },
     {
-      "paths": [
-        "packages/ui/src/Root.tsx",
-        "packages/ui/src/store/remoteWorkspaceSessionStore.ts"
-      ],
+      "paths": ["packages/ui/src/Root.tsx", "packages/ui/src/store/remoteWorkspaceSessionStore.ts"],
       "decision": "重复注释/签名排版冲突；远程身份和代际保护保留，Root的G11自动交集待审"
     },
     {
-      "paths": [
-        "packages/ui/src/repo-wiki/repoWikiServiceRouting.ts"
-      ],
+      "paths": ["packages/ui/src/repo-wiki/repoWikiServiceRouting.ts"],
       "decision": "5块逐项核对；等价readiness、精简根因、公共workspace resolver，不恢复私有断连注入"
     }
   ],

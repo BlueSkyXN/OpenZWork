@@ -48,7 +48,9 @@ describe("隔离远控配对 fixture", () => {
     let socket: WebSocket | undefined;
     try {
       close = await prepareWebRemoteControlSessionEventsFixture({
-        settingsFile, credentialsFile: join(root, "credentials.json"), workspacePath: root,
+        settingsFile,
+        credentialsFile: join(root, "credentials.json"),
+        workspacePath: root,
         webUrl: `http://127.0.0.1:${port}/remote/v4`,
       });
       socket = new WebSocket(`ws://127.0.0.1:${port}/ws`);

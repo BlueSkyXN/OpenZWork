@@ -9,23 +9,23 @@
 
 ## 条目字段
 
-| 字段                           | 内容                                                                          |
-| ------------------------------ | ----------------------------------------------------------------------------- |
-| `id`                           | `OW-P` 加三位序号，按登记顺序递增，撤销后不复用                               |
-| `title`                        | 一句话描述问题                                                                |
-| `kind`                         | `product`：发布产物中的代码；`test`：测试与夹具；`build`：构建、CI 与发布脚本 |
-| `status`                       | `open`、`fixed` 或 `retired`，见下节                                          |
-| `priority`                     | `open` 条目必填，取 `P1`–`P3`                                                 |
-| `upstream.since`               | 最早确认存在缺陷的上游版本                                                    |
-| `upstream.checked`             | 未撤销条目最近一次核对的上游版本，须等于根 `package.json.version` 解析出的官方基准        |
-| `upstream.fixedIn`             | `retired` 条目必填：上游提供等效修复的版本                                    |
-| `trigger` / `impact` / `cause` | 触发条件、错误表现与影响、根因                                                |
-| `evidence`                     | 确认依据：复现方式与结果，或回归在修复前后的结果                              |
-| `fix`                          | `fixed`、`retired` 条目必填：修复机制，也是同步冲突时必须保住的行为           |
-| `files`                        | 缺陷或修复所在文件                                                            |
-| `regression`                   | `fixed`、`retired` 条目必填：回归测试文件                                     |
-| `retire`                       | 撤销条件                                                                      |
-| `refs`                         | 可选：spec、PR 等链接；仓库内路径须存在                                       |
+| 字段                           | 内容                                                                               |
+| ------------------------------ | ---------------------------------------------------------------------------------- |
+| `id`                           | `OW-P` 加三位序号，按登记顺序递增，撤销后不复用                                    |
+| `title`                        | 一句话描述问题                                                                     |
+| `kind`                         | `product`：发布产物中的代码；`test`：测试与夹具；`build`：构建、CI 与发布脚本      |
+| `status`                       | `open`、`fixed` 或 `retired`，见下节                                               |
+| `priority`                     | `open` 条目必填，取 `P1`–`P3`                                                      |
+| `upstream.since`               | 最早确认存在缺陷的上游版本                                                         |
+| `upstream.checked`             | 未撤销条目最近一次核对的上游版本，须等于根 `package.json.version` 解析出的官方基准 |
+| `upstream.fixedIn`             | `retired` 条目必填：上游提供等效修复的版本                                         |
+| `trigger` / `impact` / `cause` | 触发条件、错误表现与影响、根因                                                     |
+| `evidence`                     | 确认依据：复现方式与结果，或回归在修复前后的结果                                   |
+| `fix`                          | `fixed`、`retired` 条目必填：修复机制，也是同步冲突时必须保住的行为                |
+| `files`                        | 缺陷或修复所在文件                                                                 |
+| `regression`                   | `fixed`、`retired` 条目必填：回归测试文件                                          |
+| `retire`                       | 撤销条件                                                                           |
+| `refs`                         | 可选：spec、PR 等链接；仓库内路径须存在                                            |
 
 ## 状态与编号标记
 

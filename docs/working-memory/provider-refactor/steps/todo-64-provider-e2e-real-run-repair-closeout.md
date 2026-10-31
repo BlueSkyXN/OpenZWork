@@ -105,17 +105,16 @@ MacBook Pro 使用干净运行目录和提交 `64d48f6eee`，按 spec 分组执�
 
 ## 4. 当前 12 个失败的裁决状态
 
-| 类别                | Case               | 当前失败                                         | 当前裁决                                                                 |
-| ------------------- | ------------------ | ------------------------------------------------ | ------------------------------------------------------------------------ |
-| Template/UI         | MP-UI-01           | 创建后没有恢复到新 Provider 详情                 | 已定位并修复：测试用 Provider 详情可无名称编辑按钮，改按选中导航身份断言 |
-| Model JSON UI       | MP-UI-06           | 期望 `"{}"`，实际空字符串                        | 已明确：更新 placeholder 旧断言                                          |
-| Template + 首发     | I08                | Personal Rule 保存等待永远不满足                 | 已定位并修复：Helper 错读 `maxOutputTokens.default`，正式字段是 `.max`   |
-| Repo Wiki           | Repo Wiki settings | 未出现 `ready-empty`                             | 已明确：删除非核心的无模型 E2E 断言，不新增无 Provider Fixture           |
-| Repo Wiki           | Repo Wiki produces | 生成按钮仍 disabled                              | 已明确：模型选择丢失 reasoning，复用统一 Selection 补全                  |
-| Output Token        | OTB08-OTB10        | OTB09 仍断言旧的 41,665 cap                      | 已定位并修复：usage anchor 已覆盖上一轮 assistant，正确值为 41,671       |
-| Reasoning           | I20                | Helper 要求 `thinking.budget_tokens`             | 已明确：删除无契约依据的共享断言                                         |
-| Restart Fallback    | I28                | 已删除模型 Recent 失效后仍期待 Account 首模型    | 已修正为回退 Host Configured Default，不恢复 Renderer Account-first      |
-
+| 类别             | Case               | 当前失败                                      | 当前裁决                                                                 |
+| ---------------- | ------------------ | --------------------------------------------- | ------------------------------------------------------------------------ |
+| Template/UI      | MP-UI-01           | 创建后没有恢复到新 Provider 详情              | 已定位并修复：测试用 Provider 详情可无名称编辑按钮，改按选中导航身份断言 |
+| Model JSON UI    | MP-UI-06           | 期望 `"{}"`，实际空字符串                     | 已明确：更新 placeholder 旧断言                                          |
+| Template + 首发  | I08                | Personal Rule 保存等待永远不满足              | 已定位并修复：Helper 错读 `maxOutputTokens.default`，正式字段是 `.max`   |
+| Repo Wiki        | Repo Wiki settings | 未出现 `ready-empty`                          | 已明确：删除非核心的无模型 E2E 断言，不新增无 Provider Fixture           |
+| Repo Wiki        | Repo Wiki produces | 生成按钮仍 disabled                           | 已明确：模型选择丢失 reasoning，复用统一 Selection 补全                  |
+| Output Token     | OTB08-OTB10        | OTB09 仍断言旧的 41,665 cap                   | 已定位并修复：usage anchor 已覆盖上一轮 assistant，正确值为 41,671       |
+| Reasoning        | I20                | Helper 要求 `thinking.budget_tokens`          | 已明确：删除无契约依据的共享断言                                         |
+| Restart Fallback | I28                | 已删除模型 Recent 失效后仍期待 Account 首模型 | 已修正为回退 Host Configured Default，不恢复 Renderer Account-first      |
 
 CPUW-01/03 首次运行失败来自 WebView 运行环境，按相同代码重跑后 2 条均通过，不列入代码修复范围。若再次失败，先修运行环境或 Fixture，不恢复旧 Account API 行为。
 
@@ -176,8 +175,6 @@ Repo Wiki 模型选择必须复用该入口，不能只保存 `providerId/modelI
 
 ### 5.3 I26
 
-
-
 修复步骤：
 
 1. Seed 写入完整 `providerId + modelId + reasoningLevel`。
@@ -209,14 +206,10 @@ Configured Default = DeepSeek 且有效
 
 ### 5.5 I31
 
-
-
 原问题有两层：
 
 1. 原生 Select 对“再次选择当前值”不保证触发 `onValueChange`，测试不应把它当作一次连接切换。
 2. `modelProviderFamilyConnectionTransitionSeq` 目前只有生产者，没有真实消费者；它不能形成 reconciliation，只是残余状态。
-
-
 
 - Seed 完整 Team Selection；
 - 进入设置页并确认仍是同一个 Team Connection；
@@ -371,8 +364,6 @@ invalid-explicit -> Generate disabled
 只有证据证明生产预算/compact 行为错误时才改生产代码；若请求正确而回放缺响应，则修 Fixture 或等待 Helper。
 
 ### 9.3 QR-E2E-09
-
-
 
 先单 Case 隔离，再与整份 spec 对比：
 

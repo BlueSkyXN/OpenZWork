@@ -14,8 +14,25 @@ import {
   type NodeReplRequestMeta,
   type NodeReplRunResult,
 } from "@zcode/core/repl";
+
+// 只加载 broker 协议常量；shared 总入口会初始化无关领域的 schema。
+import {
+  NODE_REPL_BROWSER_BROKER_SOCKET_ENV,
+  NODE_REPL_BROWSER_BROKER_TOKEN_ENV,
+} from "@zcode/shared/node-repl-browser-broker";
 import { z } from "zod";
-import { createBrowserBridgeGlobals, type ActiveNodeReplCall } from "./browser-bridge.js";
+import {
+  createBrowserBridgeGlobals,
+  type ActiveNodeReplCall,
+  type NodeReplBrowserBrokerConnection,
+} from "./browser-bridge.js";
+import {
+  createNodeReplBrowserBrokerProxy,
+  createNodeReplCallLedger,
+  type NodeReplBrowserBrokerUpstream,
+} from "./call-ledger/contract.js";
+import { createNoProgressGuard } from "./no-progress-guard.js";
+// OpenZWork 净化：上游另导入 cua-bridge/cua-broker（官方 CUA 域）；两文件已随净化删除。
 import {
   isDirectMcpEntrypoint,
   installNodeReplProcessGuards,
@@ -74,6 +91,8 @@ export interface NodeReplExecuteInput {
   requestMeta: NodeReplRequestMeta;
   signal: AbortSignal;
   syncTimeoutMs: number;
+  browserBroker?: NodeReplBrowserBrokerConnection;
+
 }
 
 export type NodeReplExecutor = (input: NodeReplExecuteInput) => Promise<NodeReplRunResult>;
@@ -88,6 +107,8 @@ interface WorkerCallData {
   kind: typeof WORKER_KIND;
   requestMeta: NodeReplRequestMeta;
   syncTimeoutMs: number;
+  browserBroker?: NodeReplBrowserBrokerConnection;
+
 }
 
 export function setNodeReplMcpProcessTitle(target: { title: string } = process): void {
@@ -107,6 +128,7 @@ export function createInProcessNodeReplExecutor(): NodeReplExecutor {
       injectedGlobals: () =>
         ({
           ...createBrowserBridgeGlobals({
+            broker: input.browserBroker,
             documentationRoot: browserDocumentationRoot,
             generation,
             getActiveCall: () => activeCall,
@@ -134,9 +156,28 @@ export function createInProcessNodeReplExecutor(): NodeReplExecutor {
 }
 
 export function createNodeReplMcpRuntime(
-  input: { executeJs?: NodeReplExecutor } = {},
+  input: {
+    executeJs?: NodeReplExecutor;
+    /** ZCode 主进程浏览器 broker 的地址和 token；默认从环境变量读取（测试注入假 broker）。 */
+    browserBrokerUpstream?: NodeReplBrowserBrokerUpstream;
+    writeStderr?: (text: string) => void;
+  } = {},
 ): NodeReplMcpRuntime {
   const executeJs = input.executeJs ?? executeJsInWorker;
+  const writeStderr = input.writeStderr ?? ((text: string) => void process.stderr.write(text));
+  const noProgressGuard = createNoProgressGuard();
+  // OpenZWork 净化：上游在此按环境捕获桌面自动化运行时并创建官方 CUA broker（官方 CUA 域）；已净化。
+  // 本次调用的可信事实只由主线程的 browser broker 记进账本（20-node-repl-call-ledger.md）。
+  const ledger = createNodeReplCallLedger();
+  const browserBrokerUpstream =
+    input.browserBrokerUpstream ?? browserBrokerUpstreamFromEnvironment(process.env);
+  const browserBrokerProxy = browserBrokerUpstream
+    ? createNodeReplBrowserBrokerProxy({
+        ledger,
+        upstream: browserBrokerUpstream,
+        platform: process.platform,
+      })
+    : undefined;
   const queues = new Map<string, Promise<void>>();
   const activeCalls = new Set<AbortController>();
   let disposed = false;
@@ -181,6 +222,7 @@ export function createNodeReplMcpRuntime(
         activeCalls.add(callController);
         const timeoutMs = args.timeout_ms ?? NODE_REPL_DEFAULT_TIMEOUT_MS;
         const callMeta = { ...requestMeta, ...(args.title ? { title: args.title } : {}) };
+        const call = ledger.open(callMeta);
         try {
           const signal = AbortSignal.any([
             extra.mcpReq.signal,
@@ -192,9 +234,27 @@ export function createNodeReplMcpRuntime(
             requestMeta: callMeta,
             signal,
             syncTimeoutMs: Math.min(timeoutMs, MAX_SYNC_TIMEOUT_MS),
+            ...(browserBrokerProxy
+              ? {
+                  browserBroker: {
+                    socketPath: browserBrokerProxy.connection.socketPath,
+                    token: call.token,
+                  },
+                }
+              : {}),
           });
-          return toMcpRunResult(run);
+          const result = toMcpRunResult(run, call.facts);
+          const hint = noProgressGuard.observe({ requestMeta, code: args.code, result });
+          if (hint) {
+            result.content.push({ type: "text", text: hint.text });
+            writeStderr(
+              `[node_repl] no-progress hint kind=${hint.kind} count=${hint.count} ` +
+                `session=${String(requestMeta.session_id)} turn=${String(requestMeta.turn_id)}\n`,
+            );
+          }
+          return result;
         } finally {
+          call.close();
           activeCalls.delete(callController);
         }
       });
@@ -209,6 +269,7 @@ export function createNodeReplMcpRuntime(
       for (const controller of activeCalls) controller.abort();
       activeCalls.clear();
       queues.clear();
+      void browserBrokerProxy?.close();
     },
   };
 }
@@ -220,8 +281,9 @@ async function executeJsInWorker(input: NodeReplExecuteInput): Promise<NodeReplR
     kind: WORKER_KIND,
     requestMeta: input.requestMeta,
     syncTimeoutMs: input.syncTimeoutMs,
+    browserBroker: input.browserBroker,
   };
-  const worker = new Worker(new URL(import.meta.url), { workerData: data });
+  const worker = new Worker(new URL(import.meta.url), { workerData: data, env: workerEnvironment() });
   return await new Promise<NodeReplRunResult>((resolveRun, rejectRun) => {
     let settled = false;
     const cleanup = () => {
@@ -247,6 +309,26 @@ async function executeJsInWorker(input: NodeReplExecuteInput): Promise<NodeReplR
     });
     if (input.signal.aborted) onAbort();
   });
+}
+
+function browserBrokerUpstreamFromEnvironment(
+  env: NodeJS.ProcessEnv,
+): NodeReplBrowserBrokerUpstream | undefined {
+  const socketPath = env[NODE_REPL_BROWSER_BROKER_SOCKET_ENV]?.trim();
+  const token = env[NODE_REPL_BROWSER_BROKER_TOKEN_ENV]?.trim();
+  return socketPath && token ? { socketPath, token } : undefined;
+}
+
+/**
+ * Worker 的环境去掉上游浏览器 broker 的地址和 token：只有主线程代理需要它们，Worker 只拿本次调用的
+ * token。这只是缩小暴露面，不是可信边界——cell 仍可能从进程的初始环境读到它们，那样绕过代理的调用
+ * 只会少记、不会多记（20-node-repl-call-ledger.md「可信边界」）。
+ */
+function workerEnvironment(): NodeJS.ProcessEnv {
+  const env = { ...process.env };
+  delete env[NODE_REPL_BROWSER_BROKER_SOCKET_ENV];
+  delete env[NODE_REPL_BROWSER_BROKER_TOKEN_ENV];
+  return env;
 }
 
 function parseToolInput<T>(schema: z.ZodType<T>, input: unknown, toolName: string): T {
@@ -311,6 +393,7 @@ if (!isMainThread && isWorkerCallData(workerData)) {
     requestMeta: workerData.requestMeta,
     signal: controller.signal,
     syncTimeoutMs: workerData.syncTimeoutMs,
+    browserBroker: workerData.browserBroker,
   })
     .then((result) => parentPort?.postMessage(result))
     .catch((error) => {

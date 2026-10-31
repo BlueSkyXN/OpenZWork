@@ -19,12 +19,18 @@ test("formal tags run all three existing gates and carry a common release identi
       "${{ github.ref_type == 'tag' && format('Release {0} / {1}', github.ref_name, github.workflow) || '' }}",
     );
   }
-  const template = new Eta({ autoEscape: false, useWith: true, tags: ["${", "}"], parse: { interpolate: "" } });
+  const template = new Eta({
+    autoEscape: false,
+    useWith: true,
+    tags: ["${", "}"],
+    parse: { interpolate: "" },
+  });
   for (const [version, expected] of [
     ["3.16.3", "v3.16.3-openzwork"],
     ["3.16.2+openzwork.1", "v3.16.2+openzwork.1"],
     ["3.16.3+openzwork.1", "v3.16.3+openzwork.1"],
-  ]) assert.equal(template.renderString(releaseConfig.git.tagName, { version }), expected);
+  ])
+    assert.equal(template.renderString(releaseConfig.git.tagName, { version }), expected);
   assert.equal(releaseConfig.github.release, false);
   assert.equal(releaseConfig.npm.publish, false);
   const env = installers.jobs.installer.env;

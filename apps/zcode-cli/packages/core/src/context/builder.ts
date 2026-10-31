@@ -395,3 +395,34 @@ function createSection(input: {
 export function createContextBuilder(config: ContextBuilderConfig): ContextBuilder {
   return new ContextBuilder(config);
 }
+
+// OpenZWork v3.17.1：上游把 meta user 组装提为公开函数（subagent 消费）；fork 保留类内私有版并复用同一实现。
+
+const RUNTIME_ANNOUNCED_SOURCES: ReadonlySet<ContextSection["source"]> = new Set([
+  "env_info",
+  "model",
+  "current_date",
+]);
+
+export function buildMetaUserAttachments(sections: ContextSection[]): ContextMetaUserAttachment[] {
+  // 来源明确分流；不再把日期、环境和 Git 折进指令 carrier。
+  const sourceMap: Partial<Record<ContextSection["source"], ContextMetaUserAttachment["source"]>> =
+    {
+      skills: "skills_listing",
+      request_user_context: "context_prefix",
+      session_context: "session_context",
+    };
+  const attachments: ContextMetaUserAttachment[] = [];
+  for (const attachmentSource of Object.values(sourceMap)) {
+    const content = buildSectionContent(
+      sections.filter(
+        (section) =>
+          section.injectionTarget === "meta_user" &&
+          !RUNTIME_ANNOUNCED_SOURCES.has(section.source) &&
+          (sourceMap[section.source] ?? "context_prefix") === attachmentSource,
+      ),
+    );
+    if (content) attachments.push({ source: attachmentSource, content });
+  }
+  return attachments;
+}

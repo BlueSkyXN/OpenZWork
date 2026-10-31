@@ -138,8 +138,6 @@ Adapter 的请求设施管理，不作为 Provider 静态事实写入 Model。
 Bootstrap 中原来用于在 Registry 热更新后原地修改 Active Session 容量、再补发 ModelSelected 的死链
 已经删除。Active Session 持有自身 Model；新的 Properties 与 Option Specs 只进入以后创建的 Model。
 
-
-
 ## 设置页面的表单边界
 
 设置页面保留一份 Renderer 私有的编辑会话状态。它的配置字段直接使用正式 Config 类型：
@@ -169,8 +167,6 @@ Personal Config Overlay
 保存操作返回写入后刷新完成的新 Settings View，因此保存后的 Provider Family 修正和 Plan 同步补偿也使用
 同一份最新 Registry 结论；Renderer 不再根据 API Key、Endpoint 和模型字段复制一套启动可用性算法。
 
-
-
 编辑会话不再复刻旧 Store 的 endpoints、kind、modalities、ProviderOptionsPatch 和时间戳字段。
 Renderer 只在正式 Config 之外附加 `providerId/modelId`、Registry 投影状态和 Personal 来源标记；
 未展示的 Model Config 字段会随编辑态保留。旧 `ModelProviderConfig` 只留在一次性物理迁移读取中。
@@ -180,13 +176,9 @@ API 类型同样只属于 Provider Config。设置页使用 `ProviderApiType` �
 API kind、Endpoint Path 或多协议选择旁路。Repo Wiki 和连接探测也直接消费该正式类型，不再把当前
 Config 反向翻译成旧 Provider Store kind。
 
-
-
 Restart E2E 使用同一边界：Replay Provider 只写 Personal Config，Environment 的冷启动默认模型只写
 版本化 Model Selection Config。测试不再通过 Project/CLI Config 复制 Provider 或 reasoning 参数，也
 不再人为制造 Host Snapshot 与 Worker CLI Catalog 不一致的旧竞态。
-
-
 
 Reasoning manual-review E2E 的 replay endpoint 发现也已经退出各用例私有的旧 Store/CLI Config 回退。
 它们使用显式 replay runtime 信息或统一的 Personal Config 测试投影；旧物理格式只留在集中迁移边界。
@@ -264,8 +256,6 @@ Bootstrap 全量运行中，本轮相关的 Runtime Config 与 Telemetry Harness
 位于既有 `v4-native-boundary`、oversize V4 Gateway 时序和 Session Resident Pool 用例。本轮没有
 借 Provider 收尾改动这些独立语义。
 
-
-
 Turn Overlay 收窄后再次执行根 `pnpm typecheck` 与 `pnpm lint`：TypeScript 通过，Lint 为 0 error、
 33 条当前 `staging` 基线 warning；Turn Overlay、Runtime Model Factory、Session Facade 与 M2 结构门禁
 共 16 条测试通过，Bootstrap 独立 typecheck 通过。分支相对最新 `origin/staging` 仍为 0 behind，
@@ -314,8 +304,6 @@ Shared DTO 已退出，UI 只保留由当前 View 投影的 `ProviderOrderView`�
 
 Bootstrap 与 Prompt CLI 中仅供文件内部使用的 Provider 迁移/Registry 辅助类型和函数不再导出。
 正式跨模块入口保持不变；Knip 复核后，这两个包中 Provider、Model、Registry 相关的无调用者导出为零。
-
-
 
 Services 路径模块中仅供内部复用的 workspace key 与外部 Agent 配置隔离目录 helper 也已收回导出；
 外部 Agent 的技能、插件和运行状态路径行为保持不变。

@@ -68,9 +68,7 @@ interface TopicFrame<S, D> {
   fromSeq: number;
   toSeq: number;
   sentAt: number;
-  payload:
-    | { kind: "snapshot"; snapshot: S }
-    | { kind: "deltas"; deltas: D[] };
+  payload: { kind: "snapshot"; snapshot: S } | { kind: "deltas"; deltas: D[] };
 }
 
 type TopicWireFrame<S, D> =
@@ -121,9 +119,7 @@ interface ConversationSnapshot {
   rows: RowsWindow;
 }
 
-type ActionAvailability =
-  | { allowed: true }
-  | { allowed: false; reasonCode: string };
+type ActionAvailability = { allowed: true } | { allowed: false; reasonCode: string };
 
 interface SessionActionAvailability {
   fork: ActionAvailability; // session/global operation lock；目标资格仍看 row.actions.canFork
@@ -148,11 +144,11 @@ UI 展示 fork 的条件来自 `availability.fork` 与目标行 `actions.canFork
 
 ```ts
 interface ConversationInputIntent {
-  sourceCommandId: string;      // 原始提交 commandId，贯穿所有后续事实
-  queueItemId: string;          // admission 时分配，edit/reorder/reserve/drain 均不变
+  sourceCommandId: string; // 原始提交 commandId，贯穿所有后续事实
+  queueItemId: string; // admission 时分配，edit/reorder/reserve/drain 均不变
   clientId: string;
   kind: "sendText" | "sendGoalCommand";
-  text: string;                 // 原文，不存解析后摘要替代值
+  text: string; // 原文，不存解析后摘要替代值
   attachments: AttachmentRef[]; // 无附件为 []，避免沿途 undefined 丢字段
   delivery: {
     requested: "auto" | "startNow" | "queue" | "guide";
@@ -160,7 +156,7 @@ interface ConversationInputIntent {
     fallbackReasonCode?: string;
   };
   order: {
-    admissionSeq: number;       // CLI 串行 admission 顺序
+    admissionSeq: number; // CLI 串行 admission 顺序
     queuePosition?: number;
   };
   steer: {
@@ -277,7 +273,7 @@ in-memory LRU
 
 discarded 命中返回 `CommandAck{status:"failed", reasonCode:"fault.command.inputDiscardedOnRestart", result:{type:"inputDisposition",delivery}}`，不是 `unknown`。同 key 的 `command execute` 与 `commands/query` 共享 single-flight/互斥入口，查询不能在“已开始执行、尚未写 LRU/transcript”的窗口误报 unknown，也不能触发第二次副作用。
 
-UI pending registry TTL 为 24h：普通文本/goal 保存可重发 payload，敏感 interaction 只保存 digest；QueueItem/guided projection 出现立即删除记录。CLI restart 后 discarded `queue/guide` 静默清账，只有未进入 transcript 的 `startNow` 或 `unknown` 提示用户确认重发；绝不自动恢复或自动重放 discarded input。
+UI pending registry TTL 为 24h：普通文本/goal 保存可重发 payload，敏感 interaction 只保存 digest；QueueItem/guided projection 出现立即删除记录。CLI restart 后 discarded `queue/guide` 静默清账，`unknown` 保留待确认线索且不提示重发，只有未进入 transcript 的 discarded `startNow` 提示用户确认重发；绝不自动恢复或自动重放 discarded input。
 
 ## 7. 稳定 assistant fork
 

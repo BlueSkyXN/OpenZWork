@@ -42,19 +42,25 @@ export async function waitForConversationToolGroup(
   timeout = 30000,
 ): Promise<ConversationToolGroupSnapshot> {
   let latest: ConversationToolGroupSnapshot | null = null;
-  await browser.waitUntil(
-    async () => {
-      latest =
-        (await listConversationToolGroups())
-          .filter((group) => group.toolName === toolName)
-          .at(-1) ?? null;
-      return latest !== null && predicate(latest);
-    },
-    {
-      timeout,
-      timeoutMsg: `${failureMessage}; latest=${JSON.stringify(latest)}`,
-    },
-  );
+  // fork 采纳上游：waitUntil options 在轮询前构造，失败现场在 catch 后读取 latest 再抛。
+  try {
+    await browser.waitUntil(
+      async () => {
+        latest =
+          (await listConversationToolGroups())
+            .filter((group) => group.toolName === toolName)
+            .at(-1) ?? null;
+        return latest !== null && predicate(latest);
+      },
+      {
+        timeout,
+        timeoutMsg: failureMessage,
+      },
+    );
+  } catch (cause) {
+    // waitUntil 的 options 在轮询前构造；失败后再读取 latest 才能保留真实现场。
+    throw new Error(`${failureMessage}; latest=${JSON.stringify(latest)}`, { cause });
+  }
   if (!latest) throw new Error(`${failureMessage}; group missing`);
   return latest;
 }

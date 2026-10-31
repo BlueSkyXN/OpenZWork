@@ -2,8 +2,6 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-
-
 **Architecture:** 复用已有的 `invalidateDraftRuntime` + `invalidationVersion` 重建通道——在 runtime 换代时递增版本号，coordinator 自动 retire 旧会话并重建。门禁抽成独立 hook（对齐 `useDraftModelReadinessGate` 范式），不往已超 max-lines 的 SessionPane 堆逻辑。附件侧把「作废」与「唤醒」两条链解耦，用 `restartEpoch` 统一唤醒。
 
 **Tech Stack:** React 19 + zustand + vitest；`packages/ui` 为主战场。
@@ -28,9 +26,11 @@
 **本任务预期不需要改产品代码**——只加测试。若测试意外失败，停下来汇报，不要改测试去迁就实现。
 
 **Files:**
+
 - Test: `packages/ui/test/v4DraftSessionPrewarm.test.ts`（在 `describe("useDraftSessionPrewarm workspace owner")` 内追加用例）
 
 **Interfaces:**
+
 - Consumes: 该文件已有的 `PrewarmHarness`、`acceptedCreateAck`、`flushMicrotasks`、`installMinimalDom`、`mountedRoots`
 - Produces: 无（纯测试）
 
@@ -39,59 +39,59 @@
 在 `packages/ui/test/v4DraftSessionPrewarm.test.ts` 的最后一个 `it(...)` 之后、`});` 收尾之前插入：
 
 ```ts
-  it("discard 后递增 invalidationVersion → 解除 blocked 并重建预热会话", async () => {
-    const calls: Array<{ type: string; sessionId: string | null }> = [];
-    let createCount = 0;
-    const dispatch = vi.fn(async (type: string, _payload: unknown, sessionId: string | null) => {
-      calls.push({ type, sessionId });
-      if (type === "createSession") {
-        createCount += 1;
-        return acceptedCreateAck(`draft-${createCount}`);
-      }
-      return { status: "accepted" as const };
-    });
-    const transportIdentity = {};
-    const observed: Array<{ sessionId: string; discard(): void } | null> = [];
-    const root = createRoot(installMinimalDom());
-    mountedRoots.push(root);
-    const renderVersion = (invalidationVersion: number) =>
-      createElement(PrewarmHarness, {
-        workspaceKey: "/local/workspace",
-        paneId: "workspace-main",
-        invalidationVersion,
-        transportIdentity,
-        dispatchCommand: dispatch,
-        onRender: (binding) => observed.push(binding),
-      });
-
-    await act(async () => {
-      root.render(renderVersion(0));
-      await flushMicrotasks();
-    });
-    expect(observed.at(-1)?.sessionId).toBe("draft-1");
-
-    // 订阅失败路径：SessionPane 会调 discard()，它把当前版本标记为 blocked。
-    await act(async () => {
-      observed.at(-1)?.discard();
-      await flushMicrotasks();
-    });
-    expect(observed.at(-1)).toBeNull();
-
-    // 同版本不重建（blocked 生效）。
-    await act(async () => {
-      root.render(renderVersion(0));
-      await flushMicrotasks();
-    });
-    expect(calls.filter((call) => call.type === "createSession")).toHaveLength(1);
-
-    // 递增版本 → 解除 blocked → 重建。
-    await act(async () => {
-      root.render(renderVersion(1));
-      await flushMicrotasks();
-    });
-    expect(calls.filter((call) => call.type === "createSession")).toHaveLength(2);
-    expect(observed.at(-1)?.sessionId).toBe("draft-2");
+it("discard 后递增 invalidationVersion → 解除 blocked 并重建预热会话", async () => {
+  const calls: Array<{ type: string; sessionId: string | null }> = [];
+  let createCount = 0;
+  const dispatch = vi.fn(async (type: string, _payload: unknown, sessionId: string | null) => {
+    calls.push({ type, sessionId });
+    if (type === "createSession") {
+      createCount += 1;
+      return acceptedCreateAck(`draft-${createCount}`);
+    }
+    return { status: "accepted" as const };
   });
+  const transportIdentity = {};
+  const observed: Array<{ sessionId: string; discard(): void } | null> = [];
+  const root = createRoot(installMinimalDom());
+  mountedRoots.push(root);
+  const renderVersion = (invalidationVersion: number) =>
+    createElement(PrewarmHarness, {
+      workspaceKey: "/local/workspace",
+      paneId: "workspace-main",
+      invalidationVersion,
+      transportIdentity,
+      dispatchCommand: dispatch,
+      onRender: (binding) => observed.push(binding),
+    });
+
+  await act(async () => {
+    root.render(renderVersion(0));
+    await flushMicrotasks();
+  });
+  expect(observed.at(-1)?.sessionId).toBe("draft-1");
+
+  // 订阅失败路径：SessionPane 会调 discard()，它把当前版本标记为 blocked。
+  await act(async () => {
+    observed.at(-1)?.discard();
+    await flushMicrotasks();
+  });
+  expect(observed.at(-1)).toBeNull();
+
+  // 同版本不重建（blocked 生效）。
+  await act(async () => {
+    root.render(renderVersion(0));
+    await flushMicrotasks();
+  });
+  expect(calls.filter((call) => call.type === "createSession")).toHaveLength(1);
+
+  // 递增版本 → 解除 blocked → 重建。
+  await act(async () => {
+    root.render(renderVersion(1));
+    await flushMicrotasks();
+  });
+  expect(calls.filter((call) => call.type === "createSession")).toHaveLength(2);
+  expect(observed.at(-1)?.sessionId).toBe("draft-2");
+});
 ```
 
 - [ ] **Step 2: 跑用例**
@@ -116,15 +116,20 @@ git commit -m "test(ui): 锁定 discard 后按 invalidationVersion 重建预热�
 runtime 换代时触发重建，并在重建期间给出 `rebuilding=true` 供发送门禁使用。抽成独立 hook 的原因：SessionPane 已超 max-lines，且 `composer/useDraftModelReadinessGate.ts` 已确立门禁 hook 的范式。
 
 **Files:**
+
 - Create: `packages/ui/src/v4/composer/useDraftRuntimeRebuildGate.ts`
 - Test: `packages/ui/test/v4DraftRuntimeRebuildGate.test.ts`
 
 **Interfaces:**
+
 - Consumes: `useZCodeSessionStore`（`@/store/zcodeSessionStore.js`）的 `invalidateDraftRuntime(workspacePath, workspaceIdentity?)`；`onRuntimeRestart: (listener: () => void) => () => void`
 - Produces:
+
   ```ts
   export const DRAFT_RUNTIME_REBUILD_TIMEOUT_MS = 5000;
-  export interface DraftRuntimeRebuildGate { rebuilding: boolean }
+  export interface DraftRuntimeRebuildGate {
+    rebuilding: boolean;
+  }
   export function useDraftRuntimeRebuildGate(params: {
     enabled: boolean;
     workspacePath: string;
@@ -222,7 +227,11 @@ afterEach(() => {
 describe("useDraftRuntimeRebuildGate", () => {
   it("草稿态换代 → 触发 invalidateDraftRuntime 并进入 rebuilding", () => {
     const restart = createRestartHook();
-    renderProbe({ enabled: true, onRuntimeRestart: restart.subscribe, prewarmSessionId: "draft-1" });
+    renderProbe({
+      enabled: true,
+      onRuntimeRestart: restart.subscribe,
+      prewarmSessionId: "draft-1",
+    });
 
     expect(latest?.rebuilding).toBe(false);
     act(() => restart.fire());
@@ -252,7 +261,11 @@ describe("useDraftRuntimeRebuildGate", () => {
 
   it("超时未重建 → 解除 rebuilding 回落无预热发送", () => {
     const restart = createRestartHook();
-    renderProbe({ enabled: true, onRuntimeRestart: restart.subscribe, prewarmSessionId: "draft-1" });
+    renderProbe({
+      enabled: true,
+      onRuntimeRestart: restart.subscribe,
+      prewarmSessionId: "draft-1",
+    });
     act(() => restart.fire());
     expect(latest?.rebuilding).toBe(true);
 
@@ -278,7 +291,11 @@ describe("useDraftRuntimeRebuildGate", () => {
 
   it("重建中再次换代 → 计时器重置，不提前解除", () => {
     const restart = createRestartHook();
-    renderProbe({ enabled: true, onRuntimeRestart: restart.subscribe, prewarmSessionId: "draft-1" });
+    renderProbe({
+      enabled: true,
+      onRuntimeRestart: restart.subscribe,
+      prewarmSessionId: "draft-1",
+    });
     act(() => restart.fire());
 
     act(() => {
@@ -328,11 +345,13 @@ git commit -m "feat(ui): 新增草稿预热会话换代重建门禁 hook"
 把 Task 2 的 hook 挂到 SessionPane，并把 `rebuilding` 并入 composer 的 `disabled`。
 
 **Files:**
+
 - Modify: `packages/ui/src/v4/SessionPane.tsx`（`:1483` 附近挂 hook，`:3494` 的 `disabled` 加条件）
 - Modify: `packages/ui/src/i18n/locales/zh-CN.ts`
 - Modify: `packages/ui/src/i18n/locales/en-US.ts`
 
 **Interfaces:**
+
 - Consumes: Task 2 的 `useDraftRuntimeRebuildGate`；SessionPane 已有的 `onRuntimeRestart`（props，`:446`）、`prewarmSessionId`（`:1483`）、`sessionId`、`workspacePath`、`workspaceIdentity`
 - Produces: 无新导出
 
@@ -409,10 +428,12 @@ git commit -m "feat(ui): 重建预热会话期间禁用发送"
 `useComposerAttachments.ts:461` 的换代回调读 `targetsRef.current`——渲染期写入的旧值，换代时它仍持有已失效的 sessionId，于是拿旧 id 入队，正是生产日志里那次 `sessionNotFound` 的成因。改为「一律置 `waitingSession`，由 `restartEpoch` 统一唤醒」。
 
 **Files:**
+
 - Modify: `packages/ui/src/v4/composer/useComposerAttachments.ts`（`:437-451` 唤醒 effect、`:461-515` 换代回调）
 - Test: `packages/ui/test/useComposerAttachmentsUpload.test.ts`
 
 **Interfaces:**
+
 - Consumes: 该文件已有的 `enqueueUpload`、`updateItem`、`readComposerAttachmentScope`
 - Produces: 无新导出（`restartEpoch` 是 hook 内部 state）
 
@@ -421,71 +442,71 @@ git commit -m "feat(ui): 重建预热会话期间禁用发送"
 在 `packages/ui/test/useComposerAttachmentsUpload.test.ts` 末尾的 `describe` 内追加：
 
 ```ts
-  it("换代后不拿旧 sessionId 入队，等新会话到达再重传", async () => {
-    const transfer = createTransferService();
-    mocks.service = transfer.service;
-    const restartListeners = new Set<() => void>();
-    const onRuntimeRestart = (listener: () => void) => {
-      restartListeners.add(listener);
-      return () => restartListeners.delete(listener);
-    };
-    const probe = renderProbe({
-      attachmentSessionId: "draft-1",
-      localDesktop: true,
-      onRuntimeRestart,
-      scopeId: "rebuild-requeue",
-    });
-    await addPaths(["/tmp/a.png"]);
-    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+it("换代后不拿旧 sessionId 入队，等新会话到达再重传", async () => {
+  const transfer = createTransferService();
+  mocks.service = transfer.service;
+  const restartListeners = new Set<() => void>();
+  const onRuntimeRestart = (listener: () => void) => {
+    restartListeners.add(listener);
+    return () => restartListeners.delete(listener);
+  };
+  const probe = renderProbe({
+    attachmentSessionId: "draft-1",
+    localDesktop: true,
+    onRuntimeRestart,
+    scopeId: "rebuild-requeue",
+  });
+  await addPaths(["/tmp/a.png"]);
+  await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
 
-    act(() => {
-      for (const listener of [...restartListeners]) listener();
-    });
-
-    // 换代后必须是 waitingSession——不能带着已失效的 draft-1 去入队。
-    expect(latestApi?.attachments[0]?.uploadStatus).toBe("waitingSession");
-    expect(latestApi?.attachments[0]?.attachmentRef).toBeUndefined();
-
-    probe.rerender({
-      attachmentSessionId: "draft-2",
-      localDesktop: true,
-      onRuntimeRestart,
-      scopeId: "rebuild-requeue",
-    });
-
-    await vi.waitFor(() =>
-      expect(latestApi?.attachments[0]?.uploadStatus).not.toBe("waitingSession"),
-    );
-    probe.root.unmount();
+  act(() => {
+    for (const listener of [...restartListeners]) listener();
   });
 
-  it("sessionId 未变的换代也能被 restartEpoch 唤醒，不永久卡在 waitingSession", async () => {
-    const transfer = createTransferService();
-    mocks.service = transfer.service;
-    const restartListeners = new Set<() => void>();
-    const onRuntimeRestart = (listener: () => void) => {
-      restartListeners.add(listener);
-      return () => restartListeners.delete(listener);
-    };
-    const probe = renderProbe({
-      attachmentSessionId: "session-1",
-      localDesktop: true,
-      onRuntimeRestart,
-      scopeId: "rebuild-same-session",
-    });
-    await addPaths(["/tmp/b.png"]);
-    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+  // 换代后必须是 waitingSession——不能带着已失效的 draft-1 去入队。
+  expect(latestApi?.attachments[0]?.uploadStatus).toBe("waitingSession");
+  expect(latestApi?.attachments[0]?.attachmentRef).toBeUndefined();
 
-    act(() => {
-      for (const listener of [...restartListeners]) listener();
-    });
-
-    // sessionId 不变，:441 的 effect 不会因依赖变化重跑；restartEpoch 必须补上唤醒。
-    await vi.waitFor(() =>
-      expect(latestApi?.attachments[0]?.uploadStatus).not.toBe("waitingSession"),
-    );
-    probe.root.unmount();
+  probe.rerender({
+    attachmentSessionId: "draft-2",
+    localDesktop: true,
+    onRuntimeRestart,
+    scopeId: "rebuild-requeue",
   });
+
+  await vi.waitFor(() =>
+    expect(latestApi?.attachments[0]?.uploadStatus).not.toBe("waitingSession"),
+  );
+  probe.root.unmount();
+});
+
+it("sessionId 未变的换代也能被 restartEpoch 唤醒，不永久卡在 waitingSession", async () => {
+  const transfer = createTransferService();
+  mocks.service = transfer.service;
+  const restartListeners = new Set<() => void>();
+  const onRuntimeRestart = (listener: () => void) => {
+    restartListeners.add(listener);
+    return () => restartListeners.delete(listener);
+  };
+  const probe = renderProbe({
+    attachmentSessionId: "session-1",
+    localDesktop: true,
+    onRuntimeRestart,
+    scopeId: "rebuild-same-session",
+  });
+  await addPaths(["/tmp/b.png"]);
+  await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+
+  act(() => {
+    for (const listener of [...restartListeners]) listener();
+  });
+
+  // sessionId 不变，:441 的 effect 不会因依赖变化重跑；restartEpoch 必须补上唤醒。
+  await vi.waitFor(() =>
+    expect(latestApi?.attachments[0]?.uploadStatus).not.toBe("waitingSession"),
+  );
+  probe.root.unmount();
+});
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
@@ -501,8 +522,8 @@ Expected: FAIL —— 当前实现会带着旧 sessionId 走 `queued`。
 在 `packages/ui/src/v4/composer/useComposerAttachments.ts` 的 `const [attachmentError, setAttachmentError] = useState<string | null>(null);`（`:186`）之后插入：
 
 ```ts
-  /** runtime 换代计数：换代后 sessionId 可能不变，仅靠它做依赖会漏掉唤醒。 */
-  const [restartEpoch, setRestartEpoch] = useState(0);
+/** runtime 换代计数：换代后 sessionId 可能不变，仅靠它做依赖会漏掉唤醒。 */
+const [restartEpoch, setRestartEpoch] = useState(0);
 ```
 
 把 `:437-451` 的唤醒 effect 依赖数组由
@@ -537,49 +558,49 @@ Expected: FAIL —— 当前实现会带着旧 sessionId 走 `queued`。
 把 `:497-511` 的
 
 ```ts
-          updateItem(targetScopeKey, item.id, (current) => ({
-            ...current,
-            uploadStatus: target?.sessionId ? "queued" : "waitingSession",
-            uploadProgress: 0,
-            uploadError: intl.formatMessage({
-              id: "chat.attachments.upload.runtimeRestarted",
-            }),
-            uploadErrorKind: "runtimeRestarted",
-            attachmentRef: undefined,
-            staged: false,
-            adopted: false,
-            showComplete: false,
-            autoRetryCount: current.autoRetryCount + 1,
-          }));
-          if (target?.sessionId) enqueueUpload(targetScopeKey, item.id);
+updateItem(targetScopeKey, item.id, (current) => ({
+  ...current,
+  uploadStatus: target?.sessionId ? "queued" : "waitingSession",
+  uploadProgress: 0,
+  uploadError: intl.formatMessage({
+    id: "chat.attachments.upload.runtimeRestarted",
+  }),
+  uploadErrorKind: "runtimeRestarted",
+  attachmentRef: undefined,
+  staged: false,
+  adopted: false,
+  showComplete: false,
+  autoRetryCount: current.autoRetryCount + 1,
+}));
+if (target?.sessionId) enqueueUpload(targetScopeKey, item.id);
 ```
 
 改为
 
 ```ts
-          // 换代后 targetsRef 里的 sessionId 必然陈旧（渲染期写入），拿它入队会直撞
-          // sessionNotFound。一律降到 waitingSession，由 restartEpoch 驱动的唤醒 effect
-          // 在新会话到达后统一入队。
-          updateItem(targetScopeKey, item.id, (current) => ({
-            ...current,
-            uploadStatus: "waitingSession",
-            uploadProgress: 0,
-            uploadError: intl.formatMessage({
-              id: "chat.attachments.upload.runtimeRestarted",
-            }),
-            uploadErrorKind: "runtimeRestarted",
-            attachmentRef: undefined,
-            staged: false,
-            adopted: false,
-            showComplete: false,
-            autoRetryCount: current.autoRetryCount + 1,
-          }));
+// 换代后 targetsRef 里的 sessionId 必然陈旧（渲染期写入），拿它入队会直撞
+// sessionNotFound。一律降到 waitingSession，由 restartEpoch 驱动的唤醒 effect
+// 在新会话到达后统一入队。
+updateItem(targetScopeKey, item.id, (current) => ({
+  ...current,
+  uploadStatus: "waitingSession",
+  uploadProgress: 0,
+  uploadError: intl.formatMessage({
+    id: "chat.attachments.upload.runtimeRestarted",
+  }),
+  uploadErrorKind: "runtimeRestarted",
+  attachmentRef: undefined,
+  staged: false,
+  adopted: false,
+  showComplete: false,
+  autoRetryCount: current.autoRetryCount + 1,
+}));
 ```
 
 并在该回调的 `for` 循环结束、`}` 收尾之前（即 `:513` 的 `}` 之后、`});` 之前）加入：
 
 ```ts
-      setRestartEpoch((current) => current + 1);
+setRestartEpoch((current) => current + 1);
 ```
 
 关于 spec 里「同一 `restartEpoch` 内不重复重传」这条：它由 `restartEpoch` 的单调递增天然保证——每次换代 `onRuntimeRestart` 只 fire 一次，`restartEpoch` 只 +1，唤醒 effect 只跑一次。不单独构造用例，因为要断言它需要在 `localDesktop` 模式下观测内部 enqueue 次数，测试成本高于其保护价值。
@@ -606,11 +627,13 @@ git commit -m "fix(ui): 换代后附件不再用陈旧 sessionId 入队，改由
 `:481` 的 `autoRetryCount >= 1` 会让一次换代烧掉用户可见的上传重试配额。dev 实测同一 workspace 已到 `runtimeGeneration=4`（3 次换代），合并计数会在正常使用中误报失败。拆成两个计数器。
 
 **Files:**
+
 - Modify: `packages/ui/src/store/composerAttachmentUploadStore.ts`（`ComposerAttachmentUploadItem` 加字段）
 - Modify: `packages/ui/src/v4/composer/useComposerAttachments.ts`（`:481` 判定、`:509` 递增、`:556`/`:842`/`:896` 三处初始化）
 - Test: `packages/ui/test/useComposerAttachmentsUpload.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 4 的 `restartEpoch`
 - Produces: `ComposerAttachmentUploadItem.runtimeRebuildRetryCount: number`
 
@@ -619,37 +642,37 @@ git commit -m "fix(ui): 换代后附件不再用陈旧 sessionId 入队，改由
 在 `packages/ui/test/useComposerAttachmentsUpload.test.ts` 末尾追加：
 
 ```ts
-  it("连续 5 次换代仍重传，第 6 次才判失败，且不消耗 autoRetryCount", async () => {
-    const transfer = createTransferService();
-    mocks.service = transfer.service;
-    const restartListeners = new Set<() => void>();
-    const onRuntimeRestart = (listener: () => void) => {
-      restartListeners.add(listener);
-      return () => restartListeners.delete(listener);
-    };
-    const probe = renderProbe({
-      attachmentSessionId: "draft-1",
-      localDesktop: true,
-      onRuntimeRestart,
-      scopeId: "rebuild-quota",
-    });
-    await addPaths(["/tmp/c.png"]);
-    await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
+it("连续 5 次换代仍重传，第 6 次才判失败，且不消耗 autoRetryCount", async () => {
+  const transfer = createTransferService();
+  mocks.service = transfer.service;
+  const restartListeners = new Set<() => void>();
+  const onRuntimeRestart = (listener: () => void) => {
+    restartListeners.add(listener);
+    return () => restartListeners.delete(listener);
+  };
+  const probe = renderProbe({
+    attachmentSessionId: "draft-1",
+    localDesktop: true,
+    onRuntimeRestart,
+    scopeId: "rebuild-quota",
+  });
+  await addPaths(["/tmp/c.png"]);
+  await vi.waitFor(() => expect(latestApi?.attachments[0]?.uploadStatus).toBe("ready"));
 
-    for (let round = 0; round < 5; round += 1) {
-      act(() => {
-        for (const listener of [...restartListeners]) listener();
-      });
-      expect(latestApi?.attachments[0]?.uploadStatus).toBe("waitingSession");
-      expect(latestApi?.attachments[0]?.autoRetryCount).toBe(0);
-    }
-
+  for (let round = 0; round < 5; round += 1) {
     act(() => {
       for (const listener of [...restartListeners]) listener();
     });
-    expect(latestApi?.attachments[0]?.uploadStatus).toBe("failed");
-    probe.root.unmount();
+    expect(latestApi?.attachments[0]?.uploadStatus).toBe("waitingSession");
+    expect(latestApi?.attachments[0]?.autoRetryCount).toBe(0);
+  }
+
+  act(() => {
+    for (const listener of [...restartListeners]) listener();
   });
+  expect(latestApi?.attachments[0]?.uploadStatus).toBe("failed");
+  probe.root.unmount();
+});
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
@@ -665,8 +688,8 @@ Expected: FAIL —— 当前第 2 次换代就会因 `autoRetryCount >= 1` 判 f
 `packages/ui/src/store/composerAttachmentUploadStore.ts`，在 `autoRetryCount: number;`（`:25`）之后插入：
 
 ```ts
-  /** 因 runtime 换代触发的重传次数；与上传失败重试分开计，避免换代烧掉用户可见配额。 */
-  runtimeRebuildRetryCount: number;
+/** 因 runtime 换代触发的重传次数；与上传失败重试分开计，避免换代烧掉用户可见配额。 */
+runtimeRebuildRetryCount: number;
 ```
 
 - [ ] **Step 4: 改判定与初始化**
@@ -729,7 +752,6 @@ pnpm exec vitest run packages/ui/test/v4DraftSessionPrewarm.test.ts packages/ui/
 ```bash
 ZCODE_CUA_DEV_MODE=1 pnpm run dev:desktop
 ```
-
 
 - [ ] 确认日志中不再出现 `fault.subscribe.sessionNotFound`
 

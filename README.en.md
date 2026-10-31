@@ -15,8 +15,10 @@ OpenZWork is an AI coding workspace with desktop, browser, and terminal interfac
 
 ## Updates
 
-- **v3.16.2 candidate**: Upstream integration and maintenance fixes are described in the [candidate notes](docs/upstream/v3.16.2-candidate.md). Published versions are listed in [Releases](https://github.com/BlueSkyXN/OpenZWork/releases).
-- **2026-10-16**: Updated to ZCode v3.16.1.
+- **v3.17.1 sync in progress**: integrating upstream v3.17.1 (Electron 44, data-sync, engineering test framework); scope in the [integration spec](docs/spec/upstream-v3.17.1-integration.md). Previous candidate notes: [v3.16.2](docs/upstream/v3.16.2-candidate.md). Published versions are listed in [Releases](https://github.com/BlueSkyXN/OpenZWork/releases).
+- 2026-10-30: upstream ZCode v3.17.1 released.
+- 2026-10-19: Updated to ZCode v3.16.2.
+- 2026-10-16: Updated to ZCode v3.16.1.
 - 2026-10-10: Updated to ZCode v3.15.1.
 - 2026-9-23: Updated to ZCode v3.14.3.
 

@@ -60,6 +60,9 @@ export function TaskActionMenuContent({
   onStartRenameTask,
   onArchiveTask,
   onMarkTaskAsUnread,
+  // 净化保留：上游 onOpenTaskFeedback（打开官方反馈表单）属 feedback 净化域，不并入；任务重启为中性功能保留。
+  onRestartTask,
+  restartPending = false,
   onOpenTaskPathInFileManager,
   onCopyWorkspacePath,
   onCopyTaskPath,
@@ -96,6 +99,8 @@ export function TaskActionMenuContent({
   onStartRenameTask: () => void;
   onArchiveTask: () => void;
   onMarkTaskAsUnread: () => void;
+  onRestartTask?: () => void;
+  restartPending?: boolean;
   onOpenTaskPathInFileManager: () => void;
   onCopyWorkspacePath: () => void;
   onCopyTaskPath: () => void;
@@ -169,6 +174,15 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "taskList.markAsUnread" })}
       </Item>
+      {onRestartTask ? (
+        <Item
+          data-testid="task-restart"
+          disabled={taskTargetActionsDisabled || restartPending}
+          onSelect={onRestartTask}
+        >
+          {intl.formatMessage({ id: restartPending ? "taskList.restarting" : "taskList.restart" })}
+        </Item>
+      ) : null}
       <Separator />
       {!hideMobileUnsupportedActions ? (
         <Item

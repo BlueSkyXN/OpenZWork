@@ -30,8 +30,6 @@ Host 任务迁移也沿用共享 runner 的表级备份和按数据库路径的�
 维持 `tasks_schema_migration` 的既有 checksum 与列，不把项目列插入冻结的历史 schema。
 备份恢复使用各自 journal，不能恢复了业务数据却保留“迁移已完成”的记录。
 
-
-
 ## 合并必须保留的行为
 
 - 项目树及真实 roots 配置目录仍是当前设计；不恢复旧 Group/workspace 侧栏。

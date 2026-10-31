@@ -19,7 +19,7 @@ export function buildSecurityNotice(): string {
  * `# Harness` 块：稳定运行时约束，不属于 output style 可替换的 coding instructions，
  * 也是工作流子代理身份（sections/workflow-actor.ts）逐字复用的那一段。
  */
-export function buildHarnessBlock(): string {
+export function buildHarnessBlock(midConversationSystem = true): string {
   return [
     "# Harness",
     "- Text you output outside of tool use is displayed to the user as Github-flavored markdown in a terminal.",

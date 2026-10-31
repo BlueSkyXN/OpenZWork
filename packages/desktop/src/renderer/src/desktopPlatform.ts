@@ -1,5 +1,12 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
-import { DesktopCommandIds, buildLocalMediaPreviewUrl, type IPlatformService } from "@zcode/shared";
+// fork 净化：上游的 recordArmsCustomEventForE2E（ARMS E2E 遥测）不随入；unwrapRemoteWorkspaceBindResult
+// 为远端 workspace 绑定结果解包（中性）保留。
+import {
+  DesktopCommandIds,
+  buildLocalMediaPreviewUrl,
+  unwrapRemoteWorkspaceBindResult,
+  type IPlatformService,
+} from "@zcode/shared";
 
 import { desktopBrowserPlatformBridge } from "./desktopBrowserPlatformBridge.js";
 import { createDesktopPluginSandboxPlatform } from "./plugin-sandbox/desktopPluginSandboxPlatform.js";
@@ -34,9 +41,15 @@ export function createDesktopPlatform(options: {
       Promise.reject(new Error("Source settings attachment bridge unavailable")),
     cancelPendingRemoteConnection: (requestId) =>
       window.zcode.cancelPendingRemoteConnection?.(requestId) ?? Promise.resolve(),
-    bindRemoteWorkspaceSessionContext: (context) =>
-      window.zcode.bindRemoteWorkspaceSessionContext?.(context) ??
-      Promise.reject(new Error("Desktop bindRemoteWorkspaceSessionContext bridge unavailable")),
+    bindRemoteWorkspaceSessionContext: async (context) => {
+      if (!window.zcode.bindRemoteWorkspaceSessionContext) {
+        throw new Error("Desktop bindRemoteWorkspaceSessionContext bridge unavailable");
+      }
+      // preload 返回结构化结果，在页面一侧还原错误才能保留 code/retryable。
+      return unwrapRemoteWorkspaceBindResult(
+        await window.zcode.bindRemoteWorkspaceSessionContext(context),
+      );
+    },
     startWebRemoteControl: (context) => window.zcode.startWebRemoteControl(context),
     refreshWebRemoteControlPairing: (context) =>
       window.zcode.refreshWebRemoteControlPairing(context),
@@ -60,6 +73,8 @@ export function createDesktopPlatform(options: {
     openInFileManager: (path) => window.zcode.openInFileManager(path),
     openExternalFile: (path) => window.zcode.openExternalFile(path),
     notifyRendererReady: () => window.zcode.notifyRendererReady(),
+    // fork 净化：上游 syncTelemetryContext/reportTelemetryEvent/reportArmsCustomEvent/
+    // rendererActionTrace/localTtft/rendererHeapSample（WP-05 渲染端遥测链）不随入。
     showTaskNotification: (payload) => window.zcode.showTaskNotification(payload),
     syncWindowTabs: (paths) => window.zcode.syncWindowTabs(paths),
     syncWebRemoteControlLegacyTasks: (tasks, directory) =>
@@ -68,6 +83,8 @@ export function createDesktopPlatform(options: {
       window.zcode.syncWebRemoteControlWorkspaces?.(workspaces),
     onWebRemoteControlReconnectWorkspace: (handler) =>
       window.zcode.onWebRemoteControlReconnectWorkspace?.(handler) ?? (() => {}),
+    onWebRemoteControlRendererAction: (handler) =>
+      window.zcode.onWebRemoteControlRendererAction?.(handler) ?? (() => {}),
     syncWindowUnreadCount: (count) => window.zcode.syncWindowUnreadCount(count),
     syncAppSettings: (patch) => window.zcode.syncAppSettings?.(patch),
     // 桥缺失（旧 preload 升级窗口）时按 supported 兜底，与 Windows 现状一致，设置开关可用。
@@ -133,6 +150,9 @@ export function createDesktopPlatform(options: {
     onApplicationLocaleChanged: (callback) =>
       window.zcode.onApplicationLocaleChanged?.(callback) ?? (() => {}),
     getInstalledEditors: (filePath) => window.zcode.getInstalledEditors(filePath),
+    getFileApplications: (target) => window.zcode.getFileApplications(target),
+    openFileWithApplication: (applicationId, target) =>
+      window.zcode.openFileWithApplication(applicationId, target),
     getApplicationIcon: (bundleId) =>
       window.zcode.getApplicationIcon?.(bundleId) ?? Promise.resolve(null),
     openInEditor: (editorId, path, editorOptions) =>

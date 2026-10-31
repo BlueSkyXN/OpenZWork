@@ -14,6 +14,7 @@ import {
 interface FileConfigOptions {
   baseDir?: string;
   configFileName?: string;
+  scope?: "user" | "project";
 }
 
 export interface LoadedConfig {
@@ -84,7 +85,10 @@ export function loadFileConfig(filePath?: string, options: FileConfigOptions = {
   try {
     const content = readFileSync(resolvedPath, "utf-8");
     const parsed = JSON.parse(content);
-    const result = parseConfigFileToRuntimePatchWithDiagnostics(parsed);
+    // OpenZWork 净化：上游此处经 migratePluginConfigInFile 把旧官方 CUA 插件 id
+    // （zcode-cua@… → computer-use@…）迁移并写回磁盘；官方 CUA/computer-use 属净化域
+    // 且我方 schema 未引入这对 id，迁移器与持久化一并移除，配置按原样装载。
+    const result = parseConfigFileToRuntimePatchWithDiagnostics(parsed, options.scope);
 
     return {
       config: result.config,

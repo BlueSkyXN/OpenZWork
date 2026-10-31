@@ -2,8 +2,6 @@
 
 ## Background
 
-
-
 If first send later reuses that stale value, the service rejects the request with `ZCODE_RUNTIME_MODEL_UNAVAILABLE` before any model request is sent.
 
 ## Expected Behavior

@@ -3,7 +3,11 @@ import { execFile } from "node:child_process";
 import { appendFile, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
-import { OPENZWORK_TAG_PATTERN, formatOpenZWorkTag, parseOpenZWorkTag } from "./openzwork-version.mjs";
+import {
+  OPENZWORK_TAG_PATTERN,
+  formatOpenZWorkTag,
+  parseOpenZWorkTag,
+} from "./openzwork-version.mjs";
 import { RELEASE_WORKFLOWS, matchesReleaseWorkflow } from "./release-workflows.mjs";
 
 const definitions = RELEASE_WORKFLOWS;

@@ -1,5 +1,15 @@
 # Provider 设置本批浏览器用例
 
+## 重命名关闭动画焦点回归（2026-10-28）
+
+PRN-01（accepted，pending）：390px 中文浅色／1200px 英文深色，真实 Header/Card 点击重命名后，在菜单关闭动画内移动鼠标，再移动到菜单外。菜单完成关闭后，名称输入框必须保留且拥有焦点；直接键盘输入应写入名称，Enter 只保存一次且不改变启停状态。再次使用键盘选择重命名，Esc 放弃输入且不额外保存。
+
+测试通过 Web Animations API 暂停并完成真实关闭动画，明确命中仍挂载的关闭菜单，不靠固定等待猜测动画窗口；不主动聚焦或 fill 名称输入框来掩盖焦点丢失。复用隔离保存路由，不写真实配置。焦点交接规格见 [标题栏操作](../working-memory/provider-refactor/steps/todo-115-provider-header-actions-and-toggle-hit-area.md)。
+
+运行：`node --test --test-name-pattern='provider rename keeps focus|header name and option feedback' packages/ui/test/browser/manual-review/pending/provider-settings-batch.test.mjs`。覆盖共享组件桌面／手机宽度，不替代完整 Electron 或手机 shared-host 验证。
+
+验证结果：旧实现两例均在鼠标移动后失去名称输入焦点；修复后新增两例与既有标题栏两例合跑 4/4 通过。未新增产品延时、重试或全局菜单行为，保持浏览器 pending 分类。
+
 ## MiMo 模板拆分（2026-10-14）
 
 MIMO-03（accepted，pending）：390px 中文浅色 / 1200px 英文深色，真实模板选择器分别显示 Xiaomi MiMo API 和 Xiaomi MiMo Token Plan，tooltip 和图标一致；分别点击后仅发送对应 templateId 的创建动作，详情 Base URL 分别为按量与中国 Token Plan 地址；无横向溢出、页面错误或额外写入。规格及官方核验见 [MiMo 模板](../provider-mimo-templates.md)。复用现有浏览器 fixture，不宣称原生 Electron、手机 shared-host 或真实付费请求已验证。
@@ -9,8 +19,6 @@ MIMO-03（accepted，pending）：390px 中文浅色 / 1200px 英文深色，真
 本轮两例通过，截图已复查：两张模板、图标、两种地址、中文浅色与英文深色正常。配置相关定向 18 项及最终 affected 17 项通过；保持 pending 身份。
 
 ## Todo148 Dock 应用图标纠正（2026-09-15）
-
-
 
 OpenRouter 名称回归：390 中文浅色／1200 英文深色的添加模板卡片显示 `OpenRouter`，不含 Anthropic 后缀；悬停提示沿用相同名称。配置单测同时验证生产／测试名称及协议、URL 未改变。
 
@@ -42,14 +50,13 @@ BR117-N02（accepted，pending）：隔离完整 Electron 应用通过测试 HTT
 
 ## Todo116 原生打开补充（2026-09-12）
 
-
 ```text
 隔离 Personal Config 单 URL -> Settings View -> 唯一按钮
     -> IPlatformService -> preload / IPC -> shell.openExternal
     -> 系统默认浏览器 -> 本机唯一 canary GET
 ```
 
-用例：`packages/desktop/test/e2e/settings/manual-review/pending/provider-key-native-open.test.ts`。需要有默认浏览器的交互桌面，不纳入无桌面的 Docker gate；请求抵达只证明原生打开链路，不证明官方控制台登录态或手机 shared-host。模板官方 URL 的精确值及有／无 Key 双尺寸组合复用既有测试，不作额外排列。测试会打开两张无账号内容的本机验收页。
+用例：`packages/desktop/test/e2e/settings/provider-key-native-open.test.ts`。需要有默认浏览器的交互桌面，不纳入无桌面的 Docker gate；请求抵达只证明原生打开链路，不证明官方控制台登录态或手机 shared-host。模板官方 URL 的精确值及有／无 Key 双尺寸组合复用既有测试，不作额外排列。测试会打开两张无账号内容的本机验收页。
 
 Todo131/125：真实编辑 Hook+弹窗增加6例（双尺寸各3）：原子恢复及失败保留；编辑/模式/供应商/关闭/重复恢复/保存开始/ID 变化时旧成功和失败均失效；9处帮助 hover/focus/tap、Escape、定稿富文本、视口边界与不修改草稿。原130两例补空 ID 恢复无请求/无写入。新增6例定向通过，合批结果见 Goal 账本；布局截图在同一临时目录。已更新三个 Electron 设置用例，但本组尚未实跑 Electron；中文字体显示仍受 Linux 字库限制。
 
@@ -57,11 +64,7 @@ Todo130：新增 manual editable fields and pending cancellation 两例，真实
 
 Todo122：新增 subagent selection error copy 两例，真实 ToolLayout 展示测试注入的公共错误 message，验证 390 中文浅色/1200 英文深色详情及复制完整原因和选择身份。两例通过；Core 的真实解析、投影、前后台 runner 另有 84 项测试，不将 fixture 冒充跨进程实机链路。
 
-
-
 2026-09-11 Todo115/132：新增两个 header name and option feedback 用例（390 中文浅色/1200 英文深色）。真实 Header/Card 的菜单焦点、停顿不保存、Esc 不保存、Enter 一次提交、长名布局、Tooltip 不覆盖开关状态和扩展热区不碰菜单；真实 Modality/Boolean 组件验证同位置点击底色有变化，文字/图标/边框/尺寸不变。六项合跑通过，保存路由隔离；不替代整页 Electron/手机 Host 链路。本轮 Linux 字库缺少中文字形，中文文案/交互可断言，但不算中文字形视觉通过。
-
-
 
 同日 Todo119/124：禁用后模型测试按钮 disabled，重新开启恢复；成功提示使用 Fixture Provider 而非内部 fixture ID，语义绿色背景/文字/边框与关闭按钮同时存在。四个浏览器用例合跑通过。名称回传、成功/失败/异常及资格提示本地化由真实 React 组件事件测试补充；签名网络错误原样透传由服务测试覆盖。
 
@@ -80,8 +83,7 @@ Todo122：新增 subagent selection error copy 两例，真实 ToolLayout 展示
 
 既有 Electron `settings-ui-polish` 已按最终 DeepSeek 两成员、菜单与帮助标题更新并在 Pro 实跑通过，`provider-settings-write-recovery` 也已在 Pro 合批通过。前者 SSH 分支仍跳过；二者不等于手机 shared-host 联合验证。原生控制台打开由 K116-N01 单独证明，不借此宣称官方登录态通过。
 
-
-
+<!-- Z.ai/BigModel Start Plan 视觉标用例属官方套餐净化域，不随上游引入 -->
 
 2026-09-12 Todo138 已验证：新增模型空 ID 档位为空；输入 ID 接收推荐档位、清空恢复空列表；显式编辑档位在解析回包后保留。复用真实 ProviderCard 新增入口，覆盖 390/中文/浅色和 1200/英文/深色，服务路由隔离。
 

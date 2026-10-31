@@ -20,8 +20,8 @@ client-executed 调用的空字符串/纯空白工具名虽然无法命中 regis
   `invalid_model_response`。这是本次范围选择，不覆盖非字符串工具名的恢复。
 - `providerExecuted=true` 的空字符串/纯空白名称继续返回 `invalid_model_response`。
 - 合法非空名称继续 trim 后执行。
-- 非空工具名即使未注册，也继续进入既有 tool lookup。找不到工具时，executor 返回
-  `Tool not found: <name>`，runtime 生成与原 call id 配对的 `is_error=true` tool result。
+- 非空工具名即使未注册，也继续进入既有 tool lookup。找不到工具时，模型看到
+  `<tool_use_error>Error: No such tool available: <name></tool_use_error>`（内部错误 message 仍是 `Tool not found: <name>`），runtime 生成与原 call id 配对的 `is_error=true` tool result。
 - 缺失 call id 的既有兼容行为不在本 ticket 中修改，也不能与 malformed 参数恢复混为一类。
   `generateText` 继续使用现有 `toolCallId ?? id ?? crypto.randomUUID()`；streaming 不增加
   新的 id fallback。空名称仅在当前路径已有可闭合 id 时恢复。
@@ -49,18 +49,18 @@ client-executed + name.trim()==="" + id 可闭合
 - provider `modelContent`：
   `<tool_use_error>Error: No such tool available: ${rawToolName}</tool_use_error>`
 
-普通非空 unknown tool 继续使用 `Tool not found: <name>`，不改变既有文案。
+普通非空 unknown tool 与空名使用同一段模型可见文本：`<tool_use_error>Error: No such tool available: <name></tool_use_error>`。
 
 ## Provider、持久化与 App 投影
 
 runtime assistant/tool-result history 始终保存 provider 原始名称。只有协议要求非空的边界使用
 固定占位值 `empty_tool_name`：
 
-| API 格式 | assistant tool call | tool-result wire |
-| --- | --- | --- |
-| `anthropic-messages` | 原始空字符串/空白字符串 | `tool_result` 不携带 name |
-| `openai-chat-completions` | `empty_tool_name` | tool message 不携带 name |
-| `openai-responses` | `empty_tool_name` | `function_call_output` 不携带 name |
+| API 格式                  | assistant tool call     | tool-result wire                   |
+| ------------------------- | ----------------------- | ---------------------------------- |
+| `anthropic-messages`      | 原始空字符串/空白字符串 | `tool_result` 不携带 name          |
+| `openai-chat-completions` | `empty_tool_name`       | tool message 不携带 name           |
+| `openai-responses`        | `empty_tool_name`       | `function_call_output` 不携带 name |
 
 - 显式 `apiFormat` 优先；格式缺失时仅 `providerKind="anthropic"` 保留原始名称，其他 provider
   使用 `empty_tool_name`。不得根据 URL 猜测协议。

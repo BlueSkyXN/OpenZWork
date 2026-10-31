@@ -42,7 +42,6 @@ const effectiveBuiltinProviders = zcodeBuiltinProviders.overlay(accountBuiltinPr
 const effectiveProviders = effectiveBuiltinProviders.overlay(personalProviders);
 ```
 
-
 ### 1.2 账号可用性统一使用 `enabled`
 
 Account Provider 是否可用不再通过“缺少 Account Overlay，最终因 `accessId` 不完整而退出 Registry”间接表达。
@@ -71,7 +70,6 @@ Secret，但当前执行语义需要它：
 - 同一账号刷新 Token、JWT、API Key 或 Header 时保持同一访问身份；
 - 切换账号、套餐或 Team scope 时访问身份变化；
 - Active Model 固定创建时的 Account Access，后续凭据刷新不能无声切换到另一个账号；
-
 
 Account Overlay 可以写入：
 

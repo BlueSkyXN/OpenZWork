@@ -45,14 +45,16 @@ import { isRemoteWorkspaceDisconnectedError } from "@/lib/remoteWorkspaceService
 import { mergeMcpServerStatusSnapshots } from "@/store/mcpStoreStatusList.js";
 
 let mcpPlatformService: McpPlatformService | null = null;
-let mcpDirectoryService: McpDirectoryService | null = null;
 
-export function setMcpStorePlatform(platform: McpPlatformService | null): void {
-  mcpPlatformService = platform;
-}
+// OpenZWork 保留：目录服务由宿主注入（上游改为 options 传参，我方测试与装配仍用 setter）。
+let mcpDirectoryService: McpDirectoryService | null = null;
 
 export function setMcpStoreDirectoryService(service: McpDirectoryService | null): void {
   mcpDirectoryService = service;
+}
+
+export function setMcpStorePlatform(platform: McpPlatformService | null): void {
+  mcpPlatformService = platform;
 }
 
 interface UpdateServerStatusOptions {
@@ -73,10 +75,11 @@ interface McpStoreState {
   isConfigLoaded: boolean;
   currentSessionId: string | null;
   loadConfig: () => void;
+  /** 重新读取当前绑定目标的 MCP 配置；要换目标请用 ensureLoadedForWorkspace。 */
   loadMcpFromUserDirectory: (
-    directoryService?: McpDirectoryService | null,
     workspaceIdentity?: string,
     authorityKey?: string,
+    directoryService?: McpDirectoryService | null,
   ) => Promise<boolean>;
   ensureLoadedForWorkspace: (
     workspacePath?: string,
@@ -352,7 +355,11 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       });
     },
 
-    loadMcpFromUserDirectory: async (directoryService, workspaceIdentity, authorityKey) => {
+    loadMcpFromUserDirectory: async (
+      workspaceIdentity?: string,
+      authorityKey?: string,
+      directoryService: McpDirectoryService | null = null,
+    ) => {
       if (typeof window === "undefined") {
         return false;
       }
@@ -379,9 +386,9 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
       }
       // 等待上一 workspace load 期间可能再次切换；目录服务必须按等待后的
       // 最新 identity 重新选择，不能拿 B 的 remote service 去读取 C 的路径。
-      let activeDirectoryService: McpDirectoryService | null;
+      let _activeDirectoryService: McpDirectoryService | null;
       try {
-        activeDirectoryService = resolveMcpDirectoryService(
+        _activeDirectoryService = resolveMcpDirectoryService(
           directoryService,
           latestWorkspaceIdentity,
         );
@@ -393,11 +400,17 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         return await loadMcpPromise;
       }
 
-      loadMcpWorkspaceKey = latestWorkspaceKey;
+      const { currentProjectPath } = get();
+      const innerWorkspacePath = currentProjectPath || undefined;
+      void innerWorkspacePath;
+      loadMcpWorkspaceKey = requestWorkspaceKey;
       loadMcpPromise = (async () => {
         try {
+          // 等待上一目标 load 期间可能再次切换；目录服务取等待后的最新绑定，
+          // 与 requestWorkspaceKey 属于同一组目标，不能拿 B 的服务读取 C 的路径。
+          const activeDirectoryService = resolveMcpDirectoryService();
           logger.info(
-            `[mcpStore] loadMcpFromUserDirectory workspace=${latestWorkspacePath ?? "<none>"} identity=${latestWorkspaceIdentity ?? "<none>"}`,
+            `[mcpStore] loadMcpFromUserDirectory workspace=${innerWorkspacePath ?? "<none>"} identity=${get().currentWorkspaceIdentity ?? "<none>"}`,
           );
           let servers = await fetchNativeMcpServers(
             mcpPlatformService,
@@ -475,11 +488,7 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         );
       }
 
-      return await get().loadMcpFromUserDirectory(
-        directoryService,
-        normalizedWorkspaceIdentity,
-        normalizedAuthorityKey,
-      );
+      return await get().loadMcpFromUserDirectory();
     },
 
     saveConfig: () => {
@@ -723,9 +732,9 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
         // 切换到远程 workspace 后配置加载是异步的；等待期间必须先清空 A 的
         // user-level MCP，不能把其 env/header/OAuth clientSecret 暂存为 B 的可发送配置。
         void get().loadMcpFromUserDirectory(
-          directoryService,
           normalizedWorkspaceIdentity,
           normalizedAuthorityKey,
+          directoryService,
         );
       }
     },
@@ -748,7 +757,11 @@ export const useMcpStore = create<McpStoreState>((set, get) => {
 
       const result: ZCodeAgentMcpServer[] = [];
       for (const server of candidates.values()) {
-        const zcodeAgentServer = convertToZCodeAgentMcpServer(server.name, server.config);
+        const zcodeAgentServer = convertToZCodeAgentMcpServer(
+          server.name,
+          server.config,
+          server.scope === "workspace" ? "workspace" : "user",
+        );
         if (zcodeAgentServer) result.push(zcodeAgentServer);
       }
       return result;

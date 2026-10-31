@@ -4,8 +4,6 @@
 
 **Goal:** Keep feedback submission available when an SSH workspace session is connecting or disconnected by wiring `FeedbackHost` to the renderer's base feedback service.
 
-
-
 **Tech Stack:** TypeScript, React, Vitest, Electron renderer service accessors.
 
 ## Global Constraints
@@ -23,9 +21,11 @@
 ### Task 1: Lock the feedback service wiring with a regression test
 
 **Files:**
+
 - Create: `packages/ui/test/feedbackBaseServiceBoundary.test.ts`
 
 **Interfaces:**
+
 - Consumes: `RootProps.services: IServiceAccessor`, `RootWorkspaceContent`, `App`, and `FeedbackHost`.
 - Produces: a source-level boundary guard that fails until the base feedback service is passed independently of workspace-scoped services.
 
@@ -35,23 +35,19 @@
 
 Run: `pnpm exec vitest run packages/ui/test/feedbackBaseServiceBoundary.test.ts --reporter=dot`
 
-
-
 ### Task 2: Explicitly inject the base feedback service
 
 **Files:**
+
 - Modify: `packages/ui/src/app-shell/types.ts`
 - Modify: `packages/ui/src/root/RootWorkspaceContent.tsx`
 - Modify: `packages/ui/src/Root.tsx`
 - Modify: `packages/ui/src/App.tsx`
 - Test: `packages/ui/test/feedbackBaseServiceBoundary.test.ts`
 
-
-
 - [ ] **Step 1: Add the typed application-level dependency**
 
 Change the service type import and props in `packages/ui/src/app-shell/types.ts`:
-
 
 - [ ] **Step 2: Thread the dependency through `RootWorkspaceContent`**
 
@@ -93,9 +89,11 @@ git commit -m "fix(feedback): keep submissions on base service"
 ### Task 3: Complete repository verification
 
 **Files:**
+
 - Verify only; no production files should change.
 
 **Interfaces:**
+
 - Consumes: the implementation commit from Task 2.
 - Produces: fresh test, typecheck, lint, and diff evidence for handoff.
 

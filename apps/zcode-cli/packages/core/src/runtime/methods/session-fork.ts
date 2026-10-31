@@ -42,6 +42,7 @@ import {
   clonePartForFork,
   emptyTokenUsageInfo,
   formatConversationForkNoticeBody,
+  isHiddenReminderMessage,
   slugify,
 } from "../helpers/index.js";
 import type { AgentRuntimeInternal } from "../internal.js";
@@ -69,8 +70,11 @@ const MODEL_SELECTION_ENTRY_SUFFIX = ":runtime-model-selection";
 
 function modelSelectionFromMessage(message: MessageWithParts): ModelSelection | undefined {
   // 私有化裁定（highspeed 整链删除）：不再存在单轮加速 Provider 的 Selection，
-  // 历史消息的选型直接可作为分叉身份。
+  // 历史消息的选型直接可作为分叉身份。吸收上游中性改进：隐藏提醒（如停止后的中断标记）
+  // 只记 provider/model，不带 options，不作为选型事实。
+  if (isHiddenReminderMessage(message)) return undefined;
   return persistedModelSelectionOfMessage(message);
+
 }
 
 function persistedModelSelectionOfMessage(message: MessageWithParts): ModelSelection | undefined {

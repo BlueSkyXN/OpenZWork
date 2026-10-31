@@ -1,13 +1,5 @@
 # SSH 断连场景反馈服务边界设计
 
-
-
-
-
-
-
-
-
 ## 非目标
 
 - 不修改 `ZCODE_REMOTE_WORKSPACE_DISCONNECTED` 断连代理的保护规则。
@@ -17,16 +9,7 @@
 
 ## 方案
 
-
-
-
-
-
-
 反馈中心的挂载位置、store、弹窗生命周期和当前任务/模型上下文读取方式保持不变，避免扩大 UI 行为变化。
-
-
-
 
 ## 错误处理
 
@@ -46,12 +29,12 @@
 
 新增回归测试验证反馈服务选择不依赖 workspace-scoped services：
 
-| 场景 | workspace services | feedback service | 预期 |
-| --- | --- | --- | --- |
-| 本地 workspace | base services | base feedback | 行为不变 |
-| SSH 已连接 | merged remote services | base feedback | 行为不变 |
-| SSH session 尚未绑定 | disconnected proxy | base feedback | 可提交，不抛断连错误 |
-| SSH 已断开 | disconnected proxy | base feedback | 可提交，不抛断连错误 |
+| 场景                 | workspace services     | feedback service | 预期                 |
+| -------------------- | ---------------------- | ---------------- | -------------------- |
+| 本地 workspace       | base services          | base feedback    | 行为不变             |
+| SSH 已连接           | merged remote services | base feedback    | 行为不变             |
+| SSH session 尚未绑定 | disconnected proxy     | base feedback    | 可提交，不抛断连错误 |
+| SSH 已断开           | disconnected proxy     | base feedback    | 可提交，不抛断连错误 |
 
 测试应直接断言 `FeedbackHost` 接收显式的 base feedback service，并避免仅依赖对象展开恰好保留该字段。现有 feedback submission 测试继续覆盖 `getDeviceSnapshot`、工单创建、附件和日志流程。
 

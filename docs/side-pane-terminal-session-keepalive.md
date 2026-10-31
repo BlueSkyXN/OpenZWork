@@ -6,6 +6,11 @@
 
 ## 0. 与既有设计的关系（不可违背）
 
+2026-10-22 补充：保活条目同时持有当前终端服务连接。手机 workspace bridge 换代后，
+同一工作区的条目重绑输入、输出和退出通知，保留原 PTY 与 xterm；相同服务引用不重复订阅，
+关闭通过最新连接释放。客户端命名空间或 workspaceKey 不同均不复用旧 PTY；底部终端生命周期不变。
+完整合同与 MRO04 回归见 [手机终端的连接换代](web-remote-control/web-remote-control-architecture.md#手机终端的连接换代2026-10-22)。
+
 `docs/ui/side-pane-terminal-tabs.md` 已明确：
 
 - 第 10/16 行：每个 side pane terminal tab 是**独立终端实例**，`+` 菜单每次新建、不复用单例。
@@ -195,11 +200,11 @@ useEffect(() => {
 
 两份拷贝只要任一处改动，另一处极易遗漏。已确认的漂移：
 
-| # | 项 | 后果 | 状态 |
-|---|----|------|------|
-| 1 | `flushTerminalServiceResize()` | persistentKey 路径 id ready 后未 flush 创建期排队 resize，PTY 停在错误 cols/rows | 已修（f8cfca38b7） |
-| 2 | exit 订阅查 `exitHandlerRef` | persistentKey 路径 exit 订阅未查 onExit 回调，与原路径不对称 | 已修（f8cfca38b7） |
-| 3 | paste 快捷键 `logger.debug("[Terminal] paste via shortcut")` | persistentKey 路径 customKeyEventHandler 漏了该 debug 日志 | 已对齐（本次） |
+| #   | 项                                                           | 后果                                                                             | 状态               |
+| --- | ------------------------------------------------------------ | -------------------------------------------------------------------------------- | ------------------ |
+| 1   | `flushTerminalServiceResize()`                               | persistentKey 路径 id ready 后未 flush 创建期排队 resize，PTY 停在错误 cols/rows | 已修（f8cfca38b7） |
+| 2   | exit 订阅查 `exitHandlerRef`                                 | persistentKey 路径 exit 订阅未查 onExit 回调，与原路径不对称                     | 已修（f8cfca38b7） |
+| 3   | paste 快捷键 `logger.debug("[Terminal] paste via shortcut")` | persistentKey 路径 customKeyEventHandler 漏了该 debug 日志                       | 已对齐（本次）     |
 
 这 3 个全是"两份拷贝必然漂移"的直接产物。
 

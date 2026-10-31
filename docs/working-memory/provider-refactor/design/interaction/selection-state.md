@@ -1,7 +1,5 @@
 # 模型选择状态
 
-
-
 ModelSelection 是可以持久化和传输的模型意图：
 
 ```ts
@@ -90,6 +88,16 @@ run、Active Model 和历史记录不重新对应账号。定时任务长期配�
 
 接口读取失败与正常不完整结果分开：公共 hook 继续订阅，首次临时读取失败允许有限、可取消重试，
 不重试不完整选择或派发；耗尽后显式 reload。没有目标、远端未连接不回退本地。没有发送前配置同步屏障。
+
+## 手动压缩的模型选择（2026-10-20）
+
+手动 `/compact` 与上下文面板的压缩动作使用提交时 Composer 的 ModelSelection。
+命令携带 provider/model 及稀疏 options；不携带 mode、Plan 或执行凭据。
+CLI 接收时固定为 canonical intent，立即执行、FIFO 排队、恢复及提升均沿用该快照。
+旧客户端缺少选择时，CLI 在接收边界固定当前 Session Selection。
+已开始的请求不受后续菜单编辑影响；Session 续跑选择沿用现有 admissionSeq 防倒写规则。
+摘要请求的 reasoning/output 策略继续由 compact 实现决定；自动 compact 使用触发轮的 Active Model。
+验收与实施边界见 [compact 裁决](../../../../testing/conversation-session-compact-decision-worksheet.md)。
 
 ## App Recent
 
@@ -327,13 +335,13 @@ Configured Default 与 Fallback Policy 的解析结果；Renderer 不重复这�
 
 ## 写入事件
 
-| 状态              | 写入事件                                   | 持久化范围                |
-| ----------------- | ------------------------------------------ | ------------------------- |
-| Draft Selection   | Composer 编辑                              | Entry Draft               |
-| App Recent        | App 接受用户 Submission                    | App × workspaceKey        |
-| Session Selection | 普通 Submission 被接纳；闲时执行临时设值 | Session（仅持久化普通选择） |
-| CLI Default Selection | CLI/TUI 的 /model、/effort；会话初始化 | 复用已有普通用户选择存储 |
-| Active Model      | Loop 启动，或 Guide 在 Step 边界切换       | 当前 Agent Loop，不持久化 |
+| 状态                  | 写入事件                                 | 持久化范围                  |
+| --------------------- | ---------------------------------------- | --------------------------- |
+| Draft Selection       | Composer 编辑                            | Entry Draft                 |
+| App Recent            | App 接受用户 Submission                  | App × workspaceKey          |
+| Session Selection     | 普通 Submission 被接纳；闲时执行临时设值 | Session（仅持久化普通选择） |
+| CLI Default Selection | CLI/TUI 的 /model、/effort；会话初始化   | 复用已有普通用户选择存储    |
+| Active Model          | Loop 启动，或 Guide 在 Step 边界切换     | 当前 Agent Loop，不持久化   |
 
 这些状态共享 ModelSelection 语义，但不共享写入时机。一个状态变化后，可以按明确事件更新另一个状态；任何状态都不通过观察其他状态的当前值来猜测自己应该保存什么。
 

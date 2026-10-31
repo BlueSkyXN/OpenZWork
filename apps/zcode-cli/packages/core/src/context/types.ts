@@ -33,8 +33,9 @@ export type ContextSource =
   | "user_prompt_section"
   | "cli_prefix" // CLI / 产品身份前缀
   | "identity" // Agent 基础描述
-  | "env_info" // 环境信息 (cwd, platform, git repo boolean)
+  | "env_info" | "model" // 环境信息 (cwd, platform, git repo boolean)
   | "system_context" // git snapshot context
+  | "session_context" // OpenZWork v3.17.1：上游 git snapshot 公告源
   | "skills" // 可用 skills
   | "tools" // 工具定义
   | "request_user_context" // request-level user context provider-visible 组合块
@@ -72,7 +73,13 @@ export interface ContextSection {
   preview: string; // 前 100 字符预览
 }
 
-export type ContextMetaUserAttachmentSource = "skills_listing" | "context_prefix";
+export type ContextMetaUserAttachmentSource =
+  | "skills_listing"
+  | "context_prefix"
+  | "env_info"
+  | "model"
+  | "git_system_context"
+  | "session_context";
 
 export interface ContextMetaUserAttachment {
   source: ContextMetaUserAttachmentSource;

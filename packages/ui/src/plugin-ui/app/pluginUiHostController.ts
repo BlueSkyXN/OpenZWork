@@ -1,7 +1,11 @@
 import { createUuid } from "@zcode/shared";
 import { createPluginUiSampling } from "./pluginUiSampling.js";
 import type { CallToolResult, Transport } from "@modelcontextprotocol/client";
-import type { McpUiHostContext } from "@modelcontextprotocol/ext-apps/app-bridge";
+import type {
+  McpUiAppCapabilities,
+  McpUiHostContext,
+} from "@modelcontextprotocol/ext-apps/app-bridge";
+import { constrainPluginUiDisplayModes } from "@/plugin-ui/domain/buildPluginUiHostContext.js";
 import { AppBridge } from "@modelcontextprotocol/ext-apps/app-bridge";
 import type { PluginSandboxHandle, PluginSandboxTransportPort } from "@zcode/shared/mcp-apps";
 import {
@@ -44,6 +48,7 @@ export function createPluginUiHostController(
   let transport: Transport | null = null;
   let unsubscribePorts: (() => void) | null = null;
   let hostContext: McpUiHostContext = deps.initialHostContext;
+  let appCapabilities: McpUiAppCapabilities | undefined;
   let disposed = false;
   let disposal: Promise<void> | null = null;
   let preparation: Promise<void> | null = null;
@@ -104,7 +109,10 @@ export function createPluginUiHostController(
         canSample: () => Boolean(deps.getHostCapabilities().sampling),
         createCallId,
         activeCalls,
-        onBusyChange: deps.onBusyChange,
+        onBusyChange: () => {
+          deps.onActivity?.();
+          deps.onBusyChange?.();
+        },
       })
     : undefined;
 
@@ -123,7 +131,10 @@ export function createPluginUiHostController(
         pluginScope,
         scopeId: buildPluginSandboxScopeId(deps.scope.scope),
         currentGeneration: () => handle?.instance.generation,
-        onBusyChange: deps.onBusyChange,
+        onBusyChange: () => {
+          deps.onActivity?.();
+          deps.onBusyChange?.();
+        },
         setTimer,
         log: deps.log,
       })
@@ -142,6 +153,8 @@ export function createPluginUiHostController(
     sampling?.reset();
     void transport?.close().catch(() => undefined);
     attached = false;
+    appCapabilities = undefined;
+    deps.onAppCapabilities?.(undefined);
     cancelHandshakeTimer?.();
     // 新端口 = 页面重载或重挂载：旧代际的订阅退掉、旧实例的工具登记注销；通知入口按新代际重新登记。
     resources.unsubscribeAll();
@@ -157,7 +170,6 @@ export function createPluginUiHostController(
       deps.getHostCapabilities(),
       contextAtCreate,
     );
-    const baseContext = hostContext;
     bridge = active;
     // 同一页面里两个 App（页面自建 + 别名）会各发一次 initialize / initialized：只按第一次进入 running 并投喂。
     let initializedOnce = false;
@@ -167,15 +179,22 @@ export function createPluginUiHostController(
       cancelHandshakeTimer?.();
       cancelHandshakeTimer = null;
       attached = true;
+      appCapabilities = active.getAppCapabilities() ?? {};
+      hostContext = constrainPluginUiDisplayModes(
+        hostContext,
+        appCapabilities,
+        deps.getPreferredDisplayMode
+          ? deps.getPreferredDisplayMode()
+          : deps.presentation.preferredDisplayMode,
+      );
+      active.setHostContext(hostContext);
+      deps.onAppCapabilities?.(appCapabilities);
       setPhase("running", { handle: handle ?? undefined });
-      deps.onAppCapabilities?.(active.getAppCapabilities());
       appTools?.onInitialized(
         active,
         active.getAppCapabilities(),
         () => !disposed && bridge === active,
       );
-      // 握手窗口内的更新不能丢弃：只补当前实例的最新值，不新增会话状态 owner。
-      if (hostContext !== baseContext) active.setHostContext(hostContext);
       sendFeed(active, deps.getToolFeed());
     };
     installPluginUiHostAppHandlers(active, {
@@ -193,6 +212,7 @@ export function createPluginUiHostController(
       createCallId,
       activeCalls,
       onBusyChange: deps.onBusyChange,
+      onActivity: deps.onActivity,
       onOpenExternal: deps.onOpenExternal,
     });
     sampling?.install(active, () => !disposed && bridge === active);
@@ -318,7 +338,13 @@ export function createPluginUiHostController(
       })();
     },
     updateHostContext(patch) {
-      hostContext = { ...hostContext, ...patch };
+      hostContext = constrainPluginUiDisplayModes(
+        { ...hostContext, ...patch },
+        appCapabilities,
+        deps.getPreferredDisplayMode
+          ? deps.getPreferredDisplayMode()
+          : deps.presentation.preferredDisplayMode,
+      );
       if (bridge && attached) bridge.setHostContext(hostContext);
     },
     notifyToolInput(input) {

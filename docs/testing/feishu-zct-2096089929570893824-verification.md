@@ -4,8 +4,6 @@
 > 不是 Todo103 整合版本的当前验收，也不据此扩大本轮修复范围。
 > 本轮 Bot 重接与新证据见 `../working-memory/provider-refactor/research/todo103-staging-integration-ledger.md` 第 20 节。
 
-
-
 ## 修复范围
 
 - `65ad97769b`：已删除的机器人活动任务不再被继续复用。

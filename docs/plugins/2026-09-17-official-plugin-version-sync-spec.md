@@ -1,7 +1,3 @@
-
-
-
-
 本规格同时覆盖三个包，因为这次它们的版本事实源清单**结构性地变了**：Browser Use 原本的
 五处事实源里，第五处 `NODE_REPL_SERVER_VERSION` 随宿主迁出，成了 node-repl-host 自己的
 记录。此前每版一份的 `docs/browser-use/*-browser-use-plugin-version-*-spec.md` 系列只描述
@@ -9,11 +5,9 @@
 
 ## 1. 版本决策
 
-| 包 | 旧版本 | 新版本 | 决策依据 |
-| --- | --- | --- | --- |
-| `@zcode/browser-use-plugin` | 0.4.2 | 0.5.0 | 发布单元内容变了：node_repl MCP server 不再由本插件携带（`dist/mcp/server.js` 移出 seed 清单），插件只剩 skill、client runtime 与文档。这是发布物构成的变化，不是缺陷修复，取 minor。 |
-
-
+| 包                          | 旧版本 | 新版本 | 决策依据                                                                                                                                                                              |
+| --------------------------- | ------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@zcode/browser-use-plugin` | 0.4.2  | 0.5.0  | 发布单元内容变了：node_repl MCP server 不再由本插件携带（`dist/mcp/server.js` 移出 seed 清单），插件只剩 skill、client runtime 与文档。这是发布物构成的变化，不是缺陷修复，取 minor。 |
 
 node-repl-host 与 Browser Use 数字相同**只是同源历史的巧合**，不构成耦合：两者各自独立升版，
 `NODE_REPL_SERVER_VERSION` 的注释里已就地记录这一点。
@@ -38,8 +32,6 @@ node-repl-host 与 Browser Use 数字相同**只是同源历史的巧合**，不
 5. `src/tool-contract.ts` 的 `NODE_REPL_SERVER_VERSION`，即 MCP `serverInfo.version`。
 
 另有 `dist-types/tool-contract.d.ts` 是 git-tracked 的声明产物，必须与 src 同步提交。
-
-
 
 ## 3. 发布与缓存链路
 
@@ -70,12 +62,11 @@ discovery 只应指向新版本。
 
 ## 5. 防漂移的机械校验
 
-| 校验点 | 覆盖范围 |
-| --- | --- |
-| `plugins.test.ts`「keeps every bundled plugin package, manifest, and seed version aligned」 | 逐个官方插件比对 package / manifest / Bootstrap definition |
-| `build-sea.test.mjs`「keeps SEA official plugin versions aligned with package and plugin manifests」 | 逐个 SEA 条目比对 package / manifest / SEA 清单 |
-| `node-repl-host/test/mcp-server.test.ts` | 钉住 `serverInfo.version` == 本包 `package.json.version` |
-
+| 校验点                                                                                               | 覆盖范围                                                   |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `plugins.test.ts`「keeps every bundled plugin package, manifest, and seed version aligned」          | 逐个官方插件比对 package / manifest / Bootstrap definition |
+| `build-sea.test.mjs`「keeps SEA official plugin versions aligned with package and plugin manifests」 | 逐个 SEA 条目比对 package / manifest / SEA 清单            |
+| `node-repl-host/test/mcp-server.test.ts`                                                             | 钉住 `serverInfo.version` == 本包 `package.json.version`   |
 
 ## 6. 验证
 

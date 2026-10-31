@@ -1,8 +1,10 @@
+// fork 保留：远控导航助手（openRemoteControlSettings/leaveRemoteControlSettings）保留；
+// 上游 seedMobileFixtureLogin（手机夹具登录种子，我方无登录页时为安全 no-op）随上游采用。
 import {
   openRemoteControlSettings,
   leaveRemoteControlSettings,
 } from "#e2e/helpers/web-remote-control-settings";
-import { openMobilePairingPage } from "#e2e/helpers/mobile-pairing";
+import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { readRemoteToolExecutionEvents } from "#e2e/helpers/remote-tool-execution-evidence";
 import { execFile } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -213,6 +215,7 @@ describe(`${CASE_MARKER}: 权限阻塞在手机端呈现、重建手机 bridge �
         hasTouch: true,
         locale: "zh-CN",
       });
+      await seedMobileFixtureLogin(context);
       const page = await context.newPage();
       await openMobilePairingPage(page, pairUrl, {
         artifactDir,

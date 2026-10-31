@@ -58,8 +58,6 @@ M1 不重写 Provider SDK、流恢复、Header 刷新和错误归一。第一版
 
 普通 Model 在创建时解析一次 Provider、model、capability 和连接信息。Agent Loop 持有该 Model 后，后续 Step 不再从可变 Registry 重新决定模型身份或普通 API Key。配置变化只影响以后创建的 Model。
 
-
-
 ### 3. 传输控制留在 Model 实现内部
 
 `statusSink`、Trace、流恢复、idle timeout、Provider stream boundary 和运行时 Header 刷新不进入公开 `ModelRequest`。第一版实现通过创建 Model 时注入的内部执行上下文承接这些能力。业务调用方不能逐请求自由拼装传输参数。
@@ -95,9 +93,6 @@ Native Web Search 与 Mid-conversation System 的旧 Provider kind、URL 和 mod
 ### 10. 旧 ModelPort 只剩唯一兼容入口
 
 生产调用方均使用 `Model.generateText()` 或 `Model.streamText()`。Core 中对旧 `modelAdapter.generateText/streamText` 的直接调用只存在于 `runtime-model.ts` 的兼容工厂，用于尚未通过 Bootstrap 装配、直接构造 `AgentRuntime` 的测试和旧嵌入调用。第二阶段替换 Model 来源时，可以整体删除这一个入口。
-
-
-
 
 ### 12. 运行历史与 Usage 以实际 Model 归因
 
@@ -172,7 +167,7 @@ Repo Wiki 迁入 `workspace/generateText` 后，统一 Model 已经能够产生�
 
 完成审计后的最终根工作区全量单元测试为 1170 个文件通过、4 个文件失败、1 个文件跳过；9989 项通过、5 项失败、8 项跳过。四项 Settings 源码文本断言和一项 Web Remote 重连时序测试均位于未修改文件，其中 Settings 失败可在 staging 代码上直接确认，Web Remote 为本次全量运行中的独立时序失败。Bootstrap 全量测试的 steering、resume title、marketplace、v4 boundary 与 telemetry mock 失败也已在 staging 或未修改文件上复核，不属于 Provider 迁移回归。
 
-ZCode CLI 的 Core 全量测试中的若干既有失败已在未修改的 staging 工作区复现，包括旧 steering 测试与本地 cc-run 路径依赖；这些失败不由本次迁移引入。CLI 全量 lint 仍会命中仓库已有的 max-lines 基线，改动文件单独 lint 为 0 error。
+ZCode CLI 的 Core 全量测试中的若干既有失败已在未修改的 staging 工作区复现，包括旧 steering 测试与缺失的本地外部夹具依赖；这些失败不由本次迁移引入。CLI 全量 lint 仍会命中仓库已有的 max-lines 基线，改动文件单独 lint 为 0 error。
 
 ## 进度
 

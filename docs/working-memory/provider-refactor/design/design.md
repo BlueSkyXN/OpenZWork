@@ -126,8 +126,6 @@ Provider 仍可以由 Personal Config 保存 API Key。
 `productId`、`organizationId`、`projectId`、账号身份与动态凭据由 Account Connection Service 拥有，
 在请求期按静态 `family + mode` 解析，不进入 Provider Config 或 Active Model。
 
-
-
 Provider 的 `visibility` 只控制用户是否能在 Settings 和 Model Selection 中看到它。Hidden Provider
 仍然使用普通完整性校验、Registry 和 ModelFactory；可见性不表达鉴权或安全权限。
 

@@ -1,3 +1,4 @@
+/* oxlint-disable no-eval -- 上游 lowering 期望产物：快照契约，内容须与 lowering 输出逐字一致 */
 const survey = await __host.ask("ask#1", __host.createActor("actor#1", "勘察员"), "列出最慢的测试文件");
 const plan = await __host.hole("hole#21b40fca", "决定分组", `最慢的是 ${survey.slowest}`, __src => eval(__src), async () => {
     __host.enterPhase("\u5206\u7EC4");

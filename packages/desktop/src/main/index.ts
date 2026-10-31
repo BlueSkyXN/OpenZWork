@@ -1,8 +1,12 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+// fork 净化：上游在此 import conversation-telemetry dispatcher、官方版请求安全域校验模块
+// （发行策略空壳，fork 侧以 request-verification no-op 承接）与 localTtftExporter（TTFT 遥测），
+// 官方遥测/账号域部分不随入。
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
 import { powerSaveBlocker } from "electron";
+import { getExportLogDir } from "@zcode/services/node";
 import "./appCrashCaptureBootstrap.js";
 import {
   onLocalDatabaseStartupReady,
@@ -34,6 +38,7 @@ import {
   nativeImage,
   protocol,
   session,
+  shell,
   webContents,
 } from "electron";
 import { randomUUID } from "node:crypto";
@@ -49,6 +54,7 @@ import {
   startupStorage,
   buildRuntimeProcessEnvPatch,
   captureLoginShellEnvSnapshot,
+  getAppConfigDir,
   getConversationWorkspaceDir,
   getZCodeDataRootDir,
   normalizeRuntimeProcessEnv,
@@ -89,10 +95,19 @@ import {
   resolveExplicitStartupWorkspaceBootstrap,
 } from "./startupWorkspaceDeepLinkGate.js";
 import { createWebRemoteControlManager } from "./webRemoteControlManager.js";
+// fork 净化：远控保留本地 HMAC/directGateway 变体；官方 deviceStorage 不随入。
+// mobileLogSink/pullAndExportMobileLogs（手机日志通道）与 runWebRemoteControlActionInRenderer
+// （手机侧动作请求）为远控中性功能，保留。
 import { createNodeWebRemoteControlRelayAuthProvider } from "./web-remote-relay/index.js";
 import {
   createWebRemoteControlConnectionProvider,
   createWebRemoteControlRelayAuthStorageProvider,
+} from "./web-remote-relay/index.js";
+import {
+  createMobileLogSink,
+  pullAndExportMobileLogs,
+  runWebRemoteControlActionInRenderer,
+  type MobileLogSink,
 } from "./web-remote-relay/index.js";
 import { createWebRemoteControlFeatureGate } from "./webRemoteControlFeatureGate.js";
 import { reconnectWebRemoteControlWorkspaceInRenderer } from "./webRemoteControlRendererReconnect.js";
@@ -405,6 +420,7 @@ async function runBrowserCommandOnView(params: {
   requestId: string;
   browserId?: string;
   browserGeneration?: number;
+  controlScopeId?: string;
   sessionId: string;
   turnId?: string;
   workspaceKey?: string;
@@ -447,6 +463,7 @@ async function runBrowserCommandOnView(params: {
     const result = await browserGuestManager.execute(
       {
         requestId: params.requestId,
+        controlScopeId: params.controlScopeId,
         browserId: params.browserId ?? "legacy-iab",
         browserGeneration: params.browserGeneration ?? 0,
         windowId: params.win.id,
@@ -594,6 +611,8 @@ const webRemoteControlManagerRef = {
   current: null as ReturnType<typeof createWebRemoteControlManager> | null,
 };
 const webRemoteControlCredentialService = createCredentialService();
+// fork 净化：上游此处为 appLaunchGate/appTelemetryCore(appTelemetryCredentialService)/ARMS 上下文
+// 同步/desktopContextPromptRollout 官方灰度链（WP-05 遥测与官方账号域），不随入；保留我方本地 HMAC 认证装配。
 const webRemoteControlAuthProvider = createNodeWebRemoteControlRelayAuthProvider();
 app.on("browser-window-focus", () => {
   rebuildMenu();
@@ -639,7 +658,21 @@ let startupOpenWorkspaceRequest: ExplicitStartupWorkspaceRequest | null =
       ? { path: startupDeepLinkWorkspacePath, source: "deep-link" }
       : null;
 
+// 手机实时日志落盘目录：放在 logs/ 下，「导出日志」打包时自动带上。
+function getMobileRealtimeLogDir(): string {
+  return join(getAppConfigDir(), "logs", "mobile");
+}
+let mobileLogSink: MobileLogSink | undefined;
+// 首次收到 mobile-log 时再创建：数据目录在启动后才最终确定，不能在模块加载时固化路径。
+function getMobileLogSink(): MobileLogSink {
+  mobileLogSink ??= createMobileLogSink({ rootDir: getMobileRealtimeLogDir(), logger });
+  return mobileLogSink;
+}
+
 const webRemoteControlManager = createWebRemoteControlManager({
+  // fork 净化：上游 getEndpointUrls/buildZCodeEndpointUrls 走官方端点解析（官方 V2 账号域），不随入；
+  // mobileLogSink 为手机日志落盘（通道无关）保留我方注入点。
+  mobileLogSink: { append: (target, events) => getMobileLogSink().append(target, events) },
   connectionProvider: createWebRemoteControlConnectionProvider({
     credentialService: webRemoteControlCredentialService,
     loadSettings: () => mainSettingService.get(),
@@ -701,6 +734,7 @@ const webRemoteControlManager = createWebRemoteControlManager({
     migrateLegacyCommonMcp: (payload) => migrateLegacyCommonMcp(payload),
   },
   reconnectWorkspace: reconnectWebRemoteControlWorkspaceInRenderer,
+  runRendererAction: runWebRemoteControlActionInRenderer,
   prepareProjectWorkspace: async (windowId, project, requestId) => {
     const win = BrowserWindow.fromId(windowId);
     if (!win || win.isDestroyed()) throw new Error("项目导航窗口已关闭");
@@ -719,6 +753,7 @@ const webRemoteControlManager = createWebRemoteControlManager({
     sendWebRemoteControlStatusChangedToWindow(BrowserWindow.fromId(windowId), status);
   },
   attachWorkspaceHost: webRemoteControlSharedHostAttachments.attachWorkspaceHost,
+  setTerminalOwner: webRemoteControlSharedHostAttachments.setTerminalOwner,
   releaseWorkspaceHostAttachment: webRemoteControlSharedHostAttachments.releaseAttachment,
   disposeWorkspaceHostAttachmentsForWindow: (windowId) =>
     webRemoteControlSharedHostAttachments.disposeWindow(windowId),
@@ -726,6 +761,8 @@ const webRemoteControlManager = createWebRemoteControlManager({
     webRemoteControlSharedHostAttachments.disposeRemoteSession(remoteSessionId),
 });
 webRemoteControlManagerRef.current = webRemoteControlManager;
+// fork 净化：上游通知推送接线（startNotifications/observeNotificationRun/sendNotification，官方 HTTP 通知链）不随入；
+// Host 侧 mobile-push 广播出口保留但 Main 不再消费。
 function resolveExternalWorkspaceConfirmationCopy() {
   const effectiveLocale =
     currentApplicationLocale === DEFAULT_LOCALE && app.isReady()
@@ -838,6 +875,8 @@ async function prepareAppQuit(reason: string, kind: AppShutdownKind = "normal"):
   appQuitPreparationInFlight = Promise.all([
     // 退出屏障结束后再启动窗口尺寸写入，可能在 app.exit 前留下 setting.json.lock。
     // 尺寸已在 resize 防抖或最大化状态变化时保存，退出屏障不再创建新的尺寸写入。
+    // fork 净化：上游退出屏障中的遥测 flush（appTelemetryCore/localTtft/TTFT 日志）与
+    // rendererActionTraceBroker 属官方遥测域，不随入（对应模块文件已不存在）。
     // 旧流程先等待 Cron 的 1.5s deadline，再启动 Host timer，导致声明的
     // 4.5s/9s 退出总预算被串行放大。两类 owner 无关闭依赖，统一并行进入同一屏障。
     (async () => {
@@ -977,6 +1016,23 @@ async function executeDesktopCommandForApp(
     },
     credentialsDir: getCredentialsDir(),
     currentApplicationLocale,
+    pullMobileLogs: (windowId) =>
+      pullAndExportMobileLogs(windowId, {
+        findTarget: (id) => webRemoteControlManager.findMobileLogPullTarget(id),
+        pull: (id, query, onShard) => webRemoteControlManager.pullMobileLogs(id, query, onShard),
+        exportDir: getExportLogDir(),
+        realtimeLogDir: getMobileRealtimeLogDir(),
+        locale: currentApplicationLocale,
+        showMessage: async (options) => {
+          const parent = senderWindow && !senderWindow.isDestroyed() ? senderWindow : undefined;
+          const result = parent
+            ? await dialog.showMessageBox(parent, options)
+            : await dialog.showMessageBox(options);
+          return result.response;
+        },
+        showItemInFolder: (path) => shell.showItemInFolder(path),
+        logger,
+      }),
   });
 }
 
@@ -1091,6 +1147,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         label,
         {
           ...initMessage,
+          browserBackendIdentity: browserGuestManager.getBackendIdentity(win.id),
           zcodeBuiltinProviderConfigFilePath: resolveZCodeBuiltinProviderConfigFilePath(),
         },
         {
@@ -1100,6 +1157,9 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
           taskRealtimeBus,
           windowHostProcessMap,
           hostRunningTaskCountMap,
+          // fork 净化：上游 spawn 依赖中的 CUA 指示器（D-14）与 ARMS/遥测回调
+          // （reportAgentProcess*ToArms、onMcpTelemetry、onPluginTelemetry、onRemoteConversationTelemetry、
+          // onSessionCreateTelemetry，WP-05）不随入。
           onCronRunResult: forwardCronRunResult,
           onCronSchedulerWakeRequested: wakeCronScheduler,
           authorizeLocalMediaPreviewPath: localMediaPreviewPathRegistry.authorize,
@@ -1112,6 +1172,13 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
           // browser-use：main 用 WebContentsView+CDP 执行命令（替换 T4 占位）。
           handleBrowserExecuteRequest: ({ win: browserWin, ...request }) =>
             runBrowserCommandOnView({ win: browserWin, ...request }),
+          // 数据同步页「模型提供商」分类：最近结果与重试都以 Main 协调器的 lane 为唯一数据源。
+          providerProvisioningLanes: {
+            getStatus: (sourceServerId, laneOptions) =>
+              remoteSessionManager.getProviderProvisioningLaneStatus(sourceServerId, laneOptions),
+            retry: (sourceServerId) =>
+              remoteSessionManager.retryProviderProvisioning(sourceServerId),
+          },
         },
         {
           taskRealtime: {

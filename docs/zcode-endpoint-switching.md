@@ -5,8 +5,6 @@ through `.env.development`.
 
 The shared resolver exposes these derived URLs:
 
-
-
 `ZCODE_BASE_URL` is the canonical env variable for the origin. Production builds still ignore
 settings overrides; the resolver uses `ZCODE_BASE_URL` when present, otherwise falls back to
 custom endpoint, while keeping release/test deploy targets explicit in env files.

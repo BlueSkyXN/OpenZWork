@@ -188,8 +188,12 @@ function resolveTerminalUnreadSignal(
   if (summary.phase === "error") {
     return "background_terminal";
   }
+  // completedInterrupted 表示用户主动停止、发新消息打断或新建对话时中断旧执行。
+  // 它仍是 terminal/ready 边界，task status 仍收口为 completed；这里只不制造未读提醒，
+  // 避免用户主动动作后出现红点且必须切走再切回才能清除。
+  if (summary.phase === "completedInterrupted") return undefined;
   if (
-    (summary.phase === "completedSuccess" || summary.phase === "completedInterrupted") &&
+    summary.phase === "completedSuccess" &&
     (summary.goalStatus === undefined || summary.goalStatus === "verified")
   ) {
     return "background_terminal";
@@ -590,7 +594,7 @@ export function createZCodeTaskIndexSyncer(
   function applyTerminalTransition(
     target: ZCodeAgentSessionTarget,
     summary: SessionSummary,
-    options?: { captureRepoSnapshot?: boolean },
+    _options?: { captureRepoSnapshot?: boolean },
   ): void {
     emitTerminalAndReady(target, summary);
     const failed = summary.phase === "error";
@@ -623,7 +627,7 @@ export function createZCodeTaskIndexSyncer(
         void resyncTaskIndexRowFromAgent(target, failed ? "phase.error" : "phase.completed", {
           // 修复原因：patch 已广播时不能让随后的 snapshot 回源再次制造完成提醒；
           // 行缺失时则把同一 signal 交给回源结果，保证提醒既不丢也不重复。
-          ...(meta || !unreadSignal ? {} : { unreadSignal }),
+          ...(meta ? undefined : unreadSignal ? { unreadSignal } : undefined),
         });
       })
       .catch((error) => {

@@ -34,13 +34,9 @@ test("core discovery keeps every declared regression and preserves process isola
     const actual = discovered.map(({ file }) => relative(root, file).split(sep).join("/"));
     assert.equal(new Set(declared).size, declared.length);
     assert.deepEqual(actual.toSorted(), declared.toSorted());
-    for (const file of [
-      "packages/desktop/test/desktopRuntimeEnv.test.ts",
-      "packages/desktop/test/e2eElectronWindowRecorder.test.ts",
-      "packages/services/test/zcodeAgentProcessManager.test.ts",
-      "packages/services/test/mcpSyncService.test.ts",
-      "packages/services/test/subagentRuntimeConfigWatcher.test.ts",
-    ]) {
+    // OpenZWork v3.17.1 同步：desktopRuntimeEnv/zcodeAgentProcessManager/mcpSyncService/
+    // subagentRuntimeConfigWatcher 随上游单测退役删除，fork-isolated 断言按存活清单收缩。
+    for (const file of ["packages/desktop/test/e2eElectronWindowRecorder.test.ts"]) {
       const entry = discovered.find(
         (item) => relative(root, item.file).split(sep).join("/") === file,
       );
@@ -74,33 +70,14 @@ test("repository Node regressions run in the blocking platform checks", async ()
   assert.match(manifest.scripts["test:repo-scripts"], /--test-concurrency=1/);
 });
 
-test("real release archive regressions remain discovered once in the isolated process pool", async () => {
-  const files = [
+test("retired release archive regressions are no longer discovered", async () => {
+  // OpenZWork v3.17.1 同步：上游退役 zcode-server-cli release/cli 单测；守护退役事实本身。
+  const { access } = await import("node:fs/promises");
+  for (const file of [
     "packages/zcode-server-cli/test/releaseInstaller.test.ts",
     "packages/zcode-server-cli/test/cli.test.ts",
-  ];
-  const dir = await mkdtemp(join(tmpdir(), "openzwork-release-scope-"));
-  try {
-    const output = join(dir, "discovered.json");
-    await promisify(execFile)(
-      process.execPath,
-      [
-        join(root, "node_modules/vitest/vitest.mjs"),
-        "list",
-        ...files,
-        "--filesOnly",
-        `--json=${output}`,
-      ],
-      { cwd: root },
-    );
-    const discovered = JSON.parse(await readFile(output, "utf8"));
-    assert.deepEqual(
-      discovered.map(({ file }) => relative(root, file).split(sep).join("/")).toSorted(),
-      files.toSorted(),
-    );
-    for (const entry of discovered) assert.equal(entry.projectName, "fork-isolated");
-  } finally {
-    await rm(dir, { recursive: true, force: true });
+  ]) {
+    await assert.rejects(access(join(root, file)), void 0, file);
   }
 });
 
@@ -116,11 +93,11 @@ test("project MCP regression runs after required runtime artifacts are built", a
 });
 
 test("system prompt regressions run in core and independent CLI gates", async () => {
+  // OpenZWork v3.17.1 同步：settingsPageConfig.test.ts 随上游退役删除。
   for (const file of [
     "packages/shared/src/system-prompt/contract.test.ts",
     "packages/ui/src/settings/system-prompt/contract.test.ts",
     "packages/ui/test/systemPromptSettingsLoading.test.ts",
-    "packages/ui/test/settingsPageConfig.test.ts",
   ])
     assert.ok(declared.includes(file), file);
 

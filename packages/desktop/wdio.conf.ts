@@ -1,4 +1,9 @@
 /* eslint-disable max-lines -- 沿用上游 WDIO 单入口，集中维护隔离启动、窗口屏障、进程回收和报告顺序。 */
+// fork 净化（3.17.1 合并）：上游 wdio 重构为 coding-plan/加速卡/entitlement/ttft-otlp/请求安全域/
+// conversationShare/oauth 401 mock 簇 + E2E_PROVIDER_PRESETS fixture-replay 基建（166 处引用，对应 helper
+// 均在我方 stage1 净化中删除、文件不存在），无法部分采纳；本文件保留我方 3.16.2 收敛版（本地配对 relay、
+// personal provider seed、SSH release 资产）。上游中性改进（chromedriver server、desktop build lock、
+// spec 过滤、beforeSession 统一入口）作为后续增量单独评估。
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
@@ -25,7 +30,10 @@ import {
   resolveE2EWorkerChromiumProfileDir,
 } from "./test/e2e/helpers/e2e-worker-isolation.js";
 import { stageE2EAppOutput } from "./test/e2e/helpers/e2e-app-output-stage.js";
-import { ensureSshRemoteReleaseAssets } from "./test/e2e/helpers/e2e-ssh-remote-release-assets.js";
+import {
+  ensureSshRemoteReleaseAssets,
+  resolveSshRemoteReleaseScope,
+} from "./test/e2e/helpers/e2e-ssh-remote-release-assets.js";
 import { createLocalPairingRelay } from "./test/e2e/helpers/local-pairing-relay.js";
 import {
   seedPersonalProviderConfig,
@@ -396,10 +404,13 @@ function prepareDesktopAppBuild() {
   assertDesktopE2EBuildReady("onPrepare build");
 }
 
-function runPnpmWorkspaceCommand(args: string[], options?: { timeoutMs?: number }) {
+function runPnpmWorkspaceCommand(
+  args: string[],
+  options?: { timeoutMs?: number; env?: Record<string, string> },
+) {
   execFileSync(PNPM_COMMAND, args, {
     cwd: REPO_ROOT,
-    env: createPnpmChildEnv(),
+    env: { ...createPnpmChildEnv(), ...(options?.env ?? {}) },
     stdio: "inherit",
     // Bug 根因：prepare:remote-assets 会在 CI 上下载 node 二进制并串行构建多个包，
     // 无 timeout 时一旦下载/构建挂死，wdio onPrepare 会一直占住专用 runner 直到 job
@@ -448,13 +459,17 @@ async function stageDesktopE2EAppOutput() {
     // 失败并让所有 SSH E2E 在 onPrepare 阶段 fatal；必须调用根 package.json 的
     // prepare:remote-assets（→ @zcode/server-cli stage:remote-assets）。runPnpmWorkspaceCommand
     // 的 cwd 固定为 REPO_ROOT，直接传脚本名即可命中根脚本。
-    ensureSshRemoteReleaseAssets({
+    // OpenZWork v3.17.1：吸收上游 scope 解析（本机 Docker runner 声明只需 Linux 时，
+    // helper 改读 descriptor 只调 prepare:remote-assets:linux；未声明行为不变）。
+    await ensureSshRemoteReleaseAssets({
       releaseDir: E2E_REMOTE_RELEASE_SOURCE_DIR,
-      prepareReleaseAssets: () =>
-        runPnpmWorkspaceCommand(["prepare:remote-assets"], {
+      scope: resolveSshRemoteReleaseScope(process.env),
+      prepareReleaseAssets: (request) =>
+        runPnpmWorkspaceCommand([request.script], {
           // 防挂死上限：冷缓存全量 prepare 约 10 分钟，给到 30 分钟只兑现在「彻底卡死」时
           // 让 onPrepare 失败退出，正常慢路径不受影响。
           timeoutMs: 30 * 60 * 1000,
+          env: request.env,
         }),
     });
     // Bug 根因：dual-SSH case 只配置 A/B target；若这里只识别 common host，就不会把
@@ -1093,6 +1108,12 @@ async function resetE2EHome(specs: string[]) {
     });
   }
   seedE2EWorkerModelStreamConfig(specs);
+  // OpenZWork v3.17.1：模型配置/切换族保留可观测的思考参数映射（上游 SHR 判定采纳）。
+  const exposeSubagentReasoningMetadata = specs.some((spec) =>
+    /conversation-session-(model-config|model-switch-tool-edit-fork|model-switch-compact|model-switch-auto-compact|goal-session-model|new-session-inherits-model|draft-model-switch-first-send|model-provider-session-isolation|upstream-workspace-smoke|model-switch-edit-fork|model-switch-queue|same-model-provider-identity)\.test\.ts$/.test(
+      spec,
+    ),
+  );
   // 小窗口只用于显式 Compact 场景；普通未读与重连用例需要完整历史。
   const autoCompactSpec = specs.some((spec) =>
     [
@@ -1100,6 +1121,7 @@ async function resetE2EHome(specs: string[]) {
       "conversation-session-compact-auto-actions.test.ts",
       "conversation-session-goal-run-cases.test.ts",
       "conversation-session-model-switch-auto-compact.test.ts",
+      "conversation-session-subagent-runtime-refresh.test.ts",
     ].some((name) => spec.endsWith(name)),
   );
   const upstreamE2EContextWindowOverride = readPositiveIntegerEnv(

@@ -22,7 +22,11 @@ docs/knip/docs/licenses/** -text -whitespace
 third-party/inventory.json linguist-generated=true
 
 # GenUI 清单按原始字节固定哈希；Windows checkout 也必须保持运行资源与许可原文一致。
-apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/vendor/** -text
+# OpenZWork：v3.17.1 清单把根级 visualize.css/html/calendar.js/tweak.js 一并钉 sha256，
+# Windows 检出不得转换换行（8a80b154 只覆盖了 vendor 子目录）。
+apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/** -text
 
 # 固定提示词夹具与运行时 LF 文本逐字比较，Windows autocrlf 不应改写基准。
 apps/zcode-cli/packages/core/tests/fixtures/memory/*.md text eol=lf
+# tweak.js 的 sha256 钉在 runtime-manifest（genUiTweakRuntime.js 源文件），同样禁止 CRLF 转换
+packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js -text
