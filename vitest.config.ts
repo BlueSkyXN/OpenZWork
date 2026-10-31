@@ -152,8 +152,10 @@ export default defineConfig({
           exclude: [
             "packages/desktop/test/e2e/**",
             "packages/zcode-cua/**",
-            ...forkIsolatedTests.map((file) => resolve(__dirname, file)),
-            ...engineeringTestFiles.map((file) => resolve(__dirname, file)),
+            // OpenZWork：Windows 下 exclude 模式必须是正斜杠绝对路径——反斜杠模式匹配
+            // 不到 Vitest 归一化后的正斜杠 id，文件会被 unit 与 engineering 双计。
+            ...forkIsolatedTests.map((file) => resolve(__dirname, file).replaceAll("\\", "/")),
+            ...engineeringTestFiles.map((file) => resolve(__dirname, file).replaceAll("\\", "/")),
           ],
           // Node 24/macOS 的 threads 全量运行可触发 V8 SIGSEGV；诊断时切换进程隔离，测试范围不变。
           pool: process.env.ZCODE_TEST_POOL === "forks" ? "forks" : "threads",
