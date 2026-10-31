@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "caseName": "plugin-promotion-check-probe",
+  "spec": "./test/e2e/plugins/plugin-promotion-check-probe.test.ts",
+  "providerFixtures": [
+    "./test/e2e/fixtures/upstream/common.json",
+    "./test/e2e/fixtures/upstream/plugin-management/plugin-promotion-check-probe.json"
+  ],
+  "requests": [
+    {
+      "id": "plugin-promotion-check-probe",
+      "kind": "main",
+      "source": "synthetic",
+      "syntheticReason": "Exercise plugin fixture-check routing without a promoted product case."
+    }
+  ]
+}

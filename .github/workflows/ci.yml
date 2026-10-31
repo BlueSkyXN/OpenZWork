@@ -142,7 +142,9 @@ jobs:
 
       - name: ToolSearch MCP and connection lifecycle regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/adapters exec vitest run tests/tool-search-capability.test.ts tests/tool-search-mcp.test.ts tests/tool-search-wire.test.ts tests/plugin-mcp-always-load.test.ts tests/plugin-mcp-tool-search-wire.test.ts tests/mcp-connection-pool.test.ts tests/mcp.test.ts
+        # OpenZWork：linux runner 上该组并行 worker 曾在 mcp.test 加载期整体 SIGINT
+        # （两轮同点复现、本地 mac 同命令全绿）；固定单 worker 串行，与 ToolSearch 步同策。
+        run: pnpm --filter @zcode/adapters exec vitest run tests/tool-search-capability.test.ts tests/tool-search-mcp.test.ts tests/tool-search-wire.test.ts tests/plugin-mcp-always-load.test.ts tests/plugin-mcp-tool-search-wire.test.ts tests/mcp-connection-pool.test.ts tests/mcp.test.ts --no-file-parallelism --maxWorkers=1
 
       - name: MCP Apps readiness and workflow shell inheritance regression
         if: matrix.lane == 'regressions'

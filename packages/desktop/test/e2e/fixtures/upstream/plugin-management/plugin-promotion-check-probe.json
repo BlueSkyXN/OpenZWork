@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "caseName": "plugin-promotion-check-probe",
+  "spec": "./test/e2e/plugins/plugin-promotion-check-probe.test.ts",
+  "fixtures": [
+    {
+      "id": "plugin-promotion-check-probe",
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "bodyIncludes": ["E2E_PLUGIN_FIXTURE_CHECK_PROBE"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": "ok"
+      }
+    }
+  ]
+}

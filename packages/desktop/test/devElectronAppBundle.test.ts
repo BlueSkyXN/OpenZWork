@@ -308,7 +308,7 @@ it("签名失败不发布缓存指纹；下次重新准备可恢复", async () =
       },
     }),
   ).rejects.toThrow("signer failed");
-  const stamp = join(input.runtimeRoot, "44.7.0-arm64", ".zcode-dev-electron-source.json");
+  const stamp = join(input.runtimeRoot, "44.7.0-arm64", ".openzwork-dev-electron-source.json");
   await expect(readFile(stamp, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   const recovered = vi.fn(async () => {});
   await prepareDevElectronAppBundle({ ...input, signApp: recovered });
