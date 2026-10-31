@@ -39,6 +39,7 @@
 
 ### 整合门禁
 
+- CI、Extended 和 Installers 的 macOS arm64 作业固定使用 `macos-15`。`macos-14` 在 2026-10-31 的计划停机演练中已拒绝分配 runner，并于 2026-11-02 退役；迁移保留 arm64 架构与既有矩阵。来源：[GitHub runner 退役公告](https://github.com/actions/runner-images/issues/13518)。
 - 必须执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、`pnpm db:schema:check`；新 scripts 门禁（stale-phrases、e2e-remote-targets）如被 pre-push 引用则一并跑通。
 - 净化残留扫描：全仓闲时任务/codingPlan/ARMS/highspeed/official-gateway 引用为零（豁免清单除外）；`stage1` 升级检查同步更新。
 - 上游来源缺陷按 [下游补丁清单](downstream-patch-registry.md) 对 v3.17.1 逐项复核未撤销条目。
