@@ -63,6 +63,7 @@ import {
   type ZCodeGoalVerificationTimelineMeta,
   type ZCodeImportSessionsResult,
   type ZCodeImportableSessionCandidate,
+  type ZCodeImportSessionSourceProvider,
   type ZCodeUsage,
   type ZCodePersistedMessage,
   type ZCodePersistedMessagePart,
@@ -159,6 +160,8 @@ import {
 import { claudeNativeSessionImportRepo } from "#src/session/claude-native/claudeNativeSessionImportRepo.js";
 import { importClaudeNativeSessions } from "#src/session/claude-native/claudeNativeSessionImportService.js";
 import { repairImportedClaudeSessionSnapshot } from "#src/session/claude-native/importedClaudeHistoryRepair.js";
+import { externalSessionImportRepo } from "#src/session/external-import/externalSessionImportRepo.js";
+import { importExternalSessions } from "#src/session/external-import/externalSessionImportService.js";
 import { safeParseLegacyTaskSessionFile } from "#src/session/legacyTaskSessionFile.js";
 import {
   MODEL_CONFIG_ID,
@@ -2747,6 +2750,110 @@ export function createZCodeTaskServiceAdapter(
             },
             meta,
             // 导入沿用 task_meta_changed 旧语义。
+            "task_meta_changed",
+          );
+        },
+      });
+    },
+
+    async scanImportableExternalSessions(params: {
+      provider: ZCodeImportSessionSourceProvider;
+      workspacePath?: string;
+      workspaceIdentity?: string;
+      modifiedSince?: number;
+      limit?: number;
+    }): Promise<ZCodeImportableSessionCandidate[]> {
+      // claude 来源继续走 claude-native（保持既有边界不动）；codex/qoder 走 external-import。
+      // workspaceIdentity 仅影响导入落盘目录，扫描仍按文件内 cwd 与可选 workspacePath 过滤。
+      void params.workspaceIdentity;
+      if (params.provider === "claude") {
+        return claudeNativeSessionImportRepo.scanImportableSessions({
+          workspacePath: params.workspacePath,
+          modifiedSince: params.modifiedSince,
+          limit: params.limit,
+        });
+      }
+      return externalSessionImportRepo.scanImportableSessions({
+        provider: params.provider,
+        workspacePath: params.workspacePath,
+        modifiedSince: params.modifiedSince,
+        limit: params.limit,
+      });
+    },
+
+    async importExternalSessions(params: {
+      provider: ZCodeImportSessionSourceProvider;
+      workspacePath?: string;
+      workspaceIdentity?: string;
+      sessionIds: string[];
+    }): Promise<ZCodeImportSessionsResult> {
+      if (params.provider === "claude") {
+        return this.importClaudeSessions({
+          workspacePath: params.workspacePath,
+          workspaceIdentity: params.workspaceIdentity,
+          sessionIds: params.sessionIds,
+        });
+      }
+      return importExternalSessions({
+        taskIndexRepo,
+        importIndex: {
+          findImportedFingerprint: async (request) => {
+            // 幂等指纹查 tasks 全量（不按 workspace 过滤）：sessionId 已含来源身份，
+            // 且导入可能落在原始 workspace 而非当前 tab 的 workspace。
+            const metas = await taskIndexRepo.listTaskMetas({ includeDeleted: true });
+            const migrationSource = request.provider === "codex" ? "codexCli" : "qoder";
+            const matched = metas.find(
+              (meta) =>
+                meta.migrationSource === migrationSource &&
+                meta.externalImport?.provider === request.provider &&
+                meta.externalImport?.sessionId === request.sessionId,
+            );
+            return matched
+              ? {
+                  taskId: matched.taskId,
+                  sourceContentSha256: matched.externalImport?.sourceContentSha256,
+                }
+              : null;
+          },
+        },
+        provider: params.provider,
+        workspacePath: params.workspacePath,
+        workspaceIdentity: params.workspaceIdentity,
+        sessionIds: params.sessionIds,
+        createImportedSession: async (source) => {
+          const targetWorkspaceIdentity = params.workspacePath
+            ? params.workspaceIdentity
+            : undefined;
+          const snapshot = await options.zcodeAgentService.createSession({
+            workspacePath: source.workspacePath,
+            workspaceIdentity: targetWorkspaceIdentity,
+            // 显式重新导入产生新 CLI 会话；来源变化后的重导不复用旧会话（spec §2.4）。
+            sessionTraceId: createSessionTraceId(),
+            persistence: "immediate",
+            importedHistory: source.importedHistory,
+          });
+          const meta = await syncTaskIndexSnapshot(snapshot);
+          // 新来源必须带自己的 migrationSource（spec 不变量 1），并把来源哈希指纹写进
+          // meta_json 供后续幂等判断。
+          return updateIndexedPresentation({
+            ...meta,
+            migrationSource: source.migrationSource,
+            externalImport: {
+              provider: source.provider,
+              sessionId: source.sessionId,
+              sourceContentSha256: source.sourceContentSha256,
+            },
+          });
+        },
+        onTaskImported: (meta) => {
+          rememberIndexedTaskMeta(meta);
+          emitWorkspaceTaskListChanged(
+            {
+              workspacePath: meta.workspacePath,
+              workspaceIdentity: meta.workspaceIdentity,
+              taskId: meta.taskId,
+            },
+            meta,
             "task_meta_changed",
           );
         },

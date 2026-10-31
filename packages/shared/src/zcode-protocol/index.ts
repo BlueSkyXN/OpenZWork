@@ -1144,6 +1144,26 @@ export const zcodeSessionImportHistorySchema = z.discriminatedUnion("source", [
     .strict(),
   z
     .object({
+      // Codex CLI/Desktop rollout jsonl 迁移；与 claudeCode 同为可见消息导入，模型/usage 不迁移。
+      source: z.literal("codexCli"),
+      title: z.string().optional(),
+      createdAt: timestampMsSchema.optional(),
+      updatedAt: timestampMsSchema.optional(),
+      messages: z.array(zcodeSessionImportMessageSchema).min(1),
+    })
+    .strict(),
+  z
+    .object({
+      // Qoder / Qoder CN 原生 jsonl 迁移；记录结构与 Claude Code 同构，可见消息导入。
+      source: z.literal("qoder"),
+      title: z.string().optional(),
+      createdAt: timestampMsSchema.optional(),
+      updatedAt: timestampMsSchema.optional(),
+      messages: z.array(zcodeSessionImportMessageSchema).min(1),
+    })
+    .strict(),
+  z
+    .object({
       source: z.literal("sharedContext"),
       title: z.string().trim().min(1),
       createdAt: timestampMsSchema.optional(),
