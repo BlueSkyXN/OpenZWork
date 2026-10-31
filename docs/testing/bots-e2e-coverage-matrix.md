@@ -225,7 +225,7 @@ cross-platform cases are still pending; the broader TP-02 case is not promoted.
 
 ## Fixture 合同
 
-BOT-E2E-SR87 位于 `bots/bot-effective-selection.test.ts`；synthetic、fast-text。验证菜单/首次派发使用同一有效选择，且查看菜单和无效提交不改原意图。Todo99 追加 BOT-E2E-SR99：绑定后从 Session 原选择解析下一次空闲输入，不重解释已固定执行。共用该 pending spec，未晋级；conversation W99-E03/E06 另在 Pro 验证 Bot→生产 Task adapter→实际 Worker 请求、完整 setter 与冷恢复。证据不覆盖真实 IM 网络或手机/SSH 联合环境。
+BOT-E2E-SR87/BOT-E2E-SR99 原 `bots/bot-effective-selection.test.ts`（synthetic、fast-text）在 v3.17.1 同步净化中随官方套餐账号域退役（合成选择使用 account:\* coding-plan provider id）；Bot 派发/绑定执行链由 BOT-E2E-TP-04/05 真实 topic worker spec 覆盖。历史口径：验证菜单/首次派发使用同一有效选择，且查看菜单和无效提交不改原意图；Todo99 曾追加绑定后从 Session 原选择解析下一次空闲输入，不重解释已固定执行。conversation W99-E03/E06 另在 Pro 验证 Bot→生产 Task adapter→实际 Worker 请求、完整 setter 与冷恢复。证据不覆盖真实 IM 网络或手机/SSH 联合环境。
 
 - `feishu-streaming-card-lifecycle.json` 是 case-local synthetic stream fixture。
 - 其余 5 个用例分别使用 `fixtures/bots/` 下同语义命名的 case-local synthetic metadata；所有 fixture 都声明 `syntheticReason` 与 timing 分类。

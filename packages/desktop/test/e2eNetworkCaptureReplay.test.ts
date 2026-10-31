@@ -132,87 +132,9 @@ it("模型回归目录的标题不得命中包含同一 E2E marker 的正文 fix
   }
 });
 
-it("SR87 账号请求通过 case-local matcher，R95C 首发与标题分别返回 SSE 和 JSON", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "zcode-sr87-replay-"));
-  const upstream = await startUpstreamReplayServer({
-    artifactPath: join(dir, "upstream.json"),
-    fixturePaths: [
-      join(
-        import.meta.dirname,
-        "e2e/fixtures/upstream/conversation-session/conversation-session-model-provider-effective-selection.json",
-      ),
-    ],
-  });
-  let proxy: Awaited<ReturnType<typeof startE2ENetworkCaptureProxy>> | undefined;
-  try {
-    proxy = await startE2ENetworkCaptureProxy({
-      artifactPath: join(dir, "proxy.json"),
-      caDir: join(dir, "ca"),
-      requestRedirects: [
-        {
-          host: "model.example.test",
-          path: "/api/anthropic/v1/messages",
-          targetUrl: `${upstream.baseUrl}/messages`,
-        },
-      ],
-      responseMocks: [
-        {
-          host: "model.example.test",
-          path: "/api/anthropic/v1/messages",
-          body: "wrong-static-response",
-        },
-      ],
-    });
-    const address = new URL(proxy.proxyUrl);
-    const replies = await Promise.all(
-      [true, false].map(async (stream) => {
-        const response = await new Promise<import("node:http").IncomingMessage>(
-          (resolve, reject) => {
-            const req = request(
-              {
-                hostname: address.hostname,
-                port: address.port,
-                path: "http://model.example.test/api/anthropic/v1/messages",
-                method: "POST",
-                headers: { host: "model.example.test", "content-type": "application/json" },
-              },
-              resolve,
-            );
-            req.on("error", reject);
-            req.end(
-              JSON.stringify({
-                model: "GLM-5.2",
-                stream,
-                messages: [
-                  {
-                    role: "user",
-                    content: stream
-                      ? "E2E_R95C_SEND: Reply briefly."
-                      : "Generate a concise title for E2E_R95C_SEND",
-                  },
-                ],
-              }),
-            );
-          },
-        );
-        let body = "";
-        for await (const chunk of response) body += String(chunk);
-        return { status: response.statusCode, type: response.headers["content-type"], body };
-      }),
-    );
-    expect(replies.map((response) => response.status)).toEqual([200, 200]);
-    expect(replies[0]!.type).toContain("text/event-stream");
-    expect(replies[0]!.body).toContain("coding-plan-e2e-ok");
-    expect(replies[1]!.type).toContain("application/json");
-    const title = JSON.parse(replies[1]!.body);
-    expect(title.type).toBe("message");
-    expect(JSON.parse(title.content[0].text).title).toBeTruthy();
-  } finally {
-    await proxy?.stop();
-    await upstream.stop();
-    await rm(dir, { recursive: true, force: true });
-  }
-});
+// v3.17.1 同步净化：原 SR87/R95C 账号请求 case-local matcher 单测依赖
+// conversation-session-model-provider-effective-selection.json fixture（官方套餐账号域），
+// 该 spec 与 fixture 已随净化域退役；通用 SSE/JSON 标题分流语义由下方用例覆盖。
 
 it("同一模型端点区分普通 JSON 标题与流式正文，并保存真实响应类型", async () => {
   const dir = await mkdtemp(join(tmpdir(), "zcode-response-type-"));

@@ -1,4 +1,4 @@
-import { clearAppData, readModelProviders, readSettings } from "#e2e/helpers/desktop-app";
+import { clearAppData, readModelProviders } from "#e2e/helpers/desktop-app";
 import {
   getV4PaneSnapshot,
   prepareV4ConversationE2E,
@@ -66,10 +66,10 @@ describe("PV4-25U：unknown command recovery 保留待确认", () => {
       );
     } catch (cause) {
       // 正式默认轮在刷新后进入欢迎页；仅采集脱敏配置，不通过重载或重试绕过启动异常。
-      const [providers, settings] = await Promise.all([readModelProviders(), readSettings()]);
+      const providers = await readModelProviders();
       throw new Error(
         `PV4-25U 刷新恢复失败: ${JSON.stringify({
-          providerFamilyDomain: settings.providerFamilyDomain,
+          // v3.17.1 同步净化：providerFamilyDomain（官方端点路由域）已从 AppSettings 剥离，不再记录。
           providers: providers.map((provider) => ({
             id: provider.id,
             enabled: provider.enabled,

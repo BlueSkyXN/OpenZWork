@@ -1,4 +1,4 @@
-import { clearAppData, readModelProviders, readSettings } from "../../../helpers/desktop-app.js";
+import { clearAppData, readModelProviders } from "../../../helpers/desktop-app.js";
 import {
   assertUpstreamRequestCapture,
   waitForUpstreamNetworkCapture,
@@ -61,10 +61,10 @@ describe("历史 session 思考深度冷恢复 E2E", () => {
       await restartIntoWorkspace();
     } catch (cause) {
       // 正式回放曾在准备阶段重启后进入欢迎页；先保留脱敏配置事实，区分 seed 丢失与启动门禁问题。
-      const [providers, settings] = await Promise.all([readModelProviders(), readSettings()]);
+      const providers = await readModelProviders();
       throw new Error(
         `I63 准备阶段重启失败: ${JSON.stringify({
-          providerFamilyDomain: settings.providerFamilyDomain,
+          // v3.17.1 同步净化：providerFamilyDomain（官方端点路由域）已从 AppSettings 剥离，不再记录。
           providers: providers.map((provider) => ({
             id: provider.id,
             enabled: provider.enabled,

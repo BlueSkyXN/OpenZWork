@@ -107,21 +107,22 @@
     {
       "capability": "local-data-and-retirement-boundaries",
       "files": [
-        "packages/ui/test/sessionUsageSummary.test.ts",
-        "packages/ui/test/onboardingVisibility.test.ts",
-        "packages/ui/test/appUsageModel.test.ts",
-        "packages/ui/test/botLocalBoundaries.test.ts",
-        "packages/ui/test/appUsageServiceAccess.test.ts",
+        "packages/services/test/appUsageService.test.ts",
+        "packages/services/test/botCredentialKey.test.ts",
         "packages/services/test/command-file-update.test.ts",
         "packages/services/test/home-resource-isolation.test.ts",
-        "packages/services/test/memory-migration-marker.test.ts",
         "packages/services/test/memory-migration-boundary.test.ts",
+        "packages/services/test/memory-migration-marker.test.ts",
         "packages/services/test/node-distribution-assets.test.ts",
         "packages/services/test/paths-isolation.test.ts",
-        "packages/services/test/botCredentialKey.test.ts",
-        "packages/services/test/appUsageService.test.ts",
         "packages/services/test/skills-toggle.test.ts",
-        "packages/services/test/upstreamRetiredPatchHosts.test.ts"
+        "packages/services/test/upstreamRetiredPatchHosts.test.ts",
+        "packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts",
+        "packages/ui/test/appUsageModel.test.ts",
+        "packages/ui/test/appUsageServiceAccess.test.ts",
+        "packages/ui/test/botLocalBoundaries.test.ts",
+        "packages/ui/test/onboardingVisibility.test.ts",
+        "packages/ui/test/sessionUsageSummary.test.ts"
       ]
     },
     {

@@ -1175,19 +1175,6 @@ modules:
       - packages/shared/src/local-ttft/contract.ts
     layers:
       contract: .
-  # local-ttft-renderer：由 architecture:adopt 登记
-  - id: local-ttft-renderer
-    roots:
-      - packages/ui/src/v4/telemetry/local-ttft
-    managed: true
-    requires:
-      - shared
-      - ui
-    publicEntrypoints:
-      - packages/ui/src/v4/telemetry/local-ttft/contract.ts
-    layers:
-      ui: .
-  # local-ttft-desktop：由 architecture:adopt 登记
   - id: local-ttft-desktop
     roots:
       - packages/desktop/src/renderer/src/local-ttft
@@ -1211,36 +1198,6 @@ modules:
       - apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/local-ttft/contract.ts
     layers:
       adapters: .
-  # cli-official-command-endpoint：由 architecture:adopt 登记
-  - id: cli-official-command-endpoint
-    roots:
-      - apps/zcode-cli/packages/bootstrap/src/official-command-endpoint
-      - apps/zcode-cli/packages/bootstrap/tests/official-command-endpoint
-    managed: true
-    requires:
-      - shared
-      - zcode-cli
-    publicEntrypoints:
-      - apps/zcode-cli/packages/bootstrap/src/official-command-endpoint/index.ts
-      - apps/zcode-cli/packages/bootstrap/src/official-command-endpoint/contract.ts
-    layers:
-      adapters: .
-    owner: identity
-  # zcode-site-panel：zcode-site 插件自带的 Sites 面板（MCP server + 页面），由 architecture:adopt 登记
-  - id: zcode-site-panel
-    roots:
-      - apps/zcode-cli/packages/zcode-site-plugin/src
-    managed: true
-    requires:
-      - shared
-    publicEntrypoints:
-      - apps/zcode-cli/packages/zcode-site-plugin/src/index.ts
-      - apps/zcode-cli/packages/zcode-site-plugin/src/contract.ts
-    layers:
-      app: .
-    owner: plugin
-
-  # file-open-apps：由 architecture:adopt 登记
   - id: file-open-apps
     roots:
       - packages/desktop/src/main/file-open-apps
@@ -1267,23 +1224,6 @@ modules:
       ui: .
     owner: file-preview
 
-  # web-platform：由 architecture:adopt 登记
-  - id: web-platform
-    roots:
-      - packages/web/src/platform
-    managed: true
-    requires:
-      - shared
-      - ui
-      - web
-    publicEntrypoints:
-      - packages/web/src/platform/index.ts
-      - packages/web/src/platform/contract.ts
-    layers:
-      adapters: .
-    owner: web
-
-  # image-preview-editor：由 architecture:adopt 登记
   - id: image-preview-editor
     roots:
       - packages/ui/src/image-preview-editor

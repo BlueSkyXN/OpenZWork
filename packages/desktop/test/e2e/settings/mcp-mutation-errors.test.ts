@@ -8,12 +8,8 @@ import {
   TID_SETTINGS_LOCALE_SELECT_ITEM,
   testId,
 } from "@zcode/shared/test-ids";
-import {
-  clearAppData,
-  clickTestIdByDom,
-  getE2EAppDataPaths,
-} from "../../../helpers/desktop-app.js";
-import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
+import { clearAppData, clickTestIdByDom, getE2EAppDataPaths } from "#e2e/helpers/desktop-app";
+import { skipOccupationOnboardingIfPresent } from "#e2e/helpers/occupation-onboarding";
 
 // MCP-WR-06 / OW-P005：只将隔离 E2E HOME 的 CLI 目录设为只读，真实持久化错误经 UI 返回。
 // 目标切换代次由受控 store/刷新函数回归验证；本例不依赖真实 SSH 或模型。

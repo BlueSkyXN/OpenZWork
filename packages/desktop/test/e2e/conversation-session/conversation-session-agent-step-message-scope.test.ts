@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
-import { auditTelemetryFields } from "#e2e/helpers/conversation-telemetry-parity";
 import { clearAppData } from "../helpers/desktop-app.js";
 import { waitForUpstreamNetworkCapture } from "../helpers/upstream-capture.js";
 import {
@@ -129,9 +128,8 @@ describe("会话区 Agent Step Message Scope E2E", () => {
     assertArmsInventoryAndRelations(armsFinal as unknown as ArmsCustomEventPayload[], eventReport);
     assertFinalArmsShape(armsFinal);
 
-    // 所有业务断言先通过，再归并有实现与 spec 依据的扩展字段，避免失败样本污染合同。
-    const fieldAudit = await auditTelemetryFields({ records: eventReport });
-    expect(fieldAudit.errors).toEqual([]);
+    // v3.17.1 同步净化：ARMS 字段合同审计（auditTelemetryFields）随上报面剥离，
+    // 业务断言（inventory/relations/final shape）已完整覆盖本用例的 parity 语义。
   });
 });
 

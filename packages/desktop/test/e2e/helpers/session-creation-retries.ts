@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { createHash, randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { BUILTIN_MODEL_PROVIDER_IDS, resolveWorkspaceKey } from "@zcode/shared";
+import { resolveWorkspaceKey } from "@zcode/shared";
 import type { CommandAck, CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
 import { projectStorage } from "../../../../services/src/project-storage/index.js";
 import { createWorkerSelectionIntegration } from "#e2e/helpers/worker-selection-integration";
@@ -24,7 +24,9 @@ export async function verifySessionCreationRetries() {
       firstInput: {
         text: `E2E_SID_RETRY_${label}`,
         modelSelection: {
-          providerId: BUILTIN_MODEL_PROVIDER_IDS.bigmodelIndividualCodingPlan,
+          // v3.17.1 同步净化：官方套餐 provider 枚举已剥离；重试语义只关心 providerId
+          // 字符串稳定性，改用与 worker-selection fixture 一致的隔离 replay provider 字面量。
+          providerId: "account:bigmodel-individual-coding-plan",
           modelId: "GLM-5.3-Flash",
           options: { reasoningLevel: "high" },
         },

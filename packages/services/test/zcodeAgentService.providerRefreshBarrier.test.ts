@@ -12,6 +12,8 @@ import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js
 const { request, getClient } = vi.hoisted(() => ({ request: vi.fn(), getClient: vi.fn() }));
 vi.mock("../src/zcode-agent/zcodeAgentProcessManager.js", () => ({
   ZCodeAgentProcessManager: class {
+    // OpenZWork v3.17.1：目录协商按 isSharedRuntime 判定共享 runtime；测试为独立 runtime。
+    isSharedRuntime = () => false;
     getClient = getClient;
     onRuntimeLifecycle() {
       return { dispose() {} };
@@ -60,6 +62,9 @@ beforeEach(async () => {
     .mockReset()
     .mockImplementation(
       async (method: string, params: unknown, schema: { parse(value: unknown): unknown }) => {
+        // OpenZWork v3.17.1：workspace 启动新增 runtime/capabilities 目录来源协商（先于命令屏障），
+        // mock 提供最小应答；sessionWorkspaceRouting 缺省为 false（非共享 runtime 不受影响）。
+        if (method === zcodeProtocolMethods.runtimeCapabilities) return schema.parse({});
         if (method === zcodeProtocolMethods.providerRefreshRegistry)
           return schema.parse(await refresh());
         if (method === V4_METHODS.command)

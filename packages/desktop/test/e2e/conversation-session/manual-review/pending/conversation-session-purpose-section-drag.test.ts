@@ -2,7 +2,6 @@ import { join } from "node:path";
 import {
   DEFAULT_WORKSPACE,
   readModelProviders,
-  readSettings,
   waitForWorkspaceApp,
 } from "../../../helpers/desktop-app.js";
 
@@ -52,10 +51,10 @@ describe("CWP02 分区标题拖拽", () => {
       await $(project).waitForDisplayed();
     } catch (cause) {
       // 正式回放曾在此刷新后进入欢迎页；保留配置事实，不能用重载或重试掩盖启动异常。
-      const [providers, settings] = await Promise.all([readModelProviders(), readSettings()]);
+      const providers = await readModelProviders();
       throw new Error(
         `CWP02 持久化验证刷新失败: ${JSON.stringify({
-          providerFamilyDomain: settings.providerFamilyDomain,
+          // v3.17.1 同步净化：providerFamilyDomain（官方端点路由域）已从 AppSettings 剥离，不再记录。
           providers: providers.map((provider) => ({
             id: provider.id,
             enabled: provider.enabled,
