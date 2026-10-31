@@ -296,10 +296,14 @@ export function relativeSourcePathForProvider(
   provider: "codex" | "qoder",
   sourcePath: string,
 ): string {
+  // Windows 扫描产物是反斜杠分隔路径（join 输出），marker 按 "/" 匹配会永远失败并误判"路径非法"
+  // （CI 实锤：C:\Users\...\.codex\sessions\... 抛路径非法）。修复：匹配前归一化为正斜杠再推导
+  // 相对层级；返回值喂给 dirname/basename/join，Node 在 Windows 上同样接受正斜杠输入。
+  const normalizedSourcePath = sourcePath.split("\\").join("/");
   const marker = provider === "codex" ? "/sessions/" : "/projects/";
-  const markerIndex = sourcePath.lastIndexOf(marker);
+  const markerIndex = normalizedSourcePath.lastIndexOf(marker);
   if (markerIndex < 0) {
     throw new Error(`[external-import] 外部 session 路径非法: ${sourcePath}`);
   }
-  return sourcePath.slice(markerIndex + marker.length);
+  return normalizedSourcePath.slice(markerIndex + marker.length);
 }

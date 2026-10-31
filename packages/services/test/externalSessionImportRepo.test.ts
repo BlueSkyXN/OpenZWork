@@ -251,3 +251,29 @@ describe("ExternalSessionImportRepo (qoder)", () => {
     }
   });
 });
+
+describe("relativeSourcePathForProvider 路径分隔符", () => {
+  // 回归：Windows 扫描产物是反斜杠路径，旧实现按 "/" 匹配 marker 会误抛"路径非法"
+  // （CI 实锤 full suite windows services shard 两个用例失败）。
+  it("接受 Windows 反斜杠路径并保留相对层级（codex/qoder）", async () => {
+    const { relativeSourcePathForProvider } = await loadRepo();
+    const codexWin = "C:\\Users\\dev\\.codex\\sessions\\2026\\10\\20\\rollout-x-01a15884.jsonl";
+    expect(relativeSourcePathForProvider("codex", codexWin)).toBe(
+      "2026/10/20/rollout-x-01a15884.jsonl",
+    );
+    const qoderWin = "C:\\Users\\dev\\.qoder\\projects\\-repo-demo\\49a2c84a-61a9.jsonl";
+    expect(relativeSourcePathForProvider("qoder", qoderWin)).toBe(
+      "-repo-demo/49a2c84a-61a9.jsonl",
+    );
+  });
+
+  it("正斜杠路径行为不变；无 marker 仍抛路径非法", async () => {
+    const { relativeSourcePathForProvider } = await loadRepo();
+    expect(
+      relativeSourcePathForProvider("codex", "/home/dev/.codex/sessions/2026/10/20/rollout-x.jsonl"),
+    ).toBe("2026/10/20/rollout-x.jsonl");
+    expect(() => relativeSourcePathForProvider("codex", "/home/dev/.codex/other/x.jsonl")).toThrow(
+      /路径非法/,
+    );
+  });
+});
