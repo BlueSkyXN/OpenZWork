@@ -12,11 +12,11 @@ node scripts/audit-conversation-session-case-coverage.mjs --check --workflow-boa
 
 | 指标                        | 当前值 |
 | --------------------------- | -----: |
-| Workflow case               |     87 |
+| Workflow case               |     86 |
 | Draft-ready case            |      0 |
 | Worksheet-ready case        |      0 |
 | Source-backfill-needed case |      0 |
-| Roadmap ready-to-write      |     33 |
+| Roadmap ready-to-write      |     32 |
 | Roadmap implemented         |     18 |
 
 ## Next Action Counts
@@ -27,7 +27,7 @@ node scripts/audit-conversation-session-case-coverage.mjs --check --workflow-boa
 | 填写 N02.1  |          1 |
 | 填写 N03.1  |          1 |
 | 填写 N04.1  |          1 |
-| 补齐        |         51 |
+| 补齐        |         50 |
 | 填写 N06.1  |          1 |
 | 填写 N07.1  |          1 |
 | 填写 N08.1  |          1 |
@@ -146,7 +146,6 @@ node scripts/audit-conversation-session-case-coverage.mjs --check --workflow-boa
 | I54  | 未分组                         | missing          | not-in-decision-protocol | planned         | ready-to-write              | 补齐        |
 | I57  | 未分组                         | missing          | not-in-decision-protocol | planned         | ready-to-write              | 补齐        |
 | I58  | 未分组                         | missing          | not-in-decision-protocol | planned         | ready-to-write              | 补齐        |
-| I59  | 未分组                         | missing          | not-in-decision-protocol | planned         | ready-to-write              | 补齐        |
 | I60  | 未分组                         | missing          | not-in-decision-protocol | planned         | ready-to-write              | 补齐        |
 | I62  | 未分组                         | missing          | not-in-decision-protocol | planned         | ready-to-write              | 补齐        |
 | I63  | 未分组                         | missing          | not-in-decision-protocol | planned         | ready-to-write              | 补齐        |

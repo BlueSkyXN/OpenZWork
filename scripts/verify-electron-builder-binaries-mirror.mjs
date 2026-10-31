@@ -161,12 +161,15 @@ export async function verifyElectronBuilderBinariesMirror({
 } = {}) {
   const resolvedManifest =
     manifest ?? require(require.resolve("./electron-builder-binaries-macos.json", import.meta.url));
+  // 修复原因：镜像地址推导依赖 .env 内网配置，开源树未配置时会先于参数校验抛配置错误，
+  // 把 --host-arch 非法这类用户输入错误吞掉。先做本地参数/清单校验（toolchain、
+  // selectHostAssets），再解析镜像地址，CLI 对非法架构以明确的 darwin-<arch> 错误非零退出。
+  const resolvedToolchain = toolchain ?? assertToolchain(resolvedManifest, workspaceRoot);
+  const assets = selectHostAssets(resolvedManifest, hostArch);
   const resolvedMirror = (mirror ?? resolveVerifyMirror()).trim();
   if (!resolvedMirror) {
     throw new Error("缺少 Builder 工具镜像地址（--mirror 或 ELECTRON_BUILDER_BINARIES_MIRROR）");
   }
-  const resolvedToolchain = toolchain ?? assertToolchain(resolvedManifest, workspaceRoot);
-  const assets = selectHostAssets(resolvedManifest, hostArch);
   const verified = [];
   for (const asset of assets) {
     verified.push(await verifyAsset(resolvedMirror, asset, timeoutMs));

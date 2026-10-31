@@ -80,7 +80,7 @@
     "test:engineering:affected": "node scripts/run-affected-engineering-tests.mjs",
     "test:engineering-tools": "node --test scripts/test/affected-engineering-test-cli.test.mjs scripts/test/pre-push-worktree.test.mjs scripts/test/retired-app-unit-evidence.test.mjs scripts/test/e2e-remote-targets-check.test.mjs",
     "check:e2e-remote-targets": "node scripts/check-e2e-remote-targets.mjs",
-    "verify:pre-push": "node scripts/check-push-worktree.mjs && pnpm run lint && pnpm run db:schema:check && pnpm run test:architecture && pnpm run architecture:check -- --changed && pnpm run test:ci:core"
+    "verify:pre-push": "node scripts/check-push-worktree.mjs && pnpm run check:e2e-remote-targets && pnpm run lint && pnpm run db:schema:check && pnpm run test:architecture && pnpm run architecture:check -- --changed && pnpm run test:ci:core"
   },
   "dependencies": {
     "border-beam": "^1.0.1",

@@ -1,5 +1,8 @@
 import { loadEndpointEnv } from "./load-endpoint-env.mjs";
 const endpointEnv = await loadEndpointEnv();
+// 净化裁决：上游闭源树在此处内置内网机器默认值；开源树按上游开源语义保留空默认，
+// 由 .env 的 INTRANET_MACHINE_HOST / ZCODE_DEPS_BASE_URL 提供。测试闭源语义时以
+// 保留的 intranet.example.invalid 占位域表示（与 remoteCdn.ts 测试常量同口径），不引入真实内网地址。
 export const DEFAULT_INTRANET_MACHINE_HOST = "";
 export function resolveIntranetMachineHost(env = { ...endpointEnv, ...process.env }) {
   // 自建镜像机器地址统一从 INTRANET_MACHINE_HOST 读取，避免多处硬编码漏改。

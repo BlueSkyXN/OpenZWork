@@ -1146,151 +1146,157 @@ staging 的 BG45 历史 focused replay artifact 为 `desktop-e2e-20260903-111126
 
 本次 ToolSearch 转正前同步修正既有 D19/I74/I75 的索引登记；保留其 pending 状态，不扩大验收结论。
 
-| 缩写   | Spec                                                                                                                                                     |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HO     | packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-history-order.test.ts                                     |
-| RC     | packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-recent-mode.test.ts                                   |
-| `FS`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-first-send.test.ts`                                           |
-| `PW`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-prewarming-queue.test.ts`                                     |
-| `RQ`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-queue.test.ts`                                        |
-| `AD`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-auto-drain.test.ts`                                           |
-| `RA`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-actions.test.ts`                                      |
-| `AF`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-auto-drain-running-fork.test.ts`                           |
-| `CE`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-cold-failed-edit.test.ts`                                  |
-| `SH`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-held-queue.test.ts`                                      |
-| `SE`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-empty.test.ts`                                           |
-| `QO`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-queue-operations.test.ts`                                     |
-| `CP`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact.test.ts`                                              |
-| `SF`   | `packages/desktop/test/e2e/conversation-session/conversation-session-compact-stream-fallback.test.ts`                                                    |
-| `CM`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-manual-queue.test.ts`                                 |
-| `CA`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-actions.test.ts`                                      |
-| `IA`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-interrupted-actions.test.ts`                                  |
-| `ED`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-edit.test.ts`                                                 |
-| `FK`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-fork.test.ts`                                                 |
-| `GL`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal.test.ts`                                                 |
-| `GR`   | `packages/desktop/test/e2e/conversation-session/conversation-session-goal-run-cases.test.ts`                                                             |
-| `GQ`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-queue.test.ts`                                           |
-| `GM`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-session-model.test.ts`                                   |
-| `MS`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-config-and-multisession.test.ts`                              |
-| `RM`   | `packages/desktop/test/e2e/conversation-session/conversation-session-model-switch-restore-repro.test.ts`                                                 |
-| `MC`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-config.test.ts`                                         |
-| `OC`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openrouter-model-id-colon.test.ts`                            |
-| `RW`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-provider-registry-prewarm.test.ts`                            |
-| `PS`   | `packages/desktop/test/e2e/provider-readiness-agent-startup.test.ts`                                                                                     |
-| `TO`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-history-order.test.ts`                                   |
-| `RC`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-recent-mode.test.ts`                                 |
-| `CT`   | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-composer-toolbar.test.ts`                                                        |
-| `PL`   | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-plan-shortcut.test.ts`                                                           |
-| `MR`   | `packages/desktop/test/e2e/conversation-session/conversation-session-model-provider-restart-recovery.test.ts`                                            |
-| `MT`   | `packages/desktop/test/e2e/conversation-session/conversation-session-model-provider-settings-transition.test.ts`                                         |
-| `TR`   | `packages/desktop/test/e2e/conversation-session/conversation-session-model-provider-turbo-recovery.test.ts`                                              |
-| `MX`   | `packages/desktop/test/e2e/conversation-session/conversation-session-model-provider-turbo-switch.test.ts`                                                |
-| `OTB`  | `packages/desktop/test/e2e/conversation-session/conversation-session-model-output-token-budget.test.ts`                                                  |
-| `OTBS` | `packages/desktop/test/e2e/conversation-session/conversation-session-model-output-token-preflight-smoke.test.ts`                                         |
-| `OTC`  | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation.test.ts`                                                                           |
-| `OTCB` | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation-boundaries.test.ts`                                                                |
-| `OTCC` | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation-control-flow.test.ts`                                                              |
-| `OTCK` | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation-compact.test.ts`                                                                   |
-| `OTCS` | `apps/zcode-cli/packages/core/tests/runtime-model-anomaly.test.ts`                                                                                       |
-| `OTCE` | `apps/zcode-cli/e2e/compact-microcompact/case-output-token-continuation.mjs`                                                                             |
-| `OTCU` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-ui.test.ts`                             |
-| `OTCM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-markdown-boundaries.test.ts`            |
-| `OTCX` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-markdown-content-types.test.ts`         |
-| `OTCP` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-markdown-protocols.test.ts`             |
-| `CWR`  | `packages/desktop/test/e2e/conversation-session/conversation-session-context-window-cold-resume.test.ts`                                                 |
-| `VT`   | `apps/zcode-cli/packages/bootstrap/tests/v4-native-fork-edit-retry.test.ts`                                                                              |
-| `GW`   | `apps/zcode-cli/packages/bootstrap/tests/v4-gateway.test.ts`                                                                                             |
-| `PU`   | `packages/desktop/test/e2e/conversation-session/conversation-session-plugin-reference.test.ts`                                                           |
-| `PUS`  | `packages/desktop/test/e2e/conversation-session/conversation-session-plugin-reference-subagent.test.ts`                                                  |
-| `PRR`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plugin-reference-append-only-resume.test.ts`                  |
-| `PC`   | `apps/zcode-cli/packages/core/tests/plugin-reference.test.ts`                                                                                            |
-| `PG`   | `apps/zcode-cli/packages/core/tests/plugin-reference-runtime.test.ts`                                                                                    |
-| `FA`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-availability-fallback.test.ts`                          |
-| `DS`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-upstream-workspace-smoke.test.ts`                             |
-| `PA`   | `packages/desktop/test/e2e/conversation-session/conversation-session-model-provider-add-send.test.ts`                                                    |
-| `LF`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-list-filtering.test.ts`                        |
-| `DM`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-draft-model-switch-first-send.test.ts`                        |
-| `NI`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-new-session-inherits-model.test.ts`                           |
-| `SI`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-session-isolation.test.ts`                     |
-| `RI`   | `packages/desktop/test/e2e/conversation-session/conversation-session-readstate-model-isolation.test.ts`                                                  |
-| `TI`   | `packages/desktop/test/e2e/conversation-session/conversation-session-thought-level-session-isolation.test.ts`                                            |
-| `CR`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-thought-level-cold-resume.test.ts`                            |
-| `SP`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-provider-identity.test.ts`                         |
-| `GZ`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-glm52-reasoning-request-shape.test.ts`                        |
-| `IS`   | `packages/desktop/test/e2e/conversation-session/conversation-session-model-switch-image-strip.test.ts`                                                   |
-| `IP`   | `packages/desktop/test/e2e/conversation-session/conversation-session-pasted-image-path-projection.test.ts`                                               |
-| `IE`   | `packages/desktop/test/e2e/conversation-session/conversation-session-pasted-image-path-edge-cases.test.ts`                                               |
-| `DV`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-deepseek-v4-reasoning-request-shape.test.ts`                  |
-| `CL`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-claude-anthropic-reasoning-budget.test.ts`                    |
-| `GO`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts`               |
-| `OT`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openai-compatible-thinking-toggle-request-shape.test.ts`      |
-| `OA`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-opus47-anthropic-adaptive-reasoning.test.ts`                  |
-| `AR`   | `packages/desktop/test/e2e/conversation-session/conversation-session-anthropic-reasoning-history-replay.test.ts`                                         |
-| `SR`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-subagent-provider-registry-cold-start.test.ts`                |
-| `SB`   | `packages/desktop/test/e2e/conversation-session/conversation-session-built-in-subagent-model-overrides.test.ts`                                          |
-| `SX`   | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-runtime-catalog-reasoning.test.ts`                                         |
-| `SD`   | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-interaction-delegate.test.ts`                                              |
-| `SA`   | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts`                                                   |
-| `BMS`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-node-repl-stateless-browser-multisession.test.ts`             |
-| `BSB`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-browser-use-subagent-boundary.test.ts`                        |
-| `GD`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-draft-provider-identity.test.ts`                   |
-| `TE`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-error-surface.test.ts`                                   |
-| `TIV`  | `packages/desktop/test/e2e/conversation-session/conversation-session-tool-input-validation-provider-content.test.ts`                                     |
-| `MQ`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-queue.test.ts`                                   |
-| `MU`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-model-switch-usage.test.ts`                           |
-| `CI`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-interrupted.test.ts`                                  |
-| `TA`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-actions.test.ts`                                         |
-| `AC`   | `packages/desktop/test/e2e/conversation-session/conversation-session-compact-auto.test.ts`                                                               |
-| `AA`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-auto-actions.test.ts`                                 |
-| `TP`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-timeline-projection.test.ts`                          |
-| `TS`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-turn-steer-probe.test.ts`                                     |
-| `GS`   | `packages/desktop/test/e2e/conversation-session/conversation-session-running-guide-steer.test.ts`                                                        |
-| `GI`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-interruptions.test.ts`                                   |
-| `BGS`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-background-guide-steer.test.ts`                               |
-| `BFD`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-background-file-diff.test.ts`                                 |
-| `BGR`  | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts`                                            |
-| `SN`   | `packages/desktop/test/e2e/conversation-session/conversation-session-running-send-now.test.ts`                                                           |
-| `ME`   | `packages/desktop/test/e2e/conversation-session/conversation-session-modified-submit-delivery.test.ts`                                                   |
-| `AQ`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts`                     |
-| `AQE`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-enter-multi-question.test.ts`        |
-| `AQM`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-click-multi-question.test.ts`        |
-| `AQK`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-enter-manual-multi-question.test.ts` |
-| `AQX`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-mixed-manual-multi-question.test.ts` |
-| `AQS`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-enter-single-question.test.ts`       |
-| `PAF`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-approval-feedback-user-message.test.ts`                  |
-| `PVD`  | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-permission.test.ts`                                                              |
-| `PFC`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts`                         |
-| `PP`   | `packages/desktop/test/e2e/conversation-session/conversation-session-plan-approval-primary-submit.test.ts`                                               |
-| `PM`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-mode-capabilities.test.ts`                               |
-| `PMC`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-mode-mcp-permission.test.ts`                             |
-| `PSR`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-session-switch-restore.test.ts`                          |
-| `AK`   | `packages/desktop/test/e2e/conversation-session/conversation-session-ask-user-question-keyboard-navigation.test.ts`                                      |
-| `ADF`  | `packages/desktop/test/e2e/conversation-session/conversation-session-ask-user-question-keyboard-default-focus.test.ts`                                   |
-| `MG`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-auto-compact.test.ts`                            |
-| `MF`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-tool-edit-fork.test.ts`                          |
-| `EF`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-edit-fork.test.ts`                               |
-| `GP`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-resume-stale-target.test.ts`                             |
-| `TX`   | `packages/desktop/test/e2e/conversation-session/conversation-session-tool-cross-product.test.ts`                                                         |
-| `CLT`  | `packages/desktop/test/e2e/conversation-session/conversation-session-chat-loading-live-tail.test.ts`                                                     |
-| `TDT`  | `packages/desktop/test/e2e/conversation-session/conversation-session-tool-detail-toggle-stability.test.ts`                                               |
-| `UTL`  | `packages/desktop/test/e2e/conversation-session/conversation-session-unregistered-tool-cold-snapshot.test.ts`                                            |
-| `WF`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-webfetch.test.ts`                                             |
-| `RS`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-read-session-context-timeout.test.ts`                         |
-| `BR`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-bash-read-state.test.ts`                                      |
-| `AW`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-file-tools-atomic-write.test.ts`                              |
-| `FSC`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-file-summary-cold-start.test.ts`                              |
-| `GT`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-timeline.test.ts`                                        |
-| `BG`   | `packages/desktop/test/e2e/conversation-session/conversation-session-background.test.ts`                                                                 |
-| `BQ`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-goal-background-queue.test.ts`                             |
-| `BGE`  | `packages/desktop/test/e2e/conversation-session/conversation-session-background-subagent-rate-limit.test.ts`                                             |
-| `FM`   | `packages/desktop/test/e2e/conversation-session/conversation-session-fork-merged-assistant.test.ts`                                                      |
-| `DR`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-draft-switching.test.ts`                             |
-| `PR`   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-prefix-routing.test.ts`                              |
-| `VM`   | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-mention.test.ts`                                                                 |
-| `MT`   | `packages/desktop/test/e2e/conversation-session/conversation-session-markdown-table-layout.test.ts`                                                      |
-| `MTS`  | `packages/desktop/test/e2e/conversation-session/conversation-session-markdown-table-enhanced-scroll.test.ts`                                             |
-| `SPL`  | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-status-panel-inline-layout.test.ts`                           |
-| `MO`   | retired（v3.17.1 同步净化：标准 MCP OAuth 状态隔离 spec 已保留，仅移除本行登记错误——见下）                                                               |
+| 缩写 | Spec                                                                                                                 |
+| ---- | -------------------------------------------------------------------------------------------------------------------- |
+| HO   | packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-history-order.test.ts |
+
+<!-- 净化收尾：RC 在机器索引表重复登记，保留唯一机器索引行，移除本处重复。 -->
+
+| `FS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-first-send.test.ts` |
+| `PW` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-prewarming-queue.test.ts` |
+| `RQ` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-queue.test.ts` |
+| `AD` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-auto-drain.test.ts` |
+| `RA` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-actions.test.ts` |
+| `AF` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-auto-drain-running-fork.test.ts` |
+| `CE` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-cold-failed-edit.test.ts` |
+| `SH` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-held-queue.test.ts` |
+| `SE` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-empty.test.ts` |
+| `QO` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-queue-operations.test.ts` |
+| `CP` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact.test.ts` |
+| `SF` | `packages/desktop/test/e2e/conversation-session/conversation-session-compact-stream-fallback.test.ts` |
+| `CM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-manual-queue.test.ts` |
+| `CA` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-actions.test.ts` |
+| `IA` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-interrupted-actions.test.ts` |
+| `ED` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-edit.test.ts` |
+| `FK` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-fork.test.ts` |
+| `GL` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal.test.ts` |
+| `GR` | `packages/desktop/test/e2e/conversation-session/conversation-session-goal-run-cases.test.ts` |
+| `GQ` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-queue.test.ts` |
+| `GM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-session-model.test.ts` |
+| `MS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-config-and-multisession.test.ts` |
+| `RM` | `packages/desktop/test/e2e/conversation-session/conversation-session-model-switch-restore-repro.test.ts` |
+| `MC` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-config.test.ts` |
+| `OC` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openrouter-model-id-colon.test.ts` |
+| `RW` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-provider-registry-prewarm.test.ts` |
+| `PS` | `packages/desktop/test/e2e/provider-readiness-agent-startup.test.ts` |
+| `TO` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-history-order.test.ts` |
+| `RC` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-recent-mode.test.ts` |
+| `CT` | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-composer-toolbar.test.ts` |
+| `PL` | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-plan-shortcut.test.ts` |
+
+<!-- retired（净化域）：conversation-session-model-provider-restart-recovery（MR）依赖 seedBigModel* 套餐/OAuth 凭据链，随 v3.17.1 同步净化删除，不恢复。 -->
+
+<!-- retired（净化域）：conversation-session-model-provider-settings-transition 曾登记于此行 -->
+<!-- 净化裁决：上游 MT=settings-transition spec 依赖 BigModel 套餐连接/OAuth seed（seedBigModelConnectionSelection/seedBigModelOAuthCredential），属官方套餐 entitlement 净化域，不随 v3.17.1 恢复；MT 缩写由 markdown-table-layout 行承接。 -->
+
+<!-- retired（净化域）：turbo-recovery（TR）/turbo-switch（MX）依赖 BigModel 套餐连接重启链（seedBigModel*/providerFamilyConnectionSelections），随 v3.17.1 同步净化删除，不恢复。 -->
+
+| `OTB` | `packages/desktop/test/e2e/conversation-session/conversation-session-model-output-token-budget.test.ts` |
+| `OTBS` | `packages/desktop/test/e2e/conversation-session/conversation-session-model-output-token-preflight-smoke.test.ts` |
+| `OTC` | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation.test.ts` |
+| `OTCB` | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation-boundaries.test.ts` |
+| `OTCC` | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation-control-flow.test.ts` |
+| `OTCK` | `apps/zcode-cli/packages/core/tests/runtime-output-token-continuation-compact.test.ts` |
+| `OTCS` | `apps/zcode-cli/packages/core/tests/runtime-model-anomaly.test.ts` |
+| `OTCE` | `apps/zcode-cli/e2e/compact-microcompact/case-output-token-continuation.mjs` |
+| `OTCU` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-ui.test.ts` |
+| `OTCM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-markdown-boundaries.test.ts` |
+| `OTCX` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-markdown-content-types.test.ts` |
+| `OTCP` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-output-limit-continue-markdown-protocols.test.ts` |
+| `CWR` | `packages/desktop/test/e2e/conversation-session/conversation-session-context-window-cold-resume.test.ts` |
+| `VT` | `apps/zcode-cli/packages/bootstrap/tests/v4-native-fork-edit-retry.test.ts` |
+| `GW` | `apps/zcode-cli/packages/bootstrap/tests/v4-gateway.test.ts` |
+| `PU` | `packages/desktop/test/e2e/conversation-session/conversation-session-plugin-reference.test.ts` |
+| `PUS` | `packages/desktop/test/e2e/conversation-session/conversation-session-plugin-reference-subagent.test.ts` |
+| `PRR` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plugin-reference-append-only-resume.test.ts` |
+| `PC` | `apps/zcode-cli/packages/core/tests/plugin-reference.test.ts` |
+| `PG` | `apps/zcode-cli/packages/core/tests/plugin-reference-runtime.test.ts` |
+| `FA` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-availability-fallback.test.ts` |
+| `DS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-upstream-workspace-smoke.test.ts` |
+| `PA` | `packages/desktop/test/e2e/conversation-session/conversation-session-model-provider-add-send.test.ts` |
+| `LF` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-list-filtering.test.ts` |
+| `DM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-draft-model-switch-first-send.test.ts` |
+| `NI` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-new-session-inherits-model.test.ts` |
+| `SI` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-session-isolation.test.ts` |
+| `RI` | `packages/desktop/test/e2e/conversation-session/conversation-session-readstate-model-isolation.test.ts` |
+| `TI` | `packages/desktop/test/e2e/conversation-session/conversation-session-thought-level-session-isolation.test.ts` |
+| `CR` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-thought-level-cold-resume.test.ts` |
+| `SP` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-provider-identity.test.ts` |
+| `GZ` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-glm52-reasoning-request-shape.test.ts` |
+| `IS` | `packages/desktop/test/e2e/conversation-session/conversation-session-model-switch-image-strip.test.ts` |
+| `IP` | `packages/desktop/test/e2e/conversation-session/conversation-session-pasted-image-path-projection.test.ts` |
+| `IE` | `packages/desktop/test/e2e/conversation-session/conversation-session-pasted-image-path-edge-cases.test.ts` |
+| `DV` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-deepseek-v4-reasoning-request-shape.test.ts` |
+| `CL` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-claude-anthropic-reasoning-budget.test.ts` |
+| `GO` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts` |
+| `OT` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openai-compatible-thinking-toggle-request-shape.test.ts` |
+| `OA` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-opus47-anthropic-adaptive-reasoning.test.ts` |
+| `AR` | `packages/desktop/test/e2e/conversation-session/conversation-session-anthropic-reasoning-history-replay.test.ts` |
+| `SR` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-subagent-provider-registry-cold-start.test.ts` |
+| `SB` | `packages/desktop/test/e2e/conversation-session/conversation-session-built-in-subagent-model-overrides.test.ts` |
+| `SX` | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-runtime-catalog-reasoning.test.ts` |
+| `SD` | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-interaction-delegate.test.ts` |
+| `SA` | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-prompt-assembly.test.ts` |
+| `BMS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-node-repl-stateless-browser-multisession.test.ts` |
+| `BSB` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-browser-use-subagent-boundary.test.ts` |
+| `GD` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-draft-provider-identity.test.ts` |
+| `TE` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-error-surface.test.ts` |
+| `TIV` | `packages/desktop/test/e2e/conversation-session/conversation-session-tool-input-validation-provider-content.test.ts` |
+| `MQ` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-queue.test.ts` |
+| `MU` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-model-switch-usage.test.ts` |
+| `CI` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-interrupted.test.ts` |
+| `TA` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-actions.test.ts` |
+| `AC` | `packages/desktop/test/e2e/conversation-session/conversation-session-compact-auto.test.ts` |
+| `AA` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-auto-actions.test.ts` |
+| `TP` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-timeline-projection.test.ts` |
+| `TS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-turn-steer-probe.test.ts` |
+| `GS` | `packages/desktop/test/e2e/conversation-session/conversation-session-running-guide-steer.test.ts` |
+| `GI` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-interruptions.test.ts` |
+| `BGS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-background-guide-steer.test.ts` |
+| `BFD` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-background-file-diff.test.ts` |
+| `BGR` | `packages/desktop/test/e2e/conversation-session/conversation-session-subagent-respond-to-coordinator.test.ts` |
+| `SN` | `packages/desktop/test/e2e/conversation-session/conversation-session-running-send-now.test.ts` |
+| `ME` | `packages/desktop/test/e2e/conversation-session/conversation-session-modified-submit-delivery.test.ts` |
+| `AQ` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts` |
+| `AQE` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-enter-multi-question.test.ts` |
+| `AQM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-click-multi-question.test.ts` |
+| `AQK` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-enter-manual-multi-question.test.ts` |
+| `AQX` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-mixed-manual-multi-question.test.ts` |
+| `AQS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-custom-enter-single-question.test.ts` |
+| `PAF` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-approval-feedback-user-message.test.ts` |
+| `PVD` | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-permission.test.ts` |
+| `PFC` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-file-compact-continuity.test.ts` |
+| `PP` | `packages/desktop/test/e2e/conversation-session/conversation-session-plan-approval-primary-submit.test.ts` |
+| `PM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-mode-capabilities.test.ts` |
+| `PMC` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-mode-mcp-permission.test.ts` |
+| `PSR` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-session-switch-restore.test.ts` |
+| `AK` | `packages/desktop/test/e2e/conversation-session/conversation-session-ask-user-question-keyboard-navigation.test.ts` |
+| `ADF` | `packages/desktop/test/e2e/conversation-session/conversation-session-ask-user-question-keyboard-default-focus.test.ts` |
+| `MG` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-auto-compact.test.ts` |
+| `MF` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-tool-edit-fork.test.ts` |
+| `EF` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-edit-fork.test.ts` |
+| `GP` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-resume-stale-target.test.ts` |
+| `TX` | `packages/desktop/test/e2e/conversation-session/conversation-session-tool-cross-product.test.ts` |
+| `CLT` | `packages/desktop/test/e2e/conversation-session/conversation-session-chat-loading-live-tail.test.ts` |
+| `TDT` | `packages/desktop/test/e2e/conversation-session/conversation-session-tool-detail-toggle-stability.test.ts` |
+| `UTL` | `packages/desktop/test/e2e/conversation-session/conversation-session-unregistered-tool-cold-snapshot.test.ts` |
+| `WF` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-webfetch.test.ts` |
+| `RS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-read-session-context-timeout.test.ts` |
+| `BR` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-bash-read-state.test.ts` |
+| `AW` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-file-tools-atomic-write.test.ts` |
+| `FSC` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-file-summary-cold-start.test.ts` |
+| `GT` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-timeline.test.ts` |
+| `BG` | `packages/desktop/test/e2e/conversation-session/conversation-session-background.test.ts` |
+| `BQ` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-goal-background-queue.test.ts` |
+| `BGE` | `packages/desktop/test/e2e/conversation-session/conversation-session-background-subagent-rate-limit.test.ts` |
+| `FM` | `packages/desktop/test/e2e/conversation-session/conversation-session-fork-merged-assistant.test.ts` |
+| `DR` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-draft-switching.test.ts` |
+| `PR` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-prefix-routing.test.ts` |
+| `VM` | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-mention.test.ts` |
+| `MT` | `packages/desktop/test/e2e/conversation-session/conversation-session-markdown-table-layout.test.ts` |
+| `MTS` | `packages/desktop/test/e2e/conversation-session/conversation-session-markdown-table-enhanced-scroll.test.ts` |
+| `SPL` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-status-panel-inline-layout.test.ts` |
+| `MO` | retired（v3.17.1 同步净化：标准 MCP OAuth 状态隔离 spec 已保留，仅移除本行登记错误——见下） |
 
 <!-- v3.17.1 同步：conversation-session-mcp-oauth-status-isolation.test.ts 为标准 MCP OAuth（loopback fixture）保留域，已恢复保留；上表 MO 缩写保留指向该 spec 的正确路径 packages/desktop/test/e2e/conversation-session/conversation-session-mcp-oauth-status-isolation.test.ts -->
 
@@ -1312,7 +1318,10 @@ staging 的 BG45 历史 focused replay artifact 为 `desktop-e2e-20260903-111126
 | `RT` | `apps/zcode-cli/packages/core/tests/runtime-compact.test.ts` |
 | `PD` | `apps/zcode-cli/packages/core/tests/prompt-admission.test.ts` |
 | `ML` | `apps/zcode-cli/packages/core/tests/runtime-model-selection.test.ts` |
-| `TM` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-agent-step-message-scope.test.ts` |
+| `TM` | `packages/desktop/test/e2e/conversation-session/conversation-session-agent-step-message-scope.test.ts` |
+
+<!-- 净化裁决：TM 原 pending 变体属 ARMS parity 净化域（armsCustomEvent 断言），已随净化删除；保留的 formal telemetry parity spec 承接 TEL01 证据，路径改指 formal spec。 -->
+
 | `VS` | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-vertical-slice.test.ts` |
 | `VQ` | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-stop-queue.test.ts` |
 | `QE` | `packages/desktop/test/e2e/conversation-session/conversation-session-v4-queue.test.ts` |
@@ -1484,20 +1493,22 @@ PV4-01/02/06 专项覆盖。
 
 <!-- OP01–OP10 覆盖行与 offPeakE2eIntegration 证据说明属闲时任务净化域，已随 5aba47d9 净化删除，不随上游恢复 -->
 
+<!-- 净化裁决：I25/I28/I35/I36 属 Coding Plan/Team Plan 套餐 entitlement 净化域（catalog 已随 v3.17.1 合并删除），矩阵行同步退役移除，不再计入统计。 -->
+
 ## 当前统计
 
 | 范围                                | 数量 |
 | ----------------------------------- | ---: |
-| Catalog A-J 总 case                 |  184 |
-| accepted case                       |  181 |
+| Catalog A-J 总 case                 |  174 |
+| accepted case                       |  172 |
 | undefined case                      |    0 |
-| covered                             |  125 |
+| covered                             |  112 |
 | failing probe                       |    0 |
 | partial                             |   17 |
-| missing accepted case               |   56 |
-| 自动化缩写                          |  121 |
-| 被引用自动化缩写                    |   78 |
-| 有测试声明的 spec                   |  121 |
+| missing accepted case               |   60 |
+| 自动化缩写                          |  117 |
+| 被引用自动化缩写                    |   74 |
+| 有测试声明的 spec                   |  117 |
 | 含 skip/only 的 spec                |    0 |
 | 关键剪枝规则 K                      |   11 |
 | PV4 核心协议 accepted case          |   24 |
@@ -2824,16 +2835,16 @@ cache 解析，并由 focused unit 覆盖 active target、completed target、sto
 | I23  | covered      | PS     | 无 OAuth/API Key 的 desktop local 冷启动保持 provider waiting；正式 spec 同时预置一条 interactive CLI 历史和对应 tasks-index membership，跳过登录后断言侧栏以 task-index 行可见、点击后经只读订阅读取正文，同时展示 `modelConfigMissing` banner；不覆盖 CLI-only 无效状态，不创建 deferred draft、不执行模型请求                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | I23a | covered      | PS     | 正式 spec 在缺模型草稿输入文本，断言发送按钮禁用、原文保留、pending command ledger 为空、banner 仍为 `modelConfigMissing`；SessionPane 单测覆盖 UI admission 零命令与 Host 竞态拒绝后的 ledger 清理                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | I24  | covered      | PS     | 同一等待 workspace 保存结构可用 provider/model 后，正式 spec 断言复用只读 CLI、Agent 稳定为 1、通过 Template 创建独立 Personal Provider 后完成草稿模型水合、清除 `modelConfigMissing` banner、保留草稿原文并恢复发送按钮可用；service focused test 覆盖 read→write 不重复启动与后续配置失效不主动销毁进程                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| I25  | covered      | MR     | App 重启保留仍可用的 family 外 DeepSeek last-selected；首发前等待 provider/runtime readiness 和选中模型稳定，首发后按 marker 先证明 request-start，再以 complete capture 证明实际模型                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| I28  | covered      | MR     | last-selected 模型成员已不可用时，重启留空且禁发；用户显式选择后以真实请求验证恢复                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| I35  | covered      | TR     | Agent `local_setting` schema ready 后写入冷启动前置状态；GLM-5-Turbo + off 经退出前 DOMStorage flush 和真实重启后保持 Turbo 二态思考能力                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| I36  | covered      | TR     | 每次重启都显式 flush 当前 DOMStorage；GLM-5-Turbo + enabled 重启后 toolbar/draft/首发请求一致，不能由默认 enabled 形成假阳性                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| I37  | covered      | TR     | 不做 App 重启；当前 Turbo deferred draft 连续切换二态时模型稳定且不出现三态选项；合并入口用 switch，覆盖点击／空格调档、菜单保持与一次外部点击关闭，冷启动恢复由 I35/I36 覆盖                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| I38  | covered      | MX     | workspace default 迟到回包不能覆盖 deferred draft 模型能力；真实 App reload 必须先回收旧 Electron，再由 service `onReload` 重建 main-process CDP bridge                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| I39  | covered      | MX     | GLM-5.2 + high 切 Turbo 时 Composer 选择目标默认 enabled，model/thought/options 原子收敛；未提交前不改写最近选择，提交后的持久化与重启恢复由 I35/I36 覆盖                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| I37  | retired      |        | Turbo deferred draft 二态切换的原始证据 spec（TR）依赖 BigModel 套餐连接链，随 v3.17.1 净化退役；合并入口与冷恢复行为由 I35/I36 存续证据覆盖                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| I38  | retired      |        | workspace default 迟到回包场景的原始证据 spec（MX）随 BigModel 套餐连接链净化退役；reload 生命周期由 I35/I36 存续证据覆盖                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| I39  | retired      |        | GLM-5.2/high 切 Turbo 的收敛断言原始证据 spec（MX）随净化退役；选择收敛语义由 I35/I36 存续证据覆盖                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| I42  | retired      |        | Turbo+enabled 切换收敛断言原始证据 spec（MX）随净化退役；未提交选择不改写语义由 I35/I36 存续证据覆盖                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | I40  | retired      |        | Provider Refactor 已删除 App Registry re-push 与 `runtimeModel` fallback。模型候选只来自目标 Environment 的 Model Selection View，因此不再为已退出的跨 Environment 恢复链补 E2E                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | I41  | retired      |        | App Store 绕过目标 Environment Model Selection View 的恢复链已删除；prepare/configOptions 失败时保持错误并允许重试，不再通过 restart、Registry re-push 或 `runtimeModel` 构造候选                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| I42  | covered      | MX     | Turbo + enabled 切 GLM-5.2 时丢弃源 thought，收敛目标默认与三态目录；未提交前不改写最近选择，避免把草稿意图误当已接受提交                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| I37  | retired      |        | 净化退役：Turbo 二态连续切换自动化（TR）依赖 BigModel 套餐连接重启链（seedBigModel\*/providerFamilyConnectionSelections），随 v3.17.1 净化删除；产品语义保留在 catalog，独立断言待非套餐链路重建                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| I38  | retired      |        | 净化退役：workspace default 迟到回包自动化（MX）依赖 BigModel 套餐链，随 v3.17.1 净化删除；产品语义保留在 catalog，待非套餐链路重建                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| I39  | retired      |        | 净化退役：GLM-5.2/high 切 Turbo 自动化（MX）依赖 BigModel 套餐链，随 v3.17.1 净化删除；产品语义保留在 catalog，待非套餐链路重建                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| I42  | retired      |        | 净化退役：Turbo enabled 切回 GLM-5.2 自动化（MX）依赖 BigModel 套餐链，随 v3.17.1 净化删除；产品语义保留在 catalog，待非套餐链路重建                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | I43  | planned      |        | 旧分离 model/thought key 迁移为版本化元组；孤立 thought 不迁移、不污染新草稿                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | I44  | planned      |        | 打开历史 session 只显示 session snapshot，不改写上次显式选择元组；回到新草稿仍使用原元组候选种子                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | I45  | planned      |        | workspace A/B 的 Root Composer Draft 分别保存 mode；B 不继承 A，返回 A 后仍恢复 A 的选择                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |

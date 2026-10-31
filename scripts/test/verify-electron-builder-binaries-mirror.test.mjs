@@ -264,11 +264,9 @@ test("未显式配置 mirror 时按内网 deps 推导默认地址", () => {
     }),
     "https://deps.example.test/zcode/deps/electron-builder-binaries/",
   );
-  // 闭源树的内网默认机器是 intranet.example.invalid；与 bundle.mjs 的默认镜像同源。
-  assert.equal(
-    resolveVerifyMirror({}),
-    "http://intranet.example.invalid:12345/zcode/deps/electron-builder-binaries/",
-  );
+  // 净化裁决：开源树 DEFAULT_INTRANET_MACHINE_HOST 为空（闭源内网机器默认值不随开源同步），
+  // 未配置任何内网源时必须明确失败，而不是回落到闭源树默认机器。
+  assert.throws(() => resolveVerifyMirror({}), /ZCODE_DEPS_BASE_URL|INTRANET_MACHINE_HOST/);
 });
 
 // 评审 CR-02 回归：入口判断曾在 POSIX 上恒不匹配，CLI 以退出码 0 假成功。

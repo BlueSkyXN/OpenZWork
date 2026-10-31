@@ -171,39 +171,6 @@
       }
     },
     {
-      "id": "upstream-background-agent-notification-consumed-after-history-tool",
-      "description": "BG01: parent consumes background Agent notification. Return final result after a visible history tool.",
-      "metadata": {
-        "kind": "main",
-        "timingPolicy": "task-notification",
-        "source": "synthetic",
-        "syntheticReason": "验证 provider-visible request 消费 <task-notification>。 验证来源提示及非用户授权边界。"
-      },
-      "maxMatches": 1,
-      "match": {
-        "method": "POST",
-        "pathIncludes": "/messages",
-        "bodyIncludes": [
-          "<task-notification>",
-          "E2E_BACKGROUND_AGENT_CHILD_RESULT",
-          "toolu_e2e_agent_history",
-          "tool_result"
-        ],
-        "bodyExcludes": [
-          "Generate a concise title",
-          "CRITICAL: Respond with TEXT ONLY",
-          "Verify whether the active session goal"
-        ]
-      },
-      "response": {
-        "statusCode": 200,
-        "text": {
-          "id": "upstream-e2e-background-agent-notification",
-          "text": "background-agent-notification-consumed-ok"
-        }
-      }
-    },
-    {
       "id": "upstream-background-bash-tool-call",
       "description": "BG02: main agent launches a background Bash command.",
       "metadata": {
@@ -304,41 +271,6 @@
             "command": "printf 'background-history-visible\\n'",
             "description": "background-history-visible"
           }
-        }
-      }
-    },
-    {
-      "id": "upstream-background-bash-notification-consumed-after-history-tool",
-      "description": "BG02: parent consumes background Bash notification. Return final result after a visible history tool.",
-      "metadata": {
-        "kind": "main",
-        "timingPolicy": "task-notification",
-        "source": "synthetic",
-        "syntheticReason": "验证 Bash completion notification 进入父模型请求。 验证来源提示及非用户授权边界。"
-      },
-      "maxMatches": 1,
-      "match": {
-        "method": "POST",
-        "pathIncludes": "/messages",
-        "bodyIncludes": [
-          "E2E_BACKGROUND_BASH",
-          "<task-notification>",
-          "<tool-use-id>toolu_e2e_background_bash</tool-use-id>",
-          "<status>completed</status>",
-          "toolu_e2e_bash_history",
-          "tool_result"
-        ],
-        "bodyExcludes": [
-          "Generate a concise title",
-          "CRITICAL: Respond with TEXT ONLY",
-          "Verify whether the active session goal"
-        ]
-      },
-      "response": {
-        "statusCode": 200,
-        "text": {
-          "id": "upstream-e2e-background-bash-notification",
-          "text": "background-bash-notification-consumed-ok"
         }
       }
     },
