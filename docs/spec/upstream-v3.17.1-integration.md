@@ -5,6 +5,7 @@
 - 上游固定为 `a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`（镜像仓 `Program/ZCode` main，官方 tag v3.17.1，Source-Commit `73158b64`）；从 OpenZWork `3a6f31bd`（PR#57 后的 main）继续，以 merge commit 保留上游历史。合并基 `3c5b2276`（v3.16.2 sync 提交）。
 - 延续 [3.16.2 的产品边界](upstream-v3.16.2-integration.md)：标准 MCP、ToolSearch、node_repl、Browser Use、动态工作流、GenUI/MCP Apps、本地/远程工作区和第三方模型配置继续保留；用户级目录 `.openzwork`、项目 `.zcode`、无账号 HMAC 配对、owner/lease 与 stale run 防护不变。
 - 官方账号、套餐（codingPlan/startPlan/闲时任务/Highspeed）、云端分享与反馈、遥测（ARMS/OTel）、自动更新、原生 CUA、官方网关路由与签名层、`zcode_official` 鉴权依赖官方 JWT 的内置插件（zcode-site/image-search 等 `auth.type=zcode_official`）保持移除；上游对已退役文件的修改逐项审查，不恢复整文件。
+- 无可用模型时，中英文提示只引导配置自定义模型；默认任务推荐不展示或填入已移除的闲时任务。既有定时任务、仓库检查和 Browser Use 推荐继续保留。
 
 ## 上游变更规模与结构
 

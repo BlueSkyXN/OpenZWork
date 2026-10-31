@@ -22,5 +22,11 @@ describe("桌面端 E2E smoke", () => {
     // smoke 应验证单 pane 与 v4 composer，而不是已删除的兼容壳子。
     await expect($(sel(testId(TID_V4_SESSION_PANE, V4_MAIN_PANE_ID)))).toBeDisplayed();
     await expect($(sel(TID_V4_COMPOSER_INPUT))).toBeDisplayed();
+    // 新用户空模型状态与默认推荐均不得重新引导到已裁剪的套餐及任务能力。
+    await expect($("body")).not.toHaveText(
+      expect.stringMatching(
+        /开通编程套餐|闲时任务|idle[- ]time task|Upgrade or set a custom model/i,
+      ),
+    );
   });
 });
