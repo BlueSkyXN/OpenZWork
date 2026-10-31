@@ -28,3 +28,5 @@ apps/zcode-cli/packages/visualize-plugin/skills/visualize/assets/** -text
 
 # 固定提示词夹具与运行时 LF 文本逐字比较，Windows autocrlf 不应改写基准。
 apps/zcode-cli/packages/core/tests/fixtures/memory/*.md text eol=lf
+# tweak.js 的 sha256 钉在 runtime-manifest（genUiTweakRuntime.js 源文件），同样禁止 CRLF 转换
+packages/desktop/src/renderer/src/plugin-sandbox/genUiTweakRuntime.js -text
