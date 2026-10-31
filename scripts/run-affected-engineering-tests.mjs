@@ -66,16 +66,32 @@ export async function main(argv = process.argv.slice(2)) {
         { server: { watch: null } },
       );
       all = await vitest.globTestSpecifications();
+      // OpenZWork 修复（Windows 语义）：
+      // 1) Vitest 模块图节点 id 在 Windows 是正斜杠绝对路径（D:/a/...），--files 传入的
+      //    相对/反斜杠路径先归一化为「绝对 + 正斜杠」，否则匹配不到任何图节点。
+      // 2) 全局触发文件（vitest.config.ts 与 engineering-test-files.json——后者被 config
+      //    引用决定全部工程测试的收集范围）在 Windows 上经 Vitest 的 config 依赖链检测
+      //    不可靠，显式判为全量选择，不再依赖平台相关的隐式行为。
+      const GLOBAL_TRIGGER_SUFFIXES = ["vitest.config.ts", "engineering-test-files.json"];
+      const relatedFiles = (scope.files ?? []).map((file) =>
+        resolve(root, file).replaceAll("\\", "/"),
+      );
+      const globalTrigger = relatedFiles.some((file) =>
+        GLOBAL_TRIGGER_SUFFIXES.some((suffix) => file.endsWith(`/${suffix}`)),
+      );
       for (const base of scope.bases) {
         vitest.config.changed = scope.files ? false : base;
-        // OpenZWork 修复：Windows 上 Vitest 模块图节点 id 是正斜杠绝对路径（D:/a/...），
-        // 而 --files 传入的可能是相对或反斜杠路径；统一归一化为「绝对 + 正斜杠」，
-        // 否则相关文件匹配不到任何图节点（显式 --files 与 config 触发文件都会退化零选中）。
-        vitest.config.related = scope.files?.map((file) =>
-          resolve(root, file).replaceAll("\\", "/"),
-        );
-        for (const spec of await vitest.getRelevantTestSpecifications())
-          selected.set(specKey(spec), spec);
+        vitest.config.related = globalTrigger
+          ? undefined
+          : relatedFiles.length
+            ? relatedFiles
+            : undefined;
+        if (globalTrigger) {
+          for (const spec of all) selected.set(specKey(spec), spec);
+        } else {
+          for (const spec of await vitest.getRelevantTestSpecifications())
+            selected.set(specKey(spec), spec);
+        }
         for (const file of vitest.config.related ?? []) related.add(file);
       }
     }
