@@ -81,7 +81,12 @@ async function fixture(t) {
     }));
   return { root, write, git, base, invoke, hook, env };
 }
-const paths = (result) => JSON.parse(result.stdout).map((spec) => spec.path);
+const paths = (result) =>
+  JSON.parse(result.stdout)
+    .map((spec) => spec.path)
+    // OpenZWork：related 归一化为绝对路径后，vitest 返回的 moduleId 在 Windows 是
+    // 绝对反斜杠路径；统一转为仓库相对正斜杠，保证跨平台断言同形。
+    .map((p) => p.replaceAll("\\", "/").replace(/.*(^|\/)tests\//, "tests/"));
 
 test("官方预览与执行一致，不加载无关文件，不改写源码或 index", async (t) => {
   const { root, write, git, invoke } = await fixture(t);
