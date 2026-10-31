@@ -43,12 +43,14 @@ describe("project MCP config", () => {
         skipUserConfig: true,
       });
 
+      // OpenZWork v3.17.1 吸收上游 workspace-mcp-trust 门：项目 MCP 不再自动连接，
+      // 首次出现为 untrusted，须经用户批准（decide）后才进入连接集；插件/内建/用户源不受门限。
       const statuses = await app.listMcpServers();
-      expect(statuses.project?.status).toBe("disconnected");
+      expect(statuses.project?.status).toBe("untrusted");
       expect(statuses.project?.error).toBeUndefined();
 
       await app.submitPrompt("hello");
-      expect(connectedServerSets).toEqual([["project", "node_repl"]]);
+      expect(connectedServerSets).toEqual([["node_repl"]]);
 
       await app.close();
     } finally {
@@ -175,18 +177,16 @@ describe("project MCP config", () => {
         userConfigPath,
       });
 
+      // OpenZWork v3.17.1：user 源不受 workspace-mcp-trust 门限（withReviews 跳过 user），
+      // project 源未批准保持 untrusted 且不进连接集——优先级语义在门下依然成立。
       const statuses = await app.listMcpServers();
-      expect(statuses["project-only"]?.status).toBe("disconnected");
+      expect(statuses["project-only"]?.status).toBe("untrusted");
       expect(statuses.shared?.status).toBe("disconnected");
 
       await app.submitPrompt("hello");
-      expect(connectedServerSets).toEqual([
-        ["project-only", "shared", "node_repl"],
-      ]);
-      expect(connectedConfigs[0]?.["project-only"]).toMatchObject({
-        command: "project-only-server",
-        type: "stdio",
-      });
+      expect(connectedServerSets).toEqual([["shared", "node_repl"]]);
+      // OpenZWork v3.17.1：project-only 未过信任门不连接；user 源的 shared 照常连接。
+      expect(connectedConfigs[0]?.["project-only"]).toBeUndefined();
       expect(connectedConfigs[0]?.shared).toMatchObject({
         command: "user-server",
         type: "stdio",
