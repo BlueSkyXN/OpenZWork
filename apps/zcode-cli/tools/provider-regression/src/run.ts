@@ -3,10 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { runWithModelInvocationContext } from "@zcode/contracts";
 import { createConfig } from "@zcode/adapters/config";
-import {
-  createRuntimeAiSdkModelExecutionConfig,
-  createDefaultProviderEndpointRoutingPort,
-} from "@zcode/bootstrap";
+import { createRuntimeAiSdkModelExecutionConfig } from "@zcode/bootstrap";
 import { AiSdkModelAdapter } from "@zcode/adapters/model";
 import { compileModelOptionMaps } from "@zcode/model-option-map";
 import type { RegressionOptions, RegressionReport, RegressionRow } from "#contract";
@@ -41,26 +38,13 @@ function contains(actual: unknown, expected: unknown): boolean {
 export async function runRegression(options: RegressionOptions): Promise<RegressionReport> {
   const config = await loadConfiguration(options.providersFile, options.listFile);
   const selected = selectCases(config.list.caseIds);
-  const { version: appVersion } = JSON.parse(
-    await readFile(new URL("../../../../../package.json", import.meta.url), "utf8"),
-  ) as { version: string };
   const network = createConfig({
     env: process.env,
     workingDirectory: config.fixtureDir,
     skipUserConfig: true,
   }).config.network;
-  const endpointRoutingPort = createDefaultProviderEndpointRoutingPort({
-    appVersion,
-    workingDirectory: config.fixtureDir,
-    skipUserConfig: true,
-    sourceTitle: "electron",
-  });
-  const executionConfig = createRuntimeAiSdkModelExecutionConfig(process.env, {
-    appVersion,
-    network,
-    endpointRoutingPort,
-    sourceTitle: "electron",
-  });
+  // OpenZWork 净化：官方端点路由（endpointRoutingPort）与 appVersion/sourceTitle 归因不入回归工具。
+  const executionConfig = createRuntimeAiSdkModelExecutionConfig(process.env, { network });
   const startedAt = new Date().toISOString();
   const runId = `${startedAt.replaceAll(":", "-")}-${randomUUID()}`;
   const report: RegressionReport = {

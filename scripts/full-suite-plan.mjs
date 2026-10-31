@@ -8,8 +8,13 @@ export const FULL_SUITE_GROUPS = [
   { name: "services", filter: ["packages/services"], minutes: 20 },
   { name: "provider", filter: ["packages/provider", "packages/provider-node"], minutes: 12 },
   { name: "server", filter: ["packages/server", "packages/zcode-server-cli"], minutes: 12 },
-  // src 保留源码旁的 contract.test.ts；仅过滤 test 会漏掉这些回归。
-  { name: "desktop", filter: ["packages/desktop/test", "packages/desktop/src"], minutes: 30 },
+  // src 保留源码旁的 contract.test.ts，scripts 保留 engineering 清单内的构建脚本测试
+  // （上游 v3.17.1 新增 packages/desktop/scripts/gen-ui-runtime-assets.test.ts）；仅过滤 test 会漏掉这些回归。
+  {
+    name: "desktop",
+    filter: ["packages/desktop/test", "packages/desktop/src", "packages/desktop/scripts"],
+    minutes: 30,
+  },
   { name: "ui-and-web", filter: ["packages/ui", "packages/web"], minutes: 30 },
   {
     name: "root-scripts",

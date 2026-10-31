@@ -1,7 +1,7 @@
 import { Server } from "@modelcontextprotocol/server";
 import { type NodeReplRequestMeta, type NodeReplRunResult } from "@zcode/core/repl";
-
-
+import { type NodeReplBrowserBrokerConnection } from "./browser-bridge.js";
+import { type NodeReplBrowserBrokerUpstream } from "./call-ledger/contract.js";
 import { installNodeReplProcessGuards, installNodeReplShutdownTriggers } from "./process-lifecycle.js";
 export declare const NODE_REPL_MCP_PROCESS_TITLE = "zcode-node-repl-mcp";
 export interface NodeReplExecuteInput {
@@ -9,8 +9,7 @@ export interface NodeReplExecuteInput {
     requestMeta: NodeReplRequestMeta;
     signal: AbortSignal;
     syncTimeoutMs: number;
-
-
+    browserBroker?: NodeReplBrowserBrokerConnection;
 }
 export type NodeReplExecutor = (input: NodeReplExecuteInput) => Promise<NodeReplRunResult>;
 export interface NodeReplMcpRuntime {
@@ -27,8 +26,9 @@ export declare function setNodeReplMcpProcessTitle(target?: {
 export declare function createInProcessNodeReplExecutor(): NodeReplExecutor;
 export declare function createNodeReplMcpRuntime(input?: {
     executeJs?: NodeReplExecutor;
-
-
+    /** ZCode 主进程浏览器 broker 的地址和 token；默认从环境变量读取（测试注入假 broker）。 */
+    browserBrokerUpstream?: NodeReplBrowserBrokerUpstream;
+    writeStderr?: (text: string) => void;
 }): NodeReplMcpRuntime;
 export { installNodeReplProcessGuards, installNodeReplShutdownTriggers };
 export declare function main(): Promise<void>;

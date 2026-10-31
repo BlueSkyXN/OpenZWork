@@ -97,7 +97,6 @@ export async function executeSessionCase(input: {
       env: { ...process.env, ZCODE_STORAGE_DIR: directory },
       skipUserConfig: true,
       pluginStorageRoot: join(directory, "plugins"),
-      sourceTitle: "electron",
       providerRegistry: input.registry,
       modelAdapter: input.adapter,
       modelIoFullRetentionEnabled: false,

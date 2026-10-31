@@ -4,6 +4,8 @@ import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import type { FileHandle } from "node:fs/promises";
 import { dirname } from "node:path";
 import { promisify } from "node:util";
+import { isZCodeFileLockTimeoutError } from "@zcode/shared";
+import { acquireFileLock } from "@zcode/shared/node";
 
 const execFileAsync = promisify(execFile);
 
@@ -56,34 +58,32 @@ export class DataRootLock {
 
   public async acquire(): Promise<void> {
     await mkdir(dirname(this.path), { recursive: true, mode: 0o700 });
-    if (await this.tryAcquireOnce()) return;
-    const recoveryPath = `${this.path}.recovery`;
-    for (let attempt = 0; attempt < 100; attempt++) {
-      const observed = await this.readOwner(this.path);
-      if (observed && (await isHolderAlive(observed.record))) {
+    // v3.17.1 同步复核：上游 sync 回退了 acquireFileLock 门闩实现，重套 OW-P014 修复——
+    // 首次建锁与陈旧恢复都必须受同一门闩保护，防止 open(wx) 后的空文件被误当成损坏 owner 回收；
+    // 同时保留上游新增的进程身份判活、heldOwnerTokens 与 readLoss 语义。
+    let releaseRecovery: () => Promise<void>;
+    try {
+      releaseRecovery = await acquireFileLock(`${this.path}.recovery`, [5], 100, 500);
+    } catch (error) {
+      if (isZCodeFileLockTimeoutError(error)) {
+        throw new Error("Another ZCode Server instance is already running", { cause: error });
+      }
+      throw error;
+    }
+    try {
+      if (await this.tryAcquireOnce()) return;
+      const current = await this.readOwner(this.path);
+      if (current && (await isHolderAlive(current.record))) {
         throw new Error("Another ZCode Server instance is already running");
       }
-      const recoveryToken = await this.tryAcquireRecoveryGate(recoveryPath);
-      if (!recoveryToken) {
-        await new Promise<void>((resolve) => setTimeout(resolve, 5));
-        continue;
+      if (current) {
+        await this.claimStalePath(this.path, current.raw);
       }
-      try {
-        const current = await this.readOwner(this.path);
-        if (current && (await isHolderAlive(current.record))) {
-          throw new Error("Another ZCode Server instance is already running");
-        }
-        if (current) {
-          await this.claimStalePath(this.path, current.raw);
-        }
-        if (await this.tryAcquireOnce()) return;
-      } finally {
-        await this.releaseOwnedPath(recoveryPath, recoveryToken);
-        heldOwnerTokens.delete(recoveryToken);
-      }
-      await new Promise<void>((resolve) => setTimeout(resolve, 5));
+      if (await this.tryAcquireOnce()) return;
+      throw new Error("Another ZCode Server instance is already running");
+    } finally {
+      await releaseRecovery();
     }
-    throw new Error("Another ZCode Server instance is already running");
   }
 
   /**
@@ -158,37 +158,6 @@ export class DataRootLock {
     } catch {
       return { raw, record: {} };
     }
-  }
-
-  private async tryAcquireRecoveryGate(path: string): Promise<string | null> {
-    const ownerToken = randomUUID();
-    let handle: FileHandle | undefined;
-    try {
-      const record = await createOwnerRecord(ownerToken);
-      handle = await open(path, "wx", 0o600);
-      heldOwnerTokens.add(ownerToken);
-      await handle.writeFile(`${JSON.stringify(record)}\n`);
-      await handle.close();
-      return ownerToken;
-    } catch (error: unknown) {
-      if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) {
-        await handle?.close().catch(() => undefined);
-        const observed = await this.readOwner(path);
-        if (observed?.record.ownerToken === ownerToken) {
-          await this.releaseOwnedPath(path, ownerToken);
-        }
-        heldOwnerTokens.delete(ownerToken);
-        throw error;
-      }
-    } finally {
-      await handle?.close().catch(() => undefined);
-    }
-    const observed = await this.readOwner(path);
-    if (!observed || !(await isHolderAlive(observed.record))) {
-      if (observed) await this.claimStalePath(path, observed.raw);
-      return null;
-    }
-    return null;
   }
 
   private async claimStalePath(path: string, expectedRaw: string): Promise<void> {

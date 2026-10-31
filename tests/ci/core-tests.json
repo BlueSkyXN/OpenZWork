@@ -76,7 +76,11 @@
     },
     {
       "capability": "remote-access",
-      "files": []
+      "files": [
+        "packages/server/test/liteTokenCookie.test.ts",
+        "packages/zcode-server-cli/test/statusSnapshotPersistence.test.ts",
+        "packages/zcode-server-cli/test/dataRootLockInitialization.test.ts"
+      ]
     },
     {
       "capability": "source-server-projects-and-migrations",
@@ -116,7 +120,8 @@
         "packages/services/test/paths-isolation.test.ts",
         "packages/services/test/botCredentialKey.test.ts",
         "packages/services/test/appUsageService.test.ts",
-        "packages/services/test/skills-toggle.test.ts"
+        "packages/services/test/skills-toggle.test.ts",
+        "packages/services/test/upstreamRetiredPatchHosts.test.ts"
       ]
     },
     {
@@ -169,6 +174,8 @@
         "packages/shared/test/webRemoteControlConnection.test.ts",
         "packages/shared/test/browserCrypto.test.ts",
         "packages/desktop/test/webRemoteControlDirectGateway.test.ts",
+        "packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts",
+        "packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts",
         "packages/ui/test/remoteControlSettingsSection.test.ts",
         "packages/web/test/webRemoteControlScanPage.test.ts"
       ]

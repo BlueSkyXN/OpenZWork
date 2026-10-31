@@ -1,4 +1,14 @@
-import type { NodeReplCuaAppIdentity, NodeReplImage, NodeReplRequestMeta } from "@zcode/core/repl";
+import type { NodeReplImage, NodeReplRequestMeta } from "@zcode/core/repl";
+/**
+ * 官方 CUA broker 记入账本的目标应用身份。上游该接口由 @zcode/core/repl 导出、
+ * 由 cua-broker 写入；OpenZWork 净化：官方 CUA/computer-use 域已删（WP-06 D-14 路线甲），
+ * 本地保留最小中性形状（appKey 标识），账本不再有写入方，仅为既有 facts 结构与
+ * contract 示例保留读取面。
+ */
+export interface NodeReplCuaAppIdentity {
+    appKey: string;
+    displayName?: string;
+}
 /** 一次 js 调用里由 broker 记下的可信事实。 */
 export interface NodeReplCallFacts {
     /** CUA broker 从 runtime 结果读到的目标应用身份，按出现顺序。 */

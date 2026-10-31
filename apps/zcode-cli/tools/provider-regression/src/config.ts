@@ -117,7 +117,7 @@ export async function loadConfiguration(providersFile: string, listFile: string)
       config.modelConfigRules === undefined
         ? ModelConfigRules.empty()
         : parsePersonalModelConfigRules(config.modelConfigRules),
-    accountProviders: ProviderConfigMap.empty(),
+    // OpenZWork 净化：accountProviders（官方账号 Provider 面）不入解析输入。
   });
   if (resolution.issues.length)
     throw new Error(

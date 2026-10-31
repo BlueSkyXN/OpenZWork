@@ -237,10 +237,35 @@ test("实际选中测试失败返回 1，无关测试不执行", async (t) => {
   assert.ok(!result.stdout.includes("UNSELECTED_TEST_EXECUTED"));
 });
 
+// v3.17.1 同步复核：上游把 affected-unit-tests 改名为 engineering-tests，本条按 OW-P004
+// 原触发场景（Windows 显式路径原生分隔符漏选测试）迁移到改名后的入口。
+test("OW-P004：显式相对与绝对路径都执行相关测试", async (t) => {
+  const { root, write, invoke } = await fixture(t);
+  await write("source.mjs", "export const value = 2;");
+  for (const file of ["source.mjs", join(root, "source.mjs")]) {
+    await rm(join(root, "selected"), { force: true });
+    const result = await invoke(["--files", file]);
+    assert.equal(result.code, 0, result.stdout + result.stderr);
+    // OW-P004：Windows 曾成功退出但选中零文件；同时验证选择范围和实际执行结果。
+    const preview = await invoke(["--files", file, "--dry-run", "--json"]);
+    assert.equal(preview.code, 0, preview.stderr);
+    assert.deepEqual(paths(preview), ["a.test.mjs"]);
+    assert.equal(await readFile(join(root, "selected"), "utf8"), "yes");
+  }
+});
+
 test("pre-push retains the engineering runner and the E2E provider seed regression", async () => {
   const root = resolve(fileURLToPath(new URL("../..", import.meta.url)));
   const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
-  assert.match(pkg.scripts["verify:pre-push"], /test:engineering:affected --scope push/);
+  // v3.17.1 同步复核：OpenZWork 有意不把工程增量门禁并入 verify:pre-push（见
+  // docs/testing/pre-push-hook.md，固定核心套件 test:ci:core 代替上游的
+  // test:engineering:affected --scope push）；这里守护工程入口脚本与种子回归仍在，
+  // 保证按需独立执行时链路完整。
+  assert.equal(typeof pkg.scripts["test:engineering:affected"], "string");
+  assert.equal(
+    pkg.scripts["test:engineering:affected"],
+    "node scripts/run-affected-engineering-tests.mjs",
+  );
   const files = JSON.parse(
     await readFile(join(root, "scripts/engineering-test-files.json"), "utf8"),
   );
