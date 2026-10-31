@@ -1,6 +1,12 @@
 {
   "$schema": "./node_modules/oxfmt/configuration_schema.json",
   "ignorePatterns": [
+    "docs/testing/conversation-session-decision-review-queue.md",
+    "docs/testing/conversation-session-next-decision-review.md",
+    "docs/testing/conversation-session-next-decision-answer-template.md",
+    "docs/testing/conversation-session-decision-answers-status.md",
+    "docs/testing/conversation-session-decision-backfill-plan.md",
+    "docs/testing/conversation-session-decision-workflow-board.md",
     ".gitlab/**/*.yml",
     "apps/zcode-cli/tests/gb2312.js",
     "docs/electron/docs/fiddles/**/*.html",
