@@ -30,6 +30,15 @@
 
 ## 验证与交付
 
+### 安装包 native 资源检查
+
+- `electron-builder.config.js` 的 `afterPack` 继续负责最终产物检查，复用 `desktop-native-package-policy.mjs` 的解析与违规判定；构建入口必须显式导入所调用的检查函数。
+- Windows x64、macOS arm64、Linux x64 的真实 `afterPack` 入口均须接受仅含目标平台、已 unpack 的 native 文件，拒绝其他平台资源以及仍留在 asar payload 中的 native 文件。
+- 工程回归使用临时 asar 与占位 native 文件执行实际 hook，不加载 native 二进制；仅替换与该边界无关的运行时依赖闭包收集，保留 asar 读写、资源检查和 Windows 安装清单生成。
+- 该回归进入 engineering 清单和固定核心套件。完整安装包验证仍由三平台 Installers 执行，同一提交的静态检查或工具函数测试不能代替打包结果。
+
+### 整合门禁
+
 - 必须执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、`pnpm db:schema:check`；新 scripts 门禁（stale-phrases、e2e-remote-targets）如被 pre-push 引用则一并跑通。
 - 净化残留扫描：全仓闲时任务/codingPlan/ARMS/highspeed/official-gateway 引用为零（豁免清单除外）；`stage1` 升级检查同步更新。
 - 上游来源缺陷按 [下游补丁清单](downstream-patch-registry.md) 对 v3.17.1 逐项复核未撤销条目。

@@ -68,6 +68,7 @@
   "packages/desktop/test/e2eWindowTargetBinding.test.ts",
   "packages/desktop/test/e2eWorkerEnvironmentResolution.test.ts",
   "packages/desktop/test/e2eWorkerIsolation.test.ts",
+  "packages/desktop/test/electronBuilderAfterPack.test.ts",
   "packages/desktop/test/electronBuilderLanguages.test.ts",
   "packages/desktop/test/ensureElectronRuntime.test.ts",
   "packages/desktop/test/genUiPresentationClipboard.test.ts",
