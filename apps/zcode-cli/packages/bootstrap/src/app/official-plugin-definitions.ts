@@ -148,25 +148,6 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
   // OpenZWork：node-repl-host seed 注册沿用上方我方条目（版本 0.6.1，随 node-repl-host 净化线维护），
   // 上游 0.7.0 的 Computer Use 域描述与 browser-use 重复条目不吸收。
   {
-    listing: {
-      author: ZAI_AUTHOR,
-      category: "developer-tools",
-      displayName: "Android Emulator",
-      displayName_i18n: { "zh-CN": "Android 模拟器" },
-      description_i18n: {
-        "zh-CN": "提供 Android 开发工作流与模拟器自动化能力。",
-      },
-    },
-    name: "android-emulator",
-    rootCandidates: [
-      "packages/android-emulator-plugin",
-      "../android-emulator-plugin",
-      "../../android-emulator-plugin",
-      "../../../android-emulator-plugin",
-    ],
-    version: "0.1.0",
-  },
-  {
     // manifest 只声明 browser-use skill；宿主 node_repl MCP 独立注入，package 另外携带其 server/client
     // runtime 资产。默认启用仅控制「何时/如何用内置浏览器」的 skill 与 browser bridge。
     defaultEnabled: true,
@@ -203,8 +184,10 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     ] as const
   ).map(
     ([name, skill, displayName, chineseName, version]): OfficialPluginDefinition => ({
-      // OpenZWork 净化：不注册官方 CDN 图标与 ui 面板（office-runtime dist 未随净化合入）。
-      defaultEnabled: true,
+      componentTypes: ["ui"],
+      // OpenZWork：componentTypes=["ui"] 保留（与 plugin.json 的 ui.surfaces 声明一致，
+      // 设置页据此归入 UI 插件）；office-runtime 面板资产由 workspace build 产出。
+      // 不默认启用——首启即拉起面板依赖的 runtime 资产，保守交给用户手动开启。
       listing: {
         author: ZAI_AUTHOR,
         category: "productivity",
@@ -230,8 +213,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     }),
   ),
   {
-    // OpenZWork：image-search 与我方 HEAD 一致保留 seed 注册（运行时对官方鉴权 fail-fast 拒绝）。
-    defaultEnabled: true,
+    // OpenZWork：image-search 保留 seed 注册（运行时对官方鉴权 fail-fast 拒绝）；不默认启用。
     listing: {
       author: ZAI_AUTHOR,
       category: "productivity",
@@ -248,44 +230,6 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       "../../../image-search-plugin",
     ],
     version: "0.1.1",
-  },
-  {
-    listing: {
-      author: ZAI_AUTHOR,
-      category: "developer-tools",
-      displayName: "iOS Simulator",
-      displayName_i18n: { "zh-CN": "iOS 模拟器" },
-      description_i18n: {
-        "zh-CN": "提供 iOS 开发工作流与模拟器自动化能力。",
-      },
-    },
-    name: "ios-simulator",
-    rootCandidates: [
-      "packages/ios-simulator-plugin",
-      "../ios-simulator-plugin",
-      "../../ios-simulator-plugin",
-      "../../../ios-simulator-plugin",
-    ],
-    version: "0.1.0",
-  },
-  {
-    listing: {
-      author: ZAI_AUTHOR,
-      category: "utilities",
-      displayName: "Restore Legacy Sessions",
-      displayName_i18n: { "zh-CN": "恢复旧版会话" },
-      description_i18n: {
-        "zh-CN": "将旧版会话恢复为 ZCode 任务与会话记录。",
-      },
-    },
-    name: "restore-legacy-sessions",
-    rootCandidates: [
-      "packages/restore-legacy-sessions-plugin",
-      "../restore-legacy-sessions-plugin",
-      "../../restore-legacy-sessions-plugin",
-      "../../../restore-legacy-sessions-plugin",
-    ],
-    version: "0.1.0",
   },
   {
 
