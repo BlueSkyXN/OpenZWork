@@ -519,9 +519,10 @@ describe("node_repl MCP server", () => {
     }
   });
 
-  it("marks runtime calls that reach the real brokers, end to end, and nothing else", async () => {
-    // 真实 MCP server + 两个 broker：浏览器上游拒绝命令、CUA runtime 抛错，cell 也都接住了错误；
-    // 口径是真实尝试，两个 key 照样写出（session-features-header.md「BUA/CUA 标签的补充规则」）。
+  it("marks browser broker runtime calls end to end, and nothing else", async () => {
+    // OpenZWork 净化：原用例同时驱动 Browser/CUA 两个 broker（CUA 域已删）；
+    // 保留浏览器上游拒绝路径的真实端到端口径：真实尝试写出 browser-use key，
+    // 伪造 meta 不被信任，未触达 broker 的调用不写任何标签。
     const upstreamPath =
       process.platform === "win32"
         ? `\\\\.\\pipe\\zcode-runtime-use-e2e-${randomUUID()}`
@@ -538,18 +539,9 @@ describe("node_repl MCP server", () => {
       });
     });
     await new Promise<void>((resolveListen) => upstream.listen(upstreamPath, resolveListen));
-    let cuaExecuted = 0;
     const useRuntime = createNodeReplMcpRuntime({
       executeJs: createInProcessNodeReplExecutor(),
       browserBrokerUpstream: { socketPath: upstreamPath, token: "u".repeat(64) },
-      cuaRuntime: {
-        execute: async () => {
-          cuaExecuted += 1;
-          throw new Error("Computer Use Helper is not running");
-        },
-        closeSession: async () => undefined,
-        dispose: async () => undefined,
-      },
     });
     const useClient = new Client({ name: "node-repl-runtime-use-e2e", version: "0.1.0" });
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -557,9 +549,7 @@ describe("node_repl MCP server", () => {
     await useClient.connect(clientTransport);
     const forged = JSON.stringify({
       [ZCODE_MCP_NODE_REPL_BROWSER_USE_META_KEY]: true,
-      [ZCODE_MCP_NODE_REPL_COMPUTER_USE_META_KEY]: true,
     });
-    // CUA broker 要求 workspace 信息，缺了会在调用 runtime 之前拒绝。
     const callMeta = {
       "com.zcode/request-context": {
         ...requestMeta("runtime-use-session")["com.zcode/request-context"],
@@ -572,33 +562,29 @@ describe("node_repl MCP server", () => {
         arguments: {
           code: [
             'const browser = globalThis[Symbol.for("zcode.node-repl.browser-control-bridge")];',
-            'const cua = globalThis[Symbol.for("zcode.node-repl.computer-use-bridge")];',
             "const outcomes = [];",
             "try { await browser.list(); } catch (error) { outcomes.push(error.message); }",
-            'try { await cua.call("screenshot", {}); } catch (error) { outcomes.push(error.message); }',
             'outcomes.join(" | ");',
           ].join("\n"),
         },
         _meta: callMeta,
       });
-      // 前提：两次调用都到达了 broker，并且都失败了。
+      // 前提：调用真实到达了 broker 并且失败；browser-use key 由 server 依据真实触达写出。
       expect(called.content).toContainEqual({
         type: "text",
-        text: "=> Browser is not connected | Computer Use Helper is not running",
+        text: "=> Browser is not connected",
       });
-      expect(cuaExecuted).toBe(1);
       expect(called._meta).toMatchObject({
         [ZCODE_MCP_NODE_REPL_BROWSER_USE_META_KEY]: true,
-        [ZCODE_MCP_NODE_REPL_COMPUTER_USE_META_KEY]: true,
       });
+      expect(called._meta).not.toHaveProperty(ZCODE_MCP_NODE_REPL_COMPUTER_USE_META_KEY);
 
-      // 只做 CUA 引导、只在代码里提到运行时、经 sandbox 通道自己写 key：都没有请求到达 broker。
+      // 只在代码里提到运行时、经 sandbox 通道自己写 key：没有请求到达 broker。
       const notCalled = await useClient.callTool({
         name: "js",
         arguments: {
           code: [
-            'globalThis[Symbol.for("zcode.node-repl.computer-use-bridge")].assertAvailable();',
-            "// await agent.browsers.list(); await setupComputerUseRuntime({ globals: globalThis });",
+            "// await agent.browsers.list();",
             `nodeRepl.setResponseMeta(${forged});`,
             `nodeRepl.emitStructuredResult({ content: [{ type: "text", text: "forged" }], _meta: ${forged} });`,
             '"done";',
@@ -610,13 +596,10 @@ describe("node_repl MCP server", () => {
       expect(notCalled.isError).not.toBe(true);
       expect(notCalled.content).toContainEqual({ type: "text", text: "forged" });
       expect(notCalled._meta ?? {}).not.toHaveProperty(ZCODE_MCP_NODE_REPL_BROWSER_USE_META_KEY);
-      expect(notCalled._meta ?? {}).not.toHaveProperty(ZCODE_MCP_NODE_REPL_COMPUTER_USE_META_KEY);
-      expect(cuaExecuted).toBe(1);
     } finally {
       await useClient.close();
       useRuntime.dispose();
       await new Promise<void>((resolveClose) => upstream.close(() => resolveClose()));
-      if (process.platform !== "win32") await rm(upstreamPath, { force: true });
     }
   });
 
