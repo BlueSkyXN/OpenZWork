@@ -308,7 +308,7 @@ test("sparse workflow tools merge reports without application files or node_modu
 test("workflow expands to nine isolated runners and preserves the platform release reports", () => {
   const tests = workflow.jobs["historical-tests"];
   const os = {
-    "macos-arm64": "macos-14",
+    "macos-arm64": "macos-15",
     "windows-amd64": "windows-latest",
     "linux-amd64": "ubuntu-latest",
   };

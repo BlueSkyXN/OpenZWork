@@ -6500,7 +6500,8 @@ const zhCN: Record<string, string> = {
   "chat.error.copyFailed": "复制报错信息失败：{error}",
   "chat.error.expandDetails": "展开详情",
   "chat.error.collapseDetails": "收起详情",
-  "chat.error.noAvailableModel": "当前没有可用模型。请开通编程套餐或配置自定义模型。",
+  // 空模型状态只引导当前可用的自定义模型入口。
+  "chat.error.noAvailableModel": "当前没有可用模型，请配置自定义模型。",
   "chat.error.remoteNoAvailableModel":
     "此远程设备尚无可用模型，请先在本机配置模型，保存后会自动同步到远程设备",
   "chat.error.sendFailed": "发送失败，请稍后重试。",

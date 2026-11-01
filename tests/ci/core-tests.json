@@ -71,6 +71,7 @@
       "capability": "build-and-settings",
       "files": [
         "packages/desktop/test/desktopTsupConfig.test.ts",
+        "packages/desktop/test/electronBuilderAfterPack.test.ts",
         "packages/desktop/test/run-production-build.test.ts"
       ]
     },

@@ -159,7 +159,7 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
     assert.deepEqual(
       job.strategy.matrix.include.map(({ os, platform }) => ({ os, platform })),
       [
-        { os: "macos-14", platform: "macos-arm64" },
+        { os: "macos-15", platform: "macos-arm64" },
         { os: "windows-latest", platform: "windows-amd64" },
         { os: "ubuntu-latest", platform: "linux-amd64" },
       ],

@@ -5,6 +5,7 @@
 - 上游固定为 `a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`（镜像仓 `Program/ZCode` main，官方 tag v3.17.1，Source-Commit `73158b64`）；从 OpenZWork `3a6f31bd`（PR#57 后的 main）继续，以 merge commit 保留上游历史。合并基 `3c5b2276`（v3.16.2 sync 提交）。
 - 延续 [3.16.2 的产品边界](upstream-v3.16.2-integration.md)：标准 MCP、ToolSearch、node_repl、Browser Use、动态工作流、GenUI/MCP Apps、本地/远程工作区和第三方模型配置继续保留；用户级目录 `.openzwork`、项目 `.zcode`、无账号 HMAC 配对、owner/lease 与 stale run 防护不变。
 - 官方账号、套餐（codingPlan/startPlan/闲时任务/Highspeed）、云端分享与反馈、遥测（ARMS/OTel）、自动更新、原生 CUA、官方网关路由与签名层、`zcode_official` 鉴权依赖官方 JWT 的内置插件（zcode-site/image-search 等 `auth.type=zcode_official`）保持移除；上游对已退役文件的修改逐项审查，不恢复整文件。
+- 无可用模型时，中英文提示只引导配置自定义模型；默认任务推荐不展示或填入已移除的闲时任务。既有定时任务、仓库检查和 Browser Use 推荐继续保留。
 
 ## 上游变更规模与结构
 
@@ -30,6 +31,17 @@
 
 ## 验证与交付
 
+### 安装包 native 资源检查
+
+- `electron-builder.config.js` 的 `afterPack` 继续负责最终产物检查，复用 `desktop-native-package-policy.mjs` 的解析与违规判定；构建入口必须显式导入所调用的检查函数。
+- Windows x64、macOS arm64、Linux x64 的真实 `afterPack` 入口均须接受仅含目标平台、已 unpack 的 native 文件，拒绝其他平台资源以及仍留在 asar payload 中的 native 文件。
+- 工程回归使用临时 asar 与占位 native 文件执行实际 hook，不加载 native 二进制；仅替换与该边界无关的运行时依赖闭包收集，保留 asar 读写、资源检查和 Windows 安装清单生成。
+- 该回归进入 engineering 清单和固定核心套件。完整安装包验证仍由三平台 Installers 执行，同一提交的静态检查或工具函数测试不能代替打包结果。
+
+### 整合门禁
+
+- 默认启动 smoke 验证隔离数据根下的 `.openzwork/workspace/default` 已创建，并显示 v4 会话面板和输入框。项目模式夹具的 `ZCodeProject` 保留原用途，不作为默认会话启动的前置条件。
+- CI、Extended 和 Installers 的 macOS arm64 作业固定使用 `macos-15`。`macos-14` 在 2026-10-31 的计划停机演练中已拒绝分配 runner，并于 2026-11-02 退役；迁移保留 arm64 架构与既有矩阵。来源：[GitHub runner 退役公告](https://github.com/actions/runner-images/issues/13518)。
 - 必须执行 `pnpm typecheck`、`pnpm lint`、`pnpm architecture:check --changed`、`pnpm db:schema:check`；新 scripts 门禁（stale-phrases、e2e-remote-targets）如被 pre-push 引用则一并跑通。
 - 净化残留扫描：全仓闲时任务/codingPlan/ARMS/highspeed/official-gateway 引用为零（豁免清单除外）；`stage1` 升级检查同步更新。
 - 上游来源缺陷按 [下游补丁清单](downstream-patch-registry.md) 对 v3.17.1 逐项复核未撤销条目。

@@ -990,6 +990,24 @@ test("[behavior] WP-09: real protocol schemas reject retired off-peak inputs", a
   );
 });
 
+test("[structural, not runtime] WP-09: empty-model guidance and starter prompts use retained capabilities", () => {
+  // 上游推荐目录与通用错误 key 没有退役域标记，旧扫描遗漏了实际可见的套餐和任务引导。
+  const prompts = fs.readFileSync(
+    path.join(root, "packages/ui/src/v4/featureSuggestedPrompts.ts"),
+    "utf8",
+  );
+  assert.doesNotMatch(prompts, /闲时任务|idle[- ]time task|off[- ]peak/i);
+  for (const locale of ["zh-CN", "en-US"]) {
+    const source = fs.readFileSync(
+      path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`),
+      "utf8",
+    );
+    const guidance = source.match(/"chat\.error\.noAvailableModel":\s*"([^"]+)"/);
+    assert.ok(guidance, `${locale}: missing empty-model guidance`);
+    assert.doesNotMatch(guidance[1], /套餐|upgrade|coding[- ]plan/i);
+  }
+});
+
 test("[structural, not runtime] WP-09: off-peak domain fully removed from source and locales", () => {
   const bannedPattern = /off[-_]peak|offpeak/i;
   const allowFiles = new Set([

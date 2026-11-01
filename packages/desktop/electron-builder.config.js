@@ -63,6 +63,8 @@ function resolveElectronBuilderWindowsTarget({
   return actualTarget;
 }
 import {
+  // 3.17.1 整合遗漏此导入会让三平台 afterPack 抛出 ReferenceError；保留最终包的 native 边界检查。
+  findDesktopNativePackageViolations,
   createDesktopNativePackagePrunePatterns,
   parseAsarListWithPackState,
 } from "./scripts/desktop-native-package-policy.mjs";

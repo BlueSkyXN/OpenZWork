@@ -55,7 +55,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-14
+          # macos-14 退役演练会在步骤执行前取消作业；macos-15 延续 arm64 runner。
+          - os: macos-15
             platform: macos-arm64
             bundle-os: mac
             bundle-arch: arm64
