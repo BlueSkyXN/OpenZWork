@@ -16,6 +16,8 @@
 4. 原版账号、套餐及 Highspeed 服务 endpoint 不进入规则库。厂商模板、模型成员和鉴权信息不随能力规则导入。
 5. Personal 精确覆盖以 `providerId + modelId` 隔离；同一 endpoint 下不同 Key 或路由用不同 Provider 实例配置。客户端不猜测网关隐藏的后端路由。
 
+清理门禁按上述边界检查：三个协议模板和空模型目录继续固定，能力规则可随 revision 更新。测试目录中的公开渠道地址仅按文件与完整字面量登记；导入器过滤已移除服务的条件按完整代码行登记。其余文件、新增路径和连接配置仍接受原扫描，不能豁免整个导入脚本或测试目录。
+
 ```mermaid
 flowchart LR
   A[模型 ID 与目标 Host 的连接配置] --> B[ModelConfigRules]

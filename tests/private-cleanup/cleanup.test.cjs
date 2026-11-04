@@ -731,6 +731,16 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
     ],
     // 官方二维码合同新增了 origin 断言；仅登记这一完整字面量，保留其余地址扫描。
     ["packages/shared/src/web-remote-relay/contract.test.ts", ['"https://zcode.z.ai"']],
+    // 能力回归样本保留上游公开渠道身份；仅允许这四个完整地址，不恢复产品连接模板。
+    [
+      "packages/provider-node/test/fixtures/model-capability-cases.json",
+      [
+        '"https://api.z.ai/api/anthropic"',
+        '"https://api.z.ai/api/paas/v4"',
+        '"https://open.bigmodel.cn/api/anthropic"',
+        '"https://open.bigmodel.cn/api/paas/v4"',
+      ],
+    ],
     [
       "docs/web-remote-control/v1-connection-modes.md",
       ["`wss://zcode.z.ai/ws`", "`https://zcode.z.ai/remote/v4`"],
@@ -785,6 +795,15 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
     removeAllowedV1Literals("unrelated.test.ts", '"https://zcode.z.ai"'),
     officialDomainRe,
   );
+  const capabilityCases = "packages/provider-node/test/fixtures/model-capability-cases.json";
+  for (const literal of allowedV1Literals.get(capabilityCases)) {
+    assert.doesNotMatch(removeAllowedV1Literals(capabilityCases, literal), officialDomainRe);
+    assert.match(removeAllowedV1Literals("unrelated.json", literal), officialDomainRe);
+  }
+  assert.match(
+    removeAllowedV1Literals(capabilityCases, '"https://api.z.ai/api/anthropic/other"'),
+    officialDomainRe,
+  );
   for (const locale of ["en-US", "zh-CN"]) {
     const file = `packages/ui/src/i18n/locales/${locale}.ts`;
     const [help] = allowedV1Literals.get(file);
@@ -821,11 +840,16 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
   );
 });
 
-test("[structural, not runtime] WP-08: builtin release keeps only three standard protocol templates", () => {
+test("[structural, not runtime] WP-08: builtin release keeps three neutral templates with independent capabilities", () => {
   const cfg = JSON.parse(
     fs.readFileSync(path.join(root, "config/provider/zcode-builtin.json"), "utf8"),
   );
-  assert.equal(cfg.revision, 35);
+  // 能力修复升级了 revision；清理边界约束入口与成员，不能把规则库锁回通用开关。
+  assert(Number.isSafeInteger(cfg.revision) && cfg.revision >= 45);
+  assert.deepEqual(
+    cfg,
+    JSON.parse(fs.readFileSync(path.join(root, "config/provider/zcode-builtin.test.json"), "utf8")),
+  );
   const pcr = cfg.config.providerConfigRules;
   assert.deepEqual(
     pcr.templateRules.map((t) => t.templateId),
@@ -845,17 +869,33 @@ test("[structural, not runtime] WP-08: builtin release keeps only three standard
   const mcr = cfg.config.modelConfigRules;
   assert.deepEqual(mcr.builtinProviderModelRules, []);
   assert.deepEqual(mcr.templateModelRules, []);
-  assert.deepEqual(mcr.providerSiteRules, []);
-  assert.equal(mcr.modelRules.length, 1);
+  assert(mcr.providerSiteRules.length > 0);
+  assert(mcr.modelRules.length > 1);
   assert.equal(mcr.modelRules[0].modelMatch, ".*");
   assert.deepEqual(
-    mcr.modelApiRules.map((rule) => [rule.modelMatch, rule.apiTypeMatch]),
+    mcr.modelApiRules
+      .filter((rule) => rule.modelMatch === ".*")
+      .map((rule) => [rule.modelMatch, rule.apiTypeMatch]),
     [
       [".*", "anthropic-messages"],
       [".*", "openai-chat-completions"],
       [".*", "openai-responses"],
     ],
   );
+  for (const [group, rules] of Object.entries(mcr)) {
+    for (const rule of rules) {
+      const allowedKeys =
+        group === "modelRules"
+          ? ["enabled", "properties", "optionSpecs"]
+          : ["properties", "optionSpecs"];
+      for (const key of Object.keys(rule.config)) {
+        assert(allowedKeys.includes(key), group + " must contain capabilities only: " + key);
+      }
+    }
+  }
+  for (const rule of mcr.providerSiteRules) {
+    assert.doesNotMatch(rule.baseUrlMatch.replaceAll("\\", ""), /zcode|off[-_]peak|\/highspeed\//i);
+  }
 });
 
 test("[behavior, not runtime] WP-08: endpoint resolver returns undefined without configuration and never invents official origins", async () => {
@@ -1015,6 +1055,18 @@ test("[structural, not runtime] WP-09: off-peak domain fully removed from source
     "packages/services/src/session/tasksDatabase/schema-v1.ts",
     "packages/services/src/session/tasksDatabase/migrations.ts",
   ]);
+  // 导入器需要拒绝旧服务；仅放行完整过滤行，同文件其他残留继续报错。
+  const capabilityImporter = "scripts/model-capability-rules.mjs";
+  const retiredEndpointGuard =
+    "return /zcode|\\/zcode-plan\\/|\\/off-peak\\/|\\/highspeed\\//i.test(pattern);";
+  const removeAllowedGuard = (file, text) =>
+    file === capabilityImporter ? text.replaceAll(retiredEndpointGuard, "") : text;
+  assert.doesNotMatch(removeAllowedGuard(capabilityImporter, retiredEndpointGuard), bannedPattern);
+  assert.match(removeAllowedGuard("unrelated.mjs", retiredEndpointGuard), bannedPattern);
+  assert.match(
+    removeAllowedGuard(capabilityImporter, retiredEndpointGuard + '\nconst path = "/off-peak/";'),
+    bannedPattern,
+  );
   // 2026-09-27 起与 WP-03 同口径：按 git 追踪清单做全仓文本扫描（原先的目录枚举漏掉
   // packages/server、scripts、tests 之外的文档与脚本）。本测试文件自身的注释含
   // off-peak/off_peak 字样（规则说明与豁免理由），必须自排除。
@@ -1035,7 +1087,7 @@ test("[structural, not runtime] WP-09: off-peak domain fully removed from source
       continue;
     const file = path.join(root, rel);
     if (!fs.existsSync(file)) continue;
-    const match = fs.readFileSync(file, "utf8").match(bannedPattern);
+    const match = removeAllowedGuard(rel, fs.readFileSync(file, "utf8")).match(bannedPattern);
     if (match) violations.push(`${rel}: ${match[0]}`);
   }
   assert.deepEqual(violations, [], `off-peak residue found:\n${violations.join("\n")}`);
