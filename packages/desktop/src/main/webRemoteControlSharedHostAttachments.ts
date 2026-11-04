@@ -212,8 +212,23 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
     });
   }
 
+  function sendTerminalOwnerMessage(
+    windowId: number,
+    type:
+      | (typeof HostMessageTypes)["AddTerminalOwner"]
+      | (typeof HostMessageTypes)["RemoveTerminalOwner"],
+    ownerId: string,
+  ): void {
+    const webContentsId = BrowserWindow.fromId(windowId)?.webContents.id ?? windowId;
+    dependencies.windowHostProcessMap.get(webContentsId)?.postMessage({ type, ownerId });
+  }
+
   return {
     setTerminalOwner,
+    addTerminalOwner: (windowId: number, ownerId: string) =>
+      sendTerminalOwnerMessage(windowId, HostMessageTypes.AddTerminalOwner, ownerId),
+    removeTerminalOwner: (windowId: number, ownerId: string) =>
+      sendTerminalOwnerMessage(windowId, HostMessageTypes.RemoveTerminalOwner, ownerId),
     attachWorkspaceHost,
     releaseAttachment,
     disposeWindow,

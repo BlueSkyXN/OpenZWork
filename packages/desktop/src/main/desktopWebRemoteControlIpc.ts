@@ -13,6 +13,12 @@ export interface WebRemoteControlIpcManager {
   getConnectionSettings?():
     | Promise<import("@zcode/shared").WebRemoteControlConnectionSettings>
     | undefined;
+  getConnectionProfiles?(): Promise<
+    Array<import("@zcode/shared").WebRemoteControlConnectionSettings>
+  >;
+  saveConnectionProfiles?(
+    profiles: Array<import("@zcode/shared").WebRemoteControlConnectionSettings>,
+  ): Promise<Array<import("@zcode/shared").WebRemoteControlConnectionSettings>>;
   authorizeStart: (
     windowId: number,
     context: WebRemoteControlContext,
@@ -27,7 +33,7 @@ export interface WebRemoteControlIpcManager {
     context: WebRemoteControlContext,
     authorization: WebRemoteControlStartAuthorization,
   ) => Promise<WebRemoteControlStartResult>;
-  stop(windowId: number): Promise<void>;
+  stop(windowId: number, profileId?: string): Promise<void>;
   getStatus(windowId: number): WebRemoteControlStatus;
 }
 
@@ -55,6 +61,15 @@ export function registerWebRemoteControlIpcHandlers(
     async () =>
       (await dependencies.webRemoteControlManager.getConnectionSettings?.()) ??
       structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+  );
+  ipcMain.handle(
+    PlatformChannels.GetWebRemoteControlConnections,
+    async () => (await dependencies.webRemoteControlManager.getConnectionProfiles?.()) ?? [],
+  );
+  ipcMain.handle(
+    PlatformChannels.SaveWebRemoteControlConnections,
+    async (_event, profiles: Array<import("@zcode/shared").WebRemoteControlConnectionSettings>) =>
+      (await dependencies.webRemoteControlManager.saveConnectionProfiles?.(profiles)) ?? profiles,
   );
   ipcMain.handle(
     PlatformChannels.StartWebRemoteControl,
@@ -86,12 +101,15 @@ export function registerWebRemoteControlIpcHandlers(
       }),
   );
 
-  ipcMain.handle(PlatformChannels.StopWebRemoteControl, async (event) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (win) {
-      await dependencies.webRemoteControlManager.stop(win.id);
-    }
-  });
+  ipcMain.handle(
+    PlatformChannels.StopWebRemoteControl,
+    async (event, request?: { profileId?: string }) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win) {
+        await dependencies.webRemoteControlManager.stop(win.id, request?.profileId);
+      }
+    },
+  );
 
   ipcMain.handle(PlatformChannels.GetWebRemoteControlStatus, (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);

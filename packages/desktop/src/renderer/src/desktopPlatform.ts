@@ -53,9 +53,12 @@ export function createDesktopPlatform(options: {
     startWebRemoteControl: (context) => window.zcode.startWebRemoteControl(context),
     refreshWebRemoteControlPairing: (context) =>
       window.zcode.refreshWebRemoteControlPairing(context),
-    stopWebRemoteControl: () => window.zcode.stopWebRemoteControl(),
+    stopWebRemoteControl: (profileId?: string) => window.zcode.stopWebRemoteControl(profileId),
     getWebRemoteControlConnectionSettings: () =>
       window.zcode.getWebRemoteControlConnectionSettings!(),
+    getWebRemoteControlConnections: () => window.zcode.getWebRemoteControlConnections!(),
+    saveWebRemoteControlConnections: (profiles) =>
+      window.zcode.saveWebRemoteControlConnections!(profiles),
     getWebRemoteControlStatus: () => window.zcode.getWebRemoteControlStatus(),
     onWebRemoteControlStatusChanged: (handler) =>
       window.zcode.onWebRemoteControlStatusChanged?.(handler) ?? (() => {}),

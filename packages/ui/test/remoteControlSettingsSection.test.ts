@@ -78,6 +78,8 @@ const platformMock = vi.hoisted(() => ({
   startWebRemoteControl: vi.fn(async () => ({ status: "running" })),
   stopWebRemoteControl: vi.fn(async () => {}),
   refreshWebRemoteControlPairing: vi.fn(async () => ({ status: "running" })),
+  getWebRemoteControlConnections: vi.fn(async () => []),
+  saveWebRemoteControlConnections: vi.fn(async (profiles: unknown[]) => profiles),
 }));
 
 vi.mock("@/hooks/usePlatform.js", () => ({
@@ -118,6 +120,8 @@ describe("RemoteControlSettingsSection layout", () => {
     platformMock.startWebRemoteControl.mockClear();
     platformMock.stopWebRemoteControl.mockClear();
     platformMock.refreshWebRemoteControlPairing.mockClear();
+    platformMock.getWebRemoteControlConnections.mockClear();
+    platformMock.saveWebRemoteControlConnections.mockClear();
     feedbackMocks.confirm.mockClear();
     feedbackMocks.error.mockClear();
     feedbackMocks.info.mockClear();
@@ -236,6 +240,50 @@ describe("RemoteControlSettingsSection layout", () => {
     await waitFor(() =>
       expect(platformMock.startWebRemoteControl).toHaveBeenCalledWith(
         expect.objectContaining({ connection: expect.objectContaining({ mode: "official" }) }),
+      ),
+    );
+  });
+
+  it("档案列表支持新增入口，切换查看后只提交当前档案", async () => {
+    const lan = {
+      mode: "direct" as const,
+      profileId: "lan",
+      direct: { listenHost: "0.0.0.0", port: 0, publicUrl: "" },
+      relay: { wsUrl: "", pageUrl: "" },
+    };
+    const relay = {
+      mode: "self-hosted" as const,
+      profileId: "relay-b",
+      direct: { listenHost: "0.0.0.0", port: 0, publicUrl: "" },
+      relay: { wsUrl: "wss://relay.example/ws", pageUrl: "https://relay.example/remote/" },
+    };
+    platformMock.getWebRemoteControlConnections.mockResolvedValueOnce([lan, relay]);
+    platformMock.saveWebRemoteControlConnections.mockImplementationOnce(
+      async (profiles: unknown[]) => [...profiles, { ...relay, profileId: "tunnel", name: "" }],
+    );
+    const view = render(
+      createElement(RemoteControlSettingsSection, {
+        workspacePath: "/tmp/project",
+      }),
+    );
+
+    await waitFor(() => expect(view.getByTestId("web-remote-profile-lan")).toBeTruthy());
+    fireEvent.click(view.getByTestId("web-remote-profile-relay-b"));
+    fireEvent.click(view.getByTestId("web-remote-mode-official"));
+    expect(view.getByTestId("web-remote-profile-lan").getAttribute("aria-pressed")).toBe("false");
+
+    fireEvent.click(view.getByTestId("web-remote-add-profile"));
+    await waitFor(() => expect(view.getByTestId("web-remote-profile-tunnel")).toBeTruthy());
+    expect(platformMock.saveWebRemoteControlConnections).toHaveBeenCalledTimes(1);
+    expect(platformMock.saveWebRemoteControlConnections.mock.calls[0]![0]).toHaveLength(3);
+
+    fireEvent.click(view.getByTestId("web-remote-profile-relay-b"));
+    fireEvent.click(view.getByTestId("web-remote-start"));
+    await waitFor(() =>
+      expect(platformMock.startWebRemoteControl).toHaveBeenCalledWith(
+        expect.objectContaining({
+          connection: expect.objectContaining({ profileId: "relay-b", mode: "official" }),
+        }),
       ),
     );
   });

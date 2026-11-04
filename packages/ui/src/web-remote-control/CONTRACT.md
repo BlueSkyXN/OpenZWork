@@ -1,6 +1,6 @@
 # Web Remote Control UI
 
-设置 → 远程控制以手机连接与 Bot Channels 卡片展示三种 V1 连接方式、连接配置草稿和 HMAC 配对状态，并报告手机当前实际查看的任务。打开页面不启动连接，离开页面不停止连接；用户显式开启后经 platform 提交，运行期间配置只读，停止后可更改。
+设置 → 远控以手机连接与 Bot Channels 卡片展示 V1 全局接入档案、连接配置草稿和 HMAC 配对状态，并报告手机当前实际查看的任务。档案列表支持添加、命名、选择和删除；运行态按窗口与 `profileId` 聚合展示，切换查看对象不触发启停。打开页面不启动连接，离开页面不停止连接；用户显式开启后经 platform 提交当前档案，运行期间该档案配置只读，停止后可更改。
 
 Main 负责配对和既有 Host attachment 的调度；页面只持有 UI 投影。目标比较同时检查 workspaceIdentity、workspacePath 与 remoteSessionId。`WebRemoteControlTaskViewReporter` 只发送已提交导航和可见性，任务已读由 Host 唯一 owner 写入。
 

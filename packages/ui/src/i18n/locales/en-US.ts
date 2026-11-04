@@ -2335,6 +2335,12 @@ const enUS: Record<string, string> = {
     "Sign in to control this computer from your phone. Use the same account on both devices.",
   "webRemoteControl.authRequired.login": "Sign in",
   "webRemoteControl.connection.mode": "Connection mode",
+  "webRemoteControl.connection.profiles": "Access profiles",
+  "webRemoteControl.connection.addProfile": "Add access",
+  "webRemoteControl.connection.deleteProfile": "Delete {name}",
+  "webRemoteControl.connection.profileName": "Access name",
+  "webRemoteControl.connection.profileNameHelp":
+    "Name entries to distinguish LAN, tunnels, and relays.",
   "webRemoteControl.connection.direct": "Direct access",
   "webRemoteControl.connection.self-hosted": "Self-hosted relay",
   "webRemoteControl.connection.official": "Official relay",

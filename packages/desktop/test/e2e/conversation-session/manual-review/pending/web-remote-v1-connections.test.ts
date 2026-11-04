@@ -162,6 +162,15 @@ async function maskedDesktopScreenshot(name: string) {
   }
 }
 
+async function runningProfileIds() {
+  return browser.execute(async () => {
+    const result = await (
+      window as unknown as { zcode: IPlatformService }
+    ).zcode.getWebRemoteControlStatus();
+    return (result.instances ?? []).map((instance) => instance.profileId ?? "default");
+  });
+}
+
 describe("E2E_V1_CONNECTIONS", () => {
   before(async () => {
     await mkdir(artifacts, { recursive: true });
@@ -325,6 +334,33 @@ describe("E2E_V1_CONNECTIONS", () => {
     await writeFile(
       join(artifacts, "direct-result.json"),
       JSON.stringify({ insecureHttp: true, paired: true, draft: true, portClosed: true }),
+    );
+  });
+
+  it("V1-04: two access profiles can run together and stopping one keeps the other", async function () {
+    this.timeout(120_000);
+    await openSettings();
+    await $('[data-testid="web-remote-start"]').click();
+    await browser.waitUntil(async () => (await runningProfileIds()).length === 1, {
+      timeout: 35_000,
+    });
+    const firstProfileId = (await runningProfileIds())[0]!;
+
+    await $('[data-testid="web-remote-add-profile"]').click();
+    await $('[data-testid="web-remote-profile-name"]').setValue("Second access");
+    await $('[data-testid="web-remote-start"]').click();
+    await browser.waitUntil(async () => (await runningProfileIds()).length === 2, {
+      timeout: 35_000,
+    });
+    const secondProfileId = (await runningProfileIds()).find((id) => id !== firstProfileId)!;
+
+    await $(`[data-testid="web-remote-profile-${firstProfileId}"]`).click();
+    await clickButton("^(关闭远程控制|停止|Stop.*)$");
+    await browser.waitUntil(async () => (await runningProfileIds()).join("\n") === secondProfileId);
+    await maskedDesktopScreenshot("two-access-profiles-one-running.png");
+    await writeFile(
+      join(artifacts, "two-access-profiles.json"),
+      JSON.stringify({ firstProfileId, remainingProfileId: secondProfileId }),
     );
   });
   it("V1-05/06/08: self-hosted V1 relay with a separately hosted page", async function () {

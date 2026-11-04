@@ -41,6 +41,15 @@ export function WebRemoteControlConnectionForm({
       className="mb-4 min-w-0 space-y-3"
     >
       <legend className="mb-2 text-ui-base font-medium">{text("mode")}</legend>
+      <label className="block space-y-1 text-ui-caption">
+        {text("profileName")}
+        <Input
+          data-testid="web-remote-profile-name"
+          value={value.name ?? ""}
+          onChange={(event) => onChange({ ...value, name: event.target.value })}
+        />
+      </label>
+      <p className="text-ui-caption text-foreground-subtle">{text("profileNameHelp")}</p>
       <div
         className="inline-flex max-w-full flex-wrap gap-0.5 rounded-lg border border-border p-0.5"
         role="group"

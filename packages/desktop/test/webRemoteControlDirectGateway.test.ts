@@ -218,7 +218,7 @@ describe("connection configuration and credential ownership", () => {
       credentialService: service,
       loadSettings: async () => settings,
       patchSettings,
-      staticRoot: "unused",
+      staticRoot: await staticRoot(),
       relayWsEnv: "wss://self.example/ws",
       pageUrlEnv: "https://self.example/remote/",
     });
@@ -232,6 +232,89 @@ describe("connection configuration and credential ownership", () => {
     expect(patchSettings).not.toHaveBeenCalled();
     await connection.commit();
     expect((await provider.getSettings()).mode).toBe("official");
+  });
+
+  it("isolates relay credentials by profile even at the same endpoint and window", async () => {
+    const { service } = credentials();
+    const provider = createWebRemoteControlConnectionProvider({
+      credentialService: service,
+      loadSettings: async () => ({ recentProjects: [], locale: "zh-CN" }),
+      patchSettings: async () => {},
+      staticRoot: await staticRoot(),
+    });
+    const profile = (profileId: string) => ({
+      ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+      profileId,
+      mode: "self-hosted" as const,
+      relay: {
+        wsUrl: "wss://same.example/ws",
+        pageUrl: "https://same.example/remote/",
+      },
+    });
+    const a = await provider.prepare(1, profile("lan"), new AbortController().signal);
+    const b = await provider.prepare(1, profile("relay-b"), new AbortController().signal);
+    cleanup.push(a.dispose, b.dispose);
+    await a.authStorageProvider.save({ deviceSid: "device-a", passHash: "hash-a" });
+    await b.authStorageProvider.save({ deviceSid: "device-b", passHash: "hash-b" });
+    expect(await a.authStorageProvider.load()).toEqual({
+      deviceSid: "device-a",
+      passHash: "hash-a",
+    });
+    expect(await b.authStorageProvider.load()).toEqual({
+      deviceSid: "device-b",
+      passHash: "hash-b",
+    });
+  });
+
+  it("saves and commits an ordered profile list while retaining a legacy mirror", async () => {
+    const { service } = credentials();
+    let settings: AppSettings = {
+      recentProjects: [],
+      locale: "zh-CN",
+      webRemoteControlConnection: {
+        ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+        mode: "direct",
+      },
+    };
+    const patchSettings = vi.fn(async (patch: Partial<AppSettings>) => {
+      settings = { ...settings, ...patch };
+    });
+    const provider = createWebRemoteControlConnectionProvider({
+      credentialService: service,
+      loadSettings: async () => settings,
+      patchSettings,
+      staticRoot: await staticRoot(),
+    });
+    const lan = {
+      ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+      profileId: "lan",
+      name: "LAN",
+    };
+    const relay = {
+      ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+      profileId: "relay-b",
+      name: "Relay B",
+      mode: "self-hosted" as const,
+      relay: {
+        wsUrl: "wss://relay.example/ws",
+        pageUrl: "https://relay.example/remote/",
+      },
+    };
+    await (await provider.prepare(1, lan, new AbortController().signal)).commit();
+    await (await provider.prepare(1, relay, new AbortController().signal)).commit();
+    expect((await provider.getConnectionProfiles()).map((item) => item.profileId)).toEqual([
+      "default",
+      "lan",
+      "relay-b",
+    ]);
+
+    const saved = await provider.saveConnectionProfiles([relay, lan]);
+    expect(saved.map((item) => item.profileId)).toEqual(["relay-b", "lan"]);
+    expect(settings.webRemoteControlConnection?.profileId).toBe("relay-b");
+    expect(settings.webRemoteControlConnections?.map((item) => item.profileId)).toEqual([
+      "relay-b",
+      "lan",
+    ]);
   });
   it("keeps direct windows independent and abort closes only its own listener", async () => {
     const { service } = credentials();

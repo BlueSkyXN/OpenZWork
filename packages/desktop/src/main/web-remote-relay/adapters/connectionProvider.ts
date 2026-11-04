@@ -4,6 +4,9 @@ import type { ICredentialService } from "@zcode/services";
 import {
   DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
   OFFICIAL_WEB_REMOTE_CONTROL_V1,
+  getWebRemoteControlProfileId,
+  normalizeWebRemoteControlConnectionProfile,
+  webRemoteControlConnectionProfilesSchema,
   webRemoteControlConnectionSettingsSchema,
   validateWebRemoteControlUrl,
   resolveWebRemoteControlBrowserRelayUrl,
@@ -86,9 +89,16 @@ function memoryAuthStorage(
 
 export function createWebRemoteControlConnectionProvider(dependencies: Dependencies) {
   const stores = new Map<string, WebRemoteControlRelayAuthStorageProvider>();
-  const getSettings = async (): Promise<WebRemoteControlConnectionSettings> => {
-    const saved = (await dependencies.loadSettings()).webRemoteControlConnection;
-    if (saved) return webRemoteControlConnectionSettingsSchema.parse(saved);
+  let commitQueue = Promise.resolve();
+  const serializedCommit = <T>(operation: () => Promise<T>): Promise<T> => {
+    const next = commitQueue.then(operation);
+    commitQueue = next.then(
+      () => {},
+      () => {},
+    );
+    return next;
+  };
+  const buildDefaultSettings = () => {
     const defaults = structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS);
     if (dependencies.relayWsEnv || dependencies.pageUrlEnv) {
       defaults.mode = "self-hosted";
@@ -99,16 +109,44 @@ export function createWebRemoteControlConnectionProvider(dependencies: Dependenc
     }
     return defaults;
   };
+  const getConnectionProfiles = async (): Promise<WebRemoteControlConnectionSettings[]> => {
+    const saved = await dependencies.loadSettings();
+    const profiles = saved.webRemoteControlConnections?.map(
+      normalizeWebRemoteControlConnectionProfile,
+    );
+    if (profiles?.length) return webRemoteControlConnectionProfilesSchema.parse(profiles);
+    const legacy = saved.webRemoteControlConnection
+      ? normalizeWebRemoteControlConnectionProfile(
+          webRemoteControlConnectionSettingsSchema.parse(saved.webRemoteControlConnection),
+        )
+      : buildDefaultSettings();
+    return [legacy];
+  };
+  const getSettings = async (): Promise<WebRemoteControlConnectionSettings> =>
+    (await getConnectionProfiles())[0]!;
+  const writeProfiles = async (profiles: WebRemoteControlConnectionSettings[]) => {
+    const nextProfiles = profiles.map(normalizeWebRemoteControlConnectionProfile);
+    webRemoteControlConnectionProfilesSchema.parse(nextProfiles);
+    await dependencies.patchSettings({
+      webRemoteControlConnection: nextProfiles[0],
+      webRemoteControlConnections: nextProfiles,
+    });
+    return nextProfiles;
+  };
+  const persistProfiles = (profiles: WebRemoteControlConnectionSettings[]) =>
+    serializedCommit(() => writeProfiles(profiles));
   return {
     getSettings,
+    getConnectionProfiles,
+    saveConnectionProfiles: persistProfiles,
     async prepare(
       windowId: number,
       requested: WebRemoteControlConnectionSettings | undefined,
       signal: AbortSignal,
       resetPairing = false,
     ): Promise<WebRemoteControlPreparedConnection> {
-      const settings = webRemoteControlConnectionSettingsSchema.parse(
-        requested ?? (await getSettings()),
+      const settings = normalizeWebRemoteControlConnectionProfile(
+        webRemoteControlConnectionSettingsSchema.parse(requested ?? (await getSettings())),
       );
       signal.throwIfAborted();
       let relayWsUrl: string;
@@ -157,7 +195,7 @@ export function createWebRemoteControlConnectionProvider(dependencies: Dependenc
           mobileRemoteControlUrl,
           validateWebRemoteControlUrl(endpoint.relayWsUrl, "relay"),
         );
-        const scope = `${relayWsUrl}\nwindow:${windowId}`;
+        const scope = `${relayWsUrl}\nwindow:${windowId}\nprofile:${getWebRemoteControlProfileId(settings)}`;
         let stored = stores.get(scope);
         if (!stored) {
           stored = createScopedWebRemoteControlAuthStorage(dependencies.credentialService, scope);
@@ -176,11 +214,34 @@ export function createWebRemoteControlConnectionProvider(dependencies: Dependenc
         mobileRemoteControlUrl,
         authStorageProvider,
         dispose,
-        commit: async () => {
-          signal.throwIfAborted();
-          await dependencies.patchSettings({ webRemoteControlConnection: settings });
-          signal.throwIfAborted();
-        },
+        commit: () =>
+          serializedCommit(async () => {
+            signal.throwIfAborted();
+            const saved = await dependencies.loadSettings();
+            const currentProfiles = saved.webRemoteControlConnections?.map(
+              normalizeWebRemoteControlConnectionProfile,
+            );
+            const baseProfiles = currentProfiles?.length
+              ? currentProfiles
+              : saved.webRemoteControlConnection
+                ? [
+                    normalizeWebRemoteControlConnectionProfile(
+                      webRemoteControlConnectionSettingsSchema.parse(
+                        saved.webRemoteControlConnection,
+                      ),
+                    ),
+                  ]
+                : [buildDefaultSettings()];
+            const profileId = getWebRemoteControlProfileId(settings);
+            const index = baseProfiles.findIndex(
+              (profile) => getWebRemoteControlProfileId(profile) === profileId,
+            );
+            const nextProfiles = [...baseProfiles];
+            if (index >= 0) nextProfiles[index] = settings;
+            else nextProfiles.push(settings);
+            await writeProfiles(nextProfiles);
+            signal.throwIfAborted();
+          }),
       };
     },
   };

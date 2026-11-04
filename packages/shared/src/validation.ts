@@ -1072,6 +1072,8 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   z
     .object({ type: z.literal("set-terminal-owner"), ownerId: nonEmptyStringSchema.nullable() })
     .strict(),
+  z.object({ type: z.literal("add-terminal-owner"), ownerId: nonEmptyStringSchema }).strict(),
+  z.object({ type: z.literal("remove-terminal-owner"), ownerId: nonEmptyStringSchema }).strict(),
   hostAttachServicePortMessageSchema,
   hostDetachServicePortMessageSchema,
   hostDisposeMessageSchema,

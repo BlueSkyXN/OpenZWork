@@ -6,6 +6,7 @@ import type {
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
 } from "@zcode/shared";
+import { DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS } from "@zcode/shared";
 import { createWebRemoteControlManager } from "../src/main/webRemoteControlManager.js";
 import { createWebRemoteControlFeatureGate } from "../src/main/webRemoteControlFeatureGate.js";
 
@@ -23,11 +24,27 @@ function createFakePort() {
   };
 }
 
-function createManagerHarness() {
+type StartupRestoreContext = {
+  connection?: typeof DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS & {
+    profileId?: string;
+  };
+  workspacePath: string;
+  workspaceIdentity?: string;
+  initialTaskId?: string;
+};
+
+function createManagerHarness({
+  startupContexts = [],
+}: {
+  startupContexts?: StartupRestoreContext[];
+} = {}) {
   const sentPayloads: WebRemoteControlAppPayload[] = [];
   const settings: AppSettings = { recentProjects: [], locale: "zh-CN" };
+  const savedStartupRestoreContexts: StartupRestoreContext[] = [];
   let storedAuth: { deviceSid: string; passHash: string } | undefined;
-  let deliverPayload: ((payload: WebRemoteControlAppPayload) => void) | undefined;
+  const deliverPayloads: Array<(payload: WebRemoteControlAppPayload) => void> = [];
+  const addTerminalOwner = vi.fn();
+  const removeTerminalOwner = vi.fn();
   const defaultAttachWorkspaceHost = vi.fn(async () => ({
     entryId: "entry-1",
     attachmentId: "attachment-1",
@@ -58,9 +75,13 @@ function createManagerHarness() {
       rotate: async () => {},
     },
     startupRestoreStorageProvider: {
-      load: async () => undefined,
-      save: async () => {},
-      clear: async () => {},
+      load: async () => startupContexts,
+      save: async (contexts) => {
+        savedStartupRestoreContexts.splice(0, savedStartupRestoreContexts.length, ...contexts);
+      },
+      clear: async () => {
+        savedStartupRestoreContexts.splice(0, savedStartupRestoreContexts.length);
+      },
     },
     featureGate: createWebRemoteControlFeatureGate(true),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -83,35 +104,46 @@ function createManagerHarness() {
     releaseWorkspaceHostAttachment: vi.fn(),
     disposeWorkspaceHostAttachmentsForWindow: vi.fn(),
     disposeWorkspaceHostAttachmentsForRemoteSession: vi.fn(),
-    setTerminalOwner: vi.fn(),
-    createDeviceTransport: (transportOptions) => ({
-      start: () => {
-        deliverPayload = transportOptions.onPayload;
-        if (transportOptions.auth.mode === "register") {
-          transportOptions.onRegisteredAuth({ deviceSid: "sid-1", passHash: "hash-1" });
-        }
-        transportOptions.onStateChange("waiting_terminal");
-      },
-      sendPayload: (payload) => {
-        sentPayloads.push(payload);
-        return true;
-      },
-      measurePayloadBytes: (payload) => JSON.stringify(payload).length,
-      sendPayloadResult: (payload) => {
-        sentPayloads.push(payload);
-        return { kind: "sent" as const, bytes: JSON.stringify(payload).length };
-      },
-      dispose: vi.fn(),
-    }),
+    addTerminalOwner,
+    removeTerminalOwner,
+    createDeviceTransport: (transportOptions) => {
+      const transportIndex = deliverPayloads.length;
+      return {
+        start: () => {
+          deliverPayloads[transportIndex] = transportOptions.onPayload;
+          if (transportOptions.auth.mode === "register") {
+            transportOptions.onRegisteredAuth({
+              deviceSid: `sid-${transportIndex + 1}`,
+              passHash: `hash-${transportIndex + 1}`,
+            });
+          }
+          transportOptions.onStateChange("waiting_terminal");
+        },
+        sendPayload: (payload) => {
+          sentPayloads.push(payload);
+          return true;
+        },
+        measurePayloadBytes: (payload) => JSON.stringify(payload).length,
+        sendPayloadResult: (payload) => {
+          sentPayloads.push(payload);
+          return { kind: "sent" as const, bytes: JSON.stringify(payload).length };
+        },
+        dispose: vi.fn(),
+      };
+    },
   });
 
   return {
     manager,
     sentPayloads,
-    deliverPayload: (payload: WebRemoteControlAppPayload) => {
-      if (!deliverPayload) throw new Error("transport not started");
-      deliverPayload(payload);
+    savedStartupRestoreContexts,
+    deliverPayload: (payload: WebRemoteControlAppPayload, transportIndex = 0) => {
+      const deliver = deliverPayloads[transportIndex];
+      if (!deliver) throw new Error("transport not started");
+      deliver(payload);
     },
+    addTerminalOwner,
+    removeTerminalOwner,
   };
 }
 
@@ -222,4 +254,118 @@ describe("webRemoteControlManager 目录推送签名", () => {
       }
     },
   );
+
+  it("同一窗口多个接入档案可并存，停止一个不释放另一个的终端 owner", async () => {
+    const h = createManagerHarness();
+    const connection = (profileId: string) => ({
+      ...structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+      profileId,
+      mode: "self-hosted" as const,
+      relay: {
+        wsUrl: "wss://relay.example/ws",
+        pageUrl: "https://relay.example/remote/",
+      },
+    });
+
+    await h.manager.start(1, {
+      workspacePath: localWorkspace.workspacePath,
+      connection: connection("lan"),
+    });
+    await h.manager.start(1, {
+      workspacePath: localWorkspace.workspacePath,
+      connection: connection("relay-b"),
+    });
+
+    expect(h.manager.getStatus(1).instances?.map((instance) => instance.profileId)).toEqual([
+      "lan",
+      "relay-b",
+    ]);
+    h.deliverPayload(
+      {
+        zcode_type: "bootstrap-request",
+        requestId: "bootstrap-lan",
+        terminalClientSessionId: "mobile-session-lan",
+      },
+      0,
+    );
+    h.deliverPayload(
+      {
+        zcode_type: "bootstrap-request",
+        requestId: "bootstrap-relay",
+        terminalClientSessionId: "mobile-session-relay",
+      },
+      1,
+    );
+    expect(h.addTerminalOwner).toHaveBeenCalledTimes(2);
+    expect(h.removeTerminalOwner).not.toHaveBeenCalled();
+
+    const lanOwnerId = h.addTerminalOwner.mock.calls[0]![1];
+    await h.manager.stop(1, "lan");
+    expect(h.removeTerminalOwner).toHaveBeenCalledWith(1, lanOwnerId);
+    expect(h.manager.getStatus(1).instances?.map((instance) => instance.profileId)).toEqual([
+      "relay-b",
+    ]);
+
+    await h.manager.disposeWindow(1);
+  });
+
+  it("并发启动授权按档案隔离，且恢复快照可路由到不同窗口", async () => {
+    const connection = (profileId: string) => ({
+      ...structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+      profileId,
+      mode: "self-hosted" as const,
+      relay: {
+        wsUrl: "wss://relay.example/ws",
+        pageUrl: "https://relay.example/remote/",
+      },
+    });
+    const contextA = {
+      workspacePath: "/workspace/a",
+      connection: connection("lan"),
+    };
+    const contextB = {
+      workspacePath: "/workspace/b",
+      connection: connection("relay-b"),
+    };
+    const h = createManagerHarness();
+    const restoreHarness = createManagerHarness({
+      startupContexts: [
+        { workspacePath: contextA.workspacePath, connection: contextA.connection },
+        { workspacePath: contextB.workspacePath, connection: contextB.connection },
+      ],
+    });
+    const authorizationA = h.manager.authorizeStart(1, contextA);
+    const authorizationB = h.manager.authorizeStart(1, contextB);
+
+    await h.manager.startAuthorized(1, contextA, authorizationA);
+    await h.manager.startAuthorized(1, contextB, authorizationB);
+    expect(h.manager.getStatus(1).instances?.map((instance) => instance.profileId)).toEqual([
+      "lan",
+      "relay-b",
+    ]);
+    await h.manager.stop(1, "lan");
+    await h.manager.stop(1, "relay-b");
+
+    expect(
+      await restoreHarness.manager.restorePreviouslyEnabled(1, [
+        { ...localWorkspace, workspacePath: contextA.workspacePath },
+      ]),
+    ).toBe(true);
+    expect(
+      await restoreHarness.manager.restorePreviouslyEnabled(2, [
+        { ...localWorkspace, workspacePath: contextB.workspacePath },
+      ]),
+    ).toBe(true);
+    expect(
+      restoreHarness.manager.getStatus(1).instances?.map((instance) => instance.profileId),
+    ).toEqual(["lan"]);
+    expect(
+      restoreHarness.manager.getStatus(2).instances?.map((instance) => instance.profileId),
+    ).toEqual(["relay-b"]);
+    expect(restoreHarness.savedStartupRestoreContexts).toHaveLength(2);
+
+    await h.manager.disposeWindow(1);
+    await restoreHarness.manager.disposeWindow(1);
+    await restoreHarness.manager.disposeWindow(2);
+  });
 });

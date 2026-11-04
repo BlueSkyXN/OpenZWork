@@ -694,19 +694,24 @@ const webRemoteControlManager = createWebRemoteControlManager({
     patchSettings: (patch) => mainSettingService.update(patch),
   }),
   startupRestoreStorageProvider: {
-    load: async () => (await mainSettingService.get()).webRemoteControlLastEnabledContext,
-    save: async (context) => {
+    load: async () => {
+      const settings = await mainSettingService.get();
+      return (
+        settings.webRemoteControlLastEnabledContexts ??
+        (settings.webRemoteControlLastEnabledContext
+          ? [settings.webRemoteControlLastEnabledContext]
+          : undefined)
+      );
+    },
+    save: async (contexts) => {
       await mainSettingService.update({
-        webRemoteControlLastEnabledContext: {
-          connection: context.connection,
-          workspacePath: context.workspacePath,
-          workspaceIdentity: context.workspaceIdentity,
-          initialTaskId: context.initialTaskId,
-        },
+        webRemoteControlLastEnabledContexts: contexts,
+        webRemoteControlLastEnabledContext: contexts.at(-1),
       });
     },
     clear: async () => {
       await mainSettingService.update({
+        webRemoteControlLastEnabledContexts: undefined,
         webRemoteControlLastEnabledContext: undefined,
       });
     },
@@ -753,7 +758,8 @@ const webRemoteControlManager = createWebRemoteControlManager({
     sendWebRemoteControlStatusChangedToWindow(BrowserWindow.fromId(windowId), status);
   },
   attachWorkspaceHost: webRemoteControlSharedHostAttachments.attachWorkspaceHost,
-  setTerminalOwner: webRemoteControlSharedHostAttachments.setTerminalOwner,
+  addTerminalOwner: webRemoteControlSharedHostAttachments.addTerminalOwner,
+  removeTerminalOwner: webRemoteControlSharedHostAttachments.removeTerminalOwner,
   releaseWorkspaceHostAttachment: webRemoteControlSharedHostAttachments.releaseAttachment,
   disposeWorkspaceHostAttachmentsForWindow: (windowId) =>
     webRemoteControlSharedHostAttachments.disposeWindow(windowId),

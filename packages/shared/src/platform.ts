@@ -16,6 +16,7 @@ import type {
 } from "./mcp.js";
 // OpenZWork：webRemoteControl 属保留能力，类型随上游恢复；OAuthStateRegistration（官方 OAuth 域）不引入。
 import type {
+  WebRemoteControlConnectionSettings,
   WebRemoteControlContext,
   WebRemoteControlReconnectWorkspaceResult,
   WebRemoteControlStartOperationResult,
@@ -786,13 +787,17 @@ export interface IPlatformService {
   ): Promise<WebRemoteControlStartOperationResult>;
 
   /** 关闭当前窗口已开启的 Web 远程控制能力 */
-  stopWebRemoteControl(): Promise<void>;
+  stopWebRemoteControl(profileId?: string): Promise<void>;
 
   /** 查询当前窗口 Web 远程控制状态 */
   getWebRemoteControlStatus(): Promise<WebRemoteControlStatus>;
   getWebRemoteControlConnectionSettings?(): Promise<
     import("./web-remote-control.js").WebRemoteControlConnectionSettings
   >;
+  getWebRemoteControlConnections?(): Promise<WebRemoteControlConnectionSettings[]>;
+  saveWebRemoteControlConnections?(
+    profiles: WebRemoteControlConnectionSettings[],
+  ): Promise<WebRemoteControlConnectionSettings[]>;
 
   /** 桌面 OAuth 会话通知；main 独立重读凭据后决定是否恢复远控。 */
 
