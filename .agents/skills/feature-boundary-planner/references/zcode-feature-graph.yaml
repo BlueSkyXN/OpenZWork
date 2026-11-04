@@ -1134,8 +1134,20 @@ nodes:
   - id: capability.system-prompt-settings
     kind: capability
     label: Main session system prompt customization
-    aliases: [system prompt, 系统提示词, prompt sections]
-    docs: [docs/spec/system-prompt-settings.md]
+    aliases:
+      [
+        system prompt,
+        系统提示词,
+        prompt sections,
+        prompt profile,
+        章节模板,
+        提示词完整预览,
+        提示词差异,
+      ]
+    docs:
+      - docs/spec/system-prompt-settings.md
+      - docs/spec/system-prompt-editor.md
+      - docs/testing/system-prompt-editor-plan.md
     codeSeeds:
       - symbol: SystemPromptSettingsSection
         file: packages/ui/src/settings/system-prompt/SystemPromptSettingsSection.tsx
@@ -1145,6 +1157,14 @@ nodes:
         file: apps/zcode-cli/packages/core/src/context/prompt-settings/contract.ts
       - symbol: systemPromptSettingsSchema
         file: packages/shared/src/system-prompt/contract.ts
+      - symbol: mergeSystemPromptProfile
+        file: packages/shared/src/system-prompt/profile.ts
+      - symbol: buildSystemPromptPreview
+        file: apps/zcode-cli/packages/core/src/context/prompt-settings/preview.ts
+      - symbol: SystemPromptObservation
+        file: apps/zcode-cli/packages/core/src/context/prompt-settings/preview.ts
+      - symbol: PromptPreviewDialog
+        file: packages/ui/src/settings/system-prompt/PromptPreviewDialog.tsx
     invariants:
       - SettingService owns saved settings; each main runtime holds its materialization snapshot.
       - Prompt customization does not change tool permissions or child agent identities.

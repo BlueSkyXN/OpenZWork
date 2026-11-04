@@ -1,3 +1,11 @@
+import { requireSession } from "./server-types.js";
+import {
+  systemPromptPreviewParamsSchema,
+  systemPromptObservationParamsSchema,
+  systemPromptObservationResultSchema,
+  systemPromptPreviewResultSchema,
+} from "@zcode/shared";
+import { buildSystemPromptPreview } from "@zcode/core";
 
 import { systemPromptCatalogParamsSchema } from "@zcode/shared";
 
@@ -695,6 +703,17 @@ export class ZCodeProtocolAgentServer {
         return this.requireV4Gateway().queryCommands(request.params);
       case V4_METHODS.sessionsIndexReconcile:
         return this.requireV4Gateway().reconcileSessions(request.params);
+      case zcodeProtocolMethods.systemPromptPreview:
+        return systemPromptPreviewResultSchema.parse(
+          buildSystemPromptPreview(systemPromptPreviewParamsSchema.parse(request.params)),
+        );
+      case zcodeProtocolMethods.sessionSystemPrompt: {
+        const params = systemPromptObservationParamsSchema.parse(request.params);
+        const record = requireSession(this.context, params.sessionId);
+        return systemPromptObservationResultSchema.parse(
+          record.app.runtime.readSystemPromptObservation(params),
+        );
+      }
       case zcodeProtocolMethods.systemPromptCatalog:
         systemPromptCatalogParamsSchema.parse(request.params ?? {});
         return getSystemPromptCatalog();

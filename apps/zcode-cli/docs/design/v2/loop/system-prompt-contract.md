@@ -62,7 +62,7 @@ never decides the wording a request sends. With MCS it is exactly:
 Without MCS, dynamic context arrives as user-side `<system-reminder>` blocks, and
 the bullet is exactly:
 
-`` - `<system-reminder>` tags in messages and tool results are injected by the harness, not the user. Hooks may intercept tool calls; treat hook output as user feedback. ``
+``- `<system-reminder>` tags in messages and tool results are injected by the harness, not the user. Hooks may intercept tool calls; treat hook output as user feedback.``
 
 The static block ends at the final `# Harness` bullet. Code-style and
 risk/reporting paragraphs must not be emitted in `system[1]`.
@@ -91,7 +91,7 @@ boundary is:
    external publishing, inspect-before-delete/overwrite, and truthful validation
    reporting.
 4. Optional `# Session-specific guidance` for slash skill invocation when the
-   Skill tool and at least one skill are available. Its bullet starts with ` - `.
+   Skill tool and at least one skill are available. Its bullet starts with `-`.
    Interactive shell input through `! <command>` is unsupported and is not advertised.
 5. Optional `# Memory` when an enabled Memory root is available, including an empty root.
 6. `# Context management` for long-context summary/continuation behavior,
@@ -304,3 +304,7 @@ Required Explore prompt behavior:
 - Memory guidance is emitted in `system[2]` when an enabled Memory root is available,
   including when its index is empty.
 - Stable system prompt does not mirror ordinary tool schemas.
+
+## 编辑器完整预览与请求观察（2026-11-04）
+
+按根目录 docs/spec/system-prompt-editor.md 实施。示例草稿使用同一个 ContextBuilder；实际内容在主会话模型请求投影完成后按来源提取系统消息与上下文公告，只保存当前 runtime 最近一份有界快照。查询不物化会话、不读取新的运行事实、不启动模型。快照引用绑定本次请求；规则反事实比较只能使用捕获的 builder 输入和已知公告，输入不足时明确不可比较。设置保存与会话创建期政策不变。

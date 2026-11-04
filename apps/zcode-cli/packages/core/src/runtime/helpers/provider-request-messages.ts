@@ -1,3 +1,6 @@
+import { modelMessageContentToText } from "@zcode/contracts";
+import type { SystemPromptPreviewBlock } from "@zcode/shared";
+import { SYSTEM_PROMPT_OBSERVED_SOURCES } from "../../context/prompt-settings/index.js";
 import {
   ProviderEntryOrigins,
   isMidTurnInput,
@@ -32,6 +35,8 @@ import {
 
 export interface ProviderRequestMessageProjectionResult {
   messages: ModelInputMessage[];
+  promptBlocks?: SystemPromptPreviewBlock[];
+  promptComplete?: boolean;
   /** 仅用于内部归属；runtime metadata 不会进入 `messages`。 */
   sourceEntries: Array<RuntimeMessageEntry | undefined>;
   diagnostics: {
@@ -126,9 +131,37 @@ export function buildProviderRequestMessages(input: {
         })
       : undefined;
 
+  // 观察与真实投影共用这次渲染结果；保留折入 tool result 前的提示词片段，避免复制工具正文。
+  const promptBlocks: SystemPromptPreviewBlock[] = [];
+  let promptComplete = true;
+  for (const [index, message] of renderedMessages.entries()) {
+    const entry = projectedEntries[index];
+    if (!entry) continue;
+    const inputs = origins.get(entry);
+    const sources = [...new Set(inputs.map((item) => item.metadata?.source ?? "system"))];
+    if (
+      message.role !== "system" &&
+      !sources.every((source) => SYSTEM_PROMPT_OBSERVED_SOURCES.has(source))
+    )
+      continue;
+    const content = modelMessageContentToText(message.content);
+    const actual = messages[mergeResult.indexMap[index] ?? -1];
+    if (!actual || !modelMessageContentToText(actual.content).includes(content))
+      promptComplete = false;
+    const source = sources.join("+");
+    promptBlocks.push({
+      id: `request:${index}`,
+      source: source.length <= 160 ? source : "runtime_context",
+      title: source.length <= 160 ? source : "Runtime context",
+      target: message.role === "system" ? "system" : "meta_user",
+      content,
+    });
+  }
   return {
     messages,
     sourceEntries,
+    promptBlocks,
+    promptComplete,
     diagnostics: {
       bubbledAttachmentEntryCount: reorderResult.bubbledAttachmentEntryCount,
       // 新标记能证明“没有真实用户”；省略索引会让媒体预算按 user role 重新猜来源。

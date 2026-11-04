@@ -1,3 +1,9 @@
+import {
+  systemPromptPreviewParamsSchema,
+  systemPromptPreviewResultSchema,
+  systemPromptObservationParamsSchema,
+  systemPromptObservationResultSchema,
+} from "@zcode/shared";
 // OpenZWork：usage 面（appUsage* schema/params）为我方保留；conversation-telemetry
 // （远端心跳）为保留域；request-verification no-op 与网络错误分类为上游中性依赖，保留。
 // resolveWorkspaceTelemetryDetail（上游 remoteUsageTelemetry）文件未随合并引入，不 import。
@@ -4536,6 +4542,30 @@ export function createZCodeAgentService(
             children,
           };
         }),
+      );
+    },
+
+    async previewSystemPrompt(params) {
+      const validated = systemPromptPreviewParamsSchema.parse(params);
+      const client = await getPluginManagementClient();
+      return client.request(
+        zcodeProtocolMethods.systemPromptPreview,
+        validated,
+        systemPromptPreviewResultSchema,
+      );
+    },
+
+    async readSessionSystemPrompt(params) {
+      const validated = systemPromptObservationParamsSchema.parse({
+        sessionId: params.sessionId,
+        ...(params.snapshotId ? { snapshotId: params.snapshotId } : {}),
+        ...(params.settings ? { settings: params.settings } : {}),
+      });
+      const client = await getReadOnlyClient(params, "existing-only");
+      return client.request(
+        zcodeProtocolMethods.sessionSystemPrompt,
+        validated,
+        systemPromptObservationResultSchema,
       );
     },
 

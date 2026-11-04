@@ -49,9 +49,111 @@ const enUS: Record<string, string> = {
   "metrics.display.field.sessionTokens": "Session main-chain total",
   "metrics.display.field.toolCalls": "Tool call count",
 
+  "settings.systemPrompt.editor.fullPreview": "Full preview",
+  "settings.systemPrompt.editor.import": "Import Profile",
+  "settings.systemPrompt.editor.export": "Export draft",
+  "settings.systemPrompt.editor.reset": "Restore defaults",
+  "settings.systemPrompt.editor.fromDefault": "Start from default rules",
+  "settings.systemPrompt.editor.fromCurrent": "Use current rules",
+  "settings.systemPrompt.editor.profileNameDefault": "My prompt profile",
+  "settings.systemPrompt.editor.exportHint": "Export the rules and switches in the current draft.",
+  "settings.systemPrompt.editor.applyHint":
+    "Review the changes, apply to the draft, then use Save on the settings page.",
+  "settings.systemPrompt.editor.chooseFile": "Choose JSON file",
+  "settings.systemPrompt.editor.pasteJson": "Paste Profile JSON",
+  "settings.systemPrompt.editor.review": "Preview changes",
+  "settings.systemPrompt.editor.profileName": "Profile name",
+  "settings.systemPrompt.editor.download": "Save JSON file",
+  "settings.systemPrompt.editor.copy": "Copy text",
+  "settings.systemPrompt.editor.copyError":
+    "Copy failed. Select the text to copy it or download the file.",
+  "settings.systemPrompt.editor.cancel": "Cancel",
+  "settings.systemPrompt.editor.apply": "Apply to draft",
+  "settings.systemPrompt.editor.before": "Before",
+  "settings.systemPrompt.editor.after": "After",
+  "settings.systemPrompt.editor.unified": "Unified view",
+  "settings.systemPrompt.editor.split": "Side by side",
+  "settings.systemPrompt.editor.removed": "Removed",
+  "settings.systemPrompt.editor.added": "Added",
+  "settings.systemPrompt.editor.modified": "Changed",
+  "settings.systemPrompt.editor.noChanges": "No changes",
+  "settings.systemPrompt.editor.loading": "Preparing preview…",
+  "settings.systemPrompt.editor.conversionWarning":
+    "The generated text includes section rules and custom sections. Conditional rules will always apply, and chapter variables such as memoryRoot will remain literal text. Review them before applying.",
+  "settings.systemPrompt.editor.wholeWarning":
+    "Default behavior rules, including security instructions, will be replaced. Section settings remain stored but are inactive in this mode.",
+  "settings.systemPrompt.editor.sectionsWarning":
+    "Switching to sections reactivates the stored section rules and custom sections.",
+  "settings.systemPrompt.editor.securityWarning":
+    "Default security instructions will be replaced or disabled.",
+  "settings.systemPrompt.editor.instructionsWarning":
+    "New or rematerialized main sessions will stop injecting AGENTS.md and other user/project instructions, along with the project memory index.",
+  "settings.systemPrompt.editor.contextWarning": "This dynamic context will no longer be injected.",
+  "settings.systemPrompt.editor.customOrder": "Custom section order",
+  "settings.systemPrompt.editor.search": "Search preview text",
+  "settings.systemPrompt.editor.systemMessages": "System prompt",
+  "settings.systemPrompt.editor.attachments": "Additional context",
+  "settings.systemPrompt.editor.chooseSession": "Choose a session in an open workspace",
+  "settings.systemPrompt.editor.noSessions":
+    "No sessions available. Open a workspace containing a session first.",
+  "settings.systemPrompt.editor.refreshActual": "Load / refresh actual content",
+  "settings.systemPrompt.editor.compareDraft": "Compare with draft",
+  "settings.systemPrompt.editor.requestBoundary": "Prompt fragments in the application request",
+  "settings.systemPrompt.editor.actualError":
+    "Could not read this session. Check that the target is connected and its runtime is available, then retry.",
+  "settings.systemPrompt.editor.unsupported":
+    "This Agent does not support this preview. Update it and retry.",
+  "settings.systemPrompt.editor.no_request":
+    "No actual request has been captured. Viewing this preview does not send a request.",
+  "settings.systemPrompt.editor.expired":
+    "This request snapshot has been replaced. Refresh the actual content before comparing.",
+  "settings.systemPrompt.editor.incomplete":
+    "The prompt exceeds the preview limit or cannot be extracted completely. A complete comparison is unavailable.",
+  "settings.systemPrompt.editor.context_unavailable":
+    "This snapshot cannot replay the dynamic context affected by this change. Read the actual content and inspect your changes in the draft preview.",
+  "settings.systemPrompt.editor.comparisonStale":
+    "The draft has changed. Select Compare with draft to update the diff.",
+  "settings.systemPrompt.editor.previewError":
+    "Could not build the full preview. Check that the Agent is updated and retry; your draft is retained.",
+  "settings.systemPrompt.editor.exampleSource":
+    "Current draft · Example environment. Paths, skills, instructions and the date are illustrative.",
+  "settings.systemPrompt.editor.actualHint":
+    "Read the selected session’s latest captured request, or compare the current draft using the same context.",
+  "settings.systemPrompt.editor.draft": "Current draft",
+  "settings.systemPrompt.editor.actual": "Actual session content",
+  "settings.systemPrompt.editor.conditions": "Simulated runtime conditions",
+  "settings.systemPrompt.editor.desktop": "Desktop session",
+  "settings.systemPrompt.editor.condition.memory": "Example memory enabled",
+  "settings.systemPrompt.editor.condition.skills": "Example skills available",
+  "settings.systemPrompt.editor.condition.outputStyle": "Example style: short paragraphs",
+  "settings.systemPrompt.editor.condition.git": "Example Git repository",
+  "settings.systemPrompt.editor.condition.visualization": "Example visualization available",
+  "settings.systemPrompt.editor.content": "Full content",
+  "settings.systemPrompt.editor.savedDiff": "Diff from saved baseline",
+  "settings.systemPrompt.editor.configurationChanges": "Configuration changes",
+  "settings.systemPrompt.editor.chapterTemplates": "Section templates",
+  "settings.systemPrompt.editor.template.concise.name": "Concise answers",
+  "settings.systemPrompt.editor.template.explain.name": "Explain key evidence",
+  "settings.systemPrompt.editor.template.verify.name": "Verify before delivery",
+  "settings.systemPrompt.editor.template.concise.body":
+    "Lead with the conclusion, followed by necessary evidence. Keep simple answers short and expand complex answers as needed.",
+  "settings.systemPrompt.editor.template.explain.body":
+    "Explain the evidence, assumptions and tradeoffs behind key decisions. For code or data, include verifiable sources and validation results.",
+  "settings.systemPrompt.editor.template.verify.body":
+    "Define acceptance criteria before execution. Run checks relevant to the change and report the actual results and remaining gaps.",
+  "settings.systemPrompt.editor.defaultDiff": "Compare with section defaults",
+  "settings.systemPrompt.editor.expandExample": "Expand example content",
+  "settings.systemPrompt.editor.disabledExample":
+    "This item is disabled. The example shows what would be injected when enabled.",
+  "settings.systemPrompt.editor.emptyContext": "No content under these example conditions.",
+  "settings.systemPrompt.editor.ruleChapters": "Editable rules",
+  "settings.systemPrompt.editor.generatedChapters": "Generated context",
+  "settings.systemPrompt.editor.generated": "Generated · Injection switch",
+  "settings.systemPrompt.editor.mixed": "Rules + runtime content",
+  "settings.systemPrompt.editor.rule": "Editable rules",
   "settings.systemPrompt.title": "System prompts",
-  "settings.systemPrompt.scenario.style_none": "No output style selected",
-  "settings.systemPrompt.scenario.style_active": "Output style selected",
+  "settings.systemPrompt.scenario.style_none": "Example: no output style",
+  "settings.systemPrompt.scenario.style_active": "Example: short paragraphs",
   "settings.systemPrompt.scenario.skills_unavailable": "Skill tool or skills unavailable",
   "settings.systemPrompt.scenario.skills_available": "Skill tool and skills available",
   "settings.systemPrompt.scenario.memory_disabled": "Memory disabled",
@@ -62,7 +164,7 @@ const enUS: Record<string, string> = {
   "settings.systemPrompt.notInjectedInScenario": "No content is injected in this scenario.",
   "settings.systemPrompt.scenarioHint":
     "Uses an example environment. Scenario selections are not saved.",
-  "settings.systemPrompt.scenario": "Preview scenario",
+  "settings.systemPrompt.scenario": "Simulated runtime conditions",
   "settings.systemPrompt.dynamicContext": "Dynamic context",
   "settings.systemPrompt.runtimeContent": "Runtime content · always retained",
   "settings.systemPrompt.ruleMode.disabled": "Disable section rules",

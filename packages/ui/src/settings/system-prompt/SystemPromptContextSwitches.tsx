@@ -1,3 +1,5 @@
+import { PromptGeneratedDetails } from "./PromptGeneratedDetails.js";
+import type { SystemPromptPreviewParams, SystemPromptPreviewResult } from "@zcode/shared";
 import type {
   SystemPromptCatalog,
   SystemPromptSectionId,
@@ -11,10 +13,12 @@ export function SystemPromptContextSwitches({
   settings,
   disabled,
   onChange,
+  preview,
 }: {
   catalog: SystemPromptCatalog;
   settings: SystemPromptSettings;
   disabled: boolean;
+  preview?: (params: SystemPromptPreviewParams) => Promise<SystemPromptPreviewResult>;
   onChange: (id: SystemPromptSectionId, enabled: boolean) => void;
 }) {
   const { intl } = useZCodeIntl();
@@ -31,6 +35,11 @@ export function SystemPromptContextSwitches({
                 {t("chapter." + section.id)}
               </label>
               <p className="text-ui-sm text-foreground-subtle">{t("generated." + section.id)}</p>
+              <PromptGeneratedDetails
+                id={section.id}
+                enabled={settings.sections[section.id]?.mode !== "disabled"}
+                preview={preview}
+              />
             </div>
             <Switch
               id={"prompt-context-" + section.id}

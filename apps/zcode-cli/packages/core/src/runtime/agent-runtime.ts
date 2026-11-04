@@ -1,3 +1,5 @@
+import { SystemPromptObservation } from "../context/prompt-settings/index.js";
+import type { SystemPromptObservationParams, SystemPromptObservationResult } from "@zcode/shared";
 
 import {
   createTurnAgentDefinitions,
@@ -184,6 +186,14 @@ export class AgentRuntime {
   private contextInitialized = false;
   private contextSourceSnapshot?: ContextSourceSnapshot;
   private latestContextBuildResult?: ContextBuildResult;
+  private readonly systemPromptObservation = new SystemPromptObservation();
+
+  readSystemPromptObservation(
+    params: Pick<SystemPromptObservationParams, "snapshotId" | "settings">,
+  ): SystemPromptObservationResult {
+    return this.systemPromptObservation.read(params);
+  }
+
   private memoryRoot?: string;
   private memoryIndexContent?: string;
   private memoryRecallState: MemoryRecallState;

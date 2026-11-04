@@ -4741,6 +4741,8 @@ YC06 视觉验收包含桌面 448px 宽度上限、两端 text-ui-lg 标题、�
 
 ## SP：系统提示词设置
 
+编辑器扩展 SPE01–SPE16、PP01–PP15 的 setup／action／assertion 与执行证据见[实施与验收记录](testing/system-prompt-editor-plan.md)，产品规则见[编辑器规格](spec/system-prompt-editor.md)。代码、浏览器候选与隔离 Electron 主流程已验证；标准 WDIO 启动受阻、真实远端／手机等未测分支单独登记。候选保持 manual-review/pending，现有 SP 覆盖状态不变。
+
 产品规则和 SP01–SP10 见 [系统提示词设置](spec/system-prompt-settings.md)。SP06：从设置侧栏进入，替换角色内容、检查本章预览、保存后离开并重进、读取 setting.json，恢复默认；其余章节与 Memory 开关保持不变。SP08 使用相同页面的窄屏和深浅主题验证。候选不调用模型。
 
 SP11–SP15 为动态修正 accepted 场景：桌面、记忆、Skill、输出风格的启用/缺席由 CLI 单测验证；SP14 在真实设置页复制桌面默认规则，切换可视化有/无与终端情景，断言预览随条件改变，保存后重进仍为规则原文，情景不进入 setting.json。SP15 在整体替换下关闭环境注入，切回逐章断言开关一致，再恢复默认。仍用原 pending 候选和隔离 HOME，无模型请求。

@@ -226,6 +226,8 @@ export async function runRegularTurnLoop(
       latestRealUserMessageIndex: providerProjection.diagnostics.latestRealUserMessageIndex,
       messages,
       sourceEntries: providerProjection.sourceEntries,
+      promptBlocks: providerProjection.promptBlocks,
+      promptComplete: providerProjection.promptComplete,
       requestEntries,
       recordedMessages: recordableProjection.messages,
       tools: prepared.request.tools,
@@ -237,7 +239,6 @@ export async function runRegularTurnLoop(
     }
   }
 }
-
 
 /**
  * 新轮通知与 peer 消息开启的轮次，首个请求不收集输入附件。

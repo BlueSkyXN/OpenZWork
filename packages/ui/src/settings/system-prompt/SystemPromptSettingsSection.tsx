@@ -1,3 +1,9 @@
+import { PromptChapterNavigation } from "./PromptChapterNavigation.js";
+import { PromptProfileToolbar } from "./PromptProfileToolbar.js";
+import { PromptPreviewDialog } from "./PromptPreviewDialog.js";
+import { PromptChapterTemplates } from "./PromptChapterTemplates.js";
+import { PromptGeneratedDetails } from "./PromptGeneratedDetails.js";
+import { PromptTextDiff } from "./PromptDiff.js";
 import { useEffect, useRef, useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import {
@@ -44,11 +50,21 @@ export function SystemPromptSettingsSection() {
       </p>
     );
   return (
-    <SystemPromptEditor catalog={state.catalog} settings={state.settings} onSave={state.save} />
+    <SystemPromptEditor
+      catalog={state.catalog}
+      settings={state.settings}
+      onSave={state.save}
+      preview={state.preview}
+    />
   );
 }
 
-export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEditorProps) {
+export function SystemPromptEditor({
+  catalog,
+  settings,
+  onSave,
+  preview: previewFull,
+}: SystemPromptEditorProps) {
   const { intl } = useZCodeIntl();
   const t = (key: string, values?: Record<string, string | number>) =>
     intl.formatMessage({ id: "settings.systemPrompt." + key }, values);
@@ -56,6 +72,8 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
   const [draft, setDraft] = useState(() => settings ?? createDefaultSystemPromptSettings());
   const [selected, setSelected] = useState<SystemPromptSectionId | "custom">("role");
   const [scenarioId, setScenarioId] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [chapterDiff, setChapterDiff] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saved" | "failed">("idle");
   const [saveError, setSaveError] = useState("");
@@ -138,6 +156,25 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
 
   return (
     <section data-testid="system-prompt-editor" className="min-w-0 space-y-5">
+      <PromptProfileToolbar
+        draft={draft}
+        catalog={catalog}
+        disabled={saving}
+        onApply={(value) => {
+          setDraft(value);
+          setSaveState("idle");
+          setSaveError("");
+        }}
+        onPreview={previewFull ? () => setPreviewOpen(true) : undefined}
+      />
+      {previewOpen && previewFull ? (
+        <PromptPreviewDialog
+          draft={draft}
+          baseline={baseline ?? createDefaultSystemPromptSettings()}
+          preview={previewFull}
+          onClose={() => setPreviewOpen(false)}
+        />
+      ) : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* 窄屏大字号下两种模式可能超出一行，允许换行以保留完整选项。 */}
         <div
@@ -194,6 +231,7 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
               catalog={catalog}
               settings={draft}
               disabled={saving}
+              preview={previewFull}
               onChange={(id, enabled) => {
                 setDraft((current) => ({
                   ...current,
@@ -208,77 +246,17 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
           </div>
         ) : (
           <div className="grid min-w-0 md:grid-cols-[12rem_minmax(0,1fr)]">
-            <div className="border-b border-border p-3 md:hidden">
-              <Select
-                value={selected}
-                disabled={saving}
-                onValueChange={(value) => {
-                  setSelected(value as SystemPromptSectionId | "custom");
-                  setScenarioId("");
-                }}
-              >
-                <SelectTrigger
-                  aria-label={t("chapters")}
-                  data-testid="system-prompt-chapter-select"
-                  className="w-full"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {catalog.sections.map((section) => (
-                    <SelectItem key={section.id} value={section.id}>
-                      {t("chapter." + section.id)}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="custom">{t("customChapters")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <nav
-              aria-label={t("chapters")}
-              data-testid="system-prompt-chapter-list"
-              className="hidden max-h-128 flex-col gap-0.5 overflow-y-auto border-r border-border bg-background p-2 md:flex md:self-start"
-            >
-              {catalog.sections.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  disabled={saving}
-                  data-testid={"system-prompt-chapter-" + section.id}
-                  aria-current={selected === section.id ? "true" : undefined}
-                  className={
-                    "flex min-h-8 shrink-0 items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-ui-base hover:bg-hover " +
-                    (selected === section.id ? "bg-selected font-medium" : "")
-                  }
-                  onClick={() => {
-                    setSelected(section.id);
-                    setScenarioId("");
-                  }}
-                >
-                  {/* 限高目录必须保留条目内容高度，长翻译不能被 flex 压缩后覆盖相邻章节。 */}
-                  <span className="min-w-0 flex-1 break-words">{t("chapter." + section.id)}</span>
-                  {draft.sections[section.id] && draft.sections[section.id]?.mode !== "default" ? (
-                    <span className="shrink-0 text-ui-xs text-foreground-subtle">
-                      {t("modified")}
-                    </span>
-                  ) : null}
-                </button>
-              ))}
-              <button
-                type="button"
-                data-testid="system-prompt-chapter-custom"
-                disabled={saving}
-                aria-current={selected === "custom" ? "true" : undefined}
-                className={
-                  "mt-1 flex min-h-8 shrink-0 items-center gap-2 rounded-md border-t border-border px-2 py-1.5 text-left text-ui-base hover:bg-hover " +
-                  (selected === "custom" ? "bg-selected font-medium" : "")
-                }
-                onClick={() => setSelected("custom")}
-              >
-                <Plus className="size-4" />
-                {t("customChapters")}
-              </button>
-            </nav>
+            <PromptChapterNavigation
+              catalog={catalog}
+              draft={draft}
+              selected={selected}
+              disabled={saving}
+              onSelect={(value) => {
+                setSelected(value);
+                setScenarioId("");
+                setChapterDiff(false);
+              }}
+            />
             <div className="min-w-0 space-y-4 p-4">
               {selected === "custom" ? (
                 <div className="space-y-4">
@@ -357,7 +335,18 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
               ) : entry ? (
                 <>
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-ui-lg font-medium">{t("chapter." + entry.id)}</h3>
+                    <div className="space-y-1">
+                      <h3 className="text-ui-lg font-medium">{t("chapter." + entry.id)}</h3>
+                      <p className="text-ui-sm text-foreground-subtle">
+                        {t(
+                          entry.generated
+                            ? "editor.generated"
+                            : entry.runtime
+                              ? "editor.mixed"
+                              : "editor.rule",
+                        )}
+                      </p>
+                    </div>
                     <Button
                       variant="ghost"
                       disabled={saving || !override}
@@ -374,6 +363,19 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
                       {t("resetChapter")}
                     </Button>
                   </div>
+                  {!entry.generated ? (
+                    <PromptChapterTemplates
+                      sectionId={entry.id}
+                      draft={draft}
+                      catalog={catalog}
+                      disabled={saving}
+                      onApply={(value) => {
+                        setDraft(value);
+                        setSaveState("idle");
+                        setSaveError("");
+                      }}
+                    />
+                  ) : null}
                   <div className="flex flex-wrap items-center gap-3">
                     <Select
                       value={mode}
@@ -520,6 +522,39 @@ export function SystemPromptEditor({ catalog, settings, onSave }: SystemPromptEd
                           : preview || t(mode === "disabled" ? "notInjected" : "emptyDefault")}
                     </pre>
                   </div>
+                  {entry.generated ? (
+                    <PromptGeneratedDetails
+                      id={entry.id}
+                      enabled={mode !== "disabled"}
+                      preview={previewFull}
+                    />
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        aria-pressed={chapterDiff}
+                        onClick={() => setChapterDiff((value) => !value)}
+                      >
+                        {t("editor.defaultDiff")}
+                      </Button>
+                      {chapterDiff ? (
+                        <PromptTextDiff
+                          before={
+                            scenario
+                              ? resolveSystemPromptRuntimeSection(
+                                  createDefaultSystemPromptSettings(),
+                                  entry.id,
+                                  scenario.template,
+                                )
+                              : entry.content
+                          }
+                          after={preview}
+                          beforeLabel={t("defaultContent")}
+                          afterLabel={t("preview")}
+                        />
+                      ) : null}
+                    </>
+                  )}
                   {!entry.generated ? (
                     <>
                       {/* 默认状态曾同时展开两份相同正文；原文作为按需对照，切章后恢复折叠。 */}

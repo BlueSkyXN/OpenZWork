@@ -1,3 +1,9 @@
+import type {
+  SystemPromptPreviewParams,
+  SystemPromptPreviewResult,
+  SystemPromptObservationParams,
+  SystemPromptObservationResult,
+} from "@zcode/shared";
 import type { AppUsageSessionsResult } from "@zcode/shared";
 import type { AppUsageSessionsParams } from "../app-usage/appUsage.js";
 import type { SystemPromptCatalog } from "@zcode/shared";
@@ -645,6 +651,10 @@ export interface ZCodeAgentStorageStartupSnapshot {
 
 export interface IZCodeAgentService {
   getSystemPromptCatalog(): Promise<SystemPromptCatalog>;
+  previewSystemPrompt(params: SystemPromptPreviewParams): Promise<SystemPromptPreviewResult>;
+  readSessionSystemPrompt(
+    params: ZCodeAgentSessionTarget & Omit<SystemPromptObservationParams, "sessionId">,
+  ): Promise<SystemPromptObservationResult>;
   /** 控制面不需要账号或模型，且不发送普通协议请求。 */
   prepareStorage(params: ZCodeAgentWorkspaceTarget): Promise<void>;
   getStorageStartupState(

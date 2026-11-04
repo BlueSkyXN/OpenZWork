@@ -215,3 +215,5 @@ export type {
 export { LogLevel, SessionEventType } from "@zcode/contracts";
 
 export { normalizeGenUiInput } from "./agent/message-history.js";
+
+export { buildSystemPromptPreview } from "./context/prompt-settings/index.js";
