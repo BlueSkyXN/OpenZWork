@@ -133,8 +133,9 @@ jobs:
 
       - name: Local bundled plugins and metadata regression
         if: matrix.lane == 'regressions'
-        # 两份测试都会播种真实插件缓存；沿用上面的单 worker 集成隔离，保留默认期限。
-        run: pnpm --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts tests/plugins-protocol.test.ts --no-file-parallelism --maxWorkers=1 --bail=1
+        # Windows 两次在不同冷缓存用例超过默认 5 秒；真实目录播种/清理沿用 30 秒集成预算。
+        # 只调整本步骤的测试期限，保留单 worker、全部断言及首次失败即停止。
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/plugins.test.ts tests/plugins-protocol.test.ts --no-file-parallelism --maxWorkers=1 --testTimeout=30000 --bail=1
 
       - name: ToolSearch runtime regression
         if: matrix.lane == 'regressions'

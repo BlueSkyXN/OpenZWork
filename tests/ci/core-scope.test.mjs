@@ -149,7 +149,7 @@ for (const [name, stepName, files] of [
     ["tests/plugins.test.ts", "tests/plugins-protocol.test.ts"],
   ],
 ]) {
-  test(`${name} regressions retain every file with one worker and original deadlines`, async () => {
+  test(`${name} regressions retain every file with one worker and declared deadlines`, async () => {
     const steps = (await workflow("ci.yml")).jobs.checks.steps;
     const step = steps.find((entry) => entry.name === stepName);
     assert.ok(step);
@@ -159,7 +159,14 @@ for (const [name, stepName, files] of [
     assert.match(step.run, /--no-file-parallelism(?: |$)/);
     assert.match(step.run, /--maxWorkers=1(?: |$)/);
     assert.match(step.run, /--bail=1$/);
-    assert.doesNotMatch(step.run, /--(?:testTimeout|test-timeout|retry|testNamePattern)| -t /);
+    // 仅真实插件缓存集成采用 30 秒期限；其余步骤和额外参数仍按原门禁拒绝。
+    const command =
+      stepName === "Local bundled plugins and metadata regression"
+        ? step.run.replace(" --testTimeout=30000", "")
+        : step.run;
+    if (stepName === "Local bundled plugins and metadata regression")
+      assert.match(step.run, /--testTimeout=30000(?: |$)/);
+    assert.doesNotMatch(command, /--(?:testTimeout|test-timeout|retry|testNamePattern)| -t /);
   });
 }
 
