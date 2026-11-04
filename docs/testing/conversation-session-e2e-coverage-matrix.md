@@ -5479,3 +5479,9 @@ release 推送前复验：继续合入 `225d1b14e1495598757dea872f72e0ac764b09ec
 ## V1 多接入档案回归（2026-11-04）
 
 V1-MA-01～04 的语义见 [V1 连接方式](../web-remote-control/v1-connection-modes.md#多档案并发与恢复)。runtime、适配器和 React hook 定向回归验证取消、单项写入、恢复记录及多官方目录；Desktop 候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts` 补充 V1-MA-02。最终 macOS Electron 运行 `packages/desktop/.e2e-artifacts/desktop-e2e-20261104-080210-534`：V1-04 多入口独立启停与 V1-MA-02 旧列表启动保留独立 IPC 新增档案，2/2 通过；另一窗口写入由独立 IPC 模拟。6 个定向回归文件共 57 项通过，覆盖 V1-MA-01～04 的受控场景。首次 E2E 构建因当前工作区缺少 contracts 局部 Zod 3 依赖而失败，复用已有 3.25.76 后构建和两次桌面运行通过。候选保持 manual-review/pending，未转正或纳入 Docker；真实公网与跨操作系统 GUI 未在本轮验收。
+
+## OpenZWork 3.17.1+openzwork.2 集成验收（2026-11-04）
+
+合并 #60、#61、#62 后，在隔离 macOS Electron 上运行提示词设置与多入口远控候选。最终证据：`packages/desktop/.e2e-artifacts/desktop-e2e-20261104-091758-353`，2 个 spec / 5 项通过：SPE04/09、SP14–SP15、SP06/SP08、V1-04 多入口独立启停、V1-MA-02 旧列表启动保留独立 IPC 新增档案。候选保持 manual-review/pending，未转正或加入 Docker。
+
+首次集成运行 3/5：差异正文尚处于 Suspense 占位即被读取；renderer helper 提前 detach debugger，模拟视口随后被撤销。修正正文就绪等待及 debugger 所有权后，复跑保留全部原断言和原时限。该次复跑复用同源码已完成构建的 Desktop/Agent，仅重新加载修改后的 E2E spec/helper。真实手机硬件和 Windows/Linux GUI 不计入此证据。

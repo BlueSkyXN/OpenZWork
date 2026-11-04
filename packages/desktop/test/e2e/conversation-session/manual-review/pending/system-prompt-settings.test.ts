@@ -83,6 +83,10 @@ describe(marker + ": 系统提示词设置", () => {
     );
     await clickTestIdByDom("system-prompt-profile-preview");
     await waitForTestIdByDom("system-prompt-changes");
+    // DiffViewer 懒加载期间容器已存在，必须等实际正文而不是读取 Suspense 占位。
+    await browser.waitUntil(async () =>
+      (await $('[data-testid="system-prompt-changes"]').getText()).includes("E2E_PROFILE_ROLE"),
+    );
     expect(await $('[data-testid="system-prompt-changes"]').getText()).toContain(
       "E2E_PROFILE_ROLE",
     );

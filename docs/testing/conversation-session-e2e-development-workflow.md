@@ -65,6 +65,8 @@ Lexical 输入 helper 必须遵守真实 DOM 的可编辑状态。冷恢复时 p
 Start Plan 诊断已证明 `max-width` 仍在过渡时按钮会移动，点击返回成功却未命中；
 测试等待浏览器动画状态，不增加固定暂停、不重复点击，也不关闭产品动画。
 
+Renderer 视口 helper 从设置 metrics 到清除 metrics 之间保持 debugger 会话；提前 detach 会异步撤销模拟尺寸。清除后只释放 helper 自己创建的会话，保留调用方已有 debugger。异步差异组件以目标正文实际出现作为就绪条件，容器已挂载或仍显示加载占位时不能读取最终 diff。
+
 ### 正式回放契约维护（2026-10-15）
 
 正式回放修复遵循当前可观察合同：模型 Recent 夹具按当前项目的 Composer scope 读写
