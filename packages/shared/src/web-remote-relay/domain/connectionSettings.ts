@@ -5,6 +5,14 @@ import { z } from "zod";
 export const webRemoteControlConnectionSettingsSchema = z
   .object({
     mode: z.enum(["direct", "self-hosted", "official"]),
+    profileId: z
+      .string()
+      .trim()
+      .min(1)
+      .max(64)
+      .regex(/^[A-Za-z0-9._~-]+$/u)
+      .optional(),
+    name: z.string().trim().max(64).optional(),
     direct: z
       .object({
         listenHost: z.string().trim().min(1).max(253),
@@ -25,11 +33,62 @@ export type WebRemoteControlConnectionSettings = z.infer<
   typeof webRemoteControlConnectionSettingsSchema
 >;
 
+export const webRemoteControlConnectionProfileMutationSchema = z.discriminatedUnion("kind", [
+  z
+    .object({ kind: z.literal("upsert"), profile: webRemoteControlConnectionSettingsSchema })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("remove"),
+      profileId: webRemoteControlConnectionSettingsSchema.shape.profileId.unwrap(),
+    })
+    .strict(),
+]);
+export type WebRemoteControlConnectionProfileMutation = z.infer<
+  typeof webRemoteControlConnectionProfileMutationSchema
+>;
+
+export const WEB_REMOTE_CONTROL_DEFAULT_PROFILE_ID = "default";
+
+export const webRemoteControlConnectionProfilesSchema = z
+  .array(webRemoteControlConnectionSettingsSchema)
+  .min(1)
+  .refine((profiles) => {
+    const ids = new Set(
+      profiles.map((profile) => profile.profileId ?? WEB_REMOTE_CONTROL_DEFAULT_PROFILE_ID),
+    );
+    return ids.size === profiles.length;
+  }, "Web remote control profile IDs must be unique");
+
+export type WebRemoteControlConnectionProfiles = z.infer<
+  typeof webRemoteControlConnectionProfilesSchema
+>;
+
 export const DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS: WebRemoteControlConnectionSettings = {
+  profileId: WEB_REMOTE_CONTROL_DEFAULT_PROFILE_ID,
   mode: "direct",
   direct: { listenHost: "0.0.0.0", port: 0, publicUrl: "" },
   relay: { wsUrl: "", pageUrl: "" },
 };
+
+export function getWebRemoteControlProfileId(
+  settings: Pick<WebRemoteControlConnectionSettings, "profileId"> | undefined,
+): string {
+  const profileId = settings?.profileId?.trim();
+  return profileId || WEB_REMOTE_CONTROL_DEFAULT_PROFILE_ID;
+}
+
+export function normalizeWebRemoteControlConnectionProfile(
+  settings: WebRemoteControlConnectionSettings,
+): WebRemoteControlConnectionSettings {
+  const profileId = getWebRemoteControlProfileId(settings);
+  const name = settings.name?.trim();
+  return {
+    ...settings,
+    profileId,
+    ...(name ? { name } : {}),
+  };
+}
 
 export function validateWebRemoteControlUrl(value: string, kind: "page" | "relay"): string {
   const url = new URL(value);

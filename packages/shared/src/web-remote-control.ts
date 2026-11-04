@@ -1,9 +1,15 @@
 import type { WebRemoteControlConnectionSettings } from "./web-remote-relay/index.js";
 // OpenZWork 拆分：连接设置域移至 web-remote-relay/domain/connectionSettings，经 barrel 转出口。
 export type { WebRemoteControlConnectionSettings } from "./web-remote-relay/index.js";
+export type { WebRemoteControlConnectionProfileMutation } from "./web-remote-relay/index.js";
 export {
   webRemoteControlConnectionSettingsSchema,
+  webRemoteControlConnectionProfilesSchema,
+  webRemoteControlConnectionProfileMutationSchema,
   DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+  WEB_REMOTE_CONTROL_DEFAULT_PROFILE_ID,
+  getWebRemoteControlProfileId,
+  normalizeWebRemoteControlConnectionProfile,
 } from "./web-remote-relay/index.js";
 export * from "./web-remote-relay/contract.js";
 export {
@@ -151,6 +157,7 @@ export function resolveWebRemoteControlFailureReasonFromCloseCode(
 
 export interface WebRemoteControlStartResult {
   connection?: WebRemoteControlConnectionSettings;
+  profileId?: string;
   status: Extract<WebRemoteControlStatusKind, "running" | "connecting" | "active">;
   sessionId: string;
   windowControlSessionId?: string;
@@ -176,6 +183,9 @@ export type WebRemoteControlStartOperationResult =
 
 export interface WebRemoteControlStatus {
   connection?: WebRemoteControlConnectionSettings;
+  profileId?: string;
+  profileName?: string;
+  instances?: WebRemoteControlStatus[];
   status: WebRemoteControlStatusKind;
   sessionId?: string;
   windowControlSessionId?: string;

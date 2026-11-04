@@ -179,6 +179,7 @@
         "packages/desktop/test/webRemoteControlDirectGateway.test.ts",
         "packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts",
         "packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts",
+        "packages/desktop/test/windowHostTerminalOwners.test.ts",
         "packages/ui/test/remoteControlSettingsSection.test.ts",
         "packages/web/test/webRemoteControlScanPage.test.ts"
       ]

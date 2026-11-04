@@ -257,23 +257,25 @@ export function useWebRemoteControlLegacyTaskSync({
     };
   }, [enabled, platform]);
   useEffect(() => {
-    if (
-      !enabled ||
-      !directory ||
-      directory.loading ||
-      !status.sessionId ||
-      status.connection?.mode !== "official" ||
-      !["running", "connecting", "active"].includes(status.status)
-    )
-      return;
+    if (!enabled || !directory || directory.loading) return;
+    // 顶层状态仅兼容旧单实例读者；目录必须按每个官方实例独立发布。
+    const instances = status.instances ?? [status];
+    const officialInstances = instances.filter(
+      (instance) =>
+        instance.sessionId &&
+        instance.connection?.mode === "official" &&
+        ["running", "connecting", "active"].includes(instance.status),
+    );
+    if (!officialInstances.length) return;
     const { tasks, ...snapshot } = buildLegacyRemoteDirectorySnapshot(
       buildWebRemoteControlWorkspaceTargets({ tabs }),
       directory.tree,
       rootlessLabel,
     );
-    platform.syncWebRemoteControlLegacyTasks?.(tasks, {
-      ...snapshot,
-      windowControlSessionId: status.sessionId,
-    });
+    for (const instance of officialInstances)
+      platform.syncWebRemoteControlLegacyTasks?.(tasks, {
+        ...snapshot,
+        windowControlSessionId: instance.sessionId!,
+      });
   }, [enabled, platform, tabs, directory?.tree, directory?.loading, status, rootlessLabel]);
 }

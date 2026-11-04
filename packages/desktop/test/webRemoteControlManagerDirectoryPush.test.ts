@@ -6,6 +6,7 @@ import type {
   WebRemoteControlTaskTarget,
   WebRemoteControlWorkspaceTarget,
 } from "@zcode/shared";
+import { DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS } from "@zcode/shared";
 import { createWebRemoteControlManager } from "../src/main/webRemoteControlManager.js";
 import { createWebRemoteControlFeatureGate } from "../src/main/webRemoteControlFeatureGate.js";
 
@@ -23,11 +24,29 @@ function createFakePort() {
   };
 }
 
-function createManagerHarness() {
+type StartupRestoreContext = {
+  connection?: typeof DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS & {
+    profileId?: string;
+  };
+  workspacePath: string;
+  workspaceIdentity?: string;
+  initialTaskId?: string;
+};
+
+function createManagerHarness({
+  startupContexts = [],
+  overrides = {},
+}: {
+  startupContexts?: StartupRestoreContext[];
+  overrides?: Partial<Parameters<typeof createWebRemoteControlManager>[0]>;
+} = {}) {
   const sentPayloads: WebRemoteControlAppPayload[] = [];
   const settings: AppSettings = { recentProjects: [], locale: "zh-CN" };
+  const savedStartupRestoreContexts: StartupRestoreContext[] = [];
   let storedAuth: { deviceSid: string; passHash: string } | undefined;
-  let deliverPayload: ((payload: WebRemoteControlAppPayload) => void) | undefined;
+  const deliverPayloads: Array<(payload: WebRemoteControlAppPayload) => void> = [];
+  const addTerminalOwner = vi.fn();
+  const removeTerminalOwner = vi.fn();
   const defaultAttachWorkspaceHost = vi.fn(async () => ({
     entryId: "entry-1",
     attachmentId: "attachment-1",
@@ -58,9 +77,13 @@ function createManagerHarness() {
       rotate: async () => {},
     },
     startupRestoreStorageProvider: {
-      load: async () => undefined,
-      save: async () => {},
-      clear: async () => {},
+      load: async () => startupContexts,
+      save: async (contexts) => {
+        savedStartupRestoreContexts.splice(0, savedStartupRestoreContexts.length, ...contexts);
+      },
+      clear: async () => {
+        savedStartupRestoreContexts.splice(0, savedStartupRestoreContexts.length);
+      },
     },
     featureGate: createWebRemoteControlFeatureGate(true),
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -83,35 +106,47 @@ function createManagerHarness() {
     releaseWorkspaceHostAttachment: vi.fn(),
     disposeWorkspaceHostAttachmentsForWindow: vi.fn(),
     disposeWorkspaceHostAttachmentsForRemoteSession: vi.fn(),
-    setTerminalOwner: vi.fn(),
-    createDeviceTransport: (transportOptions) => ({
-      start: () => {
-        deliverPayload = transportOptions.onPayload;
-        if (transportOptions.auth.mode === "register") {
-          transportOptions.onRegisteredAuth({ deviceSid: "sid-1", passHash: "hash-1" });
-        }
-        transportOptions.onStateChange("waiting_terminal");
-      },
-      sendPayload: (payload) => {
-        sentPayloads.push(payload);
-        return true;
-      },
-      measurePayloadBytes: (payload) => JSON.stringify(payload).length,
-      sendPayloadResult: (payload) => {
-        sentPayloads.push(payload);
-        return { kind: "sent" as const, bytes: JSON.stringify(payload).length };
-      },
-      dispose: vi.fn(),
-    }),
+    addTerminalOwner,
+    removeTerminalOwner,
+    createDeviceTransport: (transportOptions) => {
+      const transportIndex = deliverPayloads.length;
+      return {
+        start: () => {
+          deliverPayloads[transportIndex] = transportOptions.onPayload;
+          if (transportOptions.auth.mode === "register") {
+            transportOptions.onRegisteredAuth({
+              deviceSid: `sid-${transportIndex + 1}`,
+              passHash: `hash-${transportIndex + 1}`,
+            });
+          }
+          transportOptions.onStateChange("waiting_terminal");
+        },
+        sendPayload: (payload) => {
+          sentPayloads.push(payload);
+          return true;
+        },
+        measurePayloadBytes: (payload) => JSON.stringify(payload).length,
+        sendPayloadResult: (payload) => {
+          sentPayloads.push(payload);
+          return { kind: "sent" as const, bytes: JSON.stringify(payload).length };
+        },
+        dispose: vi.fn(),
+      };
+    },
+    ...overrides,
   });
 
   return {
     manager,
     sentPayloads,
-    deliverPayload: (payload: WebRemoteControlAppPayload) => {
-      if (!deliverPayload) throw new Error("transport not started");
-      deliverPayload(payload);
+    savedStartupRestoreContexts,
+    deliverPayload: (payload: WebRemoteControlAppPayload, transportIndex = 0) => {
+      const deliver = deliverPayloads[transportIndex];
+      if (!deliver) throw new Error("transport not started");
+      deliver(payload);
     },
+    addTerminalOwner,
+    removeTerminalOwner,
   };
 }
 
@@ -222,4 +257,334 @@ describe("webRemoteControlManager 目录推送签名", () => {
       }
     },
   );
+
+  it("同一窗口多个接入档案可并存，停止一个不释放另一个的终端 owner", async () => {
+    const h = createManagerHarness();
+    const connection = (profileId: string) => ({
+      ...structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+      profileId,
+      mode: "self-hosted" as const,
+      relay: {
+        wsUrl: "wss://relay.example/ws",
+        pageUrl: "https://relay.example/remote/",
+      },
+    });
+
+    await h.manager.start(1, {
+      workspacePath: localWorkspace.workspacePath,
+      connection: connection("lan"),
+    });
+    await h.manager.start(1, {
+      workspacePath: localWorkspace.workspacePath,
+      connection: connection("relay-b"),
+    });
+
+    expect(h.manager.getStatus(1).instances?.map((instance) => instance.profileId)).toEqual([
+      "lan",
+      "relay-b",
+    ]);
+    h.deliverPayload(
+      {
+        zcode_type: "bootstrap-request",
+        requestId: "bootstrap-lan",
+        terminalClientSessionId: "mobile-session-lan",
+      },
+      0,
+    );
+    h.deliverPayload(
+      {
+        zcode_type: "bootstrap-request",
+        requestId: "bootstrap-relay",
+        terminalClientSessionId: "mobile-session-relay",
+      },
+      1,
+    );
+    expect(h.addTerminalOwner).toHaveBeenCalledTimes(2);
+    expect(h.removeTerminalOwner).not.toHaveBeenCalled();
+
+    const lanOwnerId = h.addTerminalOwner.mock.calls[0]![1];
+    await h.manager.stop(1, "lan");
+    expect(h.removeTerminalOwner).toHaveBeenCalledWith(1, lanOwnerId);
+    expect(h.manager.getStatus(1).instances?.map((instance) => instance.profileId)).toEqual([
+      "relay-b",
+    ]);
+
+    await h.manager.disposeWindow(1);
+  });
+
+  it("并发启动授权按档案隔离，且恢复快照可路由到不同窗口", async () => {
+    const connection = (profileId: string) => ({
+      ...structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+      profileId,
+      mode: "self-hosted" as const,
+      relay: {
+        wsUrl: "wss://relay.example/ws",
+        pageUrl: "https://relay.example/remote/",
+      },
+    });
+    const contextA = {
+      workspacePath: "/workspace/a",
+      connection: connection("lan"),
+    };
+    const contextB = {
+      workspacePath: "/workspace/b",
+      connection: connection("relay-b"),
+    };
+    const h = createManagerHarness();
+    const restoreHarness = createManagerHarness({
+      startupContexts: [
+        { workspacePath: contextA.workspacePath, connection: contextA.connection },
+        { workspacePath: contextB.workspacePath, connection: contextB.connection },
+      ],
+    });
+    const authorizationA = h.manager.authorizeStart(1, contextA);
+    const authorizationB = h.manager.authorizeStart(1, contextB);
+
+    await h.manager.startAuthorized(1, contextA, authorizationA);
+    await h.manager.startAuthorized(1, contextB, authorizationB);
+    expect(h.manager.getStatus(1).instances?.map((instance) => instance.profileId)).toEqual([
+      "lan",
+      "relay-b",
+    ]);
+    await h.manager.stop(1, "lan");
+    await h.manager.stop(1, "relay-b");
+
+    expect(
+      await restoreHarness.manager.restorePreviouslyEnabled(1, [
+        { ...localWorkspace, workspacePath: contextA.workspacePath },
+      ]),
+    ).toBe(true);
+    expect(
+      await restoreHarness.manager.restorePreviouslyEnabled(2, [
+        { ...localWorkspace, workspacePath: contextB.workspacePath },
+      ]),
+    ).toBe(true);
+    expect(
+      restoreHarness.manager.getStatus(1).instances?.map((instance) => instance.profileId),
+    ).toEqual(["lan"]);
+    expect(
+      restoreHarness.manager.getStatus(2).instances?.map((instance) => instance.profileId),
+    ).toEqual(["relay-b"]);
+    expect(restoreHarness.savedStartupRestoreContexts).toHaveLength(2);
+
+    await h.manager.disposeWindow(1);
+    await restoreHarness.manager.disposeWindow(1);
+    await restoreHarness.manager.disposeWindow(2);
+  });
+});
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+const profile = (profileId: string) => ({
+  ...structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+  profileId,
+});
+
+describe("多档案启动取消与恢复持久化", () => {
+  it.each(["stop-profile", "stop-window", "suspend", "dispose"])(
+    "cancels preparing start on %s",
+    async (action) => {
+      const entered = deferred();
+      const release = deferred();
+      const h = createManagerHarness({
+        overrides: {
+          getEndpointUrls: async () => {
+            entered.resolve();
+            await release.promise;
+            return {} as never;
+          },
+        },
+      });
+      const started = h.manager
+        .start(1, { workspacePath: "/workspace/a", connection: profile("a") })
+        .then(
+          () => "resolved",
+          () => "rejected",
+        );
+      await entered.promise;
+      if (action === "stop-profile") await h.manager.stop(1, "a");
+      else if (action === "stop-window") await h.manager.stop(1);
+      else if (action === "suspend") await h.manager.suspend(1, "endpoint-changed");
+      else await h.manager.disposeWindow(1);
+      release.resolve();
+      const result = await started;
+      const status = h.manager.getStatus(1);
+      await h.manager.disposeWindow(1);
+      expect({ result, status: status.status }).toEqual({ result: "rejected", status: "idle" });
+    },
+  );
+  it("new start cancels an older preparation of the same profile", async () => {
+    const entered = deferred();
+    const release = deferred();
+    let calls = 0;
+    const h = createManagerHarness({
+      overrides: {
+        getEndpointUrls: async () => {
+          if (++calls === 1) {
+            entered.resolve();
+            await release.promise;
+          }
+          return {} as never;
+        },
+      },
+    });
+    const first = h.manager
+      .start(1, { workspacePath: "/workspace/older", connection: profile("a") })
+      .then(
+        () => "resolved",
+        () => "rejected",
+      );
+    await entered.promise;
+    await h.manager.start(1, { workspacePath: "/workspace/newer", connection: profile("a") });
+    release.resolve();
+    const outcome = await first;
+    const actual = h.manager.getStatus(1).workspacePath;
+    await h.manager.disposeWindow(1);
+    expect({ outcome, actual }).toEqual({ outcome: "rejected", actual: "/workspace/newer" });
+  });
+  it("persists pending restores before their workspace becomes available", async () => {
+    const contexts = [
+      { workspacePath: "/workspace/a", connection: profile("a") },
+      { workspacePath: "/workspace/b", connection: profile("b") },
+    ];
+    const h = createManagerHarness({
+      startupContexts: contexts,
+      overrides: {
+        connectionProvider: {
+          getSettings: async () => profile("a"),
+          prepare: async (
+            _windowId: number,
+            settings: typeof DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS | undefined,
+          ) => ({
+            settings: settings!,
+            relayWsUrl: "ws://relay.test/ws",
+            mobileRemoteControlUrl: "https://relay.test/remote/v3",
+            authStorageProvider: {
+              load: async () => undefined,
+              save: async () => {},
+              clear: async () => {},
+              rotate: async () => {},
+            },
+            commit: async () => {},
+            dispose: async () => {},
+          }),
+        },
+      },
+    });
+    await h.manager.restorePreviouslyEnabled(1, [
+      { workspacePath: "/workspace/a", label: "A", kind: "local" },
+    ]);
+    const persisted = structuredClone(h.savedStartupRestoreContexts);
+    await h.manager.disposeWindow(1);
+    expect(persisted.map((c) => c.workspacePath)).toEqual(["/workspace/a", "/workspace/b"]);
+  });
+});
+
+function restoreConnectionProvider(prepare?: (profileId: string) => Promise<void>) {
+  return {
+    getSettings: async () => profile("a"),
+    prepare: async (
+      _windowId: number,
+      requested: typeof DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS | undefined,
+    ) => {
+      const settings = requested ?? profile("a");
+      await prepare?.(settings.profileId!);
+      return {
+        settings,
+        relayWsUrl: "ws://relay.test/ws",
+        mobileRemoteControlUrl: "https://relay.test/remote/v3",
+        authStorageProvider: {
+          load: async () => undefined,
+          save: async () => {},
+          clear: async () => {},
+          rotate: async () => {},
+        },
+        commit: async () => {},
+        dispose: async () => {},
+      };
+    },
+  };
+}
+it("恢复部分失败仍保存待恢复项，同窗口下次可以重试", async () => {
+  let fail = true;
+  const contexts = ["a", "b"].map((id) => ({
+    workspacePath: `/workspace/${id}`,
+    connection: profile(id),
+  }));
+  const h = createManagerHarness({
+    startupContexts: contexts,
+    overrides: {
+      connectionProvider: restoreConnectionProvider(async (id) => {
+        if (id === "b" && fail) throw new Error("temporary prepare failure");
+      }),
+    },
+  });
+  const candidates = contexts.map((context) => ({ ...context, label: context.workspacePath }));
+  expect(await h.manager.restorePreviouslyEnabled(1, candidates)).toBe(true);
+  expect(h.savedStartupRestoreContexts.map((c) => c.connection?.profileId)).toEqual(["a", "b"]);
+  expect(h.manager.getStatus(1).instances?.map((i) => i.profileId)).toEqual(["a"]);
+  fail = false;
+  expect(await h.manager.restorePreviouslyEnabled(1, candidates)).toBe(true);
+  expect(h.manager.getStatus(1).instances?.map((i) => i.profileId)).toEqual(["a", "b"]);
+  await h.manager.stop(1, "b");
+  expect(h.savedStartupRestoreContexts.map((c) => c.connection?.profileId)).toEqual(["a"]);
+  expect(await h.manager.restorePreviouslyEnabled(1, candidates)).toBe(false);
+  await h.manager.disposeWindow(1);
+});
+it("并发窗口只加载一次恢复快照，并且同一条待恢复项只被认领一次", async () => {
+  const entered = deferred();
+  const release = deferred();
+  const context = { workspacePath: "/workspace/a", connection: profile("a") };
+  const load = vi.fn(async () => {
+    entered.resolve();
+    await release.promise;
+    return [context];
+  });
+  const h = createManagerHarness({
+    overrides: {
+      startupRestoreStorageProvider: { load, save: async () => {}, clear: async () => {} },
+      connectionProvider: restoreConnectionProvider(),
+    },
+  });
+  const first = h.manager.restorePreviouslyEnabled(1, [context]);
+  await entered.promise;
+  const second = h.manager.restorePreviouslyEnabled(2, [context]);
+  release.resolve();
+  const outcomes = await Promise.all([first, second]);
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(outcomes.filter(Boolean)).toHaveLength(1);
+  expect(
+    (h.manager.getStatus(1).instances?.length ?? 0) +
+      (h.manager.getStatus(2).instances?.length ?? 0),
+  ).toBe(1);
+  await h.manager.disposeWindow(1);
+  await h.manager.disposeWindow(2);
+});
+
+it.each(["profile", "window"])("显式停止 %s 会撤销正在恢复的档案记录", async (target) => {
+  const entered = deferred();
+  const release = deferred();
+  const context = { workspacePath: "/workspace/a", connection: profile("a") };
+  const h = createManagerHarness({
+    startupContexts: [context],
+    overrides: {
+      connectionProvider: restoreConnectionProvider(async () => {
+        entered.resolve();
+        await release.promise;
+      }),
+    },
+  });
+  const restore = h.manager.restorePreviouslyEnabled(1, [context]);
+  await entered.promise;
+  await h.manager.stop(1, target === "profile" ? "a" : undefined);
+  release.resolve();
+  expect(await restore).toBe(false);
+  expect(h.savedStartupRestoreContexts).toEqual([]);
+  expect(await h.manager.restorePreviouslyEnabled(1, [context])).toBe(false);
+  expect(h.manager.getStatus(1).status).toBe("idle");
 });

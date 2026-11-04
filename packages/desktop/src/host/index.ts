@@ -2319,7 +2319,7 @@ function logWindowHostTopology(reason: string): void {
 }
 
 function disposeAttachedServicePorts(): void {
-  terminalOwners.setOwner(null);
+  terminalOwners.dispose();
   windowHostAttachmentRegistry.dispose();
 }
 
@@ -3125,6 +3125,16 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
 
   if (msg.type === HostMessageTypes.SetTerminalOwner) {
     terminalOwners.setOwner(msg.ownerId);
+    return;
+  }
+
+  if (msg.type === HostMessageTypes.AddTerminalOwner) {
+    terminalOwners.addOwner(msg.ownerId);
+    return;
+  }
+
+  if (msg.type === HostMessageTypes.RemoveTerminalOwner) {
+    terminalOwners.removeOwner(msg.ownerId);
     return;
   }
 

@@ -397,6 +397,8 @@ export interface AppSettings {
   settingsSyncFirstRunPromptHandled?: boolean;
   /** Desktop Main 保存的 V1 连接设置；不包含配对秘密。 */
   webRemoteControlConnection?: import("./web-remote-control.js").WebRemoteControlConnectionSettings;
+  /** Desktop Main 保存的 V1 接入档案；旧单份字段仅作回滚兼容。 */
+  webRemoteControlConnections?: import("./web-remote-control.js").WebRemoteControlConnectionSettings[];
   /** 旧外部 relay 身份；新入口使用按端点和窗口隔离的 CredentialService 记录。 */
   webRemoteControlExternalRelayDevice?: {
     deviceSid: string;
@@ -408,6 +410,13 @@ export interface AppSettings {
     workspaceIdentity?: string;
     initialTaskId?: string;
   };
+  /** 上次成功开启的各接入档案；每项缺失时按用户明确关闭处理。 */
+  webRemoteControlLastEnabledContexts?: Array<{
+    connection?: import("./web-remote-control.js").WebRemoteControlConnectionSettings;
+    workspacePath: string;
+    workspaceIdentity?: string;
+    initialTaskId?: string;
+  }>;
   /** 设置页里的临时 endpoint override；正式/测试默认 base url 由 ZCODE_BASE_URL env 管理。 */
   zcodeEndpointOrigin?: string;
 }

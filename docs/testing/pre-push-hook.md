@@ -36,6 +36,11 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 
 ## 测试边界
 
+CI 的 `Local bundled plugins and metadata regression` 步骤执行真实文件系统集成：
+`plugins.test.ts` 与 `plugins-protocol.test.ts` 使用 30 秒单例期限，包含冷缓存播种、恢复和清理。
+该步骤保留单 worker、禁止文件并发、`--bail=1` 与全部断言；不增加 retry。
+其他 CLI 回归步骤继续使用默认测试期限；`tests/ci/core-scope.test.mjs` 将此例外限定在上述两份插件测试。
+
 ### 独立入口
 
 以下命令供手动选择受影响单测或 lint-staged 调用；默认 `verify:pre-push` 使用前述固定核心套件。

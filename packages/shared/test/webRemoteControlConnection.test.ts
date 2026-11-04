@@ -3,8 +3,12 @@ import {
   buildWebRemoteControlExternalQrUrl,
   parseWebRemoteControlExternalQrParams,
   webRemoteControlConnectionSettingsSchema,
+  webRemoteControlConnectionProfilesSchema,
   resolveWebRemoteControlBrowserRelayUrl,
   DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+  appSettingsSchema,
+  getWebRemoteControlProfileId,
+  normalizeWebRemoteControlConnectionProfile,
 } from "../src/index.js";
 
 describe("V1 connection settings and QR", () => {
@@ -36,6 +40,35 @@ describe("V1 connection settings and QR", () => {
     expect(resolveWebRemoteControlBrowserRelayUrl("http://phone.example")).toBe(
       "ws://phone.example/ws",
     );
+  });
+  it("normalizes and validates a non-empty unique profile list", () => {
+    const lan = normalizeWebRemoteControlConnectionProfile({
+      ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+      name: " 局域网 ",
+    });
+    const relay = {
+      ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+      profileId: "vpn-relay",
+      mode: "self-hosted" as const,
+    };
+
+    expect(getWebRemoteControlProfileId(lan)).toBe("default");
+    expect(lan.name).toBe("局域网");
+    expect(webRemoteControlConnectionProfilesSchema.parse([lan, relay])).toHaveLength(2);
+    expect(
+      appSettingsSchema.parse({
+        recentProjects: [],
+        locale: "zh-CN",
+        webRemoteControlConnections: [lan, relay],
+      }).webRemoteControlConnections,
+    ).toHaveLength(2);
+    expect(
+      webRemoteControlConnectionProfilesSchema.safeParse([
+        { ...lan, profileId: "vpn-relay" },
+        relay,
+      ]).success,
+    ).toBe(false);
+    expect(webRemoteControlConnectionProfilesSchema.safeParse([]).success).toBe(false);
   });
   it("rejects invalid QR relay schemes and mixed content", () => {
     expect(

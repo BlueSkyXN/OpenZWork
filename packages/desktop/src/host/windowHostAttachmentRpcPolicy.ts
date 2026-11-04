@@ -168,25 +168,40 @@ export function exposeWindowHostAttachmentServices(params: {
 
 /** 手机终端属于页面 owner，不属于可随导航换代的 RPC attachment。 */
 export function createWindowHostTerminalOwners(onCleanupError: (error: unknown) => void) {
-  let current:
-    | { id: string; scopes: Map<string, ReturnType<typeof createTerminalScope>> }
-    | undefined;
+  const owners = new Map<string, { scopes: Map<string, ReturnType<typeof createTerminalScope>> }>();
+  const disposeOwner = (owner: { scopes: Map<string, ReturnType<typeof createTerminalScope>> }) => {
+    for (const scope of owner.scopes.values()) scope.dispose();
+    owner.scopes.clear();
+  };
   return {
     setOwner(id: string | null): void {
-      if (current?.id === id) return;
-      const previous = current;
-      current = id === null ? undefined : { id, scopes: new Map() };
-      // 先撤销旧 owner，再异步回收；旧 attachment 和晚到 create 均不能复活它。
-      for (const scope of previous?.scopes.values() ?? []) scope.dispose();
+      for (const owner of owners.values()) disposeOwner(owner);
+      owners.clear();
+      if (id !== null) owners.set(id, { scopes: new Map() });
+    },
+    addOwner(id: string): void {
+      if (!owners.has(id)) owners.set(id, { scopes: new Map() });
+    },
+    removeOwner(id: string): void {
+      const owner = owners.get(id);
+      if (!owner) return;
+      owners.delete(id);
+      // 先撤销 owner，再异步回收；旧 attachment 和晚到 create 均不能复活它。
+      disposeOwner(owner);
     },
     bind(ownerId: string, scopeKey: string, base: ITerminalService): ITerminalService {
-      if (current?.id !== ownerId) throw new Error("Terminal owner has ended");
-      let scope = current.scopes.get(scopeKey);
+      const owner = owners.get(ownerId);
+      if (!owner) throw new Error("Terminal owner has ended");
+      let scope = owner.scopes.get(scopeKey);
       if (!scope) {
         scope = createTerminalScope(base, onCleanupError);
-        current.scopes.set(scopeKey, scope);
+        owner.scopes.set(scopeKey, scope);
       }
       return scope.service;
+    },
+    dispose(): void {
+      for (const owner of owners.values()) disposeOwner(owner);
+      owners.clear();
     },
   };
 }

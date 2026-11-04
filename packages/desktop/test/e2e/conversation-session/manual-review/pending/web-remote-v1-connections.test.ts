@@ -162,6 +162,15 @@ async function maskedDesktopScreenshot(name: string) {
   }
 }
 
+async function runningProfileIds() {
+  return browser.execute(async () => {
+    const result = await (
+      window as unknown as { zcode: IPlatformService }
+    ).zcode.getWebRemoteControlStatus();
+    return (result.instances ?? []).map((instance) => instance.profileId ?? "default");
+  });
+}
+
 describe("E2E_V1_CONNECTIONS", () => {
   before(async () => {
     await mkdir(artifacts, { recursive: true });
@@ -326,6 +335,69 @@ describe("E2E_V1_CONNECTIONS", () => {
       join(artifacts, "direct-result.json"),
       JSON.stringify({ insecureHttp: true, paired: true, draft: true, portClosed: true }),
     );
+  });
+
+  it("V1-04: two access profiles can run together and stopping one keeps the other", async function () {
+    this.timeout(120_000);
+    await openSettings();
+    await $('[data-testid="web-remote-start"]').click();
+    await browser.waitUntil(async () => (await runningProfileIds()).length === 1, {
+      timeout: 35_000,
+    });
+    const firstProfileId = (await runningProfileIds())[0]!;
+
+    await $('[data-testid="web-remote-add-profile"]').click();
+    await $('[data-testid="web-remote-profile-name"]').setValue("Second access");
+    await $('[data-testid="web-remote-start"]').click();
+    await browser.waitUntil(async () => (await runningProfileIds()).length === 2, {
+      timeout: 35_000,
+    });
+    const secondProfileId = (await runningProfileIds()).find((id) => id !== firstProfileId)!;
+
+    await $(`[data-testid="web-remote-profile-${firstProfileId}"]`).click();
+    await clickButton("^(关闭远程控制|停止|Stop.*)$");
+    await browser.waitUntil(async () => (await runningProfileIds()).join("\n") === secondProfileId);
+    await maskedDesktopScreenshot("two-access-profiles-one-running.png");
+    await writeFile(
+      join(artifacts, "two-access-profiles.json"),
+      JSON.stringify({ firstProfileId, remainingProfileId: secondProfileId }),
+    );
+  });
+  it("V1-MA-02: starting from an old settings list preserves a separately added profile", async function () {
+    this.timeout(120_000);
+    await openSettings();
+    // 设置页已经载入；独立 IPC 写入模拟另一个窗口新增档案，保留当前 UI 的旧草稿。
+    const profileId = "e2e-other-window";
+    await browser.execute(async (profileId) => {
+      const platform = (window as unknown as { zcode: IPlatformService }).zcode;
+      const [current] = await platform.getWebRemoteControlConnections!();
+      await platform.updateWebRemoteControlConnectionProfile!({
+        kind: "upsert",
+        profile: { ...current!, profileId, name: "E2E_OTHER_WINDOW" },
+      });
+    }, profileId);
+    try {
+      await $('[data-testid="web-remote-start"]').click();
+      await browser.waitUntil(async () => (await runningProfileIds()).length === 1, {
+        timeout: 35_000,
+      });
+      const savedIds = await browser.execute(async () =>
+        (
+          await (window as unknown as { zcode: IPlatformService }).zcode
+            .getWebRemoteControlConnections!()
+        ).map((profile) => profile.profileId),
+      );
+      expect(savedIds).toContain(profileId);
+      await writeFile(
+        join(artifacts, "stale-profile-start.json"),
+        JSON.stringify({ preservedOtherProfile: true }),
+      );
+    } finally {
+      await browser.execute(async (profileId) => {
+        await (window as unknown as { zcode: IPlatformService }).zcode
+          .updateWebRemoteControlConnectionProfile!({ kind: "remove", profileId });
+      }, profileId);
+    }
   });
   it("V1-05/06/08: self-hosted V1 relay with a separately hosted page", async function () {
     this.timeout(150_000);

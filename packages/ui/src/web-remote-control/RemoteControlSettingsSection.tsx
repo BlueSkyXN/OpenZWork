@@ -2,16 +2,17 @@ import { memo, useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import {
   DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
+  getWebRemoteControlProfileId,
   type WebRemoteControlConnectionSettings,
+  type WebRemoteControlConnectionProfileMutation,
 } from "@zcode/shared";
 import {
   WebRemoteControlConnectionForm,
   WebRemoteControlConnectionHelp,
 } from "./WebRemoteControlConnectionForm.js";
+import { WebRemoteControlProfileList } from "./WebRemoteControlProfileList.js";
 import type { BotProvider, WebRemoteControlStatus } from "@zcode/shared";
 import {
-  isSameWebRemoteControlTarget,
-  isReusableWebRemoteControlSession,
   getStatusLabel,
   getStatusDetail,
   getStatusDotClassName,
@@ -76,15 +77,30 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
   const canStart = Boolean(workspacePath.trim());
   const confirmDialog = useConfirmDialog();
   const { intl } = useZCodeIntl();
-  const [status, setStatus] = useState<WebRemoteControlStatus>({
-    status: "idle",
-  });
+  const [statusById, setStatusById] = useState<Record<string, WebRemoteControlStatus>>({});
   const [loading, setLoading] = useState(true);
-  const [connection, setConnection] = useState<WebRemoteControlConnectionSettings>(() =>
+  const [profiles, setProfiles] = useState<WebRemoteControlConnectionSettings[]>(() => [
     structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+  ]);
+  const [activeProfileId, setActiveProfileId] = useState<string>(
+    DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS.profileId!,
   );
   const [operationError, setOperationError] = useState<string>();
+  const selectedProfile =
+    profiles.find((profile) => getWebRemoteControlProfileId(profile) === activeProfileId) ??
+    profiles[0] ??
+    structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS);
+  const selectedProfileId = getWebRemoteControlProfileId(selectedProfile);
+  const connection = selectedProfile;
+  const status = statusById[selectedProfileId] ?? { status: "idle" as const };
   const running = ["starting", "running", "connecting", "active"].includes(status.status);
+  const runningProfileIds = new Set(
+    Object.entries(statusById)
+      .filter(([, instance]) =>
+        ["starting", "running", "connecting", "active"].includes(instance.status),
+      )
+      .map(([profileId]) => profileId),
+  );
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [botsPageOpen, setBotsPageOpen] = useState(false);
   const [botEntryProvider, setBotEntryProvider] = useState<RemoteControlBotProvider | null>(null);
@@ -114,17 +130,53 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
       setLoading(true);
 
       try {
-        const [nextStatus, savedConnection] = await Promise.all([
+        const [nextStatus, savedProfiles] = await Promise.all([
           platform.getWebRemoteControlStatus(),
-          platform.getWebRemoteControlConnectionSettings?.(),
+          platform.getWebRemoteControlConnections?.() ??
+            Promise.resolve([
+              (await platform.getWebRemoteControlConnectionSettings?.()) ??
+                structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+            ]),
         ]);
         if (!cancelled) {
-          setStatus(nextStatus);
-          setConnection(
-            nextStatus.connection ??
-              savedConnection ??
-              structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+          const instances = nextStatus.instances?.length
+            ? nextStatus.instances
+            : nextStatus.status === "idle"
+              ? []
+              : [nextStatus];
+          setStatusById(
+            Object.fromEntries(
+              instances.map((instance) => [
+                instance.profileId ?? getWebRemoteControlProfileId(instance.connection),
+                instance,
+              ]),
+            ),
           );
+          const runningProfiles = instances
+            .map((instance) => instance.connection)
+            .filter(Boolean) as WebRemoteControlConnectionSettings[];
+          const nextProfiles = [...savedProfiles];
+          for (const profile of runningProfiles) {
+            const profileId = getWebRemoteControlProfileId(profile);
+            const index = nextProfiles.findIndex(
+              (candidate) => getWebRemoteControlProfileId(candidate) === profileId,
+            );
+            if (index >= 0) nextProfiles[index] = profile;
+            else nextProfiles.push(profile);
+          }
+          setProfiles(
+            nextProfiles.length
+              ? nextProfiles
+              : [structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS)],
+          );
+          setActiveProfileId((current) => {
+            const currentExists = nextProfiles.some(
+              (profile) => getWebRemoteControlProfileId(profile) === current,
+            );
+            if (currentExists) return current;
+            const firstRunning = instances[0]?.profileId;
+            return firstRunning ?? getWebRemoteControlProfileId(nextProfiles[0]);
+          });
           setOperationError(undefined);
           logger.info("[RemoteControlSettingsSection] Web 远程控制状态已同步", {
             workspacePath,
@@ -138,11 +190,13 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         if (!cancelled) {
-          setStatus({
-            status: "error",
-            workspacePath,
-            remoteSessionId,
-            error: message,
+          setStatusById({
+            [getWebRemoteControlProfileId(undefined)]: {
+              status: "error",
+              workspacePath,
+              remoteSessionId,
+              error: message,
+            },
           });
           toast(intl.formatMessage({ id: "webRemoteControl.startFailed" }, { error: message }));
         }
@@ -177,23 +231,25 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
           return;
         }
 
-        const shouldApplyStatus =
-          isSameWebRemoteControlTarget(
-            nextStatus,
-            workspacePath,
-            workspaceIdentity,
-            remoteSessionId,
-          ) ||
-          isReusableWebRemoteControlSession(nextStatus) ||
-          nextStatus.status === "idle" ||
-          nextStatus.status === "error";
-        if (!shouldApplyStatus) {
-          return;
-        }
-
-        setStatus((currentStatus) =>
-          isSameWebRemoteControlStatus(currentStatus, nextStatus) ? currentStatus : nextStatus,
-        );
+        const instances = nextStatus.instances?.length
+          ? nextStatus.instances
+          : nextStatus.status === "idle"
+            ? []
+            : [nextStatus];
+        setStatusById((currentStatuses) => {
+          const nextStatuses = Object.fromEntries(
+            instances.map((instance) => [
+              instance.profileId ?? getWebRemoteControlProfileId(instance.connection),
+              instance,
+            ]),
+          ) as Record<string, WebRemoteControlStatus>;
+          for (const [profileId, currentStatus] of Object.entries(currentStatuses)) {
+            if (!nextStatuses[profileId]) continue;
+            if (isSameWebRemoteControlStatus(currentStatus, nextStatuses[profileId]!))
+              nextStatuses[profileId] = currentStatus;
+          }
+          return nextStatuses;
+        });
       } catch {
         // Bugfix: Web 远程控制的状态变化发生在 main / relay 侧，
         // 如果页面只在打开时同步一次，状态会长期停在“等待连接”。
@@ -239,11 +295,79 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
     };
   }, [status.qrUrl]);
 
+  const updateConnection = (next: WebRemoteControlConnectionSettings) => {
+    setProfiles((current) => {
+      const profileId = getWebRemoteControlProfileId(next);
+      const index = current.findIndex(
+        (profile) => getWebRemoteControlProfileId(profile) === profileId,
+      );
+      if (index < 0) return [...current, next];
+      const nextProfiles = [...current];
+      nextProfiles[index] = next;
+      return nextProfiles;
+    });
+  };
+
+  const persistProfile = async (mutation: WebRemoteControlConnectionProfileMutation) => {
+    setLoading(true);
+    setOperationError(undefined);
+    try {
+      if (!platform.updateWebRemoteControlConnectionProfile)
+        throw new Error(
+          intl.formatMessage({ id: "webRemoteControl.connection.updateUnavailable" }),
+        );
+      const saved = await platform.updateWebRemoteControlConnectionProfile(mutation);
+      // Main 返回全局最新列表；其他档案的本地草稿仍归编辑器，不能因新增/删除一项而丢失。
+      setProfiles((current) =>
+        saved.map(
+          (profile) =>
+            current.find(
+              (draft) =>
+                getWebRemoteControlProfileId(draft) === getWebRemoteControlProfileId(profile),
+            ) ?? profile,
+        ),
+      );
+      return true;
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : String(error));
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createProfileId = () => {
+    const randomUUID = globalThis.crypto?.randomUUID?.();
+    return randomUUID ? randomUUID : `profile-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  };
+
+  const handleAddProfile = async () => {
+    if (loading) return;
+    const next: WebRemoteControlConnectionSettings = {
+      ...structuredClone(connection),
+      profileId: createProfileId(),
+      name: "",
+    };
+    if (await persistProfile({ kind: "upsert", profile: next }))
+      setActiveProfileId(getWebRemoteControlProfileId(next));
+  };
+
+  const handleDeleteProfile = async (profileId: string) => {
+    if (loading || profiles.length <= 1 || runningProfileIds.has(profileId)) return;
+    const nextProfiles = profiles.filter(
+      (profile) => getWebRemoteControlProfileId(profile) !== profileId,
+    );
+    if (!nextProfiles.length) return;
+    if ((await persistProfile({ kind: "remove", profileId })) && profileId === selectedProfileId)
+      setActiveProfileId(getWebRemoteControlProfileId(nextProfiles[0]!));
+  };
+
   const handleStart = async () => {
     if (!canStart || loading) return;
     setLoading(true);
     setOperationError(undefined);
     try {
+      // 启动成功由 Main 的 commit 更新当前档案；旧窗口不能先回写整份列表。
       const result = await platform.startWebRemoteControl({
         workspacePath,
         workspaceIdentity,
@@ -252,8 +376,13 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
         connection,
       });
       if (result.status !== "cancelled") {
-        setStatus(result);
-        setConnection(result.connection ?? connection);
+        const resultProfile = result.connection ?? connection;
+        const resultProfileId = getWebRemoteControlProfileId(resultProfile);
+        setStatusById((current) => ({
+          ...current,
+          [resultProfileId]: { ...result, profileId: resultProfileId },
+        }));
+        updateConnection(resultProfile);
       }
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : String(error));
@@ -315,7 +444,10 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
       }
       // Bugfix: 泄露后的旧二维码包含 sid/hash，单纯重新绘制图片只会更新时间戳。
       // 这里走平台层 reset，确保 main 清掉持久化配对材料后重新注册 relay 设备。
-      setStatus(nextStatus);
+      setStatusById((current) => ({
+        ...current,
+        [selectedProfileId]: { ...nextStatus, profileId: selectedProfileId },
+      }));
       toast(intl.formatMessage({ id: "webRemoteControl.refreshQr.success" }));
       logger.info("[RemoteControlSettingsSection] 已刷新 Web 远程控制二维码", {
         workspacePath,
@@ -342,8 +474,12 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
   const handleStop = async () => {
     setLoading(true);
     try {
-      await platform.stopWebRemoteControl();
-      setStatus({ status: "idle" });
+      await platform.stopWebRemoteControl(selectedProfileId);
+      setStatusById((current) => {
+        const next = { ...current };
+        delete next[selectedProfileId];
+        return next;
+      });
       setOperationError(undefined);
       toast(intl.formatMessage({ id: "webRemoteControl.stopSuccess" }));
       logger.info("[RemoteControlSettingsSection] 已关闭 Web 远程控制", {
@@ -415,6 +551,16 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
               </p>
             </div>
           </div>
+          <WebRemoteControlProfileList
+            profiles={profiles}
+            statusesById={statusById}
+            selectedProfileId={selectedProfileId}
+            runningProfileIds={runningProfileIds}
+            loading={loading}
+            onSelect={setActiveProfileId}
+            onAdd={() => void handleAddProfile()}
+            onDelete={(profileId) => void handleDeleteProfile(profileId)}
+          />
           {running ? (
             <div className="mb-3 space-y-2">
               <p className="text-ui-caption text-foreground-subtle">
@@ -426,7 +572,7 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
           ) : (
             <WebRemoteControlConnectionForm
               value={connection}
-              onChange={setConnection}
+              onChange={updateConnection}
               disabled={loading}
             />
           )}

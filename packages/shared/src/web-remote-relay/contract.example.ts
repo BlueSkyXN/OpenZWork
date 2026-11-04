@@ -2,6 +2,7 @@
 import {
   buildWebRemoteControlExternalQrUrl,
   parseWebRemoteControlExternalQrParams,
+  webRemoteControlConnectionProfileMutationSchema,
 } from "#src/web-remote-relay/index.js";
 import { OFFICIAL_WEB_REMOTE_CONTROL_V1 } from "#src/web-remote-relay/v1Endpoint.js";
 
@@ -13,3 +14,7 @@ export const pairingUrl = buildWebRemoteControlExternalQrUrl({
   timestamp: 1_700_000_000_000,
 });
 export const pairedDevice = parseWebRemoteControlExternalQrParams(new URL(pairingUrl).searchParams);
+export const profileRemoval = webRemoteControlConnectionProfileMutationSchema.parse({
+  kind: "remove",
+  profileId: "example-profile",
+});

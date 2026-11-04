@@ -206,6 +206,8 @@ export const PlatformChannels = {
   BindRemoteWorkspaceSessionContext: "zcode:bind-remote-workspace-session-context",
   /** 为当前 workspace 开启 Web 远程控制 */
   GetWebRemoteControlConnectionSettings: "zcode:get-web-remote-control-connection-settings",
+  GetWebRemoteControlConnections: "zcode:get-web-remote-control-connections",
+  UpdateWebRemoteControlConnectionProfile: "zcode:update-web-remote-control-connection-profile",
   StartWebRemoteControl: "zcode:start-web-remote-control",
   /** 关闭当前窗口的 Web 远程控制 */
   ResetWebRemoteControlPairing: "zcode:reset-web-remote-control-pairing",
@@ -490,6 +492,10 @@ export const HostMessageTypes = {
   DisposeRemoteWorkspaceSession: "dispose-remote-workspace-session",
   /** main → host：复用现有服务，对新的 RPC MessagePort 暴露服务 */
   SetTerminalOwner: "set-terminal-owner",
+  /** main → host：注册一个手机接入档案的终端 owner */
+  AddTerminalOwner: "add-terminal-owner",
+  /** main → host：释放一个手机接入档案的终端 owner */
+  RemoveTerminalOwner: "remove-terminal-owner",
   AttachServicePort: "attach-service-port",
   /** main → host：精确释放一个 RPC MessagePort attachment */
   DetachServicePort: "detach-service-port",
@@ -718,6 +724,14 @@ export interface PlatformChannelMap {
     request: void;
     response: import("./web-remote-control.js").WebRemoteControlConnectionSettings;
   };
+  [PlatformChannels.GetWebRemoteControlConnections]: {
+    request: void;
+    response: import("./web-remote-control.js").WebRemoteControlConnectionSettings[];
+  };
+  [PlatformChannels.UpdateWebRemoteControlConnectionProfile]: {
+    request: import("./web-remote-control.js").WebRemoteControlConnectionProfileMutation;
+    response: import("./web-remote-control.js").WebRemoteControlConnectionSettings[];
+  };
   [PlatformChannels.StartWebRemoteControl]: {
     request: WebRemoteControlContext;
     response: WebRemoteControlStartOperationResult;
@@ -727,7 +741,7 @@ export interface PlatformChannelMap {
     response: WebRemoteControlStartOperationResult;
   };
   [PlatformChannels.StopWebRemoteControl]: {
-    request: void;
+    request: { profileId?: string };
     response: void;
   };
   [PlatformChannels.GetWebRemoteControlStatus]: {
