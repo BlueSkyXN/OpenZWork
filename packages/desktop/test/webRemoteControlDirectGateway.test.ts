@@ -308,12 +308,12 @@ describe("connection configuration and credential ownership", () => {
       "relay-b",
     ]);
 
-    const saved = await provider.saveConnectionProfiles([relay, lan]);
-    expect(saved.map((item) => item.profileId)).toEqual(["relay-b", "lan"]);
-    expect(settings.webRemoteControlConnection?.profileId).toBe("relay-b");
+    const saved = await provider.updateConnectionProfile({ kind: "remove", profileId: "default" });
+    expect(saved.map((item) => item.profileId)).toEqual(["lan", "relay-b"]);
+    expect(settings.webRemoteControlConnection?.profileId).toBe("lan");
     expect(settings.webRemoteControlConnections?.map((item) => item.profileId)).toEqual([
-      "relay-b",
       "lan",
+      "relay-b",
     ]);
   });
   it("keeps direct windows independent and abort closes only its own listener", async () => {
@@ -342,4 +342,50 @@ describe("connection configuration and credential ownership", () => {
     expect((await fetch(b.mobileRemoteControlUrl)).status).toBe(200);
     expect(service.save).not.toHaveBeenCalled();
   });
+});
+
+// 两个窗口读到的旧列表不能再作为全局写入值；真实 prepare/commit 只提交所选档案。
+it("不同窗口交错新增、启动和删除只更新指定档案", async () => {
+  let settings: AppSettings = { recentProjects: [], locale: "zh-CN" };
+  const provider = createWebRemoteControlConnectionProvider({
+    credentialService: {
+      load: async () => undefined,
+      save: async () => {},
+      delete: async () => {},
+    },
+    loadSettings: async () => structuredClone(settings),
+    patchSettings: async (patch) => {
+      settings = { ...settings, ...patch };
+    },
+    staticRoot: await staticRoot(),
+  });
+  const [oldWindowProfile] = await provider.getConnectionProfiles();
+  const added = { ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS, profileId: "window-a" };
+  await provider.updateConnectionProfile({ kind: "upsert", profile: added });
+  const prepared = await provider.prepare(
+    2,
+    { ...oldWindowProfile!, mode: "official" },
+    new AbortController().signal,
+  );
+  await prepared.commit();
+  expect((await provider.getConnectionProfiles()).map((p) => p.profileId)).toEqual([
+    "default",
+    "window-a",
+  ]);
+  await Promise.all([
+    provider.updateConnectionProfile({
+      kind: "upsert",
+      profile: { ...added, profileId: "window-b" },
+    }),
+    provider.updateConnectionProfile({ kind: "remove", profileId: "window-a" }),
+  ]);
+  expect((await provider.getConnectionProfiles()).map((p) => p.profileId)).toEqual([
+    "default",
+    "window-b",
+  ]);
+  await provider.updateConnectionProfile({ kind: "remove", profileId: "window-b" });
+  await expect(
+    provider.updateConnectionProfile({ kind: "remove", profileId: "default" }),
+  ).rejects.toThrow();
+  expect((await provider.getConnectionProfiles()).map((p) => p.profileId)).toEqual(["default"]);
 });

@@ -4,6 +4,7 @@ import {
   DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
   getWebRemoteControlProfileId,
   type WebRemoteControlConnectionSettings,
+  type WebRemoteControlConnectionProfileMutation,
 } from "@zcode/shared";
 import {
   WebRemoteControlConnectionForm,
@@ -307,11 +308,32 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
     });
   };
 
-  const persistProfiles = async (next: WebRemoteControlConnectionSettings[]) => {
-    setProfiles(next);
-    if (!platform.saveWebRemoteControlConnections) return;
-    const saved = await platform.saveWebRemoteControlConnections(next);
-    setProfiles(saved);
+  const persistProfile = async (mutation: WebRemoteControlConnectionProfileMutation) => {
+    setLoading(true);
+    setOperationError(undefined);
+    try {
+      if (!platform.updateWebRemoteControlConnectionProfile)
+        throw new Error(
+          intl.formatMessage({ id: "webRemoteControl.connection.updateUnavailable" }),
+        );
+      const saved = await platform.updateWebRemoteControlConnectionProfile(mutation);
+      // Main 返回全局最新列表；其他档案的本地草稿仍归编辑器，不能因新增/删除一项而丢失。
+      setProfiles((current) =>
+        saved.map(
+          (profile) =>
+            current.find(
+              (draft) =>
+                getWebRemoteControlProfileId(draft) === getWebRemoteControlProfileId(profile),
+            ) ?? profile,
+        ),
+      );
+      return true;
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : String(error));
+      return false;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const createProfileId = () => {
@@ -320,25 +342,24 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
   };
 
   const handleAddProfile = async () => {
+    if (loading) return;
     const next: WebRemoteControlConnectionSettings = {
       ...structuredClone(connection),
       profileId: createProfileId(),
       name: "",
     };
-    const nextProfiles = [...profiles, next];
-    setActiveProfileId(getWebRemoteControlProfileId(next));
-    await persistProfiles(nextProfiles);
+    if (await persistProfile({ kind: "upsert", profile: next }))
+      setActiveProfileId(getWebRemoteControlProfileId(next));
   };
 
   const handleDeleteProfile = async (profileId: string) => {
-    if (profiles.length <= 1 || runningProfileIds.has(profileId)) return;
+    if (loading || profiles.length <= 1 || runningProfileIds.has(profileId)) return;
     const nextProfiles = profiles.filter(
       (profile) => getWebRemoteControlProfileId(profile) !== profileId,
     );
     if (!nextProfiles.length) return;
-    if (profileId === selectedProfileId)
+    if ((await persistProfile({ kind: "remove", profileId })) && profileId === selectedProfileId)
       setActiveProfileId(getWebRemoteControlProfileId(nextProfiles[0]!));
-    await persistProfiles(nextProfiles);
   };
 
   const handleStart = async () => {
@@ -346,8 +367,7 @@ export const RemoteControlSettingsSection = memo(function RemoteControlSettingsS
     setLoading(true);
     setOperationError(undefined);
     try {
-      if (platform.saveWebRemoteControlConnections)
-        setProfiles(await platform.saveWebRemoteControlConnections(profiles));
+      // 启动成功由 Main 的 commit 更新当前档案；旧窗口不能先回写整份列表。
       const result = await platform.startWebRemoteControl({
         workspacePath,
         workspaceIdentity,

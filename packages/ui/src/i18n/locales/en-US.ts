@@ -2335,6 +2335,8 @@ const enUS: Record<string, string> = {
     "Sign in to control this computer from your phone. Use the same account on both devices.",
   "webRemoteControl.authRequired.login": "Sign in",
   "webRemoteControl.connection.mode": "Connection mode",
+  "webRemoteControl.connection.updateUnavailable":
+    "Update the desktop app to edit access profiles.",
   "webRemoteControl.connection.profiles": "Access profiles",
   "webRemoteControl.connection.addProfile": "Add access",
   "webRemoteControl.connection.deleteProfile": "Delete {name}",

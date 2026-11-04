@@ -207,7 +207,7 @@ export const PlatformChannels = {
   /** 为当前 workspace 开启 Web 远程控制 */
   GetWebRemoteControlConnectionSettings: "zcode:get-web-remote-control-connection-settings",
   GetWebRemoteControlConnections: "zcode:get-web-remote-control-connections",
-  SaveWebRemoteControlConnections: "zcode:save-web-remote-control-connections",
+  UpdateWebRemoteControlConnectionProfile: "zcode:update-web-remote-control-connection-profile",
   StartWebRemoteControl: "zcode:start-web-remote-control",
   /** 关闭当前窗口的 Web 远程控制 */
   ResetWebRemoteControlPairing: "zcode:reset-web-remote-control-pairing",
@@ -728,8 +728,8 @@ export interface PlatformChannelMap {
     request: void;
     response: import("./web-remote-control.js").WebRemoteControlConnectionSettings[];
   };
-  [PlatformChannels.SaveWebRemoteControlConnections]: {
-    request: import("./web-remote-control.js").WebRemoteControlConnectionSettings[];
+  [PlatformChannels.UpdateWebRemoteControlConnectionProfile]: {
+    request: import("./web-remote-control.js").WebRemoteControlConnectionProfileMutation;
     response: import("./web-remote-control.js").WebRemoteControlConnectionSettings[];
   };
   [PlatformChannels.StartWebRemoteControl]: {

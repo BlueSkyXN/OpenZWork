@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
-import type { WebRemoteControlStatus } from "@zcode/shared";
+import type {
+  WebRemoteControlStatus,
+  WebRemoteControlConnectionProfileMutation,
+} from "@zcode/shared";
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, render, waitFor, fireEvent } from "@testing-library/react";
@@ -79,7 +82,10 @@ const platformMock = vi.hoisted(() => ({
   stopWebRemoteControl: vi.fn(async () => {}),
   refreshWebRemoteControlPairing: vi.fn(async () => ({ status: "running" })),
   getWebRemoteControlConnections: vi.fn(async () => []),
-  saveWebRemoteControlConnections: vi.fn(async (profiles: unknown[]) => profiles),
+  updateWebRemoteControlConnectionProfile: vi.fn(
+    async (mutation: WebRemoteControlConnectionProfileMutation) =>
+      mutation.kind === "upsert" ? [mutation.profile] : [],
+  ),
 }));
 
 vi.mock("@/hooks/usePlatform.js", () => ({
@@ -121,7 +127,7 @@ describe("RemoteControlSettingsSection layout", () => {
     platformMock.stopWebRemoteControl.mockClear();
     platformMock.refreshWebRemoteControlPairing.mockClear();
     platformMock.getWebRemoteControlConnections.mockClear();
-    platformMock.saveWebRemoteControlConnections.mockClear();
+    platformMock.updateWebRemoteControlConnectionProfile.mockClear();
     feedbackMocks.confirm.mockClear();
     feedbackMocks.error.mockClear();
     feedbackMocks.info.mockClear();
@@ -258,8 +264,12 @@ describe("RemoteControlSettingsSection layout", () => {
       relay: { wsUrl: "wss://relay.example/ws", pageUrl: "https://relay.example/remote/" },
     };
     platformMock.getWebRemoteControlConnections.mockResolvedValueOnce([lan, relay]);
-    platformMock.saveWebRemoteControlConnections.mockImplementationOnce(
-      async (profiles: unknown[]) => [...profiles, { ...relay, profileId: "tunnel", name: "" }],
+    platformMock.updateWebRemoteControlConnectionProfile.mockImplementationOnce(
+      async (mutation: WebRemoteControlConnectionProfileMutation) => [
+        lan,
+        relay,
+        ...(mutation.kind === "upsert" ? [mutation.profile] : []),
+      ],
     );
     const view = render(
       createElement(RemoteControlSettingsSection, {
@@ -273,9 +283,15 @@ describe("RemoteControlSettingsSection layout", () => {
     expect(view.getByTestId("web-remote-profile-lan").getAttribute("aria-pressed")).toBe("false");
 
     fireEvent.click(view.getByTestId("web-remote-add-profile"));
-    await waitFor(() => expect(view.getByTestId("web-remote-profile-tunnel")).toBeTruthy());
-    expect(platformMock.saveWebRemoteControlConnections).toHaveBeenCalledTimes(1);
-    expect(platformMock.saveWebRemoteControlConnections.mock.calls[0]![0]).toHaveLength(3);
+    await waitFor(() =>
+      expect(platformMock.updateWebRemoteControlConnectionProfile).toHaveBeenCalledTimes(1),
+    );
+    const mutation = platformMock.updateWebRemoteControlConnectionProfile.mock.calls[0]![0];
+    expect(mutation.kind).toBe("upsert");
+    if (mutation.kind !== "upsert") throw new Error("Expected upsert");
+    await waitFor(() =>
+      expect(view.getByTestId(`web-remote-profile-${mutation.profile.profileId}`)).toBeTruthy(),
+    );
 
     fireEvent.click(view.getByTestId("web-remote-profile-relay-b"));
     fireEvent.click(view.getByTestId("web-remote-start"));
@@ -286,6 +302,7 @@ describe("RemoteControlSettingsSection layout", () => {
         }),
       ),
     );
+    expect(platformMock.updateWebRemoteControlConnectionProfile).toHaveBeenCalledTimes(1);
   });
 
   it("renders phone QR and bot channel entry cards in settings", () => {
@@ -470,4 +487,23 @@ describe("RemoteControlSettingsSection layout", () => {
       ),
     ).toBe("iPhone");
   });
+});
+
+it("新增档案失败保留已有草稿并允许重试", async () => {
+  const view = render(
+    createElement(RemoteControlSettingsSection, { workspacePath: "/tmp/project" }),
+  );
+  await waitFor(() =>
+    expect(view.getByTestId("web-remote-add-profile").hasAttribute("disabled")).toBe(false),
+  );
+  fireEvent.click(view.getByTestId("web-remote-mode-self-hosted"));
+  platformMock.updateWebRemoteControlConnectionProfile.mockRejectedValueOnce(
+    new Error("PROFILE_WRITE_FAILED"),
+  );
+  fireEvent.click(view.getByTestId("web-remote-add-profile"));
+  await waitFor(() => expect(view.getByText("PROFILE_WRITE_FAILED")).toBeTruthy());
+  expect(view.getByTestId("web-remote-relay-url")).toBeTruthy();
+  expect(view.getByTestId("web-remote-add-profile").hasAttribute("disabled")).toBe(false);
+  expect(view.getByTestId("web-remote-profile-default")).toBeTruthy();
+  cleanup();
 });

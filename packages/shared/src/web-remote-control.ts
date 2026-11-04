@@ -1,9 +1,11 @@
 import type { WebRemoteControlConnectionSettings } from "./web-remote-relay/index.js";
 // OpenZWork 拆分：连接设置域移至 web-remote-relay/domain/connectionSettings，经 barrel 转出口。
 export type { WebRemoteControlConnectionSettings } from "./web-remote-relay/index.js";
+export type { WebRemoteControlConnectionProfileMutation } from "./web-remote-relay/index.js";
 export {
   webRemoteControlConnectionSettingsSchema,
   webRemoteControlConnectionProfilesSchema,
+  webRemoteControlConnectionProfileMutationSchema,
   DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS,
   WEB_REMOTE_CONTROL_DEFAULT_PROFILE_ID,
   getWebRemoteControlProfileId,

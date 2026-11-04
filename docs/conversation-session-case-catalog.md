@@ -5244,3 +5244,7 @@ SLR10 review 补充（covered / pending-review）：Agent 建立受控页面后�
 | SSV04 | 从草稿、其他会话和其他工作区切回后台任务；桌面/手机、深浅主题及中英文 | 顶部标题逐帧与 DOM 变化均不出现 UI 默认“新建任务”/“New task”；Host 标题未返回时留空，返回后显示真实标题，不沿用其他任务标题 |
 
 SSV01/02/04 使用真实 Electron、Host 与 CLI；SSV03 同时保留 Electron 冷恢复和共享 Timeline 浏览器验收。候选保持 pending，不计入 formal/CI。
+
+## V1 多接入档案回归（2026-11-04）
+
+V1-MA-01～04 为 accepted，触发、断言与边界见 [V1 连接方式](web-remote-control/v1-connection-modes.md#多档案并发与恢复)。其中 V1-MA-02 的 Desktop 候选沿用 `web-remote-v1-connections.test.ts`，补充旧列表在独立 IPC 模拟其他窗口写入后新增档案仍存在的断言。只使用隔离设置与合成档案，不引入真实供应商或公网 relay。

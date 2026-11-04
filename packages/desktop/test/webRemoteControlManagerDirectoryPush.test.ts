@@ -35,8 +35,10 @@ type StartupRestoreContext = {
 
 function createManagerHarness({
   startupContexts = [],
+  overrides = {},
 }: {
   startupContexts?: StartupRestoreContext[];
+  overrides?: Partial<Parameters<typeof createWebRemoteControlManager>[0]>;
 } = {}) {
   const sentPayloads: WebRemoteControlAppPayload[] = [];
   const settings: AppSettings = { recentProjects: [], locale: "zh-CN" };
@@ -131,6 +133,7 @@ function createManagerHarness({
         dispose: vi.fn(),
       };
     },
+    ...overrides,
   });
 
   return {
@@ -368,4 +371,220 @@ describe("webRemoteControlManager 目录推送签名", () => {
     await restoreHarness.manager.disposeWindow(1);
     await restoreHarness.manager.disposeWindow(2);
   });
+});
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+const profile = (profileId: string) => ({
+  ...structuredClone(DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS),
+  profileId,
+});
+
+describe("多档案启动取消与恢复持久化", () => {
+  it.each(["stop-profile", "stop-window", "suspend", "dispose"])(
+    "cancels preparing start on %s",
+    async (action) => {
+      const entered = deferred();
+      const release = deferred();
+      const h = createManagerHarness({
+        overrides: {
+          getEndpointUrls: async () => {
+            entered.resolve();
+            await release.promise;
+            return {} as never;
+          },
+        },
+      });
+      const started = h.manager
+        .start(1, { workspacePath: "/workspace/a", connection: profile("a") })
+        .then(
+          () => "resolved",
+          () => "rejected",
+        );
+      await entered.promise;
+      if (action === "stop-profile") await h.manager.stop(1, "a");
+      else if (action === "stop-window") await h.manager.stop(1);
+      else if (action === "suspend") await h.manager.suspend(1, "endpoint-changed");
+      else await h.manager.disposeWindow(1);
+      release.resolve();
+      const result = await started;
+      const status = h.manager.getStatus(1);
+      await h.manager.disposeWindow(1);
+      expect({ result, status: status.status }).toEqual({ result: "rejected", status: "idle" });
+    },
+  );
+  it("new start cancels an older preparation of the same profile", async () => {
+    const entered = deferred();
+    const release = deferred();
+    let calls = 0;
+    const h = createManagerHarness({
+      overrides: {
+        getEndpointUrls: async () => {
+          if (++calls === 1) {
+            entered.resolve();
+            await release.promise;
+          }
+          return {} as never;
+        },
+      },
+    });
+    const first = h.manager
+      .start(1, { workspacePath: "/workspace/older", connection: profile("a") })
+      .then(
+        () => "resolved",
+        () => "rejected",
+      );
+    await entered.promise;
+    await h.manager.start(1, { workspacePath: "/workspace/newer", connection: profile("a") });
+    release.resolve();
+    const outcome = await first;
+    const actual = h.manager.getStatus(1).workspacePath;
+    await h.manager.disposeWindow(1);
+    expect({ outcome, actual }).toEqual({ outcome: "rejected", actual: "/workspace/newer" });
+  });
+  it("persists pending restores before their workspace becomes available", async () => {
+    const contexts = [
+      { workspacePath: "/workspace/a", connection: profile("a") },
+      { workspacePath: "/workspace/b", connection: profile("b") },
+    ];
+    const h = createManagerHarness({
+      startupContexts: contexts,
+      overrides: {
+        connectionProvider: {
+          getSettings: async () => profile("a"),
+          prepare: async (
+            _windowId: number,
+            settings: typeof DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS | undefined,
+          ) => ({
+            settings: settings!,
+            relayWsUrl: "ws://relay.test/ws",
+            mobileRemoteControlUrl: "https://relay.test/remote/v3",
+            authStorageProvider: {
+              load: async () => undefined,
+              save: async () => {},
+              clear: async () => {},
+              rotate: async () => {},
+            },
+            commit: async () => {},
+            dispose: async () => {},
+          }),
+        },
+      },
+    });
+    await h.manager.restorePreviouslyEnabled(1, [
+      { workspacePath: "/workspace/a", label: "A", kind: "local" },
+    ]);
+    const persisted = structuredClone(h.savedStartupRestoreContexts);
+    await h.manager.disposeWindow(1);
+    expect(persisted.map((c) => c.workspacePath)).toEqual(["/workspace/a", "/workspace/b"]);
+  });
+});
+
+function restoreConnectionProvider(prepare?: (profileId: string) => Promise<void>) {
+  return {
+    getSettings: async () => profile("a"),
+    prepare: async (
+      _windowId: number,
+      requested: typeof DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS | undefined,
+    ) => {
+      const settings = requested ?? profile("a");
+      await prepare?.(settings.profileId!);
+      return {
+        settings,
+        relayWsUrl: "ws://relay.test/ws",
+        mobileRemoteControlUrl: "https://relay.test/remote/v3",
+        authStorageProvider: {
+          load: async () => undefined,
+          save: async () => {},
+          clear: async () => {},
+          rotate: async () => {},
+        },
+        commit: async () => {},
+        dispose: async () => {},
+      };
+    },
+  };
+}
+it("恢复部分失败仍保存待恢复项，同窗口下次可以重试", async () => {
+  let fail = true;
+  const contexts = ["a", "b"].map((id) => ({
+    workspacePath: `/workspace/${id}`,
+    connection: profile(id),
+  }));
+  const h = createManagerHarness({
+    startupContexts: contexts,
+    overrides: {
+      connectionProvider: restoreConnectionProvider(async (id) => {
+        if (id === "b" && fail) throw new Error("temporary prepare failure");
+      }),
+    },
+  });
+  const candidates = contexts.map((context) => ({ ...context, label: context.workspacePath }));
+  expect(await h.manager.restorePreviouslyEnabled(1, candidates)).toBe(true);
+  expect(h.savedStartupRestoreContexts.map((c) => c.connection?.profileId)).toEqual(["a", "b"]);
+  expect(h.manager.getStatus(1).instances?.map((i) => i.profileId)).toEqual(["a"]);
+  fail = false;
+  expect(await h.manager.restorePreviouslyEnabled(1, candidates)).toBe(true);
+  expect(h.manager.getStatus(1).instances?.map((i) => i.profileId)).toEqual(["a", "b"]);
+  await h.manager.stop(1, "b");
+  expect(h.savedStartupRestoreContexts.map((c) => c.connection?.profileId)).toEqual(["a"]);
+  expect(await h.manager.restorePreviouslyEnabled(1, candidates)).toBe(false);
+  await h.manager.disposeWindow(1);
+});
+it("并发窗口只加载一次恢复快照，并且同一条待恢复项只被认领一次", async () => {
+  const entered = deferred();
+  const release = deferred();
+  const context = { workspacePath: "/workspace/a", connection: profile("a") };
+  const load = vi.fn(async () => {
+    entered.resolve();
+    await release.promise;
+    return [context];
+  });
+  const h = createManagerHarness({
+    overrides: {
+      startupRestoreStorageProvider: { load, save: async () => {}, clear: async () => {} },
+      connectionProvider: restoreConnectionProvider(),
+    },
+  });
+  const first = h.manager.restorePreviouslyEnabled(1, [context]);
+  await entered.promise;
+  const second = h.manager.restorePreviouslyEnabled(2, [context]);
+  release.resolve();
+  const outcomes = await Promise.all([first, second]);
+  expect(load).toHaveBeenCalledTimes(1);
+  expect(outcomes.filter(Boolean)).toHaveLength(1);
+  expect(
+    (h.manager.getStatus(1).instances?.length ?? 0) +
+      (h.manager.getStatus(2).instances?.length ?? 0),
+  ).toBe(1);
+  await h.manager.disposeWindow(1);
+  await h.manager.disposeWindow(2);
+});
+
+it.each(["profile", "window"])("显式停止 %s 会撤销正在恢复的档案记录", async (target) => {
+  const entered = deferred();
+  const release = deferred();
+  const context = { workspacePath: "/workspace/a", connection: profile("a") };
+  const h = createManagerHarness({
+    startupContexts: [context],
+    overrides: {
+      connectionProvider: restoreConnectionProvider(async () => {
+        entered.resolve();
+        await release.promise;
+      }),
+    },
+  });
+  const restore = h.manager.restorePreviouslyEnabled(1, [context]);
+  await entered.promise;
+  await h.manager.stop(1, target === "profile" ? "a" : undefined);
+  release.resolve();
+  expect(await restore).toBe(false);
+  expect(h.savedStartupRestoreContexts).toEqual([]);
+  expect(await h.manager.restorePreviouslyEnabled(1, [context])).toBe(false);
+  expect(h.manager.getStatus(1).status).toBe("idle");
 });

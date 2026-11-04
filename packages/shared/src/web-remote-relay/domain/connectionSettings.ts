@@ -33,6 +33,21 @@ export type WebRemoteControlConnectionSettings = z.infer<
   typeof webRemoteControlConnectionSettingsSchema
 >;
 
+export const webRemoteControlConnectionProfileMutationSchema = z.discriminatedUnion("kind", [
+  z
+    .object({ kind: z.literal("upsert"), profile: webRemoteControlConnectionSettingsSchema })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("remove"),
+      profileId: webRemoteControlConnectionSettingsSchema.shape.profileId.unwrap(),
+    })
+    .strict(),
+]);
+export type WebRemoteControlConnectionProfileMutation = z.infer<
+  typeof webRemoteControlConnectionProfileMutationSchema
+>;
+
 export const WEB_REMOTE_CONTROL_DEFAULT_PROFILE_ID = "default";
 
 export const webRemoteControlConnectionProfilesSchema = z

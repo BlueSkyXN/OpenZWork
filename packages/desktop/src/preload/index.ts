@@ -232,8 +232,8 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlConnectionSettings),
   getWebRemoteControlConnections: () =>
     ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlConnections),
-  saveWebRemoteControlConnections: (profiles) =>
-    ipcRenderer.invoke(PlatformChannels.SaveWebRemoteControlConnections, profiles),
+  updateWebRemoteControlConnectionProfile: (profiles) =>
+    ipcRenderer.invoke(PlatformChannels.UpdateWebRemoteControlConnectionProfile, profiles),
   getWebRemoteControlStatus: () => ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlStatus),
   onWebRemoteControlStatusChanged: (
     callback: (status: WebRemoteControlStatus) => void,

@@ -57,8 +57,8 @@ export function createDesktopPlatform(options: {
     getWebRemoteControlConnectionSettings: () =>
       window.zcode.getWebRemoteControlConnectionSettings!(),
     getWebRemoteControlConnections: () => window.zcode.getWebRemoteControlConnections!(),
-    saveWebRemoteControlConnections: (profiles) =>
-      window.zcode.saveWebRemoteControlConnections!(profiles),
+    updateWebRemoteControlConnectionProfile: (profiles) =>
+      window.zcode.updateWebRemoteControlConnectionProfile!(profiles),
     getWebRemoteControlStatus: () => window.zcode.getWebRemoteControlStatus(),
     onWebRemoteControlStatusChanged: (handler) =>
       window.zcode.onWebRemoteControlStatusChanged?.(handler) ?? (() => {}),

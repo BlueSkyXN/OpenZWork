@@ -208,3 +208,45 @@ it("官方运行态发布原子目录；改名同步，停止或换模式后不�
   unmount();
   expect(unsubscribe).toHaveBeenCalledOnce();
 });
+
+it.each(["direct", "official"] as const)("首个档案为 %s 时所有官方档案均收到目录", async (mode) => {
+  let listener!: (status: WebRemoteControlStatus) => void;
+  const sync = vi.fn();
+  const platform = {
+    syncWebRemoteControlLegacyTasks: sync,
+    getWebRemoteControlStatus: async () => ({ status: "idle" }),
+    onWebRemoteControlStatusChanged: (next: typeof listener) => {
+      listener = next;
+      return () => {};
+    },
+  } as unknown as IPlatformService;
+  h.directory = { tree: { projects: [project("Closed", "/closed")], tasks: [] }, loading: false };
+  const tabs: Parameters<typeof useWebRemoteControlLegacyTaskSync>[0]["tabs"] = [];
+  renderHook(() =>
+    useWebRemoteControlLegacyTaskSync({
+      platform,
+      tabs,
+      enabled: true,
+      rootlessLabel: "No folders",
+    }),
+  );
+  const first: WebRemoteControlStatus = {
+    status: "running",
+    sessionId: "first",
+    profileId: "first",
+    connection: { ...DEFAULT_WEB_REMOTE_CONTROL_CONNECTION_SETTINGS, mode },
+  };
+  const second: WebRemoteControlStatus = {
+    ...first,
+    sessionId: "second",
+    profileId: "second",
+    connection: { ...first.connection!, mode: "official" },
+  };
+  await act(async () => listener({ ...first, instances: [first, second] }));
+  expect(sync.mock.calls.map((call) => call[1].windowControlSessionId)).toEqual(
+    mode === "official" ? ["first", "second"] : ["second"],
+  );
+  sync.mockClear();
+  await act(async () => listener({ ...second, instances: [second] }));
+  expect(sync.mock.calls.map((call) => call[1].windowControlSessionId)).toEqual(["second"]);
+});

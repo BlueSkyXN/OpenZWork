@@ -16,8 +16,8 @@ export interface WebRemoteControlIpcManager {
   getConnectionProfiles?(): Promise<
     Array<import("@zcode/shared").WebRemoteControlConnectionSettings>
   >;
-  saveConnectionProfiles?(
-    profiles: Array<import("@zcode/shared").WebRemoteControlConnectionSettings>,
+  updateConnectionProfile?(
+    mutation: import("@zcode/shared").WebRemoteControlConnectionProfileMutation,
   ): Promise<Array<import("@zcode/shared").WebRemoteControlConnectionSettings>>;
   authorizeStart: (
     windowId: number,
@@ -67,9 +67,12 @@ export function registerWebRemoteControlIpcHandlers(
     async () => (await dependencies.webRemoteControlManager.getConnectionProfiles?.()) ?? [],
   );
   ipcMain.handle(
-    PlatformChannels.SaveWebRemoteControlConnections,
-    async (_event, profiles: Array<import("@zcode/shared").WebRemoteControlConnectionSettings>) =>
-      (await dependencies.webRemoteControlManager.saveConnectionProfiles?.(profiles)) ?? profiles,
+    PlatformChannels.UpdateWebRemoteControlConnectionProfile,
+    async (_event, mutation: import("@zcode/shared").WebRemoteControlConnectionProfileMutation) => {
+      const update = dependencies.webRemoteControlManager.updateConnectionProfile;
+      if (!update) throw new Error("Web remote control profile updates are unavailable");
+      return update(mutation);
+    },
   );
   ipcMain.handle(
     PlatformChannels.StartWebRemoteControl,

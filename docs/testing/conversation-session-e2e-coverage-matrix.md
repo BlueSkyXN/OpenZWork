@@ -5462,3 +5462,7 @@ release 基线复验：合入 `release/v3.17.0` 的 `024fde56b5820c1ccdd39065098
 release 推送前复验：继续合入 `225d1b14e1495598757dea872f72e0ac764b09ec`，保留远端插件风险确认与官方命令鉴权更新，重新构建 App/Agent。SSV01/02/04 在 `desktop-e2e-20261029-123135-845` 中 1/1 通过，桌面 1688、手机浅色 11 / 深色 7 个 Header 采样均无默认标题，真实标题恢复，草稿、模型与编辑器断言通过，录屏保留。共享 Timeline 12/12、CLI 官方命令鉴权 17/17 通过；根/CLI/E2E 类型、根/CLI lint 与架构检查通过。平台和 pending-review 边界不变。
 
 <!-- RV-HOST（官方版本请求安全校验）与分享 URI 回归小节属官方网关/云端分享净化域，不随上游引入；其余 R3A/DSYNC/远程域记录随上游 -->
+
+## V1 多接入档案回归（2026-11-04）
+
+V1-MA-01～04 的语义见 [V1 连接方式](../web-remote-control/v1-connection-modes.md#多档案并发与恢复)。runtime、适配器和 React hook 定向回归验证取消、单项写入、恢复记录及多官方目录；Desktop 候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts` 补充 V1-MA-02。最终 macOS Electron 运行 `packages/desktop/.e2e-artifacts/desktop-e2e-20261104-080210-534`：V1-04 多入口独立启停与 V1-MA-02 旧列表启动保留独立 IPC 新增档案，2/2 通过；另一窗口写入由独立 IPC 模拟。6 个定向回归文件共 57 项通过，覆盖 V1-MA-01～04 的受控场景。首次 E2E 构建因当前工作区缺少 contracts 局部 Zod 3 依赖而失败，复用已有 3.25.76 后构建和两次桌面运行通过。候选保持 manual-review/pending，未转正或纳入 Docker；真实公网与跨操作系统 GUI 未在本轮验收。

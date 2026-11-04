@@ -7,11 +7,13 @@ import {
   getWebRemoteControlProfileId,
   normalizeWebRemoteControlConnectionProfile,
   webRemoteControlConnectionProfilesSchema,
+  webRemoteControlConnectionProfileMutationSchema,
   webRemoteControlConnectionSettingsSchema,
   validateWebRemoteControlUrl,
   resolveWebRemoteControlBrowserRelayUrl,
   type AppSettings,
   type WebRemoteControlConnectionSettings,
+  type WebRemoteControlConnectionProfileMutation,
 } from "@zcode/shared";
 import type {
   WebRemoteControlPreparedConnection,
@@ -133,12 +135,39 @@ export function createWebRemoteControlConnectionProvider(dependencies: Dependenc
     });
     return nextProfiles;
   };
-  const persistProfiles = (profiles: WebRemoteControlConnectionSettings[]) =>
-    serializedCommit(() => writeProfiles(profiles));
+  const updateConnectionProfile = (
+    input: WebRemoteControlConnectionProfileMutation,
+    signal?: AbortSignal,
+  ) => {
+    const mutation = webRemoteControlConnectionProfileMutationSchema.parse(input);
+    return serializedCommit(async () => {
+      signal?.throwIfAborted();
+      // 窗口草稿可能落后于其他窗口；队列内读取最新列表，只修改本次命令点名的档案。
+      const profiles = await getConnectionProfiles();
+      signal?.throwIfAborted();
+      let nextProfiles: WebRemoteControlConnectionSettings[];
+      if (mutation.kind === "remove") {
+        nextProfiles = profiles.filter(
+          (profile) => getWebRemoteControlProfileId(profile) !== mutation.profileId,
+        );
+      } else {
+        const profile = normalizeWebRemoteControlConnectionProfile(mutation.profile);
+        const index = profiles.findIndex(
+          (candidate) => getWebRemoteControlProfileId(candidate) === profile.profileId,
+        );
+        nextProfiles = [...profiles];
+        if (index < 0) nextProfiles.push(profile);
+        else nextProfiles[index] = profile;
+      }
+      const saved = await writeProfiles(nextProfiles);
+      signal?.throwIfAborted();
+      return saved;
+    });
+  };
   return {
     getSettings,
     getConnectionProfiles,
-    saveConnectionProfiles: persistProfiles,
+    updateConnectionProfile,
     async prepare(
       windowId: number,
       requested: WebRemoteControlConnectionSettings | undefined,
@@ -214,34 +243,9 @@ export function createWebRemoteControlConnectionProvider(dependencies: Dependenc
         mobileRemoteControlUrl,
         authStorageProvider,
         dispose,
-        commit: () =>
-          serializedCommit(async () => {
-            signal.throwIfAborted();
-            const saved = await dependencies.loadSettings();
-            const currentProfiles = saved.webRemoteControlConnections?.map(
-              normalizeWebRemoteControlConnectionProfile,
-            );
-            const baseProfiles = currentProfiles?.length
-              ? currentProfiles
-              : saved.webRemoteControlConnection
-                ? [
-                    normalizeWebRemoteControlConnectionProfile(
-                      webRemoteControlConnectionSettingsSchema.parse(
-                        saved.webRemoteControlConnection,
-                      ),
-                    ),
-                  ]
-                : [buildDefaultSettings()];
-            const profileId = getWebRemoteControlProfileId(settings);
-            const index = baseProfiles.findIndex(
-              (profile) => getWebRemoteControlProfileId(profile) === profileId,
-            );
-            const nextProfiles = [...baseProfiles];
-            if (index >= 0) nextProfiles[index] = settings;
-            else nextProfiles.push(settings);
-            await writeProfiles(nextProfiles);
-            signal.throwIfAborted();
-          }),
+        commit: async () => {
+          await updateConnectionProfile({ kind: "upsert", profile: settings }, signal);
+        },
       };
     },
   };

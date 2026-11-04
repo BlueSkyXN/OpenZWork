@@ -363,6 +363,42 @@ describe("E2E_V1_CONNECTIONS", () => {
       JSON.stringify({ firstProfileId, remainingProfileId: secondProfileId }),
     );
   });
+  it("V1-MA-02: starting from an old settings list preserves a separately added profile", async function () {
+    this.timeout(120_000);
+    await openSettings();
+    // 设置页已经载入；独立 IPC 写入模拟另一个窗口新增档案，保留当前 UI 的旧草稿。
+    const profileId = "e2e-other-window";
+    await browser.execute(async (profileId) => {
+      const platform = (window as unknown as { zcode: IPlatformService }).zcode;
+      const [current] = await platform.getWebRemoteControlConnections!();
+      await platform.updateWebRemoteControlConnectionProfile!({
+        kind: "upsert",
+        profile: { ...current!, profileId, name: "E2E_OTHER_WINDOW" },
+      });
+    }, profileId);
+    try {
+      await $('[data-testid="web-remote-start"]').click();
+      await browser.waitUntil(async () => (await runningProfileIds()).length === 1, {
+        timeout: 35_000,
+      });
+      const savedIds = await browser.execute(async () =>
+        (
+          await (window as unknown as { zcode: IPlatformService }).zcode
+            .getWebRemoteControlConnections!()
+        ).map((profile) => profile.profileId),
+      );
+      expect(savedIds).toContain(profileId);
+      await writeFile(
+        join(artifacts, "stale-profile-start.json"),
+        JSON.stringify({ preservedOtherProfile: true }),
+      );
+    } finally {
+      await browser.execute(async (profileId) => {
+        await (window as unknown as { zcode: IPlatformService }).zcode
+          .updateWebRemoteControlConnectionProfile!({ kind: "remove", profileId });
+      }, profileId);
+    }
+  });
   it("V1-05/06/08: self-hosted V1 relay with a separately hosted page", async function () {
     this.timeout(150_000);
     const relay = await createLocalPairingRelay();

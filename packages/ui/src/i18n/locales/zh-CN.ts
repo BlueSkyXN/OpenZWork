@@ -2188,6 +2188,7 @@ const zhCN: Record<string, string> = {
     "登录后即可使用手机远程控制。手机和电脑需登录同一账号。",
   "webRemoteControl.authRequired.login": "登录",
   "webRemoteControl.connection.mode": "连接方式",
+  "webRemoteControl.connection.updateUnavailable": "请更新桌面应用后再修改接入档案。",
   "webRemoteControl.connection.profiles": "接入档案",
   "webRemoteControl.connection.addProfile": "添加入口",
   "webRemoteControl.connection.deleteProfile": "删除 {name}",

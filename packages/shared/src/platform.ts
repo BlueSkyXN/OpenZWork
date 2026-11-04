@@ -795,8 +795,8 @@ export interface IPlatformService {
     import("./web-remote-control.js").WebRemoteControlConnectionSettings
   >;
   getWebRemoteControlConnections?(): Promise<WebRemoteControlConnectionSettings[]>;
-  saveWebRemoteControlConnections?(
-    profiles: WebRemoteControlConnectionSettings[],
+  updateWebRemoteControlConnectionProfile?(
+    mutation: import("./web-remote-control.js").WebRemoteControlConnectionProfileMutation,
   ): Promise<WebRemoteControlConnectionSettings[]>;
 
   /** 桌面 OAuth 会话通知；main 独立重读凭据后决定是否恢复远控。 */

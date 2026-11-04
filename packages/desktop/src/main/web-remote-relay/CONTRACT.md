@@ -6,5 +6,7 @@
 
 Manager 通过公开工厂装配 adapter；transport 独占连接及重连，Host/CLI 独占业务会话。同一窗口多个档案可并发启动，启动授权按窗口 + 档案隔离，待恢复快照按档案 + 工作区逐项认领，避免第一个窗口吞掉其他窗口可恢复的档案。产品规则见 docs/web-remote-control/v1-connection-modes.md。
 
+档案变更使用 `updateConnectionProfile` 的单项 upsert/remove 命令；适配器在提交队列内读取最新列表，启动 commit 复用同一路径。禁止调用方用缓存列表覆盖全局档案；删除最后一项报错。取消代次覆盖准备阶段。恢复持久化包含运行项和待恢复项，认领期间保留待恢复记录，成功后转入运行记录。
+
 <!-- fork 净化：上游此处的 Relay V2 pairing spec 链接与 MobilePushConnection 通知上报 owner
      章节描述官方账号通道（JWT/HTTP 通知），随官方 V2 通道一并剥离，不适用于本地 HMAC 配对变体。 -->

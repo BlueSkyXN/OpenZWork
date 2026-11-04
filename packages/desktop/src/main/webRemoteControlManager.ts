@@ -182,8 +182,8 @@ interface WebRemoteControlManagerDependencies {
   connectionProvider?: {
     getSettings(): Promise<WebRemoteControlConnectionSettings>;
     getConnectionProfiles?(): Promise<WebRemoteControlConnectionSettings[]>;
-    saveConnectionProfiles?(
-      profiles: WebRemoteControlConnectionSettings[],
+    updateConnectionProfile?(
+      mutation: import("@zcode/shared").WebRemoteControlConnectionProfileMutation,
     ): Promise<WebRemoteControlConnectionSettings[]>;
     prepare(
       windowId: number,
@@ -382,11 +382,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
   const legacyDirectoriesByRuntime = new Map<string, WebRemoteControlLegacyDirectory>();
   const pushedWorkspaceListSignaturesByRuntime = new Map<string, string>();
   let startupRestoreClaimed = false;
-  let startupRestoreLoaded = false;
-  let restoringPreviouslyEnabled = false;
+  let startupRestoreLoad: Promise<void> | undefined;
   let lifecycleRevision = 0;
   const startupRestoreContexts = new Map<string, WebRemoteControlStartupRestoreContext>();
   const pendingStartupRestoreContexts = new Map<string, WebRemoteControlStartupRestoreContext>();
+  const startupRestoreClaims = new Map<string, number>();
   let startupRestoreWriteQueue = Promise.resolve();
 
   function runtimeKey(windowId: number, profileId: string): string {
@@ -403,7 +403,11 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
 
   function persistStartupRestoreContexts(): Promise<void> {
     const write = startupRestoreWriteQueue.then(async () => {
-      const contexts = [...startupRestoreContexts.values()];
+      // 部分工作区尚未打开时仍需保留恢复记录，不能用已恢复子集覆盖磁盘全量。
+      const pending = new Map(pendingStartupRestoreContexts);
+      const running = [...startupRestoreContexts.values()];
+      for (const context of running) pending.delete(startupRestorePendingKey(context));
+      const contexts = [...running, ...pending.values()];
       if (contexts.length) await dependencies.startupRestoreStorageProvider.save(contexts);
       else await dependencies.startupRestoreStorageProvider.clear();
     });
@@ -418,10 +422,40 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     for (const key of startupRestoreContexts.keys()) {
       if (key.startsWith(`${windowId}:`)) startupRestoreContexts.delete(key);
     }
+    removeClaimedStartupRestoreContexts(windowId);
+  }
+
+  function removeClaimedStartupRestoreContexts(windowId: number, profileId?: string): void {
+    for (const [key, owner] of startupRestoreClaims) {
+      const context = pendingStartupRestoreContexts.get(key);
+      if (
+        owner === windowId &&
+        (!profileId || getWebRemoteControlProfileId(context?.connection) === profileId)
+      )
+        pendingStartupRestoreContexts.delete(key);
+    }
+  }
+
+  function cancelLifecycle(key: string): void {
+    // lifecycle 在 prepare 之前登记；即使尚无 runtime，停止和换代也必须撤销它。
+    windowLifecycles.get(key)?.controller.abort();
+    windowLifecycles.delete(key);
   }
 
   function startupRestorePendingKey(context: WebRemoteControlStartupRestoreContext): string {
     return `${getWebRemoteControlProfileId(context.connection)}\n${resolveWebRemoteControlWorkspaceKey(context)}`;
+  }
+
+  function loadStartupRestoreContexts(): Promise<void> {
+    // 多窗口共享一次加载，避免迟到的第二次读盘把已消费的恢复项重新放回 pending。
+    return (startupRestoreLoad ??= (async () => {
+      const contexts = await dependencies.startupRestoreStorageProvider.load().catch((error) => {
+        dependencies.logger.warn("[web-remote-control] load startup restore context failed", error);
+        return undefined;
+      });
+      for (const context of contexts ?? [])
+        pendingStartupRestoreContexts.set(startupRestorePendingKey(context), { ...context });
+    })());
   }
 
   function createTransport(options: WebRemoteControlDeviceTransportOptions) {
@@ -828,8 +862,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
 
   async function stopRuntime(runtime: WindowControlRuntime, reason: string): Promise<void> {
     const key = runtimeKeyFor(runtime);
-    windowLifecycles.get(key)?.controller.abort();
-    windowLifecycles.delete(key);
+    cancelLifecycle(key);
     sendAppPayload(runtime, {
       zcode_type: "app-error",
       reason: "desktop-disconnected",
@@ -857,6 +890,9 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     reason: string,
     options: { disposeWindowAttachments?: boolean } = {},
   ): Promise<void> {
+    for (const key of windowLifecycles.keys()) {
+      if (key.startsWith(`${windowId}:`)) cancelLifecycle(key);
+    }
     const runtimeList = getWindowRuntimes(windowId);
     await Promise.all(runtimeList.map((runtime) => stopRuntime(runtime, reason)));
     if (options.disposeWindowAttachments)
@@ -1783,9 +1819,13 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       const settings = await dependencies.connectionProvider?.getSettings();
       return settings ? [settings] : [];
     },
-    saveConnectionProfiles: (profiles: WebRemoteControlConnectionSettings[]) =>
-      dependencies.connectionProvider?.saveConnectionProfiles?.(profiles) ??
-      Promise.resolve(profiles),
+    updateConnectionProfile: async (
+      mutation: import("@zcode/shared").WebRemoteControlConnectionProfileMutation,
+    ) => {
+      const update = dependencies.connectionProvider?.updateConnectionProfile;
+      if (!update) throw new Error("Web remote control profile updates are unavailable");
+      return update(mutation);
+    },
     authorizeStart,
     async startAuthorized(
       windowId: number,
@@ -1799,11 +1839,13 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       windowId: number,
       context: WebRemoteControlContext,
       resetPairing = false,
+      restoringPreviouslyEnabled = false,
     ): Promise<WebRemoteControlStartResult> {
       dependencies.featureGate.assertEnabled();
       if (!restoringPreviouslyEnabled) startupRestoreClaimed = true;
       const profileId = getWebRemoteControlProfileId(context.connection);
       const key = runtimeKey(windowId, profileId);
+      cancelLifecycle(key);
       const existingRuntime = runtimes.get(key);
       const stopped = existingRuntime ? stopRuntime(existingRuntime, "restart") : Promise.resolve();
       const controller = new AbortController();
@@ -1973,6 +2015,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           workspaceIdentity: context.workspaceIdentity,
           initialTaskId: context.initialTaskId,
         });
+        pendingStartupRestoreContexts.delete(startupRestorePendingKey(context));
         assertActive();
         await persistStartupRestoreContexts();
         assertActive();
@@ -1998,6 +2041,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       } catch (error) {
         // 停止或新启动可能已接管窗口；旧代失败不能关闭新代连接。
         if (windowLifecycles.get(key)?.controller === controller) {
+          cancelLifecycle(key);
           const failedRuntime = runtimes.get(key);
           if (failedRuntime) await stopRuntime(failedRuntime, "start-failed");
           else await connection?.dispose();
@@ -2014,6 +2058,8 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       // 先释放 transport 和 attachment，再把持久化错误返回 UI，保证本次运行立即停止。
       if (profileId) {
         const key = runtimeKey(windowId, profileId);
+        cancelLifecycle(key);
+        removeClaimedStartupRestoreContexts(windowId, profileId);
         const runtime = runtimes.get(key);
         const restoreContext = startupRestoreContexts.get(key);
         clearStartAuthorizationsForProfile(windowId, profileId);
@@ -2027,8 +2073,9 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       }
       startupRestoreClaimed = true;
       clearStartAuthorizationsForWindow(windowId);
-      await stopWindowRuntime(windowId, "manual-stop", { disposeWindowAttachments: true });
+      // 先撤销恢复意图；异步释放期间恢复任务的 finally 会清掉认领信息。
       removeStartupRestoreContextsForWindow(windowId);
+      await stopWindowRuntime(windowId, "manual-stop", { disposeWindowAttachments: true });
       await persistStartupRestoreContexts();
     },
 
@@ -2086,34 +2133,26 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           kind: candidate.workspaceIdentity || candidate.remoteSessionId ? "remote" : "local",
         })),
       );
-      if (startupRestoreClaimed || getWindowRuntimes(windowId).length) return false;
+      if (startupRestoreClaimed) return false;
       const revision = lifecycleRevision;
-      if (!startupRestoreLoaded) {
-        const persistedContexts = await dependencies.startupRestoreStorageProvider
-          .load()
-          .catch((error) => {
-            dependencies.logger.warn(
-              "[web-remote-control] load startup restore context failed",
-              error,
-            );
-            return undefined;
-          });
-        if (revision !== lifecycleRevision) {
-          return false;
-        }
-        startupRestoreLoaded = true;
-        for (const persistedContext of persistedContexts ?? []) {
-          pendingStartupRestoreContexts.set(startupRestorePendingKey(persistedContext), {
-            ...persistedContext,
-          });
-        }
-      }
-      if (startupRestoreClaimed || !pendingStartupRestoreContexts.size) {
+      await loadStartupRestoreContexts();
+      if (
+        revision !== lifecycleRevision ||
+        startupRestoreClaimed ||
+        !pendingStartupRestoreContexts.size
+      ) {
         return false;
       }
       let restored = false;
-      restoringPreviouslyEnabled = true;
       for (const [pendingKey, persistedContext] of pendingStartupRestoreContexts) {
+        if (revision !== lifecycleRevision || startupRestoreClaimed) break;
+        if (startupRestoreClaims.has(pendingKey)) continue;
+        if (
+          windowLifecycles.has(
+            runtimeKey(windowId, getWebRemoteControlProfileId(persistedContext.connection)),
+          )
+        )
+          continue;
         const persistedWorkspaceKey = resolveWebRemoteControlWorkspaceKey(persistedContext);
         // 磁盘读取期间可能发生 tab 关闭或远端重连，只能消费最新完整快照。
         const currentContext = availableWorkspacesByWindowId
@@ -2130,24 +2169,31 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         dependencies.logger.info(
           `[web-remote-control] restoring previous enabled state window=${windowId} profile=${getWebRemoteControlProfileId(persistedContext.connection)} workspace=${currentContext.workspacePath} remoteSession=${currentContext.remoteSessionId ?? "none"}`,
         );
-        pendingStartupRestoreContexts.delete(pendingKey);
+        // 认领只防止并发恢复；待恢复事实在成功前继续参与持久化，失败后可重试。
+        startupRestoreClaims.set(pendingKey, windowId);
         try {
-          await this.start(windowId, {
-            workspacePath: currentContext.workspacePath,
-            workspaceIdentity: currentContext.workspaceIdentity,
-            remoteSessionId: currentContext.remoteSessionId,
-            initialTaskId: persistedContext.initialTaskId,
-            connection: persistedContext.connection,
-          });
+          await this.start(
+            windowId,
+            {
+              workspacePath: currentContext.workspacePath,
+              workspaceIdentity: currentContext.workspaceIdentity,
+              remoteSessionId: currentContext.remoteSessionId,
+              initialTaskId: persistedContext.initialTaskId,
+              connection: persistedContext.connection,
+            },
+            false,
+            true,
+          );
           restored = true;
         } catch (error) {
           dependencies.logger.warn(
             "[web-remote-control] restore previous enabled state failed",
             error,
           );
+        } finally {
+          startupRestoreClaims.delete(pendingKey);
         }
       }
-      restoringPreviouslyEnabled = false;
       return restored;
     },
 
