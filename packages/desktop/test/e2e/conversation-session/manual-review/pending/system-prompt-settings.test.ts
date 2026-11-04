@@ -58,6 +58,49 @@ async function chooseOption(trigger: string, labelPattern: string) {
 }
 describe(marker + ": 系统提示词设置", () => {
   afterEach(clearCurrentRendererViewport);
+  it("SPE04/09 PP01/08 导入候选红绿差异、完整预览与草稿隔离", async function () {
+    this.timeout(180_000);
+    await skipOccupationOnboardingIfPresent();
+    await waitForTestIdByDom(TID_TASK_SETTINGS_BUTTON, { timeout: 45_000 });
+    await openSection("systemPrompt");
+    await waitForTestIdByDom("system-prompt-editor", { timeout: 45_000 });
+    const before = await readSettings();
+    await clickTestIdByDom("system-prompt-import");
+    await $('[data-testid="system-prompt-profile-json"]').setValue(
+      JSON.stringify({
+        schema: "openzwork.system-prompt-profile",
+        schemaVersion: 1,
+        id: "e2e-profile",
+        name: "E2E Profile",
+        settings: {
+          version: 1,
+          mode: "sections",
+          replacement: "",
+          customSections: [],
+          sections: { role: { mode: "replace", content: "E2E_PROFILE_ROLE" } },
+        },
+      }),
+    );
+    await clickTestIdByDom("system-prompt-profile-preview");
+    await waitForTestIdByDom("system-prompt-changes");
+    expect(await $('[data-testid="system-prompt-changes"]').getText()).toContain(
+      "E2E_PROFILE_ROLE",
+    );
+    await clickTestIdByDom("system-prompt-profile-apply");
+    expect((await readSettings()).systemPromptSettings).toEqual(before.systemPromptSettings);
+    await clickTestIdByDom("system-prompt-open-preview");
+    await waitForTestIdByDom("system-prompt-full-content", { timeout: 30_000 });
+    expect(await $('[data-testid="system-prompt-full-content"]').getText()).toContain(
+      "E2E_PROFILE_ROLE",
+    );
+    await clickTestIdByDom("system-prompt-full-diff");
+    await waitForTestIdByDom("system-prompt-text-diff");
+    await browser.saveScreenshot(join(artifactDir, "prompt-profile-diff.png"));
+    await browser.keys("Escape");
+    await openSection("memory");
+    await openSection("systemPrompt");
+    expect((await readSettings()).systemPromptSettings).toEqual(before.systemPromptSettings);
+  });
   it("SP14–SP15 动态情景不持久化，整体替换与逐章共用上下文开关", async function () {
     this.timeout(180_000);
     await mkdir(artifactDir, { recursive: true });

@@ -46,6 +46,27 @@ export class ContextBuilder {
     this.config = config;
   }
 
+  /** 预览捕获当次构建输入；模型对象只读复用，数据复制后不追随后续环境或设置变化。 */
+  copyForPromptPreview(settings = this.config.systemPromptSettings): ContextBuilder {
+    const config = this.config;
+    const clone = new ContextBuilder({
+      ...config,
+      envInfo: structuredClone(config.envInfo),
+      additionalDirectories: config.additionalDirectories
+        ? [...config.additionalDirectories]
+        : undefined,
+      userInstructions: config.userInstructions
+        ? structuredClone(config.userInstructions)
+        : undefined,
+      skills: config.skills ? structuredClone(config.skills) : undefined,
+      guidanceToolNames: config.guidanceToolNames ? [...config.guidanceToolNames] : undefined,
+      outputStyle: config.outputStyle ? { ...config.outputStyle } : undefined,
+      systemPromptSettings: settings ? structuredClone(settings) : undefined,
+    });
+    clone.customSections = structuredClone(this.customSections);
+    return clone;
+  }
+
   /**
    * 保留兼容入口。工具说明由 model request 的 tools 字段承载，不再镜像进 system prompt。
    */

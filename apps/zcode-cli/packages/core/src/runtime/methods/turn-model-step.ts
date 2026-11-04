@@ -1,3 +1,4 @@
+import type { SystemPromptPreviewBlock } from "@zcode/shared";
 import type { ToolSearchExecutionContext } from "@zcode/contracts";
 import { getTurnTools } from "./turn-tool-visibility.js";
 
@@ -14,7 +15,7 @@ import {
   traceContextToLogContext,
   TurnMachineImpl,
 } from "../deps.js";
-import type { MessageId, ModelNetworkStatusEvent, ModelToolContract } from "../deps.js";
+import type { ModelNetworkStatusEvent, ModelToolContract } from "../deps.js";
 import {
   createRuntimeAssistantEntry,
   type RuntimeMessageEntry,
@@ -94,40 +95,25 @@ import {
 } from "./turn-output-token-continuation.js";
 
 type ModelStepResult = "continue" | "output_continuation" | "break";
+type ModelStepOptions = {
+  drainedSteerForNextRequest?: DrainedPendingInputDiagnostics;
+  latestRealUserMessageIndex?: number;
+  messages: RunModelTextRequestOptions["messages"];
+  sourceEntries: readonly (RuntimeMessageEntry | undefined)[];
+  promptBlocks?: SystemPromptPreviewBlock[];
+  promptComplete?: boolean;
+  recordedMessages: RunModelTextRequestOptions["messages"];
+  requestEntries: readonly RuntimeMessageEntry[];
+  tools: ModelToolContract[];
+  toolSearch?: ToolSearchExecutionContext;
+};
 
 export async function runModelBackedTurnStep(
   this: AgentRuntimeInternal,
   state: RegularTurnLoopState,
-  options: {
-    drainedSteerForNextRequest?: DrainedPendingInputDiagnostics;
-    latestRealUserMessageIndex?: number;
-    messages: RunModelTextRequestOptions["messages"];
-    sourceEntries: readonly (RuntimeMessageEntry | undefined)[];
-    recordedMessages: RunModelTextRequestOptions["messages"];
-    requestEntries: readonly RuntimeMessageEntry[];
-    tools: ModelToolContract[];
-    toolSearch?: ToolSearchExecutionContext;
-  },
+  options: ModelStepOptions,
 ): Promise<ModelStepResult> {
   const assistantMessageId = createMessageId();
-  return runModelBackedTurnStepImpl.call(this, state, options, assistantMessageId);
-}
-
-async function runModelBackedTurnStepImpl(
-  this: AgentRuntimeInternal,
-  state: RegularTurnLoopState,
-  options: {
-    drainedSteerForNextRequest?: DrainedPendingInputDiagnostics;
-    latestRealUserMessageIndex?: number;
-    messages: RunModelTextRequestOptions["messages"];
-    sourceEntries: readonly (RuntimeMessageEntry | undefined)[];
-    recordedMessages: RunModelTextRequestOptions["messages"];
-    requestEntries: readonly RuntimeMessageEntry[];
-    tools: ModelToolContract[];
-    toolSearch?: ToolSearchExecutionContext;
-  },
-  assistantMessageId: MessageId,
-): Promise<ModelStepResult> {
   const model = state.model;
   const modelStepIndex = state.modelStepCount;
   const modelStartedAt = Date.now();
@@ -203,9 +189,27 @@ async function runModelBackedTurnStepImpl(
   state.pendingStreamRecoveryRequest = undefined;
   let latestModelRequestId: string | undefined;
   let latestFailedModelRequestId: string | undefined;
+  const promptBuilder =
+    querySource === "main_turn" ? (this.contextBuilder?.copyForPromptPreview() ?? null) : null;
   const recordModelNetworkStatus = (event: ModelNetworkStatusEvent): void => {
     if (event.type === "model_request_started") {
       latestModelRequestId = event.requestId;
+      if (
+        querySource === "main_turn" &&
+        !this.config.subagentContext &&
+        !this.config.workflowActor
+      ) {
+        this.systemPromptObservation.capture({
+          sessionId: String(this.sessionId),
+          requestId: event.requestId,
+          capturedAt: new Date().toISOString(),
+          model: `${model.providerId}/${model.modelId}`,
+          blocks: options.promptBlocks ?? [],
+          complete: options.promptComplete === true,
+          builder: promptBuilder,
+          settings: this.config.systemPromptSettings,
+        });
+      }
       return;
     }
     if (event.type === "model_stream_stalled" || event.type === "model_request_failed") {

@@ -3997,6 +3997,8 @@ export const zcodeProtocolMethods = {
   sessionList: "session/list",
   sessionSubagents: "session/subagents",
   systemPromptCatalog: "systemPrompt/catalog",
+  systemPromptPreview: "systemPrompt/preview",
+  sessionSystemPrompt: "session/systemPrompt",
   sessionRequestRuntimePreferences: "session/requestRuntimePreferences",
   subagentsReadRuntimeConfig: "subagents/readRuntimeConfig",
   sessionRead: "session/read",

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   systemPromptSettingsSchema,
   type SystemPromptCatalog,
+  type SystemPromptPreviewParams,
   type SystemPromptSettings,
 } from "@zcode/shared";
 import { useServices } from "@/hooks/useServices.js";
@@ -38,7 +39,12 @@ export function useSystemPromptSettings() {
     },
     [settingService, update],
   );
+  const preview = useCallback(
+    (params: SystemPromptPreviewParams) => zcodeAgentService.previewSystemPrompt(params),
+    [zcodeAgentService],
+  );
   return {
+    preview,
     settings: settings?.systemPromptSettings ?? null,
     // 刷新已加载的设置不能卸载编辑器，否则保存中的草稿与失败状态会丢失。
     loading: loading && settings === null,

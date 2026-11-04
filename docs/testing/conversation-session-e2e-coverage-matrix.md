@@ -1,5 +1,18 @@
 # Conversation Session E2E Coverage Matrix
 
+## 系统提示词编辑器扩展（SPE / PP，2026-11-04）
+
+[规格](../spec/system-prompt-editor.md)与[验收记录](system-prompt-editor-plan.md#8-本次验证记录2026-11-04)定义断言及证据边界。状态均保留 pending-review，不晋升 formal/CI/Docker。
+
+| 范围                                    | 已有证据                                                             | 剩余范围                                                        |
+| --------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------- |
+| 草稿／动态详情／diff／章节模板／Profile | CLI 回归、浏览器 6/6、1280/390px 中英深浅截图                        | 大字号／触屏细分和更多动态开关组合                              |
+| 实际内容／同上下文比较                  | 真实 runtime＋合成 Model 捕获，MCS／工具结果投影回归；浏览器实际视图 | 真实 provider、旧 CLI 和远程 Host 组合                          |
+| 保存／重进／恢复默认                    | 隔离 macOS Electron 的真实 Host/SettingService 链通过                | 标准 WDIO session 创建超时，用例未运行；SP 旧场景不可据此标通过 |
+| 目标身份／快照／手机重连                | 请求 key／service 代次守卫、latest-only runtime 回归                 | 同路径双远端和真实手机 replayable 重连未验收                    |
+
+CLI 扩展 `runtime-context-announcements` 有 19 项现有失败，干净基线复跑相同。完整命令、覆盖和限制集中见验收记录。
+
 ## OpenZWork 对话管理增强（OCC，2026-10-25）
 
 规格与验收：[对话管理](../spec/conversation-controls.md)。
