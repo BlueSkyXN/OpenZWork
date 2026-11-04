@@ -38,13 +38,13 @@ const retiredTemplateIds = [
 
 describe("standard provider built-in config", () => {
   it.each(["zcode-builtin.json", "zcode-builtin.test.json"])(
-    "%s only carries neutral protocol templates and generic rules",
+    "%s keeps neutral connection templates separate from model capabilities",
     async (filename) => {
       const raw = JSON.parse(
         await readFile(new URL(`../../../config/provider/${filename}`, import.meta.url), "utf8"),
       );
       const release = decodeZCodeBuiltinRelease(raw);
-      expect(raw.revision).toBeGreaterThanOrEqual(35);
+      expect(raw.revision).toBeGreaterThanOrEqual(44);
       expect(release.config.providers.keys()).toEqual([]);
       expect(release.config.providerTemplates.keys()).toEqual([...standardTemplateIds]);
 
@@ -57,20 +57,21 @@ describe("standard provider built-in config", () => {
       }
 
       const rules = raw.config.modelConfigRules;
-      expect(rules.modelRules.map((rule: { modelMatch: string }) => rule.modelMatch)).toEqual([
-        ".*",
-      ]);
+      expect(rules.modelRules[0].modelMatch).toBe(".*");
+      expect(rules.modelRules.length).toBeGreaterThan(1);
       expect(
-        rules.modelApiRules.map(
-          (rule: { modelMatch: string; apiTypeMatch: string }) =>
-            [rule.modelMatch, rule.apiTypeMatch] as const,
-        ),
+        rules.modelApiRules
+          .filter((rule: { modelMatch: string }) => rule.modelMatch === ".*")
+          .map(
+            (rule: { modelMatch: string; apiTypeMatch: string }) =>
+              [rule.modelMatch, rule.apiTypeMatch] as const,
+          ),
       ).toEqual([
         [".*", "anthropic-messages"],
         [".*", "openai-chat-completions"],
         [".*", "openai-responses"],
       ]);
-      expect(rules.providerSiteRules).toEqual([]);
+      expect(rules.providerSiteRules.length).toBeGreaterThan(0);
       expect(rules.templateModelRules).toEqual([]);
       expect(rules.builtinProviderModelRules).toEqual([]);
 
@@ -81,11 +82,18 @@ describe("standard provider built-in config", () => {
     },
   );
 
-  it("does not embed endpoint URLs", async () => {
-    const raw = await readFile(
-      new URL("../../../config/provider/zcode-builtin.json", import.meta.url),
-      "utf8",
+  it("公共能力规则不携带账号端点、鉴权或默认模型目录", async () => {
+    const [production, testing] = await Promise.all(
+      ["zcode-builtin.json", "zcode-builtin.test.json"].map(async (name) =>
+        JSON.parse(
+          await readFile(new URL(`../../../config/provider/${name}`, import.meta.url), "utf8"),
+        ),
+      ),
     );
-    expect(raw).not.toMatch(/https?:\/\//i);
+    expect(testing).toEqual(production);
+    expect(JSON.stringify(production.config.modelConfigRules)).not.toMatch(
+      /zcode|zhipu-account|apiKey|authorization|builtinModelIds/i,
+    );
+    expect(JSON.stringify(production.config.providerConfigRules)).not.toMatch(/https?:\/\//i);
   });
 });

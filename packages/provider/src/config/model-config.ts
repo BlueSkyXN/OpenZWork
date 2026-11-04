@@ -363,6 +363,9 @@ export interface ModelConfigRuleResolutionInput {
   readonly baseUrl?: string | null;
 }
 
+/** 匹配来源是展示投影，不表示接口或模型能力已经通过在线验证。 */
+export type ModelConfigMatchKind = "generic" | "model" | "channel";
+
 export class ModelConfigRules {
   readonly #rules: readonly ModelConfigRule[];
 
@@ -385,7 +388,15 @@ export class ModelConfigRules {
   }
 
   resolve(input: ModelConfigRuleResolutionInput): ModelConfig {
+    return this.resolveWithMatch(input).config;
+  }
+
+  resolveWithMatch(input: ModelConfigRuleResolutionInput): {
+    readonly config: ModelConfig;
+    readonly matchKind: ModelConfigMatchKind;
+  } {
     let result = ModelConfig.empty();
+    let matchKind: ModelConfigMatchKind = "generic";
     const baseUrl = input.baseUrl == null ? undefined : normalizeBaseURLForRuleMatch(input.baseUrl);
     for (const rule of this.#rules) {
       if (isExactModelRule(rule)) {
@@ -397,11 +408,14 @@ export class ModelConfigRules {
             ? ModelConfig.fromData(clearManualModelConfig(result.toJSON()))
             : result
         ).overlay(rule.config);
+        matchKind = "channel";
         continue;
       }
       if (rule.type === "template-model") {
-        if (rule.templateId === input.templateId && rule.modelId === input.modelId)
+        if (rule.templateId === input.templateId && rule.modelId === input.modelId) {
           result = result.overlay(rule.config);
+          matchKind = "channel";
+        }
         continue;
       }
       // 只放宽推荐规则匹配，不改真实请求里的模型 ID。
@@ -418,8 +432,11 @@ export class ModelConfigRules {
       )
         continue;
       result = result.overlay(rule.config);
+      // 通用兜底也可通过完整性校验；来源必须跟随实际命中的规则，不能由 UI 根据有效值猜测。
+      if (rule.type === "provider-site") matchKind = "channel";
+      else if (rule.modelMatch !== ".*" && matchKind === "generic") matchKind = "model";
     }
-    return result;
+    return Object.freeze({ config: result, matchKind });
   }
 
   setExact(

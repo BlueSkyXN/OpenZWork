@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog.js";
 import { Input } from "@/components/ui/input.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import type { ModelConfigObject } from "@zcode/provider";
+import type { ModelConfigObject, ModelConfigMatchKind } from "@zcode/provider";
 import type {
   ProviderModelDraftValues,
   ProviderModelDraftCommitResult,
@@ -52,6 +52,7 @@ export function ProviderModelMetadataDialog({
   personalConfig,
   overrideFields,
   inheritedConfig,
+  recommendationMatch,
   onOpenChange,
   onDraftChange,
   onRestore,
@@ -70,6 +71,7 @@ export function ProviderModelMetadataDialog({
   personalConfig?: ModelConfigObject;
   overrideFields?: ReadonlySet<string>;
   inheritedConfig?: ModelConfigObject;
+  recommendationMatch?: ModelConfigMatchKind;
   onOpenChange: (open: boolean) => void;
   onDraftChange: (patch: Partial<ProviderModelDraftValues>) => void;
   onRestore?: () => void;
@@ -163,6 +165,11 @@ export function ProviderModelMetadataDialog({
           <ModelSmartConfigSwitch
             disabled={saving}
             checked={smart}
+            recommendationMatch={
+              smart && !modelConfigResolutionPending && draft.idValue.trim()
+                ? recommendationMatch
+                : undefined
+            }
             onChange={(useRecommendedConfigValue) => onDraftChange({ useRecommendedConfigValue })}
           />
         </DialogHeader>
@@ -363,7 +370,11 @@ export function ProviderModelMetadataDialog({
             />
           </ModelEditorAdvanced>
         </div>
-        <ModelConfigDraftFeedback error={draftErrorMessage} matched={modelDefaultsLoaded} />
+        <ModelConfigDraftFeedback
+          error={draftErrorMessage}
+          matched={modelDefaultsLoaded}
+          recommendationMatch={recommendationMatch}
+        />
         <ProviderModelMetadataDialogActions
           leadingAction={<ModelConfigRestoreButton disabled={saving} onRestore={onRestore} />}
           saveLabel={intl.formatMessage({ id: "common.save" })}

@@ -304,6 +304,7 @@ export function ModelRowInput({
           draftErrorField={draftErrorField}
           overrideFields={editor.overrides}
           inheritedConfig={editor.inheritedConfig}
+          recommendationMatch={editor.recommendationMatch}
           onOpenChange={handleMetadataDialogOpenChange}
           onDraftChange={updateDraft}
           onCommit={handleMetadataDialogCommit}

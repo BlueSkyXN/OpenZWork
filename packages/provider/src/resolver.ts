@@ -11,6 +11,7 @@ import {
   type ApiKeyAccessConfig,
   ModelConfig,
   ModelConfigRules,
+  type ModelConfigMatchKind,
   type ZhipuAccountAccessConfig,
   type ModelId,
   ProviderConfig,
@@ -139,6 +140,7 @@ export interface ResolvedProviderModelCandidate {
   readonly source: "builtin" | "personal";
   readonly config: ModelConfig;
   readonly effectiveBuiltinConfig: ModelConfig;
+  readonly recommendationMatch?: ModelConfigMatchKind;
   readonly issues: readonly ConfigValidationIssue[];
   readonly enabled: boolean;
   readonly executable: boolean;
@@ -273,7 +275,7 @@ export class ProviderConfigResolver {
           apiType: config.api?.type,
           baseUrl: config.api?.baseUrl,
         });
-        const effectiveBuiltinConfig = input.zcodeBuiltinModelRules.resolve({
+        const builtinResolution = input.zcodeBuiltinModelRules.resolveWithMatch({
           providerId,
           templateId,
           modelId,
@@ -295,7 +297,8 @@ export class ProviderConfigResolver {
           modelId,
           source: builtinIds.has(modelId) ? "builtin" : "personal",
           config: modelConfig,
-          effectiveBuiltinConfig,
+          effectiveBuiltinConfig: builtinResolution.config,
+          recommendationMatch: builtinResolution.matchKind,
           issues: Object.freeze(modelIssues),
           enabled: modelEnabled,
           executable,

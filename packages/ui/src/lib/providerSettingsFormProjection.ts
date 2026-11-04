@@ -27,6 +27,7 @@ function projectProviderSettingsProviders(
       modelId: model.modelId,
       builtin: model.builtin,
       inheritedConfig: structuredClone(model.effectiveBuiltinConfig),
+      recommendationMatch: model.recommendationMatch,
       personalConfig: structuredClone(model.personalExactConfig ?? {}),
       useRecommendedConfig: model.useRecommendedConfig,
       config: structuredClone(model.effectiveConfig),

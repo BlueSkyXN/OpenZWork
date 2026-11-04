@@ -1,10 +1,13 @@
 import { useState } from "react";
+import type { ModelConfigMatchKind } from "@zcode/provider";
 import type { ProviderModelDraftCommitResult } from "@/settings/model-provider-section/ProviderModelMetadata.js";
 import { ProviderModelMetadataDialog } from "@/settings/model-provider-section/ProviderModelMetadataDialog.js";
 import { useProviderModelDraft } from "@/settings/model-provider-section/useProviderModelDraft.js";
 import { smartDraftModel } from "../../../providerModelSmartDraftFixture.js";
 
-export function ProviderModelEditorFixture() {
+export function ProviderModelEditorFixture({
+  initialRecommendation,
+}: { initialRecommendation?: ModelConfigMatchKind } = {}) {
   const editMode = new URLSearchParams(location.search).has("edit");
   const [open, setOpen] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -14,6 +17,7 @@ export function ProviderModelEditorFixture() {
   >(null);
   const [model] = useState(() => {
     const initial = smartDraftModel();
+    initial.recommendationMatch = initialRecommendation;
     if (new URLSearchParams(location.search).has("emptyReasoning")) {
       initial.config.optionSpecs!.reasoningLevel!.values = [];
     }
@@ -54,6 +58,8 @@ export function ProviderModelEditorFixture() {
         draftErrorMessage={error}
         draftErrorField={errorField}
         inheritedConfig={editor.inheritedConfig}
+        recommendationMatch={editor.recommendationMatch}
+        modelDefaultsLoaded={editor.defaultsLoaded}
         overrideFields={editor.overrides}
         onOpenChange={setOpen}
         onDraftChange={(patch) => {

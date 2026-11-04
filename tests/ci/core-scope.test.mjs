@@ -119,6 +119,22 @@ test("system prompt regressions run in core and independent CLI gates", async ()
   assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
 });
 
+test("model capability rules and final requests have blocking CI coverage", async () => {
+  assert.ok(declared.includes("packages/provider-node/test/model-capability-rules.test.ts"));
+  const steps = (await workflow("ci.yml")).jobs.checks.steps;
+  const build = steps.findIndex((step) => step.run === "node scripts/build-desktop-agent-cli.mjs");
+  const index = steps.findIndex(
+    (step) => step.name === "Model capability request mapping regression",
+  );
+  assert.ok(build >= 0 && index > build);
+  assert.equal(steps[index].if, "matrix.lane == 'regressions'");
+  assert.equal(steps[index]["continue-on-error"], undefined);
+  assert.match(
+    steps[index].run,
+    /--filter @zcode\/adapters exec vitest run tests\/model-capability-wire\.test\.ts/,
+  );
+});
+
 for (const [name, stepName, files] of [
   [
     "SQLite cold resume",

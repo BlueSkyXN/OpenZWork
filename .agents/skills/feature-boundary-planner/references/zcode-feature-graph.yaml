@@ -612,6 +612,7 @@ nodes:
       - GLM-x-preview-f
       - x-preview-f-free
     docs:
+      - docs/spec/model-capability-matching.md
       - docs/product-capability-map.md
       - docs/working-memory/provider-refactor/steps/03-staging-integration.md
       - docs/working-memory/provider-refactor/design/registry/configuration.md
