@@ -1,5 +1,6 @@
 import { Loader2Icon, CircleAlertIcon, CheckCircle2Icon } from "lucide-react";
 import type { ReactNode } from "react";
+import type { ModelConfigMatchKind } from "@zcode/provider";
 import { Button } from "@/components/ui/button.js";
 import { Switch } from "@/components/ui/switch.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -30,9 +31,11 @@ export function ModelConfigRestoreButton({
 export function ModelConfigDraftFeedback({
   error,
   matched,
+  recommendationMatch,
 }: {
   error?: string | null;
   matched?: boolean;
+  recommendationMatch?: ModelConfigMatchKind;
 }) {
   const { intl } = useZCodeIntl();
   if (!error && !matched) return null;
@@ -48,7 +51,13 @@ export function ModelConfigDraftFeedback({
     >
       <Icon className="size-4 shrink-0" aria-hidden="true" />
       <span className="text-ui-sm font-medium">
-        {error ?? intl.formatMessage({ id: "settings.modelProvider.modelDefaultsLoaded" })}
+        {error ??
+          intl.formatMessage({
+            id:
+              recommendationMatch === "generic"
+                ? "settings.modelProvider.genericDefaultsLoaded"
+                : "settings.modelProvider.modelDefaultsLoaded",
+          })}
       </span>
     </div>
   );
@@ -58,10 +67,12 @@ export function ModelSmartConfigSwitch({
   checked,
   disabled,
   onChange,
+  recommendationMatch,
 }: {
   checked: boolean;
   disabled: boolean;
   onChange: (checked: boolean) => void;
+  recommendationMatch?: ModelConfigMatchKind;
 }) {
   const { intl } = useZCodeIntl();
   const label = intl.formatMessage({ id: "settings.modelProvider.followRecommendedConfig" });
@@ -75,6 +86,21 @@ export function ModelSmartConfigSwitch({
         <ModelConfigHelp field="followRecommendedConfig" />
       </span>
       <Switch disabled={disabled} aria-label={label} checked={checked} onCheckedChange={onChange} />
+      {recommendationMatch ? (
+        <span
+          data-model-recommendation-source={recommendationMatch}
+          className="text-ui-sm text-foreground-subtle"
+        >
+          {intl.formatMessage({
+            id:
+              recommendationMatch === "generic"
+                ? "settings.modelProvider.recommendation.generic"
+                : recommendationMatch === "channel"
+                  ? "settings.modelProvider.recommendation.channel"
+                  : "settings.modelProvider.recommendation.model",
+          })}
+        </span>
+      ) : null}
     </div>
   );
 }

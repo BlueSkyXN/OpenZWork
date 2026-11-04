@@ -4,6 +4,7 @@ import type { ProviderModelMembership } from "./config-service.js";
 import type {
   ModelConfig,
   ModelConfigObject,
+  ModelConfigMatchKind,
   ModelId,
   ProviderConfig,
   ProviderConfigObject,
@@ -108,6 +109,7 @@ export interface ProviderSettingsModelCandidateView {
   readonly modelId: ModelId;
   readonly builtin: boolean;
   readonly effectiveBuiltinConfig: ModelConfigObject;
+  readonly recommendationMatch?: ModelConfigMatchKind;
   readonly personalExactConfig?: ModelConfigObject;
   readonly useRecommendedConfig?: boolean;
   readonly effectiveConfig: RegistryModelConfigObject | ModelConfigObject;
@@ -138,6 +140,7 @@ export type ProviderModelDiscoveryResult =
 export type ProviderSettingsModelView = ProviderSettingsModelCandidateView;
 
 export interface ModelConfigResolution {
+  readonly recommendationMatch?: ModelConfigMatchKind;
   readonly inheritedConfig: ModelConfigObject;
   readonly effectiveConfig: ModelConfigObject;
   readonly issues: readonly ConfigValidationIssue[];
@@ -255,6 +258,13 @@ export class ProviderSettingsFacade {
   resolveModelConfig(input: ResolveModelConfigInput): ModelConfigResolution {
     const snapshot = requireSnapshot(this.#source);
     const provider = requireEffectiveProvider(snapshot, input.providerId);
+    const builtinResolution = snapshot.config.zcodeBuiltinModelRules.resolveWithMatch({
+      providerId: input.providerId,
+      templateId: provider.templateId,
+      modelId: input.modelId,
+      apiType: provider.config.api?.type,
+      baseUrl: provider.config.api?.baseUrl,
+    });
     if (!("personalConfig" in input)) {
       const modelRules = ModelConfigRules.composeEffective(
         snapshot.config.zcodeBuiltinModelRules,
@@ -268,6 +278,7 @@ export class ProviderSettingsFacade {
         baseUrl: provider.config.api?.baseUrl,
       });
       return Object.freeze({
+        recommendationMatch: builtinResolution.matchKind,
         inheritedConfig: config.toJSON(),
         effectiveConfig: config.toJSON(),
         issues: Object.freeze([
@@ -277,13 +288,7 @@ export class ProviderSettingsFacade {
     }
 
     const personalConfig = parseModelConfig(input.personalConfig);
-    const inheritedConfig = snapshot.config.zcodeBuiltinModelRules.resolve({
-      providerId: input.providerId,
-      templateId: provider.templateId,
-      modelId: input.modelId,
-      apiType: provider.config.api?.type,
-      baseUrl: provider.config.api?.baseUrl,
-    });
+    const inheritedConfig = builtinResolution.config;
     let personalRules = snapshot.config.personalModels;
     if (input.originalModelId !== input.modelId) {
       personalRules = personalRules.renameExactModel(
@@ -306,6 +311,7 @@ export class ProviderSettingsFacade {
     });
     return Object.freeze({
       inheritedConfig: inheritedConfig.toJSON(),
+      recommendationMatch: builtinResolution.matchKind,
       effectiveConfig: config.toJSON(),
       issues: Object.freeze([
         ...config.validateComplete(["providers", input.providerId, "models", input.modelId]),
@@ -658,6 +664,7 @@ function createProviderSettingsView(input: {
             modelId: model.modelId,
             builtin: model.source === "builtin",
             effectiveBuiltinConfig: model.effectiveBuiltinConfig.toJSON(),
+            recommendationMatch: model.recommendationMatch,
             ...(personalModelConfig ? { personalExactConfig: personalModelConfig.toJSON() } : {}),
             ...(personalModelRule
               ? { useRecommendedConfig: personalModelRule.type !== "manual-provider-model" }

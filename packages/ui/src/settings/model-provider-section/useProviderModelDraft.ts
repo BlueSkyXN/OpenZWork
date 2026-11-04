@@ -63,10 +63,11 @@ export function useProviderModelDraft({
       return {
         ...model,
         inheritedConfig: resolution.inheritedConfig,
+        recommendationMatch: resolution.recommendationMatch,
         config: resolution.inheritedConfig,
       };
     if (rawDraft.idValue.trim() === model.modelId) return model;
-    return { ...model, config: {}, inheritedConfig: undefined };
+    return { ...model, config: {}, inheritedConfig: undefined, recommendationMatch: undefined };
   };
   const currentModel = modelWithResolution(config.resolution);
   const draft = projectModelDraft(rawDraft, currentModel);
@@ -114,6 +115,7 @@ export function useProviderModelDraft({
     commit,
     overrides: modelDraftOverrides(draft),
     inheritedConfig: currentModel.inheritedConfig,
+    recommendationMatch: smart ? currentModel.recommendationMatch : undefined,
     pending:
       smart &&
       Boolean(resolve) &&

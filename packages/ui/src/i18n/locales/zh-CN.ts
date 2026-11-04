@@ -4021,7 +4021,11 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.help.advanced":
     "**MFJS 工具 Schema**：启用 Moonshot Flavored JSON Schema（Moonshot 的 JSON Schema 格式）兼容处理，常用于 Moonshot 的 Kimi 模型接口。仅在模型接口要求该格式时开启。",
   "settings.modelProvider.help.followRecommendedConfig":
-    "根据模型 ID、Base URL 和 API 格式，为您智能匹配推荐配置。ZCode 会持续更新推荐配置，并自动同步给您。\n如果手动修改某项配置，该项将转为手动管理，不再跟随推荐更新；其他配置仍由智能配置管理。",
+    "根据模型 ID、API 格式和接入地址应用内置配置；未匹配到专用规则时使用通用配置。请按实际服务检查思考档位和推理映射。\n手动修改的项目使用你的配置，其余项目继续跟随内置规则。",
+  "settings.modelProvider.recommendation.generic": "通用配置",
+  "settings.modelProvider.recommendation.model": "模型推荐",
+  "settings.modelProvider.recommendation.channel": "渠道推荐",
+  "settings.modelProvider.genericDefaultsLoaded": "已应用通用配置",
   "settings.modelProvider.modelDefaultsLoaded": "已匹配到智能配置",
   "settings.modelProvider.modelConfigIncomplete": "模型配置不完整",
   "settings.modelProvider.models": "模型列表",

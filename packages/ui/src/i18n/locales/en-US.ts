@@ -4290,7 +4290,11 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.help.advanced":
     "**MFJS tool schema**: Enables Moonshot Flavored JSON Schema compatibility, commonly used by Moonshot's Kimi model API. Enable only when the model API requires this format.",
   "settings.modelProvider.help.followRecommendedConfig":
-    "Matches recommended configuration using the model ID, Base URL, and API format. ZCode continually updates recommendations and automatically syncs them to you.\nWhen you manually change a setting, that setting becomes manually managed and stops following recommendation updates; other settings remain managed by smart configuration.",
+    "Applies bundled configuration using the model ID, API format, and endpoint. Models without a specific rule use generic configuration. Check reasoning levels and mappings against your service.\nManually edited fields use your configuration; other fields continue to follow bundled rules.",
+  "settings.modelProvider.recommendation.generic": "Generic configuration",
+  "settings.modelProvider.recommendation.model": "Model recommendation",
+  "settings.modelProvider.recommendation.channel": "Channel recommendation",
+  "settings.modelProvider.genericDefaultsLoaded": "Generic configuration applied",
   "settings.modelProvider.modelDefaultsLoaded": "Smart configuration matched for this model",
   "settings.modelProvider.modelConfigIncomplete": "Model configuration is incomplete",
   "settings.modelProvider.models": "Model list",

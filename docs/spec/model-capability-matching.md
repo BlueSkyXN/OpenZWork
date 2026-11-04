@@ -1,0 +1,54 @@
+# 模型能力与渠道匹配
+
+## 问题与范围
+
+`aa7860b0` 将 Provider 入口精简为三种协议时，同时删除了模型与站点能力规则。例如 GLM-5.3 / Anthropic Messages 从 `low/high/max` 与 `thinking.type=enabled` 退回通用 `disabled/enabled` 与 Adaptive 映射。
+
+本次保留三个中性协议模板及空模型目录，恢复独立的模型能力与公共渠道差异。依据为上游 `v3.17.1`（`a60ba6a7e5a06742270ca605f5d2cc2766afa7e1`）的配置。上游数据是适配基线，真实渠道接受参数的证据单独记录。
+
+未知模型维持既有 `disabled/enabled`、协议映射和默认选择策略，并显示“通用配置”。这是本次确认的兼容策略。Personal 显式覆盖继续优先；不改写已有 Provider、模型 ID、凭据或会话选择。
+
+## 规则与所有者
+
+1. `modelRules` 提供型号能力；`modelApiRules` 按型号与协议提供映射。
+2. `providerSiteRules` 处理公共 endpoint 差异；保留 URL 的路径语义。
+3. 原版模板中的能力覆盖去掉成员启用字段后转成精确的模型／协议或站点规则。原厂模板提供的精确模型与协议能力可用于相同模型 ID 的兼容接入；聚合渠道覆盖限定 endpoint，不扩散到其他渠道。
+4. 原版账号、套餐及 Highspeed 服务 endpoint 不进入规则库。厂商模板、模型成员和鉴权信息不随能力规则导入。
+5. Personal 精确覆盖以 `providerId + modelId` 隔离；同一 endpoint 下不同 Key 或路由用不同 Provider 实例配置。客户端不猜测网关隐藏的后端路由。
+
+```mermaid
+flowchart LR
+  A[模型 ID 与目标 Host 的连接配置] --> B[ModelConfigRules]
+  B --> C[模型与协议规则]
+  C --> D[公共渠道规则]
+  D --> E[Personal 精确覆盖]
+  E --> F[Effective Model Config]
+  F --> G[设置页与 Composer]
+  F --> H[ModelFactory 冻结配置]
+  H --> I[现有 CEL Map 与最终请求体]
+```
+
+目标 Host 继续拥有解析；Renderer 只读取配置与匹配来源。新增加的匹配来源是只读投影，不持久化、不参与执行、不另建缓存。普通配置读取继续使用原 `resolve`；详细解析复用同一匹配循环。
+
+## 来源展示
+
+详细解析区分 `generic`（仅通用模型／协议规则）、`model`（命中具体型号规则）、`channel`（命中站点或精确 Provider 规则）。此字段说明规则来源，不表示远端验收通过。
+
+新增、编辑和恢复使用同一份来源投影；模型 ID 或 Provider 改变时，旧结果和来源一起失效。智能配置关闭时隐藏来源。界面用“通用配置”“模型推荐”“渠道推荐”区分；通用配置不显示专用匹配成功，也不宣称在线自动更新。
+
+## 验收用例
+
+| ID    | 设置与动作                                          | 必须断言                                                             |
+| ----- | --------------------------------------------------- | -------------------------------------------------------------------- |
+| MCR01 | 加载生产与测试配置                                  | 三模板、空成员、无账号入口；两份规则相同且 revision 递增             |
+| MCR02 | GLM-5.3 / Messages 逐档解析并构造请求               | `low/high/max`；enabled + 相同 effort；不混入 Responses 参数         |
+| MCR03 | 相同型号切换 OpenRouter 与普通 endpoint             | OpenRouter 使用自己的 Adaptive 映射；普通 endpoint 保留模型映射      |
+| MCR04 | 两个 Provider 共用 endpoint/model，其中一个个人覆盖 | 修改只影响对应 Provider；原请求 model ID 保留                        |
+| MCR05 | 任意未知模型分别走三协议                            | 既有开关、通用映射和默认策略不变；来源为 generic                     |
+| MCR06 | 原厂与聚合模板中的最新型号能力导入                  | 具体档位和映射保留；不创建模板、模型成员或连接                       |
+| MCR07 | 遍历维护型号／协议／站点的所有公开档位              | 有效配置完整；CEL 可执行；输出为合法对象；与输出上限映射不冲突       |
+| MCR08 | 浏览器新增、编辑、恢复、修改型号、切换 Provider     | 来源正确更新；未知显示通用；迟到回包不覆盖新目标；保存／取消语义保持 |
+| MCR09 | Adapter 对 Messages / Chat / Responses 构造请求     | 断言网络出口捕获的最终字段；覆盖流式／非流式及字段缺席               |
+| MCR10 | 规则升级并重开已有个人配置                          | 显式档位和 Map 不丢失；模型与会话选择不被迁移                        |
+
+浏览器用例保持 `manual-review/pending`；执行产物记录在 PR 验证说明，不自动声明人工验收或 CI 准入。真实服务验收另行记录接口、模型、档位与结果，不用本地构造或 HTTP 成功替代模型执行语义证明。

@@ -594,6 +594,7 @@ export function ProviderModelsSection({
           draftErrorMessage={addCommitError ?? addDraftErrorMessage}
           draftErrorField={addDraftErrorField}
           inheritedConfig={editor.inheritedConfig}
+          recommendationMatch={editor.recommendationMatch}
           overrideFields={editor.overrides}
           onOpenChange={handleAddDialogOpenChange}
           onDraftChange={updateAddDraft}
