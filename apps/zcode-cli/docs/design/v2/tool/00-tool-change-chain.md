@@ -1,5 +1,13 @@
 # Tool Change Chain Spec
 
+## OpenZWork v3.17.2 整合
+
+工具链吸收上游父子权限继承、Plan 审批与自定义命令 shell handoff 修复：命令解析只产生文本，
+模型调用 Bash 后由原权限服务准入；插件不能提升父权限，恢复子会话使用当前父权限。
+回归覆盖 App/CLI 命令入口、参数边界、Plan MCP、Guarded 单次确认及子会话冷恢复。
+官方 MCP 身份头与原生 CUA 继续沿用裁剪范围；标准 MCP/OAuth 保留。整合边界与验收见
+根目录 `docs/spec/upstream-v3.17.2-integration.md`。
+
 
 
 ## Bash 临时输出路径隔离
