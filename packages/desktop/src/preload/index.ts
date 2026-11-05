@@ -657,6 +657,8 @@ contextBridge.exposeInMainWorld("zcode", {
     error?: string;
   }> => ipcRenderer.invoke(PlatformChannels.ExportLogs),
   // CDP-on-guest pivot：`<webview>` guest dom-ready 后上报 webContentsId 给 main attach。
+  browserViewLoadUrl: (payload: { webContentsId: number; url: string }): Promise<void> =>
+    ipcRenderer.invoke(PlatformChannels.BrowserViewLoadUrl, payload),
   browserViewAttachGuest: (payload: {
     key: string;
     webContentsId: number;

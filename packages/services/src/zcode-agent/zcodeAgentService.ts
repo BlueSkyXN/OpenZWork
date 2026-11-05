@@ -1035,6 +1035,10 @@ interface CreateZCodeAgentServiceBaseOptions extends Omit<
       additionalDirectories?: string[];
     },
   ) => Promise<{ sessionId: string; additionalDirectories: string[] }>;
+  /** fork 提交后、ACK 返回前完成 Host 归属交接；duplicate 重放须幂等。 */
+  prepareForkCreation?: (
+    target: ZCodeAgentSessionTarget & { parentSessionId: string },
+  ) => Promise<void>;
   resolveSessionDirectories?: (target: ZCodeAgentSessionTarget) => Promise<string[]>;
   resolveSessionRuntimePreferences?: (
     scope: ZCodeSessionRuntimePreferencesScope,
@@ -5833,6 +5837,19 @@ export function createZCodeAgentService(
       const ack: CommandAck = await measure("host.cli_ack", () =>
         client.request(V4_METHODS.command, envelope, commandAckSchema),
       );
+      if (
+        envelope.type === "forkAssistant" &&
+        envelope.sessionId &&
+        (ack.status === "accepted" || ack.status === "duplicate") &&
+        ack.result?.type === "forkAssistant"
+      ) {
+        // 正文提交不代表 Host 组织态已写入；等待归属交接再允许界面立即打开，失败可重放同一 ACK。
+        await options?.prepareForkCreation?.({
+          ...params,
+          sessionId: ack.result.sessionId,
+          parentSessionId: envelope.sessionId,
+        });
+      }
       // Prompt command 在 committed TurnStarted 或 committed WorkspaceHookReviewRequested
       // 任一 authority 到达后即返回；人工审核不能占用 Host RPC，因此继续使用统一默认
       // timeout/watchdog。放宽到审核领域 deadline 只会掩盖串行协议队列死锁。
@@ -6242,7 +6259,7 @@ export function createZCodeAgentService(
     },
     async ensureSessionReady(params) {
       const client = await getClient(params);
-      await client.sessionLifecycle.ensureReady(params.sessionId);
+      await client.sessionLifecycle.ensureReady(params.sessionId, buildWorkspaceRef(params));
     },
     async stopSessionRuntime(params) {
       const client = await getClient(params);
@@ -6251,7 +6268,7 @@ export function createZCodeAgentService(
     async restartSessionRuntime(params) {
       const client = await getClient(params);
       try {
-        await client.sessionLifecycle.restart(params.sessionId);
+        await client.sessionLifecycle.restart(params.sessionId, buildWorkspaceRef(params));
       } catch (error) {
         if (error instanceof Error && "code" in error && error.code === -32601)
           throw new Error("fault.sessionLifecycle.unsupported", { cause: error });

@@ -8,7 +8,7 @@ import { loadPolicy } from "./architecture/policy.mjs";
 import { pristineUpstreamFiles } from "./architecture/upstream-admission.mjs";
 import {
   classifyLintDiagnostics,
-  parseLintCommand,
+  resolvePackageLintArgs,
   resolvePnpmInvocation,
 } from "./cli-lint-admission.mjs";
 import { resolveSpawnRuntimeOptions, quoteArgsForWindowsShell } from "./spawn-command.mjs";
@@ -40,7 +40,7 @@ async function main() {
         throw error;
       }
       if (!manifest.scripts?.lint) continue;
-      const args = [...parseLintCommand(manifest.scripts.lint), "--format", "json"];
+      const args = await resolvePackageLintArgs(manifest.scripts.lint, cwd);
       // 沿用各包解析出的 oxlint 版本、cwd 和原参数；包级配置仍由 oxlint 自己读取。
       const pnpm = process.env.npm_execpath;
       if (!pnpm) throw new Error("请通过 pnpm lint 运行 CLI lint");

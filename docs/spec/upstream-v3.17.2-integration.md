@@ -16,6 +16,9 @@
 6. Host 在 fork ACK 返回 UI 前继承父任务组织态；CLI 事实与 ACK 到达顺序可交换。同 workspace、Host、root 精确校验，已有归属和本地合法 NULL 不重算。远端历史 NULL 归属使用上游 `0010_remote_task_ownership` 迁移，沿用迁移备份与 checksum 约束。
 7. 生命周期 ensureReady/restart 携带 workspace，检查 `sessionLifecycleWorkspace` 能力；旧 CLI 缺失能力时返回既有 unsupported 错误，不丢弃 workspace 后重试。全局最低版本保持原配置，由操作能力检查区分支持范围。
 8. 保留通用 MCP 失败提示、macOS 文件应用图标修复与平台打包改进。官方 MCP 身份头专属实现、夹具和文档不引入。Windows x64 依赖裁剪沿用上游显式环境开关，不扩大默认启用范围。
+9. Windows/Linux 托盘沿用原图标，移除上游已取消的托盘红点合成；Windows 任务栏 overlay、支持平台的 app badge 与应用内未读状态继续保留。
+
+上游未修改依赖声明；沿用 OpenZWork 当前锁定依赖，避免引回已移除的依赖图。根 npm 锁的发行号同步更新，第三方声明从实际工作区依赖重新生成。
 
 ## 所有者与时序
 
@@ -46,3 +49,11 @@ CLI 继续独占会话事实和已接受输入队列；Host 独占项目、归�
 - 执行根 typecheck/lint、CLI typecheck/lint、架构与 schema 检查、净化扫描、下游补丁门禁、固定核心套件及受影响 CLI 测试。桌面交互沿用上游候选 E2E，按实际执行证据记录，不以文件存在代替通过。
 - 下游补丁以 [登记表](../upstream/downstream-patches.yaml) 为事实源，逐项核对未撤销条目；原样未变的上游缺陷仍保留本地修复与回归。
 - 提交可审查的升级 PR；本地结果、云端 CI、三平台安装包和实机验收分别记录。
+
+本轮执行结果与剩余实机范围见 [v3.17.2 整合验证](../testing/upstream-v3.17.2-validation.md)。
+
+CLI Lint 对没有包级 `.oxlintrc.json` 的包补充 `--no-ignore`，使根配置排除的内层 CLI 仍被实际扫描；有包级配置时保留其排除规则，避免将工作流图体语料当成普通模块解析。沿用包声明的检查目标、规则和原样上游行数准入。已登记的存量大文件同时匹配根目录和包内相对路径；使用锁定的根与 CLI 两个 oxlint 版本验证 800/801 行阈值、存量告警及包级语料排除。
+
+受影响 CLI 回归同时清理历史夹具漂移：已移除的官方 CUA 规则共享用例随该功能退役；Bash 退出码改由真实返回值验证，不依赖已移除的遥测 writer；普通后台生命周期用例提供完整执行 context。Explore 请求断言保留专用正文、工具池和 trace 校验，并包含当前系统提示词合同中的身份与环境段。
+
+桌面 E2E 的默认集合继续排除各领域 manual-review 候选；显式选择候选或设置 `ZCODE_E2E_MANUAL_REVIEW=1` 时可运行，沿用共享 glob 和远端环境门禁。MCP 手机夹具按需动态加载 Vite，避免 WDIO 配置加载器把 Vite ESM 当成 CommonJS 解析。

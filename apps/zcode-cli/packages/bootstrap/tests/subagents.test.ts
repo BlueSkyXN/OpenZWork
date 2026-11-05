@@ -10,7 +10,13 @@ import {
 } from "../src/subagents.js";
 import { loadPluginAgentProfiles } from "./helpers/subagents.js";
 
-function pluginMetadata(input: { enabled?: boolean; id: string; name: string; rootPath: string }) {
+function pluginMetadata(input: {
+  enabled?: boolean;
+  id: string;
+  marketplace?: string;
+  name: string;
+  rootPath: string;
+}) {
   return {
     commandRootCount: 0,
     components: [
@@ -26,7 +32,7 @@ function pluginMetadata(input: { enabled?: boolean; id: string; name: string; ro
     enabled: input.enabled ?? true,
     id: input.id,
     manifestPath: join(input.rootPath, ".claude-plugin", "plugin.json"),
-    marketplace: "claude-plugins-official",
+    marketplace: input.marketplace ?? "claude-plugins-official",
     mcpServerNames: [],
     name: input.name,
     hookDetails: [],
@@ -39,7 +45,7 @@ function pluginMetadata(input: { enabled?: boolean; id: string; name: string; ro
 }
 
 describe("loadZCodeAgentProfiles", () => {
-  it("一次读取迁移后的插件覆盖注入规范名和别名，不修改插件文件或串用另一插件覆盖", async () => {
+  it("一次读取插件覆盖注入规范名和别名，不修改插件文件或串用另一插件覆盖", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-plugin-selection-"));
     try {
       const storageRoot = join(root, "state");
@@ -60,7 +66,7 @@ describe("loadZCodeAgentProfiles", () => {
       );
       const state = await loadZCodeAgentProfiles({ storageRoot, workingDirectory: root });
       const selection = {
-        providerId: "account:zai-individual-coding-plan",
+        providerId: "builtin:zai-coding-plan",
         modelId: "GLM",
         options: { reasoningLevel: "high" },
       };
@@ -380,7 +386,7 @@ describe("loadPluginAgentProfiles", () => {
     }
   });
 
-  it("SA97-09：用户迁移和重新加载不改项目/插件文件或其显式旧身份", async () => {
+  it("SA97-09：重新加载保留用户、项目和插件文件中的显式旧身份", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-subagent-scope-migration-"));
     const storageRoot = join(root, "storage");
     const workingDirectory = join(root, "workspace");
@@ -410,7 +416,7 @@ describe("loadPluginAgentProfiles", () => {
         expect(plugins.diagnostics).toEqual([]);
         expect(
           local.profiles.find((profile) => profile.source === "user")?.modelSelection?.providerId,
-        ).toBe("account:zai-individual-coding-plan");
+        ).toBe("builtin:zai-coding-plan");
         expect(
           local.profiles.find((profile) => profile.source === "project")?.modelSelection
             ?.providerId,
@@ -422,12 +428,8 @@ describe("loadPluginAgentProfiles", () => {
             options: { reasoningLevel: "high" },
           });
         expect(plugins.profiles.length).toBeGreaterThan(0);
-        expect(await readFile(paths[0]!, "utf8")).toBe(
-          markdown.replace(
-            "model: builtin:zai-coding-plan",
-            "model: account:zai-individual-coding-plan",
-          ),
-        );
+        // OpenZWork 没有官方账号 Provider 迁移，用户配置也保留原身份与原文件。
+        expect(await readFile(paths[0]!, "utf8")).toBe(markdown);
         for (const path of paths.slice(1)) expect(await readFile(path, "utf8")).toBe(markdown);
       }
     } finally {
@@ -476,6 +478,65 @@ tools:
       await rm(root, { force: true, recursive: true });
     }
   });
+
+  // 插件 agent 由模型委派；frontmatter 的 permissionMode 曾按用户级原样生效，
+  // bypassPermissions 会让子会话以 yolo 运行、全工具免审批。现在保留声明值并打标记，
+  // 由 core 只取比父会话更严格的模式；官方与第三方市场同一规则。
+  it.each([
+    ["zcode-plugins-official", "acceptEdits"],
+    ["zcode-plugins-official", "auto"],
+    ["zcode-plugins-official", "bypassPermissions"],
+    ["zcode-plugins-official", "dontAsk"],
+    ["zcode-plugins-official", "plan"],
+    ["third-party", "acceptEdits"],
+    ["third-party", "auto"],
+    ["third-party", "bypassPermissions"],
+    ["third-party", "dontAsk"],
+    ["third-party", "plan"],
+  ] as const)(
+    "marks %s plugin permissionMode %s as restrict-only on canonical and alias profiles",
+    async (marketplace, permissionMode) => {
+      const root = await mkdtemp(join(tmpdir(), "zcode-plugin-subagents-permission-"));
+      const pluginRoot = join(root, "fixture");
+      try {
+        await mkdir(join(pluginRoot, "agents"), { recursive: true });
+        await writeFile(
+          join(pluginRoot, "agents", "code-architect.md"),
+          `---
+name: code-architect
+description: 插件 agent
+permissionMode: ${permissionMode}
+---
+插件 prompt`,
+          "utf8",
+        );
+
+        const plugins = [
+          pluginMetadata({
+            id: `fixture@${marketplace}`,
+            marketplace,
+            name: "fixture",
+            rootPath: pluginRoot,
+          }),
+        ];
+        const result = loadPluginAgentProfiles({ plugins });
+
+        expect(result.profiles.map((profile) => profile.name)).toEqual([
+          "fixture:code-architect",
+          "code-architect",
+        ]);
+        for (const profile of result.profiles) {
+          expect(profile).toMatchObject({
+            permissionMode,
+            permissionModeRestrictOnly: true,
+            source: "user",
+          });
+        }
+      } finally {
+        await rm(root, { force: true, recursive: true });
+      }
+    },
+  );
 
   it("applies plugin agent model overrides from shared subagent state to canonical and alias profiles", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-plugin-subagents-overrides-"));

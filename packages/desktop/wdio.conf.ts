@@ -35,12 +35,15 @@ import {
   resolveSshRemoteReleaseScope,
 } from "./test/e2e/helpers/e2e-ssh-remote-release-assets.js";
 import { createLocalPairingRelay } from "./test/e2e/helpers/local-pairing-relay.js";
+import { prepareMcpFailureGuidanceFixture } from "./test/e2e/helpers/mcp-failure-guidance-fixture.js";
 import {
   seedPersonalProviderConfig,
   seedPersonalDefaultModelSelection,
 } from "./test/e2e/helpers/model-provider-restart-config.js";
 import {
+  MANUAL_REVIEW_SPEC_GLOB,
   hasRequiredSshE2EEnvironment,
+  isExplicitE2ESpecSelection,
   resolveEnvironmentGatedFormalSpecExcludes,
 } from "./scripts/e2e-formal-spec-selection.mjs";
 import { E2EFailureArtifactCollector } from "./test/e2e/reporting/e2e-failure-artifacts.js";
@@ -178,6 +181,10 @@ const E2E_RENDERER_BRIDGE_REQUIRED_STATE_METHODS = [
 ];
 
 const requestedE2ESpecs = readRequestedE2ESpecs();
+const manualReviewE2E =
+  process.env.ZCODE_E2E_MANUAL_REVIEW?.trim() === "1" ||
+  requestedE2ESpecs.some((spec) => spec.replaceAll("\\", "/").includes("/manual-review/"));
+if (manualReviewE2E) process.env.ZCODE_E2E_MANUAL_REVIEW = "1";
 
 const requestedE2EExcludeSpecs = readRequestedE2EExcludeSpecs();
 
@@ -254,6 +261,7 @@ let currentE2EWorkerSessionSpecs: string[] = [];
 let currentE2EChromiumUserDataDir: string | null = null;
 
 let closeBotEntryRelay: (() => Promise<void>) | undefined;
+let stopMcpFailureGuidanceFixture: (() => Promise<void>) | null = null;
 
 const e2eWorkerLifecycleStarts = new Map<string, { specs: string[]; startedAt: Date }>();
 
@@ -1056,9 +1064,24 @@ async function resetE2EHome(specs: string[]) {
   await mkdir(E2E_APP_CONFIG_DIR, { recursive: true });
   await mkdir(resolve(E2E_STORAGE_ROOT, "workspace/default"), { recursive: true });
   const settings: Partial<AppSettings> = { locale: "en-US" };
-  if (specs.some((spec) => spec.endsWith("side-pane-full-view.test.ts"))) {
+  const messagesReplaySpec = specs.some((spec) =>
+    [
+      "conversation-session-custom-command-shell-handoff.test.ts",
+      "conversation-session-explore-permission-delegate.test.ts",
+      "conversation-session-plan-mode-mcp-permission.test.ts",
+      "plugin-management-ui-market.test.ts",
+    ].some((name) => spec.endsWith(name)),
+  );
+  if (
+    messagesReplaySpec ||
+    specs.some((spec) =>
+      ["side-pane-full-view.test.ts", "mcp-failure-guidance.test.ts"].some((name) =>
+        spec.endsWith(name),
+      ),
+    )
+  ) {
     // 完整视图测试需要固定项目 cwd；产品首次启动只建立 conversation workspace，
-    // 不再隐式创建 ZCodeProject，因此由这两个 spec 的夹具显式声明恢复项目。
+    // 不再隐式创建 ZCodeProject，因此由依赖固定 cwd 的场景显式声明恢复项目。
     const workspacePath = resolve(E2E_HOME_DIR, "ZCodeProject");
     await mkdir(workspacePath, { recursive: true });
     settings.lastWorkspaceSession = [{ kind: "local", workspacePath, workspacePurpose: "project" }];
@@ -1138,11 +1161,17 @@ async function resetE2EHome(specs: string[]) {
   await seedPersonalProviderConfig(E2E_APP_PROVIDER_CONFIG_FILE, {
     id,
     label: process.env.E2E_PROVIDER_NAME?.trim() || "E2E Personal",
-    apiFormat: "openai-chat-completions",
+    // 会话与插件回放使用上游 Anthropic messages 夹具；其余场景保留既有协议。
+    apiFormat: messagesReplaySpec ? "anthropic-messages" : "openai-chat-completions",
     apiKey: process.env.E2E_PROVIDER_API_KEY?.trim() || "",
     baseURL,
     models: [
-      { id: model, contextWindow, ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }) },
+      {
+        id: model,
+        contextWindow,
+        ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
+        ...(messagesReplaySpec ? { reasoningLevel: { values: ["high", "max"], map: "{}" } } : {}),
+      },
     ],
   });
   await seedPersonalDefaultModelSelection(E2E_APP_PROVIDER_CONFIG_FILE, {
@@ -1256,11 +1285,12 @@ export const config: WebdriverIO.Config = {
   ...(containerE2E ? { autoXvfb: true, xvfbAutoInstall: false } : {}),
   specs: configuredE2ESpecs,
   exclude: [
-    "./test/e2e/manual-review/**",
+    // 显式候选不能再被默认排除吞掉；默认全量使用共享的跨领域 glob。
+    ...(manualReviewE2E ? [] : [MANUAL_REVIEW_SPEC_GLOB]),
     "./test/e2e/upstream-provider.test.ts",
     ...resolveEnvironmentGatedFormalSpecExcludes({
       env: process.env,
-      targeted: requestedE2ESpecs.length > 0,
+      targeted: isExplicitE2ESpecSelection(requestedE2ESpecs),
     }),
     ...requestedE2EExcludeSpecs,
   ],
@@ -1314,6 +1344,12 @@ export const config: WebdriverIO.Config = {
         configureZCodeAgentServerEnv();
         e2eReporter.beforeSession(cid, specs);
         await resetE2EHome(specs);
+        stopMcpFailureGuidanceFixture = await prepareMcpFailureGuidanceFixture({
+          specs,
+          credentialsFile: resolve(E2E_APP_CONFIG_DIR, "credentials.json"),
+          settingsFile: E2E_APP_SETTINGS_FILE,
+          workspacePath: resolve(E2E_HOME_DIR, "ZCodeProject"),
+        });
         if (specs.some((spec) => spec.endsWith("feishu-runtime-error-ui.test.ts"))) {
           // CF-01 的 Bots 入口会启动远控；在 Electron 读取 env 前提供隔离 relay，
           // 避免无关的空 URL 错误污染该用例，也不改变其它场景的连接配置。
@@ -1462,6 +1498,9 @@ export const config: WebdriverIO.Config = {
             waitForGracefulExit: true,
           });
         } finally {
+          const stopMcp = stopMcpFailureGuidanceFixture;
+          stopMcpFailureGuidanceFixture = null;
+          await stopMcp?.();
           const close = closeBotEntryRelay;
           closeBotEntryRelay = undefined;
           await close?.();
@@ -1482,6 +1521,9 @@ export const config: WebdriverIO.Config = {
     try {
       await measureE2ELifecyclePhase("complete", { specs: configuredE2ESpecs }, async () => {
         await cleanupE2EElectronProcesses("onComplete");
+        const stopMcp = stopMcpFailureGuidanceFixture;
+        stopMcpFailureGuidanceFixture = null;
+        await stopMcp?.();
         await cleanupE2EDirectory("onComplete-home", E2E_HOME_DIR, true);
         await cleanupE2EDirectory("onComplete", E2E_RUN_CACHE_DIR);
       });
