@@ -21,6 +21,27 @@ rules:
     - invariant-only
     - evidence-only
 nodes:
+  - id: capability.cua-placeholder-boundary
+    kind: capability
+    label: Native Computer Use compatibility placeholders without product support
+    aliases: [CUA, Computer Use, 原生桌面控制, CUA 占位]
+    docs:
+      - docs/spec/cua-placeholder-boundary.md
+      - docs/testing/cua-placeholder-boundary.md
+    codeSeeds:
+      - file: packages/desktop/scripts/computer-use-producer.mjs
+        symbol: readComputerUseProducer
+      - file: scripts/dev-desktop-cua-env.mjs
+        symbol: resolveDevDesktopWindowsCuaEnv
+      - file: scripts/stage-dev-cua-plugin-runtime.mjs
+        symbol: stageDevCuaPluginRuntime
+      - file: packages/desktop/scripts/prepare-runtime-assets.mjs
+      - file: packages/desktop/electron-builder.config.js
+    invariants:
+      - Native CUA is unsupported on all product surfaces; compatibility entrypoints have no side effects.
+      - Installed producers and legacy CUA environment variables cannot activate Helper preparation.
+      - No CUA UI, official plugin, skill, runtime, native resource or signing exception is registered.
+      - Browser Use cua/dom_cua and generic third-party MCP remain independent.
   - id: capability.provider-model-discovery
     kind: capability
     label: Discover models from the saved Provider connection
@@ -4722,6 +4743,14 @@ nodes:
         file: packages/ui/src/project-sidebar/task-filters.ts
 
 edges:
+  - from: capability.cua-placeholder-boundary
+    to: capability.browser-use-plugin-distribution
+    type: must-remain-isolated-from
+    rank: invariant-only
+  - from: capability.cua-placeholder-boundary
+    to: capability.stateless-browser-use-mcp
+    type: must-remain-isolated-from
+    rank: invariant-only
   - from: capability.provider-model-discovery
     to: surface.provider-settings
     type: adds-model-selection-dialog-to

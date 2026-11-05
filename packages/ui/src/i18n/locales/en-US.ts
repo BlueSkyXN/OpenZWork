@@ -3503,8 +3503,7 @@ const enUS: Record<string, string> = {
     "Database and settings copies made before upgrades or migrations.",
   "resourceManager.storage.categoryDescription.exports":
     "Exported log bundles and feedback attachments.",
-  "resourceManager.storage.categoryDescription.runtimes":
-    "Bundled agent runtimes, Computer Use components and plugins.",
+  "resourceManager.storage.categoryDescription.runtimes": "Bundled agent runtimes and plugins.",
   "resourceManager.storage.categoryDescription.config":
     "Settings, credentials, memories and default workspace files.",
   "resourceManager.storage.categoryDescription.other":

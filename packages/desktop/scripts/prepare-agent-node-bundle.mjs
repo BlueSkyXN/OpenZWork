@@ -442,9 +442,7 @@ async function stageBundledNpmRuntime() {
 
 function stageSharpForNodeReplPlugin() {
   if (!isSharpRequiredByComputerUse({ desktopPackageRoot: desktopRoot })) {
-    console.log(
-      "[prepare:agent-bundle] Computer Use package does not declare sharp, skip sharp staging",
-    );
+    console.log("[prepare:agent-bundle] OpenZWork native CUA is unsupported, skip sharp staging");
     return;
   }
   // `sharp` 仍然外部化——它包含无法内联的 native .node，运行时从**所在包**的 node_modules

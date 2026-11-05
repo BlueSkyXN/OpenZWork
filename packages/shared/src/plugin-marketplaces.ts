@@ -23,7 +23,7 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   // Browser Use 默认开着，宿主若默认关就等于它上来就没有宿主。
   "node-repl-host@zcode-plugins-official",
   // OpenZWork：官方内容型插件默认启用名单保留（本地 seed 目录可用，无 CDN 依赖）；
-  // computer-use 仍默认关闭（CUA 域不复活）。
+  // 原生 computer-use 不纳入产品支持；CUA 兼容入口只保留空实现。
   "skill-creator@zcode-plugins-official",
   "plugin-creator@zcode-plugins-official",
   "zcode-guide@zcode-plugins-official",
