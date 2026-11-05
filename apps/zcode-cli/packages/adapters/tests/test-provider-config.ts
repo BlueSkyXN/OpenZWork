@@ -129,13 +129,8 @@ export class TestAiSdkModelAdapter extends ProductionAiSdkModelAdapter {
     const resolved = fixture.resolveConfig(
       { providerId: options.providerId, modelId: options.modelId },
     );
-    const requestDependencies =
-      options.requestDependencies ??
-        ? {
-            requestAuth: {
-            },
-          }
-        : undefined);
+    // 净化后只透传显式请求依赖；残留的账号 fallback 三元表达式会阻断整个 Adapter 测试夹具。
+    const requestDependencies = options.requestDependencies;
     const modelConfig = createRegistryModelConfig(options, resolved.providerConfig.api.type);
     const reasoningValues = modelConfig.optionSpecs.reasoningLevel.values;
     return super.createModel({

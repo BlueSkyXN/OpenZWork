@@ -40,7 +40,10 @@ async function main() {
         throw error;
       }
       if (!manifest.scripts?.lint) continue;
-      const args = [...parseLintCommand(manifest.scripts.lint), "--format", "json"];
+      const args = parseLintCommand(manifest.scripts.lint);
+      // 独立 CLI 入口必须实际扫描各包目标；根配置排除整个 CLI，继承它会得到零文件及非 JSON 前缀。
+      if (!args.includes("--no-ignore")) args.push("--no-ignore");
+      args.push("--format", "json");
       // 沿用各包解析出的 oxlint 版本、cwd 和原参数；包级配置仍由 oxlint 自己读取。
       const pnpm = process.env.npm_execpath;
       if (!pnpm) throw new Error("请通过 pnpm lint 运行 CLI lint");
