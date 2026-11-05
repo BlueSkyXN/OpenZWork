@@ -493,6 +493,7 @@ function V4ComposerModelControlsImpl({
       <ChatContextUsage
         taskUsage={taskUsage}
         cumulativeUsage={usage?.cumulative}
+        cumulativeIncompleteFields={usage?.cumulativeIncompleteFields}
         selectedProvider={displayProvider}
         intl={intl}
         locale={locale}

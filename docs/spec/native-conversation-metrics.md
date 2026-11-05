@@ -24,6 +24,36 @@
 
 ## 状态与恢复
 
+### 用量缺项（2026-11-05）
+
+- 缓存明细以 provider 原始 usage 字段是否明确上报为准。SDK 将缺字段补成的 0 不能当作零命中；明确上报 0 仍保留。单次请求的 SDK 多步骤合计只在各步骤都上报该缓存字段时保留缓存合计，输入、输出和 reasoning 的既有归一化不变。
+- 会话平均缓存率由 Runtime 原聚合 owner 判断完整性；新请求缺少缓存读取后平均率为未知，不能按零命中稀释。冷恢复从新 mainUsage 识别同一缺项，旧记录沿用既有持久 token 口径；累计缺少 mainUsage 不清除独立来源的历史平均缓存率。
+- 现有 `SessionUsageState` 增加可选 `cumulativeIncompleteFields`，元素只允许 `inputTokens`、`outputTokens`、`cacheReadTokens`、`cacheWriteTokens`，去重且固定顺序。CLI ProductProjection 持有并合并缺项事实；客户端不另设累计状态。
+- 累计数字继续保存已报告用量之和。某字段存在历史缺项时，已知值为 0 显示 `—`，大于 0 显示 `≥` 加已知值；总 token 的完整性由输入与输出共同决定。明确完整的零值仍显示 0。标记缺席保留旧发送端语义，不推测补全旧记录。
+- `mainUsage` 保存成功主链已上报的字段，允许部分缺项，以便重启后仍保留相同的已知和；本轮 `metrics.usage` 继续要求完整输入输出。失败和子任务仍不能进入 mainUsage。
+- 冷恢复从已读取的当前分支消息生成累计缺项 seed：成功模型步骤缺少 `mainUsage` 时对应字段不完整；失败、被流恢复丢弃、模型切换 marker、纯 controlOnly 轮不伪造成功请求。新摘要仍由同一 settled 事实恢复数字，合成 ModelComplete 保持零增量占位，不重复累计。没有可用上下文时也能交付缺项 seed。
+- 缺项标记随现有 snapshot / state.updated.usage 整体替换；Desktop continuous 与 Web replayable 保持原 seq/epoch、owner/lease 和 workspace 隔离。重放、分支恢复与切换会话不能把缺项变为完整。
+- TPS 复用主线的接口接收时钟：工具参数缓冲、重试提交、provider server tool 与工作流边界保持原行为。三种协议都以首个非空线协议输出为准，非流式缺少计时仍显示 `—`。
+
+```mermaid
+sequenceDiagram
+  participant A as Adapter
+  participant R as Core model step
+  participant S as Existing part store
+  participant P as ProductProjection
+  participant U as Desktop/Web UI
+  A->>R: usage（缓存缺项保留 undefined）
+  R->>P: ModelComplete（成功主请求 usage）
+  P->>P: 累加已知数字，合并不完整字段
+  R->>S: 持久化已有 modelMetrics/mainUsage
+  R->>P: ModelMetricsSettled（本轮摘要）
+  P->>U: 原 snapshot/delta + 可选字段
+  S->>P: 冷恢复：同一摘要与缺项事实
+  U->>U: 完整数字 / ≥已知值 / —
+```
+
+回归范围：三协议 × 流式/非流式的缓存缺项、明确零值、多步骤混合；工具参数原始接收计时与重试隔离；旧/新/混合历史、失败步骤、重复摘要、完整 snapshot 替换；未知上下文期间切模、迟到 seed、恢复已知用量。对应 NCM01–03 扩展，不新增递归任务总账或旧数据回填。
+
 ### 显示偏好（NCM08–NCM11）
 
 显示偏好采用独立 store / 本地存储方案，接入集中在外观设置和 Composer，便于复核上游升级。

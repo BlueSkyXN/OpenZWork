@@ -50,7 +50,13 @@ function MetricsExpanded(props: ConversationMetricsBarProps) {
             data-testid="conversation-metrics-session-total"
             className="font-mono font-normal"
           >
-            {formatMetricCount(cumulative.inputTokens + cumulative.outputTokens, locale)}
+            {formatMetricCount(
+              cumulative.inputTokens + cumulative.outputTokens,
+              locale,
+              snapshot.usage.cumulativeIncompleteFields?.some(
+                (field) => field === "inputTokens" || field === "outputTokens",
+              ),
+            )}
           </strong>
         </span>
         {app.available ? (
@@ -165,6 +171,7 @@ export const ConversationMetricsBar = memo(function ConversationMetricsBar(
       <MetricsSummaryRow
         header={header}
         cumulative={snapshot.usage.cumulative}
+        cumulativeIncompleteFields={snapshot.usage.cumulativeIncompleteFields}
         durationMs={duration}
         fields={preferences.visibleFields}
         controls={id}

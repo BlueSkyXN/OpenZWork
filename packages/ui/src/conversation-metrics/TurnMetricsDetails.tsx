@@ -4,12 +4,17 @@ import { Button } from "@/components/ui/button.js";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover.js";
 import type { TurnMetricsDetailsProps } from "./contract.js";
 
-export function formatMetricCount(value: number | undefined, locale: string): string {
-  return value === undefined
+export function formatMetricCount(
+  value: number | undefined,
+  locale: string,
+  incomplete = false,
+): string {
+  return value === undefined || (incomplete && value === 0)
     ? "—"
-    : new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 }).format(
-        value,
-      );
+    : `${incomplete ? "≥" : ""}${new Intl.NumberFormat(locale, {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(value)}`;
 }
 export function metricTotal(usage: MetricsUsage | undefined): number | undefined {
   return usage ? usage.inputTokens + usage.outputTokens : undefined;

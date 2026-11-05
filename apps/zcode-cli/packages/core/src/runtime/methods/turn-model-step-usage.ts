@@ -1,4 +1,4 @@
-import { metricsUsageSchema } from "@zcode/shared/conversation-metrics";
+import { mainUsageFromParts, mainUsageSchema } from "@zcode/shared/conversation-metrics";
 import { buildModelStepMetrics } from "../metrics/contract.js";
 import { SessionEventType, type PartId, type ModelNetworkStatusEvent } from "@zcode/contracts";
 import { createModelUsageSummaryFromEvents } from "../deps.js";
@@ -33,7 +33,7 @@ export async function recordMainTurnModelUsage(
 ): Promise<void> {
   const mainUsage =
     querySourceForTask(runtime.config.taskType) === "main_turn" && input.status === "completed"
-      ? metricsUsageSchema.safeParse(input.result?.usage)
+      ? mainUsageSchema.safeParse(input.result?.usage)
       : null;
   const modelMetrics = {
     ...(mainUsage?.success ? { mainUsage: mainUsage.data } : {}),
@@ -129,7 +129,10 @@ export function mainTurnCacheHitAggregateFromMessages(input: {
       const inputTokens = nonNegativeInteger(message.info.tokens.input) ?? 0;
       const cacheReadTokens = nonNegativeInteger(message.info.tokens.cache.read) ?? 0;
       const cacheWriteTokens = nonNegativeInteger(message.info.tokens.cache.write) ?? 0;
-      if (inputTokens <= 0 && cacheReadTokens <= 0 && cacheWriteTokens <= 0) {
+      const mainUsage = mainUsageFromParts(message.parts);
+      // OW-P020：新记录按 mainUsage 保留缺项；旧记录沿用既有持久 token 口径。
+      const missingRead = mainUsage !== undefined && mainUsage.cacheReadTokens === undefined;
+      if (inputTokens <= 0 && cacheReadTokens <= 0 && cacheWriteTokens <= 0 && !missingRead) {
         return aggregate;
       }
 
@@ -138,6 +141,9 @@ export function mainTurnCacheHitAggregateFromMessages(input: {
         totalInputTokens: aggregate.totalInputTokens + inputTokens,
         totalCacheReadTokens: aggregate.totalCacheReadTokens + cacheReadTokens,
         totalCacheWriteTokens: aggregate.totalCacheWriteTokens + cacheWriteTokens,
+        ...((aggregate.unknownRequestCount ?? 0) + Number(missingRead) > 0
+          ? { unknownRequestCount: (aggregate.unknownRequestCount ?? 0) + Number(missingRead) }
+          : {}),
       };
     },
     {
@@ -173,7 +179,9 @@ export function recordMainTurnCacheHitUsage(
   const inputTokens = modelUsageInputWindowTokens(usage) ?? 0;
   const cacheReadTokens = nonNegativeInteger(usage.cacheReadTokens) ?? 0;
   const cacheWriteTokens = nonNegativeInteger(usage.cacheWriteTokens) ?? 0;
-  if (inputTokens <= 0 && cacheReadTokens <= 0 && cacheWriteTokens <= 0) {
+  // OW-P020：平均缓存率的缺项状态归属原 Runtime 聚合，不借用会话累计的完整性。
+  const missingRead = nonNegativeInteger(usage.cacheReadTokens) === undefined;
+  if (inputTokens <= 0 && cacheReadTokens <= 0 && cacheWriteTokens <= 0 && !missingRead) {
     return undefined;
   }
 
@@ -183,6 +191,12 @@ export function recordMainTurnCacheHitUsage(
     totalCacheReadTokens: runtime.mainTurnCacheHitAggregate.totalCacheReadTokens + cacheReadTokens,
     totalCacheWriteTokens:
       runtime.mainTurnCacheHitAggregate.totalCacheWriteTokens + cacheWriteTokens,
+    ...((runtime.mainTurnCacheHitAggregate.unknownRequestCount ?? 0) + Number(missingRead) > 0
+      ? {
+          unknownRequestCount:
+            (runtime.mainTurnCacheHitAggregate.unknownRequestCount ?? 0) + Number(missingRead),
+        }
+      : {}),
   };
 
   const aggregate = runtime.mainTurnCacheHitAggregate;
@@ -190,9 +204,9 @@ export function recordMainTurnCacheHitUsage(
     inputTokens,
     cacheReadTokens,
     cacheWriteTokens,
-    latestHitRate: inputTokens > 0 ? cacheReadTokens / inputTokens : null,
+    latestHitRate: inputTokens > 0 && !missingRead ? cacheReadTokens / inputTokens : null,
     hitRate:
-      aggregate.totalInputTokens > 0
+      aggregate.totalInputTokens > 0 && !aggregate.unknownRequestCount
         ? aggregate.totalCacheReadTokens / aggregate.totalInputTokens
         : null,
     hitRateRequestCount: aggregate.requestCount,

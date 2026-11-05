@@ -98,6 +98,24 @@ function ConnectedMetrics() {
     : null;
 }
 describe("原生指标交互", () => {
+  it("累计不完整显示已知下界；完全未知与明确的零值分开", () => {
+    const value = snapshot();
+    value.usage.cumulativeIncompleteFields = ["inputTokens", "outputTokens"];
+    const view = render(ui(value));
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.getByTestId("conversation-metrics-session-total").textContent).toBe("≥102K");
+    value.usage.cumulative = {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    };
+    view.rerender(ui({ ...value }));
+    expect(screen.getByTestId("conversation-metrics-session-total").textContent).toBe("—");
+    view.rerender(ui({ ...value, usage: { ...value.usage, cumulativeIncompleteFields: [] } }));
+    expect(screen.getByTestId("conversation-metrics-session-total").textContent).toBe("0");
+  });
+
   it("设置与主栏即时同步，预览不查询，全部取消或外部关闭后隐藏", () => {
     render(
       createElement(

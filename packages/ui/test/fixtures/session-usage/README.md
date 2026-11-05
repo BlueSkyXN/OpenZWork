@@ -17,6 +17,8 @@ mise exec node -- pnpm exec vite --config packages/ui/test/fixtures/session-usag
 5. `Switch language`：中英文均显示完整本地化数字；`Switch theme`：检查 Zai Light / Zai Dark。
 6. `Large counts` + 375px 窄屏：完整长数字可读，无页面或累计区横向溢出。
 7. 触摸设备中点击触发器可展开。桌面合成 `pointerdown(pointerType=touch)` 只验证事件分支，不等同真实手机验收。
+8. `Partial cumulative`：总量、输入和缓存读使用 `≥`，输出与缓存写保持完整值；`Unknown cumulative`：累计各行显示 `—`，当前上下文仍可读。再点 `Zero usage`：明确零值显示 0，不保留缺项状态。
+9. `Large counts` 后点 `Partial cumulative`：375px 下包含 `≥` 的长数字可读，页面和累计区无横向溢出。
 
 ## 本轮记录
 

@@ -1,5 +1,4 @@
-
-import { modelStepMetricsSchema } from "@zcode/shared/conversation-metrics";
+import { mainUsageFromParts, modelStepMetricsSchema } from "@zcode/shared/conversation-metrics";
 
 /* eslint-disable max-lines -- 保持既有 transcript → event 恢复 owner；本次只透传输入快照，不拆分恢复状态机。 */
 
@@ -50,6 +49,8 @@ import {
   workflowBlockedMetaSchema,
   workflowLaunchMetaSchema,
   workflowNotificationMetaSchema,
+  SESSION_CUMULATIVE_USAGE_FIELDS,
+  type SessionCumulativeUsageField,
   type ErrorAttribution,
   type WorkflowLaunchMeta,
 } from "@zcode/shared/zcode-protocol-v4";
@@ -60,6 +61,29 @@ import { HYDRATION_TRACE_ID } from "./projection-state.js";
 const SUBAGENT_TOOL_NAMES = new Set(["Agent", "Task", "subagent"]);
 const LEGACY_MODEL_REQUEST_CANCELLED_MESSAGE = "Model request was cancelled.";
 const LEGACY_PROTOCOL_SESSION_STOPPED_MESSAGE = "ZCode Protocol session stopped";
+
+/** 只读已有 part；旧成功步骤缺少 mainUsage 时保留未知，不从 assistant tokens 回填累计。 */
+export function cumulativeIncompleteFieldsFromMessages(
+  messages: readonly MessageWithParts[],
+): SessionCumulativeUsageField[] {
+  const missing = new Set<SessionCumulativeUsageField>();
+  for (const message of messages) {
+    if (
+      message.info.role !== "assistant" ||
+      message.info.summary ||
+      message.info.error ||
+      message.info.time.completed === undefined ||
+      isProviderContextOnlyAssistant(message) ||
+      modelChangeToModelOf(message)
+    )
+      continue;
+    const usage = mainUsageFromParts(message.parts);
+    for (const field of SESSION_CUMULATIVE_USAGE_FIELDS) {
+      if (usage?.[field] === undefined) missing.add(field);
+    }
+  }
+  return SESSION_CUMULATIVE_USAGE_FIELDS.filter((field) => missing.has(field));
+}
 const PERSISTED_CANCELLATION_CODES = new Set<string>([
   CoreErrorType.TurnCancelled,
   ModelErrorCode.ModelRequestCancelled,

@@ -17,7 +17,7 @@ import {
   normalizeSources,
   normalizeToolCalls,
   normalizeToolResults,
-  normalizeUsage,
+  normalizeGenerateUsage,
 } from "./runner-normalization.js";
 import {
   isDevelopmentModelIOEnv,
@@ -217,7 +217,8 @@ export async function runGenerateText(input: {
       if (providerBusinessFinishError) {
         throw providerBusinessFinishError;
       }
-      const usage = normalizeUsage(result.totalUsage ?? result.usage);
+      // OW-P020：缓存是否上报取原始 step，不能从已丢失 raw 的 totalUsage 推断。
+      const usage = normalizeGenerateUsage(result);
       const toolCalls = normalizeToolCalls(result, input.logger);
       const toolResults = normalizeToolResults(result, toolCalls);
       const sources = normalizeSources(result);
@@ -393,7 +394,6 @@ export async function runGenerateText(input: {
         // workflow 流量（无上限预算）读策略表而不是分类器的 retryable；有界预算逐字不变。
         retryAllowedByFailurePolicy(failure, retryBudget, providerCode, unrecognizedCodeStreak);
       const canRetry = retryWithRepairedHistory || canRetryWithFailurePolicy;
-
 
       if (options) {
         recordGenerateTextDebug({

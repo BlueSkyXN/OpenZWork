@@ -23,6 +23,7 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { formatCompactTokenNumber } from "@/lib/tokenNumberFormat.js";
 import { SessionUsageSummary } from "./SessionUsageSummary.js";
 import { buildSessionUsageSummary, type SessionCumulativeUsage } from "./sessionUsageModel.js";
+import type { SessionUsageState } from "@zcode/shared/zcode-protocol-v4";
 
 type ContextUsageBreakdownSource = ZCodeContextUsageBreakdownItem["source"];
 
@@ -190,6 +191,7 @@ export function getContextCompressionCommand(_provider: ZCodeProvider): string {
 export function ChatContextUsage({
   taskUsage,
   cumulativeUsage,
+  cumulativeIncompleteFields,
   selectedProvider: _selectedProvider,
   intl,
   locale,
@@ -201,6 +203,7 @@ export function ChatContextUsage({
     breakdown?: ZCodeContextUsageBreakdownItem[];
   } | null;
   cumulativeUsage?: SessionCumulativeUsage | null;
+  cumulativeIncompleteFields?: SessionUsageState["cumulativeIncompleteFields"];
   selectedProvider: ZCodeProvider;
   intl: ReturnType<typeof useZCodeIntl>["intl"];
   locale: string;
@@ -213,7 +216,7 @@ export function ChatContextUsage({
     setContextOpen(open);
   }, []);
   const renderableTaskUsage = getRenderableTaskUsage(taskUsage);
-  const cumulativeSummary = buildSessionUsageSummary(cumulativeUsage);
+  const cumulativeSummary = buildSessionUsageSummary(cumulativeUsage, cumulativeIncompleteFields);
   const hasCumulativeUsage =
     cumulativeSummary !== null &&
     (cumulativeSummary.totalTokens > 0 ||

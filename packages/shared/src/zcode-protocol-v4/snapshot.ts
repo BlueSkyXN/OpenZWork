@@ -187,6 +187,14 @@ export type SessionMetaState = z.infer<typeof sessionMetaStateSchema>;
 export type { SharedContextImportState } from "./shared-context-import.js";
 
 // ── usage。conflation：值未变不下发──
+export const SESSION_CUMULATIVE_USAGE_FIELDS = [
+  "inputTokens",
+  "outputTokens",
+  "cacheReadTokens",
+  "cacheWriteTokens",
+] as const;
+export type SessionCumulativeUsageField = (typeof SESSION_CUMULATIVE_USAGE_FIELDS)[number];
+
 export const sessionUsageStateSchema = z.object({
   contextWindow: z
     .object({
@@ -203,6 +211,12 @@ export const sessionUsageStateSchema = z.object({
     cacheReadTokens: z.number(),
     cacheWriteTokens: z.number(),
   }),
+  /** 数字保留已报告之和；这些字段包含未采集记录，不能作为完整总量。 */
+  cumulativeIncompleteFields: z
+    .array(z.enum(SESSION_CUMULATIVE_USAGE_FIELDS))
+    .max(SESSION_CUMULATIVE_USAGE_FIELDS.length)
+    .refine((fields) => new Set(fields).size === fields.length, "duplicate cumulative field")
+    .optional(),
 });
 export type SessionUsageState = z.infer<typeof sessionUsageStateSchema>;
 

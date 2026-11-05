@@ -4,6 +4,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   applyConversationDeltas,
+  sessionUsageStateSchema,
+  filterConversationDeltasForProfile,
+  DELIVERY_PROFILES,
   type ConversationSnapshot,
 } from "@zcode/shared/zcode-protocol-v4";
 import { buildSessionUsageSummary } from "../src/chat-input-toolbar/sessionUsageModel.js";
@@ -21,6 +24,46 @@ const cumulative = {
   cacheWriteTokens: 100,
 };
 
+test("optional cumulative completeness survives both delivery profiles and replaces on new snapshots", () => {
+  const usage = {
+    contextWindow: null,
+    cumulative,
+    cumulativeIncompleteFields: ["inputTokens"] as const,
+  };
+  const parsed = sessionUsageStateSchema.parse(usage);
+  assert.deepEqual(parsed.cumulativeIncompleteFields, ["inputTokens"]);
+  assert.equal(
+    sessionUsageStateSchema.parse({ contextWindow: null, cumulative }).cumulativeIncompleteFields,
+    undefined,
+  );
+  assert.equal(
+    sessionUsageStateSchema.safeParse({ ...usage, cumulativeIncompleteFields: ["other"] }).success,
+    false,
+  );
+  assert.equal(
+    sessionUsageStateSchema.safeParse({
+      ...usage,
+      cumulativeIncompleteFields: ["inputTokens", "inputTokens"],
+    }).success,
+    false,
+  );
+  for (const profile of Object.values(DELIVERY_PROFILES)) {
+    const initial = { usage: { contextWindow: null, cumulative } } as ConversationSnapshot;
+    const deltas = filterConversationDeltasForProfile(
+      [{ op: "state.updated", patch: { usage: parsed } }],
+      profile,
+    );
+    const once = applyConversationDeltas(initial, deltas);
+    const replayed = applyConversationDeltas(once, deltas);
+    assert.deepEqual(replayed.usage, parsed);
+    assert.equal(
+      applyConversationDeltas(replayed, [{ op: "state.updated", patch: { usage: initial.usage } }])
+        .usage.cumulativeIncompleteFields,
+      undefined,
+    );
+  }
+});
+
 function intlFor(messages: Record<string, string>): IntlInstance {
   return {
     formatMessage: ({ id }) => messages[id] ?? id,
@@ -32,6 +75,33 @@ test("session token total includes input and output without counting cache twice
     ...cumulative,
     totalTokens: 1_200,
   });
+});
+
+test("incomplete cumulative fields show lower bounds or unknown without losing reported zero", () => {
+  const summary = buildSessionUsageSummary(cumulative, ["inputTokens", "cacheReadTokens"])!;
+  const html = renderToStaticMarkup(
+    createElement(SessionUsageSummary, { summary, intl: intlFor(enUS), locale: "en-US" }),
+  );
+  assert.match(html, /≥1,200/);
+  assert.match(html, /≥1,000/);
+  assert.match(html, /≥600/);
+  assert.match(html, />200</);
+  const empty = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
+  const unknown = renderToStaticMarkup(
+    createElement(SessionUsageSummary, {
+      summary: buildSessionUsageSummary(empty, [
+        "inputTokens",
+        "outputTokens",
+        "cacheReadTokens",
+        "cacheWriteTokens",
+      ])!,
+      intl: intlFor(enUS),
+      locale: "en-US",
+    }),
+  );
+  assert.doesNotMatch(unknown, />0</);
+  assert.match(unknown, /—/);
+  assert.equal(buildSessionUsageSummary(empty)?.totalTokens, 0);
 });
 
 test("reported zero is distinct from missing or invalid cumulative usage", () => {

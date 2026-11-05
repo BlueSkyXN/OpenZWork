@@ -90,6 +90,7 @@ import type {
   WorkspaceId,
 } from "@zcode/contracts";
 import { HYDRATION_TRACE_ID } from "../zcode-protocol-v4/projection-state.js";
+import { cumulativeIncompleteFieldsFromMessages } from "../zcode-protocol-v4/transcript-hydration.js";
 import { cloneModelSelection, derivedSessionModelSelection } from "./fork-model-selection.js";
 import { resolveWorkspaceRefFromId } from "./mapper.js";
 import { buildLiveWorkspaceConfigStateV4 } from "./v4-workspace-config.js";
@@ -124,11 +125,16 @@ function normalizeStoredTitleSource(
 function sessionUsageSeedFromRuntimeContextUsage(
   contextUsage: ZCodeSessionContextUsage | undefined,
   contextWindowOverride?: number,
+  messages: readonly MessageWithParts[] = [],
 ): SessionUsageSeed | null {
+  const cumulativeIncompleteFields = cumulativeIncompleteFieldsFromMessages(messages);
   if (!contextUsage || contextUsage.used <= 0) {
-    return null;
+    return cumulativeIncompleteFields.length
+      ? { contextWindow: null, cumulativeIncompleteFields }
+      : null;
   }
   return {
+    ...(cumulativeIncompleteFields.length ? { cumulativeIncompleteFields } : {}),
     contextWindow: {
       usedTokens: contextUsage.used,
       maxTokens: contextWindowOverride ?? null,
@@ -794,7 +800,7 @@ export function createConversationV4Gateway(
             : { state: "notRequested" },
         dispatch: { state: "admitted" },
         admittedAt: admission.admittedAt,
-            ...(input.provenance ? { provenance: input.provenance } : {}),
+        ...(input.provenance ? { provenance: input.provenance } : {}),
       });
       await context.deps.sessionStore.saveSessionInput({
         id: admission.queueItemId,
@@ -1114,7 +1120,6 @@ export function createConversationV4Gateway(
       // OpenZWork 净化备注：上游还清理 queuedTurnExecutions（Highspeed 排队执行域），未随净化合入。
 
       await closeSessionRuntime(context, sessionId, true);
-
     },
     // createSession 的执行面：record 建立/事件接线/catalog 同步/失败自清理全在旧
     // createSession op 内（半初始化 record 的回收顺序修过 bug，不重复实现）。
@@ -1635,6 +1640,7 @@ export function createConversationV4Gateway(
       return sessionUsageSeedFromRuntimeContextUsage(
         contextUsage,
         resolveSessionModelContextWindow(context, record),
+        persistedMessages,
       );
     },
     // ── sessions-index hooks（workspace 分桶 + 冷启动 store 种子）──────────
@@ -1959,6 +1965,7 @@ export function createConversationV4Gateway(
       const usageSeed = sessionUsageSeedFromRuntimeContextUsage(
         await readSessionContextUsage(context, sessionId, source.messages),
         contextWindow,
+        source.messages,
       );
       const merged = mergeColdConversationEvents({
         contextWindow,

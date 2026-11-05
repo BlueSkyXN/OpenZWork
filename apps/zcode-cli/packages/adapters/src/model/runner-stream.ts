@@ -669,6 +669,7 @@ export async function* runStreamText(input: {
       }
       if (recordModelIO && options) {
         await recordStreamTextDebug({
+          cacheUsageAvailability: diagnostics.cacheUsageAvailability,
           modelIoFullRetentionEnabled: input.modelIoFullRetentionEnabled,
           attempt,
           debugDir: input.debugDir,
@@ -688,6 +689,7 @@ export async function* runStreamText(input: {
       attemptFailed = true;
       if (recordModelIO && options) {
         await recordStreamTextDebug({
+          cacheUsageAvailability: diagnostics.cacheUsageAvailability,
           modelIoFullRetentionEnabled: input.modelIoFullRetentionEnabled,
           attempt,
           debugDir: input.debugDir,
@@ -1064,7 +1066,8 @@ async function handleStreamChunk(input: {
       providerBusinessFinishError,
     );
   }
-  const event = toModelStreamEvent(input.chunk);
+  // OW-P020：最终流事件与完成状态使用同一份 step 缓存存在性。
+  const event = toModelStreamEvent(input.chunk, input.diagnostics.cacheUsageAvailability);
   if (event?.type === "error") {
     return handleStreamErrorEvent({ ...input, emittedRetryBoundaryEvent }, event.error);
   }

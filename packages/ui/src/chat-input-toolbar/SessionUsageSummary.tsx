@@ -21,6 +21,17 @@ export function SessionUsageSummary({
   locale: string;
 }) {
   const numberFormatter = new Intl.NumberFormat(locale);
+  const formatCount = (key: (typeof USAGE_ROWS)[number][0]): string => {
+    const fields = summary.incompleteFields ?? [];
+    const incomplete =
+      key === "totalTokens"
+        ? fields.includes("inputTokens") || fields.includes("outputTokens")
+        : fields.includes(key);
+    // 旧记录未采集不补成 0；部分累计保留已知下界，不能冒充完整总量。
+    return incomplete && summary[key] === 0
+      ? "—"
+      : `${incomplete ? "≥" : ""}${numberFormatter.format(summary[key])}`;
+  };
   return (
     <section
       aria-label={intl.formatMessage({ id: "chat.sessionUsage.title" })}
@@ -35,7 +46,7 @@ export function SessionUsageSummary({
           <div className="flex min-w-0 items-baseline justify-between gap-3" key={key}>
             <dt className="min-w-0 text-foreground-subtle">{intl.formatMessage({ id: label })}</dt>
             <dd className="min-w-0 break-all text-right font-mono tabular-nums text-foreground">
-              {numberFormatter.format(summary[key])}
+              {formatCount(key)}
             </dd>
           </div>
         ))}
