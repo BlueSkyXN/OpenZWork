@@ -117,4 +117,4 @@ it("relocates local organization and settings while preserving remote rows, cont
     if (db.isOpen) db.close();
     await rm(root, { recursive: true, force: true });
   }
-});
+}, 180_000);

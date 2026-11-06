@@ -86,6 +86,10 @@ DetailPrint 前缀（`OpenZWork-installer.log` 等，日志逐次新建无双读
 进程命令行样本数据、历史行内路径。adapters 测试套件存在与路径无关的既有失败
 （26 项，净化前 CUA 迁移断言等，未接入 CI），另列维护任务不在本 PR 处理。
 
+Windows extended 分片上 `dataDirectoryTrueMigration` 与 relocation contract 两个
+真实 CLI 迁移测试因 runner 冷启动超过全局 30s 测试超时而抖动失败（超时非断言），
+两个用例补显式 180s 上限；macOS/Linux 与本地套件不受影响。
+
 ## 失败语义与验收
 
 - 违反核心不变量 = 隔离破洞（设计稿 A 类），按"必须清零"处理，不算可兜底缺陷。
