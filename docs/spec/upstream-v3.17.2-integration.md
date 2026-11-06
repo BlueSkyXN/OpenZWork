@@ -57,3 +57,9 @@ CLI Lint 对没有包级 `.oxlintrc.json` 的包补充 `--no-ignore`，使根配
 受影响 CLI 回归同时清理历史夹具漂移：已移除的官方 CUA 规则共享用例随该功能退役；Bash 退出码改由真实返回值验证，不依赖已移除的遥测 writer；普通后台生命周期用例提供完整执行 context。Explore 请求断言保留专用正文、工具池和 trace 校验，并包含当前系统提示词合同中的身份与环境段。
 
 桌面 E2E 的默认集合继续排除各领域 manual-review 候选；显式选择候选或设置 `ZCODE_E2E_MANUAL_REVIEW=1` 时可运行，沿用共享 glob 和远端环境门禁。MCP 手机夹具按需动态加载 Vite，避免 WDIO 配置加载器把 Vite ESM 当成 CommonJS 解析。
+
+## 合并与发行复核
+
+发行前整合 main 的 `a6bd95f7`（PR #66）。官方旧页在 connection scope 补齐新建项目意图，随后仍由 Host 创建预留持久化；fork 继续在 ACK 返回前继承父归属；用户移动通过同一个项目仓库事务修改归属，创建重试及重复 fork ACK 保留已有归属。沿用各自规格，不增加新的状态或写入路径。
+
+复核真实 SQLite 的 fork 顺序、移动后重试、旧迁移 checksum 与本地 NULL，以及远控 E2E 的官方页新建、刷新恢复、桌面移动和手机长按。PR #66 新增 OW-P022 已对上游 v3.17.2 复核，连同原有 16 项有效补丁保留。最终分支通过检查后合并，再以同一源码提交推送 `v3.17.2+openzwork.1`，由正式 tag 的 Core、Extended、Installers 和 Release 工作流完成发行。

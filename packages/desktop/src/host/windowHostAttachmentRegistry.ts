@@ -1,4 +1,4 @@
-import type { WindowHostAttachmentScope } from "@zcode/shared";
+import type { WindowHostAttachmentScope, HostLegacyProjectCreation } from "@zcode/shared";
 import type { ZCodeAgentV4ClientMode } from "@zcode/services";
 
 export interface WindowHostAttachmentPort {
@@ -20,6 +20,7 @@ export interface WindowHostExposeAttachmentParams<TServices, TPort, TCapabilitie
   attachmentId: string;
   clientMode: ZCodeAgentV4ClientMode;
   terminalOwnerId?: string;
+  legacyProjectCreation?: HostLegacyProjectCreation;
   scope: WindowHostAttachmentScope;
   services: TServices;
   generation: number;
@@ -60,6 +61,7 @@ export function createWindowHostAttachmentRegistry<
     attachmentId: string;
     clientMode: ZCodeAgentV4ClientMode;
     terminalOwnerId?: string;
+    legacyProjectCreation?: HostLegacyProjectCreation;
     scope: WindowHostAttachmentScope;
     port: TPort;
   }): void {

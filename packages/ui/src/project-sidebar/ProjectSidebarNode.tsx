@@ -13,7 +13,7 @@ import { ProjectNode } from "@/project-sidebar/ProjectNode.js";
 import type { ProjectNodeProps } from "@/project-sidebar/ProjectNodeContent.js";
 import { projectSourceServerId } from "@/project-sidebar/view.js";
 import { useTabStoreApi } from "@/store/TabStoreProvider.js";
-import { useConfirmDialog } from "@/hooks/useConfirmDialog.js";
+import { useMoveTaskToProject } from "@/project-sidebar/useMoveTaskToProject.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { setPendingSettingsSectionIntent } from "@/lib/settingsNavigation.js";
 import { toast } from "@/components/ui/toast.js";
@@ -72,7 +72,7 @@ export const ProjectSidebarNode = memo(
     ...display
   }: Props) {
     const { intl } = useZCodeIntl();
-    const confirm = useConfirmDialog();
+    const moveTaskToProject = useMoveTaskToProject(service, display.refresh);
     const tabStore = useTabStoreApi();
     const msg = (id: string) => intl.formatMessage({ id: `project.${id}` });
     const sourceServerId = projectSourceServerId(project);
@@ -167,29 +167,7 @@ export const ProjectSidebarNode = memo(
             await refresh();
           })
         }
-        onMove={(task) =>
-          runProjectAction(async () => {
-            if (!service) return;
-            try {
-              await service.moveTask({ task, projectId: project.id, hostId: project.hostId });
-            } catch (cause) {
-              if (
-                project.hostId !== "local" ||
-                !String(cause).includes("project.root-confirmation-required")
-              )
-                throw cause;
-              if (!(await confirm({ title: msg("addFolder"), description: task.workspacePath })))
-                return;
-              await service.moveTask({
-                task,
-                projectId: project.id,
-                hostId: project.hostId,
-                addMissingRoot: true,
-              });
-            }
-            await refresh();
-          })
-        }
+        onMove={(task) => void moveTaskToProject(task, project)}
       />
     );
   },
