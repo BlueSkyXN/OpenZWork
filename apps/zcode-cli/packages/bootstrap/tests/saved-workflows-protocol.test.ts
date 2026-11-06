@@ -56,7 +56,7 @@ function projectDir() {
 }
 
 function globalDir() {
-  return join(home, ".zcode", "workflows");
+  return join(home, ".openzwork", "workflows");
 }
 
 async function seedWorkflow(name: string, meta: Parameters<typeof serializeSavedWorkflow>[0]) {

@@ -107,7 +107,7 @@ describe("会话区 Goal 恢复 stale target 复现", () => {
 });
 
 function writeStaleTaskTarget(taskId: string) {
-  const db = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const db = new DatabaseSync(join(homedir(), ".openzwork", "v2", "tasks-index.sqlite"));
   try {
     const row = db.prepare("SELECT meta_json FROM tasks WHERE task_id = ?").get(taskId) as
       | { meta_json: string }

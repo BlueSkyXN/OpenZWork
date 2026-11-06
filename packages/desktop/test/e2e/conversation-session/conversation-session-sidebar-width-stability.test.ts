@@ -16,7 +16,7 @@ async function seedTaskRows() {
     throw new Error("隔离 HOME required");
   const root = join(home, "E2E_SIDEBAR_WIDTH_ROOT");
   await mkdir(root, { recursive: true });
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+  const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
   try {
     const now = Date.now();
     db.exec("BEGIN IMMEDIATE");

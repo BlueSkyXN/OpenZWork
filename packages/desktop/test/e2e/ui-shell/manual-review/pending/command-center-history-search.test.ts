@@ -60,7 +60,7 @@ describe("Command Center Host 历史搜索", () => {
           });
         }
         // node:sqlite 只提供同步接口；夹具在 Host 退出后写入，避免与迁移/索引写入竞争。
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+        const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
         try {
           const stamp = Date.now() - 36 * 24 * 60 * 60 * 1000;
           db.prepare(`UPDATE tasks SET host_id='local', root_path=workspace_path,
@@ -82,7 +82,7 @@ describe("Command Center Host 历史搜索", () => {
         } finally {
           db.close();
         }
-        const settingsPath = join(home, ".zcode/v2/setting.json");
+        const settingsPath = join(home, ".openzwork/v2/setting.json");
         const settings = JSON.parse(await readFile(settingsPath, "utf8"));
         await writeFile(
           settingsPath,
@@ -124,7 +124,7 @@ describe("Command Center Host 历史搜索", () => {
     await openSearch();
     await searchAndExpect(marker, visibleCases);
     await browser.keys("Escape");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), { readOnly: true });
     try {
       expect(
         db.prepare("SELECT archived FROM tasks WHERE task_id='session_e2e_history_archived'").get(),

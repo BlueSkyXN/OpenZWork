@@ -134,7 +134,7 @@ async function waitForSingleProjectRow(taskId: string, timeoutMsg: string): Prom
 
 function readWorkspaceTaskIds(): string[] {
   // Node 当前内置 SQLite 只提供 DatabaseSync；E2E 轮询每次都立即关闭只读句柄。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".openzwork", "v2", "tasks-index.sqlite"), {
     readOnly: true,
   });
   try {
@@ -159,7 +159,7 @@ function readCliSession(sessionId: string): {
   taskType: string | null;
 } | null {
   // Node 当前内置 SQLite 只提供 DatabaseSync；E2E 只读一次并立即关闭句柄。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+  const database = new DatabaseSync(join(homedir(), ".openzwork", "cli", "db", "db.sqlite"), {
     readOnly: true,
   });
   try {

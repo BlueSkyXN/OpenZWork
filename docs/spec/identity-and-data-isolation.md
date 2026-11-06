@@ -77,6 +77,15 @@ workspace 路径一律保留原样，不做自动迁移；与 [旧 ZCode 记忆�
 的显式导入规则一致。WP-03 结构扫描同步补强：新增 HOME join 形态与用户级子目录
 （cli/v2/runtime/server）字面量两类模式，nsh/nsi 入列扫描。
 
+第二轮复查（同日）：CI 门禁按 git 追踪清单抓到新增回归测试注释中的旧根字面量
+（本地 untracked 状态不入门禁，提交后才被扫描），按"注释/文案不得绕过"重写。
+全仓复查补充修复：`verify-remote-ssh.mjs` server root、安装器日志文件名与
+DetailPrint 前缀（`OpenZWork-installer.log` 等，日志逐次新建无双读需求）、约 34 个
+测试/夹具文件中 home 作用域的 `.zcode/cli|v2` 陈旧路径（App 与 CLI 实际读写
+`.openzwork`，原夹具在断言永不存在的路径）。保留：负向断言、项目级 `.zcode/**`、
+进程命令行样本数据、历史行内路径。adapters 测试套件存在与路径无关的既有失败
+（26 项，净化前 CUA 迁移断言等，未接入 CI），另列维护任务不在本 PR 处理。
+
 ## 失败语义与验收
 
 - 违反核心不变量 = 隔离破洞（设计稿 A 类），按"必须清零"处理，不算可兜底缺陷。

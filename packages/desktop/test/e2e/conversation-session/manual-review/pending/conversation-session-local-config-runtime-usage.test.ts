@@ -525,14 +525,14 @@ async function createCommandInSettings(): Promise<void> {
 /** 技能没有设置页新建入口（「新建」是开一个让 Agent 写文件的任务），直接写文件。 */
 async function writeSkillFile(homeDir: string): Promise<void> {
   await writeText(
-    join(homeDir, ".zcode", "skills", SKILL_NAME, "SKILL.md"),
+    join(homeDir, ".openzwork", "skills", SKILL_NAME, "SKILL.md"),
     `---\nname: ${SKILL_NAME}\ndescription: ${SKILL_DESC} local runtime skill\n---\n\n${SKILL_BODY}\n`,
   );
 }
 
 /** inline 插件没有设置页添加入口，写插件目录并登记到 config.json 的 plugins.dirs。 */
 async function writeInlinePlugin(homeDir: string): Promise<void> {
-  const dir = join(homeDir, ".zcode", "plugins", INLINE_PLUGIN);
+  const dir = join(homeDir, ".openzwork", "plugins", INLINE_PLUGIN);
   await writeText(
     join(dir, ".zcode-plugin", "plugin.json"),
     `${JSON.stringify(
@@ -549,7 +549,7 @@ async function writeInlinePlugin(homeDir: string): Promise<void> {
     )}\n`,
   );
   await writeText(join(dir, "server.cjs"), `${mcpServerScript(INLINE_PLUGIN, INLINE_RESULT)}\n`);
-  const configPath = join(homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(homeDir, ".openzwork", "cli", "config.json");
   const config = await readFile(configPath, "utf-8")
     .then((text) => JSON.parse(text) as LocalCliConfig)
     .catch((): LocalCliConfig => ({}));

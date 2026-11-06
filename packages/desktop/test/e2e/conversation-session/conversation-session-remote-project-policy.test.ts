@@ -19,7 +19,7 @@ describe("远程单目录项目展示", () => {
       (!basename(home).startsWith("zcode-remote-project-policy-e2e-") && !isolatedRunnerHome)
     )
       throw new Error("isolated HOME required");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
     try {
       db.exec("BEGIN IMMEDIATE");
       db.prepare(

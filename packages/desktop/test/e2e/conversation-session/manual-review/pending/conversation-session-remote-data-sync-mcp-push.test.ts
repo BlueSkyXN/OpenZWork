@@ -31,10 +31,10 @@ const STDIO_SERVER = "E2E-Dsync-Stdio";
 const STDIO_KEY = STDIO_SERVER.toLowerCase();
 const FILESYSTEM_SERVER = "filesystem";
 const REMOTE_HOME = "/home/dev";
-const REMOTE_CONFIG = `${REMOTE_HOME}/.zcode/cli/config.json`;
+const REMOTE_CONFIG = `${REMOTE_HOME}/.openzwork/cli/config.json`;
 
 async function writeLocalMcpServers(home: string): Promise<void> {
-  const dir = join(home, ".zcode", "cli");
+  const dir = join(home, ".openzwork", "cli");
   await mkdir(dir, { recursive: true });
   await writeFile(
     join(dir, "config.json"),

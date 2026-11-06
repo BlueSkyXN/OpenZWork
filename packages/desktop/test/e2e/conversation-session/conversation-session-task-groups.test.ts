@@ -492,7 +492,7 @@ describe("任务分组独立视图", () => {
     // 批量 runner 的 runId 可以自定义；仍只允许写入隔离 E2E HOME。
     if (!home || !basename(home).startsWith(".e2e-home-") || !cwd)
       throw new Error("隔离 HOME 和真实任务目录 required");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
     try {
       db.exec("BEGIN IMMEDIATE");
       const task = db.prepare(

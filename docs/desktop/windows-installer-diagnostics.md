@@ -32,13 +32,13 @@ NSIS .onInit
 
 交互式安装器始终显示 NSIS Details 区域，并在安装段开始时把 electron-builder 默认的 `SetDetailsPrint none` 改为 `listonly`。因此解压期间的每个 NSIS `File` 条目会持续出现在详情区；阶段事件同时写入详情区和日志文件。进程启动和初始化事件发生在 `.onInit`，详情控件尚未创建时不承诺回填到页面，只以文件日志为准。
 
-旧卸载器由 electron-builder 作为独立进程运行，外层详情区先显示 cleanup 开始/完成，进程返回后再回放本次卸载器日志中的逐条记录；原始日志仍保留在 `%TEMP%\\ZCode-uninstaller.log`，用于核对实际尝试删除了哪些文件。历史版本卸载器仍可能只显示原生重试文案。
+旧卸载器由 electron-builder 作为独立进程运行，外层详情区先显示 cleanup 开始/完成，进程返回后再回放本次卸载器日志中的逐条记录；原始日志仍保留在 `%TEMP%\OpenZWork-uninstaller.log`（2026-11-07 前为 `ZCode-uninstaller.log`），用于核对实际尝试删除了哪些文件。历史版本卸载器仍可能只显示原生重试文案。
 
 ## 日志路径与安全边界
 
-- 默认日志：`%TEMP%\ZCode-installer.log`。
+- 默认日志：`%TEMP%\OpenZWork-installer.log`。
 - 外层安装器可通过 `/LOG=<path>` 指定路径，便于支持人员收集日志。
-- UAC 提权内层不接受继承的 `/LOG` 路径，直接尝试写入 `%WINDIR%\Logs\ZCode-installer.log`，避免低权限调用方控制高权限文件路径。当前不承诺把外层 `%TEMP%` 日志复制到 Windir。
+- UAC 提权内层不接受继承的 `/LOG` 路径，直接尝试写入 `%WINDIR%\Logs\OpenZWork-installer.log`，避免低权限调用方控制高权限文件路径。当前不承诺把外层 `%TEMP%` 日志复制到 Windir。
 - 每条日志包含 `pid=<十进制 PID>`；日志写入失败只影响诊断，不得阻止安装流程。
 - 正式安装器的内层判据必须接入 electron-builder 使用的 `UAC_IsInnerInstance`；不能默认写成恒假，只在 smoke fixture 中强制模拟内层。测试替换只允许隔离夹具显式定义，正式默认行为必须使用真实 UAC 状态。
 

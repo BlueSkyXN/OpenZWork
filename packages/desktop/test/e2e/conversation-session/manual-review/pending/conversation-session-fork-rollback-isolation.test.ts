@@ -39,7 +39,7 @@ describe("FX13：fork 回滚后的会话隔离与桌面冷恢复", () => {
             "tsx",
             worker,
             "seed",
-            join(homedir(), ".zcode", "cli", "db", "db.sqlite"),
+            join(homedir(), ".openzwork", "cli", "db", "db.sqlite"),
             DEFAULT_WORKSPACE,
           ],
           { env: { ...process.env, NODE_NO_WARNINGS: "1" } },
@@ -72,7 +72,7 @@ function seedTaskMembership(sessionId: string): void {
   // 正式桌面任务同时拥有 Host membership 和 CLI 历史。只写 CLI 会构造不完整夹具，
   // 不能依赖 sessions-index 反向补齐侧栏。这里只补 Host 归属，不改刚验证的 CLI 库。
   // Node 内置 SQLite 仅提供 DatabaseSync；旧进程已退出，句柄在启动新进程前关闭。
-  const database = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"));
+  const database = new DatabaseSync(join(homedir(), ".openzwork", "v2", "tasks-index.sqlite"));
   const now = Date.now();
   try {
     database

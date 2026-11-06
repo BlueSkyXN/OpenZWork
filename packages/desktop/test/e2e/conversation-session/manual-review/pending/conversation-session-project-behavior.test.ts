@@ -71,7 +71,7 @@ describe("虚拟项目旧产品体验", () => {
     // 运行中写库不发布 Host 快照；非法 meta 还会让归档/置顶命令读不到任务。
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+        const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
         try {
           // 纯列表 fixture：只在隔离库准备已持久化的历史镜像，不声称覆盖模型/CLI 执行。
           db.prepare(
@@ -275,7 +275,7 @@ describe("虚拟项目旧产品体验", () => {
         await restartIntoWorkspacePreservingProfile(activeWorkspace, {
           afterElectronProcessExit: () => {
             const db = new DatabaseSync(
-              join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+              join(process.env.ZCODE_E2E_HOME_DIR!, ".openzwork/v2/tasks-index.sqlite"),
             );
             try {
               db.prepare("UPDATE projects SET deleted=0 WHERE project_id=?").run(targetId);
@@ -298,7 +298,7 @@ describe("虚拟项目旧产品体验", () => {
       await restartIntoWorkspacePreservingProfile(activeWorkspace, {
         afterElectronProcessExit: () => {
           const db = new DatabaseSync(
-            join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+            join(process.env.ZCODE_E2E_HOME_DIR!, ".openzwork/v2/tasks-index.sqlite"),
           );
           try {
             db.prepare("UPDATE tasks SET project_id=? WHERE task_id='e2e-behavior-6'").run(id);
@@ -684,7 +684,7 @@ describe("虚拟项目旧产品体验", () => {
     ).toBe(true);
     expect(await timeline.$$("[data-timeline-date-heading]").length).toBe(2);
     const db = new DatabaseSync(
-      join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+      join(process.env.ZCODE_E2E_HOME_DIR!, ".openzwork/v2/tasks-index.sqlite"),
     );
     let expected: string[];
     try {
@@ -910,7 +910,7 @@ describe("虚拟项目旧产品体验", () => {
 
   it("VP31：41 个项目拖拽启动保持响应，取消不改顺序", async () => {
     const home = process.env.ZCODE_E2E_HOME_DIR!;
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
     try {
       const insert = db.prepare(
         "INSERT INTO projects(project_id,host_id,name,position,created_at,updated_at) VALUES(?,'local',?,?,1,1)",

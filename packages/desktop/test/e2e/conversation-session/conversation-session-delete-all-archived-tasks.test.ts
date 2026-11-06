@@ -20,8 +20,8 @@ describe("TSL39：一键删除全部归档任务", () => {
     // 在进程退出后准备两库完整历史，冷启读取；执行阶段只经真实 UI 发送删除。
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-        const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+        const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
+        const cli = new DatabaseSync(join(home, ".openzwork/cli/db/db.sqlite"));
         try {
           const project = db
             .prepare("SELECT project_id FROM project_roots WHERE root_path=? LIMIT 1")
@@ -114,8 +114,8 @@ describe("TSL39：一键删除全部归档任务", () => {
 });
 
 function readCounts() {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
-  const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), { readOnly: true });
+  const cli = new DatabaseSync(join(home, ".openzwork/cli/db/db.sqlite"), { readOnly: true });
   try {
     return {
       ...(db

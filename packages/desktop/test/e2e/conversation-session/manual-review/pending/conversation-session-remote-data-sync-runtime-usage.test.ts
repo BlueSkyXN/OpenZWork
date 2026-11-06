@@ -144,7 +144,7 @@ async function writeText(path: string, content: string): Promise<void> {
 
 /** 本机准备六类内容：技能、子智能体、命令、MCP、钩子、inline 插件；config.json 读改写，保留已有字段。 */
 async function writeLocalContent(homeDir: string): Promise<void> {
-  const zcode = join(homeDir, ".zcode");
+  const zcode = join(homeDir, ".openzwork");
   await writeText(
     join(zcode, "skills", SKILL_NAME, "SKILL.md"),
     `---\nname: ${SKILL_NAME}\ndescription: ${SKILL_DESC} data sync runtime skill\n---\n\n${SKILL_BODY}\n`,

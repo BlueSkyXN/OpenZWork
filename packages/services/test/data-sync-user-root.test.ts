@@ -9,8 +9,8 @@ import { createHookDataSyncMethods } from "../src/data-sync/hookDataSync.js";
 import { createSkillDataSyncMethods } from "../src/data-sync/skillDataSync.js";
 
 // WP-03 数据隔离回归（2026-11-07）：data-sync 三类服务的用户级读写根必须落在
-// ~/.openzwork，不得触碰官方 ZCode 的 ~/.zcode。此前 commandsRoot/各 config 路径
-// 指向 .zcode，远端同步会把命令、hooks、技能开关写进官方产品目录。
+// .openzwork 用户根下，不得触碰官方 ZCode 的旧根目录。此前 commandsRoot/各 config 路径
+// 指向旧根，远端同步会把命令、hooks、技能开关写进官方产品目录。
 // 全部用例在临时 HOME 下执行，不触真实用户数据。
 
 const homes: string[] = [];

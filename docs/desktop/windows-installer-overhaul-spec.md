@@ -80,7 +80,7 @@ installer-completed (日志可查，完成页直接启动 `$INSTDIR\\ZCode.exe`)
 ## 诊断与步骤显示
 
 - 本版本交互安装器始终显示 Details 区域（覆盖 electron-builder 默认的 `nevershow`），并把安装段的 `SetDetailsPrint none` 改为 `listonly`。安装详情按顺序显示安装开始、清理阶段、解压阶段、逐项 NSIS `File` 条目、快捷方式阶段和完成收尾；进程启动、初始化事件发生在 `.onInit`，以文件日志为准。
-- 上一版本卸载器是独立进程，外层详情先显示 cleanup 开始/完成，进程返回后回放本次卸载器日志；当前版本卸载器会将 manifest 中实际尝试删除的相对路径逐项写入 `%TEMP%\\ZCode-uninstaller.log`。
+- 上一版本卸载器是独立进程，外层详情先显示 cleanup 开始/完成，进程返回后回放本次卸载器日志；当前版本卸载器会将 manifest 中实际尝试删除的相对路径逐项写入 `%TEMP%\\OpenZWork-uninstaller.log`。
 - 静默更新不显示 UI，但写 `%TEMP%\\ZCode-installer.log`；UAC 提权内层直接尝试写 `%WINDIR%\\Logs\\ZCode-installer.log`。当前没有“外层临时日志按权限复制到 Windir”的实现，日志不可写不应阻断安装。
 - 日志 marker 使用数字 PID 和阶段枚举，不写 `$CMDLINE`。当前已实现安装阶段为 `install-started`、`cleanup-started/completed`、`extract-started/completed`、`shortcuts-started/completed`、`install-finalization-started` 和 `install-completed`；managed cleanup 的失败分类限于 `permission-or-disk-space` 和旧卸载器返回非零，`reparse-point`、`extract` 的 Win32 错误码作为后续收敛项。
 - 交互式更新在旧卸载器返回非零时，可能先经过 electron-builder 内置的最多 5 次重试和 `appCannotBeClosed` 提示，取消后才进入本项目的准确清理错误提示；静默路径以退出码和日志为准。

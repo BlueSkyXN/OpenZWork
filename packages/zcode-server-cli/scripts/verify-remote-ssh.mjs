@@ -143,7 +143,8 @@ async function main() {
   );
 
   log("install archive through bootstrap bin/zcode");
-  const serverRoot = "/root/.zcode/server";
+  // Bugfix（2026-11-07）：与 REMOTE_BASE（~/.openzwork/server）同源，避免部署回官方命名空间。
+  const serverRoot = "/root/.openzwork/server";
   const remoteArchive = `/root/zcode-server-${target}.tar.gz`;
   const { stdout: installOutput } = await ssh(
     `/root/zcode-bootstrap/bin/zcode update --from-archive ${remoteArchive} --server-root ${serverRoot} --json`,

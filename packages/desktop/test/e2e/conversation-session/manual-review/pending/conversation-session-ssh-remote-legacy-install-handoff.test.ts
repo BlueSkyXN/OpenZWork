@@ -180,7 +180,7 @@ async function readSessionEntry(workspacePath: string) {
 describe(`${MARKER}: 迁移的密码 SSH 项目首次安装`, () => {
   const facts: Record<string, unknown> = {};
   const { credentialsFile, homeDir } = getE2EAppDataPaths();
-  const tasksIndexFile = join(homeDir, ".zcode/v2/tasks-index.sqlite");
+  const tasksIndexFile = join(homeDir, ".openzwork/v2/tasks-index.sqlite");
   let config: SSHConnectionConfig;
   let container: string;
   let workspacePath: string;

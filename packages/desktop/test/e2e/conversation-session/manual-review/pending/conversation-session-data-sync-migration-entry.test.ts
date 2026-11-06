@@ -274,7 +274,7 @@ describe(`${CASE_MARKER}: 迁移入口移到数据同步页`, () => {
     });
     expect(settingsSummary).toEqual({ imported: "1", failed: "0", workspaceRequired: false });
     expect(
-      await readFile(join(homeDir, ".zcode", "skills", SKILL_NAME, "SKILL.md"), "utf-8"),
+      await readFile(join(homeDir, ".openzwork", "skills", SKILL_NAME, "SKILL.md"), "utf-8"),
     ).toContain("DSYNC-16-02 migration");
     // 整个流程中没有项目被重新打开。
     expect(await readWorkspaceTabState()).toEqual({

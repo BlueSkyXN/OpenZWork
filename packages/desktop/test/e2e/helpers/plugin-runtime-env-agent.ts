@@ -76,7 +76,7 @@ export async function createPluginRuntimeEnvFixture(
 }
 
 async function primeDefaultPluginMarketplacesForE2E(homeDir: string): Promise<void> {
-  const path = join(homeDir, ".zcode", "cli", "plugins", "known_marketplaces.json");
+  const path = join(homeDir, ".openzwork", "cli", "plugins", "known_marketplaces.json");
   const existing = await readKnownMarketplaceRecords(path);
   const now = new Date().toISOString();
   const byId = new Map(existing.map((record) => [record.id, record]));
