@@ -1,6 +1,7 @@
 import { Fragment, memo, useCallback, useContext, useMemo, useState } from "react";
 import type { ProjectTask, ProjectSidebarProps } from "@/project-sidebar/contract.js";
 import { TaskGroupTaskMenu } from "@/project-sidebar/TaskGroupTaskMenu.js";
+import { TaskProjectMoveMenu } from "@/project-sidebar/TaskProjectMoveMenu.js";
 import { TaskList } from "@/TaskList.js";
 import { Button } from "@/components/ui/button.js";
 import { useProjectTaskActions } from "@/project-sidebar/useProjectTaskActions.js";
@@ -41,7 +42,15 @@ export const ProjectTaskRow = memo(function Row({
     [presentation.onOpenTaskFiles, task, remoteSessionId],
   );
   // 原因：内联 JSX 每次都会创建新引用，导致 TaskList 的 memo 比较失效。
-  const organizationActions = useMemo(() => <TaskGroupTaskMenu task={task} />, [task]);
+  const organizationActions = useMemo(
+    () => (
+      <>
+        <TaskProjectMoveMenu task={task} />
+        <TaskGroupTaskMenu task={task} />
+      </>
+    ),
+    [task],
+  );
   // 原因：会话行复用项目详情会在浏览任务时重复弹层；远程身份详情只由项目入口承载。
   return (
     // 每行独立渲染 TaskList，外层留白避免选中和悬停背景粘连。

@@ -9,7 +9,7 @@ import { buildSystemPromptPreview } from "@zcode/core";
 
 import { systemPromptCatalogParamsSchema } from "@zcode/shared";
 
-import { sessionLifecycleParamsSchema, sessionLifecycleSnapshotSchema } from "@zcode/shared";
+import { sessionLifecycleActivationParamsSchema, sessionLifecycleParamsSchema, sessionLifecycleSnapshotSchema } from "@zcode/shared";
 
 import { querySessionDebug } from "./session-debug.js";
 import { createNodeNetworkCapture } from "@zcode/shared/node";
@@ -725,16 +725,21 @@ export class ZCodeProtocolAgentServer {
           await getSessionLifecycle(this.context).getState(sessionId),
         );
       }
-      case zcodeProtocolMethods.sessionLifecycleEnsureReady:
-      case zcodeProtocolMethods.sessionLifecycleStop:
-      case zcodeProtocolMethods.sessionLifecycleRestart: {
+      case zcodeProtocolMethods.sessionLifecycleStop: {
         const { sessionId } = parseParams(sessionLifecycleParamsSchema, request.params);
+        await getSessionLifecycle(this.context).stop(sessionId);
+        return { completed: true as const };
+      }
+      case zcodeProtocolMethods.sessionLifecycleEnsureReady:
+      case zcodeProtocolMethods.sessionLifecycleRestart: {
+        const { sessionId, workspace } = parseParams(
+          sessionLifecycleActivationParamsSchema,
+          request.params,
+        );
         const lifecycle = getSessionLifecycle(this.context);
         if (request.method === zcodeProtocolMethods.sessionLifecycleEnsureReady)
-          await lifecycle.ensureReady(sessionId);
-        else if (request.method === zcodeProtocolMethods.sessionLifecycleStop)
-          await lifecycle.stop(sessionId);
-        else await lifecycle.restart(sessionId);
+          await lifecycle.ensureReady(sessionId, workspace);
+        else await lifecycle.restart(sessionId, workspace);
         return { completed: true as const };
       }
       case zcodeProtocolMethods.sessionResume:
@@ -892,6 +897,7 @@ export class ZCodeProtocolAgentServer {
         this.context.sessionWorkspaceRoutingEnabled ||=
           params.hostCapabilities?.sessionWorkspaceRouting === true;
         return {
+          sessionLifecycleWorkspace: true,
           sessionWorkspaceRouting: true,
           independentPlanState: true,
           historyFirst: true,

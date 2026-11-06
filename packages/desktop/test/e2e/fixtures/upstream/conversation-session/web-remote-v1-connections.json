@@ -4,6 +4,56 @@
   "spec": "./test/e2e/conversation-session/web-remote-v1-connections.test.ts",
   "fixtures": [
     {
+      "id": "v1-official-directory-title-rootless",
+      "description": "官方目录新建任务标题",
+      "metadata": {
+        "kind": "common",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "新建项目任务使用独立标题以保持历史任务选择唯一"
+      },
+      "maxMatches": 2,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "bodyIncludes": ["Generate a concise title", "E2E_V1_OFFICIAL_DIRECTORY_ROOTLESS"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "v1-official-directory-title-rootless",
+          "inputTokens": 32,
+          "outputTokens": 8,
+          "text": "{\"title\": \"E2E_V1_DIRECTORY_ROOTLESS\"}"
+        }
+      }
+    },
+    {
+      "id": "v1-official-directory-title-rooted",
+      "description": "官方目录新建任务标题",
+      "metadata": {
+        "kind": "common",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "新建项目任务使用独立标题以保持历史任务选择唯一"
+      },
+      "maxMatches": 2,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "bodyIncludes": ["Generate a concise title", "E2E_V1_OFFICIAL_DIRECTORY_ROOTED"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "v1-official-directory-title-rooted",
+          "inputTokens": 32,
+          "outputTokens": 8,
+          "text": "{\"title\": \"E2E_V1_DIRECTORY_ROOTED\"}"
+        }
+      }
+    },
+    {
       "id": "v1-official-title",
       "description": "合成任务标题",
       "metadata": {
@@ -107,6 +157,58 @@
           "inputTokens": 80,
           "outputTokens": 8,
           "text": "E2E_V1_QUEUED_REPLY"
+        }
+      }
+    },
+    {
+      "id": "v1-official-directory-rooted",
+      "description": "官方旧页唯一目录项目首次发送",
+      "metadata": {
+        "kind": "main",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "验证官方旧页新建任务的 Host 项目归属与刷新恢复"
+      },
+      "maxMatches": 1,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_DIRECTORY_ROOTED"],
+        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "v1-official-directory-rooted",
+          "inputTokens": 64,
+          "outputTokens": 8,
+          "text": "E2E_V1_DIRECTORY_REPLY_ROOTED"
+        }
+      }
+    },
+    {
+      "id": "v1-official-directory-rootless",
+      "description": "官方旧页无 root 项目首次发送",
+      "metadata": {
+        "kind": "main",
+        "timingPolicy": "fast-text",
+        "source": "synthetic",
+        "syntheticReason": "验证官方旧页新建任务的 Host 项目归属与刷新恢复"
+      },
+      "maxMatches": 1,
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_DIRECTORY_ROOTLESS"],
+        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "v1-official-directory-rootless",
+          "inputTokens": 64,
+          "outputTokens": 8,
+          "text": "E2E_V1_DIRECTORY_REPLY_ROOTLESS"
         }
       }
     }

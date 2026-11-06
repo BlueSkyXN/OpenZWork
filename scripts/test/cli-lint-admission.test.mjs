@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { execFile } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
   classifyLintDiagnostics,
   parseLintCommand,
+  resolvePackageLintArgs,
   resolvePnpmInvocation,
 } from "../cli-lint-admission.mjs";
 
@@ -25,6 +26,54 @@ test("原生可执行入口不会被当成 JavaScript，脚本路径与空格参
     assert.deepEqual(JSON.parse((await execute(entry, args)).stdout), args);
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("包入口实际扫描源码，并保留包级配置排除的非模块语料", async () => {
+  const root = await mkdtemp(join(tmpdir(), "cli-lint-config-"));
+  const oxlint = resolve(
+    import.meta.dirname,
+    "../../apps/zcode-cli/node_modules/oxlint/bin/oxlint",
+  );
+  try {
+    await writeFile(
+      join(root, ".oxlintrc.json"),
+      JSON.stringify({
+        ignorePatterns: ["apps/zcode-cli"],
+        rules: { "no-debugger": "error" },
+      }),
+    );
+    for (const localConfig of [false, true]) {
+      const cwd = join(root, "apps/zcode-cli/packages", localConfig ? "workflow" : "ordinary");
+      await mkdir(join(cwd, "src"), { recursive: true });
+      await writeFile(join(cwd, "src/index.ts"), "debugger;\n");
+      if (localConfig) {
+        await mkdir(join(cwd, "tests/graphs"), { recursive: true });
+        await writeFile(join(cwd, "tests/graphs/invalid.ts"), "const = ;\n");
+        await writeFile(
+          join(cwd, ".oxlintrc.json"),
+          JSON.stringify({
+            extends: ["../../../../.oxlintrc.json"],
+            ignorePatterns: ["tests/graphs/**"],
+          }),
+        );
+      }
+      const args = await resolvePackageLintArgs(
+        localConfig ? "oxlint src tests" : "oxlint src",
+        cwd,
+      );
+      const result = await promisify(execFile)(process.execPath, [oxlint, ...args], { cwd }).catch(
+        (error) => error,
+      );
+      assert.equal(result.code, 1, "源码错误必须阻断，而不是零文件通过");
+      const report = JSON.parse(result.stdout);
+      assert.deepEqual(
+        report.diagnostics.map(({ code, severity }) => ({ code, severity })),
+        [{ code: "eslint(no-debugger)", severity: "error" }],
+      );
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
   }
 });
 

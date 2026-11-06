@@ -60,6 +60,7 @@ import { SelectionSideChatPane } from "@/app-shell/SelectionSideChatPane.js";
 import { BackgroundBashOutputSidePane } from "@/app-shell/BackgroundBashOutputSidePane.js";
 import { PlanDetailSidePane } from "@/app-shell/PlanDetailSidePane.js";
 import {
+  usePluginUiPaneTarget,
   PluginUiLauncherItems,
   PluginUiSidePane,
   SidePaneLauncherRow,
@@ -459,6 +460,14 @@ export function AnimatedSidePanePanel({
   mobileStacked?: boolean;
 }) {
   const onOpenPluginUi = useOpenPluginUi();
+  const pluginUiTarget = usePluginUiPaneTarget({
+    workspacePath: workspaceAbsPath,
+    workspaceIdentity,
+    remoteSessionId: workspaceRemoteSessionId ?? undefined,
+    sessionId: activeTaskId,
+  });
+  const pluginUiWorkspaceKey =
+    pluginUiTarget.workspaceIdentity?.trim() || pluginUiTarget.workspacePath;
   const { intl } = useZCodeIntl();
   const isOfficeMode = useIsOfficeMode();
   const developerToolsEnabled = useDeveloperToolsVisibility();
@@ -486,8 +495,10 @@ export function AnimatedSidePanePanel({
       getVisibleSidePaneTabs(tabs, {
         workspaceKey,
         ownerTaskId: sidePaneOwnerId,
+        pluginUiSessionId: pluginUiTarget.sessionId,
+        pluginUiWorkspaceKey,
       }),
-    [sidePaneOwnerId, tabs, workspaceKey],
+    [sidePaneOwnerId, tabs, workspaceKey, pluginUiTarget.sessionId, pluginUiWorkspaceKey],
   );
   const activeTabId = sidePaneState?.activeTabId ?? "";
   const visibleActiveTabId = visibleTabs.some((tab) => tab.id === activeTabId)
@@ -872,8 +883,8 @@ export function AnimatedSidePanePanel({
               />
             ))}
           </div>
-          {/* 空会话暂不支持应用插件，连同分区入口一起隐藏。 */}
-          {activeTaskId ? (
+          {/* 草稿已有真实预热 session；按正式 task 判断会隐藏整个插件入口。 */}
+          {pluginUiTarget.sessionId ? (
             <>
               <div aria-hidden="true" className="my-4 h-px w-24 self-center bg-border" />
               <section className="min-w-0" data-testid="side-pane-ui-recommendations">
@@ -904,10 +915,11 @@ export function AnimatedSidePanePanel({
                 <div className="mt-2 grid min-w-0 grid-cols-1 gap-x-8 gap-y-1 @min-[36rem]/launcher:grid-cols-2">
                   {onOpenPluginUi ? (
                     <PluginUiLauncherItems
-                      workspacePath={workspaceAbsPath}
-                      workspaceIdentity={workspaceIdentity}
-                      remoteSessionId={workspaceRemoteSessionId}
-                      sessionId={activeTaskId}
+                      workspacePath={pluginUiTarget.workspacePath}
+                      workspaceIdentity={pluginUiTarget.workspaceIdentity}
+                      remoteSessionId={pluginUiTarget.remoteSessionId ?? undefined}
+                      sessionId={pluginUiTarget.sessionId}
+                      paneId={pluginUiTarget.paneId}
                       onOpenPluginUi={onOpenPluginUi}
                     />
                   ) : null}
@@ -1401,10 +1413,11 @@ export function AnimatedSidePanePanel({
                                 }
                                 embedded
                                 onCreateTask={onCreateTask}
-                                workspacePath={workspaceAbsPath}
-                                workspaceIdentity={workspaceIdentity}
-                                remoteSessionId={workspaceRemoteSessionId}
-                                sessionId={activeTaskId}
+                                workspacePath={pluginUiTarget.workspacePath}
+                                workspaceIdentity={pluginUiTarget.workspaceIdentity}
+                                remoteSessionId={pluginUiTarget.remoteSessionId ?? undefined}
+                                sessionId={pluginUiTarget.sessionId}
+                                paneId={pluginUiTarget.paneId}
                                 isDesktop={isDesktop}
                                 isWindowsDesktop={isWindowsDesktop}
                                 isMacDesktop={isMacDesktop}

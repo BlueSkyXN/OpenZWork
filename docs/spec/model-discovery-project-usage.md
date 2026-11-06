@@ -5,7 +5,7 @@
 ## 模型列表拉取
 
 - 设置 → 模型供应商 → 模型列表新增「拉取模型」，保留原「添加模型」。只查询已保存的目标 Provider 配置，不保存连接草稿、不改变当前会话模型。
-- Node Provider adapter 使用目标 Environment 的有效协议、Base URL、Key 与自定义 headers。Chat Completions / Responses 查询 `{base}/models`；Messages 与现有推理 adapter 一致，根地址先补 `/v1`，已含 `/v1` 时不重复追加，再查询 `/models`。仅既定同源端点，手动处理分页、拒绝重定向。设置超时、响应体和条数上限，错误不回显服务商响应正文或凭据。
+- Node Provider adapter 使用目标 Environment 的 Base URL、Key 与自定义 headers。Chat Completions / Responses 查询 `{base}/models`；Messages 与现有推理 adapter 一致，根地址先补 `/v1`，已含 `/v1` 时不重复追加，再查询 `/models`。仅既定同源端点，手动处理分页、拒绝重定向。设置超时、响应体和条数上限，错误不回显服务商响应正文或凭据。
 - 列表去重并按 ID 排序。已有模型禁选；新模型使用现有推荐解析判断是否可添加。缺项进入原添加配置弹窗，不猜能力、不查询外部能力目录。
 - 勾选后逐项调用原模型保存路径；成功项退出待选，失败项保留并可重试。切换 Provider / 关闭弹窗 / 新查询后拒收旧请求；保存期间禁止切换本弹窗的动作。候选只归当前 UI 草稿，Provider 配置仍由 Config Service 唯一持久化。
 - 空列表、401/403、404/405、超时、非法 JSON、过大响应分别有可操作提示。用户可继续手工添加。
@@ -25,6 +25,38 @@ sequenceDiagram
   U->>S: 用户勾选后逐项原 addPersonalModel
   S->>P: 原串行保存与 Registry 更新
 ```
+
+### 模型目录协议选择（2026-11-06）
+
+网关可能按 `anthropic-version` 返回经过改名的 Claude 兼容目录。模型发现由 Node adapter 独占请求策略，独立于后续推理；不修改 Provider 配置、聊天协议或已有模型 ID。
+
+- 通用 Messages 连接首次查询不自动加入 `anthropic-version`，优先读取 OpenAI 兼容的原始目录。保留该连接的 `x-api-key` 鉴权；Chat Completions / Responses 继续使用 Bearer 鉴权。用户自定义 headers 最后覆盖，不能为了获取原始目录删除用户指定的协议头或 User-Agent。
+- `api.anthropic.com` 的 Messages 连接直接发送 `anthropic-version: 2023-06-01`。明确配置了该请求头的其他连接也按用户配置发送。
+- 通用 Messages 首次响应为 HTTP 400、401、403、404、405 时，允许在同一 URL 补上 Anthropic 版本头再查询一次，以兼容要求该头的服务。只有 adapter 未添加、用户也未配置版本头时才启用这一回退；与分页共享原有 15 秒总超时。
+- 空列表视为成功。429、5xx、网络错误、重定向、非法或过大响应不触发协议回退。分页开始后固定请求方式，后续页失败直接报告，不重新拉取并混合两份目录。
+- 返回的 ID 继续原样去重、排序，不识别或反转特定网关的别名。显示名优化与已添加别名的迁移不在此次修复范围。
+
+```mermaid
+sequenceDiagram
+  participant S as Provider Settings Service
+  participant N as Node 模型发现 adapter
+  participant G as 同源模型目录
+  S->>N: 已保存的有效 Provider 配置
+  alt Anthropic 官方或用户显式版本头
+    N->>G: GET models（Anthropic 请求头）
+  else 通用 Messages 网关
+    N->>G: GET models（沿用鉴权，不自动加版本头）
+    opt 首次 HTTP 400 / 401 / 403 / 404 / 405
+      N->>G: 同一 URL 加版本头再查询一次
+    end
+  end
+  G-->>N: 模型 ID / 分页信息 / 错误
+  N-->>S: 原始 ID 或既有枚举错误
+```
+
+新增验收：MD04 使用真实设置页的 Messages 连接拉取并添加原始 ID，捕获请求证明目录查询没有自动版本头、聊天请求仍带版本头；MD05 用 loopback HTTP 服务验证缺版本头拒绝后的单次回退、官方请求构造、自定义头与分页保持；MD06 验证空列表及限流、服务端错误、非法响应不产生额外请求。MD04 沿用已有 Electron pending 用例，MD05–06 为可重复运行时验收，不新增 App 业务单测。
+
+本轮验证：loopback HTTP 运行时场景 21/21 通过。macOS Electron 的独立 MD04 场景 1/1 通过，产物 `packages/desktop/.e2e-artifacts/desktop-e2e-20261106-134516-490/` 包含网络断言、列表与保存后截图；复用本机 direct attach 启动适配，标准 WDIO 入口仍在创建 session 时超时，原整例中的用量及 fork 分支未在本轮重新验收。根 typecheck、桌面 E2E typecheck、lint（0 errors / 17 warnings）、架构与格式检查通过；依赖已按现有锁文件同步。候选保持 pending，未转正或纳入 Docker；真实 Anthropic 官方账号及 Windows/Linux 未验收。
 
 ## 项目用量（2026-10-30 二级明细页修订）
 

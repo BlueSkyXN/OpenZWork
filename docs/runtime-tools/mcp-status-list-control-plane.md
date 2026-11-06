@@ -41,6 +41,9 @@ MCP 设置页需要展示当前配置中各 server 的状态。旧方案在设�
 - 设置页同一时间只允许一个 `mcp/list` 在飞；如果在飞期间又触发刷新，只合并成完成后的下一轮，避免多次点击开关把整批 MCP 连接排队到十几秒。
 - runtime 状态映射到 UI 状态时，`failed` 映射为 `error`；`connected`、`connecting`、`disconnected` 保持可展示语义；`disabled`、`untrusted` 显示为非成功配置态并带安全说明。
 - status snapshot 可选携带稳定 `failureKind` 与 `serverRequestId`。`error` 继续保存原始详情，UI 不直接把它当用户主文案。
+- stdio 启动失败的 `error` 合并传输错误和已脱敏、去 ANSI、限长的最近 stderr；分类和连接
+  生命周期保持不变。详情 Popover 按稳定 `failureKind` 展示下一步建议，具体规则见
+  [设置 MCP 列表](../settings-mcp-list.md)。不增加协议字段或第二份诊断状态。
 - 可信官方 HTTP MCP 只读取响应头 `X-Request-Id`；连接、initialize、`tools/list` 的诊断可进入设置页，`tools/call` 的 request id 只进入对应工具结果。无 HTTP response 的 stdio、DNS、timeout 不伪造 id。
 - ZCode envelope `3001`、`1000`，JSON-RPC `error.code=1006/3101`，HTTP 429/5xx 与其他 JSON-RPC error 分别映射为 `server_not_found`、`server_unavailable`、`not_authenticated`、`coding_plan_required`、`rate_limited`、`server_internal_error`、`protocol_error`；无法细分时使用 `connection_failed`。
 
