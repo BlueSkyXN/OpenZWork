@@ -102,7 +102,7 @@ it.each([undefined, "只读目录"])(
   },
 );
 
-it("OW-P020：列表长按选择正确任务，普通点按不挂载菜单，关闭后可选择其他任务", async () => {
+it("OW-P022：列表长按选择正确任务，普通点按不挂载菜单，关闭后可选择其他任务", async () => {
   // row 事件是输入端口，实际 Radix 长按和列表选择生命周期由生产 TaskList 执行；
   // 真机事件与真实 MemoTaskItem 的接线另由 TPM03 的 Chromium touch E2E 覆盖。
   const tasks = ["first", "second"].map((taskId) => ({

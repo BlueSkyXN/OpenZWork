@@ -415,7 +415,7 @@ patches:
       - docs/spec/shared-file-lock-acquisition.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40525930576/job/122265384951
 
-  - id: OW-P020
+  - id: OW-P022
     title: 触摸长按任务行打开空菜单
     kind: product
     status: fixed

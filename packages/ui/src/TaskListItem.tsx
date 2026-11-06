@@ -518,7 +518,7 @@ export const MemoTaskItem = memo(function TaskListItem({
       onClick={handleSelect}
       onContextMenu={handleContextMenu}
       onPointerDown={(event) => {
-        // OW-P020：给列表级菜单传递触摸／笔的目标；打开时机仍由 Radix 长按手势负责。
+        // OW-P022：给列表级菜单传递触摸／笔的目标；打开时机仍由 Radix 长按手势负责。
         if (event.pointerType !== "mouse") handleContextMenu();
       }}
       draggable={canDragToWorkbench}

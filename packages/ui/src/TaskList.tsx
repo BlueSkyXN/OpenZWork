@@ -123,7 +123,7 @@ export const TaskList = memo(function TaskList({
   const handleOpenTaskContextMenu = useCallback((taskId: string) => {
     // 以前每个 task row 都常驻一个 Radix ContextMenu root/trigger。
     // 现在 row 只上报目标 task，真正的菜单树由列表级单例挂载，避免大会话里按行放大 Popper/MenuProvider 成本。
-    // OW-P020：触摸长按由 Radix pointerdown 定时打开，不触发行的 contextmenu。
+    // OW-P022：触摸长按由 Radix pointerdown 定时打开，不触发行的 contextmenu。
     // 先记录目标，菜单真正打开才加载内容；普通点按不探测路径、不取消归档确认。
     contextMenuTargetRef.current = taskId;
     if (contextMenuOpenRef.current) setContextMenuTaskId(taskId);
