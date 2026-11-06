@@ -1167,12 +1167,15 @@ nodes:
         file: packages/ui/src/settings/system-prompt/PromptPreviewDialog.tsx
     invariants:
       - SettingService owns saved settings; each main runtime holds its materialization snapshot.
+      - Explicit Restart task or /reload rematerializes the same session with current Host prompt settings; saving alone does not restart active tasks.
       - Prompt customization does not change tool permissions or child agent identities.
       - Runtime capabilities and paths remain live when editable rules are replaced or disabled.
       - Generated context switches apply in both section and whole-rule replacement modes.
   - id: capability.project-memory
     kind: capability
     label: CLI project Memory
+    invariants:
+      - Desktop and CLI startup never import another product's legacy memory; existing OpenZWork memories and migration markers remain unchanged.
     aliases:
       - Memory Extraction
       - headless Memory Extraction gate

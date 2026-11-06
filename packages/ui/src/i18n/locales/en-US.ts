@@ -178,7 +178,7 @@ const enUS: Record<string, string> = {
   "settings.systemPrompt.unsaved": "Unsaved changes",
   "settings.systemPrompt.savedConfig": "Saved configuration",
   "settings.systemPrompt.scope":
-    "Applies to main sessions when created or reloaded. Requests already running keep their current configuration.",
+    "New main sessions use the saved settings. For an existing session, choose Restart task from its menu or use /reload. Restart stops the task's execution and preserves its history.",
   "settings.systemPrompt.replaceHint":
     "Replaces default behavior rules while keeping current capabilities, memory location and output style. Choose which dynamic context to include below.",
   "settings.systemPrompt.replacement": "Custom system prompt",
@@ -3215,8 +3215,6 @@ const enUS: Record<string, string> = {
   "settings.memory.workspaceMemory": "Workspace Memory",
   "settings.memoryDescription":
     "Save and reuse long-term context in workspaces. Applies to new sessions and may increase model requests and token costs.",
-  "settings.memory.migratedHint":
-    "When enabled, workspace memories saved under ~/.openzwork/cli/memories on this device will be read. Data from the previous version (~/.zcode) is migrated automatically on app startup.",
   "settings.memory.viewer.disabled": "Enable Workspace Memory to view saved memories.",
   "settings.memory.viewer.localOnly":
     "Memory details are available only in the local desktop app. Open Memory settings there to view them.",

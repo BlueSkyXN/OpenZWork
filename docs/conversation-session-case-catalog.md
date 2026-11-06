@@ -5314,3 +5314,15 @@ ensureReady/restart/resume 必须被拒，同工作区共享一次启动；两�
 HF / SLR 激活隔离补充：已有远程实例就绪后，仅替换或删除 workspaceIdentity、保持其他字段不变，
 ensureReady/restart 必须拒绝，原实例不关闭且 generation 不变；正确身份继续可用。由 CLI 协议
 回归直接构造矛盾参数覆盖，正常桌面/手机入口继续沿用 HF/SLR E2E，不增加 UI 行为。
+
+## 旧记忆隔离与提示词重新应用（2026-11-06）
+
+规格：[旧 ZCode 记忆隔离](spec/memory-migration.md)、[系统提示词设置](spec/system-prompt-settings.md)。
+
+| ID        | 前置、动作与断言                                                                                            | 状态与证据层                                        |
+| --------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| MISO01–02 | 旧根有 canary，Desktop 默认目录冷启动后不导入；保存自定义目录并重启，自有记忆保留、旧根不变且不生成迁移标记 | accepted；沿用 openzwork-data-directory pending E2E |
+| MISO03–04 | CLI 默认/自定义根分别启动两次；缺失目标不复制，已有目标内容与旧迁移标记保持原样                             | accepted；CLI memory-isolation 回归                 |
+| SP16      | 保存新提示词后显式重启已有主会话；同一 ID 与历史保留、采用新配置，其他会话不变                              | accepted；CLI protocol 回归；UI 重启沿用 SLR01–02   |
+
+不新增热更新、自动重启或数据清理。Desktop continuous 与手机 replayable 的生命周期与订阅合同沿用 SLR；本轮不扩展这些协议。

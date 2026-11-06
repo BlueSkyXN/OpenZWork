@@ -119,6 +119,15 @@ test("system prompt regressions run in core and independent CLI gates", async ()
   assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
 });
 
+test("legacy memory isolation runs through real CLI startup in blocking CI", async () => {
+  const steps = (await workflow("ci.yml")).jobs.checks.steps;
+  const step = steps.find((candidate) => candidate.name === "Legacy memory isolation regression");
+  assert.ok(step);
+  assert.equal(step.if, "matrix.lane == 'regressions'");
+  assert.equal(step["continue-on-error"], undefined);
+  assert.match(step.run, /@zcode\/bootstrap.*tests\/memory-isolation\.test\.ts --bail=1$/);
+});
+
 test("model capability rules and final requests have blocking CI coverage", async () => {
   assert.ok(declared.includes("packages/provider-node/test/model-capability-rules.test.ts"));
   const steps = (await workflow("ci.yml")).jobs.checks.steps;

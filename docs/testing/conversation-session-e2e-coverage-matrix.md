@@ -5559,3 +5559,13 @@ CLI 定向回归已通过：V4 两种投递模式的并发 workspace 隔离、�
 桌面/手机交互沿用 HF01–02 和 SLR 综合候选。本轮实跑 covered：`desktop-e2e-20261102054133648-p182647-caa0869ba42a5410`，Linux Electron 与 390×844 触屏 Chromium，2 spec / 3 test 全通过，无 skipped 或自动重试。没有新增 UI 行为，既有 case 断言保持不变；不自动晋升 formal/CI。
 
 已就绪实例 identity 预检补全回归（2026-11-02）：CLI 协议验证仅替换/删除 identity 的 ensureReady/restart 均拒绝，原实例不关闭且 generation 不变；3 文件 183 项通过。正常 HF01–02 / SLR 交互 covered：`desktop-e2e-20261102060952670-p190384-9867bbf844a8e3cd`，Linux Electron 与触屏 Chromium，2 spec / 3 test 全通过，无自动重试。矛盾 identity 参数由协议回归覆盖，不宣称原生 SSH/WSL E2E。
+
+## 旧记忆隔离与提示词重新应用（2026-11-06）
+
+| ID        | 覆盖入口                                                                    | 状态                                                                                                                                                                                |
+| --------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MISO01–02 | conversation-session/manual-review/pending/openzwork-data-directory.test.ts | covered（pending）：macOS arm64 Electron，默认根冷启动与自定义目录迁移均通过；artifact `packages/desktop/.e2e-artifacts/desktop-e2e-20261106134516435-p99770-cdc07c4c0070ab14`，1/1 |
+| MISO03–04 | apps/zcode-cli/packages/bootstrap/tests/memory-isolation.test.ts            | passed：4/4；移除实现前默认根首启用例因旧文件被复制而失败，修改后通过                                                                                                               |
+| SP16      | apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts              | passed：完整协议套件 121/121，含显式重启采用新配置、保留历史与另一会话；该行是协议证据，不代表 Windows GUI 验收                                                                     |
+
+首次 Desktop run `desktop-e2e-20261106134053575-p92202-3a0c5e3f1473b847` 在 renderer bridge preflight 执行页面脚本超时，业务断言未运行。单独重跑得到上述通过产物。Windows 原生安装包、实体手机及远程 Host 本轮未执行；候选保留 pending，不自动晋升正式 E2E 或 Docker suite。

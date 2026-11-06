@@ -79,7 +79,6 @@ import {
   HostMessageTypes,
   InternalChannels,
 } from "@zcode/shared";
-import { runDesktopMemoryMigration } from "./desktopMemoryMigration.js";
 import { dataDirectory } from "@zcode/shared/data-directory";
 import { logger, webRemoteControlRelayLogger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
@@ -1429,15 +1428,7 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
-  await runDesktopMemoryMigration({
-    sourceMemoriesRoot: join(homedir(), ".zcode", "cli", "memories"),
-    targetStorageRoot: getZCodeDataRootDir(),
-    logger: {
-      debug: (message) => logger.debug(message),
-      info: (message) => logger.info(message),
-      warn: (message) => logger.warn(message),
-    },
-  });
+  // 旧 ZCode 与 OpenZWork 可同时使用；启动只打开当前数据根，不能把旧记忆存在视为导入授权。
 
   // scheduler 也会打开 tasks-index；等 Host 完成统一准备，避免在启动页出现前抢先迁移。
   configureDatabaseStartupQuit(() => {
