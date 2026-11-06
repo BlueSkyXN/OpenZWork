@@ -53,6 +53,14 @@
         "src/runtime/methods/turn-model-step.ts",
         "src/runtime/methods/session-fork.ts",
         "src/tool/executor/background-tasks.ts",
+        // adapters/bootstrap 的包级入口同样按 cwd 匹配；仅补全上方已有存量文件的相对路径。
+        "src/model/runner-stream.ts",
+        "src/mcp/index.ts",
+        "src/app/session-facade.ts",
+        "src/zcode-protocol/server.ts",
+        "src/zcode-protocol/v4-bridge.ts",
+        "src/app/create-app.ts",
+        "src/zcode-protocol-v4/v4-gateway.ts",
         "**/packages/ui/src/remote-connection-flow/index.ts"
       ],
       "rules": {

@@ -512,6 +512,8 @@ Header 按钮。文件搜索候选必须先从 fixture 所属项目建立草稿�
 
 ## 项目与任务草稿生命周期（PD，2026-10-16）
 
+PD13–PD16（2026-10-30，accepted / pending）：远端草稿在 projectId 就绪后才预热和首发；覆盖保留作用域的完整冷启动、只删除导航作用域后的冷启动与 Enter 拦截、显式项目新建后的真实首发、手机 shared-host 恢复及本地未归类首发。候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-remote-draft-prewarm.test.ts`；covered（候选未转正）：`packages/desktop/.e2e-artifacts/local-docker-20261030074146-15e10a` 完整通过，含真实 Provider 请求和 Host 项目归属断言。macOS Electron → SSH Linux arm64；手机为 Chrome 390px 触摸视口与真实 relay/Host，缺归属为受控 store 前置；不是实体手机或 Windows/Linux 桌面证据。缺失作用域不归因于升级。
+
 PD01–PD12 定义及分层验证见 [统一生命周期规格](../ui/project-task-draft-lifecycle.md#本轮验证记录2026-10-16)。产品语义 accepted；自动化保持 manual-review/pending，未自动转正或加入 CI。
 
 MR 集成基线 `f05db3e645` 的补验见规格末节：Composer 5/5（`desktop-e2e-20261016-103617-676`）、GRP02/03/11 关闭分组后正文及刷新 1/1（`desktop-e2e-20261016-104001-042`）；VP13 1/1（`desktop-e2e-20261016-104236-866`），同时运行 PCD01–03 的项目创建交接。原开发基线与集成基线的结果分别记录，不合并计数。
@@ -1165,6 +1167,8 @@ staging 的 BG45 历史 focused replay artifact 为 `desktop-e2e-20260903-111126
 
 <!-- 净化收尾：RC 在机器索引表重复登记，保留唯一机器索引行，移除本处重复。 -->
 
+| `SDE` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-explore-permission-delegate.test.ts` |
+| `CCH` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-custom-command-shell-handoff.test.ts` |
 | `FS` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-first-send.test.ts` |
 | `PW` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-prewarming-queue.test.ts` |
 | `RQ` | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-queue.test.ts` |
@@ -1768,7 +1772,8 @@ artifact 后人工观察”的软通过口径。
 | APC11      | partial  | APC + focused tests          | formal spec 已新增 A 收起、切换 B、返回 A 后保持收起及显式重开断言；focused tests 覆盖 owner 偏好和 BrowserView 生命周期。尚未完成人工 review、Docker replay-isolated 与 verified preset 准入                                                                                                                                 |
 | APC12      | partial  | APC + focused tests          | formal replay：case-local MP4/WAV 进入同一存在性和逆序卡片投影；点击 WAV 后 Preview Pane 挂载原生 `audio[controls]`，媒体不触发 `fileChanges`；Desktop SSH/WSL/Docker Range Proxy 与手机大媒体预览暂不纳入本 case                                                                                                             |
 | APC13      | planned  | focused + SSH/WSL/Docker E2E | Desktop remote attachment 打开大于 8 MiB MP4，Host loopback Range Proxy 返回 `206` 并支持 seek；断言无 OSS 请求、无媒体字节进入 conversation/replay；手机 `/remote` 不复用 loopback URL                                                                                                                                       |
-| APC14      | partial  | APC + focused tests          | 2026-10-21: getFileApplications + visible name/default/first-3/More; isolated main IPC fixture covers 0/1/3/10 candidates and selected app target without launching external apps. Native enumeration remains APC07/APC12. macOS targeted formal replay 4/4 passed (2026-10-21); physical mobile and Docker admission pending |
+| APC14      | partial  | APC + focused tests          | 2026-10-21: getFileApplications + visible name/default/first-3/More; isolated main IPC fixture covers 0/1/3/10 candidates and selected app target without launching external apps. 2026-10-29: local dropdown file-manager reveal order, single OpenInEditor finder/explorer select-file IPC on macOS/Windows (2026-10-30; parent-directory OpenInFileManager on Linux) and the same single entry in the right-click menu (behaviour in APC15); remote/Web visibility not automated. Native enumeration remains APC07/APC12. macOS targeted formal replay 4/4 passed (2026-10-21); physical mobile and Docker admission pending |
+| APC15      | partial  | APC                          | 2026-10-30: macOS only. Isolated main IPC probe: DOCX card and localhost card mapped to a this-turn HTML (sourcePath) send one `OpenInEditor` finder select-file request from context menu and from dropdown; plain URL card has a dropdown but no entry; mapped card still opens the original URL. 2026-11-02: reply-body Markdown file link (local DOCX) shows the entry once after the app group and before Save as, and sends one `OpenInEditor("finder", <path>, {pathKind:"file"})` with no OpenInFileManager/app-open request; body folder link sends one `OpenInFileManager(<dir>)`. Windows/Linux, remote workspaces and mobile pending |
 
 ### Conversation Share Candidate 覆盖
 
@@ -2301,12 +2306,21 @@ DCA-V1-13 菜单兼容追加验收（2026-09-15，manual-review/pending）：在
 
 ## Plan Mode MCP 权限边界覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `Y` 分组。`PMC` 使用 case-local synthetic provider fixture 稳定制造 `EnterPlanMode -> MCP lookup -> destructive MCP` 顺序，并通过工作区 `.zcode/config.json` 注入 stdio MCP fixture server：`lookup` 不声明 `readOnlyHint` 且显式非 destructive，`reset` 声明 `destructiveHint:true`。该 case 只证明桌面本地 `desktop-continuous` 首发 session 的 Plan mode MCP 权限边界；project deny/ask 优先级、伪 `mcp__` 名称不放行和 MCP metadata 映射由 core 单测覆盖，不扩展到手机 remote replayable、设置页健康检查或真实第三方 MCP server。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `Y` 分组。`PMC` 使用 case-local synthetic provider fixture 稳定制造 `EnterPlanMode -> MCP lookup -> destructive MCP` 顺序，并通过隔离 E2E HOME 下的用户级配置注入 stdio MCP fixture server（工作区 MCP 需逐条信任才会连接）：`lookup` 不声明 `readOnlyHint` 且显式非 destructive，`reset` 声明 `destructiveHint:true`；`lookup` 弹出权限弹窗后由用例选择允许一次。该 case 只证明桌面本地 `desktop-continuous` 首发 session 的 Plan mode MCP 权限边界；Plan×原模式的判定矩阵、allow 规则不能跳过 MCP 询问、project deny/ask 优先级、伪 `mcp__` 名称不放行和 MCP metadata 映射由 core 单测覆盖，不扩展到手机 remote replayable、设置页健康检查或真实第三方 MCP server。
 
 | Catalog ID | 覆盖状态 | 自动化 | 备注                                                                                                                                                 |
 | ---------- | -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Y01        | covered  | PMC    | Plan mode 内无 `readOnlyHint` 的非 destructive MCP `lookup` 真实执行，tool_result 进入下一次 provider-visible 请求，且不会触发普通 non-readonly 拒绝 |
+| Y01        | covered  | PMC    | 2026-10-31 改为 Plan 下单次询问：调用 server 前出现权限弹窗、无"始终允许"选项、允许一次后真实执行且 tool_result 进入下一次 provider-visible 请求；通过产物 `packages/desktop/.e2e-artifacts/desktop-e2e-20261031-125335-452`（当前代码重建后复跑，agent 日志判定为 `ask mode.plan.mcp`） |
 | Y02        | covered  | PMC    | 同一 plan turn 内 destructive MCP `reset` 在调用 server 前被拒绝，拒绝结果进入下一次 provider-visible 请求，会话继续收口到最终回复                   |
+
+## 自定义命令 `!` 块转交覆盖口径
+
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `CCH` 分组。`CCH` 使用 case-local synthetic provider fixture：首个模型请求返回固定的非只读 `Bash` tool_use，命令与 `!` 块逐字一致（把 `$CLAUDE_CODE_SESSION_ID` 写入 `${CLAUDE_PROJECT_DIR}/.zcode-e2e-cch.marker`），断言基于真实 CLI 解析后发给模型的请求内容、磁盘上的标记文件及其内容。该 case 只证明桌面本地 `desktop-continuous` 的项目命令；行首/空白识别、代码块闭合、插件变量替换、无法解析时只留说明、参数不被改写由 contracts 单测覆盖，插件命令由 bootstrap 单测覆盖，TUI 路径由 CLI 单测覆盖，Bash 环境变量（前台/后台、`cd` 后仍为工作区根目录）由 core 单测覆盖，headless 拒绝由 CLI 既有权限路径保证，不扩展到手机 remote replayable。
+
+| Catalog ID | 覆盖状态 | 自动化         | 备注 |
+| ---------- | -------- | -------------- | ---- |
+| CCH01      | partial  | CCH（pending） | 2026-11-01 新增：审批框打开时标记文件不存在（解析阶段未执行）；首个模型请求含写明 `/<name>` 命令文件、`project/zcode`、"not from ZCode" 的转交说明，变量保持原文；拒绝后无 `tool.call.started`、拒绝结果进入下一次请求；pending 显式回放通过（artifact: `desktop-e2e-20261101-102447-015`，agent 日志为 Bash `ask mode.build.highRisk` → `deny`），待人工 review 后转正 |
+| CCH02      | partial  | CCH（pending） | 2026-11-01 新增：允许一次后 Bash 执行（`tool.call.started`/`completed`）；标记文件出现在工作区根目录，内容等于当前会话 ID，证明会话 ID 与工作区目录来自 Bash 环境变量；同一 artifact `desktop-e2e-20261101-102447-015`，待人工 review 后转正 |
 
 ## MCP OAuth 状态刷新隔离覆盖口径
 
@@ -2387,6 +2401,7 @@ focused adapter test 与本组 permission 来源 tag 断言共同锁住该边界
 | ---------- | -------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | T01        | covered  | SD + core mirror tests                | formal `SD` 证明 parent V4 dock 的 subagent 来源 tag、自定义回答进入 child 请求、child resolve 清除 pending、父 continuation 回到 idle                                  |
 | T02        | covered  | SD + core mirror tests + adapter test | formal `SD` 证明 parent V4 dock 的 permission 来源 tag、Allow once 进入 child、child Bash 结果与父 continuation 收口；adapter test 防止 V4→PermissionDialog 再丢 origin |
+| T03        | partial  | SDE（pending）+ core runtime tests     | 2026-10-31 新增：内置 Explore 继承父会话 build，非只读 Bash 执行前代理回父会话审批（带子智能体来源），拒绝后未执行，父 continuation 收口；pending 显式回放通过（artifact: `desktop-e2e-20261031-125800-945`，当前代码重建后复跑，agent 日志为 child Bash `ask mode.build.highRisk` 且无 `tool.call.started`），待人工 review 后转正 |
 
 ## Tool Error Surface 覆盖口径
 
@@ -5145,6 +5160,23 @@ WMT 所在 3 条及 Hook HK05–07 共 6 条 E2E 通过；录屏与截图记录�
 根与 E2E typecheck、lint、架构及 79 条受影响工程测试通过。未覆盖实体手机、生产 relay、Windows/Linux 实机；候选不自动转正。
 
 规格见 `../runtime-tools/mcp-status-list-control-plane.md`，设置行为见 `../settings-mcp-list.md`。
+
+MCP 启动失败诊断回归（上游候选记录，不作为 OpenZWork 验收）：
+
+MCP-DIAG-01/02：`packages/desktop/test/e2e/settings/manual-review/pending/mcp-failure-guidance.test.ts`
+为启动失败详情与建议候选，covered（保持 pending，不自动转正）。
+`packages/desktop/.e2e-artifacts/mcp-failure-guidance-final-r5` 2/2 通过：真实进程的 Python/Node
+缺包、命令缺失均显示建议与具体 stderr；认证头、URL 凭证、前缀环境变量、带空格和转义
+引号的凭证值均脱敏，ANSI 不进入界面。桌面与 390px Chrome 手机视口覆盖中英文、深浅
+主题；恢复 fixture 后手动刷新已连接，旧错误入口消失。CLI adapter/官方鉴权回归 57/57
+通过；19 类稳定 failureKind 的中英文建议齐全，不从错误文本推断业务分类。
+
+r1/r2 的桌面断言分别误读关闭动画中的旧弹层与打开动画中不可见的内容，手机均通过。
+r3 的 DOM 证据确认旧节点 state=closed、新节点 state=open 且初始 opacity=0；测试改为
+只读可见的 open 实例，产品未增加延时或重试。r4 补充按插件依赖清单安装的文案并通过；
+r5 在最终脱敏实现上重新构建 Agent，2/2 通过。未覆盖 Windows/Linux 实机或实体手机，
+HTTP/授权等其他失败类型仅补充稳定分类对应建议，不声明各自新增端到端覆盖。
+
 候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-workspace-mcp-trust.test.ts`：
 WMT-01 覆盖 Desktop 未信任零启动、逐条持久信任、手动刷新握手与撤销；WMT-02 覆盖 390px
 手机 Web 经本机隔离 relay 操作同一 Host 记录。未人工转正、未进入 Docker/三平台 CI。
@@ -5489,3 +5521,41 @@ V1-MA-01～04 的语义见 [V1 连接方式](../web-remote-control/v1-connection
 合并 #60、#61、#62 后，在隔离 macOS Electron 上运行提示词设置与多入口远控候选。最终证据：`packages/desktop/.e2e-artifacts/desktop-e2e-20261104-091758-353`，2 个 spec / 5 项通过：SPE04/09、SP14–SP15、SP06/SP08、V1-04 多入口独立启停、V1-MA-02 旧列表启动保留独立 IPC 新增档案。候选保持 manual-review/pending，未转正或加入 Docker。
 
 首次集成运行 3/5：差异正文尚处于 Suspense 占位即被读取；renderer helper 提前 detach debugger，模拟视口随后被撤销。修正正文就绪等待及 debugger 所有权后，复跑保留全部原断言和原时限。该次复跑复用同源码已完成构建的 Desktop/Agent，仅重新加载修改后的 E2E spec/helper。真实手机硬件和 Windows/Linux GUI 不计入此证据。
+
+## 上游 v3.17.2 验证记录
+
+以下记录随上游同步保留；OpenZWork 本次验证以 `docs/spec/upstream-v3.17.2-integration.md` 和本次提交证据为准。
+
+2026-10-26 SAT30 / R3A-TASK-06：父会话真实 Bash cd 后启动 Agent，child 持久化稳定 workspace 身份；退出远端 CLI 与桌面后重新打开原 child，检查新进程身份与原历史正文；随后验证 fork 立即打开及再次重启恢复。macOS Electron + Linux SSH Source、受控模型回放通过，两个重启边界均核对 PID/startTicks 换代。CLI 同时覆盖旧 child 错误 cwd 的两代冷恢复、continuous/replayable 及外部身份拒绝。Host 回归覆盖同目录双项目 fork、facts/ACK 两种顺序、重复交接不覆盖移动、历史远端 NULL 迁移和本地 NULL 保留。未覆盖 Windows 原生运行或实体手机，用例继续保持 pending。
+
+2026-10-30 `hotfix/v3.17.2` 集成验证：CLI 的真实 Bash cd / SQLite 落盘、两种客户端投递模式冷恢复与相关 Subagent / fork 回归共 219 项通过。Host 持久化运行场景验证普通创建命令重试、fork 两种到达顺序、移动后重放、`0010_remote_task_ownership` 的父链修复、旧 `0009` 账本保留及重开数据库；未恢复已退役的 App 业务单测。使用当前 CLI 和 SQLite 输入 Windows 路径字符串时，`D:\project` 与 `d:\project` 的差异仍可复现 `project.session-lineage-invalid`，路径大小写归一化不在本 MR 修复范围；该诊断运行在 macOS，不代表 Windows 原生验收。
+
+本地桌面冷恢复复验：`desktop-e2e-20261030061437455-p20873-82511a24c62ed445`，macOS Electron 的 SAT27/SAT28 1/1 通过、0 skipped、无重试；真实 Agent 派发后重启应用，原 child 历史与只读详情恢复，主任务列表仍隐藏 child。
+
+远端复验前置：桌面与远端 Server 都须设置 `ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn`；本机 Docker 可从标准 harness 镜像派生，在 sshd 配置中加入 `SetEnv ZCODE_DYNAMIC_WORKFLOW_MODE=alwaysOn`，再通过 `R3_REMOTE_IMAGE` 选择。首次缺少远端开关时，模型请求无工作流工具且 Skill 返回未找到（run `local-docker-20261030060626-1e9ec3`）。补齐前置后工作流与辅助对话通过；重启后的页面停在底部，旧用例未滚动到历史 Agent 行，找不到详情入口（run `local-docker-20261030063300-197dda`）。冷恢复验收须先滚动到顶并等待虚拟窗口对齐，再打开原 child；这两次运行均不计完整通过。
+
+最终远端复验：`local-docker-20261030064012-5a0d1d`，macOS Electron → SSH → Linux arm64，R3A-TASK-06 整例 1/1 通过、0 skipped、无重试。真实 Bash cd 后创建 child，工作流 actor 正文只读，辅助对话可续发；退出桌面和远端 Agent 后原 child 恢复正文，再 fork 并第二次重启后恢复。Agent PID 为 201 → 691 → 1099，同时核对 startTicks 换代；工件保留 `subagent.json`、`cold-resume-child.png` 与 `cold-resume-fork.png`。远端包按当前源码指纹验真复用，未更改产品开关逻辑或放宽断言。该证据不覆盖 Windows/Linux 原生桌面、实体手机或线上模型供应商；候选仍为 pending。
+
+## HF01 / SLR 启动归属修复验收（2026-10-30）
+
+covered，候选不自动晋升 formal/CI：HF01 的持久 root 使用带末尾分隔符的旧路径，Host 保持当前路径；
+真实冷打开先显示历史，初始化完成可续发，随后菜单重启保持同一会话和历史。
+SQLite 路径字段在打开、续发、重启后保持不变。SLR 综合例回归桌面 continuous 与手机 replayable
+的菜单、/reload、所属工作关闭与浏览器重用。CLI 补充上下文冲突、旧协议、父链、慢关闭和必要收尾失败。
+不把 CLI 的路径兼容测试宣称为 Windows 原生 UI 证据。
+
+本轮 Linux 容器真实 Electron + 390×844 触屏 Chromium：2 个 spec、3 项用例全部通过，
+无 skipped、无自动重试；深浅主题、菜单、/reload、所属工作关闭与网页保留均通过。
+HF02 注入的是实例 ready 后的快照读取错误；重试应恢复投影并复用实例，不重新执行 resume hook。
+已将过时的“必须重跑 hook”断言改为 generation 与 hook 次数不变，同时保留历史、草稿和滚动断言。
+运行 ID：`desktop-e2e-20261030130734643-p171148-b5576a1c78002a0f`；原始截图、日志保留在运行环境，
+尚未作为仓库附件归档。持久复验入口为上述 E2E 及其受控 provider fixture。
+本轮未实跑 Windows/macOS 原生 GUI、实体手机或 SSH 远端。
+
+## HF / SLR 启动入口补全（2026-11-02）
+
+CLI 定向回归已通过：V4 两种投递模式的并发 workspace 隔离、两种旧 WSL 数据的四个带上下文
+入口、旧无上下文启动的加入者校验、新建任务的归属登记、慢关闭仅告警且真实完成。
+桌面/手机交互沿用 HF01–02 和 SLR 综合候选。本轮实跑 covered：`desktop-e2e-20261102054133648-p182647-caa0869ba42a5410`，Linux Electron 与 390×844 触屏 Chromium，2 spec / 3 test 全通过，无 skipped 或自动重试。没有新增 UI 行为，既有 case 断言保持不变；不自动晋升 formal/CI。
+
+已就绪实例 identity 预检补全回归（2026-11-02）：CLI 协议验证仅替换/删除 identity 的 ensureReady/restart 均拒绝，原实例不关闭且 generation 不变；3 文件 183 项通过。正常 HF01–02 / SLR 交互 covered：`desktop-e2e-20261102060952670-p190384-9867bbf844a8e3cd`，Linux Electron 与触屏 Chromium，2 spec / 3 test 全通过，无自动重试。矛盾 identity 参数由协议回归覆盖，不宣称原生 SSH/WSL E2E。

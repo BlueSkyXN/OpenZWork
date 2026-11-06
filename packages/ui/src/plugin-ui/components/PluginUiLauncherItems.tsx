@@ -17,7 +17,9 @@ export interface PluginUiLauncherItemsProps {
   workspacePath: string;
   workspaceIdentity?: string;
   remoteSessionId?: string;
+  /** 所属 pane 的有效 session，包含已就绪的草稿预热。 */
   sessionId: string | null;
+  paneId?: string;
   onOpenPluginUi: (request: OpenPluginUiSideTabRequest) => void;
   variant?: "launcher" | "menu";
 }

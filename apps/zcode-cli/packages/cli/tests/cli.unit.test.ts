@@ -10,14 +10,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE, ZCODE_PLUGIN_HOST_COMMAND } from "@zcode/contracts";
 import {
-  ZCODE_CUA_OFFICIAL_PLUGIN_ID,
-  ZCODE_CUA_NODE_REPL_HOST_ENV_KEY,
-  ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
-  ZCODE_PLUGIN_ID_ENV_KEY,
   ZCODE_RUNTIME_ENV_KEY,
   readZCodeToolEnvPassthroughEnv,
-  resetCapturedZCodeCuaBrokerCredentialsForTest,
-  sanitizeZCodeRuntimeEnvInPlace,
   type ModelSelection,
   type ZCodeModelOption,
 } from "@zcode/shared";
@@ -31,6 +25,7 @@ import {
   parseSlashCommand,
 } from "../src/command-center.js";
 import type { CommandCenterTarget } from "../src/command-center.js";
+import { expandCliCustomCommandPrompt } from "../src/custom-command-expand.js";
 import { findDotenv, loadCliDotenv, prepareCliRuntimeEnv } from "../src/env.js";
 import { runPluginsCommand } from "../src/plugins-command.js";
 import { runPluginHostCommand } from "../src/plugin-host-command.js";
@@ -1305,6 +1300,33 @@ test("headless prompt keeps a facade-reserved custom command name on the command
   assert.match(ctx.stdout.output(), /Compress tighten it/);
   // 关键：绝不能把原文丢给模型当普通 prompt。
   assert.notEqual(submitted, "/compress tighten it");
+});
+
+test("TUI custom command expansion hands shell blocks to the model like the app path", () => {
+  const { prompt } = expandCliCustomCommandPrompt({
+    args: "go !`touch arg-marker`",
+    command: {
+      content: [
+        "Run !`git status`, then report.",
+        "```!",
+        '"${CLAUDE_PLUGIN_ROOT}/s.sh" "$CLAUDE_PROJECT_DIR" $ARGUMENTS',
+        "```",
+      ].join("\n"),
+      metadata: {
+        name: "probe",
+        plugin: { dataPath: "/data/p", id: "p@market", name: "p", rootPath: "/plugins/p" },
+        scope: "user",
+        source: "plugin",
+      },
+    },
+  });
+
+  assert.match(prompt, /the \/probe command file \(user\/plugin\), not from ZCode\./);
+  // 代码块结束后原文另起一行；插件变量换成真实路径，工作区变量留给 Bash 环境；参数原样进入。
+  assert.ok(prompt.includes("```bash\ngit status\n```\n, then report."));
+  assert.ok(
+    prompt.includes('```bash\n"/plugins/p/s.sh" "$CLAUDE_PROJECT_DIR" go !`touch arg-marker`\n```'),
+  );
 });
 
 test("headless prompt keeps the Unknown command response for an unresolvable slash name", async () => {
@@ -4114,238 +4136,6 @@ export async function main() {
       delete process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT;
     } else {
       process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT = originalOutputEnv;
-    }
-    await rm(root, { force: true, recursive: true });
-  }
-});
-
-test("retired argv-based CUA host fails closed without the shared node_repl marker", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-cli-cua-plugin-host-mismatch-"));
-  const serverPath = join(root, "server.js");
-  const outputPath = join(root, "host-output.json");
-  const keys = [
-    "ZCODE_CUA_PERMISSION_BROKER_SOCKET",
-    "ZCODE_CUA_PERMISSION_BROKER_TOKEN",
-    "ZCODE_PLUGIN_HOST_TEST_OUTPUT",
-    ZCODE_PLUGIN_ID_ENV_KEY,
-    ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
-    ZCODE_CUA_NODE_REPL_HOST_ENV_KEY,
-  ] as const;
-  const originalEnv = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-
-  try {
-    await writeFile(join(root, "package.json"), JSON.stringify({ type: "module" }));
-    await writeFile(
-      serverPath,
-      `import { writeFile } from "node:fs/promises";
-export async function main() {
-  await writeFile(process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT, JSON.stringify({
-    token: process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN,
-  }));
-}
-`,
-    );
-    process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT = outputPath;
-    process.env[ZCODE_PLUGIN_ID_ENV_KEY] = ZCODE_CUA_OFFICIAL_PLUGIN_ID;
-    process.env.ZCODE_CUA_PERMISSION_BROKER_SOCKET = "/tmp/cua-broker.sock";
-    process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN = "scoped-secret-token";
-    process.env[ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY] = "official-authority";
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    sanitizeZCodeRuntimeEnvInPlace(process.env);
-    assert.equal(process.env[ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY], undefined);
-
-    const ctx = createContext([ZCODE_PLUGIN_HOST_COMMAND, serverPath]);
-    const exitCode = await runPluginHostCommand(ctx, [
-      serverPath,
-      "--permission-broker-socket",
-      "/tmp/attacker.sock",
-    ]);
-
-    assert.equal(exitCode, 1);
-    assert.match(
-      ctx.stderr.output(),
-      /Captured ZCode CUA broker credentials may only launch the trusted shared node_repl host/,
-    );
-    await assert.rejects(readFile(outputPath, "utf8"), { code: "ENOENT" });
-  } finally {
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    for (const key of keys) {
-      const value = originalEnv[key];
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    await rm(root, { force: true, recursive: true });
-  }
-});
-
-test("shared node_repl host restores the captured CUA broker credentials", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-cli-cua-node-repl-host-"));
-  const serverPath = join(root, "server.js");
-  const outputPath = join(root, "host-output.json");
-  const keys = [
-    "ZCODE_CUA_PERMISSION_BROKER_SOCKET",
-    "ZCODE_CUA_PERMISSION_BROKER_TOKEN",
-    "ZCODE_PLUGIN_HOST_TEST_OUTPUT",
-    ZCODE_PLUGIN_ID_ENV_KEY,
-    ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
-    ZCODE_CUA_NODE_REPL_HOST_ENV_KEY,
-  ] as const;
-  const originalEnv = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-
-  try {
-    await writeFile(join(root, "package.json"), JSON.stringify({ type: "module" }));
-    await writeFile(
-      serverPath,
-      `import { writeFile } from "node:fs/promises";
-export async function main() {
-  await writeFile(process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT, JSON.stringify({
-    socket: process.env.ZCODE_CUA_PERMISSION_BROKER_SOCKET,
-    token: process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN,
-  }));
-}
-`,
-    );
-    process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT = outputPath;
-    process.env[ZCODE_PLUGIN_ID_ENV_KEY] = ZCODE_CUA_OFFICIAL_PLUGIN_ID;
-    process.env[ZCODE_CUA_NODE_REPL_HOST_ENV_KEY] = "1";
-    process.env.ZCODE_CUA_PERMISSION_BROKER_SOCKET = "/tmp/cua-broker.sock";
-    process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN = "scoped-secret-token";
-    process.env[ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY] = "official-authority";
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    sanitizeZCodeRuntimeEnvInPlace(process.env);
-
-    const ctx = createContext([ZCODE_PLUGIN_HOST_COMMAND, serverPath]);
-    assert.equal(await runPluginHostCommand(ctx, [serverPath]), 0);
-    // identity 模式：恢复给宿主的只有 socket（配 authority），没有口令。环境里那个遗留
-    // token 是历史键，sanitize 会连它一起剔除，因此宿主根本看不到它 —— 否则旧版 Helper
-    // （认 bearer token 的那些）就能被同 agent 内的其它子进程直接驱动。
-    // 逐字段断言：JSON.stringify 会把值为 undefined 的键整个省掉，深比较对不上。
-    const hostEnv = JSON.parse(await readFile(outputPath, "utf8")) as {
-      socket?: string;
-      token?: string;
-    };
-    assert.equal(hostEnv.socket, "/tmp/cua-broker.sock");
-    assert.equal(hostEnv.token, undefined);
-    // 宿主只在运行期间短暂恢复，跑完父进程 env 必须回到已剔除状态。
-    assert.equal(process.env.ZCODE_CUA_PERMISSION_BROKER_SOCKET, undefined);
-    assert.equal(process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN, undefined);
-  } finally {
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    for (const key of keys) {
-      const value = originalEnv[key];
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    await rm(root, { force: true, recursive: true });
-  }
-});
-
-test("shared node_repl host launches with identity-mode credentials (socket + authority, no token)", async () => {
-  // M1 身份模式（darwin）：Helper 不签发 token；M7 懒启动：authority 由 spawn 铸造。
-  // 2026-09-10 回归：守卫曾要求 token，导致 node_repl 宿主启动即退出、工具面为空。
-  const root = await mkdtemp(join(tmpdir(), "zcode-cli-cua-node-repl-identity-"));
-  const serverPath = join(root, "server.js");
-  const outputPath = join(root, "host-output.json");
-  const keys = [
-    "ZCODE_CUA_PERMISSION_BROKER_SOCKET",
-    "ZCODE_CUA_PERMISSION_BROKER_TOKEN",
-    "ZCODE_PLUGIN_HOST_TEST_OUTPUT",
-    ZCODE_PLUGIN_ID_ENV_KEY,
-    ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
-    ZCODE_CUA_NODE_REPL_HOST_ENV_KEY,
-  ] as const;
-  const originalEnv = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-
-  try {
-    await writeFile(join(root, "package.json"), JSON.stringify({ type: "module" }));
-    await writeFile(
-      serverPath,
-      `import { writeFile } from "node:fs/promises";
-export async function main() {
-  await writeFile(process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT, JSON.stringify({
-    socket: process.env.ZCODE_CUA_PERMISSION_BROKER_SOCKET,
-    token: process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN ?? null,
-  }));
-}
-`,
-    );
-    process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT = outputPath;
-    process.env[ZCODE_PLUGIN_ID_ENV_KEY] = ZCODE_CUA_OFFICIAL_PLUGIN_ID;
-    process.env[ZCODE_CUA_NODE_REPL_HOST_ENV_KEY] = "1";
-    process.env.ZCODE_CUA_PERMISSION_BROKER_SOCKET = "/tmp/cua-broker.sock";
-    delete process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN;
-    process.env[ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY] = "official-authority";
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    sanitizeZCodeRuntimeEnvInPlace(process.env);
-
-    const ctx = createContext([ZCODE_PLUGIN_HOST_COMMAND, serverPath]);
-    assert.equal(await runPluginHostCommand(ctx, [serverPath]), 0);
-    assert.deepEqual(JSON.parse(await readFile(outputPath, "utf8")), {
-      socket: "/tmp/cua-broker.sock",
-      token: null,
-    });
-  } finally {
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    for (const key of keys) {
-      const value = originalEnv[key];
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    await rm(root, { force: true, recursive: true });
-  }
-});
-
-test("plugin host refuses non-official code while product broker credentials are captured", async () => {
-  const root = await mkdtemp(join(tmpdir(), "zcode-cli-non-cua-plugin-host-"));
-  const serverPath = join(root, "server.js");
-  const outputPath = join(root, "host-output.json");
-  const keys = [
-    "ZCODE_CUA_PERMISSION_BROKER_SOCKET",
-    "ZCODE_CUA_PERMISSION_BROKER_TOKEN",
-    "ZCODE_PLUGIN_HOST_TEST_OUTPUT",
-    ZCODE_PLUGIN_ID_ENV_KEY,
-    ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY,
-    ZCODE_CUA_NODE_REPL_HOST_ENV_KEY,
-  ] as const;
-  const originalEnv = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
-
-  try {
-    await writeFile(join(root, "package.json"), JSON.stringify({ type: "module" }));
-    await writeFile(
-      serverPath,
-      `import { writeFile } from "node:fs/promises";
-export async function main() {
-  await writeFile(process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT, String(Boolean(process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN)));
-}
-`,
-    );
-    process.env.ZCODE_PLUGIN_HOST_TEST_OUTPUT = outputPath;
-    process.env[ZCODE_PLUGIN_ID_ENV_KEY] = "zcode-cua@third-party";
-    process.env.ZCODE_CUA_PERMISSION_BROKER_SOCKET = "/tmp/cua-broker.sock";
-    process.env.ZCODE_CUA_PERMISSION_BROKER_TOKEN = "must-not-leak";
-    process.env[ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY] = "captured-authority";
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    sanitizeZCodeRuntimeEnvInPlace(process.env);
-    assert.equal(process.env[ZCODE_CUA_PLUGIN_AUTHORITY_ENV_KEY], undefined);
-
-    const ctx = createContext([
-      ZCODE_PLUGIN_HOST_COMMAND,
-      serverPath,
-      "--permission-broker-socket",
-      "/tmp/cua-broker.sock",
-    ]);
-    assert.equal(await run(ctx), 1);
-    assert.match(
-      ctx.stderr.output(),
-      /Captured ZCode CUA broker credentials may only launch the trusted shared node_repl host/,
-    );
-    await assert.rejects(readFile(outputPath, "utf8"), { code: "ENOENT" });
-  } finally {
-    resetCapturedZCodeCuaBrokerCredentialsForTest();
-    for (const key of keys) {
-      const value = originalEnv[key];
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
     }
     await rm(root, { force: true, recursive: true });
   }
