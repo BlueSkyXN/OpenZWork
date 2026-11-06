@@ -125,6 +125,10 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts --bail=1
 
+      - name: Legacy memory isolation regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/memory-isolation.test.ts --bail=1
+
       - name: Bash output settlement and shutdown regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/bash-direct-execution.test.ts tests/bash-shutdown.test.ts --bail=1

@@ -38,6 +38,21 @@ describe(CASE_MARKER, () => {
     this.timeout(180_000);
     await skipOccupationOnboardingIfPresent();
     await waitForTestIdByDom(TID_TASK_SETTINGS_BUTTON, { timeout: 30_000 });
+    // MISO01：旧 ZCode 树在冷启动前存在，缺少迁移标记也不能自动导入。
+    const memoryRelative = join("cli", "memories", "projects", "isolation-fixture", "memory");
+    const legacyDirectory = join(paths.homeDir, ".zcode", memoryRelative);
+    const ownDirectory = join(paths.storageRoot, memoryRelative);
+    await mkdir(legacyDirectory, { recursive: true });
+    await mkdir(ownDirectory, { recursive: true });
+    await writeFile(join(legacyDirectory, "legacy.md"), "legacy-memory-canary");
+    await writeFile(join(ownDirectory, "own.md"), "openzwork-memory-canary");
+    await reloadElectronSessionPreservingBrowserProfile(browser);
+    await waitForTestIdByDom(TID_TASK_SETTINGS_BUTTON, { timeout: 45_000 });
+    await expect(stat(join(ownDirectory, "legacy.md"))).rejects.toMatchObject({ code: "ENOENT" });
+    await expect(stat(join(paths.appDataDir, "memory-migration.json"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(await readFile(join(legacyDirectory, "legacy.md"), "utf8")).toBe("legacy-memory-canary");
     await rm(target, { recursive: true, force: true });
     await mkdir(target, { recursive: true });
     const before = await readSettings();
@@ -81,5 +96,15 @@ describe(CASE_MARKER, () => {
     expect(await readFile(join(target, ".openzwork/security", canary), "utf8")).toBe(CASE_MARKER);
     expect((await stat(join(target, ".openzwork/v2/tasks-index.sqlite"))).isFile()).toBe(true);
     expect((await stat(join(target, ".openzwork/cli/db/db.sqlite"))).isFile()).toBe(true);
+    // MISO02：目录迁移保留 OpenZWork 自有记忆；新目标不重新吸收旧 ZCode 数据。
+    const relocatedMemory = join(target, ".openzwork", memoryRelative);
+    expect(await readFile(join(relocatedMemory, "own.md"), "utf8")).toBe("openzwork-memory-canary");
+    await expect(stat(join(relocatedMemory, "legacy.md"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    await expect(stat(join(target, ".openzwork/v2/memory-migration.json"))).rejects.toMatchObject({
+      code: "ENOENT",
+    });
+    expect(await readFile(join(legacyDirectory, "legacy.md"), "utf8")).toBe("legacy-memory-canary");
   });
 });

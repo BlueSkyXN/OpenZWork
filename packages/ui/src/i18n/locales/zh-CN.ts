@@ -167,7 +167,7 @@ const zhCN: Record<string, string> = {
   "settings.systemPrompt.unsaved": "有未保存的修改",
   "settings.systemPrompt.savedConfig": "已保存的配置",
   "settings.systemPrompt.scope":
-    "用于主会话。保存后在新建或重新加载会话时应用；当前运行中的请求保持原配置。",
+    "保存后，新建主会话使用新配置。已有会话可通过任务菜单“重启任务”或 /reload 应用；重启会停止当前任务的执行并保留历史。",
   "settings.systemPrompt.replaceHint":
     "替换默认行为规则，保留当前能力、记忆位置和输出风格。下方选择要注入的动态上下文。",
   "settings.systemPrompt.replacement": "自定义系统提示词",
@@ -3024,8 +3024,7 @@ const zhCN: Record<string, string> = {
   "settings.memory.workspaceMemory": "工作区记忆",
   "settings.memoryDescription":
     "在工作区中保存并复用长期上下文，新会话生效。开启后可能增加模型调用和 Token 成本。",
-  "settings.memory.migratedHint":
-    "开启后将读取本机 ~/.openzwork/cli/memories 下保存的工作区记忆；旧版本（~/.zcode）的数据会在应用启动时自动迁移。",
+  "settings.memory.viewer.disabled": "开启工作区记忆后查看已保存的内容。",
   "settings.memory.viewer.localOnly":
     "记忆详情仅支持在本地桌面端查看，请前往本地桌面端的“记忆”设置。",
   "settings.memory.viewer.title": "已保存的工作区记忆",

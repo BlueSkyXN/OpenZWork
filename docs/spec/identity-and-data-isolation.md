@@ -42,10 +42,9 @@ OpenZWork 是 ZCode 开源版本的净化＋特调版。产品必须在用户机
    即使 HOME 是 Git worktree 根，也不能把其中的官方用户目录当作项目配置。HOME 下的
    普通项目仍保留 `.zcode` 与 `.agents` 兼容扫描，用户级 `.agents` 仍可用。CLI 与设置页
    使用同一个 Node-only HOME 判定工具；设置页不得向 HOME 的原生项目命令目录写入。
-2. **WP-E1a 记忆迁移**：`packages/shared/src/node/memoryMigration.ts` 及其 UI 文案
-   （memoryMigrationHint、i18n locales）一次性**单向读取**旧根 `~/.zcode` 复制记忆数据，
-   是唯一获批的旧根读取点；不得反向写入。其用户文案的测试夹具
-   （`packages/services/test/memory-migration.test.ts`）逐字镜像上述文案，随本条一并豁免。
+2. **旧记忆隔离验收**：测试可以在隔离目录播种旧 ZCode 数据，验证启动不导入且源文件不变。
+   WP-E1a 自动迁移豁免于 2026-11-06 取消；生产启动链不再读取旧记忆树，见
+   [旧 ZCode 记忆隔离](memory-migration.md)。已有 OpenZWork 记忆与历史迁移标记保留原样。
 3. **政策与修复依据文本**：本 spec 与 `docs/spec/memory-migration.md` 以旧根路径定义
    隔离边界本身；`scripts/zcode-distribution/installer.mjs` 的注释引用被替换的旧默认
    目录（`$HOME/.zcode/runtime`）作为默认值变更的修复依据。开发态诊断/重放工具描述的
@@ -94,7 +93,6 @@ OpenZWork 是 ZCode 开源版本的净化＋特调版。产品必须在用户机
 
 ```text
 Desktop setting.json → Main getDataBaseDir（唯一所有者）
-  ├─ 记忆迁移 → 当前 dataBaseDir/.openzwork/cli/memories
   └─ buildHostProcessEnv → Local Host / scheduler
        ├─ services memory catalog → 同一根（只读投影）
        ├─ prepare-storage Worker → 同一 sessionDbPath
@@ -135,8 +133,8 @@ Desktop setting.json → Main getDataBaseDir（唯一所有者）
 
 ## 迁移边界
 
-产品已经发布，必须保护现有 OpenZWork 用户的配置、数据与升级连续性。官方旧数据不自动迁移
-（WP-E1a 记忆迁移的单向复制除外）。远端机上的旧官方 `~/.zcode/server` 不被读取、不被复用、不被覆盖。
+产品已经发布，必须保护现有 OpenZWork 用户的配置、数据与升级连续性。官方旧数据不自动迁移，
+包括旧记忆。远端机上的旧官方 `~/.zcode/server` 不被读取、不被复用、不被覆盖。
 
 ## Desktop 显示名称
 
