@@ -3,7 +3,9 @@ import {
   callHandoffHost,
 } from "../../../helpers/remote-project-handoff-probe.js";
 import { ServiceChannels } from "@zcode/shared";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { E2ENetworkCaptureArtifact } from "../../../helpers/network-capture-proxy.js";
 import { startConversationModelProviderReplayServer } from "../../../helpers/model-provider-replay.js";
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
 import { reloadElectronSessionSafely } from "../../../helpers/e2e-electron-reload.js";
@@ -92,6 +94,23 @@ describe("MD01 / PU03–04 / UX01 模型拉取与用量", () => {
     expect(
       await $('[role="checkbox"][aria-label="deepseek-v4-flash"]').getAttribute("data-disabled"),
     ).not.toBeNull();
+    // MD04：网关依据版本头伪装目录；目录查询省略自动版本头，推理仍保留 Messages 协议。
+    const capture = JSON.parse(
+      await readFile(replay.artifactPath, "utf8"),
+    ) as E2ENetworkCaptureArtifact;
+    const directoryRequests = capture.records.filter(
+      (record) => record.method === "GET" && record.path === "/v1/models",
+    );
+    expect(directoryRequests).toHaveLength(1);
+    expect(directoryRequests[0]?.requestHeaders["anthropic-version"]).toBeUndefined();
+    expect(
+      capture.records.some(
+        (record) =>
+          record.method === "POST" &&
+          record.path.endsWith("/messages") &&
+          record.requestHeaders["anthropic-version"] === "2023-06-01",
+      ),
+    ).toBe(true);
     await browser.saveScreenshot(join(artifact(), "model-discovery-list.png"));
     await candidate.click();
     await clickTestIdByDom("provider-model-discovery-add");
