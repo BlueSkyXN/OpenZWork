@@ -4,6 +4,7 @@ import {
 } from "#e2e/helpers/web-remote-control-settings";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { createHash } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { mkdir, writeFile, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve, extname, sep } from "node:path";
@@ -781,5 +782,256 @@ describe("E2E_V1_CONNECTIONS", () => {
     );
     await clickButton("^(关闭远程控制|停止|Stop.*)$");
     await context.close();
+  });
+
+  it("TPM01/02/03: historical tasks move between projects through desktop and touch menus", async function () {
+    if (process.env.ZCODE_E2E_VERIFY_OFFICIAL_V1 !== "1") {
+      this.skip();
+      return;
+    }
+    this.timeout(180_000);
+    await skipOccupationOnboardingIfPresent();
+    await leaveRemoteControlSettings();
+    await ensureSidebarOpen();
+    await restoreHandoffProbes();
+    await installHandoffRpcProbe();
+    const taskId = "sess_e2e_v1_closed";
+    const cwd = join(resolveE2EStorageRoot(), "workspace/closed-history");
+    const otherPath = join(resolveE2EStorageRoot(), "workspace/move-target");
+    await mkdir(otherPath, { recursive: true });
+    const createProject = (name: string, roots: string[]) =>
+      callHandoffHost<VirtualProject>(ServiceChannels.Project, "saveProject", [{ name, roots }]);
+    const first = await createProject("E2E_TASK_MOVE_A", [cwd]);
+    const second = await createProject("E2E_TASK_MOVE_B", [otherPath]);
+    const emptyTarget = await createProject("E2E_TASK_MOVE_EMPTY", []);
+    await browser.execute(() => {
+      const actions = (
+        window as unknown as {
+          __testActions: { setLocale(value: string): void; setTheme(value: string): void };
+        }
+      ).__testActions;
+      actions.setLocale("zh-CN");
+      actions.setTheme("zai-light");
+    });
+    await selectV4TaskById(taskId, 30_000);
+    const readTask = () => {
+      const db = new DatabaseSync(join(resolveE2EStorageRoot(), "v2/tasks-index.sqlite"), {
+        readOnly: true,
+      });
+      try {
+        return db
+          .prepare(
+            "SELECT task_id,workspace_key,root_path,project_id,cli_created_at,cli_updated_at,pinned,archived FROM tasks WHERE task_id=?",
+          )
+          .get(taskId)!;
+      } finally {
+        db.close();
+      }
+    };
+    const transcriptHash = () => {
+      const db = new DatabaseSync(join(resolveE2EStorageRoot(), "cli/db/db.sqlite"), {
+        readOnly: true,
+      });
+      try {
+        return createHash("sha256")
+          .update(
+            JSON.stringify([
+              db.prepare("SELECT * FROM message WHERE session_id=? ORDER BY id").all(taskId),
+              db.prepare("SELECT * FROM part WHERE session_id=? ORDER BY id").all(taskId),
+            ]),
+          )
+          .digest("hex");
+      } finally {
+        db.close();
+      }
+    };
+    const original = readTask();
+    const originalTranscript = transcriptHash();
+    expect(original.project_id).toBeNull();
+    const row = () => $(`[data-testid="task-item-${taskId}"]`);
+    const reveal = async (projectId?: string) => {
+      if (projectId && !(await row().isDisplayed())) {
+        await $(`[data-project-id="${projectId}"] [data-testid="virtual-project-row"]`).click();
+      }
+      await row().waitForDisplayed({ timeout: 15_000 });
+    };
+    const choose = async (targetId: string) => {
+      // 项目展开期间行仍在移动；等原 Collapsible 动效结束，再由 WebDriver 按稳定位置右键。
+      await browser.execute(async (id) => {
+        const item = document.querySelector(`[data-testid="task-item-${id}"]`);
+        const scope = item?.closest("[data-project-id]") ?? item;
+        const animations =
+          scope
+            ?.getAnimations({ subtree: true })
+            .filter((animation) => animation.effect?.getTiming().iterations !== Infinity) ?? [];
+        await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
+      }, taskId);
+      await browser.execute(() => {
+        const target = window as unknown as { __projectMoveProbe: unknown[] };
+        target.__projectMoveProbe = [];
+        for (const name of ["pointerdown", "contextmenu"])
+          document.addEventListener(
+            name,
+            (event) => {
+              const element = event.target as HTMLElement;
+              target.__projectMoveProbe.push({
+                type: name,
+                tag: element.tagName,
+                testId: element.getAttribute("data-testid"),
+                row: element.closest("li")?.getAttribute("data-testid"),
+                x: (event as MouseEvent).clientX,
+                y: (event as MouseEvent).clientY,
+              });
+            },
+            { once: true, capture: true },
+          );
+      });
+      await row().click({ button: "right" });
+      const menu = $('[data-testid="task-project-move-menu"]');
+      try {
+        await menu.waitForDisplayed();
+      } catch (cause) {
+        await browser.saveScreenshot(join(artifacts, "task-project-menu-failed.png"));
+        const details = await browser.execute(() => ({
+          events: (window as unknown as { __projectMoveProbe: unknown[] }).__projectMoveProbe,
+          pointerEvents: getComputedStyle(document.body).pointerEvents,
+          menus: [...document.querySelectorAll('[data-slot="context-menu-content"]')].map(
+            (element) => ({
+              text: element.textContent,
+              rect: element.getBoundingClientRect().toJSON(),
+            }),
+          ),
+        }));
+        await writeFile(join(artifacts, "task-project-menu-failed.json"), JSON.stringify(details));
+        throw cause;
+      }
+      await menu.moveTo();
+      const target = $(`[data-task-project-target="${targetId}"]`);
+      await target.waitForDisplayed();
+      await target.click();
+    };
+    await reveal();
+    await choose(first.id);
+    await browser.waitUntil(() => readTask().project_id === first.id);
+    await reveal(first.id);
+    await expect(
+      $(`[data-project-id="${first.id}"] [data-testid="task-item-${taskId}"]`),
+    ).toBeDisplayed();
+    await choose(second.id);
+    await $('[data-testid="task-project-move-confirm"]').waitForDisplayed();
+    await browser.saveScreenshot(join(artifacts, "task-project-move-confirm.png"));
+    await browser.keys("Escape");
+    expect(readTask().project_id).toBe(first.id);
+    let projects = await callHandoffHost<VirtualProject[]>(ServiceChannels.Project, "readProjects");
+    expect(
+      projects.find((project) => project.id === second.id)!.roots.map((root) => root.rootPath),
+    ).toEqual([otherPath]);
+    await choose(second.id);
+    await $('[data-testid="task-project-move-confirm"]').waitForDisplayed();
+    await $('[data-testid="confirm-dialog-confirm"]').click();
+    await browser.waitUntil(() => readTask().project_id === second.id);
+    await reveal(second.id);
+    projects = await callHandoffHost<VirtualProject[]>(ServiceChannels.Project, "readProjects");
+    const target = projects.find((project) => project.id === second.id)!;
+    expect(target.roots.map((root) => root.rootPath)).toEqual([otherPath, cwd]);
+    expect(target.roots.find((root) => root.isPrimary)?.rootPath).toBe(otherPath);
+    expect(readTask()).toEqual({ ...original, project_id: second.id });
+    expect(transcriptHash()).toBe(originalTranscript);
+    await browser.saveScreenshot(join(artifacts, "task-project-move-desktop.png"));
+
+    await $('[data-testid="sidebar-view-menu"]').click();
+    await $('[data-testid="sidebar-view-grouped"]').click();
+    await reveal();
+    await choose(emptyTarget.id);
+    await $('[data-testid="task-project-move-confirm"]').waitForDisplayed();
+    await $('[data-testid="confirm-dialog-confirm"]').click();
+    await browser.waitUntil(() => readTask().project_id === emptyTarget.id);
+    projects = await callHandoffHost<VirtualProject[]>(ServiceChannels.Project, "readProjects");
+    expect(projects.find((project) => project.id === emptyTarget.id)!.roots).toEqual([
+      { rootPath: cwd, position: 0, isPrimary: true },
+    ]);
+    await waitForV4ConversationState(
+      (state) => state.taskId === taskId,
+      "项目移动改变了当前会话",
+      15_000,
+    );
+    await $('[data-testid="sidebar-view-menu"]').click();
+    await $('[data-testid="sidebar-view-projects"]').click();
+
+    await openSettings();
+    await $('[data-testid="web-remote-mode-direct"]').click();
+    await $('[data-testid="web-remote-listen-host"]').setValue("127.0.0.1");
+    await $('[data-testid="web-remote-start"]').click();
+    await browser.waitUntil(async () => (await status()).status === "running", { timeout: 35_000 });
+    const link = new URL(await pairingLink());
+    link.hostname = "openzwork.test";
+    const context = await mobile!.newContext({
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+      locale: "zh-CN",
+    });
+    const page = await context.newPage();
+    try {
+      await openMobilePairingPage(page, link.toString(), {
+        artifactDir: artifacts,
+        caseMarker: "E2E_V1_CONNECTIONS",
+        phase: "project-move",
+        readySelector: '[data-testid="virtual-project-new-task"]',
+      });
+      const mobileRow = page.getByTestId(`task-item-${taskId}`);
+      if (!(await mobileRow.isVisible()))
+        await page
+          .locator(`[data-project-id="${emptyTarget.id}"] [data-testid="virtual-project-row"]`)
+          .click();
+      await mobileRow.waitFor();
+      const bounds = await mobileRow.boundingBox();
+      if (!bounds) throw new Error("Mobile task row is not visible");
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }],
+      });
+      try {
+        await page.getByTestId("task-project-move-menu").waitFor({ timeout: 5_000 });
+      } finally {
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      }
+      await page.getByTestId("task-project-move-menu").click();
+      const targets = page.getByTestId("task-project-move-targets");
+      await targets.waitFor();
+      await targets.evaluate(async (element) => {
+        await Promise.all(element.getAnimations().map((animation) => animation.finished));
+      });
+      const menuBounds = await targets.boundingBox();
+      expect(menuBounds).toBeTruthy();
+      expect(menuBounds!.x).toBeGreaterThanOrEqual(0);
+      expect(menuBounds!.x + menuBounds!.width).toBeLessThanOrEqual(390);
+      expect(menuBounds!.y + menuBounds!.height).toBeLessThanOrEqual(844);
+      await page.screenshot({ path: join(artifacts, "task-project-move-mobile-menu.png") });
+      await page.locator(`[data-task-project-target="${first.id}"]`).click();
+      await browser.waitUntil(() => readTask().project_id === first.id);
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.locator(`[data-project-id="${first.id}"]`).waitFor();
+      expect(readTask()).toEqual({ ...original, project_id: first.id });
+      expect(transcriptHash()).toBe(originalTranscript);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+        true,
+      );
+      await writeFile(
+        join(artifacts, "task-project-move-result.json"),
+        JSON.stringify({
+          desktopMove: true,
+          cancelPreserved: true,
+          addedRoot: true,
+          primaryRootPreserved: true,
+          touchMove: true,
+          reloadPreserved: true,
+          transcriptPreserved: true,
+        }),
+      );
+    } finally {
+      await context.close();
+    }
   });
 });

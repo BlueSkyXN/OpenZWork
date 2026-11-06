@@ -414,3 +414,24 @@ patches:
     refs:
       - docs/spec/shared-file-lock-acquisition.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40525930576/job/122265384951
+
+  - id: OW-P020
+    title: 触摸长按任务行打开空菜单
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.17.1
+      checked: 3.17.1
+    trigger: 手机通过触摸长按普通任务行，Radix 在 pointerdown 定时器中打开列表级菜单。
+    impact: 列表没有选定菜单目标，任务菜单为空，移动到项目等组织操作无法使用。
+    cause: 上游 TaskListItem 只在 contextmenu 上报任务 ID，Radix 的 touch/pen 长按不派发该事件；TaskList 的 onOpenChange 只处理关闭。
+    fix: 触摸或笔按下先记录目标，列表在真正打开时挂载内容并取消该行归档确认；普通点按不加载菜单。关闭和下一次按下清除旧目标，桌面右键保留重选能力。
+    evidence: 上游来源 872ad960 的 TaskList 单例菜单逻辑在 3.17.1 基线仍存在；TPM03 的实际 Chromium touch 在旧接线下超时，桌面项目移动和正文校验已通过。
+    files:
+      - packages/ui/src/TaskList.tsx
+      - packages/ui/src/TaskListItem.tsx
+    regression:
+      - packages/ui/test/groupedConversationMenu.test.ts
+    retire: 上游为列表级菜单覆盖 touch/pen 目标选择，普通点按仍保持懒加载，桌面右键与真实触摸回归通过。
+    refs:
+      - docs/superpowers/specs/2026-09-09-virtual-project-design.md

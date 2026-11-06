@@ -92,6 +92,8 @@ export const TaskList = memo(function TaskList({
   const [pendingArchiveTaskId, setPendingArchiveTaskId] = useState<string | null>(null);
   const [renamingTaskId, setRenamingTaskId] = useState<string | null>(null);
   const [contextMenuTaskId, setContextMenuTaskId] = useState<string | null>(null);
+  const contextMenuTargetRef = useRef<string | null>(null);
+  const contextMenuOpenRef = useRef(false);
   const [renameDraft, setRenameDraft] = useState("");
   const renameInputRef = useRef<HTMLInputElement | null>(null);
   const pendingArchiveTaskIdRef = useRef<string | null>(pendingArchiveTaskId);
@@ -121,10 +123,10 @@ export const TaskList = memo(function TaskList({
   const handleOpenTaskContextMenu = useCallback((taskId: string) => {
     // 以前每个 task row 都常驻一个 Radix ContextMenu root/trigger。
     // 现在 row 只上报目标 task，真正的菜单树由列表级单例挂载，避免大会话里按行放大 Popper/MenuProvider 成本。
-    if (pendingArchiveTaskIdRef.current === taskId) {
-      setPendingArchiveTaskId(null);
-    }
-    setContextMenuTaskId(taskId);
+    // OW-P020：触摸长按由 Radix pointerdown 定时打开，不触发行的 contextmenu。
+    // 先记录目标，菜单真正打开才加载内容；普通点按不探测路径、不取消归档确认。
+    contextMenuTargetRef.current = taskId;
+    if (contextMenuOpenRef.current) setContextMenuTaskId(taskId);
   }, []);
 
   const handleCreateTask = useCallback(() => {
@@ -460,13 +462,25 @@ export const TaskList = memo(function TaskList({
           ) : (
             <ContextMenu
               onOpenChange={(open) => {
+                contextMenuOpenRef.current = open;
+                const target = contextMenuTargetRef.current;
+                setContextMenuTaskId(open ? target : null);
+                if (open && pendingArchiveTaskIdRef.current === target)
+                  setPendingArchiveTaskId(null);
                 if (!open) {
-                  setContextMenuTaskId(null);
+                  contextMenuTargetRef.current = null;
                 }
               }}
             >
               <ContextMenuTrigger asChild>
-                <ul className="space-y-0.5">{visibleSourceTasks.map(renderTaskItem)}</ul>
+                <ul
+                  className="space-y-0.5"
+                  onPointerDownCapture={() => {
+                    contextMenuTargetRef.current = null;
+                  }}
+                >
+                  {visibleSourceTasks.map(renderTaskItem)}
+                </ul>
               </ContextMenuTrigger>
               {contextMenuTask ? (
                 <TaskListItemContextMenuContent
