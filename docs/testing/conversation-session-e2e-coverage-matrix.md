@@ -5478,6 +5478,8 @@ release 推送前复验：继续合入 `225d1b14e1495598757dea872f72e0ac764b09ec
 
 ## V1 多接入档案回归（2026-11-04）
 
+`V1-PJ-01`～`V1-PJ-04`：官方旧页创建归属候选，见 [创建归属规格](../web-remote-control/v1-connection-modes.md#官方旧页的新建归属)。`web-remote-v1-connections.test.ts` 扩展唯一目录及无 root 项目的真实发送、隔离 tasks-index 归属与刷新恢复断言。macOS Electron + 真实官方 3.15.2 网页 + 本地模型回放：未修复基线 `desktop-e2e-20261106-014716-319` 在 project_id 为 NULL 的断言失败；修复后 `desktop-e2e-20261106-015031-855` 完整远控 6/6 通过，含 V1-PJ-01/02、历史恢复、失效目录、运行中排队与刷新。V1-PJ-04 的 connection scope 与真实内存 SQLite 预留路径完成 14 项可重复运行时检查，含显式 null、跨工作区、并发 attachment、移动后重试、过期 attachment 与 IPC schema 限制。多项目拒绝沿用原实现，本轮未新增其 GUI 验收；Windows/Linux GUI 与实体手机未执行。候选保持 manual-review/pending。
+
 V1-MA-01～04 的语义见 [V1 连接方式](../web-remote-control/v1-connection-modes.md#多档案并发与恢复)。runtime、适配器和 React hook 定向回归验证取消、单项写入、恢复记录及多官方目录；Desktop 候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts` 补充 V1-MA-02。最终 macOS Electron 运行 `packages/desktop/.e2e-artifacts/desktop-e2e-20261104-080210-534`：V1-04 多入口独立启停与 V1-MA-02 旧列表启动保留独立 IPC 新增档案，2/2 通过；另一窗口写入由独立 IPC 模拟。6 个定向回归文件共 57 项通过，覆盖 V1-MA-01～04 的受控场景。首次 E2E 构建因当前工作区缺少 contracts 局部 Zod 3 依赖而失败，复用已有 3.25.76 后构建和两次桌面运行通过。候选保持 manual-review/pending，未转正或纳入 Docker；真实公网与跨操作系统 GUI 未在本轮验收。
 
 ## OpenZWork 3.17.1+openzwork.2 集成验收（2026-11-04）

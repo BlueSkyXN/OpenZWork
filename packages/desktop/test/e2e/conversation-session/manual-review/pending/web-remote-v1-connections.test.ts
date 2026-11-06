@@ -4,9 +4,10 @@ import {
 } from "#e2e/helpers/web-remote-control-settings";
 import { createServer } from "node:http";
 import { once } from "node:events";
+import { DatabaseSync } from "node:sqlite";
 import { mkdir, writeFile, readFile, rm, stat } from "node:fs/promises";
 import { join, resolve, extname, sep } from "node:path";
-import { chromium, type Browser } from "playwright-core";
+import { chromium, type Browser, type Page } from "playwright-core";
 import { createLocalPairingRelay } from "../../../helpers/local-pairing-relay.js";
 import { openMobilePairingPage } from "../../../helpers/mobile-pairing.js";
 import { skipOccupationOnboardingIfPresent } from "../../../helpers/occupation-onboarding.js";
@@ -52,6 +53,43 @@ import { refreshSeededOpenAIProvidersThroughSettings } from "../../../helpers/cu
 const artifacts = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR ?? ".e2e-artifacts/v1-connections");
 let mobile: Browser | undefined;
 const closes: Array<() => Promise<unknown>> = [];
+
+function readCreatedProjectTasks(workspacePath: string) {
+  const db = new DatabaseSync(join(resolveE2EStorageRoot(), "v2/tasks-index.sqlite"), {
+    readOnly: true,
+  });
+  try {
+    return db
+      .prepare(
+        "SELECT task_id, project_id, root_path FROM tasks WHERE root_path=? AND cli_created_at IS NOT NULL AND deleted=0",
+      )
+      .all(workspacePath) as Array<{
+      task_id: string;
+      project_id: string | null;
+      root_path: string;
+    }>;
+  } finally {
+    db.close();
+  }
+}
+
+async function selectOfficialReplayModel(page: Page) {
+  await page.getByTestId(TID_CHAT_MODEL_SELECT_TRIGGER).click();
+  const modelItem = page.getByTestId(
+    testId(
+      TID_CHAT_MODEL_SELECT_ITEM,
+      encodeCustomModelValue(UPSTREAM_PROVIDER_ID, UPSTREAM_MODEL),
+    ),
+  );
+  if (!(await modelItem.isVisible())) {
+    const group = page.getByTestId(
+      testId(TID_CHAT_MODEL_SELECT_GROUP, `registry-provider:${UPSTREAM_PROVIDER_ID}`),
+    );
+    await group.hover();
+    await group.click();
+  }
+  await modelItem.click();
+}
 
 async function status() {
   return JSON.parse(
@@ -469,6 +507,7 @@ describe("E2E_V1_CONNECTIONS", () => {
       return;
     }
     this.timeout(300_000);
+    await skipOccupationOnboardingIfPresent();
     await leaveRemoteControlSettings();
     await ensureSidebarOpen();
     const replay = await startConversationModelProviderReplayServer("web-remote-v1-connections", {
@@ -582,10 +621,43 @@ describe("E2E_V1_CONNECTIONS", () => {
       .first()
       .waitFor({ timeout: 30_000 });
     await backHome();
-    for (const name of ["E2E_V1_RENAMED_PROJECT", "E2E_V1_ROOTLESS_PROJECT"]) {
+    const createdProjectTasks: Array<{ taskId: string; projectId: string }> = [];
+    for (const [name, projectId, marker] of [
+      ["E2E_V1_RENAMED_PROJECT", empty.id, "ROOTED"],
+      ["E2E_V1_ROOTLESS_PROJECT", rootless.id, "ROOTLESS"],
+    ] as const) {
       await card(name).locator("button").nth(1).click();
       await page.locator('[contenteditable="true"]').first().waitFor({ timeout: 30_000 });
-      await page.locator('[contenteditable="true"]').first().fill("E2E_V1_DIRECTORY_DRAFT");
+      await selectOfficialReplayModel(page);
+      await page
+        .locator('[contenteditable="true"]')
+        .first()
+        .fill(`E2E_V1_OFFICIAL_DIRECTORY_${marker}`);
+      await page.getByTestId("v4-composer-send").click();
+      await page.getByText(`E2E_V1_DIRECTORY_REPLY_${marker}`, { exact: false }).first().waitFor({
+        timeout: 45_000,
+      });
+      const projects = await callHandoffHost<VirtualProject[]>(
+        ServiceChannels.Project,
+        "readProjects",
+      );
+      const cwd = projects
+        .find((project) => project.id === projectId)
+        ?.roots.find((root) => root.isPrimary)?.rootPath;
+      expect(cwd).toBeTruthy();
+      // Bug 原因：旧用例只填草稿便返回，未经过创建预留，漏掉官方旧页丢失项目归属。
+      await browser.waitUntil(() => readCreatedProjectTasks(cwd!).length === 1, {
+        timeout: 30_000,
+      });
+      const [created] = readCreatedProjectTasks(cwd!);
+      expect(created!.project_id).toBe(projectId);
+      expect(created!.root_path).toBe(cwd);
+      createdProjectTasks.push({ taskId: created!.task_id, projectId });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.getByText(`E2E_V1_DIRECTORY_REPLY_${marker}`, { exact: false }).first().waitFor({
+        timeout: 30_000,
+      });
+      expect(readCreatedProjectTasks(cwd!)).toEqual([created]);
       await backHome();
     }
     const roots = await callHandoffHost<VirtualProject[]>(ServiceChannels.Project, "readProjects");
@@ -624,22 +696,7 @@ describe("E2E_V1_CONNECTIONS", () => {
       .waitFor({ timeout: 30_000 });
     await browser.waitUntil(async () => (await status()).mobileConnected === true);
     // 历史夹具故意没有可执行模型；手机从真实目录选择本地回放模型后才能发送。
-    await page.getByTestId(TID_CHAT_MODEL_SELECT_TRIGGER).click();
-    await page.screenshot({ path: join(artifacts, "official-model-picker.png") });
-    const modelItem = page.getByTestId(
-      testId(
-        TID_CHAT_MODEL_SELECT_ITEM,
-        encodeCustomModelValue(UPSTREAM_PROVIDER_ID, UPSTREAM_MODEL),
-      ),
-    );
-    if (!(await modelItem.isVisible())) {
-      const group = page.getByTestId(
-        testId(TID_CHAT_MODEL_SELECT_GROUP, `registry-provider:${UPSTREAM_PROVIDER_ID}`),
-      );
-      await group.hover();
-      await group.click();
-    }
-    await modelItem.click();
+    await selectOfficialReplayModel(page);
     // 受控流保持 running，手机提交后以桌面已接受队列为准，避免只验证乐观消息。
     await leaveRemoteControlSettings();
     await selectV4TaskById("sess_e2e_v1_official", 30_000);
@@ -705,6 +762,7 @@ describe("E2E_V1_CONNECTIONS", () => {
         historyListed: true,
         closedHistoryRead: true,
         emptyProjectDraft: true,
+        createdProjectTasks,
         rootlessProjectInitialized: true,
         renamePushed: true,
         missingDirectoryRejected: true,

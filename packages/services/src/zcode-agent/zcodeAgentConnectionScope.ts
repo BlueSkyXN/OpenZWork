@@ -2,6 +2,7 @@
 // V4 connection-scoped service facade：每个 RPC attachment 独立持有 subscription
 // ownership；base service 仍只转发 CLI 事实，不在 host/main/relay 复制业务状态。
 import { Emitter, Event as RpcEvent, type Event, type IDisposable } from "@zcode/rpc";
+import type { HostLegacyProjectCreation } from "@zcode/shared";
 import {
   V4_WIRE_PROTOCOL_VERSION,
   clientHelloSchema,
@@ -30,6 +31,8 @@ export interface ZCodeAgentV4ConnectionContext {
   connectionId: string;
   clientMode: ZCodeAgentV4ClientMode;
   role?: "terminal-client" | "trusted-host-relay";
+  /** Host attachment 的目录新建意图，不向 CLI 或下游 relay 转发。 */
+  legacyProjectCreation?: HostLegacyProjectCreation;
   /**
    * 这条连接的 clientHello 声明了认得 `workflowRun.*` 键级增量。与 `clientMode` 同族：
    * 由本 facade 从握手事实写出，订阅入参里的同名字段一律被清掉——一个客户端认不认得增量
@@ -745,6 +748,19 @@ export function createZCodeAgentConnectionScope(
           // 直达 CLI；静默覆盖又会破坏 command 幂等归属，因此明确拒绝不一致。
           throw new Error("fault.command.clientMismatch");
         }
+      }
+      // 官方旧页没有 projectId 参数；只在对应 attachment 的首次创建入口补缺省。
+      // null 是显式未分类，历史命令、其他 cwd 与已有预留归属均沿原路径保持。
+      const creation = context.legacyProjectCreation;
+      if (
+        role === "terminal-client" &&
+        context.clientMode === "web-remote-replayable" &&
+        creation &&
+        params.envelope.type === "createSession" &&
+        params.projectId === undefined &&
+        workspaceKey(params) === creation.workspaceKey
+      ) {
+        params = { ...params, projectId: creation.projectId };
       }
       // command 过去只校验 envelope.clientId，却没有像订阅、附件一样注入
       // host 真值，导致 mobile 可伪造顶层 clientMode，且 relay 下游身份在 command 链路丢失。

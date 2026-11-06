@@ -5249,4 +5249,6 @@ SSV01/02/04 使用真实 Electron、Host 与 CLI；SSV03 同时保留 Electron �
 
 ## V1 多接入档案回归（2026-11-04）
 
+官方旧页项目归属回归 `V1-PJ-01`～`V1-PJ-04` 为 accepted，设置、动作与断言见 [官方旧页的新建归属](web-remote-control/v1-connection-modes.md#官方旧页的新建归属)。`web-remote-v1-connections.test.ts` 必须从官方 3.15.2 页实际发送唯一 root／无 root 项目的消息，并读取隔离 tasks-index 的归属和刷新后的正文；填写草稿后返回不能作为创建覆盖。历史 NULL 行修复、远端 Source 无项目创建与更新官方网页版本不在本次范围。
+
 V1-MA-01～04 为 accepted，触发、断言与边界见 [V1 连接方式](web-remote-control/v1-connection-modes.md#多档案并发与恢复)。其中 V1-MA-02 的 Desktop 候选沿用 `web-remote-v1-connections.test.ts`，补充旧列表在独立 IPC 模拟其他窗口写入后新增档案仍存在的断言。只使用隔离设置与合成档案，不引入真实供应商或公网 relay。

@@ -3125,6 +3125,12 @@ nodes:
     codeSeeds:
       - symbol: createWebRemoteControlSharedHostAttachments
         file: packages/desktop/src/main/webRemoteControlSharedHostAttachments.ts
+      - symbol: createZCodeAgentConnectionScope
+        file: packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts
+    invariants:
+      - Official legacy directory creation carries the resolved project and prepared workspace key only
+        within its local replayable attachment. The Host fills an absent createSession projectId before
+        reservation; explicit null, other workspaces, history and desktop continuous remain unchanged.
   - id: service.desktop-web-remote-control-authorization
     kind: service
     label: Desktop Web Remote Control start dispatch boundary
