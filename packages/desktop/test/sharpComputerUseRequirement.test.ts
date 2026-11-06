@@ -29,12 +29,12 @@ afterEach(() => {
 });
 
 describe("isSharpRequiredByComputerUse", () => {
-  it("真实 Computer Use 包声明 sharp 时需要暂存 sharp", () => {
+  it("CUA-001：真实 producer 声明 sharp 也不能使 OpenZWork 暂存 CUA 依赖", () => {
     const desktopRoot = createWorkspace(
       { name: "@zcode/zcode-cua", dependencies: { sharp: "^0.34.0" } },
       "root",
     );
-    expect(isSharpRequiredByComputerUse({ desktopPackageRoot: desktopRoot })).toBe(true);
+    expect(isSharpRequiredByComputerUse({ desktopPackageRoot: desktopRoot })).toBe(false);
   });
 
   it("不声明 sharp 的占位包不需要 sharp，优先读取离桌面包最近的安装", () => {

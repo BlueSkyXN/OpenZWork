@@ -3303,8 +3303,7 @@ const zhCN: Record<string, string> = {
     "应用与 Agent 日志、崩溃报告；清理时保留当天。",
   "resourceManager.storage.categoryDescription.backups": "升级或迁移前自动留下的数据库与配置副本。",
   "resourceManager.storage.categoryDescription.exports": "导出的日志包与反馈附件。",
-  "resourceManager.storage.categoryDescription.runtimes":
-    "内置 Agent 运行时、Computer Use 组件与插件。",
+  "resourceManager.storage.categoryDescription.runtimes": "内置 Agent 运行时与插件。",
   "resourceManager.storage.categoryDescription.config": "设置、凭据、记忆与默认工作区文件。",
   "resourceManager.storage.categoryDescription.other":
     "未归类的文件，以及切换数据存储路径后遗留的旧副本。",

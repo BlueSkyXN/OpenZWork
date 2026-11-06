@@ -926,43 +926,6 @@ html[data-document-hidden] *::after {
     --animated-gradient-text-strong: var(--color-foreground-subtle);
   }
 
-  .cua-group-gradient-text {
-    display: inline-block;
-    background: linear-gradient(
-      90deg,
-      var(--animated-gradient-text-strong) 0%,
-      var(--animated-gradient-text-soft) 40%,
-      var(--animated-gradient-text-soft) 60%,
-      var(--animated-gradient-text-strong) 100%
-    );
-    background-size: 200% 100%;
-    background-clip: text;
-    -webkit-background-clip: text;
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    animation: cua-group-gradient-flow 1s linear infinite;
-    animation-delay: 0.5s;
-    will-change: background-position;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-  }
-
-  @keyframes cua-group-gradient-flow {
-    0% {
-      background-position: 100% 0;
-    }
-
-    100% {
-      background-position: -100% 0;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .cua-group-gradient-text {
-      animation: none;
-    }
-  }
-
   @keyframes gradient-flow {
     0% {
       background-position: 100% 0;

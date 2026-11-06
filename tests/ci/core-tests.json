@@ -2,6 +2,13 @@
   "version": 1,
   "suites": [
     {
+      "capability": "cua-placeholder-boundary",
+      "files": [
+        "packages/desktop/test/placeholderProducerDetection.test.ts",
+        "packages/desktop/test/sharpComputerUseRequirement.test.ts"
+      ]
+    },
+    {
       "capability": "business-data-directory-relocation",
       "files": [
         "packages/shared/src/data-directory/contract.test.ts",

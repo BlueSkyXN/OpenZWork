@@ -1,38 +1,10 @@
-// Sharp native module staging for the shared node_repl runtime.
-//
-// Why this exists: the bundled node_repl server
-// (apps/zcode-cli/packages/browser-use-plugin/dist/mcp/server.js) externalizes `sharp` because it loads a native `.node`
-// binary that esbuild cannot inline. In dev the workspace's hoisted
-// `node_modules/sharp` resolves fine. In the installed ZCode.app the server
-// runs from `<Resources>/glm/packages/browser-use-plugin/dist/mcp/server.js` and
-// Node walks up looking for `node_modules/sharp`. Nothing in that walk reaches
-// the Electron app.asar tree, so without staging sharp into the glm/ tree the
-// server fails at top-level ESM resolution and product CUA never comes up.
-//
-// What we do: copy `sharp` + the per-triplet prebuild packages into each official
-// plugin's `node_modules/` (including `zcode-cua-plugin`, which is CUA's native
-// dependency root and is independent from Browser Use).
-// macOS/Linux split the native `.node` and libvips into `@img/sharp-*` +
-// `@img/sharp-libvips-*`; Windows keeps both the `.node` and libvips DLLs in
-// `@img/sharp-win32-*`. Keeping dependencies beside the plugin avoids
-// electron-builder's root node_modules filter and matches Node's resolution.
-//
-// Mirrors node-pty-package-assets.mjs in spirit (per-triplet prebuild staging
-// into the packaged app) but writes into the bundled-agents tree instead of
-// before afterPack because extraResources already ships the whole glm/
-// directory; afterPack then verifies the final app tree.
+// Sharp 旧资源处理工具。OpenZWork 的 CUA 需求检测固定不可用；
+// 保留通用文件处理导出以兼容已有工程调用。
 
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  statSync,
-} from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
+import { isRealComputerUseProducerInstalled } from "./computer-use-producer.mjs";
 
 const requireFromDesktop = createRequire(import.meta.url);
 
@@ -159,32 +131,14 @@ function copyRuntimePackage(sourceRoot, targetRoot) {
 }
 
 /**
- * Stage Sharp's JS dependencies and target-specific native packages into
- * `<glmDir>/node_modules/...` so the shared node_repl server.js can
- * resolve the bare specifier `import sharp from "sharp"` from either official
- * plugin root. CUA passes its own root explicitly and does not depend on
- * Browser Use's staged files.
- *
- * Must be idempotent and safe to run for every desktop target platform.
+ * 保留旧需求检测接口，统一使用 OpenZWork 的 CUA 空占位策略。
+ * 原先按本机 producer 清单决定暂存，会让已取消的能力重新携带 Sharp/libvips。
  */
-/**
- * sharp 只服务于 Computer Use 截图（由 @zcode/zcode-cua 声明依赖）。
- * 构建使用不声明 sharp 的 Computer Use 占位包时，不暂存也不校验 sharp，安装包不携带 sharp/libvips。
- * 这里只读当前安装的 @zcode/zcode-cua 清单，不依赖包导出（其 exports 不含 package.json）。
- */
-export function isSharpRequiredByComputerUse({ desktopPackageRoot }) {
-  for (let dir = resolve(desktopPackageRoot); ; dir = dirname(dir)) {
-    const manifestPath = resolve(dir, "node_modules", "@zcode", "zcode-cua", "package.json");
-    if (existsSync(manifestPath)) {
-      const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-      return ["dependencies", "optionalDependencies", "peerDependencies"].some(
-        (field) => typeof manifest[field]?.sharp === "string",
-      );
-    }
-    if (dirname(dir) === dir) return false;
-  }
+export function isSharpRequiredByComputerUse(options = {}) {
+  return isRealComputerUseProducerInstalled(options);
 }
 
+/** 历史资源复制接口；产品构建不启用 CUA，保留供独立工程调用。 */
 export function stageSharpIntoBundledAgents({ desktopPackageRoot, glmDir, targetPlatform }) {
   if (!desktopPackageRoot) {
     throw new Error("[sharp-package-assets] desktopPackageRoot is required");
