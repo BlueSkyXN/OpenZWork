@@ -15,7 +15,12 @@
 !endif
 
 !ifndef ZCODE_INSTALL_MANIFEST_NAME
-  !define ZCODE_INSTALL_MANIFEST_NAME ".zcode-install-manifest"
+  !define ZCODE_INSTALL_MANIFEST_NAME ".openzwork-install-manifest"
+!endif
+; 改名过渡（2026-11-07）：旧版本安装器写入 .zcode-install-manifest。所有权清单与卸载器
+; 能力标记都写在旧安装目录里，升级读取时必须兼容旧名，缺清单会回退 fail-open 保留策略。
+!ifndef ZCODE_LEGACY_INSTALL_MANIFEST_NAME
+  !define ZCODE_LEGACY_INSTALL_MANIFEST_NAME ".zcode-install-manifest"
 !endif
 
 !ifndef ZCODE_UNINSTALLER_LOG_PATH
@@ -80,8 +85,12 @@
     !endif
     ClearErrors
     FileOpen $R0 "$INSTDIR\${ZCODE_INSTALL_MANIFEST_NAME}" r
+    IfErrors 0 zcodeManifestOpened
+    ClearErrors
+    FileOpen $R0 "$INSTDIR\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" r
     IfErrors zcodeManifestMissing
 
+    zcodeManifestOpened:
     zcodeManifestRead:
       ClearErrors
       FileRead $R0 $R1
@@ -279,13 +288,24 @@
   Function ZCodeDetectPreviousUninstallerCapabilities
     StrCpy $ZCodePreviousUninstallerSupportsManifest "0"
     ; manifest 是卸载器能力标记：存在即表示旧卸载器会按清单选择性删除。
-    IfFileExists "$INSTDIR\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityCheckNested
+    ; 改名过渡：新旧清单名任一存在即视为旧卸载器支持清单清理。
+    IfFileExists "$INSTDIR\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePrevCapLegacyRoot
+      StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
+      Return
+
+    zcodePrevCapLegacyRoot:
+    IfFileExists "$INSTDIR\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityCheckNested
       StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
       Return
 
     zcodePreviousUninstallerCapabilityCheckNested:
       ; assisted installer 的目录页会在后续 instfilesPre 才补上 APP_FILENAME 子目录，提前兼容两种形态。
-      IfFileExists "$INSTDIR\${APP_FILENAME}\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityDone
+      IfFileExists "$INSTDIR\${APP_FILENAME}\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePrevCapLegacyNested
+        StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
+        Goto zcodePreviousUninstallerCapabilityDone
+
+    zcodePrevCapLegacyNested:
+      IfFileExists "$INSTDIR\${APP_FILENAME}\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityDone
         StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
 
     zcodePreviousUninstallerCapabilityDone:
@@ -495,6 +515,14 @@
     IfFileExists "$R9\.zcode" 0 zcodeFindNestedDataDirListChildren
       StrCpy $R2 "$R9\.zcode"
     StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
+    ; 改名（2026-11-07）：当前数据根为 .openzwork，用户把数据目录放进安装目录的新形态
+    ; 同样会在覆盖安装时被清掉，递归保护必须同时识别两种命名。
+    IfFileExists "$R9\.openzwork\*.*" 0 +2
+      StrCpy $R2 "$R9\.openzwork"
+    StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
+    IfFileExists "$R9\.openzwork" 0 zcodeFindNestedDataDirListChildren
+      StrCpy $R2 "$R9\.openzwork"
+    StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
 
     zcodeFindNestedDataDirListChildren:
       FindFirst $0 $1 "$R9\*"
@@ -552,7 +580,7 @@
       Pop $0
       StrCmp $0 error zcodeInstallDirDataBlockDialogFailed 0
 
-      ${NSD_CreateLabel} 0u 0u 300u 44u "检测到该安装目录或其子目录中存在 .zcode 数据目录：$\r$\n$R2"
+      ${NSD_CreateLabel} 0u 0u 300u 44u "检测到该安装目录或其子目录中存在 .zcode / .openzwork 数据目录：$\r$\n$R2"
       Pop $1
       ${NSD_CreateLabel} 0u 54u 300u 70u "为避免历史会话和配置被安装器清理，请返回上一步选择其他安装目录。$\r$\n$\r$\n当前目录不能继续安装。"
       Pop $1
@@ -568,7 +596,7 @@
       Return
 
     zcodeInstallDirDataBlockDialogFailed:
-      MessageBox MB_OK|MB_ICONSTOP "检测到安装目录或其子目录中存在 .zcode 数据目录，安装已停止。请重新运行安装器并选择其他安装目录。"
+      MessageBox MB_OK|MB_ICONSTOP "检测到安装目录或其子目录中存在 .zcode / .openzwork 数据目录，安装已停止。请重新运行安装器并选择其他安装目录。"
       SetErrorLevel 1
       Quit
 

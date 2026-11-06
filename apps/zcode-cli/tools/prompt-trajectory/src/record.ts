@@ -145,7 +145,7 @@ function useIsolatedHome(home: string): () => void {
   const keys = [...HOME_ENV_KEYS, "ZCODE_STORAGE_DIR"] as const;
   const previous = new Map(keys.map((key) => [key, process.env[key]]));
   for (const key of HOME_ENV_KEYS) process.env[key] = home;
-  process.env.ZCODE_STORAGE_DIR = join(home, ".zcode");
+  process.env.ZCODE_STORAGE_DIR = join(home, ".openzwork");
   return () => {
     for (const [key, value] of previous) {
       if (value === undefined) delete process.env[key];

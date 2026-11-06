@@ -95,9 +95,14 @@ export function resolveAgentUserInstructionsHomeDir(env: NodeJS.ProcessEnv = pro
   return envHome && envHome.length > 0 ? envHome : homedir();
 }
 
-/** `{home}/.zcode/AGENTS.md`：用户自定义指令（个性化）的唯一事实源文件。 */
+/**
+ * `{home}/.openzwork/AGENTS.md`：用户自定义指令（个性化）的唯一事实源文件。
+ * Bugfix（2026-11-07）：此前硬编码 `.zcode`，设置页读写的是官方 ZCode 的指令文件，
+ * 而 Agent 侧（apps/zcode-cli context adapter）读取 `{home}/.openzwork/AGENTS.md`，
+ * 导致保存后不生效且污染官方产品目录。修复后两端同根。
+ */
 export function getAgentUserInstructionsFilePath(env: NodeJS.ProcessEnv = process.env): string {
-  return join(resolveAgentUserInstructionsHomeDir(env), ".zcode", "AGENTS.md");
+  return join(resolveAgentUserInstructionsHomeDir(env), OPENZWORK_DATA_DIR_NAME, "AGENTS.md");
 }
 
 function readEnvValue(env: Record<string, string | undefined>, key: string): string | undefined {

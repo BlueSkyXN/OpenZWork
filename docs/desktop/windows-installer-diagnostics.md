@@ -2,7 +2,7 @@
 
 ## 目标
 
-对本版本之后生成的 managed 更新，用户能在安装器详情和文件日志中看到可定位的阶段与进程，且静默更新仍记录同一组阶段事件。安装器使用 `.zcode-install-manifest` 判断上一版本卸载器能力，而不是依赖数字版本号：缺失 manifest 时按旧卸载器的全量删除风险处理，存在 manifest 时按新卸载器的选择性清理处理。
+对本版本之后生成的 managed 更新，用户能在安装器详情和文件日志中看到可定位的阶段与进程，且静默更新仍记录同一组阶段事件。安装器使用 `.openzwork-install-manifest`（旧版本为 `.zcode-install-manifest`，双名兼容）判断上一版本卸载器能力，而不是依赖数字版本号：缺失 manifest 时按旧卸载器的全量删除风险处理，存在 manifest 时按新卸载器的选择性清理处理。
 
 ## 阶段事件
 
@@ -44,14 +44,14 @@ NSIS .onInit
 
 ## 卸载器能力判断
 
-- 安装器在调用旧卸载器前检查旧 `$INSTDIR\\.zcode-install-manifest`。
+- 安装器在调用旧卸载器前检查旧 `$INSTDIR\\.openzwork-install-manifest` 或旧名 `$INSTDIR\\.zcode-install-manifest`。
 - manifest 存在：上一版本卸载器支持 ownership cleanup，跳过 `.zcode` 目录保护扫描。
-- manifest 缺失：上一版本可能是旧的全量删除卸载器，先扫描安装目录及子目录；发现 `.zcode` 时阻止继续安装。
+- manifest 缺失：上一版本可能是旧的全量删除卸载器，先扫描安装目录及子目录；发现 `.zcode` 或 `.openzwork` 时阻止继续安装。
 - manifest 缺失不等同于某个精确数字版本，可能是历史版本、手动删除清单或安装损坏；统一采用保守路径。
 
 ## 兼容边界
 
-- 只有上一版本已经携带 `.zcode-install-manifest` 时，ownership cleanup 和 `cleanup-failed` 分类才属于本规范的强保证；缺失 manifest 的路径采用旧卸载器兼容和 `.zcode` 保护。
+- 只有上一版本已经携带 ownership manifest（新旧名任一）时，ownership cleanup 和 `cleanup-failed` 分类才属于本规范的强保证；缺失 manifest 的路径采用旧卸载器兼容和数据目录保护。
 - 从没有 manifest 的历史版本升级时，允许 electron-builder 原生卸载器重试和原生错误文案；本轮不接管其备份、恢复或全树清理。
 - 交互式 managed 更新若旧卸载器返回非零，可能先显示 electron-builder 的 `appCannotBeClosed` 重试提示，用户取消后再显示本项目的清理错误；静默更新以退出码和日志为准。
 - 清理失败提示使用 `/SD IDOK`：交互模式显示错误框，静默模式自动采用默认确认并返回退出码 `2`，不会等待用户操作。

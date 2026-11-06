@@ -168,7 +168,9 @@ const PACMAN_RUNTIME_DEPENDENCIES = [
   "xdg-utils",
 ];
 
-const WINDOWS_INSTALL_MANIFEST_NAME = ".zcode-install-manifest";
+// 改名（2026-11-07）：清单文件落在用户安装目录，随产品命名空间改为 .openzwork-install-manifest；
+// 安装器读取旧安装目录时兼容旧名 .zcode-install-manifest（见 build/installer.nsh 过渡逻辑）。
+const WINDOWS_INSTALL_MANIFEST_NAME = ".openzwork-install-manifest";
 
 async function writeWindowsInstallManifest(context) {
   if (context.electronPlatformName !== "win32") return;

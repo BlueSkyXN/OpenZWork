@@ -5,6 +5,7 @@ import { test } from "vitest";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import {
   getAppConfigDir,
+  getAgentUserInstructionsFilePath,
   getConversationWorkspaceDir,
   getDataBaseDir,
   getTasksIndexDatabasePath,
@@ -48,5 +49,25 @@ test("默认（真实 HOME）根目录同样落在 .openzwork 下", () => {
     } else {
       process.env.HOME = previousHome;
     }
+  }
+});
+
+test("用户级个性化指令文件路径落在 .openzwork，与 Agent 读取同根", () => {
+  // 2026-11-07 回归：getAgentUserInstructionsFilePath 曾硬编码 .zcode，设置页写到
+  // 官方 ZCode 的 AGENTS.md 而 Agent 读 .openzwork/AGENTS.md，保存后不生效。
+  const fakeHome = join(tmpdir(), "ozw-paths-test-agents-md");
+  const previousHome = process.env.HOME;
+  const previousUserProfile = process.env.USERPROFILE;
+  process.env.HOME = fakeHome;
+  delete process.env.USERPROFILE;
+  try {
+    const filePath = getAgentUserInstructionsFilePath();
+    assert.equal(filePath, join(fakeHome, ".openzwork", "AGENTS.md"));
+    assert.ok(!filePath.includes(".zcode"));
+  } finally {
+    if (previousHome === undefined) delete process.env.HOME;
+    else process.env.HOME = previousHome;
+    if (previousUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = previousUserProfile;
   }
 });

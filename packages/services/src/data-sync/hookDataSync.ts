@@ -14,6 +14,7 @@ import {
   type WorkspaceHookDefinition,
   type WorkspaceHookEventName,
 } from "@zcode/shared/workspace-hook-discovery";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import { readJsonObjectFileForUpdate, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { checkRemoteSyncDirectoryWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import { resolveUserHomeDir } from "#src/subagents/subagentStorage.js";
@@ -37,7 +38,9 @@ interface HookEntry {
 
 /** 只同步用户级 `~/.openzwork/cli/config.json` 的 hooks；`~/.agents`、`~/.claude` 下的只读来源不读。 */
 function userConfigPath(): string {
-  return join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
+  // Bugfix（2026-11-07）：注释承诺同步用户级 OpenZWork 配置，实现却指向官方 ZCode
+  // 用户配置（旧根 cli/config.json）；读与写都污染另一产品。统一回 OPENZWORK_DATA_DIR_NAME。
+  return join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "cli", "config.json");
 }
 
 function sha256(value: string): string {

@@ -26,16 +26,16 @@ export async function createWorkerSelectionIntegration(
   setDataBaseDir(home);
   const runtimePaths = {
     zcodeBuiltinFilePath: resolve("../../config/provider/zcode-builtin.json"),
-    personalFilePath: join(home, ".zcode/v2/provider_config.json"),
+    personalFilePath: join(home, ".openzwork/v2/provider_config.json"),
   };
   // 独立 Host 不继承 Electron 设置。保持内建 HTTPS endpoint，
   // 将显式网络出口接到本轮数据面代理，避免假凭据直连或 HTTP 被官方请求安全校验拒绝。
   const httpProxy = process.env.ZCODE_HTTP_PROXY?.trim();
   const caCertFile = process.env.ZCODE_AGENT_CA_CERT?.trim();
   if (!httpProxy || !caCertFile) throw new Error("Worker 选择回归缺少隔离 HTTPS 数据面代理");
-  await mkdir(join(home, ".zcode/cli"), { recursive: true });
+  await mkdir(join(home, ".openzwork/cli"), { recursive: true });
   await writeFile(
-    join(home, ".zcode/cli/config.json"),
+    join(home, ".openzwork/cli/config.json"),
     JSON.stringify({
       network: { httpProxy, caCertFile, noProxy: process.env.ZCODE_NO_PROXY },
     }),

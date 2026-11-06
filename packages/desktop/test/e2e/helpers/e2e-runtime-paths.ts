@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 
 export const E2E_RUNTIME_RELATIVE_ROOT = ".zcode-e2e";
 export const E2E_RUNTIME_ROOT_REPLAY_TOKEN = "{{e2eRuntimeRoot}}";
-const E2E_AGENT_WORKSPACE_NAME = "ZCodeProject";
+// 与 fileService SCRATCH_WORKSPACE_ROOT_NAME 同名（2026-11-07 改名后）。
+const E2E_AGENT_WORKSPACE_NAME = "OpenZWorkProject";
 
 interface ResolveE2EHomeDirOptions {
   cwd?: string;

@@ -7,6 +7,7 @@ import type {
   DataSyncListItem,
   SkillDataSyncPayload,
 } from "@zcode/shared";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import { pathExists, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
@@ -52,14 +53,16 @@ interface ResolvedUserSkill {
 }
 
 function getCliConfigPath(): string {
-  return join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
+  // Bugfix（2026-11-07）：技能启用覆盖状态应存于 OpenZWork 用户配置；
+  // 原路径指向官方 ZCode 的 config.json，读写均越界。与 commandsService 同源。
+  return join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "cli", "config.json");
 }
 
 function normalizeSkillConfigPath(path: string): string {
   return path.replaceAll("\\", "/");
 }
 
-/** 按归一化 name 对齐的用户级技能；同名时保留候选排序中的第一项（`.zcode` 优先）。 */
+/** 按归一化 name 对齐的用户级技能；同名时保留候选排序中的第一项（`.openzwork` 优先）。 */
 async function resolveUserSkills(): Promise<Map<string, ResolvedUserSkill>> {
   const zcodeRoot = getUserZcodeSkillRoot();
   const result = new Map<string, ResolvedUserSkill>();

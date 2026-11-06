@@ -28,7 +28,7 @@ Section
   File /oname=ZCode.exe "${FIXTURE_EXE}"
   StrCpy $appExe "$INSTDIR\ZCode.exe"
   !ifndef OMIT_MANIFEST
-    FileOpen $0 "$INSTDIR\.zcode-install-manifest" w
+    FileOpen $0 "$INSTDIR\.openzwork-install-manifest" w
     FileWrite $0 "owned-by-zcode.txt$\r$\n"
     FileWrite $0 "..\user-data.txt$\r$\n"
     FileClose $0
