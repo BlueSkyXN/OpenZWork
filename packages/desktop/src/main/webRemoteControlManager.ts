@@ -16,6 +16,7 @@ import {
   type WebRemoteControlConnectionSettings,
   type HostPreparedProjectWorkspace,
   type HostProjectWorkspaceNavigationInput,
+  type HostLegacyProjectCreation,
   resolveUnrecognizedWebRemoteControlRequest,
   resolveWebRemoteControlWorkspaceKey,
   type WebRemoteControlAppPayload,
@@ -231,7 +232,11 @@ interface WebRemoteControlManagerDependencies {
   onStatusChanged?: (windowId: number, status: WebRemoteControlStatus) => void;
   attachWorkspaceHost: (
     windowId: number,
-    context: WebRemoteControlContext & { kind: "local" | "remote"; terminalOwnerId?: string },
+    context: WebRemoteControlContext & {
+      kind: "local" | "remote";
+      terminalOwnerId?: string;
+      legacyProjectCreation?: HostLegacyProjectCreation;
+    },
   ) => Promise<WebRemoteControlHostAttachmentHandle>;
   addTerminalOwner: (windowId: number, ownerId: string) => void;
   removeTerminalOwner: (windowId: number, ownerId: string) => void;
@@ -1214,6 +1219,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     pending: NonNullable<WindowControlRuntime["bridgeOpen"]>,
   ): Promise<WebRemoteControlExternalWorkspaceBridge> {
     let target: WebRemoteControlWorkspaceTarget | undefined;
+    let legacyProjectId: string | undefined;
     let intent: HostProjectWorkspaceNavigationInput | undefined =
       request.project ??
       ((request.fileTreeTaskId || request.taskId) && request.taskHostId
@@ -1243,7 +1249,10 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
           )?.projectIds;
           if (projectIds && projectIds.length > 1)
             throw new Error("此目录属于多个项目，请在桌面选择项目后新建任务。");
-          if (projectIds?.length === 1) intent = { hostId: "local", projectId: projectIds[0]! };
+          if (projectIds?.length === 1) {
+            legacyProjectId = projectIds[0]!;
+            intent = { hostId: "local", projectId: legacyProjectId };
+          }
         }
       }
     }
@@ -1340,6 +1349,16 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
         remoteSessionId: target.remoteSessionId,
         initialTaskId: request.fileTreeTaskId ?? request.taskId,
         kind: target.kind,
+        // 官方 3.15.2 只发送 workspace/envelope；目录准备后把本次意图交给 Host，
+        // 避免首次 createSession 被预留成 NULL。rootless 必须使用准备后的真实 key。
+        ...(legacyProjectId && target.kind === "local"
+          ? {
+              legacyProjectCreation: {
+                workspaceKey: targetWorkspaceKey,
+                projectId: legacyProjectId,
+              },
+            }
+          : {}),
         ...(bridgeRuntime.terminalOwnerId
           ? { terminalOwnerId: bridgeRuntime.terminalOwnerId }
           : {}),

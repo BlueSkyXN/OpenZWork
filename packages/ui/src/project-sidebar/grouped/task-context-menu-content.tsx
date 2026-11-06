@@ -12,6 +12,7 @@ import {
 import { TaskGroupColorDot } from "@/project-sidebar/grouped/colors.js";
 import type { TaskGroupMenuItem } from "@/project-sidebar/grouped/types.js";
 import { TaskCopyMarkdownMenuItem } from "@/TaskActionMenuContent.js";
+import { TaskProjectMoveMenu } from "@/project-sidebar/TaskProjectMoveMenu.js";
 
 export function GroupedTaskContextMenuContent({
   task,
@@ -60,6 +61,7 @@ export function GroupedTaskContextMenuContent({
 }) {
   return (
     <ContextMenuContent className="w-56">
+      <TaskProjectMoveMenu task={task} />
       {onCopyConversationMarkdown ? (
         <>
           <TaskCopyMarkdownMenuItem

@@ -800,6 +800,12 @@ export const hostDisposeRemoteWorkspaceSessionMessageSchema = z
   })
   .strict();
 
+const hostLegacyProjectCreationSchema = z
+  .object({ workspaceKey: nonEmptyStringSchema, projectId: nonEmptyStringSchema })
+  .strict();
+/** 官方旧页目录选择的创建上下文，只在本地手机 attachment 内使用。 */
+export type HostLegacyProjectCreation = z.infer<typeof hostLegacyProjectCreationSchema>;
+
 export const hostAttachServicePortMessageSchema = z
   .object({
     type: z.literal("attach-service-port"),
@@ -810,8 +816,15 @@ export const hostAttachServicePortMessageSchema = z
     attachmentId: nonEmptyStringSchema,
     clientMode: z.enum(["desktop-continuous", "web-remote-replayable"]),
     scope: windowHostAttachmentScopeSchema,
+    legacyProjectCreation: hostLegacyProjectCreationSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (message) =>
+      !message.legacyProjectCreation ||
+      (message.clientMode === "web-remote-replayable" && message.scope.kind === "local"),
+    { message: "Legacy project creation requires a local web-remote attachment." },
+  );
 
 export const hostDetachServicePortMessageSchema = z.object({
   type: z.literal("detach-service-port"),

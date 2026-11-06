@@ -31,6 +31,38 @@
       "timingPolicy": "fast-text",
       "source": "synthetic",
       "syntheticReason": "仅验证排队后正常执行和正文恢复"
+    },
+    {
+      "id": "v1-official-directory-rooted",
+      "description": "官方旧页唯一目录项目首次发送",
+      "kind": "main",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "验证官方旧页新建任务的 Host 项目归属与刷新恢复"
+    },
+    {
+      "id": "v1-official-directory-rootless",
+      "description": "官方旧页无 root 项目首次发送",
+      "kind": "main",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "验证官方旧页新建任务的 Host 项目归属与刷新恢复"
+    },
+    {
+      "id": "v1-official-directory-title-rooted",
+      "description": "官方目录新建任务标题",
+      "kind": "common",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "新建项目任务使用独立标题以保持历史任务选择唯一"
+    },
+    {
+      "id": "v1-official-directory-title-rootless",
+      "description": "官方目录新建任务标题",
+      "kind": "common",
+      "timingPolicy": "fast-text",
+      "source": "synthetic",
+      "syntheticReason": "新建项目任务使用独立标题以保持历史任务选择唯一"
     }
   ]
 }
