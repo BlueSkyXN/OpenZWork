@@ -16,7 +16,6 @@ import { resolveTimeoutMs } from "../src/tool/executor/timeout.js";
 import type {
   BashInput,
   BashOutput,
-  CommandExecutionSpanWriter,
   ExecutionPort,
   ExecutionRequest,
   ExecutionResult,
@@ -26,7 +25,6 @@ import type {
   ImageProcessorPort,
   ExecutionShellSelection,
   SessionEvent,
-  ToolExecutionSpanWriter,
 } from "@zcode/contracts";
 import { createReadFileStatePathKey } from "../src/tool/read-file-state.js";
 import type { ReadFileStateMap, ToolExecutionContext } from "../src/tool/types.js";
@@ -259,21 +257,19 @@ describe("Bash cwd policy", () => {
 });
 
 describe("bashHandler", () => {
-  it("把非零退出码保留为事实，只有结构化执行错误才标记 Command 失败", async () => {
-    const outcomes: string[] = [];
-    const telemetry = recordingBashTelemetry(outcomes);
+  // OpenZWork 已移除遥测 writer；退出状态从实际工具结果断言。
+  it("保留非零退出码并区分进程启动错误", async () => {
     const nonZeroPort: ExecutionPort = {
       async run() {
         return executionResult({ status: "failed", exitCode: 1 });
       },
     };
-    await bashHandler(
+    const nonZero = await bashHandler(
       { command: "grep missing file.txt" },
-      contextWith(nonZeroPort, { telemetry }),
+      contextWith(nonZeroPort),
     );
-    expect(outcomes).toEqual(["exit:1", "completed"]);
+    expect(nonZero).toMatchObject({ status: "failed", exitCode: 1 });
 
-    outcomes.length = 0;
     const spawnErrorPort: ExecutionPort = {
       async run() {
         return executionResult({
@@ -282,8 +278,11 @@ describe("bashHandler", () => {
         });
       },
     };
-    await bashHandler({ command: "missing-command" }, contextWith(spawnErrorPort, { telemetry }));
-    expect(outcomes).toEqual(["failed:spawn"]);
+    const spawnError = await bashHandler(
+      { command: "missing-command" },
+      contextWith(spawnErrorPort),
+    );
+    expect(spawnError).toMatchObject({ status: "spawn_error", stderr: "spawn failed" });
   });
 
   it.each([
@@ -364,7 +363,16 @@ describe("bashHandler", () => {
       shellProfile: "posix-bash",
     });
     expect(capturedRequest?.cwd).toBe(projectRoot);
-    expect(capturedRequest?.env).toBeUndefined();
+    // 模型输入不带 env；handler 只设置会话上下文变量。
+    expect(capturedRequest?.env).toEqual({
+      set: {
+        CLAUDE_CODE_SESSION_ID: "sess_test",
+        CLAUDE_PROJECT_DIR: projectRoot,
+        CLAUDE_SESSION_ID: "sess_test",
+        ZCODE_PROJECT_DIR: projectRoot,
+        ZCODE_SESSION_ID: "sess_test",
+      },
+    });
     expect(capturedRequest?.timeoutMs).toBe(123);
     expect(capturedRequest?.outputLimit).toEqual({
       maxInlineBytes: 30_000,
@@ -502,6 +510,33 @@ describe("bashHandler", () => {
       enabled: false,
       dangerouslyDisableSandbox: true,
     });
+  });
+
+  it("keeps the workspace root in session context variables after cd, for background calls too", async () => {
+    const requests: ExecutionRequest[] = [];
+    const executionPort: BashBackgroundLifecycleExecutionPort = {
+      async run(request) {
+        requests.push(request);
+        return executionResult({ status: "completed", exitCode: 0, stdout: "ok\n" });
+      },
+      async runBashWithBackgroundLifecycle(request) {
+        requests.push(request);
+        return { kind: "completed", result: executionResult({ status: "completed", exitCode: 0 }) };
+      },
+    };
+    const context = contextWith(executionPort, {
+      workingDirectory: resolve(projectRoot, "nested"),
+      workspaceRoot: projectRoot,
+    });
+
+    await bashHandler({ command: "echo ok" } satisfies BashInput, context);
+    await bashHandler({ command: "echo ok", run_in_background: true } satisfies BashInput, context);
+
+    expect(requests).toHaveLength(2);
+    for (const request of requests) {
+      expect(request.env?.set?.CLAUDE_PROJECT_DIR).toBe(projectRoot);
+      expect(request.env?.set?.ZCODE_SESSION_ID).toBe("sess_test");
+    }
   });
 
   it("updates session cwd from successful foreground Bash execution", async () => {
@@ -1253,7 +1288,7 @@ describe("bashHandler", () => {
     ).rejects.toThrow("resize aborted");
   });
 
-  it("闲时轮复用显式后台及超时自动后台的 Bash 生命周期", async () => {
+  it("普通执行复用显式后台及超时自动后台的 Bash 生命周期", async () => {
     const runBashWithBackgroundLifecycle = vi.fn(async () => ({
       kind: "completed" as const,
       result: executionResult({ status: "completed", exitCode: 0 }),
@@ -1267,12 +1302,14 @@ describe("bashHandler", () => {
     await expect(
       bashHandler(
         { command: "long-running command", run_in_background: true } satisfies BashInput,
+        contextWith(executionPort),
       ),
     ).resolves.toBeDefined();
     expect(runBashWithBackgroundLifecycle).toHaveBeenCalledTimes(1);
 
     const output = (await bashHandler(
       { command: "long-running command" } satisfies BashInput,
+      contextWith(executionPort),
     )) as BashOutput;
     expect(runBashWithBackgroundLifecycle).toHaveBeenCalledTimes(2);
     expect(run).not.toHaveBeenCalled();
@@ -2698,7 +2735,6 @@ function contextWith(
     readFileState?: ReadFileStateMap;
     runtimeScope?: ToolExecutionContext["runtimeScope"];
     setWorkingDirectory?: ToolExecutionContext["setWorkingDirectory"];
-    telemetry?: ToolExecutionSpanWriter;
     workingDirectory?: string;
     workspaceRoot?: string;
   } = {},
@@ -2717,51 +2753,10 @@ function contextWith(
     readFileState: options.readFileState,
     runtimeScope: options.runtimeScope,
     setWorkingDirectory: options.setWorkingDirectory,
-    telemetry: options.telemetry,
     workingDirectory: options.workingDirectory ?? defaultCommandRoot,
     workspaceRoot: options.workspaceRoot ?? defaultCommandRoot,
     sessionId: "sess_test",
     turnId: "turn_test",
-  };
-}
-
-function recordingBashTelemetry(outcomes: string[]): ToolExecutionSpanWriter {
-  const command: CommandExecutionSpanWriter = {
-    captureCausation: () => undefined,
-    finishBackgrounded() {
-      outcomes.push("backgrounded");
-    },
-    finishCancelled() {
-      outcomes.push("cancelled");
-    },
-    finishCompleted() {
-      outcomes.push("completed");
-    },
-    finishFailed(stage) {
-      outcomes.push(`failed:${stage}`);
-    },
-    markFirstOutput() {},
-    markTerminationRequested() {},
-    run: (execute) => execute(),
-    setExitCode(exitCode) {
-      outcomes.push(`exit:${exitCode}`);
-    },
-    setOutputBytes() {},
-    setSignal() {},
-    setTimedOut() {},
-  };
-  return {
-    captureCausation: () => undefined,
-    finishCancelled() {},
-    finishCompleted() {},
-    finishDenied() {},
-    finishFailed() {},
-    markPermissionRequested() {},
-    run: (execute) => execute(),
-    setOutputBytes() {},
-    setOutputTruncated() {},
-    setPermissionDecision() {},
-    startCommand: () => command,
   };
 }
 

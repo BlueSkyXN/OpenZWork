@@ -119,8 +119,6 @@
         "packages/services/test/botCredentialKey.test.ts",
         "packages/services/test/command-file-update.test.ts",
         "packages/services/test/home-resource-isolation.test.ts",
-        "packages/services/test/memory-migration-boundary.test.ts",
-        "packages/services/test/memory-migration-marker.test.ts",
         "packages/services/test/node-distribution-assets.test.ts",
         "packages/services/test/paths-isolation.test.ts",
         "packages/services/test/skills-toggle.test.ts",

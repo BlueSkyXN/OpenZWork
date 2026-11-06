@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
-import { createServer as createViteServer, type ViteDevServer } from "vite";
+import type { ViteDevServer } from "vite";
 import { createLocalPairingRelay } from "./local-pairing-relay.js";
 
 // 手机入口通过配对链接授权；当前产品没有账号登录凭据。
@@ -41,6 +41,8 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
   };
   try {
     if (options.webUrl) {
+      // WDIO 配置由 Jiti 读取；仅手机场景通过原生动态 import 加载 Vite 的 ESM 入口。
+      const { createServer: createViteServer } = await import("vite");
       // 默认 Web 开发代理指向 3030；fixture 必须将 /ws 接到同一个隔离 relay。
       const url = new URL(options.webUrl);
       web = await createViteServer({
@@ -54,6 +56,12 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
         },
       });
       await web.listen();
+      // 端口 0 由服务分配；配对入口必须使用实际监听端口，不能把占位值交给手机。
+      const address = web.httpServer?.address();
+      if (!address || typeof address === "string")
+        throw new Error("Mobile fixture has no TCP address");
+      url.port = String(address.port);
+      process.env.ZCODE_WEB_REMOTE_CONTROL_URL = url.href;
     }
     const settings = JSON.parse(await readFile(options.settingsFile, "utf8"));
     await writeFile(

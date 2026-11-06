@@ -2,6 +2,10 @@
 // fork 净化：上游在此 import conversation-telemetry dispatcher、官方版请求安全域校验模块
 // （发行策略空壳，fork 侧以 request-verification no-op 承接）与 localTtftExporter（TTFT 遥测），
 // 官方遥测/账号域部分不随入。
+import {
+  BROWSER_LOCAL_PREVIEW_PRIVILEGES,
+  installBrowserLocalPreview,
+} from "@desktop/main/browser-local-preview/index.js";
 /* eslint-disable max-lines */
 import "./desktopEarlyDataBaseDirBootstrap.js";
 import "./desktopEarlyChromiumHardwareAccelerationBootstrap.js";
@@ -75,7 +79,6 @@ import {
   HostMessageTypes,
   InternalChannels,
 } from "@zcode/shared";
-import { runDesktopMemoryMigration } from "./desktopMemoryMigration.js";
 import { dataDirectory } from "@zcode/shared/data-directory";
 import { logger, webRemoteControlRelayLogger } from "./logger.js";
 import { markMainLaunchAppReady } from "./desktopLaunchMarks.js";
@@ -205,7 +208,10 @@ import {
   installPluginSandboxHost,
 } from "./pluginSandbox/index.js";
 
-registerLocalMediaPreviewScheme(protocol, [PLUGIN_SANDBOX_PRIVILEGED_SCHEME]);
+registerLocalMediaPreviewScheme(protocol, [
+  PLUGIN_SANDBOX_PRIVILEGED_SCHEME,
+  BROWSER_LOCAL_PREVIEW_PRIVILEGES,
+]);
 const localMediaPreviewPathRegistry = createLocalMediaPreviewPathRegistry();
 
 // e2e 由 Chromedriver 管理远程调试端口；如果这里继续固定到 9229，
@@ -1314,6 +1320,7 @@ app.whenReady().then(async () => {
       ? { registryMaxEntries: Number(process.env.ZCODE_E2E_PLUGIN_SANDBOX_MAX_ENTRIES) }
       : {}),
   });
+  installBrowserLocalPreview(session.fromPartition(EMBEDDED_BROWSER_PARTITION));
   installBrowserRestoreBootstrapProtocol(
     session.fromPartition(EMBEDDED_BROWSER_PARTITION).protocol,
   );
@@ -1421,15 +1428,7 @@ app.whenReady().then(async () => {
     app.quit();
     return;
   }
-  await runDesktopMemoryMigration({
-    sourceMemoriesRoot: join(homedir(), ".zcode", "cli", "memories"),
-    targetStorageRoot: getZCodeDataRootDir(),
-    logger: {
-      debug: (message) => logger.debug(message),
-      info: (message) => logger.info(message),
-      warn: (message) => logger.warn(message),
-    },
-  });
+  // 旧 ZCode 与 OpenZWork 可同时使用；启动只打开当前数据根，不能把旧记忆存在视为导入授权。
 
   // scheduler 也会打开 tasks-index；等 Host 完成统一准备，避免在启动页出现前抢先迁移。
   configureDatabaseStartupQuit(() => {

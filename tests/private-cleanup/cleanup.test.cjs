@@ -1147,12 +1147,9 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
   // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/spec/identity-and-data-isolation.md。
   const bannedPattern = /(?:~|\$HOME)\/\.zcode(?![\w-])/;
   const allowFiles = new Set([
-    // WP-E1a 记忆迁移链：唯一获批的旧根单向读取点——代码、用户文案与文案的测试夹具。
-    "packages/shared/src/node/memoryMigration.ts",
-    "packages/ui/src/settings/memoryMigrationHint.ts",
+    // 既有翻译目录还包含独立的历史路径说明；旧记忆自动迁移文案由下方专用门禁禁止。
     "packages/ui/src/i18n/locales/zh-CN.ts",
     "packages/ui/src/i18n/locales/en-US.ts",
-    "packages/services/test/memory-migration.test.ts",
     // 政策文本以旧根定义隔离边界；installer 注释引用被替换的旧默认值作为修复依据。
     "docs/spec/identity-and-data-isolation.md",
     "docs/spec/memory-migration.md",
@@ -1175,6 +1172,35 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     if (match) violations.push(`${rel}: ${match[0]}`);
   }
   assert.deepEqual(violations, [], `user-level .zcode residue found:\n${violations.join("\n")}`);
+});
+
+test("[structural, not runtime] startup never restores the retired legacy-memory importer", () => {
+  for (const file of [
+    "packages/desktop/src/main/index.ts",
+    "apps/zcode-cli/packages/bootstrap/src/app/create-app.ts",
+    "packages/shared/src/node.ts",
+  ]) {
+    assert.doesNotMatch(
+      fs.readFileSync(path.join(root, file), "utf8"),
+      /runDesktopMemoryMigration|migrateDefaultCliStorageMemories|getLegacyProjectMemoriesRoot|migrateLegacyProjectMemories/,
+      `${file} must not import legacy memories during startup`,
+    );
+  }
+  for (const file of [
+    "packages/desktop/src/main/desktopMemoryMigration.ts",
+    "apps/zcode-cli/packages/bootstrap/src/app/memory-migration-bootstrap.ts",
+    "packages/shared/src/node/memoryMigration.ts",
+    "packages/shared/src/node/memoryMigrationBoundary.ts",
+    "packages/ui/src/settings/memoryMigrationHint.ts",
+  ]) {
+    assert.equal(fs.existsSync(path.join(root, file)), false, `${file} remains retired`);
+  }
+  for (const locale of ["zh-CN", "en-US"]) {
+    assert.doesNotMatch(
+      fs.readFileSync(path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`), "utf8"),
+      /settings\.memory\.migratedHint/,
+    );
+  }
 });
 
 test("[structural, not runtime] WP-03: remote deploy/startup and distribution defaults share the .openzwork root", () => {

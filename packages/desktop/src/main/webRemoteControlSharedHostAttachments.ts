@@ -2,12 +2,17 @@ import { BrowserWindow, MessageChannelMain } from "electron";
 import { stat, access } from "node:fs/promises";
 import { constants } from "node:fs";
 import type { MessagePortMain, UtilityProcess as ElectronUtilityProcess } from "electron";
-import { HostMessageTypes, type RemoteWorkspaceIdentityKind } from "@zcode/shared";
+import {
+  HostMessageTypes,
+  type RemoteWorkspaceIdentityKind,
+  type HostLegacyProjectCreation,
+} from "@zcode/shared";
 
 type WebRemoteControlSharedHostKind = "local" | "remote";
 
 interface WebRemoteControlSharedHostAttachContext {
   kind: WebRemoteControlSharedHostKind;
+  legacyProjectCreation?: HostLegacyProjectCreation;
   terminalOwnerId?: string;
   workspacePath: string;
   workspaceIdentity?: string;
@@ -81,6 +86,7 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
   function attachLocalHost(
     windowId: number,
     terminalOwnerId?: string,
+    legacyProjectCreation?: HostLegacyProjectCreation,
   ): WebRemoteControlSharedHostAttachment {
     const hostProcessWindowId = BrowserWindow.fromId(windowId)?.webContents.id ?? windowId;
     const process = dependencies.windowHostProcessMap.get(hostProcessWindowId);
@@ -101,6 +107,7 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
         clientMode: "web-remote-replayable",
         ...(terminalOwnerId ? { terminalOwnerId } : {}),
         scope: { kind: "local" },
+        ...(legacyProjectCreation ? { legacyProjectCreation } : {}),
       },
       [port2],
     );
@@ -131,7 +138,7 @@ export function createWebRemoteControlSharedHostAttachments(dependencies: {
           );
         }
       }
-      return attachLocalHost(windowId, context.terminalOwnerId);
+      return attachLocalHost(windowId, context.terminalOwnerId, context.legacyProjectCreation);
     }
     if (!context.remoteSessionId) {
       throw createSharedHostError(

@@ -10,6 +10,8 @@ Host projectService 的 readTree 决定行集合、项目归属和 CLI 事实镜
 
 创建经 Host prepareSession 固化 cwd，草稿持有 projectId，首发前由 Host 原子预留归属。选择其他项目会重建尚未提升的预热实例，已提交任务不受影响。拖动只发 moveTask，缺 root 经确认重试，失败保持原树。软删项目保留任务归属；时间线可见；恢复需用户显式选择同 roots 的已删项目。
 
+任务「移动到项目」菜单与项目拖拽共用 useMoveTaskToProject，候选只在菜单打开时读取现有项目切片。仅同 Host 的在线、未删除、非 legacySingleRoot 项目可选；远端额外要求原 cwd 已在目标 roots。当前项目禁用；本地缺 root 通过共享确认框展示目标与路径，确认才以 addMissingRoot 重试。任务正文、cwd、身份、时间、分组和当前导航保持；成功刷新目录，归属不复制到 UI 状态。项目／任务区、置顶、时间线、未读与分组菜单复用同一组件。
+
 桌面和手机共用组件；沿用现有 task 行操作、shared-host attachment、continuous/replayable 传输。CLI 不接收项目 ID。
 
 composer 的“创建项目”复用侧栏 ProjectCreation：当前为远程会话时默认该设备，其余默认本地。项目服务可用即可创建，不能沿用打开原生文件夹的能力门禁。保存只刷新目录，取消不写入，两者不切换项目/工作区或改写聊天草稿。独立设备连接后的创建继续受当前聊天返回资格约束，普通创建不继承该设备。

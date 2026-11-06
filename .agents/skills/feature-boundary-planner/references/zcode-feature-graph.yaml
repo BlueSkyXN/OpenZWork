@@ -1188,12 +1188,15 @@ nodes:
         file: packages/ui/src/settings/system-prompt/PromptPreviewDialog.tsx
     invariants:
       - SettingService owns saved settings; each main runtime holds its materialization snapshot.
+      - Explicit Restart task or /reload rematerializes the same session with current Host prompt settings; saving alone does not restart active tasks.
       - Prompt customization does not change tool permissions or child agent identities.
       - Runtime capabilities and paths remain live when editable rules are replaced or disabled.
       - Generated context switches apply in both section and whole-rule replacement modes.
   - id: capability.project-memory
     kind: capability
     label: CLI project Memory
+    invariants:
+      - Desktop and CLI startup never import another product's legacy memory; existing OpenZWork memories and migration markers remain unchanged.
     aliases:
       - Memory Extraction
       - headless Memory Extraction gate
@@ -2071,6 +2074,23 @@ nodes:
         file: packages/ui/src/browser-use/BrowserUseSidePaneContent.tsx
       - symbol: UnifiedBrowserView
         file: packages/ui/src/browser-use/UnifiedBrowserView.tsx
+  - id: capability.task-project-move
+    kind: capability
+    label: Explicit task project membership moves
+    aliases:
+      - 移动到项目
+      - 未分类会话归类
+      - move task to project
+    docs:
+      - docs/superpowers/specs/2026-09-09-virtual-project-design.md
+    codeSeeds:
+      - symbol: TaskProjectMoveMenu
+        file: packages/ui/src/project-sidebar/TaskProjectMoveMenu.tsx
+      - symbol: useMoveTaskToProject
+        file: packages/ui/src/project-sidebar/useMoveTaskToProject.ts
+    invariants:
+      - Only same-Host editable online projects are candidates; local missing roots require explicit
+        confirmation. The Host owns membership and preserves task identity, cwd, transcript and groups.
   - id: surface.project-task-list
     kind: ui-surface
     label: Project workspace task list
@@ -3146,6 +3166,12 @@ nodes:
     codeSeeds:
       - symbol: createWebRemoteControlSharedHostAttachments
         file: packages/desktop/src/main/webRemoteControlSharedHostAttachments.ts
+      - symbol: createZCodeAgentConnectionScope
+        file: packages/services/src/zcode-agent/zcodeAgentConnectionScope.ts
+    invariants:
+      - Official legacy directory creation carries the resolved project and prepared workspace key only
+        within its local replayable attachment. The Host fills an absent createSession projectId before
+        reservation; explicit null, other workspaces, history and desktop continuous remain unchanged.
   - id: service.desktop-web-remote-control-authorization
     kind: service
     label: Desktop Web Remote Control start dispatch boundary
@@ -4751,6 +4777,26 @@ edges:
     to: capability.stateless-browser-use-mcp
     type: must-remain-isolated-from
     rank: invariant-only
+  - from: capability.task-project-move
+    to: surface.project-task-list
+    type: renders-in
+    rank: must-inspect
+    condition: Task context menus in project, unclassified, pinned, timeline, unread and grouped views.
+  - from: capability.task-project-move
+    to: state.virtual-project-directory
+    type: options-from
+    rank: must-inspect
+    condition: Reuse the project-only directory slice when the context menu is mounted.
+  - from: capability.task-project-move
+    to: persistence.task-index
+    type: commits-to
+    rank: must-inspect
+    condition: Existing Host moveTask transaction; menu and native drag use the same confirmation path.
+  - from: capability.task-project-move
+    to: boundary.web-remote-replayable
+    type: preserves
+    rank: invariant-only
+    condition: Mobile long press uses the shared menu and Host attachment; no new runtime or cwd.
   - from: capability.provider-model-discovery
     to: surface.provider-settings
     type: adds-model-selection-dialog-to

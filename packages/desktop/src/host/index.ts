@@ -103,6 +103,7 @@ import {
   type TraceId,
   type ZCodeTaskMode,
   type WindowHostAttachmentScope,
+  type HostLegacyProjectCreation,
   type SourceServerArtifactPolicy,
   type ZCodeAutomation,
   type ZCodeAutomationRun,
@@ -2104,6 +2105,7 @@ function exposeServicesOnMessagePort(
   attachmentScope: WindowHostAttachmentScope = { kind: "local" },
   capabilities?: HostRemoteConnectionCapabilities,
   terminalOwnerId?: string,
+  legacyProjectCreation?: HostLegacyProjectCreation,
 ): ExposedServicePortHandle {
   const terminal = services.getOptional(ITerminalService);
   const legacyTerminalScope =
@@ -2134,7 +2136,11 @@ function exposeServicesOnMessagePort(
   const loggedServer = new LoggingChannelServer(rawServer, logRpc);
   const server = loggedServer;
   const agentService = services.getOptional(IZCodeAgentService);
-  const connectionContext = { connectionId: `host-rpc-${randomUUID()}`, clientMode };
+  const connectionContext = {
+    connectionId: `host-rpc-${randomUUID()}`,
+    clientMode,
+    ...(attachmentScope.kind === "local" && legacyProjectCreation ? { legacyProjectCreation } : {}),
+  };
   const connectionScope = agentService
     ? createZCodeAgentConnectionScope(agentService, connectionContext)
     : undefined;
@@ -2299,7 +2305,15 @@ const windowHostAttachmentRegistry = createWindowHostAttachmentRegistry<
       capabilities: windowRemoteConnectionRegistry.resolveScopedCapabilities(scope),
     };
   },
-  expose: ({ port, services, clientMode, scope, capabilities, terminalOwnerId }) =>
+  expose: ({
+    port,
+    services,
+    clientMode,
+    scope,
+    capabilities,
+    terminalOwnerId,
+    legacyProjectCreation,
+  }) =>
     exposeServicesOnMessagePort(
       port,
       services,
@@ -2308,6 +2322,7 @@ const windowHostAttachmentRegistry = createWindowHostAttachmentRegistry<
       scope,
       capabilities,
       terminalOwnerId,
+      legacyProjectCreation,
     ),
 });
 
@@ -3165,6 +3180,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
         attachmentId: msg.attachmentId,
         clientMode: msg.clientMode,
         terminalOwnerId: msg.terminalOwnerId,
+        legacyProjectCreation: msg.legacyProjectCreation,
         scope: msg.scope,
         port,
       });

@@ -28,6 +28,36 @@
 
 已存在的本地目录在新建 attachment 前执行异步只读检查，目录不存在、路径是文件或无法访问均拒绝新草稿；修复目录后再次尝试可恢复。此检查不拦截带 initialTaskId 的历史恢复，保留已有历史只读语义。空项目首次分配目录仍由原生项目服务负责；旧目录失效不能通过 mkdir 自动复活。新建准备沿用现有 bridge generation、取消和迟到结果释放规则。
 
+### 官方旧页的新建归属
+
+官方 3.15.2 页的 `sendConversationCommandV4` 只提交 workspace 和 envelope，没有项目参数。目录新建解析出唯一项目后，Main 将该项目 ID 与准备后的真实 workspaceKey 一次性交给本次本地 replayable attachment。Host connection scope 仅在同 workspaceKey 的 `createSession` 缺少 `projectId` 时补齐；显式字符串、显式 null、其他命令和其他工作区均保持原请求。补齐发生在首次创建（含预热）的归属预留之前，沿用 Host 的项目校验、附加目录解析及创建命令幂等事务。
+
+该上下文随 attachment 释放，不进入共享 AgentService 的可变状态，不随可信 V4 carrier 传给 CLI，不改变 bridge key、owner/lease 或 accepted queue。只由 official 的无 task、无显式 project 目录导航产生；历史打开、direct/self-hosted、新版项目节点与全局未分类入口不注入。多项目仍拒绝，零匹配仍保持未分类；rootless 项目使用准备后的真实目录。项目准备之后失效由既有创建预留复检，不改写已存在任务的归属，不增加 NULL 任务自动补绑或数据库迁移。
+
+```mermaid
+sequenceDiagram
+    participant W as 官方旧网页
+    participant M as Desktop Main
+    participant H as 窗口 Host
+    participant C as CLI
+    W->>M: workspace-bridge-open（目录新建）
+    M->>H: 已有 prepareProjectWorkspace（唯一项目）
+    H-->>M: 真实执行目录
+    M->>H: AttachServicePort（该目录的创建项目上下文）
+    W->>H: createSession（缺省 projectId）
+    H->>H: connection scope 补齐后原子预留归属
+    H->>C: 原有创建命令、session ID 与附加目录
+    C-->>H: 持久会话事实
+    Note over M,H: 新导航释放旧 attachment；各窗口及接入档案独立
+```
+
+| ID | 设置、动作 | 必须断言 | 验证层 |
+| --- | --- | --- | --- |
+| V1-PJ-01 | 官方旧页从唯一项目目录新建并发送，刷新页面 | tasks.project_id 为原项目；持久任务与正文可恢复 | 真实官方页 E2E |
+| V1-PJ-02 | 官方旧页从无 root 项目新建并发送 | 真实 cwd 属于原项目；归属非 NULL；临时寻址 key 不落库 | 真实官方页 E2E |
+| V1-PJ-03 | 同目录多项目、目录失效、历史打开、零匹配 | 多项目拒绝、失效不复活；历史归属与零匹配未分类语义保留 | E2E／可重复运行时场景 |
+| V1-PJ-04 | 显式项目、显式 null、跨工作区、重复 create、并发 attachment | 只补缺省；不串归属；已移动任务不被重试覆盖；desktop continuous 不变 | 可重复运行时场景 |
+
 任务目录按 `updatedAt`、`createdAt`、taskId 降序排列。即使任务仍在运行、标题和未读状态均不变，活动时间变化也必须推送完整的新目录；活动时间相同时，创建时间变化也应更新排序。workspace 的 label、path、purpose 及 task 的 workspaceLabel 变化也必须推送。相同字段值的输入列表仅改变数组顺序时仍去重。bootstrap 与后续目录推送从同一展示投影生成，手机重新连接后读取当前排序。
 
 ```mermaid

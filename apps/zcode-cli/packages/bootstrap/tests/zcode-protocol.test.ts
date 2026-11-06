@@ -3774,6 +3774,84 @@ describe("ZCodeProtocolAgentServer", () => {
     expect(createdAppOptions[1]?.runtimeConfig?.memory?.enabled).toBeUndefined();
   });
 
+  it("SP16: explicit restart reloads prompt settings and preserves history and other sessions", async () => {
+    const store = await createSqliteSessionStore({ dbPath: ":memory:" });
+    const sessionId = "sess_prompt_reload" as SessionId;
+    const otherId = "sess_prompt_unchanged" as SessionId;
+    const created: ZCodeAppOptions[] = [];
+    let prompt: SystemPromptSettings = {
+      ...createDefaultSystemPromptSettings(),
+      mode: "replace",
+      replacement: "PROMPT_BEFORE_SAVE",
+    };
+    const server = new ZCodeProtocolAgentServer({
+      createZCodeApp: (options) => {
+        created.push(options);
+        return createFakeApp(options);
+      },
+      cwd: workspace.workspacePath,
+      sessionStore: store,
+      version: "test-version",
+    });
+    attachSessionRuntimePreferencesResponder(server, () => ({
+      nativeSearchEnhancementsEnabled: false,
+      memoryEnabled: false,
+      systemPromptSettings: prompt,
+    }));
+    try {
+      for (const id of [sessionId, otherId]) {
+        await store.createSession({
+          id,
+          projectID: "project_prompt_reload" as ProjectId,
+          slug: id,
+          directory: workspace.workspacePath,
+          path: workspace.workspacePath,
+          title: id,
+          version: "test-version",
+          time: { created: 1, updated: 1 },
+        });
+        await saveUserTextMessage(store, id, `msg_${id}` as MessageId, "history canary", 10);
+        await requestResult(server, {
+          id: `resume-${id}`,
+          method: zcodeProtocolMethods.sessionResume,
+          params: { sessionId: id },
+        });
+      }
+      const before = await store.messages({ sessionID: sessionId });
+      prompt = { ...prompt, replacement: "PROMPT_AFTER_SAVE" };
+      // 普通 resume 复用常驻实例；只有显式重启才重新采用 Host 已保存配置。
+      await requestResult(server, {
+        id: "warm-resume",
+        method: zcodeProtocolMethods.sessionResume,
+        params: { sessionId },
+      });
+      expect(created).toHaveLength(2);
+      await requestResult(server, {
+        id: "reload-prompt",
+        method: zcodeProtocolMethods.sessionLifecycleRestart,
+        params: { sessionId, workspace },
+      });
+      expect(created).toHaveLength(3);
+      expect(created[2]?.sessionId).toBe(sessionId);
+      expect(created[2]?.runtimeConfig?.systemPromptSettings?.replacement).toBe("PROMPT_AFTER_SAVE");
+      expect(created[1]?.sessionId).toBe(otherId);
+      expect(created[1]?.runtimeConfig?.systemPromptSettings?.replacement).toBe("PROMPT_BEFORE_SAVE");
+      expect(await store.messages({ sessionID: sessionId })).toEqual(before);
+      const restored = zcodeSessionStateSnapshotSchema.parse(
+        await requestResult(server, {
+          id: "after-restart",
+          method: zcodeProtocolMethods.sessionResume,
+          params: { sessionId },
+        }),
+      );
+      expect(restored.session.sessionId).toBe(sessionId);
+      expect(created).toHaveLength(3);
+    } finally {
+      await server.shutdown();
+      store.close();
+    }
+  });
+
   it("reads the latest materialization preferences for a cold resume", async () => {
     const store = await createSqliteSessionStore({ dbPath: ":memory:" });
     const sessionId = "sess_native_search_cold_resume" as SessionId;

@@ -82,16 +82,25 @@ export function createProviderModelDiscovery(
       try {
         const headers = new Headers({ accept: "application/json" });
         const key = isApiKeyAccess(config.access) ? config.access.apiKey?.trim() : undefined;
-        if (config.api?.type === "anthropic-messages") {
-          headers.set("anthropic-version", "2023-06-01");
+        const messages = config.api?.type === "anthropic-messages";
+        if (messages) {
+          // 通用网关可能按版本头伪装模型 ID；目录先沿用鉴权读取原始列表，官方接口保留必需头。
+          if (url.hostname === "api.anthropic.com") headers.set("anthropic-version", "2023-06-01");
           if (key) headers.set("x-api-key", key);
         } else if (key) headers.set("authorization", `Bearer ${key}`);
         for (const [name, value] of Object.entries(config.api?.headers ?? {}))
           headers.set(name, value);
+        const canTryMessages = messages && !headers.has("anthropic-version");
         const ids = new Set<string>();
         const cursors = new Set<string>();
         for (let page = 0; page < MAX_PAGES; page += 1) {
-          const response = await fetcher(new URL(url), { headers, signal, redirect: "error" });
+          let response = await fetcher(new URL(url), { headers, signal, redirect: "error" });
+          if (page === 0 && canTryMessages && [400, 401, 403, 404, 405].includes(response.status)) {
+            // 缺版本头的 Messages 服务可能拒绝目录查询；同源回退一次，共享超时且不混合分页。
+            await response.body?.cancel();
+            headers.set("anthropic-version", "2023-06-01");
+            response = await fetcher(new URL(url), { headers, signal, redirect: "error" });
+          }
           if (!response.ok) {
             await response.body?.cancel();
             const status = response.status;

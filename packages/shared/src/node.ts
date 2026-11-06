@@ -53,14 +53,6 @@ export {
   type SharedFileLockOptions,
 } from "./node/privateFilePersistence.js";
 export {
-  getMemoryMigrationMarkerPath,
-  memoryMigrationMarkerSchema,
-  migrateLegacyProjectMemories,
-  type MemoryMigrationLogger,
-  type MemoryMigrationMarker,
-  type MemoryMigrationResult,
-} from "./node/memoryMigration.js";
-export {
   createNodeSelfResourceSampler,
   NODE_SELF_RESOURCE_SAMPLE_INTERVAL_MS,
   type NodeSelfResourceSampler,
