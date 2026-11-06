@@ -1,6 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { tokensPerSecond } from "@zcode/shared/conversation-metrics";
-import type { TurnHeaderRow } from "@zcode/shared/zcode-protocol-v4";
+import type { SessionUsageState, TurnHeaderRow } from "@zcode/shared/zcode-protocol-v4";
 import { Button, buttonVariants } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -20,6 +20,7 @@ type SummaryHeader = Pick<TurnHeaderRow, "state" | "activeMs" | "metrics" | "too
 export function MetricsSummaryRow({
   header,
   cumulative,
+  cumulativeIncompleteFields,
   durationMs,
   fields,
   expanded = false,
@@ -28,6 +29,7 @@ export function MetricsSummaryRow({
 }: {
   header: SummaryHeader;
   cumulative: { inputTokens: number; outputTokens: number };
+  cumulativeIncompleteFields?: SessionUsageState["cumulativeIncompleteFields"];
   durationMs?: number;
   fields: readonly MetricsFieldId[];
   expanded?: boolean;
@@ -51,7 +53,13 @@ export function MetricsSummaryRow({
     firstText: `${t("firstText")} ${metricSeconds(header.metrics?.latest?.timeToFirstTextMs)}`,
     turnTokens: `${t("turn")} ${formatMetricCount(metricTotal(header.metrics?.usage), locale)}`,
     cache: `${t("cache")} ${cachePercent(header.metrics?.usage)}`,
-    sessionTokens: `${t("sessionShort")} ${formatMetricCount(cumulative.inputTokens + cumulative.outputTokens, locale)}`,
+    sessionTokens: `${t("sessionShort")} ${formatMetricCount(
+      cumulative.inputTokens + cumulative.outputTokens,
+      locale,
+      cumulativeIncompleteFields?.some(
+        (field) => field === "inputTokens" || field === "outputTokens",
+      ),
+    )}`,
     toolCalls: `${t("toolsShort")} ${formatMetricCount(header.toolCallCount, locale)}`,
   };
   const { containerRef, measurementRef, visible } = useMetricsOverflow(fields);

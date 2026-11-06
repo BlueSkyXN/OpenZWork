@@ -54,6 +54,39 @@ function Fixture() {
         <button
           type="button"
           onClick={() =>
+            setUsage((current) => ({
+              ...(current ?? initial),
+              cumulativeIncompleteFields: ["inputTokens", "cacheReadTokens"],
+            }))
+          }
+        >
+          Partial cumulative
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setUsage({
+              ...initial,
+              cumulative: {
+                inputTokens: 0,
+                outputTokens: 0,
+                cacheReadTokens: 0,
+                cacheWriteTokens: 0,
+              },
+              cumulativeIncompleteFields: [
+                "inputTokens",
+                "outputTokens",
+                "cacheReadTokens",
+                "cacheWriteTokens",
+              ],
+            })
+          }
+        >
+          Unknown cumulative
+        </button>
+        <button
+          type="button"
+          onClick={() =>
             setUsage({
               ...initial,
               cumulative: {
@@ -116,6 +149,7 @@ function Fixture() {
         <ChatContextUsage
           taskUsage={context ? { used: context.usedTokens, size: context.maxTokens } : null}
           cumulativeUsage={usage?.cumulative}
+          cumulativeIncompleteFields={usage?.cumulativeIncompleteFields}
           selectedProvider={ZCODE_AGENT_PROVIDER}
           intl={intl}
           locale={locale}

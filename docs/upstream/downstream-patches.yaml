@@ -415,6 +415,58 @@ patches:
       - docs/spec/shared-file-lock-acquisition.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40525930576/job/122265384951
 
+  - id: OW-P020
+    title: SDK 默认缓存零值覆盖供应商未上报状态
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.17.1
+      checked: 3.17.2
+    trigger: 三种协议的响应保留输入输出但省略缓存明细，SDK 将缓存计数补为 0。
+    impact: 本轮缓存显示 0%，无法区分真实零命中和未知；SDK totalUsage 又丢弃原始字段存在性。
+    cause: normalizeUsage 直接采用 SDK 缓存明细，没有保留各 step 原始 usage 的字段存在性。
+    fix: 归一化前读取各 SDK step 的原始缓存字段存在性，流式只保留布尔证据并按 attempt 隔离；最终事件、完成状态和调试使用同一规则，明确零值仍保留。
+    evidence: 同步来源 a60ba6a7 保留直接读取 SDK 字段的实现；真实 SDK 六条流式与非流式缺项回归在修复前均收到 0，明确零与正数用例原已通过。
+    files:
+      - apps/zcode-cli/packages/adapters/src/model/runner-normalization.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner-generate.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner-diagnostics.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner-stream.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner-debug.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step-usage.ts
+      - apps/zcode-cli/packages/core/src/runtime/types.ts
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts
+      - packages/shared/src/conversation-metrics/contract.ts
+    regression:
+      - apps/zcode-cli/packages/adapters/tests/runner-stream-timing-wire.test.ts
+      - apps/zcode-cli/packages/core/tests/session-history-rewind.test.ts
+    retire: 上游在合计前保留三协议缓存字段是否上报，缺项、明确零、多步骤与重试回归通过。
+    refs:
+      - docs/spec/native-conversation-metrics.md
+
+  - id: OW-P021
+    title: 主请求缺少 usage 后上下文被发布为零占用
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.17.1
+      checked: 3.17.2
+    trigger: 已有上下文水位的主会话收到正常文本回复，但该请求不含可用 usage。
+    impact: usedTokens 被清零；容量更新或迟到恢复种子还可能将旧水位重新当作最新值。
+    cause: ProductProjection 用零回退 getModelUsageContextTokens 的未知结果，seed 只以正数保护最新水位。
+    fix: 内部以 null 保留最新主请求的未知占用，公开 contextWindow 为 null；切模和迟到 seed 不恢复旧水位，新真实 usage 或 compact 可恢复。冷合成事件保持原占位语义。
+    evidence: 同步来源 a60ba6a7 含相同的空值回退；已有占用 1200 的离线请求后接缺 usage 时，原投影发布 usedTokens=0。
+    files:
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/native-conversation-metrics.test.ts
+    retire: 上游区分最新上下文未知与明确零，缺项、切模、迟到 seed 与恢复已知用量回归通过。
+    refs:
+      - docs/context-window-usage-state.md
+
   - id: OW-P022
     title: 触摸长按任务行打开空菜单
     kind: product

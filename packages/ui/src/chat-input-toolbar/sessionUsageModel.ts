@@ -4,10 +4,12 @@ export type SessionCumulativeUsage = SessionUsageState["cumulative"];
 
 export interface SessionUsageSummaryModel extends SessionCumulativeUsage {
   totalTokens: number;
+  incompleteFields?: SessionUsageState["cumulativeIncompleteFields"];
 }
 
 export function buildSessionUsageSummary(
   usage: SessionCumulativeUsage | null | undefined,
+  incompleteFields?: SessionUsageState["cumulativeIncompleteFields"],
 ): SessionUsageSummaryModel | null {
   if (!usage) return null;
   const { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens } = usage;
@@ -17,5 +19,12 @@ export function buildSessionUsageSummary(
   // 缓存读写已计入输入 token，累计总量不能再次相加。
   const totalTokens = inputTokens + outputTokens;
   if (!Number.isSafeInteger(totalTokens)) return null;
-  return { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, totalTokens };
+  return {
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+    totalTokens,
+    ...(incompleteFields?.length ? { incompleteFields } : {}),
+  };
 }

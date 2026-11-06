@@ -30,6 +30,8 @@ for (const binary of [
         "apps/zcode-cli/packages/bootstrap/src/app/session-facade.ts",
         "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server.ts",
         "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/v4-bridge.ts",
+        "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/session-mapper.ts",
+        "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/product-projection.ts",
         "apps/zcode-cli/packages/bootstrap/src/app/create-app.ts",
         "apps/zcode-cli/packages/bootstrap/src/zcode-protocol-v4/v4-gateway.ts",
       ];

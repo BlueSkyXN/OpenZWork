@@ -9,6 +9,8 @@ export const metricsUsageSchema = z.object({
   cacheWriteTokens: count.optional(),
 });
 export type MetricsUsage = z.infer<typeof metricsUsageSchema>;
+/** 成功主链保留已上报字段；完整性由累计 owner 逐字段记录。 */
+export const mainUsageSchema = metricsUsageSchema.partial();
 export const latestRequestMetricsSchema = z.object({
   status: z.enum(["completed", "failed"]),
   durationMs: duration.optional(),
@@ -30,9 +32,22 @@ export type ConversationMetrics = z.infer<typeof conversationMetricsSchema>;
 export const modelStepMetricsSchema = conversationMetricsSchema.extend({
   messageId: z.string().min(1),
   /** 主链成功 result 的既有累计口径；只在冷重建时使用。 */
-  mainUsage: metricsUsageSchema.optional(),
+  mainUsage: mainUsageSchema.optional(),
 });
 export type ModelStepMetrics = z.infer<typeof modelStepMetricsSchema>;
+
+/** OW-P020：undefined 是旧记录未采集，空对象是新步骤明确没有上报用量。 */
+export function mainUsageFromParts(
+  parts: readonly { type: string; modelMetrics?: unknown }[],
+): z.infer<typeof mainUsageSchema> | undefined {
+  let usage: z.infer<typeof mainUsageSchema> | undefined;
+  for (const part of parts) {
+    if (part.type !== "step-start") continue;
+    const parsed = modelStepMetricsSchema.safeParse(part.modelMetrics);
+    if (parsed.success && parsed.data.mainUsage !== undefined) usage = parsed.data.mainUsage;
+  }
+  return usage;
+}
 
 export function mergeMetricsUsage(
   a: MetricsUsage | undefined,

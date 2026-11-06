@@ -20,6 +20,8 @@ import {
   normalizeSources,
   normalizeToolResults,
   normalizeUsage,
+  normalizeGenerateUsage,
+  type CacheUsageAvailability,
 } from "./runner-normalization.js";
 import { stringMetadata } from "./runner-record.js";
 import type {
@@ -143,7 +145,8 @@ export function recordGenerateTextDebug(input: {
             toolCalls: input.normalizedToolCalls,
             toolResults: normalizeToolResults(input.result, input.normalizedToolCalls),
             sources: normalizeSources(input.result),
-            usage: normalizeUsage(input.result.totalUsage ?? input.result.usage),
+            // OW-P020：调试用量同样保留缺项，不能再次从 SDK 合计伪造缓存 0。
+            usage: normalizeGenerateUsage(input.result),
           }
         : undefined,
       sessionId: stringMetadata(metadata.sessionId),
@@ -173,6 +176,7 @@ export function recordGenerateTextDebug(input: {
  */
 export async function recordStreamTextDebug(input: {
   attempt: number;
+  cacheUsageAvailability?: CacheUsageAvailability;
   debugDir?: string;
   error?: unknown;
   isDev: boolean;
@@ -252,7 +256,7 @@ export async function recordStreamTextDebug(input: {
               toolCalls: input.normalizedToolCalls,
               toolResults: normalizeToolResults(syntheticResult, input.normalizedToolCalls),
               sources: normalizeSources(syntheticResult),
-              usage: normalizeUsage(aggregate.usage),
+              usage: normalizeUsage(aggregate.usage, input.cacheUsageAvailability),
             }
           : undefined,
         sessionId: stringMetadata(metadata.sessionId),

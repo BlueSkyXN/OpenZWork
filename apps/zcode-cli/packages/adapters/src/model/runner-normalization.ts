@@ -13,7 +13,57 @@ import type { AiSdkGenerateTextResult } from "./runner-runtime.js";
 import { asRecord, isRecord, numberProperty, stringProperty } from "./runner-record.js";
 import { normalizeModelToolName } from "./tool-call-validation.js";
 
-export function normalizeUsage(usage?: Partial<LanguageModelUsage>): ModelUsage {
+export interface CacheUsageAvailability {
+  cacheReadTokens: boolean;
+  cacheWriteTokens: boolean;
+}
+
+export function cacheUsageAvailability(
+  usage?: Partial<LanguageModelUsage>,
+): CacheUsageAvailability {
+  const raw = isRecord(usage?.raw) ? usage.raw : undefined;
+  const known = (value: unknown): boolean => Number.isSafeInteger(value) && Number(value) >= 0;
+  // OW-P020：SDK 对原始缓存缺项补 0；必须在 totalUsage 丢弃 raw 之前保存是否上报。
+  return raw
+    ? {
+        cacheReadTokens: known(
+          raw.cache_read_input_tokens ??
+            asRecord(raw.input_tokens_details).cached_tokens ??
+            asRecord(raw.prompt_tokens_details).cached_tokens,
+        ),
+        cacheWriteTokens: known(raw.cache_creation_input_tokens),
+      }
+    : {
+        cacheReadTokens: known(usage?.inputTokenDetails?.cacheReadTokens),
+        cacheWriteTokens: known(usage?.inputTokenDetails?.cacheWriteTokens),
+      };
+}
+
+export function mergeCacheUsageAvailability(
+  previous: CacheUsageAvailability | undefined,
+  next: CacheUsageAvailability,
+): CacheUsageAvailability {
+  return previous
+    ? {
+        cacheReadTokens: previous.cacheReadTokens && next.cacheReadTokens,
+        cacheWriteTokens: previous.cacheWriteTokens && next.cacheWriteTokens,
+      }
+    : next;
+}
+
+export function normalizeGenerateUsage(result: AiSdkGenerateTextResult): ModelUsage {
+  const usage = result.totalUsage ?? result.usage;
+  const availability = result.steps?.reduce<CacheUsageAvailability | undefined>(
+    (current, step) => mergeCacheUsageAvailability(current, cacheUsageAvailability(step.usage)),
+    undefined,
+  );
+  return normalizeUsage(usage, availability ?? cacheUsageAvailability(result.usage ?? usage));
+}
+
+export function normalizeUsage(
+  usage?: Partial<LanguageModelUsage>,
+  availability = cacheUsageAvailability(usage),
+): ModelUsage {
   const rawUsage = isRecord(usage?.raw) ? usage.raw : undefined;
   const rawServerToolUse = isRecord(rawUsage?.server_tool_use)
     ? rawUsage.server_tool_use
@@ -25,8 +75,12 @@ export function normalizeUsage(usage?: Partial<LanguageModelUsage>): ModelUsage 
     inputTokens: usage?.inputTokens,
     outputTokens: usage?.outputTokens,
     totalTokens: usage?.totalTokens,
-    cacheReadTokens: usage?.inputTokenDetails?.cacheReadTokens,
-    cacheWriteTokens: usage?.inputTokenDetails?.cacheWriteTokens,
+    cacheReadTokens: availability.cacheReadTokens
+      ? usage?.inputTokenDetails?.cacheReadTokens
+      : undefined,
+    cacheWriteTokens: availability.cacheWriteTokens
+      ? usage?.inputTokenDetails?.cacheWriteTokens
+      : undefined,
     reasoningTokens: usage?.outputTokenDetails?.reasoningTokens,
     ...(webSearchRequests !== undefined || webFetchRequests !== undefined
       ? {
@@ -59,7 +113,10 @@ export function normalizeReasoning(
     }));
 }
 
-export function toModelStreamEvent(chunk: TextStreamPart<ToolSet>): ModelStreamEvent | undefined {
+export function toModelStreamEvent(
+  chunk: TextStreamPart<ToolSet>,
+  cacheAvailability?: CacheUsageAvailability,
+): ModelStreamEvent | undefined {
   switch (chunk.type) {
     case "start":
       return {
@@ -179,7 +236,7 @@ export function toModelStreamEvent(chunk: TextStreamPart<ToolSet>): ModelStreamE
         type: "finish",
         finishReason: chunk.finishReason,
         providerMetadata: buildFinishProviderMetadata(chunk),
-        usage: normalizeUsage(chunk.totalUsage),
+        usage: normalizeUsage(chunk.totalUsage, cacheAvailability),
       };
 
     case "error":

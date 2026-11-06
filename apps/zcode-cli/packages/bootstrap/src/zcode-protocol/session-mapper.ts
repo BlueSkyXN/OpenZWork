@@ -25,6 +25,7 @@ import {
   type ZCodeWorkspaceRef,
   isMainAgentToolProjectionSource,
 } from "@zcode/shared";
+import { mainUsageFromParts } from "@zcode/shared/conversation-metrics";
 import {
   EventReducer,
   SessionEventType,
@@ -613,6 +614,8 @@ export function resolveSessionContextUsage(input: {
     input.messages,
     input.projection.contextWindow,
   );
+  // OW-P021：新步骤明确没有水位时，runtime 旧 projection 的正数也不是当前请求的用量。
+  if (persistedContextUsage === null) return undefined;
   return applyContextUsageBreakdown(
     contextUsageFromProjection(
       input.projection,
@@ -734,7 +737,7 @@ function contextUsageFromProjection(
 function contextUsageFromPersistedMessages(
   messages: readonly MessageWithParts[],
   contextWindow: number,
-): ZCodeSessionContextUsage | undefined {
+): ZCodeSessionContextUsage | null | undefined {
   if (contextWindow <= 0) {
     return undefined;
   }
@@ -770,6 +773,14 @@ function contextUsageFromPersistedMessages(
     }
     const used = contextUsedFromTokens(message.info.tokens);
     if (used === undefined) {
+      if (
+        message.info.time.completed !== undefined &&
+        !message.info.error &&
+        mainUsageFromParts(message.parts) !== undefined
+      ) {
+        // OW-P021：新记录的空上报与旧记录无数据分开，不越过它恢复压缩前或上一请求的水位。
+        return null;
+      }
       continue;
     }
     // protocol eventStore 是运行期内存账本，重启 resume 后 projection.contextUsed 会回到 0。
@@ -820,6 +831,8 @@ function contextCacheUsageFromMessages(
   let latestInputTokens = 0;
   let latestCacheReadTokens = 0;
   let latestCacheWriteTokens = 0;
+  let hasUnknownRead = false;
+  let latestReadKnown = true;
 
   for (const message of messages) {
     if (message.info.role !== "assistant" || message.info.summary) {
@@ -828,7 +841,10 @@ function contextCacheUsageFromMessages(
     const input = nonNegativeInteger(message.info.tokens.input) ?? 0;
     const read = nonNegativeInteger(message.info.tokens.cache.read) ?? 0;
     const write = nonNegativeInteger(message.info.tokens.cache.write) ?? 0;
-    if (input <= 0 && read <= 0 && write <= 0) {
+    // OW-P020：新记录恢复缺项，旧记录仍使用原先的 token/cache 事实。
+    const mainUsage = mainUsageFromParts(message.parts);
+    const missingRead = mainUsage !== undefined && mainUsage.cacheReadTokens === undefined;
+    if (input <= 0 && read <= 0 && write <= 0 && !missingRead) {
       continue;
     }
     requestCount += 1;
@@ -838,6 +854,8 @@ function contextCacheUsageFromMessages(
     latestInputTokens = input;
     latestCacheReadTokens = read;
     latestCacheWriteTokens = write;
+    hasUnknownRead ||= missingRead;
+    latestReadKnown = !missingRead;
   }
 
   if (requestCount <= 0) {
@@ -847,8 +865,9 @@ function contextCacheUsageFromMessages(
     inputTokens: latestInputTokens,
     cacheReadTokens: latestCacheReadTokens,
     cacheWriteTokens: latestCacheWriteTokens,
-    latestHitRate: latestInputTokens > 0 ? latestCacheReadTokens / latestInputTokens : null,
-    hitRate: inputTokens > 0 ? cacheReadTokens / inputTokens : null,
+    latestHitRate:
+      latestInputTokens > 0 && latestReadKnown ? latestCacheReadTokens / latestInputTokens : null,
+    hitRate: inputTokens > 0 && !hasUnknownRead ? cacheReadTokens / inputTokens : null,
     hitRateRequestCount: requestCount,
     totalInputTokens: inputTokens,
     totalCacheReadTokens: cacheReadTokens,
@@ -856,9 +875,7 @@ function contextCacheUsageFromMessages(
   };
 }
 
-function mapPendingPermission(
-  permission: PendingPermission,
-): ZCodePendingPermission {
+function mapPendingPermission(permission: PendingPermission): ZCodePendingPermission {
   // display / optionsPolicy 刻意不进 legacy v3 输出。
   // 根因不是"扩 schema 只能单向兼容"，而是 strict schema 随 packages/shared 打进每个桌面端
   // 的产物：今天把 zcodePendingPermissionSchema（shared/src/zcode-protocol/index.ts:1139）和
@@ -885,9 +902,7 @@ function mapPendingPermission(
   };
 }
 
-function mapPermissionRequestedPayload(
-  payload: unknown,
-): Record<string, unknown> {
+function mapPermissionRequestedPayload(payload: unknown): Record<string, unknown> {
   // 同 mapPendingPermission：这个 payload 是整体 spread 出去的，新字段必须在这里显式解构
   // 剔除，否则会直接漏进 strict 的 zcodePermissionRequestedEventPayloadSchema。
   const { display: _display, optionsPolicy, ...record } = asRecord(payload);

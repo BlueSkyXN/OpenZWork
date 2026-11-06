@@ -1,4 +1,3 @@
-
 import { mergeMetrics, modelStepMetricsSchema } from "@zcode/shared/conversation-metrics";
 
 import { normalizeGenUiInput } from "@zcode/core";
@@ -120,6 +119,7 @@ import type {
 } from "@zcode/shared/zcode-protocol-v4";
 import {
   PROTOCOL_V4_LIMITS,
+  SESSION_CUMULATIVE_USAGE_FIELDS,
   applyConversationDeltas,
   applyConversationDeltasMutable,
   createMutableConversationSnapshotAccumulator,
@@ -252,16 +252,19 @@ export interface SessionConfigSeed {
 }
 
 export interface SessionUsageSeed {
-  contextWindow: Omit<NonNullable<SessionUsageState["contextWindow"]>, "maxTokens"> & {
-    maxTokens: number | null;
-  };
+  contextWindow?:
+    | (Omit<NonNullable<SessionUsageState["contextWindow"]>, "maxTokens"> & {
+        maxTokens: number | null;
+      })
+    | null;
   cumulative?: Partial<SessionUsageState["cumulative"]>;
+  cumulativeIncompleteFields?: SessionUsageState["cumulativeIncompleteFields"];
 }
 
 interface ContextWindowProjectionState {
   maxTokens: number | null;
   touchedByEvent: boolean;
-  usedTokens: number;
+  usedTokens: number | null;
 }
 
 export interface SessionSubagentsSeed {
@@ -676,17 +679,39 @@ export class ProductProjection {
   }
 
   seedUsage(seed: SessionUsageSeed): void {
+    if (seed.cumulativeIncompleteFields?.length) {
+      const cumulativeIncompleteFields = this.mergeCumulativeIncompleteFields(
+        seed.cumulativeIncompleteFields,
+      );
+      this.snapshot = {
+        ...this.snapshot,
+        usage: {
+          ...this.snapshot.usage,
+          cumulativeIncompleteFields,
+        },
+      };
+    }
     const current = this.snapshot.usage;
     const currentContextWindow = current.contextWindow;
     if (currentContextWindow) {
       this.contextWindowState.usedTokens = currentContextWindow.usedTokens;
     }
     // 未知容量也有内部用量事实；迟到的恢复种子不能覆盖真实 ModelComplete/Compact 水位。
-    if (this.contextWindowState.usedTokens > 0) {
+    if (this.contextWindowState.usedTokens === null || this.contextWindowState.usedTokens > 0) {
       return;
     }
     const seededContextWindow = seed.contextWindow;
-    if (!Number.isFinite(seededContextWindow.usedTokens) || seededContextWindow.usedTokens <= 0) {
+    if (seededContextWindow === null) {
+      // OW-P021：冷恢复已经确认最新请求未知，不能继续展示合成事件的零占位。
+      this.contextWindowState.usedTokens = null;
+      this.snapshot = { ...this.snapshot, usage: { ...current, contextWindow: null } };
+      return;
+    }
+    if (
+      !seededContextWindow ||
+      !Number.isFinite(seededContextWindow.usedTokens) ||
+      seededContextWindow.usedTokens <= 0
+    ) {
       return;
     }
     const cumulative = {
@@ -702,6 +727,7 @@ export class ProductProjection {
       this.snapshot = {
         ...this.snapshot,
         usage: {
+          ...current,
           contextWindow: currentContextWindow
             ? {
                 ...currentContextWindow,
@@ -726,6 +752,7 @@ export class ProductProjection {
     this.snapshot = {
       ...this.snapshot,
       usage: {
+        ...current,
         contextWindow:
           seededContextWindow.maxTokens === null
             ? null
@@ -1476,18 +1503,12 @@ export class ProductProjection {
         // 仅从本步骤持久化的主链成功事实恢复，不能把失败/子任务摘要加进去。
         if (String(event.traceId) === HYDRATION_TRACE_ID && parsed.data.mainUsage) {
           const usage = parsed.data.mainUsage;
-          const cumulative = this.snapshot.usage.cumulative;
           deltas.push({
             op: "state.updated",
             patch: {
               usage: {
                 ...this.snapshot.usage,
-                cumulative: {
-                  inputTokens: cumulative.inputTokens + usage.inputTokens,
-                  outputTokens: cumulative.outputTokens + usage.outputTokens,
-                  cacheReadTokens: cumulative.cacheReadTokens + (usage.cacheReadTokens ?? 0),
-                  cacheWriteTokens: cumulative.cacheWriteTokens + (usage.cacheWriteTokens ?? 0),
-                },
+                ...this.accumulateCumulativeUsage(usage),
               },
             },
           });
@@ -4814,7 +4835,7 @@ export class ProductProjection {
                   // Bug 原因：null 是 registry 清除显式窗口的权威事件，必须清空整个
                   // usage.contextWindow；字段缺失才保留旧事件兼容语义。
                   contextWindow:
-                    contextWindow === null
+                    contextWindow === null || this.contextWindowState.usedTokens === null
                       ? null
                       : previousContextWindow
                         ? { ...previousContextWindow, maxTokens: contextWindow }
@@ -4895,10 +4916,17 @@ export class ProductProjection {
       }
     }
     if (!isMainTurn) return [...deltas, ...retryClearDeltas];
-    const usedTokens = getModelUsageContextTokens(usage) ?? 0;
+    // OW-P021：新请求未上报 usage 表示未知；冷恢复的零增量占位仍允许随后应用持久化 seed。
+    const usedTokens =
+      getModelUsageContextTokens(usage) ??
+      (String(event.traceId) === HYDRATION_TRACE_ID ||
+      (usage.inputTokens === 0 && usage.outputTokens === 0)
+        ? 0
+        : null);
     this.contextWindowState.usedTokens = usedTokens;
     const maxTokens = payload.contextWindow ?? this.contextWindowState.maxTokens;
-    const cumulative = this.snapshot.usage.cumulative;
+    this.contextWindowState.maxTokens = maxTokens;
+    const cumulative = this.accumulateCumulativeUsage(usage);
     deltas.push({
       op: "state.updated",
       patch: {
@@ -4906,7 +4934,7 @@ export class ProductProjection {
           // Bug 原因：registry 已显式清除窗口时，缺少 contextWindow 的 ModelComplete
           // 过去会用 0 重建对象，破坏未知容量语义。token 继续在侧状态和累计值中更新。
           contextWindow:
-            maxTokens === null
+            maxTokens === null || usedTokens === null
               ? null
               : {
                   usedTokens,
@@ -4918,18 +4946,35 @@ export class ProductProjection {
                     ? { breakdown: payload.contextUsageBreakdown }
                     : {}),
                 },
-          cumulative: {
-            inputTokens: cumulative.inputTokens + (usage.inputTokens ?? 0),
-            outputTokens: cumulative.outputTokens + (usage.outputTokens ?? 0),
-            cacheReadTokens: cumulative.cacheReadTokens + (usage.cacheReadTokens ?? 0),
-            cacheWriteTokens: cumulative.cacheWriteTokens + (usage.cacheWriteTokens ?? 0),
-          },
+          ...cumulative,
         },
       },
     });
     // ModelComplete 是缺少 network completed 事件时的成功兜底，不能让重试提示悬挂。
     deltas.push(...retryClearDeltas);
     return deltas;
+  }
+
+  private mergeCumulativeIncompleteFields(
+    fields: NonNullable<SessionUsageState["cumulativeIncompleteFields"]>,
+  ): NonNullable<SessionUsageState["cumulativeIncompleteFields"]> {
+    const missing = new Set([...(this.snapshot.usage.cumulativeIncompleteFields ?? []), ...fields]);
+    return SESSION_CUMULATIVE_USAGE_FIELDS.filter((field) => missing.has(field));
+  }
+
+  private accumulateCumulativeUsage(
+    usage: ModelUsage,
+  ): Pick<SessionUsageState, "cumulative" | "cumulativeIncompleteFields"> {
+    const cumulative = { ...this.snapshot.usage.cumulative };
+    const missing: NonNullable<SessionUsageState["cumulativeIncompleteFields"]> = [];
+    for (const field of SESSION_CUMULATIVE_USAGE_FIELDS) {
+      const value = usage[field];
+      if (value !== undefined && Number.isSafeInteger(value) && value >= 0)
+        cumulative[field] += value;
+      else missing.push(field);
+    }
+    const incomplete = this.mergeCumulativeIncompleteFields(missing);
+    return { cumulative, ...(incomplete.length ? { cumulativeIncompleteFields: incomplete } : {}) };
   }
 
   // ── compact marker（compact 命令效果）──

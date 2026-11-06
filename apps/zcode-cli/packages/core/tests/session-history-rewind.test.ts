@@ -19,12 +19,88 @@ import {
   hydrateMessageHistoryFromSession,
 } from "../src/agent/session-history-hydrator.js";
 import { buildProviderRequestMessages } from "../src/runtime/helpers/provider-request-messages.js";
-import { mainTurnCacheHitAggregateFromMessages } from "../src/runtime/methods/turn-model-step-usage.js";
+import {
+  mainTurnCacheHitAggregateFromMessages,
+  recordMainTurnCacheHitUsage,
+} from "../src/runtime/methods/turn-model-step-usage.js";
 
 const modelID = createModelId("gpt-test");
 const providerID = createModelProviderId("openai");
 
 describe("session history rewind hydration", () => {
+  it("OW-P020：缓存读取缺项在热态和新记录冷恢复后保持未知，旧计数仍可恢复", () => {
+    const initial = () => ({
+      requestCount: 0,
+      totalInputTokens: 0,
+      totalCacheReadTokens: 0,
+      totalCacheWriteTokens: 0,
+    });
+    const runtime = { mainTurnCacheHitAggregate: initial() } as never;
+    expect(
+      recordMainTurnCacheHitUsage(runtime, {
+        inputTokens: 100,
+        outputTokens: 10,
+        cacheReadTokens: 80,
+      })?.hitRate,
+    ).toBe(0.8);
+    expect(
+      recordMainTurnCacheHitUsage(runtime, { inputTokens: 100, outputTokens: 10 })?.hitRate,
+    ).toBeNull();
+    expect(
+      recordMainTurnCacheHitUsage(runtime, {
+        inputTokens: 100,
+        outputTokens: 10,
+        cacheReadTokens: 0,
+      })?.hitRate,
+    ).toBeNull();
+    const sessionID = createSessionId("cache-known");
+    const userID = createMessageId("cache-user");
+    const message = assistantMessage(
+      sessionID,
+      createMessageId("cache-assistant"),
+      userID,
+      "ok",
+      2,
+      {
+        input: 100,
+        output: 10,
+        reasoning: 0,
+        cache: { read: 0, write: 0 },
+      },
+    );
+    const old = mainTurnCacheHitAggregateFromMessages({
+      activeMessages: [message],
+      persistedMessages: [message],
+    });
+    expect(old.unknownRequestCount).toBeUndefined();
+    message.parts.push({
+      id: createPartId("cache-metrics"),
+      sessionID,
+      messageID: message.info.id,
+      type: "step-start",
+      modelMetrics: {
+        messageId: String(message.info.id),
+        requestCount: 1,
+        failureCount: 0,
+        unknownUsageCount: 0,
+        mainUsage: { inputTokens: 100, outputTokens: 10 },
+      },
+    });
+    const restored = mainTurnCacheHitAggregateFromMessages({
+      activeMessages: [message],
+      persistedMessages: [message],
+    });
+    expect(restored.unknownRequestCount).toBe(1);
+    const cold = { mainTurnCacheHitAggregate: restored } as never;
+    expect(
+      recordMainTurnCacheHitUsage(cold, {
+        inputTokens: 100,
+        outputTokens: 10,
+        cacheReadTokens: 100,
+      })?.hitRate,
+    ).toBeNull();
+  });
+
   it("hydrates only the branch before a persisted rewind target", async () => {
     const sessionID = createSessionId("hydrate-rewind");
     const firstUserID = createMessageId("first-user");

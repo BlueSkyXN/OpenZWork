@@ -59,6 +59,9 @@
         "src/app/session-facade.ts",
         "src/zcode-protocol/server.ts",
         "src/zcode-protocol/v4-bridge.ts",
+        // 用量修复仍在既有 mapper / projection 内；包内 cwd 需要匹配上方已登记的相同行数规则。
+        "src/zcode-protocol/session-mapper.ts",
+        "src/zcode-protocol-v4/product-projection.ts",
         "src/app/create-app.ts",
         "src/zcode-protocol-v4/v4-gateway.ts",
         "**/packages/ui/src/remote-connection-flow/index.ts"

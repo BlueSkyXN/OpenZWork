@@ -270,6 +270,8 @@ export interface MainTurnCacheHitAggregate {
   totalInputTokens: number;
   totalCacheReadTokens: number;
   totalCacheWriteTokens: number;
+  /** OW-P020：新记录缺少缓存读取时保留未知，不能当作零命中。 */
+  unknownRequestCount?: number;
 }
 
 export type BackgroundTaskNotificationSealReason = "subagent_terminal" | "subagent_cancelled";

@@ -6,7 +6,12 @@ import { AiSdkModelAdapterError } from "./errors.js";
 import type { ClassifiedModelFailure } from "./failure-classifier.js";
 import { detectProviderBusinessFinishError } from "./provider-finish-business-error.js";
 import type { AiSdkGenerateTextResult } from "./runner-runtime.js";
-import { normalizeUsage } from "./runner-normalization.js";
+import {
+  cacheUsageAvailability,
+  mergeCacheUsageAvailability,
+  normalizeUsage,
+  type CacheUsageAvailability,
+} from "./runner-normalization.js";
 import { asRecord, stringProperty } from "./runner-record.js";
 import { modelStatusContextToLogContext, type ModelStatusContext } from "./runner-status.js";
 
@@ -36,6 +41,7 @@ interface StreamDiagnostics {
   textDeltaChars: number;
   toolCallCount: number;
   usage?: ModelUsage;
+  cacheUsageAvailability?: CacheUsageAvailability;
 }
 
 export function createStreamDiagnostics(): StreamDiagnostics {
@@ -76,6 +82,15 @@ export function recordStreamChunkDiagnostic(diagnostics: StreamDiagnostics, chun
     return;
   }
 
+  if (chunkType === "finish-step") {
+    // OW-P020：只保存缓存字段的存在性，不在诊断状态里保留原始响应。
+    diagnostics.cacheUsageAvailability = mergeCacheUsageAvailability(
+      diagnostics.cacheUsageAvailability,
+      cacheUsageAvailability(record.usage as Partial<LanguageModelUsage> | undefined),
+    );
+    return;
+  }
+
   if (chunkType === "finish") {
     diagnostics.finishReason = stringProperty(record, "finishReason") ?? diagnostics.finishReason;
     diagnostics.rawFinishReason =
@@ -83,6 +98,7 @@ export function recordStreamChunkDiagnostic(diagnostics: StreamDiagnostics, chun
     diagnostics.lastFinishChunk = chunk;
     diagnostics.usage = normalizeUsage(
       (record.totalUsage ?? record.usage) as Partial<LanguageModelUsage> | undefined,
+      diagnostics.cacheUsageAvailability,
     );
     return;
   }
