@@ -49,7 +49,7 @@ git merge --no-ff --no-commit <上游提交>
 ## 5. 合并后
 
 1. 更新台账 `upstream.version` 与 `upstream.commit`；根 `package.json` 改为 `<版本>+openzwork.1`（见 `docs/openzwork/release/openzwork-release-version.md`）。
-2. 上游改动了 `upstream-doc-edits.yaml` 中登记的文档时，以上游新版为底重放我方编辑，或改为 `-openzwork` 文档后删除登记。
+2. 上游原文随合并直接更新，不做修改。`--check` 会列出原文已变化的 OpenZWork 版本：以新原文为底重放我方修改，再更新 `upstreamBlob`。
 3. 按 `docs/openzwork/patches/downstream-patch-registry.md` 复核全部未退役补丁，更新 `upstream.checked`。
 4. 新增的裁剪域补充到 `tests/private-cleanup/cleanup.test.cjs` 与台账 `drop` 条目。
 5. 提交后执行 `pnpm openzwork:scan --check`，再按 `.github/workflows/ci.yml` 跑本地检查；核心套件前先构建 CLI（`OZK-PIT-009`）。

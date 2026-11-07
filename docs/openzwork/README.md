@@ -9,6 +9,8 @@
 | `docs/testing/*-openzwork.md`     | OpenZWork 测试计划                                |
 | 上游其他目录下的 `*-openzwork.md` | 放在对应主题目录中的 OpenZWork 文档               |
 
+上游文档与技能原文不动；OpenZWork 修改后的版本放在同目录、文件名带 `-openzwork`，全部登记在 [upstream-doc-variants.yaml](upstream-doc-variants.yaml)。
+
 ## 维护
 
 - [维护模型](maintenance-model.md)：双轨维护、来源分类、文档与代码布局、台账、扫描与经验库规则。

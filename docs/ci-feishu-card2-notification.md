@@ -1,5 +1,11 @@
 # CI 构建产物飞书 Card 2.0 通知
 
+## 范围
+
+本规范覆盖 notify 之前的测试、CUA Helper、公共 desktop 构建、远程资源与远控前端、CLI
+打包过程，以及 `notify:feishu:<platform>:<arch>` 平台结果通知。正式发版通知
+`release:notify:feishu` 保持原流程。sandbox/test tag 仍跳过通知；通知失败不改变原任务结果。
+
 ## 过程通知与平台收敛
 
 - `notifyCiResult` 是共用卡片和发送入口，接受过程名称、成功/失败结果、摘要及操作链接；

@@ -38,6 +38,7 @@
 - Client Config 公共服务重构；Todo 18 只做当前 Built-in Release 的最小接入；
 - OpenRouter、OpenCode Zen、Azure、Volcano Ark、AWS Bedrock；见 Todo 22；
 - Google Gemini 与 Vertex AI；当前不支持；
+- Off-Peak 结构化错误重构；本轮只调整配置归属；
 - 重建旧 Catalog、Preset 或 Adapter Registry；
 - 逐 commit、逐叶子的重型迁移审计。
 
@@ -45,9 +46,11 @@
 
 - 五个 Source Schema、Provider group、结构化 `provider-model` Rule、Model `enabled`、Builtin-wins 与显式 Provider/Model
   顺序已经进入正式 Config/Resolver/Facade/Repository 链路；Personal 持久化字段已收口为 `modelConfigRules`。
+- Built-in Release 已原子切换 `account:` 账号 Provider，Z.ai/BigModel Family 与普通 API Provider 已分离，Off-Peak
   已拆成两个隐藏 Family Provider；Account Overlay 决定连接约束、可用成员与对应 Provider enabled。
 - Settings 已直接消费 Host 的 group、添加候选、完整顺序、成员来源与 executable/selectable 结果；Provider ID 只读，
   Model 完整编辑保存为稀疏 Personal 专属 Rule，继承值、覆盖值与恢复继承有明确交互。
+- 官方版本请求安全校验与 Off-Peak execution protocol 已归入 Provider Access；旧 reasoning/output-token/Provider-ID
   运行时兼容和 Renderer ID 白名单已删除。后续 Todo 23 进一步删除了最后的 Compatibility Config 与 synthetic
   empty-thinking 投影。
 - Design Tree、Feature Graph 与历史 Todo 的 superseded 标注已经同步到最终实现。
@@ -532,26 +535,57 @@ Endpoint 重新解析 Built-in Rules，最后叠加原 Personal 稀疏值。这�
 
 ## 10. Built-in 配置写作与整理
 
+Provider 按产品来源连续排列：智谱直接 API 与账号/订阅/Off-Peak在前，外部主流 Provider 在后。普通外部 Built-in
 Provider 默认 `group=standard-builtin`、`enabled=false`、`visibility=visible`，提供协议、Endpoint、Access 模板和推荐成员；
 Personal Config 填写实际访问材料。
 
 Z.ai/BigModel 各自保留两个不同的 API Key 产品身份：
 
+```text
+Family API Key Provider
+├─ account:zai-api-key       -> group=zai-family
+└─ account:bigmodel-api-key  -> group=bigmodel-family
+   └─ 与账号套餐一起由固定 Family UI 管理
+
+普通 API Provider
+├─ zai-api           -> group=standard-builtin
+└─ bigmodel-api      -> group=standard-builtin
+   └─ 从“添加供应商”进入，用户独立填写 API Key
+```
+
 两组 Provider 即使 Endpoint、API Schema 和推荐模型相同，也拥有不同 providerId、Personal Overlay、enabled、API Key、
 模型成员和排序。它们不能共享或静默复制凭据。重复静态模型事实继续复用 Model Rules 的 matcher；不得为这四个
 Provider 在 Runtime/Adapter 中增加 ID 特判。
 
+现有账号 Provider ID 的 `builtin:` 前缀会一次性改为 `account:`，使物理身份与产品语义一致：
+
+```text
+builtin:zai-*       -> account:zai-*
+builtin:bigmodel-*  -> account:bigmodel-*
+builtin:offpeak-idle-plan
+                    -> account:zai-offpeak-idle-plan
+                     + account:bigmodel-offpeak-idle-plan
+```
+
 当前分支未发布，不保留旧 ID alias、dual-read 或持久化 migration；测试、Family Spec、ModelSelection fixture 和精确
 Provider 常量必须原子切换。
 
+Off-Peak 不再使用一个执行时动态跟随账号 Family 的共享 Provider，而是拆为两个完整 Provider：
+
 ```text
+account:zai-offpeak-idle-plan
 ├─ group=zai-family
 ├─ visibility=hidden
+└─ access.executionProtocol=off-peak
 
+account:bigmodel-offpeak-idle-plan
 ├─ group=bigmodel-family
 ├─ visibility=hidden
+└─ access.executionProtocol=off-peak
 ```
 
+Account Built-in Overlay 根据当前结构化 Family/Coding Plan 连接只启用匹配的 Off-Peak Provider，另一个显式
+`enabled=false`。Off-Peak 创建入口按当前 Family 取得对应精确 Provider；不存在“共享 Provider 在请求期换 Family”。
 已保存任务继续持有原 `ModelSelection`：用户切换 Family 后，旧 Family Provider disabled，任务保留但不可调度；切回且
 连接重新有效后恢复。系统不得把已保存任务静默迁移到另一 Family，也不得为其制造替代 ModelSelection。
 
@@ -580,7 +614,7 @@ Reasoning、MFJS 是否已由 Rules 承接；不恢复严格历史对照表。
 以下事实归 Provider Access：
 
 ```text
-
+access.executionProtocol = "off-peak"
 ```
 
 官方版本请求安全校验的准入同样归 Provider Access，并在 Adapter 最终 HTTP transport 边界执行（具体字段与实现只在官方版本维护）。
@@ -591,6 +625,7 @@ Reasoning、MFJS 是否已由 Rules 承接；不恢复严格历史对照表。
 - OpenAI-compatible reasoning 依赖 canonical 历史与 SDK 原生编码，删除 ZCode 特殊回放；
 - GitHub Copilot `omitMaxOutputTokens` 删除；
 - Snowflake Cortex 当前不支持，删除 `maxOutputTokensRequestField`；
+- 官方版本请求安全校验与 Off-Peak failure/execution protocol 从 Model Config 移入 Access；本轮不重构 Off-Peak 字符串错误；
 - `requiresMfjsToolSchema` 留在 Model Config；启用时投影 Tool JSON Schema，投影失败直接报错；
 - DeepSeek Anthropic 统一执行 canonical replay，不补造 synthetic empty thinking；
 - 未进入当前基线的 Z.ai text/tool signature patch 不合入；如需支持必须先取得真实响应证据，并遵守“收到什么就回放什么”。
@@ -609,10 +644,13 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 2. 调整 Config/Protocol/Repository 类型，删除 `enabledModelIds` 候选与 Model visibility；
 3. 实现 `provider-model` 专属 Rule 生命周期和普通 `match` Rule 隔离；
 4. 实现模型 enabled、三段 Model/Provider order、Builtin-wins 与保存规范化；
-5. 重构 Settings Facade、Mutation 与 UI，统一 Local/Remote Host 权威来源；
-6. 删除 Preset/Catalog 来源推断、旧排序 trick、死字段、死 helper 和过时测试；
-7. 根据最终实现将本 Todo 的事实逐项同步到 Design Tree、Feature Graph 和 superseded 旧文档；
-8. 执行单测、类型检查、Lint、格式检查和受影响 E2E，提交 Conventional Commit。
+5. 整理 `zcode-builtin.json` 的 Provider 和 Rules 顺序，一次性切换 `account:` ID，拆分 Family/普通
+   Z.ai/BigModel API Provider 和双 Off-Peak Provider，补齐模型默认 enabled 与官方停用项；
+6. 迁移官方版本请求安全校验与 Off-Peak execution protocol 到 Access，清理已经裁决删除的 Adapter Compatibility；
+7. 重构 Settings Facade、Mutation 与 UI，统一 Local/Remote Host 权威来源；
+8. 删除 Preset/Catalog 来源推断、旧排序 trick、死字段、死 helper 和过时测试；
+9. 根据最终实现将本 Todo 的事实逐项同步到 Design Tree、Feature Graph 和 superseded 旧文档；
+10. 执行单测、类型检查、Lint、格式检查和受影响 E2E，提交 Conventional Commit。
 
 ## 14. 测试计划
 
@@ -621,6 +659,7 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 - 五个 Source Schema 的允许/拒绝矩阵；
 - ZCode Built-in `group` 必填且不能为 `standard-personal`；Personal-only 固定 `standard-personal`，Overlay 不能改组；
 - 普通 Built-in、Personal-only、Z.ai Family、BigModel Family 四组完整且互斥；
+- 两个 Off-Peak Provider 由 Account Overlay 按当前 Family 互斥启用；
 - Personal 禁止写 `builtinModelIds`，禁止正常保存 Built-in 重复 `modelIds`；
 - Built-in/Personal 同 ID 时 Built-in-wins，单数组重复保留第一次；
 - Model `enabled` 的 Built-in 默认、官方特化、Personal 后置覆盖、恢复默认与 JSON round-trip；
@@ -645,6 +684,8 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 - 两个 Family 不参与普通排序，且 UI 不提供 Provider enabled 开关；删除 Personal Overlay 后仍留在固定 Family 区域；
 - 自定义 Provider 创建时不猜 API Schema、Endpoint 或模型；身份确认后立即创建不完整 Provider；
 - Family API Key 与普通 Z.ai/BigModel API Provider 的 Personal Config、凭据、enabled 和顺序互相隔离；
+- `account:` Provider ID 全链原子切换且无旧 alias；
+- 切换 Family 后，旧 Family Off-Peak 任务保留但不可调度，切回后恢复；不得静默迁移 ModelSelection；
 - Built-in Model 无删除按钮，Provider ID 全部只读，label 唯一；
 - Effective placeholder、明确覆盖和恢复默认；隐藏字段无损保留；
 - 上游有默认、上游无默认、Personal 覆盖和显式 clear 四种编辑状态互不混淆；
@@ -666,9 +707,11 @@ ZCode Built-in Provider Config 与 Built-in Model Config Rules 作为一个原�
 
 ### Adapter 与回归
 
+- 官方版本请求安全校验与 Off-Peak 按 Access 路由，Model Config 不再出现对应字段；
 - 删除 Copilot/Snowflake/旧 OpenAI replay 后无 Runtime fallback；
 - MFJS 开启、关闭和转换失败；
 - DeepSeek A/B 真实请求结果形成可复现 fixture 后再决定字段去留；
+- 普通请求、Compact、Memory、Child Agent、Off-Peak 都只使用 Active Model/Registry 事实。
 
 ## 15. 完成定义
 

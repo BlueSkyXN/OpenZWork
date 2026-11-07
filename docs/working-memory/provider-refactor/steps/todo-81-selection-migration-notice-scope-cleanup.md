@@ -50,6 +50,7 @@
 
 ## 实施记录（2026-09-04）
 
+- 新增 `shouldShowOffPeakModelSelectionIssue`，只有 queued、paused、running 这三类仍可能执行的任务显示“模型配置需要更新”。
 - completed、failed、cancelled 等终态任务继续保留原始记录和终态文案，但不再显示会误导用户的 repair-required 提示。
 - 列表卡片和编辑页共用同一判断，未改变调度层对无效 Selection 的阻止逻辑。
 - 定向测试通过：3 个文件、39 tests passed；随后通过 `pnpm typecheck` 与 `pnpm lint`（0 error）。

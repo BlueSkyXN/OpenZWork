@@ -30,6 +30,8 @@
 
 ## 合并和迁移
 
+继续合入 `staging` 的固定提交 `da486efbbbb2d194ddd70bcf733e687cc765887e`，起点为 `4595ea353ae254f67f750ec6a81d69d3e5422796`。项目规则与已有检查修复保持不变；接入 CUA workspace 包、历史先显示、Provider readiness 与 onboarding 记录的上游修复。冷恢复同时传递项目解析出的 `additionalDirectories` 与持久消息快照，保留初始化单飞、失败重试以及 continuous/replayable 边界。远端 onboarding 记录与设置、OAuth 一起透传远端 Source owner，不恢复旧 Remote Host 装配路径或混装本地记录。指定 staging 中的原样新增源码沿用固定提交准入规则，合并修改的源码继续严格检查。
+
 ```text
 项目/目录校验 → 持久历史投影 → 单飞 runtime 初始化 → 允许发送
                                      └─ 失败 → 保留历史/草稿 → 显式重试
@@ -101,10 +103,13 @@ Provider Provisioning 回归沿用上游当前合同：失效默认只是偏好�
 
 ### staging 合并复验（2026-10-10）
 
+- 本轮合入 `da486efbbb`；类型、CLI 类型、root/CLI/CUA lint、架构（0 违规）、schema 及工具 Node 测试通过。架构回归 37 项、工具 Node 回归 210 项通过。
 - 冷恢复同时保留项目附加目录与历史快照，continuous/replayable 回归 9 项通过；远程 onboarding 服务装配 13 项通过。CLI 旧断言与鉴权夹具修正后专项 93 项通过，Provider 正式磁盘/Registry 13 项通过。
 - 历史夹具曾用空 stdin 启动 app-server，协议在异步迁移完成前退出，导致历史库未建立。改为等待现有 `storage-migrate` 命令，再写隔离历史数据；所有调用链等待完成后才启动 Host。
 - macOS Electron：HF01/HF02 历史先显示、初始化前禁止发送与显式重试通过（`desktop-e2e-20261010-141711-970`）；VPR01 平铺/排序/移除入口通过（`desktop-e2e-20261010-142323-510`）；本机真实 ServerCore/Host/CLI 的 VP08/VP17/VP18 URL 创建、首发、历史与冷恢复通过（`desktop-e2e-20261010-142630-127`）。
 - 三次成功 E2E 均为 reused-build；5274 个输出文件指纹与本轮 fresh-stable 构建 run `desktop-e2e-20261010-141320-708` 完全一致。模型使用 replay；真实 SSH、真实手机、跨系统和完整视觉矩阵仍待补，pending 用例未晋升。
+
+根项目首次全量：2512 文件、23809 项通过，5 文件/48 项跳过；另有 CUA 连接超时 3 项和旧 Provider 断言 2 项失败。低负载合并复验这两个文件 28 项全通过，不把首次全量记录为全绿。CLI 并行批次在机器高负载下出现子进程超时，后续改用单任务/单 worker 原阈值复验。
 
 新合入的 `v4-cold-resume` 历史先显示用例漏等异步 `bootRestartedServer`，在读取 `store.getSession` 前即失败；补齐 await 后同文件 50 项通过，未改冷恢复断言和生产执行逻辑。
 
@@ -127,5 +132,7 @@ Debug API 的文件测试必须显式传入夹具 logDir、eventPath 与 dbPath�
 手机 relay 的真实 WebSocket 夹具同样固定 IPv4 loopback 监听，并在返回连接 URL 前断言监听地址。原 KICKED 用例全量中出现等待超时、单独复验 49ms 通过；已确认该夹具也存在地址族不一致，修复这一独立可复现的隔离缺口，不据单次通过宣称还原了超时现场。保留真实握手、KICKED 后重连与原 5 秒等待上限。
 
 Relay 地址回归先失败（监听地址为 `::`），固定地址后同文件 22 项与根类型/lint/架构检查通过。该轮全量根结果为 2513 文件/23813 项通过、1 项 relay 超时；CLI 在高并发下出现迁移超时、App 初始化超时与 OAuth URL 数量断言失败，低并发同原断言专项 5 项全部通过。正式门禁后续使用单 worker，检查范围和失败传播保持不变。
+
+2026-10-11 测试范围裁决：取消大规模单测删减，仅移除有历史超时记录的 App 用例。删除桌面 relay 的 `recovers desktop device transport from relay KICKED without entering a terminal state`；它曾在完整门禁中超过 5 秒等待预算。该删除减少了桌面端 KICKED 后自动重连的直接回归覆盖，不表示该场景已通过其他测试验证。保留同文件其余传输用例、手机 KICKED 冲突用例、全部 CLI/独立 CUA 单测与 E2E；不修改产品重连逻辑或测试超时，不使用 skip 或跳过 Git 检查。
 
 2026-10-15 按用户确认，移除手机 relay 的 `keeps KICKED relay errors scoped to mobile session conflicts`。该用例在推送门禁中超过 6 秒等待预算，单文件重跑通过，但导致整批检查需要重跑。此次删除减少了手机 KICKED 重连后进入会话冲突终态的直接回归覆盖；共享重试策略的单测继续保留，产品行为不变。

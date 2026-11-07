@@ -8,7 +8,7 @@
 | User-visible surfaces | Desktop app slash suggestions, app `--stdio` prompt send path, CLI/TUI slash command help and dispatch. |
 | Existing docs | `docs/architecture/zcode-code-architecture-overview.md`, `docs/architecture/message-flow.md`, `apps/zcode-cli/docs/design/agents-user-instructions-merge.md`, `docs/settings-directory-sources.md`. |
 | Existing code owners | Agent bootstrap input facade, ZCode Protocol slash command list, CLI command center, UI slash suggestions. |
-| Out of scope | New ZCode Protocol method, mobile-only replay semantics, global `~/.openzwork/AGENTS.md` initialization, conversation E2E expansion. |
+| Out of scope | New ZCode Protocol method, mobile-only replay semantics, global `~/.zcode/AGENTS.md` initialization, conversation E2E expansion. |
 
 ## Clarification Log
 
@@ -23,7 +23,7 @@
 | Boundary | Decision | Includes | Excludes / prunes | Source |
 | --- | --- | --- | --- | --- |
 | Command semantics | `/init` is a normal prompt command, not a session command. | The UI sends `/init` through normal prompt send/queue flow; agent rewrites it into an initialization prompt. | No `session/init` protocol method and no special UI session-control path. | `docs/architecture/message-flow.md`, code inspection |
-| Target file | Current workspace root `AGENTS.md`. | Missing file creation; existing file read and patch. | `CLAUDE.md`, `AGNENTS.md`, user-global `~/.openzwork/AGENTS.md`. | User request and `agents-user-instructions-merge.md` |
+| Target file | Current workspace root `AGENTS.md`. | Missing file creation; existing file read and patch. | `CLAUDE.md`, `AGNENTS.md`, user-global `~/.zcode/AGENTS.md`. | User request and `agents-user-instructions-merge.md` |
 | Existing hidden instructions | Check workspace `.zcode/AGENTS.md` and `.agents/AGENTS.md` before creating a new root file. | If either hidden-path instruction file exists, tell the user instructions already exist and no new file is needed. | Creating a duplicate root `AGENTS.md` in that case. | User follow-up |
 | App support | Support app `--stdio` by reusing `session/send`. | `session/send -> record.app.sendInput -> input facade prompt resolver -> runtime turn`. | Relay/main ownership of business state. | `docs/architecture/zcode-code-architecture-overview.md` |
 | Command ownership | Built-in `/init` reserves the `init` name. | App slash list and CLI help include `/init`; custom `/init` is hidden by reserved-name filtering. | Letting custom `/init` override builtin behavior. | Existing reserved command model |
@@ -67,7 +67,7 @@
 | Workspace file state | missing `AGENTS.md`, existing `AGENTS.md`, hidden `.zcode/AGENTS.md` or `.agents/AGENTS.md` present | yes | Prompt must distinguish write, edit, and no-op-with-message. |
 | Command source conflict | builtin `init`, custom `init` | yes | Builtin reserves the name. |
 | Session phase | completed, running/compacting | limited | Reuse existing normal prompt behavior; no new product rule. |
-| User-global target | `~/.openzwork/AGENTS.md` | pruned | Not in v1. |
+| User-global target | `~/.zcode/AGENTS.md` | pruned | Not in v1. |
 
 ## Candidate Combinations
 

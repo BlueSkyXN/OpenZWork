@@ -65,8 +65,6 @@ Lexical 输入 helper 必须遵守真实 DOM 的可编辑状态。冷恢复时 p
 Start Plan 诊断已证明 `max-width` 仍在过渡时按钮会移动，点击返回成功却未命中；
 测试等待浏览器动画状态，不增加固定暂停、不重复点击，也不关闭产品动画。
 
-Renderer 视口 helper 从设置 metrics 到清除 metrics 之间保持 debugger 会话；提前 detach 会异步撤销模拟尺寸。清除后只释放 helper 自己创建的会话，保留调用方已有 debugger。异步差异组件以目标正文实际出现作为就绪条件，容器已挂载或仍显示加载占位时不能读取最终 diff。
-
 ### 正式回放契约维护（2026-10-15）
 
 正式回放修复遵循当前可观察合同：模型 Recent 夹具按当前项目的 Composer scope 读写
@@ -101,7 +99,8 @@ Provider 允许合并相邻 system 消息；incoming reminder 在 wire 中校验
 
 营销触达属于全局应用界面，隔离 fixture 预置已完成职业引导的账号，防止启动弹窗抢占引导焦点；冷启动后等待应用设置入口就绪，不要求激活固定项目。窗口恢复到未选项目草稿时，固定 cwd 的等待会错误终止 beforeEach，令整份营销用例无法继续。
 
-<!-- Coding Plan 数据面代理与账号 HTTPS 回放段属 codingPlan/官方鉴权净化域，不随上游引入 -->
+- Coding Plan 数据面代理按当前 worker 的 spec 启动，位于上游回放网络配置之后、HOME 播种之前。混合批次包含 ToolSearch 时，只让 ToolSearch worker 使用自己的 capture proxy，不能关闭其他 worker 的账号模型回放。
+- 需要受控流的账号用例保留真实 HTTPS Endpoint 与鉴权路径，由测试代理按精确 host/path 转发到本例 replay server。代理保留原请求地址证据，响应逐块转发；不以固定快速回复或固定延时模拟 running。
 
 - 团队 Provider 共用 Provider ID，模型菜单项按完整团队连接身份分组；专项 helper 由夹具传入连接 key，不能仍用 `registry-provider:<id>` 定位团队行。空白 Composer 不保存未提交改选；跨任务或重启验证未提交选择时，保留非空文字草稿。
 - 合并模型菜单的 Provider 列表是二级菜单。列表断言先打开 `composer-provider-trigger`，选择态读取 radio 的 `aria-checked`；选中 Provider 后回到模型列表再断言模型。不能把尚未展开的 Provider 列表当成候选缺失，也不能依赖旧分组的 `data-model-provider-selected`。
@@ -144,6 +143,12 @@ case 的目录与模型要求 → 项目入口 / Provider fixture → 当前草�
 不能只播种 `disabled` 后让工具栏选择不存在的选项；普通回放仍使用空参数映射，
 不向请求额外注入真实模型的思考参数。
 
+Coding Plan mock 必须在 launcher 的 `onPrepare` 阶段启动，再通过 `runnerEnv` 向 worker
+传递地址。除具体 spec 名称外，选择器也识别两个已支持的批次入口：
+`test/e2e/**/*.test.ts` 和 `test/e2e/conversation-session/*.test.ts`；比较前统一路径
+分隔符和可选的 `./` 前缀。正式 CI 的目录通配符尚未展开，不能仅依赖其中出现工具名。
+worker 仍按具体 spec 使用或清理 mock 环境，无关 spec 不因本次修复启用 mock。
+
 账号模型的数据面 mock 必须按请求的 `stream` 字段返回对应协议：普通流式正文返回 SSE，
 未指定 stream 或明确为 false 的标题旁路返回该协议的 JSON message，text 中包含标题 JSON。
 默认账号响应与按轮次回放使用同一协议选择，不能只为专项 fixture 修正标题响应。
@@ -160,7 +165,7 @@ worker 收到具体 spec → 按需使用 / 清理 mock 环境 → 执行用例
 
 `automations-create-manage` 的项目操作使用当前 `automation-project-select` 和
 `role=option`。按 [虚拟项目规格 B18](../superpowers/specs/2026-09-09-virtual-project-design.md)，
-候选来自本地虚拟项目，不再使用会话草稿菜单；隔离 fixture 只应列出 `OpenZWorkProject`。
+候选来自本地虚拟项目，不再使用会话草稿菜单；隔离 fixture 只应列出 `ZCodeProject`。
 保留创建、编辑、暂停、恢复与删除断言，不把旧「不在项目中工作」入口作为当前表单前置条件。
 
 正式目录下的 spec 使用 `prepareV4ConversationE2E` 把测试带到“可发送的空草稿”；`manual-review/pending` 迁移期候选仍可使用 `prepareConversationE2E`。已转正 spec 不得导入 legacy `helpers/conversation-session.js`：V4 pane/composer/timeline 操作来自 `v4-conversation.ts`，tool block 断言来自 `conversation-session-tool.ts`，provider request 断言来自 `conversation-session-network.ts`。这条边界只收敛 formal 证据实现，不改变 catalog 的产品状态组合。
@@ -178,7 +183,7 @@ admission 规则让 legacy helper 或 ledger mismatch 进入 direct-root suite�
 composer 可见，provider 配置完成后直接复用该草稿；只有当前仍绑定已有 session、处于非 draft
 页面或 composer 不存在时，才点击新建任务。
 
-固定文件夹具的准备还必须确认导航 owner 的 cwd 为 `OpenZWorkProject` 主要目录，并先于 Provider
+固定文件夹具的准备还必须确认导航 owner 的 cwd 为 `ZCodeProject` 主要目录，并先于 Provider
 初始化完成。该目录上的初始空草稿即使没有项目标签也可复用；不能为补标签重复新建，触发预热
 owner 换代。全局新建按虚拟项目规格 D3 创建独立目录，不能用它初始化固定目录夹具；已有会话、
 其他 cwd 或非空草稿应通过现有项目行的新建入口返回夹具目录。`skipShellReady` 保留调用方
@@ -279,10 +284,10 @@ packages/desktop/test/e2e/fixtures/cases/conversation-session/<case-name>.json
 
 ### 跨平台运行时路径合同
 
-`.e2e-home` 是 Desktop E2E 的隔离用户目录，不应把 case 文件散落到系统 `/tmp`。spec 在运行时创建、读取、修改或等待的文件统一放到 Agent 实际执行 workspace `OpenZWorkProject` 下的 `.zcode-e2e/<case>`：
+`.e2e-home` 是 Desktop E2E 的隔离用户目录，不应把 case 文件散落到系统 `/tmp`。spec 在运行时创建、读取、修改或等待的文件统一放到 Agent 实际执行 workspace `ZCodeProject` 下的 `.zcode-e2e/<case>`：
 
 ```text
-.e2e-home/OpenZWorkProject/               Agent workspace cwd
+.e2e-home/ZCodeProject/               Agent workspace cwd
 └── .zcode-e2e/<case>/                case-owned runtime files
 ```
 
@@ -293,7 +298,7 @@ packages/desktop/test/e2e/fixtures/cases/conversation-session/<case-name>.json
 
 ```text
 spec native path ─────────────┐
-fixture absolute tool path ───┼─> OpenZWorkProject/.zcode-e2e/<case>/file
+fixture absolute tool path ───┼─> ZCodeProject/.zcode-e2e/<case>/file
 Bash relative path ───────────┘
 ```
 

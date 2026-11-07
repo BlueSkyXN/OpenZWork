@@ -1,12 +1,10 @@
-# 本地 TTFT 事实与检查
+# 本地 TTFT 查询与验收
 
-当前共享合同为 `packages/shared/src/localTtft.ts`。CLI 发出的时间事实经现有 Agent 服务和连接 scope 转发；归属与订阅权限由原 attachment 决定，不增加独立采集或持久化所有者。
+Status: in-progress
 
-检查一次输入时，先核对 workspace identity、session、command/input 与 turn 的关联，再区分提交、命令接纳、实际执行和首输出时间。缺失阶段保持缺失；排队等待、重试等待和用户确认应分别解释。
+[父合同](ttft-stage-telemetry.md) · [Grafana 看板模板](dashboards/local-ttft.json) · [怎么读一条 Trace](local-ttft-trace-reading.md) · [上线清单](local-ttft-rollout-checklist.md)
 
-<!-- 上游本地 TTFT 的 OTLP/ARMS 平台接入、PromQL 看板与灰度验收章节属 ARMS 遥测净化域，OpenZWork 无 ARMS/OTLP 上报链路，整段不随上游引入 -->
-
-App Usage 展示使用 CLI session store 已有 TTFT 聚合字段，查询入口见[App Usage 规格](../specs/app-usage-settings-openzwork.md)。连接隔离回归见 `packages/services/test/zcodeAgentConnectionScope.test.ts` 中本地时间事实的订阅场景。
+本地 OTLP 数据验证与 ARMS 平台验收分别记录。北京 ARMS 项目可查询既有 zcode-cli-agent / zcode-desktop-renderer Trace 和自定义 Metric。2026-09-15 已完成新 service `zcode-local-ttft` 的平台验收：Trace 与 Metric 入库、分位数查询、瀑布关联与诊断口径均核对通过，见[平台验收证据](local-ttft-platform-evidence.json)。仍未完成：控制台界面瀑布目视确认、打包版编译注入写入路径、7 天 Trace / 30 天 Metric 保留及实际费用。
 
 ## 接入
 

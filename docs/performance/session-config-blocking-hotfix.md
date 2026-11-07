@@ -4,21 +4,24 @@
 
 ## Feature Summary
 
-| 项目          | 决策                                                                                          |
-| ------------- | --------------------------------------------------------------------------------------------- |
-| 层级 / mode   | validation、recovery、运行期默认值；implementation-handoff                                    |
+| 项目 | 决策 |
+| --- | --- |
+| 意图 / capability | 聊天创建与冷恢复不依赖可选远端配置；OffPeak 工具在实际调用时准入 |
+| 层级 / mode | validation、recovery、运行期默认值；implementation-handoff |
 | Primary seeds | createZCodeAgentService、getModelContextBudgetStrategy、AgentRuntime、getAutoCompactThreshold |
-| 不包含        | draft 重复创建、MCP 启动、配置网络故障本身、页面灰度、配额/计费算法                           |
+| 不包含 | draft 重复创建、MCP 启动、配置网络故障本身、页面灰度、配额/计费算法 |
 
 ## UI Surface Matrix
 
-| 场景 / UI               | 本地状态 / 命令                    | 共享 owner                          | 行为 / 边界                               |
-| ----------------------- | ---------------------------------- | ----------------------------------- | ----------------------------------------- |
-| 冷 draft / Composer     | Renderer draft → V4 createSession  | Host capability → CLI Runtime       | 本地注册工具；配置 pending 不阻塞发送     |
-| 已有会话 / Composer     | sendText                           | 同一 CLI Runtime                    | 无新增预算读取；FIFO 不变                 |
-| 侧栏冷恢复              | subscribe → resumePersistedSession | workspace capability → createRecord | 保留原 workspace 策略通道，恢复历史与工具 |
-| 手机 / remote workspace | trusted attachment → preferences   | 现有 shared-host/remote bridge      | 同一固定预算；remote 仍不注册闲时工具     |
-| 闲时页面                | 原 store / form                    | 原 subscription + task service      | 页面灰度与准入规则不变                    |
+| 场景 / UI | 本地状态 / 命令 | 共享 owner | 行为 / 边界 |
+| --- | --- | --- | --- |
+| 冷 draft / Composer | Renderer draft → V4 createSession | Host capability → CLI Runtime | 本地注册工具；配置 pending 不阻塞发送 |
+| 已有会话 / Composer | sendText | 同一 CLI Runtime | 无新增预算读取；FIFO 不变 |
+| 侧栏冷恢复 | subscribe → resumePersistedSession | workspace capability → createRecord | 保留原 workspace 策略通道，恢复历史与工具 |
+| 闲时创建工具 | approval → OffPeakCreate | Host handler → OffPeakTaskService | 调用时校验灰度/套餐/模型，之后才取号/落库 |
+| 闲时查询工具 | OffPeakList | Host 本地 task repo | workspaceKey 隔离；无新增远端查询 |
+| 手机 / remote workspace | trusted attachment → preferences | 现有 shared-host/remote bridge | 同一固定预算；remote 仍不注册闲时工具 |
+| 闲时页面 | 原 store / form | 原 subscription + task service | 页面灰度与准入规则不变 |
 
 ## Shared And Divergent Behavior
 
@@ -27,12 +30,13 @@
 
 ## Relationships / Owners / Invariants
 
-| Rank           | 关系                                               | owner / sink / 证明                              |
-| -------------- | -------------------------------------------------- | ------------------------------------------------ |
-| must-inspect   | workspace 同步与 legacy/V4 创建 → 工具注册         | Host 本地能力；策略测试与 SCB01/02               |
-| must-inspect   | Runtime budget → compact / 每步输出 cap / 子 Agent | Core 统一 preflight；SCB04 / OTB / subagent 单测 |
-| invariant-only | trusted clientMode、workspaceIdentity、owner/FIFO  | 原 attachment/CLI 权威，不创建队列或 Host        |
-| invariant-only | client-config 成功缓存/强制刷新/其他消费者         | 原 provider owner；未增加缓存、计时器、后台刷新  |
+| Rank | 关系 | owner / sink / 证明 |
+| --- | --- | --- |
+| must-inspect | workspace 同步与 legacy/V4 创建 → 工具注册 | Host 本地能力；策略测试与 SCB01/02 |
+| must-inspect | OffPeakCreate → 校验 → createTask | Host handler；SCB03 拒绝时 createTask=0，既有允许路径 |
+| must-inspect | Runtime budget → compact / 每步输出 cap / 子 Agent | Core 统一 preflight；SCB04 / OTB / subagent 单测 |
+| invariant-only | trusted clientMode、workspaceIdentity、owner/FIFO | 原 attachment/CLI 权威，不创建队列或 Host |
+| invariant-only | client-config 成功缓存/强制刷新/其他消费者 | 原 provider owner；未增加缓存、计时器、后台刷新 |
 
 不新增数据库/Settings 持久化；兼容协议仍接受 legacy，新 Runtime 不采用旧算法。
 
@@ -40,6 +44,7 @@
 
 新 worktree 无 `.codegraph`，按约定不建立索引；通过精确函数/调用点检索检查深度 2 的
 Host → 配置 / CLI → Runtime → compact、output cap 路径。未声称执行 codegraph 扫描。
+图谱缺少聊天启动不得等待这两类配置的约束，已在 conversation-runtime 与 off-peak-model-execution
 节点加入用户确认的不变量。其他节点/边与持久化结构不变。
 
 ## Planning Handoff
@@ -56,20 +61,22 @@ SCB01–05 的 setup/action/assertion 与证据层已先写入 case catalog 和 
 ```text
 Enter -> Host 本地能力 + 固定预算 -> CLI 接纳 -> 页面绑定/用户消息 -> provider HTTP
                client/configs 始终 pending，不参与上述等待
+OffPeakCreate -> 现有审批 -> Host 灰度/套餐/模型 -> createTask -> 取号/落库
 ```
 
 同一隔离配置网关、相同 fixture；baseline 临时恢复基线生产源码后重建测试，随后恢复全部修复。
 以下为单次样本（毫秒），不代表线上分位数。HTTP 点为本地 provider 代理收到请求的时间，
 接纳点取 CLI 的 `v4 prompt admitted` 日志；页面绑定与用户消息可见由 DOM observer 记录。
 
-| 场景                 | CLI 接纳 | 页面绑定 | 用户消息可见 | HTTP 请求 |
-| -------------------- | -------: | -------: | -----------: | --------: |
-| 基线冷 draft         |    39444 |    39486 |        40081 |     40091 |
-| 修复冷 draft         |      591 |      613 |         1259 |      3373 |
-| 修复已有会话续发     |       16 |        0 |          115 |        36 |
-| 修复重启冷恢复后发送 |       45 |        0 |          113 |      1476 |
+| 场景 | CLI 接纳 | 页面绑定 | 用户消息可见 | HTTP 请求 |
+| --- | ---: | ---: | ---: | ---: |
+| 基线冷 draft | 39444 | 39486 | 40081 | 40091 |
+| 修复冷 draft | 591 | 613 | 1259 | 3373 |
+| 修复已有会话续发 | 16 | 0 | 115 | 36 |
+| 修复重启冷恢复后发送 | 45 | 0 | 113 | 1476 |
 
 续发/恢复行的页面绑定 0 表示 Enter 前已打开该会话。基线有 8 个配置请求、0 个响应，
+最终发送后因工具列表没有 OffPeakCreate 而失败；修复三个阶段分别 6/6/10 请求、始终 0 响应。
 原始证据在工作区 `packages/desktop/.e2e-artifacts/scb-baseline/` 与 `scb-final/`，
 各自 `timing-reviewed.json` 保留关联 session id 与原始时间戳，runtime-logs 保留接纳日志。
 
@@ -92,8 +99,12 @@ Enter -> Host 本地能力 + 固定预算 -> CLI 接纳 -> 页面绑定/用户�
 
 ### 未通过项与边界
 
+- Bootstrap 协议测试 109/111 通过，两项失败在原基线复现：remote Cron denylist、
+  Account Config providers 的数组/对象契约。未顺带修改这些行为。
 - 全局 conversation coverage audit 9 项错误在原基线一致：I74/I75 引用、四项统计、三份生成文档陈旧。
   graph YAML 可解析且无重复 id；四条悬空边在原基线一致，本次只增加两个节点的不变量。
+- 附加 `conversation-session-offpeak-create` E2E 在 beforeSession 因既有 mock 配置代码按对象
+  读取现有数组形式的 providers，报缺少 `account:zai-offpeak-idle-plan.api`，未进入测试正文，
   不计通过。取号/落库正常路径由服务集成测试验证。
 - 一次附加配置 E2E 捕获模型切换期间 Host `runtime is not running`，没有提交用户消息；
   日志保存在 `scb-final-guard/`。本次未处理模型切换/重复 draft 竞态；独立重跑通过，

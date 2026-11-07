@@ -40,7 +40,7 @@
 
 ### 实测证据
 
-日志 `~/.openzwork/cli/log/zcode-<日期>.jsonl`，`sess=-` 即设置页的 `protocol-settings` lease：
+日志 `~/.zcode/cli/log/zcode-<日期>.jsonl`，`sess=-` 即设置页的 `protocol-settings` lease：
 
 ```text
 08:40:04.732  mcp.server.connect.started   sess=-   plugin:official-tools:server

@@ -28,7 +28,7 @@
 - 不在本设置功能中新增 Audio 附件发送、编码或 provider request 转换能力；Video 附件能力由独立的视频输入功能提供。
 - 不新增图片、音频或视频输出的渲染链路。
 - 不改变模型候选分组、当前模型选择、任务恢复和手机 replayable 语义。
-- 不让远端 workspace 的 `~/.openzwork/v2` 成为模型设置权威源。
+- 不让远端 workspace 的 `~/.zcode/v2` 成为模型设置权威源。
 - 不把 provider registry 或能力状态下沉到 relay、desktop main 或 renderer 队列。
 
 ## 当前事实与设计缺口
@@ -135,7 +135,7 @@ modalitiesConfigured?: boolean;
           | 保存 + 校验
           v
 本地 modelProviderService（唯一权威）
-  ~/.openzwork/v2/config.json
+  ~/.zcode/v2/config.json
   ├─ model.modalities.input/output
   └─ model.zcode.modalitiesConfigured
           |

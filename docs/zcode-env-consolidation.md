@@ -24,8 +24,17 @@
 
 - `ZCODE_TEST_BASE_URL`
 - `ZCODE_PRODUCTION_BASE_URL`
+- `ZAI_TEST_OAUTH_ORIGIN`
+- `ZAI_PRODUCTION_OAUTH_ORIGIN`
 - `ZAI_TEST_BUSINESS_BASE_URL`
 - `ZAI_PRODUCTION_BUSINESS_BASE_URL`
+- `ZAI_TEST_OAUTH_CLIENT_ID`
+- `ZAI_PRODUCTION_OAUTH_CLIENT_ID`
+
+构建配置根据 `ZCODE_ENV` 选择对应链接，并向 renderer 注入公开的 `VITE_*` 值。
+renderer、host/service 和 agent 里的 ZCode API、远控链接、zcode-plan OpenAI/Anthropic
+入口都通过 `@zcode/shared` 的 endpoint resolver 派生，业务代码不要再手写
+`zcode.z.ai` / `zcode.z.ai` 的 zcode-plan URL。
 
 ## Endpoint resolver
 
@@ -34,9 +43,17 @@
 
 默认域名矩阵：
 
+| 产品环境 | ZCode API | ZAI OAuth | ZAI Business API | BigModel API |
 | --- | --- | --- | --- | --- |
+| `test` | `https://zcode.z.ai` | `https://chat.z.ai` | `https://api.z.ai` | `https://bigmodel.cn` |
+| `production` | `https://zcode.z.ai` | `https://chat.z.ai` | `https://api.z.ai` | `https://bigmodel.cn` |
 
 覆盖优先级：
+
+1. 完整 URL 覆盖优先，例如 `ZAI_OAUTH_AUTHORIZE_URL`、`BIGMODEL_OAUTH_AUTHORIZE_URL`。
+2. 不带环境前缀的 origin/base 覆盖其次，例如 `ZCODE_BASE_URL`、`ZAI_OAUTH_ORIGIN`、`ZAI_BUSINESS_BASE_URL`、`BIGMODEL_API_BASE_URL`。
+3. 环境 scoped 覆盖再次，例如 `ZCODE_TEST_BASE_URL`、`ZAI_PRODUCTION_OAUTH_ORIGIN`、`BIGMODEL_TEST_API_BASE_URL`。
+4. 最后使用 shared resolver 内置默认域名。
 
 `.env.development` 只保存本地开发常用的测试环境链接常量；它本身不选择产品环境。
 桌面启动脚本按所选命令显式注入 `ZCODE_ENV`；默认 `pnpm dev:desktop` 当前指向正式环境，

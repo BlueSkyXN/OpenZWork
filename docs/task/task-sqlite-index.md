@@ -4,13 +4,13 @@
 
 ## Scope
 
-`~/.openzwork/v2/tasks-index.sqlite` is the app/host-side index for task list queries. ZCode Agent owns core session content and runtime state; the sqlite index owns fast list metadata and product shell state.
+`~/.zcode/v2/tasks-index.sqlite` is the app/host-side index for task list queries. ZCode Agent owns core session content and runtime state; the sqlite index owns fast list metadata and product shell state.
 
 The index is not a replacement for ZCode Protocol session snapshots.
 
 ## 库级迁移（Todo109）
 
-`tasks-index.sqlite` 还容纳 Automation 表。各 Repo 在开放读写前
+`tasks-index.sqlite` 还容纳 Automation 与 Off-Peak 表。三个 Repo 在开放读写前
 复用 `runTasksDatabaseMigrations`；库级 `tasks_schema_migration` 对已登记迁移只读校验
 checksum；有待应用迁移时通过 `BEGIN IMMEDIATE` 串行复查并应用，失败回滚且不记成功。
 `0001_adopt_task_schema` 接管八张已有表、历史补列和索引；
@@ -125,6 +125,7 @@ soft-delete `3.12.0`；保留执行时间和业务数据，重复运行不重放
 旧列及时间戳不被 Provider 转换覆盖；正常 Reader/派发只使用新列。
 Automation 的 JSON `null` 表示明确使用默认配置，SQL NULL 表示配置缺失，需要重选。
 回滚产生的新旧格式记录不通过重复执行既有迁移追赶，内容仍须可列出、打开。
+Off-Peak 缺失 Provider 的旧选择不查询当前账号补猜，不改变 Ticket 或读取时补迁；
 缺配置只影响后续执行资格。TaskIndex 既有关联清理与投影维护不属于 Provider 转换。
 
 ## Responsibilities

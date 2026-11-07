@@ -76,5 +76,5 @@ zcode --prompt "<task>" --output-format stream-json
   → `--prompt` 要求加载 lark-cli 的 setup skill，stream-json 中出现 `tool.updated` 且 `toolName: "Skill"`、
   `skill: "lark-cli:setup"`，turn 正常完成 → `uninstall lark-cli --keep-data --force` 后 `data/lark-cli@…` 保留、
   cache 记录移除 → `validate` 对 bundled 插件目录、plugin.json 文件、不存在路径分别返回 0 / 0 / 1。
-- 冒烟踩坑：headless 默认模型只读 `~/.openzwork/v2/provider_config.json` 的 `config.defaultModelSelection`，
+- 冒烟踩坑：headless 默认模型只读 `~/.zcode/v2/provider_config.json` 的 `config.defaultModelSelection`，
   且必须带 `options.reasoningLevel`，否则静默回退到第一个 provider 的第一个模型。

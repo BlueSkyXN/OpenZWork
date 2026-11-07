@@ -76,6 +76,7 @@ App Recent scope = App x workspaceKey
 - `workspacePath` 继续只承担文件、命令、Git 和路径展示语义。
 
 App Recent 保存结构化且稀疏的 `ModelSelection`，只在 App 接受普通用户 Submission 时更新。菜单浏览、模型
+点击、Goal 自动续轮、Background、Off-Peak 和 Subagent 不写 App Recent。
 
 ### 1.3 Host View 原子返回候选与首选 Selection
 
@@ -114,6 +115,7 @@ Prompt CLI / TUI 新 Session
 - Automation record；
 - Repo Wiki generation settings；
 - Bot model preference/config；
+- Off-Peak task selection；
 - Custom、Workspace 与 Built-in Subagent model override；
 - 其他会在未来创建 Model 的产品配置。
 
@@ -217,14 +219,17 @@ ModelFactory 最终完整校验
 
 - Conversation 将结构化 Selection 提交给 Worker，最终失败由 ModelFactory 报告；
 - Renderer 可以根据 Host View 展示 unavailable，但不复制一套权威 option validator；
+- Automation、Repo Wiki、Bot、Off-Peak 与 Subagent 在各自 Host 产品 Service 的保存/派发边界进行必要的窄
   提前检查，防止保存明显无效配置或浪费产品资源；
 - 产品提前检查不进入公共用户 Facade，也不替代 Worker 最终校验；
+- hidden Off-Peak 继续使用 Host 内部 Registry/scoped View，不进入普通用户 View。
 
 ### 1.7 与既有阶段性文档的关系
 
 本 Todo 记录的是后续已经确认的新裁决，以下旧文档中的阶段性范围不能阻止本 Todo 收口：
 
 - Todo 09 的“暂不改 Task 数据库形态”只约束 Todo 09 当时的实施范围。本 Todo 已确认正式产品持久化统一使用
+  结构化 `ModelSelection`，因此 Off-Peak repository/API 在本 Todo 中一起迁移，不再长期保留
   `model + thoughtLevel` 投影；
 - `docs/subagents-built-in-model-overrides.md` 中通过 `workspace/readState` Runtime Catalog 对账模型候选和
   reasoning 的表述属于旧实现事实。本 Todo 实施时必须改为：Settings 读取 Local Host View，Remote
@@ -261,6 +266,7 @@ Remote Worker Registry / execution
 
 `workspace/readState` 在没有活动 Session 时创建完整临时 `ZCodeApp`，注入 state-only 假 Adapter，再通过
 `mapSessionSettings()` 生成 `model + thought + configOptions`。Conversation 首条消息只是最常见入口；同一
+链路还被 Automation preview、Repo Wiki、Subagent reconciliation、Bot、Off-Peak 用户模型与 Git Commit
 sidecar 使用。
 
 Host View 已经包含 Model Config 与 Option Specs，不应再启动 Agent App/Session 来查询模型静态事实。
@@ -309,6 +315,7 @@ Sparse Selection --------------------------> 原样保持
 Active Model.options ----------------------> 本次执行完整事实
 ```
 
+同类风险必须检查 Session restore、Model switch、Automation/Off-Peak dispatch、Compact/Memory/Subagent、
 CLI 参数、RPC round-trip 和 Draft 持久化。UI 展示当前默认值不等于用户显式选择；只有真实编辑动作才产生
 option override。
 
@@ -324,6 +331,7 @@ option override。
 | Repo Wiki         | 未指定时使用目标 Workspace 首选                               | 每次 generation 提交边界        |
 | Bot               | 未指定时使用 Bot context 对应 Workspace 的产品默认规则        | Bot config/task submission      |
 | Subagent override | 继承 Parent Active Model，不重新查询 Workspace 默认           | Parent/child execution boundary |
+| Off-Peak          | 创建任务时形成自己的精确 provider/model Selection             | Off-Peak record/dispatcher      |
 
 `modelSelection` 整体缺失与 `modelSelection.options` 缺失是两个不同状态：前者表示产品没有固定模型，后者表示
 模型身份已经固定但 option 跟随 Model Config 默认值。实现不得用同一个空字符串、`inherit` 伪 ID 或全局
@@ -338,13 +346,14 @@ Automation。
 
 ### 3.1 Feature Summary
 
-| 字段             | 结论                                                                                              |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| Developer intent | 模型选择读取目标 Host，统一稀疏结构化意图，删除 Base Host 全局候选、临时 App 目录和字符串选择旁路 |
-| Change layer     | `option-source`、`draft-default`、`validation`、`persistence`、`recovery`                         |
-| Operating mode   | planning / implementation-handoff                                                                 |
-| Primary seeds    | `IModelSelectionService`、`useModelSelectionView`、`workspace/readState`、`ModelConfigSelect`     |
-| Out of scope     | Provider Provisioning、Access/Auth、模型请求编码、Queue/Goal 状态机、远程 Subagent 配置管理       |
+| 字段             | 结论                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------- |
+| Developer intent | 模型选择读取目标 Host，统一稀疏结构化意图，删除 Base Host 全局候选、临时 App 目录和字符串选择旁路             |
+| Capability       | Model Selection、Provider Registry、Environment、Conversation、Automation、Repo Wiki、Bot、Off-Peak、Subagent |
+| Change layer     | `option-source`、`draft-default`、`validation`、`persistence`、`recovery`                                     |
+| Operating mode   | planning / implementation-handoff                                                                             |
+| Primary seeds    | `IModelSelectionService`、`useModelSelectionView`、`workspace/readState`、`ModelConfigSelect`                 |
+| Out of scope     | Provider Provisioning、Access/Auth、模型请求编码、Queue/Goal 状态机、远程 Subagent 配置管理                   |
 
 ### 3.2 UI Surface Matrix
 
@@ -355,6 +364,7 @@ Automation。
 | Automation                | 表单选中 Workspace 的目标 Host | Automation form       | Automation Service/record  | 执行 Environment ModelFactory       | 结构化持久化；取消不改 Conversation |
 | Repo Wiki                 | 当前项目目标 Host              | generation settings   | Repo Wiki Service          | 目标 Environment ModelFactory       | 删除 deferred Session preview       |
 | Bot                       | Bot context 对应目标 Host      | Bot command draft     | Bot config/Task submission | 目标 Environment ModelFactory       | 删除 workspace state 模型投影       |
+| Off-Peak                  | Local Host scoped hidden View  | Off-Peak form         | Off-Peak Service/record    | Local Worker ModelFactory           | 保持本地产品边界；结构化持久化      |
 | Subagent Settings         | Local Host View                | Subagent form         | Local `ISubagentsService`  | Local Environment config            | 不管理 Remote config                |
 | Remote Subagent execution | 无本轮 UI                      | Remote profile/config | Agent tool                 | Remote Worker ModelFactory          | 读取远端自有配置                    |
 | Git Commit sidecar        | 请求目标 Host 初始/显式选择    | 单次请求              | text generation service    | 目标 Environment ModelFactory       | 不再读 temporary App                |
@@ -473,6 +483,7 @@ Snapshot/cache 按 target service 实例与 `workspaceKey` 隔离。切换 targe
 ### 5.3 结构化持久化
 
 - App Recent 使用 `workspaceKey -> ModelSelection`；
+- Automation、Repo Wiki、Bot、Off-Peak 与 Subagent 的 shared types、strict schema、RPC 和 repository 使用
   `ModelSelection`；
 - 正式 repository 只保存显式 option；空 `options` 和清除后的空叶子必须归一化掉；
 - 删除任何把 ModelFactory/Option Spec 解析出的默认值反写 Selection 的恢复、预览或保存 helper；
@@ -487,6 +498,7 @@ Snapshot/cache 按 target service 实例与 `workspaceKey` 隔离。切换 targe
 
 - Provider Registry、ModelFactory、Active Model 和 Adapter 执行主链；
 - Session Submission、Queue、Guide、Edit、Retry 当前结构化 intent；
+- hidden Off-Peak Provider 的 scoped View 与派发前窄检查；
 - App Recent、Configured Default、Session Selection、Active Model 不同写入时机；
 - Prompt CLI/TUI 的 in-process Entry，不强制为它们启动 Host RPC。
 
@@ -533,13 +545,15 @@ Snapshot/cache 按 target service 实例与 `workspaceKey` 隔离。切换 targe
 5. 切换 provider/model 时不无脑继承源模型 options；新模型只接收用户针对它显式确认且通过 Option Specs 的值；
 6. execution history 需要实际 option 时读取/保存 Active Model facts，不物化 Selection 默认值。
 
-7. 按各自 target 切换 Host View；
-8. reasoning/output options 直接读取 View Model Config；
-9. 删除 Automation/Repo Wiki deferred Session preview；
-10. 将产品 Service/Repo 改为结构化 Selection；
-11. Automation 表单把目标 Host preferred 解析成具体 Selection；没有 preferred 时明确不可提交，不引入
-    `inherit`、空字符串或“默认模型”伪 ID；
-12. 保持各产品 Draft、取消、保存、调度和执行 owner 不变。
+### Step F：Automation、Repo Wiki、Bot、Off-Peak 与 sidecar
+
+1. 按各自 target 切换 Host View；
+2. reasoning/output options 直接读取 View Model Config；
+3. 删除 Automation/Repo Wiki deferred Session preview；
+4. 将产品 Service/Repo 改为结构化 Selection；
+5. Automation 表单把目标 Host preferred 解析成具体 Selection；没有 preferred 时明确不可提交，不引入
+   `inherit`、空字符串或“默认模型”伪 ID；
+6. 保持各产品 Draft、取消、保存、调度和执行 owner 不变。
 
 ### Step G：Subagent 本地配置边界
 
@@ -597,6 +611,7 @@ Snapshot/cache 按 target service 实例与 `workspaceKey` 隔离。切换 targe
 
 - 不展开 Provider API 类型组合；本 Todo 不改变 Adapter 编码；
 - 不实现远程 Subagent Settings CRUD、同步或冲突处理；
+- 不把 Off-Peak hidden View 合并进普通 View；
 - 不改变 Queue、Goal、Compact、Background、权限或恢复状态机；
 - 不为 Prompt CLI/TUI 启动额外 Host 进程；
 - 不为未发布分支内格式建立兼容版本矩阵。
@@ -613,6 +628,7 @@ Snapshot/cache 按 target service 实例与 `workspaceKey` 隔离。切换 targe
 - App Recent 结构化 round-trip 与 workspaceKey；
 - Selection partial options、空对象归一化、patch `null` 清除和显式 default-value pin；
 - ModelFactory 缺省 option 解析、Active Model 冻结，以及 restore/switch 不反写 Selection；
+- Automation/Repo Wiki/Bot/Off-Peak/Subagent repository 结构化 round-trip；
 - Automation preferred 初始化、具体 Selection 保存、展示和派发一致性；
 - legacy importer 只读转换与新写入零字符串选择；
 - Subagent Settings Local-only scope。
@@ -656,14 +672,15 @@ importer、非模型业务字段可能合法存在。必须逐消费者确认它
 3. App Recent 按 `workspaceKey` 隔离并保存稀疏结构化 Selection，不新增 `environmentId`；
 4. Configured Default 与 fallback 由目标 Host 解析并随同一 View 返回 `preferredSelection`，不增加第二个
    resolver RPC；Prompt CLI/TUI 复用同一纯 domain 解析；
+5. Conversation、Automation、Repo Wiki、Bot、Off-Peak 与 Subagent 的正式选择使用结构化
    `ModelSelection`，并只持久化显式 option；
-5. Subagent 配置由各 Environment 独立落盘，本轮 Settings 只管理 Local Environment；
-6. `workspace/readState`、临时 App 和 `configOptions` 不再承担模型目录、模型能力或模型默认值；
-7. Todo 12 的 ModelFactory 最终校验边界保持成立，不恢复通用用户 Facade validator；
-8. local/remote、重连和跨 workspaceKey 缓存不存在 Local fallback 或身份串用；
-9. Desktop continuous、Mobile replayable、Queue、Goal、Session 恢复与 Provider Provisioning 不变；
-10. 相关 Design、Feature Graph、测试、实现日志与删除审计已经回写；
-11. `pnpm typecheck`、`pnpm lint`、`pnpm fmt:check` 和相关测试全部通过，并完成 Conventional Commit。
+6. Subagent 配置由各 Environment 独立落盘，本轮 Settings 只管理 Local Environment；
+7. `workspace/readState`、临时 App 和 `configOptions` 不再承担模型目录、模型能力或模型默认值；
+8. Todo 12 的 ModelFactory 最终校验边界保持成立，不恢复通用用户 Facade validator；
+9. local/remote、重连和跨 workspaceKey 缓存不存在 Local fallback 或身份串用；
+10. Desktop continuous、Mobile replayable、Queue、Goal、Session 恢复与 Provider Provisioning 不变；
+11. 相关 Design、Feature Graph、测试、实现日志与删除审计已经回写；
+12. `pnpm typecheck`、`pnpm lint`、`pnpm fmt:check` 和相关测试全部通过，并完成 Conventional Commit。
 
 ## 10. 非目标
 
@@ -685,6 +702,7 @@ importer、非模型业务字段可能合法存在。必须逐消费者确认它
   按 `workspaceKey` 保存稀疏 Selection，并且只在普通用户 Submission 被接受后更新；
 - Workspace presentation 只保留 mode 与 slash commands，删除临时 Session/App 模型准备、Runtime Catalog
   对账和 Renderer 侧第二套默认值推导；
+- Automation、Repo Wiki、Bot、Off-Peak 与 Subagent 的正式配置、协议和 repository 已迁为结构化
   `ModelSelection`。旧字符串仅在各自已发布持久格式 importer 内单向读取；
 - Automation record 仍是可缺模型的 Select；每个 `automation_runs` row 在首次派发时原子固定 Submission
   Selection，调度重试只能读回该值，不会再次读取 Host preferred；

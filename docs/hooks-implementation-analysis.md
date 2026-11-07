@@ -57,7 +57,7 @@ ZCode hooks **不是单一模块**，分两层，行为可能不一致：
 
 ### 4.1 Runtime 生效配置
 
-1. **用户级**：`~/.openzwork/cli/config.json` → `hooks` 字段
+1. **用户级**：`~/.zcode/cli/config.json` → `hooks` 字段
 2. **项目级**：`<workspace>/.zcode/config.json` → `hooks` 字段
 3. **插件级**：已启用插件的 `hooks/hooks.json` 或 manifest `hooks` 字段
 

@@ -11,7 +11,7 @@
 
 ```text
 不采用：
-~/.openzwork/cli/plugins/assignments/workspaces/<hash>.json
+~/.zcode/cli/plugins/assignments/workspaces/<hash>.json
 
 采用：
 <workspace>/.zcode/config.json
@@ -83,7 +83,7 @@ runtime activation
 | Plugin options | `plugins.options` 对 User/Workspace 全开放，含 sensitive values |
 | 项目 Plugin 目录 | `.zcode/plugins` or Workspace `plugins.dirs`，无 Workspace trust |
 | Plugin MCP | 与 Hook/Skill/Command/Agent 一样直接进入 runtime，无独立 approval |
-| per-user Plugin install/cache | target Host `~/.openzwork/cli/plugins` |
+| per-user Plugin install/cache | target Host `~/.zcode/cli/plugins` |
 
 采用 ZCode 既有 config 文件名，避免 `.zcode/settings.json` 与 `.zcode/config.json` 双权威；
 安全策略按 ZCode 产品决策放开。

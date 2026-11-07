@@ -1,6 +1,7 @@
 # 草稿预热会话在 runtime 换代后的重建
 
 - 日期：2026-08-20
+- 分支：`fix/draft-prewarm-runtime-rebuild`（基于 `feat/cua-merge-0819`）
 - 状态：设计已确认，待实施
 
 ## 背景
@@ -11,6 +12,17 @@
 2. **传完、电脑控制变绿后发不出去**（生产）——图片上传成功后点发送失败。
 
 ### 根因
+
+CUA Helper 就绪会触发 agent runtime 无条件回收（`packages/services/src/node.ts:1094-1102` 的设计注释说明这是为了回收拿到 `BROKER_UNAVAILABLE` 的 stranded agent）。回收把 generation 1 里刚建立、尚未持久化的会话一并冲掉：
+
+```
+10:42:46.139  attachmentCommitV4 OK                     图片上传完成（gen1）
+10:42:46.340  cua helper ready pid=33314                「电脑控制变绿」
+10:42:46.991  agent process exited pid=33308            回收 stranded agent
+10:42:49.531  agent process started runtimeGeneration=2 新 runtime
+10:42:50.091  attachmentBeginV4 FAIL  sessionNotFound: sess_e0b036a8
+10:42:50.129  subscribeConversationV4 FAIL  sessionNotFound: sess_e0b036a8
+```
 
 草稿态的 `effectiveSessionId = sessionId ?? prewarmSessionId`（`SessionPane.tsx:1487`），`sessionId === null` 时完全依赖预热会话。预热会话消失后：
 
@@ -25,14 +37,22 @@
 
 已在讨论中确认：**容忍回收、事后补偿**，而不是在 services 侧避免回收。
 
-被否决/推迟的替代方案：
+理由：不改动 services 层的回收语义（那是本分支为修复「CUA 工具永远载入不了」而刻意引入的），风险集中在 renderer；代价是用户会看到一次短暂的重传。
 
+被否决/推迟的替代方案：
 - 在回收侧区分触发源（`onHelperHealthy` 冷启动首次就绪 vs `onHelperCredentialsRotated`），使正在服务的 workspace 不被回收；
 - 给 `ZCodeAgentService` 补活跃 turn 查询，把 `hasActiveTurnRef`（`node.ts:1467` 现为 `() => false`）真正接上。
 
 这两条与本方案不冲突，可后续单独推进。
 
 **回收触发源不止一个**，这是选择「事后补偿」而非「回收侧堵」的关键依据。除冷启动首次 ready 外，liveness watchdog 的恢复路径同样会回收。2026-08-20 12:26 的 dev 日志：
+
+```
+12:26:43.617  cua helper liveness: Helper unreachable (attempt 3); triggering resolver recovery
+12:26:44.980  cua helper ready pid=97629
+12:26:45.489  ZCode agent cleanup ... reason='workspace-dispose'
+              runtimeIdentity: /Users/dev/.zcode/workspace/default:4:57273
+```
 
 helper ready 后 509ms 触发回收，且该 workspace 已到 generation 4。若改从回收侧堵，需同时覆盖 `onHelperHealthy`、`onHelperCredentialsRotated` 与 liveness 恢复三条路径，改动面显著大于 renderer 侧补偿。
 
@@ -104,7 +124,6 @@ transport.onRuntimeRestart                         SessionPane props:446，已�
 `restartEpoch` 是必需的：正式会话态 runtime 重启后 `attachmentSessionId` 不变，仅依赖它的 effect 不会重跑，附件会永久停在 `waitingSession`。
 
 不受影响的两类附件（`:470-476` 已跳过）：
-
 - `localZeroCopy`（本地文件拖入，`ref` 直接是本地路径，从不上传）——这解释了为什么问题集中在粘贴/截图的图片上，它们没有 `localPath`；
 - `referenceOwnership === "session"`（已随消息发出）。
 
@@ -123,13 +142,13 @@ transport.onRuntimeRestart                         SessionPane props:446，已�
 
 ### 5. 测试
 
-| 层          | 用例                                                                                                       |
-| ----------- | ---------------------------------------------------------------------------------------------------------- |
-| coordinator | `invalidationVersion` 递增时 retire + 重建；`blockedInvalidationVersion` 被清除                            |
-| controller  | `dispose()` 在 `pending` 态不删会话（回归保护）                                                            |
-| attachments | 换代后置 `waitingSession`；新 sessionId 到达后入队；正式态 sessionId 不变时也能被 `restartEpoch` 唤醒      |
+| 层 | 用例 |
+| --- | --- |
+| coordinator | `invalidationVersion` 递增时 retire + 重建；`blockedInvalidationVersion` 被清除 |
+| controller | `dispose()` 在 `pending` 态不删会话（回归保护） |
+| attachments | 换代后置 `waitingSession`；新 sessionId 到达后入队；正式态 sessionId 不变时也能被 `restartEpoch` 唤醒 |
 | attachments | 同一 `restartEpoch` 内不重复重传；`runtimeRebuildRetryCount` 达 5 才判 `failed`，且不影响 `autoRetryCount` |
-| 门禁        | 重建中禁用；新 binding 到达解除；超时解除并回落                                                            |
+| 门禁 | 重建中禁用；新 binding 到达解除；超时解除并回落 |
 
 两个本地已知坑：
 
@@ -138,15 +157,16 @@ transport.onRuntimeRestart                         SessionPane props:446，已�
 
 ## 边界与失败模式
 
-| 情况             | 行为                                                                                         |
-| ---------------- | -------------------------------------------------------------------------------------------- |
-| 重建期间再次换代 | `invalidationVersion` 再 +1，reconcile 重新 retire + 建；门禁计时器重置                      |
-| 发送进行中换代   | `promotionState === "pending"`，`dispose()` 不删会话；正式 session 由 cold-resume 负责       |
-| 切换 workspace   | `invalidateDraftRuntime` 按 `workspacePath` / `workspaceIdentity` 定向，不影响其他 workspace |
-| 重建失败 / 超时  | 解除禁用，回落无预热发送路径；附件保持 `waitingSession` 直到下次有有效 session               |
-| 旧会话清理失败   | 无碍——旧 session 已随 runtime 消失，`deleteCreatedSession` 的 catch 已忽略失败               |
+| 情况 | 行为 |
+| --- | --- |
+| 重建期间再次换代 | `invalidationVersion` 再 +1，reconcile 重新 retire + 建；门禁计时器重置 |
+| 发送进行中换代 | `promotionState === "pending"`，`dispose()` 不删会话；正式 session 由 cold-resume 负责 |
+| 切换 workspace | `invalidateDraftRuntime` 按 `workspacePath` / `workspaceIdentity` 定向，不影响其他 workspace |
+| 重建失败 / 超时 | 解除禁用，回落无预热发送路径；附件保持 `waitingSession` 直到下次有有效 session |
+| 旧会话清理失败 | 无碍——旧 session 已随 runtime 消失，`deleteCreatedSession` 的 catch 已忽略失败 |
 
 ## 风险
 
 - **重传可见性**：用户会看到附件进度条回到 0 并重传一次。属预期行为，需确保文案（`chat.attachments.upload.runtimeRestarted`）读起来不像错误。
 - **门禁误报**：若 `onRuntimeRestart` 在非草稿态误触发，会无谓禁用发送 5s。effect 内以 `sessionId === null` 收紧，并在测试中覆盖。
+- **本方案不消除回收本身**：CUA Helper 冷启动仍会回收 agent，用户仍会经历一次会话换代。彻底消除需要前述被推迟的两条替代方案之一。

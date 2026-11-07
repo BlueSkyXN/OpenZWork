@@ -22,7 +22,9 @@
 - 首次安装或显式更新时按 descriptor 校验 SHA-256/大小；本地下载模式缓存完整 archive 后上传，SSH 远端下载模式在目标机下载同一 archive，最终都进入 immutable release installer
 - `ZCODE_ENV=production` 时默认内置两组官方 CDN：
   - 国内：`https://cdn.codegeex.cn/zcode/electron/releases/<version>`
+  - 海外：`https://cdn-zcode.z.ai/zcode/electron/releases/<version>`
 - CI 若配置 `CDN_DOMAIN` / `OSS_PATH_PREFIX`，生产包会在构建期把这些变量展开为 remote CDN 候选列表。
+  `CDN_DOMAIN` 的仓库默认值统一为 `cdn-zcode.z.ai`，覆盖 CI 全局变量、CDN URL 前缀校验、OSS 上传 URL 生成和 CDN 预热脚本；默认发布路径仍为 `zcode/electron/releases`。显式配置单域名或多域名列表时，继续按配置顺序解析 bucket、路径和预热账号。
   迁移期可使用逗号列表让 `3.1.3` 优先新 CDN、保留旧 CDN 兜底；切换完成后把 CI 变量收敛为单个新 CDN 即可。
 - 默认优先级按“应用语言 + 本地时区”决定：
   - `locale` 为中文，且时区处于 UTC+8：优先国内 CDN，海外 CDN 作为备选
@@ -33,7 +35,7 @@
   `build:remote:assets` job 同步 descriptor 与四个 archive。
 - `remoteCdnBaseUrl` 仍可通过环境变量覆盖；一旦显式设置，就只使用该自定义基址，不再套用
   `ZCODE_ENV` 默认值或 production 地区分流
-- SSH 远端服务器下载模式会在远端临时目录下载并校验完整 archive；最终安装到 `~/.openzwork/server/releases/`，并通过 `current.json` 原子切换。
+- SSH 远端服务器下载模式会在远端临时目录下载并校验完整 archive；最终安装到 `~/.zcode/server/releases/`，并通过 `current.json` 原子切换。
 
 ## 开发态切换公网 CDN
 

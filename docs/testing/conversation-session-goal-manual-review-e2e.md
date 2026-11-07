@@ -32,10 +32,13 @@ packages/desktop/.e2e-artifacts/<run-id>/manual-review/goal-run-cases/
 
 抓包代理默认把 CA 和 capture 文件放在 `packages/desktop/.e2e-network-capture/`。这个目录不能放进 `.e2e-home`，因为 WDIO 每个 session 启动前都会清空 `.e2e-home` 来保证测试隔离；如果 CA 被 reset 删除，agent 子进程读取 `httpProxyCaCertPath` 时会直接报 `ENOENT`。
 
+capture 模式只需要抓真实 DeepSeek provider 请求。默认 `NO_PROXY` 会绕过 `localhost`、`js.stripe.com`、`zcode.z.ai` 和 `cdn.zcode-ai.com`，避免 app 启动期 telemetry/CDN 请求进入 MITM 代理后产生无关证书告警。
+
 ## 预设启动态
 
 manual review case 不应把时间花在重复登录和设置模型上。WDIO `beforeSession` 会重置 `.e2e-home` 后直接预设：
 
+- `setting.json`：写入 `providerFamilyDomain=zai`、`providerFamilyDomainMigrated=true` 和 `modelProviderFamilyModes.zai=apiKey`，避免欢迎页再次要求登录。
 - `credentials.json`：写入 e2e 专用占位 token，只用于通过本地启动守卫。
 - `model-providers.json` 与 CLI `config.json`：写入 `e2e-upstream/deepseek-v4-flash`。
 - capture 模式下的 `httpProxy`、`httpProxyCaCertPath`：通过设置页代理语义注入 agent 子进程，确保真实 DeepSeek 请求进入抓包代理。
@@ -93,7 +96,7 @@ prompt 同时明确禁止 `Edit`、`Write`、删除、移动、安装、提交�
 可选日志观察：
 
 ```bash
-tail -f ~/.openzwork/cli/log/zcode-$(date +%F).jsonl | rg "target\\.continuation|target\\.completion_verification|turn\\.started|turn\\.completed"
+tail -f ~/.zcode/cli/log/zcode-$(date +%F).jsonl | rg "target\\.continuation|target\\.completion_verification|turn\\.started|turn\\.completed"
 ```
 
 人工观察点：

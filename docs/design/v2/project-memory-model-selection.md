@@ -97,11 +97,13 @@ modelExecution: {
 - 不写入 Session Selection、消息历史或持久配置。
 - 不影响 Recall、前台 Memory 工具调用或 Dream。
 - 普通 Turn 缺省不传，继续遵循 Session 级 Extraction 开关。
+- Off-Peak 派发显式传入 `"skip"`，确定不运行自动 Memory Extraction，避免一次性执行
   凭据在主 Turn 结束后被后台工作再次使用。
 
 协议和调用链：
 
 ```text
+Host Off-Peak dispatch
         |
         | sendText.modelExecution.memoryExtraction = "skip"
         v
@@ -119,3 +121,4 @@ Turn 成功
 
 该字段与 execution-scoped Selection、请求期访问材料和子 Agent 约束共用既有的
 `modelExecution` 单轮边界；它不进入可排队的普通 Submission Intent。当前调用方仅为要求
+idle start-now 的 Off-Peak 派发，因此不会在 CommandInbox 中丢失。

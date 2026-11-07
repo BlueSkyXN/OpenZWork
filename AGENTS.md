@@ -58,7 +58,7 @@
 ## 上游与 OpenZWork 维护
 
 - 识别文件来源、放置文档与代码、修改上游文件、更新台账、合入上游新版本和沉淀维护经验时，使用 `.agents/skills/openzwork-maintenance/SKILL.md`。
-- 上游文件保持上游原文，只改行为必需的行，不格式化。OpenZWork 文档放在 `docs/openzwork/` 或带 `-openzwork` 后缀，索引见 `docs/openzwork/README.md`。
+- 上游文件保持上游原文；代码只改行为必需的行，不格式化。上游文档与技能原文不动，OpenZWork 版本另存为同目录的 `-openzwork` 文件，读写都以 `-openzwork` 版本为准。OpenZWork 文档放在 `docs/openzwork/` 或带 `-openzwork` 后缀，索引见 `docs/openzwork/README.md`。
 - 新增功能、改变上游行为、裁剪上游功能时，在同一个 PR 中更新 `docs/openzwork/ledger.yaml`；提交后执行 `pnpm openzwork:scan --check`。
 
 ## UI 与平台边界

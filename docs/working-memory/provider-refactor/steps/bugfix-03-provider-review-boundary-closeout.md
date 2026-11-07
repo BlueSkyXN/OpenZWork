@@ -12,6 +12,7 @@
 
 本任务修复最近 Bugfix 复审中已经完成裁决、无需重新设计 Provider 主架构的四个边界问题：
 
+1. Account 首次解析失败时，fail-closed Overlay 漏掉 Off-Peak Provider；
 2. 最大输出 Token 同时存在简化输入与完整 JSON 两个编辑入口，可能静默覆盖用户输入；
 3. Configured Default 的损坏恢复在文件锁之外删除文件，存在跨进程删除竞态；
 4. Host 向 ZCode CLI 执行进程同步 Account Overlay 时使用通用 Provider Parser 和手工门禁，没有使用 Account Source 专属 Schema。
@@ -40,16 +41,54 @@ CLI Effective Provider Registry
 
 Host 在 Desktop 托管模式下继续拥有当前账号连接与套餐事实的权威；CLI 保存 revisioned Account Overlay 副本，用于构建自己的 Effective Registry 和 Active Model。协议不下发账号凭据，不同步完整 Registry，也不让 CLI 重新查询和解析一套账号上游事实。
 
+## 1. Account fail-closed 覆盖 Off-Peak
+
+### 1.1 当前问题
+
+`createFailClosedAccountProviderConfigSnapshot()` 当前只为 `access.type = "zhipu-account"` 的 Built-in Provider 发布 `enabled=false`。两个 Off-Peak Provider 使用：
+
+```ts
+access: {
+  type: "zhipu-account";
+  family: "zai" | "bigmodel";
+  mode: "off-peak";
+}
+```
+
+它们在 Built-in 中没有显式 `enabled=false`，而 Resolver 将 `enabled` 缺省解释为启用。因此首次 Account 解析失败时，普通账号 Provider 被关闭，Off-Peak Provider 却仍可能进入 Registry，并被 Off-Peak 专属 Model Selection View 按固定 Provider ID 投影。
+
+```text
+首次 Account 解析失败
+        |
+        v
+只关闭 zhipu-account
+        |
+        v
+Off-Peak enabled 缺省为 true
+        |
+        v
+进入 Registry / Off-Peak Selection View
+```
+
 ### 1.2 目标行为
 
 Account 首次事实未知且没有 Last Known Good Snapshot 时，所有受 Account Overlay 控制的 Built-in Provider 都必须显式关闭：
 
+```text
+Account-controlled Provider =
+  access.type === "zhipu-account"
+```
+
+Todo 26 已把普通账号与 Off-Peak 的静态身份统一收口为 `zhipu-account`，并由 `mode` 区分产品路径。
 正常 Account Resolver 与 fail-closed 复用同一 Account-controlled 判据，不能再维护旧 Access Type 白名单。
 
 ### 1.3 验收
 
+- 首次 Account 解析失败时，Start、Individual、Team 与两个 Off-Peak Provider 均为 `enabled=false`；
 - 普通 API Key 与 Personal Provider 仍可启动；
+- Off-Peak Model Selection View 不包含 fail-closed Provider；
 - 后续 Account 刷新成功后，以新 revision 原子替换 fail-closed Snapshot；
+- 不修改固定 Off-Peak Provider ID、Provider group、visibility 或请求期鉴权运行契约。
 
 ## 2. 最大输出 Token 单一编辑入口
 
@@ -215,11 +254,13 @@ Account Source 专属 Schema 继续机械限制当前允许的字段：
 - 当前账号约束的 `builtinModelIds`；
 - Account Access 的非敏感产品与协议事实。
 
+Off-Peak Account Overlay 只同步 `enabled`，因此切换专属 Schema 不影响 Off-Peak。公共 `accessId` 已由
 Todo 23/26 删除；Account Source Schema 不接受任何替代名称的公共凭据引用。
 
 ### 4.3 验收
 
 - 合法 Start、Individual、Team Account Overlay 可以跨进程 round-trip；
+- `{ enabled: true/false }` Off-Peak Overlay 可以跨进程 round-trip；
 - Account 同步拒绝 API Key、Endpoint、Headers、label、group、visibility、Personal modelIds；
 - CLI 不重新执行账号业务 Resolver；
 - 同步消息不包含 JWT、API Key、Team Key、临时 Header 或 Credential Store key；
@@ -229,6 +270,7 @@ Todo 23/26 删除；Account Source Schema 不接受任何替代名称的公共�
 
 本 Bugfix 可以独立完成，不等待 Todo 23：
 
+- fail-closed 覆盖 Off-Peak；
 - 最大输出 Token 唯一入口与确定性 `max/default` 推导；
 - Configured Default 锁内恢复；
 - Account 跨进程专属 Schema。
@@ -247,6 +289,7 @@ Todo 23/26 删除；Account Source Schema 不接受任何替代名称的公共�
 
 实施必须测试先行，建议顺序：
 
+1. 为 fail-closed Off-Peak、Configured Default 并发恢复和 Account Source Schema 写失败测试；
 2. 修复三项领域/持久化边界；
 3. 为最大输出 Token 小于、等于、大于、扩大后缩小和恢复默认写失败测试；
 4. 删除重复 JSON UI 并实现唯一输入推导；
@@ -259,6 +302,7 @@ Todo 23/26 删除；Account Source Schema 不接受任何替代名称的公共�
 
 ## 7. 实施结果
 
+- 第 1 项 Off-Peak fail-closed 与第 4 项 Account Source 专属 Schema 已由前序提交完成；
 - 第 3 项 Configured Default 已收口：确认 JSON/Schema/版本损坏时在同一文件锁内删除；锁、读取与 Legacy
   importer 失败只做本轮 fallback，不再锁外删除；非法内容和非内容读取失败均有回归测试；
 - 第 2 项已与 Todo 27 一并完成：删除完整 `maxOutputTokens` JSON 编辑器和对应 Draft 字段，唯一数字输入

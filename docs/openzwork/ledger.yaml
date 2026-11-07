@@ -11,7 +11,7 @@ entries:
     kind: feature
     status: active
     title: OpenZWork 维护体系
-    summary: 文档索引、台账、上游文档编辑登记、维护技能、扫描工具与门禁。
+    summary: 文档索引、台账、上游文档的 OpenZWork 版本登记、维护技能、扫描工具与门禁。
     spec: docs/openzwork/maintenance-model.md
     paths:
       - docs/openzwork/**

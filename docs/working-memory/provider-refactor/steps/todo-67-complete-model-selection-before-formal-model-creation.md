@@ -116,11 +116,12 @@ Selection 必须原样进入正式 Model 创建边界。Core 仍在实际 Git �
 
 1. 使用正式 Provider Registry 与 ModelFactory，向连接测试输入仅含 Provider/Model 身份，证明
    Adapter 最终收到 `values[0]` 和受限输出预算；
-2. Git 生成器保留完整输入 Selection，同时正式请求最终使用 `values[0]`；
-3. Subagent 切换模型后不操作 Reasoning 控件也会保存界面显示的合法档位；
-4. Session Create 在 App 构造前合并分裂的 Model/Thought；
-5. 显式 Title Override 若保留，使用正式 Registry-backed 测试验证；
-6. Desktop Provider Settings E2E 必须真正点击连接测试按钮，不能只检查 Account 页面和模型列表。
+2. 参数化覆盖 API Key、Start Plan、Team Plan，证明没有 Provider 特化；
+3. Git 生成器保留完整输入 Selection，同时正式请求最终使用 `values[0]`；
+4. Subagent 切换模型后不操作 Reasoning 控件也会保存界面显示的合法档位；
+5. Session Create 在 App 构造前合并分裂的 Model/Thought；
+6. 显式 Title Override 若保留，使用正式 Registry-backed 测试验证；
+7. Desktop Provider Settings E2E 必须真正点击连接测试按钮，不能只检查 Account 页面和模型列表。
 
 Core 的假 ModelFactory 单测可以保留用于验证 bind 行为，但不能再被视为 Registry 纵向证明。
 
@@ -129,6 +130,7 @@ Core 的假 ModelFactory 单测可以保留用于验证 bind 行为，但不能�
 - Account Provider、API Key Provider 的连接测试不再报 Reasoning 缺失；
 - 连接测试实际使用 `values[0]`，且不识别任何具体 Provider/模型；
 - Git、Subagent、Session Create 不再把不完整执行 Selection 送入 ModelFactory；
+- 普通聊天、Compact、Memory、Repo Wiki、Automation、Bot 和 Off-Peak 行为不变；
 - 没有放宽 Registry/ModelFactory，也没有建立第二套 Reasoning 默认事实；
 - 定向单测、Desktop E2E 类型检查、根 `pnpm typecheck` 与 `pnpm lint` 通过；
 - 完成后重新审计所有正式 ModelFactory 调用点，并记录尚未验证的真实 E2E 环境限制。

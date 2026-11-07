@@ -121,7 +121,7 @@
 - 首次连接：session `ee2d9a74-a9f0-4ef5-a019-bf9c811aca41` 成功；WSL `zcode-server` PID `1156`，Windows pooled Host PID `15120`，launcher PID `24620`。
 - 快速重连：关闭旧 session 后 `1.6ms` 发起同 workspace 重连，`77.1ms` 成功得到 session `d4a7de35-f4db-45c8-994f-e23efa23a506`；WSL server 仍为 PID `1156`，未启动第二份 server。
 - 整窗关闭：通过 CDP 关闭唯一窗口后，不等待 60 秒 TTL，Electron main PID `25820` 与 WSL server PID `1156` 均在 4 秒内消失。
-- deploy lock 正常收口：连接与重连后 `~/.openzwork/.deploy.lock` 不存在；未观察到 lock-holder 残留。
+- deploy lock 正常收口：连接与重连后 `~/.zcode/.deploy.lock` 不存在；未观察到 lock-holder 残留。
 - canonical identity：直接运行 `WSLBackend.resolveIdentity()` 得到 `Ubuntu/dev`；并发解析 default target 与
   显式 `{ distro: "ubuntu", user: "dev" }` 均返回 `{ distro: "Ubuntu", user: "dev" }`，`equal=true`。
 

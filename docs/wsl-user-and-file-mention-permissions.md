@@ -15,8 +15,8 @@ WSL remote workspace 通过 `wsl.exe` 启动远端 host 和 agent。WSL 不需�
 - 开发态 remote assets 的 `mock-cdn` 只是离线缓存；当前版本缓存不存在时必须回退 CDN/cache，避免 WSL 重连旧地址时被本机缺包误判为连接失败。
 - 连接 UI 对 root 用户展示 warning，提示后续创建的文件可能属于 root。该 warning 不阻止连接。
 - 文件 mention 索引遇到单个不可读或已消失目录时跳过该目录，继续展示其余可访问文件。不可读目录不应让整个 `@` 菜单失败。
-- remote workspace 的 prompt 附件会先从 host 侧上传到远端用户私有目录 `~/.openzwork/tmp/prompt-attachments/<trace>/<random>/...`，再把 prompt 中的 host 路径改写为远端路径。上传前会将目录 chmod 为 `700`，上传后会将文件 chmod 为 `600`，避免长文本粘贴、图片或本地缓存附件落到公共 `/tmp` 后被同机其他用户读取。
-- 当前版本不在 task 结束时自动删除远端 prompt 附件目录：这些文件位于当前远端用户的 `~/.openzwork/tmp` 下，便于同一会话内重试/恢复时继续读取。后续如果引入自动清理，必须绑定 task/session 生命周期并只删除本次 trace 的随机私有目录，失败仅记录 warn。
+- remote workspace 的 prompt 附件会先从 host 侧上传到远端用户私有目录 `~/.zcode/tmp/prompt-attachments/<trace>/<random>/...`，再把 prompt 中的 host 路径改写为远端路径。上传前会将目录 chmod 为 `700`，上传后会将文件 chmod 为 `600`，避免长文本粘贴、图片或本地缓存附件落到公共 `/tmp` 后被同机其他用户读取。
+- 当前版本不在 task 结束时自动删除远端 prompt 附件目录：这些文件位于当前远端用户的 `~/.zcode/tmp` 下，便于同一会话内重试/恢复时继续读取。后续如果引入自动清理，必须绑定 task/session 生命周期并只删除本次 trace 的随机私有目录，失败仅记录 warn。
 
 ## 非目标
 

@@ -11,7 +11,7 @@ hooks 从可执行配置中剥离（一律忽略）；本 MR 在此之上建立�
 
 - 项目 hook 声明规范化为 immutable `HookBundleSnapshot`，逐条计算 `hookDeclarationDigest`；
 - 持久 Trust 以 `workspaceIdentity + hookDeclarationDigest` 为 key 存用户侧 trust store
-  （`~/.openzwork/security/workspace-hook-trust-v1.json`，workspace 文件不能自授信任）；
+  （`~/.zcode/security/workspace-hook-trust-v1.json`，workspace 文件不能自授信任）；
 - **软门禁**：未信任 hook 不阻塞 turn——本轮跳过并上报 `HookRunBlocked`，聊天底部出现
   pending banner，用户在 `设置 → 钩子` 逐条点"信任"；信任只作用于未来自然事件，已跳过的
   SessionStart 不补跑；声明语义变化 → digest 变化 → 旧 Trust 失效；

@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - 除桌面 shared SSH host 明确声明 caller-side serialization 外，锁覆盖完整 `deployServer` transaction，不能缩小到单个 asset installer。
-- workspace/distro/user install root 仍为 `~/.openzwork/server`，不调用 `wsl --terminate`。
+- workspace/distro/user install root 仍为 `~/.zcode/server`，不调用 `wsl --terminate`。
 - owner token 必须不可预测；释放和 stale takeover 不使用宽泛 glob。
 - 保持 WSL、Docker 以及仍使用锁的 SSH 调用的 POSIX backend 兼容，不依赖 `flock`、GNU `mv -T` 或系统 tar。
 - 完成前运行定向测试、`pnpm typecheck` 和 `pnpm lint`。

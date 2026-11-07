@@ -9,7 +9,7 @@
 
 ## 数据来源
 
-- `~/.openzwork/cli/debug`（开发态）与 `~/.openzwork/cli/rollout`（生产态，最多保留最近 3 个会话文件）
+- `~/.zcode/cli/debug`（开发态）与 `~/.zcode/cli/rollout`（生产态，最多保留最近 3 个会话文件）
   下的 `model-io-*.jsonl`。
 - 由 `apps/zcode-cli/packages/adapters/src/model/runner-debug.ts` 落盘，文件名形如
   `model-io-<sanitizedSessionId>.jsonl`。一个 session 只对应一个 JSONL 文件；首条记录保存完整
@@ -164,5 +164,5 @@ bulk toggle ─> command(version + 1) ────> supersedes older keyed state
 
 ## 多端
 
-- 读盘收口在服务层，桌面端读本机 `~/.openzwork/cli`，手机远控经 RPC 读远端 host 的同名目录。
+- 读盘收口在服务层，桌面端读本机 `~/.zcode/cli`，手机远控经 RPC 读远端 host 的同名目录。
 - 入口在桌面与手机 Web 均可用（移动端不隐藏）；无记录时给出空态提示。

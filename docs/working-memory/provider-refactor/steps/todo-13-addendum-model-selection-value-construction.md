@@ -156,6 +156,7 @@ record。
 
 ## 8. Select 与 Submission 两阶段
 
+所有会引用模型的产品状态按现有行为归入两种阶段，不再为 Automation、Repo Wiki、Bot、Off-Peak、Subagent
 和 Sidecar 分别发明模型生命周期：
 
 ```text
@@ -221,12 +222,14 @@ Edit、Retry 等操作如果产生一份新的 Submission，可以按该产品�
 | Repo Wiki        | 生成页面或保存配置中的模型选择                    | 用户点击生成                               |
 | Bot              | Bot 配置中的模型偏好                              | 收到消息并创建一次任务                     |
 | Subagent         | Profile 中的可选 model override                   | 创建 Child Agent                           |
+| Off-Peak         | 创建页面中的模型选择                              | 用户提交闲时任务并被系统接受               |
 | Title/Memory/Git | 通常没有独立长期 Select，从当前调用上下文取得意图 | 每次 Sidecar 调用形成自己的执行 Submission |
 
 Automation record 是可复用 Select。它保持“跟随 Workspace”时不保存 `modelSelection`；每次定时触发都读取
 当时的 Host preferred，形成该次确定的 Submission。Host preferred 后续再次改变，不影响已经形成的那次
 Submission。
 
+Off-Peak 在用户确认创建闲时任务并被系统接受时形成 Submission，因此 Selection 在该边界固定。后续等待、
 取票和派发只执行这份 Submission，不重新读取 Host preferred。
 
 Subagent Profile 没有 override 时，创建 Child Submission 的边界从 Parent Active Model 取得模型身份；形成

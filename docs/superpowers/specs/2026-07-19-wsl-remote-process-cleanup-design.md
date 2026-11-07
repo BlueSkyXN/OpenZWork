@@ -212,7 +212,7 @@ Docker backend 保持相同接口语义；SSH backend 继续关闭 ssh2 connecti
 - server PID 与 Linux process start time
 - 由该 server 启动的 Agent PID 与 process start time
 
-registry 放在 WSL 用户自己的 `~/.openzwork/server/owners/`，使用原子写入；不放在 desktop main、relay 或
+registry 放在 WSL 用户自己的 `~/.zcode/server/owners/`，使用原子写入；不放在 desktop main、relay 或
 task repository。正常退出删除 registry。
 
 下一次同用户启动 WSL remote server 时，只回收同时满足以下条件的记录：

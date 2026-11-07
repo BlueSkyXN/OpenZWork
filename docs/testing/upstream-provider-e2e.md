@@ -7,13 +7,13 @@
 
 ## 环境变量
 
-| 变量                           | 作用                                                                        | 未设置时                                         |
-| ------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------ |
-| `E2E_PROVIDER_BASE_URL`        | 上游供应商地址                                                              | capture 模式报错；回放不需要                     |
-| `E2E_PROVIDER_API_KEY`         | 上游 API key                                                                | capture 模式报错；回放固定使用 `e2e-fixture-key` |
-| `E2E_PROVIDER_MODEL`           | 主模型名                                                                    | 回放夹具的录制模型                               |
-| `E2E_PROVIDER_SECONDARY_MODEL` | 第二个模型名（模型切换、备用供应商等 case）                                 | 回放夹具的录制模型                               |
-| `E2E_PROVIDER_PRESET`          | `env`（默认，上面四个变量）/ `glmhighspeed` / `bigmodel53` / `stagingmodel` | `env`                                            |
+| 变量 | 作用 | 未设置时 |
+| --- | --- | --- |
+| `E2E_PROVIDER_BASE_URL` | 上游供应商地址 | capture 模式报错；回放不需要 |
+| `E2E_PROVIDER_API_KEY` | 上游 API key | capture 模式报错；回放固定使用 `e2e-fixture-key` |
+| `E2E_PROVIDER_MODEL` | 主模型名 | 回放夹具的录制模型 |
+| `E2E_PROVIDER_SECONDARY_MODEL` | 第二个模型名（模型切换、备用供应商等 case） | 回放夹具的录制模型 |
+| `E2E_PROVIDER_PRESET` | `env`（默认，上面四个变量）/ `glmhighspeed` / `bigmodel53` / `stagingmodel` | `env` |
 
 - 录制模型只在 `packages/desktop/test/e2e/helpers/upstream-recorded-models.ts` 定义一次。产品内置模型规则按模型 ID 匹配思考档位与请求形态，夹具按录制模型采集；更换默认模型需要重新录制夹具。
 - `E2E_PROVIDER_RUNTIME_BASE_URL` 是 WDIO 写给各测试进程的实际生效地址（回放时指向本地 replay server），不要手动设置。
@@ -65,6 +65,7 @@ capture 模式会在本机启动透明 MITM 抓包代理：
 
 默认 replay 仍使用仓库内录制的 fixture，保证固定 provider 回归不访问真实网络。需要录制长 Markdown 流式性能样本时，可以显式指定
 `E2E_PROVIDER_PRESET=glmhighspeed`。该 preset 使用
+`https://open.bigmodel.cn/api/anthropic` 和模型 `glm-5.1-highspeed`。
 GLM highspeed preset 默认不选择思考深度，也不会断言 thinking 字段；录制 fixture 回放和 `env` preset 默认选择并断言 `high`。
 
 ```bash

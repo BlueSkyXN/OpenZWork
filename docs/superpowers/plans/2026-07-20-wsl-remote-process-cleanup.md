@@ -270,7 +270,7 @@ git commit -m "fix(remote): await WSL server process shutdown"
 
 **Interfaces:**
 - Produces: `RemoteAgentOwnerRegistry` with `registerAgent`, `unregisterAgent`, `reapDeadOwners`, and `dispose`.
-- Consumes: `ZCODE_REMOTE_OWNER_ID`, `ZCODE_REMOTE_OWNER_KIND`, and an owner registry root under `$HOME/.openzwork/server/owners`.
+- Consumes: `ZCODE_REMOTE_OWNER_ID`, `ZCODE_REMOTE_OWNER_KIND`, and an owner registry root under `$HOME/.zcode/server/owners`.
 
 - [ ] **Step 1: Write failing registry tests**
 

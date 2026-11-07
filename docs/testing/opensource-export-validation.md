@@ -16,8 +16,8 @@ artifact 为 `packages/desktop/.e2e-artifacts/desktop-e2e-20261103-024041-854`�
 
 ## 契约
 
-<!-- Computer Use 占位包契约（CUA 净化域）不随上游引入 -->
-
+1. Computer Use 占位包提供公共构建与类型检查入口，日志回调类型与真实 producer 一致；
+   构建只验证随包声明，不产出原生能力；保留根 CUA 测试项目入口并验证占位行为。
 2. 孤立测试识别按完整文件名或路径匹配，不能因文件名子串相同删除公共测试。
 3. 公共 case catalog、coverage matrix 和账号夹具测试继续导出；官方版本专属内容归入已有主题文件。
 4. 文档和注释使用本项目行为描述，去掉个人路径、账号和产品对标；协议、provider 和兼容导入名称保留。
@@ -66,3 +66,4 @@ artifact 为 `packages/desktop/.e2e-artifacts/desktop-e2e-20261103-024041-854`�
 - 在独立开源树冻结安装，执行构建入口、根与 CLI 类型检查、lint、保留的工程/CUA 占位/CLI 测试及覆盖清单审计。
 - 闭源执行架构检查、受影响测试、类型检查和 lint。夹具检查覆盖修改的全部 manifest。
 - 基础许可检查与严格材料检查分别报告；既有材料缺口不计为已修复。
+

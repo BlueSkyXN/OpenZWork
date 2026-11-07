@@ -121,6 +121,11 @@ ZCode 产品下发的 Built-in 层；不能简化成会与 Account Built-in 混�
 
 旧名字出现就说明切换未完成，不是需要保护的兼容场景。
 
+### 2.4 范围排除
+
+`Official MCP`、Official Plugin/Marketplace、Official CUA、官网或产品文案中的 `official` 具有独立、正确的
+业务含义，不属于 Provider Config 命名链，不得机械替换。
+
 ## 3. 当前事实与影响范围
 
 2026-08-24 的定向扫描在生产代码中命中 40 个文件，另有发布配置文件和设计/计划文档：
@@ -193,11 +198,12 @@ Personal Repository、Account Source、Registry Overlay 和 Active Model 不改�
 
 ### 4.3 UI Surface Matrix
 
-| 用户场景         | 入口              | 本 Todo 可见变化     | 必须保持的不变量                                 |
-| ---------------- | ----------------- | -------------------- | ------------------------------------------------ |
-| Provider 设置    | Provider Settings | 无；内部只读标记改名 | Built-in 展示、Personal 编辑能力不变             |
-| 普通模型选择     | Model selector    | 无                   | 候选顺序、enabled/visibility、选择状态不变       |
-| Desktop/Web/手机 | 各客户端          | 无                   | continuous/replayable、远程 workspace 和队列不变 |
+| 用户场景          | 入口                 | 本 Todo 可见变化     | 必须保持的不变量                                 |
+| ----------------- | -------------------- | -------------------- | ------------------------------------------------ |
+| Provider 设置     | Provider Settings    | 无；内部只读标记改名 | Built-in 展示、Personal 编辑能力不变             |
+| 普通模型选择      | Model selector       | 无                   | 候选顺序、enabled/visibility、选择状态不变       |
+| Off-Peak/内部模型 | scoped Registry View | 无                   | hidden Provider 和精确创建语义不变               |
+| Desktop/Web/手机  | 各客户端             | 无                   | continuous/replayable、远程 workspace 和队列不变 |
 
 本 Todo 不需要新增 UI E2E；Provider Facade/Protocol 单测与 Desktop/CLI 启动、构建测试足以覆盖命名链。现有
 代表性 UI 回归只用于证明行为未变。
@@ -277,6 +283,9 @@ zcode-provider/official.json
 isOfficial（仅 Provider Settings Built-in 标记语义）
 ```
 
+验收时用限定目录和语义过滤，避免误报 Official MCP、Plugin、CUA 或普通产品文案。另执行 `dep:refs` 检查旧
+exports 没有通过 barrel 残留。
+
 ### 7.2 自动验证
 
 - Provider/Provider Node/Services/Shared/Desktop/CLI 受影响单测；
@@ -300,6 +309,7 @@ isOfficial（仅 Provider Settings Built-in 标记语义）
 - 不重构 Config 内容、Overlay、Registry 或 ModelFactory；
 - 不改变 Account/Personal Config、Access 或请求鉴权；
 - 不改变 Provider/Model enabled、visibility、成员与冲突语义；
+- 不修改模型选择、Off-Peak、Automation、Subagent、Repo Wiki 或任务状态；
 - 不改变 Desktop continuous、Mobile replayable、远程 workspace、Queue 或恢复逻辑；
 - 不清理与 Provider Config 无关的 `official` 业务概念；
 - 不为从未发布的旧命名设计迁移和兼容。

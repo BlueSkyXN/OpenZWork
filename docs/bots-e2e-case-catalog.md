@@ -5,6 +5,10 @@
 - BOT-E2E-TP-01 (also covers mention-only guidance without admission and quoted text in one CLI queue input): a native-topic-bound task uses the real Host/CLI queue; Desktop
   source and attachments survive cancellation; resolving its saved delivery through
   the reply action bar targets that topic and works at narrow viewport widths.
+- BOT-E2E-TP-02: two ordinary topics and a dedicated topic-group root create distinct
+  tasks; ordinary discussion is silent; the next mention sees only the incremental
+  background up to its own message. Requires real Feishu CUA evidence in addition to
+  provider/service tests. No fixture can prove tenant permissions or native routing.
 
 本文记录 Bot 渠道的端到端行为合同。Bot 用例独立于 conversation-session：它们复用 ZCode task stream，但入口、状态所有者和外部证据位于 `BotsService` 与 provider API。
 

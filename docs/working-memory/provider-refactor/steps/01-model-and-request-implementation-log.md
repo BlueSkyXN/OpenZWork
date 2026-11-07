@@ -58,6 +58,8 @@ M1 不重写 Provider SDK、流恢复、Header 刷新和错误归一。第一版
 
 普通 Model 在创建时解析一次 Provider、model、capability 和连接信息。Agent Loop 持有该 Model 后，后续 Step 不再从可变 Registry 重新决定模型身份或普通 API Key。配置变化只影响以后创建的 Model。
 
+Start Plan 等现有动态 Header 链路仍允许 Adapter 在明确执行 Header 刷新后更新请求级认证材料。该例外不得改变 Model 的 `providerId`、`modelId`、Properties 和 Options。
+
 ### 3. 传输控制留在 Model 实现内部
 
 `statusSink`、Trace、流恢复、idle timeout、Provider stream boundary 和运行时 Header 刷新不进入公开 `ModelRequest`。第一版实现通过创建 Model 时注入的内部执行上下文承接这些能力。业务调用方不能逐请求自由拼装传输参数。
@@ -93,6 +95,10 @@ Native Web Search 与 Mid-conversation System 的旧 Provider kind、URL 和 mod
 ### 10. 旧 ModelPort 只剩唯一兼容入口
 
 生产调用方均使用 `Model.generateText()` 或 `Model.streamText()`。Core 中对旧 `modelAdapter.generateText/streamText` 的直接调用只存在于 `runtime-model.ts` 的兼容工厂，用于尚未通过 Bootstrap 装配、直接构造 `AgentRuntime` 的测试和旧嵌入调用。第二阶段替换 Model 来源时，可以整体删除这一个入口。
+
+### 11. Agent Loop、Compact 与 Child Agent 共用不可变 Model
+
+普通 Agent Loop 在开始时创建 Model，后续 Step、自动 Compact、Microcompact、Reactive Compact 和未显式选模的 Child Agent 都沿用该对象。Child Agent 显式选择模型时创建自己的 Model。Session 默认模型、Config 或 Registry 在 Loop 运行期间变化，不会改写已经被引用的普通 Model；Start Plan 等动态 Header Provider 仍按既有请求前刷新链路更新认证材料，但不得更换 Model 身份。
 
 ### 12. 运行历史与 Usage 以实际 Model 归因
 

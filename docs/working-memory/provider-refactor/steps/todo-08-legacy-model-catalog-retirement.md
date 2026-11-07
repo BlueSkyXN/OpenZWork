@@ -100,6 +100,7 @@ Effective Model Config.optionSpecs.reasoningLevel
                          |
                          +--> Composer
                          +--> Subagent
+                         +--> Off-Peak
                          `--> Repo Wiki
                                   |
                                   v
@@ -169,6 +170,7 @@ Adapter Provider 请求装配边界。删除 `isKimiK3ModelId()` 和所有按具
 - 模型候选协议直接表达 reasoning Option Spec；
 - 删除 `ZCodeModelReasoningState`、`buildProtocolReasoningState()` 和旧 Provider reasoning 投影；
 - 删除 `providerOptionsByLevel` 跨进程字段；
+- Composer、Subagent、Off-Peak、Repo Wiki 统一从当前候选项读取 values/default；
 - 不改变各产品入口自己的草稿、保存和提交状态归属。
 
 ### 3.3 Adapter Tool Schema 投影
@@ -183,6 +185,7 @@ Adapter Provider 请求装配边界。删除 `isKimiK3ModelId()` 和所有按具
 ## 4. 明确不在本 Todo 中处理
 
 - 完整 MFJS validator/projector 或通用 Tool Schema dialect 架构；
+- Off-Peak `ModelProviderModelConfig` 整体退役；
 - 公共 `ModelRef`、Result/Event identity 和历史 provenance；
 - Telemetry、Status、Context、Observation 的整体设计；
 - Account Request Auth、runtime header refresh；
@@ -210,9 +213,10 @@ Adapter Provider 请求装配边界。删除 `isKimiK3ModelId()` 和所有按具
 ### 5.3 Reasoning Selection View
 
 1. 有 Option Spec 的候选项发布 values/default；无 Option Spec 时不发布 reasoning 选择；
-2. 提交只写 `ModelSelection.options.reasoningLevel`；
-3. Protocol/UI 中无 `enabled` 和 `providerOptionsByLevel`；
-4. Adapter 仍按 `reasoningMapping[level]` 产生 Provider 请求参数。
+2. Composer、Subagent、Off-Peak、Repo Wiki 读取相同候选事实；
+3. 提交只写 `ModelSelection.options.reasoningLevel`；
+4. Protocol/UI 中无 `enabled` 和 `providerOptionsByLevel`；
+5. Adapter 仍按 `reasoningMapping[level]` 产生 Provider 请求参数。
 
 ### 5.4 Tool Schema 投影
 

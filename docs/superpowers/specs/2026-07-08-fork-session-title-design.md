@@ -4,7 +4,7 @@
 
 用户报告 fork 出来的 `sess_0f8d6d7c-d682-49ec-b925-f91552c2fa73` 在列表标题显示为「新任务」，但 fork child 应该显示为 `Fork of <parent title>`。运行时取证显示：
 
-- `~/.openzwork/cli/db/db.sqlite` 的 `session.title` 已经是 `Fork of Checkpoint复现目标`，`title_source=generated`。
+- `~/.zcode/cli/db/db.sqlite` 的 `session.title` 已经是 `Fork of Checkpoint复现目标`，`title_source=generated`。
 - `v4/conversation/frame` 的 `sessions-index` 下行 delta 里同一 session 一直是 `title: ""`、`titleSource: "default"`。
 - UI 看到空标题后按 `task.forkedFromTaskId ? taskList.forkedUntitled : taskList.untitled` fallback，因此显示「新任务」。
 

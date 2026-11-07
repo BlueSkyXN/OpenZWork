@@ -4,7 +4,7 @@
 > [`15-timeline-resolver-design-review.md`](./15-timeline-resolver-design-review.md)（前审 F1–F10）、
 > 第二轮代码级评审（R1–R13，2026-07-07）。
 > 出发点：彻底解决 v4 重构后仍存在的「消息/timeline 顺序错位」与「消息莫名不渲染」，
-> 并最大限度兼容用户已有历史数据（`~/.openzwork/cli/db/db.sqlite`：2,989 sessions / 26,942 messages / 96,112 parts）。
+> 并最大限度兼容用户已有历史数据（`~/.zcode/cli/db/db.sqlite`：2,989 sessions / 26,942 messages / 96,112 parts）。
 
 ## 实施状态（2026-07-08）
 

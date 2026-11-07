@@ -112,8 +112,8 @@ describe("feature boundary graph helpers", () => {
     const stats = getFeatureBoundaryGraphStats(graph);
 
     expect(stats).toMatchObject({
-      nodeCount: 361,
-      edgeCount: 672,
+      nodeCount: 324,
+      edgeCount: 629,
       unresolvedEndpointCount: 2,
     });
     expect(graph.nodes.filter((node) => node.kind === "unresolved").map((node) => node.id)).toEqual(

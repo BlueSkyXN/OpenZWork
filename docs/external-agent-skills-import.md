@@ -31,7 +31,7 @@
 
 - 只处理包含 `SKILL.md` 的技能目录。
 - 导入目标由用户在导入按钮下拉菜单中选择：
-  - `Global` 写入 `~/.openzwork/skills/<skill-dir>/`。
+  - `Global` 写入 `~/.zcode/skills/<skill-dir>/`。
   - `Project` 写入 `<workspace>/.zcode/skills/<skill-dir>/`。
 - 导入方式由用户在弹窗底部切换：
   - `软链`：在目标目录创建指向来源技能目录的符号链接，默认选项；Windows 下目录链接使用 `junction`。
@@ -59,7 +59,7 @@
 - `settings-sync` 继续承载导入状态机；本功能新增 `skills` 分类与外部 Agent source，但不改变 onboarding 的默认 `providers` 可见范围。
 - 导入弹窗不扫描用户级或项目级 `.agents/skills`，因为普通技能列表已经直接回读 `.agents` 技能目录；导入只负责把其它外部 Agent 来源复制到 ZCode 技能目录。
 - 工作区技能列表从当前目录向上遍历到 worktree 根时，每一层都合并读取 `.zcode/skills` 与 `.agents/skills`，与 Agent runtime 的默认 roots 保持一致；不得因为同层 `.zcode/skills` 已有技能就整根跳过 `.agents/skills`。两个根命中同一 realpath 时只保留一份，同名但路径不同的技能继续按安装项分别保留；废弃的 `.zcode/cli/skills` 与 `.claude/skills` 不参与发现。
-- 用户级技能列表同时读取 `~/.openzwork/skills` 与 `~/.agents/skills`，避免导入一个全局技能后把剩余外部 Agent 全局技能从设置页隐藏；若 `.agents` 下某技能已按同目录名或相同 `name` 复制到 `.zcode/skills`，列表优先展示 `.zcode` 副本，避免重复。
+- 用户级技能列表同时读取 `~/.zcode/skills` 与 `~/.agents/skills`，避免导入一个全局技能后把剩余外部 Agent 全局技能从设置页隐藏；若 `.agents` 下某技能已按同目录名或相同 `name` 复制到 `.zcode/skills`，列表优先展示 `.zcode` 副本，避免重复。
 - Agent runtime 与设置页必须对 `SKILL.md` frontmatter 使用一致语义：`description` 支持 YAML 单行标量、`>` folded block 与 `|` literal block。`~/.agents/skills` 常见手写技能会用 `description: >` 编写多行触发说明，不能只读取顶层 `description: >` 字面值而丢弃缩进行；否则设置页能显示完整描述，但 Agent 注入的 skills 清单只剩 `>`。
 - 远程 workspace 只使用当前 host process 可访问的文件系统路径；身份隔离语义仍传递 `workspaceIdentity`，路径执行仍使用 `workspacePath`。
 - 直接复制模式不引用外部目录，避免外部 Agent 后续删除或修改影响 ZCode；软链模式会持续指向外部目录，适合希望跟随外部 Agent 技能变更的用户。

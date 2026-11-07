@@ -168,6 +168,10 @@ type ProviderApiType = "anthropic-messages" | "openai-chat-completions" | "opena
 
 **access**：保留两种访问结构，不新增 OAuth 分支。
 
+```ts
+type ProviderAccessConfig = ApiKeyAccessConfig | ZhipuAccountAccessConfig;
+```
+
 **API Key 访问**：字段保持。
 
 ```ts
@@ -180,11 +184,22 @@ interface ApiKeyAccessConfig {
 
 **账号访问**：字段保持，包括 entitled。
 
+```ts
+interface ZhipuAccountAccessConfig {
+  type: "zhipu-account";
+  accountType?: "zai" | "bigmodel" | null;
+  mode?: "start-plan" | "individual-coding-plan" | "team-coding-plan" | "off-peak" | null;
+  entitled?: boolean | null;
+}
+```
+
 **外层规则集合**：统一见第 6.4 节，不再以 Record key 承载序列化的 Provider 身份；内部查询仍可建立 Map 索引。
 
 ### 3.2 已解释的字段背景
 
+- `group` 是产品分组：`standard-personal` 对应普通个人 Provider（包括从模板创建的 API Key Provider），`zai-family` / `bigmodel-family` 对应账号套餐 Provider。当前用于分组排序、设置导航、删除限制和保存分组校验；本轮未决定重构这些调用。
 - `logo` 已有 schema：`{ type: "builtin", key: string }`，运行时校验 key 非空，未限制为固定 key enum。UI 将 key 映射到内置图标，未知 key 有兜底；没有在本轮增加 URL、自定义上传或其他 logo 类型。
+- `visibility` 控制普通设置和模型选择入口是否展示，不等于关闭执行。hidden 的 Off-Peak Provider 仍可由专门执行入口使用。
 
 ## 4. entitled 的裁决与调用背景
 
@@ -215,10 +230,13 @@ ZCode 本地可用性判断与请求装配
 | 路径                         | 当前作用                                                                                                                                                        |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Account 结果解析             | `available` 生成 true，`pending` / `unavailable` 生成 false；unknown 可沿用同身份旧结果，没有旧结果则为 false。初次账号事实未到达时为 false。                   |
+| App Off-Peak                 | 从当前选中的同账号体系个人 / 团队套餐是否 available 推导值。                                                                                                    |
 | 独立 CLI                     | 根据本地账号身份及对应 API Key 是否存在生成值；配置检查判断是否存在 entitled 的账号 Provider。                                                                  |
 | Provider Resolver / Registry | 账号 Provider 的执行资格要求 entitled 为 true，同时检查 current、配置完整性等；可选择性还受 visibility 影响。                                                   |
+| 设置页                       | 参与导航项账号状态、套餐卡片、Start Plan 可见性、连接 / 重新授权完成判断和首次补同步。                                                                          |
 | 额度及套餐查询               | 侧栏、设置页、输入框和套餐身份快照，通过公共 helper 获取账号访问对象及刷新指纹。                                                                                |
 | 套餐只读查询                 | 专用 inspection helper 允许部分尚未 entitled 的状态查询权益；没有 accountState 时才回退到 entitled 判断。用于设置详情、权益 hook、手动领取横幅及 OAuth 后刷新。 |
+| 购买入口埋点                 | 用 entitled Provider 推断进入购买入口时的套餐状态，供 Automations、Off-Peak 新建等入口使用。                                                                    |
 | 类型与投影                   | 字段出现在 Provider Access Config、AccountProviderState 投影以及协议账号访问对象；本轮不改变这些结构。                                                          |
 
 主要代码证据（记录时字段仍是原名）：
@@ -231,6 +249,7 @@ ZCode 本地可用性判断与请求装配
 - [独立 CLI 账号配置](../../../../apps/zcode-cli/packages/bootstrap/src/app/standalone-account-provider-runtime.ts)
 - [UI Account Access helpers](../../../../packages/ui/src/lib/accountProviderAccess.ts)
 - [Provider 设置页](../../../../packages/ui/src/settings/ModelProviderSection.tsx)
+- [套餐状态计算](../../../../packages/ui/src/settings/model-provider-section/providerFamilyConnectionVisibility.ts)
 - [套餐身份快照](../../../../packages/ui/src/hooks/usePlanIdentitySnapshot.ts)
 - [购买入口埋点](../../../../packages/ui/src/lib/codingPlanFunnelTelemetry.ts)
 - [协议账号访问对象](../../../../packages/shared/src/zcode-protocol/index.ts)
@@ -539,17 +558,23 @@ Provider 精确模型规则见 6.2；内置集合只接受普通 ProviderModelCo
 
 本轮通过实际配置及提交记录核查发现：Model 层有一条账号 Provider 通配规则，Model + API 层有三条 Provider 条件规则。此前以“当前已有用法”为由建议保留 providerMatch，用户明确否决；schema 应按层职责约束，不能为越层规则放宽。
 
-| 原位置及条件                                            | 覆盖内容                      | 确认后的处理                                                                                         |
-| ------------------------------------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Model + API：anthropic，Claude 模型，Anthropic Messages | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 Anthropic Endpoint 匹配，保留模型及 API 条件                              |
-| Model + API：moonshot-kimi，K3 系列，Anthropic Messages | MFJS 工具 Schema 为 true      | 移入 providerSiteRules，按 Moonshot Endpoint 匹配，保留 K3 模型及 API 条件，不提升为所有站点通用规则 |
-| Model + API：deepseek，所有模型，Anthropic Messages     | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 DeepSeek Endpoint 匹配，保留 modelMatch `".*"` 及 API 条件                |
+| 原位置及条件                                                       | 覆盖内容                      | 确认后的处理                                                                                         |
+| ------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Model：账号个人 / 团队 / Start Plan Provider，modelMatch 为 `".*"` | 图片、视频输入为 true         | 改为 Endpoint 条件，移入 providerSiteRules；保留 modelMatch `".*"`                                   |
+| Model + API：anthropic，Claude 模型，Anthropic Messages            | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 Anthropic Endpoint 匹配，保留模型及 API 条件                              |
+| Model + API：moonshot-kimi，K3 系列，Anthropic Messages            | MFJS 工具 Schema 为 true      | 移入 providerSiteRules，按 Moonshot Endpoint 匹配，保留 K3 模型及 API 条件，不提升为所有站点通用规则 |
+| Model + API：deepseek，所有模型，Anthropic Messages                | 原生搜索、中途 System 为 true | 移入 providerSiteRules，按 DeepSeek Endpoint 匹配，保留 modelMatch `".*"` 及 API 条件                |
 
 Endpoint 依据当前配置 / 模板记录，实施时按对应路径生成匹配条件，不因转换成 Site 规则随意放大到整个域名：
 
+- 图片 / 视频对应当前个人、团队、Start Plan 使用的三个 Endpoint：`https://api.z.ai/api/anthropic`、`https://open.bigmodel.cn/api/anthropic`、`https://zcode.z.ai/api/v1/zcode-plan/anthropic`。
 - Anthropic：`https://api.anthropic.com/v1`。
 - Moonshot：`https://api.moonshot.cn/anthropic`。
 - DeepSeek：`https://api.deepseek.com/anthropic`。
+
+用户明确同意图片 / 视频按 Endpoint 声明：同 Endpoint 的普通 API Key 实例与账号实例得到相同站点能力。此前“账号能力必须留在 builtinProviderModelRules，以避免普通 API Key 实例命中”的建议已被本裁决取代，不能继续作为约束实施。原账号规则未包含 Off-Peak，本次不额外把其独立 Endpoint 加进来。
+
+已有匹配 Z.ai / BigModel 上述两个普通 Anthropic Endpoint 的站点规则保留：modelMatch 为 `".*"`、API 为 Anthropic Messages，声明 supportsNativeWebSearch 与 supportsMidConversationSystem 为 true。本次不将这条已有搜索规则无依据扩大到 Start Plan Endpoint；不要因图片 / 视频规则含 Start Plan 而把不同规则的 URL 条件混在一起。
 
 最终删除 providerMatch 字段及对应解析、匹配、序列化逻辑；四条原规则改为站点规则，不以兼容新格式为由保留第二套 Provider 正则匹配入口。按 providerId + modelId 的精确实例规则仍保留。
 
@@ -668,6 +693,8 @@ Provider 名称在外层 ProviderConfigRule 中叫 providerName，可选性和 n
 
 内部执行若需要合并处理，可以从所属集合补出内部类别标签；不能要求文件再保存一份类别，也不能通过 Map/API/URL 字段猜回规则所属集合而丢失其来源边界。UI 智能配置开关对应个人规则所属的普通 / 手动集合，不另存 useSmartConfig。
 
+本裁决只删除规则对象中由集合确定的 type。Provider API 的协议 type、Access 的 api-key / zhipu-account type、Logo 资源 type 保持；不要全仓机械删除 type 字段。历史先按 type 拆智能 / 手动规则，随后分两个数组，最终又去掉重复 type；最终版本以本节及 6.2 为准。
+
 ### 6.7 内置 / 个人配置文件包装：已确认
 
 内置文件层：保留版本、发布 revision 和 config 内容层。用户已确认本分支新增、未发布的内置格式从当前 schemaVersion: 3 收口为 schemaVersion: 1；发布 revision 的规则及 review 见 6.12。
@@ -754,6 +781,7 @@ providerOrder 继续独立表达展示顺序，不用规则数组顺序代替。
 | Template | 目前提供 logo、api、builtinModelIds 及不含 apiKey 的 API Key Access 元数据；不声明个人模型。旧 label 按本轮裁决删除，模板名称只在外层 templateNameMap。                                             |
 | Built-in | group 必填且限 zai-family / bigmodel-family；允许 logo、api、access、builtinModelIds、visibility，不声明 personalModelIds / modelOrder。身份与名称按 6.4 / 6.5 移到外层。                           |
 | Personal | 不允许 builtinModelIds；group 只允许 standard-personal 的覆盖值；固定 Account Provider 的 access 不能由个人层覆盖。个人 Endpoint 目前允许保留尚未完成编辑的字符串，由最终完整性校验决定是否可执行。 |
+| Account  | 目前只提供 builtinModelIds，以及 zhipu-account Access 的 entitled 覆盖；不是任意 ProviderConfig 字段的写入口。Access 的 type 仍保留。                                                               |
 
 实施时保留这些已有字段限制，通过基础 schema 派生，配合已确认的改名和身份 / 名称外移；不追加来源重组或专用类型命名工程。6.4 / 6.7 用公共 ProviderConfig / ProviderConfigRule 展示共同形状，不表示各来源可无差别写入全部字段。固定 Account Provider 的个人 access 禁写等依赖 providerId 的校验，在 ID 外移后仍须保留在外层规则校验，不能只搬字段而丢失约束。
 
@@ -809,12 +837,14 @@ Provider / Model / 排序修改 --+
 
 ### 6.10 新增文件取舍与程序维护目录：已确认
 
+背景：用户要求只看相比 staging 新增的文件和数据表，并逐份确认必要性，不把文件、schemaVersion 和 revision 混在一轮解释。本轮 Provider / ModelSelection 改造未新增数据库文件或数据表，但在现有 tasks-index.sqlite 的 automations、automation_runs、off_peak_tasks 三个表分别新增 model_selection TEXT 列，不能把“没有新表”理解为“没有新列或迁移”。这些列和其他既有结构接入 ModelSelection 的设计已统一通过，见 6.14。以下只记录本轮确认的文件取舍，不对全仓既有文件发起目录重构。
+
 用户配置层：保留 provider_config.json，集中保存个人 Provider / Model 配置、排序及 6.9 的默认模型选择。旧综合 config.json 仍承担其他配置，旧 Provider 内容仅作升级输入。尚未确认全局文件命名风格，不顺带将 provider_config.json 改为中划线。
 
 程序维护层：统一放进环境目录下 runtime/provider/。runtime 在这里表示程序维护的数据，不表示可随意清空的临时文件。此前讨论的 cache/、state/ 两套顶层目录方案均被替代。
 
 ```text
-~/.openzwork/v2/
+~/.zcode/v2/
 |-- provider_config.json
 |-- bot-config.v3.json
 |-- bot-state.v3.json
@@ -948,6 +978,13 @@ personalConfig 的具体层次复用 6.7；代码复用数据 schema 时保持�
 账号设置和凭据项保持；账号连接选择不在本轮继续改名或重组。
 
 ```ts
+interface ProviderProvisioningAccountSettings {
+  providerFamilyDomain: "zai" | "bigmodel" | null;
+  providerFamilyConnectionSelections: ProviderFamilyConnectionSelectionSettings;
+}
+```
+
+```ts
 interface ProviderProvisioningCredentialEntry {
   scope: "oauth-session" | "account-provider";
   key: string;
@@ -1014,18 +1051,27 @@ interface ProviderProvisioningResult {
 
 #### 6.14.1 既有结构接入 ModelSelection：统一通过
 
+用户明确裁决：“所有在原有基础上新增一个 model selection 的，就都 pass 吧”。因此不逐一重新讨论会话 / 消息、最近选择、Subagent 状态、Wiki、Bot、Automation、Off-Peak 等消费位置的选择字段。它们复用第 2 节的通用选择；各入口原有的未选择 / 跟随默认语义属于上层，不扩张 ModelSelection 本身。
+
+用户随后明确“pass 就是认可”：不得把这些项改标为跳过、未确认或要求重新批准。后续又明确旧字段不能删除，Off-Peak / Wiki 两处保留旧值的补充按 6.18 记录，不以此推翻已通过的 ModelSelection 结构。
+
 本轮数据库改动清单补正如下；三列均位于既有 tasks-index.sqlite，不新增数据库或表：
 
 | 既有表          | 新增列               | 本轮裁决                  |
 | --------------- | -------------------- | ------------------------- |
 | automations     | model_selection TEXT | 复用 ModelSelection，通过 |
 | automation_runs | model_selection TEXT | 复用 ModelSelection，通过 |
+| off_peak_tasks  | model_selection TEXT | 复用 ModelSelection，通过 |
 
 最近选择的新 localStorage key（zcode-model-selection-recent-v1 加工作区身份）属于客户端存储，不是新 JSON 文件或数据表。Subagent Markdown 仍有原有 model / thoughtLevel 文本表达，不因本次通过而要求全改为 JSON。Bot 按 6.10 纠正后的裁决保留 v3 新文件；“通过选择结构”不要求额外调整 Bot 路径。
 
 通过的是 schema 设计，不豁免 staging 数据迁移验证；例如 SQL NULL、JSON null 和明确选择的既有区别，实施时仍需保留其上层语义。
 
+证据：[Automation 与运行记录](../../../../packages/services/src/session/automationRepo.ts)、[Off-Peak](../../../../packages/services/src/session/offPeakTaskRepo.ts)、[最近选择](../../../../packages/ui/src/lib/composerRecent.ts)、[Subagent Markdown](../../../../packages/shared/src/subagent-markdown-selection.ts)。
+
 #### 6.14.2 账号连接选择：明确不调整
+
+保留现有 setting.json 内 providerFamilyConnectionSelections：zai / bigmodel 分别保存连接选择；kind 为 start-plan、individual-coding-plan 或 team-coding-plan，团队项带 productId、organizationId、projectId。用户已将此前“先忽略”明确为“不调整”，不进行 kind / mode 命名统一，也不重组字段；不再列为待讨论的命名问题。
 
 已有 schema 却重复手写类型的问题仍按第 1.1 节统一处理；这是实现的类型来源整理，不改变持久化格式。证据：[账号连接选择 schema 与重复类型](../../../../packages/shared/src/provider-family-connection-selection.ts)。
 
@@ -1093,6 +1139,7 @@ staging 已发布数据 --升级----> 同一最终格式
 | Provider / Model 字段改名、属性归位、选项 type 删除 | 最终文件只含目标字段，读写往返不丢值；最终有效配置语义保持                                             | schema 正反例、序列化断言、转换前后有效值对照，易于确定结果；不拿“同一个错误 codec 自己往返成功”代替独立预期值                                    |
 | Provider / Template 外层重组及名称                  | ID、模板关系、覆盖值和顺序保持；创建名称按语言取值并去重，重启后不变                                   | 现有创建 / 并发去重 / Overlay 测试可适配；补目标数组与字段外移的明确断言及设置操作 E2E。工作量较大，但结果直接可比                                |
 | 智能 / 手动分组、来源专用 schema                    | 非法来源字段和不完整手动规则被拒绝且不留下半次修改；enabled 独立保留，手动参数不随前层更新             | 现有固定配置 / 来源限制 / 原子编辑测试有对应场景，补集合互斥和新 schema 用例，易于验证                                                            |
+| Match 分层、删除 providerMatch、四条规则移 Site     | 各层拒绝越界字段；指定 Endpoint / API / 模型命中，邻近但不符合的输入不命中；规则顺序保持               | 用显式预期的命中 / 不命中矩阵验证，包含普通 API Key 同 Endpoint、Start Plan 与 Off-Peak 边界。验证本地声明的范围，不宣称由此证明远端模型真实能力  |
 | 默认选择合并及分发适配                              | 修改任一成员不丢其他成员；清除后重启不恢复旧选择；并发修改均保留；分发失败恢复原值且不覆盖期间新修改   | 文件更新、导入、故障注入可以稳定构造；另补真实两个进程的写入 / 通知及实际分发集成。可验证，需较多集成工作                                         |
 | staging 导入与 Bot 文件                             | 新安装和旧数据导入均生成最终格式，重复启动不重复导入；Bot 仍写 v3 文件，旧文件保持原样                 | App / CLI 已有 importer 及 Bot 测试可复用，以旧文件 fixture 和独立预期结果核对；不安排误记的 Bot 原路径改造                                       |
 | schemaVersion 与内置发布 revision                   | 五个格式边界接受最终版本 1，拒绝不符合结构的输入；发布比较接受更高序号、拒绝同序号异内容               | codec / release 测试能验证比较机制；实际打包 / 在线发布还须在同一发布范围核对真实 revision 与内容，单测不能代替发布序号管理                       |
@@ -1123,6 +1170,8 @@ Endpoint A(rev 20) -> 切换到 B(rev 20，内容不同)
 
 用户倾向新增字段 / 新增文件，方便实用回滚，并进一步明确“字段就是不能删除”。旧值保留供旧版使用，新版只更新自身字段，不要求把新版值持续反向同步成旧格式。该约束针对本 Todo 修改的 staging 已发布存储；本分支未发布的新 Provider 格式仍按前文裁决改名、分组和合并，不能把这两类“旧字段”混为一谈。Subagent Markdown 已在 Todo 97 明确采用原字段身份迁移，用户要求尊重其可读性取舍，本 Todo 不推翻该方案，见 6.19.2。
 
+#### 6.18.1 Off-Peak：待修，旧模型列不再清空
+
 现有表已新增 model_selection，但 updateEditableFields 保存时还会将 model / thought_level 置为 NULL。用户要求修复为：只更新新选择和本次业务编辑字段，旧模型列保留现存值，不清空，也不按新选择反向改写。新建记录没有旧值时，无须捏造旧版选择。
 
 实现范围：从当前 UPDATE 中去掉 model = NULL / thought_level = NULL 两个赋值；沿用已有字段更新、校验和保存入口，不新增保存机制。
@@ -1149,6 +1198,21 @@ Endpoint A(rev 20) -> 切换到 B(rev 20，内容不同)
 #### 6.18.3 Session：新增 modelSelection 字段，保留旧字段
 
 2026-09-10 实施更新：B1c 已落实磁盘包装与旧快照保留，局部集成回归通过，完整交付验证仍跟随 B5。下文“当前迁移后”为改造前的调查示例。逻辑 SessionStorePort 沿用 ModelSelection payload，adapter 统一包装/解包；不要求 core/bootstrap 感知回滚字段。证据及边界见 [实施账本](../research/todo104-schema-implementation-ledger.md)。
+
+数据库 session_entry 中已有 type 为 runtime/model_selection 的“当前模型选择”记录。当前迁移若命中这条旧记录，会沿用其 id，改写它的 data JSON；从旧消息推导选择时则新增一条 entry。旧 message 行保持原字节。以能确定的旧 Z.ai Coding Plan 身份为例：
+
+```text
+同一条 session_entry.data（迁移前）
+  providerId: "builtin:zai-coding-plan"
+  modelId: "GLM-5.2"
+  thoughtLevel: "high"
+                 |
+                 v
+同一条 session_entry.data（当前迁移后）
+  providerId: "account:zai-individual-coding-plan"
+  modelId: "GLM-5.2"
+  options: { reasoningLevel: "high" }
+```
 
 这里有两处原位损失：thoughtLevel 被替换；providerId 虽然字段名相同，但值也改变了。仅保留 thoughtLevel 不等于保留旧版原来的模型身份。再次对照 origin/staging@790884b1ce，旧版确实已有相同 type 和稳定 id 的选择记录，不是本分支新建的记录类别。
 
@@ -1182,6 +1246,8 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 
 旧版行为核查仅为当前静态证据：上述 staging 的桌面 / Web 恢复链路能读陌生 ID，但将对应模型判为不可用；有可用模型时有回退路径，无可用模型时历史可打开、发送受阻。旧版不读取 options.reasoningLevel。因此本裁决解决的是原选择快照丢失，不应声称旧版必然打不开整个会话；也未宣称已完成旧 App 实机回滚。
 
+证据：[Off-Peak 编辑](../../../../packages/services/src/session/offPeakTaskRepo.ts)、[Wiki 存储](../../../../packages/services/src/repo-wiki/repoWikiStorage.ts)、[Session 选择迁移](../../../../apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/model-selection-migration.ts)、[旧身份转换](../../../../packages/shared/src/legacy-model-provider-identity.ts)、[实用回滚原边界](./todo-69-provider-refactor-practical-rollback-compatibility.md)。
+
 #### 6.18.4 仍需留意的具体边界
 
 - Session 新字段迁移已经裁决，待实施；ModelSelection 通用结构和其他 pass 保持。6.19 只列本 Todo 要改的项目，用户已认可收紧后的范围。
@@ -1192,11 +1258,14 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 
 ### 6.19 本 Todo 核心 schema 之外的修改清单：范围已收紧、已认可
 
+用户明确“我只裁决我们这个 todo 要改的，其他的不看了”“确保别改坏了就行，漏了没事”。本节取代此前混入当前分支已有行为的 A/B/C 清单；仅保留 Todo 99 将要实施的改动，省略已在前文定案的 Provider / Model Config 和规则内部字段。用户已认可其他项，并在了解 Off-Peak / Wiki 的局部保存方案及 Todo 97 背景后再次确认；仍无产品实施授权。
+
 #### 6.19.1 本 Todo 要修改的 13 项配套内容
 
 | 编号 | 项目               | 已确认修改与边界                                                                                                                                                             |
 | ---- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1    | Session 选择迁移   | 原 entry.data 新增 modelSelection，保留旧 providerId / modelId / thoughtLevel 原值；读取、保存、恢复及 fork 等复制入口一起适配。不新增表或 entry 类型，见 6.18.3。           |
+| 2    | Off-Peak 保存      | 当前 UPDATE 不再将旧 model / thought_level 置 NULL；沿用既有保存链路，见 6.18.1。                                                                                            |
 | 3    | Wiki / Draft 保存  | 存储层保存时保留旧模型、档位及 maxOutputTokens 原值，复用已有锁与原子写；不恢复旧预算功能，不重构保存机制，见 6.18.2。                                                       |
 | 4    | 默认选择文件合并   | model-selection.json 合并到 provider_config.json 的 config.defaultModelSelection；调整读写、持锁更新、冲突检查和通知。清除选择不删除整个文件，不授权顺带删除旧文件，见 6.9。 |
 | 5    | 下载配置路径       | active.json 改为 runtime/provider/<平台>/<应用版本>/<服务端地址标识>/zcode-builtin.json，保留三个隔离维度。                                                                  |
@@ -1238,6 +1307,8 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
                                `-> 不把用户的 C 覆盖成分发前的 A
 ```
 
+清除示例只适用于原有业务允许清除的入口；Off-Peak 当前不允许保存空选择，不为该通用例子增加清除功能。这里只要求既有空值语义和保存正确性，不擅自新增 null 格式或全局兼容框架。遗漏的其他问题可以另记，不能作为本 Todo 无限扩项的理由。
+
 ## 7. Schema / 手写类型定向核查
 
 范围为本轮讨论的核心结构及直接关联的完整配置 / 协议类型，不宣称已完成全仓持久化结构审计。
@@ -1249,6 +1320,7 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 | ModelConfig、Properties、输入输出格式、OptionSpecs | config/schema.ts 有运行时定义，model-config.ts 另手写 Input / Object 等字段                                                             | 共享 schema，推导数据类型；不把 class 删除视作前提                                                          |
 | ModelConfigRule 三种成员                           | schema 工厂定义规则结构，model-config.ts 又手写规则接口                                                                                 | 从各具体规则 schema 推导；工厂参数当前使用 ZodTypeAny，实施时需保留 config 的具体类型，不能让推导退化为 any |
 | Registry 完整配置                                  | resolver.ts 另手写 RegistryModelConfig / RegistryModelConfigObject 等完整成员；目前完整性依靠 validateComplete，而非已有独立完整 schema | 与完整 / 稀疏 / 固定配置共享字段定义，不错误声称这里已存在完整 schema 只是没 infer                          |
+| 协议 ZCodeProviderAccountAccess                    | shared/zcode-protocol/index.ts 已从 schema infer；Resolver 中仍有手写的同形 Registry 账号访问结构                                       | 保留已推导协议类型；共享数据形状时遵守包依赖方向                                                            |
 | 账号连接选择及设置                                 | shared/provider-family-connection-selection.ts 已定义两个 schema，但又手写联合类型及设置映射类型                                        | 改为从 schema 推导；不改变 kind、团队 ID 或持久化形状，用户已跳过结构调整                                   |
 
 证据：[ModelSelection](../../../../packages/shared/src/model-selection.ts)、[Registry Selection 重用](../../../../packages/provider/src/registry.ts)、[配置 schema](../../../../packages/provider/src/config/schema.ts)、[Provider 类型](../../../../packages/provider/src/config/provider-config.ts)、[Model / Rule 类型](../../../../packages/provider/src/config/model-config.ts)、[Registry 完整类型](../../../../packages/provider/src/resolver.ts)、[协议类型](../../../../packages/shared/src/zcode-protocol/index.ts)。
@@ -1279,9 +1351,11 @@ modelSelection 层：复用第 2 节通用结构，不另建一套 Provider / Mo
 - [x] 核对核心结构审阅覆盖并记录实施 / 上线验证边界；Session 回滚遗漏按 6.18 新字段迁移裁决处理。
 - [x] 文档复核补清 Match / 手动配置边界、覆盖和顺序、身份迁移、合并文件读写 / 回滚及 Bot 既有导入入口，见 1.2、6.2–6.4、6.9–6.13、6.16。
 - [x] 恢复默认选择文件合并，纠正 Bot 原路径迁移误记，并按可验证性重新评估全部变更，见 6.17。
+- [x] 记录 pass 就是认可、已发布旧字段不删除、Off-Peak / Wiki 两处待修，以及只讨论 / 落盘文档的授权边界，见 6.18。
 - [x] 确定 Session 在已有 entry.data 新增 modelSelection，保留旧字段原值，不新增表或 entry 类型；见 6.18.3。
 - [x] Session 新字段迁移及读取 / 保存 / 复制入口适配，验证旧字段保留、迁移幂等及清除不复活；B1c 与 B5 证据见账本。
 - [x] 6.19 收紧为本 Todo 要改的 13 项配套内容并获认可；撤销 Subagent A10 误判，链接 Todo 97 的已裁决取舍，不再列为待讨论或待实施项。
+- [x] Off-Peak / Wiki 旧字段保留，验证旧值保留且不会复活新版已清除的选择。
 - [x] 6.12 来源标识修复、sourceRevision 删除、registryRevision 改名；真实文件 Source/Registry 及实际构建 Worker 的来源交付与精确模型请求通过。
 - [x] 按第 1.1 节原则整理第 7 节重复数据类型，复用 schema 并保持依赖单向；含账号连接类型，运行时字段不变。
 - [x] 落实第 3、5、6 节字段、模式与结构，配套 schema、序列化、消费者及批次验证；保留 api 层，不实施被撤回或跳过的建议。

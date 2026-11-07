@@ -23,6 +23,7 @@
 - 同文件更新已补真正两个 OS 进程写 Provider/默认选择的屏障测试；分发已补真实文件 CAS/故障回滚，期间写入的 C 不被回滚覆盖。Repository 写后返回 codec 规范化快照，修正写后下一次读 revision 无故变化；undefined providerOrder 不再凭空写成空数组。
 - 核心配置/存储/设置批次：50 文件 488 测试通过；CLI 4 文件 25 测试、入口 Node 测试 4 条通过。更广消费面 155 文件 1296 测试初跑 1286 通过、10 条旧 fixture 失败；七个文件按最终外层名称、规则数组及 Account 字典协议更新后，合并重跑 244 条全部通过。未为这 10 条失败增加产品兼容代码。
 - 根 typecheck、lint 通过（43 条既有 warning，0 error）。Pro 用隔离副本重建最新 Agent/Desktop，SC90-01、F98-03、W89-05/W89-08 共两 spec 三 case 全部通过；不为微小类型/fixture 调整重复 Pro。报告：`/Users/dev/zcode-todo99-e2e.1lO3PN/packages/desktop/.e2e-artifacts/desktop-e2e-20260910-052901-362/summary.md`。
+- 整批复审补齐账号连接类型从现有 schema 推导；dep-refs 确认独立默认选择文件 codec 及分发旧默认 DTO 无生产引用后移除。没有更改账号连接行为、Session 提交时机或 Off-Peak Ticket。
 - 证据：`/tmp/todo104-b234-{final-tests,cli-final-tests,cli-entry-tests,typecheck-final,lint,pro-e2e}.log`；`/tmp/todo104-{provider-cross-surface-tests,cross-surface-fixed-tests}.log`。最终构建产物启动、B1 跨组回归和全项复审仍在进行；不据这三条桌面用例宣告 Todo104 完成。
 
 ### B2/B3 早期实施记录（历史）
@@ -62,28 +63,30 @@
 
 ## 文档合入与决策复核
 
-| 项目                     | 复核结论                                                                      | 处理                                      |
-| ------------------------ | ----------------------------------------------------------------------------- | ----------------------------------------- |
-| 唯一显式冲突：steps.md   | 两侧入口都有效；本地仍将已完成95C/97/98列为开发中，m2仍写未授权               | 保留两侧入口，纠正状态及编号              |
-| 核心 Schema 改名／重组   | 已有具体最终结构；基础 schema → 类型/行为类单向依赖可实施，不能只做字符串替换 | 归 B2；API SDK 自身参数名不随配置字段改名 |
-| 未发布格式不兼容         | 与既有裁决一致；不等于可以破坏已发布 staging 数据                             | 新格式严格校验；独立测试旧 staging 导入   |
-| 默认选择合并             | 已批准同文件单次更新；涉及锁、通知、分发及回滚，不能分开双写                  | 归 B3，与新 personal schema 联动          |
-| 路径、revision、分发     | 已给出来源隔离及固定路径目标；不能重做账号同步系统                            | 归 B4；真实文件／进程证明和打包验证       |
-| “仅讨论／未授权实施”     | 已被本次用户请求取代，不是产品边界                                            | 顶部统一声明新授权，保留历史段落          |
-| “可构造测试所以风险不高” | 是可行性判断，不是通过证据，也不能省略并发、跨进程和构建验收                  | 每组分开记录已实现／已验证                |
-| Bot / Subagent / CLI     | Bot 保持 v3 文件；Subagent 原字段语义不改；不实施 CLI 账号架构统一            | 不扩项，只适配共享结构的必要调用方        |
+| 项目                           | 复核结论                                                                      | 处理                                      |
+| ------------------------------ | ----------------------------------------------------------------------------- | ----------------------------------------- |
+| 唯一显式冲突：steps.md         | 两侧入口都有效；本地仍将已完成95C/97/98列为开发中，m2仍写未授权               | 保留两侧入口，纠正状态及编号              |
+| 核心 Schema 改名／重组         | 已有具体最终结构；基础 schema → 类型/行为类单向依赖可实施，不能只做字符串替换 | 归 B2；API SDK 自身参数名不随配置字段改名 |
+| 未发布格式不兼容               | 与既有裁决一致；不等于可以破坏已发布 staging 数据                             | 新格式严格校验；独立测试旧 staging 导入   |
+| Session/Off-Peak/Wiki 旧值保留 | 明确取代旧保存行为；保留只供旧版回滚，不能回读复活新选择                      | 归 B1；验证原始数据及新版本权威           |
+| 默认选择合并                   | 已批准同文件单次更新；涉及锁、通知、分发及回滚，不能分开双写                  | 归 B3，与新 personal schema 联动          |
+| 路径、revision、分发           | 已给出来源隔离及固定路径目标；不能重做账号同步系统                            | 归 B4；真实文件／进程证明和打包验证       |
+| “仅讨论／未授权实施”           | 已被本次用户请求取代，不是产品边界                                            | 顶部统一声明新授权，保留历史段落          |
+| “可构造测试所以风险不高”       | 是可行性判断，不是通过证据，也不能省略并发、跨进程和构建验收                  | 每组分开记录已实现／已验证                |
+| Bot / Subagent / CLI           | Bot 保持 v3 文件；Subagent 原字段语义不改；不实施 CLI 账号架构统一            | 不扩项，只适配共享结构的必要调用方        |
 
 ## 分组状态（不以文档合并代表实施）
 
-| 组  | 对应条款       | 内容                                                                   | 裁决   | 实现                         | 验证／复审                                                             |
-| --- | -------------- | ---------------------------------------------------------------------- | ------ | ---------------------------- | ---------------------------------------------------------------------- |
-| B0  | 文档           | m2真实合并、编号、授权与过时状态                                       | 已复核 | 完成：1e4953e300             | 唯一冲突按段处理；产品代码零增量                                       |
-| B1b | 6.18.2         | Wiki/Draft保留旧模型／档位／预算                                       | 已批准 | 完成                         | 100测试通过；文件故障/并发/重启/生成Limit，typecheck/lint通过          |
-| B1c | 6.18.3         | Session entry新增modelSelection                                        | 已批准 | 已提交                       | 存储/恢复/fork及Pro冷恢复通过；最终CLI真实旧记录fixture已校正          |
-| B2  | 1.1、2–6.7     | 唯一Schema、配置字段/规则分组/名称/Match、Selection移除maxOutputTokens | 已批准 | 已提交fb627de8f6             | 最终规则矩阵、跨层消费者、Pro SC90/F98/W89及整批复审通过               |
-| B3  | 6.9、6.13      | 默认选择与personalConfig合并、分发及回滚联动                           | 已批准 | 已提交fb627de8f6             | 真实双进程并发、登录/重启/清除、真实文件分发故障/CAS及批次回归通过     |
-| B4  | 6.8、6.10–6.13 | 路径/五格式v1/端点revision/configRevision/sourceRevision               | 已批准 | 已提交fb627de8f6             | 文件/来源/原子替换、CJS Server及CLI Worker通过；其他制品启动受阻，见下 |
-| B5  | 7–8            | 全部要求核对、跨组回归、最终review与提交                               | 已批准 | 代码复审及提交完成；未全验收 | 等待独立打包修复范围决定；Windows实机未验证                            |
+| 组  | 对应条款       | 内容                                                                   | 裁决   | 实现                         | 验证／复审                                                                   |
+| --- | -------------- | ---------------------------------------------------------------------- | ------ | ---------------------------- | ---------------------------------------------------------------------------- |
+| B0  | 文档           | m2真实合并、编号、授权与过时状态                                       | 已复核 | 完成：1e4953e300             | 唯一冲突按段处理；产品代码零增量                                             |
+| B1a | 6.18.1         | Off-Peak保留旧列                                                       | 已批准 | 完成                         | 56测试通过，原始SQLite列、标题／选择编辑、新建记录、重启；typecheck/lint通过 |
+| B1b | 6.18.2         | Wiki/Draft保留旧模型／档位／预算                                       | 已批准 | 完成                         | 100测试通过；文件故障/并发/重启/生成Limit，typecheck/lint通过                |
+| B1c | 6.18.3         | Session entry新增modelSelection                                        | 已批准 | 已提交                       | 存储/恢复/fork及Pro冷恢复通过；最终CLI真实旧记录fixture已校正                |
+| B2  | 1.1、2–6.7     | 唯一Schema、配置字段/规则分组/名称/Match、Selection移除maxOutputTokens | 已批准 | 已提交fb627de8f6             | 最终规则矩阵、跨层消费者、Pro SC90/F98/W89及整批复审通过                     |
+| B3  | 6.9、6.13      | 默认选择与personalConfig合并、分发及回滚联动                           | 已批准 | 已提交fb627de8f6             | 真实双进程并发、登录/重启/清除、真实文件分发故障/CAS及批次回归通过           |
+| B4  | 6.8、6.10–6.13 | 路径/五格式v1/端点revision/configRevision/sourceRevision               | 已批准 | 已提交fb627de8f6             | 文件/来源/原子替换、CJS Server及CLI Worker通过；其他制品启动受阻，见下       |
+| B5  | 7–8            | 全部要求核对、跨组回归、最终review与提交                               | 已批准 | 代码复审及提交完成；未全验收 | 等待独立打包修复范围决定；Windows实机未验证                                  |
 
 ## 待裁决／验证限制
 
@@ -137,7 +140,10 @@ Pro 隔离副本核对 Built-in/Facade hash 后同步 Registry 与 I13 spec，�
 ### B1a 2026-09-10
 
 - 先补测试，存量场景准确失败：标题更新后旧model/thought_level从原值变为NULL。移除UPDATE中的两个清空赋值，不新增存储机制。
+- 4文件56测试通过：offPeakTaskRepo / offPeakTaskService / offPeakRuntimeModel / offPeakModelSelectionView。原始SQLite读证据对照固定staging@790884b1ce的rowToTask旧列读取形状；不宣称旧App实机回滚。
 - `pnpm typecheck`通过；`pnpm lint`通过（43既有警告、0错误）；architecture检查0违规。未改UI交互，不新增E2E。
+- 图谱检查344节点无重号；4条悬空边在HEAD已存在，本次仅追加Off-Peak存储不变量，不扩修图谱。相关5个代码seed文件/符号均存在；codegraph工具不可用，记录文本核对限制。
+- 复审：唯一调用方仍为OffPeakTaskService.updateTask；null拒绝、queued/paused门禁、Ticket不变。新记录旧列仍NULL；不会合成旧值或把新值回写旧列。其他已有invalidation路径不在本项UPDATE修复范围内。
 
 ### B1b 2026-09-10
 
@@ -163,7 +169,9 @@ Pro 隔离副本核对 Built-in/Facade hash 后同步 Registry 与 I13 spec，�
 - codec 正式读取只解包新成员：旧值未迁移则不可用，新成员空/坏值不借旧字段补齐。无档位的旧自定义 Provider 也完成一次迁移。未发布 options 中间态不列为兼容目标。
 - 红测：正确 CLI Vitest 入口 12失败/16通过；最初根 Vitest 未包含CLI目录属于命令范围问题，不算产品红测。实现后 adapters/core/bootstrap 10文件266测试通过；新增 fork 原始JSON断言后存储3文件72测试通过。包含正常保存/清空/重开、旧字段及未知成员保持、消息不变、失败 trigger 回滚、幂等、冷恢复及fork隔离。
 - 旧版证据：固定 `790884b1ce` 的 `server-operations.ts:3931-3953` reader纯字段投影用于真实迁移后JSON，验证原Provider/model/thought仍可读；不是旧App实机回滚。
+- 全仓精确检索发现两个E2E直接SQL路径：unbound-resume播种、offpeak-existing读取；均已同步新包装。两个fixture check通过，分别仍有既有标题无marker/编辑标题无matcher警告；不自动promotion。E2E typecheck通过，实机待B5共享新Agent构建复验，不借旧包结果。
 - 根typecheck通过，CLI contracts/adapters/core/bootstrap四包独立typecheck通过。根lint 43既有warning/0error；CLI changed-file lint只有既有 `session-store.port.ts` max-lines（1065有效行，当前只加注释未增加有效行），无新增诊断。架构context未托管情况见影响文档。
+- 日志：`/tmp/todo104-b1c-{red,tests,final-storage,typecheck,cli-typecheck,lint,cli-lint,e2e-typecheck,fixture-unbound,fixture-offpeak}.log`。
 - B1c完成不等于Todo104完成：B2/B3/B4/B5继续保持未完成，不推送、不合回recovery。
 
 ### 下一组 B2 调查起点

@@ -24,6 +24,16 @@
 | 定时 / 闲时 / Bots              | 各自配置编辑器              | 项目主要目录与其余 roots   | 创建时固化执行配置         | 各自 Host repo               | 之后不追随项目 roots 编辑                           |
 | 离线远程项目                    | 本机入口列表                | 最近成功基础信息缓存       | 只移除入口；在线编辑经远端 | 本机 entries / 远端 projects | 迟到刷新只 UPDATE，禁止重建入口                     |
 
+## Shared And Divergent Behavior / Feature Relationships
+
+- must-inspect：CLI store → sessions-index → Host syncer → task index。会话事实唯一写者是 CLI，Host 只能镜像。
+- must-inspect：项目服务 → create / resume / V4 cold subscribe。统一目录解析，不在 UI 拼 roots。
+- must-inspect：schema runner → desktop startup / remote server / CLI startup。表级备份与事务失败关闭。
+- should-inspect：composer、设置、automations、off-peak、Bots 的目录选项与创建默认值。
+- conditional：SSH/WSL/Docker/server 重连与旧远端单 root 降级。
+- invariant-only：CommandInbox、owner/lease、workspaceIdentity、手机 replayable、desktop continuous。
+- evidence-only：现有 session-store、v4-cold-resume、sessions-index、task index、task title/unread 单测与 TSL 系列 E2E。
+
 ## State Owners And Commit Sinks
 
 ```text
@@ -93,18 +103,18 @@ CodeGraph 返回本工作区无索引，未执行 CodeGraph 影响面扫描；�
 
 ## Dimensions / Accepted Cases
 
-| ID   | Setup → Action                                                                                           | 断言                                                                      | 证据层                   |
-| ---- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------ |
-| VP01 | 旧库含正文 → 升级 / 备份恢复                                                                             | 仅 touchedTables 变化；message/part 完整；checksum 不变                   | SQLite fixture / unit    |
-| VP02 | 升级 → 旧写者删除、改标题、新建 → 再升级                                                                 | 意图交接、orphan、空归属只判一次                                          | SQLite fixture / service |
-| VP03 | 冷种子遗漏 / 删除事件丢失 → reconcile                                                                    | exists/deleted 区分；缺席不删行                                           | protocol / CLI / Host    |
-| VP04 | 0 / 1 / 多 roots → 创建编辑、软删、同集恢复                                                              | cwd 固定、名称唯一、同 host、取消无副作用                                 | service / UI E2E         |
-| VP05 | NULL 归属、0/1/多匹配 → 首次发现 / 重启                                                                  | 仅唯一匹配归位；之后不再归位；任意 cwd 进任务区                           | service / UI E2E         |
-| VP06 | A+B 项目 → create / explicit resume / subscribe 冷恢复                                                   | B skills/subagents/可写范围可用；AGENTS/config 仅 A                       | CLI / Host / E2E         |
-| VP07 | live B 改 C / 换主要目录 / 同 cwd 双项目 / 并发订阅                                                      | live 范围固定；重建按归属；不串用；single-flight                          | unit / E2E               |
-| VP08 | 离线入口删除 + 迟到刷新 / 重启重连 → 手动重新添加                                                        | 不复活、不改远端项目和会话；主动添加原 ID                                 | repo / service / E2E     |
+| ID   | Setup → Action                                         | 断言                                                    | 证据层                   |
+| ---- | ------------------------------------------------------ | ------------------------------------------------------- | ------------------------ |
+| VP01 | 旧库含正文 → 升级 / 备份恢复                           | 仅 touchedTables 变化；message/part 完整；checksum 不变 | SQLite fixture / unit    |
+| VP02 | 升级 → 旧写者删除、改标题、新建 → 再升级               | 意图交接、orphan、空归属只判一次                        | SQLite fixture / service |
+| VP03 | 冷种子遗漏 / 删除事件丢失 → reconcile                  | exists/deleted 区分；缺席不删行                         | protocol / CLI / Host    |
+| VP04 | 0 / 1 / 多 roots → 创建编辑、软删、同集恢复            | cwd 固定、名称唯一、同 host、取消无副作用               | service / UI E2E         |
+| VP05 | NULL 归属、0/1/多匹配 → 首次发现 / 重启                | 仅唯一匹配归位；之后不再归位；任意 cwd 进任务区         | service / UI E2E         |
+| VP06 | A+B 项目 → create / explicit resume / subscribe 冷恢复 | B skills/subagents/可写范围可用；AGENTS/config 仅 A     | CLI / Host / E2E         |
+| VP07 | live B 改 C / 换主要目录 / 同 cwd 双项目 / 并发订阅    | live 范围固定；重建按归属；不串用；single-flight        | unit / E2E               |
+| VP08 | 离线入口删除 + 迟到刷新 / 重启重连 → 手动重新添加      | 不复活、不改远端项目和会话；主动添加原 ID               | repo / service / E2E     |
 | VP09 | 未置顶超期旧任务（不看结果/未读）→ Host 定时扫描 / 设置变更补扫（2026-09-14 起不随项目树加载或点击触发） | 任意 cwd 自动归档；置顶/运行中除外；组织操作不重排；点击任务不改 archived | unit / E2E               |
-| VP10 | 项目创建定时/闲时/Bot → 修改 roots → 执行恢复                                                            | 继续使用固化 cwd/additionalDirectories                                    | unit / E2E               |
+| VP10 | 项目创建定时/闲时/Bot → 修改 roots → 执行恢复          | 继续使用固化 cwd/additionalDirectories                  | unit / E2E               |
 
 ## Pruning Decisions / Unresolved Questions
 
@@ -182,6 +192,12 @@ D82 的 Web transport 偶发等待超时保留记录：当前与重构前 checko
 | CLI 归档字段链  | SessionInfo.time.archived / timeArchived / includeArchived / archivedAt（含 shared 协议与 services 参数）、createSession 显式写 time_archived=null、旧 runner 孤儿 ensureParentDir / SchemaMigrationRow、cold-session-resume 三层三元兼容调用                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | apps/zcode-cli、shared、services  |
 | 文案与注释      | 116 个无引用 i18n 键 × 2 语言；十余处仍描述 grouped / overlay / applyAgentPatch / closeSession 的注释                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | ui、services、CLI                 |
 | 文档            | sidebar-task-view-switcher.md、CLI multi-workspace.md 加废弃横幅；e2e 覆盖矩阵与 case catalog 退场 Group 语义用例（TSL22/27/37、CWP05）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | docs                              |
+
+### 顺带修复
+
+- 闲时任务绑定会话的忙碌判断已失效：归属收口后 tasks-index 行的 status 只镜像 CLI last_outcome，永远不会是 running，host 按 `listTasks(...).status === "running"` 的守卫形同虚设。新增 `IZCodeTaskService.listActiveTaskIds`（来自 syncer 活动集合），host 改用它；offPeakHostDispatch 测试按活动集合断言 busy。
+- 分支上两处已失效的旧测试：pinnedTaskFileTreeAction 断言 79de8c7fab 已移除的文件树按钮（删除）；workspaceShellRemoteMobileLayout 的 TabStoreProvider mock 缺 useTabStore（8d06343e22 后 useProjectTree 直接订阅），24 例报错（补 mock）。
+- core resume 改为拒绝恢复已软删除会话（旧 time.archived 判断永远 false）。
 
 ### 验证
 

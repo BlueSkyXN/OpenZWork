@@ -52,7 +52,7 @@ interface WSLBackendOptions {
 
 ```typescript
 // Linux 路径 → Windows UNC 路径
-// ~/.openzwork/server/node → \\wsl$\Ubuntu\home\user\.zcode\server\node
+// ~/.zcode/server/node → \\wsl$\Ubuntu\home\user\.zcode\server\node
 function wslToWindowsPath(linuxPath: string, distro: string): string
 ```
 

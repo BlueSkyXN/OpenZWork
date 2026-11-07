@@ -1,4 +1,4 @@
-// OpenZWork 维护门禁：台账、上游文档编辑登记、经验库与上游文件格式噪声。
+// OpenZWork 维护门禁：台账、上游文档原文与 OpenZWork 版本登记、经验库与上游文件格式噪声。
 // 规则见 docs/openzwork/maintenance-model.md；需要完整 Git 历史（上游基准提交）与已安装的 oxfmt。
 import assert from "node:assert/strict";
 import { dirname, resolve } from "node:path";

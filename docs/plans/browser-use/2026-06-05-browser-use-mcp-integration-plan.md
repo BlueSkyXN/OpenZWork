@@ -1,5 +1,9 @@
 # Browser Use MCP Integration Implementation Plan
 
+> **状态：历史规划，未实现。** 本文拟议的 `automationSurface` / `browser_use` 模块在当前分支不存在，
+> 不可据此判断现行浏览器自动化能力。当前产品 CUA 权限边界见
+> [ZCode CUA Permission Broker](../../cua-permission-broker/zcode-cua-permission-broker.md)。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 让 zcode-cli 内模型可以在受控开关开启后，通过内置 `browser_use` session-injected MCP 操作 z-code 桌面内置浏览器，并为未来 iOS Simulator、Android Emulator 等可视化自动化实例复用同一套 session/instance 管理结构。
@@ -170,7 +174,6 @@
 ## Task 0: 前置复读和基线确认
 
 **Files:**
-
 - Read: `DESIGN.md`
 - Read: `docs/web-remote-control/web-remote-control-architecture.md`
 - Read: `docs/web-remote-control/task-realtime-sync.md`
@@ -208,7 +211,6 @@ Expected: 只看到与当前任务相关的变更；实现时不得覆盖用户�
 ## Task 1: 增加开关和 shared automation surface contract
 
 **Files:**
-
 - Create: `packages/shared/src/automationSurface.ts`
 - Create: `packages/shared/src/browserUse.ts`
 - Modify: `packages/shared/src/protocol.ts`
@@ -300,7 +302,11 @@ Create `packages/shared/src/automationSurface.ts`:
 ```ts
 import { z } from "zod";
 
-export const automationSurfaceKindSchema = z.enum(["browser", "ios-simulator", "android-emulator"]);
+export const automationSurfaceKindSchema = z.enum([
+  "browser",
+  "ios-simulator",
+  "android-emulator",
+]);
 export type AutomationSurfaceKind = z.infer<typeof automationSurfaceKindSchema>;
 
 export const automationSurfaceClientModeSchema = z.enum([
@@ -434,12 +440,10 @@ import {
 
 describe("automation surface refs", () => {
   it("uses workspaceIdentity for isolation when present", () => {
-    expect(
-      getAutomationSurfaceWorkspaceKey({
-        workspacePath: "/repo",
-        workspaceIdentity: "ssh://host/repo",
-      }),
-    ).toBe("ssh://host/repo");
+    expect(getAutomationSurfaceWorkspaceKey({
+      workspacePath: "/repo",
+      workspaceIdentity: "ssh://host/repo",
+    })).toBe("ssh://host/repo");
   });
 
   it("builds session and instance ids with task isolation", () => {
@@ -449,9 +453,7 @@ describe("automation surface refs", () => {
       taskId: "task-1",
     });
     expect(surfaceSessionId).toContain("task-1");
-    expect(buildAutomationSurfaceInstanceId({ surfaceSessionId, kind: "browser" })).toContain(
-      "browser",
-    );
+    expect(buildAutomationSurfaceInstanceId({ surfaceSessionId, kind: "browser" })).toContain("browser");
   });
 });
 ```
@@ -478,7 +480,6 @@ git commit -m "feat: add automation surface settings and contracts"
 ## Task 2: 打通 ZCode Protocol 的 injected MCP server 链路
 
 **Files:**
-
 - Modify: `packages/shared/src/mcp.ts`
 - Modify: `packages/shared/src/zcode-protocol/index.ts`
 - Modify: `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`
@@ -556,9 +557,7 @@ In `apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts`, 
 
 ```ts
 function headerArrayToRecord(headers: { name: string; value: string }[] | undefined) {
-  return headers
-    ? Object.fromEntries(headers.map((entry) => [entry.name, entry.value]))
-    : undefined;
+  return headers ? Object.fromEntries(headers.map((entry) => [entry.name, entry.value])) : undefined;
 }
 ```
 
@@ -597,7 +596,6 @@ git commit -m "feat: support injected mcp servers in zcode protocol"
 ## Task 3: 实现 services 侧通用 AutomationSurfaceService
 
 **Files:**
-
 - Create: `packages/services/src/automation-surface/automationSurface.ts`
 - Create: `packages/services/src/automation-surface/automationSurfaceFeaturePolicy.ts`
 - Create: `packages/services/src/automation-surface/automationSurfaceHostBridge.ts`
@@ -620,27 +618,21 @@ import { resolveAutomationSurfaceFeaturePolicy } from "../src/automation-surface
 
 describe("automation surface feature policy", () => {
   it("keeps browser_use disabled by default", () => {
-    expect(
-      resolveAutomationSurfaceFeaturePolicy({ settings: {}, env: {} }).browserUse.enabled,
-    ).toBe(false);
+    expect(resolveAutomationSurfaceFeaturePolicy({ settings: {}, env: {} }).browserUse.enabled).toBe(false);
   });
 
   it("lets env force-enable browser_use for dev and tests", () => {
-    expect(
-      resolveAutomationSurfaceFeaturePolicy({
-        settings: {},
-        env: { ZCODE_BROWSER_USE_MCP: "1" },
-      }).browserUse.enabled,
-    ).toBe(true);
+    expect(resolveAutomationSurfaceFeaturePolicy({
+      settings: {},
+      env: { ZCODE_BROWSER_USE_MCP: "1" },
+    }).browserUse.enabled).toBe(true);
   });
 
   it("lets env force-disable browser_use", () => {
-    expect(
-      resolveAutomationSurfaceFeaturePolicy({
-        settings: { automationSurface: { browserUse: { enabled: true } } },
-        env: { ZCODE_BROWSER_USE_MCP: "0" },
-      }).browserUse.enabled,
-    ).toBe(false);
+    expect(resolveAutomationSurfaceFeaturePolicy({
+      settings: { automationSurface: { browserUse: { enabled: true } } },
+      env: { ZCODE_BROWSER_USE_MCP: "0" },
+    }).browserUse.enabled).toBe(false);
   });
 });
 ```
@@ -670,17 +662,13 @@ export function resolveAutomationSurfaceFeaturePolicy(input: {
   const platformSupported = input.platformSupported ?? true;
 
   if (!platformSupported) {
-    return {
-      browserUse: { enabled: false, autoOpenOnToolCall: false, reason: "unsupported-platform" },
-    };
+    return { browserUse: { enabled: false, autoOpenOnToolCall: false, reason: "unsupported-platform" } };
   }
   if (forced === "0") {
     return { browserUse: { enabled: false, autoOpenOnToolCall: false, reason: "env-disabled" } };
   }
   if (forced === "1") {
-    return {
-      browserUse: { enabled: true, autoOpenOnToolCall: browserUse?.autoOpenOnToolCall ?? true },
-    };
+    return { browserUse: { enabled: true, autoOpenOnToolCall: browserUse?.autoOpenOnToolCall ?? true } };
   }
   return {
     browserUse: {
@@ -718,9 +706,8 @@ export interface IAutomationSurfaceService {
   disposeSession(session: AutomationSurfaceSessionRef): Promise<void>;
 }
 
-export const IAutomationSurfaceService = createServiceDescriptor<IAutomationSurfaceService>(
-  "automationSurfaceService",
-);
+export const IAutomationSurfaceService =
+  createServiceDescriptor<IAutomationSurfaceService>("automationSurfaceService");
 ```
 
 - [ ] **Step 4: Implement host/main bridge**
@@ -802,7 +789,6 @@ git commit -m "feat: add automation surface service"
 ## Task 4: 实现 host/main 通用 platform bridge 和 desktop runtime
 
 **Files:**
-
 - Modify: `packages/shared/src/channels.ts`
 - Create: `packages/desktop/src/main/automationSurface/runtime.ts`
 - Create: `packages/desktop/src/main/automationSurface/security.ts`
@@ -934,7 +920,6 @@ git commit -m "feat: add desktop automation surface runtime"
 ## Task 5: 实现 Browser provider、webview preload 和 retained UI
 
 **Files:**
-
 - Create: `packages/desktop/src/main/automationSurface/browser/browserProvider.ts`
 - Create: `packages/desktop/src/main/automationSurface/browser/browserSession.ts`
 - Create: `packages/desktop/src/main/automationSurface/browser/browserStore.ts`
@@ -970,9 +955,7 @@ export function listInteractiveElements(root: ParentNode = document): Element[] 
   ).filter((element) => {
     const rect = element.getBoundingClientRect();
     const style = window.getComputedStyle(element);
-    return (
-      rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden"
-    );
+    return rect.width > 0 && rect.height > 0 && style.display !== "none" && style.visibility !== "hidden";
   });
 }
 ```
@@ -1023,7 +1006,6 @@ git commit -m "feat: add browser automation surface provider"
 ## Task 6: UI 接入 retained AutomationSurfaceHost 和独立 side pane tab
 
 **Files:**
-
 - Modify: `packages/ui/src/lib/workspaceSidePane.ts`
 - Modify: `packages/ui/src/lib/taskSidePaneMemory.ts`
 - Create: `packages/ui/src/automation-surface/AutomationSurfaceHost.tsx`
@@ -1131,7 +1113,6 @@ git commit -m "feat: render retained automation surface views"
 ## Task 7: 在 ZCode session create/resume 前注入 browser_use MCP
 
 **Files:**
-
 - Modify: `packages/services/src/zcode-agent/zcodeTaskServiceAdapter.ts`
 - Modify: `packages/services/src/session/zcodeTaskService.ts`
 - Modify: `packages/ui/src/lib/zcodeSessionPromptControl.ts`
@@ -1156,13 +1137,11 @@ afterEach(() => {
 describe("browser_use MCP injection", () => {
   it("injects browser_use only when automation surface policy enables it", async () => {
     useTempDataBaseDir();
-    const createSession = vi.fn(async () =>
-      makeSnapshot({
-        sessionId: "task-browser",
-        workspacePath: "/repo",
-        workspaceIdentity: "ssh://host/repo",
-      }),
-    );
+    const createSession = vi.fn(async () => makeSnapshot({
+      sessionId: "task-browser",
+      workspacePath: "/repo",
+      workspaceIdentity: "ssh://host/repo",
+    }));
     const taskIndexRepo = new TaskIndexRepo();
     const { agent: zcodeAgentService } = createAgentMock();
     vi.mocked(zcodeAgentService.createSession).mockImplementation(createSession);
@@ -1172,14 +1151,12 @@ describe("browser_use MCP injection", () => {
     });
     const automationSurfaceService = {
       prepareSession: vi.fn(async () => ({
-        mcpServers: [
-          {
-            name: "browser_use",
-            type: "http" as const,
-            url: "http://127.0.0.1:4567/mcp",
-            headers: [{ name: "X-ZCode-Browser-MCP-Token", value: "secret" }],
-          },
-        ],
+        mcpServers: [{
+          name: "browser_use",
+          type: "http" as const,
+          url: "http://127.0.0.1:4567/mcp",
+          headers: [{ name: "X-ZCode-Browser-MCP-Token", value: "secret" }],
+        }],
         instances: [],
       })),
     };
@@ -1271,7 +1248,6 @@ git commit -m "feat: inject browser use mcp per zcode session"
 ## Task 8: 权限、日志、错误和用户开关 UI
 
 **Files:**
-
 - Modify: `packages/services/src/automation-surface/browserUseTool.ts`
 - Modify: `packages/services/src/automation-surface/automationSurfaceService.ts`
 - Modify: `packages/ui/src/SettingsPage.tsx`
@@ -1336,7 +1312,6 @@ git commit -m "feat: add browser use permissions and settings"
 ## Task 9: 桌面端到端验证
 
 **Files:**
-
 - Create: `packages/desktop/test/browserUseMcp.e2e.test.ts` or WebdriverIO spec under current desktop e2e structure
 - Modify: package test script if needed
 
@@ -1380,7 +1355,6 @@ git commit -m "test: cover browser use mcp desktop flow"
 ## Task 10: 文档、远控说明和最终验证
 
 **Files:**
-
 - Create: `docs/browser-use-mcp.md`
 - Modify: `docs/web-remote-control/task-realtime-sync.md`
 
@@ -1391,6 +1365,14 @@ Create `docs/browser-use-mcp.md` with sections:
 ```md
 # Browser Use MCP
 
+## Summary
+## Feature Switches
+## Session And Instance Isolation
+## Data Flow
+## Permission Model
+## Desktop Continuous Boundary
+## Mobile Remote Replayable Boundary
+## Provider Extension Guide
 ## Verification
 ```
 

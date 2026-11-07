@@ -17,7 +17,7 @@
 
 ## 背景
 
-当前 SSH 远端已经支持用户级 Skill 和用户级 MCP 同步。Skill 同步复制本机用户 skill 目录到远端 `~/.openzwork/skills`，MCP 同步把本机用户 MCP 配置导入远端 `~/.openzwork/cli/config.json`。两者都遵循显式、单向、不覆盖的同步模型。
+当前 SSH 远端已经支持用户级 Skill 和用户级 MCP 同步。Skill 同步复制本机用户 skill 目录到远端 `~/.zcode/skills`，MCP 同步把本机用户 MCP 配置导入远端 `~/.zcode/cli/config.json`。两者都遵循显式、单向、不覆盖的同步模型。
 
 Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`plugins.dirs`、enabled/options、marketplace cache、installed records、builtin suppression、plugin data、skills/commands/hooks/MCP 运行时投影的组合。因此 SSH 同步必须分类型处理，避免把本机运行状态误当作可移植配置。
 
@@ -25,11 +25,11 @@ Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`p
 
 ### 用户级 inline plugin
 
-- 来源：本机用户级 `~/.openzwork/cli/config.json` 中 `plugins.dirs` 指向的 inline plugin。
+- 来源：本机用户级 `~/.zcode/cli/config.json` 中 `plugins.dirs` 指向的 inline plugin。
 - manifest：支持 `.zcode-plugin/plugin.json`、`.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`。
 - plugin id：统一按 `<manifest.name>@inline` 生成。
-- 同步方式：本机 `pluginSyncService` 导出 archive，SSH 远端 `pluginSyncService` 导入到 `~/.openzwork/plugins/<plugin-dir>`。
-- 配置写入：导入成功后把远端绝对路径追加到远端 `~/.openzwork/cli/config.json` 的 `plugins.dirs`。
+- 同步方式：本机 `pluginSyncService` 导出 archive，SSH 远端 `pluginSyncService` 导入到 `~/.zcode/plugins/<plugin-dir>`。
+- 配置写入：导入成功后把远端绝对路径追加到远端 `~/.zcode/cli/config.json` 的 `plugins.dirs`。
 - enabled 状态：如果本机 `plugins.enabledPlugins[pluginId]` 是 boolean，则同步到远端用户配置。
 - options 状态：如果本机存在 `plugins.options[pluginId]`，只同步 manifest `userConfig` 中声明的非 sensitive、非 `file` / `directory` primitive 配置；远端导入后重新读取远端 plugin schema，只有远端同 key、同类型兼容时才通过 `plugins/configure` 写入，并与远端已有 options merge。
 - 冲突策略：远端已有同 plugin id 或目标目录已存在时跳过，不覆盖。
@@ -42,7 +42,7 @@ Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`p
 - scope：支持 `user` 和 `workspace` scope，远端安装时沿用本机 scope。
 - 同步方式：不复制本机 cache；在远端调用 `installPlugin({ marketplace, pluginName, scope })`，由远端 marketplace resolver 重新安装同名 plugin。
 - marketplace source：如果远端缺少同名 marketplace，且本机 marketplace source 可序列化为 `github`、`git` 或 `url`，先在远端调用 `addPluginMarketplace`，再安装 plugin。
-- 本地 marketplace source：如果远端缺少同名 marketplace，且本机 marketplace source 是 `file`、`directory` 或可完整导出的 `settings`，先把选中 plugin 及同 marketplace 依赖闭包需要的 source mirror 到远端 `~/.openzwork/plugins/marketplace-sources/<marketplace-id>-<hash>`，再用该远端目录调用 `addPluginMarketplace`，最后执行安装。
+- 本地 marketplace source：如果远端缺少同名 marketplace，且本机 marketplace source 是 `file`、`directory` 或可完整导出的 `settings`，先把选中 plugin 及同 marketplace 依赖闭包需要的 source mirror 到远端 `~/.zcode/plugins/marketplace-sources/<marketplace-id>-<hash>`，再用该远端目录调用 `addPluginMarketplace`，最后执行安装。
 - enabled 状态：远端安装成功后调用 `setPluginEnabled`，对齐本机 enabled 状态。
 - options 状态：远端安装成功后重新读取远端 plugin schema，按与 inline 相同的安全子集规则同步 `plugins.options[pluginId]`；不传 sensitive、路径类或远端 schema 不兼容的 key。
 - 冲突策略：远端已存在同 plugin id 时认为已安装，不重复安装、不覆盖、不升级。
@@ -52,8 +52,8 @@ Plugin 比 Skill/MCP 更复杂：它不是单一资源，而是插件目录、`p
 - 来源：ZCode 随包内置的 official plugin，当前包括 `android-emulator`、`browser`、`document-skills`、`ios-simulator`、`restore-legacy-sessions`、`skill-creator`、`zcode-guide`。
 - plugin id：统一为 `<name>@zcode-plugins-official`。
 - 同步策略：不通过插件同步弹窗手动复制。builtin plugin 是产品原生能力，SSH 远端必须随远端 ZCode Agent resource 部署。
-- 远端资源布局：`glm/<platform>/packages/<plugin-package>` 打进远端资源包，部署到 `~/.openzwork/server/agents/glm/packages/<plugin-package>`。
-- seed 过程：远端 agent 启动时复用现有 official plugin filesystem seed，把这些资源物化到远端 `~/.openzwork/plugins/cache/zcode-plugins-official/<name>/<version>`。
+- 远端资源布局：`glm/<platform>/packages/<plugin-package>` 打进远端资源包，部署到 `~/.zcode/server/agents/glm/packages/<plugin-package>`。
+- seed 过程：远端 agent 启动时复用现有 official plugin filesystem seed，把这些资源物化到远端 `~/.zcode/plugins/cache/zcode-plugins-official/<name>/<version>`。
 - 资源白名单：官方插件的 `.zcode-plugin`、`skills`、`commands`、`hooks`、`.mcp.json` 和 `docs` 都属于可 seed 资源。`browser` 没有 MCP runtime，但 `runtimeFeatures.browserDocumentationRoot` 指向 `docs/`，缺失时 `agent.browsers.documentation()` 会退化。
 - 部署校验：远端已有 `zcode.cjs` 和 wrapper 但缺 `packages/*-plugin/.zcode-plugin/plugin.json` 时，不能跳过 ZCode Agent 部署，必须刷新 `glm` 组件并补齐 packages。
 - 归档权限：本地下载上传和开发态上传会在桌面侧重新生成 tar；目录条目必须使用跨平台稳定的 `0755`，不能直接使用本地 `stat.mode`。Windows 只实现有限的读写权限语义，直接透传会把目录写成不含执行位的 mode，远端解包后无法遍历或删除。
@@ -75,8 +75,8 @@ inline:
   -> listLocalUserPluginCandidates()
   -> exportPluginsArchive(pluginIds)
   -> SSH remote pluginSyncService.importPluginsArchive(archive)
-  -> 远端 ~/.openzwork/plugins/<plugin-dir>
-  -> 远端 ~/.openzwork/cli/config.json plugins.dirs / enabledPlugins
+  -> 远端 ~/.zcode/plugins/<plugin-dir>
+  -> 远端 ~/.zcode/cli/config.json plugins.dirs / enabledPlugins
 
 marketplace installed:
 本机 base zcodeAgentService
@@ -97,11 +97,11 @@ builtin official:
   -> glm/<platform>/zcode.cjs
   -> glm/<platform>/packages/*-plugin
 SSH deploy
-  -> ~/.openzwork/server/agents/glm/zcode.cjs
-  -> ~/.openzwork/server/agents/glm/packages/*-plugin
+  -> ~/.zcode/server/agents/glm/zcode.cjs
+  -> ~/.zcode/server/agents/glm/packages/*-plugin
 远端 agent 启动
   -> filesystem seed
-  -> ~/.openzwork/plugins/cache/zcode-plugins-official/<name>/<version>
+  -> ~/.zcode/plugins/cache/zcode-plugins-official/<name>/<version>
 ```
 
 UI 始终用 base services 做本机枚举和导出，用当前 workspace services 做远端状态检查和导入。远端 workspace 的 service collection 必须把 `pluginSyncService` 和 `zcodeAgentService` 透传为远端服务，避免导入或安装写回本机。
@@ -148,7 +148,7 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 
 不应混入当前 plugin 同步主流程的是未安装 marketplace 候选和 builtin/suppressed builtin 状态。未安装候选更像远端 Discover 安装或 marketplace source 同步；builtin 状态则和远端操作系统、内置插件可用性相关，应单独做兼容性判断后再同步启停状态。
 
-对于 builtin plugin，最新结论是：资产缺失属于远端资源包构建/部署问题，不属于用户手动同步问题。远端理论上应原生支持 builtin plugin；如果远端插件页显示 0 个内置插件，根因应优先检查 `~/.openzwork/server/agents/glm/packages/*-plugin` 是否随 `zcode.cjs` 一起部署。手动同步 builtin 会把产品原生能力变成用户补救步骤，还容易把官方插件误导入成 inline 插件，因此当前不做。
+对于 builtin plugin，最新结论是：资产缺失属于远端资源包构建/部署问题，不属于用户手动同步问题。远端理论上应原生支持 builtin plugin；如果远端插件页显示 0 个内置插件，根因应优先检查 `~/.zcode/server/agents/glm/packages/*-plugin` 是否随 `zcode.cjs` 一起部署。手动同步 builtin 会把产品原生能力变成用户补救步骤，还容易把官方插件误导入成 inline 插件，因此当前不做。
 
 ## UI 行为
 
@@ -180,7 +180,7 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 
 | ID             | 场景                                                                                              | 断言                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| RPS-INLINE-01  | 本机 `plugins.dirs` 有合法 inline plugin，远端缺失                                                | 导入到远端 `~/.openzwork/plugins/<dir>`，远端 config 追加路径                                                                    |
+| RPS-INLINE-01  | 本机 `plugins.dirs` 有合法 inline plugin，远端缺失                                                | 导入到远端 `~/.zcode/plugins/<dir>`，远端 config 追加路径                                                                    |
 | RPS-INLINE-02  | 远端已有同 inline plugin id                                                                       | 返回 skipped，不覆盖目录，不重复写 config                                                                                    |
 | RPS-INLINE-03  | 远端目标目录存在                                                                                  | 返回 skipped，不覆盖目录                                                                                                     |
 | RPS-INLINE-04  | 本机 inline plugin 含 symlink                                                                     | 导出失败，避免把任意宿主路径打包进远端                                                                                       |
@@ -203,10 +203,10 @@ UI 始终用 base services 做本机枚举和导出，用当前 workspace servic
 | RPS-UX-03      | 同步完成页展示失败项                                                                              | 右侧结果状态使用紧凑状态徽标，不使用高窄按钮状容器                                                                           |
 | RPS-UX-04      | 同步日志较长                                                                                      | 日志浮层可滚动，不使用非交互 tooltip 承载长日志                                                                              |
 | RPS-BUILTIN-01 | 生产远端资源包构建                                                                                | `glm/<platform>` 同时包含 `zcode.cjs` 和 `packages/*-plugin/.zcode-plugin/plugin.json`                                       |
-| RPS-BUILTIN-02 | 远端已有同版本 `zcode.cjs` 但缺 builtin packages                                                  | 部署不能跳过 ZCode Agent；必须补齐 `~/.openzwork/server/agents/glm/packages/*-plugin`                                            |
+| RPS-BUILTIN-02 | 远端已有同版本 `zcode.cjs` 但缺 builtin packages                                                  | 部署不能跳过 ZCode Agent；必须补齐 `~/.zcode/server/agents/glm/packages/*-plugin`                                            |
 | RPS-BUILTIN-03 | 开发态 SSH 部署本地 `zcode.cjs`                                                                   | 同步上传本地官方插件 packages，远端 `plugins list` 能发现 `source:"official"` 插件                                           |
-| RPS-BUILTIN-04 | Windows / macOS / Linux 桌面侧为 SSH 本地上传重打 builtin packages tar                            | tar 中所有目录条目均为 `0755`；远端解包后 `rm -rf ~/.openzwork/server/agents/glm/packages` 可正常更新资源                        |
-| RPS-BUILTIN-05 | 远端遗留不可遍历的 `~/.openzwork/server/agents/glm/packages`，builtin manifest 检查失败               | 部署先执行 owner `rwX` 修复，再进入正常 packages 刷新，用户无需手工 chmod                                                    |
+| RPS-BUILTIN-04 | Windows / macOS / Linux 桌面侧为 SSH 本地上传重打 builtin packages tar                            | tar 中所有目录条目均为 `0755`；远端解包后 `rm -rf ~/.zcode/server/agents/glm/packages` 可正常更新资源                        |
+| RPS-BUILTIN-05 | 远端遗留不可遍历的 `~/.zcode/server/agents/glm/packages`，builtin manifest 检查失败               | 部署先执行 owner `rwX` 修复，再进入正常 packages 刷新，用户无需手工 chmod                                                    |
 
 ## 测试计划
 

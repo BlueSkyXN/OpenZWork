@@ -210,13 +210,19 @@ Host admission automationId（仅接受调度派发显式注入；inputId/runId 
 
 SSH、WSL、Docker 和 Server workspace 使用 `remote:*` workspace identity。此类 session 在创建或恢复时将 CronCreate、CronList、CronUpdate、CronDelete、CronPauseSelf 加入 session 级 denylist，避免远程 Agent 暴露无法由远程调度边界可靠承载的定时任务能力。本地 workspace 不继承该限制。
 
+## Todo103：Off-Peak 工具与标准执行边界
+
 ```text
+Host 本地能力（服务装配 + workspace 类型，不联网）-> Off-Peak policy/创建参数 -> App OffPeakPort -> 工具注册
+OffPeakCreate 实际调用 -> Host 灰度/套餐/模型校验 -> createTask/取号
+idle turn attribution -> turn denylist + activeOffPeakTaskId -> 拒绝递归 Create
 当前 modelExecution + sharedContextRefs -> Core admission -> 完成时清理 turn attribution
 ```
 
 3.12.2 移除注册阶段灰度读取，保留本地支持边界、调用准入与绑定请求；CLI 冷恢复/创建通过当前异步 App 工厂装配，不恢复旧
 workspace catalog、临时 overlay、turnRuntimeModel 或模型还原。idle execution 仍携带精确
 ModelSelection/requestAuth，不能改 Session 持久选择。退出/拒绝/排队分支都要清理当前 turn
+的 activeOffPeakTaskId；允许 Cron turn 创建闲时任务，禁止将 OffPeakCreate 并入 Cron 写工具常量。
 
 ## 显式 Subagent 模型选择（Todo99）
 
@@ -227,7 +233,20 @@ profile 原 Selection -> Worker 公共 Selection Facade（同一已应用账号/
 
 解析通过宿主注入的只读端口复用；不改工具参数、结果与 profile 持久化。无同模型时不回退父模型；档位失效不补默认。隐式继承和内部执行 override 不重解释。端口透传子 Runtime / workflow，独立终端 CLI 未注入时保持原行为。完整契约与验证见 `docs/working-memory/provider-refactor/steps/todo-99-worker-account-selection-repair.md`。
 
-<!-- 闲时轮禁止 SendMessage/Workflow（D52）属闲时任务净化域，已随 5aba47d9 净化删除，不随上游恢复 -->
+## 闲时轮禁止 SendMessage / Workflow（D52）
+
+```text
+Host 闲时派发 -> prompt-turn.ts / server-operations.ts turn denylist（+SendMessage,+Workflow）
+  -> turn-loop.ts 按 OFF_PEAK_MUTATION_TOOL_NAMES 在每个 model step 隐藏
+  -> handler send-message.ts / workflow.ts 读 context.offPeakTurn -> assertNotOffPeakTurn
+  -> recoverable PermissionDenied（提示改用前台 Agent）-> 模型改走 Agent 工具（带 subagentModelOverride）
+```
+
+原因：SendMessage 续跑终态子 Agent 与 Workflow 派生脚本子会话都在闲时轮 `modelExecution` 之外重建
+模型，回落父会话常驻选择并计入用户 Coding Plan（ZCT-2099408932463325184）。三处 denylist 常量必须同值；
+`isOffPeakCreateRestrictedTurn` 的 denylist 兜底只认 OffPeakCreate 哨兵。工具 schema、权限、超时不变；
+automation 轮与普通轮不受影响。测试：`core/tests/off-peak-tool.test.ts`、
+`bootstrap/tests/offpeak-prompt-turn-disallowlist.test.ts`、`bootstrap/tests/v4-native-commands.test.ts`。
 
 #### 2026-09-08 原生验证发现的入口校验问题
 

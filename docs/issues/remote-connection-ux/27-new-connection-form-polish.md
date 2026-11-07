@@ -42,7 +42,7 @@ Status: done
 - 验证：`pnpm typecheck`、`pnpm lint`（0 errors）、`pnpm architecture:check --changed`（0 violations）、新增与受影响 UI 单测通过。本地 macOS Desktop + 独占 Linux SSH 容器运行 `conversation-session-settings-connection-completion.test.ts`，2 项全部通过，包括空表单内联校验与焦点、导入关联标签与焦点、头部预览、切换认证方式时上边缘不动、粘贴拆分、Docker 类型色与说明段删除，并截图覆盖中英文、深浅主题、1440 / 480px。
 - `conversation-session-ssh-remote-three-screen.test.ts`：导入按钮、首装确认、添加设备通过；之后被 E2E 环境的「登录已过期」弹窗阻塞，未完成离线重连与收起失败段。
 - `conversation-session-remote-accessibility.test.ts`：表单键盘段（含分段控件 `:focus-visible`）通过；之后用例仍等待设置入口进入目录屏，与 #16/#17 的设置内完成语义冲突（连接日志显示已 `remote-connected`），属于既有过期断言，本票未改写该用例后半段。新增的「打开即聚焦主机」断言位于后半段，未执行到。
-- 根受影响单测（`--base f67f7570ba`）1393/1395 文件通过；`packages/services` 的 3 项套餐 endpoint 断言（provider.example.test vs provider.example.test）在基线 `f67f7570ba` 上同样失败，与本票无关。
+- 根受影响单测（`--base f67f7570ba`）1393/1395 文件通过；`packages/services` 的 3 项套餐 endpoint 断言（`z.ai` vs `z.ai`）在基线 `f67f7570ba` 上同样失败，与本票无关。
 
 ## Follow-up fixes (2026-10-14)
 

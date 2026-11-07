@@ -388,7 +388,7 @@ productVersion 报告 App 版本，而不是 CLI 包版本。注入点只能在 
 安装后的程序和数据分离：
 
 ```text
-~/.openzwork/server/
+~/.zcode/server/
 ├── releases/<version>-<target>-<sha12>/
 │   ├── runtime/
 │   ├── bin/
@@ -564,7 +564,7 @@ status、lock、Core 或 SQLite。
 POSIX 稳定入口 `bin/zcode` 读取 `current.json.releaseDir`，只执行 `<root>/releases/` 下的 release；
 越界时输出 `Invalid current ZCode Server release` 并以 1 退出。该边界必须和写入方比较同一种路径：
 生命周期命令写 `current.json` 前已把 server root 收敛为 canonical（`realpath`）路径，launcher 也必须
-用物理路径（`cd -P` + `pwd -P`）计算 root。远端以 `"$HOME/.openzwork/server/bin/zcode"` 调用入口，
+用物理路径（`cd -P` + `pwd -P`）计算 root。远端以 `"$HOME/.zcode/server/bin/zcode"` 调用入口，
 `$HOME` 可能经过符号链接（例如 NAS 的 `/var/services/homes -> /volume1/homes`、`/home -> /var/home`），
 这种别名不得让合法 release 被判为越界。
 

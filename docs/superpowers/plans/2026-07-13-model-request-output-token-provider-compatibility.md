@@ -13,7 +13,7 @@
 当前实现同时存在两个问题：
 
 1. core 和 adapter 都会把模型输出能力预先截断到 64,000；OpenAI Compatible 的 `runtime-default` 又会在 adapter 中被省略，因此自定义网关可能回退到供应商的小默认值。
-2. App 读取 `~/.openzwork/v2/config.json` 时，catalog 的 `maxOutputTokens` 可以覆盖用户已经配置的 `model.limit.output`，与已确认的配置优先级相反。
+2. App 读取 `~/.zcode/v2/config.json` 时，catalog 的 `maxOutputTokens` 可以覆盖用户已经配置的 `model.limit.output`，与已确认的配置优先级相反。
 
 请求预算逻辑是：
 

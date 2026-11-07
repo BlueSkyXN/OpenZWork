@@ -95,7 +95,7 @@ Claude 插件规范里 manifest `skills` 的数组项指向「技能目录本身
   credentials`）同标准封堵；拒绝链接即无逃逸，不依赖判定链接指向（无跨盘符
   `relative` 谓词，无平台分支）。组件枚举（`collectSkillComponents`）对插件根
   无条件适用同一规则，不依赖 manifest 是否解析成功。词法防线（`resolveInside`
-  拒绝绝对路径与 `..` 穿越）继续生效。用户级技能根（`~/.openzwork/skills` 的
+  拒绝绝对路径与 `..` 穿越）继续生效。用户级技能根（`~/.zcode/skills` 的
   symlink 导入是受支持功能）保持默认跟随，行为不变。
 
 ## 验证命令

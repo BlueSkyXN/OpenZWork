@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url";
 import { parse as parseYaml } from "yaml";
 
 export const LEDGER_PATH = "docs/openzwork/ledger.yaml";
-export const DOC_EDITS_PATH = "docs/openzwork/upstream-doc-edits.yaml";
+export const VARIANTS_PATH = "docs/openzwork/upstream-doc-variants.yaml";
 export const PATCHES_PATH = "docs/openzwork/patches/downstream-patches.yaml";
 export const GATES_PATH = "tests/private-cleanup/cleanup.test.cjs";
 export const KNOWLEDGE_DIR = ".agents/skills/openzwork-maintenance/knowledge";
@@ -22,9 +22,15 @@ export const KNOWLEDGE_FILES = {
 const KNOWLEDGE_PREFIX = { pitfall: "OZK-PIT-", diff: "OZK-DIF-", decision: "OZK-DEC-" };
 const LEDGER_PREFIX = { feature: "OZ-F", change: "OZ-C", drop: "OZ-D", retain: "OZ-R" };
 const LEDGER_STATUS = new Set(["active", "undecided", "retired"]);
-const DOC_EDIT_KINDS = new Set(["purge", "identity", "content"]);
+const VARIANT_KINDS = new Set(["purge", "identity", "content"]);
 const MAX_ACTIVE_KNOWLEDGE = 40;
+// 上游文档与技能（文档类扩展名）保持原文；OpenZWork 版本放在同目录，文件名加 -openzwork。代码文件按代码规则原地修改。
 const DOC_ROOTS = ["docs/", ".agents/skills/"];
+const DOC_EXT = /\.(?:md|mdx|ya?ml|json|txt)$/;
+const isUpstreamDoc = (path) =>
+  DOC_ROOTS.some((root) => path.startsWith(root)) && DOC_EXT.test(path);
+export const variantOf = (path) => path.replace(/(\.[^./]+)$/, "-openzwork$1");
+const upstreamOf = (path) => path.replace(/-openzwork(\.[^./]+)$/, "$1");
 export const CATEGORIES = [
   "upstream",
   "upstream-format",
@@ -36,7 +42,7 @@ export const CATEGORIES = [
   "moved",
 ];
 
-// 用户级数据根改名（~/.zcode → ~/.openzwork）的确定性规则；只差这些改名的上游文件归为 upstream-identity。
+// 用户级数据根改名（家目录下的 .zcode 改为 .openzwork）的确定性规则；只差这些改名的上游文件归为 upstream-identity。
 export const IDENTITY_RULES = [
   [/((?:~|\$HOME|\$\{HOME\}|%USERPROFILE%)[/\\])\.zcode(?![\w-])/g, "$1.openzwork"],
   [/((?:homedir|resolveUserHomeDir)\(\)\s*,\s*["'])\.zcode(["'])/g, "$1.openzwork$2"],
@@ -239,15 +245,15 @@ export function loadMaintenance(repo, ref = "HEAD") {
     knowledge[kind] = yamlAt(repo, ref, `${KNOWLEDGE_DIR}/${file}`);
   return {
     ledger: yamlAt(repo, ref, LEDGER_PATH),
-    docEdits: yamlAt(repo, ref, DOC_EDITS_PATH),
+    variants: yamlAt(repo, ref, VARIANTS_PATH),
     patches: yamlAt(repo, ref, PATCHES_PATH),
     gates: readAt(repo, ref, GATES_PATH) ?? "",
     knowledge,
   };
 }
 
-/** 认领索引：台账条目（paths、hooks）、下游补丁（files、regression）与上游文档编辑登记。 */
-export function createClaims({ ledger, docEdits, patches }) {
+/** 认领索引：台账条目（paths、hooks、tests、spec）、下游补丁（files、regression）与上游文档的 OpenZWork 版本登记。 */
+export function createClaims({ ledger, variants, patches }) {
   const matchers = [];
   for (const entry of ledger?.entries ?? []) {
     for (const glob of [
@@ -270,8 +276,8 @@ export function createClaims({ ledger, docEdits, patches }) {
     for (const path of [...(patch.files ?? []), ...(patch.regression ?? [])])
       add(path, { id: patch.id, kind: "patch" });
   }
-  for (const edit of docEdits?.edits ?? [])
-    add(edit.path, { id: `doc-edit:${edit.kind}`, kind: "doc-edit" });
+  for (const item of variants?.variants ?? [])
+    add(item.variant, { id: `variant:${item.kind}`, kind: "variant" });
   return (path) => [
     ...matchers
       .filter((matcher) => matcher.regex.test(path))
@@ -351,35 +357,51 @@ export function validateBase(ledger, context) {
   return errors;
 }
 
-export function validateDocEdits(docEdits, context) {
+export function validateVariants(doc, context) {
   const errors = [];
-  if (!docEdits) return [`缺少 ${DOC_EDITS_PATH}`];
-  if (docEdits.version !== 1) errors.push(`${DOC_EDITS_PATH}: version 应为 1`);
-  const listed = new Map();
-  for (const edit of docEdits.edits ?? []) {
-    if (!nonEmpty(edit.path)) errors.push(`${DOC_EDITS_PATH}: 条目缺少 path`);
-    else if (listed.has(edit.path)) errors.push(`${DOC_EDITS_PATH}: 重复登记 ${edit.path}`);
-    if (!DOC_EDIT_KINDS.has(edit.kind))
-      errors.push(`${DOC_EDITS_PATH}: ${edit.path} 的 kind 应为 purge/identity/content`);
-    listed.set(edit.path, edit);
-  }
-  for (const [path, { category }] of context.result) {
-    if (!DOC_ROOTS.some((root) => path.startsWith(root))) continue;
-    const edited = category === "upstream-modified" || category === "upstream-identity";
-    const edit = listed.get(path);
-    if (edited && !edit)
+  if (!doc) return [`缺少 ${VARIANTS_PATH}`];
+  if (doc.version !== 1) errors.push(`${VARIANTS_PATH}: version 应为 1`);
+  const { baseTree, headTree, result } = context;
+  const registered = new Set();
+  for (const item of doc.variants ?? []) {
+    const where = `${VARIANTS_PATH}: ${item.upstream ?? "(缺 upstream)"}`;
+    if (!nonEmpty(item.upstream) || !nonEmpty(item.variant)) {
+      errors.push(`${where}: 需要 upstream 与 variant`);
+      continue;
+    }
+    if (registered.has(item.upstream)) errors.push(`${where}: 重复登记`);
+    registered.add(item.upstream);
+    if (item.variant !== variantOf(item.upstream))
+      errors.push(`${where}: variant 应为 ${variantOf(item.upstream)}`);
+    if (!VARIANT_KINDS.has(item.kind)) errors.push(`${where}: kind 应为 purge/identity/content`);
+    if (!headTree.has(item.variant)) errors.push(`${where}: OpenZWork 版本不存在：${item.variant}`);
+    const original = baseTree.get(item.upstream);
+    if (!original) {
       errors.push(
-        `上游文档 ${path} 与上游不一致但未登记：恢复上游原文，或登记到 ${DOC_EDITS_PATH}（能独立成文的写到 -openzwork 文档）`,
+        `${where}: 上游已删除原文；决定保留 ${item.variant}（去掉 -openzwork 后缀改为独立文档并删除登记）或一并删除`,
       );
-    if (edit && !edited) errors.push(`${DOC_EDITS_PATH}: ${path} 当前为 ${category}，删除这条登记`);
-    if (edit && category === "upstream-identity" && edit.kind !== "identity")
-      errors.push(`${DOC_EDITS_PATH}: ${path} 只有用户级根改名，kind 应为 identity`);
-    if (edit && category === "upstream-modified" && edit.kind === "identity")
-      errors.push(`${DOC_EDITS_PATH}: ${path} 不只改名，kind 不能是 identity`);
+    } else if (original.blob !== item.upstreamBlob) {
+      errors.push(
+        `${where}: 上游已更新原文；按新原文复核 ${item.variant}，再把 upstreamBlob 改为 ${original.blob}`,
+      );
+    }
   }
-  for (const path of listed.keys())
-    if (!context.result.has(path))
-      errors.push(`${DOC_EDITS_PATH}: ${path} 不是上游文件，删除这条登记`);
+  for (const [path, { category }] of result) {
+    if (!isUpstreamDoc(path)) continue;
+    if (category === "upstream-modified" || category === "upstream-identity") {
+      errors.push(
+        `上游文档 ${path} 与上游原文不一致：恢复上游原文，把 OpenZWork 的内容写到 ${variantOf(path)} 并登记到 ${VARIANTS_PATH}`,
+      );
+    }
+  }
+  for (const path of headTree.keys()) {
+    const original = upstreamOf(path);
+    if (original !== path && baseTree.has(original) && !registered.has(original)) {
+      errors.push(
+        `${path} 是上游文档 ${original} 的 OpenZWork 版本，但没有登记到 ${VARIANTS_PATH}`,
+      );
+    }
+  }
   return errors;
 }
 
@@ -441,7 +463,7 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
   const errors = [
     ...validateBase(maintenance.ledger, context),
     ...validateLedger(maintenance.ledger, context, maintenance.gates),
-    ...validateDocEdits(maintenance.docEdits, context),
+    ...validateVariants(maintenance.variants, context),
     ...validateKnowledge(maintenance.knowledge, context),
   ];
   const noise = findFormatNoise(context, formatter ?? createOxfmtFormatter(repo));
@@ -484,6 +506,13 @@ export function describePath(context, claims, path) {
     inBase: seen.at(-1)?.commit === history[0]?.commit,
     claims: claims(path),
     markers,
+    // 上游文档的 OpenZWork 版本：原文与版本互相指向，便于先读原文再读我方改动。
+    variant:
+      headTree.has(variantOf(path)) && variantOf(path) !== path ? variantOf(path) : undefined,
+    variantOf:
+      upstreamOf(path) !== path && context.baseTree.has(upstreamOf(path))
+        ? upstreamOf(path)
+        : undefined,
   };
 }
 
@@ -638,6 +667,8 @@ function printHuman(output, options) {
       );
       console.log(`  认领：${claimText(item.claims)}`);
       if (item.markers.length) console.log(`  标记：${item.markers.join(", ")}`);
+      if (item.variant) console.log(`  OpenZWork 版本：${item.variant}`);
+      if (item.variantOf) console.log(`  上游原文：${item.variantOf}`);
     }
   } else if (options.upstream) {
     console.log(

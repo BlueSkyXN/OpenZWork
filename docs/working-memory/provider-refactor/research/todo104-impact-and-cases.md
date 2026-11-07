@@ -48,6 +48,7 @@ GLM 完整性旧测试修正依据 §6.3.1：账号测试使用 Provider 实际 
 | B2R-03 | Provider/Template 身份在规则外层，同层重复拒绝；Template 密钥、Builtin 个人成员、Personal Account access 均不可越权 | 数据入口测试                     |
 | B2R-04 | 各集合顺序往返保留，不根据字段重新猜层；Manual 不继承参数，仅继承 enabled；切换集合不残留另一组                     | codec + Resolver + ConfigService |
 | B2R-05 | 模板当前语言/en-US/ID 的命名回退、大小写/空白去重，锁内并发创建不重名；后续语言变化不改已存名                       | 真实 Repository 更新与设置验收   |
+| B2R-06 | 四条 providerMatch 转精确 Endpoint，普通 API Key 可命中媒体；Off-Peak 和 Start 搜索不无故扩大                       | 实际 Builtin 解析对照            |
 | B2R-07 | 最终空数组/文件包装严格；Provider 修改保留默认选择，清默认保留其他配置；旧已发布导入输出最终结构                    | 文件/分发/并发测试               |
 
 本批消费者补充：Settings 表单区分展示名与本次改名补丁；只改 API 时不保存继承名称，只改名时不物化连接字段或丢 headers。模板创建传 locale，由服务依据当前模板命名；Account 同步仍使用原有 Provider 字典协议，不沿用磁盘规则数组。CLI 启动与登录共用 Personal 文件，首次导入一次读取旧 Provider 与默认模型；Protocol 不自行导入旧 CLI 配置。案例落在 `providerRuleForm`、`providerRuleFileIntegration`、`personal-config-default-integration`，原 `process-provider-registry-runtime`、`account-config-delivery`、`auth-login` 回归承接旧生命周期。现有 SC90/F98/W89 E2E 仍需同步最终结构后批量执行，不以纯函数测试代替桌面验收。
@@ -68,36 +69,44 @@ Target 同文件锁：确认当前仍是 A → 整份替换 B → 刷新/验证
 
 ## Feature Summary
 
-| 字段       | 内容                                                                                   |
-| ---------- | -------------------------------------------------------------------------------------- |
-| 意图／能力 | 保留既有 Provider 与 Selection 产品语义，落实最终持久化 Schema                         |
-| 层级／模式 | persistence、validation、draft-default、option-source；planning                        |
-| 不做       | 多账号同时连接、CLI账号装配重构、发送同步门禁、Subagent Markdown重新定格式、旧预算功能 |
+| 字段       | 内容                                                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| 意图／能力 | 保留既有 Provider 与 Selection 产品语义，落实最终持久化 Schema                                                                           |
+| 层级／模式 | persistence、validation、draft-default、option-source；planning                                                                          |
+| 主入口     | ProviderSettingsFacade / ProviderConfigResolver / createNodeModelSelectionFacade / OffPeakTaskRepo / RepoWikiStorage / SessionRepository |
+| 不做       | 多账号同时连接、CLI账号装配重构、发送同步门禁、Subagent Markdown重新定格式、旧预算功能                                                   |
 
 ## UI Surface Matrix
 
-| 场景／入口          | 共享实现                     | 草稿／默认         | 校验                 | 提交／权威落点             | 模式及隔离                       |
-| ------------------- | ---------------------------- | ------------------ | -------------------- | -------------------------- | -------------------------------- |
-| Provider设置        | SettingsFacade/ConfigService | 表单草稿、推荐规则 | 来源schema/完整性    | PersonalRepository单次更新 | 本地/远程注入服务；不能写Session |
-| Composer            | SelectionFacade              | 草稿/Recent/默认   | 有效选择/最终Factory | 成功提交后的Session选择    | 不提前持久化、不改已冻结运行     |
-| 自动化/Bot/Subagent | 共享Selection数据            | 各自继承规则不变   | 各自现有提交边界     | 任务/绑定Session/用户MD    | 不因共享字段而共享保存时机       |
-| Wiki/Draft          | RepoWikiStorage              | 生成设置草稿       | 新选择权威           | 既有文件锁内保存           | 不恢复手动输出上限               |
+| 场景／入口               | 共享实现                             | 草稿／默认         | 校验                    | 提交／权威落点                 | 模式及隔离                              |
+| ------------------------ | ------------------------------------ | ------------------ | ----------------------- | ------------------------------ | --------------------------------------- |
+| Provider设置             | SettingsFacade/ConfigService         | 表单草稿、推荐规则 | 来源schema/完整性       | PersonalRepository单次更新     | 本地/远程注入服务；不能写Session        |
+| Composer                 | SelectionFacade                      | 草稿/Recent/默认   | 有效选择/最终Factory    | 成功提交后的Session选择        | 不提前持久化、不改已冻结运行            |
+| 自动化/Bot/Subagent      | 共享Selection数据                    | 各自继承规则不变   | 各自现有提交边界        | 任务/绑定Session/用户MD        | 不因共享字段而共享保存时机              |
+| Wiki/Draft               | RepoWikiStorage                      | 生成设置草稿       | 新选择权威              | 既有文件锁内保存               | 不恢复手动输出上限                      |
+| 闲时编辑 OffPeakEditView | OffPeakTaskService.updateTask → Repo | 表单草稿           | queued/paused、完整选择 | off_peak_tasks.model_selection | 只保留旧列，不改Ticket、Session或工作区 |
+
+## Shared And Divergent Behavior
+
+共享模型身份、能力和选项schema；各业务分别拥有草稿、提交与保存边界。默认选择落点改变，不改变默认选择与会话持久化的区别。普通Account有效选择仍沿用当前规则；Off-Peak绑定票据不跨账号重新解析。
 
 ## Feature Relationships / State Owners And Commit Sinks
 
-| 优先级         | 关系                           | Owner／落点              | 证据与原因                                         |
-| -------------- | ------------------------------ | ------------------------ | -------------------------------------------------- |
-| must-inspect   | Wiki保存 → 文件原子更新        | RepoWikiStorage          | 运行对象不能携带旧值成为第二权威；保存层保留原值   |
-| must-inspect   | Session选择 → entry.data       | Agent SessionRepository  | 恢复/更新/fork必须一致识别新包装                   |
-| must-inspect   | 配置来源 → Resolver → Registry | Provider层；Node层负责IO | 单向schema依赖、完整配置准入、相同source快照       |
-| must-inspect   | 默认选择/Provider更新 → 同文件 | PersonalRepository       | 不能相互覆盖，分发失败只回滚本次未被并发替换的结果 |
-| conditional    | 新路径 → 打包/宿主启动         | 各宿主注入Node层路径     | Desktop/CLI/Server均需要实际产物验证               |
-| invariant-only | 手机/桌面消息交付              | 同一Session owner        | 不改continuous/replayable与workspaceIdentity隔离   |
+| 优先级         | 关系                           | Owner／落点              | 证据与原因                                                    |
+| -------------- | ------------------------------ | ------------------------ | ------------------------------------------------------------- |
+| must-inspect   | 闲时编辑 → 唯一Repo保存        | OffPeakTaskRepo / SQLite | updateEditableFields目前主动清旧列；Service只规范化已提交字段 |
+| must-inspect   | Wiki保存 → 文件原子更新        | RepoWikiStorage          | 运行对象不能携带旧值成为第二权威；保存层保留原值              |
+| must-inspect   | Session选择 → entry.data       | Agent SessionRepository  | 恢复/更新/fork必须一致识别新包装                              |
+| must-inspect   | 配置来源 → Resolver → Registry | Provider层；Node层负责IO | 单向schema依赖、完整配置准入、相同source快照                  |
+| must-inspect   | 默认选择/Provider更新 → 同文件 | PersonalRepository       | 不能相互覆盖，分发失败只回滚本次未被并发替换的结果            |
+| conditional    | 新路径 → 打包/宿主启动         | 各宿主注入Node层路径     | Desktop/CLI/Server均需要实际产物验证                          |
+| invariant-only | 手机/桌面消息交付              | 同一Session owner        | 不改continuous/replayable与workspaceIdentity隔离              |
 
 ## Must-Preserve Invariants
 
 - 已发布旧值只作回滚快照；存在新版选择后不因无效/清除重新读旧字段。
 - 读写通过现有owner，UI不直接访问Repo，Service不引用具体Runtime；IO不进入Provider领域。
+- Off-Peak新旧列不同不意味着重新迁移，Ticket、队列认领、远程禁用均不变。
 
 ```text
 表单提交 → Service既有校验 → Repo更新新选择/业务字段 → SQLite
@@ -107,6 +116,8 @@ Target 同文件锁：确认当前仍是 A → 整份替换 B → 刷新/验证
 ```
 
 ## Codegraph Evidence / Graph Drift / Graph Delta
+
+当前工具未提供codegraph入口，仓库package scripts也未配置；使用精确符号检索作为替代，不把文本命中当作语义依赖。首组展开深度2：OffPeakTaskService.updateTask唯一调用Repo.updateEditableFields，Repo行转换只读新版选择，旧列由迁移问题诊断读取。完整Schema组后续补实际调用证据。
 
 图谱中若干 Provider字段及旧分层描述将由B2修改后更新；当前不把未来字段写成已实现事实。B1a仅补保留旧列的不变量，其余现有产品边不变。
 
@@ -143,6 +154,8 @@ B1b补充：当前Wiki已有Todo97的一次落盘迁移及null空标记，Todo10
 
 无新UI交互或生成规则，B1b不新增E2E；已有Service模型Limit断言随组回归。涉及的私有存储类型不泄漏到协议和UI。
 
+B1a测试落在services/test/offPeakTaskRepo.test.ts；无UI行为修改，不新造E2E。使用临时SQLite，不碰真实数据、不需要模型fixture、不使用时间等待。其余组实施前追加用例与所需E2E矩阵。
+
 ## B1c Session 存储边界（实施前确认）
 
 唯一持久化 owner 为 SQLite SessionStore adapter。`SessionEntryInfo.data` 是 port 的逻辑 payload：模型选择仍为公共 ModelSelection（fork 无选择沿用 null）；磁盘 `session_entry.data` 才是保留旧快照的包装。沿用现有 codec 边界完成包装/解包，不让 core/bootstrap 为 SQLite 回滚字段各写一套处理。普通保存、runtime 保存、原子 fork bundle 共用 `saveSessionEntry`，恢复统一经 `decodeSessionEntryRow`。不改变 table/schema、提交时机、协议或消息行。
@@ -166,6 +179,8 @@ UPSERT 在数据库内部只替换新成员，避免应用层 read-modify-write 
 | B1c-P1 | UI/网络/主题/queue 全排列                      | 不改 interaction、continuous/replayable 或输入 admission，以现有运行层回归代表 | pruned                                    |
 
 补充架构工具事实：`architecture:check --changed` 无违规；`cli-adapters` 尚非 architecture-policy 托管模块，context 命令返回未知模块，改用现有 SessionStorePort 和 CLI AGENTS 作为边界依据，不为此扩建治理模块。
+
+B1c E2E 合同同步：现有 unbound-resume 通过原始 SQL 播种当前选择、OffPeak 已有会话用例通过原始 SQL 检查选择；二者必须读写磁盘 `data.modelSelection`，不走逻辑 port。用例语义不变，仅修 fixture/断言路径。仍为 pending，不把静态合同更新算成实机通过；最终共享 Pro 构建后合并复验。
 
 ## B2a Model 数据 Schema 单一来源
 

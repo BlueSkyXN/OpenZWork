@@ -15,30 +15,39 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 
 基准是 `docs/openzwork/ledger.yaml` 记录的上游提交（最近一次合入的上游快照）。扫描工具按下表给每个路径分类：
 
-| 分类                | 判定                                   | 要求                                                     |
-| ------------------- | -------------------------------------- | -------------------------------------------------------- |
-| `upstream`          | 内容与上游基准一致                     | 保持原样                                                 |
-| `upstream-format`   | 与上游的差异只来自格式化               | 不允许存在；恢复为上游原文                               |
-| `upstream-identity` | 差异只有用户级数据根 `.openzwork` 改名 | 允许；只改必要的行                                       |
-| `upstream-modified` | 我方实质修改的上游文件                 | 文档需登记在 `upstream-doc-edits.yaml`；代码接线处加标记 |
-| `removed`           | 上游有、我方已删除                     | 应由台账中的 `drop` 条目认领                             |
-| `openzwork`         | 上游任何版本都没有的文件               | 应由台账条目认领，或属于 OpenZWork 维护文档与工具        |
-| `retained`          | 上游已删除、我方保留                   | 应由台账中的 `retain` 条目认领                           |
-| `moved`             | 内容与某个上游文件一致，但路径不同     | 说明移动原因                                             |
+| 分类                | 判定                                   | 要求                                                      |
+| ------------------- | -------------------------------------- | --------------------------------------------------------- |
+| `upstream`          | 内容与上游基准一致                     | 保持原样                                                  |
+| `upstream-format`   | 与上游的差异只来自格式化               | 不允许存在；恢复为上游原文                                |
+| `upstream-identity` | 差异只有用户级数据根 `.openzwork` 改名 | 允许；只改必要的行                                        |
+| `upstream-modified` | 我方实质修改的上游文件                 | 只允许代码文件；接线处加标记。文档改为另存 OpenZWork 版本 |
+| `removed`           | 上游有、我方已删除                     | 应由台账中的 `drop` 条目认领                              |
+| `openzwork`         | 上游任何版本都没有的文件               | 应由台账条目认领，或属于 OpenZWork 维护文档与工具         |
+| `retained`          | 上游已删除、我方保留                   | 应由台账中的 `retain` 条目认领                            |
+| `moved`             | 内容与某个上游文件一致，但路径不同     | 说明移动原因                                              |
 
 识别"上游原作者写的"和"OpenZWork 写的"以 Git 历史中的上游快照为准。上游快照提交位于本仓库历史中（每次合入使用双亲 merge），本机镜像仓用于获取上游的新版本。
 
 ## 文档布局
 
-| 内容                            | 位置                                                                                                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 上游原有文档                    | 原路径，保持上游原文。已有的我方编辑登记在 `docs/openzwork/upstream-doc-edits.yaml`；新的编辑必须登记并写明原因，能写成独立文档的写到 `-openzwork` 文档 |
-| OpenZWork 产品 spec             | `docs/specs/<名称>-openzwork.md`，与上游的 `docs/specs/` 同目录                                                                                         |
-| OpenZWork 测试计划              | `docs/testing/<名称>-openzwork.md`                                                                                                                      |
-| 上游其他目录下的 OpenZWork 文档 | 同目录，文件名加 `-openzwork` 后缀                                                                                                                      |
-| 维护文档                        | `docs/openzwork/`：`upstream/` 上游整合与验证记录，`patches/` 下游补丁，`release/` 发行，`ci/` CI 与测试基础设施，`records/` 历史验收记录               |
+| 内容                            | 位置                                                                                                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 上游原有文档                    | 原路径，保持上游原文，不做任何修改                                                                                                                    |
+| 上游文档的 OpenZWork 版本       | 同目录，文件名加 `-openzwork`（`foo.md` → `foo-openzwork.md`），内容是 OpenZWork 修改后的完整文档；登记在 `docs/openzwork/upstream-doc-variants.yaml` |
+| OpenZWork 产品 spec             | `docs/specs/<名称>-openzwork.md`，与上游的 `docs/specs/` 同目录                                                                                       |
+| OpenZWork 测试计划              | `docs/testing/<名称>-openzwork.md`                                                                                                                    |
+| 上游其他目录下的 OpenZWork 文档 | 同目录，文件名加 `-openzwork` 后缀                                                                                                                    |
+| 维护文档                        | `docs/openzwork/`：`upstream/` 上游整合与验证记录，`patches/` 下游补丁，`release/` 发行，`ci/` CI 与测试基础设施，`records/` 历史验收记录             |
 
 `docs/openzwork/README.md` 是全部 OpenZWork 文档的索引。
+
+## 上游文档的 OpenZWork 版本
+
+- 上游文档与技能原文不动。OpenZWork 需要不同内容时，在同目录新建 `<名称>-openzwork<扩展名>`，写入修改后的完整文档，并登记到 `docs/openzwork/upstream-doc-variants.yaml`（`kind`：`purge` 删除了上游内容，`identity` 只改用户级根，`content` 增补或改写内容；`upstreamBlob` 为生成时的上游原文）。
+- 读取或修改上游文档、技能时，同目录存在 `-openzwork` 版本的，以 OpenZWork 版本为准，修改也写在 OpenZWork 版本中。
+- 合入上游后原文变化，`--check` 会按 `upstreamBlob` 提示复核对应的 OpenZWork 版本。
+- 与上游原文逐字节一致的上游文档描述的是上游产品，净化门禁 WP-03、WP-08、WP-09 的文本扫描跳过它们；OpenZWork 版本照常扫描。
+- 代码文件（包括技能中的脚本）不使用这种方式，按「代码」一节原地修改。
 
 ## 技能布局
 
@@ -94,13 +103,12 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 
 `tests/ci/openzwork-maintenance.test.mjs` 校验：
 
-1. 台账、经验库与 `upstream-doc-edits.yaml` 的字段、编号和取值。
+1. 台账、经验库与 `upstream-doc-variants.yaml` 的字段、编号和取值。
 2. 台账上游基准是 HEAD 的祖先，并与根 `package.json` 版本的前三段一致。
 3. `drop` 条目的路径不存在；其他 `active` 条目的路径存在。
-4. 上游文档与技能中，与上游不一致的文件必须登记在 `upstream-doc-edits.yaml`，已登记的文件仍须与上游不一致。
+4. 上游文档与技能（md、yaml、json 等文档类文件）与上游原文逐字节一致；同目录的 `-openzwork` 版本都已登记；登记时记录的上游原文 `upstreamBlob` 与当前基准一致，不一致说明上游更新了原文，需要复核 OpenZWork 版本。
 5. 任何上游文件都不能只有格式化差异。
 
 ## 待用户决定
 
-- `upstream-doc-edits.yaml` 登记了 482 个带有我方编辑的上游文档与技能：239 个只删除了上游内容（多为已裁剪功能的段落），102 个只改了用户级根，141 个增补或改写了内容。若要把前两类也恢复为上游原文，需要同时调整 WP-03、WP-08、WP-09 净化门禁对 `docs/` 的扫描范围。
 - image-search 插件：v3.17.1 整合 spec 写明保持移除，但代码保留了注册（运行时拒绝官方鉴权）。台账中记为 `undecided`。

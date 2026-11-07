@@ -23,7 +23,7 @@ Settings Switch
   |
   | ISettingService.update({ modelIoFullRetentionEnabled })
   v
-~/.openzwork/v2/setting.json                    authoritative app preference
+~/.zcode/v2/setting.json                    authoritative app preference
   |
   +--> current Local Host ------------------+
   |                                         |
@@ -89,7 +89,7 @@ sanitize headers / request metadata       always
 
 | User scenario | UI entry | Shared implementation | Display/draft owner | Default/inherit source | Validation/gating | Commit action | Authority/persistence | Mode boundary | Must remain isolated from |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 保留完整模型诊断轨迹 | Settings / General | `GeneralSectionContent` + `Switch` | `useSettings` shared snapshot | `appSettingsSchema` default `false` | boolean schema | `ISettingService.update` + runtime preference sync | `~/.openzwork/v2/setting.json` + active CLI runtime snapshot | desktop/web UI 共用；local/remote Host 同步 | conversation/session recovery、provider 配置、日志脱敏 |
+| 保留完整模型诊断轨迹 | Settings / General | `GeneralSectionContent` + `Switch` | `useSettings` shared snapshot | `appSettingsSchema` default `false` | boolean schema | `ISettingService.update` + runtime preference sync | `~/.zcode/v2/setting.json` + active CLI runtime snapshot | desktop/web UI 共用；local/remote Host 同步 | conversation/session recovery、provider 配置、日志脱敏 |
 
 ### Shared And Divergent Behavior
 

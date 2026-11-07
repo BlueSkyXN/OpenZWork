@@ -26,6 +26,8 @@ Think 滑杆采用胶囊轨道、离散档位圆点和白色圆形滑块。低�
 
 Provider 行左侧依次为当前供应商图标、名称、接入方式标识，子菜单箭头靠右，不再显示 Provider 标题。图标复用供应商配置中的 logo 和已有深浅主题资源，无 logo 时使用通用模型图标。供应商子菜单中的接入方式标识紧跟名称（间距 8px），不推到行尾；当前选中标记保留在右侧，末尾分割线下放置 Manage models；合并弹层底部不重复显示此入口。空目录时仍可打开子菜单进入模型管理。其他使用 ModelConfigSelect 的界面保持原布局。
 
+接入标识复用目录的 `labelBadge`：账号套餐显示个人／团队／免费，API Key 接入显示 API；由配置 access 生成，不从名称推断，不暴露凭据。
+
 子菜单使用 Portal 避免父菜单裁切。窄屏侧向空间不足时，子菜单允许覆盖父菜单并避开 Provider 触发器行，保持高于父菜单的层级；不改变 Provider 选择和模型切换逻辑。
 
 切换 Provider 立即选择该分组按目录顺序的第一个未锁定模型，沿用已有 onSelectModel 更新 Composer，Think 由既有模型切换逻辑同步为有效档位，弹层保持打开。重复选择当前 Provider 保留其当前可用模型。没有可用模型的 Provider 仍可浏览和配置，但不覆盖当前模型，Think 禁用。滑杆按 Option Spec 的原始顺序逐格选择，不排序、不转换成 Token Budget。仅 Off 单档隐藏整个 Effort 区域及分割线；其他单档禁用滑杆但显示档位；无模型／无有效档位不制造默认选择。选择档位保持弹层打开，点击外部或 Escape 收起。桌面关闭后恢复输入焦点；手机不主动弹出软键盘。
@@ -101,6 +103,8 @@ ModelSelectionView（支持的模型与档位）
 - accepted：鼠标置于菜单外、通过键盘聚焦滑杆后，打开态缩窄再恢复，保留同一按钮、菜单、range 节点和滑杆焦点；模型/Provider/档位不被 resize 改写；窄态继续按 End 调档，思考条与 config 同步；关闭再打开仍是图标＋思考条。
 - pruned：主题/语言/全部宽度不与 desktop E2E 全量叉乘；共享 CSS 的浏览器视觉证据单列，不能算作手机 `/remote` 真机或原生侧栏拖拽覆盖。当前 E2E 设置工具栏容器宽度以确定性触发真实 ResizeObserver，不伪造 compact 属性。
 - 已有覆盖保留：Provider 自动选模型、模型/Provider 切换不清空目录、Tooltip 操作文案、最高档渐变与气泡、模式菜单互斥、管理模型、scope reset。
+
+影响面：must-inspect 为 V4ComposerToolbar → ModelConfigSelect/ComposerModelMenu 与 useComposerToolbarFit；选择权威仍为 Composer 草稿，布局测量只投影 DOM。AutomationEditView、OffPeakEditView、SubagentsSection 与 workflow settings 虽复用 ModelConfigSelect，但各自持久化边界不同且不启用 composerOptions，属隔离边界；本次不修改产品代码。Desktop continuous 与手机 replayable 不涉及改动。当前环境无可调用 codegraph，未执行图索引的 depth-2 扫描，以当前源码调用点和现有用例核对，不宣称完成 codegraph 影响扫描；无新增语义图节点或 owner 关系。沿用 CT 已有 case-local fixture，不新增发送或 fixture 请求。
 
 复核结果：增强后的工具栏 Electron E2E 11 项通过，case-local fixture 校验、typecheck:e2e、全仓 typecheck、lint（62 条既有 warning、0 error）和 architecture check 通过。全仓 conversation coverage audit 被未修改的 Highspeed card fixture 两条 syntheticReason 与 manifest 不一致阻断（REQUEST_LEDGER_METADATA_MISMATCH），不计为本次工具栏测试失败；未执行 Docker admission 或手机远控真机验证。
 
@@ -191,6 +195,8 @@ CR-01 验证：新增测试先复现空 Effort；修复后 51 项组件测试、
 
 ## Composer 供应商列表中的团队入口（2026-10-08）
 
+沿用主菜单的「供应商 → Models → Effort」布局，不增加连接方式行。供应商子菜单按同一品牌依次展示个人 Coding Plan 和具体团队：`BigModel [Individual]`、`BigModel [团队名称 1]`、`BigModel [团队名称 2]`；团队块之后用弱分割线区分原有 API 供应商列表。Start Plan 和 API 行保持各自现有行为，不合并品牌或 API。主菜单顶部显示当前品牌和当前个人/团队标签。
+
 团队入口来自已有企业 pricing 的 subscribed 产品，使用真实组织名，身份包含 family/productId/organizationId/projectId；身份不完整或无组织名不制造入口，同名不同身份不得去重。未选团队额度 unknown 不等于未购买；入口以已购目录为准，执行模型在选择后校验。
 
 ```text
@@ -258,6 +264,7 @@ Composer 以 ProviderSettingsView 的 accountState.availability 为可用状态�
 
 ### 连接并发、鉴权目录与展示终态（2026-10-12）
 
+- 连接设置唯一 owner 是 SettingService。提交与失败回滚均使用 update(patch, expectedAccountSettings) 在写锁内比较 family、完整连接映射与已有 providerFamilyDomainUpdatedAt 操作版本。缺少持久版本按 0 比较；所有完整连接映射写入必须提供 expected family、完整映射和操作版本，SettingService 拒绝缺少版本的写入，并在成功提交时递增版本。设置页、OAuth 初始化/回包、失效建议和 Host Provisioning 提交/回滚使用同一准入规则。普通设置补丁保留原契约。CAS 冲突明确失败，不自动重试，用户可再次选择。回滚冲突时保留新设置，不发布恢复目录；另一操作再次选择同一连接也必须由版本比较保护。
 - 团队目录按 service、family、账号与登录会话隔离。普通菜单关闭可保留同身份快照；登出、账号变化或 family 变化立即隐藏旧快照，迟到请求不得重新发布旧目录。团队用量来源缓存同样绑定 service、family、userId 与 authSessionSeq；登出在 Provider 刷新前即清空来源、隐藏旧额度并禁用团队权益查询。权益请求的迟到响应不写入共享/本地缓存。
 - 展示回执沿用目标目录 revision 判断归属，保留的旧 ready 不作为本次回执；loading 或低于目标 revision 的旧快照保持 pending。本次 ready 是终态：匹配则成功，不匹配则失败并解除操作锁；error/unavailable 同样失败。已有 ready 的展示刷新失败仍保留旧目录，但必须同时发布绑定当前 service/input 与事件 revision 的失败回执；目标 revision 的失败解除连接锁，旧 revision 或旧 owner 的失败不得终结新操作。每次连接操作显式请求当前展示 owner 按当前输入重读，复用其请求序号隔离迟到回包；同 revision、无事件的重试仍取得独立终态，成功重读清除失败回执。沿用可重试提示，失败后允许重新选择当前连接，不增加超时。
 

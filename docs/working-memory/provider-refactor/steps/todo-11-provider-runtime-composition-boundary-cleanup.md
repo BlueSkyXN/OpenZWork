@@ -357,6 +357,7 @@ owner 暴露造成的具体 bug candidate，不只是命名偏好。
 ## 11. 非目标
 
 - 不处理 M4；
+- 不继续清理 Core、ModelRef、Catalog 或 Off-Peak；
 - 不改变 Provider/Model Overlay、成员所有权、enabled、visibility 或冲突语义；
 - 不改变 Account Connection、Access ID、凭据解析或服务端鉴权；
 - 不重构 Provider Settings UI、Model Selector 或跨进程协议；

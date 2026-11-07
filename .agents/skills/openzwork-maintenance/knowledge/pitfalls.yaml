@@ -70,9 +70,9 @@ entries:
     checked: 3.17.2
     status: active
   - id: OZK-PIT-007
-    title: 只搜 ~/.zcode 会漏掉路径拼接
+    title: 只搜旧用户级根的路径文本会漏掉拼接写法
     when: 新增或审查用户级数据路径。
-    do: 同时搜索 join(home, ".zcode")、homedir() 拼接，以及 cli、v2、runtime、server 等用户级子目录字面量。
+    do: 除了家目录前缀加旧根目录名的路径文本，还要搜索 homedir() 或 home 变量与旧根目录名拼接的写法，以及 cli、v2、runtime、server 等只在用户级根下出现的子目录字面量。
     why: 个性化指令路径与 data-sync 的三处用户级错根都是拼接写法，文本门禁直到 PR #69 才补上。
     evidence:
       - PR #69
@@ -110,5 +110,16 @@ entries:
     evidence:
       - docs/openzwork/patches/downstream-patch-registry.md
     since: 2026-10-23
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-011
+    title: 维护文件也会触发净化门禁
+    when: 修改台账、技能、扫描工具或其他维护文件之后。
+    do: 提交前运行 node --test tests/private-cleanup/cleanup.test.cjs（verify:pre-push 不包含它）。必须写出已裁剪目录名的文件登记到对应门禁的豁免列表；旧用户级根用文字描述或按片段拼出。
+    why: 台账登记的已裁剪目录名触发了 WP-09，技能与测试中的旧用户级根字面量触发了 WP-03；只跑 verify:pre-push 时没有发现。
+    evidence:
+      - PR #70
+      - tests/private-cleanup/cleanup.test.cjs
+    since: 2026-11-08
     checked: 3.17.2
     status: active

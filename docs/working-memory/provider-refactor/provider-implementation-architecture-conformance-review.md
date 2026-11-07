@@ -135,6 +135,7 @@ saveEffectiveProvider()
 - `packages/ui/src/lib/providerSettingsFormProjection.ts` 将 `effectiveConfig` 和模型 `effectiveConfig` 完整复制为表单状态。
 - `packages/ui/src/lib/providerPersonalSave.ts` 将完整 Draft 交给 `saveEffectiveProvider()`。
 - `packages/provider/src/config-service.ts` 保存时只读取 Built-in/Official Source。
+- `packages/provider/src/personal-config-projection.ts` 只能手工排除 `zhipu-account.accessId`。
 
 风险：
 
@@ -210,14 +211,29 @@ Repository Boundary
 
 `accessId` 的既定职责是稳定、非敏感的账号连接身份。当前它还被多层用于推导：
 
+- Start / Individual / Team Plan；
 - Provider Family；
 - organization/project；
 - Credential key；
 - UI 分组、标签和 Badge。
 
+当前 Account Resolver、Request Auth、Team Plan Runtime Key 和 UI 分别解析 `start-plan:`、`coding-plan:`、`team-plan:` 等前缀。尤其 `packages/ui/src/lib/modelSelectionGroups.ts` 直接通过 `accessId.startsWith(...)` 决定产品展示。
+
 这使 accessId 从 opaque identity 变成了没有集中类型定义的跨层字符串协议。
 
 候选方向：
+
+```text
+Provider Config
+└─ accessId（保持稳定、opaque）
+
+Account/Product Facade View
+├─ family
+├─ planKind
+├─ connectionId
+├─ organization/project display
+└─ presentation label/badge
+```
 
 这个候选不要求把套餐展示字段加入 Provider Config，也不建立新的 Registry Source。需要讨论的是：类型化 Account/Product 投影由哪个现有 Service/Facade 拥有，以及请求鉴权侧如何保证只有一个 accessId parser。
 
@@ -245,6 +261,8 @@ Account Resolver 时可以随手简化，但不为故障隔离建立独立任务
 - 用户候选和用户选择校验以 Selection Facade 的 visible candidates 为准；
 - 内部产品能力按精确 ID 使用完整 Registry。
 
+进一步调用审查确认，普通 UI 只消费 View，Facade `validate()` 的主要生产调用方反而是 hidden Off-Peak
+派发。最终裁决是不在用户 Facade 保留执行校验：删除 Facade/Service `validate()`，Off-Peak 改用内部 Registry
 窄提前检查；所有 Selection 在真正提交任务、构建 Model 时由当前 Agent Registry/ModelFactory 最终校验。
 
 ### F6. Provider Runtime composition 存在重复外壳
@@ -381,6 +399,7 @@ Config；缺失项继承 Built-in Rule，不能补迁移默认或形成通用 Ru
 
 - Node Repository 的文件锁、原子写、watcher、备份和 migration；
 - RPC Service 将 Config Class 投影为普通可序列化对象；
+- Account API、Start Plan、Personal Coding Plan、Team Plan 的真实业务差异；
 - Provider Source/Repository 接口和 process-local Registry；
 - SEA 环境下 Built-in 配置物理 materialization；
 - Protocol 运行时 Schema；
@@ -454,6 +473,7 @@ accessId
 ### D6. Selection Facade validate 的调用者语义
 
 已裁决：用户 Facade 只投影 visible 候选，不再公开 `validate()`。普通任务在 ModelFactory 构建边界权威校验；
+Off-Peak 等内部产品直接使用 Registry 的精确校验，visibility 不成为权限或特殊执行身份。
 
 ### D7. Runtime composition 收口时机
 

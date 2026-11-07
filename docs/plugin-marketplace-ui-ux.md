@@ -22,7 +22,8 @@
   胶囊、长描述、「MCP 服务器」「技能」等组件分区、「信息」区（开发者/类别/版本/网站/
   隐私政策/服务条款）。
 
-公开分段对应官方市场 `zcode-plugins-official`（内置插件 + CDN zip 插件，目录源
+公开与社区分段共同使用官方市场 `zcode-plugins-official`（内置插件 + CDN zip 插件，目录源
+`https://cdn-zcode.z.ai/zcode/official-plugin/marketplace.json`），按发布条目 `publisherType` 区分维护归属；个人分段承载其余一切
 个人来源（claude-plugins-official、用户自加市场、inline）。
 
 ### 官方市场单一身份与合并合同
@@ -276,6 +277,7 @@ flowchart TD
 
 `claude-plugins-official` 的上游目录不保证为每个插件提供 `icon`。刷新该市场时，Agent
 可以从 ZCode CDN 的
+`https://cdn-zcode.z.ai/zcode/official-plugin/assets/icon-sources.json` 获取可选图标映射，
 并按插件 `name` 为缺失 `icon` 的目录条目补齐：
 
 - 仅作用于 `claude-plugins-official`；用户自加市场、inline 插件及孤立安装不按名称套用，
@@ -283,6 +285,7 @@ flowchart TD
 - marketplace 条目自带的 `icon` 优先，映射不得覆盖。
 - 映射只消费 `name`、`icon`、`mimeType`、`sha256`；素材溯源字段不得进入协议、日志或 UI。
 - `icon` 必须是安全的相对 PNG 路径，最终 URL 固定落在
+  `https://cdn-zcode.z.ai/zcode/official-plugin/assets/` 下。
 - 市场 manifest 是主数据，图标映射是可选增强。映射下载或解析失败不得导致市场刷新失败；
   有旧缓存时继续使用旧缓存，无缓存或未命中时按统一的 Blocks 图标降级。
 - 映射在 marketplace 更新阶段获取并缓存；`plugins/overview` 不为每个条目单独发起图标网络请求。
@@ -333,6 +336,10 @@ existing catalog after upgrade
   一律按无需套餐处理，避免目录写错就给免费插件挂上付费提示。字段描述的是「使用条件」
   （需要付费套餐才好用），不代表插件本身是收费商品——它是纯展示标记，不参与安装门禁
   与计费。命名刻意不绑定具体套餐商品名，套餐改名或文案换口径时字段不用跟着改。
+- 卡片与详情标题使用杏色胶囊视觉，文案前展示 `size-3` 的小皇冠图标；浅色主题参考 `#FFE3C8` 背景与 `#4B280F` 文字，
+  深色主题使用同色相的深底浅字；颜色必须通过插件套餐徽标专用 token 提供。徽标文字使用
+  `text-ui-sm`，中文显示「编程套餐」，英文显示「Coding Plan」；完整条件说明保留在
+  hover/focus Tooltip 中，不读取 150% 活动配置。
 
 - 图片字段：CDN 条目用绝对 https URL；**内置插件**在仓内 `official-plugin-definitions.ts`
   补齐同构 listing 元数据。需要覆盖旧缓存或尚未发布 CDN 素材的官方内置插件，可由共享
@@ -363,6 +370,7 @@ sequenceDiagram
     participant Svc as zcodeAgentService
     participant Boot as bootstrap handlers
     participant Ad as adapters
+    participant CDN as cdn-zcode.z.ai
 
     UI->>Store: 进入页面
     Store->>Svc: getPluginsOverview()

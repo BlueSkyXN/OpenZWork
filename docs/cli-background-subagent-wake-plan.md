@@ -33,7 +33,7 @@ P1 再考虑：
 
 - `apps/zcode-cli/packages/core/src/tool/handlers/agent.ts` 中 `parsed.subagent_type ?? AgentType.GeneralPurpose`，省略时默认 `general-purpose`。
 - `apps/zcode-cli/packages/core/src/subagent/profile.ts` 中 `DEFAULT_SUBAGENT_TYPE = GENERAL_PURPOSE_AGENT_TYPE`，`normalizeAgentProfiles()` 先注册 built-in `general-purpose`，再注册 built-in `Explore`，最后覆盖用户/项目/插件 profile。
-- `apps/zcode-cli/packages/bootstrap/src/subagents.ts` 已加载用户级 `~/.openzwork/agents`、项目级 `.zcode/agents`、插件 `agents/*.md`，并保留 `general-purpose` / `Explore` reserved name。
+- `apps/zcode-cli/packages/bootstrap/src/subagents.ts` 已加载用户级 `~/.zcode/agents`、项目级 `.zcode/agents`、插件 `agents/*.md`，并保留 `general-purpose` / `Explore` reserved name。
 - `apps/zcode-cli/packages/contracts/src/tools/agent.ts` 已有 `run_in_background`，输出包含 `completed` 和 `async_launched` 两种状态。
 
 ### Subagent runner

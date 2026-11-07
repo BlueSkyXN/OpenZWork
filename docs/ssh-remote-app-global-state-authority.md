@@ -9,10 +9,29 @@ Desktop-attached SSH/Docker/WSL 只描述一种连接和操作关系，不表示
 执行 Agent 所属的 Remote Environment 拥有 Provider Config、账号事实、Credential Store、Registry 和
 ModelFactory。
 
+```text
+Desktop Environment                     Remote Environment
+===================                     ==================
+Desktop app-global settings             Remote ZCode Built-in Config
+Desktop OAuth / UI state                Remote Personal Provider Config
+Local Provider Runtime                  Remote Account Provider Config
+Local Registry                          Remote Credential Store
+                                        Remote Registry
+        |                                     |
+        | remote settings/selection/task RPC  |
+        +------------------------------------>|
+                                              v
+                                      Remote ModelFactory
+                                              |
+                                              v
+                                      Remote model request
+```
+
 Desktop 不向 Remote Worker 注入以下内容：
 
 - 完整 Provider Registry 或其序列化快照；
 - Runtime Model 或 Provider/Model 静态配置快照；
+- Desktop Account Provider Config；
 - Desktop API Key、JWT、Team Runtime Key 或动态请求 Header。
 
 旧 `workspace/updateProviderRegistry`、`ZCodeProviderRegistrySnapshot` 和
@@ -40,6 +59,20 @@ Renderer 面对的 remote workspace ServiceCollection 可以混合本地 UI Serv
 ## Environment 内部同步
 
 同一个 Environment 的 Host 与 Core Worker 各自持有 Registry 实例，并共享该 Environment 的配置事实：
+
+```text
+Environment Provider Sources
+├─ ZCode Built-in Config
+├─ Personal Provider Config
+└─ Account Provider Config
+          |
+          +-------------------+
+          |                   |
+          v                   v
+     Host Registry       Worker Registry
+          |                   |
+     Settings/View       ModelFactory/Execution
+```
 
 Host 可以通过 `provider/updateAccountConfig` 把本 Environment 的无 Secret Account Overlay 发送给自己的
 Core Worker。该协议只承载 `revision + basedOnZCodeBuiltinRevision + ProviderConfigMap`，不承载 API Key、
@@ -106,6 +139,7 @@ Local → Remote；当前 Provisioning 在本地 allowlist 凭据保存或删除
 - Desktop `desktop-continuous` 不拼接手机 replayable 恢复消息；手机
   `web-remote-replayable` 不绕过 gap/snapshot 恢复。
 - Provider/Model 静态事实只来自目标 Environment 的 Config 和 Registry。
+- 动态请求凭据不进入 Account Provider Config、Registry View 或 Session 持久化。
 - 已退出的完整 Registry writer 不提供兼容 fallback。
 
 ## 相关当前设计

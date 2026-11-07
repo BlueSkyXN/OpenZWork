@@ -1,73 +1,63 @@
-# OpenZWork 构建与发布流程
+# Release 构建与发布元数据分离
 
-当前入口为 [GitHub Actions](../../.github/workflows/) 与 [OpenZWork Releases](https://github.com/BlueSkyXN/OpenZWork/releases)。应用采用手动安装更新。历史上游 GitLab、OSS、CDN 灰度发布与官方自动更新链不属于本仓当前发行流程。
+## 目的
 
-## 候选验证
+安装包、签名、公证、blockmap 和 Electron Builder 生成的 `latest.yml` 在构建阶段完成。发布日志由 infra 通过 API 直接编辑共享目录中的更新清单；z-code CI 的人工确认只决定是否继续上传/发布，不再读取仓库 changelog 或改写更新清单。
 
-1. 固定最终分支提交，完成 `CI`、`Extended checks (non-blocking)` 与 Desktop Main/E2E 类型审计。
-2. 在同一分支触发 `Installers`，不提供 `release_tag` 或 `release_commit`：
+## 当前 CI 时序
 
-   ```bash
-   gh workflow run installers.yml -R BlueSkyXN/OpenZWork --ref <candidate-branch>
-   ```
-
-3. 回读实际 `headSha` 与各 job 结果。源码变化后，重新验证最终提交。
-4. 检查 macOS arm64、Windows x64、Linux x64 的构建日志、artifact 名称、大小、有效期和摘要。下载、解包、安装分别记录执行情况。
-
-默认构建生成 Preview 候选，输出到 Actions artifacts。`CI` 与 `Extended` 由 PR 事件触发；Installers 自动 push 入口仅覆盖 `main` 和 `wp**`，其它候选分支需要手动触发。
-
-## 正式包与 Release
-
-推送正式 tag 后，CI、Extended 和 Installers 自动验证同一提交，全部成功后由 Release 工作流公开版本。无修订号沿用 `vX.Y.Z-openzwork`；修订版使用 `vX.Y.Z+openzwork.N`。tag、实际 checkout SHA 和根 `package.json` 完整版本必须一致。编号与 Latest 比较见 [发行版本规则](../openzwork/release/openzwork-release-version.md)。
-
-根目录 release-it 负责 CHANGELOG、commit/tag/push。修订版先将完整发行号写入 `package.json.version` 并完成验证，再执行 `pnpm release --no-increment`，保留 `+openzwork.N`；已经准备好版本提交时，也可以直接推送对应的正式 tag。无修订号的官方基准升级仍可使用 `pnpm release <version>`。自有修订不使用 `patch` 自动增加官方基准。使用用户自己的 Git 凭据推送；GitHub `GITHUB_TOKEN` 创建的事件通常不会再次触发其它工作流。
-
-正式构建使用 OpenZWork production 身份，当前工作流关闭 macOS/Windows 签名。每个平台生成 `RELEASE-MANIFEST.json`，记录 source tag、source commit/tree、workflow commit、版本、身份与安装包 SHA256。
-
-| Runner      | 目标安装格式               |
-| ----------- | -------------------------- |
-| macOS arm64 | DMG、ZIP                   |
-| Windows x64 | NSIS EXE                   |
-| Linux x64   | AppImage、DEB、RPM、pacman |
-
-三份工作流并行执行，完成事件唤起 Release 协调器。它只选择该 tag/SHA 的最新运行，任一检查缺失、失败或运行中均不公开。Extended 虽名为 non-blocking，在正式发行中仍是必需门禁。
-
-runner 验证测试报告、来源及文件摘要后，自动创建或续传草稿。已有草稿正文保留；否则使用 GitHub 按 tag 生成的版本说明。七个安装文件、`PROVENANCE.json`、`SHA256SUMS` 回读一致后公开。旧版本晚完成时保留较新的 Latest。本机无需下载安装包。
-
-```mermaid
-flowchart LR
-    T[正式 tag push] --> C[Core]
-    T --> E[Extended 与类型审计]
-    T --> I[production Installers]
-    C --> G[Release 核对同源最新运行]
-    E --> G
-    I --> G
-    G --> V[报告与安装文件校验]
-    V --> D[自动草稿及九附件]
-    D --> R[公开版本]
+```text
+pnpm release（默认 release-it）
+   version + CHANGELOG.md + release commit/tag/push
+   |
+   v
+commit/tag
+   |
+   +--> build:macos/windows/linux
+   |      installer + blockmap + 基础 latest.yml
+   |      共享目录中的候选制品保持未注入 releaseNotes
+   |
+   v
+   release:approve  <--- infra 完成日志编辑后人工放行
+          |
+          v
+   release:validate
+      校验六个平台 update YAML、日志、安装包摘要和 remote components
+          |
+          v
+   release:upload:* (RELEASE_ARTIFACT_MODE=publish)
+          |
+          v
+   CDN preload -> gray publish -> stable publish
 ```
 
-失败时重跑原检查的失败 job，成功后的完成事件会再次触发发布。协调器失败或待发布任务被 GitHub 并发队列替换时，可手动恢复：
+`release:approve` 之前不会调用正式 OSS 上传或 release API。安装包保存在 CI runner 共享目录，approve 放行后先执行 validate，校验通过后才由 upload job 读取。
 
-```bash
-gh workflow run release.yml -R BlueSkyXN/OpenZWork -f release_tag=v3.16.2+openzwork.1
-```
+## 预发布版本边界
 
-<!-- 上游「预发布版本边界」节绑定 GitLab release:approve/validate/CDN/灰度发布链路，属官方发布基础设施净化域；OpenZWork 走 GitHub Actions 草稿发布，该节不随上游引入 -->
+带预发布后缀的版本 tag（如 `v3.16.3-preview.1`、`-alpha.1`、`-beta.1`、`-rc.1`，以及其他 `x.y.z-<标识>`）只保留构建和产物通知，不创建正式 `release:approve`、`release:validate`、六个平台上传、CDN 预热、灰度、全量及发版通知 job。规则按 `x.y.z-` 前缀匹配，允许小写 `v` 前缀，不校验后缀是否为合法 SemVer；因此 `v3.16.3-rc.01` 等非法 SemVer tag 也被排除。`x.y.z+build.7` 中的 build metadata 不算预发布后缀。
 
-只读取门禁与发布状态时，额外传 `-F verify_only=true`。已公开版本重放直接返回完成；同名附件有冲突则失败，不覆盖或删除。不同版本的发布串行执行；GitHub 并发组最多保留一个待运行任务。
+生产 remote 前端的版本目录与 latest 上传 job 同样不在预发布 tag 流水线中创建，避免引用已被排除的 `release:validate`；测试 remote 前端上传保持现有规则。普通正式 tag、Preview 身份、test tag、sandbox 和 `ci*` 分支保留各自既有边界。
 
-旧版本可以继续使用 Installers 的手动正式构建与精确运行编号发布入口。`release_tag`、`release_commit` 固定来源；`publish_installer_run`、`core_run`、`extended_run` 与 `release_notes` 指定既有证据和说明。手动发布仍要求已有草稿。Preview 包不能通过改名转成正式包。
+回归使用真实 YAML 的 first-match 规则求值，覆盖上述后缀、自定义与数字后缀、非法 SemVer、build metadata、正式版本和已有隔离场景。桌面发布与 remote 生产上传分别声明独立预期；生产自动上传规则只接受正式版本及 build metadata，不保留被前置排除规则遮蔽的预发布分支。不通过实际上传或发布验证排除规则。
 
-## 命令边界与重试
+## release-it 边界
 
-- `pnpm release` 使用 [.release-it.mjs](../../.release-it.mjs)；它只负责版本提交与正式 tag，后续发布交给 GitHub Actions。CLI 子包的独立版本命令不受影响。
-- 合并和候选构建不创建正式 tag。推送正式 tag 启动自动发布；服务器部署另行处理。
-- 检查失败时保留运行编号、实际进程退出码与未完成测试数量。重跑成功只能说明该次运行通过；稳定性问题的修复需要根因及回归证据。
-- 新提交产生后，旧提交的通过记录与安装包继续作为历史记录，最终候选以新的统一 SHA 验收。
+`pnpm release` 只运行 `.release-it.mjs` 中的默认发布能力和 `@release-it/conventional-changelog`：更新版本、维护根目录 `CHANGELOG.md`、创建 release commit/tag 并 push。仓库不再为 release-it 挂载 AI 改写、飞书评审或 `changelogs/vX.Y.Z*.md` 本地生成插件；CI 发布链路也不再消费根目录 `CHANGELOG.md`。
 
-## 设计来源
+日志编辑由 infra 负责并直接落到 runner 共享目录中的 `latest.yml`。全部构建完成且 infra 完成日志编辑后，发布负责人通过 `release:approve` 人工门禁放行；随后 `release:validate` 自动统一检查六个平台的版本、非空日志、update YAML 引用、文件大小和摘要，并要求 remote manifest 精确包含 `darwin-arm64`、`darwin-x64`、`linux-arm64`、`linux-x64` 四个平台且内部 `platformArch` 与文件名一致。只有完整性检查通过，各平台 upload job 才会读取共享目录中的最新内容上传。
 
-当前 GitHub Actions 编排由 OpenZWork 分支新增：核心 CI 首次加入于 `2934deb7`（2026-09-21），Installers 于 `58de1928`（2026-09-23），Core/Extended 分层于 `ec3bcdbe`（2026-10-19），正式 tag 构建于 `0e657d60`（2026-10-22），云端校验发布器于 `ffada416`（2026-10-25）。上游 v3.16.2 的公开源码树 `3c5b2276` 中没有这三份 GitHub Actions 文件。
+`build:remote:assets` 每次收集当前版本前只清理共享发布根目录中的旧 `manifest-*.json` 和 `components/`，不触碰并行平台构建写入的 `macos-*`、`windows-*`、`linux-*` 目录。这样同版本重试不会把上一次的 remote manifest 或组件混入当前候选集合。
 
-底层 `packages/desktop/scripts/bundle.mjs`、electron-builder 配置、release-it 与大量测试来自 ZCode，再按 OpenZWork 的身份、移除范围与平台支持进行适配。GitHub Actions、第三方 Actions、Node、pnpm、Vitest 和 Electron/electron-builder 属于复用工具。公开上游文档还描述了 GitLab/独立发布平台方案；当前 GitHub 工作流的归属不能用于推断官方内部 CI/CD 的全部实现。
+## 关键文件
+
+- `scripts/ci-collect-artifacts.mjs`：只收集并修正基础制品，不再注入 release notes。
+- `scripts/validate-release-artifacts.mjs`：approve 放行后、upload 前校验六个平台和 remote assets 的完整性。
+- `scripts/upload-oss.sh`：正式上传使用 `RELEASE_ARTIFACT_MODE=publish`，从共享目录读取 infra 编辑后的清单；缺少顶层 `releaseNotes: |-` 时 fail-closed。
+- `.gitlab/ci/50-release.yml`：`release:approve` 确认 infra 日志已准备完成，随后 `release:validate` 提供统一完整性 gate，各平台 upload job 依赖 validate。
+
+## 失败与重试
+
+- infra 尚未向共享目录中的 `latest.yml` 写入日志：不得点击 approve；若提前放行，validate 阶段拒绝发布。
+- 版本、引用文件、size、sha512、remote manifest 四平台集合或 remote component 任一不一致：validate 阶段拒绝发布。
+- 单个平台上传失败：不需要重新构建；从同一共享候选目录重试对应 upload job。

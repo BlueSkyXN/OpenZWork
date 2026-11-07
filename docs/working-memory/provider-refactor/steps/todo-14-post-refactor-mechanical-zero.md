@@ -133,6 +133,7 @@ packages/services/src/model-provider/legacy-*
 
 - `packages/ui/src/lib/zcodeDraftThoughtLevelSync.ts`：旧 Draft Session 的字符串 Model/Thought 同步 helper；
 - `packages/ui/src/lib/modelInputPresentation.ts`：仍依赖 Legacy `ModelProviderModality` 的旧展示 helper；
+- `packages/ui/src/settings/OffPeakToolbarSelect.tsx`：Todo 09 后未再使用的闲时专用选择器。
 
 实施时先重跑 `knip`、`rg` 和 `dep:refs`：
 
@@ -149,6 +150,7 @@ packages/services/src/model-provider/legacy-*
 - Dynamic Request Auth、Runtime Header Refresh、官方版本安全校验或账号凭据生命周期；
 - Telemetry、Status、Context、Observation 重构；
 - Provider Adapter 编码、Reasoning Mapping、MFJS Tool Schema 或新的模型能力；
+- Queue、Goal、Background、Off-Peak 调度、desktop continuous、mobile replayable 或 remote workspace 状态语义；
 - 结束 Legacy importer 兼容窗口。
 
 ## 3. Impact Brief
@@ -166,12 +168,13 @@ packages/services/src/model-provider/legacy-*
 
 ### 3.2 UI Surface Matrix
 
-| 用户场景          | UI 入口          | 状态 owner                  | 本 Todo 变化                     | 必须隔离                      |
-| ----------------- | ---------------- | --------------------------- | -------------------------------- | ----------------------------- |
-| 普通对话请求      | Composer/Session | 当前 Loop Active Model      | 无 UI 变化；MCS 公式保持既有行为 | Draft/Selection 不改变        |
-| Full/Auto Compact | Conversation     | 当前 Compact + Active Model | `force` 与普通请求一致           | Queue/Timeline/恢复语义不改变 |
-| Provider 设置     | Settings         | 当前 Provider Config        | 不再依赖 Legacy Shared DTO       | 当前表单与保存结构不改变      |
-| 启动后旧配置迁移  | 无直接 UI        | Legacy importer             | 私有类型单向导入                 | 已发布旧配置继续可读          |
+| 用户场景          | UI 入口             | 状态 owner                  | 本 Todo 变化                     | 必须隔离                        |
+| ----------------- | ------------------- | --------------------------- | -------------------------------- | ------------------------------- |
+| 普通对话请求      | Composer/Session    | 当前 Loop Active Model      | 无 UI 变化；MCS 公式保持既有行为 | Draft/Selection 不改变          |
+| Full/Auto Compact | Conversation        | 当前 Compact + Active Model | `force` 与普通请求一致           | Queue/Timeline/恢复语义不改变   |
+| Provider 设置     | Settings            | 当前 Provider Config        | 不再依赖 Legacy Shared DTO       | 当前表单与保存结构不改变        |
+| 启动后旧配置迁移  | 无直接 UI           | Legacy importer             | 私有类型单向导入                 | 已发布旧配置继续可读            |
+| Off-Peak 编辑     | Automation Settings | Off-Peak product draft      | 只删除无调用方旧组件             | 当前 scoped Selection View 不变 |
 
 ### 3.3 Shared And Divergent Behavior
 
@@ -190,6 +193,7 @@ packages/services/src/model-provider/legacy-*
 | must-inspect   | Core helper calls            | creates-through      | Runtime ModelFactory          | 删除无效参数的所有调用方 |
 | must-inspect   | Legacy store                 | imports-through      | Personal Provider Config      | 保持已发布数据兼容       |
 | should-inspect | Shared barrels/tests         | exposes/depend-on    | Legacy Provider DTO           | 防止旧契约继续扩散       |
+| invariant-only | Conversation/Off-Peak UI     | must-not-change      | Draft/commit semantics        | 本 Todo 不改产品状态     |
 | invariant-only | local/remote delivery        | must-remain-isolated | continuous/replayable runtime | 无协议或恢复改动         |
 
 ### 3.5 State Owners And Commit Sinks
@@ -281,6 +285,7 @@ Shared 当前公共出口中的 Legacy Provider store DTO  = 0
 UI 当前实现对 ModelProviderModality 的依赖          = 0
 zcodeDraftThoughtLevelSync.ts                       = deleted
 modelInputPresentation.ts                           = deleted
+OffPeakToolbarSelect.tsx                            = deleted
 ```
 
 `ModelProviderConfig` 等字符串可以继续存在于 importer 私有类型名称中；归零目标是 Shared/当前业务公共契约，
@@ -322,6 +327,7 @@ modelInputPresentation.ts                           = deleted
 - 已发布旧 Provider Store 的 DTO、parser 和 helper 已移入 Services 私有
   `legacyModelProviderSerialized.ts`，Shared 公共出口与旧公共类型测试均删除；Legacy reader/importer 仍保持
   单向迁移能力；
+- `zcodeDraftThoughtLevelSync.ts`、`modelInputPresentation.ts`、`OffPeakToolbarSelect.tsx` 以及 Todo 13 一并证明
   无调用方的旧模型偏好、Snapshot、Runtime Catalog helper 已删除；
 - Feature Graph 中 `ModelConnectionPort`、`ModelRef`、`AiSdkModelRegistry` 和旧 capability seed 已替换为当前
   Registry/ModelFactory/Active Model 入口；

@@ -12,7 +12,7 @@
 - 弹窗交互复用现有外部导入弹窗：来源范围、刷新、两层来源列表、逐项选择、目标全局/项目导入、导入结果列表。
 - MCP 导入不显示“软链/直接复制”选项，因为它只合并配置对象。
 - 导入目标：
-  - 全局：`~/.openzwork/cli/config.json` 的 `mcp.servers`
+  - 全局：`~/.zcode/cli/config.json` 的 `mcp.servers`
   - 项目：`<workspace>/.zcode/config.json` 的 `mcp.servers`
 - 同名 server 保留现有 ZCode 配置，外部 server 标记为跳过，不覆盖。
 - 不扫描 Gemini 相关目录。

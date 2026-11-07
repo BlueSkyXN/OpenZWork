@@ -119,10 +119,11 @@ Provider Config 是模型 API 调用的装配输入。它可以保存静态凭�
 
 M4 后的 Access 类型至少包括：
 
-| Access type    | Config 保存内容                          | 请求时行为                                       |
-| -------------- | ---------------------------------------- | ------------------------------------------------ |
-| `api-key`      | 静态 `apiKey`                            | Adapter 使用 Config 中的 Key                     |
-| `request-auth` | 不保存具体凭据，只声明请求期必须提供鉴权 | ModelRequest 执行时消费调用方提供的 Request Auth |
+| Access type     | Config 保存内容                          | 请求时行为                                       |
+| --------------- | ---------------------------------------- | ------------------------------------------------ |
+| `api-key`       | 静态 `apiKey`                            | Adapter 使用 Config 中的 Key                     |
+| `zhipu-account` | 稳定、非敏感的 `accessId`                | Account Request Auth Service 解析当前动态凭据    |
+| `request-auth`  | 不保存具体凭据，只声明请求期必须提供鉴权 | ModelRequest 执行时消费调用方提供的 Request Auth |
 
 `request-auth` 是普通 Access 类型，不与 `visibility`、闲时任务或所谓“受信执行”绑定。任何 Provider 都可以
 采用这种访问方式。执行 context 在创建 Model 时把本次作用域的 Request Auth Source 装配进
@@ -142,6 +143,67 @@ ModelRequest 执行
 ```
 
 Hidden Provider 不再获得 `access` 或 `baseURL` 的校验豁免。
+
+## 5. 闲时 Built-in Provider
+
+`builtin:offpeak-idle-plan` 是普通的 ZCode Built-in Provider，只是用户不可见并使用请求期鉴权：
+
+```json
+{
+  "label": "Idle plan",
+  "visibility": "hidden",
+  "access": {
+    "type": "request-auth"
+  },
+  "api": {
+    "type": "anthropic-messages",
+    "baseURL": "https://zcode.z.ai/api/v1/off-peak/anthropic"
+  },
+  "models": ["GLM-5.2", "GLM-5-Turbo"]
+}
+```
+
+生产 Endpoint 是 Built-in Provider Config 的静态事实。测试和 mock 通过注入测试用 Built-in Config
+Source 改写整份测试配置，不把 Endpoint 重新放入单次 Turn payload。
+
+模型的 context、max output、输入输出格式、reasoning levels 和 reasoning mapping 来自 ZCode
+Built-in Model Config Rules。Host 不再按 modelId、Provider family 或远端 `builtinModels` 重新推断。
+
+`enable_offpeak_task` 可以继续作为闲时任务产品灰度。远端 `allowed_models` 不再作为 Provider.models、
+模型能力或 Registry 的事实源；服务端仍可在 ticket 或模型请求边界执行自己的最终准入。
+
+## 6. 闲时 Submission
+
+闲时任务是一份带有执行期上下文的普通 Core Submission：
+
+```text
+Host / Scheduler
+├─ prompt / attachments / mode
+├─ idle ModelSelection
+├─ execution-scoped Request Auth
+├─ Off-Peak Ticket
+└─ optional Subagent Model override
+             |
+             v
+       Core Submission
+             |
+             v
+   Registry / ModelFactory
+             |
+             v
+       Loop Active Model
+```
+
+Submission 始终只有一份 `ModelSelection`。Request Auth、Ticket、Off-Peak attribution 和 Subagent
+override 是特殊执行的附加 context，不产生第二份模型绑定、Selection 或完整 Provider/Model Config。
+
+协议的最终字段形状在实施时复用现有严格 schema 和 Request Auth Port 固定，但必须满足：
+
+- 不携带 Provider/Model 静态事实；
+- 不写入 Session Selection；
+- 不进入 Personal Config、Registry View 或 Session 持久化；
+- 不进入普通用户 busy queue、Guide 或 held queue；
+- 不把 Secret、Ticket 明文写入日志、Telemetry 或 conversation event。
 
 ## 7. Session Selection 与 Active Model
 
@@ -215,6 +277,7 @@ Session Selection；二者都不把自己的模型反向写入 Session Selection
 Idle Turn
 └─ permission / elicitation requested
        ├─ 普通 Session 展示并收集响应
+       ├─ Off-Peak task 保持 running
        └─ approve / deny / skip
               └─ 同一个 Turn 继续，仍使用 Idle Model
 ```
@@ -223,6 +286,8 @@ M4 不增加 `awaiting_approval` 闲时状态，不在批准后切用户 Provide
 只有当前自动 Turn 结束后，后续普通用户 Submission 才使用用户 Session Selection。
 
 ## 10. Ticket 过期、取消和重新派发
+
+Ticket、任务排队、续跑和 settle 属于 Off-Peak Scheduler/Repo，不进入 Provider Config 或 Registry：
 
 ```text
 Idle Model Request
@@ -244,6 +309,7 @@ Registry / ModelFactory 创建新的 Idle Model
 ```
 
 成功、失败、取消、抢占、Ticket 过期或进程重启后，旧 Request Auth 不能进入下一次重新派发。
+具体取票、重排、3 小时时间盒和 continuation 仍使用当前 Off-Peak 领域实现。
 
 ## 11. Registry 与 Facade
 
@@ -273,28 +339,36 @@ Header 合并。缺少材料时在网络请求前失败；Retry 只能在当前�
 Usage、Trace 和错误必须归因到实际 Model：
 
 ```text
+providerId = builtin:offpeak-idle-plan
 modelId    = 本轮实际 idle model
 ```
 
+`offPeakTaskId`、Ticket ID 和 run type 是任务/执行维度，不替代 Model 身份，也不能把用户队列项归因到
 闲时 Provider。
 
 ## 13. 状态所有权
 
-| 状态或事实        | 权威 Owner                         | 生命周期           | 不得写入                    |
-| ----------------- | ---------------------------------- | ------------------ | --------------------------- |
-| Provider 静态事实 | Effective Provider Config          | Config revision    | Turn payload 的静态快照     |
-| Model 静态事实    | Effective Model Config             | Config revision    | Host hardcode、modelId 特判 |
-| 用户后续主模型    | Session Selection                  | Session            | 闲时执行 context            |
-| 当前执行模型      | Loop Active Model                  | Loop               | Session 持久偏好            |
-| Account 连接身份  | Account Provider Config `accessId` | Account connection | API Key/JWT/Header          |
-| Account 动态凭据  | Account Request Auth Service       | Request attempt    | Provider Config             |
+| 状态或事实                    | 权威 Owner                                            | 生命周期           | 不得写入                                      |
+| ----------------------------- | ----------------------------------------------------- | ------------------ | --------------------------------------------- |
+| Provider 静态事实             | Effective Provider Config                             | Config revision    | Turn payload 的静态快照                       |
+| Model 静态事实                | Effective Model Config                                | Config revision    | Host hardcode、modelId 特判                   |
+| 用户后续主模型                | Session Selection                                     | Session            | 闲时执行 context                              |
+| 当前执行模型                  | Loop Active Model                                     | Loop               | Session 持久偏好                              |
+| Account 连接身份              | Account Provider Config `accessId`                    | Account connection | API Key/JWT/Header                            |
+| Account 动态凭据              | Account Request Auth Service                          | Request attempt    | Provider Config                               |
+| 闲时动态凭据与 Ticket         | Off-Peak Scheduler / Request Auth context             | 有效派发           | Config、Registry View、Session snapshot、日志 |
+| Queue、Ticket、任务与续跑状态 | CLI CommandInbox / Off-Peak Scheduler / Off-Peak Repo | 各自领域生命周期   | Registry                                      |
 
 ## 14. UI Surface Matrix
 
-| 场景                      | 候选/配置来源    | 可见性与校验                      | 提交/执行 Owner            | 必须隔离                           |
-| ------------------------- | ---------------- | --------------------------------- | -------------------------- | ---------------------------------- |
-| Provider Settings         | Settings Facade  | 只显示 `visibility=visible`       | Personal Config Repository | hidden Provider、Session Selection |
-| Conversation Model Picker | Selection Facade | 只显示完整、enabled、visible 模型 | Composer/Submission        | hidden Provider、Active Model      |
+| 场景                      | 候选/配置来源                         | 可见性与校验                      | 提交/执行 Owner              | 必须隔离                              |
+| ------------------------- | ------------------------------------- | --------------------------------- | ---------------------------- | ------------------------------------- |
+| Provider Settings         | Settings Facade                       | 只显示 `visibility=visible`       | Personal Config Repository   | hidden Provider、Session Selection    |
+| Conversation Model Picker | Selection Facade                      | 只显示完整、enabled、visible 模型 | Composer/Submission          | hidden Provider、Active Model         |
+| Off-Peak 创建页           | Built-in idle Provider 的产品投影     | 产品灰度；不成为 Registry 事实源  | Off-Peak Service/Scheduler   | Personal Config、普通模型选择器       |
+| Off-Peak 自动 Turn        | 精确 idle ModelSelection              | Core start-now admission          | CLI Loop Active Model        | Session Selection、普通 Queue         |
+| Subagent 设置             | visible Registry candidates / Profile | 保存 Profile，不改变当前 Session  | Subagent Config/Markdown     | Off-Peak 单轮 override                |
+| Off-Peak Foreground Child | 当前 idle override                    | Background 由 Tool Policy 拒绝    | Child Runtime / ModelFactory | Profile 的其他 Provider、Session 状态 |
 
 ## 15. 必须保持的不变量
 
@@ -317,6 +391,7 @@ M4 完成时通过 `dep:refs`、`rg` 和 `knip` 审计以下闲时用途：
 - `ProviderConfig.executionOnly`；
 - `sendText.turnRuntimeModel`；
 - 闲时用途的完整 `ZCodeModelRuntimeConfig`；
+- `buildOffPeakTurnRuntimeModel`；
 - `TurnExecutionModel`；
 - `ExecutionScopedModelSource` / `createTurnExecutionModelSource`；
 - Turn Runtime Model Overlay；
@@ -335,7 +410,8 @@ M4 完成时通过 `dep:refs`、`rg` 和 `knip` 审计以下闲时用途：
 1. 先写失败测试。
 2. `executionOnly` 迁移为 `visibility`，Facade 负责 visible/hidden 过滤。
 3. 新增 `request-auth` Access 及完整性校验。
-4. Registry 收录完整 hidden Provider，普通 Settings/Selection View 不投影。
+4. 补齐 `builtin:offpeak-idle-plan` 的 Access、Endpoint、models 和 Built-in Model Rules。
+5. Registry 收录完整 hidden Provider，普通 Settings/Selection View 不投影。
 
 ### M4.2：标准 Model 创建与请求鉴权
 
@@ -344,11 +420,20 @@ M4 完成时通过 `dep:refs`、`rg` 和 `knip` 审计以下闲时用途：
 3. 缺少 Request Auth 返回类型化错误；动态材料不进入 Config 或 Registry。
 4. generate/stream、Retry、Usage 和 Trace 使用同一 Adapter 边界。
 
+### M4.3：切换闲时生产派发
+
+1. Host 不再构造 `turnRuntimeModel`。
+2. Core Submission 携带标准 Selection 与最小执行 context。
+3. CLI admission 直接创建 Idle Active Model，不临时 `setModel`。
+4. Automatic Compact、Foreground Subagent 和 permission continuation 使用正式 Active Model/Selection。
+5. Ticket 过期、取消、失败和成功沿现有 Off-Peak 状态机结束当前执行 context。
+
 ### M4.4：删除双轨
 
 1. 删除 Runtime Overlay、Turn 快照、临时 Registry 注入和 restore 状态机。
 2. 删除 Host 对 Provider/Model 静态事实的重复组装。
 3. 用引用审计确认没有生产消费者从旧 Runtime Model 读取事实。
+4. 更新 Design、Feature Graph、Off-Peak/Subagent spec 和测试矩阵。
 
 ## 18. 验收用例
 
@@ -360,10 +445,12 @@ M4 完成时通过 `dep:refs`、`rg` 和 `knip` 审计以下闲时用途：
 | M4-04 | 闲时 Turn running                    | 用户发送普通 prompt               | 输入进入唯一 Queue；terminal 后使用 U                           | protocol/network  |
 | M4-05 | 闲时 Turn 触发 Automatic Compact     | Compact 请求                      | 请求使用 I、idle Endpoint 与当前 Request Auth                   | runtime/network   |
 | M4-06 | Profiles 配置其他模型                | 闲时父轮启动多个 Foreground Child | Child 各自创建 Model，但都使用 idle override；Background 无请求 | runtime/network   |
+| M4-07 | 闲时 Turn 请求 permission            | approve / deny                    | Off-Peak task 保持 running；同一 Turn 仍命中 idle Endpoint      | protocol/network  |
 | M4-08 | 当前 Ticket 失效                     | Scheduler 重新取票并 resume       | 新派发、新 Model、新动态材料；Session/transcript 延续           | service/runtime   |
 | M4-09 | 闲时 Turn 结束                       | 用户继续普通对话                  | 使用 U；无 idle Header、Ticket 或归因泄漏                       | network/telemetry |
 
 不对主题、语言、操作系统、Provider family、workspace 类型和 delivery kind 做全笛卡尔积。M4 的共享
+Core/Adapter 行为由 focused tests 证明；Desktop continuous 使用现有 Off-Peak 代表 E2E，Mobile
 replayable 只验证协议字段没有进入恢复状态，不新增闲时移动端产品能力。
 
 ## 19. 完成门禁
@@ -386,6 +473,7 @@ M4 只有同时满足以下条件才完成：
 - Account Provider 身份、权益和套餐拓扑重构；
 - Management Service 下发 Built-in Config；
 - `modelContextBudget.strategy`；
+- Off-Peak UI 重做；
 - Queue、snapshot、reconnect、continuous/replayable 产品语义变化；
 - Audio 内容块、附件入口或 Provider 编码。
 
@@ -393,12 +481,14 @@ M4 只有同时满足以下条件才完成：
 
 ### 21.1 Feature Summary
 
-| Field            | Value                                                                      |
-| ---------------- | -------------------------------------------------------------------------- |
-| Developer intent | 删除闲时 Runtime Model 双轨，使特殊执行复用正式 Provider/Model 链          |
-| Change layer     | option-source、validation、commit-effect、persistence、recovery invariant  |
-| Operating mode   | implementation                                                             |
-| Out of scope     | Remote Provisioning、Account 产品重构、普通 Queue/恢复语义、Agent 参数灰度 |
+| Field            | Value                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| Developer intent | 删除闲时 Runtime Model 双轨，使特殊执行复用正式 Provider/Model 链                          |
+| Capability       | Provider Registry、Model execution、Off-Peak、Subagent                                     |
+| Change layer     | option-source、validation、commit-effect、persistence、recovery invariant                  |
+| Operating mode   | implementation                                                                             |
+| Primary seeds    | `ProviderConfigResolver`、`buildOffPeakRequestAuth`、`sessionFlowHandlers`、`agentHandler` |
+| Out of scope     | Remote Provisioning、Account 产品重构、普通 Queue/恢复语义、Agent 参数灰度                 |
 
 ### 21.2 Shared And Divergent Behavior
 
@@ -412,31 +502,34 @@ M4 只有同时满足以下条件才完成：
 
 ### 21.3 Feature Relationships
 
-| Rank           | From                     | Semantic edge    | To                      | Why inspect it                      | Evidence                    |
-| -------------- | ------------------------ | ---------------- | ----------------------- | ----------------------------------- | --------------------------- |
-| must-inspect   | hidden Built-in Provider | creates through  | Registry/ModelFactory   | 可见性只属于 Facade                 | Registry Design §§3、11     |
-| must-inspect   | idle Active Model        | inherited by     | Automatic Compact       | Compact 不能回退 Session Selection  | Execution Design §8.1       |
-| must-inspect   | idle execution context   | overrides        | Foreground Child        | Child 自建 Model 但共享本轮访问边界 | OP10、Execution Design §8.2 |
-| must-inspect   | permission response      | continues        | same idle Turn          | D44 禁止 Provider handoff           | OP03、Execution Design §9   |
-| should-inspect | Request Auth             | validates before | Adapter network I/O     | 缺凭据必须 fail-closed              | Model Creation Design       |
-| invariant-only | M4                       | must not mutate  | desktop/mobile delivery | 不改变 continuous/replayable        | AGENTS、Feature Graph       |
-| invariant-only | M4                       | must not own     | Remote Provisioning     | 远程配置同步是独立产品能力          | Environment Design          |
+| Rank           | From                     | Semantic edge                  | To                      | Why inspect it                              | Evidence                                    |
+| -------------- | ------------------------ | ------------------------------ | ----------------------- | ------------------------------------------- | ------------------------------------------- |
+| must-inspect   | Off-Peak scheduler       | dispatches Selection + context | CLI admission           | 当前 Host 构造完整 Runtime Model，M4 要删除 | `offPeakRuntimeModel.ts`、`session-flow.ts` |
+| must-inspect   | hidden Built-in Provider | creates through                | Registry/ModelFactory   | 可见性只属于 Facade                         | Registry Design §§3、11                     |
+| must-inspect   | idle Active Model        | inherited by                   | Automatic Compact       | Compact 不能回退 Session Selection          | Execution Design §8.1                       |
+| must-inspect   | idle execution context   | overrides                      | Foreground Child        | Child 自建 Model 但共享本轮访问边界         | OP10、Execution Design §8.2                 |
+| must-inspect   | permission response      | continues                      | same idle Turn          | D44 禁止 Provider handoff                   | OP03、Execution Design §9                   |
+| should-inspect | Request Auth             | validates before               | Adapter network I/O     | 缺凭据必须 fail-closed                      | Model Creation Design                       |
+| invariant-only | M4                       | must not mutate                | desktop/mobile delivery | 不改变 continuous/replayable                | AGENTS、Feature Graph                       |
+| invariant-only | M4                       | must not own                   | Remote Provisioning     | 远程配置同步是独立产品能力                  | Environment Design                          |
 
 ### 21.4 Code Evidence And Graph Drift
 
 当前工具集没有可调用的 codegraph，因此本轮以功能图已声明 seed、`rg` 精确引用和深度 2 的人工调用链
 核对替代；完成门禁使用 `dep:refs`、`knip` 和受影响测试补齐符号级删除证明。
 
-| Seed                     | Key path                                      | Depth | Interpretation                          |
-| ------------------------ | --------------------------------------------- | ----- | --------------------------------------- |
-| `sessionFlowHandlers`    | admission → Core Submission → Active Model    | 2     | 单次执行 Selection 不改 Session         |
-| `agentHandler`           | override → Child runtime → child ModelFactory | 2     | 普通 override 与 idle override 的汇合点 |
-| `ProviderConfigResolver` | Built-in → Account → Personal → Registry      | 2     | M4 静态事实的唯一来源                   |
+| Seed                      | Key path                                                      | Depth | Interpretation                          |
+| ------------------------- | ------------------------------------------------------------- | ----- | --------------------------------------- |
+| `buildOffPeakRequestAuth` | Desktop Host → `sendText.modelExecution` → Model dependencies | 2     | 只提供当前派发的动态鉴权材料            |
+| `sessionFlowHandlers`     | admission → Core Submission → Active Model                    | 2     | 单次执行 Selection 不改 Session         |
+| `agentHandler`            | override → Child runtime → child ModelFactory                 | 2     | 普通 override 与 idle override 的汇合点 |
+| `ProviderConfigResolver`  | Built-in → Account → Personal → Registry                      | 2     | M4 静态事实的唯一来源                   |
 
 | Candidate                                            | Live-code evidence                          | Graph action                                                                  |
 | ---------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------- |
 | Feature Graph 旧 code seed 指向已删除双轨            | M4 已删除旧 Builder 与 Source               | 已改为 Request Auth、派发、Submission 与 Registry Model Runtime 的 live seeds |
 | Provider Registry 不变量把最终授权写成 model service | Config 只装配访问材料，最终结果由服务端裁决 | 已改为 server                                                                 |
+| OP03 仍记录批准后切用户 Provider                     | Off-Peak spec D44 与用户裁决相反            | 已同步 case catalog 与 coverage matrix                                        |
 
 未解决且会改变 M4 范围的问题：无。协议字段的物理名称、类型化错误枚举与 Request Auth Port 方法签名属于
 实现细节，必须服从本篇不变量，不构成新的产品裁决。
@@ -467,6 +560,7 @@ M4 只有同时满足以下条件才完成：
 | provider family、workspace kind、OS、theme、locale | 不展开                              | 不改变共享 Core/Adapter 语义                    |
 
 Accepted cases 固定为 M4-01 至 M4-09；case catalog 的 OP03、OP10 和 coverage matrix 已同步。E2E 交接继续
+复用 Off-Peak mock gateway：OPA 证明 permission 后仍命中 idle endpoint，OPS 证明前台 Child 继承与
 后台拒绝，OPB 证明普通用户输入和终态后对话不继承闲时 Provider/Auth/归因。其余 Config、Registry、
 Request Auth 和 Adapter 行为由 focused unit/runtime/network tests 证明。
 
@@ -533,6 +627,8 @@ Execution-scoped Submission 不执行 Session 模型预检，不读取或修复 
 
 ### 23.4 Mock 与凭据边界
 
+`ZCODE_OFFPEAK_MOCK=1` 的 Desktop E2E 会从正式 `official.json` 派生一份测试 Official Config，只改写
+`builtin:offpeak-idle-plan.api.baseURL` 指向进程内 mock gateway，再通过 Official Config Source 路径注入 Host 和
 Worker。Mock Endpoint 因此仍属于测试 Config，不回到单次 Turn payload。
 
 命令账本只持久化普通 input intent、附件和 Selection；`requestAuth` 不进入 input ledger、conversation
@@ -546,8 +642,12 @@ event、Session snapshot 或 repo sidecar。生产日志只记录命令生命周
 - `pnpm lint` 通过，仓库保留 39 条与 M4 无关的既有 warning，新增 0 error；
 - M4 focused tests：根仓 5 files / 135 tests、CLI 7 files / 109 tests 全部通过；此前 Compact
   7 files / 168 tests、Registry/Adapter 2 files / 19 tests 也已通过；
+- `test:unit:affected` 因 staging 基线包含已删除文件而自动升级为全量单测：1454 files 中 1445
+  passed，12,298 tests passed；唯一 M4 相关失败是 M2 守卫仍许可旧 Overlay，守卫收紧后已单独复跑通过。
+  其余 30 条是当前 Linux 环境缺 `zip`、macOS 公证/CUA 原生 fixture 不匹配等基线失败；
 - 全仓 `fmt:check` 仍会被既有 vendored Electron HTML 与 GB2312 fixture 阻断；本次 65 个变更文件的
   `oxfmt --check` 全部通过，`git diff --check` 通过；
+- `dep:refs` 已确认 `buildOffPeakRequestAuth`、`ApiProviderModelRuntime` 和
   `applySubmissionExecutionState` 的 live references；旧双轨生产符号搜索为零。全仓 `knip` 与 Feature
   Graph 完整性检查仍有本轮之外的既有漂移，M4 节点自身全部可解析。
 - 最终封口复验覆盖 Adapter、Core lifecycle、Bootstrap、Provider Selection、Services 与 Desktop Bundle
@@ -565,11 +665,15 @@ background Child 被拒绝，闲时完成后同一 Session 的普通 Prompt 恢�
   可以引用 hidden Provider，只有无显式选择时的用户 fallback 跳过 hidden 候选；
 - Desktop main/host/scheduler bundle 内联 `@zcode/provider` 与 `@zcode/provider-node`，避免 Electron
   worker 在干净运行环境中从 TypeScript source export 解析不存在的 `.js` 文件；
+- Adapter 只有在 Active Model 绑定 `accountAccessId` 时才消费 Host 的账号 runtime-header Port；普通
+  API-key Model 直接使用 Provider Config 的静态访问材料，`request-auth` Model 使用创建时冻结的
+  request auth source。
 
 复现命令：
 
 ```text
 ZCODE_E2E_CONTAINER=1 \
 ZCODE_E2E_SPEC=./test/e2e/conversation-session/manual-review/pending/\
+conversation-session-offpeak-subagent-model-inheritance.test.ts \
 pnpm --filter @zcode/desktop test:e2e:serial
 ```

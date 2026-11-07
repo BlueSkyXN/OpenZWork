@@ -111,7 +111,7 @@
 - **OutputStyle**: `~/.claude/output-styles/` 目录下的 `.md` 文件
 
 ### 当前项目配置目录
-当前项目使用 `~/.openzwork/v2/` 作为主配置目录，但对于 workspace 级配置，仍然使用 workspace 目录下的 `.claude/` 目录。
+当前项目使用 `~/.zcode/v2/` 作为主配置目录，但对于 workspace 级配置，仍然使用 workspace 目录下的 `.claude/` 目录。
 
 ## 后续建议
 

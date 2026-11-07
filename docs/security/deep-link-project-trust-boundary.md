@@ -43,7 +43,7 @@ ZCode Desktop 支持 `zcode://workspace/open?path=...` 打开本地工作区，�
   插件本身没有隔离；下面的 `permissionMode` 规则不能防御恶意插件。
 - subagent profile 的 frontmatter `permissionMode` 按来源处理。父会话为 guarded 时，任何来源的
   `bypassPermissions`、`dontAsk` 都先收紧为 guarded。
-  - 用户级（用户存储根下的 `agents/`，默认 `~/.openzwork/agents`）：按声明生效。
+  - 用户级（用户存储根下的 `agents/`，默认 `~/.zcode/agents`）：按声明生效。
   - 项目级 `.zcode/agents/*.md`（含附加目录）：忽略，子会话继承父会话模式。
   - 插件 agent（默认 `agents/` 目录与 manifest `agents` 声明的目录；官方与第三方同一规则）：
     只在比父会话模式更严格时生效，否则继承父会话模式。

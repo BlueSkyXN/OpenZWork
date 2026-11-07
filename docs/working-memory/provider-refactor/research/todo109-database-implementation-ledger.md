@@ -37,7 +37,11 @@
 
 ## B. App 库
 
+TaskIndexRepo/AutomationRepo/OffPeakTaskRepo 共用 tasks-index.sqlite。建表/补列已归一至库级 versioned migration，保持已有必要初始化行为。
+
 实施边界：统一入口由 services/session 的任务库模块拥有，三个 Repo 都在开放读写前调用；不跨域复用 Agent 的具体 adapter。建表、补列、索引归入 0001（接管已有/部分表），Provider 数据转换归入 0002。IMMEDIATE 事务内核查库级账本，失败回滚。声明式 SQL/列清单参与 checksum；TS 数据转换采用冻结语义版本标识，不能用 function.toString() 作 checksum（打包会改写函数文本），已发布转换实现不得原位编辑。
+
+Automation 旧默认选择在迁移时明确写 JSON null；存在但不可确定的旧选择保持 SQL NULL，执行要求重选。正常派发不再检查旧 model 列。Off-Peak 旧数据没有 Provider 身份，不能在库事务或 list/get 用当前账号补出；保留 Ticket/旧列，展示配置待修复，当前有效新选择仅派生可用性。
 
 旧 ACP ID 整理属于本轮之前已有的迁移，不借机改变其历史产品裁决；闲时标记/归组和已删除引用清理由索引 Repo 维护，属于可重复的关联投影维护，不作为 Provider 数据转换。实施时记录保留理由。
 
@@ -45,10 +49,15 @@
 
 复制边界：逻辑 Reader 不携带旧模型字段，fork 不能靠它重新生成旧快照。存储写入接受可选的原记录坐标（sessionID/id），adapter 在复制时保留原记录的旧字段；Core 只传原/目标 ID，不解析旧配置。原子 fork bundle 一并携带消息/Part 的坐标映射，在既有事务内执行；不另建迁移服务或读取 fallback。
 
+App 八张表的结论：`automations` 的旧 model/provider/thought_level 生成 model_selection；`automation_runs` 旧版没有可靠完整身份，不猜历史执行选择；`off_peak_tasks` 保留全部旧模型字段和 Ticket，缺身份不绑定；`tasks` 及四张分组/顺序/工作区关联表保持原记录。八表完整 fixture 与旧 Reader 均验证，新增的唯一账本为 `tasks_schema_migration`。
+
+保留的非本轮旧逻辑：TaskIndex 的 ACP task ID 整理早于 Provider 重构；闲时标记/分组是关联投影维护；OffPeak 的 awaiting_approval → running 是旧生命周期修复，不是模型选择转换。TaskIndex 的 `model` 是列表展示事实，不能误当旧 Selection 读取旁路删除。本轮不重新裁决这些既有语义。
+
 ## C. 调用链、完整性复审与范围
 
 - Agent owner：`sqlite-session-store.ts` 打开后经既有 `migration-runner.ts` 应用 0020，再允许 Repo 读写；App owner：三个 Repo 的初始化统一调用 `tasksDatabase/migrations.ts`。两个物理库独立记账、独立事务，不互相导入具体 adapter。
 - 转换来源：以旧基线仓库格式及实施基线的 `model-selection-migration.ts`、`automationSelectionMigration.ts`、共享旧身份解析规则逐项对照；上述两个被替代的文件及 SessionStorePort 逐会话迁移 API 已删除。冻结 SQL/TS 转换不运行时引用可变 Provider/Account 规则。
+- 正常入口：Agent codecs 只消费新成员；bootstrap 的 create-app、message-mapper、transcript-hydration 不再恢复旧选择。App Automation 默认用 JSON null 与 SQL NULL 区分，无旧列 fallback；OffPeak `projectModelSelectionIssues` 只投影错误，不在 list/get 写库补迁。
 - Producer：Core 的消息持久化仍经过 Port；SQLite adapter 定义物理兼容字段。`session-fork.ts` 原子 bundle 及 `workspace-checkpoints.ts` 复制均传原记录坐标，adapter 在既有事务内搬运旧快照。子 Session 当前选择是 fork 边界的新选择，不复制父 Session 当前配置；原父 entry 不变。共享会话显式导入保留独立导入边界，未恢复普通读取兜底。
 - Workflow：`repositories/script-workflow-runs.ts`、`script-workflow-activities.ts` 和 `session-inputs.ts` 对旧基线无修改；Core workflow scheduler/expert 的 model 是事件/执行结果事实，不是待按当前账号重解释的持久化 Selection。原始 JSON、统计、顺序及子会话关联保留。
 - 全仓搜索数据库驱动、建表和路径入口，Provider 重构涉及的自有 SQLite owner 为上述两库。desktop Chrome Cookie 读取的是浏览器库，stability telemetry / remote connect 仅诊断 SQLite 错误，不是第三个 owner。JSON/Markdown 配置、外部缓存与第三方库不纳入本轮 DB migration。

@@ -30,6 +30,11 @@ Host 任务迁移也沿用共享 runner 的表级备份和按数据库路径的�
 维持 `tasks_schema_migration` 的既有 checksum 与列，不把项目列插入冻结的历史 schema。
 备份恢复使用各自 journal，不能恢复了业务数据却保留“迁移已完成”的记录。
 
+CLI 继续独占会话事实、正文、软删除和结果，Host 继续独占项目归属与组织态。
+两套 Host journal 只是兼容历史记账，不产生业务状态双写。
+Host 0004 把本分支已有的 automation/off-peak 项目执行目录列移到上游任务迁移之后，
+保证独立 Repo 可用；不创建项目或分配归属。0005 仍由带 settings 的 TaskIndexRepo 执行。
+
 ## 合并必须保留的行为
 
 - 项目树及真实 roots 配置目录仍是当前设计；不恢复旧 Group/workspace 侧栏。

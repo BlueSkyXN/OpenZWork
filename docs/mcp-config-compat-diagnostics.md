@@ -2,7 +2,7 @@
 
 ## 背景
 
-`~/.openzwork/cli/config.json` 可能来自旧版本、外部 Agent 导入或用户手写。历史配置里存在两类常见 MCP 字段：
+`~/.zcode/cli/config.json` 可能来自旧版本、外部 Agent 导入或用户手写。历史配置里存在两类常见 MCP 字段：
 
 - stdio server 使用 `environment` 表示环境变量。
 - HTTP remote server 使用 `type: "remote"`。

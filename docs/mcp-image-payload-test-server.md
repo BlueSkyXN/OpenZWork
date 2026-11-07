@@ -19,7 +19,7 @@ MCP server 名称建议配置为 `zcode_image_payload_test`，工具名为 `emit
 
 ## 本机 ZCode 配置
 
-ZCode Agent MCP 用户配置位于 `~/.openzwork/cli/config.json` 的 `mcp.servers`。本地测试可加入：
+ZCode Agent MCP 用户配置位于 `~/.zcode/cli/config.json` 的 `mcp.servers`。本地测试可加入：
 
 ```json
 {

@@ -47,10 +47,12 @@ GLM-5.3 的 image 能力采用 GLM-5.2 已有的 provider-aware 判定，而不�
   provider-side media 链路处理；
 - 其他未知的第三方 GLM provider fail closed 为不支持 image。
 
+[智谱官方通用参数文档](https://docs.bigmodel.cn/cn/guide/start/concept-param)确认 GLM-5.2
 及以上模型使用 `reasoning_effort` 表达推理深度。
 
 ## 目标
 
+- 在中国模型目录的 Z.AI、BigModel 及各自 Coding Plan provider 中注册 `glm-5.3`。
 - 在 bundled models.dev catalog 的对应四个 OpenAI-compatible provider 中注册
   `glm-5.3`。
 - CLI 默认策略与 workspace dynamic overlay 使用同一 GLM-5.3 身份判断：大小写不敏感

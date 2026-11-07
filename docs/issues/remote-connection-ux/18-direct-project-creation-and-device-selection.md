@@ -68,6 +68,7 @@ flowchart TD
 - 基于 `26778bf6b4` 的 `pnpm test:unit:affected --base` 通过：692 个受影响文件；普通 Vitest 688 文件、6516 用例，隔离 Vitest 1 文件、1 用例；Node 测试组通过。随后新增候选排除测试的 `--files packages/ui/test/projectCreation.test.ts` 通过（11 用例）。
 - Desktop 原生 E2E `conversation-session-project-device-selection.test.ts` 2/2 通过，runId `desktop-e2e-20261012104747134-p27975-f98ece7e94e167c8`。覆盖真实侧栏、键盘、无任务／本地任务／在线远端任务／离线远端任务默认设备、快照刷新、未知 Profile 排除的组件合同、本地零／多目录、无效目录、已识别但无项目成员的 SSH 设备、显式重连、换设备确认和迟到目录响应。
 - 两种语言、深浅主题、1440px／480px 截图通过实际 CSS 过渡结束后取样；创建按钮保持可见。证据保存在集成工作区 `packages/desktop/.e2e-artifacts/<runId>/`。
+- 远端运行产物复用 #16 已验证且 Git tree 相同的 CLI／shared／services／server／rpc／provider／client／CUA release；本票 UI 先从当前源码构建，后续仅测试改动的复跑逐项核对 5 个核心 UI 的 source map 内容一致。
 - 额外默认设备前置通过公共历史导入创建真实任务，不发送模型请求；远端准备走真实 ScopedServicePort，不能将本地服务端口加 workspaceIdentity 当作远端命令。
 - 未验证：用户明确暂缓的真实 WSL 和手机远控；迁移的其他历史 E2E 未逐一执行，不计作通过。#22 继续负责统一后台完成／恢复和最终交叉回归；本票没有提前验收后续票能力。
 

@@ -107,7 +107,7 @@
 
 ### 手工 / E2E
 
-- 桌面端连本地 CLI 跑 >30 分钟流式长会话，看 `~/.openzwork/cli/log` 里 `memory_sample` 的 `eventRows` 曲线：修复前随 token 线性上升，修复后在 turn 间回落。
+- 桌面端连本地 CLI 跑 >30 分钟流式长会话，看 `~/.zcode/cli/log` 里 `memory_sample` 的 `eventRows` 曲线：修复前随 token 线性上升，修复后在 turn 间回落。
 - V4 pane 与 legacy bot 流同时订阅、断网重连走 `afterSeq` 回放；rewind / fork / compact 后再回放。
 - 跑 `pnpm test:e2e:container:conversation`（conversation 验证集覆盖 streaming / replay 语义）。
 

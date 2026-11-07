@@ -12,7 +12,7 @@ description: OpenZWork 维护入口：识别文件和功能来自上游 ZCode �
 - 维护模型：`docs/openzwork/maintenance-model.md`
 - 文档索引：`docs/openzwork/README.md`
 - 台账：`docs/openzwork/ledger.yaml`
-- 上游文档编辑登记：`docs/openzwork/upstream-doc-edits.yaml`
+- 上游文档的 OpenZWork 版本登记：`docs/openzwork/upstream-doc-variants.yaml`
 - 下游补丁：`docs/openzwork/patches/`
 - 经验库：本技能的 `knowledge/`
 
@@ -31,7 +31,7 @@ description: OpenZWork 维护入口：识别文件和功能来自上游 ZCode �
 
 ## 每次维护都遵守
 
-1. 改文件前用 `pnpm openzwork:scan --path <文件>` 确认来源。上游文件只改行为必需的行，不格式化、不润色、不顺手重构。
+1. 改文件前用 `pnpm openzwork:scan --path <文件>` 确认来源。上游文档或技能有同目录的 `-openzwork` 版本时，读写都以该版本为准。上游文件只改行为必需的行，不格式化、不润色、不顺手重构。
 2. 开始前读 `knowledge/` 中与任务相关的条目；任务中得到的新经验按 `knowledge` 子能力写回。
 3. 改动上游文件、新增或裁剪功能时，在同一个 PR 中更新台账和登记表。
-4. 提交后执行 `pnpm openzwork:scan --check`。检查读取已提交的内容，未提交的改动不在检查范围内。
+4. 提交后执行 `pnpm openzwork:scan --check` 与 `node --test tests/private-cleanup/cleanup.test.cjs`（`verify:pre-push` 不包含后者）。前者读取已提交的内容，未提交的改动不在检查范围内。

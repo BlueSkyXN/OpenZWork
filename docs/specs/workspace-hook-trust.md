@@ -449,7 +449,7 @@ V1 不提供 `Always trust this workspace`，也不提供对未来新增 Hook �
 建议逻辑位置：
 
 ```text
-~/.openzwork/security/workspace-hook-trust.json
+~/.zcode/security/workspace-hook-trust.json
 ```
 
 实际路径必须通过现有用户数据目录/CLI storage root resolver 生成，不能在业务代码中直接硬编码 `$HOME`。

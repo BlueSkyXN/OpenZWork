@@ -10,4 +10,6 @@
 
 ## 边界
 
+`code/zcodeplan` 保留原 `zcode-server` 的 Go package 和内部 import 路径，用于后续对照、迁移或实现 off-peak task / plan 相关能力。
+
 当前变更只把来源目录附加到本项目，不把这批 Go 代码接入本仓库构建、运行时或 UI 流程。

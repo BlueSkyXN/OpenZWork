@@ -24,7 +24,7 @@
 | 连接方式 | TCP 网络协议，ssh2 库 | 本地子进程，wsl.exe |
 | 认证 | 密码/私钥/SSH Agent | Windows 用户身份（无需认证） |
 | 文件系统 | SFTP / exec pipe | Windows 路径映射 `\\wsl$\Distro` |
-| 部署路径 | 远程 `~/.openzwork/server` | WSL 路径 `/home/user/.zcode/server` |
+| 部署路径 | 远程 `~/.zcode/server` | WSL 路径 `/home/user/.zcode/server` |
 
 ## 当前释放生命周期
 
@@ -235,10 +235,10 @@ WSL 有两种访问方式：
 与 SSH 完全相同：
 ```bash
 # SSH
-ssh user@host "ZCODE_SERVER_RUNTIME_ROOT=~/.openzwork/server ~/.openzwork/server/node ..."
+ssh user@host "ZCODE_SERVER_RUNTIME_ROOT=~/.zcode/server ~/.zcode/server/node ..."
 
 # WSL
-wsl.exe --exec bash -c "ZCODE_SERVER_RUNTIME_ROOT=~/.openzwork/server ~/.openzwork/server/node ..."
+wsl.exe --exec bash -c "ZCODE_SERVER_RUNTIME_ROOT=~/.zcode/server ~/.zcode/server/node ..."
 ```
 
 ### 4. 检测可用 WSL 分发版

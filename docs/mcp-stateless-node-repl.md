@@ -14,8 +14,10 @@
    `workspaceKey = workspaceIdentity?.trim() || workspacePath` 的 session 复用一个 MCP frontend。
 2. 每次 `js` 调用使用独立的一次性 worker 和 `NodeReplSession`；调用结束后销毁 worker，禁止
    `globalThis`、timer、动态 import module cache、response meta 或 Browser wrapper 跨调用延续。
-3. Browser Use 使用模型入口 `mcp__node_repl__js`。页面、tab、权限和 backend generation
-   由现有 BrowserControl/session registry 管理；模型每次调用重新 bootstrap 并按稳定 tab id 找回页面。
+3. Browser Use 与 Computer Use 共用同一个模型入口 `mcp__node_repl__js`（本规格成文时只有
+   Browser Use，CUA 于 2026-08 接入同一宿主）。页面、tab、权限和 backend generation 继续由现有
+   BrowserControl/session registry 管理，模型每次调用重新 bootstrap 并按稳定 tab id 找回页面；
+   CUA 侧对应 shared-host 的 `CuaControlPort` 与 frame registry。
 4. 保留 code-only 运行时兼容，避免改变既有工具身份和回放合同。`js_reset` 与
    `js_add_node_module_dir` 已于 2026-09-18 连同 moduleDirs 能力一并删除（见下文「已删除的两个工具」），
    回放合同由 UI 名称映射承担。
@@ -42,8 +44,9 @@ sessionId -> BrowserControlPort.requireSession -> workspace/remote/clientMode
 
 - `mcp__node_repl__js`
 
-`node_repl` 的模型说明与 tool description 以当前 `node-repl-host` 实现为准。
-Browser Use 的模型指导使用该 MCP 入口访问已有 BrowserControl，不另设 `browser_use` 工具。
+`node_repl` 的 server instructions 和该 tool description 声明 “Browser Use and Computer Use only”
+（成文时为 “Browser Use only”，CUA 接入后两处文案已同时限域到两个官方能力）。不得把它改成通用
+JavaScript、文件、Shell、包检查或数据处理工具，也不得提示模型改用专门的 `browser_use` 工具。
 
 模型 guidance 以升级前 `control-browser` skill 和 Browser API 文档为内容基线。除下列与 kernel
 生命周期直接冲突的语句外，导航、定位、popup 恢复、截图、安全、tab 生命周期和错误恢复规则必须保留：
@@ -106,11 +109,11 @@ core 的重复调用提醒一次也没有触发——它按完整 input 计签�
 node_repl 宿主在 `tools/call` 内按 `session_id + turn_id` 维护一份计数，同一 session 的调用已串行，
 状态只在串行区内读写。缺少 `turn_id` 的请求不计数。turn 变化时全部清零。
 
-| 信号   | 判据                                               | 提示档位                |
-| ------ | -------------------------------------------------- | ----------------------- |
-| 同码   | `code` 与上一次完全相同                            | 连续 5、15、45 …（×3）  |
+| 信号 | 判据 | 提示档位 |
+| --- | --- | --- |
+| 同码 | `code` 与上一次完全相同 | 连续 5、15、45 …（×3） |
 | 无进展 | 模型可见结果（content 与 isError）与上一次完全相同 | 连续 10、30、90 …（×3） |
-| 调用量 | 本 turn 累计 `js` 次数                             | 30、80、200，之后每 200 |
+| 调用量 | 本 turn 累计 `js` 次数 | 30、80、200，之后每 200 |
 
 命中时在结果 content 末尾追加一个 text block，同一次调用最多一条，优先级同码 > 无进展 > 调用量：
 

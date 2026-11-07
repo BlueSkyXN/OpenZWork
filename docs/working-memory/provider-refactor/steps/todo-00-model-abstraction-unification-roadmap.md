@@ -12,6 +12,7 @@
 
 Todo 01–10 已全部实施。生产主链只保留 `ModelSelection -> Provider Registry -> ModelFactory -> Model`：
 Core 不再查询 Connection 或 Adapter Registry，模型能力和请求兼容只来自完整 Model Config；账号连接选择、
+Off-Peak 和 ZCode Built-in Config 也已切入同一结构化事实链。
 
 新增的 Todo 11 只保存 Provider Runtime 组合边界的后续审查，当前为“草案/不得实施”。Todo 12–14 已完成：
 用户选择 Facade 与执行校验分离；目标 Host、workspaceKey、稀疏结构化产品 Selection 和 Local-only Subagent
@@ -141,23 +142,25 @@ Telemetry 当前设计另有问题，但本轮明确不重构：
 状态只使用三种稳定值：`草案` 表示仍需逐项讨论、不得直接实施；`待执行` 表示决策已经明确，可以实施或正在实施但
 尚未完成验收；`已完成` 表示实现、测试、文档和提交均已完成。
 
-| Todo                                                                  | 状态   | 任务                            | 目标                                                                                | 主要依赖                 |
-| --------------------------------------------------------------------- | ------ | ------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ |
-| [`01`](./todo-01-core-model-adapter-boundary-cleanup.md)              | 已完成 | Core Model Adapter 边界清理     | 删除 Core `modelAdapter`、Compatibility Model、旧 ModelPort 和 Adapter 直接执行入口 | M4 已完成                |
-| [`02`](./todo-02-ai-sdk-execution-registry-retirement.md)             | 已完成 | AI SDK 执行 Registry 退役       | 删除 Adapter 的可变 Provider Registry 和反向查询面，改为创建 Model 时一次装配       | 与 Todo 03 同步完成      |
-| [`03`](./todo-03-provider-model-ownership-and-property-totality.md)   | 已完成 | Provider/Model 新实现符合性收口 | 完成成员所有权、enabled/visibility 和 Properties 完备性                             | 与 Todo 02 同步完成      |
-| [`04`](./todo-04-core-model-connection-port-retirement.md)            | 已完成 | Core Model Connection Port 退役 | 能力只读 Active Model.properties，Connection 留在 Adapter 私有实现                  | Todo 02、03 已完成       |
-| [`05`](./todo-05-model-ref-retirement.md)                             | 已完成 | ModelRef 退役                   | Selection 用 ModelSelection，执行用 Model，按消费者删除冗余身份字段                 | Todo 01 已完成           |
-| [`06`](./todo-06-config-storage-envelope-repository-privatization.md) | 已完成 | Config 存储外壳私有化           | Document、版本外壳与 migration 退出 Provider Domain                                 | 建议 Todo 03、05         |
-| [`08`](./todo-08-legacy-model-catalog-retirement.md)                  | 已完成 | Legacy Model Catalog 退役       | 删除 Catalog/override、Reasoning State，并以 Config 驱动 MFJS Tool Schema 投影      | Todo 02、03 已完成       |
-| [`10`](./todo-10-zcode-builtin-provider-config-naming-cutover.md)     | 已完成 | ZCode Built-in Config 命名切换  | Provider Config 的 `official` 领域、代码和物理命名原子退出，不保留兼容              | 可独立执行               |
-| [`11`](./todo-11-provider-runtime-composition-boundary-cleanup.md)    | 草案   | Provider Runtime 组合边界清理   | 审查 Node Config 资源、Host/Agent 组合根和唯一生命周期 owner                        | 待人工逐项裁决           |
-| [`12`](./todo-12-model-selection-validation-boundary-cutover.md)      | 已完成 | Model Selection 校验边界收口    | Facade 只提供用户候选，Registry/ModelFactory 承担权威执行校验                       | 可独立执行               |
-| [`13`](./todo-13-target-host-model-selection-authority.md)            | 已完成 | 目标 Host 模型选择权威收口      | local/remote 读取目标 Host，删除临时 App/字符串选择并按 workspaceKey 隔离状态       | 建议在 Todo 12 之后      |
-| [`14`](./todo-14-post-refactor-mechanical-zero.md)                    | 已完成 | Provider Refactor 最终机械归零  | 修复 Full Compact MCS，收紧 Factory，私有化 Legacy DTO 并删除死代码                 | 与 Todo 12/13 协调       |
-| [`23`](./todo-23-provider-refactor-decision-gap-closure.md)           | 已完成 | 决策缺口与设置事务收口          | 删除公共连接 ID/同形 ModelRef，收口 Selection 与 Model 编辑事务                     | Todo 24 取代 Access 细节 |
-| `24`（文档仅官方版本保留）                                            | 已完成 | Access 与请求安全校验契约收口   | 收窄 Account Overlay，按当前连接鉴权，Access Type 与安全校验准入机械归零            | 取代 Todo 23 Access      |
-| [`25`](./todo-25-zapi-product-entry-retirement.md)                    | 已完成 | ZAPI 产品入口退役               | 删除当前产品身份、专属 Gate、UI 入口和 Legacy 迁移特例                              | 独立产品裁决             |
+| Todo                                                                         | 状态   | 任务                            | 目标                                                                                | 主要依赖                 |
+| ---------------------------------------------------------------------------- | ------ | ------------------------------- | ----------------------------------------------------------------------------------- | ------------------------ |
+| [`01`](./todo-01-core-model-adapter-boundary-cleanup.md)                     | 已完成 | Core Model Adapter 边界清理     | 删除 Core `modelAdapter`、Compatibility Model、旧 ModelPort 和 Adapter 直接执行入口 | M4 已完成                |
+| [`02`](./todo-02-ai-sdk-execution-registry-retirement.md)                    | 已完成 | AI SDK 执行 Registry 退役       | 删除 Adapter 的可变 Provider Registry 和反向查询面，改为创建 Model 时一次装配       | 与 Todo 03 同步完成      |
+| [`03`](./todo-03-provider-model-ownership-and-property-totality.md)          | 已完成 | Provider/Model 新实现符合性收口 | 完成成员所有权、enabled/visibility 和 Properties 完备性                             | 与 Todo 02 同步完成      |
+| [`04`](./todo-04-core-model-connection-port-retirement.md)                   | 已完成 | Core Model Connection Port 退役 | 能力只读 Active Model.properties，Connection 留在 Adapter 私有实现                  | Todo 02、03 已完成       |
+| [`05`](./todo-05-model-ref-retirement.md)                                    | 已完成 | ModelRef 退役                   | Selection 用 ModelSelection，执行用 Model，按消费者删除冗余身份字段                 | Todo 01 已完成           |
+| [`06`](./todo-06-config-storage-envelope-repository-privatization.md)        | 已完成 | Config 存储外壳私有化           | Document、版本外壳与 migration 退出 Provider Domain                                 | 建议 Todo 03、05         |
+| [`07`](./todo-07-account-connection-selection-and-access-context-cutover.md) | 已完成 | Account Connection 收口         | 结构化连接选择、Account Access、Request Auth、Off-Peak 与 MCP 使用同一事实链        | Todo 03 完整类型边界     |
+| [`08`](./todo-08-legacy-model-catalog-retirement.md)                         | 已完成 | Legacy Model Catalog 退役       | 删除 Catalog/override、Reasoning State，并以 Config 驱动 MFJS Tool Schema 投影      | Todo 02、03 已完成       |
+| [`09`](./todo-09-off-peak-model-selection-legacy-projection-retirement.md)   | 已完成 | Off-Peak 旧模型投影退役         | 隐藏 Provider 以 scoped Selection View 统一候选、Reasoning 与双重校验               | Todo 03、08              |
+| [`10`](./todo-10-zcode-builtin-provider-config-naming-cutover.md)            | 已完成 | ZCode Built-in Config 命名切换  | Provider Config 的 `official` 领域、代码和物理命名原子退出，不保留兼容              | 可独立执行               |
+| [`11`](./todo-11-provider-runtime-composition-boundary-cleanup.md)           | 草案   | Provider Runtime 组合边界清理   | 审查 Node Config 资源、Host/Agent 组合根和唯一生命周期 owner                        | 待人工逐项裁决           |
+| [`12`](./todo-12-model-selection-validation-boundary-cutover.md)             | 已完成 | Model Selection 校验边界收口    | Facade 只提供用户候选，Registry/ModelFactory 承担权威执行校验                       | 可独立执行               |
+| [`13`](./todo-13-target-host-model-selection-authority.md)                   | 已完成 | 目标 Host 模型选择权威收口      | local/remote 读取目标 Host，删除临时 App/字符串选择并按 workspaceKey 隔离状态       | 建议在 Todo 12 之后      |
+| [`14`](./todo-14-post-refactor-mechanical-zero.md)                           | 已完成 | Provider Refactor 最终机械归零  | 修复 Full Compact MCS，收紧 Factory，私有化 Legacy DTO 并删除死代码                 | 与 Todo 12/13 协调       |
+| [`23`](./todo-23-provider-refactor-decision-gap-closure.md)                  | 已完成 | 决策缺口与设置事务收口          | 删除公共连接 ID/同形 ModelRef，收口 Selection 与 Model 编辑事务                     | Todo 24 取代 Access 细节 |
+| `24`（文档仅官方版本保留）                                                   | 已完成 | Access 与请求安全校验契约收口   | 收窄 Account Overlay，按当前连接鉴权，Access Type 与安全校验准入机械归零            | 取代 Todo 23 Access      |
+| [`25`](./todo-25-zapi-product-entry-retirement.md)                           | 已完成 | ZAPI 产品入口退役               | 删除当前产品身份、专属 Gate、UI 入口和 Legacy 迁移特例                              | 独立产品裁决             |
 
 编号表示清理清单的稳定身份。实施期间按逐项确认、逐项实施推进；最终依赖链已经全部闭合：
 
@@ -173,6 +176,7 @@ Todo 02–10 逐项裁决并实施
 
 Todo 02/03 建立完整 Model Properties 和唯一 Registry 类型边界；Todo 04/05 随后删除 Core Connection 查询和
 混合模型身份；Todo 06 收回存储外壳；Todo 07 建立结构化 Account Connection；Todo 08–10 最终删除 Catalog、
+Off-Peak 旧投影和错误的 Official 命名。Todo 11 是上述工作完成后发现的独立组合边界草案，不纳入既有完成链，
 不能在人工裁决前实施；Todo 12 是独立的已裁决校验边界清理；Todo 13 在 Todo 12 的最终校验边界上收口
 Host 用户选择事实、Workspace 默认与产品持久化；Todo 14 只完成已确认契约的最终机械归零。Telemetry 整体
 重构不属于本路线图。
@@ -211,6 +215,7 @@ Host 用户选择事实、Workspace 默认与产品持久化；Todo 14 只完成
 | must-inspect   | Contracts -> ModelRef/Result/Event        | `ModelRef` 混合身份、选择和 variant                      | `contracts/src/model/index.ts`、`events/session.events.ts` |
 | should-inspect | Compact/Memory/Subagent/Title/Tools       | 多个模型执行分支必须只消费 Active Model                  | Core 调用点与 Todo 01 测试                                 |
 | conditional    | Protocol/session persistence              | 只在 Todo 05 删除或迁移字段时进入                        | Session events、timeline/message persistence               |
+| invariant-only | Off-Peak/Goal/Background                  | 继续使用普通 Selection/Factory/Active Model              | M4 execution spec                                          |
 | invariant-only | desktop/mobile/remote                     | 不改变 continuous、replayable、Queue、workspace identity | Provider Environment 设计                                  |
 | completed      | Adapter 旧 Registry tests                 | 已按网络职责重组，不再保留 Registry 查询语义             | `adapters/tests/registry.test.ts` 等                       |
 
@@ -233,9 +238,10 @@ Host 用户选择事实、Workspace 默认与产品持久化；Todo 14 只完成
 4. hidden Provider 仍是普通完整 Registry 成员，只在用户 Facade 不可见；
 5. execution-provided 缺失在网络前失败，且只覆盖动态访问材料；
 6. Provider SDK 编码、代理、CA、Endpoint Routing、签名、Retry、Stream Recovery 和错误归一化不丢失；
-7. 不把 replayable 恢复语义扩散到 desktop continuous，也不改变 workspace identity；
-8. 不新增第二套 capability、identity、connection 或 execution config DTO；
-9. Telemetry 行为维持现状，不因清理扩大 payload 或引入新 context。
+7. 不改变 Session Selection、App Recent、Queue、Goal、Background、Off-Peak admission；
+8. 不把 replayable 恢复语义扩散到 desktop continuous，也不改变 workspace identity；
+9. 不新增第二套 capability、identity、connection 或 execution config DTO；
+10. Telemetry 行为维持现状，不因清理扩大 payload 或引入新 context。
 
 ### 5.6 代码事实与图谱漂移
 
@@ -245,6 +251,7 @@ Host 用户选择事实、Workspace 默认与产品持久化；Todo 14 只完成
 - 仓库 `dep:refs` 默认 glob 不包含 `apps/zcode-cli/packages/*`，必须带
   `--scope apps/zcode-cli/packages`；barrel import 会让部分 interface 的符号结果低估，因此删除验收还要结合
   `rg`、TypeScript 和 package tests；
+- 功能图已有 Provider Registry、Model capabilities 和 Off-Peak execution 节点，本计划补充执行抽象清理
   seeds 与不变量，不新增 UI surface。
 
 ## 6. 用例规划与剪枝
@@ -254,7 +261,9 @@ Host 用户选择事实、Workspace 默认与产品持久化；Todo 14 只完成
 | 维度            | 代表值                                                    | 处理                     |
 | --------------- | --------------------------------------------------------- | ------------------------ |
 | 模型生命周期    | 创建前 Config 更新 / 创建后更新                           | 必测                     |
+| Access          | api-key / zhipu-account / execution-provided              | 必测                     |
 | 请求形态        | generate / stream / retry                                 | 必测                     |
+| 执行来源        | main / compact / subagent / off-peak                      | 代表性覆盖               |
 | Provider API    | Anthropic / OpenAI Responses / OpenAI-compatible          | 必测投影                 |
 | 客户端/远程模式 | desktop continuous / mobile replayable / remote workspace | 不变量回归，不展开状态积 |
 | Telemetry       | status / trace / usage                                    | 仅回归，不设计新状态     |

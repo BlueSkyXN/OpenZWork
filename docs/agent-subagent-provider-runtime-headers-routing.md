@@ -4,6 +4,8 @@
 
 桌面端通过父 task 的 sessionId 订阅动态 session event。Explore 子 agent 在 CLI 内部会创建独立的子 sessionId，用于子会话事件、持久化和 trace 归档。
 
+Start Plan / bigmodel Start Plan 在每次真实模型请求前需要刷新 `provider-runtime-headers`，例如官方版本请求安全校验所需的一次性 header。这个刷新不是普通 session event，也不会经过 `mirrorSubagentToolEvent` 镜像回父 task，而是独立的 ZCode Protocol 请求。
+
 ## 问题
 
 修复前，Explore 子 agent 复用父 runtime 的 `providerRuntimeHeadersPort`，但刷新请求由子 runtime 发起，因此请求里带的是子 sessionId。
@@ -21,6 +23,8 @@ Explore 子 agent 的子 sessionId 仍然保留，用于 CLI 内部账本：
 只在子 agent 对外调用 `providerRuntimeHeadersPort.refreshBeforeModelRequest` 时，把请求 sessionId 改成父 task 的 sessionId。这样 runtime headers 请求会路由到桌面 UI 已订阅的父 task 通道，符合现有 `mirrorSubagentToolEvent` 的对外语义：子 agent 对用户可见的阻塞交互归属父 task。
 
 ## 影响范围
+
+该修复只影响需要 `provider-runtime-headers` 的模型请求，目前主要是 Start Plan / bigmodel Start Plan。它不改变 session 存储主键，也不把子 session 的持久化数据写入父 session。
 
 如果以后新增子 agent 的其他独立阻塞协议请求，也需要显式判断它应该路由到子 session 还是父 task session，不能假设 eventSink 镜像会覆盖协议请求。
 

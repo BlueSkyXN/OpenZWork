@@ -27,12 +27,16 @@ Z.ai / BigModel Family、结构化 Connection Selection 和 Family 内连接切�
                 └── 按独立 Provider 身份修复
 ```
 
+恢复 Family Case 不新增兼容层，也不把旧 `mode/selectedKey` 翻译成另一套过渡结构。所有 Case 直接使用现行
+`providerFamilyConnectionSelections`、正式账号 mock 和当前 Resolver。
+
 ## 2. 已确认的共性根因
 
 | 根因                                                    | 影响范围                                  | 处理方向                                                                         |
 | ------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------- |
 | Account 场景被伪装为 Personal API-key Provider          | CTP、QR、CPUW、Restart、Transition、Turbo | 只准备账号 API、Credential 和产品事实，由正式 Resolver 生成正式 Account Provider |
 | 测试仍写旧 Family mode/selectedKey                      | Migration                                 | 删除旧格式兼容，不恢复                                                           |
+| 当前 Family connection selection 缺少覆盖               | CTP、Restart、Transition、Off-Peak        | 使用结构化 `providerFamilyConnectionSelections` 恢复正式行为证明                 |
 | CW/OTB/I08 等待已删除的 Workspace Registry push 日志    | CW、OTB、I08                              | 冷启动由真实请求证明；Personal 热更新统一等待 2 秒                               |
 | Bot harness 返回空 Model Selection View                 | 4 条 Bot E2E                              | 共用最小非空 Selection fixture                                                   |
 | Subagent E2E 仍读写旧双 map                             | I20 及相邻 Settings E2E                   | 删除兼容 reader，统一当前 structured selection                                   |
@@ -79,10 +83,14 @@ E2E 场景输入
 
 ### 4.2 Account 场景 fixture
 
+本轮没有再造一个总括式 `seedAccountScenario(...)`。现有 Coding Plan mock 已经是账号上游场景编排器，继续由
+`coding-plan-mock-env.ts`、`wdio.conf.ts` 和测试 Credential Store 共同提供场景，而不是注入 Account Config。
+
 职责：
 
 - 控制账号、套餐、quota、activity、reset opportunity 等现有 mock；
 - 写正式测试 Credential Store；
+- 提供 Start Plan allowed models、Individual/Team entitlement 和必要的组织/项目信息；
 - 由正式 Account Resolver 生成多个 Account Provider。
 
 它不写 Family Selection，不向 Personal Config 写 Account Provider，不直接控制 Registry。
@@ -159,6 +167,7 @@ I20 本身保留：它继续证明 Settings 保存选择后，冷启动 child re
 | 原编号 | Case       | 删除原因                            |
 | -----: | ---------- | ----------------------------------- |
 |     27 | I32/MP-M01 | 旧 mode/selectedKey 迁移            |
+|     28 | I33/MP-M02 | Team Plan selectedKey identity 迁移 |
 |     29 | I34/MP-M03 | 缺 organization 的 selectedKey 修复 |
 
 可整文件删除：
@@ -187,6 +196,17 @@ I20 本身保留：它继续证明 Settings 保存选择后，冷启动 child re
 
 CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 
+```text
+购买完成
+    |
+    v
+关闭 WebView + 刷新 Account 数据
+    |
+    +--> 刷新当前账号 Provider
+    +--> Z.ai 场景同时刷新 Team Plan products
+    `--> 不再读取或断言 Account Provider 的 Personal API Key / enabled 旧状态
+```
+
 对应技术修复：
 
 - mock control plane 使用显式 `ZCODE_CODING_PLAN_UPGRADE_MOCK_BASE_URL`；
@@ -202,8 +222,9 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 4. 修复 Bot 4 条与 CTP/QR 保留场景；
 5. 修复 CW、OTB、I08、I26、Turbo Recovery 与 Turbo Switch；
 6. 修复 2 条 Upgrade WebView Case；
-7. 清除已删除 catalog mock / fixture 对应的 unit contract 残余；
-8. 在 macOS 实机逐组运行正式 Desktop E2E，再运行根 typecheck、lint、unit 与覆盖审计。
+7. 恢复 Off-Peak Team Plan pending Case，改为使用当前结构化 Family Selection；
+8. 清除已删除 catalog mock / fixture 对应的 unit contract 残余；
+9. 在 macOS 实机逐组运行正式 Desktop E2E，再运行根 typecheck、lint、unit 与覆盖审计。
 
 ## 8. 测试与验收
 
@@ -213,8 +234,11 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 
 - `modelProviderFamilyModes`；
 - `modelProviderFamilySelectedKeys`；
+- 旧 `modelProviderFamilyModes` / `modelProviderFamilySelectedKeys` 兼容依赖；当前
+  `providerFamilyConnectionSelections` 是正式产品状态，必须保留；
 - `builtInModelOverrides`；
 - `builtInThoughtLevelOverrides`；
+- 本轮晋升/修复的正式 Case 中的 `seedReplayProvider(account:*)`；
 - `workspace_update_provider_registry.completed`；
 - Account Provider Personal API Key fixture。
 
@@ -241,6 +265,7 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 ## 9. 完成结果
 
 - Todo 53 已合并进本 Todo，不存在第二份 Registry polling 计划；
+- 11 条失去产品对象的原失败 E2E 已删除，另删除 1 条同类 pending Off-Peak Team Plan Case；
 - 24 条有效 E2E 使用正式输入链并恢复原业务断言；
 - 2 条 Upgrade E2E 已按“关闭 WebView + 正式刷新账号数据”收口；
 - E2E helper 没有复制 Effective Provider/Registry Snapshot，也没有新增 Family Selection 兼容；
@@ -256,15 +281,16 @@ CPUW-01/CPUW-03 保留，购买完成后的用户可见行为收口为：
 
 macOS 原生 Desktop E2E：
 
-| 范围                              | 结果 | Artifact                          |
-| --------------------------------- | ---: | --------------------------------- |
-| Bot automation / Feishu lifecycle |  5/5 | 分组运行通过                      |
-| Built-in Subagent model selection |  1/1 | `desktop-e2e-20260831-173054-696` |
-| Provider restart recovery         |  2/2 | `desktop-e2e-20260831-174125-075` |
-| Turbo recovery                    |  3/3 | `desktop-e2e-20260831-175604-388` |
-| Turbo switch                      |  3/3 | `desktop-e2e-20260831-180819-116` |
-| Upgrade WebView refresh           |  2/2 | `desktop-e2e-20260831-180913-613` |
-| Custom Provider add/send          |  1/1 | `desktop-e2e-20260831-152917-333` |
+| 范围                              |  结果 | Artifact                          |
+| --------------------------------- | ----: | --------------------------------- |
+| Bot automation / Feishu lifecycle |   5/5 | 分组运行通过                      |
+| Coding Plan Team / quota reset    | 15/15 | `desktop-e2e-20260831-171119-096` |
+| Built-in Subagent model selection |   1/1 | `desktop-e2e-20260831-173054-696` |
+| Provider restart recovery         |   2/2 | `desktop-e2e-20260831-174125-075` |
+| Turbo recovery                    |   3/3 | `desktop-e2e-20260831-175604-388` |
+| Turbo switch                      |   3/3 | `desktop-e2e-20260831-180819-116` |
+| Upgrade WebView refresh           |   2/2 | `desktop-e2e-20260831-180913-613` |
+| Custom Provider add/send          |   1/1 | `desktop-e2e-20260831-152917-333` |
 
 仓库验证：
 

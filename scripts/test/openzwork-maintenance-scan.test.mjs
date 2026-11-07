@@ -18,6 +18,8 @@ import {
   runCheck,
 } from "../../.agents/skills/openzwork-maintenance/scripts/scan.mjs";
 
+// 旧用户级根按片段拼出，避免本文件被净化门禁当作旧根残留。
+const legacyRoot = ["~", ".zcode"].join("/");
 const trimFormatter = (files) => files.map(({ text }) => text.replace(/[ \t]+$/gm, ""));
 
 function fixture() {
@@ -45,7 +47,7 @@ function fixture() {
   write("docs/old.md", "# Old\n");
   write("src/keep.ts", "export const keep = 1;\n");
   write("src/gone.ts", "export const gone = 1;\n");
-  write("src/home.ts", 'export const root = "~/.zcode/cli";\n');
+  write("src/home.ts", `export const root = "${legacyRoot}/cli";\n`);
   write("src/fmt.ts", "export const fmt = 1;   \n");
   const v1 = commit("upstream 1.0.0");
   write("package.json", JSON.stringify({ version: "1.1.0" }));
@@ -59,7 +61,8 @@ function fixture() {
   write("docs/old.md", "# Old\n");
   write("src/home.ts", 'export const root = "~/.openzwork/cli";\n');
   write("src/fmt.ts", "export const fmt = 1;\n");
-  write("docs/b.md", "# B\n\nOpenZWork 说明\n");
+  // 上游文档保持原文，OpenZWork 版本另存为同目录的 -openzwork 文件。
+  write("docs/b-openzwork.md", "# B\n\nOpenZWork 说明\n");
   write(
     "docs/openzwork/ledger.yaml",
     `version: 1
@@ -92,8 +95,8 @@ entries:
 `,
   );
   write(
-    "docs/openzwork/upstream-doc-edits.yaml",
-    "version: 1\nedits:\n  - path: docs/b.md\n    kind: content\n",
+    "docs/openzwork/upstream-doc-variants.yaml",
+    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    kind: content\n    upstreamBlob: ${git("rev-parse", `${v2}:docs/b.md`)}\n`,
   );
   const knowledge = ".agents/skills/openzwork-maintenance/knowledge";
   write(
@@ -161,15 +164,23 @@ test("runCheck 拦截复活的裁剪路径与缺失的台账路径", () => {
   assert.match(errors, /证据文件不存在：src\/ours\.ts/);
 });
 
-test("runCheck 要求上游文档编辑登记与实际一致", () => {
+test("runCheck 要求上游文档保持原文、OpenZWork 版本登记并跟随原文", () => {
   const repo = fixture();
   repo.write("src/fmt.ts", "export const fmt = 1;   \n");
   repo.write("docs/a.md", "# A\n\n新增内容\n");
-  repo.write("docs/b.md", "# B\n");
+  repo.write("docs/a-openzwork.md", "# A（OpenZWork）\n");
+  repo.write(
+    "docs/openzwork/upstream-doc-variants.yaml",
+    "version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    kind: content\n    upstreamBlob: 0000000000000000000000000000000000000000\n",
+  );
   repo.commit("doc drift");
   const errors = check(repo).join("\n");
-  assert.match(errors, /上游文档 docs\/a\.md 与上游不一致但未登记/);
-  assert.match(errors, /docs\/b\.md 当前为 upstream，删除这条登记/);
+  assert.match(errors, /上游文档 docs\/a\.md 与上游原文不一致/);
+  assert.match(
+    errors,
+    /docs\/a-openzwork\.md 是上游文档 docs\/a\.md 的 OpenZWork 版本，但没有登记/,
+  );
+  assert.match(errors, /docs\/b\.md: 上游已更新原文；按新原文复核 docs\/b-openzwork\.md/);
 });
 
 test("runCheck 校验上游基准版本与经验库格式", () => {
@@ -210,6 +221,13 @@ test("describePath 给出首次与最后出现的上游版本和认领", () => {
   assert.deepEqual(
     old.claims.map((claim) => claim.id),
     ["OZ-R001"],
+  );
+  assert.equal(describePath(context, claims, "docs/b.md").variant, "docs/b-openzwork.md");
+  const variant = describePath(context, claims, "docs/b-openzwork.md");
+  assert.equal(variant.variantOf, "docs/b.md");
+  assert.deepEqual(
+    variant.claims.map((claim) => claim.id),
+    ["variant:content"],
   );
   const ours = describePath(context, claims, "src/ours.ts");
   assert.equal(ours.firstUpstream, undefined);

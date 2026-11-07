@@ -25,7 +25,7 @@ process.execPath  <Electron Helper>
   env:  { ELECTRON_RUN_AS_NODE: "1" }   // 必须，否则子进程被当成 Chromium 子进程卡在 GPU 初始化
 ```
 
-**远端**：完整 archive 将 `zcode.cjs` 放入 immutable release 的 `runtime/`，Server Core 按 release manifest 创建 Workspace Agent；不再向 `~/.openzwork/server/agents/glm/` 部署散文件或 wrapper。
+**远端**：完整 archive 将 `zcode.cjs` 放入 immutable release 的 `runtime/`，Server Core 按 release manifest 创建 Workspace Agent；不再向 `~/.zcode/server/agents/glm/` 部署散文件或 wrapper。
 
 ## 实现
 

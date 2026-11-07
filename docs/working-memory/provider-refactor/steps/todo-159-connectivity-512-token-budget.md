@@ -8,7 +8,7 @@ MacBook Air 的 ZCode 3.12.2 在设置页测试 OpenCode Go（Responses）的 `g
 
 - 使用 Air 原有 Key、地址、Prompt 和请求参数复现，服务端原始错误为：`[integer_below_min_value] Invalid 'max_output_tokens': integer below minimum value. Expected a value >= 16, but got 1 instead.`
 - 对照请求仅将 `max_output_tokens` 改为 `16`，返回 HTTP 200、正常文本与 `response.completed`。该证据证明本次连接失败由输出预算下限触发；512 尚未实测，不能把 16 的对照结果记作 512 验收通过。
-- 原始失败记录位于 Air 的 `~/.openzwork/cli/log/zcode-2026-09-17.jsonl` 与 `~/.openzwork/cli/rollout/model-io-sess_8c93aadb-89ce-4f3e-bee9-8aaa0de12488.jsonl`。文档不保存 Key。
+- 原始失败记录位于 Air 的 `~/.zcode/cli/log/zcode-2026-09-17.jsonl` 与 `~/.zcode/cli/rollout/model-io-sess_8c93aadb-89ce-4f3e-bee9-8aaa0de12488.jsonl`。文档不保存 Key。
 - 当前 [Core 连接测试入口](../../../../apps/zcode-cli/packages/core/src/runtime/methods/workspace-generate-text.ts) 将 `CONNECTIVITY_PROBE_MAX_OUTPUT_TOKENS` 固定为 `1`；[错误归一化](../../../../apps/zcode-cli/packages/adapters/src/model/failure-classifier.ts) 将该 400 显示为通用的 `Provider rejected the model request.`。错误文案优化不纳入本项。
 
 ## 已确认目标与边界

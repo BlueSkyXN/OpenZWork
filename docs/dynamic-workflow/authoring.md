@@ -666,7 +666,7 @@ How the pack reaches each runtime:
   not depend on an old plugin cache or on the server's working directory.
 - SEA binaries embed `skills/**` under the `zcode-bundled-skills/` asset prefix
   (`cli/scripts/sea-bundled-skill-assets.mjs`) with a manifest whose hash covers every file.
-  On start the CLI extracts the pack once into `~/.openzwork/cli/bundled-skills/<hash>/`; the
+  On start the CLI extracts the pack once into `~/.zcode/cli/bundled-skills/<hash>/`; the
   directory name is the content identity, so restarts are idempotent and concurrent starts
   have exactly one winner. A hash mismatch refuses the pack and falls back to the newest
   complete extraction.
@@ -1225,7 +1225,7 @@ In brief, because the rendering belongs to `docs/dynamic-workflow/presentation.m
   source the tab can reach, and "copy path". The header therefore carries one file control,
   not two; where the split button is absent, "show in workspace" stands in the header on
   its own. The file is a **copy the desktop writes** from the bytes the tab
-  already read, at `~/.openzwork/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>`;
+  already read, at `~/.zcode/tmp/workflow-artifacts/<runId>-<digest>/<artifactId>-<digest>/v<N>/<name>`;
   the name is the base name of `sourcePath` for `file` (its extension picks the app) and
   `<artifactId>.md` for `markdown`. Each `<digest>` is the first 8 hex digits of the SHA-256 of
   the id before it, as the CLI sent it. It keeps two ids the engine tells apart in two directories

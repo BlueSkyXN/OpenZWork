@@ -8,6 +8,7 @@
 
 - Access 只保留 `apiKeyManagementUrl` 一个获取 Key 的链接字段；删除团队专用字段的 Schema、类型、Overlay、序列化、模板配置与 UI 透传。
 - 所有预设模板统一显示一个“获取 API Key / Get API Key”按钮；有无已填写 Key 都不影响入口显示，不根据账号、套餐、域名猜测链接。
+- 沿用各模板原有 `apiKeyManagementUrl`，个人／团队不再分入口。Z.ai Coding Plan 为 `https://z.ai/manage-apikey/apikey-list`，BigModel Coding Plan 为 `https://bigmodel.cn/coding-plan/personal/overview`；普通 API 及其他模板的现有主链接不变。不宣称控制台无需用户切换团队。
 - Built-in 模板仍是默认链接来源，现有配置解析与模板详情消费同一字段，复用平台打开外部链接的能力；不新增导航状态或服务路径。
 - 不为未上线的双入口中间态增加别名、迁移或宽松解析；不改真实用户文件。Schema 保持 strict，不再接受已删除字段。
 - 不改 Key 内容、Provider 身份、Access 类型、个人／团队签名、账号连接或模型配置；不顺便实施 Todo115。
@@ -39,6 +40,8 @@
 六文件49项重跑通过（Provider schema/Overlay/Registry/模板、Node codec/实际发布配置）；本批18项浏览器全部通过，其中两项实际单入口、有/无 Key、点击交付 URL。根类型/lint/架构随131组通过。桌面原生打开和真实手机登录控制台未实跑，限制仍如上，不将浏览器回调当作实机证据；并入 Goal 最终应用验收。
 
 ## Pro 原生链验收（2026-09-12）
+
+新增 pending `provider-key-native-open.test.ts`，K116-N01 通过：隔离真实 Personal Config → Settings View → 唯一按钮 → 平台接口/preload/main IPC → 未 mock 的 `shell.openExternal` → 系统默认浏览器 GET 到本机随机端口的唯一 canary 路径。普通 API Key（非空）及 Coding Plan API Key（空）两个模板实例均通过；点击前未访问、点击后精确命中，配置文件字节不变。不会请求模型、登录账号或读取浏览器其他页面；官方模板 URL 的精确值复用此前配置/Schema 测试。
 
 日志 `/tmp/provider-20260912-pro-native-key2.log`，产物 `/Users/dev/provider-stabilization-pro.euQzIZ/packages/desktop/.e2e-artifacts/provider-20260912-pro-native-key2/summary.md`。复用上一轮从 `fc757c0ec9` 构建的 App；本轮无产品代码变更，新增测试及 manifest 单独同步。首次测试未写 templateId 而没有按钮，核对产品“仅模板显示入口”规则后修正夹具，不放宽 UI 或 Schema。未擅自晋级正式回归。
 

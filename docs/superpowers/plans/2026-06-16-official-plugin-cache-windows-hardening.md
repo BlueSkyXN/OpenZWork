@@ -766,7 +766,7 @@ pnpm --dir apps/zcode-cli --filter @zcode/bootstrap exec vitest run tests/plugin
 
 Windows 桌面端启动时，内置官方插件会 seed 到：
 
-`~/.openzwork/cli/plugins/cache/zcode-plugins-official/<plugin>/<version>/`
+`~/.zcode/cli/plugins/cache/zcode-plugins-official/<plugin>/<version>/`
 
 事故日志显示 `document-skills@0.1.0` 附近有大量 `0.1.0.tmp-*` 残留，并伴随 `ENOTEMPTY` 与 `EPERM` rename 失败。
 

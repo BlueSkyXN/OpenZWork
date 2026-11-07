@@ -180,6 +180,23 @@ effectiveModelRules.resolve(
 
 本轮不增加 Account Model Config Rules。账号接口只影响 Provider 连接态和模型成员，不下发模型静态能力。
 
+## 7. Account 接口和 Start Plan
+
+目前账号 availability 接口的实际差异如下：
+
+| 账号类型            | availability 来源               | 是否返回动态模型 ID |
+| ------------------- | ------------------------------- | ------------------- |
+| Z.AI Start Plan     | `/billing/balance`              | 是                  |
+| BigModel Start Plan | `/billing/balance`              | 是                  |
+| Coding Plan         | `/subscription/list`            | 否，只返回可用状态  |
+| Team Plan           | customer / project / quota 接口 | 否，只返回可用状态  |
+
+Start Plan 从余额桶的 `capabilities` 中提取 `model:<id>`，做大小写无关的去重并形成 Account Provider `models[]`。接口返回的是账号当下可见的模型集合，不能据此写死“Start Plan 只能使用某一个模型”。
+
+当前旧兼容在余额桶没有 `model:` capability 时，会把 `show_name` 当作模型 ID。`show_name` 更像展示字段，但在服务端契约没有进一步澄清前，本轮先保留兼容，不把它扩大为新的模型身份规则。
+
+由于 Coding Plan 和 Team Plan 不返回动态模型集合，不能把这些 Built-in Provider 的 `models[]` 清空。Start Plan 也保留 Built-in 默认成员，以保证 availability 暂时没有返回模型 ID 时仍有明确的产品默认值；Account `models[]` 存在时再按整列表覆盖。
+
 ## 8. `/client/configs` 的所有权收口
 
 `/api/v1/client/configs` 是通用远端产品配置中心，不是认证服务。认证相关接口可能与它协作，但不能因此把其中的 Provider / Model 静态事实继续视为账号认证结果。
@@ -196,16 +213,17 @@ effectiveModelRules.resolve(
 
 ### 8.2 字段迁移裁决
 
-| 远端配置                      | 当前作用                                             | M3 目标                                               |
-| ----------------------------- | ---------------------------------------------------- | ----------------------------------------------------- |
-| `builtinProviders`            | Provider ID、名称、模型成员、Endpoint、API Schema    | 迁入 ZCode Built-in Provider Config 后删除远端入口    |
-| `providers`                   | 旧协议下的 Provider + Model 混合配置                 | 迁入现有体系后删除兼容入口                            |
-| `builtinModels`               | context、max output、modalities、reasoning、priority | 迁入 ZCode Built-in Model Config Rules                |
-| `magic_name`                  | 按模型名匹配 reasoning 策略                          | 删除远端 matcher；有效行为写成通用 Model Config Rules |
-| `modelContextBudget.strategy` | Agent 上下文预算灰度                                 | 与模型配置无关，本轮不动                              |
-| 商品、套餐、折扣              | SKU、展示和商业配置                                  | 继续由独立远端产品配置管理                            |
-| 安全校验开关、forceUpdate     | 风控和发布策略                                       | 继续远端管理                                          |
-| computerUse、功能开关         | 产品灰度                                             | 继续远端管理                                          |
+| 远端配置                      | 当前作用                                             | M3 目标                                                     |
+| ----------------------------- | ---------------------------------------------------- | ----------------------------------------------------------- |
+| `builtinProviders`            | Provider ID、名称、模型成员、Endpoint、API Schema    | 迁入 ZCode Built-in Provider Config 后删除远端入口          |
+| `providers`                   | 旧协议下的 Provider + Model 混合配置                 | 迁入现有体系后删除兼容入口                                  |
+| `builtinModels`               | context、max output、modalities、reasoning、priority | 迁入 ZCode Built-in Model Config Rules                      |
+| `magic_name`                  | 按模型名匹配 reasoning 策略                          | 删除远端 matcher；有效行为写成通用 Model Config Rules       |
+| `offPeak.allowed_models`      | 闲时任务模型白名单                                   | 不再作为模型事实权威；静态成员进入 Built-in Provider Config |
+| `modelContextBudget.strategy` | Agent 上下文预算灰度                                 | 与模型配置无关，本轮不动                                    |
+| 商品、套餐、折扣              | SKU、展示和商业配置                                  | 继续由独立远端产品配置管理                                  |
+| 安全校验开关、forceUpdate     | 风控和发布策略                                       | 继续远端管理                                                |
+| computerUse、功能开关         | 产品灰度                                             | 继续远端管理                                                |
 
 旧远端 Provider 类型里的 `apiKey` 字段不需要另做迁移设计：真实访问方式已经由现有访问体系负责；删除旧协议时一并删除该遗留字段。
 
@@ -247,6 +265,28 @@ openai-responses        -> 暂不启用专属 reasoning
 ```
 
 这些行为写入 ZCode Built-in Model Config Rules；按模型名识别的 helper、远端 regex matcher、Default Policy 特例和 Catalog 特例删除。规则本身可以使用通用的 model match 表达式，它只是声明式匹配条件，不是业务代码中的模型特判。
+
+## 10. 闲时任务边界
+
+闲时任务的最新目标是把“模型静态事实”和“单次执行访问材料”分开：
+
+```text
+ZCode Built-in Provider Config + ZCode Built-in Model Config Rules
+└─ builtin:offpeak-idle-plan 的静态 Provider / Model 事实
+
+Execution context
+└─ 单个闲时回合所需的 Request Auth / ticket / attribution 等请求输入
+```
+
+`builtin:offpeak-idle-plan` 是 `visibility: "hidden"` 的完整 Built-in Provider。它进入同一个 Registry，但被
+Settings 和 Model Selection Facade 隐藏；内部闲时能力按精确 `providerId/modelId` 创建普通 Model。它不改写
+Session 常驻模型。`enable_offpeak_task` 可以继续作为远端产品灰度；`allowed_models` 不再承担 Registry 模型事实。
+
+Provider Config 必须声明完整的 `api.type`、生产 Endpoint、模型成员与静态模型事实，并使用
+`access.type = "request-auth"` 表达请求期注入动态鉴权。缺少 Request Auth 时，Model 在网络请求前明确失败。
+`visibility` 不代表受信、权限或完整性豁免。
+
+本轮将 staging 带来的静态 Provider / Model 信息纳入现有配置体系，但不顺手重写整套闲时任务状态机，也不处理 `modelContextBudget.strategy`。
 
 ## 11. staging 产品能力的吸收方式
 
@@ -293,6 +333,7 @@ Remote Environment -> 使用远端环境自己的 Config / Registry
 | Model rules 的解析对象        | 使用 Effective Provider 的最终 `providerId / modelId / api.type`               |
 | `/client/configs`             | 删除 Provider / Model 静态事实、旧协议 fallback 与 `magic_name` 解析           |
 | reasoning                     | 具体模型策略进入 Built-in Rules；Adapter 只保留协议级序列化                    |
+| OffPeak                       | hidden Built-in Provider 进入普通 Registry；Request Auth 按请求注入            |
 | Video                         | 能力只读取 Effective Model Config；媒体处理、持久化与请求转换保留 staging 行为 |
 | 模型设置                      | Text 固定，Image / Video 可编辑，保存为 Personal Model Config Rules            |
 
@@ -307,7 +348,9 @@ Remote Environment -> 使用远端环境自己的 Config / Registry
 | must-inspect   | `packages/provider` resolver、Account Provider Service、Registry | 配置覆盖和最终事实 owner                  |
 | must-inspect   | `/client/configs` Provider / Model 同步                          | 旧远端事实源需要退出                      |
 | must-inspect   | CLI ModelFactory、reasoning policy、API adapters                 | Model Rules 必须生成相同最终请求          |
+| must-inspect   | OffPeak execution-scoped model source                            | 静态配置与单回合访问材料分界              |
 | should-inspect | Provider Settings、模型选择候选                                  | 都消费 Registry，但各自保存语义不同       |
+| should-inspect | Start/Coding/Team Plan availability                              | 只有 Start Plan 返回动态模型 ID           |
 | conditional    | Video / modality 设置                                            | staging 新能力接入 Effective Model Config |
 | invariant-only | desktop continuous / mobile replayable                           | Provider 收口不能改变消息恢复语义         |
 | invariant-only | local / remote workspace                                         | 远端环境继续拥有自己的执行配置            |
@@ -334,8 +377,9 @@ M3 按以下顺序执行：
 3. 将 staging 的 Provider / Model 静态事实翻译到 Built-in Config 和 Model Rules；
 4. 接入 Video 与 input/output format UI，但不恢复旧 Store、Catalog 或 Snapshot；
 5. 删除 `/client/configs` 的 Provider/Model 同步、旧协议 fallback 和具体模型 hardcode；
-6. 用引用审计确认旧入口和模型特判已经退出；
-7. 更新仍使用旧层级顺序的架构文档。
+6. 收口 OffPeak 的静态事实来源；完整 Provider 进入 Registry，访问材料按请求注入；
+7. 用引用审计确认旧入口和模型特判已经退出；
+8. 更新仍使用旧层级顺序的架构文档。
 
 ## 15. 验收
 
@@ -344,12 +388,15 @@ M3 按以下顺序执行：
 - Provider overlay 顺序是 Built-in -> Account -> Personal；
 - Account Service 不读取 Personal Providers；
 - Model Rules 是 ZCode Built-in + Personal 数组拼接，且作用于 Effective Provider；
+- Start Plan 动态模型集合正确覆盖 Built-in 默认集合，Coding/Team Plan 仍保留 Built-in models；
 - 普通 API Key 与账号凭据走各自正确的配置/解析路径；
 - `/client/configs` 不再下发 Provider / Model Registry 静态事实；
 - 所有具体模型 reasoning hardcode 已删除；
 - `ox-alpha` 和其他已支持模型的最终 HTTP 请求行为未回退；
+- OffPeak 静态模型事实来自 Built-in/Rules，单回合访问材料不持久化为普通 Provider；
 - Video、Image 等能力来自 Effective Model Config；
 - 当前 Active Model、Local/Remote 所有权和 desktop/mobile 消息语义保持不变；
+- Typecheck、Lint、Provider/Registry/Account/Adapter wire/OffPeak/Settings 相关测试通过。
 
 本轮集成拓扑已经裁决为本地 merge；远端分支后续如何处理仍由用户单独决定，不属于本次提交。
 
@@ -361,21 +408,24 @@ M3 按以下顺序执行：
 - `ox-alpha`、`GLM-x-preview-f`、`x-preview-f-free` 的 reasoning 行为进入 Built-in Rules；
 - Default Policy 不再按模型名合成 Registry 静态事实；
 - `/client/configs` 的 Provider / Model 事实解析、同步与远端 matcher 已删除；
+- `builtin:offpeak-idle-plan` 当前以未发布的 `executionOnly` 中间实现提供静态成员；M4 将其改为通用
   `visibility: "hidden"`、完整 Endpoint 与 `request-auth`，不保留该中间字段；
 - Video、Image 和 reasoning 只消费 Effective Model Config；
 - staging 的 Video、模型模态编辑和其他 Provider 域外产品变更均保留。
 
 ### 16.1 验证结果
 
-| 验证范围                                              | 结果                                                          |
-| ----------------------------------------------------- | ------------------------------------------------------------- |
-| `pnpm typecheck`                                      | 通过                                                          |
-| `pnpm --dir apps/zcode-cli -r --if-present typecheck` | 通过；具有 typecheck script 的 CLI workspace package 全部通过 |
-| `pnpm lint`                                           | 通过；0 error，39 条 staging 既有 warning                     |
-| CLI Video / reasoning / Registry 聚焦单测             | 13 个文件、185 个测试通过                                     |
-| Provider 设置冲突收口聚焦单测                         | 5 个文件、93 个测试通过                                       |
-| 本轮 78 个修改/新增文件的 `oxfmt --check`             | 通过                                                          |
-| `git diff --check`                                    | 通过                                                          |
+| 验证范围                                                    | 结果                                                                                                                               |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm typecheck`                                            | 通过                                                                                                                               |
+| `pnpm --dir apps/zcode-cli -r --if-present typecheck`       | 通过；具有 typecheck script 的 CLI workspace package 全部通过                                                                      |
+| `pnpm lint`                                                 | 通过；0 error，39 条 staging 既有 warning                                                                                          |
+| Provider / Account / Registry / OffPeak / Settings 聚焦单测 | 9 个文件、117 个测试通过                                                                                                           |
+| CLI Video / reasoning / Registry 聚焦单测                   | 13 个文件、185 个测试通过                                                                                                          |
+| Provider 设置冲突收口聚焦单测                               | 5 个文件、93 个测试通过                                                                                                            |
+| `pnpm test:unit`                                            | 12,296 通过、25 跳过、30 失败；失败仅位于 7 个 Windows 打包、macOS 公证和 CUA 原生环境测试文件，与本轮 Provider / Model 改动无交集 |
+| 本轮 78 个修改/新增文件的 `oxfmt --check`                   | 通过                                                                                                                               |
+| `git diff --check`                                          | 通过                                                                                                                               |
 
 仓库级 `pnpm fmt:check` 仍会被既有的二进制 `apps/zcode-cli/tests/gb2312.js` 和用于测试解析失败的 Electron HTML fixture 阻断，因此本轮以实际修改/新增文件的格式检查作为变更门禁，没有改写这些无关 fixture。
 

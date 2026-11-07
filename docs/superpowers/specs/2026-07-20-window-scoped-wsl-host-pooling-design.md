@@ -649,7 +649,7 @@ dispose 可能被共享的整个 backend。
 ```text
 deployServer
   → start remote lock-holder shell
-      → mkdir ~/.openzwork/server/.deploy.lock (atomic acquire)
+      → mkdir ~/.zcode/server/.deploy.lock (atomic acquire)
       → write owner UUID + heartbeat
       → emit acquired marker
   → lock 内重新执行 checkServerDeployDecision

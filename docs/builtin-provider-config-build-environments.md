@@ -1,6 +1,6 @@
 # Built-in Provider 配置双环境打包
 
-标准模板的产品边界见[标准 Provider 模板](specs/standard-provider-templates-openzwork.md)；本文继续维护构建与环境转换合同。
+模板与模型的日常维护见[维护入口](./builtin-provider-maintenance/README.md)；本文继续维护构建与环境转换合同。
 
 ## 所有权与边界
 
@@ -14,12 +14,40 @@
 | test       | config/provider/zcode-builtin.test.json |
 
 两份都是完整 Release。生产文件是唯一编辑源，测试文件由
-现有配置维护流程生成并提交，revision 跟随生产文件。
-环境选择沿用同一 Release Schema、个人 Overlay 和 Registry。
+`pnpm provider:config:sync-test` 生成并提交，revision 跟随生产文件。
+`pnpm provider:config:check-test` 只检查生成结果是否过期，不写文件；纳入单测。
+不更改 Release Schema、个人 Overlay、Registry 或账号／模型选择。
 
-## 环境配置与校验
+## 测试配置的生成规则（Todo147）
 
-两份配置均按完整 Release schema 解码。当前公开模板与模型规则由仓库配置维护；构建入口 `scripts/builtin-provider-config.mjs` 只选择和校验文件，不在线获取用户配置。
+对照 `staging_backup@790884b1ce`，仅转换 `zhipu-account` Provider 的以下模型地址：
+
+| 生产 Base URL                                  | 测试 Base URL                                          |
+| ---------------------------------------------- | ------------------------------------------------------ |
+| https://api.z.ai/api/anthropic                 | https://api.z.ai/api/anthropic                 |
+| https://open.bigmodel.cn/api/anthropic         | https://open.bigmodel.cn/api/anthropic                  |
+| https://zcode.z.ai/api/v1/zcode-plan/anthropic | https://zcode.z.ai/api/v1/zcode-plan/anthropic |
+| https://zcode.z.ai/api/v1/off-peak/anthropic   | https://zcode.z.ai/api/v1/off-peak/anthropic   |
+| https://zcode.z.ai/api/v1/highspeed/anthropic  | https://zcode.z.ai/api/v1/highspeed/anthropic  |
+
+- 每次从完整生产配置重新生成，不增量修改旧测试配置，不维护第二份模型能力。
+- 手动模板、第三方地址、Key 管理链接等字段原样保留；新增未知账号地址时明确失败，要求补充映射，不偷偷请求生产。
+- 对命中上述生产地址的站点规则，保留原规则并在其后生成测试 URL 对应规则。
+  一条规则只描述一个站点，模型匹配、API 类型、能力、Map 和相对顺序全部继承。
+  保留生产规则是因为测试包里的手动 API 模板仍指向生产官方入口。
+- 完整 Release 校验后才写生成文件；无网络、无用户数据迁移、无在线发布。
+- 构建仍只读取选定文件，不在并行构建时隐式重写源文件；先同步再构建，沿用 Todo146 缓存输入。
+
+```text
+编辑生产 JSON → 同步脚本（账号 URL 映射 + 派生站点规则）→ 测试 JSON
+                       ↓ 校验生成结果
+                  原双环境打包流程
+```
+
+签名准入另外在现有 Adapter 增加 `api.z.ai`、`zcode.z.ai` 精确 hostname，
+`bigmodel.cn` 已由既有 `*.bigmodel.cn` 覆盖。不扩大到整个 `*.z.ai`，
+也不改变公共 Family 分类工具的其他消费者。与产品环境开关无关，仅依实际 URL 判断。
+账号 Start／Off-Peak 的不签名例外优先于域名；个人／团队及显式套餐 Key 继续走原入口。
 
 ```text
 ZCODE_ENV + 对应完整 JSON

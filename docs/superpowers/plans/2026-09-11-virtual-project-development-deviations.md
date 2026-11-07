@@ -147,6 +147,13 @@
 - 处理：Host 的 native/V4 创建都经预留（缺省明确 NULL）；CLI 所有创建共用 ID 占用检查，拒绝持久化、内存和在途同 ID，异步 materialize 前占用、结束即释放。显式导入分配新 CLI 身份，旧 hash 只用于历史备份修复。
 - 验证：V4 整文件 49 测试通过；native wire 针对性测试通过；CLI 创建/并发测试通过。CLI 协议整文件首次 111/112 通过，另一个失败为既有 ProviderConfigMap.toJSON 从对象变为 rules 数组后的旧断言；现改为通过公开 get 接口验证目标配置，重新整轮 112/112 通过。
 
+### D21：定时/闲时定义只有 cwd，创建预留还会重新读取当前 roots
+
+- 原预期：schema 增加项目字段后，既有派发链会自然沿用创建时的目录。
+- 实际：Repo、scheduler → main → Host 消息与 task adapter 都需要显式传递附加目录；V4 创建原来还会用当前项目解析结果覆盖调用方目录。项目移除旧 cwd 或软删除后，普通创建校验也会拒绝已有定义的下一次运行。
+- 处理：定义创建由 Host 解析并保存项目、owner、cwd 和目录快照；解析失败先于取号。派发/重试/resume 传保存值，明确空数组不回退。带快照的归属预留继续校验同 Host 的既有项目，但不重新校验当前 roots；普通创建保持原校验，项目概念不进入 CLI。
+- 验证：新增测试先复现 5 项服务/存储失败和 3 项透传失败；修正 V4 mock 不持久化的夹具后，服务/存储、调度消息与 adapter 共 5 文件 197 测试通过。表单纯逻辑用例先复现同 cwd 项目合并，改按项目 ID 后通过；GUI 选择并提交空 roots 项目已通过：实际 SQLite 中归属正确、默认 cwd 已创建、附加目录为 []；完整远端调度仍待验收。
+
 ### D22：新侧栏把 React 点击事件传进了导航的 automationId
 
 - 原预期：侧栏的无参数打开回调可以直接作为按钮 onClick。
@@ -387,6 +394,12 @@ D48/D51 验证回写：统一 Host 装配、普通 HTTP 能力声明、首次 UR
 - 竞态：目录读取前后验证 membership/入口；绑定返回只对原目录与 attachment 生效。手机无 Source settings 权限时仍保持原 shared-host workspace 边界。
 - 验证：Catalog 3 例、真实 React binding 2 例（先红后绿）、Source attachment 与原设置表单定向回归；VP11 GUI 已写入 pending，正在执行。未宣称手机未打开 root 的导航已实现。
 
+### D53：降级期间新增的调度定义漏过首次 migration
+
+- 证据：v3 migration 只在首次运行时补 automations/off_peak_tasks；每次启动 reconcileLegacy 只处理 tasks。旧版本再新增定义后，新列均为 NULL，重新升级不会执行 v3，定义缺少 owner/首次项目归属。
+- 处理：每次启动同事务交接 host_id IS NULL 的调度定义，唯一 root 匹配只决定一次，附加目录保持旧版 []；已处理 NULL 项目、已保存快照与 cwd/canonical key 均保持。
+- 验证：新增旧列写入 → 再升级 → 项目 roots 变化 → 再启动，以及远端持库 owner 三例，先跑红后实现。
+
 ### D54：菜单动画开始时 getElementText 返回空文本，GUI 断言读取过早
 
 - 证据：VP11 的 Commands 目录去重/未打开 root 选择已经通过；Hooks 菜单找到 4 个 radio item，但同一毫秒内 getElementText 都返回空字符串，断言得到 0 个匹配。run `desktop-e2e-20260910230329344-p70290-54b2a0a4f04adf9d` 为 6 pass / 1 fail。
@@ -487,7 +500,7 @@ D58–D60 验证回写：Bot/侧栏/footer 14 文件 193 例通过；typecheck 5
 
 - 证据：第 29 轮运行 `desktop-e2e-20260911010438954-p14956-f84ac66c1ea4d4d2` 在 120 秒超时。Desktop 进入 waiting_terminal，Web 控制台出现 `External relay terminal socket error`，没有进入项目导航。此前第 28 轮相同真实 relay 的草稿导航通过。
 - 处理：补充阶段标记及脱敏的 WebSocket origin/open/close 诊断后再复跑；不能据此判定 D67 正确或错误，也不能把网络问题直接归因于产品实现。
-- 状态：第 30 轮确认超时发生在 mobile relay admission，且 loopback 接收器清理遮盖原始异常。独立 Chromium 对两个 relay origin 均能握手，不能归为外网不可用。清理修正并增加 CDP 后，第 31 轮直接通过，握手 origin 为 `wss://provider.example.test`。前两轮配对失败的根因未确定，不以一次通过声称消除网络/开发服务间歇问题。
+- 状态：第 30 轮确认超时发生在 mobile relay admission，且 loopback 接收器清理遮盖原始异常。独立 Chromium 对两个 relay origin 均能握手，不能归为外网不可用。清理修正并增加 CDP 后，第 31 轮直接通过，握手 origin 为 `wss://zcode.z.ai`。前两轮配对失败的根因未确定，不以一次通过声称消除网络/开发服务间歇问题。
 
 ### D69：Composer 仍沿旧 workspace/sessions-index 候选链路
 
@@ -507,6 +520,12 @@ D58–D60 验证回写：Bot/侧栏/footer 14 文件 193 例通过；typecheck 5
 - 处理：先补 spec 6.0.3；在既有 workspaceKey 草稿 scope 保存可选项目归属，手机在 prewarm 前恢复。复用原 promotion/清理，不在 main/relay 增加业务状态。
 - 状态：归属持久化与 Root 重建两个回归先失败；promotion 不得复制组织态到 Session 草稿的回归也先失败。修复后 8 文件 85 个测试、typecheck 75、architecture 60 通过。VP13 第 34 轮真实页面 reload + 提交 + 重开通过（`desktop-e2e-20260911013709698-p23351-af24792bba497b51`，14.3 秒），正文、projectId、cwd、最终 taskId 均有断言。
 
+### D72：先前把远端定时/闲时新建列为必做项，未核对既有产品限制
+
+- 证据：`docs/off-peak-task/spec.md` 多端条目与 `docs/ui/scheduled-tasks-main-view.md` 明确规定 Scheduled/Idle-time 新建仅限本地项目，旧远端任务继续管理，手机隐藏该入口；虚拟项目 H1 只裁定绑定虚拟项目、固化目录，没有明确废除远端限制。此前实施记录把开放远端新建列为缺口，依据不足。
+- 处理：向用户异步确认是否扩展范围；确认前继续既有本地新建边界下的项目迁移，不把 Source settings attachment 扩成 Agent/调度通道。
+- 状态：用户询问是否“远端不能新建项目”，已明确说明限制只针对定时/闲时任务的创建目标，远端项目与普通对话不受影响。当前继续保留既有调度范围，不把该限制记为本次新引入，也不把未新增远端调度视作功能遗漏。
+
 ### D73：清理审计仍发现没有消费者的旧空态创建链
 
 - 证据：ScratchWorkspaceDialog 已没有 JSX/import 消费，仅 ChatEmptyState 重导出两个 helper 给旧测试；Root 的 createScratchWorkspace 回调继续经 App 传到 Shell，但 Shell 不使用。dep:refs 首次用了文件名而非实际 export，读取 export 后重查，并用全仓 rg 交叉确认。另有三个存量 store 测试只有 setup 没有断言，不能贡献有效覆盖。
@@ -518,6 +537,12 @@ D58–D60 验证回写：Bot/侧栏/footer 14 文件 193 例通过；typecheck 5
 - 证据：全仓检索 remotePinnedTaskStore / remoteTimelineTaskStore，生产调用方只剩连接后的 refresh 和 Header rename/pin/archive 的 upsert/remove，没有订阅或读取 items 的组件。连接完成仍等待这两份缓存读取，Header 仍维护额外乐观/回滚副本；新 ProjectSidebar 与全局 Controller 查询不消费它们。
 - 处理：先补 spec，删除缓存与刷新端口/写入调用。保留实际被 Header/全局搜索消费的 task query projection，不把此次清理扩展为改动 H4 全局搜索语义。
 - 状态：两份缓存、连接等待与 Header 乐观/回滚副本已删除。首次清理漏掉换行调用，被 typecheck 77 检出；补齐后全仓确认无 UI 引用，typecheck 78 通过。连接时序回归先失败，删除旧刷新端口后与 Header、选项共 4 文件 67 例通过；attachment/身份/owner 路由保留。
+
+### D75：定时/闲时项目选择仍读取整个任务树
+
+- 证据：useAutomationProjectOptions 只使用 projects，却调用 readTree，额外读取任务并进入自动归档路径。只读目录契约 readProjects 已存在。
+- 处理：新增候选读取回归先失败，改用 readProjects；新建范围暂按现有产品文档保留本地项目，范围确认未回覆不视为授权新增远端调度能力。
+- 状态：只读目录回归先失败，改用 readProjects 后与远端缓存清理共 4 文件 67 例通过，typecheck 78 通过。
 
 ### D76：H2 手机设置目录被误列为待实现交互
 
@@ -618,7 +643,7 @@ VP18 测试设施说明：runtime lifecycle 在公共接口上是可选能力，
 
 ### D91：手机回归被外部 relay 的 TLS 证书校验拒绝
 
-- 证据：第 52 轮 CDP 在 `wss://provider.example.test` 握手收到 `net::ERR_CERT_AUTHORITY_INVALID`，VP13 停在 mobile relay admission；截图为“无法连接中转服务”，尚未进入项目或会话导航。与 D68 早前不明原因配对失败区分记录。
+- 证据：第 52 轮 CDP 在 `wss://zcode.z.ai` 握手收到 `net::ERR_CERT_AUTHORITY_INVALID`，VP13 停在 mobile relay admission；截图为“无法连接中转服务”，尚未进入项目或会话导航。与 D68 早前不明原因配对失败区分记录。
 - 处理：保留 TLS 校验，不修改产品连接/恢复行为；独立核对证书连接并重跑手机代表用例，未通过前不得宣称这一轮完整通过。curl HTTPS 成功，独立 Chrome HTTPS 返回 200，证书签发者为本机 Proxyman CA；未更改用户代理、证书信任或 TLS 校验。HTTPS 成功不代表此前 WSS 证书异常已经消除。
 
 - D91 复验：第 54 轮手机单独运行仍在相同 relay TLS 握手失败；独立 Chrome 的无配对 WSS 探针没有成功建立应用握手，不能作为手机回归通过。第 48 轮既有手机完整交互通过记录保留，最后两轮失败不得覆盖或改写为通过。
@@ -635,7 +660,7 @@ VP18 测试设施说明：runtime lifecycle 在公共接口上是可选能力，
 
 migrateGroups 在 hosts.length === 0 时显式创建空项目，与“无 session 不迁移”相反。首次迁移只处理未删除成员；本机容器按备份核对来源，不按 Group 名称删除手建空项目。SQL/checksum 不变。
 
-D93 本机修复：原备份中 19 个手建 Group 与 19 个覆盖名称的迁移项目按同一顺序逐项对应，其中 11 个零成员、零 root。核对当前行未变且无任务/调度/Bot/远端入口引用后，先备份再在事务内移除这 11 个误生成容器。备份：`~/.openzwork/backup/empty-group-repair-20260911-gq2grh`。4101 条任务保留、其余 15 表哈希未变；41 个有用项目保留，quick_check 和外键检查通过。
+D93 本机修复：原备份中 19 个手建 Group 与 19 个覆盖名称的迁移项目按同一顺序逐项对应，其中 11 个零成员、零 root。核对当前行未变且无任务/调度/Bot/远端入口引用后，先备份再在事务内移除这 11 个误生成容器。备份：`~/.zcode/backup/empty-group-repair-20260911-gq2grh`。4101 条任务保留、其余 15 表哈希未变；41 个有用项目保留，quick_check 和外键检查通过。
 
 ### D94 纠偏回归的测试问题与连接生命周期
 
@@ -667,7 +692,7 @@ D95 架构收口：project 公共服务增加 1 个目录查询意图后，发�
 
 用户指出 `v3_projects` 把 schema 代号混入了 migration ID。CLI 使用四位补零序号加语义名，task-index 此前没有版本化账本，故第一条应为 `0001_projects`，两个库各自递增。仅更名声明和启动/升级测试中的预期；SQL 文本（包括 checksum 输入中的 v3 注释）保持原样，并新增固定 checksum 断言。不为开发期临时名称给公共 runner 添加别名或第二套迁移逻辑。
 
-本机先备份、在副本中更名并调用当前 projectStorage.migrate，确认 applied=[]、所有业务表哈希不变后，在真实库事务中仅更新 schema_migration.id。checksum、app_version 和 applied_at 未变；4102 条任务、41 个项目和全部 15 张业务表内容不变，quick_check/外键检查通过。备份与报告：`~/.openzwork/backup/migration-id-20260911-cppLK7/`。第一次副本断言因 Node SQLite 返回的 null-prototype row 与普通对象原型不同而失败，发生在真实库修改前；比较时统一行对象后通过，未放宽字段断言。
+本机先备份、在副本中更名并调用当前 projectStorage.migrate，确认 applied=[]、所有业务表哈希不变后，在真实库事务中仅更新 schema_migration.id。checksum、app_version 和 applied_at 未变；4102 条任务、41 个项目和全部 15 张业务表内容不变，quick_check/外键检查通过。备份与报告：`~/.zcode/backup/migration-id-20260911-cppLK7/`。第一次副本断言因 Node SQLite 返回的 null-prototype row 与普通对象原型不同而失败，发生在真实库修改前；比较时统一行对象后通过，未放宽字段断言。
 
 D98 验证：5 文件 / 34 项单测通过（含首次升级、重复启动、downgrade 和公共 runner）；root typecheck 通过，lint 为 48 warnings / 0 errors，architecture baseline/new/violations 均为 0，格式与 diff 检查通过。第 63 轮 `desktop-e2e-20260911044122173-p94329-bf236dca664095c7` 重新构建后 9/9 桌面 E2E 通过，首窗确认 app `0001_projects` 与 CLI `0020_session_soft_delete_outcome` 已完成。影响模块为 project-storage 的迁移声明；schema_migration 仍由公共 runner 独占，启动顺序与桌面/手机时序不变。代码含测试新增 15 行、删除 8 行，净增 7 行。
 
@@ -731,11 +756,11 @@ D101 最终验证：第二轮 `desktop-e2e-20260911051449253-p26668-5ffc16408305
 
 只读审计确认：本机 position 仍是旧迁移结果，前几项为 default、DEMO、ZCodeProject；保留的 9 月 10 日历史设置中 test-2、z-m、ios-demo、zcode-v4-ios 在当前库分别排第 22、29、18、30。当前 setting.json 已从错误顺序反向派生，不能当作升级前输入。用户明确要求不手改排序，并接受回退部分近期数据，改为恢复旧备份后自行启动验收。
 
-可用完整快照为 `~/.openzwork/backup/session-projects-20260909-141705/`：旧任务索引有 4078 行，无 projects 表、无 schema_migration；旧设置的前五个项目为 z-m、ios-demo、test-2、zcode-v4-ios、ios-demo-2。回撤前索引有 4111 行（新增 33、旧行无缺失），共同任务中 1 个标题、1518 个归档标记、17 个未读值不同。原始副本完整性和外键检查通过。现存两个 tasks_index 自动表级备份均为零行，不能用于本机恢复。
+可用完整快照为 `~/.zcode/backup/session-projects-20260909-141705/`：旧任务索引有 4078 行，无 projects 表、无 schema_migration；旧设置的前五个项目为 z-m、ios-demo、test-2、zcode-v4-ios、ios-demo-2。回撤前索引有 4111 行（新增 33、旧行无缺失），共同任务中 1 个标题、1518 个归档标记、17 个未读值不同。原始副本完整性和外键检查通过。现存两个 tasks_index 自动表级备份均为零行，不能用于本机恢复。
 
 CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并含另一分支的 `0020_dwf_run_result`；此次只重测 app 项目迁移，因此保留当前 CLI 正文库，不回退其 schema、不修改 checksum。当前 CLI 有 5076 个 session，旧快照 5054 个；本次没有覆盖正文。
 
-执行前确认应用/数据库无持有进程，保存当前 SQLite 一致快照与设置，再以旧备份的完整文件替换任务索引和 setting.json；原文件及 WAL/SHM 同时保留，未手改 position、project_id 或 migration ledger。备份及审计：`~/.openzwork/backup/project-migration-retest-20260911-Siq1ag/manifest.json`。还原文件 SHA-256 与旧备份逐字一致，quick_check/外键检查通过，当前库 4078 行、projects/ledger 均不存在；CLI 主文件及 WAL 哈希前后不变。
+执行前确认应用/数据库无持有进程，保存当前 SQLite 一致快照与设置，再以旧备份的完整文件替换任务索引和 setting.json；原文件及 WAL/SHM 同时保留，未手改 position、project_id 或 migration ledger。备份及审计：`~/.zcode/backup/project-migration-retest-20260911-Siq1ag/manifest.json`。还原文件 SHA-256 与旧备份逐字一致，quick_check/外键检查通过，当前库 4078 行、projects/ledger 均不存在；CLI 主文件及 WAL 哈希前后不变。
 
 状态：已回撤，等待用户用当前代码启动；未提前执行 migration，不能把恢复检查当作这次人工升级验收通过。9 月 9 日快照比保留的 9 月 10 日设置更早，项目原顺序应按此次成套恢复的 9 月 9 日 setting.json 验收。只有本机数据操作与文档更新，没有生产代码改动。
 
@@ -757,6 +782,7 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 
 用户截图发现侧栏与 composer 项目候选不一致。运行时 CDP 读取确认侧栏 44 项而旧 ChatEmptyWorkspacePreviewMenu 仅收到已打开的 z-m tab；旧筛选还截断前 5 项，以 cwd 判等并显示目录叶名。原因是重构漏接这个入口。按 spec 共用项目目录/排序，菜单改为项目身份、名称和 roots 搜索；搜索文案改“搜索项目”。无需修改数据库或迁移。
 
+
 菜单完整展示后，桌面截图暴露原固定菜单高度会裁掉底部入口：改为候选列表独立滚动、footer 不收缩。验证中 WebDriver 的 clearValue 未触发 React input，改用真实键盘清空搜索；布局 Emulation 后的原生右键坐标不稳定，将布局检查置于正常交互验证之后。最终 VP30 E2E 1/1、单测 54 项及架构/类型/lint 通过，详见 coverage matrix。`pnpm knip` 全仓扫描仍报既有大量未使用项，未借此删除无关代码。
 
 ### 同名历史任务的未读错觉与详情标题缺失（2026-09-11，只读排查）
@@ -772,6 +798,7 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 ### 归档管理实施记录
 
 设置层与 WorkspaceShellLayout 是兄弟节点，原 ProjectDirectoryProvider 只覆盖侧栏/composer，直接给设置另包一次会产生两个读取 owner。本次提升到共同 RootWorkspaceContent 并让嵌套 Provider 复用，独立壳层仍可挂载。codegraph 两次报 no such table: unresolved_refs，限定源码检查替代，未修工具索引。TaskService deleteTask 接口旧注释声称仅列表隐藏，当前实现已委托 CLI mutateSessionFacts(delete)；实现沿用当前 CLI 软删除事实，不新增本机 tombstone。
+
 
 首轮 Electron 1/3：归档与删除落库断言已经通过，后续误以为 browser.refresh 会恢复设置页，因此等不到归档页面。运行日志确认应用回到工作区；测试改为重新打开设置，再断言已删除任务不复活。该修正没有改动应用导航。用户随后明确中间下拉是排序方式，已去掉任务类型分类，仅保留更新时间/创建时间。
 
@@ -789,17 +816,18 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 
 开发中额外发现：仅以 service 对象 + workspaceKey + taskId 判定标题请求资格，无法覆盖 attachment 重建但复用 service 的情形。先补失败单测，再将 remoteSessionId 加入读取身份；同任务刷新乱序与切任务首帧清理均已覆盖。
 
-运行证据：首次隔离 E2E 在 15:35:09.849 完成 getTaskMeta（0.6ms），15:35:12.339 才完成 V4 subscribe（2484.8ms），真实历史正文及 E2E_AMT_COLD_TITLE 正常显示；没有标题 readSession 请求。首次第二项失败为测试使用了不存在的 sidebar-settings ID，改为公共 TID_TASK_SETTINGS_BUTTON 后桌面两项均通过。全部 fixture 写入 zcode-active-task-e2e-\* 隔离 HOME，未修改用户数据库。最终验证与产物见 AMT coverage matrix。
+运行证据：首次隔离 E2E 在 15:35:09.849 完成 getTaskMeta（0.6ms），15:35:12.339 才完成 V4 subscribe（2484.8ms），真实历史正文及 E2E_AMT_COLD_TITLE 正常显示；没有标题 readSession 请求。首次第二项失败为测试使用了不存在的 sidebar-settings ID，改为公共 TID_TASK_SETTINGS_BUTTON 后桌面两项均通过。全部 fixture 写入 zcode-active-task-e2e-* 隔离 HOME，未修改用户数据库。最终验证与产物见 AMT coverage matrix。
+
 
 ### 用户追加要求恢复 CLI 原始库（2026-09-11）
 
-用户在再次恢复 app 索引/设置后明确要求 cli/db/db.sqlite 也恢复到同一份 9 月 9 日 14:17 备份。已确认没有使用数据库的应用进程，先保存一致快照，再离线替换完整 CLI 文件；原文件与 WAL/SHM 留存，未逐表删除正文、未修改 migration ID/checksum。备份和审计：`~/.openzwork/backup/cli-migration-retest-20260911-EQXKVM/`。还原前 session/message/part 为 5076/71350/239427，还原后为 5054/71269/239180；恢复文件 SHA-256 与旧备份一致，quick_check 与 foreign_key_check 通过。app 任务索引及设置哈希前后不变。
+用户在再次恢复 app 索引/设置后明确要求 cli/db/db.sqlite 也恢复到同一份 9 月 9 日 14:17 备份。已确认没有使用数据库的应用进程，先保存一致快照，再离线替换完整 CLI 文件；原文件与 WAL/SHM 留存，未逐表删除正文、未修改 migration ID/checksum。备份和审计：`~/.zcode/backup/cli-migration-retest-20260911-EQXKVM/`。还原前 session/message/part 为 5076/71350/239427，还原后为 5054/71269/239180；恢复文件 SHA-256 与旧备份一致，quick_check 与 foreign_key_check 通过。app 任务索引及设置哈希前后不变。
 
 旧库与还原前库的共同 migration 中仍有 `0019_dwf_journal` checksum 差异，旧库还含另一分支的 `0020_dwf_run_result`；按用户要求保留真实旧输入，没有修改账本规避校验。未启动应用或执行 migration，等待用户手动测试；还原成功不代表此次旧 CLI 版本的升级验证通过。
 
 ### 再次成套还原任务索引与 CLI（2026-09-11）
 
-用户再次要求恢复两库，沿用 `session-projects-20260909-141705` 完整快照，同时恢复配套旧 setting.json。离线备份后，tasks-index.sqlite 从 4092 行恢复至 4078 行且无 projects 表；CLI 恢复至 5054 个 session、71269 个 message、239180 个 part（与本次还原前计数相同）。两库恢复文件与来源 SHA-256 一致，quick_check/外键检查通过；CLI 阶段确认刚恢复的 app 文件未变。当前快照、原文件及附属文件分别保存在 `~/.openzwork/backup/project-migration-retest-20260911-ZeaZCj/` 和 `~/.openzwork/backup/cli-migration-retest-20260911-PBjmXq/`，README 与 manifest 记录本次审计。没有修改 migration 账本或手工调整顺序，未启动应用或执行 migration，留给用户测试。
+用户再次要求恢复两库，沿用 `session-projects-20260909-141705` 完整快照，同时恢复配套旧 setting.json。离线备份后，tasks-index.sqlite 从 4092 行恢复至 4078 行且无 projects 表；CLI 恢复至 5054 个 session、71269 个 message、239180 个 part（与本次还原前计数相同）。两库恢复文件与来源 SHA-256 一致，quick_check/外键检查通过；CLI 阶段确认刚恢复的 app 文件未变。当前快照、原文件及附属文件分别保存在 `~/.zcode/backup/project-migration-retest-20260911-ZeaZCj/` 和 `~/.zcode/backup/cli-migration-retest-20260911-PBjmXq/`，README 与 manifest 记录本次审计。没有修改 migration 账本或手工调整顺序，未启动应用或执行 migration，留给用户测试。
 
 ### 自动归档触发点脱离项目树查询（2026-09-14）
 
@@ -816,3 +844,4 @@ CLI 旧快照额外发现 `0019_dwf_journal` checksum 与当前库不同，并�
 处理：`archiveInactive` 去掉 `unread_at IS NULL` 与 `cli_last_outcome='completed'`，保留 pinned / deleted / cli_deleted / host 过滤与 `activeTasks` 运行中兜底；扫描间隔 1 小时 → 5 分钟；设置页中英文文案改为「最后活动时间超过保留期即归档，置顶与运行中不受影响」。AMT02 重写为 28 天前已读/未读/置顶 + 6 天前未读的组合。
 
 验证：仓库/扫描器/项目服务/UI 归档清理 5 文件 38 项单测通过；桌面 E2E `desktop-e2e-20260915-035508-416` AMT01/AMT02 2/2 通过，AMT-facts：28 天前已读与未读任务 archived=1（未读保留 unread_at）、置顶旧任务 archived=0/pinned=1、6 天前任务点开后 unread_at=NULL 且 archived=0、activeTask 仍为该任务。root typecheck、desktop typecheck:e2e、lint（48 个既有 warnings / 0 errors）通过。提交时另一会话正在同一工作区 stage 主目录失效功能，本次用临时 index 只提交本会话 hunk，未卷入其改动。
+
