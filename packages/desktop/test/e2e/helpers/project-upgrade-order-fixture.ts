@@ -38,9 +38,18 @@ export function seedLegacyProviderTasks(db: DatabaseSync, workspacePath: string)
   );
 }
 
+/**
+ * 评审修正：本夹具播种的是旧版数据，历史工作区根保持旧名 `ZCodeProject`（迁移语义要求
+ * 保留原路径），与当前产品默认工作区（OpenZWorkProject）不同；用例入口必须等待本函数
+ * 返回的播种路径，不能复用 DEFAULT_WORKSPACE。
+ */
+export function legacySeedWorkspaceRoot(home: string): string {
+  return join(home, "ZCodeProject");
+}
+
 /** 先写旧版数据，再让真实建窗前迁移建立 position；不能在启动后伪造迁移结果。 */
 export async function seedProjectUpgradeOrderFixture(home: string, settingsFile: string) {
-  const workspace = join(home, "ZCodeProject");
+  const workspace = legacySeedWorkspaceRoot(home);
   const root = join(workspace, ".zcode-e2e", "project-upgrade-order");
   const defaultPath = join(home, ".zcode", "workspace", "default");
   await mkdir(defaultPath, { recursive: true });

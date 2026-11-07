@@ -20,17 +20,17 @@ import {
 // fork 采纳上游：我方原在文件头维护的 /tmp 路径守卫常量随上游移除（对应守卫用例已不在本文件）。
 describe("Desktop E2E runtime paths", () => {
   it("writes helper files where the Agent cwd can resolve them (2026-11-07 评审回归)", async () => {
-    // 评审最小复现：helper 经 resolveE2ERuntimePath 写文件，Agent 以
-    // <home>/<E2E_AGENT_WORKSPACE_NAME> 为 cwd 按 .zcode-e2e 相对路径查找。
-    // desktop-app 的 DEFAULT_WORKSPACE 若与运行时根不同源，这里会复现查找失败。
+    // 评审最小复现：helper 写入端与 Agent 启动 cwd 必须使用同一个 HOME；
+    // 读取端按 replay 固定相对路径（.zcode-e2e/<case>/<file>）从 cwd 解析，
+    // 不做 relative() 反算——反算在同盘时绕回原文件，跨盘（Windows C:/D:）会拼出非法路径。
     const e2eHomeDir = await mkdtemp(join(tmpdir(), "ozw-runtime-root-"));
     try {
       const agentCwd = join(e2eHomeDir, E2E_AGENT_WORKSPACE_NAME);
-      const helperPath = resolveE2ERuntimePath("bg-regression", "release-marker.txt");
+      const helperPath = join(resolveE2ERuntimeRoot(e2eHomeDir), "bg-regression", "release-marker.txt");
       await mkdir(dirname(helperPath), { recursive: true });
       await writeFile(helperPath, "ready", "utf8");
-      const relativeFromAgent = relative(agentCwd, helperPath);
-      assert.equal(await readFile(join(agentCwd, relativeFromAgent), "utf8"), "ready");
+      const fixedRelative = join(E2E_RUNTIME_RELATIVE_ROOT, "bg-regression", "release-marker.txt");
+      assert.equal(await readFile(join(agentCwd, fixedRelative), "utf8"), "ready");
       assert.equal(dirname(resolveE2ERuntimeRoot(e2eHomeDir)), agentCwd);
     } finally {
       await rm(e2eHomeDir, { recursive: true, force: true });

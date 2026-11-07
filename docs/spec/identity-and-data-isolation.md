@@ -98,6 +98,12 @@ E2E 运行时根与 `desktop-app` 的 DEFAULT_WORKSPACE 统一派生自同一工
 helper 写入目录与 Agent cwd 分叉以单测锁定。NSIS 分支可达性无法被编译测试覆盖，
 新增 `windowsInstallerNshStructure.test.ts` 结构断言守住上述三处控制流。
 
+复审二轮修正：E2E 路径回归首版在同盘时经 `relative()` 反算绕回原文件（假绿）、
+Windows 跨盘（C:/D:）拼出非法路径——已改为同一临时 HOME + replay 固定相对路径读取；
+卸载器日志归并首版被 Reset 的 `w` 模式空文件挡住（"文件存在"≠"已写入"），改为按
+内容长度判定；wdio 固定 cwd 夹具与 mcp 失败夹具的工作区名并入同一常量来源，VP28
+历史夹具保留旧名并以 `legacySeedWorkspaceRoot` 匹配等待路径。
+
 ## 失败语义与验收
 
 - 违反核心不变量 = 隔离破洞（设计稿 A 类），按"必须清零"处理，不算可兜底缺陷。

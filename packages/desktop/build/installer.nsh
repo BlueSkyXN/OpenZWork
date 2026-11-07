@@ -226,13 +226,21 @@
     Push $R0
     Push $R1
     Push $R2
+    Push $R3
 
     StrCmp $ZCodeUninstallerDetailsUnavailable "1" zcodeShowUninstallerDetailsDone
-    ; 新安装器调用旧卸载器时明细落在旧名日志；归并到新名，失败弹窗引用的路径才真实。
-    IfFileExists "${ZCODE_UNINSTALLER_LOG_PATH}" zcodeShowUninstallerDetailsReady
+    ; Bugfix（2026-11-07 复审）：Reset 以 w 模式创建了空的新名日志，不能按"文件存在"判定
+    ; 本次清理已写新名。按内容长度判定：新日志非空 → 直接回放；为空且旧名有内容
+    ;; （覆盖升级执行的旧卸载器写旧名）→ 归并到新名后统一回放，弹窗引用的路径才真实。
+    ClearErrors
+    FileOpen $R0 "${ZCODE_UNINSTALLER_LOG_PATH}" r
+    IfErrors zcodeShowUninstallerDetailsDone
+    FileSeek $R0 0 END $R3
+    FileClose $R0
+    IntCmp $R3 0 0 zcodeShowUninstallerDetailsReplay zcodeShowUninstallerDetailsReplay
     IfFileExists "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" 0 zcodeShowUninstallerDetailsDone
       CopyFiles /SILENT "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" "${ZCODE_UNINSTALLER_LOG_PATH}"
-    zcodeShowUninstallerDetailsReady:
+    zcodeShowUninstallerDetailsReplay:
     ClearErrors
     FileOpen $R0 "${ZCODE_UNINSTALLER_LOG_PATH}" r
     IfErrors zcodeShowUninstallerDetailsDone
@@ -247,6 +255,7 @@
     zcodeShowUninstallerDetailsClose:
       FileClose $R0
     zcodeShowUninstallerDetailsDone:
+      Pop $R3
       Pop $R2
       Pop $R1
       Pop $R0

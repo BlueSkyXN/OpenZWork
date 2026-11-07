@@ -54,10 +54,20 @@ describe("installer.nsh cross-name control flow", () => {
     const resetStart = nsh.indexOf("Function ZCodeResetUninstallerLog");
     const resetEnd = nsh.indexOf("FunctionEnd", resetStart);
     expect(nsh.slice(resetStart, resetEnd)).toContain('Delete "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}"');
-    // 回放时旧名日志归并到新名，失败弹窗引用的新名路径才真实。
+    // 复审修正：Reset 以 w 模式创建空新日志，"文件存在"不能作为已写入的判据。
+    // 必须按内容长度判定：空且旧名存在 → CopyFiles 归并，再回放新名。
     const showStart = nsh.indexOf("Function ZCodeShowUninstallerCleanupDetails");
     const showEnd = nsh.indexOf("FunctionEnd", showStart);
     const show = nsh.slice(showStart, showEnd);
-    expect(show).toContain('CopyFiles /SILENT "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" "${ZCODE_UNINSTALLER_LOG_PATH}"');
+    const sizeProbe = show.indexOf("FileSeek $R0 0 END $R3");
+    const sizeBranch = show.indexOf("IntCmp $R3 0 0 zcodeShowUninstallerDetailsReplay");
+    const copyLegacy = show.indexOf('CopyFiles /SILENT "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" "${ZCODE_UNINSTALLER_LOG_PATH}"');
+    const replayOpen = show.indexOf('FileOpen $R0 "${ZCODE_UNINSTALLER_LOG_PATH}" r', sizeBranch);
+    expect(sizeProbe).toBeGreaterThan(-1);
+    expect(sizeBranch).toBeGreaterThan(sizeProbe);
+    expect(copyLegacy).toBeGreaterThan(sizeBranch);
+    expect(replayOpen).toBeGreaterThan(copyLegacy);
+    // 复审点名的错误形态不得回归：存在性判定直接跳过归并。
+    expect(show).not.toContain("IfFileExists \"${ZCODE_UNINSTALLER_LOG_PATH}\" zcodeShowUninstallerDetailsReady");
   });
 });

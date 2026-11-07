@@ -21,6 +21,7 @@ import {
   type E2EBrowserTargetInfo,
 } from "./test/e2e/helpers/e2e-window-target.js";
 import { createE2ERendererBridgeRootHooks } from "./test/e2e/helpers/e2e-renderer-bridge-root-hook.js";
+import { E2E_AGENT_WORKSPACE_NAME } from "./test/e2e/helpers/e2e-runtime-paths.js";
 import { runMeasuredE2ELifecyclePhase } from "./test/e2e/helpers/e2e-lifecycle-measurement.js";
 import { createE2ERunnerFinalizationGuard } from "./test/e2e/helpers/e2e-runner-finalization-guard.js";
 import {
@@ -1081,8 +1082,9 @@ async function resetE2EHome(specs: string[]) {
     )
   ) {
     // 完整视图测试需要固定项目 cwd；产品首次启动只建立 conversation workspace，
-    // 不再隐式创建 ZCodeProject，因此由依赖固定 cwd 的场景显式声明恢复项目。
-    const workspacePath = resolve(E2E_HOME_DIR, "ZCodeProject");
+    // 不再隐式创建默认 scratch 工作区，因此由依赖固定 cwd 的场景显式声明恢复项目。
+    // 工作区名与 e2e-runtime-paths 同源（评审修正：DEFAULT_WORKSPACE 派生自同一常量）。
+    const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
     await mkdir(workspacePath, { recursive: true });
     settings.lastWorkspaceSession = [{ kind: "local", workspacePath, workspacePurpose: "project" }];
     settings.lastActiveTabIndex = 0;
@@ -1348,7 +1350,7 @@ export const config: WebdriverIO.Config = {
           specs,
           credentialsFile: resolve(E2E_APP_CONFIG_DIR, "credentials.json"),
           settingsFile: E2E_APP_SETTINGS_FILE,
-          workspacePath: resolve(E2E_HOME_DIR, "ZCodeProject"),
+          workspacePath: resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME),
         });
         if (specs.some((spec) => spec.endsWith("feishu-runtime-error-ui.test.ts"))) {
           // CF-01 的 Bots 入口会启动远控；在 Electron 读取 env 前提供隔离 relay，
