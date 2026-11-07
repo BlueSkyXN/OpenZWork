@@ -23,6 +23,9 @@ const KNOWLEDGE_PREFIX = { pitfall: "OZK-PIT-", diff: "OZK-DIF-", decision: "OZK
 const LEDGER_PREFIX = { feature: "OZ-F", change: "OZ-C", drop: "OZ-D", retain: "OZ-R" };
 const LEDGER_STATUS = new Set(["active", "undecided", "retired"]);
 const VARIANT_KINDS = new Set(["purge", "identity", "content"]);
+// 保留 OpenZWork 版本的理由：代码读取、规则引用、OpenZWork 改写维护、待用户确认。
+const VARIANT_ROLES = new Set(["tool", "rule", "maintained", "pending"]);
+export const README_PATH = "docs/openzwork/README.md";
 const MAX_ACTIVE_KNOWLEDGE = 40;
 // 上游文档与技能（文档类扩展名）保持原文；OpenZWork 版本放在同目录，文件名加 -openzwork。代码文件按代码规则原地修改。
 const DOC_ROOTS = ["docs/", ".agents/skills/"];
@@ -375,6 +378,26 @@ export function validateVariants(doc, context) {
       errors.push(`${where}: variant 应为 ${variantOf(item.upstream)}`);
     if (!VARIANT_KINDS.has(item.kind)) errors.push(`${where}: kind 应为 purge/identity/content`);
     if (!headTree.has(item.variant)) errors.push(`${where}: OpenZWork 版本不存在：${item.variant}`);
+    if (!VARIANT_ROLES.has(item.role)) {
+      errors.push(
+        `${where}: role 应为 tool/rule/maintained/pending，写明保留 OpenZWork 版本的理由`,
+      );
+    } else if (item.role === "tool" || item.role === "rule") {
+      // 代码读取或规则引用必须能在 usedBy 文件中找到原文或版本的文件名，关系失效时删除版本或改 role。
+      if (!Array.isArray(item.usedBy) || item.usedBy.length === 0) {
+        errors.push(`${where}: role 为 ${item.role} 时 usedBy 至少列出一个读取或引用方`);
+      }
+      const names = [item.upstream, item.variant].map((path) => path.split("/").pop());
+      for (const by of item.usedBy ?? []) {
+        const text = context.headTree.has(by)
+          ? (readAt(context.repo, context.head, by) ?? "")
+          : undefined;
+        if (text === undefined) errors.push(`${where}: usedBy 文件不存在：${by}`);
+        else if (!names.some((name) => text.includes(name))) {
+          errors.push(`${where}: ${by} 没有引用该文档；关系已失效时删除 OpenZWork 版本或调整 role`);
+        }
+      }
+    }
     const original = baseTree.get(item.upstream);
     if (!original) {
       errors.push(
@@ -403,6 +426,19 @@ export function validateVariants(doc, context) {
     }
   }
   return errors;
+}
+
+/** 差异总表：台账中每个 active、undecided 条目都要出现在 README 的「与上游的差异」中。 */
+export function validateDifferenceTable(ledger, readme) {
+  if (readme === undefined) return [`缺少 ${README_PATH}`];
+  const start = readme.indexOf("## 与上游的差异");
+  if (start < 0) return [`${README_PATH} 缺少「## 与上游的差异」一节`];
+  const next = readme.indexOf("\n## ", start + 1);
+  const section = readme.slice(start, next < 0 ? undefined : next);
+  return (ledger?.entries ?? [])
+    .filter((entry) => entry.status === "active" || entry.status === "undecided")
+    .filter((entry) => !section.includes(entry.id))
+    .map((entry) => `${README_PATH}「与上游的差异」缺少 ${entry.id}（${entry.title}）`);
 }
 
 export function validateKnowledge(knowledge, context) {
@@ -464,6 +500,7 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
     ...validateBase(maintenance.ledger, context),
     ...validateLedger(maintenance.ledger, context, maintenance.gates),
     ...validateVariants(maintenance.variants, context),
+    ...validateDifferenceTable(maintenance.ledger, readAt(repo, head, README_PATH)),
     ...validateKnowledge(maintenance.knowledge, context),
   ];
   const noise = findFormatNoise(context, formatter ?? createOxfmtFormatter(repo));

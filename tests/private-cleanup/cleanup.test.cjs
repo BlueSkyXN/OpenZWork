@@ -1206,9 +1206,8 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/skills/restore-legacy-sessions/scripts/scan-legacy-sessions.mjs",
     // 历史开发计划文档，记录当时的旧根事实，不随代码迁移。
     "docs/superpowers/plans/2026-06-10-bot-state-cache-v2-migration.md",
-    // 上游原文已恢复（与基准一致时由 pristineUpstreamDocs 跳过）；OpenZWork 版本保留当时的旧根事实。
-    "docs/superpowers/plans/2026-06-25-user-subagent-settings-management-openzwork.md",
-    "docs/superpowers/plans/2026-06-29-remote-skill-sync-openzwork.md",
+    "docs/superpowers/plans/2026-06-25-user-subagent-settings-management.md",
+    "docs/superpowers/plans/2026-06-29-remote-skill-sync.md",
   ]);
   // nsh/nsi 一并入列：Windows 安装器落盘产物（清单名、数据目录保护）属于用户磁盘形态。
   const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml|nsh|nsi)$/;

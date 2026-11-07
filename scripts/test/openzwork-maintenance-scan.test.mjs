@@ -57,7 +57,8 @@ function fixture() {
   write("package.json", JSON.stringify({ version: "1.1.0+openzwork.1" }));
   write("src/keep.ts", "export const keep = 2;\n");
   remove("src/gone.ts");
-  write("src/ours.ts", "export const ours = 1;\n");
+  // 代码读取 docs/b-openzwork.md，对应登记表中的 role: tool。
+  write("src/ours.ts", 'export const ours = 1;\nexport const doc = "docs/b-openzwork.md";\n');
   write("docs/old.md", "# Old\n");
   write("src/home.ts", 'export const root = "~/.openzwork/cli";\n');
   write("src/fmt.ts", "export const fmt = 1;\n");
@@ -96,7 +97,11 @@ entries:
   );
   write(
     "docs/openzwork/upstream-doc-variants.yaml",
-    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    kind: content\n    upstreamBlob: ${git("rev-parse", `${v2}:docs/b.md`)}\n`,
+    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/ours.ts]\n    kind: content\n    upstreamBlob: ${git("rev-parse", `${v2}:docs/b.md`)}\n`,
+  );
+  write(
+    "docs/openzwork/README.md",
+    "# 索引\n\n## 与上游的差异\n\n- OZ-F001、OZ-D001、OZ-R001\n\n## 维护\n",
   );
   const knowledge = ".agents/skills/openzwork-maintenance/knowledge";
   write(
@@ -171,7 +176,7 @@ test("runCheck 要求上游文档保持原文、OpenZWork 版本登记并跟随�
   repo.write("docs/a-openzwork.md", "# A（OpenZWork）\n");
   repo.write(
     "docs/openzwork/upstream-doc-variants.yaml",
-    "version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    kind: content\n    upstreamBlob: 0000000000000000000000000000000000000000\n",
+    "version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/keep.ts]\n    kind: content\n    upstreamBlob: 0000000000000000000000000000000000000000\n",
   );
   repo.commit("doc drift");
   const errors = check(repo).join("\n");
@@ -181,6 +186,22 @@ test("runCheck 要求上游文档保持原文、OpenZWork 版本登记并跟随�
     /docs\/a-openzwork\.md 是上游文档 docs\/a\.md 的 OpenZWork 版本，但没有登记/,
   );
   assert.match(errors, /docs\/b\.md: 上游已更新原文；按新原文复核 docs\/b-openzwork\.md/);
+  assert.match(errors, /src\/keep\.ts 没有引用该文档/);
+});
+
+test("runCheck 要求差异总表覆盖台账条目、OpenZWork 版本写明理由", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.write("docs/openzwork/README.md", "# 索引\n\n## 与上游的差异\n\n- OZ-F001\n\n## 维护\n");
+  repo.write(
+    "docs/openzwork/upstream-doc-variants.yaml",
+    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
+  );
+  repo.commit("missing table rows and role");
+  const errors = check(repo).join("\n");
+  assert.match(errors, /「与上游的差异」缺少 OZ-D001/);
+  assert.match(errors, /「与上游的差异」缺少 OZ-R001/);
+  assert.match(errors, /role 应为 tool\/rule\/maintained\/pending/);
 });
 
 test("runCheck 校验上游基准版本与经验库格式", () => {

@@ -251,4 +251,4 @@ E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/com
   `ZCode.OpenInZCode` 键，避免误伤原版。独立 CLI 仍叫 `zcode`，安装器只替换可确认属于本安装根
   的入口；其他文件或符号链接必须保留并报错，用户可选择已有 `ZCODE_DIST_BIN_DIR` 安装位置。
 - 数据根迁移由设置服务保存计划，完整重启后、Host/Agent/调度器启动前执行。复制范围、失败恢复
-  和验收见 [数据目录说明](../desktop/configurable-data-directory.md)。Main 只编排启动，不修改会话事实。
+  和验收见 [数据目录说明](../desktop/configurable-data-directory-openzwork.md)。Main 只编排启动，不修改会话事实。

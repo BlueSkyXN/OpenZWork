@@ -1,1930 +1,355 @@
-# 上游文档与技能的 OpenZWork 版本。上游原文件保持原文；OpenZWork 版本放在同目录，文件名加 -openzwork。
-# kind：purge 删除了上游内容（多为已裁剪功能的段落）；identity 只把用户级根改为 .openzwork；content 增补或改写了内容。
-# upstreamBlob 是生成该版本时上游原文的 blob。合入上游后原文变化时，按新原文复核 OpenZWork 版本，再更新 upstreamBlob。
-# 由 tests/ci/openzwork-maintenance.test.mjs 校验。
+# 上游文档与技能的 OpenZWork 版本（<名称>-openzwork<扩展名>，与上游原文同目录）。规则见 docs/openzwork/maintenance-model.md。
+# 只有以下情况才保留 OpenZWork 版本，role 写明理由：
+#   tool       代码读取该文档（usedBy 列出读取方）
+#   rule       OpenZWork 的规则或 spec 以该文档为准（usedBy 列出引用方）
+#   maintained OpenZWork 改写并持续维护的版本（描述 OpenZWork 当前行为）
+#   pending    只有少量 OpenZWork 内容，保留还是删除待用户确认
+# 其余上游文档只保留原文；OpenZWork 的差异写在 docs/openzwork/README.md 的「与上游的差异」。
+# kind：purge 删除了上游内容；identity 只改用户级根；content 增补或改写内容。
+# upstreamBlob 是生成该版本时上游原文的 blob；原文变化时按新原文复核 OpenZWork 版本，再更新 upstreamBlob。
 version: 1
 variants:
   - upstream: .agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml
     variant: .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
+    role: tool
+    usedBy:
+      - apps/dev-docs/test/featureBoundaryGraph.test.ts
+      - apps/dev-docs/vite.config.ts
+      - .agents/skills/feature-boundary-planner/SKILL.md
     kind: content
     upstreamBlob: 49ea1b138a7b447e3a08b033b62b84e3a92f2054
-  - upstream: .agents/skills/session-management/SKILL.md
-    variant: .agents/skills/session-management/SKILL-openzwork.md
-    kind: identity
-    upstreamBlob: 50ba45a10077b6699a7d36ac22db015e85e411e5
-  - upstream: .agents/skills/zcode-large-task-fixture/SKILL.md
-    variant: .agents/skills/zcode-large-task-fixture/SKILL-openzwork.md
-    kind: identity
-    upstreamBlob: 3538508f598330598bb2d1752289fe929f7a992b
-  - upstream: docs/agent-subagent-provider-runtime-headers-routing.md
-    variant: docs/agent-subagent-provider-runtime-headers-routing-openzwork.md
-    kind: purge
-    upstreamBlob: aa5dec26289e410f1d15253946c3d4b0f788f10f
-  - upstream: docs/agents/issue-tracker.md
-    variant: docs/agents/issue-tracker-openzwork.md
-    kind: content
-    upstreamBlob: 4d4c0a78fe6cad0675fa40b4a49df5a49a620933
-  - upstream: docs/agents/runtime-boundaries.md
-    variant: docs/agents/runtime-boundaries-openzwork.md
-    kind: identity
-    upstreamBlob: 461b4236125fcfbe10dcad2553fddd2579ca17d1
-  - upstream: docs/analysis/credentials-json-code-audit.md
-    variant: docs/analysis/credentials-json-code-audit-openzwork.md
-    kind: content
-    upstreamBlob: b709d3857c73c12e221945123358bf16c40e0d73
-  - upstream: docs/analysis/fix-handoff-v4.md
-    variant: docs/analysis/fix-handoff-v4-openzwork.md
-    kind: purge
-    upstreamBlob: 514f9b482b0febc4a60323b73cd7a19b622a1011
-  - upstream: docs/analysis/memory-leak-audit-2026-09-03.md
-    variant: docs/analysis/memory-leak-audit-2026-09-03-openzwork.md
-    kind: purge
-    upstreamBlob: 05f430c9aff3ce44860f9c9f38eecd3dda55684c
-  - upstream: docs/analysis/memory-leak-fix-plan-cli-event-store.md
-    variant: docs/analysis/memory-leak-fix-plan-cli-event-store-openzwork.md
-    kind: identity
-    upstreamBlob: 3acef35e49acd5764b462c974f6a3cb72d93e661
-  - upstream: docs/anthropic-request-metadata.md
-    variant: docs/anthropic-request-metadata-openzwork.md
-    kind: content
-    upstreamBlob: 1b3639658305f12bdfbe3669ae06f5b39fbcc6b9
-  - upstream: docs/architecture/federated-node-hub-state-and-migration-plan.md
-    variant: docs/architecture/federated-node-hub-state-and-migration-plan-openzwork.md
-    kind: purge
-    upstreamBlob: 7943b32c37e551788624b7ad73d79f8de0a76d5e
-  - upstream: docs/architecture/r2-server-cli-and-daemon.md
-    variant: docs/architecture/r2-server-cli-and-daemon-openzwork.md
-    kind: identity
-    upstreamBlob: f343285b2f94de633feb4ecefdd54a7c201a714d
   - upstream: docs/architecture/r3-source-server-remote-architecture.md
     variant: docs/architecture/r3-source-server-remote-architecture-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: cd29b9d8d6ef063f4f6b63942801d051e23660fe
-  - upstream: docs/architecture/r3-source-server-remote-open-issues.md
-    variant: docs/architecture/r3-source-server-remote-open-issues-openzwork.md
-    kind: purge
-    upstreamBlob: f84769b0388dc9a32f7edbfb17fbebb9f7067ac3
-  - upstream: docs/automation-edit-status.md
-    variant: docs/automation-edit-status-openzwork.md
-    kind: identity
-    upstreamBlob: 12f08ccecefe93a2438271f2e0e0421ae0a277c5
-  - upstream: docs/bigmodel-business-error-retry.md
-    variant: docs/bigmodel-business-error-retry-openzwork.md
-    kind: purge
-    upstreamBlob: 7239b5691f5da29d3e02c19bae6e08b640582022
-  - upstream: docs/bots-e2e-case-catalog.md
-    variant: docs/bots-e2e-case-catalog-openzwork.md
-    kind: purge
-    upstreamBlob: ba48374b7f202e3d8d8aea85f75be980ee728036
-  - upstream: docs/bots-feishu-group-collaboration.md
-    variant: docs/bots-feishu-group-collaboration-openzwork.md
-    kind: purge
-    upstreamBlob: de0c6b4ee9f57eecd944b4e3ea9a20adb9b2e7d2
-  - upstream: docs/browser-use/2026-07-10-browser-use-spec.md
-    variant: docs/browser-use/2026-07-10-browser-use-spec-openzwork.md
-    kind: content
-    upstreamBlob: f9d126e29a39545fca2e62716bb5e0e713845607
-  - upstream: docs/browser-use/2026-07-12-browser-use-runtime-semantics-spec.md
-    variant: docs/browser-use/2026-07-12-browser-use-runtime-semantics-spec-openzwork.md
-    kind: purge
-    upstreamBlob: 50fdb2fd04f4b61afd971e34ae15af363e769ec6
-  - upstream: docs/browser-use/2026-07-13-browser-settings-spec.md
-    variant: docs/browser-use/2026-07-13-browser-settings-spec-openzwork.md
-    kind: purge
-    upstreamBlob: a5da3ab0c9f09806ba774533e0aa550411450b30
-  - upstream: docs/browser-use/2026-07-16-subagent-browser-unavailable-spec.md
-    variant: docs/browser-use/2026-07-16-subagent-browser-unavailable-spec-openzwork.md
-    kind: purge
-    upstreamBlob: ef4c014ec536f21782af959e234b4987d0678361
-  - upstream: docs/browser-use/2026-08-02-browser-use-plugin-version-0-1-3-spec.md
-    variant: docs/browser-use/2026-08-02-browser-use-plugin-version-0-1-3-spec-openzwork.md
-    kind: identity
-    upstreamBlob: f0f245f2e7d3c5eab80de637f587335e11179b2a
-  - upstream: docs/browser-use/2026-08-06-browser-use-plugin-version-0-2-1-spec.md
-    variant: docs/browser-use/2026-08-06-browser-use-plugin-version-0-2-1-spec-openzwork.md
-    kind: identity
-    upstreamBlob: 1f1e6d784122fb8586b0fd41c954c8f3c5e15fdb
   - upstream: docs/browser-use/2026-10-08-embedded-browser-permission-governance-spec.md
     variant: docs/browser-use/2026-10-08-embedded-browser-permission-governance-spec-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 6f38f6d7a80bc8186cba37dc0b4835209d1fbda9
   - upstream: docs/browser-use/browser-use-plugin-runtime-boundary.md
     variant: docs/browser-use/browser-use-plugin-runtime-boundary-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: b90fbd78edd4d18337175cb8ed991feeca1e9e25
-  - upstream: docs/builtin-plugin-icons.md
-    variant: docs/builtin-plugin-icons-openzwork.md
-    kind: purge
-    upstreamBlob: 10dc5d81480bbdf48e7c818cd7e2e768f28aefc5
   - upstream: docs/builtin-provider-config-build-environments.md
     variant: docs/builtin-provider-config-build-environments-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: a6ee700c2192e502f9c1174bee76122301db0d87
   - upstream: docs/builtin-provider-maintenance/README.md
     variant: docs/builtin-provider-maintenance/README-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: efd2e2c303ebfc9be24c8da147f4ee6ae87c0968
-  - upstream: docs/chat-context-usage-refresh-action.md
-    variant: docs/chat-context-usage-refresh-action-openzwork.md
-    kind: purge
-    upstreamBlob: 32e84d8c6666a9b8f4c94e326b2cd80aad2db1ce
-  - upstream: docs/chat/new-task-model-resolution-chain.md
-    variant: docs/chat/new-task-model-resolution-chain-openzwork.md
-    kind: purge
-    upstreamBlob: 09883f8f9b46485eacb89f330e38f7df9d303de5
-  - upstream: docs/chat/runtime-model-unavailable-current-send.md
-    variant: docs/chat/runtime-model-unavailable-current-send-openzwork.md
-    kind: purge
-    upstreamBlob: e00af985a2019790dd84d9021bed907a88c8a8f0
-  - upstream: docs/ci-build-platform-selection.md
-    variant: docs/ci-build-platform-selection-openzwork.md
-    kind: purge
-    upstreamBlob: 856013451fb40f94ac4a013716e402eb157f3c5f
-  - upstream: docs/ci-cache-strategy.md
-    variant: docs/ci-cache-strategy-openzwork.md
-    kind: purge
-    upstreamBlob: f6937eb0e07b2c85d7ec6722f7d95fafee39322d
-  - upstream: docs/ci-feishu-card2-notification.md
-    variant: docs/ci-feishu-card2-notification-openzwork.md
-    kind: purge
-    upstreamBlob: b8edf898187a7cf7f1eff38bed3f107323dde3da
-  - upstream: docs/claude-code-marketplace-plugin-compat.md
-    variant: docs/claude-code-marketplace-plugin-compat-openzwork.md
-    kind: purge
-    upstreamBlob: 5fc1ed937a9c9c08bc4f176b76a23ae3aeb9758c
-  - upstream: docs/claude-marketplace-triplet-plugin-compat.md
-    variant: docs/claude-marketplace-triplet-plugin-compat-openzwork.md
-    kind: identity
-    upstreamBlob: 077a991bfdd52e1e8c36a31f831fa18ca06700ce
-  - upstream: docs/cli-background-subagent-wake-plan.md
-    variant: docs/cli-background-subagent-wake-plan-openzwork.md
-    kind: identity
-    upstreamBlob: 8ed34c9c43fd10565d5fbfcb7f28e67037d9d84b
-  - upstream: docs/cli-plugins-command-parity.md
-    variant: docs/cli-plugins-command-parity-openzwork.md
-    kind: identity
-    upstreamBlob: f689b58600a7e6f29e80127e3b4849ae23853be3
-  - upstream: docs/client-config-service.md
-    variant: docs/client-config-service-openzwork.md
-    kind: purge
-    upstreamBlob: bf9dccd58b0a6e78adb2a8000f5c5456c8ddb54b
-  - upstream: docs/composer-model-thinking.md
-    variant: docs/composer-model-thinking-openzwork.md
-    kind: purge
-    upstreamBlob: 4fe59aa0d4a11eb90307e2997bdd4cd86e034d66
   - upstream: docs/context-window-usage-state.md
     variant: docs/context-window-usage-state-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 819cd91078b919b5da32f5e9c29de7c5cad7b3da
   - upstream: docs/conversation-session-case-catalog.md
     variant: docs/conversation-session-case-catalog-openzwork.md
+    role: tool
+    usedBy:
+      - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
     upstreamBlob: cd50ea2b66d0cf16088be6f639efcd3d27e4e7d4
-  - upstream: docs/conversation-session-validation-matrix.md
-    variant: docs/conversation-session-validation-matrix-openzwork.md
-    kind: purge
-    upstreamBlob: ab2f1254907ca1f6e81e4e557690fcdb0bc19727
-  - upstream: docs/dangerous-command-approval-v1-plan.md
-    variant: docs/dangerous-command-approval-v1-plan-openzwork.md
-    kind: purge
-    upstreamBlob: addfd6baae31afa5da58c600aa4f3226c8e047f3
-  - upstream: docs/design/v2/project-memory-model-selection.md
-    variant: docs/design/v2/project-memory-model-selection-openzwork.md
-    kind: purge
-    upstreamBlob: f95dcfaf892e73d6719e16b9cb164d621fcd578a
-  - upstream: docs/design/v2/tool/00-tool-change-chain.md
-    variant: docs/design/v2/tool/00-tool-change-chain-openzwork.md
-    kind: content
-    upstreamBlob: dc51396d6116825b72a6ffc2c1513c13d6a9f51b
-  - upstream: docs/desktop-bundle-size-architecture.md
-    variant: docs/desktop-bundle-size-architecture-openzwork.md
-    kind: purge
-    upstreamBlob: 9c14959b0f6292068237b604aa34caf4668b52ff
   - upstream: docs/desktop-ci-cd.md
     variant: docs/desktop-ci-cd-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 5065bef88fdabbbc402a0b0f43a1651990778a36
-  - upstream: docs/desktop/chromium-hardware-acceleration-setting.md
-    variant: docs/desktop/chromium-hardware-acceleration-setting-openzwork.md
-    kind: identity
-    upstreamBlob: 4d6ca4de19de915ae09d8fc47114a98bbb0c0ec7
   - upstream: docs/desktop/configurable-data-directory.md
     variant: docs/desktop/configurable-data-directory-openzwork.md
+    role: rule
+    usedBy:
+      - docs/specs/identity-and-data-isolation-openzwork.md
     kind: content
     upstreamBlob: 892f7a3023ee3406b6614051999ab8c41ec840b2
-  - upstream: docs/desktop/database-migration-startup-gate-plan.md
-    variant: docs/desktop/database-migration-startup-gate-plan-openzwork.md
-    kind: purge
-    upstreamBlob: 342265f1a627431f119dca54f36d010e57554d3d
-  - upstream: docs/desktop/database-startup-implementation-review.md
-    variant: docs/desktop/database-startup-implementation-review-openzwork.md
-    kind: purge
-    upstreamBlob: 3bdbea0191c08bfa504def55697d9fd38c855e2c
-  - upstream: docs/desktop/database-startup-plan-review.md
-    variant: docs/desktop/database-startup-plan-review-openzwork.md
-    kind: purge
-    upstreamBlob: e52186315229af8950cc903eac9fb6dfcc2b6ad8
-  - upstream: docs/desktop/dev-build-watch.md
-    variant: docs/desktop/dev-build-watch-openzwork.md
-    kind: purge
-    upstreamBlob: a504a5cf9cefddbe164373a6992bff50e61e6f04
-  - upstream: docs/desktop/dev-deep-link.md
-    variant: docs/desktop/dev-deep-link-openzwork.md
-    kind: content
-    upstreamBlob: e22d0078da2e97b6cfaeb5de49ed49ca76f21610
-  - upstream: docs/desktop/local-crash-capture.md
-    variant: docs/desktop/local-crash-capture-openzwork.md
-    kind: identity
-    upstreamBlob: a6ff5eaa5bd51cd377d83aa6abe9a37edf64e299
   - upstream: docs/desktop/log-export-retention.md
     variant: docs/desktop/log-export-retention-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: d6725ce186a0c32ee6b1ce5f231de74a90e69b4a
-  - upstream: docs/desktop/macos-dmg-signing-notarization.md
-    variant: docs/desktop/macos-dmg-signing-notarization-openzwork.md
-    kind: purge
-    upstreamBlob: 3473a525017f2320a2c2a8742b2f3ea42badb30e
-  - upstream: docs/desktop/main-window-size.md
-    variant: docs/desktop/main-window-size-openzwork.md
-    kind: identity
-    upstreamBlob: 834569e23238879273482fe1edc2712c750a83a7
-  - upstream: docs/desktop/oss-cdn-multi-target-migration.md
-    variant: docs/desktop/oss-cdn-multi-target-migration-openzwork.md
-    kind: purge
-    upstreamBlob: c678175fb93d3f815c772716c08de0e4e716aebf
-  - upstream: docs/desktop/storage-profile-rollback.md
-    variant: docs/desktop/storage-profile-rollback-openzwork.md
-    kind: identity
-    upstreamBlob: 2e2b7801e69c74b2ea04c426a73f5a304ca726c7
   - upstream: docs/desktop/windows-installer-diagnostics.md
     variant: docs/desktop/windows-installer-diagnostics-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 4ced43df0142f4c415ff130fb517d5c34d575a76
   - upstream: docs/desktop/windows-installer-overhaul-spec.md
     variant: docs/desktop/windows-installer-overhaul-spec-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 2588ec6c6858c660f0f48485282336f1935552e7
   - upstream: docs/desktop/windows-installer-preserve-files.md
     variant: docs/desktop/windows-installer-preserve-files-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 0002379e5b83fa1e351b1c90e0b0a328d465e6ec
   - upstream: docs/desktop/windows-taskbar-unread-badge.md
     variant: docs/desktop/windows-taskbar-unread-badge-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: c893627981a00ea90b42a6efa7600e244bfe3573
-  - upstream: docs/desktop/zcode-preview-packaging.md
-    variant: docs/desktop/zcode-preview-packaging-openzwork.md
-    kind: purge
-    upstreamBlob: c944eea264021f3f62f7c11e4e80565a14bc4f87
-  - upstream: docs/development-mise-runtime.md
-    variant: docs/development-mise-runtime-openzwork.md
-    kind: content
-    upstreamBlob: 29524ca5afb15857cc1b429a9f3fdd02957bde29
-  - upstream: docs/document-skills-plugin.md
-    variant: docs/document-skills-plugin-openzwork.md
-    kind: identity
-    upstreamBlob: 04ec629aa69802f0be1585833123dc8b40083a4f
-  - upstream: docs/dynamic-workflow.md
-    variant: docs/dynamic-workflow-openzwork.md
-    kind: identity
-    upstreamBlob: 9007e8e89d99e94325968ddfafe2dea2e4ded308
-  - upstream: docs/dynamic-workflow/authoring.md
-    variant: docs/dynamic-workflow/authoring-openzwork.md
-    kind: identity
-    upstreamBlob: 47b0eb398516c21f9144173c3e921b022fbd49a5
-  - upstream: docs/dynamic-workflow/concurrency.md
-    variant: docs/dynamic-workflow/concurrency-openzwork.md
-    kind: content
-    upstreamBlob: 3bc471bde59a73a2e0b36aca343b8128280767c8
-  - upstream: docs/dynamic-workflow/launch.md
-    variant: docs/dynamic-workflow/launch-openzwork.md
-    kind: content
-    upstreamBlob: 31f187c75e02075bf7e9616fa92624a2762f71a2
-  - upstream: docs/dynamic-workflow/presentation.md
-    variant: docs/dynamic-workflow/presentation-openzwork.md
-    kind: content
-    upstreamBlob: 7a806322d2d123f398f2f86bd97fb514d93f13dc
-  - upstream: docs/electron/docs/api/browser-window.md
-    variant: docs/electron/docs/api/browser-window-openzwork.md
-    kind: content
-    upstreamBlob: 2779ed08fd84a5a865e1139c61811471d0f6653d
-  - upstream: docs/electron/docs/api/touch-bar-other-items-proxy.md
-    variant: docs/electron/docs/api/touch-bar-other-items-proxy-openzwork.md
-    kind: purge
-    upstreamBlob: efad02d070c70319fd0ce523714b818c62992b28
-  - upstream: docs/electron/docs/breaking-changes.md
-    variant: docs/electron/docs/breaking-changes-openzwork.md
-    kind: content
-    upstreamBlob: 6448e154f28ba624fc2727c53939767f303720ad
-  - upstream: docs/electron/docs/development/style-guide.md
-    variant: docs/electron/docs/development/style-guide-openzwork.md
-    kind: content
-    upstreamBlob: e7cce2b7e7963efd46d72314af330d02325ab477
-  - upstream: docs/electron/docs/tutorial/testing-on-headless-ci.md
-    variant: docs/electron/docs/tutorial/testing-on-headless-ci-openzwork.md
-    kind: purge
-    upstreamBlob: a49f2d114e94b7052586a4cf530f9068f85a014e
   - upstream: docs/electron/resource-manager-network.md
     variant: docs/electron/resource-manager-network-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 8d3ed4deb65d9c791a1e0098f52276e97cddb2be
   - upstream: docs/electron/resource-manager.md
     variant: docs/electron/resource-manager-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: b847b51326d4a17547f10f8e91dab4a593394ad6
-  - upstream: docs/external-agent-commands-import.md
-    variant: docs/external-agent-commands-import-openzwork.md
-    kind: identity
-    upstreamBlob: 62caa16d8a4b46ec63e9bc27ee3bbc9d3e40b7c5
-  - upstream: docs/external-agent-mcp-import.md
-    variant: docs/external-agent-mcp-import-openzwork.md
-    kind: identity
-    upstreamBlob: e148e9759d789ebe81fa2b19dd1bb2d3f6a43e6e
-  - upstream: docs/external-agent-plugins-import.md
-    variant: docs/external-agent-plugins-import-openzwork.md
-    kind: identity
-    upstreamBlob: 25b4bfd3b1323cc8ba829ad1966890605c346b3a
-  - upstream: docs/external-agent-skills-import.md
-    variant: docs/external-agent-skills-import-openzwork.md
-    kind: identity
-    upstreamBlob: 4597d15e3195be67ece2392f0b4b3099611e0cef
   - upstream: docs/feedback-log-export-alignment.md
     variant: docs/feedback-log-export-alignment-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 4c09d5c2196c6de61d0da99e16b4c152a85db308
-  - upstream: docs/feedback-new-api-migration.md
-    variant: docs/feedback-new-api-migration-openzwork.md
-    kind: purge
-    upstreamBlob: 5232b3c4d2911501926af896e1b9ed2ba44846a1
-  - upstream: docs/git/checkpoint-service-foundation.md
-    variant: docs/git/checkpoint-service-foundation-openzwork.md
-    kind: identity
-    upstreamBlob: 4555ac87320f7f42bf5ed14bc1028fc71521f76b
   - upstream: docs/git/release-build-publish-separation.md
     variant: docs/git/release-build-publish-separation-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: e499cc286ebebd1444db66eacbc07ad5ccab3869
-  - upstream: docs/git/requirements.md
-    variant: docs/git/requirements-openzwork.md
-    kind: purge
-    upstreamBlob: 4d8639185ac62daf7a4798a7f7d724c5d9e43f16
-  - upstream: docs/git/ui-shell.md
-    variant: docs/git/ui-shell-openzwork.md
-    kind: purge
-    upstreamBlob: 9a63cad38c5561d58f357d8e7cecf0421af5fc29
-  - upstream: docs/help-menu-whats-new.md
-    variant: docs/help-menu-whats-new-openzwork.md
-    kind: purge
-    upstreamBlob: 73fba584baa882505321a5aca35192bce0374a99
-  - upstream: docs/hooks-implementation-analysis.md
-    variant: docs/hooks-implementation-analysis-openzwork.md
-    kind: identity
-    upstreamBlob: 1bb3a651d0345586acfc367c7f2bc34c53ba2f3f
-  - upstream: docs/hooks-runtime-contract.md
-    variant: docs/hooks-runtime-contract-openzwork.md
-    kind: identity
-    upstreamBlob: ac6178f6a373587894b71779c51e734e95b8813c
-  - upstream: docs/host-api-proxy.md
-    variant: docs/host-api-proxy-openzwork.md
-    kind: purge
-    upstreamBlob: 6ae4fd48478be52079cb042cdd0827aa72ec0fc8
-  - upstream: docs/issues/data-sync/04-data-sync-page-skill-push.md
-    variant: docs/issues/data-sync/04-data-sync-page-skill-push-openzwork.md
-    kind: identity
-    upstreamBlob: e374c3950fcfc7a4ab0bb6090c2909f01f8e5ac1
-  - upstream: docs/issues/data-sync/07-inline-plugin-category.md
-    variant: docs/issues/data-sync/07-inline-plugin-category-openzwork.md
-    kind: identity
-    upstreamBlob: bb772b89f27b40c29c93dc9bd73b61b0e0f232fd
-  - upstream: docs/issues/data-sync/10-command-category.md
-    variant: docs/issues/data-sync/10-command-category-openzwork.md
-    kind: identity
-    upstreamBlob: 052283b25a3731f4cd47e2ef796d2bb1b6d5d6cb
-  - upstream: docs/issues/data-sync/15-scope-menu-by-device.md
-    variant: docs/issues/data-sync/15-scope-menu-by-device-openzwork.md
-    kind: identity
-    upstreamBlob: 980e110f1de816c40a86ea5736021f0982ef1e83
-  - upstream: docs/issues/remote-connection-ux/18-direct-project-creation-and-device-selection.md
-    variant: docs/issues/remote-connection-ux/18-direct-project-creation-and-device-selection-openzwork.md
-    kind: purge
-    upstreamBlob: 94843d8b9447189a658cc908003e0041d19a7113
   - upstream: docs/issues/remote-connection-ux/27-new-connection-form-polish.md
     variant: docs/issues/remote-connection-ux/27-new-connection-form-polish-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 472bd8148e9be53b0b0f8dcb78a978009af2f11e
-  - upstream: docs/issues/remote-e2e-stability/09-live-team-model-precondition.md
-    variant: docs/issues/remote-e2e-stability/09-live-team-model-precondition-openzwork.md
-    kind: purge
-    upstreamBlob: b435584864b17e4398b88357fe046469e55952ca
-  - upstream: docs/issues/remote-startup-failures-3-16/01-source-server-startup-failure-triage.md
-    variant: docs/issues/remote-startup-failures-3-16/01-source-server-startup-failure-triage-openzwork.md
-    kind: identity
-    upstreamBlob: e709e6411540e8eb5b907427a85927d5eadb0879
-  - upstream: docs/issues/remote-startup-failures-3-16/02-service-registration-failure-fallback.md
-    variant: docs/issues/remote-startup-failures-3-16/02-service-registration-failure-fallback-openzwork.md
-    kind: identity
-    upstreamBlob: 2bab79d94e06256002225dba8e181f347e294eb9
-  - upstream: docs/issues/remote-startup-failures-3-16/05-unexplained-ssh-timeouts-and-token-read.md
-    variant: docs/issues/remote-startup-failures-3-16/05-unexplained-ssh-timeouts-and-token-read-openzwork.md
-    kind: identity
-    upstreamBlob: 529e994f4d94f31843867db927f47ba4e54541e2
-  - upstream: docs/issues/remote-tickets-3-16-2-1022/01-ticket-triage.md
-    variant: docs/issues/remote-tickets-3-16-2-1022/01-ticket-triage-openzwork.md
-    kind: identity
-    upstreamBlob: 3c7ec0aac9a2e217fcf9d9b588c9828905db58cf
-  - upstream: docs/issues/remote-tickets-3-16-2-1022/04-wsl-stale-failure-handoff-and-profile-split.md
-    variant: docs/issues/remote-tickets-3-16-2-1022/04-wsl-stale-failure-handoff-and-profile-split-openzwork.md
-    kind: identity
-    upstreamBlob: 1f90ebb6246d1f875be67b027c4a0a1d92a784b5
-  - upstream: docs/issues/remote-tickets-3-16-2-1022/05-local-setting-lock-blocks-remote-admission.md
-    variant: docs/issues/remote-tickets-3-16-2-1022/05-local-setting-lock-blocks-remote-admission-openzwork.md
-    kind: content
-    upstreamBlob: 38ea899b27e81cfe8176ed67025a8916c607530d
-  - upstream: docs/issues/remote-tickets-3-16-2-1022/06-orphan-supervisor-after-server-root-replaced.md
-    variant: docs/issues/remote-tickets-3-16-2-1022/06-orphan-supervisor-after-server-root-replaced-openzwork.md
-    kind: identity
-    upstreamBlob: d2975fc63c6d27c403261101b63fee681c54af0d
-  - upstream: docs/issues/ttft-stage-telemetry/01-local-send-stage-observability.md
-    variant: docs/issues/ttft-stage-telemetry/01-local-send-stage-observability-openzwork.md
-    kind: purge
-    upstreamBlob: 329a9107e78b71e4a4bc6f5a55dcb9d9bd953ab0
-  - upstream: docs/issues/ttft-stage-telemetry/02-queued-retry-and-failure-diagnostics.md
-    variant: docs/issues/ttft-stage-telemetry/02-queued-retry-and-failure-diagnostics-openzwork.md
-    kind: purge
-    upstreamBlob: 77e98b75978570a253e077ec156f9a4a8fd00884
-  - upstream: docs/mcp-config-compat-diagnostics.md
-    variant: docs/mcp-config-compat-diagnostics-openzwork.md
-    kind: identity
-    upstreamBlob: 65780a1ec68d371189e08f501b0b5dcc613f01a7
-  - upstream: docs/mcp-image-payload-test-server.md
-    variant: docs/mcp-image-payload-test-server-openzwork.md
-    kind: identity
-    upstreamBlob: bd185801a2b411e29e40f0a7bcb26882ae93daef
-  - upstream: docs/mcp-oauth-client-auth.md
-    variant: docs/mcp-oauth-client-auth-openzwork.md
-    kind: purge
-    upstreamBlob: a4345455c63d7a07b44dea1a49ce938757231115
   - upstream: docs/mcp-oauth-two-phase.md
     variant: docs/mcp-oauth-two-phase-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 8a7b92d2c98a2e259a4b214e4849142f12453131
   - upstream: docs/mcp-stateless-node-repl.md
     variant: docs/mcp-stateless-node-repl-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 01183bcc7d36b27c67b9c42618df2e66e4b54e5f
-  - upstream: docs/migration/hooks-memory-outputstyle-migration.md
-    variant: docs/migration/hooks-memory-outputstyle-migration-openzwork.md
-    kind: identity
-    upstreamBlob: 5164b63afedad8182cb1679b8d1d9083926665d5
-  - upstream: docs/migration/legacy-session-restore-skill.md
-    variant: docs/migration/legacy-session-restore-skill-openzwork.md
-    kind: content
-    upstreamBlob: 763b6ef6de1c096cc487cea18639a14157ea1498
-  - upstream: docs/migration/loading-issue-debug.md
-    variant: docs/migration/loading-issue-debug-openzwork.md
-    kind: purge
-    upstreamBlob: d2af09d1f511cdb7e9353a589e4daf121f63be40
-  - upstream: docs/mobile-remote-control-android.md
-    variant: docs/mobile-remote-control-android-openzwork.md
-    kind: purge
-    upstreamBlob: ff016cfdd0f8934febc62daa697c8aa16a99434e
-  - upstream: docs/model-io-full-retention-setting.md
-    variant: docs/model-io-full-retention-setting-openzwork.md
-    kind: identity
-    upstreamBlob: b90fb2af75ff5c66dd3f87d5f90986abc84758d8
-  - upstream: docs/model-provider-client-config-remote-model-facts.md
-    variant: docs/model-provider-client-config-remote-model-facts-openzwork.md
-    kind: purge
-    upstreamBlob: 10fdde5da5cd1b3c007d8c81506dc793b4add6c6
-  - upstream: docs/model-provider-config-overrides.md
-    variant: docs/model-provider-config-overrides-openzwork.md
-    kind: identity
-    upstreamBlob: 39c3245ce7df529f75bd4f26dc63e83633442d9b
-  - upstream: docs/model-provider-json-schema.md
-    variant: docs/model-provider-json-schema-openzwork.md
-    kind: content
-    upstreamBlob: 45eb5faa1dd4ef80be4d9e65ba2ad4bc34a82d8d
-  - upstream: docs/model-provider-opencode-config.md
-    variant: docs/model-provider-opencode-config-openzwork.md
-    kind: identity
-    upstreamBlob: 0cf4b98a3c53db24bae8eefe9547fea45c7ad068
   - upstream: docs/model-provider-presets.md
     variant: docs/model-provider-presets-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: f6fa8a2251457733aef8d9f421fe0ab978e24f30
   - upstream: docs/model-provider-regression-case-catalog.md
     variant: docs/model-provider-regression-case-catalog-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 54ea815fa2781a9ed870b580db6749929ff6bbee
-  - upstream: docs/model-trajectory-viewer.md
-    variant: docs/model-trajectory-viewer-openzwork.md
-    kind: identity
-    upstreamBlob: 3047b76cd80b0e352ba78d2c4d468dc1aad4a198
   - upstream: docs/monitoring/local-ttft-queries.md
     variant: docs/monitoring/local-ttft-queries-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: dfb71432d59c9297125d500f4052094bf7195ddc
   - upstream: docs/monitoring/local-ttft-trace-reading.md
     variant: docs/monitoring/local-ttft-trace-reading-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: d57b1b67c6f5f4e56b63e61761c6377bed9b4f63
   - upstream: docs/monitoring/memory-diagnostics-log.md
     variant: docs/monitoring/memory-diagnostics-log-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 0e309387a06fa36e79ad45469efba682551ab37c
   - upstream: docs/monitoring/README.md
     variant: docs/monitoring/README-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 0bce0419c6c0f252c069e0d3127a4df7f65d41b3
-  - upstream: docs/monitoring/ttft-stage-telemetry.md
-    variant: docs/monitoring/ttft-stage-telemetry-openzwork.md
-    kind: identity
-    upstreamBlob: 4c07909c2ec5e43842bec2119203f069d9f9ce4a
-  - upstream: docs/multimodal-tool-result-p0-cases.md
-    variant: docs/multimodal-tool-result-p0-cases-openzwork.md
-    kind: purge
-    upstreamBlob: daafcb771f1e37c69e52d0fab9b044fb3d9d75d3
-  - upstream: docs/onboarding-record-spec.md
-    variant: docs/onboarding-record-spec-openzwork.md
-    kind: content
-    upstreamBlob: 27b7ab32fa180f5f02f53207b66c2da72f54b8a0
-  - upstream: docs/performance/session-config-blocking-hotfix.md
-    variant: docs/performance/session-config-blocking-hotfix-openzwork.md
-    kind: purge
-    upstreamBlob: da239ae9688fd3fe485e6e8736f309c291c2a6ab
-  - upstream: docs/performance/session-open-workspace-catalog.md
-    variant: docs/performance/session-open-workspace-catalog-openzwork.md
-    kind: purge
-    upstreamBlob: 3c3cfeb637b171aa41ea66207cc95dc6d80f701e
-  - upstream: docs/performance/ui-render-stability.md
-    variant: docs/performance/ui-render-stability-openzwork.md
-    kind: purge
-    upstreamBlob: a38a650b8c86ace669a5a25a6678db377e3093e9
-  - upstream: docs/permission-project-approval.md
-    variant: docs/permission-project-approval-openzwork.md
-    kind: purge
-    upstreamBlob: 9ad7307db6778670c968a7f1782552b140c7b592
-  - upstream: docs/plans/2026-10-13-macos-update-install-reentry.md
-    variant: docs/plans/2026-10-13-macos-update-install-reentry-openzwork.md
-    kind: purge
-    upstreamBlob: e323ba43ea91d3e75e61365814351a3768050f67
-  - upstream: docs/plans/2026-10-15-project-location-recovery.md
-    variant: docs/plans/2026-10-15-project-location-recovery-openzwork.md
-    kind: purge
-    upstreamBlob: 2955b637cb3e8a9e0fa331f3bd5570170eea3727
-  - upstream: docs/plans/browser-use/2026-06-05-browser-use-mcp-integration-plan.md
-    variant: docs/plans/browser-use/2026-06-05-browser-use-mcp-integration-plan-openzwork.md
-    kind: content
-    upstreamBlob: dc94dbfab8b1df9e6712869a491083e664153aae
-  - upstream: docs/plugin-cdn-zip-source.md
-    variant: docs/plugin-cdn-zip-source-openzwork.md
-    kind: purge
-    upstreamBlob: 61b365790f711172b31112f41c8c703b1569f740
-  - upstream: docs/plugin-eval-docker.md
-    variant: docs/plugin-eval-docker-openzwork.md
-    kind: purge
-    upstreamBlob: 320be704a28a658c6d514b37ff9eec7277b79791
-  - upstream: docs/plugin-marketplace-ui-ux.md
-    variant: docs/plugin-marketplace-ui-ux-openzwork.md
-    kind: content
-    upstreamBlob: e49b4e877ca02d16ef1cf72748622b104d10e025
-  - upstream: docs/plugins/2026-09-17-official-plugin-version-sync-spec.md
-    variant: docs/plugins/2026-09-17-official-plugin-version-sync-spec-openzwork.md
-    kind: purge
-    upstreamBlob: 4e94296680f9eaf97f9c0bd2ad1138bd44ebac8c
-  - upstream: docs/plugins/workspace-level-plugin-architecture.md
-    variant: docs/plugins/workspace-level-plugin-architecture-openzwork.md
-    kind: identity
-    upstreamBlob: 8fa49a27482a6daaf695e59d8956e6f9c42fb37e
-  - upstream: docs/plugins/workspace-level-plugin-proposal-comparison.md
-    variant: docs/plugins/workspace-level-plugin-proposal-comparison-openzwork.md
-    kind: identity
-    upstreamBlob: e13e79c4df3c5202ee1e267e186b2e3fca697a30
   - upstream: docs/product-capability-map-office-computer-use.md
     variant: docs/product-capability-map-office-computer-use-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 867149494b47a1e14d614759928471ae430b30ba
-  - upstream: docs/product-capability-map.md
-    variant: docs/product-capability-map-openzwork.md
-    kind: purge
-    upstreamBlob: 767d81538a13241ca2793e5c35d2f6e7cd2c1de4
-  - upstream: docs/remote-prompt-attachment-materialization.md
-    variant: docs/remote-prompt-attachment-materialization-openzwork.md
-    kind: identity
-    upstreamBlob: 7f6b8ad7b93e36d4b553863a64cdc1d6b1fc7f5e
-  - upstream: docs/remote-workspace-provider-sync-hang.md
-    variant: docs/remote-workspace-provider-sync-hang-openzwork.md
-    kind: identity
-    upstreamBlob: 76b4056fa0225f916d205f116e29fe23f2e3bf8f
-  - upstream: docs/remote/data-sync.md
-    variant: docs/remote/data-sync-openzwork.md
-    kind: identity
-    upstreamBlob: 7ef0ce50cd852f3767bf58bb703211ad61ccebd7
   - upstream: docs/remote/provider-provisioning.md
     variant: docs/remote/provider-provisioning-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: c299a3dce7003caac5d48d1b9d4451ef017b9696
-  - upstream: docs/restore-legacy-sessions-official-plugin.md
-    variant: docs/restore-legacy-sessions-official-plugin-openzwork.md
-    kind: identity
-    upstreamBlob: c4bb79d15765279fcf586c3b7149d95041a0f4c2
-  - upstream: docs/runtime-tools/agent-electron-node-runtime.md
-    variant: docs/runtime-tools/agent-electron-node-runtime-openzwork.md
-    kind: identity
-    upstreamBlob: b9e4fc2350c51eff70189d483ca7e7e2da4dc529
-  - upstream: docs/runtime-tools/bash-effective-shell-snapshot.md
-    variant: docs/runtime-tools/bash-effective-shell-snapshot-openzwork.md
-    kind: identity
-    upstreamBlob: af3ba89bdd9814b2a8f60d318d8e91087fb4db27
-  - upstream: docs/runtime-tools/embedded-search-native-build.md
-    variant: docs/runtime-tools/embedded-search-native-build-openzwork.md
-    kind: identity
-    upstreamBlob: 6dcbd408703f9d9bd1fbc0dde658b1ca297372c7
-  - upstream: docs/runtime-tools/mcp-status-list-control-plane.md
-    variant: docs/runtime-tools/mcp-status-list-control-plane-openzwork.md
-    kind: purge
-    upstreamBlob: 9d6c438b779a6b208c431ca6d8c25bbcc540d808
-  - upstream: docs/runtime-tools/ripgrep-runtime.md
-    variant: docs/runtime-tools/ripgrep-runtime-openzwork.md
-    kind: identity
-    upstreamBlob: c1fc20f035b5d24541aa2fbcb261e8cca203b893
-  - upstream: docs/runtime-tools/runtime-env-sanitization.md
-    variant: docs/runtime-tools/runtime-env-sanitization-openzwork.md
-    kind: purge
-    upstreamBlob: ee8af37640847482cb8077f9340dc3ef734cbca2
-  - upstream: docs/security/deep-link-project-trust-boundary.md
-    variant: docs/security/deep-link-project-trust-boundary-openzwork.md
-    kind: identity
-    upstreamBlob: c876c0e847c2f8194b366863ecc0b3edd4b066ed
-  - upstream: docs/session-idle-deactivation.md
-    variant: docs/session-idle-deactivation-openzwork.md
-    kind: purge
-    upstreamBlob: 5851808e3f982badd3d6596827865dd111488d2e
-  - upstream: docs/settings-directory-sources.md
-    variant: docs/settings-directory-sources-openzwork.md
-    kind: identity
-    upstreamBlob: c95fddb031e693be2111fad7988c0dd56b01ce2d
-  - upstream: docs/settings-list-create-actions.md
-    variant: docs/settings-list-create-actions-openzwork.md
-    kind: purge
-    upstreamBlob: 8e2831b035604bb0ab00198df548fc7ab29513cc
-  - upstream: docs/settings-mcp-list.md
-    variant: docs/settings-mcp-list-openzwork.md
-    kind: purge
-    upstreamBlob: 18b0e78b00441f7178c0d88e43586b6dc7dba9b6
-  - upstream: docs/settings-storage-management.md
-    variant: docs/settings-storage-management-openzwork.md
-    kind: content
-    upstreamBlob: 364928b909114d0d98d0cebfb4f414f323d52617
-  - upstream: docs/settings-sync-provider-import.md
-    variant: docs/settings-sync-provider-import-openzwork.md
-    kind: identity
-    upstreamBlob: 867706fd750149ce62171ddbd6ad87d995c4b76d
-  - upstream: docs/specs/workspace-hook-trust.md
-    variant: docs/specs/workspace-hook-trust-openzwork.md
-    kind: identity
-    upstreamBlob: bf91ad6d9ed8a20b603eaae2ee52e91f57865bfc
-  - upstream: docs/ssh-remote-app-global-state-authority.md
-    variant: docs/ssh-remote-app-global-state-authority-openzwork.md
-    kind: purge
-    upstreamBlob: 2cf36ed5a6853360fa46c198dbbb189f922d1b07
-  - upstream: docs/subagents-built-in-model-overrides.md
-    variant: docs/subagents-built-in-model-overrides-openzwork.md
-    kind: purge
-    upstreamBlob: ba13a6bc9348bf1963f7763be3feed3d07509dd8
-  - upstream: docs/superpowers/plans/2026-03-31-bigmodel-oauth-login.md
-    variant: docs/superpowers/plans/2026-03-31-bigmodel-oauth-login-openzwork.md
-    kind: content
-    upstreamBlob: 0d52716fed96271da3c4ea25205d4200e8fce473
-  - upstream: docs/superpowers/plans/2026-06-02-app-usage-db-migration.md
-    variant: docs/superpowers/plans/2026-06-02-app-usage-db-migration-openzwork.md
-    kind: content
-    upstreamBlob: 631360d8f574daf770ad8b40b42c3908613a4348
-  - upstream: docs/superpowers/plans/2026-06-04-model-provider-catalog-metadata.md
-    variant: docs/superpowers/plans/2026-06-04-model-provider-catalog-metadata-openzwork.md
-    kind: purge
-    upstreamBlob: 2d4e14bd3f7e9370efb4e27f45e88f8cf46b7070
-  - upstream: docs/superpowers/plans/2026-06-04-model-provider-endpoint-path-editing.md
-    variant: docs/superpowers/plans/2026-06-04-model-provider-endpoint-path-editing-openzwork.md
-    kind: purge
-    upstreamBlob: 0109a85dcc241e5d3b07fbf3bd2d82a6f94d4488
   - upstream: docs/superpowers/plans/2026-06-04-web-remote-test-static-deployment.md
     variant: docs/superpowers/plans/2026-06-04-web-remote-test-static-deployment-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 951de9698d0859bc6400147c7c8aaee5b9a7467f
   - upstream: docs/superpowers/plans/2026-06-04-web-remote-v3-static-deployment.md
     variant: docs/superpowers/plans/2026-06-04-web-remote-v3-static-deployment-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 2529a7e5b35d44905726cc59707ee3482729732e
-  - upstream: docs/superpowers/plans/2026-06-10-model-switch-context-window-guard.md
-    variant: docs/superpowers/plans/2026-06-10-model-switch-context-window-guard-openzwork.md
-    kind: content
-    upstreamBlob: 9b1464fdf8c3eb5785d2520bd519af5e3f784611
-  - upstream: docs/superpowers/plans/2026-06-16-analyze-image-client-wrapper.md
-    variant: docs/superpowers/plans/2026-06-16-analyze-image-client-wrapper-openzwork.md
-    kind: content
-    upstreamBlob: 92f088ef34812d5dbf877d29d8354bc7e9af06f6
-  - upstream: docs/superpowers/plans/2026-06-16-feedback-ticket-detail-issue-id.md
-    variant: docs/superpowers/plans/2026-06-16-feedback-ticket-detail-issue-id-openzwork.md
-    kind: purge
-    upstreamBlob: c9dd9db6b39fe64c4fd469315d952ecb12a02da6
-  - upstream: docs/superpowers/plans/2026-06-16-official-plugin-cache-windows-hardening.md
-    variant: docs/superpowers/plans/2026-06-16-official-plugin-cache-windows-hardening-openzwork.md
-    kind: identity
-    upstreamBlob: 4f31168b5cf5e12a51a17e06267dfd4c0498d8a7
-  - upstream: docs/superpowers/plans/2026-06-16-ui-perf-arms-telemetry.md
-    variant: docs/superpowers/plans/2026-06-16-ui-perf-arms-telemetry-openzwork.md
-    kind: content
-    upstreamBlob: 12999ca43089b4f057938e53e20e1d2443864558
-  - upstream: docs/superpowers/plans/2026-06-17-launch-to-input-telemetry.md
-    variant: docs/superpowers/plans/2026-06-17-launch-to-input-telemetry-openzwork.md
-    kind: content
-    upstreamBlob: f82cb4d56a2deb9e1862f43287c2644d8f6c853c
-  - upstream: docs/superpowers/plans/2026-06-23-arms-user-id.md
-    variant: docs/superpowers/plans/2026-06-23-arms-user-id-openzwork.md
-    kind: purge
-    upstreamBlob: 011106c786029f39a4abd4b51233eb999044bf06
-  - upstream: docs/superpowers/plans/2026-06-25-user-subagent-settings-management.md
-    variant: docs/superpowers/plans/2026-06-25-user-subagent-settings-management-openzwork.md
-    kind: content
-    upstreamBlob: be8778bec6325d5db2ef086e44998ab6dbda6933
-  - upstream: docs/superpowers/plans/2026-06-29-remote-skill-sync.md
-    variant: docs/superpowers/plans/2026-06-29-remote-skill-sync-openzwork.md
-    kind: content
-    upstreamBlob: 495b8535e5a6f042a04bfbc17a54a933ac58ef46
-  - upstream: docs/superpowers/plans/2026-07-06-remote-plugin-sync.md
-    variant: docs/superpowers/plans/2026-07-06-remote-plugin-sync-openzwork.md
-    kind: identity
-    upstreamBlob: 16e862ec312145c3efb318536ba8d58b1613adbe
-  - upstream: docs/superpowers/plans/2026-07-08-remote-plugin-marketplace-source-sync.md
-    variant: docs/superpowers/plans/2026-07-08-remote-plugin-marketplace-source-sync-openzwork.md
-    kind: identity
-    upstreamBlob: 59642a61d12ebb2e0cb2840ea75ecba2acdddba0
-  - upstream: docs/superpowers/plans/2026-07-10-ssh-plugin-archive-permissions.md
-    variant: docs/superpowers/plans/2026-07-10-ssh-plugin-archive-permissions-openzwork.md
-    kind: identity
-    upstreamBlob: 78ba1b9d10cdddb698a80ca6233954be1f672b7c
-  - upstream: docs/superpowers/plans/2026-07-12-feedback-base-service-boundary.md
-    variant: docs/superpowers/plans/2026-07-12-feedback-base-service-boundary-openzwork.md
-    kind: purge
-    upstreamBlob: 5e295d605c1b6264e9883f974b546735d2f28bc7
-  - upstream: docs/superpowers/plans/2026-07-13-model-request-output-token-provider-compatibility.md
-    variant: docs/superpowers/plans/2026-07-13-model-request-output-token-provider-compatibility-openzwork.md
-    kind: identity
-    upstreamBlob: d1dfbea7fc636bb102ddf693922ca081ede68e24
-  - upstream: docs/superpowers/plans/2026-07-17-e2e-direct-failure-repairs.md
-    variant: docs/superpowers/plans/2026-07-17-e2e-direct-failure-repairs-openzwork.md
-    kind: purge
-    upstreamBlob: af39b3215c1a36419533618d35f646f303292955
-  - upstream: docs/superpowers/plans/2026-07-20-remote-deploy-transaction-lock.md
-    variant: docs/superpowers/plans/2026-07-20-remote-deploy-transaction-lock-openzwork.md
-    kind: identity
-    upstreamBlob: 806c2c93a5c9d56cd3706c7f333b10474d48b4e8
-  - upstream: docs/superpowers/plans/2026-07-20-wsl-remote-process-cleanup.md
-    variant: docs/superpowers/plans/2026-07-20-wsl-remote-process-cleanup-openzwork.md
-    kind: identity
-    upstreamBlob: e6a861414788f1a90c0f9253fd170d73a17710fa
-  - upstream: docs/superpowers/plans/2026-07-21-wsl-lifecycle-review-remediation.md
-    variant: docs/superpowers/plans/2026-07-21-wsl-lifecycle-review-remediation-openzwork.md
-    kind: identity
-    upstreamBlob: 790a86ffca503c05fffed74532e476fd28a06867
-  - upstream: docs/superpowers/plans/2026-08-20-ci-build-platform-selection.md
-    variant: docs/superpowers/plans/2026-08-20-ci-build-platform-selection-openzwork.md
-    kind: purge
-    upstreamBlob: 219e53dddbfd42f82befefb56a133af94dd5230b
-  - upstream: docs/superpowers/plans/2026-08-20-draft-prewarm-runtime-rebuild.md
-    variant: docs/superpowers/plans/2026-08-20-draft-prewarm-runtime-rebuild-openzwork.md
-    kind: purge
-    upstreamBlob: 213309f18305acbc6efdfcbe13d7fed4e5a88ca7
-  - upstream: docs/superpowers/plans/2026-09-10-virtual-project-implementation.md
-    variant: docs/superpowers/plans/2026-09-10-virtual-project-implementation-openzwork.md
-    kind: purge
-    upstreamBlob: 0f223b9099fa9f6ca97ea7ebcdcebdde1508ec6c
   - upstream: docs/superpowers/plans/2026-09-11-virtual-project-development-deviations.md
     variant: docs/superpowers/plans/2026-09-11-virtual-project-development-deviations-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 34327c91df32f5f1a1d7deaccb4325a114c4abb7
   - upstream: docs/superpowers/specs/2026-03-31-bigmodel-oauth-login-design.md
     variant: docs/superpowers/specs/2026-03-31-bigmodel-oauth-login-design-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 37c4e7d1de4dd1d217be815efbde63bd92249f84
-  - upstream: docs/superpowers/specs/2026-04-28-window-level-web-remote-control-design.md
-    variant: docs/superpowers/specs/2026-04-28-window-level-web-remote-control-design-openzwork.md
-    kind: content
-    upstreamBlob: b2e5f94e1875aad0ac0eed9e2d0c36a68d1d7d27
-  - upstream: docs/superpowers/specs/2026-06-02-app-usage-db-migration-design.md
-    variant: docs/superpowers/specs/2026-06-02-app-usage-db-migration-design-openzwork.md
-    kind: purge
-    upstreamBlob: d473bfc8c4d29ada1d76927c7407a98526ad0ae2
-  - upstream: docs/superpowers/specs/2026-06-04-web-remote-test-static-deployment-design.md
-    variant: docs/superpowers/specs/2026-06-04-web-remote-test-static-deployment-design-openzwork.md
-    kind: purge
-    upstreamBlob: 77a50bd1a4b4e60b482e4fba20c3141d6e156ca2
-  - upstream: docs/superpowers/specs/2026-06-04-web-remote-v3-static-deployment-design.md
-    variant: docs/superpowers/specs/2026-06-04-web-remote-v3-static-deployment-design-openzwork.md
-    kind: purge
-    upstreamBlob: f9154dded02488bc1db8a75ee32ef10093f15276
-  - upstream: docs/superpowers/specs/2026-06-23-arms-user-id-design.md
-    variant: docs/superpowers/specs/2026-06-23-arms-user-id-design-openzwork.md
-    kind: purge
-    upstreamBlob: 2cc595933a922570d68035a1c848222cc14e30d5
-  - upstream: docs/superpowers/specs/2026-06-25-plugin-bundled-agents-discovery-design.md
-    variant: docs/superpowers/specs/2026-06-25-plugin-bundled-agents-discovery-design-openzwork.md
-    kind: identity
-    upstreamBlob: e90bb040ee6a123b8ca88792f7a920d39217be1b
-  - upstream: docs/superpowers/specs/2026-06-29-remote-skill-sync-design.md
-    variant: docs/superpowers/specs/2026-06-29-remote-skill-sync-design-openzwork.md
-    kind: identity
-    upstreamBlob: 125f52a2b379158269870eaab31be74d6b54ea38
-  - upstream: docs/superpowers/specs/2026-07-01-anthropic-authorization-header.md
-    variant: docs/superpowers/specs/2026-07-01-anthropic-authorization-header-openzwork.md
-    kind: purge
-    upstreamBlob: fb700066af856848e0907a5e0d55ab5ea6fd31ec
-  - upstream: docs/superpowers/specs/2026-07-03-remote-mcp-sync-design.md
-    variant: docs/superpowers/specs/2026-07-03-remote-mcp-sync-design-openzwork.md
-    kind: identity
-    upstreamBlob: a94d93f90735bc238b4b48ab70440b33ae5dc6d3
-  - upstream: docs/superpowers/specs/2026-07-06-remote-plugin-sync-design.md
-    variant: docs/superpowers/specs/2026-07-06-remote-plugin-sync-design-openzwork.md
-    kind: identity
-    upstreamBlob: 30058142a391754a7c0d648c7c3349623249b5f2
-  - upstream: docs/superpowers/specs/2026-07-08-fork-session-title-design.md
-    variant: docs/superpowers/specs/2026-07-08-fork-session-title-design-openzwork.md
-    kind: identity
-    upstreamBlob: 7c66b7a44992909ac4fe4d30c760c4f97c51c815
-  - upstream: docs/superpowers/specs/2026-07-10-non-project-conversation-workspace-design.md
-    variant: docs/superpowers/specs/2026-07-10-non-project-conversation-workspace-design-openzwork.md
-    kind: identity
-    upstreamBlob: 7b037bfc9a412584c32917a4b5fcb73316093bec
-  - upstream: docs/superpowers/specs/2026-07-12-feedback-base-service-boundary-design.md
-    variant: docs/superpowers/specs/2026-07-12-feedback-base-service-boundary-design-openzwork.md
-    kind: purge
-    upstreamBlob: 95cfe50170f68024e14085dcac60f6e8d6de6591
-  - upstream: docs/superpowers/specs/2026-07-13-window-scoped-ssh-remote-host-pooling-design.md
-    variant: docs/superpowers/specs/2026-07-13-window-scoped-ssh-remote-host-pooling-design-openzwork.md
-    kind: content
-    upstreamBlob: 975ed0d89660395002b29c9d0655906fcca77eb0
-  - upstream: docs/superpowers/specs/2026-07-14-wsl-remote-sync-design.md
-    variant: docs/superpowers/specs/2026-07-14-wsl-remote-sync-design-openzwork.md
-    kind: identity
-    upstreamBlob: e430f3b8d3be31389c97c3549f6a3122798a1202
-  - upstream: docs/superpowers/specs/2026-07-15-sqlite-concurrent-agent-startup-design.md
-    variant: docs/superpowers/specs/2026-07-15-sqlite-concurrent-agent-startup-design-openzwork.md
-    kind: identity
-    upstreamBlob: 07af3326dd2f54681c3d8e52c636795ed0e46dda
-  - upstream: docs/superpowers/specs/2026-07-17-e2e-direct-failure-repairs-design.md
-    variant: docs/superpowers/specs/2026-07-17-e2e-direct-failure-repairs-design-openzwork.md
-    kind: purge
-    upstreamBlob: d9d2864ead89587f32873d33d85ce7c9c0aca6b6
-  - upstream: docs/superpowers/specs/2026-07-17-kimi-k3-model-adapter-design.md
-    variant: docs/superpowers/specs/2026-07-17-kimi-k3-model-adapter-design-openzwork.md
-    kind: identity
-    upstreamBlob: d0fd88998c31b6ee1271912a7e862f4843e47811
-  - upstream: docs/superpowers/specs/2026-07-19-wsl-remote-process-cleanup-design.md
-    variant: docs/superpowers/specs/2026-07-19-wsl-remote-process-cleanup-design-openzwork.md
-    kind: identity
-    upstreamBlob: 6dc9b62074748fbb81a9bdee8d9a1405d2a0d6eb
-  - upstream: docs/superpowers/specs/2026-07-20-window-scoped-wsl-host-pooling-design.md
-    variant: docs/superpowers/specs/2026-07-20-window-scoped-wsl-host-pooling-design-openzwork.md
-    kind: identity
-    upstreamBlob: 2517b869694df32f20f5934a6d4ab215344b7a9a
-  - upstream: docs/superpowers/specs/2026-08-14-glm-5-3-model-adapter-design.md
-    variant: docs/superpowers/specs/2026-08-14-glm-5-3-model-adapter-design-openzwork.md
-    kind: purge
-    upstreamBlob: 14fb52a10afe1c55e4b8e6ef4f1fabf59f74c127
-  - upstream: docs/superpowers/specs/2026-08-20-draft-prewarm-runtime-rebuild-design.md
-    variant: docs/superpowers/specs/2026-08-20-draft-prewarm-runtime-rebuild-design-openzwork.md
-    kind: purge
-    upstreamBlob: 0b55f5479ea77d2531b590db5138f3a21ddc8f02
-  - upstream: docs/superpowers/specs/2026-08-21-model-provider-modality-settings-design.md
-    variant: docs/superpowers/specs/2026-08-21-model-provider-modality-settings-design-openzwork.md
-    kind: identity
-    upstreamBlob: c59051fff2dc4c4e3f77f38c1de33638500b0179
-  - upstream: docs/superpowers/specs/2026-08-25-host-api-proxy-design.md
-    variant: docs/superpowers/specs/2026-08-25-host-api-proxy-design-openzwork.md
-    kind: purge
-    upstreamBlob: 108f077027fe6a30dc13b84ee59a79f7381ab179
   - upstream: docs/superpowers/specs/2026-09-09-virtual-project-design.md
     variant: docs/superpowers/specs/2026-09-09-virtual-project-design-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: ba618ba1d3da59a6b856b4823c75168172e6dda2
-  - upstream: docs/superpowers/specs/2026-09-14-session-manage-upstream-merge.md
-    variant: docs/superpowers/specs/2026-09-14-session-manage-upstream-merge-openzwork.md
-    kind: purge
-    upstreamBlob: a6deb9f62d0e5bcd13328dddfb38fad7c259955d
-  - upstream: docs/superpowers/specs/2026-10-10-session-manage-upstream-integration.md
-    variant: docs/superpowers/specs/2026-10-10-session-manage-upstream-integration-openzwork.md
-    kind: purge
-    upstreamBlob: 0d19f6c49361fa858d2f60333ee636c8d204273b
-  - upstream: docs/superpowers/specs/2026-10-24-project-management.md
-    variant: docs/superpowers/specs/2026-10-24-project-management-openzwork.md
-    kind: identity
-    upstreamBlob: 44337b9297e402998f8a89fb78977afa84916c54
   - upstream: docs/task/task-sqlite-index.md
     variant: docs/task/task-sqlite-index-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 1766a0707d37fad8d2bf0d64aaa084fe0f18e106
-  - upstream: docs/testing/bash-direct-output-e2e-coverage.md
-    variant: docs/testing/bash-direct-output-e2e-coverage-openzwork.md
-    kind: purge
-    upstreamBlob: 466ea5bdab7da4150cfa622f900379101fefabaf
   - upstream: docs/testing/bots-e2e-coverage-matrix.md
     variant: docs/testing/bots-e2e-coverage-matrix-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: f8b71e22f9650a86bcfbad624b4a395e11542c2c
-  - upstream: docs/testing/browser-use-coverage-matrix.md
-    variant: docs/testing/browser-use-coverage-matrix-openzwork.md
-    kind: content
-    upstreamBlob: d8a9741eebbc5a98caacff2d681154e1ee44aa52
-  - upstream: docs/testing/conversation-session-background-e2e-coverage-matrix.md
-    variant: docs/testing/conversation-session-background-e2e-coverage-matrix-openzwork.md
-    kind: content
-    upstreamBlob: 70a91ad6199c991f1583035c0505114b63c0cd3d
   - upstream: docs/testing/conversation-session-decision-e2e-roadmap.md
     variant: docs/testing/conversation-session-decision-e2e-roadmap-openzwork.md
+    role: tool
+    usedBy:
+      - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
     upstreamBlob: 4b4617087cbbe1fde83569e3a680d02a8479bbbb
   - upstream: docs/testing/conversation-session-decision-review-queue.md
     variant: docs/testing/conversation-session-decision-review-queue-openzwork.md
+    role: tool
+    usedBy:
+      - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
     upstreamBlob: e44acfdf69ea52d23057c5cb5922a48e4dd5887c
   - upstream: docs/testing/conversation-session-decision-workflow-board.md
     variant: docs/testing/conversation-session-decision-workflow-board-openzwork.md
+    role: tool
+    usedBy:
+      - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
     upstreamBlob: e387098c3b4c38934535875a99b2e0879234dbc7
   - upstream: docs/testing/conversation-session-e2e-coverage-matrix.md
     variant: docs/testing/conversation-session-e2e-coverage-matrix-openzwork.md
+    role: tool
+    usedBy:
+      - packages/desktop/scripts/promote-conversation-e2e.mjs
+      - scripts/audit-conversation-session-case-coverage.mjs
+      - scripts/test/conversation-session-formal-admission-audit.test.mjs
+      - docs/specs/memory-migration-openzwork.md
     kind: content
     upstreamBlob: 3261a5c5a4fa2e15912ee2d2523539c9943391ce
   - upstream: docs/testing/conversation-session-e2e-development-workflow.md
     variant: docs/testing/conversation-session-e2e-development-workflow-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: c24c8bef54587eb871e78486ec1d0b61e09123f9
-  - upstream: docs/testing/conversation-session-e2e-human-readable-cases.md
-    variant: docs/testing/conversation-session-e2e-human-readable-cases-openzwork.md
-    kind: purge
-    upstreamBlob: 2d23418373563350c1dd38a6d2aeaf6e57127229
-  - upstream: docs/testing/conversation-session-goal-manual-review-e2e.md
-    variant: docs/testing/conversation-session-goal-manual-review-e2e-openzwork.md
-    kind: purge
-    upstreamBlob: 3dfc5aa71f1bca023afaa9e66f0f3a0f87cbc693
   - upstream: docs/testing/conversation-session-next-decision-answer-template.md
     variant: docs/testing/conversation-session-next-decision-answer-template-openzwork.md
+    role: tool
+    usedBy:
+      - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
     upstreamBlob: 75a39beb2d023c828a967990a3e044299b5e14ea
   - upstream: docs/testing/conversation-session-next-decision-review.md
     variant: docs/testing/conversation-session-next-decision-review-openzwork.md
+    role: tool
+    usedBy:
+      - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
     upstreamBlob: 7f75c750e49a78241ecab776e0fef9b69b746a52
-  - upstream: docs/testing/desktop-e2e-runtime-performance.md
-    variant: docs/testing/desktop-e2e-runtime-performance-openzwork.md
-    kind: purge
-    upstreamBlob: 86127f65c3134d40aec412f367c08ac6f00294b5
-  - upstream: docs/testing/desktop-local-model-provider-p0-e2e-cases.md
-    variant: docs/testing/desktop-local-model-provider-p0-e2e-cases-openzwork.md
-    kind: purge
-    upstreamBlob: 7946661bce900bcabd8d6a653ae5629fd66b059c
-  - upstream: docs/testing/feishu-zct-2096089929570893824-verification.md
-    variant: docs/testing/feishu-zct-2096089929570893824-verification-openzwork.md
-    kind: purge
-    upstreamBlob: c7cb11bde2b8be4228ef8ba85d87dfbca7ecb48e
-  - upstream: docs/testing/git-commit-dialog-e2e-coverage.md
-    variant: docs/testing/git-commit-dialog-e2e-coverage-openzwork.md
-    kind: purge
-    upstreamBlob: 85e92896580fa2b036231b78b79420d2eefc5644
-  - upstream: docs/testing/hooks-e2e-coverage-matrix.md
-    variant: docs/testing/hooks-e2e-coverage-matrix-openzwork.md
-    kind: identity
-    upstreamBlob: 75e98882861f6b2a3148111ab6e41541417ba98f
-  - upstream: docs/testing/llm-api-stream-capture-replay.md
-    variant: docs/testing/llm-api-stream-capture-replay-openzwork.md
-    kind: purge
-    upstreamBlob: 639d777ed5576d2999d43b01f9af0084f637a121
-  - upstream: docs/testing/model-provider-restart-connection-e2e-cases.md
-    variant: docs/testing/model-provider-restart-connection-e2e-cases-openzwork.md
-    kind: purge
-    upstreamBlob: 71ae498cd27604e149c5a5ef72eb5f2a96b4da57
-  - upstream: docs/testing/model-selection-regression-decision-backlog.yaml
-    variant: docs/testing/model-selection-regression-decision-backlog-openzwork.yaml
-    kind: content
-    upstreamBlob: b4e811d4c168c8e64bb0a2b41723b0a4a11e6e6c
-  - upstream: docs/testing/model-selection-regression-decision-questionnaire.md
-    variant: docs/testing/model-selection-regression-decision-questionnaire-openzwork.md
-    kind: purge
-    upstreamBlob: c04f80b8da83b4097c20be7b00f31f2d508bd859
-  - upstream: docs/testing/model-selection-regression-factor-catalog.yaml
-    variant: docs/testing/model-selection-regression-factor-catalog-openzwork.yaml
-    kind: content
-    upstreamBlob: e9d8b9d731c94924a195fb5ebe6f8efbcadb627a
-  - upstream: docs/testing/model-selection-regression-planning.md
-    variant: docs/testing/model-selection-regression-planning-openzwork.md
-    kind: content
-    upstreamBlob: 9f804d1e121b77e02b5ce6320fee3030f8cbf5a5
-  - upstream: docs/testing/opensource-export-validation.md
-    variant: docs/testing/opensource-export-validation-openzwork.md
-    kind: content
-    upstreamBlob: c03eb5c5f47bd135b7398e5438f75a21ee18e898
   - upstream: docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md
     variant: docs/testing/plugin-management-lifecycle-e2e-coverage-matrix-openzwork.md
+    role: tool
+    usedBy:
+      - packages/desktop/scripts/promote-plugin-e2e.mjs
     kind: content
     upstreamBlob: f43646c496d258f0dd6013b8e91845037d8403d2
   - upstream: docs/testing/pre-push-hook.md
     variant: docs/testing/pre-push-hook-openzwork.md
+    role: rule
+    usedBy:
+      - AGENTS.md
     kind: content
     upstreamBlob: 65314bc0d0478be69704037e48f30ac5b34bc38e
-  - upstream: docs/testing/provider-settings-batch-20260910.md
-    variant: docs/testing/provider-settings-batch-20260910-openzwork.md
-    kind: content
-    upstreamBlob: c3a446a00bbe2fba1539194f7d6d48bd4ba94df0
-  - upstream: docs/testing/provider-settings-merge-20260911.md
-    variant: docs/testing/provider-settings-merge-20260911-openzwork.md
-    kind: purge
-    upstreamBlob: 69c740cd032a85d240d4c511edc3062aacde3fb2
-  - upstream: docs/testing/r3-remote-automation-case-matrix.md
-    variant: docs/testing/r3-remote-automation-case-matrix-openzwork.md
-    kind: purge
-    upstreamBlob: 8c2a86639f9c2cb10f3ee8430a4c672d3e5b92d0
-  - upstream: docs/testing/r3-remote-automation-plan.md
-    variant: docs/testing/r3-remote-automation-plan-openzwork.md
-    kind: purge
-    upstreamBlob: 3c6750874bda7ba70a45b0c16d68d8c097ddad88
   - upstream: docs/testing/r3-remote-server-harness.md
     variant: docs/testing/r3-remote-server-harness-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: e93df26106cea0b71de8733b262b375dce853497
-  - upstream: docs/testing/settings-language-e2e-coverage-matrix.md
-    variant: docs/testing/settings-language-e2e-coverage-matrix-openzwork.md
-    kind: purge
-    upstreamBlob: f0231f34368be6d268cedcb0dcbb514bdcc90a38
   - upstream: docs/testing/side-pane-tabs-e2e-case-catalog.md
     variant: docs/testing/side-pane-tabs-e2e-case-catalog-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 44781d6ca4e23a4cfad01c40ac7a81b118738a20
   - upstream: docs/testing/side-pane-tabs-e2e-coverage-matrix.md
     variant: docs/testing/side-pane-tabs-e2e-coverage-matrix-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 4ad7529af028a6e13d39f5d6572fffa020081d25
   - upstream: docs/testing/ssh-remote-p0-e2e-plan.md
     variant: docs/testing/ssh-remote-p0-e2e-plan-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: d8279882d1fc304d899b84c03eaad004ba361e4e
-  - upstream: docs/testing/stop-tool-results-reproduction.md
-    variant: docs/testing/stop-tool-results-reproduction-openzwork.md
-    kind: purge
-    upstreamBlob: f5a5a139c7e9922e63e5eb469e73f87a22392663
   - upstream: docs/testing/subagents-built-in-model-overrides-e2e-coverage-matrix.md
     variant: docs/testing/subagents-built-in-model-overrides-e2e-coverage-matrix-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: ab4980eedb6f5c61b9e45a37a83e69947b9769db
-  - upstream: docs/testing/ui-polish-e2e-coverage-matrix.md
-    variant: docs/testing/ui-polish-e2e-coverage-matrix-openzwork.md
-    kind: purge
-    upstreamBlob: 878e9b5880a7abc59a79d8a43f8a0c750e7f6498
-  - upstream: docs/testing/unit-test-quality.md
-    variant: docs/testing/unit-test-quality-openzwork.md
-    kind: content
-    upstreamBlob: fbb7e939ffb249699efae2de7ef80b04ce5ba3f8
-  - upstream: docs/testing/upstream-provider-e2e.md
-    variant: docs/testing/upstream-provider-e2e-openzwork.md
-    kind: purge
-    upstreamBlob: 95a49b335229222987ebea3b9c8028d5ffff3821
-  - upstream: docs/testing/usage-stats-e2e-coverage-matrix.md
-    variant: docs/testing/usage-stats-e2e-coverage-matrix-openzwork.md
-    kind: purge
-    upstreamBlob: b8cdcc7a971c96c916086c1e76e7aeee0aa2b002
   - upstream: docs/testing/workspace-hook-trust-manual-acceptance.md
     variant: docs/testing/workspace-hook-trust-manual-acceptance-openzwork.md
+    role: tool
+    usedBy:
+      - scripts/create-workspace-hook-trust-uat-fixture.mjs
     kind: identity
     upstreamBlob: 1d365ef73011f6c38ec63c3483cdd21d41fe75e6
-  - upstream: docs/tmpdir-storage-paths-spec.md
-    variant: docs/tmpdir-storage-paths-spec-openzwork.md
-    kind: content
-    upstreamBlob: 766fe8386df81caaa1eefa4d46a9c9b93015dcce
-  - upstream: docs/todo/wsl-native-support.md
-    variant: docs/todo/wsl-native-support-openzwork.md
-    kind: identity
-    upstreamBlob: 59dd9c6ce47dfc63f32f5f6117c1e7dc90c94a21
   - upstream: docs/trace/model-attempt-error-diagnostics.md
     variant: docs/trace/model-attempt-error-diagnostics-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: f50a619a2be55c87a08f0f55718c66ed6f040a6d
   - upstream: docs/trace/README.md
     variant: docs/trace/README-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 9dd6edce5913197cc7b8420e8a7a46dcde418c2d
-  - upstream: docs/ui-mcp-status-refresh-issue.md
-    variant: docs/ui-mcp-status-refresh-issue-openzwork.md
-    kind: identity
-    upstreamBlob: 87955f8490d7e6efa9802e8068832be6f18a9903
-  - upstream: docs/ui/chat-input-context.md
-    variant: docs/ui/chat-input-context-openzwork.md
-    kind: purge
-    upstreamBlob: d0abe59475921acd20568d78794a31d398419316
-  - upstream: docs/ui/chat-model-select-menu.md
-    variant: docs/ui/chat-model-select-menu-openzwork.md
-    kind: purge
-    upstreamBlob: e91abf7c17af0b6dbdb285a14f0b947bf0d3452b
-  - upstream: docs/ui/chat-summary-panel.md
-    variant: docs/ui/chat-summary-panel-openzwork.md
-    kind: purge
-    upstreamBlob: 2d36f5662f9f00d709fb6d4bcfba8d5eb976a97b
-  - upstream: docs/ui/chat-view-composition.md
-    variant: docs/ui/chat-view-composition-openzwork.md
-    kind: purge
-    upstreamBlob: deb85f7481735ea6160d4a83dcb6482ca92df9e9
   - upstream: docs/ui/conversation-draft-suggested-prompts.md
     variant: docs/ui/conversation-draft-suggested-prompts-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: de080051c78b717c3642ce44c54ac298de9a3b32
-  - upstream: docs/ui/font-size-fix-plan-20260723.md
-    variant: docs/ui/font-size-fix-plan-20260723-openzwork.md
-    kind: purge
-    upstreamBlob: cc661211ed25b570ccc8bad6c836d2f3afa7d058
-  - upstream: docs/ui/help-report-vulnerability.md
-    variant: docs/ui/help-report-vulnerability-openzwork.md
-    kind: purge
-    upstreamBlob: a03136a037f655e423958db71748681a6dce5b37
-  - upstream: docs/ui/login-page.md
-    variant: docs/ui/login-page-openzwork.md
-    kind: purge
-    upstreamBlob: 98749c5f6505fa9965589f32861f0a6322d09ff6
-  - upstream: docs/ui/onboarding-migration-flow.md
-    variant: docs/ui/onboarding-migration-flow-openzwork.md
-    kind: content
-    upstreamBlob: b05c283d4ac8f0a42e668490504b6bb4084b05ba
-  - upstream: docs/ui/pinned-task-storage.md
-    variant: docs/ui/pinned-task-storage-openzwork.md
-    kind: identity
-    upstreamBlob: cbf589ab68f744c373afca2c2a3dea457ffb64ea
-  - upstream: docs/ui/scheduled-tasks-main-view.md
-    variant: docs/ui/scheduled-tasks-main-view-openzwork.md
-    kind: content
-    upstreamBlob: ee9f4f2f64a61ccc9d786e5d589e6ec799d2338d
-  - upstream: docs/ui/settings-command-source-filter.md
-    variant: docs/ui/settings-command-source-filter-openzwork.md
-    kind: identity
-    upstreamBlob: b0965eb44cd4c301fd07ab67bfffb8dd9a54bb02
-  - upstream: docs/ui/settings-model-provider-two-column-layout.md
-    variant: docs/ui/settings-model-provider-two-column-layout-openzwork.md
-    kind: purge
-    upstreamBlob: 1c94754d2dd3703b6189413cb41660271616e88a
-  - upstream: docs/ui/settings-personalization.md
-    variant: docs/ui/settings-personalization-openzwork.md
-    kind: identity
-    upstreamBlob: ebd8d6681db8b842df964061e2377dea34ac8a9e
-  - upstream: docs/ui/settings-usage-stats.md
-    variant: docs/ui/settings-usage-stats-openzwork.md
-    kind: purge
-    upstreamBlob: ece2e8c1835a2d482700992c6c3611c24c798db1
-  - upstream: docs/ui/task-grouped-view.md
-    variant: docs/ui/task-grouped-view-openzwork.md
-    kind: identity
-    upstreamBlob: 80641b0c296730061a6324ebb846c474430ab27e
-  - upstream: docs/ui/tool-display-rendering.md
-    variant: docs/ui/tool-display-rendering-openzwork.md
-    kind: purge
-    upstreamBlob: b4c8bd7623c5518266142bc4255c7627043d5a3a
   - upstream: docs/ui/workspace-header-help-menu.md
     variant: docs/ui/workspace-header-help-menu-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 2ce5f70b8e86b92a89ccf7012bcf26c5403468b8
-  - upstream: docs/ui/workspace-sidebar-footer.md
-    variant: docs/ui/workspace-sidebar-footer-openzwork.md
-    kind: purge
-    upstreamBlob: 0bb95626d73c58921d729bdd5fbff140f9af5bbc
-  - upstream: docs/usage-stats-e2e-case-catalog.md
-    variant: docs/usage-stats-e2e-case-catalog-openzwork.md
-    kind: purge
-    upstreamBlob: 711ef06b4a6c730cc19f4fa154be377951e3e993
-  - upstream: docs/v4-refactor/07-persistence.md
-    variant: docs/v4-refactor/07-persistence-openzwork.md
-    kind: identity
-    upstreamBlob: 1830db8e510a85149918b70cad145aed10f696fb
-  - upstream: docs/v4-refactor/10-protocol-spec.md
-    variant: docs/v4-refactor/10-protocol-spec-openzwork.md
-    kind: purge
-    upstreamBlob: 69f88e37737d9d6011f5801e3ebd757c78e68e93
-  - upstream: docs/v4-refactor/15-timeline-resolver-design.md
-    variant: docs/v4-refactor/15-timeline-resolver-design-openzwork.md
-    kind: identity
-    upstreamBlob: eacc2e24ff5bf686e877ff87388eda6032451cbe
-  - upstream: docs/v4-refactor/16-timeline-authority-plan.md
-    variant: docs/v4-refactor/16-timeline-authority-plan-openzwork.md
-    kind: identity
-    upstreamBlob: f9dbdb7ab29c266ef693a4dddd3a581c4534bbbf
-  - upstream: docs/v4-refactor/m5-composer-parity.md
-    variant: docs/v4-refactor/m5-composer-parity-openzwork.md
-    kind: purge
-    upstreamBlob: 49a10f54bfcee8e0ab4175a948a74e3fa6ad69ab
-  - upstream: docs/v4-refactor/m6-model-selection-parity.md
-    variant: docs/v4-refactor/m6-model-selection-parity-openzwork.md
-    kind: purge
-    upstreamBlob: d75a0031f92e37f520d27be8e98048ec2d239953
-  - upstream: docs/v4-refactor/m6-p1-runtime-model-resolution.md
-    variant: docs/v4-refactor/m6-p1-runtime-model-resolution-openzwork.md
-    kind: purge
-    upstreamBlob: 563286baa1d3cdfb512d9a4a9230da72b2fb5b21
-  - upstream: docs/web-remote-control-relay-message-logging.md
-    variant: docs/web-remote-control-relay-message-logging-openzwork.md
-    kind: identity
-    upstreamBlob: 5cf6dc2ffc2c74de12007096fefb6088a6abed4f
-  - upstream: docs/web-remote-control/mobile-log-channel.md
-    variant: docs/web-remote-control/mobile-log-channel-openzwork.md
-    kind: identity
-    upstreamBlob: 75598b6adf35c2edb662d9290e111bb8bdf16e27
-  - upstream: docs/web-remote-control/mobile-stability-analysis.md
-    variant: docs/web-remote-control/mobile-stability-analysis-openzwork.md
-    kind: purge
-    upstreamBlob: 4cd95f989f66d8bc7875cff4dcbea86995c2a820
   - upstream: docs/web-remote-control/web-remote-control-architecture.md
     variant: docs/web-remote-control/web-remote-control-architecture-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 572469150b745c1234d796dd710905e78e8d30da
-  - upstream: docs/web-remote-control/web-remote-control-minimal-plan.md
-    variant: docs/web-remote-control/web-remote-control-minimal-plan-openzwork.md
-    kind: content
-    upstreamBlob: 305c21b59692cca27e443f8c3393d2357b1ff236
-  - upstream: docs/webdriverio/docs/BoilerplateProjects.md
-    variant: docs/webdriverio/docs/BoilerplateProjects-openzwork.md
-    kind: content
-    upstreamBlob: 40b843b7b29133db8d14fb9a5fd3101de519b8e0
-  - upstream: docs/websearch-provider-domain-allowlist.md
-    variant: docs/websearch-provider-domain-allowlist-openzwork.md
-    kind: purge
-    upstreamBlob: 26491643eadbc51f6551c86439310583717a1fa6
-  - upstream: docs/windows-agent-process-cleanup-state-machine.md
-    variant: docs/windows-agent-process-cleanup-state-machine-openzwork.md
-    kind: purge
-    upstreamBlob: f8144bab51e37ed6096310f73288f608138c9c69
-  - upstream: docs/windows-test-compatibility.md
-    variant: docs/windows-test-compatibility-openzwork.md
-    kind: content
-    upstreamBlob: 3ff98b47a0a955c2d52ae3d679ba6ffaf61c7481
   - upstream: docs/windows-tray.md
     variant: docs/windows-tray-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 8b47f3c0739f38d5036370d4a23935f608121a1e
-  - upstream: docs/workflow-debugger.md
-    variant: docs/workflow-debugger-openzwork.md
-    kind: identity
-    upstreamBlob: a880bb41bb27af2a30aaebf72a16599c61e8e1d2
   - upstream: docs/working-memory/provider-refactor/design-v2/builtin-provider-inventory.md
     variant: docs/working-memory/provider-refactor/design-v2/builtin-provider-inventory-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 5924a22c0931019bf9331176788951b72bfca517
   - upstream: docs/working-memory/provider-refactor/design-v2/design.md
     variant: docs/working-memory/provider-refactor/design-v2/design-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 014fce1eb94446c72909e40d4d1a7781aa8709a1
-  - upstream: docs/working-memory/provider-refactor/design-v2/evidence-and-contradictions.md
-    variant: docs/working-memory/provider-refactor/design-v2/evidence-and-contradictions-openzwork.md
-    kind: purge
-    upstreamBlob: d9f20af9e556fd4e9d3a90c44fcae051dd1fe03b
-  - upstream: docs/working-memory/provider-refactor/design/design.md
-    variant: docs/working-memory/provider-refactor/design/design-openzwork.md
-    kind: purge
-    upstreamBlob: b304fa7fc3d2d0a8ffc4b8d7bc249dae03337113
-  - upstream: docs/working-memory/provider-refactor/design/environment/environment.md
-    variant: docs/working-memory/provider-refactor/design/environment/environment-openzwork.md
-    kind: purge
-    upstreamBlob: e0c3574a4da0c515b79e5dde1381196a3e58e000
-  - upstream: docs/working-memory/provider-refactor/design/execution/execution.md
-    variant: docs/working-memory/provider-refactor/design/execution/execution-openzwork.md
-    kind: purge
-    upstreamBlob: 6c2d78dbe6bb8393c4a99023fcaf0047d929095e
-  - upstream: docs/working-memory/provider-refactor/design/interaction/selection-state.md
-    variant: docs/working-memory/provider-refactor/design/interaction/selection-state-openzwork.md
-    kind: purge
-    upstreamBlob: 542672fc41cec793289a5b5cbdd65105dbf741e3
-  - upstream: docs/working-memory/provider-refactor/design/interaction/submission-delivery.md
-    variant: docs/working-memory/provider-refactor/design/interaction/submission-delivery-openzwork.md
-    kind: purge
-    upstreamBlob: 653e626e7aa7bbb49f8f0c7d05e7613c469f6b90
-  - upstream: docs/working-memory/provider-refactor/design/model/contract.md
-    variant: docs/working-memory/provider-refactor/design/model/contract-openzwork.md
-    kind: purge
-    upstreamBlob: 4c02bac3013d9d537239462942ae2bf8ae34ee73
-  - upstream: docs/working-memory/provider-refactor/design/registry/configuration.md
-    variant: docs/working-memory/provider-refactor/design/registry/configuration-openzwork.md
-    kind: purge
-    upstreamBlob: 03aedcd81f648d139ae9c0db6f85f94572a79f15
-  - upstream: docs/working-memory/provider-refactor/design/registry/model-creation.md
-    variant: docs/working-memory/provider-refactor/design/registry/model-creation-openzwork.md
-    kind: purge
-    upstreamBlob: d67f77765aaad87f1ccd0a91551234ede1c85178
-  - upstream: docs/working-memory/provider-refactor/design/registry/provider-and-model-configuration-overview.md
-    variant: docs/working-memory/provider-refactor/design/registry/provider-and-model-configuration-overview-openzwork.md
-    kind: purge
-    upstreamBlob: 2b1a6ee5caa1e72d013da711c7069fb73a125cfa
-  - upstream: docs/working-memory/provider-refactor/design/registry/registry.md
-    variant: docs/working-memory/provider-refactor/design/registry/registry-openzwork.md
-    kind: purge
-    upstreamBlob: b30503fdcb23056b851ba4327335e287a12d5cdf
-  - upstream: docs/working-memory/provider-refactor/design/registry/request-compatibility-and-access-protocols.md
-    variant: docs/working-memory/provider-refactor/design/registry/request-compatibility-and-access-protocols-openzwork.md
-    kind: content
-    upstreamBlob: 9ad2ba98cd9c09fd5a83a8fe2c34f839f29c68ce
-  - upstream: docs/working-memory/provider-refactor/design/registry/runtime.md
-    variant: docs/working-memory/provider-refactor/design/registry/runtime-openzwork.md
-    kind: purge
-    upstreamBlob: 089ebfc9541d642011857ab71b761a6f777d8cd7
-  - upstream: docs/working-memory/provider-refactor/design/registry/settings.md
-    variant: docs/working-memory/provider-refactor/design/registry/settings-openzwork.md
-    kind: purge
-    upstreamBlob: 644dd281aa73d751f97ab136aecd82d6fc7dcaa0
-  - upstream: docs/working-memory/provider-refactor/design/registry/zcode-builtin-provider-config.md
-    variant: docs/working-memory/provider-refactor/design/registry/zcode-builtin-provider-config-openzwork.md
-    kind: purge
-    upstreamBlob: 0692bf144a2a08683b85ff5d8ec3b07d2d158a72
-  - upstream: docs/working-memory/provider-refactor/plan/02-provider-automation-proof.md
-    variant: docs/working-memory/provider-refactor/plan/02-provider-automation-proof-openzwork.md
-    kind: content
-    upstreamBlob: d3cc73353a0326ddd8474792aceb00af36094aa8
-  - upstream: docs/working-memory/provider-refactor/plan/03-provider-refactor-release-regression-scope.md
-    variant: docs/working-memory/provider-refactor/plan/03-provider-refactor-release-regression-scope-openzwork.md
-    kind: purge
-    upstreamBlob: 33e103ef55820e57349f55530e45fde6c1e5e3af
-  - upstream: docs/working-memory/provider-refactor/plan/04-provider-refactor-release-regression-scope-2026-09-11.md
-    variant: docs/working-memory/provider-refactor/plan/04-provider-refactor-release-regression-scope-2026-09-11-openzwork.md
-    kind: purge
-    upstreamBlob: 26d7e87773cd0dffe39b459df32a02a878d64b33
-  - upstream: docs/working-memory/provider-refactor/plan/plan.md
-    variant: docs/working-memory/provider-refactor/plan/plan-openzwork.md
-    kind: purge
-    upstreamBlob: 84d9f106e8bdf28d22824777fcb9cc855ca604b4
-  - upstream: docs/working-memory/provider-refactor/plan/staging-conflict-restoration-audit.md
-    variant: docs/working-memory/provider-refactor/plan/staging-conflict-restoration-audit-openzwork.md
-    kind: purge
-    upstreamBlob: d43146f6e17ebdf51a412f8c27bade9e51db250b
-  - upstream: docs/working-memory/provider-refactor/provider-implementation-architecture-conformance-review.md
-    variant: docs/working-memory/provider-refactor/provider-implementation-architecture-conformance-review-openzwork.md
-    kind: purge
-    upstreamBlob: 5b6e6a8e9f6c7a0b531799924845045ac5a0f1d6
   - upstream: docs/working-memory/provider-refactor/provider-refactor.md
     variant: docs/working-memory/provider-refactor/provider-refactor-openzwork.md
+    role: maintained
     kind: content
     upstreamBlob: 3ef5c1abea575e3cf25cbb9b7eb63656e4965908
-  - upstream: docs/working-memory/provider-refactor/research/builtin-online-release-review-2026-09-11.md
-    variant: docs/working-memory/provider-refactor/research/builtin-online-release-review-2026-09-11-openzwork.md
-    kind: content
-    upstreamBlob: 93a90afd0304c91ad08c5f7bec244a18fbb27ced
-  - upstream: docs/working-memory/provider-refactor/research/builtin-provider-model-evidence-2026-08.md
-    variant: docs/working-memory/provider-refactor/research/builtin-provider-model-evidence-2026-08-openzwork.md
-    kind: purge
-    upstreamBlob: 3abd3d0624e9311a91ce22f9e47790cb9254002c
-  - upstream: docs/working-memory/provider-refactor/research/e2e-regression-analysis-2026-08-31.md
-    variant: docs/working-memory/provider-refactor/research/e2e-regression-analysis-2026-08-31-openzwork.md
-    kind: content
-    upstreamBlob: ca455533b699daacda4efc6ee21d999af34c6148
-  - upstream: docs/working-memory/provider-refactor/research/legacy-model-provider-service-call-map.md
-    variant: docs/working-memory/provider-refactor/research/legacy-model-provider-service-call-map-openzwork.md
-    kind: purge
-    upstreamBlob: 73b534011c49cf359b29b44e268d35a815f5683e
-  - upstream: docs/working-memory/provider-refactor/research/model-abstraction-unification-cleanup-audit.md
-    variant: docs/working-memory/provider-refactor/research/model-abstraction-unification-cleanup-audit-openzwork.md
-    kind: purge
-    upstreamBlob: 40b3afdb1b3430752819496de1cf93b516bc3d35
-  - upstream: docs/working-memory/provider-refactor/research/provider-config-schema-and-builtin-glm-draft.md
-    variant: docs/working-memory/provider-refactor/research/provider-config-schema-and-builtin-glm-draft-openzwork.md
-    kind: content
-    upstreamBlob: 240bce3cd941044465accdad76094a5a17667750
-  - upstream: docs/working-memory/provider-refactor/research/provider-settings-dogfood-2026-08-27.md
-    variant: docs/working-memory/provider-refactor/research/provider-settings-dogfood-2026-08-27-openzwork.md
-    kind: purge
-    upstreamBlob: e1188cde9a7293551d954c69fa361675a4d24074
-  - upstream: docs/working-memory/provider-refactor/research/provider-settings-merge-20260912.md
-    variant: docs/working-memory/provider-refactor/research/provider-settings-merge-20260912-openzwork.md
-    kind: purge
-    upstreamBlob: ac0a5b91ca7ccb066b6958dd0ff2c1bcf231009e
-  - upstream: docs/working-memory/provider-refactor/research/reasoning-config-to-wire.md
-    variant: docs/working-memory/provider-refactor/research/reasoning-config-to-wire-openzwork.md
-    kind: purge
-    upstreamBlob: 0b36dd8754066115539eedfa8a45cb77fe044f94
-  - upstream: docs/working-memory/provider-refactor/research/research.md
-    variant: docs/working-memory/provider-refactor/research/research-openzwork.md
-    kind: purge
-    upstreamBlob: 7365327108166ad75f5ef7dc64d158c4a3e7f3f2
-  - upstream: docs/working-memory/provider-refactor/research/staging-cc580-integration-20260910.md
-    variant: docs/working-memory/provider-refactor/research/staging-cc580-integration-20260910-openzwork.md
-    kind: purge
-    upstreamBlob: 68fa7ee2a450b92db112ea7f3b32cb5fc56046aa
-  - upstream: docs/working-memory/provider-refactor/research/staging-pre-push-unit-test-failures-2026-08-24.md
-    variant: docs/working-memory/provider-refactor/research/staging-pre-push-unit-test-failures-2026-08-24-openzwork.md
-    kind: purge
-    upstreamBlob: b2667c76466d74084a1b77e439eb5495f2cf033a
-  - upstream: docs/working-memory/provider-refactor/research/todo103-real-merge-candidate.json
-    variant: docs/working-memory/provider-refactor/research/todo103-real-merge-candidate-openzwork.json
-    kind: content
-    upstreamBlob: 7aef70e2a802229f828dcf97cef2101956bddd16
   - upstream: docs/working-memory/provider-refactor/research/todo103-staging-integration-ledger.md
     variant: docs/working-memory/provider-refactor/research/todo103-staging-integration-ledger-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 71e45f11404deab582ca4c1bb0cc705ed69d80b3
-  - upstream: docs/working-memory/provider-refactor/research/todo103-staging-source-inventory.json
-    variant: docs/working-memory/provider-refactor/research/todo103-staging-source-inventory-openzwork.json
-    kind: purge
-    upstreamBlob: 819ea39ba5fab5cae2f2e158fef1db9d6d98247a
-  - upstream: docs/working-memory/provider-refactor/research/todo104-impact-and-cases.md
-    variant: docs/working-memory/provider-refactor/research/todo104-impact-and-cases-openzwork.md
-    kind: purge
-    upstreamBlob: 84ad6965ee7a06261e6fef7c24269bce31bca56e
-  - upstream: docs/working-memory/provider-refactor/research/todo104-schema-implementation-ledger.md
-    variant: docs/working-memory/provider-refactor/research/todo104-schema-implementation-ledger-openzwork.md
-    kind: purge
-    upstreamBlob: 4386788efb6e37b832d095d8fde54eef5597ed4b
-  - upstream: docs/working-memory/provider-refactor/research/todo109-database-implementation-ledger.md
-    variant: docs/working-memory/provider-refactor/research/todo109-database-implementation-ledger-openzwork.md
-    kind: purge
-    upstreamBlob: c6298c67f3ccdf3670c54c1bc16f76d160ff978a
-  - upstream: docs/working-memory/provider-refactor/research/todo87-implementation-impact.md
-    variant: docs/working-memory/provider-refactor/research/todo87-implementation-impact-openzwork.md
-    kind: purge
-    upstreamBlob: bc5926ed757787eba945b8a85bf445dc46521335
-  - upstream: docs/working-memory/provider-refactor/research/todo88-97-final-quality-review.md
-    variant: docs/working-memory/provider-refactor/research/todo88-97-final-quality-review-openzwork.md
-    kind: purge
-    upstreamBlob: 87731c0b25abc9ac10ac6233dce9675c32489225
-  - upstream: docs/working-memory/provider-refactor/research/todo88-completion-and-commit-audit.md
-    variant: docs/working-memory/provider-refactor/research/todo88-completion-and-commit-audit-openzwork.md
-    kind: purge
-    upstreamBlob: 757c9afc02715e7c3adb105d9e385e94f2df757b
-  - upstream: docs/working-memory/provider-refactor/research/todo94-97-execution-and-review.md
-    variant: docs/working-memory/provider-refactor/research/todo94-97-execution-and-review-openzwork.md
-    kind: purge
-    upstreamBlob: a2e0c7d1c68c6b8536a9673e2f733c197cddf56e
-  - upstream: docs/working-memory/provider-refactor/research/todo97-selection-storage-audit.md
-    variant: docs/working-memory/provider-refactor/research/todo97-selection-storage-audit-openzwork.md
-    kind: purge
-    upstreamBlob: 229ad77d04be935e54d7f50c1a25e4bdd9b32096
-  - upstream: docs/working-memory/provider-refactor/research/todo99-implementation-review.md
-    variant: docs/working-memory/provider-refactor/research/todo99-implementation-review-openzwork.md
-    kind: purge
-    upstreamBlob: d1967e3a3c045d0d9d71be55b65ba607390f3db0
-  - upstream: docs/working-memory/provider-refactor/research/todos-136-139-140-review-20260912.md
-    variant: docs/working-memory/provider-refactor/research/todos-136-139-140-review-20260912-openzwork.md
-    kind: purge
-    upstreamBlob: 005c0dc671ded7db05e4cb6d08d8bd5e1ed55332
-  - upstream: docs/working-memory/provider-refactor/steps/01-model-and-request-implementation-log.md
-    variant: docs/working-memory/provider-refactor/steps/01-model-and-request-implementation-log-openzwork.md
-    kind: purge
-    upstreamBlob: 182c90ff440d2eacfe4dfc46e44a704c26cffe0a
-  - upstream: docs/working-memory/provider-refactor/steps/01-model-and-request-review.md
-    variant: docs/working-memory/provider-refactor/steps/01-model-and-request-review-openzwork.md
-    kind: purge
-    upstreamBlob: 6d340509cb3cf76893522acaf12ce9a8cfaf162b
-  - upstream: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-cleanup.md
-    variant: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-cleanup-openzwork.md
-    kind: purge
-    upstreamBlob: a7cfc06b6a191ef187a321efac59ce6a87b6d4bc
-  - upstream: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-human-in-the-loop.md
-    variant: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-human-in-the-loop-openzwork.md
-    kind: purge
-    upstreamBlob: c1b95af4dad3bdb82e3663f22c1c9b39cc54db46
-  - upstream: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-implementation-log.md
-    variant: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-implementation-log-openzwork.md
-    kind: purge
-    upstreamBlob: 1ab8bce57348f6af5af8664f29e9ba607522a4b6
-  - upstream: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-mr-review.md
-    variant: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-mr-review-openzwork.md
-    kind: purge
-    upstreamBlob: b9743eeb0db4aa566dd439b5cb05ab018b5c322c
-  - upstream: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-review.md
-    variant: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-review-openzwork.md
-    kind: purge
-    upstreamBlob: 7ce872cc4872e47ec1e12769f408bae85f50b483
-  - upstream: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry.md
-    variant: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-openzwork.md
-    kind: purge
-    upstreamBlob: e26cafc68186d14a9d713396eb368c3938c432da
-  - upstream: docs/working-memory/provider-refactor/steps/03-provider-architecture-cutover-implementation-log.md
-    variant: docs/working-memory/provider-refactor/steps/03-provider-architecture-cutover-implementation-log-openzwork.md
-    kind: purge
-    upstreamBlob: de3335bc8e971f817935b3e7e2e1b8b55d31380e
-  - upstream: docs/working-memory/provider-refactor/steps/03-staging-integration.md
-    variant: docs/working-memory/provider-refactor/steps/03-staging-integration-openzwork.md
-    kind: content
-    upstreamBlob: 303d2e4eadd19f05f285c8fe5e6bda5f0f100d97
-  - upstream: docs/working-memory/provider-refactor/steps/04-model-execution-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/04-model-execution-cutover-openzwork.md
-    kind: content
-    upstreamBlob: 6c54e0356dcf5d9bbc0a9ad3e719d7c95d457ed8
-  - upstream: docs/working-memory/provider-refactor/steps/68-72-implementation-report.md
-    variant: docs/working-memory/provider-refactor/steps/68-72-implementation-report-openzwork.md
-    kind: purge
-    upstreamBlob: 812957772f77e18ef01649acc27d2ebdb72e0ae0
-  - upstream: docs/working-memory/provider-refactor/steps/bugfix-03-provider-review-boundary-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/bugfix-03-provider-review-boundary-closeout-openzwork.md
-    kind: purge
-    upstreamBlob: f6bea59ef7f236c9fe0a5fa44acc6967c5752edd
-  - upstream: docs/working-memory/provider-refactor/steps/bugfix-08-auxiliary-model-lowest-reasoning.md
-    variant: docs/working-memory/provider-refactor/steps/bugfix-08-auxiliary-model-lowest-reasoning-openzwork.md
-    kind: purge
-    upstreamBlob: c46d92e7b620490d598942c80e3d6342c8e544d7
-  - upstream: docs/working-memory/provider-refactor/steps/host-tasks-index-startup-followup.md
-    variant: docs/working-memory/provider-refactor/steps/host-tasks-index-startup-followup-openzwork.md
-    kind: purge
-    upstreamBlob: 6caf561309c69ff1c1e354f666837ac5a4634471
-  - upstream: docs/working-memory/provider-refactor/steps/migration-roadmap.md
-    variant: docs/working-memory/provider-refactor/steps/migration-roadmap-openzwork.md
-    kind: purge
-    upstreamBlob: 167974f814a3d5ceb36a7d8c2186d58559199850
-  - upstream: docs/working-memory/provider-refactor/steps/provider-stabilization-20260911-final-review.md
-    variant: docs/working-memory/provider-refactor/steps/provider-stabilization-20260911-final-review-openzwork.md
-    kind: purge
-    upstreamBlob: 40f2fa0a239feae88bb94571f3b0f96424a77470
-  - upstream: docs/working-memory/provider-refactor/steps/steps.md
-    variant: docs/working-memory/provider-refactor/steps/steps-openzwork.md
-    kind: purge
-    upstreamBlob: 8b55980d14a5b6dfebae7036c76ee71b11f2f7b1
-  - upstream: docs/working-memory/provider-refactor/steps/todo-00-model-abstraction-unification-roadmap.md
-    variant: docs/working-memory/provider-refactor/steps/todo-00-model-abstraction-unification-roadmap-openzwork.md
-    kind: content
-    upstreamBlob: b1422e6b8df97af1c4bc03d21f18b0f11f242445
-  - upstream: docs/working-memory/provider-refactor/steps/todo-02-ai-sdk-execution-registry-retirement.md
-    variant: docs/working-memory/provider-refactor/steps/todo-02-ai-sdk-execution-registry-retirement-openzwork.md
-    kind: content
-    upstreamBlob: ccab5979da2f97220a570c482c0af92ae1d29c44
-  - upstream: docs/working-memory/provider-refactor/steps/todo-03-provider-model-ownership-and-property-totality.md
-    variant: docs/working-memory/provider-refactor/steps/todo-03-provider-model-ownership-and-property-totality-openzwork.md
-    kind: purge
-    upstreamBlob: 978724380fecaf051ced905879c85f587de4541c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-07-account-connection-selection-and-access-context-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/todo-07-account-connection-selection-and-access-context-cutover-openzwork.md
-    kind: content
-    upstreamBlob: 2c762c17e12bfbf5af9cb4b9f82396ec76bf14d4
-  - upstream: docs/working-memory/provider-refactor/steps/todo-08-legacy-model-catalog-retirement.md
-    variant: docs/working-memory/provider-refactor/steps/todo-08-legacy-model-catalog-retirement-openzwork.md
-    kind: content
-    upstreamBlob: 3e8f8c59d6a2c6b6bbc9e28ae14afe36a92beae9
-  - upstream: docs/working-memory/provider-refactor/steps/todo-10-zcode-builtin-provider-config-naming-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/todo-10-zcode-builtin-provider-config-naming-cutover-openzwork.md
-    kind: purge
-    upstreamBlob: 66c00ab5efca1afdb10158f8ea7dfef5e883d7da
-  - upstream: docs/working-memory/provider-refactor/steps/todo-102-verification-debt-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-102-verification-debt-closeout-openzwork.md
-    kind: purge
-    upstreamBlob: 98d335c92308ad76753d310046d65bd033e839b3
-  - upstream: docs/working-memory/provider-refactor/steps/todo-104-pre-release-schema-review.md
-    variant: docs/working-memory/provider-refactor/steps/todo-104-pre-release-schema-review-openzwork.md
-    kind: purge
-    upstreamBlob: 0eafafe643386ec945c7fb11c280f6ff45c0997c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-106-mcs-capability-rule-correction.md
-    variant: docs/working-memory/provider-refactor/steps/todo-106-mcs-capability-rule-correction-openzwork.md
-    kind: purge
-    upstreamBlob: 9f9de8e35866b7631c65975ee8419b93b99da876
-  - upstream: docs/working-memory/provider-refactor/steps/todo-107-provider-settings-feedback-enablement-and-template-links.md
-    variant: docs/working-memory/provider-refactor/steps/todo-107-provider-settings-feedback-enablement-and-template-links-openzwork.md
-    kind: purge
-    upstreamBlob: e0ead8030df905aac5e66a0959aa3d21d0113ec9
-  - upstream: docs/working-memory/provider-refactor/steps/todo-108-goal-verifier-model-options-restoration.md
-    variant: docs/working-memory/provider-refactor/steps/todo-108-goal-verifier-model-options-restoration-openzwork.md
-    kind: purge
-    upstreamBlob: c9d2a143629de297f5b2f3c9d7d2b1724d4cfa8b
-  - upstream: docs/working-memory/provider-refactor/steps/todo-109-database-migration-consolidation-and-rollback-readability.md
-    variant: docs/working-memory/provider-refactor/steps/todo-109-database-migration-consolidation-and-rollback-readability-openzwork.md
-    kind: purge
-    upstreamBlob: 4b3415598650ab508c6734d436e77f8e3deab6ed
-  - upstream: docs/working-memory/provider-refactor/steps/todo-11-provider-runtime-composition-boundary-cleanup.md
-    variant: docs/working-memory/provider-refactor/steps/todo-11-provider-runtime-composition-boundary-cleanup-openzwork.md
-    kind: purge
-    upstreamBlob: 70297319a32285bb4271ae9217d57040fb27ff7c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-110-guide-selection-change-prefix-rebuild.md
-    variant: docs/working-memory/provider-refactor/steps/todo-110-guide-selection-change-prefix-rebuild-openzwork.md
-    kind: content
-    upstreamBlob: 2b5229985317ff8e990c2f9da3d80ee4c24b7979
-  - upstream: docs/working-memory/provider-refactor/steps/todo-112-official-glm-model-id-normalization.md
-    variant: docs/working-memory/provider-refactor/steps/todo-112-official-glm-model-id-normalization-openzwork.md
-    kind: purge
-    upstreamBlob: 5d6001397a58cec665dafe3d2eae9da92f274378
-  - upstream: docs/working-memory/provider-refactor/steps/todo-113-new-model-catalog-refresh.md
-    variant: docs/working-memory/provider-refactor/steps/todo-113-new-model-catalog-refresh-openzwork.md
-    kind: purge
-    upstreamBlob: 25a4fd8a659c855aa49091887f76d951c6ddd89d
-  - upstream: docs/working-memory/provider-refactor/steps/todo-115-provider-header-actions-and-toggle-hit-area.md
-    variant: docs/working-memory/provider-refactor/steps/todo-115-provider-header-actions-and-toggle-hit-area-openzwork.md
-    kind: purge
-    upstreamBlob: 799ca187e517b0635644164b313ddc23db44eb65
-  - upstream: docs/working-memory/provider-refactor/steps/todo-116-single-api-key-management-url.md
-    variant: docs/working-memory/provider-refactor/steps/todo-116-single-api-key-management-url-openzwork.md
-    kind: purge
-    upstreamBlob: b92fdfde5cf5d9f9bb7a4c27a615a17c8f1e4e75
-  - upstream: docs/working-memory/provider-refactor/steps/todo-117-preserve-account-domain-on-provider-save.md
-    variant: docs/working-memory/provider-refactor/steps/todo-117-preserve-account-domain-on-provider-save-openzwork.md
-    kind: purge
-    upstreamBlob: 9edbc8dd83ab659d85d448324ba4f46d48b5ef6f
-  - upstream: docs/working-memory/provider-refactor/steps/todo-12-model-selection-validation-boundary-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/todo-12-model-selection-validation-boundary-cutover-openzwork.md
-    kind: content
-    upstreamBlob: e006003de4ab46aab884ce9261b3c7b6156fb8a4
-  - upstream: docs/working-memory/provider-refactor/steps/todo-121-repair-backfilled-session-reasoning-level.md
-    variant: docs/working-memory/provider-refactor/steps/todo-121-repair-backfilled-session-reasoning-level-openzwork.md
-    kind: purge
-    upstreamBlob: 3b07bcfe86340cc6394f9640ed3389bddd08892a
-  - upstream: docs/working-memory/provider-refactor/steps/todo-127-builtin-online-release.md
-    variant: docs/working-memory/provider-refactor/steps/todo-127-builtin-online-release-openzwork.md
-    kind: purge
-    upstreamBlob: a9d6578a23908ca85870f89c7cc9b80202593840
-  - upstream: docs/working-memory/provider-refactor/steps/todo-128-impact-and-cases.md
-    variant: docs/working-memory/provider-refactor/steps/todo-128-impact-and-cases-openzwork.md
-    kind: purge
-    upstreamBlob: 8626392f2a2dc08d9ca23cffb24b69df2eb01f1b
-  - upstream: docs/working-memory/provider-refactor/steps/todo-129-impact-and-cases.md
-    variant: docs/working-memory/provider-refactor/steps/todo-129-impact-and-cases-openzwork.md
-    kind: purge
-    upstreamBlob: a9ff12f5667985f9d872b4fcd3dbe9190a96b98b
-  - upstream: docs/working-memory/provider-refactor/steps/todo-13-addendum-model-selection-value-construction.md
-    variant: docs/working-memory/provider-refactor/steps/todo-13-addendum-model-selection-value-construction-openzwork.md
-    kind: purge
-    upstreamBlob: bc5be20d3765183ec478a7bcc11d09e7487a7b63
-  - upstream: docs/working-memory/provider-refactor/steps/todo-13-target-host-model-selection-authority.md
-    variant: docs/working-memory/provider-refactor/steps/todo-13-target-host-model-selection-authority-openzwork.md
-    kind: content
-    upstreamBlob: 0cdf795e7a218b9e9ba3c4210df4ec646af7494c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-135-model-default-headers-and-openrouter-attribution.md
-    variant: docs/working-memory/provider-refactor/steps/todo-135-model-default-headers-and-openrouter-attribution-openzwork.md
-    kind: purge
-    upstreamBlob: 0c3a67c93a2fc7b75ca02cebaacfe3af0736ec2c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-139-share-import-new-task-selection.md
-    variant: docs/working-memory/provider-refactor/steps/todo-139-share-import-new-task-selection-openzwork.md
-    kind: purge
-    upstreamBlob: 437a725889930cd436bcc5c45aa5e8574d489d00
-  - upstream: docs/working-memory/provider-refactor/steps/todo-14-post-refactor-mechanical-zero.md
-    variant: docs/working-memory/provider-refactor/steps/todo-14-post-refactor-mechanical-zero-openzwork.md
-    kind: purge
-    upstreamBlob: fc3d65c1c29d6a54ddc7c17ecddff3fc52137c92
-  - upstream: docs/working-memory/provider-refactor/steps/todo-144-large-database-migration-optimization.md
-    variant: docs/working-memory/provider-refactor/steps/todo-144-large-database-migration-optimization-openzwork.md
-    kind: purge
-    upstreamBlob: 04c075e5d3bcc856afa73d8809e885a3ff732553
-  - upstream: docs/working-memory/provider-refactor/steps/todo-145-global-database-startup-loading.md
-    variant: docs/working-memory/provider-refactor/steps/todo-145-global-database-startup-loading-openzwork.md
-    kind: purge
-    upstreamBlob: d2f85a74b33f5c7b4523be841ccf1b5e5d6d5cbb
-  - upstream: docs/working-memory/provider-refactor/steps/todo-149-opencode-go-support.md
-    variant: docs/working-memory/provider-refactor/steps/todo-149-opencode-go-support-openzwork.md
-    kind: purge
-    upstreamBlob: ad1afcbf76b74892718354ce6df9586872806089
-  - upstream: docs/working-memory/provider-refactor/steps/todo-15-provider-release-validation.md
-    variant: docs/working-memory/provider-refactor/steps/todo-15-provider-release-validation-openzwork.md
-    kind: purge
-    upstreamBlob: 8042d12008a29459226f8415d20988b6ade2593c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-152-plan-approval-mode-restoration-hotfix.md
-    variant: docs/working-memory/provider-refactor/steps/todo-152-plan-approval-mode-restoration-hotfix-openzwork.md
-    kind: purge
-    upstreamBlob: 124bce589a9658403ab61ae42fa77ffd6972dcc4
-  - upstream: docs/working-memory/provider-refactor/steps/todo-158-permission-dialog-full-access-and-queued-mode.md
-    variant: docs/working-memory/provider-refactor/steps/todo-158-permission-dialog-full-access-and-queued-mode-openzwork.md
-    kind: purge
-    upstreamBlob: 1d78d31ec0bdc4a583a5a2649199c78087570714
-  - upstream: docs/working-memory/provider-refactor/steps/todo-159-connectivity-512-token-budget.md
-    variant: docs/working-memory/provider-refactor/steps/todo-159-connectivity-512-token-budget-openzwork.md
-    kind: identity
-    upstreamBlob: 52ef83ecd4d7637223361a51c46c991c659e7b05
-  - upstream: docs/working-memory/provider-refactor/steps/todo-16-unplanned-model-abstraction-residue-cleanup.md
-    variant: docs/working-memory/provider-refactor/steps/todo-16-unplanned-model-abstraction-residue-cleanup-openzwork.md
-    kind: content
-    upstreamBlob: e927505acde9a29a7fe443835a8390f0a57c2928
-  - upstream: docs/working-memory/provider-refactor/steps/todo-161-cli-legacy-output-token-migration.md
-    variant: docs/working-memory/provider-refactor/steps/todo-161-cli-legacy-output-token-migration-openzwork.md
-    kind: identity
-    upstreamBlob: fee4ef286842afaf254ca02742121a6edf348a85
-  - upstream: docs/working-memory/provider-refactor/steps/todo-17-provider-registry-settings-authority-boundary-closure.md
-    variant: docs/working-memory/provider-refactor/steps/todo-17-provider-registry-settings-authority-boundary-closure-openzwork.md
-    kind: purge
-    upstreamBlob: 29a5c0189f0a57296220c008a170b29fcb782224
-  - upstream: docs/working-memory/provider-refactor/steps/todo-18-zcode-builtin-client-config-sync-and-lkg.md
-    variant: docs/working-memory/provider-refactor/steps/todo-18-zcode-builtin-client-config-sync-and-lkg-openzwork.md
-    kind: purge
-    upstreamBlob: 7ffccf4c9777fb16522f4373d3ca835425f99adf
-  - upstream: docs/working-memory/provider-refactor/steps/todo-20-account-overlay-atomicity-and-review-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-20-account-overlay-atomicity-and-review-closeout-openzwork.md
-    kind: purge
-    upstreamBlob: 9e605bb92c2f13c37310fb848c1377173b762275
-  - upstream: docs/working-memory/provider-refactor/steps/todo-21-zcode-builtin-config-ownership-and-model-activation-order.md
-    variant: docs/working-memory/provider-refactor/steps/todo-21-zcode-builtin-config-ownership-and-model-activation-order-openzwork.md
-    kind: content
-    upstreamBlob: f0a92939ae954e0eba06696696ed3b2de1adfe9b
-  - upstream: docs/working-memory/provider-refactor/steps/todo-23-provider-refactor-decision-gap-closure.md
-    variant: docs/working-memory/provider-refactor/steps/todo-23-provider-refactor-decision-gap-closure-openzwork.md
-    kind: content
-    upstreamBlob: 180279351a13f80ec9d4f9a6cabae3cc2f52da12
-  - upstream: docs/working-memory/provider-refactor/steps/todo-26-zhipu-access-mode-contract-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/todo-26-zhipu-access-mode-contract-cutover-openzwork.md
-    kind: content
-    upstreamBlob: 361fe86dfc50ac515faeac3918821cc85b36f71b
-  - upstream: docs/working-memory/provider-refactor/steps/todo-27-provider-settings-dogfood-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-27-provider-settings-dogfood-closeout-openzwork.md
-    kind: content
-    upstreamBlob: e5ff70e01dc237828fd83054d5ebf1a38b735456
-  - upstream: docs/working-memory/provider-refactor/steps/todo-29-model-config-resolution-and-idle-trigger-closure.md
-    variant: docs/working-memory/provider-refactor/steps/todo-29-model-config-resolution-and-idle-trigger-closure-openzwork.md
-    kind: purge
-    upstreamBlob: ef10c2229201fdf0c5cf3d119d8f665fea347b03
-  - upstream: docs/working-memory/provider-refactor/steps/todo-31-model-metadata-editor-input-consistency.md
-    variant: docs/working-memory/provider-refactor/steps/todo-31-model-metadata-editor-input-consistency-openzwork.md
-    kind: purge
-    upstreamBlob: 39b3851a9a15a189f367e805eff84fa1c8a63552
-  - upstream: docs/working-memory/provider-refactor/steps/todo-33-personal-provider-config-file-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/todo-33-personal-provider-config-file-cutover-openzwork.md
-    kind: purge
-    upstreamBlob: cb4a144ac54fbd324ee905fcfece296abbdfb7b4
-  - upstream: docs/working-memory/provider-refactor/steps/todo-34-model-selection-async-state-and-repo-wiki-draft.md
-    variant: docs/working-memory/provider-refactor/steps/todo-34-model-selection-async-state-and-repo-wiki-draft-openzwork.md
-    kind: purge
-    upstreamBlob: bf9a230b028f47d4e74bf990677a3b9ce9f349e2
-  - upstream: docs/working-memory/provider-refactor/steps/todo-40-provider-settings-and-automation-interaction-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-40-provider-settings-and-automation-interaction-closeout-openzwork.md
-    kind: purge
-    upstreamBlob: 302ea83d3ca165c79f62ce202a90f96bfed21190
-  - upstream: docs/working-memory/provider-refactor/steps/todo-42-auxiliary-reasoning-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-42-auxiliary-reasoning-closeout-openzwork.md
-    kind: purge
-    upstreamBlob: 9ddec65541ce473ac24fbb30fc1e492774f5d508
-  - upstream: docs/working-memory/provider-refactor/steps/todo-44-repo-wiki-agent-runtime-headers-and-cancellation.md
-    variant: docs/working-memory/provider-refactor/steps/todo-44-repo-wiki-agent-runtime-headers-and-cancellation-openzwork.md
-    kind: purge
-    upstreamBlob: bc49409d09edd29fda88b1b3f1def34e65626c2c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-47-provider-connectivity-save-and-result-cleanup.md
-    variant: docs/working-memory/provider-refactor/steps/todo-47-provider-connectivity-save-and-result-cleanup-openzwork.md
-    kind: purge
-    upstreamBlob: 4f1c476d830c31a8d4dd5512c2981cdee83c6361
-  - upstream: docs/working-memory/provider-refactor/steps/todo-48-account-api-and-manual-api-key-boundary-cleanup.md
-    variant: docs/working-memory/provider-refactor/steps/todo-48-account-api-and-manual-api-key-boundary-cleanup-openzwork.md
-    kind: content
-    upstreamBlob: 7d971172380d4424b8cd0d5ed53a79f237ba13bb
-  - upstream: docs/working-memory/provider-refactor/steps/todo-50-provider-enabled-and-account-entitlement-separation.md
-    variant: docs/working-memory/provider-refactor/steps/todo-50-provider-enabled-and-account-entitlement-separation-openzwork.md
-    kind: content
-    upstreamBlob: c068b2357ba45a320ee558bb27edeca42e7f703d
-  - upstream: docs/working-memory/provider-refactor/steps/todo-52-provider-e2e-regression-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-52-provider-e2e-regression-closeout-openzwork.md
-    kind: content
-    upstreamBlob: 1e52588235a783a6521f8d1fb1260805dd103791
-  - upstream: docs/working-memory/provider-refactor/steps/todo-54-model-option-map-and-raw-request-body-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/todo-54-model-option-map-and-raw-request-body-cutover-openzwork.md
-    kind: purge
-    upstreamBlob: 555991382f2de98de50bbe5681d50665c1107419
-  - upstream: docs/working-memory/provider-refactor/steps/todo-55-provider-template-inheritance-cutover.md
-    variant: docs/working-memory/provider-refactor/steps/todo-55-provider-template-inheritance-cutover-openzwork.md
-    kind: content
-    upstreamBlob: fe9f4583c890a48cc98c98c1e58a8fed5b992640
-  - upstream: docs/working-memory/provider-refactor/steps/todo-56-remote-provider-provisioning-environment-sync.md
-    variant: docs/working-memory/provider-refactor/steps/todo-56-remote-provider-provisioning-environment-sync-openzwork.md
-    kind: purge
-    upstreamBlob: 3fb7e4ed59844e0db4df55741970e2b310cea469
-  - upstream: docs/working-memory/provider-refactor/steps/todo-57-provider-e2e-runtime-verification-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-57-provider-e2e-runtime-verification-closeout-openzwork.md
-    kind: content
-    upstreamBlob: 2b778c0a60268c11d7b91d3ebcd52536e9951160
-  - upstream: docs/working-memory/provider-refactor/steps/todo-59-model-selection-fallback-and-provisioning-failure-semantics.md
-    variant: docs/working-memory/provider-refactor/steps/todo-59-model-selection-fallback-and-provisioning-failure-semantics-openzwork.md
-    kind: purge
-    upstreamBlob: d494474ca0053c01402d31ed06cce35aa8bf6598
-  - upstream: docs/working-memory/provider-refactor/steps/todo-61-provider-template-picker-and-brand-metadata.md
-    variant: docs/working-memory/provider-refactor/steps/todo-61-provider-template-picker-and-brand-metadata-openzwork.md
-    kind: purge
-    upstreamBlob: 824785ac6dfdd19c9118af1dd820158d735a6ae3
-  - upstream: docs/working-memory/provider-refactor/steps/todo-63-model-selection-validity-and-request-budget-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-63-model-selection-validity-and-request-budget-closeout-openzwork.md
-    kind: content
-    upstreamBlob: 4fb59c145301c7948bd63146b2eaf901f636a611
-  - upstream: docs/working-memory/provider-refactor/steps/todo-64-provider-e2e-real-run-repair-closeout-implementation-report.md
-    variant: docs/working-memory/provider-refactor/steps/todo-64-provider-e2e-real-run-repair-closeout-implementation-report-openzwork.md
-    kind: purge
-    upstreamBlob: 11508471891dad20fe6b7bca184f0ad858ce815b
-  - upstream: docs/working-memory/provider-refactor/steps/todo-64-provider-e2e-real-run-repair-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-64-provider-e2e-real-run-repair-closeout-openzwork.md
-    kind: purge
-    upstreamBlob: 1cea23e1a3804b3792b2abfd920bc390449b90e0
-  - upstream: docs/working-memory/provider-refactor/steps/todo-65-provider-settings-dogfood-and-template-ux-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-65-provider-settings-dogfood-and-template-ux-closeout-openzwork.md
-    kind: content
-    upstreamBlob: 35dd8f5d1dd9134beba7a4d0372c83faff087013
-  - upstream: docs/working-memory/provider-refactor/steps/todo-67-complete-model-selection-before-formal-model-creation.md
-    variant: docs/working-memory/provider-refactor/steps/todo-67-complete-model-selection-before-formal-model-creation-openzwork.md
-    kind: content
-    upstreamBlob: 2fe1e0ba7e9e1363d119ce65d3b4dee1e3e2940c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-68-active-model-context-single-source.md
-    variant: docs/working-memory/provider-refactor/steps/todo-68-active-model-context-single-source-openzwork.md
-    kind: content
-    upstreamBlob: 0f28166f1fb69a62f7c1c28b1ebfcb95821458f0
-  - upstream: docs/working-memory/provider-refactor/steps/todo-69-provider-refactor-practical-rollback-compatibility.md
-    variant: docs/working-memory/provider-refactor/steps/todo-69-provider-refactor-practical-rollback-compatibility-openzwork.md
-    kind: purge
-    upstreamBlob: d06fbe6ce8750f18690ccf3ad83759ecda52f451
-  - upstream: docs/working-memory/provider-refactor/steps/todo-70-session-model-selection-migration-and-unbound-recovery.md
-    variant: docs/working-memory/provider-refactor/steps/todo-70-session-model-selection-migration-and-unbound-recovery-openzwork.md
-    kind: purge
-    upstreamBlob: 7c10f7214feca5e1e4aec7c6e3551fef9af88202
-  - upstream: docs/working-memory/provider-refactor/steps/todo-71-persistent-composer-draft-and-submission-state.md
-    variant: docs/working-memory/provider-refactor/steps/todo-71-persistent-composer-draft-and-submission-state-openzwork.md
-    kind: purge
-    upstreamBlob: 102684c94aa827c1f11dc60eaa5af5c3cbf02fa6
-  - upstream: docs/working-memory/provider-refactor/steps/todo-72-legacy-builtin-provider-and-model-selection-migration.md
-    variant: docs/working-memory/provider-refactor/steps/todo-72-legacy-builtin-provider-and-model-selection-migration-openzwork.md
-    kind: purge
-    upstreamBlob: 6b8a855fa60ac1b63f417981f427ca34f6cf6587
-  - upstream: docs/working-memory/provider-refactor/steps/todo-78-provider-e2e-pending-consolidated-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-78-provider-e2e-pending-consolidated-closeout-openzwork.md
-    kind: purge
-    upstreamBlob: f04f2b436562bf90c0b13f6196ee2305edf278ae
-  - upstream: docs/working-memory/provider-refactor/steps/todo-81-selection-migration-notice-scope-cleanup.md
-    variant: docs/working-memory/provider-refactor/steps/todo-81-selection-migration-notice-scope-cleanup-openzwork.md
-    kind: purge
-    upstreamBlob: f4590d9b7ecd8a4a4f0bfbfd0474bb7259bf12ad
-  - upstream: docs/working-memory/provider-refactor/steps/todo-84-model-selection-reasoning-empty-and-auxiliary-policy-closeout.md
-    variant: docs/working-memory/provider-refactor/steps/todo-84-model-selection-reasoning-empty-and-auxiliary-policy-closeout-openzwork.md
-    kind: content
-    upstreamBlob: b773e79fad71239d2ceffb85ef11c9d644f7efc4
-  - upstream: docs/working-memory/provider-refactor/steps/todo-85-staging-revert-behavior-restoration.md
-    variant: docs/working-memory/provider-refactor/steps/todo-85-staging-revert-behavior-restoration-openzwork.md
-    kind: purge
-    upstreamBlob: 90003329ab2db62d0dd644374e2f4c840a8be736
-  - upstream: docs/working-memory/provider-refactor/steps/todo-86-provider-source-driven-refresh-draft.md
-    variant: docs/working-memory/provider-refactor/steps/todo-86-provider-source-driven-refresh-draft-openzwork.md
-    kind: purge
-    upstreamBlob: 2186262cf89d051bc5b8816d0023f7f771ef1ec7
-  - upstream: docs/working-memory/provider-refactor/steps/todo-87-selection-view-unified-resolution.md
-    variant: docs/working-memory/provider-refactor/steps/todo-87-selection-view-unified-resolution-openzwork.md
-    kind: content
-    upstreamBlob: 856afae8116072a2c4332895bed708685255317b
-  - upstream: docs/working-memory/provider-refactor/steps/todo-88-provider-audit-regression-repair.md
-    variant: docs/working-memory/provider-refactor/steps/todo-88-provider-audit-regression-repair-openzwork.md
-    kind: purge
-    upstreamBlob: c6ac271d1e9630af9bbda2bf1c567b372efa865c
-  - upstream: docs/working-memory/provider-refactor/steps/todo-89-provider-settings-write-boundary-cleanup.md
-    variant: docs/working-memory/provider-refactor/steps/todo-89-provider-settings-write-boundary-cleanup-openzwork.md
-    kind: purge
-    upstreamBlob: 0db992979931002838317f2e682b8ef7e60048c7
-  - upstream: docs/working-memory/provider-refactor/steps/todo-91-connectivity-probe-prompt-contract.md
-    variant: docs/working-memory/provider-refactor/steps/todo-91-connectivity-probe-prompt-contract-openzwork.md
-    kind: content
-    upstreamBlob: 005a8554ab5f69dbbd84b6eae7e7d0da4c7808e9
-  - upstream: docs/working-memory/provider-refactor/steps/todo-95-builtin-reasoning-map-simplification-and-fallback.md
-    variant: docs/working-memory/provider-refactor/steps/todo-95-builtin-reasoning-map-simplification-and-fallback-openzwork.md
-    kind: purge
-    upstreamBlob: 357181b75e1c800496200ed5b549abbf87fc8db9
-  - upstream: docs/working-memory/provider-refactor/steps/todo-96-selection-offline-migration-and-resolution-consolidation.md
-    variant: docs/working-memory/provider-refactor/steps/todo-96-selection-offline-migration-and-resolution-consolidation-openzwork.md
-    kind: content
-    upstreamBlob: 6222c5fd5edc8addf5def94cc524c4056933b972
-  - upstream: docs/working-memory/provider-refactor/steps/todo-97-subagent-markdown-in-place-migration-and-legacy-read-audit.md
-    variant: docs/working-memory/provider-refactor/steps/todo-97-subagent-markdown-in-place-migration-and-legacy-read-audit-openzwork.md
-    kind: purge
-    upstreamBlob: 42f90613ed2de8de7cb46d4a9d8b915d75d9c557
-  - upstream: docs/workspace-hook-trust-mr-scope.md
-    variant: docs/workspace-hook-trust-mr-scope-openzwork.md
-    kind: identity
-    upstreamBlob: 3d508a0581d0ebb525971cc1c493e2f172575562
-  - upstream: docs/workspace-hook-trust-user-guide.md
-    variant: docs/workspace-hook-trust-user-guide-openzwork.md
-    kind: identity
-    upstreamBlob: 7e480556f27617b4c3a3ef7211620ed2b21b9193
-  - upstream: docs/wsl-remote-workspace-design.md
-    variant: docs/wsl-remote-workspace-design-openzwork.md
-    kind: identity
-    upstreamBlob: e75075bef51063fe7c1104b282470a2f38ecdea4
-  - upstream: docs/wsl-task-status-inconsistency.md
-    variant: docs/wsl-task-status-inconsistency-openzwork.md
-    kind: identity
-    upstreamBlob: 3c8f105ec41da078fce2a7fd151ceeb8106b89d5
-  - upstream: docs/wsl-user-and-file-mention-permissions.md
-    variant: docs/wsl-user-and-file-mention-permissions-openzwork.md
-    kind: identity
-    upstreamBlob: c0d2ef7f22a47ec1bcdfa1c8d2c5dd25bb89c659
   - upstream: docs/ZCode 项目架构分析与改进建议.md
     variant: docs/ZCode 项目架构分析与改进建议-openzwork.md
+    role: pending
     kind: content
     upstreamBlob: 902790789e4a1917a77fe59ac4aaa36f39b0f081
-  - upstream: docs/zcode-endpoint-client-language-header.md
-    variant: docs/zcode-endpoint-client-language-header-openzwork.md
-    kind: purge
-    upstreamBlob: 2e8f33fe8e9f57ce1bfac5d6f939bc1eccb51163
-  - upstream: docs/zcode-endpoint-device-mid-header.md
-    variant: docs/zcode-endpoint-device-mid-header-openzwork.md
-    kind: content
-    upstreamBlob: d19c1ba7c0716d20db49ca33827bb76a1339a746
-  - upstream: docs/zcode-endpoint-switching.md
-    variant: docs/zcode-endpoint-switching-openzwork.md
-    kind: purge
-    upstreamBlob: f77a889d0a0a5ebf39fdc640866cceb1532d31d1
-  - upstream: docs/zcode-env-consolidation.md
-    variant: docs/zcode-env-consolidation-openzwork.md
-    kind: purge
-    upstreamBlob: 479b05478ce09946146bee84f612bf131cbb7ae4
-  - upstream: docs/zcode-init-agents-md-command.md
-    variant: docs/zcode-init-agents-md-command-openzwork.md
-    kind: identity
-    upstreamBlob: d96dc0eae926e070802362b710e444934143a7d2
-  - upstream: docs/zcode-lite-static-distribution.md
-    variant: docs/zcode-lite-static-distribution-openzwork.md
-    kind: identity
-    upstreamBlob: 98992cbaf3ca317dcc0f6799e56653f11d22af36
-  - upstream: docs/zcode-stdio-tap-proxy.md
-    variant: docs/zcode-stdio-tap-proxy-openzwork.md
-    kind: identity
-    upstreamBlob: 04fc7c1eb1cb2e227164d6e9a0bc4bd5f9d84f96
-  - upstream: docs/zcodeplan-import.md
-    variant: docs/zcodeplan-import-openzwork.md
-    kind: purge
-    upstreamBlob: 6f56bd272a4b0694c064ac1c112c93402de25938

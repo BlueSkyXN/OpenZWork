@@ -87,13 +87,14 @@ entries:
     checked: 3.17.2
     status: active
   - id: OZK-DEC-009
-    title: 上游文档原文不动，OpenZWork 版本另存
-    when: 需要修改上游文档或技能中的文档类文件。
-    do: 上游原文件保持原文；在同目录新建 -openzwork 版本写入修改后的完整内容，并登记到 upstream-doc-variants.yaml。
-    why: 用户确定的文档维护方式；原文不动后合入上游不再产生文档冲突，原文变化时按 upstreamBlob 提示复核 OpenZWork 版本。
+    title: 上游文档原文不动，差异集中写一处
+    when: 需要表达 OpenZWork 与某份上游文档的不同之处。
+    do: 上游原文不动；差异写进 OpenZWork 的 spec 或台账，并出现在 README「与上游的差异」。只有代码读取、规则引用或 OpenZWork 改写维护的文档才保留 -openzwork 版本，并登记 role。
+    why: 曾为 481 份上游文档各存整份副本，其中 341 份只删了段落或改了路径，增加 17 万行且每次上游更新都要复核；按需要保留后只剩 63 份。
     evidence:
       - docs/openzwork/maintenance-model.md
       - docs/openzwork/upstream-doc-variants.yaml
+      - docs/openzwork/README.md
     since: 2026-11-08
     checked: 3.17.2
     status: active

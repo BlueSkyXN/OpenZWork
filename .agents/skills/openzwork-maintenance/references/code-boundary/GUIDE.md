@@ -14,7 +14,7 @@
 
 前端设置页、侧栏、会话面板等区域常由上游组件、Zustand store 和协议类型共同承载。
 
-- 查调用关系：`pnpm dep:refs --list-exports <文件>`；查产品层面的关联：`.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml`。
+- 查调用关系：`pnpm dep:refs --list-exports <文件>`；查产品层面的关联：`.agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml`（OpenZWork 版本）。
 - 扩展上游组件时，优先新建包装组件或插槽；只有包装无法实现时才改上游组件本身。
 - 功能依赖但未修改的上游文件（共用 store、协议字段、公共 hook）也写入台账的 `hooks`。合入上游时，`pnpm openzwork:scan --upstream` 会列出这些文件的上游改动。
 - 改动上游的状态所有者或协议时，按根 `AGENTS.md` 先更新 spec，并写明所有者与事件顺序。

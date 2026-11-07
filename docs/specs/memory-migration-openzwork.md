@@ -42,4 +42,4 @@ Desktop 候选沿用 `openzwork-data-directory.test.ts`，结果记录到会话�
 
 Desktop 与 CLI 启动迁移入口、专用复制实现和完成标记处理已移除。旧迁移工具的专用测试退役，由真实 CLI 启动隔离测试及 Desktop 冷启动/数据目录 E2E 取代。新回归进入独立核心 CI 步骤。
 
-CLI 隔离 4/4、完整协议 121/121、净化门禁 46/46 通过；Desktop macOS arm64 默认/自定义根验收通过。桌面运行产物及未覆盖平台集中记录在[覆盖矩阵](../testing/conversation-session-e2e-coverage-matrix.md#旧记忆隔离与提示词重新应用2026-11-06)。
+CLI 隔离 4/4、完整协议 121/121、净化门禁 46/46 通过；Desktop macOS arm64 默认/自定义根验收通过。桌面运行产物及未覆盖平台集中记录在[覆盖矩阵](../testing/conversation-session-e2e-coverage-matrix-openzwork.md#旧记忆隔离与提示词重新应用2026-11-06)。

@@ -30,24 +30,34 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 
 ## 文档布局
 
-| 内容                            | 位置                                                                                                                                                  |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 上游原有文档                    | 原路径，保持上游原文，不做任何修改                                                                                                                    |
-| 上游文档的 OpenZWork 版本       | 同目录，文件名加 `-openzwork`（`foo.md` → `foo-openzwork.md`），内容是 OpenZWork 修改后的完整文档；登记在 `docs/openzwork/upstream-doc-variants.yaml` |
-| OpenZWork 产品 spec             | `docs/specs/<名称>-openzwork.md`，与上游的 `docs/specs/` 同目录                                                                                       |
-| OpenZWork 测试计划              | `docs/testing/<名称>-openzwork.md`                                                                                                                    |
-| 上游其他目录下的 OpenZWork 文档 | 同目录，文件名加 `-openzwork` 后缀                                                                                                                    |
-| 维护文档                        | `docs/openzwork/`：`upstream/` 上游整合与验证记录，`patches/` 下游补丁，`release/` 发行，`ci/` CI 与测试基础设施，`records/` 历史验收记录             |
+| 内容                            | 位置                                                                                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 上游原有文档                    | 原路径，保持上游原文，不做任何修改                                                                                                                                                          |
+| 上游文档的 OpenZWork 版本       | 只在代码读取、规则引用或 OpenZWork 改写维护时保留：同目录，文件名加 `-openzwork`；登记在 `docs/openzwork/upstream-doc-variants.yaml`。其余差异见 `docs/openzwork/README.md`「与上游的差异」 |
+| OpenZWork 产品 spec             | `docs/specs/<名称>-openzwork.md`，与上游的 `docs/specs/` 同目录                                                                                                                             |
+| OpenZWork 测试计划              | `docs/testing/<名称>-openzwork.md`                                                                                                                                                          |
+| 上游其他目录下的 OpenZWork 文档 | 同目录，文件名加 `-openzwork` 后缀                                                                                                                                                          |
+| 维护文档                        | `docs/openzwork/`：`upstream/` 上游整合与验证记录，`patches/` 下游补丁，`release/` 发行，`ci/` CI 与测试基础设施，`records/` 历史验收记录                                                   |
 
 `docs/openzwork/README.md` 是全部 OpenZWork 文档的索引。
 
-## 上游文档的 OpenZWork 版本
+## 上游文档与 OpenZWork 的差异
 
-- 上游文档与技能原文不动。OpenZWork 需要不同内容时，在同目录新建 `<名称>-openzwork<扩展名>`，写入修改后的完整文档，并登记到 `docs/openzwork/upstream-doc-variants.yaml`（`kind`：`purge` 删除了上游内容，`identity` 只改用户级根，`content` 增补或改写内容；`upstreamBlob` 为生成时的上游原文）。
-- 读取或修改上游文档、技能时，同目录存在 `-openzwork` 版本的，以 OpenZWork 版本为准，修改也写在 OpenZWork 版本中。
-- 合入上游后原文变化，`--check` 会按 `upstreamBlob` 提示复核对应的 OpenZWork 版本。
+判断一份上游文档要不要 OpenZWork 版本，只看一个问题：OpenZWork 是否需要自己维护这份文档的内容。
+
+| 情况                                                | 处理                                                        | role         |
+| --------------------------------------------------- | ----------------------------------------------------------- | ------------ |
+| 代码读取该文档（审计脚本、晋级脚本、开发站点等）    | 同目录保留 `<名称>-openzwork<扩展名>`，读取方改为读取该版本 | `tool`       |
+| OpenZWork 的规则或 spec 以该文档为准                | 保留 OpenZWork 版本，引用方链接到该版本                     | `rule`       |
+| OpenZWork 改写并持续维护（描述 OpenZWork 当前行为） | 保留 OpenZWork 版本                                         | `maintained` |
+| 其他                                                | 只保留上游原文，不建副本                                    | —            |
+
+- 上游文档原文不动，包括格式。
+- 不建副本的上游文档，OpenZWork 与它的差异（移除的功能、改变的行为、用户级根）统一写在 `docs/openzwork/README.md` 的「与上游的差异」。该表与台账一致，由门禁校验；读上游文档时按该表理解。
+- 新的 OpenZWork 内容写进 OpenZWork 自己的文档（`docs/specs/*-openzwork.md`、`docs/openzwork/`），不为补几句话复制整份上游文档。
+- 保留的 OpenZWork 版本登记在 `docs/openzwork/upstream-doc-variants.yaml`：`role`、`usedBy`（`tool`、`rule` 必填，门禁检查引用关系仍然存在）、`kind`、`upstreamBlob`。合入上游后原文变化，`--check` 按 `upstreamBlob` 提示复核。`pending` 表示少量 OpenZWork 内容待用户确认去留。
 - 与上游原文逐字节一致的上游文档描述的是上游产品，净化门禁 WP-03、WP-08、WP-09 的文本扫描跳过它们；OpenZWork 版本照常扫描。
-- 代码文件（包括技能中的脚本）不使用这种方式，按「代码」一节原地修改。
+- 代码文件（包括技能中的脚本）按「代码」一节原地修改。
 
 ## 技能布局
 
@@ -106,8 +116,9 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 1. 台账、经验库与 `upstream-doc-variants.yaml` 的字段、编号和取值。
 2. 台账上游基准是 HEAD 的祖先，并与根 `package.json` 版本的前三段一致。
 3. `drop` 条目的路径不存在；其他 `active` 条目的路径存在。
-4. 上游文档与技能（md、yaml、json 等文档类文件）与上游原文逐字节一致；同目录的 `-openzwork` 版本都已登记；登记时记录的上游原文 `upstreamBlob` 与当前基准一致，不一致说明上游更新了原文，需要复核 OpenZWork 版本。
-5. 任何上游文件都不能只有格式化差异。
+4. 上游文档与技能（md、yaml、json 等文档类文件）与上游原文逐字节一致；同目录的 `-openzwork` 版本都已登记并写明 `role`，`tool`、`rule` 的引用关系仍然存在；登记时记录的 `upstreamBlob` 与当前基准一致，不一致说明上游更新了原文，需要复核 OpenZWork 版本。
+5. 台账中每个 active、undecided 条目都出现在 README 的「与上游的差异」中。
+6. 任何上游文件都不能只有格式化差异。
 
 ## 待用户决定
 

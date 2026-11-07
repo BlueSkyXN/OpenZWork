@@ -18,14 +18,14 @@
 ## 上游文档
 
 - 上游原有的文档原文不动，包括格式。
-- OpenZWork 需要不同内容时，复制上游文档到同目录的 `<名称>-openzwork<扩展名>`（`foo.md` → `foo-openzwork.md`），在副本中修改，并登记到 `docs/openzwork/upstream-doc-variants.yaml`：`upstream`、`variant`、`kind`（`purge` 删除上游内容，`identity` 只改用户级根，`content` 增补或改写内容）、`upstreamBlob`（`git rev-parse <基准>:<上游路径>`）。
-- 已有 OpenZWork 版本的文档，后续修改都写在 OpenZWork 版本中。
-- 只补充 OpenZWork 独有的说明、不需要上游内容时，写独立的 `-openzwork` 文档或放进 `docs/openzwork/`，不登记为版本。
-- 合入上游后原文变化，`--check` 会提示复核：按新原文更新 OpenZWork 版本，再更新 `upstreamBlob`；上游删除了原文时，决定保留（改为独立文档并删除登记）或一并删除。
+- 读上游文档时，按 `docs/openzwork/README.md` 的「与上游的差异」理解 OpenZWork 的实际情况；同目录有 `-openzwork` 版本的，以该版本为准，修改也写在该版本中。
+- 要写 OpenZWork 的内容时，写进 OpenZWork 自己的文档（产品 spec、`docs/openzwork/`），不复制上游文档。改变了上游行为的，在台账条目中登记，并让「与上游的差异」包含它。
+- 只有三种情况才新建 OpenZWork 版本：代码要读取该文档（`role: tool`），OpenZWork 的规则或 spec 以它为准（`role: rule`），或 OpenZWork 需要整份改写并持续维护（`role: maintained`）。做法：复制上游文档到同目录的 `<名称>-openzwork<扩展名>`，在副本中修改，登记到 `docs/openzwork/upstream-doc-variants.yaml`（`role`；`tool`、`rule` 填写 `usedBy`；`kind`；`upstreamBlob` 用 `git rev-parse <基准>:<上游路径>`）。
+- 合入上游后原文变化，`--check` 会提示复核：按新原文更新 OpenZWork 版本，再更新 `upstreamBlob`。上游删除了原文时，决定保留（改为独立文档并删除登记）或一并删除。不再需要的 OpenZWork 版本（读取方或引用方已去掉）随之删除。
 
 ## 技能
 
-- `.agents/skills/` 下的上游技能原文不动；文档类文件（`SKILL.md`、references 中的 md、yaml）的 OpenZWork 版本同样另存为 `-openzwork` 并登记。技能中的脚本属于代码，按 `code-boundary` 原地修改。
+- `.agents/skills/` 下的上游技能原文不动；需要 OpenZWork 版本时按上面三种情况判断并登记。技能中的脚本属于代码，按 `code-boundary` 原地修改。
 - OpenZWork 专用的维护方法放进本技能：新的子能力加到 `references/<名称>/GUIDE.md`，并在 `SKILL.md` 的路由表中加一行。
 - 新建独立的 OpenZWork 技能前，先确认无法作为本技能的子能力；新建后在台账中登记为 `feature` 条目。
 - 用户全局 Git 忽略规则可能包含 `.agents/`，新增文件需要用 `git add -f` 加入。
