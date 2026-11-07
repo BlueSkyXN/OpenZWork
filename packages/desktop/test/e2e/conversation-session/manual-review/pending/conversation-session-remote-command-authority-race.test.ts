@@ -32,10 +32,12 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 
 const run = promisify(execFile);
 const MARKER = "E2E_COMMAND_AUTHORITY_RACE";
-const COMMAND_DIR = "/home/dev/.zcode/commands";
+// Bugfix（2026-11-07）：远端用户级根统一对齐 ~/.openzwork——命令发现目录、CLI config 与
+// server current.json 同源（93 行 status.json 早已用新根）；旧 .zcode 根自 WP-03 迁移起不再被读写。
+const COMMAND_DIR = "/home/dev/.openzwork/commands";
 const FIFO = `${COMMAND_DIR}/pending-a.md`;
-const FIFO_KEEPER = "/home/dev/.zcode/e2e-command-fifo.pid";
-const CONFIG = "/home/dev/.zcode/cli/config.json";
+const FIFO_KEEPER = "/home/dev/.openzwork/e2e-command-fifo.pid";
+const CONFIG = "/home/dev/.openzwork/cli/config.json";
 const A_MARKER = "AUTHORITY_A_ONLY";
 const B_MARKER = "AUTHORITY_B_ONLY";
 const artifactDir = resolve(process.env.ZCODE_E2E_ARTIFACT_DIR!, "command-authority-race");
@@ -99,7 +101,7 @@ async function fifoHasReader(container: string): Promise<boolean> {
 
 async function startFifoKeeper(container: string): Promise<void> {
   const release = JSON.parse(
-    (await execInRemoteContainer(container, ["cat", "/home/dev/.zcode/server/current.json"]))
+    (await execInRemoteContainer(container, ["cat", "/home/dev/.openzwork/server/current.json"]))
       .stdout,
   );
   // 保留写端使 Core 的 open 能完成而 read 继续等待；因此可从 Core fd 证明请求确实在途。

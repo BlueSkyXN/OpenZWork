@@ -880,40 +880,51 @@ async function writeLocalContent(home: string): Promise<void> {
   );
 }
 
-/** 远端已有内容：差异、已同步与远端独有项；config.json 读改写，保留连接时写入的字段。 */
+/**
+ * 远端已有内容：差异、已同步与远端独有项；config.json 读改写，保留连接时写入的字段。
+ * Bugfix（2026-11-07）：播种根对齐 data-sync 服务实现的远端用户级根 `~/.openzwork`。
+ * 旧 `.zcode` 根的失真方式分两类：skills/agents/commands 的发现目录不含旧根
+ * （agents 按 config storage.dir 解析、默认新根；commands 另合并 `.agents`），种在旧根
+ * 整类不可见，「差异 / 已同步 / 远端独有」与冲突保护判空；inline 插件经 config
+ * `plugins.dirs` 显式登记仍可被发现并列出，但旧位置在插件根（`~/.openzwork/plugins`）
+ * 之外，会被标 `external-directory` 阻止覆盖更新。四类夹具因此都必须落在新根。
+ */
 async function seedRemote(container: string): Promise<void> {
   const write = (path: string, content: string) =>
     writeRemoteContainerFile(container, `${REMOTE_HOME}/${path}`, content);
   await write(
-    `.zcode/skills/${SKILL.update}/SKILL.md`,
+    `.openzwork/skills/${SKILL.update}/SKILL.md`,
     skillMarkdown(SKILL.update, "API design rules", "Use nouns for resources. v1.1"),
   );
-  await write(`.zcode/skills/${SKILL.update}/_meta.json`, '{ "version": "1.1.0" }\n');
+  await write(`.openzwork/skills/${SKILL.update}/_meta.json`, '{ "version": "1.1.0" }\n');
   await write(
-    `.zcode/skills/${SKILL.older}/SKILL.md`,
+    `.openzwork/skills/${SKILL.older}/SKILL.md`,
     skillMarkdown(SKILL.older, "Legacy migration tips", "Newer tips on the remote."),
   );
-  await write(`.zcode/skills/${SKILL.older}/_meta.json`, '{ "version": "2.0.0" }\n');
+  await write(`.openzwork/skills/${SKILL.older}/_meta.json`, '{ "version": "2.0.0" }\n');
   await write(
-    `.zcode/skills/${SKILL.differs}/SKILL.md`,
+    `.openzwork/skills/${SKILL.differs}/SKILL.md`,
     skillMarkdown(SKILL.differs, "Release notes format", "Remote release notes format."),
   );
-  await write(`.zcode/skills/${SKILL.synced}/SKILL.md`, STYLE_GUIDE);
+  await write(`.openzwork/skills/${SKILL.synced}/SKILL.md`, STYLE_GUIDE);
   await write(
-    `.zcode/skills/${SKILL.remoteOnly}/SKILL.md`,
+    `.openzwork/skills/${SKILL.remoteOnly}/SKILL.md`,
     skillMarkdown(SKILL.remoteOnly, "Notes that only exist on the remote", "Remote only."),
   );
-  await write(`.zcode/agents/${AGENT.synced}.md`, PLANNER);
-  await write(".zcode/commands/demo-standup.md", STANDUP);
+  await write(`.openzwork/agents/${AGENT.synced}.md`, PLANNER);
+  await write(".openzwork/commands/demo-standup.md", STANDUP);
   const remotePluginDirs: string[] = [];
   for (const [name, version] of [
     [PLUGIN.update, "1.0.0"],
     [PLUGIN.older, "2.0.0"],
   ] as const) {
-    await write(`.zcode/plugins/${name}/.zcode-plugin/plugin.json`, pluginManifest(name, version));
-    await write(`.zcode/plugins/${name}/README.md`, `${name} ${version}\n`);
-    await write(`.zcode/plugins/${name}/data/state.json`, '{ "remote": true }\n');
-    remotePluginDirs.push(`${REMOTE_HOME}/.zcode/plugins/${name}`);
+    await write(
+      `.openzwork/plugins/${name}/.zcode-plugin/plugin.json`,
+      pluginManifest(name, version),
+    );
+    await write(`.openzwork/plugins/${name}/README.md`, `${name} ${version}\n`);
+    await write(`.openzwork/plugins/${name}/data/state.json`, '{ "remote": true }\n');
+    remotePluginDirs.push(`${REMOTE_HOME}/.openzwork/plugins/${name}`);
   }
   const config = (await remoteContainerPathExists(container, REMOTE_CLI_CONFIG))
     ? (JSON.parse(await readRemoteContainerFile(container, REMOTE_CLI_CONFIG)) as Record<
@@ -1399,7 +1410,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
         await caption("列表加载之后，远端另一处也写入了同名技能");
         await writeRemoteContainerFile(
           container,
-          `${REMOTE_HOME}/.zcode/skills/${SKILL.conflict}/SKILL.md`,
+          `${REMOTE_HOME}/.openzwork/skills/${SKILL.conflict}/SKILL.md`,
           skillMarkdown(SKILL.conflict, "Skill created on the remote", "Remote version."),
         );
         await beat();

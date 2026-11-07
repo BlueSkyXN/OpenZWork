@@ -32,18 +32,18 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 const CASE_MARKER = "E2E_DSYNC_07_PLUGIN_PUSH";
 const PLUGIN_NAME = "e2e-dsync-plugin";
 const PLUGIN_KEY = `${PLUGIN_NAME}@inline`;
-const REMOTE_PLUGIN_DIR = `/home/dev/.zcode/plugins/${PLUGIN_NAME}`;
-const REMOTE_CONFIG = "/home/dev/.zcode/cli/config.json";
+const REMOTE_PLUGIN_DIR = `/home/dev/.openzwork/plugins/${PLUGIN_NAME}`;
+const REMOTE_CONFIG = "/home/dev/.openzwork/cli/config.json";
 const REMOTE_DATA_MARKER = `${CASE_MARKER}_REMOTE_DATA`;
 const BIG_PLUGIN_NAME = "e2e-dsync-big-plugin";
 const BIG_PLUGIN_KEY = `${BIG_PLUGIN_NAME}@inline`;
-const REMOTE_BIG_PLUGIN_DIR = `/home/dev/.zcode/plugins/${BIG_PLUGIN_NAME}`;
+const REMOTE_BIG_PLUGIN_DIR = `/home/dev/.openzwork/plugins/${BIG_PLUGIN_NAME}`;
 // 32MiB 随机内容：RPC 若把归档展开成 JSON 数字数组（约 3.6 倍）会超过远端 WebSocket 单条消息上限 100MiB；
 // 按 base64（约 4/3 倍）传输约 43MiB。
 const BIG_PLUGIN_PAYLOAD_BYTES = 32 * 1024 * 1024;
 
 function localPluginDir(): string {
-  return join(getE2EAppDataPaths().homeDir, ".zcode", "plugins", PLUGIN_NAME);
+  return join(getE2EAppDataPaths().homeDir, ".openzwork", "plugins", PLUGIN_NAME);
 }
 
 async function writeLocalPlugin(version: string): Promise<void> {
@@ -65,7 +65,7 @@ async function writeLocalPlugin(version: string): Promise<void> {
 
 /** 把插件目录登记到本机 config.json 的 plugins.dirs（保留已有字段）。 */
 async function registerLocalPlugin(pluginDir = localPluginDir()): Promise<void> {
-  const configPath = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".openzwork", "cli", "config.json");
   let config: Record<string, unknown> = {};
   try {
     config = JSON.parse(await readFile(configPath, "utf-8")) as Record<string, unknown>;
@@ -220,7 +220,7 @@ describe(`${CASE_MARKER}: 数据同步页推送 inline 插件`, () => {
     await clickTestIdByDom("remote-sync-tab-overview");
     await clickTestIdByDom("remote-sync-close");
 
-    const dir = join(getE2EAppDataPaths().homeDir, ".zcode", "plugins", BIG_PLUGIN_NAME);
+    const dir = join(getE2EAppDataPaths().homeDir, ".openzwork", "plugins", BIG_PLUGIN_NAME);
     await mkdir(join(dir, ".zcode-plugin"), { recursive: true });
     await writeFile(
       join(dir, ".zcode-plugin", "plugin.json"),

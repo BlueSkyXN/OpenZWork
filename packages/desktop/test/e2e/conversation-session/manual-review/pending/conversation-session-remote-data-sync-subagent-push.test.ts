@@ -34,7 +34,7 @@ const CASE_MARKER = "E2E_DSYNC_09_SUBAGENT_PUSH";
 const AGENT_NAME = "E2E-DSync-Agent";
 const AGENT_KEY = AGENT_NAME.toLowerCase();
 const AGENT_FILE = "e2e-dsync-agent.md";
-const REMOTE_AGENTS = "/home/dev/.zcode/agents";
+const REMOTE_AGENTS = "/home/dev/.openzwork/agents";
 const DEPENDENCY_SKILL = "e2e-dsync-skill";
 const DEPENDENCY_MCP = "e2e-dsync-mcp";
 const DEPENDENCY_HINT = `远端缺少 MCP：${DEPENDENCY_MCP}；远端缺少技能：${DEPENDENCY_SKILL}`;
@@ -197,7 +197,7 @@ describe(`${CASE_MARKER}: 数据同步页推送子智能体`, () => {
     const workspacePath = config.workspacePaths[0];
 
     const localHome = getE2EAppDataPaths().homeDir;
-    const localAgents = join(localHome, ".zcode", "agents");
+    const localAgents = join(localHome, ".openzwork", "agents");
     await mkdir(localAgents, { recursive: true });
     await writeFile(join(localAgents, AGENT_FILE), AGENT_CONTENT);
     await writeLocalDependencies(localHome);
