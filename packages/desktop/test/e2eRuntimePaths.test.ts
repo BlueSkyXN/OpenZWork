@@ -1,6 +1,7 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   findE2EBashOutputPath,
@@ -13,14 +14,35 @@ import {
   resolveE2ERuntimeRoot,
   resolveE2EShellPath,
   resolveE2EToolPath,
+  E2E_AGENT_WORKSPACE_NAME,
 } from "./e2e/helpers/e2e-runtime-paths.js";
 
 // fork 采纳上游：我方原在文件头维护的 /tmp 路径守卫常量随上游移除（对应守卫用例已不在本文件）。
 describe("Desktop E2E runtime paths", () => {
+  it("writes helper files where the Agent cwd can resolve them (2026-11-07 评审回归)", async () => {
+    // 评审最小复现：helper 写入端与 Agent 启动 cwd 必须使用同一个 HOME；
+    // 读取端按 replay 固定相对路径（.zcode-e2e/<case>/<file>）从 cwd 解析，
+    // 不做 relative() 反算——反算在同盘时绕回原文件，跨盘（Windows C:/D:）会拼出非法路径。
+    const e2eHomeDir = await mkdtemp(join(tmpdir(), "ozw-runtime-root-"));
+    try {
+      const agentCwd = join(e2eHomeDir, E2E_AGENT_WORKSPACE_NAME);
+      const helperPath = join(resolveE2ERuntimeRoot(e2eHomeDir), "bg-regression", "release-marker.txt");
+      await mkdir(dirname(helperPath), { recursive: true });
+      await writeFile(helperPath, "ready", "utf8");
+      const fixedRelative = join(E2E_RUNTIME_RELATIVE_ROOT, "bg-regression", "release-marker.txt");
+      assert.equal(await readFile(join(agentCwd, fixedRelative), "utf8"), "ready");
+      assert.equal(dirname(resolveE2ERuntimeRoot(e2eHomeDir)), agentCwd);
+    } finally {
+      await rm(e2eHomeDir, { recursive: true, force: true });
+    }
+  });
+
   it("keeps runtime files below the isolated Agent execution workspace", () => {
     const e2eHomeDir = resolve("root", "isolated-e2e-home");
 
-    expect(resolveE2ERuntimeRoot(e2eHomeDir)).toBe(join(e2eHomeDir, "ZCodeProject", ".zcode-e2e"));
+    expect(resolveE2ERuntimeRoot(e2eHomeDir)).toBe(
+      join(e2eHomeDir, "OpenZWorkProject", ".zcode-e2e"),
+    );
     expect(resolveE2ERuntimePath("bg25", "release-child-bash")).toBe(
       join(resolveE2ERuntimeRoot(), "bg25", "release-child-bash"),
     );

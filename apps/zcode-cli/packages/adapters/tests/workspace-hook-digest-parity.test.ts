@@ -54,7 +54,7 @@ describe("workspace hook Settings/Runtime dual builder digest parity (D17 runtim
     const home = makeRoot();
     const workspace = makeRoot();
     await mkdir(join(workspace, ".git"));
-    const userConfigPath = join(home, ".zcode", "cli", "config.json");
+    const userConfigPath = join(home, ".openzwork", "cli", "config.json");
     await writeJson(userConfigPath, { hooks: { enabled: true, timeoutMs: 30_000 } });
     await writeJson(join(workspace, "zcode.json"), {
       hooks: {

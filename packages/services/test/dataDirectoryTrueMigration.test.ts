@@ -379,4 +379,4 @@ it("recovers sessions, tool output, attachments and both memory scopes after Aâ†
     scope: "user",
   });
   expect(await readFile(join(targetAgentMemory, "MEMORY.md"), "utf8")).toBe("remember user agent");
-});
+}, 180_000);

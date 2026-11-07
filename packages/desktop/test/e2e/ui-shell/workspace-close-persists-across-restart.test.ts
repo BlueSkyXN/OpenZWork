@@ -46,7 +46,7 @@ describe("project removal persists across restart E2E", () => {
     await waitForProjectRowGone(closedWorkspacePath);
 
     const readDeletedProject = () => {
-      const db = new DatabaseSync(join(homeDir, ".zcode/v2/tasks-index.sqlite"), {
+      const db = new DatabaseSync(join(homeDir, ".openzwork/v2/tasks-index.sqlite"), {
         readOnly: true,
       });
       try {

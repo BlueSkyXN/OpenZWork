@@ -20,7 +20,7 @@ export interface WebRemoteControlRendererActionPorts {
   services: {
     zcodeTaskService: IZCodeTaskService;
     windowControllerService?: IWindowControllerService;
-    /** 只用桌面 scratch workspace 的目录创建能力（~/ZCodeProject/<name>）。 */
+    /** 只用桌面 scratch workspace 的目录创建能力（~/OpenZWorkProject/<name>）。 */
     fileService: { createScratchWorkspace(params: { name: string }): Promise<{ path: string }> };
     projectService?: IProjectService;
   };
@@ -35,7 +35,7 @@ async function createLocalProject(
   ports: WebRemoteControlRendererActionPorts,
   name: string,
 ): Promise<{ workspacePath: string; projectId?: string; hostId?: string }> {
-  // 目录与校验复用桌面 scratch workspace：~/ZCodeProject/<name>，同名目录幂等复用。
+  // 目录与校验复用桌面 scratch workspace：~/OpenZWorkProject/<name>，同名目录幂等复用。
   const { path: workspacePath } = await ports.services.fileService.createScratchWorkspace({ name });
   const projectService = ports.services.projectService;
   if (!projectService) return { workspacePath };

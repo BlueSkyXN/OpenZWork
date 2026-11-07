@@ -30,7 +30,7 @@ const CASE_MARKER = "E2E_DSYNC_10_COMMAND_PUSH";
 const NESTED_KEY = "/e2e-dsync/commit";
 const AGENTS_KEY = "/e2e-dsync-review";
 const REMOTE_COMMANDS = "/home/dev/.zcode/commands";
-const REMOTE_CLI_CONFIG = "/home/dev/.zcode/cli/config.json";
+const REMOTE_CLI_CONFIG = "/home/dev/.openzwork/cli/config.json";
 
 const NESTED_CONTENT = [
   "---",
@@ -71,7 +71,7 @@ async function waitForRowStatus(key: string, status: string, timeoutMsg: string)
 
 /** 本机 config.json 读改写：只加一条命令禁用覆盖，保留 E2E 预置的其他配置。 */
 async function disableLocalCommand(homeDir: string, filePath: string) {
-  const configPath = join(homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(homeDir, ".openzwork", "cli", "config.json");
   let config: Record<string, unknown> = {};
   try {
     config = JSON.parse(await readFile(configPath, "utf-8")) as Record<string, unknown>;
@@ -99,7 +99,7 @@ describe(`${CASE_MARKER}: 数据同步页推送命令`, () => {
     const workspacePath = config.workspacePaths[0];
     const { homeDir } = getE2EAppDataPaths();
 
-    const nestedPath = join(homeDir, ".zcode", "commands", "e2e-dsync", "commit.md");
+    const nestedPath = join(homeDir, ".openzwork", "commands", "e2e-dsync", "commit.md");
     const agentsPath = join(homeDir, ".agents", "commands", "e2e-dsync-review.md");
     await mkdir(dirname(nestedPath), { recursive: true });
     await writeFile(nestedPath, NESTED_CONTENT);

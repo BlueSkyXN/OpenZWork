@@ -3,6 +3,7 @@ import {
   selectNativeProjectDirectories,
 } from "../helpers/project-sidebar.js";
 import { selectUpstreamModel } from "../helpers/upstream-provider.js";
+import { E2E_AGENT_WORKSPACE_NAME } from "../helpers/e2e-runtime-paths.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -164,7 +165,7 @@ describe("PLM-UI-001 UI 插件市场与项目配置", () => {
         await browser.waitUntil(
           async () =>
             (await browser.$('[data-testid="plugin-settings-scope-trigger"]').getText()).includes(
-              "ZCodeProject",
+              E2E_AGENT_WORKSPACE_NAME,
             ),
           { timeout: 10000 },
         );

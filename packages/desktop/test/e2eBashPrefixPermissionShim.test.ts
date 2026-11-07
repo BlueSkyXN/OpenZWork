@@ -29,7 +29,7 @@ describe("Bash prefix permission E2E pnpm shim", () => {
     expect(shimPath).toBe(
       join(
         homeDir,
-        "ZCodeProject",
+        "OpenZWorkProject",
         ".zcode-e2e",
         "conversation-session-v4-bash-command-prefix-permission",
         "bin",
@@ -39,7 +39,7 @@ describe("Bash prefix permission E2E pnpm shim", () => {
     expect(environment.PATH?.split(process.platform === "win32" ? ";" : ":")[0]).toBe(
       join(
         homeDir,
-        "ZCodeProject",
+        "OpenZWorkProject",
         ".zcode-e2e",
         "conversation-session-v4-bash-command-prefix-permission",
         "bin",
@@ -83,7 +83,7 @@ describe("Bash prefix permission E2E pnpm shim", () => {
     expect(environment.Path?.split(process.platform === "win32" ? ";" : ":")[0]).toBe(
       join(
         homeDir,
-        "ZCodeProject",
+        "OpenZWorkProject",
         ".zcode-e2e",
         "conversation-session-v4-bash-command-prefix-permission",
         "bin",

@@ -7,7 +7,9 @@ import { DatabaseSync } from "node:sqlite";
 import { spawnSync } from "node:child_process";
 
 const args = parseArgs(process.argv.slice(2));
-const zcodeRoot = join(homedir(), ".zcode");
+// Bugfix（2026-11-07）：本技能文档承诺在 ~/.openzwork 本地持久化生成夹具，
+// 脚本却读官方 ZCode 的旧根，导致生成器找不到当前应用数据。
+const zcodeRoot = join(homedir(), ".openzwork");
 const cliDbPath = join(zcodeRoot, "cli", "db", "db.sqlite");
 const taskIndexPath = join(zcodeRoot, "v2", "tasks-index.sqlite");
 

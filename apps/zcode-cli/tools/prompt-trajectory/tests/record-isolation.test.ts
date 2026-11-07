@@ -100,7 +100,7 @@ describe("prompt trajectory recording environment", () => {
     // 录制期间的会话库落在新建的隔离家目录，录制前的家目录和存储目录都没有被创建。
     const created = (await isolatedHomes()).filter((name) => !homesBefore.includes(name));
     equal(created.length, 1);
-    ok(await exists(join(sandbox, created[0]!, ".zcode", "cli", "db", "db.sqlite")));
+    ok(await exists(join(sandbox, created[0]!, ".openzwork", "cli", "db", "db.sqlite")));
     equal(await exists(home), false);
     equal(await exists(storage), false);
     // 恢复原值；原来没有的变量要删掉，不能留下字符串 "undefined"。

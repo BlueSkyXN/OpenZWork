@@ -340,7 +340,7 @@ async function readLocalMcpServers(): Promise<McpServerEntries> {
 }
 
 async function readRemoteMcpServers(container: string): Promise<McpServerEntries> {
-  const path = `${REMOTE_HOME}/.zcode/cli/config.json`;
+  const path = `${REMOTE_HOME}/.openzwork/cli/config.json`;
   if (!(await remoteContainerPathExists(container, path))) return {};
   return readMcpServerEntries(await readRemoteContainerFile(container, path));
 }
@@ -462,7 +462,7 @@ async function clickHookRow(marker: string): Promise<void> {
   );
 }
 
-/** 用户级钩子在 `<home>/.zcode/cli/config.json` 的 hooks 字段。 */
+/** 用户级钩子在 `<home>/.openzwork/cli/config.json` 的 hooks 字段。 */
 function readHooksConfig(raw: string): unknown {
   if (!raw.trim()) return null;
   return (JSON.parse(raw) as { hooks?: unknown }).hooks ?? null;
@@ -644,9 +644,9 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     const remotePath = `${REMOTE_HOME}/.zcode/commands/${REMOTE_COMMAND}.md`;
     await waitForRemotePath(container, remotePath);
     expect(await readRemoteContainerFile(container, remotePath)).toContain(`${CASE_MARKER} prompt`);
-    expect(await localPathExists(join(homeDir, ".zcode", "commands", `${REMOTE_COMMAND}.md`))).toBe(
-      false,
-    );
+    expect(
+      await localPathExists(join(homeDir, ".openzwork", "commands", `${REMOTE_COMMAND}.md`)),
+    ).toBe(false);
     await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON, { timeout: 15_000 });
   });
   it("DSYNC-15-03 MCP 只按 Scope 目标读写：本机 tab 选远端「用户」新增、开关写容器；远程 tab 选「本机 · 用户」新增写本机", async function () {
@@ -784,7 +784,7 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     expect(sourceServerId).toBeTruthy();
     const config = readSSHRuntimeConfig(CASE_MARKER);
     const remoteUserKey = `source-user:${sourceServerId}`;
-    const remoteConfigPath = `${REMOTE_HOME}/.zcode/cli/config.json`;
+    const remoteConfigPath = `${REMOTE_HOME}/.openzwork/cli/config.json`;
 
     // 两台设备各有一个用户钩子：两边的 hook ID 都从 hook-zcode-user-0 编号，旧表单带到本机保存会覆盖本机这条。
     if (await $(`[data-testid="${TID_SETTINGS_PAGE}"]`).isExisting()) {

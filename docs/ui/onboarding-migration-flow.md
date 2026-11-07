@@ -59,10 +59,10 @@ Claude Code 原生 `.jsonl` 与 ZCode 协议 snapshot **不是同一格式**，�
 ## Claude User Memory → ZCode Default AGENTS
 
 - The `AGENTS.md` step checks the Claude user memory file at `{HOME}/.claude/CLAUDE.md`.
-- If the source file exists, the step can copy that file to `{HOME}/.zcode/AGENTS.md`.
+- If the source file exists, the step can copy that file to `{HOME}/.openzwork/AGENTS.md`.
 - `~/.openzwork/AGENTS.md` is the user-level default instruction file. The runtime reads it when present and merges it before the workspace `AGENTS.md` resolved from the current working directory up to the project root.
 - This migration is explicit and selected by the user in the wizard. It is not part of the generic skills / commands / MCP import selector because it intentionally overwrites one well-known default instruction file instead of importing only missing resources.
-- Before the wizard enters the final `Migration` step, selecting this copy action must open a confirmation dialog. The copy action may replace an existing `{HOME}/.zcode/AGENTS.md`, so the dialog must clearly say that the default AGENTS configuration will be overwritten.
+- Before the wizard enters the final `Migration` step, selecting this copy action must open a confirmation dialog. The copy action may replace an existing `{HOME}/.openzwork/AGENTS.md`, so the dialog must clearly say that the default AGENTS configuration will be overwritten.
 - The service layer performs the copy against the user's home directory. `workspacePath` / `workspaceIdentity` are only carried for logging / request correlation and must not be used as the target filesystem path.
 - Remote and mobile remote-control paths must not introduce a separate runtime for this copy action. The action stays behind the existing host-process settings-sync service boundary.
 
@@ -77,9 +77,9 @@ Claude Code 原生 `.jsonl` 与 ZCode 协议 snapshot **不是同一格式**，�
 - `packages/ui/src/onboarding/OnboardingFlowParts.tsx`
   - Owns per-step content rendering.
 - `packages/services/src/settings-sync/settingsSyncService.ts`
-  - Owns the filesystem operation that copies `{HOME}/.claude/CLAUDE.md` to `{HOME}/.zcode/AGENTS.md`.
+  - Owns the filesystem operation that copies `{HOME}/.claude/CLAUDE.md` to `{HOME}/.openzwork/AGENTS.md`.
 - `apps/zcode-cli/packages/adapters/src/context/index.ts`
-  - Resolves `{HOME}/.zcode/AGENTS.md` and workspace `AGENTS.md`, then merges both when both exist.
+  - Resolves `{HOME}/.openzwork/AGENTS.md` and workspace `AGENTS.md`, then merges both when both exist.
 
 ## UX Rules
 

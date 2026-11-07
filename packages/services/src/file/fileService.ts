@@ -101,7 +101,12 @@ function isProbablyBinary(buffer: Buffer): boolean {
   }
   return suspiciousBytes / buffer.length > 0.3;
 }
-const SCRATCH_WORKSPACE_ROOT_NAME = "ZCodeProject";
+/**
+ * 改名（2026-11-07）：scratch 工作区根建在用户 HOME 下，目录名随产品命名空间改为
+ * OpenZWorkProject；旧 `~/ZCodeProject` 是用户既有工作区数据，保持原样不迁移，
+ * 用户仍可按原路径打开，新建 scratch 工作区一律落新根。
+ */
+const SCRATCH_WORKSPACE_ROOT_NAME = "OpenZWorkProject";
 function validateScratchWorkspaceName(name: string): string {
   const trimmedName = name.trim();
   if (!trimmedName) {

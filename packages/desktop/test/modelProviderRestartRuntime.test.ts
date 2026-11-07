@@ -143,7 +143,7 @@ describe("model provider restart runtime", () => {
       },
     });
     await expect(
-      stat(join(homeDir, "ZCodeProject", ".openzwork", "config.json")),
+      stat(join(homeDir, "OpenZWorkProject", ".openzwork", "config.json")),
     ).rejects.toMatchObject({ code: "ENOENT" });
   });
 });

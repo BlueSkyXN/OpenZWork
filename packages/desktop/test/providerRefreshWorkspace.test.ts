@@ -4,7 +4,7 @@ import { refreshSeededOpenAIProvidersThroughSettings } from "#e2e/helpers/custom
 import { waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 
 vi.mock("#e2e/helpers/desktop-app", () => ({
-  DEFAULT_WORKSPACE: "/fixture/ZCodeProject",
+  DEFAULT_WORKSPACE: "/fixture/OpenZWorkProject",
   clickTestIdByDom: vi.fn(),
   waitForWorkspaceApp: vi.fn(),
 }));

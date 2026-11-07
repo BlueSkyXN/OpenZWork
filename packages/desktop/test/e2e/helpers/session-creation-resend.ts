@@ -38,7 +38,7 @@ DatabaseSync.prototype.prepare = function(sql) {
 };
 `,
   );
-  const configPath = join(homeDir, ".zcode/cli/config.json");
+  const configPath = join(homeDir, ".openzwork/cli/config.json");
   const originalConfig = await readFile(configPath).catch((error: NodeJS.ErrnoException) => {
     if (error.code === "ENOENT") return null;
     throw error;
@@ -53,7 +53,9 @@ DatabaseSync.prototype.prepare = function(sql) {
       () => {},
     );
     const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
-    const database = new DatabaseSync(join(homeDir, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const database = new DatabaseSync(join(homeDir, ".openzwork/cli/db/db.sqlite"), {
+      readOnly: true,
+    });
     try {
       const input = database.prepare("SELECT * FROM session_input WHERE id=?").get(receipt.inputId);
       assert.equal(input?.status, "admitted");

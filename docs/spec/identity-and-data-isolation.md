@@ -49,8 +49,66 @@ OpenZWork 是 ZCode 开源版本的净化＋特调版。产品必须在用户机
    隔离边界本身；`scripts/zcode-distribution/installer.mjs` 的注释引用被替换的旧默认
    目录（`$HOME/.zcode/runtime`）作为默认值变更的修复依据。开发态诊断/重放工具描述的
    是本产品自身的数据位置，不豁免——必须随数据根一并迁移（2026-09-27 已修
-   README/NOTICE/shadow-replay/prompt-trajectory 六处过时引用）。
-4. 其余如需豁免，必须在本节登记并由用户批准，不得以"注释/文案"为由绕过。
+   README/NOTICE/shadow-replay/prompt-trajectory 六处过时引用；2026-11-07 补修 dev-docs
+   vite 流量日志目录与 prompt-trajectory 沙箱存储的 join 形态残留）。
+4. **restore-legacy-sessions 插件**：产品提供的用户显式历史会话恢复工具，按功能定义
+   读取旧根 `.zcode` 的会话库与 tasks-index；只读旧根、不写入，默认路径仅作为参数
+   默认值。2026-11-07 登记。
+5. 其余如需豁免，必须在本节登记并由用户批准，不得以"注释/文案"为由绕过。
+
+## 用户级路径第二轮清零（2026-11-07）
+
+第一轮只按 `~/.zcode` 文本形态清零，`join(home, ".zcode")` 代码形态漏网。本轮全仓枚举
+HOME 路径构造点后修复以下用户级落盘位置；项目级 `.zcode/**` 豁免与内部标识符命名不变：
+
+| 落点 | 修复前 | 修复后 |
+| --- | --- | --- |
+| 个性化指令文件（设置页读写） | `{home}/.zcode/AGENTS.md` | `{home}/.openzwork/AGENTS.md`（与 Agent 读取同根） |
+| data-sync hooks/skills/commands 读写与写权限预检 | `~/.zcode/cli/config.json`、`~/.zcode/commands`、`~/.zcode/cli` | `~/.openzwork/cli/config.json`、`~/.openzwork/commands`、`~/.openzwork/cli` |
+| dev-docs stdio 流量日志 | `~/.zcode/v2/dev/stdio-traffic` | `~/.openzwork/v2/dev/stdio-traffic` |
+| prompt-trajectory 录制沙箱存储 | `join(home, ".zcode")` | `join(home, ".openzwork")` |
+| 远端 docker 验证脚本 server root | `/root/.zcode/server` | `/root/.openzwork/server`（与 `REMOTE_BASE` 同源） |
+| Windows 安装器所有权清单 | `.zcode-install-manifest` | `.openzwork-install-manifest`；读旧安装目录双名兼容，嵌套数据目录保护同时识别 `.zcode` 与 `.openzwork` |
+| scratch 工作区根 | `~/ZCodeProject` | `~/OpenZWorkProject`；旧目录是用户既有工作区数据，保留不迁移 |
+| E2E 夹具用户级路径（worker-selection、bot-worker、session-creation-resend、VP28 种子 DB） | `.zcode/cli|v2/...` | `.openzwork/cli|v2/...`；VP28 行内旧后端历史路径按数据语义保留 |
+
+不迁移原则：旧 `~/ZCodeProject` 数据、旧清单名（仅读取兼容）、旧后端数据中的历史
+workspace 路径一律保留原样，不做自动迁移；与 [旧 ZCode 记忆隔离](memory-migration.md)
+的显式导入规则一致。WP-03 结构扫描同步补强：新增 HOME join 形态与用户级子目录
+（cli/v2/runtime/server）字面量两类模式，nsh/nsi 入列扫描。
+
+第二轮复查（同日）：CI 门禁按 git 追踪清单抓到新增回归测试注释中的旧根字面量
+（本地 untracked 状态不入门禁，提交后才被扫描），按"注释/文案不得绕过"重写。
+全仓复查补充修复：`verify-remote-ssh.mjs` server root、安装器日志文件名与
+DetailPrint 前缀（`OpenZWork-installer.log` 等，日志逐次新建无双读需求）、约 34 个
+测试/夹具文件中 home 作用域的 `.zcode/cli|v2` 陈旧路径（App 与 CLI 实际读写
+`.openzwork`，原夹具在断言永不存在的路径）。保留：负向断言、项目级 `.zcode/**`、
+进程命令行样本数据、历史行内路径。adapters 测试套件存在与路径无关的既有失败
+（26 项，净化前 CUA 迁移断言等，未接入 CI），另列维护任务不在本 PR 处理。
+
+Windows extended 分片上 `dataDirectoryTrueMigration` 与 relocation contract 两个
+真实 CLI 迁移测试因 runner 冷启动超过全局 30s 测试超时而抖动失败（超时非断言），
+两个用例补显式 180s 上限；macOS/Linux 与本地套件不受影响。
+
+评审修正（同日）：安装器嵌套数据目录检测的 `.openzwork` 检查插在 `.zcode` 未命中即
+跳子目录遍历之后，属不可达死代码——无 ownership manifest 且安装目录仅含 `.openzwork`
+数据的升级会漏过全目录清理保护，已重构为双名并列检测并以结构测试锁定可达顺序。
+卸载器日志跨版本归并（旧卸载器写编译期旧名，新安装器清理旧名、回放时归并到新名）。
+E2E 运行时根与 `desktop-app` 的 DEFAULT_WORKSPACE 统一派生自同一工作区名常量，
+helper 写入目录与 Agent cwd 分叉以单测锁定。NSIS 分支可达性无法被编译测试覆盖，
+新增 `windowsInstallerNshStructure.test.ts` 结构断言守住上述三处控制流。
+
+复审二轮修正：E2E 路径回归首版在同盘时经 `relative()` 反算绕回原文件（假绿）、
+Windows 跨盘（C:/D:）拼出非法路径——已改为同一临时 HOME + replay 固定相对路径读取；
+卸载器日志归并首版被 Reset 的 `w` 模式空文件挡住（"文件存在"≠"已写入"），改为按
+内容长度判定；wdio 固定 cwd 夹具与 mcp 失败夹具的工作区名并入同一常量来源，VP28
+历史夹具保留旧名并以 `legacySeedWorkspaceRoot` 匹配等待路径。
+
+消费端复查：默认工作区改名后仍有 7 个 E2E 文件共 12 处执行引用（项目选择器、
+分组名/详情断言、按钮文案等待、本地项目切换路径）沿用旧名——全部改为派生自
+`E2E_AGENT_WORKSPACE_NAME`；`ZCodeProjectB`/`ZCodeProjectClosed` 等独立命名测试目录
+与 VP28 历史播种不在其列。教训：常量改名必须按消费端文本（选择器/文案/testid）
+补扫，路径构造扫描抓不到字符串形态的名称引用。
 
 ## 失败语义与验收
 

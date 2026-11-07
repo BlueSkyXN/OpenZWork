@@ -199,8 +199,8 @@ function seedHistory(workspacePath: string) {
   // 只写 runner 的隔离 HOME；复用真实 Host/CLI 两库数据合同，不 mock 消息或目录状态。
   const home = process.env.ZCODE_E2E_HOME_DIR;
   if (!home || !DEFAULT_WORKSPACE.startsWith(home)) throw new Error("isolated HOME required");
-  const app = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-  const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+  const app = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
+  const cli = new DatabaseSync(join(home, ".openzwork/cli/db/db.sqlite"));
   try {
     const projectId = app
       .prepare("SELECT project_id FROM project_roots WHERE root_path=? LIMIT 1")

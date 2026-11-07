@@ -43,7 +43,7 @@ interface ResolvedLiveModel {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function resolveV2ModelConfig(): ResolvedLiveModel | undefined {
-  const configPath = join(homedir(), ".zcode", "v2", "config.json");
+  const configPath = join(homedir(), ".openzwork", "v2", "config.json");
   if (!existsSync(configPath)) return undefined;
   let providers: Record<string, any>;
   try {
@@ -67,7 +67,7 @@ function resolveV2ModelConfig(): ResolvedLiveModel | undefined {
 /** 活跃 provider：优先 setting.json 的 family 选择，否则取 enabled 且带 apiKey 的第一个。 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function pickActiveProviderId(providers: Record<string, any>): string | undefined {
-  const settingPath = join(homedir(), ".zcode", "v2", "setting.json");
+  const settingPath = join(homedir(), ".openzwork", "v2", "setting.json");
   if (existsSync(settingPath)) {
     try {
       const s = JSON.parse(readFileSync(settingPath, "utf8"));

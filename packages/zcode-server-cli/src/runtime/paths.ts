@@ -148,5 +148,7 @@ export function assertServerDataRoot(serverRoot: string): string {
 }
 
 export function serverDataRootFromBase(baseDir: string): string {
-  return join(resolve(baseDir), ".zcode", "server");
+  // Bugfix（2026-11-07）：同一模块内 getDefaultServerDataRoot 用 OPENZWORK_DATA_DIR_NAME，
+  // 本函数却派生 .zcode/server，凡传 baseDir 的调用都会落回官方 ZCode 命名空间。
+  return join(resolve(baseDir), OPENZWORK_DATA_DIR_NAME, "server");
 }

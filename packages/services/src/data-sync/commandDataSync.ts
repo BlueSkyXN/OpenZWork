@@ -12,6 +12,7 @@ import {
   readCommandEnabledOverridesFromUserConfig,
   setUserCommandEnabledOverrides,
 } from "#src/commands/commandsService.js";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import { pathExists, writeFileAtomically } from "#src/fs/atomicFileUtils.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import { resolveUserHomeDir } from "#src/subagents/subagentStorage.js";
@@ -20,7 +21,7 @@ import { errorMessage } from "./syncUtils.js";
 
 const COMMAND_EXTENSION = /\.md$/iu;
 
-type CommandRootSource = "zcode" | "agents";
+type CommandRootSource = "openzwork" | "agents";
 
 interface ResolvedUserCommand {
   key: string;
@@ -35,7 +36,13 @@ interface ResolvedUserCommand {
 }
 
 function commandsRoot(source: CommandRootSource): string {
-  return join(resolveUserHomeDir(), source === "zcode" ? ".zcode" : ".agents", "commands");
+  // Bugfix（2026-11-07）：主命令根误指官方 ZCode 的旧根 commands 目录（扫描与写入都
+  // 越界）；与 commandsService 的 userDirectorySegments 同源，回到 OPENZWORK_DATA_DIR_NAME。
+  return join(
+    resolveUserHomeDir(),
+    source === "openzwork" ? OPENZWORK_DATA_DIR_NAME : ".agents",
+    "commands",
+  );
 }
 
 function hashContent(content: Uint8Array): string {
@@ -78,11 +85,11 @@ async function collectCommandFiles(
 
 /**
  * 本端用户命令：`~/.openzwork/commands` 与 `~/.agents/commands` 合并，与 CLI 运行时一致，
- * 同 key 时 `.zcode` 优先（先扫描者胜出）。
+ * 同 key 时 `.openzwork` 优先（先扫描者胜出）。
  */
 async function resolveUserCommands(): Promise<Map<string, ResolvedUserCommand>> {
   const commands = new Map<string, ResolvedUserCommand>();
-  for (const source of ["zcode", "agents"] as const) {
+  for (const source of ["openzwork", "agents"] as const) {
     const root = commandsRoot(source);
     for (const file of await collectCommandFiles(root)) {
       const relativePath = relative(root, file.path)
@@ -140,7 +147,7 @@ async function importOne(
     if (item.mode === "createOnly") {
       // 列表加载后目标端出现同 key 命令（任一目录）：不写入，提示刷新后重试。
       if (existing) return { key: item.key, status: "conflict" };
-      const targetPath = join(commandsRoot("zcode"), ...segments);
+      const targetPath = join(commandsRoot("openzwork"), ...segments);
       if (await pathExists(targetPath)) return failed(`target path already exists: ${targetPath}`);
       await mkdir(dirname(targetPath), { recursive: true });
       await writeFileAtomically(targetPath, content);
@@ -228,8 +235,8 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
 
     async checkSyncWriteAccess() {
       return await checkRemoteSyncDirectoriesWriteAccess([
-        commandsRoot("zcode"),
-        join(resolveUserHomeDir(), ".zcode", "cli"),
+        commandsRoot("openzwork"),
+        join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "cli"),
       ]);
     },
 

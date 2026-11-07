@@ -570,7 +570,7 @@ describe("SQLite session store", () => {
   });
 
   it("defaults the session database under the db directory", () => {
-    expect(getDefaultSessionDbPath()).toBe(join(homedir(), ".zcode", "cli", "db", "db.sqlite"));
+    expect(getDefaultSessionDbPath()).toBe(join(homedir(), ".openzwork", "cli", "db", "db.sqlite"));
   });
 
   it("can inject sqlite open failures for startup/recovery cases", async () => {

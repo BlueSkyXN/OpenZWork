@@ -1,18 +1,22 @@
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { waitForWorkspaceApp, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
+import { waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { loginWithApiKey } from "#e2e/helpers/conversation-session";
 import {
   SAVED_PROJECT_NAMES,
   MIGRATED_REMOTE_NAME,
   LEGACY_PINNED_TASK_IDS,
   CURRENT_IMPORTED_TASK_ID,
+  legacySeedWorkspaceRoot,
 } from "#e2e/helpers/project-upgrade-order-fixture";
 
 describe("虚拟项目升级顺序", () => {
   it("VP28：仅迁移旧设置保留的项目，历史任务不建项目，刷新保留", async function () {
     this.timeout(90_000);
-    await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
+    // 评审修正：夹具播种的是历史工作区根，等待目标必须与播种内容一致。
+    const seedHome = process.env.ZCODE_E2E_HOME_DIR;
+    if (!seedHome) throw new Error("isolated E2E HOME required");
+    await waitForWorkspaceApp(legacySeedWorkspaceRoot(seedHome), 45_000);
     const expected = ["ZCodeProject", MIGRATED_REMOTE_NAME, ...SAVED_PROJECT_NAMES];
     const readNames = () =>
       browser.execute(() =>
@@ -29,7 +33,7 @@ describe("虚拟项目升级顺序", () => {
     );
     const home = process.env.ZCODE_E2E_HOME_DIR;
     if (!home) throw new Error("isolated E2E HOME required");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), { readOnly: true });
     try {
       expect(db.prepare("SELECT id FROM schema_migration").all()).toEqual([
         { id: "0005_projects" },
@@ -158,7 +162,7 @@ describe("虚拟项目升级顺序", () => {
     await unpinned.$('button[data-testid^="task-archive-"]').click();
     await unpinned.waitForExist({ reverse: true });
     const db = new DatabaseSync(
-      join(process.env.ZCODE_E2E_HOME_DIR!, ".zcode/v2/tasks-index.sqlite"),
+      join(process.env.ZCODE_E2E_HOME_DIR!, ".openzwork/v2/tasks-index.sqlite"),
       { readOnly: true },
     );
     try {

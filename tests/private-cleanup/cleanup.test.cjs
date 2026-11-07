@@ -1146,6 +1146,12 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
   // 属用户仓库工作区天然不命中；(?![\w-]) 排除恰好以 .zcode 开头的其他目录名
   // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/spec/identity-and-data-isolation.md。
   const bannedPattern = /(?:~|\$HOME)\/\.zcode(?![\w-])/;
+  // 2026-11-07 补强：仅匹配 ~/$HOME 前缀文本抓不到 join(home, ".zcode") 代码形态，
+  // 个性化指令路径与 data-sync 三处用户级错根由此漏网。新增两类模式：
+  // 1) HOME 解析函数或 home 形参直接拼接 .zcode 的代码形态；2) cli/v2/runtime/server
+  // 等只存在于用户级数据根的子目录字面量（项目级 .zcode 不会出现这些子目录名）。
+  const bannedJoinPattern =
+    /(?:homedir|resolveUserHomeDir)\(\)\s*,\s*["']\.zcode["']|join\(\s*(?:home|homeDir|userHome|realHome)\s*,\s*["']\.zcode["']|["']\.zcode["']\s*,\s*["'](?:cli|v2|runtime|server)["']/;
   const allowFiles = new Set([
     // 既有翻译目录还包含独立的历史路径说明；旧记忆自动迁移文案由下方专用门禁禁止。
     "packages/ui/src/i18n/locales/zh-CN.ts",
@@ -1154,8 +1160,16 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     "docs/spec/identity-and-data-isolation.md",
     "docs/spec/memory-migration.md",
     "scripts/zcode-distribution/installer.mjs",
+    // restore-legacy-sessions 插件按产品定义读取旧根做用户显式的历史会话恢复（豁免登记见 spec）。
+    "apps/zcode-cli/packages/restore-legacy-sessions-plugin/skills/restore-legacy-sessions/scripts/restore-conversation.mjs",
+    "apps/zcode-cli/packages/restore-legacy-sessions-plugin/skills/restore-legacy-sessions/scripts/scan-legacy-sessions.mjs",
+    // 历史开发计划文档，记录当时的旧根事实，不随代码迁移。
+    "docs/superpowers/plans/2026-06-10-bot-state-cache-v2-migration.md",
+    "docs/superpowers/plans/2026-06-25-user-subagent-settings-management.md",
+    "docs/superpowers/plans/2026-06-29-remote-skill-sync.md",
   ]);
-  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml)$/;
+  // nsh/nsi 一并入列：Windows 安装器落盘产物（清单名、数据目录保护）属于用户磁盘形态。
+  const scanExtensions = /\.(?:[cm]?[jt]sx?|mjs|cjs|json|md|sh|ya?ml|nsh|nsi)$/;
   const tracked = execFileSync("git", ["-C", root, "ls-files"], {
     encoding: "utf8",
     maxBuffer: 16 * 1024 * 1024,
@@ -1168,7 +1182,12 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     const file = path.join(root, rel);
     // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。
     if (!fs.existsSync(file)) continue;
-    const match = fs.readFileSync(file, "utf8").match(bannedPattern);
+    const text = fs.readFileSync(file, "utf8");
+    // 测试目录天然需要播种旧根做隔离/升级验收（豁免第 2 条），join 形态模式只扫生产代码；
+    // 文本形态（~/$HOME 前缀）保持全仓扫描口径不变。
+    const isTestPath =
+      /(?:^|\/)(?:tests?|e2e|fixtures)\//.test(rel) || /\.test\.|\.spec\./.test(rel);
+    const match = text.match(bannedPattern) ?? (isTestPath ? null : text.match(bannedJoinPattern));
     if (match) violations.push(`${rel}: ${match[0]}`);
   }
   assert.deepEqual(violations, [], `user-level .zcode residue found:\n${violations.join("\n")}`);

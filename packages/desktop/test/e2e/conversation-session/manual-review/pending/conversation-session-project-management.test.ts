@@ -24,12 +24,12 @@ const PROJECTS = [
   { id: "pjm-purge", name: "PJM 删除数据", lastActive: 2, own: true },
 ] as const;
 const PURGE_SESSION = "pjm-purge-task";
-const purgeArtifacts = () => join(home, ".zcode/cli/artifacts", PURGE_SESSION);
+const purgeArtifacts = () => join(home, ".openzwork/cli/artifacts", PURGE_SESSION);
 const CANDIDATES = ["pjm-missing", "pjm-idle", "pjm-keep", "pjm-empty"];
 
 const row = (id: string) => $(`[data-testid="project-management-row"][data-project-id="${id}"]`);
 function readProjects() {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return Object.fromEntries(
       (
@@ -43,7 +43,7 @@ function readProjects() {
   }
 }
 function readTaskProject(id: string) {
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+  const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), { readOnly: true });
   try {
     return (
       db.prepare("SELECT project_id FROM tasks WHERE task_id=?").get(id) as {
@@ -83,8 +83,8 @@ describe("项目管理", () => {
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
       afterElectronProcessExit: async () => {
-        const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
-        const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"));
+        const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
+        const cli = new DatabaseSync(join(home, ".openzwork/cli/db/db.sqlite"));
         const now = Date.now();
         try {
           for (const [i, project] of PROJECTS.entries()) {
@@ -367,7 +367,7 @@ describe("项目管理", () => {
     await browser.waitUntil(() => !("pjm-purge" in readProjects()), { timeout: 30000 });
     expect(readTaskProject(PURGE_SESSION)).toBeUndefined();
     expect(existsSync(purgeArtifacts())).toBe(false);
-    const cli = new DatabaseSync(join(home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const cli = new DatabaseSync(join(home, ".openzwork/cli/db/db.sqlite"), { readOnly: true });
     try {
       expect(cli.prepare("SELECT id FROM session WHERE id=?").get(PURGE_SESSION)).toBeUndefined();
     } finally {

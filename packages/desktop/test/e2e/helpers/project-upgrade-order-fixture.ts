@@ -38,9 +38,18 @@ export function seedLegacyProviderTasks(db: DatabaseSync, workspacePath: string)
   );
 }
 
+/**
+ * 评审修正：本夹具播种的是旧版数据，历史工作区根保持旧名 `ZCodeProject`（迁移语义要求
+ * 保留原路径），与当前产品默认工作区（OpenZWorkProject）不同；用例入口必须等待本函数
+ * 返回的播种路径，不能复用 DEFAULT_WORKSPACE。
+ */
+export function legacySeedWorkspaceRoot(home: string): string {
+  return join(home, "ZCodeProject");
+}
+
 /** 先写旧版数据，再让真实建窗前迁移建立 position；不能在启动后伪造迁移结果。 */
 export async function seedProjectUpgradeOrderFixture(home: string, settingsFile: string) {
-  const workspace = join(home, "ZCodeProject");
+  const workspace = legacySeedWorkspaceRoot(home);
   const root = join(workspace, ".zcode-e2e", "project-upgrade-order");
   const defaultPath = join(home, ".zcode", "workspace", "default");
   await mkdir(defaultPath, { recursive: true });
@@ -83,7 +92,8 @@ export async function seedProjectUpgradeOrderFixture(home: string, settingsFile:
     }),
   );
   // node:sqlite 仅有同步连接；此时 app/Host 尚未启动，数据库没有并发写者。
-  const db = new DatabaseSync(join(home, ".zcode", "v2", "tasks-index.sqlite"));
+  // 种子 DB 必须位于当前 App 读取的 tasks-index 路径；行内 workspace_path 保留旧后端历史值。
+  const db = new DatabaseSync(join(home, ".openzwork", "v2", "tasks-index.sqlite"));
   try {
     db.exec(`CREATE TABLE tasks (
       workspace_key TEXT NOT NULL, workspace_path TEXT NOT NULL, workspace_identity TEXT,

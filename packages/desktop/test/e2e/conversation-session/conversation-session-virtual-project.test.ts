@@ -6,6 +6,7 @@ import {
 } from "#e2e/helpers/remote-project-handoff-probe";
 import { openWorkspaceDraftFromSidebar } from "#e2e/helpers/workspace-agent-warmup";
 import type { VirtualProject } from "@zcode/services";
+import { E2E_AGENT_WORKSPACE_NAME } from "../helpers/e2e-runtime-paths.js";
 import { selectNativeProjectDirectories } from "../helpers/project-sidebar.js";
 import { openScopeProjectSubmenu } from "../helpers/settings-scope-menu.js";
 import { spawn } from "node:child_process";
@@ -202,7 +203,7 @@ describe("虚拟项目", () => {
     await row.$('[data-testid="virtual-project-create-task"]').click();
     await waitForWorkspaceApp(paths[0], 30_000);
     expect(await toggle.getAttribute("aria-expanded")).toBe("false");
-    const original = $('[data-project-name="ZCodeProject"]');
+    const original = $(`[data-project-name="${E2E_AGENT_WORKSPACE_NAME}"]`);
     await original.moveTo();
     await original.$('[data-testid="virtual-project-create-task"]').click();
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
@@ -309,7 +310,7 @@ describe("虚拟项目", () => {
     } finally {
       db.close();
       await browser.keys("Escape");
-      const original = $('[data-project-name="ZCodeProject"]');
+      const original = $(`[data-project-name="${E2E_AGENT_WORKSPACE_NAME}"]`);
       await original.moveTo();
       await original.$('[data-testid="virtual-project-create-task"]').click();
       await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
@@ -933,7 +934,7 @@ describe("虚拟项目", () => {
         archiveFacts.close();
       }
 
-      await $('[data-project-name="ZCodeProject"]')
+      await $(`[data-project-name="${E2E_AGENT_WORKSPACE_NAME}"]`)
         .$('[data-testid="virtual-project-create-task"]')
         .click();
       await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
@@ -959,7 +960,7 @@ describe("虚拟项目", () => {
       try {
         await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "VP17-final.png"));
         // 测试服务退出前回到本地，防止后续用例被已关闭 Source 的活动 tab 阻塞。
-        await $('[data-project-name="ZCodeProject"]')
+        await $(`[data-project-name="${E2E_AGENT_WORKSPACE_NAME}"]`)
           .$('[data-testid="virtual-project-create-task"]')
           .click();
         await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);

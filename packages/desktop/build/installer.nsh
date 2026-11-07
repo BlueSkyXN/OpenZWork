@@ -2,10 +2,10 @@
 !include FileFunc.nsh
 
 !ifndef ZCODE_INSTALLER_DEFAULT_LOG_PATH
-  !define ZCODE_INSTALLER_DEFAULT_LOG_PATH "$TEMP\ZCode-installer.log"
+  !define ZCODE_INSTALLER_DEFAULT_LOG_PATH "$TEMP\OpenZWork-installer.log"
 !endif
 !ifndef ZCODE_INSTALLER_ELEVATED_LOG_PATH
-  !define ZCODE_INSTALLER_ELEVATED_LOG_PATH "$WINDIR\Logs\ZCode-installer.log"
+  !define ZCODE_INSTALLER_ELEVATED_LOG_PATH "$WINDIR\Logs\OpenZWork-installer.log"
 !endif
 !ifndef ZCODE_INSTALLER_IS_ELEVATED_INNER
   ; 修复原因：来源只在测试夹具模拟内层，正式默认恒假会让提权进程继续使用调用方 /LOG。
@@ -15,11 +15,21 @@
 !endif
 
 !ifndef ZCODE_INSTALL_MANIFEST_NAME
-  !define ZCODE_INSTALL_MANIFEST_NAME ".zcode-install-manifest"
+  !define ZCODE_INSTALL_MANIFEST_NAME ".openzwork-install-manifest"
+!endif
+; 改名过渡（2026-11-07）：旧版本安装器写入 .zcode-install-manifest。所有权清单与卸载器
+; 能力标记都写在旧安装目录里，升级读取时必须兼容旧名，缺清单会回退 fail-open 保留策略。
+!ifndef ZCODE_LEGACY_INSTALL_MANIFEST_NAME
+  !define ZCODE_LEGACY_INSTALL_MANIFEST_NAME ".zcode-install-manifest"
 !endif
 
 !ifndef ZCODE_UNINSTALLER_LOG_PATH
-  !define ZCODE_UNINSTALLER_LOG_PATH "$TEMP\ZCode-uninstaller.log"
+  !define ZCODE_UNINSTALLER_LOG_PATH "$TEMP\OpenZWork-uninstaller.log"
+!endif
+; Bugfix（2026-11-07 评审）：覆盖升级执行的是已安装版本的旧卸载器，其编译期日志路径仍是
+; ZCode-uninstaller.log；新安装器只清空/回放新名会拿不到旧版清理明细。双名并处理。
+!ifndef ZCODE_LEGACY_UNINSTALLER_LOG_PATH
+  !define ZCODE_LEGACY_UNINSTALLER_LOG_PATH "$TEMP\ZCode-uninstaller.log"
 !endif
 !ifndef ZCODE_UNINSTALLER_FUNCTION_PREFIX
   !define ZCODE_UNINSTALLER_FUNCTION_PREFIX "un."
@@ -30,7 +40,7 @@
 
   ; 卸载器只在更新时删除旧文件；单独记录清理阶段，避免外层把权限/空间错误误报成应用仍在运行。
   !macro ZCodeReportUninstallerStage MESSAGE
-    DetailPrint "ZCode: ${MESSAGE}"
+    DetailPrint "OpenZWork: ${MESSAGE}"
     Push "${MESSAGE}"
     Call ${ZCODE_UNINSTALLER_FUNCTION_PREFIX}ZCodeWriteUninstallerLog
   !macroend
@@ -80,8 +90,12 @@
     !endif
     ClearErrors
     FileOpen $R0 "$INSTDIR\${ZCODE_INSTALL_MANIFEST_NAME}" r
+    IfErrors 0 zcodeManifestOpened
+    ClearErrors
+    FileOpen $R0 "$INSTDIR\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" r
     IfErrors zcodeManifestMissing
 
+    zcodeManifestOpened:
     zcodeManifestRead:
       ClearErrors
       FileRead $R0 $R1
@@ -150,7 +164,7 @@
   ; 详情面板和文件日志共用同一条阶段事件，避免静默安装丢失关键上下文。
   !macro ZCodeReportInstallerStage MESSAGE
     SetDetailsPrint listonly
-    DetailPrint "ZCode: ${MESSAGE}"
+    DetailPrint "OpenZWork: ${MESSAGE}"
     Push "${MESSAGE}"
     Call ZCodeWriteInstallerLog
   !macroend
@@ -197,6 +211,9 @@
     IfErrors zcodeUninstallerDetailsResetFailed zcodeUninstallerDetailsResetSucceeded
     zcodeUninstallerDetailsResetSucceeded:
       FileClose $R0
+      ; 旧卸载器写旧名日志；升级前一并清掉，防止回放串档到本次安装。
+      Delete "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}"
+      ClearErrors
       Goto zcodeUninstallerDetailsResetDone
     zcodeUninstallerDetailsResetFailed:
       ; 外层详情不能读取旧卸载器日志时仍继续安装，文件日志和退出码仍是最终依据。
@@ -209,8 +226,21 @@
     Push $R0
     Push $R1
     Push $R2
+    Push $R3
 
     StrCmp $ZCodeUninstallerDetailsUnavailable "1" zcodeShowUninstallerDetailsDone
+    ; Bugfix（2026-11-07 复审）：Reset 以 w 模式创建了空的新名日志，不能按"文件存在"判定
+    ; 本次清理已写新名。按内容长度判定：新日志非空 → 直接回放；为空且旧名有内容
+    ;; （覆盖升级执行的旧卸载器写旧名）→ 归并到新名后统一回放，弹窗引用的路径才真实。
+    ClearErrors
+    FileOpen $R0 "${ZCODE_UNINSTALLER_LOG_PATH}" r
+    IfErrors zcodeShowUninstallerDetailsDone
+    FileSeek $R0 0 END $R3
+    FileClose $R0
+    IntCmp $R3 0 0 zcodeShowUninstallerDetailsReplay zcodeShowUninstallerDetailsReplay
+    IfFileExists "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" 0 zcodeShowUninstallerDetailsDone
+      CopyFiles /SILENT "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" "${ZCODE_UNINSTALLER_LOG_PATH}"
+    zcodeShowUninstallerDetailsReplay:
     ClearErrors
     FileOpen $R0 "${ZCODE_UNINSTALLER_LOG_PATH}" r
     IfErrors zcodeShowUninstallerDetailsDone
@@ -220,11 +250,12 @@
       IfErrors zcodeShowUninstallerDetailsClose
       StrCmp $R1 "" zcodeShowUninstallerDetailsRead
       SetDetailsPrint listonly
-      DetailPrint "ZCode: cleanup-log $R1"
+      DetailPrint "OpenZWork: cleanup-log $R1"
       Goto zcodeShowUninstallerDetailsRead
     zcodeShowUninstallerDetailsClose:
       FileClose $R0
     zcodeShowUninstallerDetailsDone:
+      Pop $R3
       Pop $R2
       Pop $R1
       Pop $R0
@@ -279,13 +310,24 @@
   Function ZCodeDetectPreviousUninstallerCapabilities
     StrCpy $ZCodePreviousUninstallerSupportsManifest "0"
     ; manifest 是卸载器能力标记：存在即表示旧卸载器会按清单选择性删除。
-    IfFileExists "$INSTDIR\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityCheckNested
+    ; 改名过渡：新旧清单名任一存在即视为旧卸载器支持清单清理。
+    IfFileExists "$INSTDIR\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePrevCapLegacyRoot
+      StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
+      Return
+
+    zcodePrevCapLegacyRoot:
+    IfFileExists "$INSTDIR\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityCheckNested
       StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
       Return
 
     zcodePreviousUninstallerCapabilityCheckNested:
       ; assisted installer 的目录页会在后续 instfilesPre 才补上 APP_FILENAME 子目录，提前兼容两种形态。
-      IfFileExists "$INSTDIR\${APP_FILENAME}\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityDone
+      IfFileExists "$INSTDIR\${APP_FILENAME}\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodePrevCapLegacyNested
+        StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
+        Goto zcodePreviousUninstallerCapabilityDone
+
+    zcodePrevCapLegacyNested:
+      IfFileExists "$INSTDIR\${APP_FILENAME}\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" 0 zcodePreviousUninstallerCapabilityDone
         StrCpy $ZCodePreviousUninstallerSupportsManifest "1"
 
     zcodePreviousUninstallerCapabilityDone:
@@ -298,7 +340,7 @@
       ; 静默自动更新无人值守，未设置 /SD 的模态框会一直等待用户点击，
       ; 使明确的退出码无法返回静默调用方。静默时自动采用 IDOK，交互时仍显示提示。
       SetDetailsPrint listonly
-      DetailPrint "ZCode: cleanup-failed exit-code=$R0"
+      DetailPrint "OpenZWork: cleanup-failed exit-code=$R0"
       Call ZCodeShowUninstallerCleanupDetails
       MessageBox MB_OK|MB_ICONSTOP "旧版本清理失败（错误码 $R0）。可能是文件被占用、权限不足或磁盘空间不足。详细日志：${ZCODE_UNINSTALLER_LOG_PATH}" /SD IDOK
       SetErrorLevel 2
@@ -489,11 +531,19 @@
 
     StrCpy $R2 ""
 
+    ; Bugfix（2026-11-07 评审）：.zcode 与 .openzwork 必须全部先于 listChildren 跳转检测。
+    ; 此前 .openzwork 检查插在 ".zcode 未命中即跳 listChildren" 之后，成为不可达死代码，
+    ; 无 ownership manifest 且安装目录仅含 .openzwork 数据的升级会漏过全目录清理保护。
     IfFileExists "$R9\.zcode\*.*" 0 +2
       StrCpy $R2 "$R9\.zcode"
+    IfFileExists "$R9\.openzwork\*.*" 0 +2
+      StrCpy $R2 "$R9\.openzwork"
     StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
-    IfFileExists "$R9\.zcode" 0 zcodeFindNestedDataDirListChildren
+    IfFileExists "$R9\.zcode" 0 +2
       StrCpy $R2 "$R9\.zcode"
+    StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
+    IfFileExists "$R9\.openzwork" 0 zcodeFindNestedDataDirListChildren
+      StrCpy $R2 "$R9\.openzwork"
     StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
 
     zcodeFindNestedDataDirListChildren:
@@ -552,7 +602,7 @@
       Pop $0
       StrCmp $0 error zcodeInstallDirDataBlockDialogFailed 0
 
-      ${NSD_CreateLabel} 0u 0u 300u 44u "检测到该安装目录或其子目录中存在 .zcode 数据目录：$\r$\n$R2"
+      ${NSD_CreateLabel} 0u 0u 300u 44u "检测到该安装目录或其子目录中存在 .zcode / .openzwork 数据目录：$\r$\n$R2"
       Pop $1
       ${NSD_CreateLabel} 0u 54u 300u 70u "为避免历史会话和配置被安装器清理，请返回上一步选择其他安装目录。$\r$\n$\r$\n当前目录不能继续安装。"
       Pop $1
@@ -568,7 +618,7 @@
       Return
 
     zcodeInstallDirDataBlockDialogFailed:
-      MessageBox MB_OK|MB_ICONSTOP "检测到安装目录或其子目录中存在 .zcode 数据目录，安装已停止。请重新运行安装器并选择其他安装目录。"
+      MessageBox MB_OK|MB_ICONSTOP "检测到安装目录或其子目录中存在 .zcode / .openzwork 数据目录，安装已停止。请重新运行安装器并选择其他安装目录。"
       SetErrorLevel 1
       Quit
 

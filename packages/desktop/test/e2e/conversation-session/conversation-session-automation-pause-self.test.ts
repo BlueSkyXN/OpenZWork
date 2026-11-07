@@ -145,7 +145,7 @@ interface AutomationRecord {
 }
 
 function automationDatabasePath(): string {
-  return join(homedir(), ".zcode", "v2", "tasks-index.sqlite");
+  return join(homedir(), ".openzwork", "v2", "tasks-index.sqlite");
 }
 
 function readAutomationRecordByTitle(title: string): AutomationRecord | null {

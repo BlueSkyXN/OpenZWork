@@ -4,7 +4,10 @@ import { tmpdir } from "node:os";
 
 export const E2E_RUNTIME_RELATIVE_ROOT = ".zcode-e2e";
 export const E2E_RUNTIME_ROOT_REPLAY_TOKEN = "{{e2eRuntimeRoot}}";
-const E2E_AGENT_WORKSPACE_NAME = "ZCodeProject";
+// 与 fileService SCRATCH_WORKSPACE_ROOT_NAME 同名（2026-11-07 改名后）。
+// 评审修正：必须导出给 desktop-app 的 DEFAULT_WORKSPACE 派生，保证 helper 写入
+// .zcode-e2e 的目录与 Agent 实际 cwd 同一来源；否则 replay 相对路径永远找不到文件。
+export const E2E_AGENT_WORKSPACE_NAME = "OpenZWorkProject";
 
 interface ResolveE2EHomeDirOptions {
   cwd?: string;
@@ -30,7 +33,7 @@ export function resolveE2EStorageRoot(e2eHomeDir = resolveE2EHomeDir()): string 
 
 export function resolveE2ERuntimeRoot(e2eHomeDir = resolveE2EHomeDir()): string {
   // Bug 根因：conversation E2E 的 Agent 实际 cwd 是隔离 HOME 下的
-  // ZCodeProject，而不是 conversation backing workspace。Node 若写到后者，
+  // OpenZWorkProject，而不是 conversation backing workspace。Node 若写到后者，
   // Bash 的相对路径就会永远等不到同一个文件，Windows 上还会叠加 shell 路径差异。
   return join(e2eHomeDir, E2E_AGENT_WORKSPACE_NAME, E2E_RUNTIME_RELATIVE_ROOT);
 }

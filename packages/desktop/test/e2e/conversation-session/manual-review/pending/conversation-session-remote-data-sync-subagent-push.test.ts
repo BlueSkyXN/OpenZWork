@@ -66,13 +66,13 @@ const AGENT_CONTENT = [
 
 /** 本机用户级技能与 MCP：子智能体引用的依赖在本机存在，远端缺少时才提示。 */
 async function writeLocalDependencies(home: string): Promise<void> {
-  const skillDir = join(home, ".zcode", "skills", DEPENDENCY_SKILL);
+  const skillDir = join(home, ".openzwork", "skills", DEPENDENCY_SKILL);
   await mkdir(skillDir, { recursive: true });
   await writeFile(
     join(skillDir, "SKILL.md"),
     `---\nname: ${DEPENDENCY_SKILL}\ndescription: dependency for data sync e2e\n---\nBody\n`,
   );
-  const cliDir = join(home, ".zcode", "cli");
+  const cliDir = join(home, ".openzwork", "cli");
   await mkdir(cliDir, { recursive: true });
   await writeFile(
     join(cliDir, "config.json"),
@@ -237,7 +237,7 @@ describe(`${CASE_MARKER}: 数据同步页推送子智能体`, () => {
 
   it("DSYNC-09-02 推送后，已打开的远程项目输入 / 能看到新子智能体", async function () {
     this.timeout(10 * 60_000);
-    const localAgents = join(getE2EAppDataPaths().homeDir, ".zcode", "agents");
+    const localAgents = join(getE2EAppDataPaths().homeDir, ".openzwork", "agents");
     await writeFile(
       join(localAgents, SLASH_AGENT_FILE),
       `---\nname: ${SLASH_AGENT_NAME}\ndescription: ${CASE_MARKER} slash\n---\nSlash prompt.\n`,

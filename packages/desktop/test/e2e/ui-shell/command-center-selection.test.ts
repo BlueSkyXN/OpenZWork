@@ -38,7 +38,7 @@ describe("Command Center 重名任务选中", () => {
     }
     // 纯列表 fixture：在隔离索引准备重名任务，不恢复合成会话或发送模型请求。
     // node:sqlite 仅提供同步接口，短事务结束后立即关闭连接。
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
     try {
       const now = Date.now();
       const insert = db.prepare(`

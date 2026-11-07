@@ -8,7 +8,7 @@ import { parse as parseYaml } from "yaml";
 import { normalizeFeatureBoundaryGraph } from "./src/data/featureBoundaryGraphSource.js";
 
 const STDIO_TRAFFIC_API_PATH = "/api/dev/stdio-traffic";
-const STDIO_TRAFFIC_LOG_DIR = join(homedir(), ".zcode", "v2", "dev", "stdio-traffic");
+const STDIO_TRAFFIC_LOG_DIR = join(homedir(), ".openzwork", "v2", "dev", "stdio-traffic");
 const MAX_TAIL_BYTES = 2 * 1024 * 1024;
 const DEFAULT_RECORD_LIMIT = 300;
 const FEATURE_BOUNDARY_GRAPH_MODULE_ID = "virtual:zcode-feature-boundary-graph";

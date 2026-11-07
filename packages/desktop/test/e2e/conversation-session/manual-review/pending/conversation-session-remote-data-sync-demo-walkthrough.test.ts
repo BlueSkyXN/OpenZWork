@@ -72,7 +72,7 @@ const BEAT_MS = 2_200;
 const LONG_BEAT_MS = 3_200;
 const CLICK_LEAD_MS = 700;
 const REMOTE_HOME = "/home/dev";
-const REMOTE_CLI_CONFIG = `${REMOTE_HOME}/.zcode/cli/config.json`;
+const REMOTE_CLI_CONFIG = `${REMOTE_HOME}/.openzwork/cli/config.json`;
 const SCOPE_TRIGGER = '[data-plugin-scope-trigger="true"]';
 const DIALOG = '[data-testid="remote-sync-dialog"]';
 const DIALOG_CLOSE = `${DIALOG} [data-slot="dialog-close"]`;
@@ -768,7 +768,7 @@ async function readJson(path: string): Promise<Record<string, unknown>> {
 
 /** 本机六类内容：每类都有「推送」项，另配「更新 / 差异 / 已同步 / 不能同步」所需的对照项。 */
 async function writeLocalContent(home: string): Promise<void> {
-  const zcode = join(home, ".zcode");
+  const zcode = join(home, ".openzwork");
   const skills = join(zcode, "skills");
   await writeText(
     join(skills, SKILL.push, "SKILL.md"),
@@ -1044,7 +1044,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
     if (offlineTarget)
       await bringRemoteDeviceOnline(container, offlineTarget).catch(() => undefined);
     if (providerDirLocked)
-      await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.zcode/v2`).catch(
+      await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.openzwork/v2`).catch(
         () => undefined,
       );
     await browser.electron.restoreAllMocks();
@@ -1385,7 +1385,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       ],
       setup: async () => {
         await writeText(
-          join(homeDir, ".zcode", "skills", SKILL.conflict, "SKILL.md"),
+          join(homeDir, ".openzwork", "skills", SKILL.conflict, "SKILL.md"),
           skillMarkdown(SKILL.conflict, "Skill created on this machine", "Local version."),
         );
         await closeDataSyncDialog();
@@ -1452,7 +1452,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       ],
       setup: async () => {
         // 远端模型配置目录只读：本机新增提供商后自动下发失败（与 DSYNC-13 相同的故障注入）。
-        await chmodRemoteContainerPath(container, "a-w", `${REMOTE_HOME}/.zcode/v2`);
+        await chmodRemoteContainerPath(container, "a-w", `${REMOTE_HOME}/.openzwork/v2`);
         providerDirLocked = true;
         await openSettingsSection("modelProvider");
         await createAndConfigurePersonalProvider(SECOND_PROVIDER);
@@ -1487,7 +1487,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
           "显示上次自动同步的时间和失败原因，并提供「重试」",
           { ms: LONG_BEAT_MS },
         );
-        await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.zcode/v2`);
+        await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.openzwork/v2`);
         providerDirLocked = false;
         await caption("远端恢复可写后点「重试」");
         await demoClick(tid("remote-sync-providers-retry"));
@@ -1506,7 +1506,7 @@ describe(`${MARKER}: 数据同步功能演示走查`, () => {
       },
       cleanup: async () => {
         if (providerDirLocked) {
-          await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.zcode/v2`);
+          await chmodRemoteContainerPath(container, "u+w", `${REMOTE_HOME}/.openzwork/v2`);
           providerDirLocked = false;
         }
       },

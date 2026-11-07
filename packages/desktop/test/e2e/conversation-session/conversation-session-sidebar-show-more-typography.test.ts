@@ -17,7 +17,7 @@ async function seedRows() {
   if (!home || !basename(home).startsWith(".e2e-home-")) throw new Error("需要本 case 的隔离 HOME");
   const root = join(DEFAULT_WORKSPACE, ".zcode-e2e", "show-more");
   await mkdir(root, { recursive: true });
-  const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"));
+  const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"));
   try {
     const now = Date.now();
     db.exec("BEGIN IMMEDIATE");

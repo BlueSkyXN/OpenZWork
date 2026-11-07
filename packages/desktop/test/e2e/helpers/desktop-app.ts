@@ -19,6 +19,7 @@ import {
 } from "@zcode/shared/test-ids";
 import type { AppSettings } from "@zcode/shared";
 import { collectWindowsE2EProcessTreePids } from "./e2e-process-cleanup.js";
+import { E2E_AGENT_WORKSPACE_NAME } from "./e2e-runtime-paths.js";
 import {
   collectE2EWebDriverPageHandleCandidates,
   type E2EBrowserTargetInfo,
@@ -39,7 +40,8 @@ const E2E_HOME_DIR =
 // 隔离由测试 HOME 保证，目录名与 OpenZWork 用户数据根保持一致。
 const E2E_STORAGE_ROOT = join(E2E_HOME_DIR, ".openzwork");
 const E2E_APP_DATA_DIR = join(E2E_STORAGE_ROOT, "v2");
-export const DEFAULT_WORKSPACE = join(E2E_HOME_DIR, "ZCodeProject");
+// 评审修正：工作区名与 e2e-runtime-paths 的运行时根同源，防止 helper 写入目录与 Agent cwd 分叉。
+export const DEFAULT_WORKSPACE = join(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
 export const DEFAULT_CONVERSATION_WORKSPACE = join(E2E_STORAGE_ROOT, "workspace", "default");
 const SETTINGS_FILE = join(E2E_APP_DATA_DIR, "setting.json");
 const CREDENTIALS_FILE = join(E2E_APP_DATA_DIR, "credentials.json");
