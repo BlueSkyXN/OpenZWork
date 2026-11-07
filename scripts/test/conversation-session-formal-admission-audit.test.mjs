@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -11,6 +12,12 @@ const INTEGRATION_URL = new URL(
   import.meta.url,
 );
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+// OpenZWork(OZ-F001): 上游文档原文不动，存在 -openzwork 版本时按 OpenZWork 版本核对（与审计脚本一致）。
+const coverageMatrixPath = () => {
+  const path = "docs/testing/conversation-session-e2e-coverage-matrix.md";
+  const variant = path.replace(/\.md$/, "-openzwork.md");
+  return existsSync(join(REPO_ROOT, variant)) ? variant : path;
+};
 const AUDIT_PATH = join(REPO_ROOT, "scripts/audit-conversation-session-case-coverage.mjs");
 
 test("projects formal rejection into audit errors, JSON, text, and nonzero check", async () => {
@@ -161,7 +168,7 @@ test("current coverage audit stays consistent after App unit evidence retirement
   assert.deepEqual(report.errors, []);
 
   const matrix = await readFile(
-    join(REPO_ROOT, "docs/testing/conversation-session-e2e-coverage-matrix.md"),
+    join(REPO_ROOT, coverageMatrixPath()),
     "utf8",
   );
   // 修复原因：顶部退役说明不影响机器索引；按主路径审计的两字母缩写检查路径，避免已删业务单测仍被计数。
@@ -182,7 +189,7 @@ test("current coverage audit stays consistent after App unit evidence retirement
 
 test("VI03 keeps its retained CLI unit evidence with unambiguous full paths", async () => {
   const matrix = await readFile(
-    join(REPO_ROOT, "docs/testing/conversation-session-e2e-coverage-matrix.md"),
+    join(REPO_ROOT, coverageMatrixPath()),
     "utf8",
   );
   const row = matrix.split("\n").find((line) => /^\|\s*VI03\s*\|/.test(line));

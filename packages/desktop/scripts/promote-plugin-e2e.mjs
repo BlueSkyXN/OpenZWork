@@ -7,9 +7,13 @@ const desktopDir = resolve(import.meta.dirname, "..");
 const repoRoot = resolve(desktopDir, "../..");
 const pluginDir = resolve(desktopDir, "test/e2e/plugins");
 const pendingDir = resolve(pluginDir, "manual-review/pending");
-const matrixPath = resolve(
-  repoRoot,
-  "docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md",
+// OpenZWork(OZ-F001): 上游文档原文不动，OpenZWork 版本另存为同目录的 -openzwork 文件；存在时读写 OpenZWork 版本。
+const openzworkDoc = (path) => {
+  const variant = path.replace(/(\.[^./]+)$/, "-openzwork$1");
+  return existsSync(variant) ? variant : path;
+};
+const matrixPath = openzworkDoc(
+  resolve(repoRoot, "docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md"),
 );
 const fixtureDir = resolve(desktopDir, "test/e2e/fixtures/upstream/plugin-management");
 const manifestDir = resolve(desktopDir, "test/e2e/fixtures/cases/plugins");

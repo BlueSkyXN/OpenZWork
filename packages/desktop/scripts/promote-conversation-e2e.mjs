@@ -17,9 +17,13 @@ const conversationDir = resolve(desktopDir, "test/e2e/conversation-session");
 const pendingDir = resolve(conversationDir, "manual-review/pending");
 const providerFixtureDir = resolve(desktopDir, "test/e2e/fixtures/upstream/conversation-session");
 const caseManifestDir = resolve(desktopDir, "test/e2e/fixtures/cases/conversation-session");
-const coverageMatrixPath = resolve(
-  repoRoot,
-  "docs/testing/conversation-session-e2e-coverage-matrix.md",
+// OpenZWork(OZ-F001): 上游文档原文不动，OpenZWork 版本另存为同目录的 -openzwork 文件；存在时读写 OpenZWork 版本。
+const openzworkDoc = (path) => {
+  const variant = path.replace(/(\.[^./]+)$/, "-openzwork$1");
+  return existsSync(variant) ? variant : path;
+};
+const coverageMatrixPath = openzworkDoc(
+  resolve(repoRoot, "docs/testing/conversation-session-e2e-coverage-matrix.md"),
 );
 const coverageAuditPath = resolve(repoRoot, "scripts/audit-conversation-session-case-coverage.mjs");
 

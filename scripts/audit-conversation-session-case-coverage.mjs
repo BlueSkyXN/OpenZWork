@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /* eslint-disable max-lines -- 会话 case 审计需要集中维护 catalog、coverage、fault、backlog 与 worksheet 的一致性口径。 */
 
+import { existsSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,12 @@ import { inspectCoverageMatrices } from "./lib/retired-app-unit-evidence.mjs";
 import { inspectConversationSessionFormalAdmission } from "./lib/conversation-session-formal-admission.mjs";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+// OpenZWork(OZ-F001): 上游文档原文不动，OpenZWork 版本另存为同目录的 -openzwork 文件
+// （docs/openzwork/maintenance-model.md）；存在 OpenZWork 版本时按它读取与核对。
+const openzworkDoc = (path) => {
+  const variant = path.replace(/(\.[^./]+)$/, "-openzwork$1");
+  return existsSync(resolve(REPO_ROOT, variant)) ? variant : path;
+};
 
 function resolveFormalAdmissionRoot() {
   const override =
@@ -34,33 +41,33 @@ function resolveFormalAdmissionRoot() {
 // E2E case 转正期间会频繁出现短暂不一致；它必须由显式 audit 命令触发，
 // 不能挂在默认 Vitest 单测里阻塞每次提交。
 const DOCS = {
-  mainCatalog: "docs/conversation-session-case-catalog.md",
-  coverageMatrix: "docs/testing/conversation-session-e2e-coverage-matrix.md",
+  mainCatalog: openzworkDoc("docs/conversation-session-case-catalog.md"),
+  coverageMatrix: openzworkDoc("docs/testing/conversation-session-e2e-coverage-matrix.md"),
   environmentFaultCatalog:
-    "docs/testing/conversation-session-environment-fault-catalog.md",
+    openzworkDoc("docs/testing/conversation-session-environment-fault-catalog.md"),
   faultCoverageMatrix:
-    "docs/testing/conversation-session-fault-e2e-coverage-matrix.md",
-  decisionBacklog: "docs/testing/conversation-session-decision-backlog.md",
+    openzworkDoc("docs/testing/conversation-session-fault-e2e-coverage-matrix.md"),
+  decisionBacklog: openzworkDoc("docs/testing/conversation-session-decision-backlog.md"),
   decisionE2ERoadmap:
-    "docs/testing/conversation-session-decision-e2e-roadmap.md",
+    openzworkDoc("docs/testing/conversation-session-decision-e2e-roadmap.md"),
 };
 
 const DECISION_ANSWERS_PATH =
-  "docs/testing/conversation-session-decision-answers.md";
+  openzworkDoc("docs/testing/conversation-session-decision-answers.md");
 
 const GENERATED_MARKDOWN_DOCS = {
   decisionAnswerTemplate:
-    "docs/testing/conversation-session-next-decision-answer-template.md",
+    openzworkDoc("docs/testing/conversation-session-next-decision-answer-template.md"),
   decisionAnswersStatus:
-    "docs/testing/conversation-session-decision-answers-status.md",
+    openzworkDoc("docs/testing/conversation-session-decision-answers-status.md"),
   decisionBackfillPlan:
-    "docs/testing/conversation-session-decision-backfill-plan.md",
+    openzworkDoc("docs/testing/conversation-session-decision-backfill-plan.md"),
   decisionReviewQueue:
-    "docs/testing/conversation-session-decision-review-queue.md",
+    openzworkDoc("docs/testing/conversation-session-decision-review-queue.md"),
   decisionWorkflowBoard:
-    "docs/testing/conversation-session-decision-workflow-board.md",
+    openzworkDoc("docs/testing/conversation-session-decision-workflow-board.md"),
   nextDecisionReview:
-    "docs/testing/conversation-session-next-decision-review.md",
+    openzworkDoc("docs/testing/conversation-session-next-decision-review.md"),
 };
 const MAIN_AUTOMATION_SPEC_PATH_PREFIXES = [
   "packages/desktop/test/e2e/",
@@ -103,15 +110,15 @@ const ROADMAP_SOURCE_STATUSES = [
 const DECISION_WORKSHEETS = {
   compact: {
     idPattern: /^(?:F09|G11|G12)$/,
-    path: "docs/testing/conversation-session-compact-decision-worksheet.md",
+    path: openzworkDoc("docs/testing/conversation-session-compact-decision-worksheet.md"),
   },
   networkSse: {
     idPattern: /^(?:N\d{2}|S\d{2})$/,
-    path: "docs/testing/conversation-session-network-sse-decision-worksheet.md",
+    path: openzworkDoc("docs/testing/conversation-session-network-sse-decision-worksheet.md"),
   },
   recoveryIsolation: {
     idPattern: /^(?:D\d{2}|L\d{2}|W\d{2}|X\d{2})$/,
-    path: "docs/testing/conversation-session-recovery-isolation-decision-worksheet.md",
+    path: openzworkDoc("docs/testing/conversation-session-recovery-isolation-decision-worksheet.md"),
   },
 };
 
