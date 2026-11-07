@@ -26,7 +26,9 @@ const CASE_MARKER = "E2E_DSYNC_13_PROVIDER_RETRY";
 const PROVIDER_NAME = "E2E DSYNC 13 Provider";
 const PROVIDER_BASE_URL = "https://dsync13.example.com/v1";
 const PROVIDER_API_KEY = "sk-e2e-dsync13-0123456789abcd";
-const REMOTE_PROVIDER_DIR = "/home/dev/.zcode/v2";
+// Bugfix（2026-11-07）：模型提供商配置写入远端 App 配置目录（getAppConfigDir() = ~/.openzwork/v2）；
+// 旧 .zcode 根自 WP-03 用户级路径迁移（783be9f4c）起不再被读写。
+const REMOTE_PROVIDER_DIR = "/home/dev/.openzwork/v2";
 const REMOTE_PROVIDER_CONFIG = `${REMOTE_PROVIDER_DIR}/provider_config.json`;
 const SYNC_TIMEOUT_MS = 120_000;
 
