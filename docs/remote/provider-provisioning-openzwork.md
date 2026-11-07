@@ -242,7 +242,7 @@ V4 `switchModelConfig` 与输入命令共用该刷新屏障：刷新成功后才
   Endpoint Active 同时被删除时，Source 使用本进程已解析的 Bundled 基线继续服务并重建 Active，
   Provisioning 同步不再持续失败到 Core 重启（规则见
   [Built-in Release 与活动缓存](../working-memory/provider-refactor/design/registry/configuration.md)）。
-  R3 侧接线见 [r3-source-server-remote-architecture.md §8.3](../architecture/r3-source-server-remote-architecture-openzwork.md)。
+  R3 侧接线见 [r3-source-server-remote-architecture.md §8.3](../architecture/r3-source-server-remote-architecture.md)。
 
   ```text
   zcode-server-cli Core（standalone-server，target 常驻）
@@ -250,7 +250,7 @@ V4 `switchModelConfig` 与输入命令共用该刷新屏障：刷新成功后才
     └─ /ws       web-remote-replayable ─► { apply: () => throw }（stub；手机 allowlist 亦不含该 channel）
   ```
 
-- Remote Workspace 已连接后的自动同步失败记录结构化 warning，不拆除现有连接，也不改变本地保存成功反馈；不新增 Banner，也不在模型设置页新增入口。Main 协调器按 lane 在内存中保留最近一次执行结果（时间、成功 / 失败、固定阶段码），只供数据同步页「模型提供商」分类读取；该分类在设备有 lane 且最近一次失败时提供「重试」，重试推进同一条 lane（trigger `user-retry`），不新增同步链路，见 [R3 §8.3.6](../architecture/r3-source-server-remote-architecture-openzwork.md) 与 [数据同步](data-sync.md)。
+- Remote Workspace 已连接后的自动同步失败记录结构化 warning，不拆除现有连接，也不改变本地保存成功反馈；不新增 Banner，也不在模型设置页新增入口。Main 协调器按 lane 在内存中保留最近一次执行结果（时间、成功 / 失败、固定阶段码），只供数据同步页「模型提供商」分类读取；该分类在设备有 lane 且最近一次失败时提供「重试」，重试推进同一条 lane（trigger `user-retry`），不新增同步链路，见 [R3 §8.3.6](../architecture/r3-source-server-remote-architecture.md) 与 [数据同步](data-sync.md)。
 - 网络断开导致结果未知时，以 `syncId` 重试；目标端重复收到任意已完成 `syncId` 时返回之前结果，
   不会因后续同步覆盖幂等记录而重新应用旧 Envelope。
 - Environment 离线时保留一次待同步意图，重新上线后读取最新本地状态执行；普通失败不循环

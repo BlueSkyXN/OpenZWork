@@ -74,7 +74,7 @@ pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/conversation-session
 - project：`arms-project-placeholder`
 - Trace：`logstore-tracing`
 - Metric：`metricstore-apm-metrics-custom`
-- 2026-09-15 完成平台验收：新 service `zcode-local-ttft` 的 Trace 与 Metric 已入库并可查，指标名不带单位后缀（本文默认名成立），DELTA + `sum_over_time` 口径成立，`observation_id` 去连字符等于 traceID，单条发送的六阶段并集与根时长对账一致。实测见[平台验收证据](local-ttft-platform-evidence.json)、部署与剩余步骤见[上线清单](local-ttft-rollout-checklist.md)。控制台界面瀑布目视、保留期与费用仍未核验。
+- 2026-09-15 完成平台验收：新 service `zcode-local-ttft` 的 Trace 与 Metric 已入库并可查，指标名不带单位后缀（本文默认名成立），DELTA + `sum_over_time` 口径成立，`observation_id` 去连字符等于 traceID，单条发送的六阶段并集与根时长对账一致。实测见[平台验收证据](local-ttft-platform-evidence.json)。控制台界面瀑布目视、保留期与费用仍未核验。
 - [本地真实出口证据](local-ttft-evidence.json)保留 3 次发送、6 阶段、8 个 Histogram 的 count/分桶估计与实测误差。
 
 ## Ticket 02：排队、准备、重试和未收口

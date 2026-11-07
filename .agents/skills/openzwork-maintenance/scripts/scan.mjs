@@ -427,18 +427,20 @@ export function validateVariants(doc, context) {
   }
   for (const { file, line, target, variant } of findUpstreamLinks(context, registered)) {
     errors.push(
-      `${file}:${line} 链接 ${target} 打开的是上游原文；OpenZWork 文档改为链接 ${variant.split("/").pop()}（上游原文的内容和锚点与 OpenZWork 版本不同）`,
+      `${file}:${line} 链接 ${target} 打开的是上游原文；OpenZWork 文档改为链接 ${variant.split("/").pop()}（上游原文的内容和锚点与 OpenZWork 版本不同）；确实要引用上游原文时，链接文字以「上游」开头`,
     );
   }
   return errors;
 }
 
-const INLINE_LINK = /\]\(\s*<?([^)\s>]+)>?/g;
+// 行内链接的文字与目标；文字以「上游」开头表示有意引用上游原文（OpenZWork 版本没有对应内容）。
+const INLINE_LINK = /\[((?:[^[\]]|\[[^\]]*\])*)\]\(\s*<?([^)\s>]+)>?/g;
 const REFERENCE_LINK = /^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)>?/;
 
 /**
  * OpenZWork 自有的 Markdown（分类 openzwork）里，指向「有 OpenZWork 版本的上游文档」的相对链接。
  * 这类链接应改指 OpenZWork 版本，否则读者打开的是上游原文，锚点也可能不存在。
+ * 链接文字以「上游」开头的视为有意引用上游原文，不计入。
  */
 export function findUpstreamLinks(context, registered) {
   const own = [...context.result]
@@ -456,7 +458,9 @@ export function findUpstreamLinks(context, registered) {
       if (/^\s*(?:```|~~~)/.test(text)) fenced = !fenced;
       if (fenced) return;
       const reference = REFERENCE_LINK.exec(text)?.[1];
-      const targets = [...text.matchAll(INLINE_LINK)].map((match) => match[1]);
+      const targets = [...text.matchAll(INLINE_LINK)]
+        .filter((match) => !match[1].trimStart().startsWith("上游"))
+        .map((match) => match[2]);
       for (const target of reference ? [...targets, reference] : targets) {
         const [path] = target.split("#");
         if (!path || /^[a-z][\w+.-]*:/i.test(path)) continue;

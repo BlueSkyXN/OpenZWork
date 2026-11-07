@@ -27,7 +27,7 @@ CLI 定向回归覆盖工具 schema/精确查询、混合引用去重和邮箱�
 
 ## Web 远控大 RPC 容量（MRL，2026-10-27 accepted）
 
-规格：[合法大消息的重放容量](web-remote-control/web-remote-control-architecture-openzwork.md#合法大消息的重放容量2026-10-27)。
+规格：[上游远控架构：合法大消息的重放容量](web-remote-control/web-remote-control-architecture.md#合法大消息的重放容量2026-10-27)。
 候选：`packages/web/test/e2e/manual-review/pending/remote-large-rpc.mjs`。
 
 | ID    | 前置与动作                                                                                                       | 必须断言                                                                                                                                       |
@@ -41,7 +41,7 @@ CLI 定向回归覆盖工具 schema/精确查询、混合引用去重和邮箱�
 
 ## Web 远控提交与 RPC 生命周期（MRS，2026-10-27 accepted）
 
-规格：[Bridge 服务与在途 RPC 终结](web-remote-control/web-remote-control-architecture-openzwork.md#bridge-服务与在途-rpc-终结2026-10-27)。
+规格：[上游远控架构：Bridge 服务与在途 RPC 终结](web-remote-control/web-remote-control-architecture.md#bridge-服务与在途-rpc-终结2026-10-27)。
 候选：`packages/web/test/e2e/manual-review/pending/remote-submit-lifecycle.mjs`。
 
 | ID    | 前置与动作                                                              | 必须断言                                                                                        |
@@ -107,7 +107,7 @@ MRO04（accepted / pending）：固定回放建立已有会话，桌面打开终
 仅外部账号与 relay 使用 loopback fixture，
 模型只用固定回放建立会话，不评价生成质量。Host RPC 补充输入、输出、resize、dispose、其他频道拒绝和桌面对照。
 候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-web-remote-terminal.test.ts`。
-规格见 [远控架构](web-remote-control/web-remote-control-architecture-openzwork.md#启动调用边界与-office-xss-关系)。
+规格见 [上游远控架构：启动调用边界与 Office XSS 关系](web-remote-control/web-remote-control-architecture.md#启动调用边界与-office-xss-关系)。
 
 ## Gen UI 输入上下文分离（GUC，2026-10-20）
 
@@ -4801,7 +4801,7 @@ CPE03：配置选择器打开后，选择另一模型或重复选择当前模型
 
 ## R3A-BLD-08：systemd 装载失败回退 detached fallback（2026-10-23）
 
-规格见 [R3 §5.2 daemon 启动能力判定](architecture/r3-source-server-remote-architecture-openzwork.md) 与 [问题记录 02](issues/remote-startup-failures-3-16/02-service-registration-failure-fallback.md)。`conversation-session-r3-daemon-service-fallback.test.ts` 的 accepted / pending 场景，只能在 E-SVC 目标运行（`run-local-docker.mjs --systemd`：systemd 为 PID 1，dev 开启 linger，user manager 开机常驻）。`R3_DAEMON_SERVICE_CASE` 选择子场景：
+规格见 [R3 §5.2 daemon 启动能力判定](architecture/r3-source-server-remote-architecture.md) 与 [问题记录 02](issues/remote-startup-failures-3-16/02-service-registration-failure-fallback.md)。`conversation-session-r3-daemon-service-fallback.test.ts` 的 accepted / pending 场景，只能在 E-SVC 目标运行（`run-local-docker.mjs --systemd`：systemd 为 PID 1，dev 开启 linger，user manager 开机常驻）。`R3_DAEMON_SERVICE_CASE` 选择子场景：
 
 - `stale-group`：manager 启动后才建目录访问组并把 dev 加入，`~/.openzwork` 指向只有该组能进的目录。先确认 manager 的 Groups 不含该组。
 - `private-tmp`：user@1000 设 `PrivateTmp=yes` 后重启，`~/.openzwork` 指向宿主 `/tmp`。先确认宿主可见、manager 挂载视图里不存在。
@@ -4934,7 +4934,7 @@ CPE03：配置选择器打开后，选择另一模型或重复选择当前模型
 
 ## 数据同步：模型提供商只读分类与失败重试（DSYNC-13，2026-10-17，pending）
 
-规格见 [数据同步](remote/data-sync.md)「模型提供商（只读）」、[R3 §8.3.6](architecture/r3-source-server-remote-architecture-openzwork.md)、票据 [13](issues/data-sync/13-provider-readonly-retry.md)。最近结果与重试的唯一数据源是 Main 协调器的 Provisioning lane；远端为本机 Docker 远端 runner 或服务器队列提供的 Linux 容器，故障用 docker exec 把容器内 `/home/dev/.zcode/v2` 设为只读制造，远端断言读 `/home/dev/.zcode/v2/provider_config.json`。
+规格见 [数据同步](remote/data-sync.md)「模型提供商（只读）」、[R3 §8.3.6](architecture/r3-source-server-remote-architecture.md)、票据 [13](issues/data-sync/13-provider-readonly-retry.md)。最近结果与重试的唯一数据源是 Main 协调器的 Provisioning lane；远端为本机 Docker 远端 runner 或服务器队列提供的 Linux 容器，故障用 docker exec 把容器内 `/home/dev/.zcode/v2` 设为只读制造，远端断言读 `/home/dev/.zcode/v2/provider_config.json`。
 
 | ID          | 场景与断言                                                                                                                                                                                                                                                                                                                                                                    | 自动化                                                                                                             |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -5054,8 +5054,8 @@ DSYNC-17 的本机对照。只用本机桌面（经本机 Docker 远端 runner �
 
 | ID      | 场景与断言                                                                                                                                                                                                                                                                      | 测试入口                                                                                                            |
 | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| LRCD-01 | 3.15 设置中有一条 legacy SSH 远程条目，其密码 key 在本机无法解密 → 升级首启：本地项目仍在侧栏；Source Directory 迁移版本写为 1，生成的 SSH Profile 不带密码引用（连接时走交互凭据）；旧密码记录原值保留。规则见 [R3 §9.1](architecture/r3-source-server-remote-architecture-openzwork.md) | `conversation-session/manual-review/pending/conversation-session-legacy-remote-credential-decrypt.test.ts`，Pending |
-| LRCD-02 | 已连接 SSH Profile 的密码 key 被换成本机解不开的密文（~/.openzwork 换机/换用户）→ 冷启动后从侧栏项目菜单点“连接”：连接屏出现密码框，不显示通用的“连接失败”；补充密码后连上原项目，并覆盖原 key。规则见 [R3 §9.1](architecture/r3-source-server-remote-architecture-openzwork.md)          | `conversation-session/manual-review/pending/conversation-session-profile-secret-decrypt.test.ts`，Pending           |
+| LRCD-01 | 3.15 设置中有一条 legacy SSH 远程条目，其密码 key 在本机无法解密 → 升级首启：本地项目仍在侧栏；Source Directory 迁移版本写为 1，生成的 SSH Profile 不带密码引用（连接时走交互凭据）；旧密码记录原值保留。规则见 [R3 §9.1](architecture/r3-source-server-remote-architecture.md) | `conversation-session/manual-review/pending/conversation-session-legacy-remote-credential-decrypt.test.ts`，Pending |
+| LRCD-02 | 已连接 SSH Profile 的密码 key 被换成本机解不开的密文（~/.openzwork 换机/换用户）→ 冷启动后从侧栏项目菜单点“连接”：连接屏出现密码框，不显示通用的“连接失败”；补充密码后连上原项目，并覆盖原 key。规则见 [R3 §9.1](architecture/r3-source-server-remote-architecture.md)          | `conversation-session/manual-review/pending/conversation-session-profile-secret-decrypt.test.ts`，Pending           |
 
 <!-- 分享 URI 文本回归（SHARE-E2E-03）属云端分享净化域，OpenZWork 无发布链路，该小节不随上游引入 -->
 
@@ -5074,7 +5074,7 @@ DSYNC-17 的本机对照。只用本机桌面（经本机 Docker 远端 runner �
 
 ## MRO04 后台失效恢复与任务保留（2026-10-22，accepted / pending）
 
-Spec：[远控后台恢复与原任务导航](web-remote-control/web-remote-control-architecture-openzwork.md#后台恢复与原任务导航)。
+Spec：[上游远控架构：后台恢复与原任务导航](web-remote-control/web-remote-control-architecture.md#后台恢复与原任务导航)。
 
 | ID       | 前置与操作                                                                                                                                                                                    | 必须断言                                                                                                                                                                                                                      |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -5089,9 +5089,9 @@ Spec：[远控后台恢复与原任务导航](web-remote-control/web-remote-cont
 MRO04-03～05 在真实 bootstrap 响应边界注入过期导航与离线候选，保留真实版本、认证、可用 workspace
 和后续 bridge/RPC 链路；不模拟 Desktop 删除操作，不产生模型请求。
 
-MRO04-06（2026-10-24，accepted / pending）对应 [挂起保留连接的可靠帧](web-remote-control/relay-v2-pairing.md#手机首次进入与恢复05)。只观察真实线级消息，不丢帧、不改时钟或可见性；回前台后的输出用于暴露后台丢帧造成的序号断档。桌面每次心跳会补发未确认帧，因此只看最终内容不足以区分修复前后，必须同时断言后台 ACK、socket 数与 bridge-open 次数。
+MRO04-06（2026-10-24，accepted / pending）对应 挂起保留连接的可靠帧。只观察真实线级消息，不丢帧、不改时钟或可见性；回前台后的输出用于暴露后台丢帧造成的序号断档。桌面每次心跳会补发未确认帧，因此只看最终内容不足以区分修复前后，必须同时断言后台 ACK、socket 数与 bridge-open 次数。
 
-MRO04-07（2026-10-24，accepted / pending）对应 [挂起保留连接的可靠帧](web-remote-control/relay-v2-pairing.md#手机首次进入与恢复05) 的「重复 INTERNAL 结果相同」。loopback relay 在桌面断开时发 DEVICE_OFFLINE 并关闭手机 socket，走不到 INTERNAL 路径；因此在手机侧线级按 hub 契约注入（桌面不在时每条 data 回 INTERNAL、不关闭 socket）。桌面与 relay 的真实连接不变；握手与配对查询照常转发，只把回包改为 waiting，保证 relay 侧会话始终已认证。回前台只保持 10 秒，使恢复仍落在 15 秒 recover 窗口内，按原 workspace/task 恢复；修复前后的区分靠首次偏离：修复前第二个 INTERNAL 在后台关闭原 socket，回前台首次探测落在新 socket。修复前的失败页不作为本用例断言：真实 App 中 15 秒 recover 超时后的后台重连和 bridge 降级触发的恢复都会重新计 30 秒 waiting，失败页时间不固定；保持更久还会触发原有的导航丢失（见[覆盖矩阵](testing/conversation-session-e2e-coverage-matrix-openzwork.md) MRO04-07 长窗口观察）。真实 hub 是否对每个 ACK 回 INTERNAL 需生产 relay 实测确认，本用例不代表该事实。
+MRO04-07（2026-10-24，accepted / pending）对应 挂起保留连接的可靠帧 的「重复 INTERNAL 结果相同」。loopback relay 在桌面断开时发 DEVICE_OFFLINE 并关闭手机 socket，走不到 INTERNAL 路径；因此在手机侧线级按 hub 契约注入（桌面不在时每条 data 回 INTERNAL、不关闭 socket）。桌面与 relay 的真实连接不变；握手与配对查询照常转发，只把回包改为 waiting，保证 relay 侧会话始终已认证。回前台只保持 10 秒，使恢复仍落在 15 秒 recover 窗口内，按原 workspace/task 恢复；修复前后的区分靠首次偏离：修复前第二个 INTERNAL 在后台关闭原 socket，回前台首次探测落在新 socket。修复前的失败页不作为本用例断言：真实 App 中 15 秒 recover 超时后的后台重连和 bridge 降级触发的恢复都会重新计 30 秒 waiting，失败页时间不固定；保持更久还会触发原有的导航丢失（见[覆盖矩阵](testing/conversation-session-e2e-coverage-matrix-openzwork.md) MRO04-07 长窗口观察）。真实 hub 是否对每个 ACK 回 INTERNAL 需生产 relay 实测确认，本用例不代表该事实。
 
 候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-web-remote-recovery.test.ts`。采用隔离 Electron、真实 Web、loopback relay 与 case-local 受控回放；使用原生 visibility helper，禁止以伪造 visibility getter/event 代替真实后台。Host 身份隔离、任务不存在与远端 session 换代由定向边界测试补充。本次登记不代表已运行、人工审核或 formal/CI 准入；生产 relay 实机证据另记录具体构建和场景。
 
@@ -5107,7 +5107,7 @@ MRO04-07（2026-10-24，accepted / pending）对应 [挂起保留连接的可靠
 
 ## SSH-P0-CONN-09：用户名含冒号（2026-10-26）
 
-Accepted。规格见 [R3 身份合同](architecture/r3-source-server-remote-architecture-openzwork.md#32-workspace-身份的三层结构)。
+Accepted。规格见 [R3 身份合同](architecture/r3-source-server-remote-architecture.md#32-workspace-身份的三层结构)。
 从产品向导以本机 Docker SSH 账号加 `:tenant` 发起连接，先输入错误密码。
 必须进入真实 SSH 认证并展示认证失败，不得出现 `remote-project.invalid-host-identity`；
 远程项目目录 RPC 仍成功，保留完整用户名和离线状态。随后仅改为正确密码，原用户名不变，
@@ -5198,7 +5198,7 @@ SLR05（2026-10-27）：真实 Linux Electron 与 390×844 触屏 Web 共用 Hos
 
 ## 无项目工作区共享 CLI（STCLI）
 
-设计与场景定义见 [shared-task-cli](shared-task-cli.md)。STCLI01–07 已按本期边界接受；本地实跑结果与未覆盖项见 [覆盖矩阵](testing/conversation-session-e2e-coverage-matrix-openzwork.md#无项目工作区共享-cli-stcli)。用例状态仍为 pending；远端新建无项目和项目移回任务区没有产品入口，不新增。候选 E2E：`manual-review/pending/conversation-session-shared-cli.test.ts`，尚未人工转正或加入 CI。
+设计与场景定义见 [shared-task-cli](shared-task-cli.md)。STCLI01–07 已按本期边界接受；本地实跑结果与未覆盖项见 [覆盖矩阵](testing/conversation-session-e2e-coverage-matrix-openzwork.md#无项目工作区共享-clistcli)。用例状态仍为 pending；远端新建无项目和项目移回任务区没有产品入口，不新增。候选 E2E：`manual-review/pending/conversation-session-shared-cli.test.ts`，尚未人工转正或加入 CI。
 
 ## SLR06–08 所属工作整体关闭（2026-10-28，accepted / pending）
 

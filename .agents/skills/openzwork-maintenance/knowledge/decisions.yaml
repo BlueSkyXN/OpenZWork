@@ -80,7 +80,7 @@ entries:
     title: spec 与代码矛盾时登记为待定
     when: 发现整合 spec 的结论与现有代码不一致。
     do: 保持现有代码行为，在台账中把对应条目记为 undecided，交给用户决定；不自行选择一边。
-    why: image-search 插件在 v3.17.1 spec 中写明移除，代码却保留了注册，记为 OZ-D009。
+    why: image-search 插件在 v3.17.1 spec 中写明移除，代码却保留了注册，记为 OZ-D009，之后由用户决定移除。
     evidence:
       - docs/openzwork/ledger.yaml
     since: 2026-11-07
@@ -90,7 +90,7 @@ entries:
     title: 上游文档原文不动，差异集中写一处
     when: 需要表达 OpenZWork 与某份上游文档的不同之处。
     do: 上游原文不动；差异写进 OpenZWork 的 spec 或台账，并出现在 README「与上游的差异」。只有代码读取、规则引用或 OpenZWork 改写维护的文档才保留 -openzwork 版本，并登记 role。
-    why: 曾为 481 份上游文档各存整份副本，其中 341 份只删了段落或改了路径，增加 17 万行且每次上游更新都要复核；按需要保留后只剩 63 份。
+    why: 曾为 481 份上游文档各存整份副本，其中 341 份只删了段落或改了路径，增加 17 万行且每次上游更新都要复核；按需要保留后只剩 63 份；22 份待确认版本经复核删除后为 41 份。
     evidence:
       - docs/openzwork/maintenance-model.md
       - docs/openzwork/upstream-doc-variants.yaml

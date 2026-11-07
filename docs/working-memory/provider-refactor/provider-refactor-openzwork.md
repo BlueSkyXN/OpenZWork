@@ -44,7 +44,7 @@ provider-refactor/
 │     └─ 当前代码与协议的专项调研
 ```
 
-- [`design-v2/design.md`](./design-v2/design-openzwork.md) 是当前核心设计唯一入口。
+- [`design-v2/design.md`](./design-v2/design.md) 是当前核心设计唯一入口。
 - [`design-v2/evidence-and-contradictions.md`](./design-v2/evidence-and-contradictions.md) 说明旧材料如何被取代、
   当前事实依据和仍未完成的事项。
 - [`design/design.md`](./design/design.md) 保留演进过程中的层次化设计，发生冲突时不再覆盖 Design V2。
@@ -122,7 +122,7 @@ Built-in + Personal Model Rules 和进程级 Registry。完成情况见
 
 核心架构与后续已完成 Todo 已形成当前上线收口基线；Todo 32 已完成 Team/Individual 设置页与
 Effective Provider 边界收口。Todo 11、11A、15、19、22 等未完成、延后和草案事项统一见
-[`design-v2/design.md`](./design-v2/design-openzwork.md#11-尚未完成但不改变设计的工作)，不再从旧阶段编号推断当前状态。
+[`design-v2/design.md`](./design-v2/design.md#11-尚未完成但不改变设计的工作)，不再从旧阶段编号推断当前状态。
 
 本轮上线收口不扩大到 Remote Provisioning、模型选择生命周期、普通 Queue、
 `modelContextBudget.strategy` 或账号产品重构。

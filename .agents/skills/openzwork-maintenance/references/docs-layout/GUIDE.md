@@ -22,6 +22,7 @@
 - 要写 OpenZWork 的内容时，写进 OpenZWork 自己的文档（产品 spec、`docs/openzwork/`），不复制上游文档。改变了上游行为的，在台账条目中登记，并让「与上游的差异」包含它。
 - 只有三种情况才新建 OpenZWork 版本：代码要读取该文档（`role: tool`），OpenZWork 的规则或 spec 以它为准（`role: rule`），或 OpenZWork 需要整份改写并持续维护（`role: maintained`）。做法：复制上游文档到同目录的 `<名称>-openzwork<扩展名>`，在副本中修改，登记到 `docs/openzwork/upstream-doc-variants.yaml`（`role`；`tool`、`rule` 填写 `usedBy`；`kind`；`upstreamBlob` 用 `git rev-parse <基准>:<上游路径>`）。
 - 新建 OpenZWork 版本后，把 OpenZWork 文档中指向该上游文档的链接改为指向新版本，`--check` 会列出遗漏的链接。上游文档之间的链接保持原样。
+- OpenZWork 版本没有对应内容、需要引用上游原文时，链接文字以「上游」开头（如 `[上游远控架构：后台恢复](…)`），读者能看出打开的是上游文本。删除 OpenZWork 版本时，把指向它的链接改回上游原文。
 - 合入上游后原文变化，`--check` 会提示复核：按新原文更新 OpenZWork 版本，再更新 `upstreamBlob`。上游删除了原文时，决定保留（改为独立文档并删除登记）或一并删除。不再需要的 OpenZWork 版本（读取方或引用方已去掉）随之删除。
 
 ## 技能
