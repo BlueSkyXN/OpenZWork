@@ -25,6 +25,7 @@ import {
   waitForWorkspaceApp,
   DEFAULT_WORKSPACE,
 } from "#e2e/helpers/desktop-app";
+import { E2E_AGENT_WORKSPACE_NAME } from "#e2e/helpers/e2e-runtime-paths";
 import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 import {
   clickLastEnabledSSHDialogButton,
@@ -353,7 +354,7 @@ describe(`${CASE_MARKER}: 侧栏详情和设备菜单`, () => {
       { timeout: 30_000 },
     );
     // 当前远端断线时输入框不可操作；从本地草稿验证菜单内离线项目，覆盖实际可用入口。
-    const localProject = $('[data-project-name="ZCodeProject"]');
+    const localProject = $(`[data-project-name="${E2E_AGENT_WORKSPACE_NAME}"]`);
     await localProject.moveTo();
     await localProject.$('[data-testid="virtual-project-create-task"]').click();
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);

@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { writeFile } from "node:fs/promises";
+import { E2E_AGENT_WORKSPACE_NAME } from "../../../helpers/e2e-runtime-paths.js";
 import { TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
 import {
   prepareV4ConversationE2E,
@@ -22,7 +23,7 @@ describe("草稿首发列表与详情同步", () => {
         await startNewV4Draft();
       }
       // 展开所属项目；折叠偏好不是本用例要改变的创建语义。
-      const project = $('[data-project-name="ZCodeProject"]');
+      const project = $(`[data-project-name="${E2E_AGENT_WORKSPACE_NAME}"]`);
       let expectedProjectId: string | null = null;
       if (scope === "project") {
         await project.waitForDisplayed();

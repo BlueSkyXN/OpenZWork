@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { basename, join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import { TID_TASK_SETTINGS_BUTTON, TID_SETTINGS_BACK_BUTTON } from "@zcode/shared/test-ids";
+import { E2E_AGENT_WORKSPACE_NAME } from "../helpers/e2e-runtime-paths.js";
 import { DEFAULT_WORKSPACE, waitForWorkspaceApp } from "../helpers/desktop-app.js";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
 
@@ -56,7 +57,7 @@ const activeTask = () =>
   }, DEFAULT_WORKSPACE);
 const revealProject = async (id: string) => {
   if (!(await item(id).isDisplayed()))
-    await $('[data-project-name="ZCodeProject"] [data-testid="virtual-project-row"]').click();
+    await ($(`[data-project-name="${E2E_AGENT_WORKSPACE_NAME}"] [data-testid="virtual-project-row"]`)).click();
   await item(id).waitForDisplayed();
 };
 

@@ -17,6 +17,7 @@ import {
   getE2EAppDataPaths,
   readSettings,
 } from "#e2e/helpers/desktop-app";
+import { E2E_AGENT_WORKSPACE_NAME } from "#e2e/helpers/e2e-runtime-paths";
 import { getV4Messages, getV4ConversationState } from "#e2e/helpers/v4-conversation";
 import {
   prepareSSHLifecycle,
@@ -299,7 +300,7 @@ describe(`${CASE_MARKER}: ${variant}，卸载重装与独立环境替换`, () =>
     expect(replaced.code).toBe(0);
     facts.originalDataArchived = true;
     // 同一线路安装到空环境，检测到不同身份后必须等待确认；取消不改绑原连接。
-    await openWorkspaceDraftFromSidebar(resolve(getE2EAppDataPaths().homeDir, "ZCodeProject"));
+    await openWorkspaceDraftFromSidebar(resolve(getE2EAppDataPaths().homeDir, E2E_AGENT_WORKSPACE_NAME));
     await openSSHRemoteDialog(CASE_MARKER);
     await fillSSHPasswordSettings(config);
     await clickLastEnabledSSHDialogButton(CASE_MARKER);
