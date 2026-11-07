@@ -2,12 +2,12 @@
 
 这里列出 OpenZWork 自己编写的全部文档。`docs/` 下其余文档来自上游 ZCode，保持上游原文。布局规则见 [维护模型](maintenance-model.md)。
 
-| 位置 | 内容 |
-| --- | --- |
-| `docs/openzwork/` | 维护文档：上游整合、下游补丁、发行、CI 与历史记录 |
-| `docs/specs/*-openzwork.md` | OpenZWork 产品 spec |
-| `docs/testing/*-openzwork.md` | OpenZWork 测试计划 |
-| 上游其他目录下的 `*-openzwork.md` | 放在对应主题目录中的 OpenZWork 文档 |
+| 位置                              | 内容                                              |
+| --------------------------------- | ------------------------------------------------- |
+| `docs/openzwork/`                 | 维护文档：上游整合、下游补丁、发行、CI 与历史记录 |
+| `docs/specs/*-openzwork.md`       | OpenZWork 产品 spec                               |
+| `docs/testing/*-openzwork.md`     | OpenZWork 测试计划                                |
+| 上游其他目录下的 `*-openzwork.md` | 放在对应主题目录中的 OpenZWork 文档               |
 
 ## 维护
 

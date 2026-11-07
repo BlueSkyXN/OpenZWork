@@ -14,7 +14,11 @@ export const DOC_EDITS_PATH = "docs/openzwork/upstream-doc-edits.yaml";
 export const PATCHES_PATH = "docs/openzwork/patches/downstream-patches.yaml";
 export const GATES_PATH = "tests/private-cleanup/cleanup.test.cjs";
 export const KNOWLEDGE_DIR = ".agents/skills/openzwork-maintenance/knowledge";
-export const KNOWLEDGE_FILES = { pitfall: "pitfalls.yaml", diff: "diff.yaml", decision: "decisions.yaml" };
+export const KNOWLEDGE_FILES = {
+  pitfall: "pitfalls.yaml",
+  diff: "diff.yaml",
+  decision: "decisions.yaml",
+};
 const KNOWLEDGE_PREFIX = { pitfall: "OZK-PIT-", diff: "OZK-DIF-", decision: "OZK-DEC-" };
 const LEDGER_PREFIX = { feature: "OZ-F", change: "OZ-C", drop: "OZ-D", retain: "OZ-R" };
 const LEDGER_STATUS = new Set(["active", "undecided", "retired"]);
@@ -110,7 +114,8 @@ export function classify(repo, base, head = "HEAD") {
   const headTree = readTree(repo, head);
   const history = upstreamHistory(repo, base);
   const older = new Set();
-  for (const { commit } of history.slice(1)) for (const path of readTree(repo, commit).keys()) older.add(path);
+  for (const { commit } of history.slice(1))
+    for (const path of readTree(repo, commit).keys()) older.add(path);
   const added = [...headTree.keys()].filter((path) => !baseTree.has(path));
   const removed = [...baseTree.keys()].filter((path) => !headTree.has(path));
   const addedByBlob = new Map(added.map((path) => [headTree.get(path).blob, path]));
@@ -138,7 +143,9 @@ export function classify(repo, base, head = "HEAD") {
     const before = blobs.get(baseTree.get(path).blob);
     const after = blobs.get(headTree.get(path).blob);
     const identity =
-      isText(before) && isText(after) && applyIdentity(before.toString("utf8")) === after.toString("utf8");
+      isText(before) &&
+      isText(after) &&
+      applyIdentity(before.toString("utf8")) === after.toString("utf8");
     result.set(path, { category: identity ? "upstream-identity" : "upstream-modified" });
   }
   return { repo, base, head, history, baseTree, headTree, result, blobs };
@@ -148,7 +155,10 @@ export function classify(repo, base, head = "HEAD") {
 export function createOxfmtFormatter(repo) {
   let bin;
   try {
-    bin = join(dirname(createRequire(join(repo, "package.json")).resolve("oxfmt/package.json")), "bin/oxfmt");
+    bin = join(
+      dirname(createRequire(join(repo, "package.json")).resolve("oxfmt/package.json")),
+      "bin/oxfmt",
+    );
   } catch {
     return undefined;
   }
@@ -167,7 +177,10 @@ export function createOxfmtFormatter(repo) {
         writeFileSync(target, text);
       });
       // 个别文件无法解析时 oxfmt 返回非零，其余文件仍已格式化；未改动的文件按原文比较。
-      spawnSync(process.execPath, [bin, "--no-error-on-unmatched-pattern", "."], { cwd: root, maxBuffer: 1 << 28 });
+      spawnSync(process.execPath, [bin, "--no-error-on-unmatched-pattern", "."], {
+        cwd: root,
+        maxBuffer: 1 << 28,
+      });
       return files.map(({ path }, index) => readFileSync(join(root, String(index), path), "utf8"));
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -182,7 +195,10 @@ export function findFormatNoise(context, formatter = createOxfmtFormatter(contex
   const candidates = [...result]
     .filter(([, { category }]) => category === "upstream-modified")
     .map(([path]) => path)
-    .filter((path) => isText(blobs.get(baseTree.get(path).blob)) && isText(blobs.get(headTree.get(path).blob)));
+    .filter(
+      (path) =>
+        isText(blobs.get(baseTree.get(path).blob)) && isText(blobs.get(headTree.get(path).blob)),
+    );
   const inputs = candidates.flatMap((path) => {
     const text = blobs.get(baseTree.get(path).blob).toString("utf8");
     return [
@@ -219,7 +235,8 @@ export function globToRegExp(glob) {
 
 export function loadMaintenance(repo, ref = "HEAD") {
   const knowledge = {};
-  for (const [kind, file] of Object.entries(KNOWLEDGE_FILES)) knowledge[kind] = yamlAt(repo, ref, `${KNOWLEDGE_DIR}/${file}`);
+  for (const [kind, file] of Object.entries(KNOWLEDGE_FILES))
+    knowledge[kind] = yamlAt(repo, ref, `${KNOWLEDGE_DIR}/${file}`);
   return {
     ledger: yamlAt(repo, ref, LEDGER_PATH),
     docEdits: yamlAt(repo, ref, DOC_EDITS_PATH),
@@ -233,18 +250,32 @@ export function loadMaintenance(repo, ref = "HEAD") {
 export function createClaims({ ledger, docEdits, patches }) {
   const matchers = [];
   for (const entry of ledger?.entries ?? []) {
-    for (const glob of [...(entry.paths ?? []), ...(entry.hooks ?? []), ...(entry.tests ?? []), ...specList(entry)]) {
-      matchers.push({ id: entry.id, kind: entry.kind, status: entry.status, regex: globToRegExp(glob) });
+    for (const glob of [
+      ...(entry.paths ?? []),
+      ...(entry.hooks ?? []),
+      ...(entry.tests ?? []),
+      ...specList(entry),
+    ]) {
+      matchers.push({
+        id: entry.id,
+        kind: entry.kind,
+        status: entry.status,
+        regex: globToRegExp(glob),
+      });
     }
   }
   const exact = new Map();
   const add = (path, claim) => exact.set(path, [...(exact.get(path) ?? []), claim]);
   for (const patch of patches?.patches ?? []) {
-    for (const path of [...(patch.files ?? []), ...(patch.regression ?? [])]) add(path, { id: patch.id, kind: "patch" });
+    for (const path of [...(patch.files ?? []), ...(patch.regression ?? [])])
+      add(path, { id: patch.id, kind: "patch" });
   }
-  for (const edit of docEdits?.edits ?? []) add(edit.path, { id: `doc-edit:${edit.kind}`, kind: "doc-edit" });
+  for (const edit of docEdits?.edits ?? [])
+    add(edit.path, { id: `doc-edit:${edit.kind}`, kind: "doc-edit" });
   return (path) => [
-    ...matchers.filter((matcher) => matcher.regex.test(path)).map(({ id, kind, status }) => ({ id, kind, status })),
+    ...matchers
+      .filter((matcher) => matcher.regex.test(path))
+      .map(({ id, kind, status }) => ({ id, kind, status })),
     ...(exact.get(path) ?? []),
   ];
 }
@@ -257,34 +288,46 @@ export function validateLedger(ledger, context, gates) {
   const errors = [];
   if (!ledger) return [`缺少 ${LEDGER_PATH}`];
   if (ledger.version !== 1) errors.push(`${LEDGER_PATH}: version 应为 1`);
-  if (!SEMVER.test(ledger.upstream?.version ?? "")) errors.push(`${LEDGER_PATH}: upstream.version 应为 X.Y.Z`);
-  if (!/^[0-9a-f]{40}$/.test(ledger.upstream?.commit ?? "")) errors.push(`${LEDGER_PATH}: upstream.commit 应为 40 位提交号`);
+  if (!SEMVER.test(ledger.upstream?.version ?? ""))
+    errors.push(`${LEDGER_PATH}: upstream.version 应为 X.Y.Z`);
+  if (!/^[0-9a-f]{40}$/.test(ledger.upstream?.commit ?? ""))
+    errors.push(`${LEDGER_PATH}: upstream.commit 应为 40 位提交号`);
   const ids = new Set();
   const headPaths = [...context.headTree.keys()];
   for (const entry of ledger.entries ?? []) {
     const where = `${LEDGER_PATH}: ${entry.id ?? "(缺 id)"}`;
     const prefix = LEDGER_PREFIX[entry.kind];
     if (!prefix) errors.push(`${where}: kind 应为 ${Object.keys(LEDGER_PREFIX).join("/")}`);
-    else if (!new RegExp(`^${prefix}\\d{3}$`).test(entry.id ?? "")) errors.push(`${where}: ${entry.kind} 条目的 id 应为 ${prefix}NNN`);
+    else if (!new RegExp(`^${prefix}\\d{3}$`).test(entry.id ?? ""))
+      errors.push(`${where}: ${entry.kind} 条目的 id 应为 ${prefix}NNN`);
     if (ids.has(entry.id)) errors.push(`${where}: id 重复`);
     ids.add(entry.id);
-    if (!LEDGER_STATUS.has(entry.status)) errors.push(`${where}: status 应为 active/undecided/retired`);
-    for (const field of ["title", "summary", "source"]) if (!nonEmpty(entry[field])) errors.push(`${where}: 缺少 ${field}`);
-    if (!Array.isArray(entry.paths) || entry.paths.length === 0) errors.push(`${where}: paths 至少一项`);
-    for (const spec of specList(entry)) if (!context.headTree.has(spec)) errors.push(`${where}: spec 不存在：${spec}`);
-    for (const test of entry.tests ?? []) if (!context.headTree.has(test)) errors.push(`${where}: 测试不存在：${test}`);
+    if (!LEDGER_STATUS.has(entry.status))
+      errors.push(`${where}: status 应为 active/undecided/retired`);
+    for (const field of ["title", "summary", "source"])
+      if (!nonEmpty(entry[field])) errors.push(`${where}: 缺少 ${field}`);
+    if (!Array.isArray(entry.paths) || entry.paths.length === 0)
+      errors.push(`${where}: paths 至少一项`);
+    for (const spec of specList(entry))
+      if (!context.headTree.has(spec)) errors.push(`${where}: spec 不存在：${spec}`);
+    for (const test of entry.tests ?? [])
+      if (!context.headTree.has(test)) errors.push(`${where}: 测试不存在：${test}`);
     if (entry.status !== "active") continue;
     for (const glob of entry.paths ?? []) {
       const regex = globToRegExp(glob);
       const hits = headPaths.filter((path) => regex.test(path));
-      if (entry.kind === "drop" && hits.length) errors.push(`${where}: 已裁剪路径仍存在：${hits.slice(0, 5).join(", ")}`);
-      if (entry.kind !== "drop" && !hits.length) errors.push(`${where}: 路径不存在：${glob}（已移动请更新台账）`);
+      if (entry.kind === "drop" && hits.length)
+        errors.push(`${where}: 已裁剪路径仍存在：${hits.slice(0, 5).join(", ")}`);
+      if (entry.kind !== "drop" && !hits.length)
+        errors.push(`${where}: 路径不存在：${glob}（已移动请更新台账）`);
     }
     for (const glob of entry.hooks ?? []) {
       const regex = globToRegExp(glob);
-      if (!headPaths.some((path) => regex.test(path))) errors.push(`${where}: hooks 路径不存在：${glob}`);
+      if (!headPaths.some((path) => regex.test(path)))
+        errors.push(`${where}: hooks 路径不存在：${glob}`);
     }
-    for (const gate of entry.gates ?? []) if (!gates.includes(gate)) errors.push(`${where}: ${GATES_PATH} 中找不到门禁：${gate}`);
+    for (const gate of entry.gates ?? [])
+      if (!gates.includes(gate)) errors.push(`${where}: ${GATES_PATH} 中找不到门禁：${gate}`);
   }
   return errors;
 }
@@ -296,9 +339,15 @@ export function validateBase(ledger, context) {
     errors.push(`上游基准 ${base} 不是 ${head} 的祖先；合入上游后更新 ${LEDGER_PATH} 的 upstream`);
   }
   const baseVersion = versionAt(repo, base);
-  if (baseVersion !== ledger.upstream?.version) errors.push(`上游基准的 package.json 版本为 ${baseVersion}，台账记为 ${ledger.upstream?.version}`);
+  if (baseVersion !== ledger.upstream?.version)
+    errors.push(
+      `上游基准的 package.json 版本为 ${baseVersion}，台账记为 ${ledger.upstream?.version}`,
+    );
   const headVersion = (versionAt(repo, head) ?? "").split("+")[0];
-  if (headVersion !== ledger.upstream?.version) errors.push(`根 package.json 版本前三段为 ${headVersion}，与台账上游版本 ${ledger.upstream?.version} 不一致`);
+  if (headVersion !== ledger.upstream?.version)
+    errors.push(
+      `根 package.json 版本前三段为 ${headVersion}，与台账上游版本 ${ledger.upstream?.version} 不一致`,
+    );
   return errors;
 }
 
@@ -310,19 +359,27 @@ export function validateDocEdits(docEdits, context) {
   for (const edit of docEdits.edits ?? []) {
     if (!nonEmpty(edit.path)) errors.push(`${DOC_EDITS_PATH}: 条目缺少 path`);
     else if (listed.has(edit.path)) errors.push(`${DOC_EDITS_PATH}: 重复登记 ${edit.path}`);
-    if (!DOC_EDIT_KINDS.has(edit.kind)) errors.push(`${DOC_EDITS_PATH}: ${edit.path} 的 kind 应为 purge/identity/content`);
+    if (!DOC_EDIT_KINDS.has(edit.kind))
+      errors.push(`${DOC_EDITS_PATH}: ${edit.path} 的 kind 应为 purge/identity/content`);
     listed.set(edit.path, edit);
   }
   for (const [path, { category }] of context.result) {
     if (!DOC_ROOTS.some((root) => path.startsWith(root))) continue;
     const edited = category === "upstream-modified" || category === "upstream-identity";
     const edit = listed.get(path);
-    if (edited && !edit) errors.push(`上游文档 ${path} 与上游不一致但未登记：恢复上游原文，或登记到 ${DOC_EDITS_PATH}（能独立成文的写到 -openzwork 文档）`);
+    if (edited && !edit)
+      errors.push(
+        `上游文档 ${path} 与上游不一致但未登记：恢复上游原文，或登记到 ${DOC_EDITS_PATH}（能独立成文的写到 -openzwork 文档）`,
+      );
     if (edit && !edited) errors.push(`${DOC_EDITS_PATH}: ${path} 当前为 ${category}，删除这条登记`);
-    if (edit && category === "upstream-identity" && edit.kind !== "identity") errors.push(`${DOC_EDITS_PATH}: ${path} 只有用户级根改名，kind 应为 identity`);
-    if (edit && category === "upstream-modified" && edit.kind === "identity") errors.push(`${DOC_EDITS_PATH}: ${path} 不只改名，kind 不能是 identity`);
+    if (edit && category === "upstream-identity" && edit.kind !== "identity")
+      errors.push(`${DOC_EDITS_PATH}: ${path} 只有用户级根改名，kind 应为 identity`);
+    if (edit && category === "upstream-modified" && edit.kind === "identity")
+      errors.push(`${DOC_EDITS_PATH}: ${path} 不只改名，kind 不能是 identity`);
   }
-  for (const path of listed.keys()) if (!context.result.has(path)) errors.push(`${DOC_EDITS_PATH}: ${path} 不是上游文件，删除这条登记`);
+  for (const path of listed.keys())
+    if (!context.result.has(path))
+      errors.push(`${DOC_EDITS_PATH}: ${path} 不是上游文件，删除这条登记`);
   return errors;
 }
 
@@ -335,30 +392,43 @@ export function validateKnowledge(knowledge, context) {
       errors.push(`缺少 ${file}`);
       continue;
     }
-    if (doc.version !== 1 || doc.kind !== kind) errors.push(`${file}: 应为 version: 1、kind: ${kind}`);
+    if (doc.version !== 1 || doc.kind !== kind)
+      errors.push(`${file}: 应为 version: 1、kind: ${kind}`);
     let active = 0;
     for (const entry of doc.entries ?? []) {
       const where = `${file}: ${entry.id ?? "(缺 id)"}`;
-      if (!new RegExp(`^${KNOWLEDGE_PREFIX[kind]}\\d{3}$`).test(entry.id ?? "")) errors.push(`${where}: id 应为 ${KNOWLEDGE_PREFIX[kind]}NNN`);
+      if (!new RegExp(`^${KNOWLEDGE_PREFIX[kind]}\\d{3}$`).test(entry.id ?? ""))
+        errors.push(`${where}: id 应为 ${KNOWLEDGE_PREFIX[kind]}NNN`);
       if (all.has(entry.id)) errors.push(`${where}: id 重复`);
       all.set(entry.id, entry);
-      for (const field of ["title", "when", "do", "why"]) if (!nonEmpty(entry[field])) errors.push(`${where}: 缺少 ${field}`);
-      if (nonEmpty(entry.title) && [...entry.title].length > 40) errors.push(`${where}: title 不超过 40 字`);
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(entry.since ?? ""))) errors.push(`${where}: since 应为 YYYY-MM-DD`);
-      if (!SEMVER.test(String(entry.checked ?? ""))) errors.push(`${where}: checked 应为上游版本 X.Y.Z`);
-      if (!Array.isArray(entry.evidence) || entry.evidence.length === 0) errors.push(`${where}: evidence 至少一项`);
+      for (const field of ["title", "when", "do", "why"])
+        if (!nonEmpty(entry[field])) errors.push(`${where}: 缺少 ${field}`);
+      if (nonEmpty(entry.title) && [...entry.title].length > 40)
+        errors.push(`${where}: title 不超过 40 字`);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(entry.since ?? "")))
+        errors.push(`${where}: since 应为 YYYY-MM-DD`);
+      if (!SEMVER.test(String(entry.checked ?? "")))
+        errors.push(`${where}: checked 应为上游版本 X.Y.Z`);
+      if (!Array.isArray(entry.evidence) || entry.evidence.length === 0)
+        errors.push(`${where}: evidence 至少一项`);
       for (const item of entry.evidence ?? []) {
-        if (/^[\w.@-]+(?:\/[\w.@-]+)+$/.test(item) && !context.headTree.has(item)) errors.push(`${where}: 证据文件不存在：${item}`);
+        if (/^[\w.@-]+(?:\/[\w.@-]+)+$/.test(item) && !context.headTree.has(item))
+          errors.push(`${where}: 证据文件不存在：${item}`);
       }
       if (entry.status === "active") active++;
-      else if (entry.status !== "superseded") errors.push(`${where}: status 应为 active/superseded`);
+      else if (entry.status !== "superseded")
+        errors.push(`${where}: status 应为 active/superseded`);
     }
-    if (active > MAX_ACTIVE_KNOWLEDGE) errors.push(`${file}: active 条目 ${active} 条，超过 ${MAX_ACTIVE_KNOWLEDGE}；先合并同类条目`);
+    if (active > MAX_ACTIVE_KNOWLEDGE)
+      errors.push(
+        `${file}: active 条目 ${active} 条，超过 ${MAX_ACTIVE_KNOWLEDGE}；先合并同类条目`,
+      );
   }
   for (const entry of all.values()) {
     if (entry.status !== "superseded") continue;
     const next = all.get(entry.supersededBy);
-    if (!next || next.status !== "active") errors.push(`${entry.id}: supersededBy 应指向 active 条目`);
+    if (!next || next.status !== "active")
+      errors.push(`${entry.id}: supersededBy 应指向 active 条目`);
   }
   return errors;
 }
@@ -377,7 +447,9 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
   const noise = findFormatNoise(context, formatter ?? createOxfmtFormatter(repo));
   if (!noise) errors.push("找不到 oxfmt，无法检查格式噪声；先执行 pnpm install");
   for (const { path, variant } of noise ?? []) {
-    errors.push(`${path} 与上游只差${variant === "format" ? "格式化" : "改名和格式化"}：恢复为上游原文${variant === "format" ? "" : "并只保留 .openzwork 改名"}`);
+    errors.push(
+      `${path} 与上游只差${variant === "format" ? "格式化" : "改名和格式化"}：恢复为上游原文${variant === "format" ? "" : "并只保留 .openzwork 改名"}`,
+    );
   }
   return errors;
 }
@@ -394,8 +466,13 @@ export function summarize(context, claims) {
 
 export function describePath(context, claims, path) {
   const { result, history, headTree, repo, head } = context;
-  const seen = [...history].reverse().filter(({ commit }) => git(repo, ["cat-file", "-e", `${commit}:${path}`], { allowFail: true }).status === 0);
-  const text = headTree.has(path) ? readAt(repo, head, path) ?? "" : "";
+  const seen = [...history]
+    .reverse()
+    .filter(
+      ({ commit }) =>
+        git(repo, ["cat-file", "-e", `${commit}:${path}`], { allowFail: true }).status === 0,
+    );
+  const text = headTree.has(path) ? (readAt(repo, head, path) ?? "") : "";
   const markers = [...new Set(text.match(/OW-P\d{3}|OpenZWork\((?:OZ-[FCDR]\d{3})\)/g) ?? [])];
   return {
     path,
@@ -415,13 +492,25 @@ export function previewUpstream(context, claims, ledger, target) {
   const { repo, head, base } = context;
   const commit = gitText(repo, ["rev-parse", `${target}^{commit}`]).trim();
   const mergeBase = gitText(repo, ["merge-base", head, commit]).trim();
-  const delta = gitText(repo, ["diff", "--no-renames", "--name-status", "-z", base, commit]).split("\0").filter(Boolean);
+  const delta = gitText(repo, ["diff", "--no-renames", "--name-status", "-z", base, commit])
+    .split("\0")
+    .filter(Boolean);
   const changes = [];
-  for (let index = 0; index < delta.length; index += 2) changes.push({ status: delta[index], path: delta[index + 1] });
-  const merge = git(repo, ["merge-tree", "--write-tree", "--name-only", "--no-messages", head, commit], { allowFail: true });
-  const conflicts = merge.status === 1 ? merge.stdout.toString("utf8").split("\n").slice(1).filter(Boolean) : [];
-  const drops = (ledger?.entries ?? []).filter((entry) => entry.kind === "drop" && entry.status === "active");
-  const dropRegexes = drops.flatMap((entry) => entry.paths.map((glob) => ({ id: entry.id, regex: globToRegExp(glob) })));
+  for (let index = 0; index < delta.length; index += 2)
+    changes.push({ status: delta[index], path: delta[index + 1] });
+  const merge = git(
+    repo,
+    ["merge-tree", "--write-tree", "--name-only", "--no-messages", head, commit],
+    { allowFail: true },
+  );
+  const conflicts =
+    merge.status === 1 ? merge.stdout.toString("utf8").split("\n").slice(1).filter(Boolean) : [];
+  const drops = (ledger?.entries ?? []).filter(
+    (entry) => entry.kind === "drop" && entry.status === "active",
+  );
+  const dropRegexes = drops.flatMap((entry) =>
+    entry.paths.map((glob) => ({ id: entry.id, regex: globToRegExp(glob) })),
+  );
   const touchedEntries = new Map();
   for (const { path } of changes) {
     for (const claim of claims(path)) {
@@ -435,13 +524,21 @@ export function previewUpstream(context, claims, ledger, target) {
     mergeBase,
     baseMatches: mergeBase === base,
     changes: changes.length,
-    conflicts: conflicts.map((path) => ({ path, category: context.result.get(path)?.category ?? "new", claims: claims(path) })),
+    conflicts: conflicts.map((path) => ({
+      path,
+      category: context.result.get(path)?.category ?? "new",
+      claims: claims(path),
+    })),
     modifiedAfterRemoval: changes
-      .filter(({ status, path }) => status === "M" && context.result.get(path)?.category === "removed")
+      .filter(
+        ({ status, path }) => status === "M" && context.result.get(path)?.category === "removed",
+      )
       .map(({ path }) => ({ path, claims: claims(path) })),
     addedInDropPaths: changes
       .filter(({ status }) => status === "A")
-      .flatMap(({ path }) => dropRegexes.filter(({ regex }) => regex.test(path)).map(({ id }) => ({ path, id }))),
+      .flatMap(({ path }) =>
+        dropRegexes.filter(({ regex }) => regex.test(path)).map(({ id }) => ({ path, id })),
+      ),
     touchedEntries: [...touchedEntries].map(([id, paths]) => ({ id, paths })),
   };
 }
@@ -455,8 +552,10 @@ function parseArgs(argv) {
     else if (arg === "--upstream") options.upstream = argv[++index];
     else if (arg === "--list") options.list = argv[++index];
     else if (arg === "--path") {
-      while (argv[index + 1] && !argv[index + 1].startsWith("--")) options.paths.push(argv[++index]);
-    } else if (["--check", "--json", "--format", "--unclaimed"].includes(arg)) options[arg.slice(2)] = true;
+      while (argv[index + 1] && !argv[index + 1].startsWith("--"))
+        options.paths.push(argv[++index]);
+    } else if (["--check", "--json", "--format", "--unclaimed"].includes(arg))
+      options[arg.slice(2)] = true;
     else if (arg === "--help" || arg === "-h") options.help = true;
     else throw new Error(`未知参数：${arg}（--help 查看用法）`);
   }
@@ -481,7 +580,12 @@ function main() {
   if (options.check) {
     const errors = runCheck(repo, { base: options.base });
     if (options.json) console.log(JSON.stringify({ errors }, null, 2));
-    else console.log(errors.length ? `维护门禁未通过（${errors.length} 项）：\n- ${errors.join("\n- ")}` : "维护门禁通过");
+    else
+      console.log(
+        errors.length
+          ? `维护门禁未通过（${errors.length} 项）：\n- ${errors.join("\n- ")}`
+          : "维护门禁通过",
+      );
     process.exitCode = errors.length ? 1 : 0;
     return;
   }
@@ -491,12 +595,17 @@ function main() {
   const context = classify(repo, base, "HEAD");
   const claims = createClaims(maintenance);
   let output;
-  if (options.paths.length) output = options.paths.map((path) => describePath(context, claims, path));
-  else if (options.upstream) output = previewUpstream(context, claims, maintenance.ledger, options.upstream);
+  if (options.paths.length)
+    output = options.paths.map((path) => describePath(context, claims, path));
+  else if (options.upstream)
+    output = previewUpstream(context, claims, maintenance.ledger, options.upstream);
   else if (options.list) {
     if (!CATEGORIES.includes(options.list)) throw new Error(`未知分类：${options.list}`);
     output = [...context.result]
-      .filter(([path, { category }]) => category === options.list && (!options.unclaimed || !claims(path).length))
+      .filter(
+        ([path, { category }]) =>
+          category === options.list && (!options.unclaimed || !claims(path).length),
+      )
       .map(([path, info]) => ({ path, ...info, claims: claims(path) }));
   } else {
     const rows = summarize(context, claims);
@@ -505,33 +614,50 @@ function main() {
       rows.get("upstream-format").total = noise.length;
       rows.get("upstream-modified").total -= noise.length;
     }
-    output = { base, version: maintenance.ledger?.upstream?.version, categories: Object.fromEntries(rows) };
+    output = {
+      base,
+      version: maintenance.ledger?.upstream?.version,
+      categories: Object.fromEntries(rows),
+    };
   }
   if (options.json) return console.log(JSON.stringify(output, null, 2));
   printHuman(output, options);
 }
 
 function printHuman(output, options) {
-  const claimText = (claims) => (claims.length ? claims.map((claim) => claim.id).join(", ") : "未认领");
+  const claimText = (claims) =>
+    claims.length ? claims.map((claim) => claim.id).join(", ") : "未认领";
   if (options.paths.length) {
     for (const item of output) {
       console.log(`${item.path}`);
-      console.log(`  分类：${item.category}${item.movedTo ? ` → ${item.movedTo}` : ""}${item.movedFrom ? ` ← ${item.movedFrom}` : ""}`);
-      console.log(`  上游：${item.firstUpstream ? `首次出现于 ${item.firstUpstream}，最后出现于 ${item.lastUpstream}${item.inBase ? "（当前基准仍有）" : "（上游已删除）"}` : "上游从未出现"}`);
+      console.log(
+        `  分类：${item.category}${item.movedTo ? ` → ${item.movedTo}` : ""}${item.movedFrom ? ` ← ${item.movedFrom}` : ""}`,
+      );
+      console.log(
+        `  上游：${item.firstUpstream ? `首次出现于 ${item.firstUpstream}，最后出现于 ${item.lastUpstream}${item.inBase ? "（当前基准仍有）" : "（上游已删除）"}` : "上游从未出现"}`,
+      );
       console.log(`  认领：${claimText(item.claims)}`);
       if (item.markers.length) console.log(`  标记：${item.markers.join(", ")}`);
     }
   } else if (options.upstream) {
-    console.log(`目标 ${output.target.slice(0, 12)}（${output.version}），上游改动 ${output.changes} 个文件`);
-    if (!output.baseMatches) console.log(`注意：合并基 ${output.mergeBase.slice(0, 12)} 与台账基准不一致`);
+    console.log(
+      `目标 ${output.target.slice(0, 12)}（${output.version}），上游改动 ${output.changes} 个文件`,
+    );
+    if (!output.baseMatches)
+      console.log(`注意：合并基 ${output.mergeBase.slice(0, 12)} 与台账基准不一致`);
     console.log(`\n冲突 ${output.conflicts.length} 个：`);
-    for (const item of output.conflicts) console.log(`  ${item.path}  [${item.category}]  ${claimText(item.claims)}`);
+    for (const item of output.conflicts)
+      console.log(`  ${item.path}  [${item.category}]  ${claimText(item.claims)}`);
     console.log(`\n上游修改了我方已删除的文件 ${output.modifiedAfterRemoval.length} 个：`);
-    for (const item of output.modifiedAfterRemoval) console.log(`  ${item.path}  ${claimText(item.claims)}`);
+    for (const item of output.modifiedAfterRemoval)
+      console.log(`  ${item.path}  ${claimText(item.claims)}`);
     console.log(`\n上游新增文件落在裁剪路径内 ${output.addedInDropPaths.length} 个：`);
     for (const item of output.addedInDropPaths) console.log(`  ${item.path}  ${item.id}`);
     console.log(`\n上游改动涉及的台账条目 ${output.touchedEntries.length} 个：`);
-    for (const item of output.touchedEntries) console.log(`  ${item.id}: ${item.paths.slice(0, 8).join(", ")}${item.paths.length > 8 ? ` 等 ${item.paths.length} 个` : ""}`);
+    for (const item of output.touchedEntries)
+      console.log(
+        `  ${item.id}: ${item.paths.slice(0, 8).join(", ")}${item.paths.length > 8 ? ` 等 ${item.paths.length} 个` : ""}`,
+      );
   } else if (options.list) {
     for (const item of output) console.log(`${item.path}  ${claimText(item.claims)}`);
     console.log(`共 ${output.length} 个`);
@@ -539,7 +665,9 @@ function printHuman(output, options) {
     console.log(`上游基准 ${output.version}（${output.base.slice(0, 12)}）`);
     console.log("分类                 文件数   已认领");
     for (const [category, { total, claimed }] of Object.entries(output.categories)) {
-      console.log(`${category.padEnd(20)} ${String(total).padStart(6)}   ${category === "upstream" ? "-" : claimed}`);
+      console.log(
+        `${category.padEnd(20)} ${String(total).padStart(6)}   ${category === "upstream" ? "-" : claimed}`,
+      );
     }
     if (!options.format) console.log("（upstream-format 需加 --format 才会计算）");
   }

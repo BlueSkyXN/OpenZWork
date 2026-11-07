@@ -2,11 +2,11 @@
 
 `knowledge/` 保存跨任务可复用的维护经验，分三份：
 
-| 文件 | 内容 | 编号 |
-| --- | --- | --- |
-| `pitfalls.yaml` | 踩过的坑与规避方法 | `OZK-PIT-NNN` |
-| `diff.yaml` | 阅读 diff、识别来源与合并冲突的方法 | `OZK-DIF-NNN` |
-| `decisions.yaml` | 同类上游改动的取舍先例 | `OZK-DEC-NNN` |
+| 文件             | 内容                                | 编号          |
+| ---------------- | ----------------------------------- | ------------- |
+| `pitfalls.yaml`  | 踩过的坑与规避方法                  | `OZK-PIT-NNN` |
+| `diff.yaml`      | 阅读 diff、识别来源与合并冲突的方法 | `OZK-DIF-NNN` |
+| `decisions.yaml` | 同类上游改动的取舍先例              | `OZK-DEC-NNN` |
 
 具体某个功能的决定写在台账中；`decisions.yaml` 只写可以套用到同类情况的判断规则。
 
@@ -27,17 +27,17 @@
 3. 与产生这条经验的改动放在同一个 PR 中提交。
 
 ```yaml
-  - id: OZK-PIT-011
-    title: 不超过 40 字的标题
-    when: 适用场景。
-    do: 具体做法。
-    why: 依据：发生过什么、根因是什么。
-    evidence:
-      - PR #00
-      - path/to/file
-    since: YYYY-MM-DD
-    checked: X.Y.Z        # 最近确认仍成立的上游版本
-    status: active
+- id: OZK-PIT-011
+  title: 不超过 40 字的标题
+  when: 适用场景。
+  do: 具体做法。
+  why: 依据：发生过什么、根因是什么。
+  evidence:
+    - PR #00
+    - path/to/file
+  since: YYYY-MM-DD
+  checked: X.Y.Z # 最近确认仍成立的上游版本
+  status: active
 ```
 
 ## 维护

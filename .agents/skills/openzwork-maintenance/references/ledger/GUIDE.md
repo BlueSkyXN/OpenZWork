@@ -4,12 +4,12 @@
 
 ## 选择条目类型
 
-| 情况 | kind | 编号 |
-| --- | --- | --- |
-| 上游没有、OpenZWork 新增的功能 | `feature` | `OZ-F` |
-| 上游已有的功能，OpenZWork 改变了行为 | `change` | `OZ-C` |
-| 上游的功能，OpenZWork 移除 | `drop` | `OZ-D` |
-| 上游后来删除，OpenZWork 继续保留 | `retain` | `OZ-R` |
+| 情况                                 | kind      | 编号   |
+| ------------------------------------ | --------- | ------ |
+| 上游没有、OpenZWork 新增的功能       | `feature` | `OZ-F` |
+| 上游已有的功能，OpenZWork 改变了行为 | `change`  | `OZ-C` |
+| 上游的功能，OpenZWork 移除           | `drop`    | `OZ-D` |
+| 上游后来删除，OpenZWork 继续保留     | `retain`  | `OZ-R` |
 
 缺陷修复不进台账，按下游补丁登记为 `OW-Pxxx`。
 

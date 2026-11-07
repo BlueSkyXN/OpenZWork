@@ -2,16 +2,16 @@
 
 ## 放在哪里
 
-| 要写的内容 | 位置 |
-| --- | --- |
-| OpenZWork 产品 spec | `docs/specs/<名称>-openzwork.md` |
-| OpenZWork 测试计划 | `docs/testing/<名称>-openzwork.md` |
-| 属于上游某个主题目录的 OpenZWork 文档 | 该目录下的 `<名称>-openzwork.md` |
-| 上游整合与验证记录 | `docs/openzwork/upstream/v<版本>-integration.md`、`v<版本>-validation.md` |
-| 下游补丁说明 | `docs/openzwork/patches/` |
-| 发行流程 | `docs/openzwork/release/` |
-| CI 与测试基础设施 | `docs/openzwork/ci/` |
-| 一次性的验收或排查记录 | `docs/openzwork/records/` |
+| 要写的内容                            | 位置                                                                      |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| OpenZWork 产品 spec                   | `docs/specs/<名称>-openzwork.md`                                          |
+| OpenZWork 测试计划                    | `docs/testing/<名称>-openzwork.md`                                        |
+| 属于上游某个主题目录的 OpenZWork 文档 | 该目录下的 `<名称>-openzwork.md`                                          |
+| 上游整合与验证记录                    | `docs/openzwork/upstream/v<版本>-integration.md`、`v<版本>-validation.md` |
+| 下游补丁说明                          | `docs/openzwork/patches/`                                                 |
+| 发行流程                              | `docs/openzwork/release/`                                                 |
+| CI 与测试基础设施                     | `docs/openzwork/ci/`                                                      |
+| 一次性的验收或排查记录                | `docs/openzwork/records/`                                                 |
 
 新建 OpenZWork 文档后，在 `docs/openzwork/README.md` 中加一行索引。
 

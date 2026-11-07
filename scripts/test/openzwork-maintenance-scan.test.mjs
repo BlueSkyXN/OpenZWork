@@ -207,10 +207,16 @@ test("describePath 给出首次与最后出现的上游版本和认领", () => {
   assert.equal(old.firstUpstream, "1.0.0");
   assert.equal(old.lastUpstream, "1.0.0");
   assert.equal(old.inBase, false);
-  assert.deepEqual(old.claims.map((claim) => claim.id), ["OZ-R001"]);
+  assert.deepEqual(
+    old.claims.map((claim) => claim.id),
+    ["OZ-R001"],
+  );
   const ours = describePath(context, claims, "src/ours.ts");
   assert.equal(ours.firstUpstream, undefined);
-  assert.deepEqual(ours.claims.map((claim) => claim.id), ["OZ-F001"]);
+  assert.deepEqual(
+    ours.claims.map((claim) => claim.id),
+    ["OZ-F001"],
+  );
 });
 
 test("previewUpstream 列出冲突、我方已删被修改与落入裁剪路径的新增", () => {
@@ -227,8 +233,15 @@ test("previewUpstream 列出冲突、我方已删被修改与落入裁剪路径�
   const preview = previewUpstream(context, createClaims(maintenance), maintenance.ledger, next);
   assert.equal(preview.version, "1.2.0");
   assert.equal(preview.baseMatches, true);
-  assert.deepEqual(preview.conflicts.map((item) => item.path).sort(), ["package.json", "src/gone.ts", "src/keep.ts"]);
-  assert.deepEqual(preview.modifiedAfterRemoval.map((item) => item.path), ["src/gone.ts"]);
+  assert.deepEqual(preview.conflicts.map((item) => item.path).sort(), [
+    "package.json",
+    "src/gone.ts",
+    "src/keep.ts",
+  ]);
+  assert.deepEqual(
+    preview.modifiedAfterRemoval.map((item) => item.path),
+    ["src/gone.ts"],
+  );
   assert.deepEqual(preview.addedInDropPaths, [{ path: "src/gone-new.ts", id: "OZ-D001" }]);
   assert.deepEqual(preview.touchedEntries, [{ id: "OZ-F001", paths: ["src/keep.ts"] }]);
 });
