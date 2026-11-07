@@ -1,0 +1,969 @@
+# 与上游原文不一致的上游文档与技能（docs/、.agents/skills/）。由 tests/ci/openzwork-maintenance.test.mjs 校验。
+# kind：purge 只删除了上游内容（多为已裁剪功能的段落）；identity 只把用户级根改为 .openzwork；content 增补或改写了内容。
+# 新增编辑必须登记；能独立成文的内容写到 -openzwork 文档，上游文档保持原文。恢复为上游原文后删除对应条目。
+version: 1
+edits:
+  - path: .agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml
+    kind: content
+  - path: .agents/skills/session-management/SKILL.md
+    kind: identity
+  - path: .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture.mjs
+    kind: content
+  - path: .agents/skills/zcode-large-task-fixture/SKILL.md
+    kind: identity
+  - path: docs/agent-subagent-provider-runtime-headers-routing.md
+    kind: purge
+  - path: docs/agents/issue-tracker.md
+    kind: content
+  - path: docs/agents/runtime-boundaries.md
+    kind: identity
+  - path: docs/analysis/credentials-json-code-audit.md
+    kind: content
+  - path: docs/analysis/fix-handoff-v4.md
+    kind: purge
+  - path: docs/analysis/memory-leak-audit-2026-09-03.md
+    kind: purge
+  - path: docs/analysis/memory-leak-fix-plan-cli-event-store.md
+    kind: identity
+  - path: docs/anthropic-request-metadata.md
+    kind: content
+  - path: docs/architecture/federated-node-hub-state-and-migration-plan.md
+    kind: purge
+  - path: docs/architecture/r2-server-cli-and-daemon.md
+    kind: identity
+  - path: docs/architecture/r3-source-server-remote-architecture.md
+    kind: content
+  - path: docs/architecture/r3-source-server-remote-open-issues.md
+    kind: purge
+  - path: docs/automation-edit-status.md
+    kind: identity
+  - path: docs/bigmodel-business-error-retry.md
+    kind: purge
+  - path: docs/bots-e2e-case-catalog.md
+    kind: purge
+  - path: docs/bots-feishu-group-collaboration.md
+    kind: purge
+  - path: docs/browser-use/2026-07-10-browser-use-spec.md
+    kind: content
+  - path: docs/browser-use/2026-07-12-browser-use-runtime-semantics-spec.md
+    kind: purge
+  - path: docs/browser-use/2026-07-13-browser-settings-spec.md
+    kind: purge
+  - path: docs/browser-use/2026-07-16-subagent-browser-unavailable-spec.md
+    kind: purge
+  - path: docs/browser-use/2026-08-02-browser-use-plugin-version-0-1-3-spec.md
+    kind: identity
+  - path: docs/browser-use/2026-08-06-browser-use-plugin-version-0-2-1-spec.md
+    kind: identity
+  - path: docs/browser-use/2026-10-08-embedded-browser-permission-governance-spec.md
+    kind: content
+  - path: docs/browser-use/browser-use-plugin-runtime-boundary.md
+    kind: content
+  - path: docs/builtin-plugin-icons.md
+    kind: purge
+  - path: docs/builtin-provider-config-build-environments.md
+    kind: content
+  - path: docs/builtin-provider-maintenance/README.md
+    kind: content
+  - path: docs/chat-context-usage-refresh-action.md
+    kind: purge
+  - path: docs/chat/new-task-model-resolution-chain.md
+    kind: purge
+  - path: docs/chat/runtime-model-unavailable-current-send.md
+    kind: purge
+  - path: docs/ci-build-platform-selection.md
+    kind: purge
+  - path: docs/ci-cache-strategy.md
+    kind: purge
+  - path: docs/ci-feishu-card2-notification.md
+    kind: purge
+  - path: docs/claude-code-marketplace-plugin-compat.md
+    kind: purge
+  - path: docs/claude-marketplace-triplet-plugin-compat.md
+    kind: identity
+  - path: docs/cli-background-subagent-wake-plan.md
+    kind: identity
+  - path: docs/cli-plugins-command-parity.md
+    kind: identity
+  - path: docs/client-config-service.md
+    kind: purge
+  - path: docs/composer-model-thinking.md
+    kind: purge
+  - path: docs/context-window-usage-state.md
+    kind: content
+  - path: docs/conversation-session-case-catalog.md
+    kind: content
+  - path: docs/conversation-session-validation-matrix.md
+    kind: purge
+  - path: docs/dangerous-command-approval-v1-plan.md
+    kind: purge
+  - path: docs/design/v2/project-memory-model-selection.md
+    kind: purge
+  - path: docs/design/v2/tool/00-tool-change-chain.md
+    kind: content
+  - path: docs/desktop-bundle-size-architecture.md
+    kind: purge
+  - path: docs/desktop-ci-cd.md
+    kind: content
+  - path: docs/desktop/chromium-hardware-acceleration-setting.md
+    kind: identity
+  - path: docs/desktop/configurable-data-directory.md
+    kind: content
+  - path: docs/desktop/database-migration-startup-gate-plan.md
+    kind: purge
+  - path: docs/desktop/database-startup-implementation-review.md
+    kind: purge
+  - path: docs/desktop/database-startup-plan-review.md
+    kind: purge
+  - path: docs/desktop/dev-build-watch.md
+    kind: purge
+  - path: docs/desktop/dev-deep-link.md
+    kind: content
+  - path: docs/desktop/local-crash-capture.md
+    kind: identity
+  - path: docs/desktop/log-export-retention.md
+    kind: content
+  - path: docs/desktop/macos-dmg-signing-notarization.md
+    kind: purge
+  - path: docs/desktop/main-window-size.md
+    kind: identity
+  - path: docs/desktop/oss-cdn-multi-target-migration.md
+    kind: purge
+  - path: docs/desktop/storage-profile-rollback.md
+    kind: identity
+  - path: docs/desktop/windows-installer-diagnostics.md
+    kind: content
+  - path: docs/desktop/windows-installer-overhaul-spec.md
+    kind: content
+  - path: docs/desktop/windows-installer-preserve-files.md
+    kind: content
+  - path: docs/desktop/windows-taskbar-unread-badge.md
+    kind: content
+  - path: docs/desktop/zcode-preview-packaging.md
+    kind: purge
+  - path: docs/development-mise-runtime.md
+    kind: content
+  - path: docs/document-skills-plugin.md
+    kind: identity
+  - path: docs/dynamic-workflow.md
+    kind: identity
+  - path: docs/dynamic-workflow/authoring.md
+    kind: identity
+  - path: docs/dynamic-workflow/concurrency.md
+    kind: content
+  - path: docs/dynamic-workflow/launch.md
+    kind: content
+  - path: docs/dynamic-workflow/presentation.md
+    kind: content
+  - path: docs/electron/docs/api/browser-window.md
+    kind: content
+  - path: docs/electron/docs/api/touch-bar-other-items-proxy.md
+    kind: purge
+  - path: docs/electron/docs/breaking-changes.md
+    kind: content
+  - path: docs/electron/docs/development/style-guide.md
+    kind: content
+  - path: docs/electron/docs/tutorial/testing-on-headless-ci.md
+    kind: purge
+  - path: docs/electron/resource-manager-network.md
+    kind: content
+  - path: docs/electron/resource-manager.md
+    kind: content
+  - path: docs/external-agent-commands-import.md
+    kind: identity
+  - path: docs/external-agent-mcp-import.md
+    kind: identity
+  - path: docs/external-agent-plugins-import.md
+    kind: identity
+  - path: docs/external-agent-skills-import.md
+    kind: identity
+  - path: docs/feedback-log-export-alignment.md
+    kind: content
+  - path: docs/feedback-new-api-migration.md
+    kind: purge
+  - path: docs/git/checkpoint-service-foundation.md
+    kind: identity
+  - path: docs/git/release-build-publish-separation.md
+    kind: content
+  - path: docs/git/requirements.md
+    kind: purge
+  - path: docs/git/ui-shell.md
+    kind: purge
+  - path: docs/help-menu-whats-new.md
+    kind: purge
+  - path: docs/hooks-implementation-analysis.md
+    kind: identity
+  - path: docs/hooks-runtime-contract.md
+    kind: identity
+  - path: docs/host-api-proxy.md
+    kind: purge
+  - path: docs/issues/data-sync/04-data-sync-page-skill-push.md
+    kind: identity
+  - path: docs/issues/data-sync/07-inline-plugin-category.md
+    kind: identity
+  - path: docs/issues/data-sync/10-command-category.md
+    kind: identity
+  - path: docs/issues/data-sync/15-scope-menu-by-device.md
+    kind: identity
+  - path: docs/issues/remote-connection-ux/18-direct-project-creation-and-device-selection.md
+    kind: purge
+  - path: docs/issues/remote-connection-ux/27-new-connection-form-polish.md
+    kind: content
+  - path: docs/issues/remote-e2e-stability/09-live-team-model-precondition.md
+    kind: purge
+  - path: docs/issues/remote-startup-failures-3-16/01-source-server-startup-failure-triage.md
+    kind: identity
+  - path: docs/issues/remote-startup-failures-3-16/02-service-registration-failure-fallback.md
+    kind: identity
+  - path: docs/issues/remote-startup-failures-3-16/05-unexplained-ssh-timeouts-and-token-read.md
+    kind: identity
+  - path: docs/issues/remote-tickets-3-16-2-1022/01-ticket-triage.md
+    kind: identity
+  - path: docs/issues/remote-tickets-3-16-2-1022/04-wsl-stale-failure-handoff-and-profile-split.md
+    kind: identity
+  - path: docs/issues/remote-tickets-3-16-2-1022/05-local-setting-lock-blocks-remote-admission.md
+    kind: content
+  - path: docs/issues/remote-tickets-3-16-2-1022/06-orphan-supervisor-after-server-root-replaced.md
+    kind: identity
+  - path: docs/issues/ttft-stage-telemetry/01-local-send-stage-observability.md
+    kind: purge
+  - path: docs/issues/ttft-stage-telemetry/02-queued-retry-and-failure-diagnostics.md
+    kind: purge
+  - path: docs/mcp-config-compat-diagnostics.md
+    kind: identity
+  - path: docs/mcp-image-payload-test-server.md
+    kind: identity
+  - path: docs/mcp-oauth-client-auth.md
+    kind: purge
+  - path: docs/mcp-oauth-two-phase.md
+    kind: content
+  - path: docs/mcp-stateless-node-repl.md
+    kind: content
+  - path: docs/migration/hooks-memory-outputstyle-migration.md
+    kind: identity
+  - path: docs/migration/legacy-session-restore-skill.md
+    kind: content
+  - path: docs/migration/loading-issue-debug.md
+    kind: purge
+  - path: docs/mobile-remote-control-android.md
+    kind: purge
+  - path: docs/model-io-full-retention-setting.md
+    kind: identity
+  - path: docs/model-provider-client-config-remote-model-facts.md
+    kind: purge
+  - path: docs/model-provider-config-overrides.md
+    kind: identity
+  - path: docs/model-provider-json-schema.md
+    kind: content
+  - path: docs/model-provider-opencode-config.md
+    kind: identity
+  - path: docs/model-provider-presets.md
+    kind: content
+  - path: docs/model-provider-regression-case-catalog.md
+    kind: content
+  - path: docs/model-trajectory-viewer.md
+    kind: identity
+  - path: docs/monitoring/local-ttft-queries.md
+    kind: content
+  - path: docs/monitoring/local-ttft-trace-reading.md
+    kind: content
+  - path: docs/monitoring/memory-diagnostics-log.md
+    kind: content
+  - path: docs/monitoring/README.md
+    kind: content
+  - path: docs/monitoring/ttft-stage-telemetry.md
+    kind: identity
+  - path: docs/multimodal-tool-result-p0-cases.md
+    kind: purge
+  - path: docs/onboarding-record-spec.md
+    kind: content
+  - path: docs/performance/session-config-blocking-hotfix.md
+    kind: purge
+  - path: docs/performance/session-open-workspace-catalog.md
+    kind: purge
+  - path: docs/performance/ui-render-stability.md
+    kind: purge
+  - path: docs/permission-project-approval.md
+    kind: purge
+  - path: docs/plans/2026-10-13-macos-update-install-reentry.md
+    kind: purge
+  - path: docs/plans/2026-10-15-project-location-recovery.md
+    kind: purge
+  - path: docs/plans/browser-use/2026-06-05-browser-use-mcp-integration-plan.md
+    kind: content
+  - path: docs/plugin-cdn-zip-source.md
+    kind: purge
+  - path: docs/plugin-eval-docker.md
+    kind: purge
+  - path: docs/plugin-marketplace-ui-ux.md
+    kind: content
+  - path: docs/plugins/2026-09-17-official-plugin-version-sync-spec.md
+    kind: purge
+  - path: docs/plugins/workspace-level-plugin-architecture.md
+    kind: identity
+  - path: docs/plugins/workspace-level-plugin-proposal-comparison.md
+    kind: identity
+  - path: docs/product-capability-map-office-computer-use.md
+    kind: content
+  - path: docs/product-capability-map.md
+    kind: purge
+  - path: docs/remote-prompt-attachment-materialization.md
+    kind: identity
+  - path: docs/remote-workspace-provider-sync-hang.md
+    kind: identity
+  - path: docs/remote/data-sync.md
+    kind: identity
+  - path: docs/remote/provider-provisioning.md
+    kind: content
+  - path: docs/restore-legacy-sessions-official-plugin.md
+    kind: identity
+  - path: docs/runtime-tools/agent-electron-node-runtime.md
+    kind: identity
+  - path: docs/runtime-tools/bash-effective-shell-snapshot.md
+    kind: identity
+  - path: docs/runtime-tools/embedded-search-native-build.md
+    kind: identity
+  - path: docs/runtime-tools/mcp-status-list-control-plane.md
+    kind: purge
+  - path: docs/runtime-tools/ripgrep-runtime.md
+    kind: identity
+  - path: docs/runtime-tools/runtime-env-sanitization.md
+    kind: purge
+  - path: docs/security/deep-link-project-trust-boundary.md
+    kind: identity
+  - path: docs/session-idle-deactivation.md
+    kind: purge
+  - path: docs/settings-directory-sources.md
+    kind: identity
+  - path: docs/settings-list-create-actions.md
+    kind: purge
+  - path: docs/settings-mcp-list.md
+    kind: purge
+  - path: docs/settings-storage-management.md
+    kind: content
+  - path: docs/settings-sync-provider-import.md
+    kind: identity
+  - path: docs/specs/workspace-hook-trust.md
+    kind: identity
+  - path: docs/ssh-remote-app-global-state-authority.md
+    kind: purge
+  - path: docs/subagents-built-in-model-overrides.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-03-31-bigmodel-oauth-login.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-02-app-usage-db-migration.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-04-model-provider-catalog-metadata.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-06-04-model-provider-endpoint-path-editing.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-06-04-web-remote-test-static-deployment.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-04-web-remote-v3-static-deployment.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-10-model-switch-context-window-guard.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-16-analyze-image-client-wrapper.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-16-feedback-ticket-detail-issue-id.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-06-16-official-plugin-cache-windows-hardening.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-06-16-ui-perf-arms-telemetry.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-17-launch-to-input-telemetry.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-23-arms-user-id.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-06-25-user-subagent-settings-management.md
+    kind: content
+  - path: docs/superpowers/plans/2026-06-29-remote-skill-sync.md
+    kind: content
+  - path: docs/superpowers/plans/2026-07-06-remote-plugin-sync.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-07-08-remote-plugin-marketplace-source-sync.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-07-10-ssh-plugin-archive-permissions.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-07-12-feedback-base-service-boundary.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-07-13-model-request-output-token-provider-compatibility.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-07-17-e2e-direct-failure-repairs.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-07-20-remote-deploy-transaction-lock.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-07-20-wsl-remote-process-cleanup.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-07-21-wsl-lifecycle-review-remediation.md
+    kind: identity
+  - path: docs/superpowers/plans/2026-08-20-ci-build-platform-selection.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-08-20-draft-prewarm-runtime-rebuild.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-09-10-virtual-project-implementation.md
+    kind: purge
+  - path: docs/superpowers/plans/2026-09-11-virtual-project-development-deviations.md
+    kind: content
+  - path: docs/superpowers/specs/2026-03-31-bigmodel-oauth-login-design.md
+    kind: content
+  - path: docs/superpowers/specs/2026-04-28-window-level-web-remote-control-design.md
+    kind: content
+  - path: docs/superpowers/specs/2026-06-02-app-usage-db-migration-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-06-04-web-remote-test-static-deployment-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-06-04-web-remote-v3-static-deployment-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-06-23-arms-user-id-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-06-25-plugin-bundled-agents-discovery-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-06-29-remote-skill-sync-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-01-anthropic-authorization-header.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-07-03-remote-mcp-sync-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-06-remote-plugin-sync-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-08-fork-session-title-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-10-non-project-conversation-workspace-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-12-feedback-base-service-boundary-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-07-13-window-scoped-ssh-remote-host-pooling-design.md
+    kind: content
+  - path: docs/superpowers/specs/2026-07-14-wsl-remote-sync-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-15-sqlite-concurrent-agent-startup-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-17-e2e-direct-failure-repairs-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-07-17-kimi-k3-model-adapter-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-19-wsl-remote-process-cleanup-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-07-20-window-scoped-wsl-host-pooling-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-08-14-glm-5-3-model-adapter-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-08-20-draft-prewarm-runtime-rebuild-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-08-21-model-provider-modality-settings-design.md
+    kind: identity
+  - path: docs/superpowers/specs/2026-08-25-host-api-proxy-design.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-09-09-virtual-project-design.md
+    kind: content
+  - path: docs/superpowers/specs/2026-09-14-session-manage-upstream-merge.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-10-10-session-manage-upstream-integration.md
+    kind: purge
+  - path: docs/superpowers/specs/2026-10-24-project-management.md
+    kind: identity
+  - path: docs/task/task-sqlite-index.md
+    kind: content
+  - path: docs/testing/bash-direct-output-e2e-coverage.md
+    kind: purge
+  - path: docs/testing/bots-e2e-coverage-matrix.md
+    kind: content
+  - path: docs/testing/browser-use-coverage-matrix.md
+    kind: content
+  - path: docs/testing/conversation-session-background-e2e-coverage-matrix.md
+    kind: content
+  - path: docs/testing/conversation-session-decision-e2e-roadmap.md
+    kind: content
+  - path: docs/testing/conversation-session-decision-review-queue.md
+    kind: content
+  - path: docs/testing/conversation-session-decision-workflow-board.md
+    kind: content
+  - path: docs/testing/conversation-session-e2e-coverage-matrix.md
+    kind: content
+  - path: docs/testing/conversation-session-e2e-development-workflow.md
+    kind: content
+  - path: docs/testing/conversation-session-e2e-human-readable-cases.md
+    kind: purge
+  - path: docs/testing/conversation-session-goal-manual-review-e2e.md
+    kind: purge
+  - path: docs/testing/conversation-session-next-decision-answer-template.md
+    kind: content
+  - path: docs/testing/conversation-session-next-decision-review.md
+    kind: content
+  - path: docs/testing/desktop-e2e-runtime-performance.md
+    kind: purge
+  - path: docs/testing/desktop-local-model-provider-p0-e2e-cases.md
+    kind: purge
+  - path: docs/testing/feishu-zct-2096089929570893824-verification.md
+    kind: purge
+  - path: docs/testing/git-commit-dialog-e2e-coverage.md
+    kind: purge
+  - path: docs/testing/hooks-e2e-coverage-matrix.md
+    kind: identity
+  - path: docs/testing/llm-api-stream-capture-replay.md
+    kind: purge
+  - path: docs/testing/model-provider-restart-connection-e2e-cases.md
+    kind: purge
+  - path: docs/testing/model-selection-regression-decision-backlog.yaml
+    kind: content
+  - path: docs/testing/model-selection-regression-decision-questionnaire.md
+    kind: purge
+  - path: docs/testing/model-selection-regression-factor-catalog.yaml
+    kind: content
+  - path: docs/testing/model-selection-regression-planning.md
+    kind: content
+  - path: docs/testing/opensource-export-validation.md
+    kind: content
+  - path: docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md
+    kind: content
+  - path: docs/testing/pre-push-hook.md
+    kind: content
+  - path: docs/testing/provider-settings-batch-20260910.md
+    kind: content
+  - path: docs/testing/provider-settings-merge-20260911.md
+    kind: purge
+  - path: docs/testing/r3-remote-automation-case-matrix.md
+    kind: purge
+  - path: docs/testing/r3-remote-automation-plan.md
+    kind: purge
+  - path: docs/testing/r3-remote-server-harness.md
+    kind: content
+  - path: docs/testing/settings-language-e2e-coverage-matrix.md
+    kind: purge
+  - path: docs/testing/side-pane-tabs-e2e-case-catalog.md
+    kind: content
+  - path: docs/testing/side-pane-tabs-e2e-coverage-matrix.md
+    kind: content
+  - path: docs/testing/ssh-remote-p0-e2e-plan.md
+    kind: content
+  - path: docs/testing/stop-tool-results-reproduction.md
+    kind: purge
+  - path: docs/testing/subagents-built-in-model-overrides-e2e-coverage-matrix.md
+    kind: content
+  - path: docs/testing/ui-polish-e2e-coverage-matrix.md
+    kind: purge
+  - path: docs/testing/unit-test-quality.md
+    kind: content
+  - path: docs/testing/upstream-provider-e2e.md
+    kind: purge
+  - path: docs/testing/usage-stats-e2e-coverage-matrix.md
+    kind: purge
+  - path: docs/testing/workspace-hook-trust-manual-acceptance.md
+    kind: identity
+  - path: docs/tmpdir-storage-paths-spec.md
+    kind: content
+  - path: docs/todo/wsl-native-support.md
+    kind: identity
+  - path: docs/trace/model-attempt-error-diagnostics.md
+    kind: content
+  - path: docs/trace/README.md
+    kind: content
+  - path: docs/ui-mcp-status-refresh-issue.md
+    kind: identity
+  - path: docs/ui/chat-input-context.md
+    kind: purge
+  - path: docs/ui/chat-model-select-menu.md
+    kind: purge
+  - path: docs/ui/chat-summary-panel.md
+    kind: purge
+  - path: docs/ui/chat-view-composition.md
+    kind: purge
+  - path: docs/ui/conversation-draft-suggested-prompts.md
+    kind: content
+  - path: docs/ui/font-size-fix-plan-20260723.md
+    kind: purge
+  - path: docs/ui/help-report-vulnerability.md
+    kind: purge
+  - path: docs/ui/login-page.md
+    kind: purge
+  - path: docs/ui/onboarding-migration-flow.md
+    kind: content
+  - path: docs/ui/pinned-task-storage.md
+    kind: identity
+  - path: docs/ui/scheduled-tasks-main-view.md
+    kind: content
+  - path: docs/ui/settings-command-source-filter.md
+    kind: identity
+  - path: docs/ui/settings-model-provider-two-column-layout.md
+    kind: purge
+  - path: docs/ui/settings-personalization.md
+    kind: identity
+  - path: docs/ui/settings-usage-stats.md
+    kind: purge
+  - path: docs/ui/task-grouped-view.md
+    kind: identity
+  - path: docs/ui/tool-display-rendering.md
+    kind: purge
+  - path: docs/ui/workspace-header-help-menu.md
+    kind: content
+  - path: docs/ui/workspace-sidebar-footer.md
+    kind: purge
+  - path: docs/usage-stats-e2e-case-catalog.md
+    kind: purge
+  - path: docs/v4-refactor/07-persistence.md
+    kind: identity
+  - path: docs/v4-refactor/10-protocol-spec.md
+    kind: purge
+  - path: docs/v4-refactor/15-timeline-resolver-design.md
+    kind: identity
+  - path: docs/v4-refactor/16-timeline-authority-plan.md
+    kind: identity
+  - path: docs/v4-refactor/m5-composer-parity.md
+    kind: purge
+  - path: docs/v4-refactor/m6-model-selection-parity.md
+    kind: purge
+  - path: docs/v4-refactor/m6-p1-runtime-model-resolution.md
+    kind: purge
+  - path: docs/web-remote-control-relay-message-logging.md
+    kind: identity
+  - path: docs/web-remote-control/mobile-log-channel.md
+    kind: identity
+  - path: docs/web-remote-control/mobile-stability-analysis.md
+    kind: purge
+  - path: docs/web-remote-control/web-remote-control-architecture.md
+    kind: content
+  - path: docs/web-remote-control/web-remote-control-minimal-plan.md
+    kind: content
+  - path: docs/webdriverio/docs/BoilerplateProjects.md
+    kind: content
+  - path: docs/websearch-provider-domain-allowlist.md
+    kind: purge
+  - path: docs/windows-agent-process-cleanup-state-machine.md
+    kind: purge
+  - path: docs/windows-test-compatibility.md
+    kind: content
+  - path: docs/windows-tray.md
+    kind: content
+  - path: docs/workflow-debugger.md
+    kind: identity
+  - path: docs/working-memory/provider-refactor/design-v2/builtin-provider-inventory.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/design-v2/design.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/design-v2/evidence-and-contradictions.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/design.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/environment/environment.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/execution/execution.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/interaction/selection-state.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/interaction/submission-delivery.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/model/contract.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/registry/configuration.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/registry/model-creation.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/registry/provider-and-model-configuration-overview.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/registry/registry.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/registry/request-compatibility-and-access-protocols.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/design/registry/runtime.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/registry/settings.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/design/registry/zcode-builtin-provider-config.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/plan/02-provider-automation-proof.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/plan/03-provider-refactor-release-regression-scope.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/plan/04-provider-refactor-release-regression-scope-2026-09-11.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/plan/plan.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/plan/staging-conflict-restoration-audit.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/provider-implementation-architecture-conformance-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/provider-refactor.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/research/builtin-online-release-review-2026-09-11.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/research/builtin-provider-model-evidence-2026-08.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/e2e-regression-analysis-2026-08-31.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/research/legacy-model-provider-service-call-map.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/model-abstraction-unification-cleanup-audit.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/provider-config-schema-and-builtin-glm-draft.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/research/provider-settings-dogfood-2026-08-27.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/provider-settings-merge-20260912.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/reasoning-config-to-wire.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/research.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/staging-cc580-integration-20260910.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/staging-pre-push-unit-test-failures-2026-08-24.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo103-real-merge-candidate.json
+    kind: content
+  - path: docs/working-memory/provider-refactor/research/todo103-staging-integration-ledger.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/research/todo103-staging-source-inventory.json
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo104-impact-and-cases.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo104-schema-implementation-ledger.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo109-database-implementation-ledger.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo87-implementation-impact.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo88-97-final-quality-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo88-completion-and-commit-audit.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo94-97-execution-and-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo97-selection-storage-audit.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todo99-implementation-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/research/todos-136-139-140-review-20260912.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/01-model-and-request-implementation-log.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/01-model-and-request-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-cleanup.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-human-in-the-loop.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-implementation-log.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-mr-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/02-provider-config-and-registry.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/03-provider-architecture-cutover-implementation-log.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/03-staging-integration.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/04-model-execution-cutover.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/68-72-implementation-report.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/bugfix-03-provider-review-boundary-closeout.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/bugfix-08-auxiliary-model-lowest-reasoning.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/host-tasks-index-startup-followup.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/migration-roadmap.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/provider-stabilization-20260911-final-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/steps.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-00-model-abstraction-unification-roadmap.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-02-ai-sdk-execution-registry-retirement.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-03-provider-model-ownership-and-property-totality.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-07-account-connection-selection-and-access-context-cutover.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-08-legacy-model-catalog-retirement.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-10-zcode-builtin-provider-config-naming-cutover.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-102-verification-debt-closeout.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-104-pre-release-schema-review.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-106-mcs-capability-rule-correction.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-107-provider-settings-feedback-enablement-and-template-links.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-108-goal-verifier-model-options-restoration.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-109-database-migration-consolidation-and-rollback-readability.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-11-provider-runtime-composition-boundary-cleanup.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-110-guide-selection-change-prefix-rebuild.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-112-official-glm-model-id-normalization.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-113-new-model-catalog-refresh.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-115-provider-header-actions-and-toggle-hit-area.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-116-single-api-key-management-url.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-117-preserve-account-domain-on-provider-save.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-12-model-selection-validation-boundary-cutover.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-121-repair-backfilled-session-reasoning-level.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-127-builtin-online-release.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-128-impact-and-cases.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-129-impact-and-cases.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-13-addendum-model-selection-value-construction.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-13-target-host-model-selection-authority.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-135-model-default-headers-and-openrouter-attribution.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-139-share-import-new-task-selection.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-14-post-refactor-mechanical-zero.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-144-large-database-migration-optimization.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-145-global-database-startup-loading.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-149-opencode-go-support.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-15-provider-release-validation.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-152-plan-approval-mode-restoration-hotfix.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-158-permission-dialog-full-access-and-queued-mode.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-159-connectivity-512-token-budget.md
+    kind: identity
+  - path: docs/working-memory/provider-refactor/steps/todo-16-unplanned-model-abstraction-residue-cleanup.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-161-cli-legacy-output-token-migration.md
+    kind: identity
+  - path: docs/working-memory/provider-refactor/steps/todo-17-provider-registry-settings-authority-boundary-closure.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-18-zcode-builtin-client-config-sync-and-lkg.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-20-account-overlay-atomicity-and-review-closeout.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-21-zcode-builtin-config-ownership-and-model-activation-order.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-23-provider-refactor-decision-gap-closure.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-26-zhipu-access-mode-contract-cutover.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-27-provider-settings-dogfood-closeout.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-29-model-config-resolution-and-idle-trigger-closure.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-31-model-metadata-editor-input-consistency.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-33-personal-provider-config-file-cutover.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-34-model-selection-async-state-and-repo-wiki-draft.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-40-provider-settings-and-automation-interaction-closeout.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-42-auxiliary-reasoning-closeout.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-44-repo-wiki-agent-runtime-headers-and-cancellation.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-47-provider-connectivity-save-and-result-cleanup.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-48-account-api-and-manual-api-key-boundary-cleanup.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-50-provider-enabled-and-account-entitlement-separation.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-52-provider-e2e-regression-closeout.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-54-model-option-map-and-raw-request-body-cutover.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-55-provider-template-inheritance-cutover.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-56-remote-provider-provisioning-environment-sync.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-57-provider-e2e-runtime-verification-closeout.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-59-model-selection-fallback-and-provisioning-failure-semantics.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-61-provider-template-picker-and-brand-metadata.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-63-model-selection-validity-and-request-budget-closeout.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-64-provider-e2e-real-run-repair-closeout-implementation-report.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-64-provider-e2e-real-run-repair-closeout.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-65-provider-settings-dogfood-and-template-ux-closeout.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-67-complete-model-selection-before-formal-model-creation.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-68-active-model-context-single-source.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-69-provider-refactor-practical-rollback-compatibility.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-70-session-model-selection-migration-and-unbound-recovery.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-71-persistent-composer-draft-and-submission-state.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-72-legacy-builtin-provider-and-model-selection-migration.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-78-provider-e2e-pending-consolidated-closeout.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-81-selection-migration-notice-scope-cleanup.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-84-model-selection-reasoning-empty-and-auxiliary-policy-closeout.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-85-staging-revert-behavior-restoration.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-86-provider-source-driven-refresh-draft.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-87-selection-view-unified-resolution.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-88-provider-audit-regression-repair.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-89-provider-settings-write-boundary-cleanup.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-91-connectivity-probe-prompt-contract.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-95-builtin-reasoning-map-simplification-and-fallback.md
+    kind: purge
+  - path: docs/working-memory/provider-refactor/steps/todo-96-selection-offline-migration-and-resolution-consolidation.md
+    kind: content
+  - path: docs/working-memory/provider-refactor/steps/todo-97-subagent-markdown-in-place-migration-and-legacy-read-audit.md
+    kind: purge
+  - path: docs/workspace-hook-trust-mr-scope.md
+    kind: identity
+  - path: docs/workspace-hook-trust-user-guide.md
+    kind: identity
+  - path: docs/wsl-remote-workspace-design.md
+    kind: identity
+  - path: docs/wsl-task-status-inconsistency.md
+    kind: identity
+  - path: docs/wsl-user-and-file-mention-permissions.md
+    kind: identity
+  - path: docs/ZCode 项目架构分析与改进建议.md
+    kind: content
+  - path: docs/zcode-endpoint-client-language-header.md
+    kind: purge
+  - path: docs/zcode-endpoint-device-mid-header.md
+    kind: content
+  - path: docs/zcode-endpoint-switching.md
+    kind: purge
+  - path: docs/zcode-env-consolidation.md
+    kind: purge
+  - path: docs/zcode-init-agents-md-command.md
+    kind: identity
+  - path: docs/zcode-lite-static-distribution.md
+    kind: identity
+  - path: docs/zcode-stdio-tap-proxy.md
+    kind: identity
+  - path: docs/zcodeplan-import.md
+    kind: purge

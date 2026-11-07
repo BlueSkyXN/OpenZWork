@@ -1,0 +1,607 @@
+# OpenZWork 台账：功能（OZ-F）、改变上游行为（OZ-C）、裁剪（OZ-D）、上游已删我方保留（OZ-R）。
+# 字段与规则见 docs/openzwork/maintenance-model.md；由 tests/ci/openzwork-maintenance.test.mjs 校验。
+# 新增功能、改变上游行为、裁剪上游功能时，在同一个 PR 中更新本文件。合入上游新版本后更新 upstream。
+version: 1
+upstream:
+  repository: https://github.com/zai-org/ZCode
+  version: 3.17.2
+  commit: a9fe401eede6e6e5e01be9048679c206fe6f02d9
+entries:
+  - id: OZ-F001
+    kind: feature
+    status: active
+    title: OpenZWork 维护体系
+    summary: 文档索引、台账、上游文档编辑登记、维护技能、扫描工具与门禁。
+    spec: docs/openzwork/maintenance-model.md
+    paths:
+      - docs/openzwork/**
+      - .agents/skills/openzwork-maintenance/**
+      - docs/specs/*-openzwork.md
+      - docs/testing/*-openzwork.md
+      - docs/web-remote-control/*-openzwork.md
+    tests:
+      - tests/ci/openzwork-maintenance.test.mjs
+      - scripts/test/openzwork-maintenance-scan.test.mjs
+    source: 本 PR
+  - id: OZ-F002
+    kind: feature
+    status: active
+    title: 系统提示词设置与编辑器
+    summary: 系统提示词设置、完整预览、差异与模板。
+    spec:
+      - docs/specs/system-prompt-settings-openzwork.md
+      - docs/specs/system-prompt-editor-openzwork.md
+      - docs/testing/system-prompt-editor-plan-openzwork.md
+    paths:
+      - packages/shared/src/system-prompt/CONTRACT.md
+      - packages/shared/src/system-prompt/contract.example.ts
+      - packages/shared/src/system-prompt/contract.ts
+      - packages/shared/src/system-prompt/index.ts
+      - packages/shared/src/system-prompt/module.ts
+      - packages/shared/src/system-prompt/preview.ts
+      - packages/shared/src/system-prompt/profile.ts
+      - packages/ui/src/settings/system-prompt/CONTRACT.md
+      - packages/ui/src/settings/system-prompt/PromptChapterNavigation.tsx
+      - packages/ui/src/settings/system-prompt/PromptChapterTemplates.tsx
+      - packages/ui/src/settings/system-prompt/PromptDiff.tsx
+      - packages/ui/src/settings/system-prompt/PromptGeneratedDetails.tsx
+      - packages/ui/src/settings/system-prompt/PromptPreviewDialog.tsx
+      - packages/ui/src/settings/system-prompt/PromptProfileToolbar.tsx
+      - packages/ui/src/settings/system-prompt/SystemPromptContextSwitches.tsx
+      - packages/ui/src/settings/system-prompt/SystemPromptSettingsSection.tsx
+      - packages/ui/src/settings/system-prompt/contract.example.ts
+      - packages/ui/src/settings/system-prompt/contract.ts
+      - packages/ui/src/settings/system-prompt/hooks/usePromptObservation.ts
+      - packages/ui/src/settings/system-prompt/hooks/usePromptProfileFiles.ts
+      - packages/ui/src/settings/system-prompt/hooks/useSystemPromptSettings.ts
+      - packages/ui/src/settings/system-prompt/module.ts
+      - packages/ui/src/settings/system-prompt/types.ts
+    hooks:
+      - apps/zcode-cli/docs/design/v2/loop/system-prompt-contract.md
+    tests:
+      - apps/zcode-cli/packages/core/tests/system-prompt-editor.test.ts
+      - apps/zcode-cli/packages/core/tests/system-prompt-observation.test.ts
+      - apps/zcode-cli/packages/core/tests/system-prompt-settings.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/system-prompt-settings.test.ts
+      - packages/shared/src/system-prompt/contract.test.ts
+      - packages/ui/src/settings/system-prompt/contract.test.ts
+      - packages/ui/test/browser/manual-review/pending/system-prompt-editor.fixture.tsx
+      - packages/ui/test/browser/manual-review/pending/system-prompt-editor.test.mjs
+      - packages/ui/test/systemPromptSettingsLoading.test.ts
+    source: "PR #33、PR #61"
+  - id: OZ-F003
+    kind: feature
+    status: active
+    title: 本地使用统计页
+    summary: 使用统计页按本机度量重建。
+    spec: docs/specs/app-usage-settings-openzwork.md
+    paths:
+      - packages/services/src/app-usage/appUsage.ts
+      - packages/services/src/app-usage/appUsageService.ts
+      - packages/ui/src/hooks/appUsageServiceAccess.ts
+      - packages/ui/src/hooks/useAppUsageStats.ts
+      - packages/ui/src/settings/usage-stats/AppUsageSection.tsx
+      - packages/ui/src/settings/usage-stats/UsageVisualizations.tsx
+    tests:
+      - packages/services/test/appUsageService.test.ts
+      - packages/ui/test/appUsageModel.test.ts
+      - packages/ui/test/appUsageServiceAccess.test.ts
+    source: "PR #15"
+  - id: OZ-F004
+    kind: feature
+    status: active
+    title: 会话累计用量
+    summary: 输入框工具栏显示会话累计用量。
+    spec: docs/specs/session-usage-summary-openzwork.md
+    paths:
+      - packages/ui/src/chat-input-toolbar/SessionUsageSummary.tsx
+      - packages/ui/src/chat-input-toolbar/sessionUsageModel.ts
+    tests:
+      - packages/ui/test/fixtures/session-usage/README.md
+      - packages/ui/test/fixtures/session-usage/index.html
+      - packages/ui/test/fixtures/session-usage/main.tsx
+      - packages/ui/test/fixtures/session-usage/vite.config.mts
+      - packages/ui/test/sessionUsageSummary.test.ts
+    source: "PR #22"
+  - id: OZ-F005
+    kind: feature
+    status: active
+    title: 原生会话指标栏
+    summary: 会话指标栏与自选指标。
+    spec: docs/specs/native-conversation-metrics-openzwork.md
+    paths:
+      - apps/zcode-cli/docs/design/v2/native-conversation-metrics.md
+      - apps/zcode-cli/packages/core/src/runtime/metrics/CONTRACT.md
+      - apps/zcode-cli/packages/core/src/runtime/metrics/contract.example.ts
+      - apps/zcode-cli/packages/core/src/runtime/metrics/contract.ts
+      - apps/zcode-cli/packages/core/src/runtime/metrics/module.ts
+      - packages/shared/src/conversation-metrics/CONTRACT.md
+      - packages/shared/src/conversation-metrics/contract.example.ts
+      - packages/shared/src/conversation-metrics/contract.ts
+      - packages/shared/src/conversation-metrics/index.ts
+      - packages/shared/src/conversation-metrics/module.ts
+      - packages/ui/src/conversation-metrics/CONTRACT.md
+      - packages/ui/src/conversation-metrics/ConversationMetricsBar.tsx
+      - packages/ui/src/conversation-metrics/MetricsDisplaySettings.tsx
+      - packages/ui/src/conversation-metrics/MetricsSummaryRow.tsx
+      - packages/ui/src/conversation-metrics/TurnMetricsDetails.tsx
+      - packages/ui/src/conversation-metrics/contract.example.ts
+      - packages/ui/src/conversation-metrics/contract.ts
+      - packages/ui/src/conversation-metrics/index.ts
+      - packages/ui/src/conversation-metrics/module.ts
+      - packages/ui/src/conversation-metrics/useMetricsOverflow.ts
+      - packages/ui/src/store/conversationMetricsPreferencesStore.ts
+    tests:
+      - apps/zcode-cli/packages/bootstrap/tests/native-conversation-metrics.test.ts
+      - apps/zcode-cli/packages/core/src/runtime/metrics/contract.test.ts
+      - apps/zcode-cli/packages/core/tests/native-metrics.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-native-metrics.test.ts
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-native-metrics.json
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-native-metrics.json
+      - packages/shared/src/conversation-metrics/contract.test.ts
+      - packages/ui/src/conversation-metrics/contract.test.ts
+      - packages/ui/test/conversationMetrics.test.ts
+      - packages/ui/test/conversationMetricsPreferences.test.ts
+    source: "PR #38"
+  - id: OZ-F006
+    kind: feature
+    status: active
+    title: 对话复制、筛选与项目排序
+    summary: 对话 Markdown 复制、任务筛选与项目活动排序。
+    spec: docs/specs/conversation-controls-openzwork.md
+    paths:
+      - packages/ui/src/conversation-export/CONTRACT.md
+      - packages/ui/src/conversation-export/contract.example.ts
+      - packages/ui/src/conversation-export/contract.ts
+      - packages/ui/src/conversation-export/index.ts
+      - packages/ui/src/conversation-export/module.ts
+      - packages/ui/src/project-sidebar/SidebarTaskFilters.tsx
+    tests:
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openzwork-controls.test.ts
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-openzwork-controls.json
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-openzwork-controls.json
+      - packages/ui/src/conversation-export/contract.test.ts
+    source: "PR #38"
+  - id: OZ-F007
+    kind: feature
+    status: active
+    title: 外部会话多源导入
+    summary: 从多个外部客户端导入会话。
+    spec: docs/specs/external-session-import-openzwork.md
+    paths:
+      - packages/services/src/session/external-import/CONTRACT.md
+      - packages/services/src/session/external-import/codexRolloutParser.ts
+      - packages/services/src/session/external-import/contract.example.ts
+      - packages/services/src/session/external-import/contract.ts
+      - packages/services/src/session/external-import/externalImportSource.ts
+      - packages/services/src/session/external-import/externalImportedSessionTypes.ts
+      - packages/services/src/session/external-import/externalSessionImportRepo.ts
+      - packages/services/src/session/external-import/externalSessionImportService.ts
+      - packages/services/src/session/external-import/index.ts
+      - packages/services/src/session/external-import/module.ts
+      - packages/services/src/session/external-import/qoderSessionParser.ts
+    tests:
+      - packages/services/src/session/external-import/contract.test.ts
+    source: "PR #56"
+  - id: OZ-F008
+    kind: feature
+    status: active
+    title: 模型列表拉取与项目用量
+    summary: 拉取模型目录、按项目查询用量。
+    spec: docs/specs/model-discovery-project-usage-openzwork.md
+    paths:
+      - packages/provider-node/src/model-discovery/CONTRACT.md
+      - packages/provider-node/src/model-discovery/contract.example.ts
+      - packages/provider-node/src/model-discovery/contract.ts
+      - packages/provider-node/src/model-discovery/discovery.ts
+      - packages/provider-node/src/model-discovery/index.ts
+      - packages/provider-node/src/model-discovery/module.ts
+      - packages/ui/src/hooks/useProviderModelDiscovery.ts
+      - packages/ui/src/model-discovery/CONTRACT.md
+      - packages/ui/src/model-discovery/ProviderModelDiscoveryDialog.tsx
+      - packages/ui/src/model-discovery/contract.example.ts
+      - packages/ui/src/model-discovery/contract.ts
+      - packages/ui/src/model-discovery/index.ts
+      - packages/ui/src/model-discovery/module.ts
+      - packages/ui/src/project-usage/CONTRACT.md
+      - packages/ui/src/project-usage/ProjectUsageDetails.tsx
+      - packages/ui/src/project-usage/contract.example.ts
+      - packages/ui/src/project-usage/contract.ts
+      - packages/ui/src/project-usage/index.ts
+      - packages/ui/src/project-usage/module.ts
+    tests:
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-discovery-usage.test.ts
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-discovery-usage.json
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-discovery-usage.json
+      - packages/provider-node/src/model-discovery/contract.test.ts
+      - packages/ui/src/model-discovery/contract.test.ts
+      - packages/ui/src/project-usage/contract.test.ts
+      - packages/ui/test/providerModelDiscoveryHook.test.ts
+    source: "PR #57、PR #67"
+  - id: OZ-F009
+    kind: feature
+    status: active
+    title: Node 发行内置技能资产
+    summary: 普通 Node CLI/Web 发行包携带内置技能。
+    spec: docs/specs/node-distribution-bundled-skills-openzwork.md
+    paths:
+      - scripts/zcode-distribution-skills-smoke.mjs
+    hooks:
+      - scripts/zcode-distribution/assets.mjs
+    tests:
+      - packages/services/test/node-distribution-assets.test.ts
+    source: "PR #22"
+  - id: OZ-F010
+    kind: feature
+    status: active
+    title: V1 远控连接方式
+    summary: 官方 V1 远控页的多种连接方式与多入口。
+    spec: docs/web-remote-control/v1-connection-modes-openzwork.md
+    paths:
+      - packages/desktop/src/main/web-remote-relay/adapters/connectionProvider.ts
+      - packages/desktop/src/main/web-remote-relay/adapters/directGateway.ts
+      - packages/shared/src/web-remote-relay/adapters/browserCrypto.ts
+      - packages/shared/src/web-remote-relay/domain/connection.ts
+      - packages/shared/src/web-remote-relay/domain/connectionSettings.ts
+      - packages/ui/src/web-remote-control/RemoteControlSettingsSection.tsx
+      - packages/ui/src/web-remote-control/WebRemoteControlConnectionForm.tsx
+      - packages/ui/src/web-remote-control/WebRemoteControlProfileList.tsx
+      - packages/web/src/web-remote-control/adapters/webRemoteControlRelayAuthProvider.ts
+    hooks:
+      - packages/desktop/src/main/desktopWebRemoteControlIpc.ts
+      - packages/desktop/src/main/web-remote-relay/CONTRACT.md
+      - packages/desktop/src/main/web-remote-relay/contract.ts
+      - packages/desktop/src/main/web-remote-relay/index.ts
+      - packages/desktop/src/main/webRemoteControlManager.ts
+      - packages/desktop/src/main/webRemoteControlSharedHostAttachments.ts
+      - packages/shared/src/web-remote-control.ts
+      - packages/shared/src/web-remote-relay/CONTRACT.md
+      - packages/shared/src/web-remote-relay/contract.example.ts
+      - packages/shared/src/web-remote-relay/contract.ts
+      - packages/shared/src/web-remote-relay/index.ts
+      - packages/ui/src/web-remote-control/CONTRACT.md
+      - packages/ui/src/web-remote-control/index.ts
+      - packages/web/src/web-remote-control/CONTRACT.md
+      - packages/web/src/web-remote-control/ui/webRemoteControlScanPage.tsx
+    tests:
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts
+      - packages/desktop/test/e2e/helpers/web-remote-control-settings.ts
+      - packages/desktop/test/webRemoteControlDirectGateway.test.ts
+      - packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts
+      - packages/shared/test/webRemoteControlConnection.test.ts
+      - packages/ui/test/remoteControlSettingsSection.test.ts
+      - packages/ui/test/webRemoteControlLegacyTasks.test.ts
+      - packages/web/test/webRemoteControlScanPage.test.ts
+    source: "PR #34、PR #62"
+  - id: OZ-C001
+    kind: change
+    status: active
+    title: 产品身份与用户级数据根
+    summary: 用户级数据根改为 .openzwork，产品身份与 ZCode 隔离。
+    spec: docs/specs/identity-and-data-isolation-openzwork.md
+    paths:
+      - packages/desktop/test/windowsInstallerNshStructure.test.ts
+      - packages/services/test/dataDirectoryTrueMigration.test.ts
+      - tests/private-cleanup/identity-paths.test.ts
+    hooks:
+      - packages/desktop/build/installer.nsh
+      - packages/services/src/paths.ts
+      - packages/zcode-server-cli/src/runtime/paths.ts
+      - scripts/zcode-distribution/installer.mjs
+    source: "PR #21、PR #69"
+  - id: OZ-C002
+    kind: change
+    status: active
+    title: 旧 ZCode 记忆隔离
+    summary: 不再隐式复制旧 ZCode 记忆，保留已导入数据。
+    spec: docs/specs/memory-migration-openzwork.md
+    paths:
+      - apps/zcode-cli/packages/bootstrap/tests/memory-isolation.test.ts
+    hooks:
+      - packages/ui/src/settings/MemorySettingsSection.tsx
+    source: "PR #14、PR #68"
+  - id: OZ-C003
+    kind: change
+    status: active
+    title: 标准 Provider 模板
+    summary: 内置 Provider 入口只保留三种标准协议模板。
+    spec: docs/specs/standard-provider-templates-openzwork.md
+    paths:
+      - packages/provider-node/test/standard-provider-config.test.ts
+      - packages/ui/test/browser/manual-review/pending/standard-provider-templates.fixture.tsx
+      - packages/ui/test/browser/manual-review/pending/standard-provider-templates.test.mjs
+    hooks:
+      - config/provider/zcode-builtin.json
+      - packages/provider/src/resolver.ts
+      - packages/ui/src/settings/model-provider-section/ProviderLogo.tsx
+      - packages/ui/src/settings/model-provider-section/ProviderTemplatePicker.tsx
+    source: "PR #53"
+  - id: OZ-C004
+    kind: change
+    status: active
+    title: 模型能力与渠道匹配
+    summary: 恢复模型与站点的能力规则和推理映射。
+    spec: docs/specs/model-capability-matching-openzwork.md
+    paths:
+      - scripts/model-capability-rules.mjs
+    tests:
+      - apps/zcode-cli/packages/adapters/tests/model-capability-wire.test.ts
+      - packages/provider-node/test/fixtures/model-capability-cases.json
+      - packages/provider-node/test/model-capability-rules.test.ts
+      - packages/ui/test/browser/manual-review/pending/model-capability-matching.fixture.tsx
+      - packages/ui/test/browser/manual-review/pending/model-capability-matching.test.mjs
+      - scripts/test/model-capability-rules.test.mjs
+    source: "PR #60"
+  - id: OZ-C005
+    kind: change
+    status: active
+    title: 本地首次引导偏好
+    summary: 首次引导改为本地偏好，不依赖官方账号。
+    spec: docs/specs/onboarding-local-settings-openzwork.md
+    paths:
+      - packages/ui/src/onboarding/onboardingVisibility.ts
+    tests:
+      - packages/ui/test/onboardingVisibility.test.ts
+    source: "PR #17"
+  - id: OZ-C006
+    kind: change
+    status: active
+    title: 自定义命令改名与保存
+    summary: 命令改名不丢数据，保存失败如实返回。
+    spec: docs/specs/command-file-update-openzwork.md
+    paths:
+      - packages/services/test/command-file-update.test.ts
+    hooks:
+      - packages/services/src/commands/commandsService.ts
+    source: "PR #24"
+  - id: OZ-C007
+    kind: change
+    status: active
+    title: 技能开关链路
+    summary: 内置技能开关的规则、所有者与回归。
+    spec: docs/specs/skills-toggle-openzwork.md
+    paths:
+      - packages/services/test/skills-toggle.test.ts
+    source: "PR #13"
+  - id: OZ-C008
+    kind: change
+    status: active
+    title: 设置页布局与远控入口
+    summary: 设置页内容布局调整，恢复侧栏底部的远控入口。
+    spec: docs/specs/settings-visual-polish-openzwork.md
+    paths:
+      - packages/ui/src/conversation-metrics/MetricsDisplaySettings.tsx
+      - packages/ui/src/settings/system-prompt/SystemPromptSettingsSection.tsx
+      - packages/ui/src/settings/usage-stats/AppUsageSection.tsx
+      - packages/ui/src/web-remote-control/RemoteControlSettingsSection.tsx
+      - packages/ui/src/web-remote-control/WebRemoteControlConnectionForm.tsx
+    hooks:
+      - packages/ui/src/WorkspaceSidebarFooter.tsx
+      - packages/ui/src/web-remote-control/CONTRACT.md
+    tests:
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/settings-visual-polish.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/system-prompt-settings.test.ts
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/settings-visual-polish.json
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/settings-visual-polish.json
+      - packages/ui/src/settings/system-prompt/contract.test.ts
+    source: "PR #44"
+  - id: OZ-D001
+    kind: drop
+    status: active
+    title: 遥测（ARMS/OTel）
+    summary: 移除 desktop、services、ui、CLI 四层遥测与上报依赖。
+    paths:
+      - apps/zcode-cli/packages/telemetry/**
+      - apps/zcode-cli/packages/core/src/telemetry/**
+      - packages/services/src/telemetry/**
+    gates:
+      - WP-05 telemetry full-chain sources are physically absent
+      - Desktop OTLP initialization and IPC bridge methods are removed
+      - Agent and Desktop direct exporter dependencies are removed
+    source: 净化工作包 WP-05；docs/openzwork/upstream/v3.17.1-integration.md
+  - id: OZ-D002
+    kind: drop
+    status: active
+    title: 官方套餐、加速卡与闲时任务
+    summary: 移除 Coding Plan、Start Plan、Highspeed 加速卡与闲时任务。
+    paths:
+      - packages/services/src/coding-plan-subscription/**
+      - packages/services/src/highspeed/**
+      - packages/ui/src/highspeed/**
+      - packages/ui/src/v4/highspeed/**
+      - packages/ui/src/assets/highspeed/**
+      - packages/ui/src/components/coding-plan-quota-reset/**
+      - packages/ui/src/components/manual-claim-plan/**
+      - apps/zcode-cli/packages/core/src/runtime/off-peak/**
+      - docs/coding-plan/**
+      - docs/highspeed/**
+      - docs/off-peak-task/**
+    gates:
+      - "WP-09: off-peak domain fully removed from source and locales"
+      - "re-clean gate: highspeed card chain"
+      - "WP-08: removed login/startPlan key families stay absent"
+    source: 净化工作包 WP-08、WP-09
+  - id: OZ-D003
+    kind: drop
+    status: active
+    title: 官方账号登录
+    summary: 移除 BigModel/Z.AI 账号 OAuth 与 Web 登录。
+    paths:
+      - packages/services/src/oauth/**
+      - packages/services/src/bigmodel/**
+      - packages/ui/src/login/**
+      - packages/web/src/auth/**
+      - docs/oauth/**
+    gates:
+      - "WP-08: official product endpoints are absent outside the explicit exemption list"
+      - "WP-08: removed login/startPlan key families stay absent"
+    source: 净化工作包 WP-08
+  - id: OZ-D004
+    kind: drop
+    status: active
+    title: 云端分享、反馈与自动更新
+    summary: 移除会话云端分享、云端反馈与应用自动更新。
+    paths:
+      - packages/services/src/conversation-share/**
+      - packages/ui/src/conversation-share-interaction/**
+      - packages/share-ui/**
+      - packages/web-share/**
+      - packages/web/src/share/**
+      - packages/ui/src/feedback/**
+      - packages/desktop/test/e2e/feedback/**
+      - docs/web-share/**
+    gates:
+      - "WP-07: conversation-share / cloud feedback / app-update sources are physically absent"
+      - "WP-07: updater dependencies and share/feedback/update channel surface are gone"
+    source: 净化工作包 WP-07
+  - id: OZ-D005
+    kind: drop
+    status: active
+    title: 原生 CUA
+    summary: 移除原生电脑控制实现，只保留兼容占位。
+    spec:
+      - docs/specs/cua-placeholder-boundary-openzwork.md
+      - docs/testing/cua-placeholder-boundary-openzwork.md
+    hooks:
+      - packages/desktop/scripts/computer-use-producer.mjs
+      - scripts/dev-desktop-cua-env.mjs
+      - scripts/stage-dev-cua-plugin-runtime.mjs
+    paths:
+      - packages/zcode-cua/**
+      - apps/zcode-cli/packages/zcode-cua-plugin/**
+      - packages/services/src/cua-permission-broker/**
+      - packages/ui/src/cua-permission/**
+      - docs/cua/**
+      - docs/cua-permission-broker/**
+    gates:
+      - "WP-06: CUA / clientScenes / plugin-creator surfaces are gone"
+    source: "PR #64；docs/specs/cua-placeholder-boundary-openzwork.md"
+  - id: OZ-D006
+    kind: drop
+    status: active
+    title: 官方 MCP 鉴权与官方端点配置
+    summary: 移除官方 MCP 身份头、客户端配置下发、场景配置与官方命令端点。
+    paths:
+      - packages/services/src/official-mcp/**
+      - packages/services/src/client-config/**
+      - packages/services/src/client-scenes/**
+      - apps/zcode-cli/packages/bootstrap/src/official-command-endpoint/**
+      - apps/zcode-cli/packages/bootstrap/tests/official-command-endpoint/**
+      - apps/zcode-cli/packages/adapters/src/model/endpoint-routing-edition/**
+      - apps/zcode-cli/packages/zcode-site-plugin/**
+    gates:
+      - "WP-06: official MCP residue is removed from agent packages"
+      - removed gateways and exporters are physically absent
+    source: 净化工作包 WP-06；docs/openzwork/upstream/v3.17.2-integration.md
+  - id: OZ-D007
+    kind: drop
+    status: active
+    title: 营销触达、奖励与请求安全版本
+    summary: 移除营销触达、奖励内嵌与请求安全版本链路。
+    paths:
+      - packages/services/src/marketing-touch/**
+      - packages/ui/src/components/marketing-touch/**
+      - packages/ui/src/marketing-touch-contract/**
+      - packages/ui/src/rewards/**
+      - packages/ui/src/request-security-edition/**
+      - packages/desktop/src/main/request-security-edition/**
+      - apps/zcode-cli/packages/adapters/src/model/request-security-edition/**
+      - packages/desktop/test/e2e/helpers/request-security-edition/**
+    gates:
+      - "re-clean gate: highspeed card chain / request-security-edition / marketingTouch / rewardsEmbedded / project-access-token stay absent"
+    source: v3.17.1 重净
+  - id: OZ-D008
+    kind: drop
+    status: active
+    title: 云端内容、公告与云端用量账本
+    summary: 移除云端内容弹窗、全局公告与上游云端用量统计。
+    paths:
+      - packages/services/src/cloud-content/**
+      - packages/ui/src/components/cloud-content-dialog/**
+      - packages/ui/src/assets/cloud-content/**
+      - packages/ui/src/global-notice/**
+      - packages/services/src/usage-stats/**
+      - packages/services/src/onboarding/**
+    source: 净化工作包；本地替代见 OZ-F003、OZ-C005
+  - id: OZ-D009
+    kind: drop
+    status: undecided
+    title: image-search 插件
+    summary: v3.17.1 整合 spec 写明移除 zcode_official 鉴权插件，代码仍保留注册并在运行时拒绝官方鉴权；保留或移除待用户决定。
+    paths:
+      - apps/zcode-cli/packages/image-search-plugin/**
+    hooks:
+      - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
+      - packages/desktop/scripts/prepare-agent-node-bundle.mjs
+    source: docs/openzwork/upstream/v3.17.1-integration.md；official-plugin-definitions.ts 中的 image-search 注册
+  - id: OZ-R001
+    kind: retain
+    status: active
+    title: 上游已退役的桌面测试与兼容源码
+    summary: 上游后续版本删除、OpenZWork 继续使用的桌面 E2E 用例、夹具与三个兼容源码文件。
+    paths:
+      - packages/desktop/src/main/webRemoteControlTransport.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-auto-drain.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-bash-read-state.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-claude-anthropic-reasoning-budget.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-interrupted.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-manual-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-draft-switching.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-prefix-routing.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-recent-mode.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-config-and-multisession.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-deepseek-v4-reasoning-request-shape.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-draft-model-switch-first-send.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-file-tools-atomic-write.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-first-send.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-glm52-reasoning-request-shape.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-interruptions.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-resume-stale-target.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-session-model.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-timeline.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-interrupted-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-availability-fallback.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-config.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-list-filtering.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-session-isolation.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-auto-compact.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-native-file-picker-attachments.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-new-session-inherits-model.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-node-repl-stateless-browser-multisession.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openai-compatible-thinking-toggle-request-shape.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openrouter-model-id-colon.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-opus47-anthropic-adaptive-reasoning.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-mode-capabilities.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-prewarming-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-provider-registry-prewarm.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-queue-operations.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-read-session-context-timeout.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-model-switch-usage.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-draft-provider-identity.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-provider-identity.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-empty.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-held-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-subagent-provider-registry-cold-start.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-title-generation-timeout.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-error-surface.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-history-order.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-turn-steer-probe.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-upstream-workspace-smoke.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-auto-drain-running-fork.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-cold-failed-edit.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-goal-background-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-webfetch.test.ts
+      - packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts
+      - packages/services/src/device/deviceMid.ts
+      - packages/shared/src/sessionCreateSource.ts
+    source: v3.17.1 整合（上游退役 App 单测与部分 E2E，OpenZWork 保留 CLI、E2E 与门禁测试）

@@ -1,0 +1,114 @@
+# 踩坑经验。规则见 ../references/knowledge/GUIDE.md；由 tests/ci/openzwork-maintenance.test.mjs 校验。
+version: 1
+kind: pitfall
+entries:
+  - id: OZK-PIT-001
+    title: 按文件名判断净化交集会漏掉官方逻辑
+    when: 评估上游新版本是否碰到已裁剪的官方功能。
+    do: 对当前 origin/main 做 merge-tree 预演，逐段阅读上游改动；保留文件里新增的端点、鉴权头、遥测和账号逻辑同样要找出来。
+    why: v3.17.2 首轮评估按文件名得出“与净化域零交集”，实际官方 MCP 身份头写在通用的 zcodeAgentService.ts 里。
+    evidence:
+      - PR #65
+      - docs/openzwork/upstream/v3.17.2-integration.md
+      - packages/services/src/zcode-agent/zcodeAgentService.ts
+    since: 2026-11-05
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-002
+    title: 收尾时格式化上游文件
+    when: 合并上游或修 lint、类型错误的收尾阶段。
+    do: 只改行为必需的行，不对上游文件运行 oxfmt 或 lint:fix；格式化仅限 OpenZWork 自己的文件。
+    why: 5ac3b459 的收尾提交格式化了 1122 个上游文件，之后每次合入上游，这些文件都会因格式差异产生冲突。
+    evidence:
+      - 5ac3b4596
+      - docs/openzwork/maintenance-model.md
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-003
+    title: CI 检查名不代表实际执行内容
+    when: 根据 CI 判断某类测试是否覆盖。
+    do: 读 .github/workflows 与 package.json 中实际执行的命令，不按检查名推断。
+    why: v3.15.1 整合时检查名仍写着 services 与 ui 的单测，实际已改为全仓 Vitest。
+    evidence:
+      - PR #25
+      - .github/workflows/ci.yml
+    since: 2026-10-19
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-004
+    title: CI 结果只认最终 head
+    when: 汇报 PR 的 CI 结果。
+    do: 以最新 head SHA 的运行结果为准；旧提交的通过记录不能挪用到新提交。
+    why: v3.15.1 与 v3.16.1 的堆叠 PR 中，旧提交失败、修复后只有最终 head 全部通过。
+    evidence:
+      - PR #25
+      - PR #26
+    since: 2026-10-19
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-005
+    title: 重跑通过不等于问题已修复
+    when: OOM、SIGSEGV、文件监听超时等偶发失败在重跑后通过。
+    do: 记为原因未明，保留现象和运行编号；不写成已修复，不靠加大 timeout 或删除用例换取通过。
+    why: Windows Extended 的 OOM 与 macOS 的 SIGSEGV 都在重跑后通过，但根因始终没有定位。
+    evidence:
+      - PR #30
+      - PR #31
+    since: 2026-10-23
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-006
+    title: CLI lint 可能一个文件都没扫
+    when: CLI lint 报告 0 个问题。
+    do: 确认 lint 实际选中了 CLI 文件；根配置排除了内层 CLI，没有包级 .oxlintrc.json 的包需要加 --no-ignore。
+    why: v3.17.2 整合时 CLI lint 一度没有选中任何文件；统一加 --no-ignore 又会误扫动态工作流的图语料。
+    evidence:
+      - PR #65
+      - scripts/cli-lint-admission.mjs
+    since: 2026-11-05
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-007
+    title: 只搜 ~/.zcode 会漏掉路径拼接
+    when: 新增或审查用户级数据路径。
+    do: 同时搜索 join(home, ".zcode")、homedir() 拼接，以及 cli、v2、runtime、server 等用户级子目录字面量。
+    why: 个性化指令路径与 data-sync 的三处用户级错根都是拼接写法，文本门禁直到 PR #69 才补上。
+    evidence:
+      - PR #69
+      - tests/private-cleanup/cleanup.test.cjs
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-008
+    title: 复用的依赖可能早于当前 lockfile
+    when: 新 worktree 复用或克隆其他工作区的 node_modules。
+    do: 复用前核对关键依赖的已安装版本与 lockfile 一致（如 electron、electron-builder）；不一致就执行 pnpm install --frozen-lockfile。
+    why: 克隆来的依赖早于 Electron 44 升级，typecheck 与仓库脚本测试报出与改动无关的失败。
+    evidence:
+      - pnpm-lock.yaml
+      - packages/desktop/package.json
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-009
+    title: 核心套件需要先构建 CLI
+    when: 在新 worktree 中执行 pnpm test:ci:core。
+    do: 先执行 node scripts/build-desktop-agent-cli.mjs，与 CI 的步骤顺序一致。
+    why: CLI 未构建时，dataDirectoryMigration.test.ts 无法解析 @zcode/adapters/storage，整个文件加载失败。
+    evidence:
+      - scripts/build-desktop-agent-cli.mjs
+      - packages/services/test/dataDirectoryMigration.test.ts
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-010
+    title: 上游可能用同一 tag 重推内容
+    when: 拉取上游 tag。
+    do: 拉取时不加 --force；出现 would clobber existing tag 时停止，核对新旧提交后再继续。
+    why: 版本号不变时，下游补丁登记的检查不会提示需要复核。
+    evidence:
+      - docs/openzwork/patches/downstream-patch-registry.md
+    since: 2026-10-23
+    checked: 3.17.2
+    status: active

@@ -1,0 +1,48 @@
+# 扫描：识别来源与预演合入
+
+`pnpm openzwork:scan`（`scripts/scan.mjs`）以台账 `upstream.commit` 为上游基准，读取已提交的 HEAD。上游快照位于本仓历史中，CI 与本机都能运行。
+
+## 常见问题
+
+| 想知道 | 命令 | 看哪里 |
+| --- | --- | --- |
+| 这个文件是上游的还是我们的 | `--path <文件>` | `上游：首次出现于 …` 或 `上游从未出现` |
+| 这个文件是不是我们删过的 | `--path <文件>` | 分类 `removed`，认领中的 `OZ-D…` 是对应的裁剪条目 |
+| 上游已删、我们还留着的文件 | `--list retained` | 应全部被 `OZ-R…` 认领 |
+| 哪些 OpenZWork 文件还没登记 | `--list openzwork --unclaimed` | 逐个补到台账，或确认属于已有条目 |
+| 哪些上游文件被我们实质修改 | `--list upstream-modified` | 认领中的 `OZ-…`、`OW-P…`、`doc-edit:…` |
+| 合入新上游会冲突什么 | `--upstream <提交或 tag>` | 冲突、我方已删被上游修改、上游新增落在裁剪路径内、受影响的台账条目 |
+| 有没有只差格式化的上游文件 | `--format` 或 `--check` | `upstream-format` 应为 0 |
+
+加 `--json` 输出结构化结果；`--base <提交>` 临时指定其他上游基准，例如回放历史同步。
+
+## 分类
+
+| 分类 | 含义 |
+| --- | --- |
+| `upstream` | 与上游基准一致 |
+| `upstream-format` | 只差格式化，必须恢复为上游原文 |
+| `upstream-identity` | 只差用户级根 `.openzwork` 改名 |
+| `upstream-modified` | 我方实质修改的上游文件 |
+| `removed` | 上游有、我方已删除 |
+| `openzwork` | 上游任何版本都没有 |
+| `retained` | 上游已删除、我方保留 |
+| `moved` | 内容与某个上游文件相同，路径不同 |
+
+“认领”指台账条目（`paths`、`hooks`、`tests`、`spec`）、下游补丁（`files`、`regression`）或上游文档编辑登记覆盖了该路径。未认领不会让检查失败，但说明台账还不完整。
+
+## 门禁
+
+`--check` 与 CI 的 `tests/ci/openzwork-maintenance.test.mjs` 执行同一组检查，失败信息会给出修复方法：
+
+- 台账、登记表与经验库的字段、编号格式和取值；
+- 上游基准是 HEAD 的祖先，并与根 `package.json` 版本的前三段一致；
+- 裁剪条目的路径不存在，其他 `active` 条目的路径存在；
+- 与上游不一致的上游文档和技能都已登记，登记的文件确实与上游不一致；
+- 没有只差格式化的上游文件（需要已安装依赖中的 oxfmt）。
+
+## 限制
+
+- 只读取已提交的内容；检查未提交的改动前先提交。
+- 改名判定只覆盖用户级根 `~/.zcode` 改为 `~/.openzwork` 的确定性写法，其他改动一律归为 `upstream-modified`。
+- `--upstream` 只做预演，不修改工作区；冲突以 `git merge-tree` 的结果为准。

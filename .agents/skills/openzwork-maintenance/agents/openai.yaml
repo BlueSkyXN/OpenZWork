@@ -1,0 +1,3 @@
+interface:
+  display_name: "OpenZWork 维护"
+  short_description: "识别来源、放置文档与代码、台账、合入上游与经验库"

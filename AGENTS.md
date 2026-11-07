@@ -25,6 +25,7 @@
 | 模块阅读包       | `pnpm architecture:context <module-id>`                        |
 | 未使用依赖与导出 | `pnpm knip`                                                    |
 | 导出引用查询     | `pnpm dep:refs --list-exports <file>`                          |
+| 来源扫描与维护门禁 | `pnpm openzwork:scan`、`pnpm openzwork:scan --check`        |
 
 `verify:pre-push` 运行固定核心套件 `test:ci:core`。独立命令 `test:unit:affected` 使用 Vitest 官方选择；选中整个套件时说明并跳过 UT，成功退出。两者均不替代 CLI 测试或桌面 E2E。全量使用 `pnpm test` / `pnpm test:unit`，仅在用户明确要求时调用。范围与输出合同见 [pre-push 说明](docs/testing/pre-push-hook.md)。
 
@@ -53,6 +54,12 @@
 - 必须执行 `pnpm typecheck` 和 `pnpm lint`，报告真实结果，不将已有失败写成通过。
 - 使用异步文件和网络 IO；跨包导入使用公开入口，遵守现有路径别名。
 - 禁止 UI 直接调用 Repo、Service 引用 Runtime 具体实现、跨域导入实现细节及循环依赖。
+
+## 上游与 OpenZWork 维护
+
+- 识别文件来源、放置文档与代码、修改上游文件、更新台账、合入上游新版本和沉淀维护经验时，使用 `.agents/skills/openzwork-maintenance/SKILL.md`。
+- 上游文件保持上游原文，只改行为必需的行，不格式化。OpenZWork 文档放在 `docs/openzwork/` 或带 `-openzwork` 后缀，索引见 `docs/openzwork/README.md`。
+- 新增功能、改变上游行为、裁剪上游功能时，在同一个 PR 中更新 `docs/openzwork/ledger.yaml`；提交后执行 `pnpm openzwork:scan --check`。
 
 ## UI 与平台边界
 
