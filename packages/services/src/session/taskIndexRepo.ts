@@ -1119,6 +1119,7 @@ export class TaskIndexRepo {
         | "lastError"
         | "target"
         | "migrationSource"
+        | "externalImport"
         | "cronAutomationId"
       >
     >;

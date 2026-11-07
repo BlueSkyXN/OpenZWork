@@ -1,6 +1,6 @@
 import { copyFile, mkdir, readdir, rename, stat } from "node:fs/promises";
 import { homedir } from "node:os";
-import { basename, dirname, join, normalize, resolve } from "node:path";
+import { basename, dirname, join, normalize, posix, resolve, win32 } from "node:path";
 import type { ZCodeImportableSessionCandidate } from "@zcode/shared";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { getAppConfigDir, getDataBaseDir, getWorkspaceHash } from "#src/paths.js";
@@ -296,14 +296,16 @@ export function relativeSourcePathForProvider(
   provider: "codex" | "qoder",
   sourcePath: string,
 ): string {
-  // Windows 扫描产物是反斜杠分隔路径（join 输出），marker 按 "/" 匹配会永远失败并误判"路径非法"
-  // （CI 实锤：C:\Users\...\.codex\sessions\... 抛路径非法）。修复：匹配前归一化为正斜杠再推导
-  // 相对层级；返回值喂给 dirname/basename/join，Node 在 Windows 上同样接受正斜杠输入。
-  const normalizedSourcePath = sourcePath.split("\\").join("/");
-  const marker = provider === "codex" ? "/sessions/" : "/projects/";
-  const markerIndex = normalizedSourcePath.lastIndexOf(marker);
+  // 统一替换反斜杠虽兼容 Windows，却会改写 POSIX 的合法文件名。
+  // 按来源路径选语义，保留盘符、UNC 支持及 POSIX 文件名中的反斜杠。
+  const pathApi = /^[a-z]:[\\/]|^\\\\/iu.test(sourcePath) ? win32 : posix;
+  const normalizedSource = pathApi.normalize(sourcePath);
+  const marker = `${pathApi.sep}${provider === "codex" ? "sessions" : "projects"}${pathApi.sep}`;
+  const markerIndex = normalizedSource.lastIndexOf(marker);
   if (markerIndex < 0) {
     throw new Error(`[external-import] 外部 session 路径非法: ${sourcePath}`);
   }
-  return normalizedSourcePath.slice(markerIndex + marker.length);
+  const sourceRoot = normalizedSource.slice(0, markerIndex + marker.length - 1);
+  const relativePath = pathApi.relative(sourceRoot, normalizedSource);
+  return pathApi === win32 ? relativePath.split(win32.sep).join(posix.sep) : relativePath;
 }

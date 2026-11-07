@@ -69,6 +69,71 @@ function codexFixture(cwd: string): unknown[] {
 }
 
 describe("external session parsers", () => {
+  it("过滤连续的客户端环境前缀，标题和轮次从真实用户问题开始", async () => {
+    const directory = makeTempDir("zcode-external-context-");
+    const sourcePath = join(directory, "rollout.jsonl");
+    const { parseCodexRolloutSessionFile, parseCodexRolloutSessionHeadInfo } =
+      await import("#src/session/external-import/codexRolloutParser.js");
+    const records = [
+      { type: "session_meta", payload: { cwd: directory } },
+      {
+        type: "response_item",
+        payload: {
+          type: "message",
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "# AGENTS.md instructions for /example\n<INSTRUCTIONS>合成指令</INSTRUCTIONS>\n<environment_context><cwd>/example</cwd></environment_context>\n<app-context>合成环境</app-context>",
+            },
+          ],
+        },
+      },
+      ...codexFixture(directory).slice(1),
+    ];
+    writeJsonl(sourcePath, records);
+    const parsed = await parseCodexRolloutSessionFile({
+      filePath: sourcePath,
+      sessionId: "context",
+    });
+
+    // 环境注入曾成为第一条 user 消息和标题；头采样与完整导入必须使用同一过滤规则。
+    expect(parseCodexRolloutSessionHeadInfo(records).previewTitle).toBe("真正的问题：构建失败");
+    expect(parsed.title).toBe("真正的问题：构建失败");
+    expect(
+      parsed.messages.map(({ role, content, turnIndex }) => ({ role, content, turnIndex })),
+    ).toEqual([
+      { role: "user", content: "真正的问题：构建失败", turnIndex: 0 },
+      { role: "assistant", content: "已修复。", turnIndex: 0 },
+    ]);
+  });
+
+  it("保留用户正文的标签引用与 assistant 原文", async () => {
+    const directory = makeTempDir("zcode-external-quoted-context-");
+    const sourcePath = join(directory, "rollout.jsonl");
+    const { parseCodexRolloutSessionFile } =
+      await import("#src/session/external-import/codexRolloutParser.js");
+    const userText =
+      "请解释 <INSTRUCTIONS>示例</INSTRUCTIONS>，以及 <environment_context>示例</environment_context>";
+    const assistantText =
+      "<app-context>这是回答中的示例</app-context>\n```xml\n<INSTRUCTIONS>原文</INSTRUCTIONS>\n```";
+    writeJsonl(sourcePath, [
+      { type: "session_meta", payload: { cwd: directory } },
+      ...[
+        ["user", userText],
+        ["assistant", assistantText],
+      ].map(([role, text]) => ({
+        type: "response_item",
+        payload: { type: "message", role, content: [{ type: "text", text }] },
+      })),
+    ]);
+    const parsed = await parseCodexRolloutSessionFile({
+      filePath: sourcePath,
+      sessionId: "quoted-context",
+    });
+    expect(parsed.messages.map(({ content }) => content)).toEqual([userText, assistantText]);
+  });
+
   it("codex rollout 解析：developer 注入与 AGENTS.md 头被过滤，模型不迁移", async () => {
     const home = makeTempDir("zcode-external-parse-home-");
     const dataBaseDir = makeTempDir("zcode-external-parse-db-");

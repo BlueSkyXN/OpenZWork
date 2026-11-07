@@ -14,10 +14,11 @@ import type { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 const logger = createServiceLogger("external-import");
 
 export interface ExternalSessionImportTaskIndex {
-  /** 查同 provider+sessionId 已导入任务的 externalImport 指纹（幂等判断）。 */
+  /** 按来源、sessionId 和内容哈希查已导入任务，包含已删除任务。 */
   findImportedFingerprint(params: {
     provider: "codex" | "qoder";
     sessionId: string;
+    sourceContentSha256: string;
     workspaceKey?: string;
   }): Promise<{ taskId: string; sourceContentSha256?: string } | null>;
 }
@@ -134,27 +135,26 @@ export async function importExternalSessions(params: {
         continue;
       }
 
-      // 幂等（spec §2.4）：同 provider+sessionId 且来源哈希未变 → 跳过，不重复建会话。
+      const importedSource = await parseExternalSessionFile({
+        provider: params.provider,
+        filePath: candidate.sourcePath,
+        sessionId,
+        workspacePath: importedWorkspacePath,
+      });
+      // 必须把本次内容哈希一起交给索引查询，才能识别同一来源已经导入过的多个版本。
       const fingerprint = await params.importIndex.findImportedFingerprint({
         provider: params.provider,
         sessionId,
+        sourceContentSha256: importedSource.sourceContentSha256,
       });
-      if (fingerprint?.sourceContentSha256) {
-        const parsedForHash = await parseExternalSessionFile({
+      if (fingerprint?.sourceContentSha256 === importedSource.sourceContentSha256) {
+        result.skipped.push({
           provider: params.provider,
-          filePath: candidate.sourcePath,
           sessionId,
+          reason: "already_imported_unchanged",
           workspacePath: importedWorkspacePath,
         });
-        if (parsedForHash.sourceContentSha256 === fingerprint.sourceContentSha256) {
-          result.skipped.push({
-            provider: params.provider,
-            sessionId,
-            reason: "already_imported_unchanged",
-            workspacePath: importedWorkspacePath,
-          });
-          continue;
-        }
+        continue;
       }
 
       const copiedArtifacts = await externalSessionImportRepo.copySessionFileToWorkspace({
@@ -164,13 +164,6 @@ export async function importExternalSessions(params: {
         sourcePath: candidate.sourcePath,
       });
       createdOutputPaths = copiedArtifacts.createdOutputPaths;
-
-      const importedSource = await parseExternalSessionFile({
-        provider: params.provider,
-        filePath: candidate.sourcePath,
-        sessionId,
-        workspacePath: importedWorkspacePath,
-      });
 
       const meta = await params.createImportedSession({
         provider: params.provider,

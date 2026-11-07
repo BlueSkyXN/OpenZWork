@@ -15,12 +15,8 @@ import type { ExternalImportedSessionSource } from "#src/session/external-import
  * 这些是 Codex 客户端自行写入的 instructions/app-context，不是用户可见消息，
  * 直接导入会把外部产品的运行时指令混进我方会话（spec §2.3 复用规则）。
  */
-const CODEX_INJECTED_BLOCK_RES: readonly RegExp[] = [
-  /<environment_instructions>[\s\S]*?<\/environment_instructions>/gi,
-  /<app-context>[\s\S]*?<\/app-context>/gi,
-  /<user_instructions>[\s\S]*?<\/user_instructions>/gi,
-  /<INSTRUCTIONS>[\s\S]*?<\/INSTRUCTIONS>/gi,
-];
+const CODEX_INJECTED_PREFIX_RE =
+  /^<(environment_instructions|environment_context|app-context|user_instructions|INSTRUCTIONS)>[\s\S]*?<\/\1>\s*/i;
 
 /** AGENTS.md 注入的头部行：Codex 会把 "# AGENTS.md instructions for ..." 开头的块塞进 user 消息。 */
 const CODEX_AGENTS_MD_HEADER_RE =
@@ -29,18 +25,18 @@ const CODEX_AGENTS_MD_HEADER_RE =
 const CODEX_ROLLOUT_FILENAME_SESSION_ID_RE =
   /rollout-[\dT:-]+-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/iu;
 
-function sanitizeCodexVisibleText(text: string): string {
-  let normalized = text.replace(/\r\n/g, "\n");
-  for (const blockRe of CODEX_INJECTED_BLOCK_RES) {
-    normalized = normalized.replace(blockRe, " ");
-  }
-  return normalized.trim();
+function normalizeCodexVisibleText(text: string): string {
+  return text.replace(/\r\n/g, "\n").trim();
 }
 
-function stripCodexAgentsMdHeader(text: string): string {
-  // "# AGENTS.md instructions for <path>" 标题行（可带 <INSTRUCTIONS> 块）整体剥掉；
-  // 只有当它占据开头时才视为 instructions 载体，用户在正文里引用标签不受影响。
-  return text.replace(CODEX_AGENTS_MD_HEADER_RE, "").trim();
+function stripCodexInjectedPrefix(text: string): string {
+  // 环境块曾被当作首条问题；只剥离 user 的连续注入前缀，避免全局替换吞掉正文引用和回答示例。
+  let rest = text.replace(CODEX_AGENTS_MD_HEADER_RE, "").trim();
+  for (;;) {
+    const next = rest.replace(CODEX_INJECTED_PREFIX_RE, "").trim();
+    if (next === rest) return rest;
+    rest = next;
+  }
 }
 
 function toTimestampMs(value: unknown): number | undefined {
@@ -71,7 +67,7 @@ function readCodexPayload(entry: JsonLineRecord): Record<string, unknown> | unde
 function extractCodexMessageText(payload: Record<string, unknown>): string | null {
   const content = payload.content;
   if (typeof content === "string") {
-    const normalized = sanitizeCodexVisibleText(content);
+    const normalized = normalizeCodexVisibleText(content);
     return normalized.length > 0 ? normalized : null;
   }
   if (!Array.isArray(content)) {
@@ -80,7 +76,7 @@ function extractCodexMessageText(payload: Record<string, unknown>): string | nul
   const parts = content
     .flatMap((item): string[] => {
       if (typeof item === "string") {
-        const normalized = sanitizeCodexVisibleText(item);
+        const normalized = normalizeCodexVisibleText(item);
         return normalized.length > 0 ? [normalized] : [];
       }
       if (!isObjectRecord(item)) {
@@ -90,7 +86,7 @@ function extractCodexMessageText(payload: Record<string, unknown>): string | nul
       if (item.type !== "text" && item.type !== "input_text" && item.type !== "output_text") {
         return [];
       }
-      const normalized = sanitizeCodexVisibleText(readTrimmedString(item.text) ?? "");
+      const normalized = normalizeCodexVisibleText(readTrimmedString(item.text) ?? "");
       return normalized.length > 0 ? [normalized] : [];
     })
     .filter((part) => part.length > 0);
@@ -117,7 +113,7 @@ function extractCodexVisibleMessage(
   if (!rawText) {
     return null;
   }
-  const content = role === "user" ? stripCodexAgentsMdHeader(rawText) : rawText;
+  const content = role === "user" ? stripCodexInjectedPrefix(rawText) : rawText;
   if (content.length === 0) {
     return null;
   }

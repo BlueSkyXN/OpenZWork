@@ -104,6 +104,42 @@ async function loadRepo() {
   return await import("#src/session/external-import/externalSessionImportRepo.js");
 }
 
+describe("external session backup path", () => {
+  it.each([
+    ["codex", "/home/example/.codex/sessions/2026/10/28/rollout.jsonl", "2026/10/28/rollout.jsonl"],
+    [
+      "codex",
+      String.raw`C:\Users\example\.codex\sessions\2026\10\28\rollout.jsonl`,
+      "2026/10/28/rollout.jsonl",
+    ],
+    [
+      "codex",
+      "C:/Users/example/.codex/sessions/2026/10/28/rollout.jsonl",
+      "2026/10/28/rollout.jsonl",
+    ],
+    [
+      "qoder",
+      String.raw`C:\Users\example\.qoder-cn\projects\project\session.jsonl`,
+      "project/session.jsonl",
+    ],
+    [
+      "qoder",
+      String.raw`\\host\share\.qoder\projects\project\session.jsonl`,
+      "project/session.jsonl",
+    ],
+    ["qoder", "/home/example/.qoder/projects/project/session.jsonl", "project/session.jsonl"],
+    [
+      "qoder",
+      String.raw`/home/example/.qoder/projects/project/with\slash.jsonl`,
+      String.raw`project/with\slash.jsonl`,
+    ],
+  ] as const)("%s backup path: %s", async (provider, sourcePath, expected) => {
+    const { relativeSourcePathForProvider } = await loadRepo();
+    // Windows 相对路径沿用正斜杠输出；POSIX 文件名中的反斜杠不能被当作目录分隔符。
+    expect(relativeSourcePathForProvider(provider, sourcePath)).toBe(expected);
+  });
+});
+
 describe("ExternalSessionImportRepo (codex)", () => {
   it("扫描 ~/.codex/sessions rollout 文件并提取 session_meta.cwd 候选", async () => {
     const home = makeTempDir("zcode-external-codex-home-");
@@ -262,15 +298,16 @@ describe("relativeSourcePathForProvider 路径分隔符", () => {
       "2026/10/20/rollout-x-01a15884.jsonl",
     );
     const qoderWin = "C:\\Users\\dev\\.qoder\\projects\\-repo-demo\\49a2c84a-61a9.jsonl";
-    expect(relativeSourcePathForProvider("qoder", qoderWin)).toBe(
-      "-repo-demo/49a2c84a-61a9.jsonl",
-    );
+    expect(relativeSourcePathForProvider("qoder", qoderWin)).toBe("-repo-demo/49a2c84a-61a9.jsonl");
   });
 
   it("正斜杠路径行为不变；无 marker 仍抛路径非法", async () => {
     const { relativeSourcePathForProvider } = await loadRepo();
     expect(
-      relativeSourcePathForProvider("codex", "/home/dev/.codex/sessions/2026/10/20/rollout-x.jsonl"),
+      relativeSourcePathForProvider(
+        "codex",
+        "/home/dev/.codex/sessions/2026/10/20/rollout-x.jsonl",
+      ),
     ).toBe("2026/10/20/rollout-x.jsonl");
     expect(() => relativeSourcePathForProvider("codex", "/home/dev/.codex/other/x.jsonl")).toThrow(
       /路径非法/,
