@@ -12,7 +12,7 @@ Windows close-to-tray behavior is enabled by default. Users can disable `closeTo
 - The tray instance is held by `packages/desktop/src/main/desktopTray.ts` module state so Electron does not garbage collect it.
 - Left-click and double-click call `primaryWindowCoordinator.ensurePrimaryWindow("tray-show-current-window")`, reusing the current window restore/create logic.
 - The context menu exposes Open OpenZWork, New Task, Open Workspace, About OpenZWork, Export Logs, and Quit. Export Logs replaces Clear All Data in the same position; the tray no longer exposes data deletion.
-- The tooltip and product labels use the shared OpenZWork brand name. See [Desktop display names](spec/identity-and-data-isolation.md#desktop-显示名称) for window-title ownership and locale-refresh acceptance cases.
+- The tooltip and product labels use the shared OpenZWork brand name. See [Desktop display names](specs/identity-and-data-isolation-openzwork.md#desktop-显示名称) for window-title ownership and locale-refresh acceptance cases.
 - Task and workspace commands reuse `executeDesktopCommandForApp` and existing `DesktopCommandIds`; no new IPC protocol is introduced.
 - Quit calls the existing `app.quit()` path, so `before-quit` confirmation and host process cleanup stay centralized.
 - Export Logs reuses `DesktopCommandIds.ExportLogs`, matching the desktop application menu's archive creation and system file reveal. The existing tray command flow restores the primary window before exporting. Labels follow the current application locale through the existing desktop menu translations.

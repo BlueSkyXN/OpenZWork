@@ -1,6 +1,6 @@
 # 标准 Provider 模板维护
 
-OpenZWork 只提供三个中性协议入口，模型能力与公共渠道差异单独维护。产品边界见[标准 Provider 模板](../spec/standard-provider-templates.md)，匹配与验收见[模型能力匹配](../spec/model-capability-matching.md)。
+OpenZWork 只提供三个中性协议入口，模型能力与公共渠道差异单独维护。产品边界见[标准 Provider 模板](../specs/standard-provider-templates-openzwork.md)，匹配与验收见[模型能力匹配](../specs/model-capability-matching-openzwork.md)。
 
 日常维护：
 

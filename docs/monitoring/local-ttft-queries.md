@@ -6,7 +6,7 @@
 
 <!-- 上游本地 TTFT 的 OTLP/ARMS 平台接入、PromQL 看板与灰度验收章节属 ARMS 遥测净化域，OpenZWork 无 ARMS/OTLP 上报链路，整段不随上游引入 -->
 
-App Usage 展示使用 CLI session store 已有 TTFT 聚合字段，查询入口见[App Usage 规格](../spec/app-usage-settings.md)。连接隔离回归见 `packages/services/test/zcodeAgentConnectionScope.test.ts` 中本地时间事实的订阅场景。
+App Usage 展示使用 CLI session store 已有 TTFT 聚合字段，查询入口见[App Usage 规格](../specs/app-usage-settings-openzwork.md)。连接隔离回归见 `packages/services/test/zcodeAgentConnectionScope.test.ts` 中本地时间事实的订阅场景。
 
 ## 接入
 

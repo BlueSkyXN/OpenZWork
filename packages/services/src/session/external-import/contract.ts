@@ -1,6 +1,6 @@
 /**
  * session-external-import 对外契约：多来源外部客户端会话导入（spec
- * docs/spec/external-session-import.md）。调用方（zcodeTaskServiceAdapter）
+ * docs/specs/external-session-import-openzwork.md）。调用方（zcodeTaskServiceAdapter）
  * 要想正确调用就必须知道的一切都写在这里；其余对外不可见。
  */
 import type {

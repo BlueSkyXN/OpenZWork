@@ -1,6 +1,6 @@
 # 迁移、远端 UAT 与 Node 发行修复验收记录
 
-> 历史验收记录：其中旧 ZCode 记忆自动迁移实现与专用测试已于 2026-11-06 退役，当前规则见 [旧 ZCode 记忆隔离](memory-migration.md)。
+> 历史验收记录：其中旧 ZCode 记忆自动迁移实现与专用测试已于 2026-11-06 退役，当前规则见 [旧 ZCode 记忆隔离](../../specs/memory-migration-openzwork.md)。
 
 验证日期：2026-10-01，macOS arm64，Node 24.14.0、pnpm 10.33.2。
 

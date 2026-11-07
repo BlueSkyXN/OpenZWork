@@ -1,6 +1,6 @@
 # Desktop CI/CD
 
-当前仓库使用 `.github/workflows/` 下的 GitHub Actions。Node 与 pnpm 版本遵循 `mise.toml` 和仓库 package manager 声明；具体运行时准备规则见[GitHub Actions runtime](./spec/github-actions-runtime.md)。
+当前仓库使用 `.github/workflows/` 下的 GitHub Actions。Node 与 pnpm 版本遵循 `mise.toml` 和仓库 package manager 声明；具体运行时准备规则见[GitHub Actions runtime](openzwork/ci/github-actions-runtime.md)。
 
 ## 工作流
 

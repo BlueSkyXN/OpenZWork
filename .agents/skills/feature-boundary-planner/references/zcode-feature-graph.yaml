@@ -26,8 +26,8 @@ nodes:
     label: Native Computer Use compatibility placeholders without product support
     aliases: [CUA, Computer Use, 原生桌面控制, CUA 占位]
     docs:
-      - docs/spec/cua-placeholder-boundary.md
-      - docs/testing/cua-placeholder-boundary.md
+      - docs/specs/cua-placeholder-boundary-openzwork.md
+      - docs/testing/cua-placeholder-boundary-openzwork.md
     codeSeeds:
       - file: packages/desktop/scripts/computer-use-producer.mjs
         symbol: readComputerUseProducer
@@ -46,7 +46,7 @@ nodes:
     kind: capability
     label: Discover models from the saved Provider connection
     aliases: [拉取模型, 模型发现, Fetch models]
-    docs: [docs/spec/model-discovery-project-usage.md]
+    docs: [docs/specs/model-discovery-project-usage-openzwork.md]
     codeSeeds:
       - file: packages/ui/src/model-discovery/ProviderModelDiscoveryDialog.tsx
         symbol: ProviderModelDiscoveryDialog
@@ -62,7 +62,7 @@ nodes:
     label: Project and session usage in Settings and QueryUsage
     aliases: [项目用量, 会话用量, QueryUsage]
     docs:
-      - docs/spec/model-discovery-project-usage.md
+      - docs/specs/model-discovery-project-usage-openzwork.md
       - apps/zcode-cli/docs/design/v2/tool/00-tool-change-chain.md
     codeSeeds:
       - file: packages/ui/src/project-usage/ProjectUsageDetails.tsx
@@ -92,7 +92,7 @@ nodes:
     kind: capability
     label: Native conversation metrics
     aliases: [原生指标栏, 本轮统计, tok/s, 首字]
-    docs: [docs/spec/native-conversation-metrics.md]
+    docs: [docs/specs/native-conversation-metrics-openzwork.md]
     codeSeeds:
       - file: packages/shared/src/conversation-metrics/contract.ts
         symbol: conversationMetricsSchema
@@ -633,7 +633,7 @@ nodes:
       - GLM-x-preview-f
       - x-preview-f-free
     docs:
-      - docs/spec/model-capability-matching.md
+      - docs/specs/model-capability-matching-openzwork.md
       - docs/product-capability-map.md
       - docs/working-memory/provider-refactor/steps/03-staging-integration.md
       - docs/working-memory/provider-refactor/design/registry/configuration.md
@@ -781,7 +781,7 @@ nodes:
       - 应用用量
       - 用量统计
     docs:
-      - docs/spec/app-usage-settings.md
+      - docs/specs/app-usage-settings-openzwork.md
       - apps/zcode-cli/docs/design/v2/usage-observability.md
     codeSeeds:
       - file: packages/services/src/app-usage/appUsageService.ts
@@ -1166,9 +1166,9 @@ nodes:
         提示词差异,
       ]
     docs:
-      - docs/spec/system-prompt-settings.md
-      - docs/spec/system-prompt-editor.md
-      - docs/testing/system-prompt-editor-plan.md
+      - docs/specs/system-prompt-settings-openzwork.md
+      - docs/specs/system-prompt-editor-openzwork.md
+      - docs/testing/system-prompt-editor-plan-openzwork.md
     codeSeeds:
       - symbol: SystemPromptSettingsSection
         file: packages/ui/src/settings/system-prompt/SystemPromptSettingsSection.tsx
@@ -1546,7 +1546,7 @@ nodes:
       - 模型供应商
       - 自定义 provider
     docs:
-      - docs/spec/upstream-v3.16.1-integration.md
+      - docs/openzwork/upstream/v3.16.1-integration.md
       - config/README.md
       - docs/working-memory/provider-refactor/steps/03-staging-integration.md
       - docs/working-memory/provider-refactor/design/design.md
@@ -1728,7 +1728,7 @@ nodes:
       - 手机远控
       - 重连恢复
     docs:
-      - docs/web-remote-control/v1-connection-modes.md
+      - docs/web-remote-control/v1-connection-modes-openzwork.md
       - docs/web-remote-control/web-remote-control-architecture.md
       - docs/web-remote-control/task-realtime-sync.md
       - docs/web-remote-control-task-command-queue.md
@@ -2236,7 +2236,7 @@ nodes:
       - Web Remote Control QR dialog
       - 手机远控二维码弹窗
     docs:
-      - docs/web-remote-control/v1-connection-modes.md
+      - docs/web-remote-control/v1-connection-modes-openzwork.md
       - docs/web-remote-control/web-remote-control-architecture.md
     codeSeeds:
       - symbol: WebRemoteControlConnectionForm
@@ -2247,8 +2247,8 @@ nodes:
     kind: ui-surface
     label: Workspace footer shortcut to Remote Control settings
     docs:
-      - docs/spec/settings-visual-polish.md
-      - docs/web-remote-control/v1-connection-modes.md
+      - docs/specs/settings-visual-polish-openzwork.md
+      - docs/web-remote-control/v1-connection-modes-openzwork.md
     codeSeeds:
       - symbol: WorkspaceSidebarFooter
         file: packages/ui/src/WorkspaceSidebarFooter.tsx
@@ -4753,7 +4753,7 @@ nodes:
     label: OpenZWork conversation Markdown copy, sidebar filters and project activity order
     aliases: [复制对话, Markdown 复制, 未读筛选, 项目活动排序]
     docs:
-      - docs/spec/conversation-controls.md
+      - docs/specs/conversation-controls-openzwork.md
     codeSeeds:
       - symbol: copyConversationMarkdown
         file: packages/ui/src/conversation-export/index.ts

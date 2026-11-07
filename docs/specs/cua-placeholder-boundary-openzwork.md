@@ -49,4 +49,4 @@ sequenceDiagram
 | CUA-005 | 读取正式打包配置                                 | 无 CUA 资源与专属签名例外；其他原生资源规则保留                |
 | CUA-006 | 检查设置、Composer、官方插件声明与中英文资源说明 | 无 CUA 产品入口或支持声明；Browser Use 仍可发现                |
 
-验证范围与证据见 [CUA 占位验证计划](../testing/cua-placeholder-boundary.md)。此项落实产品边界，不登记为上游缺陷补丁。
+验证范围与证据见 [CUA 占位验证计划](../testing/cua-placeholder-boundary-openzwork.md)。此项落实产品边界，不登记为上游缺陷补丁。

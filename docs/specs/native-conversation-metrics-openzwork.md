@@ -176,4 +176,4 @@ accepted：NCM01–NCM11。pruned：额度/费用/壁纸/云遥测；递归后�
 
 ## 设置页布局
 
-字段分组、预览区与现有偏好不变量见[设置页布局规格](settings-visual-polish.md)。
+字段分组、预览区与现有偏好不变量见[设置页布局规格](settings-visual-polish-openzwork.md)。

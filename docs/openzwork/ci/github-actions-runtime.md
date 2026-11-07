@@ -4,7 +4,7 @@
 
 消除 `CI` 与 `Installers` 工作流中 JavaScript Action 声明使用 Node.js 20 的弃用提示，不依赖 GitHub runner 强制切换旧 Action 的运行时。
 
-本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 、`.github/workflows/release.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](upstream-v3.15.1-integration.md) 与 [v3.16.1 整合验收](upstream-v3.16.1-integration.md)。
+本规范维护 `.github/workflows/ci.yml`、`.github/workflows/installers.yml`、`.github/workflows/extended-checks.yml` 、`.github/workflows/release.yml` 和对应的离线结构测试。产品整合验收及核心/扩展检查边界另见 [v3.15.1 整合验收](../upstream/v3.15.1-integration.md) 与 [v3.16.1 整合验收](../upstream/v3.16.1-integration.md)。
 
 ## 所有者与边界
 
@@ -55,7 +55,7 @@
 - 工作流可从主干执行并 checkout 已有版本 tag，因此工作流的 SHA 与源码 SHA 分别记录。GitHub run 的 `head_sha` 表示工作流来源，安装包来源以验证过的 `release_commit`、源码 tree 与 tag 为准。
 - 构建后生成 `RELEASE-MANIFEST.json`：记录源码 tag/SHA/tree、工作流 SHA/run、版本、平台、正式身份及实际安装文件的字节数和 SHA-256。只收集 dist 根目录的两份 macOS、一个 Windows 或四份 Linux 安装文件；不将 unpacked 目录中的辅助 exe 作为安装包发布。缺文件或空文件直接失败。
 - Linux x64 的各发行格式采用 builder 实际架构名：AppImage/rpm 为 `x86_64`、deb 为 `amd64`、pacman 为 `x64`。按版本、平台、允许的架构别名和扩展名从根目录匹配，每种格式必须恰有一个文件；歧义也直接失败。
-- 正式 tag 的 GitHub Release 由 `Release` 自动协调：三项同 tag/SHA 的最新运行成功后发布。普通分支 push 只生成 Preview artifacts。原手动 `Installers` 发布模式保留，接受 `publish_installer_run`、`core_run`、`extended_run` 和 `release_notes`。事件选择、幂等和恢复详见 [正式 tag 自动发布](automatic-github-release.md)。
+- 正式 tag 的 GitHub Release 由 `Release` 自动协调：三项同 tag/SHA 的最新运行成功后发布。普通分支 push 只生成 Preview artifacts。原手动 `Installers` 发布模式保留，接受 `publish_installer_run`、`core_run`、`extended_run` 和 `release_notes`。事件选择、幂等和恢复详见 [正式 tag 自动发布](../release/automatic-github-release.md)。
 - 发布 job 共用串行并发组和最小 `actions: read`、`contents: write` 权限；在 GitHub runner 下载已有 artifacts，核对归档 SHA-256、源码 tag/SHA/tree、正式身份、每种安装格式的数量、大小和哈希，然后生成 `PROVENANCE.json` 与 `SHA256SUMS`。本机无需下载安装包。
 - 核心与 Extended 必须完整成功并指向发布源码；Extended 三平台的 `source.json`、七组退出码及测试统计必须一致。构建工作流 SHA 单独记录；发布脚本不移动 tag、不重新构建产品。
 - 先校验全部产物再写 Release。草稿可继续上传缺少的附件；同名附件仅在大小和摘要相同的情况下复用。已发布内容不覆盖、不删除；全部九个附件核验后才公开；按语义版本比较决定 Latest，旧版补发不降低 Latest。

@@ -2,13 +2,13 @@
 
 ## OpenZWork 对话管理增强（OCC，2026-10-25）
 
-OCC01–OCC06 的设置、动作、断言与剪枝边界见 [对话管理规格](spec/conversation-controls.md#验收与边界)。本轮按已确认的维护边界实现：完整 Markdown 复制、未读/状态筛选、项目活动排序、共享归档样式。保留既有菜单顺序与归档执行流程；不扩展 CLI 协议或数据库。交互自动化保持 manual-review/pending，不能据此声明已发布或人工验收通过。
+OCC01–OCC06 的设置、动作、断言与剪枝边界见 [对话管理规格](specs/conversation-controls-openzwork.md#验收与边界)。本轮按已确认的维护边界实现：完整 Markdown 复制、未读/状态筛选、项目活动排序、共享归档样式。保留既有菜单顺序与归档执行流程；不扩展 CLI 协议或数据库。交互自动化保持 manual-review/pending，不能据此声明已发布或人工验收通过。
 
 分页一致性、迟到复制、旧偏好、离线/同名跨 Host 与筛选组合由定向单测覆盖；桌面候选覆盖共享菜单、筛选反馈、排序切换与读回。实际运行证据见 coverage matrix。
 
 ## 原生会话指标（NCM）
 
-NCM01–NCM11 为 accepted，范围、设置、动作、断言与剪枝见 [指标规格](spec/native-conversation-metrics.md#验收与剪枝)。NCM08–11 增加设置选择、偏好恢复/同域同步、内容宽度折叠与展开后关闭。固定顺序与客户端独立偏好；排序、跨设备同步与今日/子任务常驻为 pruned。交互候选保持 manual-review/pending。
+NCM01–NCM11 为 accepted，范围、设置、动作、断言与剪枝见 [指标规格](specs/native-conversation-metrics-openzwork.md#验收与剪枝)。NCM08–11 增加设置选择、偏好恢复/同域同步、内容宽度折叠与展开后关闭。固定顺序与客户端独立偏好；排序、跨设备同步与今日/子任务常驻为 pruned。交互候选保持 manual-review/pending。
 
 ## 会话 ID 兼容（SID，2026-10-28 accepted）
 
@@ -4767,9 +4767,9 @@ YC06 视觉验收包含桌面 448px 宽度上限、两端 text-ui-lg 标题、�
 
 ## SP：系统提示词设置
 
-编辑器扩展 SPE01–SPE16、PP01–PP15 的 setup／action／assertion 与执行证据见[实施与验收记录](testing/system-prompt-editor-plan.md)，产品规则见[编辑器规格](spec/system-prompt-editor.md)。代码、浏览器候选与隔离 Electron 主流程已验证；标准 WDIO 启动受阻、真实远端／手机等未测分支单独登记。候选保持 manual-review/pending，现有 SP 覆盖状态不变。
+编辑器扩展 SPE01–SPE16、PP01–PP15 的 setup／action／assertion 与执行证据见[实施与验收记录](testing/system-prompt-editor-plan-openzwork.md)，产品规则见[编辑器规格](specs/system-prompt-editor-openzwork.md)。代码、浏览器候选与隔离 Electron 主流程已验证；标准 WDIO 启动受阻、真实远端／手机等未测分支单独登记。候选保持 manual-review/pending，现有 SP 覆盖状态不变。
 
-产品规则和 SP01–SP10 见 [系统提示词设置](spec/system-prompt-settings.md)。SP06：从设置侧栏进入，替换角色内容、检查本章预览、保存后离开并重进、读取 setting.json，恢复默认；其余章节与 Memory 开关保持不变。SP08 使用相同页面的窄屏和深浅主题验证。候选不调用模型。
+产品规则和 SP01–SP10 见 [系统提示词设置](specs/system-prompt-settings-openzwork.md)。SP06：从设置侧栏进入，替换角色内容、检查本章预览、保存后离开并重进、读取 setting.json，恢复默认；其余章节与 Memory 开关保持不变。SP08 使用相同页面的窄屏和深浅主题验证。候选不调用模型。
 
 SP11–SP15 为动态修正 accepted 场景：桌面、记忆、Skill、输出风格的启用/缺席由 CLI 单测验证；SP14 在真实设置页复制桌面默认规则，切换可视化有/无与终端情景，断言预览随条件改变，保存后重进仍为规则原文，情景不进入 setting.json。SP15 在整体替换下关闭环境注入，切回逐章断言开关一致，再恢复默认。仍用原 pending 候选和隔离 HOME，无模型请求。
 
@@ -4791,11 +4791,11 @@ CPE03：配置选择器打开后，选择另一模型或重复选择当前模型
 
 ## SVP 设置页布局与首页远控入口（accepted）
 
-[规格](spec/settings-visual-polish.md)定义 SVP01–SVP06 的 setup、action 和 assertion。范围仅为呈现与导航，不改变连接/统计/提示词运行时。候选：settings-visual-polish.test.ts；复用 NCM08、SP06/SP14、V1-11/V1-12 语义。
+[规格](specs/settings-visual-polish-openzwork.md)定义 SVP01–SVP06 的 setup、action 和 assertion。范围仅为呈现与导航，不改变连接/统计/提示词运行时。候选：settings-visual-polish.test.ts；复用 NCM08、SP06/SP14、V1-11/V1-12 语义。
 
 ## MD / PU 模型拉取与项目用量（2026-10-30）
 
-用户已确认按界面示意实现。规则见 [功能规格](spec/model-discovery-project-usage.md)。候选 `conversation-session/manual-review/pending/conversation-session-model-discovery-usage.test.ts`：独立本机回放返回模型列表和固定用量；真实设置页拉取、勾选、保存、切换项目筛选、查看会话明细；随后主会话通过 QueryUsage 往返 Host 查询，回放必须收到带 retentionDays 的真实工具结果才返回终态标记。MD01/PU03/PU04/UX01 为本候选 accepted 场景；MD02/MD03/PU01/PU02 的数据及竞态组合由对应 UI/service/SQLite 单测覆盖。本次不转正、不新增 Docker admission，不扩展远端账户/额度。
+用户已确认按界面示意实现。规则见 [功能规格](specs/model-discovery-project-usage-openzwork.md)。候选 `conversation-session/manual-review/pending/conversation-session-model-discovery-usage.test.ts`：独立本机回放返回模型列表和固定用量；真实设置页拉取、勾选、保存、切换项目筛选、查看会话明细；随后主会话通过 QueryUsage 往返 Host 查询，回放必须收到带 retentionDays 的真实工具结果才返回终态标记。MD01/PU03/PU04/UX01 为本候选 accepted 场景；MD02/MD03/PU01/PU02 的数据及竞态组合由对应 UI/service/SQLite 单测覆盖。本次不转正、不新增 Docker admission，不扩展远端账户/额度。
 
 2026-10-30 PU 二级页修订 accepted：原概览无页尾表；卡片内明细入口；二级面包屑、同一筛选、返回滚动误差不超过 1px 与入口焦点；480px 列表布局；真实 fork 后 Host readTree 包含独立任务。分页与全量合计由 SQLite/UI 和真实组件对照台验证。
 
@@ -5277,13 +5277,13 @@ SSV01/02/04 使用真实 Electron、Host 与 CLI；SSV03 同时保留 Electron �
 
 历史任务项目移动 `TPM01`～`TPM04` 为 accepted，语义见 [虚拟项目设计 §6](superpowers/specs/2026-09-09-virtual-project-design.md)。任务右键／长按菜单与拖拽共用 Host moveTask；在已有 V1 候选中验收真实历史任务从未分类归入项目、项目间移动、缺目录取消／确认和手机恢复。组织移动保留 cwd，不扩展跨设备迁移或自动批量修复。
 
-官方旧页项目归属回归 `V1-PJ-01`～`V1-PJ-04` 为 accepted，设置、动作与断言见 [官方旧页的新建归属](web-remote-control/v1-connection-modes.md#官方旧页的新建归属)。`web-remote-v1-connections.test.ts` 必须从官方 3.15.2 页实际发送唯一 root／无 root 项目的消息，并读取隔离 tasks-index 的归属和刷新后的正文；填写草稿后返回不能作为创建覆盖。历史 NULL 行修复、远端 Source 无项目创建与更新官方网页版本不在本次范围。
+官方旧页项目归属回归 `V1-PJ-01`～`V1-PJ-04` 为 accepted，设置、动作与断言见 [官方旧页的新建归属](web-remote-control/v1-connection-modes-openzwork.md#官方旧页的新建归属)。`web-remote-v1-connections.test.ts` 必须从官方 3.15.2 页实际发送唯一 root／无 root 项目的消息，并读取隔离 tasks-index 的归属和刷新后的正文；填写草稿后返回不能作为创建覆盖。历史 NULL 行修复、远端 Source 无项目创建与更新官方网页版本不在本次范围。
 
-V1-MA-01～04 为 accepted，触发、断言与边界见 [V1 连接方式](web-remote-control/v1-connection-modes.md#多档案并发与恢复)。其中 V1-MA-02 的 Desktop 候选沿用 `web-remote-v1-connections.test.ts`，补充旧列表在独立 IPC 模拟其他窗口写入后新增档案仍存在的断言。只使用隔离设置与合成档案，不引入真实供应商或公网 relay。
+V1-MA-01～04 为 accepted，触发、断言与边界见 [V1 连接方式](web-remote-control/v1-connection-modes-openzwork.md#多档案并发与恢复)。其中 V1-MA-02 的 Desktop 候选沿用 `web-remote-v1-connections.test.ts`，补充旧列表在独立 IPC 模拟其他窗口写入后新增档案仍存在的断言。只使用隔离设置与合成档案，不引入真实供应商或公网 relay。
 
 ## 上游 v3.17.2 验证记录
 
-以下记录随上游同步保留；OpenZWork 本次验证以 `docs/spec/upstream-v3.17.2-integration.md` 和本次提交证据为准。
+以下记录随上游同步保留；OpenZWork 本次验证以 `docs/openzwork/upstream/v3.17.2-integration.md` 和本次提交证据为准。
 
 2026-10-26 SAT30 / R3A-TASK-06：父会话真实 Bash cd 后启动 Agent，child 持久化稳定 workspace 身份；退出远端 CLI 与桌面后重新打开原 child，检查新进程身份与原历史正文；随后验证 fork 立即打开及再次重启恢复。macOS Electron + Linux SSH Source、受控模型回放通过，两个重启边界均核对 PID/startTicks 换代。CLI 同时覆盖旧 child 错误 cwd 的两代冷恢复、continuous/replayable 及外部身份拒绝。Host 回归覆盖同目录双项目 fork、facts/ACK 两种顺序、重复交接不覆盖移动、历史远端 NULL 迁移和本地 NULL 保留。未覆盖 Windows 原生运行或实体手机，用例继续保持 pending。
 
@@ -5317,7 +5317,7 @@ ensureReady/restart 必须拒绝，原实例不关闭且 generation 不变；正
 
 ## 旧记忆隔离与提示词重新应用（2026-11-06）
 
-规格：[旧 ZCode 记忆隔离](spec/memory-migration.md)、[系统提示词设置](spec/system-prompt-settings.md)。
+规格：[旧 ZCode 记忆隔离](specs/memory-migration-openzwork.md)、[系统提示词设置](specs/system-prompt-settings-openzwork.md)。
 
 | ID        | 前置、动作与断言                                                                                            | 状态与证据层                                        |
 | --------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |

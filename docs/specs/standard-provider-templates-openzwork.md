@@ -10,7 +10,7 @@ OpenZWork 的内置 Provider 目录只提供三个中性协议模板：
 | `standard-openai-chat-completions` | `openai-chat-completions` | OpenAI Chat Completions 兼容服务 |
 | `standard-openai-responses`        | `openai-responses`        | OpenAI Responses 兼容服务        |
 
-模板只预置协议类型和 API Key 接入方式；不预置厂商名称、Base URL、Logo 或模型目录。用户创建 Provider 时选择协议模板，随后填写自己的 endpoint、Key 和模型。模型能力与渠道适配独立维护，见[模型能力匹配](model-capability-matching.md)。
+模板只预置协议类型和 API Key 接入方式；不预置厂商名称、Base URL、Logo 或模型目录。用户创建 Provider 时选择协议模板，随后填写自己的 endpoint、Key 和模型。模型能力与渠道适配独立维护，见[模型能力匹配](model-capability-matching-openzwork.md)。
 
 内置配置允许保留：
 

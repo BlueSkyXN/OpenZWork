@@ -74,7 +74,7 @@
 
 | 项目                           | 落点与状态                                                         |
 | ------------------------------ | ------------------------------------------------------------------ |
-| Spec                           | `docs/spec/cua-placeholder-boundary.md`；已明确规则                |
+| Spec                           | `docs/specs/cua-placeholder-boundary-openzwork.md`；已明确规则                |
 | Case catalog / Coverage matrix | 本文 CUA-001～006；随执行补充证据                                  |
 | Decision backlog               | 无未决产品问题                                                     |
 | E2E handoff                    | 无新交互；保留 UI 缺席与 Browser Use 隔离检查，不生成 CUA 操作用例 |

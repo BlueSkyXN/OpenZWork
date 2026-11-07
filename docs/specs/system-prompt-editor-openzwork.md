@@ -1,8 +1,8 @@
 # 系统提示词编辑器：完整预览、差异与模板
 
-状态：已实现，验证范围见[实施与验收记录](../testing/system-prompt-editor-plan.md)。更新日期：2026-11-04。
+状态：已实现，验证范围见[实施与验收记录](../testing/system-prompt-editor-plan-openzwork.md)。更新日期：2026-11-04。
 
-本规格扩展[系统提示词设置](system-prompt-settings.md)，交付可编辑、可解释、可比较的提示词页面。实施切片、技术边界与验收场景见[实施与验收计划](../testing/system-prompt-editor-plan.md)。原有 SP01–SP15 和[设置页布局规则](settings-visual-polish.md)继续作为回归基线。
+本规格扩展[系统提示词设置](system-prompt-settings-openzwork.md)，交付可编辑、可解释、可比较的提示词页面。实施切片、技术边界与验收场景见[实施与验收计划](../testing/system-prompt-editor-plan-openzwork.md)。原有 SP01–SP15 和[设置页布局规则](settings-visual-polish-openzwork.md)继续作为回归基线。
 
 ## 1. 目标与范围
 

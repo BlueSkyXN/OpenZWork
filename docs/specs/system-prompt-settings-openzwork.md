@@ -1,6 +1,6 @@
 # 系统提示词设置
 
-完整预览、会话实际内容、红绿 diff、动态详情及 Profile／章节模板见[系统提示词编辑器](system-prompt-editor.md)。下文描述设置与运行时合同，新增预览和 Profile 继续复用这些规则。
+完整预览、会话实际内容、红绿 diff、动态详情及 Profile／章节模板见[系统提示词编辑器](system-prompt-editor-openzwork.md)。下文描述设置与运行时合同，新增预览和 Profile 继续复用这些规则。
 
 ## 产品规则
 
@@ -94,4 +94,4 @@ CI：shared schema、UI 编辑器、加载状态和设置导航测试纳入 Core
 
 ## 编辑器布局
 
-默认原文折叠、窄屏章节选择与保存操作区见[设置页布局规格](settings-visual-polish.md)。目录内容与保存/冲突合同保持不变。
+默认原文折叠、窄屏章节选择与保存操作区见[设置页布局规格](settings-visual-polish-openzwork.md)。目录内容与保存/冲突合同保持不变。

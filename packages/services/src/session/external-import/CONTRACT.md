@@ -4,7 +4,7 @@
 
 意图：把外部客户端（Codex CLI/Desktop、Qoder/Qoder CN）的原生会话历史一次性导入为
 OpenZWork 真实会话。claude 来源留在 `claude-native`（历史模块），本模块只承载新来源；
-spec 见 `docs/spec/external-session-import.md`。
+spec 见 `docs/specs/external-session-import-openzwork.md`。
 
 不变量：
 

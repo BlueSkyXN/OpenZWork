@@ -8,8 +8,8 @@ import { parseDocument } from "yaml";
 import { parseOpenZWorkVersion } from "../../scripts/openzwork-version.mjs";
 
 const root = new URL("../../", import.meta.url);
-const registryFile = "docs/upstream/downstream-patches.yaml";
-const specFile = "docs/spec/downstream-patch-registry.md";
+const registryFile = "docs/openzwork/patches/downstream-patches.yaml";
+const specFile = "docs/openzwork/patches/downstream-patch-registry.md";
 const idPattern = /^OW-P\d{3}$/;
 const versionPattern = /^\d+\.\d+\.\d+$/;
 const textFields = ["title", "trigger", "impact", "cause", "evidence", "retire"];

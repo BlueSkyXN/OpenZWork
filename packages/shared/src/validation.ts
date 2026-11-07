@@ -1854,7 +1854,7 @@ export const zcodeTaskMetaSchema = z.object({
   // meta 直接解析自 tasks-index/旧 session 文件；历史 provider 值在此归一为 glm。
   provider: legacyZCodeProviderSchema.optional(),
   migrationSource: zcodeTaskMigrationSourceSchema.optional(),
-  // 外部会话导入指纹（docs/spec/external-session-import.md §2.4）：来源哈希未变时重导按幂等跳过。
+  // 外部会话导入指纹（docs/specs/external-session-import-openzwork.md §2.4）：来源哈希未变时重导按幂等跳过。
   externalImport: z
     .object({
       provider: z.enum(["claude", "codex", "qoder"]),

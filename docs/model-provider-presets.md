@@ -4,7 +4,7 @@
 
 - 内置目录只保留三个中性协议模板：Anthropic Messages、OpenAI Chat Completions、OpenAI Responses。
 - 三个模板不携带厂商 Base URL、Logo、模型目录或能力差异；用户新增 Provider 时填写自己的 endpoint、Key 和模型。
-- 模型能力在独立规则库中按模型 ID、协议和公共 endpoint 匹配，Personal 覆盖优先。当前合同与验收见[模型能力与渠道匹配](spec/model-capability-matching.md)。
+- 模型能力在独立规则库中按模型 ID、协议和公共 endpoint 匹配，Personal 覆盖优先。当前合同与验收见[模型能力与渠道匹配](specs/model-capability-matching-openzwork.md)。
 - 不再在刷新预置供应商时补齐任何第三方厂商模板。
 - codex/claude/gemini 官方 OAuth 不再作为模型供应商设置入口，也不再暴露 model provider service RPC。
 

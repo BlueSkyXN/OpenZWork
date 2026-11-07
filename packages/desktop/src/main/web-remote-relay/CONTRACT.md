@@ -4,7 +4,7 @@
 
 外部 relay 的 SID 与 passHash 一起保存到 CredentialService，key 由规范化 URL、窗口和 `profileId` 生成；旧的无端点记录不迁移、不删除。直连凭据仅驻内存，网关只接受预置身份，鉴权后转发原 V1 消息。网关不保存任务、snapshot 或已接纳输入。手机资源来自 Desktop 同级 web-remote 产物。
 
-Manager 通过公开工厂装配 adapter；transport 独占连接及重连，Host/CLI 独占业务会话。同一窗口多个档案可并发启动，启动授权按窗口 + 档案隔离，待恢复快照按档案 + 工作区逐项认领，避免第一个窗口吞掉其他窗口可恢复的档案。产品规则见 docs/web-remote-control/v1-connection-modes.md。
+Manager 通过公开工厂装配 adapter；transport 独占连接及重连，Host/CLI 独占业务会话。同一窗口多个档案可并发启动，启动授权按窗口 + 档案隔离，待恢复快照按档案 + 工作区逐项认领，避免第一个窗口吞掉其他窗口可恢复的档案。产品规则见 docs/web-remote-control/v1-connection-modes-openzwork.md。
 
 档案变更使用 `updateConnectionProfile` 的单项 upsert/remove 命令；适配器在提交队列内读取最新列表，启动 commit 复用同一路径。禁止调用方用缓存列表覆盖全局档案；删除最后一项报错。取消代次覆盖准备阶段。恢复持久化包含运行项和待恢复项，认领期间保留待恢复记录，成功后转入运行记录。
 

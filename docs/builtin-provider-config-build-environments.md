@@ -1,6 +1,6 @@
 # Built-in Provider 配置双环境打包
 
-标准模板的产品边界见[标准 Provider 模板](./spec/standard-provider-templates.md)；本文继续维护构建与环境转换合同。
+标准模板的产品边界见[标准 Provider 模板](specs/standard-provider-templates-openzwork.md)；本文继续维护构建与环境转换合同。
 
 ## 所有权与边界
 

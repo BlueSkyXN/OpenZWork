@@ -1,4 +1,4 @@
-# OpenZWork 下游补丁清单：字段、状态与维护流程见 docs/spec/downstream-patch-registry.md。
+# OpenZWork 下游补丁清单：字段、状态与维护流程见 docs/openzwork/patches/downstream-patch-registry.md。
 # 由 tests/ci/downstream-patches.test.mjs 校验。
 version: 1
 patches:
@@ -21,7 +21,7 @@ patches:
       - packages/ui/test/mcpStoreMutations.test.ts
     retire: 上游让 Source 用户级目标经远端目录服务读写，原触发场景只调用远端服务。
     refs:
-      - docs/spec/maintenance-fixes-3.16.2.md
+      - docs/openzwork/patches/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/commit/0a1fc56d279fd1001f78387bd81aec1c26767411
 
   - id: OW-P002
@@ -43,7 +43,7 @@ patches:
       - packages/server/test/liteTokenCookie.test.ts
     retire: 上游统一 Cookie 写入与读取的编码，含 +、/、= 的 token 经 Cookie 请求返回 200。
     refs:
-      - docs/spec/maintenance-fixes-3.16.2.md
+      - docs/openzwork/patches/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/commit/872ad960de7ec172591f7e1952f7849229f94521
 
   - id: OW-P003
@@ -65,7 +65,7 @@ patches:
       - packages/services/test/upstreamRetiredPatchHosts.test.ts
     retire: 上游退役该夹具域即视为撤销；若后续恢复真实 Store 生命周期单测，需保留 dispose 前排空刷新队列的语义。
     refs:
-      - docs/spec/provider-provisioning-test-lifecycle.md
+      - docs/openzwork/ci/provider-provisioning-test-lifecycle.md
 
   - id: OW-P004
     title: Windows 显式文件清单未选中 Vitest 相关测试
@@ -85,7 +85,7 @@ patches:
       - scripts/test/affected-engineering-test-cli.test.mjs
     retire: 上游相关文件入口统一路径后，Windows 的显式路径、manifest 和公共 setup 回归通过。
     refs:
-      - docs/spec/maintenance-fixes-3.16.2.md
+      - docs/openzwork/patches/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/39958918968/job/120431657202
       - https://github.com/BlueSkyXN/OpenZWork/pull/31
 
@@ -110,7 +110,7 @@ patches:
       - packages/ui/test/mcpStoreMutations.test.ts
     retire: 上游所有 MCP 写入入口都向调用方返回失败，失败时原界面及持久化标记保持。
     refs:
-      - docs/spec/maintenance-fixes-3.16.2.md
+      - docs/openzwork/patches/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/pull/31
 
   - id: OW-P006
@@ -133,7 +133,7 @@ patches:
       - packages/ui/test/mcpStoreMutations.test.ts
     retire: 上游对 MCP 写回及界面完成动作检查目标代次，切换和重连回归不再污染配置投影。
     refs:
-      - docs/spec/maintenance-fixes-3.16.2.md
+      - docs/openzwork/patches/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/pull/31
 
   - id: OW-P007
@@ -155,7 +155,7 @@ patches:
       - packages/services/test/upstreamRetiredPatchHosts.test.ts
     retire: 上游退役消息流单测域即视为撤销；若恢复 Bot 消息流单测，夹具需默认关闭后台任务并逐例等待 disposeAllAndWait。
     refs:
-      - docs/spec/maintenance-fixes-3.16.2.md
+      - docs/openzwork/patches/maintenance-fixes-3.16.2.md
       - https://github.com/BlueSkyXN/OpenZWork/pull/32
 
   - id: OW-P008
@@ -177,7 +177,7 @@ patches:
       - packages/services/test/upstreamRetiredPatchHosts.test.ts
     retire: 上游退役资源遥测单测域即视为撤销；若恢复该 RPC 遥测单测，夹具必须等待服务端首个监听器注册信号而非固定睡眠。
     refs:
-      - docs/spec/automatic-github-release.md
+      - docs/openzwork/release/automatic-github-release.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40189299521/job/121156666989
       - https://github.com/BlueSkyXN/OpenZWork/pull/36
 
@@ -199,7 +199,7 @@ patches:
       - packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts
     retire: 官方 V1 兼容路径采用包含时间字段的等效去重实现，或该旧协议支持经产品决定撤销；保留重复快照及 bootstrap 一致性回归。
     refs:
-      - docs/web-remote-control/v1-connection-modes.md
+      - docs/web-remote-control/v1-connection-modes-openzwork.md
 
   - id: OW-P010
     title: Bash 编码集成测试外层期限短于真实命令执行期限
@@ -261,7 +261,7 @@ patches:
       - apps/zcode-cli/packages/bootstrap/tests/v4-cold-resume.test.ts
     retire: 上游采用已关闭的基准历史模板或等效隔离准备，恢复断言继续使用真实持久化与原期限，并保留模板隔离和本例身份覆盖回归。
     refs:
-      - docs/spec/ci-cold-resume-fixtures.md
+      - docs/openzwork/ci/ci-cold-resume-fixtures.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40391057695/job/121811837803
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40395050403
 
@@ -283,7 +283,7 @@ patches:
       - packages/zcode-server-cli/test/statusSnapshotPersistence.test.ts
     retire: 上游状态原子替换采用等效有界共享占用处理，最终快照可被停机等待方观测，永久失败与队列顺序回归仍保留。
     refs:
-      - docs/spec/source-server-status-persistence.md
+      - docs/openzwork/patches/source-server-status-persistence.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40398952165/job/121839361291
 
   - id: OW-P014
@@ -304,7 +304,7 @@ patches:
       - packages/zcode-server-cli/test/dataRootLockInitialization.test.ts
     retire: 上游对首次取得与陈旧恢复提供等效互斥，初始化中的记录不会被误回收，真实多进程竞争及 ownerToken 保护回归保留。
     refs:
-      - docs/spec/source-server-lock-acquisition.md
+      - docs/openzwork/patches/source-server-lock-acquisition.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40410464216/job/121879570233
 
   - id: OW-P015
@@ -351,7 +351,7 @@ patches:
       - apps/zcode-cli/packages/adapters/tests/project-config-compatibility.test.ts
     retire: 上游在覆盖前保留旧 MCP 层，项目叠加回归中不同名 server 均可见且同名定义不混合。
     refs:
-      - docs/spec/identity-and-data-isolation.md
+      - docs/specs/identity-and-data-isolation-openzwork.md
 
   - id: OW-P017
     title: 本地远控新建在目录失效时仍交付 Host attachment
@@ -371,7 +371,7 @@ patches:
       - packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts
     retire: 上游新草稿 admission 执行等效目录检查，历史读取与目录恢复回归保持通过。
     refs:
-      - docs/web-remote-control/v1-connection-modes.md
+      - docs/web-remote-control/v1-connection-modes-openzwork.md
 
   - id: OW-P018
     title: 远控工作区改名被目录推送去重吞掉
@@ -391,7 +391,7 @@ patches:
       - packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts
     retire: 上游签名覆盖相同展示字段，单字段变化和重复快照回归通过。
     refs:
-      - docs/web-remote-control/v1-connection-modes.md
+      - docs/web-remote-control/v1-connection-modes-openzwork.md
 
   - id: OW-P019
     title: Windows 创建共享锁目录的短暂 EPERM 中断配置写入
@@ -412,7 +412,7 @@ patches:
       - packages/provider-node/test/standard-provider-config.test.ts
     retire: 上游在同一预算内处理 Windows 创建阶段的临时占用，永久错误与 owner 隔离回归保留，真实双进程写入通过。
     refs:
-      - docs/spec/shared-file-lock-acquisition.md
+      - docs/openzwork/patches/shared-file-lock-acquisition.md
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/40525930576/job/122265384951
 
   - id: OW-P020
@@ -443,7 +443,7 @@ patches:
       - apps/zcode-cli/packages/core/tests/session-history-rewind.test.ts
     retire: 上游在合计前保留三协议缓存字段是否上报，缺项、明确零、多步骤与重试回归通过。
     refs:
-      - docs/spec/native-conversation-metrics.md
+      - docs/specs/native-conversation-metrics-openzwork.md
 
   - id: OW-P021
     title: 主请求缺少 usage 后上下文被发布为零占用

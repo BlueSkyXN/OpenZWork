@@ -742,7 +742,7 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       ],
     ],
     [
-      "docs/web-remote-control/v1-connection-modes.md",
+      "docs/web-remote-control/v1-connection-modes-openzwork.md",
       ["`wss://zcode.z.ai/ws`", "`https://zcode.z.ai/remote/v4`"],
     ],
     ["packages/desktop/test/webRemoteControlDirectGateway.test.ts", ['"wss://zcode.z.ai/ws"']],
@@ -1144,7 +1144,7 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
   // 自动入列，且与 CI 新检出看到的是同一份"全仓"（工作树的 node_modules/dist/未纳管
   // 私目录不会混入）。模式只匹配用户级旧根字面量：~/、$HOME/ 前缀，项目级 <cwd>/.zcode
   // 属用户仓库工作区天然不命中；(?![\w-]) 排除恰好以 .zcode 开头的其他目录名
-  // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/spec/identity-and-data-isolation.md。
+  // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/specs/identity-and-data-isolation-openzwork.md。
   const bannedPattern = /(?:~|\$HOME)\/\.zcode(?![\w-])/;
   // 2026-11-07 补强：仅匹配 ~/$HOME 前缀文本抓不到 join(home, ".zcode") 代码形态，
   // 个性化指令路径与 data-sync 三处用户级错根由此漏网。新增两类模式：
@@ -1157,8 +1157,8 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     "packages/ui/src/i18n/locales/zh-CN.ts",
     "packages/ui/src/i18n/locales/en-US.ts",
     // 政策文本以旧根定义隔离边界；installer 注释引用被替换的旧默认值作为修复依据。
-    "docs/spec/identity-and-data-isolation.md",
-    "docs/spec/memory-migration.md",
+    "docs/specs/identity-and-data-isolation-openzwork.md",
+    "docs/specs/memory-migration-openzwork.md",
     "scripts/zcode-distribution/installer.mjs",
     // restore-legacy-sessions 插件按产品定义读取旧根做用户显式的历史会话恢复（豁免登记见 spec）。
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/skills/restore-legacy-sessions/scripts/restore-conversation.mjs",

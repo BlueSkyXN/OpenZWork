@@ -150,4 +150,4 @@ UI 不调用 active remote services / useWorkspaceServices；仍只调用 Base/l
 
 ## 概览与空态呈现
 
-紧凑概览、空快照和无样本比率的呈现见[设置页布局规格](settings-visual-polish.md)。查询来源与聚合字段保持不变。
+紧凑概览、空快照和无样本比率的呈现见[设置页布局规格](settings-visual-polish-openzwork.md)。查询来源与聚合字段保持不变。

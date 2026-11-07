@@ -1,7 +1,7 @@
 # Builtin Provider 历史维护清单
 
 > 本文保留原调查时点的目标清单与裁决，不代表当前配置或上游实时状态。
-> 2026-10-14 的厂商库存仅是历史记录；2026-10-27 起当前边界见[标准 Provider 模板](../../../spec/standard-provider-templates.md)。
+> 2026-10-14 的厂商库存仅是历史记录；2026-10-27 起当前边界见[标准 Provider 模板](../../../specs/standard-provider-templates-openzwork.md)。
 > 本文表格与删除段本身也有历史差异；不要直接据此恢复或删除模型。
 
 > 历史状态：Todo 76/79 当时的 Builtin 维护基线；后续库存已移到新维护目录。

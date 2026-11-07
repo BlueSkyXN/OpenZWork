@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll as after, test } from "vitest";
 
-// WP-E1c 技能开关回归测试（docs/spec/skills-toggle.md §6 建议项的自动化沉淀）。
+// WP-E1c 技能开关回归测试（docs/specs/skills-toggle-openzwork.md §6 建议项的自动化沉淀）。
 // 覆盖链路：skillsService.setEnabled 落盘 → adapters config schema 解析为 skillOverrides
 // → bootstrap collectDisabledPaths → NodeSkillAdapter 发现期剔除。
 //

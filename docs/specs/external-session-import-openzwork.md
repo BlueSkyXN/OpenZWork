@@ -1,6 +1,6 @@
 # 外部会话多源导入（external session import）
 
-状态：已实现（PR-1）　所有者：conversation（session 域）　关联：`docs/spec/` 无前置；上游为 `packages/services/src/session/claude-native/`（Claude Code 单源导入，保持不动）
+状态：已实现（PR-1）　所有者：conversation（session 域）　关联：无前置 spec；上游为 `packages/services/src/session/claude-native/`（Claude Code 单源导入，保持不动）
 
 ## 1. 背景与目标
 

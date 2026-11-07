@@ -1,6 +1,6 @@
 # 下游补丁清单
 
-[`docs/upstream/downstream-patches.yaml`](../upstream/downstream-patches.yaml) 登记缺陷代码来自上游 ZCode、由 OpenZWork 修复或确认待修复的问题。每个条目记录触发条件、上游核对版本、修复与回归位置，以及撤销条件。清单描述所在提交的代码状态：分支上的修复随合并进入 main，某个 tag 中的清单就是该版本的补丁状态。
+[`docs/openzwork/patches/downstream-patches.yaml`](downstream-patches.yaml) 登记缺陷代码来自上游 ZCode、由 OpenZWork 修复或确认待修复的问题。每个条目记录触发条件、上游核对版本、修复与回归位置，以及撤销条件。清单描述所在提交的代码状态：分支上的修复随合并进入 main，某个 tag 中的清单就是该版本的补丁状态。
 
 ## 登记范围
 

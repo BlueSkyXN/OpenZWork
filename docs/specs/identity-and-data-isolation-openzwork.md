@@ -1,7 +1,7 @@
 # Spec：产品身份与用户级数据根隔离（WP-03）
 
 状态：现行有效。本文落实 `local/implementation-design/WP-03-identity.md` §3 步骤 5 要求的 spec 交付物
-（设计稿原定路径 `docs/openzwork/specs/`，按仓库现行 spec 约定落位 `docs/spec/`，见 DEVELOPMENT_PLAN.md §8 维护记录）。
+（OpenZWork 产品 spec 统一位于 `docs/specs/`，文件名带 `-openzwork` 后缀，见 [OpenZWork 文档索引](../openzwork/README.md)）。
 
 ## 目的与范围
 
@@ -44,8 +44,8 @@ OpenZWork 是 ZCode 开源版本的净化＋特调版。产品必须在用户机
    使用同一个 Node-only HOME 判定工具；设置页不得向 HOME 的原生项目命令目录写入。
 2. **旧记忆隔离验收**：测试可以在隔离目录播种旧 ZCode 数据，验证启动不导入且源文件不变。
    WP-E1a 自动迁移豁免于 2026-11-06 取消；生产启动链不再读取旧记忆树，见
-   [旧 ZCode 记忆隔离](memory-migration.md)。已有 OpenZWork 记忆与历史迁移标记保留原样。
-3. **政策与修复依据文本**：本 spec 与 `docs/spec/memory-migration.md` 以旧根路径定义
+   [旧 ZCode 记忆隔离](memory-migration-openzwork.md)。已有 OpenZWork 记忆与历史迁移标记保留原样。
+3. **政策与修复依据文本**：本 spec 与 `docs/specs/memory-migration-openzwork.md` 以旧根路径定义
    隔离边界本身；`scripts/zcode-distribution/installer.mjs` 的注释引用被替换的旧默认
    目录（`$HOME/.zcode/runtime`）作为默认值变更的修复依据。开发态诊断/重放工具描述的
    是本产品自身的数据位置，不豁免——必须随数据根一并迁移（2026-09-27 已修
@@ -73,7 +73,7 @@ HOME 路径构造点后修复以下用户级落盘位置；项目级 `.zcode/**`
 | E2E 夹具用户级路径（worker-selection、bot-worker、session-creation-resend、VP28 种子 DB） | `.zcode/cli|v2/...` | `.openzwork/cli|v2/...`；VP28 行内旧后端历史路径按数据语义保留 |
 
 不迁移原则：旧 `~/ZCodeProject` 数据、旧清单名（仅读取兼容）、旧后端数据中的历史
-workspace 路径一律保留原样，不做自动迁移；与 [旧 ZCode 记忆隔离](memory-migration.md)
+workspace 路径一律保留原样，不做自动迁移；与 [旧 ZCode 记忆隔离](memory-migration-openzwork.md)
 的显式导入规则一致。WP-03 结构扫描同步补强：新增 HOME join 形态与用户级子目录
 （cli/v2/runtime/server）字面量两类模式，nsh/nsi 入列扫描。
 

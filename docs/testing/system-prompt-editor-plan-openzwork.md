@@ -2,7 +2,7 @@
 
 状态：实现完成，候选待 review；执行覆盖与限制见第 8 节。更新日期：2026-11-04。
 
-产品规则以[系统提示词编辑器设计](../spec/system-prompt-editor.md)为准；保持[原系统提示词设置](../spec/system-prompt-settings.md)的 schema、保存和会话快照合同。本文只登记实施依赖和验收，不把既有 SP 测试结果记作新增功能通过。
+产品规则以[系统提示词编辑器设计](../specs/system-prompt-editor-openzwork.md)为准；保持[原系统提示词设置](../specs/system-prompt-settings-openzwork.md)的 schema、保存和会话快照合同。本文只登记实施依赖和验收，不把既有 SP 测试结果记作新增功能通过。
 
 ## 1. 目标与采用的规则
 

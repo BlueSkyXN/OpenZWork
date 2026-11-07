@@ -18,7 +18,7 @@
 
 ## 正式包与 Release
 
-推送正式 tag 后，CI、Extended 和 Installers 自动验证同一提交，全部成功后由 Release 工作流公开版本。无修订号沿用 `vX.Y.Z-openzwork`；修订版使用 `vX.Y.Z+openzwork.N`。tag、实际 checkout SHA 和根 `package.json` 完整版本必须一致。编号与 Latest 比较见 [发行版本规则](../spec/openzwork-release-version.md)。
+推送正式 tag 后，CI、Extended 和 Installers 自动验证同一提交，全部成功后由 Release 工作流公开版本。无修订号沿用 `vX.Y.Z-openzwork`；修订版使用 `vX.Y.Z+openzwork.N`。tag、实际 checkout SHA 和根 `package.json` 完整版本必须一致。编号与 Latest 比较见 [发行版本规则](../openzwork/release/openzwork-release-version.md)。
 
 根目录 release-it 负责 CHANGELOG、commit/tag/push。修订版先将完整发行号写入 `package.json.version` 并完成验证，再执行 `pnpm release --no-increment`，保留 `+openzwork.N`；已经准备好版本提交时，也可以直接推送对应的正式 tag。无修订号的官方基准升级仍可使用 `pnpm release <version>`。自有修订不使用 `patch` 自动增加官方基准。使用用户自己的 Git 凭据推送；GitHub `GITHUB_TOKEN` 创建的事件通常不会再次触发其它工作流。
 

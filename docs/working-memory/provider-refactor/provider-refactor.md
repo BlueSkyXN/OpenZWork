@@ -1,7 +1,7 @@
 # Provider 重构 Working Memory
 
 > 本目录是上游 Provider 重构的研究与实施历史。文中的 Account Config、账号权益和服务端配置
-> 记录用于解释当时的设计；OpenZWork 当前功能以源码与 `docs/spec/` 为准。日常维护从下方
+> 记录用于解释当时的设计；OpenZWork 当前功能以源码与 [OpenZWork 文档索引](../../openzwork/README.md) 为准。日常维护从下方
 > 内置 Provider 维护入口展开。
 
 > 状态：主体实现收口，进入整体验证

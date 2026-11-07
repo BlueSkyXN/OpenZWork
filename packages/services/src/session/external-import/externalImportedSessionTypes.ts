@@ -5,7 +5,7 @@ import type {
 } from "@zcode/shared";
 
 /**
- * 多来源外部会话导入的统一中间形态（docs/spec/external-session-import.md §2.3）。
+ * 多来源外部会话导入的统一中间形态（docs/specs/external-session-import-openzwork.md §2.3）。
  * claude 来源继续走 claude-native 模块产出 ClaudeNativeImportedSessionSource，
  * 这里承载 codex / qoder 两个新来源，字段语义与 claude-native 保持对齐。
  */
