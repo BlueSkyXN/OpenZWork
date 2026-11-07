@@ -28,11 +28,9 @@
 ### Task 1: Focused navigation and highlight regression tests
 
 **Files:**
-
 - Test: `packages/ui/test/conversationFindSearch.test.ts`
 
 **Interfaces:**
-
 - Consumes: navigation direction/request helpers and highlight scroll-key helper.
 - Produces: failing proof that repeated navigation must create a distinct scroll request even when the index stays `0`.
 
@@ -57,7 +55,6 @@ Expected: FAIL because `TaskFindDialog` has no explicit navigation callbacks and
 ### Task 2: Renderer-local navigation request state
 
 **Files:**
-
 - Modify: `packages/ui/src/App.tsx`
 - Modify: `packages/ui/src/quickpick/TaskFindDialog.tsx`
 - Modify: `packages/ui/src/ChatView/useConversationFindHighlights.ts`
@@ -70,7 +67,6 @@ Expected: FAIL because `TaskFindDialog` has no explicit navigation callbacks and
 - Modify: `packages/ui/src/app-shell/AnimatedSidePanePanel.tsx`
 
 **Interfaces:**
-
 - Produces: `conversationFindNavigationRequestId: number`, `fileChangeFindNavigationRequestId: number`.
 - Produces: `onConversationFindNavigate(query: string, activeIndex: number)` and `onFileChangeFindNavigate(query: string, activeIndex: number)`.
 - Consumes: `navigationRequestId?: number` in `useConversationFindHighlights`.
@@ -111,11 +107,9 @@ Run the Task 1 Vitest command. Expected: all tests pass.
 ### Task 3: Pending Electron regression case
 
 **Files:**
-
 - Create: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts`
 
 **Interfaces:**
-
 - Consumes: WDIO-only `window.__zcodeSessionStoreE2E` bridge.
 - Produces: `CFR` pending manual-review evidence for catalog `CF01`; no provider requests.
 
@@ -134,7 +128,6 @@ Expected: PASS after Task 2. The spec stays pending until human review; do not p
 ### Task 4: Full verification and implementation commit
 
 **Files:**
-
 - Review all modified files above.
 
 - [x] **Step 1: Run focused and required verification**
@@ -161,7 +154,6 @@ git commit -m "fix(ui): refocus repeated chat find navigation"
 ### Task 5: Review follow-up navigation state and keyboard guards
 
 **Files:**
-
 - Create: `packages/ui/src/quickpick/taskFindNavigationState.ts`
 - Create: `packages/ui/test/taskFindNavigationState.test.ts`
 - Modify: `packages/ui/src/App.tsx`
@@ -171,7 +163,6 @@ git commit -m "fix(ui): refocus repeated chat find navigation"
 - Modify: `packages/ui/test/taskFindDialogNavigation.test.ts`
 
 **Interfaces:**
-
 - Produces: `TaskFindNavigationState` with `query`, `activeIndex`, and `navigationRequestId`.
 - Produces: `changeTaskFindSelection(state, query, activeIndex)` that preserves the request id.
 - Produces: `navigateTaskFindSelection(state, query, activeIndex)` that increments the request id even when the index is unchanged.
@@ -200,12 +191,10 @@ Run the Task 5 Vitest command. Expected: all tests pass.
 ### Task 6: CF01 confirmation and CF02 pending manual-review evidence
 
 **Files:**
-
 - Modify: `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-chat-find-refocus.test.ts`
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
 
 **Interfaces:**
-
 - Keeps: the existing provider-free `CFR` pending case and `window.__zcodeSessionStoreE2E` conversation injection.
 - Adds: a case-local Git workspace file with one file-change marker and enough lines to prove scroll-away/re-center behavior.
 - Produces: manual-review evidence for both accepted catalog cases CF01 and CF02 without promotion or replay fixture admission.
@@ -241,14 +230,12 @@ git commit -m "fix(ui): align chat find navigation edge cases"
 ### Task 7: Keep mobile chat find outside the inert surface
 
 **Files:**
-
 - Modify: `packages/ui/test/webRemoteControlMobileShell.test.ts`
 - Modify: `packages/ui/test/workspaceShellRemoteMobileLayout.test.ts`
 - Modify: `packages/ui/src/WebRemoteControlMobileShell.tsx`
 - Modify: `packages/ui/src/app-shell/WorkspaceShellLayout.tsx`
 
 **Interfaces:**
-
 - Adds: `chatOverlay?: ReactNode` to `WebRemoteControlMobileShell`.
 - Keeps: `chatContent` inside the existing `inert` / `aria-hidden` mobile chat surface.
 - Renders: `chatOverlay` as a sibling layer with `data-mobile-chat-overlay="true"`, `z-40`, and pointer events restored for its child content.
@@ -270,13 +257,14 @@ Expected: FAIL because `WebRemoteControlMobileShell` has no `chatOverlay` slot a
 Add the optional prop and render it inside the mobile content wrapper, after the side-pane overlay:
 
 ```tsx
-{
-  chatOverlay ? (
-    <div className="pointer-events-none absolute inset-0 z-40" data-mobile-chat-overlay="true">
-      <div className="pointer-events-auto">{chatOverlay}</div>
-    </div>
-  ) : null;
-}
+{chatOverlay ? (
+  <div
+    className="pointer-events-none absolute inset-0 z-40"
+    data-mobile-chat-overlay="true"
+  >
+    <div className="pointer-events-auto">{chatOverlay}</div>
+  </div>
+) : null}
 ```
 
 For the dedicated mobile branch in `WorkspaceShellLayout`, remove `renderChatFindDialog()` from `chatContent` and pass `chatOverlay={renderChatFindDialog()}` to `WebRemoteControlMobileShell`. Do not change the desktop conversation-panel render site or weaken mobile `inert`.
@@ -288,12 +276,10 @@ Run the Task 7 Vitest command. Expected: both files pass.
 ### Task 8: Respect handled Escape events
 
 **Files:**
-
 - Modify: `packages/ui/test/taskFindDialogNavigation.test.ts`
 - Modify: `packages/ui/src/quickpick/TaskFindDialog.tsx`
 
 **Interfaces:**
-
 - Keeps: unhandled Escape closes chat-placement find.
 - Adds: `event.defaultPrevented === true` prevents the window listener from closing find.
 
@@ -326,13 +312,11 @@ Run the Task 8 Vitest command. Expected: all dialog navigation and Escape cases 
 ### Task 9: Coverage notes, regression gates, and delivery
 
 **Files:**
-
 - Modify: `docs/conversation-session-case-catalog.md`
 - Modify: `docs/testing/conversation-session-e2e-coverage-matrix.md`
 - Review: all Task 7-8 files.
 
 **Interfaces:**
-
 - Records: mobile DOM coverage proves the overlay is outside the inert surface.
 - Preserves: `CFR` under `manual-review/pending`; no promotion, replay fixture, Docker admission, or CI claim.
 

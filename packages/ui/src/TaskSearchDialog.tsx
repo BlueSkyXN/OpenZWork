@@ -104,7 +104,10 @@ export function TaskSearchDialog({
   const [expandedTaskKeys, setExpandedTaskKeys] = useState<Set<string>>(() => new Set());
   const shortcutLabel = formatCommandShortcutLabel("G");
   const trimmedQuery = query.trim();
-  const searchWorkspaceTabs = useMemo(() => (open ? workspaceTabs : []), [open, workspaceTabs]);
+  const searchWorkspaceTabs = useMemo(
+    () => (open ? workspaceTabs : []),
+    [open, workspaceTabs],
+  );
   const taskList = useGlobalTaskList({
     kind: "active",
     // 修复原因：搜索弹窗组件常驻在 App 里，但未打开时不需要 recent/search 结果。
@@ -153,7 +156,9 @@ export function TaskSearchDialog({
 
     for (const task of taskByKey.values()) {
       const taskKey = getTaskResultKey(task);
-      const snippets = hasQuery ? getUniqueTaskSearchSnippets(task) : [];
+      const snippets = hasQuery
+        ? getUniqueTaskSearchSnippets(task)
+        : [];
       if (snippets.length === 0) {
         rows.push({
           key: taskKey,
@@ -359,11 +364,7 @@ export function TaskSearchDialog({
                     ) : null}
                     <CommandItem
                       value={`${title} ${workspaceLabel} ${searchSnippet ?? ""}`}
-                      className={
-                        isExpandRow
-                          ? "min-h-7 items-center px-2.5 text-ui-base"
-                          : quickPickItemClassName
-                      }
+                      className={isExpandRow ? "min-h-7 items-center px-2.5 text-ui-base" : quickPickItemClassName}
                       onSelect={() => selectTask(result)}
                     >
                       {isExpandRow ? (
@@ -378,7 +379,11 @@ export function TaskSearchDialog({
                         </span>
                       ) : (
                         <>
-                          <span className={"flex min-w-0 flex-1 flex-col justify-center py-0.5"}>
+                          <span
+                            className={
+                              "flex min-w-0 flex-1 flex-col justify-center py-0.5"
+                            }
+                          >
                             {searchSnippet ? (
                               <span className="min-w-0 truncate text-ui-base font-normal leading-4 text-foreground-subtle">
                                 <HighlightedMatchText text={searchSnippet} query={query} />

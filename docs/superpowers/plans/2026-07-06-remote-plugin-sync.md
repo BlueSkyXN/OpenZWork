@@ -22,7 +22,6 @@
 ### Task 1: Shared Types And Service Tests
 
 **Files:**
-
 - Create: `packages/shared/src/plugin-sync.ts`
 - Modify: `packages/shared/src/index.ts`
 - Modify: `packages/shared/src/channels.ts`
@@ -30,7 +29,6 @@
 - Create: `packages/services/test/pluginSyncService.test.ts`
 
 **Interfaces:**
-
 - Produces: `PluginSyncCandidate`, `PluginSyncRemoteStatus`, `PluginSyncArchiveExportResult`, `PluginSyncImportResult`.
 - Produces: `IPluginSyncService` with `listLocalUserPluginCandidates`, `listRemoteUserPluginStatuses`, `exportPluginsArchive`, `importPluginsArchive`.
 
@@ -40,7 +38,6 @@
 ### Task 2: Plugin Sync Service
 
 **Files:**
-
 - Create: `packages/services/src/plugin-sync/pluginSyncArchive.ts`
 - Create: `packages/services/src/plugin-sync/pluginSyncPath.ts`
 - Create: `packages/services/src/plugin-sync/pluginSyncService.ts`
@@ -49,7 +46,6 @@
 - Modify: `packages/services/src/accessor.ts`
 
 **Interfaces:**
-
 - Consumes: types and descriptor from Task 1.
 - Produces: `createPluginSyncService(options?: { maxArchiveBytes?: number }): IPluginSyncService`.
 
@@ -62,7 +58,6 @@
 ### Task 3: Remote Service Wiring
 
 **Files:**
-
 - Modify: `packages/desktop/src/host/remoteConnectionServiceCollection.ts`
 - Modify: `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts`
 - Modify: `packages/desktop/src/renderer/src/remoteWorkspaceSessionServices.ts`
@@ -72,7 +67,6 @@
 - Modify: `packages/server/test/remoteDeploy.test.ts`
 
 **Interfaces:**
-
 - Consumes: `pluginSyncService` on `IServiceAccessor`.
 - Produces: remote service collections that expose the remote `pluginSyncService`.
 
@@ -83,7 +77,6 @@
 ### Task 4: UI Dialog And Entry Points
 
 **Files:**
-
 - Create: `packages/ui/src/settings/RemotePluginSyncDialog.tsx`
 - Modify: `packages/ui/src/settings/RemoteSyncActions.tsx`
 - Modify: `packages/ui/src/settings/PluginsSection.tsx`
@@ -94,7 +87,6 @@
 - Create/Modify: UI tests for remote plugin sync and remote sync actions.
 
 **Interfaces:**
-
 - Consumes: `IPluginSyncService`.
 - Produces: SSH-only “sync plugin” action and dialog.
 
@@ -106,7 +98,6 @@
 ### Task 5: Verification And Commit
 
 **Files:**
-
 - All touched files.
 
 - [ ] Run targeted service/UI/desktop/server tests.

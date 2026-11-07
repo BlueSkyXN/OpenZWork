@@ -76,9 +76,7 @@ export function getToolCallErrorText(
   }
 
   const rawOutput = isRecord(toolCall.raw.rawOutput) ? toolCall.raw.rawOutput : null;
-  const rawOutputError = rawOutput
-    ? readFirstStringField(rawOutput, ["error", "message"])
-    : undefined;
+  const rawOutputError = rawOutput ? readFirstStringField(rawOutput, ["error", "message"]) : undefined;
   if (rawOutputError) {
     return rawOutputError;
   }

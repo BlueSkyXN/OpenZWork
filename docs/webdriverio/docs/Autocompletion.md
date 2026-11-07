@@ -29,8 +29,12 @@ If you use vanilla JavaScript and want to have proper type support you have to c
 
 ```json title="jsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework"]
-  }
+    "compilerOptions": {
+        "types": [
+            "node",
+            "@wdio/globals/types",
+            "@wdio/mocha-framework"
+        ]
+    }
 }
 ```

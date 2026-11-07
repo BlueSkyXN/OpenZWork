@@ -40,8 +40,14 @@
         "method": "POST",
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_BUILT_IN_SUBAGENT_GENERAL_PARENT"],
-        "bodyIncludes": ["E2E_BUILT_IN_SUBAGENT_GENERAL_PARENT", "general-purpose"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "bodyIncludes": [
+          "E2E_BUILT_IN_SUBAGENT_GENERAL_PARENT",
+          "general-purpose"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -72,7 +78,10 @@
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_BUILT_IN_SUBAGENT_GENERAL_CHILD"],
         "bodyIncludes": ["E2E_BUILT_IN_SUBAGENT_GENERAL_CHILD"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -102,7 +111,10 @@
           "E2E_BUILT_IN_SUBAGENT_GENERAL_PARENT",
           "E2E_BUILT_IN_SUBAGENT_GENERAL_CHILD_OK"
         ],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -135,7 +147,10 @@
           "CRITICAL: Respond with TEXT ONLY",
           "\"stream\":true"
         ],
-        "bodyExcludes": ["Generate a concise title", "E2E_BUILT_IN_SUBAGENT_EXPLORE_PARENT"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "E2E_BUILT_IN_SUBAGENT_EXPLORE_PARENT"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -161,8 +176,14 @@
         "method": "POST",
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_BUILT_IN_SUBAGENT_EXPLORE_PARENT"],
-        "bodyIncludes": ["E2E_BUILT_IN_SUBAGENT_EXPLORE_PARENT", "Explore"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "bodyIncludes": [
+          "E2E_BUILT_IN_SUBAGENT_EXPLORE_PARENT",
+          "Explore"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -192,7 +213,10 @@
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_BUILT_IN_SUBAGENT_EXPLORE_CHILD"],
         "bodyIncludes": ["E2E_BUILT_IN_SUBAGENT_EXPLORE_CHILD"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -253,7 +277,10 @@
           "E2E_BUILT_IN_SUBAGENT_EXPLORE_PARENT",
           "E2E_BUILT_IN_SUBAGENT_EXPLORE_CHILD_OK"
         ],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,

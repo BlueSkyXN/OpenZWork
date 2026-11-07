@@ -223,10 +223,7 @@ describe(`${CASE_MARKER}: API Key 代表（ZAPI / GLM-5.3）经 Provisioning 到
       workspacePath: workspaceA,
     });
     // 同步后的远端 Personal 配置必须含该 provider 与 baseURL；secret 不落入本记录。
-    const remoteConfig = await runSSHCommand(
-      config,
-      'cat "$HOME/.openzwork/v2/provider_config.json"',
-    );
+    const remoteConfig = await runSSHCommand(config, 'cat "$HOME/.openzwork/v2/provider_config.json"');
     expect(remoteConfig.stdout).toContain(LIVE_PROVIDER_NAME);
     expect(remoteConfig.stdout).toContain(seeded.baseURL);
     facts.remoteConfigHasProvider = true;

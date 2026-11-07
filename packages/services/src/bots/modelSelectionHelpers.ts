@@ -1,4 +1,6 @@
-import { type ZCodeProvider } from "@zcode/shared";
+import {
+  type ZCodeProvider,
+} from "@zcode/shared";
 
 const BOT_NATIVE_MODEL_PROVIDER_PREFIX = "native:";
 

@@ -12,15 +12,12 @@ To setup WebdriverIO within your SolidJS project, follow the [instructions](/doc
 ```js
 // wdio.conf.js
 export const config = {
-  // ...
-  runner: [
-    "browser",
-    {
-      preset: "solid",
-    },
-  ],
-  // ...
-};
+    // ...
+    runner: ['browser', {
+        preset: 'solid'
+    }],
+    // ...
+}
 ```
 
 :::info
@@ -46,10 +43,22 @@ npx wdio run ./wdio.conf.js
 Given you have the following SolidJS component:
 
 ```html title="./components/Component.tsx"
-import { createSignal } from 'solid-js' function App() { const [theme, setTheme] =
-createSignal('light') const toggleTheme = () => { const nextTheme = theme() === 'light' ? 'dark' :
-'light' setTheme(nextTheme) } return
-<button onClick="{toggleTheme}">Current theme: {theme()}</button> } export default App
+import { createSignal } from 'solid-js'
+
+function App() {
+    const [theme, setTheme] = createSignal('light')
+
+    const toggleTheme = () => {
+        const nextTheme = theme() === 'light' ? 'dark' : 'light'
+        setTheme(nextTheme)
+    }
+
+    return <button onClick={toggleTheme}>
+        Current theme: {theme()}
+    </button>
+}
+
+export default App
 ```
 
 In your test use the `render` method from `solid-js/web` to attach the component to the test page. To interact with the component we recommend to use WebdriverIO commands as they behave more close to actual user interactions, e.g.:
@@ -86,3 +95,4 @@ describe('Solid Component Testing', () => {
 ```
 
 You can find a full example of a WebdriverIO component test suite for SolidJS in our [example repository](https://github.com/webdriverio/component-testing-examples/tree/main/solidjs-typescript-vite).
+

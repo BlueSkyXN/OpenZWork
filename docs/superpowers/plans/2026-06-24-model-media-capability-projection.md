@@ -78,15 +78,12 @@
 ### Task 1: Add Core Media Capability Projection
 
 **Files:**
-
 - Create: `apps/zcode-cli/packages/core/src/runtime/helpers/media-capability.ts`
 - Modify: `apps/zcode-cli/packages/core/src/runtime/helpers/index.ts`
 - Test: `apps/zcode-cli/packages/core/tests/media-capability.test.ts`
 
 **Interfaces:**
-
 - Produces:
-
   ```ts
   export interface ModelInputMediaCapabilities {
     supportsImages?: boolean;
@@ -113,7 +110,6 @@
     options: { event: string; message: string; model: string },
   ): void;
   ```
-
 - Consumes: `modelMessageContentToText`, `traceContextToLogContext`, `ModelInputMessage`, `ModelMessageContentBlock`.
 
 - [ ] **Step 1: Write failing tests**
@@ -245,7 +241,6 @@
 ### Task 2: Apply Projection in Runtime Provider Requests
 
 **Files:**
-
 - Modify: `apps/zcode-cli/packages/core/src/runtime/types.ts`
 - Modify: `apps/zcode-cli/packages/core/src/runtime/methods/config.ts`
 - Modify: `apps/zcode-cli/packages/core/src/runtime/methods/model.ts`
@@ -253,7 +248,6 @@
 - Test: `apps/zcode-cli/packages/core/tests/media-budget.test.ts`
 
 **Interfaces:**
-
 - Consumes: `ModelInputMediaCapabilities`, `projectMessagesForMediaCapabilities`, `logMediaCapabilityProjection`.
 - Produces: `AgentRuntimeConfig.modelInputMediaCapabilities?: ModelInputMediaCapabilities`.
 
@@ -398,7 +392,6 @@
 ### Task 3: Resolve Runtime Capabilities from Model Catalog
 
 **Files:**
-
 - Modify: `apps/zcode-cli/packages/contracts/src/model/catalog.ts`
 - Modify: `packages/shared/src/zcode-protocol/index.ts`
 - Modify: `apps/zcode-cli/packages/bootstrap/src/app/model-selection.ts`
@@ -409,7 +402,6 @@
 - Test: `apps/zcode-cli/packages/bootstrap/tests/runtime-config.test.ts`
 
 **Interfaces:**
-
 - Produces:
   ```ts
   export function resolveRuntimeModelInputCapabilities(
@@ -525,7 +517,6 @@
 ### Task 4: Wire Adapter-Side Capability Guard
 
 **Files:**
-
 - Modify: `apps/zcode-cli/packages/bootstrap/src/model-config.ts`
 - Modify: `apps/zcode-cli/packages/adapters/src/model/registry.ts`
 - Modify: `apps/zcode-cli/packages/adapters/src/model/runner-options.ts`
@@ -536,9 +527,7 @@
 - Test: `apps/zcode-cli/packages/adapters/tests/model-transform-tool-media.test.ts`
 
 **Interfaces:**
-
 - Produces:
-
   ```ts
   export interface AiSdkModelInputMediaCapabilities {
     supportsImages?: boolean;
@@ -553,7 +542,6 @@
     inputMediaCapabilities?: AiSdkModelInputMediaCapabilities;
   }
   ```
-
 - Consumes: capability resolver from bootstrap/model-selection or equivalent local registry config input.
 
 - [ ] **Step 1: Write failing adapter tests**
@@ -652,12 +640,10 @@
 ### Task 5: End-to-End Request Shape Verification
 
 **Files:**
-
 - Modify if needed: `apps/zcode-cli/packages/core/tests/runtime-tool-loop.test.ts`
 - Modify if needed: `apps/zcode-cli/packages/core/tests/runtime-trace.test.ts`
 
 **Interfaces:**
-
 - Consumes: runtime projection from Task 2 and catalog capability from Task 3.
 - Produces: test evidence that user attachment media and tool-result media both disappear from text-only provider requests.
 
@@ -688,7 +674,6 @@
 ### Task 6: Full Validation
 
 **Files:**
-
 - No source files expected unless previous tasks expose integration failures.
 
 - [ ] **Step 1: Run package-focused tests**

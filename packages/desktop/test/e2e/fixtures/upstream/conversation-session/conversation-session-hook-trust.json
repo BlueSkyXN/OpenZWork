@@ -16,8 +16,12 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_HOOK_TRUST: reply with ok"],
-        "bodyExcludes": ["Generate a concise title"]
+        "bodyIncludes": [
+          "E2E_HOOK_TRUST: reply with ok"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -42,8 +46,12 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_HOOK_TRUST second prompt: reply with ok"],
-        "bodyExcludes": ["Generate a concise title"]
+        "bodyIncludes": [
+          "E2E_HOOK_TRUST second prompt: reply with ok"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -68,8 +76,12 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_HOOK_TRUST new task: reply with ok"],
-        "bodyExcludes": ["Generate a concise title"]
+        "bodyIncludes": [
+          "E2E_HOOK_TRUST new task: reply with ok"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title"
+        ]
       },
       "response": {
         "statusCode": 200,

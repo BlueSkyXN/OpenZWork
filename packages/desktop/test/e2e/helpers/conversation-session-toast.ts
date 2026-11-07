@@ -7,7 +7,9 @@ export async function waitForToastContaining(
   await browser.waitUntil(
     async () => {
       latest = await getToastMessages();
-      return expectedTexts.some((text) => latest.some((message) => message.includes(text)));
+      return expectedTexts.some((text) =>
+        latest.some((message) => message.includes(text)),
+      );
     },
     {
       timeout: 5000,

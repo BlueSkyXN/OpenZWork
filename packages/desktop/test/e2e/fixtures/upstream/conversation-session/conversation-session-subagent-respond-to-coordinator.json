@@ -44,8 +44,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["CRITICAL: Respond with TEXT ONLY", "E2E_INCOMING_TEXT"],
-        "bodyExcludes": ["E2E_INCOMING_TEXT_COMPACT_SUMMARY"]
+        "bodyIncludes": [
+          "CRITICAL: Respond with TEXT ONLY",
+          "E2E_INCOMING_TEXT"
+        ],
+        "bodyExcludes": [
+          "E2E_INCOMING_TEXT_COMPACT_SUMMARY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -68,8 +73,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_INCOMING_TEXT_COLD:"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TEXT_COLD:"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -125,8 +135,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["CRITICAL: Respond with TEXT ONLY", "E2E_INCOMING_TOOL"],
-        "bodyExcludes": ["E2E_INCOMING_TOOL_COMPACT_SUMMARY"]
+        "bodyIncludes": [
+          "CRITICAL: Respond with TEXT ONLY",
+          "E2E_INCOMING_TOOL"
+        ],
+        "bodyExcludes": [
+          "E2E_INCOMING_TOOL_COMPACT_SUMMARY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -149,8 +164,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_INCOMING_TOOL_COLD:"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TOOL_COLD:"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -178,7 +198,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_INCOMING_"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_INCOMING_"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -199,7 +222,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_SUBAGENT_RESPOND_TO_COORDINATOR"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_SUBAGENT_RESPOND_TO_COORDINATOR"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -223,14 +249,18 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_SUBAGENT_RESPOND_TO_COORDINATOR"],
+        "bodyIncludes": [
+          "E2E_SUBAGENT_RESPOND_TO_COORDINATOR"
+        ],
         "bodyExcludes": [
           "Async agent launched successfully",
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["E2E_SUBAGENT_RESPOND_TO_COORDINATOR"]
+        "lastUserMessageIncludes": [
+          "E2E_SUBAGENT_RESPOND_TO_COORDINATOR"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -270,7 +300,9 @@
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageExcludes": ["<task-notification>"]
+        "lastUserMessageExcludes": [
+          "<task-notification>"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -299,7 +331,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_SUBAGENT_COORDINATOR_QUESTION_PAYLOAD", "sent to its active turn"],
+        "bodyIncludes": [
+          "E2E_SUBAGENT_COORDINATOR_QUESTION_PAYLOAD",
+          "sent to its active turn"
+        ],
         "bodyExcludes": [
           "<subagent-message>",
           "Generate a concise title",
@@ -328,7 +363,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_SUBAGENT_CHILD_LONG_TASK"],
+        "bodyIncludes": [
+          "E2E_SUBAGENT_CHILD_LONG_TASK"
+        ],
         "bodyExcludes": [
           "E2E_SUBAGENT_COORDINATOR_QUESTION_PAYLOAD",
           "E2E_SUBAGENT_CHILD_BASH_RELEASED",
@@ -336,7 +373,9 @@
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["E2E_SUBAGENT_CHILD_LONG_TASK"]
+        "lastUserMessageIncludes": [
+          "E2E_SUBAGENT_CHILD_LONG_TASK"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -374,7 +413,9 @@
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["E2E_SUBAGENT_CHILD_BASH_RELEASED"]
+        "lastUserMessageIncludes": [
+          "E2E_SUBAGENT_CHILD_BASH_RELEASED"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -447,7 +488,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_SUBAGENT_CONTINUED_WORK_TOOL_DONE"],
+        "bodyIncludes": [
+          "E2E_SUBAGENT_CONTINUED_WORK_TOOL_DONE"
+        ],
         "bodyExcludes": [
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
@@ -485,8 +528,12 @@
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["<subagent-message>"],
-        "lastUserMessageExcludes": ["<task-notification>"]
+        "lastUserMessageIncludes": [
+          "<subagent-message>"
+        ],
+        "lastUserMessageExcludes": [
+          "<task-notification>"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -509,7 +556,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["<task-notification>", "E2E_SUBAGENT_FINAL_RESULT"],
+        "bodyIncludes": [
+          "<task-notification>",
+          "E2E_SUBAGENT_FINAL_RESULT"
+        ],
         "bodyExcludes": [
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
@@ -542,7 +592,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["You are now acting as the memory extraction subagent"]
+        "bodyIncludes": [
+          "You are now acting as the memory extraction subagent"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -565,14 +617,19 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_TASK_OUTPUT_TOOL_CARD", "agentId: agent_"],
+        "bodyIncludes": [
+          "E2E_TASK_OUTPUT_TOOL_CARD",
+          "agentId: agent_"
+        ],
         "bodyExcludes": [
           "<retrieval_status>",
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["E2E_TASK_OUTPUT_TOOL_CARD"]
+        "lastUserMessageIncludes": [
+          "E2E_TASK_OUTPUT_TOOL_CARD"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -616,7 +673,9 @@
           "<retrieval_status>success</retrieval_status>",
           "E2E_SUBAGENT_FINAL_RESULT"
         ],
-        "lastUserMessageExcludes": ["E2E_TASK_OUTPUT_TOOL_CARD_DONE"]
+        "lastUserMessageExcludes": [
+          "E2E_TASK_OUTPUT_TOOL_CARD_DONE"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -639,7 +698,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_TOOL_RENDERER_ERROR_CARDS"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_TOOL_RENDERER_ERROR_CARDS"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -662,14 +724,18 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_TOOL_RENDERER_ERROR_CARDS"],
+        "bodyIncludes": [
+          "E2E_TOOL_RENDERER_ERROR_CARDS"
+        ],
         "bodyExcludes": [
           "Async agent launched successfully",
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["E2E_TOOL_RENDERER_ERROR_CARDS"]
+        "lastUserMessageIncludes": [
+          "E2E_TOOL_RENDERER_ERROR_CARDS"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -703,7 +769,9 @@
           "E2E_RESPOND_ERROR_CHILD",
           "Async agent launched successfully"
         ],
-        "lastUserMessageIncludes": ["Async agent launched successfully"],
+        "lastUserMessageIncludes": [
+          "Async agent launched successfully"
+        ],
         "bodyExcludes": [
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
@@ -731,7 +799,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_RESPOND_ERROR_CHILD"],
+        "bodyIncludes": [
+          "E2E_RESPOND_ERROR_CHILD"
+        ],
         "bodyExcludes": [
           "E2E_ERROR_CHILD_RELEASED",
           "InputValidationError: RespondToCoordinator",
@@ -739,7 +809,9 @@
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["E2E_RESPOND_ERROR_CHILD"]
+        "lastUserMessageIncludes": [
+          "E2E_RESPOND_ERROR_CHILD"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -766,7 +838,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_RESPOND_ERROR_CHILD", "E2E_ERROR_CHILD_RELEASED"],
+        "bodyIncludes": [
+          "E2E_RESPOND_ERROR_CHILD",
+          "E2E_ERROR_CHILD_RELEASED"
+        ],
         "bodyExcludes": [
           "InputValidationError: RespondToCoordinator",
           "Generate a concise title",
@@ -833,7 +908,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["<task-notification>", "E2E_RESPOND_ERROR_CHILD_DONE"],
+        "bodyIncludes": [
+          "<task-notification>",
+          "E2E_RESPOND_ERROR_CHILD_DONE"
+        ],
         "lastUserMessageIncludes": [
           "<task-notification>",
           "E2E_RESPOND_ERROR_CHILD_DONE",
@@ -867,14 +945,19 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_TASK_OUTPUT_ERROR_CARD", "task_e2e_missing"],
+        "bodyIncludes": [
+          "E2E_TASK_OUTPUT_ERROR_CARD",
+          "task_e2e_missing"
+        ],
         "bodyExcludes": [
           "No task found with ID: task_e2e_missing",
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
           "Verify whether the active session goal"
         ],
-        "lastUserMessageIncludes": ["E2E_TASK_OUTPUT_ERROR_CARD"]
+        "lastUserMessageIncludes": [
+          "E2E_TASK_OUTPUT_ERROR_CARD"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -906,7 +989,9 @@
           "toolu_e2e_error_task_output",
           "<tool_use_error>No task found with ID: task_e2e_missing</tool_use_error>"
         ],
-        "lastUserMessageIncludes": ["No task found with ID: task_e2e_missing"],
+        "lastUserMessageIncludes": [
+          "No task found with ID: task_e2e_missing"
+        ],
         "bodyExcludes": [
           "Generate a concise title",
           "CRITICAL: Respond with TEXT ONLY",
@@ -934,7 +1019,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL"
+        ],
         "bodyExcludes": [
           "Async agent launched successfully",
           "Generate a concise title",
@@ -942,7 +1029,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TOOL:"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TOOL:"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -971,7 +1060,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL_CHILD"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL_CHILD"
+        ],
         "bodyExcludes": [
           "E2E_INCOMING_TOOL_CHILD_RELEASED",
           "E2E_INCOMING_TOOL_QUESTION",
@@ -980,7 +1071,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TOOL_CHILD:"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TOOL_CHILD:"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -1007,7 +1100,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL", "Async agent launched successfully"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL",
+          "Async agent launched successfully"
+        ],
         "bodyExcludes": [
           "sent to its active turn",
           "Generate a concise title",
@@ -1043,7 +1139,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL", "sent to its active turn"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL",
+          "sent to its active turn"
+        ],
         "bodyExcludes": [
           "<subagent-message>\n<agent-id>",
           "E2E_INCOMING_TOOL_RESUME",
@@ -1163,7 +1262,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL_CHILD_FINAL_BARRIER_DONE"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL_CHILD_FINAL_BARRIER_DONE"
+        ],
         "bodyExcludes": [
           "<subagent-message>\n<agent-id>",
           "E2E_INCOMING_TOOL_RESUME_BODY",
@@ -1265,7 +1366,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL_RESUME:"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL_RESUME:"
+        ],
         "bodyExcludes": [
           "E2E_INCOMING_TOOL_RESUME_BODY",
           "Generate a concise title",
@@ -1273,7 +1376,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TOOL_RESUME:"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TOOL_RESUME:"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -1301,7 +1406,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL_RESUME_BODY"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL_RESUME_BODY"
+        ],
         "bodyExcludes": [
           "<subagent-message>\n<agent-id>",
           "E2E_INCOMING_TOOL_RESUMED_CHILD_DONE",
@@ -1310,7 +1417,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TOOL_RESUME_BODY"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TOOL_RESUME_BODY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -1333,7 +1442,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TOOL_RESUME:", "E2E_INCOMING_TOOL_RESUME_BODY"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TOOL_RESUME:",
+          "E2E_INCOMING_TOOL_RESUME_BODY"
+        ],
         "bodyExcludes": [
           "E2E_INCOMING_TOOL_RESUMED_OK",
           "E2E_INCOMING_TOOL_RESUMED_CHILD_DONE",
@@ -1395,7 +1507,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT"
+        ],
         "bodyExcludes": [
           "Async agent launched successfully",
           "Generate a concise title",
@@ -1403,7 +1517,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TEXT:"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TEXT:"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -1432,7 +1548,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT_CHILD"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT_CHILD"
+        ],
         "bodyExcludes": [
           "E2E_INCOMING_TEXT_CHILD_RELEASED",
           "E2E_INCOMING_TEXT_QUESTION",
@@ -1441,7 +1559,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TEXT_CHILD:"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TEXT_CHILD:"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -1468,7 +1588,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT", "Async agent launched successfully"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT",
+          "Async agent launched successfully"
+        ],
         "bodyExcludes": [
           "sent to its active turn",
           "Generate a concise title",
@@ -1504,7 +1627,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT", "sent to its active turn"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT",
+          "sent to its active turn"
+        ],
         "bodyExcludes": [
           "<subagent-message>\n<agent-id>",
           "E2E_INCOMING_TEXT_RESUME",
@@ -1620,7 +1746,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT_CHILD_FINAL_BARRIER_DONE"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT_CHILD_FINAL_BARRIER_DONE"
+        ],
         "bodyExcludes": [
           "<subagent-message>\n<agent-id>",
           "E2E_INCOMING_TEXT_RESUME_BODY",
@@ -1718,7 +1846,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT_RESUME:"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT_RESUME:"
+        ],
         "bodyExcludes": [
           "E2E_INCOMING_TEXT_RESUME_BODY",
           "Generate a concise title",
@@ -1726,7 +1856,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TEXT_RESUME:"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TEXT_RESUME:"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -1754,7 +1886,9 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT_RESUME_BODY"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT_RESUME_BODY"
+        ],
         "bodyExcludes": [
           "<subagent-message>\n<agent-id>",
           "E2E_INCOMING_TEXT_RESUMED_CHILD_DONE",
@@ -1763,7 +1897,9 @@
           "Verify whether the active session goal",
           "You are now acting as the memory extraction subagent"
         ],
-        "lastUserMessageIncludes": ["E2E_INCOMING_TEXT_RESUME_BODY"]
+        "lastUserMessageIncludes": [
+          "E2E_INCOMING_TEXT_RESUME_BODY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -1786,7 +1922,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["E2E_INCOMING_TEXT_RESUME:", "E2E_INCOMING_TEXT_RESUME_BODY"],
+        "bodyIncludes": [
+          "E2E_INCOMING_TEXT_RESUME:",
+          "E2E_INCOMING_TEXT_RESUME_BODY"
+        ],
         "bodyExcludes": [
           "E2E_INCOMING_TEXT_RESUMED_OK",
           "E2E_INCOMING_TEXT_RESUMED_CHILD_DONE",

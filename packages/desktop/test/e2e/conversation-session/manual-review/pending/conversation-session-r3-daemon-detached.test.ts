@@ -57,8 +57,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
     });
     const core0 = await readRemoteCoreIdentity(prepared.config, CASE_MARKER);
     const status0 = JSON.parse(
-      (await runSSHCommand(prepared.config, 'cat "$HOME/.openzwork/server/run/status.json"'))
-        .stdout,
+      (await runSSHCommand(prepared.config, 'cat "$HOME/.openzwork/server/run/status.json"')).stdout,
     ) as { serviceRegistered: boolean; state: string };
     // 容器没有 systemd user manager：只能是 detached daemon，且不得伪装成已注册服务。
     expect(status0.serviceRegistered).toBe(false);
@@ -151,8 +150,7 @@ describe(`${CASE_MARKER}: 无 user service manager 目标的 daemon 生命周期
     expect(core1.supervisorPid).not.toBe(core0.supervisorPid);
     expect(core1.state).toBe("ready");
     const status1 = JSON.parse(
-      (await runSSHCommand(prepared.config, 'cat "$HOME/.openzwork/server/run/status.json"'))
-        .stdout,
+      (await runSSHCommand(prepared.config, 'cat "$HOME/.openzwork/server/run/status.json"')).stdout,
     ) as { serviceRegistered: boolean };
     expect(status1.serviceRegistered).toBe(false);
     facts.core1 = core1;

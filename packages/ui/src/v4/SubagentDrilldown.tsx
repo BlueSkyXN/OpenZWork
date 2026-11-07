@@ -54,7 +54,9 @@ export const SubagentDrilldown = memo(function SubagentDrilldown({
   const sourceRows = state.snapshot?.rows.window ?? [];
   const rows = sourceRows.filter(isSubagentOutputRow);
   const visibleRows =
-    rows.length > SUBAGENT_DRILLDOWN_MAX_ROWS ? rows.slice(-SUBAGENT_DRILLDOWN_MAX_ROWS) : rows;
+    rows.length > SUBAGENT_DRILLDOWN_MAX_ROWS
+      ? rows.slice(-SUBAGENT_DRILLDOWN_MAX_ROWS)
+      : rows;
   const hiddenCount = rows.length - visibleRows.length;
   const statusText =
     state.status === "connecting"
@@ -87,7 +89,9 @@ export const SubagentDrilldown = memo(function SubagentDrilldown({
           {intl.formatMessage({ id: "chat.toolCall.agent.output" })}
         </h4>
         {statusText ? (
-          <span className="min-w-0 truncate text-ui-sm text-foreground-subtle">{statusText}</span>
+          <span className="min-w-0 truncate text-ui-sm text-foreground-subtle">
+            {statusText}
+          </span>
         ) : null}
       </div>
       {visibleRows.length === 0 ? (
@@ -107,7 +111,11 @@ export const SubagentDrilldown = memo(function SubagentDrilldown({
             </div>
           ) : null}
           {visibleRows.map((row) => (
-            <ConversationRowView key={row.rowId} row={row} context={drilldownContext} />
+            <ConversationRowView
+              key={row.rowId}
+              row={row}
+              context={drilldownContext}
+            />
           ))}
         </div>
       )}

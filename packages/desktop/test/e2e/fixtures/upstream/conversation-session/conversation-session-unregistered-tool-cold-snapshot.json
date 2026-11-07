@@ -17,7 +17,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_UNREGISTERED_TOOL_COLD_SNAPSHOT"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_UNREGISTERED_TOOL_COLD_SNAPSHOT"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -44,8 +47,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_UNREGISTERED_TOOL_COLD_SNAPSHOT"],
-        "bodyExcludes": ["Generate a concise title", "No such tool available: Grep"]
+        "lastUserMessageIncludes": [
+          "E2E_UNREGISTERED_TOOL_COLD_SNAPSHOT"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "No such tool available: Grep"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -623,7 +631,9 @@
           "toolu_e2e_unregistered_grep_61",
           "No such tool available: Grep"
         ],
-        "bodyExcludes": ["Generate a concise title"]
+        "bodyExcludes": [
+          "Generate a concise title"
+        ]
       },
       "response": {
         "statusCode": 200,

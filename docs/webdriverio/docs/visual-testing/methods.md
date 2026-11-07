@@ -19,14 +19,14 @@ Saves an image of an element.
 
 ```ts
 await browser.saveElement(
-  // element
-  await $("#element-selector"),
-  // tag
-  "your-reference",
-  // saveElementOptions
-  {
-    // ...
-  },
+    // element
+    await $('#element-selector'),
+    // tag
+    'your-reference',
+    // saveElementOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -39,15 +39,15 @@ await browser.saveElement(
 
 #### Parameters
 
-- **`element`:**
-  - **Mandatory:** Yes
-  - **Type:** WebdriverIO Element
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`saveElementOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Save Options](./method-options#save-options)
+-   **`element`:**
+    -   **Mandatory:** Yes
+    -   **Type:** WebdriverIO Element
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`saveElementOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Save Options](./method-options#save-options)
 
 #### Output:
 
@@ -61,12 +61,12 @@ Saves an image of a viewport.
 
 ```ts
 await browser.saveScreen(
-  // tag
-  "your-reference",
-  // saveScreenOptions
-  {
-    // ...
-  },
+    // tag
+    'your-reference',
+    // saveScreenOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -78,13 +78,12 @@ await browser.saveScreen(
 - Mobile Native Apps
 
 #### Parameters
-
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`saveScreenOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Save Options](./method-options#save-options)
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`saveScreenOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Save Options](./method-options#save-options)
 
 #### Output:
 
@@ -98,12 +97,12 @@ Saves an image of the complete screen.
 
 ```ts
 await browser.saveFullPageScreen(
-  // tag
-  "your-reference",
-  // saveFullPageScreenOptions
-  {
-    // ...
-  },
+    // tag
+    'your-reference',
+    // saveFullPageScreenOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -113,13 +112,12 @@ await browser.saveFullPageScreen(
 - Mobile Browsers
 
 #### Parameters
-
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`saveFullPageScreenOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Save Options](./method-options#save-options)
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`saveFullPageScreenOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Save Options](./method-options#save-options)
 
 #### Output:
 
@@ -133,12 +131,12 @@ Saves an image of the complete screen with the tabbable lines and dots.
 
 ```ts
 await browser.saveTabbablePage(
-  // tag
-  "your-reference",
-  // saveTabbableOptions
-  {
-    // ...
-  },
+    // tag
+    'your-reference',
+    // saveTabbableOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -147,13 +145,12 @@ await browser.saveTabbablePage(
 - Desktop Browsers
 
 #### Parameters
-
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`saveTabbableOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Save Options](./method-options#save-options)
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`saveTabbableOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Save Options](./method-options#save-options)
 
 #### Output:
 
@@ -184,14 +181,14 @@ Compare an image of an element against a baseline image.
 
 ```ts
 await browser.checkElement(
-  // element
-  "#element-selector",
-  // tag
-  "your-reference",
-  // checkElementOptions
-  {
-    // ...
-  },
+    // element
+    '#element-selector',
+    // tag
+    'your-reference',
+    // checkElementOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -203,16 +200,15 @@ await browser.checkElement(
 - Mobile Native Apps
 
 #### Parameters
-
-- **`element`:**
-  - **Mandatory:** Yes
-  - **Type:** WebdriverIO Element
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`checkElementOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
+-   **`element`:**
+    -   **Mandatory:** Yes
+    -   **Type:** WebdriverIO Element
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`checkElementOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
 
 #### Output:
 
@@ -226,12 +222,12 @@ Compares an image of a viewport against a baseline image.
 
 ```ts
 await browser.checkScreen(
-  // tag
-  "your-reference",
-  // checkScreenOptions
-  {
-    // ...
-  },
+    // tag
+    'your-reference',
+    // checkScreenOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -243,13 +239,12 @@ await browser.checkScreen(
 - Mobile Native Apps
 
 #### Parameters
-
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`checkScreenOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`checkScreenOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
 
 #### Output:
 
@@ -263,12 +258,12 @@ Compares an image of the complete screen against a baseline image.
 
 ```ts
 await browser.checkFullPageScreen(
-  // tag
-  "your-reference",
-  // checkFullPageOptions
-  {
-    // ...
-  },
+    // tag
+    'your-reference',
+    // checkFullPageOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -278,13 +273,12 @@ await browser.checkFullPageScreen(
 - Mobile Browsers
 
 #### Parameters
-
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`checkFullPageOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`checkFullPageOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
 
 #### Output:
 
@@ -298,12 +292,12 @@ Compares an image of the complete screen with the tabbable lines and dots agains
 
 ```ts
 await browser.checkTabbablePage(
-  // tag
-  "your-reference",
-  // checkTabbableOptions
-  {
-    // ...
-  },
+    // tag
+    'your-reference',
+    // checkTabbableOptions
+    {
+        // ...
+    }
 );
 ```
 
@@ -312,13 +306,12 @@ await browser.checkTabbablePage(
 - Desktop Browsers
 
 #### Parameters
-
-- **`tag`:**
-  - **Mandatory:** Yes
-  - **Type:** string
-- **`checkTabbableOptions`:**
-  - **Mandatory:** No
-  - **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
+-   **`tag`:**
+    -   **Mandatory:** Yes
+    -   **Type:** string
+-   **`checkTabbableOptions`:**
+    -   **Mandatory:** No
+    -   **Type:** an object of options, see [Compare/Check Options](./method-options#compare-check-options)
 
 #### Output:
 

@@ -7,7 +7,8 @@ interface ResolveE2EScheduledSpecFilesOptions {
   specs: string[];
 }
 
-interface AssertNonEmptyE2EScheduledSpecFilesOptions extends ResolveE2EScheduledSpecFilesOptions {
+interface AssertNonEmptyE2EScheduledSpecFilesOptions
+  extends ResolveE2EScheduledSpecFilesOptions {
   argv: string[];
   envSpec?: string;
   requestedSpecs: string[];
@@ -80,9 +81,7 @@ function resolveSpecSearchRoot(baseDir: string, pattern: string): string {
     return normalizeAbsolutePath(normalized);
   }
   const slashBeforeGlob = normalized.lastIndexOf("/", firstGlobIndex);
-  return normalizeAbsolutePath(
-    slashBeforeGlob < 0 ? baseDir : normalized.slice(0, slashBeforeGlob),
-  );
+  return normalizeAbsolutePath(slashBeforeGlob < 0 ? baseDir : normalized.slice(0, slashBeforeGlob));
 }
 
 function* walkSpecFiles(root: string): Generator<string> {

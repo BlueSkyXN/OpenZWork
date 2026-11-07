@@ -275,7 +275,10 @@ interface McpToolCatalogContext {
 
   beginFetch(): McpToolCatalogFetchTicket;
 
-  publishIfNewest(ticket: McpToolCatalogFetchTicket, tools: McpToolDescriptor[]): void;
+  publishIfNewest(
+    ticket: McpToolCatalogFetchTicket,
+    tools: McpToolDescriptor[],
+  ): void;
 
   invalidate(): void;
 }
@@ -294,7 +297,12 @@ interface McpToolCatalogPort {
 ```ts
 type McpCatalogToolDescriptor = Pick<
   McpToolDescriptor,
-  "serverName" | "toolName" | "name" | "description" | "inputSchema" | "outputSchema"
+  | "serverName"
+  | "toolName"
+  | "name"
+  | "description"
+  | "inputSchema"
+  | "outputSchema"
 >;
 ```
 

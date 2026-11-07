@@ -1,4 +1,7 @@
-import type { SourceServerMigrationReport, SourceServerMigrationReportRow } from "@zcode/shared";
+import type {
+  SourceServerMigrationReport,
+  SourceServerMigrationReportRow,
+} from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import { cn } from "@/components/lib/utils.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
@@ -7,7 +10,9 @@ import {
   getSourceMigrationStatusMessageId,
 } from "@/settings/sourceServerManagementPresentation.js";
 
-function getStatusChipClassName(status: SourceServerMigrationReportRow["status"]): string {
+function getStatusChipClassName(
+  status: SourceServerMigrationReportRow["status"],
+): string {
   switch (status) {
     case "failed":
       return "bg-destructive-surface text-destructive-surface-foreground";
@@ -91,7 +96,10 @@ export function SourceServerMigrationReportPanel({
               row.status === "abandoned" ||
               row.status === "abandoned-diverged");
           return (
-            <div key={row.migrationId} className="flex min-w-0 flex-wrap items-center gap-2 py-1.5">
+            <div
+              key={row.migrationId}
+              className="flex min-w-0 flex-wrap items-center gap-2 py-1.5"
+            >
               <span
                 className={cn(
                   "shrink-0 rounded-full px-2 py-0.5 text-ui-xs",
@@ -102,10 +110,7 @@ export function SourceServerMigrationReportPanel({
                   id: getSourceMigrationStatusMessageId(row.status),
                 })}
               </span>
-              <span
-                title={row.workspacePath}
-                className="min-w-0 truncate font-mono text-ui-sm text-foreground"
-              >
+              <span title={row.workspacePath} className="min-w-0 truncate font-mono text-ui-sm text-foreground">
                 {row.workspacePath}
               </span>
               {detailText ? (
@@ -133,7 +138,9 @@ export function SourceServerMigrationReportPanel({
                       size="xs"
                       className="text-destructive"
                       disabled={disabled}
-                      onClick={() => onAbandon(row.workspacePath, row.migrationId)}
+                      onClick={() =>
+                        onAbandon(row.workspacePath, row.migrationId)
+                      }
                     >
                       {intl.formatMessage({
                         id: "settings.source.abandonMigration",

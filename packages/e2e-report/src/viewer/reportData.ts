@@ -15,6 +15,8 @@ export async function loadReportSummary() {
 }
 
 function resolveSummaryUrl() {
-  const summary = new URLSearchParams(window.location.search).get("summary")?.trim();
+  const summary = new URLSearchParams(window.location.search)
+    .get("summary")
+    ?.trim();
   return summary || DEFAULT_SUMMARY_URL;
 }

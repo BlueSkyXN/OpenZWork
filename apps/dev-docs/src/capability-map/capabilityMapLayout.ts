@@ -55,7 +55,9 @@ export interface CapabilityMapLayout {
   edgeRoutes: Map<string, CapabilityEdgeRoute>;
 }
 
-const capabilityGroupById = new Map(capabilityGroups.map((group) => [group.id, group]));
+const capabilityGroupById = new Map(
+  capabilityGroups.map((group) => [group.id, group]),
+);
 
 interface InternalGroupLayout {
   id: string;
@@ -79,7 +81,11 @@ function getRequiredNumber(value: number | undefined, description: string) {
   return value;
 }
 
-function getRequiredPosition(positions: Map<string, ElkPoint>, id: string, description: string) {
+function getRequiredPosition(
+  positions: Map<string, ElkPoint>,
+  id: string,
+  description: string,
+) {
   const position = positions.get(id);
   if (!position) {
     throw new Error(`缺少${description} ${id}`);
@@ -97,7 +103,9 @@ function systemNodeId(systemId: string) {
 
 function buildGroupGraph(groupId: string): ElkNode {
   const groupNodeIds = new Set(
-    capabilityNodes.filter((node) => node.groupId === groupId).map((node) => node.id),
+    capabilityNodes
+      .filter((node) => node.groupId === groupId)
+      .map((node) => node.id),
   );
   return {
     id: groupNodeId(groupId),
@@ -126,7 +134,10 @@ function buildGroupGraph(groupId: string): ElkNode {
         height: CAPABILITY_NODE_HEIGHT,
       })),
     edges: capabilityEdges
-      .filter((edge) => groupNodeIds.has(edge.source) && groupNodeIds.has(edge.target))
+      .filter(
+        (edge) =>
+          groupNodeIds.has(edge.source) && groupNodeIds.has(edge.target),
+      )
       .map(
         (edge): ElkExtendedEdge => ({
           id: edge.id,
@@ -236,7 +247,9 @@ async function calculateSystemLayout(
   systemId: string,
   groupLayoutsById: Map<string, InternalGroupLayout>,
 ) {
-  const graph = await elk.layout(buildSystemGraph(systemId, groupLayoutsById));
+  const graph = await elk.layout(
+    buildSystemGraph(systemId, groupLayoutsById),
+  );
   return {
     id: systemId,
     width: getRequiredNumber(graph.width, `${graph.id}.width`),
@@ -278,16 +291,22 @@ async function calculateCapabilityMapLayout(): Promise<CapabilityMapLayout> {
 
     const systemLayouts: InternalSystemLayout[] = [];
     for (const system of capabilitySystems) {
-      systemLayouts.push(await calculateSystemLayout(elk, system.id, groupLayoutsById));
+      systemLayouts.push(
+        await calculateSystemLayout(elk, system.id, groupLayoutsById),
+      );
     }
     const systemPositions = buildCapabilitySystemPositions(systemLayouts);
     const groups = systemLayouts.flatMap((systemLayout) => systemLayout.groups);
-    const groupLayoutPositions = new Map(groups.map((group) => [group.id, group.position]));
+    const groupLayoutPositions = new Map(
+      groups.map((group) => [group.id, group.position]),
+    );
     const nodes = groupLayouts.flatMap((groupLayout) => groupLayout.nodes);
     const edgeRoutes = new Map<string, CapabilityEdgeRoute>();
     for (const groupLayout of groupLayouts) {
       const group = capabilityGroupById.get(groupLayout.id);
-      const systemPosition = group ? systemPositions.get(group.systemId) : undefined;
+      const systemPosition = group
+        ? systemPositions.get(group.systemId)
+        : undefined;
       const groupPosition = groupLayoutPositions.get(groupLayout.id);
       if (!systemPosition || !groupPosition) {
         throw new Error(`缺少能力群全局位置 ${groupLayout.id}`);
@@ -305,7 +324,11 @@ async function calculateCapabilityMapLayout(): Promise<CapabilityMapLayout> {
     return {
       systems: systemLayouts.map((systemLayout) => ({
         id: systemLayout.id,
-        position: getRequiredPosition(systemPositions, systemLayout.id, "顶层区域全局位置"),
+        position: getRequiredPosition(
+          systemPositions,
+          systemLayout.id,
+          "顶层区域全局位置",
+        ),
         width: systemLayout.width,
         height: systemLayout.height,
       })),

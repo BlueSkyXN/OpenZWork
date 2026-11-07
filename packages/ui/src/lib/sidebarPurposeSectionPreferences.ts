@@ -7,7 +7,10 @@ export interface SidebarPurposeSectionPreferences {
   projectsExpanded: boolean;
   conversationsExpanded: boolean;
   sectionOrder: SidebarPurposeSectionId[];
-  sourceGroupExpandedSections?: Record<string, Partial<Record<SidebarPurposeSectionId, boolean>>>;
+  sourceGroupExpandedSections?: Record<
+    string,
+    Partial<Record<SidebarPurposeSectionId, boolean>>
+  >;
 }
 
 export const SIDEBAR_PURPOSE_SECTION_IDS = ["projects", "conversations"] as const;
@@ -67,7 +70,12 @@ function normalizeSourceGroupExpandedSections(
 
   const normalized = Object.fromEntries(
     Object.entries(value).flatMap(([sourceGroupKey, sections]) => {
-      if (!sourceGroupKey || !sections || typeof sections !== "object" || Array.isArray(sections)) {
+      if (
+        !sourceGroupKey ||
+        !sections ||
+        typeof sections !== "object" ||
+        Array.isArray(sections)
+      ) {
         return [];
       }
       const sectionValue = sections as Record<string, unknown>;
@@ -102,7 +110,8 @@ export function resolveSidebarPurposeSectionExpanded(
   sourceGroupKey?: string,
 ): boolean {
   if (sourceGroupKey) {
-    const sourceValue = preferences.sourceGroupExpandedSections?.[sourceGroupKey]?.[sectionId];
+    const sourceValue =
+      preferences.sourceGroupExpandedSections?.[sourceGroupKey]?.[sectionId];
     if (typeof sourceValue === "boolean") {
       return sourceValue;
     }
@@ -120,12 +129,18 @@ export function updateSidebarPurposeSectionExpanded(
 ): SidebarPurposeSectionPreferences {
   const { sectionId, expanded, sourceGroupKey } = update;
   if (!sourceGroupKey) {
-    const field = sectionId === "projects" ? "projectsExpanded" : "conversationsExpanded";
-    return preferences[field] === expanded ? preferences : { ...preferences, [field]: expanded };
+    const field =
+      sectionId === "projects"
+        ? "projectsExpanded"
+        : "conversationsExpanded";
+    return preferences[field] === expanded
+      ? preferences
+      : { ...preferences, [field]: expanded };
   }
 
   const fallback = getExpandedFallback(preferences, sectionId);
-  const currentSourceSections = preferences.sourceGroupExpandedSections?.[sourceGroupKey];
+  const currentSourceSections =
+    preferences.sourceGroupExpandedSections?.[sourceGroupKey];
   const currentExpanded = currentSourceSections?.[sectionId] ?? fallback;
   if (currentExpanded === expanded) {
     return preferences;
@@ -150,7 +165,9 @@ export function updateSidebarPurposeSectionExpanded(
   return {
     ...preferences,
     sourceGroupExpandedSections:
-      Object.keys(sourceGroupExpandedSections).length > 0 ? sourceGroupExpandedSections : undefined,
+      Object.keys(sourceGroupExpandedSections).length > 0
+        ? sourceGroupExpandedSections
+        : undefined,
   };
 }
 

@@ -10,14 +10,12 @@ export interface RemoteConnectionLogEntry {
 }
 
 export function normalizeRemoteConnectionLogMessage(message: string): string {
-  return (
-    message
-      .replace(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]\s*/u, "")
-      .replace(/^\[pid:\d+\]\s*/u, "")
-      // Source Server phase 是 bootstrap UI 的正式状态，不是通用日志前缀，必须保留。
-      .replace(/^(?:\[(?!source-server:)[^\]]+\]\s*)+/u, "")
-      .trim()
-  );
+  return message
+    .replace(/^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}\]\s*/u, "")
+    .replace(/^\[pid:\d+\]\s*/u, "")
+    // Source Server phase 是 bootstrap UI 的正式状态，不是通用日志前缀，必须保留。
+    .replace(/^(?:\[(?!source-server:)[^\]]+\]\s*)+/u, "")
+    .trim();
 }
 
 function isRemoteDownloadProgressLog(message: string): boolean {
@@ -30,7 +28,9 @@ function getRemoteTransferProgressKey(message: string): string | null {
     return "download";
   }
 
-  const uploadMatch = /^upload progress(?: \[([^\]]+)\])?(?: \((.+)\))?:/iu.exec(progressMessage);
+  const uploadMatch = /^upload progress(?: \[([^\]]+)\])?(?: \((.+)\))?:/iu.exec(
+    progressMessage,
+  );
   if (!uploadMatch) {
     return null;
   }
@@ -52,7 +52,10 @@ export function appendRemoteConnectionRuntimeLog(
     let matchingProgressIndex = -1;
     for (let index = currentLogs.length - 1; index >= 0; index -= 1) {
       const currentLog = currentLogs[index];
-      if (currentLog && getRemoteTransferProgressKey(currentLog.message) === incomingProgressKey) {
+      if (
+        currentLog &&
+        getRemoteTransferProgressKey(currentLog.message) === incomingProgressKey
+      ) {
         matchingProgressIndex = index;
         break;
       }
@@ -104,7 +107,9 @@ export function shouldAcceptRemoteConnectionRuntimeLog(
 export function useRemoteConnectionLogs(activeRequestId?: string | null) {
   const platform = usePlatform();
   const activeRequestIdRef = useRef(activeRequestId);
-  const [connectionLogs, setConnectionLogs] = useState<RemoteConnectionLogEntry[]>([]);
+  const [connectionLogs, setConnectionLogs] = useState<
+    RemoteConnectionLogEntry[]
+  >([]);
 
   useEffect(() => {
     activeRequestIdRef.current = activeRequestId;
@@ -138,7 +143,10 @@ export function useRemoteConnectionLogs(activeRequestId?: string | null) {
     setConnectionLogs([]);
   };
 
-  const appendConnectionLog = (level: RemoteConnectionLogEntry["level"], message: string) => {
+  const appendConnectionLog = (
+    level: RemoteConnectionLogEntry["level"],
+    message: string,
+  ) => {
     setConnectionLogs((currentLogs) => [
       ...currentLogs,
       {

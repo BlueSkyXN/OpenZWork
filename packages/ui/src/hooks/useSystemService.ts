@@ -38,7 +38,10 @@ function normalizeRequiredSuccessCountForStableKey(
     return 1;
   }
 
-  if (typeof requiredSuccessCount !== "number" || !Number.isFinite(requiredSuccessCount)) {
+  if (
+    typeof requiredSuccessCount !== "number" ||
+    !Number.isFinite(requiredSuccessCount)
+  ) {
     return 1;
   }
 
@@ -81,7 +84,9 @@ function normalizeProbeTargetForStableKey(target: IntranetProbeTarget) {
 }
 
 /** 生成 request 的稳定 key，避免调用方传 inline object 时因引用变化导致重复自动探测 */
-export function createIntranetProbeRequestStableKey(request: IntranetProbeRequest | null): string {
+export function createIntranetProbeRequestStableKey(
+  request: IntranetProbeRequest | null,
+): string {
   if (!request) {
     return "null";
   }

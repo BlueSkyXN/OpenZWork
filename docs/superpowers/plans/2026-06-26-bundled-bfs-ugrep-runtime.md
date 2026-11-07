@@ -94,12 +94,10 @@
 ### Task 1: Lock Runtime Tool Descriptors
 
 **Files:**
-
 - Modify: `packages/shared/src/runtime-tool-runtime.ts`
 - Create: `packages/shared/test/runtimeToolRuntime.test.ts`
 
 **Interfaces:**
-
 - Produces: `RuntimeToolId = "ripgrep" | "bfs" | "ugrep"`
 - Produces: `getRuntimeToolRuntime(toolId: RuntimeToolId): RuntimeToolRuntimeDescriptor`
 
@@ -188,12 +186,10 @@ Expected: PASS.
 ### Task 2: Extend Runtime Env Resolver
 
 **Files:**
-
 - Modify: `packages/services/src/runtime-tools/runtimeCommandEnv.ts`
 - Modify: `packages/services/test/runtimeToolResolver.test.ts`
 
 **Interfaces:**
-
 - Consumes: `RuntimeToolId` from Task 1
 - Produces: `buildRuntimeProcessEnvPatch()` includes `ZCODE_BFS_BINARY`, `ZCODE_UGREP_BINARY`, and prepends their directories to `PATH`
 
@@ -213,24 +209,8 @@ it("会从 bundled-tools 平台目录发现 bfs 和 ugrep binary 并注入 PATH"
   const platformKey = `${process.platform}-${process.arch}`;
   const bfsName = process.platform === "win32" ? "bfs.exe" : "bfs";
   const ugrepName = process.platform === "win32" ? "ugrep.exe" : "ugrep";
-  const bfsPath = join(
-    appRepoDir,
-    "packages",
-    "desktop",
-    "bundled-tools",
-    platformKey,
-    "bfs",
-    bfsName,
-  );
-  const ugrepPath = join(
-    appRepoDir,
-    "packages",
-    "desktop",
-    "bundled-tools",
-    platformKey,
-    "ugrep",
-    ugrepName,
-  );
+  const bfsPath = join(appRepoDir, "packages", "desktop", "bundled-tools", platformKey, "bfs", bfsName);
+  const ugrepPath = join(appRepoDir, "packages", "desktop", "bundled-tools", platformKey, "ugrep", ugrepName);
 
   mkdirSync(dirname(bfsPath), { recursive: true });
   mkdirSync(dirname(ugrepPath), { recursive: true });
@@ -278,12 +258,10 @@ Expected: PASS.
 ### Task 3: Add Search Runtime Tool Download Manifest
 
 **Files:**
-
 - Create: `scripts/search-runtime-tools.mjs`
 - Create: `packages/desktop/test/searchRuntimeToolsManifest.test.ts`
 
 **Interfaces:**
-
 - Produces: `SEARCH_RUNTIME_TOOLS`
 - Produces: `SUPPORTED_SEARCH_RUNTIME_PLATFORM_KEYS`
 - Produces: `REMOTE_SEARCH_RUNTIME_PLATFORM_KEYS`
@@ -338,16 +316,13 @@ describe("search runtime tool manifest", () => {
     expect(plan.platformKey).toBe("darwin-arm64");
     expect(plan.binaryName).toBe("bfs");
     expect(plan.releaseFileName).toBe("bfs-4.1.1-darwin-arm64.tar.gz");
-    expect(plan.downloadUrl).toBe(
-      "https://deps.example.test/search-tools/bfs-4.1.1/bfs-4.1.1-darwin-arm64.tar.gz",
-    );
+    expect(plan.downloadUrl).toBe("https://deps.example.test/search-tools/bfs-4.1.1/bfs-4.1.1-darwin-arm64.tar.gz");
   });
 
   it("has an asset plan for every bundled search tool on every supported platform", () => {
     for (const platformKey of supportedPlatformKeys) {
       const [targetPlatform, targetArch] = platformKey.split("-");
-      if (!targetPlatform || !targetArch)
-        throw new Error(`Invalid test platform key: ${platformKey}`);
+      if (!targetPlatform || !targetArch) throw new Error(`Invalid test platform key: ${platformKey}`);
 
       for (const [toolId, tool] of Object.entries(SEARCH_RUNTIME_TOOLS)) {
         const plan = resolveSearchRuntimeToolPlan({
@@ -360,9 +335,7 @@ describe("search runtime tool manifest", () => {
         const binaryName = targetPlatform === "win32" ? `${tool.binary}.exe` : tool.binary;
         expect(plan.platformKey).toBe(platformKey);
         expect(plan.binaryName).toBe(binaryName);
-        expect(plan.releaseFileName).toBe(
-          `${tool.binary}-${tool.version}-${platformKey}.${archiveExt}`,
-        );
+        expect(plan.releaseFileName).toBe(`${tool.binary}-${tool.version}-${platformKey}.${archiveExt}`);
       }
     }
   });
@@ -460,14 +433,7 @@ export function resolveSearchRuntimeToolPlan({
   const binaryName = platform === "win32" ? `${tool.binary}.exe` : tool.binary;
   const releaseFileName = `${tool.binary}-${tool.version}-${platformKey}.${archiveExt}`;
   const localOutputDir = join(repoRoot, "packages/desktop/bundled-tools", platformKey, toolId);
-  const remoteOutputDir = join(
-    repoRoot,
-    "packages/desktop/mock-cdn/releases",
-    "local",
-    "tools",
-    platformKey,
-    toolId,
-  );
+  const remoteOutputDir = join(repoRoot, "packages/desktop/mock-cdn/releases", "local", "tools", platformKey, toolId);
   const outputDir = forceRemoteOutput ? remoteOutputDir : localOutputDir;
 
   return {
@@ -498,14 +464,12 @@ Expected: PASS.
 ### Task 4: Download and Stage Runtime Tool Assets
 
 **Files:**
-
 - Create: `scripts/download-search-runtime-tool.mjs`
 - Modify: `scripts/download-ripgrep.mjs`
 - Modify: `packages/desktop/package.json`
 - Create: `packages/desktop/test/download-search-runtime-tool.test.ts`
 
 **Interfaces:**
-
 - Consumes: `resolveSearchRuntimeToolPlan()` from Task 3
 - Produces: `pnpm --filter @zcode/desktop prepare:bfs`
 - Produces: `pnpm --filter @zcode/desktop prepare:ugrep`
@@ -551,15 +515,7 @@ Implement `scripts/download-search-runtime-tool.mjs` for `bfs` / `ugrep` only. D
 ```js
 #!/usr/bin/env node
 
-import {
-  chmodSync,
-  copyFileSync,
-  createWriteStream,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  rmSync,
-} from "node:fs";
+import { chmodSync, copyFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -585,33 +541,21 @@ function download(url, destinationPath) {
         rejectPromise(error);
       });
     };
-    client
-      .get(url, (response) => {
-        if (
-          response.statusCode &&
-          response.statusCode >= 300 &&
-          response.statusCode < 400 &&
-          response.headers.location
-        ) {
-          file.close(() => {
-            rmSync(destinationPath, { force: true });
-            download(response.headers.location, destinationPath).then(
-              resolvePromise,
-              rejectPromise,
-            );
-          });
-          return;
-        }
-        if (response.statusCode !== 200) {
-          cleanupAndReject(new Error(`Download failed: HTTP ${response.statusCode}`));
-          return;
-        }
-        response.pipe(file);
-        file.on("finish", () =>
-          file.close((error) => (error ? rejectPromise(error) : resolvePromise())),
-        );
-      })
-      .on("error", cleanupAndReject);
+    client.get(url, (response) => {
+      if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        file.close(() => {
+          rmSync(destinationPath, { force: true });
+          download(response.headers.location, destinationPath).then(resolvePromise, rejectPromise);
+        });
+        return;
+      }
+      if (response.statusCode !== 200) {
+        cleanupAndReject(new Error(`Download failed: HTTP ${response.statusCode}`));
+        return;
+      }
+      response.pipe(file);
+      file.on("finish", () => file.close((error) => (error ? rejectPromise(error) : resolvePromise())));
+    }).on("error", cleanupAndReject);
     file.on("error", cleanupAndReject);
   });
 }
@@ -632,9 +576,7 @@ function findBinaryRecursively(rootDir, binaryName) {
 export async function downloadSearchRuntimeTool(argv = process.argv.slice(2), env = process.env) {
   const toolId = argv[0];
   if (toolId !== "bfs" && toolId !== "ugrep") {
-    throw new Error(
-      "Usage: node scripts/download-search-runtime-tool.mjs <bfs|ugrep> [platform] [arch]",
-    );
+    throw new Error("Usage: node scripts/download-search-runtime-tool.mjs <bfs|ugrep> [platform] [arch]");
   }
   const targetPlatform = argv[1] || env.ZCODE_TARGET_OS || process.platform;
   const targetArch = argv[2] || env.ZCODE_TARGET_ARCH || process.arch;
@@ -658,14 +600,7 @@ export async function downloadSearchRuntimeTool(argv = process.argv.slice(2), en
     mkdirSync(extractDir, { recursive: true });
     if (plan.archiveExt === "zip") {
       if (process.platform === "win32") {
-        run("powershell.exe", [
-          "-NoProfile",
-          "-NonInteractive",
-          "-ExecutionPolicy",
-          "Bypass",
-          "-Command",
-          `Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${extractDir}' -Force`,
-        ]);
+        run("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", `Expand-Archive -LiteralPath '${archivePath}' -DestinationPath '${extractDir}' -Force`]);
       } else {
         run("unzip", ["-q", archivePath, "-d", extractDir]);
       }
@@ -726,7 +661,6 @@ Expected: PASS.
 ### Task 5: Wire Desktop and Remote Runtime Assets
 
 **Files:**
-
 - Modify: `packages/desktop/scripts/prepare-runtime-assets.mjs`
 - Modify: `packages/desktop/scripts/ensure-local-runtime-assets.mjs`
 - Modify: `scripts/prepare-prebuilds.mjs`
@@ -735,7 +669,6 @@ Expected: PASS.
 - Modify: `packages/desktop/test/preparePrebuildsReleaseReuse.test.ts`
 
 **Interfaces:**
-
 - Consumes: Task 4 scripts
 - Produces: local packaged app resources `tools/bfs/<binary>` and `tools/ugrep/<binary>`
 - Produces: local packaged app resources `tools/ripgrep/<binary>`
@@ -749,9 +682,7 @@ Extend `packages/desktop/test/runtime-asset-scripts.test.ts`:
 it("desktop 安装包应显式携带内置 bfs 和 ugrep runtime", () => {
   expect(electronBuilderConfigSource).toContain("from: `bundled-tools/${targetPlatform.key}/bfs`");
   expect(electronBuilderConfigSource).toContain('to: "tools/bfs"');
-  expect(electronBuilderConfigSource).toContain(
-    "from: `bundled-tools/${targetPlatform.key}/ugrep`",
-  );
+  expect(electronBuilderConfigSource).toContain("from: `bundled-tools/${targetPlatform.key}/ugrep`");
   expect(electronBuilderConfigSource).toContain('to: "tools/ugrep"');
 });
 
@@ -777,7 +708,12 @@ it("remote prebuilds should use the shared search runtime platform matrix", () =
 In `packages/desktop/scripts/prepare-runtime-assets.mjs`:
 
 ```js
-const localRuntimeScripts = ["prepare:agent-bundle", "prepare:rg", "prepare:bfs", "prepare:ugrep"];
+const localRuntimeScripts = [
+  "prepare:agent-bundle",
+  "prepare:rg",
+  "prepare:bfs",
+  "prepare:ugrep",
+];
 ```
 
 In `packages/desktop/scripts/ensure-local-runtime-assets.mjs`, add entries for `bfs` / `ugrep` under `REQUIRED_LOCAL_RUNTIME_ASSETS` next to the existing `ripgrep` entry:
@@ -809,16 +745,10 @@ for (const platformKey of remotePlatforms) {
   if (!targetOs || !targetArch) throw new Error(`Invalid remote platform key: ${platformKey}`);
 
   for (const toolId of Object.keys(SEARCH_RUNTIME_TOOLS)) {
-    const scriptName =
-      toolId === "ripgrep" ? "download-ripgrep.mjs" : "download-search-runtime-tool.mjs";
+    const scriptName = toolId === "ripgrep" ? "download-ripgrep.mjs" : "download-search-runtime-tool.mjs";
     const args =
       toolId === "ripgrep"
-        ? [
-            join(rootDir, "scripts", scriptName),
-            SEARCH_RUNTIME_TOOLS.ripgrep.version,
-            targetOs,
-            targetArch,
-          ]
+        ? [join(rootDir, "scripts", scriptName), SEARCH_RUNTIME_TOOLS.ripgrep.version, targetOs, targetArch]
         : [join(rootDir, "scripts", scriptName), toolId, targetOs, targetArch];
     runCommand(process.execPath, args, {
       cwd: rootDir,
@@ -859,13 +789,11 @@ Expected: PASS.
 ### Task 6: Implement CLI Multicall Dispatch
 
 **Files:**
-
 - Create: `apps/zcode-cli/packages/cli/src/bundled-search/multicall.ts`
 - Modify: `apps/zcode-cli/packages/cli/src/run.ts`
 - Create: `apps/zcode-cli/packages/cli/tests/bundled-search-multicall.test.ts`
 
 **Interfaces:**
-
 - Produces: `resolveEffectiveMulticallName(env, argv0): "rg" | "bfs" | "ugrep" | undefined`
 - Produces: `runBundledSearchMulticall(name, argv, io): Promise<number>`
 
@@ -997,12 +925,10 @@ Expected: PASS.
 ### Task 7: Switch Backend Resolver to argv0-dispatch When Bundled Tools Exist
 
 **Files:**
-
 - Modify: `apps/zcode-cli/packages/bootstrap/src/app/embedded-search-backend.ts`
 - Modify: `apps/zcode-cli/packages/bootstrap/tests/embedded-search-backend.test.ts`
 
 **Interfaces:**
-
 - Consumes: `ZCODE_BFS_BINARY`, `ZCODE_UGREP_BINARY`
 - Produces: `EmbeddedSearchBackend.kind === "argv0-dispatch"` when bundled tools are executable
 - Preserves: current `internal-cli` fallback
@@ -1109,13 +1035,11 @@ Expected: PASS.
 ### Task 8: Implement argv0 Prelude
 
 **Files:**
-
 - Modify: `apps/zcode-cli/packages/adapters/src/exec/embedded-search-prelude.ts`
 - Modify: `apps/zcode-cli/packages/adapters/tests/embedded-search-prelude.test.ts`
 - Modify: `apps/zcode-cli/packages/adapters/tests/bash-startup-script.test.ts`
 
 **Interfaces:**
-
 - Consumes: `EmbeddedSearchBackend.kind === "argv0-dispatch"`
 - Produces: shell functions using the argv0 dispatch strategy
 
@@ -1126,9 +1050,7 @@ In `embedded-search-prelude.test.ts`, assert argv0-dispatch content contains:
 ```ts
 expect(content).toContain("if [[ -n $ZSH_VERSION ]]; then");
 expect(content).toContain("ARGV0=bfs");
-expect(content).toContain(
-  'elif [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "win32" ]]; then',
-);
+expect(content).toContain("elif [[ \"$OSTYPE\" == \"msys\" ]] || [[ \"$OSTYPE\" == \"cygwin\" ]] || [[ \"$OSTYPE\" == \"win32\" ]]; then");
 expect(content).toContain("exec -a bfs");
 expect(content).toContain("-S dfs -regextype findutils-default");
 expect(content).toContain("ARGV0=ugrep");
@@ -1199,12 +1121,10 @@ Expected: PASS.
 ### Task 9: Add Real Execution Tests With Stub Binaries
 
 **Files:**
-
 - Modify: `apps/zcode-cli/packages/adapters/tests/exec.test.ts`
 - Modify: `apps/zcode-cli/packages/core/tests/bash-handler.test.ts`
 
 **Interfaces:**
-
 - Verifies: Bash prelude actually sources `.sh` and reaches `argv0-dispatch`
 
 - [ ] **Step 1: Add fake zcode dispatcher fixture in test**
@@ -1229,7 +1149,7 @@ Test command:
 const result = await adapter.run({
   command: {
     mode: "shell",
-    command: "find . -maxdepth 1 -type f; grep -R needle .",
+    command: 'find . -maxdepth 1 -type f; grep -R needle .',
     shellProfile: "posix-bash",
   },
   bashPrelude: {
@@ -1266,11 +1186,9 @@ Expected: PASS.
 ### Task 10: Manual Verification With Real Binaries
 
 **Files:**
-
 - No source changes
 
 **Interfaces:**
-
 - Verifies: actual `bfs` / `ugrep` behavior
 
 - [ ] **Step 1: Verify runtime assets exist**

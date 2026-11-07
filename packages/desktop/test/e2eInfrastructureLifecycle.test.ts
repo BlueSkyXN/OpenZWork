@@ -37,7 +37,9 @@ describe("desktop E2E infrastructure lifecycle", () => {
         throw "";
       }),
     ).rejects.toBe("");
-    expect(record).toHaveBeenCalledWith(expect.objectContaining({ error: "", status: "failed" }));
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({ error: "", status: "failed" }),
+    );
   });
 
   it("keeps a referenced finalization timer until it is disarmed", () => {

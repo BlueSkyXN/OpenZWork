@@ -18,7 +18,9 @@ interface RemoteConnectionDirectoryFailureState {
   step: RemoteWizardStep;
 }
 
-export function isRemoteConnectionFlowActive(snapshot: RemoteConnectionDialogSnapshot): boolean {
+export function isRemoteConnectionFlowActive(
+  snapshot: RemoteConnectionDialogSnapshot,
+): boolean {
   return snapshot.loading || Boolean(snapshot.connectedSessionId);
 }
 
@@ -33,7 +35,10 @@ export function getRemoteConnectionCompletionDialogState(
     // 连接成功后先停留在连接阶段，让用户明确点击“前往选择目录”进入下一步；
     // 唯一例外是第 1 步在线设备的「选择其他目录」直达流（原型 rail-foot：已有设备可从第 1 步直达第 5 步），
     // 建链秒成后直接进入选目录，不再停留等待一次多余的点击。
-    step: status === "success" && options?.directToDirectory ? "directory" : "connecting",
+    step:
+      status === "success" && options?.directToDirectory
+        ? "directory"
+        : "connecting",
   };
 }
 

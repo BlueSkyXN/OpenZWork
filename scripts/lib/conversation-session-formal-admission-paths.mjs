@@ -39,7 +39,10 @@ export async function resolveProviderFixturePaths({
       );
       continue;
     }
-    const realContainment = await inspectRealContainment(providerFixtureRoot, absolutePath);
+    const realContainment = await inspectRealContainment(
+      providerFixtureRoot,
+      absolutePath,
+    );
     if (realContainment.exists && !realContainment.contained) {
       reasons.push(
         diagnostic({
@@ -81,7 +84,10 @@ export async function validateStaticFilePaths({
       );
       continue;
     }
-    const realContainment = await inspectRealContainment(fixtureRoot, absolutePath);
+    const realContainment = await inspectRealContainment(
+      fixtureRoot,
+      absolutePath,
+    );
     if (!realContainment.exists) {
       reasons.push(
         diagnostic({
@@ -159,13 +165,18 @@ function isPathContainedBy(root, path) {
   const relativePath = relative(root, path).replaceAll("\\", "/");
   return (
     relativePath === "" ||
-    (relativePath !== ".." && !relativePath.startsWith("../") && !isAbsolute(relativePath))
+    (relativePath !== ".." &&
+      !relativePath.startsWith("../") &&
+      !isAbsolute(relativePath))
   );
 }
 
 async function inspectRealContainment(root, candidate) {
   try {
-    const [realRoot, realCandidate] = await Promise.all([realpath(root), realpath(candidate)]);
+    const [realRoot, realCandidate] = await Promise.all([
+      realpath(root),
+      realpath(candidate),
+    ]);
     return {
       contained: isPathContainedBy(realRoot, realCandidate),
       exists: true,

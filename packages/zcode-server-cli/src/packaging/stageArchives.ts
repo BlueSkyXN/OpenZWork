@@ -24,7 +24,9 @@ export async function runPackagingCommand(
       ? { ...process.env, COPYFILE_DISABLE: "1" }
       : process.env;
     const commandArgs =
-      command === "tar" && process.platform === "darwin" ? ["--no-xattrs", ...baseArgs] : baseArgs;
+      command === "tar" && process.platform === "darwin"
+        ? ["--no-xattrs", ...baseArgs]
+        : baseArgs;
     const child = spawn(resolvedCommand, commandArgs, {
       cwd,
       env,
