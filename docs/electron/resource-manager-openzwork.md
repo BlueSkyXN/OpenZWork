@@ -10,7 +10,7 @@
 - **存储**：显示存储服务解析出的本机 `.openzwork` 数据根及分类占用，支持扫描、下钻和按既有策略清理。数据根由 `packages/services/src/storage/adapters/rootsResolver.ts` 解析；窗口只消费扫描结果。
 - **进程归属**：Host 直管的内置插件、`mcpSource: "builtin"` 的 MCP 子树及 Browser Use guest renderer 归入内置插件；其它 MCP 子树归入社区插件；Electron、Host、Agent 与普通工具子进程归入基础服务。原生 Computer Use 已退役。
 
-网络页及其跨 Main/Host/CLI 采集链已移除，迁移说明见 [网络页退役与诊断入口](resource-manager-network.md)。
+网络页及其跨 Main/Host/CLI 采集链已移除，迁移说明见 [网络页退役与诊断入口](resource-manager-network-openzwork.md)。
 
 ## 本地诊断职责
 
@@ -19,7 +19,7 @@
 | 资源窗口 CPU / 内存                                       | Window Host 采样，Main 合并 Electron 和系统指标                           | 页面观察时启用；切页、关窗或 renderer 退出后取消；不创建远端 Agent                       |
 | 资源窗口存储                                              | Main 持有 `StorageService`，Worker 遍历文件                               | 存储页发起扫描并可取消；清理由显式操作触发                                               |
 | [设置中的 App Usage](../specs/app-usage-settings-openzwork.md)       | 本机 Agent SQLite 使用事实，service 只转发读取                            | 仅已确认的 Desktop Local Host 可查询；保留 token、错误率、TTFT、回合耗时，不维护云端账本 |
-| [本地日志导出](../desktop/log-export-retention.md)        | Desktop `exportLogs()` 收集既有日志与配置，脱敏后生成 ZIP，失败时回退目录 | 帮助菜单或平台导出动作触发；归档留在本机                                                 |
+| [本地日志导出](../desktop/log-export-retention-openzwork.md)        | Desktop `exportLogs()` 收集既有日志与配置，脱敏后生成 ZIP，失败时回退目录 | 帮助菜单或平台导出动作触发；归档留在本机                                                 |
 | [ModelIO 保留设置](../model-io-full-retention-setting.md) | CLI ModelIO writer 按 App 偏好记录模型请求与响应                          | 全量保留默认关闭；关闭时沿用有界记录，凭据脱敏在两种模式下均保留                         |
 | CLI debug 网络调试                                        | `apps/zcode-cli/packages/debug/server/network-capture.ts`                 | 属于独立 debug server；配置和代理生命周期由该工具管理，资源窗口不启动它                  |
 

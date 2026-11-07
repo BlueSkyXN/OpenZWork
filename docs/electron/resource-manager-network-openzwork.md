@@ -4,9 +4,9 @@ OpenZWork 资源管理器只提供 CPU、内存和存储页。原网络页、窗
 
 ## 当前入口
 
-- 查看本机进程占用和存储：[资源管理器](resource-manager.md)。采样由窗口观察状态控制。
+- 查看本机进程占用和存储：[资源管理器](resource-manager-openzwork.md)。采样由窗口观察状态控制。
 - 查看模型使用量、TTFT、耗时和错误率：[本地 App Usage](../specs/app-usage-settings-openzwork.md)。使用本机数据库已有事实。
-- 导出排障材料：[日志导出范围](../desktop/log-export-retention.md)；归档工具边界见[本地诊断归档](../feedback-log-export-alignment.md)。
+- 导出排障材料：[日志导出范围](../desktop/log-export-retention-openzwork.md)；归档工具边界见[本地诊断归档](../feedback-log-export-alignment-openzwork.md)。
 - 检查模型请求记录：[ModelIO 保留设置](../model-io-full-retention-setting.md)。全量保留默认关闭，凭据脱敏持续生效。
 - 开发网络调试：`apps/zcode-cli/packages/debug/server/network-capture.ts` 属于独立 CLI debug server 的代理工具。它有自己的启动配置，与资源窗口无接线关系。
 

@@ -159,7 +159,7 @@ worker 收到具体 spec → 按需使用 / 清理 mock 环境 → 执行用例
 不能证明 CI 的初始化路径。此合同只涉及 E2E 启动层，不修改生产实现。
 
 `automations-create-manage` 的项目操作使用当前 `automation-project-select` 和
-`role=option`。按 [虚拟项目规格 B18](../superpowers/specs/2026-09-09-virtual-project-design.md)，
+`role=option`。按 [虚拟项目规格 B18](../superpowers/specs/2026-09-09-virtual-project-design-openzwork.md)，
 候选来自本地虚拟项目，不再使用会话草稿菜单；隔离 fixture 只应列出 `OpenZWorkProject`。
 保留创建、编辑、暂停、恢复与删除断言，不把旧「不在项目中工作」入口作为当前表单前置条件。
 

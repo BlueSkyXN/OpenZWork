@@ -7,4 +7,4 @@
 - 并行区间按实际重叠关系解释，不能简单相加各阶段分位数。
 - 缺失、时钟异常和合法零值应分开呈现。
 
-检查入口见[本地 TTFT 事实](./local-ttft-queries.md)。本地用量聚合由 CLI session store 提供，模型请求失败详情见[模型错误诊断](../trace/model-attempt-error-diagnostics.md)。
+检查入口见[本地 TTFT 事实](./local-ttft-queries-openzwork.md)。本地用量聚合由 CLI session store 提供，模型请求失败详情见[模型错误诊断](../trace/model-attempt-error-diagnostics-openzwork.md)。

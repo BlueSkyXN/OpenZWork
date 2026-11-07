@@ -115,12 +115,12 @@ Personal Config 只允许具体 `providerId + modelId` 的精确覆盖，不再�
 
 ### 2.3 Builtin Provider 维护清单
 
-日常维护统一从[标准 Provider 模板维护](../../../builtin-provider-maintenance/README.md)进入；
+日常维护统一从[标准 Provider 模板维护](../../../builtin-provider-maintenance/README-openzwork.md)进入；
 当前边界见[标准 Provider 模板](../../../specs/standard-provider-templates-openzwork.md)。
 下方旧库存链接保留调查历史，不再作为实时配置清单。
 
 Builtin 的维护范围用入口库存表达，不在文档中重复抄写完整 Provider Config；实际成员见上方当前状态，
-原调查依据保留在[`历史维护清单`](./builtin-provider-inventory.md)。清单口径为：
+原调查依据保留在[`历史维护清单`](./builtin-provider-inventory-openzwork.md)。清单口径为：
 
 ```text
 供应商 | 类型 | templateId / providerId | Base URL | 产品维护模型

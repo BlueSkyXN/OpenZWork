@@ -48,7 +48,7 @@ SLS 的 SQL 入口可执行同一 PromQL：
 
 ## 单消息瀑布图
 
-字段单位、span 命名与逐项读法见[怎么读一条 Trace](local-ttft-trace-reading.md)。
+字段单位、span 命名与逐项读法见[怎么读一条 Trace](local-ttft-trace-reading-openzwork.md)。
 
 Trace service.name 为 `zcode-local-ttft`。以 `observation_id` 精确过滤得到一次发送；其去除连字符后的值就是 trace ID。根 `local_ttft` 的 start/end 使用同一个 Renderer 单调时钟。六个 child span 保留原始区间，ACK 延迟没有混入主阶段。`command_id`/`input_id`/`query_id`、runtime `turn_id`、`product_turn_id`、`logical_call_id` 和 `request_id` 仅用于 Trace 关联；`cli_instance_id` 区分进程。`local_ttft.start`、`local_ttft.first_text` 和 `local_ttft.no_text` 是同一 Trace 的独立检查点，不增加主 TTFT 样本。
 

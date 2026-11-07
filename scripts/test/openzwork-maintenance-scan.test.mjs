@@ -204,6 +204,38 @@ test("runCheck 要求差异总表覆盖台账条目、OpenZWork 版本写明理�
   assert.match(errors, /role 应为 tool\/rule\/maintained\/pending/);
 });
 
+test("runCheck 要求 OpenZWork 文档链接已登记上游文档的 OpenZWork 版本", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.write(
+    "docs/openzwork/guide.md",
+    [
+      "# 指南",
+      "",
+      "见 [B](../b.md#b)，另见 [A](../a.md)、[B 版本](../b-openzwork.md)。",
+      "",
+      "```md",
+      "[示例](../b.md)",
+      "```",
+      "",
+      "[ref]: /docs/b.md",
+      "",
+    ].join("\n"),
+  );
+  repo.commit("links to upstream original");
+  const errors = check(repo);
+  assert.deepEqual(errors, [
+    "docs/openzwork/guide.md:3 链接 ../b.md#b 打开的是上游原文；OpenZWork 文档改为链接 b-openzwork.md（上游原文的内容和锚点与 OpenZWork 版本不同）",
+    "docs/openzwork/guide.md:9 链接 /docs/b.md 打开的是上游原文；OpenZWork 文档改为链接 b-openzwork.md（上游原文的内容和锚点与 OpenZWork 版本不同）",
+  ]);
+  repo.write(
+    "docs/openzwork/guide.md",
+    "# 指南\n\n见 [B](../b-openzwork.md#b)。\n\n[ref]: /docs/b-openzwork.md\n",
+  );
+  repo.commit("link variants");
+  assert.deepEqual(check(repo), []);
+});
+
 test("runCheck 校验上游基准版本与经验库格式", () => {
   const repo = fixture();
   repo.write("src/fmt.ts", "export const fmt = 1;   \n");

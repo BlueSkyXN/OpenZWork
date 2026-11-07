@@ -1,6 +1,6 @@
 # 虚拟项目重构：开发偏差记录
 
-关联设计：[虚拟项目设计](../specs/2026-09-09-virtual-project-design.md)。
+关联设计：[虚拟项目设计](../specs/2026-09-09-virtual-project-design-openzwork.md)。
 关联进度：[实施记录](2026-09-10-virtual-project-implementation.md)。
 
 本文件单独记录开发中与设计、原有理解或首次实现预期不符的情况，持续追加。**“已修正”仅表示该问题已有针对性实现和验证，不表示整个重构完成。** 未执行的 GUI、真远端和跨平台验证不算通过。

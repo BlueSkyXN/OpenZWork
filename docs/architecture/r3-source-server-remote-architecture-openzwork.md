@@ -3,7 +3,7 @@
 ## 1. 状态与范围
 
 - 状态：已实现（代码基线 `fad93b9e57`，2026-09-13）。正式发布校验与真实 SSH E2E 复跑仍在进行，以 [问题台账](./r3-source-server-remote-open-issues.md) R3-ISSUE-001 / 020 为准。本文是当前事实规格；R3 过程文档已归档到 `docs/archive/remote-r3/`，阅读入口见 [docs/remote/README.md](../remote/README.md)
-- 修订：2026-09-07 合并 Provider 重构 M2（Provider 重构 M1~M4 + Remote Provider Provisioning）后，§1/§2/§3.1/§6.2/§7.1/§8/§10/§11 中的模型配置语义改为「设置页绑定本地 + Provisioning 自动单向下发」；Provider 侧以 [Remote Provider Provisioning](../remote/provider-provisioning.md) 与 [SSH 远端 Workspace 状态权威边界](../ssh-remote-app-global-state-authority.md) 为事实文档，合并过程与决策见 [r3-provider-refactor-merge.md（已归档）](../archive/remote-r3/r3-provider-refactor-merge.md)
+- 修订：2026-09-07 合并 Provider 重构 M2（Provider 重构 M1~M4 + Remote Provider Provisioning）后，§1/§2/§3.1/§6.2/§7.1/§8/§10/§11 中的模型配置语义改为「设置页绑定本地 + Provisioning 自动单向下发」；Provider 侧以 [Remote Provider Provisioning](../remote/provider-provisioning-openzwork.md) 与 [SSH 远端 Workspace 状态权威边界](../ssh-remote-app-global-state-authority.md) 为事实文档，合并过程与决策见 [r3-provider-refactor-merge.md（已归档）](../archive/remote-r3/r3-provider-refactor-merge.md)
 - 阶段：统一多端远程架构 R3 / D5—D11
 - 发布方式：SSH、WSL、Docker 在同一 App 版本统一切换新主链；不按连接方式分版本或灰度；R3 App 内不保留可运行的旧远程主链
 - 核心目标：引入 Source Server、`sourceServerId`、Connection Profile、Transport Adapter、Source 权威、身份迁移与版本兼容，让三种连接方式在「窗口级 Local Host（R1）↔ 常驻 ZCode Server daemon（R2）」的新主链上完成产品闭环
@@ -13,7 +13,7 @@
 - [ZCode 统一多端远程连接架构与产品方案（评审稿）](https://internal-docs.example.invalid/redacted)（D5—D11 定义）
 - [R1 窗口级单 Host 进程重构规格](./r1-single-window-host-refactor.md)（已实施，当前架构事实）
 - [R2 独立 Server CLI 与 daemon 规格](./r2-server-cli-and-daemon.md)（已实施；`verify-remote-ssh.mjs` 为 R3 SSH Transport 的最小形态预演）
-- [R3 Source Server 发布测试方案（历史，已归档）](../archive/remote-r3/r3-source-server-release-test-plan.md)：REMOTE-01—15 稳定编号现由 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 承载，当前执行方案见 [r3-remote-automation-plan.md](../testing/r3-remote-automation-plan.md)
+- [R3 Source Server 发布测试方案（历史，已归档）](../archive/remote-r3/r3-source-server-release-test-plan.md)：REMOTE-01—15 稳定编号现由 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 承载，当前执行方案见 [r3-remote-automation-plan.md](../testing/r3-remote-automation-plan.md)
 - [远程工作区投影与持久化兼容](./remote-domain-simplification-and-conversation-workspace-spec.md)（统一 projection、open set、strict schema 与 R4 剩余事项）
 - [ZCode Lite / Server 统一多端架构实施计划](./unified-zcode-lite-server-multi-server-plan.md)（目标架构背景）
 - [Remote Target 抽象](./remote-target-abstraction.md)（现有旧主链的 target/backend 事实）
@@ -26,7 +26,7 @@ R3 交付：
 - 统一远程主链：三种连接方式全部改为连接常驻 Server daemon，删除「部署临时 stdio zcode-server」的旧业务主链；旧连接记录与远端旧数据完成迁移（D8）；
 - 生命周期与恢复：启动自动重连、在线断连重试、离线探测、断连数据恢复、待确认请求恢复（D9）；
 - 版本兼容与更新：双端 compatibility manifest、只升级旧端、完整 Server CLI 远程更新与重新握手（D10）；
-- 多 Source 产品面：连接管理页、平铺项目与任务来源标识、非阻断持续运行提示、完整更新交互（D11）。模型配置与登录信息**不再**提供设备选择器与「一键同步」入口：由 Provider Provisioning 在首连 / 重连 / 本机保存成功时自动单向下发，设置页「模型设置」永远绑定本地 Environment（2026-09-07 合并 Provider 重构 M2 时拍板，路线 A；见 §8.2、§8.3 与 [Remote Provider Provisioning](../remote/provider-provisioning.md)）。
+- 多 Source 产品面：连接管理页、平铺项目与任务来源标识、非阻断持续运行提示、完整更新交互（D11）。模型配置与登录信息**不再**提供设备选择器与「一键同步」入口：由 Provider Provisioning 在首连 / 重连 / 本机保存成功时自动单向下发，设置页「模型设置」永远绑定本地 Environment（2026-09-07 合并 Provider 重构 M2 时拍板，路线 A；见 §8.2、§8.3 与 [Remote Provider Provisioning](../remote/provider-provisioning-openzwork.md)）。
 
 R3 不交付：
 
@@ -131,7 +131,7 @@ interface CompatibilityManifest {
 }
 ```
 
-以上类型全部配套 zod 严格 schema（`.strict()`），放入 `packages/shared/src/validation*` 体系并有契约测试。`RemoteTarget` 的 `ssh/wsl/docker` 三种连接参数形状不变，继续作为 Adapter 的输入。模型配置下发使用 `ProviderProvisioningEnvelope`（Personal Layer + Configured Default + 账号窄设置 + allowlist 凭据），其字段与事务语义以 [Remote Provider Provisioning](../remote/provider-provisioning.md) 为准，R3 不再定义自己的同步快照类型。
+以上类型全部配套 zod 严格 schema（`.strict()`），放入 `packages/shared/src/validation*` 体系并有契约测试。`RemoteTarget` 的 `ssh/wsl/docker` 三种连接参数形状不变，继续作为 Adapter 的输入。模型配置下发使用 `ProviderProvisioningEnvelope`（Personal Layer + Configured Default + 账号窄设置 + allowlist 凭据），其字段与事务语义以 [Remote Provider Provisioning](../remote/provider-provisioning-openzwork.md) 为准，R3 不再定义自己的同步快照类型。
 
 ### 保留数据的卸载重装（2026-10-10）
 
@@ -341,7 +341,7 @@ Backend 只读命令 → probeSourceServer 校验退出码及必需结果
 
 本修复不改变探测分段的换行兼容策略，不声明已查明用户现场“旧版本可连接”的上游原因。
 桌面与手机仍消费同一 Window Host 的 Source 状态；不增加重试、超时或独立探测状态。
-验收用例与实际运行证据见 [RDUX-11-11/12](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)。
+验收用例与实际运行证据见 [RDUX-11-11/12](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)。
 
 ### 5.2 三种实现
 
@@ -825,7 +825,7 @@ Main 保存窗口偏好、Local Host 保存 Source Directory 均沿用 `SettingS
 
 ### 8.2 模型设置页绑定本地 Environment
 
-2026-09-07 合并 Provider 重构 M2 时拍板（路线 A）：设置页「模型设置」**永远绑定本地 Environment**，不提供设备选择器、不可编辑远端、没有手动「一键同步」按钮。依据是 Provider Refactor Design V2 §7.1（每个执行 Environment 自己读本环境配置，Host 不向 Worker 发 Registry Snapshot；远程编辑与登录同步是独立产品能力，不属于 Provider 核心）与 [Remote Provider Provisioning](../remote/provider-provisioning.md)「Desktop 模型配置页」一节。
+2026-09-07 合并 Provider 重构 M2 时拍板（路线 A）：设置页「模型设置」**永远绑定本地 Environment**，不提供设备选择器、不可编辑远端、没有手动「一键同步」按钮。依据是 Provider Refactor Design V2 §7.1（每个执行 Environment 自己读本环境配置，Host 不向 Worker 发 Registry Snapshot；远程编辑与登录同步是独立产品能力，不属于 Provider 核心）与 [Remote Provider Provisioning](../remote/provider-provisioning-openzwork.md)「Desktop 模型配置页」一节。
 
 ```text
 SettingsPage
@@ -848,7 +848,7 @@ Active workspace（local / remote）──只决定工作区上下文，不改�
 
 ### 8.3 Provider Provisioning 接入 R3 主链
 
-模型配置没有用户触发的同步入口；唯一例外是数据同步页「模型提供商」分类在该设备最近一次自动下发失败时提供的「重试」（§8.3.6）。本机是 Provider 配置的唯一编辑权威，每个在线 Source Server 是本机配置的可丢弃执行镜像；Envelope 内容、目标端事务 / 回滚、`syncId` 幂等、校验边界以 [Remote Provider Provisioning](../remote/provider-provisioning.md) 为事实文档，本节只描述它如何挂到 R3 Source Server 主链上，不得与之矛盾。
+模型配置没有用户触发的同步入口；唯一例外是数据同步页「模型提供商」分类在该设备最近一次自动下发失败时提供的「重试」（§8.3.6）。本机是 Provider 配置的唯一编辑权威，每个在线 Source Server 是本机配置的可丢弃执行镜像；Envelope 内容、目标端事务 / 回滚、`syncId` 幂等、校验边界以 [Remote Provider Provisioning](../remote/provider-provisioning-openzwork.md) 为事实文档，本节只描述它如何挂到 R3 Source Server 主链上，不得与之矛盾。
 
 #### 8.3.1 链路：Main coordinator → Window Host executor → Source Server target
 
@@ -1077,7 +1077,7 @@ Desktop Main（desktopHostProcess → remoteSessionManager → coordinator）
 结构升级统一进入物理库的正式 migration 账本：Controller/Source 附加表按用途进入
 `tasks_schema_migration`，session identity 表进入 CLI `schema_migration`。
 Repo 不再独立建表/补列。旧 schema、未完成计划与回退兼容规则见
-[`Task SQLite Index：R3 附加表纳入库级账本`](../task/task-sqlite-index.md#r3-附加表纳入库级账本)。
+[`Task SQLite Index：R3 附加表纳入库级账本`](../task/task-sqlite-index-openzwork.md#r3-附加表纳入库级账本)。
 以下 workspace 级数据合并 ledger 仍负责业务进度，不代替库级 schema 版本。
 
 ### 9.1 控制端迁移（App 升级后首次启动）

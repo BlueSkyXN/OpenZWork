@@ -1,6 +1,6 @@
 # Task SQLite Index
 
-> 历史文档：2026-09 虚拟项目重构已替代本文的运行模型。当前行为以[虚拟项目设计](../superpowers/specs/2026-09-09-virtual-project-design.md)为准。分组表已由[分组视图](../ui/task-grouped-view.md)恢复为运行态，新增 `task_group_admissions` 记录首次归组和创建 placement；workspace bootstrap 不再执行。CLI 拥有会话事实，Host 拥有项目与组织态。下文只作历史设计记录。
+> 历史文档：2026-09 虚拟项目重构已替代本文的运行模型。当前行为以[虚拟项目设计](../superpowers/specs/2026-09-09-virtual-project-design-openzwork.md)为准。分组表已由[分组视图](../ui/task-grouped-view.md)恢复为运行态，新增 `task_group_admissions` 记录首次归组和创建 placement；workspace bootstrap 不再执行。CLI 拥有会话事实，Host 拥有项目与组织态。下文只作历史设计记录。
 
 ## Scope
 

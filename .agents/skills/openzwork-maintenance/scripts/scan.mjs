@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, posix } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parse as parseYaml } from "yaml";
 
@@ -425,7 +425,58 @@ export function validateVariants(doc, context) {
       );
     }
   }
+  for (const { file, line, target, variant } of findUpstreamLinks(context, registered)) {
+    errors.push(
+      `${file}:${line} 链接 ${target} 打开的是上游原文；OpenZWork 文档改为链接 ${variant.split("/").pop()}（上游原文的内容和锚点与 OpenZWork 版本不同）`,
+    );
+  }
   return errors;
+}
+
+const INLINE_LINK = /\]\(\s*<?([^)\s>]+)>?/g;
+const REFERENCE_LINK = /^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)>?/;
+
+/**
+ * OpenZWork 自有的 Markdown（分类 openzwork）里，指向「有 OpenZWork 版本的上游文档」的相对链接。
+ * 这类链接应改指 OpenZWork 版本，否则读者打开的是上游原文，锚点也可能不存在。
+ */
+export function findUpstreamLinks(context, registered) {
+  const own = [...context.result]
+    .filter(([path, { category }]) => category === "openzwork" && /\.mdx?$/.test(path))
+    .map(([path]) => path);
+  const blobs = readBlobs(
+    context.repo,
+    own.map((path) => context.headTree.get(path).blob),
+  );
+  const hits = [];
+  for (const file of own) {
+    let fenced = false;
+    const lines = blobs.get(context.headTree.get(file).blob).toString("utf8").split("\n");
+    lines.forEach((text, index) => {
+      if (/^\s*(?:```|~~~)/.test(text)) fenced = !fenced;
+      if (fenced) return;
+      const reference = REFERENCE_LINK.exec(text)?.[1];
+      const targets = [...text.matchAll(INLINE_LINK)].map((match) => match[1]);
+      for (const target of reference ? [...targets, reference] : targets) {
+        const [path] = target.split("#");
+        if (!path || /^[a-z][\w+.-]*:/i.test(path)) continue;
+        let resolved;
+        try {
+          resolved = posix.normalize(
+            path.startsWith("/")
+              ? decodeURI(path.slice(1))
+              : posix.join(posix.dirname(file), decodeURI(path)),
+          );
+        } catch {
+          continue;
+        }
+        if (registered.has(resolved)) {
+          hits.push({ file, line: index + 1, target, variant: variantOf(resolved) });
+        }
+      }
+    });
+  }
+  return hits;
 }
 
 /** 差异总表：台账中每个 active、undecided 条目都要出现在 README 的「与上游的差异」中。 */

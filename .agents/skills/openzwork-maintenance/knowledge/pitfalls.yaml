@@ -123,3 +123,14 @@ entries:
     since: 2026-11-08
     checked: 3.17.2
     status: active
+  - id: OZK-PIT-012
+    title: 恢复上游原文后自有文档的链接仍指向原文
+    when: 把 OpenZWork 改过的上游文档恢复为原文、内容移到 -openzwork 版本之后。
+    do: 把 OpenZWork 文档里指向该文档的链接改指 -openzwork 版本，再运行 --check 确认没有遗漏。
+    why: 迁移后 22 份 OpenZWork 文档中 156 处链接打开的是上游原文，其中 4 处锚点只存在于 OpenZWork 版本，链接失效。
+    evidence:
+      - PR #70
+      - docs/openzwork/upstream-doc-variants.yaml
+    since: 2026-11-08
+    checked: 3.17.2
+    status: active

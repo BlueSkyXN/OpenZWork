@@ -2,9 +2,9 @@
 
 本目录记录本地运行日志、TTFT 查询和测试度量。App Usage 的事实由 CLI session store 持有，设置页通过已注册的本机服务只读查询。
 
-- [进程内存本地诊断日志](./memory-diagnostics-log.md)
-- [本地 TTFT 查询与验收](./local-ttft-queries.md)
-- [本地 TTFT Trace 阅读](./local-ttft-trace-reading.md)
+- [进程内存本地诊断日志](./memory-diagnostics-log-openzwork.md)
+- [本地 TTFT 查询与验收](./local-ttft-queries-openzwork.md)
+- [本地 TTFT Trace 阅读](./local-ttft-trace-reading-openzwork.md)
 - [Session 停止来源诊断](./session-stop-source-diagnostics.md)
 - [App Usage 规格](../specs/app-usage-settings-openzwork.md)
 

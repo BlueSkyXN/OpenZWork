@@ -158,11 +158,11 @@ SSH 项目用例遵循[当前三屏向导](../architecture/remote-device-connect
 
 ### RDUX-04 向导回归
 
-准备、动作、断言与运行证据见[会话 case 目录](../conversation-session-case-catalog.md#rdux-04-向导回归)；测试路径与 pending 状态见[覆盖矩阵](conversation-session-e2e-coverage-matrix.md#rdux-04-向导回归)。
+准备、动作、断言与运行证据见[会话 case 目录](../conversation-session-case-catalog-openzwork.md#rdux-04-向导回归)；测试路径与 pending 状态见[覆盖矩阵](conversation-session-e2e-coverage-matrix-openzwork.md#rdux-04-向导回归)。
 
 ### RDUX-10 三屏向导验收
 
-准备、动作、断言与运行证据见[会话 case 目录](../conversation-session-case-catalog.md#rdux-10-三屏向导验收)；测试路径与 pending 状态见[覆盖矩阵](conversation-session-e2e-coverage-matrix.md#rdux-10-三屏向导验收)。
+准备、动作、断言与运行证据见[会话 case 目录](../conversation-session-case-catalog-openzwork.md#rdux-10-三屏向导验收)；测试路径与 pending 状态见[覆盖矩阵](conversation-session-e2e-coverage-matrix-openzwork.md#rdux-10-三屏向导验收)。
 
 ### RDUX-11 连接中与目录屏验收（accepted）
 

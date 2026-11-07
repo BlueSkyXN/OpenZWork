@@ -670,7 +670,7 @@ CR-01 组织请求挂起回归保留。手机以触摸圆标和真实 touch 长�
 桌面 6/6（`desktop-e2e-20261015074007168-p14878-82ee5f5def897173`）、手机 shared-host 1/1（`desktop-e2e-20261015074353798-p21370-787572f877f63d6a`）通过；桌面中英/深浅与手机深浅截图已检查。仍不扩展到实体手机、Windows/Linux 桌面或真实远端重连。
 合入后续 staging 后，项目区 D3、VP24/31 专项 2/2 通过（`desktop-e2e-20261015080913429-p63953-a64e3599b9852007`），确认原项目继承、批量折叠与刷新持久化保留；匿名回放刷新后的欢迎页复用真实登录步骤完成准备。
 
-验收契约见[分组视图](../ui/task-grouped-view.md#恢复验收)，case 见[目录](../conversation-session-case-catalog.md)。
+验收契约见[分组视图](../ui/task-grouped-view.md#恢复验收)，case 见[目录](../conversation-session-case-catalog-openzwork.md)。
 桌面 pending `conversation-session-task-groups.test.ts` 覆盖偏好升级、分组 CRUD、首发、
 共享菜单、置顶/归档恢复、整行跨组移动、整组排序与取消、千行虚拟滚动/吸顶及折叠重载；中英、深浅主题分别取证。
 GRP06/CR-01 增加 placement RPC 挂起 → 导航取消 → 新项目可见 → 释放后一次入组的桌面故障回归；
@@ -1556,7 +1556,7 @@ artifact 后人工观察”的软通过口径。
 
 `GS` 的 running guide 保留用例补充待引导布局回归：在实际 pending guide 等待状态测量消息行、气泡、等待提示和输入框的右边界，误差不得超过 1px。该断言只证明桌面 Electron 的布局；手机 Web 复用同一列表与 16px 留白，仍需独立远控界面回归。
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `M/N` 扩展分组，暂不计入 A-J 主路径统计；其中仍标为 `probe` 的条目只代表软观察。`TS` 曾于 2026-06-24 晋升到默认 conversation E2E，但在 V4 迁移时重新降级到 `manual-review/pending`；当前 spec 会前置切回 `queue` 交互行为，并以硬断言保留 M01-M05 的候选执行证据，但这不代表当前 V4 版本已通过人工 review、formal replay 和 Docker admission。现有证据覆盖可见 queue kind/order、tool block 保留和 `/compact` 入队 guard，但不证明输入只在 ACK+CLI 权威投影可对账后清空，这一闭环由 `PV4-03/PV4-07` 追踪。`GS` 已转为 formal replay，覆盖 running Guide 的 accepted steer、批次顺序、text-only 续跑和 interrupted fallback；`SN` 覆盖 running queue send-now；active goal 的相邻抢占合同由已转正的 `GR` deterministic cases 证明。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `M/N` 扩展分组，暂不计入 A-J 主路径统计；其中仍标为 `probe` 的条目只代表软观察。`TS` 曾于 2026-06-24 晋升到默认 conversation E2E，但在 V4 迁移时重新降级到 `manual-review/pending`；当前 spec 会前置切回 `queue` 交互行为，并以硬断言保留 M01-M05 的候选执行证据，但这不代表当前 V4 版本已通过人工 review、formal replay 和 Docker admission。现有证据覆盖可见 queue kind/order、tool block 保留和 `/compact` 入队 guard，但不证明输入只在 ACK+CLI 权威投影可对账后清空，这一闭环由 `PV4-03/PV4-07` 追踪。`GS` 已转为 formal replay，覆盖 running Guide 的 accepted steer、批次顺序、text-only 续跑和 interrupted fallback；`SN` 覆盖 running queue send-now；active goal 的相邻抢占合同由已转正的 `GR` deterministic cases 证明。
 
 | Catalog ID | 覆盖状态     | 自动化                                                                                                                                                                                | 备注                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1637,7 +1637,7 @@ artifact 后人工观察”的软通过口径。
 
 ## 扩展覆盖：Composer 前缀提示路由
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `S` 扩展分组。它验证输入框提示面板的分流和键盘选择，不发起 provider 请求，不纳入 A-J 主路径统计。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `S` 扩展分组。它验证输入框提示面板的分流和键盘选择，不发起 provider 请求，不纳入 A-J 主路径统计。
 
 | Catalog ID | 覆盖状态 | 自动化                  | 备注                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ---------- | -------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1651,7 +1651,7 @@ artifact 后人工观察”的软通过口径。
 
 ## 扩展覆盖：Plugin 引用（@ Plugin capability hint）
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `PLG` 扩展分组，产品语义见 [plugin-reference-mention.md](../plugin-reference-mention.md)。runtime 注入、持久化与恢复语义优先用 focused core 单测取证（`PC`/`PG`），provider wire 级证据由确定性 replay E2E（`PU`）承担；Subagent reminder 的独立 provider-wire E2E 记为 `PUS`（`conversation-session-plugin-reference-subagent.test.ts`）；不纳入 A-J 主路径统计。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `PLG` 扩展分组，产品语义见 [plugin-reference-mention.md](../plugin-reference-mention.md)。runtime 注入、持久化与恢复语义优先用 focused core 单测取证（`PC`/`PG`），provider wire 级证据由确定性 replay E2E（`PU`）承担；Subagent reminder 的独立 provider-wire E2E 记为 `PUS`（`conversation-session-plugin-reference-subagent.test.ts`）；不纳入 A-J 主路径统计。
 
 | Catalog ID | 覆盖状态                        | 自动化                                                                      | 备注                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | ------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1690,7 +1690,7 @@ artifact 后人工观察”的软通过口径。
 
 ## Markdown 表格布局覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `W` 分组，验证 assistant markdown 表格在 completed 消息里的布局与动作合同。`MT`/`MTS` 保留原 formal 的 setup/action/assert 和 case-local replay fixture，但 2026-07-11 已降到 pending，只作为 legacy 历史语料，不计当前 V4 formal gate。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `W` 分组，验证 assistant markdown 表格在 completed 消息里的布局与动作合同。`MT`/`MTS` 保留原 formal 的 setup/action/assert 和 case-local replay fixture，但 2026-07-11 已降到 pending，只作为 legacy 历史语料，不计当前 V4 formal gate。
 
 | Catalog ID | 覆盖状态 | 自动化 | 备注                                                                                                                                                                                                                                              |
 | ---------- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1714,7 +1714,7 @@ artifact 后人工观察”的软通过口径。
 
 ## 消息图片画廊覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的
 `MIG` 分组。首批使用 case-local provider/filesystem fixture 验证 Markdown 与 Browser Use 图片来源，
 共享缩略图和预览交互走同一 renderer 合同。390px viewport 只覆盖响应式 CSS，不声称覆盖真实手机
 `web-remote-replayable` 恢复。双指 pinch、Web download 与主题 token 继续由 focused tests 代表。
@@ -1732,7 +1732,7 @@ artifact 后人工观察”的软通过口径。
 
 ## Status Panel Inline Layout 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `SP` 分组，验证 V4 `ConversationTimeline` 右上角 status panel 在桌面 `desktop-continuous` 下的 inline offset、聊天主列宽度和 panel 内导航入口合同。当前 V4 单测守住 draft/normal/inline 宽度 class、具名 conversation container 和 inline 布局的单一静态截面；手动 mini、手动重新展开、room resize 跨阈值及三个内容容器的动态同步尚只有 `SPL` legacy pending 历史语料，不计当前 V4 formal gate。桌面窄 pane 与手机 Web 共用 container-width 语义，但 `SP08` 的 replayable GUI 仍需独立自动化。剪枝为：布局保留草稿、普通、inline 展开/收起、窄 pane、手机 Web 六类状态，不对 Git/goal/todo/running 内容类型做全笛卡尔积；`SP13` 已确认只保留桌面展开态 + 未暂存文件代表，`staged-only` 由 source 透传组件测试覆盖，`unstaged + staged` 与未暂存优先规则等价，mini 展开归 `SP05`，手机远控归 `SP08`。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `SP` 分组，验证 V4 `ConversationTimeline` 右上角 status panel 在桌面 `desktop-continuous` 下的 inline offset、聊天主列宽度和 panel 内导航入口合同。当前 V4 单测守住 draft/normal/inline 宽度 class、具名 conversation container 和 inline 布局的单一静态截面；手动 mini、手动重新展开、room resize 跨阈值及三个内容容器的动态同步尚只有 `SPL` legacy pending 历史语料，不计当前 V4 formal gate。桌面窄 pane 与手机 Web 共用 container-width 语义，但 `SP08` 的 replayable GUI 仍需独立自动化。剪枝为：布局保留草稿、普通、inline 展开/收起、窄 pane、手机 Web 六类状态，不对 Git/goal/todo/running 内容类型做全笛卡尔积；`SP13` 已确认只保留桌面展开态 + 未暂存文件代表，`staged-only` 由 source 透传组件测试覆盖，`unstaged + staged` 与未暂存优先规则等价，mini 展开归 `SP05`，手机远控归 `SP08`。
 
 | Catalog ID | 覆盖状态 | 自动化                                                                                         | 备注                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ---------- | -------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1756,7 +1756,7 @@ artifact 后人工观察”的软通过口径。
 
 ## Assistant Preview Cards 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `APC` 分组。Assistant Preview Cards 是 v4 assistant text row 的派生 UI，不新增协议、snapshot、replayable queue 或 relay 状态；E2E 通过 provider replay fixture 输出 localhost/HTML/Markdown/Office/PDF 候选，并断言卡片只出现在 latest terminal assistant row 下方。当前窗口 case 已完成人工 review、正式目录 promotion 和本地 formal replay；覆盖状态仍记 partial，因为 replay-isolated Docker admission 尚未执行，部分排列继续由 focused tests 守护。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `APC` 分组。Assistant Preview Cards 是 v4 assistant text row 的派生 UI，不新增协议、snapshot、replayable queue 或 relay 状态；E2E 通过 provider replay fixture 输出 localhost/HTML/Markdown/Office/PDF 候选，并断言卡片只出现在 latest terminal assistant row 下方。当前窗口 case 已完成人工 review、正式目录 promotion 和本地 formal replay；覆盖状态仍记 partial，因为 replay-isolated Docker admission 尚未执行，部分排列继续由 focused tests 守护。
 
 | Catalog ID | 覆盖状态 | 自动化                       | 备注                                                                                                                                                                                                                                                                                                                          |
 | ---------- | -------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1805,7 +1805,7 @@ provider replay text/tool call
 
 ## Browser Tab Lifecycle 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `BTL`
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `BTL`
 分组。首批只取 Desktop local `desktop-continuous` + IAB，provider replay 固定模型选择，但 Browser 命令走
 真实 `node_repl -> host -> main -> webview/CDP`。BTL01-03 保留无上限压力的进程内基线；BTL04/05
 覆盖每窗口 32 个逻辑 Tab 硬上限与运行态保护；BTL12 覆盖完整重启后 Browser Tab 全部清空。
@@ -1843,7 +1843,7 @@ remote/mobile 与保护 predicate 不和多 tab × 多 turn 做全排列。
 
 ## Browser Stateless MCP 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `BSM`
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `BSM`
 分组。产品已按 catalog 的 accepted 剪枝执行：
 
 - 首批只取 Desktop local `desktop-continuous`；复用 multi-session Browser Use pending fixture，
@@ -1876,7 +1876,7 @@ BSM01/BSM02 的两个 session 都从同一项目入口创建，保持同一 work
 
 ## Browser Agent Boundary 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `BAB`
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `BAB`
 分组。只取 Desktop local `desktop-continuous` + foreground built-in subagent；真实父 tab 与 workspace 共享 MCP frontend、每调用独立 Worker
 必须参与，不能只用 facade unit 证明完成。
 
@@ -1886,7 +1886,7 @@ BSM01/BSM02 的两个 session 都从同一项目入口创建，保持同一 work
 
 ## Browser Turn Auto Screenshot 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `BTA`
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `BTA`
 分组。已按产品确认剪枝：只保留“成功具体页面 Browser API / 非页面或失败调用”、“正常完成 / 其它终态”、
 “本轮有 / 无显式 `emitImage`”、“有 / 无 active tab”和“live / cold/replayable”代表组合，不做 backend、
 页面尺寸、图片数量、MIME、所有 Browser method 与所有失败码的全笛卡尔积。实现先由 core/projection/UI focused
@@ -1913,7 +1913,7 @@ BTA01/BTA02/BTA05/BTA08 的 Desktop manual-review 证据。无状态迁移后的
 
 ## v4 Conversation Detail Parity 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `VDP` 分组。v4 Conversation Detail Parity 是 renderer/adapter 层 P0 回归恢复，不新增协议、snapshot、replayable queue、relay、main process 或 agent runtime 状态；当前由 focused unit tests 覆盖适配和 prop wiring，后续需要正式 conversation E2E 时再补 provider replay fixture。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `VDP` 分组。v4 Conversation Detail Parity 是 renderer/adapter 层 P0 回归恢复，不新增协议、snapshot、replayable queue、relay、main process 或 agent runtime 状态；当前由 focused unit tests 覆盖适配和 prop wiring，后续需要正式 conversation E2E 时再补 provider replay fixture。
 
 | Catalog ID | 覆盖状态 | 自动化 | 备注                                                                                                                                                                                      |
 | ---------- | -------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1922,7 +1922,7 @@ BTA01/BTA02/BTA05/BTA08 的 Desktop manual-review 证据。无状态迁移后的
 
 ## Streaming Tool Input Preview 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `STIP` 分组。`STIP` 恢复 v4 桌面 `desktop-continuous` 的流式 function call 参数预览，并把 `Write/Edit` 的昂贵预览收敛为首包 eager、后续 1000ms 采样、终态立即冲刷；不新增协议字段、relay/main 业务状态或工具执行时机。当前用 focused unit tests 覆盖 v4 projection、兼容 projection、delivery profile 过滤和 renderer adapter；正式 E2E 后续用 synthetic provider fixture 稳定制造 `Write/Edit` 参数流，再断言工具执行前的路径和行数变化。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `STIP` 分组。`STIP` 恢复 v4 桌面 `desktop-continuous` 的流式 function call 参数预览，并把 `Write/Edit` 的昂贵预览收敛为首包 eager、后续 1000ms 采样、终态立即冲刷；不新增协议字段、relay/main 业务状态或工具执行时机。当前用 focused unit tests 覆盖 v4 projection、兼容 projection、delivery profile 过滤和 renderer adapter；正式 E2E 后续用 synthetic provider fixture 稳定制造 `Write/Edit` 参数流，再断言工具执行前的路径和行数变化。
 
 | Catalog ID | 覆盖状态 | 自动化  | 备注                                                                                                                                                                                                |
 | ---------- | -------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1937,7 +1937,7 @@ BTA01/BTA02/BTA05/BTA08 的 Desktop manual-review 证据。无状态迁移后的
 
 ## Conversation Query Navigator 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `TN` 分组。Conversation Query Navigator 从 CLI 同一完整 projection 派生：首帧保持有界 tail snapshot，宽屏显示时复用既有无状态 `rows/range` 补齐全量，再用固定行高 virtualizer 只挂载 rail viewport 与 overscan；不新增 snapshot 字段、replayable queue、relay、main process、目录持久化或独立 agent runtime 状态。`TN` 正式 replay fixture 输出 4 条以上可滚动 query，并真实制造一段 Read tool history，断言宽 pane 显示、窗口收窄后的窄 pane 隐藏与恢复、紧凑左贴 rail、连续 hit area、query + assistant tooltip、点击跳转和 active highlight。focused store/UI 与大会话 runtime 继续覆盖 1000-query 全量补拉、单次 projection 合并、rail DOM 有界，以及 sticky composer 透明 gutter 的 hover/click 命中。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `TN` 分组。Conversation Query Navigator 从 CLI 同一完整 projection 派生：首帧保持有界 tail snapshot，宽屏显示时复用既有无状态 `rows/range` 补齐全量，再用固定行高 virtualizer 只挂载 rail viewport 与 overscan；不新增 snapshot 字段、replayable queue、relay、main process、目录持久化或独立 agent runtime 状态。`TN` 正式 replay fixture 输出 4 条以上可滚动 query，并真实制造一段 Read tool history，断言宽 pane 显示、窗口收窄后的窄 pane 隐藏与恢复、紧凑左贴 rail、连续 hit area、query + assistant tooltip、点击跳转和 active highlight。focused store/UI 与大会话 runtime 继续覆盖 1000-query 全量补拉、单次 projection 合并、rail DOM 有界，以及 sticky composer 透明 gutter 的 hover/click 命中。
 
 | Catalog ID | 覆盖状态 | 自动化                | 备注                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ---------- | -------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1964,7 +1964,7 @@ Windows 实机、物理手机与真实 remote 传输未验证。
 
 ## Session Scroll Memory 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的
 `SRM` 分组。滚动记忆只属于当前 renderer；正式 E2E 复用现有 V4 长会话 fixture 做真实 task
 切换，不新增 provider 请求。pane/workspace key、LRU、layout + animation-frame 恢复时序由 UI
 单测覆盖；跨重启、跨设备同步与 turn/row 语义锚点已剪枝。
@@ -2031,7 +2031,7 @@ BDO07 补充实时刷新合同：同一工具、同一会话不重新发送 prom
 
 BG13/BG18 增量埋点断言：保留内部工具逐条上报及零 token 断言，新增独占累计 usage 的 background Agent step、原 launch message 归属和 child-local 顺序断言；普通主轮与独立 wake 主轮的最终 `message_id` 均为 UUID v7，彼此独立。复用既有 barrier/provider fixture，最终 HTTP 上报保存为 telemetry artifact；取消、失败、重复 usage/terminal、并行 child 的细分分支由 Supervisor 单测覆盖。
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `BG` 分组。`BG` 不是工具叉乘的快速失败态；formal spec 使用真实 runtime background 任务与 case-local DeepSeek replay，覆盖 provider-visible `<task-notification>`、active-loop 合流或 idle wake fallback、goal verifier defer/wake、already-background task stop control、child tool 隔离、session 切换恢复、queue send-now，以及 UI 隐藏 synthetic user message。2026-07-24 已完成 25 条 strict/default 双跑转正；范围只证明桌面端 `desktop-continuous`，手机 `web-remote-replayable` 的 accepted command 恢复、foreground-to-background controls、Workflow 完整 output-file artifact 后续单独立项。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `BG` 分组。`BG` 不是工具叉乘的快速失败态；formal spec 使用真实 runtime background 任务与 case-local DeepSeek replay，覆盖 provider-visible `<task-notification>`、active-loop 合流或 idle wake fallback、goal verifier defer/wake、already-background task stop control、child tool 隔离、session 切换恢复、queue send-now，以及 UI 隐藏 synthetic user message。2026-07-24 已完成 25 条 strict/default 双跑转正；范围只证明桌面端 `desktop-continuous`，手机 `web-remote-replayable` 的 accepted command 恢复、foreground-to-background controls、Workflow 完整 output-file artifact 后续单独立项。
 
 更完整的枚举矩阵见 [conversation-session-background-e2e-coverage-matrix.md](./conversation-session-background-e2e-coverage-matrix.md)。
 
@@ -2085,7 +2085,7 @@ BG13/BG18 增量埋点断言：保留内部工具逐条上报及零 token 断言
 
 ## ChatLoading Lifecycle 覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `CHL` 分组。立即显示和 blocker 使用 focused UI test；normal-flow live tail 与滚动权先由组件测试覆盖，并用确定性真实 Markdown 逐行 desktop fixture 做布局验证。手机端复用 shared UI，但 replayable 重连不由 desktop 测试代替。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `CHL` 分组。立即显示和 blocker 使用 focused UI test；normal-flow live tail 与滚动权先由组件测试覆盖，并用确定性真实 Markdown 逐行 desktop fixture 做布局验证。手机端复用 shared UI，但 replayable 重连不由 desktop 测试代替。
 
 | Catalog ID | 覆盖状态     | 自动化                                                                                                                                | 备注                                                                                                                                                                                                                                                                                                                                                                           |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -2101,7 +2101,7 @@ BG13/BG18 增量埋点断言：保留内部工具逐条上报及零 token 断言
 
 ## History Lazy Pagination 覆盖口径
 
-这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `HLP` 分组。
+这组 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `HLP` 分组。
 正式 GUI 复用 `UTL` 的单 turn 61-tool fixture 精确制造 `turnHeader` 落在 60-row tail 之外；普通多 turn
 继续复用 `conversation-session-v4-load-older.test.ts`。断言必须同时包含 UI 可见性、projection row count
 和虚拟滚动锚点，不能只证明 `rows/range` 请求成功。
@@ -2113,7 +2113,7 @@ BG13/BG18 增量埋点断言：保留内部工具逐条上报及零 token 断言
 
 ## AskUserQuestion 问答响应可见性覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `Q` 分组。`TX` 已覆盖 `AskUserQuestion` 作为工具块参与 completed 后 compact/fork/goal 的稳定性，但没有断言用户回答本身是否在会话历史里可见。`AQ` 先证明 `elicitation_response` 已进入下一次模型请求，再断言同一答案必须保留在 AskUserQuestion 消息的已回答记录里。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `Q` 分组。`TX` 已覆盖 `AskUserQuestion` 作为工具块参与 completed 后 compact/fork/goal 的稳定性，但没有断言用户回答本身是否在会话历史里可见。`AQ` 先证明 `elicitation_response` 已进入下一次模型请求，再断言同一答案必须保留在 AskUserQuestion 消息的已回答记录里。
 
 | Catalog ID | 覆盖状态 | 自动化  | 备注                                                                                                                                                                                                                                                                                                                                                                       |
 | ---------- | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2276,7 +2276,7 @@ DCA-V1-13 菜单兼容追加验收（2026-09-15，manual-review/pending）：在
 
 ## ExitPlanMode 计划审批反馈可见性覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `S` 分组。`PAF` 覆盖和 `AQ` 相邻但语义相反的 elicitation 路径：`ExitPlanMode` 计划审批弹窗里的 custom feedback 必须成为独立普通 user message，而不是像普通 `AskUserQuestion` 一样只留在工具消息详情里，也不能显示 turn steer / guided 标记。`PFC` 覆盖审批通过后的 plan file compact 连续性：已批准 plan 落到工作区 `.zcode/plans` 后，手动 `/compact` 的后续普通请求必须重新带上 `plan_file_reference`。`PM` 覆盖 plan mode 的两个能力边界：无反馈拒绝审批停止当前 turn 且保持 plan mode；写工具被 plan mode 拒绝时，后续只读工具仍继续执行并把真实结果返回给 provider。`PSR` 覆盖 `ExitPlanMode` 参数流式生成期间切走、后台进入审批等待、再切回的恢复路径：运行中 snapshot 必须覆盖同 tool id 的空流式预览，不依赖 stop 后的终态 reconcile 才展示计划。S01-S16 的 provider、工具和桌面 UI 合同仍只声明本地 `desktop-continuous`；S17 单独覆盖手机 `web-remote-replayable` 的 Plan ACK 后权威对齐，并明确剪枝普通 permission、`AskUserQuestion` 和桌面路径。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `S` 分组。`PAF` 覆盖和 `AQ` 相邻但语义相反的 elicitation 路径：`ExitPlanMode` 计划审批弹窗里的 custom feedback 必须成为独立普通 user message，而不是像普通 `AskUserQuestion` 一样只留在工具消息详情里，也不能显示 turn steer / guided 标记。`PFC` 覆盖审批通过后的 plan file compact 连续性：已批准 plan 落到工作区 `.zcode/plans` 后，手动 `/compact` 的后续普通请求必须重新带上 `plan_file_reference`。`PM` 覆盖 plan mode 的两个能力边界：无反馈拒绝审批停止当前 turn 且保持 plan mode；写工具被 plan mode 拒绝时，后续只读工具仍继续执行并把真实结果返回给 provider。`PSR` 覆盖 `ExitPlanMode` 参数流式生成期间切走、后台进入审批等待、再切回的恢复路径：运行中 snapshot 必须覆盖同 tool id 的空流式预览，不依赖 stop 后的终态 reconcile 才展示计划。S01-S16 的 provider、工具和桌面 UI 合同仍只声明本地 `desktop-continuous`；S17 单独覆盖手机 `web-remote-replayable` 的 Plan ACK 后权威对齐，并明确剪枝普通 permission、`AskUserQuestion` 和桌面路径。
 
 | Catalog ID | 覆盖状态     | 自动化                                                                                                                                                                            | 备注                                                                                                                                                                                                                                                                                                                         |
 | ---------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2306,7 +2306,7 @@ DCA-V1-13 菜单兼容追加验收（2026-09-15，manual-review/pending）：在
 
 ## Plan Mode MCP 权限边界覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `Y` 分组。`PMC` 使用 case-local synthetic provider fixture 稳定制造 `EnterPlanMode -> MCP lookup -> destructive MCP` 顺序，并通过隔离 E2E HOME 下的用户级配置注入 stdio MCP fixture server（工作区 MCP 需逐条信任才会连接）：`lookup` 不声明 `readOnlyHint` 且显式非 destructive，`reset` 声明 `destructiveHint:true`；`lookup` 弹出权限弹窗后由用例选择允许一次。该 case 只证明桌面本地 `desktop-continuous` 首发 session 的 Plan mode MCP 权限边界；Plan×原模式的判定矩阵、allow 规则不能跳过 MCP 询问、project deny/ask 优先级、伪 `mcp__` 名称不放行和 MCP metadata 映射由 core 单测覆盖，不扩展到手机 remote replayable、设置页健康检查或真实第三方 MCP server。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `Y` 分组。`PMC` 使用 case-local synthetic provider fixture 稳定制造 `EnterPlanMode -> MCP lookup -> destructive MCP` 顺序，并通过隔离 E2E HOME 下的用户级配置注入 stdio MCP fixture server（工作区 MCP 需逐条信任才会连接）：`lookup` 不声明 `readOnlyHint` 且显式非 destructive，`reset` 声明 `destructiveHint:true`；`lookup` 弹出权限弹窗后由用例选择允许一次。该 case 只证明桌面本地 `desktop-continuous` 首发 session 的 Plan mode MCP 权限边界；Plan×原模式的判定矩阵、allow 规则不能跳过 MCP 询问、project deny/ask 优先级、伪 `mcp__` 名称不放行和 MCP metadata 映射由 core 单测覆盖，不扩展到手机 remote replayable、设置页健康检查或真实第三方 MCP server。
 
 | Catalog ID | 覆盖状态 | 自动化 | 备注                                                                                                                                                 |
 | ---------- | -------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2315,7 +2315,7 @@ DCA-V1-13 菜单兼容追加验收（2026-09-15，manual-review/pending）：在
 
 ## 自定义命令 `!` 块转交覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `CCH` 分组。`CCH` 使用 case-local synthetic provider fixture：首个模型请求返回固定的非只读 `Bash` tool_use，命令与 `!` 块逐字一致（把 `$CLAUDE_CODE_SESSION_ID` 写入 `${CLAUDE_PROJECT_DIR}/.zcode-e2e-cch.marker`），断言基于真实 CLI 解析后发给模型的请求内容、磁盘上的标记文件及其内容。该 case 只证明桌面本地 `desktop-continuous` 的项目命令；行首/空白识别、代码块闭合、插件变量替换、无法解析时只留说明、参数不被改写由 contracts 单测覆盖，插件命令由 bootstrap 单测覆盖，TUI 路径由 CLI 单测覆盖，Bash 环境变量（前台/后台、`cd` 后仍为工作区根目录）由 core 单测覆盖，headless 拒绝由 CLI 既有权限路径保证，不扩展到手机 remote replayable。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `CCH` 分组。`CCH` 使用 case-local synthetic provider fixture：首个模型请求返回固定的非只读 `Bash` tool_use，命令与 `!` 块逐字一致（把 `$CLAUDE_CODE_SESSION_ID` 写入 `${CLAUDE_PROJECT_DIR}/.zcode-e2e-cch.marker`），断言基于真实 CLI 解析后发给模型的请求内容、磁盘上的标记文件及其内容。该 case 只证明桌面本地 `desktop-continuous` 的项目命令；行首/空白识别、代码块闭合、插件变量替换、无法解析时只留说明、参数不被改写由 contracts 单测覆盖，插件命令由 bootstrap 单测覆盖，TUI 路径由 CLI 单测覆盖，Bash 环境变量（前台/后台、`cd` 后仍为工作区根目录）由 core 单测覆盖，headless 拒绝由 CLI 既有权限路径保证，不扩展到手机 remote replayable。
 
 | Catalog ID | 覆盖状态 | 自动化         | 备注 |
 | ---------- | -------- | -------------- | ---- |
@@ -2324,7 +2324,7 @@ DCA-V1-13 菜单兼容追加验收（2026-09-15，manual-review/pending）：在
 
 ## MCP OAuth 状态刷新隔离覆盖口径
 
-该组对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `MO` 分组。`MO01` 使用本地 authorization server、受保护 HTTP MCP、普通无鉴权 HTTP MCP、用户级 stdio MCP 和安装型 plugin fixture，在 Settings 观察 authorization pending 并至少等待一次 status-only poll 后完成 localhost callback；通过 stdio PID 与普通 HTTP initialize 次数排除“短暂断开后重连”的假阳性。`MO02` 用 UI/store 单测覆盖本地 A 到远程 B 的 `workspaceKey = workspaceIdentity?.trim() || workspacePath` 隔离、旧 runner/response 丢弃、敏感配置不外发，以及自动刷新 key 经空状态后重新武装。`MO03` 在 Desktop main 配置文件不可解析时断言 load failure 不进入 full connect replace；恢复有效配置后沿既有 connect replace 语义重新收敛。该组不扩展到手机 remote replayable、真实第三方 OAuth 或多授权并发。
+该组对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `MO` 分组。`MO01` 使用本地 authorization server、受保护 HTTP MCP、普通无鉴权 HTTP MCP、用户级 stdio MCP 和安装型 plugin fixture，在 Settings 观察 authorization pending 并至少等待一次 status-only poll 后完成 localhost callback；通过 stdio PID 与普通 HTTP initialize 次数排除“短暂断开后重连”的假阳性。`MO02` 用 UI/store 单测覆盖本地 A 到远程 B 的 `workspaceKey = workspaceIdentity?.trim() || workspacePath` 隔离、旧 runner/response 丢弃、敏感配置不外发，以及自动刷新 key 经空状态后重新武装。`MO03` 在 Desktop main 配置文件不可解析时断言 load failure 不进入 full connect replace；恢复有效配置后沿既有 connect replace 语义重新收敛。该组不扩展到手机 remote replayable、真实第三方 OAuth 或多授权并发。
 
 | Catalog ID | 覆盖状态 | 自动化        | 备注                                                                                                                                                     |
 | ---------- | -------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2334,7 +2334,7 @@ DCA-V1-13 菜单兼容追加验收（2026-09-15，manual-review/pending）：在
 
 ## Subagent Session Side Tabs 覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md)
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md)
 的 `SAT` 分组。当前先以 UI/state、runtime 与 gateway 单测覆盖完整边界；正式桌面 E2E 需要
 case-local controlled-stream fixture 稳定制造 7 个并行 child sessions 和持续 child delta，完成
 manual/capture review 后再从 pending 转正。普通 Web 使用同一 renderer 状态与 transport 组合测试；
@@ -2380,7 +2380,7 @@ manual/capture review 后再从 pending 转正。普通 Web 使用同一 rendere
 
 ## Subagent Human-in-the-loop Delegate 覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `T` 分组。`SB/SR` 已覆盖 subagent provider/model 请求链路，但没有断言 child 内部阻塞式人机交互是否代理回父 task。`SD` 使用 synthetic provider fixture 稳定制造父 `Agent` tool_use、child `AskUserQuestion`、child `Bash` permission 和父 continuation；断言 UI pending request 的 `origin.kind=subagent` 保留、用户响应进入 child provider-visible 请求、child 结果再被父会话 continuation 消费。该组只证明桌面本地 `desktop-continuous`，不覆盖手机 replayable 恢复、后台通知、并发 child 或 child `ExitPlanMode`。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `T` 分组。`SB/SR` 已覆盖 subagent provider/model 请求链路，但没有断言 child 内部阻塞式人机交互是否代理回父 task。`SD` 使用 synthetic provider fixture 稳定制造父 `Agent` tool_use、child `AskUserQuestion`、child `Bash` permission 和父 continuation；断言 UI pending request 的 `origin.kind=subagent` 保留、用户响应进入 child provider-visible 请求、child 结果再被父会话 continuation 消费。该组只证明桌面本地 `desktop-continuous`，不覆盖手机 replayable 恢复、后台通知、并发 child 或 child `ExitPlanMode`。
 
 2026-07-24 真实运行时日志发现 V4 回归：child `AskUserQuestion` 已进入
 `permission_requested/decision=ask`，parent broker 也已登记 auto-resolution，但 parent
@@ -2405,7 +2405,7 @@ focused adapter test 与本组 permission 来源 tag 断言共同锁住该边界
 
 ## Tool Error Surface 覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `Z` 分组。`TE` 使用 case-local synthetic provider fixture 稳定制造父模型同一轮返回两个 `Agent` tool call：一个读取过时 subagent profile 并在 child model 启动前得到 provider/model 配置错误，另一个正常 child 继续完成。`TIV` 使用 synthetic raw SSE 制造 malformed `AskUserQuestion` arguments，读取 network capture 的结构化 request body，断言 live continuation 与完整 CLI cold restart 后 follow-up 中的归一化 `tool_use` 和精确 error `tool_result`。两条 case 只证明桌面本地 `desktop-continuous`；手机 replayable、后台 subagent、网络 fault、Hook/permission 修改输入及 formatter 错误组合不从本组推断。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `Z` 分组。`TE` 使用 case-local synthetic provider fixture 稳定制造父模型同一轮返回两个 `Agent` tool call：一个读取过时 subagent profile 并在 child model 启动前得到 provider/model 配置错误，另一个正常 child 继续完成。`TIV` 使用 synthetic raw SSE 制造 malformed `AskUserQuestion` arguments，读取 network capture 的结构化 request body，断言 live continuation 与完整 CLI cold restart 后 follow-up 中的归一化 `tool_use` 和精确 error `tool_result`。两条 case 只证明桌面本地 `desktop-continuous`；手机 replayable、后台 subagent、网络 fault、Hook/permission 修改输入及 formatter 错误组合不从本组推断。
 
 | Catalog ID | 覆盖状态 | 自动化 | 备注                                                                                                                                                                                                                                                                                         |
 | ---------- | -------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2414,7 +2414,7 @@ focused adapter test 与本组 permission 来源 tag 断言共同锁住该边界
 
 ## Timeline 位置与折叠覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `P` 分组。`P` 组是 UI 投影/渲染语义，核心风险是 timeline 被错误归到 assistant 工作历史，或反过来 compact 被错误切成轮次边界。`TP` 当前仍是 pending legacy spec；它保留两类真实 GUI 回归的执行证据：auto compact + terminal snapshot/backfill 不能吞掉 pending assistant；manual compact failed 夹在前后 assistant activity 之间时不能把同一轮“已工作”切成多段。该证据不代表 `TP` 已 formal admitted。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `P` 分组。`P` 组是 UI 投影/渲染语义，核心风险是 timeline 被错误归到 assistant 工作历史，或反过来 compact 被错误切成轮次边界。`TP` 当前仍是 pending legacy spec；它保留两类真实 GUI 回归的执行证据：auto compact + terminal snapshot/backfill 不能吞掉 pending assistant；manual compact failed 夹在前后 assistant activity 之间时不能把同一轮“已工作”切成多段。该证据不代表 `TP` 已 formal admitted。
 
 | Catalog ID | 覆盖状态 | 自动化   | 备注                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ---------- | -------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -2431,7 +2431,7 @@ focused adapter test 与本组 permission 来源 tag 断言共同锁住该边界
 
 ## Composer 草稿作用域覆盖口径
 
-这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `R` 分组。`DR` 是正式 composer 草稿切换 E2E，覆盖 completed task、running task、未发送 draft 三个作用域；断言同时读取 composer DOM 和 renderer store 的 `composerDraftByScopeId`，避免只验证可见文本而漏掉附件或作用域串写。`DR` 验证三个作用域的正文、普通文件附件、Markdown 附件和图片附件都能在 task 切换后完整恢复。
+这些 case 对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `R` 分组。`DR` 是正式 composer 草稿切换 E2E，覆盖 completed task、running task、未发送 draft 三个作用域；断言同时读取 composer DOM 和 renderer store 的 `composerDraftByScopeId`，避免只验证可见文本而漏掉附件或作用域串写。`DR` 验证三个作用域的正文、普通文件附件、Markdown 附件和图片附件都能在 task 切换后完整恢复。
 
 | Catalog ID | 覆盖状态 | 自动化 | 备注                                                                                             |
 | ---------- | -------- | ------ | ------------------------------------------------------------------------------------------------ |
@@ -2918,7 +2918,7 @@ cache 解析，并由 focused unit 覆盖 active target、completed target、sto
 
 ## Hooks Lifecycle 覆盖口径
 
-该组对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog.md) 的 `HK`
+该组对应 [conversation-session-case-catalog.md](../conversation-session-case-catalog-openzwork.md) 的 `HK`
 分组。`HL` 使用 case-local provider fixture 和 workspace-local Node Hook recorder，在独立新
 session 中覆盖 7 个现有事件、process/command sync/async、兼容 stdin 和事件效果。执行器不与
 全部事件做笛卡尔积：process 负责完整事件矩阵，command 负责真实 shell 与 fire-and-forget
@@ -3121,7 +3121,7 @@ Electron 只保留代表性的迁移报告/放弃入口，不重复数据库排�
 | R3-REMOTE-08F               | `retired:packages/desktop/test/sourceServerUpdateCancellation.test.ts`；`conversation-session/manual-review/pending/conversation-session-r3-server-update.test.ts` 的 `R3_SERVER_UPDATE_CASE=remove-sibling`                                                                                                                                                         | 退役单测的独立断言待补；历史记录：focused + pending E2E 已通过：7 项新增 focused 覆盖原恢复线路接续、迟到成功/失败、健康连接、其他更新与后续断开/删除 owner/dispose；macOS Desktop → 隔离 Linux arm64 SSH 的 `update-sibling-1010-r5` 通过项目菜单建立 A/B 两条线路，经正式设置 RPC 保存 B 凭据，真实更新使 A 失效时删除 B，验证 A retrying → online、B 保持删除、原 workspace 的 remoteSessionId 换代及迟到更新返回取消异常。case 保持 pending；不依赖模型请求，手机复用同一 Source owner，手机实机未验证。 |
 | R3-REMOTE-09/09A/09B/10     | repo integration 覆盖逐 phase resume、全对象对账、abandon 普通重开、diverged 只读投影、显式 retry、resume 新冲突复用原 ledger 且零后续 rekey、identity isolation                                                                                                                                                                                                     | covered-unit：迁移数据语义由 SQLite 集成测试闭环；Electron 只保留报告/操作入口，不重复数据库排列组合                                                                                                                                                                                                                                                                                                                                                                                                         |
 | R3-REMOTE-13                | CLI uninstall allowlist、ownership guard、`preservedPaths` 与 install state suites                                                                                                                                                                                                                                                                                   | covered                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| R3-REMOTE-16 / CWP13-CWP19  | 历史远程无项目 UI 合同；当前入口按 RPN 导航，底层身份与持久化兼容继续保留                                                                                                                                                                                                                                                                                            | 原 partial；历史真实 SSH 代表 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-remote-project-conversation-scope.test.ts` 于 2026-08-28 通过，仍 pending；artifact 与限制见 [CWP 目录](../conversation-session-case-catalog.md)。原同 session join 仍缺 cold-reconnect 代表，不由文档整理关闭；旧 UI 结果不证明当前导航通过。                                                                                                                                  |
+| R3-REMOTE-16 / CWP13-CWP19  | 历史远程无项目 UI 合同；当前入口按 RPN 导航，底层身份与持久化兼容继续保留                                                                                                                                                                                                                                                                                            | 原 partial；历史真实 SSH 代表 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-remote-project-conversation-scope.test.ts` 于 2026-08-28 通过，仍 pending；artifact 与限制见 [CWP 目录](../conversation-session-case-catalog-openzwork.md)。原同 session join 仍缺 cold-reconnect 代表，不由文档整理关闭；旧 UI 结果不证明当前导航通过。                                                                                                                                  |
 
 最近跨系统运行：2026-08-19，Ubuntu 22.04 systemd 容器。以下记录只证明连接/首发链路，不代表上述
 partial/planned 行已经验收。`conversation-session-ssh-remote-p0.test.ts`
@@ -4084,72 +4084,72 @@ Memory MEM08 埋点补充（2026-09-17）：现有 Desktop Memory 用例同时�
 
 ### RDUX-04 向导回归
 
-场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog.md#rdux-04-向导回归)；保留原 pending/候选状态，不代表转正或 CI 准入。
+场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog-openzwork.md#rdux-04-向导回归)；保留原 pending/候选状态，不代表转正或 CI 准入。
 
 | Case           | 场景定义                                                           | 自动化                                                                                      |
 | -------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| SSH-P0-CONN-06 | [见目录](../conversation-session-case-catalog.md#rdux-04-向导回归) | `manual-review/pending/conversation-session-ssh-remote-wizard-credentials.test.ts`，Pending |
-| SSH-P0-CONN-07 | [见目录](../conversation-session-case-catalog.md#rdux-04-向导回归) | 同上，Pending                                                                               |
-| SSH-P0-CONN-03 | [见目录](../conversation-session-case-catalog.md#rdux-04-向导回归) | 更新既有 cancel-retry pending spec，未转正                                                  |
+| SSH-P0-CONN-06 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-04-向导回归) | `manual-review/pending/conversation-session-ssh-remote-wizard-credentials.test.ts`，Pending |
+| SSH-P0-CONN-07 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-04-向导回归) | 同上，Pending                                                                               |
+| SSH-P0-CONN-03 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-04-向导回归) | 更新既有 cancel-retry pending spec，未转正                                                  |
 
 ### RDUX-08 断线体验与原地重连
 
-场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连)；保留原 pending/候选状态，不代表转正或 CI 准入。
+场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连)；保留原 pending/候选状态，不代表转正或 CI 准入。
 
 | Case              | 场景定义                                                                     | 证据                                                                                                                                                                                                             |
 | ----------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RDUX-08-01        | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-disconnect-experience.test.ts`，真实 SSH PASS（`r3-server-rdux08-visual-20260928-04`）；未转正                                          |
-| RDUX-08-02        | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | 同上，真实 SSH PASS；未转正                                                                                                                                                                                      |
-| RDUX-08-03        | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | 同上，真实 SSH PASS；未转正                                                                                                                                                                                      |
-| RDUX-08-04        | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | `remoteProjectReconnectIntent`、`sshDialogFlow` 单测；SSH 凭据路径沿用 SSH-P0-CONN-06                                                                                                                            |
-| RDUX-08-05        | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | `remoteConversationDisconnected`、`webRemoteControlTaskIndex` 单测；本地 Electron RPN 通过（run `desktop-e2e-20260927163345863-p2314-13cd15bfd21db756`）                                                         |
-| RDUX-08-06        | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | `remoteWorkspaceServiceError`、`chatErrorBannerFeedbackDraft` 单测                                                                                                                                               |
-| RDUX-08-07        | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | `conversation-session-r3-mobile.test.ts`，真实 SSH + relay PASS（`r3-server-rdux08-mobile-20260928-11`）；同时覆盖手机独立 replay、桌面 continuous 和双端 FIFO                                                   |
-| RDUX-MOBILE-DRAFT | [见目录](../conversation-session-case-catalog.md#rdux-08-断线体验与原地重连) | accepted；`conversation-session-r3-mobile.test.ts` 独立同名 `it`，可用 `--mochaOpts.grep RDUX-MOBILE-DRAFT` 单独执行；2026-09-30 实跑 PASS（`r3-server-reviewfix-mobile-final`），捕获模型请求为 0；保持 pending |
+| RDUX-08-01        | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-disconnect-experience.test.ts`，真实 SSH PASS（`r3-server-rdux08-visual-20260928-04`）；未转正                                          |
+| RDUX-08-02        | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | 同上，真实 SSH PASS；未转正                                                                                                                                                                                      |
+| RDUX-08-03        | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | 同上，真实 SSH PASS；未转正                                                                                                                                                                                      |
+| RDUX-08-04        | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | `remoteProjectReconnectIntent`、`sshDialogFlow` 单测；SSH 凭据路径沿用 SSH-P0-CONN-06                                                                                                                            |
+| RDUX-08-05        | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | `remoteConversationDisconnected`、`webRemoteControlTaskIndex` 单测；本地 Electron RPN 通过（run `desktop-e2e-20260927163345863-p2314-13cd15bfd21db756`）                                                         |
+| RDUX-08-06        | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | `remoteWorkspaceServiceError`、`chatErrorBannerFeedbackDraft` 单测                                                                                                                                               |
+| RDUX-08-07        | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | `conversation-session-r3-mobile.test.ts`，真实 SSH + relay PASS（`r3-server-rdux08-mobile-20260928-11`）；同时覆盖手机独立 replay、桌面 continuous 和双端 FIFO                                                   |
+| RDUX-MOBILE-DRAFT | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-08-断线体验与原地重连) | accepted；`conversation-session-r3-mobile.test.ts` 独立同名 `it`，可用 `--mochaOpts.grep RDUX-MOBILE-DRAFT` 单独执行；2026-09-30 实跑 PASS（`r3-server-reviewfix-mobile-final`），捕获模型请求为 0；保持 pending |
 
 ### RDUX-09 恢复原项目与会话
 
-场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话)；保留原 pending/候选状态，不代表转正或 CI 准入。
+场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话)；保留原 pending/候选状态，不代表转正或 CI 准入。
 
 | 场景               | 场景定义                                                                   | 状态                                                                                                               |
 | ------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| 重连保留选择       | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
-| 冷启动进入草稿     | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；按 2026-10-19 裁决手动打开原任务，正式回放中                                                              |
-| 未挂回与终态未连接 | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
-| 目标会话不存在     | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
-| 手机恢复边界       | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | pending；真实 relay + SSH E2E PASS                                                                                 |
-| 横幅重连经向导恢复 | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
-| 横幅：握手前断开   | [见目录](../conversation-session-case-catalog.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
+| 重连保留选择       | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
+| 冷启动进入草稿     | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话) | pending；按 2026-10-19 裁决手动打开原任务，正式回放中                                                              |
+| 未挂回与终态未连接 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
+| 目标会话不存在     | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话) | pending；real SSH E2E PASS                                                                                         |
+| 手机恢复边界       | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话) | pending；真实 relay + SSH E2E PASS                                                                                 |
+| 横幅重连经向导恢复 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
+| 横幅：握手前断开   | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-09-恢复原项目与会话) | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`，Pending |
 
 ### RDUX-10 三屏向导验收
 
 2026-10-12：设置入口候选已迁移 RDUX15 分类添加与成功留在设置；旧三屏截图/运行结果不作为本轮通过证据。RDUX-10-02 的旧最近目录入口由项目流程替代。
 
-场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog.md#rdux-10-三屏向导验收)；保留原 pending/候选状态，不代表转正或 CI 准入。
+场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog-openzwork.md#rdux-10-三屏向导验收)；保留原 pending/候选状态，不代表转正或 CI 准入。
 
 | Case       | 场景定义                                                                                                                   | 自动化                                                                                                         |
 | ---------- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| RDUX-10-01 | [见目录](../conversation-session-case-catalog.md#rdux-10-三屏向导验收)                                                     | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-three-screen.test.ts`，Pending |
-| RDUX-10-02 | [见目录](../conversation-session-case-catalog.md#rdux-10-三屏向导验收)                                                     | 同上，Pending                                                                                                  |
-| RDUX-10-03 | [见目录](../conversation-session-case-catalog.md#rdux-10-三屏向导验收)；后台不抢项目页，返回远程设备设置查看同一进度与失败 | 同上，Pending                                                                                                  |
-| RDUX-10-04 | [见目录](../conversation-session-case-catalog.md#rdux-10-三屏向导验收)                                                     | 同上，Pending；手机 `/remote` 沿现有回归边界                                                                   |
+| RDUX-10-01 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-10-三屏向导验收)                                                     | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-three-screen.test.ts`，Pending |
+| RDUX-10-02 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-10-三屏向导验收)                                                     | 同上，Pending                                                                                                  |
+| RDUX-10-03 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-10-三屏向导验收)；后台不抢项目页，返回远程设备设置查看同一进度与失败 | 同上，Pending                                                                                                  |
+| RDUX-10-04 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-10-三屏向导验收)                                                     | 同上，Pending；手机 `/remote` 沿现有回归边界                                                                   |
 
 ### RDUX-11 连接中与目录屏验收（accepted）
 
-场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)；保留原 pending/候选状态，不代表转正或 CI 准入。
+场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)；保留原 pending/候选状态，不代表转正或 CI 准入。
 
 | Case       | 场景定义                                                                                                                                                           | 自动化                                                                                                                                     |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| RDUX-11-01 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)                                                                               | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-three-screen.test.ts`，Pending                             |
-| RDUX-11-02 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)                                                                               | `conversation-session-ssh-remote-connection-p0.test.ts`，沿用 SSH-P0-CONN-01/02                                                            |
-| RDUX-11-03 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)                                                                               | `packages/desktop/test/e2e/conversation-session/conversation-session-remote-connection-log-contract.test.ts`，Pending                      |
-| RDUX-11-04 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)                                                                               | 退役单测的独立断言待补；历史记录：三屏 pending spec + `retired:packages/ui/test/remoteConnectionDirectoryNavigation.test.ts`               |
-| RDUX-11-05 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)；2FA 主机显示“服务器要求额外验证”，无密码框                                   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-unsupported-target-errors.test.ts`，Pending |
-| RDUX-11-06 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)；已撤销：旧 glibc / musl 只警告不拦截                                         | retired；警告路径见 R3A-BLD-09 old-glibc                                                                                                   |
-| RDUX-11-07 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)；模拟带 PowerShell 特征的 Windows shell 显示系统不受支持                      | 同上，Pending                                                                                                                              |
-| RDUX-11-08 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)；只有 GBK 乱码的 shell 失败显示预检失败并保留诊断                             | 同上，Pending                                                                                                                              |
-| RDUX-11-09 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)；重复 Password 提示的主机输错密码仍可就地补密码                               | 同上，Pending                                                                                                                              |
-| RDUX-11-10 | [见目录](../conversation-session-case-catalog.md#rdux-11-连接中与目录屏验收accepted)；riscv64 主机显示系统不受支持，详细信息保留完整中文原因                       | 同上，Pending                                                                                                                              |
+| RDUX-11-01 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)                                                                               | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-three-screen.test.ts`，Pending                             |
+| RDUX-11-02 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)                                                                               | `conversation-session-ssh-remote-connection-p0.test.ts`，沿用 SSH-P0-CONN-01/02                                                            |
+| RDUX-11-03 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)                                                                               | `packages/desktop/test/e2e/conversation-session/conversation-session-remote-connection-log-contract.test.ts`，Pending                      |
+| RDUX-11-04 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)                                                                               | 退役单测的独立断言待补；历史记录：三屏 pending spec + `retired:packages/ui/test/remoteConnectionDirectoryNavigation.test.ts`               |
+| RDUX-11-05 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)；2FA 主机显示“服务器要求额外验证”，无密码框                                   | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-unsupported-target-errors.test.ts`，Pending |
+| RDUX-11-06 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)；已撤销：旧 glibc / musl 只警告不拦截                                         | retired；警告路径见 R3A-BLD-09 old-glibc                                                                                                   |
+| RDUX-11-07 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)；模拟带 PowerShell 特征的 Windows shell 显示系统不受支持                      | 同上，Pending                                                                                                                              |
+| RDUX-11-08 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)；只有 GBK 乱码的 shell 失败显示预检失败并保留诊断                             | 同上，Pending                                                                                                                              |
+| RDUX-11-09 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)；重复 Password 提示的主机输错密码仍可就地补密码                               | 同上，Pending                                                                                                                              |
+| RDUX-11-10 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-11-连接中与目录屏验收accepted)；riscv64 主机显示系统不受支持，详细信息保留完整中文原因                       | 同上，Pending                                                                                                                              |
 | RDUX-11-11 | 真实 SSH 容器的探测输出为空、缺少 PLATFORM / ARCH / ROOT / INSTALLED / END、INSTALLED 非法或 uname 失败 → 显示预检失败与具体原因；不显示系统不支持，不进入安装确认 | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-probe-validation.test.ts`，Pending          |
 | RDUX-11-12 | 正常首装及项目绑定 → 主动断开 → 已有设备的 INSTALLED 输出丢失 → 连接失败但 Source 身份、已安装状态和项目历史不变 → 恢复输出后同一 Source 重连成功且不重装          | 同上，Pending                                                                                                                              |
 
@@ -4157,15 +4157,15 @@ R3A-UI-04 / RDUX-11-04 回归（2026-10-12 macOS 真实 SSH 1/1 PASS，仍 pendi
 
 ### RDUX-13 设置设备卡与更新（accepted）
 
-场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)；保留原 pending/候选状态，不代表转正或 CI 准入。
+场景、运行批次及未验证边界统一见[case 目录](../conversation-session-case-catalog-openzwork.md#rdux-13-设置设备卡与更新accepted)；保留原 pending/候选状态，不代表转正或 CI 准入。
 
-| 用例       | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)                                                                          | 证据入口                                                                                                                                                                                                                     |
+| 用例       | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-13-设置设备卡与更新accepted)                                                                          | 证据入口                                                                                                                                                                                                                     |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RDUX-13-01 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)；在线/离线最近项目在草稿缓存缺失或过期时保持项目身份、入口数且无创建弹窗 | `packages/desktop/test/e2e/conversation-session/conversation-session-remote-device-cards.test.ts`                                                                                                                            |
-| RDUX-13-02 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)                                                                          | 同上                                                                                                                                                                                                                         |
-| RDUX-13-03 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)                                                                          | 同上；480px 是桌面窄屏，手机不开放设备管理                                                                                                                                                                                   |
-| RDUX-13-04 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)                                                                          | 独立断言待补；历史单测：`retired:packages/ui/test/sourceServerUpdateNotifications.test.ts`、`retired:packages/ui/test/sourceServerUpdatePreferences.test.ts`、`retired:packages/ui/test/sourceServerManagementPanel.test.ts` |
-| RDUX-13-05 | [见目录](../conversation-session-case-catalog.md#rdux-13-设置设备卡与更新accepted)；设备列表收起/展开、搜索、更多菜单与定位高亮                             | 同 RDUX-13-01 E2E；排序冻结、进度展示、等待输入和短状态的独立断言待补；历史单测：`retired:packages/ui/test/sourceServerDeviceListPanel.test.ts`、`retired:packages/ui/test/sourceServerDeviceList.test.ts`                   |
+| RDUX-13-01 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-13-设置设备卡与更新accepted)；在线/离线最近项目在草稿缓存缺失或过期时保持项目身份、入口数且无创建弹窗 | `packages/desktop/test/e2e/conversation-session/conversation-session-remote-device-cards.test.ts`                                                                                                                            |
+| RDUX-13-02 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-13-设置设备卡与更新accepted)                                                                          | 同上                                                                                                                                                                                                                         |
+| RDUX-13-03 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-13-设置设备卡与更新accepted)                                                                          | 同上；480px 是桌面窄屏，手机不开放设备管理                                                                                                                                                                                   |
+| RDUX-13-04 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-13-设置设备卡与更新accepted)                                                                          | 独立断言待补；历史单测：`retired:packages/ui/test/sourceServerUpdateNotifications.test.ts`、`retired:packages/ui/test/sourceServerUpdatePreferences.test.ts`、`retired:packages/ui/test/sourceServerManagementPanel.test.ts` |
+| RDUX-13-05 | [见目录](../conversation-session-case-catalog-openzwork.md#rdux-13-设置设备卡与更新accepted)；设备列表收起/展开、搜索、更多菜单与定位高亮                             | 同 RDUX-13-01 E2E；排序冻结、进度展示、等待输入和短状态的独立断言待补；历史单测：`retired:packages/ui/test/sourceServerDeviceListPanel.test.ts`、`retired:packages/ui/test/sourceServerDeviceList.test.ts`                   |
 
 ### 2026-09-30 评审修复回归证据
 
@@ -4298,12 +4298,12 @@ provider 的缓存命中或 bench 成功率。Native/Off 的既有合同保持�
 
 ## Bot Worker 正式用例（2026-09-23）
 
-用户确认转正的 `conversation-session-bot-channel-worker.test.ts`、`conversation-session-bot-topic-worker.test.ts`、`conversation-session-bot-continuous-worker.test.ts` 位于 `packages/desktop/test/e2e/conversation-session/`，覆盖真实 CLI 的群回复工具、话题续接/资源和持续订阅。2026-10-21 默认渠道工具暂停后，channel-worker 原用例及 fixture 保留并暂时跳过，等待插件入口；topic-worker 的身份断言改读有序分工材料。详细验收与证据见 [Bot 覆盖矩阵](bots-e2e-coverage-matrix.md#2026-09-23-用户确认转正)。未进行 Docker/CI 准入。
+用户确认转正的 `conversation-session-bot-channel-worker.test.ts`、`conversation-session-bot-topic-worker.test.ts`、`conversation-session-bot-continuous-worker.test.ts` 位于 `packages/desktop/test/e2e/conversation-session/`，覆盖真实 CLI 的群回复工具、话题续接/资源和持续订阅。2026-10-21 默认渠道工具暂停后，channel-worker 原用例及 fixture 保留并暂时跳过，等待插件入口；topic-worker 的身份断言改读有序分工材料。详细验收与证据见 [Bot 覆盖矩阵](bots-e2e-coverage-matrix-openzwork.md#2026-09-23-用户确认转正)。未进行 Docker/CI 准入。
 
 ## SSH 桌面指南候选覆盖（2026-10-10）
 
 `SSH-GUIDE-ACCOUNT/EXIT/ATTACH/MANAGE/DIR/ORDER/RESOURCE/RETRY/SHARE/HISTORY/VERSION`
-的 setup/action/assertions 见 [case catalog](../conversation-session-case-catalog.md#ssh-桌面测试指南补齐2026-10-10)。
+的 setup/action/assertions 见 [case catalog](../conversation-session-case-catalog-openzwork.md#ssh-桌面测试指南补齐2026-10-10)。
 全部保留在 `manual-review/pending`，case-local fixture 使用 canonical formal target。
 服务器队列按故障/资源/版本/管理场景独立调度；通过、业务失败与环境缺口的逐点结果见
 [桌面 SSH 指南回归](desktop-ssh-guide-regression.md)，不提升为 formal/CI 已覆盖。
@@ -4849,7 +4849,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：数据同步页推送技能（DSYNC-04）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步数据同步页推送技能dsync-042026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-skills`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步数据同步页推送技能dsync-042026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-skills`）。
 
 | 用例        | 测试文件                                                                         | 状态    |
 | ----------- | -------------------------------------------------------------------------------- | ------- |
@@ -4866,7 +4866,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：推送 inline 插件（DSYNC-07）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步推送-inline-插件dsync-072026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-plugins`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步推送-inline-插件dsync-072026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-plugins`）。
 
 | 用例        | 测试文件                                                                          | 状态    |
 | ----------- | --------------------------------------------------------------------------------- | ------- |
@@ -4880,7 +4880,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：数据同步页推送子智能体（DSYNC-09）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步数据同步页推送子智能体dsync-092026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-subagents`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步数据同步页推送子智能体dsync-092026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-subagents`）。
 
 | 用例        | 测试文件                                                                            | 状态    |
 | ----------- | ----------------------------------------------------------------------------------- | ------- |
@@ -4897,7 +4897,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：推送 MCP 服务器（DSYNC-06）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步推送-mcp-服务器dsync-062026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-mcp`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步推送-mcp-服务器dsync-062026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-mcp`）。
 
 | 用例        | 测试文件                                                                       | 状态    |
 | ----------- | ------------------------------------------------------------------------------ | ------- |
@@ -4907,7 +4907,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：数据同步页推送命令（DSYNC-10）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步数据同步页推送命令dsync-102026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-commands`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步数据同步页推送命令dsync-102026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-commands`）。
 
 | 用例        | 测试文件                                                                           | 状态    |
 | ----------- | ---------------------------------------------------------------------------------- | ------- |
@@ -4917,7 +4917,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：推送 marketplace 插件（DSYNC-08）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步推送-marketplace-插件dsync-082026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-marketplace-plugins`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步推送-marketplace-插件dsync-082026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-marketplace-plugins`）。
 
 | 用例        | 测试文件                                                                                      | 状态    |
 | ----------- | --------------------------------------------------------------------------------------------- | ------- |
@@ -4927,7 +4927,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：数据同步页推送钩子（DSYNC-11）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步数据同步页推送钩子dsync-112026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-hooks`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步数据同步页推送钩子dsync-112026-10-16pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-hooks`）。
 
 | 用例        | 测试文件                                                                        | 状态    |
 | ----------- | ------------------------------------------------------------------------------- | ------- |
@@ -4937,7 +4937,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：数据同步页设备状态与连接（DSYNC-05）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步数据同步页设备状态与连接dsync-052026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-device-connect`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步数据同步页设备状态与连接dsync-052026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-device-connect`）。
 
 | 用例        | 测试文件                                                                             | 状态    |
 | ----------- | ------------------------------------------------------------------------------------ | ------- |
@@ -4952,7 +4952,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：模型提供商只读分类与失败重试（DSYNC-13）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步模型提供商只读分类与失败重试dsync-132026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-providers`）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步模型提供商只读分类与失败重试dsync-132026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-providers`）。
 
 | 用例        | 测试文件                                                                             | 状态    |
 | ----------- | ------------------------------------------------------------------------------------ | ------- |
@@ -4962,7 +4962,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：迁移入口移到数据同步页（DSYNC-16）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步迁移入口移到数据同步页dsync-162026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。只用本机桌面，不入远程服务器队列。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步迁移入口移到数据同步页dsync-162026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。只用本机桌面，不入远程服务器队列。
 
 | 用例        | 测试文件                                                                       | 状态    |
 | ----------- | ------------------------------------------------------------------------------ | ------- |
@@ -4984,7 +4984,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：旧同步入口打开数据同步弹窗（DSYNC-14）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步旧同步入口打开数据同步弹窗dsync-142026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-legacy-entries`）。Header 入口由 WPL-011 覆盖（同为 pending）。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步旧同步入口打开数据同步弹窗dsync-142026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-legacy-entries`）。Header 入口由 WPL-011 覆盖（同为 pending）。
 
 | 用例        | 测试文件                                                                                   | 状态    |
 | ----------- | ------------------------------------------------------------------------------------------ | ------- |
@@ -4995,7 +4995,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：设置页 Scope 菜单按设备分组（DSYNC-15）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步设置页-scope-菜单按设备分组dsync-152026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-scope-by-device`）。R3A-DEV-06（`conversation-session-r3-settings-scopes.test.ts`）的期望随本票修订为「远程 tab 默认选中该设备 · 用户、显式选『本机 · 用户』写本机」。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步设置页-scope-菜单按设备分组dsync-152026-10-17pending)；保持 pending，未人工转正，未进 Docker conversation 预设。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-scope-by-device`）。R3A-DEV-06（`conversation-session-r3-settings-scopes.test.ts`）的期望随本票修订为「远程 tab 默认选中该设备 · 用户、显式选『本机 · 用户』写本机」。
 
 | 用例        | 测试文件                                                                              | 状态    |
 | ----------- | ------------------------------------------------------------------------------------- | ------- |
@@ -5019,7 +5019,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：推送内容在远端会话中的可用时机（DSYNC-17）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步推送内容在远端会话中的可用时机dsync-172026-10-18pending)；保持 pending，未人工转正，未进 Docker conversation 预设。需要模型回放隧道（与 WPL-011 相同）。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-runtime-usage`），尚未在服务器队列运行。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步推送内容在远端会话中的可用时机dsync-172026-10-18pending)；保持 pending，未人工转正，未进 Docker conversation 预设。需要模型回放隧道（与 WPL-011 相同）。已入服务器队列 `harness/remote/run-all-remote.sh`（`r3-server-qa-datasync-runtime-usage`），尚未在服务器队列运行。
 
 | 用例        | 测试文件                                                                            | 状态    |
 | ----------- | ----------------------------------------------------------------------------------- | ------- |
@@ -5035,7 +5035,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：本机配置变更在本机会话中的生效时机（DSYNC-18）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步本机配置变更在本机会话中的生效时机dsync-182026-10-18pending)；保持 pending，未人工转正，未进 Docker conversation 预设。DSYNC-17 的本机对照。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步本机配置变更在本机会话中的生效时机dsync-182026-10-18pending)；保持 pending，未人工转正，未进 Docker conversation 预设。DSYNC-17 的本机对照。
 
 | 用例        | 测试文件                                                                        | 状态    |
 | ----------- | ------------------------------------------------------------------------------- | ------- |
@@ -5059,7 +5059,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 ## 数据同步：功能演示走查（DSYNC-DEMO）
 
-场景见[case 目录](../conversation-session-case-catalog.md#数据同步功能演示走查dsync-demo2026-10-18pending)；演示型走查，保持 pending，不转正。工件在 `data-sync-demo/`：分章 webm、拼接后的 `data-sync-demo.mp4`、`chapters.txt`、`index.json`。
+场景见[case 目录](../conversation-session-case-catalog-openzwork.md#数据同步功能演示走查dsync-demo2026-10-18pending)；演示型走查，保持 pending，不转正。工件在 `data-sync-demo/`：分章 webm、拼接后的 `data-sync-demo.mp4`、`chapters.txt`、`index.json`。
 
 | 用例       | 测试文件                                                                               | 状态    |
 | ---------- | -------------------------------------------------------------------------------------- | ------- |
@@ -5084,7 +5084,7 @@ CPE03 对应 `packages/desktop/test/e2e/conversation-session/manual-review/pendi
 
 LRCD-02 验证（2026-10-22）：macOS Electron 连本机 Docker sshd（Linux arm64）。连接后退出应用，把 Profile 引用的密码 key 换成不可解密密文，打开启动自动重连后冷启动，从项目菜单点“连接”。修复前 `local-docker-20261021154909-1c07d8` 失败：Host 日志 `credential.load FAIL`（凭据解密失败），不出现密码框，项目行仍为“离线”。修复后 `local-docker-20261021161056-6eea63` 1/1 PASS：连接屏显示“需要补充密码”，补充后原项目重连，Profile 引用的 key 被新密码覆盖。无 provider 请求；未覆盖 Windows/Linux 桌面与手机，保持 pending。
 
-侧栏冷启动隔离（2026-10-21，[虚拟项目 §4.2.1](../superpowers/specs/2026-09-09-virtual-project-design.md)）：只回退迁移修复、保留侧栏隔离时同一 spec 仍让 Directory 初始化失败（`desktop-e2e-20261021030904948-p57357-911a6e625d54b1f3`，`readDirectory` 失败 4 次），本地项目断言通过，停在迁移版本断言。两项修复都在时 `desktop-e2e-20261021031154717-p66974-d757b8b1b1323647` 1/1 通过。冷启动与已有快照两种失败语义由 `retired:packages/ui/test/projectTreeDirectoryFailure.test.ts` 覆盖；没有可在修复后稳定触发目录失败的 E2E 输入，不新增正式 E2E 断言。（retired: 为退役历史证据，不计现行覆盖。）
+侧栏冷启动隔离（2026-10-21，[虚拟项目 §4.2.1](../superpowers/specs/2026-09-09-virtual-project-design-openzwork.md)）：只回退迁移修复、保留侧栏隔离时同一 spec 仍让 Directory 初始化失败（`desktop-e2e-20261021030904948-p57357-911a6e625d54b1f3`，`readDirectory` 失败 4 次），本地项目断言通过，停在迁移版本断言。两项修复都在时 `desktop-e2e-20261021031154717-p66974-d757b8b1b1323647` 1/1 通过。冷启动与已有快照两种失败语义由 `retired:packages/ui/test/projectTreeDirectoryFailure.test.ts` 覆盖；没有可在修复后稳定触发目录失败的 E2E 输入，不新增正式 E2E 断言。（retired: 为退役历史证据，不计现行覆盖。）
 
 ### APC 文件菜单契约修订（2026-10-21）
 
@@ -5109,7 +5109,7 @@ APC06/APC07/APC12 的文件菜单期望来自正确 fixture 路径的 `getFileAp
 
 ## MRO04 后台失效恢复与任务保留（2026-10-22，accepted / pending）
 
-Spec：[远控后台恢复与原任务导航](../web-remote-control/web-remote-control-architecture.md#后台恢复与原任务导航)。
+Spec：[远控后台恢复与原任务导航](../web-remote-control/web-remote-control-architecture-openzwork.md#后台恢复与原任务导航)。
 
 | ID       | 前置与操作                                                                                                                                                                                    | 必须断言                                                                                                                                                                                                                      |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -5270,7 +5270,7 @@ Desktop/Agent，`workspace-mcp-staging-merge-20261026-r1` 回放 3/3 通过（59
 
 | 场景                                                                                                                    | 证据与用例                                                                                                                                                                                             | 状态                      |
 | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- |
-| 带冒号用户名错误密码认证失败后目录可读；正确密码重试、安装、目录选择与稳定 Source 绑定成功，完整用户名保留、Host 数不变 | `test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-remote-colon-username.test.ts`；[场景合同](../conversation-session-case-catalog.md#ssh-p0-conn-09用户名含冒号2026-10-26) | pending，实跑通过（见下） |
+| 带冒号用户名错误密码认证失败后目录可读；正确密码重试、安装、目录选择与稳定 Source 绑定成功，完整用户名保留、Host 数不变 | `test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-remote-colon-username.test.ts`；[场景合同](../conversation-session-case-catalog-openzwork.md#ssh-p0-conn-09用户名含冒号2026-10-26) | pending，实跑通过（见下） |
 
 共享解析与成员准入的原单测（`retired:packages/shared/test/remoteWorkspaceIdentity.test.ts`、`retired:packages/services/test/remoteProjectConnectionMembership.test.ts`）已退役；多冒号、路径中的冒号、旧身份字符串不变、空字段拒绝与成员准入绑定的独立断言待补，不计入现行单测覆盖。上面的 E2E 证据仍保留。
 
