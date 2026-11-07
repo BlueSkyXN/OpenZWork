@@ -90,6 +90,14 @@ Windows extended 分片上 `dataDirectoryTrueMigration` 与 relocation contract 
 真实 CLI 迁移测试因 runner 冷启动超过全局 30s 测试超时而抖动失败（超时非断言），
 两个用例补显式 180s 上限；macOS/Linux 与本地套件不受影响。
 
+评审修正（同日）：安装器嵌套数据目录检测的 `.openzwork` 检查插在 `.zcode` 未命中即
+跳子目录遍历之后，属不可达死代码——无 ownership manifest 且安装目录仅含 `.openzwork`
+数据的升级会漏过全目录清理保护，已重构为双名并列检测并以结构测试锁定可达顺序。
+卸载器日志跨版本归并（旧卸载器写编译期旧名，新安装器清理旧名、回放时归并到新名）。
+E2E 运行时根与 `desktop-app` 的 DEFAULT_WORKSPACE 统一派生自同一工作区名常量，
+helper 写入目录与 Agent cwd 分叉以单测锁定。NSIS 分支可达性无法被编译测试覆盖，
+新增 `windowsInstallerNshStructure.test.ts` 结构断言守住上述三处控制流。
+
 ## 失败语义与验收
 
 - 违反核心不变量 = 隔离破洞（设计稿 A 类），按"必须清零"处理，不算可兜底缺陷。

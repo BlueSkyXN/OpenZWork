@@ -1,6 +1,7 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import assert from "node:assert/strict";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   findE2EBashOutputPath,
@@ -13,10 +14,29 @@ import {
   resolveE2ERuntimeRoot,
   resolveE2EShellPath,
   resolveE2EToolPath,
+  E2E_AGENT_WORKSPACE_NAME,
 } from "./e2e/helpers/e2e-runtime-paths.js";
 
 // fork 采纳上游：我方原在文件头维护的 /tmp 路径守卫常量随上游移除（对应守卫用例已不在本文件）。
 describe("Desktop E2E runtime paths", () => {
+  it("writes helper files where the Agent cwd can resolve them (2026-11-07 评审回归)", async () => {
+    // 评审最小复现：helper 经 resolveE2ERuntimePath 写文件，Agent 以
+    // <home>/<E2E_AGENT_WORKSPACE_NAME> 为 cwd 按 .zcode-e2e 相对路径查找。
+    // desktop-app 的 DEFAULT_WORKSPACE 若与运行时根不同源，这里会复现查找失败。
+    const e2eHomeDir = await mkdtemp(join(tmpdir(), "ozw-runtime-root-"));
+    try {
+      const agentCwd = join(e2eHomeDir, E2E_AGENT_WORKSPACE_NAME);
+      const helperPath = resolveE2ERuntimePath("bg-regression", "release-marker.txt");
+      await mkdir(dirname(helperPath), { recursive: true });
+      await writeFile(helperPath, "ready", "utf8");
+      const relativeFromAgent = relative(agentCwd, helperPath);
+      assert.equal(await readFile(join(agentCwd, relativeFromAgent), "utf8"), "ready");
+      assert.equal(dirname(resolveE2ERuntimeRoot(e2eHomeDir)), agentCwd);
+    } finally {
+      await rm(e2eHomeDir, { recursive: true, force: true });
+    }
+  });
+
   it("keeps runtime files below the isolated Agent execution workspace", () => {
     const e2eHomeDir = resolve("root", "isolated-e2e-home");
 

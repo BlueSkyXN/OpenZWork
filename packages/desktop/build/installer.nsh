@@ -26,6 +26,11 @@
 !ifndef ZCODE_UNINSTALLER_LOG_PATH
   !define ZCODE_UNINSTALLER_LOG_PATH "$TEMP\OpenZWork-uninstaller.log"
 !endif
+; Bugfix（2026-11-07 评审）：覆盖升级执行的是已安装版本的旧卸载器，其编译期日志路径仍是
+; ZCode-uninstaller.log；新安装器只清空/回放新名会拿不到旧版清理明细。双名并处理。
+!ifndef ZCODE_LEGACY_UNINSTALLER_LOG_PATH
+  !define ZCODE_LEGACY_UNINSTALLER_LOG_PATH "$TEMP\ZCode-uninstaller.log"
+!endif
 !ifndef ZCODE_UNINSTALLER_FUNCTION_PREFIX
   !define ZCODE_UNINSTALLER_FUNCTION_PREFIX "un."
 !endif
@@ -206,6 +211,9 @@
     IfErrors zcodeUninstallerDetailsResetFailed zcodeUninstallerDetailsResetSucceeded
     zcodeUninstallerDetailsResetSucceeded:
       FileClose $R0
+      ; 旧卸载器写旧名日志；升级前一并清掉，防止回放串档到本次安装。
+      Delete "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}"
+      ClearErrors
       Goto zcodeUninstallerDetailsResetDone
     zcodeUninstallerDetailsResetFailed:
       ; 外层详情不能读取旧卸载器日志时仍继续安装，文件日志和退出码仍是最终依据。
@@ -220,6 +228,11 @@
     Push $R2
 
     StrCmp $ZCodeUninstallerDetailsUnavailable "1" zcodeShowUninstallerDetailsDone
+    ; 新安装器调用旧卸载器时明细落在旧名日志；归并到新名，失败弹窗引用的路径才真实。
+    IfFileExists "${ZCODE_UNINSTALLER_LOG_PATH}" zcodeShowUninstallerDetailsReady
+    IfFileExists "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" 0 zcodeShowUninstallerDetailsDone
+      CopyFiles /SILENT "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" "${ZCODE_UNINSTALLER_LOG_PATH}"
+    zcodeShowUninstallerDetailsReady:
     ClearErrors
     FileOpen $R0 "${ZCODE_UNINSTALLER_LOG_PATH}" r
     IfErrors zcodeShowUninstallerDetailsDone
@@ -509,16 +522,16 @@
 
     StrCpy $R2 ""
 
+    ; Bugfix（2026-11-07 评审）：.zcode 与 .openzwork 必须全部先于 listChildren 跳转检测。
+    ; 此前 .openzwork 检查插在 ".zcode 未命中即跳 listChildren" 之后，成为不可达死代码，
+    ; 无 ownership manifest 且安装目录仅含 .openzwork 数据的升级会漏过全目录清理保护。
     IfFileExists "$R9\.zcode\*.*" 0 +2
       StrCpy $R2 "$R9\.zcode"
-    StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
-    IfFileExists "$R9\.zcode" 0 zcodeFindNestedDataDirListChildren
-      StrCpy $R2 "$R9\.zcode"
-    StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
-    ; 改名（2026-11-07）：当前数据根为 .openzwork，用户把数据目录放进安装目录的新形态
-    ; 同样会在覆盖安装时被清掉，递归保护必须同时识别两种命名。
     IfFileExists "$R9\.openzwork\*.*" 0 +2
       StrCpy $R2 "$R9\.openzwork"
+    StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
+    IfFileExists "$R9\.zcode" 0 +2
+      StrCpy $R2 "$R9\.zcode"
     StrCmp $R2 "" 0 zcodeFindNestedDataDirDone
     IfFileExists "$R9\.openzwork" 0 zcodeFindNestedDataDirListChildren
       StrCpy $R2 "$R9\.openzwork"
