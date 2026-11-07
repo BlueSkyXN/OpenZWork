@@ -10,7 +10,7 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES = [
   "pdf-plugin",
   "presentations-plugin",
   "spreadsheets-plugin",
-  "image-search-plugin",
+  // OpenZWork(OZ-D009): image-search-plugin 已删除，远端资产合同不包含它。
   "ios-simulator-plugin",
   "restore-legacy-sessions-plugin",
   "skill-creator-plugin",
@@ -90,7 +90,6 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
   "browser-use-plugin/skills/web-gui-tester/SKILL.md",
   // 修复原因：仅校验 manifest 无法发现文档插件缺少技能正文或视觉评审 Agent。
   // 文档插件 0.2.0 起带查看面板，远端还必须有 office-runtime 构建出的 server 与面板资源。
-  "image-search-plugin/.mcp.json",
   "documents-plugin/agents/visual-judge.md",
   "documents-plugin/skills/docx/SKILL.md",
   "documents-plugin/skills/docx-viewer/SKILL.md",

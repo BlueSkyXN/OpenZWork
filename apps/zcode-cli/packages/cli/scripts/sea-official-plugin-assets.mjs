@@ -91,16 +91,7 @@ export const officialSeaPlugins = [
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
     version: "0.2.1",
   },
-  {
-    marketplace: "zcode-plugins-official",
-    name: "image-search",
-    packageName: "@zcode/image-search-plugin",
-    requiresRuntime: false,
-    requiredSeedPaths: [".mcp.json"],
-    rootPath: join("packages", "image-search-plugin"),
-    // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.1.1",
-  },
+  // OpenZWork(OZ-D009): image-search 插件已删除，不嵌入 SEA。
   {
     marketplace: "zcode-plugins-official",
     name: "pdf",

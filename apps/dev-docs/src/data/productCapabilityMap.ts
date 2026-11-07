@@ -464,7 +464,8 @@ const nodeDefinitions: readonly CapabilityNodeDefinition[] = [
   ["commands", "extension-runtime", "命令运行时（Commands Runtime）", "Markdown command、slash catalog、启停和 prompt materialization。", "CLI Command loader"],
   ["memory-resources", "extension-runtime", "记忆资源（Memory Resources）", "持久记忆文件、topic、读取和提示注入资源。", "CLI memory files"],
   ["extension-loader", "extension-runtime", "扩展发现与加载（Extension Discovery & Loading）", "优先级、资源合并、plugin contribution 和 runtime reload。", "CLI extension loader"],
-  ["document-skills", "extension-runtime", "文档生产技能（Document Production Skills）", "当前：官方 DOCX/PDF/PPTX/XLSX Skills 与 image_search MCP，通过现有工具和脚本创建、编辑、校验工作区文档；不等于原生 Office Editor。", "CLI official document-skills plugin"],
+  // OpenZWork(OZ-D009): 官方 image_search MCP 已移除。
+  ["document-skills", "extension-runtime", "文档生产技能（Document Production Skills）", "当前：官方 DOCX/PDF/PPTX/XLSX Skills，通过现有工具和脚本创建、编辑、校验工作区文档；不等于原生 Office Editor。", "CLI official document-skills plugin"],
   ["computer-use-mcp", "extension-runtime", "计算机操作 MCP 接入（Computer Use MCP Integration）", "当前 beta：识别 zcode-cua、注入专属 broker 凭据、缺少可信 Host 时 fail closed，并注册 MCP tools。", "CLI MCP runtime + zcode-cua resolver"],
   ["browser-plugin", "browser-runtime", "浏览器使用插件（Browser Use Plugin）", "官方 skill、client runtime 和 MCP server。", "Bundled browser-use plugin"],
   ["node-repl", "browser-runtime", "Node 运行环境（Node REPL / Playwright）", "持久绑定、Playwright facade 和浏览器脚本执行。", "CLI Node REPL runtime"],

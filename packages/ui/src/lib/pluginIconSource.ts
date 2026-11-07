@@ -1,5 +1,4 @@
 import documentsIconUrl from "@/assets/plugin-icons/documents.png";
-import imageSearchIconUrl from "@/assets/plugin-icons/image-search.png";
 import pdfIconUrl from "@/assets/plugin-icons/pdf.png";
 import presentationsIconUrl from "@/assets/plugin-icons/presentations.png";
 import spreadsheetsIconUrl from "@/assets/plugin-icons/spreadsheets.png";
@@ -7,7 +6,7 @@ import { isTrustedImageUrl } from "@/lib/trustedImageUrl.js";
 
 const OFFICIAL_PLUGIN_ICON_BY_ID: Readonly<Record<string, string>> = {
   "documents@zcode-plugins-official": documentsIconUrl,
-  "image-search@zcode-plugins-official": imageSearchIconUrl,
+  // OpenZWork(OZ-D009): image-search 已删除，不打包其图标。
   "pdf@zcode-plugins-official": pdfIconUrl,
   "presentations@zcode-plugins-official": presentationsIconUrl,
   "spreadsheets@zcode-plugins-official": spreadsheetsIconUrl,

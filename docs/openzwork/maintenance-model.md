@@ -121,7 +121,3 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 5. 台账中每个 active、undecided 条目都出现在 README 的「与上游的差异」中。
 6. 任何上游文件都不能只有格式化差异。
 7. OpenZWork 自有的 Markdown 中，指向已登记上游文档的相对链接都改指其 OpenZWork 版本。
-
-## 待用户决定
-
-- image-search 插件：v3.17.1 整合 spec 写明保持移除，但代码保留了注册（运行时拒绝官方鉴权）。台账中记为 `undecided`。
