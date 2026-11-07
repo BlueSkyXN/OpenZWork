@@ -9,14 +9,6 @@ CLI usage events -> ProductProjection.usage -> snapshot/delta
 
 `V4ComposerToolbar` 读取 `snapshot.usage.contextWindow` 展示使用量。UI 不本地累加 token，也不从旧 task stream 拼 usage；恢复后以 snapshot 覆盖。
 
-## 成功请求缺少 usage
-
-最新主请求没有可用上下文计数时，V4 `usage.contextWindow` 为 null，表示当前占用未知；不以 0 或上一请求水位代替。投影内部保留已应用模型容量，下一次真实 usage 或 compact 水位可以恢复显示。此后单独更新模型容量或到达旧 hydration seed，不能把旧水位重新发布为最新值。累计只增加已报告字段，并用 `cumulativeIncompleteFields` 保留缺项。
-
-冷恢复合成的 ModelComplete 仍是零增量占位，允许同次加载的持久化 token seed 恢复上下文；该占位不是一次新请求，不能因为旧累计缺项阻断合法的上下文 seed。主链累计、当前上下文和缓存明细各保留原有统计范围。
-
-最新成功步骤的新 mainUsage 明确缺少可恢复的 token 水位时，持久化解析停止回退旧 assistant；内部 seed 的 contextWindow=null 明确清除冷占位，字段缺省则不覆盖。晚到 seed 仍不能覆盖已到达的真实新 usage。
-
 ## compact 后冷恢复
 
 Todo123：冷恢复按 `runtime.getSessionModelSelection() ?? record.restoredModelSelection`

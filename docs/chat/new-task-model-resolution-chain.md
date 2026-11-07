@@ -24,6 +24,7 @@ last-selected 的 model 与 thought 是一个不可拆分元组：
 - thought 必须按该模型的能力过滤，不能把全局独立 thought 应用到另一模型；
 - 跨模型 intent 先清空 thought，由目标 runtime 决定实际默认/兼容档位；
 - 外部 custom provider 的上次模型仍可用时，Z.ai/BigModel family 的连接记忆不能把它覆盖；
+- 上次模型属于当前 family 时，Coding/Team Plan 只约束该 family 内的 provider 与可用模型；
 - 当前 Plan provider 暂不可用时，不退回同 family 的旧连接。
 
 所有 workspace 级隔离使用 `workspaceKey = workspaceIdentity?.trim() || workspacePath`；文件和命令

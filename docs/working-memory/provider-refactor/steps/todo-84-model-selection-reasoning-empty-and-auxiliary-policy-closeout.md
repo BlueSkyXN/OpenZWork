@@ -52,6 +52,7 @@ Provider/Model 无效       Provider/Model 有效
 - 本次裁决不单独改变全新 Composer 的初始模型、Recent 或 Configured Default 优先级，也不改变账号切换的同模型/同档位衔接规则。
 - Reasoning 为空的 Selection 不得进入普通模型执行；Composer 等待用户重新选择档位。
 - Provider 或 Model 不存在时，不能猜测身份，整份 Selection 置空。
+- 普通 Composer 对失效 Reasoning 只显示为空，不弹泛化的迁移失败通知；可执行任务（如 Automation、仍可能运行的 Off-Peak）在其原有错误位置提示无法继续运行，沿用 Todo 81 的场景化提示范围。
 
 ### 2. 辅助请求独立、显式选择档位
 
@@ -80,14 +81,16 @@ Provider/Model 无效       Provider/Model 有效
 1. 恢复用户主动选模时取最高 Reasoning 的公共构造入口及调用，补充与历史恢复留空的区别测试；不将补值下沉至执行层。
 2. 保证所有普通 Selection 进入执行前都要求有效 Reasoning；禁止 ModelFactory 或其他下层静默补档位。
 3. 保留并统一“Provider/Model 无效整份置空、Reasoning 无效只清空 Reasoning”的恢复语义。
-4. 明确辅助请求的调用点和测试边界，尤其确认 Goal 主执行不会误走 `auxiliaryModelOptions`，Goal Completion Verification 才使用最低档位。
-5. 清理与旧“最高档默认补齐”规则相关的命名、注释、文档和测试，避免保留桥接逻辑。
+4. 检查 Composer、Session 恢复、Model Selection View、Automation、Off-Peak、Subagent、Bot、Repo Wiki 等消费方，避免各自重新猜测或补齐 Reasoning。
+5. 明确辅助请求的调用点和测试边界，尤其确认 Goal 主执行不会误走 `auxiliaryModelOptions`，Goal Completion Verification 才使用最低档位。
+6. 清理与旧“最高档默认补齐”规则相关的命名、注释、文档和测试，避免保留桥接逻辑。
 
 ## 验收标准
 
 - 用户主动选择新模型后，默认档位为该模型当前最高档；持久化/历史恢复及已有选择校验发现缺失或失效 Reasoning 时仍留空，不自动降档或升档。
 - Provider/Model 失效时整份 Selection 为空；Reasoning 单独失效时模型身份仍保留。
 - Composer 可以识别空 Reasoning 并要求用户重新选择，但不显示无法修复的泛化迁移通知。
+- Automation、可继续执行的 Off-Peak 等任务在空 Selection 时不会运行，并在原任务位置给出可理解的错误提示。
 - 普通 Goal 设置、Goal continuation 使用当前完整 Selection；Goal Completion Verification 使用最低 Reasoning 和自己的输出预算。
 - Title、Memory、Connectivity 等辅助请求仍显式传入最低档位，且不修改任何持久化 Selection。
 - 覆盖新建、持久化恢复、Registry 变更、Composer、Goal、Automation、连接测试的定向测试通过，并通过全量 typecheck、lint 和既有 E2E 回归。

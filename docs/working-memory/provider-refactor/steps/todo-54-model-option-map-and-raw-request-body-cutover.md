@@ -461,6 +461,7 @@ Map 由 Built-in 中按 `api.type` 的通用/具体 Model Config Rule 提供；�
 跨进程 Config、Settings draft、Personal JSON round-trip、Registry Model Config 与 Active Model Option Specs 使用同一
 结构。不得新增平铺 `reasoningMap`、Runtime capability DTO 或 UI-only Mapping 类型。
 
+Vision 标识、输入输出格式、模型选择、Session Selection、Automation、Subagent、Repo Wiki、Compact 与 Off-Peak
 继续只消费 Effective Model/Options；本 Todo 不改变它们的模型身份、队列、恢复或持久化归属。
 
 ## 9. 实现范围
@@ -614,6 +615,7 @@ Request Body”这条语义边。实现阶段在当前设计文档更新后补�
 
 - 普通请求使用 `default` 或显式 Option；
 - Title、Goal、Git、Recall 使用 `values[0]`，且没有 Reasoning Spec 时不合成；
+- Compact、Memory、Subagent、Off-Peak、Repo Wiki 继续读取本轮 Active Model；
 - 设置页不展示 Map；编辑可见 Option 字段时不复制、不覆盖、不清除 Built-in Map；
 - 取消编辑不提交，隐藏字段不丢失；
 - 本地/远端 Registry 使用同一结构，无第二套 Runtime DTO。

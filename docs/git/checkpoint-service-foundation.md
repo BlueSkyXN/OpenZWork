@@ -94,7 +94,7 @@ flowchart LR
   Repo --> GitRepo["GitCliRepo.resolveRepository"]
   Repo --> Cmd["GitCommandProvider"]
   Cmd --> GitCLI["System Git CLI"]
-  Store --> Manifest["~/.openzwork/v2/checkpoints/{workspaceHash}/{checkpointId}.json"]
+  Store --> Manifest["~/.zcode/v2/checkpoints/{workspaceHash}/{checkpointId}.json"]
   Repo --> HiddenRef["refs/zcode/checkpoints/{workspaceHash}/{checkpointId}"]
 ```
 
@@ -161,7 +161,7 @@ export interface IGitCheckpointService {
 默认 manifest 目录：
 
 ```text
-~/.openzwork/v2/checkpoints/{workspaceHash}/{checkpointId}.json
+~/.zcode/v2/checkpoints/{workspaceHash}/{checkpointId}.json
 ```
 
 manifest 当前只保存：

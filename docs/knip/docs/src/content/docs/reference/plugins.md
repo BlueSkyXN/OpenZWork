@@ -4,7 +4,6 @@ tableOfContents: false
 ---
 
 :::section{.columns.min200}
-
 - [Angular](/reference/plugins/angular "Angular")
 - [Astro](/reference/plugins/astro "Astro")
 - [Astro DB](/reference/plugins/astro-db "Astro DB")
@@ -142,5 +141,6 @@ tableOfContents: false
 - [Yarn](/reference/plugins/yarn "Yarn")
 - [yorkie](/reference/plugins/yorkie "yorkie")
 - [zx](/reference/plugins/zx "zx")
+
 
 :::

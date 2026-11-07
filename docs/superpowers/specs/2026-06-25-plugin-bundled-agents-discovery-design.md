@@ -44,7 +44,7 @@ commit `41bb6b7af`（`fix(plugins): include installed marketplace resources`）�
 ## 范围（已与用户对齐）
 
 - **做**：发现（discovery）+ 插件管理界面展示 + 规范名称/唯一裸名称的运行时调用投影。
-- **不做**：不物理拷贝文件到 `~/.openzwork/agents`——采用就地扫描，卸载即消失，无重名/陈旧拷贝问题。
+- **不做**：不物理拷贝文件到 `~/.zcode/agents`——采用就地扫描，卸载即消失，无重名/陈旧拷贝问题。
 
 ## 关键架构事实（探索结论）
 
@@ -127,7 +127,7 @@ commit `41bb6b7af`（`fix(plugins): include installed marketplace resources`）�
 
 - 不修改 agent 文件格式或 subagent 执行协议。
 - 不改 i18n、不扩展 `AgentSummary` / `AgentsListResult` 契约。
-- 不物理拷贝到 `~/.openzwork/agents`。
+- 不物理拷贝到 `~/.zcode/agents`。
 - 不把插件发现 helper 抽成公共模块（保持与 skills/commands 同样的「各自复制」风格）。
 
 ## 验证

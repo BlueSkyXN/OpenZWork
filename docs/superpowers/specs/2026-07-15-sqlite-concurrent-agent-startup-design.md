@@ -3,7 +3,7 @@
 ## 背景
 
 ZCode 的本地工作区和远程工作区都会启动独立 Agent 进程；同一系统用户下的 Agent
-共享 `~/.openzwork/cli/db/db.sqlite`。窗口级 SSH host pooling 允许同一 SSH 主机上的多个
+共享 `~/.zcode/cli/db/db.sqlite`。窗口级 SSH host pooling 允许同一 SSH 主机上的多个
 workspace 在 host 就绪后并行启动 Agent，因此数据库初始化必须支持多个进程同时进入。
 
 2026-07-15 在 `mac-studio` 上观测到两个远程 workspace 同时启动时：两个 Agent 都进入

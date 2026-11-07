@@ -15,7 +15,7 @@ OpenZWork is an AI coding workspace with desktop, browser, and terminal interfac
 
 ## Updates
 
-- **2026-11-05**: Based on ZCode v3.17.2, with subagent and Plan permission fixes, draft authorization and remote session ownership fixes, and isolated local HTML previews. See the [integration spec](docs/spec/upstream-v3.17.2-integration.md) and [published releases](https://github.com/BlueSkyXN/OpenZWork/releases).
+- **2026-11-05**: Based on ZCode v3.17.2, with subagent and Plan permission fixes, draft authorization and remote session ownership fixes, and isolated local HTML previews. See the [integration spec](docs/openzwork/upstream/v3.17.2-integration.md) and [published releases](https://github.com/BlueSkyXN/OpenZWork/releases).
 - 2026-10-30: upstream ZCode v3.17.1 released.
 - 2026-10-19: Updated to ZCode v3.16.2.
 - 2026-10-16: Updated to ZCode v3.16.1.

@@ -7,14 +7,24 @@ import { insertVerifiedDockerSpecRow } from "./conversation-docker-plan.mjs";
 const desktopDir = resolve(import.meta.dirname, "..");
 const repoRoot = resolve(desktopDir, "../..");
 const conversationDir = resolve(desktopDir, "test/e2e/conversation-session");
-const providerFixtureDir = resolve(desktopDir, "test/e2e/fixtures/upstream/conversation-session");
-const caseManifestDir = resolve(desktopDir, "test/e2e/fixtures/cases/conversation-session");
-const containerScriptPath = resolve(repoRoot, "scripts/test-desktop-e2e-container.sh");
+const providerFixtureDir = resolve(
+  desktopDir,
+  "test/e2e/fixtures/upstream/conversation-session",
+);
+const caseManifestDir = resolve(
+  desktopDir,
+  "test/e2e/fixtures/cases/conversation-session",
+);
+const containerScriptPath = resolve(
+  repoRoot,
+  "scripts/test-desktop-e2e-container.sh",
+);
 const dockerPlanPath = resolve(
   repoRoot,
   "docs/testing/conversation-session-docker-automation-plan.md",
 );
-const suiteAssignmentPattern = /^(CONVERSATION_SESSION_VERIFIED_E2E_SPEC=")([^"]*)(")$/m;
+const suiteAssignmentPattern =
+  /^(CONVERSATION_SESSION_VERIFIED_E2E_SPEC=")([^"]*)(")$/m;
 
 const options = parseArgs(process.argv.slice(2));
 if (options.help || !options.spec) {
@@ -122,7 +132,9 @@ function admit({ apply, artifact, spec, verified }) {
     errors.push(`Spec not found: ${specPath}`);
   }
   if (!alreadyInSuite && !existsSync(providerFixturePath)) {
-    errors.push(`Provider fixture not found: ${relative(repoRoot, providerFixturePath)}`);
+    errors.push(
+      `Provider fixture not found: ${relative(repoRoot, providerFixturePath)}`,
+    );
   }
   if (alreadyInSuite && !existsSync(providerFixturePath)) {
     warnings.push(
@@ -130,7 +142,9 @@ function admit({ apply, artifact, spec, verified }) {
     );
   }
   if (!alreadyInSuite && !existsSync(caseManifestPath)) {
-    errors.push(`Case manifest not found: ${relative(repoRoot, caseManifestPath)}`);
+    errors.push(
+      `Case manifest not found: ${relative(repoRoot, caseManifestPath)}`,
+    );
   }
   if (alreadyInSuite && !existsSync(caseManifestPath)) {
     warnings.push(
@@ -138,7 +152,9 @@ function admit({ apply, artifact, spec, verified }) {
     );
   }
   if (apply && !verified) {
-    errors.push("Use --verified when applying Docker admission after replay-isolated passes.");
+    errors.push(
+      "Use --verified when applying Docker admission after replay-isolated passes.",
+    );
   }
   if (artifact && !existsSync(resolveSpecPath(artifact))) {
     warnings.push(
@@ -155,12 +171,16 @@ function admit({ apply, artifact, spec, verified }) {
     if (alreadyInSuite) {
       actions.push(`Docker suite already contains ${specRelFromDesktop}.`);
     } else {
-      actions.push(`Add ${specRelFromDesktop} to conversation-session-verified Docker preset.`);
+      actions.push(
+        `Add ${specRelFromDesktop} to conversation-session-verified Docker preset.`,
+      );
     }
     if (alreadyInPlan) {
       actions.push(`Docker plan already lists ${specRelFromDesktop}.`);
     } else {
-      actions.push(`Add ${specRelFromDesktop} to ${relative(repoRoot, dockerPlanPath)}.`);
+      actions.push(
+        `Add ${specRelFromDesktop} to ${relative(repoRoot, dockerPlanPath)}.`,
+      );
     }
   }
 
@@ -204,7 +224,9 @@ function resolveSpecPath(pathText) {
 
 function readConversationDockerSuite({ errors }) {
   if (!existsSync(containerScriptPath)) {
-    errors.push(`Container script not found: ${relative(repoRoot, containerScriptPath)}`);
+    errors.push(
+      `Container script not found: ${relative(repoRoot, containerScriptPath)}`,
+    );
     return { specs: [], text: "" };
   }
 
@@ -226,7 +248,11 @@ function readConversationDockerSuite({ errors }) {
 function updateConversationDockerSuite({ specRelFromDesktop, suite }) {
   const nextSpecs = [...suite.specs, specRelFromDesktop];
   const nextLine = `CONVERSATION_SESSION_VERIFIED_E2E_SPEC="${nextSpecs.join(",")}"`;
-  writeFileSync(containerScriptPath, suite.text.replace(suiteAssignmentPattern, nextLine), "utf8");
+  writeFileSync(
+    containerScriptPath,
+    suite.text.replace(suiteAssignmentPattern, nextLine),
+    "utf8",
+  );
 }
 
 function updateDockerPlan({ specRelFromDesktop, warnings }) {
@@ -241,7 +267,9 @@ function updateDockerPlan({ specRelFromDesktop, warnings }) {
     return;
   }
   if (updated.error) {
-    warnings.push(`${updated.error} in ${relative(repoRoot, dockerPlanPath)}`);
+    warnings.push(
+      `${updated.error} in ${relative(repoRoot, dockerPlanPath)}`,
+    );
     return;
   }
 
@@ -294,13 +322,9 @@ function printResult(result) {
   console.log("\nNext:");
   if (!result.alreadyInSuite) {
     console.log(`- E2E_SPEC=${specArg} pnpm run test:e2e:container`);
-    console.log(
-      `- pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`,
-    );
+    console.log(`- pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`);
   } else if (!result.alreadyInPlan) {
-    console.log(
-      `- pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`,
-    );
+    console.log(`- pnpm --filter @zcode/desktop e2e:docker:admit -- --spec ${specArg} --verified --artifact packages/desktop/.e2e-artifacts/<run-id> --apply`);
   }
   console.log("- pnpm run test:e2e:container:conversation");
 }

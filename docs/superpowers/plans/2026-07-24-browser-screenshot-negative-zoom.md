@@ -45,7 +45,8 @@
 - Produces:
 
 ```ts
-export interface BrowserViewScreenshotSurfaceReadyPayload extends BrowserViewScreenshotSurfacePreparePayload {
+export interface BrowserViewScreenshotSurfaceReadyPayload
+  extends BrowserViewScreenshotSurfacePreparePayload {
   surfaceScale: number;
 }
 ```
@@ -101,7 +102,8 @@ Change the shared type to:
 
 ```ts
 /** Owner renderer 确认目标 guest 的逻辑 viewport 与原生预览 surface 比例均已稳定。 */
-export interface BrowserViewScreenshotSurfaceReadyPayload extends BrowserViewScreenshotSurfacePreparePayload {
+export interface BrowserViewScreenshotSurfaceReadyPayload
+  extends BrowserViewScreenshotSurfacePreparePayload {
   surfaceScale: number;
 }
 ```
@@ -126,7 +128,10 @@ function readSurfaceScale(webview: ElectronWebviewTag): number {
   return Number.isFinite(value) && value > 0 ? value : 1;
 }
 
-function sameSurface(left: StableScreenshotSurface, right: StableScreenshotSurface): boolean {
+function sameSurface(
+  left: StableScreenshotSurface,
+  right: StableScreenshotSurface,
+): boolean {
   return (
     withinOnePixel(left.viewport, right.viewport) &&
     Math.abs(left.surfaceScale - right.surfaceScale) <= SURFACE_SCALE_EPSILON
@@ -262,7 +267,10 @@ readySurfaceScale?: number;
 In `handleReady`, reject invalid values before `finishGroupReady`:
 
 ```ts
-if (!Number.isFinite(input.payload.surfaceScale) || input.payload.surfaceScale <= 0) {
+if (
+  !Number.isFinite(input.payload.surfaceScale) ||
+  input.payload.surfaceScale <= 0
+) {
   this.options.log?.("[browser-screenshot-surface] ignored ready with invalid surface scale");
   return;
 }
@@ -363,7 +371,12 @@ For the new raster test, return `surfaceScale: 0.625`.
 Create an agent viewport, clear setup calls, execute a screenshot, and assert the CDP order:
 
 ```ts
-await mgr.updateViewportFromRenderer("tab-209", { width: 1280, height: 720 }, 0, Math.pow(1.1, -2));
+await mgr.updateViewportFromRenderer(
+  "tab-209",
+  { width: 1280, height: 720 },
+  0,
+  Math.pow(1.1, -2),
+);
 spy.cdpCalls.length = 0;
 
 await expect(mgr.execute("tab-209", { method: "screenshot" })).resolves.toMatchObject({
@@ -371,7 +384,10 @@ await expect(mgr.execute("tab-209", { method: "screenshot" })).resolves.toMatchO
 });
 
 const relevant = spy.cdpCalls.filter(({ method }) =>
-  ["Emulation.setDeviceMetricsOverride", "Page.captureScreenshot"].includes(method),
+  [
+    "Emulation.setDeviceMetricsOverride",
+    "Page.captureScreenshot",
+  ].includes(method),
 );
 expect(relevant).toEqual([
   {
@@ -485,7 +501,10 @@ await this.enqueueViewportMutation(tab, async () => {
     }
     running.dispatched = true;
     result = await executeBrowserCommandOnView(
-      this.toControlledView(guest, Boolean(tab.viewportOverride || tab.backgroundViewportFallback)),
+      this.toControlledView(
+        guest,
+        Boolean(tab.viewportOverride || tab.backgroundViewportFallback),
+      ),
       command,
       { signal: running.controller.signal },
     );
@@ -638,7 +657,7 @@ Remove-Item Env:ZCODE_SCREENSHOT_SMOKE_SCALE_FACTOR
 Expected stdout:
 
 ```json
-{ "width": 1280, "height": 720, "periodicRepeat": false, "corners": "distinct" }
+{"width":1280,"height":720,"periodicRepeat":false,"corners":"distinct"}
 ```
 
 - [ ] **Step 5: Commit the native smoke**

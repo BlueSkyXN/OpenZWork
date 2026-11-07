@@ -9,7 +9,7 @@
 ## 目标
 
 - SSH 和 WSL workspace 都显示同一套远端同步入口。
-- 同步目标仍是当前远端 runtime 的用户目录：`~/.openzwork/skills`、`~/.openzwork/cli/config.json`、`~/.openzwork/plugins`。
+- 同步目标仍是当前远端 runtime 的用户目录：`~/.zcode/skills`、`~/.zcode/cli/config.json`、`~/.zcode/plugins`。
 - 本地 workspace 不显示远端同步入口。
 - Docker 本轮不扩展入口，避免把插件安装和 MCP 环境兼容风险扩大到容器场景。
 
@@ -28,9 +28,9 @@
 
 同步开始前由远端 sync service 执行写入预检：
 
-- Skills：检查 `~/.openzwork/skills`
-- MCP：检查 `~/.openzwork/cli`
-- Plugins：检查 `~/.openzwork/plugins` 和 `~/.openzwork/cli`
+- Skills：检查 `~/.zcode/skills`
+- MCP：检查 `~/.zcode/cli`
+- Plugins：检查 `~/.zcode/plugins` 和 `~/.zcode/cli`
 
 预检只做 `mkdir -p` 等价目录创建、写入一个 `.zcode-sync-preflight-*` 临时文件并立即删除。它不做 `chmod` / `chown`，避免改变 WSL/SSH 用户已有权限模型。若目录被其他用户占用、目标路径是文件或当前远端用户不可写，UI 在导出本地资源前显示错误并停止同步。
 

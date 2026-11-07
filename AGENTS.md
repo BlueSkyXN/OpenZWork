@@ -9,7 +9,7 @@
 
 开工前运行 `node scripts/check-workspace-freshness.mjs` 检查基线。Node 版本以 `mise.toml` 为准。
 
-新 worktree 若直接复用或 APFS 克隆依赖，在该工作区运行 `pnpm exec husky` 并确认 `.husky/_/pre-push` 可执行；具体说明见 [pre-push 说明](docs/testing/pre-push-hook.md#新工作区的-hook-入口)。
+新 worktree 若直接复用或 APFS 克隆依赖，在该工作区运行 `pnpm exec husky` 并确认 `.husky/_/pre-push` 可执行；具体说明见 [pre-push 说明](docs/testing/pre-push-hook-openzwork.md#新工作区的-hook-入口)。
 
 以下命令从仓库根目录执行：
 
@@ -25,8 +25,9 @@
 | 模块阅读包       | `pnpm architecture:context <module-id>`                        |
 | 未使用依赖与导出 | `pnpm knip`                                                    |
 | 导出引用查询     | `pnpm dep:refs --list-exports <file>`                          |
+| 来源扫描与维护门禁 | `pnpm openzwork:scan`、`pnpm openzwork:scan --check`        |
 
-`verify:pre-push` 运行固定核心套件 `test:ci:core`。独立命令 `test:unit:affected` 使用 Vitest 官方选择；选中整个套件时说明并跳过 UT，成功退出。两者均不替代 CLI 测试或桌面 E2E。全量使用 `pnpm test` / `pnpm test:unit`，仅在用户明确要求时调用。范围与输出合同见 [pre-push 说明](docs/testing/pre-push-hook.md)。
+`verify:pre-push` 运行固定核心套件 `test:ci:core`。独立命令 `test:unit:affected` 使用 Vitest 官方选择；选中整个套件时说明并跳过 UT，成功退出。两者均不替代 CLI 测试或桌面 E2E。全量使用 `pnpm test` / `pnpm test:unit`，仅在用户明确要求时调用。范围与输出合同见 [pre-push 说明](docs/testing/pre-push-hook-openzwork.md)。
 
 上游 v3.17.1 引入工程测试框架：`pnpm test:engineering <文件>` 与 `pnpm test:engineering:affected`（App 业务单测执行链已退役，不新增或恢复 App 业务单测 test/spec 或 `contract.test.ts`；保留 CLI、E2E、浏览器验收和工程门禁测试）。OpenZWork 的 `verify:pre-push` 在上游链基础上保留固定核心套件 `test:ci:core`。
 
@@ -47,12 +48,18 @@
 - 避免重复状态和多条写入路径。明确唯一所有者、接口、依赖方向、事件顺序与幂等边界，不能用超时掩盖同步问题。
 - App 行为改动先更新 spec，确定 E2E、浏览器验收或可重复运行时场景；交互改动先维护 E2E 再改实现。工程工具、CLI/CUA 先补其回归测试。实际执行必要验证，未执行或环境受限时如实说明。
 - 修复 bug 时用中文注释说明原因和修复依据。发现设计缺陷时先与用户对齐，不不断增加兜底分支。
-- 缺陷代码来自上游时，按 [下游补丁清单](docs/spec/downstream-patch-registry.md) 登记，修复处与回归处加编号标记；合入上游新版本时逐项复核未撤销条目。
+- 缺陷代码来自上游时，按 [下游补丁清单](docs/openzwork/patches/downstream-patch-registry.md) 登记，修复处与回归处加编号标记；合入上游新版本时逐项复核未撤销条目。
 - PR 描述须说明背景、设计意图与修改前后行为；包含 bugfix 时逐项说明触发场景、根因证据、修复机制及回归验证，并尽量关联已有工单链接。未确认的根因或引入提交如实标注，不根据模块或时间接近推断归因。
 - 涉及状态、时序、远端或异步同步的方案，用图展示所有者及事件顺序。
 - 必须执行 `pnpm typecheck` 和 `pnpm lint`，报告真实结果，不将已有失败写成通过。
 - 使用异步文件和网络 IO；跨包导入使用公开入口，遵守现有路径别名。
 - 禁止 UI 直接调用 Repo、Service 引用 Runtime 具体实现、跨域导入实现细节及循环依赖。
+
+## 上游与 OpenZWork 维护
+
+- 识别文件来源、放置文档与代码、修改上游文件、更新台账、合入上游新版本和沉淀维护经验时，使用 `.agents/skills/openzwork-maintenance/SKILL.md`。
+- 上游文件保持上游原文；代码只改行为必需的行，不格式化。上游文档与技能原文不动，`docs/` 下不带 `-openzwork` 的文档描述的是上游 ZCode：OpenZWork 与它的差异见 `docs/openzwork/README.md`「与上游的差异」，同目录有 `-openzwork` 版本时读写该版本。OpenZWork 文档放在 `docs/openzwork/` 或带 `-openzwork` 后缀，索引见 `docs/openzwork/README.md`。
+- 新增功能、改变上游行为、裁剪上游功能时，在同一个 PR 中更新 `docs/openzwork/ledger.yaml`；提交后执行 `pnpm openzwork:scan --check`。
 
 ## UI 与平台边界
 

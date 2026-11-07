@@ -1786,6 +1786,16 @@
       "candidateEvidence": "todo103-staging-integration-ledger.md §33/37/39: implemented/adjudicated at group boundary; final candidate acceptance remains open"
     },
     {
+      "sha": "45a0078032a904932babcbdec556d2e593e10188",
+      "subject": "feat(offpeak): 会话内创建闲时任务（OffPeakCreate/OffPeakList 工具 + 轮尾卡直达编辑，D49）",
+      "group": "G07",
+      "status": "integrated-awaiting-final-validation",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial",
+      "candidateEvidence": "todo103-staging-integration-ledger.md §28/32/41: implemented/adjudicated at group boundary; final candidate acceptance remains open"
+    },
+    {
       "sha": "446a47a8a834f5332dadb65efec704173b6ef8c0",
       "subject": "Revert \"docs: make Obsidian tracking opt-in\"",
       "group": "G02",
@@ -2558,6 +2568,16 @@
       "resolutionFiles": []
     },
     {
+      "sha": "790e53eb77e5effe07a28acc53fd253ed0a94658",
+      "parents": [
+        "0c5c238f9e2f47939c9da0cce507754a9be9806d",
+        "45a0078032a904932babcbdec556d2e593e10188"
+      ],
+      "subject": "Merge branch 'feat/offpeak_v2' into 'staging'",
+      "status": "no-independent-resolution-diff",
+      "resolutionFiles": []
+    },
+    {
       "sha": "b6b25bd201ad82f4240edc83abe95beda165864b",
       "parents": [
         "790e53eb77e5effe07a28acc53fd253ed0a94658",
@@ -2634,6 +2654,16 @@
         "b75513d5743fdadddb56b852837a62b147db6217"
       ],
       "subject": "Merge branch 'refactor/remove-cua-gray-rollout' into 'staging'",
+      "status": "no-independent-resolution-diff",
+      "resolutionFiles": []
+    },
+    {
+      "sha": "5a865ed6de98e5371ffea723199baeedfe4bb4e0",
+      "parents": [
+        "7d6709c09982912dd39b847681fb424506447c85",
+        "2054da8804b39a4ad48c1849be645c8deed59654"
+      ],
+      "subject": "Merge branch 'fix/offpeak-typography-field-count' into 'staging'",
       "status": "no-independent-resolution-diff",
       "resolutionFiles": []
     },
@@ -3809,6 +3839,32 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/off-peak-tool-policy.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/offpeak-port.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "apps/zcode-cli/packages/bootstrap/src/zcode-protocol/permission-options.ts",
       "netChange": "M",
       "oursChanged": false,
@@ -3979,6 +4035,19 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "apps/zcode-cli/packages/bootstrap/tests/off-peak-tool-policy.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "apps/zcode-cli/packages/bootstrap/tests/official-cua-permission-options.test.ts",
       "netChange": "M",
       "oursChanged": false,
@@ -3987,6 +4056,32 @@
       "groups": ["G12"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "apps/zcode-cli/packages/bootstrap/tests/offpeak-port.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "apps/zcode-cli/packages/bootstrap/tests/offpeak-prompt-turn-disallowlist.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
       "decisionStatus": "decided",
       "implementationStatus": "implemented",
       "verificationStatus": "partial"
@@ -4215,6 +4310,19 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "apps/zcode-cli/packages/contracts/src/interfaces/off-peak.port.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "apps/zcode-cli/packages/contracts/src/interfaces/permission.port.ts",
       "netChange": "M",
       "oursChanged": false,
@@ -4280,12 +4388,38 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "apps/zcode-cli/packages/contracts/src/tools/off-peak.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "apps/zcode-cli/packages/contracts/tests/in-memory-session-event-store.test.ts",
       "netChange": "A",
       "oursChanged": false,
       "explicitConflict": false,
       "sourceCommits": ["3d87e89955", "228c641268"],
       "groups": ["G14"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "apps/zcode-cli/packages/contracts/tests/off-peak.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "source-preserved",
       "decisionStatus": "decided",
@@ -4728,6 +4862,19 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "apps/zcode-cli/packages/core/src/tool/handlers/off-peak.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "apps/zcode-cli/packages/core/src/tool/types.ts",
       "netChange": "M",
       "oursChanged": true,
@@ -4743,6 +4890,19 @@
     {
       "path": "apps/zcode-cli/packages/core/tests/bash-handler.test.ts",
       "netChange": "M",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "apps/zcode-cli/packages/core/tests/off-peak-tool.test.ts",
+      "netChange": "A",
       "oursChanged": false,
       "explicitConflict": false,
       "sourceCommits": ["45a0078032"],
@@ -5535,6 +5695,71 @@
       "status": "reviewed",
       "evidence": "todo103-staging-integration-ledger.md section 19: G09 preserved or adapted; accountIdentity retained; 207 focused tests, Pro AUTH-05/06 2/2, typecheck and lint passed; audit archived as historical only",
       "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "docs/off-peak-task/decisions.md",
+      "netChange": "M",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "docs/off-peak-task/glossary.md",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": true,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "docs/off-peak-task/implementation-notes.md",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "docs/off-peak-task/spec.md",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "docs/off-peak-task/tech-design.md",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": true,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
       "decisionStatus": "decided",
       "implementationStatus": "implemented",
       "verificationStatus": "partial"
@@ -6562,6 +6787,19 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "packages/desktop/src/host/offPeakDispatchPlan.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "packages/desktop/src/host/remoteWorkspaceServiceCollection.ts",
       "netChange": "M",
       "oursChanged": true,
@@ -7561,6 +7799,32 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-offpeak-create-existing-session.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-offpeak-create.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-approval-feedback-user-message.test.ts",
       "netChange": "M",
       "oursChanged": false,
@@ -7763,6 +8027,32 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-offpeak-create-existing-session.json",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-offpeak-create.json",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-plus-menu.json",
       "netChange": "A",
       "oursChanged": false,
@@ -7888,6 +8178,32 @@
       "explicitConflict": false,
       "sourceCommits": ["6212edb621"],
       "groups": ["G16"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-offpeak-create-existing-session.json",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-offpeak-create.json",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "source-preserved",
       "decisionStatus": "decided",
@@ -8528,6 +8844,19 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "packages/desktop/test/offPeakDispatchPlan.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "packages/desktop/test/remoteWorkspaceSessionServices.test.ts",
       "netChange": "M",
       "oursChanged": true,
@@ -9103,6 +9432,32 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "packages/services/src/session/offPeakTaskRepo.ts",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": true,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/services/src/session/offPeakTaskService.ts",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": true,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "packages/services/src/skills/skillsService.ts",
       "netChange": "M",
       "oursChanged": false,
@@ -9576,6 +9931,45 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "packages/services/test/offPeakAgentToolBridge.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/services/test/offPeakTaskRepo.test.ts",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": true,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/services/test/offPeakTaskService.test.ts",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "packages/services/test/providerRuntimeHeadersResponse.test.ts",
       "netChange": "A",
       "oursChanged": false,
@@ -9648,6 +10042,32 @@
       "explicitConflict": false,
       "sourceCommits": ["ffa9ccfd9b"],
       "groups": ["G03"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/services/test/zcodeAgentService.offPeakRpcErrorSanitize.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/services/test/zcodeAgentService.offPeakToolPolicy.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "combined",
       "decisionStatus": "decided",
@@ -9875,6 +10295,19 @@
       "groups": ["G14"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/shared/src/off-peak-types.ts",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
       "decisionStatus": "decided",
       "implementationStatus": "implemented",
       "verificationStatus": "partial"
@@ -10631,6 +11064,19 @@
       "explicitConflict": false,
       "sourceCommits": ["046c47d3b7"],
       "groups": ["G18"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/src/ToolCallBlocks/renderers/offpeak-create.tsx",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "source-preserved",
       "decisionStatus": "decided",
@@ -12103,6 +12549,58 @@
       "verificationStatus": "partial"
     },
     {
+      "path": "packages/ui/src/settings/OffPeakEditActionsMenu.tsx",
+      "netChange": "M",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["ef68bcdbfb"],
+      "groups": ["G18"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/src/settings/OffPeakEditView.tsx",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/src/settings/OffPeakHistoryTab.tsx",
+      "netChange": "M",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["ef68bcdbfb"],
+      "groups": ["G18"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/src/settings/OffPeakTaskList.tsx",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
       "path": "packages/ui/src/settings/PluginStorePage.tsx",
       "netChange": "M",
       "oursChanged": false,
@@ -12707,6 +13205,19 @@
       "groups": ["G11", "G07"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/src/v4/OffPeakNewTaskEntry.tsx",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": true,
+      "sourceCommits": ["cd112e9028"],
+      "groups": ["G10"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
       "decisionStatus": "decided",
       "implementationStatus": "implemented",
       "verificationStatus": "partial"
@@ -13773,6 +14284,45 @@
       "groups": ["G18"],
       "status": "integrated-awaiting-final-validation",
       "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/test/offPeakCreateTaskCard.test.ts",
+      "netChange": "A",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["45a0078032"],
+      "groups": ["G07"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/test/offPeakFigmaLayout.test.ts",
+      "netChange": "M",
+      "oursChanged": false,
+      "explicitConflict": false,
+      "sourceCommits": ["84be5103f9"],
+      "groups": ["G11"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "source-preserved",
+      "decisionStatus": "decided",
+      "implementationStatus": "implemented",
+      "verificationStatus": "partial"
+    },
+    {
+      "path": "packages/ui/test/offPeakNewTaskEntry.test.ts",
+      "netChange": "M",
+      "oursChanged": true,
+      "explicitConflict": false,
+      "sourceCommits": ["83ba8c483a"],
+      "groups": ["G10"],
+      "status": "integrated-awaiting-final-validation",
+      "candidateDisposition": "combined",
       "decisionStatus": "decided",
       "implementationStatus": "implemented",
       "verificationStatus": "partial"

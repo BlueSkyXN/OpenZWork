@@ -1,44 +1,25 @@
 # Bots E2E Coverage Matrix
 
-## OpenZWork 当前覆盖与执行入口
+> `retired:` 逐处标记已退役 App 单测，仅供追溯；原通过记录不代表现行覆盖。独立断言缺口需由后续验收补齐。
 
-本节按当前保留的 Bot 行为维护。下方折叠区保存上游历史记录，其中的 `formal`、运行编号和已删除路径不作为当前分支的执行或通过状态。历史案例编号继续使用，便于追踪断言。
+> 2026-10-26：App 业务单测已按[测试规格](unit-test-quality.md)退役。本文中的相关单测路径和历史通过记录不再代表现行覆盖；CLI/CUA、工程测试、E2E 与浏览器验收证据仍按各自状态解释。未补验收的场景不得自动视为已覆盖。
 
-覆盖层级按实际执行对象区分：服务回归使用真实 BotsService、受控 task events 和模拟渠道 HTTP；组件测试检查渲染或交互；Desktop E2E 才验证 Electron、Host/RPC 与 DOM。放在旧 `test/e2e` 目录中的服务替身测试不因此获得真实 Host/CLI 证据。
+## 2026-10-21 默认渠道工具暂停
 
-<!-- 上游 2026-10-26「App 业务单测退役」retired: 标记体系与 2026-10-21 默认渠道工具暂停、2026-10-19 人工复核通过项两批记录不适用于 OpenZWork：我方保留 BotsService/provider/组件级单测与自有执行入口，故不引入该横幅与上游验收批次 -->
+ReplyToChannel 默认注册和发送接线注释停用，MN-02/FN-01 组合 E2E 暂时跳过；
+原用例及 fixture 完整保留，待插件接入后恢复。窗口发送接线用例同样保留并暂时跳过，
+新增断言确认默认 relay 不调用 Bot 发送服务。权限、协议和发送实现的独立测试继续执行。
+TP-04 的身份断言改读有序分工材料，不再依赖发送用 refId 或工具指引。
+下方默认工具发送通过记录仅为历史证据，不计为本次覆盖。
 
-| Case ID | 保留的 setup → action → assertion                                                                            | 当前入口                                                                                                                                                                                                                                        | 层级与处置                                                                                 |
-| ------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| SC-01   | 已绑定飞书 → 输入与分阶段工具/文本事件 → 单张卡片、工具折叠、按顺序完成与 typing 清理                        | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 `streams Feishu replies into one schema 2 timeline card with collapsed tool summaries`；`retired:packages/services/test/botsFeishuProvider.test.ts` 的 typing reaction 回归 | 服务/provider；沿用，不重复恢复旧服务替身 E2E                                              |
-| AQ-01   | 待回答问题 → 多选、自定义输入及逐题回调 → 正确结构化答案、原交互卡更新、响应 ACK                             | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 multi-select/custom answer/next question 回归                                                                                                                               | 服务；沿用                                                                                 |
-| IL-01   | 流式输出中 → 进入 Plan approval 并继续 → 旧流封口、交互卡保留、新流使用新卡                                  | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 `seals the current stream, retains Plan approval, and starts a new stream card`                                                                                             | 服务；沿用                                                                                 |
-| RT-01   | 同一飞书 App 的两个 Bot 记录 → 获取锁、owner 释放、再次获取 → 同时只有一个 owner，释放后允许接管             | `retired:packages/services/test/botsChannelRuntime.test.ts` 的 `locks the same Feishu App identity across local bot records`；`retired:packages/services/test/botsService.feishuRuntimeLock.test.ts`                                            | 锁/服务；本次补释放后接管断言                                                              |
-| RT-02   | attached remote 关闭后台工作 → 保存 Feishu/Telegram 配置 → 不启动 provider 网络或候选预热，runtime 保持 idle | `retired:packages/services/test/botsService.config.test.ts` 的 `does not run remote-disabled bot background work after config changes`                                                                                                          | 服务；本次把既有 Telegram 场景扩展到 Feishu                                                |
-| PV-01   | Feishu/Lark 使用相同输入 → 调用 provider → 各自 OpenAPI origin 与请求内容正确                                | `retired:packages/services/test/botsFeishuProvider.test.ts` 的双 provider 参数化回归                                                                                                                                                            | provider；沿用                                                                             |
-| RW-01   | Bot 指向断连远端 → 收到普通消息 → 明确拒绝，不自动重连或本机派发                                             | `retired:packages/services/test/botsService.messageFlow.test.ts` 的 `blocks a disconnected remote workspace message without reconnecting`；`retired:packages/desktop/test/botRemoteWorkspaceResolver.test.ts`                                   | 服务/Host resolver；沿用                                                                   |
-| CR-01   | 创建并重开自动化 repo → 准备 watcher 后派发、收到完成或失败 → 原渠道收到终态，禁用/失效目标不订阅            | `retired:packages/services/test/automationRepo.test.ts` 的 Bot 来源重开持久化；`retired:packages/desktop/test/cronBotDelivery.test.ts` 的订阅屏障；`retired:packages/services/test/botsService.messageFlow.test.ts` 的 automation delivery 回归 | repo/Host/service 组合；本次补 Feishu 成功、失败出站 HTTP 断言，不要求恢复重复的 repo 场景 |
-| CF-01   | 已绑定、缺凭据的 Feishu Bot → 在弹窗启用并保持弹窗打开 → 连接错误更新、绑定与 v3 配置保留                    | `retired:packages/ui/test/botsDialogRuntimeError.test.ts`；`packages/desktop/test/e2e/bots/manual-review/pending/feishu-runtime-error-ui.test.ts`                                                                                               | 组件回归保留；Desktop 场景恢复为 pending，执行记录单独列出，不沿用上游人工转正             |
-| RW-02   | 同一个 Source 的 legacy/stable identity → Bot 调用 → 复用同一目录服务、连接和任务路由                        | `packages/desktop/test/e2e/bots/manual-review/pending/bot-r3-workspace-identity.test.ts`                                                                                                                                                        | 现存 MessagePort/Host 服务集成候选；本次不改变其实现或 promotion 状态                      |
+## 2026-10-19 人工复核通过项
 
-### 本轮边界和验证
+7 个 Bot spec 已完成独立 fixture 和默认正式回放，保留正式目录；`bot-deleted-task-recovery` 已修正文件路径，但未完成修复后回放，先保留 pending。
+本轮状态与逐文件证据见[批量清单](./conversation-session-e2e-coverage-matrix.md#2026-10-19-人审通过项迁移清单)。
+`feishu-group-draft-mode` 的业务缺陷继续保留 pending；本轮未改 Bot 业务实现。
 
-- 复用 `BotsService`、现有 provider、Runtime lock、AutomationRepo 和 watcher 所有者。只补测试和覆盖记录，不增加业务写入路径，也不改变 Desktop continuous、Bot continuous、手机 replayable 的合同。
-- 接受 RT-01 释放后接管、RT-02 两种 provider、CR-01 Feishu 两种终态和 CF-01 可见弹窗错误作为当前已定义行为；按上述既有合同维护，无新增产品取舍。
-- SC/AQ/IL/PV/RW 的服务断言已有覆盖；不复制相同测试到 WDIO。官方账号、真实租户和真实模型请求不进入夹具。历史 topic/mention 的真实 Host/CLI 记录保留于折叠区，不据此声明当前已运行。
-- CF-01 使用独立 E2E HOME、格式有效的合成 App ID 和缺失的凭据引用，明确断言缺少 App Secret 的错误。WDIO 在 Electron 启动前仅为本用例配置本机随机端口 relay，结束时关闭并恢复环境；进入 Bots 的远控入口因此不依赖外部服务。保持 pending，人工转正或 Docker admission 另按现有生命周期处理。
-- 本次相关基线为 9 文件、313 项通过；补强后的 3 个文件为 120 项通过。8 个此前未进入固定核心清单的相关文件已加入 `retained-bot-delivery-and-runtime`，与原有 runtime lock 核心回归共同守护以上行为。
-- CF-01 在 macOS arm64、Node 24.14.0 的真实 Electron 中通过（1 项，`desktop-e2e-20261024111035063-p65228-c77bd31348e5111a`）；截图确认缺凭据详情和绑定可见，远控入口先完成本机 relay 配对准备。该结果不包含人工转正、Docker admission、手机或真实租户验收。
-- 根类型检查、Desktop E2E 类型检查通过；根 Lint 为 0 error、34 个既有 warning，架构检查 0 violation。固定核心门禁通过 244 个文件、3378 项，另有 1 项既有 skip。
-
-CF-01 的显式执行入口（保留默认构建，避免复用被类型检查改写的 Host 输出）：
-
-```bash
-ZCODE_E2E_MANUAL_REVIEW=1 pnpm --filter @zcode/desktop test:e2e -- --spec './test/e2e/bots/manual-review/pending/feishu-runtime-error-ui.test.ts'
-```
-
-<details>
-<summary>上游历史案例与验收记录（保留溯源，不作为当前执行清单）</summary>
+BOT-E2E-DT-01 首轮正式回放在读取 fixture 时报告 `ENOENT`，尚未进入业务断言。
+迁移到正式目录后，相对文件路径应同步减少两层；保留原 fixture 和删除恢复、重复投递断言，修正后重新验证。
 
 ## MN-01 / MN-03 转正（2026-10-08）
 
@@ -127,6 +108,11 @@ passed); its 36-test file passed in isolation, then the entire pre-push command
 passed without concurrent E2E. No unrelated test or implementation was changed.
 Changed-file formatting and `git diff --check` passed.
 
+Live verification resumed on 2026-09-08 after the Mac was unlocked. The existing
+`pnpm dev:desktop` process completed startup (Electron PID 17515, local Host 17711;
+development log `/tmp/zcode-topic-dev.log`). Computer Use operated Ryan Bot in the
+real `ZCode 群聊验证` group (`oc_da0fa1e9e7e9f852894c8d6aaca1c044`).
+
 - `/history on` returned the native opt-in confirmation. An ordinary root message
   and an ordinary topic reply created no task before the first explicit bot mention.
 - Topic A (`omt_19fae40ad30fdbe5`, root
@@ -150,6 +136,10 @@ Changed-file formatting and `git diff --check` passed.
   including its root (position -1), ordinary discussion (position 0), request
   (position 1), and two application cards. This establishes permission and native
   API access.
+- After disk space recovered to 12 GiB, Computer Use submitted request
+  `om_x100b66c367d6ec70c122bdda2618103` in Topic A. The visible native reply was
+  `Codename: APRICOT; agreed launch day: Friday.` Its accepted input snapshot
+  contained exactly the root and ordinary Friday discussion, `hasGap: false`.
 - A subsequent ordinary message changed the launch day to Monday
   (`om_x100b66c365b480a0c10ca8be0bba666`). Before the next mention, the topic still
   had two accepted inputs and no new bot reply. The next mention
@@ -178,6 +168,8 @@ The real private group `ZCode 专用话题验证`
 `chat_mode: topic`, Ryan Bot and the bound user as its only participants. Computer
 Use confirmed the native topic-group page and its create-topic entry.
 
+Dedicated-topic execution was then verified through Computer Use on 2026-09-08:
+
 - Publishing an owner mention `/enable` as a topic root enabled the parent group
   and returned the native enablement card inside that topic. The parent group's
   default task remained absent.
@@ -187,6 +179,12 @@ Use confirmed the native topic-group page and its create-topic entry.
   `sess_895438b4-d7d0-4136-bc07-878ec258476d`; accepted input
   `om_x100b66c3057900a4dd82aa5adb6242a` completed and its saved delivery was
   `sent` (`om_x100b66c303bf28b4c102b2c7b21c42f`).
+- A second topic with a mention directly in its root
+  `om_x100b66c3189decbcc27d014d2d7c4fc` created distinct thread
+  `omt_19fafdac200edb8b` and task `sess_f34a27da-c0dd-4e34-b200-ce4952cb9f70`.
+  Computer Use opened that topic and observed `DEDICATEDSECOND` and a completion
+  reaction under its own root. This establishes both root-mention and reply-mention
+  routing in a real `chat_mode: topic` group, separate from ordinary-group tasks.
 
 Dedicated-group history, attachment/card-control races, long history and remaining
 cross-platform cases are still pending; the broader TP-02 case is not promoted.
@@ -225,7 +223,7 @@ cross-platform cases are still pending; the broader TP-02 case is not promoted.
 
 ## Fixture 合同
 
-BOT-E2E-SR87/BOT-E2E-SR99 原 `bots/bot-effective-selection.test.ts`（synthetic、fast-text）在 v3.17.1 同步净化中随官方套餐账号域退役（合成选择使用 account:\* coding-plan provider id）；Bot 派发/绑定执行链由 BOT-E2E-TP-04/05 真实 topic worker spec 覆盖。历史口径：验证菜单/首次派发使用同一有效选择，且查看菜单和无效提交不改原意图；Todo99 曾追加绑定后从 Session 原选择解析下一次空闲输入，不重解释已固定执行。conversation W99-E03/E06 另在 Pro 验证 Bot→生产 Task adapter→实际 Worker 请求、完整 setter 与冷恢复。证据不覆盖真实 IM 网络或手机/SSH 联合环境。
+BOT-E2E-SR87 位于 `bots/bot-effective-selection.test.ts`；synthetic、fast-text。验证菜单/首次派发使用同一有效选择，且查看菜单和无效提交不改原意图。Todo99 追加 BOT-E2E-SR99：绑定后从 Session 原选择解析下一次空闲输入，不重解释已固定执行。共用该 pending spec，未晋级；conversation W99-E03/E06 另在 Pro 验证 Bot→生产 Task adapter→实际 Worker 请求、完整 setter 与冷恢复。证据不覆盖真实 IM 网络或手机/SSH 联合环境。
 
 - `feishu-streaming-card-lifecycle.json` 是 case-local synthetic stream fixture。
 - 其余 5 个用例分别使用 `fixtures/bots/` 下同语义命名的 case-local synthetic metadata；所有 fixture 都声明 `syntheticReason` 与 timing 分类。
@@ -406,6 +404,23 @@ Final local gates for this revision: `pnpm typecheck`, `pnpm lint` (43 existing
 warnings, no errors), and `pnpm verify:pre-push` passed. The latest wording omits
 the generic member label and shows only the last six ID characters on fallback.
 
+Normal `pnpm dev:desktop` was rebuilt and restarted after the change (main PID
+53715, Host PID 53837). Native Computer Use verified the existing group task's
+`Feishu / 飞书 · 5cce9a` labels, click-to-open full ID, and Escape dismissal.
+The new Host RPC `bots.getGroupMemberNames` reached the actual Feishu API and
+returned the same missing-scope error for `cli_a9786b1e21e5dbc2`; therefore the
+remaining live-name verification is blocked by that application's permission,
+not by a mocked UI or an unstarted service. The normal dev app remains running.
+
+Follow-up live evidence (2026-09-07): the user replaced the configured bot with
+Ryan Bot (`cli_a9647cf87cf95bef`) and enabled the same test group for that bot.
+The previous bot's group authorization is disabled. The actual member API now
+returns HTTP 200 / code 0, including the bound user's name. The normal dev Host
+logs `bots.getGroupMemberNames OK`; native Computer Use and the user's screenshot
+both show `飞书 · 莫汝舰` on the real incoming message. This resolves the earlier
+application-permission blocker. The spacing follow-up adds an 8px gap between
+attribution and the bubble; GR-02/04 measures the actual rendered gap.
+
 Spacing regression passed in isolated Desktop run
 `desktop-e2e-20260907114650611-p68251-40a284ddf131f45c`, including the rendered
 8-12px gap assertion. Root typecheck and lint also passed.
@@ -419,6 +434,18 @@ The isolated Desktop run
 `desktop-e2e-20260907115618260-p20788-6275e395b82d51f7` passed. Root typecheck,
 lint, and 30 group service tests passed.
 
+Native Computer Use verified the normal `pnpm dev:desktop` and real Ryan Bot
+in ZCode 群聊验证: after a new draft, `@Ryan Bot Reply only REPLYBODYOK. Do not
+use tools.` produced a native quoted reply whose body is exactly `REPLYBODYOK`.
+The saved delivery is `sent` and retains the incoming message ID. Existing
+messages remain unchanged. The first request after restarting the dev Host
+encountered `proto.sessionNotFound` for the old task; this is a separate restart
+recovery issue, not fixed or claimed covered by this formatting change. Windows,
+Linux and real mobile remote control were not rerun for this service-only change.
+The full `pnpm verify:pre-push` rerun passed. Its first run hit the unrelated
+Supervisor client-timeout/rollback lifecycle test; that file passed all 19 tests
+in isolation before the full rerun.
+
 GR-05 reaction revision (2026-09-07): 94 focused provider/service/lifecycle tests
 pass, including monotonic transitions, cancelled/failed/completed states,
 Feishu/Lark operator isolation and compact queue-card payload. The prior
@@ -427,6 +454,21 @@ GR-02/04 passed in `desktop-e2e-20260907121550738-p28948-c52d61fb6862ae03` with
 the updated queue acknowledgement; it does not prove external reaction rendering.
 Root typecheck and lint passed. The real bot can list message reactions (HTTP
 200 / code 0) and reports its operator as the application's app ID.
+
+GR-05 live macOS evidence: normal `pnpm dev:desktop` was restarted, then native
+Computer Use sent `@Ryan Bot` a read-only `sleep 45` request and a second queued
+request in ZCode 群聊验证. The first displayed OnIt; the second displayed
+OneSecond and a single-row waiting/cancel card. Clicking Cancel succeeded,
+replaced the card with its cancellation confirmation and removed the second
+input's reaction. The first completed with `REACTIONDONE`; its only reaction
+was CheckMark. Direct API readback returned code 0, `[CheckMark]` for the first
+message and `[]` for the cancelled message; the saved result status is `sent`.
+No old OK or in-progress reaction remained on those inputs. Failed/stop paths
+have service regression coverage, not live failure-injection evidence. Lark
+has provider HTTP coverage; real Lark, Windows/Linux and mobile were not rerun.
+Root typecheck, lint and the full pre-push gate passed. An initial provider test
+run exposed test-token cache contamination; the new fixture now uses its own
+app ID and the focused suite passes all 94 tests.
 
 GR-05 queue-card lifecycle correction (2026-09-07): the previous live test
 cancelled the queued input and did not cover normal promotion/completion. Queue
@@ -439,6 +481,17 @@ completion before admission returns and the persisted-target/cancel/stop/discard
 cases. Root typecheck, lint and pre-push passed. Desktop GR-02/04 passed in
 `desktop-e2e-20260907123427883-p5094-a2e438fea8ec6398`, including persisted stopped
 status from the real CLI.
+
+Live normal-dev verification used native Computer Use in ZCode 群聊验证 with
+Ryan Bot: a `sleep 45` request (`QCARDFIRST`) followed by a queued `sleep 15`
+request (`QCARDSECOND`). The second request was allowed to execute normally.
+Its original card changed from waiting with Cancel to running without Cancel,
+then completed without Cancel; both requests finished with CheckMark. Persisted
+cardMessageId stayed identical through waiting/working/done, and cardStatus was
+done after `QCARDSECOND` arrived. Old cards without a saved message ID are not
+automatically migrated. Actual failure injection, real Lark, Windows/Linux and
+mobile remote control were not rerun; no continuous/replayable stream or CLI
+queue ownership changes are involved.
 
 ## Mention-only and explicit-reference correction (2026-09-08)
 
@@ -462,6 +515,18 @@ with zero queued inputs, and explicit quoted text enters the real CLI queue with
 the existing input/attachment and can be cancelled without stopping the task.
 The candidate remains pending; it uses the existing controlled provider fixture.
 
+Normal `pnpm dev:desktop` restarted after the local macOS signing prompt was
+resolved. Native Computer Use confirmed that a bare main-chat mention returns the
+Chinese guidance and does not add an execution reaction. A quote-only mention was
+parsed successfully, but exposed a cold-task admission failure:
+`proto.sessionNotFound`, although the original task remained in the CLI database.
+The adapter now obtains the existing background subscription snapshot before
+attachment upload/admission, preserving the same task and workspace identity.
+The added test checks recovery ordering, remoteSessionId propagation and refusal
+to submit after recovery failure. All 212 tests across the three affected suites
+passed; typecheck and lint passed (43 existing warnings, zero errors).
+Desktop/mobile continuous/replayable transport and owner routing were not changed.
+
 A subsequent native quote-only request was accepted into the original task after
 cold start (`om_x100b66c39fb070acc34a8c8d2ab2180`), exposing the companion failure:
 the startup continuous result subscription had exhausted retries before runtime
@@ -469,6 +534,18 @@ activation, so the completed result did not reach Feishu. Group stream setup now
 waits for the same authoritative snapshot before subscribing, and rechecks the
 subscription map after the await to avoid duplicate startup/input listeners.
 The lifecycle test covers this ordering without resubmitting old inputs.
+
+Final native verification used `pnpm dev:desktop` and Computer Use in the ordinary
+Feishu test group. After restart, quote-only mention
+`om_x100b66c3b24414b0c4fa84f7f9c3268` quoted the ordinary arithmetic question
+“7 plus 5”. Feishu visibly returned `12` as a native reply and replaced the
+working reaction with CheckMark. Persisted state confirms the original task
+`sess_5ec4cfa2-10e5-46d9-947f-eb2fe9a3eb27`, accepted admission, progress `done`,
+and delivery `sent` to that exact request
+(provider message `om_x100b66c3b39e84b4df93b3dcb6d1bde`). No task reset or historical
+input replay was used. The implicit request wording explicitly asks the model to
+answer the quoted question or carry out its request; command parsing remains
+separate on the server.
 
 TP-01 passed again with the cold-subscription fix in
 `desktop-e2e-20260908031650082-p95172-4bf16d8330951c84` (one case, one spec).
@@ -478,6 +555,11 @@ The final three unit suites passed 212 tests. A broad pre-push run had one unrel
 unverified for this correction; earlier platform coverage is not relabelled.
 
 ### Native long-background summary verification (2026-09-08)
+
+Computer Use operated `pnpm dev:desktop` with Ryan Bot in the real dedicated topic
+group `oc_6596fb27f96a81b6ee5c34cc09be6089`. The bound owner enabled topic history
+with a native `/history on` mention, then created a fresh CEDAR topic
+`omt_19fa0d1df1cfda52`. The root and ordinary discussion did not submit task inputs.
 
 - The editor received 27,860 characters of synthetic discussion. A subsequent
   read-only native message API check returned exactly 19,999 text characters for
@@ -494,6 +576,10 @@ unverified for this correction; earlier platform coverage is not relabelled.
   earlier-discussion summary and the recent confirmation verbatim. The summary
   labeled Friday as an unconfirmed proposal and retained its original message ID.
   This was a real configured model invocation, not a summary fixture.
+- The native final reply correctly reported CEDAR, Tuesday, and owner not yet
+  determined. Computer Use observed that reply in the source topic and the native
+  completion checkmark. Input progress was `done`; saved delivery was `sent`, with
+  provider message ID `om_x100b66cc289cecb0c4a6013736ee30a`.
 
 The focused Agent background/archive tests also passed (11 tests, two files).
 This run does not establish the 200-message cap, missing-history recovery,
@@ -517,6 +603,17 @@ regressions, not a real phone, native attachment upload or native card race test
 
 ### Native dedicated-topic file boundary (2026-09-08, incomplete)
 
+Computer Use uploaded the synthetic 154-byte file
+`zcode-topic-attachment-verification.txt` to CEDAR in the dedicated test group.
+The native history API confirmed file message `om_x100b66ccd1ebe0a8c22a536e7f67b07`
+in thread `omt_19fa0d1df1cfda52`, chat `oc_6596fb27f96a81b6ee5c34cc09be6089`.
+No bot mention was sent with this file, and no file-analysis input was admitted.
+
+The inspected native message UI had forward/recall/selection controls but no quote
+reply. The forward dialog was closed without forwarding. Further UI verification
+stopped after Computer Use reported that the user had changed the Feishu window.
+This establishes native upload only, not attachment admission or Agent analysis.
+
 Code inspection then confirmed a real implementation gap: historical files become
 text placeholders in provider history and the topic archive tool cannot fetch their
 resources. The remaining retrieval contract is now explicit in the feature spec;
@@ -538,10 +635,16 @@ original synthetic file. This establishes native resource API permission/content
 the file has not yet been admitted as history by a subsequent mention, so it is not
 evidence of the complete Agent on-demand retrieval flow.
 
+Root typecheck and lint passed (43 existing warnings, zero errors). The first full
+pre-push run had CUA shutdown timing and mobile-layout timeout failures plus a Vitest
+worker heap exhaustion; both files passed in isolation (79 tests). The full
+`VITEST_MAX_WORKERS=2 pnpm verify:pre-push` rerun then passed without changing those tests.
+
 # 2026-09-08 原生单独 @ 与令牌有效期回归
 
 - `pnpm dev:desktop` 实际运行时，12:37 的主聊天单独 @ 收到原生事件，但发送补充需求提示失败，飞书返回 `99991663`。代码原先忽略 `expire` 并固定缓存 90 分钟。
 - 改为按接口剩余有效期缓存；飞书／Lark provider 定时回归先失败、修复后通过，provider 共 79 项通过。真实接口本次返回 `expire=4187` 秒，小于旧实现固定的 5400 秒。
+- 重启开发版本后，Computer Use 在 `ZCode 群聊验证` 发送原生单独 @，消息 `om_x100b66cd6c1c20a4c026ae6aa5b7893`，原生回复 `om_x100b66cd6c2e3938c1c10da2d404a76`，客户端显示“请补充需求，或回复要处理的消息并 @我。”
 - 原生 API 消息 ID 对照当前群持久化输入，该消息没有 admission 记录；未新建或排入任务。之前失败的消息 `om_x100b66cd5f92d8acc322408850c60f9` 也没有自动补执行。
 - 本次真实验证确认重启后提示投递恢复；完整有效期跨越由受控时钟测试覆盖，未在真实租户等待令牌自然过期。未将该验证宣称为 Agent 历史附件读取、手机、Lark 或其他操作系统通过。
 
@@ -551,7 +654,9 @@ evidence of the complete Agent on-demand retrieval flow.
 
 13:11 的另一条测试消息意外带入剪贴板图片，触发真实 Bot 附件 admission 的 `fault.attachment.connectionUntrusted`，未被 CLI 接收。13:17 已在原生界面撤回该测试消息并确认撤回状态。该入口现补接既有可信 connection scope，91 条 task adapter 测试通过；修复后的真实富文本上传仍待重测。
 
-<!-- 上游「本地检查」段（122 条测试通过记录、CUA conformance 失败清单）已随 5aba47d9 净化删除，不随上游恢复 -->
+继续发送 /stop 前 Mac 锁屏，Computer Use 返回无法自动解锁；未将尚未确认发送的停止命令记为成功。历史文件下载、最终字段回复及最终表情归属仍需解锁并重启新代码后重测，不能用单测或先前 Host 下载哈希验证替代端到端结果。
+
+本地检查：当前资源桥、资源授权、附件上传与 task adapter 共 122 条测试通过，根目录 typecheck、lint 通过（lint 43 个 warning）。本轮完整 pre-push 曾在 `retired:packages/ui/test/subagentsSection.test.ts` 的保存后刷新失败场景失败，单独重跑该场景通过，尚未取得新一轮完整 pre-push 成功。扩展 Agent 全量测试仍有 CUA、文件行数及外部 conformance 路径等失败；未宣称全量通过。当前修改暂未提交，远程 Host 转发、真实手机和 Lark 仍待验证／实现。（retired: 为退役历史证据，不计现行覆盖。）
 
 ### 2026-09-08 后续代码与受控远程链路检查
 
@@ -560,6 +665,7 @@ evidence of the complete Agent on-demand retrieval flow.
 - 分块传输覆盖字节数、SHA-256、群停用、来源连接、remoteSessionId、取消、超时、过载拒绝和同 ID 旧请求迟到。未建立新任务队列或 runtime。
 - 受控假 CLI 进程复现预热后反向请求遗漏 remoteSessionId，修复为每次资源请求固定同一 CLI 的当前目标；该测试验证 Host 路由，不代表真实远端 Agent 工具调用通过。
 - 最新服务／Host／stdio 回归 8 文件 86 条通过，根目录 typecheck 与 lint 通过（43 个 warning）。完整 `verify:pre-push` 的上一版提交范围重跑成功；该脚本按基线到 HEAD 取文件范围，新增未提交文件另由上述定向测试覆盖，最终提交仍需再跑提交检查。
+- Computer Use 再次确认 Mac 锁屏。旧 `pnpm dev:desktop` 执行句柄已退出（130），旧 Electron／Host PID 已不存在；因此不再保留旧代码中的失败测试进程。新的 `pnpm dev:desktop` 构建句柄仍在运行，尚未把新版本原生验证记为通过。
 - 待补：新版本本地历史文件完整读取和原话题结果、真实 SSH／WSL／Docker、WebSocket Server 私有回查通道、手机／多成员权限卡、Lark 与其他系统验证。保留原目标范围，不以受控传输测试替代这些验收。
 
 ### BOT-E2E-TP-03 话题交互卡（pending）
@@ -816,9 +922,3 @@ Provider 单测覆盖 checkpoint 前、调用后、删除和窗口内必需卡�
 
 身份投影定位回归：CLI 单测覆盖相同正文、原生 @ 前后位置交换、同一目标重复出现和多消息
 批次；TP-04 实际模型请求断言有序 text/mention 结构及自身/他人关联，不暴露 targetId。
-
-</details>
-
-## 2026-10-25 设置页入口整合
-
-当前 CF-01 从“设置 → 远程控制 → 机器人管理”进入，在内嵌管理页保持打开时检查已绑定机器人的缺凭据错误、绑定保留和 v3 配置落盘。复用设置导航 helper，不启动手机连接。历史弹窗截图保留为历史证据，候选继续位于 manual-review/pending。

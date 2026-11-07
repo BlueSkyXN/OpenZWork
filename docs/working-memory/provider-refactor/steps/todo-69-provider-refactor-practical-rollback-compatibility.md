@@ -9,6 +9,8 @@
 > 更新：2026-09-03。本文取代此前的多领域持续双写方案。
 >
 > 审查基线：当前分支 `eb8b9deee500` 及工作区；回滚目标仅为 `origin/staging@6e781fdd9029`。
+>
+> 2026-09-09 后续裁决：用户明确旧字段不能因新选择接入被删除或清空，Off-Peak 编辑 / Wiki 保存两处需保留旧值，不要求持续反向双写；Session 已裁决改为原 entry.data 新增 modelSelection 并保留旧身份 / 档位字段。Subagent Markdown 沿用 [Todo97](./todo-97-subagent-markdown-in-place-migration-and-legacy-read-audit.md) 已裁决的可读性取舍及用户目录原字段迁移；此前将其列为待复审项是误记，已撤销。见 [Todo104 §6.18](./todo-104-pre-release-schema-review.md)（m2 原 Todo99）。这些是待实施补充，不修改本文冻结 Reader 的既有验证事实，也不恢复 Bot 原文件写入。
 
 ## 1. 目标和最终裁决
 
@@ -35,6 +37,7 @@ staging 的真实 Reader
 
 最终范围：
 
+- Provider Config、Session、Off-Peak、Automation、Account Settings、Subagent、Repo Wiki 均不持续双写旧字段。
 - SQLite 保持增量、可空的 Schema 变更，不执行破坏性降级。
 - **Bot Config 和 State 是此次审查中唯一确定的整域失败风险，采用文件版本隔离，不持续双写。**
 - Model/Reasoning 随所属记录处理，不新建通用旧版 Encoder、兼容 DTO 或第二套模型事实。
@@ -49,6 +52,7 @@ staging 的真实 Reader
 | ------------------ | -------------------------------------------------------------------- | -------------------------------------------------- | -------------- |
 | Provider Config    | 读取旧 `config.json`；当前版本只写新 `provider_config.json`          | 使用升级前配置，看不到新版 Provider/Template 修改  | 不双写         |
 | Session            | 已认识 `runtime/model_selection`；消息、Part、Entry 是宽松 JSON 读取 | 新模型元数据、Reasoning 或个别新版消息展示可能退化 | 不双写         |
+| Off-Peak           | 旧 `model/thought_level` 可空，额外列不影响读取                      | 新任务可能使用 staging 原有默认模型                | 不双写         |
 | Automation         | 旧 `model/provider/thought_level` 可空，额外列不影响读取             | 新任务和 Run 不能精确保留新版冻结选择              | 不双写         |
 | Account Settings   | 非 strict Schema，忽略新字段，为缺失旧字段提供空值默认               | 账号连接或套餐选择可能需要重新选择                 | 不双写         |
 | 自定义 Subagent    | Frontmatter 只读取已知字段，不因新 `modelSelection` 拒绝整个文件     | 新式显式模型选择退化为继承或默认                   | 不双写         |
@@ -87,6 +91,10 @@ User/Assistant/Timeline/Subtask 的新版模型元数据也可能不被旧展示
 
 当前版本读取旧 Session、识别失效选择、保证历史可打开由 Todo 70 处理，不在本 Todo 扩展为双写。
 
+### 2.3 Off-Peak
+
+当前 `off_peak_tasks` 增加了可空 `model_selection`，保留原有旧列。当前创建逻辑写入：
+
 ```text
 model_selection = 完整 ModelSelection
 model            = NULL
@@ -111,6 +119,10 @@ staging 的派发路径只在旧模型字段存在时使用它们，否则走自
 不为此实现当前 Registry Provider ID 到旧 Agent Provider 枚举的反向映射，不双写旧模型列。
 
 ### 2.5 Account Settings
+
+当前字段是 `providerFamilyConnectionSelections`；staging 使用
+`modelProviderFamilyModes/modelProviderFamilySelectedKeys`。冻结 staging 的 Settings Schema 非 strict，
+会忽略新字段，并把缺失旧字段缺省为空对象，整份 Settings 仍可加载。
 
 用户回滚后可能需要重新选择账号连接。staging 后续保存 Settings 还可能移除它不认识的新版字段，再次升级时
 需要重选。这属于可重建设置退化，不维护新旧 Family 选择的持续反向投影。
@@ -201,6 +213,11 @@ Bot 不保证体现在回滚版本中。这是明确接受的产品边界。
 首次导入可以在下一次启动补齐尚未生成的另一个 v3 文件；不得把这种一次性导入误实现为每次保存持续回写。
 各文件写入继续使用既有安全写入机制，失败不伪装为成功。
 
+导入上下文由服务组装层注入：普通 Bot 默认配置使用所属 Host 的模型与当前登录连接；带
+`workspaceIdentity` 的旧状态只能使用该远端的模型事实，不能拿本地账号解释旧 Coding Plan。
+若当时远端不可连接或没有可取得的账号上下文，无法确认的绑定留空，主体状态照常导入。
+新文件的解析/IO 错误向调用方暴露，不回读旧文件，也不把损坏文件改写为空。
+
 ## 4. 范围约束及与相邻 Todo 的关系
 
 生产改动只针对 Bot Config/State 文件隔离及其单向升级入口。其他领域保留当前单向升级读取，不新增降级写入。
@@ -208,10 +225,25 @@ Bot 不保证体现在回滚版本中。这是明确接受的产品边界。
 禁止：
 
 - Provider Config 反向同步；
+- Session、Off-Peak、Automation、Settings、Subagent、Repo Wiki 持续写旧别名；
 - 为兼容旧版静默变换 Reasoning 档位或猜测旧 Agent Provider；
 - 通用旧版 Selection Encoder、兼容 DTO、第二份 Config/Registry 权威；
 - 整库副本、破坏性 SQLite 降级迁移；
 - 当前版本持续读取冻结旧文件修复当前数据。
+
+```text
+Todo 69：当前版本 -> staging 降级回滚
+└─ 防止整域数据被旧 Reader 拒绝；当前硬点是 Bot 文件隔离
+
+Todo 70：旧 Session -> 当前版本升级恢复
+└─ 新旧字段判定、可靠迁移、失效 Selection 与历史可打开性
+
+Todo 71：当前版本内 Composer -> Submission
+└─ 持久草稿和提交状态，不承担跨版本字段双写
+
+Todo 72：旧 Provider 配置与持久化选择 -> 当前身份
+└─ 修正内置分类、只迁 Built-in API Key、按迁移时当前连接转换旧 Coding Plan 身份
+```
 
 升级身份规则见 [Todo 72](./todo-72-legacy-builtin-provider-and-model-selection-migration.md)，
 包括 Bot 一次性导入所需的身份转换；不扩大本文的降级兼容范围，不恢复持续双写。
@@ -241,6 +273,7 @@ Bot 不保证体现在回滚版本中。这是明确接受的产品边界。
 ### 5.2 其他领域最小验证
 
 - 复用 Provider Config 测试，证明旧 `config.json` 不变。
+- 用 staging 的 Off-Peak/Automation Row Reader 验证旧模型列为空的新版代表行可读；不要求得到精确新选择。
 - 确认新增 SQLite 列为旧版可忽略的可空列，旧表/列不做破坏性删除。
 - 对 Session、Settings、Subagent、Wiki 使用代表性新字段输入，验证旧读取入口不会整域拒绝；优先复用现有
   测试，只补没有直接证据的边界。
@@ -287,6 +320,7 @@ Bot 不保证体现在回滚版本中。这是明确接受的产品边界。
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Provider   | `packages/services/src/model-provider/providerConfigRuntime.ts`；`packages/services/test/providerConfigRuntime.test.ts`                                       |
 | Session    | `apps/zcode-cli/packages/adapters/src/storage/session-store/codecs.ts`；`apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts`              |
+| Off-Peak   | `packages/services/src/session/offPeakTaskRepo.ts` 的 Schema、create、rowToTask/list                                                                          |
 | Automation | `packages/services/src/session/automationRepo.ts` 的 Schema、create、rowToAutomation/list                                                                     |
 | Settings   | `packages/shared/src/validationAppSettings.ts`                                                                                                                |
 | Subagent   | `packages/services/src/subagents/subagentMarkdown.ts`；`packages/services/src/subagents/subagentsService.ts`                                                  |

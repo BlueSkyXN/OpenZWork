@@ -31,7 +31,7 @@ Linux/Windows 共用 executable 的 helper/utility crash loop 污染产品稳定
   └── archive/     ← ZCode 额外保留的本地副本
 ```
 
-`appConfigDir` 默认 `~/.openzwork/v2/`；用户配置了自定义 `dataBaseDir` 时，路径为 `<dataBaseDir>/.zcode/v2/crash/`（依赖 `desktopEarlyDataBaseDirBootstrap` 在 crash 初始化前注入 `dataBaseDir`）。
+`appConfigDir` 默认 `~/.zcode/v2/`；用户配置了自定义 `dataBaseDir` 时，路径为 `<dataBaseDir>/.zcode/v2/crash/`（依赖 `desktopEarlyDataBaseDirBootstrap` 在 crash 初始化前注入 `dataBaseDir`）。
 
 ## 本地归档保留策略
 

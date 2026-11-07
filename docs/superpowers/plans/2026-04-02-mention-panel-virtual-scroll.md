@@ -12,20 +12,19 @@
 
 ## File Structure
 
-| Action | File                                                        | Responsibility                                     |
-| ------ | ----------------------------------------------------------- | -------------------------------------------------- |
-| Modify | `packages/ui/src/mentions/components/MentionPanel.tsx`      | Add virtual scrolling to option list               |
-| Modify | `packages/ui/src/mentions/providers/fileMentionProvider.ts` | Remove hard limit of 100                           |
-| Modify | `packages/ui/src/mentions/mentionSearch.ts`                 | Add soft display cap constant (1000) as safety net |
-| Create | `packages/ui/test/mentionPanel.test.ts`                     | Unit tests for virtual scroll behavior             |
-| Modify | `packages/ui/test/mentionSearch.test.ts`                    | Add test for large result set handling             |
+| Action | File | Responsibility |
+|--------|------|----------------|
+| Modify | `packages/ui/src/mentions/components/MentionPanel.tsx` | Add virtual scrolling to option list |
+| Modify | `packages/ui/src/mentions/providers/fileMentionProvider.ts` | Remove hard limit of 100 |
+| Modify | `packages/ui/src/mentions/mentionSearch.ts` | Add soft display cap constant (1000) as safety net |
+| Create | `packages/ui/test/mentionPanel.test.ts` | Unit tests for virtual scroll behavior |
+| Modify | `packages/ui/test/mentionSearch.test.ts` | Add test for large result set handling |
 
 ---
 
 ### Task 1: Add `@tanstack/react-virtual` dependency
 
 **Files:**
-
 - Modify: `packages/ui/package.json`
 
 - [ ] **Step 1: Install the dependency**
@@ -54,7 +53,6 @@ git commit -m "chore: add @tanstack/react-virtual for mention panel virtualizati
 ### Task 2: Remove hard limit in fileMentionProvider
 
 **Files:**
-
 - Modify: `packages/ui/src/mentions/providers/fileMentionProvider.ts:8,85-91`
 - Modify: `packages/ui/src/mentions/mentionSearch.ts`
 - Modify: `packages/ui/test/mentionSearch.test.ts`
@@ -102,7 +100,6 @@ Expected: first assertion FAILS — `filterMentionItemsWithOptions` without expl
 In `packages/ui/src/mentions/providers/fileMentionProvider.ts`, make these changes:
 
 Remove the constant:
-
 ```typescript
 // DELETE this line:
 const FILE_MENTION_RESULT_LIMIT = 100;
@@ -111,7 +108,10 @@ const FILE_MENTION_RESULT_LIMIT = 100;
 Update the `useMemo` that calls `filterMentionItemsWithOptions` — remove the `limit` option:
 
 ```typescript
-const items = useMemo(() => filterMentionItemsWithOptions(allItems, query), [allItems, query]);
+  const items = useMemo(
+    () => filterMentionItemsWithOptions(allItems, query),
+    [allItems, query],
+  );
 ```
 
 - [ ] **Step 4: Add a safety-net display cap constant in mentionSearch.ts**
@@ -193,7 +193,6 @@ git commit -m "feat: remove hard 100-item cap from mention panel, add 1000-item 
 This is the core task. Replace the naive `section.options.map(...)` DOM render with `@tanstack/react-virtual`'s `useVirtualizer`.
 
 **Files:**
-
 - Modify: `packages/ui/src/mentions/components/MentionPanel.tsx`
 
 - [ ] **Step 1: Flatten sections into a single virtual list with section headers**
@@ -247,26 +246,11 @@ function buildVirtualRows(sections: MentionPanelSection[]): VirtualRow[] {
 
   for (const section of sections) {
     if (section.errorText) {
-      rows.push({
-        kind: "status",
-        sectionId: section.id,
-        content: "error",
-        text: section.errorText,
-      });
+      rows.push({ kind: "status", sectionId: section.id, content: "error", text: section.errorText });
     } else if (section.loading) {
-      rows.push({
-        kind: "status",
-        sectionId: section.id,
-        content: "loading",
-        text: section.loadingText ?? section.emptyText,
-      });
+      rows.push({ kind: "status", sectionId: section.id, content: "loading", text: section.loadingText ?? section.emptyText });
     } else if (section.options.length === 0) {
-      rows.push({
-        kind: "status",
-        sectionId: section.id,
-        content: "empty",
-        text: section.emptyText,
-      });
+      rows.push({ kind: "status", sectionId: section.id, content: "empty", text: section.emptyText });
     } else {
       for (const option of section.options) {
         rows.push({ kind: "option", sectionId: section.id, option, flatOptionIndex });
@@ -398,10 +382,18 @@ function StatusRow({ row }: { row: Extract<VirtualRow, { kind: "status" }> }) {
   }
 
   if (row.content === "error") {
-    return <div className="rounded-xl px-5 py-2 text-xs text-red-500">{row.text}</div>;
+    return (
+      <div className="rounded-xl px-5 py-2 text-xs text-red-500">
+        {row.text}
+      </div>
+    );
   }
 
-  return <div className="rounded-xl px-5 py-2 text-xs text-on-surface-muted">{row.text}</div>;
+  return (
+    <div className="rounded-xl px-5 py-2 text-xs text-on-surface-muted">
+      {row.text}
+    </div>
+  );
 }
 
 function OptionRow({
@@ -435,9 +427,13 @@ function OptionRow({
     >
       <span className="min-w-0 flex-1 flex">
         <span className="flex items-center gap-2 flex-auto">
-          <span className="truncate text-xs font-medium text-on-surface">{option.label}</span>
+          <span className="truncate text-xs font-medium text-on-surface">
+            {option.label}
+          </span>
           {option.meta ? (
-            <span className="shrink-0 text-[10px] text-on-surface-muted">{option.meta}</span>
+            <span className="shrink-0 text-[10px] text-on-surface-muted">
+              {option.meta}
+            </span>
           ) : null}
         </span>
         <span className="mt-1 block truncate text-[11px] text-on-surface-muted">
@@ -460,7 +456,6 @@ Expected: No TypeScript or build errors.
 - [ ] **Step 3: Manual smoke test**
 
 Open the app, type `@` in the chat input. Verify:
-
 - Panel opens with file list
 - Arrow keys navigate and scroll correctly
 - Typing a query filters the list
@@ -479,7 +474,6 @@ git commit -m "feat: virtualize mention panel list with @tanstack/react-virtual"
 ### Task 4: Unit tests for virtualized MentionPanel
 
 **Files:**
-
 - Create: `packages/ui/test/mentionPanel.test.ts`
 
 - [ ] **Step 1: Write tests for buildVirtualRows helper**
@@ -536,14 +530,7 @@ describe("buildVirtualRows", () => {
 
   it("shows loading status row when section is loading", () => {
     const sections: MentionPanelSection[] = [
-      {
-        id: "files",
-        title: "Files",
-        options: [],
-        emptyText: "No files",
-        loading: true,
-        loadingText: "Loading...",
-      },
+      { id: "files", title: "Files", options: [], emptyText: "No files", loading: true, loadingText: "Loading..." },
     ];
     const rows = buildVirtualRows(sections);
     expect(rows).toHaveLength(1);
@@ -552,13 +539,7 @@ describe("buildVirtualRows", () => {
 
   it("shows error status row when section has error", () => {
     const sections: MentionPanelSection[] = [
-      {
-        id: "files",
-        title: "Files",
-        options: [],
-        emptyText: "No files",
-        errorText: "Failed to load",
-      },
+      { id: "files", title: "Files", options: [], emptyText: "No files", errorText: "Failed to load" },
     ];
     const rows = buildVirtualRows(sections);
     expect(rows).toHaveLength(1);
@@ -646,7 +627,6 @@ Expected: Clean build, no errors.
 - [ ] **Step 4: Manual E2E smoke test**
 
 Open the app and verify:
-
 1. Type `@` — panel opens, shows files (loading indicator → list)
 2. Scroll down — smooth virtual scrolling, no blank gaps
 3. Type a query (e.g., `pack`) — list filters instantly

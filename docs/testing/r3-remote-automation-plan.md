@@ -19,6 +19,7 @@
 - 平台：macOS → Linux SSH 完整回归、Docker 代表、手机浏览器真实 relay；WSL 单独 Windows 执行包，缺环境为 BLOCKED；移动浏览器与手机实机分别登记。
 - 执行方式：WDIO 固定套件 + Agent 探索补漏；新用例首次审阅语义和关键录像，稳定用例重复执行自动收证；保留 dev:desktop 开发入口验收。
 - 基线：clean / premerge R3 / supported-old 三类；旧 App、旧 Server、旧数据分别认证，不以版本号或空 runtime fixture 替代完整旧环境。
+- 真实模型代表：账号 Coding Plan 用 BigModel **Team Coding Plan**（同一现有登录下的 Team 项目，已通过独立 Linux x64 最小请求；个人套餐 429 只保留为历史结果）；API Key 用本机名为 `ZAPI` 的 Anthropic Messages 配置 / glm-5.3（此前豆包结果保留为历史）。真实请求消耗上限已取消，按覆盖需要执行并记录请求次数、失败、重试与服务返回的 usage。
 - 覆盖策略：行为与状态转换全覆盖，高风险交叉专项，其余 pairwise；不进行全局笛卡尔积，每项剪枝有理由与代表证明。
 - 分档：smoke / full / soak；50 次循环 + 2 小时长稳；首次完整验收包含 soak，耗时由试跑测量，分档不缩减完整验收范围。
 - 缺陷处理：可修测试基础设施；产品缺陷先复现、定位、记录；阻断依赖路径、继续独立路径；产品修复进入独立阶段，设计问题交用户裁决。
@@ -115,7 +116,7 @@ Mobile replayable -------+                 +-> 独立 mobile gap/snapshot
 
 隔离要求：
 
-1. 当前桌面 SSH adapter 固定远端用户 `~/.openzwork/server`。CLI 虽支持 `--server-root`，该能力未贯穿桌面入口；不得把本地 `ZCODE_DATA_BASE_DIR` 或两个项目目录当作远端环境隔离。
+1. 当前桌面 SSH adapter 固定远端用户 `~/.zcode/server`。CLI 虽支持 `--server-root`，该能力未贯穿桌面入口；不得把本地 `ZCODE_DATA_BASE_DIR` 或两个项目目录当作远端环境隔离。
 2. 专用本地 E2E profile + 专用远端用户/容器；真实模型只将选定代表配置通过产品写入口导入隔离 profile，再由正式 Provisioning 下发。不得盲拷用户完整 `.zcode`。App数据/Chromium/CLI/Helper目录必须分别检查：旧版Helper还需要独立 `ZCODE_HOME`，仅设置 `ZCODE_DATA_BASE_DIR` 与 `ZCODE_DESKTOP_HOME_DIR` 不足以隔离它。
 3. 项目 fixture 位于各自实际 workspace 的 `.zcode-e2e/<run>/<case>`；两个 Source 使用相同 POSIX path 验证身份隔离；同时保留一个本地 workspace 作为反向污染哨兵。
 4. 专属环境串行执行 `ZCODE_E2E_MAX_INSTANCES=1`；独立环境可由未来 runner 做有界并行，不能共享默认安装根、provider store、端口或录像输出。

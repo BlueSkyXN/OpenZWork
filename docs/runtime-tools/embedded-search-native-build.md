@@ -215,7 +215,7 @@ TODO：全部平台的 native build 与 E2E 接入完成后，将上述锁定源
   - `packages/desktop/bundled-tools/linux-<arch>/{bfs,ugrep,ripgrep}` 由 native search 预编译下载链路准备。
   - `packages/desktop/bundled-tools/win32-<arch>/{ugrep,ripgrep}` 由 native search 预编译下载链路准备。
 - desktop host 和 Linux remote server 通过现有 runtime tool resolver 发现各平台已启用的产物，并把绝对路径投影为对应的 `ZCODE_BFS_BINARY`、`ZCODE_UGREP_BINARY`、`ZCODE_RG_BINARY`。Windows 不生成也不投影 `ZCODE_BFS_BINARY`，`find` 继续走 Git Bash/system；已发现工具的所在目录追加到 Agent runtime 的 `PATH`，保留用户命令优先级。
-- SEA 仍按 target 交付单一可执行文件，不能把 `bfs`、`ugrep`、`rg` 作为同目录 sidecar 交付。构建时把当前 target 已启用的原生工具及 manifest 写入 SEA assets；运行时首次读取 asset 并解压到 `ZCODE_STORAGE_DIR`（默认 `~/.openzwork`）下的 `cache/runtime_tools`。
+- SEA 仍按 target 交付单一可执行文件，不能把 `bfs`、`ugrep`、`rg` 作为同目录 sidecar 交付。构建时把当前 target 已启用的原生工具及 manifest 写入 SEA assets；运行时首次读取 asset 并解压到 `ZCODE_STORAGE_DIR`（默认 `~/.zcode`）下的 `cache/runtime_tools`。
 - `pnpm build:sea` 保持既有 all-target 契约并显式传入 `--all`。各目标平台的 producer 必须先构建、验证并发布预编译归档；SEA 构建再按同一 release plan 为每个 target 下载、校验并准备 `packages/desktop/bundled-tools/<platform>-<arch>` 后统一消费。缺少 foreign target 工具时必须 fail-closed，不能把公开命令降级成 host-only。host E2E 使用底层 `sea --target <host-target>`，不改变发行入口。
 - SEA runtime tool 缓存必须按 `<target>/<tool>/<tool-version>-<binary-sha256>` 定位，不能包含 CLI 版本。多个 CLI 版本携带完全相同的工具版本和二进制内容时必须复用同一份缓存；单个工具升级时也不能迫使其他未变化工具重复解压。
 - SEA 解压必须逐文件校验 manifest 中的 SHA-256，写入同级临时目录后原子替换，并恢复可执行权限。并发首次启动必须收敛到同一缓存目录；已完成且 marker、文件大小、实际 SHA-256 和可执行权限均有效的缓存直接复用。

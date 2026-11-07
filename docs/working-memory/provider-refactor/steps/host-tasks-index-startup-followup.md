@@ -8,6 +8,7 @@
 Host 部分 Repo 在服务发布前同步打开或迁移 tasks-index.sqlite，届时会话库状态服务尚不可用。
 必须先设计状态提供方、数据库执行线程、依赖服务的准入顺序、后台 scheduler/bot 启动以及失败重试边界，再实现。
 
+- [ ] 梳理 AutomationRepo、OffPeakTaskRepo、TaskIndexRepo 的初始化和迁移时机。
 - [ ] 决定迁移 Worker 或延迟服务初始化方案；Main 保持调度/透传职责。
 - [ ] SQLite 保持同一物理库的唯一迁移协调者，避免再加 Host 迁移锁。
 - [ ] 服务发布前即可观察阶段；依赖 Repo 的业务只能在事务提交后开放。

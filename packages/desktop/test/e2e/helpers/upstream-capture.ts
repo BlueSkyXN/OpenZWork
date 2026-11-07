@@ -30,7 +30,9 @@ export async function waitForUpstreamNetworkCapture(expectedText: string) {
         latestArtifact = await readCaptureArtifact();
         const record = findUpstreamRequestRecord(latestArtifact, expectedText);
         return Boolean(
-          record?.requestJson && record.status === "complete" && record.statusCode !== undefined,
+          record?.requestJson &&
+            record.status === "complete" &&
+            record.statusCode !== undefined,
         );
       },
       {
@@ -40,7 +42,11 @@ export async function waitForUpstreamNetworkCapture(expectedText: string) {
     );
   } catch (error) {
     throw new Error(
-      `没有捕获到 上游 请求\n${JSON.stringify(summarizeCaptureArtifact(latestArtifact), null, 2)}`,
+      `没有捕获到 上游 请求\n${JSON.stringify(
+        summarizeCaptureArtifact(latestArtifact),
+        null,
+        2,
+      )}`,
       { cause: error },
     );
   }
@@ -97,7 +103,9 @@ export function assertUpstreamRequestCapture(
     expect(record.protocol).toBe(expectedProtocol);
   }
   expect(record.method).toBe("POST");
-  expect(record.path.includes("/messages") || record.path.includes("/chat/completions")).toBe(true);
+  expect(
+    record.path.includes("/messages") || record.path.includes("/chat/completions"),
+  ).toBe(true);
   if (!record.statusCode || record.statusCode < 200 || record.statusCode >= 300) {
     throw new Error(
       `上游 请求没有返回 2xx\n${JSON.stringify(summarizeCaptureRecord(record), null, 2)}`,
@@ -117,7 +125,9 @@ export function assertUpstreamThoughtLevelCapture(
       isThinkingToggleLevel ? thoughtLevel : "enabled",
     );
     if (!isThinkingToggleLevel) {
-      expect(readNestedString(record.requestJson, ["output_config", "effort"])).toBe(thoughtLevel);
+      expect(readNestedString(record.requestJson, ["output_config", "effort"])).toBe(
+        thoughtLevel,
+      );
     }
     return;
   }
@@ -129,7 +139,9 @@ export function assertUpstreamThoughtLevelCapture(
     isThinkingToggleLevel ? thoughtLevel : "enabled",
   );
   expect(readNested(record.requestJson, ["extra_body"])).toBeUndefined();
-  expect(readNestedBoolean(record.requestJson, ["stream_options", "include_usage"])).toBe(true);
+  expect(readNestedBoolean(record.requestJson, ["stream_options", "include_usage"])).toBe(
+    true,
+  );
 }
 
 export function readUpstreamUsageFromCapture(
@@ -153,9 +165,12 @@ export function readUpstreamUsageFromCapture(
   );
   // 修复原因：上游 Anthropic-compatible 响应会把 prompt token 和 cache token 拆开返回；
   // runtime context meter 展示的是本次请求实际占用的上下文总量，抓包断言必须同口径相加。
-  const inputTokens = (providerInputTokens ?? 0) + (cacheReadTokens ?? 0) + (cacheWriteTokens ?? 0);
+  const inputTokens =
+    (providerInputTokens ?? 0) + (cacheReadTokens ?? 0) + (cacheWriteTokens ?? 0);
   if (!inputTokens || inputTokens <= 0) {
-    throw new Error(`Upstream usage 缺少有效 input tokens\n${JSON.stringify({ usage }, null, 2)}`);
+    throw new Error(
+      `Upstream usage 缺少有效 input tokens\n${JSON.stringify({ usage }, null, 2)}`,
+    );
   }
 
   const completionDetails = asRecord(usage.completion_tokens_details);
@@ -226,7 +241,8 @@ function findUpstreamRequestRecord(
 
   if (expectedText) {
     return (
-      records.findLast((record) => captureContainsText(record.requestJson, expectedText)) ?? null
+      records.findLast((record) => captureContainsText(record.requestJson, expectedText)) ??
+      null
     );
   }
 
@@ -294,7 +310,9 @@ function mergeSseUsage(
 
 function readContextUsageLabel() {
   return browser.execute((triggerTestId) => {
-    const trigger = document.querySelector<HTMLElement>(`[data-testid="${triggerTestId}"]`);
+    const trigger = document.querySelector<HTMLElement>(
+      `[data-testid="${triggerTestId}"]`,
+    );
     return (
       trigger?.getAttribute("aria-label") ??
       trigger?.getAttribute("title") ??
@@ -370,7 +388,8 @@ function summarizeCaptureArtifact(artifact: E2ENetworkCaptureArtifact | null) {
     configured: Boolean(process.env.E2E_PROVIDER_CAPTURE_PATH),
     mode: process.env.E2E_PROVIDER_CAPTURE_MODE,
     proxyUrl: process.env.E2E_PROVIDER_CAPTURE_PROXY_URL,
-    records: artifact?.records.map((record) => summarizeCaptureRecord(record)) ?? [],
+    records:
+      artifact?.records.map((record) => summarizeCaptureRecord(record)) ?? [],
   };
 }
 

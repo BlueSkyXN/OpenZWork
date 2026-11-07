@@ -78,7 +78,10 @@ export function createWorkerWorkspaceFileSearchFilterBackend(): WorkspaceFileSea
   }
 
   let seq = 0;
-  const pending = new Map<number, { resolve: (entries: WorkspaceFileEntry[] | null) => void }>();
+  const pending = new Map<
+    number,
+    { resolve: (entries: WorkspaceFileEntry[] | null) => void }
+  >();
 
   worker.onmessage = (
     event: MessageEvent<{ type: string; seq?: number; entries?: WorkspaceFileEntry[] }>,

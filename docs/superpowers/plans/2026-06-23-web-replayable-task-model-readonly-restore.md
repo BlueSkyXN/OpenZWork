@@ -17,7 +17,6 @@
 ### Task 1: Add Red Tests
 
 **Files:**
-
 - Modify: `packages/ui/test/useTaskRestoreRuntimeSnapshot.test.ts`
 - Modify: `packages/ui/test/useTaskStreamEventsSnapshotReader.test.ts`
 - Modify: `packages/ui/test/taskStreamEventSnapshotSync.test.ts`
@@ -35,7 +34,6 @@
 ### Task 2: Implement Mobile-Only Policy
 
 **Files:**
-
 - Modify: `packages/services/src/session/zcodeTaskService.ts`
 - Modify: `packages/ui/src/hooks/useZCodeTaskService.ts`
 - Modify: `packages/ui/src/hooks/useTaskRestore.ts`
@@ -53,7 +51,6 @@
 ### Task 3: Verify
 
 **Files:**
-
 - Test: `packages/ui/test/useTaskRestoreRuntimeSnapshot.test.ts`
 - Test: `packages/services/test/zcodeLegacyTaskCompatTaskIndex.test.ts`
 

@@ -15,6 +15,9 @@
 综合配置使用，导致正式 Personal 文件、Legacy Importer 输入和其他产品配置在物理命名上发生冲突。Repository 为了
 在同一文件上原地改写旧格式，还引入了 `pre-provider-v1` 备份与损坏恢复覆盖。
 
+此外，已经退役写入的 `model-providers.json` 仍被 Desktop Legacy Reader 作为回退输入；Remote Workspace 还可能从该
+旧 Store 搬运 Coding Plan API Key。这两条兼容链不再属于上线目标。
+
 ## 2. 最终裁决
 
 Personal Provider Config 与 Personal Model Config Rules 统一保存在所属 Environment 配置目录下的：
@@ -39,6 +42,7 @@ Active/LKG、Account Config、MCP/Plugin/Hook 使用的其他 `config.json` 均�
 
 - 不识别或迁移当前开发分支曾写入 `config.json` 的 Provider v1 中间格式；
 - 不读取 `model-providers.json`；
+- 不从旧 Provider Store 迁移 Coding Plan API Key；
 - 不生成迁移备份；
 - 不删除、不改写 Legacy `config.json`，它仅作为已发布旧配置的一次性只读输入。
 
@@ -78,7 +82,7 @@ Legacy Importer，不参与迁移；长期存活时继续使用 Bugfix 05 的 co
 
 ### 3.3 Standalone CLI
 
-Standalone Prompt CLI/TUI 是自身 Environment 的组合根。它在 `~/.openzwork/v2/provider_config.json` 缺失时，只读既有
+Standalone Prompt CLI/TUI 是自身 Environment 的组合根。它在 `~/.zcode/v2/provider_config.json` 缺失时，只读既有
 CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只读正式文件。
 
 ## 4. Repository 语义
@@ -109,19 +113,26 @@ CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只�
 - 删除只覆盖 `model-providers.json` 的测试和辅助类型；
 - 不监听、不迁移、不删除磁盘上可能残留的文件。
 
+### 5.2 Account Coding Plan Key
+
+- 删除 `legacyAccountProviderApiKeyLoader`；
+- 删除 Account Credential Store/Service 的 `loadLegacy` 参数；
+- 删除 Remote Workspace 对旧 Provider Store 的 Key 读取；
+- 当前账号 Key 只从账号作用域 Credential Store 读取，缺失时经当前 OAuth/服务端解析并写入正式凭据存储。
+
 ## 6. 路径覆盖
 
 必须统一修改：
 
 - Desktop Local Host 默认 Personal Config 路径；
 - Host 派发给本地/远程 Agent 的 `ZCODE_PERSONAL_PROVIDER_CONFIG_FILE`；
-- Standalone CLI 的 `~/.openzwork/v2/provider_config.json`；
+- Standalone CLI 的 `~/.zcode/v2/provider_config.json`；
 - Desktop E2E 的 Provider Config seed；
 - Provider Node、Services、CLI、Desktop 的路径与迁移测试。
 
 不得批量改名其他 `config.json`。以下文件明确不属于本 Todo：
 
-- `~/.openzwork/cli/config.json`；
+- `~/.zcode/cli/config.json`；
 - workspace `.zcode/config.json`；
 - MCP、Plugin、Hook、Command、Skill 配置；
 - `model-selection.json`；
@@ -132,7 +143,7 @@ CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只�
 先写失败测试，再改生产实现：
 
 1. Desktop/Services 默认目标为同目录 `provider_config.json`；
-2. Standalone CLI 默认目标为 `~/.openzwork/v2/provider_config.json`；
+2. Standalone CLI 默认目标为 `~/.zcode/v2/provider_config.json`；
 3. 目标不存在时从旧 `config.json` 一次性导入，旧文件字节不变且不产生 `.bak`；
 4. 目标存在时不调用 Legacy Importer；
 5. `model-providers.json` 即使存在也不会被读取；
@@ -148,6 +159,7 @@ CLI 用户 `config.json` 并执行一次性导入。协议 Worker 路径仍只�
 
 - 生产默认路径中不再存在 Personal Provider `config.json`；
 - 生产代码不再读取 `model-providers.json`；
+- 生产代码不存在旧 Coding Plan Provider Key Loader 或 `loadLegacy` 凭据参数；
 - 不再创建 Personal Provider Config 迁移备份；
 - Host/Worker/Standalone 对同一 Environment 使用同一个 `provider_config.json`；
 - Personal content-revision 轮询、连接测试主动刷新和 Active Model 冻结语义保持不变；

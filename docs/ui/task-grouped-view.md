@@ -371,7 +371,7 @@ const workspaceKey = workspaceIdentity?.trim() || workspacePath;
 Group 相关数据持久化到现有 task 索引库：
 
 ```txt
-~/.openzwork/v2/tasks-index.sqlite
+~/.zcode/v2/tasks-index.sqlite
 ```
 
 不要为 group 另建 JSON 真相源，也不要把 group 状态放进 UI store、relay 或 main process。SQLite 仍由 services 层 repo 统一读写，UI 只通过 service/hook 访问。

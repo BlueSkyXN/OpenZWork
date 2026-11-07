@@ -10,7 +10,7 @@
 Workspace-level Plugin 的含义是：Plugin 的启用状态和运行时 options 可以由当前 Workspace 的项目配置决定。配置 scope 与 Skill、Command、Hook 保持一致，只支持两级：
 
 ```text
-User       ~/.openzwork/cli/config.json
+User       ~/.zcode/cli/config.json
 Workspace  <workspace>/.zcode/config.json
 ```
 
@@ -99,13 +99,13 @@ Workspace 配置不保存 package bytes、安装完成态、Marketplace cache、
 ### 3.2 User/Host state
 
 ```text
-~/.openzwork/cli/config.json
+~/.zcode/cli/config.json
   plugins.enabledPlugins
   plugins.options
   plugins.suppressedBuiltins
   user-level plugins.dirs
 
-~/.openzwork/cli/plugins/
+~/.zcode/cli/plugins/
   known_marketplaces.json
   installed_plugins.json
   marketplaces/
@@ -222,7 +222,7 @@ Source: User / Workspace
 
 ```text
 User scope:
-  patch ~/.openzwork/cli/config.json#plugins.enabledPlugins[id]
+  patch ~/.zcode/cli/config.json#plugins.enabledPlugins[id]
 
 Workspace scope:
   patch <workspace>/.zcode/config.json#plugins.enabledPlugins[id]

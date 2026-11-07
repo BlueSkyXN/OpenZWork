@@ -24,7 +24,11 @@ const textExtensions = new Set([
   ".yml",
 ]);
 
-const defaultRoots = ["packages", "apps/zcode-cli/packages", "scripts"];
+const defaultRoots = [
+  "packages",
+  "apps/zcode-cli/packages",
+  "scripts",
+];
 
 const alwaysIgnoredSegments = new Set([
   ".git",
@@ -195,10 +199,8 @@ function toPosixPath(path) {
 }
 
 function isTestPath(relativePath) {
-  return (
-    /(^|\/)(test|tests|__tests__)(\/|$)/u.test(relativePath) ||
-    /\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(relativePath)
-  );
+  return /(^|\/)(test|tests|__tests__)(\/|$)/u.test(relativePath) ||
+    /\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(relativePath);
 }
 
 function shouldSkipPath(relativePath, options) {
@@ -311,9 +313,8 @@ function buildReport(options) {
     totalFiles: hits.length,
     totalMatches: hits.reduce((sum, hit) => sum + hit.matches.length, 0),
     categories: Object.fromEntries([...categories.entries()].sort()),
-    hits: hits.sort(
-      (left, right) =>
-        left.category.localeCompare(right.category) || left.path.localeCompare(right.path),
+    hits: hits.sort((left, right) =>
+      left.category.localeCompare(right.category) || left.path.localeCompare(right.path),
     ),
   };
 }
@@ -324,10 +325,14 @@ function assertLimits(report, options) {
   const runtimeBlockerFiles = report.categories["runtime-blocker"]?.files ?? 0;
 
   if (options.maxUnclassified !== null && unclassifiedFiles > options.maxUnclassified) {
-    failures.push(`unclassified files ${unclassifiedFiles} > ${options.maxUnclassified}`);
+    failures.push(
+      `unclassified files ${unclassifiedFiles} > ${options.maxUnclassified}`,
+    );
   }
   if (options.maxRuntimeBlocker !== null && runtimeBlockerFiles > options.maxRuntimeBlocker) {
-    failures.push(`runtime-blocker files ${runtimeBlockerFiles} > ${options.maxRuntimeBlocker}`);
+    failures.push(
+      `runtime-blocker files ${runtimeBlockerFiles} > ${options.maxRuntimeBlocker}`,
+    );
   }
 
   return failures;

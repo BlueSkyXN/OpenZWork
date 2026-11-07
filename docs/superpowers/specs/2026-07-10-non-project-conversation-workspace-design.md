@@ -10,7 +10,7 @@ workspacePurpose = conversation
 selectedProject = null
 ```
 
-默认 `dataBaseDir` 为用户 home，因此默认路径是 `~/.openzwork/workspace/default`。该目录提供 Agent、session、terminal 和文件工具需要的真实 cwd，但不作为项目展示给用户。所有非项目对话共享这一目录；本期不实现每条对话独立目录及对应的 Agent 回收、目录注册和 GC。
+默认 `dataBaseDir` 为用户 home，因此默认路径是 `~/.zcode/workspace/default`。该目录提供 Agent、session、terminal 和文件工具需要的真实 cwd，但不作为项目展示给用户。所有非项目对话共享这一目录；本期不实现每条对话独立目录及对应的 Agent 回收、目录注册和 GC。
 
 ## 状态与边界
 

@@ -15,7 +15,7 @@ The default workflow kind is `expert`, while the ZCode task service/types accept
 
 ## ZCode Integration
 
-The renderer never reads `~/.openzwork/cli/workflows` directly. It calls `IZCodeTaskService`, which currently exposes the shared `IWorkflowService` shape.
+The renderer never reads `~/.zcode/cli/workflows` directly. It calls `IZCodeTaskService`, which currently exposes the shared `IWorkflowService` shape.
 
 Current branch status: the UI and shared `ZCodeWorkflow*` types are still present, but the ZCode task service adapter only returns empty workflow data and marks mutating workflow operations unsupported. The intended agent extension methods remain:
 

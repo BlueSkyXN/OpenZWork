@@ -43,10 +43,7 @@ export function RunForm(props: {
       <div className="fieldGrid">
         <label>
           <span>Model</span>
-          <input
-            value={props.form.model}
-            onChange={(event) => update("model", event.target.value)}
-          />
+          <input value={props.form.model} onChange={(event) => update("model", event.target.value)} />
         </label>
         <label>
           <span>Base URL</span>

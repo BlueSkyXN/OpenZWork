@@ -17,6 +17,10 @@ Provider 配置体系的唯一目的，是把用户对某个模型 API 的选择
 - 一次提交最终使用哪个 Provider、Model 和 Options；
 - 配置更新、账号刷新和执行并发时，哪一份事实生效。
 
+它不是统一凭据中心，也不是最终授权方。API Key Provider 可以直接保存 API Key；账号类型的 Provider Config
+只描述静态访问类型，登录态 Token、Team Project Key、Start Plan JWT 和闲时 Ticket 等动态材料由账号与执行期服务取得。
+模型服务端仍然对每次请求作最终鉴权和授权裁决。
+
 ## 2. 核心原则
 
 ### 2.1 一份配置事实，两条解析路径
@@ -115,9 +119,10 @@ Personal Config 只允许具体 `providerId + modelId` 的精确覆盖，不再�
 
 ### 2.3 Builtin Provider 维护清单
 
-日常维护统一从[标准 Provider 模板维护](../../../builtin-provider-maintenance/README.md)进入；
-当前边界见[标准 Provider 模板](../../../spec/standard-provider-templates.md)。
-下方旧库存链接保留调查历史，不再作为实时配置清单。
+日常维护统一从[内置 Provider 模板与模型维护](../../../builtin-provider-maintenance/README.md)进入；
+其中[当前状态](../../../builtin-provider-maintenance/current-state.md)按实际配置记录模板、完整成员和默认启停，
+[范围原则](../../../builtin-provider-maintenance/scope.md)与[配置规范](../../../builtin-provider-maintenance/configuration.md)
+承接持续维护。下方旧库存链接保留调查历史，不再作为实时配置清单。
 
 Builtin 的维护范围用入口库存表达，不在文档中重复抄写完整 Provider Config；实际成员见上方当前状态，
 原调查依据保留在[`历史维护清单`](./builtin-provider-inventory.md)。清单口径为：
@@ -237,11 +242,30 @@ interface ProviderConfig {
 
 正式 Access 联合类型只有两种：
 
+```ts
+type ProviderAccessConfig =
+  | {
+      type: "api-key";
+      apiKey?: string | null;
+      apiKeyManagementUrl?: string | null;
+    }
+  | {
+      type: "zhipu-account";
+      accountType?: "zai" | "bigmodel" | null;
+      mode?: "start-plan" | "individual-coding-plan" | "team-coding-plan" | "off-peak" | null;
+      entitled?: boolean | null;
+    };
+```
+
 `group`、`accountType` 和 `mode` 不重复：
 
 - `group` 是 Provider 的静态产品分组；
 - `accountType` 是智谱账号体系的访问身份；
 - `mode` 是该账号 Provider 的访问模式。
+
+`entitled` 是当前账号是否具有该固定 Account Provider 产品资格的唯一配置事实。Provider 顶层不存在 `enabled`。
+`zhipu-account` Config 不保存账号连接 ID、商品 ID、组织/项目 Scope、Token 或请求安全校验协议。账号运行协议中仍可有
+`planKind`、`productId` 等字段，但它们属于账号、套餐或请求期上下文，不是 Provider Config Schema。
 
 ### 3.3 Model Config
 
@@ -374,8 +398,15 @@ Account Provider Config 是正式 Provider Overlay，但它只投影账号上游
 - Account Provider 由 Built-in 固定声明并进入对应 Family；
 - 当前账号明确拥有该产品时写 `access.entitled=true`，明确无资格时写 `false`；
 - Individual / Team 默认沿用 Built-in 模型成员；
+- Start Plan 的模型因账号而异，成功时使用接口返回的模型集合约束 `builtinModelIds`；
+- Start Plan 没有可靠模型集合时保留上一份可用 Account Overlay；首次无可用事实时 fail-closed；
 - 临时查询失败的 `unknown` 保留上一份 Account Overlay，避免抖动；首次无历史事实时 fail-closed；
 - 动态凭据不写入 Account Provider Config。
+
+Account State 的可选 `unavailableReason` 随同一份快照传递，Host 与 CLI 的严格协议复用 shared 原因 schema。
+个人套餐服务端明确无权益显示未开通；已登录但获取 Key 失败显示获取失败并复用手动刷新重试，不能仅凭缺 Key
+推断 OAuth 失效或强制重新登录。Z.ai 与 BigModel 使用一致分类。原因只属于运行态事实，不写 Provider Config；
+具体裁决与验证见 [Todo114](../steps/todo-114-account-status-sync-and-key-retry.md)（上游原 Todo105）。
 
 Account 与 Built-in revision 必须配对。Built-in 更新而 Account 仍基于旧 revision 时，Registry 继续服务上一份完整快照，
 等待 Account Source 重算后原子发布，不能发布“新 Built-in + 旧 Account”的中间态。
@@ -385,6 +416,9 @@ Account 与 Built-in revision 必须配对。Built-in 更新而 Account 仍基�
 设置页直接消费 Provider Settings View 中的最终 Effective Provider/Model；它不读取、重放或推断 Account Overlay。
 套餐、额度、连接错误和购买状态是独立产品投影，只能控制状态卡及相应操作，不能决定 Effective Provider 配置区、
 模型列表或模型编辑入口是否存在。
+
+Individual / Team Coding Plan 可以在产品 UI 中隐藏 Endpoint 和 API Schema，但这些字段仍完整存在于 Effective
+Provider Config，并被 Registry、ModelFactory 和 Runtime 消费。隐藏是展示决策，不是删字段后的 Account DTO。
 
 这项页面收口已由 Todo 32 完成：Team / Individual 详情按 `providerId` 从 Provider Settings View 精确解析；套餐状态卡
 不再控制 Provider 配置区和模型列表是否存在；页面隐藏 Endpoint/API Schema 时不删减 Effective Provider Config。
@@ -404,6 +438,8 @@ Account 与 Built-in revision 必须配对。Built-in 更新而 Account 仍基�
 - Start 保留现有额度横幅与不可用反馈；全局连接失效通知只观察个人／团队，保留付费间建议，删除通过写 Start 连接来切换的动作。
 
 普通 Session／草稿已有提交写回，Automation／显式 Subagent 长期配置不一定回写。不迁移是已确认的新行为选择，不表示所有旧配置的有效结果都不变；具体证据与撤回的全量迁移推断见 [C25](./evidence-and-contradictions.md#c25-start-独立-provider-与现行单连接语义)。
+
+本节目标已按 2026-09-16 的实施授权落地。完整按钮语义、入口矩阵、状态归属与验证证据由 [Todo154](../steps/todo-154-start-plan-independent-provider.md) 维护。Start 在共用 node facade 中按 ordinary 精确解析；推荐复用 UsageEntitlement 与 SettingService，偏好字段为 startPlanRecommendationDismissed。Built-in → Account → Personal、目标 Environment Registry、continuous／replayable 与原提交 owner 保持。
 
 ## 5. 选择、创建与执行
 
@@ -446,14 +482,18 @@ ModelFactory
 
 - API Key Provider 使用 Config 中保存的 Key；
 - 智谱账号 Provider 在请求期通过账号访问服务取得当前动态凭据；
+- Off-Peak 仍使用固定 Provider ID 表达精确产品身份，并以 `zhipu-account + mode=off-peak` 表达访问方式；
 - 缺少动态访问材料时在网络请求前明确失败；
 - Retry 可以刷新同一访问方式的动态材料，但不能改变 Provider、Model 或静态配置身份。
 
 ### 5.3 所有执行分支使用同一个 Model
 
+正常请求、Compact、Memory、子 Agent 和 Off-Peak 都必须使用正式 Model/ModelFactory：
+
 - Compact 使用本轮 Active Model，不回退到 Session 默认 Model；
 - Memory 等异步工作保留创建它的 Model 或同结构不可变执行事实；
 - 子 Agent 默认继承父 ModelFactory；显式选择时通过同一个 Registry 创建自己的 Model；
+- Off-Peak 用标准 ModelSelection 和固定隐藏 Provider 精确创建 Model，不修改普通 Session Selection；
 - 媒体 gating 读取 `Model.properties.inputFormat`，同时尊重 Adapter 的真实编码能力。
 
 不存在 ModelRef、ModelConnectionPort、AI SDK 执行 Registry、Legacy Model Catalog、Runtime capability map 或
@@ -482,6 +522,8 @@ Active Model
 - Submission Selection 是本次用户提交接受的精确选择；
 - Session Current Selection 是后续默认；
 - Active Model 是已经创建并冻结的执行事实。
+
+队列、Guide 步骤、恢复和模型切换不得把这四层合并。Off-Peak 等辅助执行也不得借机修改 Session Current Selection。
 
 Guide 携带选择时仍通过现有 Factory 重新解析并创建 Model，保证配置更新用于后续请求。
 切模前缀重建仅比较当前 Loop 与新执行 Model 的 Provider、模型、推理档位；对象重新创建或
@@ -569,6 +611,7 @@ runtime/provider/
 允许存在的兼容只有明确的一次性边界：
 
 - 旧 Personal Config importer 可以读取已发布历史字段，并立即投影成新 Personal Overlay；
+- 历史账号、商品和 Usage 协议可以继续使用自己的 `planKind/productId`，但不得重新进入 Provider Config；
 - Adapter 内部可以使用协议局部 helper，但不得把旧 capability 类型重新暴露成 Model 事实源。
 
 正式 Config、Registry、Model 和 Runtime 中禁止重新出现：
@@ -576,6 +619,7 @@ runtime/provider/
 - `Official Config` 双轨；
 - `ProviderConfigDocument` / `ModelSelectionConfigDocument` 领域对象；
 - `request-auth` / `execution-provided` Access；
+- `accessId`、静态 `planKind`、`challenge`、`requestSigning`、`executionProtocol`；
 - `executionOnly` 或“受信执行”逃逸开关；
 - Model `visibility`；
 - `adapterCompatibility`、`reasoningReplay` 和具体模型 Runtime hardcode；
@@ -589,11 +633,13 @@ runtime/provider/
 3. Effective Model Config 必须在 Effective Provider 的 API 上下文中解析。
 4. Settings 与 Registry 来自同一次 Resolver 解析；Settings 不从 Registry 反推不完整配置。
 5. Registry 只含完整可执行项，但 hidden Provider 仍可被内部精确执行。
-6. 动态账号凭据不进入 Config；API Key Config 可以持有 API Key；最终授权由服务端决定。
-7. ModelFactory 只消费当前 Registry 的完整配置；Active Model 创建后冻结。
-8. Provider/Model 身份始终是 `providerId/modelId`，不能只按 modelId 路由。
-9. 产品 UI、套餐卡、Usage 和连接错误不得成为 Provider/Model 配置事实源。
-10. 当前代码若与已裁决设计不同，应视为实现漂移，而不是新的隐式设计。
+6. Account Overlay 只约束 Built-in 账号 Provider；Start Plan 的模型集合可以因账号而异。
+7. 动态账号凭据不进入 Config；API Key Config 可以持有 API Key；最终授权由服务端决定。
+8. ModelFactory 只消费当前 Registry 的完整配置；Active Model 创建后冻结。
+9. Provider/Model 身份始终是 `providerId/modelId`，不能只按 modelId 路由。
+10. 产品 UI、套餐卡、Usage 和连接错误不得成为 Provider/Model 配置事实源。
+11. 不为 Off-Peak、连接测试、Compact、Memory、子 Agent 或远程执行建立第二套模型事实。
+12. 当前代码若与已裁决设计不同，应视为实现漂移，而不是新的隐式设计。
 
 ## 11. 尚未完成但不改变设计的工作
 

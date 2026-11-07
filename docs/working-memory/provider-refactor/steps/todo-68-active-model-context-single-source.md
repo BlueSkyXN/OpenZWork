@@ -28,6 +28,7 @@ Model，而请求内的环境说明仍写上一轮 Model，表现为切模总是
 同一分裂还影响：
 
 - Guide 在同一 Turn 的合法 model-step 边界切换 Model；
+- execution-scoped Off-Peak Model 不修改 Session Selection；
 - Subagent 继承父 Active Model 时仍从父 Session Selection 拼 child Selection；
 - Context 中按模型投影的工具提示没有使用正式请求持有的 Model。
 
@@ -65,6 +66,7 @@ Session / Submission ModelSelection
 
 ### 3.1 Turn admission
 
+普通 Turn、Compact 和 execution-scoped Off-Peak 在第一次异步等待前冻结 Selection，并只创建一次
 本轮 Active Model。随后：
 
 1. Context 初始化/重建显式接收该 Model；
@@ -104,16 +106,18 @@ Subagent 继承父 Model 时，child Selection、child prompt 中的模型身份
 先增加会在旧实现失败的回归测试：
 
 1. 普通显式切模：请求使用新 Model，Context 也立即显示同一 Provider/Model；
-2. Turn 已开始后外部修改 Session Selection：当前 Active Model 与 Context 不变；
-3. Guide 切模：下一 model step 的 Context、工具和请求同时切到 Guide Model；
-4. SessionStart Hook：首轮收到 admission 时已经选定的 Model；
-5. Subagent 继承：即使父 Session Selection 与父 Active Model 不同，child 仍完整继承 Active Model；
-6. Registry/Selection 后续变化只影响后来创建的 Model。
+2. execution-scoped Off-Peak：Context 和请求都使用临时 Model，Session Selection 保持不变；
+3. Turn 已开始后外部修改 Session Selection：当前 Active Model 与 Context 不变；
+4. Guide 切模：下一 model step 的 Context、工具和请求同时切到 Guide Model；
+5. SessionStart Hook：首轮收到 admission 时已经选定的 Model；
+6. Subagent 继承：即使父 Session Selection 与父 Active Model 不同，child 仍完整继承 Active Model；
+7. Registry/Selection 后续变化只影响后来创建的 Model。
 
 ## 5. 完成标准
 
 - 代码中不存在从 Session Selection 推导当前执行 Context Model 的路径；
 - 一个 model step 的 Context、工具与 Adapter 请求使用同一 Active Model；
+- 普通切模、Guide、Off-Peak 和 Subagent 不再出现模型身份错拍或混用；
 - 不引入第二套模型事实、额外状态同步或超时兜底；
 - 定向测试、Core 全量单测、根 `pnpm typecheck` 与 `pnpm lint` 通过；
 - 更新 Registry Runtime Design 与 Feature Graph，并记录最终实施结果。
@@ -126,6 +130,7 @@ Subagent 继承父 Model 时，child Selection、child prompt 中的模型身份
   `refreshContextModelSnapshot` 已删除。
 - Context Source 不再保存执行模型；`currentModel` 和模型相关工具提示仅从当前 model step 显式传入的
   Active Model 生成。
+- execution-scoped Off-Peak 使用自己的 Model 和 Context，但不改写 Session Selection；Guide 在下一个
   model step 同时更新 Model 与 request-local Context；Subagent 从实际继承的父 Active Model 派生 child
   Selection 并直接复用该 Model。
 - 删除了切换 Session Selection 时冗余的 Built-in Tool 刷新；工具是否可见继续在请求时由
@@ -272,6 +277,7 @@ Submission 参数一致性问题，不是 Provider/Active Model 重构的组成�
 
 - 普通 Turn 显式切换 Provider/Model；
 - 同一 Turn 内 Guide 开启的新 model step；
+- execution-scoped Off-Peak；
 - Subagent 继承父 Active Model 与显式覆盖；
 - 首轮 Context 初始化、后续 Prefix 重建与 SessionStart Hook；
 - 模型相关工具投影与 Adapter 请求使用相同 Active Model。

@@ -1,6 +1,8 @@
 # Mobile Remote Access 最小跑通规划（历史方案）
 
 > **已废弃：** 本文描述的是已经移除的仓库内 relay 和远控专用 Host 方案，仅作为历史记录保留。
+> 当前实现按 endpoint 选择外部 relay：production 为 `wss://zcode.z.ai/ws`，标准 test 为
+> `wss://zcode.z.ai/ws`。默认二维码入口按 App 版本选择 `/remote/v3` 或 `/remote/v4`；
 > `3.4.0` 稳定版门槛及预发布版本规则见现行架构文档，显式 URL 覆盖优先。
 > 手机通过 shared-host attachment 连接目标桌面窗口唯一 Window Host 中的 local/remote workspace scope；
 > 不启动手机专用 Host/Agent。当前事实以 [Web Remote Control Architecture](./web-remote-control-architecture.md) 为准。
@@ -88,6 +90,8 @@
 3. 手机端至少能完成文件浏览、基本聊天、基本终端连接
 4. Desktop 关闭Web 远程控制后，手机端连接立即失效
 
+## 2. 现状约束
+
 ## 2.1 Desktop 现状
 
 当前 desktop 的服务结构是：
@@ -125,6 +129,8 @@
 - build/dev 脚本
 
 所以本期 relay 应视为**重新落包**，而不是在现有源码上迭代。
+
+## 3. 推荐方案
 
 ## 3.1 总体架构
 
@@ -180,6 +186,8 @@ UI 发起时必须把当前 workspace 上下文带给 main：
 - 远程 workspace：`workspacePath + remoteSessionId`
 
 main 再根据 `remoteSessionId` 去解析当前 mobile host 应该起 `init-local` 还是 `init-remote`。
+
+## 4. 分模块规划
 
 ## 4.1 `packages/shared`
 
@@ -405,6 +413,8 @@ GET  /r/:token
 
 有它时走 dev redirect / proxy，没有它时走本地静态资源。
 
+## 5. 协议建议
+
 ## 5.1 Desktop 开启Web 远程控制
 
 1. UI 调 `startWebRemoteControl({ workspacePath, remoteSessionId? })`
@@ -429,9 +439,7 @@ GET  /r/:token
 4. relay 找到对应 session，并通知 desktop control ws：
 
 ```ts
-{
-  type: ("mobile-session-request", sessionId);
-}
+{ type: "mobile-session-request", sessionId }
 ```
 
 5. main 收到后立即建立 `ws/desktop/session/:sessionId`
@@ -450,6 +458,8 @@ desktop session ws <-> MessagePortMain <-> host ChannelServer
 2. main 销毁 mobile host
 3. main 清理 runtime map
 4. UI 状态回到 idle
+
+## 6. 分阶段实施计划
 
 ## 阶段 0：落包与脚手架
 

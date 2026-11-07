@@ -38,39 +38,40 @@
 
 ## 总览
 
-| ID           | 严重度 | 领域             | 问题摘要                                                                      | 置信度           | 状态   |
-| ------------ | ------ | ---------------- | ----------------------------------------------------------------------------- | ---------------- | ------ |
-| R3-ISSUE-001 | P0     | 发布             | 正式 release validator 仍校验旧 remote assets                                 | 已确认           | 待验证 |
-| R3-ISSUE-002 | P1     | Desktop IPC      | Preload 丢失 workspace scope                                                  | 已确认           | 已关闭 |
-| R3-ISSUE-003 | P1     | Mobile 权限      | 手机 attachment 可访问 Terminal RPC                                           | 已确认           | 已关闭 |
-| R3-ISSUE-004 | P1     | 生命周期         | retrying 时显式断开不能收口                                                   | 已确认           | 已关闭 |
-| R3-ISSUE-005 | P1     | 生命周期         | 同一 Source 的不同 Profile 可能产生两个 logical owner                         | 已确认           | 已关闭 |
-| R3-ISSUE-006 | P1     | 生命周期         | 删除 Profile 后 Manager 仍可能使用旧线路重连                                  | 已确认           | 已关闭 |
-| R3-ISSUE-007 | P1     | 恢复             | 自动恢复遇到用户动作状态仍继续重试                                            | 已确认           | 已关闭 |
-| R3-ISSUE-008 | P1     | 设置             | 启动自动重连偏好被完整 AppSettings schema 丢弃                                | 已确认           | 已关闭 |
-| R3-ISSUE-009 | P1     | Mobile 恢复      | bridge 重建预算耗尽后没有明确终态                                             | 已确认           | 已关闭 |
-| R3-ISSUE-010 | P2     | Source Settings  | 旧端口迟到关闭可能删除新一代服务                                              | 已确认           | 已关闭 |
-| R3-ISSUE-011 | P1     | 恢复             | 多 workspace logical replacement 不是完整原子操作                             | 已确认           | 已关闭 |
-| R3-ISSUE-012 | P2     | Provider 安全    | API Key 明文持久化规格与实现冲突                                              | 已确认           | 不修复 |
-| R3-ISSUE-013 | P2     | 迁移             | 首次 Directory 迁移失败可能遗留孤儿凭据                                       | 已确认           | 已关闭 |
-| R3-ISSUE-014 | P2     | Release Resolver | 下载缺少取消和 cache single-flight                                            | 高风险待复现     | 待修复 |
-| R3-ISSUE-015 | P2     | UI 架构          | RemoteWorkspaceController 尚未成为统一写入口                                  | 已确认           | 已关闭 |
-| R3-ISSUE-016 | P2     | UI 投影          | RemoteWorkspaceProjection 未完全接线且会误投影本地 tab                        | 已确认           | 已关闭 |
-| R3-ISSUE-017 | P2     | Mobile UI        | 手机 Source 组头状态与名称可能降级失真                                        | 高风险待复现     | 待修复 |
-| R3-ISSUE-018 | P2     | 设计系统         | 新增远程 UI 存在任意尺寸和 ad-hoc alpha                                       | 已确认           | 待验证 |
-| R3-ISSUE-019 | P2     | 文档             | 架构、计划、coverage 与实机记录状态漂移                                       | 已确认           | 修复中 |
-| R3-ISSUE-020 | P1     | 发布证据         | 历史实机记录不能证明当前 HEAD                                                 | 已确认           | 待验证 |
-| R3-ISSUE-021 | P1     | 生命周期         | 握手落盘期间断连被丢弃，死连接被发布为 online                                 | 已确认           | 已关闭 |
-| R3-ISSUE-022 | P1     | 发布             | 远端 archive 缺 android/ios 插件 MCP runtime                                  | 已确认           | 已关闭 |
-| R3-ISSUE-023 | P1     | 恢复             | 恢复态手动连接成功不发 reconnect，Registry 停在 recovering                    | 已确认           | 已关闭 |
-| R3-ISSUE-024 | P0     | WSL Transport    | wsl.exe 非 --exec 模式让默认 shell 提前展开命令变量，WSL 安装误报缺少 tar     | 已确认           | 待验证 |
-| R3-ISSUE-029 | P2     | 恢复             | logical replacement 在途时不保留后续 reconnect，当前连接收口时序未触发        | 已确认（条件性） | 待修复 |
-| R3-ISSUE-030 | P2     | Provider 取消    | 等待共享 Registry 刷新期间不能及时取消，当前生产调用方不传 signal             | 已确认（条件性） | 待修复 |
-| R3-ISSUE-031 | P2     | 恢复             | crash-loop-stopped 时 `serve --daemon` 因锁冲突失败，自动恢复无法拉起远端服务 | 已确认（静态）   | 待修复 |
-| R3-ISSUE-032 | P2     | 生命周期         | Supervisor 自身无响应时没有强杀兜底，停止与重启只能报错                       | 已确认           | 待修复 |
-| R3-ISSUE-033 | P2     | 文档             | 启动自动重连文案与 §7.1 写“最近 7 天”，代码不按 7 天过滤                      | 已确认           | 待修复 |
+| ID           | 严重度 | 领域             | 问题摘要                                                                  | 置信度       | 状态   |
+| ------------ | ------ | ---------------- | ------------------------------------------------------------------------- | ------------ | ------ |
+| R3-ISSUE-001 | P0     | 发布             | 正式 release validator 仍校验旧 remote assets                             | 已确认       | 待验证 |
+| R3-ISSUE-002 | P1     | Desktop IPC      | Preload 丢失 workspace scope                                              | 已确认       | 已关闭 |
+| R3-ISSUE-003 | P1     | Mobile 权限      | 手机 attachment 可访问 Terminal RPC                                       | 已确认       | 已关闭 |
+| R3-ISSUE-004 | P1     | 生命周期         | retrying 时显式断开不能收口                                               | 已确认       | 已关闭 |
+| R3-ISSUE-005 | P1     | 生命周期         | 同一 Source 的不同 Profile 可能产生两个 logical owner                     | 已确认       | 已关闭 |
+| R3-ISSUE-006 | P1     | 生命周期         | 删除 Profile 后 Manager 仍可能使用旧线路重连                              | 已确认       | 已关闭 |
+| R3-ISSUE-007 | P1     | 恢复             | 自动恢复遇到用户动作状态仍继续重试                                        | 已确认       | 已关闭 |
+| R3-ISSUE-008 | P1     | 设置             | 启动自动重连偏好被完整 AppSettings schema 丢弃                            | 已确认       | 已关闭 |
+| R3-ISSUE-009 | P1     | Mobile 恢复      | bridge 重建预算耗尽后没有明确终态                                         | 已确认       | 已关闭 |
+| R3-ISSUE-010 | P2     | Source Settings  | 旧端口迟到关闭可能删除新一代服务                                          | 已确认       | 已关闭 |
+| R3-ISSUE-011 | P1     | 恢复             | 多 workspace logical replacement 不是完整原子操作                         | 已确认       | 已关闭 |
+| R3-ISSUE-012 | P2     | Provider 安全    | API Key 明文持久化规格与实现冲突                                          | 已确认       | 不修复 |
+| R3-ISSUE-013 | P2     | 迁移             | 首次 Directory 迁移失败可能遗留孤儿凭据                                   | 已确认       | 已关闭 |
+| R3-ISSUE-014 | P2     | Release Resolver | 下载缺少取消和 cache single-flight                                        | 高风险待复现 | 待修复 |
+| R3-ISSUE-015 | P2     | UI 架构          | RemoteWorkspaceController 尚未成为统一写入口                              | 已确认       | 已关闭 |
+| R3-ISSUE-016 | P2     | UI 投影          | RemoteWorkspaceProjection 未完全接线且会误投影本地 tab                    | 已确认       | 已关闭 |
+| R3-ISSUE-017 | P2     | Mobile UI        | 手机 Source 组头状态与名称可能降级失真                                    | 高风险待复现 | 待修复 |
+| R3-ISSUE-018 | P2     | 设计系统         | 新增远程 UI 存在任意尺寸和 ad-hoc alpha                                   | 已确认       | 待验证 |
+| R3-ISSUE-019 | P2     | 文档             | 架构、计划、coverage 与实机记录状态漂移                                   | 已确认       | 修复中 |
+| R3-ISSUE-020 | P1     | 发布证据         | 历史实机记录不能证明当前 HEAD                                             | 已确认       | 待验证 |
+| R3-ISSUE-021 | P1     | 生命周期         | 握手落盘期间断连被丢弃，死连接被发布为 online                             | 已确认       | 已关闭 |
+| R3-ISSUE-022 | P1     | 发布             | 远端 archive 缺 android/ios 插件 MCP runtime                              | 已确认       | 已关闭 |
+| R3-ISSUE-023 | P1     | 恢复             | 恢复态手动连接成功不发 reconnect，Registry 停在 recovering                | 已确认       | 已关闭 |
+| R3-ISSUE-024 | P0     | WSL Transport    | wsl.exe 非 --exec 模式让默认 shell 提前展开命令变量，WSL 安装误报缺少 tar | 已确认       | 待验证 |
+| R3-ISSUE-029 | P2 | 恢复 | logical replacement 在途时不保留后续 reconnect，当前连接收口时序未触发 | 已确认（条件性） | 待修复 |
+| R3-ISSUE-030 | P2 | Provider 取消 | 等待共享 Registry 刷新期间不能及时取消，当前生产调用方不传 signal | 已确认（条件性） | 待修复 |
+| R3-ISSUE-031 | P2 | 恢复 | crash-loop-stopped 时 `serve --daemon` 因锁冲突失败，自动恢复无法拉起远端服务 | 已确认（静态） | 待修复 |
+| R3-ISSUE-032 | P2 | 生命周期 | Supervisor 自身无响应时没有强杀兜底，停止与重启只能报错 | 已确认 | 待修复 |
+| R3-ISSUE-033 | P2 | 文档 | 启动自动重连文案与 §7.1 写“最近 7 天”，代码不按 7 天过滤 | 已确认 | 待修复 |
 
 ## 问题详情
+
 
 关闭项的完整定位、旧路径与逐轮记录保存在 `git show a17a875588b8d66c2bee49236292e174df651363:docs/architecture/r3-source-server-remote-open-issues.md`；以下摘要不提升原验证等级。
 
@@ -266,6 +267,7 @@
   - [`../archive/remote-r3/r3-source-server-release-test-plan.md`](../archive/remote-r3/r3-source-server-release-test-plan.md)；
   - [`docs/model-provider-opencode-config.md`](../model-provider-opencode-config.md)；
   - `packages/services/src/model-provider/modelProviderService.ts`（已随 Provider 重构 M2 删除）。
+- 关闭条件：明确兼容期真实策略；统一架构规格、存储文档和 Secret scan；若继续双写，明确普通 Provider 与 Start Plan 的不同安全边界。
 
 #### 决策记录 2026-09-13
 
@@ -303,7 +305,7 @@
 - 根因：controller handler 全部为 optional，生产只装配 `open-conversation`；Root 继续向 Sidebar、Settings、Dialog 和 tab lifecycle 暴露分散的连接、断开、项目打开、重连和关闭回调。
 - 修复：六类 handler 改为强类型必填，在 `useRemoteWorkspaceHistory` 内按 Source/attachment/persistence owner 完整装配单一 controller，并通过 Root provider 供 UI 使用；普通 Profile 连接统一携带 `open-conversation` completion intent。项目选择、设备断开、workspace 重连和 user-close 均先 dispatch，再进入既有 owner helper。
 - 验证：controller 全 intent/错误传播、Root production wiring、Settings disconnect 和 Sidebar 禁止直接 `disconnectSource` 的 focused tests 通过；全量 unit（1500 passed，1 skipped）、`pnpm typecheck` 与 `pnpm lint` 通过。`pnpm bootstrap:with-remote` 构建成功，`VITE_ZCODE_E2E_STORE_BRIDGE=1 pnpm dev:desktop` 启动成功并监听 CDP 9229。
-- 真实 SSH/CDP（2026-08-28）：使用 SSH alias `linux-amd64-dev`（`dev@localhost:2222`，密码由测试环境注入）连接真实设备，远端 `~/.openzwork/server/current.json` 为 `3.9.1`，设备 `4fedce9b49f0`，Source Server 为 `32a10b89-141c-469b-aa97-850f41ab7deb`。设置页普通连接完成后自动打开 `/home/dev/.zcode/workspace/default` 的 `conversation` tab，`workspaceIdentity=remote:server:<sourceServerId>:/home/dev/.zcode/workspace/default`；断开后卡片由“已连接”变为“未连接”，远程 attachment/session 被释放；再次连接生成新的 `remoteSessionId` 并重新打开 conversation。随后从 conversation 选择 `/home/dev` 打开 project，project 与 conversation 使用不同 `remoteSessionId`；通过真实 tab close 触发 user-close 后 project 被移除且 conversation 保留。
+- 真实 SSH/CDP（2026-08-28）：使用 SSH alias `linux-amd64-dev`（`dev@localhost:2222`，密码由测试环境注入）连接真实设备，远端 `~/.zcode/server/current.json` 为 `3.9.1`，设备 `4fedce9b49f0`，Source Server 为 `32a10b89-141c-469b-aa97-850f41ab7deb`。设置页普通连接完成后自动打开 `/home/dev/.zcode/workspace/default` 的 `conversation` tab，`workspaceIdentity=remote:server:<sourceServerId>:/home/dev/.zcode/workspace/default`；断开后卡片由“已连接”变为“未连接”，远程 attachment/session 被释放；再次连接生成新的 `remoteSessionId` 并重新打开 conversation。随后从 conversation 选择 `/home/dev` 打开 project，project 与 conversation 使用不同 `remoteSessionId`；通过真实 tab close 触发 user-close 后 project 被移除且 conversation 保留。
 - 自动化 SSH E2E：`E2E_SSH_REMOTE_PROJECT_CONVERSATION_SCOPE` 1 项通过，报告 [`desktop-e2e-20260828-153721-524`](../../packages/desktop/.e2e-artifacts/desktop-e2e-20260828-153721-524/summary.md)。同轮执行的 pending-cancel 手工复核因代理 socket 在 30 秒断言窗口后约 1.5 秒才关闭而失败（`desktop-e2e-20260828-153846-870`）；该失败路径不涉及本 issue 的 controller 写入口变更，未将其计入 R3-ISSUE-015 关闭条件。
 
 ### R3-ISSUE-016：RemoteWorkspaceProjection 未完全接线且会误投影本地 tab
@@ -386,6 +388,7 @@
 - 严重度：P1
 - 置信度：已确认
 - 状态：待验证
+- 现象：SSH 和扩展实机记录绑定的 commit 不是当前 HEAD 的祖先；当前分支后续又修改了自动升级、workspace 恢复、conversation、OAuth、Team Plan 和 mobile bridge。
 - 影响：历史记录能证明故障模式和早期能力，但不能作为当前候选发布签字。
 - 证据：
   - SSH record 基线 `d684ee1af7`；
@@ -445,7 +448,7 @@
 - 根因：见上；责任边界是 `WSLBackend` 向 wsl.exe 交付命令的方式，不是 preflight 或错误文案。
 - 修复：`buildWslArgs` 的分隔符由 `--` 改为 `--exec`。wsl.exe 按 `CommandLineToArgvW` 解析 argv 后直接 exec `bash -lc <command>`，该解析与 Node 的加引号规则互逆，命令字节原样到达 bash；登录环境仍由显式的 `bash -lc` 提供。`exec`（部署、上传流）与 `execSimple` / `execDirect`（身份解析、`uname`、代理探测）同时生效；preflight、错误文案与部署锁/agent wrapper 的既有落盘路径不动。
 - 自动化验证：`packages/server/test/wslBackend.test.ts` 新增「exec 与 execSimple 都以 --exec 直传 argv，命令不经默认 shell 二次解析」，并把 3 处 `--` 参数期望改为 `--exec`；修复前 3 项失败、修复后 18 项通过。`wslProxy`、`remoteAssetPreflight`、`sourceServerTransportAdapter`、`remoteDeployLock`、`remoteAssetInstaller` 合计 6 文件 75 项通过；`tsc -b packages/server`、`pnpm architecture:check --changed`、oxlint、oxfmt 通过。隔离探针：真实 `buildWslArgs` → libuv 加引号 → `CommandLineToArgvW` 规则解析回 argv 后直接 exec，对 tar preflight、完整资源 preflight、Source Server probe、WSL 网关探测四条真实命令均字节一致回环，真实 `detectRemoteTarTool` 返回 `tar`，`probeSourceServer` 正常解析。
-- 运行时验证：未在真实 Windows/WSL 上运行。关闭条件：Windows 实机用本修复构建连接 WSL Ubuntu，五步弹窗走到「链路就绪」，且 `~/.openzwork/server/.bootstrap-*` 过期目录会被清理、`status.json` 存活时 `ensureDaemon` 不再重复 `serve --daemon`。
+- 运行时验证：未在真实 Windows/WSL 上运行。关闭条件：Windows 实机用本修复构建连接 WSL Ubuntu，五步弹窗走到「链路就绪」，且 `~/.zcode/server/.bootstrap-*` 过期目录会被清理、`status.json` 存活时 `ensureDaemon` 不再重复 `serve --daemon`。
 - 剩余风险：`--exec` 要求 distro 内 PATH 能解析 `bash`，与现有 `bash -lc` 依赖一致；此前被外层 shell 掩盖的脚本（stale staging 清理、`$status_pid` 检查、网关 `route=` 行）在 WSL 上首次真正执行，语义与 SSH 路径一致。若用户默认 shell 不是 POSIX shell，旧路径本会以非零退出码失败，新路径不再经过它。
 
 ### R3-ISSUE-029：replacement 在途时不保留后续 reconnect
@@ -462,6 +465,7 @@
 - 状态：待修复，当前无传 signal 的生产调用方；2026-10-11 登记，评审核对基线 `f5c233df918e`（CR-07）。
 - 责任位置：`zcodeAgentService.ts` 的 `generateWorkspaceText` / `testProviderModelConnectivity` 等待 `ensureAccountProviderConfigSynced` 时未消费 signal。
 - 证据：真实 Service 探针中取消后仍等待刷新结束，随后以 AbortError 收口；协议客户端在后续请求发出前检查 signal，因此不会执行已取消的模型请求。该证据证明收口延迟，不表示取消失效。
+- 当前处理：仅登记。首个支持取消的生产调用方接入时，单个等待者与 signal 竞速；共享 `accountConfigSyncByClient` 刷新继续完成，不能由一个调用者取消其他调用者依赖的刷新。
 - 关闭条件：一个等待者取消时及时拒绝，其他等待者仍可完成，且已取消的模型请求不会发送；共享刷新失败仍向未取消调用者传播。
 
 ### R3-ISSUE-031：crash-loop-stopped 时自动恢复无法拉起远端服务

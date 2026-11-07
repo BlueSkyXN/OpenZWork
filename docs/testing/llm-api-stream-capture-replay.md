@@ -60,6 +60,7 @@ pnpm --filter @zcode/desktop test:e2e -- --spec ./test/e2e/upstream-provider.tes
 ```
 
 `glmhighspeed` preset 使用 Anthropic-compatible endpoint
+`https://open.bigmodel.cn/api/anthropic` 和模型 `glm-5.1-highspeed`。capture 模式在未显式指定
 provider preset 时默认仍使用 DeepSeek v4 flash；只有显式设置
 `E2E_PROVIDER_PRESET=glmhighspeed` / `LLM_E2E_PROVIDER_PRESET=glmhighspeed`
 时才会切到 GLM highspeed。GLM highspeed preset 默认不强制选择思考深度；如需覆盖，可显式设置

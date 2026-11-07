@@ -8,7 +8,9 @@ export interface ActivePromptInputTrigger {
 export function getPromptInputTriggerSignature(
   activeTrigger: ActivePromptInputTrigger | null,
 ): string | null {
-  return activeTrigger ? `${activeTrigger.trigger}:${activeTrigger.query}` : null;
+  return activeTrigger
+    ? `${activeTrigger.trigger}:${activeTrigger.query}`
+    : null;
 }
 
 export interface PromptInputSuggestionItem {
@@ -119,7 +121,8 @@ export function extractActivePromptInputTrigger(
   textBeforeCursor: string,
 ): ActivePromptInputTrigger | null {
   const match =
-    ACTIVE_MENTION_TRIGGER_RE.exec(textBeforeCursor) ?? ACTIVE_TRIGGER_RE.exec(textBeforeCursor);
+    ACTIVE_MENTION_TRIGGER_RE.exec(textBeforeCursor) ??
+    ACTIVE_TRIGGER_RE.exec(textBeforeCursor);
   if (!match) {
     return null;
   }

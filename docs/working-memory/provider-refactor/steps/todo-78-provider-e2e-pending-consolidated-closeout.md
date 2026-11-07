@@ -23,6 +23,9 @@
 | `MP-UI-06` 模型设置推理档位与 Mapping | 失败     | 测试期待英文“Model capabilities”，运行语言为中文，实际为“模型能力” | 核对用例是否应按当前语言断言；若只是断言错误，改测试，不改产品文案 |
 | `QR-E2E-09` 首次机会提醒              | 失败     | 页面没有机会徽标、提醒或对应请求                                   | 检查机会数据注入和显示条件；确认 fixture 后再决定改测试还是修产品  |
 | `QR-E2E-10` 临期机会提醒              | 失败     | 页面没有临期提醒或对应请求                                         | 与 QR-E2E-09 一起定位，避免各写一套准备逻辑                        |
+| `off-peak-automations-home-layout`    | 失败     | 闲时任务创建入口没有出现                                           | 检查灰度/mock 前置是否仍有效；未命中前不修改闲时业务断言           |
+| `off-peak-create-manage` 两个用例     | 失败     | 创建入口缺失；第二个用例还未切到预期工作区                         | 分开确认入口前置和工作区切换问题，确认是否属于同一测试环境问题     |
+| `off-peak-limit-pre-gate`             | 失败     | 创建入口没有出现                                                   | 与其他闲时用例共用同一入口前置，修复或明确阻塞原因                 |
 | `SE-01` Subagent 创建/编辑持久化      | 失败     | 生成的 Subagent Markdown 与表单内容不一致                          | 核对当前表单和持久化语义，确认测试是否仍使用旧字段或旧目录快照     |
 | `SE-02` Subagent 默认 effort          | 失败     | 未操作默认 effort 仍写入 `agents-state.json`                       | 对照当前产品语义判断是实际回归还是旧测试预期                       |
 | `SE-03` 删除已选模型                  | 失败     | 生成的 Subagent Markdown 与表单内容不一致                          | 与 SE-01 共用定位结果，避免单独增加兼容分支                        |
@@ -43,6 +46,10 @@
 - Subagent `settings-subagent-create-edit-persistence.test.ts`：原测试使用了旧的 `model`/`thoughtLevel` Markdown 快照。已按当前 `modelSelection` 序列化契约更新测试，并取消错误的 `skipProvider` 前置；SE-01 已通过。SE-02 原预期与当前设计相反：切换模型会物化该模型的 catalog 默认 reasoning（本轮验证得到 `max`），已改为验证这一语义；SE-03 在独立运行时仍因模型删除入口未找到目标模型而阻塞，需后续补充 UI 诊断后再决定是否是定位器问题。
 - 闲时任务 3 个 spec：即使单独运行仍停在灰度创建入口前置，未进入业务断言；当前记录为 E2E fixture/Account Provider 可用性阻塞，不修改闲时业务代码。
 
+Off-Peak 阻塞的运行时证据（Air 首轮日志）已进一步确认：Host 启动时 Registry 中包含两个 hidden Off-Peak Provider，但账号连接快照将它们以及其他账号 Provider 全部标记为 `entitled:false`；`resolveOffPeakClientConfig` 在 mock 模式仍要求投影出的 Registry 有可用模型，且 mock 只替代曝光/套餐状态，不伪造 Account entitlement。因此入口缺失发生在 Account Provider 可用性层，尚未进入 ticket availability 或任务业务链路。后续若要继续，必须补齐独立的 Coding Plan entitlement fixture/availability mock；不能只修改闲时 UI 断言或生产模型选择逻辑。
+
+2026-09-05 在 Air 上补跑 `coding-plan-team-usage.test.ts`：18/18 通过，包含 CTP-01～11、QR-E2E-01/02/03/04/09/10。为使机会提醒用例反映真实用户路径，测试先通过 Composer 模型选择控件选中 BigModel Coding Plan，再重载 Renderer；同时把 urgent opportunity mock 改为每次 status 响应提供未来 120 秒，避免完整 Electron 重启/build 时间让固定起始时间的 179 秒机会过期。两项均为 E2E fixture/准备逻辑修正，没有改生产代码。
+
 2026-09-05 在 Air 上再次运行 Subagent spec（同步最新测试 helper 后）：
 
 - `settings-subagent-create-edit-persistence.test.ts`：3/3 通过。
@@ -52,12 +59,14 @@
 2026-09-05 在 Air 上再次运行 `coding-plan-team-usage.test.ts`（补充 CTP-02B 后）：
 
 - `desktop-e2e-20260905-051133-051`：19/19 通过。
+- CTP-02B 独立确认侧栏头像旁显示当前已确认的 Team Plan 标签（`团队`）。该用例覆盖了 Todo 73 的图形验证要求；没有修改产品代码。
 
 ## 3. 从旧 Todo 收口的范围
 
 ### 3.1 已关闭
 
 - Todo 34：Repo Wiki 三个正式 E2E 已在本基线通过。
+- Todo 40：Provider 升级、Coding Plan 主要额度场景和 Automation 创建管理已通过；QR-E2E-09/10 仍按上表处理。
 - Todo 62、75、77：模型设置、Template 创建和推理档位相关图形 E2E 统一由 `settings-ui-polish.test.ts` 覆盖；当前只剩 `MP-UI-06` 的语言断言问题。
 
 ### 3.2 已记录的剩余环境阻塞

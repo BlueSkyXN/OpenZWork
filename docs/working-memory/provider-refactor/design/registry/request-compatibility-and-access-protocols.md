@@ -50,6 +50,8 @@ Provider 返回的真实 content / reasoning / metadata
 | Z.ai text/tool block signature 候选 patch     | 不采用                                      | 不在当前 HEAD/staging，不把外部分支候选带入本次重构；可独立实测服务 wire，但测试不等于自动合入 |
 | `omitMaxOutputTokens`                         | 删除                                        | 旧 GitHub Copilot 特判不为当前未正式支持的接入保留                                             |
 | `maxOutputTokensRequestField`                 | 删除                                        | 当前先不支持 Snowflake Cortex，不为它保留字段、Rule 或请求体改写                               |
+| 官方版本访问安全校验字段                      | `zhipu-account/start-plan`                  | 从 Model Config 移除；动态材料仍由官方版本产品链路提供                                         |
+| `failureProtocol`                             | `zhipu-account/off-peak`                    | 字符串 marker、跨进程错误与 UI 状态机行为保持不变                                              |
 | 官方版本请求安全校验准入                      | Provider 请求协议                           | 由显式 Access 与官方域名决定是否进入，具体规则只在官方版本维护                                 |
 | `requiresMfjsToolSchema`                      | Model Config                                | 保留模型/API 请求编码事实；仅为显式匹配的 Model Config 启用，失败时报错；设置页置于最后        |
 
@@ -104,6 +106,11 @@ Anthropic 的真实 thinking block、空 thinking、signature 和 redacted think
 任何 Anthropic-compatible Provider 都统一执行 canonical replay：服务端返回真实 thinking/signature 时原样保存和
 回放；服务端没有返回时不补造 block 或 signature。该行为不接受 Model ID、Provider ID 或配置开关分流。
 
+2026-09-10 补充：历史签名兼容判断与上述 block 编码规则分开。旧 Coding Plan ID 与同服务的 Individual/Team ID
+可以通过 Adapter 内集中、精确枚举的纯函数判为回放兼容；模型 ID 仍须一致。Z.ai、BigModel 分组隔离，其他
+Provider 保留精确 ID 判断，不新增配置或持久化字段、不重写历史身份，也不把该函数用于选型和鉴权。
+完整边界与验证见 [Reasoning History Replay](../../../../../apps/zcode-cli/docs/design/v2/model/anthropic-reasoning-history-replay.md#coding-plan-provider-identity-compatibility)。
+
 ### 3.4 Z.ai text/tool block signature：候选实现不采用
 
 当前 HEAD 与 `origin/staging` 没有 text/tool block signature replay；相关实现只存在于未合入候选分支。本次重构不采用、
@@ -144,7 +151,16 @@ Copilot 时按当时接口重新设计，不能恢复旧规则作为默认。
 
 ## 5. Provider Access 产品协议
 
+### 5.1 官方版本访问安全校验
+
+Start Plan 在官方版本中需要额外的访问安全校验。它是产品协议，不是某个模型的静态能力或 API 编码偏好。
+`access.type=zhipu-account + mode=start-plan` 是唯一静态分派事实；动态材料由请求期链路生成和注入，
+不持久化进 Model Config。具体实现只在官方版本中维护。
+
 ### 5.2 官方版本请求安全校验
+
+Individual/Team Coding Plan、显式手动套餐 Access 以及官方域名请求在官方版本中会经过额外的请求安全校验，
+具体准入规则与实现只在官方版本中维护。开源设计只保留以下边界：
 
 - 两种手动 Access 的 type 在覆盖、序列化、编辑 Key 和绑定 Model 时原样保留；不能在保存时降回普通 `api-key`；
 - 准入判断使用本次 Model 已绑定的配置快照，不读取实时 Registry，不修改保存的 Access、Template 或 Model Selection，
@@ -155,14 +171,38 @@ Copilot 时按当时接口重新设计，不能恢复旧规则作为默认。
 - 获取 Key 仅使用 `apiKeyManagementUrl` 展示元数据，个人／团队共用模板的单一入口，不新增身份专用链接字段，
   也不由链接推断鉴权（Todo116）。
 
+### 5.3 Off-Peak 执行协议归入 Access
+
+Off-Peak 的排队、Ticket 和失效重试属于访问该产品服务的执行协议，不是模型事实。
+`access.type=zhipu-account + mode=off-peak` 是唯一静态分派事实。
+
+当前 Adapter 抛出包含 `off-peak-ticket-expired` 的字符串错误，Desktop/Renderer 再按字符串或正则识别。这套运行状态机
 本轮保持等价，不因为配置归属迁移而顺手改成结构化错误。
 
 本轮保持：
 
+- 删除 Model Config `failureProtocol`，由完整 Provider Access 的 `mode="off-peak"` 启用同一行为；
 - 现有 ticket marker 字符串；
 - 现有跨进程传播和 UI 识别；
+- Off-Peak 队列、Ticket、恢复与调度语义。
 
 不得在本轮顺手改为结构化错误，也不得把一次“字段整理”伪装成产品状态机迁移。它作为明确技术债保留，未来独立设计。
+
+### 5.4 Coding Plan 请求来源归因 Header
+
+所有模型请求在 Adapter 的 per-request 层发送 `x-zcode-session-type`，值域为 `main`、`subagent`、
+`side_chat`、`other`。它表示宿主会话类型；标题、Memory 与工具内部请求继承宿主，调用用途通过
+`x-zcode-query-source` 独立表达。连接测试等工作区独立请求归为 `other`。
+
+该 Header 是请求级来源归因，不是 Provider/Model 静态能力，也不是鉴权材料：
+
+- 不进入 Provider Config、Model Config、Registry 或 Active Model；
+- 不按 Provider ID、Model ID、Endpoint 或 Access Mode 推断；
+- 由本次调用上下文产生，并覆盖 Provider 静态 Header 中的同名伪造值；
+- 流式、非流式和 Adapter retry 使用同一构造逻辑，retry 不改变来源分类。
+
+完整分类表和兼容规则见
+[`Agent 模型请求归因 Header`](../../../../superpowers/specs/2026-06-09-agent-model-request-session-header-design.md)。
 
 ## 6. Settings 边界
 
@@ -179,10 +219,12 @@ Copilot 时按当时接口重新设计，不能恢复旧规则作为默认。
 
 1. 先用最终 HTTP request body 测试证明当前 OpenAI-compatible SDK 能原生回放非空 reasoning，再删除 ZCode helper；
 2. 删除 GitHub Copilot omit 字段和规则，不保留兼容读取；
-3. DeepSeek 统一执行 canonical replay，不保留 synthetic empty-thinking 或 Compatibility Config；
-4. Z.ai text/tool signature 候选实现不采用；真实 wire 测试作为独立证据任务；
-5. 删除 Snowflake 字段和专属请求改写，当前不支持 Snowflake；
-6. Adapter 不恢复通用 Compatibility Config、Registry 查询或 ID hardcode。
+3. 官方版本安全校验按 `zhipu-account.mode` 与显式 Access 分派，并保持动态材料与运行状态不进入 Config；
+4. Off-Peak 启用事实是 `mode=off-peak`，字符串 marker 与现有运行状态机保持等价；
+5. DeepSeek 统一执行 canonical replay，不保留 synthetic empty-thinking 或 Compatibility Config；
+6. Z.ai text/tool signature 候选实现不采用；真实 wire 测试作为独立证据任务；
+7. 删除 Snowflake 字段和专属请求改写，当前不支持 Snowflake；
+8. Adapter 不恢复通用 Compatibility Config、Registry 查询或 ID hardcode。
 
 ## 8. 当前证据记录
 
@@ -202,3 +244,4 @@ Copilot 时按当时接口重新设计，不能恢复旧规则作为默认。
 - 当前 DeepSeek Replay fixtures 的 `syntheticReason` 明确表明相关 wire shape 是构造数据，不能单独证明服务端约束；
 - text/tool block signature 候选提交 `70546bde31` 只位于
   `origin/anthropic-block-signature-replay-staging-latest`，不是当前 HEAD 或 `origin/staging` 的祖先；
+- Off-Peak 当前 marker 常量为 `off-peak-ticket-expired`，Adapter 与 UI 仍通过错误字符串传递和识别，本轮按既有行为保留。

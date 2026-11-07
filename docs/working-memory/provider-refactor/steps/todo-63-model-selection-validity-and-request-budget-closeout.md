@@ -40,6 +40,7 @@ interface ModelSelection {
 }
 ```
 
+- 删除 `ModelSelection.options.maxOutputTokens`，并清理协议、持久化、Recent、Session、Subagent、Automation、Off-Peak、时间线比较与 Hydration 中的对应残余。
 - 新写入的 Selection 必须携带具体 `reasoningLevel`。
 - 旧 Selection 缺少 reasoning 时，只允许在“创建全新默认选择”的既有 Host 初始化边界补 `values.at(-1)`；业务层、Renderer、ModelFactory 和 Adapter 不再各自补值。
 - 显式但已失效的 reasoning 不得自动替换。
@@ -60,6 +61,7 @@ Active Model / Adapter
 模型 API
 ```
 
+- 普通 Turn、Off-Peak 和普通 Subagent 可以由 Agent 框架显式选择 `spec.max`。
 - Title、Goal、Memory、Git Commit、Connectivity、WebSearch/WebFetch 等辅助链继续使用其明确预算。
 - Compact 和 Repo Wiki 保留自身任务语义，但必须由调用方显式传值。
 - 删除 ModelFactory 的 `selection value ?? spec.max`；Active Model 不再把 Selection 中的输出预算当作长期绑定状态。
@@ -116,6 +118,27 @@ Persisted Task Selection
                                等待用户编辑
 ```
 
+### 6.1 旧闲时任务
+
+旧记录只有 `model` / `thought_level`，没有 Provider 身份。旧实现本来就在执行时根据当前账号连接选择 Z.ai 或 BigModel，因此可靠迁移应在当前 Off-Peak Selection View 就绪后完成，而不是在 SQLite Row Mapper 中猜 Provider：
+
+```text
+legacy model / thought_level
+          +
+current Off-Peak Selection View
+          |
+          v
+解析唯一、当前有效的完整 Selection
+          |
+          +-- 成功 --> 原子写回 model_selection
+          `-- 失败 --> 保留为 repair-required
+```
+
+- Repository 必须逐条容忍缺失或非法 `model_selection`，一条旧记录不能让 `list()`、同步或其他任务调度整体失败。
+- 待修复任务仍出现在列表中；终态历史记录可以正常查看。
+- 未修复的非终态任务不能被 claim、continue 或 dispatch。
+- 不删除旧记录，不凭模型名猜账号 Provider，不把当前默认模型静默写入已创建任务。
+
 ## 7. Registry 更新与 Active Model
 
 ```text
@@ -135,7 +158,8 @@ Desktop continuous 与 Mobile replayable 只共享 Selection 校验结果；本 
 3. Agent Runtime：ModelFactory 不绑定输出预算；普通 Turn 显式传 `spec.max`；所有其他执行链在 Executor 前都有明确预算。
 4. UI unit：Recent/当前草稿失效后回到 Host preferred，并暴露“发生过失效”的结果；新草稿正常缺省不误报。
 5. UI E2E：Registry revision 使当前草稿选择失效后，工具条切换到有效默认值并显示一次通知；无可用模型时要求重选。
-6. 回归：Session、Subagent、Automation、Repo Wiki、Title、Goal、Memory、Compact、Connectivity 的 Selection 和 Request Options 不混用。
+6. Off-Peak Repo/Service：旧行不拖垮列表；可唯一恢复时写回；不可恢复时可见但不可调度；其他任务继续同步与 claim。
+7. 回归：Session、Subagent、Automation、Repo Wiki、Title、Goal、Memory、Compact、Connectivity 的 Selection 和 Request Options 不混用。
 
 ## 9. 完成门禁
 
@@ -149,8 +173,11 @@ Desktop continuous 与 Mobile replayable 只共享 Selection 校验结果；本 
 
 ## 10. 实施结果
 
+- `ModelSelection` 已收口为 Provider、Model 与 Reasoning；协议、Session、Timeline、Recent、Automation、Subagent、Off-Peak 和 Repo Wiki 不再保存 `maxOutputTokens`。
+- ModelFactory 不再绑定或缺省输出预算；普通 Turn/Off-Peak/Subagent 显式选择模型 `spec.max`，Compact、Title、Goal、Memory、Git Commit、Connectivity、WebSearch/WebFetch 与 Repo Wiki 保留各自的显式预算。
 - Provider Registry 对缺失 Reasoning 和非法 Reasoning 返回结构化失效原因；新选择统一通过 `completeNewModelSelection()` 取有序档位最后一项，显式非法值不修补。
 - 草稿在 Registry revision 变化后会原子清除失效 Selection，回到 Host preferred，并按 workspace/revision 去重显示一次通知；已经开始执行的 Active Model 不变。
+- 闲时任务 Repository 可逐条读取缺失、旧 Schema 或损坏的 `model_selection`；Service 只在当前 Account Family 的 Off-Peak Resolver 能保留原 model/reason 时写回。无法恢复的任务保留在列表、标记待修复并撤销调度资格，编辑时必须重新选择完整模型与 Reasoning。
 - 延迟迁移和失效写回均在 SQLite 写锁内重读，避免覆盖另一进程刚完成的用户修复。
 
 ### 10.1 验证记录

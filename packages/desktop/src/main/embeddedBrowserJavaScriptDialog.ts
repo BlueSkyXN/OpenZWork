@@ -39,7 +39,10 @@ function parseEmbeddedBrowserDialogRequest(value: unknown): EmbeddedBrowserDialo
   return { type: candidate.type, message: candidate.message };
 }
 
-export function resolveEmbeddedBrowserDialogSource(frameUrl: string, guestUrl?: string): string {
+export function resolveEmbeddedBrowserDialogSource(
+  frameUrl: string,
+  guestUrl?: string,
+): string {
   for (const candidate of [frameUrl, guestUrl]) {
     if (!candidate) continue;
     try {

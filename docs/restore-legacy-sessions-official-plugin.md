@@ -2,7 +2,7 @@
 
 ## 背景
 
-旧版 ZCode 的 session 快照保存在 `~/.openzwork/v2/sessions`。迁移能力已经作为本地 skill 验证过，可以列出旧 agent、workspace、conversation，并把选中的历史对话恢复到新 ZCode 的任务索引和 CLI session DB。
+旧版 ZCode 的 session 快照保存在 `~/.zcode/v2/sessions`。迁移能力已经作为本地 skill 验证过，可以列出旧 agent、workspace、conversation，并把选中的历史对话恢复到新 ZCode 的任务索引和 CLI session DB。
 
 为了避免默认会话暴露高风险本地迁移能力，需要把该 skill 包装成官方插件，但默认关闭。用户显式启用后，新的 session 才能看到迁移 skill 和命令。
 
@@ -40,11 +40,11 @@ commands/restore-legacy-sessions.md
 
 ## 行为边界
 
-- 默认源目录是 `~/.openzwork/v2/sessions`。
+- 默认源目录是 `~/.zcode/v2/sessions`。
 - 只有用户明确要求读取其它目录时，才传 `--legacy-dir <path>` 覆盖默认源。
 - 目的地保持为：
-  - `~/.openzwork/v2/tasks-index.sqlite`
-  - `~/.openzwork/cli/db/db.sqlite`
+  - `~/.zcode/v2/tasks-index.sqlite`
+  - `~/.zcode/cli/db/db.sqlite`
 - 恢复前必须创建时间戳备份。
 - 旧版会话恢复后的 provider 固定写 `glm`。
 - 不写 `migration_source`，也不写 `meta_json.migrationSource`。

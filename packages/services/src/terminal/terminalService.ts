@@ -400,7 +400,11 @@ export function createTerminalService(dependencies: {
   }
 
   const service: ITerminalService & { disposeAll(): void } = {
-    async create(params: { cols: number; rows: number; cwd?: string }): Promise<{
+    async create(params: {
+      cols: number;
+      rows: number;
+      cwd?: string;
+    }): Promise<{
       id: string;
       shell: string;
       fontFamily: string;
@@ -413,10 +417,12 @@ export function createTerminalService(dependencies: {
       const shell = resolveTerminalShell();
       const cwd = resolveTerminalCwd(params.cwd);
       const env = resolveTerminalEnv();
-      const terminalProfileSettings = await dependencies.settingService.get().catch(() => ({
-        terminalFontFamily: undefined,
-        terminalInheritSystemProfile: true,
-      }));
+      const terminalProfileSettings = await dependencies.settingService
+        .get()
+        .catch(() => ({
+          terminalFontFamily: undefined,
+          terminalInheritSystemProfile: true,
+        }));
       const fontProfile = resolveTerminalFontProfile({
         settings: terminalProfileSettings,
         env: process.env,
@@ -438,9 +444,7 @@ export function createTerminalService(dependencies: {
           env,
         });
       } catch (error) {
-        throw new Error(
-          `Failed to start terminal with shell '${shell}' in '${cwd}': ${getErrorMessage(error)}`,
-        );
+        throw new Error(`Failed to start terminal with shell '${shell}' in '${cwd}': ${getErrorMessage(error)}`);
       }
 
       p.onData((data) => terminalOutput.push(data));

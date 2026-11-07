@@ -6,7 +6,7 @@
 
 - 支持 marketplace plugin entry 指向 CDN 托管的 `.zip` 插件包，并复用现有安装闭环：
   `installMarketplacePlugin` -> `cacheMarketplacePlugin` -> `resolvePluginSourceRoot` -> 拷贝到
-  `~/.openzwork/cli/plugins/cache/{marketplace}/{plugin}/{version}/` -> 写入
+  `~/.zcode/cli/plugins/cache/{marketplace}/{plugin}/{version}/` -> 写入
   `installed_plugins.json`。
 - 在 plugin entry 现有 `{ "source": "url" }` 上新增显式 artifact type：
   `{ "source": "url", "type": "zip", ... }`。无 `type` 的 `{ "source": "url" }`
@@ -55,15 +55,15 @@
 
 字段语义：
 
-| 字段        | Phase 1 语义                                                                                                                                                      |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `source`    | 固定为 `"url"`。这是 plugin entry source，不是 marketplace source。                                                                                               |
-| `type`      | zip artifact 必填为 `"zip"`。缺失或 `"git"` 时保持 legacy git clone。未知值直接诊断/报错，不 fallback。                                                           |
-| `url`       | 必填，远端 CDN 必须是 `https://` URL。本地测试/fixture 允许 loopback HTTP（`localhost` / `127.0.0.1` / `::1`）。                                                  |
-| `sha256`    | zip source 必填，64 位小写 hex。下载后必须先校验 digest，校验通过才允许解压。                                                                                     |
-| `path`      | 可选，zip 解压后的插件子目录。语义对齐 git source 的 `path`，先安全解压到临时根，再在临时根内 `resolveInside(path)` 定位插件根。                                  |
-| `headers`   | 可选，仅允许普通字符串 header；禁止 `Authorization`、`Cookie` 等敏感 header 进入 marketplace JSON。Phase 1 建议仅支持公开 CDN，不把 credential 写入 marketplace。 |
-| `stripRoot` | 可选布尔值。`true` 表示 zip 所有条目都有同一个安全顶层目录时，定位 root 时可剥离这一层；默认推荐 `true`，但实现要和 `path` 互斥或明确优先级。                     |
+| 字段 | Phase 1 语义 |
+| --- | --- |
+| `source` | 固定为 `"url"`。这是 plugin entry source，不是 marketplace source。 |
+| `type` | zip artifact 必填为 `"zip"`。缺失或 `"git"` 时保持 legacy git clone。未知值直接诊断/报错，不 fallback。 |
+| `url` | 必填，远端 CDN 必须是 `https://` URL。本地测试/fixture 允许 loopback HTTP（`localhost` / `127.0.0.1` / `::1`）。 |
+| `sha256` | zip source 必填，64 位小写 hex。下载后必须先校验 digest，校验通过才允许解压。 |
+| `path` | 可选，zip 解压后的插件子目录。语义对齐 git source 的 `path`，先安全解压到临时根，再在临时根内 `resolveInside(path)` 定位插件根。 |
+| `headers` | 可选，仅允许普通字符串 header；禁止 `Authorization`、`Cookie` 等敏感 header 进入 marketplace JSON。Phase 1 建议仅支持公开 CDN，不把 credential 写入 marketplace。 |
+| `stripRoot` | 可选布尔值。`true` 表示 zip 所有条目都有同一个安全顶层目录时，定位 root 时可剥离这一层；默认推荐 `true`，但实现要和 `path` 互斥或明确优先级。 |
 
 推荐的最小公开 CDN entry：
 
@@ -128,6 +128,7 @@
       "source": {
         "source": "url",
         "type": "zip",
+        "url": "https://cdn-zcode.z.ai/zcode/official-plugin/plugins/example-plugin/0.1.1/plugin.zip",
         "sha256": "5e93c44a9a3c292d6c59688d76874d9035ff740486390612c5daf13566d4049b",
         "path": "example-plugin"
       }
@@ -136,6 +137,7 @@
 }
 ```
 
+入口 URL 为 `https://cdn-zcode.z.ai/zcode/official-plugin/index.json`。示例中的版本和 digest
 仅表示发布时快照；客户端 smoke 测试应从 overview 读取 live 版本，避免 CDN 增量发布造成硬编码漂移。
 
 ## 3. Install pipeline steps
@@ -184,7 +186,7 @@ Phase 1 zip 安装步骤：
 10. `cacheMarketplacePlugin()` 继续按现有逻辑复制 plain directory 到：
 
 ```text
-~/.openzwork/cli/plugins/cache/{marketplace}/{plugin}/{version}/
+~/.zcode/cli/plugins/cache/{marketplace}/{plugin}/{version}/
 ```
 
 11. cache 复制成功后的 source cleanup 是 best-effort；cleanup failure 不得阻断安装记录构造和
@@ -511,7 +513,7 @@ cache/{marketplace}/{plugin}/{version}/
 
 - [ ] 阅读并保持本 spec 与 `docs/claude-code-marketplace-plugin-compat.md` 一致。
 - [ ] 在 adapters 增加 zip dependency：优先评估 `yauzl`，并在 `apps/zcode-cli/packages/adapters/package.json`
-      显式声明，不依赖 desktop/services 的 transitive dependency。
+  显式声明，不依赖 desktop/services 的 transitive dependency。
 - [ ] 新建 `apps/zcode-cli/packages/adapters/src/plugins/zip-source.ts`：
   - [ ] `resolveZipPluginSource(input): Promise<ResolvedPluginSourceRoot>`；
   - [ ] HTTPS URL 和 redirect 校验；

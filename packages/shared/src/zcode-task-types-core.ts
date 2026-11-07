@@ -326,7 +326,7 @@ export interface ZCodeTaskMeta {
   provider?: ZCodeProvider;
   /** 迁移来源；普通新建任务为空，用于识别外部客户端原生历史导入（Claude Code / Codex / Qoder）。 */
   migrationSource?: ZCodeTaskMigrationSource;
-  /** 外部会话导入指纹（spec docs/spec/external-session-import.md §2.4）；来源哈希未变时重导按幂等跳过。 */
+  /** 外部会话导入指纹（spec docs/specs/external-session-import-openzwork.md §2.4）；来源哈希未变时重导按幂等跳过。 */
   externalImport?: ZCodeTaskExternalImportFingerprint;
   /**
    * cron 身份标记：该 session 属于哪条 automation。

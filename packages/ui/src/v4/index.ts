@@ -1,6 +1,9 @@
 // UI 侧 v4 数据层（M3 m3-ui-core，docs/v4-refactor/06-ui）。
 // 纯新增：与旧 store/zcodeSessionStore* 并存，删除发生在竖切可用后（11-deletion-plan 波次 1）。
-export { conversationTopic, type ConversationTransport } from "@/v4/transport.js";
+export {
+  conversationTopic,
+  type ConversationTransport,
+} from "@/v4/transport.js";
 export {
   ConversationProjectionStore,
   type ConversationStoreState,
@@ -29,7 +32,10 @@ export {
   type AgentSessionsIndexTransportTarget,
   type SessionsIndexTransport,
 } from "@/v4/agentSessionsIndexTransport.js";
-export { useSessionsIndex, type UseSessionsIndexResult } from "@/v4/useSessionsIndex.js";
+export {
+  useSessionsIndex,
+  type UseSessionsIndexResult,
+} from "@/v4/useSessionsIndex.js";
 export {
   LOCAL_SESSIONS_INDEX_ENDPOINT,
   acquireSessionsIndex,
@@ -39,7 +45,11 @@ export {
   type SessionsIndexAgentService,
   type SessionsIndexScope,
 } from "@/v4/sessionsIndexRegistry.js";
-export { createCommandEnvelope, getV4ClientId, uuidv7 } from "@/v4/commandFactory.js";
+export {
+  createCommandEnvelope,
+  getV4ClientId,
+  uuidv7,
+} from "@/v4/commandFactory.js";
 export {
   V4ConversationProvider,
   V4PaneConversationProvider,
@@ -89,7 +99,10 @@ export {
   type WorkspaceConnectionLease,
   type WorkspaceConnectionScope,
 } from "@/v4/workspaceConnectionRegistry.js";
-export { V4WorkspaceChatArea, type V4WorkspaceChatAreaProps } from "@/v4/V4WorkspaceChatArea.js";
+export {
+  V4WorkspaceChatArea,
+  type V4WorkspaceChatAreaProps,
+} from "@/v4/V4WorkspaceChatArea.js";
 export { V4InteractionDialogs } from "@/v4/V4InteractionDialogs.js";
 export {
   pendingPermissionToLegacyRequest,

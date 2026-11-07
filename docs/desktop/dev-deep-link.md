@@ -59,4 +59,5 @@ pnpm dev:desktop:test
    `com.github.electron`。
 3. 线上 Share 页面仍显示原 CTA 和原 `zcode://share/import` href。
 4. Dev 已运行时点击 CTA，不出现 Electron 默认页，现有 Dev 窗口收到 `ShareImport`。
-5. 原有 deep-link parser/route 单测继续通过。
+5. Dev endpoint 为 `https://zcode.z.ai`，导入请求与页面环境一致。
+6. 原有 deep-link parser/route 单测继续通过。

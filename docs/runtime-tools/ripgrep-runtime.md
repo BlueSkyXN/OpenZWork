@@ -28,7 +28,7 @@ resources/tools/ripgrep/rg(.exe)
 
 ```text
 mock-cdn/releases/<version>/tools/linux-<arch>/{bfs,ripgrep,ugrep}/<binary>
-~/.openzwork/server/tools/{bfs,ripgrep,ugrep}/<binary>
+~/.zcode/server/tools/{bfs,ripgrep,ugrep}/<binary>
 ```
 
 Linux remote（包括 WSL、Linux SSH 与 Linux Docker）部署 `bfs 4.1.1-2`、

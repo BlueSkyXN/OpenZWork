@@ -10,10 +10,18 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import type { E2EReportSummary, TestResultSummary } from "../shared/types.js";
+import type {
+  E2EReportSummary,
+  TestResultSummary,
+} from "../shared/types.js";
 import { TrendPanels } from "./ChartPanels.js";
 import { CoveragePanel } from "./CoveragePanel.js";
-import { formatBytes, formatDateTime, formatDuration, formatNumber } from "./format.js";
+import {
+  formatBytes,
+  formatDateTime,
+  formatDuration,
+  formatNumber,
+} from "./format.js";
 import { loadReportSummary } from "./reportData.js";
 import { loadPerformanceTrends } from "./trendData.js";
 import type { PerformanceTrends } from "./trendData.js";
@@ -37,7 +45,8 @@ export function App() {
         } catch (loadError: unknown) {
           setReport({
             summary,
-            trendError: loadError instanceof Error ? loadError.message : String(loadError),
+            trendError:
+              loadError instanceof Error ? loadError.message : String(loadError),
             trends: null,
           });
         }
@@ -96,13 +105,18 @@ function ReportView({ report }: { report: ReportState }) {
           detail={
             uiCoverage
               ? `${uiCoverage.sourceFileCount ?? uiCoverage.rendererEntryCount} ${
-                  uiCoverage.sourceFileCount === undefined ? "renderer scripts" : "source files"
+                  uiCoverage.sourceFileCount === undefined
+                    ? "renderer scripts"
+                    : "source files"
                 }`
               : "disabled"
           }
           icon={<GaugeIcon />}
           label="UI 覆盖率"
-          value={statsValue(uiCoverage?.totals.lines?.pct ?? uiCoverage?.totals.percent, "%")}
+          value={statsValue(
+            uiCoverage?.totals.lines?.pct ?? uiCoverage?.totals.percent,
+            "%",
+          )}
         />
         <MetricCard
           detail={sampleHint(summary.performance.processSamples)}
@@ -145,7 +159,12 @@ function ReportView({ report }: { report: ReportState }) {
   );
 }
 
-function MetricCard(props: { detail: string; icon: ReactNode; label: string; value: string }) {
+function MetricCard(props: {
+  detail: string;
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
     <article className="metric">
       <div className="metricIcon">{props.icon}</div>
@@ -209,7 +228,12 @@ function InfoPanel({ rows, title }: { rows: Array<[string, string]>; title: stri
   );
 }
 
-function Panel(props: { children: ReactNode; meta?: string; title: string; wide?: boolean }) {
+function Panel(props: {
+  children: ReactNode;
+  meta?: string;
+  title: string;
+  wide?: boolean;
+}) {
   return (
     <section className={props.wide ? "panel wide" : "panel"}>
       <div className="panelHeader">

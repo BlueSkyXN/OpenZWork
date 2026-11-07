@@ -14,6 +14,43 @@ const { pathToFileURL } = require("node:url");
 const execFileAsync = promisify(execFile);
 const root = process.env.ZCODE_TEST_SOURCE_ROOT || path.resolve(__dirname, "../..");
 const ts = require(process.env.TYPESCRIPT_MODULE_PATH || "typescript");
+// 上游文档与技能保持上游原文，OpenZWork 版本另存为同目录的 -openzwork 文件
+// （docs/openzwork/maintenance-model.md）。与上游基准逐字节一致的这类文件描述的是上游产品，
+// 不属于 OpenZWork 产品文本：WP-03、WP-08、WP-09 的文本扫描跳过它们，-openzwork 版本照常扫描。
+// 基准取台账 upstream.commit；工作区有未提交改动的文件不算原文。
+let pristineUpstreamDocsCache;
+function pristineUpstreamDocs() {
+  if (pristineUpstreamDocsCache) return pristineUpstreamDocsCache;
+  const ledger = fs.readFileSync(path.join(root, "docs/openzwork/ledger.yaml"), "utf8");
+  const base = ledger.match(/^\s+commit:\s*([0-9a-f]{40})\s*$/m)?.[1];
+  assert.ok(base, "docs/openzwork/ledger.yaml 缺少 upstream.commit");
+  const docExt = /\.(?:md|mdx|ya?ml|json|txt)$/;
+  const git = (args) =>
+    execFileSync("git", ["-C", root, ...args], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  let upstream;
+  try {
+    upstream = git(["ls-tree", "-r", "-z", base, "--", "docs", ".agents/skills"]);
+  } catch (cause) {
+    throw new Error(`读取上游基准 ${base} 失败；门禁需要完整 Git 历史（checkout 使用 fetch-depth: 0）`, {
+      cause,
+    });
+  }
+  const upstreamBlobs = new Map();
+  for (const line of upstream.split("\0").filter(Boolean)) {
+    const tab = line.indexOf("\t");
+    upstreamBlobs.set(line.slice(tab + 1), line.slice(0, tab).split(" ")[2]);
+  }
+  const dirty = new Set(git(["diff", "--name-only", "-z", "--", "docs", ".agents/skills"]).split("\0"));
+  pristineUpstreamDocsCache = new Set();
+  for (const line of git(["ls-files", "-s", "-z", "--", "docs", ".agents/skills"]).split("\0")) {
+    if (!line) continue;
+    const tab = line.indexOf("\t");
+    const rel = line.slice(tab + 1);
+    const blob = line.slice(0, tab).split(" ")[1];
+    if (docExt.test(rel) && !dirty.has(rel) && upstreamBlobs.get(rel) === blob) pristineUpstreamDocsCache.add(rel);
+  }
+  return pristineUpstreamDocsCache;
+}
 const adapter = "apps/zcode-cli/packages/adapters/src/model/";
 const sdkCalls = [];
 function sdkFactory(kind) {
@@ -742,7 +779,7 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       ],
     ],
     [
-      "docs/web-remote-control/v1-connection-modes.md",
+      "docs/web-remote-control/v1-connection-modes-openzwork.md",
       ["`wss://zcode.z.ai/ws`", "`https://zcode.z.ai/remote/v4`"],
     ],
     ["packages/desktop/test/webRemoteControlDirectGateway.test.ts", ['"wss://zcode.z.ai/ws"']],
@@ -826,6 +863,7 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
     .filter(Boolean);
   for (const rel of tracked) {
     if (!scanExtensions.test(rel) || rel === "tests/private-cleanup/cleanup.test.cjs") continue;
+    if (pristineUpstreamDocs().has(rel)) continue;
     const file = path.join(root, rel);
     if (!fs.existsSync(file)) continue;
     const match = removeAllowedV1Literals(rel, fs.readFileSync(file, "utf8")).match(
@@ -1054,6 +1092,8 @@ test("[structural, not runtime] WP-09: off-peak domain fully removed from source
     // DB DDL 兼容：存量 tasks-index.sqlite 已有 off_peak_tasks 表与投影列，建库语句原样保留。
     "packages/services/src/session/tasksDatabase/schema-v1.ts",
     "packages/services/src/session/tasksDatabase/migrations.ts",
+    // 台账按路径登记已裁剪的上游目录（OZ-D002），必须写出目录原名。
+    "docs/openzwork/ledger.yaml",
   ]);
   // 导入器需要拒绝旧服务；仅放行完整过滤行，同文件其他残留继续报错。
   const capabilityImporter = "scripts/model-capability-rules.mjs";
@@ -1082,6 +1122,7 @@ test("[structural, not runtime] WP-09: off-peak domain fully removed from source
     if (
       !scanExtensions.test(rel) ||
       allowFiles.has(rel) ||
+      pristineUpstreamDocs().has(rel) ||
       rel === "tests/private-cleanup/cleanup.test.cjs"
     )
       continue;
@@ -1121,7 +1162,7 @@ test("[structural, not runtime] re-clean gate: highspeed card chain / request-se
     .filter(Boolean);
   for (const rel of tracked) {
     if (rel === "tests/private-cleanup/cleanup.test.cjs") continue; // 本文件的 pattern 与注释自含禁词
-    if (isVendoredDoc(rel)) continue;
+    if (isVendoredDoc(rel) || pristineUpstreamDocs().has(rel)) continue;
     if (bannedPath.test(rel)) {
       violations.push(`path ${rel}`);
       continue;
@@ -1144,7 +1185,7 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
   // 自动入列，且与 CI 新检出看到的是同一份"全仓"（工作树的 node_modules/dist/未纳管
   // 私目录不会混入）。模式只匹配用户级旧根字面量：~/、$HOME/ 前缀，项目级 <cwd>/.zcode
   // 属用户仓库工作区天然不命中；(?![\w-]) 排除恰好以 .zcode 开头的其他目录名
-  // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/spec/identity-and-data-isolation.md。
+  // （如开发沙箱 .zcode-dev-home）。豁免登记见 docs/specs/identity-and-data-isolation-openzwork.md。
   const bannedPattern = /(?:~|\$HOME)\/\.zcode(?![\w-])/;
   // 2026-11-07 补强：仅匹配 ~/$HOME 前缀文本抓不到 join(home, ".zcode") 代码形态，
   // 个性化指令路径与 data-sync 三处用户级错根由此漏网。新增两类模式：
@@ -1157,8 +1198,8 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     "packages/ui/src/i18n/locales/zh-CN.ts",
     "packages/ui/src/i18n/locales/en-US.ts",
     // 政策文本以旧根定义隔离边界；installer 注释引用被替换的旧默认值作为修复依据。
-    "docs/spec/identity-and-data-isolation.md",
-    "docs/spec/memory-migration.md",
+    "docs/specs/identity-and-data-isolation-openzwork.md",
+    "docs/specs/memory-migration-openzwork.md",
     "scripts/zcode-distribution/installer.mjs",
     // restore-legacy-sessions 插件按产品定义读取旧根做用户显式的历史会话恢复（豁免登记见 spec）。
     "apps/zcode-cli/packages/restore-legacy-sessions-plugin/skills/restore-legacy-sessions/scripts/restore-conversation.mjs",
@@ -1178,7 +1219,7 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     .filter(Boolean);
   const violations = [];
   for (const rel of tracked) {
-    if (!scanExtensions.test(rel) || allowFiles.has(rel)) continue;
+    if (!scanExtensions.test(rel) || allowFiles.has(rel) || pristineUpstreamDocs().has(rel)) continue;
     const file = path.join(root, rel);
     // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。
     if (!fs.existsSync(file)) continue;

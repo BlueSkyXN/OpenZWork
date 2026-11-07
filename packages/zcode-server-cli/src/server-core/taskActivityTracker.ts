@@ -77,9 +77,7 @@ export function createTaskActivityTracker(
     }
     removeWorkspace(key);
     const activeSessionIds = new Set<string>();
-    const telemetry = source?.onDynamicConversationTelemetryFact(event)((fact) =>
-      acceptFact(key, fact),
-    );
+    const telemetry = source?.onDynamicConversationTelemetryFact(event)((fact) => acceptFact(key, fact));
     if (!telemetry) return;
     workspaces.set(key, {
       activeSessionIds,

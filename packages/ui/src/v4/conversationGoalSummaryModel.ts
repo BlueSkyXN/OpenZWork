@@ -37,7 +37,9 @@ function requiredIterationCount(goal: GoalState): number {
     goal.status === "active" ||
     goal.status === "notSatisfied" ||
     (goal.status === "paused" && latestVerification?.outcome === "notSatisfied");
-  const statusIteration = continuationIsOpen ? goal.iteration + 1 : Math.max(1, goal.iteration);
+  const statusIteration = continuationIsOpen
+    ? goal.iteration + 1
+    : Math.max(1, goal.iteration);
   return Math.max(1, statusIteration, maxTodoIteration, maxVerificationIteration);
 }
 
@@ -61,7 +63,7 @@ export function buildConversationGoalIterationSummaries(
       iteration,
       title:
         iteration === 1
-          ? goal.summaryTitle?.trim() || goal.objective.trim() || null
+          ? (goal.summaryTitle?.trim() || goal.objective.trim() || null)
           : visibleNextAction(previousVerification?.nextAction),
       items,
       completedCount,

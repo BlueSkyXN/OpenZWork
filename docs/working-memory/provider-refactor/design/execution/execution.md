@@ -1,5 +1,7 @@
 # Model 执行与继承
 
+> **已实现：** [闲时后台生命周期计划](../../../../off-peak-task/background-lifecycle-plan.md) 调整闲时 Session 续跑选择、后台继承与接管，并明确加速卡专属回退快照；下文描述当前执行规则。
+
 本篇规定 Submission 进入 Core 后，各类执行如何取得、保持或切换 Model。Selection 状态见
 [`../interaction/interaction.md`](../interaction/interaction.md)，Model 创建和鉴权见
 [`../registry/model-creation.md`](../registry/model-creation.md)。
@@ -16,16 +18,17 @@
 
 ## 执行分类
 
-| 执行              | Selection 来源                        | Model 生命周期      | Session Selection        |
-| ----------------- | ------------------------------------- | ------------------- | ------------------------ |
-| 普通 start-now    | 当前 Submission                       | 新 Agent Loop       | 接收时更新               |
-| 普通 Queue drain  | Queue item 保存的 Submission          | 新 Agent Loop       | 接纳时已更新，出队不覆盖 |
-| Guide / “立即”    | Guide Submission                      | 当前 Loop 后续 Step | Guide 接收时更新         |
-| Automatic Compact | 当前 Loop Active Model                | 当前 Loop           | 不更新                   |
-| 手动 Compact      | Compact Submission                    | 新 Loop             | 普通规则                 |
-| Subagent          | override > Profile > Parent Selection | Child 生命周期      | 不更新父 Session         |
-| Background        | 每轮启动时确定的 Selection            | 当前后台模型轮      | 不反向更新               |
-| Goal continuation | 续轮发生时的 Session Selection        | 每轮新的主 Loop     | 不额外保存               |
+| 执行                    | Selection 来源                        | Model 生命周期      | Session Selection |
+| ----------------------- | ------------------------------------- | ------------------- | ----------------- |
+| 普通 start-now          | 当前 Submission                       | 新 Agent Loop       | 接收时更新        |
+| 普通 Queue drain        | Queue item 保存的 Submission          | 新 Agent Loop       | 接纳时已更新，出队不覆盖 |
+| Guide / “立即”          | Guide Submission                      | 当前 Loop 后续 Step | Guide 接收时更新  |
+| Automatic Compact       | 当前 Loop Active Model                | 当前 Loop           | 不更新            |
+| 手动 Compact            | Compact Submission                    | 新 Loop             | 普通规则          |
+| Subagent                | override > Profile > Parent Selection | Child 生命周期      | 不更新父 Session  |
+| Background              | 每轮启动时确定的 Selection            | 当前后台模型轮      | 不反向更新        |
+| Goal continuation       | 续轮发生时的 Session Selection        | 每轮新的主 Loop     | 不额外保存        |
+| Off-Peak automatic turn | idle Submission 的 ModelSelection     | 整项驻留执行内的模型轮 | 临时更新，不持久化 |
 
 ## 普通 Agent Loop
 
@@ -155,6 +158,93 @@ Turn 3: 唤醒主 Agent，读取 Session Selection B
 
 Background 自身继续使用 A；完成后只触发新的主 Loop。Background Model 不反向修改 Session Selection。
 
+## 闲时任务
+
+闲时任务根据当前账号 Family 使用用户不可见但完整的 Built-in Provider：
+
+```text
+Z.ai      -> account:zai-offpeak-idle-plan
+BigModel  -> account:bigmodel-offpeak-idle-plan
+```
+
+两个 Provider 拥有各自固定的 Endpoint、Access 与模型成员，不在执行期互相切换：
+
+```text
+Host / Scheduler
+├─ prompt / mode
+├─ idle ModelSelection
+├─ Request Auth
+├─ Off-Peak Ticket / attribution
+└─ optional Subagent override = idle Selection
+             |
+             v
+       Core Submission
+             |
+             v
+   Registry / ModelFactory
+             |
+             v
+      Idle Active Model
+```
+
+Provider 的 Visibility、Access、Endpoint、models 和 Model Config 都来自正常 Config/Rules。Host 只提供
+本次有效派发的动态 Request Auth、Ticket 和归因，不提供完整 Provider/Model Config。
+
+### Session 状态
+
+闲时执行将 Session Selection 临时设为闲时选择，供所属后台工作续跑；普通选择仍作为持久化值保留，不改 App Recent、Configured Default 或 CLI Default。
+
+```text
+用户 Session = U → 闲时执行 Session = I
+                    ├─ 整项完成且未接管 → 恢复 U
+                    └─ 用户消息被接纳 → Session = 用户提交选择 V
+                                         └─ 以后恢复/唤起使用 V
+```
+
+已经启动的闲时子轮持有自己的模型与票据直到该轮结束。旧控制器只保留幂等回执，不覆盖后续用户选择。
+
+### Busy 与 Queue
+
+闲时派发只在当前 Session 能 start-now 时接收。遇到 busy race 返回类型化 admission rejection，由
+Scheduler 稍后重新派发；Request Auth/Ticket 不进入普通 Queue、Guide、held queue 或 replayable pending
+input。
+
+运行中用户补发的普通 Submission 被 CLI 接纳后接管整项任务，并进入唯一 CLI Queue。队列项使用自己保存的 Selection 执行，不继承 idle Access、Ticket 或 attribution；后续后台恢复/唤起读取最新用户选择。等待新票的主轮按既有接管路径恢复，持有效旧票的已启动子轮可先跑完。
+
+### Automatic Compact
+
+闲时 Automatic Compact 直接使用 Idle Active Model 和当前有效 Request Auth/Ticket，不读取 Session
+Selection，也不接收 Turn Runtime Model 快照。
+
+### Foreground Subagent
+
+闲时 Submission 的通用 Subagent override 把允许的 Foreground Child 固定到 idle Selection。每个 Child
+仍通过 Registry/ModelFactory 创建自己的 Model，并使用当前闲时执行的 Request Auth/Ticket context。
+Explore、general-purpose 和 custom Profile 中其他 Provider/model override 均被本轮 Core override 压过。
+
+后台 Child 与前台 Child 均可启动，并继承闲时选择和独立票据租约；SendMessage 和后台 Bash 沿用普通工具与通知机制。主轮结束后只要还有后台工作或待处理通知，整项任务就继续驻留。
+
+### Permission / elicitation
+
+保持 D44：
+
+```text
+Idle Turn
+└─ permission / elicitation requested
+       ├─ 普通 Session 展示并收集响应
+       ├─ Off-Peak task 保持 running
+       └─ approve / deny / skip
+              └─ 同一个 Turn 继续，仍使用 Idle Model
+```
+
+不增加 `awaiting_approval` 闲时状态，不在 approve 后切用户 Provider，不建立 mid-turn Provider handoff。
+
+### Ticket 与续跑
+
+Ticket 过期时已有执行等待换票，Scheduler 使用 executionId + renewalId + ticketId 幂等交接新票；不重发原始任务、不重跑 Bash。仅未交付内容的模型请求可以续试。票据释放与整项完成分开；主轮、后台工作、待处理通知/输入、换票及模型租约均耗尽才完成。
+
+用户接管后不再申请闲时票，已启动且持有效票的子轮可以结束；后续轮使用用户选择。重启不恢复后台进程和通知。Ticket、排队与 settle 属于 Off-Peak 领域，不进入 Registry。
+
 ## 独立模型任务
 
 Title、Repo Wiki、Memory、WebFetch/WebSearch 和其他一次性模型任务都应显式接收 ModelSelection 或
@@ -169,6 +259,7 @@ Model，不读取全局可变 Runtime Model。它们根据自己的产品语义�
 ## 归因
 
 每次 ModelRequest 的 Usage、Trace 和错误归因到实际 `providerId + modelId`。Compact、Subagent、Goal、
+Background、Off-Peak taskId 和 request source 是额外执行维度，不替代 Model 身份。已经发出的请求不能
 在事后归因到新的 Active Model。
 
 ## 不变量

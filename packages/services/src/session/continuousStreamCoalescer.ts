@@ -34,18 +34,14 @@ interface ContinuousStreamCoalescer {
   dispose(): void;
 }
 
-function isContinuousCoalescibleChunk(
-  event: ZCodeStreamEvent,
-): event is ContinuousCoalescibleChunk {
+function isContinuousCoalescibleChunk(event: ZCodeStreamEvent): event is ContinuousCoalescibleChunk {
   return (
     event.type === "agent_thought_chunk" ||
     (event.type === "agent_message_chunk" && !event.zcodeTimeline)
   );
 }
 
-function isContinuousCoalescibleState(
-  event: ZCodeStreamEvent,
-): event is ContinuousCoalescibleState {
+function isContinuousCoalescibleState(event: ZCodeStreamEvent): event is ContinuousCoalescibleState {
   if (event.type === "usage_update") {
     return true;
   }
@@ -70,12 +66,16 @@ function getContinuousChunkMergeKey(event: ContinuousCoalescibleChunk): string {
     event.taskId,
     event.traceId,
     normalizeChunkParentToolUseId(event),
-    event.type === "agent_message_chunk" ? (event.messageId ?? "") : "",
+    event.type === "agent_message_chunk" ? event.messageId ?? "" : "",
   ].join(CONTINUOUS_CHUNK_KEY_SEPARATOR);
 }
 
 function getContinuousStateMergeKey(event: ContinuousCoalescibleState): string {
-  return [event.type, event.taskId, event.traceId].join(CONTINUOUS_CHUNK_KEY_SEPARATOR);
+  return [
+    event.type,
+    event.taskId,
+    event.traceId,
+  ].join(CONTINUOUS_CHUNK_KEY_SEPARATOR);
 }
 
 function mergeContinuousChunks(

@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Clock3, Trash2 } from "lucide-react";
-import type { BotConfig, BotReplyGranularity, BotServiceStatus } from "@zcode/shared";
+import type {
+  BotConfig,
+  BotReplyGranularity,
+  BotServiceStatus,
+} from "@zcode/shared";
 import { Button } from "@/components/ui/button.js";
 import {
   Select,
@@ -11,7 +15,10 @@ import {
 } from "@/components/ui/select.js";
 import { Switch } from "@/components/ui/switch.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
+import {
+  SettingsGroupCard,
+  SettingsRow,
+} from "@/settings/SettingsPageParts.js";
 import {
   getBotReplyGranularitiesForProvider,
   getBotReplyGranularityEntryForProvider,
@@ -78,7 +85,9 @@ export function BotSummaryCard({
       return undefined;
     }
     const updateWidth = () => {
-      setNameEditorWidth(Math.ceil(measureButton.getBoundingClientRect().width));
+      setNameEditorWidth(
+        Math.ceil(measureButton.getBoundingClientRect().width),
+      );
     };
     updateWidth();
     const resizeObserver = new ResizeObserver(updateWidth);
@@ -91,9 +100,13 @@ export function BotSummaryCard({
       {renaming ? (
         <label
           className="relative inline-block min-w-6 max-w-md align-middle"
-          style={nameEditorWidth ? { width: `${nameEditorWidth}px` } : undefined}
+          style={
+            nameEditorWidth ? { width: `${nameEditorWidth}px` } : undefined
+          }
         >
-          <span className="sr-only">{intl.formatMessage({ id: "bots.name" })}</span>
+          <span className="sr-only">
+            {intl.formatMessage({ id: "bots.name" })}
+          </span>
           <button
             ref={nameMeasureButtonRef}
             type="button"
@@ -138,7 +151,12 @@ export function BotSummaryCard({
   const botIdentityDescription = (
     <span className="inline-flex items-center gap-2 text-foreground-subtle">
       {isBound || runtime?.status === "error" ? (
-        <span className={cn("size-1.5 rounded-full", runtimeDot(runtime, bot.enabled))} />
+        <span
+          className={cn(
+            "size-1.5 rounded-full",
+            runtimeDot(runtime, bot.enabled),
+          )}
+        />
       ) : (
         <Clock3 className="size-3 text-foreground-subtle" />
       )}
@@ -148,13 +166,19 @@ export function BotSummaryCard({
 
   return (
     <div className="flex items-center gap-3 pb-2 px-2">
-      <ProviderIcon provider={bot.provider} className="size-12 shrink-0 text-foreground-subtle" />
+      <ProviderIcon
+        provider={bot.provider}
+        className="size-12 shrink-0 text-foreground-subtle"
+      />
       <div className="min-w-0 flex-1 space-y-1">
         {botNameControl}
         {botIdentityDescription}
       </div>
       <div className="shrink-0">
-        <Switch checked={bot.enabled} onCheckedChange={(enabled) => onPatchBot({ enabled })} />
+        <Switch
+          checked={bot.enabled}
+          onCheckedChange={(enabled) => onPatchBot({ enabled })}
+        />
       </div>
     </div>
   );
@@ -169,7 +193,10 @@ export function BotReplyGranularityCard({
 }) {
   const { intl } = useZCodeIntl();
   const replyGranularities = getBotReplyGranularitiesForProvider(bot.provider);
-  const selectedGranularity = getBotReplyGranularityEntryForProvider(bot.provider, bot.replyMode);
+  const selectedGranularity = getBotReplyGranularityEntryForProvider(
+    bot.provider,
+    bot.replyMode,
+  );
 
   return (
     <SettingsRow
@@ -180,7 +207,9 @@ export function BotReplyGranularityCard({
       control={
         <Select
           value={selectedGranularity.id}
-          onValueChange={(replyMode) => onPatchBot({ replyMode: replyMode as BotReplyGranularity })}
+          onValueChange={(replyMode) =>
+            onPatchBot({ replyMode: replyMode as BotReplyGranularity })
+          }
         >
           <SelectTrigger size="lg" className="w-48 justify-between">
             <SelectValue />

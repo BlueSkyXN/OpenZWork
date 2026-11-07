@@ -19,7 +19,7 @@
 ## 当前 Issue
 
 - [桌面本地消息 TTFT 分阶段遥测](../monitoring/ttft-stage-telemetry.md)
-<!-- relay-v2 工单（手机 OAuth/JWT 登录配对）属净化域，docs/issues/web-remote-control-relay-v2/ 已随净化删除，不恢复此索引行 -->
+- [Web 远控接入 Relay V2：手机登录后连接桌面](../issues/web-remote-control-relay-v2/01-relay-v2-login-pairing.md)
 - [数据同步：把本机配置推送到远端设备](../remote/data-sync.md)
   - 实施票 [01](../issues/data-sync/01-harden-user-config-writers.md)～[16](../issues/data-sync/16-migration-entry.md)，编号按依赖先后排列；01、02、03 可立即开始，04 是首条 Tracer（依赖 01、03），其余每张票写明其阻塞项
   - 后续修订 [19](../issues/data-sync/19-scope-menu-project-submenu.md)：Scope 菜单的项目收进各设备的子菜单

@@ -25,10 +25,11 @@
 
 ### UI Surface Matrix
 
-| 场景 / UI 入口                 | 共享实现 / 显示 owner               | 校验与提交                     | authority / 落点          | 模式与隔离                                  |
-| ------------------------------ | ----------------------------------- | ------------------------------ | ------------------------- | ------------------------------------------- |
-| 侧栏头像 / useRootOAuthEffects | OAuth cached session / Root user    | 原有鉴权确认后才重登           | OAuthService / oauth:\*   | 保留身份、无新增 UI 状态                    |
-| 用量与模型请求                 | Account request auth / Token client | 请求前换证，不重放已建立模型流 | Host runtime / 内存 Token | 个人/团队命名空间隔离；远程继续原 authority |
+| 场景 / UI 入口                      | 共享实现 / 显示 owner                   | 校验与提交                      | authority / 落点                    | 模式与隔离                                  |
+| ----------------------------------- | --------------------------------------- | ------------------------------- | ----------------------------------- | ------------------------------------------- |
+| 设置套餐连接 / ModelProviderSection | Account Provider → ProviderSettingsView | 请求期 Token 解析，位置异常重建 | Host Token owner / credentials.json | 桌面、shared-host；不能退出有效登录         |
+| 侧栏头像 / useRootOAuthEffects      | OAuth cached session / Root user        | 原有鉴权确认后才重登            | OAuthService / oauth:\*             | 保留身份、无新增 UI 状态                    |
+| 用量与模型请求                      | Account request auth / Token client     | 请求前换证，不重放已建立模型流  | Host runtime / 内存 Token           | 个人/团队命名空间隔离；远程继续原 authority |
 
 ### Shared And Divergent Behavior
 

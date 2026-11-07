@@ -16,7 +16,11 @@ export interface WebRemoteControlRelayProtocolOptions {
   maxBufferedFrames?: number;
   bufferedFrameTimeoutMs?: number | null;
   onBufferedFrameTimeout?(count: number): void;
-  onFrameGap?(gap: { bridgeSessionId: string; seq: number; expectedSeq: number }): void;
+  onFrameGap?(gap: {
+    bridgeSessionId: string;
+    seq: number;
+    expectedSeq: number;
+  }): void;
 }
 
 export interface WebRemoteControlRelayProtocolAdapter {

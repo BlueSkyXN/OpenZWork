@@ -4,14 +4,14 @@
 
 **Goal:** Add explicit SSH remote sync for user-level inline plugins.
 
-**Architecture:** Add a restricted `IPluginSyncService` parallel to skill/MCP sync. Local base services enumerate/export user inline plugins; remote workspace services status/import the archive into remote `~/.openzwork/plugins` and remote user config.
+**Architecture:** Add a restricted `IPluginSyncService` parallel to skill/MCP sync. Local base services enumerate/export user inline plugins; remote workspace services status/import the archive into remote `~/.zcode/plugins` and remote user config.
 
 **Tech Stack:** TypeScript, Vitest, React settings UI, existing RPC service descriptors, existing remote service collection.
 
 ## Global Constraints
 
 - Spec before code lives at `docs/superpowers/specs/2026-07-06-remote-plugin-sync-design.md`.
-- V1 only supports user-level inline plugins from `~/.openzwork/cli/config.json.plugins.dirs`.
+- V1 only supports user-level inline plugins from `~/.zcode/cli/config.json.plugins.dirs`.
 - Do not sync marketplace/cache/builtin plugins, plugin data, or plugin options.
 - Do not overwrite existing remote plugins.
 - UI changes must follow `DESIGN.md`, support i18n, desktop, web, light and dark themes.
@@ -22,7 +22,6 @@
 ### Task 1: Shared Types And Service Tests
 
 **Files:**
-
 - Create: `packages/shared/src/plugin-sync.ts`
 - Modify: `packages/shared/src/index.ts`
 - Modify: `packages/shared/src/channels.ts`
@@ -30,7 +29,6 @@
 - Create: `packages/services/test/pluginSyncService.test.ts`
 
 **Interfaces:**
-
 - Produces: `PluginSyncCandidate`, `PluginSyncRemoteStatus`, `PluginSyncArchiveExportResult`, `PluginSyncImportResult`.
 - Produces: `IPluginSyncService` with `listLocalUserPluginCandidates`, `listRemoteUserPluginStatuses`, `exportPluginsArchive`, `importPluginsArchive`.
 
@@ -40,7 +38,6 @@
 ### Task 2: Plugin Sync Service
 
 **Files:**
-
 - Create: `packages/services/src/plugin-sync/pluginSyncArchive.ts`
 - Create: `packages/services/src/plugin-sync/pluginSyncPath.ts`
 - Create: `packages/services/src/plugin-sync/pluginSyncService.ts`
@@ -49,11 +46,10 @@
 - Modify: `packages/services/src/accessor.ts`
 
 **Interfaces:**
-
 - Consumes: types and descriptor from Task 1.
 - Produces: `createPluginSyncService(options?: { maxArchiveBytes?: number }): IPluginSyncService`.
 
-- [ ] Implement config reading/writing for `~/.openzwork/cli/config.json`.
+- [ ] Implement config reading/writing for `~/.zcode/cli/config.json`.
 - [ ] Implement manifest discovery for `.zcode-plugin`, `.claude-plugin`, `.codex-plugin`.
 - [ ] Implement safe archive create/extract with size limits.
 - [ ] Implement remote import with no-overwrite conflict checks.
@@ -62,7 +58,6 @@
 ### Task 3: Remote Service Wiring
 
 **Files:**
-
 - Modify: `packages/desktop/src/host/remoteConnectionServiceCollection.ts`
 - Modify: `packages/desktop/src/host/remoteWorkspaceServiceCollection.ts`
 - Modify: `packages/desktop/src/renderer/src/remoteWorkspaceSessionServices.ts`
@@ -72,7 +67,6 @@
 - Modify: `packages/server/test/remoteDeploy.test.ts`
 
 **Interfaces:**
-
 - Consumes: `pluginSyncService` on `IServiceAccessor`.
 - Produces: remote service collections that expose the remote `pluginSyncService`.
 
@@ -83,7 +77,6 @@
 ### Task 4: UI Dialog And Entry Points
 
 **Files:**
-
 - Create: `packages/ui/src/settings/RemotePluginSyncDialog.tsx`
 - Modify: `packages/ui/src/settings/RemoteSyncActions.tsx`
 - Modify: `packages/ui/src/settings/PluginsSection.tsx`
@@ -94,7 +87,6 @@
 - Create/Modify: UI tests for remote plugin sync and remote sync actions.
 
 **Interfaces:**
-
 - Consumes: `IPluginSyncService`.
 - Produces: SSH-only “sync plugin” action and dialog.
 
@@ -106,7 +98,6 @@
 ### Task 5: Verification And Commit
 
 **Files:**
-
 - All touched files.
 
 - [ ] Run targeted service/UI/desktop/server tests.

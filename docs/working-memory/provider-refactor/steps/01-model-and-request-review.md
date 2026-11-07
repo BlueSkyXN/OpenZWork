@@ -142,6 +142,8 @@ Guide 内联当前 Turn
 
 ## P2：动态 Header 刷新仍会重新取得完整 Provider 对象
 
+Start Plan 等 Provider 需要在每个物理请求前刷新一次性 Header。当前 Adapter 在刷新后重新从 Registry resolve 同一个 `providerId/modelId`，并只检查模型身份没有改变：
+
 ```text
 已绑定 Model A
     |
@@ -183,14 +185,14 @@ Usage、Trace 和消息持久化已经使用实际执行 Model 归因。当前�
 
 如果把严重度按当前证据排列：
 
-| 等级 | 结论                              | 影响                                              |
-| ---- | --------------------------------- | ------------------------------------------------- |
-| P0   | 未发现                            | 没有大范围不可用、数据破坏或安全事故证据          |
-| P1   | Workflow Child 未使用正式 Factory | 可能在同一 Workflow Loop 中混入更新后的连接或配置 |
-| P1   | 未知 Property 被硬化为 `false`    | 可能拒绝实际可工作的自定义图片/PDF模型            |
-| P2   | Guide 继续使用当前 Loop Model     | 产品语义未裁决，影响局部交互                      |
-| P2   | 动态 Header 刷新重取完整 Provider | 继承风险，影响特殊 Plan Provider 的不可变性       |
-| P2   | 兼容入口与旧依赖仍可进入生产装配  | 收口不彻底，增加后续迁移风险                      |
+| 等级 | 结论 | 影响 |
+| --- | --- | --- |
+| P0 | 未发现 | 没有大范围不可用、数据破坏或安全事故证据 |
+| P1 | Workflow Child 未使用正式 Factory | 可能在同一 Workflow Loop 中混入更新后的连接或配置 |
+| P1 | 未知 Property 被硬化为 `false` | 可能拒绝实际可工作的自定义图片/PDF模型 |
+| P2 | Guide 继续使用当前 Loop Model | 产品语义未裁决，影响局部交互 |
+| P2 | 动态 Header 刷新重取完整 Provider | 继承风险，影响特殊 Plan Provider 的不可变性 |
+| P2 | 兼容入口与旧依赖仍可进入生产装配 | 收口不彻底，增加后续迁移风险 |
 
 ## 建议的 M1.1 收口顺序
 

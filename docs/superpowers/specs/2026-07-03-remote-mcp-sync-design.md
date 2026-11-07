@@ -6,14 +6,14 @@
 
 ZCode 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。MCP 的运行链路与 Skills 有相似处：本地设置页读取本机用户目录中的 MCP 配置，创建或恢复 ZCode Agent session 时把启用的 MCP 配置显式下发给 agent，agent 再在其所在运行时启动 stdio MCP 或连接 HTTP / SSE MCP。
 
-这意味着 SSH 远程 workspace 里，MCP 进程实际运行在远端 zcode-server 所在主机上。当前本地用户级 MCP 可以通过 session 参数临时传给远端 runtime，但远端用户目录并不会持久化这批 MCP 配置。用户在远端主机上重新打开 workspace、手机端通过 shared-host 进入同一远端 workspace、或远端 runtime 自行读取配置时，仍然缺少远端 `~/.openzwork/cli/config.json` 中的用户级 MCP 配置。
+这意味着 SSH 远程 workspace 里，MCP 进程实际运行在远端 zcode-server 所在主机上。当前本地用户级 MCP 可以通过 session 参数临时传给远端 runtime，但远端用户目录并不会持久化这批 MCP 配置。用户在远端主机上重新打开 workspace、手机端通过 shared-host 进入同一远端 workspace、或远端 runtime 自行读取配置时，仍然缺少远端 `~/.zcode/cli/config.json` 中的用户级 MCP 配置。
 
 ## 目标
 
-- 允许用户在已连接 SSH 远程 workspace 中，把本机用户级 ZCode Agent MCP 配置同步到该 SSH 主机的远端用户级 `~/.openzwork/cli/config.json`。
+- 允许用户在已连接 SSH 远程 workspace 中，把本机用户级 ZCode Agent MCP 配置同步到该 SSH 主机的远端用户级 `~/.zcode/cli/config.json`。
 - 本机候选只包含用户级 MCP，不包含 workspace 级 MCP、plugin MCP、系统内置 MCP 或外部 Agent 原始来源。
-- 候选发现语义与本地 MCP 设置保持一致：优先读取 `~/.openzwork/cli/config.json` 的 `mcp.servers`；当该 scope 下没有 ZCode MCP server 时，兼容读取 `~/.agents/mcp.json` 的 `mcpServers`。
-- 远端导入写入 `~/.openzwork/cli/config.json` 的 `mcp.servers`，不写 `.agents`。
+- 候选发现语义与本地 MCP 设置保持一致：优先读取 `~/.zcode/cli/config.json` 的 `mcp.servers`；当该 scope 下没有 ZCode MCP server 时，兼容读取 `~/.agents/mcp.json` 的 `mcpServers`。
+- 远端导入写入 `~/.zcode/cli/config.json` 的 `mcp.servers`，不写 `.agents`。
 - 远端已存在同名 MCP 时默认跳过，不覆盖。
 - stdio / context7 这类命令型 MCP 可直接复制配置；不检查远端是否已经安装命令、包管理器或依赖。
 - HTTP / SSE MCP 直接复制 URL、headers、token 等 secret 字段，允许 secret 写入远端配置文件。
@@ -50,7 +50,7 @@ ZCode 当前已经支持把本地用户级 Skills 同步到 SSH 远端主机。M
 - `IMcpSyncService.listLocalUserMcpCandidates()`：在调用方所在机器列出用户级 MCP 候选。renderer 通过 base services 调用时读取本机用户目录；通过 remote services 调用时读取远端用户目录。
 - `IMcpSyncService.listRemoteUserMcpStatuses({ names })`：在远端查询同名 server 是否已存在。
 - `IMcpSyncService.exportMcpServers({ serverIds })`：本机按候选 id 导出 MCP 配置 DTO，并带上本机 home 路径用于路径改写。
-- `IMcpSyncService.importMcpServers({ servers, localHomeDir, remoteWorkspacePath, localWorkspacePath?, overwrite: false })`：远端写入 `~/.openzwork/cli/config.json`，同名存在时跳过；filesystem MCP 在写入前执行路径改写。
+- `IMcpSyncService.importMcpServers({ servers, localHomeDir, remoteWorkspacePath, localWorkspacePath?, overwrite: false })`：远端写入 `~/.zcode/cli/config.json`，同名存在时跳过；filesystem MCP 在写入前执行路径改写。
 
 服务需要像 skill-sync 一样注册到本地 host 和远端 zcode-server service collection。桌面 renderer 合并 remote workspace services 时，`mcpSyncService` 必须覆盖为 remote service；否则导入会写回本机用户目录。
 
@@ -199,7 +199,7 @@ filesystem MCP 识别规则：
 ## 测试与验证
 
 - 单元测试：
-  - 候选列表读取本机 `~/.openzwork/cli/config.json` 用户级 `mcp.servers`。
+  - 候选列表读取本机 `~/.zcode/cli/config.json` 用户级 `mcp.servers`。
   - `.zcode` 用户级没有 server 时读取 `~/.agents/mcp.json` 的 `mcpServers` fallback。
   - 导入 HTTP MCP 时保留 URL、headers 和 secret。
   - 导入 context7 / stdio MCP 时直接复制 command / args / env。

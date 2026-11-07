@@ -1,0 +1,77 @@
+# diff 与识别经验。规则见 ../references/knowledge/GUIDE.md；由 tests/ci/openzwork-maintenance.test.mjs 校验。
+version: 1
+kind: diff
+entries:
+  - id: OZK-DIF-001
+    title: 上游按整版快照发布
+    when: 判断上游这一版改了什么。
+    do: 用 git merge-base HEAD <上游提交> 得到基准，用 git diff <基准> <上游提交> 看整版增量；上游没有细粒度提交，不能按功能 cherry-pick。
+    why: 本机镜像仓中，上游每个版本只有一个 sync 提交；合入时使用双亲 merge，因此基准始终在本仓历史里。
+    evidence:
+      - docs/openzwork/upstream/v3.17.2-integration.md
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-DIF-002
+    title: 预演合并要基于当前 origin/main
+    when: 评估合入上游新版本的冲突。
+    do: 执行 pnpm openzwork:scan --upstream <上游提交>，或 git merge-tree --write-tree --name-only --no-messages origin/main <上游提交>。
+    why: v3.17.2 的初版评估基于旧分支，冲突判断与实际不符；对当前 main 预演才得到 33 个冲突文件。
+    evidence:
+      - PR #65
+    since: 2026-11-05
+    checked: 3.17.2
+    status: active
+  - id: OZK-DIF-003
+    title: 格式差异要逐字节判定
+    when: 判断一个上游文件是否只差格式化。
+    do: 用 oxfmt 格式化上游原文后与当前文件逐字节比较（pnpm openzwork:scan --format）；不用去空白、去引号之类的归一化比较。
+    why: 归一化比较会把 Markdown 重编号、转义、标题样式等格式化误判为实质修改。
+    evidence:
+      - .agents/skills/openzwork-maintenance/scripts/scan.mjs
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-DIF-004
+    title: 我方已删的文件也要读上游改动
+    when: 合并出现我方已删除、上游修改的冲突。
+    do: 保持删除，但先读上游的改动；属于保留域的修复移植到我方对应的存活文件。
+    why: v3.17.1 整合的冲突解决规则第 1 条。
+    evidence:
+      - docs/openzwork/upstream/v3.17.1-integration.md
+    since: 2026-10-31
+    checked: 3.17.2
+    status: active
+  - id: OZK-DIF-005
+    title: 双方都改的文件以上游为底
+    when: 合并出现双方都修改的冲突。
+    do: 以上游新版本为底，重放我方语义：.openzwork 用户级根、官方端点与鉴权与遥测的剥离、OpenZWork 接线、OW-P 标记与回归；不整份采用任一侧。
+    why: v3.17.1 整合的冲突解决规则第 2 条；整份取我方会丢掉上游修复，整份取上游会丢掉我方改动。
+    evidence:
+      - docs/openzwork/upstream/v3.17.1-integration.md
+    since: 2026-10-31
+    checked: 3.17.2
+    status: active
+  - id: OZK-DIF-006
+    title: 上游已有目录不放 OpenZWork 文件
+    when: 新建 OpenZWork 文档。
+    do: 维护文档放 docs/openzwork/；产品 spec 放 docs/specs/ 并加 -openzwork 后缀；不放进上游已有的同名目录。
+    why: docs/upstream/ 是上游记录依赖问题的目录，曾混入 OpenZWork 的补丁登记表，按目录无法分辨来源。
+    evidence:
+      - docs/upstream/mcp-sdk-probe-malformed-response-issue.md
+      - docs/openzwork/maintenance-model.md
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-DIF-007
+    title: PR 改动的文件不能直接算作功能归属
+    when: 用 PR 的改动推断一个功能涉及哪些文件。
+    do: 按功能关键词过滤，排除上游同步 PR 和多功能 PR 中的无关文件，并在台账 source 中写明来源 PR。
+    why: PR #17 是上游同步，带入一百多个与引导偏好无关的文件；PR #38 同时包含两个功能。
+    evidence:
+      - PR #17
+      - PR #38
+      - docs/openzwork/ledger.yaml
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active

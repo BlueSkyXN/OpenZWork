@@ -16,14 +16,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function formatSelectionCommand(selection: SelectionPrompt, optionId: string): string {
+function formatSelectionCommand(
+  selection: SelectionPrompt,
+  optionId: string,
+): string {
   if (selection.action === "permission.respond") {
     return optionId;
   }
   if (selection.action === "elicitation.respond") {
-    return selection.token
-      ? `/elicitation ${selection.token} ${optionId}`
-      : `/elicitation ${optionId}`;
+    return selection.token ? `/elicitation ${selection.token} ${optionId}` : `/elicitation ${optionId}`;
   }
   if (selection.action === "model.provider.set") {
     return `/model provider ${optionId}`;
@@ -50,17 +51,30 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function parseWebhookAttachment(value: unknown, index: number): BotInboundAttachment | null {
+function parseWebhookAttachment(
+  value: unknown,
+  index: number,
+): BotInboundAttachment | null {
   if (!isRecord(value)) {
     return null;
   }
   const kind = value.kind;
-  if (kind !== "image" && kind !== "audio" && kind !== "video" && kind !== "file") {
+  if (
+    kind !== "image" &&
+    kind !== "audio" &&
+    kind !== "video" &&
+    kind !== "file"
+  ) {
     return null;
   }
-  const id = typeof value.id === "string" && value.id.trim() ? value.id : `webhook-${index + 1}`;
+  const id =
+    typeof value.id === "string" && value.id.trim()
+      ? value.id
+      : `webhook-${index + 1}`;
   const filename =
-    typeof value.filename === "string" && value.filename.trim() ? value.filename : `${id}.${kind}`;
+    typeof value.filename === "string" && value.filename.trim()
+      ? value.filename
+      : `${id}.${kind}`;
   const mimeType =
     typeof value.mimeType === "string" && value.mimeType.trim()
       ? value.mimeType
@@ -70,19 +84,34 @@ function parseWebhookAttachment(value: unknown, index: number): BotInboundAttach
     kind,
     filename,
     mimeType,
-    ...(typeof value.sizeBytes === "number" ? { sizeBytes: value.sizeBytes } : {}),
-    ...(typeof value.providerFileId === "string" ? { providerFileId: value.providerFileId } : {}),
-    ...(typeof value.downloadUrl === "string" ? { downloadUrl: value.downloadUrl } : {}),
-    ...(typeof value.dataBase64 === "string" ? { dataBase64: value.dataBase64 } : {}),
-    ...(typeof value.localPath === "string" ? { localPath: value.localPath } : {}),
+    ...(typeof value.sizeBytes === "number"
+      ? { sizeBytes: value.sizeBytes }
+      : {}),
+    ...(typeof value.providerFileId === "string"
+      ? { providerFileId: value.providerFileId }
+      : {}),
+    ...(typeof value.downloadUrl === "string"
+      ? { downloadUrl: value.downloadUrl }
+      : {}),
+    ...(typeof value.dataBase64 === "string"
+      ? { dataBase64: value.dataBase64 }
+      : {}),
+    ...(typeof value.localPath === "string"
+      ? { localPath: value.localPath }
+      : {}),
   };
 }
 
-function parseWebhookAttachments(payload: Record<string, unknown>): BotInboundAttachment[] {
+function parseWebhookAttachments(
+  payload: Record<string, unknown>,
+): BotInboundAttachment[] {
   return Array.isArray(payload.attachments)
     ? payload.attachments
         .map((attachment, index) => parseWebhookAttachment(attachment, index))
-        .filter((attachment): attachment is BotInboundAttachment => attachment !== null)
+        .filter(
+          (attachment): attachment is BotInboundAttachment =>
+            attachment !== null,
+        )
     : [];
 }
 
@@ -93,9 +122,14 @@ function parseWebhookElicitationResponse(
     return undefined;
   }
   const requestId =
-    typeof payload.requestId === "string" && payload.requestId.trim() ? payload.requestId : "";
+    typeof payload.requestId === "string" && payload.requestId.trim()
+      ? payload.requestId
+      : "";
   const action = payload.action;
-  if (!requestId || (action !== "accept" && action !== "decline" && action !== "cancel")) {
+  if (
+    !requestId ||
+    (action !== "accept" && action !== "decline" && action !== "cancel")
+  ) {
     return undefined;
   }
   return {
@@ -105,7 +139,10 @@ function parseWebhookElicitationResponse(
   };
 }
 
-async function postWebhookWithRetry(url: string, init: RequestInit): Promise<Response> {
+async function postWebhookWithRetry(
+  url: string,
+  init: RequestInit,
+): Promise<Response> {
   let lastResponse: Response | null = null;
   let lastError: unknown;
   for (const retryDelayMs of [0, 500, 1_500]) {
@@ -128,7 +165,9 @@ async function postWebhookWithRetry(url: string, init: RequestInit): Promise<Res
   throw lastError instanceof Error ? lastError : new Error(String(lastError));
 }
 
-export function createWebhookBotProvider(deps: WebhookProviderDeps): BotProviderAdapter {
+export function createWebhookBotProvider(
+  deps: WebhookProviderDeps,
+): BotProviderAdapter {
   return {
     async test(bot: BotConfig) {
       if (!bot.enabled) {
@@ -173,7 +212,9 @@ export function createWebhookBotProvider(deps: WebhookProviderDeps): BotProvider
       if (!bot.webhookUrl) {
         return;
       }
-      const secret = bot.webhookSecretRef ? await deps.loadCredential(bot.webhookSecretRef) : null;
+      const secret = bot.webhookSecretRef
+        ? await deps.loadCredential(bot.webhookSecretRef)
+        : null;
       const headers: Record<string, string> = {
         "content-type": "application/json",
       };
@@ -191,12 +232,16 @@ export function createWebhookBotProvider(deps: WebhookProviderDeps): BotProvider
           text: buildSelectionText(message),
           selection: message.selection,
           elicitation: message.elicitation,
-          ...(message.elicitation ? { type: "zcode.bot.elicitation_request" } : {}),
+          ...(message.elicitation
+            ? { type: "zcode.bot.elicitation_request" }
+            : {}),
           sentAt: Date.now(),
         }),
       });
       if (!response.ok) {
-        throw new Error(`Webhook outbound endpoint returned HTTP ${response.status}`);
+        throw new Error(
+          `Webhook outbound endpoint returned HTTP ${response.status}`,
+        );
       }
     },
 
@@ -222,9 +267,13 @@ export function createWebhookBotProvider(deps: WebhookProviderDeps): BotProvider
             provider: "webhook",
             botId,
             providerUserId: userId,
-            displayName: typeof payload.displayName === "string" ? payload.displayName : undefined,
+            displayName:
+              typeof payload.displayName === "string"
+                ? payload.displayName
+                : undefined,
             chatType: payload.chatType === "group" ? "group" : "private",
-            chatId: typeof payload.chatId === "string" ? payload.chatId : undefined,
+            chatId:
+              typeof payload.chatId === "string" ? payload.chatId : undefined,
             // Bugfix: webhook 回调也需要携带消息 id 进入通用幂等层。
             // 否则上游重试同一条消息时，Bot 会重复创建/发送任务。
             providerMessageId:

@@ -19,18 +19,18 @@
 - pnpm 固定为 `10.33.2`，与 `apps/zcode-cli/package.json` 的 `packageManager` 保持一致。
 - Electron 安装阶段通过 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 下载，避免首次安装依赖时直连 GitHub release 超时。
 - 任务入口仍调用根目录 `package.json` 中已有脚本，避免 desktop / web / agent 的启动语义分叉。
-- `dev` 任务调用 `pnpm dev:desktop:test`，并注入 `ZCODE_DATA_BASE_DIR=$HOME/.openzwork-dev-home`；实际应用数据落到 `$HOME/.openzwork-dev-home/.zcode/`。
+- `dev` 任务调用 `pnpm dev:desktop:test`，并注入 `ZCODE_DATA_BASE_DIR=$HOME/.zcode-dev-home`；实际应用数据落到 `$HOME/.zcode-dev-home/.zcode/`。
 - Dev 数据目录不会从正式环境自动复制凭据、设置、任务历史或插件状态；首次启动需要重新登录和配置。
 - `pnpm dev:desktop:test` 本身仍保持原有数据目录语义；隔离只属于 `mise run dev` 入口。
 - 生产环境桌面启动使用 `dev-desktop-prod`，不继承 `dev` 任务的数据目录变量。
-- 若 `$HOME/.openzwork/v2/setting.json` 里配置过自定义 `dataBaseDir`，它会经 `applyEarlyDataBaseDirBootstrap()` 覆盖本变量（`setDataBaseDir()` 优先级高于 env）；需要隔离时先清掉该字段。
+- 若 `$HOME/.zcode/v2/setting.json` 里配置过自定义 `dataBaseDir`，它会经 `applyEarlyDataBaseDirBootstrap()` 覆盖本变量（`setDataBaseDir()` 优先级高于 env）；需要隔离时先清掉该字段。
 - 数据目录隔离不改变 OAuth 回调协议。正式包与 Dev 仍使用 `zcode://`，因此 Dev 登录时应先退出其他 ZCode 实例，避免回调被错误进程接收。
 
 ## 与 3996dcbdb3 回滚的关系
 
 `3996dcbdb3`（revert storage-profile 系列）撤掉了源码 Desktop 按 `app.isPackaged=false`
-自动选 `$HOME/.openzwork-dev/` 的能力，也顺带撤掉了本入口的隔离。现在 storage profile 不再
-参与，mise 入口注入 `ZCODE_DATA_BASE_DIR` 是唯一的隔离手段；`$HOME/.openzwork-dev/` 属于
+自动选 `$HOME/.zcode-dev/` 的能力，也顺带撤掉了本入口的隔离。现在 storage profile 不再
+参与，mise 入口注入 `ZCODE_DATA_BASE_DIR` 是唯一的隔离手段；`$HOME/.zcode-dev/` 属于
 废弃目录，不再被任何启动路径使用。
 
 ## 验证

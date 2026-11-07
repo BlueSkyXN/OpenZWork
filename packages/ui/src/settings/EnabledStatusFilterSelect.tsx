@@ -9,7 +9,10 @@ import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 
 export type EnabledStatusFilter = "all" | "enabled" | "disabled";
 
-export function matchesEnabledStatusFilter(enabled: boolean, filter: EnabledStatusFilter): boolean {
+export function matchesEnabledStatusFilter(
+  enabled: boolean,
+  filter: EnabledStatusFilter,
+): boolean {
   if (filter === "all") {
     return true;
   }

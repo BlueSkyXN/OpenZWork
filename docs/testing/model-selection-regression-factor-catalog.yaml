@@ -68,6 +68,10 @@ dimensions:
         label: Automation 编辑
       - id: automation-run
         label: Automation 手动或定时运行
+      - id: offpeak-editor
+        label: Off-Peak 编辑
+      - id: offpeak-run
+        label: Off-Peak 调度与执行
       - id: user-subagent
         label: User Subagent
       - id: builtin-subagent
@@ -127,6 +131,8 @@ dimensions:
       - id: login
       - id: automation-save
       - id: automation-run
+      - id: offpeak-create
+      - id: offpeak-run
       - id: subagent-create
       - id: subagent-run
       - id: bot-model
@@ -177,6 +183,7 @@ dimensions:
       - id: openai-compatible
       - id: anthropic-compatible
       - id: openai-native
+      - id: offpeak-family
 
   - id: access-mode
     category: auth
@@ -186,6 +193,7 @@ dimensions:
       - id: start-plan
       - id: individual-coding-plan
       - id: team-coding-plan
+      - id: offpeak
       - id: none
 
   - id: entitlement-state
@@ -229,6 +237,7 @@ dimensions:
       - id: start-jwt
       - id: individual-jwt-signing
       - id: team-jwt-signing
+      - id: offpeak-ticket
       - id: security-verification-challenge
       - id: missing-dynamic-credentials
       - id: invalid-credentials
@@ -392,6 +401,7 @@ dimensions:
       - id: conversation-snapshot
       - id: automation-record
       - id: automation-run-snapshot
+      - id: offpeak-task-record
       - id: subagent-profile
       - id: parent-inheritance
       - id: fork-time-config
@@ -493,6 +503,7 @@ dimensions:
       - id: registry-refresh
       - id: reconnect
       - id: cli-restart
+      - id: offpeak-expired
       - id: compact-required
 
   - id: delivery-kind
@@ -545,6 +556,7 @@ dimensions:
       - id: connectivity
       - id: subagent
       - id: automation
+      - id: offpeak
 
   - id: presentation-context
     category: presentation
@@ -609,7 +621,10 @@ constraints:
         - dimension: access-mode
           in: [start-plan]
         - dimension: surface
+          in: [offpeak-editor, offpeak-run]
     decision: reject
+    effect: Off-Peak does not use Start Plan execution.
+    invariant: offpeak-start-plan-is-unsupported
     representativeCases: [MSR-OFF-002]
 
   - id: MSR-PRUNE-004
@@ -691,7 +706,13 @@ constraints:
       all:
         - dimension: surface
           in:
-            [chat-draft, chat-existing-session, automation-editor, user-subagent, builtin-subagent]
+            [
+              chat-draft,
+              chat-existing-session,
+              automation-editor,
+              user-subagent,
+              builtin-subagent,
+            ]
         - dimension: provider-source
           in: [zcode-builtin, account-builtin, personal, remote-host-mirror]
     decision: signature-class-representative
@@ -895,10 +916,12 @@ caseSeeds:
     status: accepted
     state: complete hidden Provider contains an enabled internal model
     event: ordinary picker display and internal exact creation
+    target: chat-draft + offpeak-run
     guard: visibility is separate from execution availability
     effect: absent from ordinary picker but available to permitted internal path
     assertions:
       - ordinary user cannot select it
+      - Off-Peak exact creation can validate it through Registry
     evidenceLayers: [ui, registry, runtime]
 
   - id: MSR-AUTH-001
@@ -1298,6 +1321,9 @@ caseSeeds:
 
   - id: MSR-OFF-001
     status: accepted
+    state: Off-Peak model is hidden from ordinary picker but available in internal Registry
+    event: create and execute Off-Peak task
+    target: offpeak-editor -> offpeak-run
     guard: exact hidden selection plus ticket/auth context
     effect: internal task executes without changing ordinary Recent/default/session model
     assertions:
@@ -1308,6 +1334,9 @@ caseSeeds:
 
   - id: MSR-OFF-002
     status: accepted
+    state: Off-Peak request ticket is missing, expired, or provider-mismatched
+    event: offpeak-run
+    target: offpeak-run
     guard: execution context validation
     effect: fail before provider request or enter expired state
     assertions:
@@ -1390,6 +1419,7 @@ coverageLayers:
     scope: API format, request projection, auth, history normalization, retry, usage
     preferredDimensions: [api-format, auth-profile, endpoint-state, history-shape, recovery-state]
   - id: service-integration
+    scope: automation, Subagent, Off-Peak, official MCP, workspace identity
     preferredDimensions: [surface, query-source, persistence-state, workspace-identity]
   - id: desktop-e2e
     scope: representative user-visible paths with case-local provider replay
@@ -1427,6 +1457,8 @@ generationPolicy:
 graphDrift:
   - id: GRAPH-DRIFT-001
     status: candidate
+    liveSurface: packages/ui/src/settings/OffPeakEditView.tsx
+    graphRelation: off-peak settings editor is not fully declared as a distinct UI surface
     followUp: confirm whether it should become a stable surface node
   - id: GRAPH-DRIFT-002
     status: candidate

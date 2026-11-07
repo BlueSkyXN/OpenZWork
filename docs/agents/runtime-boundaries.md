@@ -70,6 +70,6 @@ Renderer：未提交草稿 + pending optimistic overlay
 ## 运行时证据
 
 - RPC 通道使用 [LoggingChannelServer / LoggingChannelClient](../../packages/rpc/src/logging-middleware.ts) 记录频道、命令和耗时；优先利用已有日志定位调用链。
-- Agent session 轨迹在 `~/.openzwork/cli/rollout` 或 `~/.openzwork/cli/debug`，CLI 日志在 `~/.openzwork/cli/log`。
+- Agent session 轨迹在 `~/.zcode/cli/rollout` 或 `~/.zcode/cli/debug`，CLI 日志在 `~/.zcode/cli/log`。
 - 界面复现优先使用 agent-browser；失败时可直接 CDP 调试，开发默认端口为 9229，连接前核实实际监听端口。
 - 验证分别覆盖受影响的桌面本地和手机远控路径，记录 owner、事件顺序、identity 和 delivery 边界证据；必要环境缺失按根 AGENTS.md 的阻塞规则处理。

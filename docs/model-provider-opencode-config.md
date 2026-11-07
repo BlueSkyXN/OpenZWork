@@ -11,13 +11,13 @@
 
 ## 文件边界
 
-| 文件                                             | 语义                                                               |
-| ------------------------------------------------ | ------------------------------------------------------------------ |
-| `~/.openzwork/v2/config.json`                    | app 模型供应商权威源，包含 `provider` 字段（见 Provider Schema）。 |
-| `~/.openzwork/v2/model-providers.json`           | 一次性迁移来源，只读取有效旧内容，迁移后保留原文件不改。           |
-| `~/.openzwork/v2/model-providers.v2.json`        | 完全忽略，不读取、不删除、不迁移。                                 |
-| `~/.openzwork/cli/config.json`                   | standalone CLI 使用的配置文件，不参与 app provider 迁移。          |
-| `models_catalog_china_llm_zcode_2026-06-03.json` | legacy `model-providers.json` 迁移时的模型 metadata 补齐源。       |
+| 文件                                             | 语义                                                         |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| `~/.zcode/v2/config.json`                        | app 模型供应商权威源，包含 `provider` 字段（见 Provider Schema）。 |
+| `~/.zcode/v2/model-providers.json`               | 一次性迁移来源，只读取有效旧内容，迁移后保留原文件不改。     |
+| `~/.zcode/v2/model-providers.v2.json`            | 完全忽略，不读取、不删除、不迁移。                           |
+| `~/.zcode/cli/config.json`                       | standalone CLI 使用的配置文件，不参与 app provider 迁移。    |
+| `models_catalog_china_llm_zcode_2026-06-03.json` | legacy `model-providers.json` 迁移时的模型 metadata 补齐源。 |
 
 `config.json` 已经存在且包含有效 `provider` 时，不用旧文件覆盖用户的新配置。
 
@@ -123,7 +123,7 @@ provider.options
 
 ## 迁移
 
-迁移只从 `~/.openzwork/v2/model-providers.json` 读取。支持两类历史形态：
+迁移只从 `~/.zcode/v2/model-providers.json` 读取。支持两类历史形态：
 
 1. 旧裸数组 `ModelProviderConfig[]`。
 2. 历史误写入旧文件的 `{ schemaVersion, providers }`。
@@ -154,11 +154,11 @@ continuous 链路、手机远控 replayable 恢复链路和 agent context meter 
 例如 `deepseek-v4-pro` 会从 catalog 得到 `contextWindow: 1000000`，避免落到旧
 128k 兜底值。`model-providers.v2.json` 不参与读取或迁移。
 
-迁移成功后原子写入 `~/.openzwork/v2/config.json`，不修改旧文件。
+迁移成功后原子写入 `~/.zcode/v2/config.json`，不修改旧文件。
 
 ## App 与 Agent 边界
 
-App 设置页读写 `~/.openzwork/v2/config.json`，并投影出：
+App 设置页读写 `~/.zcode/v2/config.json`，并投影出：
 
 - UI 兼容 DTO，供设置页和聊天页展示。
 - `ZCodeProviderRegistrySnapshot`，供 app service 在本进程内解析当前选中模型。
@@ -187,4 +187,4 @@ agent runtime，也不读取远端机器自己的 provider 配置。
 - 设置页保存 provider 后只修改 `config.json`。
 - agent `--stdio` 初始化和 `session/send` 不接收完整 provider registry，只接收当前模型 runtime config。
 - UI 模型选择列表来自 app provider 数据源，agent snapshot 只需要提供当前模型状态。
-- standalone CLI 仍只受 `~/.openzwork/cli/config.json` 影响。
+- standalone CLI 仍只受 `~/.zcode/cli/config.json` 影响。

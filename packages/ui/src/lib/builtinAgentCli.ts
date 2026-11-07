@@ -6,7 +6,11 @@ import {
 } from "@zcode/shared";
 const INSTALLABLE_AGENT_CLI_PROVIDERS: ZCodeProvider[] = [];
 
-export type BuiltinAgentCliStatus = "enabled" | "enabling" | "disabling" | "disabled";
+export type BuiltinAgentCliStatus =
+  | "enabled"
+  | "enabling"
+  | "disabling"
+  | "disabled";
 
 function normalizeEnabledBuiltinAgentCliProviders(
   providers?: ReadonlyArray<ZCodeProvider>,
@@ -17,7 +21,9 @@ function normalizeEnabledBuiltinAgentCliProviders(
 export function getEnabledBuiltinAgentCliProviders(
   settings: Pick<AppSettings, "enabledBuiltinAgentCliProviders"> | null | undefined,
 ): ZCodeProvider[] {
-  return normalizeEnabledBuiltinAgentCliProviders(settings?.enabledBuiltinAgentCliProviders);
+  return normalizeEnabledBuiltinAgentCliProviders(
+    settings?.enabledBuiltinAgentCliProviders,
+  );
 }
 
 export function requiresBuiltinAgentCliInstall(provider: ZCodeProvider): boolean {

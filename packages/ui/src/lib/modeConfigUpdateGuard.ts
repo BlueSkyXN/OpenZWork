@@ -46,7 +46,10 @@ export function markPendingModeSwitchGuard(params: {
     return;
   }
 
-  const workspaceKey = resolveWorkspaceStateKey(params.workspacePath, params.workspaceIdentity);
+  const workspaceKey = resolveWorkspaceStateKey(
+    params.workspacePath,
+    params.workspaceIdentity,
+  );
   pendingModeSwitchGuardByWorkspaceKey.set(workspaceKey, {
     taskId: normalizedTaskId,
     modeId: normalizedModeId,
@@ -59,7 +62,10 @@ export function clearPendingModeSwitchGuard(params: {
   workspaceIdentity?: string;
   modeId?: string;
 }): void {
-  const workspaceKey = resolveWorkspaceStateKey(params.workspacePath, params.workspaceIdentity);
+  const workspaceKey = resolveWorkspaceStateKey(
+    params.workspacePath,
+    params.workspaceIdentity,
+  );
   if (typeof params.modeId !== "string") {
     pendingModeSwitchGuardByWorkspaceKey.delete(workspaceKey);
     return;
@@ -78,7 +84,10 @@ export function ackPendingModeSwitchGuardFromModeUpdate(params: {
   workspaceIdentity?: string;
   modeId: string | null | undefined;
 }): void {
-  const guard = readPendingModeSwitchGuard(params.workspacePath, params.workspaceIdentity);
+  const guard = readPendingModeSwitchGuard(
+    params.workspacePath,
+    params.workspaceIdentity,
+  );
   const normalizedModeId = normalizeModeId(params.modeId);
   if (!guard || !normalizedModeId || guard.modeId !== normalizedModeId) {
     return;
@@ -96,7 +105,10 @@ export function shouldPreserveModeAgainstConfigUpdate(params: {
   currentModeId: string | null;
   incomingModeId: string | null;
 }): boolean {
-  const guard = readPendingModeSwitchGuard(params.workspacePath, params.workspaceIdentity);
+  const guard = readPendingModeSwitchGuard(
+    params.workspacePath,
+    params.workspaceIdentity,
+  );
   if (!guard) {
     return false;
   }
@@ -123,7 +135,10 @@ export function shouldPreserveModeAgainstConfigUpdate(params: {
     return false;
   }
 
-  return Boolean(normalizedIncomingModeId && normalizedIncomingModeId !== normalizedCurrentModeId);
+  return Boolean(
+    normalizedIncomingModeId &&
+      normalizedIncomingModeId !== normalizedCurrentModeId,
+  );
 }
 
 export function resetPendingModeSwitchGuardForTest(): void {

@@ -39,7 +39,7 @@
 ## 导入策略
 
 - 导入目标由用户在导入按钮下拉菜单中选择：
-  - `Global` 写入 `~/.openzwork/plugins/<plugin-dir>/`，并把该绝对路径追加到 `~/.openzwork/cli/config.json` 的 `plugins.dirs`。
+  - `Global` 写入 `~/.zcode/plugins/<plugin-dir>/`，并把该绝对路径追加到 `~/.zcode/cli/config.json` 的 `plugins.dirs`。
   - `Project` 写入 `<workspace>/.zcode/plugins/<plugin-dir>/`，并把该绝对路径追加到 `<workspace>/.zcode/config.json` 的 `plugins.dirs`。
 - 导入方式与技能、命令一致：
   - `软链`：在目标路径创建指向来源插件目录的符号链接，默认选项。

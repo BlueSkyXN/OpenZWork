@@ -52,3 +52,9 @@ E2E 无法稳定守住的约束：
   只靠 `main/index.ts` 中的调用顺序保证。
 - Host 初始化期间收到变更：同样会被挂载后的同步掩盖（推断，未实测）。顺序由「消息处理在任何 `await` 之前同步赋值」保证。
 - 只推给发起窗口的 Host：其他窗口的渲染进程收到语言广播后也会各自同步给 Main，用户可见行为不变（推断，未实测）。
+
+## 未覆盖
+
+- 远端 `zcode-server` 发起的请求。
+- `offPeakServerClient` 直接 `fetch`，仍用 `Intl` 规则。
+- CLI（`apps/zcode-cli`）的 provider endpoint routing 与 standalone Built-in 下载。

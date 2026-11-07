@@ -22,6 +22,8 @@ Main 创建窗口 + window-scoped Host
 
 Host 是启动状态和重试的唯一所有者；SQLite 账本是持久化完成事实。Main 只保存可丢弃的通知镜像、透传控制消息、记录遥测和调度进程。状态通过独立 IPC 控制面建立，不能依赖普通服务已发布。Renderer reload 读取当前快照，不重新启动迁移。服务端口早到时保留，ready 前不构建业务服务消费者。
 
+覆盖清单：TaskIndexRepo、AutomationRepo、OffPeakTaskRepo 共用真实 `getTasksIndexDatabasePath()`；Worker 串行完成原迁移及 TaskIndexRepo 的历史 ID/分组修复、OffPeak 遗留状态修复，再释放连接。Host 中 Repo 仅复用当前启动已完成的路径准备结果，不新增持久化标记；路径变化重新走原准备入口。Worker 内 SQL 与业务 Repo 共用实现。
+
 会话库由 Agent 的 `createConfig` / `getSessionDbPath` 解析，存储专用入口在 Provider Registry、登录、MCP、遥测及业务 runtime 之前返回。执行 cwd 是已有实际目录，不创建/绑定虚构 workspace。相对 `sessionDbPath` 按 Main 提供的本地启动恢复/预热目录（最多三个）逐一解析和准备；无目录时使用真实 fallback cwd。目录去重，短生命周期 Worker 串行，避免同时迁移多个大库。之后新增的不同物理库仍受正常 Agent 协议准入保护。私有准备协议先公布解析后的路径供 Host 采样；路径不进入 ARMS。正常 Agent 仍保留按实际物理库的协议准入，覆盖之后更换配置或新增库。
 
 Host 同步 SQLite 放在所属 Worker，Host 事件循环可持续采样和应答。Main scheduler 延后至本地准备成功，避免抢先迁移同库。Host 必需服务装配成功前不发布正常 RPC；预热、bot、Wiki 和 scheduler 不提前访问未准备库。
@@ -39,6 +41,16 @@ Host 同步 SQLite 放在所属 Worker，Host 事件循环可持续采样和应�
 错误分类检查原始 cause 的结构化码及 SQLite primary code（`errcode & 0xff`）：FULL/ENOSPC/EDQUOT、权限、IOERR、CANTOPEN、NOMEM、坏库、checksum、锁超时及未知退出。错误文本不用于推断磁盘满或 OOM。FULL 可以来自临时盘或容量上限，不能因主库盘尚有空间否定它。
 
 空间不足提示：**存储空间不足或已达到容量限制，无法完成数据更新。请检查数据目录及系统临时目录所在磁盘的可用空间，释放空间或调整存储额度后重试。** 失败页提供诊断 ID、复制诊断、手动重试（适用时）、退出。复制内容不含 Key/账号/聊天正文。启动页复用主题、国际化及响应式规范，无假百分比。
+
+## 磁盘观测和 ARMS
+
+沿用 Todo 145 §9 的合同。每个可靠识别的存储 scope 记录 `max(0, baselineAvailable - minObservedAvailable)`；名称明确为观测可用空间下降峰值，并非迁移独占物理字节。默认每 2 秒一次异步 statfs，同一时刻最多一个查询，慢查询跳过不排队；不遍历目录、不读 DB 内容、不记录逐样本数组或磁盘日志。SQL Worker 与采样隔离。
+
+基线必须早于写入才可计算全程峰值；晚到/失败标为 partial 或 unknown，未知值不填 0。相同 scope 共用基线，多 scope 不相加；回滚后保留历史最小余量，终态使用缓存，不依赖故障盘再次可读。
+
+Host 向 Main 发送有限的聚合快照，Main 持有最新摘要，执行者崩溃也可报告已观测值。ARMS 只发送开始、阶段、终态及终态磁盘摘要；本版不发送周期网络 checkpoint，也不实现跨重启 outbox；整应用中途被杀可能缺少终态。记录 attempt、耗时、状态、统一错误、采样质量/陈旧度；不发送路径、消息、Key、全部采样。
+
+**上报的有限重试与数据库重试完全分开。** 发送结果区分 SDK 入队、HTTP 接收确认和后台可查询。HTTP 非成功、网络异常/超时可有限退避，稳定 event ID 便于去重；上报故障不阻塞启动或错误页。若实现跨重启摘要，终态 outbox 上限 64 KiB/7 天，满盘写失败走内存。不承诺离线、满盘和整个应用同时被强杀时 100% 送达。
 
 ## 验证和交付
 

@@ -13,8 +13,8 @@
 - Update the existing SSH plugin sync spec before production code.
 - The fix applies to `packages/server/src/remote/localTarGz.ts`, which is shared by production local-download-upload and development SSH asset upload.
 - Directory archive entries must use POSIX `0755` on every desktop operating system.
-- Existing broken `~/.openzwork/server/agents/glm/packages` directories must be repaired automatically before replacement.
-- Permission repair is limited to the product-owned builtin packages directory; do not touch `~/.openzwork/plugins`.
+- Existing broken `~/.zcode/server/agents/glm/packages` directories must be repaired automatically before replacement.
+- Permission repair is limited to the product-owned builtin packages directory; do not touch `~/.zcode/plugins`.
 - Do not change inline plugin archive extraction or remote-download artifact extraction in this fix.
 - Add the bug cause as a Chinese production-code comment.
 - Run targeted tests, `pnpm typecheck`, and `pnpm lint` before committing.
@@ -24,14 +24,12 @@
 ### Task 1: Canonical Remote Asset Directory Modes
 
 **Files:**
-
 - Modify: `packages/server/test/localTarGz.test.ts`
 - Modify: `packages/server/src/remote/localTarGz.ts`
 - Modify: `packages/server/test/remoteDeploy.test.ts`
 - Modify: `packages/server/src/remote/zcodeAgentDeploy.ts`
 
 **Interfaces:**
-
 - Consumes: `createTarGzArchive(archivePath, entries)` and the existing ustar header format.
 - Produces: tar directory headers whose mode field is always `0o755`.
 
@@ -51,7 +49,7 @@ Change only the directory branch of `appendTarEntry` to pass `0o755` to `createT
 
 - [ ] **Step 4: Write the failing migration regression**
 
-Add a deploy regression where the packages root exists but a required builtin manifest is inaccessible. Assert that deployment executes `command chmod -R u+rwX` for only `~/.openzwork/server/agents/glm/packages`.
+Add a deploy regression where the packages root exists but a required builtin manifest is inaccessible. Assert that deployment executes `command chmod -R u+rwX` for only `~/.zcode/server/agents/glm/packages`.
 
 - [ ] **Step 5: Run the migration regression and verify RED**
 

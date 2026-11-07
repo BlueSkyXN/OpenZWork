@@ -18,34 +18,23 @@ interface SavedWorkflowProjectTargets {
  * target）。三者只在是否携带 remoteSessionId 上不同；引用在依赖不变时保持稳定，供 memo / effect 依赖。
  */
 export function useSavedWorkflowProjectTargets(
-  project: Pick<
-    AutomationWorkspaceOption,
-    "workspacePath" | "workspaceIdentity" | "projectId" | "hostId"
-  >,
+  project: Pick<AutomationWorkspaceOption, "workspacePath" | "workspaceIdentity" | "projectId" | "hostId">,
   remoteSessionId: string | null,
 ): SavedWorkflowProjectTargets {
   const target = useMemo<ZCodeAgentWorkspaceTarget>(
     () => ({
-      projectId: project.projectId,
-      hostId: project.hostId,
+      projectId: project.projectId, hostId: project.hostId,
       workspacePath: project.workspacePath,
       ...(project.workspaceIdentity?.trim()
         ? { workspaceIdentity: project.workspaceIdentity }
         : {}),
       ...(remoteSessionId ? { remoteSessionId } : {}),
     }),
-    [
-      project.projectId,
-      project.hostId,
-      project.workspacePath,
-      project.workspaceIdentity,
-      remoteSessionId,
-    ],
+    [project.projectId, project.hostId, project.workspacePath, project.workspaceIdentity, remoteSessionId],
   );
   const projectTarget = useMemo<SavedWorkflowProjectTarget>(
     () => ({
-      projectId: project.projectId,
-      hostId: project.hostId,
+      projectId: project.projectId, hostId: project.hostId,
       workspacePath: project.workspacePath,
       ...(project.workspaceIdentity ? { workspaceIdentity: project.workspaceIdentity } : {}),
     }),
@@ -53,19 +42,12 @@ export function useSavedWorkflowProjectTargets(
   );
   const launchTarget = useMemo<SavedWorkflowLaunchTarget>(
     () => ({
-      projectId: project.projectId,
-      hostId: project.hostId,
+      projectId: project.projectId, hostId: project.hostId,
       workspacePath: project.workspacePath,
       ...(project.workspaceIdentity ? { workspaceIdentity: project.workspaceIdentity } : {}),
       ...(remoteSessionId ? { remoteSessionId } : {}),
     }),
-    [
-      project.projectId,
-      project.hostId,
-      project.workspacePath,
-      project.workspaceIdentity,
-      remoteSessionId,
-    ],
+    [project.projectId, project.hostId, project.workspacePath, project.workspaceIdentity, remoteSessionId],
   );
   return { target, projectTarget, launchTarget };
 }

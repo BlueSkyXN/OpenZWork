@@ -19,6 +19,7 @@ If you need to set a different path for `tsconfig.json` please set the TSCONFIG_
 
 Alternatively, you can use the [environment variable](https://tsx.is/dev-api/node-cli#custom-tsconfig-json-path) for `tsx`.
 
+
 #### Type Checking
 
 Note that `tsx` does not support type-checking - if you wish to check your types then you will need to do this in a separate step with `tsc`.
@@ -29,9 +30,9 @@ Your `tsconfig.json` needs the following:
 
 ```json title="tsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["node", "@wdio/globals/types"]
-  }
+    "compilerOptions": {
+        "types": ["node", "@wdio/globals/types"]
+    }
 }
 ```
 
@@ -45,20 +46,20 @@ Depending on the framework you use, you will need to add the types for that fram
 For instance, if you decide to use the Mocha framework, you need to install `@types/mocha` and add it like this to have all types globally available:
 
 <Tabs
-defaultValue="mocha"
-values={[
-{label: 'Mocha', value: 'mocha'},
-{label: 'Jasmine', value: 'jasmine'},
-{label: 'Cucumber', value: 'cucumber'},
-]
+  defaultValue="mocha"
+  values={[
+    {label: 'Mocha', value: 'mocha'},
+    {label: 'Jasmine', value: 'jasmine'},
+    {label: 'Cucumber', value: 'cucumber'},
+  ]
 }>
 <TabItem value="mocha">
 
 ```json title="tsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework"]
-  }
+    "compilerOptions": {
+        "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework"]
+    }
 }
 ```
 
@@ -67,9 +68,9 @@ values={[
 
 ```json title="tsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["node", "@wdio/globals/types", "@wdio/jasmine-framework"]
-  }
+    "compilerOptions": {
+        "types": ["node", "@wdio/globals/types", "@wdio/jasmine-framework"]
+    }
 }
 ```
 
@@ -78,9 +79,9 @@ values={[
 
 ```json title="tsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["node", "@wdio/globals/types", "@wdio/cucumber-framework"]
-  }
+    "compilerOptions": {
+        "types": ["node", "@wdio/globals/types", "@wdio/cucumber-framework"]
+    }
 }
 ```
 
@@ -93,9 +94,14 @@ If you use services that add commands to the browser scope you also need to incl
 
 ```json title="tsconfig.json"
 {
-  "compilerOptions": {
-    "types": ["node", "@wdio/globals/types", "@wdio/mocha-framework", "@wdio/lighthouse-service"]
-  }
+    "compilerOptions": {
+        "types": [
+            "node",
+            "@wdio/globals/types",
+            "@wdio/mocha-framework",
+            "@wdio/lighthouse-service"
+        ]
+    }
 }
 ```
 

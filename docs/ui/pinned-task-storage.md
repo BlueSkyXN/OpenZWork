@@ -12,13 +12,13 @@
 
 - pin task 时：
   - task 快照文件保持 `{taskId}.json`
-  - 更新 `~/.openzwork/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
+  - 更新 `~/.zcode/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
 - unpin task 时：
   - task 快照文件保持 `{taskId}.json`
-  - 更新 `~/.openzwork/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
+  - 更新 `~/.zcode/v2/tasks-index.sqlite` 中对应 task 的 `pinned` 状态
 - archive task 时：
   - task 快照文件保持 `{taskId}.json`
-  - 更新 `~/.openzwork/v2/tasks-index.sqlite` 中对应 task 的 `archived` 状态
+  - 更新 `~/.zcode/v2/tasks-index.sqlite` 中对应 task 的 `archived` 状态
   - 若之前已 pin，会同步把 sqlite 中 `pinned` 状态清掉
 
 ## 读取规则

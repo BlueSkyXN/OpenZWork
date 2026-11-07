@@ -1,6 +1,10 @@
 # Conversation Session Background E2E Coverage Matrix
 
-<!-- 上游 retired 单测退役横幅不适用 OpenZWork 单测保留口径；闲时后台修订（retired background-lifecycle-plan）属净化域，均不随上游引入 -->
+> `retired:` 逐处标记已退役 App 单测，仅供追溯；原通过记录不代表现行覆盖。独立断言缺口需由后续验收补齐。
+
+> 2026-10-26：App 业务单测已按[测试规格](unit-test-quality.md)退役。本文中的相关单测路径和历史通过记录不再代表现行覆盖；CLI/CUA、工程测试、E2E 与浏览器验收证据仍按各自状态解释。未补验收的场景不得自动视为已覆盖。
+
+> **闲时后台修订：** 设计、Core/协议证据及 OP10 三种桌面变体结果见 [实施计划](../off-peak-task/background-lifecycle-plan.md#最终验证记录2026-10-08)。用例仍为 manual-review/pending；手机整机交互未验证，不改变本矩阵原有准入与交付范围。
 
 本文记录会话区 background runtime task 的 E2E 枚举边界。它补充主矩阵里的 `BG` 分组，只覆盖当前已经实现并确认的桌面端主链路。
 

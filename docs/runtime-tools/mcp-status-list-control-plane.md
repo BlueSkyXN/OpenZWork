@@ -7,7 +7,7 @@ MCP 设置页需要展示当前配置中各 server 的状态。旧方案在设�
 ## 目标
 
 - 设置页初次加载使用一次批量状态查询，避免按 server 数量触发自动检查。
-- 批量状态查询走独立的 `mcp-status` lane control-plane CLI 进程，与 plugin 管理命令（`plugins/*`）隔离进程；两者共用同一个内部 cwd（数据目录下的 `.zcode/plugin-workspace`，即 `getDataBaseDir()/.zcode/plugin-workspace`，默认等于 `~/.openzwork/plugin-workspace`；E2E 隔离 HOME 或自定义 data dir 时不在 `~` 下），但不共用 stdio 连接。
+- 批量状态查询走独立的 `mcp-status` lane control-plane CLI 进程，与 plugin 管理命令（`plugins/*`）隔离进程；两者共用同一个内部 cwd（数据目录下的 `.zcode/plugin-workspace`，即 `getDataBaseDir()/.zcode/plugin-workspace`，默认等于 `~/.zcode/plugin-workspace`；E2E 隔离 HOME 或自定义 data dir 时不在 `~` 下），但不共用 stdio 连接。
 - 保留单 server 主动检查能力，但只在用户手动检查或启用后检查时触发。
 - 不把 MCP 状态下沉到 desktop main、relay 或 mobile remote 链路。
 
@@ -17,7 +17,7 @@ MCP 设置页需要展示当前配置中各 server 的状态。旧方案在设�
 - 进程生命周期：mcp-status lane 进程在首次 `mcp/list` 时惰性拉起，每个 host 最多一个（进程 key 是固定的内部 cwd）。它通过进程级连接池真正连上可信 MCP server 且完成后不断开，因此进程本身约 45 MB 之外还挂着 MCP 子进程；为避免这部分常驻，manager 对该 lane 启用 `idleTimeoutMs`（默认 5 分钟）：连接上没有请求在飞满 5 分钟即主动回收整棵进程树（`terminationKind=expected`、`terminationReason=idle-timeout`），下一次 `mcp/list` 透明地重新拉起（实测冷启动约 1 s）。chat / plugin lane 不启用空闲回收。
 - 进程可观测性：spawn/ready/exit/error 事件经 `processLifecycleReporter` 上报 host → main → ARMS，payload 带 `lane`（`mcp-status`），与共用同一 cwd 和 command 的 plugin lane 进程可区分。
 - 为什么要独立进程：CLI 的 ZCode Protocol transport 对同一条 stdio 连接上的请求严格串行（FIFO，只有 `session/stop` 可越队）。connect 模式的 `mcp/list` 会真正连接全部 MCP server，任一 server 握手不完成就吃满 30s 超时；此前它与 `plugins/uninstall` 等命令共用 plugin 管理进程，卸载被排在 30s 探测后面，UI 在 5 分钟请求超时内没有任何反馈（2026-09-03 线上复现：`uninstallPlugin` 等待 37s 直到用户强退，`mcp/list` 出现 60.5s = 两个 30s 首尾相接）。拆到独立 lane 后探测再慢也不阻塞插件管理，探测超时触发的进程回收也不再连坐在途的安装/卸载。
-- `mcp/list` 可以带 `mcpServers` 显式输入。桌面设置页已经由 desktop main 解析 `~/.openzwork/cli/config.json` 与 `.agents/mcp.json` fallback，并在真实 session create/resume 时把 enabled MCP 下发为 `params.mcpServers`；状态查询必须复用同一批 UI-resolved MCP，避免 control-plane agent 自己 `createConfig()` 读不到 `.agents` fallback 时把实际可用 server 标红。
+- `mcp/list` 可以带 `mcpServers` 显式输入。桌面设置页已经由 desktop main 解析 `~/.zcode/cli/config.json` 与 `.agents/mcp.json` fallback，并在真实 session create/resume 时把 enabled MCP 下发为 `params.mcpServers`；状态查询必须复用同一批 UI-resolved MCP，避免 control-plane agent 自己 `createConfig()` 读不到 `.agents` fallback 时把实际可用 server 标红。
 - `mcp/probe`：保留为单 server 主动检查语义。只有用户显式检查或启用后检查时使用，结果可以和 `mcp/list` 不同。
 
 因此 UI 不应把 `mcp/list` 结果解释成真实健康检查成功；绿色 connected 只表示快照来源报告为 connected。
@@ -30,6 +30,30 @@ MCP 设置页需要展示当前配置中各 server 的状态。旧方案在设�
 4. CLI handler 对可信配置调用进程内 `mcpPort.connectConfiguredServers(...)` 刷新本地 records；project untrusted MCP 从连接输入中剔除。显式 `mcpServers` 与 session create/resume 使用同一个 protocol-to-runtime 转换 helper，保持 timeout/env/header 等字段一致。
 5. CLI handler 包装现有 `listMcpServerStatuses(...)` 返回 status snapshot；`status()` 本身只读本地 records，不再额外连接。
 6. UI store 按当前本地 ZCode Agent MCP 行合并状态；plugin-managed 只读列表继续由 plugin 管理数据驱动，避免同名 server 串状态。
+
+### 官方 MCP 的反向授权路由
+
+Host 在每次 `mcp/list` 发出前，通过现有 client 工作区登记表记录实际探测目标，重试时也重新
+登记。`mcp-status` CLI 的内部 cwd 只决定进程载体，不替代目标工作区身份。
+
+```text
+设置页 → Host 登记探测目标 → mcp-status CLI 的 mcp/list
+                           → 官方 MCP 反向授权 → 校验登记归属与 Origin → 当前凭证
+聊天 CLI → 原有 active runtime 归属校验（独立于探测 lane）
+```
+
+只有 Host 已确认的 `mcp-status` lane、合法的 `interaction/requestOfficialMcpAuthHeaders`
+请求且 `consumer=mcp-server`（含缺省值）使用登记表路由，不要求与该项目的聊天 client 相同。
+禁止将探测 client 写成聊天 owner，禁止在反向请求中补登记；其他请求、通知和旧聊天 client
+继续执行原来的归属检查。未登记工作区、不同 identity、非法参数、其他 consumer 与不可信
+Origin 不得通过该路径读取凭证。登记随 client 退出清理；切换项目不改写已登记目标的身份，
+连接切换、OAuth 取消与 UI 迟到结果丢弃继续由现有 owner/epoch 规则控制。
+
+Host 的路由拒绝日志只保留 lane、阶段、错误码和请求关联信息；不增加凭证缓存、计时器或重试。
+
+2026-10-30 回归：候选 `settings/manual-review/pending/mcp-official-auth-routing.test.ts`
+在 `official-mcp-auth-final` 中 3/3 通过，覆盖桌面、390px 手机、真实控制面进程的项目切换、
+重建与五类恶意反向请求。精确覆盖边界见[覆盖矩阵](../testing/conversation-session-e2e-coverage-matrix.md)。
 
 ## UI 合并规则
 

@@ -165,7 +165,8 @@ if (parsed.values.json) {
       `evidence:  ${evidencePath}`,
       "",
       "Open the workspace in ZCode Desktop, then follow:",
-      "docs/testing/workspace-hook-trust-manual-acceptance.md",
+      // OpenZWork(OZ-F001): 指向 OpenZWork 版本；上游原文保留上游产品的操作说明。
+      "docs/testing/workspace-hook-trust-manual-acceptance-openzwork.md",
       "",
     ].join("\n"),
   );

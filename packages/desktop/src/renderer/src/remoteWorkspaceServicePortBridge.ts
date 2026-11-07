@@ -30,8 +30,14 @@ export function parseRemoteWorkspaceServicePortMessage(
 }
 
 export function notifyRemoteWorkspaceServicePortReady(
-  payload: Pick<RemoteWorkspaceServicePortRegistration, "attachmentId" | "sessionId">,
-  postMessage: (message: unknown, targetOrigin: string) => void = window.postMessage.bind(window),
+  payload: Pick<
+    RemoteWorkspaceServicePortRegistration,
+    "attachmentId" | "sessionId"
+  >,
+  postMessage: (
+    message: unknown,
+    targetOrigin: string,
+  ) => void = window.postMessage.bind(window),
 ): void {
   postMessage(
     {

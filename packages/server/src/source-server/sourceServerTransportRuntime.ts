@@ -90,10 +90,7 @@ function waitForClose(stream: StdioStream): Promise<number> {
   });
 }
 
-async function readText(
-  stream: NodeJS.ReadableStream,
-  onLine?: (line: string) => void,
-): Promise<string> {
+async function readText(stream: NodeJS.ReadableStream, onLine?: (line: string) => void): Promise<string> {
   const chunks: Buffer[] = [];
   const decoder = new StringDecoder("utf8");
   let pending = "";
@@ -113,10 +110,7 @@ async function readText(
   return Buffer.concat(chunks).toString("utf8");
 }
 
-export async function collectCommand(
-  stream: StdioStream,
-  onStdoutLine?: (line: string) => void,
-): Promise<RemoteExecResult> {
+export async function collectCommand(stream: StdioStream, onStdoutLine?: (line: string) => void): Promise<RemoteExecResult> {
   const [stdout, stderr, exitCode] = await Promise.all([
     readText(stream.stdout, onStdoutLine),
     readText(stream.stderr),

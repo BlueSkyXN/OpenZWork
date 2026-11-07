@@ -38,7 +38,9 @@ export async function clickQueueSendNow(promptId: string) {
   const items = await getQueueItems();
   const target = items.find((item) => item.id === promptId);
   if (!target) {
-    throw new Error(`队列中不存在可立即发送的项 ${promptId}; latest=${JSON.stringify(items)}`);
+    throw new Error(
+      `队列中不存在可立即发送的项 ${promptId}; latest=${JSON.stringify(items)}`,
+    );
   }
   const buttonTestId = await resolveQueueActionTestId(
     target.id,
@@ -65,10 +67,14 @@ export async function clickQueueEdit(promptId: string) {
 }
 
 export async function setQueueEditInputText(promptId: string, content: string) {
-  await setInputValueByTestIdDom(`${TID_CHAT_QUEUE_EDIT_INPUT}-${promptId}`, content, {
-    timeout: 15000,
-    timeoutMsg: `队列项 ${promptId} 的编辑输入框没有出现`,
-  });
+  await setInputValueByTestIdDom(
+    `${TID_CHAT_QUEUE_EDIT_INPUT}-${promptId}`,
+    content,
+    {
+      timeout: 15000,
+      timeoutMsg: `队列项 ${promptId} 的编辑输入框没有出现`,
+    },
+  );
 }
 
 export async function clickQueueEditSave(promptId: string) {
@@ -90,11 +96,18 @@ export async function clickQueueRemove(promptId: string) {
   });
 }
 
-export async function dragQueueItemOnto(sourcePromptId: string, targetPromptId: string) {
+export async function dragQueueItemOnto(
+  sourcePromptId: string,
+  targetPromptId: string,
+) {
   const positions = (await browser.execute(
     (dragHandleTestId, targetItemTestId) => {
-      const dragHandle = document.querySelector<HTMLElement>(`[data-testid="${dragHandleTestId}"]`);
-      const targetItem = document.querySelector<HTMLElement>(`[data-testid="${targetItemTestId}"]`);
+      const dragHandle = document.querySelector<HTMLElement>(
+        `[data-testid="${dragHandleTestId}"]`,
+      );
+      const targetItem = document.querySelector<HTMLElement>(
+        `[data-testid="${targetItemTestId}"]`,
+      );
       if (!dragHandle || !targetItem) {
         return {
           ok: false,
@@ -186,11 +199,14 @@ export async function waitForQueueOrderContaining(
         if (latest.length < expectedTokens.length) {
           return false;
         }
-        return expectedTokens.every((token, index) => latest[index]?.content.includes(token));
+        return expectedTokens.every((token, index) =>
+          latest[index]?.content.includes(token),
+        );
       },
       {
         timeout: 30000,
-        timeoutMsg: timeoutMsg ?? `队列顺序不符合预期 ${JSON.stringify(expectedTokens)}`,
+        timeoutMsg:
+          timeoutMsg ?? `队列顺序不符合预期 ${JSON.stringify(expectedTokens)}`,
       },
     );
   } catch (error) {
@@ -243,8 +259,12 @@ export function getQueueItems(): Promise<QueueItemSnapshot[]> {
       v4QueuePanelTestId,
     ) => {
       const panel =
-        document.querySelector<HTMLElement>(`[data-testid="${v4QueuePanelTestId}"]`) ??
-        document.querySelector<HTMLElement>(`[data-testid="${queuePanelTestId}"]`);
+        document.querySelector<HTMLElement>(
+          `[data-testid="${v4QueuePanelTestId}"]`,
+        ) ??
+        document.querySelector<HTMLElement>(
+          `[data-testid="${queuePanelTestId}"]`,
+        );
       if (!panel) {
         return [];
       }
@@ -277,9 +297,15 @@ export function getQueueItems(): Promise<QueueItemSnapshot[]> {
             .trim(),
           id,
           index,
-          kind: rawKind === "sendText" ? "text" : rawKind === "sendGoalCommand" ? "goal" : rawKind,
+          kind:
+            rawKind === "sendText"
+              ? "text"
+              : rawKind === "sendGoalCommand"
+                ? "goal"
+                : rawKind,
           status:
-            element.getAttribute("data-status") ?? element.getAttribute("data-dispatch-state"),
+            element.getAttribute("data-status") ??
+            element.getAttribute("data-dispatch-state"),
         };
       });
     },
@@ -291,7 +317,11 @@ export function getQueueItems(): Promise<QueueItemSnapshot[]> {
   );
 }
 
-async function resolveQueueActionTestId(promptId: string, legacyPrefix: string, v4Prefix: string) {
+async function resolveQueueActionTestId(
+  promptId: string,
+  legacyPrefix: string,
+  v4Prefix: string,
+) {
   const testIdValue = await browser.execute(
     (itemId, legacyActionPrefix, v4ActionPrefix) => {
       const v4TestId = `${v4ActionPrefix}-${itemId}`;
@@ -326,8 +356,11 @@ export async function waitForQueueContaining(text: string) {
     );
   } catch (error) {
     latest = await getQueueItems();
-    throw new Error(`队列中没有出现 ${text}; latest=${JSON.stringify(latest)}`, {
-      cause: error,
-    });
+    throw new Error(
+      `队列中没有出现 ${text}; latest=${JSON.stringify(latest)}`,
+      {
+        cause: error,
+      },
+    );
   }
 }

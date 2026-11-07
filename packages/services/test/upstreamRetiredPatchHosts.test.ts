@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 // v3.17.1 同步复核产生的退役守护：上游 sync（a60ba6a7）整体退役了三组下游补丁的
-// 原回归宿主，本文件按 docs/spec/downstream-patch-registry.md 对 retired 条目的要求
+// 原回归宿主，本文件按 docs/openzwork/patches/downstream-patch-registry.md 对 retired 条目的要求
 // （回归带编号标记并进入核心 CI）提供存活载体，防止退役事实被悄悄回退：
 // - OW-P003：providerProvisioningRealStores 夹具域已退役，Registry 刷新仍在
 //   providerRuntime 中由 start/dispose 生命周期管理；

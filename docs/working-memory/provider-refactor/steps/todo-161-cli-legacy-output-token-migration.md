@@ -6,7 +6,7 @@
 
 评测团队仍使用 CLI 配置目录下的旧 `config.json` 定义 Provider 和模型输出上限，需要在首次导入新 Provider 配置时保留该值。
 
-- 默认来源为 `~/.openzwork/cli/config.json`，由 `getDefaultConfigPath()` 定位；Standalone 的既有 `legacyCliUserConfigFilePath` 注入入口保持可用。
+- 默认来源为 `~/.zcode/cli/config.json`，由 `getDefaultConfigPath()` 定位；Standalone 的既有 `legacyCliUserConfigFilePath` 注入入口保持可用。
 - [旧格式 parser](../../../../apps/zcode-cli/packages/bootstrap/src/app/legacy-cli-model-config.ts)已经接受模型的 `maxOutputTokens`、`limit.output` 和 `options`。
 - [CLI 导入器](../../../../apps/zcode-cli/packages/bootstrap/src/app/legacy-cli-personal-provider-config-importer.ts)的成员投影只保留 `contextWindow`，创建模型规则时还会跳过没有 context 的成员，导致输出上限丢失。
 - [旧配置测试](../../../../apps/zcode-cli/packages/adapters/tests/config.test.ts)记录的优先级为 `limit.output` → `options.max_tokens` → 模型顶层 `maxOutputTokens`。

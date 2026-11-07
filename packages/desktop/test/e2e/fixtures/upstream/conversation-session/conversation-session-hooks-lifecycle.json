@@ -40,7 +40,11 @@
         "method": "POST",
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_HOOKS_FULL_CHAIN"],
-        "bodyIncludes": ["E2E_HOOKS_FULL_CHAIN", "HOOK_SESSION_CONTEXT", "HOOK_PROMPT_CONTEXT"],
+        "bodyIncludes": [
+          "E2E_HOOKS_FULL_CHAIN",
+          "HOOK_SESSION_CONTEXT",
+          "HOOK_PROMPT_CONTEXT"
+        ],
         "bodyExcludes": [
           "Generate a concise title",
           "HOOK_ASYNC_CONTEXT_MUST_BE_IGNORED",
@@ -117,7 +121,10 @@
           "HOOK_PRE_READ_CONTEXT",
           "HOOK_POST_FAILURE_CONTEXT"
         ],
-        "bodyExcludes": ["Generate a concise title", "HOOK_ASYNC_CONTEXT_MUST_BE_IGNORED"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "HOOK_ASYNC_CONTEXT_MUST_BE_IGNORED"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -166,8 +173,15 @@
         "method": "POST",
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_HOOKS_EARLY_FAILURES"],
-        "bodyIncludes": ["E2E_HOOKS_EARLY_FAILURES", "HOOK_SESSION_CONTEXT", "HOOK_PROMPT_CONTEXT"],
-        "bodyExcludes": ["Generate a concise title", "toolu_e2e_hooks_early_pre_deny"]
+        "bodyIncludes": [
+          "E2E_HOOKS_EARLY_FAILURES",
+          "HOOK_SESSION_CONTEXT",
+          "HOOK_PROMPT_CONTEXT"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "toolu_e2e_hooks_early_pre_deny"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -200,7 +214,10 @@
           "toolu_e2e_hooks_early_pre_deny",
           "HOOK_PRE_DENY_CONTEXT"
         ],
-        "bodyExcludes": ["Generate a concise title", "toolu_e2e_hooks_early_invalid"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "toolu_e2e_hooks_early_invalid"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -233,7 +250,10 @@
           "toolu_e2e_hooks_early_invalid",
           "HOOK_PRE_INVALID_UPDATE_CONTEXT"
         ],
-        "bodyExcludes": ["Generate a concise title", "toolu_e2e_hooks_early_permission_deny"]
+        "bodyExcludes": [
+          "Generate a concise title",
+          "toolu_e2e_hooks_early_permission_deny"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -316,7 +336,10 @@
         "method": "POST",
         "pathIncludes": "/messages",
         "lastUserMessageIncludes": ["E2E_HOOKS_STOP_CAP"],
-        "bodyIncludes": ["E2E_HOOKS_STOP_CAP", "HOOK_PROMPT_CONTEXT"],
+        "bodyIncludes": [
+          "E2E_HOOKS_STOP_CAP",
+          "HOOK_PROMPT_CONTEXT"
+        ],
         "bodyExcludes": ["Generate a concise title", "HOOK_STOP_CONTEXT_1"]
       },
       "response": {

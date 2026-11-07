@@ -58,7 +58,8 @@ function ConversationBackgroundWorkTriggerImpl({
 }: ConversationBackgroundWorkTriggerProps) {
   const { intl } = useZCodeIntl();
   const counts = useMemo(
-    () => getComposerBackgroundWorkCounts(backgroundWorks, runningSubagentCount),
+    () =>
+      getComposerBackgroundWorkCounts(backgroundWorks, runningSubagentCount),
     [backgroundWorks, runningSubagentCount],
   );
 
@@ -145,4 +146,6 @@ function ConversationBackgroundWorkTriggerImpl({
   );
 }
 
-export const ConversationBackgroundWorkTrigger = memo(ConversationBackgroundWorkTriggerImpl);
+export const ConversationBackgroundWorkTrigger = memo(
+  ConversationBackgroundWorkTriggerImpl,
+);

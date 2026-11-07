@@ -42,20 +42,22 @@ Todo103 候选回归：MP-UI-06 的 Hover/键盘焦点颜色比较须等待被�
 
 ### UI Surface Matrix
 
-| Scenario                                 | UI entry                                    | Shared implementation    | State owner / source                      | Validation / gating                                         | Commit sink                                          | Mode boundary                                      | Isolation invariant                                                      |
-| ---------------------------------------- | ------------------------------------------- | ------------------------ | ----------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
-| Inspect preference order                 | Sidebar avatar menu                         | `WorkspaceSidebarFooter` | React props + desktop zoom platform state | Zoom is desktop-only                                        | Existing theme/locale callbacks and desktop commands | Order is shared; zoom remains desktop-only         | Opening the menu must not mutate preferences                             |
-| Inspect add-provider guidance            | Settings > Model provider > Add provider    | `AddProviderCard`        | Local add-provider draft                  | Add action disabled until required fields and a model exist | Existing model-provider service create action        | Responsive desktop/web layout                      | Hint must not create a second validation rule                            |
-| Delete the final editable provider model | Settings > Model provider > Custom provider | `ProviderModelsSection`  | Model-provider registry                   | Empty list is allowed for an existing provider              | Existing provider update action                      | Desktop/web share UI; no replay semantics involved | Empty models remove chat candidates while preserving the provider editor |
+| Scenario                                 | UI entry                                    | Shared implementation               | State owner / source                      | Validation / gating                                                   | Commit sink                                          | Mode boundary                                      | Isolation invariant                                                      |
+| ---------------------------------------- | ------------------------------------------- | ----------------------------------- | ----------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
+| Inspect preference order                 | Sidebar avatar menu                         | `WorkspaceSidebarFooter`            | React props + desktop zoom platform state | Zoom is desktop-only                                                  | Existing theme/locale callbacks and desktop commands | Order is shared; zoom remains desktop-only         | Opening the menu must not mutate preferences                             |
+| Inspect add-provider guidance            | Settings > Model provider > Add provider    | `AddProviderCard`                   | Local add-provider draft                  | Add action disabled until required fields and a model exist           | Existing model-provider service create action        | Responsive desktop/web layout                      | Hint must not create a second validation rule                            |
+| Delete the final editable provider model | Settings > Model provider > Custom provider | `ProviderModelsSection`             | Model-provider registry                   | Empty list is allowed for an existing provider                        | Existing provider update action                      | Desktop/web share UI; no replay semantics involved | Empty models remove chat candidates while preserving the provider editor |
+| Resolve a zero-model Coding Plan         | Provider family connection resolver         | `resolveCodingPlanEntitlementState` | Model-provider registry                   | Connection requires credential + endpoint, not a non-empty model list | No UI mutation                                       | Shared pure resolver                               | Empty models must not disconnect entitlement                             |
 
 ### Ranked Relationships
 
-| Rank           | Relationship                                         | Reason                                                                      | Evidence                                        |
-| -------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------- |
-| must-inspect   | Provider settings -> model-provider service          | Deleting the final model persists through the existing provider update path | `ModelProviderSection`, `ProviderModelsSection` |
-| should-inspect | Add-provider footer -> add-provider draft validation | Guidance and disabled action must agree                                     | `AddProviderCard.tsx`                           |
-| conditional    | Profile menu -> desktop zoom commands                | Zoom appears only in Electron desktop mode                                  | `WorkspaceSidebarFooter.tsx`                    |
-| invariant-only | Provider settings -> chat model picker               | Zero models means no selectable chat model, without changing plan identity  | `docs/model-provider-family-merge.md`           |
+| Rank           | Relationship                                           | Reason                                                                            | Evidence                                        |
+| -------------- | ------------------------------------------------------ | --------------------------------------------------------------------------------- | ----------------------------------------------- |
+| must-inspect   | Provider settings -> model-provider service            | Deleting the final model persists through the existing provider update path       | `ModelProviderSection`, `ProviderModelsSection` |
+| must-inspect   | Coding Plan visibility -> provider connection resolver | The regression was caused by treating `models.length` as a connection requirement | `providerFamilyConnectionVisibility.ts`         |
+| should-inspect | Add-provider footer -> add-provider draft validation   | Guidance and disabled action must agree                                           | `AddProviderCard.tsx`                           |
+| conditional    | Profile menu -> desktop zoom commands                  | Zoom appears only in Electron desktop mode                                        | `WorkspaceSidebarFooter.tsx`                    |
+| invariant-only | Provider settings -> chat model picker                 | Zero models means no selectable chat model, without changing plan identity        | `docs/model-provider-family-merge.md`           |
 
 ### Codegraph Evidence
 
@@ -67,15 +69,18 @@ feature graph; this test task does not change its state or persistence contract.
 
 ## Boundary Decisions
 
-| Decision                     | Status   | Included                                                         | Pruned / reason                                                             |
-| ---------------------------- | -------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| UP-01 profile menu order     | accepted | Visible top-level order in desktop mode                          | Theme and locale value changes: existing behavior, unchanged by this branch |
-| MP-UI-01 add-provider footer | accepted | Divider, info hint, DOM/visual left-right order, disabled action | Provider request/send: already covered by P0-02                             |
-| Locale variants              | pruned   | One runtime locale plus exact zh/en locale unit assertions       | Layout uses the same message id and responsive flex contract                |
-| Theme variants               | pruned   | Semantic classes asserted by unit test                           | No theme-specific branch or raw color was added                             |
-| Mobile/remote runtime        | pruned   | Responsive class contract remains unit-covered                   | No process, protocol, replay, owner, or workspace identity change           |
+| Decision                         | Status   | Included                                                                        | Pruned / reason                                                                                                                                           |
+| -------------------------------- | -------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UP-01 profile menu order         | accepted | Visible top-level order in desktop mode                                         | Theme and locale value changes: existing behavior, unchanged by this branch                                                                               |
+| MP-UI-01 add-provider footer     | accepted | Divider, info hint, DOM/visual left-right order, disabled action                | Provider request/send: already covered by P0-02                                                                                                           |
+| MP-UI-02 empty editable provider | accepted | Delete the final custom-provider model; empty hint and Add Model remain visible | Coding Plan models are server-synced/read-only, so zero-model connection stays resolver-unit coverage; Team/Start/Z.ai variants are pairwise unit-covered |
+| Locale variants                  | pruned   | One runtime locale plus exact zh/en locale unit assertions                      | Layout uses the same message id and responsive flex contract                                                                                              |
+| Theme variants                   | pruned   | Semantic classes asserted by unit test                                          | No theme-specific branch or raw color was added                                                                                                           |
+| Mobile/remote runtime            | pruned   | Responsive class contract remains unit-covered                                  | No process, protocol, replay, owner, or workspace identity change                                                                                         |
 
 ## Accepted Cases
+
+2026-09-08 Todo93 C93-01～12（已实现 / 已验证）：套餐同身份失效只提示一次，点击具体目标才切换；覆盖重复刷新、身份切换、启动基线、unknown/pending、旧按钮竞态及条件写入失败。旧 Todo88 R06 / SPMC-08 的“刷新即自动切换”预期已被替代，历史通过不代表新契约通过；已保留该链路覆盖并补真实点击、点击前不写/点击后读盘断言；Pro desktop-e2e-20260908-101239-586 4/4 通过。完整场景和隔离 E2E 交接见 [Todo93](../working-memory/provider-refactor/steps/todo-93-account-plan-loss-manual-switch.md)。
 
 2026-09-08 最终裁决：撤销 Todo92 的 G92 分组恢复用例和 `provider-model-group-reset.test.ts` 实验用例。正式计划改为 Todo92 F92-01～08：个人覆盖边框逐项表达、档位整体而 Mapping 独立、Hover/聚焦同背景、MFJS 无前置复选框、容器标题收敛；与 Todo90 M90-01～08 联合验证“智能配置”开启/关闭、全部必填、不按名称匹配、取消和保存。已按最终契约实现并通过联合验收，旧 Air 预览不计作证据；不显示“自定义 · 恢复推荐”，不加分组或全局恢复按钮。
 
@@ -91,6 +96,7 @@ feature graph; this test task does not change its state or persistence contract.
 
 ## Coverage Goal
 
+- Every changed branch in `providerFamilyConnectionVisibility.ts` is covered by unit tests.
 - Every added render branch and class contract in `AddProviderCard.tsx` and
   `ProviderCardSections.tsx` is covered by unit tests and one real Electron path.
 - The sidebar order is covered by an Electron DOM-order assertion; callback and desktop zoom
@@ -139,6 +145,7 @@ M90-01～08、F92-01～08 以 317 条相关单测和上述代表 Electron 联合
 - Red: the new shared-radius and business-override contract tests failed against the old styles.
 - Green: 22 targeted unit tests passed; `pnpm typecheck`, `pnpm --filter @zcode/desktop typecheck:e2e`, and `pnpm lint` passed (41 existing lint warnings, no errors).
 - macOS Electron: `settings-ui-polish.test.ts`, 3/3 passed, including computed menu shell/option radii. Run: `desktop-e2e-20260904075731227-p32863-d53541f289639947`.
+- Windows caption and automation/off-peak menu overrides were removed so these surfaces inherit shared radii. ContextMenu, Select, checkbox/radio items and submenus have contract coverage; their individual runtime paths and mobile/Windows/Linux visual checks were not run in this change.
 
 ## macOS 根框架背景（2026-09-04）
 

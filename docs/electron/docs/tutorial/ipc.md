@@ -27,9 +27,9 @@ you can use as a reference for your app code.
 Before proceeding to implementation details, you should be familiar with the idea of using a
 [preload script][] to import Node.js and Electron modules in a context-isolated renderer process.
 
-- For a full overview of Electron's process model, you can read the [process model docs][].
-- For a primer into exposing APIs from your preload script using the `contextBridge` module, check
-  out the [context isolation tutorial][].
+* For a full overview of Electron's process model, you can read the [process model docs][].
+* For a primer into exposing APIs from your preload script using the `contextBridge` module, check
+out the [context isolation tutorial][].
 
 ## Pattern 1: Renderer to main (one-way)
 
@@ -44,7 +44,6 @@ script. The full code is below, but we'll be explaining each file individually i
 sections.
 
 ```fiddle docs/fiddles/ipc/pattern-1
-
 ```
 
 ### 1. Listen for events with `ipcMain.on`
@@ -52,31 +51,31 @@ sections.
 In the main process, set an IPC listener on the `set-title` channel with the `ipcMain.on` API:
 
 ```js {7-11,23} title='main.js (Main Process)'
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain } = require('electron')
 
-const path = require("node:path");
+const path = require('node:path')
 
 // ...
 
-function handleSetTitle(event, title) {
-  const webContents = event.sender;
-  const win = BrowserWindow.fromWebContents(webContents);
-  win.setTitle(title);
+function handleSetTitle (event, title) {
+  const webContents = event.sender
+  const win = BrowserWindow.fromWebContents(webContents)
+  win.setTitle(title)
 }
 
-function createWindow() {
+function createWindow () {
   const mainWindow = new BrowserWindow({
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-    },
-  });
-  mainWindow.loadFile("index.html");
+      preload: path.join(__dirname, 'preload.js')
+    }
+  })
+  mainWindow.loadFile('index.html')
 }
 
 app.whenReady().then(() => {
-  ipcMain.on("set-title", handleSetTitle);
-  createWindow();
-});
+  ipcMain.on('set-title', handleSetTitle)
+  createWindow()
+})
 // ...
 ```
 
@@ -99,11 +98,11 @@ In your preload script, add the following code, which will expose a global `wind
 variable to your renderer process.
 
 ```js title='preload.js (Preload Script)'
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  setTitle: (title) => ipcRenderer.send("set-title", title),
-});
+contextBridge.exposeInMainWorld('electronAPI', {
+  setTitle: (title) => ipcRenderer.send('set-title', title)
+})
 ```
 
 At this point, you'll be able to use the `window.electronAPI.setTitle()` function in the renderer
@@ -123,13 +122,13 @@ and a button:
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <title>Hello World!</title>
   </head>
   <body>
-    Title: <input id="title" />
+    Title: <input id="title"/>
     <button id="btn" type="button">Set</button>
     <script src="./renderer.js"></script>
   </body>
@@ -141,12 +140,12 @@ To make these elements interactive, we'll be adding a few lines of code in the i
 script:
 
 ```js title='renderer.js (Renderer Process)' @ts-expect-error=[4,5]
-const setButton = document.getElementById("btn");
-const titleInput = document.getElementById("title");
-setButton.addEventListener("click", () => {
-  const title = titleInput.value;
-  window.electronAPI.setTitle(title);
-});
+const setButton = document.getElementById('btn')
+const titleInput = document.getElementById('title')
+setButton.addEventListener('click', () => {
+  const title = titleInput.value
+  window.electronAPI.setTitle(title)
+})
 ```
 
 At this point, your demo should be fully functional. Try using the input field and see what happens
@@ -166,7 +165,6 @@ script. The full code is below, but we'll be explaining each file individually i
 sections.
 
 ```fiddle docs/fiddles/ipc/pattern-2
-
 ```
 
 ### 1. Listen for events with `ipcMain.handle`
@@ -185,32 +183,32 @@ provided to the renderer process. Please refer to
 :::
 
 ```js {6-13,25} title='main.js (Main Process)'
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 
-const path = require("node:path");
+const path = require('node:path')
 
 // ...
 
-async function handleFileOpen() {
-  const { canceled, filePaths } = await dialog.showOpenDialog({});
+async function handleFileOpen () {
+  const { canceled, filePaths } = await dialog.showOpenDialog({})
   if (!canceled) {
-    return filePaths[0];
+    return filePaths[0]
   }
 }
 
-function createWindow() {
+function createWindow () {
   const mainWindow = new BrowserWindow({
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-    },
-  });
-  mainWindow.loadFile("index.html");
+      preload: path.join(__dirname, 'preload.js')
+    }
+  })
+  mainWindow.loadFile('index.html')
 }
 
 app.whenReady().then(() => {
-  ipcMain.handle("dialog:openFile", handleFileOpen);
-  createWindow();
-});
+  ipcMain.handle('dialog:openFile', handleFileOpen)
+  createWindow()
+})
 // ...
 ```
 
@@ -230,11 +228,11 @@ In the preload script, we expose a one-line `openFile` function that calls and r
 native dialog from our renderer's user interface.
 
 ```js title='preload.js (Preload Script)'
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  openFile: () => ipcRenderer.invoke("dialog:openFile"),
-});
+contextBridge.exposeInMainWorld('electronAPI', {
+  openFile: () => ipcRenderer.invoke('dialog:openFile')
+})
 ```
 
 :::caution Security warning
@@ -250,15 +248,15 @@ Finally, let's build the HTML file that we load into our BrowserWindow.
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <title>Dialog</title>
   </head>
   <body>
     <button type="button" id="btn">Open a File</button>
     File path: <strong id="filePath"></strong>
-    <script src="./renderer.js"></script>
+    <script src='./renderer.js'></script>
   </body>
 </html>
 ```
@@ -268,13 +266,13 @@ a `#filePath` element that will be used to display the path of the selected file
 pieces work will take a few lines of code in the renderer process script:
 
 ```js title='renderer.js (Renderer Process)' @ts-expect-error=[5]
-const btn = document.getElementById("btn");
-const filePathElement = document.getElementById("filePath");
+const btn = document.getElementById('btn')
+const filePathElement = document.getElementById('filePath')
 
-btn.addEventListener("click", async () => {
-  const filePath = await window.electronAPI.openFile();
-  filePathElement.innerText = filePath;
-});
+btn.addEventListener('click', async () => {
+  const filePath = await window.electronAPI.openFile()
+  filePathElement.innerText = filePath
+})
 ```
 
 In the above snippet, we listen for clicks on the `#btn` button, and call our
@@ -306,30 +304,30 @@ via IPC prior to Electron 7.
 ```js title='preload.js (Preload Script)'
 // You can also put expose this code to the renderer
 // process with the `contextBridge` API
-const { ipcRenderer } = require("electron");
+const { ipcRenderer } = require('electron')
 
-ipcRenderer.on("asynchronous-reply", (_event, arg) => {
-  console.log(arg); // prints "pong" in the DevTools console
-});
-ipcRenderer.send("asynchronous-message", "ping");
+ipcRenderer.on('asynchronous-reply', (_event, arg) => {
+  console.log(arg) // prints "pong" in the DevTools console
+})
+ipcRenderer.send('asynchronous-message', 'ping')
 ```
 
 ```js title='main.js (Main Process)'
-ipcMain.on("asynchronous-message", (event, arg) => {
-  console.log(arg); // prints "ping" in the Node console
+ipcMain.on('asynchronous-message', (event, arg) => {
+  console.log(arg) // prints "ping" in the Node console
   // works like `send`, but returning a message back
   // to the renderer that sent the original message
-  event.reply("asynchronous-reply", "pong");
-});
+  event.reply('asynchronous-reply', 'pong')
+})
 ```
 
 There are a couple downsides to this approach:
 
-- You need to set up a second `ipcRenderer.on` listener to handle the response in the renderer
-  process. With `invoke`, you get the response value returned as a Promise to the original API call.
-- There's no obvious way to pair the `asynchronous-reply` message to the original
-  `asynchronous-message` one. If you have very frequent messages going back and forth through these
-  channels, you would need to add additional app code to track each call and response individually.
+* You need to set up a second `ipcRenderer.on` listener to handle the response in the renderer
+process. With `invoke`, you get the response value returned as a Promise to the original API call.
+* There's no obvious way to pair the `asynchronous-reply` message to the original
+`asynchronous-message` one. If you have very frequent messages going back and forth through these
+channels, you would need to add additional app code to track each call and response individually.
 
 #### Using `ipcRenderer.sendSync`
 
@@ -337,21 +335,21 @@ The `ipcRenderer.sendSync` API sends a message to the main process and waits _sy
 response.
 
 ```js title='main.js (Main Process)'
-const { ipcMain } = require("electron");
+const { ipcMain } = require('electron')
 
-ipcMain.on("synchronous-message", (event, arg) => {
-  console.log(arg); // prints "ping" in the Node console
-  event.returnValue = "pong";
-});
+ipcMain.on('synchronous-message', (event, arg) => {
+  console.log(arg) // prints "ping" in the Node console
+  event.returnValue = 'pong'
+})
 ```
 
 ```js title='preload.js (Preload Script)'
 // You can also put expose this code to the renderer
 // process with the `contextBridge` API
-const { ipcRenderer } = require("electron");
+const { ipcRenderer } = require('electron')
 
-const result = ipcRenderer.sendSync("synchronous-message", "ping");
-console.log(result); // prints "pong" in the DevTools console
+const result = ipcRenderer.sendSync('synchronous-message', 'ping')
+console.log(result) // prints "pong" in the DevTools console
 ```
 
 The structure of this code is very similar to the `invoke` model, but we recommend
@@ -373,7 +371,6 @@ script. The full code is below, but we'll be explaining each file individually i
 sections.
 
 ```fiddle docs/fiddles/ipc/pattern-3
-
 ```
 
 ### 1. Send messages with the `webContents` module
@@ -383,35 +380,35 @@ module that uses the `webContents.send` API to send an IPC message from the main
 target renderer.
 
 ```js {11-26} title='main.js (Main Process)'
-const { app, BrowserWindow, Menu, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain } = require('electron')
 
-const path = require("node:path");
+const path = require('node:path')
 
-function createWindow() {
+function createWindow () {
   const mainWindow = new BrowserWindow({
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-    },
-  });
+      preload: path.join(__dirname, 'preload.js')
+    }
+  })
 
   const menu = Menu.buildFromTemplate([
     {
       label: app.name,
       submenu: [
         {
-          click: () => mainWindow.webContents.send("update-counter", 1),
-          label: "Increment",
+          click: () => mainWindow.webContents.send('update-counter', 1),
+          label: 'Increment'
         },
         {
-          click: () => mainWindow.webContents.send("update-counter", -1),
-          label: "Decrement",
-        },
-      ],
-    },
-  ]);
-  Menu.setApplicationMenu(menu);
+          click: () => mainWindow.webContents.send('update-counter', -1),
+          label: 'Decrement'
+        }
+      ]
+    }
+  ])
+  Menu.setApplicationMenu(menu)
 
-  mainWindow.loadFile("index.html");
+  mainWindow.loadFile('index.html')
 }
 // ...
 ```
@@ -422,7 +419,7 @@ sends a message (either `1` or `-1`) to the renderer process through the `update
 <!-- eslint-skip -->
 
 ```js @ts-type={mainWindow:Electron.BrowserWindow}
-click: () => mainWindow.webContents.send("update-counter", -1);
+click: () => mainWindow.webContents.send('update-counter', -1)
 ```
 
 :::info
@@ -435,12 +432,11 @@ Like in the previous renderer-to-main example, we use the `contextBridge` and `i
 modules in the preload script to expose IPC functionality to the renderer process:
 
 ```js title='preload.js (Preload Script)'
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  onUpdateCounter: (callback) =>
-    ipcRenderer.on("update-counter", (_event, value) => callback(value)),
-});
+contextBridge.exposeInMainWorld('electronAPI', {
+  onUpdateCounter: (callback) => ipcRenderer.on('update-counter', (_event, value) => callback(value))
+})
 ```
 
 After loading the preload script, your renderer process should have access to the
@@ -458,16 +454,16 @@ In the case of this minimal example, you can call `ipcRenderer.on` directly in t
 rather than exposing it over the context bridge.
 
 ```js title='preload.js (Preload Script)'
-const { ipcRenderer } = require("electron");
+const { ipcRenderer } = require('electron')
 
-window.addEventListener("DOMContentLoaded", () => {
-  const counter = document.getElementById("counter");
-  ipcRenderer.on("update-counter", (_event, value) => {
-    const oldValue = Number(counter.innerText);
-    const newValue = oldValue + value;
-    counter.innerText = newValue;
-  });
-});
+window.addEventListener('DOMContentLoaded', () => {
+  const counter = document.getElementById('counter')
+  ipcRenderer.on('update-counter', (_event, value) => {
+    const oldValue = Number(counter.innerText)
+    const newValue = oldValue + value
+    counter.innerText = newValue
+  })
+})
 ```
 
 However, this approach has limited flexibility compared to exposing your preload APIs
@@ -483,9 +479,9 @@ To tie it all together, we'll create an interface in the loaded HTML file that c
 <!DOCTYPE html>
 <html>
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <title>Menu Counter</title>
   </head>
   <body>
@@ -499,13 +495,13 @@ Finally, to make the values update in the HTML document, we'll add a few lines o
 so that the value of the `#counter` element is updated whenever we fire an `update-counter` event.
 
 ```js title='renderer.js (Renderer Process)' @ts-window-type={electronAPI:{onUpdateCounter:(callback:(value:number)=>void)=>void}}
-const counter = document.getElementById("counter");
+const counter = document.getElementById('counter')
 
 window.electronAPI.onUpdateCounter((value) => {
-  const oldValue = Number(counter.innerText);
-  const newValue = oldValue + value;
-  counter.innerText = newValue.toString();
-});
+  const oldValue = Number(counter.innerText)
+  const newValue = oldValue + value
+  counter.innerText = newValue.toString()
+})
 ```
 
 In the above code, we're passing in a callback to the `window.electronAPI.onUpdateCounter` function
@@ -522,33 +518,32 @@ renderer process, expose another API to send a reply back to the main process th
 `counter-value` channel.
 
 ```js title='preload.js (Preload Script)'
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld("electronAPI", {
-  onUpdateCounter: (callback) =>
-    ipcRenderer.on("update-counter", (_event, value) => callback(value)),
-  counterValue: (value) => ipcRenderer.send("counter-value", value),
-});
+contextBridge.exposeInMainWorld('electronAPI', {
+  onUpdateCounter: (callback) => ipcRenderer.on('update-counter', (_event, value) => callback(value)),
+  counterValue: (value) => ipcRenderer.send('counter-value', value)
+})
 ```
 
 ```js title='renderer.js (Renderer Process)' @ts-window-type={electronAPI:{onUpdateCounter:(callback:(value:number)=>void)=>void,counterValue:(value:number)=>void}}
-const counter = document.getElementById("counter");
+const counter = document.getElementById('counter')
 
 window.electronAPI.onUpdateCounter((value) => {
-  const oldValue = Number(counter.innerText);
-  const newValue = oldValue + value;
-  counter.innerText = newValue.toString();
-  window.electronAPI.counterValue(newValue);
-});
+  const oldValue = Number(counter.innerText)
+  const newValue = oldValue + value
+  counter.innerText = newValue.toString()
+  window.electronAPI.counterValue(newValue)
+})
 ```
 
 In the main process, listen for `counter-value` events and handle them appropriately.
 
 ```js title='main.js (Main Process)'
 // ...
-ipcMain.on("counter-value", (_event, value) => {
-  console.log(value); // will print value to Node console
-});
+ipcMain.on('counter-value', (_event, value) => {
+  console.log(value) // will print value to Node console
+})
 // ...
 ```
 
@@ -557,10 +552,10 @@ ipcMain.on("counter-value", (_event, value) => {
 There's no direct way to send messages between renderer processes in Electron using the `ipcMain`
 and `ipcRenderer` modules. To achieve this, you have two options:
 
-- Use the main process as a message broker between renderers. This would involve sending a message
-  from one renderer to the main process, which would forward the message to the other renderer.
-- Pass a [MessagePort][] from the main process to both renderers. This will allow direct communication
-  between renderers after the initial setup.
+* Use the main process as a message broker between renderers. This would involve sending a message
+from one renderer to the main process, which would forward the message to the other renderer.
+* Pass a [MessagePort][] from the main process to both renderers. This will allow direct communication
+between renderers after the initial setup.
 
 ## Object serialization
 

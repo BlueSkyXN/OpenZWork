@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - P0 只支持用户级/global subagent 管理；不支持工作区级创建/编辑。
-- 用户级 agent Markdown 的默认运行时根目录是 `~/.openzwork/agents`，不是 `~/.openzwork/cli/agents`。
+- 用户级 agent Markdown 的默认运行时根目录是 `~/.zcode/agents`，不是 `~/.zcode/cli/agents`。
 - GUI 的 enabled/disabled 状态必须被 zcode-cli runtime 启动时消费；不能只影响 Settings 列表或 mention 面板。
 - built-in agents `general-purpose` 和 `Explore` 在 P0 只读展示，不支持编辑/删除。
 - workspace/project agents 如果需要继续供 mention 使用，必须从 runtime 实际路径 `<workspace>/.zcode/agents` 读取；Settings P0 不提供编辑入口。
@@ -28,8 +28,8 @@
 - CLI runtime 当前读取：
   - user root: `join(storageRoot, "agents")`
   - project root: `join(workingDirectory, ".zcode", "agents")`
-- `storageRoot` 默认来自 `DefaultRuntimeConfig.storage.dir = "~/.openzwork"`。
-- App service 当前 `packages/services/src/subagents/subagentsService.ts` 仍用 `ZCODE_AGENT_RUNTIME.nativeConfigDir` 推导 `~/.openzwork/cli/agents` 和 `<workspace>/.zcode/cli/agents`，这和 runtime loader 不一致。
+- `storageRoot` 默认来自 `DefaultRuntimeConfig.storage.dir = "~/.zcode"`。
+- App service 当前 `packages/services/src/subagents/subagentsService.ts` 仍用 `ZCODE_AGENT_RUNTIME.nativeConfigDir` 推导 `~/.zcode/cli/agents` 和 `<workspace>/.zcode/cli/agents`，这和 runtime loader 不一致。
 - App service 当前只解析/写回 `name`、`description`、`color`、`model`、`tools`、body；runtime profile 还支持 `disallowedTools`、`skills`、`permissionMode`、`maxTurns`、`background`、`mcpServers`。
 - `agents-state.json` 当前只被 service 读写，runtime 不消费。
 
@@ -45,7 +45,7 @@
   - 不依赖 `@zcode/core`。
 - Create: `packages/services/src/subagents/subagentStorage.ts`
   - 统一解析 user/global agent root、project agent root、state file path。
-  - 读取 `~/.openzwork/cli/config.json` 中的 `storage.dir`，fallback 到 `~/.openzwork`。
+  - 读取 `~/.zcode/cli/config.json` 中的 `storage.dir`，fallback 到 `~/.zcode`。
 - Modify: `packages/services/src/subagents/subagents.ts`
   - 扩展 service interface，支持 settings user-only list、create/update/delete 的 user scope。
 - Modify: `packages/services/src/subagents/subagentsService.ts`
@@ -349,10 +349,7 @@ Parser 要接受 runtime 当前 loose parser 能接受的格式。P0 不支持�
 
 ```ts
 export interface SubagentMarkdownDiagnostic {
-  code:
-    | "agent_missing_frontmatter"
-    | "agent_missing_required_frontmatter"
-    | "agent_invalid_frontmatter";
+  code: "agent_missing_frontmatter" | "agent_missing_required_frontmatter" | "agent_invalid_frontmatter";
   message: string;
   path: string;
 }
@@ -393,11 +390,11 @@ pnpm test -- --run packages/services/test/subagentsService.test.ts
   - `resolveUserSubagentRoot(): Promise<string>`
   - `resolveWorkspaceSubagentRoot(workspacePath: string): string`
   - `resolveSubagentStateFile(): Promise<string>`
-- Consumes: `~/.openzwork/cli/config.json` 的 `storage.dir`，fallback `~/.openzwork`。
+- Consumes: `~/.zcode/cli/config.json` 的 `storage.dir`，fallback `~/.zcode`。
 
 - [ ] **Step 1: 写 failing root resolution test**
 
-使用临时 HOME，创建 `~/.openzwork/cli/config.json`：
+使用临时 HOME，创建 `~/.zcode/cli/config.json`：
 
 ```ts
 it("uses runtime storage.dir agents root for user subagents", async () => {
@@ -421,7 +418,7 @@ it("uses runtime storage.dir agents root for user subagents", async () => {
 `subagentStorage.ts` 不直接使用 `ZCODE_AGENT_RUNTIME.nativeConfigDir` 推导 agent root。它只用 native config path 读取 config 文件：
 
 ```ts
-const DEFAULT_STORAGE_DIR = "~/.openzwork";
+const DEFAULT_STORAGE_DIR = "~/.zcode";
 const ZCODE_CONFIG_PATH = join(resolveUserHomeDir(), ".zcode", "cli", "config.json");
 
 export async function resolveUserSubagentRoot(): Promise<string> {
@@ -445,7 +442,7 @@ export async function resolveSubagentStateFile(): Promise<string> {
 
 - [ ] **Step 4: 保留兼容迁移读取**
 
-为了不让已有 `~/.openzwork/cli/agents` 用户立刻消失，P0 可以只读 legacy root 但不再写 legacy root。实现为：
+为了不让已有 `~/.zcode/cli/agents` 用户立刻消失，P0 可以只读 legacy root 但不再写 legacy root。实现为：
 
 ```ts
 const roots = [
@@ -1270,7 +1267,7 @@ Start the app using the repo's normal dev command for this worktree. Then:
 1. Open Settings.
 2. Open Subagents section.
 3. Create user agent `code-reviewer`.
-4. Confirm file exists at `~/.openzwork/agents/code-reviewer.md` or configured `${storage.dir}/agents/code-reviewer.md`.
+4. Confirm file exists at `~/.zcode/agents/code-reviewer.md` or configured `${storage.dir}/agents/code-reviewer.md`.
 5. Disable `code-reviewer`.
 6. Start a new agent session.
 7. Inspect model-io/provider-visible request and confirm `code-reviewer` is absent from available agent list.

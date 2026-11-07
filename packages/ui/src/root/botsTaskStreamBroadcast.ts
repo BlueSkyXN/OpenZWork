@@ -27,7 +27,8 @@ function isBotTaskStreamBroadcastPayload(
     typeof value.workspacePath === "string" &&
     typeof value.taskId === "string" &&
     typeof value.updatedAt === "number" &&
-    (value.workspaceIdentity === undefined || typeof value.workspaceIdentity === "string") &&
+    (value.workspaceIdentity === undefined ||
+      typeof value.workspaceIdentity === "string") &&
     isZCodeStreamEvent(value.event) &&
     value.event.taskId === value.taskId
   );
@@ -50,7 +51,8 @@ export function resolveBotTaskStreamBroadcast(
   const hasOpenWorkspace = tabs.some(
     (tab) =>
       isWorkspaceTab(tab) &&
-      buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity) === targetWorkspaceKey,
+      buildTaskWorkspaceKey(tab.workspacePath, tab.workspaceIdentity) ===
+        targetWorkspaceKey,
   );
   return hasOpenWorkspace ? message.payload : null;
 }

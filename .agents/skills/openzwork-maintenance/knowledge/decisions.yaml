@@ -1,0 +1,100 @@
+# 取舍先例：遇到同类上游改动时怎样决定。具体决定记录在 docs/openzwork/ledger.yaml。
+# 规则见 ../references/knowledge/GUIDE.md；由 tests/ci/openzwork-maintenance.test.mjs 校验。
+version: 1
+kind: decision
+entries:
+  - id: OZK-DEC-001
+    title: 只有子项依赖官方服务时保留主体
+    when: 上游新功能的一部分依赖官方账号、网关或下发通道。
+    do: 吸收不依赖官方服务的主体，只裁掉依赖官方的子项，并在整合 spec 中写明裁掉了哪个子项。
+    why: v3.17.1 保留了 data-sync 的配置推送；其中模型配置 Provisioning 下发若依赖官方通道则单独裁剪。
+    evidence:
+      - docs/openzwork/upstream/v3.17.1-integration.md
+    since: 2026-10-31
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-002
+    title: 观测链按用途决定去留
+    when: 上游把观测或遥测接进了保留功能的契约。
+    do: 服务于产品功能的本地观测保留；向官方上报的链路和依赖裁剪。
+    why: processResourceTelemetry 被上游接入远端心跳契约，保留了观测骨架，ARMS 上报面不导出。
+    evidence:
+      - 5ac3b4596
+      - packages/shared/src/processResourceTelemetry.ts
+    since: 2026-10-31
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-003
+    title: 裁剪官方 MCP 身份头，保留通用 MCP 诊断
+    when: 上游在 MCP 链路中同时修改官方鉴权和通用行为。
+    do: 官方 MCP 身份头的专属实现、夹具和文档不引入；通用的 MCP 失败分类与诊断保留。
+    why: v3.17.2 整合吸收行为第 8 条。
+    evidence:
+      - docs/openzwork/upstream/v3.17.2-integration.md
+    since: 2026-11-05
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-004
+    title: 原生 CUA 只保留兼容占位
+    when: 上游新增或修改原生电脑控制（CUA）的实现。
+    do: 不吸收实现，只保留占位边界；相关 spec 与测试也不引入。
+    why: v3.17.1 整合未吸收 CUA Windows 输入系列；占位边界见 CUA spec。
+    evidence:
+      - docs/openzwork/upstream/v3.17.1-integration.md
+      - docs/specs/cua-placeholder-boundary-openzwork.md
+    since: 2026-11-05
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-005
+    title: 上游实现了我方已有功能时改用上游
+    when: 上游新版本提供了与 OpenZWork 已有功能等效的实现。
+    do: 先接入上游实现并验证，再删除我方的重复实现，对应补丁按登记流程改为 retired；上游实现依赖官方服务时保留我方实现。
+    why: 两套实现并存会产生重复状态和两条写入路径；补丁登记已用 retired 状态记录这类情况。
+    evidence:
+      - docs/openzwork/patches/downstream-patch-registry.md
+    since: 2026-10-23
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-006
+    title: 依赖锁文件不手改
+    when: 合并时 pnpm-lock.yaml 冲突或依赖声明变化。
+    do: 依赖声明确实变化后执行 pnpm install --lockfile-only --ignore-scripts 重算，不手工编辑锁文件。
+    why: v3.17.1 整合的冲突解决规则第 3 条。
+    evidence:
+      - docs/openzwork/upstream/v3.17.1-integration.md
+    since: 2026-10-31
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-007
+    title: 上游退役的测试按 OpenZWork 口径保留
+    when: 上游删除测试或测试基础设施。
+    do: 上游退役的 App 业务单测不恢复；OpenZWork 仍需要的 CLI、E2E 与门禁测试保留，并登记到台账的 retain 条目。
+    why: v3.17.1 上游退役 App 单测；OpenZWork 保留固定核心套件与部分桌面 E2E。
+    evidence:
+      - AGENTS.md
+      - docs/openzwork/ledger.yaml
+    since: 2026-10-31
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-008
+    title: spec 与代码矛盾时登记为待定
+    when: 发现整合 spec 的结论与现有代码不一致。
+    do: 保持现有代码行为，在台账中把对应条目记为 undecided，交给用户决定；不自行选择一边。
+    why: image-search 插件在 v3.17.1 spec 中写明移除，代码却保留了注册，记为 OZ-D009。
+    evidence:
+      - docs/openzwork/ledger.yaml
+    since: 2026-11-07
+    checked: 3.17.2
+    status: active
+  - id: OZK-DEC-009
+    title: 上游文档原文不动，差异集中写一处
+    when: 需要表达 OpenZWork 与某份上游文档的不同之处。
+    do: 上游原文不动；差异写进 OpenZWork 的 spec 或台账，并出现在 README「与上游的差异」。只有代码读取、规则引用或 OpenZWork 改写维护的文档才保留 -openzwork 版本，并登记 role。
+    why: 曾为 481 份上游文档各存整份副本，其中 341 份只删了段落或改了路径，增加 17 万行且每次上游更新都要复核；按需要保留后只剩 63 份。
+    evidence:
+      - docs/openzwork/maintenance-model.md
+      - docs/openzwork/upstream-doc-variants.yaml
+      - docs/openzwork/README.md
+    since: 2026-11-08
+    checked: 3.17.2
+    status: active

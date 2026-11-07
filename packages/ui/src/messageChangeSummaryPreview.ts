@@ -45,13 +45,11 @@ export function buildChangeSummaryDiffViewerSource({
   };
 }
 
-export function buildChangeSummaryFilePreviewSource(
-  input: {
-    path: string;
-    relativePath: string;
-    workspacePath: string;
-  } & CodeViewerWorkspaceScope,
-): CodeViewerSource {
+export function buildChangeSummaryFilePreviewSource(input: {
+  path: string;
+  relativePath: string;
+  workspacePath: string;
+} & CodeViewerWorkspaceScope): CodeViewerSource {
   const { path, relativePath, workspacePath, workspaceIdentity, workspaceRemoteSessionId } = input;
   return {
     type: "file",

@@ -1,5 +1,7 @@
 # 模型选择状态
 
+> **已实现：** [闲时后台生命周期计划](../../../../off-peak-task/background-lifecycle-plan.md) 拆出每会话 `cliDefaultSelection`，保留 Runtime Session Selection 负责续跑，复用现有存储且不做配置/数据库迁移。验证范围与 review 修复记录见该计划。
+
 ModelSelection 是可以持久化和传输的模型意图：
 
 ```ts
@@ -54,6 +56,7 @@ ModelSelection。App 重启或 Session 恢复时，Draft 重新初始化 Compose
 
 Registry 更新使未提交草稿的 Selection 失效时，按失效层级处理**临时有效结果**，不清除持久原意图；留空本身不弹错误提示：
 
+- 普通 Provider 或 Model 失效：保持模型控件为空，等待用户重选；不自动替换为其他 Provider 或默认模型；普通账号套餐按下节统一对应当前连接；
 - Provider/Model 仍有效但 Reasoning 缺失或失效：保留 Provider/Model，只清空 `reasoningLevel`，要求用户
   重新选择档位，不得自动替换成最高、最低或默认值。
 
@@ -76,15 +79,18 @@ Registry 更新使未提交草稿的 Selection 失效时，按失效层级处理
 不把消费者的选择放进共享事件或 Host 全局缓存。传入 null 表示明确没有选择，不采用 preferredSelection。
 
 统一纯解析先识别原选择是否为正式普通账号 Provider：是则在同一快照中找唯一 `current=true`
+的普通账号 Provider；否则保持原 Provider（包含 Off-Peak）。身份分类由服务装配层复用现有正式 ID
 定义注入，Provider 纯模块不另抄一份 ID 表、不导入整个 shared barrel 或按字符串猜身份。
 目标缺失/多个 current 时返回不完整，不随意选首项。再精确匹配 modelId 和原 reasoningLevel：
 缺模型则结果为空，缺档位则只清有效结果的档位，不补最高值。普通可选菜单仍过滤 hidden，
+Off-Peak 的原身份有效性检查使用同一 Registry 内部事实，不把隐藏模型塞进普通菜单。
 
 Todo95C 关闭档位改名是失效档位的有限例外：原值仍合法时保留；否则只有明确命中已改名 Built-in 来源且目标支持 `disabled` 时，才在临时有效结果中将旧 `off/nothink` 对应过去。Node Host/Worker 复用同一来源判定，API 原生 `none` 和自定义值不全局替换。Personal 推理值域/Map 或固定配置不套用内置旧名推断。最终 Registry/ModelFactory 仍精确校验，不在执行层迁移。
 
 读取/配置刷新不写文件。文本和附件的自动保存仍保存原选择；用户主动清空则是新的空意图。
 提交被接纳后采用本次有效值时，必须检查原意图和 scope 没有被后续编辑替换。已固定的 Submission、
 run、Active Model 和历史记录不重新对应账号。定时任务长期配置只在编辑保存时改变，本次 run
+在目标 Host 首次派发前固定；Off-Peak 不跨账号换 Provider 或 Ticket，只保护读取不破坏原意图。
 
 接口读取失败与正常不完整结果分开：公共 hook 继续订阅，首次临时读取失败允许有限、可取消重试，
 不重试不完整选择或派发；耗尽后显式 reload。没有目标、远端未连接不回退本地。没有发送前配置同步屏障。
@@ -126,7 +132,7 @@ Session Selection 保存 Session 后续执行延续使用的 ModelSelection。�
 
 ### CLI 默认与加速卡回退
 
-`cliDefaultSelection` 由 Bootstrap 按会话维护，只给没有显式选择的 CLI/TUI 用户输入补齐模型。新会话从 `~/.openzwork/v2/provider_config.json` 的 `config.defaultModelSelection` 初始化，恢复会话复用已有普通用户选择；不会在每次请求时重读全局默认。`/model`、`/effort` 修改并保存这个默认值，消息尚未接受时不改 Session 续跑选择。App 继续维护 Composer 草稿，不新增第二份 CLI 默认状态。
+`cliDefaultSelection` 由 Bootstrap 按会话维护，只给没有显式选择的 CLI/TUI 用户输入补齐模型。新会话从 `~/.zcode/v2/provider_config.json` 的 `config.defaultModelSelection` 初始化，恢复会话复用已有普通用户选择；不会在每次请求时重读全局默认。`/model`、`/effort` 修改并保存这个默认值，消息尚未接受时不改 Session 续跑选择。App 继续维护 Composer 草稿，不新增第二份 CLI 默认状态。
 
 `highspeedFallbackSelection` 仅指**加速卡过期的回退选择**：在加速轮启动、任何异步初始化之前，从当时的普通 Session 选择复制并冻结。错误处理只读这份快照，不能读取后来被新消息更新的 Session。回退保留本轮历史，移除加速卡请求鉴权；没有普通选择时保留真实卡过期错误。它不是闲时换票或通用错误回退。
 
@@ -231,6 +237,7 @@ Option Spec 重新推断。
 
 ## 产品配置中的 Selection
 
+Automation、Repo Wiki、Bot、Off-Peak 和 Subagent 等产品保留自己的 Draft、Config、Record、保存事件与
 执行时机，只统一其中引用模型的值类型：
 
 ```text
@@ -245,6 +252,7 @@ Option Spec 重新推断。
 Selection，就写入当时选定的具体模型和 reasoning level。两者不能合并，也不能使用 `model: "inherit"`
 等伪模型 ID 表达继承。
 
+Subagent 没有显式 override 时继承 Parent Active Model；已经保存的 Off-Peak execution selection 在派发时
 使用自身身份。Automation 创建时把当前 Host preferred 或用户显式选择解析成具体 Selection 并保存，不保留
 虚拟的“继承/默认模型”表单状态。
 
@@ -335,13 +343,13 @@ Configured Default 与 Fallback Policy 的解析结果；Renderer 不重复这�
 
 ## 写入事件
 
-| 状态                  | 写入事件                                 | 持久化范围                  |
-| --------------------- | ---------------------------------------- | --------------------------- |
-| Draft Selection       | Composer 编辑                            | Entry Draft                 |
-| App Recent            | App 接受用户 Submission                  | App × workspaceKey          |
-| Session Selection     | 普通 Submission 被接纳；闲时执行临时设值 | Session（仅持久化普通选择） |
-| CLI Default Selection | CLI/TUI 的 /model、/effort；会话初始化   | 复用已有普通用户选择存储    |
-| Active Model          | Loop 启动，或 Guide 在 Step 边界切换     | 当前 Agent Loop，不持久化   |
+| 状态              | 写入事件                                   | 持久化范围                |
+| ----------------- | ------------------------------------------ | ------------------------- |
+| Draft Selection   | Composer 编辑                              | Entry Draft               |
+| App Recent        | App 接受用户 Submission                    | App × workspaceKey        |
+| Session Selection | 普通 Submission 被接纳；闲时执行临时设值 | Session（仅持久化普通选择） |
+| CLI Default Selection | CLI/TUI 的 /model、/effort；会话初始化 | 复用已有普通用户选择存储 |
+| Active Model      | Loop 启动，或 Guide 在 Step 边界切换       | 当前 Agent Loop，不持久化 |
 
 这些状态共享 ModelSelection 语义，但不共享写入时机。一个状态变化后，可以按明确事件更新另一个状态；任何状态都不通过观察其他状态的当前值来猜测自己应该保存什么。
 

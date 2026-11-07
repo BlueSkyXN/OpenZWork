@@ -57,6 +57,7 @@ SPT05 验收以真实 DOM 几何调用和动画事件为证据：批量收起工
 - 摘要使用输入 `query`：`select:Read,TodoWrite` 展示为“搜索工具：Read, TodoWrite”，关键词查询保留原文；输入尚未到达或为空时只显示“搜索工具”。中英文共用同一渲染路径，长查询沿用搜索卡的单行省略。
 - 该分流仅属于 UI，不把 ToolSearch 加入通用 search family 或 Explore 聚合，不改变工具结果、模型请求及持久化。桌面实时与冷恢复、手机 Web 共用该 renderer。
 - `Node REPL` / Browser Use 工具的展开布局保持透明，并与工具摘要正文保持同一水平基线；不得在 `ToolLayout` 的详情间距之外再次叠加整块横向 padding。文本结果内容块和“查看执行细节”展开后的代码/错误栈分别使用 `bg-card border border-border rounded-xl`；图片、“查看执行细节”按钮和折叠布局本身留在卡片外。单行、非 JSON、长度不超过 160 字符的短结果使用普通次级正文展示；JSON、多行或更长的日志继续使用带复制/换行操作的 CodeBlock。图片结果在消息流展开区始终使用单列，避免窄桌面栏和手机 Web 中被响应式断点切成过窄的双列缩略图；大图查看器行为保持不变。
+- `CUA` 工具的展开区只展示面向用户的动作、结果、失败原因、建议、截图、权限、环境、列表和应用状态，不提供完整 tool call JSON 的“查看原始数据”入口。原始 input、output、display 和生命周期元数据仍按既有协议与持久化链路保留，只是不进入桌面端与手机 Web 共用的 CUA 展开界面；其他工具 renderer 的原始数据能力不受影响。
 - `ReadSessionContext` 通过 `ReadSessionContextToolCallBlock` 渲染，不走 fallback 的 `Parameters` / `Result` JSON 块。
 - 摘要行展示本次上下文读取的 `query`，并把 `sessionId` 作为次级标识。
 - 展开区只展示 `query` 和返回的上下文内容；若 output 是结构化对象，优先读取 `output.content`，再回退到文本型 output 或 `rawOutput`。
@@ -115,6 +116,8 @@ SPT05 验收以真实 DOM 几何调用和动画事件为证据：批量收起工
 - ZCode persisted tool call 现在会持久化 `status` 和 `raw`
 - 这样实时流里的 diff / image / 特殊 tool payload，刷新后仍然能复用同一套展示逻辑
 - Core 的 `ToolResultDisplayPayload` 是 UI 结构化事实边界：display 从原始 tool output 生成，通过实时 `ToolCallResult.result.display` 传输，并通过 completed tool part metadata 持久化。模型可见 content 的格式化、截断和 hook additional context 不得改变 display。
+- V4 product projection 必须把 CUA、file diff 等通用 display 保留在 `ToolCallRow.output.display`；`ToolCallRow.display` 只保留既有 `node_repl_images` 专用通道。UI adapter 优先读取 `output.display`，并兼容旧 Node REPL 顶层 display。
+- CUA display v1 的 `input` 仅作为旧历史记录兼容字段继续可读；新事件不再重复写入。工具调用自身的 `ToolCallRow.input` 是唯一输入事实源，UI 解析旧 display 时丢弃其中的副本。
 - UI 读取 display 时必须同时覆盖桌面 `desktop-continuous` 的实时 raw event 与手机 `web-remote-replayable` 的持久化 metadata；不得把 replayable 恢复数据拼接进 desktop continuous 主链路，也不得绕过现有 snapshot/gap 恢复边界。
 
 ## WebFetch 与公开工具展示

@@ -324,7 +324,11 @@ Array of workspaces to ignore, globs allowed. Example:
 
 ```json title="knip.json"
 {
-  "ignoreWorkspaces": ["packages/go-server", "packages/flat/*", "packages/deep/**"]
+  "ignoreWorkspaces": [
+    "packages/go-server",
+    "packages/flat/*",
+    "packages/deep/**"
+  ]
 }
 ```
 

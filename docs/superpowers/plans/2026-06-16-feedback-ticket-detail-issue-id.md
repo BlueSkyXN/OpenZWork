@@ -13,7 +13,6 @@
 ### Task 1: Document The UI Contract
 
 **Files:**
-
 - Create: `docs/ui/feedback-ticket-detail-issue-id.md`
 
 - [x] **Step 1: Write the spec**
@@ -27,10 +26,30 @@ Confirm the change does not alter feedback service APIs, realtime stream boundar
 ### Task 2: Add A Failing Detail View Test
 
 **Files:**
-
 - Modify: `packages/ui/test/feedbackTicketDetail.test.ts`
 
 - [x] **Step 1: Add the test**
+
+```ts
+it("shows the issue id with a copy action", () => {
+  const html = renderToStaticMarkup(
+    createElement(
+      ZCodeIntlProvider,
+      { initialLocale: "zh-CN" },
+      createElement(TicketDetailView, {
+        ticket: createTicket(),
+        feedbackService: {} as IFeedbackService,
+        onRefresh: vi.fn(),
+        onOpenProcess: vi.fn(),
+      }),
+    ),
+  );
+
+  expect(html).toContain("Issue #");
+  expect(html).toContain("ticket-1");
+  expect(html).toContain('aria-label="复制 issue 编号"');
+});
+```
 
 - [x] **Step 2: Run the focused test and verify red**
 
@@ -41,7 +60,6 @@ Expected: the new test fails because `TicketDetailView` does not render the issu
 ### Task 3: Implement The Detail Header Control
 
 **Files:**
-
 - Modify: `packages/ui/src/feedback/TicketDetail.tsx`
 - Modify: `packages/ui/src/i18n/locales/zh-CN.ts`
 - Modify: `packages/ui/src/i18n/locales/en-US.ts`
@@ -75,7 +93,6 @@ and English equivalents:
 ### Task 4: Verify And Commit
 
 **Files:**
-
 - Test: `packages/ui/test/feedbackTicketDetail.test.ts`
 
 - [x] **Step 1: Run focused test**

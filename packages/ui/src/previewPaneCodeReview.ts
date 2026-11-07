@@ -1,4 +1,7 @@
-import type { CodeCommentPreview, CodeCommentRange } from "@/lib/codeCommentContext.js";
+import type {
+  CodeCommentPreview,
+  CodeCommentRange,
+} from "@/lib/codeCommentContext.js";
 import type { CodeReviewCodeViewerSource } from "@/lib/codeViewer.js";
 
 export interface CodeReviewContentProjection {

@@ -1,5 +1,7 @@
 # 窗口级 Web 远程控制设计
 
+> **已废弃：** 本设计描述的是已移除的仓库内 relay / `remoteControlToken` / `bridgeToken` 方案。当前实现使用外部 relay `wss://zcode.z.ai/ws` 与 `/remote` QR 参数，业务消息统一封装在 `data.payload`。
+
 ## 背景
 
 当前 Web 远程控制的 `token/sessionId` 绑定到某个 workspace 的一次访问。手机扫码后进入的是当前 workspace 的旁路访问；跨 workspace 打开 task 时，会在同一条 relay control tunnel 下创建新的 relay session，并跳转到新的 `connectUrl` 重新 bootstrap。
@@ -405,7 +407,9 @@ interface RemoteWorkspaceBridgeRuntime {
   disposeBridge?: () => void;
 }
 
-type WorkspaceBridgeRuntime = LocalWorkspaceBridgeRuntime | RemoteWorkspaceBridgeRuntime;
+type WorkspaceBridgeRuntime =
+  | LocalWorkspaceBridgeRuntime
+  | RemoteWorkspaceBridgeRuntime;
 ```
 
 `start(windowId)` 行为：

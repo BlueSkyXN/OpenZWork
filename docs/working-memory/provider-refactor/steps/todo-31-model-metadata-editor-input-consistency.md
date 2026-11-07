@@ -86,6 +86,8 @@ Enter
 9. UI 定向测试、typecheck、lint、格式检查和 `git diff --check` 通过；
 10. 完成后更新实施结果并提交 Conventional Commit。
 
+本 Todo 不修改 Model Config Rule 内容、Overlay 顺序、Registry、账号套餐或模型运行时能力。
+
 ## 6. 实施结果
 
 - JSON 字段收口为单层、固定高度的普通 `Textarea`，背景、边框和 Focus 状态与普通

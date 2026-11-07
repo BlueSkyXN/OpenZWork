@@ -94,7 +94,7 @@ Case-local artifacts：
   `packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-hooks-lifecycle.json`
 - Manifest：
   `packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-hooks-lifecycle.json`
-- File fixture：WDIO 在隔离 HOME 的 user `~/.openzwork/cli/config.json` 写 hooks；spec 在默认
+- File fixture：WDIO 在隔离 HOME 的 user `~/.zcode/cli/config.json` 写 hooks；spec 在默认
   workspace 写 Node recorder/trace，完成后恢复 user config 并删除 workspace 产物。
 - Timing：`fast-text`。Hook 运行和文件断言不依赖 SSE cadence。
 

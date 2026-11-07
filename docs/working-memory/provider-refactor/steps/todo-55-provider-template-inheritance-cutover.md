@@ -6,6 +6,7 @@
 >
 > 取代范围：Todo 49/50/51 中关于普通 Built-in Provider placement、Family 固定“按量 API”槽位、Welcome
 > 固定 API Provider Overlay 与 Provider 顶层 `enabled` 的阶段性设计。Z.ai/BigModel Account Family、
+> Account Access、`entitled`、请求期凭据和 Off-Peak 鉴权边界继续有效。
 
 ## 0. 当前裁决速览
 
@@ -13,6 +14,7 @@
   可以创建多个独立实例。
 - 全部非 Account Built-in Concrete Provider 退役；Z.ai API、BigModel API 与其他第三方供应商一起改为
   Provider Template。
+- Z.ai/BigModel Family 继续保留，但只组织 Start、Individual、Team、Off-Peak Account Provider；不再包含
   “按量 API”连接项。
 - Account Provider 的定义由 Built-in Release 提供，并固定进入对应 Family 的 Settings 结构；用户不负责创建或
   删除它们。Account Overlay 的 `access.entitled` 只决定当前账号是否拥有访问资格。
@@ -77,10 +79,27 @@ Template 不是 Provider：它不进入 Registry、模型选择或已创建 Prov
 
 本轮保留 Z.ai/BigModel Family，但将其职责收窄为只组织 Account Provider；按量 API 与 Family 解耦：
 
+```text
+Z.ai Account Family                      BigModel Account Family
+├─ Start Plan                            ├─ Start Plan
+├─ Individual Coding Plan                ├─ Individual Coding Plan
+├─ Team Coding Plan                      ├─ Team Coding Plan
+└─ Off-Peak                              └─ Off-Peak
+
+普通 Provider Templates
+├─ Z.ai API
+├─ BigModel API
+├─ DeepSeek
+├─ Moonshot Kimi
+└─ ……
+```
+
 因此：
 
 - `zai-api`、`bigmodel-api` 从固定 Built-in Concrete Provider 迁入 Provider Templates；
 - 两者和其他 Template 一样进入普通“添加供应商”菜单，允许创建多个 Personal Provider 实例；
+- Start、Individual、Team、Off-Peak Account Provider 继续由对应 Family 组织；
+- 保留 `ProviderFamilyDomain`、Account Family Header/Connection UI、套餐、额度、升级、账号凭据与 Off-Peak
   消费链路；
 - `ProviderFamilyConnectionSelection` 删除 `kind: "api-key"` 分支，只保留 Start、Individual、Team Account
   选择；
@@ -158,6 +177,7 @@ interface ZCodeBuiltinConfigContent {
 ```text
 providers
 ├─ Start / Individual / Team Account Provider
+└─ Off-Peak Account Provider
 
 providerTemplates
 ├─ Z.ai API / BigModel API
@@ -503,10 +523,13 @@ ProviderFamilyConnectionSelection
 
 - Family Header、Account 连接方式菜单和当前选择持久化；
 - Start、Individual、Team 的切换与恢复；
+- `providerFamilyDomain` 与登录账号体系同步；
+- 套餐、额度、升级、账号凭据和 Off-Peak 对 Z.ai/BigModel 身份的消费；
 - `ProviderFamilyConnectionSelection` 的 `api-key` variant、固定 Provider ID 与对应 App Settings 数据退出；
 - Z.ai/BigModel API Templates 进入普通“添加供应商”候选，但不出现在 Account Family 连接方式菜单；
 - 不重新建立已经删除的第二份 `oauth | apiKey` mode 状态。
 
+Off-Peak 仍属于对应 Account Family 的账号与套餐产品链，但它是隐藏执行 Provider：不作为
 `ProviderFamilyConnectionSelection` 候选，不出现在普通 Settings Provider 列表，也不提供用户编辑入口。它继续
 由内部闲时执行通过真实 Provider ID 和普通 Registry/ModelFactory 精确使用。
 
@@ -593,10 +616,11 @@ createPersonalProvider({
 2. 增加独立 Template Map 与严格 Template Source Schema，Map 值复用 `ProviderConfigOverlay`，并执行字段
    白名单；
 3. Built-in Release 版本提升并原子贯穿 Bundled/Remote/Active/LKG；
-4. Z.ai API、BigModel API 与其他普通第三方 Provider 全部移入 `providerTemplates`；
-5. 不新增 `family = zhipu | others`，保留现有 Family 与设置分组；
-6. 删除 Provider 顶层 `enabled`，保留 `access.entitled` 和 Model `enabled`；
-7. 将 Account Access 的 `family` 改名为 `accountType`，但不删除 Provider Family 产品结构。
+4. `providers` 只保留全部 Account/Off-Peak Concrete Provider；
+5. Z.ai API、BigModel API 与其他普通第三方 Provider 全部移入 `providerTemplates`；
+6. 不新增 `family = zhipu | others`，保留现有 Family 与设置分组；
+7. 删除 Provider 顶层 `enabled`，保留 `access.entitled` 和 Model `enabled`；
+8. 将 Account Access 的 `family` 改名为 `accountType`，但不删除 Provider Family 产品结构。
 
 ### B. Model Rules 与 Resolver
 
@@ -648,6 +672,7 @@ createPersonalProvider({
 - `zai-family`、`bigmodel-family` 与当前 Personal 分组；
 - `ProviderFamilyDomain`、收窄后的 Account `ProviderFamilyConnectionSelection` 及其持久化；
 - Account Family Header/Connection UI；
+- Account 套餐、额度、升级、凭据与 Off-Peak Family 消费链路。
 
 ## 8. 测试与验收
 
@@ -684,15 +709,18 @@ createPersonalProvider({
 - Template Personal 实例没有伪造的 `effectiveBuiltinConfig`；四类 Settings Config 投影语义准确；
 - Template 菜单包含 Z.ai API / BigModel API，且可分别创建多个实例；
 - Family 页面只包含 Start、Individual 与 Team，不再包含按量 API；
+- Off-Peak 不进入 Family Connection Selection 或普通 Settings 列表，但内部精确执行不回归；
 - Welcome 每次保存 Key 都创建新的正确 Template 实例，且不复用旧实例、不修改 Account Connection
   Selection；
 - 账号登录不创建按量 API Template 实例；`providerSetupCompleted` 不参与实例去重。
 
 ### Family / Account 回归
 
+- `providerFamilyDomain` 切换与登录恢复正确；
 - Start、Individual、Team Connection Selection round-trip 正确；旧 `api-key` variant 零残留；
 - Z.ai API / BigModel API Template 实例不被 Family 导航或 Account Resolver 消费；
 - Start 模型成员、Individual/Team entitlement 与状态不回归；
+- 套餐、额度、升级、账号凭据和 Off-Peak 读取正确 Account Type；
 - 不存在第二份 `oauth | apiKey` mode 状态。
 - Provider Settings DTO 和 UI 不再存在 Provider 级 enabled 或“已启用”胶囊；Model enabled 保持不变。
 
@@ -803,6 +831,7 @@ Template 分支。
 - Settings、Registry、ModelFactory 与 Runtime 不存在第二套 Provider/Model 事实；
 - Settings 不混淆 Template 来源、Effective Built-in、Personal Overlay 与最终 Effective Config；
 - Provider 级 enabled 字段、DTO、胶囊与隐式替代物清零，Model enabled 保留；
+- Account entitlement、套餐、请求期凭据、Off-Peak 与 Active Model 冻结语义保持正确；
 - 所有定向、全量与 E2E 证据通过后提交 Conventional Commit。
 
 ## 11. 实施记录
@@ -810,6 +839,7 @@ Template 分支。
 2026-09-01 已完成 Provider Template 切换：
 
 - Built-in Release 升级为 `providers + providerTemplates + modelConfigRules` 的原子版本；
+- 普通第三方 Provider 全部迁为 Template，只有 Account/Off-Peak 保留 Built-in Concrete Provider；
 - Settings 与 Welcome 统一通过 `createPersonalProvider(templateId, ...)` 创建独立 Personal Provider；
 - Z.ai/BigModel 按量 API 退出 Family Connection Selection，Template ID 不再充当运行时 Provider ID；
 - Account Registry Access 使用 `accountType`，请求期账号访问事实继续使用 `family`；

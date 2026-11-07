@@ -2,14 +2,14 @@
 
 ## 背景
 
-App 侧模型供应商权威源是 `~/.openzwork/v2/config.json` 的 `provider` 字段。这个文件可能来自
+App 侧模型供应商权威源是 `~/.zcode/v2/config.json` 的 `provider` 字段。这个文件可能来自
 旧版本迁移、远端同步、用户手动编辑或设置页保存。用户已经显式配置的模型 metadata 必须
 保留；本地 catalog 只负责补齐缺失事实。
 
 ## 设计
 
 `packages/services/src/model-provider/modelProviderServiceStorage.ts` 在读取
-`~/.openzwork/v2/config.json` 后，先把 provider 配置转为内部 `ModelProviderConfig`，再执行 catalog
+`~/.zcode/v2/config.json` 后，先把 provider 配置转为内部 `ModelProviderConfig`，再执行 catalog
 metadata merge。
 
 合并规则统一为 fill-only：

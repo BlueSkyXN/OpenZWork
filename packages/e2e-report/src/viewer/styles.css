@@ -298,7 +298,12 @@ th {
 
 code,
 pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
 }
 
 code {
@@ -379,6 +384,7 @@ pre {
   .heroMeta {
     justify-items: start;
   }
+
 }
 
 @media (max-width: 560px) {

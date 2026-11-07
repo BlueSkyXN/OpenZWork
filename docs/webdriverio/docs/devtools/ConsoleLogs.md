@@ -6,7 +6,6 @@ title: Console Logs
 Capture and inspect all browser console output during test execution. DevTools records console messages from your application (`console.log()`, `console.warn()`, `console.error()`, `console.info()`, `console.debug()`) as well as WebDriverIO framework logs based on the `logLevel` configured in your `wdio.conf.ts`.
 
 **Features:**
-
 - Real-time console message capture during test execution
 - Browser console logs (log, warn, error, info, debug)
 - WebDriverIO framework logs filtered by configured `logLevel` (trace, debug, info, warn, error, silent)
@@ -14,13 +13,12 @@ Capture and inspect all browser console output during test execution. DevTools r
 - Console logs displayed alongside test steps and browser screenshots for context
 
 **Configuration:**
-
 ```js
 // wdio.conf.ts
 export const config = {
-  // Level of logging verbosity: trace | debug | info | warn | error | silent
-  logLevel: "info", // Controls which framework logs are captured
-  // ...
+    // Level of logging verbosity: trace | debug | info | warn | error | silent
+    logLevel: 'info', // Controls which framework logs are captured
+    // ...
 };
 ```
 
@@ -28,6 +26,5 @@ This makes it easy to debug JavaScript errors, track application behavior, and s
 
 ## Demo
 
-### >\_ Console Logs
-
+### >_ Console Logs
 ![Console Logs](/img/devtools/console-logs.gif)

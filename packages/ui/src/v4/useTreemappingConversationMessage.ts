@@ -39,11 +39,15 @@ export function buildTreemappingMessageFromRows(
   }
 
   const turnRows = rows.filter((row) => row.turnId === lastAssistantTurnId);
-  const toolCallRows = turnRows.filter((row): row is ToolCallRow => row.kind === "toolCall");
+  const toolCallRows = turnRows.filter(
+    (row): row is ToolCallRow => row.kind === "toolCall",
+  );
   const streaming = turnRows.some(
     (row) =>
-      ((row.kind === "assistantText" || row.kind === "reasoning") && row.state === "streaming") ||
-      (row.kind === "toolCall" && (row.status === "inputStreaming" || row.status === "running")),
+      ((row.kind === "assistantText" || row.kind === "reasoning") &&
+        row.state === "streaming") ||
+      (row.kind === "toolCall" &&
+        (row.status === "inputStreaming" || row.status === "running")),
   );
 
   return {
@@ -96,5 +100,8 @@ export function useTreemappingConversationMessage(params: {
 
   const state = useConversationProjection(lease);
   const rows = state.snapshot?.rows.window;
-  return useMemo(() => (rows ? buildTreemappingMessageFromRows(rows) : null), [rows]);
+  return useMemo(
+    () => (rows ? buildTreemappingMessageFromRows(rows) : null),
+    [rows],
+  );
 }

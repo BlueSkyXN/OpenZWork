@@ -6,7 +6,10 @@ export interface SourceServerDisplayNameRegistry {
   getSnapshot(): ReadonlyMap<string, string>;
 }
 
-const registries = new WeakMap<ISourceServerManagementService, SourceServerDisplayNameRegistry>();
+const registries = new WeakMap<
+  ISourceServerManagementService,
+  SourceServerDisplayNameRegistry
+>();
 
 export function getSourceServerDisplayNameRegistry(
   management: ISourceServerManagementService,
@@ -26,7 +29,10 @@ export function getSourceServerDisplayNameRegistry(
       .getSnapshot()
       .then((snapshot) => {
         names = new Map(
-          snapshot.servers.map((server) => [server.sourceServerId, server.displayName]),
+          snapshot.servers.map((server) => [
+            server.sourceServerId,
+            server.displayName,
+          ]),
         );
         for (const listener of listeners) listener();
       })

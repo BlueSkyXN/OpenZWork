@@ -185,10 +185,7 @@ describe(`${CASE_MARKER}: 同一 Source 经两条线路/alias 与 symlink 打开
     expect(results.filter((result) => result.status === "applied").length).toBeGreaterThanOrEqual(
       2,
     );
-    const remoteConfig = await runSSHCommand(
-      config,
-      'cat "$HOME/.openzwork/v2/provider_config.json"',
-    );
+    const remoteConfig = await runSSHCommand(config, 'cat "$HOME/.openzwork/v2/provider_config.json"');
     expect(remoteConfig.stdout).toContain(UPSTREAM_PROVIDER_NAME);
     const sidebar = await browser.execute(() => document.body?.innerText ?? "");
     facts.deviceRowsShowingPort = (

@@ -40,7 +40,7 @@ Hook 名称与命令                                      [信任] [开关]
 
 ### Trust store 损坏（`workspace_hooks_trust_store_corrupt`）
 
-持久 Trust store（`~/.openzwork/security/workspace-hook-trust-v1.json`，可被 user config 的
+持久 Trust store（`~/.zcode/security/workspace-hook-trust-v1.json`，可被 user config 的
 `storage.dir` 重定向）按完整 strict schema 解析：JSON 语法错误、缺少 `schemaVersion`、
 record 缺少必需字段（`decision` / `grantedAt` / `digestAlgorithm` 等）、非法时间戳、未知
 字段等一律判 corrupt 并 fail-closed——所有消费者（Settings UI、Runtime admission、CLI）

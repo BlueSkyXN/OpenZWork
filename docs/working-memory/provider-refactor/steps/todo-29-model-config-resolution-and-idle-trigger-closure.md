@@ -134,6 +134,8 @@ Resolution 完成
 | validation    | 保存前等待当前 Resolution          | 完整性规则和 Adapter compatibility           |
 | persistence   | Provider 文本仍自动保存            | Personal Config Schema 与物理位置            |
 
+不修改模型选择、连接测试、账号套餐、Remote Provisioning、Desktop continuous、Mobile replayable、队列或恢复链路。
+
 ## 7. 测试计划
 
 1. `GLM-5.3-Flash + anthropic-messages` 展示 1M、128K、Image/Video、reasoning spec 和 mapping；

@@ -40,8 +40,8 @@ http://intranet.example.invalid:12345/zcode/deps/
       sha256.txt
 
 用户机器
-  ~/.openzwork/lite/releases/<version>
-  ~/.openzwork/lite/current -> releases/<version>
+  ~/.zcode/lite/releases/<version>
+  ~/.zcode/lite/current -> releases/<version>
   ~/.local/bin/zcode-lite
 
 运行时

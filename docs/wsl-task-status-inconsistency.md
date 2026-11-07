@@ -205,7 +205,7 @@ CLI(WSL)              renderer sessionsIndexStore           任务列表      �
 ## 剩余风险与后续材料
 
 - 截图时刻端内状态不可回放（renderer 无日志），判级 probable；R-C 落地后可闭环。
-- 下次复现请让用户额外导出 WSL 内 `~/.openzwork/cli/log`（当前 bundle 只含 Windows 侧 CLI 日志）。
+- 下次复现请让用户额外导出 WSL 内 `~/.zcode/cli/log`（当前 bundle 只含 Windows 侧 CLI 日志）。
 - 远程两跳事件隐式透传可靠性未被 e2e 覆盖，独立跟进。
 
 ## 修复实施记录

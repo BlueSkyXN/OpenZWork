@@ -520,7 +520,12 @@ textarea {
 .rawPanel pre {
   margin: 0;
   max-height: 360px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
   font-size: 12px;
 }
 
@@ -532,6 +537,7 @@ textarea {
   .metricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 
 @media (max-width: 560px) {

@@ -6,7 +6,7 @@
 ## 背景与目标
 
 「应用用量」（App Usage）面板当前的数据全部来自**本地 session JSON 文件**
-（`~/.openzwork/sessions/*.json`），经宿主进程的 `usageStatsAggregator.ts` 用
+（`~/.zcode/sessions/*.json`），经宿主进程的 `usageStatsAggregator.ts` 用
 「字符数 / 3」**估算** token 后聚合成三个区块：概要、热力图、趋势，支持
 全部 / 7d / 30d 时间筛选。
 
@@ -39,7 +39,7 @@ ZCode Protocol（stdio JSON-RPC）请求数据（现有 `session/list`、`sessio
 
 ```
 旧:  useAppUsageStats → usageStatsService.getAppUsageSnapshot()
-        → readPersistedSessionFiles(~/.openzwork/sessions/*.json)      [删]
+        → readPersistedSessionFiles(~/.zcode/sessions/*.json)      [删]
         → buildUsageStatsSnapshot()  字符数/3 估算                 [删]
 
 新:  useAppUsageStats → usageStatsService.getAppUsageSnapshot()
@@ -58,17 +58,17 @@ ZCode Protocol（stdio JSON-RPC）请求数据（现有 `session/list`、`sessio
 
 固定 8 张卡。映射如下：
 
-| 旧卡片                    | 处理             | 新卡片                                        | 数据来源                                             |
-| ------------------------- | ---------------- | --------------------------------------------- | ---------------------------------------------------- |
-| Token 用量（字符/3 估算） | 换真实           | **真实 Token**（总量，副标拆 输入/输出/缓存） | `model_usage.computed_total_tokens` 等               |
-| 消息数                    | 删，替换         | **对话轮次**                                  | `turn_usage` 行数                                    |
-| 会话数                    | 保留             | 会话数                                        | distinct `session_id`                                |
-| 活跃天数                  | 保留             | 活跃天数                                      | distinct day(`started_at`)                           |
-| 当前/最长连续             | 合并             | **连续活跃天数**（30 天内）                   | day(`started_at`)                                    |
-| 峰值时段                  | 删（移到热力图） | **缓存命中率**                                | `cache_read / (input + cache_creation + cache_read)` |
-| 最常用模型                | 保留             | 最常用模型（按真实 token）                    | `model_usage` GROUP BY model                         |
-| —                         | 新增             | **工具调用**（总数 + 错误率）                 | `tool_usage`                                         |
-| —                         | 新增             | **可靠性**（模型错误率 / 平均 TTFT）          | `model_usage.status`、`time_to_first_token_ms`       |
+| 旧卡片 | 处理 | 新卡片 | 数据来源 |
+|---|---|---|---|
+| Token 用量（字符/3 估算） | 换真实 | **真实 Token**（总量，副标拆 输入/输出/缓存） | `model_usage.computed_total_tokens` 等 |
+| 消息数 | 删，替换 | **对话轮次** | `turn_usage` 行数 |
+| 会话数 | 保留 | 会话数 | distinct `session_id` |
+| 活跃天数 | 保留 | 活跃天数 | distinct day(`started_at`) |
+| 当前/最长连续 | 合并 | **连续活跃天数**（30 天内） | day(`started_at`) |
+| 峰值时段 | 删（移到热力图） | **缓存命中率** | `cache_read / (input + cache_creation + cache_read)` |
+| 最常用模型 | 保留 | 最常用模型（按真实 token） | `model_usage` GROUP BY model |
+| — | 新增 | **工具调用**（总数 + 错误率） | `tool_usage` |
+| — | 新增 | **可靠性**（模型错误率 / 平均 TTFT） | `model_usage.status`、`time_to_first_token_ms` |
 
 > 候选 9 项取 8。默认取舍：保留「连续活跃天数」与「可靠性」，因「工具调用」已在第 4 区块
 > 充分展开，概要中可省其一以控制在 8 张；实现时可微调，不影响架构。
@@ -121,6 +121,10 @@ ZCode Protocol（stdio JSON-RPC）请求数据（现有 `session/list`、`sessio
 - `packages/ui/src/settings/usage-stats/AppUsageDailyModelBarChart.tsx`
   — 真实 token。
 - i18n keys 增删（`settings.usage.range.all` 移除等）。
+
+### 不动
+
+- 编程套餐（Coding Plan）整个 tab、BigModel monitor API 那条线保持原样。
 
 ## 测试
 

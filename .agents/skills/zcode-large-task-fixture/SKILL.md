@@ -1,6 +1,6 @@
 ---
 name: zcode-large-task-fixture
-description: Generate, verify, or remove large synthetic ZCode task fixtures in local ~/.openzwork persistence for UI/session performance testing. Use when testing big conversation/task rendering, task list performance, snapshot recovery, tool-call rendering, reasoning, patches, todos, and model usage without spending time chatting manually.
+description: Generate, verify, or remove large synthetic ZCode task fixtures in local ~/.zcode persistence for UI/session performance testing. Use when testing big conversation/task rendering, task list performance, snapshot recovery, tool-call rendering, reasoning, patches, todos, and model usage without spending time chatting manually.
 disable-model-invocation: true
 ---
 
@@ -9,8 +9,8 @@ disable-model-invocation: true
 Use this skill to create a large local task that behaves like a long-running ZCode Agent task.
 It writes both persistence layers:
 
-- App task index: `~/.openzwork/v2/tasks-index.sqlite`
-- Agent session DB: `~/.openzwork/cli/db/db.sqlite`
+- App task index: `~/.zcode/v2/tasks-index.sqlite`
+- Agent session DB: `~/.zcode/cli/db/db.sqlite`
 
 The generated task is synthetic test data. Always back up before writing and record the manifest path.
 
@@ -49,8 +49,8 @@ node .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture
 ## Safety
 
 - The script uses SQLite `.backup` before generation unless `--no-backup` is passed.
-- Backups are stored under `~/.openzwork/perf-task-backups/<timestamp>/`.
-- Manifests are stored under `~/.openzwork/perf-task-manifests/<sessionId>.json`.
+- Backups are stored under `~/.zcode/perf-task-backups/<timestamp>/`.
+- Manifests are stored under `~/.zcode/perf-task-manifests/<sessionId>.json`.
 - Use `--delete <sessionId>` for generated fixtures. It deletes from `tasks-index.sqlite` and cascades the agent `session` rows.
 - Do not delete manually unless you have checked the manifest and confirmed the task id starts with `sess_perf_large_`.
 
@@ -64,3 +64,4 @@ Generated sessions include:
 - Bash, Read, Grep, Glob, Edit, Write, TodoWrite, AskUserQuestion, Agent, WebSearch, and WebFetch tool shapes
 - Patch, compaction, subtask, agent, retry, step-start, and step-finish parts
 - Todo rows, session target rows, model usage rows, turn usage rows, and task index searchable text
+

@@ -31,7 +31,9 @@ const capabilityGroupHeaderStyle = {
   height: CAPABILITY_GROUP_HEADER_HEIGHT,
 } satisfies CSSProperties;
 
-function CapabilitySystemFlowNodeView({ data }: NodeProps<CapabilitySystemFlowNode>) {
+function CapabilitySystemFlowNodeView({
+  data,
+}: NodeProps<CapabilitySystemFlowNode>) {
   return (
     <section
       className={`h-full w-full rounded-2xl border-2 border-dashed border-border bg-background-alt ${
@@ -42,7 +44,9 @@ function CapabilitySystemFlowNodeView({ data }: NodeProps<CapabilitySystemFlowNo
         className="overflow-hidden border-b border-dashed border-border px-5 py-4"
         style={capabilitySystemHeaderStyle}
       >
-        <h2 className="text-ui-lg font-medium text-foreground">{data.system.name}</h2>
+        <h2 className="text-ui-lg font-medium text-foreground">
+          {data.system.name}
+        </h2>
         <p className="mt-1 max-w-3xl text-ui-sm text-foreground-subtle">
           {data.system.description}
         </p>
@@ -51,7 +55,9 @@ function CapabilitySystemFlowNodeView({ data }: NodeProps<CapabilitySystemFlowNo
   );
 }
 
-function CapabilityGroupFlowNodeView({ data }: NodeProps<CapabilityGroupFlowNode>) {
+function CapabilityGroupFlowNodeView({
+  data,
+}: NodeProps<CapabilityGroupFlowNode>) {
   const complexity = getCapabilityGroupComplexity(data.group.id);
   const fullCodeEstimate = formatCapabilityCodeEstimateFull(
     data.group.codeEstimate.productionLines,
@@ -59,14 +65,18 @@ function CapabilityGroupFlowNodeView({ data }: NodeProps<CapabilityGroupFlowNode
   return (
     <section
       className={`h-full w-full rounded-xl border bg-surface ${
-        data.selected ? "border-brand" : "border-card-border hover:border-border-hover"
+        data.selected
+          ? "border-brand"
+          : "border-card-border hover:border-border-hover"
       } ${data.dimmed ? "opacity-20" : ""}`}
     >
       <div
         className="overflow-hidden border-b border-border px-4 py-3"
         style={capabilityGroupHeaderStyle}
       >
-        <h3 className="text-ui-base font-medium text-foreground">{data.group.name}</h3>
+        <h3 className="text-ui-base font-medium text-foreground">
+          {data.group.name}
+        </h3>
         <div className="mt-1 flex min-w-0 items-center justify-between gap-2">
           <p
             className="min-w-0 truncate text-ui-xs text-foreground-subtlest"
@@ -79,8 +89,10 @@ function CapabilityGroupFlowNodeView({ data }: NodeProps<CapabilityGroupFlowNode
             className="shrink-0 rounded-full bg-tag px-2 py-0.5 font-mono text-ui-xs text-foreground-subtle"
             title={`主责代码估算：${fullCodeEstimate}；跨群入度：${complexity.inDegree}；跨群出度：${complexity.outDegree}`}
           >
-            {formatCapabilityCodeEstimateCompact(data.group.codeEstimate.productionLines)} · 入
-            {complexity.inDegree} · 出{complexity.outDegree}
+            {formatCapabilityCodeEstimateCompact(
+              data.group.codeEstimate.productionLines,
+            )}{" "}
+            · 入{complexity.inDegree} · 出{complexity.outDegree}
           </span>
         </div>
       </div>
@@ -88,7 +100,9 @@ function CapabilityGroupFlowNodeView({ data }: NodeProps<CapabilityGroupFlowNode
   );
 }
 
-function CapabilityItemFlowNodeView({ data }: NodeProps<CapabilityItemFlowNode>) {
+function CapabilityItemFlowNodeView({
+  data,
+}: NodeProps<CapabilityItemFlowNode>) {
   return (
     <article
       className={`flex h-full w-full items-center rounded-lg border bg-card px-3 ${
@@ -175,12 +189,17 @@ function CapabilityMapEdge({
   targetY,
 }: EdgeProps<CapabilityFlowEdge>) {
   const fallback = getBezierPath({ sourceX, sourceY, targetX, targetY });
-  const path = data?.route ? roundedOrthogonalPath(data.route.points) : fallback[0];
-  const labelPosition = data?.route ? data.route.labelPosition : { x: fallback[1], y: fallback[2] };
+  const path = data?.route
+    ? roundedOrthogonalPath(data.route.points)
+    : fallback[0];
+  const labelPosition = data?.route
+    ? data.route.labelPosition
+    : { x: fallback[1], y: fallback[2] };
   const relationType = data?.capability.type ?? "state";
   const intraGroup =
     data &&
-    nodeById.get(data.capability.source)?.groupId === nodeById.get(data.capability.target)?.groupId;
+    nodeById.get(data.capability.source)?.groupId ===
+      nodeById.get(data.capability.target)?.groupId;
 
   return (
     <>

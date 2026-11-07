@@ -168,6 +168,10 @@ Provider Config
 `visibility=hidden` 只隐藏普通 Settings 与 Selection；配置完整且启用的 hidden Provider 仍可由内部产品通过普通
 Registry 和 ModelFactory 精确使用。系统不保存 Provider `selectable`。
 
+Provider 顶层没有 `enabled`。Personal Provider 一旦创建，其定义就固定留在 Settings；配置不完整时仍可继续编辑，只是
+不会进入可执行 Registry。Account Provider 固定进入对应 Family，账号资格只由 `zhipu-account access.entitled`
+表达。Model 的执行开关仍由 Model Config `enabled` 表达。
+
 ## 5. 模型成员、启用和顺序
 
 Provider 中的三个模型数组各自只有一个含义：
@@ -337,6 +341,18 @@ Image/Video/PDF，隐藏的 Audio 在编辑其他字段时必须原样保留。
 `access.type` 描述访问材料怎样取得，`api.type` 描述请求使用哪种公开协议；两者正交。
 智谱产品协议使用有限的 Access Mode：
 
+```text
+zhipu-account/start-plan
+└─ 官方版本访问安全校验
+
+zhipu-account/individual-coding-plan | team-coding-plan
+└─ ZCode V4 transport 请求证明准入；不扩散给普通 api-key Provider
+
+zhipu-account/off-peak
+└─ Off-Peak 排队、Ticket 与重试协议入口
+```
+
+这些字段都不是 Model capability。动态安全校验材料、Runtime Key、JWT、Off-Peak Ticket 与远端 rollout
 不进入 Config。
 
 已经确认的兼容决策是：
@@ -344,6 +360,7 @@ Image/Video/PDF，隐藏的 Audio 在编辑其他字段时必须原样保留。
 - OpenAI-compatible reasoning 使用真实 canonical 历史和当前 SDK 原生编码，删除 ZCode 特殊回放；
 - GitHub Copilot `omitMaxOutputTokens` 删除；
 - Snowflake Cortex 当前不支持，删除专属输出字段改写；
+- 官方版本请求安全校验与 Off-Peak execution protocol 由 `zhipu-account.mode` 分派；
 - `requiresMfjsToolSchema` 留在 Model Config，显式开启才转换，失败报错；
 - DeepSeek Anthropic synthetic empty thinking 已删除；只保留真实 canonical reasoning 回放；
 - 未进入当前基线的 Z.ai text/tool signature 候选不采用。

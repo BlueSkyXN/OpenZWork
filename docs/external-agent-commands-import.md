@@ -30,7 +30,7 @@
 
 - 只处理 `.md` 命令文件，跳过隐藏目录与隐藏文件。
 - 导入目标由用户在导入按钮下拉菜单中选择：
-  - `Global` 写入 `~/.openzwork/commands/`。
+  - `Global` 写入 `~/.zcode/commands/`。
   - `Project` 写入 `<workspace>/.zcode/commands/`。
 - 导入时保留命令文件相对来源根目录的层级，例如 `review/code.md` 仍导入为 `review/code.md`。
 - 导入方式与技能一致：

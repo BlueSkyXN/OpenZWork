@@ -54,8 +54,8 @@ Host tasks-index    project_id、pinned、archived、unread_at(+CAS)、sort_orde
 ## 3. 关键裁决速查（详见 spec 第 3 节）
 
 - 2026-10-10 远程裁决：本地/远程项目平铺，Host 不作为分组；远程先建单目录项目再建会话，不允许无项目创建或拖拽追加目录。统一项目顺序归控制端侧栏偏好。详见 `docs/superpowers/specs/2026-10-10-session-manage-upstream-integration.md`。
-- 侧栏 = 全局置顶区（session + 置顶项目）→ 项目区 → 任务区（`project_id IS NULL`，任意 cwd）；`~/.openzwork/workspace/*` 只作为全局新建任务的默认执行目录。筛选含按项目 / 按分组 / 最近更新；真实目录不是节点，不恢复旧两级切换器。
-- 项目：本地 0..n 个同 host 的 roots + 一个主要目录，远程恰好一个固定目录；同一目录可属多个项目；新建 session cwd = 主要目录；仅本地 0 root 时自动建 `~/.openzwork/workspace/<ts>` 并加为主要 root。
+- 侧栏 = 全局置顶区（session + 置顶项目）→ 项目区 → 任务区（`project_id IS NULL`，任意 cwd）；`~/.zcode/workspace/*` 只作为全局新建任务的默认执行目录。筛选含按项目 / 按分组 / 最近更新；真实目录不是节点，不恢复旧两级切换器。
+- 项目：本地 0..n 个同 host 的 roots + 一个主要目录，远程恰好一个固定目录；同一目录可属多个项目；新建 session cwd = 主要目录；仅本地 0 root 时自动建 `~/.zcode/workspace/<ts>` 并加为主要 root。
 - 本地项目及在线远端权威项目删除 = 软删除容器，session 保留归属，时间线可见；新建 roots 集合完全相等的项目时提示恢复；不提供彻底删除。远程项目离线删除只移除本机入口与缓存，不触发远端软删除或恢复。
 - 本地项目移除 root / 换主要目录不影响已创建 session、定时任务、闲时任务、Bots（它们在创建时固化 cwd 与附加目录）；roots 变更对运行中 session 下次 resume 生效。
 - 同名 skill / subagent 来自不同 root 时并存，由 CLI 赋限定名 `<rootName>/<name>`。

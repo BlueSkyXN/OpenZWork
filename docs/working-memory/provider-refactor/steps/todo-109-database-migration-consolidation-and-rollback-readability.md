@@ -31,7 +31,7 @@
 
 ### 2.1 Agent 会话库
 
-默认路径 `~/.openzwork/cli/db/db.sqlite`，以实际配置解析路径为准。已有 0001–0018 migration 及 `schema_migration` 记录；这些 SQL 与执行器相对固定旧基线没有差异。执行器使用 IMMEDIATE 事务、checksum、成功后记录与错误回滚。表结构没变化不代表 JSON 内容没变化。
+默认路径 `~/.zcode/cli/db/db.sqlite`，以实际配置解析路径为准。已有 0001–0018 migration 及 `schema_migration` 记录；这些 SQL 与执行器相对固定旧基线没有差异。执行器使用 IMMEDIATE 事务、checksum、成功后记录与错误回滚。表结构没变化不代表 JSON 内容没变化。
 
 内存执行确认 18 张业务表，另加迁移记录表。下列每一行都必须产出“迁移/保持不变/明确待裁决”的结论及证据；表名列表不是完成声明。
 
@@ -63,6 +63,8 @@
 
 ### 2.2 App 任务库及其他库
 
+默认 `~/.zcode/v2/tasks-index.sqlite`。TaskIndexRepo、AutomationRepo、OffPeakTaskRepo 共用该库，不能误认为三个独立数据库或各维护一套迁移版本。
+
 | 表/范围                                                      | 已知情况与审计要求                                                                   |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | tasks                                                        | 列、meta_json、搜索内容、workspace 身份；相对旧基线无变化也要给出结论                |
@@ -70,8 +72,11 @@
 | task_group_view_node_orders、task_group_workspace_bootstraps | 顺序和工作区关联                                                                     |
 | automations                                                  | 新 model_selection 与旧 model/provider/thought_level；分散导入入口                   |
 | automation_runs                                              | 新 model_selection；历史执行来源不能随当前账号重解释                                 |
+| off_peak_tasks                                               | 新 model_selection；旧模型/档位及 Ticket 关联，读取时 repair 路径                    |
 | 新增迁移记录表                                               | 库级唯一账本，名称/实现按最终设计确定                                                |
 | 其他自有数据库                                               | 搜索建库、驱动、路径及写入入口，补入清单；无关库明确排除理由，不以这两库作为漏查理由 |
+
+当前 App Repo 存在各自 CREATE TABLE / ensureColumn，Automation 在初始化链路导入旧选择，Off-Peak 在 list/get 等路径修复旧选择。实施需归并机制，但不得丢失其他必要建表/补列行为。
 
 ### 2.3 审计方法与账本字段
 
@@ -145,18 +150,20 @@
 
 模式 planning；改动层级 persistence / recovery，非 UI 重新设计。数据库迁移由所属进程的存储层负责，UI/Host 投影不能成为第二份内容权威。
 
-| 用户入口/状态                    | 共享实现与权威落点                                 | 草稿/默认与提交边界                                           | 必须保持的模式/隔离                                    |
-| -------------------------------- | -------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------ |
-| 任务列表、搜索、分组             | TaskIndexRepo / tasks-index.sqlite；列表元数据权威 | 不因浏览启动所有 Agent，不改用户草稿                          | workspaceIdentity 与路径不混用                         |
-| 打开会话、历史消息、子任务、目标 | Agent SessionStore；UI 消费协议投影                | 阅读不要求模型可执行；执行仍用现有选择/绑定                   | 本地/SSH/WSL/Docker 的数据库由实际 owner 迁移          |
-| 自动化列表、编辑、运行记录       | AutomationRepo / tasks-index.sqlite                | 编辑写自动化配置，不改 Session 草稿；缺配置在既有执行入口处理 | 不改变自动运行、计划及启停状态                         |
-| 手机打开以上内容                 | 同一 shared-host 和所属 SessionStore/Repo          | 不新增手机独立迁移或独立运行时                                | desktop-continuous 与 web-remote-replayable 不互相扩散 |
+| 用户入口/状态                    | 共享实现与权威落点                                  | 草稿/默认与提交边界                                           | 必须保持的模式/隔离                                    |
+| -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------ |
+| 任务列表、搜索、分组             | TaskIndexRepo / tasks-index.sqlite；列表元数据权威  | 不因浏览启动所有 Agent，不改用户草稿                          | workspaceIdentity 与路径不混用                         |
+| 打开会话、历史消息、子任务、目标 | Agent SessionStore；UI 消费协议投影                 | 阅读不要求模型可执行；执行仍用现有选择/绑定                   | 本地/SSH/WSL/Docker 的数据库由实际 owner 迁移          |
+| 自动化列表、编辑、运行记录       | AutomationRepo / tasks-index.sqlite                 | 编辑写自动化配置，不改 Session 草稿；缺配置在既有执行入口处理 | 不改变自动运行、计划及启停状态                         |
+| 闲时列表、编辑、Ticket           | OffPeakTaskRepo 与既有 Service / tasks-index.sqlite | 不通过普通读取自动更换账号或 Ticket                           | 保留已绑定 Ticket 的执行语义                           |
+| 手机打开以上内容                 | 同一 shared-host 和所属 SessionStore/Repo           | 不新增手机独立迁移或独立运行时                                | desktop-continuous 与 web-remote-replayable 不互相扩散 |
 
 共享的是迁移保证和存储转换；不同的是每库 owner、表契约、Selection 含义、各业务提交/执行时机。保持 API/Model 的公共校验，不改候选生成、默认/继承来源；不把存储兼容变成运行兜底。
 
 影响分级与代码种子（均相对仓库根）：
 
 - must-inspect：`apps/zcode-cli/packages/adapters/src/storage/session-store/{migrations,migration-runner,codecs,sqlite-session-store}.ts`、`repositories/{session-entries,model-selection-migration,messages,usage}.ts`；本次格式、事务及读写 owner。
+- must-inspect：`packages/services/src/session/{taskIndexRepo,automationRepo,automationSelectionMigration,offPeakTaskRepo,offPeakTaskService}.ts`；同库打开入口及分散补迁。
 - must-inspect：Session 消息/Part/输入 producer、恢复、fork、导入等直接消费者；需在实施账本补齐实际符号与路径，不以当前种子替代全审计。
 - should-inspect：任务投影、会话历史 hydration、自动化和闲时派发；证明配置缺失不阻碍内容，且不改变执行语义。
 - conditional：桌面/手机 shared-host、远程 workspace、不同 OS 文件锁；按路径差异选代表性验证，不重做协议。

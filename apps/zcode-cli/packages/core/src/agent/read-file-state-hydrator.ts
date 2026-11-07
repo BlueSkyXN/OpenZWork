@@ -1,4 +1,9 @@
-import type { MessageId, MessagePart, MessageWithParts, ToolPart } from "@zcode/contracts";
+import type {
+  MessageId,
+  MessagePart,
+  MessageWithParts,
+  ToolPart,
+} from "@zcode/contracts";
 import {
   parseReadFileStateMetadata,
   type PersistedReadFileStateMetadata,
