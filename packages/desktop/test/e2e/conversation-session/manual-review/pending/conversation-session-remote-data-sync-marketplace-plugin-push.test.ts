@@ -37,8 +37,8 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 // 再在远端 add + install。远端断言用 docker exec 读容器内 ~/.openzwork。覆盖旧插件同步弹窗 WPL-011 的场景。
 const CASE_MARKER = "E2E_DSYNC_08_MARKETPLACE_PLUGIN_PUSH";
 const ROW_KEY = PLUGIN_LIFECYCLE_ID.toLowerCase();
-const REMOTE_PLUGIN_STORAGE = "/home/dev/.zcode/cli/plugins";
-const REMOTE_CONFIG = "/home/dev/.zcode/cli/config.json";
+const REMOTE_PLUGIN_STORAGE = "/home/dev/.openzwork/cli/plugins";
+const REMOTE_CONFIG = "/home/dev/.openzwork/cli/config.json";
 
 /** 本机把该插件设为停用（直接写 User config，CLI 每次请求重新读取），用于断言启用状态随推送一致。 */
 async function disableLocalPlugin(): Promise<void> {
@@ -169,7 +169,7 @@ describe(`${CASE_MARKER}: 数据同步页推送 marketplace 插件`, () => {
       `${REMOTE_PLUGIN_STORAGE}/known_marketplaces.json`,
     );
     expect(knownMarketplaces).toContain(PLUGIN_LIFECYCLE_MARKETPLACE_ID);
-    expect(knownMarketplaces).toContain("/home/dev/.zcode/plugins/marketplace-sources/");
+    expect(knownMarketplaces).toContain("/home/dev/.openzwork/plugins/marketplace-sources/");
     const installed = await readRemoteContainerFile(
       container,
       `${REMOTE_PLUGIN_STORAGE}/installed_plugins.json`,

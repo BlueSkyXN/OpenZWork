@@ -29,7 +29,9 @@ import { prepareV4ConversationE2E } from "#e2e/helpers/v4-conversation";
 const CASE_MARKER = "E2E_DSYNC_10_COMMAND_PUSH";
 const NESTED_KEY = "/e2e-dsync/commit";
 const AGENTS_KEY = "/e2e-dsync-review";
-const REMOTE_COMMANDS = "/home/dev/.zcode/commands";
+// Bugfix（2026-11-07）：远端命令根与 commandDataSync 的 commandsRoot("openzwork") 同源——推送目标
+// 文件与禁用覆盖键都落在 ~/.openzwork/commands；旧 .zcode 根在用户级路径迁移后不再被读写。
+const REMOTE_COMMANDS = "/home/dev/.openzwork/commands";
 const REMOTE_CLI_CONFIG = "/home/dev/.openzwork/cli/config.json";
 
 const NESTED_CONTENT = [

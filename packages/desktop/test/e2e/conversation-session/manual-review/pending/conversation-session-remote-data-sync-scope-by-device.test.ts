@@ -515,7 +515,7 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     remoteWorkspacePath = workspacePath;
     remoteWorkspaceIdentity = remoteTab.workspaceIdentity ?? "";
     const remoteUserKey = `source-user:${sourceServerId}`;
-    const remoteModelAgentPath = `${REMOTE_HOME}/.zcode/agents/${REMOTE_MODEL_AGENT}.md`;
+    const remoteModelAgentPath = `${REMOTE_HOME}/.openzwork/agents/${REMOTE_MODEL_AGENT}.md`;
     await writeRemoteContainerFile(
       container,
       remoteModelAgentPath,
@@ -556,7 +556,7 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
 
     // 远端「用户」：新建写入远端 ~/.openzwork/agents，本机不变。
     await createSubagent(REMOTE_AGENT);
-    await waitForRemotePath(container, `${REMOTE_HOME}/.zcode/agents/${REMOTE_AGENT}.md`);
+    await waitForRemotePath(container, `${REMOTE_HOME}/.openzwork/agents/${REMOTE_AGENT}.md`);
     expect(
       await localPathExists(join(resolveE2EStorageRoot(), "agents", `${REMOTE_AGENT}.md`)),
     ).toBe(false);
@@ -614,7 +614,10 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
       { timeout: 30_000, timeoutMsg: `${CASE_MARKER}: 本机没有写入 ${LOCAL_AGENT}` },
     );
     expect(
-      await remoteContainerPathExists(container, `${REMOTE_HOME}/.zcode/agents/${LOCAL_AGENT}.md`),
+      await remoteContainerPathExists(
+        container,
+        `${REMOTE_HOME}/.openzwork/agents/${LOCAL_AGENT}.md`,
+      ),
     ).toBe(false);
     await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON, { timeout: 15_000 });
   });
@@ -641,7 +644,7 @@ describe(`${CASE_MARKER}: 设置页 Scope 菜单按设备分组`, () => {
     await fillByPlaceholder("填写调用该命令时发送的提示词...", `${CASE_MARKER} prompt`);
     await submitFormOf("my-command");
 
-    const remotePath = `${REMOTE_HOME}/.zcode/commands/${REMOTE_COMMAND}.md`;
+    const remotePath = `${REMOTE_HOME}/.openzwork/commands/${REMOTE_COMMAND}.md`;
     await waitForRemotePath(container, remotePath);
     expect(await readRemoteContainerFile(container, remotePath)).toContain(`${CASE_MARKER} prompt`);
     expect(
