@@ -55,7 +55,13 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 - 上游文档原文不动，包括格式。
 - 不建副本的上游文档，OpenZWork 与它的差异（移除的功能、改变的行为、用户级根）统一写在 `docs/openzwork/README.md` 的「与上游的差异」。该表与台账一致，由门禁校验；读上游文档时按该表理解。
 - 新的 OpenZWork 内容写进 OpenZWork 自己的文档（`docs/specs/*-openzwork.md`、`docs/openzwork/`），不为补几句话复制整份上游文档。
-- 保留的 OpenZWork 版本登记在 `docs/openzwork/upstream-doc-variants.yaml`：`role`、`usedBy`（`tool`、`rule` 必填，门禁检查引用关系仍然存在）、`kind`、`upstreamBlob`。合入上游后原文变化，`--check` 按 `upstreamBlob` 提示复核。`pending` 表示少量 OpenZWork 内容待用户确认去留。
+- 保留的 OpenZWork 版本登记在 `docs/openzwork/upstream-doc-variants.yaml`：`role`、`usedBy`（`tool`、`rule` 必填）、`kind`、`upstreamBlob`。合入上游后原文变化，`--check` 按 `upstreamBlob` 提示复核。`pending` 表示少量 OpenZWork 内容待用户确认去留。
+- `tool`、`rule` 的 `usedBy` 由门禁验证实际读取目标，不是文件名出现即可：OpenZWork 版本存在时，读取方必须选中该版本。允许三种写法：
+  - 直接写 OpenZWork 版本路径（如 `resolve(__dirname, "…/zcode-feature-graph-openzwork.yaml")`）；
+  - 把原文路径传给登记的选择函数——`openzworkDoc(原路径)`：版本存在时返回版本、不存在时回退原文。选择函数按名字登记（当前只有 `openzworkDoc`），其定义处带 `OpenZWork(OZ-F001)` 标记；
+  - `rule` 文档用 Markdown 链接指向 OpenZWork 版本。
+
+  直接读取原文路径（登记了版本却仍读上游），或文件名只出现在注释与无关字符串里，都判失败；关系失效时删除 OpenZWork 版本或调整 `role`。
 - 与上游原文逐字节一致的上游文档描述的是上游产品，净化门禁 WP-03、WP-08、WP-09 的文本扫描跳过它们；OpenZWork 版本照常扫描。
 - OpenZWork 自有文档链接到有 OpenZWork 版本的上游文档时，链接该版本；上游原文的内容和锚点与它不同。OpenZWork 版本没有对应内容、需要引用上游原文时，链接文字以「上游」开头，例如 `[上游远控架构：后台恢复](…)`。
 - 代码文件（包括技能中的脚本）按「代码」一节原地修改。

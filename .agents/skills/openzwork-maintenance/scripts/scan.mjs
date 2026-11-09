@@ -360,6 +360,49 @@ export function validateBase(ledger, context) {
   return errors;
 }
 
+// 登记的文档版本选择函数（maintenance-model.md）：定义处带 OpenZWork(OZ-F001) 标记。
+const VARIANT_SELECTOR_FUNCTIONS = ["openzworkDoc"];
+
+// 验证 usedBy 文件实际选中 OpenZWork 版本。返回 { ok, reason }；isMarkdown 用于 rule 文档的链接判定。
+function verifyVariantReader(text, item, isMarkdown) {
+  const upstreamName = item.upstream.split("/").pop();
+  const variantName = item.variant.split("/").pop();
+  const variantBase = variantName.replace(/(\.[^./]+)$/, "");
+
+  // 写法一：直接引用 OpenZWork 版本路径或文件名。
+  if (text.includes(item.variant) || text.includes(variantName)) return { ok: true };
+
+  // 写法二：把原文路径传给登记的选择函数（openzworkDoc(原路径)），版本存在时选中版本。
+  for (const fn of VARIANT_SELECTOR_FUNCTIONS) {
+    const selectorUsed = new RegExp(`${fn}\\s*\\(([\\s\\S]*?)\\)`, "g");
+    let match;
+    while ((match = selectorUsed.exec(text)) !== null) {
+      const args = match[1];
+      if (
+        args.includes(item.upstream) ||
+        args.includes(`"${item.upstream.split("/").pop()}"`) ||
+        args.includes(`'${item.upstream.split("/").pop()}'`)
+      )
+        return { ok: true };
+    }
+  }
+
+  // 写法三：rule 文档用 Markdown 链接指向 OpenZWork 版本。
+  if (isMarkdown && new RegExp(`\\]\\([^)#]*${variantBase}-openzwork\\.[^)]*\\)`).test(text))
+    return { ok: true };
+
+  // 未选中版本：区分“引用了上游原文”与“完全没有读取关系”。
+  if (text.includes(upstreamName))
+    return {
+      ok: false,
+      reason: `登记了 OpenZWork 版本仍读取上游原文 ${upstreamName}；改为读版本路径、选择函数或版本链接`,
+    };
+  return {
+    ok: false,
+    reason: "没有引用该文档；关系已失效时删除 OpenZWork 版本或调整 role",
+  };
+}
+
 export function validateVariants(doc, context) {
   const errors = [];
   if (!doc) return [`缺少 ${VARIANTS_PATH}`];
@@ -383,19 +426,21 @@ export function validateVariants(doc, context) {
         `${where}: role 应为 tool/rule/maintained/pending，写明保留 OpenZWork 版本的理由`,
       );
     } else if (item.role === "tool" || item.role === "rule") {
-      // 代码读取或规则引用必须能在 usedBy 文件中找到原文或版本的文件名，关系失效时删除版本或改 role。
+      // 代码读取或规则引用必须实际选中 OpenZWork 版本（maintenance-model.md 的三种写法），
+      // 文件名只在注释或无关字符串里出现、或登记了版本仍读上游原文，都算关系失效。
       if (!Array.isArray(item.usedBy) || item.usedBy.length === 0) {
         errors.push(`${where}: role 为 ${item.role} 时 usedBy 至少列出一个读取或引用方`);
       }
-      const names = [item.upstream, item.variant].map((path) => path.split("/").pop());
       for (const by of item.usedBy ?? []) {
         const text = context.headTree.has(by)
           ? (readAt(context.repo, context.head, by) ?? "")
           : undefined;
-        if (text === undefined) errors.push(`${where}: usedBy 文件不存在：${by}`);
-        else if (!names.some((name) => text.includes(name))) {
-          errors.push(`${where}: ${by} 没有引用该文档；关系已失效时删除 OpenZWork 版本或调整 role`);
+        if (text === undefined) {
+          errors.push(`${where}: usedBy 文件不存在：${by}`);
+          continue;
         }
+        const verdict = verifyVariantReader(text, item, by.endsWith(".md"));
+        if (!verdict.ok) errors.push(`${where}: ${by} ${verdict.reason}`);
       }
     }
     const original = baseTree.get(item.upstream);

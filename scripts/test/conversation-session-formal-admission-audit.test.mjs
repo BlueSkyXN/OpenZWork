@@ -13,11 +13,12 @@ const INTEGRATION_URL = new URL(
 );
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 // OpenZWork(OZ-F001): 上游文档原文不动，存在 -openzwork 版本时按 OpenZWork 版本核对（与审计脚本一致）。
-const coverageMatrixPath = () => {
-  const path = "docs/testing/conversation-session-e2e-coverage-matrix.md";
-  const variant = path.replace(/\.md$/, "-openzwork.md");
+// 采用登记的选择函数名 openzworkDoc（docs/openzwork/maintenance-model.md），供维护门禁验证读取目标。
+const openzworkDoc = (path) => {
+  const variant = path.replace(/(\.[^./]+)$/, "-openzwork$1");
   return existsSync(join(REPO_ROOT, variant)) ? variant : path;
 };
+const coverageMatrixPath = () => openzworkDoc("docs/testing/conversation-session-e2e-coverage-matrix.md");
 const AUDIT_PATH = join(REPO_ROOT, "scripts/audit-conversation-session-case-coverage.mjs");
 
 test("projects formal rejection into audit errors, JSON, text, and nonzero check", async () => {

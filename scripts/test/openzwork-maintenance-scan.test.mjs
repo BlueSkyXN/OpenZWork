@@ -189,6 +189,46 @@ test("runCheck 要求上游文档保持原文、OpenZWork 版本登记并跟随�
   assert.match(errors, /src\/keep\.ts 没有引用该文档/);
 });
 
+test("runCheck 按实际读取目标验证 usedBy：版本路径、选择函数与版本链接通过", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  // 写法一：直接读版本路径。
+  repo.write("src/reader-variant.ts", 'export const doc = "docs/b-openzwork.md";\n');
+  // 写法二：裸字面量与 resolve 包裹的选择函数实参都可以。
+  repo.write(
+    "src/reader-selector.ts",
+    'const openzworkDoc = (p) => p;\nexport const a = openzworkDoc("docs/b.md");\nexport const b = openzworkDoc(resolve(root, "docs/b.md"));\n',
+  );
+  // 写法三：rule 文档用 Markdown 链接指向版本。
+  repo.write("docs/rule.md", "以 [B 版本](b-openzwork.md) 为准。\n");
+  repo.write(
+    "docs/openzwork/upstream-doc-variants.yaml",
+    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/reader-variant.ts, src/reader-selector.ts]\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
+  );
+  repo.commit("valid readers");
+  assert.deepEqual(check(repo), []);
+});
+
+test("runCheck 拦截读上游原文、注释提及与缺失引用的 usedBy", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  // 登记了版本仍读上游原文。
+  repo.write("src/reader-upstream.ts", 'export const doc = "docs/b.md";\n');
+  // 文件名只出现在注释里，没有读取关系。
+  repo.write("src/reader-comment.ts", "// 提一下 docs/b.md 而已\nexport const x = 1;\n");
+  // rule 文档链接到上游原文。
+  repo.write("docs/rule-bad.md", "以 [B](b.md) 为准。\n");
+  repo.write(
+    "docs/openzwork/upstream-doc-variants.yaml",
+    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/reader-upstream.ts, src/reader-comment.ts]\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
+  );
+  repo.commit("invalid readers");
+  const errors = check(repo).join("\n");
+  // 登记了版本仍出现上游原文（含只在注释里的情形），与完全没有引用，都必须失败。
+  assert.match(errors, /src\/reader-upstream\.ts 登记了 OpenZWork 版本仍读取上游原文 b\.md/);
+  assert.match(errors, /src\/reader-comment\.ts 登记了 OpenZWork 版本仍读取上游原文 b\.md/);
+});
+
 test("runCheck 要求差异总表覆盖台账条目、OpenZWork 版本写明理由", () => {
   const repo = fixture();
   repo.write("src/fmt.ts", "export const fmt = 1;   \n");

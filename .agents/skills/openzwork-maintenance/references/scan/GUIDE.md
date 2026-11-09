@@ -39,7 +39,7 @@
 - 台账、登记表与经验库的字段、编号格式和取值；
 - 上游基准是 HEAD 的祖先，并与根 `package.json` 版本的前三段一致；
 - 裁剪条目的路径不存在，其他 `active` 条目的路径存在；
-- 上游文档和技能保持原文；同目录的 `-openzwork` 版本都已登记并写明 `role`，`tool`、`rule` 的读取或引用方确实引用了该文档，登记的上游原文与当前基准一致；
+- 上游文档和技能保持原文；同目录的 `-openzwork` 版本都已登记并写明 `role`，`tool`、`rule` 的读取方按实际读取目标验证（详见 `docs/openzwork/maintenance-model.md`：直接写版本路径、`openzworkDoc(原路径)` 选择函数或 `rule` 链接指向版本三种写法；直接读原文路径或文件名只在注释里都判失败），登记的上游原文与当前基准一致；
 - 台账中每个 active、undecided 条目都出现在 `docs/openzwork/README.md` 的「与上游的差异」；
 - 没有只差格式化的上游文件（需要已安装依赖中的 oxfmt）；
 - OpenZWork 自有 Markdown 中指向已登记上游文档的相对链接，都指向其 OpenZWork 版本（只检查文件路径，不检查锚点；链接文字以「上游」开头的除外）。

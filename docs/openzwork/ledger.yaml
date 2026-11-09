@@ -12,6 +12,9 @@ entries:
     status: active
     title: OpenZWork 维护体系
     summary: 文档索引、台账、上游文档的 OpenZWork 版本登记、维护技能、扫描工具与门禁。
+    hooks:
+      - apps/dev-docs/vite.config.ts
+      - apps/dev-docs/test/featureBoundaryGraph.test.ts
     spec: docs/openzwork/maintenance-model.md
     paths:
       - docs/openzwork/**
@@ -390,6 +393,8 @@ entries:
     status: active
     title: 遥测（ARMS/OTel）
     summary: 移除 desktop、services、ui、CLI 四层遥测与上报依赖。
+    hooks:
+      - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
     paths:
       - apps/zcode-cli/packages/telemetry/**
       - apps/zcode-cli/packages/core/src/telemetry/**
@@ -404,6 +409,8 @@ entries:
     status: active
     title: 官方套餐、加速卡与闲时任务
     summary: 移除 Coding Plan、Start Plan、Highspeed 加速卡与闲时任务。
+    hooks:
+      - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
     paths:
       - packages/services/src/coding-plan-subscription/**
       - packages/services/src/highspeed/**
@@ -426,6 +433,8 @@ entries:
     status: active
     title: 官方账号登录
     summary: 移除 BigModel/Z.AI 账号 OAuth 与 Web 登录。
+    hooks:
+      - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
     paths:
       - packages/services/src/oauth/**
       - packages/services/src/bigmodel/**
@@ -441,6 +450,8 @@ entries:
     status: active
     title: 云端分享、反馈与自动更新
     summary: 移除会话云端分享、云端反馈与应用自动更新。
+    hooks:
+      - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
     paths:
       - packages/services/src/conversation-share/**
       - packages/ui/src/conversation-share-interaction/**
@@ -463,6 +474,7 @@ entries:
       - docs/specs/cua-placeholder-boundary-openzwork.md
       - docs/testing/cua-placeholder-boundary-openzwork.md
     hooks:
+      - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
       - apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs
       - apps/zcode-cli/packages/node-repl-host/package.json
       - packages/desktop/scripts/computer-use-producer.mjs
@@ -503,6 +515,8 @@ entries:
     status: active
     title: 营销触达、奖励与请求安全版本
     summary: 移除营销触达、奖励内嵌与请求安全版本链路。
+    hooks:
+      - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
     paths:
       - packages/services/src/marketing-touch/**
       - packages/ui/src/components/marketing-touch/**

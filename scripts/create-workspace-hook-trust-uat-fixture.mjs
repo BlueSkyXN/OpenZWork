@@ -144,7 +144,7 @@ Each admitted Hook appends one JSON line to:
 Before Trust admission, that file must not be created by these Hooks.
 Follow the repository checklist:
 
-\`docs/testing/workspace-hook-trust-manual-acceptance.md\`
+\`docs/testing/workspace-hook-trust-manual-acceptance-openzwork.md\`
 `;
 
 await Promise.all([
