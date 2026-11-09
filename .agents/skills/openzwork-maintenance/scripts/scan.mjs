@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
 import { pathToFileURL } from "node:url";
+import ts from "typescript";
 import { parse as parseYaml } from "yaml";
 
 export const LEDGER_PATH = "docs/openzwork/ledger.yaml";
@@ -367,29 +368,45 @@ const VARIANT_SELECTOR_FUNCTIONS = ["openzworkDoc"];
 function verifyVariantReader(text, item, isMarkdown) {
   const upstreamName = item.upstream.split("/").pop();
   const variantName = item.variant.split("/").pop();
-  const variantBase = variantName.replace(/(\.[^./]+)$/, "");
+  const matchesPath = (value, path) => {
+    if (/\s/.test(value)) return false;
+    const normalized = posix.normalize(value);
+    return normalized === path || normalized.endsWith(`/${path}`);
+  };
 
-  // 写法一：直接引用 OpenZWork 版本路径或文件名。
-  if (text.includes(item.variant) || text.includes(variantName)) return { ok: true };
-
-  // 写法二：把原文路径传给登记的选择函数（openzworkDoc(原路径)），版本存在时选中版本。
-  for (const fn of VARIANT_SELECTOR_FUNCTIONS) {
-    const selectorUsed = new RegExp(`${fn}\\s*\\(([\\s\\S]*?)\\)`, "g");
-    let match;
-    while ((match = selectorUsed.exec(text)) !== null) {
-      const args = match[1];
-      if (
-        args.includes(item.upstream) ||
-        args.includes(`"${item.upstream.split("/").pop()}"`) ||
-        args.includes(`'${item.upstream.split("/").pop()}'`)
-      )
-        return { ok: true };
-    }
+  if (isMarkdown) {
+    // 规则文档只接受实际链接；HTML 注释里的示例不能证明引用关系。
+    const visible = text.replace(/<!--[\s\S]*?-->/g, "");
+    const targets = [
+      ...[...visible.matchAll(INLINE_LINK)].map((match) => match[2]),
+      ...visible.split("\n").map((line) => REFERENCE_LINK.exec(line)?.[1]).filter(Boolean),
+    ];
+    if (targets.some((target) => matchesPath(target.split("#")[0], variantName)))
+      return { ok: true };
+  } else {
+    // 注释和字符串中的调用示例不是读取；语法树保留嵌套实参，避免正则在第一个右括号处截断。
+    const source = ts.createSourceFile("reader.ts", text, ts.ScriptTarget.Latest, true);
+    let selected = false;
+    const visit = (node) => {
+      if (ts.isStringLiteralLike(node)) {
+        if (matchesPath(node.text, item.variant) || matchesPath(node.text, variantName))
+          selected = true;
+        for (let parent = node.parent; parent; parent = parent.parent) {
+          if (
+            ts.isCallExpression(parent) &&
+            ts.isIdentifier(parent.expression) &&
+            VARIANT_SELECTOR_FUNCTIONS.includes(parent.expression.text) &&
+            parent.arguments.some((arg) => arg.pos <= node.pos && arg.end >= node.end) &&
+            (matchesPath(node.text, item.upstream) || matchesPath(node.text, upstreamName))
+          )
+            selected = true;
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    if (selected) return { ok: true };
   }
-
-  // 写法三：rule 文档用 Markdown 链接指向 OpenZWork 版本。
-  if (isMarkdown && new RegExp(`\\]\\([^)#]*${variantBase}-openzwork\\.[^)]*\\)`).test(text))
-    return { ok: true };
 
   // 未选中版本：区分“引用了上游原文”与“完全没有读取关系”。
   if (text.includes(upstreamName))

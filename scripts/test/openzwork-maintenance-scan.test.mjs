@@ -229,6 +229,39 @@ test("runCheck 拦截读上游原文、注释提及与缺失引用的 usedBy", (
   assert.match(errors, /src\/reader-comment\.ts 登记了 OpenZWork 版本仍读取上游原文 b\.md/);
 });
 
+test("runCheck 不把版本注释、字符串中的调用示例和无关说明当作读取", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  const readers = {
+    "src/version-comment.ts": '// docs/b-openzwork.md\nexport const doc = "docs/b.md";\n',
+    "src/selector-comment.ts": '// openzworkDoc("docs/b.md")\nexport const doc = "docs/b.md";\n',
+    "src/selector-example.ts": 'export const note = \'openzworkDoc("docs/b.md")\';\n',
+    "src/version-prose.ts": 'export const note = "请使用 docs/b-openzwork.md";\n',
+    "docs/rule-comment.md": "<!-- [B](b-openzwork.md) -->\n以 [上游 B](b.md) 为准。\n",
+  };
+  for (const [path, text] of Object.entries(readers)) repo.write(path, text);
+  repo.write(
+    "docs/openzwork/upstream-doc-variants.yaml",
+    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: ${JSON.stringify(Object.keys(readers))}\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
+  );
+  repo.commit("reader false positives");
+  const errors = check(repo).join("\n");
+  for (const path of Object.keys(readers)) assert.ok(errors.includes(path), path);
+});
+
+test("runCheck 分别验证嵌套选择函数与规则链接", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.write("src/nested-reader.ts", 'export const doc = openzworkDoc(resolve(root(), "docs/b.md"));\n');
+  repo.write("docs/rule.md", "以 [B 版本](b-openzwork.md#b) 为准。\n");
+  repo.write(
+    "docs/openzwork/upstream-doc-variants.yaml",
+    `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/nested-reader.ts, docs/rule.md]\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
+  );
+  repo.commit("nested and markdown readers");
+  assert.deepEqual(check(repo), []);
+});
+
 test("runCheck 要求差异总表覆盖台账条目、OpenZWork 版本写明理由", () => {
   const repo = fixture();
   repo.write("src/fmt.ts", "export const fmt = 1;   \n");
