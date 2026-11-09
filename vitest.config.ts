@@ -146,6 +146,8 @@ export default defineConfig({
             "packages/services/src/gen-ui/**/*.test.ts",
             "scripts/assert-safe-cua-helper-zip.test.mjs",
             "scripts/ci/ci-telemetry-keyword-guard.test.mjs",
+            // OpenZWork(OW-P023)：dev-docs 图谱测试进根 vitest，供核心 CI 清单收录。
+            "apps/dev-docs/test/**/*.test.ts",
           ],
           // OpenZWork：engineering project 已收编的文件（上游 157 清单）不重复入 unit，避免双 project 双计。
           // exclude 需绝对路径才能压过 project 解析后的绝对 include（见 affected 图同款先例）。

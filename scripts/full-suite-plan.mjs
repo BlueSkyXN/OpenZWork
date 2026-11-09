@@ -15,7 +15,8 @@ export const FULL_SUITE_GROUPS = [
     filter: ["packages/desktop/test", "packages/desktop/src", "packages/desktop/scripts"],
     minutes: 30,
   },
-  { name: "ui-and-web", filter: ["packages/ui", "packages/web"], minutes: 30 },
+  // OpenZWork(OW-P023)：dev-docs 测试纳入 ui-and-web 分片，保持分片并集等于全量发现。 
+  { name: "ui-and-web", filter: ["packages/ui", "packages/web", "apps/dev-docs"], minutes: 30 },
   {
     name: "root-scripts",
     filter: ["packages/shared/src/node/genUiPaths.test.ts", "packages/services/src/gen-ui"],

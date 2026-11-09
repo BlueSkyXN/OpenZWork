@@ -413,7 +413,7 @@ nodes:
       - file: packages/ui/src/lib/interfaceMode.ts
         symbol: normalizeInterfaceMode
       - file: packages/ui/src/hooks/useInterfaceMode.ts
-        symbol: useIsGeneralMode
+        symbol: useIsOfficeMode
     invariants:
       - Display preference does not change Agent capabilities or canonical task records.
   - id: state.interface-mode
@@ -730,8 +730,7 @@ nodes:
         file: packages/provider/src/facades.ts
       - symbol: ProviderTemplatePicker
         file: packages/ui/src/settings/model-provider-section/ProviderTemplatePicker.tsx
-      - symbol: resolveBuiltinProviderLogoAsset
-        file: packages/ui/src/settings/model-provider-section/ProviderLogo.tsx
+      - file: packages/ui/src/settings/model-provider-section/ProviderLogo.tsx
     invariants:
       - "A Provider Template is an inheritance baseline, not a Provider: it has a templateId but no
         providerId, group, Registry identity, execution state, or recursive Template parent."
@@ -1283,7 +1282,7 @@ nodes:
     codeSeeds:
       - symbol: createLocalServices
         file: packages/services/src/node.ts
-      - symbol: createRemoteWorkspaceServiceCollection
+      - symbol: createServerRemoteWorkspaceServiceCollection
         file: packages/desktop/src/host/remoteWorkspaceServiceCollection.ts
     invariants:
       - AppSettings is the only Host app-managed proxy, No Proxy, and custom CA authority; ambient shell proxy
@@ -2990,7 +2989,7 @@ nodes:
     kind: service
     label: Anthropic model request metadata options
     codeSeeds:
-      - symbol: createAnthropicRequestMetadataUserId
+      - symbol: resolveAnthropicRequestMetadataUserId
         file: apps/zcode-cli/packages/adapters/src/model/anthropic-request-metadata.ts
       - symbol: createGenerateTextOptions
         file: apps/zcode-cli/packages/adapters/src/model/runner-options.ts
@@ -3026,8 +3025,7 @@ nodes:
     codeSeeds:
       - symbol: toAiSdkMessages
         file: apps/zcode-cli/packages/adapters/src/model/transform.ts
-      - symbol: withDeepSeekV4AnthropicThinkingReplay
-        file: apps/zcode-cli/packages/adapters/src/model/anthropic-reasoning-metadata.ts
+      - file: apps/zcode-cli/packages/adapters/src/model/anthropic-reasoning-metadata.ts
   - id: service.usage-stats-bridge
     kind: service
     label: Host App Usage protocol bridge
@@ -3051,7 +3049,7 @@ nodes:
         file: apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs
       - symbol: enumeratePluginComponents
         file: apps/zcode-cli/packages/adapters/src/plugins/plugin-components.ts
-      - symbol: loadPluginAgentProfiles
+      - symbol: loadPluginAgentTemplates
         file: apps/zcode-cli/packages/bootstrap/src/subagents.ts
     invariants:
       - Every official packaging and seed whitelist preserves agents/, and document-skills completeness
@@ -3150,7 +3148,7 @@ nodes:
     codeSeeds:
       - symbol: createLocalServices
         file: packages/services/src/node.ts
-      - symbol: createRemoteWorkspaceServiceCollection
+      - symbol: createServerRemoteWorkspaceServiceCollection
         file: packages/desktop/src/host/remoteWorkspaceServiceCollection.ts
   - id: service.desktop-browser-tab-residency
     kind: service
@@ -3419,7 +3417,7 @@ nodes:
     codeSeeds:
       - symbol: loadKnownMarketplacesSync
         file: apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
-      - symbol: copyMarketplaceDirectoryPlugins
+      - symbol: stageMarketplaceDirectoryPlugins
         file: apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
       - symbol: cacheMarketplacePlugin
         file: apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
@@ -3429,7 +3427,7 @@ nodes:
     codeSeeds:
       - symbol: updatePluginMarketplace
         file: apps/zcode-cli/packages/bootstrap/src/zcode-protocol/plugins.ts
-      - symbol: PluginSyncService
+      - symbol: createPluginSyncService
         file: packages/services/src/plugin-sync/pluginSyncService.ts
   - id: capability.workspace-project-plugin-scope
     kind: capability
@@ -3629,8 +3627,7 @@ nodes:
     codeSeeds:
       - symbol: PluginStoreDetailView
         file: packages/ui/src/settings/PluginStoreDetailView.tsx
-      - symbol: handleUsePrompt
-        file: packages/ui/src/settings/PluginsSection.tsx
+      - file: packages/ui/src/settings/PluginsSection.tsx
       - symbol: buildPluginMentionMarkdown
         file: packages/ui/src/mentions/mentionMarkdown.ts
   - id: surface.new-task-suggested-prompts
@@ -3699,9 +3696,9 @@ nodes:
     kind: service
     label: plugins/referenceCatalog protocol query (session vs workspace authority)
     codeSeeds:
-      - symbol: getPluginReferenceCatalog
+      - symbol: getPluginsOverview
         file: apps/zcode-cli/packages/bootstrap/src/zcode-protocol/plugins.ts
-      - symbol: getPluginReferenceCatalog
+      - symbol: getPluginsOverview
         file: packages/services/src/zcode-agent/zcodeAgentService.ts
   - id: service.suggested-plugin-reference-resolution
     kind: service
@@ -3910,8 +3907,7 @@ nodes:
         file: packages/services/src/file/file.ts
       - symbol: useRemoteWorkspaceHistory
         file: packages/ui/src/root/useRemoteWorkspaceHistory.ts
-      - symbol: RemoteConnectionDeviceStep
-        file: packages/ui/src/RemoteConnectionDialogContent.tsx
+      - file: packages/ui/src/RemoteConnectionDialogContent.tsx
   - id: capability.remote-device-connection-ux
     kind: capability
     label: Remote device connection naming, status presentation, and entry routing
@@ -3948,8 +3944,7 @@ nodes:
     kind: ui-surface
     label: Remote connection device picker and project selection flow
     codeSeeds:
-      - symbol: RemoteConnectionDeviceStep
-        file: packages/ui/src/RemoteConnectionDialogContent.tsx
+      - file: packages/ui/src/RemoteConnectionDialogContent.tsx
       - symbol: SSHDialog
         file: packages/ui/src/SSHDialog.tsx
   - id: surface.remote-source-task-sidebar

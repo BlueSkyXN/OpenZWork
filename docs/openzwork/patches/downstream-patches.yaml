@@ -504,6 +504,8 @@ patches:
     files:
       - apps/dev-docs/vite.config.ts
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
+      - vitest.config.ts
+      - scripts/full-suite-plan.mjs
     regression:
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
     retire: 上游测试改为结构/引用断言或自行维护与图谱同步的计数生成，上游基准运行通过。

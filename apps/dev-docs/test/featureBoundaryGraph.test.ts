@@ -1,13 +1,17 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parse as parseYaml } from "yaml";
 import {
   getFeatureBoundaryGraphStats,
   getFeatureBoundaryNeighborhood,
   type FeatureBoundaryGraph,
-} from "@/data/featureBoundaryGraph.js";
-import { normalizeFeatureBoundaryGraph } from "@/data/featureBoundaryGraphSource.js";
+} from "../src/data/featureBoundaryGraph.js";
+import { normalizeFeatureBoundaryGraph } from "../src/data/featureBoundaryGraphSource.js";
+
+// OpenZWork(OW-P023)：从测试文件定位仓库根，dev-docs 内部与根 vitest 两个入口的 cwd 不同。
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const fixture: FeatureBoundaryGraph = {
   schemaVersion: 1,
@@ -105,8 +109,8 @@ describe("feature boundary graph helpers", () => {
     // 改为结构、引用与裁剪边界断言，不再断言节点总数。
     const source = await readFile(
       resolve(
-        process.cwd(),
-        "../../.agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml",
+        REPO_ROOT,
+        ".agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml",
       ),
       "utf8",
     );
@@ -125,11 +129,11 @@ describe("feature boundary graph helpers", () => {
     const { stat } = await import("node:fs/promises");
     for (const node of graph.nodes) {
       for (const doc of node.docs) {
-        await expect(stat(resolve(process.cwd(), "../../", doc))).resolves.toBeTruthy();
+        await expect(stat(resolve(REPO_ROOT, doc))).resolves.toBeTruthy();
       }
       for (const seed of node.codeSeeds) {
         const seedFile = seed.split(" · ").pop() ?? seed;
-        await expect(stat(resolve(process.cwd(), "../../", seedFile))).resolves.toBeTruthy();
+        await expect(stat(resolve(REPO_ROOT, seedFile))).resolves.toBeTruthy();
       }
     }
 
