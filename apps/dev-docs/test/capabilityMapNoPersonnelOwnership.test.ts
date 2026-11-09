@@ -1,9 +1,11 @@
 import { access, readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { capabilityGroups } from "@/data/productCapabilityMap.js";
+import { capabilityGroups } from "../src/data/productCapabilityMap.js";
 
-const devDocsRoot = process.cwd();
+// OpenZWork(OW-P023)：以测试文件定位 dev-docs 根，dev-docs 内部与根 vitest 的 cwd 不同。
+const devDocsRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ownershipDataPath = resolve(
   devDocsRoot,
   "src/data/productCapabilityOwnership.ts",

@@ -504,7 +504,9 @@ patches:
     files:
       - apps/dev-docs/vite.config.ts
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
+      - apps/dev-docs/test/capabilityMapNoPersonnelOwnership.test.ts
       - vitest.config.ts
+      - vitest.core.config.ts
       - scripts/full-suite-plan.mjs
     regression:
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
