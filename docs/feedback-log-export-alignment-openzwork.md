@@ -1,6 +1,6 @@
 # 本地诊断归档边界
 
-OpenZWork 已移除官方云端反馈表单与工单上传。桌面帮助菜单和平台动作调用 `packages/desktop/src/main/exportLogs.ts` 的 `exportLogs()`，将既有日志与配置脱敏后写为本地 ZIP；ZIP 写入失败时尝试目录导出。手动导出范围见[日志保留规则](desktop/log-export-retention-openzwork.md)。
+OpenZWork 已移除官方云端反馈表单与工单上传。桌面帮助菜单和平台动作调用 `packages/desktop/src/main/exportLogs.ts` 的 `exportLogs()`，将既有日志与配置脱敏后写为本地 ZIP；ZIP 写入失败时尝试目录导出。手动导出范围见[日志保留规则](desktop/log-export-retention.md)。
 
 `packages/services/src/feedback/feedbackLogArchive.ts` 保留 `createFeedbackDiagnosticArchive()` 本地归档工具。`exportLogs.ts` 中的 `createFeedbackLogArchiveFromExportLogs()` 是该工具的适配入口，当前主要由回归测试直接覆盖；普通 `exportLogs()` 走自身的归档路径。保留 `feedback` 文件名不表示存在云端提单消费者。
 

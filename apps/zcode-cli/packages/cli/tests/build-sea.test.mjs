@@ -706,6 +706,13 @@ test("includes bundled official plugin assets", async () => {
       manifest.plugins.some((item) => item.name === "superpowers"),
       false,
     );
+    // OpenZWork(OZ-D009): image-search 已删除，官方清单和发布资产都不能再携带它。
+    assert.equal(officialSeaPlugins.some((item) => item.name === "image-search"), false);
+    assert.equal(manifest.plugins.some((item) => item.name === "image-search"), false);
+    assert.equal(
+      Object.keys(assets).some((assetKey) => assetKey.includes("/image-search/")),
+      false,
+    );
     assert.equal(iosPaths.has(".zcode-plugin/plugin.json"), true);
     assert.equal(iosPaths.has("commands/ios-dev.md"), true);
     assert.equal(iosPaths.has("skills/ios-dev/SKILL.md"), true);
@@ -1307,8 +1314,6 @@ async function writeDocumentPluginFixtures(root) {
       await writeTestFile(root, `packages/${name}-plugin/${runtimePath}`, "");
     }
   }
-  await writeTestFile(root, "packages/image-search-plugin/.zcode-plugin/plugin.json", "{}");
-  await writeTestFile(root, "packages/image-search-plugin/.mcp.json", "{}");
 }
 
 async function writeVisualizePluginFixture(root) {

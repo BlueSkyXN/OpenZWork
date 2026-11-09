@@ -22,17 +22,17 @@
 
 ### 已移除的上游功能
 
-| 编号    | 名称                         | 说明                                                                                                             | 依据                                                                                                  |
-| ------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| OZ-D001 | 遥测（ARMS/OTel）            | 移除 desktop、services、ui、CLI 四层遥测与上报依赖。                                                             | 净化工作包 WP-05；docs/openzwork/upstream/v3.17.1-integration.md                                      |
-| OZ-D002 | 官方套餐、加速卡与闲时任务   | 移除 Coding Plan、Start Plan、Highspeed 加速卡与闲时任务。                                                       | 净化工作包 WP-08、WP-09                                                                               |
-| OZ-D003 | 官方账号登录                 | 移除 BigModel/Z.AI 账号 OAuth 与 Web 登录。                                                                      | 净化工作包 WP-08                                                                                      |
-| OZ-D004 | 云端分享、反馈与自动更新     | 移除会话云端分享、云端反馈与应用自动更新。                                                                       | 净化工作包 WP-07                                                                                      |
-| OZ-D005 | 原生 CUA                     | 移除原生电脑控制实现，只保留兼容占位。                                                                           | [spec](../specs/cua-placeholder-boundary-openzwork.md)                                                |
-| OZ-D006 | 官方 MCP 鉴权与官方端点配置  | 移除官方 MCP 身份头、客户端配置下发、场景配置与官方命令端点。                                                    | 净化工作包 WP-06；docs/openzwork/upstream/v3.17.2-integration.md                                      |
-| OZ-D007 | 营销触达、奖励与请求安全版本 | 移除营销触达、奖励内嵌与请求安全版本链路。                                                                       | v3.17.1 重净                                                                                          |
-| OZ-D008 | 云端内容、公告与云端用量账本 | 移除云端内容弹窗、全局公告与上游云端用量统计。                                                                   | 净化工作包；本地替代见 OZ-F003、OZ-C005                                                               |
-| OZ-D009 | image-search 插件（待定）    | v3.17.1 整合 spec 写明移除 zcode_official 鉴权插件，代码仍保留注册并在运行时拒绝官方鉴权；保留或移除待用户决定。 | docs/openzwork/upstream/v3.17.1-integration.md；official-plugin-definitions.ts 中的 image-search 注册 |
+| 编号    | 名称                         | 说明                                                                                      | 依据                                                                 |
+| ------- | ---------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| OZ-D001 | 遥测（ARMS/OTel）            | 移除 desktop、services、ui、CLI 四层遥测与上报依赖。                                      | 净化工作包 WP-05；docs/openzwork/upstream/v3.17.1-integration.md     |
+| OZ-D002 | 官方套餐、加速卡与闲时任务   | 移除 Coding Plan、Start Plan、Highspeed 加速卡与闲时任务。                                | 净化工作包 WP-08、WP-09                                              |
+| OZ-D003 | 官方账号登录                 | 移除 BigModel/Z.AI 账号 OAuth 与 Web 登录。                                               | 净化工作包 WP-08                                                     |
+| OZ-D004 | 云端分享、反馈与自动更新     | 移除会话云端分享、云端反馈与应用自动更新。                                                | 净化工作包 WP-07                                                     |
+| OZ-D005 | 原生 CUA                     | 移除原生电脑控制实现，只保留兼容占位。                                                    | [spec](../specs/cua-placeholder-boundary-openzwork.md)               |
+| OZ-D006 | 官方 MCP 鉴权与官方端点配置  | 移除官方 MCP 身份头、客户端配置下发、场景配置与官方命令端点。                             | 净化工作包 WP-06；docs/openzwork/upstream/v3.17.2-integration.md     |
+| OZ-D007 | 营销触达、奖励与请求安全版本 | 移除营销触达、奖励内嵌与请求安全版本链路。                                                | v3.17.1 重净                                                         |
+| OZ-D008 | 云端内容、公告与云端用量账本 | 移除云端内容弹窗、全局公告与上游云端用量统计。                                            | 净化工作包；本地替代见 OZ-F003、OZ-C005                              |
+| OZ-D009 | image-search 插件            | 移除依赖官方后端与 zcode_official 鉴权的官方搜图 MCP 插件，不注册、不打包，图标一并删除。 | 用户 2026-11-08 决定；docs/openzwork/upstream/v3.17.1-integration.md |
 
 ### 改变了行为的上游功能
 

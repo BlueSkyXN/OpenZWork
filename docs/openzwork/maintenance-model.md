@@ -57,7 +57,7 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 - 新的 OpenZWork 内容写进 OpenZWork 自己的文档（`docs/specs/*-openzwork.md`、`docs/openzwork/`），不为补几句话复制整份上游文档。
 - 保留的 OpenZWork 版本登记在 `docs/openzwork/upstream-doc-variants.yaml`：`role`、`usedBy`（`tool`、`rule` 必填，门禁检查引用关系仍然存在）、`kind`、`upstreamBlob`。合入上游后原文变化，`--check` 按 `upstreamBlob` 提示复核。`pending` 表示少量 OpenZWork 内容待用户确认去留。
 - 与上游原文逐字节一致的上游文档描述的是上游产品，净化门禁 WP-03、WP-08、WP-09 的文本扫描跳过它们；OpenZWork 版本照常扫描。
-- OpenZWork 自有文档链接到有 OpenZWork 版本的上游文档时，链接该版本；上游原文的内容和锚点与它不同。
+- OpenZWork 自有文档链接到有 OpenZWork 版本的上游文档时，链接该版本；上游原文的内容和锚点与它不同。OpenZWork 版本没有对应内容、需要引用上游原文时，链接文字以「上游」开头，例如 `[上游远控架构：后台恢复](…)`。
 - 代码文件（包括技能中的脚本）按「代码」一节原地修改。
 
 ## 技能布局
@@ -120,8 +120,4 @@ OpenZWork 持续合入上游 ZCode，同时保留自己的功能、行为调整�
 4. 上游文档与技能（md、yaml、json 等文档类文件）与上游原文逐字节一致；同目录的 `-openzwork` 版本都已登记并写明 `role`，`tool`、`rule` 的引用关系仍然存在；登记时记录的 `upstreamBlob` 与当前基准一致，不一致说明上游更新了原文，需要复核 OpenZWork 版本。
 5. 台账中每个 active、undecided 条目都出现在 README 的「与上游的差异」中。
 6. 任何上游文件都不能只有格式化差异。
-7. OpenZWork 自有的 Markdown 中，指向已登记上游文档的相对链接都改指其 OpenZWork 版本。
-
-## 待用户决定
-
-- image-search 插件：v3.17.1 整合 spec 写明保持移除，但代码保留了注册（运行时拒绝官方鉴权）。台账中记为 `undecided`。
+7. OpenZWork 自有的 Markdown 中，指向已登记上游文档的相对链接都改指其 OpenZWork 版本；链接文字以「上游」开头的除外。

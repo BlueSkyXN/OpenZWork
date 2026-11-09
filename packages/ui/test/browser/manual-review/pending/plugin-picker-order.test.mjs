@@ -244,21 +244,20 @@ for (const width of [1200, 390]) {
             '[role="option"][data-option-id="plugin:plugin-creator@zcode-plugins-official"]',
           );
           await option.waitFor();
-          const image = option.locator("img");
-          assert.match(await image.getAttribute("src"), /plugin-creator\.png/u);
-          await page.waitForFunction(() => {
-            const image = document.querySelector('[role="option"] img');
-            return image?.complete && image.naturalWidth > 0;
-          });
+          // OpenZWork(OZ-D005): plugin-creator 的专属图标已删除，候选项使用通用 SVG 兜底。
+          await option.locator("svg").waitFor();
+          assert.equal(await option.locator("img").count(), 0);
           await option.click();
           const token = editor.locator(
             '[data-mention-id="plugin:plugin-creator@zcode-plugins-official"]',
           );
           await token.waitFor();
-          assert.match(
-            await token.evaluate((node) => node.style.getPropertyValue("--mention-image")),
-            /plugin-creator\.png/u,
-          );
+          const decoration = await token.evaluate((node) => ({
+            image: node.style.getPropertyValue("--mention-image"),
+            mask: node.style.getPropertyValue("--mention-mask"),
+          }));
+          assert.equal(decoration.image, "");
+          assert.match(decoration.mask, /data:image\/svg\+xml/u);
           assert.equal(await editor.innerText(), "plugin-creator ");
         } finally {
           await page.close();

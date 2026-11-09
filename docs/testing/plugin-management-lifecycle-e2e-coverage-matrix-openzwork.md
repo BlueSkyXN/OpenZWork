@@ -7,7 +7,7 @@
 ## 2026-10-19 人工复核与正式回放
 
 用户已审阅候选通过项，12 个插件 spec 已完成正式路径的独立 fixture 和默认回放；其余 3 个因标题响应补齐后尚待复验，先保留 pending。
-本轮逐文件入口、候选证据及正式回放结果以[批量清单](./conversation-session-e2e-coverage-matrix-openzwork.md#2026-10-19-人审通过项迁移清单)为准。
+本轮逐文件入口、候选证据及正式回放结果以[上游批量清单](./conversation-session-e2e-coverage-matrix.md#人审迁移清单含-2026-10-20-续跑状态)为准。
 `plugin-management-recoverable-failures` 因已记录的来源错误丢失缺陷继续 pending；
 `plugin-cdn-zip-official-cdn-smoke` 是用户确认的唯一人工例外。
 其他历史段落中的 pending/never 仅描述当时状态；`plugin-no-git-github-archive` 已获准进入正式入口。

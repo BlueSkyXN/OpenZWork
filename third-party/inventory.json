@@ -239,7 +239,6 @@
     "apps/zcode-cli/packages/dynamic-workflow-runtime/package.json": "700fb16f330bee73cd84d6e1fc8609663faf14ffa2108415e3bfb267ae9bcb3a",
     "apps/zcode-cli/packages/dynamic-workflow/package.json": "9edb746ae170418d81c4431dc16533e814bf3a97e4693a2a94f06b4516151a95",
     "apps/zcode-cli/packages/i18n/package.json": "cd51fc9cda66d726ab54f9821ff748bc150bf4bd84143bb7c8aa9b712a7e6c61",
-    "apps/zcode-cli/packages/image-search-plugin/package.json": "f59cba2c8890624a2f5164c9e2f68f808021d2958a7f088544c268eddc9a26a5",
     "apps/zcode-cli/packages/ios-simulator-plugin/package.json": "fc38d3f6d88598f2c84aced1dfbbef0682addc54e477500dbe323e829c74217a",
     "apps/zcode-cli/packages/node-repl-host/package.json": "622acdda4b9cf342ad5b1c56c0da524d4c6940f4797d3d9c4ded9f77ee68d1ab",
     "apps/zcode-cli/packages/office-runtime/package.json": "c51046c5646a0670e554ac4b5949c70cc029c1ba94a5ee3b277b26208e2b4063",

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { IBroadcastService, IServiceAccessor } from "@zcode/services";
+import type { PluginStoreOrder } from "@zcode/shared";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
 import { ServiceProvider } from "@/hooks/useServices.js";
-import { usePluginStoreOrder } from "@/hooks/usePluginStoreOrder.js";
 import { StoreContext } from "@/store/StoreProvider.js";
 import { createZCodeStore } from "@/store/index.js";
 import { PluginStoreListView, type PluginStoreSegment } from "@/settings/PluginStoreListView.js";
@@ -53,7 +53,6 @@ const defaultItems =
             "pdf",
             "presentations",
             "spreadsheets",
-            "image-search",
             "repairable",
           ].map((name) => ({
             id: `${name}@${official}`,
@@ -131,6 +130,23 @@ const services = {
     },
   },
 } as unknown as IServiceAccessor;
+
+function usePluginStoreOrder() {
+  const [order, setOrder] = useState<PluginStoreOrder | null>(null);
+  const refresh = useCallback(async () => {
+    try {
+      const response = await fetch("/order");
+      if (response.ok) setOrder((await response.json()) as PluginStoreOrder | null);
+    } catch {
+      // 保留当前投影，覆盖失败刷新的行为。
+    }
+  }, []);
+
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  return { order, refresh };
+}
 
 function Fixture() {
   const { order, refresh } = usePluginStoreOrder();

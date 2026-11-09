@@ -126,17 +126,13 @@ vi.mock("../src/app/official-plugin-seed-lock.js", async (importOriginal) => {
 });
 
 import { resolveOfficialPluginRoots } from "../src/app/bundled-plugins.js";
-import { OFFICIAL_PLUGIN_DEFINITIONS } from "../src/app/official-plugin-definitions.js";
 import { resolveZCodePlugins } from "../src/plugins.js";
 
 const OFFICIAL_CACHE_ROOT = join("cache", "zcode-plugins-official");
 const BROWSER_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "browser-use", "0.5.1");
-const ANDROID_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "android-emulator", "0.1.0");
+const DOCUMENTS_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "documents", "0.2.1");
+const DOCUMENTS_MANIFEST_SUFFIX = join(DOCUMENTS_CACHE_SUFFIX, ".zcode-plugin", "plugin.json");
 const SKILL_CREATOR_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "skill-creator", "0.1.0");
-const ANDROID_MANIFEST_SUFFIX = join(ANDROID_CACHE_SUFFIX, ".zcode-plugin", "plugin.json");
-const CUA_DEFINITION = OFFICIAL_PLUGIN_DEFINITIONS.find(({ name }) => name === "computer-use");
-if (!CUA_DEFINITION) throw new Error("computer-use official plugin definition is missing");
-const CUA_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, CUA_DEFINITION.name, CUA_DEFINITION.version);
 
 describe("bundled official plugin cache resilience", () => {
   const cleanups: string[] = [];
@@ -201,6 +197,57 @@ describe("bundled official plugin cache resilience", () => {
         pluginId: "browser-use@zcode-plugins-official",
       }),
     );
+  });
+
+  it("ignores a stale image-search cache without affecting retained official plugins", async () => {
+    const storageRoot = await createStorageRoot(cleanups);
+    const staleRoot = join(storageRoot, OFFICIAL_CACHE_ROOT, "image-search", "0.1.1");
+    await mkdir(join(staleRoot, ".zcode-plugin"), { recursive: true });
+    await writeFile(
+      join(staleRoot, ".zcode-plugin", "plugin.json"),
+      JSON.stringify({
+        mcpServers: {
+          image_search: {
+            type: "http",
+            url: "${ZCODE_BASE_URL}/api/v1/mcp/server/image_search",
+          },
+        },
+        name: "image-search",
+        version: "0.1.1",
+      }),
+    );
+    await writeFile(join(staleRoot, ".mcp.json"), "{}");
+
+    const outcome = resolveZCodePlugins({
+      pluginStorageRoot: storageRoot,
+      skipUserConfig: true,
+      workingDirectory: dirname(storageRoot),
+    });
+
+    // OpenZWork(OZ-D009): 旧缓存只是用户磁盘上的孤儿目录，不进入官方清单、
+    // 插件 discovery 或 MCP 启动配置，也不能影响保留的官方插件。
+    expect(
+      outcome.plugins.some((plugin) => plugin.id === "image-search@zcode-plugins-official"),
+    ).toBe(false);
+    expect(
+      Object.keys(outcome.mcpServers).some((name) => name.toLowerCase().includes("image_search")),
+    ).toBe(false);
+    const marketplace = JSON.parse(
+      await readFile(
+        join(storageRoot, "marketplaces", "zcode-plugins-official", "marketplace.json"),
+        "utf8",
+      ),
+    ) as { plugins: Array<{ name: string }> };
+    expect(marketplace.plugins.some((plugin) => plugin.name === "image-search")).toBe(false);
+    expect(existsSync(staleRoot)).toBe(true);
+    expect(
+      outcome.plugins.find((plugin) => plugin.id === "browser-use@zcode-plugins-official")
+        ?.enabled,
+    ).toBe(true);
+    expect(
+      outcome.plugins.find((plugin) => plugin.id === "skill-creator@zcode-plugins-official")
+        ?.enabled,
+    ).toBe(true);
   });
 
   it("keeps a stale but usable target when promotion fails", async () => {
@@ -327,10 +374,10 @@ describe("bundled official plugin cache resilience", () => {
         severity: "warning",
       }),
     ]);
-    const documentSkills = outcome.plugins.find(
-      (plugin) => plugin.id === "documents@zcode-plugins-official",
+    const skillCreator = outcome.plugins.find(
+      (plugin) => plugin.id === "skill-creator@zcode-plugins-official",
     );
-    expect(documentSkills?.enabled).toBe(true);
+    expect(skillCreator?.enabled).toBe(true);
     expect(logger.warn).toHaveBeenCalledWith(
       "Official plugin cache operation degraded",
       expect.objectContaining({
@@ -441,18 +488,9 @@ describe("bundled official plugin cache resilience", () => {
     ).toEqual([]);
   });
 
-  it("does not mix an old zcode-cua cache with the current consumer contract", async () => {
-    const storageRoot = await createStorageRoot(cleanups);
-    resolveOfficialPluginRoots({ storageRoot });
-    const currentRoot = join(storageRoot, CUA_CACHE_SUFFIX);
-    const staleRoot = join(dirname(currentRoot), "0.5.9");
-    await rename(currentRoot, staleRoot);
-    faults.promoteTargetSuffix = CUA_CACHE_SUFFIX;
-
-    const roots = resolveOfficialPluginRoots({ storageRoot });
-
-    expect(roots).not.toContain(staleRoot);
-  });
+  // OpenZWork(OZ-D005): computer-use 已删除；旧 zcode-cua 缓存契约依赖被删定义，
+  // 不能让它在模块加载期拦截通用缓存恢复回归。通用锁竞争、损坏缓存、EXDEV、
+  // 旧版本回退和启动降级案例保留执行。
 
   it("continues when another process moves the target after the existence check", async () => {
     const storageRoot = await createStorageRoot(cleanups);
@@ -586,17 +624,17 @@ describe("bundled official plugin cache resilience", () => {
     resolveOfficialPluginRoots({ storageRoot });
     const logger = createLogger();
     process.argv[1] = join(storageRoot, "different-zcode.cjs");
-    faults.runtimeManifestTargetSuffix = ANDROID_MANIFEST_SUFFIX;
+    faults.runtimeManifestTargetSuffix = DOCUMENTS_MANIFEST_SUFFIX;
 
     expect(() => resolveOfficialPluginRoots({ logger, storageRoot })).not.toThrow();
 
-    expect(existsSync(join(storageRoot, ANDROID_CACHE_SUFFIX))).toBe(true);
+    expect(existsSync(join(storageRoot, DOCUMENTS_CACHE_SUFFIX))).toBe(true);
     expect(logger.warn).toHaveBeenCalledWith(
       "Official plugin cache operation degraded",
       expect.objectContaining({
         degraded: true,
         operation: "seed_plugin",
-        pluginId: "android-emulator@zcode-plugins-official",
+        pluginId: "documents@zcode-plugins-official",
       }),
     );
   });
@@ -606,18 +644,18 @@ describe("bundled official plugin cache resilience", () => {
     resolveOfficialPluginRoots({ storageRoot });
     const logger = createLogger();
     process.argv[1] = join(storageRoot, "different-zcode.cjs");
-    faults.runtimeManifestNotFoundTargetSuffix = ANDROID_MANIFEST_SUFFIX;
+    faults.runtimeManifestNotFoundTargetSuffix = DOCUMENTS_MANIFEST_SUFFIX;
 
     expect(() => resolveOfficialPluginRoots({ logger, storageRoot })).not.toThrow();
 
-    expect(existsSync(join(storageRoot, ANDROID_CACHE_SUFFIX))).toBe(true);
+    expect(existsSync(join(storageRoot, DOCUMENTS_CACHE_SUFFIX))).toBe(true);
     expect(logger.warn).toHaveBeenCalledWith(
       "Official plugin cache operation degraded",
       expect.objectContaining({
         degraded: true,
         errorCode: "ENOENT",
         operation: "seed_plugin",
-        pluginId: "android-emulator@zcode-plugins-official",
+        pluginId: "documents@zcode-plugins-official",
       }),
     );
   });

@@ -385,8 +385,10 @@ for (const width of [1200, 390]) {
             page.locator(`[data-testid="plugin-store-card"][data-plugin-id="${name}@${official}"]`);
           await card("documents").waitFor();
           assert.equal(await card("document-skills").count(), 0);
-          for (const name of ["documents", "pdf", "presentations", "spreadsheets", "image-search"])
+          // OpenZWork(OZ-D009): image-search 已从官方清单删除，不能作为待安装卡片出现。
+          for (const name of ["documents", "pdf", "presentations", "spreadsheets"])
             assert.equal(await card(name).count(), 1, name);
+          assert.equal(await card("image-search").count(), 0);
           assert.equal(
             await card("repairable")
               .getByRole("button", { name: locale === "zh-CN" ? "安装" : "Install", exact: true })
@@ -394,14 +396,17 @@ for (const width of [1200, 390]) {
             1,
           );
           const bundledIcons = [
-            ["plugin-creator", "plugin-creator.png"],
             ["documents", "documents.png"],
             ["pdf", "pdf.png"],
             ["presentations", "presentations.png"],
             ["spreadsheets", "spreadsheets.png"],
-            ["image-search", "image-search.png"],
           ];
           await Promise.all(bundledIcons.map(([name]) => card(name).locator("img").waitFor()));
+          // OpenZWork(OZ-D005): plugin-creator 的专属图标已删除，保留插件但使用通用 SVG 兜底。
+          for (const name of ["plugin-creator", "repairable"]) {
+            await card(name).locator("svg").first().waitFor();
+            assert.equal(await card(name).locator("img").count(), 0, name);
+          }
           await page.waitForFunction(() => {
             const images = document.querySelectorAll(
               '[data-plugin-id$="@zcode-plugins-official"] img',

@@ -58,13 +58,14 @@ export const officialSeaPlugins = [
   {
     // node_repl 宿主：Browser Use 与 Computer Use 共用的运行时产物，自己不是面向用户的插件
     // （无 skill、无市场 listing）。它必须始终随发布物嵌入，否则任一能力启用时都没有宿主可跑。
+    // OpenZWork(OZ-D005): 仓内宿主保持在 0.6.1；上游 0.7.0 的 CUA 域差异不随本仓发布。
     marketplace: "zcode-plugins-official",
     name: "node-repl-host",
     packageName: "@zcode/node-repl-host",
     requiresRuntime: true,
     requiredRuntimePaths: ["dist/mcp/server.js"],
     rootPath: join("packages", "node-repl-host"),
-    version: "0.7.0",
+    version: "0.6.1",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -91,16 +92,7 @@ export const officialSeaPlugins = [
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
     version: "0.2.1",
   },
-  {
-    marketplace: "zcode-plugins-official",
-    name: "image-search",
-    packageName: "@zcode/image-search-plugin",
-    requiresRuntime: false,
-    requiredSeedPaths: [".mcp.json"],
-    rootPath: join("packages", "image-search-plugin"),
-    // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.1.1",
-  },
+  // OpenZWork(OZ-D009): image-search 插件已删除，不嵌入 SEA。
   {
     marketplace: "zcode-plugins-official",
     name: "pdf",

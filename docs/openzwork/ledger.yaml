@@ -463,6 +463,8 @@ entries:
       - docs/specs/cua-placeholder-boundary-openzwork.md
       - docs/testing/cua-placeholder-boundary-openzwork.md
     hooks:
+      - apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs
+      - apps/zcode-cli/packages/node-repl-host/package.json
       - packages/desktop/scripts/computer-use-producer.mjs
       - scripts/dev-desktop-cua-env.mjs
       - scripts/stage-dev-cua-plugin-runtime.mjs
@@ -473,6 +475,9 @@ entries:
       - packages/ui/src/cua-permission/**
       - docs/cua/**
       - docs/cua-permission-broker/**
+    tests:
+      - apps/zcode-cli/packages/bootstrap/tests/bundled-plugins-resilience.test.ts
+      - packages/ui/test/browser/manual-review/pending/plugin-picker-order.test.mjs
     gates:
       - "WP-06: CUA / clientScenes / plugin-creator surfaces are gone"
     source: "PR #64；docs/specs/cua-placeholder-boundary-openzwork.md"
@@ -525,15 +530,24 @@ entries:
     source: 净化工作包；本地替代见 OZ-F003、OZ-C005
   - id: OZ-D009
     kind: drop
-    status: undecided
+    status: active
     title: image-search 插件
-    summary: v3.17.1 整合 spec 写明移除 zcode_official 鉴权插件，代码仍保留注册并在运行时拒绝官方鉴权；保留或移除待用户决定。
+    summary: 移除依赖官方后端与 zcode_official 鉴权的官方搜图 MCP 插件，不注册、不打包，图标一并删除。
     paths:
       - apps/zcode-cli/packages/image-search-plugin/**
+      - packages/ui/src/assets/plugin-icons/image-search.png
     hooks:
       - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
+      - apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs
       - packages/desktop/scripts/prepare-agent-node-bundle.mjs
-    source: docs/openzwork/upstream/v3.17.1-integration.md；official-plugin-definitions.ts 中的 image-search 注册
+      - packages/server/src/remote/zcodeAgentOfficialPluginAssets.ts
+      - packages/ui/src/lib/pluginIconSource.ts
+      - apps/dev-docs/src/data/productCapabilityMap.ts
+    tests:
+      - apps/zcode-cli/packages/cli/tests/build-sea.test.mjs
+      - packages/ui/test/browser/manual-review/pending/plugin-store-mode-order.fixture.tsx
+      - packages/ui/test/browser/manual-review/pending/plugin-store-mode-order.test.mjs
+    source: 用户 2026-11-08 决定移除；docs/openzwork/upstream/v3.17.1-integration.md
   - id: OZ-R001
     kind: retain
     status: active

@@ -121,13 +121,7 @@ const officialPluginPackages = [
     runtimeBuildScript: "../office-runtime/scripts/build.mjs",
     stagedPath: "packages/documents-plugin",
   },
-  {
-    packageName: "@zcode/image-search-plugin",
-    relativePath: "apps/zcode-cli/packages/image-search-plugin",
-    requiresRuntime: false,
-    requiredSeedPaths: [".mcp.json"],
-    stagedPath: "packages/image-search-plugin",
-  },
+  // OpenZWork(OZ-D009): image-search 插件已删除，不 stage 进桌面包。
   {
     packageName: "@zcode/pdf-plugin",
     relativePath: "apps/zcode-cli/packages/pdf-plugin",

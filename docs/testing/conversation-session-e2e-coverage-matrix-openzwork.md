@@ -5109,7 +5109,7 @@ APC06/APC07/APC12 的文件菜单期望来自正确 fixture 路径的 `getFileAp
 
 ## MRO04 后台失效恢复与任务保留（2026-10-22，accepted / pending）
 
-Spec：[远控后台恢复与原任务导航](../web-remote-control/web-remote-control-architecture-openzwork.md#后台恢复与原任务导航)。
+Spec：[上游远控架构：后台恢复与原任务导航](../web-remote-control/web-remote-control-architecture.md#后台恢复与原任务导航)。
 
 | ID       | 前置与操作                                                                                                                                                                                    | 必须断言                                                                                                                                                                                                                      |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -5124,9 +5124,9 @@ Spec：[远控后台恢复与原任务导航](../web-remote-control/web-remote-c
 MRO04-03～05 在真实 bootstrap 响应边界注入过期导航与离线候选，保留真实版本、认证、可用 workspace
 和后续 bridge/RPC 链路；不模拟 Desktop 删除操作，不产生模型请求。
 
-MRO04-06（2026-10-24，accepted / pending）对应 [挂起保留连接的可靠帧](../web-remote-control/relay-v2-pairing.md#手机首次进入与恢复05)。只观察真实线级消息，不丢帧、不改时钟或可见性；回前台后的输出用于暴露后台丢帧造成的序号断档。桌面每次心跳会补发未确认帧，因此只看最终内容不足以区分修复前后，必须同时断言后台 ACK、socket 数与 bridge-open 次数。
+MRO04-06（2026-10-24，accepted / pending）对应 挂起保留连接的可靠帧。只观察真实线级消息，不丢帧、不改时钟或可见性；回前台后的输出用于暴露后台丢帧造成的序号断档。桌面每次心跳会补发未确认帧，因此只看最终内容不足以区分修复前后，必须同时断言后台 ACK、socket 数与 bridge-open 次数。
 
-MRO04-07（2026-10-24，accepted / pending）对应 [挂起保留连接的可靠帧](../web-remote-control/relay-v2-pairing.md#手机首次进入与恢复05) 的「重复 INTERNAL 结果相同」。loopback relay 在桌面断开时发 DEVICE_OFFLINE 并关闭手机 socket，走不到 INTERNAL 路径；因此在手机侧线级按 hub 契约注入（桌面不在时每条 data 回 INTERNAL、不关闭 socket）。桌面与 relay 的真实连接不变；握手与配对查询照常转发，只把回包改为 waiting，保证 relay 侧会话始终已认证。回前台只保持 10 秒，使恢复仍落在 15 秒 recover 窗口内，按原 workspace/task 恢复；修复前后的区分靠首次偏离：修复前第二个 INTERNAL 在后台关闭原 socket，回前台首次探测落在新 socket。修复前的失败页不作为本用例断言：真实 App 中 15 秒 recover 超时后的后台重连和 bridge 降级触发的恢复都会重新计 30 秒 waiting，失败页时间不固定；保持更久还会触发原有的导航丢失（见下方 MRO04-07 长窗口观察）。真实 hub 是否对每个 ACK 回 INTERNAL 需生产 relay 实测确认，本用例不代表该事实。
+MRO04-07（2026-10-24，accepted / pending）对应 挂起保留连接的可靠帧 的「重复 INTERNAL 结果相同」。loopback relay 在桌面断开时发 DEVICE_OFFLINE 并关闭手机 socket，走不到 INTERNAL 路径；因此在手机侧线级按 hub 契约注入（桌面不在时每条 data 回 INTERNAL、不关闭 socket）。桌面与 relay 的真实连接不变；握手与配对查询照常转发，只把回包改为 waiting，保证 relay 侧会话始终已认证。回前台只保持 10 秒，使恢复仍落在 15 秒 recover 窗口内，按原 workspace/task 恢复；修复前后的区分靠首次偏离：修复前第二个 INTERNAL 在后台关闭原 socket，回前台首次探测落在新 socket。修复前的失败页不作为本用例断言：真实 App 中 15 秒 recover 超时后的后台重连和 bridge 降级触发的恢复都会重新计 30 秒 waiting，失败页时间不固定；保持更久还会触发原有的导航丢失（见下方 MRO04-07 长窗口观察）。真实 hub 是否对每个 ACK 回 INTERNAL 需生产 relay 实测确认，本用例不代表该事实。
 
 候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-web-remote-recovery.test.ts`。采用隔离 Electron、真实 Web、loopback relay 与 case-local 受控回放；使用原生 visibility helper，禁止以伪造 visibility getter/event 代替真实后台。Host 身份隔离、任务不存在与远端 session 换代由定向边界测试补充。本次登记不代表已运行、人工审核或 formal/CI 准入；生产 relay 实机证据另记录具体构建和场景。
 

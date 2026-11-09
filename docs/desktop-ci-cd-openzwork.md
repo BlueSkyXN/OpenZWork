@@ -17,7 +17,7 @@
 
 ## Source Server 与开发资源
 
-3.16 的主远程链路按 Source Server release descriptor 和完整 archive 解析、校验和安装制品。Desktop 的窗口 Host 复用已有远程资产网络出口；安装与原子切换规则见[R3 架构](./architecture/r3-source-server-remote-architecture-openzwork.md)。
+3.16 的主远程链路按 Source Server release descriptor 和完整 archive 解析、校验和安装制品。Desktop 的窗口 Host 复用已有远程资产网络出口；安装与原子切换规则见[R3 架构](./architecture/r3-source-server-remote-architecture.md)。
 
 开发态通过 `scripts/build-desktop-agent-cli.mjs` 构建 Agent bundle 与通用插件 runtime。桌面打包与 Source Server 资产装配使用当前各包脚本；`packages/server` 下的 component installer 仍有独立兼容测试，不能据此把旧散文件安装方式描述为 R3 主链。
 
