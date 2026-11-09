@@ -13,9 +13,10 @@ const MAX_TAIL_BYTES = 2 * 1024 * 1024;
 const DEFAULT_RECORD_LIMIT = 300;
 const FEATURE_BOUNDARY_GRAPH_MODULE_ID = "virtual:zcode-feature-boundary-graph";
 const FEATURE_BOUNDARY_GRAPH_RESOLVED_ID = `\0${FEATURE_BOUNDARY_GRAPH_MODULE_ID}`;
+// OW-P023：读裁剪后的 OpenZWork 图谱版本，不读上游原文（见 docs/openzwork/upstream-doc-variants.yaml）。
 const FEATURE_BOUNDARY_GRAPH_SOURCE_PATH = resolve(
   __dirname,
-  "../../.agents/skills/feature-boundary-planner/references/zcode-feature-graph.yaml",
+  "../../.agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml",
 );
 
 interface StdioTrafficFile {
