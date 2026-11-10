@@ -105,6 +105,7 @@ OpenZWork 专用的维护方法、扫描用法和经验集中在 `.agents/skills
 - 上游文件不做格式化、注释润色或与任务无关的重构。改动上游文件时夹带的格式化同样不允许：与上游的差异只包含实质改动。已经被整文件格式化的上游文件用 `.agents/skills/openzwork-maintenance/scripts/unformat.mjs` 恢复，方法见技能的 `code-boundary` 子能力。
 - 恢复工具以已提交的内容生成方案。`--apply` 写入前检查全部目标文件；目标有暂存或未暂存的改动，或生成方案后 HEAD 已变化时，整次拒绝写入。`--verify` 要求对比提交和上游基准有效，Git 读取失败时返回非零。
 - `pnpm fmt` 和 `pnpm fmt:check` 只处理 OpenZWork 自己的文件，由维护工具先按上游历史筛选，再交给 oxfmt。上游原文、改名、实质修改、保留和移动文件均跳过；新建且未被 Git 忽略的自有文件也参与。可以传文件、目录或 glob 缩小范围，`--list` 预览候选清单。候选为空时不启动 oxfmt；明确指定上游文件时拒绝执行。CI 执行同一范围的 `fmt:check`。
+- Git 的 `core.autocrlf=true` 自动检出 CRLF 时，格式检查在临时副本中归一化换行；工作区保持原状，实际排版错误仍返回失败。
 
 ## 台账
 

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // OpenZWork 格式化入口：先按上游历史限制文件范围，再调用仓库已有的 oxfmt。
 import { spawn } from "node:child_process";
-import { lstat } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { classify, gitText, globToRegExp, loadMaintenance, readTree } from "./scan.mjs";
@@ -80,6 +81,45 @@ export async function selectFormatFiles(repo, selectors = []) {
 }
 
 async function runOxfmt(repo, files, mode) {
+  // Windows checkout 会把已合格式的 LF 文件变成 CRLF；检查 Git 内容的排版，不能因此误报。
+  // 临时副本保留相同路径与忽略配置，不改写用户的工作区。
+  if (
+    mode !== "write" &&
+    gitText(repo, ["config", "--get", "core.autocrlf"], { allowFail: true }).trim() === "true"
+  ) {
+    const copy = await mkdtemp(join(tmpdir(), "openzwork-format-check-"));
+    try {
+      const ignores = new Set([".oxfmtrc.json", ".gitignore", ".prettierignore"]);
+      for (const file of files) {
+        for (let dir = dirname(file); dir !== "."; dir = dirname(dir)) {
+          ignores.add(join(dir, ".gitignore"));
+          ignores.add(join(dir, ".prettierignore"));
+        }
+        const buffer = await readFile(join(repo, file));
+        await mkdir(dirname(join(copy, file)), { recursive: true });
+        await writeFile(
+          join(copy, file),
+          buffer.includes(0) ? buffer : buffer.toString("utf8").replace(/\r\n/g, "\n"),
+        );
+      }
+      for (const path of ignores) {
+        try {
+          const buffer = await readFile(join(repo, path));
+          await mkdir(dirname(join(copy, path)), { recursive: true });
+          await writeFile(join(copy, path), buffer);
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error;
+        }
+      }
+      return await runOxfmtBatches(copy, files, mode);
+    } finally {
+      await rm(copy, { recursive: true, force: true });
+    }
+  }
+  return runOxfmtBatches(repo, files, mode);
+}
+
+async function runOxfmtBatches(repo, files, mode) {
   const bin = join(
     dirname(createRequire(import.meta.url).resolve("oxfmt/package.json")),
     "bin/oxfmt",

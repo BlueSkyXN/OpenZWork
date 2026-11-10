@@ -724,6 +724,23 @@ test("格式化空范围不启动工具，检查模式与错误状态透传", as
   assert.equal(called, true);
 });
 
+test("Windows 自动检出的 CRLF 不触发格式误报，检查仍发现排版错误且不写工作区", async () => {
+  const repo = fixture();
+  repo.git("config", "core.autocrlf", "true");
+  repo.write(".oxfmtrc.json", JSON.stringify({ ignorePatterns: ["src/ignored.ts"] }));
+  repo.write("src/ignored.ts", "invalid ???\r\n");
+  const options = { selectors: ["src/ours.ts", "src/ignored.ts"], mode: "check" };
+  const formatted = "export const ours = 1;\r\n";
+  repo.write("src/ours.ts", formatted);
+  assert.equal((await formatOwnFiles(repo.dir, options)).code, 0);
+  assert.equal(readFileSync(join(repo.dir, "src/ours.ts"), "utf8"), formatted);
+  const unformatted = "export  const ours=1\r\n";
+  repo.write("src/ours.ts", unformatted);
+  assert.equal((await formatOwnFiles(repo.dir, options)).code, 1);
+  assert.equal(readFileSync(join(repo.dir, "src/ours.ts"), "utf8"), unformatted);
+  assert.equal(readFileSync(join(repo.dir, "src/ignored.ts"), "utf8"), "invalid ???\r\n");
+});
+
 test("模块认领沿用架构归属，自动覆盖新文件与核心保证，嵌套模块须单独引用", () => {
   const repo = fixture();
   repo.write("src/fmt.ts", "export const fmt = 1;   \n");
