@@ -27,7 +27,9 @@
 
 ## 技能
 
-- `.agents/skills/` 下的上游技能原文不动；需要 OpenZWork 版本时按上面三种情况判断并登记。技能中的脚本属于代码，按 `code-boundary` 原地修改。
+- `.agents/skills/` 下来自上游的技能整体不改，包括其中的脚本。先用 `pnpm openzwork:scan --path <文件>` 确认文件来自上游，再按 `docs/openzwork/maintenance-model.md`「技能布局」的表选择做法：说明上的差异写进差异表或根 `AGENTS.md`；不同的内容新增 `-openzwork` 文件并登记；不同的流程写成本技能的子能力或新建 OpenZWork 技能；整个技能不适用时保留不用或整个删除并登记 `drop` 条目。
+- 上游技能的脚本只允许用户级根改名这一种原地改动：只改那一行，不加注释，改完用 `--path` 确认分类为 `upstream-identity`。需要其他行为时把脚本复制为 `<名称>-openzwork<扩展名>`，登记到 `docs/openzwork/upstream-doc-variants.yaml`（`role: maintained`，`upstreamBlob` 取上游原脚本），原脚本保持不动。
+- 可以在上游技能目录下新增 OpenZWork 文件。
 - OpenZWork 专用的维护方法放进本技能：新的子能力加到 `references/<名称>/GUIDE.md`，并在 `SKILL.md` 的路由表中加一行。
 - 新建独立的 OpenZWork 技能前，先确认无法作为本技能的子能力；新建后在台账中登记为 `feature` 条目。
 - 用户全局 Git 忽略规则可能包含 `.agents/`，新增文件需要用 `git add -f` 加入。

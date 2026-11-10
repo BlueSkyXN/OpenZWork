@@ -160,9 +160,10 @@ describe("ZCode plugins", () => {
         await readFile(join(packageRoot, ".zcode-plugin", "plugin.json"), "utf8"),
       ) as { ui?: { surfaces?: unknown[] } };
       // 卸载后的可恢复条目没有运行时信息，商店只能靠定义里的 componentTypes 归入「UI 插件」。
-      expect(plugin.componentTypes?.includes("ui") ?? false, plugin.name).toBe(
-        (pluginManifest.ui?.surfaces?.length ?? 0) > 0,
-      );
+      expect(
+        plugin.componentTypes?.includes("ui") ?? false,
+        plugin.name,
+      ).toBe((pluginManifest.ui?.surfaces?.length ?? 0) > 0);
     }
   });
 

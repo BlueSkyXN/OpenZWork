@@ -147,7 +147,7 @@ export interface ZCodeProtocolAgentServerContext {
      */
     dynamicWorkflowEnabled: boolean;
   /** 与 dynamicWorkflowEnabled 同行的灰度 mode；缺席 = alwaysOn。 */
-  dynamicWorkflowMode?: DynamicWorkflowMode;
+    dynamicWorkflowMode?: DynamicWorkflowMode;
   subagentRuntimeConfigEnabled?: boolean;
   };
   // 竖切：v4 conversation 通道（订阅/帧/命令），与旧 session/* 方法并存。

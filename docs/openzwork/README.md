@@ -36,30 +36,34 @@
 
 ### 改变了行为的上游功能
 
-| 编号    | 名称                   | 说明                                                 | 依据                                                      |
-| ------- | ---------------------- | ---------------------------------------------------- | --------------------------------------------------------- |
-| OZ-C001 | 产品身份与用户级数据根 | 用户级数据根改为 .openzwork，产品身份与 ZCode 隔离。 | [spec](../specs/identity-and-data-isolation-openzwork.md) |
-| OZ-C002 | 旧 ZCode 记忆隔离      | 不再隐式复制旧 ZCode 记忆，保留已导入数据。          | [spec](../specs/memory-migration-openzwork.md)            |
-| OZ-C003 | 标准 Provider 模板     | 内置 Provider 入口只保留三种标准协议模板。           | [spec](../specs/standard-provider-templates-openzwork.md) |
-| OZ-C004 | 模型能力与渠道匹配     | 恢复模型与站点的能力规则和推理映射。                 | [spec](../specs/model-capability-matching-openzwork.md)   |
-| OZ-C005 | 本地首次引导偏好       | 首次引导改为本地偏好，不依赖官方账号。               | [spec](../specs/onboarding-local-settings-openzwork.md)   |
-| OZ-C006 | 自定义命令改名与保存   | 命令改名不丢数据，保存失败如实返回。                 | [spec](../specs/command-file-update-openzwork.md)         |
-| OZ-C007 | 技能开关链路           | 内置技能开关的规则、所有者与回归。                   | [spec](../specs/skills-toggle-openzwork.md)               |
-| OZ-C008 | 设置页布局与远控入口   | 设置页内容布局调整，恢复侧栏底部的远控入口。         | [spec](../specs/settings-visual-polish-openzwork.md)      |
+| 编号    | 名称                    | 说明                                                                   | 依据                                                        |
+| ------- | ----------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------- |
+| OZ-C001 | 产品身份与用户级数据根  | 用户级数据根改为 .openzwork，产品身份与 ZCode 隔离。                   | [spec](../specs/identity-and-data-isolation-openzwork.md)   |
+| OZ-C002 | 旧 ZCode 记忆隔离       | 不再隐式复制旧 ZCode 记忆，保留已导入数据。                            | [spec](../specs/memory-migration-openzwork.md)              |
+| OZ-C003 | 标准 Provider 模板      | 内置 Provider 入口只保留三种标准协议模板。                             | [spec](../specs/standard-provider-templates-openzwork.md)   |
+| OZ-C004 | 模型能力与渠道匹配      | 恢复模型与站点的能力规则和推理映射。                                   | [spec](../specs/model-capability-matching-openzwork.md)     |
+| OZ-C005 | 本地引导与 Bot 数据边界 | 本地首次偏好、Bot 凭据迁移和显式注册/启用边界。                        | [spec](../specs/onboarding-local-settings-openzwork.md)     |
+| OZ-C006 | 自定义命令改名与保存    | 命令改名不丢数据，保存失败如实返回。                                   | [spec](../specs/command-file-update-openzwork.md)           |
+| OZ-C007 | 技能开关链路            | 内置技能开关的规则、所有者与回归。                                     | [spec](../specs/skills-toggle-openzwork.md)                 |
+| OZ-C008 | 设置页布局与远控入口    | 设置页内容布局调整，恢复侧栏底部的远控入口。                           | [spec](../specs/settings-visual-polish-openzwork.md)        |
+| OZ-C009 | 业务数据目录完整迁移    | 保存迁移计划，重启前置阶段复制并转换 CLI/Host 数据，发布后切换数据根。 | [spec](../desktop/configurable-data-directory-openzwork.md) |
+| OZ-C010 | 发行许可与上游声明      | GPL-3.0 整体声明、上游 Apache-2.0 原文与 NOTICE 入口。                 | [分支声明](../../NOTICE.md)                                 |
 
 ### OpenZWork 新增的功能
 
-| 编号    | 名称                     | 说明                                         | 依据                                                           |
-| ------- | ------------------------ | -------------------------------------------- | -------------------------------------------------------------- |
-| OZ-F002 | 系统提示词设置与编辑器   | 系统提示词设置、完整预览、差异与模板。       | [spec](../specs/system-prompt-settings-openzwork.md)           |
-| OZ-F003 | 本地使用统计页           | 使用统计页按本机度量重建。                   | [spec](../specs/app-usage-settings-openzwork.md)               |
-| OZ-F004 | 会话累计用量             | 输入框工具栏显示会话累计用量。               | [spec](../specs/session-usage-summary-openzwork.md)            |
-| OZ-F005 | 原生会话指标栏           | 会话指标栏与自选指标。                       | [spec](../specs/native-conversation-metrics-openzwork.md)      |
-| OZ-F006 | 对话复制、筛选与项目排序 | 对话 Markdown 复制、任务筛选与项目活动排序。 | [spec](../specs/conversation-controls-openzwork.md)            |
-| OZ-F007 | 外部会话多源导入         | 从多个外部客户端导入会话。                   | [spec](../specs/external-session-import-openzwork.md)          |
-| OZ-F008 | 模型列表拉取与项目用量   | 拉取模型目录、按项目查询用量。               | [spec](../specs/model-discovery-project-usage-openzwork.md)    |
-| OZ-F009 | Node 发行内置技能资产    | 普通 Node CLI/Web 发行包携带内置技能。       | [spec](../specs/node-distribution-bundled-skills-openzwork.md) |
-| OZ-F010 | V1 远控连接方式          | 官方 V1 远控页的多种连接方式与多入口。       | [spec](../web-remote-control/v1-connection-modes-openzwork.md) |
+| 编号    | 名称                     | 说明                                                       | 依据                                                           |
+| ------- | ------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------- |
+| OZ-F002 | 系统提示词设置与编辑器   | 系统提示词设置、完整预览、差异与模板。                     | [spec](../specs/system-prompt-settings-openzwork.md)           |
+| OZ-F003 | 本地使用统计页           | 使用统计页按本机度量重建。                                 | [spec](../specs/app-usage-settings-openzwork.md)               |
+| OZ-F004 | 会话累计用量             | 输入框工具栏显示会话累计用量。                             | [spec](../specs/session-usage-summary-openzwork.md)            |
+| OZ-F005 | 原生会话指标栏           | 会话指标栏与自选指标。                                     | [spec](../specs/native-conversation-metrics-openzwork.md)      |
+| OZ-F006 | 对话复制、筛选与项目排序 | 对话 Markdown 复制、任务筛选与项目活动排序。               | [spec](../specs/conversation-controls-openzwork.md)            |
+| OZ-F007 | 外部会话多源导入         | 从多个外部客户端导入会话。                                 | [spec](../specs/external-session-import-openzwork.md)          |
+| OZ-F008 | 模型列表拉取与项目用量   | 拉取模型目录、按项目查询用量。                             | [spec](../specs/model-discovery-project-usage-openzwork.md)    |
+| OZ-F009 | Node 发行内置技能资产    | 普通 Node CLI/Web 发行包携带内置技能。                     | [spec](../specs/node-distribution-bundled-skills-openzwork.md) |
+| OZ-F010 | V1 远控连接方式          | 官方 V1 远控页的多种连接方式与多入口。                     | [spec](../web-remote-control/v1-connection-modes-openzwork.md) |
+| OZ-F011 | OpenZWork 构建与发行流程 | 发行版本、安装包校验与正式 tag 自动发布。                  | [发行规范](release/openzwork-release-version.md)               |
+| OZ-F012 | CI 与桌面验证工程        | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。 | [CI 规范](ci/ci-job-orchestration.md)                          |
 
 ### 上游已删除、OpenZWork 保留
 
@@ -115,6 +119,7 @@
 ## 产品 spec
 
 - [产品身份与用户级数据根隔离](../specs/identity-and-data-isolation-openzwork.md)
+- [可配置数据存储目录与完整迁移](../desktop/configurable-data-directory-openzwork.md)
 - [旧 ZCode 记忆隔离](../specs/memory-migration-openzwork.md)
 - [CUA 空占位边界](../specs/cua-placeholder-boundary-openzwork.md)
 - [标准 Provider 模板](../specs/standard-provider-templates-openzwork.md)

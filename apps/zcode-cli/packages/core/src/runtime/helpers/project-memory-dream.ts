@@ -97,7 +97,7 @@ async function executeProjectMemoryDream(
         nowMs,
       });
       if (timing.decision === "skip") {
-          return;
+        return;
       }
 
       runtime.memoryDreamLastScanAtMs = nowMs;
@@ -114,12 +114,12 @@ async function executeProjectMemoryDream(
         lastConsolidatedAtMs,
       );
       if (transcriptSessionIds.length < DREAM_MINIMUM_TRANSCRIPT_SESSIONS) {
-          return;
+        return;
       }
 
       const priorMtimeMs = await acquireDreamLock({ memoryRoot: context.memoryRoot, nowMs });
       if (priorMtimeMs === null) {
-          return;
+        return;
       }
       acquiredPriorMtimeMs = priorMtimeMs;
 

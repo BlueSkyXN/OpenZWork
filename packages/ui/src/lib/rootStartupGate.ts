@@ -21,7 +21,9 @@ export function shouldBlockRootRender(state: RootStartupGateState): boolean {
   );
 }
 
-export function shouldShowRootStartupLoading(state: RootStartupLoadingVisibilityState): boolean {
+export function shouldShowRootStartupLoading(
+  state: RootStartupLoadingVisibilityState,
+): boolean {
   return Boolean(state.isDesktop) && shouldBlockRootRender(state);
 }
 

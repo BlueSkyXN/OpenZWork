@@ -26,7 +26,9 @@ describe("installer.nsh cross-name control flow", () => {
     const body = nsh.slice(fnStart, fnEnd);
     const listChildrenLabel = body.indexOf("zcodeFindNestedDataDirListChildren:");
     const openzworkContent = body.indexOf('$R9\\.openzwork\\*.*"');
-    const openzworkEmpty = body.indexOf('IfFileExists "$R9\\.openzwork" 0 zcodeFindNestedDataDirListChildren');
+    const openzworkEmpty = body.indexOf(
+      'IfFileExists "$R9\\.openzwork" 0 zcodeFindNestedDataDirListChildren',
+    );
     expect(listChildrenLabel).toBeGreaterThan(-1);
     // 两种命名的直属检测都必须出现在递归子目录入口之前。
     expect(openzworkContent).toBeGreaterThan(-1);
@@ -34,14 +36,19 @@ describe("installer.nsh cross-name control flow", () => {
     expect(openzworkEmpty).toBeGreaterThan(-1);
     expect(openzworkEmpty).toBeLessThan(listChildrenLabel);
     // .zcode 未命中不得直接跳过 .openzwork 检测：跳转只允许出现在最后一个 .openzwork 检查上。
-    const zcodeJumpToChildren = indexOfAll(body, 'IfFileExists "$R9\\.zcode" 0 zcodeFindNestedDataDirListChildren');
+    const zcodeJumpToChildren = indexOfAll(
+      body,
+      'IfFileExists "$R9\\.zcode" 0 zcodeFindNestedDataDirListChildren',
+    );
     expect(zcodeJumpToChildren).toEqual([]);
   });
 
   it("reads ownership manifest with the legacy name fallback", () => {
     const removeStart = nsh.indexOf("zcodeManifestRead:");
     const openNew = nsh.indexOf('FileOpen $R0 "$INSTDIR\\${ZCODE_INSTALL_MANIFEST_NAME}" r');
-    const openLegacy = nsh.indexOf('FileOpen $R0 "$INSTDIR\\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" r');
+    const openLegacy = nsh.indexOf(
+      'FileOpen $R0 "$INSTDIR\\${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" r',
+    );
     expect(openNew).toBeGreaterThan(-1);
     expect(openLegacy).toBeGreaterThan(-1);
     expect(openNew).toBeLessThan(openLegacy);
@@ -49,11 +56,15 @@ describe("installer.nsh cross-name control flow", () => {
   });
 
   it("handles the old uninstaller writing the legacy log name", () => {
-    expect(nsh).toContain('!define ZCODE_LEGACY_UNINSTALLER_LOG_PATH "$TEMP\\ZCode-uninstaller.log"');
+    expect(nsh).toContain(
+      '!define ZCODE_LEGACY_UNINSTALLER_LOG_PATH "$TEMP\\ZCode-uninstaller.log"',
+    );
     // 升级前清掉旧名日志，避免旧内容串档进本次回放。
     const resetStart = nsh.indexOf("Function ZCodeResetUninstallerLog");
     const resetEnd = nsh.indexOf("FunctionEnd", resetStart);
-    expect(nsh.slice(resetStart, resetEnd)).toContain('Delete "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}"');
+    expect(nsh.slice(resetStart, resetEnd)).toContain(
+      'Delete "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}"',
+    );
     // 复审修正：Reset 以 w 模式创建空新日志，"文件存在"不能作为已写入的判据。
     // 必须按内容长度判定：空且旧名存在 → CopyFiles 归并，再回放新名。
     const showStart = nsh.indexOf("Function ZCodeShowUninstallerCleanupDetails");
@@ -61,13 +72,17 @@ describe("installer.nsh cross-name control flow", () => {
     const show = nsh.slice(showStart, showEnd);
     const sizeProbe = show.indexOf("FileSeek $R0 0 END $R3");
     const sizeBranch = show.indexOf("IntCmp $R3 0 0 zcodeShowUninstallerDetailsReplay");
-    const copyLegacy = show.indexOf('CopyFiles /SILENT "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" "${ZCODE_UNINSTALLER_LOG_PATH}"');
+    const copyLegacy = show.indexOf(
+      'CopyFiles /SILENT "${ZCODE_LEGACY_UNINSTALLER_LOG_PATH}" "${ZCODE_UNINSTALLER_LOG_PATH}"',
+    );
     const replayOpen = show.indexOf('FileOpen $R0 "${ZCODE_UNINSTALLER_LOG_PATH}" r', sizeBranch);
     expect(sizeProbe).toBeGreaterThan(-1);
     expect(sizeBranch).toBeGreaterThan(sizeProbe);
     expect(copyLegacy).toBeGreaterThan(sizeBranch);
     expect(replayOpen).toBeGreaterThan(copyLegacy);
     // 复审点名的错误形态不得回归：存在性判定直接跳过归并。
-    expect(show).not.toContain("IfFileExists \"${ZCODE_UNINSTALLER_LOG_PATH}\" zcodeShowUninstallerDetailsReady");
+    expect(show).not.toContain(
+      'IfFileExists "${ZCODE_UNINSTALLER_LOG_PATH}" zcodeShowUninstallerDetailsReady',
+    );
   });
 });

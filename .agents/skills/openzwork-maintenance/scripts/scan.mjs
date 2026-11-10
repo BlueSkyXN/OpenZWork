@@ -5,10 +5,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join, posix } from "node:path";
+import { dirname, join, posix, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
 import { parse as parseYaml } from "yaml";
+import { moduleForFile } from "../../../../scripts/architecture/policy.mjs";
 
 export const LEDGER_PATH = "docs/openzwork/ledger.yaml";
 export const VARIANTS_PATH = "docs/openzwork/upstream-doc-variants.yaml";
@@ -32,8 +33,14 @@ const CORE_TESTS_PATH = "tests/ci/core-tests.json";
 const INTEGRATION_DOC = (version) => `docs/openzwork/upstream/v${version}-integration.md`;
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const MAX_ACTIVE_KNOWLEDGE = 40;
+// 夹带格式化的门槛：与上游的差异中来自格式化的行数达到该值，且超过实质改动的一半。
+const FORMAT_NOISE_LIMIT = 20;
+const OXFMT_CONFIG_PATH = ".oxfmtrc.json";
+const UNFORMAT_SCRIPT = ".agents/skills/openzwork-maintenance/scripts/unformat.mjs";
+const ARCHITECTURE_PATH = "architecture-policy.yaml";
 // 上游文档与技能（文档类扩展名）保持原文；OpenZWork 版本放在同目录，文件名加 -openzwork。代码文件按代码规则原地修改。
-const DOC_ROOTS = ["docs/", ".agents/skills/"];
+const SKILLS_ROOT = ".agents/skills/";
+const DOC_ROOTS = ["docs/", SKILLS_ROOT];
 const DOC_EXT = /\.(?:md|mdx|ya?ml|json|txt)$/;
 const isUpstreamDoc = (path) =>
   DOC_ROOTS.some((root) => path.startsWith(root)) && DOC_EXT.test(path);
@@ -69,7 +76,7 @@ function git(repo, args, { input, allowFail = false } = {}) {
   }
   return { status: result.status, stdout: result.stdout, stderr: result.stderr.toString() };
 }
-const gitText = (repo, args, options) => git(repo, args, options).stdout.toString("utf8");
+export const gitText = (repo, args, options) => git(repo, args, options).stdout.toString("utf8");
 
 export function readTree(repo, ref) {
   const tree = new Map();
@@ -105,6 +112,32 @@ function yamlAt(repo, ref, path) {
   const text = readAt(repo, ref, path);
   return text === undefined ? undefined : parseYaml(text);
 }
+
+// 文件归属由架构策略唯一决定；复用其最具体模块匹配，避免父模块吞掉嵌套模块。
+function moduleLookup(repo, architecture) {
+  const policy = {
+    modules: (architecture?.modules ?? []).map((module) => ({
+      ...module,
+      roots: module.roots.map((root) => resolve(repo, root)),
+    })),
+  };
+  const cache = new Map();
+  return (path) => {
+    if (!cache.has(path)) cache.set(path, moduleForFile(resolve(repo, path), policy)?.id);
+    return cache.get(path);
+  };
+}
+
+const moduleList = (entry) => (Array.isArray(entry.modules) ? entry.modules : []);
+function modulePaths(context, entry) {
+  const ids = new Set(moduleList(entry));
+  return ids.size
+    ? [...context.headTree.keys()].filter((path) => ids.has(context.moduleOf(path)))
+    : [];
+}
+const entryPaths = (context, entry) => [
+  ...new Set([...matchPaths(context, entry.paths ?? []), ...modulePaths(context, entry)]),
+];
 function versionAt(repo, ref) {
   const text = readAt(repo, ref, "package.json");
   try {
@@ -162,7 +195,19 @@ export function classify(repo, base, head = "HEAD") {
       applyIdentity(before.toString("utf8")) === after.toString("utf8");
     result.set(path, { category: identity ? "upstream-identity" : "upstream-modified" });
   }
-  return { repo, base, head, history, baseTree, headTree, result, blobs };
+  const architecture = yamlAt(repo, head, ARCHITECTURE_PATH);
+  return {
+    repo,
+    base,
+    head,
+    history,
+    baseTree,
+    headTree,
+    result,
+    blobs,
+    architecture,
+    moduleOf: moduleLookup(repo, architecture),
+  };
 }
 
 /** 默认格式化器：用仓库的 oxfmt 与 .oxfmtrc.json（去掉 ignorePatterns）格式化给定文本。 */
@@ -230,6 +275,83 @@ export function findFormatNoise(context, formatter = createOxfmtFormatter(contex
   return noise;
 }
 
+/** 两段文本按行比较的 git diff 输出；extra 追加 --numstat、-U0、-w 等参数。 */
+export function lineDiff(a, b, extra = []) {
+  const dir = mkdtempSync(join(tmpdir(), "openzwork-diff-"));
+  try {
+    writeFileSync(join(dir, "a"), a);
+    writeFileSync(join(dir, "b"), b);
+    return spawnSync("git", ["diff", "--no-index", ...extra, join(dir, "a"), join(dir, "b")], {
+      maxBuffer: 1 << 28,
+    }).stdout.toString("utf8");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** 两段文本相差的行数（增加与删除之和）。 */
+export function countLineDiff(a, b) {
+  if (a === b) return 0;
+  const [added, deleted] = lineDiff(a, b, ["--numstat"]).split("\t");
+  return Number(added) + Number(deleted) || 0;
+}
+
+/**
+ * 上游文件与上游的差异中有多少行来自格式化：直接差异行数，减去双方都格式化之后的差异行数。
+ * 我方包了一层代码造成的缩进变化在格式化后仍然存在，不计入。返回 { raw, real, noise }。
+ */
+export function measureFormatNoise({ base, head, formattedBase, formattedHead }) {
+  const raw = countLineDiff(base, head);
+  const real = countLineDiff(formattedBase, formattedHead);
+  return { raw, real, noise: Math.max(0, raw - real) };
+}
+
+/** 夹带格式化的上游文件：格式噪声达到门槛且超过实质改动的一半。格式化工具忽略的文件不检查。 */
+export function findPartialFormatNoise(context, formatter = createOxfmtFormatter(context.repo)) {
+  if (!formatter) return undefined;
+  const { repo, head, baseTree, headTree, blobs, result } = context;
+  const stats = diffStats(context);
+  let ignored = [];
+  try {
+    const config = JSON.parse(readAt(repo, head, OXFMT_CONFIG_PATH) ?? "{}");
+    ignored = (config.ignorePatterns ?? []).map(globToRegExp);
+  } catch {
+    // 配置无法解析时不排除任何文件。
+  }
+  const text = (path, tree) => blobs.get(tree.get(path).blob);
+  const candidates = [...result]
+    .filter(([, { category }]) => category === "upstream-modified")
+    .map(([path]) => path)
+    .filter((path) => {
+      const { added = 0, deleted = 0 } = stats.get(path) ?? {};
+      return added + deleted >= FORMAT_NOISE_LIMIT && !ignored.some((regex) => regex.test(path));
+    })
+    .filter((path) => isText(text(path, baseTree)) && isText(text(path, headTree)));
+  const formatted = formatter(
+    candidates.flatMap((path) => [
+      { path, text: text(path, baseTree).toString("utf8") },
+      { path, text: text(path, headTree).toString("utf8") },
+    ]),
+  );
+  const noisy = [];
+  candidates.forEach((path, index) => {
+    const base = text(path, baseTree).toString("utf8");
+    const current = text(path, headTree).toString("utf8");
+    const formattedBase = formatted[index * 2];
+    const formattedHead = formatted[index * 2 + 1];
+    // 双方都符合格式时差异全部是实质改动。
+    if (formattedBase === base && formattedHead === current) return;
+    const { real, noise } = measureFormatNoise({
+      base,
+      head: current,
+      formattedBase,
+      formattedHead,
+    });
+    if (noise >= FORMAT_NOISE_LIMIT && noise * 2 > real) noisy.push({ path, noise, real });
+  });
+  return noisy;
+}
+
 export function globToRegExp(glob) {
   let source = "";
   for (let index = 0; index < glob.length; index++) {
@@ -252,7 +374,9 @@ export function loadMaintenance(repo, ref = "HEAD") {
   for (const [kind, file] of Object.entries(KNOWLEDGE_FILES))
     knowledge[kind] = yamlAt(repo, ref, `${KNOWLEDGE_DIR}/${file}`);
   return {
+    repo,
     ledger: yamlAt(repo, ref, LEDGER_PATH),
+    architecture: yamlAt(repo, ref, ARCHITECTURE_PATH),
     variants: yamlAt(repo, ref, VARIANTS_PATH),
     patches: yamlAt(repo, ref, PATCHES_PATH),
     gates: readAt(repo, ref, GATES_PATH) ?? "",
@@ -260,9 +384,11 @@ export function loadMaintenance(repo, ref = "HEAD") {
   };
 }
 
-/** 认领索引：台账条目（paths、hooks、tests、spec）、下游补丁（files、regression）与上游文档的 OpenZWork 版本登记。 */
-export function createClaims({ ledger, variants, patches }) {
+/** 认领索引：台账条目（modules、paths、hooks、tests、spec）、下游补丁与文档版本登记。 */
+export function createClaims({ repo = process.cwd(), ledger, variants, patches, architecture }) {
   const matchers = [];
+  const moduleOf = moduleLookup(repo, architecture);
+  const moduleEntries = (ledger?.entries ?? []).filter((entry) => moduleList(entry).length);
   for (const entry of ledger?.entries ?? []) {
     for (const glob of [
       ...(entry.paths ?? []),
@@ -289,6 +415,9 @@ export function createClaims({ ledger, variants, patches }) {
   return (path) => [
     ...matchers
       .filter((matcher) => matcher.regex.test(path))
+      .map(({ id, kind, status }) => ({ id, kind, status })),
+    ...moduleEntries
+      .filter((entry) => moduleList(entry).includes(moduleOf(path)))
       .map(({ id, kind, status }) => ({ id, kind, status })),
     ...(exact.get(path) ?? []),
   ];
@@ -391,7 +520,9 @@ export function loadCiTests(context) {
 function entryGuard(entry, context, ci) {
   const gates = entry.gates ?? [];
   if (entry.kind === "drop") return { ok: true, tests: [], gates, pathCheck: true };
-  const tests = matchPaths(context, [...(entry.tests ?? []), ...(entry.paths ?? [])])
+  const tests = [
+    ...new Set([...matchPaths(context, entry.tests ?? []), ...entryPaths(context, entry)]),
+  ]
     .filter((path) => ci.runs(path))
     .sort();
   return { ok: tests.length > 0, tests, gates };
@@ -418,6 +549,27 @@ export function validateGuards(ledger, context, ci) {
     errors.push(
       `${where}点名的测试文件不存在：${path}（上游删除测试后步骤仍会通过；删掉点名，或改为仍存在的回归）`,
     );
+  return errors;
+}
+
+/**
+ * 上游技能保持原作者的文件（maintenance-model.md「技能布局」）：原有文件与上游一致，
+ * 脚本最多只差用户级根改名；被删除的文件要由 drop 条目认领。文档类文件的改动由 validateVariants 报告。
+ */
+export function validateUpstreamSkills(context, claims) {
+  const errors = [];
+  for (const [path, info] of context.result) {
+    if (!path.startsWith(SKILLS_ROOT) || !context.baseTree.has(path)) continue;
+    if (info.category === "upstream-modified" && !isUpstreamDoc(path))
+      errors.push(
+        `上游技能文件 ${path} 被修改：恢复为上游原文（只允许用户级根 .openzwork 改名那一行，不加注释）；需要其他行为时复制为 ${variantOf(path)} 并登记到 ${VARIANTS_PATH}`,
+      );
+    const gone = info.category === "removed" || (info.category === "moved" && info.movedTo);
+    if (gone && !claims(path).some((claim) => claim.kind === "drop" && claim.status === "active"))
+      errors.push(
+        `上游技能文件 ${path} 被删除：恢复该文件；整个技能不适用时全部删除，并在 ${LEDGER_PATH} 用 drop 条目登记`,
+      );
+  }
   return errors;
 }
 
@@ -471,7 +623,8 @@ export function entryReport(context, ledger, ci) {
   return (ledger?.entries ?? []).map((entry) => {
     const hooks = matchPaths(context, entry.hooks ?? []);
     const wiring = { hooks: hooks.length, modified: 0, added: 0, deleted: 0 };
-    const claimed = entry.kind === "drop" ? hooks : matchPaths(context, entry.paths ?? []);
+    const claimed =
+      entry.kind === "drop" ? modulePaths(context, entry) : entryPaths(context, entry);
     for (const path of new Set([...hooks, ...claimed])) {
       const category = context.result.get(path)?.category;
       if (category !== "upstream-modified" && category !== "upstream-identity") continue;
@@ -485,6 +638,7 @@ export function entryReport(context, ledger, ci) {
       kind: entry.kind,
       status: entry.status,
       title: entry.title,
+      modules: moduleList(entry),
       guard: entryGuard(entry, context, ci),
       unguarded: entry.unguarded,
       wiring,
@@ -518,8 +672,24 @@ export function validateLedger(ledger, context, gates) {
       errors.push(`${where}: status 应为 active/undecided/retired`);
     for (const field of ["title", "summary", "source"])
       if (!nonEmpty(entry[field])) errors.push(`${where}: 缺少 ${field}`);
-    if (!Array.isArray(entry.paths) || entry.paths.length === 0)
-      errors.push(`${where}: paths 至少一项`);
+    if (
+      (!Array.isArray(entry.paths) || entry.paths.length === 0) &&
+      (entry.kind === "drop" || !moduleList(entry).length)
+    )
+      errors.push(
+        `${where}: ${entry.kind === "drop" ? "paths 至少一项" : "paths 或 modules 至少一项"}`,
+      );
+    if (
+      entry.modules !== undefined &&
+      (!Array.isArray(entry.modules) ||
+        entry.modules.some((id) => !nonEmpty(id)) ||
+        new Set(entry.modules).size !== entry.modules.length)
+    )
+      errors.push(`${where}: modules 应为不重复的模块 ID 数组`);
+    if (entry.status !== "retired")
+      for (const id of moduleList(entry))
+        if (!(context.architecture?.modules ?? []).some((module) => module.id === id))
+          errors.push(`${where}: 模块不存在：${id}`);
     for (const spec of specList(entry))
       if (!context.headTree.has(spec)) errors.push(`${where}: spec 不存在：${spec}`);
     for (const test of entry.tests ?? [])
@@ -540,6 +710,30 @@ export function validateLedger(ledger, context, gates) {
     }
     for (const gate of entry.gates ?? [])
       if (!gates.includes(gate)) errors.push(`${where}: ${GATES_PATH} 中找不到门禁：${gate}`);
+  }
+  return errors;
+}
+
+/** 只强制自有文件与上游基准外的模块有归属；不对上游零散修改做全量认领。 */
+export function validateOwnership(maintenance, context, claims = createClaims(maintenance)) {
+  const errors = [];
+  const upstreamModules = new Set(
+    (yamlAt(context.repo, context.base, ARCHITECTURE_PATH)?.modules ?? []).map(({ id }) => id),
+  );
+  const entries = (maintenance.ledger?.entries ?? []).filter(({ status }) =>
+    ["active", "undecided"].includes(status),
+  );
+  for (const { id } of context.architecture?.modules ?? [])
+    if (!upstreamModules.has(id) && !entries.some((entry) => moduleList(entry).includes(id)))
+      errors.push(`模块 ${id} 未被有效台账条目引用（在对应条目的 modules 中登记）`);
+  for (const [path, { category }] of context.result) {
+    if (category !== "openzwork") continue;
+    if (
+      !claims(path).some(
+        ({ status }) => status === undefined || ["active", "undecided"].includes(status),
+      )
+    )
+      errors.push(`OpenZWork 自有文件未认领：${path}（引用所属 modules，或补入对应条目的 paths）`);
   }
   return errors;
 }
@@ -818,6 +1012,7 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
   const maintenance = loadMaintenance(repo, head);
   if (!maintenance.ledger) return [`缺少 ${LEDGER_PATH}（检查以 ${head} 的已提交内容为准）`];
   const context = classify(repo, base ?? maintenance.ledger.upstream.commit, head);
+  const claims = createClaims(maintenance);
   const errors = [
     ...validateBase(maintenance.ledger, context),
     ...validateLedger(maintenance.ledger, context, maintenance.gates),
@@ -826,9 +1021,16 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
     ...validateKnowledge(maintenance.knowledge, context),
     ...validateGuards(maintenance.ledger, context, loadCiTests(context)),
     ...validateIntegrationDoc(maintenance.ledger, context),
+    ...validateUpstreamSkills(context, claims),
+    ...validateOwnership(maintenance, context, claims),
   ];
-  const noise = findFormatNoise(context, formatter ?? createOxfmtFormatter(repo));
+  const format = formatter ?? createOxfmtFormatter(repo);
+  const noise = findFormatNoise(context, format);
   if (!noise) errors.push("找不到 oxfmt，无法检查格式噪声；先执行 pnpm install");
+  for (const { path, noise: lines, real } of findPartialFormatNoise(context, format) ?? [])
+    errors.push(
+      `${path} 与上游的差异约有 ${lines} 行来自格式化（实质改动约 ${real} 行）：恢复上游排版，只保留实质改动（node ${UNFORMAT_SCRIPT} --apply ${path}）`,
+    );
   for (const { path, variant } of noise ?? []) {
     errors.push(
       `${path} 与上游只差${variant === "format" ? "格式化" : "改名和格式化"}：恢复为上游原文${variant === "format" ? "" : "并只保留 .openzwork 改名"}`,
@@ -913,7 +1115,7 @@ export function previewUpstream(context, claims, ledger, target) {
   const touchedEntries = new Map();
   for (const { path } of changes) {
     for (const claim of claims(path)) {
-      if (claim.kind === "drop") continue;
+      if (claim.kind === "drop" && !context.headTree.has(path)) continue;
       touchedEntries.set(claim.id, [...(touchedEntries.get(claim.id) ?? []), path]);
     }
   }
@@ -1079,6 +1281,7 @@ function printHuman(output, options) {
         `${item.id}  ${item.title}${item.status === "active" ? "" : `  [${item.status}]`}`,
       );
       console.log(`  保证：${guardText}`);
+      if (item.modules.length) console.log(`  模块：${item.modules.join(", ")}`);
       console.log(
         `  接线：hooks ${wiring.hooks} 个，改动的上游文件 ${wiring.modified} 个（+${wiring.added} −${wiring.deleted} 行）`,
       );

@@ -251,7 +251,7 @@ export function V4ConversationProvider({
       remoteSessionId={ready.remoteSessionId}
     >
       <RemoteConversationAvailability available={resolution.rpcReady} banner={disconnectedBanner}>
-        {children}
+      {children}
       </RemoteConversationAvailability>
     </ReadyV4ConversationProvider>
   );
@@ -332,7 +332,7 @@ export function V4PaneConversationProvider({
         available={targetResolution.rpcReady}
         banner={disconnectedBanner}
       >
-        {children}
+      {children}
       </RemoteConversationAvailability>
     </ReadyV4PaneConversationProvider>
   );

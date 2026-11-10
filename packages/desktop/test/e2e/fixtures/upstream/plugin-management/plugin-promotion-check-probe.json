@@ -8,9 +8,7 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": [
-          "E2E_PLUGIN_FIXTURE_CHECK_PROBE"
-        ]
+        "bodyIncludes": ["E2E_PLUGIN_FIXTURE_CHECK_PROBE"]
       },
       "response": {
         "statusCode": 200,

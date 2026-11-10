@@ -31,7 +31,7 @@
 | `retained`          | 上游已删除、我方保留             |
 | `moved`             | 内容与某个上游文件相同，路径不同 |
 
-“认领”指台账条目（`paths`、`hooks`、`tests`、`spec`）、下游补丁（`files`、`regression`）或上游文档的 OpenZWork 版本登记（`variant:…`）覆盖了该路径。`--path` 还会显示上游文档对应的 OpenZWork 版本，或 OpenZWork 版本对应的上游原文。需要认领的范围见 `docs/openzwork/maintenance-model.md`「来源分类」：`upstream-modified` 文件不要求逐个认领，汇总中的增删行数用来观察交叉面的变化。未认领不会让检查失败。
+“认领”指台账条目（`modules`、`paths`、`hooks`、`tests`、`spec`）、下游补丁（`files`、`regression`）或上游文档的 OpenZWork 版本登记（`variant:…`）覆盖了该路径。模块文件归属直接复用架构策略的匹配规则。`--path` 还会显示上游文档对应的 OpenZWork 版本，或 OpenZWork 版本对应的上游原文。需要认领的范围见 `docs/openzwork/maintenance-model.md`「来源分类」：自有文件与上游基准没有的现存模块未认领会让检查失败；`upstream-modified` 文件不要求逐个认领，汇总中的增删行数用来观察交叉面的变化。
 
 ## 门禁
 
@@ -42,11 +42,13 @@
 - 裁剪条目的路径不存在，其他 `active` 条目的路径存在；
 - 上游文档和技能保持原文；同目录的 `-openzwork` 版本都已登记并写明 `role`，`tool`、`rule` 的读取方按实际读取目标验证（详见 `docs/openzwork/maintenance-model.md`：直接写版本路径、`openzworkDoc(原路径)` 选择函数或 `rule` 链接指向版本三种写法；直接读原文路径或文件名只在注释里都判失败），登记的上游原文与当前基准一致；
 - 台账中每个 active、undecided 条目都出现在 `docs/openzwork/README.md` 的「与上游的差异」；
-- 没有只差格式化的上游文件（需要已安装依赖中的 oxfmt）；
+- 没有只差格式化的上游文件；夹带实质改动的上游文件，格式化造成的差异不能达到 20 行且超过实质改动的一半（需要已安装依赖中的 oxfmt；恢复方法见 `code-boundary` 子能力）；
 - OpenZWork 自有 Markdown 中指向已登记上游文档的相对链接，都指向其 OpenZWork 版本（只检查文件路径，不检查锚点；链接文字以「上游」开头的除外）；
 - 每个 `active` 条目有核心 CI 中的保证或写明 `unguarded`，已有保证的条目没有残留的 `unguarded`；
 - `.github/workflows/ci.yml` 步骤点名的测试文件都存在；
-- 台账上游版本对应的 `docs/openzwork/upstream/v<版本>-integration.md` 存在。
+- 台账上游版本对应的 `docs/openzwork/upstream/v<版本>-integration.md` 存在；
+- 上游技能（`.agents/skills/` 下上游基准已有的文件）与上游一致，脚本最多只差用户级根改名；被删除的由 `drop` 条目认领。
+- 台账引用的模块存在，上游基准没有的现存模块被有效条目引用，OpenZWork 自有文件有认领。
 
 ## 核心 CI 中运行的测试
 

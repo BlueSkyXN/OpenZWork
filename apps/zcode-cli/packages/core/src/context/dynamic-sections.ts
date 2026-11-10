@@ -26,8 +26,8 @@ const COMMUNICATION_PROMPTS = {
 
 const CONTEXT_MANAGEMENT_PROMPTS = {
   default: [
-    "# Context management",
-    "When the conversation grows long, some or all of the current context is summarized; the summary, along with any remaining unsummarized context, is provided in the next context window so work can continue \u2014 you don't need to wrap up early or hand off mid-task.",
+  "# Context management",
+  "When the conversation grows long, some or all of the current context is summarized; the summary, along with any remaining unsummarized context, is provided in the next context window so work can continue \u2014 you don't need to wrap up early or hand off mid-task.",
   ].join("\n"),
   additional: [
     "When you have enough information to act, act. Do not re-derive facts already established in the conversation, re-litigate a decision the user has already made, or narrate options you will not pursue. If you are weighing a choice, give a recommendation, not an exhaustive survey",

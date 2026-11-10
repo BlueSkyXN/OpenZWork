@@ -146,3 +146,39 @@ entries:
     since: 2026-11-10
     checked: 3.17.2
     status: active
+  - id: OZK-PIT-014
+    title: 格式化夹带少量改动会躲过格式噪声检查
+    when: 修改上游文件，或排查某个上游文件的差异为什么比实际改动大得多。
+    do: 用 git diff --stat <上游基准> 看差异行数是否与实际改动相称；行数远大于改动时用 scripts/unformat.mjs 恢复上游排版，恢复单独成一个提交并用 --verify 复核。噪声低于门禁门槛的文件不会报错，改到该文件时顺手恢复。
+    why: 最初的格式噪声检查只识别纯格式化或改名加格式化。generate-large-task-fixture.mjs 改了用户级根并加了两行注释，同时被整文件格式化，与上游相差 754 行，检查没有命中。全仓另有 49 个同类文件，恢复后与上游的差异合计从 4779 行降到 3050 行；其中 architecture-policy.yaml 的噪声来自另一种 YAML 写法（方括号内带空格），不是 oxfmt。
+    evidence:
+      - .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture.mjs
+      - .agents/skills/openzwork-maintenance/scripts/scan.mjs
+      - .agents/skills/openzwork-maintenance/scripts/unformat.mjs
+      - scripts/test/openzwork-maintenance-scan.test.mjs
+    since: 2026-11-10
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-015
+    title: 基于提交生成的结果会覆盖工作区改动
+    when: 工具从 Git 提交生成恢复或重写方案并写回工作区。
+    do: 固定生成方案使用的提交；写入前核对 HEAD 和全部目标的暂存区、工作区状态，有改动时整次拒绝写入。无关文件的改动不应阻止操作。
+    why: 排版恢复工具曾直接把 HEAD 的恢复结果写回，丢失目标文件尚未提交的实质修改；逐个写入再检查还会留下部分应用的状态。
+    evidence:
+      - .agents/skills/openzwork-maintenance/scripts/unformat.mjs
+      - scripts/test/openzwork-maintenance-scan.test.mjs
+    since: 2026-11-10
+    checked: 3.17.2
+    status: active
+  - id: OZK-PIT-016
+    title: Git 失败后的空输出不能当作检查通过
+    when: 用 Git 输出生成扫描、差异或验证结果。
+    do: 先验证输入引用，再检查每条 Git 命令的错误与退出码；读取失败立即返回非零。合法的空差异与执行失败分开处理。
+    why: 排版复核曾只读取 stdout，不存在的提交使 git diff 失败并输出空字符串，最终却报告核对零文件成功。
+    evidence:
+      - .agents/skills/openzwork-maintenance/scripts/unformat.mjs
+      - .agents/skills/openzwork-maintenance/scripts/scan.mjs
+      - scripts/test/openzwork-maintenance-scan.test.mjs
+    since: 2026-11-10
+    checked: 3.17.2
+    status: active
