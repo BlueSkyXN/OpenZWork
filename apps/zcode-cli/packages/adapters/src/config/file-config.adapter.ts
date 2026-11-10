@@ -447,7 +447,7 @@ function patchPluginOptions(
   const currentOptions = isRecord(plugins.options) ? plugins.options : {};
   const currentPluginOptions = isRecord(currentOptions[pluginId])
     ? currentOptions[pluginId]
-    : {};
+      : {};
   const nextOptions = { ...currentOptions };
   delete nextOptions[pluginId];
   const clearedOptionKeySet = new Set(clearOptionKeys);

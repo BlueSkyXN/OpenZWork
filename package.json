@@ -122,5 +122,5 @@
   "packageManager": "pnpm@11.28.6",
   "zcodeCompatibility": {
     "minCompatibleVersion": "3.17.1"
-  }
+    }
 }

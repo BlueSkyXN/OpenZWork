@@ -62,7 +62,7 @@ never decides the wording a request sends. With MCS it is exactly:
 Without MCS, dynamic context arrives as user-side `<system-reminder>` blocks, and
 the bullet is exactly:
 
-``- `<system-reminder>` tags in messages and tool results are injected by the harness, not the user. Hooks may intercept tool calls; treat hook output as user feedback.``
+`` - `<system-reminder>` tags in messages and tool results are injected by the harness, not the user. Hooks may intercept tool calls; treat hook output as user feedback. ``
 
 The static block ends at the final `# Harness` bullet. Code-style and
 risk/reporting paragraphs must not be emitted in `system[1]`.
@@ -91,7 +91,7 @@ boundary is:
    external publishing, inspect-before-delete/overwrite, and truthful validation
    reporting.
 4. Optional `# Session-specific guidance` for slash skill invocation when the
-   Skill tool and at least one skill are available. Its bullet starts with `-`.
+   Skill tool and at least one skill are available. Its bullet starts with ` - `.
    Interactive shell input through `! <command>` is unsupported and is not advertised.
 5. Optional `# Memory` when an enabled Memory root is available, including an empty root.
 6. `# Context management` for long-context summary/continuation behavior,

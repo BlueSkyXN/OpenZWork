@@ -11,7 +11,8 @@ const BUILT_IN_STYLES: OutputStyle[] = [
   {
     id: "default",
     name: "Default",
-    description: "Completes coding tasks efficiently and provides concise responses",
+    description:
+      "Completes coding tasks efficiently and provides concise responses",
     content: "",
     isBuiltIn: true,
     enabled: true,
@@ -19,7 +20,8 @@ const BUILT_IN_STYLES: OutputStyle[] = [
   {
     id: "explanatory",
     name: "Explanatory",
-    description: "Explains implementation choices and codebase patterns",
+    description:
+      "Explains implementation choices and codebase patterns",
     content: "",
     isBuiltIn: true,
     enabled: false,
@@ -27,7 +29,8 @@ const BUILT_IN_STYLES: OutputStyle[] = [
   {
     id: "learning",
     name: "Learning",
-    description: "Pauses and asks you to write small pieces of code for hands-on practice",
+    description:
+      "Pauses and asks you to write small pieces of code for hands-on practice",
     content: "",
     isBuiltIn: true,
     enabled: false,
@@ -216,7 +219,10 @@ ${config.content}`;
     await writeFile(filePath, content, "utf-8");
   }
 
-  async function updateStyle(params: { id: string; config: OutputStyleConfig }): Promise<void> {
+  async function updateStyle(params: {
+    id: string;
+    config: OutputStyleConfig;
+  }): Promise<void> {
     const { id, config } = params;
 
     // 移除 'custom-' 前缀获取文件名

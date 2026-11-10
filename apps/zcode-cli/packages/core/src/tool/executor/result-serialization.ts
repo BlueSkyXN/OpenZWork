@@ -201,7 +201,7 @@ export function appendHookAdditionalContexts(
       ...referenceProjection,
       truncated: serialization.truncated || referenceProjection.truncated,
     };
-  }
+}
   const artifactPreview = isPersistedArtifactPreview(serialization);
   const contentProjection = artifactPreview
     ? appendHookToPersistedArtifactPreview(serialization.content, suffix, maxModelBytes)
