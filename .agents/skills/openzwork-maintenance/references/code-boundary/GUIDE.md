@@ -22,6 +22,7 @@
 ## 修改上游文件时
 
 - 只改行为必需的行；不格式化、不调整 import 顺序、不改无关注释。
+- `.agents/skills/` 下上游技能的脚本不按本节修改，见 `docs-layout` 子能力。
 - 用户级数据根只用 `.openzwork`，项目级配置目录保持 `.zcode`。
 - 提交后执行 `pnpm openzwork:scan --check`，确认没有产生只差格式化的文件。
 

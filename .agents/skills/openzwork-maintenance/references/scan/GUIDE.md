@@ -46,7 +46,8 @@
 - OpenZWork 自有 Markdown 中指向已登记上游文档的相对链接，都指向其 OpenZWork 版本（只检查文件路径，不检查锚点；链接文字以「上游」开头的除外）；
 - 每个 `active` 条目有核心 CI 中的保证或写明 `unguarded`，已有保证的条目没有残留的 `unguarded`；
 - `.github/workflows/ci.yml` 步骤点名的测试文件都存在；
-- 台账上游版本对应的 `docs/openzwork/upstream/v<版本>-integration.md` 存在。
+- 台账上游版本对应的 `docs/openzwork/upstream/v<版本>-integration.md` 存在；
+- 上游技能（`.agents/skills/` 下上游基准已有的文件）与上游一致，脚本最多只差用户级根改名；被删除的由 `drop` 条目认领。
 
 ## 核心 CI 中运行的测试
 
