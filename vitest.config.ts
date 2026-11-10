@@ -174,6 +174,23 @@ export default defineConfig({
           sequence: { groupOrder: 2 },
         },
       },
+      {
+        extends: true,
+        // OpenZWork(OW-P023)：dev-docs 测试进根 vitest，供核心 CI 清单收录。
+        // "@/" 在根配置指向 packages/ui/src，dev-docs 需要独立 project 覆盖为自己的 src。
+        resolve: {
+          alias: {
+            "@": resolve(__dirname, "apps/dev-docs/src"),
+          },
+        },
+        test: {
+          name: "dev-docs",
+          include: ["apps/dev-docs/test/**/*.test.ts"],
+          environment: "node",
+          pool: process.env.ZCODE_TEST_POOL === "forks" ? "forks" : "threads",
+          maxWorkers: 2,
+        },
+      },
     ],
     coverage: {
       provider: "v8",

@@ -487,3 +487,29 @@ patches:
     retire: 上游为列表级菜单覆盖 touch/pen 目标选择，普通点按仍保持懒加载，桌面右键与真实触摸回归通过。
     refs:
       - docs/superpowers/specs/2026-09-09-virtual-project-design.md
+
+  - id: OW-P023
+    title: dev-docs 图谱生产数据测试在上游基准上断言过期计数
+    kind: test
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.17.1
+      checked: 3.17.2
+    trigger: 在上游基准代码上运行 apps/dev-docs 的 featureBoundaryGraph 生产数据测试。
+    impact: 测试断言 324 个节点、629 条边，上游原文实际解析出 417 个节点、805 条边；测试与读取目标在上游基准同样失败，掩盖真实回归。
+    cause: 上游测试把节点/边总数硬编码为登记时点的快照，图谱演进后断言过期；OpenZWork 裁剪后读取目标与计数进一步偏离。
+    fix: OpenZWork 读取改选 OpenZWork 图谱版本并加标记；生产数据测试改为结构、引用与裁剪边界断言（节点/边非空、无重复、docs 与 codeSeeds 指向现存文件、已裁剪功能节点不回流），删除节点总数断言。
+    evidence: 上游 v3.17.2 的 zcode-feature-graph.yaml 解析出 417 节点/805 边，与断言 324/629 不符；OpenZWork 版本修复后 368 节点/692 边全部断言通过。
+    files:
+      - apps/dev-docs/vite.config.ts
+      - apps/dev-docs/test/featureBoundaryGraph.test.ts
+      - apps/dev-docs/test/capabilityMapNoPersonnelOwnership.test.ts
+      - vitest.config.ts
+      - vitest.core.config.ts
+      - scripts/full-suite-plan.mjs
+    regression:
+      - apps/dev-docs/test/featureBoundaryGraph.test.ts
+    retire: 上游测试改为结构/引用断言或自行维护与图谱同步的计数生成，上游基准运行通过。
+    refs:
+      - docs/feature-boundary-graph-visualization.md

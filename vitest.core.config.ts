@@ -22,8 +22,9 @@ export default defineConfig({
       if (typeof project !== "object" || !project.test) {
         throw new Error("Core scope expects inline base test projects");
       }
-      // OpenZWork 修复：三个 project 对同一 selected 集分区认领（engineering→fork→unit 依次扣除），
+      // OpenZWork(OW-P023) 修复：project 对同一 selected 集分区认领（engineering→fork→其余 project 依次扣除），
       // 避免 unit/engineering 都收全量造成同文件双 project 双计（core-scope 守护测试断言唯一性）。
+      // dev-docs project 只认领自己的清单文件；其余 project 的兜底分支排除 dev-docs 路径。
       const engineering = new Set(engineeringTestFiles);
       const forkSet = new Set(forkIsolatedTests);
       const projectName = project.test.name;
@@ -32,7 +33,14 @@ export default defineConfig({
           ? files.filter((file) => forkSet.has(file))
           : projectName === "engineering"
             ? files.filter((file) => engineering.has(file) && !forkSet.has(file))
-            : files.filter((file) => !engineering.has(file) && !forkSet.has(file));
+            : projectName === "dev-docs"
+              ? files.filter((file) => file.startsWith("apps/dev-docs/"))
+              : files.filter(
+                  (file) =>
+                    !engineering.has(file) &&
+                    !forkSet.has(file) &&
+                    !file.startsWith("apps/dev-docs/"),
+                );
       return { ...project, test: { ...project.test, include } };
     }),
   },

@@ -7,6 +7,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
 import { pathToFileURL } from "node:url";
+import ts from "typescript";
 import { parse as parseYaml } from "yaml";
 
 export const LEDGER_PATH = "docs/openzwork/ledger.yaml";
@@ -360,6 +361,68 @@ export function validateBase(ledger, context) {
   return errors;
 }
 
+// 登记的文档版本选择函数（maintenance-model.md）：定义处带 OpenZWork(OZ-F001) 标记。
+const VARIANT_SELECTOR_FUNCTIONS = ["openzworkDoc"];
+
+// 验证 usedBy 文件实际选中 OpenZWork 版本。返回 { ok, reason }；isMarkdown 用于 rule 文档的链接判定。
+function verifyVariantReader(text, item, isMarkdown) {
+  const upstreamName = item.upstream.split("/").pop();
+  const variantName = item.variant.split("/").pop();
+  const matchesPath = (value, path) => {
+    if (/\s/.test(value)) return false;
+    const normalized = posix.normalize(value);
+    return normalized === path || normalized.endsWith(`/${path}`);
+  };
+
+  if (isMarkdown) {
+    // 规则文档只接受实际链接；HTML 注释里的示例不能证明引用关系。
+    const visible = text.replace(/<!--[\s\S]*?-->/g, "");
+    const targets = [
+      ...[...visible.matchAll(INLINE_LINK)].map((match) => match[2]),
+      ...visible
+        .split("\n")
+        .map((line) => REFERENCE_LINK.exec(line)?.[1])
+        .filter(Boolean),
+    ];
+    if (targets.some((target) => matchesPath(target.split("#")[0], variantName)))
+      return { ok: true };
+  } else {
+    // 注释和字符串中的调用示例不是读取；语法树保留嵌套实参，避免正则在第一个右括号处截断。
+    const source = ts.createSourceFile("reader.ts", text, ts.ScriptTarget.Latest, true);
+    let selected = false;
+    const visit = (node) => {
+      if (ts.isStringLiteralLike(node)) {
+        if (matchesPath(node.text, item.variant) || matchesPath(node.text, variantName))
+          selected = true;
+        for (let parent = node.parent; parent; parent = parent.parent) {
+          if (
+            ts.isCallExpression(parent) &&
+            ts.isIdentifier(parent.expression) &&
+            VARIANT_SELECTOR_FUNCTIONS.includes(parent.expression.text) &&
+            parent.arguments.some((arg) => arg.pos <= node.pos && arg.end >= node.end) &&
+            (matchesPath(node.text, item.upstream) || matchesPath(node.text, upstreamName))
+          )
+            selected = true;
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(source);
+    if (selected) return { ok: true };
+  }
+
+  // 未选中版本：区分“引用了上游原文”与“完全没有读取关系”。
+  if (text.includes(upstreamName))
+    return {
+      ok: false,
+      reason: `登记了 OpenZWork 版本仍读取上游原文 ${upstreamName}；改为读版本路径、选择函数或版本链接`,
+    };
+  return {
+    ok: false,
+    reason: "没有引用该文档；关系已失效时删除 OpenZWork 版本或调整 role",
+  };
+}
+
 export function validateVariants(doc, context) {
   const errors = [];
   if (!doc) return [`缺少 ${VARIANTS_PATH}`];
@@ -383,19 +446,21 @@ export function validateVariants(doc, context) {
         `${where}: role 应为 tool/rule/maintained/pending，写明保留 OpenZWork 版本的理由`,
       );
     } else if (item.role === "tool" || item.role === "rule") {
-      // 代码读取或规则引用必须能在 usedBy 文件中找到原文或版本的文件名，关系失效时删除版本或改 role。
+      // 代码读取或规则引用必须实际选中 OpenZWork 版本（maintenance-model.md 的三种写法），
+      // 文件名只在注释或无关字符串里出现、或登记了版本仍读上游原文，都算关系失效。
       if (!Array.isArray(item.usedBy) || item.usedBy.length === 0) {
         errors.push(`${where}: role 为 ${item.role} 时 usedBy 至少列出一个读取或引用方`);
       }
-      const names = [item.upstream, item.variant].map((path) => path.split("/").pop());
       for (const by of item.usedBy ?? []) {
         const text = context.headTree.has(by)
           ? (readAt(context.repo, context.head, by) ?? "")
           : undefined;
-        if (text === undefined) errors.push(`${where}: usedBy 文件不存在：${by}`);
-        else if (!names.some((name) => text.includes(name))) {
-          errors.push(`${where}: ${by} 没有引用该文档；关系已失效时删除 OpenZWork 版本或调整 role`);
+        if (text === undefined) {
+          errors.push(`${where}: usedBy 文件不存在：${by}`);
+          continue;
         }
+        const verdict = verifyVariantReader(text, item, by.endsWith(".md"));
+        if (!verdict.ok) errors.push(`${where}: ${by} ${verdict.reason}`);
       }
     }
     const original = baseTree.get(item.upstream);

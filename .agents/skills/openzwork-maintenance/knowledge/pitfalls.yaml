@@ -134,3 +134,14 @@ entries:
     since: 2026-11-08
     checked: 3.17.2
     status: active
+  - id: OZK-PIT-013
+    title: 字符串命中不能证明实际读取关系
+    when: 为 usedBy 或类似登记关系增加静态门禁。
+    do: 用语法树区分调用、路径字面量和注释，并分别覆盖调用示例、无关说明与嵌套实参；规则文档单独验证链接。
+    why: 直接 includes 会接受注释里的版本文件名，截取第一个右括号的正则又会拒绝合法嵌套选择函数；正反回归都要独立验证。
+    evidence:
+      - .agents/skills/openzwork-maintenance/scripts/scan.mjs
+      - scripts/test/openzwork-maintenance-scan.test.mjs
+    since: 2026-11-10
+    checked: 3.17.2
+    status: active

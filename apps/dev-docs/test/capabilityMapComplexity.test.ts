@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { groupComplexityById } from "@/capability-map/capabilityMapTypes.js";
+import { groupComplexityById } from "../src/capability-map/capabilityMapTypes.js";
 
 // 原测试依赖当前能力图，并把缺失端点误计为跨群边，导致 136 != 137。
 // 使用固定小图独立声明期望，不让文档节点增删或统计实现决定测试答案。

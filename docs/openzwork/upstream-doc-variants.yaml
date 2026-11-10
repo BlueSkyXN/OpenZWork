@@ -15,7 +15,6 @@ variants:
     usedBy:
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
       - apps/dev-docs/vite.config.ts
-      - .agents/skills/feature-boundary-planner/SKILL.md
     kind: content
     upstreamBlob: 49ea1b138a7b447e3a08b033b62b84e3a92f2054
   - upstream: docs/builtin-provider-config-build-environments.md

@@ -4,7 +4,7 @@ import {
   CAPABILITY_MAP_SYSTEM_GAP,
   ENGINEERING_INFRASTRUCTURE_SYSTEM_ID,
   buildCapabilitySystemPositions,
-} from "@/capability-map/capabilityMapSystemPlacement.js";
+} from "../src/capability-map/capabilityMapSystemPlacement.js";
 
 describe("能力图顶层区域布局", () => {
   it("前三个运行层横向排列，工程基础设施居中放在下方", () => {
