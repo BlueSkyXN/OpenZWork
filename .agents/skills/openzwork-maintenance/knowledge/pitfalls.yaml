@@ -149,11 +149,12 @@ entries:
   - id: OZK-PIT-014
     title: 格式化夹带少量改动会躲过格式噪声检查
     when: 修改上游文件，或排查某个上游文件的差异为什么比实际改动大得多。
-    do: 用 git diff --stat <上游基准> 看差异行数是否与实际改动相称；行数远大于改动时，恢复上游原文再重放改动。上游技能的文件由门禁强制，只允许用户级根改名那一行。
-    why: 格式噪声检查只识别纯格式化或改名加格式化。generate-large-task-fixture.mjs 改了用户级根并加了两行注释，同时被整文件格式化，与上游相差 754 行，检查没有命中；恢复后只差一行。
+    do: 用 git diff --stat <上游基准> 看差异行数是否与实际改动相称；行数远大于改动时用 scripts/unformat.mjs 恢复上游排版，恢复单独成一个提交并用 --verify 复核。噪声低于门禁门槛的文件不会报错，改到该文件时顺手恢复。
+    why: 最初的格式噪声检查只识别纯格式化或改名加格式化。generate-large-task-fixture.mjs 改了用户级根并加了两行注释，同时被整文件格式化，与上游相差 754 行，检查没有命中。全仓另有 49 个同类文件，恢复后与上游的差异合计从 4779 行降到 3050 行；其中 architecture-policy.yaml 的噪声来自另一种 YAML 写法（方括号内带空格），不是 oxfmt。
     evidence:
       - .agents/skills/zcode-large-task-fixture/scripts/generate-large-task-fixture.mjs
       - .agents/skills/openzwork-maintenance/scripts/scan.mjs
+      - .agents/skills/openzwork-maintenance/scripts/unformat.mjs
       - scripts/test/openzwork-maintenance-scan.test.mjs
     since: 2026-11-10
     checked: 3.17.2

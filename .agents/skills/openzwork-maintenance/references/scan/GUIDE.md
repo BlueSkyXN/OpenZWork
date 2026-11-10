@@ -42,7 +42,7 @@
 - 裁剪条目的路径不存在，其他 `active` 条目的路径存在；
 - 上游文档和技能保持原文；同目录的 `-openzwork` 版本都已登记并写明 `role`，`tool`、`rule` 的读取方按实际读取目标验证（详见 `docs/openzwork/maintenance-model.md`：直接写版本路径、`openzworkDoc(原路径)` 选择函数或 `rule` 链接指向版本三种写法；直接读原文路径或文件名只在注释里都判失败），登记的上游原文与当前基准一致；
 - 台账中每个 active、undecided 条目都出现在 `docs/openzwork/README.md` 的「与上游的差异」；
-- 没有只差格式化的上游文件（需要已安装依赖中的 oxfmt）；
+- 没有只差格式化的上游文件；夹带实质改动的上游文件，格式化造成的差异不能达到 20 行且超过实质改动的一半（需要已安装依赖中的 oxfmt；恢复方法见 `code-boundary` 子能力）；
 - OpenZWork 自有 Markdown 中指向已登记上游文档的相对链接，都指向其 OpenZWork 版本（只检查文件路径，不检查锚点；链接文字以「上游」开头的除外）；
 - 每个 `active` 条目有核心 CI 中的保证或写明 `unguarded`，已有保证的条目没有残留的 `unguarded`；
 - `.github/workflows/ci.yml` 步骤点名的测试文件都存在；

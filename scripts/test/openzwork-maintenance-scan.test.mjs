@@ -20,11 +20,18 @@ import {
   previewUpstream,
   runCheck,
 } from "../../.agents/skills/openzwork-maintenance/scripts/scan.mjs";
+import {
+  planRestore,
+  verifyFormatOnly,
+} from "../../.agents/skills/openzwork-maintenance/scripts/unformat.mjs";
 
 // 旧用户级根按片段拼出，避免本文件被净化门禁当作旧根残留。
 const legacyRoot = ["~", ".zcode"].join("/");
 const legacyHomeJoin = `join(homedir(), "${[".", "zcode"].join("")}")`;
 const trimFormatter = (files) => files.map(({ text }) => text.replace(/[ \t]+$/gm, ""));
+// 上游的两个较长文件：big 每行带行尾空白（不符合替身格式化器的格式），plain 符合格式。
+const bigSource = Array.from({ length: 30 }, (_, n) => `export const a${n} = ${n};   \n`).join("");
+const plainSource = Array.from({ length: 30 }, (_, n) => `export const p${n} = ${n};\n`).join("");
 
 function fixture() {
   const dir = mkdtempSync(join(tmpdir(), "openzwork-scan-"));
@@ -59,6 +66,8 @@ function fixture() {
   write("src/home.ts", `export const root = "${legacyRoot}/cli";\n`);
   write("src/fmt.ts", "export const fmt = 1;   \n");
   // 上游技能：一份文档和一个带用户级根的脚本。
+  write("src/big.ts", bigSource);
+  write("src/plain.ts", plainSource);
   write(".agents/skills/up/SKILL.md", "# Up\n");
   write(".agents/skills/up/scripts/run.mjs", `export const root = ${legacyHomeJoin};\n`);
   const v1 = commit("upstream 1.0.0");
@@ -557,6 +566,53 @@ test("runCheck 要求上游技能保持原作者的文件，脚本只允许用�
   repo.edit("docs/openzwork/README.md", "OZ-D001、", "OZ-D001、OZ-D002、");
   repo.commit("whole upstream skill dropped with a ledger entry");
   assert.deepEqual(check(repo), []);
+});
+
+test("runCheck 拦截夹带实质改动的整文件格式化，planRestore 恢复上游排版后通过", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  // 整文件去掉行尾空白，同时改了一行。
+  repo.write(
+    "src/big.ts",
+    bigSource.replace(/[ \t]+$/gm, "").replace("export const a5 = 5;", "export const a5 = 55;"),
+  );
+  const noisy = repo.commit("whole-file format with one real change");
+  const errors = check(repo);
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(errors[0], /src\/big\.ts 与上游的差异约有 58 行来自格式化（实质改动约 2 行）/);
+
+  const [plan] = planRestore(classify(repo.dir, repo.v2), trimFormatter, ["src/big.ts"]);
+  assert.equal(plan.raw, 60);
+  assert.equal(plan.after, 2);
+  // 恢复结果：上游原文，只有改动的那一行来自当前文件。
+  assert.equal(
+    plan.text,
+    bigSource.replace("export const a5 = 5;   \n", "export const a5 = 55;\n"),
+  );
+  repo.write("src/big.ts", plan.text);
+  repo.commit("upstream layout restored");
+  assert.deepEqual(check(repo), []);
+  assert.deepEqual(verifyFormatOnly(repo.dir, noisy, trimFormatter, repo.v2), {
+    checked: 1,
+    mismatched: [],
+  });
+
+  // 再改一行实质内容：不再是“只改排版”。
+  repo.edit("src/big.ts", "export const a6 = 6;", "export const a6 = 66;");
+  repo.commit("another real change");
+  assert.deepEqual(verifyFormatOnly(repo.dir, noisy, trimFormatter, repo.v2).mismatched, [
+    "src/big.ts",
+  ]);
+});
+
+test("我方包了一层代码造成的缩进变化不算格式噪声", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  const wrapped = `if (flag) {\n${plainSource.replace(/^/gm, "  ").replace(/ {2}$/, "")}}\n`;
+  repo.write("src/plain.ts", wrapped);
+  repo.commit("upstream code wrapped in a block");
+  assert.deepEqual(check(repo), []);
+  assert.deepEqual(planRestore(classify(repo.dir, repo.v2), trimFormatter, ["src/plain.ts"]), []);
 });
 
 test("entryReport 给出每个条目的保证与接线面，modifiedSummary 汇总增删行数", () => {

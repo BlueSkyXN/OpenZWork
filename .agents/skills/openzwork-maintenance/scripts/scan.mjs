@@ -32,6 +32,10 @@ const CORE_TESTS_PATH = "tests/ci/core-tests.json";
 const INTEGRATION_DOC = (version) => `docs/openzwork/upstream/v${version}-integration.md`;
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const MAX_ACTIVE_KNOWLEDGE = 40;
+// 夹带格式化的门槛：与上游的差异中来自格式化的行数达到该值，且超过实质改动的一半。
+const FORMAT_NOISE_LIMIT = 20;
+const OXFMT_CONFIG_PATH = ".oxfmtrc.json";
+const UNFORMAT_SCRIPT = ".agents/skills/openzwork-maintenance/scripts/unformat.mjs";
 // 上游文档与技能（文档类扩展名）保持原文；OpenZWork 版本放在同目录，文件名加 -openzwork。代码文件按代码规则原地修改。
 const SKILLS_ROOT = ".agents/skills/";
 const DOC_ROOTS = ["docs/", SKILLS_ROOT];
@@ -229,6 +233,83 @@ export function findFormatNoise(context, formatter = createOxfmtFormatter(contex
     else if (formatted[index * 2 + 1] === current) noise.push({ path, variant: "identity+format" });
   });
   return noise;
+}
+
+/** 两段文本按行比较的 git diff 输出；extra 追加 --numstat、-U0、-w 等参数。 */
+export function lineDiff(a, b, extra = []) {
+  const dir = mkdtempSync(join(tmpdir(), "openzwork-diff-"));
+  try {
+    writeFileSync(join(dir, "a"), a);
+    writeFileSync(join(dir, "b"), b);
+    return spawnSync("git", ["diff", "--no-index", ...extra, join(dir, "a"), join(dir, "b")], {
+      maxBuffer: 1 << 28,
+    }).stdout.toString("utf8");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/** 两段文本相差的行数（增加与删除之和）。 */
+export function countLineDiff(a, b) {
+  if (a === b) return 0;
+  const [added, deleted] = lineDiff(a, b, ["--numstat"]).split("\t");
+  return Number(added) + Number(deleted) || 0;
+}
+
+/**
+ * 上游文件与上游的差异中有多少行来自格式化：直接差异行数，减去双方都格式化之后的差异行数。
+ * 我方包了一层代码造成的缩进变化在格式化后仍然存在，不计入。返回 { raw, real, noise }。
+ */
+export function measureFormatNoise({ base, head, formattedBase, formattedHead }) {
+  const raw = countLineDiff(base, head);
+  const real = countLineDiff(formattedBase, formattedHead);
+  return { raw, real, noise: Math.max(0, raw - real) };
+}
+
+/** 夹带格式化的上游文件：格式噪声达到门槛且超过实质改动的一半。格式化工具忽略的文件不检查。 */
+export function findPartialFormatNoise(context, formatter = createOxfmtFormatter(context.repo)) {
+  if (!formatter) return undefined;
+  const { repo, head, baseTree, headTree, blobs, result } = context;
+  const stats = diffStats(context);
+  let ignored = [];
+  try {
+    const config = JSON.parse(readAt(repo, head, OXFMT_CONFIG_PATH) ?? "{}");
+    ignored = (config.ignorePatterns ?? []).map(globToRegExp);
+  } catch {
+    // 配置无法解析时不排除任何文件。
+  }
+  const text = (path, tree) => blobs.get(tree.get(path).blob);
+  const candidates = [...result]
+    .filter(([, { category }]) => category === "upstream-modified")
+    .map(([path]) => path)
+    .filter((path) => {
+      const { added = 0, deleted = 0 } = stats.get(path) ?? {};
+      return added + deleted >= FORMAT_NOISE_LIMIT && !ignored.some((regex) => regex.test(path));
+    })
+    .filter((path) => isText(text(path, baseTree)) && isText(text(path, headTree)));
+  const formatted = formatter(
+    candidates.flatMap((path) => [
+      { path, text: text(path, baseTree).toString("utf8") },
+      { path, text: text(path, headTree).toString("utf8") },
+    ]),
+  );
+  const noisy = [];
+  candidates.forEach((path, index) => {
+    const base = text(path, baseTree).toString("utf8");
+    const current = text(path, headTree).toString("utf8");
+    const formattedBase = formatted[index * 2];
+    const formattedHead = formatted[index * 2 + 1];
+    // 双方都符合格式时差异全部是实质改动。
+    if (formattedBase === base && formattedHead === current) return;
+    const { real, noise } = measureFormatNoise({
+      base,
+      head: current,
+      formattedBase,
+      formattedHead,
+    });
+    if (noise >= FORMAT_NOISE_LIMIT && noise * 2 > real) noisy.push({ path, noise, real });
+  });
+  return noisy;
 }
 
 export function globToRegExp(glob) {
@@ -850,8 +931,13 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
     ...validateIntegrationDoc(maintenance.ledger, context),
     ...validateUpstreamSkills(context, createClaims(maintenance)),
   ];
-  const noise = findFormatNoise(context, formatter ?? createOxfmtFormatter(repo));
+  const format = formatter ?? createOxfmtFormatter(repo);
+  const noise = findFormatNoise(context, format);
   if (!noise) errors.push("找不到 oxfmt，无法检查格式噪声；先执行 pnpm install");
+  for (const { path, noise: lines, real } of findPartialFormatNoise(context, format) ?? [])
+    errors.push(
+      `${path} 与上游的差异约有 ${lines} 行来自格式化（实质改动约 ${real} 行）：恢复上游排版，只保留实质改动（node ${UNFORMAT_SCRIPT} --apply ${path}）`,
+    );
   for (const { path, variant } of noise ?? []) {
     errors.push(
       `${path} 与上游只差${variant === "format" ? "格式化" : "改名和格式化"}：恢复为上游原文${variant === "format" ? "" : "并只保留 .openzwork 改名"}`,
