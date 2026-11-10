@@ -2,7 +2,7 @@
 // 用临时 Git 仓库模拟两版上游快照与一版 OpenZWork 分支；格式化器用去行尾空白的替身，不依赖 oxfmt。
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { test } from "node:test";
@@ -11,9 +11,12 @@ import {
   classify,
   createClaims,
   describePath,
+  entryReport,
   findFormatNoise,
   globToRegExp,
+  loadCiTests,
   loadMaintenance,
+  modifiedSummary,
   previewUpstream,
   runCheck,
 } from "../../.agents/skills/openzwork-maintenance/scripts/scan.mjs";
@@ -30,6 +33,11 @@ function fixture() {
     writeFileSync(join(dir, path), text);
   };
   const remove = (path) => rmSync(join(dir, path));
+  const edit = (path, from, to) => {
+    const text = readFileSync(join(dir, path), "utf8");
+    assert.ok(text.includes(from), `${path} 中找不到：${from}`);
+    write(path, text.replace(from, to));
+  };
   const commit = (message) => {
     // 强制加入：开发机的全局忽略规则可能包含 .agents/，夹具不能受本机配置影响。
     git("add", "-A", "--force");
@@ -59,6 +67,13 @@ function fixture() {
   remove("src/gone.ts");
   // 代码读取 docs/b-openzwork.md，对应登记表中的 role: tool。
   write("src/ours.ts", 'export const ours = 1;\nexport const doc = "docs/b-openzwork.md";\n');
+  // OZ-F001 的保证：回归测试列入核心清单。
+  write("src/ours.test.ts", "export {};\n");
+  write(
+    "tests/ci/core-tests.json",
+    JSON.stringify({ version: 1, suites: [{ capability: "ours", files: ["src/ours.test.ts"] }] }),
+  );
+  write("docs/openzwork/upstream/v1.1.0-integration.md", "# 1.1.0 整合\n");
   write("docs/old.md", "# Old\n");
   write("src/home.ts", 'export const root = "~/.openzwork/cli";\n');
   write("src/fmt.ts", "export const fmt = 1;\n");
@@ -78,6 +93,7 @@ entries:
     summary: 台账与工具。
     paths: ["src/ours.ts", "docs/openzwork/**", ".agents/skills/openzwork-maintenance/**"]
     hooks: ["src/keep.ts"]
+    tests: ["src/ours.test.ts"]
     source: 测试
   - id: OZ-D001
     kind: drop
@@ -92,6 +108,7 @@ entries:
     title: 保留
     summary: 上游已删、我方保留。
     paths: ["docs/old.md"]
+    unguarded: 夹具：保留的文档没有测试。
     source: 测试
 `,
   );
@@ -123,10 +140,14 @@ entries:
   write(`${knowledge}/diff.yaml`, "version: 1\nkind: diff\nentries: []\n");
   write(`${knowledge}/decisions.yaml`, "version: 1\nkind: decision\nentries: []\n");
   const fork = commit("openzwork");
-  return { dir, git, write, remove, commit, v1, v2, fork };
+  return { dir, git, write, remove, edit, commit, v1, v2, fork };
 }
 
 const check = (repo) => runCheck(repo.dir, { formatter: trimFormatter });
+const ciWorkflow = (steps) =>
+  `name: CI\njobs:\n  checks:\n    steps:\n${steps
+    .map(({ name, run }) => `      - name: ${name}\n        run: ${JSON.stringify(run)}\n`)
+    .join("")}`;
 
 test("classify 给上游、改名、修改、删除、新增、保留分类", () => {
   const repo = fixture();
@@ -374,6 +395,7 @@ test("previewUpstream 列出冲突、我方已删被修改与落入裁剪路径�
   repo.write("src/keep.ts", "export const keep = 3;\n");
   repo.write("src/gone.ts", "export const gone = 2;\n");
   repo.write("src/gone-new.ts", "export const fresh = 1;\n");
+  repo.write("docs/a.md", "# A\n\n上游新增一段\n");
   const next = repo.commit("upstream 1.2.0");
   repo.git("checkout", "-q", "fork");
   const maintenance = loadMaintenance(repo.dir);
@@ -392,6 +414,121 @@ test("previewUpstream 列出冲突、我方已删被修改与落入裁剪路径�
   );
   assert.deepEqual(preview.addedInDropPaths, [{ path: "src/gone-new.ts", id: "OZ-D001" }]);
   assert.deepEqual(preview.touchedEntries, [{ id: "OZ-F001", paths: ["src/keep.ts"] }]);
+  // 吸收概览：docs/a.md 我方未改动；package.json 与 src/keep.ts 我方改过；src/gone.ts 我方已删；src/gone-new.ts 为上游新增。
+  assert.deepEqual(preview.absorption, { direct: 1, merge: 2, removed: 1, added: 1 });
+});
+
+test("runCheck 要求 active 条目有核心 CI 中运行的保证或写明 unguarded", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.write("tests/ci/core-tests.json", JSON.stringify({ version: 1, suites: [] }));
+  repo.commit("core list emptied");
+  let errors = check(repo).join("\n");
+  assert.match(errors, /OZ-F001: 没有核心 CI 中运行的保证/);
+  // 裁剪条目由路径不存在的检查保证；写明 unguarded 的条目不报错。
+  assert.doesNotMatch(errors, /OZ-D001: 没有核心 CI/);
+  assert.doesNotMatch(errors, /OZ-R001/);
+
+  // ci.yml 点名也算：--filter 的路径相对包目录，根脚本展开后的通配符按目录匹配。
+  repo.write("packages/pkg/package.json", JSON.stringify({ name: "@x/pkg" }));
+  repo.write("packages/pkg/tests/a.test.ts", "export {};\n");
+  repo.write("scripts/test/b.test.mjs", "export {};\n");
+  repo.write(
+    "package.json",
+    JSON.stringify({
+      version: "1.1.0+openzwork.1",
+      scripts: { "test:repo-scripts": "node --test scripts/test/*.test.mjs" },
+    }),
+  );
+  repo.write(
+    ".github/workflows/ci.yml",
+    ciWorkflow([
+      { name: "pkg", run: "pnpm --filter @x/pkg exec vitest run tests/a.test.ts --bail=1" },
+      { name: "scripts", run: "pnpm test:repo-scripts" },
+    ]),
+  );
+  repo.edit(
+    "docs/openzwork/ledger.yaml",
+    'tests: ["src/ours.test.ts"]',
+    'tests: ["packages/pkg/tests/a.test.ts"]',
+  );
+  repo.edit(
+    "docs/openzwork/ledger.yaml",
+    'paths: ["docs/old.md"]',
+    'paths: ["docs/old.md"]\n    tests: ["scripts/test/b.test.mjs"]',
+  );
+  repo.commit("guards from ci.yml");
+  errors = check(repo);
+  // OZ-F001 由 ci.yml 点名的包内测试保证；OZ-R001 有了保证却还留着 unguarded。
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(errors[0], /OZ-R001: 已有保证（scripts\/test\/b\.test\.mjs），删除 unguarded/);
+
+  repo.edit("docs/openzwork/ledger.yaml", "    unguarded: 夹具：保留的文档没有测试。\n", "");
+  repo.commit("drop stale unguarded");
+  assert.deepEqual(check(repo), []);
+
+  repo.edit(
+    "docs/openzwork/ledger.yaml",
+    '\n    tests: ["scripts/test/b.test.mjs"]',
+    "\n    unguarded: ''",
+  );
+  repo.commit("empty unguarded");
+  assert.match(check(repo).join("\n"), /OZ-R001: unguarded 要写明原因与补齐方式/);
+});
+
+test("runCheck 拦截 ci.yml 点名但已不存在的测试文件", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.write(
+    ".github/workflows/ci.yml",
+    ciWorkflow([
+      {
+        name: "Remote control regression",
+        // Vitest 忽略匹配不到文件的过滤器，步骤照常通过；echo 里的文件名不是点名。
+        run: 'pnpm exec vitest run src/ours.test.ts src/missing.test.ts --bail=1\necho "running tests/echo.test.ts alone"',
+      },
+    ]),
+  );
+  repo.commit("ci names a deleted test");
+  const errors = check(repo);
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(
+    errors[0],
+    /ci\.yml 步骤「Remote control regression」点名的测试文件不存在：src\/missing\.test\.ts/,
+  );
+  const ci = loadCiTests(classify(repo.dir, repo.v2));
+  assert.equal(ci.runs("src/ours.test.ts"), true);
+  assert.equal(ci.runs("tests/echo.test.ts"), false);
+});
+
+test("runCheck 要求台账上游版本有整合文档", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.remove("docs/openzwork/upstream/v1.1.0-integration.md");
+  repo.commit("integration doc removed");
+  assert.match(check(repo).join("\n"), /缺少 docs\/openzwork\/upstream\/v1\.1\.0-integration\.md/);
+});
+
+test("entryReport 给出每个条目的保证与接线面，modifiedSummary 汇总增删行数", () => {
+  const repo = fixture();
+  const context = classify(repo.dir, repo.v2);
+  const { ledger } = loadMaintenance(repo.dir);
+  const report = entryReport(context, ledger, loadCiTests(context));
+  const byId = Object.fromEntries(report.map((item) => [item.id, item]));
+  assert.deepEqual(byId["OZ-F001"].guard, { ok: true, tests: ["src/ours.test.ts"], gates: [] });
+  // src/keep.ts 是我方改过的上游文件：改一行计 +1 −1。
+  assert.deepEqual(byId["OZ-F001"].wiring, { hooks: 1, modified: 1, added: 1, deleted: 1 });
+  assert.equal(byId["OZ-D001"].guard.ok, true);
+  assert.equal(byId["OZ-D001"].guard.pathCheck, true);
+  assert.equal(byId["OZ-R001"].guard.ok, false);
+  assert.equal(byId["OZ-R001"].unguarded, "夹具：保留的文档没有测试。");
+  // upstream-modified：package.json、src/keep.ts、src/fmt.ts 各改一行。
+  assert.deepEqual(modifiedSummary(context), {
+    files: 3,
+    deletionOnly: 0,
+    added: 3,
+    deleted: 3,
+  });
 });
 
 test("globToRegExp 与 applyIdentity", () => {
