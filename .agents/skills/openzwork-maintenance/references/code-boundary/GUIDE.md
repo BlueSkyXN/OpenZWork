@@ -8,7 +8,7 @@
 2. 功能代码放在新文件或新模块中。上游文件里只保留接入所需的改动：注册、调用入口、类型字段、i18n 键等。
 3. 每个上游文件中的接线处加注释 `OpenZWork(<台账编号>): <原因>`，例如 `// OpenZWork(OZ-F002): 注入系统提示词设置入口`。同一处的多行改动只标一次。
 4. 修复上游缺陷时按 `docs/openzwork/patches/downstream-patch-registry.md` 登记 `OW-Pxxx`，并在修复处和回归处加编号标记。
-5. 在台账条目中登记：新文件写入 `paths`，接线的上游文件写入 `hooks`，回归测试写入 `tests`。
+5. 在台账条目中登记：新文件写入 `paths`，接线的上游文件写入 `hooks`，回归测试写入 `tests`。至少一个回归测试要在核心 CI 中运行（见 `ledger` 子能力），用 `pnpm openzwork:scan --entries` 核对保证与接线面。
 
 ## 与上游共用的组件、store 和函数
 
@@ -27,4 +27,4 @@
 
 ## 存量
 
-已有的 `OpenZWork 净化：`、`OpenZWork：`、`Bugfix（…）` 等标记写法，在下次修改该处时改为上面的统一格式。没有标记的存量改动，按 `pnpm openzwork:scan --list upstream-modified --unclaimed` 逐步补登到台账。
+已有的 `OpenZWork 净化：`、`OpenZWork：`、`Bugfix（…）` 等标记写法，在下次修改该处时改为上面的统一格式。没有标记的存量改动不批量补登；修改到某处并确认它属于哪个条目时，再加标记并写入该条目的 `hooks`。
