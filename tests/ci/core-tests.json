@@ -25,9 +25,7 @@
     },
     {
       "capability": "desktop-recording-timeouts",
-      "files": [
-        "packages/desktop/test/e2eElectronWindowRecorder.test.ts"
-      ]
+      "files": ["packages/desktop/test/e2eElectronWindowRecorder.test.ts"]
     },
     {
       "capability": "desktop-product-name",
@@ -35,9 +33,7 @@
     },
     {
       "capability": "release-version-display",
-      "files": [
-        "packages/desktop/test/desktopProductIdentity.test.ts"
-      ]
+      "files": ["packages/desktop/test/desktopProductIdentity.test.ts"]
     },
     {
       "capability": "conversation-controls",
@@ -72,9 +68,7 @@
     },
     {
       "capability": "mcp",
-      "files": [
-        "packages/ui/test/mcpStoreMutations.test.ts"
-      ]
+      "files": ["packages/ui/test/mcpStoreMutations.test.ts"]
     },
     {
       "capability": "browser-use",
@@ -82,9 +76,7 @@
     },
     {
       "capability": "gen-ui-and-mcp-apps",
-      "files": [
-        "packages/services/src/gen-ui/contract.test.ts"
-      ]
+      "files": ["packages/services/src/gen-ui/contract.test.ts"]
     },
     {
       "capability": "workflow",
@@ -112,9 +104,7 @@
     },
     {
       "capability": "project-ui-and-composer",
-      "files": [
-        "packages/ui/test/floatingLayerHitRegions.test.ts"
-      ]
+      "files": ["packages/ui/test/floatingLayerHitRegions.test.ts"]
     },
     {
       "capability": "relay-and-source-contracts",
@@ -200,9 +190,7 @@
     },
     {
       "capability": "shared-file-lock-acquisition",
-      "files": [
-        "packages/shared/test/atomicFileLockWindows.test.ts"
-      ]
+      "files": ["packages/shared/test/atomicFileLockWindows.test.ts"]
     },
     {
       "capability": "remote-v1-connection-modes",
@@ -220,9 +208,7 @@
     },
     {
       "capability": "upstream-3.16.2-and-provider-lifecycle",
-      "files": [
-        "packages/ui/test/v4SessionPaneOwner.test.ts"
-      ]
+      "files": ["packages/ui/test/v4SessionPaneOwner.test.ts"]
     },
     {
       "capability": "retained-bot-delivery-and-runtime",
@@ -230,9 +216,7 @@
     },
     {
       "capability": "feature-boundary-graph-visualization",
-      "files": [
-        "apps/dev-docs/test/featureBoundaryGraph.test.ts"
-      ]
+      "files": ["apps/dev-docs/test/featureBoundaryGraph.test.ts"]
     }
   ]
 }

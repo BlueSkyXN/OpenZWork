@@ -14,14 +14,14 @@
 
 ## 本地诊断职责
 
-| 入口                                                      | 数据与所有者                                                              | 启动与输出边界                                                                           |
-| --------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| 资源窗口 CPU / 内存                                       | Window Host 采样，Main 合并 Electron 和系统指标                           | 页面观察时启用；切页、关窗或 renderer 退出后取消；不创建远端 Agent                       |
-| 资源窗口存储                                              | Main 持有 `StorageService`，Worker 遍历文件                               | 存储页发起扫描并可取消；清理由显式操作触发                                               |
-| [设置中的 App Usage](../specs/app-usage-settings-openzwork.md)       | 本机 Agent SQLite 使用事实，service 只转发读取                            | 仅已确认的 Desktop Local Host 可查询；保留 token、错误率、TTFT、回合耗时，不维护云端账本 |
-| [本地日志导出](../desktop/log-export-retention.md)        | Desktop `exportLogs()` 收集既有日志与配置，脱敏后生成 ZIP，失败时回退目录 | 帮助菜单或平台导出动作触发；归档留在本机                                                 |
-| [ModelIO 保留设置](../model-io-full-retention-setting.md) | CLI ModelIO writer 按 App 偏好记录模型请求与响应                          | 全量保留默认关闭；关闭时沿用有界记录，凭据脱敏在两种模式下均保留                         |
-| CLI debug 网络调试                                        | `apps/zcode-cli/packages/debug/server/network-capture.ts`                 | 属于独立 debug server；配置和代理生命周期由该工具管理，资源窗口不启动它                  |
+| 入口                                                           | 数据与所有者                                                              | 启动与输出边界                                                                           |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| 资源窗口 CPU / 内存                                            | Window Host 采样，Main 合并 Electron 和系统指标                           | 页面观察时启用；切页、关窗或 renderer 退出后取消；不创建远端 Agent                       |
+| 资源窗口存储                                                   | Main 持有 `StorageService`，Worker 遍历文件                               | 存储页发起扫描并可取消；清理由显式操作触发                                               |
+| [设置中的 App Usage](../specs/app-usage-settings-openzwork.md) | 本机 Agent SQLite 使用事实，service 只转发读取                            | 仅已确认的 Desktop Local Host 可查询；保留 token、错误率、TTFT、回合耗时，不维护云端账本 |
+| [本地日志导出](../desktop/log-export-retention.md)             | Desktop `exportLogs()` 收集既有日志与配置，脱敏后生成 ZIP，失败时回退目录 | 帮助菜单或平台导出动作触发；归档留在本机                                                 |
+| [ModelIO 保留设置](../model-io-full-retention-setting.md)      | CLI ModelIO writer 按 App 偏好记录模型请求与响应                          | 全量保留默认关闭；关闭时沿用有界记录，凭据脱敏在两种模式下均保留                         |
+| CLI debug 网络调试                                             | `apps/zcode-cli/packages/debug/server/network-capture.ts`                 | 属于独立 debug server；配置和代理生命周期由该工具管理，资源窗口不启动它                  |
 
 产品遥测的 ARMS、OTLP 上传与专属采集链保持移除。上述本地读取、归档、业务使用事实和开发工具沿用各自入口。
 

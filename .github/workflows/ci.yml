@@ -70,6 +70,10 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm lint
 
+      - name: OpenZWork file formatting
+        if: matrix.lane == 'regressions'
+        run: pnpm fmt:check
+
       - name: Architecture boundaries
         if: matrix.lane == 'regressions'
         run: pnpm architecture:check

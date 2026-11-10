@@ -25,7 +25,7 @@
 - `.agents/skills/` 下上游技能的脚本不按本节修改，见 `docs-layout` 子能力。
 - 用户级数据根只用 `.openzwork`，项目级配置目录保持 `.zcode`。
 - 提交后执行 `pnpm openzwork:scan --check`，确认没有产生只差格式化的文件。
-- 格式只检查自己新增的文件：`pnpm exec oxfmt --check <文件…>`。不对上游文件运行 oxfmt，也不运行全仓的 `pnpm fmt`。
+- 格式检查用 `pnpm fmt:check`，修正自有文件用 `pnpm fmt`。两者先筛选 OpenZWork 自有文件，接受文件、目录或 glob；用 `pnpm fmt --list` 预览。上游文件即使被显式指定也会拒绝处理。未跟踪但不被 Git 忽略的新文件会参与；被全局规则忽略的 `.agents/` 新文件先 `git add -f`。
 - 提交前用 `git diff --stat <上游基准> -- <文件>` 看差异行数是否与实际改动相称（上游基准见台账 `upstream.commit`）。行数远大于改动，说明文件被整体格式化了，按下一节恢复。
 
 ## 恢复被整文件格式化的上游文件

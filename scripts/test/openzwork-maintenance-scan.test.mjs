@@ -25,6 +25,10 @@ import {
   planRestore,
   verifyFormatOnly,
 } from "../../.agents/skills/openzwork-maintenance/scripts/unformat.mjs";
+import {
+  formatOwnFiles,
+  selectFormatFiles,
+} from "../../.agents/skills/openzwork-maintenance/scripts/format.mjs";
 
 // 旧用户级根按片段拼出，避免本文件被净化门禁当作旧根残留。
 const legacyRoot = ["~", ".zcode"].join("/");
@@ -652,6 +656,55 @@ test("排版复核拒绝无效提交和基准，允许有效的空差异", () =>
     checked: 0,
     mismatched: [],
   });
+});
+
+test("格式化只选择自有文件，保留上游原文、修改、改名、保留和移动文件", async () => {
+  const repo = fixture();
+  repo.git("mv", "src/keep.ts", "src/renamed.ts");
+  repo.write("src/new file.ts", "export const fresh=1\n");
+  repo.write(".gitignore", "local/\n");
+  repo.write("local/ignored.ts", "export const ignored=1\n");
+  repo.write("src/gone.ts", "export const resurrected=1\n");
+  const files = await selectFormatFiles(repo.dir, ["src", "docs"]);
+  assert.ok(files.includes("src/new file.ts"));
+  assert.ok(files.includes("src/ours.ts"));
+  assert.ok(files.includes("docs/b-openzwork.md"));
+  for (const path of [
+    "src/renamed.ts",
+    "src/gone.ts",
+    "src/home.ts",
+    "src/fmt.ts",
+    "docs/a.md",
+    "docs/old.md",
+    "local/ignored.ts",
+  ])
+    assert.ok(!files.includes(path), path);
+  assert.deepEqual(await selectFormatFiles(repo.dir, ["src/**/*.ts", "!src/ours.test.ts"]), [
+    "src/new file.ts",
+    "src/ours.ts",
+  ]);
+  await assert.rejects(selectFormatFiles(repo.dir, ["src/home.ts"]), /上游文件/);
+});
+
+test("格式化空范围不启动工具，检查模式与错误状态透传", async () => {
+  const repo = fixture();
+  let called = false;
+  const formatter = async (_repo, files, mode) => {
+    called = true;
+    assert.deepEqual(files, ["src/ours.ts"]);
+    assert.equal(mode, "check");
+    return 1;
+  };
+  assert.deepEqual(await formatOwnFiles(repo.dir, { selectors: ["!**"], formatter }), {
+    files: [],
+    code: 0,
+  });
+  assert.equal(called, false);
+  assert.equal(
+    (await formatOwnFiles(repo.dir, { selectors: ["src/ours.ts"], mode: "check", formatter })).code,
+    1,
+  );
+  assert.equal(called, true);
 });
 
 test("我方包了一层代码造成的缩进变化不算格式噪声", () => {

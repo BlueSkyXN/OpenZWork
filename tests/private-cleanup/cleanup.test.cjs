@@ -31,23 +31,29 @@ function pristineUpstreamDocs() {
   try {
     upstream = git(["ls-tree", "-r", "-z", base, "--", "docs", ".agents/skills"]);
   } catch (cause) {
-    throw new Error(`读取上游基准 ${base} 失败；门禁需要完整 Git 历史（checkout 使用 fetch-depth: 0）`, {
-      cause,
-    });
+    throw new Error(
+      `读取上游基准 ${base} 失败；门禁需要完整 Git 历史（checkout 使用 fetch-depth: 0）`,
+      {
+        cause,
+      },
+    );
   }
   const upstreamBlobs = new Map();
   for (const line of upstream.split("\0").filter(Boolean)) {
     const tab = line.indexOf("\t");
     upstreamBlobs.set(line.slice(tab + 1), line.slice(0, tab).split(" ")[2]);
   }
-  const dirty = new Set(git(["diff", "--name-only", "-z", "--", "docs", ".agents/skills"]).split("\0"));
+  const dirty = new Set(
+    git(["diff", "--name-only", "-z", "--", "docs", ".agents/skills"]).split("\0"),
+  );
   pristineUpstreamDocsCache = new Set();
   for (const line of git(["ls-files", "-s", "-z", "--", "docs", ".agents/skills"]).split("\0")) {
     if (!line) continue;
     const tab = line.indexOf("\t");
     const rel = line.slice(tab + 1);
     const blob = line.slice(0, tab).split(" ")[1];
-    if (docExt.test(rel) && !dirty.has(rel) && upstreamBlobs.get(rel) === blob) pristineUpstreamDocsCache.add(rel);
+    if (docExt.test(rel) && !dirty.has(rel) && upstreamBlobs.get(rel) === blob)
+      pristineUpstreamDocsCache.add(rel);
   }
   return pristineUpstreamDocsCache;
 }
@@ -1219,7 +1225,8 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     .filter(Boolean);
   const violations = [];
   for (const rel of tracked) {
-    if (!scanExtensions.test(rel) || allowFiles.has(rel) || pristineUpstreamDocs().has(rel)) continue;
+    if (!scanExtensions.test(rel) || allowFiles.has(rel) || pristineUpstreamDocs().has(rel))
+      continue;
     const file = path.join(root, rel);
     // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。
     if (!fs.existsSync(file)) continue;

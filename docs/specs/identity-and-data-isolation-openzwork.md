@@ -61,16 +61,16 @@ OpenZWork 是 ZCode 开源版本的净化＋特调版。产品必须在用户机
 第一轮只按 `~/.zcode` 文本形态清零，`join(home, ".zcode")` 代码形态漏网。本轮全仓枚举
 HOME 路径构造点后修复以下用户级落盘位置；项目级 `.zcode/**` 豁免与内部标识符命名不变：
 
-| 落点 | 修复前 | 修复后 |
-| --- | --- | --- |
-| 个性化指令文件（设置页读写） | `{home}/.zcode/AGENTS.md` | `{home}/.openzwork/AGENTS.md`（与 Agent 读取同根） |
-| data-sync hooks/skills/commands 读写与写权限预检 | `~/.zcode/cli/config.json`、`~/.zcode/commands`、`~/.zcode/cli` | `~/.openzwork/cli/config.json`、`~/.openzwork/commands`、`~/.openzwork/cli` |
-| dev-docs stdio 流量日志 | `~/.zcode/v2/dev/stdio-traffic` | `~/.openzwork/v2/dev/stdio-traffic` |
-| prompt-trajectory 录制沙箱存储 | `join(home, ".zcode")` | `join(home, ".openzwork")` |
-| 远端 docker 验证脚本 server root | `/root/.zcode/server` | `/root/.openzwork/server`（与 `REMOTE_BASE` 同源） |
-| Windows 安装器所有权清单 | `.zcode-install-manifest` | `.openzwork-install-manifest`；读旧安装目录双名兼容，嵌套数据目录保护同时识别 `.zcode` 与 `.openzwork` |
-| scratch 工作区根 | `~/ZCodeProject` | `~/OpenZWorkProject`；旧目录是用户既有工作区数据，保留不迁移 |
-| E2E 夹具用户级路径（worker-selection、bot-worker、session-creation-resend、VP28 种子 DB） | `.zcode/cli|v2/...` | `.openzwork/cli|v2/...`；VP28 行内旧后端历史路径按数据语义保留 |
+| 落点                                                                                      | 修复前                                                          | 修复后                                                                                                 |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | --------------- | ---------------------------------------------- |
+| 个性化指令文件（设置页读写）                                                              | `{home}/.zcode/AGENTS.md`                                       | `{home}/.openzwork/AGENTS.md`（与 Agent 读取同根）                                                     |
+| data-sync hooks/skills/commands 读写与写权限预检                                          | `~/.zcode/cli/config.json`、`~/.zcode/commands`、`~/.zcode/cli` | `~/.openzwork/cli/config.json`、`~/.openzwork/commands`、`~/.openzwork/cli`                            |
+| dev-docs stdio 流量日志                                                                   | `~/.zcode/v2/dev/stdio-traffic`                                 | `~/.openzwork/v2/dev/stdio-traffic`                                                                    |
+| prompt-trajectory 录制沙箱存储                                                            | `join(home, ".zcode")`                                          | `join(home, ".openzwork")`                                                                             |
+| 远端 docker 验证脚本 server root                                                          | `/root/.zcode/server`                                           | `/root/.openzwork/server`（与 `REMOTE_BASE` 同源）                                                     |
+| Windows 安装器所有权清单                                                                  | `.zcode-install-manifest`                                       | `.openzwork-install-manifest`；读旧安装目录双名兼容，嵌套数据目录保护同时识别 `.zcode` 与 `.openzwork` |
+| scratch 工作区根                                                                          | `~/ZCodeProject`                                                | `~/OpenZWorkProject`；旧目录是用户既有工作区数据，保留不迁移                                           |
+| E2E 夹具用户级路径（worker-selection、bot-worker、session-creation-resend、VP28 种子 DB） | `.zcode/cli                                                     | v2/...`                                                                                                | `.openzwork/cli | v2/...`；VP28 行内旧后端历史路径按数据语义保留 |
 
 不迁移原则：旧 `~/ZCodeProject` 数据、旧清单名（仅读取兼容）、旧后端数据中的历史
 workspace 路径一律保留原样，不做自动迁移；与 [旧 ZCode 记忆隔离](memory-migration-openzwork.md)
