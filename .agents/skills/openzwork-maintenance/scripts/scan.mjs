@@ -379,7 +379,10 @@ function verifyVariantReader(text, item, isMarkdown) {
     const visible = text.replace(/<!--[\s\S]*?-->/g, "");
     const targets = [
       ...[...visible.matchAll(INLINE_LINK)].map((match) => match[2]),
-      ...visible.split("\n").map((line) => REFERENCE_LINK.exec(line)?.[1]).filter(Boolean),
+      ...visible
+        .split("\n")
+        .map((line) => REFERENCE_LINK.exec(line)?.[1])
+        .filter(Boolean),
     ];
     if (targets.some((target) => matchesPath(target.split("#")[0], variantName)))
       return { ok: true };

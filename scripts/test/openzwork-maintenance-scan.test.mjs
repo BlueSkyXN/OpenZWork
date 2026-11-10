@@ -235,7 +235,7 @@ test("runCheck 不把版本注释、字符串中的调用示例和无关说明�
   const readers = {
     "src/version-comment.ts": '// docs/b-openzwork.md\nexport const doc = "docs/b.md";\n',
     "src/selector-comment.ts": '// openzworkDoc("docs/b.md")\nexport const doc = "docs/b.md";\n',
-    "src/selector-example.ts": 'export const note = \'openzworkDoc("docs/b.md")\';\n',
+    "src/selector-example.ts": "export const note = 'openzworkDoc(\"docs/b.md\")';\n",
     "src/version-prose.ts": 'export const note = "请使用 docs/b-openzwork.md";\n',
     "docs/rule-comment.md": "<!-- [B](b-openzwork.md) -->\n以 [上游 B](b.md) 为准。\n",
   };
@@ -252,7 +252,10 @@ test("runCheck 不把版本注释、字符串中的调用示例和无关说明�
 test("runCheck 分别验证嵌套选择函数与规则链接", () => {
   const repo = fixture();
   repo.write("src/fmt.ts", "export const fmt = 1;   \n");
-  repo.write("src/nested-reader.ts", 'export const doc = openzworkDoc(resolve(root(), "docs/b.md"));\n');
+  repo.write(
+    "src/nested-reader.ts",
+    'export const doc = openzworkDoc(resolve(root(), "docs/b.md"));\n',
+  );
   repo.write("docs/rule.md", "以 [B 版本](b-openzwork.md#b) 为准。\n");
   repo.write(
     "docs/openzwork/upstream-doc-variants.yaml",
