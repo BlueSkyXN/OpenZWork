@@ -33,7 +33,8 @@ const INTEGRATION_DOC = (version) => `docs/openzwork/upstream/v${version}-integr
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const MAX_ACTIVE_KNOWLEDGE = 40;
 // 上游文档与技能（文档类扩展名）保持原文；OpenZWork 版本放在同目录，文件名加 -openzwork。代码文件按代码规则原地修改。
-const DOC_ROOTS = ["docs/", ".agents/skills/"];
+const SKILLS_ROOT = ".agents/skills/";
+const DOC_ROOTS = ["docs/", SKILLS_ROOT];
 const DOC_EXT = /\.(?:md|mdx|ya?ml|json|txt)$/;
 const isUpstreamDoc = (path) =>
   DOC_ROOTS.some((root) => path.startsWith(root)) && DOC_EXT.test(path);
@@ -418,6 +419,27 @@ export function validateGuards(ledger, context, ci) {
     errors.push(
       `${where}点名的测试文件不存在：${path}（上游删除测试后步骤仍会通过；删掉点名，或改为仍存在的回归）`,
     );
+  return errors;
+}
+
+/**
+ * 上游技能保持原作者的文件（maintenance-model.md「技能布局」）：原有文件与上游一致，
+ * 脚本最多只差用户级根改名；被删除的文件要由 drop 条目认领。文档类文件的改动由 validateVariants 报告。
+ */
+export function validateUpstreamSkills(context, claims) {
+  const errors = [];
+  for (const [path, info] of context.result) {
+    if (!path.startsWith(SKILLS_ROOT) || !context.baseTree.has(path)) continue;
+    if (info.category === "upstream-modified" && !isUpstreamDoc(path))
+      errors.push(
+        `上游技能文件 ${path} 被修改：恢复为上游原文（只允许用户级根 .openzwork 改名那一行，不加注释）；需要其他行为时复制为 ${variantOf(path)} 并登记到 ${VARIANTS_PATH}`,
+      );
+    const gone = info.category === "removed" || (info.category === "moved" && info.movedTo);
+    if (gone && !claims(path).some((claim) => claim.kind === "drop" && claim.status === "active"))
+      errors.push(
+        `上游技能文件 ${path} 被删除：恢复该文件；整个技能不适用时全部删除，并在 ${LEDGER_PATH} 用 drop 条目登记`,
+      );
+  }
   return errors;
 }
 
@@ -826,6 +848,7 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
     ...validateKnowledge(maintenance.knowledge, context),
     ...validateGuards(maintenance.ledger, context, loadCiTests(context)),
     ...validateIntegrationDoc(maintenance.ledger, context),
+    ...validateUpstreamSkills(context, createClaims(maintenance)),
   ];
   const noise = findFormatNoise(context, formatter ?? createOxfmtFormatter(repo));
   if (!noise) errors.push("找不到 oxfmt，无法检查格式噪声；先执行 pnpm install");

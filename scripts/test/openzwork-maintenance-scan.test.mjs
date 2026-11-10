@@ -23,6 +23,7 @@ import {
 
 // 旧用户级根按片段拼出，避免本文件被净化门禁当作旧根残留。
 const legacyRoot = ["~", ".zcode"].join("/");
+const legacyHomeJoin = `join(homedir(), "${[".", "zcode"].join("")}")`;
 const trimFormatter = (files) => files.map(({ text }) => text.replace(/[ \t]+$/gm, ""));
 
 function fixture() {
@@ -57,6 +58,9 @@ function fixture() {
   write("src/gone.ts", "export const gone = 1;\n");
   write("src/home.ts", `export const root = "${legacyRoot}/cli";\n`);
   write("src/fmt.ts", "export const fmt = 1;   \n");
+  // 上游技能：一份文档和一个带用户级根的脚本。
+  write(".agents/skills/up/SKILL.md", "# Up\n");
+  write(".agents/skills/up/scripts/run.mjs", `export const root = ${legacyHomeJoin};\n`);
   const v1 = commit("upstream 1.0.0");
   write("package.json", JSON.stringify({ version: "1.1.0" }));
   remove("docs/old.md");
@@ -507,6 +511,52 @@ test("runCheck 要求台账上游版本有整合文档", () => {
   repo.remove("docs/openzwork/upstream/v1.1.0-integration.md");
   repo.commit("integration doc removed");
   assert.match(check(repo).join("\n"), /缺少 docs\/openzwork\/upstream\/v1\.1\.0-integration\.md/);
+});
+
+test("runCheck 要求上游技能保持原作者的文件，脚本只允许用户级根改名", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  const script = ".agents/skills/up/scripts/run.mjs";
+  // 新增文件和只改用户级根的那一行都允许。
+  repo.write(script, 'export const root = join(homedir(), ".openzwork");\n');
+  repo.write(".agents/skills/up/references/ours.md", "# OpenZWork 补充\n");
+  repo.commit("identity rename and a new file");
+  assert.deepEqual(check(repo), []);
+  assert.equal(classify(repo.dir, repo.v2).result.get(script).category, "upstream-identity");
+
+  // 多一行注释就不再是改名：格式化或说明性改动都要恢复。
+  repo.write(script, '// 说明\nexport const root = join(homedir(), ".openzwork");\n');
+  repo.commit("comment added to upstream skill script");
+  let errors = check(repo);
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(errors[0], /上游技能文件 \.agents\/skills\/up\/scripts\/run\.mjs 被修改/);
+
+  // 删除其中一个文件：没有 drop 条目认领时报错。
+  repo.write(script, 'export const root = join(homedir(), ".openzwork");\n');
+  repo.remove(".agents/skills/up/SKILL.md");
+  repo.commit("part of an upstream skill removed");
+  errors = check(repo);
+  assert.equal(errors.length, 1, errors.join("\n"));
+  assert.match(errors[0], /上游技能文件 \.agents\/skills\/up\/SKILL\.md 被删除/);
+
+  // 整个技能删除并登记为裁剪条目后通过。
+  repo.remove(script);
+  repo.remove(".agents/skills/up/references/ours.md");
+  repo.edit(
+    "docs/openzwork/ledger.yaml",
+    "  - id: OZ-R001",
+    `  - id: OZ-D002
+    kind: drop
+    status: active
+    title: 不适用的技能
+    summary: 整个删除上游技能 up。
+    paths: [".agents/skills/up/**"]
+    source: 测试
+  - id: OZ-R001`,
+  );
+  repo.edit("docs/openzwork/README.md", "OZ-D001、", "OZ-D001、OZ-D002、");
+  repo.commit("whole upstream skill dropped with a ledger entry");
+  assert.deepEqual(check(repo), []);
 });
 
 test("entryReport 给出每个条目的保证与接线面，modifiedSummary 汇总增删行数", () => {
