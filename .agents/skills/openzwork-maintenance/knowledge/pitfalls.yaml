@@ -28,11 +28,12 @@ entries:
   - id: OZK-PIT-003
     title: CI 检查名不代表实际执行内容
     when: 根据 CI 判断某类测试是否覆盖。
-    do: 读 .github/workflows 与 package.json 中实际执行的命令，不按检查名推断。
-    why: v3.15.1 整合时检查名仍写着 services 与 ui 的单测，实际已改为全仓 Vitest。
+    do: 读 .github/workflows 与 package.json 中实际执行的命令，不按检查名推断；步骤点名的测试文件是否还在，以 pnpm openzwork:scan --check 的结果为准。
+    why: v3.15.1 整合时检查名仍写着 services 与 ui 的单测，实际已改为全仓 Vitest。v3.17.1 上游退役 App 单测后，ci.yml 两个步骤点名的 9 个文件中有 7 个已不存在，Vitest 忽略匹配不到文件的过滤器，步骤照常通过。
     evidence:
       - PR #25
       - .github/workflows/ci.yml
+      - scripts/test/openzwork-maintenance-scan.test.mjs
     since: 2026-10-19
     checked: 3.17.2
     status: active

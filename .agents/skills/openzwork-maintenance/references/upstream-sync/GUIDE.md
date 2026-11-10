@@ -21,6 +21,15 @@ git fetch origin main
 pnpm openzwork:scan --upstream <上游提交>
 ```
 
+输出开头的吸收概览把上游改动的文件按我方现状分成四类，先据此估计工作量并记入同步记录：
+
+| 类别               | 含义                   | 处理                                   |
+| ------------------ | ---------------------- | -------------------------------------- |
+| 直接吸收           | 我方没有改动的上游文件 | 随合并更新，按功能域抽读，写入变更清单 |
+| 需要合并           | 我方改过的上游文件     | 可能冲突；不冲突的也要读上游改动       |
+| 我方已删、上游修改 | 裁剪域内的文件         | 保持删除，读改动，移植保留域的修复     |
+| 上游新增           | 上游这一版新加的文件   | 判断吸收还是裁剪                       |
+
 逐项处理输出：
 
 - **冲突**：按分类和认领判断，涉及台账条目的优先处理。
@@ -33,7 +42,15 @@ pnpm openzwork:scan --upstream <上游提交>
 ## 3. 建工作区并先写 spec
 
 - 从 `origin/main` 新建 worktree 与分支 `codex/sync-upstream-v<版本>-<YYYYMMDD>`；复用依赖前核对 lockfile（`OZK-PIT-008`）。
-- 写 `docs/openzwork/upstream/v<版本>-integration.md`：基线、延续的保留与裁剪范围、吸收的行为、裁剪的新内容、冲突规则、验证场景。单独提交后再合并。
+- 写 `docs/openzwork/upstream/v<版本>-integration.md`：基线、延续的保留与裁剪范围、上游变更清单、冲突规则、验证场景。单独提交后再合并。
+- 上游变更清单按功能域列出上游这一版的新增与修复，每项一行：
+
+  | 功能域 | 上游改动 | 处置 | 理由 |
+  | ------ | -------- | ---- | ---- |
+
+  处置写吸收、裁剪或暂缓。暂缓项写明重新评估的条件。清单来自阅读上游整版增量（`OZK-DIF-001`），覆盖吸收概览的四类文件；我方已删文件中属于保留域的修复单独列出移植到了哪里。
+
+- 合并前执行 `pnpm openzwork:scan --entries`，保存输出，用于合并后对比接线面。
 
 ## 4. 合并与取舍
 
@@ -53,7 +70,13 @@ git merge --no-ff --no-commit <上游提交>
 3. 按 `docs/openzwork/patches/downstream-patch-registry.md` 复核全部未退役补丁，更新 `upstream.checked`。
 4. 新增的裁剪域补充到 `tests/private-cleanup/cleanup.test.cjs` 与台账 `drop` 条目。
 5. 提交后执行 `pnpm openzwork:scan --check`，再按 `.github/workflows/ci.yml` 跑本地检查；核心套件前先构建 CLI（`OZK-PIT-009`）。
-6. 结果写入 `docs/openzwork/upstream/v<版本>-validation.md`，本地结果、CI 结果与实机验收分开记录。
+6. 结果写入 `docs/openzwork/upstream/v<版本>-validation.md`，本地结果、CI 结果与实机验收分开记录。其中的同步记录写明：
+   - 上游发布日期与合入 main 的日期；
+   - 预演的吸收概览与冲突数；
+   - 我方已删文件中移植的上游修复；
+   - 受影响台账条目的复核结论，以及 `--entries` 中保证一列的变化（上游删除测试会让保证消失）；
+   - 合并前后的接线面；
+   - 合并后发现的回归及其补丁或 PR，后续发现的回归补记到同一份文档。
 7. 把本次得到的新经验写回 `knowledge/`。
 
 ## 挑选上游做法

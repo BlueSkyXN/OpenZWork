@@ -27,6 +27,10 @@ const VARIANT_KINDS = new Set(["purge", "identity", "content"]);
 // 保留 OpenZWork 版本的理由：代码读取、规则引用、OpenZWork 改写维护、待用户确认。
 const VARIANT_ROLES = new Set(["tool", "rule", "maintained", "pending"]);
 export const README_PATH = "docs/openzwork/README.md";
+const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
+const CORE_TESTS_PATH = "tests/ci/core-tests.json";
+const INTEGRATION_DOC = (version) => `docs/openzwork/upstream/v${version}-integration.md`;
+const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const MAX_ACTIVE_KNOWLEDGE = 40;
 // 上游文档与技能（文档类扩展名）保持原文；OpenZWork 版本放在同目录，文件名加 -openzwork。代码文件按代码规则原地修改。
 const DOC_ROOTS = ["docs/", ".agents/skills/"];
@@ -288,6 +292,204 @@ export function createClaims({ ledger, variants, patches }) {
       .map(({ id, kind, status }) => ({ id, kind, status })),
     ...(exact.get(path) ?? []),
   ];
+}
+
+/** glob 列表在 HEAD 中命中的路径；不含通配符的直接查树。 */
+function matchPaths(context, globs) {
+  const hits = new Set();
+  let headPaths;
+  for (const glob of globs) {
+    if (!glob.includes("*") && !glob.includes("?")) {
+      if (context.headTree.has(glob)) hits.add(glob);
+      continue;
+    }
+    headPaths ??= [...context.headTree.keys()];
+    const regex = globToRegExp(glob);
+    for (const path of headPaths) if (regex.test(path)) hits.add(path);
+  }
+  return [...hits];
+}
+
+/**
+ * 核心 CI 中运行的测试（判定规则见 references/scan/GUIDE.md）：core-tests.json 列出的文件，
+ * 加 ci.yml 各步骤 run 中点名的测试文件。返回 runs(path) 与点名却不存在的文件 missing。
+ */
+export function loadCiTests(context) {
+  const { repo, head, headTree } = context;
+  const named = new Map();
+  const globs = [];
+  const name = (path, where) => {
+    if (path.includes("*")) globs.push(globToRegExp(path));
+    else if (!named.has(path)) named.set(path, where);
+  };
+  const core = readAt(repo, head, CORE_TESTS_PATH);
+  if (core !== undefined)
+    for (const suite of JSON.parse(core).suites ?? [])
+      for (const file of suite.files ?? []) name(file, CORE_TESTS_PATH);
+  const workflow = yamlAt(repo, head, CI_WORKFLOW_PATH);
+  if (workflow) {
+    const scripts = JSON.parse(readAt(repo, head, "package.json") ?? "{}").scripts ?? {};
+    // 包名到目录：--filter <包名> 后面的测试路径相对包目录。同名时取最浅的目录，避开测试夹具里的同名包。
+    const manifests = [...headTree.keys()].filter((path) => path.endsWith("/package.json"));
+    const blobs = readBlobs(
+      repo,
+      manifests.map((path) => headTree.get(path).blob),
+    );
+    const packageDirs = new Map();
+    for (const path of manifests.sort((a, b) => a.split("/").length - b.split("/").length)) {
+      try {
+        const packageName = JSON.parse(blobs.get(headTree.get(path).blob).toString("utf8")).name;
+        if (packageName && !packageDirs.has(packageName))
+          packageDirs.set(packageName, posix.dirname(path));
+      } catch {
+        // 夹具中故意损坏的 package.json 不参与包名解析。
+      }
+    }
+    const unquote = (value) => value.replace(/^["']|["']$/g, "");
+    const expand = (command, depth = 0) => {
+      const out = [command];
+      if (depth < 3)
+        for (const match of command.matchAll(/\bpnpm (?:run )?([\w:.-]+)/g))
+          if (typeof scripts[match[1]] === "string")
+            out.push(...expand(scripts[match[1]], depth + 1));
+      return out;
+    };
+    for (const [jobId, job] of Object.entries(workflow.jobs ?? {})) {
+      for (const step of job?.steps ?? []) {
+        if (typeof step?.run !== "string") continue;
+        const where = `${CI_WORKFLOW_PATH} 步骤「${step.name ?? jobId}」`;
+        const commands = step.run
+          .split("\n")
+          .flatMap((line) => expand(line))
+          .flatMap((line) => line.split("&&"));
+        for (const raw of commands) {
+          const command = raw.trim();
+          // 注释与 echo 里出现的文件名不是点名。
+          if (!command || command.startsWith("#") || /^echo\b/.test(command)) continue;
+          const filter = /--filter[=\s]+(\S+)/.exec(command)?.[1];
+          const dir =
+            /--dir[=\s]+(\S+)/.exec(command)?.[1] ??
+            (filter ? packageDirs.get(unquote(filter)) : undefined);
+          for (const word of command.split(/\s+/)) {
+            const token = unquote(word);
+            if (!token.includes("/") || !TEST_FILE.test(token)) continue;
+            name(posix.normalize(dir ? `${unquote(dir)}/${token}` : token), where);
+          }
+        }
+      }
+    }
+  }
+  return {
+    runs: (path) => named.has(path) || globs.some((regex) => regex.test(path)),
+    missing: [...named]
+      .filter(([path]) => !headTree.has(path))
+      .map(([path, where]) => ({ path, where })),
+  };
+}
+
+/** 条目的保证：裁剪条目由路径不存在的检查保证，其余条目要有核心 CI 中运行的测试。 */
+function entryGuard(entry, context, ci) {
+  const gates = entry.gates ?? [];
+  if (entry.kind === "drop") return { ok: true, tests: [], gates, pathCheck: true };
+  const tests = matchPaths(context, [...(entry.tests ?? []), ...(entry.paths ?? [])])
+    .filter((path) => ci.runs(path))
+    .sort();
+  return { ok: tests.length > 0, tests, gates };
+}
+
+export function validateGuards(ledger, context, ci) {
+  const errors = [];
+  for (const entry of ledger?.entries ?? []) {
+    if (entry.status !== "active") continue;
+    const where = `${LEDGER_PATH}: ${entry.id ?? "(缺 id)"}`;
+    const guard = entryGuard(entry, context, ci);
+    if (entry.unguarded !== undefined && !nonEmpty(entry.unguarded))
+      errors.push(`${where}: unguarded 要写明原因与补齐方式`);
+    else if (guard.ok && entry.unguarded !== undefined)
+      errors.push(
+        `${where}: 已有保证（${guard.pathCheck ? "裁剪路径检查" : guard.tests.slice(0, 3).join(", ")}），删除 unguarded`,
+      );
+    else if (!guard.ok && entry.unguarded === undefined)
+      errors.push(
+        `${where}: 没有核心 CI 中运行的保证：把回归测试列入 ${CORE_TESTS_PATH} 或在 ${CI_WORKFLOW_PATH} 中点名，并写入条目的 tests；确实没有时填写 unguarded 说明原因与补齐方式`,
+      );
+  }
+  for (const { path, where } of ci.missing)
+    errors.push(
+      `${where}点名的测试文件不存在：${path}（上游删除测试后步骤仍会通过；删掉点名，或改为仍存在的回归）`,
+    );
+  return errors;
+}
+
+export function validateIntegrationDoc(ledger, context) {
+  const version = ledger?.upstream?.version;
+  if (!SEMVER.test(version ?? "")) return [];
+  return context.headTree.has(INTEGRATION_DOC(version))
+    ? []
+    : [`缺少 ${INTEGRATION_DOC(version)}：每个合入的上游版本要有上游变更清单`];
+}
+
+/** 上游文件相对上游基准的增删行数（按文件）；二进制文件不计行数。 */
+function diffStats(context) {
+  if (context.stats) return context.stats;
+  const stats = new Map();
+  const fields = gitText(context.repo, [
+    "diff",
+    "--numstat",
+    "--no-renames",
+    "-z",
+    context.base,
+    context.head,
+  ]).split("\0");
+  for (const field of fields) {
+    const [added, deleted, path] = field.split("\t");
+    if (path === undefined || added === "-") continue;
+    stats.set(path, { added: Number(added), deleted: Number(deleted) });
+  }
+  context.stats = stats;
+  return stats;
+}
+
+/** upstream-modified 文件的交叉面：文件数、只删不增的文件数与增删行数。 */
+export function modifiedSummary(context) {
+  const stats = diffStats(context);
+  const summary = { files: 0, deletionOnly: 0, added: 0, deleted: 0 };
+  for (const [path, { category }] of context.result) {
+    if (category !== "upstream-modified") continue;
+    const { added = 0, deleted = 0 } = stats.get(path) ?? {};
+    summary.files++;
+    summary.added += added;
+    summary.deleted += deleted;
+    if (added === 0 && deleted > 0) summary.deletionOnly++;
+  }
+  return summary;
+}
+
+/** 每个台账条目的保证与接线面（hooks 与 paths 中被我方修改的上游文件）。 */
+export function entryReport(context, ledger, ci) {
+  const stats = diffStats(context);
+  return (ledger?.entries ?? []).map((entry) => {
+    const hooks = matchPaths(context, entry.hooks ?? []);
+    const wiring = { hooks: hooks.length, modified: 0, added: 0, deleted: 0 };
+    const claimed = entry.kind === "drop" ? hooks : matchPaths(context, entry.paths ?? []);
+    for (const path of new Set([...hooks, ...claimed])) {
+      const category = context.result.get(path)?.category;
+      if (category !== "upstream-modified" && category !== "upstream-identity") continue;
+      const { added = 0, deleted = 0 } = stats.get(path) ?? {};
+      wiring.modified++;
+      wiring.added += added;
+      wiring.deleted += deleted;
+    }
+    return {
+      id: entry.id,
+      kind: entry.kind,
+      status: entry.status,
+      title: entry.title,
+      guard: entryGuard(entry, context, ci),
+      unguarded: entry.unguarded,
+      wiring,
+    };
+  });
 }
 
 const SEMVER = /^\d+\.\d+\.\d+$/;
@@ -622,6 +824,8 @@ export function runCheck(repo, { base, head = "HEAD", formatter } = {}) {
     ...validateVariants(maintenance.variants, context),
     ...validateDifferenceTable(maintenance.ledger, readAt(repo, head, README_PATH)),
     ...validateKnowledge(maintenance.knowledge, context),
+    ...validateGuards(maintenance.ledger, context, loadCiTests(context)),
+    ...validateIntegrationDoc(maintenance.ledger, context),
   ];
   const noise = findFormatNoise(context, formatter ?? createOxfmtFormatter(repo));
   if (!noise) errors.push("找不到 oxfmt，无法检查格式噪声；先执行 pnpm install");
@@ -697,6 +901,15 @@ export function previewUpstream(context, claims, ledger, target) {
   const dropRegexes = drops.flatMap((entry) =>
     entry.paths.map((glob) => ({ id: entry.id, regex: globToRegExp(glob) })),
   );
+  // 吸收概览：上游改动的文件按我方现状分类，估计合入的工作量。
+  const absorption = { direct: 0, merge: 0, removed: 0, added: 0 };
+  for (const { status, path } of changes) {
+    const category = context.result.get(path)?.category;
+    if (category === "removed") absorption[status === "D" ? "direct" : "removed"]++;
+    else if (status === "A" && !context.headTree.has(path)) absorption.added++;
+    else if (category === "upstream") absorption.direct++;
+    else absorption.merge++;
+  }
   const touchedEntries = new Map();
   for (const { path } of changes) {
     for (const claim of claims(path)) {
@@ -710,6 +923,7 @@ export function previewUpstream(context, claims, ledger, target) {
     mergeBase,
     baseMatches: mergeBase === base,
     changes: changes.length,
+    absorption,
     conflicts: conflicts.map((path) => ({
       path,
       category: context.result.get(path)?.category ?? "new",
@@ -740,7 +954,7 @@ function parseArgs(argv) {
     else if (arg === "--path") {
       while (argv[index + 1] && !argv[index + 1].startsWith("--"))
         options.paths.push(argv[++index]);
-    } else if (["--check", "--json", "--format", "--unclaimed"].includes(arg))
+    } else if (["--check", "--json", "--format", "--unclaimed", "--entries"].includes(arg))
       options[arg.slice(2)] = true;
     else if (arg === "--help" || arg === "-h") options.help = true;
     else throw new Error(`未知参数：${arg}（--help 查看用法）`);
@@ -752,6 +966,7 @@ const HELP = `用法：pnpm openzwork:scan [选项]
   （无选项）            来源分类汇总与认领情况
   --path <路径…>        单个路径的来源、首次出现的上游版本、分类、认领与标记
   --list <分类>         列出某一分类的路径；加 --unclaimed 只列未认领的
+  --entries             每个台账条目的保证（核心 CI 中的测试、净化门禁）与接线面
   --upstream <提交|tag>  预演合入上游新版本
   --check               执行维护门禁（以已提交的 HEAD 为准）
   --format              汇总时附带格式噪声检查
@@ -785,6 +1000,7 @@ function main() {
     output = options.paths.map((path) => describePath(context, claims, path));
   else if (options.upstream)
     output = previewUpstream(context, claims, maintenance.ledger, options.upstream);
+  else if (options.entries) output = entryReport(context, maintenance.ledger, loadCiTests(context));
   else if (options.list) {
     if (!CATEGORIES.includes(options.list)) throw new Error(`未知分类：${options.list}`);
     output = [...context.result]
@@ -804,6 +1020,7 @@ function main() {
       base,
       version: maintenance.ledger?.upstream?.version,
       categories: Object.fromEntries(rows),
+      modified: modifiedSummary(context),
     };
   }
   if (options.json) return console.log(JSON.stringify(output, null, 2));
@@ -833,6 +1050,10 @@ function printHuman(output, options) {
     );
     if (!output.baseMatches)
       console.log(`注意：合并基 ${output.mergeBase.slice(0, 12)} 与台账基准不一致`);
+    const { direct, merge, removed, added } = output.absorption;
+    console.log(
+      `吸收概览：直接吸收 ${direct} 个，需要合并 ${merge} 个，我方已删上游修改 ${removed} 个，上游新增 ${added} 个`,
+    );
     console.log(`\n冲突 ${output.conflicts.length} 个：`);
     for (const item of output.conflicts)
       console.log(`  ${item.path}  [${item.category}]  ${claimText(item.claims)}`);
@@ -846,6 +1067,24 @@ function printHuman(output, options) {
       console.log(
         `  ${item.id}: ${item.paths.slice(0, 8).join(", ")}${item.paths.length > 8 ? ` 等 ${item.paths.length} 个` : ""}`,
       );
+  } else if (options.entries) {
+    for (const item of output) {
+      const { guard, wiring } = item;
+      const guardText = guard.pathCheck
+        ? `裁剪路径检查${guard.gates.length ? `＋净化门禁 ${guard.gates.length} 项` : ""}`
+        : guard.ok
+          ? `核心 CI 测试 ${guard.tests.length} 个`
+          : `无${item.unguarded ? `（unguarded：${item.unguarded}）` : ""}`;
+      console.log(
+        `${item.id}  ${item.title}${item.status === "active" ? "" : `  [${item.status}]`}`,
+      );
+      console.log(`  保证：${guardText}`);
+      console.log(
+        `  接线：hooks ${wiring.hooks} 个，改动的上游文件 ${wiring.modified} 个（+${wiring.added} −${wiring.deleted} 行）`,
+      );
+    }
+    const unguarded = output.filter((item) => item.status === "active" && !item.guard.ok);
+    console.log(`共 ${output.length} 个条目，${unguarded.length} 个没有保证`);
   } else if (options.list) {
     for (const item of output) console.log(`${item.path}  ${claimText(item.claims)}`);
     console.log(`共 ${output.length} 个`);
@@ -858,6 +1097,10 @@ function printHuman(output, options) {
       );
     }
     if (!options.format) console.log("（upstream-format 需加 --format 才会计算）");
+    const { files, deletionOnly, added, deleted } = output.modified;
+    console.log(
+      `upstream-modified 相对上游基准：${files} 个文件，+${added} −${deleted} 行，其中 ${deletionOnly} 个只删不增`,
+    );
   }
 }
 
