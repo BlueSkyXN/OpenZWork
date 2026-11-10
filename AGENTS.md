@@ -17,7 +17,7 @@
 | ---------------- | -------------------------------------------------------------- |
 | 类型检查         | `pnpm typecheck`                                               |
 | Lint             | `pnpm lint` / `pnpm lint:fix`                                  |
-| 格式检查         | `pnpm fmt:check`                                               |
+| 格式检查         | `pnpm exec oxfmt --check <OpenZWork 文件…>`                    |
 | 桌面开发         | `pnpm dev:desktop`                                             |
 | Web 开发         | `pnpm dev:web`                                                 |
 | 提交前检查       | `pnpm verify:pre-push`（Lint、schema、架构治理与固定核心单测） |
@@ -58,8 +58,13 @@
 ## 上游与 OpenZWork 维护
 
 - 识别文件来源、放置文档与代码、修改上游文件、更新台账、合入上游新版本和沉淀维护经验时，使用 `.agents/skills/openzwork-maintenance/SKILL.md`。
-- 上游文件保持上游原文；代码只改行为必需的行，不格式化。上游文档与技能原文不动，`docs/` 下不带 `-openzwork` 的文档描述的是上游 ZCode：OpenZWork 与它的差异见 `docs/openzwork/README.md`「与上游的差异」，同目录有 `-openzwork` 版本时读写该版本。OpenZWork 文档放在 `docs/openzwork/` 或带 `-openzwork` 后缀，索引见 `docs/openzwork/README.md`。
-- 新增功能、改变上游行为、裁剪上游功能时，在同一个 PR 中更新 `docs/openzwork/ledger.yaml`；提交后执行 `pnpm openzwork:scan --check`。
+- 全部规则及每条规则的检查方式见 `docs/openzwork/maintenance-model.md`「规则与检查」；本节只列每次改动都会用到的几条。
+- 改文件前用 `pnpm openzwork:scan --path <文件>` 确认它来自上游还是 OpenZWork。
+- 上游代码文件只改行为必需的行：不格式化、不调整 import 顺序、不改无关注释。格式检查只针对 OpenZWork 自己的文件；全仓 `pnpm fmt:check` 会在保持原文的上游文件上报错，不运行 `pnpm fmt` 去修。
+- 上游文档和上游技能（包括技能中的脚本）保持原作者的文件；需要 OpenZWork 的差异时新增 `-openzwork` 文件并登记。
+- `docs/` 下不带 `-openzwork` 的文档描述的是上游 ZCode：OpenZWork 与它的差异见 `docs/openzwork/README.md`「与上游的差异」，同目录有 `-openzwork` 版本时读写该版本。
+- OpenZWork 文档放在 `docs/openzwork/` 或带 `-openzwork` 后缀，索引见 `docs/openzwork/README.md`。
+- 新增功能、改变上游行为、裁剪上游功能时，在同一个 PR 中更新 `docs/openzwork/ledger.yaml`，条目带着核心 CI 中运行的保证；提交后执行 `pnpm openzwork:scan --check`。
 
 ## UI 与平台边界
 
