@@ -4,6 +4,7 @@
 // 方法与取舍见 ../references/code-boundary/GUIDE.md「恢复被整文件格式化的上游文件」。
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -11,9 +12,11 @@ import {
   classify,
   countLineDiff,
   createOxfmtFormatter,
+  gitText,
   lineDiff,
   loadMaintenance,
   measureFormatNoise,
+  readTree,
 } from "./scan.mjs";
 
 const DATA_FILE = /\.(?:ya?ml|json)$/;
@@ -166,17 +169,19 @@ export function planRestore(context, formatter, paths) {
 
 /** 核对 rev 到 HEAD 之间改过的上游文件只改了排版：改动前后分别格式化后逐字节一致。返回不一致的路径。 */
 export function verifyFormatOnly(repo, rev, formatter, base) {
-  const run = (args) =>
-    spawnSync("git", ["-C", repo, ...args], { maxBuffer: 1 << 28 }).stdout.toString("utf8");
-  const changed = run(["diff", "--name-only", "--no-renames", "-z", rev, "HEAD"])
+  // 无效提交曾让 git diff 失败后返回空 stdout，误报为“核对 0 个文件，通过”。
+  const commit = (ref) =>
+    gitText(repo, ["rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`]).trim();
+  const from = commit(rev);
+  const head = commit("HEAD");
+  const baseTree = readTree(repo, commit(base));
+  const changed = gitText(repo, ["diff", "--name-only", "--no-renames", "-z", from, head, "--"])
     .split("\0")
     .filter(Boolean)
-    .filter(
-      (path) => spawnSync("git", ["-C", repo, "cat-file", "-e", `${base}:${path}`]).status === 0,
-    );
+    .filter((path) => baseTree.has(path));
   const inputs = changed.flatMap((path) => [
-    { path, text: run(["show", `${rev}:${path}`]) },
-    { path, text: run(["show", `HEAD:${path}`]) },
+    { path, text: gitText(repo, ["show", `${from}:${path}`]) },
+    { path, text: gitText(repo, ["show", `${head}:${path}`]) },
   ]);
   const formatted = formatter(inputs);
   return {
@@ -185,13 +190,36 @@ export function verifyFormatOnly(repo, rev, formatter, base) {
   };
 }
 
+/** 先核对全部恢复目标，再写入；未提交的内容由工作区和暂存区保留。 */
+export async function applyRestore(repo, rows, expectedHead) {
+  if (gitText(repo, ["rev-parse", "HEAD"]).trim() !== expectedHead)
+    throw new Error("HEAD 已变化，请重新运行恢复命令计算方案");
+  const targets = rows.filter(({ how }) => how);
+  if (!targets.length) return;
+  // 方案来自 HEAD，直接写回会丢失目标的未提交修改。一次检查所有目标，避免先写一部分再失败。
+  const dirty = gitText(repo, [
+    "status",
+    "--porcelain=v1",
+    "-z",
+    "--untracked-files=no",
+    "--",
+    ...targets.map(({ path }) => `:(literal)${path}`),
+  ]);
+  if (dirty)
+    throw new Error(
+      `目标文件存在未提交改动，请先保存并提交后再恢复：\n${dirty.split("\0").filter(Boolean).join("\n")}`,
+    );
+  for (const { path, text } of targets) await writeFile(join(repo, path), text);
+}
+
 const HELP = `用法：node .agents/skills/openzwork-maintenance/scripts/unformat.mjs [选项] [路径…]
   （无选项）        列出有格式噪声的上游文件和可恢复到的差异行数，不写文件
   --apply           把通过等价证明的恢复结果写入工作区
   --verify <提交>   核对该提交到 HEAD 之间改过的上游文件只改了排版
-以已提交的 HEAD 为准；未指定路径时处理全部被修改的上游文件。`;
+以已提交的 HEAD 为准；未指定路径时处理全部被修改的上游文件。
+--apply 拒绝覆盖有暂存或未暂存改动的目标文件。`;
 
-function main() {
+async function main() {
   const argv = process.argv.slice(2);
   if (argv.includes("--help") || argv.includes("-h")) return console.log(HELP);
   const verifyAt = argv.indexOf("--verify");
@@ -201,7 +229,7 @@ function main() {
   const paths = argv.filter(
     (arg, index) => !arg.startsWith("--") && !(verifyAt >= 0 && index === verifyAt + 1),
   );
-  const top = spawnSync("git", ["rev-parse", "--show-toplevel"]).stdout.toString().trim();
+  const top = gitText(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
   const formatter = createOxfmtFormatter(top);
   if (!formatter) throw new Error("找不到 oxfmt；先执行 pnpm install");
   const base = loadMaintenance(top).ledger?.upstream?.commit;
@@ -213,7 +241,9 @@ function main() {
     process.exitCode = mismatched.length ? 1 : 0;
     return;
   }
-  const rows = planRestore(classify(top, base), formatter, paths);
+  const head = gitText(top, ["rev-parse", "HEAD"]).trim();
+  const rows = planRestore(classify(top, base, head), formatter, paths);
+  if (apply) await applyRestore(top, rows, head);
   let restored = 0;
   for (const row of rows.sort((a, b) => b.raw - b.after - (a.raw - a.after))) {
     console.log(
@@ -221,7 +251,6 @@ function main() {
     );
     if (!row.how) continue;
     restored++;
-    if (apply) writeFileSync(join(top, row.path), row.text);
   }
   console.log(
     `有格式噪声的上游文件 ${rows.length} 个，可恢复 ${restored} 个${apply ? "，已写入工作区" : "（加 --apply 写入）"}`,
@@ -229,10 +258,8 @@ function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try {
-    main();
-  } catch (error) {
+  main().catch((error) => {
     console.error(error.message);
     process.exitCode = 2;
-  }
+  });
 }

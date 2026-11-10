@@ -21,6 +21,7 @@ import {
   runCheck,
 } from "../../.agents/skills/openzwork-maintenance/scripts/scan.mjs";
 import {
+  applyRestore,
   planRestore,
   verifyFormatOnly,
 } from "../../.agents/skills/openzwork-maintenance/scripts/unformat.mjs";
@@ -568,7 +569,7 @@ test("runCheck 要求上游技能保持原作者的文件，脚本只允许用�
   assert.deepEqual(check(repo), []);
 });
 
-test("runCheck 拦截夹带实质改动的整文件格式化，planRestore 恢复上游排版后通过", () => {
+test("runCheck 拦截夹带实质改动的整文件格式化，planRestore 恢复上游排版后通过", async () => {
   const repo = fixture();
   repo.write("src/fmt.ts", "export const fmt = 1;   \n");
   // 整文件去掉行尾空白，同时改了一行。
@@ -589,7 +590,7 @@ test("runCheck 拦截夹带实质改动的整文件格式化，planRestore 恢�
     plan.text,
     bigSource.replace("export const a5 = 5;   \n", "export const a5 = 55;\n"),
   );
-  repo.write("src/big.ts", plan.text);
+  await applyRestore(repo.dir, [plan], noisy);
   repo.commit("upstream layout restored");
   assert.deepEqual(check(repo), []);
   assert.deepEqual(verifyFormatOnly(repo.dir, noisy, trimFormatter, repo.v2), {
@@ -603,6 +604,54 @@ test("runCheck 拦截夹带实质改动的整文件格式化，planRestore 恢�
   assert.deepEqual(verifyFormatOnly(repo.dir, noisy, trimFormatter, repo.v2).mismatched, [
     "src/big.ts",
   ]);
+});
+
+test("恢复排版拒绝覆盖目标的工作区与暂存区改动，其他目标也保持原样", async () => {
+  for (const staged of [false, true]) {
+    const repo = fixture();
+    repo.write("src/big.ts", bigSource.replace(/[ \t]+$/gm, "").replace("a5 = 5", "a5 = 55"));
+    const head = repo.commit("format with real change");
+    const plans = planRestore(classify(repo.dir, repo.v2), trimFormatter, [
+      "src/fmt.ts",
+      "src/big.ts",
+    ]);
+    assert.equal(plans.filter(({ how }) => how).length, 2);
+    repo.edit("src/big.ts", "a6 = 6", "a6 = 66");
+    if (staged) repo.git("add", "src/big.ts");
+    const before = plans.map(({ path }) => readFileSync(join(repo.dir, path), "utf8"));
+    await assert.rejects(applyRestore(repo.dir, plans, head), /目标文件存在未提交改动/);
+    assert.deepEqual(
+      plans.map(({ path }) => readFileSync(join(repo.dir, path), "utf8")),
+      before,
+    );
+  }
+});
+
+test("恢复排版允许无关文件未提交，但拒绝使用旧 HEAD 的方案", async () => {
+  const repo = fixture();
+  const plans = planRestore(classify(repo.dir, repo.v2), trimFormatter, ["src/fmt.ts"]);
+  repo.edit("src/ours.ts", "ours = 1", "ours = 2");
+  await applyRestore(repo.dir, plans, repo.fork);
+  assert.equal(readFileSync(join(repo.dir, "src/fmt.ts"), "utf8"), "export const fmt = 1;   \n");
+  assert.match(readFileSync(join(repo.dir, "src/ours.ts"), "utf8"), /ours = 2/);
+  repo.commit("unrelated change and restored layout");
+  await assert.rejects(applyRestore(repo.dir, plans, repo.fork), /HEAD 已变化/);
+});
+
+test("排版复核拒绝无效提交和基准，允许有效的空差异", () => {
+  const repo = fixture();
+  assert.throws(
+    () => verifyFormatOnly(repo.dir, "missing-revision", trimFormatter, repo.v2),
+    /git.*失败/,
+  );
+  assert.throws(
+    () => verifyFormatOnly(repo.dir, repo.fork, trimFormatter, "missing-upstream"),
+    /git.*失败/,
+  );
+  assert.deepEqual(verifyFormatOnly(repo.dir, repo.fork, trimFormatter, repo.v2), {
+    checked: 0,
+    mismatched: [],
+  });
 });
 
 test("我方包了一层代码造成的缩进变化不算格式噪声", () => {

@@ -38,7 +38,7 @@ node .agents/skills/openzwork-maintenance/scripts/unformat.mjs --apply [路径�
 node .agents/skills/openzwork-maintenance/scripts/unformat.mjs --verify <提交>   # 核对该提交到 HEAD 只改了排版
 ```
 
-工具以已提交的 HEAD 为准。先提交实质改动，再恢复排版，恢复单独成一个提交，便于用 `--verify` 复核。
+工具以已提交的 HEAD 为准。先提交实质改动，再恢复排版，恢复单独成一个提交，便于用 `--verify` 复核。`--apply` 会在写入前检查全部恢复目标；目标有暂存或未暂存的改动，或计算方案后 HEAD 已变化时拒绝整次写入，其他文件的未提交改动不影响恢复。`--verify` 的提交或上游基准不存在、Git 读取失败时返回非零；有效提交之间没有上游文件变化时可以返回 0 个文件。
 
 工具的判定方式，手工处理时遵守同样的标准：
 

@@ -74,7 +74,7 @@ function git(repo, args, { input, allowFail = false } = {}) {
   }
   return { status: result.status, stdout: result.stdout, stderr: result.stderr.toString() };
 }
-const gitText = (repo, args, options) => git(repo, args, options).stdout.toString("utf8");
+export const gitText = (repo, args, options) => git(repo, args, options).stdout.toString("utf8");
 
 export function readTree(repo, ref) {
   const tree = new Map();
