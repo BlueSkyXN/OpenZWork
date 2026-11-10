@@ -31,7 +31,7 @@
 | `retained`          | 上游已删除、我方保留             |
 | `moved`             | 内容与某个上游文件相同，路径不同 |
 
-“认领”指台账条目（`paths`、`hooks`、`tests`、`spec`）、下游补丁（`files`、`regression`）或上游文档的 OpenZWork 版本登记（`variant:…`）覆盖了该路径。`--path` 还会显示上游文档对应的 OpenZWork 版本，或 OpenZWork 版本对应的上游原文。需要认领的范围见 `docs/openzwork/maintenance-model.md`「来源分类」：`upstream-modified` 文件不要求逐个认领，汇总中的增删行数用来观察交叉面的变化。未认领不会让检查失败。
+“认领”指台账条目（`modules`、`paths`、`hooks`、`tests`、`spec`）、下游补丁（`files`、`regression`）或上游文档的 OpenZWork 版本登记（`variant:…`）覆盖了该路径。模块文件归属直接复用架构策略的匹配规则。`--path` 还会显示上游文档对应的 OpenZWork 版本，或 OpenZWork 版本对应的上游原文。需要认领的范围见 `docs/openzwork/maintenance-model.md`「来源分类」：自有文件与上游基准没有的现存模块未认领会让检查失败；`upstream-modified` 文件不要求逐个认领，汇总中的增删行数用来观察交叉面的变化。
 
 ## 门禁
 
@@ -48,6 +48,7 @@
 - `.github/workflows/ci.yml` 步骤点名的测试文件都存在；
 - 台账上游版本对应的 `docs/openzwork/upstream/v<版本>-integration.md` 存在；
 - 上游技能（`.agents/skills/` 下上游基准已有的文件）与上游一致，脚本最多只差用户级根改名；被删除的由 `drop` 条目认领。
+- 台账引用的模块存在，上游基准没有的现存模块被有效条目引用，OpenZWork 自有文件有认领。
 
 ## 核心 CI 中运行的测试
 

@@ -14,6 +14,8 @@ Core 原先在每个平台串行执行检查、CLI 回归和核心单测；Windo
 
 CI workflow 拥有 lane 分配与门禁，核心清单仍由 tests/ci/core-tests.json 拥有。Extended 的分片归属与报告合并按 [Extended 并行规范](extended-ci-parallel.md)执行。发布器继续以完整工作流成功和原 artifact 格式验收。
 
+台账 `OZ-F012` 维护 CI 调度、报告、桌面 runner 和已有验证材料；业务断言沿用各自的 spec 与补丁记录。桌面 runner 的文件归属直接引用架构模块 `desktop-e2e-runner`。候选 E2E、浏览器用例和夹具登记后仍按原生命周期运行，核心保证只统计核心清单及 `ci.yml` 实际接入的测试。Core 的 regressions 路径同时执行 `pnpm fmt:check`，只检查自有文件。
+
 ```mermaid
 flowchart LR
     S[同一提交 / 每个平台] --> R[独立准备 → 静态和专项回归]

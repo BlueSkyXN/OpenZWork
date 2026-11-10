@@ -63,6 +63,8 @@ function fixture() {
   git("config", "commit.gpgsign", "false");
   git("config", "core.autocrlf", "false");
   write("package.json", JSON.stringify({ version: "1.0.0" }));
+  write("architecture-policy.yaml", "version: 1\nmodules:\n  - id: upstream\n    roots: [src]\n");
+  write(".github/workflows/ci.yml", "jobs: {}\n");
   write("docs/a.md", "# A\n");
   write("docs/b.md", "# B\n");
   write("docs/old.md", "# Old\n");
@@ -109,7 +111,7 @@ entries:
     status: active
     title: 维护体系
     summary: 台账与工具。
-    paths: ["src/ours.ts", "docs/openzwork/**", ".agents/skills/openzwork-maintenance/**"]
+    paths: ["src/ours.ts", "docs/openzwork/**", ".agents/skills/openzwork-maintenance/**", "tests/ci/core-tests.json"]
     hooks: ["src/keep.ts"]
     tests: ["src/ours.test.ts"]
     source: 测试
@@ -162,6 +164,14 @@ entries:
 }
 
 const check = (repo) => runCheck(repo.dir, { formatter: trimFormatter });
+const claimPaths = (repo, paths, remove = false) => {
+  const file = "docs/openzwork/ledger.yaml";
+  const text = readFileSync(join(repo.dir, file), "utf8");
+  const match = /^    paths: (\[[^\n]*\])$/m.exec(text);
+  const current = JSON.parse(match[1]);
+  const next = remove ? current.filter((path) => !paths.includes(path)) : [...current, ...paths];
+  repo.write(file, text.replace(match[0], `    paths: ${JSON.stringify(next)}`));
+};
 const ciWorkflow = (steps) =>
   `name: CI\njobs:\n  checks:\n    steps:\n${steps
     .map(({ name, run }) => `      - name: ${name}\n        run: ${JSON.stringify(run)}\n`)
@@ -244,6 +254,7 @@ test("runCheck 按实际读取目标验证 usedBy：版本路径、选择函数�
     "docs/openzwork/upstream-doc-variants.yaml",
     `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/reader-variant.ts, src/reader-selector.ts]\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
   );
+  claimPaths(repo, ["src/reader-variant.ts", "src/reader-selector.ts", "docs/rule.md"]);
   repo.commit("valid readers");
   assert.deepEqual(check(repo), []);
 });
@@ -261,6 +272,7 @@ test("runCheck 拦截读上游原文、注释提及与缺失引用的 usedBy", (
     "docs/openzwork/upstream-doc-variants.yaml",
     `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/reader-upstream.ts, src/reader-comment.ts]\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
   );
+  claimPaths(repo, ["src/reader-upstream.ts", "src/reader-comment.ts", "docs/rule-bad.md"]);
   repo.commit("invalid readers");
   const errors = check(repo).join("\n");
   // 登记了版本仍出现上游原文（含只在注释里的情形），与完全没有引用，都必须失败。
@@ -283,6 +295,7 @@ test("runCheck 不把版本注释、字符串中的调用示例和无关说明�
     "docs/openzwork/upstream-doc-variants.yaml",
     `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: ${JSON.stringify(Object.keys(readers))}\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
   );
+  claimPaths(repo, Object.keys(readers));
   repo.commit("reader false positives");
   const errors = check(repo).join("\n");
   for (const path of Object.keys(readers)) assert.ok(errors.includes(path), path);
@@ -300,6 +313,7 @@ test("runCheck 分别验证嵌套选择函数与规则链接", () => {
     "docs/openzwork/upstream-doc-variants.yaml",
     `version: 1\nvariants:\n  - upstream: docs/b.md\n    variant: docs/b-openzwork.md\n    role: tool\n    usedBy: [src/nested-reader.ts, docs/rule.md]\n    kind: content\n    upstreamBlob: ${repo.git("rev-parse", `${repo.v2}:docs/b.md`)}\n`,
   );
+  claimPaths(repo, ["src/nested-reader.ts", "docs/rule.md"]);
   repo.commit("nested and markdown readers");
   assert.deepEqual(check(repo), []);
 });
@@ -475,6 +489,7 @@ test("runCheck 要求 active 条目有核心 CI 中运行的保证或写明 ungu
     'paths: ["docs/old.md"]',
     'paths: ["docs/old.md"]\n    tests: ["scripts/test/b.test.mjs"]',
   );
+  claimPaths(repo, ["packages/pkg/package.json", "src/ours.test.ts"]);
   repo.commit("guards from ci.yml");
   errors = check(repo);
   // OZ-F001 由 ci.yml 点名的包内测试保证；OZ-R001 有了保证却还留着 unguarded。
@@ -534,6 +549,7 @@ test("runCheck 要求上游技能保持原作者的文件，脚本只允许用�
   // 新增文件和只改用户级根的那一行都允许。
   repo.write(script, 'export const root = join(homedir(), ".openzwork");\n');
   repo.write(".agents/skills/up/references/ours.md", "# OpenZWork 补充\n");
+  claimPaths(repo, [".agents/skills/up/references/ours.md"]);
   repo.commit("identity rename and a new file");
   assert.deepEqual(check(repo), []);
   assert.equal(classify(repo.dir, repo.v2).result.get(script).category, "upstream-identity");
@@ -556,6 +572,7 @@ test("runCheck 要求上游技能保持原作者的文件，脚本只允许用�
   // 整个技能删除并登记为裁剪条目后通过。
   repo.remove(script);
   repo.remove(".agents/skills/up/references/ours.md");
+  claimPaths(repo, [".agents/skills/up/references/ours.md"], true);
   repo.edit(
     "docs/openzwork/ledger.yaml",
     "  - id: OZ-R001",
@@ -705,6 +722,78 @@ test("格式化空范围不启动工具，检查模式与错误状态透传", as
     1,
   );
   assert.equal(called, true);
+});
+
+test("模块认领沿用架构归属，自动覆盖新文件与核心保证，嵌套模块须单独引用", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.write(
+    "architecture-policy.yaml",
+    "version: 1\nmodules:\n  - id: upstream\n    roots: [src]\n  - id: feature\n    roots: [src/feature]\n",
+  );
+  repo.write("src/feature/index.ts", "export const feature = 1;\n");
+  repo.write("src/feature/feature.test.ts", "export {};\n");
+  repo.commit("new module without ledger");
+  assert.match(check(repo).join("\n"), /模块 feature 未被有效台账条目引用/);
+  repo.write(
+    "docs/openzwork/ledger.yaml",
+    readFileSync(join(repo.dir, "docs/openzwork/ledger.yaml"), "utf8") +
+      `  - id: OZ-F009
+    kind: feature
+    status: active
+    title: 模块定制
+    summary: 通过模块认领。
+    modules: [feature]
+    source: 测试
+`,
+  );
+  repo.edit("docs/openzwork/README.md", "OZ-F001、", "OZ-F001、OZ-F009、");
+  repo.write(
+    "tests/ci/core-tests.json",
+    JSON.stringify({
+      version: 1,
+      suites: [{ files: ["src/ours.test.ts", "src/feature/feature.test.ts"] }],
+    }),
+  );
+  repo.commit("module registered");
+  assert.deepEqual(check(repo), []);
+  repo.write("src/feature/new.ts", "export const next = 1;\n");
+  repo.commit("file added inside owned module");
+  assert.deepEqual(check(repo), []);
+  const maintenance = loadMaintenance(repo.dir);
+  assert.ok(createClaims(maintenance)("src/feature/new.ts").some(({ id }) => id === "OZ-F009"));
+  const context = classify(repo.dir, repo.v2);
+  const entry = entryReport(context, maintenance.ledger, loadCiTests(context)).find(
+    ({ id }) => id === "OZ-F009",
+  );
+  assert.deepEqual(entry.modules, ["feature"]);
+  assert.deepEqual(entry.guard.tests, ["src/feature/feature.test.ts"]);
+  repo.write(
+    "architecture-policy.yaml",
+    readFileSync(join(repo.dir, "architecture-policy.yaml"), "utf8") +
+      "  - id: nested\n    roots: [src/feature/nested]\n",
+  );
+  repo.write("src/feature/nested/private.ts", "export {};\n");
+  repo.commit("nested module needs its own reference");
+  assert.equal(createClaims(loadMaintenance(repo.dir))("src/feature/nested/private.ts").length, 0);
+  assert.match(check(repo).join("\n"), /模块 nested 未被有效台账条目引用/);
+  repo.edit("docs/openzwork/ledger.yaml", "modules: [feature]", "modules: [missing-module]");
+  repo.commit("unknown module reference");
+  assert.match(check(repo).join("\n"), /模块不存在：missing-module/);
+});
+
+test("自有文件须认领，上游零散改动不要求逐文件认领", () => {
+  const repo = fixture();
+  repo.write("src/fmt.ts", "export const fmt = 1;   \n");
+  repo.write("src/new-custom.ts", "export const custom = 1;\n");
+  repo.write("src/plain.ts", plainSource.replace("p5 = 5", "p5 = 55"));
+  repo.commit("new own file and small upstream change");
+  assert.deepEqual(check(repo), [
+    "OpenZWork 自有文件未认领：src/new-custom.ts（引用所属 modules，或补入对应条目的 paths）",
+  ]);
+  claimPaths(repo, ["src/new-custom.ts"]);
+  repo.commit("own file claimed");
+  assert.deepEqual(check(repo), []);
 });
 
 test("我方包了一层代码造成的缩进变化不算格式噪声", () => {
