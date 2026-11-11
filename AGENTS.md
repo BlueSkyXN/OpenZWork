@@ -29,7 +29,7 @@
 
 `verify:pre-push` 运行固定核心套件 `test:ci:core`。独立命令 `test:unit:affected` 使用 Vitest 官方选择；选中整个套件时说明并跳过 UT，成功退出。两者均不替代 CLI 测试或桌面 E2E。全量使用 `pnpm test` / `pnpm test:unit`，仅在用户明确要求时调用。范围与输出合同见 [pre-push 说明](docs/testing/pre-push-hook-openzwork.md)。
 
-上游 v3.17.1 引入工程测试框架：`pnpm test:engineering <文件>` 与 `pnpm test:engineering:affected`（App 业务单测执行链已退役，不新增或恢复 App 业务单测 test/spec 或 `contract.test.ts`；保留 CLI、E2E、浏览器验收和工程门禁测试）。OpenZWork 的 `verify:pre-push` 在上游链基础上保留固定核心套件 `test:ci:core`。
+上游 v3.17.1 引入工程测试框架：`pnpm test:engineering <文件>` 与 `pnpm test:engineering:affected`。上游 App 全量业务单测链已退役，不恢复已退役的 App test/spec，不新增 `contract.test.ts`；保留 CLI、E2E、浏览器验收和工程门禁测试。OpenZWork 的 `verify:pre-push` 保留固定核心套件 `test:ci:core`，新定制的 App 行为按 spec 编写场景回归并登记到核心套件。各类保证测试的放置、写法与 CI 登记见 `docs/openzwork/maintenance-model.md`「保证测试的位置与写法」。
 
 测试入口以目标包当前的 `package.json` 和实际测试文件为准，不假定存在统一的单测或 E2E 命令。
 
