@@ -5,6 +5,7 @@ import {
   systemPromptCatalogSchema,
 } from "@zcode/shared";
 import { createContextBuilder } from "../src/context/builder.js";
+import { resolveAnnouncedOutputStyleInstructions } from "../src/runtime/methods/context-refresh.js";
 import { getSystemPromptCatalog } from "../src/context/prompt-settings/contract.js";
 
 const base = {
@@ -52,7 +53,9 @@ describe("main session prompt customization", () => {
     expect(system(result)).not.toContain("You are an interactive ZCode agent");
     expect(system(result)).toContain("CUSTOM_COMMUNICATION");
     expect(system(result)).toContain("# Harness");
-    expect(system(result)).toContain("# Environment");
+    // OpenZWork v3.18.0：环境随运行时公告发送，不进 system。
+    expect(system(result)).not.toContain("# Environment");
+    expect(result.sections.some((section) => section.source === "env_info")).toBe(true);
     expect(system(result)).not.toContain("You are operating autonomously");
     expect(result.metaUserAttachments).toEqual(
       createContextBuilder(base).build().metaUserAttachments,
@@ -66,10 +69,14 @@ describe("main session prompt customization", () => {
     };
     const result = createContextBuilder({ ...base, systemPromptSettings: settings }).build();
     expect(system(result)).toContain("ONLY_CUSTOM_SYSTEM");
-    expect(system(result)).toContain("# Environment");
-    expect(system(result)).toContain("Gen UI is unavailable");
+    expect(system(result)).not.toContain("# Environment");
+    expect(system(result)).not.toContain("# ZCode Desktop Context");
     expect(system(result)).not.toContain("# Harness");
     expect(system(result)).not.toContain("# Communicating with the user");
+    // 运行时事实（环境/桌面能力/日期）是公告段，整段替换不丢。
+    expect(result.sections.map((section) => section.source)).toEqual(
+      expect.arrayContaining(["env_info", "desktop_context", "current_date"]),
+    );
     expect(result.metaUserAttachments).toEqual(
       createContextBuilder(base).build().metaUserAttachments,
     );
@@ -82,31 +89,34 @@ describe("main session prompt customization", () => {
         (entry) => entry.id === "desktop_context",
       )!.content;
       settings.sections.desktop_context = { mode, content };
-      const without = system(
-        createContextBuilder({ ...base, systemPromptSettings: settings }).build(),
+      const without = createContextBuilder({ ...base, systemPromptSettings: settings }).build();
+      const withoutDesktop = without.sections.find(
+        (section) => section.source === "desktop_context",
       );
-      expect(without).toContain("Gen UI is unavailable");
-      expect(without).not.toContain("This Desktop host supports Gen UI");
-      expect(without).not.toContain('directory for this session: ""');
-      const withDirectory = system(
+      // 无目录时整段 Gen UI 上下文省略（上游 v3.18 语义），但能力段本身保留。
+      expect(withoutDesktop?.injectionTarget).toBe("meta_user");
+      expect(withoutDesktop?.content).not.toContain("This Desktop host supports Gen UI");
+      expect(system(without)).not.toContain("# ZCode Desktop Context");
+      const withDirectory = createContextBuilder({
+        ...base,
+        genUiOutputDirectory: "/example/second-views",
+        systemPromptSettings: settings,
+      }).build();
+      const withDirectoryDesktop = withDirectory.sections.find(
+        (section) => section.source === "desktop_context",
+      );
+      expect(withDirectoryDesktop?.content).toContain("This Desktop host supports Gen UI");
+      // 目录本身随环境公告行发送（公告链注入），不进 Desktop 段，也不在 builder 的 env 段里。
+      expect(withDirectoryDesktop?.content).not.toContain("/example/second-views");
+      expect(
         createContextBuilder({
           ...base,
-          genUiOutputDirectory: "/example/second-views",
+          presentationSurface: "terminal",
           systemPromptSettings: settings,
-        }).build(),
-      );
-      expect(withDirectory).toContain("This Desktop host supports Gen UI");
-      expect(withDirectory).toContain('"/example/second-views"');
-      expect(withDirectory).not.toContain("Gen UI is unavailable");
-      expect(
-        system(
-          createContextBuilder({
-            ...base,
-            presentationSurface: "terminal",
-            systemPromptSettings: settings,
-          }).build(),
-        ),
-      ).not.toContain("# ZCode Desktop Context");
+        })
+          .build()
+          .sections.some((section) => section.source === "desktop_context"),
+      ).toBe(false);
     },
   );
   it.each(["replace", "disabled"] as const)(
@@ -132,15 +142,20 @@ describe("main session prompt customization", () => {
   it("keeps the active output style live when its extra rules are replaced", () => {
     const settings = createDefaultSystemPromptSettings();
     settings.sections.output_style = { mode: "replace", content: "EXTRA_STYLE_RULE" };
-    const result = system(
-      createContextBuilder({
-        ...base,
-        outputStyle: { name: "Current style", prompt: "CURRENT_STYLE_RULE" },
-        systemPromptSettings: settings,
-      }).build(),
-    );
-    expect(result).toContain("EXTRA_STYLE_RULE");
-    expect(result).toContain("CURRENT_STYLE_RULE");
+    const style = { name: "Current style", prompt: "CURRENT_STYLE_RULE" };
+    // v3.18.0 起输出样式正文随 output_style_instructions 公告送达；
+    // 章节定制在公告侧消费，替换规则不挤掉当次活跃风格（运行时事实）。
+    const announced = resolveAnnouncedOutputStyleInstructions(settings, style);
+    expect(announced).toContain("EXTRA_STYLE_RULE");
+    expect(announced).toContain("CURRENT_STYLE_RULE");
+    const plain = resolveAnnouncedOutputStyleInstructions(undefined, style);
+    expect(plain).toBe("# Output Style: Current style\nCURRENT_STYLE_RULE");
+    expect(resolveAnnouncedOutputStyleInstructions(settings, undefined)).toBeNull();
+    expect(
+      createContextBuilder({ ...base, outputStyle: style, systemPromptSettings: settings })
+        .build()
+        .sections.some((section) => section.source === "output_style"),
+    ).toBe(false);
   });
   it("honors generated switches in whole replacement mode", () => {
     const settings = {
@@ -153,7 +168,11 @@ describe("main session prompt customization", () => {
     const result = createContextBuilder({ ...base, systemPromptSettings: settings }).build();
     expect(system(result)).not.toContain("# Environment");
     expect(JSON.stringify(result.metaUserAttachments)).not.toContain("PROJECT_RULE");
-    expect(JSON.stringify(result.metaUserAttachments)).toContain("2026-10-24");
+    // 日期是独立公告段（current_date），不在指令 carrier 里。
+    expect(result.sections.find((section) => section.source === "current_date")?.content).toBe(
+      "Today's date is 2026-10-24.",
+    );
+    expect(JSON.stringify(result.metaUserAttachments)).not.toContain("2026-10-24");
   });
   it("honors generated-section switches and preserves conditions for absent features", () => {
     const settings = createDefaultSystemPromptSettings();
@@ -228,7 +247,10 @@ describe("main session prompt customization", () => {
         expect(actual).toBe(
           resolveSystemPromptRuntimeSection(settings, entry.id, scenario.template),
         );
-        expect(actual.includes("/example/views")).toBe(scenario.id === "gen_ui_available");
+        // v3.18.0 起目录不内嵌本段（随环境公告行发送），按 Gen UI 能力块判定。
+        expect(actual.includes("This Desktop host supports Gen UI")).toBe(
+          scenario.id === "gen_ui_available",
+        );
       }
     },
   );
@@ -250,8 +272,20 @@ describe("main session prompt customization", () => {
       }).build(),
     );
     expect(result).toContain("C:\\example\\memory/");
-    expect(result).toContain(JSON.stringify("C:\\example\\views"));
-    expect(result).toContain("CURRENT_STYLE");
+    // Gen UI 目录随环境公告行发送，输出风格随 output_style_instructions 公告发送。
+    const built = createContextBuilder({
+      ...base,
+      memoryRoot: "C:\\example\\memory",
+      genUiOutputDirectory: "C:\\example\\views",
+      outputStyle: { name: "Current", prompt: "CURRENT_STYLE" },
+      systemPromptSettings: settings,
+    }).build();
+    expect(
+      resolveAnnouncedOutputStyleInstructions(settings, {
+        name: "Current",
+        prompt: "CURRENT_STYLE",
+      }),
+    ).toContain("CURRENT_STYLE");
     expect(result).not.toContain("CHAPTER_ONLY");
     expect(result).not.toContain("CHAPTER_MEMORY_RULE");
   });

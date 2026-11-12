@@ -5,7 +5,7 @@ import { IifeContextExecutor, type ReplExecutor } from "./executors.js";
 import {
   PROCESS_MODULE_IDS,
   createReplRequire,
-  createRestrictedProcessFacade,
+  createProtocolSafeProcessFacade,
   normalizeReplError,
   stringifyReplResult,
 } from "./node-repl-runtime-helpers.js";
@@ -53,10 +53,10 @@ export interface NodeReplRunResult {
 export type NodeReplRequestMeta = Record<string, unknown>;
 
 export interface NodeReplSessionOptions {
-  /** 注入到 sandbox 的额外全局（如 browser execute 桥、agent 对象）。 */
+  /** 注入到 REPL globals 的额外全局（如 browser execute 桥、agent 对象）。 */
   injectedGlobals?: Record<PropertyKey, unknown> | (() => Record<PropertyKey, unknown>);
-  /** MCP stdio runtime 使用受限 process facade，防止 cell 关闭进程或写坏协议 stdout。 */
-  restrictProcess?: boolean;
+  /** MCP stdio runtime 使用协议保护 process facade，防止 cell 关闭进程或写坏协议 stdout；不限制 cell 的能力。 */
+  protectProtocolStdio?: boolean;
 }
 
 function browserScreenshotIndexResult(
@@ -98,16 +98,17 @@ export function matchBrowserScreenshotImageIndices(
 /**
  * NodeReplSession：调用方进程内的持久 JavaScript 执行引擎。
  *
- * 每个 session 一个实例；sandbox 即模型看到的 globalThis，并在多次 run() 之间保持状态。
+ * 每个 session 一个实例；REPL globals 即模型看到的 globalThis，并在多次 run() 之间保持状态。
  * 顶层 await 由 async IIFE 执行，动态加载通过注入的 importModule() 完成，结果统一结构化返回。
  *
- * 安全说明：vm 不是安全沙箱，隔离仍由上层权限与审批 gate 承担。受限 process facade 只负责
- * 限制 cell 对进程控制和 MCP stdio 的直接影响；第三方模块仍在宿主 Node realm 执行。
+ * 能力说明：cell 以 agent 的权限运行、没有沙箱，可加载任意模块、读写文件、启动子进程。
+ * vm context 只隔离每次调用的全局状态；协议保护 process facade 只保护 MCP stdio 与宿主进程生命周期。
+ * MCP 入口的 js 按 high/system 审批，不经过 Bash 的 guarded 危险命令匹配。
  */
 export class NodeReplSession {
   private context: Context;
   private readonly createInjectedGlobals: () => Record<PropertyKey, unknown>;
-  private readonly restrictedProcess: Readonly<Record<string, unknown>> | undefined;
+  private readonly protocolSafeProcess: Readonly<Record<string, unknown>> | undefined;
   private currentSink: NodeReplWriteSink | null = null;
   private nodeReplApi: {
     requestMeta: NodeReplRequestMeta;
@@ -122,7 +123,9 @@ export class NodeReplSession {
     const injectedGlobals = options.injectedGlobals;
     this.createInjectedGlobals =
       typeof injectedGlobals === "function" ? injectedGlobals : () => injectedGlobals ?? {};
-    this.restrictedProcess = options.restrictProcess ? createRestrictedProcessFacade() : undefined;
+    this.protocolSafeProcess = options.protectProtocolStdio
+      ? createProtocolSafeProcessFacade()
+      : undefined;
     this.executor = new IifeContextExecutor();
     this.context = this.buildContext();
   }
@@ -174,7 +177,7 @@ export class NodeReplSession {
       debug: (...args: unknown[]) => this.emit(args),
     };
     // 用当前工作目录作 require 基准。
-    const req = createReplRequire(createRequire(`${process.cwd()}/`), this.restrictedProcess);
+    const req = createReplRequire(createRequire(`${process.cwd()}/`), this.protocolSafeProcess);
     const nodeReplApi = {
       cwd: process.cwd(),
       homeDir: homedir(),
@@ -189,9 +192,9 @@ export class NodeReplSession {
       setResponseMeta: (meta: unknown) => this.setResponseMeta(meta),
     };
     this.nodeReplApi = nodeReplApi;
-    const sandbox: Record<PropertyKey, unknown> = {
+    const replGlobals: Record<PropertyKey, unknown> = {
       console: teeConsole,
-      process: this.restrictedProcess ?? process,
+      process: this.protocolSafeProcess ?? process,
       Buffer,
       URL,
       URLSearchParams,
@@ -213,7 +216,7 @@ export class NodeReplSession {
       // 不能跨 reset 漂移到新 generation，保持新会话 bootstrap 边界一致。
       ...this.createInjectedGlobals(),
     };
-    const context = createContext(sandbox);
+    const context = createContext(replGlobals);
     // globalThis 自引用，让模型可用 globalThis.x = ... 显式持久化。
     runInContext("globalThis.globalThis = globalThis;", context);
     return context;
@@ -423,8 +426,8 @@ export class NodeReplSession {
   }
 
   private async importModule(specifier: string): Promise<unknown> {
-    if (this.restrictedProcess && PROCESS_MODULE_IDS.has(specifier)) {
-      return { ...this.restrictedProcess, default: this.restrictedProcess };
+    if (this.protocolSafeProcess && PROCESS_MODULE_IDS.has(specifier)) {
+      return { ...this.protocolSafeProcess, default: this.protocolSafeProcess };
     }
     return await import(specifier);
   }

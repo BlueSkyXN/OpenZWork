@@ -1,10 +1,15 @@
-import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { SidebarNativeTooltip, ControlHintTooltip } from "@/ControlHintTooltip.js";
 /* oxlint-disable eslint(max-lines) -- footer 聚合账户、主题、模式和快捷键菜单。 */
 import type { Locale, UserInfo } from "@zcode/shared";
 import { memo, useCallback, useEffect, useState, type ReactNode } from "react";
-import { DesktopCommandIds } from "@zcode/shared";
-import { TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar.js";
+import { DesktopCommandIds, LOCALE_NATIVE_NAMES, SUPPORTED_LOCALES } from "@zcode/shared";
+import {
+  TID_LOGIN_MENU_ITEM,
+  TID_LOGIN_TRIGGER,
+  TID_LOGOUT_BUTTON,
+  TID_TASK_SETTINGS_BUTTON,
+} from "@zcode/shared/test-ids";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js";
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import {
@@ -93,6 +98,7 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
   const platform = usePlatform();
   const remoteControlEnabled = useWebRemoteControlFeatureEnabled();
   const interfaceMode = useZCodeStore((state) => state.interfaceMode);
+  // 净化保留：上游 useSetInterfaceModeWithTelemetry（appTelemetry 域）不并入，直接走 store 命令。
   const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
   const zoomInShortcutLabel = useShortcutCommandLabel("zoomIn");
   const zoomOutShortcutLabel = useShortcutCommandLabel("zoomOut");
@@ -195,16 +201,12 @@ export const WorkspaceSidebarFooter = memo(function WorkspaceSidebarFooterCompon
                       id: "sidebar.settings.systemDefault",
                     })}
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="en-US">
-                    {intl.formatMessage({
-                      id: "sidebar.settings.locale.en-US",
-                    })}
-                  </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="zh-CN">
-                    {intl.formatMessage({
-                      id: "sidebar.settings.locale.zh-CN",
-                    })}
-                  </DropdownMenuRadioItem>
+                  {/* 语言选项显示各语言本名（LOCALE_NATIVE_NAMES），不随界面语言翻译。 */}
+                  {SUPPORTED_LOCALES.map((locale) => (
+                    <DropdownMenuRadioItem key={locale} value={locale} lang={locale}>
+                      {LOCALE_NATIVE_NAMES[locale]}
+                    </DropdownMenuRadioItem>
+                  ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>

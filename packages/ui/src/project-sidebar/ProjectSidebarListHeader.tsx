@@ -1,4 +1,4 @@
-import type { Ref } from "react";
+import { memo, type Ref } from "react";
 import { Bell, Clock, Folder, Hash, ListFilter, Search } from "lucide-react";
 import type { ProjectSidebarProps, ProjectSidebarView } from "@/project-sidebar/contract.js";
 import { Button } from "@/components/ui/button.js";
@@ -23,7 +23,8 @@ import {
 } from "@/project-sidebar/task-filters.js";
 
 /** 列表头部独立于导航和滚动内容，搜索与视图仍使用现有 owner。 */
-export function ProjectSidebarListHeader({
+// 项目展开不改变搜索或视图；memo 只隔离父更新，真实视图与语言变化仍正常传播。
+export const ProjectSidebarListHeader = memo(function ProjectSidebarListHeader({
   onOpenCommandCenter,
   view,
   onViewChange,
@@ -148,4 +149,4 @@ export function ProjectSidebarListHeader({
       ) : null}
     </>
   );
-}
+});

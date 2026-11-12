@@ -24,6 +24,11 @@ import type {
 import type { AppSettings, Locale } from "./protocol.js";
 import type { StorageCleanRequest, StorageCleanResult, StorageUsageSnapshot } from "./storage.js";
 import type {
+  ExtensionNotificationClick,
+  ExtensionNotificationPayload,
+  NotificationsShowResult,
+} from "#src/extension-host/notifications.js";
+import type {
   CancelPendingRemoteConnectionRequest,
   BindRemoteWorkspaceSessionContextRequest,
   BrowserViewScreenshotSurfacePreparePayload,
@@ -31,6 +36,7 @@ import type {
   BrowserViewScreenshotSurfaceReleasePayload,
   BrowserViewCloseTabNotification,
   BrowserViewCloseTabRequest,
+  BrowserViewPromoteDraftTabsRequest,
   BrowserViewResidencyReportPayload,
   BrowserViewResidencyTransitionPayload,
   BrowserViewRestoredTabShell,
@@ -56,6 +62,10 @@ import type {
   SaveFileRequest,
   SaveFileResult,
   PrintPageToPdfResult,
+  MicrophoneAccessResult,
+  MicrophoneSettingsTarget,
+  CaptureBrowserGuestPageRequest,
+  CaptureBrowserGuestPageResult,
   OpenInEditorOptions,
   RemoteSessionClosedEvent,
   RemoteSessionReconnectedEvent,
@@ -97,6 +107,8 @@ export const ServiceChannels = {
   /** ZCode session 应用服务 */
   ZCodeSession: "zcode-session",
   Project: "project",
+  /** 受管 worktree 任务管理（列表、删除、起点、fork 到新 worktree），仅本地桌面 Host。 */
+  ManagedWorktrees: "managed-worktrees",
   TaskGroups: "task-groups",
   RemoteProjects: "remote-projects",
   WindowProject: "window-project",
@@ -118,6 +130,12 @@ export const ServiceChannels = {
   DeviceSyncState: "device-sync-state",
   /** 桌面 Host 的数据同步页模型提供商：读取 / 重试 Main 协调器的 Provisioning lane（仅本机注册） */
   ProviderProvisioningStatus: "provider-provisioning-status",
+  /** 桌面 Host 的扩展门面（docs/plugins/extension-host.md）：贡献表、扩展进程状态、命令、重新加载（仅本机注册） */
+  Extensions: "extensions",
+  /** 桌面 Host 的扩展视图门面（docs/plugins/extension-host.md §8）：视图实例、页面请求与通知、views.open（仅本机注册） */
+  ExtensionViews: "extension-views",
+  /** 桌面 Host 的扩展授权门面（docs/plugins/extension-host.md §17.7）：授予、撤销、授权状态、启用确认、最近操作（仅本机注册） */
+  ExtensionGrants: "extension-grants",
   /** 本地 usage 统计服务 */
   UsageStats: "usage-stats",
   /** Skills 管理服务 */
@@ -188,6 +206,12 @@ export const PlatformChannels = {
   SaveFile: "zcode:save-file",
   /** Renderer → Main：用 Chromium 打印引擎把当前页面 print 媒体版面导出为 PDF */
   PrintToPdf: "zcode:print-to-pdf",
+  /** Renderer → Main：检查并按需请求系统麦克风权限 */
+  MicrophoneAccess: "zcode:microphone-access",
+  /** Renderer → Main：打开系统麦克风权限 / 声音输入设置页 */
+  OpenMicrophoneSettings: "zcode:open-microphone-settings",
+  /** Renderer → Main：在 main 截取内置浏览器 guest 当前视口为 PNG（renderer 侧 capturePage 会崩溃） */
+  CaptureBrowserGuestPage: "zcode:capture-browser-guest-page",
   /** Main → Renderer：转发远程连接过程日志 */
   RemoteConnectionLog: "zcode:remote-connection-log",
   /** Main → Renderer：远程 workspace session 已关闭 */
@@ -345,6 +369,10 @@ export const PlatformChannels = {
   TaskNotificationSound: "zcode:task-notification-sound",
   /** Main → Preload：用户点击了系统通知，携带 taskId 让 renderer 跳转到对应任务 */
   TaskNotificationClick: "zcode:task-notification-click",
+  /** Renderer → Main：弹扩展的系统通知并返回结果（§18.1 H8） */
+  ShowExtensionNotification: "zcode:show-extension-notification",
+  /** Main → Preload：用户点了扩展通知，携带插件 id 与要打开的视图 */
+  ExtensionNotificationClick: "zcode:extension-notification-click",
   /** Renderer → Main：导出日志（打包 ~/.openzwork/v2 及外部 agent 日志为 zip 并在 Finder 中显示） */
   ExportLogs: "zcode:export-logs",
   /** Renderer → Main：截取当前窗口作为反馈附件 */
@@ -363,6 +391,8 @@ export const PlatformChannels = {
   BrowserViewCloseTabFromRenderer: "zcode:browser-view-close-tab-from-renderer",
   /** Renderer → Main：上报 Browser tab residency/display facts。 */
   BrowserViewReportResidency: "zcode:browser-view-report-residency",
+  /** Renderer → Main：草稿首发后把草稿 human tab 的 owner 升级为新会话。 */
+  BrowserViewPromoteDraftTabs: "zcode:browser-view-promote-draft-tabs",
   /** Renderer → Main：指定 generation 的 guest 已卸载。 */
   BrowserViewSuspendReady: "zcode:browser-view-suspend-ready",
   /** Renderer → Main：用户访问 suspended tab，请求恢复。 */
@@ -429,6 +459,22 @@ export type PlatformChannelName = (typeof PlatformChannels)[keyof typeof Platfor
 export const EmbeddedBrowserWebviewChannels = {
   /** Guest 无法继续消费某方向的滚动时，把二维 delta 转交自由尺寸画布。 */
   WheelBoundary: "zcode:embedded-browser-wheel-boundary",
+  /**
+   * 设计运行时的页面事件（docs/browser-use/2026-11-03-browser-design-mode-spec.md）：页面主世界
+   * `window.postMessage` 带命名空间的信封，preload 校验后把 `events` 数组转给宿主。
+   */
+  DesignEvents: "zcode:embedded-browser-design-events",
+  /**
+   * 页面上按下 Cmd/Ctrl + Z（Shift 为重做），且按键当下的目标不是可编辑元素：preload 隔离世界只认 isTrusted 的按键，
+   * 页面脚本发不出这条，设计工具据此撤销 / 重做源码写回。
+   */
+  DesignUndoShortcut: "zcode:embedded-browser-design-undo-shortcut",
+} as const;
+
+/** 设计运行时 postMessage 信封：`{ [messageKey]: 1, events: unknown[] }`；events 序列化后超过上限（UTF-8 字节）的消息 preload 直接丢弃。 */
+export const EMBEDDED_BROWSER_DESIGN_BRIDGE = {
+  messageKey: "__zcodeDesign",
+  maxMessageBytes: 256 * 1024,
 } as const;
 
 export interface EmbeddedBrowserWheelBoundaryPayload {
@@ -458,6 +504,8 @@ export const InternalChannels = {
   ScopedServicePort: "zcode:scoped-service-port",
   /** renderer → main：scoped MessagePort 已注册，可安全切换 attachment */
   ScopedServicePortReady: "zcode:scoped-service-port-ready",
+  /** main → renderer：ready ACK 到达时 route 已不存在，窗口释放这次 attachment 的登记 */
+  ScopedServicePortReleased: "zcode:scoped-service-port-released",
   /** main → renderer：在线 Source 的配置专用 MessagePort */
   SourceSettingsServicePort: "zcode:source-settings-service-port",
   /** preload → renderer：主进程已确认系统通知展示，renderer 可播放提示音 */
@@ -477,6 +525,8 @@ export const ZCODE_RPC_HOST_CAPABILITY_HEADER = "x-zcode-rpc-host-capability";
 
 /** main → host process 的初始化消息类型 */
 export const HostMessageTypes = {
+  /** Main → Host：仅经已绑定私有通道返回加解密结果，不含系统主密钥。 */
+  CredentialCipherResult: "credential-cipher-result",
   /** main → Host：准备手机项目目录，只复用已在线物理 Source。 */
   PrepareProjectWorkspace: "prepare-project-workspace",
   DatabaseStartupControl: "database-startup-control",
@@ -540,6 +590,8 @@ export const HostMessageTypes = {
 
 /** host process → main process 的反馈消息类型 */
 export const HostResponseTypes = {
+  /** Host → Main：对本 Host 绑定的凭据目录执行加解密。 */
+  CredentialCipherRequest: "credential-cipher-request",
   /** Host → main：已准入的目录与 scope，main 不解释项目业务。 */
   ProjectWorkspacePrepared: "project-workspace-prepared",
   DatabaseStartupState: "database-startup-state",
@@ -586,6 +638,8 @@ export const HostResponseTypes = {
   ResourceUsageSnapshotResult: "resource-usage-snapshot-result",
   /** host 内当前正在执行 prompt 的 agent session 数量变化 */
   AgentRunningTaskCountChanged: "agent-running-task-count-changed",
+  /** host 内阻止退出的事项变化（例如正在创建的 worktree） */
+  QuitBlockersChanged: "quit-blockers-changed",
   /** host 内指定 workspace 当前仍未 terminal 的 task 数量变化 */
   WorkspaceRunningTaskCountChanged: "workspace-running-task-count-changed",
   /** host → main：workspace generation 已可安全 attach */
@@ -671,6 +725,18 @@ export interface PlatformChannelMap {
   [PlatformChannels.PrintToPdf]: {
     request: void;
     response: PrintPageToPdfResult;
+  };
+  [PlatformChannels.MicrophoneAccess]: {
+    request: void;
+    response: MicrophoneAccessResult;
+  };
+  [PlatformChannels.OpenMicrophoneSettings]: {
+    request: MicrophoneSettingsTarget;
+    response: boolean;
+  };
+  [PlatformChannels.CaptureBrowserGuestPage]: {
+    request: CaptureBrowserGuestPageRequest;
+    response: CaptureBrowserGuestPageResult;
   };
   [PlatformChannels.RemoteConnectionLog]: {
     request: {
@@ -960,6 +1026,14 @@ export interface PlatformChannelMap {
     request: string;
     response: void;
   };
+  [PlatformChannels.ShowExtensionNotification]: {
+    request: ExtensionNotificationPayload;
+    response: NotificationsShowResult;
+  };
+  [PlatformChannels.ExtensionNotificationClick]: {
+    request: ExtensionNotificationClick;
+    response: void;
+  };
   [PlatformChannels.WindowFullscreenChanged]: {
     request: boolean;
     response: void;
@@ -1017,6 +1091,10 @@ export interface PlatformChannelMap {
   [PlatformChannels.BrowserViewReportResidency]: {
     request: BrowserViewResidencyReportPayload;
     response: void;
+  };
+  [PlatformChannels.BrowserViewPromoteDraftTabs]: {
+    request: BrowserViewPromoteDraftTabsRequest;
+    response: string[];
   };
   [PlatformChannels.BrowserViewSuspendReady]: {
     request: { tabId: string; generation: number };

@@ -109,7 +109,9 @@ function resolveAttachmentOverrides(
     (overrides?.get(IMcpSyncService.channelName) as IMcpSyncService | undefined) ??
     services.getOptional(IMcpSyncService);
   if (!mcpSync) return overrides;
-  return new Map(overrides).set(IMcpSyncService.channelName, scopeMcpSyncServiceForMobile(mcpSync));
+  const scoped = new Map(overrides);
+  if (mcpSync) scoped.set(IMcpSyncService.channelName, scopeMcpSyncServiceForMobile(mcpSync));
+  return scoped;
 }
 
 export function exposeWindowHostAttachmentServices(params: {
@@ -147,7 +149,13 @@ export function exposeWindowHostAttachmentServices(params: {
   params.services.exposeOnChannelServer(
     params.server,
     resolveAttachmentOverrides(params.services, params.clientMode, params.overrides),
-    resolveWindowHostServiceExposurePolicy(params.clientMode),
+    {
+      ...resolveWindowHostServiceExposurePolicy(params.clientMode),
+      // 只有本机桌面 MessagePort 具备恢复权限；远端、手机和未知 scope 均默认拒绝。
+      ...(params.clientMode === "desktop-continuous" && params.attachmentScope?.kind === "local"
+        ? { credentialStoreRecovery: "local-desktop" as const }
+        : {}),
+    },
   );
   if (params.clientMode === "web-remote-replayable") {
     const controllerServices =
@@ -250,6 +258,11 @@ export function createTerminalScope(
     async dispose({ id }) {
       if (!active || !terminals.has(id)) return;
       await release(id);
+    },
+    async listTerminalIdsUnderPath(params) {
+      assertActive();
+      // attachment 只能看到自己创建的终端，不能借查询枚举 Host 上其他 owner 的终端。
+      return (await base.listTerminalIdsUnderPath(params)).filter((id) => terminals.has(id));
     },
     onDynamicData(id) {
       assertActive(id);

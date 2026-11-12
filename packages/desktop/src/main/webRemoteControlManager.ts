@@ -46,14 +46,10 @@ import {
 } from "@zcode/shared";
 import {
   WebRemoteControlDeviceTransport,
+  type WebRemoteControlDeviceTransportAuth,
   type WebRemoteControlDeviceTransportOptions,
   type WebRemoteControlDeviceTransportState,
-  type WebRemoteControlDeviceTransportAuth,
 } from "./webRemoteControlTransport.js";
-// fork 净化：上游 import createWebRemoteControlV2Http / WebRemoteControlLogin / deviceStorage
-// （官方 V2 http/token 账号通道）与 MobilePushConnection（官方 HTTP 通知）不随入；
-// 本地 HMAC 通道用我方 relay contract 与 adapters。
-// mobileLogPull 为配对 WS payload 上的手机日志拉取编排（与鉴权通道无关），保留。
 import type { WebRemoteControlPreparedConnection } from "./web-remote-relay/index.js";
 import type { WebRemoteControlRelayAuthProvider } from "./web-remote-relay/index.js";
 import type { WebRemoteControlRelayAuthStorageProvider } from "./web-remote-relay/index.js";
@@ -193,6 +189,8 @@ interface WebRemoteControlManagerDependencies {
       resetPairing?: boolean,
     ): Promise<WebRemoteControlPreparedConnection>;
   };
+  /** 当前界面语言（Main 的 currentApplicationLocale），用于 ZCode endpoint 请求的 X-Client-Language。 */
+  getClientLanguage?: () => string | undefined;
   getEndpointUrls?: () => Promise<ZCodeEndpointUrls> | ZCodeEndpointUrls;
   relayWsUrl: string;
   mobileRemoteControlUrl: string;
@@ -381,11 +379,17 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
     shardTimeoutMs: dependencies.mobileLogPullShardTimeoutMs,
   });
 
-  // 同步修复：这些业务所有者在删除相邻遥测函数时被一起移除，启动与恢复仍依赖它们。
+  /**
+   * Bugfix: 401 只否定发起请求时用的 JWT。旧实现直接把在途旧 JWT 的 401 当成当前登录失效，
+   * 同账号刚重新登录（signed-in 已处理完）后旧请求才返回，远控就停在 auth-required，需要第二次登录通知。
+   * 这里由凭据读取方 currentLogin 核对：JWT 已被替换时转为可重试，transport 退避后用新 JWT 重新申请；
+   * 账号或 endpoint 变化仍由 currentLogin 抛出 auth-required，JWT 未变才保留原 401。
+   */
+  // OpenZWork(D003/D004)：官方 V2 设备注册与 MobilePush 通知通道不引入；远控走本地 HMAC。
   const availableTasksByWindowId = new Map<number, WebRemoteControlTaskTarget[]>();
-  // 修复原因：值语义是每窗口一份目录投影，误声明为数组导致既有 6 处访问错位。
   const legacyDirectoriesByRuntime = new Map<string, WebRemoteControlLegacyDirectory>();
   const pushedWorkspaceListSignaturesByRuntime = new Map<string, string>();
+  const pushedWorkspaceListSignaturesByWindowId = new Map<number, string>();
   let startupRestoreClaimed = false;
   let startupRestoreLoad: Promise<void> | undefined;
   let lifecycleRevision = 0;
@@ -929,6 +933,21 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       label: getPathLabel(runtime.workspacePath),
       kind: runtime.remoteSessionId || runtime.workspaceIdentity ? "remote" : "local",
     };
+  }
+
+  // Bugfix：远控可能以未连接的远端目标启动（重启恢复时远端还没重连）。runtime 的 remoteSessionId
+  // 以前只在 start 时写一次，远端之后连上也不更新：桌面弹窗按“不同目标”重启 device relay，
+  // initialViewState 也因目标不可 bridge 丢掉 initialTaskId。窗口快照是 workspace 连接身份的唯一来源，
+  // 目标在快照里时 runtime 跟随快照；目标不在快照里时没有新事实，保留原值。
+  function syncRuntimeRemoteSession(runtime: WindowControlRuntime): boolean {
+    if (!runtime.workspaceIdentity) return false;
+    const workspaceKey = resolveWebRemoteControlWorkspaceKey(runtime);
+    const workspace = availableWorkspacesByWindowId
+      .get(runtime.windowId)
+      ?.find((candidate) => resolveWebRemoteControlWorkspaceKey(candidate) === workspaceKey);
+    if (!workspace || workspace.remoteSessionId === runtime.remoteSessionId) return false;
+    runtime.remoteSessionId = workspace.remoteSessionId;
+    return true;
   }
 
   function getRuntimeStatusTarget(runtime: WindowControlRuntime): WebRemoteControlWorkspaceTarget {
@@ -1910,8 +1929,7 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             : undefined;
         let registeredAuth: { deviceSid: string; passHash: string } | undefined;
         const isCurrent = () =>
-          !signal.aborted && runtime !== undefined && runtimes.get(key) === runtime;
-        const readyPromise = new Promise<void>((resolve, reject) => {
+          !signal.aborted && runtime !== undefined && runtimes.get(key) === runtime;        const readyPromise = new Promise<void>((resolve, reject) => {
           let settled = false;
           const finish = (error?: Error) => {
             if (settled) return;
@@ -2013,7 +2031,9 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
             hasObservedSendReadyForPairing: false,
             pendingOutboundPayloads: [],
           };
-          runtimes.set(key, runtime);
+          runtimes.set(runtimeKeyFor(runtime), runtime);
+          // 启动前的 await 期间远端可能已连上，那次窗口同步还找不到 runtime，这里补读最新快照。
+          syncRuntimeRemoteSession(runtime);
           emitRuntimeStatus(runtime);
           transport.start();
         });
@@ -2275,16 +2295,16 @@ export function createWebRemoteControlManager(dependencies: WebRemoteControlMana
       const runtimeList = getWindowRuntimes(windowId);
       if (!runtimeList.length) return;
       if (directory) {
-        const runtime = runtimeList.find(
+        const matched = runtimeList.find(
           (candidate) => directory.windowControlSessionId === candidate.deviceSid,
         );
         if (
-          !runtime ||
-          runtime.connection?.settings.mode !== "official" ||
-          !["running", "connecting", "active"].includes(runtime.status)
-        )
-          return;
-        legacyDirectoriesByRuntime.set(runtimeKeyFor(runtime), directory);
+          matched &&
+          matched.connection?.settings.mode !== "official" &&
+          ["running", "connecting", "active"].includes(matched.status)
+        ) {
+          legacyDirectoriesByRuntime.set(runtimeKeyFor(matched), directory);
+        }
       }
       availableTasksByWindowId.set(windowId, tasks);
       for (const runtime of runtimeList) pushWorkspaceListUpdated(runtime);

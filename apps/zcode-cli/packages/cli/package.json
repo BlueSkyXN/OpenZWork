@@ -14,7 +14,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:desktop-agent": "node scripts/build.mjs --desktop-agent",
-    "build:sea": "pnpm --dir ../../../.. exec turbo --skip-infer --cwd apps/zcode-cli run build --filter=!@zcode/cli --force && pnpm build && node scripts/build-sea.mjs --all",
+    "build:sea": "pnpm --dir ../../../.. build:sea:prepare && node scripts/build-sea.mjs --all",
     "sea": "node scripts/build-sea.mjs",
     "upload:sea": "node scripts/upload-sea-smb.mjs",
     "clean": "node ../../scripts/clean-dist.mjs",
@@ -28,6 +28,7 @@
     "lint:fix": "oxlint --write src"
   },
   "dependencies": {
+    "@napi-rs/keyring": "2.1.2",
     "@zcode/adapters": "workspace:*",
     "@zcode/bootstrap": "workspace:*",
     "@zcode/contracts": "workspace:*",

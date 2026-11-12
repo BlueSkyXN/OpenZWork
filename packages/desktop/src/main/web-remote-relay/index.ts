@@ -13,8 +13,7 @@ export { createWebRemoteControlDirectGateway } from "./adapters/directGateway.js
 export {
   createWebRemoteControlConnectionProvider,
   createScopedWebRemoteControlAuthStorage,
-} from "./adapters/connectionProvider.js";
-export {
+} from "./adapters/connectionProvider.js";export {
   respondToWebRemoteControlActionRequest,
   type RunWebRemoteControlRendererAction,
   type WebRemoteControlActionRequestPayload,

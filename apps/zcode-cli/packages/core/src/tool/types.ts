@@ -1,14 +1,7 @@
-import type { UsageQueryPort } from "@zcode/contracts";
-import type { ToolSearchExecutionContext, ModelCallWrapper } from "@zcode/contracts";
-import type { McpToolUiDescriptor } from "@zcode/shared/mcp-apps";
-// ============================================================
-// Tool Types - Core tool types for registry and executor
-// ============================================================
-
 import type {
-  CollaborationMode,
   AutomationPort,
   BrowserControlPort,
+  CollaborationMode,
   CoordinatorResponsePort,
   DynamicWorkflowRunPort,
   DynamicWorkflowSnippetPort,
@@ -19,17 +12,20 @@ import type {
   HttpClientPort,
   ImageProcessorPort,
   JsonSchema,
+  Logger,
   Model,
+  ModelCallWrapper,
   ModelCatalogPort,
   ModelContentProtection,
   ModelMessageContent,
   ModelToolSideEffectScope,
-  TopicResourcePort,
   PdfDocumentPort,
   PermissionBrokerReasonSource,
+  PermissionCapabilityGroup,
   PermissionRuleBehavior,
   PermissionRuleValue,
   PermissionUpdate,
+  PluginDiscoveryPort,
   ProviderNativeToolSpec,
   RiskLevel,
   SessionEvent,
@@ -44,18 +40,30 @@ import type {
   ToolCancellationPolicy,
   ToolContractDeclaration,
   ToolExecutionMode,
+  ToolExecutionSpanWriter,
   ToolExecutionTelemetry,
   ToolResultBudgetStrategy,
   ToolResultDisplayPayload,
+  ToolSearchExecutionContext,
   ToolTimeoutPolicy,
+  TopicResourcePort,
   TraceContext,
   TraceId,
   TurnId,
+  UsageQueryPort,
   WorkflowEscalatePort,
   WorkflowPort,
   WorkflowSubmitPort,
+  WorkflowWebSearchBudgetPort,
 } from "@zcode/contracts";
-// 私有化：不引入上游 PermissionCapabilityGroup（仅服务已删的 CUA 能力）与 ToolExecutionSpanWriter（遥测写入接口）。
+import type { SessionControlBinding } from "./session-control/contract.js";
+import type { McpToolUiDescriptor } from "@zcode/shared/mcp-apps";
+// ============================================================
+// Tool Types - Core tool types for registry and executor
+// ============================================================
+
+// OpenZWork：v3.18.0 起 PermissionCapabilityGroup 已是通用权限能力分组（session-features 消费）、
+// ToolExecutionSpanWriter 为本地观测写入接口（DEC-002）；恢复引入。
 import type { RuntimeTaskRegistry } from "../runtime-task/registry.js";
 import type { SystemReminderSource } from "../system-reminder/source.js";
 import type {
@@ -141,6 +149,12 @@ export interface ToolExecutionContext {
   /**
    * 当前 Tool 的实时观测写入器。Handler 只能通过窄接口写事实，不能接触原始 OTel Span。
    */
+  telemetry?: ToolExecutionSpanWriter;
+  /**
+   * Runtime 日志。只给需要记录工具内部事实（如 Bash 子进程 pid）的 handler 用，
+   * 工具调用开始/结束的通用日志仍由 executor 写。
+   */
+  logger?: Logger;
   /** 当前工具调用是否属于 automation 派发轮；写工具 handler 用它做最终权限校验。 */
   automationTurn?: boolean;
   /** Host 准入注入的本轮 automationId；CronPauseSelf 唯一的暂停目标，不来自模型输入。 */
@@ -172,10 +186,15 @@ export interface ToolExecutionContext {
   workflowSubmitPort?: WorkflowSubmitPort;
   /** 工作流 actor 升级阻塞问题并等待主代理作答的端口；仅在 workflow actor 会话注入。 */
   workflowEscalatePort?: WorkflowEscalatePort;
+  /** 工作流 actor 每个 ask 的 WebSearch 预算；仅在 workflow actor 会话注入，缺席即无上限。 */
+  webSearchBudget?: WorkflowWebSearchBudgetPort;
   artifactStore?: ToolArtifactStorePort;
+  /** 仅可信根会话装配；子代理不继承此控制权。 */
+  sessionControl?: SessionControlBinding;
   automationPort?: AutomationPort;
   topicResourcePort?: TopicResourcePort;
   usageQueryPort?: UsageQueryPort;
+  pluginDiscoveryPort?: PluginDiscoveryPort;
   sessionStore?: SessionStorePort;
   sessionModePort?: SessionModePort;
   workflowPort?: WorkflowPort;
@@ -196,6 +215,8 @@ export interface ToolExecutionContext {
   workingDirectory: string;
   workspaceRoot: string;
   workspaceIdentity?: string;
+  /** 会话所属 workspace 的 key；受管 worktree 会话 = 项目，不等于 workingDirectory。 */
+  workspaceKey?: string;
   remoteSessionId?: string;
   clientMode?: "desktop-continuous" | "web-remote-replayable";
   deliveryKind?: "desktop-continuous" | "web-remote-replayable";
@@ -328,9 +349,22 @@ export interface ToolEntry extends ToolContractDeclaration {
    */
   resultArtifactContentType?: string;
   metadata: ToolMetadata;
+  permissionCapabilityGroup?: PermissionCapabilityGroup;
   executionMode?: ToolExecutionMode;
   providerNative?: ProviderNativeToolSpec;
   handler: ToolHandler;
+  /**
+   * 调用在 handler 返回之前超时或取消时，追加给模型的对账说明（规格 0.15）；返回 undefined 不追加。
+   *
+   * 只服务「请求可能已被受理、但回执没能送回」的写操作：它们靠回执把请求身份交给模型，回执送不回来，
+   * 模型就拿不到身份，只能另起新请求，于是重复执行。执行器只在超时与执行中取消这两种错误上调用它。
+   */
+  describeUnsettledCall?: (input: unknown, toolCallId: string) => string | undefined;
+  /**
+   * handler 抛错后追加给模型的补充文本，接在错误原文之后；返回 undefined 不追加。
+   * 只进入 `ToolExecutionResult.modelContent`，不改 `error.message`、工具错误事件和日志。
+   */
+  formatErrorModelContent?: (error: unknown) => string | undefined;
   /** 当前 turn 模型能力对 provider descriptor 与 executor schema 的同源投影。 */
   resolveModelContract?: (context: ToolExecutionModelContext) => {
     description?: string;

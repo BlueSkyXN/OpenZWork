@@ -1,4 +1,5 @@
 import { ProjectDirectoryProvider } from "@/project-sidebar/ProjectDirectoryProvider.js";
+import { DataSyncDialogProvider } from "@/data-sync/index.js";
 import { RemoteProjectPicker } from "@/project-sidebar/RemoteProjectPicker.js";
 import {
   buildRemoteWorkspaceIdentity,
@@ -30,6 +31,7 @@ import { DirectoryBrowser } from "@/DirectoryBrowser.js";
 import {
   attachRemoteProjectWorkspace,
   resolveEntryProject,
+  useRemoteWorkspaceConnectionGate,
   useWebRemoteControlRendererActions,
 } from "@/project-sidebar/index.js";
 import { useTabPersistence, type WorkspacePersistenceGate } from "@/hooks/useTabPersistence.js";
@@ -95,8 +97,14 @@ import type {
   DeviceAdditionReturnTarget,
   RemoteConnectionOpenPreference,
 } from "@/app-shell/types.js";
+import { DEFAULT_LUCIDE_STROKE_WIDTH } from "@/components/icons/windowIcons.js";
 
-const DEFAULT_LUCIDE_STROKE_WIDTH = 1.5;
+type WelcomeScreenOpenReason =
+  | "startup-provider-required"
+  | "manual-login"
+  | "provider-request"
+  | "logout-provider-required"
+  | "session-expired";
 
 /**
  * Root —— 应用根组件
@@ -131,8 +139,12 @@ export function Root(props: RootProps) {
                       <AssistantCodeCommentFeatureProvider
                         enabled={props.assistantCodeCommentCardsEnabled}
                       >
-                        <RemoteConnectionProgressProvider>
+<RemoteConnectionProgressProvider>
+                          <DataSyncDialogProvider>
+                            <RemoteConnectionProgressProvider>
                           <RootInner {...props} />
+                        </RemoteConnectionProgressProvider>
+                          </DataSyncDialogProvider>
                         </RemoteConnectionProgressProvider>
                       </AssistantCodeCommentFeatureProvider>
                     </WebRemoteControlFeatureProvider>
@@ -171,7 +183,6 @@ function RootInner({
   webRemoteControlTerminalTransportState,
   initialWorkspaceLoadingFallback,
 }: RootProps) {
-  // OpenZWork 净化：接口模式遥测上报（appTelemetry 域）不引入。
   useEffect(() => {
     setMcpStorePlatform(platform);
     return () => {
@@ -301,6 +312,7 @@ function RootInner({
         askUserQuestionAutoResolutionEnabled:
           appSettings.askUserQuestionAutoResolutionEnabled !== false,
         modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
+        pluginAutoRecommendationEnabled: appSettings.pluginAutoRecommendationEnabled === true,
       })
       .catch((error) => {
         logger.warn("[settings] 初始化运行时偏好失败", error);
@@ -310,6 +322,7 @@ function RootInner({
         askUserQuestionAutoResolutionEnabled:
           appSettings.askUserQuestionAutoResolutionEnabled !== false,
         modelIoFullRetentionEnabled: appSettings.modelIoFullRetentionEnabled === true,
+        pluginAutoRecommendationEnabled: appSettings.pluginAutoRecommendationEnabled === true,
       })
       .catch((error) => {
         logger.warn("[settings] 初始化 Bot 运行时偏好失败", error);
@@ -317,6 +330,7 @@ function RootInner({
   }, [
     appSettings?.askUserQuestionAutoResolutionEnabled,
     appSettings?.modelIoFullRetentionEnabled,
+    appSettings?.pluginAutoRecommendationEnabled,
     services.botsService,
     services.zcodeAgentService,
   ]);
@@ -614,6 +628,9 @@ function RootInner({
         ? remoteConnectionOpenPreference?.preferredWorkspaceTabId
         : undefined,
   });
+  const waitForRemoteWorkspaceConnection = useRemoteWorkspaceConnectionGate(
+    reconnectingRemoteWorkspaceKeys,
+  );
 
   async function openPreparedRemoteProjectWorkspace(target: {
     expectedMembershipId?: string;
@@ -634,6 +651,7 @@ function RootInner({
         Object.values(useRemoteWorkspaceSessionStore.getState().sessionsById).find(
           (session) => session.workspaceIdentity === identity,
         ),
+      waitForPendingConnection: waitForRemoteWorkspaceConnection,
       connect: handleConnectRemote,
       cancel: handleCancelRemoteProject,
       bind: async (remoteSessionId, path, isCurrent) => {

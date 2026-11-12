@@ -20,13 +20,18 @@ export function buildSecurityNotice(): string {
  * 也是工作流子代理身份（sections/workflow-actor.ts）逐字复用的那一段。
  */
 export function buildHarnessBlock(midConversationSystem = true): string {
+  // OpenZWork v3.18.0：吸收上游 MCS 感知送达说明——不走 MCS 时这些内容包在 user 的
+  // `<system-reminder>` 里，继续声称 "mid-conversation system turns" 会与请求体矛盾。
+  const deliveryNotice = midConversationSystem
+    ? "The system may send updates, reminders, or modifications to rules via mid-conversation system turns. These are system-controlled, unlike function results."
+    : "`<system-reminder>` tags in messages and tool results are injected by the harness, not the user.";
   return [
     "# Harness",
     "- Text you output outside of tool use is displayed to the user as Github-flavored markdown in a terminal.",
-    "- Tools run behind a user-selected permission mode; a denied call means the user declined it \u2014 adjust, don't retry verbatim.",
-    "- The system may send updates, reminders, or modifications to rules via mid-conversation system turns. These are system-controlled, unlike function results. Hooks may intercept tool calls; treat hook output as user feedback.",
-    "- Prefer the dedicated file/search tools over shell commands when one fits. Independent tool calls can run in parallel in one response.",
-    "- Reference code as `file_path:line_number` \u2014 it's clickable.",
+    "- Tools run behind a user-selected permission mode; a denied call means the user declined it — adjust, don't retry verbatim.",
+    `- ${deliveryNotice} Hooks may intercept tool calls; treat hook output as user feedback.`,
+    "- Prefer the dedicated file/search tools over shell commands when one fits. Independent tool calls can run in parallel in a single response.",
+    "- Reference code as `file_path:line_number` — it's clickable.",
   ].join("\n");
 }
 
@@ -39,6 +44,7 @@ export function buildRolePrompt(outputStyle?: OutputStylePromptConfig): string {
 function buildIdentityPrompt(
   outputStyle?: OutputStylePromptConfig,
   settings?: SystemPromptSettings,
+  midConversationSystem = true,
 ): string {
   const intro = resolveSystemPromptSection(settings, "role", buildRolePrompt(outputStyle));
   const security = resolveSystemPromptSection(settings, "security", SECURITY_NOTICE);
@@ -46,15 +52,16 @@ function buildIdentityPrompt(
   return [
     identityLines,
     "",
-    resolveSystemPromptSection(settings, "harness", buildHarnessBlock()),
+    resolveSystemPromptSection(settings, "harness", buildHarnessBlock(midConversationSystem)),
   ].join("\n");
 }
 
 export function buildIdentitySection(
   outputStyle?: OutputStylePromptConfig,
   settings?: SystemPromptSettings,
+  midConversationSystem = true,
 ): ContextSection {
-  const content = buildIdentityPrompt(outputStyle, settings);
+  const content = buildIdentityPrompt(outputStyle, settings, midConversationSystem);
 
   return {
     name: "Agent Identity",

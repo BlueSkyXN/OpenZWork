@@ -1,3 +1,4 @@
+import type { MessageId } from "@zcode/contracts";
 import type { SystemPromptPreviewBlock } from "@zcode/shared";
 import type { ToolSearchExecutionContext } from "@zcode/contracts";
 import { getTurnTools } from "./turn-tool-visibility.js";
@@ -17,11 +18,13 @@ import {
 } from "../deps.js";
 import type { ModelNetworkStatusEvent, ModelToolContract } from "../deps.js";
 import {
+  buildAssistantEntries,
   createRuntimeAssistantEntry,
   type RuntimeMessageEntry,
 } from "../../agent/message-history.js";
 import {
   createProviderToolRoundEntries,
+  orderedAssistantHistoryBlocks,
   providerToolRoundsCompactGroupKey,
   withCompactGroupKey,
 } from "../provider-tool-rounds/contract.js";
@@ -57,6 +60,7 @@ import {
 } from "./turn-stop.js";
 import { createStreamingToolCoordinator } from "./streaming-tool-coordinator.js";
 import { persistCancelledStreamSnapshot } from "./cancelled-stream-persistence.js";
+import { persistTextBlockParts } from "./message-persistence.js";
 import {
   beginStartPlanBusyAdmissionRetryAttempt,
   createStartPlanBusyAutoRetryExhaustedError,
@@ -111,9 +115,46 @@ type ModelStepOptions = {
 export async function runModelBackedTurnStep(
   this: AgentRuntimeInternal,
   state: RegularTurnLoopState,
-  options: ModelStepOptions,
+  options: {
+    drainedSteerForNextRequest?: DrainedPendingInputDiagnostics;
+    latestRealUserMessageIndex?: number;
+    messages: RunModelTextRequestOptions["messages"];
+    sourceEntries: readonly (RuntimeMessageEntry | undefined)[];
+    originEntries?: readonly (readonly RuntimeMessageEntry[])[];
+    // OpenZWork（F002）：系统提示词预览观测输入（与上游 originEntries 并存）。
+    promptBlocks?: SystemPromptPreviewBlock[];
+    promptComplete?: boolean;
+    recordedMessages: RunModelTextRequestOptions["messages"];
+    requestEntries: readonly RuntimeMessageEntry[];
+    tools: ModelToolContract[];
+    toolSearch?: ToolSearchExecutionContext;
+  },
 ): Promise<ModelStepResult> {
   const assistantMessageId = createMessageId();
+  // OpenZWork 净化（OZ-D001）：上游在此包一层 agentTelemetry step 观测；
+  // 该遥测域已裁剪，直接执行模型步，不引入观测包装。
+  return runModelBackedTurnStepImpl.call(this, state, options, assistantMessageId);
+}
+
+async function runModelBackedTurnStepImpl(
+  this: AgentRuntimeInternal,
+  state: RegularTurnLoopState,
+  options: {
+    drainedSteerForNextRequest?: DrainedPendingInputDiagnostics;
+    latestRealUserMessageIndex?: number;
+    messages: RunModelTextRequestOptions["messages"];
+    sourceEntries: readonly (RuntimeMessageEntry | undefined)[];
+    originEntries?: readonly (readonly RuntimeMessageEntry[])[];
+    // OpenZWork（F002）：系统提示词预览观测输入（与上游 originEntries 并存）。
+    promptBlocks?: SystemPromptPreviewBlock[];
+    promptComplete?: boolean;
+    recordedMessages: RunModelTextRequestOptions["messages"];
+    requestEntries: readonly RuntimeMessageEntry[];
+    tools: ModelToolContract[];
+    toolSearch?: ToolSearchExecutionContext;
+  },
+  assistantMessageId: MessageId,
+): Promise<ModelStepResult> {
   const model = state.model;
   const modelStepIndex = state.modelStepCount;
   const modelStartedAt = Date.now();
@@ -238,6 +279,7 @@ export async function runModelBackedTurnStep(
       latestRealUserMessageIndex: options.latestRealUserMessageIndex,
       messages: options.messages,
       sourceEntries: options.sourceEntries,
+      originEntries: options.originEntries,
       model,
       onStreamSnapshot: (snapshot) => {
         latestStreamSnapshot = snapshot;
@@ -371,6 +413,17 @@ export async function runModelBackedTurnStep(
       const modelRef = state.model
         ? { providerId: state.model.providerId, modelId: state.model.modelId }
         : undefined;
+      const orderedBlocks = orderedAssistantHistoryBlocks(latestStreamSnapshot);
+      if (orderedBlocks) {
+        // 有序快照与冷恢复共用 buildAssistantEntries；本地工具仍不进入（已知差异，见 spec）。
+        const entries = buildAssistantEntries({
+          blocks: orderedBlocks,
+          model: modelRef,
+          groupKey: providerToolRoundsCompactGroupKey(latestStreamSnapshot.providerToolRounds),
+        });
+        commitTurnRequestEntries(this, state.turnRequestState, entries);
+        if (entries.length > 0) recordModelHistoryRound(state);
+      }
       // 已收起的服务端内置工具轮在流中就已落盘，取消时同样要进入 live history。
       const providerRoundEntries = createProviderToolRoundEntries(
         latestStreamSnapshot.providerToolRounds,
@@ -378,7 +431,7 @@ export async function runModelBackedTurnStep(
         hasAssistantReasoningContent,
       );
       const hasCurrentRound = latestStreamSnapshot.text.length > 0 || reasoning.length > 0;
-      if (hasCurrentRound || providerRoundEntries.length > 0) {
+      if (!orderedBlocks && (hasCurrentRound || providerRoundEntries.length > 0)) {
         // 取消时 durable snapshot 已经持久化，但成功路径的 live history commit
         // 和 historyRoundCount 不会执行，导致当前进程与 cold resume 的 provider history 不一致。
         commitTurnRequestEntries(
@@ -485,6 +538,17 @@ export async function runModelBackedTurnStep(
     state.modelResponse = buildAutomationCreateLimitFallback(state.input);
   } else if (state.automationCreateLimitReached && state.modelResponse.trim().length === 0) {
     state.modelResponse = buildAutomationCreateLimitFallback(state.input);
+  }
+  if (result.textBlocks && state.modelResponse !== result.text) {
+    // fallback 替换了模型文字：只保留一个 fallback 文字块，序号排在已有块之后，
+    // 写库与 live history 都读 result.textBlocks，两边保持一致。
+    result.textBlocks = [
+      {
+        type: "text",
+        text: state.modelResponse,
+        blockIndex: maxResultBlockIndex(result) + 1,
+      },
+    ];
   }
   const usage = result.usage ?? {};
   const responseLength = state.modelResponse.length;
@@ -605,6 +669,7 @@ export async function runModelBackedTurnStep(
         messageID: assistantMessageId,
         type: "reasoning",
         text: reasoning.text,
+        ...(reasoning.blockIndex !== undefined ? { blockIndex: reasoning.blockIndex } : {}),
         metadata: reasoning.providerOptions,
         time: {
           start: modelStartedAt,
@@ -614,22 +679,16 @@ export async function runModelBackedTurnStep(
       modelTraceContext,
     );
   }
-  if (state.modelResponse.length > 0) {
-    await this.persistPart(
-      {
-        id: createPartId(),
-        sessionID: this.sessionId,
-        messageID: assistantMessageId,
-        type: "text",
-        text: state.modelResponse,
-        time: {
-          start: modelStartedAt,
-          end: Date.now(),
-        },
-      },
-      modelTraceContext,
-    );
-  }
+  await persistTextBlockParts(
+    this,
+    {
+      messageId: assistantMessageId,
+      textBlocks: result.textBlocks,
+      text: state.modelResponse,
+      time: { start: modelStartedAt, end: Date.now() },
+    },
+    modelTraceContext,
+  );
 
   const cacheHit =
     querySource === "main_turn" ? recordMainTurnCacheHitUsage(this, result.usage) : undefined;
@@ -779,6 +838,20 @@ export async function runModelBackedTurnStep(
     streamedToolResults,
   });
   return toolStepResult;
+}
+
+function maxResultBlockIndex(result: RuntimeModelTextResult): number {
+  const indices = [
+    ...(result.reasoning ?? []),
+    ...(result.textBlocks ?? []),
+    ...(result.toolCalls ?? []),
+    ...(result.providerToolRounds ?? []).flatMap((round) => [
+      ...round.reasoning,
+      ...(round.textBlocks ?? []),
+      round.toolCall,
+    ]),
+  ].map((block) => block.blockIndex ?? -1);
+  return Math.max(-1, ...indices);
 }
 
 function buildAutomationCreateLimitFallback(input: string): string {

@@ -22,15 +22,31 @@ import {
   resolveDesktopArtifactSuffix,
   resolveDesktopProductIdentity,
 } from "./scripts/desktop-product-identity.mjs";
-// fork 净化：上游在此引入 CUA helper（windows-cua-helper-assets）、computer-use
-// （sharp/koffi/computer-use-producer）与自动更新发布器（windows-update-publisher、
-// powershell-command）等 import，均属净化域，全部剥离；Windows 目标解析保留下方 fork 本地实现。
-const ELECTRON_BUILDER_ARCH = {
-  1: "x64",
-  3: "arm64",
-};
-// fork 净化：不导入 scripts/windows-cua-helper-assets.mjs 的官方 CUA helper 链，
-// Windows 目标解析保留 fork 本地实现（语义与上游一致，仅去掉 helper 打包耦合）。
+import {
+  isSharpRequiredByComputerUse,
+  verifyStagedSharp,
+} from "./scripts/sharp-package-assets.mjs";
+import { isRealComputerUseProducerInstalled } from "./scripts/computer-use-producer.mjs";
+import {
+  MAC_ELECTRON_LANGUAGES,
+  findMissingMacElectronLocales,
+  resolveMacElectronFrameworkResourcesDir,
+} from "./scripts/mac-electron-locales.mjs";
+import {
+  // 3.17.1 整合遗漏此导入会让三平台 afterPack 抛出 ReferenceError；保留最终包的 native 边界检查。
+  findDesktopNativePackageViolations,
+  createDesktopNativePackagePrunePatterns,
+  parseAsarListWithPackState,
+} from "./scripts/desktop-native-package-policy.mjs";
+import { replaceAppAsarFromStaging } from "./scripts/app-asar-repack.mjs";
+import {
+  patchNsisInstallSectionFile,
+  patchNsisInstallUtilFile,
+  restoreNsisInstallSectionFileSync,
+} from "./scripts/patch-nsis-install-section.mjs";
+
+const buildMetadata = getBuildMetadata();
+const desktopVersion = getDesktopVersion(buildMetadata.appVersion);
 function resolveElectronBuilderWindowsTarget({
   electronPlatformName,
   arch,
@@ -41,42 +57,13 @@ function resolveElectronBuilderWindowsTarget({
       `[electron-builder.config] context platform is not win32: ${String(electronPlatformName)}`,
     );
   }
-  const actualArch = ELECTRON_BUILDER_ARCH[arch];
-  if (!actualArch) {
-    throw new Error(
-      `[electron-builder.config] unsupported electron-builder Windows architecture: ${String(arch)}`,
-    );
-  }
-  const actualTarget = {
+  return {
     os: "win32",
-    arch: actualArch,
-    key: `win32-${actualArch}`,
+    arch,
+    key: `win32-${arch}`,
   };
-  if (
-    configuredTargetPlatform?.os !== actualTarget.os ||
-    configuredTargetPlatform?.arch !== actualTarget.arch ||
-    configuredTargetPlatform?.key !== actualTarget.key
-  ) {
-    throw new Error(
-      `[electron-builder.config] configured target ${String(configuredTargetPlatform?.key)} does not match electron-builder target ${actualTarget.key}`,
-    );
-  }
-  return actualTarget;
 }
-import {
-  // 3.17.1 整合遗漏此导入会让三平台 afterPack 抛出 ReferenceError；保留最终包的 native 边界检查。
-  findDesktopNativePackageViolations,
-  createDesktopNativePackagePrunePatterns,
-  parseAsarListWithPackState,
-} from "./scripts/desktop-native-package-policy.mjs";
-import { replaceAppAsarFromStaging } from "./scripts/app-asar-repack.mjs";
-import {
-  patchNsisInstallSectionFile,
-  restoreNsisInstallSectionFileSync,
-} from "./scripts/patch-nsis-install-section.mjs";
 
-const buildMetadata = getBuildMetadata();
-const desktopVersion = getDesktopVersion(buildMetadata.appVersion);
 const targetPlatform = getTargetPlatform();
 const builtinProviderConfig = await loadBuiltinProviderConfig();
 const desktopProductIdentity = resolveDesktopProductIdentity({
@@ -129,6 +116,8 @@ const REQUIRED_ASAR_RUNTIME_MODULES = [
   // 这与 yauzl 漏 pend 是同一类隐患——校验要求的模块必须有人负责补齐。node-forge 无子依赖，
   // 已在产物里时 afterPack 扫描会跳过它，不改变现有打包结果。
   "node-forge",
+  // Main 静态依赖 PKIjs；收集其完整闭包并校验产物，避免 pnpm 去重后漏包。
+  "pkijs",
   // 2.7.0 起 services 新增反馈日志压缩链路并引入 yazl；2.6.0 没有这条启动期依赖，
   // pnpm hoisted 布局下 yazl 可能进了 app.asar，但子依赖 buffer-crc32 没有稳定随包进入产物；
   // 这里显式以 yazl 作为闭包根注入，让递归依赖收集把 ZIP 打包链路所需依赖一起补齐。
@@ -208,6 +197,35 @@ function resolveElectronDownloadMirror(env = process.env) {
   return DEFAULT_ELECTRON_MIRROR;
 }
 
+function assertPackagedMacElectronLocales(context) {
+  if (context.electronPlatformName !== "darwin") return;
+  // .app 名以 electron-builder 的 productFilename 为准，和同文件 asar 路径同源。
+  const resourcesDir = resolveMacElectronFrameworkResourcesDir(
+    join(context.appOutDir, `${context.packager.appInfo.productFilename}.app`),
+  );
+  const missing = findMissingMacElectronLocales(resourcesDir);
+  if (missing.length > 0) {
+    // 语言包名对不上时 electron-builder 会静默删光所有 lproj，3.16.2 就因此丢了视频菜单文案。
+    throw new Error(
+      `Packaged ZCode is missing Electron locales: ${missing.map((l) => `${l}.lproj`).join(", ")} in ${resourcesDir}`,
+    );
+  }
+}
+
+function assertPackagedCuaHelper(context) {
+  if (targetPlatform.os !== "darwin" || !shouldPackageComputerUseHelper) return;
+  const appPath = join(
+    context.appOutDir,
+    `${desktopProductIdentity.productName}.app`,
+    "Contents",
+    "Resources",
+    "cua-helper",
+    HELPER_APP_NAME,
+  );
+  if (!existsSync(appPath)) {
+    throw new Error(`Packaged ZCode is missing bundled Computer Use Helper: ${appPath}`);
+  }
+}
 const shouldEnableWindowsVsign =
   process.platform === "win32" && process.env.ZCODE_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
@@ -534,6 +552,7 @@ export default {
     "!node_modules/react-dom/**",
   ],
   asarUnpack: [
+    "node_modules/@napi-rs/keyring-*/**/*.node",
     // node-pty 的 target prebuild 还包含 spawn-helper / winpty-agent.exe 等辅助可执行文件，
     // 整个目标目录必须 unpack；其他平台目录已由 files 规则裁剪。
     `node_modules/node-pty/prebuilds/${targetPlatform.key}/**`,
@@ -555,7 +574,6 @@ export default {
     const patchResult = await runTimedAsync("beforePack:patchNsisInstallSection", () =>
       patchNsisInstallSectionFile(nsisInstallSectionPath),
     );
-    nsisInstallSectionPatched = true;
     nsisInstallSectionOriginalSource = patchResult.originalSource;
     if (patchResult.changed) {
       // electron-builder 在当前进程内随后才会编译 NSIS；等整个构建进程退出后恢复 node_modules
@@ -567,6 +585,17 @@ export default {
         });
       });
     }
+    const installUtilPath = resolve(dirname(nsisInstallSectionPath), "include", "installUtil.nsh");
+    const utilPatch = await patchNsisInstallUtilFile(installUtilPath);
+    if (utilPatch.changed) {
+      process.once("exit", () => {
+        restoreNsisInstallSectionFileSync({
+          filePath: installUtilPath,
+          originalSource: utilPatch.originalSource,
+        });
+      });
+    }
+    nsisInstallSectionPatched = true;
   },
   afterExtract: async (context) => {
     // 修复：macOS 重命名阶段会删除归档顶层许可证，必须在 afterExtract 保留目标平台原文。
@@ -603,6 +632,7 @@ export default {
     runTimedSync("afterPack:assertPackagedNodePtyPrebuild", () =>
       assertPackagedNodePtyPrebuild(context),
     );
+    // OpenZWork 净化（OZ-D005）：上游的 CUA helper 打包断言与 finalize 不随入。
     if (actualWindowsTarget) {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),
@@ -612,6 +642,14 @@ export default {
   // fork 净化：上游新增 afterSign 钩子做 Windows 浏览器导入 helper 签名断言与
   // 自动更新发布器（writeWindowsUpdatePublisher）写入，属 CUA/updater 净化域，不随入。
   extraResources: [
+    ...(targetPlatform.os === "win32"
+      ? [
+          {
+            from: `bundled-tools/${targetPlatform.key}/runtime-host/zcode-runtime-host.exe`,
+            to: "tools/runtime-host/zcode-runtime-host.exe",
+          },
+        ]
+      : []),
     { from: resolve(workspaceRoot, noticesFileName), to: noticesFileName },
     {
       // 正式包不能依赖仓库目录读取社区、反馈等内置兜底配置。
@@ -702,12 +740,14 @@ export default {
     artifactName: buildDesktopArtifactName("mac"),
     // macOS 语言包是 en.lproj / zh_CN.lproj，沿用顶层 "en-US" 会一个都匹配不上被全部删掉，
     // Chromium 自带文案随之丢失（视频控件菜单只剩图标、播放速度子菜单空白）。
-    electronLanguages: ["en", "zh_CN"],
+    electronLanguages: MAC_ELECTRON_LANGUAGES,
     extendInfo: {
       NSAppleEventsUsageDescription: `${desktopProductIdentity.productName} needs Apple Events access to coordinate local automation workflows with user-approved desktop apps.`,
       // 缺失该 key 时 macOS 会静默拒绝 CoreBluetooth 枚举，内置浏览器 Web Bluetooth
       // 的设备选择器列表恒为空（实测 Chrome 有蓝牙隐私权限则正常）。
       NSBluetoothAlwaysUsageDescription: `${desktopProductIdentity.productName} needs Bluetooth access to list nearby devices when a website you open in the embedded browser requests one.`,
+      // 语音输入（docs/chat/composer-voice-input.md）：缺失该 key 时 askForMediaAccess 直接失败。
+      NSMicrophoneUsageDescription: `${desktopProductIdentity.productName} needs microphone access to turn your speech into text when you use voice input.`,
     },
     // 预签名脚本走的是原生 codesign，要求完整的 "Developer ID Application: ..." 身份串；
     // 但 electron-builder 的 mac.identity 在 26.x 下会拒绝带此前缀的名字。

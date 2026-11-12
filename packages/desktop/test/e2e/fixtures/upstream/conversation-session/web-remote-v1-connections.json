@@ -1,7 +1,7 @@
 {
   "version": 1,
   "caseName": "web-remote-v1-connections",
-  "spec": "./test/e2e/conversation-session/web-remote-v1-connections.test.ts",
+  "spec": "./test/e2e/conversation-session/remote/installation/web-remote-v1-connections.test.ts",
   "fixtures": [
     {
       "id": "v1-official-directory-title-rootless",
@@ -16,7 +16,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_V1_OFFICIAL_DIRECTORY_ROOTLESS"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_V1_OFFICIAL_DIRECTORY_ROOTLESS"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -41,7 +44,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_V1_OFFICIAL_DIRECTORY_ROOTED"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_V1_OFFICIAL_DIRECTORY_ROOTED"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -66,7 +72,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_V1_OFFICIAL"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_V1_OFFICIAL"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -91,8 +100,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_SLOW"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "lastUserMessageIncludes": [
+          "E2E_V1_OFFICIAL_SLOW"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -147,8 +161,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_QUEUED"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "lastUserMessageIncludes": [
+          "E2E_V1_OFFICIAL_QUEUED"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -173,8 +192,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_DIRECTORY_ROOTED"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "lastUserMessageIncludes": [
+          "E2E_V1_OFFICIAL_DIRECTORY_ROOTED"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -199,8 +223,13 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_V1_OFFICIAL_DIRECTORY_ROOTLESS"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "lastUserMessageIncludes": [
+          "E2E_V1_OFFICIAL_DIRECTORY_ROOTLESS"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,

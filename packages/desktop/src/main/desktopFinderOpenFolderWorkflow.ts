@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import type { Locale } from "@zcode/shared";
+import { toZhOrEnLocale, type Locale } from "@zcode/shared";
 
 const WORKFLOW_NAME = "Open in OpenZWork.workflow";
 const WORKFLOW_BUNDLE_ID = "work.openzwork.app.finder-open-workflow";
@@ -10,7 +10,11 @@ const WORKFLOW_VERSION = "6";
 const SERVICES_MENU_LABELS: Record<Locale, string> = {
   "zh-CN": "在 OpenZWork 中打开",
   "en-US": "Open in OpenZWork",
+  "ja-JP": "OpenZWork で開く",
+  "ru-RU": "Открыть в OpenZWork",
+  "ko-KR": "OpenZWork에서 열기",
 };
+
 
 const workflowScript = `first=""
 for item in "$@"; do
@@ -36,7 +40,7 @@ function escapeXml(value: string): string {
 }
 
 function getServicesMenuLabel(locale: Locale): string {
-  return SERVICES_MENU_LABELS[locale] ?? SERVICES_MENU_LABELS["en-US"];
+  return SERVICES_MENU_LABELS[toZhOrEnLocale(locale)];
 }
 
 function buildInfoPlist(locale: Locale): string {

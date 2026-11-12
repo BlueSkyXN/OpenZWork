@@ -1,11 +1,6 @@
-import {
-  telemetryInputOrigin,
-  backgroundBatchTelemetryAttributes,
-  TELEMETRY_INPUT_ORIGIN_ATTRIBUTE,
-} from "../src/runtime/methods/input-intent-persistence.js";
+import {telemetryInputOrigin, backgroundBatchTelemetryAttributes, TELEMETRY_INPUT_ORIGIN_ATTRIBUTE, buildPersistedConversationInputIntent} from "../src/runtime/methods/input-intent-persistence.js";
 import { describe, expect, it } from "vitest";
 import type { TurnInputIntentMetadata } from "@zcode/contracts";
-import { buildPersistedConversationInputIntent } from "../src/runtime/methods/input-intent-persistence.js";
 
 describe("persisted conversation input intent", () => {
   it.each(["build", "guarded", "yolo"] as const)(
@@ -51,6 +46,7 @@ describe("persisted conversation input intent", () => {
       clientId: "desktop-new",
       kind: "sendText",
       text: "original text",
+      source: { kind: "session", sessionId: "source-session", title: "来源会话" },
       admissionSeq: 4,
       admittedAt: 1000,
       requestedDelivery: "guide",
@@ -65,6 +61,7 @@ describe("persisted conversation input intent", () => {
     expect(buildPersistedConversationInputIntent("original text", intent, "drained")).toMatchObject(
       {
         sourceCommandId: "command-retry",
+        source: intent.source,
         provenance: {
           sourceCommandId: "command-original",
           queueItemId: "queue-original",

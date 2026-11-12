@@ -17,7 +17,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Loader2Icon } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { ProviderStatusIndicator } from "./ProviderStatusIndicator.js";
 
 import { TID_MODEL_PROVIDER_NAV_ITEM, testId } from "@zcode/shared/test-ids";
@@ -338,7 +338,7 @@ export function ModelProviderSectionNavigation({
                   presetLoading,
                   customLoading,
                 }) ? (
-                  <Loader2Icon className="size-3 animate-spin text-foreground-subtlest" />
+                  <LoaderCircle className="size-3 animate-spin text-foreground-subtlest" />
                 ) : null}
               </div>
 

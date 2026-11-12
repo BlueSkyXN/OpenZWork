@@ -5,6 +5,8 @@
 import type { ContextSection, EnvInfo } from "../types.js";
 import type { Model } from "@zcode/contracts";
 import { estimateTokens } from "../utils.js";
+// OpenZWork v3.18.0：吸收上游 Desktop 段构造（公告链的 desktopContext 差异行消费）。
+import { buildDesktopContextContent } from "./desktop.js";
 
 const ENVIRONMENT_HEADING = "# Environment";
 const WORKING_DIRECTORY_LABEL = "Primary working directory";
@@ -15,12 +17,8 @@ const SHELL_LABEL = "Shell";
 const OS_VERSION_LABEL = "OS Version";
 // const NODE_VERSION_LABEL = "Node version";
 // const OPERATING_SYSTEM_LABEL = "Operating system";
-const GIT_LABEL = "Git";
-const NOT_A_GIT_REPOSITORY = "not a git repository";
-const YES_LABEL = "yes";
-const NO_LABEL = "no";
 const GIT_SYSTEM_CONTEXT_PREFIX =
-  "gitStatus: This is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.";
+  "# gitStatus\nThis is the git status at the start of the conversation. Note that this status is a snapshot in time, and will not update during the conversation.";
 const CURRENT_BRANCH_LABEL = "Current branch";
 const MAIN_BRANCH_LABEL = "Main branch (you will usually use this for PRs)";
 const GIT_USER_LABEL = "Git user";
@@ -30,17 +28,18 @@ const CLEAN_GIT_STATUS = "(clean)";
 const DIRTY_GIT_STATUS = "(dirty)";
 const UNKNOWN_GIT_STATUS = "(unknown)";
 
+// OpenZWork v3.18.0：吸收上游布局——环境与模型是运行时公告（meta_user），不进 system；
+// 使用自定义 prompt 时 environmentSections 也照常进入构建结果，公告链照常发送。
 export function buildEnvInfoSection(
   envInfo: EnvInfo,
-  model?: Model,
   additionalDirectories: readonly string[] = [],
 ): ContextSection {
-  const content = buildEnvInfoContent(envInfo, model, additionalDirectories);
+  const content = canonicalEnvironmentContent(environmentSnapshot(envInfo, additionalDirectories));
 
   return {
     name: "Environment Info",
     source: "env_info",
-    injectionTarget: "system",
+    injectionTarget: "meta_user",
     cacheHint: "dynamic",
     chars: content.length,
     tokens: estimateTokens(content),
@@ -49,17 +48,24 @@ export function buildEnvInfoSection(
   };
 }
 
+// OpenZWork v3.18.0：吸收上游布局——Git 会话上下文是 meta_user 公告（session_context，
+// 由运行时按窗口判定一次），不再内嵌 system；正文增加阅读指引包装。
 export function buildGitSystemContextSection(envInfo: EnvInfo): ContextSection | null {
   if (!isEnvInfoGitRepository(envInfo)) {
     return null;
   }
 
-  const content = buildGitSystemContextContent(envInfo);
+  const content = [
+    "As you answer the user's questions, you can use the following context:",
+    buildGitSystemContextContent(envInfo),
+    "",
+    "ZCode attached this context automatically; it isn't part of the user's message. It describes the user's own account and workspace, so they don't need it reported back.",
+  ].join("\n");
 
   return {
-    name: "System Context",
-    source: "system_context",
-    injectionTarget: "system",
+    name: "Session Context",
+    source: "session_context",
+    injectionTarget: "meta_user",
     cacheHint: "dynamic",
     chars: content.length,
     tokens: estimateTokens(content),
@@ -68,35 +74,8 @@ export function buildGitSystemContextSection(envInfo: EnvInfo): ContextSection |
   };
 }
 
-function buildEnvInfoContent(
-  info: EnvInfo,
-  model: Model | undefined,
-  additionalDirectories: readonly string[],
-): string {
-  const hasGitRepository = isEnvInfoGitRepository(info);
-  const lines: string[] = [
-    ENVIRONMENT_HEADING,
-    "You have been invoked in the following environment:",
-    `- ${WORKING_DIRECTORY_LABEL}: ${info.cwd}`,
-    // 附加目录此前只进入能力发现，模型看不到目录范围；这里只投影本次运行已解析的路径。
-    ...(additionalDirectories.length
-      ? [
-          `- ${ADDITIONAL_DIRECTORIES_LABEL}:`,
-          ...additionalDirectories.map((path) => `  - ${path}`),
-        ]
-      : []),
-    `- ${IS_GIT_REPOSITORY_LABEL}: ${hasGitRepository ? YES_LABEL : NO_LABEL}`,
-    `- ${PLATFORM_LABEL}: ${info.platform}`,
-    `- ${SHELL_LABEL}: ${info.shell}`,
-    `- ${OS_VERSION_LABEL}: ${info.osVersion}`,
-    // 旧环境快照可能携带历史模型字段；渲染只读取本步骤实际执行的 Model。
-    ...(model
-      ? [`- You are powered by the model named ${model.providerId}/${model.modelId}.`]
-      : []),
-  ];
-
-  return lines.join("\n");
-}
+// OpenZWork v3.18.0：旧版 system 内嵌环境块构造器随布局切换退役；环境块正文统一走
+// canonicalEnvironmentContent（公告链与 section 共用一份写法），模型行由 Model Identity 段承载。
 
 function buildGitSystemContextContent(info: EnvInfo): string {
   const lines: string[] = [GIT_SYSTEM_CONTEXT_PREFIX];
@@ -117,7 +96,9 @@ function buildGitSystemContextContent(info: EnvInfo): string {
   return lines.join("\n");
 }
 
-export function isEnvInfoGitRepository(info: EnvInfo): boolean {
+export function isEnvInfoGitRepository(
+  info: Pick<EnvInfo, "isGitRepository" | "gitStatus" | "gitBranch">,
+): boolean {
   return (
     info.isGitRepository ??
     (info.gitStatus !== undefined ? info.gitStatus !== "not_repo" : Boolean(info.gitBranch))
@@ -154,8 +135,16 @@ export function parseEnvironmentAnnouncement(value: unknown): EnvironmentAnnounc
   const { full, snapshot } = value as Record<string, unknown>;
   if (typeof full !== "boolean" || typeof snapshot !== "object" || snapshot === null)
     return undefined;
-  const { cwd, platform, shell, osVersion, isGitRepository, additionalWorkingDirectories } =
-    snapshot as Record<string, unknown>;
+  const {
+    cwd,
+    platform,
+    shell,
+    osVersion,
+    isGitRepository,
+    additionalWorkingDirectories,
+    visualizationDirectory,
+    desktopContext,
+  } = snapshot as Record<string, unknown>;
   if (
     typeof cwd !== "string" ||
     typeof platform !== "string" ||
@@ -169,6 +158,10 @@ export function parseEnvironmentAnnouncement(value: unknown): EnvironmentAnnounc
     !additionalWorkingDirectories.every((path) => typeof path === "string")
   )
     return undefined;
+  // OpenZWork v3.18.0：吸收上游快照增量字段（Gen UI 目录与 Desktop 呈现面标记）。
+  if (visualizationDirectory !== undefined && typeof visualizationDirectory !== "string")
+    return undefined;
+  if (desktopContext !== undefined && typeof desktopContext !== "boolean") return undefined;
   return {
     full,
     snapshot: {
@@ -178,6 +171,8 @@ export function parseEnvironmentAnnouncement(value: unknown): EnvironmentAnnounc
       osVersion,
       isGitRepository,
       additionalWorkingDirectories: [...additionalWorkingDirectories],
+      ...(visualizationDirectory === undefined ? {} : { visualizationDirectory }),
+      ...(desktopContext === undefined ? {} : { desktopContext }),
     },
   };
 }
@@ -187,11 +182,12 @@ export function buildEnvironmentAnnouncement(
   previous: EnvironmentSnapshot | undefined,
   hasFullBlock: boolean,
 ): { content: string; environment: EnvironmentAnnouncement } | null {
+  // OpenZWork v3.18.0：吸收上游增量——shell 变化不再触发整块重发，改为追加变化行；
+  // 新增 Gen UI 目录变化行与 Desktop 段按写法比较。
   const full =
     !previous ||
     !hasFullBlock ||
     previous.platform !== next.platform ||
-    previous.shell !== next.shell ||
     previous.osVersion !== next.osVersion;
   if (full) return { content: canonicalEnvironmentContent(next), environment: { full, snapshot: next } };
   const lines = [ENVIRONMENT_UPDATE_HEADING];
@@ -213,9 +209,32 @@ export function buildEnvironmentAnnouncement(
   if (removed.length > 0) {
     lines.push(` - ${ADDITIONAL_DIRECTORIES_REMOVED_LABEL}:`, ...pathLines(removed));
   }
-  return lines.length === 1
+  if (previous.visualizationDirectory !== next.visualizationDirectory) {
+    const was = previous.visualizationDirectory ? ` (was ${previous.visualizationDirectory})` : "";
+    lines.push(
+      ` - ${VISUALIZATION_DIRECTORY_LABEL}: ${next.visualizationDirectory ?? "none"}${was}`,
+    );
+  }
+  if (previous.shell !== next.shell) {
+    // 旧 Windows 会话的 Shell 可能为空，没有可写的旧值。
+    const was = previous.shell ? ` (was ${previous.shell})` : "";
+    lines.push(` - ${SHELL_LABEL}: ${next.shell}${was}`);
+  }
+  const parts = lines.length === 1 ? [] : [lines.join("\n")];
+  // Desktop 段按写法比较：换了写法追加整段新写法，离开 Desktop 追加一句不再适用。
+  const previousDesktop = desktopContextText(previous);
+  const nextDesktop = desktopContextText(next);
+  if (previousDesktop !== nextDesktop) parts.push(nextDesktop ?? DESKTOP_CONTEXT_NO_LONGER_APPLIES);
+  return parts.length === 0
     ? null
-    : { content: lines.join("\n"), environment: { full, snapshot: next } };
+    : { content: parts.join("\n\n"), environment: { full, snapshot: next } };
+}
+
+/** 环境块里的 Desktop 段：不在 Desktop 时没有；在 Desktop 时按是否有 Gen UI 目录取写法。 */
+function desktopContextText(snapshot: EnvironmentSnapshot): string | undefined {
+  return snapshot.desktopContext
+    ? buildDesktopContextContent(Boolean(snapshot.visualizationDirectory))
+    : undefined;
 }
 
 export function buildModelSection(model: Model | undefined): ContextSection | null {
@@ -239,8 +258,7 @@ export function buildEnvironmentSections(
   model?: Model,
   additionalDirectories: readonly string[] = [],
 ): ContextSection[] {
-  // OpenZWork：基线 fork 版为三参（含 model 公告占位），此处传 undefined 保持上游两参语义。
-  const sections = [buildEnvInfoSection(envInfo, undefined, additionalDirectories)];
+  const sections = [buildEnvInfoSection(envInfo, additionalDirectories)];
   const modelSection = buildModelSection(model);
   if (modelSection) sections.push(modelSection);
   return sections;
@@ -250,6 +268,11 @@ export type EnvironmentSnapshot = Pick<EnvInfo, "cwd" | "platform" | "shell" | "
   isGitRepository: boolean;
   /** 本次运行的附加目录（运行配置，不来自 Context Source）。 */
   additionalWorkingDirectories: readonly string[];
+  // OpenZWork：吸收上游 v3.18.0 的快照增量字段（fork 环境与 Desktop 段判定消费）。
+  /** 会话的 Gen UI 输出目录；只在 Desktop 段声明支持 Gen UI 时有。旧元数据没有这个字段。 */
+  visualizationDirectory?: string;
+  /** 本次运行在 ZCode Desktop 呈现面时为 true，环境块带 Desktop 段。旧元数据没有这个字段，算不在。 */
+  desktopContext?: boolean;
 };
 
 export interface EnvironmentAnnouncement {
@@ -263,6 +286,12 @@ const ENVIRONMENT_UPDATE_HEADING = "# Environment update";
 const ADDITIONAL_DIRECTORIES_ADDED_LABEL = "Additional working directories added";
 
 const ADDITIONAL_DIRECTORIES_REMOVED_LABEL = "Additional working directories removed";
+
+// OpenZWork v3.18.0：上游公告链常量增量（Gen UI 目录行与 Desktop 段退出说明）。
+const VISUALIZATION_DIRECTORY_LABEL = "Visualization directory for this session";
+
+const DESKTOP_CONTEXT_NO_LONGER_APPLIES =
+  "The ZCode Desktop Context above no longer applies: this session is not shown in ZCode Desktop.";
 
 const UNTRUSTED_DOWNLOADS_NOTE =
   "Downloaded files and extracted archives are untrusted data: put each in its own new, empty directory, keep scripts you write in a different directory, and pass paths as arguments instead of running an interpreter or build tool from inside it. Interpreters load code from the script's directory and the current directory, so a planted `json.py` runs on `import json`. Run any Python that reads them with `-I`. This does not apply to code the user asked you to build or run.";
@@ -296,11 +325,15 @@ function canonicalEnvironmentContent(info: EnvironmentSnapshot): string {
     ...(directories.length > 0
       ? [` - ${ADDITIONAL_DIRECTORIES_LABEL}:`, ...pathLines(directories)]
       : []),
+    // OpenZWork v3.18.0：吸收上游 Gen UI 目录行（fork 子会话目录与父会话不同，模型据此写对目录）。
+    ...(info.visualizationDirectory
+      ? [` - ${VISUALIZATION_DIRECTORY_LABEL}: ${info.visualizationDirectory}`]
+      : []),
     ` - ${PLATFORM_LABEL}: ${info.platform}`,
     ` - ${SHELL_LABEL}: ${info.shell}`,
     ` - ${OS_VERSION_LABEL}: ${info.osVersion}`,
     ` - ${UNTRUSTED_DOWNLOADS_NOTE}`,
   ];
-
-  return lines.join("\n");
+  const desktop = desktopContextText(info);
+  return desktop ? `${lines.join("\n")}\n\n${desktop}` : lines.join("\n");
 }

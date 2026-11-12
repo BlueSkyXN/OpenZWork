@@ -23,6 +23,7 @@ import {
   FileIcon,
   GitBranchIcon,
   GoalIcon,
+  InfoIcon,
   PencilIcon,
   ThumbsDownIcon,
   ThumbsUpIcon,
@@ -35,8 +36,9 @@ import {
   TID_V4_EDIT_ATTACHMENT_REMOVE,
   TID_V4_EDIT_CANCEL,
   TID_V4_EDIT_INPUT,
-  TID_V4_EDIT_SUBMIT,
   TID_V4_EDIT_REWIND_WORKSPACE,
+  TID_V4_EDIT_SUBMIT,
+  TID_V4_EDIT_IN_COMPOSER_HINT,
   TID_V4_FEEDBACK_DISLIKE,
   TID_V4_FEEDBACK_LIKE,
   TID_V4_FORK,
@@ -47,9 +49,10 @@ import {
 import type {
   AttachmentRef,
   ArtifactRow,
-  AssistantTextRow,
   CommandAck,
+  AssistantTextRow,
   ConversationRow,
+  ConversationInputSource,
   ConversationRowTarget,
   HookInvocationRow,
   ReasoningRow,
@@ -57,6 +60,7 @@ import type {
   TimelineMarkerRow,
   ToolCallRow,
   TurnHeaderRow,
+  UnreadableConversationRow,
   UserInputRow,
   V4ConversationFileRewindPreviewResult,
 } from "@zcode/shared/zcode-protocol-v4";
@@ -84,6 +88,12 @@ import {
 import { cn } from "@/components/lib/utils.js";
 import { Button } from "@/components/ui/button.js";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
+import { resolveProviderLabel } from "@/lib/registryProviderView.js";
+import type { LexicalChatInputHandle } from "@/LexicalChatInput.js";
+import { ChatPromptEditor } from "@/prompt-editor/ChatPromptEditor.js";
+import { ConversationFileRewindDialog } from "@/v4/ConversationFileRewindDialog.js";
+import { formatModelChangeLabel } from "@/v4/composer/modelTriggerDisplay.js";
+import { composerEditSessionKey, useComposerEditStore } from "@/composer-edit-mode/index.js";
 import { WorkflowToolSummary } from "@/v4/WorkflowToolSummary.js";
 import {
   readWorkflowName,
@@ -99,6 +109,10 @@ import {
 import { ToolCallBlock } from "@/ToolCallBlocks.js";
 import { resolveWorkflowRunOpenToolCallId } from "@/v4/workflowRunCardJoin.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { requestTaskNavigation } from "@/store/zcodeSessionStoreNavigation.js";
+import { useOptionalProjectDirectory } from "@/project-sidebar/ProjectDirectoryProvider.js";
+import type { ProjectTask } from "@/project-sidebar/contract.js";
+import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { logger } from "@/logger.js";
 import { PluginUiModelContextChip, formatPluginDisplayName } from "@/plugin-ui/index.js";
 import type { AssistantPreviewCard } from "@/lib/assistantPreviewCards.js";
@@ -111,9 +125,6 @@ import {
   projectAssistantCodeComments,
   type AssistantCodeCommentCard,
 } from "@/lib/assistantCodeComment.js";
-import { resolveProviderLabel } from "@/lib/registryProviderView.js";
-import type { LexicalChatInputHandle } from "@/LexicalChatInput.js";
-import { ChatPromptEditor } from "@/prompt-editor/ChatPromptEditor.js";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import {
   isConversationReasoningRowVisible,
@@ -130,12 +141,15 @@ import { WebElementContextAttachmentChip } from "@/v4/composer/WebElementContext
 import { ConversationSelectionReferenceChip } from "@/v4/composer/ConversationSelectionReferenceChip.js";
 import { PptxElementReferenceChip } from "@/v4/composer/PptxElementReferenceChip.js";
 import { useOpenPptxElementReference } from "@/v4/composer/useOpenPptxElementReference.js";
-import { ConversationFileRewindDialog } from "@/v4/ConversationFileRewindDialog.js";
 import { BotGroupSourceLabel } from "@/v4/BotGroupSourceLabel.js";
 import { splitUserInputEpilogue } from "@/v4/ConversationUserInputEpilogue.js";
 import { ConversationHookDetailsAction } from "@/v4/ConversationHookDetailsAction.js";
-import { formatModelChangeLabel } from "@/v4/composer/modelTriggerDisplay.js";
 import { formatMessageTimeLabel } from "@/v4/messageTimeLabel.js";
+import {
+  ForkDestinationMenu,
+  WorktreeCreatedMarker,
+  useForkDestination,
+} from "@/managed-worktrees/index.js";
 
 function RowShell({
   rowId,
@@ -168,6 +182,106 @@ const ArtifactRowView = memo(function ArtifactRowView({ row }: { row: ArtifactRo
             {row.artifactType.toUpperCase()} · {row.sizeBytes} bytes
           </p>
         </div>
+      </div>
+    </RowShell>
+  );
+});
+
+type SessionSource = Extract<ConversationInputSource, { kind: "session" }>;
+
+// 目录树的 tasks 是数组，而来源只有 sessionId。每个提示每次渲染都遍历一遍会随任务规模线性变差，
+// 所以按数组引用缓存一份反查表：stabilizeProjectTree 只在内容真变化时换引用，缓存因此自动失效。
+const taskByIdCache = new WeakMap<object, Map<string, ProjectTask>>();
+function findTaskById(tasks: readonly ProjectTask[], taskId: string): ProjectTask | undefined {
+  let index = taskByIdCache.get(tasks);
+  if (!index) {
+    index = new Map<string, ProjectTask>();
+    for (const task of tasks) if (!index.has(task.taskId)) index.set(task.taskId, task);
+    taskByIdCache.set(tasks, index);
+  }
+  return index.get(taskId);
+}
+
+/**
+ * 跨会话发送的来源提示（规格 0.13）。
+ *
+ * 标题按「当前事实 → 旧快照 → 身份」回落：持久化载荷只带 sessionId，标题在这里按 id 解析。
+ * 旧数据里的 `source.title` 是发送那一刻的快照，多半停在 titleSource=default 档（= 首条提示词
+ * 原文），所以只作为解析不到时的兜底，不优先于当前标题。
+ *
+ * 解析用项目目录树——侧栏与 App 控制工具的 OpenSession 用的是同一份跨项目权威列表，
+ * 不另起一份任务索引。全量目录 Context 会随任务活动变化，但只有带会话来源的行才挂这个组件，
+ * 重渲染面限于这几条提示本身。
+ *
+ * 解析不到来源会话（已删除、嵌入 pane 没有目录 owner）时保持可读但不可点击：
+ * 跳转需要的 workspacePath 与标题同源，猜路径会把「打不开」变成「打开了别的会话」。
+ */
+const SessionSourceHint = memo(function SessionSourceHint({ source }: { source: SessionSource }) {
+  const { intl } = useZCodeIntl();
+  const directory = useOptionalProjectDirectory();
+  const task = directory ? findTaskById(directory.tree.tasks, source.sessionId) : undefined;
+  const workspacePath = task?.workspacePath;
+  const workspaceIdentity = task?.workspaceIdentity;
+  const handleOpen = useCallback(() => {
+    if (!workspacePath) return;
+    requestTaskNavigation({
+      taskId: source.sessionId,
+      workspacePath,
+      ...(workspaceIdentity ? { workspaceIdentity } : {}),
+    });
+  }, [source.sessionId, workspaceIdentity, workspacePath]);
+  const label = intl.formatMessage(
+    { id: "conversation.fromSession" },
+    { name: task?.title || source.title || source.sessionId },
+  );
+  return (
+    <div
+      className="mt-1 text-right text-ui-sm text-foreground-subtlest"
+      data-v4-user-input-source="session"
+      data-source-session-id={source.sessionId}
+    >
+      {workspacePath ? (
+        <button
+          type="button"
+          onClick={handleOpen}
+          title={intl.formatMessage({ id: "conversation.fromSession.open" })}
+          data-source-session-navigable="true"
+          className="rounded-sm underline-offset-2 hover:text-foreground-subtle hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          {label}
+        </button>
+      ) : (
+        label
+      )}
+    </div>
+  );
+});
+
+/**
+ * 「这一行读不懂」的占位行（10-protocol-spec §4.4.9，04-sync-and-recovery 封闭规则 13）。
+ *
+ * 为什么必须画出来而不是返回 null：静默跳过会让用户以为消息丢了，那比显示一条说明更失真。
+ * rowId 与 turnId 都保留，所以它就停在原来那条消息的位置上，前后文不会错位。
+ *
+ * 用中性信息语义而不是 warning 色：会话本身没出错，只是这个 build 认不出其中一行——与
+ * ConversationShareReadonlyTimeline 的「部分内容需要更新 ZCode 查看」是同一视觉语言。
+ */
+const UnreadableRowView = memo(function UnreadableRowView({
+  row,
+}: {
+  row: UnreadableConversationRow;
+}) {
+  const { intl } = useZCodeIntl();
+  return (
+    <RowShell rowId={row.rowId} className="px-4 py-1">
+      <div
+        data-conversation-unreadable-row={row.sourceKind}
+        className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 text-ui-xs text-foreground-subtle"
+      >
+        <InfoIcon aria-hidden="true" className="size-3.5 shrink-0" />
+        <span className="min-w-0 break-words">
+          {intl.formatMessage({ id: "conversation.row.unreadable" })}
+        </span>
       </div>
     </RowShell>
   );
@@ -208,7 +322,8 @@ const CopyRowAction = memo(function CopyRowAction({
   );
 });
 
-type UserInputEditHandler = (
+/** 请求在底部 composer 编辑该 user 行（docs/ui/composer-edit-mode.md）；提交由 composer 完成。 */
+export type UserInputEditHandler = (
   target: ConversationRowTarget,
   newText: string,
   attachments?: readonly AttachmentRef[],
@@ -253,7 +368,7 @@ export interface ConversationRowViewProps {
   onFeedbackChange?: AssistantFeedbackHandler;
   /** 协议兼容：上层仍可提供 retryTurn capability，但产品 UI 不渲染普通重试入口。 */
   onRetry?: (target: ConversationRowTarget) => void;
-  /** user 行的 edit 入口（editUserQuery command，用行内编辑文本替换该轮）。 */
+  /** user 行的 edit 入口：进入底部 composer 编辑态，提交走 editUserQuery。 */
   onEdit?: UserInputEditHandler;
   editWorkspaceRewindAvailability?: EditWorkspaceRewindAvailability;
   /** 嵌套在工具 Group 内时去掉 Reasoning 内容的重复左导线与缩进。 */
@@ -943,6 +1058,30 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
     }),
     [context.workspaceIdentity, context.workspacePath, bodyText, row.conversationQuotes],
   );
+  const editSessionKey = context.sessionId
+    ? composerEditSessionKey(
+        context.workspaceIdentity?.trim() || context.workspacePath,
+        context.sessionId,
+      )
+    : null;
+  // 只订阅本行是否为编辑目标，避免编辑态变化让整条时间线重渲染。
+  const editingInComposer = useComposerEditStore((state) => {
+    const target = editSessionKey ? state.sessions[editSessionKey]?.target : undefined;
+    return target?.kind === "userQuery" && target.rowId === row.rowId;
+  });
+  useEffect(() => {
+    if (!editingInComposer || !editSessionKey || !editWorkspaceRewindAvailability) return;
+    // 「对话 + 文件重置」的可用性只有本行知道；编辑期间同步给 composer 状态条。
+    useComposerEditStore.getState().update(editSessionKey, {
+      workspaceRewind: {
+        enabled: editWorkspaceRewindAvailability.enabled,
+        reason: editWorkspaceRewindAvailability.reason,
+      },
+    });
+  }, [editSessionKey, editWorkspaceRewindAvailability, editingInComposer]);
+  const handleFocusComposerEdit = useCallback(() => {
+    if (editSessionKey) useComposerEditStore.getState().requestFocus(editSessionKey);
+  }, [editSessionKey]);
   const [editing, setEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [draft, setDraft] = useState(row.text);
@@ -977,7 +1116,11 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
         });
   const visibleText = parsedPrompt.visibleContent;
   const codeCommentContexts = parsedPrompt.codeComments;
-  const webElementContexts = parsedPrompt.webElements;
+  // 设计稿元素在正文里已经画成 token，卡片只给普通网页「选择元素」的引用
+  const webElementContexts = useMemo(
+    () => parsedPrompt.webElements.filter((context) => !context.inline),
+    [parsedPrompt.webElements],
+  );
   const pptxElementReferences = parsedPrompt.pptxElements;
   const conversationSelections = parsedPrompt.conversationSelections;
   const hasAttachments = (row.attachments?.length ?? 0) > 0;
@@ -1370,6 +1513,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
         // 气泡保留 flex item 的自动宽度；宿主至少 624px 时再以 36rem 封顶并保留 48px 余量。
         <ConversationUserInputBubble
           text={visibleText}
+          imagePreviewContext={context}
           contentParts={row.botGroupSource?.contentParts}
           rowId={row.rowId}
           epilogue={epilogue}
@@ -1377,6 +1521,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           contextAttachmentCount={countComposerPromptContexts(parsedPrompt)}
         />
       ) : null}
+      {row.source?.kind === "session" && <SessionSourceHint source={row.source} />}
       {row.source?.kind === "genUi" && (
         <div
           className="mt-1 text-right text-ui-sm text-foreground-subtlest"
@@ -1385,10 +1530,12 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           {intl.formatMessage({ id: "genUi.from" }, { name: row.source.title || "Gen UI" })}
         </div>
       )}
-      {row.source?.kind === "pluginUi" ? (
-        // 插件 UI 代发：来源标记来自 CLI 持久化的 intent.source，不由 renderer 推断。
+      {row.source?.kind === "pluginUi" || row.source?.kind === "extension" ? (
+        // 插件 UI 或扩展（docs/plugins/extension-host.md §17.8）代发：来源标记来自 CLI 持久化的 intent.source，
+        // 不由 renderer 推断。两者同一句文案；名字取插件 id 的名字部分，手机没有扩展静态表，桌面与手机一致。
         <div
           data-v4-user-input-source={row.source.pluginId}
+          data-v4-user-input-source-kind={row.source.kind}
           className="mt-1 text-right text-ui-sm text-foreground-subtlest"
         >
           {intl.formatMessage(
@@ -1421,7 +1568,7 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           rowId={row.rowId}
           label={intl.formatMessage({ id: "chat.message.copy" })}
         />
-        {onEdit && row.entityId ? (
+        {onEdit && row.entityId && !editingInComposer ? (
           <MessageAction
             label={intl.formatMessage({ id: "chat.message.edit" })}
             tooltip={intl.formatMessage({ id: "chat.message.edit" })}
@@ -1432,6 +1579,17 @@ const SingleUserInputRowView = memo(function SingleUserInputRowView({
           </MessageAction>
         ) : null}
       </MessageActions>
+      {editingInComposer ? (
+        <button
+          type="button"
+          data-testid={testId(TID_V4_EDIT_IN_COMPOSER_HINT, String(row.rowId))}
+          className="mt-1 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-ui-sm text-foreground-subtle hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-border-focused"
+          onClick={handleFocusComposerEdit}
+        >
+          <PencilIcon className="size-3.5" aria-hidden />
+          {intl.formatMessage({ id: "chat.composerEdit.inComposerHint" })}
+        </button>
+      ) : null}
     </RowShell>
   );
 });
@@ -1540,6 +1698,11 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
       onFork?.({ rowId, entityId });
     }
   }, [entityId, onFork, rowId]);
+  const forkDestination = useForkDestination();
+  const forkToWorktree = forkDestination.forkToWorktree;
+  const handleForkToWorktree = useCallback(() => {
+    if (entityId && forkToWorktree) forkToWorktree({ rowId, entityId });
+  }, [entityId, forkToWorktree, rowId]);
   return (
     <MessageActions className={cn(className, "has-[[data-bot-group-delivery]]:opacity-100")}>
       <CopyRowAction
@@ -1589,15 +1752,27 @@ export const ConversationAssistantTextActions = memo(function ConversationAssist
         </>
       ) : null}
       {onFork && entityId ? (
-        <MessageAction
-          aria-label={forkLabel}
-          label={forkLabel}
-          tooltip={resolveTooltip(forkLabel)}
-          data-testid={testId(TID_V4_FORK, String(rowId))}
-          onClick={handleFork}
-        >
-          <TrendingUpDownIcon className="size-3.5" />
-        </MessageAction>
+        forkToWorktree ? (
+          <ForkDestinationMenu
+            rowId={rowId}
+            label={forkLabel}
+            tooltip={resolveTooltip(forkLabel)}
+            worktreeAvailable={forkDestination.available}
+            inWorktree={forkDestination.inWorktree}
+            onForkHere={handleFork}
+            onForkToWorktree={handleForkToWorktree}
+          />
+        ) : (
+          <MessageAction
+            aria-label={forkLabel}
+            label={forkLabel}
+            tooltip={resolveTooltip(forkLabel)}
+            data-testid={testId(TID_V4_FORK, String(rowId))}
+            onClick={handleFork}
+          >
+            <TrendingUpDownIcon className="size-3.5" />
+          </MessageAction>
+        )
       ) : null}
       {turnId && hookInvocations ? (
         <ConversationHookDetailsAction rows={hookInvocations} turnId={turnId} />
@@ -1895,12 +2070,7 @@ function MarkerDividerRow({
   );
 }
 
-/**
- * timelineMarker 行渲染：compact / forkNotice / goalVerify / modelChange 画成分隔线。
- * modelChange 可见化 = 裁决（切换后实际发送出去的轮才落分隔，含
- * model-only 续跑轮）；goalSet/forkCreated 已在投影层停产（隐形行清零），
- * retryNotice·checkpointRestored 无 UI，default 分支兜底不渲染。
- */
+/** timelineMarker 分隔线与分享只读页共用；这里只注入 App 宿主能力。 */
 const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
   row,
   context,
@@ -1911,6 +2081,9 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
   const { intl } = useZCodeIntl();
   const isOfficeMode = useIsOfficeMode();
   const marker = row.marker;
+  // "已创建 worktree"是可展开的输出块，不是分隔线（docs/git/worktree.md §3.3）。
+  // 它依赖 App 侧 managed-worktrees 能力，留在宿主这里，不进分享只读页共用的分隔线组件。
+  // rules-of-hooks：本组件下方有 useMemo，worktreeCreated 的提前返回必须放在全部 hook 之后。
   const modelSelectionView = context.modelSelectionView ?? null;
   const view = useMemo((): {
     icon: React.ReactNode;
@@ -2015,6 +2188,9 @@ const TimelineMarkerRowView = memo(function TimelineMarkerRowView({
     return () => onNavigate(marker.parentSessionId, marker.parentRowId);
   }, [marker, onNavigate]);
 
+  if (row.marker.type === "worktreeCreated") {
+    return <WorktreeCreatedMarker rowId={row.rowId} output={row.marker.output} />;
+  }
   if (!view) {
     return null;
   }
@@ -2358,6 +2534,8 @@ function ConversationRowViewImpl({
       return <SubagentRowView row={row} />;
     case "artifact":
       return <ArtifactRowView row={row} />;
+    case "unreadable":
+      return <UnreadableRowView row={row} />;
     default:
       return null;
   }

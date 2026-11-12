@@ -18,6 +18,12 @@ export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "claude-plugins-official";
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
+  // OpenZWork（T09）：文档族四件套随上游拆分补入（与 official-plugin-definitions 的
+  // defaultEnabled 机械对照）；上游的 image-search（OZ-D009）与 zcode-site 不引入。
+  "documents@zcode-plugins-official",
+  "pdf@zcode-plugins-official",
+  "presentations@zcode-plugins-official",
+  "spreadsheets@zcode-plugins-official",
   // node_repl 宿主：不进市场、不对用户露出，也不贡献任何 skill/command/subagent，但必须
   // 始终可用 —— node_repl 的注册门禁是「Browser Use 启用」，宿主自己不参与那个判断。
   // Browser Use 默认开着，宿主若默认关就等于它上来就没有宿主。

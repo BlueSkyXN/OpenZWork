@@ -329,7 +329,7 @@ settings 更新的文件锁覆盖完整的「重读最新配置 → 合并补丁
 
 main 启动目录选择、Renderer 恢复和草稿预热均使用 lastActiveWorkspace 已绑定的 cwd。新版的独立 conversation cwd 不再套用旧的“归一到 default”规则；只有没有活动选择时才准备默认空白入口。
 
-项目主目录失效时，侧栏标题置灰但可展开历史，新建与查看文件入口禁用；状态由所属 Host 实时派生，编辑入口保留。行为、刷新与新建复检边界见 [项目主目录可用性](../../project-primary-root-availability.md)。
+项目主目录失效时，侧栏标题置灰但可展开历史，新建与查看文件入口禁用；状态由所属 Host 实时派生，编辑入口保留。行为、刷新与新建复检边界见 [项目主目录可用性](../../project-primary-root-availability-openzwork.md)。
 
 ```text
 project / retained-entry mutation → SQLite commit → settings file lock

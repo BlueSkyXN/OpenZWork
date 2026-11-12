@@ -83,10 +83,8 @@ export interface WebRemoteControlTerminalTransportOptions {
   heartbeatIntervalMs?: number;
   heartbeatJitterMs?: number;
   heartbeatAckTimeoutMs?: number;
-  reconnectJitterMs?: number;
   healthCheckTimeoutMs?: number;
   desktopOfflineGraceMs?: number;
-  staleWaitingRecoveryMs?: number;
   waitingTimeoutMs?: number;
   authProvider: {
     calculateProof(

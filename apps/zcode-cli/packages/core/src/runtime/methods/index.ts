@@ -1,28 +1,12 @@
 import type { AgentRuntimeInternal } from "../internal.js";
 import { sampleModel } from "./sample-model.js";
-import { grantPermissionFullAccess } from "../permission-full-access.js";
+import { grantPermissionMode } from "../permission-full-access.js";
+import {getSessionShellSelection, initializeSessionShellEnvironmentIfNeeded, updateConfig, setExecutionState, getMode, getPlanEnabled, getSessionModelSelection, setSessionModelSelection, getProjectId, setWorkingDirectory, ensureSessionPersistedForExternalActivity, getActiveTurnInfo, getTools, invalidateToolCache, getToolRegistry, getToolExecutor, subscribeEvents, getSessionEventStore, notifyExternalChildSessionEvent, createChildClientPorts, getContextBuilder, getPendingPermissionRequests, getProjection, getSessionId} from "./config.js";
 import {
-  getSessionShellSelection,
-  initializeSessionShellEnvironmentIfNeeded,
-  updateConfig,
-  setExecutionState,
-} from "./config.js";
-import { getMode, getPlanEnabled } from "./config.js";
-import { getSessionModelSelection, setSessionModelSelection } from "./config.js";
-import { getProjectId } from "./config.js";
-import { setWorkingDirectory } from "./config.js";
-import { ensureSessionPersistedForExternalActivity } from "./config.js";
-import { getActiveTurnInfo } from "./config.js";
-import { getTools } from "./config.js";
-import { invalidateToolCache } from "./config.js";
-import { getToolRegistry } from "./config.js";
-import { getToolExecutor } from "./config.js";
-import { subscribeEvents } from "./config.js";
-import { getSessionEventStore } from "./config.js";
-import { notifyExternalChildSessionEvent } from "./config.js";
-import { createChildClientPorts } from "./config.js";
-import { getContextBuilder } from "./config.js";
-import { getPendingPermissionRequests } from "./config.js";
+  markContextCompositionChanged,
+  subscribeContextCompositionChanged,
+} from "../context-composition/state.js";
+import { getContextComposition } from "../context-composition/query.js";
 import { recordUserInputAutoResolutionUpdate } from "./interaction-auto-resolution.js";
 import { recordDynamicWorkflowRunProgress } from "./dynamic-workflow-run-progress.js";
 import { trackResumedDynamicWorkflowRun } from "./dynamic-workflow-run-track.js";
@@ -30,20 +14,7 @@ import { activateDynamicWorkflowTools } from "./dynamic-workflow-activation.js";
 import { recordSessionFeature } from "../session-features/contract.js";
 import { startSavedWorkflowRun } from "./dynamic-workflow-run-start.js";
 import { amendWorkflowRunSettings } from "./dynamic-workflow-run-settings.js";
-import { getProjection } from "./config.js";
-import { getSessionId } from "./config.js";
-import { enqueueDeferredInput } from "./steering.js";
-import { steerTurn } from "./steering.js";
-import { beginActiveTurn } from "./steering.js";
-import { reserveTurnStart } from "./steering.js";
-import { releaseTurnStart } from "./steering.js";
-import { finishActiveTurn } from "./steering.js";
-import { createPendingInputId } from "./steering.js";
-import { rejectTurnSteer } from "./steering.js";
-import { hasPendingInput } from "./steering.js";
-import { hasInlineGuidePendingInput } from "./steering.js";
-import { fallbackPendingGuidesToQueue } from "./steering.js";
-import { drainPendingInput } from "./steering.js";
+import {enqueueDeferredInput, steerTurn, beginActiveTurn, reserveTurnStart, releaseTurnStart, finishActiveTurn, createPendingInputId, rejectTurnSteer, hasPendingInput, hasInlineGuidePendingInput, fallbackPendingGuidesToQueue, drainPendingInput, clearAllPendingInputs, completeExternalQueueDrain, discardHeldPendingInputById, discardPendingInput, editPendingInputById, emitModeChanged, getPendingInputEditLock, lockPendingInputEdit, releasePendingInputEdit, emitModelSelected, markPendingInputPromoting, releasePendingInputReservation, removePendingInputById, reorderPendingInput, reservePendingInputById, setFollowupMode, setQueueAutoDrain, discardPersistedPendingSteerInputs} from "./steering.js";
 import {
   enqueueBackgroundTaskNotification,
   sealBackgroundTaskNotifications,
@@ -60,70 +31,19 @@ import {
   stopActiveForegroundExecution,
 } from "./runtime-command-queue.js";
 import { hasResidencyBlockingWork, trackResidencyBlockingWork } from "./residency.js";
-import {
-  clearAllPendingInputs,
-  completeExternalQueueDrain,
-  discardHeldPendingInputById,
-  discardPendingInput,
-  editPendingInputById,
-  emitModeChanged,
-  emitModelSelected,
-  markPendingInputPromoting,
-  releasePendingInputReservation,
-  removePendingInputById,
-  reorderPendingInput,
-  reservePendingInputById,
-  setFollowupMode,
-  setQueueAutoDrain,
-} from "./steering.js";
-import { discardPersistedPendingSteerInputs } from "./steering.js";
 import { createDefaultSubagentPort } from "./subagent.js";
-import { ensureContextInitialized, getSkillCatalog } from "./context.js";
-import { createContextBuilderFromSnapshot } from "./context.js";
-import { loadProjectMemoryRoot } from "./context.js";
-import { logMemorySkipped } from "./context.js";
+import {ensureContextInitialized, getSkillCatalog, createContextBuilderFromSnapshot, loadProjectMemoryRoot, logMemorySkipped, discoverSkillsForContext, createConfigOnlyContextSnapshot, initializeMessageHistoryFromContext, extractToolCallsFromResult, shouldStreamModelText} from "./context.js";
 import { injectPluginReferenceReminderFromTurn } from "./plugin-reference.js";
-import { initializeMcp, refreshMcpToolsIfChanged } from "./mcp.js";
-import { startMcpStartup } from "./mcp.js";
-import { discoverSkillsForContext } from "./context.js";
-import { createConfigOnlyContextSnapshot } from "./context.js";
-import { initializeMessageHistoryFromContext } from "./context.js";
-import { extractToolCallsFromResult } from "./context.js";
-import { shouldStreamModelText } from "./context.js";
+import {initializeMcp, refreshMcpToolsIfChanged, startMcpStartup} from "./mcp.js";
 import { runModelTextRequest } from "./model.js";
 import { emitModelStreamingEvent } from "./model-streaming-event.js";
-import { createModelStatusSink } from "./model-status.js";
-import { logModelNetworkStatus } from "./model-status.js";
-import { logContextUsageSnapshot } from "./context-usage.js";
-import { logModelRequestSteeringContext } from "./context-usage.js";
-import { buildModelMessageTailDiagnostics } from "./context-usage.js";
-import { buildContextUsageSnapshot } from "./context-usage.js";
-import { buildContextUsageBreakdownFromSnapshot } from "./context-usage.js";
-import { buildContextUsageCategory } from "./context-usage.js";
-import { buildToolUsageDetail } from "./context-usage.js";
-import { buildSkillUsageDetails } from "./context-usage.js";
-import { buildMessageRoleBreakdown } from "./context-usage.js";
-import { estimatedMetric } from "./context-usage.js";
-import { estimatedMetricFromKnown } from "./context-usage.js";
-import { sumMetrics } from "./context-usage.js";
-import { toScheduleState } from "./resume.js";
-import { resumeFromStore } from "./resume.js";
-import { readSessionTodosForContext } from "./resume.js";
-import { readSessionTargetForContext } from "./resume.js";
-import { injectTargetStateIntoMessageHistory } from "./resume.js";
-import { recordTargetChanged } from "./target.js";
+import {createModelStatusSink, logModelNetworkStatus} from "./model-status.js";
+import {logContextUsageSnapshot, logModelRequestSteeringContext, buildModelMessageTailDiagnostics, buildContextUsageSnapshot, buildContextUsageBreakdownFromSnapshot, buildContextUsageCategory, buildToolUsageDetail, buildSkillUsageDetails, buildMessageRoleBreakdown, estimatedMetric, estimatedMetricFromKnown, sumMetrics} from "./context-usage.js";
+import {toScheduleState, resumeFromStore, readSessionTodosForContext, readSessionTargetForContext, injectTargetStateIntoMessageHistory} from "./resume.js";
+import {recordTargetChanged, continueActiveTargetIfIdle, targetContinuationCandidate, accountTargetTurnCompletion, startTargetTurnAccounting, heartbeatTargetTurnAccounting, finishTargetTurnAccounting, pauseActiveTargetForCancellation, activatePausedTargetAfterResume} from "./target.js";
 import { recordGoalStateChangeReminder } from "./goal-state-reminder.js";
-import { continueActiveTargetIfIdle } from "./target.js";
 import { continueActiveTargetLoop } from "./target-continuation-loop.js";
-import { targetContinuationCandidate } from "./target.js";
-import { accountTargetTurnCompletion } from "./target.js";
-import { startTargetTurnAccounting } from "./target.js";
-import { heartbeatTargetTurnAccounting } from "./target.js";
-import { finishTargetTurnAccounting } from "./target.js";
-import { pauseActiveTargetForCancellation } from "./target.js";
-import { activatePausedTargetAfterResume } from "./target.js";
 import {
-  injectHookAdditionalContextIntoMessageHistory,
   runSessionStartHooks,
   runStopHooks,
   runUserPromptSubmitHooks,
@@ -131,68 +51,29 @@ import {
 } from "./hooks.js";
 import { executeTurn, executeTurnCommand } from "./turn.js";
 import { admitPrompt } from "./prompt-admission.js";
-import { executeManualCompact } from "./compact.js";
-import { autoCompactIfNeeded } from "./compact.js";
+import {executeManualCompact, autoCompactIfNeeded, reactiveCompactAfterContextExceeded} from "./compact.js";
 import { microcompactIfNeeded } from "./microcompact.js";
-import { reactiveCompactAfterContextExceeded } from "./compact.js";
 import { compactActiveConversation } from "./compact-active.js";
-import { executeRewindCommand } from "./rewind.js";
-import { formatRewindStatus } from "./rewind.js";
-import { rewindWorkspaceToCheckpoint } from "./rewind.js";
-import { finishUnavailableRewind } from "./rewind.js";
-import { rewindConversationToMessage } from "./rewind-message.js";
-import { rewindCascadeToMessage } from "./rewind-message.js";
-import { rewindToMessage } from "./rewind-message.js";
-import { rewindWorkspaceToMessage } from "./rewind-message.js";
-import { restoreWorkspaceCheckpointArtifact } from "./workspace-checkpoints.js";
-import { copySessionMessagesForFork } from "./workspace-checkpoints.js";
-import { listWorkspaceCheckpoints } from "./workspace-checkpoints.js";
-import { forkWorkspaceFromCheckpoint } from "./workspace-checkpoints.js";
+import {executeRewindCommand, formatRewindStatus, rewindWorkspaceToCheckpoint, finishUnavailableRewind} from "./rewind.js";
+import {rewindConversationToMessage, rewindCascadeToMessage, rewindToMessage, rewindWorkspaceToMessage} from "./rewind-message.js";
+import {restoreWorkspaceCheckpointArtifact, copySessionMessagesForFork, listWorkspaceCheckpoints, forkWorkspaceFromCheckpoint, loadCheckpointMessagePreviews} from "./workspace-checkpoints.js";
 import {
   createSelectionSideConversation,
   forkConversationBeforeMessage,
   forkStableConversationAtMessage,
 } from "./session-fork.js";
-import { loadCheckpointMessagePreviews } from "./workspace-checkpoints.js";
 import { applyWorkspaceFileRewind, previewWorkspaceFileRewind } from "./file-rewind.js";
-import { scheduleTools } from "./tools.js";
-import { executeTools } from "./tools.js";
-import { emitToolScheduledEvents } from "./tools.js";
-import { emitFileMutationCheckpoint } from "./tools.js";
-import { emitPermissionRequest } from "./tools.js";
-import { resolvePermission } from "./tools.js";
-import {
-  cancelBackgroundTask,
-  cancelRunningRuntimeBackgroundTasks,
-  hasRunningBackgroundTasks,
-  stopBackgroundTask,
-} from "./background.js";
-import { buildBackgroundTaskPayload } from "./background.js";
+import {scheduleTools, executeTools, emitToolScheduledEvents, emitFileMutationCheckpoint, emitPermissionRequest, resolvePermission} from "./tools.js";
+import {cancelBackgroundTask, cancelRunningRuntimeBackgroundTasks, hasRunningBackgroundTasks, stopBackgroundTask, buildBackgroundTaskPayload} from "./background.js";
 import { readBackgroundBashOutput } from "./background-bash-output.js";
-import { createEvent } from "./events.js";
-import { appendEvent } from "./events.js";
-import { notifyEventSinks } from "./events.js";
-import { ensureSessionPersisted, isSessionPersisted } from "./events.js";
-import { buildCompactTimelinePayload } from "./compact-persistence.js";
-import { persistCompactTimeline } from "./compact-persistence.js";
-import { finishCompactTimelineFailure } from "./compact-persistence.js";
-import { recoverInterruptedCompactTimelines } from "./compact-persistence.js";
-import { persistCompactSummary } from "./compact-persistence.js";
+import {createEvent, appendEvent, notifyEventSinks, ensureSessionPersisted, isSessionPersisted} from "./events.js";
+import {buildCompactTimelinePayload, persistCompactTimeline, finishCompactTimelineFailure, recoverInterruptedCompactTimelines, persistCompactSummary} from "./compact-persistence.js";
 import { recordExternalUserPrompt } from "./control-only-turn.js";
-import { persistUserPrompt } from "./message-persistence.js";
-import { persistSyntheticUserNotice } from "./message-persistence.js";
-import { persistSyntheticUserNoticeForSession } from "./message-persistence.js";
-import { persistAssistantMessage } from "./message-persistence.js";
-import { persistMessage } from "./message-persistence.js";
-import { persistPart } from "./message-persistence.js";
-import { rebuildProjection } from "./message-persistence.js";
-import { recordPendingModelChange } from "./timeline-persistence.js";
-import { persistPendingModelChangeTimeline } from "./timeline-persistence.js";
-import { persistAssistantTimelinePartForSession } from "./timeline-persistence.js";
+import {persistUserPrompt, persistSyntheticUserNotice, persistSyntheticUserNoticeForSession, persistAssistantMessage, persistMessage, persistPart, rebuildProjection} from "./message-persistence.js";
+import {persistPendingWorktreeCreationTimeline, recordPendingModelChange, recordPendingWorktreeCreation, persistPendingModelChangeTimeline, persistAssistantTimelinePartForSession} from "./timeline-persistence.js";
 import { generateWorkspaceText, testModelConnectivity } from "./workspace-generate-text.js";
 import { maybeStartGoalSummaryTitleGeneration } from "./goal-summary-title.js";
-import { maybeStartSessionTitleGenerationFromExternalInput } from "./session-title.js";
-import { setCustomSessionTitle } from "./session-title.js";
+import {maybeStartSessionTitleGenerationFromExternalInput, setCustomSessionTitle} from "./session-title.js";
 import {
   drainMemoryExtractions,
   isProjectMemoryEnabled,
@@ -204,7 +85,7 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   const proto = ctor.prototype as Record<string, unknown>;
   proto.updateConfig = updateConfig;
   proto.setExecutionState = setExecutionState;
-  proto.grantPermissionFullAccess = grantPermissionFullAccess;
+  proto.grantPermissionMode = grantPermissionMode;
   proto.initializeSessionShellEnvironmentIfNeeded = initializeSessionShellEnvironmentIfNeeded;
   proto.getSessionShellSelection = getSessionShellSelection;
   proto.getMode = getMode;
@@ -226,6 +107,9 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.getToolRegistry = getToolRegistry;
   proto.getToolExecutor = getToolExecutor;
   proto.subscribeEvents = subscribeEvents;
+  proto.getContextComposition = getContextComposition;
+  proto.subscribeContextCompositionChanged = subscribeContextCompositionChanged;
+  proto.markContextCompositionChanged = markContextCompositionChanged;
   proto.getSessionEventStore = getSessionEventStore;
   proto.notifyExternalChildSessionEvent = notifyExternalChildSessionEvent;
   proto.createChildClientPorts = createChildClientPorts;
@@ -271,6 +155,9 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.markPendingInputPromoting = markPendingInputPromoting;
   proto.releasePendingInputReservation = releasePendingInputReservation;
   proto.editPendingInputById = editPendingInputById;
+  proto.lockPendingInputEdit = lockPendingInputEdit;
+  proto.releasePendingInputEdit = releasePendingInputEdit;
+  proto.getPendingInputEditLock = getPendingInputEditLock;
   proto.reorderPendingInput = reorderPendingInput;
   proto.setQueueAutoDrain = setQueueAutoDrain;
   proto.completeExternalQueueDrain = completeExternalQueueDrain;
@@ -330,8 +217,6 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.runSessionStartHooks = runSessionStartHooks;
   proto.runUserPromptSubmitHooks = runUserPromptSubmitHooks;
   proto.runStopHooks = runStopHooks;
-  proto.injectHookAdditionalContextIntoMessageHistory =
-    injectHookAdditionalContextIntoMessageHistory;
   proto.shouldContinueAfterStopHooks = shouldContinueAfterStopHooks;
   proto.executeTurn = executeTurn;
   proto.admitPrompt = admitPrompt;
@@ -388,6 +273,8 @@ export function installAgentRuntimeMethods(ctor: AgentRuntimeConstructor): void 
   proto.persistCompactSummary = persistCompactSummary;
   proto.persistUserPrompt = persistUserPrompt;
   proto.recordPendingModelChange = recordPendingModelChange;
+  proto.recordPendingWorktreeCreation = recordPendingWorktreeCreation;
+  proto.persistPendingWorktreeCreationTimeline = persistPendingWorktreeCreationTimeline;
   proto.persistPendingModelChangeTimeline = persistPendingModelChangeTimeline;
   proto.persistSyntheticUserNotice = persistSyntheticUserNotice;
   proto.persistSyntheticUserNoticeForSession = persistSyntheticUserNoticeForSession;

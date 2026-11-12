@@ -18,10 +18,14 @@ import {
   type SeedReplayProviderModel,
 } from "./model-provider-restart-config.js";
 import { getV4DraftThoughtState } from "./v4-conversation.js";
+import { skipOccupationOnboardingIfPresent } from "./occupation-onboarding.js";
 
 const paths = getE2EAppDataPaths();
-const _SETTINGS_FILE = join(paths.appDataDir, "setting.json");
-const _CREDENTIALS_FILE = paths.credentialsFile;
+const SETTINGS_FILE = join(paths.appDataDir, "setting.json");
+const CREDENTIALS_FILE = paths.credentialsFile;
+// 设备级引导记录跟随 dataBaseDir，E2E 隔离 HOME 下即 appDataDir。
+const ONBOARDING_RECORD_FILE = join(paths.appDataDir, "onboarding-record.json");
+const BIGMODEL_E2E_USER_ID = "bigmodel-e2e-user";
 async function currentComposerRecentKey(): Promise<string> {
   return browser.execute((workspacePath) => {
     // 首次草稿可能尚无导航缓存；直接读当前草稿 owner，不能用旧 workspace 键或猜测项目。

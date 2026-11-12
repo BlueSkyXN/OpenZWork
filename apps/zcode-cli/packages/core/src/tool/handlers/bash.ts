@@ -12,6 +12,7 @@ import {
   CoreErrorType,
   SessionEventType,
   createCoreError,
+  traceContextToLogContext,
   type BashInput,
   type BashOutput,
   type BackgroundExecutionStartResult,
@@ -28,6 +29,7 @@ import {
   shouldInjectEmbeddedSearchBashPrelude,
   supportsEmbeddedSearchShellSelection,
 } from "../../embedded-search/shell.js";
+import type { CommandExecutionSpanWriter } from "@zcode/contracts";
 import type {
   ToolEntry,
   ToolExecutionContext,
@@ -129,6 +131,9 @@ export function resolveBashPermissionCapability(
     );
     if (match.status === "matched") return { userApprovalRule: match.ruleId };
   }
+  // Bash 会把 # 后的 CMD 命令当注释；异构 shell 不能用 Bash AST 证明整条命令只读。
+  const dialect = context?.bashShellSelection?.dialect;
+  if (dialect === "cmd" || dialect === "legacy-shell") return undefined;
   if (!command || !isRuntimeReadOnlyBashCommand(command, context)) return undefined;
   return {
     destructive: false,
@@ -179,7 +184,18 @@ async function executeBashHandler(
 
   const request = createExecutionRequest(parsed, context, timeoutPolicy);
   const progressTiming: BashProgressTiming = {};
-  const runOptions = createExecutionRunOptions(context, progressTiming);
+  const commandTelemetry = startBashCommandTelemetry(parsed, context);
+  const processLog: BashProcessLogState = {
+    runInBackground: parsed.run_in_background === true,
+    startedLogged: false,
+  };
+  const runOptions = createExecutionRunOptions(
+    context,
+    progressTiming,
+    commandTelemetry,
+    processLog,
+  );
+  // 闲时后台归属由 Runtime 生命周期保留，Bash 复用普通显式/超时后台路径。
   const eligibleForAutoBackground = isBashAutoBackgroundEligible(parsed);
   const backgroundLifecyclePort = supportsBashBackgroundLifecycle(executionPort)
     ? executionPort
@@ -219,6 +235,9 @@ async function executeBashHandler(
   const runResult = await runCommand();
 
   if (runResult.kind === "backgrounded") {
+    // explicit 模式下适配器在 started 事件里就提交后台，之后的事件（含这次 started）都不再转发；
+    // 启动日志在这里用 task.pid 补写。auto_on_timeout 已在前台阶段收到 started，不会重复写。
+    logBashProcessStarted(context, processLog, runResult.task.pid);
     // auto_on_timeout 只在超时计时器到点时转后台，所以这里记录的就是触发转后台的超时。
     const timedOutAfterMs =
       !parsed.run_in_background && eligibleForAutoBackground ? request.timeoutMs : undefined;
@@ -226,6 +245,7 @@ async function executeBashHandler(
   }
 
   const result = runResult.result;
+  logBashProcessExited(context, result);
   const cwdDecision = decideBashCwdPolicy({
     status: result.status,
     exitCode: result.exitCode,
@@ -292,10 +312,16 @@ function toBackgroundedBashOutput(
 function createExecutionRunOptions(
   context: ToolExecutionContext,
   progressTiming?: BashProgressTiming,
+  telemetry?: CommandExecutionSpanWriter,
+  processLog?: BashProcessLogState,
 ): ExecutionRunOptions {
   return {
     signal: context.abortSignal,
     onEvent: async (event) => {
+      if (event.type === "started") {
+        if (processLog) logBashProcessStarted(context, processLog, event.pid);
+        return;
+      }
       if (event.type !== "progress") return;
       if (
         progressTiming &&
@@ -307,6 +333,118 @@ function createExecutionRunOptions(
       await emitProgressEvent(event, context);
     },
   };
+}
+
+// 系统侧（任务管理器、Windows 资源耗尽事件）只认 pid；pid 与 toolCallId 同时落到 info 日志，
+// 才能把占用内存的进程对回具体的工具调用。Windows 上这是 bash.exe / cmd.exe 外壳的 pid，
+// 命令本身是它的子孙进程。后台命令的结束日志由 background task tracking 写。
+interface BashProcessLogState {
+  runInBackground: boolean;
+  /** started 事件和转后台补写两条入口共用，保证每次调用只写一条启动日志。 */
+  startedLogged: boolean;
+}
+
+function logBashProcessStarted(
+  context: ToolExecutionContext,
+  state: BashProcessLogState,
+  pid: number | undefined,
+): void {
+  if (state.startedLogged) return;
+  state.startedLogged = true;
+  context.logger?.info("Bash process started", {
+    ...(context.traceContext ? traceContextToLogContext(context.traceContext) : {}),
+    event: "tool.bash.process.started",
+    module: "core.tool.bash",
+    pid,
+    runInBackground: state.runInBackground,
+    toolCallId: context.toolCallId,
+  });
+}
+
+function logBashProcessExited(context: ToolExecutionContext, result: ExecutionResult): void {
+  context.logger?.info("Bash process exited", {
+    ...(context.traceContext ? traceContextToLogContext(context.traceContext) : {}),
+    cancelled: result.cancelled,
+    durationMs: result.durationMs,
+    event: "tool.bash.process.exited",
+    exitCode: result.exitCode,
+    module: "core.tool.bash",
+    pid: result.pid,
+    signal: result.signal,
+    executionStatus: result.status,
+    timedOut: result.timedOut,
+    toolCallId: context.toolCallId,
+  });
+}
+
+function startBashCommandTelemetry(
+  input: BashInput,
+  context: ToolExecutionContext,
+): CommandExecutionSpanWriter | undefined {
+  const identity = classifySafeCommandIdentity(input.command);
+  return context.telemetry?.startCommand({
+    category: commandCategory(input.command),
+    commandCount: identity.count ?? 0,
+    safeName: identity.name ?? "other",
+    sandboxed: input.dangerouslyDisableSandbox !== true,
+    shellKind: commandShellKind(context.bashShellSelection),
+  });
+}
+
+function finishBashCommandTelemetry(
+  telemetry: CommandExecutionSpanWriter | undefined,
+  result: ExecutionResult,
+): void {
+  if (!telemetry) return;
+  if (result.exitCode !== undefined) telemetry.setExitCode(result.exitCode);
+  if (result.signal) telemetry.setSignal(result.signal);
+  telemetry.setOutputBytes(result.stdout.bytes + result.stderr.bytes);
+  telemetry.setTimedOut(result.timedOut);
+
+  if (result.timedOut) {
+    telemetry.markTerminationRequested("timeout");
+    telemetry.finishFailed("timeout", "timeout", result.error);
+  } else if (result.cancelled) {
+    telemetry.markTerminationRequested("cancelled");
+    telemetry.finishCancelled("abort_signal");
+  } else if (result.status === "spawn_error") {
+    telemetry.finishFailed("spawn", "configuration", result.error);
+  } else if (result.status === "failed" && result.error) {
+    // 非零退出码是命令事实（例如 grep 未匹配），不等同于执行框架失败。
+    // 只有 Adapter 明确提供结构化 failure 时才污染 command failure rate。
+    telemetry.finishFailed("execute", "internal", result.error);
+  } else {
+    telemetry.finishCompleted();
+  }
+}
+
+function commandCategory(command: string): CommandCategory {
+  switch (classifyCommand(command)) {
+    case "git":
+      return "git";
+    case "package":
+      return "package_manager";
+    case "build":
+      return "build";
+    case "test":
+      return "test";
+    case "network":
+      return "network";
+    default:
+      return "shell";
+  }
+}
+
+function commandShellKind(
+  selection: ToolExecutionContext["bashShellSelection"],
+): CommandShellKind | undefined {
+  const displayName = selection?.display.name.toLowerCase();
+  if (displayName?.includes("powershell")) return "powershell";
+  if (displayName?.includes("zsh")) return "zsh";
+  if (displayName?.includes("bash")) return "bash";
+  if (selection?.dialect === "cmd") return "cmd";
+  if (selection?.dialect === "posix") return "sh";
+  return selection ? "other" : undefined;
 }
 
 async function emitProgressEvent(

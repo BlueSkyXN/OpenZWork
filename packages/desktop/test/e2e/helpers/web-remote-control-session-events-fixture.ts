@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 import type { ViteDevServer } from "vite";
 import { createLocalPairingRelay } from "./local-pairing-relay.js";
+// import { CODING_PLAN_TEAM_MOCK_BASE_URL_ENV } from "#e2e/helpers/coding-plan-mock-env";
 
 // 手机入口通过配对链接授权；当前产品没有账号登录凭据。
 export const WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS: Record<string, string> = {};
@@ -16,10 +17,13 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
   workspacePath: string;
   webUrl?: string;
   mobilePush?: boolean;
+  additionalRelayUsers?: Record<string, string>;
+  /** 上次启用远控时的 workspace；缺省为启动后会恢复的 workspacePath。 */
+  lastEnabledWorkspacePath?: string;
+  regionalDesktop?: boolean;
 }): Promise<() => Promise<void>> {
   void options.mobilePush;
-  const relay = await createLocalPairingRelay();
-  const envPatch = {
+  const relay = await createLocalPairingRelay();  const envPatch = {
     ...(options.webUrl ? { VITE_ZCODE_E2E_STORE_BRIDGE: "1" } : {}),
     ZCODE_ENDPOINT_ORIGIN: relay.httpUrl,
     ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL: relay.wsUrl,
@@ -36,8 +40,7 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
       for (const [key, value] of Object.entries(previous)) {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;
-      }
-    }
+      }    }
   };
   try {
     if (options.webUrl) {

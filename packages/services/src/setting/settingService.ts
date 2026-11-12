@@ -17,6 +17,8 @@ import {
   appSettingsSchema,
   formatLogPrefix,
   formatZodError,
+  hasLegacyIncompatiblePersistedLocale,
+  toPersistedSettingsLocaleFields,
   USER_INSTRUCTIONS_MAX_BYTES,
   USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
 } from "@zcode/shared";
@@ -193,8 +195,7 @@ async function writeSettingsAt(
   await mkdir(settingsDir, { recursive: true });
   if (!shouldCommit()) return;
   maybeThrowInjectedFsFault({ operation: "writeFile", path: settingsFile });
-  const persisted = settings;
-  await atomicWriteText(settingsFile, JSON.stringify(persisted, null, 2), {
+  const persisted = settings;  await atomicWriteText(settingsFile, JSON.stringify(persisted, null, 2), {
     useFileLock: false,
     beforeRename: () => {
       if (!shouldCommit()) {

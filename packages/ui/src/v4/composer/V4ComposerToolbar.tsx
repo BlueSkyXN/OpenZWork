@@ -17,6 +17,7 @@
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ZCODE_AGENT_PROVIDER, type ZCodeConfigOption, type ZCodeProvider } from "@zcode/shared";
+import { isApiKeyAccess } from "@zcode/provider";
 import { TID_V4_MODEL_CONFIG, TID_V4_COMPOSER_INPUT } from "@zcode/shared/test-ids";
 import type {
   SessionConfigState,
@@ -93,6 +94,9 @@ export interface V4ComposerToolbarProps {
   draftConfig?: Partial<SessionConfigState>;
   usage: SessionUsageState | null;
   disabled: boolean;
+  modelSelectionPending?: boolean;
+  onConnectionPendingChange?: (pending: boolean) => void;
+  /** Highspeed 卡生效时固定本轮模型，禁止通过选择器或快捷键切换。 */
   modelLocked?: boolean;
   /** 本次入场是否为 draw 新命中的激活动效；恢复入场的模型标识不做翻页。 */
   /** 模型翻页完成并静置后播放一次扫光。 */
@@ -109,7 +113,7 @@ export interface V4ComposerToolbarProps {
     model: string,
     sourceModel: ModelSelectionSource | null,
     reasoningLevel?: string,
-  ) => void;
+  ) => void | Promise<void>;
   /** 选中思考深度；modelContext 固定本次用户操作的目标模型。 */
   onSelectThought: (thought: string, modelContext: { provider: string; model: string }) => void;
   onSwitchMode: (mode: string) => void;
@@ -137,6 +141,8 @@ function V4ComposerModelControlsImpl({
   draftConfig,
   usage,
   disabled,
+  modelSelectionPending = false,
+  onConnectionPendingChange,
   modelLocked = false,
   activeConfigPicker,
   onConfigPickerOpenChange,
@@ -159,6 +165,12 @@ function V4ComposerModelControlsImpl({
   // Ctrl+M 热键：递增 openRequestKey 请求 ModelConfigSelect 打开菜单（旧 handleOpenModelMenuShortcut 语义）。
   const [modelMenuOpenRequestKey, setModelMenuOpenRequestKey] = useState(0);
   const [recoveryPending, setRecoveryPending] = useState(false);
+  // 独立档位下拉沿用选中关闭；合并模型面板不能因 ACK 等待收起，否则选模和滑杆都会中断。
+  useEffect(() => {
+    if (modelSelectionPending) {
+      onConfigPickerOpenChange("thought", false);
+    }
+  }, [modelSelectionPending, onConfigPickerOpenChange]);
   const handleOpenModelMenuShortcut = useCallback(() => {
     setModelMenuOpenRequestKey((current) => current + 1);
   }, []);
@@ -315,17 +327,20 @@ function V4ComposerModelControlsImpl({
       }
       if (decoded) {
         if (reasoningLevel !== undefined)
-          onSelectModel(decoded.providerId, decoded.modelName ?? "", sourceModel, reasoningLevel);
-        else onSelectModel(decoded.providerId, decoded.modelName ?? "", sourceModel);
-        return;
+          return onSelectModel(
+            decoded.providerId,
+            decoded.modelName ?? "",
+            sourceModel,
+            reasoningLevel,
+          );
+        else return onSelectModel(decoded.providerId, decoded.modelName ?? "", sourceModel);
       }
       const slashIndex = value.indexOf("/");
       if (slashIndex > 0) {
-        onSelectModel(value.slice(0, slashIndex), value.slice(slashIndex + 1), sourceModel);
-        return;
+        return onSelectModel(value.slice(0, slashIndex), value.slice(slashIndex + 1), sourceModel);
       }
       // 裸 model id：provider 沿用当前（宿主从最新投影补齐）。
-      onSelectModel("", value, sourceModel);
+      return onSelectModel("", value, sourceModel);
     },
     [
       configOptionsError,
@@ -452,8 +467,9 @@ function V4ComposerModelControlsImpl({
       : undefined;
   useToolbarShortcutBindings({
     hasAnyOption: Boolean(modelOption) || Boolean(thoughtOption),
-    toolbarDisabled: disabled || recoveryPending,
-    modelMenuDisabled: disabled || recoveryPending || modelLocked || !modelMenuVisible,
+    toolbarDisabled: disabled || recoveryPending || modelSelectionPending,
+    modelMenuDisabled:
+      disabled || recoveryPending || modelLocked || modelSelectionPending || !modelMenuVisible,
     modelOption,
     thoughtOption: thoughtOption ?? undefined,
     onOpenModelMenu: handleOpenModelMenuShortcut,
@@ -553,8 +569,10 @@ function V4ComposerModelControlsImpl({
           })}
           isItemLocked={isModelOptionLocked}
           onValueChange={handleModelValueChange}
+          pending={modelSelectionPending}
           disabled={
             disabled ||
+            modelSelectionPending ||
             recoveryPending ||
             modelLocked ||
             (modelSelectionState.status !== "ready" &&
@@ -582,12 +600,12 @@ function V4ComposerModelControlsImpl({
           indicatorClassName="block"
           option={thoughtOption}
           onValueChange={handleThoughtValueChange}
-          disabled={disabled || recoveryPending}
+          disabled={disabled || recoveryPending || modelSelectionPending}
           intl={intl}
           provider={displayProvider}
           shortcutLabel={thoughtShortcutLabel}
           triggerRef={thoughtTriggerRef}
-          open={activeConfigPicker === "thought"}
+          open={!modelSelectionPending && activeConfigPicker === "thought"}
           onOpenChange={handleThoughtPickerOpenChange}
           restoreFocusSelector={V4_COMPOSER_INPUT_SELECTOR}
         />
@@ -597,4 +615,3 @@ function V4ComposerModelControlsImpl({
 }
 
 export const V4ComposerModelControls = memo(V4ComposerModelControlsImpl);
-import { isApiKeyAccess } from "@zcode/provider";

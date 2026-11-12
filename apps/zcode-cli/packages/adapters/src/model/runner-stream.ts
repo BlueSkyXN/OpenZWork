@@ -89,7 +89,10 @@ import {
   providerRequestIdFromHeaders,
   readModelFailureErrorPhase,
 } from "./runner-telemetry.js";
-import { repairReasoningHistoryAfterSignatureRejection } from "./reasoning-history-normalization.js";
+import {
+  repairReasoningHistoryAfterSignatureRejection,
+  thinkingSignatureRejectionEvidence,
+} from "./reasoning-history-normalization.js";
 
 type StreamFailurePhase = "request_setup" | "response_body";
 
@@ -123,6 +126,11 @@ export async function* runStreamText(input: {
   const isDev = isDevelopmentModelIOEnv(input.env);
   let requestMessages = input.request.messages;
   let signatureRepairAttempted = false;
+  // 修复后的重试成功时，在 finish 上告诉 core 记 signedReasoningReset，之后的请求不再发被拒的块。
+  const withRepairMarker = (event: ModelStreamEvent): ModelStreamEvent =>
+    signatureRepairAttempted && event.type === "finish"
+      ? { ...event, signedReasoningReset: true }
+      : event;
   let emptyCompletionRetryCount = 0;
   // 不认识的业务码在本次请求里连续出现的次数：workflow 策略表据此停下，见 workflow-model-failure-policy.ts。
   // 每次失败（外层 catch 与流内错误块两条路径）都经它更新一次。
@@ -213,6 +221,11 @@ export async function* runStreamText(input: {
         nextAttempt: attempt + 1,
         requestId: statusContext.requestId,
         status: "waiting",
+        // 记下 provider 原文和 prefix 不一致响应头：写明哪一块、因为什么被拒，排查前缀变化时用。
+        ...thinkingSignatureRejectionEvidence(
+          error,
+          sanitizeModelNetworkHeaders(getResponseHeaders(unwrapRetryError(error))),
+        ),
       });
       return true;
     };
@@ -414,7 +427,7 @@ export async function* runStreamText(input: {
             emittedRetryBoundaryEvent = true;
             for (const pendingEvent of pendingRetrySafeEvents.splice(0)) {
               emittedEvent = true;
-              yield pendingEvent;
+              yield withRepairMarker(pendingEvent);
             }
             // 无 raw message-block provenance 的 provider 可能直接给完整 tool-call。
             // 先把 inferred block stop 交给隐藏 collector，再传播校验错误，避免 HTTP 重放。
@@ -478,7 +491,7 @@ export async function* runStreamText(input: {
             const observation = observeVisibleStreamEvent(visibleEvent, Date.now() - startedAt);
             await publishVisibleMilestones(observation);
             streamOutputCommitted = streamOutputCommitted || observation.outputCommitted;
-            yield visibleEvent;
+            yield withRepairMarker(visibleEvent);
           }
         }
       }
@@ -501,7 +514,7 @@ export async function* runStreamText(input: {
           const observation = observeVisibleStreamEvent(visibleEvent, Date.now() - startedAt);
           await publishVisibleMilestones(observation);
           streamOutputCommitted = streamOutputCommitted || observation.outputCommitted;
-          yield visibleEvent;
+          yield withRepairMarker(visibleEvent);
         }
       }
 
@@ -510,7 +523,7 @@ export async function* runStreamText(input: {
         const observation = observeVisibleStreamEvent(pendingEvent, Date.now() - startedAt);
         await publishVisibleMilestones(observation);
         streamOutputCommitted = streamOutputCommitted || observation.outputCommitted;
-        yield pendingEvent;
+        yield withRepairMarker(pendingEvent);
       }
 
       if (!emittedError) {

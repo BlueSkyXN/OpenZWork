@@ -285,6 +285,14 @@ export class PermissionService {
       );
     }
 
+    if (capability.permission?.confirmationHandledByTool) {
+      return this.allow(
+        context,
+        capability,
+        "tool.explicitConfirmation",
+        "Tool collects explicit confirmation before mutations",
+      );
+    }
     if (context.mode === "edit") {
       return this.checkEditMode(context, capability);
     }
@@ -692,6 +700,7 @@ export class PermissionService {
         toolCapability?.needsApproval ??
         !this.isReadOnlyTool(context.toolName),
       permissionName: toolCapability?.permission?.permission,
+      permission: toolCapability?.permission,
     };
   }
 
@@ -744,6 +753,7 @@ export class PermissionService {
 }
 
 interface ResolvedPermissionCapability {
+  permission?: ToolPermissionSpec;
   allowedInPlanMode: boolean;
   alwaysAsk: boolean;
   readOnly: boolean;

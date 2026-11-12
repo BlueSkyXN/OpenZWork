@@ -3,6 +3,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConversationSnapshot } from "@zcode/shared/zcode-protocol-v4";
 import { ZCodeIntlProvider } from "@/i18n/IntlProvider.js";
+// OpenZWork v3.18.0：useResolvedRemoteWorkspaceSessionId 链路新增 useTabStore 依赖，
+// 渲染 harness 需要包一层 TabStoreProvider。
+import { TabStoreProvider } from "@/store/TabStoreProvider.js";
 import type { PendingCommandEntry } from "@/v4/pendingCommandRegistry.js";
 import { SessionPane, type SessionPaneProps } from "@/v4/SessionPane.js";
 import { useModelSelectionServiceView } from "@/hooks/useModelSelectionView.js";
@@ -152,6 +155,25 @@ const servicesMock = vi.hoisted(() => ({
   },
   zcodeTaskService: {
     restartWorkspaceProcess: vi.fn(),
+    // OpenZWork v3.18.0：useWorkspaceActiveTaskState 订阅动态工作区事件刷新任务列表。
+    onDynamicWorkspaceEvent: vi.fn(() => vi.fn(() => ({ dispose: vi.fn() }))),
+    getWorkspaceTaskList: vi.fn(async () => ({ tasks: [], revision: 0 })),
+    getTaskMeta: vi.fn(async () => null),
+    getWorkspaceRoots: vi.fn(async () => []),
+  },
+  // OpenZWork v3.18.0：useSubagents 链路经 useServices 取 subagentsService
+  // （getSubagentsContextKey 以服务实例为 WeakMap key），harness 提供最小实例。
+  subagentsService: {
+    list: vi.fn(async () => ({ agents: [], diagnostics: [] })),
+    onDidChange: vi.fn(() => ({ dispose: vi.fn() })),
+  },
+  // useWorkspaceActiveTaskState 经 useBaseWorkspaceServices 订阅 broadcast 频道。
+  broadcastService: {
+    onMessage: vi.fn(() => ({ dispose: vi.fn() })),
+  },
+  // AgentRuntimeExitBanner 订阅 agent 退出事件（可选链容错，但需服务存在）。
+  zcodeAgentService: {
+    onAgentRuntimeExited: vi.fn(() => ({ dispose: vi.fn() })),
   },
 }));
 
@@ -463,6 +485,8 @@ function createMinimalElement(ownerDocument: Document, tagName = "div") {
 function installMinimalDom() {
   const documentMock = {
     addEventListener: () => {},
+    // OpenZWork v3.18.0：IntlProvider 会同步 document.documentElement.lang。
+    documentElement: { lang: "" },
     createElement: (tagName: string) =>
       createMinimalElement(documentMock as unknown as Document, tagName),
     createTextNode: (nodeValue: string) => ({
@@ -508,12 +532,16 @@ function renderPane(
       createElement(
         ZCodeIntlProvider,
         { initialLocale: "zh-CN" },
-        createElement(SessionPane, {
-          paneId: "workspace-main",
-          sessionId,
-          workspacePath: "/workspace",
-          ...props,
-        }),
+        createElement(
+          TabStoreProvider,
+          null,
+          createElement(SessionPane, {
+            paneId: "workspace-main",
+            sessionId,
+            workspacePath: "/workspace",
+            ...props,
+          }),
+        ),
       ),
     );
   });

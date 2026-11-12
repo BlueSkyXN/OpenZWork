@@ -1,12 +1,7 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 /* eslint-disable max-lines -- subagent runtime wiring 集中衔接 child runtime、tool pool、权限、MCP 与 activity watchdog，拆分需单独迁移。 */
-import {
-  RESPOND_TO_COORDINATOR_TOOL_NAME,
-  SESSION_ENTRY_MODEL_SELECTION,
-  parseModelSelectionValue,
-} from "@zcode/contracts";
+import {RESPOND_TO_COORDINATOR_TOOL_NAME, SESSION_ENTRY_MODEL_SELECTION, parseModelSelectionValue, inheritPermissionMode, restrictPermissionMode} from "@zcode/contracts";
 import type { CollaborationMode, SubagentRunOptions, WorkspaceId } from "@zcode/contracts";
-import { inheritPermissionMode, restrictPermissionMode } from "@zcode/contracts";
 import {
   defaultScheduler,
   buildExploreAllowedTools,
@@ -55,6 +50,7 @@ import { createCoordinatorResponsePort } from "../../subagent/coordinator-respon
 import { isStaleBranchRuntimeTaskEvent } from "./runtime-command-generation.js";
 import { loadPersistentAgentMemory } from "../../subagent/persistent-memory.js";
 import { persistRuntimeModelSelection, sameModelSelection } from "./turn-model.js";
+import { noteSubagentActivity } from "../../subagent/background-stall.js";
 
 export function createDefaultSubagentPort(
   this: AgentRuntimeInternal,
@@ -274,6 +270,7 @@ export function createDefaultSubagentPort(
             workspaceIdentity:
               this.config.workspaceIdentity ??
               (this.config.memory?.workspaceIdentity?.trim() as WorkspaceId | undefined),
+            workspaceKey: this.config.workspaceKey,
             // 执行模型只由 child Active Model 投影进 Context；envInfo 不保存第二份模型事实。
             envInfo: childRuntimeEnvInfo,
             // Explore 子运行时之前没有继承主会话的流式配置，Protocol 桌面端虽已默认
@@ -369,6 +366,14 @@ export function createDefaultSubagentPort(
             eventSink: {
               onSessionEvent: async (event) => {
                 request.reportActivity?.();
+                request.onEvent?.(event);
+                noteSubagentActivity(
+                  this.runtimeTaskRegistry,
+                  request.agentId,
+                  event,
+                  Date.now(),
+                  request.executionId,
+                );
                 // child runtime 的事件已经按 childSessionId 落库，但旧链路只把
                 // 少量工具事件镜像给 parent sink，导致 UI 订阅 child topic 后只能拿到打开时
                 // 的 hydration，后续流式内容不会更新。raw child event 只通知父 runtime 的

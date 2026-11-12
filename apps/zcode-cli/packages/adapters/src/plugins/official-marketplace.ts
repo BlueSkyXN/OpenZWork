@@ -1,4 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { withFileLock } from "@zcode/shared/node";
+import { writePluginTextIfChanged } from "./helpers.js";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
 
@@ -155,4 +157,94 @@ function writeJsonFileSync(path: string, value: unknown): void {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// OpenZWork：追加上游 v3.18.0 的异步分区接口（marketplace 刷新链消费），与上方 fork 同步接口并存。
+export async function writeBundledOfficialMarketplacePartition(input: {
+  manifest: Record<string, unknown>;
+  storageRoot: string;
+}): Promise<Record<string, unknown>> {
+  assertOfficialManifest(input.manifest);
+  return publishPartition(input.storageRoot, async () => {
+    await writeJsonFile(partitionPath(input.storageRoot, BUNDLED_PARTITION_FILE), {
+      manifest: input.manifest,
+      version: 1,
+    } satisfies BundledMarketplacePartition);
+  });
+}
+
+export async function writeCdnOfficialMarketplacePartition(input: {
+  manifest: Record<string, unknown>;
+  storageRoot: string;
+}): Promise<Record<string, unknown>> {
+  assertOfficialManifest(input.manifest);
+  return publishPartition(input.storageRoot, async () => {
+    await writeJsonFile(partitionPath(input.storageRoot, CDN_PARTITION_FILE), input.manifest);
+  });
+}
+
+export async function loadBundledOfficialPluginRoots(
+  storageRoot: string,
+): Promise<string[] | undefined> {
+  const bundledPartition = await readBundledPartition(storageRoot);
+  if (!bundledPartition) return undefined;
+
+  const officialCacheRoot = resolve(storageRoot, "cache", ZCODE_OFFICIAL_PLUGIN_MARKETPLACE);
+  return readPluginEntries(bundledPartition.manifest).flatMap((plugin) => {
+    const name = readPluginName(plugin);
+    const cachePath = typeof plugin.cachePath === "string" ? plugin.cachePath : undefined;
+    if (!name || !cachePath) return [];
+
+    const pluginCacheRoot = resolve(officialCacheRoot, name);
+    const resolvedCachePath = resolve(cachePath);
+    if (
+      !isStrictDescendant(officialCacheRoot, pluginCacheRoot) ||
+      !isStrictDescendant(pluginCacheRoot, resolvedCachePath)
+    ) {
+      return [];
+    }
+    return [resolvedCachePath];
+  });
+}
+
+// OpenZWork：上游异步分区接口的内部支撑（锁内发布）。
+async function publishPartition(
+  storageRoot: string,
+  write: () => Promise<void>,
+): Promise<Record<string, unknown>> {
+  // 启动 seed 和商店刷新可来自不同进程。分片写入和合并发布同属一次事务，
+  // 使用目录文件本身的锁，不递归获取外层安装锁，也不会锁住普通查询。
+  return withFileLock(partitionPath(storageRoot, MERGED_MARKETPLACE_FILE), async () => {
+    await write();
+    return rebuildOfficialMarketplace(storageRoot);
+  });
+}
+
+
+async function writeJsonFile(path: string, value: unknown): Promise<void> {
+  await writePluginTextIfChanged(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+async function rebuildOfficialMarketplace(storageRoot: string): Promise<Record<string, unknown>> {
+  const bundledPartition = await readBundledPartition(storageRoot);
+  const cdnManifest = await readJsonRecord(partitionPath(storageRoot, CDN_PARTITION_FILE));
+  const bundledManifest = bundledPartition?.manifest;
+  const cdnPlugins = readPluginEntries(cdnManifest);
+  const cdnPluginNames = new Set(cdnPlugins.map(readPluginName).filter(isDefined));
+  const bundledPlugins = readPluginEntries(bundledManifest).filter((plugin) => {
+    const name = readPluginName(plugin);
+    return name !== undefined && !cdnPluginNames.has(name);
+  });
+
+  // 内置插件与 CDN 插件曾使用两个 marketplace id，UI 会把内置市场当成
+  // 无 source 的独立市场并在刷新时报 not found。两个分片必须独立持久化后再合并，
+  // 否则应用启动时的 seed 会覆盖 CDN 目录，或 CDN 刷新会覆盖内置目录。同名时以
+  // 可刷新的 CDN 市场条目为准，但只过滤合并目录，不删除应用内置缓存。
+  const merged = {
+    ...(bundledManifest ?? {}),
+    ...(cdnManifest ?? {}),
+    name: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
+    plugins: [...cdnPlugins, ...bundledPlugins],
+  };
+  await writeJsonFile(partitionPath(storageRoot, MERGED_MARKETPLACE_FILE), merged);
+  return merged;
 }

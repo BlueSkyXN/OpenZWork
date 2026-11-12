@@ -1,7 +1,7 @@
 {
   "version": 1,
   "caseName": "conversation-session-config-and-multisession",
-  "spec": "./test/e2e/conversation-session/conversation-session-config-and-multisession.test.ts",
+  "spec": "./test/e2e/conversation-session/runtime/conversation-session-config-and-multisession.test.ts",
   "fixtures": [
     {
       "id": "title-e2e_multi_session_",
@@ -9,7 +9,10 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "bodyIncludes": ["Generate a concise title", "E2E_MULTI_SESSION_"]
+        "bodyIncludes": [
+          "Generate a concise title",
+          "E2E_MULTI_SESSION_"
+        ]
       },
       "response": {
         "statusCode": 200,
@@ -32,9 +35,17 @@
       "match": {
         "method": "POST",
         "pathIncludes": "/messages",
-        "lastUserMessageIncludes": ["E2E_SLOW_STREAM", "E2E_MULTI_SESSION_"],
-        "bodyIncludes": ["E2E_SLOW_STREAM"],
-        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+        "lastUserMessageIncludes": [
+          "E2E_SLOW_STREAM",
+          "E2E_MULTI_SESSION_"
+        ],
+        "bodyIncludes": [
+          "E2E_SLOW_STREAM"
+        ],
+        "bodyExcludes": [
+          "Generate a concise title",
+          "CRITICAL: Respond with TEXT ONLY"
+        ]
       },
       "response": {
         "statusCode": 200,

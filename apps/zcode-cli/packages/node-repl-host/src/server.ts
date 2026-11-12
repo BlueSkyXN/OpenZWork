@@ -135,7 +135,7 @@ export function createInProcessNodeReplExecutor(): NodeReplExecutor {
             session: () => session,
           }),
         }),
-      restrictProcess: true,
+      protectProtocolStdio: true,
     });
     activeCall = {
       generation,

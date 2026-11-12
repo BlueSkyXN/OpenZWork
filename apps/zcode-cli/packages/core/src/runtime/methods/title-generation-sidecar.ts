@@ -110,6 +110,7 @@ export async function generateTitleCandidate(
   ]);
   titleAbortSignal.throwIfAborted();
   const modelStartedAt = Date.now();
+  using statusSink = this.createModelStatusSink(modelTraceContext, events);
   const invocationContext = {
     metadata: traceContextToLogContext(modelTraceContext),
     modelCall: {
@@ -119,7 +120,7 @@ export async function generateTitleCandidate(
           : ("session_title_generation" as const),
       reasoning: { requestedLevel: model.options.reasoningLevel },
     },
-    statusSink: this.createModelStatusSink(modelTraceContext, events),
+    statusSink,
     traceContext: modelTraceContext,
     refreshRuntimeHeadersBeforeAttempt: createRefreshRuntimeHeadersBeforeModelAttempt(this, {
       abortSignal: titleAbortSignal,

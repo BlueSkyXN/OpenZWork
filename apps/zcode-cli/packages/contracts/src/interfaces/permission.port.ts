@@ -9,6 +9,13 @@ import type { InteractionRequestOrigin, SessionId, ToolCallId, TraceId, TurnId }
 
 export type PermissionRuleBehavior = "allow" | "deny" | "ask";
 
+// OpenZWork：上游 PermissionCapabilityGroup 唯一成员 official_cua 属已裁 CUA 域；
+// 保留分组类型面（session-features/tool 元数据消费），值为空集。
+export const PermissionCapabilityGroup = {} as const;
+
+export type PermissionCapabilityGroup =
+  (typeof PermissionCapabilityGroup)[keyof typeof PermissionCapabilityGroup];
+
 export interface PermissionRuleValue {
   toolName: string;
   ruleContent?: string;

@@ -137,6 +137,49 @@ function reduce(messages: MessageWithParts[]) {
 }
 
 describe("transcript→event 合成", () => {
+  it.each([
+    { output: "任务完成", expectedType: "frontend-demo" },
+    { output: JSON.stringify({ agentType: "Explore" }), expectedType: "Explore" },
+  ])(
+    "冷恢复从 subagent_type 保留名称且输出显式名称优先: $expectedType",
+    ({ output, expectedType }) => {
+      const { projection } = reduce([
+        userMessage("u-agent-name", "执行任务", 1000),
+        assistantMessageWithParts(
+          "a-agent-name",
+          "u-agent-name",
+          [
+            {
+              id: "part-agent-name" as never,
+              sessionID: "s1" as never,
+              messageID: "a-agent-name" as never,
+              type: "tool",
+              callID: "call-agent-name",
+              tool: "Agent",
+              metadata: {},
+              state: {
+                status: "completed",
+                input: { subagent_type: "frontend-demo", description: "创建示例项目" },
+                output,
+                title: "创建示例项目",
+                metadata: {},
+                time: { start: 1001, end: 1002 },
+              },
+            },
+          ],
+          1001,
+        ),
+      ]);
+      expect(
+        projection.getSnapshot().rows.window.find((row) => row.kind === "subagent"),
+      ).toMatchObject({
+        parentToolCallId: "call-agent-name",
+        subagentType: expectedType,
+        status: "success",
+      });
+    },
+  );
+
   it("冷恢复把缺少完成时间的 orphan assistant 收口为 completedInterrupted", () => {
     const user = userMessage("u-orphan", "执行任务", 1000);
     const orphan = assistantMessage("a-orphan", "u-orphan", "未完成的部分结果", 1001);
@@ -250,6 +293,24 @@ describe("transcript→event 合成", () => {
         .getSnapshot()
         .rows.window.find((row) => row.kind === "assistantText" && row.entityId === "a-feedback"),
     ).not.toHaveProperty("feedback");
+  });
+
+  it("多个文字 part 冷恢复成多行，反馈落在最后一个文字行", () => {
+    const assistant = assistantMessage("a-blocks", "u-blocks", "第一段", 1001);
+    const firstPart = assistant.parts.find((part) => part.type === "text")!;
+    assistant.parts = [
+      ...assistant.parts,
+      { ...firstPart, id: "a-blocks-second" as never, text: "第二段" },
+    ];
+    assistant.info.metadata = { assistantFeedback: "like" };
+    const { projection } = reduce([userMessage("u-blocks", "问题", 1000), assistant]);
+
+    const rows = projection
+      .getSnapshot()
+      .rows.window.filter((row) => row.kind === "assistantText" && row.entityId === "a-blocks");
+    expect(rows.map((row) => (row as { text: string }).text)).toEqual(["第一段", "第二段"]);
+    expect(rows[0]).not.toHaveProperty("feedback");
+    expect(rows[1]).toMatchObject({ feedback: "like" });
   });
 
   it("首订阅晚于完成时仍从真实持久化语义恢复 assistant 正文", () => {
@@ -885,6 +946,130 @@ describe("transcript→event 合成", () => {
         sourceCommandId: "command-goal",
         text: "X",
       },
+    });
+  });
+
+  it("cold hydration preserves the canonical sending session source without parsing message text", () => {
+    const input = userMessage("u-session-source", "普通正文，不含来源提示", 1000);
+    const source = { kind: "session", sessionId: "source-session", title: "来源会话" } as const;
+    input.info.metadata = {
+      conversationInputIntent: {
+        sourceCommandId: "command-session-source",
+        queueItemId: "queue-session-source",
+        clientId: "host-caller",
+        kind: "sendText",
+        text: input.parts[0]!.type === "text" ? input.parts[0]!.text : "",
+        attachments: [],
+        delivery: { requested: "queue", admitted: "startNow" },
+        order: { admissionSeq: 1 },
+        steer: { state: "notRequested" },
+        dispatch: { state: "drained" },
+        admittedAt: 999,
+        source,
+      },
+    };
+    const { projection } = reduce([
+      input,
+      assistantMessage("a-session-source", "u-session-source", "收到", 1001),
+    ]);
+    expect(projection.getSnapshot().rows.window).toContainEqual(
+      expect.objectContaining({ kind: "userInput", text: "普通正文，不含来源提示", source }),
+    );
+  });
+
+  it("cold hydration projects persisted highspeed metadata onto the user input row", () => {
+    const input = userMessage("u-highspeed", "accelerated prompt", 1000);
+    input.info.metadata = {
+      conversationInputIntent: {
+        sourceCommandId: "command-highspeed",
+        queueItemId: "queue-highspeed",
+        clientId: "desktop-highspeed",
+        kind: "sendText",
+        text: "accelerated prompt",
+        attachments: [],
+        delivery: { requested: "startNow", admitted: "startNow" },
+        order: { admissionSeq: 5 },
+        steer: { state: "notRequested" },
+        dispatch: { state: "drained" },
+        admittedAt: 1000,
+        highspeed: {
+          schemaVersion: 1,
+          ownerKey: `v1:${"a".repeat(64)}`,
+          cardId: "hsc-persisted",
+          taskId: "s1",
+          provider: "zai",
+          model: "glm-5",
+          issuedAt: 900,
+          expiresAt: 1900,
+          regularTps: 73,
+          outputTokens: 120_000,
+          durationMs: 881_000,
+          savedDurationMs: 762_836,
+          // CR-02：fallbackAt 是权威 metadata 字段，cold hydration 必须原样恢复。
+          fallbackAt: 1500,
+        },
+      },
+    };
+
+    const { projection } = reduce([
+      input,
+      assistantMessage("a-highspeed", "u-highspeed", "accelerated answer", 1001),
+    ]);
+
+    expect(
+      projection.getSnapshot().rows.window.find((row) => row.kind === "userInput"),
+    ).toMatchObject({
+      sourceCommandId: "command-highspeed",
+      highspeed: {
+        schemaVersion: 1,
+        ownerKey: `v1:${"a".repeat(64)}`,
+        cardId: "hsc-persisted",
+        taskId: "s1",
+        provider: "zai",
+        model: "glm-5",
+        issuedAt: 900,
+        expiresAt: 1900,
+        regularTps: 73,
+        outputTokens: 120_000,
+        durationMs: 881_000,
+        savedDurationMs: 762_836,
+        fallbackAt: 1500,
+      },
+    });
+
+    const turnId = projection
+      .getSnapshot()
+      .rows.window.find((row) => row.kind === "turnHeader")?.turnId;
+    projection.applyEvent({
+      id: "highspeed-metrics-update" as never,
+      sessionId: "s1" as never,
+      turnId,
+      type: SessionEventType.HighspeedMetricsUpdated,
+      timestamp: new Date(2000),
+      traceId: "trace-highspeed" as never,
+      sequenceNumber: 99,
+      payload: {
+        entityId: "u-highspeed",
+        highspeed: {
+          schemaVersion: 1,
+          cardId: "hsc-persisted",
+          taskId: "s1",
+          provider: "zai",
+          model: "glm-5",
+          issuedAt: 900,
+          expiresAt: 1900,
+          regularTps: 73,
+          outputTokens: 130_000,
+          durationMs: 900_000,
+          savedDurationMs: 880_822,
+        },
+      },
+    });
+    expect(
+      projection.getSnapshot().rows.window.find((row) => row.kind === "userInput"),
+    ).toMatchObject({
+      // CR-02：终态指标更新是字段级合并，不含 fallbackAt 的 payload 不得清掉已持久化的 fallbackAt。
+      highspeed: { outputTokens: 130_000, savedDurationMs: 880_822, fallbackAt: 1500 },
     });
   });
 

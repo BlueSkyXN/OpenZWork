@@ -566,3 +566,14 @@ function isSkillCommandOverrideValue(value: unknown): value is { enable?: boolea
 function isAbsoluteConfigPath(path: string): boolean {
   return path.startsWith("/") || path.startsWith("\\") || /^[A-Za-z]:[\\/]/.test(path);
 }
+
+// OpenZWork：上游 canonicalizePluginId/pluginIdAliases 仅承载官方 CUA 插件 id 改名
+// （zcode-cua@… → computer-use@…）的别名迁移；该域已净化，这里提供恒等实现，
+// 供 file-config.adapter 的通用插件配置路径调用。
+export function canonicalizePluginId(pluginId: string): string {
+  return pluginId;
+}
+
+export function pluginIdAliases(pluginId: string): readonly string[] {
+  return [pluginId];
+}

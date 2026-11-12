@@ -1,4 +1,4 @@
-import { resolveHelpAppConfig, type Locale } from "@zcode/shared";
+import { resolveHelpAppConfig, toZhOrEnLocale, type Locale } from "@zcode/shared";
 import localDefaultAppConfig from "../../../config/default.json" with { type: "json" };
 
 interface ResolveWebCommunityUrlOptions {
@@ -14,5 +14,6 @@ export async function resolveWebCommunityUrl(
   locale: Locale,
   options: ResolveWebCommunityUrlOptions = {},
 ): Promise<string | undefined> {
-  return (await resolveWebHelpConfig(options)).community_urls?.[locale];
+  // 社区链接只配置中英；非中文界面语言走英文链接。
+  return (await resolveWebHelpConfig(options)).community_urls?.[toZhOrEnLocale(locale)];
 }

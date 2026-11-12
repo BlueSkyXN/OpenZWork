@@ -5,6 +5,6 @@
     "rootDir": "src",
     "lib": ["es2025", "dom"]
   },
-  "include": ["src/preload"],
-  "references": [{ "path": "../shared" }]
+  "include": ["src/preload", "ward.ts"],
+  "references": [{ "path": "../shared" }, { "path": "./tsconfig.app-navigation.json" }]
 }

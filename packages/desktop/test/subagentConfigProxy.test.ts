@@ -47,7 +47,7 @@ it.each([false, true])(
     });
   `,
     );
-    // Node 的 --import 在 Windows 需要 file URL，盘符路径会被误判为协议。
+    // 与 WDIO 注入方式一致：Windows 的 ESM loader 不接受裸绝对路径，预加载必须是 file:// URL。
     const proxy = new URL("./e2e/helpers/subagent-config-proxy.mjs", import.meta.url).href;
     const child = spawn(process.execPath, [entry, "app-server", "--stdio"], {
       // 超时与测试失败都必须回收进程，避免代理缺陷把 CI 或开发机持续压满。

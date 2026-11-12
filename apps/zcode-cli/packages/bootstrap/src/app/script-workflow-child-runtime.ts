@@ -14,7 +14,29 @@ import {
   type ChildClientPortsContext,
   type PermissionService,
 } from "@zcode/core";
-import { type ContextSourcePort, type FileSystemPort, type HttpClientPort, type ImageProcessorPort, type JsonSchema, type PdfDocumentPort, type Logger, type McpPort, type ModelRequestAdmission, type SessionId, type BrowserControlPort, type SessionStorePort, type SkillRoot, type ToolArtifactStorePort, type TraceContext, type WorkflowAgentCallInput, type WorkflowEscalatePort, type WorkflowSubmitPort } from "@zcode/contracts";
+import {
+  type AgentExecutionTelemetryPort,
+  type BrowserControlPort,
+  type ContextSourcePort,
+  type FileSystemPort,
+  type HttpClientPort,
+  type ImageProcessorPort,
+  type JsonSchema,
+  type PdfDocumentPort,
+  type Logger,
+  type McpPort,
+  type ModelRequestAdmission,
+  type SessionId,
+  type SessionStorePort,
+  type SkillPort,
+  type SkillRoot,
+  type ToolArtifactStorePort,
+  type TraceContext,
+  type WorkflowAgentCallInput,
+  type WorkflowEscalatePort,
+  type WorkflowWebSearchBudgetPort,
+  type WorkflowSubmitPort,
+} from "@zcode/contracts";
 import { collectDisabledPaths } from "../skill-command-overrides.js";
 import { parseProviderQualifiedModelSelection } from "./provider-registry-selection.js";
 import type { ZCodeAppOptions } from "./types.js";
@@ -73,6 +95,8 @@ export function createScriptWorkflowAgentRuntime(input: {
    * （core 的注册门同样以端口存在为准），这是 actor 遇到真阻塞时唯一的求助通道。
    */
   workflowEscalatePort?: WorkflowEscalatePort;
+  /** 每个 ask 的 WebSearch 预算端口（dwf actor 恒有）；缺席即无上限（legacy `Workflow` 子代理）。 */
+  webSearchBudget?: WorkflowWebSearchBudgetPort;
   /**
    * 模型请求准入端口。dwf actor 由 driver
    * 给出（每次模型请求尝试先过进程级闸门）；legacy `Workflow` 工具的子代理不传——不受闸门约束、
@@ -119,7 +143,7 @@ export function createScriptWorkflowAgentRuntime(input: {
       maxTurns: input.request.opts?.maxTurns ?? input.deps.runtimeConfig.maxTurns,
       mode: "yolo",
       modelSelection,
-      // 父 Shell 在首条输入才解析，子会话须继承已初始化的会话快照。
+      // 父 Shell 在首条输入才解析，子会话须继承父 runtime 已初始化的 shell。
       bashShellSelection: input.deps.runtime.getSessionShellSelection(),
       parentSessionId: input.deps.sessionId,
       subagents: { enabled: false },
@@ -160,6 +184,7 @@ export function createScriptWorkflowAgentRuntime(input: {
         ? { workflowSubmitSchema: input.workflowSubmitSchema }
         : {}),
       ...(input.workflowEscalatePort ? { workflowEscalatePort: input.workflowEscalatePort } : {}),
+      ...(input.webSearchBudget ? { webSearchBudget: input.webSearchBudget } : {}),
       ...(input.modelRequestAdmission
         ? { modelRequestAdmission: input.modelRequestAdmission }
         : {}),

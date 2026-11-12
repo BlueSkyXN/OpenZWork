@@ -16,7 +16,7 @@ import { estimateTokens } from "./utils.js";
 import { buildCliPrefixSection } from "./sections/cli-prefix.js";
 import { buildIdentitySection } from "./sections/identity.js";
 import { buildWorkflowActorIdentitySection } from "./sections/workflow-actor.js";
-import { buildEnvInfoSection, buildGitSystemContextSection } from "./sections/env-info.js";
+import { buildEnvironmentSections, buildGitSystemContextSection } from "./sections/env-info.js";
 import { buildSkillsSection } from "./sections/skills.js";
 import { buildRequestUserContextSection } from "./sections/request-user-context.js";
 import { buildCurrentDateSection } from "./sections/current-date.js";
@@ -26,8 +26,8 @@ import { buildDesktopContextSection } from "./sections/desktop.js";
 import {
   buildContextManagementSection,
   buildDynamicBehaviorSection,
-  buildOutputStyleSection,
   buildSessionGuidanceSection,
+  buildTotalTokensSection,
 } from "./dynamic-sections.js";
 
 // -----------------------------------------------
@@ -123,7 +123,7 @@ export class ContextBuilder {
       !isWorkflowActor && !hasCustomSystemPrompt ? this.config.systemPromptSettings : undefined;
 
     // 1. CLI / product prefix. Keep this as the short leading identity block.
-    // 「You are ZCode, an interactive coding agent」对一个
+    // 「You are ZCode, an interactive agent」对一个
     // 只对脚本说话、可能连读文件工具都没有的子代理是错的身份，且走在正确身份段前面。
     if (!isWorkflowActor) {
       sections.push(buildCliPrefixSection());
@@ -143,8 +143,22 @@ export class ContextBuilder {
     } else if (workflowActor !== undefined) {
       sections.push(buildWorkflowActorIdentitySection(workflowActor));
     } else {
-      sections.push(buildIdentitySection(activeOutputStyle, promptSettings));
+      sections.push(
+        buildIdentitySection(
+          activeOutputStyle,
+          promptSettings,
+          this.config.midConversationSystem !== false,
+        ),
+      );
     }
+
+    // 环境与模型是运行时公告（meta_user），不进 system；使用自定义 prompt 时也照常发送。
+    // （OpenZWork v3.18.0：吸收上游布局，公告链的 announcesEnvironment 门控据此判定。）
+    const environmentSections = buildEnvironmentSections(
+      this.config.envInfo,
+      this.config.model,
+      this.config.additionalDirectories,
+    );
 
     // 3. Dynamic system context
     // custom prompt 不是只替换
@@ -154,7 +168,7 @@ export class ContextBuilder {
     // guidance——契约里已把 Report outcomes faithfully 搬过去），保留 memory 与其后各段。
     if (!hasCustomSystemPrompt) {
       if (!isWorkflowActor && this.config.presentationSurface === "zcode_desktop") {
-        sections.push(buildDesktopContextSection(this.config.genUiOutputDirectory));
+        sections.push(buildDesktopContextSection(Boolean(this.config.genUiOutputDirectory)));
       }
 
       // behaviour part right after stable sp...
@@ -183,38 +197,23 @@ export class ContextBuilder {
           sections.push(memorySection);
         }
       }
-      sections.push(
-        buildEnvInfoSection(
-          this.config.envInfo,
-          this.config.model,
-          this.config.additionalDirectories,
-        ),
-      );
+      sections.push(...environmentSections);
 
-      // Output Style
-      const outputStyleSection =
-        buildOutputStyleSection(activeOutputStyle) ??
-        (promptSettings?.mode === "sections" &&
-        ["append", "replace"].includes(promptSettings.sections.output_style?.mode ?? "")
-          ? createSection({
-              name: "Output Style",
-              source: "output_style",
-              injectionTarget: "system",
-              cacheHint: "dynamic",
-              content: "",
-            })
-          : null);
-      if (outputStyleSection) {
-        sections.push(outputStyleSection);
-      }
+      // OpenZWork v3.18.0：吸收上游布局——输出样式正文不再进 system，由运行时
+      // output_style_instructions 公告按变化送达（context-refresh），身份段只换 intro 行。
 
       // Context Management
-      sections.push(buildContextManagementSection(promptSettings));
+    sections.push(buildContextManagementSection(promptSettings));
+    sections.push(buildTotalTokensSection());
 
       const gitSystemContextSection = buildGitSystemContextSection(this.config.envInfo);
       if (gitSystemContextSection) {
         sections.push(gitSystemContextSection);
       }
+    } else {
+      // 自定义 prompt 跳过默认 system 段，但环境与模型段保留在构建结果里：
+      // 它们是 meta_user 公告的依据，运行时事实不随 system 正文替换而丢失。
+      sections.push(...environmentSections);
     }
 
     // 4. Skills appear as a meta user system-reminder, matching provider block layout.
@@ -258,7 +257,7 @@ export class ContextBuilder {
     const totalTokens = orderedSections.reduce((sum, s) => sum + s.tokens, 0);
 
     const systemMessages = this.assembleSystemMessages(orderedSections);
-    const metaUserAttachments = this.assembleMetaUserAttachments(orderedSections);
+    const metaUserAttachments = buildMetaUserAttachments(orderedSections);
 
     return {
       sections: orderedSections,
@@ -321,36 +320,34 @@ export class ContextBuilder {
 
     return messages;
   }
+}
 
-  private assembleMetaUserAttachments(sections: ContextSection[]): ContextMetaUserAttachment[] {
-    const attachments: ContextMetaUserAttachment[] = [];
-
-    const skillsContent = buildSkillsMetaUserBody(
-      sections.filter(
-        (section) => section.injectionTarget === "meta_user" && section.source === "skills",
-      ),
+export function buildMetaUserAttachments(sections: ContextSection[]): ContextMetaUserAttachment[] {
+  // 来源明确分流；不再把日期、环境和 Git 折进指令 carrier。
+  const sourceMap: Partial<Record<ContextSection["source"], ContextMetaUserAttachment["source"]>> =
+    {
+      skills: "skills_listing",
+      request_user_context: "context_prefix",
+      session_context: "session_context",
+    };
+  const attachments: ContextMetaUserAttachment[] = [];
+  for (const attachmentSource of Object.values(sourceMap)) {
+    const grouped = sections.filter(
+      (section) =>
+        section.injectionTarget === "meta_user" &&
+        !RUNTIME_ANNOUNCED_SOURCES.has(section.source) &&
+        (sourceMap[section.source] ?? "context_prefix") === attachmentSource,
     );
-    if (skillsContent) {
-      attachments.push({
-        source: "skills_listing",
-        content: skillsContent,
-      });
-    }
-
-    const contextContent = buildContextMetaUserBody(
-      sections.filter(
-        (section) => section.injectionTarget === "meta_user" && section.source !== "skills",
-      ),
-    );
-    if (contextContent) {
-      attachments.push({
-        source: "context_prefix",
-        content: contextContent,
-      });
-    }
-
-    return attachments;
+    const content = buildSectionContent(grouped);
+    if (!content) continue;
+    const files = grouped.flatMap((section) => section.instructionFiles ?? []);
+    attachments.push({
+      source: attachmentSource,
+      content,
+      ...(files.length > 0 ? { files } : {}),
+    });
   }
+  return attachments;
 }
 
 function orderSectionsForInjection(sections: ContextSection[]): ContextSection[] {
@@ -368,26 +365,6 @@ function orderSectionsForInjection(sections: ContextSection[]): ContextSection[]
       (section) => section.injectionTarget === "meta_user" && section.cacheHint === "dynamic",
     ),
   ];
-}
-
-export function buildContextMetaUserBody(sections: ContextSection[]): string | null {
-  if (sections.length === 0) return null;
-
-  return [
-    "As you answer the user's questions, you can use the following context:",
-    buildSectionContent(sections),
-    "",
-    "      IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context unless it is highly relevant to your task.",
-  ].join("\n");
-}
-
-export function buildSkillsMetaUserBody(sections: ContextSection[]): string | null {
-  const content = buildSectionContent(sections);
-  if (!content) {
-    return null;
-  }
-
-  return content;
 }
 
 function buildSectionContent(sections: ContextSection[]): string {
@@ -419,31 +396,10 @@ export function createContextBuilder(config: ContextBuilderConfig): ContextBuild
 
 // OpenZWork v3.17.1：上游把 meta user 组装提为公开函数（subagent 消费）；fork 保留类内私有版并复用同一实现。
 
+// 环境（含 Desktop 段）、模型、日期由运行时按当前事实宣告；builder 只保留 section 作开关与用量统计。
 const RUNTIME_ANNOUNCED_SOURCES: ReadonlySet<ContextSection["source"]> = new Set([
   "env_info",
+  "desktop_context",
   "model",
   "current_date",
 ]);
-
-export function buildMetaUserAttachments(sections: ContextSection[]): ContextMetaUserAttachment[] {
-  // 来源明确分流；不再把日期、环境和 Git 折进指令 carrier。
-  const sourceMap: Partial<Record<ContextSection["source"], ContextMetaUserAttachment["source"]>> =
-    {
-      skills: "skills_listing",
-      request_user_context: "context_prefix",
-      session_context: "session_context",
-    };
-  const attachments: ContextMetaUserAttachment[] = [];
-  for (const attachmentSource of Object.values(sourceMap)) {
-    const content = buildSectionContent(
-      sections.filter(
-        (section) =>
-          section.injectionTarget === "meta_user" &&
-          !RUNTIME_ANNOUNCED_SOURCES.has(section.source) &&
-          (sourceMap[section.source] ?? "context_prefix") === attachmentSource,
-      ),
-    );
-    if (content) attachments.push({ source: attachmentSource, content });
-  }
-  return attachments;
-}

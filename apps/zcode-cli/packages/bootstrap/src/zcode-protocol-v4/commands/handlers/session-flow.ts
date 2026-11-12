@@ -20,6 +20,7 @@ import { startPromptTurn, turnBackgroundAttributionOf } from "../prompt-turn.js"
 import { requireRecord } from "../record-access.js";
 import type { V4CommandCoreHost, V4SessionRecordView } from "../types.js";
 import { V4CommandNoopError } from "../../v4-gateway.js";
+import type { V4TurnExecution } from "../types.js";
 
 /** 等 idle 轮询参数：25ms 间隔、5s 超时。 */
 const IDLE_POLL_INTERVAL_MS = 25;
@@ -67,6 +68,13 @@ async function sendText(
 
   const routingMode = host.getInputRoutingMode?.(envelope.sessionId ?? "") ?? null;
   const forceStartNow = payload.requestedDelivery === "startNow";
+  // 队首被 composer 编辑态冻结时 Core 可能完全空闲；不强制入队会 startNow 越过冻结项。
+  const queueHeadEditLocked =
+    !forceStartNow &&
+    routingMode === "enqueue" &&
+    host.isQueueHeadEditLocked?.(record.app.sessionId) === true;
+  // 加速本轮由「标准 Selection 指向加速 Provider + 单次执行材料」表达；判定必须用 Family
+  // 谓词，不能和单个 provider id 常量比较，否则 BigModel 账号的卡会被当成普通轮静默丢弃。
   const foregroundPromotionLeaseId = forceStartNow ? `send-now:${envelope.commandId}` : undefined;
   let foregroundPromotionLeaseAcquired = false;
   const releaseForegroundPromotionLease = () => {
@@ -154,6 +162,7 @@ async function sendText(
       // promotion lease 本身属于 Core busy authority；若不声明 requireIdle，
       // 抢占完成后的 startNow 会先落 deferred queue，待 lease 释放后再被自动 drain。
       ...(forceStartNow ? { requireIdle: true } : {}),
+      ...(queueHeadEditLocked ? { requireQueue: true } : {}),
     });
   } finally {
     releaseForegroundPromotionLease();
