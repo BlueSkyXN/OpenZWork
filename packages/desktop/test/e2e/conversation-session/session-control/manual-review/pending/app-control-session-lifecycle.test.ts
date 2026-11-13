@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { chromium, type Browser, type Page } from "playwright-core";
 import { ServiceChannels } from "@zcode/shared";
 import type { ProjectTask, ProjectTree } from "@zcode/services";
@@ -197,7 +197,7 @@ describe(`${CASE}: App session lifecycle through actual tools`, () => {
 
     const projects = await action<{
       projects: Array<{ project: NonNullable<SessionRef["project"]> }>;
-    }>("projects", "Call ListProjects with query=ZCodeProject.");
+    }>("projects", `Call ListProjects with query=${basename(DEFAULT_WORKSPACE)}.`);
     expect(projects.projects).toHaveLength(1);
     const created = await action<Creation>(
       "create",

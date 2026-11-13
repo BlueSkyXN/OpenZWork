@@ -4,7 +4,7 @@ import { chromium, type Browser } from "playwright-core";
 import { BufferReader, BufferWriter, deserialize, serialize, VSBuffer } from "@zcode/rpc";
 import { ServiceChannels } from "@zcode/shared";
 import { TID_TASK_ITEM, TID_V4_SESSION_PANE, testId } from "@zcode/shared/test-ids";
-import { clearAppData, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
+import { clearAppData, DEFAULT_WORKSPACE, pinE2ELocale } from "#e2e/helpers/desktop-app";
 import {
   buildReadonlyToolPrompt,
   ensureReadonlyToolFixtureFile,
@@ -244,6 +244,9 @@ describe(`${CASE}: explicit App session navigation`, () => {
 
   it("SCT03 / SCT02: sidebar and tool navigation share back/forward history; mobile stays on caller", async function () {
     this.timeout(300_000);
+    // OpenZWork：本机宿主系统语言是 zh-CN，而 forward 按钮断言用英文 aria-label
+    // （上游 CI 在英文宿主上运行）。首帧跟随宿主语言，这里把界面固定为 en-US 再继续。
+    await pinE2ELocale("en-US");
     await ensureReadonlyToolFixtureFile();
     await prepareV4ConversationE2E();
     await startDraftFromProject(DEFAULT_WORKSPACE);

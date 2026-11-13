@@ -147,7 +147,7 @@ describe(`${CASE}: App session tools on a long turn and a retried creation`, () 
 
     const projects = await action<{
       projects: Array<{ project: NonNullable<SessionRef["project"]> }>;
-    }>("projects", "Call ListProjects with query=ZCodeProject.");
+    }>("projects", `Call ListProjects with query=${basename(DEFAULT_WORKSPACE)}.`);
     expect(projects.projects).toHaveLength(1);
     const project = projects.projects[0]!.project;
 
