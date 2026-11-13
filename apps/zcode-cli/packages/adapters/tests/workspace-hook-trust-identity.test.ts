@@ -1,5 +1,5 @@
 // Hook Trust identity 的 CLI adapter（docs/specs/workspace-hook-trust.md D23）。
-// 用真实 git 临时仓库 + 受管 worktree 布局 <dataBaseDir>/.zcode/worktrees/<4hex>/<repo> 验证：
+// 用真实 git 临时仓库 + 受管 worktree 布局 <dataBaseDir>/.openzwork/worktrees/<4hex>/<repo> 验证：
 // - adapter 与共享 resolver 得到同一个 Trust identity；
 // - Runtime snapshot（createConfig）在 worktree 中归一为源仓库路径，bundleDigest 与源仓库一致；
 // - 伪造反向链接不继承；远程 identity 原样返回。
@@ -49,7 +49,7 @@ async function managedWorktreeFixture() {
   roots.push(root);
   const source = join(root, "projects", REPO);
   const dataBaseDir = join(root, "data");
-  const worktree = join(dataBaseDir, ".zcode", "worktrees", BUCKET, REPO);
+  const worktree = join(dataBaseDir, ".openzwork", "worktrees", BUCKET, REPO);
   await mkdir(join(source, ".zcode"), { recursive: true });
   await mkdir(join(source, "packages", "app"), { recursive: true });
   await writeFile(join(source, "packages", "app", "README.md"), "app\n");
@@ -69,7 +69,7 @@ async function managedWorktreeFixture() {
   await git(source, "init", "-q");
   await git(source, "add", ".");
   await git(source, "commit", "-q", "-m", "init");
-  await mkdir(join(dataBaseDir, ".zcode", "worktrees", BUCKET), { recursive: true });
+  await mkdir(join(dataBaseDir, ".openzwork", "worktrees", BUCKET), { recursive: true });
   await git(source, "worktree", "add", "-q", "--detach", worktree);
   return { dataBaseDir, env: { ZCODE_DATA_BASE_DIR: dataBaseDir }, root, source, worktree };
 }

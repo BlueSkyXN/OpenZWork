@@ -458,15 +458,15 @@ describe("MCP connection pool session workspace key", () => {
     await session.connectServer(
       "node_repl",
       { command: "node", type: "stdio" },
-      { workingDirectory: "/data/.zcode/worktrees/3f2a/repo", workspaceKey: "/projects/repo" },
+      { workingDirectory: "/data/.openzwork/worktrees/3f2a/repo", workspaceKey: "/projects/repo" },
     );
 
     expect(createAdapter).toHaveBeenCalledWith(
       expect.objectContaining({
         connectionContext: expect.objectContaining({
-          workspaceKey: "/data/.zcode/worktrees/3f2a/repo",
+          workspaceKey: "/data/.openzwork/worktrees/3f2a/repo",
         }),
-        workingDirectory: "/data/.zcode/worktrees/3f2a/repo",
+        workingDirectory: "/data/.openzwork/worktrees/3f2a/repo",
         workspaceKey: "/projects/repo",
       }),
     );
@@ -480,7 +480,7 @@ describe("MCP connection pool session workspace key", () => {
     );
     const pool = createMcpConnectionPool({ createAdapter, idleGraceMs: 0 });
     const config = { command: "node", type: "stdio" as const, isolation: "workspace" as const };
-    const cwd = "/data/.zcode/worktrees/3f2a/repo";
+    const cwd = "/data/.openzwork/worktrees/3f2a/repo";
     // 同一 cwd：一个是源项目的 worktree 会话，一个把该目录单独添加成项目（MR !3520 review SG-01）。
     const leases = [
       pool.acquireLease({ leaseId: "a", sessionId: "a" }),

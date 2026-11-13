@@ -1,5 +1,5 @@
 // CLI 侧 Hook Trust identity 接入（docs/specs/workspace-hook-trust.md D23，docs/git/worktree.md §6.2）。
-// 真实 git 临时仓库 + ZCODE_DATA_BASE_DIR 临时目录，按 <dataBaseDir>/.zcode/worktrees/<4hex>/<repo>
+// 真实 git 临时仓库 + ZCODE_DATA_BASE_DIR 临时目录，按 <dataBaseDir>/.openzwork/worktrees/<4hex>/<repo>
 // 布局创建受管 worktree，验证 Trust CLI、协议授予与活跃 session 重载都按 Trust identity 工作。
 import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
@@ -50,7 +50,7 @@ async function fixture() {
   roots.push(root);
   const source = join(root, "projects", REPO);
   const dataBaseDir = join(root, "data");
-  const worktree = join(dataBaseDir, ".zcode", "worktrees", BUCKET, REPO);
+  const worktree = join(dataBaseDir, ".openzwork", "worktrees", BUCKET, REPO);
   const userConfigPath = join(root, "config.json");
   await writeFile(
     userConfigPath,
@@ -76,7 +76,7 @@ async function fixture() {
   await git(source, "init", "-q");
   await git(source, "add", ".");
   await git(source, "commit", "-q", "-m", "init");
-  await mkdir(join(dataBaseDir, ".zcode", "worktrees", BUCKET), { recursive: true });
+  await mkdir(join(dataBaseDir, ".openzwork", "worktrees", BUCKET), { recursive: true });
   await git(source, "worktree", "add", "-q", "--detach", worktree);
   const env = { ZCODE_DATA_BASE_DIR: dataBaseDir };
   return { dataBaseDir, env, root, source, userConfigPath, worktree };

@@ -157,7 +157,7 @@ describe("createWorkspaceHookRuntimeSecurity reloadTrust", () => {
 
   it("D23：AdmissionUpdated 对外发会话 workspaceKey，而不是 snapshot 的 Trust identity", async () => {
     const { homeDir } = await tempHome();
-    const workspaceKey = "/data/.zcode/worktrees/3f2a/workspace";
+    const workspaceKey = "/data/.openzwork/worktrees/3f2a/workspace";
     const emitted: Array<{ workspaceIdentity?: string }> = [];
     const security = createWorkspaceHookRuntimeSecurity({
       emitAdmissionEvent: async (event) => {

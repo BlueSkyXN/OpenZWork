@@ -666,7 +666,7 @@ describe("WorkspaceHookReviewController", () => {
   });
 
   it("D23：worktree target（workspaceKey）经 resolver 归一后与 Trust identity snapshot 匹配，不再误判 mismatch", async () => {
-    const WORKTREE_KEY = "/data/.zcode/worktrees/3f2a/workspace";
+    const WORKTREE_KEY = "/data/.openzwork/worktrees/3f2a/workspace";
     const resolveTargetTrustIdentity = vi.fn(async (identity: string) =>
       identity === WORKTREE_KEY ? WORKSPACE : identity,
     );
@@ -704,7 +704,7 @@ describe("WorkspaceHookReviewController", () => {
   });
 
   it("D23：对外 request 与 AdmissionUpdated 只发会话 workspaceKey，Trust identity 只留在内部", async () => {
-    const WORKTREE_KEY = "/data/.zcode/worktrees/3f2a/workspace";
+    const WORKTREE_KEY = "/data/.openzwork/worktrees/3f2a/workspace";
     const value = fixture({
       workspaceKey: WORKTREE_KEY,
       resolveTargetTrustIdentity: async (identity) =>

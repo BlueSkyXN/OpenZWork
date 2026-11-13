@@ -1186,10 +1186,10 @@ describe("v4 原生 forkAssistant", () => {
       forkStableConversation,
     });
     const targetCwd = {
-      cwd: "/Users/dev/.zcode/worktrees/3f2a/project",
+      cwd: "/Users/dev/.openzwork/worktrees/3f2a/project",
       childSessionId: "ses_wt_child",
       worktreeCreation: {
-        path: "/Users/dev/.zcode/worktrees/3f2a/project",
+        path: "/Users/dev/.openzwork/worktrees/3f2a/project",
         sha: "9e6d2f72d4",
         ref: null,
         output: "",

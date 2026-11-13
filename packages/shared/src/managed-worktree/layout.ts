@@ -2,9 +2,13 @@
 // 只做纯路径计算；"是否真的是受管 worktree"还要叠加 git worktree list 与 .git 反向链接校验，
 // 由调用方（Git 服务 / Trust identity resolver）完成。
 import { basename, isAbsolute, join, relative, sep } from "node:path";
+// 修复依据（OpenZWork）：受管根必须落在用户级数据根 .openzwork 内（docs/specs/
+// identity-and-data-isolation-openzwork.md「受管 worktree 根目录」），上游的
+// [".zcode", "worktrees"] 会与官方 ZCode 用户数据同域，目录名唯一来源是 productIdentity。
+import { OPENZWORK_DATA_DIR_NAME } from "../productIdentity.js";
 
-/** 受管根目录相对数据根目录的路径段：<dataBaseDir>/.zcode/worktrees。 */
-export const MANAGED_WORKTREE_HOME_SEGMENTS = [".zcode", "worktrees"] as const;
+/** 受管根目录相对数据根目录的路径段：<dataBaseDir>/.openzwork/worktrees。 */
+export const MANAGED_WORKTREE_HOME_SEGMENTS = [OPENZWORK_DATA_DIR_NAME, "worktrees"] as const;
 
 /** bucket 是 4 位小写 hex；位数同时用来控制 Windows 路径长度。 */
 export const MANAGED_WORKTREE_BUCKET_LENGTH = 4;

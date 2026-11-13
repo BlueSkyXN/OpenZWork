@@ -1,5 +1,5 @@
 // 受管 worktree = 会话 cwd（docs/git/worktree.md §1.1 / §9.3）集成验收：
-// 真实 git 仓库 + 真实 linked worktree（<dataBaseDir>/.zcode/worktrees/<bucket>/<repo>）+
+// 真实 git 仓库 + 真实 linked worktree（<dataBaseDir>/.openzwork/worktrees/<bucket>/<repo>）+
 // 真 sqlite sessionStore + ZCodeProtocolAgentServer + 真 app。
 // 覆盖：能力声明、createSession.cwd（key 属于项目、执行路径是 worktree、权限/记忆映射回源仓库）、
 // "已创建 worktree" 首轮落盘并在首个用户输入之前投影、冷恢复（Host key + 存储 cwd）、
@@ -124,7 +124,7 @@ async function git(cwd: string, ...args: string[]): Promise<string> {
 async function fixture(root: string) {
   const source = join(root, "projects", REPO);
   const dataBaseDir = join(root, "data");
-  const worktree = join(dataBaseDir, ".zcode", "worktrees", BUCKET, REPO);
+  const worktree = join(dataBaseDir, ".openzwork", "worktrees", BUCKET, REPO);
   const plain = join(root, "plain");
   await mkdir(source, { recursive: true });
   await mkdir(plain, { recursive: true });
@@ -132,7 +132,7 @@ async function fixture(root: string) {
   await git(source, "init", "-q");
   await git(source, "add", ".");
   await git(source, "commit", "-qm", "init");
-  await mkdir(join(dataBaseDir, ".zcode", "worktrees", BUCKET), { recursive: true });
+  await mkdir(join(dataBaseDir, ".openzwork", "worktrees", BUCKET), { recursive: true });
   await git(source, "worktree", "add", "--detach", worktree, "HEAD");
   const sha = await git(worktree, "rev-parse", "HEAD");
   return { source, dataBaseDir, worktree, plain, sha };

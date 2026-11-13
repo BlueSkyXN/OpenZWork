@@ -35,7 +35,7 @@ describe("resolveWorkspaceRefFromId", () => {
 
 describe("workspaceRefWithCwd（受管 worktree：workspace key 不变，只换执行路径）", () => {
   const project = buildWorkspaceRef({ workspacePath: "/Users/dev/project" });
-  const cwd = "/Users/dev/.zcode/worktrees/3f2a/project";
+  const cwd = "/Users/dev/.openzwork/worktrees/3f2a/project";
 
   it("本地 workspace：key 保持项目，workspacePath 换成 cwd", () => {
     expect(workspaceRefWithCwd(project, cwd)).toEqual({
@@ -56,7 +56,7 @@ describe("workspaceRefWithCwd（受管 worktree：workspace key 不变，只换�
 });
 
 describe("resolveResumeWorkspaceRef（冷恢复：身份取 Host，路径取存储 cwd）", () => {
-  const stored = { directory: "/Users/dev/.zcode/worktrees/3f2a/project" };
+  const stored = { directory: "/Users/dev/.openzwork/worktrees/3f2a/project" };
 
   it("Host 携带本地 workspace：key 取请求，路径取存储目录", () => {
     expect(
