@@ -791,7 +791,7 @@
     "docs/knip/docs/src/styles/theme-light.css": "e2e85900fd43b5b563f56b9ce7e2a09f07d7420a78e80f0133efffeb8fce2aa0",
     "docs/knip/docs/src/util/post.ts": "6d7c45bd29035a73f1b67d24524760c7e317f367d32216de2c9a240dda7a40d1",
     "docs/knip/docs/tsconfig.json": "662b1f10a5e572b49a45669e4be9ee46c22f987dcf277c204948777b367df1cd",
-    "package.json": "a43a197e5cb1aab75d32cb46468352b690998748da4e585c0f624b29bcc06d43",
+    "package.json": "75a077829cfba56101a13e4d7d093c5ffeb39658caf750aa186cf5a9ad0a7a95",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/design-runtime/package.json": "647d36a7bb3b5b13f87ddb8a94811152a1a024f0293eebd0b16032e1c0976d9c",
     "packages/desktop/package.json": "397f5bb3c22d008c77eb3d02d35f23f9076b744deb3ae6d371bc031d1bfce1ae",
