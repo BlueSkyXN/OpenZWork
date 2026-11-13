@@ -2237,7 +2237,7 @@ async function resetE2EHome(specs: string[]) {
     await seedSidebarRichContentFixture({
       cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
       e2eHomeDir: E2E_HOME_DIR,
-      workspacePath: resolve(E2E_HOME_DIR, "ZCodeProject"),
+      workspacePath: resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME),
     });
   }
   if (usesProviderReadinessColdStartFixture(specs) || usesGitReviewEntryFixture(specs)) {
@@ -2295,7 +2295,7 @@ async function resetE2EHome(specs: string[]) {
     await seedSessionHistoryFirstFixture({
       cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
       e2eHomeDir: E2E_HOME_DIR,
-      workspacePath: resolve(E2E_HOME_DIR, "ZCodeProject"),
+      workspacePath: resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME),
       providerId: e2eProviderPreset.providerId,
       modelId: e2eProviderPreset.model,
       thoughtLevel: readE2EThoughtLevel(),
@@ -2388,7 +2388,7 @@ function seedE2EGitCommitDialogWorkspace(specs: string[] = []) {
     return;
   }
 
-  const workspacePath = resolve(E2E_HOME_DIR, "ZCodeProject");
+  const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
   mkdirSync(resolve(workspacePath, "src"), { recursive: true });
   writeFileSync(resolve(workspacePath, "README.md"), "Git commit dialog E2E workspace\n", "utf-8");
   runGitE2ECommand(workspacePath, ["init"]);
@@ -2425,7 +2425,7 @@ function seedE2EStartupState(specs: string[] = []) {
   const useFreshConversationWorkspace = specs.some((spec) =>
     spec.includes("conversation-session-conversation-workspace.test.ts"),
   );
-  const legacyDefaultProjectPath = resolve(E2E_HOME_DIR, "ZCodeProject");
+  const legacyDefaultProjectPath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
   const agentWarmupFixture = AGENT_WARMUP_FIXTURE_SPECS.some((marker) =>
     workerSpecsContain(specs, marker),
   );
@@ -2567,7 +2567,7 @@ function usesGitReviewEntryFixture(specs: string[] = []) {
 async function seedE2EGitReviewEntryWorkspace(specs: string[] = []) {
   if (!usesGitReviewEntryFixture(specs)) return;
 
-  const workspacePath = resolve(E2E_HOME_DIR, "ZCodeProject");
+  const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
   const caseRoot = resolve(workspacePath, ".zcode-e2e/conversation-session-git-review-entry");
   await mkdir(caseRoot, { recursive: true });
   await runGitReviewEntryCommand(workspacePath, ["init"]);
@@ -2703,7 +2703,7 @@ async function seedE2EWorkspacePluginState(specs: string[] = []) {
   const state = resolvePluginMcpSkillState(specs);
   if (!state?.startsWith("workspace-")) return;
 
-  const workspacePath = resolve(E2E_HOME_DIR, "ZCodeProject");
+  const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
   const userConfigPath = resolve(E2E_CLI_CONFIG_DIR, "config.json");
   const workspaceConfigPath = resolve(workspacePath, ".zcode", "config.json");
   const pluginId = "e2e-plugin-mcp-ping@e2e-fixture";
@@ -2773,7 +2773,7 @@ async function seedE2EBuiltinWorkspacePluginDisable(specs: string[] = []) {
   }
 
   const pluginId = "skill-creator@zcode-plugins-official";
-  const workspaceA = resolve(E2E_HOME_DIR, "ZCodeProject");
+  const workspaceA = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
   const workspaceB = resolve(E2E_HOME_DIR, "WorkspaceB");
   const userConfig = await readOptionalE2ECliConfig(E2E_CLI_CONFIG_FILE);
   const userPlugins = (userConfig.plugins as Record<string, unknown> | undefined) ?? {};
@@ -3168,10 +3168,13 @@ export const config: WebdriverIO.Config = {
         else delete process.env.ZCODE_CREDENTIAL_SECRET;
         // OpenZWork（T15 修复 T12 回归）：runE2EBeforeSessionSetup 的裁剪域 mock 确已退役，
         // 但 startUpstreamHttp 是 replay 模式的公共注入点（E2E_PROVIDER_CAPTURE_MODE 等 env
-        // 须在 Electron 启动前进入 Main→Host 环境链），插件/UI 用例直接断言该 env 为 "replay"。
-        // 这里按上游原位恢复该调用；conversation 系用例自建的 case-local replay server
+        // 须在 Electron 启动前进入 Main→Host 环境链），插件/UI 用例直接断言该 env 为 "replay"；
+        // resetHome 是 worker session 的 HOME 重建 + 官方插件缓存模板 + 启动状态播种的前置事务
+        // （上游 e2e-before-session.ts 内顺序：startUpstreamHttp → … → resetHome）。
+        // 这里按上游原位恢复这两个调用；conversation 系用例自建的 case-local replay server
         // 在 spec 内覆盖同一组 env，行为不变。
         await startUpstreamE2EHttp(specs);
+        await resetE2EHome(specs);
         if (
           process.platform === "darwin" &&
           specs.some((spec) => spec.endsWith("system-credential-storage.test.ts"))
@@ -3190,7 +3193,7 @@ export const config: WebdriverIO.Config = {
           specs,
           credentialsFile: E2E_APP_CREDENTIALS_FILE,
           settingsFile: E2E_APP_SETTINGS_FILE,
-          workspacePath: resolve(E2E_HOME_DIR, "ZCodeProject"),
+          workspacePath: resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME),
         });
         stopMcpFailureGuidanceFixture = await prepareMcpFailureGuidanceFixture({
           specs,
