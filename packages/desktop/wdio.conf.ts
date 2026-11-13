@@ -496,6 +496,27 @@ let upstreamE2EHttpMode = resolveUpstreamE2EHttpMode({
     requestedE2ESpecs.some((spec) => spec.replaceAll("\\", "/").includes("/manual-review/")),
   requestedMode: requestedUpstreamE2EHttpMode,
 });
+
+// 修复依据（OpenZWork）：T12 重建 wdio.conf 时丢失了上游的 applyUpstreamE2EHttpModeForWorker
+// （上游 wdio.conf.ts:932，beforeSession 内调用）。没有它，pending manual-review 用例即使已有
+// 确定性 case-local fixture 也无法进入 replay（runner 级 manualReview 开关把它们固定到
+// capture，或要求显式 E2E_PROVIDER_REPLAY_FIXTURE_PATH，而显式路径会绕过 common/legacy
+// 响应池使工具循环断链）。按上游原位恢复 per-worker 决策。
+function applyUpstreamE2EHttpModeForWorker(specs: string[]) {
+  upstreamE2EHttpMode = resolveUpstreamE2EHttpModeForWorker({
+    caseLocalReplayFixtureAvailable: hasUpstreamCaseLocalReplayFixtureForWorker({
+      caseFixtureDir: UPSTREAM_CONVERSATION_SESSION_REPLAY_FIXTURE_DIR,
+      specs,
+    }),
+    explicitReplayFixture: Boolean(process.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH?.trim()),
+    requestedMode: requestedUpstreamE2EHttpMode,
+    specs,
+  });
+  // Bug 根因（上游注释）：combined run 的全局 manual-review 开关过去把正式 worker 也固定为
+  // capture，case-local replay 因此直连真实模型并产生假失败。mode 必须在每个 Electron
+  // 启动前按该 worker 的 spec 与 fixture 完整性重新决策。
+  process.env.E2E_PROVIDER_HTTP_MODE = upstreamE2EHttpMode;
+}
 const manualReviewHoldMs = readPositiveIntegerEnv("ZCODE_E2E_MANUAL_REVIEW_HOLD_MS") ?? 0;
 const configuredE2ESpecs = requestedE2ESpecs.length
   ? requestedE2ESpecs
@@ -3091,6 +3112,9 @@ export const config: WebdriverIO.Config = {
   },
   async beforeSession(_config, capabilities, specs, cid) {
     currentE2EWorkerSessionSpecs = specs;
+    // 修复依据（OpenZWork）：恢复上游在 beforeSession 内的 per-worker provider 模式决策
+    // （applyUpstreamE2EHttpModeForWorker），详见其定义处注释。
+    applyUpstreamE2EHttpModeForWorker(specs);
     currentE2EBeforeSessionError = null;
     currentE2EChromiumUserDataDir = resolveE2EWorkerChromiumProfileDir(
       E2E_CHROMIUM_USER_DATA_ROOT_DIR,
