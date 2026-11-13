@@ -18,7 +18,10 @@ import {
 import { skipOccupationOnboardingIfPresent } from "../../../../helpers/occupation-onboarding.js";
 import { startDraftFromProject } from "../../../../helpers/project-sidebar.js";
 import { clearAppData, DEFAULT_WORKSPACE } from "../../../../helpers/desktop-app.js";
-import { resolveE2ERuntimePath, resolveE2EToolPath } from "../../../../helpers/e2e-runtime-paths.js";
+import {
+  resolveE2ERuntimePath,
+  resolveE2EToolPath,
+} from "../../../../helpers/e2e-runtime-paths.js";
 import { getLatestUpstreamToolResultByToolCallId } from "../../../../helpers/conversation-session-network.js";
 import { getV4ComposerDraftScopeSnapshot } from "../../../../helpers/conversation-session-store.js";
 import {

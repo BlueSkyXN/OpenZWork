@@ -3,7 +3,10 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { getE2EAppDataPaths, seedSettings } from "../../../../helpers/desktop-app.js";
-import { createFeishuConfig, readBotSyntheticFixture } from "../../../helpers/bots-service-harness.js";
+import {
+  createFeishuConfig,
+  readBotSyntheticFixture,
+} from "../../../helpers/bots-service-harness.js";
 
 import { skipOccupationOnboardingIfPresent } from "../../../../helpers/occupation-onboarding.js";
 

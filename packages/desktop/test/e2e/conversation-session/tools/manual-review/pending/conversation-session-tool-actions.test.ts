@@ -1,6 +1,9 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { clearAppData } from "../../../../helpers/desktop-app.js";
-import { resolveE2ERuntimePath, resolveE2EToolPath } from "../../../../helpers/e2e-runtime-paths.js";
+import {
+  resolveE2ERuntimePath,
+  resolveE2EToolPath,
+} from "../../../../helpers/e2e-runtime-paths.js";
 import {
   E2E_REPLY_TOKEN,
   openAssistantHistoryForAssistantContaining,
