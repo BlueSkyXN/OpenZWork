@@ -331,7 +331,7 @@ describe("PLM-EXT-P3C 扩展经 ctx.sessions.* 写会话", () => {
 
     // (a) 默认工作区的项目。
     const [projects] = await runStep("projects", [
-      { name: "listProjects", input: { query: "ZCodeProject" } },
+      { name: "listProjects", input: { query: "OpenZWorkProject" } },
     ]);
     const project = (
       projects!.ok as { projects: Array<{ project: NonNullable<SessionRef["project"]> }> }
