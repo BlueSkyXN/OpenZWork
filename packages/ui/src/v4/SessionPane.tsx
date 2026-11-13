@@ -4796,6 +4796,12 @@ export function SessionPane({
                 workspacePath={workspacePath}
                 workspaceIdentity={workspaceIdentity}
               >
+                {/* 修复依据（OpenZWork）：v3.18.0 合并时丢失了上游对 ConversationTimeline 的
+                    ForkDestinationContext.Provider 包裹（上游 SessionPane 6830/6951 行），
+                    forkDestinationValue 沦为死代码，行组件读到 context 默认值
+                    {forkToWorktree:null}，"在新 worktree 中分叉"入口永远不渲染（WT-05/WT-30
+                    E2E 定位）。按上游原位恢复。 */}
+                <ForkDestinationContext.Provider value={forkDestinationValue}>
                 <ConversationTimeline
                   compactForRemoteControl={compactForRemoteControl}
                   scrollToBottomActionRef={timelineScrollToBottomRef}
@@ -4877,6 +4883,7 @@ export function SessionPane({
                       : undefined
                   }
                 />
+                </ForkDestinationContext.Provider>
               </BotGroupDeliveryProvider>
             </SessionPluginReferenceIconBoundary>
           )}
