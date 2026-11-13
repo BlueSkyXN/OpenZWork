@@ -1661,7 +1661,11 @@ modules:
     roots:
       - packages/shared/src/managed-worktree
     managed: true
-    requires: []
+    # OpenZWork（v3.18.0 同步）：受管根目录名派生自 productIdentity 的
+    # OPENZWORK_DATA_DIR_NAME（用户级数据根隔离，见 docs/specs/
+    # identity-and-data-isolation-openzwork.md），声明对 shared 的依赖。
+    requires:
+      - shared
     publicEntrypoints:
       - packages/shared/src/managed-worktree/index.ts
       - packages/shared/src/managed-worktree/contract.ts
