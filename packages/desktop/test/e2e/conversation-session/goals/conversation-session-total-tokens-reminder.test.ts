@@ -318,7 +318,7 @@ function expectProjection(requests: Request[], mcs: boolean) {
 function rewriteSnapshotWithoutLine(sessionId: string) {
   const home = process.env.ZCODE_E2E_HOME_DIR;
   if (!home) throw new Error("缺少 ZCODE_E2E_HOME_DIR");
-  const database = new DatabaseSync(join(home, ".zcode", "cli", "db", "db.sqlite"));
+  const database = new DatabaseSync(join(home, ".openzwork", "cli", "db", "db.sqlite"));
   try {
     const id = `${sessionId}:runtime-prompt-snapshot`;
     const row = database.prepare("select data from session_entry where id = ?").get(id) as

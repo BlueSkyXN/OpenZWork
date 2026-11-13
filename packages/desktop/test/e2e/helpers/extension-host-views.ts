@@ -21,7 +21,7 @@ export async function writePluginDirsConfig(
   dirs: readonly string[],
   pluginIds: readonly string[],
 ): Promise<void> {
-  const configPath = join(getE2EAppDataPaths().homeDir, ".openzwork", "v2", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".openzwork", "cli", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8").catch(() => "{}")) as Record<
     string,
     unknown

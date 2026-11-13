@@ -63,7 +63,7 @@ const evidence: Record<string, unknown> = {};
 const log = createExtensionLog();
 
 function cliPath(...segments: string[]): string {
-  return join(getE2EAppDataPaths().homeDir, ".zcode", "cli", ...segments);
+  return join(getE2EAppDataPaths().homeDir, ".openzwork", "cli", ...segments);
 }
 
 async function seedFixtures(): Promise<void> {

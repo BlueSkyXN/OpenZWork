@@ -430,7 +430,7 @@ describe("PLM-EXT-JARVISHOST Jarvis 要的宿主能力", () => {
     };
     evidence.dataPath = reported;
     expect(reported.dataPath).toBe(
-      join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "plugins", "data", PLUGIN_ID),
+      join(getE2EAppDataPaths().homeDir, ".openzwork", "cli", "plugins", "data", PLUGIN_ID),
     );
     expect(reported.isDirectory).toBe(true);
 

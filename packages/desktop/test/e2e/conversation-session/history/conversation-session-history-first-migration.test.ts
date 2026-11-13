@@ -35,10 +35,10 @@ describe("HF04：旧标题迁移与历史首帧边界", () => {
       async () => (await readFile(join(root, "entered"), "utf8").catch(() => "")) === "entered",
       { timeout: 30_000, timeoutMsg: "旧标题交接没有启动冷恢复" },
     );
-    const cli = new DatabaseSync(join(homedir(), ".zcode", "cli", "db", "db.sqlite"), {
+    const cli = new DatabaseSync(join(homedir(), ".openzwork", "cli", "db", "db.sqlite"), {
       readOnly: true,
     });
-    const host = new DatabaseSync(join(homedir(), ".zcode", "v2", "tasks-index.sqlite"), {
+    const host = new DatabaseSync(join(homedir(), ".openzwork", "v2", "tasks-index.sqlite"), {
       readOnly: true,
     });
     try {

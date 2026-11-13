@@ -76,7 +76,7 @@ async function seedFixtures(): Promise<void> {
   for (const name of PLUGINS) {
     await cp(join(FIXTURE_ROOT, name), join(target, name), { recursive: true, force: true });
   }
-  const configPath = join(getE2EAppDataPaths().homeDir, ".openzwork", "v2", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".openzwork", "cli", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8").catch(() => "{}")) as Record<
     string,
     unknown

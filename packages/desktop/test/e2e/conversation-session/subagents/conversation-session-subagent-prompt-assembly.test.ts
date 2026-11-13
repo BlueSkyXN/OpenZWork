@@ -49,7 +49,7 @@ const DATE_ANNOUNCEMENT = "Today's date is ";
 const INSTRUCTIONS_PREAMBLE = "Codebase and user instructions are shown below.";
 const WORKSPACE_AGENTS_MARKER = "E2E_SUBAGENT_WORKSPACE_AGENTS_INSTRUCTION";
 const TEST_HOME_DIR = resolveE2EHomeDir();
-const USER_AGENTS_PATH = join(TEST_HOME_DIR, ".zcode", "AGENTS.md");
+const USER_AGENTS_PATH = join(TEST_HOME_DIR, ".openzwork", "AGENTS.md");
 const WORKSPACE_AGENTS_PATH = join(DEFAULT_WORKSPACE, "AGENTS.md");
 const CUSTOM_AGENT_PROFILE = `---
 name: ${CUSTOM_AGENT_NAME}
@@ -73,12 +73,12 @@ ${ISOLATED_CUSTOM_AGENT_PROMPT_MARKER}
 Reply only with the requested marker.
 `;
 const CUSTOM_AGENT_PATHS = [
-  join(TEST_HOME_DIR, ".zcode", "agents", `${CUSTOM_AGENT_NAME}.md`),
-  join(TEST_HOME_DIR, ".zcode", "cli", "agents", `${CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".openzwork", "agents", `${CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".openzwork", "cli", "agents", `${CUSTOM_AGENT_NAME}.md`),
 ];
 const ISOLATED_CUSTOM_AGENT_PATHS = [
-  join(TEST_HOME_DIR, ".zcode", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
-  join(TEST_HOME_DIR, ".zcode", "cli", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".openzwork", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
+  join(TEST_HOME_DIR, ".openzwork", "cli", "agents", `${ISOLATED_CUSTOM_AGENT_NAME}.md`),
 ];
 
 describe("会话区 subagent prompt assembly E2E", () => {

@@ -390,7 +390,7 @@ describe("I76 assistant block order", () => {
 function rewriteAsLegacyMessages(sessionId: string) {
   const home = process.env.ZCODE_E2E_HOME_DIR;
   if (!home) throw new Error("缺少 ZCODE_E2E_HOME_DIR");
-  const database = new DatabaseSync(join(home, ".zcode", "cli", "db", "db.sqlite"));
+  const database = new DatabaseSync(join(home, ".openzwork", "cli", "db", "db.sqlite"));
   try {
     database.exec("begin immediate");
     const messages = database

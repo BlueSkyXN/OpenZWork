@@ -95,7 +95,7 @@ describe("HF01：历史首帧早于 resume hook 完成", () => {
     );
     await waitForV4TimelineContaining("HISTORY_FIRST_OK", 30_000);
     const database = new DatabaseSync(
-      join(DEFAULT_WORKSPACE, "..", ".zcode", "cli", "db", "db.sqlite"),
+      join(DEFAULT_WORKSPACE, "..", ".openzwork", "cli", "db", "db.sqlite"),
     );
     try {
       expect(
@@ -121,7 +121,7 @@ describe("HF01：历史首帧早于 resume hook 完成", () => {
     await scrollV4TimelineToTop();
     const scrollBefore = (await getV4TimelineScrollState()).scrollTop;
     const database = new DatabaseSync(
-      join(DEFAULT_WORKSPACE, "..", ".zcode", "cli", "db", "db.sqlite"),
+      join(DEFAULT_WORKSPACE, "..", ".openzwork", "cli", "db", "db.sqlite"),
     );
     try {
       // 在 M0 已展示、hook 尚未完成时损坏会话分支字段，触发真实最终物化读取错误。

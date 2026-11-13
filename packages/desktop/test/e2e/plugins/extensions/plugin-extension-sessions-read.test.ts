@@ -108,13 +108,13 @@ async function seedPlugin(): Promise<void> {
   const target = fixturesDir();
   await mkdir(target, { recursive: true });
   await cp(join(FIXTURE_ROOT, PLUGIN), join(target, PLUGIN), { recursive: true, force: true });
-  const configPath = join(getE2EAppDataPaths().homeDir, ".zcode", "cli", "config.json");
+  const configPath = join(getE2EAppDataPaths().homeDir, ".openzwork", "cli", "config.json");
   const config = JSON.parse(await readFile(configPath, "utf8").catch(() => "{}")) as Record<
     string,
     unknown
   >;
   const plugins = (config.plugins ?? {}) as Record<string, unknown>;
-  await mkdir(join(getE2EAppDataPaths().homeDir, ".zcode", "cli"), { recursive: true });
+  await mkdir(join(getE2EAppDataPaths().homeDir, ".openzwork", "cli"), { recursive: true });
   await writeFile(
     configPath,
     JSON.stringify(

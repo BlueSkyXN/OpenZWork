@@ -813,7 +813,7 @@ describe("虚拟项目", () => {
     )
       throw new Error("isolated E2E HOME required");
     const serverHome = join(testHome, "url-server");
-    await mkdir(join(serverHome, ".zcode", "v2"), { recursive: true });
+    await mkdir(join(serverHome, ".openzwork", "v2"), { recursive: true });
     const child = spawn(
       process.execPath,
       ["--import", "tsx", "test/e2e/fixtures/virtual-project/server.ts"],
@@ -1191,7 +1191,7 @@ describe("虚拟项目", () => {
       await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
       await removeRemoteProjectEntryForRow('[data-project-name="E2E_VP08_URL_RENAMED"]');
       await renamed.waitForDisplayed({ reverse: true });
-      const cliDb = new DatabaseSync(join(serverHome, ".zcode", "cli", "db", "db.sqlite"), {
+      const cliDb = new DatabaseSync(join(serverHome, ".openzwork", "cli", "db", "db.sqlite"), {
         readOnly: true,
       });
       try {
