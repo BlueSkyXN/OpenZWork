@@ -1415,10 +1415,14 @@ export function createLocalServices(options: {
     .register(IUserConfigSyncService, createUserConfigSyncService())
     .register(IPluginsService, createPluginsService({ isDesktopRuntime: true }))
     // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
+    // OpenZWork（T15 修复）：onMutationSucceeded 传递在合并时丢失，插件变更信号
+    // 到不了 Window Host（refreshInventory/settings 通知链）；按上游原位恢复。
+    // reportTelemetryEvent 属遥测裁剪域（OZ-D001），不恢复。
     .register(
       IPluginManagementService,
       createPluginManagementService({
         zcodeAgentService,
+        onMutationSucceeded: options?.onPluginManagementMutated,
       }),
     )
     .register(ISubagentsService, subagentsService)
