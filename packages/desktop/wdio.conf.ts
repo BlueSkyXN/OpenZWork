@@ -3166,7 +3166,12 @@ export const config: WebdriverIO.Config = {
         );
         if (fixtureCredentialSecret) process.env.ZCODE_CREDENTIAL_SECRET = fixtureCredentialSecret;
         else delete process.env.ZCODE_CREDENTIAL_SECRET;
-        // OpenZWork（T12）：runE2EBeforeSessionSetup 随裁剪域退役；resetHome/startUpstreamHttp 由 spec 场景自行触发。
+        // OpenZWork（T15 修复 T12 回归）：runE2EBeforeSessionSetup 的裁剪域 mock 确已退役，
+        // 但 startUpstreamHttp 是 replay 模式的公共注入点（E2E_PROVIDER_CAPTURE_MODE 等 env
+        // 须在 Electron 启动前进入 Main→Host 环境链），插件/UI 用例直接断言该 env 为 "replay"。
+        // 这里按上游原位恢复该调用；conversation 系用例自建的 case-local replay server
+        // 在 spec 内覆盖同一组 env，行为不变。
+        await startUpstreamE2EHttp(specs);
         if (
           process.platform === "darwin" &&
           specs.some((spec) => spec.endsWith("system-credential-storage.test.ts"))
