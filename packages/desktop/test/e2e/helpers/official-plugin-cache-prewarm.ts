@@ -15,7 +15,8 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const OFFICIAL_PLUGIN_CACHE_SEGMENTS = [
-  ".zcode",
+  // OpenZWork（D-03）：用户级数据根为 .openzwork，CLI 的插件缓存写在这里。
+  ".openzwork",
   "cli",
   "plugins",
   "cache",
