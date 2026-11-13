@@ -244,11 +244,12 @@ describe(`${CASE}: explicit App session navigation`, () => {
 
   it("SCT03 / SCT02: sidebar and tool navigation share back/forward history; mobile stays on caller", async function () {
     this.timeout(300_000);
-    // OpenZWork：本机宿主系统语言是 zh-CN，而 forward 按钮断言用英文 aria-label
-    // （上游 CI 在英文宿主上运行）。首帧跟随宿主语言，这里把界面固定为 en-US 再继续。
-    await pinE2ELocale("en-US");
     await ensureReadonlyToolFixtureFile();
     await prepareV4ConversationE2E();
+    // OpenZWork：本机宿主系统语言是 zh-CN，而 forward 按钮断言用英文 aria-label
+    // （上游 CI 在英文宿主上运行）。首帧跟随宿主语言；__testActions 在 renderer 挂载后
+    // 注册，故在应用就绪后再把界面固定为 en-US。
+    await pinE2ELocale("en-US");
     await startDraftFromProject(DEFAULT_WORKSPACE);
     await sendV4Prompt(buildReadonlyToolPrompt(`${CASE}_TARGET`));
     await waitForV4AssistantMessageContaining("upstream-e2e-ok", 90_000);
