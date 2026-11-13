@@ -106,18 +106,31 @@ export function createPluginManagementService(
     onDynamicPluginOperationProgress: (operationId) =>
       agent.onDynamicPluginOperationProgress(operationId),
     getPluginsOverview: (params) => agent.getPluginsOverview(params),
-    addPluginMarketplace: (params) => agent.addPluginMarketplace(params),
-    removePluginMarketplace: (params) => agent.removePluginMarketplace(params),
-    updatePluginMarketplace: (params) => agent.updatePluginMarketplace(params),
-    installPlugin: (params) => agent.installPlugin(params),
+    // OpenZWork（T15 修复）：observe 包装在遥测剥离（OZ-D001）时被误删成裸调，
+    // onMutationSucceeded 从不触发——设置保存后 settings.onDidChange 不通知扩展、
+    // 安装/启停后静态表不刷新。这里按上游原位恢复包装；observe 本体已是去遥测形态。
+    addPluginMarketplace: (params) =>
+      observe("source_add", params, (clean) => agent.addPluginMarketplace(clean as typeof params)),
+    removePluginMarketplace: (params) =>
+      observe("source_remove", params, (clean) => agent.removePluginMarketplace(clean as typeof params)),
+    updatePluginMarketplace: (params) =>
+      observe("source_refresh", params, (clean) => agent.updatePluginMarketplace(clean as typeof params)),
+    installPlugin: (params) => observe("install", params, (clean) => agent.installPlugin(clean as typeof params)),
     cancelPluginOperation: (params) => agent.cancelPluginOperation(params),
-    uninstallPlugin: (params) => agent.uninstallPlugin(params),
-    updatePlugin: (params) => agent.updatePlugin(params),
-    restoreBuiltinPlugin: (params) => agent.restoreBuiltinPlugin(params),
-    configurePlugin: (params) => agent.configurePlugin(params),
-    resetPluginConfig: (params) => agent.resetPluginConfig(params),
+    uninstallPlugin: (params) =>
+      observe("uninstall", params, (clean) => agent.uninstallPlugin(clean as typeof params)),
+    updatePlugin: (params) => observe("update", params, (clean) => agent.updatePlugin(clean as typeof params)),
+    restoreBuiltinPlugin: (params) =>
+      observe("restore", params, (clean) => agent.restoreBuiltinPlugin(clean as typeof params)),
+    configurePlugin: (params) =>
+      observe("configure", params, (clean) => agent.configurePlugin(clean as typeof params)),
+    resetPluginConfig: (params) =>
+      observe("reset_config", params, (clean) => agent.resetPluginConfig(clean as typeof params)),
     validatePlugin: (params) => agent.validatePlugin(params),
     describePlugin: (params) => agent.describePlugin(params),
-    setPluginEnabled: (params) => agent.setPluginEnabled(params),
+    setPluginEnabled: (params) =>
+      observe(params.enabled ? "enable" : "disable", params, (clean) =>
+        agent.setPluginEnabled(clean as typeof params),
+      ),
   };
 }
