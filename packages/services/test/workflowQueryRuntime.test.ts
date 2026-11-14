@@ -183,63 +183,78 @@ async function isPidAlive(pid: number): Promise<boolean> {
   }
 }
 
-/** 采样一棵进程树的总 RSS（KB）：ps 全量 + 按 ppid 递归归并后代。 */
-async function sampleProcessTreeRssKb(rootPids: number[]): Promise<number> {
-  if (rootPids.length === 0) return 0;
-  const { stdout } = await execFileAsync("ps", ["-eo", "pid=,ppid=,rss="], {
-    maxBuffer: 16 * 1024 * 1024,
-  });
-  const rows = stdout
+interface ProcessTableRow {
+  pid: number;
+  ppid: number;
+  rssKb?: number;
+}
+
+/**
+ * 跨平台进程表：POSIX 用 ps 全量；Windows 直接复用产品的
+ * readWindowsProcessListAsync（PowerShell/CIM），与产品终止链同一数据源。
+ * `includeRss` 仅 POSIX 支持（CIM 行不含内存列）；Windows 返回的 rssKb 为
+ * undefined，调用方按 0 处理（内存采样断言只在 POSIX CI/本机跑）。
+ */
+async function readProcessTable(includeRss: boolean): Promise<ProcessTableRow[]> {
+  if (process.platform === "win32") {
+    const { readWindowsProcessListAsync } =
+      await import("../src/process/windowsProcessListAsync.js");
+    const identities = await readWindowsProcessListAsync({});
+    return identities.map((identity) => ({ pid: identity.pid, ppid: identity.parentPid }));
+  }
+  const args = includeRss ? ["-eo", "pid=,ppid=,rss="] : ["-eo", "pid=,ppid="];
+  const { stdout } = await execFileAsync("ps", args, { maxBuffer: 16 * 1024 * 1024 });
+  return stdout
     .split("\n")
     .map((line) => line.trim().split(/\s+/))
-    .filter((parts) => parts.length === 3 && parts.every((part) => /^\d+$/.test(part)))
-    .map((parts) => ({ pid: Number(parts[0]), ppid: Number(parts[1]), rssKb: Number(parts[2]) }));
-  const byPid = new Map(rows.map((row) => [row.pid, row]));
+    .filter((parts) => parts.length === args.length && parts.every((part) => /^\d+$/.test(part)))
+    .map((parts) => ({
+      pid: Number(parts[0]),
+      ppid: Number(parts[1]),
+      ...(includeRss ? { rssKb: Number(parts[2]) } : {}),
+    }));
+}
+
+function childrenByPpid(rows: readonly ProcessTableRow[]): Map<number, number[]> {
   const children = new Map<number, number[]>();
   for (const row of rows) {
     const list = children.get(row.ppid) ?? [];
     list.push(row.pid);
     children.set(row.ppid, list);
   }
-  let total = 0;
-  const stack = [...rootPids];
+  return children;
+}
+
+function collectTreePids(
+  rootPids: readonly number[],
+  children: Map<number, number[]>,
+): Set<number> {
   const seen = new Set<number>();
+  const stack = [...rootPids];
   while (stack.length > 0) {
     const pid = stack.pop()!;
     if (seen.has(pid)) continue;
     seen.add(pid);
-    const row = byPid.get(pid);
-    if (row) total += row.rssKb;
     for (const child of children.get(pid) ?? []) stack.push(child);
   }
+  return seen;
+}
+
+/** 采样一棵进程树的总 RSS（KB）：进程表全量 + 按 ppid 递归归并后代。 */
+async function sampleProcessTreeRssKb(rootPids: number[]): Promise<number> {
+  if (rootPids.length === 0) return 0;
+  const rows = await readProcessTable(true);
+  const byPid = new Map(rows.map((row) => [row.pid, row]));
+  const seen = collectTreePids(rootPids, childrenByPpid(rows));
+  let total = 0;
+  for (const pid of seen) total += byPid.get(pid)?.rssKb ?? 0;
   return total;
 }
 
 async function listTreePids(rootPids: number[]): Promise<number[]> {
   if (rootPids.length === 0) return [];
-  const { stdout } = await execFileAsync("ps", ["-eo", "pid=,ppid="], {
-    maxBuffer: 16 * 1024 * 1024,
-  });
-  const rows = stdout
-    .split("\n")
-    .map((line) => line.trim().split(/\s+/))
-    .filter((parts) => parts.length === 2 && parts.every((part) => /^\d+$/.test(part)))
-    .map((parts) => ({ pid: Number(parts[0]), ppid: Number(parts[1]) }));
-  const children = new Map<number, number[]>();
-  for (const row of rows) {
-    const list = children.get(row.ppid) ?? [];
-    list.push(row.pid);
-    children.set(row.ppid, list);
-  }
-  const seen = new Set<number>();
-  const stack = [...rootPids];
-  while (stack.length > 0) {
-    const pid = stack.pop()!;
-    if (seen.has(pid)) continue;
-    seen.add(pid);
-    for (const child of children.get(pid) ?? []) stack.push(child);
-  }
-  return [...seen];
+  const rows = await readProcessTable(false);
+  return [...collectTreePids(rootPids, childrenByPpid(rows))];
 }
 
 describe("工作流查询 lane（OW-P024）", () => {
