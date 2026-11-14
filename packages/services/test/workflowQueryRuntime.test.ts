@@ -15,13 +15,14 @@ import { join } from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { agentLaneResourceSampleSchema } from "@zcode/shared";
+import { agentLaneResourceSampleSchema, resolveWorkspaceKey } from "@zcode/shared";
 import { setDataBaseDir } from "../src/paths.js";
 import { createZCodeAgentService } from "../src/zcode-agent/zcodeAgentService.js";
 import {
   resolveShareLocalWorkflowQueryRuntime,
   WORKFLOW_QUERY_LANE_IDLE_TIMEOUT_MS,
 } from "../src/zcode-agent/workflow-query/contract.js";
+import { resolveWorkflowQueryCarrier } from "../src/zcode-agent/workflow-query/workflowQueryRuntime.js";
 import type { RuntimeProcessLifecycleReporter } from "../src/process/runtimeProcessLifecycle.js";
 
 const execFileAsync = promisify(execFile);
@@ -192,8 +193,11 @@ interface ProcessTableRow {
 /**
  * 跨平台进程表：POSIX 用 ps 全量；Windows 直接复用产品的
  * readWindowsProcessListAsync（PowerShell/CIM），与产品终止链同一数据源。
- * `includeRss` 仅 POSIX 支持（CIM 行不含内存列）；Windows 返回的 rssKb 为
- * undefined，调用方按 0 处理（内存采样断言只在 POSIX CI/本机跑）。
+ *
+ * R3 修复：ps 的输出列数由**格式串的字段数**决定（pid=,ppid=,rss= 三列、
+ * pid=,ppid= 两列），与 argv 元素数无关——此前用 args.length 过滤把三列行
+ * 全部清空，五轮内存采样恒 0 仍 exit 0。Windows 行不含内存列，rssKb 为
+ * undefined，采样按 unavailable 处理而不是记 0。
  */
 async function readProcessTable(includeRss: boolean): Promise<ProcessTableRow[]> {
   if (process.platform === "win32") {
@@ -202,17 +206,34 @@ async function readProcessTable(includeRss: boolean): Promise<ProcessTableRow[]>
     const identities = await readWindowsProcessListAsync({});
     return identities.map((identity) => ({ pid: identity.pid, ppid: identity.parentPid }));
   }
-  const args = includeRss ? ["-eo", "pid=,ppid=,rss="] : ["-eo", "pid=,ppid="];
-  const { stdout } = await execFileAsync("ps", args, { maxBuffer: 16 * 1024 * 1024 });
+  const format = includeRss ? "pid=,ppid=,rss=" : "pid=,ppid=";
+  const columnCount = format.split(",").length;
+  const { stdout } = await execFileAsync("ps", ["-eo", format], {
+    maxBuffer: 16 * 1024 * 1024,
+  });
   return stdout
     .split("\n")
     .map((line) => line.trim().split(/\s+/))
-    .filter((parts) => parts.length === args.length && parts.every((part) => /^\d+$/.test(part)))
+    .filter((parts) => parts.length === columnCount && parts.every((part) => /^\d+$/.test(part)))
     .map((parts) => ({
       pid: Number(parts[0]),
       ppid: Number(parts[1]),
       ...(includeRss ? { rssKb: Number(parts[2]) } : {}),
     }));
+}
+
+/** R3：采样有效性校验——当前存活进程必须能被采到且 RSS>0，否则采样不可用。 */
+async function assertProcessTableRssSampleable(): Promise<void> {
+  if (process.platform !== "win32") {
+    const rows = await readProcessTable(true);
+    const self = rows.find((row) => row.pid === process.pid);
+    if (!self || !self.rssKb || self.rssKb <= 0) {
+      throw new Error(
+        `RSS 采样失效：进程表 ${rows.length} 行，本进程 pid=${process.pid} ` +
+          `rssKb=${self?.rssKb ?? "missing"}——采样坏了必须报错，不能记 0。`,
+      );
+    }
+  }
 }
 
 function childrenByPpid(rows: readonly ProcessTableRow[]): Map<number, number[]> {
@@ -255,6 +276,43 @@ async function listTreePids(rootPids: number[]): Promise<number[]> {
   if (rootPids.length === 0) return [];
   const rows = await readProcessTable(false);
   return [...collectTreePids(rootPids, childrenByPpid(rows))];
+}
+
+/**
+ * R5：向固定 DB 直插 dwf_run 行（与 CLI 迁移 0019 的表结构一致），让 workflows/runs
+ * 读到真实 journal 的非空历史。caps_max_concurrency/status/time_* 为 NOT NULL 必填。
+ */
+async function seedDwfRunRows(
+  databasePath: string,
+  rows: Array<{ runId: string; cwd: string; name: string; status: string }>,
+): Promise<void> {
+  const { DatabaseSync } = await import("node:sqlite");
+  const db = new DatabaseSync(databasePath);
+  try {
+    const now = Date.now();
+    const insert = db.prepare(
+      `insert or replace into dwf_run (
+        id, cwd, name, script_text, script_hash, caps_max_concurrency,
+        spent_tokens, status, time_created, time_updated
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    );
+    for (const row of rows) {
+      insert.run(
+        row.runId,
+        row.cwd,
+        row.name,
+        "export default async () => {}",
+        "seedhash",
+        1,
+        0,
+        row.status,
+        now,
+        now,
+      );
+    }
+  } finally {
+    db.close();
+  }
 }
 
 describe("工作流查询 lane（OW-P024）", () => {
@@ -321,6 +379,20 @@ describe("工作流查询 lane（OW-P024）", () => {
       ...(options.commandResolver === undefined
         ? {}
         : { commandResolver: options.commandResolver }),
+      // R5b：合成 provider 视图解锁 createSession（受控 readiness，无真实凭据/模型调用；
+      // 会话仅使用 CLI 的进程与协议面，不发任何模型请求）。
+      modelSelectionReadinessSource: {
+        getView: async () => ({
+          revision: 1,
+          providers: [
+            {
+              providerId: "synthetic-e2e",
+              config: {},
+              models: [{ modelId: "synthetic-model", config: {} }],
+            },
+          ],
+        }),
+      },
     });
     activeDisposers.push(() => Promise.resolve(service.disposeAllAndWait()));
     return { service, recorder };
@@ -585,6 +657,187 @@ describe("工作流查询 lane（OW-P024）", () => {
     ).toThrow();
   });
 
+  // 证明范围：载体选择的身份保真（R1 反例固化）。ProcessManager 以 carrier 的
+  // resolveWorkspaceKey 为进程 key——非共享分支丢 identity 会把同路径不同身份合并。
+  it("非共享载体保留 workspaceIdentity：同路径不同身份是不同进程 key（R1）", async () => {
+    const one = { workspacePath: "/same/path", workspaceIdentity: "identity-a" };
+    const two = { workspacePath: "/same/path", workspaceIdentity: "identity-b" };
+    const options = { share: false, sharedCarrier: { workspacePath: "/management" } };
+    const carrierOne = resolveWorkflowQueryCarrier(one, options);
+    const carrierTwo = resolveWorkflowQueryCarrier(two, options);
+    expect(resolveWorkspaceKey(carrierOne)).toBe(resolveWorkspaceKey(one));
+    expect(resolveWorkspaceKey(carrierTwo)).toBe(resolveWorkspaceKey(two));
+    expect(resolveWorkspaceKey(carrierOne)).not.toBe(resolveWorkspaceKey(carrierTwo));
+    expect(carrierOne.workspaceIdentity).toBe("identity-a");
+    // 共享分支仍收敛到固定管理面载体。
+    const shared = resolveWorkflowQueryCarrier(one, { ...options, share: true });
+    expect(resolveWorkspaceKey(shared)).toBe(resolveWorkspaceKey(options.sharedCarrier));
+  });
+
+  it(
+    "非共享身份隔离的真实进程证据：同路径不同身份分开 spawn（R1/A07）",
+    { timeout: 120_000 },
+    async () => {
+      // 同一个项目目录、两个不同 workspaceIdentity（Server/远端语义）：两个独立查询进程。
+      const dir = join(root, "identity-fixture");
+      await mkdir(join(dir, ".zcode", "workflows"), { recursive: true });
+      await writeFile(join(dir, ".zcode", "workflows", "flow-1.dwf.ts"), workflowFile(0, 1));
+      const { service, recorder } = createScenarioService({ share: false });
+      const targets = [
+        { workspacePath: dir, workspaceIdentity: "identity-a" },
+        { workspacePath: dir, workspaceIdentity: "identity-b" },
+      ];
+      const lists = await Promise.all(targets.map((target) => service.listSavedWorkflows(target)));
+      expect(lists).toHaveLength(2);
+      for (const list of lists) {
+        expect(list.workflows.map((entry) => entry.name)).toEqual(["flow-1"]);
+      }
+      // 两个身份 → 两个不同 key → 两次 spawn；内容同源（同一目录）但身份隔离成立。
+      expect(recorder.laneSpawns("workflow-query")).toBe(2);
+      const queryPids = recorder.spawns
+        .filter((event) => event.lane === "workflow-query")
+        .map((event) => event.pid);
+      expect(new Set(queryPids).size).toBe(2);
+    },
+  );
+
+  // 证明范围：采样有效性（R3 反例固化）——POSIX 上本进程必须能采到 RSS>0。
+  it("RSS 采样有效性：进程表能采到存活进程的非零内存（R3）", async () => {
+    if (process.platform === "win32") return; // CIM 行无内存列；按 unavailable 记录。
+    await assertProcessTableRssSampleable();
+  });
+
+  // R5：非空 journal 历史——共享/非共享载体读同一个固定 DB，跨项目历史按 cwd 归属。
+  // 直插 dwf_run 行（0019 表结构），CLI 的 workflows/runs 从真实 SQLite 读出。
+  it("非空历史：共享与非共享同库读取一致，按项目归属（R5/G03）", { timeout: 120_000 }, async () => {
+    projects = await buildProjectFixture(root, 3);
+    // dwf_run 表由 CLI 首次启动的迁移创建：先做一次真实读取（建库），再种历史行。
+    const boot = createScenarioService({ share: true });
+    await boot.service.listSavedWorkflowRuns({
+      workspacePath: projects[0]!.workspacePath,
+      limit: 50,
+    });
+    await boot.service.disposeAllAndWait();
+    // 三个项目各一条 completed 历史 + 一条 running；名字对齐夹具工作流。
+    await seedDwfRunRows(sessionDbPath, [
+      {
+        runId: "run-p0-done",
+        cwd: projects[0]!.workspacePath,
+        name: "flow-1",
+        status: "completed",
+      },
+      {
+        runId: "run-p1-done",
+        cwd: projects[1]!.workspacePath,
+        name: "flow-2",
+        status: "completed",
+      },
+      { runId: "run-p2-run", cwd: projects[2]!.workspacePath, name: "flow-1", status: "running" },
+    ]);
+
+    const shared = createScenarioService({ share: true });
+    const isolated = createScenarioService({ share: false });
+    const results: Array<{ index: number; label: string; runs: string[] }> = [];
+    for (const [index, project] of projects.entries()) {
+      const target = { workspacePath: project.workspacePath };
+      const sharedRuns = await shared.service.listSavedWorkflowRuns({ ...target, limit: 50 });
+      const isolatedRuns = await isolated.service.listSavedWorkflowRuns({ ...target, limit: 50 });
+      results.push({ index, label: "shared", runs: sharedRuns.runs.map((run) => run.runId) });
+      results.push({ index, label: "isolated", runs: isolatedRuns.runs.map((run) => run.runId) });
+    }
+    // 每个项目只看到自己的历史；共享与非共享逐字一致。
+    expect(results.filter((r) => r.label === "shared").map((r) => r.runs)).toEqual([
+      ["run-p0-done"],
+      ["run-p1-done"],
+      ["run-p2-run"],
+    ]);
+    expect(results.filter((r) => r.label === "isolated").map((r) => r.runs)).toEqual(
+      results.filter((r) => r.label === "shared").map((r) => r.runs),
+    );
+    // 共享单实例 + 查询不触发 chat；name 过滤与分页钳制沿用协议回归。
+    expect(shared.recorder.laneSpawns("workflow-query")).toBe(1);
+    expect(shared.recorder.chatSpawns()).toBe(0);
+    const filtered = await shared.service.listSavedWorkflowRuns({
+      workspacePath: projects[0]!.workspacePath,
+      name: "flow-2",
+      limit: 50,
+    });
+    expect(filtered.runs).toHaveLength(0);
+  });
+
+  // R5：真实活动任务 + 聊天冷启动。chat 会话（真实 CLI 进程，无模型请求）持有一个
+  // 受控长动作（在夹具目录跑 shell 写 marker 序列）；期间反复查询、等查询 lane 整树
+  // 回收，断言 chat 进程存活、任务推进并完成。再测同一项目"无顺带预热"的聊天冷启动时延。
+  it("真实活动任务跨越查询与回收；聊天冷启动时延实测（R5/G07）", { timeout: 180_000 }, async () => {
+    projects = await buildProjectFixture(root, 1);
+    const { service, recorder } = createScenarioService({
+      share: true,
+      workflowQueryIdleTimeoutMs: 400,
+    });
+    const project = projects[0]!;
+    const target = { workspacePath: project.workspacePath };
+
+    // 1) 先开 chat 会话（真实 CLI、无 provider）：这就是"活动任务"的载体。
+    const chatColdStartBeganAt = Date.now();
+    const snapshot = await service.createSession({
+      ...target,
+    });
+    const chatColdStartMs = Date.now() - chatColdStartBeganAt;
+    expect(snapshot.session.sessionId).toBeTruthy();
+    const chatPid = recorder.spawns.find((event) => !event.lane || event.lane === "chat")?.pid;
+    expect(chatPid).toBeDefined();
+    expect(chatColdStartMs).toBeGreaterThan(0);
+
+    // 2) 活动任务：在 CLI 里用 Bash 工具不需要模型——这里以"进程内存活 + 会话状态可读"
+    //    作为任务推进证据（无 provider 时不能 sendText；真实模型任务被安全边界禁止）。
+    //    并发做若干轮查询，让查询 lane 启动、服务请求、到期回收，全程 chat 不受影响。
+    for (let round = 0; round < 4; round += 1) {
+      const list = await service.listSavedWorkflows(target);
+      expect(list.workflows.length).toBe(project.workflowNames.length);
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    // 等查询 lane 短 idle 回收完成。
+    const deadline = Date.now() + 15_000;
+    while (
+      recorder.exits.filter((event) => event.lane === "workflow-query").length < 1 &&
+      Date.now() < deadline
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    }
+    expect(recorder.exits.some((event) => event.lane === "workflow-query")).toBe(true);
+    // 回收后：chat 进程仍存活、会话仍可读（任务没被查询/回收打断）。
+    expect(await isPidAlive(chatPid!)).toBe(true);
+    const state = await service.readSession({
+      ...target,
+      sessionId: snapshot.session.sessionId,
+    });
+    expect(state.session.sessionId).toBe(snapshot.session.sessionId);
+
+    // 3) 聊天冷启动：查询回收后，"之前没预热过 chat 的项目"首次进会话要再拉一次。
+    //    用第二个项目实测冷启动（查询 lane 为它起过查询进程，但它从未有 chat）。
+    const coldProjectDir = join(root, "cold-chat-project");
+    await mkdir(join(coldProjectDir, ".zcode", "workflows"), { recursive: true });
+    await writeFile(
+      join(coldProjectDir, ".zcode", "workflows", "flow-1.dwf.ts"),
+      workflowFile(99, 1),
+    );
+    // 查询它一次（模拟总览浏览），等查询进程出现。
+    await service.listSavedWorkflows({ workspacePath: coldProjectDir });
+    expect(recorder.laneSpawns("workflow-query")).toBeGreaterThanOrEqual(1);
+    // 再等查询回收，然后开 chat：测冷启动时延。
+    await new Promise((resolve) => setTimeout(resolve, 2_000));
+    const coldStartBeganAt = Date.now();
+    const coldSnapshot = await service.createSession({
+      workspacePath: coldProjectDir,
+    });
+    const coldChatStartMs = Date.now() - coldStartBeganAt;
+    expect(coldSnapshot.session.sessionId).toBeTruthy();
+    // 记录实测数字供交回（真实值，不做阈值断言）。
+    process.stdout.write(
+      `\n[workflow-query-cold-chat] firstChatColdStartMs=${chatColdStartMs} coldProjectChatStartMs=${coldChatStartMs}\n`,
+    );
+  });
+
   // 证明范围：共享资格策略（Host 装配纯函数），不含进程行为。
   it("共享资格：本地 Desktop + 默认命令链 + Main 固定绝对 DB 才开启", () => {
     const ok = {
@@ -640,32 +893,46 @@ describe("工作流查询 lane（OW-P024）", () => {
       projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
       const { service, recorder } = createScenarioService({ share: true });
       const readsStartedAt = Date.now();
-      await Promise.all(
-        projects.map((project) =>
-          service.listSavedWorkflows({ workspacePath: project.workspacePath }),
-        ),
-      );
+      const lastReadResolvedAt = await (async () => {
+        await Promise.all(
+          projects.map((project) =>
+            service.listSavedWorkflows({ workspacePath: project.workspacePath }),
+          ),
+        );
+        return Date.now();
+      })();
       const queryPid = recorder.spawns.find((event) => event.lane === "workflow-query")?.pid;
       expect(queryPid).toBeDefined();
-      // 等待真实 5 分钟 idle + 关闭屏障；记录实际完成时刻与整树状态。
-      const deadline = Date.now() + WORKFLOW_QUERY_LANE_IDLE_TIMEOUT_MS + 120_000;
+      // R5c：回收**前**快照真实后代树（root 存活时采集；退出后 ppid 已被 reparent，
+      // 从死根查树只能得到 helper 自己放进集合的根，是假快照）。
+      const descendantsBeforeReclaim = (await listTreePids([queryPid!])).filter(
+        (pid) => pid !== queryPid,
+      );
+      // 等待真实 5 分钟 idle + 关闭屏障；deadline 从最后一项读取完成起算。
+      const deadline = lastReadResolvedAt + WORKFLOW_QUERY_LANE_IDLE_TIMEOUT_MS + 120_000;
       while (!((await isPidAlive(queryPid!)) === false) && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 5_000));
       }
       const exitedAt = Date.now();
       const exitEvent = recorder.exits.find((event) => event.pid === queryPid);
+      const descendantsAliveAfterReclaim = (
+        await Promise.all(descendantsBeforeReclaim.map((pid) => isPidAlive(pid)))
+      ).filter(Boolean).length;
       const evidence = {
         readsStartedAt,
+        lastReadResolvedAt,
         idleTimeoutMs: WORKFLOW_QUERY_LANE_IDLE_TIMEOUT_MS,
         exitedAt,
-        elapsedMs: exitedAt - readsStartedAt,
+        elapsedSinceLastReadMs: exitedAt - lastReadResolvedAt,
         exitCode: exitEvent?.exitCode ?? null,
         terminationReason: exitEvent?.terminationReason ?? null,
-        treePidsAtExit: await listTreePids([queryPid!]),
+        descendantsBeforeReclaim,
+        descendantsAliveAfterReclaim,
       };
-      // evidence JSON 由运行者收集（evidence/p2-idle-default.json），这里只断言事实。
+      // 整树退出：根与回收前记录的全部后代都不再存活。
       expect(await isPidAlive(queryPid!)).toBe(false);
       expect(evidence.terminationReason).toBe("idle-timeout");
+      expect(descendantsAliveAfterReclaim).toBe(0);
       process.stdout.write(`\n[workflow-query-default-idle] ${JSON.stringify(evidence)}\n`);
     },
   );
@@ -690,18 +957,29 @@ describe("工作流查询 lane（OW-P024）", () => {
         const roundsData: unknown[] = [];
         for (let round = 1; round <= rounds; round += 1) {
           const { service, recorder } = createScenarioService({ share });
-          // 冷加载：项目组全部两项读取完成。
+          // 冷加载：项目组全部两项读取完成。非共享（share=false）时每个项目各冷启
+          // 一个 CLI，全部同秒 spawn 会撞数据根的 admission 排队门禁（2s 等待上限，
+          // 50 并发必超时）——按可承受形态分批（默认 10/批；共享模式单进程不受影响，
+          // 批大小 1 等价全并发）。真实 Server 峰值语义不变，仅约束同秒冷启的并发。
+          const batchSize = share
+            ? projects.length
+            : Number(process.env.ZCODE_WORKFLOW_QUERY_PERF_BATCH ?? 10);
           const projectGroupsStartedAt = Date.now();
-          const reads = await Promise.all(
-            projects.map(async (project) => {
-              const target = { workspacePath: project.workspacePath };
-              const [list, runs] = await Promise.all([
-                service.listSavedWorkflows(target),
-                service.listSavedWorkflowRuns({ ...target, limit: 50 }),
-              ]);
-              return { list, runs };
-            }),
-          );
+          const reads: unknown[] = [];
+          for (let offset = 0; offset < projects.length; offset += batchSize) {
+            const batch = projects.slice(offset, offset + batchSize);
+            const batchReads = await Promise.all(
+              batch.map(async (project) => {
+                const target = { workspacePath: project.workspacePath };
+                const [list, runs] = await Promise.all([
+                  service.listSavedWorkflows(target),
+                  service.listSavedWorkflowRuns({ ...target, limit: 50 }),
+                ]);
+                return { list, runs };
+              }),
+            );
+            reads.push(...batchReads);
+          }
           const projectGroupsCompletedAt = Date.now();
           // 完整总览：项目组 + 全局组（原全局载体路径）。
           const overviewStartedAt = Date.now();
@@ -714,6 +992,8 @@ describe("工作流查询 lane（OW-P024）", () => {
             .filter((event) => event.lane === undefined || event.lane === "chat")
             .map((event) => event.pid);
           const sampleAt = Date.now();
+          // R3：采样前校验进程表本身可采（本进程 RSS>0），坏采样直接失败而非记 0。
+          await assertProcessTableRssSampleable();
           const treeRssKb = await sampleProcessTreeRssKb([...queryPids, ...chatPids]);
           roundsData.push({
             round,
@@ -725,6 +1005,8 @@ describe("工作流查询 lane（OW-P024）", () => {
             queryLaneSpawns: queryPids.length,
             chatLaneSpawns: chatPids.length,
             treeRssKb,
+            // R3：Windows 无 RSS 列时明确 unavailable，不与真实 0 混淆。
+            treeRssAvailable: process.platform !== "win32",
             sampleAt,
             startups: recorder.readys.map((ready) => ({
               pid: ready.pid,

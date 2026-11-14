@@ -327,6 +327,7 @@ export function SavedWorkflowProjectGroup({
         projectLabel={project.label}
         entry={entry}
         runs={state.runs.filter((run) => run.name === mode.name)}
+        runsError={state.runsError}
         now={now}
         busy={busyName === mode.name}
         canOpenRun={Boolean(onOpenWorkflowRun)}
@@ -354,6 +355,11 @@ export function SavedWorkflowProjectGroup({
     <div
       data-testid={testId(TID_WORKFLOW_PROJECT_GROUP, workspaceKey)}
       data-workflow-project-current={isCurrent ? "true" : undefined}
+      // OW-P024 R4：组级可观察状态（E2E/浏览器验收用稳定标记，不匹配语言片段）。
+      data-workflows-loading={state.loading ? "true" : undefined}
+      data-workflows-loaded={state.loaded ? "true" : undefined}
+      data-workflows-load-error={state.error ? "true" : undefined}
+      data-workflows-runs-error={state.runsError ? "true" : undefined}
       className="mt-8 first:mt-0"
     >
       <div className="flex items-center justify-between gap-3">
@@ -390,6 +396,7 @@ export function SavedWorkflowProjectGroup({
               key={entry.path}
               entry={entry}
               lastRun={lastRuns.get(entry.name)}
+              runsError={state.runsError}
               now={now}
               busy={busyName === entry.name}
               onOpen={handleOpen}

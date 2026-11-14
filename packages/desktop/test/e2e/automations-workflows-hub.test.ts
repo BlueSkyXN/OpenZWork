@@ -52,7 +52,6 @@ import {
   waitForUserMessageContaining,
 } from "./helpers/conversation-session.js";
 import { getV4ComposerBackgroundWorkCounts } from "./helpers/v4-conversation.js";
-import { readDynamicWorkflowGrayMockStatus } from "#e2e/helpers/dynamic-workflow-gray";
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";
 
 const WORKFLOW_NAME = "release-check";
@@ -150,9 +149,9 @@ describe("已保存工作流中枢 E2E", () => {
     // 只需要 workspace 就绪即可进入自动化页，不需要账号或配置模型 provider。
     await prepareConversationE2E({ skipProvider: true });
 
-    const configStatus = await readDynamicWorkflowGrayMockStatus();
-    expect(configStatus.mode).toBe("alwaysOn");
-    expect(configStatus.configRequests).toBeGreaterThan(0);
+    // OpenZWork：动态工作流门禁为本地恒开（官方套餐灰度链随账号域移除，见
+    // zcodeAgentService.resolveDynamicWorkflowGate），不请求 /client/configs——
+    // 上游的 case-local 灰度网关断言在本 fork 不适用，直接进入页面验证。
 
     // 1) 打开自动化页，页标题切到「工作流」。
     await clickTestIdByDom(TID_AUTOMATIONS_OPEN, {
@@ -208,20 +207,33 @@ describe("已保存工作流中枢 E2E", () => {
     });
     expect(await readTestIdText(cardTestId)).toContain("发布前检查");
 
-    // 3a) OW-P024：连续两次强制刷新（bypassCache 并发）后内容保持一致、不闪空、无错误横幅。
-    //     读取已走 workflow-query lane；请求代际保证旧结果不覆盖新结果（store 回归覆盖时序，
-    //     E2E 覆盖真实链路下的可见行为）。
+    // 3a) OW-P024 R4：双刷新收敛 + 状态标记检查。两次强制刷新（bypassCache 并发）后：
+    //     等待 loading 消失（新请求收敛）再断言卡片仍是预置内容——请求代际保证旧结果
+    //     不覆盖新结果。错误检查用 DOM 状态标记（data-workflow-*-error），不匹配语言片段。
     await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "工作流页没有刷新按钮" });
     await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "第二次点击刷新失败" });
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          () =>
+            document.querySelector(
+              '[data-testid^="workflow-project-group-"][data-workflows-loading="true"]',
+            ) === null,
+        )) as boolean,
+      { timeout: 20_000, timeoutMsg: "双刷新后项目组 loading 未收敛" },
+    );
     await waitForTestIdByDom(cardTestId, {
-      timeout: 20000,
+      timeout: 20_000,
       timeoutMsg: "双刷新后工作流卡片消失",
     });
     expect(await readTestIdText(cardTestId)).toContain("发布前检查");
-    const refreshErrorText = await browser.execute(
-      () => document.body.textContent?.includes("读取工作流失败") ?? false,
+    const refreshErrorMarkers = await browser.execute(
+      () =>
+        document.querySelectorAll(
+          '[data-workflows-load-error="true"], [data-workflow-history-error="true"], [data-workflow-last-run="unknown"]',
+        ).length,
     );
-    expect(refreshErrorText).toBe(false);
+    expect(refreshErrorMarkers).toBe(0);
 
     // 4) 点卡片进详情，改说明并保存。
     await clickTestIdByDom(cardTestId, { timeoutMsg: "无法点击工作流卡片进入详情" });

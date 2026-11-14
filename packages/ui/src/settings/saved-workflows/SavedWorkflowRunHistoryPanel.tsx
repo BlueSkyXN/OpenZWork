@@ -28,6 +28,7 @@ export interface SavedWorkflowRunProject {
 /** 详情页「运行历史」：journal 行（状态 / 时间 / 花费 / 实参），有归属字段的行可「查看实例」。 */
 export function SavedWorkflowRunHistory({
   runs,
+  runsError,
   now,
   canOpenRun,
   onOpenRun,
@@ -35,6 +36,8 @@ export function SavedWorkflowRunHistory({
   resolveRunProject,
 }: {
   runs: readonly ZCodeSavedWorkflowRun[];
+  /** 历史读取失败（OW-P024 R2）：空 runs 不能断言「还没有记录」。 */
+  runsError?: string | null;
   now: number;
   canOpenRun: boolean;
   onOpenRun: (run: ZCodeSavedWorkflowRun) => void;
@@ -48,6 +51,14 @@ export function SavedWorkflowRunHistory({
 }) {
   const { intl } = useZCodeIntl();
   if (runs.length === 0) {
+    // OW-P024 R2：区分「成功读取且无记录」与「读取失败」——失败时不能肯定地说空。
+    if (runsError) {
+      return (
+        <p className="text-ui-base text-warning" data-workflow-history-error="true">
+          {intl.formatMessage({ id: "workflows.hub.runsError" }, { error: runsError })}
+        </p>
+      );
+    }
     return (
       <p className="text-ui-base text-foreground-subtlest">
         {intl.formatMessage({ id: "workflows.hub.history.empty" })}

@@ -525,8 +525,8 @@ patches:
     trigger: 打开「自动化 → 工作流」，项目组挂载时每项调用 workflows/list 与 workflows/runs 两次读取。
     impact: 每个带 workspace 的项目各拉起并登记一个 chat lane CLI（start-if-needed），manager 无 idleTimeoutMs，打开一次总览即按项目数产生启动风暴并长期常驻；运行历史读取失败被静默转换为空数组，强制刷新并发时旧结果可覆盖新结果。
     cause: resolveSavedWorkflowCarrier 对带 workspace 的读取一律 getOrStartReadOnlyClient（chat lane、无空闲回收）；savedWorkflowStore 把 runs 失败吞为 []、写回无请求代际。上游 3.18.1 仍是同一读取链。
-    fix: 独立 workflow-query lane：Desktop 固定 DB 条件下共用管理面 carrier（单 key 单进程、默认 5 分钟 idle 回收，Host 装配 shareLocalWorkflowQueryRuntime 裁决），Server/远端按项目 key 同样回收；savedWorkflowStore 分离 runsError 并按请求代际写回。spec：docs/specs/saved-workflow-query-lifecycle-openzwork.md。
-    evidence: 改前基线 50 项目冷加载中位 9399ms、50 chat spawn、树内存约 8.8GB；改后共享态 618ms、1 workflow-query spawn、约 780MB；查询触发 chat spawn=0；默认 300000ms idle 实测 300646ms 整树退出（idle-timeout）。
+    fix: 独立 workflow-query lane：Desktop 固定 DB 条件下共用管理面 carrier（单 key 单进程、默认 5 分钟 idle 回收，Host 装配 shareLocalWorkflowQueryRuntime 裁决；非共享分支保留完整 workspaceIdentity），Server/远端按项目 key 同样回收；savedWorkflowStore 分离 runsError 并按请求代际写回，卡片/详情/全局组的错误态不把失败断言成空历史。spec：docs/specs/saved-workflow-query-lifecycle-openzwork.md。
+    evidence: 改前基线 50 项目冷加载中位 9399ms、50 chat spawn、树内存约 8.8GB。返工后（R1–R6 复测）：共享态项目组中位 623ms、1 workflow-query spawn、树内存约 780–800MB（采样自检 RSS>0 生效）；查询触发 chat spawn=0；同路径双身份分开 spawn=2（身份隔离）；非空 journal 同库共享/非共享读取一致；默认 300000ms idle 从最后一项读取完成起算 300157ms 整树退出（idle-timeout、后代零存活）；hub E2E 真实通过（项目准备经 settings 恢复项目；fork 语义下灰度断言移除）；聊天冷启动实测 835ms/719ms。遗留单列：跨版本 lane 枚举（旧 Desktop Main 收新枚举）未实测。
     files:
       - packages/services/src/zcode-agent/zcodeAgentService.ts
       - packages/services/src/zcode-agent/workflow-query/contract.ts
@@ -537,7 +537,11 @@ patches:
       - packages/shared/src/index.ts
       - packages/ui/src/store/savedWorkflowStore.ts
       - packages/ui/src/settings/saved-workflows/SavedWorkflowProjectGroup.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowCard.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowDetailView.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowRunHistoryPanel.tsx
       - packages/desktop/test/e2e/automations-workflows-hub.test.ts
+      - packages/desktop/wdio.conf.ts
       - .github/workflows/ci.yml
     regression:
       - packages/services/test/workflowQueryRuntime.test.ts

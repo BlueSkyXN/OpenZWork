@@ -33,14 +33,25 @@ const MAX_ARG_CHIPS = 3;
 /** 卡片「上次运行」徽标：四态 + 尚未运行。沿用定时任务卡的徽标形状（rounded-lg，20px 图标槽）。 */
 export function SavedWorkflowLastRunBadge({
   run,
+  runsError,
   now,
 }: {
   run: ZCodeSavedWorkflowRun | undefined;
   now: number;
+  /** 历史读取失败（OW-P024 R2）：无 run 不能断言 never，改显示未知。 */
+  runsError?: string | null;
 }) {
   const { intl } = useZCodeIntl();
   const kind = savedWorkflowRunBadgeKind(run?.status);
   if (kind === "never" || !run) {
+    // OW-P024 R2：历史读取失败时不能肯定地宣称「从未运行」——展示未知状态。
+    if (runsError) {
+      return (
+        <span className="text-ui-base text-foreground-subtlest" data-workflow-last-run="unknown">
+          {intl.formatMessage({ id: "workflows.hub.lastRun.unknown" })}
+        </span>
+      );
+    }
     return (
       <span className="text-ui-base text-foreground-subtlest" data-workflow-last-run="never">
         {intl.formatMessage({ id: "workflows.hub.lastRun.never" })}
@@ -88,6 +99,8 @@ export function SavedWorkflowLastRunBadge({
 interface SavedWorkflowCardProps {
   entry: ZCodeSavedWorkflowEntry;
   lastRun: ZCodeSavedWorkflowRun | undefined;
+  /** 历史读取失败（OW-P024 R2）：徽标不得宣称「从未运行」。 */
+  runsError?: string | null;
   now: number;
   busy?: boolean;
   onOpen: (entry: ZCodeSavedWorkflowEntry) => void;
@@ -106,6 +119,7 @@ interface SavedWorkflowCardProps {
 export const SavedWorkflowCard = memo(function SavedWorkflowCard({
   entry,
   lastRun,
+  runsError,
   now,
   busy = false,
   onOpen,
@@ -146,7 +160,7 @@ export const SavedWorkflowCard = memo(function SavedWorkflowCard({
         </p>
         <div className="mt-auto flex h-6 min-w-0 items-center gap-2 text-ui-base leading-5">
           <div className="flex min-w-0 flex-1 items-center">
-            <SavedWorkflowLastRunBadge run={lastRun} now={now} />
+            <SavedWorkflowLastRunBadge run={lastRun} runsError={runsError} now={now} />
           </div>
           {argNames.length === 0 ? null : (
             <div className="flex shrink-0 items-center gap-1" data-workflow-args="true">

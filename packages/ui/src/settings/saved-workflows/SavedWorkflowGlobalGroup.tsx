@@ -131,6 +131,7 @@ export function SavedWorkflowGlobalGroup(props: SavedWorkflowGlobalGroupProps) {
           projectLabel={intl.formatMessage({ id: "workflows.hub.global.title" })}
           entry={entry}
           runs={state.runs.filter((run) => run.name === mode.name)}
+          runsError={state.runsError}
           now={now}
           busy={busyName === mode.name}
           canOpenRun={Boolean(onOpenWorkflowRun)}
@@ -201,6 +202,7 @@ export function SavedWorkflowGlobalGroup(props: SavedWorkflowGlobalGroupProps) {
               key={entry.path}
               entry={entry}
               lastRun={lastRuns.get(entry.name)}
+              runsError={state.runsError}
               now={now}
               busy={busyName === entry.name}
               onOpen={handleOpen}

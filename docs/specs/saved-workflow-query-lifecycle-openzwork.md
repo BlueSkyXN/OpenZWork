@@ -62,14 +62,18 @@ workflow-query manager：
 ### 4. lane 类型与资源样本
 
 `PROCESS_RESOURCE_CLI_LANES` 追加 `"workflow-query"`（归 `cli_aux` 角色）。lane 由
-Host 侧 wireClient 打标，CLI 不感知；旧远端样本无 lane 仍可接收。同版本 Desktop
-Main/Host 同批发布；workflow-query lane 只在本地 Desktop Host 产生，远端 Host 不会
-发出新枚举，旧 Desktop Main 不会收到未知 lane。
+Host 侧 wireClient 打标，CLI 不感知；旧远端样本（无 lane）仍可接收。产生范围：
+**所有装配查询 lane 的 Host（含 Server/远端的非共享分支）都会 spawn 并标记该 lane**，
+不是只有本地 Desktop；schema 侧仅作为可选枚举扩展（`z.enum` 追加成员）。同版本
+Main/Host 同批发布时无缺口；「旧 Desktop Main 收到新 lane 枚举」的跨版本实测覆盖
+在交回记录单列，不随 schema 兼容声明。
 
 ### 5. UI 读取状态（savedWorkflowStore）
 
 - 列表错误与运行历史错误分别表达：`runsError` 独立于 `error`；历史读取失败时保留
-  列表与上次已知 runs，显示可重试状态，不显示为「尚未运行」。
+  列表与上次已知 runs，显示可重试状态。**所有消费方**都不得把失败断言成空历史：卡片
+  徽标在 runsError 且无 run 时显示「上次运行未知」（`lastRun.unknown`）而非「尚未运行」；
+  详情页历史面板空态区分「读取失败」与「还没有记录」；全局组的列表与详情同样接线。
 - 每个 store key 维护请求代际；成功/失败/loading 清理仅由当前代际写回。强制刷新
   （bypassCache）可与在途请求并发，旧代际结果不得覆盖新代际，也不得清掉新代际的
   loading。现有非 bypass 在途复用保留。
@@ -116,9 +120,9 @@ Main/Host 同批发布；workflow-query lane 只在本地 Desktop Host 产生，
 
 - 服务场景：`packages/services/test/workflowQueryRuntime.test.ts`（核心 CI，capability
   `workflow`）。
-- CLI 配置：`apps/zcode-cli/packages/adapters/tests/config.test.ts`（ci.yml 点名）。
+- CLI 配置：`apps/zcode-cli/packages/adapters/tests/workflow-query-session-db.test.ts`（ci.yml 点名）。
 - CLI 读取协议：既有 `saved-workflows-protocol.test.ts` / `saved-workflows-run-protocol.test.ts`。
-- UI store：`packages/ui/test/savedWorkflowStoreRefresh.test.ts`（受控 service 的状态
+- UI store：`packages/ui/test/savedWorkflowRefresh.test.ts`（受控 service 的状态
   回归，证明范围限 UI 状态机）。
 - 桌面 E2E：`packages/desktop/test/e2e/automations-workflows-hub.test.ts` 扩充。
 

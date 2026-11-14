@@ -5965,6 +5965,7 @@ const zhCN: Record<string, string> = {
   "workflows.hub.card.delete": "删除工作流",
   "workflows.hub.card.argsMore": "+{count}",
   "workflows.hub.lastRun.never": "尚未运行",
+  "workflows.hub.lastRun.unknown": "上次运行未知",
   "workflows.hub.lastRun.completed": "已完成",
   "workflows.hub.lastRun.errored": "出错",
   "workflows.hub.lastRun.running": "运行中",

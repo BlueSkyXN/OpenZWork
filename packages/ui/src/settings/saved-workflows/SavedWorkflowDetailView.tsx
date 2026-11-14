@@ -68,6 +68,8 @@ interface SavedWorkflowDetailViewProps {
   projectLabel: string;
   entry: ZCodeSavedWorkflowEntry | undefined;
   runs: readonly ZCodeSavedWorkflowRun[];
+  /** 历史读取失败（OW-P024 R2）：历史页不得断言「还没有记录」。 */
+  runsError?: string | null;
   now: number;
   busy: boolean;
   canOpenRun: boolean;
@@ -99,6 +101,7 @@ export function SavedWorkflowDetailView({
   projectLabel,
   entry,
   runs,
+  runsError,
   now,
   busy,
   canOpenRun,
@@ -343,6 +346,7 @@ export function SavedWorkflowDetailView({
       {tab === "history" ? (
         <SavedWorkflowRunHistory
           runs={runs}
+          runsError={runsError}
           now={now}
           canOpenRun={canOpenRun}
           onOpenRun={onOpenRun}

@@ -6315,6 +6315,7 @@ const enUS: Record<string, string> = {
   "workflows.hub.card.delete": "Delete workflow",
   "workflows.hub.card.argsMore": "+{count}",
   "workflows.hub.lastRun.never": "Not run yet",
+  "workflows.hub.lastRun.unknown": "Last run unknown",
   "workflows.hub.lastRun.completed": "Completed",
   "workflows.hub.lastRun.errored": "Errored",
   "workflows.hub.lastRun.running": "Running",

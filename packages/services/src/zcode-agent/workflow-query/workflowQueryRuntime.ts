@@ -29,7 +29,7 @@ export interface WorkflowQueryRuntime {
   /** 独立 manager：与 chat/plugin/mcp-status 互不共享请求队列与 idle timer。 */
   readonly manager: ZCodeAgentProcessManager;
   /** 共享分支的固定载体 workspace（由 agent service 注入管理面路径解析器）。 */
-  resolveSharedCarrier(): { workspacePath: string };
+  resolveSharedCarrier(): { workspacePath: string; workspaceIdentity?: string };
   listManagedProcesses(): ReturnType<ZCodeAgentProcessManager["listManagedProcesses"]>;
   disposeAll(): void;
   disposeAllAndWait(): Promise<void>;
@@ -69,16 +69,24 @@ export function createWorkflowQueryRuntime(
  * - 共享开关开启且 target 为本地（无 remoteSessionId、identity 非远端）→ 固定管理面 carrier；
  * - 其余带 workspace 的读取（共享关闭/自定义命令/远端/Server）→ 原项目 carrier（按项目分 key）；
  * - 无 workspacePath 的全局读取不经本函数（保持原全局载体选择）。
+ *
+ * 非共享分支必须原样保留 workspaceIdentity（OW-P024 R1）：ProcessManager 的
+ * bind/processKey/命令解析/spawn env 都以 carrier 为准，丢身份会让同路径不同身份的
+ * 两个目标合并到同一进程 key，破坏身份隔离（workspaceIdentity 用于身份、
+ * workspacePath 用于 IO，见 AGENTS.md「Workspace Identity」）。
  */
 export function resolveWorkflowQueryCarrier(
   params: { workspacePath: string; workspaceIdentity?: string; remoteSessionId?: string },
   options: { sharedCarrier: { workspacePath: string }; share: boolean },
-): { workspacePath: string } {
+): { workspacePath: string; workspaceIdentity?: string } {
   const isLocalTarget =
     !params.remoteSessionId &&
     !(params.workspaceIdentity && isRemoteWorkspaceIdentity(params.workspaceIdentity));
   if (options.share && isLocalTarget) {
     return options.sharedCarrier;
   }
-  return { workspacePath: params.workspacePath };
+  return {
+    workspacePath: params.workspacePath,
+    ...(params.workspaceIdentity ? { workspaceIdentity: params.workspaceIdentity } : {}),
+  };
 }
