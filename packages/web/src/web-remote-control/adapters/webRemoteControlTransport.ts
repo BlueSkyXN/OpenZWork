@@ -210,10 +210,19 @@ export class WebRemoteControlTerminalTransport {
   }
 
   suspend(): void {
-    if (this.state !== "paired" && this.state !== "connecting" && this.state !== "reconnecting") {
+    if (
+      this.state !== "paired" &&
+      this.state !== "connecting" &&
+      this.state !== "reconnecting" &&
+      this.state !== "authenticating" &&
+      this.state !== "waiting"
+    ) {
       return;
     }
+    // 未认证连接没有可复用的会话，挂起时撤销它；迟到 open/ACK 不能在后台启动 bootstrap。
+    if (!this.authenticated) this.closeSocket();
     this.hiddenStartedAt = Date.now();
+    clearTimeout(this.handshakeTimer);
     this.clearReconnectTimer();
     this.stopHeartbeat();
     this.clearWaitingTimer();
@@ -300,6 +309,12 @@ export class WebRemoteControlTerminalTransport {
         });
         break;
       case "auth_ack":
+        // Bugfix: 上游 a60ba6a7 起在 auth_ack 置 authenticated=true；本仓 v3.16.1 整合
+        // 冲突解时丢失该行，authenticated 恒 false 使 canContinueRetainedRpc 永不成立——
+        // 挂起期 ACK 发不出（MRO04-06 acks=0），挂起期 INTERNAL 只撤销许可的修复也不生效。
+        if (this.state !== "authenticating" || message.device_sid !== this.options.deviceSid)
+          return;
+        this.authenticated = true;
         this.applyPairStatus(message.pair_status);
         break;
       case "pair_status_ack":
@@ -311,7 +326,13 @@ export class WebRemoteControlTerminalTransport {
         this.applyPairStatus(message.pair_status);
         break;
       case "data":
-        this.handleDataPayload(message.payload);
+        if (this.state === "paired") {
+          this.handleDataPayload(message.payload);
+        } else if (this.canContinueRetainedRpc() && isRawTransportCandidate(message.payload)) {
+          // Bugfix: 3.16 在挂起/原 socket 探测期间丢弃同一有效 socket 的 rpc-frame，回前台下一帧序号断档，
+          // 触发 physicalGap 和 bridge 重建。raw 帧交现有 adapter 校验身份与顺序，未接纳的不回落 app payload。
+          this.options.onRawTransportPayload?.(message.payload);
+        }
         break;
       case "error":
         this.handleRelayError(message.code, message.message);
