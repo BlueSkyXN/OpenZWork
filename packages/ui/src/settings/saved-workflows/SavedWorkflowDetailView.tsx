@@ -84,6 +84,8 @@ interface SavedWorkflowDetailViewProps {
   /** 产物 chip → `workflow-artifact` tab；缺席即 chips 只读。 */
   onOpenArtifact?: (run: ZCodeSavedWorkflowRun, artifactId: string) => void;
   onMetaSaved: () => void;
+  /** 历史读取失败时的重试（bypassCache 刷新；列表层提供，详情层不直接持刷新能力）。 */
+  onRunsRetry?: () => void;
   /** 传入即在运行历史每行渲染项目列（全局工作流跨项目历史）。 */
   resolveRunProject?: (run: ZCodeSavedWorkflowRun) => SavedWorkflowRunProject | null;
   /** 实参窗由列表层持有（同一份状态），详情页只负责挂到树上。 */
@@ -114,6 +116,7 @@ export function SavedWorkflowDetailView({
   onOpenRun,
   onOpenArtifact,
   onMetaSaved,
+  onRunsRetry,
   resolveRunProject,
   launchDialog,
 }: SavedWorkflowDetailViewProps) {
@@ -347,6 +350,7 @@ export function SavedWorkflowDetailView({
         <SavedWorkflowRunHistory
           runs={runs}
           runsError={runsError}
+          onRetry={onRunsRetry}
           now={now}
           canOpenRun={canOpenRun}
           onOpenRun={onOpenRun}

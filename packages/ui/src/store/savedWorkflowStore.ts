@@ -93,9 +93,9 @@ async function fetchWorkspace(
   // 列表与运行历史并行；运行历史失败不拖垮列表（journal 缺席时中枢照常能看、能管），
   // 但错误要如实暴露给 UI（OW-P024：不再静默转换成空历史）。
   const [list, runs] = await Promise.all([
-    agentService.listSavedWorkflows(target),
-    agentService
-      .listSavedWorkflowRuns({ ...target, limit: SAVED_WORKFLOW_RUNS_PAGE })
+    (controlledListSavedWorkflows ?? agentService.listSavedWorkflows.bind(agentService))(target),
+    (controlledListSavedWorkflowRuns ??
+      agentService.listSavedWorkflowRuns.bind(agentService))({ ...target, limit: SAVED_WORKFLOW_RUNS_PAGE })
       .then((result) => ({ runs: result.runs, runsError: null }))
       .catch((error: unknown) => {
         const message = error instanceof Error ? error.message : String(error);
@@ -185,5 +185,34 @@ export function selectSavedWorkflowState(
 export function resetSavedWorkflowStoreForTests(): void {
   inFlight.clear();
   generationByKey.clear();
+  controlledListSavedWorkflows = null;
+  controlledListSavedWorkflowRuns = null;
   useSavedWorkflowStore.setState({ byWorkspaceKey: {} });
+}
+
+/**
+ * E2E 受控注入（仅经 E2E store 桥设置；生产恒 null）：替换两项读取的
+ * agentService 调用，用于在真实 UI/store 上确定性地制造「失败→重试成功」
+ * 与「旧请求后返回」的响应顺序。注入的是 service 调用边界，进程与组件全真实。
+ */
+type SavedWorkflowTargetLike = Parameters<
+  IZCodeAgentService["listSavedWorkflows"]
+>[0];
+let controlledListSavedWorkflows:
+  | ((target: SavedWorkflowTargetLike) => Promise<ZCodeWorkflowsListResult>)
+  | null = null;
+let controlledListSavedWorkflowRuns:
+  | ((target: SavedWorkflowTargetLike) => Promise<{ runs: ZCodeSavedWorkflowRun[] }>)
+  | null = null;
+
+export function setControlledSavedWorkflowReadsForE2E(overrides: {
+  listSavedWorkflows?: (
+    target: SavedWorkflowTargetLike,
+  ) => Promise<ZCodeWorkflowsListResult>;
+  listSavedWorkflowRuns?: (
+    target: SavedWorkflowTargetLike,
+  ) => Promise<{ runs: ZCodeSavedWorkflowRun[] }>;
+}): void {
+  controlledListSavedWorkflows = overrides.listSavedWorkflows ?? null;
+  controlledListSavedWorkflowRuns = overrides.listSavedWorkflowRuns ?? null;
 }

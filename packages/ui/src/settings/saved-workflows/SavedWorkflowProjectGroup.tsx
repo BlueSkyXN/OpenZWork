@@ -328,6 +328,7 @@ export function SavedWorkflowProjectGroup({
         entry={entry}
         runs={state.runs.filter((run) => run.name === mode.name)}
         runsError={state.runsError}
+        onRunsRetry={() => void refresh({ bypassCache: true })}
         now={now}
         busy={busyName === mode.name}
         canOpenRun={Boolean(onOpenWorkflowRun)}
@@ -427,6 +428,8 @@ export function SavedWorkflowProjectGroup({
             variant="link"
             size="sm"
             className="h-auto p-0 text-ui-sm"
+            // OW-P024 R4：组级重试的稳定选择器（E2E/浏览器验收；不依赖语言片段）。
+            data-workflows-runs-retry="true"
             onClick={() => void refresh({ bypassCache: true })}
           >
             {intl.formatMessage({ id: "workflows.hub.retry" })}

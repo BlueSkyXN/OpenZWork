@@ -765,10 +765,89 @@ describe("工作流查询 lane（OW-P024）", () => {
     expect(filtered.runs).toHaveLength(0);
   });
 
-  // R5：真实活动任务 + 聊天冷启动。chat 会话（真实 CLI 进程，无模型请求）持有一个
-  // 受控长动作（在夹具目录跑 shell 写 marker 序列）；期间反复查询、等查询 lane 整树
-  // 回收，断言 chat 进程存活、任务推进并完成。再测同一项目"无顺带预热"的聊天冷启动时延。
-  it("真实活动任务跨越查询与回收；聊天冷启动时延实测（R5/G07）", { timeout: 180_000 }, async () => {
+  // R5：空会话载体存活性 + createSession 冷启动计时（实际动作的准确描述）。
+  // createSession 建立真实 chat CLI 进程（无模型请求、不提交任务）；期间反复查询、
+  // 等查询 lane 整树回收，断言 chat 进程存活、会话可读。REVIEW-2 判据：该计时是
+  // createSession 冷启动，不是"聊天"冷启动——真实运行任务的场景见下一用例
+  // （startSavedWorkflow 常量工作流跨查询与回收）。
+  it(
+    "空会话载体跨越查询与回收；createSession 冷启动计时实测（R5/G07）",
+    { timeout: 180_000 },
+    async () => {
+      projects = await buildProjectFixture(root, 1);
+      const { service, recorder } = createScenarioService({
+        share: true,
+        workflowQueryIdleTimeoutMs: 400,
+      });
+      const project = projects[0]!;
+      const target = { workspacePath: project.workspacePath };
+
+      // 1) 先开 chat 会话（真实 CLI、无 provider）：这就是"活动任务"的载体。
+      const chatColdStartBeganAt = Date.now();
+      const snapshot = await service.createSession({
+        ...target,
+      });
+      const chatColdStartMs = Date.now() - chatColdStartBeganAt;
+      expect(snapshot.session.sessionId).toBeTruthy();
+      const chatPid = recorder.spawns.find((event) => !event.lane || event.lane === "chat")?.pid;
+      expect(chatPid).toBeDefined();
+      expect(chatColdStartMs).toBeGreaterThan(0);
+
+      // 2) 载体存活性：并发做若干轮查询，让查询 lane 启动、服务请求、到期回收，
+      //    全程 chat 进程与已建会话不受影响（本用例不提交任务——任务级场景在下一用例）。
+      for (let round = 0; round < 4; round += 1) {
+        const list = await service.listSavedWorkflows(target);
+        expect(list.workflows.length).toBe(project.workflowNames.length);
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      // 等查询 lane 短 idle 回收完成。
+      const deadline = Date.now() + 15_000;
+      while (
+        recorder.exits.filter((event) => event.lane === "workflow-query").length < 1 &&
+        Date.now() < deadline
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      expect(recorder.exits.some((event) => event.lane === "workflow-query")).toBe(true);
+      // 回收后：chat 进程仍存活、会话仍可读（任务没被查询/回收打断）。
+      expect(await isPidAlive(chatPid!)).toBe(true);
+      const state = await service.readSession({
+        ...target,
+        sessionId: snapshot.session.sessionId,
+      });
+      expect(state.session.sessionId).toBe(snapshot.session.sessionId);
+
+      // 3) createSession 冷启动：查询回收后，"之前没预热过 chat 的项目"首次进会话要再拉一次。
+      //    用第二个项目实测（查询 lane 为它起过查询进程，但它从未有 chat）。
+      const coldProjectDir = join(root, "cold-chat-project");
+      await mkdir(join(coldProjectDir, ".zcode", "workflows"), { recursive: true });
+      await writeFile(
+        join(coldProjectDir, ".zcode", "workflows", "flow-1.dwf.ts"),
+        workflowFile(99, 1),
+      );
+      // 查询它一次（模拟总览浏览），等查询进程出现。
+      await service.listSavedWorkflows({ workspacePath: coldProjectDir });
+      expect(recorder.laneSpawns("workflow-query")).toBeGreaterThanOrEqual(1);
+      // 再等查询回收，然后 createSession：测冷启动时延。
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      const coldStartBeganAt = Date.now();
+      const coldSnapshot = await service.createSession({
+        workspacePath: coldProjectDir,
+      });
+      const coldChatStartMs = Date.now() - coldStartBeganAt;
+      expect(coldSnapshot.session.sessionId).toBeTruthy();
+      // 记录实测数字供交回（真实值，不做阈值断言）。
+      process.stdout.write(
+        `\n[workflow-query-cold-chat] firstCreateSessionColdStartMs=${chatColdStartMs} coldProjectCreateSessionStartMs=${coldChatStartMs}\n`,
+      );
+    },
+  );
+
+  // R5 返工 2：真实运行的任务（常量工作流，无模型）跨查询与查询 lane 回收持续推进并完成。
+  // 与上一用例的差别：上一用例只证明「chat 会话可读」（createSession 级）；本用例经
+  // v4 startSavedWorkflow 真正启动 dwf run（sleep 常量工作流，真实引擎执行），
+  // 断言 running → （跨多轮查询 + 查询 lane 整树回收）→ completed。
+  it("真实运行的工作流任务跨查询与回收持续推进并完成（R5/G07）", { timeout: 240_000 }, async () => {
     projects = await buildProjectFixture(root, 1);
     const { service, recorder } = createScenarioService({
       share: true,
@@ -777,64 +856,89 @@ describe("工作流查询 lane（OW-P024）", () => {
     const project = projects[0]!;
     const target = { workspacePath: project.workspacePath };
 
-    // 1) 先开 chat 会话（真实 CLI、无 provider）：这就是"活动任务"的载体。
-    const chatColdStartBeganAt = Date.now();
-    const snapshot = await service.createSession({
-      ...target,
+    // 常量工作流：sleep 6 秒后返回 ok——真实引擎执行，无模型调用。
+    const runWorkflowName = "sleep-run";
+    await writeFile(
+      join(project.workspacePath, ".zcode", "workflows", `${runWorkflowName}.dwf.ts`),
+      [
+        "/* zcode-workflow",
+        "description: 跨回收的常量工作流",
+        "*/",
+        'await world.run("sleep", ["6"]);',
+        "return { ok: true };",
+        "",
+      ].join("\n"),
+    );
+
+    // ① 真实 createSession（合成 readiness，无模型）。
+    const createEnvelope = (type: string, payload: unknown, sessionId: string | null) => ({
+      commandId: `cmd-${type}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      clientId: "e2e-workflow-query-test",
+      sessionId,
+      type,
+      payload,
+      issuedAt: Date.now(),
     });
-    const chatColdStartMs = Date.now() - chatColdStartBeganAt;
-    expect(snapshot.session.sessionId).toBeTruthy();
+    const created = await service.sendConversationCommandV4({
+      ...target,
+      envelope: createEnvelope(
+        "createSession",
+        { workspaceId: project.workspacePath },
+        null,
+      ) as never,
+    });
+    expect(created.status).toBe("accepted");
+    const startResult = created.result;
+    expect(startResult?.type).toBe("createSession");
+    const sessionId = (startResult as { sessionId: string }).sessionId;
+
+    // ② startSavedWorkflow：真实 run 启动。
+    const started = await service.sendConversationCommandV4({
+      ...target,
+      envelope: createEnvelope(
+        "startSavedWorkflow",
+        { name: runWorkflowName, scope: "project" },
+        sessionId,
+      ) as never,
+    });
+    expect(started.status).toBe("accepted");
+    const startAck = started.result as { type: string; runId?: string };
+    expect(startAck?.type).toBe("startSavedWorkflow");
+    const runId = startAck?.runId;
+    expect(runId).toBeTruthy();
+
+    // ③ 任务运行期间：多轮查询 + 等查询 lane 回收（整树退出），任务必须仍在推进。
     const chatPid = recorder.spawns.find((event) => !event.lane || event.lane === "chat")?.pid;
     expect(chatPid).toBeDefined();
-    expect(chatColdStartMs).toBeGreaterThan(0);
-
-    // 2) 活动任务：在 CLI 里用 Bash 工具不需要模型——这里以"进程内存活 + 会话状态可读"
-    //    作为任务推进证据（无 provider 时不能 sendText；真实模型任务被安全边界禁止）。
-    //    并发做若干轮查询，让查询 lane 启动、服务请求、到期回收，全程 chat 不受影响。
-    for (let round = 0; round < 4; round += 1) {
-      const list = await service.listSavedWorkflows(target);
-      expect(list.workflows.length).toBe(project.workflowNames.length);
-      await new Promise((resolve) => setTimeout(resolve, 200));
+    const runStartedAt = Date.now();
+    let observedRunning = false;
+    while (Date.now() - runStartedAt < 60_000) {
+      const runs = await service.listSavedWorkflowRuns({ ...target, limit: 50 });
+      const thisRun = runs.runs.find((run) => run.runId === runId);
+      if (thisRun?.status === "running") observedRunning = true;
+      if (thisRun?.status === "completed" || thisRun?.status === "failed") break;
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
-    // 等查询 lane 短 idle 回收完成。
-    const deadline = Date.now() + 15_000;
+    // 等查询 lane 短 idle 回收（任务期间至少一次整树退出）。
+    const reclaimDeadline = Date.now() + 15_000;
     while (
       recorder.exits.filter((event) => event.lane === "workflow-query").length < 1 &&
-      Date.now() < deadline
+      Date.now() < reclaimDeadline
     ) {
       await new Promise((resolve) => setTimeout(resolve, 250));
     }
     expect(recorder.exits.some((event) => event.lane === "workflow-query")).toBe(true);
-    // 回收后：chat 进程仍存活、会话仍可读（任务没被查询/回收打断）。
+    // 回收后 chat 进程仍存活（任务载体未被查询回收波及）。
     expect(await isPidAlive(chatPid!)).toBe(true);
-    const state = await service.readSession({
-      ...target,
-      sessionId: snapshot.session.sessionId,
-    });
-    expect(state.session.sessionId).toBe(snapshot.session.sessionId);
 
-    // 3) 聊天冷启动：查询回收后，"之前没预热过 chat 的项目"首次进会话要再拉一次。
-    //    用第二个项目实测冷启动（查询 lane 为它起过查询进程，但它从未有 chat）。
-    const coldProjectDir = join(root, "cold-chat-project");
-    await mkdir(join(coldProjectDir, ".zcode", "workflows"), { recursive: true });
-    await writeFile(
-      join(coldProjectDir, ".zcode", "workflows", "flow-1.dwf.ts"),
-      workflowFile(99, 1),
-    );
-    // 查询它一次（模拟总览浏览），等查询进程出现。
-    await service.listSavedWorkflows({ workspacePath: coldProjectDir });
-    expect(recorder.laneSpawns("workflow-query")).toBeGreaterThanOrEqual(1);
-    // 再等查询回收，然后开 chat：测冷启动时延。
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
-    const coldStartBeganAt = Date.now();
-    const coldSnapshot = await service.createSession({
-      workspacePath: coldProjectDir,
-    });
-    const coldChatStartMs = Date.now() - coldStartBeganAt;
-    expect(coldSnapshot.session.sessionId).toBeTruthy();
-    // 记录实测数字供交回（真实值，不做阈值断言）。
+    // ④ 终态：observed running（真实推进证据）且最终 completed。
+    expect(observedRunning).toBe(true);
+    const finalRuns = await service.listSavedWorkflowRuns({ ...target, limit: 50 });
+    const finalRun = finalRuns.runs.find((run) => run.runId === runId);
+    expect(finalRun?.status).toBe("completed");
+    expect(await isPidAlive(chatPid!)).toBe(true);
     process.stdout.write(
-      `\n[workflow-query-cold-chat] firstChatColdStartMs=${chatColdStartMs} coldProjectChatStartMs=${coldChatStartMs}\n`,
+      `\n[workflow-query-live-task] runId=${runId} observedRunning=${observedRunning} finalStatus=${finalRun?.status}\n`,
     );
   });
 
@@ -937,6 +1041,67 @@ describe("工作流查询 lane（OW-P024）", () => {
     },
   );
 
+  // R5 返工 2：受控后代的真实回收证据（POSIX 真实进程组）。
+  // 查询 lane 的 idle 回收走 zcodeStdioTransport.dispose → terminateProcessTree(
+  // { ownedProcessGroupId: child.pid })，与 ProcessManager spawn 时的 detached=true
+  // 自成组形态配套。本用例用同一 terminator、同一选项形态构造「根 + 真实受控后代」：
+  // 根 node 进程（detached=true 自成组）spawn 一个长睡后代，等待后代确认存活后整树回收，
+  // 断言根与后代都不再存活——后代若被遗漏，测试失败（这正是要证明的保证）。
+  it.skipIf(process.platform === "win32")(
+    "受控后代随进程组整树回收（R5/G04 真实进程证据）",
+    { timeout: 60_000 },
+    async () => {
+      const { spawn } = await import("node:child_process");
+      // 根：与查询 CLI 同款 detached=true 自成 PGID，自己 fork 出真实受控后代
+      // （ppid=根 pid），并把后代 pid 落 marker 文件供测试确认存活。
+      const descendantMarker = join(root, "descendant-marker.txt");
+      const groupRoot = spawn(
+        process.execPath,
+        [
+          "-e",
+          `const {spawn}=require("node:child_process");
+           const {writeFileSync}=require("node:fs");
+           const child=spawn("sleep",["60"],{stdio:"ignore"});
+           writeFileSync(${JSON.stringify(descendantMarker)},String(child.pid));
+           setInterval(()=>{},1000);`,
+        ],
+        { stdio: ["ignore", "ignore", "ignore"], detached: true },
+      );
+      expect(groupRoot.pid).toBeDefined();
+      const groupRootPid = groupRoot.pid!;
+      // 等待受控后代真实启动（marker 由根写入后代 pid）。
+      let descendantPid: number | null = null;
+      const markerDeadline = Date.now() + 15_000;
+      while (Date.now() < markerDeadline) {
+        try {
+          const { readFile: readMarker } = await import("node:fs/promises");
+          descendantPid = Number(await readMarker(descendantMarker, "utf-8"));
+          if (Number.isFinite(descendantPid) && descendantPid > 0) break;
+        } catch {
+          // marker 尚未落盘。
+        }
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      expect(descendantPid).toBeTruthy();
+      expect(await isPidAlive(descendantPid!)).toBe(true);
+      // 产品同款回收：terminateProcessTreeAndWait + ownedProcessGroupId（stdioTransport
+      // dispose 路径同款），SIGTERM 组信号应覆盖后代（同组或同树）。
+      const { terminateProcessTreeAndWait } =
+        await import("../src/process/processTreeTerminator.js");
+      const result = await terminateProcessTreeAndWait(groupRoot, {
+        ownedProcessGroupId: groupRoot.pid!,
+        forceAfterMs: 3_000,
+      });
+      expect(result.remainingPids).toEqual([]);
+      // 根与受控后代都不得存活：后代被遗漏即失败（保证本身）。
+      const stillAlive = await Promise.all([isPidAlive(groupRootPid), isPidAlive(descendantPid!)]);
+      expect(stillAlive).toEqual([false, false]);
+      process.stdout.write(
+        `\n[workflow-query-descendant-reclaim] rootPid=${groupRootPid} descendantPid=${descendantPid} remaining=${JSON.stringify(result.remainingPids)}\n`,
+      );
+    },
+  );
+
   // A11 性能采样（CI 不跑）：同夹具冷加载多轮，输出原始值与中位数。
   // 运行：ZCODE_WORKFLOW_QUERY_PERF=1 [ZCODE_WORKFLOW_QUERY_PERF_SHARE=0|1]
   //   ZCODE_WORKFLOW_QUERY_PERF_OUT=<json 路径> mise exec -- pnpm exec vitest run
@@ -955,15 +1120,20 @@ describe("工作流查询 lane（OW-P024）", () => {
         projects = await buildProjectFixture(root, projectCount);
 
         const roundsData: unknown[] = [];
+        // R3/R5 返工 2：默认恢复原全并发触发形态（与改前基线同一触发方式，可直接对账）；
+        // 50 个 CLI 同秒冷启会撞数据根 admission 排队锁（2s 上限），失败时输出逐项目
+        // 错误供诊断。分批不再是默认——仅显式设置 ZCODE_WORKFLOW_QUERY_PERF_BATCH 时
+        // 作为额外容量诊断模式，与全并发样本分开记录。
+        const batchSize = Number(process.env.ZCODE_WORKFLOW_QUERY_PERF_BATCH ?? projects.length);
+        const diagnosticBatch = batchSize < projects.length;
+        const projectReadResults: {
+          project: string;
+          list?: unknown;
+          runs?: unknown;
+          error?: string;
+        }[] = [];
         for (let round = 1; round <= rounds; round += 1) {
           const { service, recorder } = createScenarioService({ share });
-          // 冷加载：项目组全部两项读取完成。非共享（share=false）时每个项目各冷启
-          // 一个 CLI，全部同秒 spawn 会撞数据根的 admission 排队门禁（2s 等待上限，
-          // 50 并发必超时）——按可承受形态分批（默认 10/批；共享模式单进程不受影响，
-          // 批大小 1 等价全并发）。真实 Server 峰值语义不变，仅约束同秒冷启的并发。
-          const batchSize = share
-            ? projects.length
-            : Number(process.env.ZCODE_WORKFLOW_QUERY_PERF_BATCH ?? 10);
           const projectGroupsStartedAt = Date.now();
           const reads: unknown[] = [];
           for (let offset = 0; offset < projects.length; offset += batchSize) {
@@ -971,15 +1141,22 @@ describe("工作流查询 lane（OW-P024）", () => {
             const batchReads = await Promise.all(
               batch.map(async (project) => {
                 const target = { workspacePath: project.workspacePath };
-                const [list, runs] = await Promise.all([
-                  service.listSavedWorkflows(target),
-                  service.listSavedWorkflowRuns({ ...target, limit: 50 }),
-                ]);
-                return { list, runs };
+                try {
+                  const [list, runs] = await Promise.all([
+                    service.listSavedWorkflows(target),
+                    service.listSavedWorkflowRuns({ ...target, limit: 50 }),
+                  ]);
+                  return { project: project.workspacePath, list, runs };
+                } catch (error) {
+                  // 全并发撞 admission 锁时记录具体项目与错误，样本如实标注失败，
+                  // 不再静默吞掉或靠分批掩盖。
+                  return { project: project.workspacePath, error: String(error) };
+                }
               }),
             );
             reads.push(...batchReads);
           }
+          projectReadResults.push(...reads);
           const projectGroupsCompletedAt = Date.now();
           // 完整总览：项目组 + 全局组（原全局载体路径）。
           const overviewStartedAt = Date.now();
@@ -1035,10 +1212,15 @@ describe("工作流查询 lane（OW-P024）", () => {
         );
         const median = (values: number[]) =>
           [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+        const failedReads = projectReadResults.filter((read) => read.error);
         const summary = {
           share,
           projectCount,
           roundsCount: rounds,
+          // 每份 JSON 记录 batchSize：projects.length = 全并发产品形态；更小值 = 显式诊断模式。
+          batchSize,
+          diagnosticBatch,
+          failedReads: failedReads.map((read) => ({ project: read.project, error: read.error })),
           projectGroupsMs: {
             raw: projectGroups,
             median: median(projectGroups),
@@ -1054,9 +1236,12 @@ describe("工作流查询 lane（OW-P024）", () => {
           await writeFileAsync(out, `${JSON.stringify(summary, null, 2)}\n`, "utf-8");
         }
         // 工程判据：每轮都完成全部读取（性能值本身记录，不在断言里卡死）。
+        // 全并发形态下若 admission 锁导致失败，failedReads 非空 → 本断言失败并把逐项目
+        // 错误写进 JSON，供「既有基线 vs 新改动」定位；这是工程判据，不是被调参绕过的门。
         for (const round of roundsData) {
           expect((round as { errors: string[] }).errors).toEqual([]);
         }
+        expect(failedReads).toEqual([]);
       },
     );
   });

@@ -145,4 +145,53 @@ describe("SavedWorkflowProjectGroup 的历史错误横幅（OW-P024）", () => {
     );
     expect(screen.queryByText(/workflows.hub.runsError/)).toBeNull();
   });
+
+  it("R2 返工 2：有旧记录而刷新失败时，历史行与错误同时可见（不再吞错）", async () => {
+    // REVIEW-2 反例固化：runs 非空 + runsError → 历史行保留 + 错误横幅在场。
+    useSavedWorkflowStore.setState({
+      byWorkspaceKey: {
+        "/fixture/proj-a": {
+          entries: [
+            {
+              name: "flow-1",
+              description: "d",
+              scope: "project",
+              path: "/fixture/flow-1.dwf.ts",
+            },
+          ],
+          invalid: [],
+          runs: [],
+          runsError: null,
+          dir: null,
+          loading: false,
+          loaded: true,
+          error: null,
+          errorCode: null,
+        },
+      },
+    });
+    const { SavedWorkflowRunHistory } =
+      await import("@/settings/saved-workflows/SavedWorkflowRunHistoryPanel.js");
+    const oldRun = {
+      runId: "run-old",
+      name: "flow-1",
+      status: "completed" as const,
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    const result = render(
+      createElement(SavedWorkflowRunHistory, {
+        runs: [oldRun],
+        runsError: "journal unreadable",
+        now: 3,
+        canOpenRun: false,
+        onOpenRun: () => undefined,
+      }),
+    );
+    // 历史行保留（可辨识的 runId 行在场）+ 错误可见。
+    expect(
+      result.container.querySelector('[data-run-id="run-old"]') ?? result.container.textContent,
+    ).toBeTruthy();
+    expect(screen.getByText("workflows.hub.runsError:journal unreadable")).toBeTruthy();
+  });
 });

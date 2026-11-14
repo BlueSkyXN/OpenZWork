@@ -132,6 +132,7 @@ export function SavedWorkflowGlobalGroup(props: SavedWorkflowGlobalGroupProps) {
           entry={entry}
           runs={state.runs.filter((run) => run.name === mode.name)}
           runsError={state.runsError}
+          onRunsRetry={() => void refresh({ bypassCache: true })}
           now={now}
           busy={busyName === mode.name}
           canOpenRun={Boolean(onOpenWorkflowRun)}

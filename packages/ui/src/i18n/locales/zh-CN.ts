@@ -5952,6 +5952,7 @@ const zhCN: Record<string, string> = {
   "workflows.hub.noWorkspace": "打开一个项目以查看它的工作流。",
   "workflows.hub.loadError": "读取工作流失败：{error}",
   "workflows.hub.runsError": "运行历史读取失败：{error}",
+  "workflows.hub.runsError.stale": "运行历史刷新失败（下方为上次结果）：{error}",
   "workflows.hub.retry": "重试",
   "workflows.hub.invalid": "{count} 个文件无法读取",
   "workflows.hub.invalidOne": "{count} 个文件无法读取",

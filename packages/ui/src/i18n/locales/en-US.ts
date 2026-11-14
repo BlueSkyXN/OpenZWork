@@ -6302,6 +6302,7 @@ const enUS: Record<string, string> = {
   "workflows.hub.noWorkspace": "Open a workspace to see its workflows.",
   "workflows.hub.loadError": "Could not read workflows: {error}",
   "workflows.hub.runsError": "Could not read run history: {error}",
+  "workflows.hub.runsError.stale": "Run history refresh failed (showing last results): {error}",
   "workflows.hub.retry": "Retry",
   "workflows.hub.invalid": "{count} files could not be read",
   "workflows.hub.invalidOne": "{count} file could not be read",

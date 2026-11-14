@@ -311,6 +311,14 @@ function initializeBusinessRoot(port: MessagePort): void {
   baseServicesForRemoteSessions = services;
   registerBaseWorkspaceServices(services);
   registerLocalBaseWorkspaceServices(services);
+  // OW-P024 R4：E2E 专用——暴露项目目录服务的受控入口（与 store 桥同一 VITE 门控）。
+  // 50 项目总览用例经真实 saveProject RPC 注册项目（Host 会广播变更驱动侧栏树刷新），
+  // 替代直插 tasks-index 的旁路（旁路无广播，UI 树不更新——返工 2 实测根因）。
+  if (((import.meta as ImportMeta & { env?: DesktopRendererImportMetaEnv }).env ?? {})
+    .VITE_ZCODE_E2E_STORE_BRIDGE === "1") {
+    (window as Window & { __e2eProjectService?: unknown }).__e2eProjectService =
+      services.projectService;
+  }
   flushPendingRemoteWorkspaceServicePorts();
   const settingService = supportsSettings ? services.settingService : undefined;
 
