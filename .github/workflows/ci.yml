@@ -273,6 +273,11 @@ jobs:
       - name: Build CLI and required MCP runtimes
         run: node scripts/build-desktop-agent-cli.mjs
 
+      # wdio 的报告器在启动时导入 @zcode/e2e-report 的 dist-node（本机由
+      # typecheck:e2e/pretest 钩子顺带构建；CI 显式构建，产物缺省会 ERR_MODULE_NOT_FOUND）。
+      - name: Build e2e report runtime
+        run: pnpm --filter @zcode/e2e-report build:node
+
       - name: Run workflows hub E2E
         id: hub_e2e
         env:
