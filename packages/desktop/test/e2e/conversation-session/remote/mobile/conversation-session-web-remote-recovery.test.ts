@@ -171,7 +171,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
       try {
         // 原生后台允许Web先自愈，不能强制桌面先降级。补发场景单独丢旧bridge下行数据和首条
         // 真实失效通知，保留ACK与心跳；两条路径都不改时钟/可见性，也不提前制造失效通知。
-        await page.routeWebSocket(/\/api\/v1\/remote\/ws2(?:\?|$)/u, (route) => {
+        await page.routeWebSocket(/(?:\/api\/v1\/remote\/ws2|\/ws)(?:\?|$)/u, (route) => {
           const server = route.connectToServer();
           route.onMessage((message) => {
             const frame = JSON.parse(String(message)) as { payload?: unknown };
@@ -361,7 +361,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
     try {
       // 只观察真实线级消息，不丢帧、不改时钟或可见性。桌面心跳会补发未确认帧，
       // 只看最终内容无法区分修复前后，因此同时记录后台 ACK、socket 数与 bridge-open。
-      await page.routeWebSocket(/\/api\/v1\/remote\/ws2(?:\?|$)/u, (route) => {
+      await page.routeWebSocket(/(?:\/api\/v1\/remote\/ws2|\/ws)(?:\?|$)/u, (route) => {
         evidence.sockets += 1;
         const server = route.connectToServer();
         route.onMessage((message) => {
@@ -484,7 +484,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
       // loopback relay 在桌面断开时发 DEVICE_OFFLINE 并关闭手机 socket，走不到 INTERNAL 路径。
       // 这里只在手机线级按 hub 契约模拟“找不到桌面”：data 回 INTERNAL 且不关 socket；桌面与 relay
       // 的真实连接不变，握手和查询照常转发、只改回包配对态，保证 relay 侧会话始终已认证。
-      await page.routeWebSocket(/\/api\/v1\/remote\/ws2(?:\?|$)/u, (route) => {
+      await page.routeWebSocket(/(?:\/api\/v1\/remote\/ws2|\/ws)(?:\?|$)/u, (route) => {
         const socket = evidence.sockets.length;
         const record: (typeof evidence.sockets)[number] = { openedAt: Date.now() };
         evidence.sockets.push(record);
@@ -661,7 +661,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
         try {
           // 只在真实 bootstrap 边界注入旧导航，保留认证、版本与实际可用候选。
           // 后续 bridge 和 RPC 仍由真实 Desktop/Host 处理，不能模拟一个成功首页。
-          await page.routeWebSocket(/\/api\/v1\/remote\/ws2(?:\?|$)/u, (route) => {
+          await page.routeWebSocket(/(?:\/api\/v1\/remote\/ws2|\/ws)(?:\?|$)/u, (route) => {
             const server = route.connectToServer();
             route.onMessage((message) => {
               const frame = JSON.parse(String(message)) as { payload?: unknown };
