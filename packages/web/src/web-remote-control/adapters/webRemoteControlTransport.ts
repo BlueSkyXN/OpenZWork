@@ -300,7 +300,14 @@ export class WebRemoteControlTerminalTransport {
         });
         break;
       case "auth_ack":
+        this.applyPairStatus(message.pair_status);
+        break;
       case "pair_status_ack":
+        if (this.state === "suspended") {
+          // 后台 waiting 只撤销 raw 帧许可；迟到 matched 不复活页面或心跳，回前台由探测重新确认。
+          if (message.pair_status === "waiting") this.pairedSocket = undefined;
+          return;
+        }
         this.applyPairStatus(message.pair_status);
         break;
       case "data":
@@ -313,6 +320,7 @@ export class WebRemoteControlTerminalTransport {
   }
 
   private applyPairStatus(status: "waiting" | "matched"): void {
+    this.pairedSocket = status === "matched" ? this.socket : undefined;
     this.lastPairStatusAckAt = Date.now();
     this.armHeartbeatAckWatchdog();
     this.emitDiagnostic({ type: "pair-status", pairStatus: status, state: this.state });
@@ -376,6 +384,14 @@ export class WebRemoteControlTerminalTransport {
       return;
     }
     if (code === "INTERNAL") {
+      if (this.wasPaired && this.canContinueRetainedRpc(false)) {
+        // Bugfix: 挂起期间回 ACK 时 hub 找不到桌面只回 INTERNAL。若按未配对重连处理，会关闭 socket
+        // 并清掉 wasPaired，回前台跳过原 socket 探测，桌面未回来时 30 秒进入失败页。这里只撤销许可。
+        // 多个 ACK 在途时会连收 INTERNAL，首个已撤销许可，所以这里不要求许可，否则后续落回未配对分支。
+        this.pairedSocket = undefined;
+        this.options.onError(new Error(message || code));
+        return;
+      }
       if (this.state === "paired" || (this.hadPairedSession && this.state === "waiting")) {
         this.enterWaitingForDeviceAfterRelayError(message || code);
         return;
