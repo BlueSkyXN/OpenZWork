@@ -84,6 +84,9 @@ export {
   USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
 } from "./userInstructions.js";
 export * from "./validation.js";
+// OW-P024：lane 枚举追加 workflow-query 后，消费方（services wireClient）经 barrel
+// 取同一份类型——此前 services 持有本地同构类型，随枚举演进会静默分叉。
+export * from "./processResourceTelemetry.js";
 export * from "./api.js";
 export * from "./zcode-protocol/index.js";
 // re-home：旧协议承重面的幸存文件（消费者继续走 barrel，零感知）

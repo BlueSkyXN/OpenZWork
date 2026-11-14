@@ -521,6 +521,35 @@ entries:
     tests:
       - tests/ci/license-declarations.test.mjs
     source: NOTICE.md 当前分支声明；LICENSE 与 LICENSE.Apache-2.0.txt 的已提交内容
+  - id: OZ-C011
+    kind: change
+    status: active
+    title: 工作流查询进程与生命周期
+    summary: 工作流总览两项读取共用独立 workflow-query lane：Desktop 固定 DB 条件下单实例并空闲回收，Server/远端按项目 key 回收；UI 读状态分离历史错误并按请求代际写回。
+    spec: docs/specs/saved-workflow-query-lifecycle-openzwork.md
+    modules:
+      - workflow-query
+    paths:
+      - packages/services/src/zcode-agent/workflow-query/**
+    hooks:
+      - packages/services/src/zcode-agent/zcodeAgentService.ts
+      - packages/services/src/node.ts
+      - packages/desktop/src/host/index.ts
+      - packages/shared/src/processResourceTelemetry.ts
+      - packages/shared/src/index.ts
+      - packages/ui/src/store/savedWorkflowStore.ts
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowProjectGroup.tsx
+      - packages/ui/src/i18n/locales/zh-CN.ts
+      - packages/ui/src/i18n/locales/en-US.ts
+      - packages/desktop/test/e2e/automations-workflows-hub.test.ts
+    tests:
+      - packages/services/test/workflowQueryRuntime.test.ts
+      - packages/ui/test/savedWorkflowRefresh.test.ts
+      - packages/ui/test/savedWorkflowProjectGroupRunsError.test.ts
+      - apps/zcode-cli/packages/adapters/tests/workflow-query-session-db.test.ts
+      - apps/zcode-cli/packages/bootstrap/tests/saved-workflows-protocol.test.ts
+      - apps/zcode-cli/packages/bootstrap/tests/saved-workflows-run-protocol.test.ts
+    source: 本 PR（补丁 OW-P024）
   - id: OZ-D001
     kind: drop
     status: active

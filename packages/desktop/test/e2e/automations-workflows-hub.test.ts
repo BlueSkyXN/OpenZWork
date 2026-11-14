@@ -10,6 +10,7 @@ import {
   TID_WORKFLOW_ARTIFACT_PANE,
   TID_WORKFLOW_CARD,
   TID_WORKFLOW_CARD_MENU,
+  TID_WORKFLOWS_REFRESH,
   TID_WORKFLOW_CARD_RUN,
   TID_WORKFLOW_DETAIL,
   TID_WORKFLOW_DETAIL_DESCRIPTION,
@@ -51,7 +52,6 @@ import {
   waitForUserMessageContaining,
 } from "./helpers/conversation-session.js";
 import { getV4ComposerBackgroundWorkCounts } from "./helpers/v4-conversation.js";
-import { readDynamicWorkflowGrayMockStatus } from "#e2e/helpers/dynamic-workflow-gray";
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";
 
 const WORKFLOW_NAME = "release-check";
@@ -149,9 +149,9 @@ describe("已保存工作流中枢 E2E", () => {
     // 只需要 workspace 就绪即可进入自动化页，不需要账号或配置模型 provider。
     await prepareConversationE2E({ skipProvider: true });
 
-    const configStatus = await readDynamicWorkflowGrayMockStatus();
-    expect(configStatus.mode).toBe("alwaysOn");
-    expect(configStatus.configRequests).toBeGreaterThan(0);
+    // OpenZWork：动态工作流门禁为本地恒开（官方套餐灰度链随账号域移除，见
+    // zcodeAgentService.resolveDynamicWorkflowGate），不请求 /client/configs——
+    // 上游的 case-local 灰度网关断言在本 fork 不适用，直接进入页面验证。
 
     // 1) 打开自动化页，页标题切到「工作流」。
     await clickTestIdByDom(TID_AUTOMATIONS_OPEN, {
@@ -206,6 +206,34 @@ describe("已保存工作流中枢 E2E", () => {
       timeoutMsg: "工作流列表没有出现预置的 release-check 卡片",
     });
     expect(await readTestIdText(cardTestId)).toContain("发布前检查");
+
+    // 3a) OW-P024 R4：双刷新收敛 + 状态标记检查。两次强制刷新（bypassCache 并发）后：
+    //     等待 loading 消失（新请求收敛）再断言卡片仍是预置内容——请求代际保证旧结果
+    //     不覆盖新结果。错误检查用 DOM 状态标记（data-workflow-*-error），不匹配语言片段。
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "工作流页没有刷新按钮" });
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "第二次点击刷新失败" });
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          () =>
+            document.querySelector(
+              '[data-testid^="workflow-project-group-"][data-workflows-loading="true"]',
+            ) === null,
+        )) as boolean,
+      { timeout: 20_000, timeoutMsg: "双刷新后项目组 loading 未收敛" },
+    );
+    await waitForTestIdByDom(cardTestId, {
+      timeout: 20_000,
+      timeoutMsg: "双刷新后工作流卡片消失",
+    });
+    expect(await readTestIdText(cardTestId)).toContain("发布前检查");
+    const refreshErrorMarkers = await browser.execute(
+      () =>
+        document.querySelectorAll(
+          '[data-workflows-load-error="true"], [data-workflow-history-error="true"], [data-workflow-last-run="unknown"]',
+        ).length,
+    );
+    expect(refreshErrorMarkers).toBe(0);
 
     // 4) 点卡片进详情，改说明并保存。
     await clickTestIdByDom(cardTestId, { timeoutMsg: "无法点击工作流卡片进入详情" });
@@ -274,6 +302,358 @@ describe("已保存工作流中枢 E2E", () => {
       timeout: 10000,
       timeoutMsg: "删除后磁盘文件仍然存在",
     });
+  });
+});
+
+// ── OW-P024 R4 返工 2：历史失败/重试与倒序刷新的真实 UI 确定性场景 ──
+// 控制边界：savedWorkflowStore 的 E2E 受控读取（service 调用级注入，经 renderer
+// E2E store 桥设置；store/组件/请求代际全真实）。进程单实例由服务场景回归证明。
+declare global {
+  interface Window {
+    __setControlledSavedWorkflowReadsForE2E?: (overrides: Record<string, unknown>) => void;
+    __wfReleaseA?: (value: unknown) => void;
+  }
+}
+
+describe("工作流中枢错误与刷新竞态 E2E（OW-P024 R4）", () => {
+  before(async () => {
+    await mkdir(WORKFLOWS_DIR, { recursive: true });
+    await writeFile(WORKFLOW_FILE, SEED, "utf-8");
+  });
+
+  after(async () => {
+    await browser.execute(() => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({});
+    });
+    await browser.electron.restoreAllMocks();
+    await rm(WORKFLOWS_DIR, { recursive: true, force: true });
+    await clearAppData();
+  });
+
+  it("历史读取失败→错误可见→重试→新历史出现、错误消失", async function () {
+    this.timeout(150000);
+    await prepareConversationE2E({ skipProvider: true });
+    await clickTestIdByDom(TID_AUTOMATIONS_OPEN, { timeoutMsg: "侧栏没有出现自动化入口" });
+    await clickTestIdByDom(testId(TID_AUTOMATIONS_PAGE_TAB, "workflow"), {
+      timeoutMsg: "自动化页标题没有「工作流」切换",
+    });
+
+    // 1) 注入：只替换历史读取为失败；列表仍走真实 service（真实文件内容）。
+    // 打开中枢时首轮 load 已在途（真实读取），注入只影响下一次 load——点列表刷新
+    // 按钮（bypassCache）让受控失败真正生效，这正是「保留旧记录后的刷新失败」场景。
+    await waitForTestIdByDom(testId(TID_WORKFLOW_CARD, WORKFLOW_NAME), {
+      timeout: 20000,
+      timeoutMsg: "工作流卡片未出现（首轮真实读取）",
+    });
+    await browser.execute(() => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({
+        listSavedWorkflowRuns: async () => {
+          throw new Error("journal unreadable (controlled)");
+        },
+      });
+    });
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, {
+      timeoutMsg: "列表工具行没有刷新按钮",
+    });
+    // 历史错误可见（组级 runs-error 标记）。
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          () =>
+            document.querySelector('[data-testid^="workflow-project-group-"][data-workflows-runs-error="true"]') !==
+            null,
+        )) as boolean,
+      { timeout: 15000, timeoutMsg: "历史读取失败没有在组上显示" },
+    );
+
+    // 2) 重试：切换注入为成功（返回一条 completed 历史），点组级重试按钮。
+    await browser.execute((runName) => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({
+        listSavedWorkflowRuns: async () => ({
+          runs: [
+            {
+              runId: "run-controlled-1",
+              name: runName,
+              status: "completed",
+              createdAt: Date.now() - 60_000,
+              updatedAt: Date.now() - 30_000,
+            },
+          ],
+        }),
+      });
+    }, WORKFLOW_NAME);
+    await browser.execute(() => {
+      // 组横幅的稳定重试标记（data-workflows-runs-retry），不按语言片段或泛化按钮匹配。
+      const retry = document.querySelector<HTMLButtonElement>(
+        '[data-workflows-runs-retry="true"]',
+      );
+      retry?.click();
+    });
+    // 3) 错误消失 + 徽标不再是 unknown（有真实 run → completed 可见）。
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          () =>
+            document.querySelector('[data-testid^="workflow-project-group-"][data-workflows-runs-error="true"]') ===
+              null,
+        )) as boolean,
+      { timeout: 15000, timeoutMsg: "重试成功后错误标记未消失" },
+    );
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          () => document.querySelector('[data-workflow-last-run="completed"]') !== null,
+        )) as boolean,
+      { timeout: 15000, timeoutMsg: "重试成功后没有出现 completed 徽标" },
+    );
+  });
+
+  it("倒序刷新：新请求 B 先完成显示新内容，旧请求 A 最后返回不得覆盖", async function () {
+    this.timeout(150000);
+    await prepareConversationE2E({ skipProvider: true });
+    await clickTestIdByDom(TID_AUTOMATIONS_OPEN, { timeoutMsg: "侧栏没有出现自动化入口" });
+    await clickTestIdByDom(testId(TID_AUTOMATIONS_PAGE_TAB, "workflow"), {
+      timeoutMsg: "自动化页标题没有「工作流」切换",
+    });
+
+    // 两次强刷（各 bypassCache）：A（先发、挂起、返回旧描述）与 B（后发、立即返回新描述）。
+    // 用门闩在 renderer 内精确排序：A 的 promise 挂到 window 上，测试稍后释放。
+    await browser.execute((oldDesc, newDesc, wfName) => {
+      const gate = { release: (_r: unknown) => {} };
+      const released = new Promise<unknown>((resolve) => {
+        gate.release = resolve;
+      });
+      (window as unknown as { __wfReleaseA?: (v: unknown) => void }).__wfReleaseA =
+        gate.release;
+      let calls = 0;
+      window.__setControlledSavedWorkflowReadsForE2E?.({
+        listSavedWorkflows: async (target: { workspacePath: string }) => {
+          calls += 1;
+          const isStale = calls === 2; // 第一次=挂载读（真实数据），A=第2次(挂起旧值), B=第3次(新值)
+          if (isStale) {
+            await released;
+            return {
+              workflows: [
+                {
+                  name: wfName,
+                  description: oldDesc,
+                  scope: "project",
+                  path: `${target.workspacePath}/.zcode/workflows/${wfName}.dwf.ts`,
+                },
+              ],
+              invalid: [],
+              dir: `${target.workspacePath}/.zcode/workflows`,
+            };
+          }
+          return {
+            workflows: [
+              {
+                name: wfName,
+                description: newDesc,
+                scope: "project",
+                path: `${target.workspacePath}/.zcode/workflows/${wfName}.dwf.ts`,
+              },
+            ],
+            invalid: [],
+            dir: `${target.workspacePath}/.zcode/workflows`,
+          };
+        },
+      });
+    }, "旧-描述-A", "新-描述-B", WORKFLOW_NAME);
+
+    const cardTestId = testId(TID_WORKFLOW_CARD, WORKFLOW_NAME);
+    await waitForTestIdByDom(cardTestId, { timeout: 20000, timeoutMsg: "挂载读未完成" });
+    // A：点刷新（bypassCache）→ 挂起；B：再点刷新 → 立即返回新描述。
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "第一次刷新失败" });
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "第二次刷新失败" });
+    // B 收敛：新描述显示、loading 结束。
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          (desc) =>
+            document.body.textContent?.includes(desc) === true &&
+            document.querySelector('[data-testid^="workflow-project-group-"][data-workflows-loading="true"]') ===
+              null,
+          "新-描述-B",
+        )) as boolean,
+      { timeout: 20000, timeoutMsg: "新请求 B 未收敛显示" },
+    );
+    // 释放 A：页面必须保持 B 的内容（旧描述不得出现）。
+    await browser.execute(() => {
+      (window as unknown as { __wfReleaseA?: (v: unknown) => void }).__wfReleaseA?.(undefined);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const staleShown = await browser.execute(
+      (desc) => document.body.textContent?.includes(desc) === true,
+      "旧-描述-A",
+    );
+    expect(staleShown).toBe(false);
+    const freshShown = await browser.execute(
+      (desc) => document.body.textContent?.includes(desc) === true,
+      "新-描述-B",
+    );
+    expect(freshShown).toBe(true);
+  });
+});
+
+// ── OW-P024 R4 返工 2：50 项目真实总览（真实项目恢复 + 全组渲染 + 刷新 + 计时）──
+// 项目来自真实 project directory（settings lastWorkspaceSession 恢复 50 个真实目录），
+// 每个项目有真实工作流文件；页面必须挂载全部组并完成两项读取。进程断言在服务层回归
+// （同 50 项目场景 spawn=1），此处验证真实 UI 总览形态与可感知时延。
+const OVERVIEW_PROJECT_COUNT = 50;
+const OVERVIEW_ROOT = join(E2E_HOME_DIR_WORKFLOWS_HUB(), "overview-50");
+
+/** 本 spec 的隔离 HOME（与 helper 常量同源：dirname(DEFAULT_WORKSPACE)）。 */
+function E2E_HOME_DIR_WORKFLOWS_HUB(): string {
+  return dirname(DEFAULT_WORKSPACE);
+}
+
+describe("工作流总览 50 项目渲染与刷新 E2E（OW-P024 R4）", () => {
+  before(async () => {
+    // 50 个真实项目目录 + 每个一个工作流文件。
+    for (let index = 0; index < OVERVIEW_PROJECT_COUNT; index += 1) {
+      const projectDir = join(OVERVIEW_ROOT, `proj-${String(index).padStart(2, "0")}`);
+      await mkdir(join(projectDir, ".zcode", "workflows"), { recursive: true });
+      await writeFile(
+        join(projectDir, ".zcode", "workflows", "flow-1.dwf.ts"),
+        [
+          "/* zcode-workflow",
+          `description: 项目 ${index} 工作流`,
+          "*/",
+          "export default async ({ agent }) => {};",
+          "",
+        ].join("\n"),
+        "utf-8",
+      );
+    }
+    // 项目分组的真实来源是项目目录（projectService.readTree），不是
+    // settings.lastWorkspaceSession（上一版写错来源，组数恒 0），也不是直插
+    // tasks-index（第二版旁路——Host 无变更广播，UI 项目树不刷新，50 组 120s
+    // 不出现，两次实测根因）。修复：经 renderer E2E 桥的真实 saveProject RPC
+    // 注册 50 个项目——与用户「打开目录」同一产品路径，Host 广播驱动侧栏树刷新。
+    // renderer 的项目服务桥随业务握手注册（initializeBusinessRoot）；等待它就绪再注册项目。
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          () =>
+            Boolean(
+              (window as Window & { __e2eProjectService?: unknown }).__e2eProjectService,
+            ),
+        )) as boolean,
+      { timeout: 30000, timeoutMsg: "renderer 项目服务桥未出现（__e2eProjectService）" },
+    );
+    const registered = await browser.executeAsync((count: number, rootPrefix: string, done: (v: unknown) => void) => {
+      const service = (window as Window & { __e2eProjectService?: { saveProject: (input: { name: string; defaultName: string; roots: string[]; primaryRoot: string }) => Promise<{ id: string }> } }).__e2eProjectService;
+      if (!service) {
+        done({ error: "project-service-bridge-missing" });
+        return;
+      }
+      void (async () => {
+        try {
+          const ids: string[] = [];
+          for (let index = 0; index < count; index += 1) {
+            const dir = `${rootPrefix}/proj-${String(index).padStart(2, "0")}`;
+            const project = await service.saveProject({
+              name: `项目 ${index}`,
+              defaultName: `项目 ${index}`,
+              roots: [dir],
+              primaryRoot: dir,
+            });
+            ids.push(project.id);
+          }
+          done({ ids });
+        } catch (error) {
+          done({ error: String(error) });
+        }
+      })();
+    }, OVERVIEW_PROJECT_COUNT, OVERVIEW_ROOT);
+    const registration = registered as { ids?: string[]; error?: string };
+    if (registration.error || !registration.ids || registration.ids.length !== OVERVIEW_PROJECT_COUNT) {
+      throw new Error(`50 项目注册失败: ${JSON.stringify(registration).slice(0, 300)}`);
+    }
+  });
+
+  after(async () => {
+    // 经同一产品路径软删除 50 个项目（deleteProject），避免死目录项目组污染后续
+    // describe；再删目录并重置应用数据。
+    await browser.executeAsync((done: (v: unknown) => void) => {
+      const service = (
+        window as Window & {
+          __e2eProjectService?: {
+            readProjects: () => Promise<Array<{ id: string; name: string; deleted: boolean }>>;
+            deleteProject: (id: string) => Promise<void>;
+          };
+        }
+      ).__e2eProjectService;
+      if (!service) {
+        done(null);
+        return;
+      }
+      void (async () => {
+        try {
+          const projects = await service.readProjects();
+          const targets = projects.filter((project) => /^项目 \d+$/.test(project.name) && !project.deleted);
+          for (const project of targets) {
+            await service.deleteProject(project.id);
+          }
+          done({ removed: targets.length });
+        } catch (error) {
+          done({ error: String(error) });
+        }
+      })();
+    }).then(() => undefined, () => undefined);
+    await rm(OVERVIEW_ROOT, { recursive: true, force: true });
+    await clearAppData();
+  });
+
+  it("50 个项目组全部渲染并完成读取；刷新后全部收敛", async function () {
+    this.timeout(240000);
+    await prepareConversationE2E({ skipProvider: true });
+    await clickTestIdByDom(TID_AUTOMATIONS_OPEN, { timeoutMsg: "侧栏没有出现自动化入口" });
+    await clickTestIdByDom(testId(TID_AUTOMATIONS_PAGE_TAB, "workflow"), {
+      timeoutMsg: "自动化页标题没有「工作流」切换",
+    });
+
+    const overviewShownAt = Date.now();
+    // 全部 50 个项目组出现（按 testid 前缀计数），且都完成读取（loaded 标记）。
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          (expected: number) =>
+            document.querySelectorAll(
+              '[data-testid^="workflow-project-group-"][data-workflows-loaded="true"]',
+            ).length >= expected,
+          OVERVIEW_PROJECT_COUNT,
+        )) as boolean,
+      { timeout: 120_000, timeoutMsg: "50 个项目组没有全部完成读取" },
+    );
+    const allLoadedMs = Date.now() - overviewShownAt;
+    // 至少一个组的描述在场（内容正确性抽检：项目 7）。
+    const desc7 = await browser.execute(
+      () => document.body.textContent?.includes("项目 7 工作流") === true,
+    );
+    expect(desc7).toBe(true);
+
+    // 刷新：全部组再次收敛（loading 全消 + 仍 50 组 loaded）。
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "总览刷新按钮不可用" });
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          (expected: number) =>
+            document.querySelectorAll(
+              '[data-testid^="workflow-project-group-"][data-workflows-loading="true"]',
+            ).length === 0 &&
+            document.querySelectorAll(
+              '[data-testid^="workflow-project-group-"][data-workflows-loaded="true"]',
+            ).length >= expected,
+          OVERVIEW_PROJECT_COUNT,
+        )) as boolean,
+      { timeout: 120_000, timeoutMsg: "刷新后 50 个项目组未全部收敛" },
+    );
+    const refreshMs = Date.now() - overviewShownAt - allLoadedMs;
+    process.stdout.write(
+      `\n[overview-50-e2e] firstLoadMs=${allLoadedMs} refreshConvergeMs=${refreshMs}\n`,
+    );
   });
 });
 
