@@ -616,7 +616,15 @@ function readAppControlResults(request: unknown): Record<string, unknown> {
       try {
         results[block.tool_use_id] = JSON.parse(text);
       } catch {
-        /* 不猜测非结构化结果。 */
+        // 修复依据（OpenZWork）：同 readAppControlTargetRef——剥离折叠的 token 提醒后再解析。
+        const folded = text.indexOf("<system-reminder>");
+        if (folded > 0) {
+          try {
+            results[block.tool_use_id] = JSON.parse(text.slice(0, folded).trimEnd());
+          } catch {
+            /* 不猜测非结构化结果。 */
+          }
+        }
       }
     }
   }
@@ -638,7 +646,18 @@ function readAppControlTargetRef(
       try {
         inspectResult(JSON.parse(value));
       } catch {
-        /* 非结构化结果不猜测引用。 */
+        // 修复依据（OpenZWork，v3.18.0 同步 T15）：CLI 会把 token 预算提醒折叠进
+        // tool_result 尾部（"<system-reminder>…</system-reminder>"，同 app-control-evidence
+        // 的 stripFoldedReminders 语义）。整体 parse 失败就放弃会让 appControlTargetRef
+        // 变量不注入，SCT03 的 {{appControlTargetSessionId}} 原样发给工具得到 invalid_format。
+        const folded = value.indexOf("<system-reminder>");
+        if (folded > 0) {
+          try {
+            inspectResult(JSON.parse(value.slice(0, folded).trimEnd()));
+          } catch {
+            /* 非结构化结果不猜测引用。 */
+          }
+        }
       }
       return;
     }
