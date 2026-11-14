@@ -670,9 +670,9 @@ describe("ZCode plugins", () => {
 
     try {
       const pluginStorageRoot = join(root, "plugins");
-      // OpenZWork(D004，T09 收口）：官方市场为本地同步分区实现，无 CDN 默认远端；
-      // 空存储不产生默认市场条目、不写 known_marketplaces.json、不发网络请求。
-      // 官方内置目录仍经本地 seed 提供（availablePlugins 可见），Claude 市场需用户添加。
+      // OpenZWork(D004，2026-11-14 T15 修正）：官方市场为本地同步分区实现，无 CDN 默认远端
+      // （WP-08 保持）；Claude 官方目录恢复默认注册（GitHub shorthand，非 z.ai 产品域），
+      // 空存储本地登记该条目、不写远端快照、不发网络请求；首次刷新才拉取 catalog。
       const fetchSpy = vi.fn();
       vi.stubGlobal("fetch", fetchSpy);
       const overview = await getZCodePluginsOverview({
@@ -682,9 +682,11 @@ describe("ZCode plugins", () => {
         workingDirectory: root,
       });
 
-      expect(overview.marketplaces).toEqual([]);
+      expect(overview.marketplaces).toEqual([
+        expect.objectContaining({ id: "claude-plugins-official" }),
+      ]);
       expect(fetchSpy).not.toHaveBeenCalled();
-      expect(existsSync(join(pluginStorageRoot, "known_marketplaces.json"))).toBe(false);
+      expect(existsSync(join(pluginStorageRoot, "known_marketplaces.json"))).toBe(true);
     } finally {
       // 恢复全局 fetch，避免污染后续需要真实网络的用例（zip 安装等）。
       vi.unstubAllGlobals();
