@@ -1,6 +1,8 @@
 // 已保存工作流中枢的读缓存。
 // 按 workspaceKey 分片；磁盘仍是唯一权威（不变式 2）——缓存只服务同一页内的重渲染，
 // 变更后一律 `bypass` 刷新（skillStore 的同一条教训：复用 in-flight Promise 会拿到旧扫描）。
+// OW-P024：列表错误与运行历史错误分别表达（历史失败不再伪装成「尚未运行」）；
+// 每个 key 的请求带代际，旧代际的完成/失败/清理不得覆盖新代际，也不得清掉新代际的 loading。
 import { create } from "zustand";
 import {
   resolveWorkspaceKey,
@@ -25,6 +27,8 @@ export interface SavedWorkflowWorkspaceState {
   entries: ZCodeSavedWorkflowEntry[];
   invalid: ZCodeSavedWorkflowInvalidEntry[];
   runs: ZCodeSavedWorkflowRun[];
+  /** 运行历史读取失败的原因；列表仍可用，失败时保留上次已知 runs（OW-P024）。 */
+  runsError: string | null;
   /** 扫过的目录（本地绝对路径），全局组据此 watch；未加载或列表未回时为 null。 */
   dir: string | null;
   loading: boolean;
@@ -38,6 +42,7 @@ const EMPTY_SAVED_WORKFLOW_STATE: SavedWorkflowWorkspaceState = {
   entries: [],
   invalid: [],
   runs: [],
+  runsError: null,
   dir: null,
   loading: false,
   loaded: false,
@@ -55,6 +60,8 @@ interface SavedWorkflowStoreState {
 }
 
 const inFlight = new Map<string, Promise<void>>();
+/** 每个 store key 的请求代际：写回仅对当前代际生效（OW-P024 刷新竞态）。 */
+const generationByKey = new Map<string, number>();
 
 /**
  * 读缓存的分片键：全局档（`scope:"global"` 且不带 workspace）
@@ -78,21 +85,25 @@ function extractErrorCode(error: unknown): number | null {
 async function fetchWorkspace(
   target: ZCodeAgentSavedWorkflowTarget,
   agentService: IZCodeAgentService,
-): Promise<{ list: ZCodeWorkflowsListResult; runs: ZCodeSavedWorkflowRun[] }> {
-  // 列表与运行历史并行；运行历史失败不拖垮列表（journal 缺席时中枢照常能看、能管）。
+): Promise<{
+  list: ZCodeWorkflowsListResult;
+  runs: ZCodeSavedWorkflowRun[];
+  runsError: string | null;
+}> {
+  // 列表与运行历史并行；运行历史失败不拖垮列表（journal 缺席时中枢照常能看、能管），
+  // 但错误要如实暴露给 UI（OW-P024：不再静默转换成空历史）。
   const [list, runs] = await Promise.all([
     agentService.listSavedWorkflows(target),
     agentService
       .listSavedWorkflowRuns({ ...target, limit: SAVED_WORKFLOW_RUNS_PAGE })
-      .then((result) => result.runs)
+      .then((result) => ({ runs: result.runs, runsError: null }))
       .catch((error: unknown) => {
-        logger.warn("[savedWorkflowStore] 拉取运行历史失败，按无记录处理", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return [] as ZCodeSavedWorkflowRun[];
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn("[savedWorkflowStore] 拉取运行历史失败", { error: message });
+        return { runs: null, runsError: message };
       }),
   ]);
-  return { list, runs };
+  return { list, runs: runs.runs ?? [], runsError: runs.runsError };
 }
 
 export const useSavedWorkflowStore = create<SavedWorkflowStoreState>((set) => ({
@@ -103,6 +114,9 @@ export const useSavedWorkflowStore = create<SavedWorkflowStoreState>((set) => ({
       const current = inFlight.get(key);
       if (current) return current;
     }
+    const generation = (generationByKey.get(key) ?? 0) + 1;
+    generationByKey.set(key, generation);
+    const isCurrent = () => generationByKey.get(key) === generation;
     set((state) => ({
       byWorkspaceKey: {
         ...state.byWorkspaceKey,
@@ -110,7 +124,8 @@ export const useSavedWorkflowStore = create<SavedWorkflowStoreState>((set) => ({
       },
     }));
     const request = fetchWorkspace(target, agentService)
-      .then(({ list, runs }) => {
+      .then(({ list, runs, runsError }) => {
+        if (!isCurrent()) return;
         // 中枢刚看过磁盘：把完成卡那张「这次 run 存成了哪个工作流」的读缓存一并作废
         // （docs/dynamic-workflow/transcript-and-notifications.md「Which workflow a run is saved as」）。
         // 中枢里的删除 / 移动 / 改元数据都以一次刷新收尾，这一行让那些动作也走到对话里的卡片上。
@@ -121,7 +136,9 @@ export const useSavedWorkflowStore = create<SavedWorkflowStoreState>((set) => ({
             [key]: {
               entries: list.workflows,
               invalid: list.invalid,
-              runs,
+              // 历史读取失败时保留上次已知 runs（可重试），不把失败伪装成空历史。
+              runs: runsError ? (state.byWorkspaceKey[key]?.runs ?? []) : runs,
+              runsError,
               dir: list.dir,
               loading: false,
               loaded: true,
@@ -132,6 +149,7 @@ export const useSavedWorkflowStore = create<SavedWorkflowStoreState>((set) => ({
         }));
       })
       .catch((error: unknown) => {
+        if (!isCurrent()) return;
         const message = error instanceof Error ? error.message : String(error);
         logger.warn("[savedWorkflowStore] 拉取已保存工作流失败", { error: message });
         set((state) => ({
@@ -163,8 +181,9 @@ export function selectSavedWorkflowState(
   return state.byWorkspaceKey[savedWorkflowStoreKey(target)] ?? EMPTY_SAVED_WORKFLOW_STATE;
 }
 
-/** 测试用：清掉 in-flight 去重表。 */
+/** 测试用：清掉 in-flight 去重表与代际表。 */
 export function resetSavedWorkflowStoreForTests(): void {
   inFlight.clear();
+  generationByKey.clear();
   useSavedWorkflowStore.setState({ byWorkspaceKey: {} });
 }

@@ -409,6 +409,24 @@ export function SavedWorkflowProjectGroup({
         </p>
       ) : null}
 
+      {/* OW-P024：运行历史读取失败不再伪装成「尚未运行」——保留列表与上次已知 runs，给可重试的提示。 */}
+      {state.runsError ? (
+        <p className="mt-2 flex items-center gap-2 text-ui-sm text-warning">
+          <span>
+            {intl.formatMessage({ id: "workflows.hub.runsError" }, { error: state.runsError })}
+          </span>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-ui-sm"
+            onClick={() => void refresh({ bypassCache: true })}
+          >
+            {intl.formatMessage({ id: "workflows.hub.retry" })}
+          </Button>
+        </p>
+      ) : null}
+
       {invalidCount === 0 ? null : (
         <div
           data-workflows-invalid="true"

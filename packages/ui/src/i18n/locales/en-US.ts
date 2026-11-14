@@ -6301,6 +6301,8 @@ const enUS: Record<string, string> = {
     "Design a workflow with ZCode in chat, then have it save the workflow to a project once it works. Projects that aren't open don't appear here.",
   "workflows.hub.noWorkspace": "Open a workspace to see its workflows.",
   "workflows.hub.loadError": "Could not read workflows: {error}",
+  "workflows.hub.runsError": "Could not read run history: {error}",
+  "workflows.hub.retry": "Retry",
   "workflows.hub.invalid": "{count} files could not be read",
   "workflows.hub.invalidOne": "{count} file could not be read",
   "workflows.hub.card.run": "Run",

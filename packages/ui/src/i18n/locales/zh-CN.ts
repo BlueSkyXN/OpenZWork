@@ -5951,6 +5951,8 @@ const zhCN: Record<string, string> = {
     "在对话里让 ZCode 设计工作流，跑通之后再让它保存到项目里。未打开的项目不会出现在这里。",
   "workflows.hub.noWorkspace": "打开一个项目以查看它的工作流。",
   "workflows.hub.loadError": "读取工作流失败：{error}",
+  "workflows.hub.runsError": "运行历史读取失败：{error}",
+  "workflows.hub.retry": "重试",
   "workflows.hub.invalid": "{count} 个文件无法读取",
   "workflows.hub.invalidOne": "{count} 个文件无法读取",
   "workflows.hub.card.run": "运行",

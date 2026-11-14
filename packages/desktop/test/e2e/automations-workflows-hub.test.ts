@@ -10,6 +10,7 @@ import {
   TID_WORKFLOW_ARTIFACT_PANE,
   TID_WORKFLOW_CARD,
   TID_WORKFLOW_CARD_MENU,
+  TID_WORKFLOWS_REFRESH,
   TID_WORKFLOW_CARD_RUN,
   TID_WORKFLOW_DETAIL,
   TID_WORKFLOW_DETAIL_DESCRIPTION,
@@ -206,6 +207,21 @@ describe("已保存工作流中枢 E2E", () => {
       timeoutMsg: "工作流列表没有出现预置的 release-check 卡片",
     });
     expect(await readTestIdText(cardTestId)).toContain("发布前检查");
+
+    // 3a) OW-P024：连续两次强制刷新（bypassCache 并发）后内容保持一致、不闪空、无错误横幅。
+    //     读取已走 workflow-query lane；请求代际保证旧结果不覆盖新结果（store 回归覆盖时序，
+    //     E2E 覆盖真实链路下的可见行为）。
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "工作流页没有刷新按钮" });
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "第二次点击刷新失败" });
+    await waitForTestIdByDom(cardTestId, {
+      timeout: 20000,
+      timeoutMsg: "双刷新后工作流卡片消失",
+    });
+    expect(await readTestIdText(cardTestId)).toContain("发布前检查");
+    const refreshErrorText = await browser.execute(
+      () => document.body.textContent?.includes("读取工作流失败") ?? false,
+    );
+    expect(refreshErrorText).toBe(false);
 
     // 4) 点卡片进详情，改说明并保存。
     await clickTestIdByDom(cardTestId, { timeoutMsg: "无法点击工作流卡片进入详情" });
