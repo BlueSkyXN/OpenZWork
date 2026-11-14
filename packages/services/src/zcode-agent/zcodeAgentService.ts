@@ -87,6 +87,7 @@ import {
   ZCODE_AGENT_PROVIDER_NOT_READY_REASON,
   ZCODE_MODEL_REASONING_SEPARATOR,
   isRemoteWorkspaceIdentity,
+  type ProcessResourceCliLane,
   ZCODE_PROTOCOL_NAME,
   ZCODE_PROTOCOL_VERSION,
   zcodeMcpListResultSchema,
@@ -374,6 +375,7 @@ import { TaskIndexRepo } from "#src/session/taskIndexRepo.js";
 import { ZCodeAgentMcpStatusModeUnsupportedError } from "#src/zcode-agent/zcodeAgentErrors.js";
 import { ZCodeAgentProcessManager } from "./zcodeAgentProcessManager.js";
 import type { ZCodeAgentProcessManagerOptions } from "./zcodeAgentProcessManager.js";
+import { createWorkflowQueryRuntime, resolveWorkflowQueryCarrier } from "./workflow-query/workflowQueryRuntime.js";
 import {
   ZCodeProtocolRequestTimeoutError,
   type ZCodeProtocolClient,
@@ -1013,6 +1015,14 @@ interface CreateZCodeAgentServiceBaseOptions extends Omit<
 > {
   /** 仅供 MCP 状态探测进程使用，不能把空闲回收传给 chat。 */
   mcpStatusIdleTimeoutMs?: number;
+  /**
+   * OW-P024：已保存工作流两项读取是否共用固定查询载体。仅 Host 装配层可设置
+   * （Desktop 本地 + 默认命令链 + Main 固定绝对 DB 时为 true）；UI/RPC 调用方无法自行开启。
+   * 关闭时两项读取仍走 workflow-query lane，但按项目分 key（Server/远端语义）。
+   */
+  shareLocalWorkflowQueryRuntime?: boolean;
+  /** 仅供确定性生命周期场景注入短时值；查询 lane 产品缺省 5 分钟。 */
+  workflowQueryIdleTimeoutMs?: number;
   readAppUsageReport?: (params: AppUsageStatsParams) => Promise<string>;
   accountProviderConfigSource?: ProviderSource<AccountProviderConfigSnapshot>;
   /** Desktop Host 请求 Main 登记 Agent 已授权的精确本地视频路径。 */
@@ -1130,6 +1140,21 @@ export function createZCodeAgentService(
     waitForSpawnAdmission: options?.waitForSpawnAdmission,
     lane: "mcp-status",
     idleTimeoutMs: options?.mcpStatusIdleTimeoutMs ?? MCP_STATUS_LANE_IDLE_TIMEOUT_MS,
+  });
+  // OW-P024：已保存工作流总览两项读取（workflows/list、workflows/runs）的独立查询 lane。
+  // 共享开关由 Host 装配判定：Desktop 固定 DB 条件下共用管理面载体（单 key 单进程、
+  // 空闲回收）；关闭/远端时按项目分 key，保留启动峰值但同样空闲回收。查询载体不参与
+  // chat 的 useSharedTaskRuntime 分配，也不进 chat active client 表。
+  const workflowQueryRuntime = createWorkflowQueryRuntime({
+    commandResolver: options?.commandResolver,
+    presentationSurface: options?.presentationSurface,
+    requestTimeoutMs: options?.requestTimeoutMs,
+    processLifecycleReporter: options?.processLifecycleReporter,
+    resolveSpawnEnv: options?.resolveSpawnEnv,
+    waitForSpawnAdmission: options?.waitForSpawnAdmission,
+    spawnFallbackCwd: options?.spawnFallbackCwd,
+    idleTimeoutMs: options?.workflowQueryIdleTimeoutMs,
+    resolveSharedCarrierWorkspacePath: ensurePluginManagementWorkspacePath,
   });
   const sessionEmitters = new Map<string, Emitter<ZCodeAgentServiceEvent>>();
   /**
@@ -1884,9 +1909,9 @@ export function createZCodeAgentService(
     emitWorkspaceEvent(workspace, { type: "state.updated", notification });
   }
 
-  // OpenZWork：进程资源观测（保留域）采用上游 lane 参数签名；ProcessResourceCliLane
-  // 随 WP-05 删除的 processResourceTelemetry.ts 未随合并恢复，此处本地定义同构类型。
-  type ProcessResourceCliLane = "chat" | "plugin" | "mcp-status";
+  // OpenZWork：进程资源观测（保留域）。v3.17.1 同步已恢复 shared 的
+  // processResourceTelemetry.ts，lane 类型回归单一来源（此前本地同构类型随 WP-05 删除遗留）。
+  // OW-P024 在枚举中追加 workflow-query 查询泳道。
   function wireClient(
     client: ZCodeProtocolClient,
     initialWorkspace: ZCodeAgentWorkspaceTarget,
@@ -3242,6 +3267,20 @@ export function createZCodeAgentService(
     return client;
   }
 
+  // OW-P024：workflows/list 与 workflows/runs 两项读取的查询 client。载体由
+  // resolveWorkflowQueryCarrier 决定（共享开关 → 固定管理面单 key；否则按项目分 key），
+  // RPC target 仍由调用方带真实项目参数——载体共用不改变 target。请求保持默认
+  // operation 计数，生命周期全部交给 manager 的既有 idle/关闭语义。
+  async function getWorkflowQueryClient(params: ZCodeAgentWorkspaceTarget): Promise<ZCodeProtocolClient> {
+    const carrier = resolveWorkflowQueryCarrier(params, {
+      sharedCarrier: workflowQueryRuntime.resolveSharedCarrier(),
+      share: Boolean(options?.shareLocalWorkflowQueryRuntime),
+    });
+    const client = await workflowQueryRuntime.manager.getClient(carrier);
+    wireClient(client, carrier, "workflow-query");
+    return client;
+  }
+
   function disposeLocalState(): void {
     modelSelectionSubscription?.dispose();
     modelSelectionSubscription = undefined;
@@ -4400,12 +4439,20 @@ export function createZCodeAgentService(
       );
     },
 
-    // 已保存工作流的 GUI 中枢：与 Skill catalog 同一条
-    // workspace agent client 路径；文件在 workspace 里，远程 workspace 就在远端进程里扫。
-    // 全局档：载体由 resolveSavedWorkflowCarrier 选，
-    // `scope` 只在有定义时下推。
+    // 已保存工作流的 GUI 中枢。OW-P024：两项读取改走独立 workflow-query lane
+    // （载体见 getWorkflowQueryClient），不再按项目登记 chat runtime；无 workspace 的
+    // 全局组仍由 resolveSavedWorkflowCarrier 自选本机载体（活跃 chat → 管理面）。
+    // 其余读写方法保持原路由。`scope` 只在有定义时下推。
     async listSavedWorkflows(params: ZCodeAgentListSavedWorkflowsParams) {
-      const { client, workspace } = await resolveSavedWorkflowCarrier(params);
+      if (savedWorkflowTargetHasWorkspace(params)) {
+        const client = await getWorkflowQueryClient(params);
+        return client.request(
+          zcodeProtocolMethods.workflowsList,
+          { workspace: buildWorkspaceRef(params), ...savedWorkflowScopeParam(params) },
+          zcodeWorkflowsListResultSchema,
+        );
+      }
+      const { client, workspace } = await resolveGlobalSavedWorkflowCarrier();
       return client.request(
         zcodeProtocolMethods.workflowsList,
         { workspace, ...savedWorkflowScopeParam(params) },
@@ -4441,7 +4488,21 @@ export function createZCodeAgentService(
     },
 
     async listSavedWorkflowRuns(params: ZCodeAgentListSavedWorkflowRunsParams) {
-      const { client, workspace } = await resolveSavedWorkflowCarrier(params);
+      // OW-P024：与 workflowsList 同一条查询 lane（见 listSavedWorkflows）。
+      if (savedWorkflowTargetHasWorkspace(params)) {
+        const client = await getWorkflowQueryClient(params);
+        return client.request(
+          zcodeProtocolMethods.workflowsRuns,
+          {
+            workspace: buildWorkspaceRef(params),
+            ...(params.name === undefined ? {} : { name: params.name }),
+            limit: params.limit,
+            ...savedWorkflowScopeParam(params),
+          },
+          zcodeWorkflowsRunsResultSchema,
+        );
+      }
+      const { client, workspace } = await resolveGlobalSavedWorkflowCarrier();
       return client.request(
         zcodeProtocolMethods.workflowsRuns,
         {
@@ -4519,7 +4580,12 @@ export function createZCodeAgentService(
     },
 
     async collectLocalRuntimeChildProcesses(signal?: AbortSignal) {
-      const managed = [processManager, pluginProcessManager, mcpStatusProcessManager]
+      const managed = [
+        processManager,
+        pluginProcessManager,
+        mcpStatusProcessManager,
+        workflowQueryRuntime.manager,
+      ]
         .flatMap((manager) => manager.listManagedProcesses())
         .filter(
           (runtime) => !runtime.client.isDisposed && !runtime.client.storageStartup.isWaiting,
@@ -6482,6 +6548,7 @@ export function createZCodeAgentService(
       processManager.disposeAll();
       pluginProcessManager.disposeAll();
       mcpStatusProcessManager.disposeAll();
+      workflowQueryRuntime.disposeAll();
       // automation 专用的 AutomationRepo / TaskIndexRepo 各持 tasks-index.sqlite
       // 连接句柄，dispose 后必须收口，否则 Windows 上句柄悬着（临时目录清理撞 EBUSY）
       automationRepo.close();
@@ -6494,6 +6561,7 @@ export function createZCodeAgentService(
         processManager.disposeAllAndWait(),
         pluginProcessManager.disposeAllAndWait(),
         mcpStatusProcessManager.disposeAllAndWait(),
+        workflowQueryRuntime.disposeAllAndWait(),
       ]);
       automationRepo.close();
       automationTaskIndexRepo.close();

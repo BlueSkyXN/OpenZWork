@@ -32,14 +32,17 @@ export const ZCODE_CLI_RESOURCE_SAMPLE_INTERVAL_MS = 60_000;
  * zcode-cli 的进程泳道。
  *
  * lane 不是 CLI 协议字段——CLI 进程不知道自己被哪个进程管理器拉起，由 app 侧 services 层
- * 在解析样本时按所属进程管理器打标（`chat` 是 workspace 级 Agent，其余两条是控制面 lane）。
+ * 在解析样本时按所属进程管理器打标（`chat` 是 workspace 级 Agent，其余是控制面 lane）。
+ * `workflow-query` 是已保存工作流总览读取的独立查询 lane（OW-P024）：共享载体单实例、
+ * 空闲回收；只在本地 Desktop Host 产生，远端 Host 不会发出该枚举。
  */
-export const PROCESS_RESOURCE_CLI_LANES = ["chat", "plugin", "mcp-status"] as const;
+export const PROCESS_RESOURCE_CLI_LANES = ["chat", "plugin", "mcp-status", "workflow-query"] as const;
 
 export type ProcessResourceCliLane = (typeof PROCESS_RESOURCE_CLI_LANES)[number];
 
 /**
- * lane → 角色：`chat` 归 `cli_chat`（每 workspace 一个进程），其余两条 lane 合并为 `cli_aux`。
+ * lane → 角色：`chat` 归 `cli_chat`（每 workspace 一个进程），其余控制面 lane（plugin /
+ * mcp-status / workflow-query）合并为 `cli_aux`。
  *
  * 缺省（无 lane）归 `cli_chat`：唯一可能来源是版本落后、还没给样本打 lane 的远端 server，
  * 而远端 workspace 上长期存活并产生资源占用的是 chat lane；归到 cli_chat 比整条样本丢弃更接近事实。
