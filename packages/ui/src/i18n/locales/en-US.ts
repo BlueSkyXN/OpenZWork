@@ -1015,6 +1015,14 @@ const enUS: Record<string, string> = {
   "conversation.row.unreadable": "This message requires a newer version of ZCode",
   "settings.resourceGroup.item.one": "{count} item",
   "settings.resourceGroup.item.other": "{count} items",
+  // 修复依据（OpenZWork）：v3.15.1 重净恢复了 plugin-creator 本地注册（cff93d06），但 WP-06
+  // 删除的 UI 键族未随之回补，PluginAddMenu/usePluginCreator 在 zh/en 下露出原始 key。
+  // 与上游 v3.18.0（en-US 1268-1272 行）逐字节一致。
+  "pluginCreator.add": "Add",
+  "pluginCreator.create": "Create plugin",
+  "pluginCreator.addMarketplace": "Add plugin marketplace",
+  "pluginCreator.unavailable":
+    "Plugin Creator is unavailable. Check the connection, then enable or restore Plugin Creator in the marketplace and retry.",
   "settings.create.action": "New",
   "settings.resourceActions.import": "Import",
   "settings.resourceActions.export": "Export",

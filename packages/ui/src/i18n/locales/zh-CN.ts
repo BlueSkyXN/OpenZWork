@@ -964,6 +964,14 @@ const zhCN: Record<string, string> = {
   "conversation.row.unreadable": "这条内容需要更新 ZCode 查看",
   "settings.resourceGroup.item.one": "{count} 项",
   "settings.resourceGroup.item.other": "{count} 项",
+  // 修复依据（OpenZWork）：v3.15.1 重净恢复了 plugin-creator 本地注册（cff93d06），但 WP-06
+  // 删除的 UI 键族未随之回补，PluginAddMenu/usePluginCreator 在 zh/en 下露出原始 key。
+  // 与上游 v3.18.0（zh-CN 1151-1155 行）逐字节一致。
+  "pluginCreator.add": "添加",
+  "pluginCreator.create": "创建插件",
+  "pluginCreator.addMarketplace": "添加插件市场",
+  "pluginCreator.unavailable":
+    "插件创建器暂不可用。请检查连接，并在插件市场启用或恢复“插件创建器”后重试。",
   "settings.create.action": "新建",
   "settings.resourceActions.import": "导入",
   "settings.resourceActions.export": "导出",

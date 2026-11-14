@@ -2436,3 +2436,11 @@ exceptions:
     paths:
       - packages/ui/src/root/GlobalDatabaseStartupLoading.tsx
     reason: 启动失败页在现有复制诊断/重试/退出旁增加导出日志按钮（docs/desktop/database-migration-startup-gate-plan.md）。只扩展既有失败页交互，不新增文件、不改变启动状态 owner 或模块边界；接管 packages/ui/src/root 不在本次范围内。
+  - id: v3180-sync-plugin-creator-prefill
+    rule: unmanaged-new-file
+    paths: [packages/ui/src/settings/pluginCreatorPrefill.ts]
+    reason: 修复依据（OpenZWork，v3.18.0 同步 T15）：v3.15.1 重净恢复了 plugin-creator 本地注册
+      （cff93d06 名单+definitions），但 WP-06 删除的 UI 链未随之回补，商店「创建插件」入口
+      永久缺失（PD 必需场景 PD01-03 断言失败）。本文件与上游 v3.18.0 逐字节一致（无官方
+      依赖，PLUGIN_CREATOR_ID 仅本地插件 id），与 usePluginCreator/PluginAddMenu 同批恢复；
+      接管 packages/ui/src/settings 不在本次范围内。
