@@ -14,8 +14,10 @@ import {
 vi.mock("@/i18n/IntlProvider.js", () => ({
   useZCodeIntl: () => ({
     locale: "en-US",
-    intl: { formatMessage: ({ id }: { id: string }, values?: Record<string, string>) =>
-      values?.error ? `${id}:${values.error}` : id },
+    intl: {
+      formatMessage: ({ id }: { id: string }, values?: Record<string, string>) =>
+        values?.error ? `${id}:${values.error}` : id,
+    },
   }),
 }));
 vi.mock("@/hooks/useWorkspaceServices.js", () => ({
@@ -35,7 +37,12 @@ vi.mock("@/settings/saved-workflows/useSavedWorkflowsDirectoryWatch.js", () => (
   useSavedWorkflowsDirectoryWatch: () => undefined,
 }));
 vi.mock("@/settings/saved-workflows/useSavedWorkflowLauncher.js", () => ({
-  useSavedWorkflowLauncher: () => ({ launch: vi.fn(), pending: false, error: null, clearError: vi.fn() }),
+  useSavedWorkflowLauncher: () => ({
+    launch: vi.fn(),
+    pending: false,
+    error: null,
+    clearError: vi.fn(),
+  }),
 }));
 vi.mock("@/settings/saved-workflows/useSavedWorkflowPromote.js", () => ({
   useSavedWorkflowPromote: () => ({ promote: vi.fn() }),
@@ -44,9 +51,8 @@ vi.mock("@/settings/saved-workflows/useSavedWorkflowRunOpeners.js", () => ({
   useSavedWorkflowRunOpeners: () => ({ handleOpenArtifact: vi.fn(), handleOpenRun: vi.fn() }),
 }));
 
-const { SavedWorkflowProjectGroup } = await import(
-  "@/settings/saved-workflows/SavedWorkflowProjectGroup.js"
-);
+const { SavedWorkflowProjectGroup } =
+  await import("@/settings/saved-workflows/SavedWorkflowProjectGroup.js");
 
 const project: AutomationWorkspaceOption = {
   projectId: "p1",

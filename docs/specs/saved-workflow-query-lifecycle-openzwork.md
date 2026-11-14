@@ -33,11 +33,11 @@
 `listSavedWorkflows` 与 `listSavedWorkflowRuns` 中**带 workspacePath** 的分支改走独立
 workflow-query manager：
 
-| 条件 | manager carrier / key | RPC target |
-| --- | --- | --- |
+| 条件                                                           | manager carrier / key                                                                            | RPC target                                                                                           |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
 | 共享开关 true，且 target 无 `remoteSessionId`、identity 非远端 | `ensurePluginManagementWorkspacePath()` 所得管理面 carrier；`resolveWorkspaceKey` 后为固定单 key | `buildWorkspaceRef(params)` 原样（path/identity/remoteSessionId/workspaceKey/scope/name/limit 不变） |
-| 其他带 workspace 的读取（共享关闭、自定义命令、远端/Server） | 原 path/identity，按 `resolveWorkspaceKey(target)` 按项目分 key | 原请求参数 |
-| 无 `workspacePath`（全局组） | 原全局载体选择（活跃本地 runtime → 管理面）不变 | 原全局参数 |
+| 其他带 workspace 的读取（共享关闭、自定义命令、远端/Server）   | 原 path/identity，按 `resolveWorkspaceKey(target)` 按项目分 key                                  | 原请求参数                                                                                           |
+| 无 `workspacePath`（全局组）                                   | 原全局载体选择（活跃本地 runtime → 管理面）不变                                                  | 原全局参数                                                                                           |
 
 其余三个读写方法（get / updateMeta / delete）与 move/save/forRun 保持原
 `resolveSavedWorkflowCarrier` 路由。Server/远端因此保留启动峰值（最多 N 个查询 CLI），
@@ -88,29 +88,29 @@ Main/Host 同批发布；workflow-query lane 只在本地 Desktop Host 产生，
 
 ## 状态所有者
 
-| 状态 | 所有者 |
-| --- | --- |
-| 查询进程实例、idle timer、spawn 去重 | workflow-query `ZCodeAgentProcessManager` |
-| 共享资格事实 | Desktop Host 装配（一次性，启动时） |
-| 列表/历史读缓存与请求代际 | `savedWorkflowStore`（UI 局部状态，不是服务端事实） |
-| 固定 DB 路径 | Desktop Main（`buildHostProcessEnv`） |
-| chat lane 进程 | 原 processManager（本 spec 不触碰） |
+| 状态                                 | 所有者                                              |
+| ------------------------------------ | --------------------------------------------------- |
+| 查询进程实例、idle timer、spawn 去重 | workflow-query `ZCodeAgentProcessManager`           |
+| 共享资格事实                         | Desktop Host 装配（一次性，启动时）                 |
+| 列表/历史读缓存与请求代际            | `savedWorkflowStore`（UI 局部状态，不是服务端事实） |
+| 固定 DB 路径                         | Desktop Main（`buildHostProcessEnv`）               |
+| chat lane 进程                       | 原 processManager（本 spec 不触碰）                 |
 
 ## 验收用例（A01–A11）
 
-| ID | 场景 | 验证层 |
-| --- | --- | --- |
-| A01 | Desktop 50 项目两项读取：workflow-query spawn=1、查询触发 chat spawn=0、各请求读到真实项目内容 | 服务场景回归（真实 Service/manager/CLI 子进程） |
-| A02 | 默认 5 分钟 idle 后完整进程树退出；重进再起一个 | 服务场景（实测一次默认值）+ 交错场景（短时注入） |
-| A03 | Env/用户/项目配置冲突、绝对/相对路径、目录缺失、custom command false 分支，结果等价 | CLI 配置回归（真实临时文件）+ 服务场景 |
-| A04 | 同名文件、project/global scope、远端同路径、错误与分页/artifact | 服务场景 + 既有 bootstrap 协议回归 |
-| A05 | 查询、离页与 idle 不影响活动任务 | 服务场景 + E2E |
-| A06 | 并发启动、存储等待、新请求/退出交错、关闭失败与 Host teardown | 服务场景（短时注入） |
-| A07 | Server/远端按项目隔离并空闲回收；峰值记 N | 服务场景（共享关闭分支） |
-| A08 | 新旧 lane 枚举样本解析 | schema 回归（注册在服务场景文件内，标注证明范围） |
-| A09 | 项目查询与插件操作隔离；全局组保留原等待 | 服务场景 + E2E |
-| A10 | runs 错误独立展示、可重试；旧请求不能覆盖新刷新 | UI store 回归（受控 service；不据此声称进程结论）+ E2E |
-| A11 | 同 fixture ≥5 轮冷加载，项目组/完整总览中位数不高于基线，记录内存峰值 | 性能 harness（真实 Service/CLI） |
+| ID  | 场景                                                                                           | 验证层                                                 |
+| --- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| A01 | Desktop 50 项目两项读取：workflow-query spawn=1、查询触发 chat spawn=0、各请求读到真实项目内容 | 服务场景回归（真实 Service/manager/CLI 子进程）        |
+| A02 | 默认 5 分钟 idle 后完整进程树退出；重进再起一个                                                | 服务场景（实测一次默认值）+ 交错场景（短时注入）       |
+| A03 | Env/用户/项目配置冲突、绝对/相对路径、目录缺失、custom command false 分支，结果等价            | CLI 配置回归（真实临时文件）+ 服务场景                 |
+| A04 | 同名文件、project/global scope、远端同路径、错误与分页/artifact                                | 服务场景 + 既有 bootstrap 协议回归                     |
+| A05 | 查询、离页与 idle 不影响活动任务                                                               | 服务场景 + E2E                                         |
+| A06 | 并发启动、存储等待、新请求/退出交错、关闭失败与 Host teardown                                  | 服务场景（短时注入）                                   |
+| A07 | Server/远端按项目隔离并空闲回收；峰值记 N                                                      | 服务场景（共享关闭分支）                               |
+| A08 | 新旧 lane 枚举样本解析                                                                         | schema 回归（注册在服务场景文件内，标注证明范围）      |
+| A09 | 项目查询与插件操作隔离；全局组保留原等待                                                       | 服务场景 + E2E                                         |
+| A10 | runs 错误独立展示、可重试；旧请求不能覆盖新刷新                                                | UI store 回归（受控 service；不据此声称进程结论）+ E2E |
+| A11 | 同 fixture ≥5 轮冷加载，项目组/完整总览中位数不高于基线，记录内存峰值                          | 性能 harness（真实 Service/CLI）                       |
 
 ## 回归入口
 

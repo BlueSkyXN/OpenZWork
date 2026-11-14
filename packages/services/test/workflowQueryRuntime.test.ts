@@ -157,6 +157,11 @@ function createRecorder(): {
         exitCode: event.exitCode,
         signal: event.signal,
       });
+      if (event.stderrTail?.length) {
+        process.stderr.write(
+          `[workflow-query-test] pid=${event.pid} lane=${event.lane ?? "chat"} stderr: ${event.stderrTail.join(" | ")}\n`,
+        );
+      }
     },
   };
   return {
@@ -266,6 +271,7 @@ describe("工作流查询 lane（OW-P024）", () => {
     options: {
       share?: boolean;
       workflowQueryIdleTimeoutMs?: number;
+      spawnFallbackCwd?: string;
       commandResolver?: import("../src/zcode-agent/zcodeAgentProcessManager.js").ZCodeAgentCommandResolver;
     } = {},
     recorder = createRecorder(),
@@ -294,63 +300,71 @@ describe("工作流查询 lane（OW-P024）", () => {
       ...(options.workflowQueryIdleTimeoutMs === undefined
         ? {}
         : { workflowQueryIdleTimeoutMs: options.workflowQueryIdleTimeoutMs }),
-      ...(options.commandResolver === undefined ? {} : { commandResolver: options.commandResolver }),
+      ...(options.spawnFallbackCwd === undefined
+        ? {}
+        : { spawnFallbackCwd: options.spawnFallbackCwd }),
+      ...(options.commandResolver === undefined
+        ? {}
+        : { commandResolver: options.commandResolver }),
     });
     activeDisposers.push(() => Promise.resolve(service.disposeAllAndWait()));
     return { service, recorder };
   }
 
-  it("A01 共享开关下 50 项目两项读取只 spawn 1 个 workflow-query CLI，chat spawn=0，内容按项目归属", { timeout: 120_000 }, async () => {
-    projects = await buildProjectFixture(root, SCENARIO_PROJECTS);
-    const { service, recorder } = createScenarioService({ share: true });
+  it(
+    "A01 共享开关下 50 项目两项读取只 spawn 1 个 workflow-query CLI，chat spawn=0，内容按项目归属",
+    { timeout: 120_000 },
+    async () => {
+      projects = await buildProjectFixture(root, SCENARIO_PROJECTS);
+      const { service, recorder } = createScenarioService({ share: true });
 
-    // 模拟总览挂载：每个项目组两项读取并发（列表 + 运行历史）。
-    const startedAt = Date.now();
-    const results = await Promise.all(
-      projects.map(async (project) => {
-        const target = { workspacePath: project.workspacePath };
-        const [list, runs] = await Promise.all([
-          service.listSavedWorkflows(target),
-          service.listSavedWorkflowRuns({ ...target, limit: 50 }),
-        ]);
-        return { project, list, runs };
-      }),
-    );
-    const completedAt = Date.now();
-    expect(completedAt).toBeGreaterThan(0);
+      // 模拟总览挂载：每个项目组两项读取并发（列表 + 运行历史）。
+      const results = await Promise.all(
+        projects.map(async (project) => {
+          const target = { workspacePath: project.workspacePath };
+          const [list, runs] = await Promise.all([
+            service.listSavedWorkflows(target),
+            service.listSavedWorkflowRuns({ ...target, limit: 50 }),
+          ]);
+          return { project, list, runs };
+        }),
+      );
+      const completedAt = Date.now();
+      expect(completedAt).toBeGreaterThan(0);
 
-    // 内容归属：每个请求都读到本项目的真实文件（target 不因载体共用而漂移）。
-    for (const { project, list, runs } of results) {
-      const names = [...list.workflows].map((entry) => entry.name).sort();
-      expect(names).toEqual([...project.workflowNames].sort());
-      const index = projects.indexOf(project);
-      if (index !== 7) {
-        for (const entry of list.workflows) {
-          expect(entry.description).toContain(`项目 ${index}`);
+      // 内容归属：每个请求都读到本项目的真实文件（target 不因载体共用而漂移）。
+      for (const { project, list, runs } of results) {
+        const names = [...list.workflows].map((entry) => entry.name).sort();
+        expect(names).toEqual([...project.workflowNames].sort());
+        const index = projects.indexOf(project);
+        if (index !== 7) {
+          for (const entry of list.workflows) {
+            expect(entry.description).toContain(`项目 ${index}`);
+          }
         }
+        expect(list.dir).toBe(join(project.workspacePath, ".zcode", "workflows"));
+        expect(Array.isArray(runs.runs)).toBe(true);
       }
-      expect(list.dir).toBe(join(project.workspacePath, ".zcode", "workflows"));
-      expect(Array.isArray(runs.runs)).toBe(true);
-    }
-    // 空项目（proj-07）没有合法条目也没有坏文件；坏文件项目（proj-11）只影响自己。
-    expect(results[7]!.list.workflows).toHaveLength(0);
-    expect(results[7]!.list.invalid).toHaveLength(0);
-    expect(results[11]!.list.invalid.map((entry) => entry.path)).toEqual([
-      join(projects[11]!.workspacePath, ".zcode", "workflows", "broken.dwf.ts"),
-    ]);
-    // 同名工作流跨项目：各自列出的 description 不同。
-    expect(
-      results[19]!.list.workflows.find((entry) => entry.name === "same-name")!.description,
-    ).toContain("属于项目 19");
-    expect(
-      results[20]!.list.workflows.find((entry) => entry.name === "same-name")!.description,
-    ).toContain("属于项目 20");
+      // 空项目（proj-07）没有合法条目也没有坏文件；坏文件项目（proj-11）只影响自己。
+      expect(results[7]!.list.workflows).toHaveLength(0);
+      expect(results[7]!.list.invalid).toHaveLength(0);
+      expect(results[11]!.list.invalid.map((entry) => entry.path)).toEqual([
+        join(projects[11]!.workspacePath, ".zcode", "workflows", "broken.dwf.ts"),
+      ]);
+      // 同名工作流跨项目：各自列出的 description 不同。
+      expect(
+        results[19]!.list.workflows.find((entry) => entry.name === "same-name")!.description,
+      ).toContain("属于项目 19");
+      expect(
+        results[20]!.list.workflows.find((entry) => entry.name === "same-name")!.description,
+      ).toContain("属于项目 20");
 
-    // 进程数量（OW-P024 的核心断言）：单 key 单实例（getClient 多次调用不新建进程），
-    // 查询不再按项目登记 chat runtime。
-    expect(recorder.laneSpawns("workflow-query")).toBe(1);
-    expect(recorder.chatSpawns()).toBe(0);
-  });
+      // 进程数量（OW-P024 的核心断言）：单 key 单实例（getClient 多次调用不新建进程），
+      // 查询不再按项目登记 chat runtime。
+      expect(recorder.laneSpawns("workflow-query")).toBe(1);
+      expect(recorder.chatSpawns()).toBe(0);
+    },
+  );
 
   it("A02 非共享分支按项目分 key，短 idle 后整树退出，重进再起", { timeout: 120_000 }, async () => {
     projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
@@ -396,50 +410,60 @@ describe("工作流查询 lane（OW-P024）", () => {
     expect(recorder.laneSpawns("workflow-query")).toBe(ISOLATION_PROJECTS + 1);
   });
 
-  it("A03 共享关闭（等价 custom command / 固定 DB 缺失分支）时结果与共享分支逐字一致", { timeout: 120_000 }, async () => {
-    projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
-    const shared = createScenarioService({ share: true });
-    const isolated = createScenarioService({ share: false });
+  it(
+    "A03 共享关闭（等价 custom command / 固定 DB 缺失分支）时结果与共享分支逐字一致",
+    { timeout: 120_000 },
+    async () => {
+      projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
+      const shared = createScenarioService({ share: true });
+      // Desktop 装配会传 zcodeAgentSpawnFallbackCwd（工作区目录被删时的 spawn cwd 兜底）；
+      // 查询 lane 按同一选项转发（spec §3），数据归属仍由 RPC target 决定。
+      const isolated = createScenarioService({ share: false, spawnFallbackCwd: root });
 
-    const project = projects[0]!;
-    const target = { workspacePath: project.workspacePath };
-    const [sharedList, isolatedList] = await Promise.all([
-      shared.service.listSavedWorkflows(target),
-      isolated.service.listSavedWorkflows(target),
-    ]);
-    expect(isolatedList.workflows.map((entry) => entry.description)).toEqual(
-      sharedList.workflows.map((entry) => entry.description),
-    );
-    expect(isolatedList.dir).toBe(sharedList.dir);
-    // 目录缺失的 workspace：读取成功、按空项目处理（spawnFallbackCwd 语义不改变数据归属）。
-    const missing = join(root, "removed-project");
-    const missingList = await isolated.service.listSavedWorkflows({ workspacePath: missing });
-    expect(missingList.workflows).toHaveLength(0);
-  });
+      const project = projects[0]!;
+      const target = { workspacePath: project.workspacePath };
+      // 串行读：两个 service 同时冷启同一个全新 SQLite 会触发并发初始化竞态（transport
+      // 在 storage startup 中关闭），与本场景要证明的内容归属无关。
+      const sharedList = await shared.service.listSavedWorkflows(target);
+      const isolatedList = await isolated.service.listSavedWorkflows(target);
+      expect(isolatedList.workflows.map((entry) => entry.description)).toEqual(
+        sharedList.workflows.map((entry) => entry.description),
+      );
+      expect(isolatedList.dir).toBe(sharedList.dir);
+      // 目录缺失的 workspace：读取成功、按空项目处理（spawnFallbackCwd 语义不改变数据归属）。
+      const missing = join(root, "removed-project");
+      const missingList = await isolated.service.listSavedWorkflows({ workspacePath: missing });
+      expect(missingList.workflows).toHaveLength(0);
+    },
+  );
 
-  it("A04 scope、分页与错误归属：project 档按本项目，分页钳制在服务端不变", { timeout: 120_000 }, async () => {
-    projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
-    const { service } = createScenarioService({ share: true });
-    const project = projects[0]!;
-    const scoped = await service.listSavedWorkflows({
-      workspacePath: project.workspacePath,
-      scope: "project",
-    });
-    expect(scoped.workflows.map((entry) => entry.name).sort()).toEqual(
-      [...project.workflowNames].sort(),
-    );
-    const runs = await service.listSavedWorkflowRuns({
-      workspacePath: project.workspacePath,
-      name: "flow-1",
-      limit: 50,
-    });
-    expect(runs.runs).toHaveLength(0);
-    // 全局组（无 workspace）：保持原全局载体选择，不为项目再 spawn；
-    // 子进程 HOME 已指向夹具根，全局根为空目录。
-    const globalList = await service.listSavedWorkflows({ scope: "global" });
-    expect(globalList.workflows).toHaveLength(0);
-    expect(globalList.dir).toBe(join(root, ".openzwork", "workflows"));
-  });
+  it(
+    "A04 scope、分页与错误归属：project 档按本项目，分页钳制在服务端不变",
+    { timeout: 120_000 },
+    async () => {
+      projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
+      const { service } = createScenarioService({ share: true });
+      const project = projects[0]!;
+      const scoped = await service.listSavedWorkflows({
+        workspacePath: project.workspacePath,
+        scope: "project",
+      });
+      expect(scoped.workflows.map((entry) => entry.name).sort()).toEqual(
+        [...project.workflowNames].sort(),
+      );
+      const runs = await service.listSavedWorkflowRuns({
+        workspacePath: project.workspacePath,
+        name: "flow-1",
+        limit: 50,
+      });
+      expect(runs.runs).toHaveLength(0);
+      // 全局组（无 workspace）：保持原全局载体选择，不为项目再 spawn；
+      // 子进程 HOME 已指向夹具根，全局根为空目录。
+      const globalList = await service.listSavedWorkflows({ scope: "global" });
+      expect(globalList.workflows).toHaveLength(0);
+      expect(globalList.dir).toBe(join(root, ".openzwork", "workflows"));
+    },
+  );
 
   it("A05 查询 lane 的 spawn 与 idle 回收不影响活动 chat 进程", { timeout: 120_000 }, async () => {
     projects = await buildProjectFixture(root, 1);
@@ -474,49 +498,53 @@ describe("工作流查询 lane（OW-P024）", () => {
     expect(await isPidAlive(chatPid!)).toBe(true);
   });
 
-  it("A06 并发启动与跨 idle 边界的读取交错：请求全部成功，disposeAndWait 收口整树", { timeout: 120_000 }, async () => {
-    projects = await buildProjectFixture(root, SCENARIO_PROJECTS);
-    const { service, recorder } = createScenarioService({
-      share: true,
-      workflowQueryIdleTimeoutMs: 400,
-    });
-    // 100 个 RPC 与单 key 启动并发：single-flight 启动期间到达的请求全部复用同一实例。
-    const first = await Promise.all(
-      projects.flatMap((project) => [
-        service.listSavedWorkflows({ workspacePath: project.workspacePath }),
-        service.listSavedWorkflowRuns({ workspacePath: project.workspacePath, limit: 50 }),
-      ]),
-    );
-    expect(first).toHaveLength(SCENARIO_PROJECTS * 2);
-    expect(recorder.laneSpawns("workflow-query")).toBe(1);
-
-    // 读取跨 idle 边界：持续请求期间到期不回收，请求归零后回收。
-    for (let round = 0; round < 4; round += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      const again = await service.listSavedWorkflows({
-        workspacePath: projects[round % projects.length]!.workspacePath,
+  it(
+    "A06 并发启动与跨 idle 边界的读取交错：请求全部成功，disposeAndWait 收口整树",
+    { timeout: 120_000 },
+    async () => {
+      projects = await buildProjectFixture(root, SCENARIO_PROJECTS);
+      const { service, recorder } = createScenarioService({
+        share: true,
+        workflowQueryIdleTimeoutMs: 400,
       });
-      expect(again.workflows.length).toBeGreaterThan(0);
-    }
-    expect(recorder.laneSpawns("workflow-query")).toBe(1);
+      // 100 个 RPC 与单 key 启动并发：single-flight 启动期间到达的请求全部复用同一实例。
+      const first = await Promise.all(
+        projects.flatMap((project) => [
+          service.listSavedWorkflows({ workspacePath: project.workspacePath }),
+          service.listSavedWorkflowRuns({ workspacePath: project.workspacePath, limit: 50 }),
+        ]),
+      );
+      expect(first).toHaveLength(SCENARIO_PROJECTS * 2);
+      expect(recorder.laneSpawns("workflow-query")).toBe(1);
 
-    // Host teardown：进程仍在服务请求时先快照整棵树，再等 idle 到期并 disposeAllAndWait。
-    const queryPid = recorder.spawns.find((event) => event.lane === "workflow-query")?.pid;
-    expect(queryPid).toBeDefined();
-    const treeBeforeDispose = await listTreePids([queryPid!]);
-    await new Promise((resolve) => setTimeout(resolve, 2_000));
-    await service.disposeAllAndWait();
-    const deadline = Date.now() + 15_000;
-    while (
-      (await Promise.all(treeBeforeDispose.map((pid) => isPidAlive(pid)))).some(Boolean) &&
-      Date.now() < deadline
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-    for (const pid of treeBeforeDispose) {
-      expect(await isPidAlive(pid)).toBe(false);
-    }
-  });
+      // 读取跨 idle 边界：持续请求期间到期不回收，请求归零后回收。
+      for (let round = 0; round < 4; round += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        const again = await service.listSavedWorkflows({
+          workspacePath: projects[round % projects.length]!.workspacePath,
+        });
+        expect(again.workflows.length).toBeGreaterThan(0);
+      }
+      expect(recorder.laneSpawns("workflow-query")).toBe(1);
+
+      // Host teardown：进程仍在服务请求时先快照整棵树，再等 idle 到期并 disposeAllAndWait。
+      const queryPid = recorder.spawns.find((event) => event.lane === "workflow-query")?.pid;
+      expect(queryPid).toBeDefined();
+      const treeBeforeDispose = await listTreePids([queryPid!]);
+      await new Promise((resolve) => setTimeout(resolve, 2_000));
+      await service.disposeAllAndWait();
+      const deadline = Date.now() + 15_000;
+      while (
+        (await Promise.all(treeBeforeDispose.map((pid) => isPidAlive(pid)))).some(Boolean) &&
+        Date.now() < deadline
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      for (const pid of treeBeforeDispose) {
+        expect(await isPidAlive(pid)).toBe(false);
+      }
+    },
+  );
 
   // 证明范围：仅 schema 解析（资源样本兼容），不含进程行为。
   it("A08 新旧 lane 资源样本解析：workflow-query 归 cli_aux，旧样本无 lane 仍可接收", () => {
@@ -525,11 +553,13 @@ describe("工作流查询 lane（OW-P024）", () => {
       arch: "arm64",
       logicalCpuCount: 10,
       intervalMs: 60_000,
-      cpuCores: [1, 2],
+      cpuCores: 1.75,
       cpuPercent: 1.5,
       rssKb: 102_400,
     };
-    expect(agentLaneResourceSampleSchema.parse({ ...baseSample, lane: "workflow-query" })).toBeTruthy();
+    expect(
+      agentLaneResourceSampleSchema.parse({ ...baseSample, lane: "workflow-query" }),
+    ).toBeTruthy();
     expect(agentLaneResourceSampleSchema.parse({ ...baseSample, lane: "chat" })).toBeTruthy();
     expect(agentLaneResourceSampleSchema.parse({ ...baseSample, lane: "mcp-status" })).toBeTruthy();
     // 旧远端样本：不带 lane（版本落后），仍可接收。
@@ -550,19 +580,23 @@ describe("工作流查询 lane（OW-P024）", () => {
     };
     expect(resolveShareLocalWorkflowQueryRuntime(ok)).toBe(true);
     // 远端 Host / desktop-attached remote：false。
-    expect(resolveShareLocalWorkflowQueryRuntime({ ...ok, runtimeSurface: "remote_workspace_host" })).toBe(
+    expect(
+      resolveShareLocalWorkflowQueryRuntime({ ...ok, runtimeSurface: "remote_workspace_host" }),
+    ).toBe(false);
+    // 自定义 command resolver / ZCODE_AGENT_SERVER_COMMAND：false。
+    expect(resolveShareLocalWorkflowQueryRuntime({ ...ok, hasCustomCommandResolver: true })).toBe(
       false,
     );
-    // 自定义 command resolver / ZCODE_AGENT_SERVER_COMMAND：false。
-    expect(resolveShareLocalWorkflowQueryRuntime({ ...ok, hasCustomCommandResolver: true })).toBe(false);
     expect(
       resolveShareLocalWorkflowQueryRuntime({ ...ok, agentServerCommandEnv: "/custom/agent" }),
     ).toBe(false);
     // DB 未固定 / 相对路径 / 旧别名不认：false。
-    expect(resolveShareLocalWorkflowQueryRuntime({ ...ok, sessionDbPathEnv: undefined })).toBe(false);
-    expect(resolveShareLocalWorkflowQueryRuntime({ ...ok, sessionDbPathEnv: "cli/db.sqlite" })).toBe(
+    expect(resolveShareLocalWorkflowQueryRuntime({ ...ok, sessionDbPathEnv: undefined })).toBe(
       false,
     );
+    expect(
+      resolveShareLocalWorkflowQueryRuntime({ ...ok, sessionDbPathEnv: "cli/db.sqlite" }),
+    ).toBe(false);
     // 默认常量与 mcp-status 同源：5 分钟。
     expect(WORKFLOW_QUERY_LANE_IDLE_TIMEOUT_MS).toBe(5 * 60_000);
   });
@@ -586,6 +620,7 @@ describe("工作流查询 lane（OW-P024）", () => {
   //   -t "默认 5 分钟 idle"
   it.skipIf(process.env.ZCODE_WORKFLOW_QUERY_DEFAULT_IDLE !== "1")(
     "默认 5 分钟 idle：最后一项读取完成后整树退出（实测证据）",
+    { timeout: 8 * 60_000 },
     async () => {
       projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
       const { service, recorder } = createScenarioService({ share: true });
@@ -599,7 +634,7 @@ describe("工作流查询 lane（OW-P024）", () => {
       expect(queryPid).toBeDefined();
       // 等待真实 5 分钟 idle + 关闭屏障；记录实际完成时刻与整树状态。
       const deadline = Date.now() + WORKFLOW_QUERY_LANE_IDLE_TIMEOUT_MS + 120_000;
-      while (!(await isPidAlive(queryPid!) === false) && Date.now() < deadline) {
+      while (!((await isPidAlive(queryPid!)) === false) && Date.now() < deadline) {
         await new Promise((resolve) => setTimeout(resolve, 5_000));
       }
       const exitedAt = Date.now();
@@ -626,92 +661,106 @@ describe("工作流查询 lane（OW-P024）", () => {
   //   --config vitest.core.config.ts packages/services/test/workflowQueryRuntime.test.ts
   //   -t "冷加载性能采样"
   describe.skipIf(process.env.ZCODE_WORKFLOW_QUERY_PERF !== "1")("冷加载性能采样", () => {
-    it("同夹具多轮冷加载：记录项目组/总览时延、spawn 与进程树内存", { timeout: 20 * 60_000 }, async () => {
-      const share = process.env.ZCODE_WORKFLOW_QUERY_PERF_SHARE !== "0";
-      const projectCount = Number(process.env.ZCODE_WORKFLOW_QUERY_PERF_PROJECTS ?? PERF_DEFAULT_PROJECTS);
-      const rounds = Number(process.env.ZCODE_WORKFLOW_QUERY_PERF_ROUNDS ?? PERF_DEFAULT_ROUNDS);
-      projects = await buildProjectFixture(root, projectCount);
-
-      const roundsData: unknown[] = [];
-      for (let round = 1; round <= rounds; round += 1) {
-        const { service, recorder } = createScenarioService({ share });
-        // 冷加载：项目组全部两项读取完成。
-        const projectGroupsStartedAt = Date.now();
-        const reads = await Promise.all(
-          projects.map(async (project) => {
-            const target = { workspacePath: project.workspacePath };
-            const [list, runs] = await Promise.all([
-              service.listSavedWorkflows(target),
-              service.listSavedWorkflowRuns({ ...target, limit: 50 }),
-            ]);
-            return { list, runs };
-          }),
+    it(
+      "同夹具多轮冷加载：记录项目组/总览时延、spawn 与进程树内存",
+      { timeout: 20 * 60_000 },
+      async () => {
+        const share = process.env.ZCODE_WORKFLOW_QUERY_PERF_SHARE !== "0";
+        const projectCount = Number(
+          process.env.ZCODE_WORKFLOW_QUERY_PERF_PROJECTS ?? PERF_DEFAULT_PROJECTS,
         );
-        const projectGroupsCompletedAt = Date.now();
-        // 完整总览：项目组 + 全局组（原全局载体路径）。
-        const overviewStartedAt = Date.now();
-        const globalList = await service.listSavedWorkflows({ scope: "global" });
-        const overviewCompletedAt = Date.now();
-        const queryPids = recorder.spawns
-          .filter((event) => event.lane === "workflow-query")
-          .map((event) => event.pid);
-        const chatPids = recorder.spawns
-          .filter((event) => event.lane === undefined || event.lane === "chat")
-          .map((event) => event.pid);
-        const sampleAt = Date.now();
-        const treeRssKb = await sampleProcessTreeRssKb([...queryPids, ...chatPids]);
-        roundsData.push({
-          round,
+        const rounds = Number(process.env.ZCODE_WORKFLOW_QUERY_PERF_ROUNDS ?? PERF_DEFAULT_ROUNDS);
+        projects = await buildProjectFixture(root, projectCount);
+
+        const roundsData: unknown[] = [];
+        for (let round = 1; round <= rounds; round += 1) {
+          const { service, recorder } = createScenarioService({ share });
+          // 冷加载：项目组全部两项读取完成。
+          const projectGroupsStartedAt = Date.now();
+          const reads = await Promise.all(
+            projects.map(async (project) => {
+              const target = { workspacePath: project.workspacePath };
+              const [list, runs] = await Promise.all([
+                service.listSavedWorkflows(target),
+                service.listSavedWorkflowRuns({ ...target, limit: 50 }),
+              ]);
+              return { list, runs };
+            }),
+          );
+          const projectGroupsCompletedAt = Date.now();
+          // 完整总览：项目组 + 全局组（原全局载体路径）。
+          const overviewStartedAt = Date.now();
+          const globalList = await service.listSavedWorkflows({ scope: "global" });
+          const overviewCompletedAt = Date.now();
+          const queryPids = recorder.spawns
+            .filter((event) => event.lane === "workflow-query")
+            .map((event) => event.pid);
+          const chatPids = recorder.spawns
+            .filter((event) => event.lane === undefined || event.lane === "chat")
+            .map((event) => event.pid);
+          const sampleAt = Date.now();
+          const treeRssKb = await sampleProcessTreeRssKb([...queryPids, ...chatPids]);
+          roundsData.push({
+            round,
+            share,
+            projectCount,
+            projectGroupsMs: projectGroupsCompletedAt - projectGroupsStartedAt,
+            overviewGlobalMs: overviewCompletedAt - overviewStartedAt,
+            globalWorkflows: globalList.workflows.length,
+            queryLaneSpawns: queryPids.length,
+            chatLaneSpawns: chatPids.length,
+            treeRssKb,
+            sampleAt,
+            startups: recorder.readys.map((ready) => ({
+              pid: ready.pid,
+              lane: ready.lane ?? "chat",
+              startupDurationMs: ready.startupDurationMs,
+            })),
+            errors: reads.length !== projectCount ? ["read-count-mismatch"] : [],
+          });
+          await service.disposeAllAndWait();
+          // 等整树退场再进入下一轮（冷加载口径：无存活进程）。
+          const livePids = [...queryPids, ...chatPids];
+          const deadline = Date.now() + 30_000;
+          while (
+            (await Promise.all(livePids.map((pid) => isPidAlive(pid)))).some(Boolean) &&
+            Date.now() < deadline
+          ) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
+
+        const projectGroups = roundsData.map(
+          (round) => (round as { projectGroupsMs: number }).projectGroupsMs,
+        );
+        const overview = roundsData.map(
+          (round) => (round as { overviewGlobalMs: number }).overviewGlobalMs,
+        );
+        const median = (values: number[]) =>
+          [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
+        const summary = {
           share,
           projectCount,
-          projectGroupsMs: projectGroupsCompletedAt - projectGroupsStartedAt,
-          overviewGlobalMs: overviewCompletedAt - overviewStartedAt,
-          globalWorkflows: globalList.workflows.length,
-          queryLaneSpawns: queryPids.length,
-          chatLaneSpawns: chatPids.length,
-          treeRssKb,
-          sampleAt,
-          startups: recorder.readys.map((ready) => ({
-            pid: ready.pid,
-            lane: ready.lane ?? "chat",
-            startupDurationMs: ready.startupDurationMs,
-          })),
-          errors: reads.length !== projectCount ? ["read-count-mismatch"] : [],
-        });
-        await service.disposeAllAndWait();
-        // 等整树退场再进入下一轮（冷加载口径：无存活进程）。
-        const livePids = [...queryPids, ...chatPids];
-        const deadline = Date.now() + 30_000;
-        while (
-          (await Promise.all(livePids.map((pid) => isPidAlive(pid)))).some(Boolean) &&
-          Date.now() < deadline
-        ) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          roundsCount: rounds,
+          projectGroupsMs: {
+            raw: projectGroups,
+            median: median(projectGroups),
+            max: Math.max(...projectGroups),
+          },
+          overviewGlobalMs: { raw: overview, median: median(overview), max: Math.max(...overview) },
+          rounds: roundsData,
+        };
+        process.stdout.write(`\n[workflow-query-perf] ${JSON.stringify(summary)}\n`);
+        const out = process.env.ZCODE_WORKFLOW_QUERY_PERF_OUT;
+        if (out) {
+          const { writeFile: writeFileAsync } = await import("node:fs/promises");
+          await writeFileAsync(out, `${JSON.stringify(summary, null, 2)}\n`, "utf-8");
         }
-      }
-
-      const projectGroups = roundsData.map((round) => (round as { projectGroupsMs: number }).projectGroupsMs);
-      const overview = roundsData.map((round) => (round as { overviewGlobalMs: number }).overviewGlobalMs);
-      const median = (values: number[]) =>
-        [...values].sort((a, b) => a - b)[Math.floor(values.length / 2)];
-      const summary = {
-        share,
-        projectCount,
-        rounds,
-        projectGroupsMs: { raw: projectGroups, median: median(projectGroups), max: Math.max(...projectGroups) },
-        overviewGlobalMs: { raw: overview, median: median(overview), max: Math.max(...overview) },
-        rounds: roundsData,
-      };
-      process.stdout.write(`\n[workflow-query-perf] ${JSON.stringify(summary)}\n`);
-      const out = process.env.ZCODE_WORKFLOW_QUERY_PERF_OUT;
-      if (out) {
-        const { writeFile: writeFileAsync } = await import("node:fs/promises");
-        await writeFileAsync(out, `${JSON.stringify(summary, null, 2)}\n`, "utf-8");
-      }
-      // 工程判据：每轮都完成全部读取（性能值本身记录，不在断言里卡死）。
-      for (const round of roundsData) {
-        expect((round as { errors: string[] }).errors).toEqual([]);
-      }
-    });
+        // 工程判据：每轮都完成全部读取（性能值本身记录，不在断言里卡死）。
+        for (const round of roundsData) {
+          expect((round as { errors: string[] }).errors).toEqual([]);
+        }
+      },
+    );
   });
 });
