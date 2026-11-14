@@ -173,16 +173,29 @@ describe("Command Center Host 历史搜索", () => {
           await fetch(`http://127.0.0.1:${port}`, { method: "POST", body: text });
         };
       }, address.port);
-      await $(
-        'button[aria-label="移动端远程控制"], button[aria-label="Mobile remote control"]',
-      ).click();
+      // 修复依据（OpenZWork，v3.18.0 同步 T15）：上游侧栏 Trigger 按钮与远控弹窗已随
+      // OZ-C008（0a0bdac4，远控入口移入设置页）退役；按本仓裁定经侧栏快捷入口进入
+      // 设置页远控节，start 后用复制链接行按钮取配对链接（语义与旧弹窗复制一致）。
+      await $('[data-testid="sidebar-remote-control-button"]').waitForClickable({ timeout: 30_000 });
+      await $('[data-testid="sidebar-remote-control-button"]').click();
+      await $('[data-testid="remote-control-settings"]').waitForDisplayed({ timeout: 30_000 });
+      await browser.waitUntil(
+        async () =>
+          (await $('[data-testid="web-remote-control-connection-card"]').isExisting()) ||
+          (await $('[data-testid="web-remote-start"]').isEnabled()),
+        { timeout: 30_000 },
+      );
+      const remoteStart = $('[data-testid="web-remote-start"]');
+      if (await remoteStart.isExisting()) {
+        await remoteStart.waitForClickable({ timeout: 30_000 });
+        await remoteStart.click();
+      }
       await browser.waitUntil(
         () =>
           browser.execute(() => {
+            const row = document.querySelector('[data-testid="web-remote-control-copy-link-row"]');
             const button = Array.from(
-              document.querySelectorAll<HTMLButtonElement>(
-                '[data-testid="web-remote-control-dialog-scroll"] button',
-              ),
+              row?.querySelectorAll<HTMLButtonElement>("button") ?? [],
             ).find(
               (node) => /^(复制链接|Copy link)$/.test(node.innerText.trim()) && !node.disabled,
             );
