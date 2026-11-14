@@ -42,6 +42,7 @@ import {
   TID_V4_QUEUE_ITEM,
   TID_V4_QUEUE_PAUSED_BANNER,
   TID_V4_QUEUE_RESUME,
+  TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
   TID_V4_ROW,
   TID_V4_ROW_ATTACHMENTS,
   TID_V4_SESSION_PANE,
@@ -1605,8 +1606,16 @@ export function getV4CompactMarkers(
   paneId: string = V4_MAIN_PANE_ID,
 ): Promise<V4CompactMarkerSnapshot[]> {
   return browser.execute(
-    (paneTestId, rowPrefix) => {
+    (paneTestId, rowPrefix, historyTriggerPrefix) => {
       const pane = document.querySelector<HTMLElement>(`[data-testid="${paneTestId}"]`);
+      // 完成轮的工作史默认折叠（assistantHistoryDefaultOpen 只在运行中/异常终态/无正文时为
+      // true，与上游一致）；轮中 auto compact 的 marker 落在折叠的 flow 内，Radix 关闭态不挂载
+      // DOM。先点开仍折叠的工作史，下一次轮询即可读到真实渲染的 marker 行（不注入、不改状态）。
+      for (const trigger of document.querySelectorAll<HTMLElement>(
+        `button[aria-expanded="false"][data-testid^="${historyTriggerPrefix}"]`,
+      )) {
+        if (pane?.contains(trigger)) trigger.click();
+      }
       return Array.from(
         pane?.querySelectorAll<HTMLElement>(
           `[data-testid^="${rowPrefix}-"][data-row-kind="timelineMarker"][data-marker-type="compact"]`,
@@ -1623,6 +1632,7 @@ export function getV4CompactMarkers(
     },
     testId(TID_V4_SESSION_PANE, paneId),
     TID_V4_ROW,
+    TID_CHAT_ASSISTANT_HISTORY_TRIGGER,
   );
 }
 
