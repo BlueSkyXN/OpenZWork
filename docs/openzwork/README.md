@@ -48,6 +48,7 @@
 | OZ-C008 | 设置页布局与远控入口    | 设置页内容布局调整，恢复侧栏底部的远控入口。                           | [spec](../specs/settings-visual-polish-openzwork.md)        |
 | OZ-C009 | 业务数据目录完整迁移    | 保存迁移计划，重启前置阶段复制并转换 CLI/Host 数据，发布后切换数据根。 | [spec](../desktop/configurable-data-directory-openzwork.md) |
 | OZ-C010 | 发行许可与上游声明      | GPL-3.0 整体声明、上游 Apache-2.0 原文与 NOTICE 入口。                 | [分支声明](../../NOTICE.md)                                 |
+| OZ-C011 | 工作流查询进程与生命周期 | 工作流总览读取共用独立查询 lane 并空闲回收，UI 读状态分代际。          | [spec](../specs/saved-workflow-query-lifecycle-openzwork.md) |
 
 ### OpenZWork 新增的功能
 
