@@ -215,8 +215,18 @@ export function createSettingService(): ISettingService {
   return createSettingServiceWithMigrations().service;
 }
 
-/** Host 私有投影装配端口；目录事实通过现有设置写队列落盘。 */
-export function createSettingServiceWithMigrations(): {
+/**
+ * Host 私有投影装配端口；目录事实通过现有设置写队列落盘。
+ *
+ * dependencies 保留上游 v3.18.2 运行时合同（Host 注入 shareCredentialKeyWithDataRoot）；
+ * 我方 updateDataBaseDir 只保存迁移计划，复制与凭据密钥共享在启动门禁
+ * applyPendingDataBaseDirMigration 由 Main 直接执行（见该函数注释），此处不消费。
+ */
+export function createSettingServiceWithMigrations(
+  _dependencies: {
+    shareCredentialKeyWithDataRoot?: (targetBaseDir: string) => Promise<void>;
+  } = {},
+): {
   service: ISettingService;
   setWorkspaceProjection: (
     reader: (settings: AppSettings) => Promise<WorkspaceSettingsProjection>,
@@ -434,6 +444,11 @@ export function createSettingServiceWithMigrations(): {
 /** 仅由 Desktop 在所有业务 Host/Agent 启动前调用，不暴露为运行中 RPC。 */
 export async function applyPendingDataBaseDirMigration(
   relocateAgent?: (plan: DataRelocationPlan) => Promise<void>,
+  // Desktop Main 注入：数据目录复制完成后把系统密钥登记到目标数据根（凭据密钥共享，
+  // 上游 v3.18.2 同能力）。失败时迁移中止、指针不变。Server/Web 不注入。
+  dependencies: {
+    shareCredentialKeyWithDataRoot?: (targetBaseDir: string) => Promise<void>;
+  } = {},
 ): Promise<void> {
   const settingsFile = join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "v2", "setting.json");
   const initial = (await readSettingsWithMetaAt(settingsFile)).settings;
@@ -444,12 +459,18 @@ export async function applyPendingDataBaseDirMigration(
     if (!pending) return;
     await copyDataDirectory(pending.sourceBaseDir, pending.targetBaseDir, pending.id, {
       relocateAgent,
-      commit: async (plan) =>
-        writeSettingsAt(settingsFile, {
+      commit: async (plan) => {
+        // 移植（上游 v3.18.2 ZCT-2120723935487688704 同源修复，适配我方启动门禁结构）：
+        // 3.18.0 起凭据密钥存于系统库并按凭据文件路径分条目，只复制 credentials.json 时
+        // 新根没有对应条目，重启后掉登录且无法重新登录。提交指针前由 Main 把系统密钥
+        // 登记到目标数据根；失败直接抛出，指针保持不变（下次启动重试，不产生半迁移态）。
+        await dependencies.shareCredentialKeyWithDataRoot?.(pending.targetBaseDir);
+        await writeSettingsAt(settingsFile, {
           ...relocateWorkspaceSettings(settings, plan),
           dataBaseDir: dirname(plan.targetRoot),
           pendingDataBaseDirMigration: undefined,
-        }),
+        });
+      },
     });
   });
 }

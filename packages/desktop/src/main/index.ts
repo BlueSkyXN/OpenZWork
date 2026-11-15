@@ -216,6 +216,23 @@ import {
   getPluginSandboxHost,
   installPluginSandboxHost,
 } from "./pluginSandbox/index.js";
+import {
+  createSystemCredentialCipher,
+  enablePrivateFileKeyFallback,
+} from "@zcode/shared/credential-security";
+
+// Bug 原因：Linux 的 Secret Service（GNOME Keyring/KWallet）不是必备组件；没有 keyring 服务，
+// 或 keyring 被锁且用户取消解锁框时，Main 取不到系统密钥，登录永远保存失败。
+// 修复：Main 在首次访问凭据前开启私有文件密钥回退，只作用于尚未绑定来源的凭据目录。
+// Host/内置 CLI 经凭据桥跟随 Main；独立 CLI、Server 不开启；macOS/Windows 不受影响。
+if (process.platform === "linux") {
+  const fallbackEnabled = enablePrivateFileKeyFallback({
+    onFallback: () => logger.warn("[credential] Linux 系统凭据库不可用，已改用私有文件密钥"),
+  });
+  if (!fallbackEnabled) {
+    logger.warn("[credential] 凭据已在回退开启前被访问，本次进程保持系统凭据库规则");
+  }
+}
 
 registerLocalMediaPreviewScheme(protocol, [
   PLUGIN_SANDBOX_PRIVILEGED_SCHEME,
@@ -1512,6 +1529,17 @@ app.whenReady().then(async () => {
             "The bundled CLI is unavailable; restore the application and retry migration.",
           );
         await startupStorage.relocateAgent({ command, plan });
+      }, {
+        // 移植（上游 v3.18.2 ZCT-2120723935487688704）：我方迁移在启动门禁执行、业务
+        // Host 尚未启动，凭据密钥共享由 Main 直接调系统 cipher 完成（不经 Host 通道；
+        // Host 侧 shareCredentialKeyWithDataRoot 保留为运行时通道合同）。密钥不离开 Main。
+        shareCredentialKeyWithDataRoot: (targetBaseDir) =>
+          createSystemCredentialCipher({
+            // 目标根下的凭据文件路径；密钥条目按该路径登记（与 Host fork 时的绑定规则一致）。
+            filePath: join(targetBaseDir, OPENZWORK_DATA_DIR_NAME, "v2", "credentials.json"),
+          }).shareKeyWithCopiedCredentials(
+            join(targetBaseDir, OPENZWORK_DATA_DIR_NAME, "v2", "credentials.json"),
+          ),
       });
       break;
     } catch (error) {

@@ -86,6 +86,7 @@ import {
   seedProjectUpgradeOrderFixture,
 } from "./test/e2e/helpers/project-upgrade-order-fixture.js";
 import {
+  isNativeKeychainCredentialSpec,
   resolveAskUserQuestionClockScaleForWorker,
   resolveE2ECredentialSecret,
 } from "./test/e2e/helpers/e2e-worker-environment.js";
@@ -3199,10 +3200,10 @@ export const config: WebdriverIO.Config = {
         // 在 spec 内覆盖同一组 env，行为不变。
         await startUpstreamE2EHttp(specs);
         await resetE2EHome(specs);
-        if (
-          process.platform === "darwin" &&
-          specs.some((spec) => spec.endsWith("system-credential-storage.test.ts"))
-        ) {
+        // 上游 v3.18.2：原生钥匙串专项判定升级为 isNativeKeychainCredentialSpec（新增
+        // system-credential-data-root 同属该类——会把隔离 HOME 的 Keychains 链到系统库，
+        // 仅显式点名执行时准备，正式 glob 不带入 pending spec）。
+        if (process.platform === "darwin" && specs.some(isNativeKeychainCredentialSpec)) {
           // Main 首次访问发生在界面就绪前；原生专项必须先准备隔离 HOME 的系统库入口。
           await mkdir(resolve(E2E_HOME_DIR, "Library"), { recursive: true });
           await symlink(
