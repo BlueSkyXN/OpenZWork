@@ -7,6 +7,11 @@ on:
     branches: [main]
     tags: ["v*-openzwork", "v*openzwork.*"]
   workflow_dispatch:
+    inputs:
+      desktop_e2e:
+        description: Also run the interactive desktop E2E job (real Electron/Host/CLI, controlled replay)
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -73,6 +78,17 @@ jobs:
       - name: OpenZWork file formatting
         if: matrix.lane == 'regressions'
         run: pnpm fmt:check
+
+      # 与本地 verify:pre-push 同口径：schema 契约（根测试 + 内层 SQLite schema 校验）。
+      - name: SQLite schema contract
+        if: matrix.lane == 'regressions'
+        run: pnpm db:schema:check
+
+      # 三方许可门禁（allowlist 之外或许可未知即失败）；strict 的既有 14 项例外
+      # 不进 CI 终态，另行人工核对（与本地口径一致）。
+      - name: Dependency license check
+        if: matrix.lane == 'regressions'
+        run: node scripts/licenses.mjs check
 
       - name: Architecture boundaries
         if: matrix.lane == 'regressions'
@@ -254,3 +270,94 @@ jobs:
         env:
           CHECKS_RESULT: ${{ needs.checks.result }}
         run: test "$CHECKS_RESULT" = success
+
+  # 交互 E2E（云优先验收入口）：真实 Electron + 窗口 Local Host + 内置 CLI、隔离 HOME、
+  # 受控回放 fixture。不进 PR 自动门禁（时长），仅 workflow_dispatch 显式触发；spec 与
+  # fixture 逐个点名（依赖文件名注入 fixture 的 spec 不用 glob）；单 runner 串行，
+  # 不与其他 E2E 分片并行共享 HOME。
+  desktop-e2e:
+    name: interactive e2e (${{ matrix.spec-group }})
+    if: github.event_name == 'workflow_dispatch' && inputs.desktop_e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # WT04：受管 worktree 冷恢复（desktop-continuous）+ 手机查看复用同一 Host/CLI
+          # （web-remote-replayable，含 G2 同 runtime 关联断言）。manual-review/pending
+          # 用例显式候选执行，不自动晋升；回放 fixture 显式点名（common + git 领域）。
+          - spec-group: wt04-remote-view
+            specs: ./test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/git/managed-worktree.json
+          # 同路径双 identity 的任务索引隔离（G2/F3 受控运行时入口，无 provider 依赖）。
+          - spec-group: identity-isolation
+            specs: ./test/e2e/git/worktrees/task-index-workspace-identity-isolation.test.ts
+            replay-fixtures: ""
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 11.28.6
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # 交互 E2E 需要完整运行时：Electron 二进制、node-pty 原生重建（wdio onPrepare
+      # 负责 build:no-runtime-assets + agent server + 官方插件模板预热）。
+      - name: Install dependencies (frozen lockfile, with scripts)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build E2E report tooling
+        run: pnpm --filter @zcode/e2e-report build:node
+
+      - name: Run interactive E2E specs
+        id: e2e_run
+        working-directory: packages/desktop
+        env:
+          E2E_PROVIDER_REPLAY_FIXTURE_PATH: ${{ matrix.replay-fixtures }}
+        run: pnpm exec wdio run wdio.conf.ts --spec '${{ matrix.specs }}'
+
+      - name: Upload E2E artifacts
+        if: always() && steps.e2e_run.outcome != 'skipped'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-e2e-${{ matrix.spec-group }}
+          path: packages/desktop/.e2e-artifacts/desktop-e2e-*/
+          archive: true
+          if-no-files-found: error
+
+      # 结果完整性：0 collected、关键 skip、取消、缺报告、被 continue-on-error 掩盖的
+      # 失败都不能算通过——从 runner 自己的 summary.json 复核，不信 wdio 退出码单点。
+      - name: Verify E2E summary completeness
+        if: always() && steps.e2e_run.outcome != 'skipped'
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir, readFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          const root = 'packages/desktop/.e2e-artifacts';
+          const runs = (await readdir(root, { withFileTypes: true }))
+            .filter((entry) => entry.isDirectory() && entry.name.startsWith('desktop-e2e-'))
+            .map((entry) => entry.name);
+          if (runs.length !== 1) throw new Error(`Expected exactly one E2E run dir, found ${runs.length}`);
+          const summary = JSON.parse(await readFile(join(root, runs[0], 'summary.json'), 'utf8'));
+          const requested = (summary.requestedSpecs ?? []).map((spec) => String(spec).replaceAll('\\', '/'));
+          const collected = new Set((summary.tests?.results ?? []).map((result) => String(result.file).replaceAll('\\', '/')));
+          const missing = requested.filter((spec) => ![...collected].some((file) => file.endsWith(spec.replace(/^\.\//, ''))));
+          const failures = [];
+          if (summary.exitCode !== 0) failures.push(`exitCode=${summary.exitCode}`);
+          if ((summary.tests?.passed ?? 0) < 1) failures.push('0 collected tests');
+          if ((summary.tests?.failed ?? 0) > 0) failures.push(`failed=${summary.tests.failed}`);
+          if (summary.stability?.passRate !== 1) failures.push(`passRate=${summary.stability?.passRate}`);
+          if ((summary.stability?.infraFailureCount ?? 0) > 0) failures.push(`infra=${summary.stability.infraFailureCount}`);
+          if ((summary.stability?.flakyCount ?? 0) > 0) failures.push(`flaky=${summary.stability.flakyCount}`);
+          if (missing.length > 0) failures.push(`specs with 0 collected: ${missing.join(', ')}`);
+          if (failures.length > 0) throw new Error(`E2E summary incomplete: ${failures.join('; ')}`);
+          console.log(JSON.stringify({ runId: summary.runId, passed: summary.tests.passed, failed: summary.tests.failed, passRate: summary.stability.passRate, specs: requested.length }));
+          NODE
