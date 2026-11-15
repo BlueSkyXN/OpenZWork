@@ -252,12 +252,40 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     // WT04 CLI 复用补证（2026-11-15 独立复核缺口）：除 sessionId 与 Host 进程集合外，
     // 记录查看前桌面 pane 的会话运行代（data-session-generation）——手机查看若另起/重启
     // 独立 CLI runtime，该代数会翻新；查看后应保持不变（合法冷恢复场景由 WT04-1 覆盖）。
+    // 运行代必须存在且有效：查看前后都为 null 的空匹配不能当通过（独立复核 F2）。
     const desktopGenerationBefore = await browser.execute(() => {
       const pane = document.querySelector(
         '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
       );
       return pane?.getAttribute("data-session-generation") ?? null;
     });
+    expect(desktopGenerationBefore).toMatch(/^\d+$/u);
+    // 运行身份基线（2026-11-15 独立复核 F2 重写，按实测 ps 形态）：
+    // macOS ps 中 Host/CLI 是改名进程（`zcode-host-<label>`、`zcode-cli`，不带路径），
+    // Electron helper 才有完整命令行路径——按路径猜本 run 身份会恒空匹配（旧写法实证）。
+    // 因此观察集有效性直接断言树内已存在本次运行的真实运行时：窗口唯一 Local Host 与
+    // WT04-1 会话已建立的 CLI 连接都必须在树上；树外扫描改为「查看期间新增」增量判定，
+    // 开发机上与本 run 无关的既有 zcode 进程进入基线，不误伤也不空放。
+    const hostBefore = agentsBefore.filter((entry) => entry.includes("zcode-host"));
+    const cliPidsBefore = agentsBefore
+      .filter((entry) => entry.includes("zcode-cli"))
+      .map((entry) => Number(entry.split(":", 1)[0]))
+      .sort((left, right) => left - right);
+    if (hostBefore.length === 0 || cliPidsBefore.length === 0)
+      throw new Error(
+        `Electron 树内观察集缺少本 run 运行时（host=${hostBefore.length}，cli=${cliPidsBefore.length}）；快照：${agentsBefore.join(" | ")}`,
+      );
+    // 树外 zcode 进程基线：手机查看开始前已存在的进程（含开发机其他实例）不算本 run 证据。
+    const electronRootPidBefore = await browser.electron.execute((electron) => process.pid);
+    const systemProcessesBefore = await listSystemProcesses();
+    const outOfTreeBefore = systemProcessesBefore
+      .filter(
+        (proc) =>
+          /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidBefore,
+      )
+      .filter((proc) => !agentsBefore.some((entry) => entry.startsWith(`${proc.pid}:`)))
+      .map((proc) => proc.pid)
+      .sort((left, right) => left - right);
 
     const pairingUrl = await obtainUnreadPairingUrl();
     webBrowser = await chromium.launch({
@@ -320,8 +348,7 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     expect(mobileSessionId).toBeTruthy();
     expect(mobileSessionId).toBe(desktopSessionId);
 
-    // 不派生另一 Host：窗口唯一 Local Host 的进程集合不变（zcode-host 无新增）。
-    const hostBefore = agentsBefore.filter((entry) => entry.includes("zcode-host"));
+    // 不派生另一 Host：窗口唯一 Local Host 的进程集合不变（zcode-host 无新增/替换）。
     const agentsAfter = await readAgentTreeSnapshot();
     expect(agentsAfter.filter((entry) => entry.includes("zcode-host"))).toEqual(hostBefore);
 
@@ -335,19 +362,32 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     });
     expect(desktopGenerationAfter).toBe(desktopGenerationBefore);
 
-    // CLI 复用归属补证②：本 run 属单 spec 点名执行，凡命令行携带本工作区路径的
-    // zcode CLI/Host 进程必须全部位于该 Electron 唯一 Host 的进程树内；树外命中即
-    // 视为手机查看派生了独立 CLI/runtime（进程归属证据，允许树内合法懒启动）。
-    const electronRootPid = await browser.electron.execute((electron) => process.pid);
+    // CLI 复用归属补证②（进程级，独立复核 F2）：查看前已存在的会话 CLI 连接在查看后
+    // 全部存活——原连接被复用而非重启/替换。Host 在树内按会话懒启动额外 CLI worker 属
+    // 合法恢复语义（实测 +8，与 2026-11-15 run4 结论一致）；「另起该会话的独立 runtime」
+    // 由 Host 集合不变、树外增量扫描与 session id 一致性排除，树内新 CLI 不算独立证据。
+    const cliPidsAfter = agentsAfter
+      .filter((entry) => entry.includes("zcode-cli"))
+      .map((entry) => Number(entry.split(":", 1)[0]))
+      .sort((left, right) => left - right);
+    const droppedCliPids = cliPidsBefore.filter((pid) => !cliPidsAfter.includes(pid));
+    if (droppedCliPids.length > 0)
+      throw new Error(
+        `手机查看期间原会话 CLI 连接被重启/替换（前=${cliPidsBefore.join(",")} 后=${cliPidsAfter.join(",")}，消失=${droppedCliPids.join(",")}）`,
+      );
+
+    // CLI 复用归属补证③（独立复核 F2）：手机查看期间系统里不得新增任何树外
+    // zcode CLI/Host 进程——与查看前基线做增量判定，不按路径猜本 run 身份
+    // （改名进程无路径，路径过滤已实证恒空匹配）。
+    const electronRootPidAfter = await browser.electron.execute((electron) => process.pid);
     const allProcesses = await listSystemProcesses();
     const rogueAgents = allProcesses
       .filter(
         (proc) =>
-          /zcode[-.](cli|host)/iu.test(proc.command) &&
-          proc.command.includes("OpenZWork-sync-v3.18.0-20261111") &&
-          proc.pid !== electronRootPid,
+          /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidAfter,
       )
-      .filter((proc) => !agentsAfter.some((entry) => entry.startsWith(`${proc.pid}:`)));
+      .filter((proc) => !agentsAfter.some((entry) => entry.startsWith(`${proc.pid}:`)))
+      .filter((proc) => !outOfTreeBefore.includes(proc.pid));
     expect(rogueAgents).toEqual([]);
 
     // 桌面侧没有因此打开第二个同路径 workspace（不派生另一 Host 的窗口侧证据）。
