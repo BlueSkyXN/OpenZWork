@@ -21,18 +21,54 @@ let closedWorkspace: string;
 let home: string;
 
 describe("Command Center Host 历史搜索", () => {
-  afterEach(async () => {
+  afterEach(async function () {
+    // 修复依据（OpenZWork，v3.18.1 B3）：固定文件名会让后一用例覆盖首错现场；首错失败后
+    // Escape 不会执行，残留对话框把后续用例的侧栏点击全部拦截（02/03 连带失败）。按用例
+    // 落唯一诊断文件，并附只读 DB 快照（archived 正文搜索为空时核对 searchable_text 是否
+    // 被运行时改写），最后用正常 UI 关闭可能残留的对话框。
+    const caseSlug =
+      this.currentTest?.title.replace(/[^\p{L}\p{N}-]+/gu, "_").slice(0, 80) ?? "unknown";
     const snapshot = await browser.execute(() => ({
       text: document.body.innerText.slice(0, 12000),
       rows: Array.from(document.querySelectorAll('[role="dialog"] [cmdk-item]')).map((row) => ({
         text: row.textContent,
         value: row.getAttribute("data-value"),
       })),
+      dialogOpen: Boolean(document.querySelector('[role="dialog"]')),
     }));
     await writeFile(
-      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "history-search-state.json"),
+      join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `history-search-state-${caseSlug}.json`),
       JSON.stringify(snapshot, null, 2),
     );
+    let dbSnapshot: unknown = null;
+    if (home) {
+      try {
+        const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), {
+          readOnly: true,
+        });
+        try {
+          dbSnapshot = db
+            .prepare(
+              `SELECT task_id, host_id, pinned, archived, deleted, cli_deleted, cli_created_at,
+               cli_updated_at, title_overridden, length(searchable_text) AS searchable_len,
+               substr(searchable_text, 1, 200) AS searchable_head
+               FROM tasks WHERE task_id LIKE 'session_e2e_history_%'`,
+            )
+            .all();
+        } finally {
+          db.close();
+        }
+      } catch (error) {
+        dbSnapshot = { error: String(error) };
+      }
+      await writeFile(
+        join(process.env.ZCODE_E2E_ARTIFACT_DIR!, `history-search-db-${caseSlug}.json`),
+        JSON.stringify(dbSnapshot, null, 2),
+      );
+    }
+    if (snapshot.dialogOpen) {
+      await browser.keys("Escape");
+    }
   });
   before(async () => {
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45_000);
@@ -262,15 +298,33 @@ async function openSearch() {
 }
 
 async function searchAndExpect(query: string, names: string[]) {
+  // 修复依据（OpenZWork，v3.18.1 B3）：20261115045826333 run 中 setValue 与 app 重启后
+  // warmup 引发的重渲染竞态会留下受控输入串损坏（标题/正文命中正常、后续查询恒空且
+  // 渲染「暂无相关结果」=有查询零结果态）。按真实用户行为核验输入值，不符则重设一次；
+  // 断言不变，失败时附输入框实际值与当前行，区分查询串损坏与数据缺失。
   await $(inputSelector).setValue(query);
-  await browser.waitUntil(
-    async () => {
-      const texts = await $$(rowSelector).map((row) => row.getText());
-      return (
-        texts.length === names.length &&
-        names.every((name) => texts.some((text) => text.includes(`${marker}_${name}`)))
-      );
-    },
-    { timeout: 10_000, timeoutMsg: `历史搜索 ${query} 应返回 ${names.join(",")}` },
-  );
+  if ((await $(inputSelector).getValue()) !== query) {
+    await $(inputSelector).setValue(query);
+  }
+  try {
+    await browser.waitUntil(
+      async () => {
+        const texts = await $$(rowSelector).map((row) => row.getText());
+        return (
+          texts.length === names.length &&
+          names.every((name) => texts.some((text) => text.includes(`${marker}_${name}`)))
+        );
+      },
+      { timeout: 10_000, timeoutMsg: `历史搜索 ${query} 应返回 ${names.join(",")}` },
+    );
+  } catch (error) {
+    const inputValue = await $(inputSelector).getValue().catch(() => "<unavailable>");
+    const currentRows = await Promise.all(
+      (await $$(rowSelector).map((row) => row.getText().catch(() => "<stale>"))),
+    ).catch(() => ["<row-query-failed>"]);
+    throw new Error(
+      `历史搜索 ${query} 应返回 ${names.join(",")}（诊断：输入框实际值=${JSON.stringify(inputValue)}，当前行=${JSON.stringify(currentRows)}）`,
+      { cause: error },
+    );
+  }
 }
