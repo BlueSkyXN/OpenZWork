@@ -33,8 +33,8 @@ export const ZCODE_CLI_RESOURCE_SAMPLE_INTERVAL_MS = 60_000;
  *
  * lane 不是 CLI 协议字段——CLI 进程不知道自己被哪个进程管理器拉起，由 app 侧 services 层
  * 在解析样本时按所属进程管理器打标（`chat` 是 workspace 级 Agent，其余是控制面 lane）。
- * `workflow-query` 是已保存工作流总览读取的独立查询 lane（OW-P024）：共享载体单实例、
- * 空闲回收；只在本地 Desktop Host 产生，远端 Host 不会发出该枚举。
+ * `workflow-query` 是已保存工作流总览读取的独立查询 lane（OW-P024），本地 Desktop 与
+ * Server/远端 Host 均可产生。符合共享资格的本地 Desktop 共用单载体，其余按项目隔离，均支持空闲回收。
  */
 export const PROCESS_RESOURCE_CLI_LANES = ["chat", "plugin", "mcp-status", "workflow-query"] as const;
 

@@ -533,8 +533,15 @@ entries:
       - packages/services/src/zcode-agent/workflow-query/**
     hooks:
       - packages/services/src/zcode-agent/zcodeAgentService.ts
+      - packages/services/src/zcode-agent/zcodeAgentProcessManager.ts
+      - packages/services/src/zcode-agent/zcodeProtocolClient.ts
       - packages/services/src/node.ts
       - packages/desktop/src/host/index.ts
+      - packages/desktop/src/main/desktopRuntimeEnv.ts
+      - apps/zcode-cli/packages/contracts/src/config/index.ts
+      - apps/zcode-cli/packages/adapters/src/config/config-factory.ts
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/saved-workflows.ts
+      - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/transport.ts
       - packages/shared/src/processResourceTelemetry.ts
       - packages/shared/src/index.ts
       - packages/ui/src/store/savedWorkflowStore.ts
