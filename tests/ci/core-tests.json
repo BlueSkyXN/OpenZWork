@@ -64,7 +64,7 @@
     },
     {
       "capability": "session-and-host",
-      "files": []
+      "files": ["packages/services/test/taskIndexWorkspaceIdentityIsolation.test.ts"]
     },
     {
       "capability": "mcp",
