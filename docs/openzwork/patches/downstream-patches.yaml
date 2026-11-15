@@ -542,12 +542,12 @@ patches:
       since: 3.18.0
       checked: 3.18.0
     trigger: 同一 spec 内先用 setRendererViewport（Emulation.setDeviceMetricsOverride）设置 CSS 覆盖，后续用例再调用 setCurrentElectronRendererContentSize/setPluginPresentation 调整窗口尺寸。
-    impact: 覆盖钉住 innerWidth/innerHeight，窗口尺寸变更后 renderer viewport 永不跟随，helper 的收敛等待 10s 超时；顺序执行 plugin-localization-creator 两用例时第二用例 setPluginPresentation(1200x800) 报「renderer viewport 没有收敛: actual 1280x844」（run 155225442-p85137）。
+    impact: 覆盖钉住 innerWidth/innerHeight，窗口尺寸变更后 renderer viewport 永不跟随，helper 的收敛等待 10s 超时；顺序执行 plugin-localization-creator 两用例时第二用例 setPluginPresentation(1200x800) 报「renderer viewport 没有收敛，actual 1280x844」（run 155225442-p85137）。
     cause: 覆盖只在 describe 级 after 的 clearRendererViewport 清除；窗口尺寸 helper 不感知覆盖存在，收敛契约（innerWidth=窗口内容宽/zoomFactor）与覆盖语义互斥但未先释放覆盖。
     fix: setCurrentElectronRendererContentSize 先调用 clearRendererViewport 释放遗留覆盖再调 setContentSize；未设置覆盖时清除为 no-op，既有「先窗口尺寸后覆盖」调用顺序的断言结果不变。
-    evidence: 上游 b95ebaff 的 desktop-app.ts 同 helper 与 renderer-viewport.ts 均不感知覆盖（同缺陷）；修复后顺序全量 plugin-localization-creator 两用例通过（run 见 v3.18.0-validation），受影响调用方（presentation/zoom/remote 等族）随最终 E2E 门禁复核。
+    evidence: 上游 b95ebaff 的 desktop-app.ts 同 helper 与 renderer-viewport.ts 均不感知覆盖（同缺陷）；修复后顺序执行推进到 case2 市场断言、单用例与全 marketplace/installation 族通过（run 见 v3.18.0-validation）；核心 CI 以 e2eViewportOverrideRelease 断言清除先于尺寸调整的顺序契约。
     files:
       - packages/desktop/test/e2e/helpers/desktop-app.ts
     regression:
-      - packages/desktop/test/e2e/plugins/marketplace/plugin-localization-creator.test.ts
+      - packages/desktop/test/e2eViewportOverrideRelease.test.ts
     retire: 上游在窗口尺寸调整前释放设备度量覆盖，或覆盖设置器改为用例级自动清理，顺序执行同等场景通过。

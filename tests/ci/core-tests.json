@@ -178,7 +178,10 @@
     },
     {
       "capability": "retained-ui-and-desktop-repair",
-      "files": []
+      "files": [
+        "packages/ui/test/pluginStoreSettingsExit.test.ts",
+        "packages/desktop/test/e2eViewportOverrideRelease.test.ts"
+      ]
     },
     {
       "capability": "process-lifecycle-safety",
