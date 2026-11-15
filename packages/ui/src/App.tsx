@@ -956,12 +956,17 @@ export function App({
     (_target: PluginStoreOpenTarget = {}) => {
       // 管理范围由市场内视图持有，重复打开只重置市场导航。
       if (workspaceMainView === "plugin-store") {
+        // OW-P025：设置层仍打开时再次进入市场走此 bump 分支（主视图已是 plugin-store），
+        // 必须先置 preserve 标记，否则设置退出的 useLayoutEffect 会因「主视图与进入设置前
+        // 一致」把市场切回对话，商店打不开。标记只在设置层打开时可写（hook 内有守卫），
+        // 从市场内部重复打开不受影响。
+        preserveNextSettingsExit();
         setPluginStoreOpenVersion((version) => version + 1);
         return;
       }
       handleOpenPluginStore();
     },
-    [handleOpenPluginStore, workspaceMainView],
+    [handleOpenPluginStore, preserveNextSettingsExit, workspaceMainView],
   );
   useEffect(
     () => addPluginStoreOpenListener(handleOpenPluginStoreForScope),
