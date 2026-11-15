@@ -715,6 +715,8 @@ entries:
     spec: docs/openzwork/upstream/v3.18.1-integration.md
     modules:
       - cli-memory-diagnostics
+    tests:
+      - apps/zcode-cli/packages/adapters/tests/memory-diagnostics/recorder.test.ts
     source: "v3.18.1 同步（c5904686）"
   - id: OZ-R001
     kind: retain

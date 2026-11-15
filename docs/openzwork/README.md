@@ -51,19 +51,20 @@
 
 ### OpenZWork 新增的功能
 
-| 编号    | 名称                     | 说明                                                       | 依据                                                           |
-| ------- | ------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------- |
-| OZ-F002 | 系统提示词设置与编辑器   | 系统提示词设置、完整预览、差异与模板。                     | [spec](../specs/system-prompt-settings-openzwork.md)           |
-| OZ-F003 | 本地使用统计页           | 使用统计页按本机度量重建。                                 | [spec](../specs/app-usage-settings-openzwork.md)               |
-| OZ-F004 | 会话累计用量             | 输入框工具栏显示会话累计用量。                             | [spec](../specs/session-usage-summary-openzwork.md)            |
-| OZ-F005 | 原生会话指标栏           | 会话指标栏与自选指标。                                     | [spec](../specs/native-conversation-metrics-openzwork.md)      |
-| OZ-F006 | 对话复制、筛选与项目排序 | 对话 Markdown 复制、任务筛选与项目活动排序。               | [spec](../specs/conversation-controls-openzwork.md)            |
-| OZ-F007 | 外部会话多源导入         | 从多个外部客户端导入会话。                                 | [spec](../specs/external-session-import-openzwork.md)          |
-| OZ-F008 | 模型列表拉取与项目用量   | 拉取模型目录、按项目查询用量。                             | [spec](../specs/model-discovery-project-usage-openzwork.md)    |
-| OZ-F009 | Node 发行内置技能资产    | 普通 Node CLI/Web 发行包携带内置技能。                     | [spec](../specs/node-distribution-bundled-skills-openzwork.md) |
-| OZ-F010 | V1 远控连接方式          | 官方 V1 远控页的多种连接方式与多入口。                     | [spec](../web-remote-control/v1-connection-modes-openzwork.md) |
-| OZ-F011 | OpenZWork 构建与发行流程 | 发行版本、安装包校验与正式 tag 自动发布。                  | [发行规范](release/openzwork-release-version.md)               |
-| OZ-F012 | CI 与桌面验证工程        | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。 | [CI 规范](ci/ci-job-orchestration.md)                          |
+| 编号    | 名称                                                                             | 说明                                                       | 依据                                                           |
+| ------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------- |
+| OZ-F002 | 系统提示词设置与编辑器                                                           | 系统提示词设置、完整预览、差异与模板。                     | [spec](../specs/system-prompt-settings-openzwork.md)           |
+| OZ-F003 | 本地使用统计页                                                                   | 使用统计页按本机度量重建。                                 | [spec](../specs/app-usage-settings-openzwork.md)               |
+| OZ-F004 | 会话累计用量                                                                     | 输入框工具栏显示会话累计用量。                             | [spec](../specs/session-usage-summary-openzwork.md)            |
+| OZ-F005 | 原生会话指标栏                                                                   | 会话指标栏与自选指标。                                     | [spec](../specs/native-conversation-metrics-openzwork.md)      |
+| OZ-F006 | 对话复制、筛选与项目排序                                                         | 对话 Markdown 复制、任务筛选与项目活动排序。               | [spec](../specs/conversation-controls-openzwork.md)            |
+| OZ-F007 | 外部会话多源导入                                                                 | 从多个外部客户端导入会话。                                 | [spec](../specs/external-session-import-openzwork.md)          |
+| OZ-F008 | 模型列表拉取与项目用量                                                           | 拉取模型目录、按项目查询用量。                             | [spec](../specs/model-discovery-project-usage-openzwork.md)    |
+| OZ-F009 | Node 发行内置技能资产                                                            | 普通 Node CLI/Web 发行包携带内置技能。                     | [spec](../specs/node-distribution-bundled-skills-openzwork.md) |
+| OZ-F010 | V1 远控连接方式                                                                  | 官方 V1 远控页的多种连接方式与多入口。                     | [spec](../web-remote-control/v1-connection-modes-openzwork.md) |
+| OZ-F011 | OpenZWork 构建与发行流程                                                         | 发行版本、安装包校验与正式 tag 自动发布。                  | [发行规范](release/openzwork-release-version.md)               |
+| OZ-F012 | CI 与桌面验证工程                                                                | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。 | [CI 规范](ci/ci-job-orchestration.md)                          |
+| OZ-F013 | 本地内存诊断与 sampler 节拍（`.openzwork/cli` 数据根、节拍恢复；官方上传链裁剪） | v3.18.1 同步                                               |
 
 ### 上游已删除、OpenZWork 保留
 

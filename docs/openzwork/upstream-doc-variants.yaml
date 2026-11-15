@@ -38,7 +38,7 @@ variants:
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: 045ea44de71b2b49ad31bac801e2f2d55e5fb154
+    upstreamBlob: 3969d2fa8ef03dac32a15e70f18834b8c85ff91f
   - upstream: docs/desktop-ci-cd.md
     variant: docs/desktop-ci-cd-openzwork.md
     role: maintained
@@ -60,7 +60,7 @@ variants:
     variant: docs/desktop/windows-installer-overhaul-spec-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 358885466bb722461baeb84c7903f7f0e14a0f00
+    upstreamBlob: 3b36216120cac4a8b8cb1119a128aef60a2f8fcd
   - upstream: docs/electron/resource-manager-network.md
     variant: docs/electron/resource-manager-network-openzwork.md
     role: maintained
@@ -110,7 +110,7 @@ variants:
     variant: docs/monitoring/memory-diagnostics-log-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 0e309387a06fa36e79ad45469efba682551ab37c
+    upstreamBlob: 5e2d3ae6f55e6db37e6eaa52e40452517e9a13ea
   - upstream: docs/monitoring/README.md
     variant: docs/monitoring/README-openzwork.md
     role: maintained
@@ -130,7 +130,7 @@ variants:
     variant: docs/superpowers/specs/2026-09-09-virtual-project-design-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: f205c06191778243ec04339bdab26d13acc9b22d
+    upstreamBlob: f6430d7cd8d2cbaa2950038816793939cbf39200
   - upstream: docs/testing/bots-e2e-coverage-matrix.md
     variant: docs/testing/bots-e2e-coverage-matrix-openzwork.md
     role: maintained
@@ -166,7 +166,7 @@ variants:
       - scripts/test/conversation-session-formal-admission-audit.test.mjs
       - docs/specs/memory-migration-openzwork.md
     kind: content
-    upstreamBlob: 6da2a6f86627d8656e4cb2fe9b469c7d1b4ff291
+    upstreamBlob: 099cb195b475d4c1d73f60d3041f618627c3dca8
   - upstream: docs/testing/conversation-session-e2e-development-workflow.md
     variant: docs/testing/conversation-session-e2e-development-workflow-openzwork.md
     role: maintained
@@ -231,7 +231,7 @@ variants:
     variant: docs/web-remote-control/web-remote-control-architecture-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 66e51acb94161e2cc374cc25acb35732ddc80d98
+    upstreamBlob: 99d77e16be947667c497b94da089497fff11150e
   - upstream: docs/windows-tray.md
     variant: docs/windows-tray-openzwork.md
     role: maintained

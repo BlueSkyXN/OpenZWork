@@ -177,6 +177,10 @@
       "files": []
     },
     {
+      "capability": "cli-memory-diagnostics",
+      "files": ["apps/zcode-cli/packages/adapters/tests/memory-diagnostics/recorder.test.ts"]
+    },
+    {
       "capability": "retained-ui-and-desktop-repair",
       "files": [
         "packages/ui/test/pluginStoreSettingsExit.test.ts",
