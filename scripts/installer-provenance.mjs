@@ -135,7 +135,9 @@ export async function recordInstallerProvenance({
     if (!/^[0-9a-f]{40}$/.test(expectedCommit))
       throw new Error("Build-only manifest requires a full 40-hex source commit");
     if (sourceCommit !== expectedCommit)
-      throw new Error(`Build-only checkout ${sourceCommit} does not match source ${expectedCommit}`);
+      throw new Error(
+        `Build-only checkout ${sourceCommit} does not match source ${expectedCommit}`,
+      );
   }
 
   const [upstreamVersion, revision] = version.split("+openzwork.");
@@ -149,7 +151,11 @@ export async function recordInstallerProvenance({
     runUrl,
     version,
     ...(mode === "release" || mode === "build-only"
-      ? { upstreamVersion, releaseRevision, nativeBuildVersion: `${upstreamVersion}.${releaseRevision}` }
+      ? {
+          upstreamVersion,
+          releaseRevision,
+          nativeBuildVersion: `${upstreamVersion}.${releaseRevision}`,
+        }
       : {}),
     ...(versionVerification ? { versionVerification } : {}),
     platform,

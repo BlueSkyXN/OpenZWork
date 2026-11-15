@@ -268,8 +268,14 @@ test("dispatch builds pin immutable sources and verify packaged contents in-runn
   const provenance = stepIndex("Record build provenance");
   assert.ok(provenance > pk01);
   assert.match(job.steps[provenance].run, /scripts\/installer-provenance\.mjs/);
-  assert.equal(job.steps[provenance].env.IS_RELEASE, "${{ (inputs.release_tag || github.ref_type == 'tag') && '1' || '0' }}");
-  assert.equal(job.steps[provenance].env.IS_BUILD_PRODUCTION, "${{ inputs.build_production == true && '1' || '0' }}");
+  assert.equal(
+    job.steps[provenance].env.IS_RELEASE,
+    "${{ (inputs.release_tag || github.ref_type == 'tag') && '1' || '0' }}",
+  );
+  assert.equal(
+    job.steps[provenance].env.IS_BUILD_PRODUCTION,
+    "${{ inputs.build_production == true && '1' || '0' }}",
+  );
 });
 
 test("production build-only entry requires an immutable source and never publishes", () => {
@@ -299,8 +305,7 @@ test("installer-provenance names preview assets from the real product identity",
   const root = join(cwd, "packages/desktop/dist");
   await mkdir(root, { recursive: true });
   await writeFile(join(cwd, "package.json"), JSON.stringify({ version: "3.18.2+openzwork.1" }));
-  const git = (...args) =>
-    exec("git", ["-c", "core.hooksPath=", ...args], { cwd });
+  const git = (...args) => exec("git", ["-c", "core.hooksPath=", ...args], { cwd });
   await git("init");
   await git("add", ".");
   await git("-c", "user.name=P", "-c", "user.email=p@example.invalid", "commit", "-m", "fixture");
@@ -365,7 +370,10 @@ test("installer-provenance covers build-only and release routes with source bind
   const root = join(cwd, "packages/desktop/dist");
   await mkdir(root, { recursive: true });
   await writeFile(join(cwd, "package.json"), JSON.stringify({ version: "3.18.2+openzwork.1" }));
-  await writeFile(join(root, "VERSION-VERIFICATION.json"), JSON.stringify({ version: "3.18.2+openzwork.1" }));
+  await writeFile(
+    join(root, "VERSION-VERIFICATION.json"),
+    JSON.stringify({ version: "3.18.2+openzwork.1" }),
+  );
   const git = (...args) => exec("git", ["-c", "core.hooksPath=", ...args], { cwd });
   await git("init");
   await git("add", ".");
