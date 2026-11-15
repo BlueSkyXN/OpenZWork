@@ -35,7 +35,10 @@ export async function prepareWebRemoteControlAuthGateFixture(options: {
         spec.endsWith("conversation-session-web-remote-unread.test.ts") ||
         spec.endsWith("conversation-session-id-compatibility.test.ts") ||
         spec.endsWith("conversation-session-gen-ui-context.test.ts") ||
-        spec.endsWith("plugin-extension-sessions-write.test.ts"),
+        spec.endsWith("plugin-extension-sessions-write.test.ts") ||
+        // WT04（受管 worktree 手机查看）：依赖 loopback Web 前端与本地 relay，
+        // 与上面保留场景同一配对链路；官方登录桩仍不恢复。
+        spec.endsWith("git-worktree-remote-view.test.ts"),
     )
   )
     return prepareWebRemoteControlSessionEventsFixture({
