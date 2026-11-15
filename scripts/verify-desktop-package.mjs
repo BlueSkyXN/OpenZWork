@@ -67,15 +67,16 @@ export async function verifyDesktopPackage({
   if (!unpacked) throw new Error(`Unsupported platform: ${platform}`);
   const contents = join(root, distRoot || join("packages/desktop/dist"), unpacked);
   const resources = join(contents, platform === "macos-arm64" ? "Resources" : "resources");
+  // 测试可注入合成 asar 读取器；缺省按本仓 hoisted 布局解析 @electron/asar。
   const extractFile =
     extractAsarFile ??
-    (() => {
-      const require = createRequire(join(root, "packages/desktop/package.json"));
-      // eslint-disable-next-line @typescript-eslint/no-implied-eval -- 动态导入 asar 库
-      return import(pathToFileURL(require.resolve("@electron/asar")).href).then(
-        (module) => module.extractFile,
-      );
-    })();
+    (
+      await import(
+        pathToFileURL(
+          createRequire(join(root, "packages/desktop/package.json")).resolve("@electron/asar"),
+        ).href
+      )
+    ).extractFile;
   const archive = join(resources, "app.asar");
 
   const pkg = JSON.parse(extractFile(archive, "package.json").toString());
