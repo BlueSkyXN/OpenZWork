@@ -470,13 +470,21 @@ export async function applyPendingDataBaseDirMigration(
         // 3.18.0 起凭据密钥存于系统库并按凭据文件路径分条目，只复制 credentials.json 时
         // 新根没有对应条目，重启后掉登录且无法重新登录。提交指针前由 Main 把系统密钥
         // 登记到目标数据根；失败直接抛出，指针保持不变（下次启动重试，不产生半迁移态）。
+        // 修复原因（独立复核 G1，2026-11-15）：计划 targetBaseDir 保存的是用户输入的
+        // resolve 结果，可保留符号链接别名；copyDataDirectory 实际按 realpath 执行并
+        // 在下方提交 canonical 目标。系统条目按 resolve(凭据路径) 分条目，共享若登记
+        // 到别名条目，重启按持久化 dataBaseDir 找的是另一条目，复制过去的密文解不开
+        // （CREDENTIAL_SECURE_STORAGE_UNAVAILABLE）。共享目标必须与最终提交、未来
+        // Host 绑定的同一目标路径一致；源端保留计划 sourceBaseDir（既有密钥 owner
+        // 实际使用的命名），不做 realpath。
+        const committedTargetBaseDir = dirname(plan.targetRoot);
         await dependencies.shareCredentialKeyWithDataRoot?.({
           sourceBaseDir: pending.sourceBaseDir,
-          targetBaseDir: pending.targetBaseDir,
+          targetBaseDir: committedTargetBaseDir,
         });
         await writeSettingsAt(settingsFile, {
           ...relocateWorkspaceSettings(settings, plan),
-          dataBaseDir: dirname(plan.targetRoot),
+          dataBaseDir: committedTargetBaseDir,
           pendingDataBaseDirMigration: undefined,
         });
       },

@@ -1,6 +1,6 @@
-import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import {
   createSystemCredentialCipher,
@@ -48,6 +48,21 @@ function countingKeyStore(initial: string | null = null): {
   };
 }
 
+// 独立复核 G1（2026-11-15）：真实 systemKeyStore 的系统条目按 resolve(凭据路径) 分条目，
+// 不归并符号链接别名。替身按同一规则命名：共享与重启读取各自按真实路径取库，
+// 不能共用一个固定 targetStore——那会把「登记到别名条目」掩盖成通过。
+function perPathKeyStore() {
+  const saved = new Map<string, string>();
+  const storeFor = (file: string): CredentialKeyStore => ({
+    get: async () => saved.get(resolve(file)) ?? null,
+    set: async (key) => {
+      saved.set(resolve(file), key);
+    },
+  });
+  const hasEntry = (file: string) => saved.has(resolve(file));
+  return { saved, storeFor, hasEntry };
+}
+
 type MigrationServices = typeof import("@zcode/services/node");
 type MigrationBootstrap = typeof import("#src/main/desktopDataBaseDirBootstrap.js");
 
@@ -88,6 +103,21 @@ const shareWith =
   (bootstrap: MigrationBootstrap, stores: CopiedDataRootCredentialKeyStores) =>
   (plan: { sourceBaseDir: string; targetBaseDir: string }) =>
     bootstrap.shareCopiedDataRootCredentialKey(plan, stores);
+
+// G1 别名场景的共享入口：keyStore 按 plan 实际传入的凭据路径取对应条目库，
+// 真实装配/真实迁移链不变——修复前 target 传别名即登记到别名条目、重启读 canonical
+// 条目为空（CREDENTIAL_SECURE_STORAGE_UNAVAILABLE）。
+const shareWithPerPathStores =
+  (bootstrap: MigrationBootstrap, stores: ReturnType<typeof perPathKeyStore>) =>
+  async (plan: { sourceBaseDir: string; targetBaseDir: string }) => {
+    const credentialsPath = (baseDir: string) =>
+      join(baseDir, ".openzwork", "v2", "credentials.json");
+    await bootstrap.shareCopiedDataRootCredentialKey(plan, {
+      sourceKeyStore: stores.storeFor(credentialsPath(plan.sourceBaseDir)),
+      targetKeyStore: stores.storeFor(credentialsPath(plan.targetBaseDir)),
+    });
+    return plan.targetBaseDir;
+  };
 
 afterEach(async () => {
   for (const key of envKeys) {
@@ -141,6 +171,57 @@ it("registers the planned source key at the target root so the copied credential
 function sourceCipherOf(credentialsPath: string, store: CredentialKeyStore) {
   return createSystemCredentialCipher({ filePath: credentialsPath, env: {}, keyStore: store });
 }
+
+// 独立复核 G1（2026-11-15）正向回归：已登录＋目标符号链接别名。迁移提交的是 canonical
+// 目标（copyDataDirectory 按 realpath 执行），共享密钥必须登记到同一条目名下，新实例按
+// 持久化 dataBaseDir 才能解密；别名名下不得出现凭空条目。
+it("shares the key to the committed canonical target when the user picked a symlink alias", async () => {
+  const { home, services, bootstrap } = await runtime();
+  const taskRoot = await temp();
+  const destination = join(taskRoot, "destination");
+  const alias = join(taskRoot, "destination-alias");
+  await mkdir(destination);
+  await symlink(destination, alias, "dir");
+  const stores = perPathKeyStore();
+  const sourceCredentials = join(home, ".openzwork", "v2", "credentials.json");
+  const { token } = await seedSourceLogin(home, {
+    store: stores.storeFor(sourceCredentials),
+  });
+  const service = services.createSettingService();
+  await service.update({ locale: "en-US", dataBaseDir: home });
+  await service.updateDataBaseDir(alias);
+
+  let sharedTarget: string | undefined;
+  await services.applyPendingDataBaseDirMigration(undefined, {
+    shareCredentialKeyWithDataRoot: async (plan) => {
+      sharedTarget = await shareWithPerPathStores(bootstrap, stores)(plan);
+    },
+  });
+
+  // 提交指针与共享目标是同一条目名：canonical 目标，不是用户输入的别名。
+  const committed = await services.createSettingService().get();
+  expect(committed.dataBaseDir).toBe(destination);
+  expect(committed.pendingDataBaseDirMigration).toBeUndefined();
+  expect(sharedTarget).toBe(destination);
+
+  // 新实例按持久化 dataBaseDir 命名取条目可解密（修复前该条目为空）。
+  const canonicalCredentials = join(destination, ".openzwork", "v2", "credentials.json");
+  const copiedToken = JSON.parse(await readFile(canonicalCredentials, "utf8")).token as string;
+  const targetCipher = createSystemCredentialCipher({
+    filePath: canonicalCredentials,
+    env: {},
+    keyStore: stores.storeFor(canonicalCredentials),
+  });
+  expect(await targetCipher.decrypt(copiedToken)).toBe("source-login");
+  expect(await targetCipher.decrypt(await targetCipher.encrypt("relogin"))).toBe("relogin");
+  // 条目确实写在 canonical 名下；别名名下没有条目（别名不是密钥 owner 的命名）。
+  expect(stores.hasEntry(canonicalCredentials)).toBe(true);
+  expect(stores.hasEntry(join(alias, ".openzwork", "v2", "credentials.json"))).toBe(false);
+  // 旧源仍按原命名可读（切回/核对合同）。
+  expect(
+    await sourceCipherOf(sourceCredentials, stores.storeFor(sourceCredentials)).decrypt(token),
+  ).toBe("source-login");
+});
 
 it("keeps the pointer and the plan when the source key is unavailable, and a retry after recovery commits", async () => {
   const { home, services, bootstrap } = await runtime();

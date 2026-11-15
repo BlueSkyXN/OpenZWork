@@ -181,8 +181,16 @@ describe("data directory migration", () => {
     await symlink(target, alias, process.platform === "win32" ? "junction" : "dir");
     const service = context.createSettingService();
     await service.updateDataBaseDir(alias);
-    await context.applyPendingDataBaseDirMigration();
+    // 独立复核 G1（2026-11-15）：凭据密钥共享必须拿到与提交指针相同的 canonical 目标；
+    // 系统条目按 resolve(凭据路径) 分条目，传别名会登记到别名条目而重启读取失败。
+    const shareTargets: string[] = [];
+    await context.applyPendingDataBaseDirMigration(undefined, {
+      shareCredentialKeyWithDataRoot: async (plan) => {
+        shareTargets.push(plan.targetBaseDir);
+      },
+    });
     expect((await service.get()).dataBaseDir).toBe(target);
+    expect(shareTargets).toEqual([target]);
   });
 
   // 上游 v3.18.2（ZCT-2120723935487688704）移植回归：凭据密钥共享在指针提交前执行，
