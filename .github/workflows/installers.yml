@@ -9,6 +9,10 @@ on:
         description: Immutable source commit for dispatch builds (empty uses the event commit; never a floating branch head)
         type: string
         default: ""
+      build_production:
+        description: Build unsigned production installers from source_commit without publishing (no tag, no release)
+        type: boolean
+        default: false
       release_tag:
         description: Existing formal OpenZWork tag for a production installer
         type: string
@@ -53,7 +57,9 @@ jobs:
     if: ${{ !inputs.publish_installer_run }}
     name: installer (${{ matrix.platform }})
     env:
-      ZCODE_ENV: ${{ (inputs.release_tag || github.ref_type == 'tag') && 'production' || '' }}
+      # 三条路由：正式 tag / 正式 tag 直跑 = production；dispatch 的 build_production
+      # = production 但只构建不发布；其余分支 push 与普通 dispatch = Preview。
+      ZCODE_ENV: ${{ (inputs.release_tag || github.ref_type == 'tag' || inputs.build_production == true) && 'production' || '' }}
       ZCODE_PREVIEW_IDENTITY: "0"
       ZCODE_ENABLE_MAC_SIGN: "0"
       ZCODE_ENABLE_WINDOWS_SIGN: "0"
@@ -121,6 +127,21 @@ jobs:
           }
           console.log(JSON.stringify({ sourceCommit: head }));
           NODE
+
+      # production 仅构建入口（CI-FIRST §2.8）：用固定 source_commit 产出未签名 production
+      # 安装包，不依赖正式 tag，也不进入 publish job。缺 source_commit 直接失败——不能用
+      # 浮动分支头充当验收来源。
+      - name: Require immutable source for production build-only
+        if: inputs.build_production == true
+        shell: bash
+        run: |
+          if [ -z "$SOURCE_COMMIT" ]; then
+            echo "::error::build_production requires source_commit (full 40-hex SHA)"; exit 1
+          fi
+          if ! printf '%s' "$SOURCE_COMMIT" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::source_commit must be a full 40-hex commit SHA"; exit 1
+          fi
+          echo "production build-only from $SOURCE_COMMIT (unsigned, not published)"
 
       # Workflow 可以来自更新的主干，源码必须固定到已有 tag；不能把 run.head_sha 当源码 SHA。
       - name: Verify release source
@@ -219,121 +240,55 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Preview 也有来源清单（CI-FIRST §2.7）：source/tree/workflow SHA + 全部安装包
-      # sha256；正式 tag 走下方 release manifest，不重复。
-      - name: Record preview build provenance
-        if: env.RELEASE_TAG == ''
+      # 来源清单（CI-FIRST §2.7）：Preview / production 仅构建 / 正式 tag 三条路由共用
+      # scripts/installer-provenance.mjs 的命名与清单逻辑。产品身份、环境后缀、平台/架构
+      # 别名都取真实构建期函数——分支 Preview 包实际叫
+      # `OpenZWork Preview-<version>-mac-arm64_TEST.dmg`，硬编码 `OpenZWork-<version>-...`
+      # 会恒找不到（2026-11-16 复现：Expected at least one dmg installer, found 0）。
+      - name: Record build provenance
         shell: bash
         env:
           RELEASE_PLATFORM: ${{ matrix.platform }}
           RELEASE_OS: ${{ matrix.bundle-os }}
           RELEASE_ARCH: ${{ matrix.bundle-arch }}
+          EXPECTED_COMMIT: ${{ inputs.release_commit || inputs.source_commit || github.sha }}
+          IS_RELEASE: ${{ (inputs.release_tag || github.ref_type == 'tag') && '1' || '0' }}
+          IS_BUILD_PRODUCTION: ${{ inputs.build_production == true && '1' || '0' }}
+          SOURCE_TAG: ${{ inputs.release_tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
         run: |
+          set -euo pipefail
           node --input-type=module <<'NODE'
-          import { execFile } from 'node:child_process';
-          import { createHash } from 'node:crypto';
-          import { createReadStream } from 'node:fs';
-          import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
-          import { join } from 'node:path';
-          import { promisify } from 'node:util';
-          const exec = promisify(execFile);
-          const git = async (...args) => (await exec('git', args)).stdout.trim();
-          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
-          const extensions = { mac: ['dmg', 'zip'], win: ['exe'], linux: ['AppImage', 'deb', 'rpm', 'pkg.tar.zst'] }[process.env.RELEASE_OS];
-          const root = 'packages/desktop/dist';
-          const arch = process.env.RELEASE_ARCH;
-          const aliases = process.env.RELEASE_OS === 'linux' && arch === 'x64' ? ['x64', 'x86_64', 'amd64'] : [arch];
-          const files = (await readdir(root, { withFileTypes: true })).filter((entry) => entry.isFile()).map((entry) => entry.name);
-          const assets = [];
-          for (const ext of extensions) {
-            const candidates = files.filter((name) => aliases.some((alias) => name === `OpenZWork-${version}-${process.env.RELEASE_OS}-${alias}.${ext}`));
-            if (candidates.length < 1) throw new Error(`Expected at least one ${ext} installer, found ${candidates.length}`);
-            for (const name of candidates) {
-              const path = join(root, name);
-              const info = await stat(path);
-              if (!info.isFile() || info.size === 0) throw new Error(`Missing or empty installer: ${name}`);
-              const hash = createHash('sha256');
-              for await (const chunk of createReadStream(path)) hash.update(chunk);
-              assets.push({ name, size: info.size, sha256: hash.digest('hex') });
-            }
-          }
-          const manifest = {
-            sourceCommit: await git('rev-parse', 'HEAD'),
-            sourceTree: await git('rev-parse', 'HEAD^{tree}'),
-            workflowCommit: process.env.GITHUB_WORKFLOW_SHA,
-            runUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
-            version,
-            platform: process.env.RELEASE_PLATFORM,
-            productName: 'OpenZWork', environment: 'preview', codeSigning: 'unsigned',
-            assets,
-          };
-          await writeFile(join(root, 'PREVIEW-MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
-          console.log(JSON.stringify(manifest, null, 2));
-          NODE
-
-      - name: Record release installer provenance
-        if: env.RELEASE_TAG != ''
-        shell: bash
-        env:
-          RELEASE_PLATFORM: ${{ matrix.platform }}
-          RELEASE_OS: ${{ matrix.bundle-os }}
-          RELEASE_ARCH: ${{ matrix.bundle-arch }}
-        run: |
-          node --input-type=module <<'NODE'
-          import { execFile } from 'node:child_process';
-          import { createHash } from 'node:crypto';
-          import { createReadStream } from 'node:fs';
-          import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
-          import { join } from 'node:path';
-          import { promisify } from 'node:util';
-          const exec = promisify(execFile);
-          const git = async (...args) => (await exec('git', args)).stdout.trim();
-          if (process.env.ZCODE_ENV !== 'production' || process.env.ZCODE_PREVIEW_IDENTITY !== '0') {
-            throw new Error('Release manifest requires production identity');
-          }
-          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
-          const [upstreamVersion, revision] = version.split('+openzwork.');
-          const releaseRevision = revision ?? '0';
-          let versionVerification;
-          if (revision) {
+          import { readFile } from 'node:fs/promises';
+          import { recordInstallerProvenance } from './scripts/installer-provenance.mjs';
+          // 路由判定放在脚本里：YAML 表达式不支持可读的嵌套三元（且 `? :` 会被当映射键）。
+          const mode =
+            process.env.IS_RELEASE === '1'
+              ? 'release'
+              : process.env.IS_BUILD_PRODUCTION === '1'
+                ? 'build-only'
+                : 'preview';
+          const version = JSON.parse(await readFile('package.json', 'utf8')).version;
+          let versionVerification = null;
+          if (mode !== 'preview' && version.includes('+openzwork.')) {
             versionVerification = JSON.parse(await readFile('packages/desktop/dist/VERSION-VERIFICATION.json', 'utf8'));
           }
-          const extensions = { mac: ['dmg', 'zip'], win: ['exe'], linux: ['AppImage', 'deb', 'rpm', 'pkg.tar.zst'] }[process.env.RELEASE_OS];
-          if (!extensions) throw new Error('Unsupported release platform');
-          const root = 'packages/desktop/dist';
-          // Linux 各 target 按发行格式将 x64 映射为 x86_64 / amd64；沿用 bundle 的架构别名。
-          const arch = process.env.RELEASE_ARCH;
-          const aliases = process.env.RELEASE_OS === 'linux' && arch === 'x64' ? ['x64', 'x86_64', 'amd64'] : [arch];
-          const files = (await readdir(root, { withFileTypes: true })).filter(entry => entry.isFile()).map(entry => entry.name);
-          const assets = [];
-          for (const ext of extensions) {
-            const candidates = files.filter(name => aliases.some(alias => name === `OpenZWork-${version}-${process.env.RELEASE_OS}-${alias}.${ext}`));
-            if (candidates.length !== 1) throw new Error(`Expected one ${ext} installer, found ${candidates.length}`);
-            const [name] = candidates;
-            const path = join(root, name);
-            const info = await stat(path);
-            if (!info.isFile() || info.size === 0) throw new Error(`Missing or empty installer: ${name}`);
-            const hash = createHash('sha256');
-            for await (const chunk of createReadStream(path)) hash.update(chunk);
-            assets.push({ name, size: info.size, sha256: hash.digest('hex') });
-          }
-          const manifest = {
-            sourceTag: process.env.RELEASE_TAG,
-            sourceCommit: await git('rev-parse', 'HEAD'),
-            sourceTree: await git('rev-parse', 'HEAD^{tree}'),
-            workflowCommit: process.env.GITHUB_WORKFLOW_SHA,
-            runUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
-            version, upstreamVersion, releaseRevision,
-            nativeBuildVersion: `${upstreamVersion}.${releaseRevision}`,
-            ...(versionVerification ? { versionVerification } : {}),
+          const { manifest, fileName } = await recordInstallerProvenance({
+            mode,
             platform: process.env.RELEASE_PLATFORM,
-            productName: 'OpenZWork', environment: 'production', codeSigning: 'unsigned',
-            assets,
-          };
-          if (manifest.sourceCommit !== process.env.RELEASE_COMMIT) throw new Error('Source changed during build');
-          await writeFile(join(root, 'RELEASE-MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
-          console.log(JSON.stringify(manifest, null, 2));
+            os: process.env.RELEASE_OS,
+            arch: process.env.RELEASE_ARCH,
+            sourceTag: process.env.SOURCE_TAG,
+            expectedCommit: process.env.EXPECTED_COMMIT,
+            versionVerification,
+          });
+          console.log(JSON.stringify({ fileName, manifest }, null, 2));
           NODE
+          {
+            echo '### Build provenance'
+            echo '```json'
+            cat packages/desktop/dist/*-MANIFEST.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v7.0.1
@@ -357,6 +312,7 @@ jobs:
             packages/desktop/dist/**/*.pkg.tar.zst
             packages/desktop/dist/RELEASE-MANIFEST.json
             packages/desktop/dist/PREVIEW-MANIFEST.json
+            packages/desktop/dist/BUILD-MANIFEST.json
             packages/desktop/dist/VERSION-VERIFICATION.json
             packages/desktop/dist/PK01-REPORT.json
           if-no-files-found: error
@@ -445,7 +401,8 @@ jobs:
           if-no-files-found: error
 
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_installer_run != '' }}
+    # production 仅构建路由（build_production）永不进入发布：它只产出未签名验收包。
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_installer_run != '' && inputs.build_production != true }}
     name: Publish verified release
     runs-on: ubuntu-latest
     timeout-minutes: 30
