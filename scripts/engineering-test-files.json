@@ -13,6 +13,7 @@
   "packages/desktop/test/conversationTelemetryParity.test.ts",
   "packages/desktop/test/conversationTurnEvidence.test.ts",
   "packages/desktop/test/credentialFault.test.ts",
+  "packages/desktop/test/credentialMigrationDataRootShare.test.ts",
   "packages/desktop/test/customOpenAIProviderStore.test.ts",
   "packages/desktop/test/desktop-native-package-policy.test.ts",
   "packages/desktop/test/desktopAgentBytecode.test.ts",

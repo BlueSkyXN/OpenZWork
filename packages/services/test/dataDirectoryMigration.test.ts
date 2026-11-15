@@ -186,7 +186,9 @@ describe("data directory migration", () => {
   });
 
   // 上游 v3.18.2（ZCT-2120723935487688704）移植回归：凭据密钥共享在指针提交前执行，
-  // 且失败中止迁移（不产生半迁移态）。
+  // 且失败中止迁移（不产生半迁移态）。此处只验证服务层调用时序（share 边界 stub）；
+  // Main 真实装配（源/目标路径绑定与真实 cipher）由 desktop 工程回归覆盖
+  // （packages/desktop/test/credentialMigrationDataRootShare.test.ts）。
   it("shares the credential key before committing the pointer and aborts on share failure", async () => {
     const context = await runtime();
     const target = await temp();
@@ -195,26 +197,30 @@ describe("data directory migration", () => {
     await fixture(context.home, "cli/config.json", "{}");
     await service.updateDataBaseDir(target);
 
-    const shareCalls: string[] = [];
+    const shareCalls: Array<{ sourceBaseDir: string; targetBaseDir: string }> = [];
     await expect(
       context.applyPendingDataBaseDirMigration(undefined, {
-        shareCredentialKeyWithDataRoot: async (targetBaseDir) => {
-          shareCalls.push(targetBaseDir);
+        shareCredentialKeyWithDataRoot: async (plan) => {
+          shareCalls.push(plan);
           throw new Error("system credential storage unavailable");
         },
       }),
     ).rejects.toThrow("system credential storage unavailable");
-    expect(shareCalls).toEqual([target]);
+    // 独立复核 F1 回归：源/目标都必须来自迁移计划，不允许只传目标让 Main 猜源。
+    expect(shareCalls).toEqual([{ sourceBaseDir: context.home, targetBaseDir: target }]);
     const aborted = await context.createSettingService().get();
     expect(aborted.dataBaseDir).toBe(context.home);
     expect(aborted.pendingDataBaseDirMigration?.targetBaseDir).toBe(target);
 
     await context.applyPendingDataBaseDirMigration(undefined, {
-      shareCredentialKeyWithDataRoot: async (targetBaseDir) => {
-        shareCalls.push(targetBaseDir);
+      shareCredentialKeyWithDataRoot: async (plan) => {
+        shareCalls.push(plan);
       },
     });
-    expect(shareCalls).toEqual([target, target]);
+    expect(shareCalls).toEqual([
+      { sourceBaseDir: context.home, targetBaseDir: target },
+      { sourceBaseDir: context.home, targetBaseDir: target },
+    ]);
     const committed = await context.createSettingService().get();
     expect(committed.dataBaseDir).toBe(target);
     expect(committed.pendingDataBaseDirMigration).toBeUndefined();

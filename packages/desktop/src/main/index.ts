@@ -216,10 +216,8 @@ import {
   getPluginSandboxHost,
   installPluginSandboxHost,
 } from "./pluginSandbox/index.js";
-import {
-  createSystemCredentialCipher,
-  enablePrivateFileKeyFallback,
-} from "@zcode/shared/credential-security";
+import { enablePrivateFileKeyFallback } from "@zcode/shared/credential-security";
+import { shareCopiedDataRootCredentialKey } from "./desktopDataBaseDirBootstrap.js";
 
 // Bug 原因：Linux 的 Secret Service（GNOME Keyring/KWallet）不是必备组件；没有 keyring 服务，
 // 或 keyring 被锁且用户取消解锁框时，Main 取不到系统密钥，登录永远保存失败。
@@ -1533,13 +1531,9 @@ app.whenReady().then(async () => {
         // 移植（上游 v3.18.2 ZCT-2120723935487688704）：我方迁移在启动门禁执行、业务
         // Host 尚未启动，凭据密钥共享由 Main 直接调系统 cipher 完成（不经 Host 通道；
         // Host 侧 shareCredentialKeyWithDataRoot 保留为运行时通道合同）。密钥不离开 Main。
-        shareCredentialKeyWithDataRoot: (targetBaseDir) =>
-          createSystemCredentialCipher({
-            // 目标根下的凭据文件路径；密钥条目按该路径登记（与 Host fork 时的绑定规则一致）。
-            filePath: join(targetBaseDir, OPENZWORK_DATA_DIR_NAME, "v2", "credentials.json"),
-          }).shareKeyWithCopiedCredentials(
-            join(targetBaseDir, OPENZWORK_DATA_DIR_NAME, "v2", "credentials.json"),
-          ),
+        // 修复原因（独立复核 F1，2026-11-15）：源/目标必须来自迁移计划——装配在
+        // shareCopiedDataRootCredentialKey（cipher 绑定计划源凭据路径，向目标登记）。
+        shareCredentialKeyWithDataRoot: shareCopiedDataRootCredentialKey,
       });
       break;
     } catch (error) {

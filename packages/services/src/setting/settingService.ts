@@ -446,8 +446,14 @@ export async function applyPendingDataBaseDirMigration(
   relocateAgent?: (plan: DataRelocationPlan) => Promise<void>,
   // Desktop Main 注入：数据目录复制完成后把系统密钥登记到目标数据根（凭据密钥共享，
   // 上游 v3.18.2 同能力）。失败时迁移中止、指针不变。Server/Web 不注入。
+  // 修复原因（独立复核 F1，2026-11-15）：源/目标必须来自迁移计划本体——启动门禁时
+  // Main 的运行时根已被 early bootstrap 指向目标，不能按目标猜源，也不能只传目标让
+  // Main 反推源。计划（pendingDataBaseDirMigration）是源/目标的唯一所有者。
   dependencies: {
-    shareCredentialKeyWithDataRoot?: (targetBaseDir: string) => Promise<void>;
+    shareCredentialKeyWithDataRoot?: (plan: {
+      sourceBaseDir: string;
+      targetBaseDir: string;
+    }) => Promise<void>;
   } = {},
 ): Promise<void> {
   const settingsFile = join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "v2", "setting.json");
@@ -464,7 +470,10 @@ export async function applyPendingDataBaseDirMigration(
         // 3.18.0 起凭据密钥存于系统库并按凭据文件路径分条目，只复制 credentials.json 时
         // 新根没有对应条目，重启后掉登录且无法重新登录。提交指针前由 Main 把系统密钥
         // 登记到目标数据根；失败直接抛出，指针保持不变（下次启动重试，不产生半迁移态）。
-        await dependencies.shareCredentialKeyWithDataRoot?.(pending.targetBaseDir);
+        await dependencies.shareCredentialKeyWithDataRoot?.({
+          sourceBaseDir: pending.sourceBaseDir,
+          targetBaseDir: pending.targetBaseDir,
+        });
         await writeSettingsAt(settingsFile, {
           ...relocateWorkspaceSettings(settings, plan),
           dataBaseDir: dirname(plan.targetRoot),

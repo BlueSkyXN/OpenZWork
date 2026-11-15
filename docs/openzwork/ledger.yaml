@@ -506,9 +506,10 @@ entries:
     tests:
       - packages/services/test/dataDirectoryMigration.test.ts
       - packages/services/test/dataDirectoryTrueMigration.test.ts
+      - packages/desktop/test/credentialMigrationDataRootShare.test.ts
       - apps/zcode-cli/packages/adapters/tests/storage-relocation.test.ts
       - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/openzwork-data-directory.test.ts
-    source: "PR #54；b36db2f6e；可配置数据存储目录规范"
+    source: "PR #54；b36db2f6e；可配置数据存储目录规范；v3.18.2 凭据密钥共享启动门禁装配见 docs/openzwork/upstream/v3.18.2-integration.md（F1 修正裁定）"
   - id: OZ-C010
     kind: change
     status: active
