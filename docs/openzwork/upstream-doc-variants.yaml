@@ -16,7 +16,7 @@ variants:
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
       - apps/dev-docs/vite.config.ts
     kind: content
-    upstreamBlob: e75b073e5f0ec891a898c210834b3ffea796404e
+    upstreamBlob: b2a1c1962018c69d3e98ece467df12b9c1008e91
   - upstream: docs/builtin-provider-config-build-environments.md
     variant: docs/builtin-provider-config-build-environments-openzwork.md
     role: maintained
