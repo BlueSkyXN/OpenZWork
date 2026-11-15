@@ -249,6 +249,15 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
       throw new Error("WT04 requires isolated Electron runner");
     const agentsBefore = await readAgentTreeSnapshot();
+    // WT04 CLI 复用补证（2026-11-15 独立复核缺口）：除 sessionId 与 Host 进程集合外，
+    // 记录查看前桌面 pane 的会话运行代（data-session-generation）——手机查看若另起/重启
+    // 独立 CLI runtime，该代数会翻新；查看后应保持不变（合法冷恢复场景由 WT04-1 覆盖）。
+    const desktopGenerationBefore = await browser.execute(() => {
+      const pane = document.querySelector(
+        '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
+      );
+      return pane?.getAttribute("data-session-generation") ?? null;
+    });
 
     const pairingUrl = await obtainUnreadPairingUrl();
     webBrowser = await chromium.launch({
@@ -315,6 +324,31 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     const hostBefore = agentsBefore.filter((entry) => entry.includes("zcode-host"));
     const agentsAfter = await readAgentTreeSnapshot();
     expect(agentsAfter.filter((entry) => entry.includes("zcode-host"))).toEqual(hostBefore);
+
+    // CLI 复用归属补证①：桌面 pane 会话运行代不变——手机查看走原 Host attachment 的
+    // 只读路径，不为查看重启/派生会话 runtime。
+    const desktopGenerationAfter = await browser.execute(() => {
+      const pane = document.querySelector(
+        '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
+      );
+      return pane?.getAttribute("data-session-generation") ?? null;
+    });
+    expect(desktopGenerationAfter).toBe(desktopGenerationBefore);
+
+    // CLI 复用归属补证②：本 run 属单 spec 点名执行，凡命令行携带本工作区路径的
+    // zcode CLI/Host 进程必须全部位于该 Electron 唯一 Host 的进程树内；树外命中即
+    // 视为手机查看派生了独立 CLI/runtime（进程归属证据，允许树内合法懒启动）。
+    const electronRootPid = await browser.electron.execute((electron) => process.pid);
+    const allProcesses = await listSystemProcesses();
+    const rogueAgents = allProcesses
+      .filter(
+        (proc) =>
+          /zcode[-.](cli|host)/iu.test(proc.command) &&
+          proc.command.includes("OpenZWork-sync-v3.18.0-20261111") &&
+          proc.pid !== electronRootPid,
+      )
+      .filter((proc) => !agentsAfter.some((entry) => entry.startsWith(`${proc.pid}:`)));
+    expect(rogueAgents).toEqual([]);
 
     // 桌面侧没有因此打开第二个同路径 workspace（不派生另一 Host 的窗口侧证据）。
     const pathsAfterMobile = await readDesktopWorkspacePaths();
