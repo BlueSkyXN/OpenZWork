@@ -5,7 +5,14 @@ import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { verifyDesktopPackage } from "../verify-desktop-package.mjs";
+import {
+  REQUIRED_ASAR_DIRECTORIES,
+  REQUIRED_BUNDLED_PLUGIN_PACKAGES,
+  REQUIRED_PLUGIN_ENTRY_POINTS,
+  REQUIRED_RENDERER_ENTRIES,
+  REQUIRED_RUNTIME_PATHS,
+  verifyDesktopPackage,
+} from "../verify-desktop-package.mjs";
 import {
   resolveDesktopProductIdentity,
   desktopProductIdentities,
@@ -44,6 +51,17 @@ async function syntheticPackage(
   const staging = join(root, "staging");
   await mkdir(join(staging, "out/metadata"), { recursive: true });
   await mkdir(join(staging, "out/main"), { recursive: true });
+  // PK01 扩展入口与分块目录（H6）：合成包必须带上被核验的全部必需项，否则核验会
+  // 因夹具缺件失败——这是夹具责任，不是放宽检查。
+  for (const directory of REQUIRED_ASAR_DIRECTORIES) {
+    if (directory === "out/metadata" || directory === "out/main") continue;
+    await mkdir(join(staging, directory), { recursive: true });
+  }
+  for (const entry of REQUIRED_RENDERER_ENTRIES) {
+    const target = join(staging, entry);
+    if (entry.endsWith("/")) await mkdir(target, { recursive: true });
+    else await writeFile(target, "<html></html>\n");
+  }
   await writeFile(
     join(staging, "package.json"),
     JSON.stringify({ version, zcodeProductFlavor: flavor }),
@@ -66,7 +84,28 @@ async function syntheticPackage(
   await writeFile(join(resources, "THIRD-PARTY-NOTICES.md"), "notices\n");
   await mkdir(join(resources, "glm"), { recursive: true });
   await writeFile(join(resources, "glm/zcode.cjs"), "console.log('agent');\n");
-  return { resources };
+  // 内置插件包 + MCP 入口 + 运行库材料。
+  for (const name of REQUIRED_BUNDLED_PLUGIN_PACKAGES) {
+    const directory = join(resources, "glm", "packages", name);
+    await mkdir(directory, { recursive: true });
+    const entry = REQUIRED_PLUGIN_ENTRY_POINTS[name];
+    await writeFile(
+      join(directory, "package.json"),
+      JSON.stringify(entry ? { name, main: entry } : { name }),
+    );
+    if (entry) {
+      const entryPath = join(directory, entry);
+      await mkdir(join(entryPath, ".."), { recursive: true });
+      await writeFile(entryPath, "// mcp server\n");
+    }
+  }
+  for (const relative of REQUIRED_RUNTIME_PATHS) {
+    if (relative === "glm/zcode.cjs") continue;
+    const target = join(resources, relative);
+    await mkdir(join(target, ".."), { recursive: true });
+    await writeFile(target, "binary\n");
+  }
+  return { resources, staging };
 }
 
 async function projectRoot(packageRoot) {
@@ -222,6 +261,111 @@ test("verify-desktop-package fails when license material or runtime entries go m
     assert.match(joined, /license material missing: thirdPartyNotices/);
     assert.match(joined, /agent runtime directory missing/);
     assert.match(joined, /desktop CLI entry missing/);
+  } finally {
+    await rm(packageRoot, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+// H6：PK01 自动核验范围。以下反例证明新增检查能发现真实缺件，而不是只断言"出现了某字符串"。
+test("verify-desktop-package rejects a missing bundled plugin package", async () => {
+  const packageRoot = await temp();
+  const { resources } = await syntheticPackage(packageRoot, { flavor: "production" });
+  await rm(join(resources, "glm/packages/design-plugin"), { recursive: true, force: true });
+  const root = await projectRoot(packageRoot);
+  try {
+    const report = await verifyDesktopPackage({
+      platform: "macos-arm64",
+      root,
+      distRoot: "packages/desktop/dist-pkg",
+      extractAsarFile,
+      env: ENV_PRODUCTION,
+    });
+    assert.equal(report.ok, false);
+    assert.match(
+      report.failures.join("\n"),
+      /bundled plugin package missing: glm\/packages\/design-plugin/,
+    );
+    assert.equal(report.bundledPlugins["design-plugin"], false);
+  } finally {
+    await rm(packageRoot, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("verify-desktop-package rejects a plugin whose declared MCP entry is absent", async () => {
+  const packageRoot = await temp();
+  const { resources } = await syntheticPackage(packageRoot, { flavor: "production" });
+  // 声明了 main 但文件被删：只看 package.json 存在会漏判。
+  await rm(join(resources, "glm/packages/node-repl-host/dist/mcp/server.js"), { force: true });
+  const root = await projectRoot(packageRoot);
+  try {
+    const report = await verifyDesktopPackage({
+      platform: "macos-arm64",
+      root,
+      distRoot: "packages/desktop/dist-pkg",
+      extractAsarFile,
+      env: ENV_PRODUCTION,
+    });
+    assert.equal(report.ok, false);
+    assert.match(
+      report.failures.join("\n"),
+      /plugin entry point missing: glm\/packages\/node-repl-host/,
+    );
+    assert.equal(report.pluginEntryPoints["node-repl-host"].present, false);
+  } finally {
+    await rm(packageRoot, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("verify-desktop-package rejects missing extension-host chunk and renderer entries", async () => {
+  const packageRoot = await temp();
+  const { staging } = await syntheticPackage(packageRoot, { flavor: "production" });
+  // 删掉 extension-host 分块与 renderer 静态资源后重打 asar。
+  await rm(join(staging, "out/extension-host"), { recursive: true, force: true });
+  await rm(join(staging, "out/renderer/assets"), { recursive: true, force: true });
+  const productName = desktopProductIdentities.production.productName;
+  const resources = join(packageRoot, `mac-arm64/${productName}.app/Contents/Resources`);
+  const { createPackage } = await import(require.resolve("@electron/asar"));
+  await createPackage(staging, join(resources, "app.asar"));
+  const root = await projectRoot(packageRoot);
+  try {
+    const report = await verifyDesktopPackage({
+      platform: "macos-arm64",
+      root,
+      distRoot: "packages/desktop/dist-pkg",
+      extractAsarFile,
+      env: ENV_PRODUCTION,
+    });
+    assert.equal(report.ok, false);
+    const joined = report.failures.join("\n");
+    assert.match(joined, /required asar directory missing: out\/extension-host/);
+    assert.match(joined, /required renderer entry missing: out\/renderer\/assets\//);
+    assert.equal(report.asarDirectories["out/extension-host"], false);
+    assert.equal(report.rendererEntries["out/renderer/assets/"], false);
+  } finally {
+    await rm(packageRoot, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("verify-desktop-package rejects a missing runtime library", async () => {
+  const packageRoot = await temp();
+  const { resources } = await syntheticPackage(packageRoot, { flavor: "production" });
+  await rm(join(resources, "tools/ripgrep"), { force: true });
+  const root = await projectRoot(packageRoot);
+  try {
+    const report = await verifyDesktopPackage({
+      platform: "macos-arm64",
+      root,
+      distRoot: "packages/desktop/dist-pkg",
+      extractAsarFile,
+      env: ENV_PRODUCTION,
+    });
+    assert.equal(report.ok, false);
+    assert.match(report.failures.join("\n"), /required runtime path missing: tools\/ripgrep/);
+    assert.equal(report.runtimePaths["tools/ripgrep"], false);
   } finally {
     await rm(packageRoot, { recursive: true, force: true });
     await rm(root, { recursive: true, force: true });
