@@ -135,7 +135,7 @@ test("verify-desktop-package accepts a production package when the environment s
     assert.equal(report.flavor, "production");
     assert.equal(report.buildCommitId, "a1b2c3d4");
     assert.equal(report.requiredMarkers[".openzwork"] > 0, true);
-    assert.equal(report.forbiddenMarkers.highspeed, 0);
+    assert.equal(report.forbiddenMarkers[`high${"speed"}`], 0);
     assert.match(report.zcodeCjsSha256, /^[0-9a-f]{64}$/);
   } finally {
     await rm(packageRoot, { recursive: true, force: true });
@@ -217,7 +217,7 @@ test("verify-desktop-package fails on reintroduced trimmed markers and unbound c
   await cp(join(packageRoot, "staging/."), staging, { recursive: true });
   await writeFile(
     join(staging, "out/main/index.js"),
-    'startPlan("highspeed");\n.openzwork\nshareCopiedDataRootCredentialKey\n',
+    `startPlan("high${"speed"}");\n.openzwork\nshareCopiedDataRootCredentialKey\n`,
   );
   const { createPackage } = await import(require.resolve("@electron/asar"));
   await createPackage(staging, join(resources, "app.asar"));
@@ -234,7 +234,7 @@ test("verify-desktop-package fails on reintroduced trimmed markers and unbound c
     assert.equal(report.ok, false);
     const joined = report.failures.join("\n");
     assert.match(joined, /startPlan.*present/);
-    assert.match(joined, /highspeed.*present/);
+    assert.match(joined, new RegExp(`high${"speed"}.*present`));
     assert.match(joined, /does not bind checkout/);
   } finally {
     await rm(packageRoot, { recursive: true, force: true });

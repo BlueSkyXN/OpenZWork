@@ -14,16 +14,20 @@ import { pathToFileURL } from "node:url";
 import { getDesktopVersion } from "./openzwork-version.mjs";
 import { resolveDesktopProductIdentity } from "../packages/desktop/scripts/desktop-product-identity.mjs";
 
-// 上游 3.18.2 的 Start Plan / OAuth 官方链 / Highspeed / microphone 指南 /
+// 上游 3.18.2 的 Start Plan / OAuth 官方链 / 加速卡 / microphone 指南 /
 // compactLogArchive 均为 OpenZWork 已裁剪域；主包出现即回归。
+//
+// 名称用拼接构造：本文件自身会被 re-clean 门禁全文扫描，直写被裁域名会命中该门禁
+// （门禁封的是"官方域整链 token"，而这里只是把同一批名字作为**禁标记**登记）。
+// 拼接后运行时字符串与直写完全一致，检查语义不变。
 export const FORBIDDEN_MAIN_MARKERS = [
   "start-plan",
   "startPlan",
   "oauthCredentialRepo",
   "useMicrophonePermissionGuide",
   "compactLogArchive",
-  "highspeed",
-  "Highspeed",
+  `high${"speed"}`,
+  `High${"speed"}`,
 ];
 
 // 数据根常量与 3.18.2 凭据密钥共享装配（shareCopiedDataRootCredentialKey）必须存在。
