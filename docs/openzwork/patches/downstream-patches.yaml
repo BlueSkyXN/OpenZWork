@@ -513,3 +513,41 @@ patches:
     retire: 上游测试改为结构/引用断言或自行维护与图谱同步的计数生成，上游基准运行通过。
     refs:
       - docs/feature-boundary-graph-visualization.md
+
+  - id: OW-P025
+    title: 插件市场已是主视图时从设置页再次进入市场被切回对话
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.18.0
+      checked: 3.18.0
+    trigger: 插件商店为主视图时打开设置，在插件设置页点击「浏览插件商店」。
+    impact: 设置层关闭后主视图被退出流程切回对话，商店不出现；顺序执行 plugin-localization-creator 两个用例时第二个用例 openPluginSettings 等待 plugin-store-root 30s 超时（run 155209494-p73596 EXIT 1）。
+    cause: App 的 handleOpenPluginStoreForScope 在主视图已是 plugin-store 时走 bump 分支提前返回，不置 preserveNextSettingsExit 标记；useWorkspaceMainViewSettingsExit 在设置关闭时看到「主视图与进入设置前一致」即调用 onExitSettings 切回对话。hook 注释本身已写明该标记用于防止设置退出错误关闭市场，但 bump 分支漏置。
+    fix: bump 分支在递增 pluginStoreOpenVersion 前调用 preserveNextSettingsExit()；标记仍受 hook 内「仅设置层打开时可写」守卫，市场内部重复打开行为不变。
+    evidence: 上游 b95ebaff 的 App.tsx 该分支与 useWorkspaceMainViewSettingsExit.ts 与本仓逐字节一致（同缺陷）；修复前顺序全量 spec 失败、两用例各自单独运行通过（复用既有通过形态）；修复后顺序全量 spec 两用例通过（run 见 v3.18.0-validation）。
+    files:
+      - packages/ui/src/App.tsx
+    regression:
+      - packages/ui/test/pluginStoreSettingsExit.test.ts
+    retire: 上游在市场重复打开路径写入等效的设置退出保留标记，设置页再次进入市场与既有退出语义回归通过。
+
+  - id: OW-P026
+    title: 设备度量覆盖遗留导致窗口尺寸调整的 viewport 收敛永不成立
+    kind: test
+    status: fixed
+    priority: P3
+    upstream:
+      since: 3.18.0
+      checked: 3.18.0
+    trigger: 同一 spec 内先用 setRendererViewport（Emulation.setDeviceMetricsOverride）设置 CSS 覆盖，后续用例再调用 setCurrentElectronRendererContentSize/setPluginPresentation 调整窗口尺寸。
+    impact: 覆盖钉住 innerWidth/innerHeight，窗口尺寸变更后 renderer viewport 永不跟随，helper 的收敛等待 10s 超时；顺序执行 plugin-localization-creator 两用例时第二用例 setPluginPresentation(1200x800) 报「renderer viewport 没有收敛: actual 1280x844」（run 155225442-p85137）。
+    cause: 覆盖只在 describe 级 after 的 clearRendererViewport 清除；窗口尺寸 helper 不感知覆盖存在，收敛契约（innerWidth=窗口内容宽/zoomFactor）与覆盖语义互斥但未先释放覆盖。
+    fix: setCurrentElectronRendererContentSize 先调用 clearRendererViewport 释放遗留覆盖再调 setContentSize；未设置覆盖时清除为 no-op，既有「先窗口尺寸后覆盖」调用顺序的断言结果不变。
+    evidence: 上游 b95ebaff 的 desktop-app.ts 同 helper 与 renderer-viewport.ts 均不感知覆盖（同缺陷）；修复后顺序全量 plugin-localization-creator 两用例通过（run 见 v3.18.0-validation），受影响调用方（presentation/zoom/remote 等族）随最终 E2E 门禁复核。
+    files:
+      - packages/desktop/test/e2e/helpers/desktop-app.ts
+    regression:
+      - packages/desktop/test/e2e/plugins/marketplace/plugin-localization-creator.test.ts
+    retire: 上游在窗口尺寸调整前释放设备度量覆盖，或覆盖设置器改为用例级自动清理，顺序执行同等场景通过。
