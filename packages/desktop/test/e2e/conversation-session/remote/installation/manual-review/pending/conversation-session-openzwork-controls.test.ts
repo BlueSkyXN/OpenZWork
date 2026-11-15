@@ -54,6 +54,29 @@ async function copyFromMenu() {
   );
   return browser.execute(() => window.__occCopiedText!);
 }
+
+/** 等待可见且已渲染文本的 destructive 菜单项：Radix 会保留隐藏测量副本，裸 getText
+ * 可能命中隐藏副本拿到空串（061843840 run OCC03 首败根因），按可见+非空收敛。 */
+async function visibleDestructiveItemText(): Promise<string> {
+  let text = "";
+  await browser.waitUntil(
+    async () => {
+      const items = await $$('[role="menuitem"][data-variant="destructive"]');
+      for (const item of items) {
+        if (!(await item.isDisplayed())) continue;
+        const value = await item.getText();
+        if (value.trim()) {
+          text = value;
+          return true;
+        }
+      }
+      return false;
+    },
+    { timeout: 10_000, timeoutMsg: "可见的 destructive 菜单项未出现" },
+  );
+  return text;
+}
+
 async function openFilter() {
   const trigger = $('[data-testid="sidebar-view-menu"]');
   if ((await trigger.getAttribute("aria-expanded")) !== "true") await trigger.click();
@@ -82,6 +105,10 @@ describe("OpenZWork 对话管理增强", () => {
         join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "OCC-failure-" + Date.now() + ".png"),
       );
     }
+    // 修复依据（OpenZWork，v3.18.0 A 补证）：用例右键打开的上下文菜单/视图菜单没有收尾，
+    // 残留菜单把后续用例的侧栏点击全部拦截（061008738 run 4/6 败全属此类连带）。按正常
+    // UI 关闭可能残留的菜单，断言不变。
+    await browser.keys("Escape");
   });
   before(async function () {
     this.timeout(90_000);
@@ -265,9 +292,19 @@ describe("OpenZWork 对话管理增强", () => {
     });
     await $('[data-testid="' + TID_WORKSPACE_MORE_BUTTON + '"]').click();
     await $('[data-testid="task-copy-markdown"]').waitForDisplayed();
-    expect(await $('[role="menuitem"][data-variant="destructive"]').getText()).toContain("归档");
-    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "OCC06-menu-light.png"));
+    // 上游 v3.18.0 合同变更：Header 三点菜单拿不到实时运行态后不再提供归档
+    // （b95ebaff TaskActionMenuContent「归档只在侧栏提供」）；三点仍复制当前任务。
     expect(await copyFromMenu()).toContain("# E2E_OCC_LONG");
+    await browser.keys("Escape");
+    await browser.execute(() => {
+      window.__occCopiedText = "";
+    });
+    // 归档动作与 destructive 警示样式随上游迁移到侧栏右键菜单，断言随合同迁移。
+    await item(first).click({ button: "right" });
+    await $('[data-testid="task-copy-markdown"]').waitForDisplayed();
+    expect(await visibleDestructiveItemText()).toContain("归档");
+    await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "OCC06-menu-light.png"));
+    await browser.keys("Escape");
     await browser.execute(() => {
       window.__occCopiedText = "";
     });
@@ -294,7 +331,7 @@ describe("OpenZWork 对话管理增强", () => {
         window.__occCopiedText = "";
       });
       await item(second).click({ button: "right" });
-      expect(await $('[role="menuitem"][data-variant="destructive"]').getText()).toContain("归档");
+      expect(await visibleDestructiveItemText()).toContain("归档");
       expect(await copyFromMenu()).toContain("# E2E_OCC_OTHER");
     }
     await openFilter();
@@ -353,7 +390,7 @@ describe("OpenZWork 对话管理增强", () => {
     );
     await item(first).click({ button: "right" });
     await $('[data-testid="task-copy-markdown"]').waitForDisplayed();
-    expect(await $('[role="menuitem"][data-variant="destructive"]').getText()).toContain("归档");
+    expect(await visibleDestructiveItemText()).toContain("归档");
     await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "OCC06-menu-dark.png"));
     await browser.keys("Escape");
   });
