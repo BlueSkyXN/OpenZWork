@@ -157,6 +157,10 @@ export function TaskActionMenuContent({
       </Item>
       {onArchiveTask ? (
         <Item
+          // 修复依据（OZ-F006，v3.18.0 merge 丢失回补）：归档未归档任务会把它移出主列表，
+          // v3.17.1 起以 destructive 样式警示（3402c963 同文件同位）；v3.18.0 上游重写该
+          // 文件时此行在冲突裁决中丢失，OCC E2E 五用例断言 destructive 菜单项失败。
+          variant={isArchived ? "default" : "destructive"}
           disabled={taskTargetActionsDisabled || Boolean(archiveDisabledReason)}
           title={disabledReason ?? archiveDisabledReason}
           onSelect={() => {
