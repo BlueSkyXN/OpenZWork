@@ -93,8 +93,8 @@ export function startCliMemoryDiagnostics(
     }),
     write: (record) =>
       writeMemoryDiagnostic(
-        // OpenZWork（WP-03 数据根）：CLI 用户级数据统一在 ~/.openzwork/cli（与
-        // config-factory 的 DEFAULT_BASE_DIR 同根），不落上游的 ~/.zcode/cli。
+        // OpenZWork（WP-03 数据根）：CLI 用户级数据统一在用户级 .openzwork/cli（与
+        // config-factory 的 DEFAULT_BASE_DIR 同根），不落上游的官方数据根。
         options.directory ?? join(homedir(), ".openzwork", "cli", CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
         record,
       ),

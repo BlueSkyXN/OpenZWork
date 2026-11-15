@@ -45,6 +45,16 @@ describe.each([
       await mkdir(dirname(prebuild), { recursive: true });
       await mkdir(resourcesDir, { recursive: true });
       await writeFile(prebuild, "fixture-native-file");
+      // 上游 v3.18.1：win32 afterPack 会校验并登记 installer process helper（CR-01）。
+      // valid 场景需在夹具中放置该 helper；缺失即拒 pack（真实构建由 windows-runtime-host 产出）。
+      if (os === "win32") {
+        const helper = resolve(
+          resourcesDir,
+          "tools/runtime-host/zcode-installer-process-helper.exe",
+        );
+        await mkdir(dirname(helper), { recursive: true });
+        await writeFile(helper, "fixture-installer-helper");
+      }
 
       if (scenario === "wrong-platform") {
         const foreignKey = os === "win32" ? "darwin-arm64" : "win32-x64";

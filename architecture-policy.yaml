@@ -1940,6 +1940,9 @@ modules:
       - apps/zcode-cli/packages/adapters/src/memory-diagnostics
       - apps/zcode-cli/packages/adapters/tests/memory-diagnostics
       - apps/zcode-cli/packages/bootstrap/src/zcode-protocol/resource-sampler.ts
+      # OpenZWork：sampler 基础文件随 v3.18.1 节拍链恢复取回（上游树内在受管根下，
+      # 本仓该路径无归属，并入同一诊断模块）。
+      - apps/zcode-cli/packages/bootstrap/src/process-resource-sampler.ts
       - packages/services/src/feedback/feedbackLogArchive.ts
     managed: true
     requires: [shared, zcode-cli]

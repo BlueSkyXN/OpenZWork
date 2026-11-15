@@ -4,8 +4,8 @@
 version: 1
 upstream:
   repository: https://github.com/zai-org/ZCode
-  version: 3.18.0
-  commit: b95ebaffeab641907b38652f45c1502bd762972d
+  version: 3.18.1
+  commit: c5904686ea8341826b3affe5d993d06a134fa779
 entries:
   - id: OZ-F001
     kind: feature
@@ -705,6 +705,17 @@ entries:
       - packages/ui/test/browser/manual-review/pending/plugin-store-mode-order.fixture.tsx
       - packages/ui/test/browser/manual-review/pending/plugin-store-mode-order.test.mjs
     source: 用户 2026-11-08 决定移除；docs/openzwork/upstream/v3.17.1-integration.md
+  - id: OZ-F013
+    kind: feature
+    status: active
+    title: 本地内存诊断与资源采样节拍
+    summary: 上游 v3.18.1 引入的本地内存诊断（recorder/storage/归档）与 sampler 60s 节拍；
+      OpenZWork 保留本地诊断链并恢复被 WP-05 误删的节拍驱动（rebalance/prune 三方法曾无
+      调用方），落盘根改为用户级 .openzwork/cli；官方反馈上传链保持裁剪。
+    spec: docs/openzwork/upstream/v3.18.1-integration.md
+    modules:
+      - cli-memory-diagnostics
+    source: "v3.18.1 同步（c5904686）"
   - id: OZ-R001
     kind: retain
     status: active

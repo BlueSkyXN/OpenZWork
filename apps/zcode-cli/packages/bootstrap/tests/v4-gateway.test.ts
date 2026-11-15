@@ -839,10 +839,10 @@ describe("订阅与帧调度", () => {
     );
   });
 
-  // OpenZWork（off-peak 裁剪修复）：上游此用例断言 Off-Peak TurnStarted 只透传稳定
+  // OpenZWork（闲时域裁剪修复）：上游此用例断言闲时 TurnStarted 只透传稳定
   // attribution；裁剪后保留其隐私核心——正文不进 telemetry facts。A 期手术曾误删
   // it 头留下孤儿代码块（括号失衡，语法错误随本批 v3.18.1 复跑暴露），此处补回
-  // 用例头并保持无 off-peak 字段的 OpenZWork 形态。
+  // 用例头并保持无闲时域字段的 OpenZWork 形态。
   it("TurnStarted 只透传事件事实，正文不进入 telemetry facts", () => {
     const host = makeHost();
     const gateway = makeGateway(host);

@@ -226,6 +226,11 @@ function assertPackagedCuaHelper(context) {
     throw new Error(`Packaged ZCode is missing bundled Computer Use Helper: ${appPath}`);
   }
 }
+// 上游 v3.18.1：Windows Chrome 导入入口隐藏后默认不携带/签名/校验原生 helper，
+// 供应链保留在显式 opt-in（ZCODE_ENABLE_WINDOWS_BROWSER_IMPORT=1）后。
+const shouldPackageWindowsBrowserImportHelper =
+  targetPlatform.os === "win32" && process.env.ZCODE_ENABLE_WINDOWS_BROWSER_IMPORT === "1";
+const HELPER_FILENAME = "zcode-browser-import-helper.exe";
 const shouldEnableWindowsVsign =
   process.platform === "win32" && process.env.ZCODE_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
