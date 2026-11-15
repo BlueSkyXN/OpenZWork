@@ -55,10 +55,7 @@ const untouchedSource = {
   },
 };
 
-async function listTaskTitles(
-  repo: TaskIndexRepo,
-  workspaceIdentity?: string,
-): Promise<string[]> {
+async function listTaskTitles(repo: TaskIndexRepo, workspaceIdentity?: string): Promise<string[]> {
   const result = await repo.queryTaskList({
     kind: "all",
     workspaceScopes: [
@@ -87,10 +84,7 @@ describe("WT04 受控运行时：同一路径两个不同 identity 的任务隔�
         { workspacePath: SHARED_PATH, workspaceIdentity: IDENTITY_B },
         summaryOf("t_identity_b", "B 的任务"),
       );
-      await facts.ingest(
-        { workspacePath: SHARED_PATH },
-        summaryOf("t_local", "本地任务"),
-      );
+      await facts.ingest({ workspacePath: SHARED_PATH }, summaryOf("t_local", "本地任务"));
 
       await expect(listTaskTitles(repo, IDENTITY_A)).resolves.toEqual(["A 的任务"]);
       await expect(listTaskTitles(repo, IDENTITY_B)).resolves.toEqual(["B 的任务"]);
@@ -104,8 +98,10 @@ describe("WT04 受控运行时：同一路径两个不同 identity 的任务隔�
   it("删除经事实管道 removed 公开面双向隔离，冷恢复（重开 DB）后隔离保持", async () => {
     const dbPath = await makeDbPath();
     const repo = new TaskIndexRepo(undefined, "local", dbPath);
-    const changes: Array<{ target: { workspaceIdentity?: string; taskId: string }; reason: string }> =
-      [];
+    const changes: Array<{
+      target: { workspaceIdentity?: string; taskId: string };
+      reason: string;
+    }> = [];
     const facts = createTaskFacts({
       store: repo,
       source: untouchedSource,
@@ -120,7 +116,11 @@ describe("WT04 受控运行时：同一路径两个不同 identity 的任务隔�
       summaryOf("t_b", "属于 B"),
     );
     // B 侧删除不波及 A 侧行；变更事件携带被删目标的 identity（供远端/侧栏按键过滤）。
-    await facts.removed({ workspacePath: SHARED_PATH, workspaceIdentity: IDENTITY_B, taskId: "t_b" });
+    await facts.removed({
+      workspacePath: SHARED_PATH,
+      workspaceIdentity: IDENTITY_B,
+      taskId: "t_b",
+    });
     expect(changes).toEqual([
       {
         target: { workspacePath: SHARED_PATH, workspaceIdentity: IDENTITY_B, taskId: "t_b" },

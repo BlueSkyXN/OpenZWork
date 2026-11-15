@@ -63,7 +63,8 @@ async function runtime(): Promise<{
   vi.resetModules();
   // 同一 specifier 保证 setDataBaseDir 单例与 settingService/迁移实现共享同一实例。
   const services = (await import("@zcode/services/node")) as MigrationServices;
-  const bootstrap = (await import("#src/main/desktopDataBaseDirBootstrap.js")) as MigrationBootstrap;
+  const bootstrap =
+    (await import("#src/main/desktopDataBaseDirBootstrap.js")) as MigrationBootstrap;
   services.setDataBaseDir(home);
   await mkdir(join(home, ".openzwork", "v2"), { recursive: true });
   return { home, services, bootstrap };
@@ -84,10 +85,7 @@ async function seedSourceLogin(home: string, sourceStore: { store: CredentialKey
 
 // 只注入密钥库替身；路径绑定、真实 cipher 与共享执行全部是被验证的生产装配。
 const shareWith =
-  (
-    bootstrap: MigrationBootstrap,
-    stores: CopiedDataRootCredentialKeyStores,
-  ) =>
+  (bootstrap: MigrationBootstrap, stores: CopiedDataRootCredentialKeyStores) =>
   (plan: { sourceBaseDir: string; targetBaseDir: string }) =>
     bootstrap.shareCopiedDataRootCredentialKey(plan, stores);
 
@@ -229,9 +227,10 @@ it("refuses to overwrite a different key already registered at the target and ke
     await readFile(join(target, ".openzwork", "v2", "credentials.json"), "utf8"),
   ).token as string;
   expect(
-    await sourceCipherOf(join(target, ".openzwork", "v2", "credentials.json"), clearedTargetStore.store).decrypt(
-      copiedToken,
-    ),
+    await sourceCipherOf(
+      join(target, ".openzwork", "v2", "credentials.json"),
+      clearedTargetStore.store,
+    ).decrypt(copiedToken),
   ).toBe("source-login");
   expect(await sourceCipherOf(credentialsPath, sourceStore.store).decrypt(token)).toBe(
     "source-login",
