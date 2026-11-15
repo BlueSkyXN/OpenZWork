@@ -384,8 +384,10 @@ describe("工作流中枢错误与刷新竞态 E2E（OW-P024 R4）", () => {
     }, WORKFLOW_NAME);
     await browser.execute(() => {
       // 组横幅的稳定重试标记（data-workflows-runs-retry），不按语言片段或泛化按钮匹配。
+      // 必须限定项目组：全局组也在页面上且有同一个重试标记，而全局组在 DOM 里排在前面，
+      // 无作用域的选择器会点到全局组（全局列表错误重试场景引入后暴露的选择器歧义）。
       const retry = document.querySelector<HTMLButtonElement>(
-        '[data-workflows-runs-retry="true"]',
+        '[data-testid^="workflow-project-group-"][data-workflows-runs-error="true"] [data-workflows-runs-retry="true"]',
       );
       retry?.click();
     });
@@ -402,7 +404,11 @@ describe("工作流中枢错误与刷新竞态 E2E（OW-P024 R4）", () => {
     await browser.waitUntil(
       async () =>
         (await browser.execute(
-          () => document.querySelector('[data-workflow-last-run="completed"]') !== null,
+          // 限定项目组：全局组也有卡片徽标（全局列表错误重试场景引入后）。
+          () =>
+            document.querySelector(
+              '[data-testid^="workflow-project-group-"] [data-workflow-last-run="completed"]',
+            ) !== null,
         )) as boolean,
       { timeout: 15000, timeoutMsg: "重试成功后没有出现 completed 徽标" },
     );
@@ -493,6 +499,147 @@ describe("工作流中枢错误与刷新竞态 E2E（OW-P024 R4）", () => {
       "新-描述-B",
     );
     expect(freshShown).toBe(true);
+  });
+});
+
+// ── OW-P024 R4 收尾（REVIEW-3 A）：全局工作流列表的历史失败提示与重试 ──
+// 全局组此前只把 runsError 交给卡片：有旧 run 时卡片渲染 completed 徽标，组上没有任何
+// 失败提示，等于吞错。本场景在真实 UI 上验证「有缓存失败 → 错误可见且旧徽标保留 →
+// 点重试真的重读 → 错误消失」。控制边界与上一个 describe 相同：只替换 service 调用，
+// store / 组件 / 请求代际全真实。
+const GLOBAL_LIST_WORKFLOW_NAME = "global-note";
+
+describe("全局工作流列表错误与重试 E2E（OW-P024 R4）", () => {
+  const globalListDir = join(E2E_HOME_DIR_WORKFLOWS_HUB(), ".openzwork", "workflows");
+  const globalListFile = join(globalListDir, `${GLOBAL_LIST_WORKFLOW_NAME}.dwf.ts`);
+
+  before(async () => {
+    // 真实全局档：`$HOME/.openzwork/workflows/`（隔离 HOME 内），列表读取走真实 service。
+    await mkdir(globalListDir, { recursive: true });
+    await writeFile(
+      globalListFile,
+      [
+        "/* zcode-workflow",
+        "description: 全局记录说明",
+        "whenToUse: 跨项目复用",
+        "*/",
+        SCRIPT,
+      ].join("\n"),
+      "utf-8",
+    );
+  });
+
+  after(async () => {
+    await browser.execute(() => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({});
+    });
+    await browser.electron.restoreAllMocks();
+    await rm(globalListDir, { recursive: true, force: true });
+    await clearAppData();
+  });
+
+  it("全局组有旧历史时刷新失败：错误与旧徽标同时可见，重试后错误消失", async function () {
+    this.timeout(150000);
+    await prepareConversationE2E({ skipProvider: true });
+    await clickTestIdByDom(TID_AUTOMATIONS_OPEN, { timeoutMsg: "侧栏没有出现自动化入口" });
+    await clickTestIdByDom(testId(TID_AUTOMATIONS_PAGE_TAB, "workflow"), {
+      timeoutMsg: "自动化页标题没有「工作流」切换",
+    });
+
+    // 等全局组出现并完成首轮真实读取（列表来自真实全局档文件）。
+    await waitForTestIdByDom(TID_WORKFLOW_GLOBAL_GROUP, {
+      timeout: 20000,
+      timeoutMsg: "全局组没有渲染",
+    });
+
+    // 1) 首轮真实读取给出一条 completed 历史，卡片渲染 completed 徽标。
+    await browser.execute((name) => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({
+        listSavedWorkflowRuns: async () => ({
+          runs: [
+            {
+              runId: "run-global-old",
+              name,
+              status: "completed",
+              createdAt: Date.now() - 120_000,
+              updatedAt: Date.now() - 60_000,
+            },
+          ],
+        }),
+      });
+    }, GLOBAL_LIST_WORKFLOW_NAME);
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "列表工具行没有刷新按钮" });
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          () => document.querySelector('[data-workflow-last-run="completed"]') !== null,
+        )) as boolean,
+      { timeout: 20000, timeoutMsg: "首轮刷新后没有出现 completed 徽标" },
+    );
+
+    // 2) 有缓存后刷新失败：全局组必须露出错误与重试，且旧徽标保留。
+    await browser.execute(() => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({
+        listSavedWorkflowRuns: async () => {
+          throw new Error("journal unreadable (controlled)");
+        },
+      });
+    });
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "列表工具行没有刷新按钮" });
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          (groupId) =>
+            document.querySelector(
+              `[data-testid="${groupId}"][data-workflows-runs-error="true"]`,
+            ) !== null,
+          TID_WORKFLOW_GLOBAL_GROUP,
+        )) as boolean,
+      { timeout: 20000, timeoutMsg: "全局组的运行历史失败没有显示出来" },
+    );
+    const staleBadgeKept = await browser.execute(
+      () => document.querySelector('[data-workflow-last-run="completed"]') !== null,
+    );
+    expect(staleBadgeKept).toBe(true);
+
+    // 3) 重试：读取恢复，错误消失、历史仍在。
+    await browser.execute((name) => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({
+        listSavedWorkflowRuns: async () => ({
+          runs: [
+            {
+              runId: "run-global-new",
+              name,
+              status: "completed",
+              createdAt: Date.now() - 30_000,
+              updatedAt: Date.now() - 10_000,
+            },
+          ],
+        }),
+      });
+    }, GLOBAL_LIST_WORKFLOW_NAME);
+    await browser.execute((groupId) => {
+      // 稳定标记：只在全局组内取重试按钮，不按语言片段或泛化按钮匹配。
+      const retry = document.querySelector<HTMLButtonElement>(
+        `[data-testid="${groupId}"] [data-workflows-runs-retry="true"]`,
+      );
+      retry?.click();
+    }, TID_WORKFLOW_GLOBAL_GROUP);
+    await browser.waitUntil(
+      async () =>
+        (await browser.execute(
+          (groupId) =>
+            document.querySelector(
+              `[data-testid="${groupId}"][data-workflows-runs-error="true"]`,
+            ) === null,
+          TID_WORKFLOW_GLOBAL_GROUP,
+        )) as boolean,
+      { timeout: 20000, timeoutMsg: "全局组重试成功后错误标记未消失" },
+    );
+    const historyKept = await browser.execute(
+      () => document.querySelector('[data-workflow-last-run="completed"]') !== null,
+    );
+    expect(historyKept).toBe(true);
   });
 });
 

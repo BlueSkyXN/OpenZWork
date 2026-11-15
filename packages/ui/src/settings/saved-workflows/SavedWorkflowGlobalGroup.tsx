@@ -169,7 +169,15 @@ export function SavedWorkflowGlobalGroup(props: SavedWorkflowGlobalGroupProps) {
   );
 
   return (
-    <div data-testid={TID_WORKFLOW_GLOBAL_GROUP} className="mt-8 first:mt-0">
+    <div
+      data-testid={TID_WORKFLOW_GLOBAL_GROUP}
+      // OW-P024 R4：组级可观察状态（与项目组同款稳定标记，E2E/浏览器验收不匹配语言片段）。
+      data-workflows-loading={state.loading ? "true" : undefined}
+      data-workflows-loaded={state.loaded ? "true" : undefined}
+      data-workflows-load-error={state.error ? "true" : undefined}
+      data-workflows-runs-error={state.runsError ? "true" : undefined}
+      className="mt-8 first:mt-0"
+    >
       <div className="flex items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 text-ui-base font-medium leading-5 text-foreground">
           <span className="truncate">
@@ -228,6 +236,27 @@ export function SavedWorkflowGlobalGroup(props: SavedWorkflowGlobalGroupProps) {
           {intl.formatMessage({ id: "workflows.hub.global.empty" })}
         </p>
       )}
+
+      {/* OW-P024 R4：运行历史读取失败不再伪装成「尚未运行」——与项目组同款：
+          保留列表与卡片上上次已知 run 的徽标，组上给可重试的错误提示。 */}
+      {state.runsError ? (
+        <p className="mt-4 flex items-center gap-2 text-ui-sm text-warning">
+          <span>
+            {intl.formatMessage({ id: "workflows.hub.runsError" }, { error: state.runsError })}
+          </span>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-ui-sm"
+            // OW-P024 R4：组级重试的稳定选择器（E2E/浏览器验收；不依赖语言片段）。
+            data-workflows-runs-retry="true"
+            onClick={() => void refresh({ bypassCache: true })}
+          >
+            {intl.formatMessage({ id: "workflows.hub.retry" })}
+          </Button>
+        </p>
+      ) : null}
 
       {state.invalid.length > 0 ? (
         <div

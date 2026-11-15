@@ -543,11 +543,15 @@ patches:
       - packages/desktop/src/renderer/src/main.tsx
       - packages/desktop/test/e2e/automations-workflows-hub.test.ts
       - packages/desktop/wdio.conf.ts
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowGlobalGroup.tsx
+      - scripts/check-e2e-required-cases.mjs
       - .github/workflows/ci.yml
     regression:
       - packages/services/test/workflowQueryRuntime.test.ts
       - packages/ui/test/savedWorkflowRefresh.test.ts
       - packages/ui/test/savedWorkflowProjectGroupRunsError.test.ts
+      - packages/ui/test/savedWorkflowGlobalGroupRunsError.test.ts
+      - scripts/test/check-e2e-required-cases.test.mjs
       - apps/zcode-cli/packages/adapters/tests/workflow-query-session-db.test.ts
     retire: 上游为 workflows/list、workflows/runs 提供等价的单进程/空闲回收读取链（或等效修复启动风暴与回收），A01–A11 适用条目在上游实现上通过。
     refs:

@@ -282,10 +282,21 @@ jobs:
         id: hub_e2e
         env:
           ZCODE_E2E_RENDERER_BRIDGE_PREFLIGHT_TIMEOUT_MS: "60000"
+          # OW-P024 R4：grep 必须覆盖本任务的每个目标 describe。此前只有
+          # 「已保存工作流中枢 E2E」，新增的三个场景从未被收集，job 却仍显示成功。
+          ZCODE_E2E_HUB_GREP: "已保存工作流中枢 E2E|OW-P024 R4"
         run: >
           pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
           --spec ./test/e2e/automations-workflows-hub.test.ts
-          --mochaOpts.grep '已保存工作流中枢 E2E'
+          --mochaOpts.grep "$ZCODE_E2E_HUB_GREP"
+
+      # OW-P024 R4：只看进程退出码会漏掉「grep 漏选」——漏选的用例不产生报告，
+      # 也就不会让 wdio 失败。这里按本轮真实报告核对每个目标用例都在且通过：
+      # 缺失、跳过、失败都让 job 失败；清单外的用例（含既有欠账）不参与判定，
+      # 因此后续新增用例不会被误判。
+      - name: Require the target E2E cases to actually pass
+        if: always() && steps.hub_e2e.outcome != 'skipped'
+        run: node scripts/check-e2e-required-cases.mjs packages/desktop/.e2e-artifacts
 
       - name: Upload E2E artifacts
         if: always() && steps.hub_e2e.outcome != 'skipped'
