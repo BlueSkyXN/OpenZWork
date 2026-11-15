@@ -68,7 +68,9 @@ describe("plugins protocol contracts", () => {
     async (enabled) => {
       const root = await mkdtemp(join(tmpdir(), "zcode-plugin-user-config-"));
       const pluginRoot = join(root, "extension");
-      const userConfigPath = join(FAKE_HOME, ".zcode", "cli", "config.json");
+      // 修复依据（OpenZWork WP-03 数据根）：CLI 用户配置在 ~/.openzwork/cli/config.json，
+    // 上游原文的 .zcode 路径在本仓永远不会被读取，plugins.dirs 因此不生效。
+    const userConfigPath = join(FAKE_HOME, ".openzwork", "cli", "config.json");
       const manifestPath = join(pluginRoot, ".claude-plugin", "plugin.json");
       const userConfig = {
         track: { type: "string", default: "auto", options: ["auto", "transform"] },
@@ -123,7 +125,9 @@ describe("plugins protocol contracts", () => {
     { token: { default: [] } },
   ])("isolates invalid known userConfig fields: %j", async (userConfig) => {
     const root = await mkdtemp(join(tmpdir(), "zcode-plugin-invalid-config-"));
-    const userConfigPath = join(FAKE_HOME, ".zcode", "cli", "config.json");
+    // 修复依据（OpenZWork WP-03 数据根）：CLI 用户配置在 ~/.openzwork/cli/config.json，
+    // 上游原文的 .zcode 路径在本仓永远不会被读取，plugins.dirs 因此不生效。
+    const userConfigPath = join(FAKE_HOME, ".openzwork", "cli", "config.json");
     try {
       for (const name of ["healthy", "invalid"]) {
         await writeTestFile(
@@ -406,7 +410,9 @@ describe("plugins protocol contracts", () => {
     // 与 MCP server 的 ${ZCODE_PLUGIN_DATA} 同一个值（<CLI 插件存储根>/data/<插件 id>）。
     const root = await mkdtemp(join(tmpdir(), "zcode-plugin-data-path-"));
     const pluginRoot = join(root, "plugins", "data-demo");
-    const userConfigPath = join(FAKE_HOME, ".zcode", "cli", "config.json");
+    // 修复依据（OpenZWork WP-03 数据根）：CLI 用户配置在 ~/.openzwork/cli/config.json，
+    // 上游原文的 .zcode 路径在本仓永远不会被读取，plugins.dirs 因此不生效。
+    const userConfigPath = join(FAKE_HOME, ".openzwork", "cli", "config.json");
     try {
       await writeTestFile(
         userConfigPath,
@@ -425,7 +431,9 @@ describe("plugins protocol contracts", () => {
       });
 
       expect(result.plugins.find((plugin) => plugin.id === "data-demo@inline")?.dataPath).toBe(
-        join(FAKE_HOME, ".zcode", "cli", "plugins", "data", "data-demo@inline"),
+        // 修复依据（OpenZWork WP-03 数据根）：用户级插件数据目录随 CLI 存储根落在
+        // ~/.openzwork/cli/plugins/data，与上方用户配置路径同一数据根。
+        join(FAKE_HOME, ".openzwork", "cli", "plugins", "data", "data-demo@inline"),
       );
       expect(() => zcodePluginsListResultSchema.parse(result)).not.toThrow();
     } finally {

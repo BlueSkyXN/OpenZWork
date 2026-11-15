@@ -26,6 +26,7 @@ import {
   type E2EBrowserTargetInfo,
 } from "./e2e-window-target.js";
 import { dismissOccupationOnboarding } from "./occupation-onboarding.js";
+import { clearRendererViewport } from "./renderer-viewport.js";
 import { sel } from "./selectors.js";
 import { projectSectionSelector } from "./project-sidebar.js";
 
@@ -1162,6 +1163,11 @@ export async function setCurrentElectronRendererContentSize(
   width: number,
   height?: number,
 ): Promise<ElectronRendererContentSizeSnapshot> {
+  // OW-P026：上一用例可能遗留 Emulation.setDeviceMetricsOverride（CSS 覆盖会钉住
+  // innerWidth/innerHeight），此后窗口尺寸再怎么变，本 helper 的「renderer viewport 必须跟随
+  // 窗口尺寸」收敛等待都永远失败。先清除覆盖再调窗口尺寸；未设置覆盖时清除为无害 no-op，
+  // 既有「先 setPluginPresentation 后 setRendererViewport」的顺序不受影响。
+  await clearRendererViewport();
   const currentUrl = await browser.getUrl();
   const result = await browser.electron.execute(
     (electron, targetUrl, nextWidth, nextHeight) => {
