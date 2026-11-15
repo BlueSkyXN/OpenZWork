@@ -185,6 +185,41 @@ describe("data directory migration", () => {
     expect((await service.get()).dataBaseDir).toBe(target);
   });
 
+  // 上游 v3.18.2（ZCT-2120723935487688704）移植回归：凭据密钥共享在指针提交前执行，
+  // 且失败中止迁移（不产生半迁移态）。
+  it("shares the credential key before committing the pointer and aborts on share failure", async () => {
+    const context = await runtime();
+    const target = await temp();
+    const service = context.createSettingService();
+    await service.update({ locale: "en-US", dataBaseDir: context.home });
+    await fixture(context.home, "cli/config.json", "{}");
+    await service.updateDataBaseDir(target);
+
+    const shareCalls: string[] = [];
+    await expect(
+      context.applyPendingDataBaseDirMigration(undefined, {
+        shareCredentialKeyWithDataRoot: async (targetBaseDir) => {
+          shareCalls.push(targetBaseDir);
+          throw new Error("system credential storage unavailable");
+        },
+      }),
+    ).rejects.toThrow("system credential storage unavailable");
+    expect(shareCalls).toEqual([target]);
+    const aborted = await context.createSettingService().get();
+    expect(aborted.dataBaseDir).toBe(context.home);
+    expect(aborted.pendingDataBaseDirMigration?.targetBaseDir).toBe(target);
+
+    await context.applyPendingDataBaseDirMigration(undefined, {
+      shareCredentialKeyWithDataRoot: async (targetBaseDir) => {
+        shareCalls.push(targetBaseDir);
+      },
+    });
+    expect(shareCalls).toEqual([target, target]);
+    const committed = await context.createSettingService().get();
+    expect(committed.dataBaseDir).toBe(target);
+    expect(committed.pendingDataBaseDirMigration).toBeUndefined();
+  });
+
   it("saves only a plan, includes later writes, and reopens both SQLite stores in a fresh process", async () => {
     const context = await runtime();
     const target = await temp();
