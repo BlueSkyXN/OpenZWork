@@ -3514,6 +3514,9 @@ const enUS: Record<string, string> = {
   "settings.appearance.codeTitle": "Code settings",
   "settings.appearance.codeDescription":
     "Choose code themes, font size, and display options independently from the interface font size.",
+  "settings.fontSmoothing": "Font smoothing",
+  "settings.fontSmoothingDescription":
+    "Use grayscale smoothing. Text may look thinner; results vary by display.",
   "settings.uiFontSize": "UI font size",
   "settings.uiFontSizeDescription":
     "Adjust interface text without changing icons or layout dimensions.",

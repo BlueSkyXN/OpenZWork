@@ -498,6 +498,86 @@ function assertPackagedNodePtyPrebuild(context) {
     throw new Error(`node-pty 预编译产物缺失: ${targetBinaryPath}`);
 }
 
+function assertSignedWindowsHelper(context, relativeHelperPath) {
+  if (context.electronPlatformName !== "win32" || !shouldEnableWindowsVsign) return;
+  const helperPath = resolve(context.appOutDir, "resources", relativeHelperPath);
+  const appExecutablePath = resolve(
+    context.appOutDir,
+    `${context.packager.appInfo.productFilename}.exe`,
+  );
+  const script = [
+    "$helper=Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $zcodeArg0;",
+    "$app=Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath $zcodeArg1;",
+    "if($helper.Status -ne 'Valid' -or $app.Status -ne 'Valid'){",
+    "[Console]::Error.WriteLine(('Authenticode status invalid: helper={0} ({1}); app={2} ({3})' -f $helper.Status,$helper.StatusMessage,$app.Status,$app.StatusMessage));",
+    "exit 23};",
+    "if($null -eq $helper.SignerCertificate -or $null -eq $app.SignerCertificate){",
+    "[Console]::Error.WriteLine('Authenticode signer certificate missing');exit 24};",
+    "if($helper.SignerCertificate.Thumbprint -ne $app.SignerCertificate.Thumbprint){",
+    "[Console]::Error.WriteLine(('Authenticode signer mismatch: helper={0}; app={1}' -f $helper.SignerCertificate.Thumbprint,$app.SignerCertificate.Thumbprint));",
+    "exit 25};",
+  ].join("");
+  // Bugfix 原因：extraResources 下的 EXE 是否进入 electron-builder 默认签名遍历会随版本变化；
+  // 同时 Windows PowerShell 的 `-Command` 不会把尾随路径放进 `$args`，旧校验因此固定误报 exit 23。
+  // 发布态改用 EncodedCommand，并从 PSHOME 显式加载系统 Security 模块，避免 pwsh 继承的
+  // PSModulePath 让 Windows PowerShell 5.1 错误加载不兼容模块。
+  runCommand(
+    "powershell.exe",
+    createWindowsPowerShellSecurityArgs(script, [helperPath, appExecutablePath]),
+  );
+}
+
+function signWindowsHelper(context, relativeHelperPath) {
+  if (context.electronPlatformName !== "win32" || !shouldEnableWindowsVsign) return;
+  const helperPath = resolve(context.appOutDir, "resources", relativeHelperPath);
+  runCommand("powershell.exe", [
+    "-NoLogo",
+    "-NoProfile",
+    "-NonInteractive",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    resolve(workspaceRoot, "scripts/sign-windows.ps1"),
+    "-FilePath",
+    helperPath,
+  ]);
+}
+
+// CR-01 修复原因：普通 NSIS 构建只提供 APP_64/APP_ARM64（压缩包路径），没有 APP_DIR_*；
+// installer.nsh 无法自行推导 helper 来源。afterPack 先于 makensis 执行，在这里把实际
+// appOutDir 下的 helper 写成按架构命名的生成 define 文件，NSIS 编译时按架构 include。
+export function installerProcessHelperDefineLine(appOutDir) {
+  const helperPath = join(
+    appOutDir,
+    "resources",
+    "tools",
+    "runtime-host",
+    "zcode-installer-process-helper.exe",
+  );
+  // NSIS 的 File 指令只认反斜杠绝对路径；引号字符串中 $ 与 " 需转义，属防御性处理。
+  const escaped = helperPath.replaceAll("$", "$$").replaceAll('"', '$\\"');
+  return `!define ZCODE_INSTALLER_PROCESS_HELPER "${escaped}"\n`;
+}
+
+async function writeInstallerProcessHelperDefine(context, archName) {
+  const helperPath = resolve(
+    context.appOutDir,
+    "resources",
+    "tools",
+    "runtime-host",
+    "zcode-installer-process-helper.exe",
+  );
+  if (!existsSync(helperPath)) {
+    throw new Error(`Installer process helper missing after pack: ${helperPath}`);
+  }
+  mkdirSync(join(desktopPackageRoot, "build", "generated"), { recursive: true });
+  await writeFile(
+    join(desktopPackageRoot, "build", "generated", `zcode-process-helper-${archName}.nsh`),
+    installerProcessHelperDefineLine(context.appOutDir),
+    "utf8",
+  );
+}
+
 /** @type {import("electron-builder").Configuration} */
 export default {
   appId: desktopProductIdentity.appId,
@@ -638,6 +718,39 @@ export default {
         writeWindowsInstallManifest(context),
       );
     }
+    if (context.electronPlatformName === "win32") {
+      // 普通打包没有 APP_DIR_* 宏；makensis 前落盘按架构的 helper define（见函数注释）。
+      await writeInstallerProcessHelperDefine(
+        context,
+        actualWindowsTarget?.arch ?? targetPlatform.arch,
+      );
+      signWindowsHelper(context, "tools/runtime-host/zcode-runtime-host.exe");
+      signWindowsHelper(context, "tools/runtime-host/zcode-installer-process-helper.exe");
+    }
+    if (shouldPackageWindowsBrowserImportHelper) {
+      runTimedSync("afterPack:signWindowsBrowserImportHelper", () =>
+        signWindowsHelper(context, `browser-import/${HELPER_FILENAME}`),
+      );
+    }
+  },
+  afterSign: async (context) => {
+    if (context.electronPlatformName === "win32") {
+      assertSignedWindowsHelper(context, "tools/runtime-host/zcode-runtime-host.exe");
+      assertSignedWindowsHelper(context, "tools/runtime-host/zcode-installer-process-helper.exe");
+    }
+    if (shouldPackageWindowsBrowserImportHelper) {
+      runTimedSync("afterSign:assertSignedWindowsBrowserImportHelper", () =>
+        assertSignedWindowsHelper(context, `browser-import/${HELPER_FILENAME}`),
+      );
+    }
+    if (context.electronPlatformName === "win32" && shouldEnableWindowsVsign) {
+      await runTimedAsync("afterSign:writeWindowsUpdatePublisher", () =>
+        writeWindowsUpdatePublisher({
+          appOutDir: context.appOutDir,
+          executableName: context.packager.appInfo.productFilename,
+        }),
+      );
+    }
   },
   // fork 净化：上游新增 afterSign 钩子做 Windows 浏览器导入 helper 签名断言与
   // 自动更新发布器（writeWindowsUpdatePublisher）写入，属 CUA/updater 净化域，不随入。
@@ -647,6 +760,10 @@ export default {
           {
             from: `bundled-tools/${targetPlatform.key}/runtime-host/zcode-runtime-host.exe`,
             to: "tools/runtime-host/zcode-runtime-host.exe",
+          },
+          {
+            from: `bundled-tools/${targetPlatform.key}/runtime-host/zcode-installer-process-helper.exe`,
+            to: "tools/runtime-host/zcode-installer-process-helper.exe",
           },
         ]
       : []),

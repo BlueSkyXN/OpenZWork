@@ -289,6 +289,8 @@ export function SettingsPage({
   const setTheme = useZCodeStore((state) => state.setTheme);
   const codePreviewSettings = useZCodeStore((state) => state.codePreviewSettings);
   const setCodePreviewSettings = useZCodeStore((state) => state.setCodePreviewSettings);
+  const fontSmoothingEnabled = useZCodeStore((state) => state.fontSmoothingEnabled);
+  const setFontSmoothingEnabled = useZCodeStore((state) => state.setFontSmoothingEnabled);
   const uiFontSizePx = useZCodeStore((state) => state.uiFontSizePx);
   const setUiFontSizePx = useZCodeStore((state) => state.setUiFontSizePx);
   const hideProjectDeviceNames = useZCodeStore((state) => state.hideProjectDeviceNames);
@@ -889,7 +891,9 @@ export function SettingsPage({
                     windowsHost: hostPlatform === "win32",
                     tray: Boolean(isWindowsDesktop || isLinuxDesktop),
                     notWindows: !isWindowsDesktop,
-                    // 原生 CUA（computerUse）属裁剪域 OZ-D006，搜索入口恒不可用。
+                    macDesktop: Boolean(isDesktop && isMacDesktop),
+                    // 原生 CUA（computerUse）属裁剪域 OZ-D006，搜索入口恒不可用；
+                    // 上游 resolveComputerUseAvailability 分支不带入。
                     computerUse: false,
                   }}
                   onSelect={({ section, setting }) => navigateToSettingsSection(section, setting)}
@@ -1346,6 +1350,9 @@ export function SettingsPage({
                             )
                           ) : activeSection === "appearance" ? (
                             <AppearanceSectionContent
+                              isMacDesktop={Boolean(isDesktop && isMacDesktop)}
+                              fontSmoothingEnabled={fontSmoothingEnabled}
+                              setFontSmoothingEnabled={setFontSmoothingEnabled}
                               codePreviewSettings={codePreviewSettings}
                               setCodePreviewSettings={handleCodePreviewSettingsChange}
                               theme={theme}

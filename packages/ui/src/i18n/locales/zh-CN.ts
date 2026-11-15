@@ -3338,6 +3338,8 @@ const zhCN: Record<string, string> = {
   "settings.appearance.interfaceDescription": "设置应用主题和界面文字大小。",
   "settings.appearance.codeTitle": "代码设置",
   "settings.appearance.codeDescription": "设置代码内容的主题、字号和显示方式，不受界面字号影响。",
+  "settings.fontSmoothing": "字体平滑",
+  "settings.fontSmoothingDescription": "开启后使用灰度平滑，文字可能显得更细。效果因显示器而异。",
   "settings.uiFontSize": "界面字号",
   "settings.uiFontSizeDescription": "调整应用界面的文字大小，图标和布局尺寸不受影响。",
   "settings.agentBehavior.title": "行为与工具",

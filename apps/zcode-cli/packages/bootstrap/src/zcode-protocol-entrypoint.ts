@@ -44,6 +44,12 @@ import { installZCodeProtocolAiSdkWarningLogger } from "./zcode-protocol/ai-sdk-
 import { ZCodeProtocolAgentServer } from "./zcode-protocol/server.js";
 import { ZCodeProtocolNdjsonConnection } from "./zcode-protocol/transport.js";
 import { cleanupProtocolRuntime } from "./zcode-protocol/runtime-cleanup.js";
+// OpenZWork（v3.18.1 同步）：恢复上游 sampler 节拍链。WP-05 删除遥测时把 60s 采样
+// 节拍一并删除，server.rebalanceResidentSessions / pruneSessionEventStores /
+// pruneDetachedChildPublishers 因此无任何调用方（清理逻辑从未运行）。sampler 本体为
+// 本地内存诊断与节拍驱动，无遥测上传；见 docs/openzwork/upstream/v3.18.1-integration.md。
+import { startProtocolResourceSampler } from "./zcode-protocol/resource-sampler.js";
+import type { ZCodeProcessResourceSampler } from "./process-resource-sampler.js";
 import { acquireProtocolStartupResource } from "./zcode-protocol/startup-resource.js";
 
 function applyProtocolPresentationSurface(
@@ -217,6 +223,7 @@ export async function runZCodeProtocolAgent(
     // MCP elicitation 归属到协议 server 的会话；pool 先于 server 创建，端口延迟绑定。
     let elicitationServer: {
       requestMcpElicitation: McpElicitationPort["requestElicitation"];
+  let processResourceSampler: ZCodeProcessResourceSampler | undefined;
       handleMcpNotification: McpNotificationPort["onNotification"];
     } | null = null;
 
@@ -342,6 +349,12 @@ export async function runZCodeProtocolAgent(
     elicitationServer = server;
     server.setNotificationSink((notification) => connection.send(notification));
     connection.start();
+    // OpenZWork（v3.18.1 同步）：本地内存诊断+会话清理节拍（上游原位恢复，无遥测上传）。
+    processResourceSampler = startProtocolResourceSampler(
+      server,
+      (message) => connection.send(message),
+      logger,
+    );
     startupTimer.complete("ZCode Protocol agent startup completed", {
       event: "zcode_protocol.startup.completed",
       stage: "total",
@@ -373,6 +386,7 @@ export async function runZCodeProtocolAgent(
           await pluginPrewarm;
         },
       },
+      processResourceSampler,
       nodeReplBrowserBroker,
       mcpPort,
       mcpConnectionPool,
