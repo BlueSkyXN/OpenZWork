@@ -717,6 +717,8 @@ entries:
       - cli-memory-diagnostics
     tests:
       - apps/zcode-cli/packages/adapters/tests/memory-diagnostics/recorder.test.ts
+      # OpenZWork（v3.18.1 B3）：默认落盘根 .openzwork/cli/memory-diagnostics（WP-03）断言。
+      - apps/zcode-cli/packages/adapters/tests/memory-diagnostics/default-directory.test.ts
     source: "v3.18.1 同步（c5904686）"
   - id: OZ-R001
     kind: retain

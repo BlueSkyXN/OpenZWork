@@ -178,7 +178,10 @@
     },
     {
       "capability": "cli-memory-diagnostics",
-      "files": ["apps/zcode-cli/packages/adapters/tests/memory-diagnostics/recorder.test.ts"]
+      "files": [
+        "apps/zcode-cli/packages/adapters/tests/memory-diagnostics/recorder.test.ts",
+        "apps/zcode-cli/packages/adapters/tests/memory-diagnostics/default-directory.test.ts"
+      ]
     },
     {
       "capability": "retained-ui-and-desktop-repair",
