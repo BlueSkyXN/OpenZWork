@@ -288,10 +288,13 @@ jobs:
           - spec-group: wt04-remote-view
             specs: ./test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts
             replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/git/managed-worktree.json
+            # 必需 case 清单：完整性门禁按这些标题核销，报告自报 requestedSpecs 不作依据。
+            required-cases: '["WT04-1", "WT04-2"]'
           # 同路径双 identity 的任务索引隔离（G2/F3 受控运行时入口，无 provider 依赖）。
           - spec-group: identity-isolation
             specs: ./test/e2e/git/worktrees/task-index-workspace-identity-isolation.test.ts
             replay-fixtures: ""
+            required-cases: '["identity A/B 在同一路径互不可见，本地路径键看不到 identity 任务", "删除经事实管道 removed 公开面双向隔离，冷恢复（重开 DB）后隔离保持"]'
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -332,32 +335,43 @@ jobs:
           archive: true
           if-no-files-found: error
 
-      # 结果完整性：0 collected、关键 skip、取消、缺报告、被 continue-on-error 掩盖的
-      # 失败都不能算通过——从 runner 自己的 summary.json 复核，不信 wdio 退出码单点。
+      # 结果完整性（H5）：按 job 的必需 spec/case 清单核销实际结果，不信报告自报的
+      # requestedSpecs；skip、缺 case、0 collected、取消、失败、缺报告一律拒绝。
+      # 校验逻辑在 scripts/verify-e2e-summary.mjs，本地回归直接执行同一实现。
       - name: Verify E2E summary completeness
         if: always() && steps.e2e_run.outcome != 'skipped'
         shell: bash
+        env:
+          REQUIRED_SPECS: ${{ matrix.specs }}
+          REQUIRED_CASES: ${{ matrix.required-cases }}
         run: |
-          node --input-type=module <<'NODE'
-          import { readdir, readFile } from 'node:fs/promises';
+          set -euo pipefail
+          summary_path=$(node --input-type=module <<'NODE'
+          import { readdir } from 'node:fs/promises';
           import { join } from 'node:path';
           const root = 'packages/desktop/.e2e-artifacts';
           const runs = (await readdir(root, { withFileTypes: true }))
             .filter((entry) => entry.isDirectory() && entry.name.startsWith('desktop-e2e-'))
             .map((entry) => entry.name);
           if (runs.length !== 1) throw new Error(`Expected exactly one E2E run dir, found ${runs.length}`);
-          const summary = JSON.parse(await readFile(join(root, runs[0], 'summary.json'), 'utf8'));
-          const requested = (summary.requestedSpecs ?? []).map((spec) => String(spec).replaceAll('\\', '/'));
-          const collected = new Set((summary.tests?.results ?? []).map((result) => String(result.file).replaceAll('\\', '/')));
-          const missing = requested.filter((spec) => ![...collected].some((file) => file.endsWith(spec.replace(/^\.\//, ''))));
-          const failures = [];
-          if (summary.exitCode !== 0) failures.push(`exitCode=${summary.exitCode}`);
-          if ((summary.tests?.passed ?? 0) < 1) failures.push('0 collected tests');
-          if ((summary.tests?.failed ?? 0) > 0) failures.push(`failed=${summary.tests.failed}`);
-          if (summary.stability?.passRate !== 1) failures.push(`passRate=${summary.stability?.passRate}`);
-          if ((summary.stability?.infraFailureCount ?? 0) > 0) failures.push(`infra=${summary.stability.infraFailureCount}`);
-          if ((summary.stability?.flakyCount ?? 0) > 0) failures.push(`flaky=${summary.stability.flakyCount}`);
-          if (missing.length > 0) failures.push(`specs with 0 collected: ${missing.join(', ')}`);
-          if (failures.length > 0) throw new Error(`E2E summary incomplete: ${failures.join('; ')}`);
-          console.log(JSON.stringify({ runId: summary.runId, passed: summary.tests.passed, failed: summary.tests.failed, passRate: summary.stability.passRate, specs: requested.length }));
+          console.log(join(root, runs[0], 'summary.json'));
           NODE
+          )
+          export SUMMARY_PATH="$summary_path"
+          node --input-type=module <<'NODE' | tee /tmp/e2e-completeness.json
+          import { readFile } from 'node:fs/promises';
+          import { verifyE2ESummary } from './scripts/verify-e2e-summary.mjs';
+          // case 标题本身可能含逗号，故必需清单按 JSON 传，不用逗号分隔。
+          const specs = (process.env.REQUIRED_SPECS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+          const cases = JSON.parse(process.env.REQUIRED_CASES || '[]');
+          const summary = JSON.parse(await readFile(process.env.SUMMARY_PATH, 'utf8'));
+          const report = verifyE2ESummary({ summary, required: specs.map((spec) => ({ spec, cases })) });
+          console.log(JSON.stringify({ ...report, runId: summary.runId }, null, 2));
+          if (!report.ok) throw new Error(`E2E summary incomplete: ${report.failures.join('; ')}`);
+          NODE
+          {
+            echo '### E2E completeness'
+            echo '```json'
+            cat /tmp/e2e-completeness.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

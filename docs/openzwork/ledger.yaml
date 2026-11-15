@@ -330,11 +330,13 @@ entries:
       - scripts/test-report-validation.mjs
       - scripts/agent-node-dist.mjs
       - scripts/verify-agent-node-dist.mjs
+      - scripts/verify-e2e-summary.mjs
       - tests/ci/core-tests.json
       - packages/desktop/test/e2e/reporting/istanbul-lib-instrument.d.ts
     tests:
       - tests/ci/actions-runtime.test.mjs
       - scripts/test/verify-agent-node-dist.test.mjs
+      - scripts/test/verify-e2e-summary.test.mjs
       - tests/ci/core-scope.test.mjs
       - tests/ci/extended-parallel.test.mjs
       - tests/ci/gen-ui-vendor-checkout.test.mjs
