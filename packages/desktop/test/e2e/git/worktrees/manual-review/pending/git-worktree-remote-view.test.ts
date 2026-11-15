@@ -282,8 +282,7 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     const systemProcessesBefore = await listSystemProcesses();
     const outOfTreeBefore = systemProcessesBefore
       .filter(
-        (proc) =>
-          /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidBefore,
+        (proc) => /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidBefore,
       )
       .filter((proc) => !agentsBefore.some((entry) => entry.startsWith(`${proc.pid}:`)))
       .map((proc) => proc.pid)
@@ -415,8 +414,7 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     const allProcesses = await listSystemProcesses();
     const rogueAgents = allProcesses
       .filter(
-        (proc) =>
-          /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidAfter,
+        (proc) => /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidAfter,
       )
       .filter((proc) => !agentsAfter.some((entry) => entry.startsWith(`${proc.pid}:`)))
       .filter((proc) => !outOfTreeBefore.includes(proc.pid));
