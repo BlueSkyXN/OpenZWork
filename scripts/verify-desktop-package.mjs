@@ -54,11 +54,14 @@ export async function verifyDesktopPackage({
   requiredMarkers = REQUIRED_MAIN_MARKERS,
   // 测试注入合成 asar 读取器；缺省按本仓 hoisted 布局从 packages/desktop 解析。
   extractAsarFile = null,
+  // 产品身份来自构建期环境（ZCODE_ENV / ZCODE_PREVIEW_IDENTITY）。CLI 直接调用时用真实
+  // 环境；测试必须显式传入，避免把调用者 shell 里的 ZCODE_ENV 当成验收前提。
+  env = process.env,
 }) {
   const failures = [];
   const version = JSON.parse(await readFile(join(root, "package.json"), "utf8")).version;
   const expected = getDesktopVersion(version);
-  const identity = resolveDesktopProductIdentity();
+  const identity = resolveDesktopProductIdentity(env);
   const unpacked = {
     "macos-arm64": `mac-arm64/${identity.productName}.app/Contents`,
     "windows-amd64": "win-unpacked",
@@ -78,6 +81,27 @@ export async function verifyDesktopPackage({
       )
     ).extractFile;
   const archive = join(resources, "app.asar");
+
+  // 身份不符时包目录整个不存在（如 production 环境里只有 Preview 包）：必须作为失败报告
+  // 返回，不能抛 ENOENT——核验脚本的调用方（CI 步骤）需要结构化 failures 才能定位原因。
+  try {
+    await readFile(archive);
+  } catch {
+    return {
+      platform,
+      version,
+      flavor: identity.flavor,
+      buildCommitId: null,
+      expectedCommit: expectedCommit || null,
+      forbiddenMarkers: {},
+      requiredMarkers: {},
+      licenseMaterial: null,
+      runtime: null,
+      zcodeCjsSha256: null,
+      ok: false,
+      failures: [`app.asar not found for flavor ${identity.flavor}: ${archive}`],
+    };
+  }
 
   const pkg = JSON.parse(extractFile(archive, "package.json").toString());
   const metadata = JSON.parse(

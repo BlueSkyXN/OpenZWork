@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { createReadStream } from "node:fs";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, access, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -53,12 +53,18 @@ export async function verifyAgentNodeDist({
   try {
     await exec("tar", ["-xzf", resolve(tarball), "-C", workspace]);
     const root = join(workspace, PACKAGE_DIR);
-    for (const entry of REQUIRED_ENTRIES) {
+    // 用 fs.access 而非 `test -e`：repo-scripts 在 macOS/Windows/Linux 三平台运行，
+    // 命令行的 test 不是 Windows shell 内建。
+    const exists = async (path) => {
       try {
-        await exec("test", ["-e", join(root, entry)]);
+        await access(path);
+        return true;
       } catch {
-        failures.push(`required entry missing: ${entry}`);
+        return false;
       }
+    };
+    for (const entry of REQUIRED_ENTRIES) {
+      if (!(await exists(join(root, entry)))) failures.push(`required entry missing: ${entry}`);
     }
     const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
     if (expectedVersion && pkg.version !== expectedVersion)
