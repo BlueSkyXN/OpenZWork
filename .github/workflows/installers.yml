@@ -5,6 +5,10 @@ run-name: ${{ github.ref_type == 'tag' && format('Release {0} / {1}', github.ref
 on:
   workflow_dispatch:
     inputs:
+      source_commit:
+        description: Immutable source commit for dispatch builds (empty uses the event commit; never a floating branch head)
+        type: string
+        default: ""
       release_tag:
         description: Existing formal OpenZWork tag for a production installer
         type: string
@@ -29,6 +33,10 @@ on:
         description: Markdown release notes for publishing the reviewed draft
         type: string
         default: ""
+      zcode_dist_base_url:
+        description: Download base URL embedded in the independent Node dist install script (build:zcode)
+        type: string
+        default: "https://example.invalid/zcode/deps/zcode/"
   push:
     branches: [main, "wp**"]
     tags: ["v*-openzwork", "v*openzwork.*"]
@@ -49,6 +57,7 @@ jobs:
       ZCODE_PREVIEW_IDENTITY: "0"
       ZCODE_ENABLE_MAC_SIGN: "0"
       ZCODE_ENABLE_WINDOWS_SIGN: "0"
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
       RELEASE_TAG: ${{ inputs.release_tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
       RELEASE_COMMIT: ${{ inputs.release_commit || (github.ref_type == 'tag' && github.sha) || '' }}
     strategy:
@@ -77,9 +86,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
+      # 来源钉定（CI-FIRST §2.7）：tag > 显式 source_commit > 事件提交。绝不用浮动
+      # 分支名——dispatch 后分支前进会让构建源与 run.head_sha 漂移。
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ inputs.release_tag || github.ref }}
+          ref: ${{ inputs.release_tag || inputs.source_commit || github.sha }}
           persist-credentials: false
 
       - uses: pnpm/action-setup@v6.1.0
@@ -90,6 +101,26 @@ jobs:
         with:
           node-version: 24.14.0
           cache: pnpm
+
+      # dispatch 钉定来源的完整性：checkout 必须逐字等于请求的完整 SHA。
+      - name: Verify dispatch source
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const expected = process.env.SOURCE_COMMIT || '';
+          if (!expected) process.exit(0);
+          if (!/^[0-9a-f]{40}$/.test(expected)) {
+            throw new Error('source_commit must be a full 40-hex commit SHA');
+          }
+          const head = (await exec('git', ['rev-parse', 'HEAD'])).stdout.trim();
+          if (head !== expected) {
+            throw new Error(`dispatch checkout ${head} does not match requested source ${expected}`);
+          }
+          console.log(JSON.stringify({ sourceCommit: head }));
+          NODE
 
       # Workflow 可以来自更新的主干，源码必须固定到已有 tag；不能把 run.head_sha 当源码 SHA。
       - name: Verify release source
@@ -169,6 +200,75 @@ jobs:
             const { verifyPackagedVersion } = await import('./scripts/verify-desktop-release-version.mjs');
             console.log(JSON.stringify(await verifyPackagedVersion({ platform: process.env.RELEASE_PLATFORM, version }), null, 2));
           }
+          NODE
+
+      # PK01 包内内容检查（CI-FIRST §2.6）：身份/来源绑定/数据根/裁剪域/许可材料/运行时，
+      # 结构化报告落盘并进 job summary；buildCommitId 必须绑定本次 checkout。
+      - name: Verify packaged contents (PK01)
+        shell: bash
+        env:
+          RELEASE_PLATFORM: ${{ matrix.platform }}
+          EXPECTED_COMMIT: ${{ inputs.release_commit || inputs.source_commit || github.sha }}
+        run: |
+          set -euo pipefail
+          node scripts/verify-desktop-package.mjs --platform "$RELEASE_PLATFORM" --expected-commit "$EXPECTED_COMMIT" --report packages/desktop/dist/PK01-REPORT.json | tee /tmp/pk01-report.json
+          {
+            echo '### PK01 package contents'
+            echo '```json'
+            cat /tmp/pk01-report.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Preview 也有来源清单（CI-FIRST §2.7）：source/tree/workflow SHA + 全部安装包
+      # sha256；正式 tag 走下方 release manifest，不重复。
+      - name: Record preview build provenance
+        if: env.RELEASE_TAG == ''
+        shell: bash
+        env:
+          RELEASE_PLATFORM: ${{ matrix.platform }}
+          RELEASE_OS: ${{ matrix.bundle-os }}
+          RELEASE_ARCH: ${{ matrix.bundle-arch }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { createHash } from 'node:crypto';
+          import { createReadStream } from 'node:fs';
+          import { readFile, readdir, stat, writeFile } from 'node:fs/promises';
+          import { join } from 'node:path';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+          const extensions = { mac: ['dmg', 'zip'], win: ['exe'], linux: ['AppImage', 'deb', 'rpm', 'pkg.tar.zst'] }[process.env.RELEASE_OS];
+          const root = 'packages/desktop/dist';
+          const arch = process.env.RELEASE_ARCH;
+          const aliases = process.env.RELEASE_OS === 'linux' && arch === 'x64' ? ['x64', 'x86_64', 'amd64'] : [arch];
+          const files = (await readdir(root, { withFileTypes: true })).filter((entry) => entry.isFile()).map((entry) => entry.name);
+          const assets = [];
+          for (const ext of extensions) {
+            const candidates = files.filter((name) => aliases.some((alias) => name === `OpenZWork-${version}-${process.env.RELEASE_OS}-${alias}.${ext}`));
+            if (candidates.length < 1) throw new Error(`Expected at least one ${ext} installer, found ${candidates.length}`);
+            for (const name of candidates) {
+              const path = join(root, name);
+              const info = await stat(path);
+              if (!info.isFile() || info.size === 0) throw new Error(`Missing or empty installer: ${name}`);
+              const hash = createHash('sha256');
+              for await (const chunk of createReadStream(path)) hash.update(chunk);
+              assets.push({ name, size: info.size, sha256: hash.digest('hex') });
+            }
+          }
+          const manifest = {
+            sourceCommit: await git('rev-parse', 'HEAD'),
+            sourceTree: await git('rev-parse', 'HEAD^{tree}'),
+            workflowCommit: process.env.GITHUB_WORKFLOW_SHA,
+            runUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            version,
+            platform: process.env.RELEASE_PLATFORM,
+            productName: 'OpenZWork', environment: 'preview', codeSigning: 'unsigned',
+            assets,
+          };
+          await writeFile(join(root, 'PREVIEW-MANIFEST.json'), JSON.stringify(manifest, null, 2) + '\n');
+          console.log(JSON.stringify(manifest, null, 2));
           NODE
 
       - name: Record release installer provenance
@@ -256,7 +356,92 @@ jobs:
             packages/desktop/dist/**/*.rpm
             packages/desktop/dist/**/*.pkg.tar.zst
             packages/desktop/dist/RELEASE-MANIFEST.json
+            packages/desktop/dist/PREVIEW-MANIFEST.json
             packages/desktop/dist/VERSION-VERIFICATION.json
+            packages/desktop/dist/PK01-REPORT.json
+          if-no-files-found: error
+
+  # 独立 Node 分发（build:zcode tarball）云构建与内容核验（CI-FIRST §2.5，F4 同口径）：
+  # 结构/版本/数据根/裁剪域标记 + tarball sha256，结构化报告进 summary 与 artifact。
+  # install.sh 的下载基地址是分发期属性，显式输入占位，不伪装成正式地址。
+  agent-node-dist:
+    if: ${{ !inputs.publish_installer_run }}
+    name: agent node dist (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            platform: macos-arm64
+          - os: ubuntu-latest
+            platform: linux-amd64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.release_tag || inputs.source_commit || github.sha }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 11.28.6
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Verify dispatch source
+        shell: bash
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { execFile } from 'node:child_process';
+          import { promisify } from 'node:util';
+          const exec = promisify(execFile);
+          const expected = process.env.SOURCE_COMMIT || '';
+          if (!expected) process.exit(0);
+          if (!/^[0-9a-f]{40}$/.test(expected)) throw new Error('source_commit must be a full 40-hex commit SHA');
+          const head = (await exec('git', ['rev-parse', 'HEAD'])).stdout.trim();
+          if (head !== expected) throw new Error(`dispatch checkout ${head} does not match requested source ${expected}`);
+          console.log(JSON.stringify({ sourceCommit: head }));
+          NODE
+
+      - name: Install dependencies (frozen lockfile, with scripts)
+        run: pnpm install --frozen-lockfile
+
+      # 与 B/C 本地构建同链：先备 shared 声明与 CLI 包，再 build:zcode 出 tarball。
+      - name: Prepare agent workspace build
+        run: pnpm build:sea:prepare
+
+      - name: Build independent Node distribution
+        run: pnpm build:zcode --base-url "${{ inputs.zcode_dist_base_url }}"
+
+      - name: Verify agent node dist contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -e "console.log(require('./package.json').version)")
+          tarball=$(find dist/zcode/releases -name "zcode-*.tar.gz" | head -1)
+          test -n "$tarball"
+          node scripts/verify-agent-node-dist.mjs --tarball "$tarball" --expected-version "$version" --report dist/zcode/releases/AGENT-DIST-REPORT.json | tee /tmp/agent-dist-report.json
+          {
+            echo '### Agent Node distribution'
+            echo '```json'
+            cat /tmp/agent-dist-report.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload agent dist report
+        if: always()
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: agent-node-dist-${{ matrix.platform }}
+          archive: true
+          path: |
+            dist/zcode/releases/AGENT-DIST-REPORT.json
           if-no-files-found: error
 
   publish:

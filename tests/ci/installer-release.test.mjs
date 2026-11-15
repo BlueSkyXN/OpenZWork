@@ -164,7 +164,11 @@ test("production installers use verified tag sources before installing dependenc
   assert.equal(job.env.ZCODE_PREVIEW_IDENTITY, "0");
   assert.equal(job.env.ZCODE_ENABLE_MAC_SIGN, "0");
   assert.equal(job.env.ZCODE_ENABLE_WINDOWS_SIGN, "0");
-  assert.equal(steps[0].with.ref, "${{ inputs.release_tag || github.ref }}");
+  // 2026-11-15（CI-FIRST §2.7）：来源钉定到不可变提交，不再用浮动分支名。
+  assert.equal(
+    steps[0].with.ref,
+    "${{ inputs.release_tag || inputs.source_commit || github.sha }}",
+  );
   const verify = steps.findIndex((step) => step.name === "Verify release source");
   const install = steps.findIndex((step) => step.run === "pnpm install --frozen-lockfile");
   assert.ok(verify >= 0 && verify < install);
@@ -221,4 +225,42 @@ test("Linux manifest accepts format-specific x64 aliases and rejects ambiguous i
   );
   await writeFile(join(root, "OpenZWork-3.15.1-linux-x64.AppImage"), "ambiguous");
   await assert.rejects(f.run("Record release installer provenance", env));
+});
+
+test("dispatch builds pin immutable sources and verify packaged contents in-runner", () => {
+  const job = workflow.jobs.installer;
+  const stepIndex = (name) => job.steps.findIndex((step) => step.name === name);
+  // 来源钉定：dispatch 输入与事件提交都不可变；校验先于安装执行。
+  const dispatchVerify = stepIndex("Verify dispatch source");
+  const install = job.steps.findIndex((step) => step.run === "pnpm install --frozen-lockfile");
+  assert.ok(dispatchVerify >= 0 && dispatchVerify < install);
+  assert.notEqual(job.steps[dispatchVerify]["continue-on-error"], true);
+  assert.match(job.steps[dispatchVerify].run, /SOURCE_COMMIT/);
+  // PK01 包内检查：绑定本次 checkout 提交，报告落盘并上传（上传路径由 runtime 套件断言）。
+  const pk01 = stepIndex("Verify packaged contents (PK01)");
+  const version = stepIndex("Verify packaged release version");
+  assert.ok(pk01 > version);
+  assert.match(job.steps[pk01].run, /scripts\/verify-desktop-package\.mjs/);
+  assert.match(job.steps[pk01].run, /--expected-commit/);
+  assert.match(job.steps[pk01].run, /PK01-REPORT\.json/);
+  // Preview 来源清单：无 tag 时也产出（浮动 ref 的来源缺口）。
+  const preview = stepIndex("Record preview build provenance");
+  assert.equal(job.steps[preview].if, "env.RELEASE_TAG == ''");
+  assert.match(job.steps[preview].run, /PREVIEW-MANIFEST\.json/);
+});
+
+test("agent node dist job builds and verifies the independent distribution", () => {
+  const job = workflow.jobs["agent-node-dist"];
+  assert.ok(job, "agent-node-dist job exists");
+  assert.equal(
+    job.steps[0].with.ref,
+    "${{ inputs.release_tag || inputs.source_commit || github.sha }}",
+  );
+  const runs = job.steps.map((step) => step.run ?? "").join("\n");
+  assert.match(runs, /pnpm build:sea:prepare/);
+  assert.match(runs, /pnpm build:zcode --base-url/);
+  assert.match(runs, /scripts\/verify-agent-node-dist\.mjs/);
+  assert.match(runs, /AGENT-DIST-REPORT\.json/);
+  const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
+  assert.equal(upload.with["if-no-files-found"], "error");
 });

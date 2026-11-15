@@ -39,12 +39,13 @@ for (const [name, steps] of [
   ["Extended tests", extended.jobs["historical-tests"].steps],
   ["Main audit", extended.jobs["desktop-main-audit"].steps],
   ["Interactive E2E", ci.jobs["desktop-e2e"].steps],
+  ["Agent node dist", installers.jobs["agent-node-dist"].steps],
 ]) {
   test(`${name} uses the reviewed Node.js 24 Action releases`, () => {
     const actions = steps.filter((step) => step.uses);
     assert.equal(
       actions.length,
-      name === "Extended tests" ? 6 : name === "Interactive E2E" ? 4 : 5,
+      name === "Extended tests" ? 6 : ["Interactive E2E", "Agent node dist"].includes(name) ? 4 : 5,
     );
     for (const step of actions) {
       const [action, version] = step.uses.split("@");
@@ -75,6 +76,7 @@ test("dependency installation keeps each workflow's lifecycle-script policy", ()
     [extended.jobs["historical-tests"].steps, "pnpm install --frozen-lockfile"],
     [extended.jobs["desktop-main-audit"].steps, "pnpm install --frozen-lockfile --ignore-scripts"],
     [ci.jobs["desktop-e2e"].steps, "pnpm install --frozen-lockfile"],
+    [installers.jobs["agent-node-dist"].steps, "pnpm install --frozen-lockfile"],
   ]) {
     const installs = steps.filter((step) => step.run?.startsWith("pnpm install"));
     assert.equal(installs.length, 1);
@@ -108,7 +110,9 @@ test("installer uploads remain named multi-file archives and fail on missing fil
     extensions.map((extension) => `packages/desktop/dist/${glob}.${extension}`),
   );
   expectedPaths.push("packages/desktop/dist/RELEASE-MANIFEST.json");
+  expectedPaths.push("packages/desktop/dist/PREVIEW-MANIFEST.json");
   expectedPaths.push("packages/desktop/dist/VERSION-VERIFICATION.json");
+  expectedPaths.push("packages/desktop/dist/PK01-REPORT.json");
   assert.deepEqual(upload.with.path.trim().split("\n"), expectedPaths);
 });
 
@@ -133,6 +137,12 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
   assert.deepEqual(installers.on, {
     workflow_dispatch: {
       inputs: {
+        source_commit: {
+          description:
+            "Immutable source commit for dispatch builds (empty uses the event commit; never a floating branch head)",
+          type: "string",
+          default: "",
+        },
         release_tag: {
           description: "Existing formal OpenZWork tag for a production installer",
           type: "string",
@@ -163,6 +173,12 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
           description: "Markdown release notes for publishing the reviewed draft",
           type: "string",
           default: "",
+        },
+        zcode_dist_base_url: {
+          description:
+            "Download base URL embedded in the independent Node dist install script (build:zcode)",
+          type: "string",
+          default: "https://example.invalid/zcode/deps/zcode/",
         },
       },
     },
@@ -308,10 +324,7 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
   const job = ci.jobs["desktop-e2e"];
   assert.equal(job["runs-on"], "macos-15");
   assert.equal(job["timeout-minutes"] >= 30, true);
-  assert.equal(
-    job.if,
-    "github.event_name == 'workflow_dispatch' && inputs.desktop_e2e",
-  );
+  assert.equal(job.if, "github.event_name == 'workflow_dispatch' && inputs.desktop_e2e");
   const include = job.strategy.matrix.include;
   assert.equal(job.strategy["fail-fast"], false);
   const byGroup = new Map(include.map((entry) => [entry["spec-group"], entry]));
@@ -345,10 +358,7 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
     "passRate !== 1",
     "specs with 0 collected",
   ]) {
-    assert.ok(
-      verify.run.includes(fragment),
-      `summary verification must check ${fragment}`,
-    );
+    assert.ok(verify.run.includes(fragment), `summary verification must check ${fragment}`);
   }
   const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
   assert.equal(upload.with["if-no-files-found"], "error");
