@@ -298,9 +298,10 @@ async function openSearch() {
 }
 
 async function searchAndExpect(query: string, names: string[]) {
-  // 修复依据（OpenZWork，v3.18.1 B3）：20261115045826333 run 中 setValue 与 app 重启后
-  // warmup 引发的重渲染竞态会留下受控输入串损坏（标题/正文命中正常、后续查询恒空且
-  // 渲染「暂无相关结果」=有查询零结果态）。按真实用户行为核验输入值，不符则重设一次；
+  // 修复依据（OpenZWork，v3.18.1 B3）：20261115045826333 run 首错为输入值不符的恒空查询
+  // （标题/正文命中正常、渲染「暂无相关结果」=有查询零结果态）。根因为高置信假设、失败
+  // 不可复现——推测 setValue 与 app 重启后 warmup 引发的重渲染竞态损坏受控输入串；4 次
+  // 复跑绿只证明本轮结果，不能反证首错原因。按真实用户行为核验输入值，不符则重设一次；
   // 断言不变，失败时附输入框实际值与当前行，区分查询串损坏与数据缺失。
   await $(inputSelector).setValue(query);
   if ((await $(inputSelector).getValue()) !== query) {
