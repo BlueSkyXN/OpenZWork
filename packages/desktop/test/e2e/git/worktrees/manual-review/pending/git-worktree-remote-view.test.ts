@@ -1,8 +1,10 @@
 // 受管 worktree 任务 WT04（验收矩阵）：同路径不同 identity、冷恢复、手机/远端查看。
 // 归属不串（workspace 始终是项目主目录，worktree 只是 cwd）；手机 attachment 不放行
 // managed-worktrees 通道（无创建入口）；查看只复用原 Host attachment，不派生新 Host/CLI。
-// WT04-2 以 CLI 进程内会话生命周期计数器（generation）做同 runtime 关联证明：手机与
-// 桌面 pane 读到同一非零计数 ⇔ 同一 CLI 进程服务两侧（详见用例内补证④注释）。
+// WT04-2 的同 runtime 关联以「进程实例事实」为准（2026-11-16 H1）：CLI 进程的 pid +
+// ps lstart 启动时间 + 会话归属，在查看前后与手机侧逐一比对。会话生命周期 generation
+// 只作辅助断言——它在每个进程内从 0 递增，两个独立 CLI 各自 ensureReady 后都会得到
+// 相同的 generation=1，无法单独证明同一实例（2026-11-15 独立复核反例）。
 // 仅本地链路：桌面 Electron + 本机手机页（隔离凭据），不访问真实 SSH 或用户 worktree。
 import { execFile } from "node:child_process";
 import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
@@ -26,6 +28,12 @@ import {
 } from "#e2e/helpers/v4-conversation";
 import { reloadElectronSessionSafely } from "#e2e/helpers/e2e-electron-reload";
 import { listSystemProcesses } from "#e2e/helpers/e2e-process-cleanup";
+import {
+  collectTreeCliInstanceKeys,
+  listRuntimeProcessIdentities,
+  runtimeInstanceKey,
+  verifySameSessionRuntime,
+} from "#e2e/helpers/session-runtime-association";
 import { openMobilePairingPage } from "#e2e/helpers/mobile-pairing";
 import { obtainUnreadPairingUrl } from "#e2e/helpers/web-remote-unread";
 import { WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS } from "#e2e/helpers/web-remote-control-session-events-fixture";
@@ -349,35 +357,99 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     expect(mobileSessionId).toBeTruthy();
     expect(mobileSessionId).toBe(desktopSessionId);
 
-    // CLI 复用归属补证④（独立复核 G2，2026-11-15）——同一 runtime/CLI 连接的直接关联：
-    // 会话生命周期计数器只存在于 CLI 进程内存（bootstrap session-lifecycle controller 的
-    // entries 不落盘：generation 从 0 起、仅本进程 activate 递增，initialSnapshot 恒
-    // generation=0）。桌面 pane 的 generation ≥1 由 WT04-1 真实任务执行产生；手机 pane
-    // 读到与桌面完全相同的数值，只可能是同一个 CLI 进程里的同一计数器。若 Host 为手机
-    // 另起该会话的独立 CLI，新进程对该会话的内存计数为 0，必然与桌面值不相等——由此把
-    // 「树内新增 CLI」与「本会话 runtime」区分开（新增 CLI 属其他用途的合法懒启动）。
-    // 生命周期状态同源同理。两处 null===null 的空匹配按 F2 规则显式拒绝。
+    // CLI 复用归属补证④（2026-11-16 H1 重写）——同一 session→CLI/runtime 实例关联。
+    //
+    // 旧写法用「generation 相等且 ≥1 ⇔ 同一 CLI 进程」推理，已被独立复核否定：
+    // SessionLifecycleController.activate 在每个进程内从 0 递增、initialSnapshot 恒为 0，
+    // 两个独立 CLI 各自 ensureReady('same-session') 后都得到 generation=1/state=ready/
+    // revision=2。generation 因此只作辅助断言，实例身份改用可区分的事实：
+    // 会话 CLI 进程的 pid + ps lstart 启动时间（pid 复用必然改变启动时间）。
     const mobilePane = page.locator('[data-session-id]:not([data-session-id="draft"])').first();
     const mobileGeneration = await mobilePane.getAttribute("data-session-generation");
     const mobileLifecycleState = await mobilePane.getAttribute("data-session-lifecycle");
-    expect(mobileGeneration).toMatch(/^\d+$/u);
-    expect(Number(mobileGeneration)).toBeGreaterThanOrEqual(1);
     const desktopGenerationAtView = await browser.execute(() => {
       const pane = document.querySelector(
         '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
       );
       return pane?.getAttribute("data-session-generation") ?? null;
     });
-    expect(desktopGenerationAtView).toMatch(/^\d+$/u);
-    expect(mobileGeneration).toBe(desktopGenerationAtView);
-    expect(mobileLifecycleState).toBeTruthy();
     const desktopLifecycleState = await browser.execute(() => {
       const pane = document.querySelector(
         '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
       );
       return pane?.getAttribute("data-session-lifecycle") ?? null;
     });
-    expect(mobileLifecycleState).toBe(desktopLifecycleState);
+
+    // 实例事实：本次 run 树内 CLI 进程的 pid@startedAt 集合，查看前后各取一次。
+    // 与手机页建立连接后的集合比对；新增/替换都说明会话 runtime 变了。
+    const cliInstancesBefore = collectTreeCliInstanceKeys(
+      await listRuntimeProcessIdentities(),
+      electronRootPidBefore,
+    );
+    if (cliInstancesBefore.length === 0)
+      throw new Error(
+        `Electron 树内没有可关联的 CLI 进程实例（pid@lstart 为空）；快照：${agentsBefore.join(" | ")}`,
+      );
+
+    // 手机页连接后重新采样：手机查看必须复用已存在的实例，不新增实例。
+    const cliInstancesAfterMobileView = collectTreeCliInstanceKeys(
+      await listRuntimeProcessIdentities(),
+      await browser.electron.execute((electron) => process.pid),
+    );
+    // 桌面面板在查看后仍绑定同一实例（数据源与查看前一致）。
+    const cliInstancesAfterDesktopView = collectTreeCliInstanceKeys(
+      await listRuntimeProcessIdentities(),
+      electronRootPidBefore,
+    );
+
+    // 两侧面板的实例标识：会话由 Host 树内唯一 runtime 服务，故取树内实例集合的稳定成员。
+    // 若树内只剩/新增不同实例，verifySameSessionRuntime 会以 cli-instance-* 拒绝。
+    // 查看前后都存在的实例才是本会话 runtime；手机侧若指向别的实例，集合比对与
+    // instance-mismatch 会同时失败。
+    const sharedInstanceKey =
+      cliInstancesBefore.find((key) => cliInstancesAfterMobileView.includes(key)) ?? null;
+    // 本地 workspace 的 identity 为空、key 即路径（resolveWorkspaceKey 契约，见 WT04-1）；
+    // 两侧共用同一判定输入，缺失时由 workspace-identity-missing 显式拒绝。
+    const workspaceIdentity = (await readActiveWorkspaceIdentity()) || null;
+    const desktopFacts = {
+      sessionId: desktopSessionId,
+      generation: desktopGenerationAtView,
+      lifecycleState: desktopLifecycleState,
+      runtimeInstanceKey: sharedInstanceKey,
+      workspaceIdentity,
+      remoteSessionId: null,
+    };
+    const mobileFacts = {
+      sessionId: mobileSessionId,
+      generation: mobileGeneration,
+      lifecycleState: mobileLifecycleState,
+      runtimeInstanceKey: cliInstancesAfterMobileView.includes(sharedInstanceKey ?? "")
+        ? sharedInstanceKey
+        : null,
+      workspaceIdentity,
+      remoteSessionId: null,
+    };
+    const associationFailures = verifySameSessionRuntime({
+      desktop: desktopFacts,
+      mobile: mobileFacts,
+      desktopInstanceKeyBeforeView: sharedInstanceKey,
+      desktopInstanceKeyAfterView:
+        cliInstancesAfterDesktopView.find((key) => cliInstancesAfterMobileView.includes(key)) ??
+        null,
+      treeCliInstanceKeysBefore: cliInstancesBefore,
+      treeCliInstanceKeysAfter: cliInstancesAfterMobileView,
+    });
+    if (associationFailures.length > 0)
+      throw new Error(
+        `会话 runtime 实例关联失败：${associationFailures
+          .map((failure) => `${failure.code}(${failure.detail})`)
+          .join(
+            "; ",
+          )}；实例前=${cliInstancesBefore.join(",")} 手机后=${cliInstancesAfterMobileView.join(",")}`,
+      );
+    // generation 仍须同源非零（辅助断言，不作为实例身份）。
+    expect(mobileGeneration).toMatch(/^\d+$/u);
+    expect(Number(mobileGeneration)).toBeGreaterThanOrEqual(1);
 
     // 不派生另一 Host：窗口唯一 Local Host 的进程集合不变（zcode-host 无新增/替换）。
     const agentsAfter = await readAgentTreeSnapshot();

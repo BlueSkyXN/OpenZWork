@@ -345,6 +345,9 @@ entries:
       - packages/desktop/test/e2eRuntimePaths.test.ts
       # WT04（受管 worktree 冷恢复归属+手机查看）验收用例：v3.18.0 同步期 OpenZWork 自有覆盖。
       - packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts
+      # H1（2026-11-16）：会话 runtime 实例关联判定（pid+lstart+会话归属，generation 仅辅助）。
+      - packages/desktop/test/e2e/helpers/session-runtime-association.ts
+      - packages/desktop/test/sessionRuntimeAssociation.test.ts
       # WT04 补证（2026-11-15 独立复核 F3 迁移）：同路径两个 identity 的任务隔离与冷恢复，
       # 受控运行时入口走生产 task-facts 管道 + 真实 TaskIndexRepo 存储（原 services 业务单测
       # 违反「不新增 App 业务单测」规则，已删除）。
