@@ -290,6 +290,8 @@ entries:
       - scripts/publish-github-release.mjs
       - scripts/release-workflows.mjs
       - scripts/verify-desktop-release-version.mjs
+      - scripts/verify-desktop-package.mjs
+      - scripts/installer-provenance.mjs
       - packages/desktop/src/renderer/env.d.ts
     hooks:
       - package.json
@@ -302,6 +304,7 @@ entries:
       - scripts/test/openzwork-version.test.mjs
       - scripts/test/publish-github-release.test.mjs
       - scripts/test/verify-desktop-release-version.test.mjs
+      - scripts/test/verify-desktop-package.test.mjs
       - scripts/test/zcode-distribution-installer.test.mjs
       - tests/ci/automatic-release.test.mjs
       - tests/ci/installer-release.test.mjs
@@ -325,10 +328,13 @@ entries:
       - scripts/merge-full-suite-reports.mjs
       - scripts/run-full-suite-groups.mjs
       - scripts/test-report-validation.mjs
+      - scripts/agent-node-dist.mjs
+      - scripts/verify-agent-node-dist.mjs
       - tests/ci/core-tests.json
       - packages/desktop/test/e2e/reporting/istanbul-lib-instrument.d.ts
     tests:
       - tests/ci/actions-runtime.test.mjs
+      - scripts/test/verify-agent-node-dist.test.mjs
       - tests/ci/core-scope.test.mjs
       - tests/ci/extended-parallel.test.mjs
       - tests/ci/gen-ui-vendor-checkout.test.mjs

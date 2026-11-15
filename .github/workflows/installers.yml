@@ -368,36 +368,98 @@ jobs:
       - name: Install dependencies (frozen lockfile, with scripts)
         run: pnpm install --frozen-lockfile
 
+      # 下载基地址来源必须显式（CI-FIRST §2.5/H4）：dispatch 取输入，push/tag 取仓库变量
+      # ZCODE_DIST_BASE_URL；缺失直接失败，不用空串或临时 fallback 冒充正式地址。
+      - name: Resolve agent dist download base URL
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          INPUT_BASE_URL: ${{ inputs.zcode_dist_base_url }}
+          VARS_BASE_URL: ${{ vars.ZCODE_DIST_BASE_URL }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE' | tee /tmp/agent-dist-base-url.txt
+          import { resolveAgentDistBaseUrl } from './scripts/agent-node-dist.mjs';
+          const resolved = resolveAgentDistBaseUrl({
+            eventName: process.env.EVENT_NAME,
+            refType: process.env.REF_TYPE,
+            inputs: { zcode_dist_base_url: process.env.INPUT_BASE_URL ?? '' },
+            vars: { ZCODE_DIST_BASE_URL: process.env.VARS_BASE_URL ?? '' },
+          });
+          console.error(`agent dist base URL source: ${resolved.source}`);
+          console.log(resolved.baseUrl);
+          NODE
+          {
+            echo "AGENT_DIST_BASE_URL=$(cat /tmp/agent-dist-base-url.txt)"
+            echo "AGENT_DIST_BASE_URL_SOURCE=${{ github.event_name == 'workflow_dispatch' && 'dispatch-input' || 'repository-variable' }}"
+          } >> "$GITHUB_ENV"
+
       # 与 B/C 本地构建同链：先备 shared 声明与 CLI 包，再 build:zcode 出 tarball。
       - name: Prepare agent workspace build
         run: pnpm build:sea:prepare
 
       - name: Build independent Node distribution
-        run: pnpm build:zcode --base-url "${{ inputs.zcode_dist_base_url }}"
+        run: pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL"
 
+      # 产物选择与来源清单：与本次版本唯一对应的 tarball，附 source/tree/workflow SHA、
+      # 平台、工具链与 hash；不用 `find | head -1` 忽略多产物。
       - name: Verify agent node dist contents
         shell: bash
+        env:
+          DIST_PLATFORM: ${{ matrix.platform }}
         run: |
           set -euo pipefail
-          version=$(node -e "console.log(require('./package.json').version)")
-          tarball=$(find dist/zcode/releases -name "zcode-*.tar.gz" | head -1)
-          test -n "$tarball"
-          node scripts/verify-agent-node-dist.mjs --tarball "$tarball" --expected-version "$version" --report dist/zcode/releases/AGENT-DIST-REPORT.json | tee /tmp/agent-dist-report.json
+          export VERSION=$(node -e "console.log(require('./package.json').version)")
+          export TARBALL=$(node --input-type=module <<'NODE'
+          import { selectAgentDistTarball } from './scripts/agent-node-dist.mjs';
+          console.log(
+            await selectAgentDistTarball({ releaseRoot: 'dist/zcode/releases', version: process.env.VERSION }),
+          );
+          NODE
+          )
+          node scripts/verify-agent-node-dist.mjs --tarball "$TARBALL" --expected-version "$VERSION" --report dist/zcode/releases/AGENT-DIST-REPORT.json | tee /tmp/agent-dist-report.json
+          export PNPM_VERSION=$(pnpm --version)
+          node --input-type=module <<'NODE' | tee /tmp/agent-dist-manifest.json
+          import { execFile } from 'node:child_process';
+          import { promisify } from 'node:util';
+          import { writeAgentDistManifest } from './scripts/agent-node-dist.mjs';
+          const exec = promisify(execFile);
+          const git = async (...args) => (await exec('git', args)).stdout.trim();
+          const { manifest } = await writeAgentDistManifest({
+            releaseRoot: 'dist/zcode/releases',
+            tarball: process.env.TARBALL,
+            version: process.env.VERSION,
+            platform: process.env.DIST_PLATFORM,
+            baseUrl: process.env.AGENT_DIST_BASE_URL,
+            baseUrlSource: process.env.AGENT_DIST_BASE_URL_SOURCE,
+            sourceCommit: await git('rev-parse', 'HEAD'),
+            sourceTree: await git('rev-parse', 'HEAD^{tree}'),
+            workflowCommit: process.env.GITHUB_WORKFLOW_SHA,
+            nodeVersion: process.version,
+            pnpmVersion: process.env.PNPM_VERSION ?? '',
+          });
+          console.log(JSON.stringify(manifest, null, 2));
+          NODE
           {
             echo '### Agent Node distribution'
             echo '```json'
-            cat /tmp/agent-dist-report.json
+            cat /tmp/agent-dist-manifest.json
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload agent dist report
+      # 实际交付物必须留档：只上传报告会让 runner 退出后无法取用 tarball。
+      - name: Upload agent node distribution
         if: always()
         uses: actions/upload-artifact@v7.0.1
         with:
           name: agent-node-dist-${{ matrix.platform }}
           archive: true
           path: |
+            dist/zcode/releases/*/zcode-*.tar.gz
+            dist/zcode/releases/*/sha256.txt
             dist/zcode/releases/AGENT-DIST-REPORT.json
+            dist/zcode/releases/AGENT-DIST-MANIFEST.json
           if-no-files-found: error
 
   publish:

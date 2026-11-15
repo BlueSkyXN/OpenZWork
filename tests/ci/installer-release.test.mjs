@@ -485,9 +485,122 @@ test("agent node dist job builds and verifies the independent distribution", () 
   );
   const runs = job.steps.map((step) => step.run ?? "").join("\n");
   assert.match(runs, /pnpm build:sea:prepare/);
-  assert.match(runs, /pnpm build:zcode --base-url/);
+  // 下载基地址由显式解析步骤提供，不再直接把 dispatch 输入塞进构建命令（push/tag 无该输入）。
+  assert.match(runs, /scripts\/agent-node-dist\.mjs/);
+  assert.match(runs, /pnpm build:zcode --base-url "\$AGENT_DIST_BASE_URL"/);
+  assert.doesNotMatch(
+    runs,
+    /pnpm build:zcode --base-url "\$\{\{ inputs\.zcode_dist_base_url \}\}"/,
+  );
   assert.match(runs, /scripts\/verify-agent-node-dist\.mjs/);
   assert.match(runs, /AGENT-DIST-REPORT\.json/);
+  // 实际交付物留档：tarball 与 sha256 进 artifact，不只上传报告。
   const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
   assert.equal(upload.with["if-no-files-found"], "error");
+  assert.match(upload.with.path, /zcode-\*\.tar\.gz/);
+  assert.match(upload.with.path, /sha256\.txt/);
+  assert.match(upload.with.path, /AGENT-DIST-MANIFEST\.json/);
+});
+
+test("agent dist base URL resolution requires an explicit source per event", async () => {
+  const { resolveAgentDistBaseUrl, isPlaceholderBaseUrl } =
+    await import("../../scripts/agent-node-dist.mjs");
+  // dispatch：用输入。
+  assert.deepEqual(
+    resolveAgentDistBaseUrl({
+      eventName: "workflow_dispatch",
+      inputs: { zcode_dist_base_url: "https://dist.example.org/zcode/" },
+      vars: {},
+    }),
+    { baseUrl: "https://dist.example.org/zcode/", source: "dispatch-input" },
+  );
+  // dispatch 缺输入必须失败，不能回落到占位或仓库变量。
+  assert.throws(
+    () =>
+      resolveAgentDistBaseUrl({
+        eventName: "workflow_dispatch",
+        inputs: { zcode_dist_base_url: "" },
+        vars: { ZCODE_DIST_BASE_URL: "https://dist.example.org/zcode/" },
+      }),
+    /requires the zcode_dist_base_url input/,
+  );
+  // push / tag：取已批准的仓库变量。
+  for (const refType of ["branch", "tag"]) {
+    assert.deepEqual(
+      resolveAgentDistBaseUrl({
+        eventName: "push",
+        refType,
+        inputs: {},
+        vars: { ZCODE_DIST_BASE_URL: "https://dist.example.org/zcode" },
+      }),
+      { baseUrl: "https://dist.example.org/zcode/", source: "repository-variable" },
+    );
+    // 缺变量必须失败——这正是旧 job 传空串给 build:zcode 的缺陷。
+    assert.throws(
+      () => resolveAgentDistBaseUrl({ eventName: "push", refType, inputs: {}, vars: {} }),
+      /push\/tag runs require the repository variable ZCODE_DIST_BASE_URL/,
+    );
+  }
+  assert.throws(() => resolveAgentDistBaseUrl({ eventName: "pull_request" }), /not supported/);
+  // 占位地址只标 kind，不被当成正式配置。
+  assert.equal(isPlaceholderBaseUrl("https://example.invalid/zcode/deps/zcode/"), true);
+  assert.equal(isPlaceholderBaseUrl("https://dist.example.org/zcode/"), false);
+});
+
+test("agent dist tarball selection rejects missing, extra and stale artifacts", async (t) => {
+  const { selectAgentDistTarball, writeAgentDistManifest } =
+    await import("../../scripts/agent-node-dist.mjs");
+  const root = await mkdtemp(join(tmpdir(), "openzwork-agent-dist-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const version = "3.18.2+openzwork.1";
+  const expected = `zcode-${version}.tar.gz`;
+
+  // 缺目录 / 缺产物 / 版本不符（旧版本残留）都必须失败。
+  await assert.rejects(
+    selectAgentDistTarball({ releaseRoot: join(root, "missing"), version }),
+    /release directory missing/,
+  );
+  await mkdir(root, { recursive: true });
+  await assert.rejects(selectAgentDistTarball({ releaseRoot: root, version }), /found 0/);
+  await writeFile(join(root, "zcode-3.18.1+openzwork.1.tar.gz"), "stale");
+  await assert.rejects(selectAgentDistTarball({ releaseRoot: root, version }), /found 0/);
+
+  // 正确产物出现后唯一命中。
+  await writeFile(join(root, expected), "tarball bytes");
+  assert.equal(await selectAgentDistTarball({ releaseRoot: root, version }), join(root, expected));
+
+  // 多产物（同名不可能，但多版本共存）不影响选择；清单记录实际 hash 与占位标记。
+  const { manifest } = await writeAgentDistManifest({
+    releaseRoot: root,
+    tarball: join(root, expected),
+    version,
+    platform: "macos-arm64",
+    baseUrl: "https://example.invalid/zcode/deps/zcode/",
+    baseUrlSource: "dispatch-input",
+    sourceCommit: "a".repeat(40),
+    sourceTree: "b".repeat(40),
+    workflowCommit: "c".repeat(40),
+    nodeVersion: "v24.14.0",
+    pnpmVersion: "11.28.6",
+  });
+  assert.equal(manifest.tarball, expected);
+  assert.equal(manifest.baseUrlKind, "placeholder");
+  assert.equal(manifest.tarballSha256, createHash("sha256").update("tarball bytes").digest("hex"));
+  assert.equal(manifest.sourceCommit, "a".repeat(40));
+  assert.deepEqual(manifest.toolchain, { node: "v24.14.0", pnpm: "11.28.6" });
+  // 正式地址不再标 placeholder。
+  const configured = await writeAgentDistManifest({
+    releaseRoot: root,
+    tarball: join(root, expected),
+    version,
+    platform: "linux-amd64",
+    baseUrl: "https://dist.example.org/zcode/",
+    baseUrlSource: "repository-variable",
+    sourceCommit: "a".repeat(40),
+    sourceTree: "b".repeat(40),
+    workflowCommit: "c".repeat(40),
+    nodeVersion: "v24.14.0",
+    pnpmVersion: "11.28.6",
+  });
+  assert.equal(configured.manifest.baseUrlKind, "configured");
 });

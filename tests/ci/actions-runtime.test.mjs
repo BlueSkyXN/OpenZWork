@@ -111,6 +111,7 @@ test("installer uploads remain named multi-file archives and fail on missing fil
   );
   expectedPaths.push("packages/desktop/dist/RELEASE-MANIFEST.json");
   expectedPaths.push("packages/desktop/dist/PREVIEW-MANIFEST.json");
+  expectedPaths.push("packages/desktop/dist/BUILD-MANIFEST.json");
   expectedPaths.push("packages/desktop/dist/VERSION-VERIFICATION.json");
   expectedPaths.push("packages/desktop/dist/PK01-REPORT.json");
   assert.deepEqual(upload.with.path.trim().split("\n"), expectedPaths);
@@ -142,6 +143,12 @@ test("workflow triggers preserve build matrices and expose explicit cloud publis
             "Immutable source commit for dispatch builds (empty uses the event commit; never a floating branch head)",
           type: "string",
           default: "",
+        },
+        build_production: {
+          description:
+            "Build unsigned production installers from source_commit without publishing (no tag, no release)",
+          type: "boolean",
+          default: false,
         },
         release_tag: {
           description: "Existing formal OpenZWork tag for a production installer",
