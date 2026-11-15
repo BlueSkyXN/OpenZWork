@@ -27,6 +27,7 @@ import {
   modelRequestMetricsFactSchema,
   type ConversationTelemetryFact,
   type ModelRequestMetricsFact,
+  looksLikeSecretIdentifier,
 } from "@zcode/shared/zcode-protocol-v4";
 
 const MAX_TRACKED_LIFECYCLE_KEYS = 2_000;
@@ -113,7 +114,17 @@ function skillTelemetryFactFields(
   // 仅消费加载结果 metadata；请求参数不证明技能存在，不能进入遥测。
 
   const name = optionalString(value.name);
-  const skillName = source && name && name.length <= 64 && /^[A-Za-z0-9][A-Za-z0-9_-]*$/u.test(name) ? name : undefined;
+  // 修复依据（OpenZWork，v3.18.1 同步）：内联过滤补齐 schema 同款密钥形态拒绝
+  // （looksLikeSecretIdentifier）——此前 sk- 形态名字通过内联检查却在 schema parse
+  // 被拒，整条 tool.lifecycle 事实被丢弃（v4-gateway 技能隐私用例失败根因）。
+  const skillName =
+    source &&
+    name &&
+    name.length <= 64 &&
+    /^[A-Za-z0-9][A-Za-z0-9_-]*$/u.test(name) &&
+    !looksLikeSecretIdentifier(name)
+      ? name
+      : undefined;
   return {
     ...(skillName ? { skillName } : {}),
     ...(qualifiedName ? { skillQualifiedName: qualifiedName } : {}),

@@ -727,11 +727,13 @@ describe("订阅与帧调度", () => {
           { turnId: "turn-skill" },
         ),
       );
-      expect(
-        host.telemetryFacts.find(
-          (fact) => fact.kind === "tool.lifecycle" && fact.phase === "completed",
-        ),
-      ).toMatchObject({ skillName: "unknown", skillSource: "zcode" });
+      // OpenZWork 适配（本地事实投影，无遥测上传）：不合规模码的 skillName 直接
+      // 不落字段（上游为官方遥测 shape 固定写 "unknown"）；隐私断言同严——原文不进 facts。
+      const completed = host.telemetryFacts.find(
+        (fact) => fact.kind === "tool.lifecycle" && fact.phase === "completed",
+      );
+      expect(completed).toMatchObject({ skillSource: "zcode" });
+      expect(completed).not.toHaveProperty("skillName");
       expect(JSON.stringify(host.telemetryFacts)).not.toContain(name);
     },
   );
@@ -837,6 +839,11 @@ describe("订阅与帧调度", () => {
     );
   });
 
+  // OpenZWork（off-peak 裁剪修复）：上游此用例断言 Off-Peak TurnStarted 只透传稳定
+  // attribution；裁剪后保留其隐私核心——正文不进 telemetry facts。A 期手术曾误删
+  // it 头留下孤儿代码块（括号失衡，语法错误随本批 v3.18.1 复跑暴露），此处补回
+  // 用例头并保持无 off-peak 字段的 OpenZWork 形态。
+  it("TurnStarted 只透传事件事实，正文不进入 telemetry facts", () => {
     const host = makeHost();
     const gateway = makeGateway(host);
     const log = new EventLog();

@@ -146,13 +146,7 @@ const toolLifecycleFactSchema = z
       // 移除上报模块时丢失了原版 redactTelemetryText 的密钥拒绝规则；字段校验仍需保留。
       // 其余 URL/路径/空白模式已由上面的标识字符合同拒绝。
       .refine(
-        (value) =>
-          ![
-            /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/iu,
-            /\bgh[pousr]_[A-Za-z0-9]{20,}\b/u,
-            /\bAKIA[A-Z0-9]{16}\b/u,
-            /\bAIza[0-9A-Za-z_-]{30,}\b/u,
-          ].some((pattern) => pattern.test(value)),
+        (value) => !looksLikeSecretIdentifier(value),
         "skillName must be a bounded, safe resolved Skill identifier",
       )
       .optional(),
@@ -326,6 +320,21 @@ type TurnStartedConversationTelemetryFact = Extract<
 export type ConversationTelemetryFact =
   | Exclude<ConversationTelemetryFactBase, { kind: "turn.started" }>
   | TurnStartedConversationTelemetryFact;
+
+
+/**
+ * 密钥形态标识拒绝（OpenZWork）：v3.18.0 合并期曾把该规则只留在 schema refine，
+ * 投影侧内联过滤缺同款检查，命中密钥形态的 skillName 会让整条事实被 schema
+ * parse 丢弃（v4-gateway 技能隐私用例失败）。两处共用本谓词（v3.18.1 同步收口）。
+ */
+export function looksLikeSecretIdentifier(value: string): boolean {
+  return [
+    /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/iu,
+    /\bgh[pousr]_[A-Za-z0-9]{20,}\b/u,
+    /\bAKIA[A-Z0-9]{16}\b/u,
+    /\bAIza[0-9A-Za-z_-]{30,}\b/u,
+  ].some((pattern) => pattern.test(value));
+}
 
 export const conversationTelemetryFactSchema = conversationTelemetryFactRuntimeSchema.transform(
   (fact): ConversationTelemetryFact => fact as ConversationTelemetryFact,
