@@ -357,16 +357,20 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
   const run = job.steps.find((step) => step.name === "Run interactive E2E specs");
   assert.equal(run.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH, "${{ matrix.replay-fixtures }}");
   assert.notEqual(run["continue-on-error"], true);
+  // 必需 case 清单逐个点名：完整性门禁按它核销，报告自报 requestedSpecs 不作依据。
+  for (const entry of include) {
+    const cases = JSON.parse(entry["required-cases"]);
+    assert.ok(Array.isArray(cases) && cases.length > 0, `${entry["spec-group"]}: required cases`);
+  }
   const verify = job.steps.find((step) => step.name === "Verify E2E summary completeness");
   assert.ok(verify, "summary completeness verification step exists");
-  for (const fragment of [
-    "exitCode !== 0",
-    "0 collected tests",
-    "passRate !== 1",
-    "specs with 0 collected",
-  ]) {
-    assert.ok(verify.run.includes(fragment), `summary verification must check ${fragment}`);
-  }
+  // 判定逻辑在 scripts/verify-e2e-summary.mjs（其行为由 scripts/test 覆盖），
+  // 步骤只负责定位报告、传必需清单并复用同一实现；不能再内联一份判据。
+  assert.match(verify.run, /scripts\/verify-e2e-summary\.mjs/);
+  assert.match(verify.run, /verifyE2ESummary/);
+  assert.match(verify.env.REQUIRED_SPECS, /matrix\.specs/);
+  assert.match(verify.env.REQUIRED_CASES, /matrix\.required-cases/);
+  assert.notEqual(verify["continue-on-error"], true);
   const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
   assert.equal(upload.with["if-no-files-found"], "error");
 });
