@@ -50,9 +50,7 @@ async function listTaskTitles(
 ): Promise<string[]> {
   const result = await repo.queryTaskList({
     kind: "all",
-    workspaceScopes: [
-      { workspacePath, ...(workspaceIdentity ? { workspaceIdentity } : {}) },
-    ],
+    workspaceScopes: [{ workspacePath, ...(workspaceIdentity ? { workspaceIdentity } : {}) }],
     sortBy: "updated",
   });
   return result.items.map((item) => item.title).sort();
@@ -72,10 +70,20 @@ describe("WT04：同一路径两个不同 identity 的任务隔离与冷恢复",
     const repo = new TaskIndexRepo(undefined, "local", dbPath);
     try {
       await repo.applyCliFacts({
-        meta: makeMeta({ taskId: "t_identity_a", title: "A 的任务", workspacePath: path, workspaceIdentity: IDENTITY_A }),
+        meta: makeMeta({
+          taskId: "t_identity_a",
+          title: "A 的任务",
+          workspacePath: path,
+          workspaceIdentity: IDENTITY_A,
+        }),
       });
       await repo.applyCliFacts({
-        meta: makeMeta({ taskId: "t_identity_b", title: "B 的任务", workspacePath: path, workspaceIdentity: IDENTITY_B }),
+        meta: makeMeta({
+          taskId: "t_identity_b",
+          title: "B 的任务",
+          workspacePath: path,
+          workspaceIdentity: IDENTITY_B,
+        }),
       });
       await repo.applyCliFacts({
         meta: makeMeta({ taskId: "t_local", title: "本地任务", workspacePath: path }),
@@ -95,13 +103,27 @@ describe("WT04：同一路径两个不同 identity 的任务隔离与冷恢复",
     const path = "/virtual/shared-project";
     const repo = new TaskIndexRepo(undefined, "local", dbPath);
     await repo.applyCliFacts({
-      meta: makeMeta({ taskId: "t_a", title: "属于 A", workspacePath: path, workspaceIdentity: IDENTITY_A }),
+      meta: makeMeta({
+        taskId: "t_a",
+        title: "属于 A",
+        workspacePath: path,
+        workspaceIdentity: IDENTITY_A,
+      }),
     });
     await repo.applyCliFacts({
-      meta: makeMeta({ taskId: "t_b", title: "属于 B", workspacePath: path, workspaceIdentity: IDENTITY_B }),
+      meta: makeMeta({
+        taskId: "t_b",
+        title: "属于 B",
+        workspacePath: path,
+        workspaceIdentity: IDENTITY_B,
+      }),
     });
     // B 侧删除不波及 A 侧行。
-    await repo.applyCliDeletion({ workspacePath: path, workspaceIdentity: IDENTITY_B, taskId: "t_b" });
+    await repo.applyCliDeletion({
+      workspacePath: path,
+      workspaceIdentity: IDENTITY_B,
+      taskId: "t_b",
+    });
     repo.close({ throwOnError: true });
 
     // 冷恢复：新实例重开同一数据库，事实不串。
