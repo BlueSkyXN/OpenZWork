@@ -606,11 +606,15 @@ test("[structural, not runtime] WP-06: CUA / clientScenes / plugin-creator surfa
     "apps/zcode-cli/packages/node-repl-host/src/server.ts",
     "apps/zcode-cli/packages/cli/src/plugin-host-command.ts",
   ];
+  // 修复依据（OpenZWork，2026-11-15 T15）：v3.18.0 同步恢复 plugin-creator 本地创建链
+  // （4d9a8c12 修 WP-06 裁剪与注册恢复的不一致；i18n 键族随上游回补，PluginAddMenu/
+  // usePluginCreator 现用）。WP-06 的 pluginCreator 字面量禁令随之解除；CUA/
+  // clientScenes/computerUse 等其余官方能力面保持零残留。
   for (const file of surfaces) {
     const text = fs.readFileSync(path.join(root, file), "utf8");
     assert.doesNotMatch(
       text,
-      /cuaPermission|CuaPermission|cuaAccessibility|CuaOsSupport|computerUse|ComputerUse|clientScenes|ClientScenes|pluginCreator|trustedOfficialCua|syncActiveTaskSession|ZCODE_CUA_/,
+      /cuaPermission|CuaPermission|cuaAccessibility|CuaOsSupport|computerUse|ComputerUse|clientScenes|ClientScenes|trustedOfficialCua|syncActiveTaskSession|ZCODE_CUA_/,
       file,
     );
   }

@@ -671,7 +671,7 @@ describe("ZCode plugins", () => {
     try {
       const pluginStorageRoot = join(root, "plugins");
       // OpenZWork(D004，2026-11-14 T15 修正）：官方市场为本地同步分区实现，无 CDN 默认远端
-      // （WP-08 保持）；Claude 官方目录恢复默认注册（GitHub shorthand，非 z.ai 产品域），
+      // （WP-08 保持）；Claude 官方目录恢复默认注册（GitHub shorthand，非官方产品域），
       // 空存储本地登记该条目、不写远端快照、不发网络请求；首次刷新才拉取 catalog。
       const fetchSpy = vi.fn();
       vi.stubGlobal("fetch", fetchSpy);

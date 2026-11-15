@@ -7,7 +7,11 @@ import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { promisify } from "node:util";
 import { chromium, type Browser } from "playwright-core";
-import { TID_TASK_ROW_WORKTREE_ICON, TID_WORKSPACE_PATH, TID_WORKTREE_TOGGLE } from "@zcode/shared/test-ids";
+import {
+  TID_TASK_ROW_WORKTREE_ICON,
+  TID_WORKSPACE_PATH,
+  TID_WORKTREE_TOGGLE,
+} from "@zcode/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { E2E_REPLY_TOKEN } from "#e2e/helpers/conversation-session";
 import { startDraftFromProject } from "#e2e/helpers/project-sidebar";
@@ -112,7 +116,10 @@ async function readActiveWorkspaceIdentity(): Promise<string | null | undefined>
     const state = (
       window as Window & {
         __zcodeTabStoreE2E?: {
-          getState(): { activeWorkspacePath: string | null; activeWorkspaceIdentity?: string | null };
+          getState(): {
+            activeWorkspacePath: string | null;
+            activeWorkspaceIdentity?: string | null;
+          };
         };
       }
     ).__zcodeTabStoreE2E?.getState();
@@ -228,7 +235,12 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     // 同路径只允许一个 workspace 状态（identity 未变）；worktree 任务没有带来第二个 tab。
     expect(pathsAfter.filter((p) => p === DEFAULT_WORKSPACE).length).toBe(1);
     // 受管 worktree 目录仍在（冷恢复不误删）。
-    expect(await stat(worktree).then(() => true, () => false)).toBe(true);
+    expect(
+      await stat(worktree).then(
+        () => true,
+        () => false,
+      ),
+    ).toBe(true);
   });
 
   it("WT04-2: 手机查看 worktree 任务复用原 Host，不出现创建入口，不派生新 Host/CLI", async function () {
@@ -279,10 +291,7 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     const worktreeIcon = page.getByTestId(TID_TASK_ROW_WORKTREE_ICON).first();
     await worktreeIcon.waitFor({ timeout: 60_000 });
     await worktreeIcon.click();
-    await page
-      .getByText(E2E_REPLY_TOKEN, { exact: false })
-      .first()
-      .waitFor({ timeout: 90_000 });
+    await page.getByText(E2E_REPLY_TOKEN, { exact: false }).first().waitFor({ timeout: 90_000 });
 
     // 手机页没有 worktree 创建入口：managed-worktrees 通道不放行手机 attachment。
     expect(await page.getByTestId(TID_WORKTREE_TOGGLE).count()).toBe(0);

@@ -45,7 +45,7 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
 // OpenZWork：官方市场的远端 CDN source 不随上游恢复（WP-08 官方产品域扫描零残留）；
 // 本地 bundled seed 分片仍会在 Agent storage 内合并出官方市场目录；用户可自行添加第三方市场。
 // Claude 官方目录（anthropics/claude-plugins-official）保留注册（2026-11-14 T15 修复）：它是
-// GitHub 公开仓库 shorthand 而非 z.ai 产品域，不在 WP-08 净化面（cleanup 门禁只拦 z.ai 域）；
+// GitHub 公开仓库 shorthand 而非官方产品域，不在 WP-08 净化面（门禁只拦官方域字面量）；
 // Git 不可用时的 GitHub Archive 刷新通道与 no-git 用例都依赖该默认条目存在。
 export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
   {

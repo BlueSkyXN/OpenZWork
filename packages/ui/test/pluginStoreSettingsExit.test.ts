@@ -78,9 +78,7 @@ describe("useWorkspaceMainViewSettingsExit 插件市场保留（OW-P025）", () 
 
   it("未 preserve 时关闭设置回到对话视图（既有语义不回归）", () => {
     const onExitSettings = vi.fn();
-    render(
-      createElement(SettingsExitHarness, { onExitSettings, onPreserve: () => {} }),
-    );
+    render(createElement(SettingsExitHarness, { onExitSettings, onPreserve: () => {} }));
 
     const closeSettings = document.querySelector('[data-testid="close-settings"]')!;
     act(() => {
