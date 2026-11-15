@@ -1197,6 +1197,31 @@ async function collectLogArchiveFile(
   files.push({ absolutePath, archivePath });
 }
 
+// 上游 v3.18.1 新增：按文件名谓词收集目录（memory-diagnostics 采集用）；
+// 依赖下方 collectLogArchiveFile，与上游同名同语义。
+async function collectLogArchiveFilesByName(
+  absoluteDir: string,
+  relativeDir: string,
+  isCollectableFileName: (fileName: string) => boolean,
+  files: LogArchiveFileEntry[],
+): Promise<void> {
+  const dirents = await readdir(absoluteDir, { withFileTypes: true }).catch(() => null);
+  if (!dirents) {
+    return;
+  }
+  dirents.sort((left, right) => left.name.localeCompare(right.name));
+  for (const dirent of dirents) {
+    if (!dirent.isFile() || !isCollectableFileName(dirent.name)) {
+      continue;
+    }
+    await collectLogArchiveFile(
+      join(absoluteDir, dirent.name),
+      posix.join(relativeDir, dirent.name),
+      files,
+    );
+  }
+}
+
 export async function collectLogArchiveFiles(sourceDir: string): Promise<LogArchiveFileEntry[]> {
   const files: LogArchiveFileEntry[] = [];
   const visitedDirs = new Set<string>();
@@ -1229,7 +1254,7 @@ export async function createLogArchiveArtifacts(
     join(zcodeCliDir, CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
     // OpenZWork（WP-03）：归档内路径标签与实际数据根 .openzwork 一致，避免误导排查。
     posix.join(OPENZWORK_DATA_DIR_NAME, "cli", CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
-    (name) => CLI_MEMORY_FILE_PATTERN.test(name),
+    (name: string) => CLI_MEMORY_FILE_PATTERN.test(name),
     files,
   );
   // 排查 agent CLI 问题还需要它的运行配置与模型 IO 轨迹。

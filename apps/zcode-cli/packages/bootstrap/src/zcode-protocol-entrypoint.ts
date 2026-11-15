@@ -137,6 +137,7 @@ export async function runZCodeProtocolAgent(
   let pluginPrewarm: Promise<void> | undefined;
   let sessionStore: SqliteSessionStore | undefined;
   let releaseDataRoot: (() => Promise<void>) | undefined;
+  let processResourceSampler: ZCodeProcessResourceSampler | undefined;
   let serverForCleanup: ZCodeProtocolAgentServer | undefined;
   let nodeReplBrowserBroker: NodeReplBrowserBroker | undefined;
   let mcpConnectionPool: McpConnectionPool | undefined;
@@ -223,7 +224,6 @@ export async function runZCodeProtocolAgent(
     // MCP elicitation 归属到协议 server 的会话；pool 先于 server 创建，端口延迟绑定。
     let elicitationServer: {
       requestMcpElicitation: McpElicitationPort["requestElicitation"];
-  let processResourceSampler: ZCodeProcessResourceSampler | undefined;
       handleMcpNotification: McpNotificationPort["onNotification"];
     } | null = null;
 

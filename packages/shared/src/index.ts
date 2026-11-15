@@ -130,6 +130,9 @@ export * from "./remoteAppConfig.js";
 export * from "./helpAppConfig.js";
 export * from "./remoteAssetInstallMode.js";
 export * from "./remoteResourcePackages.js";
+// OpenZWork（v3.18.1 同步）：sampler 节拍链恢复所需的资源采样常量/角色类型。
+// WP-05 曾移除该出口；模块内无遥测上传，仅本地节拍与协议通知负载类型。
+export * from "./processResourceTelemetry.js";
 export {
   BROWSER_SCREENSHOT_SURFACE_PREPARE_TIMEOUT_MS,
   BROWSER_VIEW_DRAFT_SESSION_ID,
@@ -184,11 +187,6 @@ export type {
   SaveFileResult,
   PrintPageToPdfResult,
   MicrophoneAccessResetResult,
-  MicrophoneAccessResult,
-  MicrophoneSettingsTarget,
-  CaptureBrowserGuestPageClip,
-  CaptureBrowserGuestPageRequest,
-  CaptureBrowserGuestPageResult,
   DesktopCloseToTrayCapability,
   DesktopCommandId,
   DesktopWindowChromeState,
