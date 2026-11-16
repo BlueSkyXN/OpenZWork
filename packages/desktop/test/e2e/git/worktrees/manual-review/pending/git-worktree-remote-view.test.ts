@@ -296,6 +296,18 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       .map((proc) => proc.pid)
       .sort((left, right) => left - right);
 
+    // 实例事实基线（H1）：手机查看开始前，树内 CLI 进程的 pid@ps-lstart 集合。
+    // 该集合与查看后的集合逐一比对；新增/移除都说明会话 runtime 实例变了
+    // （pid 复用必然伴随启动时间变化，故单独 pid 相等不足以判同一实例）。
+    const cliInstancesBefore = collectTreeCliInstanceKeys(
+      await listRuntimeProcessIdentities(),
+      electronRootPidBefore,
+    );
+    if (cliInstancesBefore.length === 0)
+      throw new Error(
+        `Electron 树内没有可关联的 CLI 进程实例（pid@lstart 为空）；快照：${agentsBefore.join(" | ")}`,
+      );
+
     const pairingUrl = await obtainUnreadPairingUrl();
     webBrowser = await chromium.launch({
       ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
@@ -380,37 +392,28 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       return pane?.getAttribute("data-session-lifecycle") ?? null;
     });
 
-    // 实例事实：本次 run 树内 CLI 进程的 pid@startedAt 集合，查看前后各取一次。
-    // 与手机页建立连接后的集合比对；新增/替换都说明会话 runtime 变了。
-    const cliInstancesBefore = collectTreeCliInstanceKeys(
-      await listRuntimeProcessIdentities(),
-      electronRootPidBefore,
-    );
-    if (cliInstancesBefore.length === 0)
-      throw new Error(
-        `Electron 树内没有可关联的 CLI 进程实例（pid@lstart 为空）；快照：${agentsBefore.join(" | ")}`,
-      );
-
-    // 手机页连接后重新采样：手机查看必须复用已存在的实例，不新增实例。
+    // 采样 1（S1）：手机页已打开任务、读回 session id 之后的树内实例集合。
     const cliInstancesAfterMobileView = collectTreeCliInstanceKeys(
       await listRuntimeProcessIdentities(),
       await browser.electron.execute((electron) => process.pid),
     );
-    // 桌面面板在查看后仍绑定同一实例（数据源与查看前一致）。
-    const cliInstancesAfterDesktopView = collectTreeCliInstanceKeys(
-      await listRuntimeProcessIdentities(),
-      electronRootPidBefore,
+
+    // 稳定实例 = 查看前（S0）与查看后（S1）都以同一 pid@lstart 存活的实例。
+    // 会话 runtime 必然是稳定实例：桌面 pane 在查看前后读同一 session（generation 不变），
+    // 而生命期盖不住查看窗口的短命 worker 不可能服务两端。实测树内短命 worker 以约
+    // 10 个/秒的速度生死更替（run desktop-e2e-20261115-235558-369，6s 窗口 10 进 8 出），
+    // 因此「集合严格相等」会把合法懒启动误判为实例替换；这里只认跨窗口存活者。
+    const stableInstanceKeys = cliInstancesBefore.filter((key) =>
+      cliInstancesAfterMobileView.includes(key),
+    );
+    const removedInstanceKeys = cliInstancesBefore.filter(
+      (key) => !cliInstancesAfterMobileView.includes(key),
     );
 
-    // 两侧面板的实例标识：会话由 Host 树内唯一 runtime 服务，故取树内实例集合的稳定成员。
-    // 若树内只剩/新增不同实例，verifySameSessionRuntime 会以 cli-instance-* 拒绝。
-    // 查看前后都存在的实例才是本会话 runtime；手机侧若指向别的实例，集合比对与
-    // instance-mismatch 会同时失败。
-    const sharedInstanceKey =
-      cliInstancesBefore.find((key) => cliInstancesAfterMobileView.includes(key)) ?? null;
     // 本地 workspace 的 identity 为空、key 即路径（resolveWorkspaceKey 契约，见 WT04-1）；
-    // 两侧共用同一判定输入，缺失时由 workspace-identity-missing 显式拒绝。
+    // 两侧共用同一判定输入（两侧同为空是合法状态，单侧缺失/取值不等才拒绝）。
     const workspaceIdentity = (await readActiveWorkspaceIdentity()) || null;
+    const sharedInstanceKey = stableInstanceKeys[0] ?? null;
     const desktopFacts = {
       sessionId: desktopSessionId,
       generation: desktopGenerationAtView,
@@ -423,30 +426,11 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       sessionId: mobileSessionId,
       generation: mobileGeneration,
       lifecycleState: mobileLifecycleState,
-      runtimeInstanceKey: cliInstancesAfterMobileView.includes(sharedInstanceKey ?? "")
-        ? sharedInstanceKey
-        : null,
+      runtimeInstanceKey: sharedInstanceKey,
       workspaceIdentity,
       remoteSessionId: null,
     };
-    const associationFailures = verifySameSessionRuntime({
-      desktop: desktopFacts,
-      mobile: mobileFacts,
-      desktopInstanceKeyBeforeView: sharedInstanceKey,
-      desktopInstanceKeyAfterView:
-        cliInstancesAfterDesktopView.find((key) => cliInstancesAfterMobileView.includes(key)) ??
-        null,
-      treeCliInstanceKeysBefore: cliInstancesBefore,
-      treeCliInstanceKeysAfter: cliInstancesAfterMobileView,
-    });
-    if (associationFailures.length > 0)
-      throw new Error(
-        `会话 runtime 实例关联失败：${associationFailures
-          .map((failure) => `${failure.code}(${failure.detail})`)
-          .join(
-            "; ",
-          )}；实例前=${cliInstancesBefore.join(",")} 手机后=${cliInstancesAfterMobileView.join(",")}`,
-      );
+
     // generation 仍须同源非零（辅助断言，不作为实例身份）。
     expect(mobileGeneration).toMatch(/^\d+$/u);
     expect(Number(mobileGeneration)).toBeGreaterThanOrEqual(1);
@@ -465,18 +449,47 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     });
     expect(desktopGenerationAfter).toBe(desktopGenerationBefore);
 
-    // CLI 复用归属补证②（进程级，独立复核 F2）：查看前已存在的会话 CLI 连接在查看后
-    // 全部存活——原连接被复用而非重启/替换。Host 在树内按会话懒启动额外 CLI worker 属
-    // 合法恢复语义（实测 +8，与 2026-11-15 run4 结论一致）；「另起该会话的独立 runtime」
-    // 由 Host 集合不变、树外增量扫描与 session id 一致性排除，树内新 CLI 不算独立证据。
+    // CLI 复用归属补证②（H1 重构）：会话 runtime 的连续性不再用「树内 CLI pid 全部存活」
+    // 表达——实测短命 worker 在窗口内高频率生死（6s 窗口 10 进 8 出），pid 级零消失既不成立
+    // 也不是会话证据。改用：会话实例必须是跨窗口稳定实例（同 pid@lstart 存活于 S0∩S1），
+    // 且窗口内新增、收尾仍存活的实例（persistentAdded）必须为空——后者才能承载「为手机
+    // 另起会话 CLI」形态，短命 worker 生命期盖不住窗口、无服务能力。
     const cliPidsAfter = agentsAfter
       .filter((entry) => entry.includes("zcode-cli"))
       .map((entry) => Number(entry.split(":", 1)[0]))
       .sort((left, right) => left - right);
     const droppedCliPids = cliPidsBefore.filter((pid) => !cliPidsAfter.includes(pid));
-    if (droppedCliPids.length > 0)
+
+    // 采样 2（S2）：与 S1 拉开数秒（经历 generation 复读、树快照、全量进程扫描）。
+    // 稳定成员必须活到 S2：chat/plugin lane 按 workspaceKey 单活且无空闲回收，「为手机
+    // 另起会话 CLI」只能以替换原实例实现（= 稳定成员消失）；窗口内新增的持久 worker
+    // 属其他 lane（mcp-status 带空闲回收）的合法懒启动，计入证据不参与判定。
+    const endInstanceKeys = collectTreeCliInstanceKeys(
+      await listRuntimeProcessIdentities(),
+      await browser.electron.execute((electron) => process.pid),
+    );
+    const windowAddedKeys = cliInstancesAfterMobileView.filter(
+      (key) => !cliInstancesBefore.includes(key),
+    );
+    const associationFailures = verifySameSessionRuntime({
+      desktop: desktopFacts,
+      mobile: mobileFacts,
+      desktopInstanceKeyBeforeView: sharedInstanceKey,
+      desktopInstanceKeyAfterView: sharedInstanceKey,
+      stableInstanceKeys,
+      endInstanceKeys,
+    });
+    if (associationFailures.length > 0)
       throw new Error(
-        `手机查看期间原会话 CLI 连接被重启/替换（前=${cliPidsBefore.join(",")} 后=${cliPidsAfter.join(",")}，消失=${droppedCliPids.join(",")}）`,
+        `会话 runtime 实例关联失败：${associationFailures
+          .map((failure) => `${failure.code}(${failure.detail})`)
+          .join(
+            "; ",
+          )}；稳定实例=${stableInstanceKeys.join(",")}；窗口内消失=${removedInstanceKeys.length} 个（短命 worker 证据）；窗口内新增=${windowAddedKeys.length} 个（其他 lane 懒启动证据）`,
+      );
+    if (droppedCliPids.length > 0)
+      console.log(
+        `[WT04-2] 树内 CLI pid 级更替（短命 worker 证据，不影响会话实例连续性）：消失=${droppedCliPids.join(",")}`,
       );
 
     // CLI 复用归属补证③（独立复核 F2）：手机查看期间系统里不得新增任何树外

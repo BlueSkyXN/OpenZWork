@@ -128,8 +128,10 @@ export function verifySameSessionRuntime(input: {
   mobile: SessionRuntimeFacts;
   desktopInstanceKeyBeforeView: string | null;
   desktopInstanceKeyAfterView: string | null;
-  treeCliInstanceKeysBefore: string[];
-  treeCliInstanceKeysAfter: string[];
+  /** 查看前（S0）与查看后（S1）都以同一 pid@lstart 存活的实例；会话 runtime 必在其中。 */
+  stableInstanceKeys: string[];
+  /** 用例收尾（S2）仍存活的树内实例集合；稳定成员必须在其中（chat lane 无空闲回收）。 */
+  endInstanceKeys: string[];
 }): AssociationFailure[] {
   const failures: AssociationFailure[] = [];
   const { desktop, mobile } = input;
@@ -162,15 +164,21 @@ export function verifySameSessionRuntime(input: {
       detail: `before=${input.desktopInstanceKeyBeforeView} after=${input.desktopInstanceKeyAfterView}`,
     });
 
-  // 树内 CLI 实例集合不变：不新增、不替换（PID 复用会改变 startedAt，故一并拒绝）。
-  const before = new Set(input.treeCliInstanceKeysBefore);
-  const after = new Set(input.treeCliInstanceKeysAfter);
-  const added = [...after].filter((key) => !before.has(key));
-  const removed = [...before].filter((key) => !after.has(key));
-  if (added.length > 0)
-    failures.push({ code: "cli-instance-added", detail: `added=${added.join(",")}` });
-  if (removed.length > 0)
-    failures.push({ code: "cli-instance-removed", detail: `removed=${removed.join(",")}` });
+  // 会话 runtime 必须是跨窗口稳定实例：生命期盖不住查看窗口的短命 worker（实测约
+  // 10 个/秒生死更替）不可能服务两端，树内 pid 级零更替反而是不可满足的错误判据。
+  if (input.stableInstanceKeys.length === 0)
+    failures.push({
+      code: "stable-instance-missing",
+      detail: "no instance survived the view window",
+    });
+  // 稳定成员必须活到用例收尾：Host 的 chat/plugin 进程管理器按 workspaceKey 单活
+  //（activeClientsByWorkspaceKey，chat lane 无空闲回收），「为手机另起会话 CLI」只能
+  // 以替换原实例的方式出现，表现为稳定成员消失或 pid@lstart 变化。窗口内其他 lane
+  // （mcp-status 等，带空闲回收）的新增持久 worker 属合法懒启动，由调用方记录为证据。
+  const endKeys = new Set(input.endInstanceKeys);
+  const lost = input.stableInstanceKeys.filter((key) => !endKeys.has(key));
+  if (lost.length > 0)
+    failures.push({ code: "stable-instance-lost", detail: `lost=${lost.join(",")}` });
 
   // generation 只作辅助：必须同源非零，但不作为实例身份。
   if (!/^\d+$/u.test(desktop.generation ?? "") || !/^\d+$/u.test(mobile.generation ?? ""))
@@ -194,13 +202,14 @@ export function verifySameSessionRuntime(input: {
       detail: `desktop=${desktop.lifecycleState} mobile=${mobile.lifecycleState}`,
     });
 
-  // workspace identity / remoteSessionId 参与关联：任一面板缺失或不等都拒绝。
-  if (!desktop.workspaceIdentity || !mobile.workspaceIdentity)
-    failures.push({ code: "workspace-identity-missing", detail: "workspaceIdentity missing" });
-  else if (desktop.workspaceIdentity !== mobile.workspaceIdentity)
+  // workspace identity 参与关联：本地 workspace 的 identity 合法为空（key 回落为路径，
+  // resolveWorkspaceKey 契约），两侧同为空不算缺失；只有单侧缺失或取值不等才拒绝。
+  const desktopIdentity = desktop.workspaceIdentity ?? null;
+  const mobileIdentity = mobile.workspaceIdentity ?? null;
+  if (desktopIdentity !== mobileIdentity)
     failures.push({
       code: "workspace-identity-mismatch",
-      detail: `desktop=${desktop.workspaceIdentity} mobile=${mobile.workspaceIdentity}`,
+      detail: `desktop=${desktopIdentity} mobile=${mobileIdentity}`,
     });
   if (
     desktop.remoteSessionId &&
