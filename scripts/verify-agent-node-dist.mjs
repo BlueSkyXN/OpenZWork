@@ -3,7 +3,12 @@
 // 数据根常量、裁剪域标记、tarball sha256，输出结构化报告供 workflow 上传与 job summary。
 // 用法：node scripts/verify-agent-node-dist.mjs --tarball <path> [--report <path>]
 // 裁剪标记为 2026-11-15 对已验收 zcode-3.18.2 tarball 实测 0 命中后收录；
-// 注意 start-plan/highspeed 在 CLI 侧属保留能力，不作禁标记（与桌面包口径不同）。
+// 注意 start-plan/highspeed 不作禁标记：官方套餐/加速卡/闲时任务的**服务与 UI 域**已按
+// OZ-D002 删除（packages/services/src/coding-plan-subscription|highspeed、off-peak 等），
+// 但 CLI 内 start-plan 字样命中属通用重试/错误处理的 provider-id 兼容分支
+// （streaming-recovery.ts / target-completion-verification.ts 的 busy 重试集合与
+// prompt-turn.ts 的 Provider 下架恢复），全词禁用会误伤合法兼容代码；
+// 字符串零/非零命中都不反向决定产品套餐能力范围。
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { createReadStream } from "node:fs";
