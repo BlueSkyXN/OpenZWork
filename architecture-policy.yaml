@@ -3,6 +3,24 @@ version: 1
 # 存量模块先标记为 legacy；新模块或完成迁移的模块设置 managed: true。
 modules:
   # windows-runtime-host：由 architecture:adopt 登记
+  - id: host-e2e-attachment-probe
+    roots:
+      - packages/desktop/src/host/e2e-attachment-probe
+    managed: true
+    requires: [services, shared]
+    publicEntrypoints:
+      - packages/desktop/src/host/e2e-attachment-probe/index.ts
+    layers: {adapters: .}
+    owner: desktop
+  - id: pane-runtime-identity-e2e
+    roots:
+      - packages/ui/src/v4/pane-runtime-identity-e2e
+    managed: true
+    requires: [shared, ui]
+    publicEntrypoints:
+      - packages/ui/src/v4/pane-runtime-identity-e2e/index.ts
+    layers: {ui: .}
+    owner: desktop-testing
   - id: windows-runtime-host
     roots:
       - packages/services/src/windows-runtime-host

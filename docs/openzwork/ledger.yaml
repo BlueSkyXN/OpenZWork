@@ -330,7 +330,8 @@ entries:
       - packages/desktop/test/e2e/reporting/istanbul-lib-instrument.d.ts
       # WT04 direct 证据（2026-11-16 受控同步自 C）：Host attachment/subscription 只读
       # probe 与 pane 查询判定合同，见 docs/specs/wt04-direct-runtime-association-openzwork.md。
-      - packages/desktop/src/host/e2eAttachmentProbe.ts
+      - packages/desktop/src/host/e2e-attachment-probe
+      - packages/ui/src/v4/pane-runtime-identity-e2e
       - packages/desktop/test/e2e/helpers/direct-attachment-association.ts
     tests:
       - tests/ci/actions-runtime.test.mjs

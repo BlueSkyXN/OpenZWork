@@ -175,7 +175,7 @@ import {
   hostE2EAttachmentProbe,
   type HostE2EAttachmentProbeBinding,
   type HostE2EAttachmentProbeContext,
-} from "./e2eAttachmentProbe.js";
+} from "./e2e-attachment-probe/index.js";
 // fork 净化：上游同处的 conversationShare attachment scoping 属 WP-07 已删分享域，不随入；
 // terminal owner scope（远控终端独占隔离）保留。
 import {
