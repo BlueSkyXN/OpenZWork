@@ -203,6 +203,13 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/node-repl-host exec vitest run test/mcp-server.test.ts --bail=1
 
+      # SC05（TUI 后台审批 vs headless）：后台审批可处理、主会话 bypass 不传递、headless 明确
+      # 拒绝、队列来源正确。交互行为断言（118 用例）不在 Core/Extended 默认集内，按 V1 映射
+      # 最小扩展接入 regressions lane。
+      - name: CLI background approval regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/v4-native-interaction-background.test.ts tests/guarded-permission-options.test.ts --bail=1
+
       - name: CLI workflow option regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts
@@ -295,6 +302,18 @@ jobs:
             specs: ./test/e2e/git/worktrees/task-index-workspace-identity-isolation.test.ts
             replay-fixtures: ""
             required-cases: '["identity A/B 在同一路径互不可见，本地路径键看不到 identity 任务", "删除经事实管道 removed 公开面双向隔离，冷恢复（重开 DB）后隔离保持"]'
+          # BD01–BD03（V1 最小扩展）：浏览器设计模式（3.18.1 吸收「设计模式分离」后无交互
+          # 复验）+ 本地 HTML 预览。spec 自带本地 HTTP/文件环境，不依赖模型回复；回放
+          # fixture 显式点名 browser 领域两份，满足 replay 模式入口要求。
+          - spec-group: bd-design-and-local-html
+            specs: >-
+              ./test/e2e/browser/design/browser-design-mode.test.ts
+              ./test/e2e/browser/design/browser-design-page-tools.test.ts
+              ./test/e2e/browser/design/browser-capture-guest-timeout.test.ts
+              ./test/e2e/browser/design/browser-design-mode-cross-session.test.ts
+              ./test/e2e/browser/files/browser-local-html-preview.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-local-html-preview.json,packages/desktop/test/e2e/fixtures/upstream/browser/browser-download-navigation-address.json
+            required-cases: '["设计工具随页面出现；点选元素进输入框成引用（Shift 多选、普通点击替换），翻页，首发带引用与截图", "截图在途时换了选中：不加已取消选中的元素，只引用最后选中的", "属性面板改数值直接写回本机 HTML，页面不刷新；Cmd/Ctrl + Z 撤销、Shift 重做；页面变量写 :root；脚本生成的元素只读", "写回的边界：非 UTF-8 文件只读且字节不变；带内联子元素的文字不能双击改；写回失败时页面撤回到源码的样子", "自写之后一起改了 CSS 照常刷新；带 text-transform 的元素改字按源码大小写写回", "输入框不收元素引用时，每轮点选只提示一次：写回重读选中不再弹，退出点选后再选会再提示", "预设改视口、导出落盘、只为已加载资源自动刷新、设计桥拒收超限与非本页消息", "超时返回 capture_timeout；底层未结算前再请求为 capture_in_progress；结算后可再取帧", "底层 capturePage 永不结束：上限前一直 capture_in_progress，超过 2× deadline 强制释放后能再取帧", "A 点选，切到 B 再切回 A 截图只有一张；移除引用后截图全部撤掉", "真实浏览器入口加载相对资源，同时拒绝越界文件并支持刷新和后退"]'
     runs-on: macos-15
     timeout-minutes: 45
     steps:
