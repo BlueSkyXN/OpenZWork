@@ -1,20 +1,25 @@
 // 受管 worktree 任务 WT04（验收矩阵）：同路径不同 identity、冷恢复、手机/远端查看。
 // 归属不串（workspace 始终是项目主目录，worktree 只是 cwd）；手机 attachment 不放行
 // managed-worktrees 通道（无创建入口）；查看只复用原 Host attachment，不派生新 Host/CLI。
-// WT04-2 的同 runtime 关联以「进程实例事实」为准（2026-11-16 H1）：CLI 进程的 pid +
-// ps lstart 启动时间 + 会话归属，在查看前后与手机侧逐一比对。会话生命周期 generation
-// 只作辅助断言——它在每个进程内从 0 递增，两个独立 CLI 各自 ensureReady 后都会得到
-// 相同的 generation=1，无法单独证明同一实例（2026-11-15 独立复核反例）。
+// WT04-2 的同 runtime 关联以 direct 证据为准（2026-11-16 direct 版，见
+// docs/specs/wt04-direct-runtime-association-openzwork.md）：桌面/手机 pane 各自从当前
+// 注入的服务独立查询 runtime identity（查看前/查看中/查看后三次读数），与 Host 真实
+// attachment/subscription 记录（E2E-only probe 落盘的真实 subscribe ACK）交叉核对。
+// 旧 generation 相等判据（独立复核反例否定）与旧「两端赋同一 sharedInstanceKey」代填
+// 均已废弃；进程树快照只作辅助诊断输出，不参与实例判定。会话生命周期 generation
+// 只作辅助断言。
 // 仅本地链路：桌面 Electron + 本机手机页（隔离凭据），不访问真实 SSH 或用户 worktree。
 import { execFile } from "node:child_process";
-import { mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { promisify } from "node:util";
 import { chromium, type Browser } from "playwright-core";
 import {
   TID_TASK_ROW_WORKTREE_ICON,
+  TID_V4_SESSION_PANE,
   TID_WORKSPACE_PATH,
   TID_WORKTREE_TOGGLE,
+  testId,
 } from "@zcode/shared/test-ids";
 import { DEFAULT_WORKSPACE, clearAppData, waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { E2E_REPLY_TOKEN } from "#e2e/helpers/conversation-session";
@@ -31,9 +36,13 @@ import { listSystemProcesses } from "#e2e/helpers/e2e-process-cleanup";
 import {
   collectTreeCliInstanceKeys,
   listRuntimeProcessIdentities,
-  runtimeInstanceKey,
-  verifySameSessionRuntime,
 } from "#e2e/helpers/session-runtime-association";
+import {
+  parseHostAttachmentProbeRecords,
+  verifyDirectAttachmentAssociation,
+  type DirectPaneRuntimeQuery,
+  type HostAttachmentSubscriptionRecord,
+} from "#e2e/helpers/direct-attachment-association";
 import { openMobilePairingPage } from "#e2e/helpers/mobile-pairing";
 import { obtainUnreadPairingUrl } from "#e2e/helpers/web-remote-unread";
 import { WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS } from "#e2e/helpers/web-remote-control-session-events-fixture";
@@ -119,6 +128,85 @@ async function readDesktopWorkspacePaths(): Promise<string[]> {
     if (!state) throw new Error("WT04 desktop tab store missing");
     return state.tabs.flatMap((tab) => (tab.workspacePath ? [tab.workspacePath] : []));
   });
+}
+
+/** Host probe ndjson 快照（E2E gate 关闭时目录不存在 → 空表，验收端按缺证据判失败）。 */
+async function readHostProbeFiles(artifactDir: string): Promise<Map<string, string>> {
+  const dir = join(artifactDir, "host-probes");
+  const files = (await readdir(dir).catch(() => [] as string[])).filter((file) =>
+    file.endsWith(".ndjson"),
+  );
+  const map = new Map<string, string>();
+  for (const file of files) {
+    map.set(file, await readFile(join(dir, file), "utf8"));
+  }
+  return map;
+}
+
+interface PaneRegistryEntry {
+  status: "ok" | "error";
+  identity?: string;
+  generation?: number;
+  processId?: number;
+  workspaceKey?: string;
+  error?: string;
+  queriedAt: string;
+  target: {
+    workspacePath: string;
+    workspaceIdentity: string | null;
+    remoteSessionId: string | null;
+  };
+}
+
+type PaneRegistry = Record<string, PaneRegistryEntry | null>;
+
+function pickPaneEntry(
+  registry: PaneRegistry,
+  workspacePath: string,
+  paneKeyIncludes?: string,
+): PaneRegistryEntry | null {
+  for (const [key, entry] of Object.entries(registry)) {
+    if (!entry || entry.status !== "ok") continue;
+    if (entry.target?.workspacePath !== workspacePath) continue;
+    if (paneKeyIncludes && !key.includes(paneKeyIncludes)) continue;
+    return entry;
+  }
+  return null;
+}
+
+/** 桌面 pane 的独立 runtime 查询读数（pane 自身注入服务所查，非测试代填）。 */
+async function readDesktopPaneQuery(workspacePath: string): Promise<DirectPaneRuntimeQuery | null> {
+  const entry = await browser.execute(
+    (wsPath, keyHint) => {
+      const registry =
+        (window as Window & { __zcodePaneRuntimeIdentityE2E?: PaneRegistry })
+          .__zcodePaneRuntimeIdentityE2E ?? {};
+      const hit = Object.entries(registry).find(
+        ([key, candidate]) =>
+          candidate &&
+          candidate.status === "ok" &&
+          candidate.target?.workspacePath === wsPath &&
+          (!keyHint || key.includes(keyHint)),
+      );
+      return hit?.[1] ?? null;
+    },
+    workspacePath,
+    "workspace-main",
+  );
+  return entry as DirectPaneRuntimeQuery | null;
+}
+
+/** 触发桌面 pane 立即重查（existing-only 只读），返回是否成功触发。 */
+async function refreshDesktopPaneQuery(paneKey: string): Promise<boolean> {
+  return browser.execute((key) => {
+    const refresh =
+      (window as Window & { __zcodePaneRuntimeIdentityE2ERefresh?: Record<string, () => void> })
+        .__zcodePaneRuntimeIdentityE2ERefresh ?? {};
+    const fn = refresh[key];
+    if (!fn) return false;
+    fn();
+    return true;
+  }, paneKey);
 }
 
 async function readActiveWorkspaceIdentity(): Promise<string | null | undefined> {
@@ -253,16 +341,22 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     ).toBe(true);
   });
 
-  it("WT04-2: 手机查看 worktree 任务复用原 Host，不出现创建入口，不派生新 Host/CLI", async function () {
+  it("WT04-2: 手机查看 worktree 任务复用原 Host，不出现创建入口，不派生新 Host/CLI（direct 证据）", async function () {
     this.timeout(TEST_TIMEOUT_MS);
     const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
     if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
       throw new Error("WT04 requires isolated Electron runner");
-    const agentsBefore = await readAgentTreeSnapshot();
-    // WT04 CLI 复用补证（2026-11-15 独立复核缺口）：除 sessionId 与 Host 进程集合外，
-    // 记录查看前桌面 pane 的会话运行代（data-session-generation）——手机查看若另起/重启
-    // 独立 CLI runtime，该代数会翻新；查看后应保持不变（合法冷恢复场景由 WT04-1 覆盖）。
-    // 运行代必须存在且有效：查看前后都为 null 的空匹配不能当通过（独立复核 F2）。
+    const DESKTOP_PANE_KEY = testId(TID_V4_SESSION_PANE, "workspace-main");
+
+    // ── 桌面查看前事实（事实①）：pane 独立 runtime 查询（pane 注入服务所查）。
+    const desktopQueryBefore = await readDesktopPaneQuery(DEFAULT_WORKSPACE);
+    if (!desktopQueryBefore)
+      throw new Error(
+        "桌面 pane 查看前没有独立 runtime 查询读数（pane 诊断未运行或 E2E 构建未启用 bridge）",
+      );
+    expect(desktopQueryBefore.status).toBe("ok");
+    // 辅助（非判定）：pane 会话运行代基线 + Host/CLI 进程树快照。direct 判定不使用
+    // 进程树/generation；这里保留输出用于失败时诊断（合法懒启动会进出树，不作断言）。
     const desktopGenerationBefore = await browser.execute(() => {
       const pane = document.querySelector(
         '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
@@ -270,23 +364,9 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       return pane?.getAttribute("data-session-generation") ?? null;
     });
     expect(desktopGenerationBefore).toMatch(/^\d+$/u);
-    // 运行身份基线（2026-11-15 独立复核 F2 重写，按实测 ps 形态）：
-    // macOS ps 中 Host/CLI 是改名进程（`zcode-host-<label>`、`zcode-cli`，不带路径），
-    // Electron helper 才有完整命令行路径——按路径猜本 run 身份会恒空匹配（旧写法实证）。
-    // 因此观察集有效性直接断言树内已存在本次运行的真实运行时：窗口唯一 Local Host 与
-    // WT04-1 会话已建立的 CLI 连接都必须在树上；树外扫描改为「查看期间新增」增量判定，
-    // 开发机上与本 run 无关的既有 zcode 进程进入基线，不误伤也不空放。
-    const hostBefore = agentsBefore.filter((entry) => entry.includes("zcode-host"));
-    const cliPidsBefore = agentsBefore
-      .filter((entry) => entry.includes("zcode-cli"))
-      .map((entry) => Number(entry.split(":", 1)[0]))
-      .sort((left, right) => left - right);
-    if (hostBefore.length === 0 || cliPidsBefore.length === 0)
-      throw new Error(
-        `Electron 树内观察集缺少本 run 运行时（host=${hostBefore.length}，cli=${cliPidsBefore.length}）；快照：${agentsBefore.join(" | ")}`,
-      );
-    // 树外 zcode 进程基线：手机查看开始前已存在的进程（含开发机其他实例）不算本 run 证据。
+    const agentsBefore = await readAgentTreeSnapshot();
     const electronRootPidBefore = await browser.electron.execute((electron) => process.pid);
+    // 树外 zcode 进程基线：手机查看开始前已存在的进程（含开发机其他实例）不算本 run 证据。
     const systemProcessesBefore = await listSystemProcesses();
     const outOfTreeBefore = systemProcessesBefore
       .filter(
@@ -295,19 +375,19 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       .filter((proc) => !agentsBefore.some((entry) => entry.startsWith(`${proc.pid}:`)))
       .map((proc) => proc.pid)
       .sort((left, right) => left - right);
-
-    // 实例事实基线（H1）：手机查看开始前，树内 CLI 进程的 pid@ps-lstart 集合。
-    // 该集合与查看后的集合逐一比对；新增/移除都说明会话 runtime 实例变了
-    // （pid 复用必然伴随启动时间变化，故单独 pid 相等不足以判同一实例）。
-    const cliInstancesBefore = collectTreeCliInstanceKeys(
+    const treeCliInstancesBefore = collectTreeCliInstanceKeys(
       await listRuntimeProcessIdentities(),
       electronRootPidBefore,
     );
-    if (cliInstancesBefore.length === 0)
-      throw new Error(
-        `Electron 树内没有可关联的 CLI 进程实例（pid@lstart 为空）；快照：${agentsBefore.join(" | ")}`,
-      );
+    // ── Host probe 快照（查看前记录数）：查看窗口内的 subscribed 才算手机查看期间
+    // 的真实订阅；旧订阅记录不当当前连接。
+    const probeFilesBeforeView = await readHostProbeFiles(artifacts);
+    const probeLinesBeforeByFile = new Map<string, number>();
+    for (const [file, text] of probeFilesBeforeView) {
+      probeLinesBeforeByFile.set(file, text.split(/\r?\n/u).filter((line) => line.trim()).length);
+    }
 
+    // ── 手机查看（事实②的产生窗口）：配对 → 打开项目 → 打开 WT04-1 的 worktree 任务。
     const pairingUrl = await obtainUnreadPairingUrl();
     webBrowser = await chromium.launch({
       ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE || process.env.R3_MOBILE_CHROME
@@ -355,7 +435,7 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     expect(await page.getByTestId(TID_WORKTREE_TOGGLE).count()).toBe(0);
 
     // 查看复用的是原任务会话：手机 pane 与桌面 pane 指向同一 session id
-    // （不派生另一个并行任务/会话）。CLI 进程按会话懒启动属正常恢复，不作为判据。
+    //（不派生另一个并行任务/会话）。
     const mobileSessionId = await page
       .locator('[data-session-id]:not([data-session-id="draft"])')
       .first()
@@ -369,78 +449,92 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     expect(mobileSessionId).toBeTruthy();
     expect(mobileSessionId).toBe(desktopSessionId);
 
-    // CLI 复用归属补证④（2026-11-16 H1 重写）——同一 session→CLI/runtime 实例关联。
-    //
-    // 旧写法用「generation 相等且 ≥1 ⇔ 同一 CLI 进程」推理，已被独立复核否定：
-    // SessionLifecycleController.activate 在每个进程内从 0 递增、initialSnapshot 恒为 0，
-    // 两个独立 CLI 各自 ensureReady('same-session') 后都得到 generation=1/state=ready/
-    // revision=2。generation 因此只作辅助断言，实例身份改用可区分的事实：
-    // 会话 CLI 进程的 pid + ps lstart 启动时间（pid 复用必然改变启动时间）。
-    const mobilePane = page.locator('[data-session-id]:not([data-session-id="draft"])').first();
-    const mobileGeneration = await mobilePane.getAttribute("data-session-generation");
-    const mobileLifecycleState = await mobilePane.getAttribute("data-session-lifecycle");
-    const desktopGenerationAtView = await browser.execute(() => {
-      const pane = document.querySelector(
-        '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
-      );
-      return pane?.getAttribute("data-session-generation") ?? null;
-    });
-    const desktopLifecycleState = await browser.execute(() => {
-      const pane = document.querySelector(
-        '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
-      );
-      return pane?.getAttribute("data-session-lifecycle") ?? null;
-    });
+    // 手机 pane 独立 runtime 查询（事实②）：pane 注入服务所查，等待诊断注册表出现读数。
+    const mobileHandle = await page.waitForFunction(
+      (wsPath) => {
+        const registry =
+          (window as Window & { __zcodePaneRuntimeIdentityE2E?: PaneRegistry })
+            .__zcodePaneRuntimeIdentityE2E ?? {};
+        const hit = Object.entries(registry).find(
+          ([, candidate]) =>
+            candidate &&
+            candidate.status === "ok" &&
+            Boolean(candidate.identity) &&
+            candidate.target?.workspacePath === wsPath,
+        );
+        return hit?.[1] ?? null;
+      },
+      DEFAULT_WORKSPACE,
+      { timeout: 30_000, polling: 500 },
+    );
+    const mobileQuery = (await mobileHandle.jsonValue()) as DirectPaneRuntimeQuery | null;
+    expect(mobileQuery).not.toBeNull();
 
-    // 采样 1（S1）：手机页已打开任务、读回 session id 之后的树内实例集合。
-    const cliInstancesAfterMobileView = collectTreeCliInstanceKeys(
+    // ── 桌面查看后事实（事实③）：同一挂载期内触发重查，identity 必须仍与查看前一致
+    //（手机查看不得替换/重启桌面会话 runtime）。
+    const refreshed = await refreshDesktopPaneQuery(DESKTOP_PANE_KEY);
+    expect(refreshed).toBe(true);
+    const queriedAtBeforeView = desktopQueryBefore.queriedAt;
+    const desktopAfter: { entry: DirectPaneRuntimeQuery | null } = { entry: null };
+    await browser.waitUntil(
+      async () => {
+        const entry = await readDesktopPaneQuery(DEFAULT_WORKSPACE);
+        if (entry && queriedAtBeforeView && entry.queriedAt !== queriedAtBeforeView) {
+          desktopAfter.entry = entry;
+          return true;
+        }
+        return false;
+      },
+      { timeout: 30_000, interval: 500, timeoutMsg: "桌面 pane 查看后没有新的 runtime 查询读数" },
+    );
+    if (!desktopAfter.entry) throw new Error("桌面 pane 查看后读数缺失");
+    expect(desktopAfter.entry.identity).toBe(desktopQueryBefore.identity);
+
+    // ── Host 真实 attachment/subscription 记录：手机记录所在文件 = 当前 Window Host；
+    // 桌面订阅（重启后 pane 打开任务时建立）必须仍在同文件且查看期间未结束。
+    const probeFilesAfter = await readHostProbeFiles(artifacts);
+    let hostRecords: HostAttachmentSubscriptionRecord[] = [];
+    let recordsBeforeView = 0;
+    for (const [file, text] of probeFilesAfter) {
+      const records = parseHostAttachmentProbeRecords(text);
+      const mobileHit = records.find(
+        (record) =>
+          record.event === "subscribed" &&
+          record.clientMode === "web-remote-replayable" &&
+          record.sessionId === desktopSessionId &&
+          record.seq > (probeLinesBeforeByFile.get(file) ?? 0),
+      );
+      if (mobileHit) {
+        hostRecords = records;
+        recordsBeforeView = probeLinesBeforeByFile.get(file) ?? 0;
+        break;
+      }
+    }
+    // direct 判定（合同见 docs/specs/wt04-direct-runtime-association-openzwork.md）：
+    // 缺 artifact/gate 未启用/缺任一 attachment/scope 或会话不匹配/订阅已结束/
+    // 查询不可用/两端查询互异，全部在此拒绝。
+    const associationFailures = verifyDirectAttachmentAssociation({
+      sessionId: desktopSessionId!,
+      desktopQuery: desktopAfter.entry ?? desktopQueryBefore,
+      mobileQuery,
+      hostRecords,
+      recordsBeforeView,
+    });
+    if (associationFailures.length > 0)
+      throw new Error(
+        `WT04 direct attachment 关联失败：${associationFailures
+          .map((failure) => `${failure.code}(${failure.detail})`)
+          .join("; ")}；hostRecords=${hostRecords.length}，recordsBeforeView=${recordsBeforeView}`,
+      );
+
+    // 辅助诊断输出（不参与判定）：树内 CLI 实例集合与 generation 连续性。
+    const treeCliInstancesAfterView = collectTreeCliInstanceKeys(
       await listRuntimeProcessIdentities(),
-      await browser.electron.execute((electron) => process.pid),
+      electronRootPidBefore,
     );
-
-    // 稳定实例 = 查看前（S0）与查看后（S1）都以同一 pid@lstart 存活的实例。
-    // 会话 runtime 必然是稳定实例：桌面 pane 在查看前后读同一 session（generation 不变），
-    // 而生命期盖不住查看窗口的短命 worker 不可能服务两端。实测树内短命 worker 以约
-    // 10 个/秒的速度生死更替（run desktop-e2e-20261115-235558-369，6s 窗口 10 进 8 出），
-    // 因此「集合严格相等」会把合法懒启动误判为实例替换；这里只认跨窗口存活者。
-    const stableInstanceKeys = cliInstancesBefore.filter((key) =>
-      cliInstancesAfterMobileView.includes(key),
+    console.log(
+      `[WT04-2] direct 判定通过；辅助快照：树内 CLI 实例 查看前=${treeCliInstancesBefore.length} 查看中后=${treeCliInstancesAfterView.length}；host 记录=${hostRecords.length}（查看前=${recordsBeforeView}）`,
     );
-    const removedInstanceKeys = cliInstancesBefore.filter(
-      (key) => !cliInstancesAfterMobileView.includes(key),
-    );
-
-    // 本地 workspace 的 identity 为空、key 即路径（resolveWorkspaceKey 契约，见 WT04-1）；
-    // 两侧共用同一判定输入（两侧同为空是合法状态，单侧缺失/取值不等才拒绝）。
-    const workspaceIdentity = (await readActiveWorkspaceIdentity()) || null;
-    const sharedInstanceKey = stableInstanceKeys[0] ?? null;
-    const desktopFacts = {
-      sessionId: desktopSessionId,
-      generation: desktopGenerationAtView,
-      lifecycleState: desktopLifecycleState,
-      runtimeInstanceKey: sharedInstanceKey,
-      workspaceIdentity,
-      remoteSessionId: null,
-    };
-    const mobileFacts = {
-      sessionId: mobileSessionId,
-      generation: mobileGeneration,
-      lifecycleState: mobileLifecycleState,
-      runtimeInstanceKey: sharedInstanceKey,
-      workspaceIdentity,
-      remoteSessionId: null,
-    };
-
-    // generation 仍须同源非零（辅助断言，不作为实例身份）。
-    expect(mobileGeneration).toMatch(/^\d+$/u);
-    expect(Number(mobileGeneration)).toBeGreaterThanOrEqual(1);
-
-    // 不派生另一 Host：窗口唯一 Local Host 的进程集合不变（zcode-host 无新增/替换）。
-    const agentsAfter = await readAgentTreeSnapshot();
-    expect(agentsAfter.filter((entry) => entry.includes("zcode-host"))).toEqual(hostBefore);
-
-    // CLI 复用归属补证①：桌面 pane 会话运行代不变——手机查看走原 Host attachment 的
-    // 只读路径，不为查看重启/派生会话 runtime。
     const desktopGenerationAfter = await browser.execute(() => {
       const pane = document.querySelector(
         '[data-testid="v4-session-pane-workspace-main"][data-session-id]:not([data-session-id="draft"])',
@@ -449,57 +543,18 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     });
     expect(desktopGenerationAfter).toBe(desktopGenerationBefore);
 
-    // CLI 复用归属补证②（H1 重构）：会话 runtime 的连续性不再用「树内 CLI pid 全部存活」
-    // 表达——实测短命 worker 在窗口内高频率生死（6s 窗口 10 进 8 出），pid 级零消失既不成立
-    // 也不是会话证据。改用：会话实例必须是跨窗口稳定实例（同 pid@lstart 存活于 S0∩S1），
-    // 且窗口内新增、收尾仍存活的实例（persistentAdded）必须为空——后者才能承载「为手机
-    // 另起会话 CLI」形态，短命 worker 生命期盖不住窗口、无服务能力。
-    const cliPidsAfter = agentsAfter
-      .filter((entry) => entry.includes("zcode-cli"))
-      .map((entry) => Number(entry.split(":", 1)[0]))
-      .sort((left, right) => left - right);
-    const droppedCliPids = cliPidsBefore.filter((pid) => !cliPidsAfter.includes(pid));
-
-    // 采样 2（S2）：与 S1 拉开数秒（经历 generation 复读、树快照、全量进程扫描）。
-    // 稳定成员必须活到 S2：chat/plugin lane 按 workspaceKey 单活且无空闲回收，「为手机
-    // 另起会话 CLI」只能以替换原实例实现（= 稳定成员消失）；窗口内新增的持久 worker
-    // 属其他 lane（mcp-status 带空闲回收）的合法懒启动，计入证据不参与判定。
-    const endInstanceKeys = collectTreeCliInstanceKeys(
-      await listRuntimeProcessIdentities(),
-      await browser.electron.execute((electron) => process.pid),
+    // 不派生另一 Host：窗口唯一 Local Host 的进程集合不变（zcode-host 无新增/替换）。
+    const agentsAfter = await readAgentTreeSnapshot();
+    expect(agentsAfter.filter((entry) => entry.includes("zcode-host"))).toEqual(
+      agentsBefore.filter((entry) => entry.includes("zcode-host")),
     );
-    const windowAddedKeys = cliInstancesAfterMobileView.filter(
-      (key) => !cliInstancesBefore.includes(key),
-    );
-    const associationFailures = verifySameSessionRuntime({
-      desktop: desktopFacts,
-      mobile: mobileFacts,
-      desktopInstanceKeyBeforeView: sharedInstanceKey,
-      desktopInstanceKeyAfterView: sharedInstanceKey,
-      stableInstanceKeys,
-      endInstanceKeys,
-    });
-    if (associationFailures.length > 0)
-      throw new Error(
-        `会话 runtime 实例关联失败：${associationFailures
-          .map((failure) => `${failure.code}(${failure.detail})`)
-          .join(
-            "; ",
-          )}；稳定实例=${stableInstanceKeys.join(",")}；窗口内消失=${removedInstanceKeys.length} 个（短命 worker 证据）；窗口内新增=${windowAddedKeys.length} 个（其他 lane 懒启动证据）`,
-      );
-    if (droppedCliPids.length > 0)
-      console.log(
-        `[WT04-2] 树内 CLI pid 级更替（短命 worker 证据，不影响会话实例连续性）：消失=${droppedCliPids.join(",")}`,
-      );
 
-    // CLI 复用归属补证③（独立复核 F2）：手机查看期间系统里不得新增任何树外
-    // zcode CLI/Host 进程——与查看前基线做增量判定，不按路径猜本 run 身份
-    // （改名进程无路径，路径过滤已实证恒空匹配）。
-    const electronRootPidAfter = await browser.electron.execute((electron) => process.pid);
+    // 手机查看期间系统里不得新增任何树外 zcode CLI/Host 进程（不按路径猜本 run 身份，
+    // 按查看前基线做增量判定）。
     const allProcesses = await listSystemProcesses();
     const rogueAgents = allProcesses
       .filter(
-        (proc) => /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidAfter,
+        (proc) => /zcode[-.](cli|host)/iu.test(proc.command) && proc.pid !== electronRootPidBefore,
       )
       .filter((proc) => !agentsAfter.some((entry) => entry.startsWith(`${proc.pid}:`)))
       .filter((proc) => !outOfTreeBefore.includes(proc.pid));
