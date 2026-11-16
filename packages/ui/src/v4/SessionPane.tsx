@@ -72,7 +72,7 @@ import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js"
 import { useServices } from "@/hooks/useServices.js";
 // WT04 direct 证据（docs/specs/wt04-direct-runtime-association-openzwork.md）：
 // E2E 构建下 pane 用自身注入服务独立查询 runtime identity；非 E2E 构建零行为。
-import { usePaneRuntimeIdentityE2E } from "@/v4/paneRuntimeIdentityE2E.js";
+import { usePaneRuntimeIdentityE2E } from "@/v4/pane-runtime-identity-e2e/index.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { resolveWorkflowResumeHandler } from "@/v4/workflowResumeGate.js";
 import {

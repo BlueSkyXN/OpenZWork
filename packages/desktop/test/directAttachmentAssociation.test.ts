@@ -13,7 +13,7 @@ import {
   createHostE2EAttachmentProbe,
   resolveHostE2EAttachmentProbeFilePath,
   type HostE2EConversationSubscribeParams,
-} from "../src/host/e2eAttachmentProbe.js";
+} from "../src/host/e2e-attachment-probe/index.js";
 
 // WT04 direct 关联判定合同回归（docs/specs/wt04-direct-runtime-association-openzwork.md）。
 // 反例矩阵覆盖任务要求的全部拒绝面：不同 runtime 但 generation/state 相同、缺少一侧
