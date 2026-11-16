@@ -70,6 +70,9 @@ import { WORKSPACE_FILE_DRAG_MIME } from "@/lib/workspaceFileDrag.js";
 import { buildChatSessionScrollMemoryKey } from "@/lib/chatSessionScrollMemory.js";
 import type { MessageFileLinkTarget } from "@/components/ai-elements/message.js";
 import { useServices } from "@/hooks/useServices.js";
+// WT04 direct 证据（docs/specs/wt04-direct-runtime-association-openzwork.md）：
+// E2E 构建下 pane 用自身注入服务独立查询 runtime identity；非 E2E 构建零行为。
+import { usePaneRuntimeIdentityE2E } from "@/v4/paneRuntimeIdentityE2E.js";
 import { useOptionalPlatform } from "@/hooks/usePlatform.js";
 import { resolveWorkflowResumeHandler } from "@/v4/workflowResumeGate.js";
 import {
@@ -618,9 +621,19 @@ export function SessionPane({
     onRuntimeLifecycle,
     fileChanges,
     fileRewindPreview,
+    remoteSessionId: conversationRemoteSessionId,
   } = useV4Conversation();
   const platform = useOptionalPlatform();
   const { modelSelectionService, zcodeSessionService, zcodeTaskService } = useServices();
+  // WT04 direct 证据：pane 用自身注入服务独立查询 runtime identity（E2E 构建才启用），
+  // remoteSessionId 取 Provider 当前已解析 scope；注册随 pane 生命周期清理。
+  usePaneRuntimeIdentityE2E({
+    paneKey: testId(TID_V4_SESSION_PANE, paneId),
+    workspacePath,
+    workspaceIdentity,
+    remoteSessionId: conversationRemoteSessionId,
+    active: Boolean(sessionId),
+  });
   const { intl, locale } = useZCodeIntl();
   const slashCommands = useSlashCommands(workspacePath, workspaceIdentity);
 

@@ -169,6 +169,13 @@ import {
 import { connectServerRemote, type ServerRemoteConnection } from "./serverRemoteConnection.js";
 import { bindBotGroupTaskScope } from "./botGroupTaskScope.js";
 import { createWindowHostAttachmentRegistry } from "./windowHostAttachmentRegistry.js";
+// WT04 direct 证据（docs/specs/wt04-direct-runtime-association-openzwork.md）：
+// 仅在专用 E2E bridge flag + 非空 run ID + 有效 artifact 目录时启用；关闭时零输出。
+import {
+  hostE2EAttachmentProbe,
+  type HostE2EAttachmentProbeBinding,
+  type HostE2EAttachmentProbeContext,
+} from "./e2eAttachmentProbe.js";
 // fork 净化：上游同处的 conversationShare attachment scoping 属 WP-07 已删分享域，不随入；
 // terminal owner scope（远控终端独占隔离）保留。
 import {
@@ -2186,6 +2193,7 @@ function exposeServicesOnMessagePort(
   capabilities?: HostRemoteConnectionCapabilities,
   terminalOwnerId?: string,
   legacyProjectCreation?: HostLegacyProjectCreation,
+  attachmentProbeContext?: HostE2EAttachmentProbeContext,
 ): ExposedServicePortHandle {
   const terminal = services.getOptional(ITerminalService);
   const legacyTerminalScope =
@@ -2229,6 +2237,9 @@ function exposeServicesOnMessagePort(
   const controllerAttachment = windowHostControllerRuntime.createAttachmentService(
     clientMode === "desktop-continuous" && attachmentScope.kind === "local",
   );
+  // WT04 direct 证据：E2E gate 全开时以只读 proxy 观察本 attachment 的真实 V4 订阅面；
+  // 诊断不改产品 ACK/背压/路由语义，gate 关闭时保持原服务引用（零包装）。
+  let attachmentProbeBinding: HostE2EAttachmentProbeBinding | undefined;
   const overrides = new Map<string, unknown>([
     [IWindowControllerService.channelName, controllerAttachment],
   ]);
@@ -2270,7 +2281,25 @@ function exposeServicesOnMessagePort(
     );
   }
   if (connectionScope) {
-    overrides.set(IZCodeAgentService.channelName, connectionScope.service);
+    // WT04 direct 证据：registry attach 事实（attachmentId/generation）+ 本 attachment
+    // 的 scope/clientMode 与真实订阅 ACK 一起落盘；runtime identity 用该 scope 的
+    // session service existing-only 查询，失败仅记录，不拉起 dormant runtime。
+    attachmentProbeBinding =
+      hostE2EAttachmentProbe.enabled && attachmentProbeContext
+        ? hostE2EAttachmentProbe.wrapService({
+            attachmentId: attachmentProbeContext.attachmentId,
+            clientMode,
+            hostConnectionId: connectionContext.connectionId,
+            hostGeneration: attachmentProbeContext.generation,
+            scope: attachmentScope,
+            service: connectionScope.service,
+            sessionService: services.getOptional(IZCodeSessionService),
+          })
+        : undefined;
+    overrides.set(
+      IZCodeAgentService.channelName,
+      attachmentProbeBinding?.service ?? connectionScope.service,
+    );
   }
   // fork 净化：上游此处另有 conversationShare attachment scoping（WP-07 已删分享域）；
   // scopedTerminal 与手机 project tree activity decorate（远控域）保留。
@@ -2327,6 +2356,11 @@ function exposeServicesOnMessagePort(
       flowStateDisposable.dispose();
       controllerAttachment.dispose();
       legacyTerminalScope?.dispose();
+      // WT04 direct 证据：attachment 生命周期结束时记录仍未退订的 subscription，
+      // 避免已失效订阅被判有效；诊断失败不影响产品 dispose 链。
+      void attachmentProbeBinding?.dispose().catch((error: unknown) => {
+        logger.warn("failed to flush host E2E attachment probe records", error);
+      });
       webRemoteProjectTreeRetention?.dispose();
       void disposePromptAttachmentTransfer?.().catch((error: unknown) => {
         logger.warn("failed to dispose remote attachment transfer", error);
@@ -2393,6 +2427,8 @@ const windowHostAttachmentRegistry = createWindowHostAttachmentRegistry<
     capabilities,
     terminalOwnerId,
     legacyProjectCreation,
+    attachmentId,
+    generation,
   }) =>
     exposeServicesOnMessagePort(
       port,
@@ -2403,6 +2439,7 @@ const windowHostAttachmentRegistry = createWindowHostAttachmentRegistry<
       capabilities,
       terminalOwnerId,
       legacyProjectCreation,
+      { attachmentId, generation },
     ),
 });
 

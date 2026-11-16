@@ -317,6 +317,7 @@ entries:
       - docs/openzwork/ci/ci-job-orchestration.md
       - docs/openzwork/ci/extended-ci-parallel.md
       - docs/testing/conversation-session-e2e-development-workflow-openzwork.md
+      - docs/specs/wt04-direct-runtime-association-openzwork.md
     modules:
       - desktop-e2e-runner
     paths:
@@ -327,6 +328,10 @@ entries:
       - scripts/test-report-validation.mjs
       - tests/ci/core-tests.json
       - packages/desktop/test/e2e/reporting/istanbul-lib-instrument.d.ts
+      # WT04 direct 证据（2026-11-16 受控同步自 C）：Host attachment/subscription 只读
+      # probe 与 pane 查询判定合同，见 docs/specs/wt04-direct-runtime-association-openzwork.md。
+      - packages/desktop/src/host/e2eAttachmentProbe.ts
+      - packages/desktop/test/e2e/helpers/direct-attachment-association.ts
     tests:
       - tests/ci/actions-runtime.test.mjs
       - tests/ci/core-scope.test.mjs
@@ -337,9 +342,12 @@ entries:
       - packages/desktop/test/e2eRuntimePaths.test.ts
       # WT04（受管 worktree 冷恢复归属+手机查看）验收用例：v3.18.0 同步期 OpenZWork 自有覆盖。
       - packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts
-      # H1（2026-11-16）：会话 runtime 实例关联判定（pid+lstart 稳定实例，generation 仅辅助）。
+      # H1（2026-11-16）：进程树稳定实例代理（历史校准，保留为辅助诊断事实）。
       - packages/desktop/test/e2e/helpers/session-runtime-association.ts
       - packages/desktop/test/sessionRuntimeAssociation.test.ts
+      # WT04 direct 关联判定合同回归（2026-11-16 受控同步自 C）：反例拒绝同代异实例/
+      # 缺 attachment/scope 不匹配/订阅结束/查询不可用/缺 artifact/gate 未启用/同值代填。
+      - packages/desktop/test/directAttachmentAssociation.test.ts
       # WT04 补证（2026-11-15 独立复核 F3 迁移）：同路径两个 identity 的任务隔离与冷恢复，
       # 受控运行时入口走生产 task-facts 管道 + 真实 TaskIndexRepo 存储（原 services 业务单测
       # 违反「不新增 App 业务单测」规则，已删除）。
@@ -353,6 +361,13 @@ entries:
       - packages/ui/test/browser/manual-review/pending/floating-layer-hit-regions.test.mjs
       - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-model-menu-selection.test.ts
       - packages/desktop/test/e2e/workspace-file-tree/manual-review/pending/workspace-file-tree-shared-search.test.ts
+    hooks:
+      # WT04 direct probe 接线点（上游文件，只加行为必需行；2026-11-16 受控同步自 C）：
+      # Host 在 exposeServicesOnMessagePort 内以 registry attach 事实包装 agent service；
+      # SessionPane/V4ConversationContext 暴露 pane-local 查询所需的已解析 scope。
+      - packages/desktop/src/host/index.ts
+      - packages/ui/src/v4/SessionPane.tsx
+      - packages/ui/src/v4/V4ConversationContext.tsx
     source: 现有 CI/E2E 规范；889fe19d6 的 runner 登记；补登已有验证材料
   - id: OZ-C001
     kind: change
