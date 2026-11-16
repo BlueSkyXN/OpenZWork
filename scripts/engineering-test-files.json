@@ -48,6 +48,7 @@
   "packages/desktop/test/e2eNetworkCaptureReplay.test.ts",
   "packages/desktop/test/e2eNodeCoverageNormalization.test.ts",
   "packages/desktop/test/e2eProcessCleanup.test.ts",
+  "packages/desktop/test/sessionRuntimeAssociation.test.ts",
   "packages/desktop/test/e2ePromotionAuditTransaction.test.ts",
   "packages/desktop/test/e2eProviderConfigSeedBoundary.test.ts",
   "packages/desktop/test/e2eProviderEndpoint.test.ts",
