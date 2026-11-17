@@ -47,12 +47,25 @@ sequenceDiagram
 ```
 
 判定输入只来自图中标注的观察面；测试把①②③与 probe 记录交叉核对。
+时序合同（2026-11-17 J2 对齐实现）：probe 记录在真实调用返回 ACK 之后异步落盘
+（不阻塞产品 ACK）；结束事件记录排在此前在途 subscribed 记录之后，dispose 冲刷
+等待全部在途观察完成——文件行序与 seq 单调一致，由判定合同 8 校验。
 
-## probe 启用合同（缺一不启用；关闭时零输出、零额外查询）
+## 启用合同（缺一不启用；关闭时零输出、零额外查询、零注册诊断入口）
+
+Host probe 三条件：
 
 1. 专用 E2E bridge flag：`VITE_ZCODE_E2E_STORE_BRIDGE=1`（复用既有 E2E-only 开关）。
 2. 非空 run ID：`ZCODE_E2E_RUN_ID`。
 3. 有效 artifact 目标：`ZCODE_E2E_ARTIFACT_DIR` 存在且输出路径不逃逸该目录。
+
+pane 诊断双条件（2026-11-17 J2 补齐，与 Host 同口径）：
+
+1. 同一 build flag（renderer/Web 构建期注入）。
+2. 页面携带有效 run ID：桌面 renderer 由 main 在加载 URL 注入 `zcodeE2eRunId`
+   （desktopHostProcess，仅在 Host 同一 gate 命中时下发）；手机 Web 由 E2E helper
+   在配对 URL 追加同名参数。任一缺失（含生产构建）不注册 `__zcodePaneRuntimeIdentityE2E*`
+   诊断入口、不做额外查询。
 
 Host 侧 probe 记录写入 `<artifactDir>/host-probes/host-attachment-subscriptions-<hostPid>.ndjson`，
 每行一条 JSON（seq 单调递增、recordedAt ISO 时间、event、attachmentId、clientMode、
@@ -75,15 +88,29 @@ dormant runtime））。写入串行化（write chain），诊断失败不改变
    查看桌面 workspace 走 shared Host attachment（scope=local，attachmentId 形如
    `shared-host-attachment-*`）；查看远端 workspace 时 scope=remote 且 remoteSessionId 与
    registry scope 一致；订阅发生在查看窗口内（seq > 窗口起点）。
+   5a. 查看窗口以 probe 单调 seq 表达：`lastSeqBeforeView`（手机查看前最后落盘 seq）与
+   `lastSeqInViewEnd`（查看结束、用例收尾之前的 seq 快照）。结束事件只在
+   (subscribed.seq, lastSeqInViewEnd] 内算查看中关闭；用例收尾的 dispose
+   （seq > lastSeqInViewEnd）不算。手机订阅有效性（未在查看中结束）与桌面同标准。
+   5b. 两端记录必须各自独立：attachmentId、hostConnectionId、subscriptionId 任一同值
+   即拒绝（实测 local 配对拓扑亦为三个不同值；同值即一端记录复用另一端）。
 6. Host 侧 runtimeIdentity 与对应 pane 查询结果一致（identity、workspaceKey；generation
-   仅辅助）。不同 runtime 即使 generation/state 相同也因 identity 不同被拒绝。
+   仅辅助），且完整核对查询返回值：Host 记录内嵌 runtimeIdentity.workspaceKey 与 pane
+   查询返回的 workspaceKey 互证（Host 查回 other-workspace 而 pane 查回本 workspace
+   即拒绝）。不同 runtime 即使 generation/state 相同也因 identity 不同被拒绝。
 7. 反例回归必须能拒绝：同 generation/state 不同 identity、缺少一侧 attachment、
-   scope/会话不匹配、订阅已结束、查询不可用、缺 artifact、E2E gate 未启用，以及
+   scope/会话不匹配、订阅（任一端）查看中已结束、两端 attachment/连接/订阅关系复用、
+   查询不可用、缺 artifact、E2E gate 未启用、seq 非单调、窗口快照自相矛盾，以及
    旧「两侧赋同一 sharedInstanceKey」代填（无 Host 记录支撑即拒绝）。
+8. Host 记录文件行序与 seq 单调一致（单一写链合同）；不一致判观察不可靠。
+9. 验收 artifact 必须结构化保存：查看前/中/后三段 pane 查询读数、Host 记录全文、
+   窗口 seq 边界与判定结论（`wt04-direct-association-evidence.json`），不只留一行
+   「判定通过」。
 
 ## 验收入口
 
 - 工程回归：`packages/desktop/test/directAttachmentAssociation.test.ts`（判定合同反例 +
-  probe 启用矩阵 + 记录解析）。
+  probe 启用矩阵 + ACK 先行/落盘顺序 + 记录解析）；
+  `packages/ui/test/paneRuntimeIdentityE2EGate.test.ts`（pane 诊断装配矩阵，生产关闭态单列）。
 - E2E：`packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts`
   （manual-review/pending，显式 fixture 候选运行；runId 与两端查询、Host artifact 记录在案）。

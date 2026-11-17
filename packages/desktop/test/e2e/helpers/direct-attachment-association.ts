@@ -82,18 +82,44 @@ function resolveWorkspaceKey(identity: string | null | undefined, path: string |
  * 判定「桌面/手机 pane 的真实 runtime 查询与 Host 真实 attachment/subscription 证据
  * 指向同一会话 runtime」。任一必需观察面缺失、不匹配或已失效都返回失败原因；
  * 调用方必须把非空失败列表整体判失败（缺证据不是通过）。
+ *
+ * 窗口以 Host probe 的单调 seq 表达（不是文件行数）：`lastSeqBeforeView` 是手机查看
+ * 前最后一条已落盘记录的 seq（查看开始快照），`lastSeqInViewEnd` 是查看结束、用例收尾
+ * 之前的 seq 快照。收尾 dispose 事件（seq > lastSeqInViewEnd）不算查看中关闭。
  */
 export function verifyDirectAttachmentAssociation(input: {
   sessionId: string;
   desktopQuery: DirectPaneRuntimeQuery | null;
   mobileQuery: DirectPaneRuntimeQuery | null;
-  /** Host probe 记录（查看结束后的完整序列）。 */
+  /** Host probe 记录（查看结束、收尾之前的完整序列）。 */
   hostRecords: HostAttachmentSubscriptionRecord[];
-  /** 手机查看开始前的记录条数；窗口内的 subscribed 才算手机查看期间的真实订阅。 */
-  recordsBeforeView: number;
+  /** 手机查看开始前最后一条记录的 seq（含）；窗口内订阅要求 seq > 该值。 */
+  lastSeqBeforeView: number;
+  /** 查看结束快照的 seq（含）；结束事件只在 (subscribed.seq, lastSeqInViewEnd] 内算查看中结束。 */
+  lastSeqInViewEnd: number;
 }): DirectAssociationFailure[] {
   const failures: DirectAssociationFailure[] = [];
   const { desktopQuery, mobileQuery, hostRecords } = input;
+
+  // 序列完整性：probe 按单一写链落盘，文件行序必须与 seq 单调递增一致；
+  // 行序错乱说明观察输出不可靠（丢记录/乱序），不能当有效证据。
+  for (let index = 1; index < hostRecords.length; index += 1) {
+    const current = hostRecords[index];
+    const previous = hostRecords[index - 1];
+    if (current && previous && current.seq <= previous.seq) {
+      failures.push({
+        code: "host-records-seq-disorder",
+        detail: `host probe records not monotonically increasing at index ${index} (seq ${previous.seq} -> ${current.seq})`,
+      });
+      break;
+    }
+  }
+  if (input.lastSeqInViewEnd < input.lastSeqBeforeView) {
+    failures.push({
+      code: "view-window-invalid",
+      detail: `lastSeqInViewEnd(${input.lastSeqInViewEnd}) < lastSeqBeforeView(${input.lastSeqBeforeView})`,
+    });
+  }
 
   // 观察面 0：Host artifact。没有记录 = 缺 artifact / gate 未启用，直接失败，
   // 不给「两侧查询相等」留替代通道。
@@ -129,43 +155,76 @@ export function verifyDirectAttachmentAssociation(input: {
       sessionId: input.sessionId,
       clientMode: "desktop-continuous",
       scopeKind: desktopScopeKind,
+      maxSeq: input.lastSeqInViewEnd,
     });
     const mobileSubscribed = pickSubscribedRecord(hostRecords, {
       sessionId: input.sessionId,
       clientMode: "web-remote-replayable",
       scopeKind: mobileScopeKind,
-      minSeq: input.recordsBeforeView + 1,
+      minSeq: input.lastSeqBeforeView + 1,
+      maxSeq: input.lastSeqInViewEnd,
     });
 
     // 桌面 attachment：desktop-continuous + 与 pane 解析一致的 scope + 该会话的真实订阅。
     if (!desktopSubscribed) {
       failures.push({
         code: "desktop-attachment-missing",
-        detail: `no desktop-continuous/${desktopScopeKind} subscribed record for session ${input.sessionId}`,
+        detail: `no desktop-continuous/${desktopScopeKind} subscribed record for session ${input.sessionId} within view window (lastSeqInViewEnd=${input.lastSeqInViewEnd})`,
       });
     }
     // 手机 attachment：web-remote-replayable + 与 pane 解析一致的 scope + 查看窗口内
-    // 发生的订阅（seq > 查看前记录数）。旧订阅不算当前连接。
+    // 发生的订阅（seq > 查看前快照）。旧订阅不算当前连接。
     if (!mobileSubscribed) {
       failures.push({
         code: "mobile-attachment-missing",
-        detail: `no web-remote-replayable/${mobileScopeKind} subscribed record for session ${input.sessionId} after view start (recordsBeforeView=${input.recordsBeforeView})`,
+        detail: `no web-remote-replayable/${mobileScopeKind} subscribed record for session ${input.sessionId} after view start (lastSeqBeforeView=${input.lastSeqBeforeView})`,
       });
     }
 
-    // 订阅有效性：桌面订阅在查看期间不得收到 unsubscribed / attachment-disposed。
-    if (desktopSubscribed) {
+    // 订阅有效性（两端同标准）：订阅在查看窗口内不得收到 unsubscribed / attachment-disposed。
+    // 窗口以 seq 界定（subscribed.seq < end.seq <= lastSeqInViewEnd）；用例收尾的
+    // dispose（seq > lastSeqInViewEnd）不算查看中关闭。
+    for (const [label, record] of [
+      ["desktop", desktopSubscribed],
+      ["mobile", mobileSubscribed],
+    ] as const) {
+      if (!record) continue;
       const ended = hostRecords.find(
-        (record) =>
-          record.subscriptionId === desktopSubscribed.subscriptionId &&
-          record.attachmentId === desktopSubscribed.attachmentId &&
-          record.seq > desktopSubscribed.seq &&
-          (record.event === "unsubscribed" || record.event === "attachment-disposed"),
+        (candidate) =>
+          candidate.subscriptionId === record.subscriptionId &&
+          candidate.attachmentId === record.attachmentId &&
+          candidate.seq > record.seq &&
+          candidate.seq <= input.lastSeqInViewEnd &&
+          (candidate.event === "unsubscribed" || candidate.event === "attachment-disposed"),
       );
       if (ended) {
         failures.push({
           code: "subscription-ended",
-          detail: `desktop subscription ${desktopSubscribed.subscriptionId} ended before/while viewing (event=${ended.event}, seq=${ended.seq})`,
+          detail: `${label} subscription ${record.subscriptionId} ended while viewing (event=${ended.event}, seq=${ended.seq}, windowEnd=${input.lastSeqInViewEnd})`,
+        });
+      }
+    }
+
+    // 两端独立关系：桌面与手机必须各自持有一条真实、独立的 attachment/连接/订阅。
+    // 实测拓扑（local 配对查看）也是两个不同 attachmentId（base-* 与 shared-host-attachment-*）、
+    // 两条 hostConnectionId、两个 subscriptionId；任一同值意味着一端记录被另一端复用。
+    if (desktopSubscribed && mobileSubscribed) {
+      if (desktopSubscribed.hostConnectionId === mobileSubscribed.hostConnectionId) {
+        failures.push({
+          code: "cross-end-connection-reuse",
+          detail: `desktop and mobile records share hostConnectionId=${desktopSubscribed.hostConnectionId}`,
+        });
+      }
+      if (desktopSubscribed.subscriptionId === mobileSubscribed.subscriptionId) {
+        failures.push({
+          code: "cross-end-subscription-reuse",
+          detail: `desktop and mobile records share subscriptionId=${desktopSubscribed.subscriptionId}`,
+        });
+      }
+      if (desktopSubscribed.attachmentId === mobileSubscribed.attachmentId) {
+        failures.push({
+          code: "cross-end-attachment-reuse",
+          detail: `desktop and mobile records share attachmentId=${desktopSubscribed.attachmentId}`,
         });
       }
     }
@@ -228,15 +287,32 @@ export function verifyDirectAttachmentAssociation(input: {
         });
       }
       // workspace key 严格一致：identity?.trim() || path 回落；两侧同为空合法，
-      // 单侧不同（含同路径不同 identity）在此拒绝。
+      // 单侧不同（含同路径不同 identity）在此拒绝。Host 侧优先用 runtime 查询返回值
+      // （runtimeIdentity.workspaceKey，Host 对同一 attachment 实际查到的 key），
+      // 不只比记录顶层按订阅参数推导的字段。
       const queryKey =
         resolveWorkspaceKey(query.target.workspaceIdentity, query.target.workspacePath) ||
         resolveWorkspaceKey(query.workspaceKey, undefined);
-      const hostKey = resolveWorkspaceKey(record.workspaceIdentity, record.workspacePath);
+      const hostKey =
+        resolveWorkspaceKey(record.runtimeIdentity?.workspaceKey, undefined) ||
+        resolveWorkspaceKey(record.workspaceIdentity, record.workspacePath);
       if (queryKey !== hostKey) {
         failures.push({
           code: "workspace-key-mismatch",
           detail: `${label} pane workspaceKey=${queryKey || "<empty>"} host record workspaceKey=${hostKey || "<empty>"}`,
+        });
+      }
+      // 查询返回值互证：两端都是对同一 runtime 的真实查询，返回的 workspaceKey 必须一致
+      //（Host 返回 other-workspace 而 pane 查回本 workspace 即在此拒绝）。
+      if (
+        record.runtimeIdentity &&
+        query.workspaceKey !== undefined &&
+        query.workspaceKey.trim() &&
+        query.workspaceKey.trim() !== record.runtimeIdentity.workspaceKey
+      ) {
+        failures.push({
+          code: "host-returned-workspace-key-mismatch",
+          detail: `${label} pane query returned workspaceKey=${query.workspaceKey} host runtime query returned=${record.runtimeIdentity.workspaceKey}`,
         });
       }
     }
@@ -281,6 +357,7 @@ function pickSubscribedRecord(
     clientMode: string;
     scopeKind: "local" | "remote";
     minSeq?: number;
+    maxSeq?: number;
   },
 ): HostAttachmentSubscriptionRecord | null {
   const candidates = records.filter(
@@ -289,7 +366,8 @@ function pickSubscribedRecord(
       record.clientMode === filter.clientMode &&
       record.sessionId === filter.sessionId &&
       record.scope.kind === filter.scopeKind &&
-      (filter.minSeq === undefined || record.seq >= filter.minSeq),
+      (filter.minSeq === undefined || record.seq >= filter.minSeq) &&
+      (filter.maxSeq === undefined || record.seq <= filter.maxSeq),
   );
   if (candidates.length === 0) return null;
   // 取窗口内最后一次订阅（重订阅以最新为准）。

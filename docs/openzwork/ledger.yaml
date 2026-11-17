@@ -367,8 +367,11 @@ entries:
       - packages/desktop/test/e2e/helpers/session-runtime-association.ts
       - packages/desktop/test/sessionRuntimeAssociation.test.ts
       # WT04 direct 关联判定合同回归：反例拒绝同代异实例/缺 attachment/scope 不匹配/
-      # 订阅结束/查询不可用/缺 artifact/gate 未启用/同值代填。
+      # 订阅（任一端）查看中结束/两端 attachment·连接·订阅复用/查询返回值互异/
+      # 查询不可用/缺 artifact/gate 未启用/seq 乱序/同值代填；probe ACK 先行与落盘顺序。
       - packages/desktop/test/directAttachmentAssociation.test.ts
+      # pane 诊断装配矩阵（2026-11-17 J2）：flag+run ID 双条件，生产关闭态单列。
+      - packages/ui/test/paneRuntimeIdentityE2EGate.test.ts
       # WT04 补证（2026-11-15 独立复核 F3 迁移）：同路径两个 identity 的任务隔离与冷恢复，
       # 受控运行时入口走生产 task-facts 管道 + 真实 TaskIndexRepo 存储（原 services 业务单测
       # 违反「不新增 App 业务单测」规则，已删除）。
@@ -385,8 +388,11 @@ entries:
     hooks:
       # WT04 direct probe 接线点（上游文件，只加行为必需行）：
       # Host 在 exposeServicesOnMessagePort 内以 registry attach 事实包装 agent service；
-      # SessionPane/V4ConversationContext 暴露 pane-local 查询所需的已解析 scope。
+      # SessionPane/V4ConversationContext 暴露 pane-local 查询所需的已解析 scope；
+      # desktopHostProcess（2026-11-17 J2）在 Host gate 命中时向 renderer URL 注入
+      # zcodeE2eRunId（pane 诊断双条件之一）。
       - packages/desktop/src/host/index.ts
+      - packages/desktop/src/main/desktopHostProcess.ts
       - packages/ui/src/v4/SessionPane.tsx
       - packages/ui/src/v4/V4ConversationContext.tsx
     source: 现有 CI/E2E 规范；889fe19d6 的 runner 登记；补登已有验证材料
