@@ -353,6 +353,8 @@ entries:
       - packages/desktop/test/directAttachmentAssociation.test.ts
       # pane 诊断装配矩阵（2026-11-17 J2）：flag+run ID 双条件，生产关闭态单列。
       - packages/ui/test/paneRuntimeIdentityE2EGate.test.ts
+      # CLH 补充（2026-11-17 J1.4，对齐 C 线登记）：openCommunity 本地配置链受控回归。
+      - packages/desktop/test/communityLocalConfig.test.ts
       # WT04 补证（2026-11-15 独立复核 F3 迁移）：同路径两个 identity 的任务隔离与冷恢复，
       # 受控运行时入口走生产 task-facts 管道 + 真实 TaskIndexRepo 存储（原 services 业务单测
       # 违反「不新增 App 业务单测」规则，已删除）。
