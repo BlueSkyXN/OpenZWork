@@ -22,9 +22,8 @@ vi.mock("electron", () => ({
   shell: { openExternal: vi.fn() },
 }));
 
-const { resolveLocalAppConfigPath, resolveCommunityUrl } = await import(
-  "../src/main/desktopCommandHandlers.js"
-);
+const { resolveLocalAppConfigPath, resolveCommunityUrl } =
+  await import("../src/main/desktopCommandHandlers.js");
 
 const roots: string[] = [];
 async function temp() {

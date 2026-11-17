@@ -4,7 +4,7 @@
 // 用法：node scripts/verify-agent-node-dist.mjs --tarball <path> [--report <path>]
 // 裁剪标记为 2026-11-15 对已验收 zcode-3.18.2 tarball 实测 0 命中后收录；
 // 注意 start-plan/highspeed 不作禁标记：官方套餐/加速卡/闲时任务的**服务与 UI 域**已按
-// OZ-D002 删除（packages/services/src/coding-plan-subscription|highspeed、off-peak 等），
+// OZ-D002 删除（含 packages/services/src/coding-plan-subscription 与 highspeed 等目录），
 // 但 CLI 内 start-plan 字样命中属通用重试/错误处理的 provider-id 兼容分支
 // （streaming-recovery.ts / target-completion-verification.ts 的 busy 重试集合与
 // prompt-turn.ts 的 Provider 下架恢复），全词禁用会误伤合法兼容代码；

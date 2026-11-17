@@ -44,14 +44,14 @@ ui-locales.md「setting.json 存储格式与降级兼容」节描述的丢失场
 
 ## 3. 验收（OZ-CLH 补齐：持久化/冷恢复合同）
 
-| 验收 | 入口 | 断言 |
-| --- | --- | --- |
-| L1 多语言落盘 | 工程回归（真实服务+真实文件+隔离数据根） | ja/ru/ko：旧字段=en-US、新字段=真实值；zh 写 zh；偏好 system 照写 |
-| L2 冷恢复真实语言 | 同上（新服务实例重读文件） | `get().locale` 等于真实选择（非降级值） |
-| L3 旧客户端 schema 可识别 | 同上 | 落盘 locale/localePreference 值均在旧枚举内（strict 解析不失败） |
-| L4 旧格式迁移 | 同上（种子写入旧字段=ja-JP 的文件） | `get()` 后文件被重写为新格式，内存仍识别 ja-JP |
-| L5 其他设置保留 | 同上（先写无关字段再改语言） | 无关字段不丢 |
-| OZ-CLH-02 UI 链落盘 | E2E `settings-client-language-header-openzwork.test.ts` | 设置页选 ja-JP 后，应用数据根 `v2/setting.json` 出现 `uiLocale=ja-JP` 且 `locale=en-US` |
+| 验收                      | 入口                                                    | 断言                                                                                    |
+| ------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| L1 多语言落盘             | 工程回归（真实服务+真实文件+隔离数据根）                | ja/ru/ko：旧字段=en-US、新字段=真实值；zh 写 zh；偏好 system 照写                       |
+| L2 冷恢复真实语言         | 同上（新服务实例重读文件）                              | `get().locale` 等于真实选择（非降级值）                                                 |
+| L3 旧客户端 schema 可识别 | 同上                                                    | 落盘 locale/localePreference 值均在旧枚举内（strict 解析不失败）                        |
+| L4 旧格式迁移             | 同上（种子写入旧字段=ja-JP 的文件）                     | `get()` 后文件被重写为新格式，内存仍识别 ja-JP                                          |
+| L5 其他设置保留           | 同上（先写无关字段再改语言）                            | 无关字段不丢                                                                            |
+| OZ-CLH-02 UI 链落盘       | E2E `settings-client-language-header-openzwork.test.ts` | 设置页选 ja-JP 后，应用数据根 `v2/setting.json` 出现 `uiLocale=ja-JP` 且 `locale=en-US` |
 
 OZ-CLH-01（UI 实时切换 + client/configs 零请求）不变。上游
 `settings-client-language-header.test.ts` 的 5 个 case 仍按 OZ-D008 裁剪标不适用
