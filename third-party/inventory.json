@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "a02bedf4f7b3771f0dab1826958806d6d85840782df55a2b99916a60deec0a2f",
+  "noticesSha256": "ee908ae22c78a0c6542684dd21e8124b3470fe50c5c20ce15c4d93398551339d",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -3355,7 +3355,7 @@
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
     "third-party/native-search/sources.json": "3ed43433e5a4c684c0d751bc03facc3f020d5077d8ffd299156a54b51a1ec6d9",
-    "third-party/npm-overrides.json": "6a882c6540d9babd0aa74cfa02100abc641382c80c24802694952ab05efa4aaf",
+    "third-party/npm-overrides.json": "9578204cb535628666d0790ee09179cb1526b9847ffbc1bffb7624db7231942d",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -3374,7 +3374,6 @@
     "third-party/upstream/268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5.txt": "268872b9816f90fd8e85db5a28d33f8150ebb8dd016653fb39ef1f94f2686bc5",
     "third-party/upstream/2711a8b5a5cdfef0e639f96c1aca12ae23d7d64a02d0507f1bdf14d2b27bbc3a.txt": "2711a8b5a5cdfef0e639f96c1aca12ae23d7d64a02d0507f1bdf14d2b27bbc3a",
     "third-party/upstream/2c88816684a40c718113a10062a8335b665cec00d3c7b32e2b3fe9c620a3e03e.txt": "2c88816684a40c718113a10062a8335b665cec00d3c7b32e2b3fe9c620a3e03e",
-    "third-party/upstream/2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d.txt": "2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d",
     "third-party/upstream/3007cd45c9afdf93812c0c8a7643ea32a7db0b24e495dc0f2312c8a43990b0dd.txt": "3007cd45c9afdf93812c0c8a7643ea32a7db0b24e495dc0f2312c8a43990b0dd",
     "third-party/upstream/31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87.txt": "31b15de82aa19a845156169a17a5488bf597e561b2c318d159ed583139b25e87",
     "third-party/upstream/34dee5fd5e5cc756efb5ad4d64652bce719bdf5e900ca5d7538253e737930bc4.txt": "34dee5fd5e5cc756efb5ad4d64652bce719bdf5e900ca5d7538253e737930bc4",
@@ -3397,6 +3396,7 @@
     "third-party/upstream/5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd.txt": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd",
     "third-party/upstream/62928eb197fe4662d1efc3af0735b3ba5df3c0308badd9a2baf2b619009f5366.txt": "62928eb197fe4662d1efc3af0735b3ba5df3c0308badd9a2baf2b619009f5366",
     "third-party/upstream/66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101.txt": "66aa9feab8bb39aceebd69f2a357015d57ceab486d3c7a19ff8d3d4110a6d101",
+    "third-party/upstream/6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733.txt": "6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733",
     "third-party/upstream/6ae13df543a24b3fb18c25182cf4f084132f799ea9225410f7037888401b7469.txt": "6ae13df543a24b3fb18c25182cf4f084132f799ea9225410f7037888401b7469",
     "third-party/upstream/6d3011c008b1b4290f4f5713d86550bcc4b57ab477d9ed5eb893c6a7042add57.txt": "6d3011c008b1b4290f4f5713d86550bcc4b57ab477d9ed5eb893c6a7042add57",
     "third-party/upstream/75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6.txt": "75815e3bf6484201a3c3d17a1bbf10f2e8e3237f84df10a2357ea896db2a81d6",
@@ -3422,11 +3422,11 @@
     "third-party/upstream/bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362.txt": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
     "third-party/upstream/bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526.txt": "bdb0a645ea18c60507d0368379b1ac5474b92255fcc2d115e07486a7672ba526",
     "third-party/upstream/c5adaf9051f20a1bbeecfb39de415cac1fef591d4fcda2b55d66b31354fdba1e.txt": "c5adaf9051f20a1bbeecfb39de415cac1fef591d4fcda2b55d66b31354fdba1e",
-    "third-party/upstream/c681d64256e752c1435814cf045f4467720a8473e425ea54103a0f5128bfc817.txt": "c681d64256e752c1435814cf045f4467720a8473e425ea54103a0f5128bfc817",
     "third-party/upstream/c8b789cf5a746611e6300a0cc7750dbf92b61912a709d04e639245f7290656d0.txt": "c8b789cf5a746611e6300a0cc7750dbf92b61912a709d04e639245f7290656d0",
     "third-party/upstream/cb992262f361a5359e6771c28740d33c7041e15332ae8537fae40538992591a9.txt": "cb992262f361a5359e6771c28740d33c7041e15332ae8537fae40538992591a9",
     "third-party/upstream/cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c.txt": "cc3273e0694ea5896145e0677699b53471b03ea43021ddc50e7923fbb9f5023c",
     "third-party/upstream/cdab3014d4f69b49dde2b85e81792208c72de613aa6aed7f7a9b5c6609b89670.txt": "cdab3014d4f69b49dde2b85e81792208c72de613aa6aed7f7a9b5c6609b89670",
+    "third-party/upstream/cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6.txt": "cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6",
     "third-party/upstream/cf81859d85e99ff2fad83d51d9dfd85ca5189b23c4442aacf1890c54665d92f4.txt": "cf81859d85e99ff2fad83d51d9dfd85ca5189b23c4442aacf1890c54665d92f4",
     "third-party/upstream/cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "third-party/upstream/d65ff929f8a373ea16b21d45d5489557d51389ba6583a5c9959d5487c02ce965.txt": "d65ff929f8a373ea16b21d45d5489557d51389ba6583a5c9959d5487c02ce965",
@@ -4380,8 +4380,8 @@
           "sha256": "daf005969aac8cb4283b3777361f0244f4cce898b9a983a60b7f0d9e96f559bf"
         },
         {
-          "member": "https://registry.npmjs.org/@hono%2fnode-ws/1.3.0",
-          "sha256": "c681d64256e752c1435814cf045f4467720a8473e425ea54103a0f5128bfc817"
+          "member": "https://github.com/honojs/middleware/blob/main/LICENSE",
+          "sha256": "6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733"
         }
       ]
     },
@@ -8533,8 +8533,8 @@
       "repository": "https://github.com/fb55/boolbase",
       "notices": [
         {
-          "member": "https://registry.npmjs.org/boolbase/1.0.0",
-          "sha256": "2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d"
+          "member": "https://github.com/fb55/boolbase/blob/be0bcd8a4e/LICENSE",
+          "sha256": "cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6"
         }
       ]
     },
@@ -32964,12 +32964,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
         "npmArchiveSha256": "9c9795688a9e224759468aeee2ff88d917fadc65f7b3480e62571f0853eaa446",
-        "sourceRevision": "f9771c0c21e863e4938a7aed0af89575f9673152",
-        "sourceTreeUrl": "https://api.github.com/repos/justjake/node-unsafe-pointer/git/trees/f9771c0c21e863e4938a7aed0af89575f9673152?recursive=1",
-        "upstreamLicenseFiles": []
+        "sourceRevision": "v0.2.0",
+        "sourceTreeUrl": "https://api.github.com/repos/justjake/node-unsafe-pointer/git/trees/v0.2.0?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. No monorepo root license exists for this package."
       }
     },
     {
@@ -32984,9 +32985,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
-        "npmArchiveSha256": "ccc872d7a2dc007cbf9d755f30d56b8d80eabdbe22c44c95a709129bfdc46f01"
+        "npmArchiveSha256": "ccc872d7a2dc007cbf9d755f30d56b8d80eabdbe22c44c95a709129bfdc46f01",
+        "sourceRevision": "b3b1287aad81def2e2ae707274b74531b61ddbaf",
+        "sourceTreeUrl": "https://api.github.com/repos/theKashey/react-remove-scroll-bar/git/trees/b3b1287aad81def2e2ae707274b74531b61ddbaf?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. Parent monorepo theKashey/react-remove-scroll has a root LICENSE but no tag/ref matching 2.3.8 (standalone repo tags stop at v2.3.7); no version-matched monorepo material exists."
       }
     },
     {
@@ -33003,29 +33008,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
-        "npmArchiveSha256": "f4dd386c2e705ffb8692a8afdc1e3b8ff09c6b8ef3aee48d0537ff71d8839cd1"
-      }
-    },
-    {
-      "package": "@hono/node-ws@1.3.0",
-      "repo": "honojs/middleware",
-      "refs": [
-        "2c026b9d5bfff006dc9abdc1b33c53856d2d784f"
-      ],
-      "file": "third-party/upstream/c681d64256e752c1435814cf045f4467720a8473e425ea54103a0f5128bfc817.txt",
-      "sha256": "c681d64256e752c1435814cf045f4467720a8473e425ea54103a0f5128bfc817",
-      "source": "https://registry.npmjs.org/@hono%2fnode-ws/1.3.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
-      "license": "MIT",
-      "reviewEvidence": {
-        "checkedOn": "2026-09-21",
-        "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
-        "npmArchiveSha256": "48b94f87b85ca84428491d7275f0fad16450254bd49d9b2b4f621539fda8a2af",
-        "sourceRevision": "2c026b9d5bfff006dc9abdc1b33c53856d2d784f",
-        "sourceTreeUrl": "https://api.github.com/repos/honojs/middleware/git/trees/2c026b9d5bfff006dc9abdc1b33c53856d2d784f?recursive=1",
-        "upstreamLicenseFiles": []
+        "npmArchiveSha256": "f4dd386c2e705ffb8692a8afdc1e3b8ff09c6b8ef3aee48d0537ff71d8839cd1",
+        "sourceRevision": "quickjs-wasi@2.2.0",
+        "sourceTreeUrl": "https://api.github.com/repos/vercel-labs/quickjs-wasi/git/trees/quickjs-wasi@2.2.0?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. No monorepo root license exists for this package."
       }
     },
     {
@@ -33042,12 +33031,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
         "npmArchiveSha256": "43c456f72612074a13e8399c29ffd59c8c277274924b633f6e4fa07342f63cab",
-        "sourceRevision": "56e004cf2793053ea9ece4330fd52cace96acbff",
-        "sourceTreeUrl": "https://api.github.com/repos/open-draft/strict-event-emitter/git/trees/56e004cf2793053ea9ece4330fd52cace96acbff?recursive=1",
-        "upstreamLicenseFiles": []
+        "sourceRevision": "v0.5.1",
+        "sourceTreeUrl": "https://api.github.com/repos/open-draft/strict-event-emitter/git/trees/v0.5.1?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. No monorepo root license exists for this package."
       }
     },
     {
@@ -33062,31 +33052,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
         "npmArchiveSha256": "72002cc502d607af8e2dbcbdafa3495bf4efe34394e1a037b92038d157f077a2",
-        "sourceRevision": "88a33875b168cc7b5943d7fe987c36d08321d252",
-        "sourceTreeUrl": "https://api.github.com/repos/abrkn/semaphore.js/git/trees/88a33875b168cc7b5943d7fe987c36d08321d252?recursive=1",
-        "upstreamLicenseFiles": []
-      }
-    },
-    {
-      "package": "boolbase@1.0.0",
-      "repo": "fb55/boolbase",
-      "refs": [
-        "v1.0.0",
-        "boolbase@1.0.0",
-        "1.0.0"
-      ],
-      "file": "third-party/upstream/2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d.txt",
-      "sha256": "2d2349188616c4b64ceeae33e1386bb546b0658864b4f7f8c9785757cb065b5d",
-      "source": "https://registry.npmjs.org/boolbase/1.0.0",
-      "evidenceKind": "publisher-license-identifier-and-standard-terms",
-      "license": "ISC",
-      "reviewEvidence": {
-        "checkedOn": "2026-09-21",
-        "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
-        "npmArchiveSha256": "69628ff8092c5ff940ea4a0f29da98d520615bae138755c9e059033606c6caa8"
+        "sourceRevision": "v1.1.0",
+        "sourceTreeUrl": "https://api.github.com/repos/abrkn/semaphore.js/git/trees/v1.1.0?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. No monorepo root license exists for this package."
       }
     },
     {
@@ -33101,12 +33073,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
         "npmArchiveSha256": "57f8d0cf303951c66dcdab2a10c2fe57194ad4cbb851880c604d4c3e521def2b",
-        "sourceRevision": "b30f1b683311030e92fcdd08d2bd6574d652b77f",
-        "sourceTreeUrl": "https://api.github.com/repos/open-draft/deferred-promise/git/trees/b30f1b683311030e92fcdd08d2bd6574d652b77f?recursive=1",
-        "upstreamLicenseFiles": []
+        "sourceRevision": "v2.2.0",
+        "sourceTreeUrl": "https://api.github.com/repos/open-draft/deferred-promise/git/trees/v2.2.0?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. No monorepo root license exists for this package."
       }
     },
     {
@@ -33123,12 +33096,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "MIT",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
         "npmArchiveSha256": "810d5c86ac247ffbfab3dcdee3cef95fb830e1f5eea9674858e8dcd6de4accba",
-        "sourceRevision": "8a6152c795d8705be97166bd5167e70ac6efc67c",
-        "sourceTreeUrl": "https://api.github.com/repos/mswjs/is-node-process/git/trees/8a6152c795d8705be97166bd5167e70ac6efc67c?recursive=1",
-        "upstreamLicenseFiles": []
+        "sourceRevision": "v1.2.0",
+        "sourceTreeUrl": "https://api.github.com/repos/mswjs/is-node-process/git/trees/v1.2.0?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. No monorepo root license exists for this package."
       }
     },
     {
@@ -33143,12 +33117,13 @@
       "evidenceKind": "publisher-license-identifier-and-standard-terms",
       "license": "BSD-3-Clause",
       "reviewEvidence": {
-        "checkedOn": "2026-09-21",
+        "checkedOn": "2026-11-17",
         "result": "The versioned npm archive contains no standalone complete LICENSE; existing publisher declaration and original README license sections remain preserved. Upstream authorization/copyright material is still required to close this review.",
         "npmArchiveSha256": "e06fc6be19323cf447f0058975cfcf41923d3422ea613cff2e67d8fd8ee1d655",
-        "sourceRevision": "145140971e9d83ccac32265f24b1c55dea437896",
-        "sourceTreeUrl": "https://api.github.com/repos/nteract/ansi-to-react/git/trees/145140971e9d83ccac32265f24b1c55dea437896?recursive=1",
-        "upstreamLicenseFiles": []
+        "sourceRevision": "v6.2.6",
+        "sourceTreeUrl": "https://api.github.com/repos/nteract/ansi-to-react/git/trees/v6.2.6?recursive=1",
+        "upstreamLicenseFiles": [],
+        "recheckResult": "GitHub tree API at the version ref lists no LICENSE/COPYING/NOTICE file. No monorepo root license exists for this package."
       }
     }
   ],
@@ -33435,19 +33410,11 @@
       "reason": "Original version-specific publisher copyright/license material remains incomplete."
     },
     {
-      "id": "@hono/node-ws@1.3.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
       "id": "strict-event-emitter@0.5.1",
       "reason": "Original version-specific publisher copyright/license material remains incomplete."
     },
     {
       "id": "semaphore@1.1.0",
-      "reason": "Original version-specific publisher copyright/license material remains incomplete."
-    },
-    {
-      "id": "boolbase@1.0.0",
       "reason": "Original version-specific publisher copyright/license material remains incomplete."
     },
     {
