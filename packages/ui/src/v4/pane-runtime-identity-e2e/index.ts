@@ -22,7 +22,15 @@ export function shouldEnablePaneRuntimeIdentityE2E(input: {
 
 export function readPaneRuntimeIdentityE2ERunId(): string | null {
   if (typeof window === "undefined") return null;
-  return new URLSearchParams(window.location.search).get(PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM);
+  // 桌面 renderer：main 经加载 URL 注入。手机 Web：SPA 路由会重写 URL，配对 URL 也
+  // 不能附加参数（一次性 token 对参数敏感，实测附加即配对失败）；E2E 上下文经
+  // addInitScript 种入 sessionStorage（与凭据种子同模式），生产环境两者皆不存在。
+  const fromUrl = new URLSearchParams(window.location.search).get(
+    PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM,
+  );
+  if (fromUrl?.trim()) return fromUrl;
+  const fromStorage = window.sessionStorage?.getItem(PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM);
+  return fromStorage?.trim() || null;
 }
 
 export interface PaneRuntimeIdentityE2ETarget {

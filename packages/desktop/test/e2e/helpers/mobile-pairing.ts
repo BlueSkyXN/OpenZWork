@@ -60,17 +60,18 @@ export async function openMobilePairingPage(
   page.on("pageerror", onPageError);
   page.on("requestfailed", onRequestFailed);
   try {
-    // OpenZWork(OZ-F012): 手机 Web 页的 pane runtime identity E2E 诊断需要有效 run ID
-    // （与桌面 renderer 的 URL 注入同参名）；仅 E2E runner 环境追加，普通访问不携带。
+    // OpenZWork(OZ-F012): 手机 Web 页的 pane runtime identity E2E 诊断需要有效 run ID。
+    // 配对 URL 是一次性 token，附加参数会破坏配对（实测）；改为与凭据种子相同的
+    // addInitScript 方式种入 sessionStorage（gate 与桌面 URL 注入读同一参数名）。
     const runId = process.env.ZCODE_E2E_RUN_ID?.trim();
-    const targetUrl = runId
-      ? (() => {
-          const url = new URL(pairingUrl);
-          url.searchParams.set("zcodeE2eRunId", runId);
-          return url.toString();
-        })()
-      : pairingUrl;
-    await page.goto(targetUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    if (runId) {
+      await page.context().addInitScript((value) => {
+        if (!sessionStorage.getItem("zcodeE2eRunId")) {
+          sessionStorage.setItem("zcodeE2eRunId", value);
+        }
+      }, runId);
+    }
+    await page.goto(pairingUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
     // 新首页已展示共享项目/任务，不再渲染旧“已连接”文案；必须等调用方指定的真实内容。
     // Desktop 的手机连接状态仍由各 case 独立核对，空侧栏不能作为配对成功证据。
     const connected = page.locator(options.readySelector);
