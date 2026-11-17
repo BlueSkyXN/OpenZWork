@@ -80,33 +80,39 @@ const hostRecord = (
   };
 };
 
-const validInput = () => ({
-  sessionId: SESSION,
-  desktopQuery: paneQuery(),
-  mobileQuery: paneQuery({
-    queriedAt: "2026-11-16T08:00:30.000Z",
-    target: {
-      workspacePath: WORKSPACE,
-      workspaceIdentity: null,
-      remoteSessionId: "remote-session-1",
-    },
-  }),
-  hostRecords: [
-    hostRecord({ clientMode: "desktop-continuous", scope: { kind: "local" } }),
-    hostRecord({
-      clientMode: "web-remote-replayable",
-      remoteSessionId: "remote-session-1",
-      subscribeRemoteSessionId: null,
-      scope: {
-        kind: "remote",
-        remoteSessionId: "remote-session-1",
+const validInput = () => {
+  // 每次构造都从 seq=1 开始：窗口断言（lastSeqBeforeView/lastSeqInViewEnd）与
+  // 记录 seq 必须逐调用对齐，不能用跨调用递增计数器。
+  seqCounter = 0;
+  return {
+    sessionId: SESSION,
+    desktopQuery: paneQuery(),
+    mobileQuery: paneQuery({
+      queriedAt: "2026-11-16T08:00:30.000Z",
+      target: {
         workspacePath: WORKSPACE,
-        workspaceIdentity: "",
+        workspaceIdentity: null,
+        remoteSessionId: "remote-session-1",
       },
     }),
-  ],
-  recordsBeforeView: 1,
-});
+    hostRecords: [
+      hostRecord({ clientMode: "desktop-continuous", scope: { kind: "local" } }),
+      hostRecord({
+        clientMode: "web-remote-replayable",
+        remoteSessionId: "remote-session-1",
+        subscribeRemoteSessionId: null,
+        scope: {
+          kind: "remote",
+          remoteSessionId: "remote-session-1",
+          workspacePath: WORKSPACE,
+          workspaceIdentity: "",
+        },
+      }),
+    ],
+    lastSeqBeforeView: 1,
+    lastSeqInViewEnd: 2,
+  };
+};
 
 describe("WT04 direct attachment 关联判定合同", () => {
   it("合法样本：两端独立查询与两条真实 Host 订阅记录一致时通过", () => {
@@ -195,12 +201,111 @@ describe("WT04 direct attachment 关联判定合同", () => {
         {
           ...desktopRecord,
           event: "attachment-disposed",
-          seq: desktopRecord.seq + 1,
+          seq: 3,
           recordedAt: "2026-11-16T08:00:20.000Z",
         },
       ],
+      lastSeqInViewEnd: 3,
     });
     expect(failures.map((failure) => failure.code)).toContain("subscription-ended");
+  });
+
+  it("反例：手机订阅在查看期间追加 attachment-disposed 也必须拒绝（不只查桌面结束）", () => {
+    const input = validInput();
+    const mobileRecord = input.hostRecords[1];
+    const failures = verifyDirectAttachmentAssociation({
+      ...input,
+      hostRecords: [
+        input.hostRecords[0],
+        mobileRecord,
+        {
+          ...mobileRecord,
+          event: "attachment-disposed",
+          seq: 3,
+          recordedAt: "2026-11-16T08:00:40.000Z",
+        },
+      ],
+      lastSeqInViewEnd: 3,
+    });
+    expect(failures.map((failure) => failure.code)).toContain("subscription-ended");
+    expect(failures.map((failure) => failure.code).join()).not.toContain("desktop");
+  });
+
+  it("窗口边界：用例收尾产生的 dispose（seq 晚于查看结束快照）不算查看中关闭", () => {
+    const input = validInput();
+    const desktopRecord = input.hostRecords[0];
+    const mobileRecord = input.hostRecords[1];
+    // 收尾 dispose 在快照之后（seq=5/6 > lastSeqInViewEnd=2）：真实文件尾部的合法形态。
+    const failures = verifyDirectAttachmentAssociation({
+      ...input,
+      hostRecords: [
+        desktopRecord,
+        mobileRecord,
+        { ...desktopRecord, event: "attachment-disposed", seq: 5 },
+        { ...mobileRecord, event: "attachment-disposed", seq: 6 },
+      ],
+    });
+    expect(failures).toEqual([]);
+  });
+
+  it("反例：两端记录复用同一 hostConnectionId/subscriptionId/attachmentId 必须拒绝", () => {
+    const input = validInput();
+    // 桌面记录被手机端复用（同一 attachment、同一连接、同一订阅）——不是两条独立关系。
+    const reused = {
+      ...input.hostRecords[1],
+      attachmentId: input.hostRecords[0].attachmentId,
+      hostConnectionId: input.hostRecords[0].hostConnectionId,
+      subscriptionId: input.hostRecords[0].subscriptionId,
+    } as HostAttachmentSubscriptionRecord;
+    const failures = verifyDirectAttachmentAssociation({
+      ...input,
+      hostRecords: [input.hostRecords[0], reused],
+    });
+    const codes = failures.map((failure) => failure.code);
+    expect(codes).toContain("cross-end-connection-reuse");
+    expect(codes).toContain("cross-end-subscription-reuse");
+    expect(codes).toContain("cross-end-attachment-reuse");
+  });
+
+  it("反例：Host runtime 查询返回 other-workspace 而 pane 查回本 workspace 必须拒绝", () => {
+    const input = validInput();
+    // 只改 Host 记录内嵌的查询返回值：顶层字段一致也不放行（完整核查询返回值）。
+    const desktopRecord = {
+      ...input.hostRecords[0],
+      runtimeIdentity: {
+        ...input.hostRecords[0].runtimeIdentity!,
+        workspaceKey: "/other-workspace",
+        identity: `/other-workspace:1:${input.hostRecords[0].runtimeIdentity!.processId}`,
+      },
+    } as HostAttachmentSubscriptionRecord;
+    const failures = verifyDirectAttachmentAssociation({
+      ...input,
+      hostRecords: [desktopRecord, input.hostRecords[1]],
+    });
+    const codes = failures.map((failure) => failure.code);
+    expect(codes).toContain("host-returned-workspace-key-mismatch");
+    expect(codes).toContain("identity-mismatch");
+  });
+
+  it("反例：Host 记录 seq 非单调（行序与序号不一致）判观察不可靠", () => {
+    const input = validInput();
+    const failures = verifyDirectAttachmentAssociation({
+      ...input,
+      hostRecords: [
+        { ...input.hostRecords[0], seq: 2 },
+        { ...input.hostRecords[1], seq: 1 },
+      ],
+    });
+    expect(failures.map((failure) => failure.code)).toContain("host-records-seq-disorder");
+  });
+
+  it("反例：查看窗口快照自相矛盾（end < before）必须拒绝", () => {
+    const failures = verifyDirectAttachmentAssociation({
+      ...validInput(),
+      lastSeqBeforeView: 5,
+      lastSeqInViewEnd: 2,
+    });
+    expect(failures.map((failure) => failure.code)).toContain("view-window-invalid");
   });
 
   it("反例：任一端 pane 查询不可用必须拒绝（错误不得吞成绿色）", () => {
@@ -223,7 +328,7 @@ describe("WT04 direct attachment 关联判定合同", () => {
       desktopQuery: paneQuery(),
       mobileQuery: paneQuery(),
       hostRecords: [],
-      recordsBeforeView: 0,
+      lastSeqBeforeView: 0,
     });
     expect(failures.map((failure) => failure.code)).toContain("host-records-missing");
   });
@@ -274,11 +379,14 @@ describe("WT04 direct attachment 关联判定合同", () => {
       }),
       hostRecords: [
         input.hostRecords[0],
-        hostRecord({
-          clientMode: "web-remote-replayable",
-          attachmentId: "shared-host-attachment-1",
-          scope: { kind: "local" },
-        }),
+        {
+          ...hostRecord({
+            clientMode: "web-remote-replayable",
+            attachmentId: "shared-host-attachment-1",
+            scope: { kind: "local" },
+          }),
+          seq: 2,
+        } as HostAttachmentSubscriptionRecord,
       ],
     });
     expect(failures).toEqual([]);

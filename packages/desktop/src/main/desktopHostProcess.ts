@@ -26,6 +26,7 @@ import {
   RUNTIME_ZCODE_DEBUG,
   serializeLaunchMarks,
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  shouldEnableE2ETestBridge,
 } from "@zcode/shared";
 import type {
   PluginSandboxHandle,
@@ -129,6 +130,11 @@ export function loadWindow(
       unavailableWorkspacePath: bootstrap?.unavailableWorkspacePath,
       windowKind: bootstrap?.windowKind,
       locale: bootstrap?.locale,
+      // OpenZWork(OZ-F012): pane runtime identity E2E 诊断的 run ID 注入——与 Host probe
+      // 同一 gate（build flag + 非空 run ID）才随 URL 下发；生产构建 flag 缺失时不存在。
+      ...(shouldEnableE2ETestBridge(process.env)
+        ? { zcodeE2eRunId: process.env.ZCODE_E2E_RUN_ID?.trim() }
+        : {}),
     }).filter((entry): entry is [string, string] => entry[1] != null),
   );
 

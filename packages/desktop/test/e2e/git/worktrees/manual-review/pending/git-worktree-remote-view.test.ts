@@ -379,12 +379,15 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       await listRuntimeProcessIdentities(),
       electronRootPidBefore,
     );
-    // ── Host probe 快照（查看前记录数）：查看窗口内的 subscribed 才算手机查看期间
-    // 的真实订阅；旧订阅记录不当当前连接。
+    // ── Host probe 快照（查看前最后 seq）：查看窗口内的 subscribed 才算手机查看期间
+    // 的真实订阅；旧订阅记录不当当前连接。按 probe 单调 seq 快照（不用文件行数冒充
+    // 事件序号——seq 与行序一致性由判定合同校验）。
     const probeFilesBeforeView = await readHostProbeFiles(artifacts);
-    const probeLinesBeforeByFile = new Map<string, number>();
+    const probeLastSeqBeforeByFile = new Map<string, number>();
     for (const [file, text] of probeFilesBeforeView) {
-      probeLinesBeforeByFile.set(file, text.split(/\r?\n/u).filter((line) => line.trim()).length);
+      const records = parseHostAttachmentProbeRecords(text);
+      const lastSeq = records.reduce((max, record) => Math.max(max, record.seq), 0);
+      probeLastSeqBeforeByFile.set(file, lastSeq);
     }
 
     // ── 手机查看（事实②的产生窗口）：配对 → 打开项目 → 打开 WT04-1 的 worktree 任务。
@@ -492,9 +495,12 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
 
     // ── Host 真实 attachment/subscription 记录：手机记录所在文件 = 当前 Window Host；
     // 桌面订阅（重启后 pane 打开任务时建立）必须仍在同文件且查看期间未结束。
+    // 本快照在用例收尾之前取得：文件内全部记录都在查看窗口内，末条 seq 即窗口上界。
     const probeFilesAfter = await readHostProbeFiles(artifacts);
     let hostRecords: HostAttachmentSubscriptionRecord[] = [];
-    let recordsBeforeView = 0;
+    let lastSeqBeforeView = 0;
+    let lastSeqInViewEnd = 0;
+    let hostRecordFile: string | null = null;
     for (const [file, text] of probeFilesAfter) {
       const records = parseHostAttachmentProbeRecords(text);
       const mobileHit = records.find(
@@ -502,29 +508,56 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
           record.event === "subscribed" &&
           record.clientMode === "web-remote-replayable" &&
           record.sessionId === desktopSessionId &&
-          record.seq > (probeLinesBeforeByFile.get(file) ?? 0),
+          record.seq > (probeLastSeqBeforeByFile.get(file) ?? 0),
       );
       if (mobileHit) {
         hostRecords = records;
-        recordsBeforeView = probeLinesBeforeByFile.get(file) ?? 0;
+        hostRecordFile = file;
+        lastSeqBeforeView = probeLastSeqBeforeByFile.get(file) ?? 0;
+        lastSeqInViewEnd = records.reduce((max, record) => Math.max(max, record.seq), 0);
         break;
       }
     }
     // direct 判定（合同见 docs/specs/wt04-direct-runtime-association-openzwork.md）：
-    // 缺 artifact/gate 未启用/缺任一 attachment/scope 或会话不匹配/订阅已结束/
-    // 查询不可用/两端查询互异，全部在此拒绝。
+    // 缺 artifact/gate 未启用/缺任一 attachment/scope 或会话不匹配/订阅（任一端）查看中
+    // 结束/两端 attachment·连接·订阅关系复用/查询不可用/查询返回值互异，全部在此拒绝。
     const associationFailures = verifyDirectAttachmentAssociation({
       sessionId: desktopSessionId!,
       desktopQuery: desktopAfter.entry ?? desktopQueryBefore,
       mobileQuery,
       hostRecords,
-      recordsBeforeView,
+      lastSeqBeforeView,
+      lastSeqInViewEnd,
     });
+    // 结构化 artifact：查看前/中/后三段查询读数 + Host 记录 + 窗口与判定结论，
+    // 供离线复核（不只留一行「判定通过」）。
+    await writeFile(
+      join(artifacts, "wt04-direct-association-evidence.json"),
+      `${JSON.stringify(
+        {
+          sessionId: desktopSessionId,
+          capturedAt: new Date().toISOString(),
+          desktopQueryBeforeView: desktopQueryBefore,
+          mobileQueryDuringView: mobileQuery,
+          desktopQueryAfterView: desktopAfter.entry,
+          hostRecordFile,
+          lastSeqBeforeView,
+          lastSeqInViewEnd,
+          hostRecords,
+          associationFailures,
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
     if (associationFailures.length > 0)
       throw new Error(
         `WT04 direct attachment 关联失败：${associationFailures
           .map((failure) => `${failure.code}(${failure.detail})`)
-          .join("; ")}；hostRecords=${hostRecords.length}，recordsBeforeView=${recordsBeforeView}`,
+          .join(
+            "; ",
+          )}；hostRecords=${hostRecords.length}，window=[${lastSeqBeforeView},${lastSeqInViewEnd}]`,
       );
 
     // 辅助诊断输出（不参与判定）：树内 CLI 实例集合与 generation 连续性。
@@ -533,7 +566,7 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       electronRootPidBefore,
     );
     console.log(
-      `[WT04-2] direct 判定通过；辅助快照：树内 CLI 实例 查看前=${treeCliInstancesBefore.length} 查看中后=${treeCliInstancesAfterView.length}；host 记录=${hostRecords.length}（查看前=${recordsBeforeView}）`,
+      `[WT04-2] direct 判定通过；辅助快照：树内 CLI 实例 查看前=${treeCliInstancesBefore.length} 查看中后=${treeCliInstancesAfterView.length}；host 记录=${hostRecords.length}（窗口=[${lastSeqBeforeView},${lastSeqInViewEnd}]）`,
     );
     const desktopGenerationAfter = await browser.execute(() => {
       const pane = document.querySelector(

@@ -96,18 +96,43 @@ export function createHostE2EAttachmentProbe(options: {
   const hostProcessId = options.hostProcessId ?? process.pid;
   let seq = 0;
   let writeChain = Promise.resolve();
+  // 在途观察任务（含 runtime 查询与落盘）：dispose 冲刷前先等它们完成，
+  // 保证同一订阅的 subscribed 记录先于 attachment-disposed 落盘。
+  const pendingRecordTasks = new Set<Promise<void>>();
 
-  const appendRecord = (record: HostE2EAttachmentProbeRecord): Promise<void> => {
+  const trackRecordTask = (
+    task: () => Promise<void>,
+    options2?: {
+      /** 结束事件记录排在此前在途记录之后：同一订阅的 subscribed 先于其 end 事件落盘。 */
+      afterPending?: boolean;
+    },
+  ): void => {
+    const pendingBefore = options2?.afterPending ? Array.from(pendingRecordTasks) : [];
+    const tracked = (async () => {
+      if (pendingBefore.length > 0) await Promise.allSettled(pendingBefore);
+      await task();
+    })().catch((error) => {
+      options.onWarn?.("failed to observe host E2E attachment probe event", error);
+    });
+    pendingRecordTasks.add(tracked);
+    void tracked.finally(() => {
+      pendingRecordTasks.delete(tracked);
+    });
+  };
+
+  const appendRecord = (record: Omit<HostE2EAttachmentProbeRecord, "seq">): Promise<void> => {
     if (!outputPath) return Promise.resolve();
-    const current = writeChain.then(async () => {
+    // seq 在写链内按落盘顺序分配：观察异步化（ACK 先返回）后文件行序仍与 seq 单调一致。
+    const write = writeChain.then(async () => {
+      seq += 1;
       await mkdir(dirname(outputPath!), { recursive: true });
-      await appendFile(outputPath!, `${JSON.stringify(record)}\n`, "utf8");
+      await appendFile(outputPath!, `${JSON.stringify({ ...record, seq })}\n`, "utf8");
     });
     // 诊断失败不能破坏产品业务调用；写失败仅丢弃该条记录。
-    writeChain = current.catch((error) => {
+    writeChain = write.catch((error) => {
       options.onWarn?.("failed to write host E2E attachment probe record", error);
     });
-    return current;
+    return write;
   };
 
   const hostScope = (scope: WindowHostAttachmentScope) =>
@@ -123,8 +148,7 @@ export function createHostE2EAttachmentProbe(options: {
     scope: WindowHostAttachmentScope;
     sessionId: string;
     subscriptionId: string;
-  }): Omit<HostE2EAttachmentProbeRecord, "runtimeIdentity" | "runtimeIdentityError"> => {
-    seq += 1;
+  }): Omit<HostE2EAttachmentProbeRecord, "runtimeIdentity" | "runtimeIdentityError" | "seq"> => {
     const remoteSessionId = hostScope(input.scope);
     const workspaceKey = input.params.workspaceIdentity?.trim() || input.params.workspacePath;
     return {
@@ -138,7 +162,6 @@ export function createHostE2EAttachmentProbe(options: {
       remoteSessionId,
       scope: input.scope,
       scopeMatchesTarget: matchesAttachmentScope(input.scope, input.params),
-      seq,
       sessionId: input.sessionId,
       subscribeRemoteSessionId: input.params.remoteSessionId ?? null,
       subscriptionId: input.subscriptionId,
@@ -235,7 +258,8 @@ export function createHostE2EAttachmentProbe(options: {
           const value = Reflect.get(target, property, receiver) as unknown;
           if (property === "subscribeConversationV4" && typeof value === "function") {
             return async (params: HostE2EConversationSubscribeParams) => {
-              // 先执行真实订阅并透传 ACK；记录只观察结果，不改变返回值/时序。
+              // 真实订阅完成即返回 ACK（产品调用边界不变：观察不得阻塞 ACK）；
+              // subscribed 记录（runtime 查询+落盘）在后台进行，失败只丢记录。
               const result = await value.call(target, params);
               const unsubscribeParams: HostE2EConversationUnsubscribeParams = {
                 workspacePath: params.workspacePath,
@@ -249,11 +273,13 @@ export function createHostE2EAttachmentProbe(options: {
                 params: unsubscribeParams,
                 sessionId: params.sessionId,
               });
-              await recordSubscribed({
-                ...input,
-                params,
-                subscriptionId: result.ack.subscriptionId,
-              }).catch(() => undefined);
+              trackRecordTask(() =>
+                recordSubscribed({
+                  ...input,
+                  params,
+                  subscriptionId: result.ack.subscriptionId,
+                }),
+              );
               return result;
             };
           }
@@ -263,12 +289,16 @@ export function createHostE2EAttachmentProbe(options: {
               const result = await value.call(target, params);
               if (tracked) {
                 sessionBySubscription.delete(params.subscriptionId);
-                await recordEnded({
-                  ...input,
-                  event: "unsubscribed",
-                  params,
-                  sessionId: tracked.sessionId,
-                }).catch(() => undefined);
+                trackRecordTask(
+                  () =>
+                    recordEnded({
+                      ...input,
+                      event: "unsubscribed",
+                      params,
+                      sessionId: tracked.sessionId,
+                    }),
+                  { afterPending: true },
+                );
               }
               return result;
             };
@@ -282,7 +312,9 @@ export function createHostE2EAttachmentProbe(options: {
           if (disposed) return;
           disposed = true;
           // attachment dispose（端口关闭/换代/registry detach）时记录所有仍未退订的
-          // subscription，避免已失效订阅被判有效。
+          // subscription，避免已失效订阅被判有效。先等在途 subscribed 观察完成，
+          // 保证同一订阅的 subscribed 记录先于 attachment-disposed 落盘（seq 单调）。
+          await Promise.allSettled(Array.from(pendingRecordTasks));
           const tracked = Array.from(sessionBySubscription, ([subscriptionId, entry]) => ({
             ...entry,
             subscriptionId,
