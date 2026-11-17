@@ -571,6 +571,8 @@ entries:
     title: 界面语言持久化兼容合同保留
     summary: 保留上游 uiLocale/uiLocalePreference 落盘兼容（旧字段只写中英、真实选择写新字段、旧格式迁移重写）；v3.18.0 merge 4d263563 冲突裁决曾丢失该合同，2026-11-17 恢复并以核心 CI 回归守护。
     spec: docs/specs/settings-locale-persistence-openzwork.md
+    paths:
+      - docs/specs/settings-locale-persistence-openzwork.md
     hooks:
       - packages/services/src/setting/settingService.ts
     tests:
