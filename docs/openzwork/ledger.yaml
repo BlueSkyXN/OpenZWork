@@ -565,6 +565,9 @@ entries:
     spec: NOTICE.md
     paths:
       - LICENSE.Apache-2.0.txt
+      # 2026-11-17 J5：licenses strict 复核闭合 boolbase/@hono node-ws 的发布方原文快照。
+      - third-party/upstream/cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6.txt
+      - third-party/upstream/6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733.txt
     hooks:
       - LICENSE
       - NOTICE.md
