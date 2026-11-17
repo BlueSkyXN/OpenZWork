@@ -546,6 +546,20 @@ entries:
     tests:
       - tests/ci/license-declarations.test.mjs
     source: NOTICE.md 当前分支声明；LICENSE 与 LICENSE.Apache-2.0.txt 的已提交内容
+  - id: OZ-C011
+    kind: change
+    status: active
+    title: 界面语言持久化兼容合同保留
+    summary: 保留上游 uiLocale/uiLocalePreference 落盘兼容（旧字段只写中英、真实选择写新字段、旧格式迁移重写）；v3.18.0 merge 4d263563 冲突裁决曾丢失该合同，2026-11-17 恢复并以核心 CI 回归守护。
+    spec: docs/specs/settings-locale-persistence-openzwork.md
+    paths:
+      - docs/specs/settings-locale-persistence-openzwork.md
+    hooks:
+      - packages/services/src/setting/settingService.ts
+    tests:
+      - packages/services/test/settingsLocalePersistence.test.ts
+      - packages/desktop/test/communityLocalConfig.test.ts
+    source: 上游 docs/i18n/ui-locales.md 合同；J1 返工（NEXT-FINISH-LOCALE-DIRECT-CI-20261117，受控同步自 C）
   - id: OZ-D001
     kind: drop
     status: active

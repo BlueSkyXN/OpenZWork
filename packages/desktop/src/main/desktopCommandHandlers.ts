@@ -122,7 +122,7 @@ async function clearAllDataAndRelaunch(options: {
   app.exit(0);
 }
 
-function resolveLocalAppConfigPath(options?: {
+export function resolveLocalAppConfigPath(options?: {
   appPath?: string;
   isPackaged?: boolean;
   resourcesPath?: string;

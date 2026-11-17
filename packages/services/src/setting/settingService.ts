@@ -102,6 +102,8 @@ function shouldPersistSettingsMigrations(rawValue: unknown): boolean {
   if (!rawValue || typeof rawValue !== "object" || Array.isArray(rawValue)) return false;
   const raw = rawValue as Record<string, unknown>;
   return (
+    // OpenZWork(OZ-C011): 旧字段里出现旧版本不认识的语言值时尽快迁移写盘，否则降级会重置全部设置。
+    hasLegacyIncompatiblePersistedLocale(raw) ||
     raw.remoteBoundaryOnboardingVersion === 3 ||
     raw.closeToTrayOnWindowsMigrationInitialized !== true ||
     raw.messageStreamShowReasoningMigrationInitialized !== true ||
@@ -195,7 +197,15 @@ async function writeSettingsAt(
   await mkdir(settingsDir, { recursive: true });
   if (!shouldCommit()) return;
   maybeThrowInjectedFsFault({ operation: "writeFile", path: settingsFile });
-  const persisted = settings;  await atomicWriteText(settingsFile, JSON.stringify(persisted, null, 2), {
+  // 界面语言统一经 toPersistedSettingsLocaleFields 落盘：旧字段 locale/localePreference 只写中英，
+  // 真实选择写 uiLocale/uiLocalePreference，避免旧版本读到 ja-JP 等新值时重置整份设置。
+  // OpenZWork(OZ-C011): 该合并曾在 v3.18.0 merge 4d263563 冲突裁决中丢失并回归为直写，
+  // 此处恢复上游行为；账号/team 回滚域按官方账号裁剪不搬回。
+  const persisted = {
+    ...settings,
+    ...toPersistedSettingsLocaleFields(settings),
+  };
+  await atomicWriteText(settingsFile, JSON.stringify(persisted, null, 2), {
     useFileLock: false,
     beforeRename: () => {
       if (!shouldCommit()) {
