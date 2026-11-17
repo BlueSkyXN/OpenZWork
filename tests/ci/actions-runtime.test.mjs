@@ -350,9 +350,44 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
     identity.specs,
     "./test/e2e/git/worktrees/task-index-workspace-identity-isolation.test.ts",
   );
+  // BD（2026-11-17 J3 逐 spec 重构）：5 spec 各自成组、共 12 必需 case（含 design-mode
+  // 的「再点一次「选择元素」退出点选…」——旧 11 条清单漏列该 case）。
+  const bdGroups = [
+    ["bd-design-mode", "./test/e2e/browser/design/browser-design-mode.test.ts", 7],
+    ["bd-design-page-tools", "./test/e2e/browser/design/browser-design-page-tools.test.ts", 1],
+    [
+      "bd-capture-guest-timeout",
+      "./test/e2e/browser/design/browser-capture-guest-timeout.test.ts",
+      2,
+    ],
+    [
+      "bd-design-cross-session",
+      "./test/e2e/browser/design/browser-design-mode-cross-session.test.ts",
+      1,
+    ],
+    ["bd-local-html-preview", "./test/e2e/browser/files/browser-local-html-preview.test.ts", 1],
+  ];
+  for (const [group, spec, caseCount] of bdGroups) {
+    const entry = byGroup.get(group);
+    assert.ok(entry, `matrix missing ${group}`);
+    assert.equal(entry.specs, spec);
+    assert.equal(JSON.parse(entry["required-cases"]).length, caseCount, `${group}: case count`);
+  }
+  assert.equal(byGroup.has("bd-design-and-local-html"), false, "旧折叠多 spec 组必须已移除");
   for (const entry of include) {
-    assert.equal(/\.test\.ts$/u.test(entry.specs), true, `${entry["spec-group"]}: single spec`);
-    assert.equal(entry.specs.includes("*"), false, `${entry["spec-group"]}: no glob specs`);
+    // wdio CLI 的 --spec 每次接收一个文件路径（--help 示例：--spec a.js --spec b.js）；
+    // 折叠多行/逗号/空白拼接的字符串会被当成单个带引号参数而 0 匹配（2026-11-17 J3
+    // 反例）。每条矩阵条目必须是单个已存在的 spec 文件、无 glob。
+    assert.match(
+      entry.specs,
+      /^\.\/test\/e2e\/[\w./-]+\.test\.ts$/u,
+      `${entry["spec-group"]}: single spec path`,
+    );
+    assert.equal(
+      /\s|,|\*/u.test(entry.specs),
+      false,
+      `${entry["spec-group"]}: no folded/glob specs`,
+    );
   }
   const run = job.steps.find((step) => step.name === "Run interactive E2E specs");
   assert.equal(run.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH, "${{ matrix.replay-fixtures }}");
@@ -373,4 +408,45 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
   assert.notEqual(verify["continue-on-error"], true);
   const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
   assert.equal(upload.with["if-no-files-found"], "error");
+});
+
+async function loadCi() {
+  const workflow = await readFile(
+    new URL("../../.github/workflows/ci.yml", import.meta.url),
+    "utf8",
+  );
+  return parseDocument(workflow).toJS();
+}
+
+test("interactive E2E matrix required-cases cross-check real spec it() titles (both directions)", async () => {
+  // 2026-11-17 J3：旧 BD 组 11 条清单漏列 design-mode 的「退出点选」用例（实际 12 case）。
+  // 本测试把每条矩阵的 required-cases 与 spec 文件的真实 it() 标题双向核对：
+  // 任一必需 case 匹配不到真实标题（写错/改名未同步），或任一真实标题没被任何必需 case
+  // 覆盖（漏列），都在 CI 结构层失败——完整性门禁不靠清单自洽。
+  const ci = await loadCi();
+  const include = ci.jobs["desktop-e2e"].strategy.matrix.include;
+  for (const entry of include) {
+    const specPath = new URL(
+      `../../packages/desktop/${entry.specs.replace(/^\.\//u, "")}`,
+      import.meta.url,
+    );
+    const source = await readFile(specPath, "utf8");
+    const titles = [
+      ...source.matchAll(/\bit(?:\.[a-zA-Z]+)?\(\s*(["'])((?:\\.|(?!\1).)*)\1/gu),
+    ].map((match) => match[2]);
+    assert.ok(titles.length > 0, `${entry["spec-group"]}: no it() titles parsed`);
+    const cases = JSON.parse(entry["required-cases"]);
+    for (const required of cases) {
+      assert.ok(
+        titles.some((title) => title.includes(required)),
+        `${entry["spec-group"]}: required case matches no it() title: ${required}`,
+      );
+    }
+    for (const title of titles) {
+      assert.ok(
+        cases.some((required) => title.includes(required)),
+        `${entry["spec-group"]}: it() title not covered by required-cases: ${title}`,
+      );
+    }
+  }
 });

@@ -192,7 +192,9 @@ test("H5：CI 的 E2E job 逐个点名必需 spec 与 case，并复用同一校�
   const workflow = yaml.parse(await readFile(join(repoRoot, ".github/workflows/ci.yml"), "utf8"));
   const job = workflow.jobs["desktop-e2e"];
   const entries = job.strategy.matrix.include;
-  assert.equal(entries.length, 2);
+  // 2026-11-17 J3 修正：不硬编码条目数（V1 加 BD 组时此断言已过期失败）；
+  // 逐条形态断言由 tests/ci/actions-runtime.test.mjs 承担，这里只保证清单结构可用。
+  assert.ok(entries.length >= 2);
   for (const entry of entries) {
     assert.ok(entry.specs, `${entry["spec-group"]}: named spec`);
     assert.doesNotMatch(entry.specs, /\*/u, `${entry["spec-group"]}: no glob`);
@@ -206,4 +208,50 @@ test("H5：CI 的 E2E job 逐个点名必需 spec 与 case，并复用同一校�
   assert.match(step.run, /scripts\/verify-e2e-summary\.mjs/);
   assert.match(step.run, /verifyE2ESummary/);
   assert.doesNotMatch(step.run, /passRate !== 1\) failures\.push/);
+});
+
+// 2026-11-17 J3：BD 逐 spec 归属回归。旧 ci.yml 把 5 个 spec 折叠成一个带引号的
+// --spec 参数（0 匹配）并把全组 case 挂到逗号切分出的单个 spec 上；判定实现本身
+// 一直按 spec 归属核销——这里固定该合同，防止汇总侧再出现「跨 spec 顶账」。
+test("J3：逐 spec 归属——A spec 的 case 不能由 B spec 的结果顶账", () => {
+  const specA = "./test/e2e/browser/design/browser-design-mode.test.ts";
+  const specB = "./test/e2e/browser/files/browser-local-html-preview.test.ts";
+  const required = [
+    { spec: specA, cases: ["设计工具随页面出现"] },
+    { spec: specB, cases: ["真实浏览器入口加载相对资源"] },
+  ];
+  // 只有 B 跑了且通过：A 的必需 case 缺失 + A 0 collected，必须拒绝。
+  const report = verifyE2ESummary({
+    summary: summary({
+      results: [result(specB, "真实浏览器入口加载相对资源，同时拒绝越界文件并支持刷新和后退")],
+    }),
+    required,
+  });
+  assert.equal(report.ok, false);
+  const joined = report.failures.join("\n");
+  assert.match(joined, /browser-design-mode\.test\.ts: 0 collected/);
+  assert.match(joined, /missing required case/);
+  const coverageB = report.coverage.find((entry) =>
+    entry.spec.includes("browser-local-html-preview"),
+  );
+  assert.equal(coverageB.missingCases.length, 0);
+});
+
+test("J3：BD 五 spec 各自全部必需 case 通过时放行（12 case 形态）", () => {
+  const groups = [
+    ["./test/e2e/browser/design/browser-design-mode.test.ts", 7],
+    ["./test/e2e/browser/design/browser-design-page-tools.test.ts", 1],
+    ["./test/e2e/browser/design/browser-capture-guest-timeout.test.ts", 2],
+    ["./test/e2e/browser/design/browser-design-mode-cross-session.test.ts", 1],
+    ["./test/e2e/browser/files/browser-local-html-preview.test.ts", 1],
+  ];
+  const results = [];
+  const required = groups.map(([spec, count]) => {
+    const cases = Array.from({ length: count }, (_, index) => `case-${index}`);
+    for (const title of cases) results.push(result(spec, title));
+    return { spec, cases };
+  });
+  const report = verifyE2ESummary({ summary: summary({ results }), required });
+  assert.equal(report.ok, true, report.failures.join("; "));
+  assert.equal(report.coverage.length, 5);
 });
