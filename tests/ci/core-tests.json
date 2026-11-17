@@ -136,6 +136,7 @@
         "packages/ui/test/appUsageServiceAccess.test.ts",
         "packages/ui/test/botLocalBoundaries.test.ts",
         "packages/ui/test/onboardingVisibility.test.ts",
+        "packages/desktop/test/communityLocalConfig.test.ts",
         "packages/ui/test/sessionUsageSummary.test.ts"
       ]
     },
@@ -149,7 +150,8 @@
         "packages/provider-node/test/model-capability-rules.test.ts",
         "packages/provider-node/test/standard-provider-config.test.ts",
         "packages/services/test/dataDirectoryMigration.test.ts",
-        "packages/desktop/test/credentialMigrationDataRootShare.test.ts"
+        "packages/desktop/test/credentialMigrationDataRootShare.test.ts",
+        "packages/services/test/settingsLocalePersistence.test.ts"
       ]
     },
     {
