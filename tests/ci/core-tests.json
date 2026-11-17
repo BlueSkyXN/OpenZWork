@@ -148,7 +148,8 @@
       "files": [
         "packages/provider-node/test/model-capability-rules.test.ts",
         "packages/provider-node/test/standard-provider-config.test.ts",
-        "packages/services/test/dataDirectoryMigration.test.ts"
+        "packages/services/test/dataDirectoryMigration.test.ts",
+        "packages/services/test/settingsLocalePersistence.test.ts"
       ]
     },
     {
