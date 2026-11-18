@@ -368,32 +368,29 @@ jobs:
       - name: Install dependencies (frozen lockfile, with scripts)
         run: pnpm install --frozen-lockfile
 
-      # 下载基地址来源必须显式（CI-FIRST §2.5/H4）：dispatch 取输入，push/tag 取仓库变量
-      # ZCODE_DIST_BASE_URL；缺失直接失败，不用空串或临时 fallback 冒充正式地址。
+      # 分支预览从本次 Actions 运行下载。清单同时记录下载地址和解析出的来源。
       - name: Resolve agent dist download base URL
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
           INPUT_BASE_URL: ${{ inputs.zcode_dist_base_url }}
+          DIST_RELEASE_TAG: ${{ inputs.release_tag }}
           VARS_BASE_URL: ${{ vars.ZCODE_DIST_BASE_URL }}
         run: |
           set -euo pipefail
-          node --input-type=module <<'NODE' | tee /tmp/agent-dist-base-url.txt
+          node --input-type=module <<'NODE' >> "$GITHUB_ENV"
           import { resolveAgentDistBaseUrl } from './scripts/agent-node-dist.mjs';
           const resolved = resolveAgentDistBaseUrl({
             eventName: process.env.EVENT_NAME,
             refType: process.env.REF_TYPE,
-            inputs: { zcode_dist_base_url: process.env.INPUT_BASE_URL ?? '' },
+            inputs: { zcode_dist_base_url: process.env.INPUT_BASE_URL ?? '', release_tag: process.env.DIST_RELEASE_TAG },
             vars: { ZCODE_DIST_BASE_URL: process.env.VARS_BASE_URL ?? '' },
           });
           console.error(`agent dist base URL source: ${resolved.source}`);
-          console.log(resolved.baseUrl);
+          console.log(`AGENT_DIST_BASE_URL=${resolved.baseUrl}`);
+          console.log(`AGENT_DIST_BASE_URL_SOURCE=${resolved.source}`);
           NODE
-          {
-            echo "AGENT_DIST_BASE_URL=$(cat /tmp/agent-dist-base-url.txt)"
-            echo "AGENT_DIST_BASE_URL_SOURCE=${{ github.event_name == 'workflow_dispatch' && 'dispatch-input' || 'repository-variable' }}"
-          } >> "$GITHUB_ENV"
 
       # 与 B/C 本地构建同链：先备 shared 声明与 CLI 包，再 build:zcode 出 tarball。
       - name: Prepare agent workspace build

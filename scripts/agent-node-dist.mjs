@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 // 独立 Node 分发（build:zcode tarball）的 CI 参数解析与产物选择（CI-FIRST §2.5/H4）。
 //
-// 三类事件的下载基地址来源必须显式，不允许空串或临时 fallback 冒充正式地址：
-// - workflow_dispatch：用 zcode_dist_base_url 输入；为空直接失败（不静默用占位）。
-// - tag / push：没有 dispatch 输入，只能取仓库变量 ZCODE_DIST_BASE_URL；缺失即失败。
-// 占位地址（example.invalid）只用于验收构建，清单里以 baseUrlKind=placeholder 标出，
-// 不会被当成正式分发配置。
+// 分支预览由 Actions 保存 tarball；正式 tag 的安装脚本使用配置好的下载地址。
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
@@ -29,38 +25,35 @@ export function isPlaceholderBaseUrl(baseUrl) {
  * 解析本次运行的下载基地址。
  * eventName 为 GitHub 事件名（push/tag 都以 push 事件到达，用 refType 区分）。
  */
-export function resolveAgentDistBaseUrl({
-  eventName,
-  refType = "branch",
-  inputs = {},
-  vars = {},
-  env = process.env,
-}) {
+export function resolveAgentDistBaseUrl({ eventName, refType = "branch", inputs = {}, vars = {} }) {
   const fromInput = String(inputs.zcode_dist_base_url ?? "").trim();
   const fromVars = String(vars.ZCODE_DIST_BASE_URL ?? "").trim();
   const dispatch = eventName === "workflow_dispatch";
-
-  if (dispatch) {
-    if (!fromInput) {
-      throw new Error(
-        "workflow_dispatch requires the zcode_dist_base_url input (empty is not a valid download base)",
-      );
-    }
-    return { baseUrl: normalizeBaseUrl(fromInput), source: "dispatch-input" };
-  }
-  if (eventName !== "push") {
+  if (!dispatch && eventName !== "push") {
     throw new Error(`agent node dist is not supported for event ${eventName}`);
   }
-  // tag 与分支 push 都没有 dispatch 输入：只能取已批准的仓库变量。
-  if (!fromVars) {
-    throw new Error(
-      `push/tag runs require the repository variable ZCODE_DIST_BASE_URL (${refType}); no fallback is used`,
-    );
+  if (dispatch && !fromInput) {
+    throw new Error("workflow_dispatch requires the zcode_dist_base_url input");
   }
-  return { baseUrl: normalizeBaseUrl(fromVars), source: "repository-variable" };
+  const release = refType === "tag" || Boolean(inputs.release_tag);
+  if (!dispatch && !release && !fromVars) {
+    return { baseUrl: "https://example.invalid/zcode/deps/zcode/", source: "actions-preview" };
+  }
+  const value = dispatch ? fromInput : fromVars;
+  if (
+    release &&
+    (!URL.canParse(value) || !/^https?:\/\//iu.test(value) || isPlaceholderBaseUrl(value))
+  ) {
+    throw new Error("release tags require a configured ZCODE_DIST_BASE_URL download address");
+  }
+  return {
+    baseUrl: normalizeBaseUrl(value),
+    source: dispatch ? "dispatch-input" : "repository-variable",
+  };
 }
 
 function normalizeBaseUrl(value) {
+  if (/[\r\n]/u.test(value)) throw new Error("Download base URL must fit on one line");
   return value.endsWith("/") ? value : `${value}/`;
 }
 

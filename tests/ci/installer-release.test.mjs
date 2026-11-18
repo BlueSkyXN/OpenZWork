@@ -535,12 +535,32 @@ test("agent dist base URL resolution requires an explicit source per event", asy
       }),
       { baseUrl: "https://dist.example.org/zcode/", source: "repository-variable" },
     );
-    // 缺变量必须失败——这正是旧 job 传空串给 build:zcode 的缺陷。
+  }
+  const preview = resolveAgentDistBaseUrl({ eventName: "push", refType: "branch" });
+  assert.equal(preview.source, "actions-preview");
+  assert.equal(isPlaceholderBaseUrl(preview.baseUrl), true);
+  for (const baseUrl of ["", preview.baseUrl, "not-a-url"]) {
     assert.throws(
-      () => resolveAgentDistBaseUrl({ eventName: "push", refType, inputs: {}, vars: {} }),
-      /push\/tag runs require the repository variable ZCODE_DIST_BASE_URL/,
+      () =>
+        resolveAgentDistBaseUrl({
+          eventName: "push",
+          refType: "tag",
+          vars: { ZCODE_DIST_BASE_URL: baseUrl },
+        }),
+      /release tags require a configured ZCODE_DIST_BASE_URL/,
     );
   }
+  assert.throws(
+    () =>
+      resolveAgentDistBaseUrl({
+        eventName: "workflow_dispatch",
+        inputs: {
+          release_tag: "v3.18.2+openzwork.1",
+          zcode_dist_base_url: preview.baseUrl,
+        },
+      }),
+    /release tags require a configured/,
+  );
   assert.throws(() => resolveAgentDistBaseUrl({ eventName: "pull_request" }), /not supported/);
   // 占位地址只标 kind，不被当成正式配置。
   assert.equal(isPlaceholderBaseUrl("https://example.invalid/zcode/deps/zcode/"), true);
