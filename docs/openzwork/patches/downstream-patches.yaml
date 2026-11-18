@@ -730,7 +730,7 @@ patches:
     retire: 上游回归能在 Windows 和 POSIX 上验证两个模拟器的完整 MCP 入口路径。
 
   - id: OW-P034
-    title: 本地 HTML 预览测试在目标页面挂载前读取旧 guest
+    title: 浏览器导航回归在地址提交或目标页面挂载前读取 guest
     kind: test
     status: fixed
     upstream:
@@ -738,12 +738,13 @@ patches:
       checked: 3.18.2
     trigger: 在桌面浏览器打开本地 HTML，目标 guest 仍在挂载时，测试开始等待页面标题。
     impact: 读取上一文档的脚本可能挂起，页面内容回归提前结束。
-    cause: 用例用 guest 内的脚本判断导航是否就绪，首个脚本可能发往即将被替换的文档。
-    evidence: CI run 44363189458 中，WebDriver 读取 document.title 的请求先于 Main 的 attachGuest，三十秒后超时。上游 v3.18.2 使用同一等待方式。
-    fix: 先从桌面当前标签观察到目标标题，再进入 guest 核对文档标题与实际内容。
+    cause: 用例用 guest 内的脚本判断导航是否就绪，首个脚本可能发往即将被替换的文档。设计工具用例向全局焦点发送回车，提交前没有核对地址栏的值。
+    evidence: CI run 44363189458 中，WebDriver 读取 document.title 的请求先于 Main 的 attachGuest，三十秒后超时。同次运行的设计工具用例从站点设置返回后，第二次导航未观察到目标页。上游 v3.18.2 使用相同的提交和等待方式。
+    fix: 聚焦地址栏、全选并输入目标，核对字段值后将回车发给同一字段。先从当前标签观察到目标标题，再进入 guest 核对文档标题与实际内容。
     files:
       - packages/desktop/test/e2e/browser/files/browser-local-html-preview.test.ts
       - packages/desktop/test/e2e/helpers/browser-side-pane.ts
+      - packages/desktop/test/e2e/helpers/browser-design-mode.ts
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游等待目标页面挂载后读取实际文档，本地预览导航回归在云端通过。

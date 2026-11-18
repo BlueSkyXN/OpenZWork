@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { TID_BROWSER_ADDRESS_INPUT, TID_BROWSER_WEBVIEW } from "@zcode/shared/test-ids";
-import { openFirstBrowserTab, readActiveBrowserTabTitle } from "#e2e/helpers/browser-side-pane";
+import { openFirstBrowserTab, readActiveBrowserTabTitle, submitBrowserAddress } from "#e2e/helpers/browser-side-pane";
 import { waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 
@@ -90,8 +90,7 @@ describe("本地 HTML 预览的文件权限边界", () => {
     await waitForWorkspaceApp(join(resolveE2EStorageRoot(), "workspace", "default"));
     await openFirstBrowserTab();
     const input = await $(`[data-testid="${TID_BROWSER_ADDRESS_INPUT}"]`);
-    await input.setValue(fileUrl);
-    await browser.keys("Enter");
+    await submitBrowserAddress(input, fileUrl);
     await waitForPageTitle("Local HTML boundary", 30_000);
     expect(await runInGuest("location.protocol")).toBe("zcode-html:");
     expect(await input.getValue()).toBe(canonicalFileUrl);

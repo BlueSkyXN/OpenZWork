@@ -5,6 +5,7 @@ import {
   TID_BROWSER_DESIGN_INSPECTOR,
   TID_BROWSER_ELEMENT_PICKER_BUTTON,
 } from "@zcode/shared/test-ids";
+import { readActiveBrowserTabTitle, submitBrowserAddress } from "#e2e/helpers/browser-side-pane";
 import { clickTestIdByDom, DEFAULT_WORKSPACE } from "#e2e/helpers/desktop-app";
 import {
   clickPluginControl,
@@ -65,13 +66,14 @@ export async function navigateBrowser(
   urlPrefix: string = url,
 ): Promise<void> {
   const addressInput = await $(`[data-testid="${TID_BROWSER_ADDRESS_INPUT}"]`);
-  await addressInput.setValue(url);
-  await addressInput.click();
-  await browser.keys("Enter");
-  await browser.waitUntil(async () => (await guestEval(urlPrefix, "document.title")) === title, {
-    timeout: 30_000,
-    timeoutMsg: `内置浏览器没有打开 ${url}`,
-  });
+  // OW-P034：先确认当前标签已提交导航，再从目标地址的 guest 读取标题。
+  await submitBrowserAddress(addressInput, url);
+  await browser.waitUntil(
+    async () =>
+      (await browser.execute(readActiveBrowserTabTitle)) === title &&
+      (await guestEval(urlPrefix, "document.title")) === title,
+    { timeout: 30_000, timeoutMsg: `内置浏览器没有打开 ${url}` },
+  );
 }
 
 /** 在 URL 以 urlPrefix 开头的 guest 里求值（main 侧 webContents.executeJavaScript）；没找到返回 null */

@@ -149,3 +149,48 @@ test("local preview readiness follows the active browser tab across navigation",
     dom.window.close();
   }
 });
+
+test("browser navigation submits the verified address to the input that was edited", async (t) => {
+  // OW-P034：焦点可在 tab 恢复时变化，全局回车或提交被重写的地址均不符合用户操作。
+  const { tsImport } = await import("tsx/esm/api");
+  const { submitBrowserAddress } = await tsImport(
+    "../../packages/desktop/test/e2e/helpers/browser-side-pane.ts",
+    import.meta.url,
+  );
+  const url = "https://example.test/preview";
+  const calls = [];
+  const input = {
+    click() {
+      calls.push("focus");
+    },
+    addValue(value) {
+      calls.push(value);
+    },
+    getValue() {
+      return url;
+    },
+  };
+  const previous = globalThis.browser;
+  globalThis.browser = {
+    keys(keys) {
+      calls.push(keys);
+    },
+  };
+  t.after(() => {
+    if (previous === undefined) delete globalThis.browser;
+    else globalThis.browser = previous;
+  });
+  await submitBrowserAddress(input, url);
+  assert.deepEqual(calls, [
+    "focus",
+    [process.platform === "darwin" ? "Meta" : "Control", "a"],
+    url,
+    "\uE007",
+  ]);
+  calls.length = 0;
+  await assert.rejects(
+    submitBrowserAddress({ ...input, getValue: () => "about:blank" }, url),
+    /地址栏/,
+  );
+  assert.ok(!calls.includes("\uE007"));
+});

@@ -28,6 +28,15 @@ export function readActiveBrowserTabTitle(root: ParentNode = document): string |
   )?.textContent ?? null;
 }
 
+export async function submitBrowserAddress(input: ReturnType<typeof $>, url: string): Promise<void> {
+  // OW-P034：标签恢复时焦点可能回到 guest。按用户编辑顺序替换地址，向同一输入框发送回车。
+  await input.click();
+  await browser.keys([process.platform === "darwin" ? "Meta" : "Control", "a"]);
+  await input.addValue(url);
+  if ((await input.getValue()) !== url) throw new Error("浏览器地址栏未保留本次输入的目标地址");
+  await input.addValue("\uE007");
+}
+
 export async function clickCloseButton(tabId: string): Promise<void> {
   const clicked = await browser.execute((targetTabId) => {
     const trigger = document.querySelector<HTMLElement>(`[data-side-pane-tab-id="${targetTabId}"]`);
