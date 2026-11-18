@@ -50,8 +50,9 @@ it.each([false, true])(
     // 与 WDIO 注入方式一致：Windows 的 ESM loader 不接受裸绝对路径，预加载必须是 file:// URL。
     const proxy = new URL("./e2e/helpers/subagent-config-proxy.mjs", import.meta.url).href;
     const child = spawn(process.execPath, [entry, "app-server", "--stdio"], {
-      // 超时与测试失败都必须回收进程，避免代理缺陷把 CI 或开发机持续压满。
-      timeout: 10_000,
+      // Windows 代理还会冷启动 PowerShell 查询真实父进程，给查询和 stdio 往返留出时间。
+      // 子进程仍须早于外层 30 秒测试期限退出，以便失败时回收。
+      timeout: process.platform === "win32" ? 25_000 : 10_000,
       env: {
         ...process.env,
         NODE_OPTIONS: `--import=${JSON.stringify(proxy)}`,
@@ -78,7 +79,7 @@ it.each([false, true])(
       child.once("error", reject);
       child.once("close", resolve);
     });
-    expect(code, stderr).toBe(0);
+    expect(code, stderr || `stdio proxy exit signal: ${child.signalCode ?? "none"}`).toBe(0);
     expect(frames.filter((frame) => frame.method === "storage/startup")).toHaveLength(1);
     expect(frames.at(-1)).toMatchObject({
       method: "done",
@@ -95,7 +96,12 @@ it.each([false, true])(
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line));
-    expect(records[0]).toMatchObject({ kind: "read", sessionId: "parent", failed });
+    expect(records[0]).toMatchObject({
+      kind: "read",
+      sessionId: "parent",
+      hostPid: process.pid,
+      failed,
+    });
   },
 );
 
