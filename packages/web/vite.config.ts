@@ -67,7 +67,14 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       // 修复：在依赖预构建阶段显式加入 react 相关入口，避免 rolldown 解析 `react/jsx-runtime`
       // / `react/jsx-dev-runtime` 时返回无后缀路径导致的加载失败（UNLOADABLE_DEPENDENCY）。
-      include: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime"],
+      include: [
+        "react",
+        "react-dom",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+        // OW-P035：首次渲染任务才发现 diff worker 会触发 Vite 整页刷新，中断已配对的手机草稿。
+        "@pierre/diffs/worker/worker.js",
+      ],
       // pdfjs-dist 是纯 ESM，不需要预构建。上面的 alias 让 dev 依赖扫描把带 ?url 的 worker
       // 当成依赖预构建并崩溃，pdf-viewer 动态导入随之 504；排除后直接按源文件提供。
       exclude: ["pdfjs-dist"],

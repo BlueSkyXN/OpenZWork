@@ -194,3 +194,16 @@ test("browser navigation submits the verified address to the input that was edit
   );
   assert.ok(!calls.includes("\uE007"));
 });
+
+test("the mobile dev server prebundles the diff worker before a paired page sends its first task", async () => {
+  // OW-P035：冷缓存下首次渲染任务会发现这个动态 worker；启动阶段须已登记该依赖。
+  const { loadConfigFromFile } = await import("vite");
+  const root = fileURLToPath(new URL("../web/", desktop));
+  const result = await loadConfigFromFile(
+    { command: "serve", mode: "development", isPreview: false, isSsrBuild: false },
+    join(root, "vite.config.ts"),
+    root,
+    "silent",
+  );
+  assert.ok(result?.config.optimizeDeps?.include?.includes("@pierre/diffs/worker/worker.js"));
+});

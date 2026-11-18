@@ -748,3 +748,21 @@ patches:
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游等待目标页面挂载后读取实际文档，本地预览导航回归在云端通过。
+
+  - id: OW-P035
+    title: Web 开发服务器在第一次远控发送期间优化 diff worker 并刷新页面
+    kind: build
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 从冷的 Vite 缓存启动 Web，手机配对并首次渲染任务视图。
+    impact: 页面在提交或接收首段回复期间刷新，测试在注入断线场景前就已失去原草稿。
+    cause: 动态 worker 不在 Web 的启动预构建清单中。Vite 在首次使用时重算依赖，随后要求页面重新加载。
+    evidence: CI run 44363189458 和 44372268942 均记录首次发现 @pierre/diffs/worker/worker.js 后整页刷新。第二次的手机项目还未创建任务。独立远控传输用例已显式预构建同一入口。
+    fix: Web 开发配置在启动时预构建真实的 diff worker 入口。
+    files:
+      - packages/web/vite.config.ts
+    regression:
+      - scripts/test/desktop-e2e-case-config.test.mjs
+    retire: 上游开发配置避免在首次远控任务中为该动态入口触发整页刷新，冷缓存手机恢复用例通过。
