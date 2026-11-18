@@ -27,6 +27,7 @@
 - `hooks` 写接线或依赖的上游文件，必须存在。
 - `spec` 可写多份；`source` 写 PR、提交或 spec 段落，不写推测。
 - 每个 `active` 条目要有核心 CI 中运行的保证，判定规则见 `docs/openzwork/maintenance-model.md`「保证」。`feature`、`change`、`retain` 条目把回归测试写入 `tests`（或 `paths`），并确认该测试已列入 `tests/ci/core-tests.json` 或由 `ci.yml` 点名；`drop` 条目由路径不存在的检查保证，文本残留写入 `gates`。用 `pnpm openzwork:scan --entries` 核对。
+- 回归测试的目录、验证层与 CI 登记按同一文档的「保证测试的位置与写法」执行；spec 的验收表列出覆盖文件，界面断言放在界面验收中。
 - 确实没有保证时填写 `unguarded`，写明原因与补齐方式；补上保证后删除该字段。
 - 发现 spec 与代码矛盾时，把条目设为 `undecided`，在 `summary` 中写清矛盾，交给用户决定。
 

@@ -36,18 +36,19 @@
 
 ### 改变了行为的上游功能
 
-| 编号    | 名称                    | 说明                                                                   | 依据                                                        |
-| ------- | ----------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------- |
-| OZ-C001 | 产品身份与用户级数据根  | 用户级数据根改为 .openzwork，产品身份与 ZCode 隔离。                   | [spec](../specs/identity-and-data-isolation-openzwork.md)   |
-| OZ-C002 | 旧 ZCode 记忆隔离       | 不再隐式复制旧 ZCode 记忆，保留已导入数据。                            | [spec](../specs/memory-migration-openzwork.md)              |
-| OZ-C003 | 标准 Provider 模板      | 内置 Provider 入口只保留三种标准协议模板。                             | [spec](../specs/standard-provider-templates-openzwork.md)   |
-| OZ-C004 | 模型能力与渠道匹配      | 恢复模型与站点的能力规则和推理映射。                                   | [spec](../specs/model-capability-matching-openzwork.md)     |
-| OZ-C005 | 本地引导与 Bot 数据边界 | 本地首次偏好、Bot 凭据迁移和显式注册/启用边界。                        | [spec](../specs/onboarding-local-settings-openzwork.md)     |
-| OZ-C006 | 自定义命令改名与保存    | 命令改名不丢数据，保存失败如实返回。                                   | [spec](../specs/command-file-update-openzwork.md)           |
-| OZ-C007 | 技能开关链路            | 内置技能开关的规则、所有者与回归。                                     | [spec](../specs/skills-toggle-openzwork.md)                 |
-| OZ-C008 | 设置页布局与远控入口    | 设置页内容布局调整，恢复侧栏底部的远控入口。                           | [spec](../specs/settings-visual-polish-openzwork.md)        |
-| OZ-C009 | 业务数据目录完整迁移    | 保存迁移计划，重启前置阶段复制并转换 CLI/Host 数据，发布后切换数据根。 | [spec](../desktop/configurable-data-directory-openzwork.md) |
-| OZ-C010 | 发行许可与上游声明      | GPL-3.0 整体声明、上游 Apache-2.0 原文与 NOTICE 入口。                 | [分支声明](../../NOTICE.md)                                 |
+| 编号    | 名称                     | 说明                                                                   | 依据                                                         |
+| ------- | ------------------------ | ---------------------------------------------------------------------- | ------------------------------------------------------------ |
+| OZ-C001 | 产品身份与用户级数据根   | 用户级数据根改为 .openzwork，产品身份与 ZCode 隔离。                   | [spec](../specs/identity-and-data-isolation-openzwork.md)    |
+| OZ-C002 | 旧 ZCode 记忆隔离        | 不再隐式复制旧 ZCode 记忆，保留已导入数据。                            | [spec](../specs/memory-migration-openzwork.md)               |
+| OZ-C003 | 标准 Provider 模板       | 内置 Provider 入口只保留三种标准协议模板。                             | [spec](../specs/standard-provider-templates-openzwork.md)    |
+| OZ-C004 | 模型能力与渠道匹配       | 恢复模型与站点的能力规则和推理映射。                                   | [spec](../specs/model-capability-matching-openzwork.md)      |
+| OZ-C005 | 本地引导与 Bot 数据边界  | 本地首次偏好、Bot 凭据迁移和显式注册/启用边界。                        | [spec](../specs/onboarding-local-settings-openzwork.md)      |
+| OZ-C006 | 自定义命令改名与保存     | 命令改名不丢数据，保存失败如实返回。                                   | [spec](../specs/command-file-update-openzwork.md)            |
+| OZ-C007 | 技能开关链路             | 内置技能开关的规则、所有者与回归。                                     | [spec](../specs/skills-toggle-openzwork.md)                  |
+| OZ-C008 | 设置页布局与远控入口     | 设置页内容布局调整，恢复侧栏底部的远控入口。                           | [spec](../specs/settings-visual-polish-openzwork.md)         |
+| OZ-C009 | 业务数据目录完整迁移     | 保存迁移计划，重启前置阶段复制并转换 CLI/Host 数据，发布后切换数据根。 | [spec](../desktop/configurable-data-directory-openzwork.md)  |
+| OZ-C010 | 发行许可与上游声明       | GPL-3.0 整体声明、上游 Apache-2.0 原文与 NOTICE 入口。                 | [分支声明](../../NOTICE.md)                                  |
+| OZ-C011 | 工作流查询进程与生命周期 | 工作流总览读取共用独立查询 lane 并空闲回收，UI 读状态分代际。          | [spec](../specs/saved-workflow-query-lifecycle-openzwork.md) |
 
 ### OpenZWork 新增的功能
 

@@ -28,6 +28,8 @@ export interface SavedWorkflowRunProject {
 /** 详情页「运行历史」：journal 行（状态 / 时间 / 花费 / 实参），有归属字段的行可「查看实例」。 */
 export function SavedWorkflowRunHistory({
   runs,
+  runsError,
+  onRetry,
   now,
   canOpenRun,
   onOpenRun,
@@ -35,6 +37,10 @@ export function SavedWorkflowRunHistory({
   resolveRunProject,
 }: {
   runs: readonly ZCodeSavedWorkflowRun[];
+  /** 历史读取失败（OW-P024 R2）：空 runs 不能断言「还没有记录」；有旧记录时也必须可见（R2 返工 2）。 */
+  runsError?: string | null;
+  /** 详情页历史读取失败时的重试入口（bypassCache 刷新）；列表页由组级横幅提供。 */
+  onRetry?: () => void;
   now: number;
   canOpenRun: boolean;
   onOpenRun: (run: ZCodeSavedWorkflowRun) => void;
@@ -48,14 +54,59 @@ export function SavedWorkflowRunHistory({
 }) {
   const { intl } = useZCodeIntl();
   if (runs.length === 0) {
+    // OW-P024 R2：区分「成功读取且无记录」与「读取失败」——失败时不能肯定地说空。
+    if (runsError) {
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-ui-base text-warning" data-workflow-history-error="true">
+            {intl.formatMessage({ id: "workflows.hub.runsError" }, { error: runsError })}
+          </p>
+          {onRetry ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto w-fit p-0 text-ui-sm"
+              onClick={onRetry}
+              data-workflow-history-retry="true"
+            >
+              {intl.formatMessage({ id: "workflows.hub.retry" })}
+            </Button>
+          ) : null}
+        </div>
+      );
+    }
     return (
       <p className="text-ui-base text-foreground-subtlest">
         {intl.formatMessage({ id: "workflows.hub.history.empty" })}
       </p>
     );
   }
+  // R2 返工 2：有旧记录而刷新失败时，历史行照常保留，失败与重试在顶部可见——
+  // 不因「还有内容可看」就吞掉错误。
+  const staleErrorBanner = runsError ? (
+    <div className="flex flex-col gap-1">
+      <p className="text-ui-base text-warning" data-workflow-history-error="true">
+        {intl.formatMessage({ id: "workflows.hub.runsError" }, { error: runsError })}
+      </p>
+      {onRetry ? (
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto w-fit p-0 text-ui-sm"
+          onClick={onRetry}
+          data-workflow-history-retry="true"
+        >
+          {intl.formatMessage({ id: "workflows.hub.retry" })}
+        </Button>
+      ) : null}
+    </div>
+  ) : null;
   return (
     <div className="flex flex-col gap-4">
+      {staleErrorBanner}
+      <div className="flex flex-col gap-4">
       <div className="overflow-hidden rounded-lg border border-border">
         {runs.map((run, index) => {
           const kind = savedWorkflowRunBadgeKind(run.status);
@@ -179,6 +230,7 @@ export function SavedWorkflowRunHistory({
             </div>
           );
         })}
+      </div>
       </div>
       <p className="text-ui-sm text-foreground-subtle">
         {intl.formatMessage({ id: "workflows.hub.history.note" })}

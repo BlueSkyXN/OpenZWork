@@ -77,6 +77,8 @@ import {
   getAppConfigDir,
   type BotProjectConnection,
   type HostApiNetworkTransport,
+  // OW-P024：工作流查询 lane 的共享资格判定（纯函数，装配时一次）。
+  resolveShareLocalWorkflowQueryRuntime,
 } from "@zcode/services/node";
 import { createHostResourceUsageResponder } from "./hostResourceUsage.js";
 import {
@@ -3463,6 +3465,16 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               serviceAuthorityMode: "desktop-local",
               zcodeAgentSpawnFallbackCwd: msg.agentSpawnFallbackCwd,
               zcodeBuiltinProviderConfigFilePath: msg.zcodeBuiltinProviderConfigFilePath,
+              // OW-P024：本地 Desktop 才可能共享查询载体；自定义命令/未固定绝对 DB 时
+              // 判 false（逐项目查询 key）。资格只在此处裁决，UI/RPC 无法自行开启。
+              // 本装配不注入 zcodeAgentCommandResolver（该注入点供测试/特殊宿主），
+              // 未来若在此注入自定义命令，必须同步把该项传入资格判定。
+              shareLocalWorkflowQueryRuntime: resolveShareLocalWorkflowQueryRuntime({
+                runtimeSurface: "desktop_local_host",
+                hasCustomCommandResolver: false,
+                agentServerCommandEnv: process.env.ZCODE_AGENT_SERVER_COMMAND,
+                sessionDbPathEnv: process.env.ZCODE_SESSION_DB_PATH,
+              }),
               processLifecycleReporter: runtimeProcessLifecycleReporter,
               taskRuntimeReporter: runtimeTaskReporter,
               forwardSessionMessageSendRequested: (request) => {

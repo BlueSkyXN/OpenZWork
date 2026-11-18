@@ -80,7 +80,12 @@
     },
     {
       "capability": "workflow",
-      "files": []
+      "files": [
+        "packages/services/test/workflowQueryRuntime.test.ts",
+        "packages/ui/test/savedWorkflowRefresh.test.ts",
+        "packages/ui/test/savedWorkflowProjectGroupRunsError.test.ts",
+        "packages/ui/test/savedWorkflowGlobalGroupRunsError.test.ts"
+      ]
     },
     {
       "capability": "build-and-settings",

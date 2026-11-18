@@ -648,6 +648,17 @@ modules:
       - packages/services/src/zcode-agent/resident-rows-range/contract.ts
     layers: {app: .}
     owner: remote
+  # workflow-query：已保存工作流两项读取共用的独立查询 lane（spec：docs/specs/saved-workflow-query-lifecycle-openzwork.md）
+  - id: workflow-query
+    roots:
+      - packages/services/src/zcode-agent/workflow-query
+    managed: true
+    requires: [shared, services]
+    publicEntrypoints:
+      - packages/services/src/zcode-agent/workflow-query/contract.ts
+      - packages/services/src/zcode-agent/workflow-query/workflowQueryRuntime.ts
+    layers: {app: .}
+    owner: conversation
   - id: tool-discovery
     roots:
       - apps/zcode-cli/packages/core/src/tool/search

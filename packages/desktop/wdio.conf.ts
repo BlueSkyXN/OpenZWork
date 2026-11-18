@@ -1076,9 +1076,14 @@ async function resetE2EHome(specs: string[]) {
   if (
     messagesReplaySpec ||
     specs.some((spec) =>
-      ["side-pane-full-view.test.ts", "mcp-failure-guidance.test.ts"].some((name) =>
-        spec.endsWith(name),
-      ),
+      [
+        "side-pane-full-view.test.ts",
+        "mcp-failure-guidance.test.ts",
+        // OW-P024 R4：工作流中枢用例读取 DEFAULT_WORKSPACE（OpenZWorkProject）下的
+        // .zcode/workflows 并等待它成为当前工作区；产品首次启动只创建 conversation
+        // workspace，不隐式登记项目——与 side-pane 同款由 settings 显式恢复。
+        "automations-workflows-hub.test.ts",
+      ].some((name) => spec.endsWith(name)),
     )
   ) {
     // 完整视图测试需要固定项目 cwd；产品首次启动只建立 conversation workspace，

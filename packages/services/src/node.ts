@@ -126,6 +126,8 @@ export {
 export { createCredentialService } from "./credential/credentialService.js";
 export { createBroadcastService } from "./broadcast/broadcastService.js";
 export { createZCodeAgentService } from "./zcode-agent/zcodeAgentService.js";
+// OW-P024：workflow-query lane 的共享资格判定（Host 装配层消费的纯函数）。
+export { resolveShareLocalWorkflowQueryRuntime } from "./zcode-agent/workflow-query/contract.js";
 export { createZCodeTaskServiceAdapter } from "./zcode-agent/zcodeTaskServiceAdapter.js";
 export { createZCodeSessionService } from "./zcode-session/zcodeSessionService.js";
 export {
@@ -520,6 +522,12 @@ export function createLocalServices(options: {
   // 注入点：默认 resolver 已能覆盖 dev/桌面/SSH 远端三类形态；
   // 测试或特殊宿主想强制走自定义 binary/参数时从这里注入。
   zcodeAgentCommandResolver?: ZCodeAgentCommandResolver;
+  /**
+   * OW-P024：已保存工作流两项读取是否共用固定查询载体。仅 Host 装配层设置
+   * （Desktop 本地 + 默认命令链 + Main 固定绝对 DB），UI/RPC 调用方无法开启；
+   * 远端 server / desktop-attached remote 不注入。
+   */
+  shareLocalWorkflowQueryRuntime?: boolean;
   /** Desktop Main 提前异步采集的本机 runtime 环境；Local Host 注入后不再同步启动 login shell。 */
   runtimeProcessEnvPatch?: Record<string, string>;
   /** 本地桌面上次 workspace 缺失时，仅用于 Agent 子进程 spawn.cwd 兜底。 */
@@ -892,6 +900,7 @@ export function createLocalServices(options: {
     ...(resolveDynamicWorkflowUserMode ? { resolveDynamicWorkflowUserMode } : {}),
     forwardDynamicWorkflowUserMode: options?.forwardDynamicWorkflowUserMode,
     commandResolver: options?.zcodeAgentCommandResolver,
+    shareLocalWorkflowQueryRuntime: options?.shareLocalWorkflowQueryRuntime,
     presentationSurface: resolveZCodeAgentPresentationSurface({
       runtimeSurface: options?.agentRuntimeContext?.runtimeSurface,
       serviceAuthorityMode: options?.serviceAuthorityMode,
