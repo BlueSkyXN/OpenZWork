@@ -12,6 +12,8 @@ Extended 的七组单测按[平台与分片并行规范](../ci/extended-ci-paral
 
 安装文件下载、校验、上传全部在 GitHub runner 完成。自动流程沿用 production 身份、七个安装文件、来源清单和校验和；未签名构建、手动安装更新的产品规则不变。
 
+Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP。解压结果须能通过已有的二进制目标检查，runner 上 PowerShell 归档模块的版本不参与构建。
+
 ## 所有者与事件顺序
 
 - 三份原工作流拥有测试和构建步骤；通过明确的运行标题 `Release <tag> / <workflow>` 标识 tag 运行，不复用同提交的分支 Preview。
