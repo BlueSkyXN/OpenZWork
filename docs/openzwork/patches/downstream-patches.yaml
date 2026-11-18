@@ -613,3 +613,22 @@ patches:
     regression:
       - scripts/test/prebuilt-binary-extract.test.mjs
     retire: 上游支持在没有 PowerShell 归档模块的 Windows runner 上解压所有预构建 ZIP。
+
+  - id: OW-P028
+    title: Windows runtime host 构建依赖固定版本的 Visual Studio
+    kind: build
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.18.0
+      checked: 3.18.2
+    trigger: 在安装 Visual Studio 2026 的 Windows runner 上编译桌面运行时。
+    impact: CMake 配置中止，运行时和安装包无法生成。
+    cause: 构建脚本显式指定 Visual Studio 17 2022 生成器，CMake 只查找该版本。
+    evidence: 上游 v3.18.0 和 v3.18.2 均指定该生成器。Installers run 44333223336 的 Windows 作业在 CMake 配置阶段报告找不到对应实例。
+    fix: 由 CMake 选择已安装的 Visual Studio，显式传入 x64 或 ARM64，并继续核验生成的两个可执行文件的 PE 架构。
+    files:
+      - scripts/build-windows-runtime-host.mjs
+    regression:
+      - scripts/test/windows-runtime-host-build.test.mjs
+    retire: 上游支持使用 runner 已安装的 Visual Studio 编译，且生成的运行时与安装器辅助程序符合指定架构。

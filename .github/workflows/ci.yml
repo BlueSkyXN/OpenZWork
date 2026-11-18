@@ -255,6 +255,11 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm exec tsx --test tests/private-cleanup/remote-chain-local.test.ts
 
+      # 工作流查询回归按产品路径启动真实 CLI，Windows 由原生 runtime host 创建子进程。
+      - name: Prepare Windows runtime host for core tests
+        if: runner.os == 'Windows' && matrix.lane == 'unit'
+        run: node scripts/build-windows-runtime-host.mjs --ensure
+
       - name: Core unit regression
         if: matrix.lane == 'unit'
         id: core_tests
@@ -330,9 +335,10 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-e2e-hub-artifacts
-          path: packages/desktop/.e2e-artifacts
+          path: packages/desktop/.e2e-artifacts/desktop-e2e-*/
+          include-hidden-files: true
           archive: true
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   check-results:
     name: checks (${{ matrix.platform }})
@@ -473,6 +479,7 @@ jobs:
         with:
           name: desktop-e2e-${{ matrix.spec-group }}
           path: packages/desktop/.e2e-artifacts/desktop-e2e-*/
+          include-hidden-files: true
           archive: true
           if-no-files-found: error
 

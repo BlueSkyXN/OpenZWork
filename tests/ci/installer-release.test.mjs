@@ -257,6 +257,13 @@ test("dispatch builds pin immutable sources and verify packaged contents in-runn
   assert.notEqual(job.steps[dispatchVerify]["continue-on-error"], true);
   assert.match(job.steps[dispatchVerify].run, /SOURCE_COMMIT/);
   // PK01 包内检查：绑定本次 checkout 提交，报告落盘并上传（上传路径由 runtime 套件断言）。
+  const navigation = job.steps.findIndex(
+    (step) => step.run === "pnpm exec tsc -b packages/desktop/tsconfig.app-navigation.json",
+  );
+  assert.ok(
+    install < navigation &&
+      navigation < stepIndex("Package installer (prepare + build + electron-builder)"),
+  );
   const pk01 = stepIndex("Verify packaged contents (PK01)");
   const version = stepIndex("Verify packaged release version");
   assert.ok(pk01 > version);
@@ -493,6 +500,7 @@ test("agent node dist job builds and verifies the independent distribution", () 
     /pnpm build:zcode --base-url "\$\{\{ inputs\.zcode_dist_base_url \}\}"/,
   );
   assert.match(runs, /scripts\/verify-agent-node-dist\.mjs/);
+  assert.match(runs, /--release-root "dist\/zcode\/releases\/\$VERSION" --version "\$VERSION"/);
   assert.match(runs, /AGENT-DIST-REPORT\.json/);
   // 实际交付物留档：tarball 与 sha256 进 artifact，不只上传报告。
   const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));

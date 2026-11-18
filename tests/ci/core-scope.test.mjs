@@ -54,6 +54,11 @@ test("core CI cannot be hidden behind historical collection or optional outcomes
   assert.equal(core.length, 1);
   assert.equal(core[0].if, "matrix.lane == 'unit'");
   assert.equal(core[0]["continue-on-error"], undefined);
+  const host = steps.find(
+    (step) => step.run === "node scripts/build-windows-runtime-host.mjs --ensure",
+  );
+  assert.equal(host?.if, "runner.os == 'Windows' && matrix.lane == 'unit'");
+  assert.ok(steps.indexOf(host) < steps.indexOf(core[0]));
   assert.equal(ci.jobs.checks.needs, undefined);
   assert.ok(!steps.some((step) => /vitest list|pnpm (?:run )?test:unit/.test(step.run ?? "")));
 });
@@ -207,6 +212,14 @@ test("extended checks keep real failures and run independently with Electron pre
   }
   const tests = extended.jobs["historical-tests"].steps;
   assert.ok(tests.some((step) => step.run === "pnpm install --frozen-lockfile"));
+  const host = tests.find(
+    (step) => step.run === "node scripts/build-windows-runtime-host.mjs --ensure",
+  );
+  assert.equal(
+    host?.if,
+    "runner.os == 'Windows' && (matrix.shard == 'services' || matrix.shard == 'supporting')",
+  );
+  assert.ok(tests.indexOf(host) < tests.findIndex((step) => step.id === "full_tests"));
   // 2026-10-20：全量套件改为分组执行，脚本内建组级时限与逐组 JSON；断言从单条
   // vitest 命令改为分组入口，语义不变（真实失败仍失败、结果仍上传）。
   assert.ok(

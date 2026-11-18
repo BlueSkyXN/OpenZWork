@@ -3,18 +3,9 @@ import { test } from "node:test";
 import { resolveRuntimeHostBuild, verifyRuntimeHostPe } from "../build-windows-runtime-host.mjs";
 
 test("Windows builds both supported architectures with the matching MSVC target", () => {
-  assert.deepEqual(resolveRuntimeHostBuild("x64", "win32").configureArgs, [
-    "-G",
-    "Visual Studio 17 2022",
-    "-A",
-    "x64",
-  ]);
-  assert.deepEqual(resolveRuntimeHostBuild("arm64", "win32").configureArgs, [
-    "-G",
-    "Visual Studio 17 2022",
-    "-A",
-    "ARM64",
-  ]);
+  // OW-P028：生成器随 runner 安装版本选择，两种目标架构必须仍显式传入。
+  assert.deepEqual(resolveRuntimeHostBuild("x64", "win32").configureArgs, ["-A", "x64"]);
+  assert.deepEqual(resolveRuntimeHostBuild("arm64", "win32").configureArgs, ["-A", "ARM64"]);
   assert.throws(() => resolveRuntimeHostBuild("ia32", "win32"), /architecture/);
 });
 test("cross builds explicitly select a Windows compiler", () => {

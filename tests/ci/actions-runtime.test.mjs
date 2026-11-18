@@ -406,8 +406,12 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
   assert.match(verify.env.REQUIRED_SPECS, /matrix\.specs/);
   assert.match(verify.env.REQUIRED_CASES, /matrix\.required-cases/);
   assert.notEqual(verify["continue-on-error"], true);
-  const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
-  assert.equal(upload.with["if-no-files-found"], "error");
+  for (const e2e of [job, ci.jobs["workflows-hub-e2e"]]) {
+    const upload = e2e.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
+    assert.equal(upload.with.path, "packages/desktop/.e2e-artifacts/desktop-e2e-*/");
+    assert.equal(upload.with["include-hidden-files"], true);
+    assert.equal(upload.with["if-no-files-found"], "error");
+  }
 });
 
 async function loadCi() {

@@ -202,6 +202,11 @@ jobs:
       - name: Install dependencies (frozen lockfile, with scripts)
         run: pnpm install --frozen-lockfile
 
+      # 导航目录由独立的 TypeScript 项目生成，干净 runner 上没有开发工作区已有的输出。
+      - name: Build desktop navigation for packaging
+        if: hashFiles('packages/desktop/tsconfig.app-navigation.json') != ''
+        run: pnpm exec tsc -b packages/desktop/tsconfig.app-navigation.json
+
       # bundle = prepare:runtime-assets + 生产构建 + electron-builder + 运行时依赖校验 + 体积审计。
       # ZCODE_SKIP_REMOTE_ASSETS=1：桌面安装包不依赖跨平台 remote 预编译产物（上游 Windows job 同款开关）。
       - name: Package installer (prepare + build + electron-builder)
@@ -407,14 +412,9 @@ jobs:
           DIST_PLATFORM: ${{ matrix.platform }}
         run: |
           set -euo pipefail
-          export VERSION=$(node -e "console.log(require('./package.json').version)")
-          export TARBALL=$(node --input-type=module <<'NODE'
-          import { selectAgentDistTarball } from './scripts/agent-node-dist.mjs';
-          console.log(
-            await selectAgentDistTarball({ releaseRoot: 'dist/zcode/releases', version: process.env.VERSION }),
-          );
-          NODE
-          )
+          VERSION=$(node -p "require('./package.json').version")
+          TARBALL=$(node scripts/agent-node-dist.mjs --release-root "dist/zcode/releases/$VERSION" --version "$VERSION")
+          export VERSION TARBALL
           node scripts/verify-agent-node-dist.mjs --tarball "$TARBALL" --expected-version "$VERSION" --report dist/zcode/releases/AGENT-DIST-REPORT.json | tee /tmp/agent-dist-report.json
           export PNPM_VERSION=$(pnpm --version)
           node --input-type=module <<'NODE' | tee /tmp/agent-dist-manifest.json

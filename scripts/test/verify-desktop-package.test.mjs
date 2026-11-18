@@ -24,7 +24,8 @@ const require = createRequire(join(repoRoot, "packages/desktop/package.json"));
 // 仓库侧 asar 读取器（合成 asar 是真实 asar 文件，可直接读取）；
 // verifyDesktopPackage 的合成项目根解析不到仓库 node_modules，故注入。
 const repoAsar = await import(pathToFileURL(require.resolve("@electron/asar")).href);
-const extractAsarFile = repoAsar.extractFile;
+// Windows 的盘符路径不能直接用于 ESM 导入，打包和读取夹具复用同一个模块。
+const { createPackage, extractFile: extractAsarFile } = repoAsar;
 
 // 产品身份只由构建期环境决定（ZCODE_ENV / ZCODE_PREVIEW_IDENTITY）。测试全程显式传入
 // env，不读调用者 shell：CI 的 repo-scripts 步骤不设 ZCODE_ENV，本机宿主进程却可能设了
@@ -79,7 +80,6 @@ async function syntheticPackage(
     join(staging, "out/main/index.js"),
     'const dataRoot = ".openzwork";\nshareCopiedDataRootCredentialKey();\n',
   );
-  const { createPackage } = await import(require.resolve("@electron/asar"));
   await createPackage(staging, join(resources, "app.asar"));
   await writeFile(join(resources, "THIRD-PARTY-NOTICES.md"), "notices\n");
   await mkdir(join(resources, "glm"), { recursive: true });
@@ -219,7 +219,6 @@ test("verify-desktop-package fails on reintroduced trimmed markers and unbound c
     join(staging, "out/main/index.js"),
     `startPlan("high${"speed"}");\n.openzwork\nshareCopiedDataRootCredentialKey\n`,
   );
-  const { createPackage } = await import(require.resolve("@electron/asar"));
   await createPackage(staging, join(resources, "app.asar"));
   const root = await projectRoot(packageRoot);
   try {
@@ -327,7 +326,6 @@ test("verify-desktop-package rejects missing extension-host chunk and renderer e
   await rm(join(staging, "out/renderer/assets"), { recursive: true, force: true });
   const productName = desktopProductIdentities.production.productName;
   const resources = join(packageRoot, `mac-arm64/${productName}.app/Contents/Resources`);
-  const { createPackage } = await import(require.resolve("@electron/asar"));
   await createPackage(staging, join(resources, "app.asar"));
   const root = await projectRoot(packageRoot);
   try {

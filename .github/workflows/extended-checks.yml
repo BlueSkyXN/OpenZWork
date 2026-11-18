@@ -137,8 +137,8 @@ jobs:
       - name: Build remote server bundle
         run: pnpm --filter @zcode/server build:remote
 
-      - name: Prepare Windows process helper for the installer lifecycle fixture
-        if: runner.os == 'Windows' && matrix.shard == 'supporting'
+      - name: Prepare Windows runtime host and installer process helper
+        if: runner.os == 'Windows' && (matrix.shard == 'services' || matrix.shard == 'supporting')
         run: node scripts/build-windows-runtime-host.mjs --ensure
 
       - name: Full historical unit suite (grouped)
