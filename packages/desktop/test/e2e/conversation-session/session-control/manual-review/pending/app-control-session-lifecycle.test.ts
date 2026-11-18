@@ -148,8 +148,8 @@ describe(`${CASE}: App session lifecycle through actual tools`, () => {
     await clearAppData();
   });
 
-  it("creates, queues, waits, forks stable history, organizes and guards interruption on desktop and 390px mobile", async function () {
-    this.timeout(900_000);
+  // OW-P030：WDIO 在调用函数前读取 Mocha 的期限，必须在注册用例时设置。
+  it("creates, queues, waits, forks stable history, organizes and guards interruption on desktop and 390px mobile", async () => {
     await ensureReadonlyToolFixtureFile();
     await prepareV4ConversationE2E();
     await startDraftFromProject(DEFAULT_WORKSPACE);
@@ -570,5 +570,5 @@ describe(`${CASE}: App session lifecycle through actual tools`, () => {
       projectId: fork.session.project!.projectId,
     });
     assertions.coldRestoredOrganization = restored;
-  });
+  }).timeout(900_000);
 });

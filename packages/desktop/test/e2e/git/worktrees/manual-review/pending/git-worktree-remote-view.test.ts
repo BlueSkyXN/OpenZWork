@@ -9,10 +9,8 @@
 // 均已废弃；进程树快照只作辅助诊断输出，不参与实例判定。会话生命周期 generation
 // 只作辅助断言。
 // 仅本地链路：桌面 Electron + 本机手机页（隔离凭据），不访问真实 SSH 或用户 worktree。
-import { execFile } from "node:child_process";
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
-import { promisify } from "node:util";
 import { chromium, type Browser } from "playwright-core";
 import {
   TID_TASK_ROW_WORKTREE_ICON,
@@ -47,29 +45,12 @@ import { openMobilePairingPage } from "#e2e/helpers/mobile-pairing";
 import { obtainUnreadPairingUrl } from "#e2e/helpers/web-remote-unread";
 import { WEB_REMOTE_CONTROL_FIXTURE_CREDENTIALS } from "#e2e/helpers/web-remote-control-session-events-fixture";
 
-const execGit = promisify(execFile);
 const TEST_TIMEOUT_MS = 240_000;
 // 与 git-managed-worktree.test.ts 同规则：受管根从 DEFAULT_WORKSPACE 父目录推导。
 const MANAGED_ROOT = join(dirname(DEFAULT_WORKSPACE), ".openzwork", "worktrees");
-const BASELINE_FILE = join(".zcode-e2e", "managed-worktree", "baseline.md");
 // 回放响应沿用 git 领域 fixture（managed-worktree.json）的 E2E_MANAGED_WORKTREE 请求键；
 // 时间戳保证唯一，不与其他 worktree 用例互串。
 const CASE = "E2E_MANAGED_WORKTREE_WT04";
-
-async function git(cwd: string, ...args: string[]): Promise<string> {
-  const { stdout } = await execGit("git", args, { cwd });
-  return stdout.trim();
-}
-
-async function prepareSourceRepository(): Promise<void> {
-  await mkdir(dirname(join(DEFAULT_WORKSPACE, BASELINE_FILE)), { recursive: true });
-  await execGit("git", ["init", "-q", "-b", "main"], { cwd: DEFAULT_WORKSPACE });
-  await git(DEFAULT_WORKSPACE, "config", "user.email", "zcode-e2e@example.invalid");
-  await git(DEFAULT_WORKSPACE, "config", "user.name", "ZCode E2E");
-  await writeFile(join(DEFAULT_WORKSPACE, BASELINE_FILE), "baseline\n", "utf8");
-  await git(DEFAULT_WORKSPACE, "add", BASELINE_FILE);
-  await git(DEFAULT_WORKSPACE, "commit", "-qm", "test: wt04 baseline");
-}
 
 function isUnderManagedRoot(path: string | null | undefined): path is string {
   if (!path) return false;
@@ -266,7 +247,6 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
 
   before(async () => {
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30_000);
-    await prepareSourceRepository();
     await prepareV4ConversationE2E();
   });
 

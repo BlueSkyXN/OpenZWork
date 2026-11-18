@@ -482,7 +482,7 @@ jobs:
           E2E_PROVIDER_REPLAY_FIXTURE_PATH: ${{ matrix.replay-fixtures }}
           # J4：manual-review 用例的隔离 HOME 守卫要求 `.e2e-home-` 前缀（按 case 分配
           # HOME 的 runner 合同）；每条矩阵一个独立 HOME，runner 一次性环境随 job 回收。
-          ZCODE_E2E_HOME_DIR: ${{ github.workspace }}/packages/desktop/.e2e-home-${{ matrix.spec-group }}-${{ github.run_id }}${{ github.run_attempt }}
+          ZCODE_E2E_HOME_DIR: ${{ runner.temp }}/.e2e-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ strategy.job-index }}
         run: pnpm exec wdio run wdio.conf.ts --spec '${{ matrix.specs }}'
 
       - name: Upload E2E artifacts

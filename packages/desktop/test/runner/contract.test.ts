@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
+import { E2E_AGENT_WORKSPACE_NAME } from "../e2e/helpers/e2e-runtime-paths.js";
 import { describe, expect, it } from "vitest";
 
 const exec = promisify(execFile);
@@ -68,6 +69,9 @@ async function runReset(spec: string, env: Record<string, string> = {}) {
       : null;
     return {
       cleaned: !existsSync(stale),
+      hasWorktreeBaseline: existsSync(
+        join(home, E2E_AGENT_WORKSPACE_NAME, ".git", "refs", "heads", "main"),
+      ),
       settings: JSON.parse(await readFile(join(dir, "setting.json"), "utf8")),
       hasCredentials: existsSync(join(dir, "credentials.json")),
       provider,
@@ -81,9 +85,15 @@ describe("desktop-e2e-runner 隔离初始化合同", () => {
   it("清理旧 worker 的 HOME，缺少捕获凭据时只写本地启动设置", async () => {
     const result = await runReset("smoke.test.ts");
     expect(result.cleaned).toBe(true);
+    expect(result.hasWorktreeBaseline).toBe(false);
     expect(result.settings).toMatchObject({ providerFamilyConnectionSelections: {} });
     expect(result.hasCredentials).toBe(false);
     expect(result.provider).toBeNull();
+  });
+
+  it("桌面打开 WT04 项目前已经有独立 Git 基线", async () => {
+    const result = await runReset("git-worktree-remote-view.test.ts");
+    expect(result.hasWorktreeBaseline).toBe(true);
   });
 
   it.each([

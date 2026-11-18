@@ -391,6 +391,7 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
   }
   const run = job.steps.find((step) => step.name === "Run interactive E2E specs");
   assert.equal(run.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH, "${{ matrix.replay-fixtures }}");
+  assert.match(run.env.ZCODE_E2E_HOME_DIR, /^\$\{\{ runner\.temp \}\}\/\.e2e-home-/u);
   assert.notEqual(run["continue-on-error"], true);
   // 必需 case 清单逐个点名：完整性门禁按它核销，报告自报 requestedSpecs 不作依据。
   for (const entry of include) {

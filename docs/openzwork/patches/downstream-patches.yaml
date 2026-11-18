@@ -633,6 +633,45 @@ patches:
       - scripts/test/windows-runtime-host-build.test.mjs
     retire: 上游支持使用 runner 已安装的 Visual Studio 编译，且生成的运行时与安装器辅助程序符合指定架构。
 
+  - id: OW-P029
+    title: macOS 测试窗口的内容尺寸被虚拟显示器工作区截断
+    kind: test
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.18.0
+      checked: 3.18.2
+    trigger: 页面工具或双端会话用例在小屏 macOS runner 上设置固定桌面视口。
+    impact: Electron 只应用屏幕可容纳的高度，后续布局断言无法执行。
+    cause: 主窗口沿用 Electron 的默认原生工作区限制。
+    evidence: CI run 44337227185 的页面工具用例请求 760×720，实际内容尺寸为 760×684。
+    fix: 仅在 E2E 运行时启用 Electron 的 enableLargerThanScreen，继续精确核对实际视口。
+    files:
+      - packages/desktop/src/main/desktopWindowChrome.ts
+    regression:
+      - scripts/test/desktop-e2e-case-config.test.mjs
+    retire: 上游能在小屏 macOS runner 完整执行规定视口的页面工具和双端会话用例。
+
+  - id: OW-P030
+    title: 会话控制长场景在用例声明的期限前被 WDIO 终止
+    kind: test
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.18.0
+      checked: 3.18.2
+    trigger: WDIO 执行长任务重试或会话生命周期 E2E，单例执行超过两分钟。
+    impact: 用例仍在正常处理工具或审批请求时，运行器提前报告超时。
+    cause: 两个用例在函数体内设置十五分钟，WDIO 包装器在进入函数体前已读取两分钟的默认值。
+    evidence: CI run 44337227185 的会话生命周期用例在审批期间被截断。用 Mocha 加载两个用例后，修复前注册期限均为 120000 毫秒。
+    fix: 注册用例时设置原有的 900000 毫秒期限。
+    files:
+      - packages/desktop/test/e2e/conversation-session/session-control/manual-review/pending/app-control-long-turn-retry.test.ts
+      - packages/desktop/test/e2e/conversation-session/session-control/manual-review/pending/app-control-session-lifecycle.test.ts
+    regression:
+      - scripts/test/desktop-e2e-case-config.test.mjs
+    retire: 上游的两个场景在 WDIO 运行前已注册其完整预算。
+
   - id: OW-P031
     title: 插件 hook 重建测试在 Windows 上要求 POSIX 执行位
     kind: test

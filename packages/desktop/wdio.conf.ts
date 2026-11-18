@@ -12,7 +12,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { tmpdir, userInfo } from "node:os";
@@ -2309,6 +2309,18 @@ export async function resetE2EHome(specs: string[]) {
   await seedE2EBuiltinWorkspacePluginDisable(specs);
   seedE2EBuiltInSubagentModelOverrides(specs);
   seedE2ESubagentProfiles(specs);
+  // WT04 第一次打开项目就读取 Git 状态，仓库基线必须在 Electron 启动前准备好。
+  if (specs.some((spec) => spec.endsWith("git-worktree-remote-view.test.ts"))) {
+    const workspace = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
+    const baseline = ".zcode-e2e/managed-worktree/baseline.md";
+    await mkdir(dirname(resolve(workspace, baseline)), { recursive: true });
+    await runGitFixtureCommand(workspace, ["init", "-q", "-b", "main"]);
+    await runGitFixtureCommand(workspace, ["config", "user.email", "zcode-e2e@example.invalid"]);
+    await runGitFixtureCommand(workspace, ["config", "user.name", "ZCode E2E"]);
+    await writeFile(resolve(workspace, baseline), "baseline\n", "utf8");
+    await runGitFixtureCommand(workspace, ["add", baseline]);
+    await runGitFixtureCommand(workspace, ["commit", "-qm", "test: wt04 baseline"]);
+  }
   await seedE2EGitReviewEntryWorkspace(specs);
   seedE2EGitCommitDialogWorkspace(specs);
   if (
@@ -2592,8 +2604,8 @@ async function seedE2EGitReviewEntryWorkspace(specs: string[] = []) {
   const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
   const caseRoot = resolve(workspacePath, ".zcode-e2e/conversation-session-git-review-entry");
   await mkdir(caseRoot, { recursive: true });
-  await runGitReviewEntryCommand(workspacePath, ["init"]);
-  await runGitReviewEntryCommand(workspacePath, ["checkout", "-B", "main"]);
+  await runGitFixtureCommand(workspacePath, ["init"]);
+  await runGitFixtureCommand(workspacePath, ["checkout", "-B", "main"]);
   await writeFile(
     resolve(caseRoot, "status-panel-review.txt"),
     "status panel Git review e2e fixture\n",
@@ -2601,7 +2613,7 @@ async function seedE2EGitReviewEntryWorkspace(specs: string[] = []) {
   );
 }
 
-async function runGitReviewEntryCommand(cwd: string, args: string[]) {
+async function runGitFixtureCommand(cwd: string, args: string[]) {
   await execFileAsync(process.env.ZCODE_GIT_BINARY?.trim() || "git", args, {
     cwd,
     encoding: "utf8",

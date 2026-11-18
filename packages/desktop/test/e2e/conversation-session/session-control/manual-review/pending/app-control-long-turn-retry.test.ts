@@ -131,8 +131,8 @@ describe(`${CASE}: App session tools on a long turn and a retried creation`, () 
     await clearAppData();
   });
 
-  it("reports long-turn outcomes past the snapshot tail and reuses the first creation on retry", async function () {
-    this.timeout(900_000);
+  // OW-P030：WDIO 在调用函数前读取 Mocha 的期限，必须在注册用例时设置。
+  it("reports long-turn outcomes past the snapshot tail and reuses the first creation on retry", async () => {
     await ensureReadonlyToolFixtureFile();
     await mkdir(SECOND_ROOT, { recursive: true });
     await prepareV4ConversationE2E();
@@ -243,5 +243,5 @@ describe(`${CASE}: App session tools on a long turn and a retried creation`, () 
       coldMessages,
       taskUnchanged: coldAfter as ProjectTask | undefined,
     };
-  });
+  }).timeout(900_000);
 });
