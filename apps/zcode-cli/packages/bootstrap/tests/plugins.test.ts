@@ -1773,6 +1773,8 @@ describe("ZCode plugins", () => {
         }),
       ]);
     } finally {
+      // OW-P031：禁用 Git 的 PATH 仅属于本例，随后运行的 Windows hook 需要正常的命令搜索路径。
+      vi.unstubAllEnvs();
       await rm(root, { force: true, recursive: true });
     }
   });
@@ -1829,7 +1831,7 @@ describe("ZCode plugins", () => {
       const run = promisify(execFile);
       if (process.platform !== "win32") expect((await stat(hook)).mode & 0o111).not.toBe(0);
       const result = process.platform === "win32"
-        ? await run("cmd.exe", ["/d", "/c", "run-hook.cmd"], { cwd: dirname(hook) })
+        ? await run(process.env.ComSpec || "cmd.exe", ["/d", "/c", "run-hook.cmd"], { cwd: dirname(hook) })
         : await run(hook);
       expect(result.stdout.trim()).toBe("seeded-hook");
     } finally {

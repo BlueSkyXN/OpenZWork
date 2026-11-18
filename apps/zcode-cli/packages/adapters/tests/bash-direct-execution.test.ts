@@ -87,6 +87,13 @@ async function fixture(shell: ExecutionShellSelection, code: string, useTmp = fa
   return { adapter, request, release, tempParent, path: join(root, "probe", "direct-stdout.log") };
 }
 
+// OW-P010：真实 shell 和 Node 子进程就绪可能超过默认一秒，按同组的首段输出期限等待实际写入。
+async function waitForWriterOutput(path: string) {
+  await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"), {
+    timeout: 5_000,
+  });
+}
+
 const gatedWriter = `const fs = require('node:fs');
 fs.writeSync(1, 'file:' + fs.fstatSync(1).isFile() + ':' + fs.fstatSync(2).isFile() + '\\n');
 fs.writeSync(2, 'stderr-first\\n');
@@ -177,7 +184,7 @@ const timer = setInterval(() => {
       expect(outcome.kind).toBe("backgrounded");
       if (outcome.kind !== "backgrounded") return;
       const id = outcome.task.taskId;
-      await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"));
+      await waitForWriterOutput(path);
       expect(await adapter.readBackgroundBashOutput(id, "other-session")).toEqual({
         kind: "unavailable",
         workId: id,
@@ -222,7 +229,7 @@ const timer = setInterval(() => {
     const { adapter, request, path } = await fixture(shell, gatedWriter);
     const outcome = await adapter.runBashWithBackgroundLifecycle(request, { mode: "explicit" });
     if (outcome.kind !== "backgrounded") throw new Error("expected background");
-    await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"));
+    await waitForWriterOutput(path);
     let releaseRead!: () => void;
     const gate = new Promise<void>((resolve) => {
       releaseRead = resolve;
@@ -363,9 +370,7 @@ const timer = setInterval(() => {
       expect(launch.kind).toBe("backgrounded");
       if (launch.kind !== "backgrounded") throw new Error("Expected background task");
       expect(launch.task.outputPath).toBe(path);
-      await vi.waitFor(async () => expect(await readFile(path, "utf8")).toContain("stderr-first"), {
-        timeout: 5_000,
-      });
+      await waitForWriterOutput(path);
       abort.abort();
       expect((await adapter.getBackgroundTask(launch.task.taskId))?.status).toBe("running");
       await writeFile(release, "go");
