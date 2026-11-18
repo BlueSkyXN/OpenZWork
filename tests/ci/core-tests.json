@@ -113,11 +113,13 @@
     {
       "capability": "e2e-fixture-contracts",
       "files": [
+        "packages/desktop/test/directAttachmentAssociation.test.ts",
         "packages/desktop/test/localPairingRelay.test.ts",
         "packages/desktop/test/remoteStartupProfile.test.ts",
         "packages/desktop/test/e2eRuntimePaths.test.ts",
         "packages/desktop/test/modelProviderRestartConfig.test.ts",
-        "packages/desktop/test/modelProviderRestartRuntime.test.ts"
+        "packages/desktop/test/modelProviderRestartRuntime.test.ts",
+        "packages/ui/test/paneRuntimeIdentityE2EGate.test.ts"
       ]
     },
     {

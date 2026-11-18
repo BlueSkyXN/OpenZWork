@@ -355,6 +355,11 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
         "桌面 pane 查看前没有独立 runtime 查询读数（pane 诊断未运行或 E2E 构建未启用 bridge）",
       );
     expect(desktopQueryBefore.status).toBe("ok");
+    const desktopSessionIdBeforeView = await $(`[data-testid="${DESKTOP_PANE_KEY}"]`).getAttribute(
+      "data-session-id",
+    );
+    if (!desktopSessionIdBeforeView || desktopSessionIdBeforeView === "draft")
+      throw new Error("桌面 pane 查看前没有当前会话 ID");
     // 辅助（非判定）：pane 会话运行代基线 + Host/CLI 进程树快照。direct 判定不使用
     // 进程树/generation；这里保留输出用于失败时诊断（合法懒启动会进出树，不作断言）。
     const desktopGenerationBefore = await browser.execute(() => {
@@ -379,16 +384,34 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       await listRuntimeProcessIdentities(),
       electronRootPidBefore,
     );
-    // ── Host probe 快照（查看前最后 seq）：查看窗口内的 subscribed 才算手机查看期间
-    // 的真实订阅；旧订阅记录不当当前连接。按 probe 单调 seq 快照（不用文件行数冒充
-    // 事件序号——seq 与行序一致性由判定合同校验）。
-    const probeFilesBeforeView = await readHostProbeFiles(artifacts);
+    // Host probe 在 ACK 后异步落盘。先取得当前桌面订阅的证据，再采样查看前 seq。
     const probeLastSeqBeforeByFile = new Map<string, number>();
-    for (const [file, text] of probeFilesBeforeView) {
-      const records = parseHostAttachmentProbeRecords(text);
-      const lastSeq = records.reduce((max, record) => Math.max(max, record.seq), 0);
-      probeLastSeqBeforeByFile.set(file, lastSeq);
-    }
+    await browser.waitUntil(
+      async () => {
+        probeLastSeqBeforeByFile.clear();
+        let desktopSubscribed = false;
+        for (const [file, text] of await readHostProbeFiles(artifacts)) {
+          const records = parseHostAttachmentProbeRecords(text);
+          probeLastSeqBeforeByFile.set(
+            file,
+            records.reduce((max, record) => Math.max(max, record.seq), 0),
+          );
+          if (
+            records.some(
+              (record) =>
+                record.event === "subscribed" &&
+                record.clientMode === "desktop-continuous" &&
+                record.sessionId === desktopSessionIdBeforeView &&
+                record.runtimeIdentity?.identity === desktopQueryBefore.identity,
+            )
+          ) {
+            desktopSubscribed = true;
+          }
+        }
+        return desktopSubscribed;
+      },
+      { timeout: 10_000, interval: 250, timeoutMsg: "手机查看前缺少当前桌面订阅的 Host 记录" },
+    );
 
     // ── 手机查看（事实②的产生窗口）：配对 → 打开项目 → 打开 WT04-1 的 worktree 任务。
     const pairingUrl = await obtainUnreadPairingUrl();
@@ -451,6 +474,7 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
     });
     expect(mobileSessionId).toBeTruthy();
     expect(mobileSessionId).toBe(desktopSessionId);
+    expect(desktopSessionId).toBe(desktopSessionIdBeforeView);
 
     // 手机 pane 独立 runtime 查询（事实②）：pane 注入服务所查，等待诊断注册表出现读数。
     const mobileHandle = await page.waitForFunction(

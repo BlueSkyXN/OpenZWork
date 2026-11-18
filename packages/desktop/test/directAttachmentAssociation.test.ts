@@ -210,6 +210,39 @@ describe("WT04 direct attachment 关联判定合同", () => {
     expect(failures.map((failure) => failure.code)).toContain("subscription-ended");
   });
 
+  it.each(["unsubscribed", "attachment-disposed"] as const)(
+    "反例：桌面原订阅 %s 后重订阅同一 runtime 仍须拒绝",
+    (event) => {
+      const input = validInput();
+      const desktop = input.hostRecords[0];
+      const ended = { ...desktop, event, seq: 3 };
+      const replacement = hostRecord({
+        clientMode: "desktop-continuous",
+        seq: 4,
+        ...(event === "unsubscribed"
+          ? { attachmentId: desktop.attachmentId, hostConnectionId: desktop.hostConnectionId }
+          : {}),
+      });
+      const failures = verifyDirectAttachmentAssociation({
+        ...input,
+        hostRecords: [...input.hostRecords, ended, replacement],
+        lastSeqInViewEnd: 4,
+      });
+      expect(failures.map((failure) => failure.code)).toContain("subscription-ended");
+    },
+  );
+
+  it("反例：只有查看开始后建立的桌面订阅，缺少查看前的基线", () => {
+    const input = validInput();
+    const failures = verifyDirectAttachmentAssociation({
+      ...input,
+      hostRecords: [input.hostRecords[1], { ...input.hostRecords[0], seq: 3 }],
+      lastSeqBeforeView: 0,
+      lastSeqInViewEnd: 3,
+    });
+    expect(failures.map((failure) => failure.code)).toContain("desktop-attachment-missing");
+  });
+
   it("反例：手机订阅在查看期间追加 attachment-disposed 也必须拒绝（不只查桌面结束）", () => {
     const input = validInput();
     const mobileRecord = input.hostRecords[1];
