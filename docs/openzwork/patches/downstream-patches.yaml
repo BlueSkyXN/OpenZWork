@@ -632,3 +632,22 @@ patches:
     regression:
       - scripts/test/windows-runtime-host-build.test.mjs
     retire: 上游支持使用 runner 已安装的 Visual Studio 编译，且生成的运行时与安装器辅助程序符合指定架构。
+
+  - id: OW-P031
+    title: 插件 hook 重建测试在 Windows 上要求 POSIX 执行位
+    kind: test
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.18.0
+      checked: 3.18.2
+    trigger: 在 Windows runner 上重建旧版内置插件缓存。
+    impact: 已重建的 cmd 脚本因没有 POSIX 执行位而被判为失败。
+    cause: 测试对所有平台断言 stat.mode 的执行位，Windows 通过命令解释器运行 cmd 文件。
+    evidence: CI run 44341247595 的 Windows 核心回归读到执行位为零。上游 v3.18.2 的回归采用相同断言。
+    fix: 所有平台都运行重建后的脚本并核对输出，POSIX 平台同时核对执行位。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    retire: 上游插件重建回归能在 Windows 和 POSIX 上核实 hook 的可执行性。

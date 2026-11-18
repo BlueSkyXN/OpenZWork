@@ -1777,7 +1777,8 @@ describe("ZCode plugins", () => {
     }
   });
 
-  it("preserves hook executable mode when rebuilding an older filesystem version", async () => {
+  // OW-P031：Windows 用命令解释器运行 cmd，POSIX 还需保留执行位；两端均执行重建后的 hook。
+  it("rebuilds a runnable hook from an older filesystem seed", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-plugin-mode-reseed-"));
     const entryRoot = join(root, "resources", "glm");
     const pluginStorageRoot = join(root, "plugins");
@@ -1800,7 +1801,7 @@ describe("ZCode plugins", () => {
       await writeTestFile(join(pluginRoot, "hooks", "hooks.json"), "{}");
       await writeExecutableTestFile(
         join(pluginRoot, "hooks", "run-hook.cmd"),
-        "#!/usr/bin/env bash\n",
+        process.platform === "win32" ? "@echo off\r\necho seeded-hook\r\n" : "#!/bin/sh\necho seeded-hook\n",
       );
       await writeTestFile(join(pluginRoot, "skills", "skill-creator", "SKILL.md"), "# skill");
 
@@ -1824,7 +1825,13 @@ describe("ZCode plugins", () => {
       process.argv[1] = join(entryRoot, "zcode.cjs");
       await resolveOfficialPluginRoots({ storageRoot: pluginStorageRoot });
 
-      expect((await stat(join(targetRoot, "hooks", "run-hook.cmd"))).mode & 0o111).not.toBe(0);
+      const hook = join(targetRoot, "hooks", "run-hook.cmd");
+      const run = promisify(execFile);
+      if (process.platform !== "win32") expect((await stat(hook)).mode & 0o111).not.toBe(0);
+      const result = process.platform === "win32"
+        ? await run("cmd.exe", ["/d", "/c", "run-hook.cmd"], { cwd: dirname(hook) })
+        : await run(hook);
+      expect(result.stdout.trim()).toBe("seeded-hook");
     } finally {
       process.argv[1] = originalEntrypoint;
       await rm(root, { force: true, recursive: true });
