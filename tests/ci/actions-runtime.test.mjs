@@ -345,6 +345,10 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
     wt04["replay-fixtures"],
     "packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/git/managed-worktree.json",
   );
+  const git = job.steps.find((step) => step.name === "Resolve Git for the worktree scenario");
+  assert.equal(git?.if, "matrix.spec-group == 'wt04-remote-view'");
+  assert.match(git.run, /command -v git/);
+  assert.match(git.run, /ZCODE_GIT_BINARY=.*GITHUB_ENV/);
   const identity = byGroup.get("identity-isolation");
   assert.equal(
     identity.specs,

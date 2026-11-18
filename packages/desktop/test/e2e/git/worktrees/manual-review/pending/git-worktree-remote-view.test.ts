@@ -263,7 +263,30 @@ describe("受管 worktree 任务 WT04：冷恢复归属与手机查看 manual-re
       throw new Error("WT04 requires isolated Electron runner");
     await startDraftFromProject(DEFAULT_WORKSPACE);
     const toggle = $(`[data-testid="${TID_WORKTREE_TOGGLE}"]`);
-    await toggle.waitForDisplayed({ timeout: 30_000, timeoutMsg: "worktree 复选框没有出现" });
+    try {
+      await toggle.waitForDisplayed({ timeout: 30_000 });
+    } catch (error) {
+      const state = await browser.execute((workspace) => {
+        const w = window as Window & {
+          __zcodeSessionStoreE2E?: {
+            getState(): { workspaces: Record<string, { draftProjectId?: string }> };
+          };
+        };
+        return {
+          interfaceMode: localStorage.getItem("zcode-interface-mode") ?? "coding",
+          hasProjectDraft: Boolean(
+            w.__zcodeSessionStoreE2E?.getState().workspaces[workspace]?.draftProjectId,
+          ),
+          showsGitBranch: Boolean(document.querySelector("[data-branch-switcher-primary-icon]")),
+        };
+      }, DEFAULT_WORKSPACE);
+      const head = await readFile(join(DEFAULT_WORKSPACE, ".git", "HEAD"), "utf8").catch(
+        () => "missing",
+      );
+      throw new Error(`worktree 复选框没有出现：HEAD=${head.trim()} ${JSON.stringify(state)}`, {
+        cause: error,
+      });
+    }
     await browser.waitUntil(async () => (await toggle.getAttribute("disabled")) === null, {
       timeout: 30_000,
       timeoutMsg: "worktree 复选框一直禁用（CLI 未声明 worktreeCwd）",

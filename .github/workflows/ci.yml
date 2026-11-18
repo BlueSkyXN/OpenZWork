@@ -475,6 +475,15 @@ jobs:
       - name: Build E2E report tooling
         run: pnpm --filter @zcode/e2e-report build:node
 
+      - name: Resolve Git for the worktree scenario
+        if: matrix.spec-group == 'wt04-remote-view'
+        shell: bash
+        run: |
+          # 夹具和 Electron Host 的登录 shell 可有不同的 PATH。二者共用 runner 已验证的 Git。
+          git_binary="$(command -v git)"
+          "$git_binary" --version
+          echo "ZCODE_GIT_BINARY=$git_binary" >> "$GITHUB_ENV"
+
       - name: Run interactive E2E specs
         id: e2e_run
         working-directory: packages/desktop
