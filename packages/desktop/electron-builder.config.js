@@ -4,6 +4,7 @@ import { readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { createRequire } from "node:module";
+import { Arch } from "electron-builder";
 import { runCommand, runCommandAndReadStdout } from "../../scripts/spawn-command.mjs";
 import { loadBuiltinProviderConfig } from "../../scripts/builtin-provider-config.mjs";
 import { noticesFileName, stageElectronNotices } from "../../scripts/third-party-notices.mjs";
@@ -57,11 +58,14 @@ function resolveElectronBuilderWindowsTarget({
       `[electron-builder.config] context platform is not win32: ${String(electronPlatformName)}`,
     );
   }
-  return {
-    os: "win32",
-    arch,
-    key: `win32-${arch}`,
-  };
+  // afterPack 接收数字枚举，NSIS 按 x64/arm64 查找头文件；两端须使用同一目标架构。
+  const actualArch = Arch[arch];
+  if (configuredTargetPlatform.key !== `win32-${actualArch}`) {
+    throw new Error(
+      `Configured target ${configuredTargetPlatform.key} does not match electron-builder Windows architecture ${arch} (${actualArch})`,
+    );
+  }
+  return configuredTargetPlatform;
 }
 
 const targetPlatform = getTargetPlatform();
@@ -575,9 +579,10 @@ async function writeInstallerProcessHelperDefine(context, archName) {
   if (!existsSync(helperPath)) {
     throw new Error(`Installer process helper missing after pack: ${helperPath}`);
   }
-  mkdirSync(join(desktopPackageRoot, "build", "generated"), { recursive: true });
+  const generatedDir = join(context.packager.buildResourcesDir, "generated");
+  mkdirSync(generatedDir, { recursive: true });
   await writeFile(
-    join(desktopPackageRoot, "build", "generated", `zcode-process-helper-${archName}.nsh`),
+    join(generatedDir, `zcode-process-helper-${archName}.nsh`),
     installerProcessHelperDefineLine(context.appOutDir),
     "utf8",
   );
@@ -722,13 +727,8 @@ export default {
       await runTimedAsync("afterPack:writeWindowsInstallManifest", () =>
         writeWindowsInstallManifest(context),
       );
-    }
-    if (context.electronPlatformName === "win32") {
       // 普通打包没有 APP_DIR_* 宏；makensis 前落盘按架构的 helper define（见函数注释）。
-      await writeInstallerProcessHelperDefine(
-        context,
-        actualWindowsTarget?.arch ?? targetPlatform.arch,
-      );
+      await writeInstallerProcessHelperDefine(context, actualWindowsTarget.arch);
       signWindowsHelper(context, "tools/runtime-host/zcode-runtime-host.exe");
       signWindowsHelper(context, "tools/runtime-host/zcode-installer-process-helper.exe");
     }
