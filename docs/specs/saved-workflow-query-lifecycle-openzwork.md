@@ -39,6 +39,8 @@ workflow-query manager：
 | 其他带 workspace 的读取（共享关闭、自定义命令、远端/Server）   | 原 path/identity，按 `resolveWorkspaceKey(target)` 按项目分 key                                  | 原请求参数                                                                                           |
 | 无 `workspacePath`（全局组）                                   | 原全局载体选择（活跃本地 runtime → 管理面）不变                                                  | 原全局参数                                                                                           |
 
+仅在选中共享载体后才解析并创建管理面目录。按项目读取只需要项目载体，管理面目录不可用时仍可查询项目工作流和运行历史。
+
 其余三个读写方法（get / updateMeta / delete）与 move/save/forRun 保持原
 `resolveSavedWorkflowCarrier` 路由。Server/远端因此保留启动峰值（最多 N 个查询 CLI），
 但每个 key 独立空闲回收。

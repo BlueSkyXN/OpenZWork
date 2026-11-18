@@ -3273,7 +3273,7 @@ export function createZCodeAgentService(
   // operation 计数，生命周期全部交给 manager 的既有 idle/关闭语义。
   async function getWorkflowQueryClient(params: ZCodeAgentWorkspaceTarget): Promise<ZCodeProtocolClient> {
     const carrier = resolveWorkflowQueryCarrier(params, {
-      sharedCarrier: workflowQueryRuntime.resolveSharedCarrier(),
+      resolveSharedCarrier: workflowQueryRuntime.resolveSharedCarrier,
       share: Boolean(options?.shareLocalWorkflowQueryRuntime),
     });
     const client = await workflowQueryRuntime.manager.getClient(carrier);

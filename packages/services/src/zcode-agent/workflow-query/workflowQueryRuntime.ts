@@ -77,13 +77,14 @@ export function createWorkflowQueryRuntime(
  */
 export function resolveWorkflowQueryCarrier(
   params: { workspacePath: string; workspaceIdentity?: string; remoteSessionId?: string },
-  options: { sharedCarrier: { workspacePath: string }; share: boolean },
+  options: { resolveSharedCarrier: () => { workspacePath: string }; share: boolean },
 ): { workspacePath: string; workspaceIdentity?: string } {
   const isLocalTarget =
     !params.remoteSessionId &&
     !(params.workspaceIdentity && isRemoteWorkspaceIdentity(params.workspaceIdentity));
   if (options.share && isLocalTarget) {
-    return options.sharedCarrier;
+    // OW-P024：管理面目录创建失败只影响使用该目录的共享载体。
+    return options.resolveSharedCarrier();
   }
   return {
     workspacePath: params.workspacePath,

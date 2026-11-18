@@ -454,6 +454,10 @@ describe("工作流查询 lane（OW-P024）", () => {
   );
 
   it("A02 非共享分支按项目分 key，短 idle 后整树退出，重进再起", { timeout: 120_000 }, async () => {
+    // OW-P024：模拟共享载体目录不可用，项目工作流和运行历史仍应能读。
+    const dataRoot = join(root, ".openzwork");
+    await mkdir(dataRoot, { recursive: true });
+    await writeFile(join(dataRoot, "plugin-workspace"), "blocked management directory");
     projects = await buildProjectFixture(root, ISOLATION_PROJECTS);
     const { service, recorder } = createScenarioService({
       share: false,
@@ -662,7 +666,8 @@ describe("工作流查询 lane（OW-P024）", () => {
   it("非共享载体保留 workspaceIdentity：同路径不同身份是不同进程 key（R1）", async () => {
     const one = { workspacePath: "/same/path", workspaceIdentity: "identity-a" };
     const two = { workspacePath: "/same/path", workspaceIdentity: "identity-b" };
-    const options = { share: false, sharedCarrier: { workspacePath: "/management" } };
+    const sharedCarrier = { workspacePath: "/management" };
+    const options = { share: false, resolveSharedCarrier: () => sharedCarrier };
     const carrierOne = resolveWorkflowQueryCarrier(one, options);
     const carrierTwo = resolveWorkflowQueryCarrier(two, options);
     expect(resolveWorkspaceKey(carrierOne)).toBe(resolveWorkspaceKey(one));
@@ -671,7 +676,7 @@ describe("工作流查询 lane（OW-P024）", () => {
     expect(carrierOne.workspaceIdentity).toBe("identity-a");
     // 共享分支仍收敛到固定管理面载体。
     const shared = resolveWorkflowQueryCarrier(one, { ...options, share: true });
-    expect(resolveWorkspaceKey(shared)).toBe(resolveWorkspaceKey(options.sharedCarrier));
+    expect(resolveWorkspaceKey(shared)).toBe(resolveWorkspaceKey(sharedCarrier));
   });
 
   it(
