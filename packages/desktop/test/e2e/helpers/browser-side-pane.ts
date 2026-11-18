@@ -21,6 +21,13 @@ export async function openFirstBrowserTab(): Promise<void> {
   await waitForTabCount(1);
 }
 
+// OW-P034：从宿主的当前标签读取已提交的页面标题，导航中无需向旧 guest 发脚本。
+export function readActiveBrowserTabTitle(root: ParentNode = document): string | null {
+  return root.querySelector(
+    '[data-side-pane-tab-id^="browser:"][data-state="active"] [data-side-pane-tab-title]',
+  )?.textContent ?? null;
+}
+
 export async function clickCloseButton(tabId: string): Promise<void> {
   const clicked = await browser.execute((targetTabId) => {
     const trigger = document.querySelector<HTMLElement>(`[data-side-pane-tab-id="${targetTabId}"]`);

@@ -653,24 +653,25 @@ patches:
     retire: 上游能在小屏 macOS runner 完整执行规定视口的页面工具和双端会话用例。
 
   - id: OW-P030
-    title: 会话控制长场景在用例声明的期限前被 WDIO 终止
+    title: 会话控制和手机恢复长场景在用例声明的期限前被 WDIO 终止
     kind: test
     status: fixed
     priority: P2
     upstream:
       since: 3.18.0
       checked: 3.18.2
-    trigger: WDIO 执行长任务重试或会话生命周期 E2E，单例执行超过两分钟。
+    trigger: WDIO 执行长任务重试、会话生命周期或手机后台恢复 E2E，单例执行超过两分钟。
     impact: 用例仍在正常处理工具或审批请求时，运行器提前报告超时。
-    cause: 两个用例在函数体内设置十五分钟，WDIO 包装器在进入函数体前已读取两分钟的默认值。
-    evidence: CI run 44337227185 的会话生命周期用例在审批期间被截断。用 Mocha 加载两个用例后，修复前注册期限均为 120000 毫秒。
-    fix: 注册用例时设置原有的 900000 毫秒期限。
+    cause: 用例在函数体内设置期限，WDIO 包装器在进入函数体前已读取两分钟的默认值。
+    evidence: CI run 44337227185 的会话生命周期用例在审批期间被截断。CI run 44363189458 的 MRO04-1440 在两分钟时被截断。用 Mocha 加载这些用例，修复前均读到 120000 毫秒。
+    fix: 在注册时设置会话控制原有的十五分钟和手机场景各自原有的三至五分钟，恢复延迟仍在用例内单独核验。
     files:
       - packages/desktop/test/e2e/conversation-session/session-control/manual-review/pending/app-control-long-turn-retry.test.ts
       - packages/desktop/test/e2e/conversation-session/session-control/manual-review/pending/app-control-session-lifecycle.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/mobile/conversation-session-web-remote-recovery.test.ts
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
-    retire: 上游的两个场景在 WDIO 运行前已注册其完整预算。
+    retire: 上游的会话控制和手机恢复场景在 WDIO 运行前已注册各自的完整预算。
 
   - id: OW-P031
     title: 插件 hook 重建测试在 Windows 上要求 POSIX 执行位
@@ -727,3 +728,22 @@ patches:
     regression:
       - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
     retire: 上游回归能在 Windows 和 POSIX 上验证两个模拟器的完整 MCP 入口路径。
+
+  - id: OW-P034
+    title: 本地 HTML 预览测试在目标页面挂载前读取旧 guest
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 在桌面浏览器打开本地 HTML，目标 guest 仍在挂载时，测试开始等待页面标题。
+    impact: 读取上一文档的脚本可能挂起，页面内容回归提前结束。
+    cause: 用例用 guest 内的脚本判断导航是否就绪，首个脚本可能发往即将被替换的文档。
+    evidence: CI run 44363189458 中，WebDriver 读取 document.title 的请求先于 Main 的 attachGuest，三十秒后超时。上游 v3.18.2 使用同一等待方式。
+    fix: 先从桌面当前标签观察到目标标题，再进入 guest 核对文档标题与实际内容。
+    files:
+      - packages/desktop/test/e2e/browser/files/browser-local-html-preview.test.ts
+      - packages/desktop/test/e2e/helpers/browser-side-pane.ts
+    regression:
+      - scripts/test/desktop-e2e-case-config.test.mjs
+    retire: 上游等待目标页面挂载后读取实际文档，本地预览导航回归在云端通过。

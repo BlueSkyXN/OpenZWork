@@ -145,8 +145,8 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
     const title = loseInvalidation
       ? "首次失效通知丢失后15秒内补发恢复原task，重复通知只恢复一次"
       : "真实后台46秒后回前台15秒内显示原task完成内容";
-    it(`MRO04-${width}: ${title}`, async function () {
-      this.timeout(5 * 60_000);
+    // OW-P030：WDIO 在调用函数前读取期限，注册时设置才能涵盖真实后台等待。
+    it(`MRO04-${width}: ${title}`, async () => {
       const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
       if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
         throw new Error("MRO04 requires isolated Electron runner");
@@ -328,10 +328,9 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
         await native.close();
         await restoreHandoffProbes();
       }
-    });
+    }).timeout(5 * 60_000);
   }
-  it("MRO04-06: 运行中短后台持续收帧，回前台复用原socket与bridge完成原task", async function () {
-    this.timeout(4 * 60_000);
+  it("MRO04-06: 运行中短后台持续收帧，回前台复用原socket与bridge完成原task", async () => {
     const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
     if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
       throw new Error("MRO04 requires isolated Electron runner");
@@ -440,9 +439,8 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
       await native.close();
       await restoreHandoffProbes();
     }
-  });
-  it("MRO04-07: 后台多个在途ACK各收到INTERNAL，回前台先探测原socket，桌面离开期间不进失败页", async function () {
-    this.timeout(4 * 60_000);
+  }).timeout(4 * 60_000);
+  it("MRO04-07: 后台多个在途ACK各收到INTERNAL，回前台先探测原socket，桌面离开期间不进失败页", async () => {
     const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
     if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
       throw new Error("MRO04 requires isolated Electron runner");
@@ -626,11 +624,10 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
       await native.close();
       await restoreHandoffProbes();
     }
-  });
+  }).timeout(4 * 60_000);
   for (const width of [1440, 390]) {
     for (const scenario of ["offline", "deleted-task", "removed-host"] as const) {
-      it(`MRO04-cold-${width}-${scenario}: 首次加载和刷新使用可用workspace`, async function () {
-        this.timeout(3 * 60_000);
+      it(`MRO04-cold-${width}-${scenario}: 首次加载和刷新使用可用workspace`, async () => {
         const artifacts = process.env.ZCODE_E2E_ARTIFACT_DIR;
         if (!artifacts || !process.env.ZCODE_E2E_HOME_DIR)
           throw new Error("MRO04 cold start requires isolated Electron runner");
@@ -752,7 +749,7 @@ describe(`${CASE}: 失效通知补发与长后台恢复原项目任务`, () => {
           await writeFile(join(artifacts, `${marker}.json`), JSON.stringify(evidence, null, 2));
           await native.close();
         }
-      });
+      }).timeout(3 * 60_000);
     }
   }
 });

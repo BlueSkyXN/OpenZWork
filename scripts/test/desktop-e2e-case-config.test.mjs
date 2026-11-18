@@ -18,7 +18,7 @@ test("only E2E windows opt into sizes beyond the macOS work area", async () => {
   );
 });
 
-test("long session cases register their deadlines before WDIO invokes the body", async () => {
+test("long session and mobile recovery cases register their deadlines before WDIO invokes the body", async () => {
   // OW-P030：读取真实 Mocha Runnable 的预算，加载用例时不启动 Electron 或模型。
   const loadCases = `
     import Mocha from "mocha";
@@ -40,10 +40,17 @@ test("long session cases register their deadlines before WDIO invokes the body",
       loadCases,
       `${directory}/app-control-long-turn-retry.test.ts`,
       `${directory}/app-control-session-lifecycle.test.ts`,
+      "test/e2e/conversation-session/remote/mobile/conversation-session-web-remote-recovery.test.ts",
     ],
     { cwd: desktop },
   );
-  assert.deepEqual(JSON.parse(stdout), [900_000, 900_000]);
+  assert.deepEqual(
+    JSON.parse(stdout),
+    [
+      900_000, 900_000, 300_000, 300_000, 240_000, 240_000, 180_000, 180_000, 180_000, 180_000,
+      180_000, 180_000,
+    ],
+  );
 });
 
 test("a navigation after the native visibility check preserves the observed foreground event", async (t) => {
@@ -115,5 +122,30 @@ test("the replay server answers each design cross-session prompt", async (t) => 
     });
     assert.equal(response.status, 200, marker);
     assert.match(await response.text(), /upstream-e2e-ok/);
+  }
+});
+
+test("local preview readiness follows the active browser tab across navigation", async () => {
+  // OW-P034：后台标签的旧标题和未提交导航的前台标签均不能放行页面读取。
+  const { JSDOM } = await import("jsdom");
+  const { tsImport } = await import("tsx/esm/api");
+  const { readActiveBrowserTabTitle } = await tsImport(
+    "../../packages/desktop/test/e2e/helpers/browser-side-pane.ts",
+    import.meta.url,
+  );
+  const dom = new JSDOM(`
+    <div data-side-pane-tab-id="browser:previous" data-state="inactive"><span data-side-pane-tab-title>Preview</span></div>
+    <div data-side-pane-tab-id="browser:current" data-state="active"><span data-side-pane-tab-title>Browser</span></div>
+  `);
+  try {
+    const { document } = dom.window;
+    assert.equal(readActiveBrowserTabTitle(document), "Browser");
+    document.querySelector('[data-state="active"] [data-side-pane-tab-title]').textContent =
+      "Preview";
+    assert.equal(readActiveBrowserTabTitle(document), "Preview");
+    document.querySelector('[data-state="active"]').remove();
+    assert.equal(readActiveBrowserTabTitle(document), null);
+  } finally {
+    dom.window.close();
   }
 });

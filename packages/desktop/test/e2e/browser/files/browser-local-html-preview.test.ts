@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { TID_BROWSER_ADDRESS_INPUT, TID_BROWSER_WEBVIEW } from "@zcode/shared/test-ids";
-import { openFirstBrowserTab } from "#e2e/helpers/browser-side-pane";
+import { openFirstBrowserTab, readActiveBrowserTabTitle } from "#e2e/helpers/browser-side-pane";
 import { waitForWorkspaceApp } from "#e2e/helpers/desktop-app";
 import { resolveE2EStorageRoot } from "#e2e/helpers/e2e-runtime-paths";
 
@@ -20,6 +20,15 @@ async function runInGuest(script: string): Promise<unknown> {
     TID_BROWSER_WEBVIEW,
     script,
   );
+}
+
+async function waitForPageTitle(title: string, timeout: number): Promise<void> {
+  // OW-P034：目标 guest 尚未挂载时，旧文档上的 executeJavaScript 可能一直等到 WebDriver 超时。
+  await browser.waitUntil(async () => (await browser.execute(readActiveBrowserTabTitle)) === title, {
+    timeout,
+    timeoutMsg: `当前浏览器标签没有显示页面标题 ${title}`,
+  });
+  expect(await runInGuest("document.title")).toBe(title);
 }
 
 describe("本地 HTML 预览的文件权限边界", () => {
@@ -83,10 +92,7 @@ describe("本地 HTML 预览的文件权限边界", () => {
     const input = await $(`[data-testid="${TID_BROWSER_ADDRESS_INPUT}"]`);
     await input.setValue(fileUrl);
     await browser.keys("Enter");
-    await browser.waitUntil(
-      async () => (await runInGuest("document.title")) === "Local HTML boundary",
-      { timeout: 30_000, timeoutMsg: "本地 HTML 未加载" },
-    );
+    await waitForPageTitle("Local HTML boundary", 30_000);
     expect(await runInGuest("location.protocol")).toBe("zcode-html:");
     expect(await input.getValue()).toBe(canonicalFileUrl);
     await browser.waitUntil(
@@ -138,9 +144,7 @@ describe("本地 HTML 预览的文件权限边界", () => {
       },
     );
     await runInGuest("document.querySelector('#next').click()");
-    await browser.waitUntil(async () => (await runInGuest("document.title")) === "next", {
-      timeout: 15_000,
-    });
+    await waitForPageTitle("next", 15_000);
     await runInGuest("history.back()");
     await browser.waitUntil(async () => (await runInGuest("location.href")) === previewUrl, {
       timeout: 15_000,
