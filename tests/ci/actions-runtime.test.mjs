@@ -373,6 +373,9 @@ test("interactive E2E job names every spec and fixture and re-verifies the run s
     assert.equal(entry.specs, spec);
     assert.equal(JSON.parse(entry["required-cases"]).length, caseCount, `${group}: case count`);
   }
+  const crossSessionFixture =
+    "packages/desktop/test/e2e/fixtures/upstream/browser/browser-design-mode-cross-session.json";
+  assert.equal(byGroup.get("bd-design-cross-session")["replay-fixtures"], crossSessionFixture);
   assert.equal(byGroup.has("bd-design-and-local-html"), false, "旧折叠多 spec 组必须已移除");
   for (const entry of include) {
     // wdio CLI 的 --spec 每次接收一个文件路径（--help 示例：--spec a.js --spec b.js）；

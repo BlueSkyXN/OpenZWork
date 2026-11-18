@@ -357,6 +357,7 @@ entries:
       # 2026-11-16 direct 关联以两端 pane 独立查询与 Host attachment/subscription 记录交叉核对，
       # 进程树快照只作辅助诊断（sharedInstanceKey 同值代填与 generation 相等判据均已废弃）。
       - packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts
+      - packages/desktop/test/e2e/fixtures/upstream/browser/browser-design-mode-cross-session.json
       # CLH 处置（2026-11-16 V2）：上游 settings-client-language-header.test.ts 依赖的
       # /api/v1/client/configs 已随 OZ-D008 删除（其 5 case 保留历史标不适用）；
       # 本自有验收承接保留行为（语言实时切换 + client/configs 零请求反向合同）。

@@ -690,3 +690,22 @@ patches:
     regression:
       - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
     retire: 上游插件重建回归能在 Windows 和 POSIX 上核实 hook 的可执行性。
+
+  - id: OW-P032
+    title: 手机前后台切换记录在页面导航时重复读取已销毁的文档
+    kind: test
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.16.1
+      checked: 3.18.2
+    trigger: 移动浏览器切回前台，可见性检查通过后主框架立即导航。
+    impact: 测试记录报执行上下文已销毁，后续断线恢复流程中断。
+    cause: 等待页面可见后，记录阶段又跨进程读取一次 visibilityState。
+    evidence: CI run 44337227185 的 MRO04-1440 在 show 的记录步骤失败。定向回归在已确认状态后模拟导航，复现同一异常。
+    fix: 等待真实文档达到目标可见状态，随后直接记录已确认的值。
+    files:
+      - packages/desktop/test/e2e/helpers/web-remote-visibility-browser.ts
+    regression:
+      - scripts/test/desktop-e2e-case-config.test.mjs
+    retire: 上游导航与可见性记录共用一次成功观察，真实前后台恢复场景通过。

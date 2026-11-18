@@ -414,7 +414,7 @@ jobs:
             required-cases: '["超时返回 capture_timeout；底层未结算前再请求为 capture_in_progress；结算后可再取帧", "底层 capturePage 永不结束：上限前一直 capture_in_progress，超过 2× deadline 强制释放后能再取帧"]'
           - spec-group: bd-design-cross-session
             specs: ./test/e2e/browser/design/browser-design-mode-cross-session.test.ts
-            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-local-html-preview.json,packages/desktop/test/e2e/fixtures/upstream/browser/browser-download-navigation-address.json
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-design-mode-cross-session.json
             required-cases: '["A 点选，切到 B 再切回 A 截图只有一张；移除引用后截图全部撤掉"]'
           - spec-group: bd-local-html-preview
             specs: ./test/e2e/browser/files/browser-local-html-preview.test.ts

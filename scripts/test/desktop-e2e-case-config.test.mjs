@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
+import { fileURLToPath } from "node:url";
 
 const desktop = new URL("../../packages/desktop/", import.meta.url);
 
@@ -41,4 +44,76 @@ test("long session cases register their deadlines before WDIO invokes the body",
     { cwd: desktop },
   );
   assert.deepEqual(JSON.parse(stdout), [900_000, 900_000]);
+});
+
+test("a navigation after the native visibility check preserves the observed foreground event", async (t) => {
+  // OW-P032：在可见性已确认后切换文档，旧上下文不能再读取，仍应保存这次前台事实。
+  const { chromium } = await import("playwright-core");
+  const { tsImport } = await import("tsx/esm/api");
+  const { createWebRemoteVisibilityBrowser } = await tsImport(
+    "../../packages/desktop/test/e2e/helpers/web-remote-visibility-browser.ts",
+    import.meta.url,
+  );
+  const dir = await mkdtemp(join(tmpdir(), "openzwork-visibility-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const page = {
+    on() {},
+    setDefaultTimeout() {},
+    async bringToFront() {},
+    waitForFunction: t.mock.fn(async () => {}),
+    async evaluate() {
+      throw new Error("Execution context was destroyed");
+    },
+  };
+  t.mock.method(chromium, "launch", async () => ({
+    newContext: async () => ({ newPage: async () => page, close: async () => {} }),
+    close: async () => {},
+  }));
+  const native = await createWebRemoteVisibilityBrowser(dir);
+  try {
+    await native.show();
+    assert.equal(page.waitForFunction.mock.callCount(), 1);
+    assert.equal(page.waitForFunction.mock.calls[0].arguments[1], "visible");
+    const event = JSON.parse(await readFile(join(dir, "MRO03-native-stages.jsonl"), "utf8"));
+    assert.deepEqual(event, { stage: "native-foreground", detail: { visibility: "visible" } });
+  } finally {
+    await native.close();
+  }
+});
+
+test("the replay server answers each design cross-session prompt", async (t) => {
+  const { tsImport } = await import("tsx/esm/api");
+  const { startUpstreamReplayServer } = await tsImport(
+    "../../packages/desktop/test/e2e/helpers/upstream-replay-server.ts",
+    import.meta.url,
+  );
+  const dir = await mkdtemp(join(tmpdir(), "openzwork-design-replay-"));
+  const fixture = new URL(
+    "test/e2e/fixtures/upstream/browser/browser-design-mode-cross-session.json",
+    desktop,
+  );
+  const server = await startUpstreamReplayServer({
+    artifactPath: join(dir, "network.json"),
+    fixturePaths: [fileURLToPath(fixture)],
+  });
+  t.after(async () => {
+    await server.stop();
+    await rm(dir, { recursive: true, force: true });
+  });
+  for (const marker of [
+    "E2E_DESIGN_CROSS_SESSION_A",
+    "E2E_DESIGN_CROSS_SESSION_B",
+    "E2E_DESIGN_AMBIENT_DESKTOP",
+  ]) {
+    const response = await fetch(server.baseUrl + "/messages", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        stream: true,
+        messages: [{ role: "user", content: marker + ': Reply with exactly "upstream-e2e-ok".' }],
+      }),
+    });
+    assert.equal(response.status, 200, marker);
+    assert.match(await response.text(), /upstream-e2e-ok/);
+  }
 });
