@@ -6,7 +6,7 @@ import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConfig } from "@zcode/adapters/config";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
@@ -1950,16 +1950,9 @@ describe("ZCode plugins", () => {
         },
       });
       expect(server?.args?.at(-2)).toBe(ZCODE_PLUGIN_HOST_COMMAND);
-      expect(server?.args?.at(-1)).toContain(
-        join(
-          "cache",
-          "zcode-plugins-official",
-          "ios-simulator",
-          "0.1.0",
-          "dist",
-          "mcp",
-          "server.js",
-        ),
+      // OW-P033：清单保留正斜杠。按系统路径语义核对完整入口，包括本次插件缓存根。
+      expect(normalize(server?.args?.at(-1) ?? "")).toBe(
+        join(expectedRoot, "dist", "mcp", "server.js"),
       );
       await expect(
         readFile(
@@ -2047,16 +2040,9 @@ describe("ZCode plugins", () => {
         expect(server?.env).not.toHaveProperty(unusedEnv);
       }
       expect(server?.args?.at(-2)).toBe(ZCODE_PLUGIN_HOST_COMMAND);
-      expect(server?.args?.at(-1)).toContain(
-        join(
-          "cache",
-          "zcode-plugins-official",
-          "android-emulator",
-          "0.1.1",
-          "dist",
-          "mcp",
-          "server.js",
-        ),
+      // OW-P033：清单保留正斜杠。按系统路径语义核对完整入口，包括本次插件缓存根。
+      expect(normalize(server?.args?.at(-1) ?? "")).toBe(
+        join(expectedRoot, "dist", "mcp", "server.js"),
       );
       expect(existsSync(join(expectedRoot, ".zcode-plugin-seed.json"))).toBe(true);
       expect(existsSync(join(expectedRoot, "dist", "mcp", "server.js"))).toBe(

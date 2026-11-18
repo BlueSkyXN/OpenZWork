@@ -709,3 +709,21 @@ patches:
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游导航与可见性记录共用一次成功观察，真实前后台恢复场景通过。
+
+  - id: OW-P033
+    title: 模拟器插件回归在 Windows 上把等价的 MCP 入口路径判为错误
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 在 Windows 上启用内置 iOS 或 Android 模拟器插件并解析 MCP 启动参数。
+    impact: 插件根目录与入口文件均正确，核心检查却在比对路径时失败。
+    cause: 清单用正斜杠拼接插件根目录与入口；测试用系统分隔符构造子串，并逐字符比较。
+    evidence: CI run 44358403458 在 iOS 插件的 server.js 参数处失败。上游 v3.18.2 的两个模拟器回归使用同样的断言。
+    fix: 按当前系统规范化实际入口路径，和本次缓存根下的完整预期文件名比较。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    retire: 上游回归能在 Windows 和 POSIX 上验证两个模拟器的完整 MCP 入口路径。
