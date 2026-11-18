@@ -825,7 +825,7 @@ describe("workspace presentation admission", () => {
       const output = new PassThrough();
       const policy = Promise.withResolvers<void>();
       const catalog = Promise.withResolvers<void>();
-      const firstAccount = Promise.withResolvers<void>();
+      const firstRefresh = Promise.withResolvers<void>();
       const entered: string[] = [];
       const replies: Array<{ id: string; result: { revision: number } }> = [];
       const workspace = {
@@ -862,10 +862,10 @@ describe("workspace presentation admission", () => {
             expect(policyApplied).toBe(true);
             expect(message.params).toEqual({ workspace });
             await catalog.promise;
-          } else if (message.id === "account-1") {
-            await firstAccount.promise;
+          } else if (message.id === "refresh-1") {
+            await firstRefresh.promise;
             revision = 1;
-          } else if (message.id === "account-2") {
+          } else if (message.id === "refresh-2") {
             revision = 2;
           } else if (message.id === "history") {
             expect(message.params).toEqual({
@@ -890,8 +890,9 @@ describe("workspace presentation admission", () => {
               method: zcodeProtocolMethods.workspaceReadPresentation,
               params: { workspace },
             }),
-            frame({ id: "account-1", method: zcodeProtocolMethods.providerUpdateAccountConfig }),
-            frame({ id: "account-2", method: zcodeProtocolMethods.providerUpdateAccountConfig }),
+            // OpenZWork 通过 Registry 刷新 Provider 配置，保留连续刷新与历史订阅的顺序断言。
+            frame({ id: "refresh-1", method: zcodeProtocolMethods.providerRefreshRegistry }),
+            frame({ id: "refresh-2", method: zcodeProtocolMethods.providerRefreshRegistry }),
             frame({ id: "refresh", method: zcodeProtocolMethods.providerRefreshRegistry }),
           ].join(""),
         );
@@ -899,15 +900,15 @@ describe("workspace presentation admission", () => {
         expect(entered).toEqual(["policy"]);
         policy.resolve();
         await new Promise<void>((resolve) => setImmediate(resolve));
-        expect(entered).toEqual(["policy", "catalog", "account-1"]);
+        expect(entered).toEqual(["policy", "catalog", "refresh-1"]);
         expect(replies.map((reply) => reply.id)).not.toContain("history");
-        firstAccount.resolve();
+        firstRefresh.resolve();
         await new Promise<void>((resolve) => setImmediate(resolve));
         expect(entered).toEqual([
           "policy",
           "catalog",
-          "account-1",
-          "account-2",
+          "refresh-1",
+          "refresh-2",
           "refresh",
           "history",
         ]);
@@ -918,7 +919,7 @@ describe("workspace presentation admission", () => {
         expect(replies.map((reply) => reply.id)).not.toContain("catalog");
       } finally {
         policy.resolve();
-        firstAccount.resolve();
+        firstRefresh.resolve();
         catalog.resolve();
         input.end();
         await connection.waitForClose();
@@ -1015,14 +1016,14 @@ describe("workspace presentation admission", () => {
       },
     });
     connection.start();
-    input.write(frame({ id: "config", method: zcodeProtocolMethods.providerUpdateAccountConfig }));
+    input.write(frame({ id: "config", method: zcodeProtocolMethods.providerRefreshRegistry }));
     input.write(frame({ id: "catalog", method: zcodeProtocolMethods.workspaceReadPresentation }));
     await new Promise<void>((resolve) => setImmediate(resolve));
     controller.abort();
     await connection.waitForClose();
     gate.resolve();
     await new Promise<void>((resolve) => setImmediate(resolve));
-    expect(entered).toEqual([zcodeProtocolMethods.providerUpdateAccountConfig]);
+    expect(entered).toEqual([zcodeProtocolMethods.providerRefreshRegistry]);
     input.destroy();
   });
 
