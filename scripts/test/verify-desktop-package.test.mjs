@@ -10,7 +10,6 @@ import {
   REQUIRED_BUNDLED_PLUGIN_PACKAGES,
   REQUIRED_PLUGIN_ENTRY_POINTS,
   REQUIRED_RENDERER_ENTRIES,
-  REQUIRED_RUNTIME_PATHS,
   verifyDesktopPackage,
 } from "../verify-desktop-package.mjs";
 import {
@@ -42,13 +41,22 @@ async function temp() {
 /** 合成最小桌面包：真实 asar（真实 @electron/asar 打包）+ 版本元数据 + 资源件。 */
 async function syntheticPackage(
   root,
-  { buildCommitId = "a1b2c3d4", version = "3.18.2+openzwork.1", flavor = "production" } = {},
+  {
+    buildCommitId = "a1b2c3d4",
+    version = "3.18.2+openzwork.1",
+    flavor = "production",
+    platform = "macos-arm64",
+  } = {},
 ) {
   // 目录名必须与被核验身份的 productName 一致，否则脚本解析不到包内路径。
   const productName = desktopProductIdentities[flavor].productName;
-  const resources = join(root, `mac-arm64/${productName}.app/Contents/Resources`);
+  const resources =
+    platform === "windows-amd64"
+      ? join(root, "win-unpacked", "resources")
+      : join(root, `mac-arm64/${productName}.app/Contents/Resources`);
   await mkdir(join(resources, "licenses"), { recursive: true });
-  await mkdir(join(root, `mac-arm64/${productName}.app/Contents/MacOS`), { recursive: true });
+  if (platform === "macos-arm64")
+    await mkdir(join(root, `mac-arm64/${productName}.app/Contents/MacOS`), { recursive: true });
   const staging = join(root, "staging");
   await mkdir(join(staging, "out/metadata"), { recursive: true });
   await mkdir(join(staging, "out/main"), { recursive: true });
@@ -99,8 +107,9 @@ async function syntheticPackage(
       await writeFile(entryPath, "// mcp server\n");
     }
   }
-  for (const relative of REQUIRED_RUNTIME_PATHS) {
-    if (relative === "glm/zcode.cjs") continue;
+  const runtimePaths = ["glm/node-runtime/npm", "tools/ripgrep", "tools/ugrep"];
+  if (platform === "macos-arm64") runtimePaths.push("tools/bfs");
+  for (const relative of runtimePaths) {
     const target = join(resources, relative);
     await mkdir(join(target, ".."), { recursive: true });
     await writeFile(target, "binary\n");
@@ -368,4 +377,28 @@ test("verify-desktop-package rejects a missing runtime library", async () => {
     await rm(packageRoot, { recursive: true, force: true });
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test("Windows package verification requires its native search tools and accepts a package without bfs", async (t) => {
+  const packageRoot = await temp();
+  t.after(() => rm(packageRoot, { recursive: true, force: true }));
+  await syntheticPackage(packageRoot, { platform: "windows-amd64" });
+  const root = await projectRoot(packageRoot);
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const options = {
+    platform: "windows-amd64",
+    root,
+    distRoot: "packages/desktop/dist-pkg",
+    extractAsarFile,
+    env: ENV_PRODUCTION,
+  };
+  const report = await verifyDesktopPackage(options);
+  assert.equal(report.ok, true, JSON.stringify(report.failures));
+  assert.equal(Object.hasOwn(report.runtimePaths, "tools/bfs"), false);
+  assert.equal(report.runtimePaths["tools/ripgrep"], true);
+  assert.equal(report.runtimePaths["tools/ugrep"], true);
+  await rm(join(root, options.distRoot, "win-unpacked/resources/tools/ugrep"));
+  const missing = await verifyDesktopPackage(options);
+  assert.equal(missing.ok, false);
+  assert.deepEqual(missing.failures, ["required runtime path missing: tools/ugrep"]);
 });

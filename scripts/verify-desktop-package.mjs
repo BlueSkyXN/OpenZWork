@@ -12,6 +12,7 @@ import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { getDesktopVersion } from "./openzwork-version.mjs";
+import { getNativeSearchRuntimeToolIdsForPlatform } from "./native-search-tools-config.mjs";
 import { resolveDesktopProductIdentity } from "../packages/desktop/scripts/desktop-product-identity.mjs";
 
 // 上游 3.18.2 的 Start Plan / OAuth 官方链 / 加速卡 / microphone 指南 /
@@ -99,13 +100,11 @@ export const REQUIRED_PLUGIN_ENTRY_POINTS = {
 };
 
 /** 运行时材料：agent 运行时、内置 Node/npm、原生搜索工具。 */
-export const REQUIRED_RUNTIME_PATHS = [
-  "glm/zcode.cjs",
-  "glm/node-runtime/npm",
-  "tools/bfs",
-  "tools/ripgrep",
-  "tools/ugrep",
-];
+function requiredRuntimePaths(platform) {
+  // Windows 发行包只携带 ripgrep 和 ugrep，核验与打包共用原生搜索工具清单。
+  const tools = getNativeSearchRuntimeToolIdsForPlatform(platform.split("-")[0]);
+  return ["glm/zcode.cjs", "glm/node-runtime/npm", ...tools.map((tool) => `tools/${tool}`)];
+}
 
 async function sha256(path) {
   const hash = createHash("sha256");
@@ -311,7 +310,7 @@ export async function verifyDesktopPackage({
 
   // 运行库与声明：agent 运行时、内置 Node/npm、原生搜索工具。
   const runtimePaths = {};
-  for (const relative of REQUIRED_RUNTIME_PATHS) {
+  for (const relative of requiredRuntimePaths(platform)) {
     runtimePaths[relative] = await exists(join(resources, relative));
     if (!runtimePaths[relative]) failures.push(`required runtime path missing: ${relative}`);
   }
