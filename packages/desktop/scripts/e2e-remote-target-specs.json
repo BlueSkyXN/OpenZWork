@@ -41,7 +41,6 @@
   "conversation-session/remote/connection/conversation-session-ssh-remote-cold-reconnect.test.ts",
   "conversation-session/remote/connection/conversation-session-ssh-remote-colon-username.test.ts",
   "conversation-session/remote/connection/conversation-session-ssh-remote-connection-management.test.ts",
-  "conversation-session/remote/connection/conversation-session-ssh-remote-connection-p0.test.ts",
   "conversation-session/remote/connection/conversation-session-ssh-remote-core-start-failure.test.ts",
   "conversation-session/remote/connection/conversation-session-ssh-remote-core-unresponsive.test.ts",
   "conversation-session/remote/connection/conversation-session-ssh-remote-development-p0.test.ts",

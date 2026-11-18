@@ -59,6 +59,11 @@ export const CATEGORIES = [
 
 // 用户级数据根改名（家目录下的 .zcode 改为 .openzwork）的确定性规则；只差这些改名的上游文件归为 upstream-identity。
 export const IDENTITY_RULES = [
+  // 上游夹具用 fixture.home 代替 homedir()，这两处是用户数据库。
+  [
+    /(join\(fixture\.home, ["'])\.zcode(?=\/(?:cli\/db\/db\.sqlite|v2\/tasks-index\.sqlite)["']\))/g,
+    "$1.openzwork",
+  ],
   [/((?:~|\$HOME|\$\{HOME\}|%USERPROFILE%)[/\\])\.zcode(?![\w-])/g, "$1.openzwork"],
   [/((?:homedir|resolveUserHomeDir)\(\)\s*,\s*["'])\.zcode(["'])/g, "$1.openzwork$2"],
 ];

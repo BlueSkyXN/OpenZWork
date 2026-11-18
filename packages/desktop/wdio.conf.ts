@@ -2237,7 +2237,7 @@ function forceFinalizeE2ERunnerFromGuard() {
     }
   })();
 }
-async function resetE2EHome(specs: string[]) {
+export async function resetE2EHome(specs: string[]) {
   await removeE2EHomeWithRetry();
   mkdirSync(E2E_HOME_DIR, { recursive: true });
   // 先拷官方插件缓存，再写各 spec 的 fixture，避免覆盖 fixture 自己写入的插件状态。

@@ -16,7 +16,7 @@ describe("E2E Windows runtime host preflight", () => {
 
     const packagedIndex = body.indexOf("E2E_PACKAGED_APP_BINARY_PATH");
     const ensureIndex = body.indexOf("ensureWindowsRuntimeHost();");
-    const skipBuildIndex = body.indexOf("shouldReuseDesktopE2EBuild(");
+    const skipBuildIndex = body.indexOf('process.env.ZCODE_E2E_SKIP_BUILD === "1"');
     expect(packagedIndex).toBeGreaterThan(-1);
     expect(ensureIndex).toBeGreaterThan(packagedIndex);
     expect(skipBuildIndex).toBeGreaterThan(ensureIndex);

@@ -109,7 +109,7 @@ describe("Windows E2E shard runner", () => {
       ZCODE_E2E_SSH_CONTAINER: "zcode-r3-server-example",
     });
     expect(harnessSpecs).toContain(
-      "./test/e2e/conversation-session/remote/connection/conversation-session-ssh-remote-connection-p0.test.ts",
+      "./test/e2e/conversation-session/remote/connection/conversation-session-ssh-remote-connection-management.test.ts",
     );
     expect(harnessSpecs).toContain(
       "./test/e2e/conversation-session/remote/configuration/conversation-session-r3-model-switch.test.ts",

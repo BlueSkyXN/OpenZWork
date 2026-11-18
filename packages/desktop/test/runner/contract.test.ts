@@ -1,108 +1,124 @@
-import { readFile } from "node:fs/promises";
-import { runInNewContext } from "node:vm";
-import ts from "typescript";
-import { describe, expect, it, vi } from "vitest";
+import { execFile } from "node:child_process";
+import { existsSync } from "node:fs";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { describe, expect, it } from "vitest";
 
-async function runReset(specs: string[], env: Record<string, string> = {}) {
-  const source = await readFile(new URL("../../wdio.conf.ts", import.meta.url), "utf8");
-  const ast = ts.createSourceFile("wdio.conf.ts", source, ts.ScriptTarget.Latest, true);
-  const node = ast.statements.find(
-    (item): item is ts.FunctionDeclaration =>
-      ts.isFunctionDeclaration(item) && item.name?.text === "resetE2EHome",
-  );
-  if (!node) throw new Error("WDIO resetE2EHome is missing");
-  const mkdir = vi.fn(async () => undefined);
-  const writeFile = vi.fn(async () => undefined);
-  const seedPersonalProviderConfig = vi.fn(async (_path: string, _config: unknown) => undefined);
-  const seedPersonalDefaultModelSelection = vi.fn(async () => undefined);
-  const seedE2EWorkerModelStreamConfig = vi.fn();
-  const removeE2EHomeWithRetry = vi.fn(async () => undefined);
-  const reset = runInNewContext(
-    ts.transpileModule(node.getText(ast), { compilerOptions: { target: ts.ScriptTarget.ES2022 } })
-      .outputText + ";resetE2EHome;",
-    {
-      process: { env },
-      mkdir,
-      writeFile,
-      seedPersonalProviderConfig,
-      seedPersonalDefaultModelSelection,
-      seedE2EWorkerModelStreamConfig,
-      removeE2EHomeWithRetry,
-      E2E_APP_CONFIG_DIR: "/isolated/.openzwork/v2",
-      E2E_STORAGE_ROOT: "/isolated/.openzwork",
-      E2E_APP_SETTINGS_FILE: "/isolated/.openzwork/v2/setting.json",
-      E2E_APP_PROVIDER_CONFIG_FILE: "/isolated/.openzwork/v2/provider_config.json",
-      resolve: (...parts: string[]) => parts.join("/"),
-      readPositiveIntegerEnv: (name: string) => (env[name] ? Number(env[name]) : undefined),
-    },
-  ) as (specs: string[]) => Promise<void>;
-  await reset(specs);
-  return {
-    mkdir,
-    writeFile,
-    seedPersonalProviderConfig,
-    seedPersonalDefaultModelSelection,
-    seedE2EWorkerModelStreamConfig,
-    removeE2EHomeWithRetry,
+const exec = promisify(execFile);
+const desktopDir = fileURLToPath(new URL("../../", import.meta.url));
+const loadWorkerHome = `
+  import { FileSystemPathService } from "@wdio/config/node";
+  const config = await new FileSystemPathService().loadFile(new URL("./wdio.conf.ts", import.meta.url).href);
+  await config.resetE2EHome([process.argv[1]]);
+`;
+interface SeededConfig {
+  defaultModelSelection: { providerId: string; modelId: string };
+  providerConfigRules: { providerRules: Array<{ providerId: string }> };
+  modelConfigRules: {
+    providerModelRules: Array<{
+      providerId: string;
+      modelId: string;
+      config: {
+        properties: { contextWindow: number };
+        optionSpecs: { maxOutputTokens: { max: number } };
+      };
+    }>;
   };
 }
 
-const providerEnv = {
-  E2E_PROVIDER_BASE_URL: "http://127.0.0.1:1/v1",
-  E2E_PROVIDER_MODEL: "fixture-model",
-};
+async function runReset(spec: string, env: Record<string, string> = {}) {
+  const home = await mkdtemp(join(tmpdir(), ".e2e-home-runner-"));
+  const stale = join(home, "previous-worker");
+  try {
+    await writeFile(stale, "previous worker");
+    // 旧测试只摘出 resetE2EHome 的函数体，实际初始化已拆入多个 helper。
+    // 使用 WDIO 自己的配置加载器，在隔离子进程内只执行真实的 HOME 准备步骤。
+    const systemEnv = Object.fromEntries(
+      Object.entries(process.env).filter(([key]) =>
+        /^(path|systemroot|systemdrive|windir|tmp|temp|tmpdir)$/i.test(key),
+      ),
+    );
+    await exec(
+      process.execPath,
+      ["--import", "tsx", "--input-type=module", "-e", loadWorkerHome, spec],
+      {
+        cwd: desktopDir,
+        env: {
+          ...systemEnv,
+          HOME: home,
+          USERPROFILE: home,
+          ZCODE_E2E_HOME_DIR: home,
+          ZCODE_E2E_PACKAGED_APP_PATH: process.execPath,
+          E2E_PROVIDER_PRESET: "env",
+          E2E_PROVIDER_HTTP_MODE: "capture",
+          E2E_PROVIDER_BASE_URL: "http://127.0.0.1:1",
+          E2E_PROVIDER_MODEL: "fixture-model",
+          E2E_PROVIDER_API_KEY: "xxx",
+          ...env,
+        },
+      },
+    );
+    const dir = join(home, ".openzwork", "v2");
+    const providerFile = join(dir, "provider_config.json");
+    const provider: SeededConfig | null = existsSync(providerFile)
+      ? JSON.parse(await readFile(providerFile, "utf8")).config
+      : null;
+    return {
+      cleaned: !existsSync(stale),
+      settings: JSON.parse(await readFile(join(dir, "setting.json"), "utf8")),
+      hasCredentials: existsSync(join(dir, "credentials.json")),
+      provider,
+    };
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
+}
 
 describe("desktop-e2e-runner 隔离初始化合同", () => {
-  it("先清理所属测试目录，只写本地偏好，缺 Provider 配置时不注入账号或模型", async () => {
-    const result = await runReset(["smoke.test.ts"]);
-    expect(result.removeE2EHomeWithRetry).toHaveBeenCalledOnce();
-    expect(result.writeFile).toHaveBeenCalledExactlyOnceWith(
-      "/isolated/.openzwork/v2/setting.json",
-      JSON.stringify({ locale: "en-US" }),
-    );
-    expect(result.seedPersonalProviderConfig).not.toHaveBeenCalled();
-    expect(result.seedPersonalDefaultModelSelection).not.toHaveBeenCalled();
-    expect(result.removeE2EHomeWithRetry.mock.invocationCallOrder[0]).toBeLessThan(
-      result.writeFile.mock.invocationCallOrder[0]!,
-    );
+  it("清理旧 worker 的 HOME，缺少捕获凭据时只写本地启动设置", async () => {
+    const result = await runReset("smoke.test.ts");
+    expect(result.cleaned).toBe(true);
+    expect(result.settings).toMatchObject({ providerFamilyConnectionSelections: {} });
+    expect(result.hasCredentials).toBe(false);
+    expect(result.provider).toBeNull();
   });
+
   it.each([
-    ["conversation-session-web-remote-unread.test.ts", 128000, undefined],
-    ["conversation-session-compact-auto.test.ts", 240, 80],
+    ["conversation-session-web-remote-unread.test.ts", {}, 128000, 32000],
+    ["conversation-session-compact-auto.test.ts", {}, 240, 80],
+    [
+      "conversation-session-compact-auto.test.ts",
+      {
+        ZCODE_E2E_UPSTREAM_CONTEXT_WINDOW: "64000",
+        ZCODE_E2E_UPSTREAM_MAX_OUTPUT_TOKENS: "4096",
+      },
+      64000,
+      4096,
+    ],
   ] as const)(
-    "%s 保持目标场景的上下文，并从同一 Provider 设置默认模型",
-    async (spec, contextWindow, maxOutputTokens) => {
-      const result = await runReset([spec], providerEnv);
-      const config = result.seedPersonalProviderConfig.mock.calls[0] as unknown as [
-        string,
-        { models: object[]; apiKey: string },
-      ];
-      expect(config[0]).toBe("/isolated/.openzwork/v2/provider_config.json");
-      expect(config[1].apiKey).toBe("");
-      expect(config[1].models).toEqual([
-        {
-          id: "fixture-model",
-          contextWindow,
-          ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
-        },
-      ]);
-      expect(result.seedPersonalDefaultModelSelection).toHaveBeenCalledWith(config[0], {
-        providerId: "e2e-personal",
+    "%s 为默认模型写入当前场景的上下文及输出上限 %j",
+    async (spec, env, contextWindow, maxOutputTokens) => {
+      const { provider } = await runReset(spec, {
+        E2E_PROVIDER_API_KEY: "synthetic-runner-fixture",
+        ...env,
+      });
+      expect(provider?.defaultModelSelection).toMatchObject({
+        providerId: "e2e-upstream",
         modelId: "fixture-model",
       });
+      expect(provider?.providerConfigRules.providerRules).toContainEqual(
+        expect.objectContaining({ providerId: "e2e-upstream" }),
+      );
+      const model = provider?.modelConfigRules.providerModelRules.find(
+        (rule) =>
+          rule.providerId === provider.defaultModelSelection.providerId &&
+          rule.modelId === provider.defaultModelSelection.modelId,
+      );
+      expect(model?.config.properties.contextWindow).toBe(contextWindow);
+      expect(model?.config.optionSpecs.maxOutputTokens.max).toBe(maxOutputTokens);
     },
   );
-  it("显式上下文覆盖优先于 Compact 的小窗口", async () => {
-    const result = await runReset(["conversation-session-compact-auto.test.ts"], {
-      ...providerEnv,
-      ZCODE_E2E_UPSTREAM_CONTEXT_WINDOW: "64000",
-      ZCODE_E2E_UPSTREAM_MAX_OUTPUT_TOKENS: "4096",
-    });
-    expect(result.seedPersonalProviderConfig).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        models: [{ id: "fixture-model", contextWindow: 64000, maxOutputTokens: 4096 }],
-      }),
-    );
-  });
 });

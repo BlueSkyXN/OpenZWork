@@ -21,8 +21,8 @@ it("生成的本地 fixture 使用路径归属，不把目录哈希写成显式�
   fixture.home = await mkdtemp(join(tmpdir(), "large-task-fixture-"));
   const workspace = join(fixture.home, "workspace");
   await mkdir(workspace);
-  const cliPath = join(fixture.home, ".zcode/cli/db/db.sqlite");
-  const indexPath = join(fixture.home, ".zcode/v2/tasks-index.sqlite");
+  const cliPath = join(fixture.home, ".openzwork/cli/db/db.sqlite");
+  const indexPath = join(fixture.home, ".openzwork/v2/tasks-index.sqlite");
   for (const [path, schema] of [
     [cliPath, "apps/zcode-cli/packages/adapters/src/storage/session-store/schema.baseline.sql"],
     [indexPath, "packages/services/src/project-storage/schema.baseline.sql"],

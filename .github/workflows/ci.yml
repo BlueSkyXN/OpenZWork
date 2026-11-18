@@ -71,6 +71,10 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=6144
 
+      - name: Agent process exit diagnostics (Node test runner)
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/desktop test:agent-crash-diagnostic
+
       - name: Root lint
         if: matrix.lane == 'regressions'
         run: pnpm lint
