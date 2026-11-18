@@ -9,7 +9,7 @@
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, readdir, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 /** 明确的占位域名：仅用于验收构建，正式分发必须替换。 */
@@ -117,7 +117,7 @@ export async function writeAgentDistManifest({
   const manifest = {
     version,
     platform,
-    tarball: tarball.split("/").pop(),
+    tarball: basename(tarball),
     tarballSha256: await sha256(tarball),
     tarballSize: (await readFile(tarball)).length,
     baseUrl,
