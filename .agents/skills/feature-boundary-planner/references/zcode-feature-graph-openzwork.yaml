@@ -172,10 +172,10 @@ nodes:
     docs:
       - docs/testing/conversation-session-e2e-coverage-matrix.md
     codeSeeds:
-      - file: packages/desktop/test/e2e/conversation-session/conversation-session-toolsearch-lifecycle.test.ts
-      - file: packages/desktop/test/e2e/conversation-session/conversation-session-toolsearch-cli.test.ts
-      - file: packages/desktop/test/e2e/conversation-session/conversation-session-toolsearch-tui.test.ts
-      - file: packages/desktop/test/e2e/conversation-session/conversation-session-toolsearch-catalog.test.ts
+      - file: packages/desktop/test/e2e/conversation-session/tools/conversation-session-toolsearch-lifecycle.test.ts
+      - file: packages/desktop/test/e2e/conversation-session/tools/conversation-session-toolsearch-cli.test.ts
+      - file: packages/desktop/test/e2e/conversation-session/tools/conversation-session-toolsearch-tui.test.ts
+      - file: packages/desktop/test/e2e/conversation-session/tools/conversation-session-toolsearch-catalog.test.ts
   - id: capability.preview-pane-image-actions
     kind: capability
     label: Preview Pane image copy, download and draft file reference
@@ -3431,7 +3431,7 @@ nodes:
         file: packages/services/src/plugin-sync/pluginSyncService.ts
   - id: capability.workspace-project-plugin-scope
     kind: capability
-    label: Claude-shaped User and Workspace Plugin scope with open ZCode config
+    label: User and Workspace Plugin scope with open ZCode config
     aliases:
       - Workspace-level Plugin
       - project Plugin scope

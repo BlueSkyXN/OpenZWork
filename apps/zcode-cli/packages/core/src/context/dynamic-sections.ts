@@ -1,5 +1,6 @@
 import { resolveSystemPromptSection, type SystemPromptSettings } from "@zcode/shared";
 import type { ContextBuilderConfig, ContextSection } from "./types.js";
+import { TOTAL_TOKENS_SYSTEM_LINE } from "./total-tokens.js";
 import { estimateTokens } from "./utils.js";
 
 const COMMUNICATION_PROMPTS = {
@@ -27,24 +28,24 @@ const COMMUNICATION_PROMPTS = {
 const CONTEXT_MANAGEMENT_PROMPTS = {
   default: [
   "# Context management",
-  "When the conversation grows long, some or all of the current context is summarized; the summary, along with any remaining unsummarized context, is provided in the next context window so work can continue \u2014 you don't need to wrap up early or hand off mid-task.",
+  "When the conversation grows long, some or all of the current context is summarized; the summary, along with any remaining unsummarized context, is provided in the next context window so work can continue — you don't need to wrap up early or hand off mid-task.",
   ].join("\n"),
+  // OpenZWork v3.18.0 同步裁定：persistence 段只保留 act-dont-rederive 一行；
+  // 原 autonomy 四段（自主运行/例外/收尾检查/系统状态命令）随本裁定移除。
   additional: [
     "When you have enough information to act, act. Do not re-derive facts already established in the conversation, re-litigate a decision the user has already made, or narrate options you will not pursue. If you are weighing a choice, give a recommendation, not an exhaustive survey",
-    "",
-    "You are operating autonomously. The user is not watching in real time and cannot answer questions mid-task, so asking 'Want me to\u2026?' or 'Shall I\u2026?' will block the work. For reversible actions that follow from the original request, proceed without asking. Stop only for destructive actions or genuine scope changes the user must decide. Offering follow-ups after the task is done is fine; asking permission before doing the work is not.",
-    "",
-    "Exception: when the user is describing a problem, asking a question, or thinking out loud rather than requesting a change, the deliverable is your assessment. Report your findings and stop. Don't apply a fix until they ask for one.",
-    "",
-    "Before ending your turn, check your last paragraph. If it is a plan, an analysis, a question, a list of next steps, or a promise about work you have not done ('I'll\u2026', 'let me know when\u2026'), do that work now with tool calls. That includes retrying after errors and gathering missing information yourself. Do not stop because the context or session is long. End your turn only when the task is complete or you are blocked on input only the user can provide.",
-    "",
-    "Before running a command that changes system state \u2014 restarts, deletes, config edits \u2014 check that the evidence actually supports that specific action. A signal that pattern-matches to a known failure may have a different cause.",
   ].join("\n"),
 } as const;
 
 export function buildSessionGuidanceSection(toolNames: readonly string[], hasSkills = false): ContextSection | null {
   const tools = new Set(toolNames);
   const lines = ["# Session-specific guidance"];
+  // 插件发现工具已改为 deferred，暂不注入插件推荐指导段。
+  // if (tools.has("SearchPlugins") && tools.has("SuggestPluginInstall")) {
+  //   lines.push(
+  //     "- Check existing capabilities first. When an official plugin would materially help the user's task, proactively use SearchPlugins, then SuggestPluginInstall with a concrete reason. Do not invent plugins or repeat skipped suggestions. The confirmation card owns installation approval. Installed plugins are usable only after activation is ready.",
+  //   );
+  // }
 
   // 当前不输出 Agent 指导段。
   // if (tools.has("Agent")) {
@@ -83,7 +84,9 @@ export function getCommunicationPrompt(): string {
   ].join("\n");
 }
 export function getExecutionPrompt(): string {
-  return "For actions that are hard to reverse or outward-facing, confirm first unless durably authorized or explicitly told to proceed without asking; approval in one context doesn't extend to the next. Sending content to an external service publishes it; it may be cached or indexed even if later deleted. Before deleting or overwriting, look at the target \u2014 if what you find contradicts how it was described, or you didn't create it, surface that instead of proceeding. Report outcomes faithfully: if tests fail, say so with the output; if a step was skipped, say that; when something is done and verified, state it plainly without hedging.";
+  // OpenZWork v3.18.0 同步裁定：回到上游短版（删除前查看目标即止），
+  // 官方闭源版的“发现与描述不符即上报”扩写不并入。
+  return "For actions that are hard to reverse or outward-facing, confirm first unless durably authorized or explicitly told to proceed without asking; approval in one context doesn't extend to the next. Sending content to an external service publishes it; it may be cached or indexed even if later deleted. Before deleting or overwriting, look at the target. Report outcomes faithfully: if tests fail, say so with the output; if a step was skipped, say that; when something is done and verified, state it plainly without hedging.";
 }
 export function getContextManagementPrompt(): string {
   return CONTEXT_MANAGEMENT_PROMPTS.default;
@@ -121,6 +124,11 @@ export function buildContextManagementSection(settings?: SystemPromptSettings): 
       resolveSystemPromptSection(settings, "persistence", getPersistencePrompt()),
     ].join("\n"),
   );
+}
+
+/** 固定的 token 预算行，是 system 的最后一段；倒数由每次请求的提醒附件表达。 */
+export function buildTotalTokensSection(): ContextSection {
+  return createDynamicSection("Total Tokens", "total_tokens", TOTAL_TOKENS_SYSTEM_LINE);
 }
 
 function createDynamicSection(

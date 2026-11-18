@@ -1,3 +1,4 @@
+import { SessionToolCallBlock, isSessionToolName } from "@/ToolCallBlocks/session/contract.js";
 // ============================================================
 // 工具卡 renderer 注册表：tool identity → 具体 renderer 组件
 // ============================================================
@@ -7,13 +8,10 @@
 
 import { EditToolCallBlock } from "@/ToolCallBlocks/renderers/edit.js";
 import { AgentToolCallBlock } from "@/ToolCallBlocks/renderers/agent.js";
-import { ChangesGroupToolCallBlock } from "@/ToolCallBlocks/renderers/changes-group.js";
 import { CreateWorkflowToolCallBlock } from "@/ToolCallBlocks/renderers/create-workflow.js";
 import { EscalateToolCallBlock } from "@/ToolCallBlocks/renderers/escalate.js";
 import { EvalWorkflowSnippetToolCallBlock } from "@/ToolCallBlocks/renderers/eval-workflow-snippet.js";
-import { ExploreToolCallBlock } from "@/ToolCallBlocks/renderers/explore.js";
 import { ExecuteToolCallBlock } from "@/ToolCallBlocks/renderers/execute.js";
-import { ExecuteGroupToolCallBlock } from "@/ToolCallBlocks/renderers/execute-group.js";
 import { FallbackToolCallBlock } from "@/ToolCallBlocks/renderers/fallback.js";
 import { GetWorkflowRunToolCallBlock } from "@/ToolCallBlocks/renderers/get-workflow-run.js";
 import { ListModelsToolCallBlock } from "@/ToolCallBlocks/renderers/list-models.js";
@@ -54,18 +52,12 @@ import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import type { ToolCallBlockRenderContext } from "@/ToolCallBlocks/shared.js";
 
 export function resolveToolCallRenderer(context: ToolCallBlockRenderContext) {
-  if (context.toolCallNode.toolCall.kind === "changesGroup") {
-    return ChangesGroupToolCallBlock;
-  }
-  if (context.toolCallNode.toolCall.kind === "executeGroup") {
-    return ExecuteGroupToolCallBlock;
-  }
-
   const identity = resolveToolCallIdentity(context.toolCallNode.toolCall);
 
   // 工具目录查询只复用搜索卡片；不改 search family，避免被聚合为 Explore 内容搜索。
   const toolCall = context.toolCallNode.toolCall;
   const toolName = toolCall.toolName ?? toolCall.kind;
+  if (isSessionToolName(toolName)) return SessionToolCallBlock;
   // 参数生成和中途停止尚未经过执行归一化，必须让 Local 名称也复用同一卡片与文案。
   if (toolName === "ToolSearch" || toolName === "LocalToolSearch") {
     return ToolSearchToolCallBlock;
@@ -158,8 +150,6 @@ export function resolveToolCallRenderer(context: ToolCallBlockRenderContext) {
       return ReadToolCallBlock;
     case "file-write":
       return EditToolCallBlock;
-    case "explore":
-      return ExploreToolCallBlock;
     case "switch-mode":
       return SwitchModeToolCallBlock;
     case "web-fetch":

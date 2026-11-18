@@ -19,17 +19,26 @@ export async function prepareWebRemoteControlAuthGateFixture(options: {
         spec.endsWith("conversation-session-web-remote-terminal.test.ts") ||
         spec.endsWith("conversation-session-runtime-restart.test.ts") ||
         spec.endsWith("conversation-session-shared-cli.test.ts") ||
+        // 修复依据（OpenZWork）：app-control 三个 spec 与 mobile-event-push 等在净化裁剪时被从
+        // 手机配对 fixture 的 spec 名单移除，但 spec 本体保留且依赖 loopback Web 前端
+        // （MRO03 requires loopback Web frontend）；恢复这些保留场景的入口，官方登录桩仍不恢复。
+        spec.endsWith("app-control-explicit-navigation.test.ts") ||
+        spec.endsWith("app-control-cross-project-search.test.ts") ||
+        spec.endsWith("app-control-session-lifecycle.test.ts") ||
         // 远程批量 runner 的 HOME 没有登录态；复用本地账号/relay，避免卡在配对链接门禁。
         spec.endsWith("conversation-session-r3-mobile.test.ts") ||
         spec.endsWith("conversation-session-r3-mobile-permission.test.ts") ||
-        spec.endsWith("conversation-session-r3-soak-dual.test.ts") ||
+        spec.endsWith("conversation-session-r3-mobile-startup-restore.test.ts") ||
         spec.endsWith("conversation-session-web-remote-project-directory.test.ts") ||
         spec.endsWith("conversation-session-remote-draft-prewarm.test.ts") ||
         spec.endsWith("conversation-session-web-remote-recovery.test.ts") ||
         spec.endsWith("conversation-session-web-remote-unread.test.ts") ||
-        spec.endsWith("conversation-session-workspace-mcp-trust.test.ts") ||
         spec.endsWith("conversation-session-id-compatibility.test.ts") ||
-        spec.endsWith("conversation-session-gen-ui-context.test.ts"),
+        spec.endsWith("conversation-session-gen-ui-context.test.ts") ||
+        spec.endsWith("plugin-extension-sessions-write.test.ts") ||
+        // WT04（受管 worktree 手机查看）：依赖 loopback Web 前端与本地 relay，
+        // 与上面保留场景同一配对链路；官方登录桩仍不恢复。
+        spec.endsWith("git-worktree-remote-view.test.ts"),
     )
   )
     return prepareWebRemoteControlSessionEventsFixture({

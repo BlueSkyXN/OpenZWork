@@ -127,7 +127,10 @@ test("报告缺失时 CLI 以非零退出（用例没运行不能算通过）", 
 test("清单里的每个标题都是 spec 里真实存在的 it 标题，且 grep 能选中它所在 describe", async () => {
   const { readFile } = await import("node:fs/promises");
   const spec = await readFile(
-    new URL("packages/desktop/test/e2e/automations-workflows-hub.test.ts", root),
+    new URL(
+      "packages/desktop/test/e2e/automations/workflows/automations-workflows-hub.test.ts",
+      root,
+    ),
     "utf8",
   );
   const grep = (await readFile(new URL(".github/workflows/ci.yml", root), "utf8")).match(
@@ -158,12 +161,16 @@ test("清单里的每个标题都是 spec 里真实存在的 it 标题，且 gre
 
 test("ci.yml 的 grep 覆盖目标 describe，并保留报告校验步骤", async () => {
   const { readFile } = await import("node:fs/promises");
-  const ci = parseDocument(
-    await readFile(new URL(".github/workflows/ci.yml", root), "utf8"),
-  ).toJS();
-  const steps = ci.jobs["desktop-e2e"].steps;
+  const document = parseDocument(await readFile(new URL(".github/workflows/ci.yml", root), "utf8"));
+  assert.deepEqual(document.errors, [], "CI 中的作业 ID 必须唯一");
+  const ci = document.toJS();
+  const steps = ci.jobs["workflows-hub-e2e"].steps;
   const run = steps.find((step) => step.id === "hub_e2e");
-  assert.ok(run, "desktop-e2e 存在 hub E2E 步骤");
+  assert.ok(run, "自动作业中存在工作流总览 E2E 步骤");
+  assert.match(
+    run.run,
+    /--spec \.\/test\/e2e\/automations\/workflows\/automations-workflows-hub\.test\.ts\s/u,
+  );
   // grep 变量必须同时覆盖旧 CRUD describe 与 OW-P024 R4 的三个新 describe。
   assert.match(run.env.ZCODE_E2E_HUB_GREP, /已保存工作流中枢 E2E/u);
   assert.match(run.env.ZCODE_E2E_HUB_GREP, /OW-P024 R4/u);

@@ -8,5 +8,6 @@
     "noEmit": true
   },
   "include": ["src"],
+  "exclude": ["src/share-manage"],
   "references": [{ "path": "../ui" }, { "path": "../client" }]
 }

@@ -110,6 +110,21 @@ Windows 跨盘（C:/D:）拼出非法路径——已改为同一临时 HOME + re
 与 VP28 历史播种不在其列。教训：常量改名必须按消费端文本（选择器/文案/testid）
 补扫，路径构造扫描抓不到字符串形态的名称引用。
 
+## 受管 worktree 根目录（2026-11-14，v3.18.0 合并移植）
+
+上游 v3.18.0 新增受管 worktree 功能（`docs/git/worktree.md`，上游文档），其受管根
+原始定义为 `<数据根目录>/.zcode/worktrees`（`packages/shared/src/managed-worktree/layout.ts`
+的 `MANAGED_WORKTREE_HOME_SEGMENTS`）。该落点在用户主目录下创建 `.zcode` 一级目录，
+违反上述核心不变量（用户级数据必须落 `{base}/.openzwork`），属上游代码在 OpenZWork
+的合并移植缺陷，非上游原生 bug。处置：
+
+- `MANAGED_WORKTREE_HOME_SEGMENTS` 派生自 `OPENZWORK_DATA_DIR_NAME`：
+  `<dataBaseDir>/.openzwork/worktrees`；生产调用方（Host gitWorktreeRepo、trust-identity
+  resolver、CLI config-factory）与测试断言同源更新。
+- 受管 worktree 是 v3.18.0 新能力，OpenZWork 此前无既有 worktree 数据落点，故无迁移
+  负担；上游文档 §6.3 保持原作者原文，OpenZWork 差异以本节为准。
+- 归属判定（trust identity、removed-worktree 分类）随常量同源，不引入第二份路径真相。
+
 ## 失败语义与验收
 
 - 违反核心不变量 = 隔离破洞（设计稿 A 类），按"必须清零"处理，不算可兜底缺陷。

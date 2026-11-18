@@ -31,6 +31,7 @@ export function TaskListItemContextMenu({
   disableCopyConversation,
   disableTaskActions = false,
   disabledReason,
+  archiveDisabledReason,
 }: {
   organizationActions?: React.ReactNode;
   intl: {
@@ -63,6 +64,7 @@ export function TaskListItemContextMenu({
   disableCopyConversation?: boolean;
   disableTaskActions?: boolean;
   disabledReason?: string;
+  archiveDisabledReason?: string;
 }) {
   return (
     <ContextMenuContent className="w-52">
@@ -94,6 +96,7 @@ export function TaskListItemContextMenu({
         disableCopyConversation={disableCopyConversation}
         disableTaskActions={disableTaskActions}
         disabledReason={disabledReason}
+        archiveDisabledReason={archiveDisabledReason}
       />
     </ContextMenuContent>
   );

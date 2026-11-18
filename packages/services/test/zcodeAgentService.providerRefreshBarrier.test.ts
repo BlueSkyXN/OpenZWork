@@ -108,7 +108,10 @@ function command(type: CommandEnvelope["type"]): CommandEnvelope {
         ? { workspaceId: "workspace" }
         : type === "sendText"
           ? { text: "hello" }
-          : {},
+          : // v3.18.0 起 forkAssistant 载荷要求 conversationRow target（吸收上游 schema）。
+            type === "forkAssistant"
+            ? { target: { rowId: 0, entityId: "entity" } }
+            : {},
     issuedAt: 1,
   };
 }

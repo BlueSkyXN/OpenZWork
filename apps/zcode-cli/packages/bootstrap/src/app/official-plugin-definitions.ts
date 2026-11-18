@@ -24,6 +24,7 @@ const OFFICIAL_BROWSER_USE_PLUGIN_NAME = "browser-use";
 // 内置插件 listing 属我方保留域（plugins/skills），恢复常量而非删条目。
 const ZAI_AUTHOR = { name: "Z.ai", url: "https://z.ai" } as const;
 export const OFFICIAL_BROWSER_USE_PLUGIN_ID = `${OFFICIAL_BROWSER_USE_PLUGIN_NAME}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`;
+export const OFFICIAL_VISUALIZE_PLUGIN_ID = `visualize@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`;
 /**
  * node_repl 宿主。它不是面向用户的插件：没有 skill、没有 listing、不进市场，唯一职责是
  * 携带 `dist/mcp/server.js` 这个 Browser Use 运行时产物。
@@ -50,6 +51,11 @@ export interface OfficialPluginDefinition {
    * 仅用于产品归属和设置页状态展示；运行时仍保留宿主 identity。
    */
   hostMcpServerNames?: readonly string[];
+  /**
+   * 构建产物内嵌每次构建不同、但不改版本号的值时，指向构建脚本写出的身份文件。
+   * seed 把文件内容记入 marker，内容变化按版本变化处理。
+   */
+  buildIdentityPath?: string;
   name: string;
   /** filesystem/SEA seed 缺少任一项时拒绝生成残缺的官方插件缓存。 */
   requiredSeedPaths?: readonly string[];
@@ -78,6 +84,27 @@ export const OFFICIAL_BROWSER_USE_REQUIRED_SEED_PATHS = [
   "scripts/browser-client.mjs",
   "skills/control-browser/SKILL.md",
   "skills/web-gui-tester/SKILL.md",
+] as const;
+
+// design 是纯内容型插件（技能 + 设计资源 + SessionStart hook，无 MCP），技能正文按需读取 references/
+// 与 scripts/；hook 只注入一句指针，正文缺失时 hook 静默退出，会话里就再也触发不到技能。
+// 所以这里钉住入口、7 份规则文件、三个随包脚本和 hook，seed 缺任一项都拒绝生成残缺缓存。
+export const OFFICIAL_DESIGN_REQUIRED_SEED_PATHS = [
+  "skills/design/SKILL.md",
+  "skills/design/references/catalog.md",
+  "skills/design/references/check.md",
+  "skills/design/references/create.md",
+  "skills/design/references/design-system.md",
+  "skills/design/references/interact.md",
+  "skills/design/references/output.md",
+  "skills/design/references/redesign.md",
+  "skills/design/scripts/adapt-canvas.mjs",
+  "skills/design/scripts/design-lint.mjs",
+  "skills/design/scripts/design-tokens.mjs",
+  "skills/design/scripts/import-design-system.mjs",
+  "hooks/hooks.json",
+  "hooks/run-hook.cmd",
+  "hooks/design-rules",
 ] as const;
 
 export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = [
@@ -143,7 +170,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       "../../visualize-plugin",
       "../../../visualize-plugin",
     ],
-    version: "0.1.1",
+    version: "0.1.2",
   },
   // OpenZWork：node-repl-host seed 注册沿用上方我方条目（版本 0.6.1，随 node-repl-host 净化线维护），
   // 上游 0.7.0 的 Computer Use 域描述与 browser-use 重复条目不吸收。
@@ -177,17 +204,18 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     [
       // 版本按插件各自升，换新缓存目录：pdf 0.2.1 起面板带中日韩字体回退；0.2.1（pdf 0.2.2）起
       // server 由工作区内各 session 共享，旧缓存的 server 不区分 session，不能沿用。
-      ["documents", "docx", "Documents", "Word文档", "0.2.1"],
-      ["pdf", "pdf", "PDF", "PDF", "0.2.2"],
-      ["presentations", "pptx", "Presentations", "演示文档", "0.2.1"],
-      ["spreadsheets", "xlsx", "Spreadsheets", "电子表格", "0.2.1"],
+      ["documents", "docx", "Documents", "Word文档", "0.2.2"],
+      ["pdf", "pdf", "PDF", "PDF", "0.2.3"],
+      ["presentations", "pptx", "Presentations", "演示文档", "0.2.2"],
+      ["spreadsheets", "xlsx", "Spreadsheets", "电子表格", "0.2.2"],
     ] as const
   ).map(
     ([name, skill, displayName, chineseName, version]): OfficialPluginDefinition => ({
       componentTypes: ["ui"],
-      // OpenZWork：componentTypes=["ui"] 保留（与 plugin.json 的 ui.surfaces 声明一致，
-      // 设置页据此归入 UI 插件）；office-runtime 面板资产由 workspace build 产出。
-      // 不默认启用——首启即拉起面板依赖的 runtime 资产，保守交给用户手动开启。
+      defaultEnabled: true,
+      // OpenZWork（T09）：恢复上游默认启用（内容型查看面板，runtime 资产由 workspace
+      // build 产出并列入 requiredSeedPaths；曾临时改为默认关闭，与 shared 默认名单的
+      // 机械对照和上游行为冲突）。
       listing: {
         author: ZAI_AUTHOR,
         category: "productivity",
@@ -202,6 +230,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
         "agents/visual-judge.md",
         `skills/${skill}/SKILL.md`,
         `skills/${skill}-viewer/SKILL.md`,
+        ...OFFICIAL_OFFICE_VIEWER_RUNTIME_PATHS,
       ],
       rootCandidates: [
         `packages/${name}-plugin`,
@@ -294,7 +323,94 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     ],
     version: "0.3.0",
   },
-  // OpenZWork 净化：上游在此新增 computer-use（@zcode/zcode-cua 官方 CUA 域）与
+  {
+    // 设计工作流（HTML 设计稿、交互原型、HTML 演示稿）。纯内容型，默认关闭；用户可启用、可停用、不可卸载。
+    // 版本与 package.json / 两份 plugin.json / sea-official-plugin-assets.mjs 同步 bump。
+    listing: {
+      author: ZAI_AUTHOR,
+      category: "productivity",
+      displayName: "Design",
+      // 英文名与描述回退到 manifest（displayName / description）；这里只放 zh-CN 覆盖。
+      displayName_i18n: { "zh-CN": "设计" },
+      description_i18n: {
+        "zh-CN": "做网页设计稿、原型和演示稿；桌面端本地工作区可在内置浏览器里点选修改。",
+      },
+      examplePrompts: ["Design a landing page for a budgeting app", "Build an 8-page HTML deck"],
+      examplePrompts_i18n: {
+        "zh-CN": ["给记账 App 设计一个落地页", "做一份 8 页的 HTML 演示稿"],
+      },
+    },
+    name: "design",
+    requiredSeedPaths: OFFICIAL_DESIGN_REQUIRED_SEED_PATHS,
+    rootCandidates: [
+      "packages/design-plugin",
+      "../design-plugin",
+      "../../design-plugin",
+      "../../../design-plugin",
+    ],
+    version: "0.7.2",
+  },
+  {
+    // OpenZWork（T09）：模拟器/恢复类内置插件按上游注册（包在树内，非裁剪域）；
+    // 图标行按 fork 策略省略（不指向官方 assets CDN，UI 用默认图标降级）。
+    listing: {
+      author: ZAI_AUTHOR,
+      category: "developer-tools",
+      displayName: "Android Emulator",
+      displayName_i18n: { "zh-CN": "Android 模拟器" },
+      description_i18n: {
+        "zh-CN": "提供 Android 开发工作流与模拟器自动化能力。",
+      },
+    },
+    name: "android-emulator",
+    rootCandidates: [
+      "packages/android-emulator-plugin",
+      "../android-emulator-plugin",
+      "../../android-emulator-plugin",
+      "../../../android-emulator-plugin",
+    ],
+    version: "0.1.1",
+  },
+  {
+    listing: {
+      author: ZAI_AUTHOR,
+      category: "developer-tools",
+      displayName: "iOS Simulator",
+      displayName_i18n: { "zh-CN": "iOS 模拟器" },
+      description_i18n: {
+        "zh-CN": "提供 iOS 开发工作流与模拟器自动化能力。",
+      },
+    },
+    name: "ios-simulator",
+    rootCandidates: [
+      "packages/ios-simulator-plugin",
+      "../ios-simulator-plugin",
+      "../../ios-simulator-plugin",
+      "../../../ios-simulator-plugin",
+    ],
+    version: "0.1.0",
+  },
+  {
+    listing: {
+      author: ZAI_AUTHOR,
+      category: "utilities",
+      displayName: "Restore Legacy Sessions",
+      displayName_i18n: { "zh-CN": "恢复旧版会话" },
+      description_i18n: {
+        "zh-CN": "将旧版会话恢复为 ZCode 任务与会话记录。",
+      },
+    },
+    name: "restore-legacy-sessions",
+    rootCandidates: [
+      "packages/restore-legacy-sessions-plugin",
+      "../restore-legacy-sessions-plugin",
+      "../../restore-legacy-sessions-plugin",
+      "../../../restore-legacy-sessions-plugin",
+    ],
+    version: "0.1.0",
+  },
+  // OpenZWork 净化（T09 吸收）：design 纯内容型插件按上游原样注册（默认关闭，见上方块）；
+  // 上游在此另有 computer-use（@zcode/zcode-cua 官方 CUA 域）与
   // zcode-site（zcode_official JWT 端点域）两个 seed 注册；两者包目录已随本次合并删除，
   // 官方 CDN 图标与 zcode_official 鉴权的内置插件不注册，保持删除。
 
@@ -303,19 +419,12 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
 // 在 official plugin 定义里标了 defaultEnabled: true 的, 拼成 `<name>@<marketplace>` 形式,
 // 透传给 adapter 让它在用户没显式配置时默认开启 (内容型 plugin 才适用)。
 // 注意: 任何解析 plugin 的入口 (CLI 子命令 resolveZCodePlugins、应用启动 resolveStartupPlugins)
-// 都必须把这个集合传给 discoverNodePluginsSync, 否则 defaultEnabled 不生效。
+// 都必须把这个集合传给 discoverNodePlugins, 否则 defaultEnabled 不生效。
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
   OFFICIAL_PLUGIN_DEFINITIONS.filter((definition) => definition.defaultEnabled).map(
     (definition) => `${definition.name}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`,
   ),
 );
-
-export function resolveOfficialPluginHostMcpServerNames(pluginId: string): string[] {
-  const definition = OFFICIAL_PLUGIN_DEFINITIONS.find(
-    (candidate) => `${candidate.name}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}` === pluginId,
-  );
-  return definition?.hostMcpServerNames ? [...definition.hostMcpServerNames] : [];
-}
 
 /**
  * 官方插件由 host CLI 注入的 MCP（如 browser-use 的 `node_repl`）server name 不带 `plugin:` 前缀，

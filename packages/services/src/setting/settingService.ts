@@ -17,6 +17,8 @@ import {
   appSettingsSchema,
   formatLogPrefix,
   formatZodError,
+  hasLegacyIncompatiblePersistedLocale,
+  toPersistedSettingsLocaleFields,
   USER_INSTRUCTIONS_MAX_BYTES,
   USER_INSTRUCTIONS_TOO_LARGE_ERROR_CODE,
 } from "@zcode/shared";
@@ -100,6 +102,8 @@ function shouldPersistSettingsMigrations(rawValue: unknown): boolean {
   if (!rawValue || typeof rawValue !== "object" || Array.isArray(rawValue)) return false;
   const raw = rawValue as Record<string, unknown>;
   return (
+    // OpenZWork(OZ-C012): 旧字段里出现旧版本不认识的语言值时尽快迁移写盘，否则降级会重置全部设置。
+    hasLegacyIncompatiblePersistedLocale(raw) ||
     raw.remoteBoundaryOnboardingVersion === 3 ||
     raw.closeToTrayOnWindowsMigrationInitialized !== true ||
     raw.messageStreamShowReasoningMigrationInitialized !== true ||
@@ -193,7 +197,14 @@ async function writeSettingsAt(
   await mkdir(settingsDir, { recursive: true });
   if (!shouldCommit()) return;
   maybeThrowInjectedFsFault({ operation: "writeFile", path: settingsFile });
-  const persisted = settings;
+  // 界面语言统一经 toPersistedSettingsLocaleFields 落盘：旧字段 locale/localePreference 只写中英，
+  // 真实选择写 uiLocale/uiLocalePreference，避免旧版本读到 ja-JP 等新值时重置整份设置。
+  // OpenZWork(OZ-C012): 该合并曾在 v3.18.0 merge 4d263563 冲突裁决中丢失并回归为直写，
+  // 此处恢复上游行为；账号/team 回滚域按官方账号裁剪不搬回。
+  const persisted = {
+    ...settings,
+    ...toPersistedSettingsLocaleFields(settings),
+  };
   await atomicWriteText(settingsFile, JSON.stringify(persisted, null, 2), {
     useFileLock: false,
     beforeRename: () => {
@@ -214,8 +225,18 @@ export function createSettingService(): ISettingService {
   return createSettingServiceWithMigrations().service;
 }
 
-/** Host 私有投影装配端口；目录事实通过现有设置写队列落盘。 */
-export function createSettingServiceWithMigrations(): {
+/**
+ * Host 私有投影装配端口；目录事实通过现有设置写队列落盘。
+ *
+ * dependencies 保留上游 v3.18.2 运行时合同（Host 注入 shareCredentialKeyWithDataRoot）；
+ * 我方 updateDataBaseDir 只保存迁移计划，复制与凭据密钥共享在启动门禁
+ * applyPendingDataBaseDirMigration 由 Main 直接执行（见该函数注释），此处不消费。
+ */
+export function createSettingServiceWithMigrations(
+  _dependencies: {
+    shareCredentialKeyWithDataRoot?: (targetBaseDir: string) => Promise<void>;
+  } = {},
+): {
   service: ISettingService;
   setWorkspaceProjection: (
     reader: (settings: AppSettings) => Promise<WorkspaceSettingsProjection>,
@@ -433,6 +454,17 @@ export function createSettingServiceWithMigrations(): {
 /** 仅由 Desktop 在所有业务 Host/Agent 启动前调用，不暴露为运行中 RPC。 */
 export async function applyPendingDataBaseDirMigration(
   relocateAgent?: (plan: DataRelocationPlan) => Promise<void>,
+  // Desktop Main 注入：数据目录复制完成后把系统密钥登记到目标数据根（凭据密钥共享，
+  // 上游 v3.18.2 同能力）。失败时迁移中止、指针不变。Server/Web 不注入。
+  // 修复原因（独立复核 F1，2026-11-15）：源/目标必须来自迁移计划本体——启动门禁时
+  // Main 的运行时根已被 early bootstrap 指向目标，不能按目标猜源，也不能只传目标让
+  // Main 反推源。计划（pendingDataBaseDirMigration）是源/目标的唯一所有者。
+  dependencies: {
+    shareCredentialKeyWithDataRoot?: (plan: {
+      sourceBaseDir: string;
+      targetBaseDir: string;
+    }) => Promise<void>;
+  } = {},
 ): Promise<void> {
   const settingsFile = join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "v2", "setting.json");
   const initial = (await readSettingsWithMetaAt(settingsFile)).settings;
@@ -443,12 +475,29 @@ export async function applyPendingDataBaseDirMigration(
     if (!pending) return;
     await copyDataDirectory(pending.sourceBaseDir, pending.targetBaseDir, pending.id, {
       relocateAgent,
-      commit: async (plan) =>
-        writeSettingsAt(settingsFile, {
+      commit: async (plan) => {
+        // 移植（上游 v3.18.2 ZCT-2120723935487688704 同源修复，适配我方启动门禁结构）：
+        // 3.18.0 起凭据密钥存于系统库并按凭据文件路径分条目，只复制 credentials.json 时
+        // 新根没有对应条目，重启后掉登录且无法重新登录。提交指针前由 Main 把系统密钥
+        // 登记到目标数据根；失败直接抛出，指针保持不变（下次启动重试，不产生半迁移态）。
+        // 修复原因（独立复核 G1，2026-11-15）：计划 targetBaseDir 保存的是用户输入的
+        // resolve 结果，可保留符号链接别名；copyDataDirectory 实际按 realpath 执行并
+        // 在下方提交 canonical 目标。系统条目按 resolve(凭据路径) 分条目，共享若登记
+        // 到别名条目，重启按持久化 dataBaseDir 找的是另一条目，复制过去的密文解不开
+        // （CREDENTIAL_SECURE_STORAGE_UNAVAILABLE）。共享目标必须与最终提交、未来
+        // Host 绑定的同一目标路径一致；源端保留计划 sourceBaseDir（既有密钥 owner
+        // 实际使用的命名），不做 realpath。
+        const committedTargetBaseDir = dirname(plan.targetRoot);
+        await dependencies.shareCredentialKeyWithDataRoot?.({
+          sourceBaseDir: pending.sourceBaseDir,
+          targetBaseDir: committedTargetBaseDir,
+        });
+        await writeSettingsAt(settingsFile, {
           ...relocateWorkspaceSettings(settings, plan),
-          dataBaseDir: dirname(plan.targetRoot),
+          dataBaseDir: committedTargetBaseDir,
           pendingDataBaseDirMigration: undefined,
-        }),
+        });
+      },
     });
   });
 }

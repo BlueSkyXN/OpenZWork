@@ -34,10 +34,11 @@ export type {
   PersistedWorkspaceSessionEntry,
 } from "./protocol.js";
 export type { WorkspacePurpose } from "./workspacePurpose.js";
-export { DEFAULT_LOCALE } from "./protocol.js";
+export { DEFAULT_LOCALE, SUPPORTED_LOCALES } from "./protocol.js";
 export { ZCODE_VERSION, ZCODE_COMMIT, ZCODE_BUILD_TIME } from "./version.js";
 export type { HelloMessage, HelloAckMessage } from "./handshake.js";
 export type { ZCodeEnv, ZCodeProductFlavor } from "./env.js";
+export { ZCODE_CLIENT_LANGUAGE_ENV } from "./env.js";
 export type { RemoteAssetInstallMode } from "./remoteAssetInstallMode.js";
 export type {
   RemoteResourcePackageId,
@@ -132,8 +133,12 @@ export * from "./remoteAppConfig.js";
 export * from "./helpAppConfig.js";
 export * from "./remoteAssetInstallMode.js";
 export * from "./remoteResourcePackages.js";
+// OpenZWork（v3.18.1 同步）：sampler 节拍链恢复所需的资源采样常量/角色类型。
+// WP-05 曾移除该出口；模块内无遥测上传，仅本地节拍与协议通知负载类型。
+export * from "./processResourceTelemetry.js";
 export {
   BROWSER_SCREENSHOT_SURFACE_PREPARE_TIMEOUT_MS,
+  BROWSER_VIEW_DRAFT_SESSION_ID,
   BROWSER_VIEW_RESTORE_BOOTSTRAP_URL,
   LOCAL_MEDIA_PREVIEW_SCHEME,
   BROWSER_LOCAL_PREVIEW_SCHEME,
@@ -146,6 +151,8 @@ export {
 export type { LaunchMarks } from "./launchMarks.js";
 export { LAUNCH_MARKS_QUERY_KEY, parseLaunchMarks, serializeLaunchMarks } from "./launchMarks.js";
 export type {
+  AppNavigationTarget,
+  AppNavigationHandler,
   BrowserViewSurfaceScaleMode,
   CancelPendingRemoteConnectionRequest,
   BindRemoteWorkspaceSessionContextRequest,
@@ -156,7 +163,13 @@ export type {
   BrowserViewCloseTabRequest,
   BrowserViewOperationPayload,
   BrowserViewResidencyReportPayload,
+  BrowserViewPromoteDraftTabsRequest,
   BrowserViewResidencyTransitionPayload,
+  CaptureBrowserGuestPageClip,
+  CaptureBrowserGuestPageRequest,
+  CaptureBrowserGuestPageResult,
+  MicrophoneAccessResult,
+  MicrophoneSettingsTarget,
   BrowserViewRestoredTabShell,
   BrowserViewRestoreTabsRequest,
   BrowserViewScreenshotSurfacePreparePayload,
@@ -176,6 +189,7 @@ export type {
   SaveFileRequest,
   SaveFileResult,
   PrintPageToPdfResult,
+  MicrophoneAccessResetResult,
   DesktopCloseToTrayCapability,
   DesktopCommandId,
   DesktopWindowChromeState,
@@ -242,6 +256,8 @@ export * from "./settings-errors.js";
 export * from "./app-runtime-preferences.js";
 export * from "./command-types.js";
 export * from "./plugin-marketplaces.js";
+export * from "./locale.js";
+export * from "./plugin-store-visibility.js";
 export * from "./lineChangeStat.js";
 export * from "./process-names.js";
 export * from "./mcp.js";

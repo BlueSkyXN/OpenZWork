@@ -125,6 +125,9 @@ export default defineConfig({
     projects: [
       {
         extends: true,
+        // 评测工具的回归测试以子进程运行这些脚本；声明为资源后测试可以 import 它们（只得到路径），
+        // 依赖图里有了它们，改脚本时受影响工程测试才会选中 docker/plugin-eval/legal-bench/test/。
+        assetsInclude: ["**/docker/plugin-eval/**/*.{pl,sh,py}"],
         test: {
           name: "engineering",
           include: engineeringTestFiles,
@@ -151,6 +154,8 @@ export default defineConfig({
           // exclude 需绝对路径才能压过 project 解析后的绝对 include（见 affected 图同款先例）。
           exclude: [
             "packages/desktop/test/e2e/**",
+            // 退出诊断由 Node test runner 执行，见 CI 中的 test:agent-crash-diagnostic。
+            "packages/desktop/test/agent-crash-diagnostic.node.test.ts",
             "packages/zcode-cua/**",
             // OpenZWork：Windows 下 exclude 模式必须是正斜杠绝对路径——反斜杠模式匹配
             // 不到 Vitest 归一化后的正斜杠 id，文件会被 unit 与 engineering 双计。

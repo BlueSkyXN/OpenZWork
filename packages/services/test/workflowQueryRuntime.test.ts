@@ -850,7 +850,7 @@ describe("工作流查询 lane（OW-P024）", () => {
 
   // R5 返工 2：真实运行的任务（常量工作流，无模型）跨查询与查询 lane 回收持续推进并完成。
   // 与上一用例的差别：上一用例只证明「chat 会话可读」（createSession 级）；本用例经
-  // v4 startSavedWorkflow 真正启动 dwf run（sleep 常量工作流，真实引擎执行），
+  // v4 startSavedWorkflow 真正启动 dwf run，由测试在观察查询回收后放行真实子进程，
   // 断言 running → （跨多轮查询 + 查询 lane 整树回收）→ completed。
   it("真实运行的工作流任务跨查询与回收持续推进并完成（R5/G07）", { timeout: 240_000 }, async () => {
     projects = await buildProjectFixture(root, 1);
@@ -861,15 +861,25 @@ describe("工作流查询 lane（OW-P024）", () => {
     const project = projects[0]!;
     const target = { workspacePath: project.workspacePath };
 
-    // 常量工作流：sleep 6 秒后返回 ok——真实引擎执行，无模型调用。
-    const runWorkflowName = "sleep-run";
+    // OW-P024：固定 sleep 可能先于查询 CLI 冷启动结束，用文件握手保持工作流运行到查询进程退出。
+    const runWorkflowName = "query-reclaim-run";
+    const ready = join(project.workspacePath, "workflow-running");
+    const release = join(project.workspacePath, "workflow-release");
+    const writer = [
+      'const fs = require("node:fs");',
+      'const finish = () => { if (fs.existsSync("workflow-release")) fs.unwatchFile("workflow-release"); };',
+      'fs.watchFile("workflow-release", { interval: 50 }, finish);',
+      'fs.writeFileSync("workflow-running", "running");',
+      "finish();",
+    ].join("\n");
     await writeFile(
       join(project.workspacePath, ".zcode", "workflows", `${runWorkflowName}.dwf.ts`),
       [
         "/* zcode-workflow",
         "description: 跨回收的常量工作流",
         "*/",
-        'await world.run("sleep", ["6"]);',
+        `const result = await world.run("node", ["-e", ${JSON.stringify(writer)}], { timeoutMs: 120000 });`,
+        'if (result.exitCode !== 0) throw new Error("Workflow gate failed");',
         "return { ok: true };",
         "",
       ].join("\n"),
@@ -915,35 +925,34 @@ describe("工作流查询 lane（OW-P024）", () => {
     // ③ 任务运行期间：多轮查询 + 等查询 lane 回收（整树退出），任务必须仍在推进。
     const chatPid = recorder.spawns.find((event) => !event.lane || event.lane === "chat")?.pid;
     expect(chatPid).toBeDefined();
-    const runStartedAt = Date.now();
-    let observedRunning = false;
-    while (Date.now() - runStartedAt < 60_000) {
-      const runs = await service.listSavedWorkflowRuns({ ...target, limit: 50 });
-      const thisRun = runs.runs.find((run) => run.runId === runId);
-      if (thisRun?.status === "running") observedRunning = true;
-      if (thisRun?.status === "completed" || thisRun?.status === "failed") break;
-      await new Promise((resolve) => setTimeout(resolve, 500));
+    const readStatus = async () => {
+      const { runs } = await service.listSavedWorkflowRuns({ ...target, limit: 50 });
+      return runs.find((run) => run.runId === runId)?.status;
+    };
+    try {
+      await expect.poll(() => readFile(ready, "utf8"), { timeout: 60_000 }).toBe("running");
+      expect(await readStatus()).toBe("running");
+      expect(await readStatus()).toBe("running");
+      const queryPid = recorder.spawns.findLast((event) => event.lane === "workflow-query")?.pid;
+      expect(queryPid).toBeDefined();
+      await expect
+        .poll(
+          () =>
+            recorder.exits.some(
+              (event) => event.lane === "workflow-query" && event.pid === queryPid,
+            ),
+          { timeout: 15_000 },
+        )
+        .toBe(true);
+      expect(await isPidAlive(chatPid!)).toBe(true);
+    } finally {
+      await writeFile(release, "finish");
     }
-    // 等查询 lane 短 idle 回收（任务期间至少一次整树退出）。
-    const reclaimDeadline = Date.now() + 15_000;
-    while (
-      recorder.exits.filter((event) => event.lane === "workflow-query").length < 1 &&
-      Date.now() < reclaimDeadline
-    ) {
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    }
-    expect(recorder.exits.some((event) => event.lane === "workflow-query")).toBe(true);
-    // 回收后 chat 进程仍存活（任务载体未被查询回收波及）。
-    expect(await isPidAlive(chatPid!)).toBe(true);
-
-    // ④ 终态：observed running（真实推进证据）且最终 completed。
-    expect(observedRunning).toBe(true);
-    const finalRuns = await service.listSavedWorkflowRuns({ ...target, limit: 50 });
-    const finalRun = finalRuns.runs.find((run) => run.runId === runId);
-    expect(finalRun?.status).toBe("completed");
+    // 查询进程已回收，这次读取会重新启动查询，核对同一 run 完成且 chat 载体仍存活。
+    await expect.poll(readStatus, { timeout: 60_000 }).toBe("completed");
     expect(await isPidAlive(chatPid!)).toBe(true);
     process.stdout.write(
-      `\n[workflow-query-live-task] runId=${runId} observedRunning=${observedRunning} finalStatus=${finalRun?.status}\n`,
+      `\n[workflow-query-live-task] runId=${runId} observedRunning=true finalStatus=completed\n`,
     );
   });
 

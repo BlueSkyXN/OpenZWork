@@ -27,6 +27,18 @@ export function resolveE2EElectronBinary({
   installElectronPackage = runElectronPackageInstall,
   repoRoot,
 }: ResolveE2EElectronBinaryOptions) {
+  // 修复依据（OpenZWork，v3.18.0 同步 T15）：外置盘上的 Electron.app 在 macOS 高 IO 负载下，
+  // AppKit SafeAperture 初始化读 bundle 元数据的 getattrlist 会与 _FileCache 锁互相等待致死锁
+  //（sample 栈：主线程 NSApplication init→_FileCacheLockTransitionToPreparer→__ulock_wait2；
+  //utility 线程持锁卡 __getattrlist）。允许 ZCODE_E2E_ELECTRON_BINARY 指向内置盘的
+  // Electron 可执行文件绕开；不设置时保持原解析路径。
+  const overrideBinary = environment.ZCODE_E2E_ELECTRON_BINARY?.trim();
+  if (overrideBinary) {
+    if (!existsSync(overrideBinary)) {
+      throw new Error(`[e2e] ZCODE_E2E_ELECTRON_BINARY 不存在: ${overrideBinary}`);
+    }
+    return overrideBinary;
+  }
   const packageRoots = [
     ...new Set([
       resolve(desktopDir, "node_modules", "electron"),

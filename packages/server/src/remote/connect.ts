@@ -409,6 +409,5 @@ export function buildRemoteServerCommand(
       );
     }
   }
-  // REMOTE_BASE（~/ 前缀）在词首且未加引号，由 shell 展开；与 deploy.ts 上传目标同源。
-  return `${envParts.join(" ")} ${REMOTE_BASE}/node ${REMOTE_BASE}/zcode-server.cjs`;
+  return `${envParts.join(" ")} ~/.openzwork/server/node ~/.openzwork/server/zcode-server.cjs --prepare-credentials`;
 }

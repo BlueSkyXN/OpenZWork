@@ -1,15 +1,7 @@
 import { createWorkspaceMcpTrust } from "../workspace-mcp-trust/index.js";
-import {
-  zcodeWorkspaceMcpTrustParamsSchema,
-  type ZCodeWorkspaceMcpTrustResult,
-} from "@zcode/shared";
+import {zcodeWorkspaceMcpTrustParamsSchema, type ZCodeWorkspaceMcpTrustResult, zcodeMcpListParamsSchema, zcodeMcpListResultSchema, type ZCodeMcpListResult} from "@zcode/shared";
 import { createConfig, resolvePath } from "@zcode/adapters/config";
 import type { Logger, McpConnectionSnapshot, McpPort, McpServerStatus } from "@zcode/contracts";
-import {
-  zcodeMcpListParamsSchema,
-  zcodeMcpListResultSchema,
-  type ZCodeMcpListResult,
-} from "@zcode/shared";
 import { listMcpServerStatuses, omitMcpServers } from "../mcp-config.js";
 import { StartupTimer, startupNow } from "../startup-logging.js";
 import { getCliStorageRoot } from "../app/paths.js";
@@ -48,12 +40,19 @@ export async function listMcpServers(
     },
     startupNow(),
   );
-  const pluginOutcome = resolveStartupPlugins({
+  const pluginOutcome = await resolveStartupPlugins({
     cliStorageRoot,
     configResult,
     env: context.deps.env,
     logger: context.logger,
-    options: {},
+    options: {
+      pluginPreparation: context.deps?.pluginPreparation,
+      pluginDiscovery: context.deps?.pluginDiscovery,
+      runtimeConfig: {
+        memory: { workspaceIdentity: params.workspace.workspaceIdentity },
+        remoteSessionId: params.workspace.remoteSessionId,
+      },
+    },
     startupTimer,
     workingDirectory,
   });

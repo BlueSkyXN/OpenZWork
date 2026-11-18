@@ -110,6 +110,7 @@ export interface WorkspaceSettingsLayerProps {
   windowsWindowControlsRightPaddingPx?: number;
   captionWorkspacePath?: string | null;
   onBack?: () => void;
+  /** 设置页分享管理「跳转对话」；与 Root 层 SettingsPage 使用同一导航入口。 */
   onCreateTask?: (request?: CreateTaskRequest) => void;
   onOpenWorkspace?: () => void;
   onOpenRemoteWorkspace?: () => void;

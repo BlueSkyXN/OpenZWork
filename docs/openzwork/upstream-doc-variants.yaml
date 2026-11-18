@@ -16,7 +16,7 @@ variants:
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
       - apps/dev-docs/vite.config.ts
     kind: content
-    upstreamBlob: 49ea1b138a7b447e3a08b033b62b84e3a92f2054
+    upstreamBlob: b2a1c1962018c69d3e98ece467df12b9c1008e91
   - upstream: docs/builtin-provider-config-build-environments.md
     variant: docs/builtin-provider-config-build-environments-openzwork.md
     role: maintained
@@ -26,7 +26,7 @@ variants:
     variant: docs/builtin-provider-maintenance/README-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: efd2e2c303ebfc9be24c8da147f4ee6ae87c0968
+    upstreamBlob: cc50c1806c71b3c72ec50b3375765e0335e25572
   - upstream: docs/context-window-usage-state.md
     variant: docs/context-window-usage-state-openzwork.md
     role: maintained
@@ -38,12 +38,12 @@ variants:
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: cd50ea2b66d0cf16088be6f639efcd3d27e4e7d4
+    upstreamBlob: 3969d2fa8ef03dac32a15e70f18834b8c85ff91f
   - upstream: docs/desktop-ci-cd.md
     variant: docs/desktop-ci-cd-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 5065bef88fdabbbc402a0b0f43a1651990778a36
+    upstreamBlob: 8ec5d50bfcfe8c53a79efd74b1fd5e25ec1df99b
   - upstream: docs/desktop/configurable-data-directory.md
     variant: docs/desktop/configurable-data-directory-openzwork.md
     role: rule
@@ -55,12 +55,12 @@ variants:
     variant: docs/desktop/windows-installer-diagnostics-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 4ced43df0142f4c415ff130fb517d5c34d575a76
+    upstreamBlob: b1f72aea04c4c9368e5b3f4b92e01b275ecd84c5
   - upstream: docs/desktop/windows-installer-overhaul-spec.md
     variant: docs/desktop/windows-installer-overhaul-spec-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 2588ec6c6858c660f0f48485282336f1935552e7
+    upstreamBlob: 3b36216120cac4a8b8cb1119a128aef60a2f8fcd
   - upstream: docs/electron/resource-manager-network.md
     variant: docs/electron/resource-manager-network-openzwork.md
     role: maintained
@@ -70,12 +70,12 @@ variants:
     variant: docs/electron/resource-manager-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: b847b51326d4a17547f10f8e91dab4a593394ad6
+    upstreamBlob: 07bd7140b34b842c66dcef1a9775778f95b24ff0
   - upstream: docs/feedback-log-export-alignment.md
     variant: docs/feedback-log-export-alignment-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 4c09d5c2196c6de61d0da99e16b4c152a85db308
+    upstreamBlob: f5fbfbe47dedefa9c88df857b04e66d2cdd2e101
   - upstream: docs/git/release-build-publish-separation.md
     variant: docs/git/release-build-publish-separation-openzwork.md
     role: maintained
@@ -90,17 +90,17 @@ variants:
     variant: docs/mcp-stateless-node-repl-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 01183bcc7d36b27c67b9c42618df2e66e4b54e5f
+    upstreamBlob: ec7e2d961d471c4f0bf0ff434375766de51489ef
   - upstream: docs/model-provider-presets.md
     variant: docs/model-provider-presets-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: f6fa8a2251457733aef8d9f421fe0ab978e24f30
+    upstreamBlob: 3b5d9a96510a5a013bc6158d0e1f9cc92f0d5e3b
   - upstream: docs/monitoring/local-ttft-queries.md
     variant: docs/monitoring/local-ttft-queries-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: dfb71432d59c9297125d500f4052094bf7195ddc
+    upstreamBlob: b7011b850fade92c26f539a92dd09b6f77415517
   - upstream: docs/monitoring/local-ttft-trace-reading.md
     variant: docs/monitoring/local-ttft-trace-reading-openzwork.md
     role: maintained
@@ -110,7 +110,7 @@ variants:
     variant: docs/monitoring/memory-diagnostics-log-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 0e309387a06fa36e79ad45469efba682551ab37c
+    upstreamBlob: 5e2d3ae6f55e6db37e6eaa52e40452517e9a13ea
   - upstream: docs/monitoring/README.md
     variant: docs/monitoring/README-openzwork.md
     role: maintained
@@ -125,38 +125,38 @@ variants:
     variant: docs/remote/provider-provisioning-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: c299a3dce7003caac5d48d1b9d4451ef017b9696
+    upstreamBlob: 095f97282dcc7feadd457f9ceadfeacd38f325a1
   - upstream: docs/superpowers/specs/2026-09-09-virtual-project-design.md
     variant: docs/superpowers/specs/2026-09-09-virtual-project-design-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: ba618ba1d3da59a6b856b4823c75168172e6dda2
+    upstreamBlob: f6430d7cd8d2cbaa2950038816793939cbf39200
   - upstream: docs/testing/bots-e2e-coverage-matrix.md
     variant: docs/testing/bots-e2e-coverage-matrix-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: f8b71e22f9650a86bcfbad624b4a395e11542c2c
+    upstreamBlob: 1e1b2cdcf5b1d8b3bbe454a32dcd4c799882df04
   - upstream: docs/testing/conversation-session-decision-e2e-roadmap.md
     variant: docs/testing/conversation-session-decision-e2e-roadmap-openzwork.md
     role: tool
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: 4b4617087cbbe1fde83569e3a680d02a8479bbbb
+    upstreamBlob: 2e2430a3a2373e8a6d4f9b46cfdc4352697779d5
   - upstream: docs/testing/conversation-session-decision-review-queue.md
     variant: docs/testing/conversation-session-decision-review-queue-openzwork.md
     role: tool
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: e44acfdf69ea52d23057c5cb5922a48e4dd5887c
+    upstreamBlob: 434ade3e8d37fb675b204b30bb1ecc1c3d23458b
   - upstream: docs/testing/conversation-session-decision-workflow-board.md
     variant: docs/testing/conversation-session-decision-workflow-board-openzwork.md
     role: tool
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: e387098c3b4c38934535875a99b2e0879234dbc7
+    upstreamBlob: 43fa80f52e4c2343f72ca954009f2727ff80605f
   - upstream: docs/testing/conversation-session-e2e-coverage-matrix.md
     variant: docs/testing/conversation-session-e2e-coverage-matrix-openzwork.md
     role: tool
@@ -166,33 +166,33 @@ variants:
       - scripts/test/conversation-session-formal-admission-audit.test.mjs
       - docs/specs/memory-migration-openzwork.md
     kind: content
-    upstreamBlob: 3261a5c5a4fa2e15912ee2d2523539c9943391ce
+    upstreamBlob: 099cb195b475d4c1d73f60d3041f618627c3dca8
   - upstream: docs/testing/conversation-session-e2e-development-workflow.md
     variant: docs/testing/conversation-session-e2e-development-workflow-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: c24c8bef54587eb871e78486ec1d0b61e09123f9
+    upstreamBlob: 8a346f6b6dd79c956a91af618ef289e8afa72a2b
   - upstream: docs/testing/conversation-session-next-decision-answer-template.md
     variant: docs/testing/conversation-session-next-decision-answer-template-openzwork.md
     role: tool
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: 75a39beb2d023c828a967990a3e044299b5e14ea
+    upstreamBlob: cb8616903b7ace23117aeb62adb456086dbf6fec
   - upstream: docs/testing/conversation-session-next-decision-review.md
     variant: docs/testing/conversation-session-next-decision-review-openzwork.md
     role: tool
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: 7f75c750e49a78241ecab776e0fef9b69b746a52
+    upstreamBlob: f2985c39484541cdc86dd761b3aa46042b8d1a84
   - upstream: docs/testing/plugin-management-lifecycle-e2e-coverage-matrix.md
     variant: docs/testing/plugin-management-lifecycle-e2e-coverage-matrix-openzwork.md
     role: tool
     usedBy:
       - packages/desktop/scripts/promote-plugin-e2e.mjs
     kind: content
-    upstreamBlob: f43646c496d258f0dd6013b8e91845037d8403d2
+    upstreamBlob: a9a0e41a05a4082789f92f5652f8245bf11b7d7b
   - upstream: docs/testing/pre-push-hook.md
     variant: docs/testing/pre-push-hook-openzwork.md
     role: rule
@@ -231,14 +231,54 @@ variants:
     variant: docs/web-remote-control/web-remote-control-architecture-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 572469150b745c1234d796dd710905e78e8d30da
+    upstreamBlob: 99d77e16be947667c497b94da089497fff11150e
   - upstream: docs/windows-tray.md
     variant: docs/windows-tray-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 8b47f3c0739f38d5036370d4a23935f608121a1e
+    upstreamBlob: 7f64525ab9df44bb289e3ca1a95efcff231b8681
   - upstream: docs/working-memory/provider-refactor/provider-refactor.md
     variant: docs/working-memory/provider-refactor/provider-refactor-openzwork.md
     role: maintained
     kind: content
     upstreamBlob: 3ef5c1abea575e3cf25cbb9b7eb63656e4965908
+  - upstream: docs/desktop/finder-open-folder-deep-link.md
+    variant: docs/desktop/finder-open-folder-deep-link-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: 3bbfe82c5cca58af4ef9439f61ea6f04b8326c8b
+  - upstream: docs/project-primary-root-availability.md
+    variant: docs/project-primary-root-availability-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: 47fd90ba4c33df9539dbf45298fe695dfd982e3f
+  - upstream: docs/settings-mcp-list.md
+    variant: docs/settings-mcp-list-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: 4062a2a60e8e996a21237c2b7db146648bd838a0
+  - upstream: docs/specs/gen-ui-model-context.md
+    variant: docs/specs/gen-ui-model-context-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: 69ae705d978e1aa27cc3da08b152291148a9f4ee
+  - upstream: docs/streaming-markdown-reveal.md
+    variant: docs/streaming-markdown-reveal-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: 382d20a1840eb222122509348515612683bb8cb0
+  - upstream: docs/superpowers/plans/2026-07-21-desktop-e2e-runtime-paths.md
+    variant: docs/superpowers/plans/2026-07-21-desktop-e2e-runtime-paths-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: 7bbe826a6bc77708eeff07f522fb18f4518ae0a7
+  - upstream: docs/testing/subagents-built-in-model-overrides-e2e-coverage-matrix.md
+    variant: docs/testing/subagents-built-in-model-overrides-e2e-coverage-matrix-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: f94112f1e518e7c0a09fdfb200d51136ccaac63d
+  - upstream: docs/testing/workspace-file-tree-e2e-coverage.md
+    variant: docs/testing/workspace-file-tree-e2e-coverage-openzwork.md
+    role: maintained
+    kind: content
+    upstreamBlob: 73de8c191549cbcff3fe5a4b1a1c7ae683f351c5

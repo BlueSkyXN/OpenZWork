@@ -24,7 +24,10 @@ import { parseAutomationRunId } from "@zcode/shared";
 import { workflowLifecycleFactFromProgress } from "./conversation-telemetry-workflow-facts.js";
 import {
   conversationTelemetryFactSchema,
+  modelRequestMetricsFactSchema,
   type ConversationTelemetryFact,
+  type ModelRequestMetricsFact,
+  looksLikeSecretIdentifier,
 } from "@zcode/shared/zcode-protocol-v4";
 
 const MAX_TRACKED_LIFECYCLE_KEYS = 2_000;
@@ -111,7 +114,17 @@ function skillTelemetryFactFields(
   // 仅消费加载结果 metadata；请求参数不证明技能存在，不能进入遥测。
 
   const name = optionalString(value.name);
-  const skillName = source && name && name.length <= 64 && /^[A-Za-z0-9][A-Za-z0-9_-]*$/u.test(name) ? name : undefined;
+  // 修复依据（OpenZWork，v3.18.1 同步）：内联过滤补齐 schema 同款密钥形态拒绝
+  // （looksLikeSecretIdentifier）——此前 sk- 形态名字通过内联检查却在 schema parse
+  // 被拒，整条 tool.lifecycle 事实被丢弃（v4-gateway 技能隐私用例失败根因）。
+  const skillName =
+    source &&
+    name &&
+    name.length <= 64 &&
+    /^[A-Za-z0-9][A-Za-z0-9_-]*$/u.test(name) &&
+    !looksLikeSecretIdentifier(name)
+      ? name
+      : undefined;
   return {
     ...(skillName ? { skillName } : {}),
     ...(qualifiedName ? { skillQualifiedName: qualifiedName } : {}),
@@ -162,6 +175,28 @@ function eventTimestamp(event: SessionEvent): number {
   const value =
     event.timestamp instanceof Date ? event.timestamp.getTime() : Number(event.timestamp);
   return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function factBase(
+  sessionId: string,
+  event: SessionEvent,
+  runtimeMetadata: { memoryEnabled?: boolean } | undefined,
+) {
+  const turnId = event.turnId ? String(event.turnId) : undefined;
+  return {
+    turnKey: turnId ? `${sessionId}\0${turnId}` : undefined,
+    base: {
+      ...(runtimeMetadata?.memoryEnabled !== undefined
+        ? { memoryEnabled: runtimeMetadata.memoryEnabled }
+        : {}),
+      version: 1 as const,
+      eventId: String(event.id),
+      eventSeq: Math.max(0, Math.floor(event.sequenceNumber)),
+      occurredAt: eventTimestamp(event),
+      sessionId,
+      ...(turnId ? { turnId } : {}),
+    },
+  };
 }
 
 function automationAdmission(inputId: string | undefined, automationId: string | undefined) {
@@ -305,24 +340,55 @@ export class ConversationTelemetryFactNormalizer {
   }>();
   private readonly completedModelRequests = new BoundedValueMap<CompletedModelRequestIdentity[]>();
 
+  /**
+   * 模型请求指标：只由 `model_request_completed` 产生，供扩展进程算生成速率。
+   * 走独立通知，不进 ConversationTelemetryFact（docs/monitoring/conversation-telemetry-v4.md「模型请求指标」）。
+   * 必须在同一事件的 normalize 之后调用，sourceCommandId 依赖 normalize 记下的轮次输入。
+   */
+  normalizeModelRequestMetrics(
+    sessionId: string,
+    event: SessionEvent,
+    runtimeMetadata?: { memoryEnabled?: boolean },
+  ): ModelRequestMetricsFact | null {
+    if (event.type !== SessionEventType.ModelNetworkStatus) return null;
+    const payload = event.payload as ModelNetworkStatusPayload;
+    if (payload.type !== "model_request_completed") return null;
+    const { base, turnKey } = factBase(sessionId, event, runtimeMetadata);
+    const sourceCommandId = turnKey ? this.sourceCommandByTurn.get(turnKey) : undefined;
+    const usage = recordValue(payload.usage);
+    const token = (value: unknown) => nonNegative(value);
+    const usageFields = {
+      inputTokens: token(usage.inputTokens),
+      outputTokens: token(usage.outputTokens),
+      reasoningTokens: token(usage.reasoningTokens),
+      cacheReadTokens: token(usage.cacheReadTokens),
+      cacheWriteTokens: token(usage.cacheWriteTokens),
+      totalTokens: token(usage.totalTokens),
+    };
+    return modelRequestMetricsFactSchema.parse({
+      ...base,
+      kind: "model.request.metrics",
+      ...(sourceCommandId ? { sourceCommandId } : {}),
+      requestId: String(payload.requestId),
+      providerId: String(payload.providerId),
+      modelId: String(payload.modelId),
+      ...(payload.querySource ? { querySource: payload.querySource } : {}),
+      ...(payload.queryId ? { queryId: String(payload.queryId) } : {}),
+      durationMs: nonNegative(payload.durationMs) ?? 0,
+      ...(nonNegative(payload.timeToFirstContentMs) !== undefined
+        ? { timeToFirstContentMs: payload.timeToFirstContentMs }
+        : {}),
+      ...Object.fromEntries(Object.entries(usageFields).filter(([, value]) => value !== undefined)),
+    });
+  }
+
   normalize(
     sessionId: string,
     event: SessionEvent,
     runtimeMetadata?: { modelName?: string; modelProvider?: string; memoryEnabled?: boolean },
   ): ConversationTelemetryFact | null {
     const turnId = event.turnId ? String(event.turnId) : undefined;
-    const turnKey = turnId ? `${sessionId}\0${turnId}` : undefined;
-    const base = {
-      ...(runtimeMetadata?.memoryEnabled !== undefined
-        ? { memoryEnabled: runtimeMetadata.memoryEnabled }
-        : {}),
-      version: 1 as const,
-      eventId: String(event.id),
-      eventSeq: Math.max(0, Math.floor(event.sequenceNumber)),
-      occurredAt: eventTimestamp(event),
-      sessionId,
-      ...(turnId ? { turnId } : {}),
-    };
+    const { base, turnKey } = factBase(sessionId, event, runtimeMetadata);
     const sourceCommandId = turnKey ? this.sourceCommandByTurn.get(turnKey) : undefined;
 
     switch (event.type) {

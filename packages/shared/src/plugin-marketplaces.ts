@@ -18,6 +18,12 @@ export const CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "claude-plugins-official";
 /** Settings 三类资源发现共用；Bootstrap 单测与官方 definition 的 defaultEnabled 机械对照。 */
 export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set([
   "browser-use@zcode-plugins-official",
+  // OpenZWork（T09）：文档族四件套随上游拆分补入（与 official-plugin-definitions 的
+  // defaultEnabled 机械对照）；上游的 image-search（OZ-D009）与 zcode-site 不引入。
+  "documents@zcode-plugins-official",
+  "pdf@zcode-plugins-official",
+  "presentations@zcode-plugins-official",
+  "spreadsheets@zcode-plugins-official",
   // node_repl 宿主：不进市场、不对用户露出，也不贡献任何 skill/command/subagent，但必须
   // 始终可用 —— node_repl 的注册门禁是「Browser Use 启用」，宿主自己不参与那个判断。
   // Browser Use 默认开着，宿主若默认关就等于它上来就没有宿主。
@@ -38,7 +44,20 @@ export const DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS: ReadonlySet<string> = new Set(
 
 // OpenZWork：官方市场的远端 CDN source 不随上游恢复（WP-08 官方产品域扫描零残留）；
 // 本地 bundled seed 分片仍会在 Agent storage 内合并出官方市场目录；用户可自行添加第三方市场。
-export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [];
+// Claude 官方目录（anthropics/claude-plugins-official）保留注册（2026-11-14 T15 修复）：它是
+// GitHub 公开仓库 shorthand 而非官方产品域，不在 WP-08 净化面（门禁只拦官方域字面量）；
+// Git 不可用时的 GitHub Archive 刷新通道与 no-git 用例都依赖该默认条目存在。
+export const DEFAULT_PLUGIN_MARKETPLACES: DefaultPluginMarketplace[] = [
+  {
+    id: CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+    source: "anthropics/claude-plugins-official",
+    name: CLAUDE_OFFICIAL_PLUGIN_MARKETPLACE_ID,
+    description:
+      "Directory of popular Claude Code extensions including development tools, productivity plugins, and MCP integrations",
+    // 只内置官方 catalog 来源，不把远端 manifest 快照打包进仓库；首次刷新前数量未知。
+    pluginCount: 0,
+  },
+];
 
 // 商店「公开」分段只有一个 ZCode 官方市场 id，内置与第三方市场不再拆分身份。
 export const PUBLIC_STORE_MARKETPLACE_IDS = [ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID] as const;

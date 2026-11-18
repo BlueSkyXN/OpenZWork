@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import type { Locale } from "@zcode/shared";
+import { toZhOrEnLocale, type Locale } from "@zcode/shared";
 
 type ProductFlavor = "production" | "preview" | "development";
 const PRODUCT_NAMES: Record<ProductFlavor, string> = {
@@ -11,8 +11,7 @@ const PRODUCT_NAMES: Record<ProductFlavor, string> = {
 const MENU_KEY_NAMES: Record<ProductFlavor, string> = {
   production: "OpenZWork.OpenInOpenZWork",
   preview: "OpenZWork.Preview.OpenInOpenZWork",
-  development: "OpenZWork.Dev.OpenInOpenZWork",
-};
+  development: "OpenZWork.Dev.OpenInOpenZWork",};
 
 type Logger = {
   info: (...args: unknown[]) => void;
@@ -28,8 +27,7 @@ export function getWindowsOpenFolderMenuName(
   productFlavor: ProductFlavor = "production",
 ): string {
   const productName = PRODUCT_NAMES[productFlavor];
-  return locale === "zh-CN" ? `在 ${productName} 中打开` : `Open in ${productName}`;
-}
+  return locale === "zh-CN" ? `在 ${productName} 中打开` : `Open in ${productName}`;}
 
 function quoteWindowsCommandArg(value: string): string {
   return `"${value.replace(/"/g, '\\"')}"`;

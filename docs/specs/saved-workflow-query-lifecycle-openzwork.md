@@ -133,7 +133,7 @@ Main/Host 同批发布时无缺口；「旧 Desktop Main 收到新 lane 枚举�
 - CLI 读取协议：既有 `saved-workflows-protocol.test.ts` / `saved-workflows-run-protocol.test.ts`。
 - UI store：`packages/ui/test/savedWorkflowRefresh.test.ts`（受控 service 的状态
   回归，证明范围限 UI 状态机）。
-- 桌面 E2E：`packages/desktop/test/e2e/automations-workflows-hub.test.ts` 扩充。
+- 桌面 E2E：`packages/desktop/test/e2e/automations/workflows/automations-workflows-hub.test.ts` 扩充。
 
 ## 上游跟进与撤销
 

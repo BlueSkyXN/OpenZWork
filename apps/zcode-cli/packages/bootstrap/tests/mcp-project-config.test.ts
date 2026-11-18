@@ -8,7 +8,7 @@ import { createRegistryBackedTestApp as createZCodeApp } from "./helpers/registr
 
 describe("project MCP config", () => {
   // 标准项目、插件和用户 MCP 配置优先级与自动连接回归。
-  it("lists project MCP servers as trusted and auto-connects on startup", async () => {
+  it("keeps an unapproved project MCP server out of startup connections", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-mcp-"));
     const cwd = join(root, "workspace");
     const connectedServerSets: string[][] = [];
@@ -50,7 +50,9 @@ describe("project MCP config", () => {
       expect(statuses.project?.error).toBeUndefined();
 
       await app.submitPrompt("hello");
-      expect(connectedServerSets).toEqual([["node_repl"]]);
+      // 已构建的内置插件也会随启动连接，独立核对项目来源的信任门与宿主连接。
+      expect(connectedServerSets).toEqual([expect.arrayContaining(["node_repl"])]);
+      expect(connectedServerSets[0]).not.toContain("project");
 
       await app.close();
     } finally {
@@ -105,7 +107,7 @@ describe("project MCP config", () => {
 
       await app.submitPrompt("hello");
       expect(connectedServerSets).toEqual([
-        ["plugin:ios-dev:ios-simulator", "node_repl"],
+        expect.arrayContaining(["plugin:ios-dev:ios-simulator", "node_repl"]),
       ]);
       expect(connectedConfigs[0]?.["plugin:ios-dev:ios-simulator"]).toMatchObject({
         command: "node",
@@ -184,7 +186,7 @@ describe("project MCP config", () => {
       expect(statuses.shared?.status).toBe("disconnected");
 
       await app.submitPrompt("hello");
-      expect(connectedServerSets).toEqual([["shared", "node_repl"]]);
+      expect(connectedServerSets).toEqual([expect.arrayContaining(["shared", "node_repl"])]);
       // OpenZWork v3.17.1：project-only 未过信任门不连接；user 源的 shared 照常连接。
       expect(connectedConfigs[0]?.["project-only"]).toBeUndefined();
       expect(connectedConfigs[0]?.shared).toMatchObject({

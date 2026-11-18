@@ -45,7 +45,7 @@ export interface V4ChatPaneProps {
   /** CLI session id；null = draft 首发。 */
   sessionId: string | null;
   provider?: ZCodeProvider;
-  onSessionCreated?: (sessionId: string) => void;
+  onSessionCreated?: (sessionId: string, origin?: "draft-promotion") => void;
   /** deleteSession：删除当前会话后回到 draft。 */
   onSessionDeleted?: () => void;
   /** 草稿态 composer contextHeader（m5，壳层构造下发）。 */

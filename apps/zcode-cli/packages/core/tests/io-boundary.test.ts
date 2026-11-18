@@ -1,7 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
-
 const repoRoot = join(import.meta.dirname, "..", "..", "..");
 const allowedNetworkBoundaryFiles = new Set([
   "packages/adapters/src/auth/localhost-callback.ts",

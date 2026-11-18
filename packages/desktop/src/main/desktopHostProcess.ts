@@ -1,6 +1,11 @@
-// fork 净化：上游在此 import ARMS 资源遥测落盘（desktopResourceTelemetry/processResourceMcpTelemetrySource，
-// WP-05 已删面，文件不存在），连同 onMcpTelemetry/onSessionCreateTelemetry（官方遥测链）与
-// onCuaOperationState*（D-14 CUA 链）一并剥离；data-sync 与 bots 回调保留。
+import type { HostQuitBlocker, HostRemoteConversationTelemetryResponse } from "@zcode/shared";
+import {
+  createSystemCredentialCipher,
+  executeCredentialCipherRequest,
+} from "@zcode/shared/credential-security";
+import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import { getAppConfigDir } from "@zcode/services/node";
+import { bindAppControlNavigationHost } from "#src/app-control-navigation/main.js";
 /* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、ZCode Agent，拆分前先保持跨进程消息收口。 */
 import {
   type HostAgentProcessErrorResponse,
@@ -13,6 +18,7 @@ import {
   type RemoteTarget,
   type TaskRealtimeHostDeliveryKind,
   type WorkspacePurpose,
+  CREDENTIAL_KEY_SHARE_UNAVAILABLE_ERROR_CODE,
   formatZCodeHostProcessName,
   HostMessageTypes,
   hostResponseMessageSchema,
@@ -22,6 +28,7 @@ import {
   RUNTIME_ZCODE_DEBUG,
   serializeLaunchMarks,
   ZCODE_DESKTOP_CONTEXT_PROMPT_ENABLED_ENV,
+  shouldEnableE2ETestBridge,
 } from "@zcode/shared";
 import type {
   PluginSandboxHandle,
@@ -36,7 +43,7 @@ import {
   MessageChannelMain,
 } from "electron";
 import { randomUUID } from "node:crypto";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { BroadcastHub } from "./broadcastHub.js";
 import { bindDatabaseStartupRelay } from "./databaseStartupRelay.js";
 import { getMainLaunchPartialMarks } from "./desktopLaunchMarks.js";
@@ -125,6 +132,11 @@ export function loadWindow(
       unavailableWorkspacePath: bootstrap?.unavailableWorkspacePath,
       windowKind: bootstrap?.windowKind,
       locale: bootstrap?.locale,
+      // OpenZWork(OZ-F012): pane runtime identity E2E 诊断的 run ID 注入——与 Host probe
+      // 同一 gate（build flag + 非空 run ID）才随 URL 下发；生产构建 flag 缺失时不存在。
+      ...(shouldEnableE2ETestBridge(process.env)
+        ? { zcodeE2eRunId: process.env.ZCODE_E2E_RUN_ID?.trim() }
+        : {}),
     }).filter((entry): entry is [string, string] => entry[1] != null),
   );
 
@@ -167,6 +179,8 @@ export function spawnHostProcess(
     taskRealtimeBus?: TaskRealtimeBus;
     windowHostProcessMap: Map<number, ElectronUtilityProcess>;
     hostRunningTaskCountMap: Map<ElectronUtilityProcess, number>;
+    /** 每个 Host 当前阻止退出的事项（docs/git/worktree.md §6.4）；空集合时删除条目。 */
+    hostQuitBlockersMap: Map<ElectronUtilityProcess, HostQuitBlocker[]>;
     onWorkspaceRunningTaskCountChanged?: (
       child: ElectronUtilityProcess,
       event: {
@@ -252,6 +266,10 @@ export function spawnHostProcess(
   options?: SpawnHostProcessOptions,
 ): ElectronUtilityProcess {
   const hostId = randomUUID();
+  // 系统库只由 Main 访问；路径在 fork 时绑定，Host 不能指定其他凭据目录。
+  const credentialCipher = createSystemCredentialCipher({
+    filePath: join(getAppConfigDir(), "credentials.json"),
+  });
   const glmBinaryPath = resolveBundledGlmBinaryPath();
   const execArgv = [
     ...(RUNTIME_ZCODE_DEBUG ? [`--inspect-brk=${RUNTIME_ZCODE_DEBUG}`] : []),
@@ -298,9 +316,59 @@ export function spawnHostProcess(
   });
 
   const databaseStartupRelay = bindDatabaseStartupRelay(win, child, hostId);
+  const unbindAppNavigation = bindAppControlNavigationHost(win, child, (id) =>
+    BrowserWindow.fromId(id),
+  );
+  child.once("exit", unbindAppNavigation);
   child.on("message", (message: unknown) => {
     const result = hostResponseMessageSchema.safeParse(message);
     if (!result.success) {
+      return;
+    }
+
+    if (result.data.type === HostResponseTypes.CredentialCipherRequest) {
+      const { type: _type, ...request } = result.data;
+      void executeCredentialCipherRequest(credentialCipher, request)
+        .then((reply) => {
+          if (!exitedHostProcesses.has(child)) {
+            child.postMessage({ type: HostMessageTypes.CredentialCipherResult, ...reply });
+          }
+        })
+        .catch(() => {
+          // Host 已退出时只能放弃回包；任何凭据输入/结果都不得进入日志。
+        });
+      return;
+    }
+
+    if (result.data.type === HostResponseTypes.CredentialKeyShareRequest) {
+      const { requestId, targetBaseDir } = result.data;
+      // 修复原因（ZCT-2120723935487688704）：切换数据存储路径只复制凭据文件，新根缺少系统条目，
+      // 重启后掉登录且无法重新登录。Host 只提供数据根；凭据路径由 Main 按 copyDataDirectory 的
+      // 目标布局推导，密钥不离开 Main，也不开放对目标目录的加解密。
+      const share = isAbsolute(targetBaseDir)
+        ? credentialCipher.shareKeyWithCopiedCredentials(
+            // OpenZWork（WP-03 唯一数据根）：凭据文件随数据根常量，不用上游 .zcode 字面量。
+            join(targetBaseDir, OPENZWORK_DATA_DIR_NAME, "v2", "credentials.json"),
+          )
+        : Promise.reject(new Error("Data root must be absolute"));
+      void share
+        .then(
+          () => ({ ok: true }),
+          () => ({ ok: false, errorCode: CREDENTIAL_KEY_SHARE_UNAVAILABLE_ERROR_CODE }),
+        )
+        .then((reply) => {
+          dependencies.logger.info(`[credential-key-share] ${reply.ok ? "completed" : "failed"}`);
+          if (!exitedHostProcesses.has(child)) {
+            child.postMessage({
+              type: HostMessageTypes.CredentialKeyShareResult,
+              requestId,
+              ...reply,
+            });
+          }
+        })
+        .catch(() => {
+          // Host 已退出时只能放弃回包；原生异常不进入日志，避免泄露系统细节。
+        });
       return;
     }
 
@@ -367,7 +435,9 @@ export function spawnHostProcess(
         return;
       }
       void Promise.resolve()
-        .then(() => register(request))
+        // schema 的 refine 已按 contentKind 校验归属（扩展视图无会话，其他类型必须有会话）；
+        // zod 的推导类型表达不出这层判别，这里收窄成契约的判别联合。
+        .then(() => register(request as PluginSandboxRegisterRequestPayload))
         .then((handle) => reply({ requestId: request.requestId, ok: true, ...handle }))
         .catch((error: unknown) =>
           reply({
@@ -584,6 +654,7 @@ export function spawnHostProcess(
     hostLogRelay.flushRawLogs();
     dependencies.logger.info(`[spawnHostProcess] host process (${label}) exited with code ${code}`);
     dependencies.hostRunningTaskCountMap.delete(child);
+    dependencies.hostQuitBlockersMap.delete(child);
     if (shouldRegisterBroadcast) {
       dependencies.broadcastHub.unregister(windowId);
     }

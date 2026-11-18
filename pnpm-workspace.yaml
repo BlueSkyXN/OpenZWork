@@ -27,6 +27,8 @@ supportedArchitectures:
     - current
     - glibc
 allowBuilds:
+  # core-js 为 v3.18.0 新增传递依赖，postinstall 仅输出 funding 横幅，无副作用。
+  core-js: true
   cpu-features: true
   edgedriver: true
   electron: true
@@ -48,6 +50,9 @@ overrides:
   "@electron/rebuild>node-abi": "4.40.0"
 patchedDependencies:
   "@radix-ui/react-collapsible@1.1.12": patches/@radix-ui__react-collapsible@1.1.12.patch
+  # 上游 v3.18.0 新增的 radix menu 补丁（@arms 补丁随遥测域裁剪不登记；
+  # @open-pencil__core 补丁文件保留但全树无消费者，不登记）。
+  "@radix-ui/react-menu@2.1.16": patches/@radix-ui__react-menu@2.1.16.patch
   vitest@4.1.7: patches/vitest@4.1.7.patch
   wdio-electron-service@9.2.1: patches/wdio-electron-service@9.2.1.patch
   "@ai-sdk/openai-compatible@2.0.60": patches/@ai-sdk__openai-compatible@2.0.60.patch

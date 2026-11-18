@@ -52,7 +52,7 @@ export function OccupationOnboarding({
   const [occupation, setOccupation] = useState<OccupationValue | null>("developer");
   const savedInterfaceMode = useZCodeStore((state) => state.interfaceMode);
   const setInterfaceMode = useZCodeStore((state) => state.setInterfaceMode);
-  // mode 为 null 表示模式页被跳过；落 settings 时沿用既有保守默认值。
+  // mode 为 null 表示模式页被"跳过"（跳过是显式答案，记录里保留 null 而非兜底值）。
   const [mode, setMode] = useState<InterfaceMode | null>(savedInterfaceMode);
   const [step, setStep] = useState<0 | 1 | 2>(0);
   const preferences = step === 2;
@@ -169,6 +169,8 @@ export function OccupationOnboarding({
     setSaving(true);
     setError(false);
     try {
+      // 卡片是草稿；实际应用才报切换，后续偏好保存失败重试也不重报同值。
+      // 净化保留：上游 applyInterfaceMode（appTelemetry 域）不并入，直接走 store 命令。
       if (mode) setInterfaceMode(mode);
       logger.info("[occupation-onboarding] 保存偏好", { interfaceMode: mode });
       await update({

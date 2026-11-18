@@ -4,8 +4,8 @@
 version: 1
 upstream:
   repository: https://github.com/zai-org/ZCode
-  version: 3.17.2
-  commit: a9fe401eede6e6e5e01be9048679c206fe6f02d9
+  version: 3.18.2
+  commit: fec975905a2abd4c07e35c40d51fa097a2258ec9
 entries:
   - id: OZ-F001
     kind: feature
@@ -59,7 +59,7 @@ entries:
       - apps/zcode-cli/packages/core/tests/system-prompt-editor.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-observation.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-settings.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/system-prompt-settings.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/system-prompt-settings.test.ts
       - packages/shared/src/system-prompt/contract.test.ts
       - packages/ui/src/settings/system-prompt/contract.test.ts
       - packages/ui/test/browser/manual-review/pending/system-prompt-editor.fixture.tsx
@@ -124,7 +124,7 @@ entries:
       - apps/zcode-cli/packages/bootstrap/tests/native-conversation-metrics.test.ts
       - apps/zcode-cli/packages/core/src/runtime/metrics/contract.test.ts
       - apps/zcode-cli/packages/core/tests/native-metrics.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-native-metrics.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-native-metrics.test.ts
       - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-native-metrics.json
       - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-native-metrics.json
       - packages/shared/src/conversation-metrics/contract.test.ts
@@ -146,7 +146,7 @@ entries:
       - packages/ui/src/project-sidebar/task-filters.ts
       - packages/ui/src/project-sidebar/useMoveTaskToProject.ts
     tests:
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openzwork-controls.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-openzwork-controls.test.ts
       - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-openzwork-controls.json
       - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-openzwork-controls.json
       - packages/ui/src/conversation-export/contract.test.ts
@@ -189,7 +189,7 @@ entries:
       - usage-query-tool
       - usage-query-protocol
     tests:
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-discovery-usage.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-model-discovery-usage.test.ts
       - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-model-discovery-usage.json
       - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-model-discovery-usage.json
       - packages/provider-node/src/model-discovery/contract.test.ts
@@ -259,7 +259,7 @@ entries:
       - packages/web/src/web-remote-control/adapters/webRemoteControlTransport.ts
       - packages/desktop/src/host/windowHostAttachmentRpcPolicy.ts
     tests:
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/web-remote-v1-connections.test.ts
       - packages/desktop/test/e2e/helpers/web-remote-control-settings.ts
       - packages/desktop/test/webRemoteControlDirectGateway.test.ts
       - packages/desktop/test/webRemoteControlManagerDirectoryPush.test.ts
@@ -290,6 +290,8 @@ entries:
       - scripts/publish-github-release.mjs
       - scripts/release-workflows.mjs
       - scripts/verify-desktop-release-version.mjs
+      - scripts/verify-desktop-package.mjs
+      - scripts/installer-provenance.mjs
       - packages/desktop/src/renderer/env.d.ts
     hooks:
       - package.json
@@ -304,6 +306,7 @@ entries:
       - scripts/test/prebuilt-binary-extract.test.mjs
       - scripts/test/publish-github-release.test.mjs
       - scripts/test/verify-desktop-release-version.test.mjs
+      - scripts/test/verify-desktop-package.test.mjs
       - scripts/test/zcode-distribution-installer.test.mjs
       - tests/ci/automatic-release.test.mjs
       - tests/ci/installer-release.test.mjs
@@ -319,26 +322,63 @@ entries:
       - docs/openzwork/ci/ci-job-orchestration.md
       - docs/openzwork/ci/extended-ci-parallel.md
       - docs/testing/conversation-session-e2e-development-workflow-openzwork.md
+      - docs/specs/wt04-direct-runtime-association-openzwork.md
     modules:
       - desktop-e2e-runner
+      - host-e2e-attachment-probe
+      - pane-runtime-identity-e2e
     paths:
       - .github/workflows/ci.yml
       - .github/workflows/extended-checks.yml
       - scripts/merge-full-suite-reports.mjs
       - scripts/run-full-suite-groups.mjs
       - scripts/test-report-validation.mjs
+      - scripts/agent-node-dist.mjs
+      - scripts/verify-agent-node-dist.mjs
+      - scripts/verify-e2e-summary.mjs
       - tests/ci/core-tests.json
       - packages/desktop/test/e2e/reporting/istanbul-lib-instrument.d.ts
-      - packages/desktop/test/e2e/fixtures/cases/plugins/plugin-promotion-check-probe.json
-      - packages/desktop/test/e2e/fixtures/upstream/plugin-management/plugin-promotion-check-probe.json
+      # WT04 direct 证据（2026-11-16）：Host attachment/subscription 只读 probe 与
+      # pane 查询判定合同，见 docs/specs/wt04-direct-runtime-association-openzwork.md。
+      - packages/desktop/src/host/e2e-attachment-probe/*
+      - packages/ui/src/v4/pane-runtime-identity-e2e/*
+      - packages/desktop/test/e2e/helpers/direct-attachment-association.ts
     tests:
       - tests/ci/actions-runtime.test.mjs
+      - scripts/test/verify-agent-node-dist.test.mjs
+      - scripts/test/verify-e2e-summary.test.mjs
       - tests/ci/core-scope.test.mjs
       - tests/ci/extended-parallel.test.mjs
       - tests/ci/gen-ui-vendor-checkout.test.mjs
       - tests/ci/typecheck-scope.test.mjs
       - tests/private-cleanup/cli-artifact-workflow.test.mjs
       - packages/desktop/test/e2eRuntimePaths.test.ts
+      # WT04（受管 worktree 冷恢复归属+手机查看）验收用例：manual-review/pending，需显式回放；
+      # 2026-11-16 direct 关联以两端 pane 独立查询与 Host attachment/subscription 记录交叉核对，
+      # 进程树快照只作辅助诊断（sharedInstanceKey 同值代填与 generation 相等判据均已废弃）。
+      - packages/desktop/test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts
+      - packages/desktop/test/e2e/fixtures/upstream/browser/browser-design-mode-cross-session.json
+      # CLH 处置（2026-11-16 V2）：上游 settings-client-language-header.test.ts 依赖的
+      # /api/v1/client/configs 已随 OZ-D008 删除（其 5 case 保留历史标不适用）；
+      # 本自有验收承接保留行为（语言实时切换 + client/configs 零请求反向合同）。
+      - packages/desktop/test/e2e/settings/general/settings-client-language-header-openzwork.test.ts
+      # CLH 补充（2026-11-17 J1.4）：openCommunity 本地配置链受控回归——
+      # dev 形态解析仓库根 config/default.json 并按语言返回 community_urls；
+      # packaged 形态从 resourcesPath 解析（electron-builder 布局）。
+      - packages/desktop/test/communityLocalConfig.test.ts
+      # H1（2026-11-16）：进程树稳定实例代理（历史校准，保留为辅助诊断事实）。
+      - packages/desktop/test/e2e/helpers/session-runtime-association.ts
+      - packages/desktop/test/sessionRuntimeAssociation.test.ts
+      # WT04 direct 关联判定合同回归：反例拒绝同代异实例/缺 attachment/scope 不匹配/
+      # 订阅（任一端）查看中结束（固定原桌面订阅，重订阅也判失败）/两端关系复用/查询返回值互异/
+      # 查询不可用/缺 artifact/gate 未启用/seq 乱序/同值代填；probe ACK 先行与落盘顺序。
+      - packages/desktop/test/directAttachmentAssociation.test.ts
+      # pane 诊断装配矩阵：flag+run ID 双条件，含空查询串读取手机 sessionStorage。
+      - packages/ui/test/paneRuntimeIdentityE2EGate.test.ts
+      # WT04 补证（2026-11-15 独立复核 F3 迁移）：同路径两个 identity 的任务隔离与冷恢复，
+      # 受控运行时入口走生产 task-facts 管道 + 真实 TaskIndexRepo 存储（原 services 业务单测
+      # 违反「不新增 App 业务单测」规则，已删除）。
+      - packages/desktop/test/e2e/git/worktrees/task-index-workspace-identity-isolation.test.ts
       - packages/services/src/gen-ui/contract.test.ts
       - packages/services/test/localServicesPluginUiComposition.test.ts
       - packages/services/test/processTreeLineage.test.ts
@@ -346,8 +386,18 @@ entries:
       - packages/zcode-server-cli/test/componentArchiveProcess.test.ts
       - packages/ui/test/browser/manual-review/pending/floating-layer-hit-regions.fixture.tsx
       - packages/ui/test/browser/manual-review/pending/floating-layer-hit-regions.test.mjs
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-menu-selection.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-model-menu-selection.test.ts
       - packages/desktop/test/e2e/workspace-file-tree/manual-review/pending/workspace-file-tree-shared-search.test.ts
+    hooks:
+      # WT04 direct probe 接线点（上游文件，只加行为必需行）：
+      # Host 在 exposeServicesOnMessagePort 内以 registry attach 事实包装 agent service；
+      # SessionPane/V4ConversationContext 暴露 pane-local 查询所需的已解析 scope；
+      # desktopHostProcess（2026-11-17 J2）在 Host gate 命中时向 renderer URL 注入
+      # zcodeE2eRunId（pane 诊断双条件之一）。
+      - packages/desktop/src/host/index.ts
+      - packages/desktop/src/main/desktopHostProcess.ts
+      - packages/ui/src/v4/SessionPane.tsx
+      - packages/ui/src/v4/V4ConversationContext.tsx
     source: 现有 CI/E2E 规范；889fe19d6 的 runner 登记；补登已有验证材料
   - id: OZ-C001
     kind: change
@@ -362,6 +412,7 @@ entries:
       - packages/shared/src/node/userHomeBoundary.ts
     hooks:
       - packages/desktop/build/installer.nsh
+      - packages/desktop/test/fixtures/installer-preserve-files.nsi
       - packages/services/src/paths.ts
       - packages/zcode-server-cli/src/runtime/paths.ts
       - scripts/zcode-distribution/installer.mjs
@@ -377,6 +428,7 @@ entries:
       - packages/shared/src/node.ts
     source: "PR #21、PR #69"
     tests:
+      - packages/desktop/test/windowsInstallerPreserveFiles.test.ts
       - packages/services/test/data-sync-user-root.test.ts
       - packages/services/test/desktop-agent-storage.test.ts
       - packages/services/test/home-resource-isolation.test.ts
@@ -438,7 +490,7 @@ entries:
       - packages/ui/test/onboardingVisibility.test.ts
       - packages/services/test/botCredentialKey.test.ts
       - packages/ui/test/botLocalBoundaries.test.ts
-      - packages/desktop/test/e2e/bots/manual-review/pending/feishu-runtime-error-ui.test.ts
+      - packages/desktop/test/e2e/bots/channels/manual-review/pending/feishu-runtime-error-ui.test.ts
     source: "PR #17；ad4f5b943；onboarding-local-settings-openzwork.md 的 WP-E7 规则"
     hooks:
       - packages/services/src/bots/config.ts
@@ -481,8 +533,8 @@ entries:
       - packages/ui/src/WorkspaceSidebarFooter.tsx
       - packages/ui/src/web-remote-control/CONTRACT.md
     tests:
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/settings-visual-polish.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/system-prompt-settings.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/settings-visual-polish.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/system-prompt-settings.test.ts
       - packages/desktop/test/e2e/fixtures/cases/conversation-session/settings-visual-polish.json
       - packages/desktop/test/e2e/fixtures/upstream/conversation-session/settings-visual-polish.json
       - packages/ui/src/settings/system-prompt/contract.test.ts
@@ -506,9 +558,10 @@ entries:
     tests:
       - packages/services/test/dataDirectoryMigration.test.ts
       - packages/services/test/dataDirectoryTrueMigration.test.ts
+      - packages/desktop/test/credentialMigrationDataRootShare.test.ts
       - apps/zcode-cli/packages/adapters/tests/storage-relocation.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/openzwork-data-directory.test.ts
-    source: "PR #54；b36db2f6e；可配置数据存储目录规范"
+      - packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/openzwork-data-directory.test.ts
+    source: "PR #54；b36db2f6e；可配置数据存储目录规范；v3.18.2 凭据密钥共享启动门禁装配见 docs/openzwork/upstream/v3.18.2-integration.md（F1 修正裁定；G1 别名目标共享 canonical 目标 95386e4e）"
   - id: OZ-C010
     kind: change
     status: active
@@ -517,6 +570,9 @@ entries:
     spec: NOTICE.md
     paths:
       - LICENSE.Apache-2.0.txt
+      # 2026-11-17 J5：licenses strict 复核闭合 boolbase/@hono node-ws 的发布方原文快照。
+      - third-party/upstream/cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6.txt
+      - third-party/upstream/6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733.txt
     hooks:
       - LICENSE
       - NOTICE.md
@@ -551,7 +607,7 @@ entries:
       - packages/ui/src/settings/saved-workflows/SavedWorkflowGlobalGroup.tsx
       - packages/ui/src/i18n/locales/zh-CN.ts
       - packages/ui/src/i18n/locales/en-US.ts
-      - packages/desktop/test/e2e/automations-workflows-hub.test.ts
+      - packages/desktop/test/e2e/automations/workflows/automations-workflows-hub.test.ts
     tests:
       - packages/services/test/workflowQueryRuntime.test.ts
       - packages/ui/test/savedWorkflowRefresh.test.ts
@@ -560,6 +616,20 @@ entries:
       - apps/zcode-cli/packages/bootstrap/tests/saved-workflows-protocol.test.ts
       - apps/zcode-cli/packages/bootstrap/tests/saved-workflows-run-protocol.test.ts
     source: 本 PR（补丁 OW-P024）
+  - id: OZ-C012
+    kind: change
+    status: active
+    title: 界面语言持久化兼容合同保留
+    summary: 保留上游 uiLocale/uiLocalePreference 落盘兼容（旧字段只写中英、真实选择写新字段、旧格式迁移重写）；v3.18.0 merge 4d263563 冲突裁决曾丢失该合同，2026-11-17 恢复并以核心 CI 回归守护。
+    spec: docs/specs/settings-locale-persistence-openzwork.md
+    paths:
+      - docs/specs/settings-locale-persistence-openzwork.md
+    hooks:
+      - packages/services/src/setting/settingService.ts
+    tests:
+      - packages/services/test/settingsLocalePersistence.test.ts
+      - packages/desktop/test/e2e/settings/general/settings-client-language-header-openzwork.test.ts
+    source: 上游 docs/i18n/ui-locales.md 合同；J1 返工（NEXT-FINISH-LOCALE-DIRECT-CI-20261117）
   - id: OZ-D001
     kind: drop
     status: active
@@ -744,6 +814,21 @@ entries:
       - packages/ui/test/browser/manual-review/pending/plugin-store-mode-order.fixture.tsx
       - packages/ui/test/browser/manual-review/pending/plugin-store-mode-order.test.mjs
     source: 用户 2026-11-08 决定移除；docs/openzwork/upstream/v3.17.1-integration.md
+  - id: OZ-F013
+    kind: feature
+    status: active
+    title: 本地内存诊断与资源采样节拍
+    summary: 上游 v3.18.1 引入的本地内存诊断（recorder/storage/归档）与 sampler 60s 节拍；
+      OpenZWork 保留本地诊断链并恢复被 WP-05 误删的节拍驱动（rebalance/prune 三方法曾无
+      调用方），落盘根改为用户级 .openzwork/cli；官方反馈上传链保持裁剪。
+    spec: docs/openzwork/upstream/v3.18.1-integration.md
+    modules:
+      - cli-memory-diagnostics
+    tests:
+      - apps/zcode-cli/packages/adapters/tests/memory-diagnostics/recorder.test.ts
+      # OpenZWork（v3.18.1 B3）：默认落盘根 .openzwork/cli/memory-diagnostics（WP-03）断言。
+      - apps/zcode-cli/packages/adapters/tests/memory-diagnostics/default-directory.test.ts
+    source: "v3.18.1 同步（c5904686）"
   - id: OZ-R001
     kind: retain
     status: active
@@ -751,66 +836,65 @@ entries:
     summary: 上游后续版本删除、OpenZWork 继续使用的桌面 E2E 用例、夹具与三个兼容源码文件。
     paths:
       - packages/desktop/src/main/webRemoteControlTransport.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-auto-drain.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-bash-read-state.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-claude-anthropic-reasoning-budget.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-actions.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-interrupted.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact-manual-queue.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-compact.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-draft-switching.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-prefix-routing.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-recent-mode.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-config-and-multisession.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-deepseek-v4-reasoning-request-shape.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-draft-model-switch-first-send.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-file-tools-atomic-write.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-first-send.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-glm52-reasoning-request-shape.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-interruptions.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-queue.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-resume-stale-target.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-session-model.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal-timeline.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-goal.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-interrupted-actions.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-availability-fallback.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-config.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-list-filtering.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-provider-session-isolation.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-auto-compact.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-model-switch-queue.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-native-file-picker-attachments.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-new-session-inherits-model.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-node-repl-stateless-browser-multisession.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openai-compatible-thinking-toggle-request-shape.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-openrouter-model-id-colon.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-opus47-anthropic-adaptive-reasoning.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-plan-mode-capabilities.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-prewarming-queue.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-provider-registry-prewarm.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-queue-operations.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-read-session-context-timeout.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-actions.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-model-switch-usage.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-running-queue.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-draft-provider-identity.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-same-model-provider-identity.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-empty.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-stop-held-queue.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-subagent-provider-registry-cold-start.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-title-generation-timeout.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-actions.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-error-surface.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-tool-history-order.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-turn-steer-probe.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-upstream-workspace-smoke.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-auto-drain-running-fork.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-cold-failed-edit.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-v4-goal-background-queue.test.ts
-      - packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-webfetch.test.ts
+      - packages/desktop/test/e2e/conversation-session/permissions/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts
+      - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-auto-drain.test.ts
+      - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-bash-read-state.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-claude-anthropic-reasoning-budget.test.ts
+      - packages/desktop/test/e2e/conversation-session/context/manual-review/pending/conversation-session-compact-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/context/manual-review/pending/conversation-session-compact-interrupted.test.ts
+      - packages/desktop/test/e2e/conversation-session/context/manual-review/pending/conversation-session-compact-manual-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/context/manual-review/pending/conversation-session-compact.test.ts
+      - packages/desktop/test/e2e/conversation-session/composer/manual-review/pending/conversation-session-composer-draft-switching.test.ts
+      - packages/desktop/test/e2e/conversation-session/composer/manual-review/pending/conversation-session-composer-prefix-routing.test.ts
+      - packages/desktop/test/e2e/conversation-session/composer/manual-review/pending/conversation-session-composer-recent-mode.test.ts
+      - packages/desktop/test/e2e/conversation-session/runtime/manual-review/pending/conversation-session-config-and-multisession.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-deepseek-v4-reasoning-request-shape.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-draft-model-switch-first-send.test.ts
+      - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-file-tools-atomic-write.test.ts
+      - packages/desktop/test/e2e/conversation-session/composer/manual-review/pending/conversation-session-first-send.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-glm52-reasoning-request-shape.test.ts
+      - packages/desktop/test/e2e/conversation-session/goals/manual-review/pending/conversation-session-goal-interruptions.test.ts
+      - packages/desktop/test/e2e/conversation-session/goals/manual-review/pending/conversation-session-goal-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/goals/manual-review/pending/conversation-session-goal-resume-stale-target.test.ts
+      - packages/desktop/test/e2e/conversation-session/goals/manual-review/pending/conversation-session-goal-session-model.test.ts
+      - packages/desktop/test/e2e/conversation-session/goals/manual-review/pending/conversation-session-goal-timeline.test.ts
+      - packages/desktop/test/e2e/conversation-session/goals/manual-review/pending/conversation-session-goal.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-gpt-openai-compatible-reasoning-effort.test.ts
+      - packages/desktop/test/e2e/conversation-session/execution/manual-review/pending/conversation-session-interrupted-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-model-availability-fallback.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-model-config.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-model-provider-list-filtering.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-model-provider-session-isolation.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-model-switch-auto-compact.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-model-switch-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/attachments/manual-review/pending/conversation-session-native-file-picker-attachments.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-new-session-inherits-model.test.ts
+      - packages/desktop/test/e2e/conversation-session/browser-use/manual-review/pending/conversation-session-node-repl-stateless-browser-multisession.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-openai-compatible-thinking-toggle-request-shape.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-openrouter-model-id-colon.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-opus47-anthropic-adaptive-reasoning.test.ts
+      - packages/desktop/test/e2e/conversation-session/planning/manual-review/pending/conversation-session-plan-mode-capabilities.test.ts
+      - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-prewarming-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-provider-registry-prewarm.test.ts
+      - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-queue-operations.test.ts
+      - packages/desktop/test/e2e/conversation-session/execution/manual-review/pending/conversation-session-running-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-running-model-switch-usage.test.ts
+      - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-running-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-same-model-draft-provider-identity.test.ts
+      - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-same-model-provider-identity.test.ts
+      - packages/desktop/test/e2e/conversation-session/execution/manual-review/pending/conversation-session-stop-empty.test.ts
+      - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-stop-held-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/subagents/manual-review/pending/conversation-session-subagent-provider-registry-cold-start.test.ts
+      - packages/desktop/test/e2e/conversation-session/task-management/manual-review/pending/conversation-session-title-generation-timeout.test.ts
+      - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-tool-actions.test.ts
+      - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-tool-error-surface.test.ts
+      - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-tool-history-order.test.ts
+      - packages/desktop/test/e2e/conversation-session/execution/manual-review/pending/conversation-session-turn-steer-probe.test.ts
+      - packages/desktop/test/e2e/conversation-session/runtime/manual-review/pending/conversation-session-upstream-workspace-smoke.test.ts
+      - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-v4-auto-drain-running-fork.test.ts
+      - packages/desktop/test/e2e/conversation-session/editing/manual-review/pending/conversation-session-v4-cold-failed-edit.test.ts
+      - packages/desktop/test/e2e/conversation-session/goals/manual-review/pending/conversation-session-v4-goal-background-queue.test.ts
+      - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-webfetch.test.ts
       - packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts
       - packages/services/src/device/deviceMid.ts
       - packages/shared/src/sessionCreateSource.ts

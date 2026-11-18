@@ -19,9 +19,11 @@ export function resolveDesktopProductionCleanPaths(cwd) {
     resolve(cwd, "out/renderer"),
     resolve(cwd, "out/web-remote"),
     resolve(cwd, "out/plugin-sandbox"),
+    resolve(cwd, "out/extension-host"),
     resolve(cwd, "out/.main-build-ready"),
     resolve(cwd, "out/.host-build-ready"),
     resolve(cwd, "out/.preload-build-ready"),
+    resolve(cwd, "out/.extension-host-build-ready"),
   ];
 }
 

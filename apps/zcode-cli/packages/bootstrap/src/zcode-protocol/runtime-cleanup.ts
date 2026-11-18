@@ -1,5 +1,6 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
 import type { Logger, McpPort } from "@zcode/contracts";
+import type { ZCodeProcessResourceSampler } from "../process-resource-sampler.js";
 import type { McpConnectionPool, McpTelemetryTracker } from "@zcode/adapters/mcp";
 import type { SqliteSessionStore } from "@zcode/adapters/storage";
 import { closeSessionStore } from "../app/session-store.js";
@@ -19,6 +20,9 @@ export async function cleanupProtocolRuntime(options: {
   mcpConnectionPool?: Pick<McpConnectionPool, "close">;
   sessionStore?: SqliteSessionStore;
   providerRegistryRuntime?: { dispose(): unknown };
+  // OpenZWork（v3.18.1 同步）：sampler 节拍链恢复（上游同位字段）。
+  processResourceSampler?: Pick<ZCodeProcessResourceSampler, "stop">;
+  pluginPreparation?: { dispose(): unknown };
 }): Promise<void> {
   const deadline = options.deadlineAt ?? Date.now() + DEFAULT_CLEANUP_BUDGET_MS;
   const step = async (resource: string, cleanup: () => unknown | Promise<unknown>) => {
@@ -44,7 +48,11 @@ export async function cleanupProtocolRuntime(options: {
       if (timeout) clearTimeout(timeout);
     }
   };
-  await step("mcp_telemetry", () => options.mcpTelemetryTracker?.stop());
+  await Promise.all([
+    step("sampler", () => (options as { processResourceSampler?: { stop(): Promise<void> } }).processResourceSampler?.stop()),
+    step("plugin_preparation", () => options.pluginPreparation?.dispose()),
+    step("mcp_telemetry", () => options.mcpTelemetryTracker?.stop()),
+  ]);
   await step("sessions", () => options.server?.shutdown());
   await step("projections", () => options.server?.disposeProjections());
   await Promise.all([

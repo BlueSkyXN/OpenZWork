@@ -10,7 +10,6 @@ import {
 import type { TaskChatToolCallTreeNode } from "@/lib/toolCallTree.js";
 import { resolveToolCallIdentity } from "@/lib/toolIdentity.js";
 import { resolveToolCallRenderer } from "@/ToolCallBlocks/resolveRenderer.js";
-import { FallbackToolCallBlock } from "@/ToolCallBlocks/renderers/fallback.js";
 import {
   readRawToolCallFileSummaries,
   type ToolCallBlockRenderContext,
@@ -75,7 +74,5 @@ export function ToolPresentation({
   const identity = resolveToolCallIdentity(toolCall);
   if (identity.family === "todo" && options.showTodoToolCalls !== true) return null;
   const Renderer = resolveToolCallRenderer(context);
-  if (Renderer === FallbackToolCallBlock)
-    return <FallbackToolCallBlock {...context} hideRawFallback={capabilities.readonly} />;
   return <Renderer {...context} />;
 }

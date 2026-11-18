@@ -1,13 +1,74 @@
-/* eslint-disable max-lines -- 沿用上游 WDIO 单入口，集中维护隔离启动、窗口屏障、进程回收和报告顺序。 */
-// fork 净化（3.17.1 合并）：上游 wdio 重构为 coding-plan/加速卡/entitlement/ttft-otlp/请求安全域/
-// conversationShare/oauth 401 mock 簇 + E2E_PROVIDER_PRESETS fixture-replay 基建（166 处引用，对应 helper
-// 均在我方 stage1 净化中删除、文件不存在），无法部分采纳；本文件保留我方 3.16.2 收敛版（本地配对 relay、
-// personal provider seed、SSH release 资产）。上游中性改进（chromedriver server、desktop build lock、
-// spec 过滤、beforeSession 统一入口）作为后续增量单独评估。
-import { execFileSync } from "node:child_process";
+// OpenZWork（T12 待办）：上游 runner 已重构；我方 v3.17.1 的净化 spec 清单（coding-plan/加速卡/遥测/oauth/share）
+// 需按 ledger OZ-D 域重新剥离，净化线索见升级计划 T01 assignment 与 v3.17.1-integration。
+import { seedSidebarRichContentFixture } from "./test/e2e/helpers/sidebar-rich-content-fixture.js";
+import {
+  loadToolSearchResponses,
+  toolSearchResponseStage,
+  type ToolSearchRequest,
+} from "./test/e2e/helpers/toolsearch-provider.js";
+/* eslint-disable max-lines -- WDIO 配置需要集中维护 Electron、Xvfb、代理和容器 demo 参数，拆开会让测试入口更难追踪。 */
+import { execFile, execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
+import { dirname, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { promisify } from "node:util";
+import { tmpdir, userInfo } from "node:os";
+import {
+  resolveE2EChromedriverExecutable,
+  startE2EChromedriverServer,
+} from "./scripts/e2e-chromedriver-server.mjs";
+import {
+  captureWorkspaceSources,
+  withE2ESourceEvidence,
+} from "./test/e2e/reporting/e2e-source-evidence.js";
+import { installBashPrefixPermissionPnpmShim } from "./test/e2e/helpers/bash-prefix-permission-shim.js";
+import {
+  applyDynamicWorkflowConfigMockEnv,
+  clearDynamicWorkflowConfigMockEnv,
+  resolveDynamicWorkflowConfigMockScenario,
+  startDynamicWorkflowConfigMockServer,
+  type DynamicWorkflowConfigMockServer,
+} from "./test/e2e/helpers/dynamic-workflow-config-mock-server.js";
+import { installHookTrustFixture } from "./test/e2e/helpers/hook-trust-fixture.js";
+import { installHooksLifecycleFixture } from "./test/e2e/helpers/hooks-lifecycle-fixture.js";
+import {
+  DEFAULT_E2E_NETWORK_CAPTURE_NO_PROXY,
+  startE2ENetworkCaptureProxy,
+  type E2ENetworkCaptureProxy,
+} from "./test/e2e/helpers/network-capture-proxy.js";
+import {
+  PASSIVE_AGENT_STARTUP_SCENARIO,
+  SMALL_AGENT_WARMUP_SCENARIO,
+  seedPassiveAgentStartupWorkspaces,
+} from "./test/e2e/helpers/passive-agent-startup-fixture.js";
+import {
+  CONTEXT_WINDOW_COLD_RESUME_MAX_TOKENS,
+  CONTEXT_WINDOW_COLD_RESUME_MAX_OUTPUT_TOKENS,
+  CONTEXT_WINDOW_COLD_RESUME_MODEL_ID,
+  CONTEXT_WINDOW_COLD_RESUME_PROVIDER_ID,
+  CONTEXT_WINDOW_COLD_RESUME_PROVIDER_NAME,
+  seedProviderReadinessHistoryFixture,
+} from "./test/e2e/helpers/provider-readiness-history-fixture.js";
+import { seedSessionHistoryFirstFixture } from "./test/e2e/helpers/session-history-first-fixture.js";
+import { installStopToolResultsFixture } from "./test/e2e/helpers/stop-tool-results-fixture.js";
+import { seedTaskIndexRowAuthorityFixture } from "./test/e2e/helpers/task-list-row-authority-fixture.js";
+import { seedTaskTitleMarqueeFixture } from "./test/e2e/helpers/task-title-marquee-fixture.js";
+import { resolveUpstreamModels } from "./test/e2e/helpers/upstream-recorded-models.js";
+import {
+  hasUpstreamCaseLocalReplayFixtureForWorker,
+  resolveUpstreamE2EHttpMode,
+  resolveUpstreamE2EHttpModeForWorker,
+  resolvePluginReplayFixturePaths,
+  resolveUpstreamReplayFixturePaths as resolveUpstreamReplayFixturePathsFromContract,
+  type UpstreamReplayFixtureMode,
+} from "./test/e2e/helpers/upstream-replay-fixture-resolution.js";
+import {
+  startUpstreamReplayServer,
+  type UpstreamReplayServer,
+} from "./test/e2e/helpers/upstream-replay-server.js";
 import { config as loadDotenv } from "dotenv";
 import type { AppSettings } from "@zcode/shared";
 import {
@@ -20,26 +81,46 @@ import {
   collectE2EWebDriverPageHandleCandidates,
   type E2EBrowserTargetInfo,
 } from "./test/e2e/helpers/e2e-window-target.js";
+import {
+  PROJECT_UPGRADE_ORDER_SPEC,
+  seedProjectUpgradeOrderFixture,
+} from "./test/e2e/helpers/project-upgrade-order-fixture.js";
+import {
+  isNativeKeychainCredentialSpec,
+  resolveAskUserQuestionClockScaleForWorker,
+  resolveE2ECredentialSecret,
+} from "./test/e2e/helpers/e2e-worker-environment.js";
 import { createE2ERendererBridgeRootHooks } from "./test/e2e/helpers/e2e-renderer-bridge-root-hook.js";
 import { E2E_AGENT_WORKSPACE_NAME } from "./test/e2e/helpers/e2e-runtime-paths.js";
 import { runMeasuredE2ELifecyclePhase } from "./test/e2e/helpers/e2e-lifecycle-measurement.js";
 import { createE2ERunnerFinalizationGuard } from "./test/e2e/helpers/e2e-runner-finalization-guard.js";
 import {
+  applyE2EWorkerReplayProxyEnv,
   replaceChromeUserDataDirArg,
   resolveE2EWorkerModelStreamIdleTimeoutMs,
   resolveE2EWebDriverRequestLimits,
   resolveE2EWorkerChromiumProfileDir,
+  workerSpecsContain,
 } from "./test/e2e/helpers/e2e-worker-isolation.js";
+import { seedRemoteOnboardingFixture } from "./test/e2e/helpers/remote-startup-profile.js";
+import {
+  installOfficialPluginCacheTemplate,
+  prepareOfficialPluginCacheTemplate,
+} from "./test/e2e/helpers/official-plugin-cache-prewarm.js";
+import { getE2EProviderEndpointEnv } from "#e2e/helpers/e2e-provider-endpoint";
+import { prepareWebRemoteControlAuthGateFixture } from "./test/e2e/helpers/web-remote-control-auth-gate-fixture.js";
+import { prepareMcpFailureGuidanceFixture } from "#e2e/helpers/mcp-failure-guidance-fixture";
+import { createE2EReplayFixtureVariables } from "./test/e2e/helpers/e2e-runtime-paths.js";
 import { stageE2EAppOutput } from "./test/e2e/helpers/e2e-app-output-stage.js";
 import {
   ensureSshRemoteReleaseAssets,
   resolveSshRemoteReleaseScope,
 } from "./test/e2e/helpers/e2e-ssh-remote-release-assets.js";
 import { createLocalPairingRelay } from "./test/e2e/helpers/local-pairing-relay.js";
-import { prepareMcpFailureGuidanceFixture } from "./test/e2e/helpers/mcp-failure-guidance-fixture.js";
 import {
   seedPersonalProviderConfig,
   seedPersonalDefaultModelSelection,
+  type PersonalProviderConfigSeed,
 } from "./test/e2e/helpers/model-provider-restart-config.js";
 import {
   MANUAL_REVIEW_SPEC_GLOB,
@@ -113,7 +194,132 @@ const ELECTRON_APP_BINARY_PATH =
     repoRoot: REPO_ROOT,
     installTimeoutMs: E2E_ELECTRON_INSTALL_TIMEOUT_MS,
   });
+const UPSTREAM_PROVIDER_SPEC = "./test/e2e/infrastructure/smoke/upstream-provider.test.ts";
+const PLUGIN_NO_GIT_GITHUB_ARCHIVE_SPEC = "plugin-no-git-github-archive.test.ts";
+const GIT_COMMIT_DIALOG_UI_FLOW_SPEC = "git-commit-dialog-ui-flow.test.ts";
+const OAUTH_CREDENTIAL_RECOVERY_SPEC = "oauth-credential-recovery.test.ts";
+const JWT_EXPIRY_REAUTHENTICATION_SPEC = "jwt-expiry-reauthentication.test.ts";
+const SUBAGENT_CODING_PLAN_LOGIN_CATALOG_STALE_SPEC =
+  "subagent-coding-plan-login-catalog-stale.test.ts";
+const SUBAGENT_CODING_PLAN_LOGIN_CATALOG_STALE_MODE = "subagent-login-catalog-stale";
+const SUBAGENT_CODING_PLAN_OAUTH_FLOW_ID = "e2e-subagent-bigmodel-flow";
+const SUBAGENT_CODING_PLAN_OAUTH_STATE = "e2e-subagent-bigmodel-state";
+const PROVIDER_READINESS_AGENT_STARTUP_SPEC = "provider-readiness-agent-startup.test.ts";
+const CONTEXT_WINDOW_COLD_RESUME_SPEC = "conversation-session-context-window-cold-resume.test.ts";
+const PASSIVE_AGENT_STARTUP_SPEC = "workspace-passive-agent-startup.test.ts";
+const AGENT_WARMUP_LIFECYCLE_SPEC = "workspace-agent-warmup-lifecycle.test.ts";
+const AGENT_WARMUP_SMALL_SET_SPEC = "workspace-agent-warmup-small-set.test.ts";
+const PROVIDER_SAVE_DORMANT_AGENT_SPEC = "workspace-provider-save-dormant-agent.test.ts";
+const MODEL_PROVIDER_REGRESSION_GAPS_SPEC =
+  "conversation-session-model-provider-regression-gaps.test.ts";
+// 只借用这套 fixture 的「多 workspace 已恢复」启动态来做 workspace 切换，不断言 agent 预热行为。
+const BROWSER_CROSS_WORKSPACE_CLOSE_SPEC = "browser-tab-close-cross-workspace.test.ts";
+const BROWSER_CROSS_WORKSPACE_ATTACHMENT_SPEC =
+  "browser-tab-attachment-restore-cross-workspace.test.ts";
+const WORKSPACE_REMOVAL_RUNTIME_RELEASE_SPEC = "workspace-removal-runtime-release.test.ts";
+const AGENT_WARMUP_FIXTURE_SPECS = [
+  PASSIVE_AGENT_STARTUP_SPEC,
+  AGENT_WARMUP_LIFECYCLE_SPEC,
+  AGENT_WARMUP_SMALL_SET_SPEC,
+  PROVIDER_SAVE_DORMANT_AGENT_SPEC,
+  BROWSER_CROSS_WORKSPACE_CLOSE_SPEC,
+  BROWSER_CROSS_WORKSPACE_ATTACHMENT_SPEC,
+  WORKSPACE_REMOVAL_RUNTIME_RELEASE_SPEC,
+  MODEL_PROVIDER_REGRESSION_GAPS_SPEC,
+] as const;
+/** 只需要两个 workspace 的 spec，用小号 scenario 少 seed 7 个目录。 */
+const SMALL_AGENT_WARMUP_SPECS = [
+  AGENT_WARMUP_SMALL_SET_SPEC,
+  BROWSER_CROSS_WORKSPACE_CLOSE_SPEC,
+  BROWSER_CROSS_WORKSPACE_ATTACHMENT_SPEC,
+  WORKSPACE_REMOVAL_RUNTIME_RELEASE_SPEC,
+  MODEL_PROVIDER_REGRESSION_GAPS_SPEC,
+] as const;
+const TASK_INDEX_ROW_AUTHORITY_SPEC = "conversation-session-task-index-row-authority.test.ts";
+const TASK_TITLE_MARQUEE_SPEC = "conversation-session-task-title-marquee.test.ts";
+const GIT_REVIEW_ENTRY_SPEC = "conversation-session-git-review-entry.test.ts";
+const WINDOWS_AGENT_METRIC_PROBE_ABSENCE_SPEC = "windows-agent-metric-probe-absence.test.ts";
+const HOOKS_LIFECYCLE_SPEC = "conversation-session-hooks-lifecycle.test.ts";
+const HOOK_TRUST_SPEC = "conversation-session-hook-trust.test.ts";
+const E2E_PROVIDER_ID = "e2e-upstream";
+const E2E_PROVIDER_ALTERNATE_PROVIDER_ID = "e2e-upstream-alt";
+const E2E_PROVIDER_ALTERNATE_PROVIDER_NAME = "Upstream E2E Alt";
+// 模型名由 E2E_PROVIDER_MODEL / E2E_PROVIDER_SECONDARY_MODEL 控制，未设置时使用回放夹具的录制模型。
+const { model: E2E_PROVIDER_MODEL, secondaryModel: E2E_PROVIDER_SECONDARY_MODEL } =
+  resolveUpstreamModels();
+const SUBAGENT_PROVIDER_REGISTRY_COLD_START_SPEC =
+  "conversation-session-subagent-provider-registry-cold-start.test.ts";
+const BUILT_IN_SUBAGENT_MODEL_OVERRIDES_SPEC =
+  "conversation-session-built-in-subagent-model-overrides.test.ts";
+const SETTINGS_SUBAGENT_CREATE_EDIT_PERSISTENCE_SPEC =
+  "settings-subagent-create-edit-persistence.test.ts";
+const SUBAGENT_REASONING_AGENT_NAME = "e2e-reasoning-reviewer";
+const SUBAGENT_RUNTIME_CATALOG_REASONING_SPEC =
+  "conversation-session-subagent-runtime-catalog-reasoning.test.ts";
+const SUBAGENT_RUNTIME_CATALOG_PROVIDER_ID = "e2e-claude-runtime-catalog";
+const SUBAGENT_RUNTIME_CATALOG_PROVIDER_NAME = "Claude Runtime Catalog E2E";
+const SUBAGENT_RUNTIME_CATALOG_MODEL = "claude-opus-4-8";
+const SUBAGENT_RUNTIME_CATALOG_AGENT_NAME = "e2e-claude-catalog-reviewer";
+const MODEL_PROVIDER_PLAN_SURFACE_SPEC = "conversation-session-model-provider-plan-surface.test.ts";
+const SUBAGENT_TEAM_SCOPE_SPEC = "conversation-session-subagent-team-scope.test.ts";
+const TOOL_ERROR_SURFACE_SPEC = "conversation-session-tool-error-surface.test.ts";
+const MODEL_OUTPUT_TOKEN_BUDGET_SPEC = "conversation-session-model-output-token-budget.test.ts";
+const MODEL_OUTPUT_TOKEN_PREFLIGHT_SPEC = "conversation-session-model-output-token-preflight";
+const OUTPUT_LIMIT_CONTINUE_MARKDOWN_PROTOCOLS_SPEC =
+  "conversation-session-output-limit-continue-markdown-protocols.test.ts";
+const SUBAGENT_PROVIDER_REGISTRY_AGENT_NAME = "e2e-provider-registry-reviewer";
+const TOOL_ERROR_SURFACE_STALE_AGENT_NAME = "e2e-stale-error-reviewer";
+const TOOL_ERROR_SURFACE_HEALTHY_AGENT_NAME = "e2e-healthy-error-reviewer";
+// 上游供应商地址由 E2E_PROVIDER_BASE_URL 提供，仓库不写死任何供应商；只有 capture 模式访问真实上游时需要。
+// 回放模式使用本地回放服务器，实际生效的地址经 E2E_PROVIDER_RUNTIME_BASE_URL 传给各测试进程。
+const E2E_PROVIDER_UPSTREAM_BASE_URL = process.env.E2E_PROVIDER_BASE_URL?.trim() ?? "";
+const E2E_PROVIDER_REPLAY_API_KEY = "e2e-fixture-key";
+const E2E_AUTH_PROVIDER_ID = "zai";
+// OpenZWork（T12）：E2E provider preset 只保留 env（自建回放/自备端点）；
+// 上游指向官方端点的 preset（glm 加速卡/bigmodel53/stagingmodel）与闲时/加速卡域不引入。
+const E2E_PROVIDER_PRESETS = {
+  env: {
+    apiKeyEnvNames: ["E2E_PROVIDER_API_KEY"],
+    baseUrl: E2E_PROVIDER_UPSTREAM_BASE_URL,
+    expectedHost: readUpstreamBaseUrlPart("host"),
+    expectedProtocol: readUpstreamBaseUrlPart("protocol"),
+    model: E2E_PROVIDER_MODEL,
+    providerId: E2E_PROVIDER_ID,
+    providerName: "Upstream E2E",
+    thoughtLevel: "high",
+  },
+} as const;
+type E2EProviderPresetName = keyof typeof E2E_PROVIDER_PRESETS;
 
+function readUpstreamBaseUrlPart(part: "host" | "protocol") {
+  if (!E2E_PROVIDER_UPSTREAM_BASE_URL) return "";
+  const url = new URL(E2E_PROVIDER_UPSTREAM_BASE_URL);
+  return part === "host" ? url.host : url.protocol.replace(/:$/u, "");
+}
+
+function readE2EProviderPresetName(): E2EProviderPresetName {
+  const configured =
+    process.env.E2E_PROVIDER_PRESET?.trim() || process.env.LLM_E2E_PROVIDER_PRESET?.trim();
+  if (!configured) {
+    // OpenZWork：默认使用环境变量配置的上游供应商（E2E_PROVIDER_BASE_URL / API_KEY / MODEL）。
+    return "env";
+  }
+  if (configured === "env" || configured in E2E_PROVIDER_PRESETS) {
+    return configured as E2EProviderPresetName;
+  }
+  throw new Error(
+    `Unsupported E2E_PROVIDER_PRESET=${configured}. Expected one of: ${Object.keys(E2E_PROVIDER_PRESETS).join(", ")}.`,
+  );
+}
+
+const e2eProviderPresetName = readE2EProviderPresetName();
+const e2eProviderPreset = E2E_PROVIDER_PRESETS[e2eProviderPresetName];
+const upstreamE2EContextWindowOverride = readPositiveIntegerEnv(
+  "ZCODE_E2E_UPSTREAM_CONTEXT_WINDOW",
+);
+const upstreamE2EMaxOutputTokensOverride = readPositiveIntegerEnv(
+  "ZCODE_E2E_UPSTREAM_MAX_OUTPUT_TOKENS",
+);
 const DESKTOP_PACKAGE_JSON = JSON.parse(
   readFileSync(resolve(DESKTOP_DIR, "package.json"), "utf-8"),
 ) as { devDependencies?: Record<string, string> };
@@ -181,6 +387,96 @@ const E2E_RENDERER_BRIDGE_REQUIRED_STATE_METHODS = [
   "upsertOptimisticTaskListItem",
 ];
 
+const configuredE2EWorkerNetworkEnv = {
+  httpProxy: process.env.ZCODE_HTTP_PROXY,
+  noProxy: process.env.ZCODE_NO_PROXY,
+};
+const E2E_APP_CREDENTIALS_FILE = resolve(E2E_APP_CONFIG_DIR, "credentials.json");
+const E2E_AGENTS_STATE_FILE = resolve(E2E_APP_CONFIG_DIR, "agents-state.json");
+const execFileAsync = promisify(execFile);
+
+const E2E_CERT_CACHE_ROOT =
+  process.env.ZCODE_E2E_CERT_CACHE_DIR?.trim() || resolve(REPO_ROOT, ".cache");
+
+
+const E2E_NETWORK_CAPTURE_DIR = resolve(
+  process.env.ZCODE_E2E_NETWORK_CAPTURE_DIR?.trim() ||
+    // 修复原因：beforeSession 会清空 .e2e-home；抓包代理的 CA 必须放在
+    // reset 范围之外，否则 agent 读 httpProxyCaCertPath 时会遇到 ENOENT。
+    resolve(DESKTOP_DIR, ".e2e-network-capture"),
+);
+
+
+const E2E_NETWORK_CAPTURE_CA_DIR = resolve(E2E_CERT_CACHE_ROOT, "desktop-e2e-network-capture-ca");
+
+
+const UPSTREAM_CAPTURE_ARTIFACT_PATH = resolve(E2E_NETWORK_CAPTURE_DIR, "upstream-provider.json");
+
+
+const UPSTREAM_CAPTURE_RESPONSE_PREVIEW_BYTES = 8 * 1024 * 1024;
+
+
+const UPSTREAM_CAPTURE_RESPONSE_CHUNK_TIMELINE_BYTES = 16 * 1024 * 1024;
+
+
+
+
+
+const UPSTREAM_REPLAY_FIXTURE_ROOT = resolve(DESKTOP_DIR, "test/e2e/fixtures/upstream");
+
+
+const UPSTREAM_CONVERSATION_SESSION_REPLAY_FIXTURE_DIR = resolve(
+  UPSTREAM_REPLAY_FIXTURE_ROOT,
+  "conversation-session",
+);
+
+
+const UPSTREAM_CONVERSATION_SESSION_CASE_MANIFEST_DIR = resolve(
+  DESKTOP_DIR,
+  "test/e2e/fixtures/cases/conversation-session",
+);
+
+
+const UPSTREAM_COMMON_REPLAY_FIXTURE_PATH = resolve(UPSTREAM_REPLAY_FIXTURE_ROOT, "common.json");
+
+
+const LEGACY_UPSTREAM_REPLAY_FIXTURE_PATHS = [
+  resolve(UPSTREAM_REPLAY_FIXTURE_ROOT, "provider-conversation-tool-cross-product.json"),
+  resolve(UPSTREAM_REPLAY_FIXTURE_ROOT, "provider-basic.json"),
+];
+
+
+const E2E_USER_AGENTS_DIR = resolve(E2E_STORAGE_ROOT, "agents");
+
+
+const E2E_CLI_AGENTS_DIR = resolve(E2E_CLI_CONFIG_DIR, "agents");
+
+
+const E2E_USER_PROFILE = {
+  displayName: "ZCode E2E",
+  id: "zcode-e2e-user",
+  username: "zcode-e2e-user",
+};
+
+
+const E2E_AUTH_TOKEN = "e2e-oauth-token";
+
+
+const E2E_PROVIDER_RUNTIME_FILE = resolve(E2E_NETWORK_CAPTURE_DIR, "upstream-runtime.json");
+
+
+const REQUESTED_UPSTREAM_HTTP_MODE_ENV = "ZCODE_E2E_REQUESTED_UPSTREAM_HTTP_MODE";
+
+
+const INITIAL_ZCODE_BUILTIN_PROVIDER_CONFIG_FILE =
+  process.env.ZCODE_BUILTIN_PROVIDER_CONFIG_FILE?.trim();
+
+
+const E2E_DEFAULT_ZCODE_BUILTIN_PROVIDER_CONFIG_FILE = resolve(
+  REPO_ROOT,
+  "config/provider/zcode-builtin.json",
+);
+
 const requestedE2ESpecs = readRequestedE2ESpecs();
 const manualReviewE2E =
   process.env.ZCODE_E2E_MANUAL_REVIEW?.trim() === "1" ||
@@ -190,9 +486,48 @@ if (manualReviewE2E) process.env.ZCODE_E2E_MANUAL_REVIEW = "1";
 const requestedE2EExcludeSpecs = readRequestedE2EExcludeSpecs();
 
 const containerE2E = process.env.ZCODE_E2E_CONTAINER === "1";
+const requestedUpstreamE2EHttpMode =
+  process.env[REQUESTED_UPSTREAM_HTTP_MODE_ENV] !== undefined
+    ? process.env[REQUESTED_UPSTREAM_HTTP_MODE_ENV]?.trim() || undefined
+    : process.env.E2E_PROVIDER_HTTP_MODE?.trim() || undefined;
+let upstreamE2EHttpMode = resolveUpstreamE2EHttpMode({
+  explicitReplayFixture: Boolean(process.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH?.trim()),
+  manualReview:
+    process.env.ZCODE_E2E_MANUAL_REVIEW?.trim() === "1" ||
+    requestedE2ESpecs.some((spec) => spec.replaceAll("\\", "/").includes("/manual-review/")),
+  requestedMode: requestedUpstreamE2EHttpMode,
+});
+
+// 修复依据（OpenZWork）：T12 重建 wdio.conf 时丢失了上游的 applyUpstreamE2EHttpModeForWorker
+// （上游 wdio.conf.ts:932，beforeSession 内调用）。没有它，pending manual-review 用例即使已有
+// 确定性 case-local fixture 也无法进入 replay（runner 级 manualReview 开关把它们固定到
+// capture，或要求显式 E2E_PROVIDER_REPLAY_FIXTURE_PATH，而显式路径会绕过 common/legacy
+// 响应池使工具循环断链）。按上游原位恢复 per-worker 决策。
+function applyUpstreamE2EHttpModeForWorker(specs: string[]) {
+  upstreamE2EHttpMode = resolveUpstreamE2EHttpModeForWorker({
+    caseLocalReplayFixtureAvailable: hasUpstreamCaseLocalReplayFixtureForWorker({
+      caseFixtureDir: UPSTREAM_CONVERSATION_SESSION_REPLAY_FIXTURE_DIR,
+      specs,
+    }),
+    explicitReplayFixture: Boolean(process.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH?.trim()),
+    requestedMode: requestedUpstreamE2EHttpMode,
+    specs,
+  });
+  // Bug 根因（上游注释）：combined run 的全局 manual-review 开关过去把正式 worker 也固定为
+  // capture，case-local replay 因此直连真实模型并产生假失败。mode 必须在每个 Electron
+  // 启动前按该 worker 的 spec 与 fixture 完整性重新决策。
+  process.env.E2E_PROVIDER_HTTP_MODE = upstreamE2EHttpMode;
+}
+const manualReviewHoldMs = readPositiveIntegerEnv("ZCODE_E2E_MANUAL_REVIEW_HOLD_MS") ?? 0;
 const configuredE2ESpecs = requestedE2ESpecs.length
   ? requestedE2ESpecs
   : ["./test/e2e/**/*.test.ts"];
+const pluginNoGitGitHubArchiveE2E = configuredE2ESpecs.some((spec) =>
+  spec.includes(PLUGIN_NO_GIT_GITHUB_ARCHIVE_SPEC),
+);
+const workspacePluginRemoteExplicitSyncE2E = configuredE2ESpecs.some((spec) =>
+  spec.includes("conversation-session-plugin-remote-explicit-sync-workspace.test.ts"),
+);
 
 const e2eReporter = createE2EReporter({
   repoRoot: REPO_ROOT,
@@ -210,7 +545,10 @@ const E2E_RUN_ID = process.env.ZCODE_E2E_RUN_ID!;
 const E2E_RUN_CACHE_DIR = resolve(DESKTOP_DIR, ".e2e-cache", E2E_RUN_ID);
 
 const E2E_APP_OUTPUT_DIR = resolve(E2E_RUN_CACHE_DIR, "app");
-
+const E2E_OFFICIAL_PLUGIN_CACHE_TEMPLATE_HOME = resolve(
+  E2E_RUN_CACHE_DIR,
+  "official-plugin-cache-home",
+);
 const E2E_APP_ENTRY_POINT = resolve(E2E_APP_OUTPUT_DIR, "main/index.js");
 
 const E2E_APP_RENDERER_ASSETS_DIR = resolve(E2E_APP_OUTPUT_DIR, "renderer/assets");
@@ -247,6 +585,32 @@ const containerChromeArgs = [
   "--window-size=1440,1000",
 ];
 
+process.env.HOME = E2E_HOME_DIR;
+process.env.USERPROFILE = E2E_HOME_DIR;
+process.env.ZCODE_E2E_HOME_DIR = E2E_HOME_DIR;
+process.env.ZCODE_E2E_RUN_ID = E2E_RUN_ID;
+process.env.ZCODE_DATA_BASE_DIR = E2E_HOME_DIR;
+process.env.ZCODE_DESKTOP_APPLICATION_NAME = "ZCode E2E";
+process.env.ZCODE_DESKTOP_HOME_DIR = E2E_HOME_DIR;
+process.env.ZCODE_DESKTOP_USE_ELECTRON_DEFAULT_USER_DATA = "1";
+// 修复原因：从 ZCode 客户端拉起的 shell 里带有应用自身环境（ZCODE_ENV=production、
+// ZCODE_BASE_URL 指向官方端点）。它们会被 onPrepare 的 agent 构建读走并固化进产物，
+// 让 E2E 打到生产域、忽略 settings 里的 endpoint，fixture mock server 收不到请求。
+// 桌面包的归一在 ensure-e2e-desktop-build 内完成，这里保证 WDIO 侧构建链路一致。
+process.env.ZCODE_ENV = "test";
+delete process.env.ZCODE_BASE_URL;
+delete process.env.ZCODE_RUNTIME_ENV;
+// Bugfix: renderer E2E store bridge 只能由 WDIO 进程显式打开，避免 ZCODE_ENV=test 的产品测试环境暴露全局可变 store。
+process.env.VITE_ZCODE_E2E_STORE_BRIDGE = "1";
+// Bugfix: e2e session 由 Chromedriver 管理调试端口；禁用主进程开发态固定的 9229，
+// 避免和本机已打开的 ZCode Dev 冲突后出现空白窗口并卡在 session 创建阶段。
+process.env.ZCODE_DISABLE_FIXED_REMOTE_DEBUGGING_PORT = "1";
+
+let upstreamCaptureProxy: E2ENetworkCaptureProxy | null = null;
+let upstreamReplayServer: UpstreamReplayServer | null = null;
+let dynamicWorkflowConfigMockServer: DynamicWorkflowConfigMockServer | null = null;
+let stopWebRemoteControlAuthGateFixture: (() => Promise<void>) | null = null;
+let upstreamE2EBaseUrl: string = e2eProviderPreset.baseUrl;
 let e2eRunnerExitWatchdog: ReturnType<typeof setTimeout> | null = null;
 
 let currentE2EElectronAppPid: number | null = null;
@@ -266,6 +630,610 @@ let stopMcpFailureGuidanceFixture: (() => Promise<void>) | null = null;
 
 const e2eWorkerLifecycleStarts = new Map<string, { specs: string[]; startedAt: Date }>();
 
+function readE2EThoughtLevel() {
+  for (const envName of ["E2E_PROVIDER_THOUGHT_LEVEL", "LLM_E2E_THOUGHT_LEVEL"]) {
+    if (process.env[envName] !== undefined) {
+      return process.env[envName]?.trim() ?? "";
+    }
+  }
+  return e2eProviderPreset.thoughtLevel;
+}
+function resolveActiveE2EProviderEnv(specs: string[] = configuredE2ESpecs) {
+  return {
+    providerId: e2eProviderPreset.providerId,
+    providerName: e2eProviderPreset.providerName,
+    model: e2eProviderPreset.model,
+    thoughtLevel: readE2EThoughtLevel(),
+  };
+}
+function buildUpstreamE2EAnthropicBaseUrl() {
+  const baseURL = upstreamE2EBaseUrl.replace(/\/+$/u, "");
+  return baseURL.endsWith("/anthropic") ? baseURL : `${baseURL}/anthropic`;
+}
+async function resolveUpstreamReplayFixturePaths(specs: string[] = []) {
+  const configured = readConfiguredUpstreamReplayFixturePaths();
+  const mode = readUpstreamReplayFixtureMode();
+  return resolveUpstreamReplayFixturePathsFromContract({
+    caseFixtureDir: UPSTREAM_CONVERSATION_SESSION_REPLAY_FIXTURE_DIR,
+    caseManifestDir: UPSTREAM_CONVERSATION_SESSION_CASE_MANIFEST_DIR,
+    commonFixturePath: UPSTREAM_COMMON_REPLAY_FIXTURE_PATH,
+    configuredFixturePaths: configured,
+    legacyFixturePaths: LEGACY_UPSTREAM_REPLAY_FIXTURE_PATHS,
+    mode,
+    pluginFixturePaths:
+      configured || mode === "strict-case-local"
+        ? []
+        : await resolvePluginReplayFixturePaths({
+            fixtureRoot: UPSTREAM_REPLAY_FIXTURE_ROOT,
+            specs,
+          }),
+    specs,
+  });
+}
+function readConfiguredUpstreamReplayFixturePaths() {
+  const configured = process.env.E2E_PROVIDER_REPLAY_FIXTURE_PATH?.trim();
+  if (!configured) {
+    return null;
+  }
+
+  return configured
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => resolve(REPO_ROOT, item));
+}
+function readUpstreamReplayFixtureMode(): UpstreamReplayFixtureMode {
+  const mode = process.env.E2E_PROVIDER_REPLAY_FIXTURE_MODE?.trim() || "compatible";
+  if (mode === "compatible" || mode === "strict-case-local") {
+    return mode;
+  }
+  throw new Error(
+    `Unsupported E2E_PROVIDER_REPLAY_FIXTURE_MODE=${mode}. Expected compatible or strict-case-local.`,
+  );
+}
+function isBuiltInSubagentModelSelectionOverridesSpec(specs: string[] = []) {
+  return specs.some((spec) => spec.includes(BUILT_IN_SUBAGENT_MODEL_OVERRIDES_SPEC));
+}
+function isSubagentRuntimeCatalogReasoningSpec(specs: string[] = []) {
+  return specs.some((spec) => spec.includes(SUBAGENT_RUNTIME_CATALOG_REASONING_SPEC));
+}
+function isModelProviderPlanSurfaceSpec(specs: string[] = []) {
+  return specs.some((spec) => spec.includes(MODEL_PROVIDER_PLAN_SURFACE_SPEC));
+}
+function isSettingsSubagentCreateEditPersistenceSpec(specs: string[] = []) {
+  return specs.some((spec) => spec.includes(SETTINGS_SUBAGENT_CREATE_EDIT_PERSISTENCE_SPEC));
+}
+function isSubagentProviderRegistryColdStartSpec(specs: string[] = []) {
+  return specs.some((spec) => spec.includes(SUBAGENT_PROVIDER_REGISTRY_COLD_START_SPEC));
+}
+function isToolErrorSurfaceSpec(specs: string[] = []) {
+  return specs.some((spec) => spec.includes(TOOL_ERROR_SURFACE_SPEC));
+}
+function seedE2EBuiltInSubagentModelOverrides(specs: string[] = []) {
+  const builtInModelSelectionOverridesSpec = isBuiltInSubagentModelSelectionOverridesSpec(specs);
+  const runtimeCatalogSpec = isSubagentRuntimeCatalogReasoningSpec(specs);
+  if (!builtInModelSelectionOverridesSpec && !runtimeCatalogSpec) {
+    return;
+  }
+
+  // Bug 根因：browser.reloadSession() 会再次触发 beforeSession。若这里无条件重写，
+  // 测试刚通过设置页保存的 structured selection 会在冷启动前被初始 fixture 覆盖，
+  // 使“冷恢复”实际验证的仍是 seed，而不是用户持久化结果。初始 HOME 为空时才落盘。
+  if (existsSync(E2E_AGENTS_STATE_FILE)) {
+    return;
+  }
+
+  const overrideSelection = runtimeCatalogSpec
+    ? {
+        providerId: SUBAGENT_RUNTIME_CATALOG_PROVIDER_ID,
+        modelId: SUBAGENT_RUNTIME_CATALOG_MODEL,
+      }
+    : {
+        providerId: E2E_PROVIDER_ALTERNATE_PROVIDER_ID,
+        modelId: E2E_PROVIDER_SECONDARY_MODEL,
+      };
+  const initialGeneralPurposeSelection = runtimeCatalogSpec
+    ? overrideSelection
+    : {
+        providerId: e2eProviderPreset.providerId,
+        modelId: e2eProviderPreset.model,
+      };
+  mkdirSync(E2E_APP_CONFIG_DIR, { recursive: true });
+  writeFileSync(
+    E2E_AGENTS_STATE_FILE,
+    JSON.stringify(
+      {
+        builtInModelSelectionOverrides: {
+          Explore: {
+            ...overrideSelection,
+            ...(builtInModelSelectionOverridesSpec || runtimeCatalogSpec
+              ? { options: { reasoningLevel: "invalid-e2e" } }
+              : {}),
+          },
+          "general-purpose": {
+            ...initialGeneralPurposeSelection,
+            ...(runtimeCatalogSpec ? { options: { reasoningLevel: "high" } } : {}),
+          },
+        },
+        disabledAgentIds: [],
+      },
+      null,
+      2,
+    ),
+    "utf-8",
+  );
+}
+function seedE2ESubagentProfiles(specs: string[] = []) {
+  if (specs.some((spec) => spec.includes("conversation-session-subagent-cross-host.test.ts"))) {
+    // 内置文档插件已拆分并固定模型；覆盖/清除覆盖场景使用自己的继承模型 fixture。
+    const pluginDir = resolve(E2E_STORAGE_ROOT, "cli/plugins");
+    mkdirSync(pluginDir, { recursive: true });
+    writeFileSync(
+      resolve(pluginDir, "installed_plugins.json"),
+      JSON.stringify({
+        version: 1,
+        plugins: [
+          {
+            id: "e2e-subagent-refresh@e2e-fixture",
+            name: "e2e-subagent-refresh",
+            marketplace: "e2e-fixture",
+            version: "1.0.0",
+            installPath: resolve(DESKTOP_DIR, "test/e2e/fixtures/subagent-refresh-plugin"),
+            installedAt: "2026-09-18T00:00:00.000Z",
+            updatedAt: "2026-09-18T00:00:00.000Z",
+            scope: "user",
+          },
+        ],
+      }),
+    );
+    const config = existsSync(E2E_CLI_CONFIG_FILE)
+      ? JSON.parse(readFileSync(E2E_CLI_CONFIG_FILE, "utf8"))
+      : {};
+    config.plugins = {
+      ...config.plugins,
+      enabledPlugins: {
+        ...config.plugins?.enabledPlugins,
+        "e2e-subagent-refresh@e2e-fixture": true,
+      },
+    };
+    writeFileSync(E2E_CLI_CONFIG_FILE, JSON.stringify(config));
+  }
+  const profileEntries: Array<{ content: string; name: string }> = [];
+
+  if (isBuiltInSubagentModelSelectionOverridesSpec(specs)) {
+    profileEntries.push({
+      name: SUBAGENT_REASONING_AGENT_NAME,
+      content: `---
+name: ${SUBAGENT_REASONING_AGENT_NAME}
+description: E2E custom subagent for reasoning effort persistence coverage.
+model: custom:${E2E_PROVIDER_ALTERNATE_PROVIDER_ID}:${E2E_PROVIDER_SECONDARY_MODEL}
+thoughtLevel: invalid-e2e
+tools: Read
+maxTurns: 1
+---
+You are the E2E reasoning reviewer. Reply only with the requested marker.
+`,
+    });
+  }
+
+  if (isSubagentRuntimeCatalogReasoningSpec(specs)) {
+    profileEntries.push({
+      name: SUBAGENT_RUNTIME_CATALOG_AGENT_NAME,
+      content: `---
+name: ${SUBAGENT_RUNTIME_CATALOG_AGENT_NAME}
+description: E2E custom subagent for runtime reasoning catalog coverage.
+model: custom:${SUBAGENT_RUNTIME_CATALOG_PROVIDER_ID}:${SUBAGENT_RUNTIME_CATALOG_MODEL}
+thoughtLevel: invalid-e2e
+tools: Read
+maxTurns: 1
+---
+You are the E2E Claude catalog reviewer. Reply only with the requested marker.
+`,
+    });
+  }
+
+  if (isSubagentProviderRegistryColdStartSpec(specs)) {
+    profileEntries.push({
+      name: SUBAGENT_PROVIDER_REGISTRY_AGENT_NAME,
+      content: `---
+name: ${SUBAGENT_PROVIDER_REGISTRY_AGENT_NAME}
+description: E2E subagent bound to an alternate provider for cold-start registry sync reproduction.
+model: custom:${E2E_PROVIDER_ALTERNATE_PROVIDER_ID}:${E2E_PROVIDER_SECONDARY_MODEL}
+thoughtLevel: high
+tools: Read
+maxTurns: 1
+---
+You are the E2E provider registry reviewer. Reply only with the requested marker.
+`,
+    });
+  }
+
+  if (isToolErrorSurfaceSpec(specs)) {
+    profileEntries.push(
+      {
+        name: TOOL_ERROR_SURFACE_STALE_AGENT_NAME,
+        content: `---
+name: ${TOOL_ERROR_SURFACE_STALE_AGENT_NAME}
+description: E2E subagent intentionally bound to a stale provider/model for tool error surface coverage.
+model: custom:e2e-stale-provider:e2e-stale-model
+tools: Read
+maxTurns: 1
+---
+You are the stale E2E reviewer. This profile should fail before any child model request.
+`,
+      },
+      {
+        name: TOOL_ERROR_SURFACE_HEALTHY_AGENT_NAME,
+        content: `---
+name: ${TOOL_ERROR_SURFACE_HEALTHY_AGENT_NAME}
+description: E2E subagent used as the healthy sibling when another Agent tool fails.
+tools: Read
+maxTurns: 1
+---
+You are the healthy E2E reviewer. Reply only with the requested marker.
+`,
+      },
+    );
+  }
+
+  if (specs.some((spec) => spec.includes(SUBAGENT_TEAM_SCOPE_SPEC))) {
+    profileEntries.push({
+      name: "e2e-team-scope-reviewer",
+      content: `---
+name: e2e-team-scope-reviewer
+description: E2E custom subagent bound to a Team connection without organization/project scope.
+model: custom:team-plan:e2e-missing-scope:team-model
+tools: Read
+maxTurns: 1
+---
+This child must fail before sending a provider request when the Team scope is unavailable.
+`,
+    });
+  }
+
+  if (profileEntries.length === 0) {
+    return;
+  }
+
+  for (const agentsDir of [E2E_USER_AGENTS_DIR, E2E_CLI_AGENTS_DIR]) {
+    // 修复原因：CLI runtime 从 storageRoot/agents 加载用户 subagent profile，
+    // 而设置页/历史路径曾使用 .zcode/cli/agents。双写只作用于本复现 spec，
+    // 避免路径差异让 case 停在 agent type not found，而不是 provider registry 缺失。
+    mkdirSync(agentsDir, { recursive: true });
+    for (const profile of profileEntries) {
+      const profilePath = resolve(agentsDir, `${profile.name}.md`);
+      // 同 agents-state：reloadSession 不能覆盖设置页已经保存的当前 Markdown。
+      if (!existsSync(profilePath)) {
+        writeFileSync(profilePath, profile.content, "utf-8");
+      }
+    }
+  }
+}
+async function seedUpstreamE2EModelConfig(specs: string[] = []) {
+  if (isOAuthCredentialRecoverySpec(specs) || usesProviderReadinessColdStartFixture(specs)) {
+    // Bugfix: OAuth 凭据恢复及 provider-readiness 冷启动 fixture 必须保持
+    // 无可用本地模型配置，避免默认 上游 回放 provider 绕过登录/执行门禁。
+    return;
+  }
+
+  const apiKey =
+    upstreamE2EHttpMode === "replay"
+      ? E2E_PROVIDER_REPLAY_API_KEY
+      : (process.env.E2E_PROVIDER_API_KEY?.trim() ?? "");
+  if (!apiKey || apiKey === "xxx") {
+    return;
+  }
+
+  // 修复原因：固定 e2e 默认回放真实采集 fixture，capture 模式才访问线上
+  // 上游；baseURL 必须在每个 session 重置前跟随当前 HTTP 模式写入配置。
+  const anthropicBaseURL = buildUpstreamE2EAnthropicBaseUrl();
+  const modelProviderListFilteringSpec = specs.some((spec) =>
+    spec.includes("conversation-session-model-provider-list-filtering.test.ts"),
+  );
+  const builtInSubagentModelOverridesSpec = isBuiltInSubagentModelSelectionOverridesSpec(specs);
+  const settingsSubagentCreateEditPersistenceSpec =
+    isSettingsSubagentCreateEditPersistenceSpec(specs);
+  const exposeSubagentReasoningMetadata =
+    // 模型配置隔离和 Edit/Fork 继承直接检查请求参数；空映射会吞掉所选档位。
+    specs.some((spec) =>
+      /conversation-session-(model-config|model-switch-tool-edit-fork|model-switch-compact|model-switch-auto-compact|goal-session-model|new-session-inherits-model|draft-model-switch-first-send|model-provider-session-isolation|upstream-workspace-smoke|model-switch-edit-fork|model-switch-queue|same-model-provider-identity)\.test\.ts$/.test(
+        spec,
+      ),
+    ) ||
+    // SHR 回归检查 child 的真实 wire 参数；仅给菜单 high/max 而把 map 设为 {}
+    // 会把所选档位从请求中删掉，导致配置更新用例在第一轮就误报参数丢失。
+    specs.some((spec) =>
+      /conversation-session-subagent-(runtime-refresh|catalog-refresh|profile-fields|context-boundaries|multi-workspace|cross-host)\.test\.ts$/.test(
+        spec,
+      ),
+    ) ||
+    // 思考隔离专项需要核对真实 wire；空 Map 会让参数缺席，无法验证 session 隔离。
+    specs.some((spec) =>
+      /conversation-session-(thought-level-session-isolation|readstate-model-isolation|v4-goal)\.test\.ts$/.test(
+        spec,
+      ),
+    ) ||
+    builtInSubagentModelOverridesSpec ||
+    settingsSubagentCreateEditPersistenceSpec ||
+    specs.some((spec) => spec.includes("plugin-subagent-override-cold.test.ts")) ||
+    isSubagentCodingPlanLoginCatalogStaleSpec(specs);
+  const subagentRuntimeCatalogReasoningSpec = isSubagentRuntimeCatalogReasoningSpec(specs);
+  // 原因：pending 目录曾统一使用 240/80，导致普通续发插入无关 Compact，
+  // 并在转正移动文件后改变测试语义。只有显式自动压缩场景使用小窗口。
+  const autoCompactSpec = specs.some((spec) =>
+    /conversation-session-(compact-auto|compact-auto-actions|goal-run-cases|model-switch-auto-compact|subagent-runtime-refresh)\.test\.ts$/.test(
+      spec,
+    ),
+  );
+  const contextWindow = upstreamE2EContextWindowOverride ?? (autoCompactSpec ? 240 : 128000);
+  const maxOutputTokens = upstreamE2EMaxOutputTokensOverride ?? (autoCompactSpec ? 80 : undefined);
+  // 菜单只设置下次发送意图；App 和 Agent 使用相同窗口，不再伪造 1 token 触发旧 guard。
+  const appContextWindow = contextWindow;
+  const appMaxOutputTokens = maxOutputTokens;
+  mkdirSync(E2E_APP_CONFIG_DIR, { recursive: true });
+  // 工具栏用例实际选择 high/max；只声明 disabled 会在进入交互断言前失败。
+  const composerToolbarSpec = specs.some((spec) =>
+    spec.includes("conversation-session-v4-composer-toolbar.test.ts"),
+  );
+  // 通用 fixture 自带完整 Option Spec，SSH 目标不依赖本机 E2E Built-in 补全。
+  // Registry 以末项作为最高档；旧夹具将默认值放首项，导致 alternate 的 max 被 high 覆盖。
+  const reasoning = (): PersonalProviderConfigSeed["models"][number]["reasoningLevel"] => ({
+    values: specs.some((spec) => spec.endsWith("conversation-session-v4-goal.test.ts"))
+      ? ["high", "low", "max"]
+      : // 默认 env 的准备步骤选择 high；只声明 disabled 会在进入被测流程前失败。
+        e2eProviderPresetName === "env" ||
+          e2eProviderPresetName === "stagingmodel" ||
+          composerToolbarSpec
+        ? builtInSubagentModelOverridesSpec
+          ? ["off", "low", "high", "max"]
+          : ["high", "max"]
+        : ["disabled"],
+    // 只有专项 wire 用例注入思考参数；普通 replay 的响应节奏由 fixture 控制。
+    map: exposeSubagentReasoningMetadata
+      ? '{"thinking":{"type":"enabled","budget_tokens":1024},"output_config":{"effort":reasoningLevel}}'
+      : "{}",
+  });
+  const model = (
+    id: string,
+    visibility?: "visible" | "hidden",
+  ): PersonalProviderConfigSeed["models"][number] => ({
+    id,
+    contextWindow: appContextWindow,
+    // 图片布局和 Stop 收尾用例必须检查真实图片 wire 内容，限定这些 fixture 支持图片输入。
+    ...(specs.some(
+      (spec) =>
+        spec.includes("conversation-session-v4-attachment-layout.test.ts") ||
+        spec.includes("conversation-session-stop-tool-results.test.ts"),
+    )
+      ? { inputModalities: ["text", "image"] as const }
+      : {}),
+    ...(appMaxOutputTokens !== undefined ? { maxOutputTokens: appMaxOutputTokens } : {}),
+    reasoningLevel: reasoning(),
+    ...(visibility ? { enabled: visibility !== "hidden" } : {}),
+  });
+  const provider = (params: {
+    apiKey?: string;
+    baseURL?: string;
+    enabled?: boolean;
+    id: string;
+    label: string;
+    models: PersonalProviderConfigSeed["models"];
+    visibility?: "visible" | "hidden";
+  }): PersonalProviderConfigSeed => ({
+    apiFormat: "anthropic-messages",
+    apiKey: params.apiKey ?? apiKey,
+    baseURL: params.baseURL ?? anthropicBaseURL,
+    enabled: params.enabled ?? true,
+    id: params.id,
+    label: params.label,
+    models: params.models,
+    ...(params.visibility ? { visibility: params.visibility } : {}),
+  });
+  const appProviders: PersonalProviderConfigSeed[] = [
+    provider({
+      id: e2eProviderPreset.providerId,
+      label: e2eProviderPreset.providerName,
+      models: [
+        model(e2eProviderPreset.model),
+        ...(e2eProviderPresetName === "env" ? [model(E2E_PROVIDER_SECONDARY_MODEL)] : []),
+      ],
+    }),
+    ...(e2eProviderPresetName === "env"
+      ? [
+          provider({
+            id: E2E_PROVIDER_ALTERNATE_PROVIDER_ID,
+            label: E2E_PROVIDER_ALTERNATE_PROVIDER_NAME,
+            models: [model(E2E_PROVIDER_SECONDARY_MODEL)],
+          }),
+        ]
+      : []),
+    ...(subagentRuntimeCatalogReasoningSpec
+      ? [
+          provider({
+            id: SUBAGENT_RUNTIME_CATALOG_PROVIDER_ID,
+            label: SUBAGENT_RUNTIME_CATALOG_PROVIDER_NAME,
+            // I68 验证四档父子请求隔离；通用 high/max 夹具不能代替其明确的 Option Spec。
+            models: [
+              {
+                ...model(SUBAGENT_RUNTIME_CATALOG_MODEL),
+                maxOutputTokens: 32_000,
+                reasoningLevel: {
+                  values: ["low", "medium", "high", "xhigh"],
+                  map: '{"thinking":{"type":"enabled","budget_tokens":reasoningLevel == "low" ? 4000 : reasoningLevel == "medium" ? 8000 : reasoningLevel == "high" ? 16000 : 31999},"output_config":{"effort":reasoningLevel}}',
+                },
+              },
+            ],
+          }),
+        ]
+      : []),
+    ...(modelProviderListFilteringSpec
+      ? [
+          provider({
+            id: "e2e-hidden-provider",
+            label: "Hidden Provider",
+            models: [model("hidden-provider-model")],
+            visibility: "hidden",
+          }),
+          provider({
+            id: "e2e-visible-provider-hidden-model",
+            label: "Visible Provider With Hidden Model",
+            models: [model("visible-companion-model"), model("hidden-model", "hidden")],
+          }),
+          provider({
+            enabled: false,
+            id: "e2e-hidden-disabled",
+            label: "Hidden Disabled Provider",
+            models: [model("hidden-disabled-model")],
+          }),
+          provider({
+            apiKey: "",
+            id: "e2e-hidden-no-key",
+            label: "Hidden No Key Provider",
+            models: [model("hidden-no-key-model")],
+          }),
+          provider({
+            baseURL: "",
+            id: "e2e-hidden-no-endpoint",
+            label: "Hidden No Endpoint Provider",
+            models: [model("hidden-no-endpoint-model")],
+          }),
+          provider({
+            baseURL: `${anthropicBaseURL}/builtin-personal-conflict`,
+            id: "e2e-zai-template-provider",
+            label: "Z.ai Template Provider E2E",
+            models: [model("glm-5.3")],
+          }),
+        ]
+      : []),
+  ];
+  for (const provider of appProviders) {
+    await seedPersonalProviderConfig(E2E_APP_PROVIDER_CONFIG_FILE, provider);
+  }
+  await seedPersonalDefaultModelSelection(E2E_APP_PROVIDER_CONFIG_FILE, {
+    providerId: e2eProviderPreset.providerId,
+    modelId: e2eProviderPreset.model,
+    // 远端 Provisioning 只接受完整模型选择；默认模型缺少思考档位会使 SSH 首连与
+    // OP10 新建会话退回 Registry 推荐。无思考能力的模型也显式选择 disabled。
+    options: { reasoningLevel: readE2EThoughtLevel() || "disabled" },
+  });
+}
+async function seedModelOutputTokenProviders(specs: string[] = []) {
+  const providerSeeds: ModelOutputTokenProviderSeed[] = [];
+  if (specs.some((spec) => spec.includes(MODEL_OUTPUT_TOKEN_BUDGET_SPEC))) {
+    providerSeeds.push({
+      id: "output-token-budget-e2e",
+      models: [
+        { contextWindow: 128_000, id: "otb-default" },
+        { contextWindow: 128_000, id: "otb-16k", limitOutput: 16_000 },
+        { contextWindow: 128_000, id: "otb-64k", maxOutputTokens: 64_000 },
+        { contextWindow: 128_000, id: "otb-runtime-refresh" },
+      ],
+      name: "Output Token Budget E2E",
+    });
+  }
+  if (specs.some((spec) => spec.includes(MODEL_OUTPUT_TOKEN_PREFLIGHT_SPEC))) {
+    providerSeeds.push({
+      id: "output-token-preflight-e2e",
+      models: [
+        {
+          contextWindow: 128_000,
+          id: "otb-preflight-64k",
+          limitOutput: 64_000,
+        },
+        {
+          contextWindow: 64_000,
+          id: "otb-preflight-smoke-64k-48k",
+          limitOutput: 48_000,
+        },
+        {
+          contextWindow: 200_000,
+          id: "otb-preflight-smoke-200k-128k",
+          limitOutput: 128_000,
+        },
+      ],
+      name: "Output Token Preflight E2E",
+    });
+  }
+  if (specs.some((spec) => spec.includes(OUTPUT_LIMIT_CONTINUE_MARKDOWN_PROTOCOLS_SPEC))) {
+    providerSeeds.push(
+      {
+        id: "otc-protocol-chat",
+        models: [{ contextWindow: 128_000, id: "otc-protocol-chat" }],
+        name: "OTC Chat Completions E2E",
+      },
+      {
+        apiFormat: "openai-responses",
+        id: "otc-protocol-responses",
+        kind: "openai",
+        models: [{ contextWindow: 128_000, id: "otc-protocol-responses" }],
+        name: "OTC Responses API E2E",
+        supportedFormat: "responses",
+      },
+    );
+  }
+  if (providerSeeds.length === 0) {
+    return;
+  }
+
+  const apiKey =
+    upstreamE2EHttpMode === "replay"
+      ? E2E_PROVIDER_REPLAY_API_KEY
+      : (process.env.E2E_PROVIDER_API_KEY?.trim() ?? "");
+  if (!apiKey || apiKey === "xxx") {
+    throw new Error("Output-token E2E 缺少可用 provider API Key");
+  }
+  const appProviders = providerSeeds.map(
+    (provider): PersonalProviderConfigSeed => ({
+      // OTC11 明确验证两种协议；不能把 Responses seed 再覆盖成 Chat Completions。
+      apiFormat: provider.apiFormat ?? "openai-chat-completions",
+      apiKey,
+      baseURL: upstreamE2EBaseUrl,
+      enabled: true,
+      id: provider.id,
+      label: provider.name,
+      models: provider.models.map((model) => ({
+        contextWindow: model.contextWindow,
+        id: model.id,
+        ...(model.maxOutputTokens === undefined && model.limitOutput === undefined
+          ? {}
+          : { maxOutputTokens: model.maxOutputTokens ?? model.limitOutput }),
+      })),
+    }),
+  );
+  for (const provider of appProviders) {
+    await seedPersonalProviderConfig(E2E_APP_PROVIDER_CONFIG_FILE, provider);
+  }
+}
+async function seedContextWindowColdResumeModelConfig() {
+  const apiKey =
+    upstreamE2EHttpMode === "replay"
+      ? E2E_PROVIDER_REPLAY_API_KEY
+      : (process.env.E2E_PROVIDER_API_KEY?.trim() ?? "");
+  if (!apiKey || apiKey === "xxx") {
+    throw new Error("context-window cold-resume 缺少可用 provider API Key");
+  }
+  const provider: PersonalProviderConfigSeed = {
+    id: CONTEXT_WINDOW_COLD_RESUME_PROVIDER_ID,
+    label: CONTEXT_WINDOW_COLD_RESUME_PROVIDER_NAME,
+    baseURL: upstreamE2EBaseUrl,
+    apiFormat: "openai-chat-completions",
+    apiKey,
+    enabled: true,
+    models: [
+      {
+        id: CONTEXT_WINDOW_COLD_RESUME_MODEL_ID,
+        contextWindow: CONTEXT_WINDOW_COLD_RESUME_MAX_TOKENS,
+        maxOutputTokens: CONTEXT_WINDOW_COLD_RESUME_MAX_OUTPUT_TOKENS,
+      },
+    ],
+  };
+  await seedPersonalProviderConfig(E2E_APP_PROVIDER_CONFIG_FILE, provider);
+  mkdirSync(E2E_APP_CONFIG_DIR, { recursive: true });
+  await seedPersonalDefaultModelSelection(E2E_APP_PROVIDER_CONFIG_FILE, {
+    providerId: CONTEXT_WINDOW_COLD_RESUME_PROVIDER_ID,
+    modelId: CONTEXT_WINDOW_COLD_RESUME_MODEL_ID,
+  });
+}
 async function measureE2ELifecyclePhase<T>(
   phase: E2ELifecyclePhase,
   context: { cid?: string; specs?: string[] },
@@ -399,6 +1367,10 @@ function prepareDesktopAppBuild() {
     console.log(`[e2e] using packaged app: ${E2E_PACKAGED_APP_BINARY_PATH}`);
     return;
   }
+  // Bug 根因：Windows 上 Agent CLI 只能经过 zcode-runtime-host.exe 启动，而下面的
+  // build:no-runtime-assets 不产出它，Windows CI 全部 case 报 runtime host missing /
+  // slash 目录为空。复用构建（ZCODE_E2E_SKIP_BUILD）也必须检查，产物不受 out stamp 保护。
+  ensureWindowsRuntimeHost();
   // 修复原因：WDIO 配置会先被 esbuild 解析，CI 可执行字符串必须保持 ASCII 引号。
   // 官方购买页面 fixture 已移除，复用条件只保留显式构建标记。
   if (process.env.ZCODE_E2E_SKIP_BUILD === "1") {
@@ -411,6 +1383,16 @@ function prepareDesktopAppBuild() {
   // 因此 WDIO 入口始终先构建，确保测试使用当前源码对应的桌面产物。
   runPnpmWorkspaceCommand(["--filter", "@zcode/desktop", "build:no-runtime-assets"]);
   assertDesktopE2EBuildReady("onPrepare build");
+}
+
+// 非 Windows 由脚本 --if-windows 跳过；--ensure 按源码摘要复用已有产物，只在缺失或过期时调用 CMake。
+// 调用方持有 E2E build 锁，分片 runner 不会并发写同一个 bundled-tools 目录。
+function ensureWindowsRuntimeHost() {
+  execFileSync(
+    process.execPath,
+    [resolve(REPO_ROOT, "scripts/build-windows-runtime-host.mjs"), "--if-windows", "--ensure"],
+    { cwd: REPO_ROOT, env: createPnpmChildEnv(), stdio: "inherit" },
+  );
 }
 
 function runPnpmWorkspaceCommand(
@@ -572,6 +1554,201 @@ function configureZCodeAgentServerEnv() {
   delete process.env.ZCODE_AGENT_SERVER_COMMAND;
   delete process.env.ZCODE_AGENT_SERVER_ARGS_JSON;
   delete process.env.ZCODE_AGENT_SERVER_CWD;
+}
+
+function assertUpstreamCaptureConfig() {
+  if (!e2eProviderPreset.baseUrl) {
+    throw new Error(
+      `E2E_PROVIDER_HTTP_MODE=capture with ${e2eProviderPresetName} requires E2E_PROVIDER_BASE_URL.`,
+    );
+  }
+  const apiKey = readE2EProviderApiKey();
+  if (apiKey && apiKey !== "xxx") {
+    return;
+  }
+
+  // 修复原因：默认 e2e 已切成 fixture replay；只有显式 capture 才会访问真实
+  // 上游。采集 fixture 时必须提前校验真实 key，避免把失败响应固化进仓库。
+  throw new Error(
+    `E2E_PROVIDER_HTTP_MODE=capture with ${e2eProviderPresetName} requires one of: ${e2eProviderPreset.apiKeyEnvNames.join(", ")}.`,
+  );
+}
+
+function readE2EProviderApiKey() {
+  for (const envName of e2eProviderPreset.apiKeyEnvNames) {
+    const value = process.env[envName]?.trim();
+    if (value) {
+      return value;
+    }
+  }
+  return "";
+}
+
+function ensureUpstreamReplayConfig() {
+  process.env.E2E_PROVIDER_API_KEY = E2E_PROVIDER_REPLAY_API_KEY;
+}
+
+async function startUpstreamE2EHttp(specs: string[] = []) {
+  await stopUpstreamE2EHttp();
+  if (
+    upstreamE2EHttpMode === "capture" ||
+    specs.some((spec) => spec.includes("conversation-session-toolsearch"))
+  ) {
+    applyE2EWorkerReplayProxyEnv(process.env, [], "", configuredE2EWorkerNetworkEnv);
+    await startUpstreamCaptureProxy(specs);
+    return;
+  }
+
+  ensureUpstreamReplayConfig();
+  upstreamReplayServer = await startUpstreamReplayServer({
+    artifactPath: UPSTREAM_CAPTURE_ARTIFACT_PATH,
+    fixtureVariables: createE2EReplayFixtureVariables(E2E_HOME_DIR),
+    fixturePaths: await resolveUpstreamReplayFixturePaths(specs),
+  });
+  upstreamE2EBaseUrl = upstreamReplayServer.baseUrl;
+  process.env.E2E_PROVIDER_CAPTURE_MODE = "replay";
+  process.env.E2E_PROVIDER_CAPTURE_PATH = upstreamReplayServer.artifactPath;
+  process.env.E2E_PROVIDER_CAPTURE_PROXY_URL = upstreamReplayServer.baseUrl;
+  process.env.E2E_PROVIDER_EXPECTED_HOST = `${upstreamReplayServer.host}:${upstreamReplayServer.port}`;
+  process.env.E2E_PROVIDER_EXPECTED_PROTOCOL = "http";
+  process.env.E2E_PROVIDER_RUNTIME_BASE_URL = upstreamReplayServer.baseUrl;
+  process.env.NO_PROXY = DEFAULT_E2E_NETWORK_CAPTURE_NO_PROXY;
+  process.env.no_proxy = DEFAULT_E2E_NETWORK_CAPTURE_NO_PROXY;
+  applyE2EWorkerReplayProxyEnv(
+    process.env,
+    specs,
+    upstreamReplayServer.baseUrl,
+    configuredE2EWorkerNetworkEnv,
+  );
+  writeUpstreamE2ERuntimeFile("replay", upstreamReplayServer.baseUrl);
+}
+
+async function readRequestJson<T>(request: IncomingMessage): Promise<T> {
+  const chunks: Buffer[] = [];
+  await new Promise<void>((resolveRead) => {
+    request.on("data", (chunk: Buffer) => chunks.push(chunk));
+    request.on("end", () => resolveRead());
+  });
+  const raw = Buffer.concat(chunks).toString("utf-8").trim();
+  return (raw ? JSON.parse(raw) : {}) as T;
+}
+
+function writeJson(response: ServerResponse, payload: unknown, statusCode = 200) {
+  response.statusCode = statusCode;
+  response.setHeader("content-type", "application/json; charset=utf-8");
+  response.end(JSON.stringify(payload));
+}
+
+async function startUpstreamCaptureProxy(specs: readonly string[]) {
+  const toolSearchFixture = specs.some((spec) => spec.includes("conversation-session-toolsearch"));
+  if (!toolSearchFixture) assertUpstreamCaptureConfig();
+  const toolSearchSpec = specs.find((spec) => spec.includes("conversation-session-toolsearch"));
+  const toolSearchResponses = toolSearchSpec
+    ? await loadToolSearchResponses(
+        toolSearchSpec
+          .replaceAll("\\", "/")
+          .split("/")
+          .at(-1)!
+          .replace(/\.test\.ts$/, ""),
+      )
+    : undefined;
+  const apiKey = toolSearchFixture ? E2E_PROVIDER_REPLAY_API_KEY : readE2EProviderApiKey();
+  upstreamCaptureProxy = await startE2ENetworkCaptureProxy({
+    artifactPath: UPSTREAM_CAPTURE_ARTIFACT_PATH,
+    // Bugfix: beforeSession 会在启动 capture proxy 后重置 .e2e-home；
+    // CA 若放在 .e2e-home 下会被删掉，agent 随后读取 ZCODE_AGENT_CA_CERT 就会 ENOENT。
+    caDir: E2E_NETWORK_CAPTURE_CA_DIR,
+    recordResponseChunkTimeline: true,
+    responseChunkTimelineLimitBytes: UPSTREAM_CAPTURE_RESPONSE_CHUNK_TIMELINE_BYTES,
+    responsePreviewLimitBytes: UPSTREAM_CAPTURE_RESPONSE_PREVIEW_BYTES,
+    responseMocks: undefined,
+  });
+  process.env.E2E_PROVIDER_API_KEY = apiKey;
+  upstreamE2EBaseUrl = e2eProviderPreset.baseUrl;
+
+  // 修复原因：capture 模式用于更新固定 fixture，需要真实上游响应和请求抓包；
+  // 默认 replay 模式不会走这里，避免固定回归受网络、余额、限流影响。
+  for (const [key, value] of Object.entries(upstreamCaptureProxy.env)) {
+    process.env[key] = value;
+  }
+  process.env.E2E_PROVIDER_CAPTURE_MODE = "capture";
+  process.env.E2E_PROVIDER_CAPTURE_PATH = upstreamCaptureProxy.artifactPath;
+  process.env.E2E_PROVIDER_CAPTURE_PROXY_URL = upstreamCaptureProxy.proxyUrl;
+  process.env.E2E_PROVIDER_EXPECTED_HOST = e2eProviderPreset.expectedHost;
+  process.env.E2E_PROVIDER_EXPECTED_PROTOCOL = e2eProviderPreset.expectedProtocol;
+  process.env.E2E_PROVIDER_RUNTIME_BASE_URL = e2eProviderPreset.baseUrl;
+  writeUpstreamE2ERuntimeFile("capture", e2eProviderPreset.baseUrl);
+}
+
+function writeUpstreamE2ERuntimeFile(mode: "capture" | "replay", baseUrl: string) {
+  // 修复原因：WDIO hook 内设置的 env 不一定能被所有 spec 代码稳定读取；
+  // 用 runtime 文件暴露本轮代理地址，避免自定义 provider case 误读旧 CLI config 端口。
+  mkdirSync(E2E_NETWORK_CAPTURE_DIR, { recursive: true });
+  writeFileSync(
+    E2E_PROVIDER_RUNTIME_FILE,
+    JSON.stringify(
+      {
+        artifactPath: process.env.E2E_PROVIDER_CAPTURE_PATH ?? "",
+        baseUrl,
+        mode,
+      },
+      null,
+      2,
+    ),
+  );
+}
+
+async function stopUpstreamE2EHttp() {
+  if (!upstreamCaptureProxy) {
+    if (upstreamReplayServer) {
+      await upstreamReplayServer.stop();
+      upstreamReplayServer = null;
+    }
+    return;
+  }
+  await upstreamCaptureProxy.stop();
+  upstreamCaptureProxy = null;
+  if (upstreamReplayServer) {
+    await upstreamReplayServer.stop();
+    upstreamReplayServer = null;
+  }
+}
+
+function restoreE2EProviderEndpointEnv() {
+  const endpointEnv = getE2EProviderEndpointEnv(
+    configuredE2ESpecs,
+    e2eProviderPresetName,
+    upstreamE2EHttpMode,
+  );
+  if (Object.keys(endpointEnv).length > 0) {
+    // 修复原因：每轮 beforeSession 都会执行 mock 清理；请求安全 capture 与 live-team
+    // 的生产控制面选择必须恢复，否则生产凭据会被送到测试域。
+    Object.assign(process.env, endpointEnv);
+    return;
+  }
+}
+
+async function startDynamicWorkflowConfigE2EMock(specs: string[] = []) {
+  const scenario = resolveDynamicWorkflowConfigMockScenario(specs);
+  if (!scenario) {
+    await stopDynamicWorkflowConfigE2EMock();
+    return;
+  }
+  if (dynamicWorkflowConfigMockServer?.scenario !== scenario) {
+    await stopDynamicWorkflowConfigE2EMock();
+    dynamicWorkflowConfigMockServer = await startDynamicWorkflowConfigMockServer(scenario);
+  }
+  applyDynamicWorkflowConfigMockEnv(process.env, dynamicWorkflowConfigMockServer.baseUrl);
+}
+
+async function stopDynamicWorkflowConfigE2EMock() {
+  if (!dynamicWorkflowConfigMockServer) {
+    return;
+  }
+  const baseUrl = dynamicWorkflowConfigMockServer.baseUrl;
+  await dynamicWorkflowConfigMockServer.stop();
+  dynamicWorkflowConfigMockServer = null;
+  clearDynamicWorkflowConfigMockEnv(process.env, baseUrl);
 }
 
 async function armCurrentElectronAppQuit(stage: string) {
@@ -1060,47 +2237,34 @@ function forceFinalizeE2ERunnerFromGuard() {
     }
   })();
 }
-async function resetE2EHome(specs: string[]) {
+export async function resetE2EHome(specs: string[]) {
   await removeE2EHomeWithRetry();
-  await mkdir(E2E_APP_CONFIG_DIR, { recursive: true });
-  await mkdir(resolve(E2E_STORAGE_ROOT, "workspace/default"), { recursive: true });
-  const settings: Partial<AppSettings> = { locale: "en-US" };
-  const messagesReplaySpec = specs.some((spec) =>
-    [
-      "conversation-session-custom-command-shell-handoff.test.ts",
-      "conversation-session-explore-permission-delegate.test.ts",
-      "conversation-session-plan-mode-mcp-permission.test.ts",
-      "plugin-management-ui-market.test.ts",
-    ].some((name) => spec.endsWith(name)),
-  );
-  if (
-    messagesReplaySpec ||
-    specs.some((spec) =>
-      [
-        "side-pane-full-view.test.ts",
-        "mcp-failure-guidance.test.ts",
-        // OW-P024 R4：工作流中枢用例读取 DEFAULT_WORKSPACE（OpenZWorkProject）下的
-        // .zcode/workflows 并等待它成为当前工作区；产品首次启动只创建 conversation
-        // workspace，不隐式登记项目——与 side-pane 同款由 settings 显式恢复。
-        "automations-workflows-hub.test.ts",
-      ].some((name) => spec.endsWith(name)),
-    )
-  ) {
-    // 完整视图测试需要固定项目 cwd；产品首次启动只建立 conversation workspace，
-    // 不再隐式创建默认 scratch 工作区，因此由依赖固定 cwd 的场景显式声明恢复项目。
-    // 工作区名与 e2e-runtime-paths 同源（评审修正：DEFAULT_WORKSPACE 派生自同一常量）。
-    const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
-    await mkdir(workspacePath, { recursive: true });
-    settings.lastWorkspaceSession = [{ kind: "local", workspacePath, workspacePurpose: "project" }];
-    settings.lastActiveTabIndex = 0;
+  mkdirSync(E2E_HOME_DIR, { recursive: true });
+  // 先拷官方插件缓存，再写各 spec 的 fixture，避免覆盖 fixture 自己写入的插件状态。
+  await installOfficialPluginCacheTemplate({
+    homeDir: E2E_HOME_DIR,
+    templateHome: E2E_OFFICIAL_PLUGIN_CACHE_TEMPLATE_HOME,
+  });
+  seedE2EStartupState(specs);
+  await seedRemoteOnboardingFixture({
+    // 营销触达域（WP-07）已裁剪；保留远控 profile 引导夹具的既有开关语义。
+    enabled: process.env.ZCODE_E2E_REMOTE_PROFILE === "1",
+    specs,
+    appConfigDir: E2E_APP_CONFIG_DIR,
+  });
+  if (workerSpecsContain(specs, PROJECT_UPGRADE_ORDER_SPEC)) {
+    await seedProjectUpgradeOrderFixture(E2E_HOME_DIR, E2E_APP_SETTINGS_FILE);
   }
-  await writeFile(E2E_APP_SETTINGS_FILE, JSON.stringify(settings));
-  if (
-    process.env.ZCODE_E2E_VERIFY_OFFICIAL_V1 === "1" &&
-    specs.some((spec) => spec.endsWith("web-remote-v1-connections.test.ts"))
-  ) {
-    const { seedProviderReadinessHistoryFixture } =
-      await import("./test/e2e/helpers/provider-readiness-history-fixture.js");
+  if (specs.some((spec) => spec.endsWith("sidebar-rich-content-performance.test.ts"))) {
+    await seedSidebarRichContentFixture({
+      cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
+      e2eHomeDir: E2E_HOME_DIR,
+      workspacePath: resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME),
+    });
+  }
+  if (usesProviderReadinessColdStartFixture(specs) || usesGitReviewEntryFixture(specs)) {
+    // SP13 必须在 Host 打开 tasks-index 前同时预置真实 task row 与可打开的
+    // CLI session；测试内临时注入会绕过 Header 与 status panel 的真实 task/service 解析链路。
     await seedProviderReadinessHistoryFixture({
       cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
       e2eHomeDir: E2E_HOME_DIR,
@@ -1138,53 +2302,57 @@ async function resetE2EHome(specs: string[]) {
     });
   }
   seedE2EWorkerModelStreamConfig(specs);
-  // OpenZWork v3.17.1：模型配置/切换族保留可观测的思考参数映射（上游 SHR 判定采纳）。
-  const exposeSubagentReasoningMetadata = specs.some((spec) =>
-    /conversation-session-(model-config|model-switch-tool-edit-fork|model-switch-compact|model-switch-auto-compact|goal-session-model|new-session-inherits-model|draft-model-switch-first-send|model-provider-session-isolation|upstream-workspace-smoke|model-switch-edit-fork|model-switch-queue|same-model-provider-identity)\.test\.ts$/.test(
-      spec,
-    ),
-  );
-  // 小窗口只用于显式 Compact 场景；普通未读与重连用例需要完整历史。
-  const autoCompactSpec = specs.some((spec) =>
-    [
-      "conversation-session-compact-auto.test.ts",
-      "conversation-session-compact-auto-actions.test.ts",
-      "conversation-session-goal-run-cases.test.ts",
-      "conversation-session-model-switch-auto-compact.test.ts",
-      "conversation-session-subagent-runtime-refresh.test.ts",
-    ].some((name) => spec.endsWith(name)),
-  );
-  const upstreamE2EContextWindowOverride = readPositiveIntegerEnv(
-    "ZCODE_E2E_UPSTREAM_CONTEXT_WINDOW",
-  );
-  const contextWindow = upstreamE2EContextWindowOverride ?? (autoCompactSpec ? 240 : 128000);
-  const maxOutputTokens =
-    readPositiveIntegerEnv("ZCODE_E2E_UPSTREAM_MAX_OUTPUT_TOKENS") ??
-    (autoCompactSpec ? 80 : undefined);
-  const baseURL = process.env.E2E_PROVIDER_BASE_URL?.trim();
-  const model = process.env.E2E_PROVIDER_MODEL?.trim();
-  if (!baseURL || !model) return;
-  const id = process.env.E2E_PROVIDER_ID?.trim() || "e2e-personal";
-  await seedPersonalProviderConfig(E2E_APP_PROVIDER_CONFIG_FILE, {
-    id,
-    label: process.env.E2E_PROVIDER_NAME?.trim() || "E2E Personal",
-    // 会话与插件回放使用上游 Anthropic messages 夹具；其余场景保留既有协议。
-    apiFormat: messagesReplaySpec ? "anthropic-messages" : "openai-chat-completions",
-    apiKey: process.env.E2E_PROVIDER_API_KEY?.trim() || "",
-    baseURL,
-    models: [
-      {
-        id: model,
-        contextWindow,
-        ...(maxOutputTokens === undefined ? {} : { maxOutputTokens }),
-        ...(messagesReplaySpec ? { reasoningLevel: { values: ["high", "max"], map: "{}" } } : {}),
-      },
-    ],
-  });
-  await seedPersonalDefaultModelSelection(E2E_APP_PROVIDER_CONFIG_FILE, {
-    providerId: id,
-    modelId: model,
-  });
+  await seedE2EModelConfig(specs);
+  seedE2EPluginMcpSkillInstalledPlugins(specs);
+  seedE2EPluginMcpSkillState(specs);
+  await seedE2EWorkspacePluginState(specs);
+  await seedE2EBuiltinWorkspacePluginDisable(specs);
+  seedE2EBuiltInSubagentModelOverrides(specs);
+  seedE2ESubagentProfiles(specs);
+  // WT04 第一次打开项目就读取 Git 状态，仓库基线必须在 Electron 启动前准备好。
+  if (specs.some((spec) => spec.endsWith("git-worktree-remote-view.test.ts"))) {
+    const workspace = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
+    const baseline = ".zcode-e2e/managed-worktree/baseline.md";
+    await mkdir(dirname(resolve(workspace, baseline)), { recursive: true });
+    await runGitFixtureCommand(workspace, ["init", "-q", "-b", "main"]);
+    await runGitFixtureCommand(workspace, ["config", "user.email", "zcode-e2e@example.invalid"]);
+    await runGitFixtureCommand(workspace, ["config", "user.name", "ZCode E2E"]);
+    await writeFile(resolve(workspace, baseline), "baseline\n", "utf8");
+    await runGitFixtureCommand(workspace, ["add", baseline]);
+    await runGitFixtureCommand(workspace, ["commit", "-qm", "test: wt04 baseline"]);
+  }
+  await seedE2EGitReviewEntryWorkspace(specs);
+  seedE2EGitCommitDialogWorkspace(specs);
+  if (
+    specs.some((spec) => /conversation-session-history-first(?:-migration)?\.test\.ts$/.test(spec))
+  ) {
+    await seedSessionHistoryFirstFixture({
+      cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
+      e2eHomeDir: E2E_HOME_DIR,
+      workspacePath: resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME),
+      providerId: e2eProviderPreset.providerId,
+      modelId: e2eProviderPreset.model,
+      thoughtLevel: readE2EThoughtLevel(),
+      legacyTitleHandoff: specs.some((spec) =>
+        spec.endsWith("conversation-session-history-first-migration.test.ts"),
+      ),
+    });
+  }
+  if (specs.some((spec) => spec.includes(HOOKS_LIFECYCLE_SPEC))) {
+    // Bug 根因：spec 的 before hook 运行时 app-server 已经读取过 workspace config；
+    // 测试内再写 Hooks 只能改变设置页，无法改变本轮 agent runtime。case-local fixture
+    // 必须在 beforeSession 的干净 HOME 阶段落盘，确保首个 agent 进程冷启动即加载。
+    await installHooksLifecycleFixture();
+  }
+  if (workerSpecsContain(specs, "conversation-session-stop-tool-results.test.ts")) {
+    // Stop 复现的 Hook 必须在 app-server 首次读配置前落盘；spec.before 已晚于预热。
+    await installStopToolResultsFixture();
+  }
+  if (specs.some((spec) => spec.includes(HOOK_TRUST_SPEC))) {
+    // 同上：workspace 级 hook trust fixture 必须在首个 agent 进程冷启动前落盘，
+    // 否则 SessionStart 软门禁不会在首轮 turn 生效（HK05 的 pending banner 前提）。
+    await installHookTrustFixture();
+  }
 }
 
 async function removeE2EHomeWithRetry() {
@@ -1218,6 +2386,492 @@ function isRetryableRemoveError(error: unknown) {
   );
 }
 
+// 把插件 MCP skill lifecycle spec 需要的 installed_plugins.json 写到
+// `~/.openzwork/cli/plugins/installed_plugins.json`；仅在 spec 命中且 state != not-installed
+// 时执行。注意 storageRoot 在 agent 视角是 `<home>/.zcode`，而 pluginStorageRoot
+// 是 `<home>/.zcode/cli/plugins`，installed_plugins.json 必须落在后者下面才会被
+// bootstrap 的 `listInstalledPluginRecords(pluginStorageRoot)` 读到（见
+// `apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts:347`）。
+function seedE2EPluginMcpSkillInstalledPlugins(specs: string[] = []) {
+  const state = resolvePluginMcpSkillState(specs);
+  if (!state || state === "not-installed" || state === "workspace-root") return;
+  const templateName =
+    state === "installed-enabled"
+      ? "installed-plugins.enabled.template.json"
+      : "installed-plugins.disabled.template.json";
+  const fixturePath = resolve(DESKTOP_DIR, "test/e2e/fixtures/plugin-mcp-skill", templateName);
+  const pluginRoot = resolve(DESKTOP_DIR, "test/e2e/fixtures/plugin-mcp-skill/e2e-plugin-mcp-ping");
+  // 修复原因：Windows 路径的反斜杠直接拼进 JSON 字符串会成为非法转义（如 `\U`），
+  // installed_plugins.json 解析失败后插件安装记录整体丢失；必须按 JSON 字符串编码替换。
+  const template = readFileSync(fixturePath, "utf-8").replaceAll(
+    '"__INSTALL_PATH__"',
+    JSON.stringify(pluginRoot),
+  );
+  // pluginStorageRoot = <home>/.zcode/cli/plugins
+  const targetDir = resolve(E2E_STORAGE_ROOT, "cli/plugins");
+  mkdirSync(targetDir, { recursive: true });
+  writeFileSync(resolve(targetDir, "installed_plugins.json"), template, "utf-8");
+}
+
+function shouldSeedGitCommitDialogWorkspace(specs: string[] = []) {
+  return specs.some((spec) => spec.includes(GIT_COMMIT_DIALOG_UI_FLOW_SPEC));
+}
+
+function seedE2EGitCommitDialogWorkspace(specs: string[] = []) {
+  if (!shouldSeedGitCommitDialogWorkspace(specs)) {
+    return;
+  }
+
+  const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
+  mkdirSync(resolve(workspacePath, "src"), { recursive: true });
+  writeFileSync(resolve(workspacePath, "README.md"), "Git commit dialog E2E workspace\n", "utf-8");
+  runGitE2ECommand(workspacePath, ["init"]);
+  runGitE2ECommand(workspacePath, ["checkout", "-B", "main"]);
+  runGitE2ECommand(workspacePath, ["config", "user.name", "ZCode E2E"]);
+  runGitE2ECommand(workspacePath, ["config", "user.email", "zcode-e2e@example.com"]);
+  runGitE2ECommand(workspacePath, ["add", "README.md"]);
+  runGitE2ECommand(workspacePath, ["commit", "-m", "chore: seed git commit dialog e2e"]);
+  runGitE2ECommand(workspacePath, ["branch", "e2e-target"]);
+
+  writeFileSync(
+    resolve(workspacePath, "src/staged-file.ts"),
+    "export const stagedGitCommitDialogE2E = true;\n",
+    "utf-8",
+  );
+  writeFileSync(
+    resolve(workspacePath, "src/unstaged-file.ts"),
+    "export const unstagedGitCommitDialogE2E = true;\n",
+    "utf-8",
+  );
+  runGitE2ECommand(workspacePath, ["add", "src/staged-file.ts"]);
+}
+
+function runGitE2ECommand(cwd: string, args: string[]) {
+  execFileSync("git", args, {
+    cwd,
+    env: process.env,
+    stdio: "ignore",
+  });
+}
+
+function seedE2EStartupState(specs: string[] = []) {
+  mkdirSync(E2E_APP_CONFIG_DIR, { recursive: true });
+  const useFreshConversationWorkspace = specs.some((spec) =>
+    spec.includes("conversation-session-conversation-workspace.test.ts"),
+  );
+  const legacyDefaultProjectPath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
+  const agentWarmupFixture = AGENT_WARMUP_FIXTURE_SPECS.some((marker) =>
+    workerSpecsContain(specs, marker),
+  );
+  const agentWarmupScenario = SMALL_AGENT_WARMUP_SPECS.some((marker) =>
+    workerSpecsContain(specs, marker),
+  )
+    ? SMALL_AGENT_WARMUP_SCENARIO
+    : PASSIVE_AGENT_STARTUP_SCENARIO;
+  const modelProviderRegressionFixture = workerSpecsContain(
+    specs,
+    MODEL_PROVIDER_REGRESSION_GAPS_SPEC,
+  );
+  const passiveWorkspacePaths = agentWarmupFixture
+    ? seedPassiveAgentStartupWorkspaces(E2E_HOME_DIR, agentWarmupScenario.workspaceCount)
+    : [];
+  if (modelProviderRegressionFixture) {
+    // 模型回归缺口 spec 既需要 dormant workspace 切换，也需要 legacy 默认工作区
+    // 供 provider/replay helper 初始化；两者都放进同一份 lastWorkspaceSession，避免
+    // 测试直接绕过用户可见的侧栏入口注入 workspace。
+    mkdirSync(legacyDefaultProjectPath, { recursive: true });
+  }
+  if (!useFreshConversationWorkspace && !agentWarmupFixture) {
+    // OW-P024：工作流总览等 E2E 以已打开的项目为前置；产品首次启动已改为 conversation，
+    // 测试基线显式 seed 项目会话，避免把“老 case 的 fixture”误当成新用户默认行为。
+    mkdirSync(legacyDefaultProjectPath, { recursive: true });
+  }
+  const now = Date.now();
+  const builtInSubagentModelOverridesSpec = isBuiltInSubagentModelSelectionOverridesSpec(specs);
+  const providerReadinessColdStartFixture = usesProviderReadinessColdStartFixture(specs);
+  // OpenZWork（OZ-D003 官方账号域）：bigmodel/官方 OAuth 凭据播种分支移除。
+  writeFileSync(
+    E2E_APP_SETTINGS_FILE,
+    JSON.stringify(
+      {
+        providerFamilyDomain: "zai",
+        providerFamilyDomainMigrated: true,
+        providerFamilyDomainUpdatedAt: now,
+        ...(modelProviderRegressionFixture
+          ? {
+              recentProjects: [legacyDefaultProjectPath, ...passiveWorkspacePaths],
+              lastWorkspaceSession: [legacyDefaultProjectPath, ...passiveWorkspacePaths].map(
+                (workspacePath) => ({
+                  kind: "local" as const,
+                  workspacePath,
+                  workspacePurpose: "project" as const,
+                }),
+              ),
+              lastActiveTabIndex: 0,
+            }
+          : agentWarmupFixture
+            ? {
+                recentProjects: passiveWorkspacePaths,
+                lastWorkspaceSession: passiveWorkspacePaths.map((workspacePath) => ({
+                  kind: "local" as const,
+                  workspacePath,
+                  workspacePurpose: "project" as const,
+                })),
+                lastActiveTabIndex: agentWarmupScenario.activeWorkspaceIndex,
+              }
+            : !useFreshConversationWorkspace
+              ? {
+                  lastWorkspaceSession: [
+                    {
+                      kind: "local",
+                      workspacePath: legacyDefaultProjectPath,
+                      workspacePurpose: "project",
+                    },
+                  ],
+                  lastActiveTabIndex: 0,
+                }
+              : {}),
+        ...(shouldSeedGuideInteractionBehavior(specs)
+          ? {
+              // steer 相关复现需要从当前 worker 的初始 settings 进入 guide 模式；
+              // 运行中再改 setting.json 会被 app 启动态写回覆盖，导致实际仍跑 queue。
+              zcodeInteractionBehavior: "guide",
+            }
+          : {}),
+        providerFamilyConnectionSelections: {},
+        ...(upstreamCaptureProxy
+          ? {
+              // 修复原因：agent 子进程只信任设置页显式代理配置，不读取
+              // WDIO 进程里的标准 HTTPS_PROXY；capture 模式必须预设这里才能抓到真实请求。
+              httpProxy: upstreamCaptureProxy.proxyUrl,
+              httpProxyCaCertPath: upstreamCaptureProxy.caCertPath,
+              httpProxyNoProxy: DEFAULT_E2E_NETWORK_CAPTURE_NO_PROXY,
+            }
+          : {}),
+      },
+      null,
+      2,
+    ),
+    "utf-8",
+  );
+  // OpenZWork（OZ-D003）：假 OAuth/JWT 凭据播种全部移除；仅保留 synthetic 注入分支。
+  if (providerReadinessColdStartFixture) {
+    writeFileSync(E2E_APP_CREDENTIALS_FILE, JSON.stringify({}, null, 2), "utf-8");
+  }
+  if (workerSpecsContain(specs, "credential-store-recovery.test.ts")) {
+    // 容器恢复专项只能在隔离 HOME 注入损坏字节，不能复用真实用户凭据。
+    writeFileSync(E2E_APP_CREDENTIALS_FILE, '{"bot:fixture":"synthetic",', "utf8");
+  }
+}
+
+function isOAuthCredentialRecoverySpec(specs: string[] = []) {
+  return (
+    workerSpecsContain(specs, OAUTH_CREDENTIAL_RECOVERY_SPEC) ||
+    workerSpecsContain(specs, "credential-store-recovery.test.ts")
+  );
+}
+
+function isJwtExpiryReauthenticationSpec(specs: string[] = []) {
+  return workerSpecsContain(specs, JWT_EXPIRY_REAUTHENTICATION_SPEC);
+}
+
+function isSubagentCodingPlanLoginCatalogStaleSpec(specs: string[] = []) {
+  return workerSpecsContain(specs, SUBAGENT_CODING_PLAN_LOGIN_CATALOG_STALE_SPEC);
+}
+
+function usesProviderReadinessColdStartFixture(specs: string[] = []) {
+  return (
+    workerSpecsContain(specs, PROVIDER_READINESS_AGENT_STARTUP_SPEC) ||
+    workerSpecsContain(specs, WINDOWS_AGENT_METRIC_PROBE_ABSENCE_SPEC)
+  );
+}
+
+function usesContextWindowColdResumeFixture(specs: string[] = []) {
+  return workerSpecsContain(specs, CONTEXT_WINDOW_COLD_RESUME_SPEC);
+}
+
+function usesTaskIndexRowAuthorityFixture(specs: string[] = []) {
+  return workerSpecsContain(specs, TASK_INDEX_ROW_AUTHORITY_SPEC);
+}
+
+function usesGitReviewEntryFixture(specs: string[] = []) {
+  return workerSpecsContain(specs, GIT_REVIEW_ENTRY_SPEC);
+}
+
+async function seedE2EGitReviewEntryWorkspace(specs: string[] = []) {
+  if (!usesGitReviewEntryFixture(specs)) return;
+
+  const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
+  const caseRoot = resolve(workspacePath, ".zcode-e2e/conversation-session-git-review-entry");
+  await mkdir(caseRoot, { recursive: true });
+  await runGitFixtureCommand(workspacePath, ["init"]);
+  await runGitFixtureCommand(workspacePath, ["checkout", "-B", "main"]);
+  await writeFile(
+    resolve(caseRoot, "status-panel-review.txt"),
+    "status panel Git review e2e fixture\n",
+    "utf8",
+  );
+}
+
+async function runGitFixtureCommand(cwd: string, args: string[]) {
+  await execFileAsync(process.env.ZCODE_GIT_BINARY?.trim() || "git", args, {
+    cwd,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+}
+
+function shouldSeedGuideInteractionBehavior(specs: string[] = []) {
+  return specs.some(
+    (arg) =>
+      arg.includes("conversation-session-running-guide-steer.test.ts") ||
+      arg.includes("conversation-session-background-guide-steer.test.ts"),
+  );
+}
+
+// 插件 MCP skill 生命周期 spec 的 spec 名 → seed 状态映射。
+// 状态 A 不写任何 plugin 记录；状态 B 装入并启用；状态 C 装入但通过
+// `config.json#plugins.enabledPlugins[id] = false` 关闭。读取顺序：
+// ZCODE_E2E_PLUGIN_MCP_SKILL_STATE 环境变量 > spec 文件名约定。
+const PLUGIN_MCP_SKILL_SPEC_PATTERN =
+  /conversation-session-plugin-mcp-skill-(not-installed|installed-enabled|installed-disabled|workspace-enabled|workspace-disabled|workspace-inherited|workspace-isolation|workspace-root|workspace-freeze)\.test\.ts/u;
+const PLUGIN_MCP_SKILL_STATES = new Set([
+  "not-installed",
+  "installed-enabled",
+  "installed-disabled",
+  "workspace-enabled",
+  "workspace-disabled",
+  "workspace-inherited",
+  "workspace-isolation",
+  "workspace-root",
+  "workspace-freeze",
+]);
+
+function resolvePluginMcpSkillState(
+  specs: string[] = [],
+):
+  | "not-installed"
+  | "installed-enabled"
+  | "installed-disabled"
+  | "workspace-enabled"
+  | "workspace-disabled"
+  | "workspace-inherited"
+  | "workspace-isolation"
+  | "workspace-root"
+  | "workspace-freeze"
+  | null {
+  const envState = process.env.ZCODE_E2E_PLUGIN_MCP_SKILL_STATE?.trim();
+  if (envState && PLUGIN_MCP_SKILL_STATES.has(envState)) {
+    return envState as Exclude<ReturnType<typeof resolvePluginMcpSkillState>, null>;
+  }
+  for (const arg of specs) {
+    if (arg.includes("conversation-session-plugin-resident-freeze-cold-resume.test.ts")) {
+      return "workspace-freeze";
+    }
+    const match = arg.match(PLUGIN_MCP_SKILL_SPEC_PATTERN);
+    if (match && match[1]) {
+      return match[1] as
+        | "not-installed"
+        | "installed-enabled"
+        | "installed-disabled"
+        | "workspace-enabled"
+        | "workspace-disabled"
+        | "workspace-inherited"
+        | "workspace-isolation"
+        | "workspace-root"
+        | "workspace-freeze";
+    }
+  }
+  return null;
+}
+
+// 状态 A 不需要写任何文件；B/C 才落 fixture。
+// 这一段必须在 `seedUpstreamE2EModelConfig` 之后调用，因为它要 patch
+// 我们刚写好的 `~/.openzwork/cli/config.json`，把 `plugins.enabledPlugins[id]`
+// 置为 false 以表达"已安装但关闭"。
+function seedE2EPluginMcpSkillState(specs: string[] = []) {
+  const state = resolvePluginMcpSkillState(specs);
+  if (!state || state === "not-installed" || state.startsWith("workspace-")) return;
+  const configPath = resolve(E2E_CLI_CONFIG_DIR, "config.json");
+  let config: Record<string, unknown> = {};
+  try {
+    config = JSON.parse(readFileSync(configPath, "utf-8")) as Record<string, unknown>;
+  } catch (error) {
+    if (
+      !(error instanceof Error) ||
+      !("code" in error) ||
+      (error as { code?: string }).code !== "ENOENT"
+    ) {
+      throw error;
+    }
+  }
+
+  const plugins = (config.plugins as Record<string, unknown> | undefined) ?? {};
+  const enabledPlugins = (plugins.enabledPlugins as Record<string, boolean> | undefined) ?? {};
+  const pluginId = "e2e-plugin-mcp-ping@e2e-fixture";
+  // Bugfix: 安装型 plugin 在 candidate 构造时 defaultEnabled=false（见
+  // apps/zcode-cli/packages/adapters/src/plugins/index.ts:resolveCandidates）；
+  // resolveEnabled 用 `config.enabledPlugins[id] ?? defaultEnabled` 判定，
+  // 所以 enabled 状态必须显式写 true，不能只 "delete 字段"。
+  if (state === "installed-disabled") {
+    enabledPlugins[pluginId] = false;
+  } else {
+    enabledPlugins[pluginId] = true;
+  }
+  plugins.enabledPlugins = enabledPlugins;
+  config.plugins = plugins;
+  writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+}
+
+// Provider Registry 不再写 CLI config；插件夹具必须显式创建自己的配置，不能依赖模型初始化副作用。
+async function readOptionalE2ECliConfig(path: string): Promise<Record<string, unknown>> {
+  try {
+    return JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return {};
+    throw error;
+  }
+}
+
+async function seedE2EWorkspacePluginState(specs: string[] = []) {
+  const state = resolvePluginMcpSkillState(specs);
+  if (!state?.startsWith("workspace-")) return;
+
+  const workspacePath = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
+  const userConfigPath = resolve(E2E_CLI_CONFIG_DIR, "config.json");
+  const workspaceConfigPath = resolve(workspacePath, ".zcode", "config.json");
+  const pluginId = "e2e-plugin-mcp-ping@e2e-fixture";
+  const pluginRoot = resolve(DESKTOP_DIR, "test/e2e/fixtures/plugin-mcp-skill/e2e-plugin-mcp-ping");
+  await mkdir(resolve(workspacePath, ".zcode"), { recursive: true });
+  const userConfig = await readOptionalE2ECliConfig(userConfigPath);
+  const userPlugins = (userConfig.plugins as Record<string, unknown> | undefined) ?? {};
+  const userEnabledPlugins =
+    (userPlugins.enabledPlugins as Record<string, boolean> | undefined) ?? {};
+  const userOptions =
+    (userPlugins.options as Record<string, Record<string, unknown>> | undefined) ?? {};
+  userEnabledPlugins[pluginId] = state !== "workspace-isolation";
+  userOptions[pluginId] = {
+    label: "user-label",
+    secret: "E2E_USER_PLUGIN_SECRET",
+  };
+  userPlugins.enabledPlugins = userEnabledPlugins;
+  userPlugins.options = userOptions;
+  userConfig.plugins = userPlugins;
+  await mkdir(E2E_CLI_CONFIG_DIR, { recursive: true });
+  await writeFile(userConfigPath, JSON.stringify(userConfig, null, 2), "utf-8");
+
+  const workspaceEnabledPlugins =
+    state === "workspace-inherited"
+      ? {}
+      : {
+          [pluginId]:
+            state === "workspace-enabled" ||
+            state === "workspace-isolation" ||
+            state === "workspace-root" ||
+            state === "workspace-freeze",
+        };
+  const workspaceDirs = state === "workspace-root" ? [pluginRoot] : undefined;
+  await writeFile(
+    workspaceConfigPath,
+    JSON.stringify(
+      {
+        plugins: {
+          ...(workspaceDirs ? { dirs: workspaceDirs } : {}),
+          enabledPlugins: workspaceEnabledPlugins,
+          options: {
+            [pluginId]: {
+              label: "workspace-label",
+              secret: "E2E_WORKSPACE_PLUGIN_SECRET",
+            },
+          },
+        },
+      },
+      null,
+      2,
+    ),
+    "utf-8",
+  );
+
+  if (state === "workspace-isolation") {
+    await mkdir(resolve(E2E_HOME_DIR, "WorkspaceB"), { recursive: true });
+  }
+}
+
+async function seedE2EBuiltinWorkspacePluginDisable(specs: string[] = []) {
+  if (
+    !specs.some((spec) =>
+      spec.includes("conversation-session-plugin-builtin-workspace-disable.test.ts"),
+    )
+  ) {
+    return;
+  }
+
+  const pluginId = "skill-creator@zcode-plugins-official";
+  const workspaceA = resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME);
+  const workspaceB = resolve(E2E_HOME_DIR, "WorkspaceB");
+  const userConfig = await readOptionalE2ECliConfig(E2E_CLI_CONFIG_FILE);
+  const userPlugins = (userConfig.plugins as Record<string, unknown> | undefined) ?? {};
+  const enabledPlugins = (userPlugins.enabledPlugins as Record<string, boolean> | undefined) ?? {};
+  const options =
+    (userPlugins.options as Record<string, Record<string, unknown>> | undefined) ?? {};
+  enabledPlugins[pluginId] = true;
+  options[pluginId] = { e2e: "preserve-user-option" };
+  userPlugins.enabledPlugins = enabledPlugins;
+  userPlugins.options = options;
+  userConfig.plugins = userPlugins;
+  await mkdir(E2E_CLI_CONFIG_DIR, { recursive: true });
+  await writeFile(E2E_CLI_CONFIG_FILE, `${JSON.stringify(userConfig, null, 2)}\n`, "utf-8");
+
+  await mkdir(resolve(workspaceA, ".zcode"), { recursive: true });
+  await mkdir(workspaceB, { recursive: true });
+  await writeFile(
+    resolve(workspaceA, ".zcode", "config.json"),
+    `${JSON.stringify(
+      {
+        plugins: {
+          enabledPlugins: {
+            [pluginId]: false,
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf-8",
+  );
+
+  const pluginDataDir = resolve(E2E_CLI_CONFIG_DIR, "plugins", "data", pluginId);
+  await mkdir(pluginDataDir, { recursive: true });
+  await writeFile(
+    resolve(pluginDataDir, "state.json"),
+    `${JSON.stringify({ marker: "preserve-user-data" }, null, 2)}\n`,
+    "utf-8",
+  );
+}
+
+async function seedE2EModelConfig(specs: string[] = []) {
+  if (usesContextWindowColdResumeFixture(specs)) {
+    await seedContextWindowColdResumeModelConfig();
+    return;
+  }
+  await seedUpstreamE2EModelConfig(specs);
+  await seedModelOutputTokenProviders(specs);
+}
+
+interface ModelOutputTokenProviderSeed {
+  apiFormat?: "openai-chat-completions" | "openai-responses";
+  id: string;
+  kind?: "openai" | "openai-compatible";
+  models: Array<{
+    contextWindow: number;
+    id: string;
+    limitOutput?: number;
+    maxOutputTokens?: number;
+  }>;
+  name: string;
+  supportedFormat?: "openai" | "responses";
+}
+
 function seedE2EWorkerModelStreamConfig(specs: string[] = []) {
   const modelStreamIdleTimeoutMs = resolveE2EWorkerModelStreamIdleTimeoutMs(specs);
   if (modelStreamIdleTimeoutMs === undefined) return;
@@ -1243,32 +2897,74 @@ Object.assign(process.env, {
 });
 export const config: WebdriverIO.Config = {
   runner: "local",
+  // 修复原因：waitUntil 的 timeout 无法中断内部已经发出的 WebDriver HTTP 请求；
+  // 坏 ContextId 在 hook 中会按默认 120 秒和 3 次重试卡数分钟，必须在协议层设硬边界。
+  connectionRetryCount: E2E_WEBDRIVER_REQUEST_LIMITS.retryCount,
+  // executeAsyncScript 的浏览器内 script timeout 与 WDIO 到 Chromedriver 的 HTTP timeout
+  // 是两层独立门限；公网 Archive case 两层都必须覆盖 Agent 的 180 秒下载上限。
+  connectionRetryTimeout: pluginNoGitGitHubArchiveE2E
+    ? 300_000
+    : E2E_WEBDRIVER_REQUEST_LIMITS.timeoutMs,
+  runnerEnv: {
+    E2E_PROVIDER_ALTERNATE_MODEL: E2E_PROVIDER_SECONDARY_MODEL,
+    E2E_PROVIDER_ALTERNATE_PROVIDER_ID,
+    E2E_PROVIDER_ALTERNATE_PROVIDER_NAME,
+    E2E_PROVIDER_HTTP_MODE: upstreamE2EHttpMode,
+    [REQUESTED_UPSTREAM_HTTP_MODE_ENV]: requestedUpstreamE2EHttpMode ?? "",
+    E2E_PROVIDER_MODEL: resolveActiveE2EProviderEnv().model,
+    E2E_PROVIDER_ID: resolveActiveE2EProviderEnv().providerId,
+    E2E_PROVIDER_NAME: resolveActiveE2EProviderEnv().providerName,
+    E2E_PROVIDER_PRESET: e2eProviderPresetName,
+    E2E_PROVIDER_THOUGHT_LEVEL: resolveActiveE2EProviderEnv().thoughtLevel,
+    ...(upstreamE2EHttpMode === "replay"
+      ? { E2E_PROVIDER_API_KEY: E2E_PROVIDER_REPLAY_API_KEY }
+      : {}),
+    HOME: E2E_HOME_DIR,
+    USERPROFILE: E2E_HOME_DIR,
+    ZCODE_CREDENTIAL_SECRET:
+      resolveE2ECredentialSecret(configuredE2ESpecs, process.env.ZCODE_CREDENTIAL_SECRET) ?? "",
+    // PLM-LC-010 使用非 ZCODE_ 前缀验证插件 MCP 的 Claude-compatible env 展开。
+    // 值只供 fixture 做 hash 比对，工具结果和截图都不得回显原值。
+    E2E_PLUGIN_RUNTIME_SECRET: "e2e-plugin-runtime-secret-fixture-20260718",
+    ...(pluginNoGitGitHubArchiveE2E
+      ? {
+          // 真实公网 smoke 必须证明 Agent 没有偷偷回退开发机 Git；不存在的绝对路径会让
+          // 任意 Git 调用稳定得到 ENOENT，同时不影响 WDIO runner 自身的进程清理命令。
+          ZCODE_GIT_BINARY: resolve(E2E_HOME_DIR, "missing-bin", "git"),
+        }
+      : {}),
+    VITE_ZCODE_E2E_STORE_BRIDGE: "1",
+    ZCODE_AGENT_SERVER_ARGS_JSON: "",
+    ZCODE_AGENT_SERVER_COMMAND: "",
+    ZCODE_DATA_BASE_DIR: E2E_HOME_DIR,
+    ZCODE_BUILTIN_PROVIDER_CONFIG_FILE:
+      INITIAL_ZCODE_BUILTIN_PROVIDER_CONFIG_FILE ?? E2E_DEFAULT_ZCODE_BUILTIN_PROVIDER_CONFIG_FILE,
+    ZCODE_DESKTOP_APPLICATION_NAME: "ZCode E2E",
+    ZCODE_DESKTOP_HOME_DIR: E2E_HOME_DIR,
+    ZCODE_DESKTOP_USE_ELECTRON_DEFAULT_USER_DATA: "1",
+    ZCODE_DISABLE_FIXED_REMOTE_DEBUGGING_PORT: "1",
+    ZCODE_E2E_HOME_DIR: E2E_HOME_DIR,
+    ZCODE_E2E_ARTIFACT_DIR: e2eReporter.artifactDir,
+    ZCODE_E2E_DEFER_APP_DATA_CLEANUP: "1",
+    ZCODE_E2E_RUN_ID: E2E_RUN_ID,
+    ZCODE_ENV: "test",
+    // 修复原因：普通 E2E 的 ZCODE_ENV=test 会把配置接口路由到测试域；
+    // 请求安全 capture 与独立 live-team 显式覆盖生产控制面，其他用例保持原行为。
+    ...getE2EProviderEndpointEnv(configuredE2ESpecs, e2eProviderPresetName, upstreamE2EHttpMode),
+    ...(process.env.ZCODE_TELEMETRY_PARITY_CAPTURE_PATH?.trim()
+      ? {
+          ZCODE_TELEMETRY_PARITY_CAPTURE_PATH: process.env.ZCODE_TELEMETRY_PARITY_CAPTURE_PATH,
+        }
+      : {}),
+    ...(process.env.ZCODE_TELEMETRY_PARITY_VARIANT?.trim()
+      ? {
+          ZCODE_TELEMETRY_PARITY_VARIANT: process.env.ZCODE_TELEMETRY_PARITY_VARIANT,
+        }
+      : {}),
+  },
   framework: "mocha",
   reporters: ["spec"],
   maxInstances: 1,
-  connectionRetryCount: E2E_WEBDRIVER_REQUEST_LIMITS.retryCount,
-  connectionRetryTimeout: E2E_WEBDRIVER_REQUEST_LIMITS.timeoutMs,
-  runnerEnv: {
-    HOME: E2E_HOME_DIR,
-    USERPROFILE: E2E_HOME_DIR,
-    ZCODE_DATA_BASE_DIR: E2E_HOME_DIR,
-    ZCODE_DESKTOP_HOME_DIR: E2E_HOME_DIR,
-    ZCODE_E2E_HOME_DIR: E2E_HOME_DIR,
-    ZCODE_E2E_RUN_ID: E2E_RUN_ID,
-    ZCODE_E2E_ARTIFACT_DIR: e2eReporter.artifactDir,
-    ZCODE_E2E_DEFER_APP_DATA_CLEANUP: "1",
-    ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: resolve(REPO_ROOT, "config/provider/zcode-builtin.json"),
-    ZCODE_DESKTOP_APPLICATION_NAME: "ZCode E2E",
-    ZCODE_DESKTOP_USE_ELECTRON_DEFAULT_USER_DATA: "1",
-    ZCODE_DISABLE_FIXED_REMOTE_DEBUGGING_PORT: "1",
-    VITE_ZCODE_E2E_STORE_BRIDGE: "1",
-    ZCODE_ENV: "test",
-    ...Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key, value]) => key.startsWith("E2E_PROVIDER_") && value !== undefined,
-      ),
-    ),
-  },
   services: [[E2E_ELECTRON_SERVICE_MODULE_PATH, { rootDir: DESKTOP_DIR }]],
   capabilities: [
     {
@@ -1278,6 +2974,12 @@ export const config: WebdriverIO.Config = {
         appArgs: [
           ...(E2E_PACKAGED_APP_BINARY_PATH ? [] : [`--app=${E2E_APP_ENTRY_POINT}`]),
           "--no-sandbox",
+          // 语音输入 E2E（docs/chat/composer-voice-input.md）：用 Chromium 假麦克风设备，
+          // 不访问真实设备，也不弹出系统授权；其他用例不调用 getUserMedia，不受影响。
+          "--use-fake-device-for-media-stream",
+          "--use-fake-ui-for-media-stream",
+          // 修复原因：环境变量不会出现在进程命令行；同时传 runId 与 HOME identity，
+          // 让跨平台清理优先命中当前 run，并为 Windows shard 保留路径级兜底。
           buildE2ERunIdArg(E2E_RUN_ID),
           createWindowsE2EHomeMarkerArg(E2E_HOME_DIR),
         ],
@@ -1302,8 +3004,6 @@ export const config: WebdriverIO.Config = {
     ...requestedE2EExcludeSpecs,
   ],
   mochaOpts: {
-    ui: "bdd",
-    timeout: 120000,
     rootHooks: createE2ERendererBridgeRootHooks(
       async () => {
         await measureE2ELifecyclePhase(
@@ -1316,6 +3016,91 @@ export const config: WebdriverIO.Config = {
       },
       () => currentE2EBeforeSessionError,
     ),
+    // 远程 e2e 队列里有正式 spec 只包含一个远程用例（settings-ui-polish 的
+    // MP-UI-05-remote）：整份跑会把同 spec 的本机用例一起拉进远程结果，失败原因
+    // 与远程无关却计在远程账上（实测 MP-UI-06 拖累 MP-UI-05-remote 的通过结论）。
+    // 未设置时保持全量，不影响本机回归。
+    ...(process.env.ZCODE_E2E_MOCHA_GREP?.trim()
+      ? { grep: process.env.ZCODE_E2E_MOCHA_GREP.trim() }
+      : {}),
+    // 修复原因：真实模型配置 + 首次会话预热可能超过 30s，保留更宽的单 case 上限，避免还没收到上游响应就被 Mocha 截断。
+    // 真实 GitHub Archive smoke 会下载 Claude 官方市场和目标插件；E2E 抓包代理还会
+    // 记录完整二进制响应，不能沿用只覆盖本地 fixture 的 120 秒上限。
+    // WPL-011 会经过 SSH asset、marketplace 镜像、远端安装与 runtime refresh；
+    // 固定 120 秒会在 UI 有机会报告具体同步结果前先截断 case。
+    // Bug 根因：Mocha adapter 会在进入 test body 前按 config timeout 包裹用例，
+    // 因此用例内的 this.timeout 无法为人工保留阶段追加预算。显式 hold 只扩展
+    // manual-review 运行，不改变普通 E2E 的 120 秒上限。
+    // 修复原因：旧写法是嵌套三元，按出现顺序取第一个命中；同一分片同时包含多个长预算 spec 时，
+    // 排在前面的较小预算会截断后面的较长用例（例如 240s 截断 background-bash 的 360s）。
+    // 改为对所有命中的预算取最大值，新增分支与顺序无关。
+    timeout:
+      Math.max(
+        120000,
+        ...[
+          {
+            // 此用例包含真实 SSH 首装、目录复用、设置定位、16 张截图和原目录重连；
+            // 探测校验用例同样经过真实首装与已有设备故障恢复，不能在到达状态断言前被截断。
+            // Mocha 外层须与用例的 15 分钟预算一致，不能在首装解压时被默认 120 秒截断。
+            matched: configuredE2ESpecs.some(
+              (spec) =>
+                spec.endsWith("conversation-session-remote-sidebar-menus.test.ts") ||
+                spec.endsWith("conversation-session-ssh-probe-validation.test.ts"),
+            ),
+            ms: 15 * 60_000,
+          },
+          {
+            // 用例不稳定原因：RDUX15 串行走 SSH、Docker 四个入口的后台连接，用例内声明 20 分钟预算，
+            // 但 this.timeout 无法覆盖外层，负载高时在 Docker 段被 120 秒截断（Error: Timeout）。
+            matched: configuredE2ESpecs.some((spec) =>
+              spec.endsWith("conversation-session-background-connection.test.ts"),
+            ),
+            ms: 20 * 60_000,
+          },
+          {
+            // 走查用例串行完成真实首装、失败/取消/后台、设置页与停容器掉线恢复，并全程录屏；
+            // 与用例内 30 分钟预算一致。
+            matched: configuredE2ESpecs.some((spec) =>
+              spec.endsWith("conversation-session-remote-ui-walkthrough.test.ts"),
+            ),
+            ms: 30 * 60_000,
+          },
+          {
+            // 此用例串行完成真实 SSH 安装、两次 relay 配对和断网恢复；同步其原定预算，
+            // 避免 WDIO 在手机离线期间按默认 120 秒截断，this.timeout 无法覆盖外层。
+            matched: configuredE2ESpecs.some((spec) =>
+              spec.endsWith("conversation-session-r3-mobile.test.ts"),
+            ),
+            ms: 40 * 60_000,
+          },
+          {
+            matched:
+              pluginNoGitGitHubArchiveE2E ||
+              workspacePluginRemoteExplicitSyncE2E ||
+              configuredE2ESpecs.some((spec) =>
+                spec.endsWith("conversation-session-subagent-cross-host.test.ts"),
+              ),
+            ms: 600000,
+          },
+          {
+            // SHR14/SHR17 串行跑两个 workspace、四轮父子请求与设置保存，用例声明
+            // this.timeout(240000)，但外层 Mocha 包裹先按 120 秒截断（Windows 上实测约 130 秒）。
+            matched: configuredE2ESpecs.some((spec) =>
+              spec.endsWith("conversation-session-subagent-multi-workspace.test.ts"),
+            ),
+            ms: 240000,
+          },
+          {
+            // 后台 Bash 冷恢复回归等待真实 child 结束、120s publisher grace 及 60s 清理节拍。
+            matched: configuredE2ESpecs.some((spec) =>
+              spec.endsWith("conversation-session-background-bash-output.test.ts"),
+            ),
+            ms: 360000,
+          },
+        ]
+          .filter((budget) => budget.matched)
+          .map((budget) => budget.ms),
+      ) + manualReviewHoldMs,
   },
   async onPrepare() {
     try {
@@ -1325,6 +3110,13 @@ export const config: WebdriverIO.Config = {
         prepareDesktopAppBuild();
         if (!E2E_PACKAGED_APP_BINARY_PATH) await stageDesktopE2EAppOutput();
         prepareZCodeAgentServer();
+        // 正式包使用随包 CLI，模板 seed 源不同，不预热；缺模板时各 HOME 照常冷 seed。
+        if (!E2E_PACKAGED_APP_BINARY_PATH) {
+          await prepareOfficialPluginCacheTemplate({
+            cliEntryPoint: ZCODE_CLI_ENTRYPOINT,
+            templateHome: E2E_OFFICIAL_PLUGIN_CACHE_TEMPLATE_HOME,
+          });
+        }
       });
     } catch (error) {
       console.error("[e2e] fatal onPrepare failure", error);
@@ -1333,24 +3125,113 @@ export const config: WebdriverIO.Config = {
   },
   async beforeSession(_config, capabilities, specs, cid) {
     currentE2EWorkerSessionSpecs = specs;
+    // 修复依据（OpenZWork）：恢复上游在 beforeSession 内的 per-worker provider 模式决策
+    // （applyUpstreamE2EHttpModeForWorker），详见其定义处注释。
+    applyUpstreamE2EHttpModeForWorker(specs);
     currentE2EBeforeSessionError = null;
     currentE2EChromiumUserDataDir = resolveE2EWorkerChromiumProfileDir(
       E2E_CHROMIUM_USER_DATA_ROOT_DIR,
       cid,
     );
-    const cap = capabilities as { "goog:chromeOptions"?: { args?: string[] } };
-    const chrome = cap["goog:chromeOptions"] ?? {};
-    chrome.args = replaceChromeUserDataDirArg(chrome.args ?? [], currentE2EChromiumUserDataDir);
-    cap["goog:chromeOptions"] = chrome;
+    const chromeCapabilities = capabilities as {
+      "goog:chromeOptions"?: { args?: string[] };
+    };
+    const chromeOptions = chromeCapabilities["goog:chromeOptions"] ?? {};
+    // 修复原因：所有 worker 复用并反复删除同一个 profile 时，长批次中 Chromium
+    // 会留下失效文档，CDP target 仍显示 file://，运行时却漂到 chrome-error://。
+    // 在 session 创建前按 cid 注入独立 profile，确保 worker 生命周期互不污染。
+    chromeOptions.args = replaceChromeUserDataDirArg(
+      chromeOptions.args ?? [],
+      currentE2EChromiumUserDataDir,
+    );
+    const storageDiagnostics =
+      process.env.ZCODE_E2E_STORAGE_WORKER_DIAGNOSTICS === "1" &&
+      specs.some((spec) =>
+        spec.endsWith("conversation-session-r3-desktop-settings-authority.test.ts"),
+      );
+    const credentialOwnerProbe = specs.some((spec) =>
+      /system-credential-owner(?:-mcp)?\.test\.ts$/.test(spec),
+    );
+    if (
+      !E2E_PACKAGED_APP_BINARY_PATH &&
+      (credentialOwnerProbe ||
+        storageDiagnostics ||
+        specs.some((spec) =>
+          /conversation-session-subagent-(context-boundaries|multi-workspace|cross-host)\.test\.ts/.test(
+            spec,
+          ),
+        ))
+    ) {
+      // ChromeDriver 会清空 NODE_OPTIONS；测试启动文件在正式 Main 导入前设置代理预加载。
+      // 文件放在原 Main 旁边，保留 app 路径；正式 Host/CLI resolver 与存储准备均不替换。
+      const entry = resolve(E2E_APP_OUTPUT_DIR, "main/subagent-e2e.mjs");
+      const proxy = resolve(
+        REPO_ROOT,
+        credentialOwnerProbe
+          ? "packages/desktop/test/e2e/helpers/credential-owner-probe.mjs"
+          : storageDiagnostics
+            ? "packages/desktop/test/e2e/helpers/storage-worker-diagnostics.mjs"
+            : "packages/desktop/test/e2e/helpers/subagent-config-proxy.mjs",
+      );
+      // Bug 根因：Windows 上 `--import="C:\..."` 会被 ESM loader 当作协议 `c:` 拒绝
+      // （ERR_UNSUPPORTED_ESM_URL_SCHEME）；Host utility process 继承 NODE_OPTIONS 后启动即
+      // exit 1，用例卡在等待工作区。预加载统一传 file:// URL，macOS/Linux 行为不变。
+      const preload = `--import=${JSON.stringify(pathToFileURL(proxy).href)}`;
+      const diagnostics = credentialOwnerProbe
+        ? `process.env.ZCODE_E2E_CREDENTIAL_OWNER_LOG = ${JSON.stringify(resolve(E2E_HOME_DIR, "credential-owner.ndjson"))};\nawait import(${JSON.stringify(pathToFileURL(proxy).href)});\n`
+        : storageDiagnostics
+          ? `process.env.ZCODE_E2E_STORAGE_WORKER_DIAGNOSTICS_DIR = ${JSON.stringify(resolve(e2eReporter.artifactDir, "storage-workers"))};\n`
+          : "";
+      await writeFile(
+        entry,
+        `${diagnostics}process.env.NODE_OPTIONS = ${JSON.stringify(preload)};\nawait import(${JSON.stringify(pathToFileURL(E2E_APP_ENTRY_POINT).href)});\n`,
+      );
+      chromeOptions.args = chromeOptions.args.map((arg) =>
+        arg.startsWith("--app=") ? `--app=${entry}` : arg,
+      );
+    }
+    chromeCapabilities["goog:chromeOptions"] = chromeOptions;
     try {
       await measureE2ELifecyclePhase("before-session", { cid, specs }, async () => {
         await cleanupE2EElectronProcesses("beforeSession-start", { requireExit: true });
         if (specs.some((spec) => spec.endsWith("conversation-session-r3-subagent.test.ts"))) {
           process.env.ZCODE_DYNAMIC_WORKFLOW_MODE = "alwaysOn";
         }
-        configureZCodeAgentServerEnv();
-        e2eReporter.beforeSession(cid, specs);
+        const fixtureCredentialSecret = resolveE2ECredentialSecret(
+          specs,
+          process.env.ZCODE_CREDENTIAL_SECRET,
+        );
+        if (fixtureCredentialSecret) process.env.ZCODE_CREDENTIAL_SECRET = fixtureCredentialSecret;
+        else delete process.env.ZCODE_CREDENTIAL_SECRET;
+        // OpenZWork（T15 修复 T12 回归）：runE2EBeforeSessionSetup 的裁剪域 mock 确已退役，
+        // 但 startUpstreamHttp 是 replay 模式的公共注入点（E2E_PROVIDER_CAPTURE_MODE 等 env
+        // 须在 Electron 启动前进入 Main→Host 环境链），插件/UI 用例直接断言该 env 为 "replay"；
+        // resetHome 是 worker session 的 HOME 重建 + 官方插件缓存模板 + 启动状态播种的前置事务
+        // （上游 e2e-before-session.ts 内顺序：startUpstreamHttp → … → resetHome）。
+        // 这里按上游原位恢复这两个调用；conversation 系用例自建的 case-local replay server
+        // 在 spec 内覆盖同一组 env，行为不变。
+        await startUpstreamE2EHttp(specs);
         await resetE2EHome(specs);
+        // 上游 v3.18.2：原生钥匙串专项判定升级为 isNativeKeychainCredentialSpec（新增
+        // system-credential-data-root 同属该类——会把隔离 HOME 的 Keychains 链到系统库，
+        // 仅显式点名执行时准备，正式 glob 不带入 pending spec）。
+        if (process.platform === "darwin" && specs.some(isNativeKeychainCredentialSpec)) {
+          // Main 首次访问发生在界面就绪前；原生专项必须先准备隔离 HOME 的系统库入口。
+          await mkdir(resolve(E2E_HOME_DIR, "Library"), { recursive: true });
+          await symlink(
+            resolve(userInfo().homedir, "Library/Keychains"),
+            resolve(E2E_HOME_DIR, "Library/Keychains"),
+            "dir",
+          );
+        }
+        // Client Scenes 是布局 case 的远端目录依赖；必须在 resetHome 完成、Electron
+        // 启动前覆盖 endpoint，确保 Main → Host 首次 import 时拿到 case-local fixture。
+        stopWebRemoteControlAuthGateFixture = await prepareWebRemoteControlAuthGateFixture({
+          specs,
+          credentialsFile: E2E_APP_CREDENTIALS_FILE,
+          settingsFile: E2E_APP_SETTINGS_FILE,
+          workspacePath: resolve(E2E_HOME_DIR, E2E_AGENT_WORKSPACE_NAME),
+        });
         stopMcpFailureGuidanceFixture = await prepareMcpFailureGuidanceFixture({
           specs,
           credentialsFile: resolve(E2E_APP_CONFIG_DIR, "credentials.json"),
@@ -1432,6 +3313,59 @@ export const config: WebdriverIO.Config = {
       }
     });
   },
+  async afterSession() {
+    await measureE2ELifecyclePhase(
+      "after-session",
+      { specs: currentE2EWorkerSessionSpecs },
+      async () => {
+        try {
+          await cleanupE2EElectronProcesses("afterSession", {
+            requireExit: true,
+            waitForGracefulExit: true,
+          });
+          if (currentE2EChromiumUserDataDir) {
+            await cleanupE2EDirectory("afterSession", currentE2EChromiumUserDataDir, true);
+          }
+          // Electron/Host/CLI 都已退出，V8 JSON 此时完整封口；趁下一 worker 启动前
+          // 就地归一化，避免全量 manual-review 把重复 source map 累积到磁盘上限。
+          e2eReporter.compactNodeCoverage();
+        } finally {
+          await stopDynamicWorkflowConfigE2EMock();
+          currentE2EElectronAppPid = null;
+          await stopWebRemoteControlAuthGateFixture?.();
+          stopWebRemoteControlAuthGateFixture = null;
+          await stopMcpFailureGuidanceFixture?.();
+          stopMcpFailureGuidanceFixture = null;
+          const close = closeBotEntryRelay;
+          closeBotEntryRelay = undefined;
+          await close?.();
+          currentE2EBeforeSessionError = null;
+          e2eFailureArtifacts = null;
+          currentE2EWorkerSessionSpecs = [];
+          currentE2EChromiumUserDataDir = null;
+        }
+      },
+    );
+  },
+  onWorkerEnd(cid, exitCode, specs) {
+    e2eRunnerFinalizationGuard.arm();
+    const workerLifecycle = e2eWorkerLifecycleStarts.get(cid);
+    if (!workerLifecycle) {
+      return;
+    }
+    e2eWorkerLifecycleStarts.delete(cid);
+    const completedAt = new Date();
+    e2eReporter.recordLifecycleEvent({
+      cid,
+      completedAt: completedAt.toISOString(),
+      durationMs: completedAt.getTime() - workerLifecycle.startedAt.getTime(),
+      error: exitCode === 0 ? undefined : `worker exited with code ${exitCode}`,
+      phase: "worker",
+      specs: specs.length > 0 ? specs : workerLifecycle.specs,
+      startedAt: workerLifecycle.startedAt.toISOString(),
+      status: exitCode === 0 ? "passed" : "failed",
+    });
+  },
   async afterTest(test, _context, result) {
     let failureArtifacts;
     const collectionErrors: string[] = [];
@@ -1475,64 +3409,31 @@ export const config: WebdriverIO.Config = {
       startedAt: new Date(),
     });
   },
-  onWorkerEnd(cid, exitCode, specs) {
-    e2eRunnerFinalizationGuard.arm();
-    const workerLifecycle = e2eWorkerLifecycleStarts.get(cid);
-    if (!workerLifecycle) {
-      return;
-    }
-    e2eWorkerLifecycleStarts.delete(cid);
-    const completedAt = new Date();
-    e2eReporter.recordLifecycleEvent({
-      cid,
-      completedAt: completedAt.toISOString(),
-      durationMs: completedAt.getTime() - workerLifecycle.startedAt.getTime(),
-      error: exitCode === 0 ? undefined : `worker exited with code ${exitCode}`,
-      phase: "worker",
-      specs: specs.length > 0 ? specs : workerLifecycle.specs,
-      startedAt: workerLifecycle.startedAt.toISOString(),
-      status: exitCode === 0 ? "passed" : "failed",
-    });
-  },
-  async afterSession() {
-    await measureE2ELifecyclePhase(
-      "after-session",
-      { specs: currentE2EWorkerSessionSpecs },
-      async () => {
-        try {
-          await cleanupE2EElectronProcesses("afterSession", {
-            requireExit: true,
-            waitForGracefulExit: true,
-          });
-        } finally {
-          const stopMcp = stopMcpFailureGuidanceFixture;
-          stopMcpFailureGuidanceFixture = null;
-          await stopMcp?.();
-          const close = closeBotEntryRelay;
-          closeBotEntryRelay = undefined;
-          await close?.();
-        }
-        if (currentE2EChromiumUserDataDir)
-          await cleanupE2EDirectory("afterSession", currentE2EChromiumUserDataDir, true);
-        e2eReporter.compactNodeCoverage();
-        currentE2EElectronAppPid = null;
-        currentE2EBeforeSessionError = null;
-        e2eFailureArtifacts = null;
-        currentE2EWorkerSessionSpecs = [];
-        currentE2EChromiumUserDataDir = null;
-      },
-    );
-  },
   async onComplete(exitCode) {
     e2eRunnerFinalizationGuard.disarm();
     try {
       await measureE2ELifecyclePhase("complete", { specs: configuredE2ESpecs }, async () => {
-        await cleanupE2EElectronProcesses("onComplete");
-        const stopMcp = stopMcpFailureGuidanceFixture;
-        stopMcpFailureGuidanceFixture = null;
-        await stopMcp?.();
-        await cleanupE2EDirectory("onComplete-home", E2E_HOME_DIR, true);
-        await cleanupE2EDirectory("onComplete", E2E_RUN_CACHE_DIR);
+        try {
+          await stopUpstreamE2EHttp();
+          await stopDynamicWorkflowConfigE2EMock();
+          await stopWebRemoteControlAuthGateFixture?.();
+          stopWebRemoteControlAuthGateFixture = null;
+          await stopMcpFailureGuidanceFixture?.();
+          stopMcpFailureGuidanceFixture = null;
+        } finally {
+          await cleanupE2EElectronProcesses("onComplete");
+          // 修复原因：逐 worker 删除同一 app data 会重复支付 SQLite 锁重试；下一
+          // beforeSession 已负责重置，最后一个 worker 的 HOME 在全部进程退出后统一删除。
+          // 失败保留诊断现场：批次 runner（run.mjs）注入 ZCODE_E2E_KEEP_HOME_ON_FAIL=1 时，
+          // 失败 run 保留 HOME（setting.json/credentials/db 是失败定性的关键证据，
+          // r3-rerun §49 曾因 home 被删只能从 run.log 反推 settings）。PASS 行为不变。
+          if (exitCode !== 0 && process.env.ZCODE_E2E_KEEP_HOME_ON_FAIL === "1") {
+            console.warn(`[e2e] keeping failure home for diagnosis: ${E2E_HOME_DIR}`);
+          } else {
+            await cleanupE2EDirectory("onComplete-home", E2E_HOME_DIR, true);
+          }
+          await cleanupE2EDirectory("onComplete", E2E_RUN_CACHE_DIR);
+        }
       });
     } finally {
       e2eReporter.writeSummary(exitCode);

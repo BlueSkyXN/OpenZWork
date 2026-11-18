@@ -118,11 +118,13 @@
     {
       "capability": "e2e-fixture-contracts",
       "files": [
+        "packages/desktop/test/directAttachmentAssociation.test.ts",
         "packages/desktop/test/localPairingRelay.test.ts",
         "packages/desktop/test/remoteStartupProfile.test.ts",
         "packages/desktop/test/e2eRuntimePaths.test.ts",
         "packages/desktop/test/modelProviderRestartConfig.test.ts",
-        "packages/desktop/test/modelProviderRestartRuntime.test.ts"
+        "packages/desktop/test/modelProviderRestartRuntime.test.ts",
+        "packages/ui/test/paneRuntimeIdentityE2EGate.test.ts"
       ]
     },
     {
@@ -141,6 +143,7 @@
         "packages/ui/test/appUsageServiceAccess.test.ts",
         "packages/ui/test/botLocalBoundaries.test.ts",
         "packages/ui/test/onboardingVisibility.test.ts",
+        "packages/desktop/test/communityLocalConfig.test.ts",
         "packages/ui/test/sessionUsageSummary.test.ts"
       ]
     },
@@ -153,7 +156,9 @@
       "files": [
         "packages/provider-node/test/model-capability-rules.test.ts",
         "packages/provider-node/test/standard-provider-config.test.ts",
-        "packages/services/test/dataDirectoryMigration.test.ts"
+        "packages/services/test/dataDirectoryMigration.test.ts",
+        "packages/desktop/test/credentialMigrationDataRootShare.test.ts",
+        "packages/services/test/settingsLocalePersistence.test.ts"
       ]
     },
     {
@@ -182,8 +187,18 @@
       "files": []
     },
     {
+      "capability": "cli-memory-diagnostics",
+      "files": [
+        "apps/zcode-cli/packages/adapters/tests/memory-diagnostics/recorder.test.ts",
+        "apps/zcode-cli/packages/adapters/tests/memory-diagnostics/default-directory.test.ts"
+      ]
+    },
+    {
       "capability": "retained-ui-and-desktop-repair",
-      "files": []
+      "files": [
+        "packages/ui/test/pluginStoreSettingsExit.test.ts",
+        "packages/desktop/test/e2eViewportOverrideRelease.test.ts"
+      ]
     },
     {
       "capability": "process-lifecycle-safety",

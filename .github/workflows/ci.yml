@@ -7,6 +7,11 @@ on:
     branches: [main]
     tags: ["v*-openzwork", "v*openzwork.*"]
   workflow_dispatch:
+    inputs:
+      desktop_e2e:
+        description: Also run the interactive desktop E2E job (real Electron/Host/CLI, controlled replay)
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -66,6 +71,10 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=6144
 
+      - name: Agent process exit diagnostics (Node test runner)
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/desktop test:agent-crash-diagnostic
+
       - name: Root lint
         if: matrix.lane == 'regressions'
         run: pnpm lint
@@ -73,6 +82,17 @@ jobs:
       - name: OpenZWork file formatting
         if: matrix.lane == 'regressions'
         run: pnpm fmt:check
+
+      # 与本地 verify:pre-push 同口径：schema 契约（根测试 + 内层 SQLite schema 校验）。
+      - name: SQLite schema contract
+        if: matrix.lane == 'regressions'
+        run: pnpm db:schema:check
+
+      # 三方许可门禁（allowlist 之外或许可未知即失败）；strict 的既有 14 项例外
+      # 不进 CI 终态，另行人工核对（与本地口径一致）。
+      - name: Dependency license check
+        if: matrix.lane == 'regressions'
+        run: node scripts/licenses.mjs check
 
       - name: Architecture boundaries
         if: matrix.lane == 'regressions'
@@ -82,8 +102,20 @@ jobs:
           ARCHITECTURE_BASE: ${{ github.event.pull_request.base.sha || (github.ref_type == 'branch' && github.event.before != '0000000000000000000000000000000000000000' && github.event.before) || '' }}
 
       - name: Repository script regressions
-        if: matrix.lane == 'regressions'
+        if: matrix.lane == 'regressions' && runner.os != 'Windows'
         run: pnpm test:repo-scripts
+
+      # Windows 镜像的调试特权会绕过进程 ACL；用普通权限跑夹具，实际验证拒绝访问。
+      - name: Windows repository script regressions
+        if: matrix.lane == 'regressions' && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if ((whoami /priv) -match '\bSeDebugPrivilege\b') {
+            [System.Diagnostics.Process]::LeaveDebugMode()
+          }
+          whoami /priv | Select-String SeDebugPrivilege
+          pnpm test:repo-scripts
+          exit $LASTEXITCODE
 
       # 内层 Agent workspace：turbo 未随根安装进入内层 .bin（嵌套 workspace 结构性限制，
       # WP-02 已记录），故用固定版本 npx turbo；本地基线 2.9.14 下 25/25 通过。
@@ -192,6 +224,13 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/node-repl-host exec vitest run test/mcp-server.test.ts --bail=1
 
+      # SC05（TUI 后台审批 vs headless）：后台审批可处理、主会话 bypass 不传递、headless 明确
+      # 拒绝、队列来源正确。交互行为断言（118 用例）不在 Core/Extended 默认集内，按 V1 映射
+      # 最小扩展接入 regressions lane。
+      - name: CLI background approval regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/v4-native-interaction-background.test.ts tests/guarded-permission-options.test.ts --bail=1
+
       - name: CLI workflow option regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts
@@ -228,6 +267,11 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm exec tsx --test tests/private-cleanup/remote-chain-local.test.ts
 
+      # 工作流查询回归按产品路径启动真实 CLI，Windows 由原生 runtime host 创建子进程。
+      - name: Prepare Windows runtime host for core tests
+        if: runner.os == 'Windows' && matrix.lane == 'unit'
+        run: node scripts/build-windows-runtime-host.mjs --ensure
+
       - name: Core unit regression
         if: matrix.lane == 'unit'
         id: core_tests
@@ -246,7 +290,7 @@ jobs:
   # 过任何 wdio 用例；本 job 让 hub 场景（项目恢复、双刷新收敛、错误态标记）在每个
   # PR 上有真实浏览器证据。仅 macos（Electron/chromedriver 免额外服务；Linux 需 xvfb、
   # Windows sharding 另行评估），单 spec 控制成本（~4 分钟）。
-  desktop-e2e:
+  workflows-hub-e2e:
     name: desktop e2e (macos-arm64)
     runs-on: macos-15
     timeout-minutes: 25
@@ -287,7 +331,7 @@ jobs:
           ZCODE_E2E_HUB_GREP: "已保存工作流中枢 E2E|OW-P024 R4"
         run: >
           pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
-          --spec ./test/e2e/automations-workflows-hub.test.ts
+          --spec ./test/e2e/automations/workflows/automations-workflows-hub.test.ts
           --mochaOpts.grep "$ZCODE_E2E_HUB_GREP"
 
       # OW-P024 R4：只看进程退出码会漏掉「grep 漏选」——漏选的用例不产生报告，
@@ -303,9 +347,10 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: desktop-e2e-hub-artifacts
-          path: packages/desktop/.e2e-artifacts
+          path: packages/desktop/.e2e-artifacts/desktop-e2e-*/
+          include-hidden-files: true
           archive: true
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   check-results:
     name: checks (${{ matrix.platform }})
@@ -324,3 +369,178 @@ jobs:
         env:
           CHECKS_RESULT: ${{ needs.checks.result }}
         run: test "$CHECKS_RESULT" = success
+
+  # 交互 E2E（云优先验收入口）：真实 Electron + 窗口 Local Host + 内置 CLI、隔离 HOME、
+  # 受控回放 fixture。不进 PR 自动门禁（时长），仅 workflow_dispatch 显式触发；spec 与
+  # fixture 逐个点名（依赖文件名注入 fixture 的 spec 不用 glob）；单 runner 串行，
+  # 不与其他 E2E 分片并行共享 HOME。
+  desktop-e2e:
+    name: interactive e2e (${{ matrix.spec-group }})
+    if: github.event_name == 'workflow_dispatch' && inputs.desktop_e2e
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # WT04：受管 worktree 冷恢复（desktop-continuous）+ 手机查看复用同一 Host/CLI
+          # （web-remote-replayable，含 G2 同 runtime 关联断言）。manual-review/pending
+          # 用例显式候选执行，不自动晋升；回放 fixture 显式点名（common + git 领域）。
+          - spec-group: wt04-remote-view
+            specs: ./test/e2e/git/worktrees/manual-review/pending/git-worktree-remote-view.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/git/managed-worktree.json
+            # 必需 case 清单：完整性门禁按这些标题核销，报告自报 requestedSpecs 不作依据。
+            required-cases: '["WT04-1", "WT04-2"]'
+          # 同路径双 identity 的任务索引隔离（G2/F3 受控运行时入口，无 provider 依赖）。
+          - spec-group: identity-isolation
+            specs: ./test/e2e/git/worktrees/task-index-workspace-identity-isolation.test.ts
+            replay-fixtures: ""
+            required-cases: '["identity A/B 在同一路径互不可见，本地路径键看不到 identity 任务", "删除经事实管道 removed 公开面双向隔离，冷恢复（重开 DB）后隔离保持"]'
+          # BD01–BD03（V1 扩展，2026-11-17 J3 逐 spec 重构）：浏览器设计模式（3.18.1 吸收
+          # 「设计模式分离」后无交互复验）+ 本地 HTML 预览。spec 自带本地 HTTP/文件环境，
+          # 不依赖模型回复；回放 fixture 显式点名 browser 领域两份，满足 replay 模式入口
+          # 要求。逐 spec 一条矩阵：--spec 单文件（WDIO 实际支持形态，折叠多行字符串会被
+          # 当成单个带引号参数而 0 匹配），required-cases 按 spec 归属、与其 it() 标题
+          # 逐字核对（5 spec 共 12 case，含 design-mode 的退出点选用例）。
+          - spec-group: bd-design-mode
+            specs: ./test/e2e/browser/design/browser-design-mode.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-local-html-preview.json,packages/desktop/test/e2e/fixtures/upstream/browser/browser-download-navigation-address.json
+            required-cases: '["设计工具随页面出现；点选元素进输入框成引用（Shift 多选、普通点击替换），翻页，首发带引用与截图", "截图在途时换了选中：不加已取消选中的元素，只引用最后选中的", "属性面板改数值直接写回本机 HTML，页面不刷新；Cmd/Ctrl + Z 撤销、Shift 重做；页面变量写 :root；脚本生成的元素只读", "写回的边界：非 UTF-8 文件只读且字节不变；带内联子元素的文字不能双击改；写回失败时页面撤回到源码的样子", "自写之后一起改了 CSS 照常刷新；带 text-transform 的元素改字按源码大小写写回", "输入框不收元素引用时，每轮点选只提示一次：写回重读选中不再弹，退出点选后再选会再提示", "再点一次「选择元素」退出点选：页面点击不再被拦截、引用留在输入框；普通网页也是同一套点选，调整面板只读"]'
+          - spec-group: bd-design-page-tools
+            specs: ./test/e2e/browser/design/browser-design-page-tools.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-local-html-preview.json,packages/desktop/test/e2e/fixtures/upstream/browser/browser-download-navigation-address.json
+            required-cases: '["预设改视口、导出落盘、只为已加载资源自动刷新、设计桥拒收超限与非本页消息"]'
+          - spec-group: bd-capture-guest-timeout
+            specs: ./test/e2e/browser/design/browser-capture-guest-timeout.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-local-html-preview.json,packages/desktop/test/e2e/fixtures/upstream/browser/browser-download-navigation-address.json
+            required-cases: '["超时返回 capture_timeout；底层未结算前再请求为 capture_in_progress；结算后可再取帧", "底层 capturePage 永不结束：上限前一直 capture_in_progress，超过 2× deadline 强制释放后能再取帧"]'
+          - spec-group: bd-design-cross-session
+            specs: ./test/e2e/browser/design/browser-design-mode-cross-session.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-design-mode-cross-session.json
+            required-cases: '["A 点选，切到 B 再切回 A 截图只有一张；移除引用后截图全部撤掉"]'
+          - spec-group: bd-local-html-preview
+            specs: ./test/e2e/browser/files/browser-local-html-preview.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/browser/browser-local-html-preview.json,packages/desktop/test/e2e/fixtures/upstream/browser/browser-download-navigation-address.json
+            required-cases: '["真实浏览器入口加载相对资源，同时拒绝越界文件并支持刷新和后退"]'
+          # J4（2026-11-17）：V1 §9 留缺的必需场景编入可 dispatch 入口。均为既有 spec
+          # 与已验证的 replay fixture（fixture 头部 caseName/spec 配对核对），逐 spec
+          # required-cases 与 it() 标题双向核对（actions-runtime 结构测试）。
+          # SC03：长轮次重试——snapshot 尾部之后的长轮次结果与重试复用首次创建。
+          - spec-group: sc03-long-turn-retry
+            specs: ./test/e2e/conversation-session/session-control/manual-review/pending/app-control-long-turn-retry.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/app-control-long-turn-retry.json
+            required-cases: '["reports long-turn outcomes past the snapshot tail and reuses the first creation on retry"]'
+          # SC04：排队/审批 wait 专项——创建/队列/等待/fork 稳定历史/整理与中断防护
+          #（desktop + 390px 手机双端）。
+          - spec-group: sc04-session-lifecycle
+            specs: ./test/e2e/conversation-session/session-control/manual-review/pending/app-control-session-lifecycle.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/app-control-session-lifecycle.json
+            required-cases: '["creates, queues, waits, forks stable history, organizes and guards interruption on desktop and 390px mobile"]'
+          # RM01 断连/重连专项（web-remote-replayable）：后台/回前台复用原 socket 与
+          # bridge、在途 ACK INTERNAL 先探原 socket（MRO04-06/07）。
+          - spec-group: rm01-web-remote-recovery
+            specs: ./test/e2e/conversation-session/remote/mobile/conversation-session-web-remote-recovery.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-web-remote-recovery.json
+            required-cases: '["MRO04-1440: 首次失效通知丢失后15秒内补发恢复原task，重复通知只恢复一次", "MRO04-390: 真实后台46秒后回前台15秒内显示原task完成内容", "MRO04-06: 运行中短后台持续收帧，回前台复用原socket与bridge完成原task", "MRO04-07: 后台多个在途ACK各收到INTERNAL，回前台先探测原socket，桌面离开期间不进失败页", "MRO04-cold-1440-offline: 首次加载和刷新使用可用workspace", "MRO04-cold-1440-deleted-task: 首次加载和刷新使用可用workspace", "MRO04-cold-1440-removed-host: 首次加载和刷新使用可用workspace", "MRO04-cold-390-offline: 首次加载和刷新使用可用workspace", "MRO04-cold-390-deleted-task: 首次加载和刷新使用可用workspace", "MRO04-cold-390-removed-host: 首次加载和刷新使用可用workspace"]'
+          # UI01/02 B/C 复验（受上游改动触面的既有交互 spec）：B 期 QueuedSummaryContent
+          # 吸收链——真实 queued input 的重启丢弃合同。
+          - spec-group: ui-queued-restart
+            specs: ./test/e2e/conversation-session/queue/conversation-session-queued-command-restart.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-queued-command-restart.json
+            required-cases: '["真实 queued input 在 App/CLI 重启后 discarded，不显示重发提示"]'
+          # UI01 cold-start（B/C 期 UI 域复验样本）：冷启动摘要一致与可展开。
+          - spec-group: ui-file-summary-cold-start
+            specs: ./test/e2e/conversation-session/history/conversation-session-file-summary-cold-start.test.ts
+            replay-fixtures: packages/desktop/test/e2e/fixtures/upstream/common.json,packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-file-summary-cold-start.json
+            required-cases: '["单次 Write 完成后完整冷启动仍显示相同摘要并可展开文件"]'
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 11.28.6
+
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # 交互 E2E 需要完整运行时：Electron 二进制、node-pty 原生重建（wdio onPrepare
+      # 负责 build:no-runtime-assets + agent server + 官方插件模板预热）。
+      - name: Install dependencies (frozen lockfile, with scripts)
+        run: pnpm install --frozen-lockfile
+
+      - name: Build E2E report tooling
+        run: pnpm --filter @zcode/e2e-report build:node
+
+      - name: Resolve Git for the worktree scenario
+        if: matrix.spec-group == 'wt04-remote-view'
+        shell: bash
+        run: |
+          # 夹具和 Electron Host 的登录 shell 可有不同的 PATH。二者共用 runner 已验证的 Git。
+          git_binary="$(command -v git)"
+          "$git_binary" --version
+          echo "ZCODE_GIT_BINARY=$git_binary" >> "$GITHUB_ENV"
+
+      - name: Run interactive E2E specs
+        id: e2e_run
+        working-directory: packages/desktop
+        env:
+          E2E_PROVIDER_REPLAY_FIXTURE_PATH: ${{ matrix.replay-fixtures }}
+          # J4：manual-review 用例的隔离 HOME 守卫要求 `.e2e-home-` 前缀（按 case 分配
+          # HOME 的 runner 合同）；每条矩阵一个独立 HOME，runner 一次性环境随 job 回收。
+          ZCODE_E2E_HOME_DIR: ${{ runner.temp }}/.e2e-home-${{ github.run_id }}-${{ github.run_attempt }}-${{ strategy.job-index }}
+        run: pnpm exec wdio run wdio.conf.ts --spec '${{ matrix.specs }}'
+
+      - name: Upload E2E artifacts
+        if: always() && steps.e2e_run.outcome != 'skipped'
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-e2e-${{ matrix.spec-group }}
+          path: packages/desktop/.e2e-artifacts/desktop-e2e-*/
+          include-hidden-files: true
+          archive: true
+          if-no-files-found: error
+
+      # 结果完整性（H5）：按 job 的必需 spec/case 清单核销实际结果，不信报告自报的
+      # requestedSpecs；skip、缺 case、0 collected、取消、失败、缺报告一律拒绝。
+      # 校验逻辑在 scripts/verify-e2e-summary.mjs，本地回归直接执行同一实现。
+      - name: Verify E2E summary completeness
+        if: always() && steps.e2e_run.outcome != 'skipped'
+        shell: bash
+        env:
+          REQUIRED_SPECS: ${{ matrix.specs }}
+          REQUIRED_CASES: ${{ matrix.required-cases }}
+        run: |
+          set -euo pipefail
+          summary_path=$(node --input-type=module <<'NODE'
+          import { readdir } from 'node:fs/promises';
+          import { join } from 'node:path';
+          const root = 'packages/desktop/.e2e-artifacts';
+          const runs = (await readdir(root, { withFileTypes: true }))
+            .filter((entry) => entry.isDirectory() && entry.name.startsWith('desktop-e2e-'))
+            .map((entry) => entry.name);
+          if (runs.length !== 1) throw new Error(`Expected exactly one E2E run dir, found ${runs.length}`);
+          console.log(join(root, runs[0], 'summary.json'));
+          NODE
+          )
+          export SUMMARY_PATH="$summary_path"
+          node --input-type=module <<'NODE' | tee /tmp/e2e-completeness.json
+          import { readFile } from 'node:fs/promises';
+          import { verifyE2ESummary } from './scripts/verify-e2e-summary.mjs';
+          // case 标题本身可能含逗号，故必需清单按 JSON 传，不用逗号分隔。
+          const specs = (process.env.REQUIRED_SPECS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+          const cases = JSON.parse(process.env.REQUIRED_CASES || '[]');
+          const summary = JSON.parse(await readFile(process.env.SUMMARY_PATH, 'utf8'));
+          const report = verifyE2ESummary({ summary, required: specs.map((spec) => ({ spec, cases })) });
+          console.log(JSON.stringify({ ...report, runId: summary.runId }, null, 2));
+          if (!report.ok) throw new Error(`E2E summary incomplete: ${report.failures.join('; ')}`);
+          NODE
+          {
+            echo '### E2E completeness'
+            echo '```json'
+            cat /tmp/e2e-completeness.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

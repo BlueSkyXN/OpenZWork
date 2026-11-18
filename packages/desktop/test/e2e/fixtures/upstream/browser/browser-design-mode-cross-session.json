@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "caseName": "browser-design-mode-cross-session",
+  "spec": "./test/e2e/browser/design/browser-design-mode-cross-session.test.ts",
+  "fixtures": [
+    {
+      "id": "design-cross-session-title",
+      "description": "跨会话点选用例的标题响应。",
+      "metadata": {
+        "kind": "common",
+        "source": "synthetic",
+        "timingPolicy": "fast-text",
+        "syntheticReason": "桌面为两个会话生成标题，需要独立的非流式响应。"
+      },
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "bodyIncludes": ["Generate a concise title", "E2E_DESIGN_"]
+      },
+      "response": {
+        "statusCode": 200,
+        "statusMessage": "OK",
+        "headers": {
+          "content-type": "application/json; charset=utf-8"
+        },
+        "body": "{\"id\":\"upstream-e2e-title-fixture\",\"type\":\"message\",\"role\":\"assistant\",\"model\":\"deepseek-v4-flash\",\"content\":[{\"type\":\"text\",\"text\":\"{\\\"title\\\":\\\"Upstream E2E Fixture\\\"}\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"usage\":{\"input_tokens\":125,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":24,\"service_tier\":\"standard\"}}"
+      }
+    },
+    {
+      "id": "design-cross-session-a",
+      "metadata": {
+        "kind": "main",
+        "source": "synthetic",
+        "timingPolicy": "fast-text",
+        "syntheticReason": "固定回复使会话完成，点选引用、附件和请求内容由真实桌面界面验收。"
+      },
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "lastUserMessageIncludes": ["E2E_DESIGN_CROSS_SESSION_A:"],
+        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "design-cross-session-a",
+          "inputTokens": 40,
+          "outputTokens": 8,
+          "text": "upstream-e2e-ok"
+        }
+      }
+    },
+    {
+      "id": "design-cross-session-b",
+      "metadata": {
+        "kind": "main",
+        "source": "synthetic",
+        "timingPolicy": "fast-text",
+        "syntheticReason": "固定回复使会话完成，点选引用、附件和请求内容由真实桌面界面验收。"
+      },
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "lastUserMessageIncludes": ["E2E_DESIGN_CROSS_SESSION_B:"],
+        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "design-cross-session-b",
+          "inputTokens": 40,
+          "outputTokens": 8,
+          "text": "upstream-e2e-ok"
+        }
+      }
+    },
+    {
+      "id": "design-cross-session-ambient",
+      "metadata": {
+        "kind": "main",
+        "source": "synthetic",
+        "timingPolicy": "fast-text",
+        "syntheticReason": "固定回复使会话完成，点选引用、附件和请求内容由真实桌面界面验收。"
+      },
+      "match": {
+        "method": "POST",
+        "pathIncludes": "/messages",
+        "lastUserMessageIncludes": ["E2E_DESIGN_AMBIENT_DESKTOP:"],
+        "bodyExcludes": ["Generate a concise title", "CRITICAL: Respond with TEXT ONLY"]
+      },
+      "response": {
+        "statusCode": 200,
+        "text": {
+          "id": "design-cross-session-ambient",
+          "inputTokens": 40,
+          "outputTokens": 8,
+          "text": "upstream-e2e-ok"
+        }
+      }
+    }
+  ]
+}

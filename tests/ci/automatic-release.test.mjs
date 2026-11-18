@@ -42,11 +42,12 @@ test("formal tags run all three existing gates and carry a common release identi
     env.RELEASE_COMMIT,
     "${{ inputs.release_commit || (github.ref_type == 'tag' && github.sha) || '' }}",
   );
+  // 三条路由共用一个清单步骤；路由由 IS_RELEASE / IS_BUILD_PRODUCTION 决定，
+  // 正式 tag 对应 IS_RELEASE=1（Preview 与 production 仅构建都不写 RELEASE-MANIFEST）。
   assert.equal(
-    installers.jobs.installer.steps.find(
-      (step) => step.name === "Record release installer provenance",
-    ).if,
-    "env.RELEASE_TAG != ''",
+    installers.jobs.installer.steps.find((step) => step.name === "Record build provenance").env
+      .IS_RELEASE,
+    "${{ (inputs.release_tag || github.ref_type == 'tag') && '1' || '0' }}",
   );
 });
 

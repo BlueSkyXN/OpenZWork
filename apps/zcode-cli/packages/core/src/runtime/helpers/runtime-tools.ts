@@ -23,6 +23,7 @@ import {
 import { isStaleBranchRuntimeTaskEvent } from "../methods/runtime-command-generation.js";
 import { resolveEnabledProjectMemoryRoot } from "./project-memory.js";
 import { sessionHasLoadedSkill } from "../../agent/loaded-skills.js";
+import { sessionControlForRuntime } from "../../tool/session-control/contract.js";
 
 const DEFAULT_SUBAGENT_BACKGROUND_BASH_MAX_MS = 3_600_000;
 const EMPTY_RUNTIME_HOOK_CONFIG = {
@@ -47,6 +48,11 @@ export function initializeRuntimeTooling(
 
 function registerRuntimeBuiltInTools(runtime: AgentRuntimeInternal, deps: AgentRuntimeDeps): void {
   const nodeReplEnabled = runtime.config.runtimeFeatures?.nodeRepl === true;
+  runtime.sessionControlKind = sessionControlForRuntime(
+    deps.sessionControl,
+    runtime.config.taskType,
+    runtime.sessionId,
+  )?.kind;
   const browserUseEnabled = resolveRuntimeBrowserUseEnabled(runtime, deps);
   registerBuiltInTools(runtime.registry, {
     bashTimeoutPolicy: runtime.config.bashTimeoutPolicy,
@@ -66,11 +72,16 @@ function registerRuntimeBuiltInTools(runtime: AgentRuntimeInternal, deps: AgentR
     // escalate 与 submit_result 同门同理由：端口在场即注册（不做 opt-in：最可能撞墙的 actor 恰是作者没标记的那个）。
     includeEscalate: Boolean(deps.workflowEscalatePort),
     includeWorkflow: Boolean(deps.workflowPort),
+    sessionControlKind: runtime.sessionControlKind,
     includeAutomation: Boolean(deps.automationPort) && runtime.config.taskType !== "subagent_child",
-    // 动态工作流灰度门：
+      // 话题资源只在 App 托管运行时可读；CLI 不知道会话是否为机器人会话，授权在调用时按可信输入校验。
+    includeTopicResource: Boolean(deps.topicResourcePort),
+    // 动态工作流灰度门：与已裁剪的灰度域不同，
     // 这里不能用端口在场做判据——十个工具的端口在任何 CLI 里都装配齐全，灰度是 Host 的决定。
     // 取值收在 tool-allowlist.ts，与分支刷新那个入口共用同一个推导。
     includeDynamicWorkflow: resolveRuntimeDynamicWorkflowToolsIncluded(runtime),
+    includePluginDiscovery:
+      Boolean(deps.pluginDiscoveryPort) && runtime.config.taskType !== "subagent_child",
     // 修复原因：browserControlPort 只是宿主能力，不应隐式暴露高权限 node_repl。
     // node_repl/browser-use 由 ZCode 官方 browser-use 插件启停推导出的 runtimeFeatures 控制。
     includeNodeRepl: nodeReplEnabled,
@@ -183,10 +194,16 @@ function createRuntimeToolExecutor(
     coordinatorResponsePort: deps.coordinatorResponsePort,
     workflowSubmitPort: deps.workflowSubmitPort,
     workflowEscalatePort: deps.workflowEscalatePort,
+    webSearchBudget: deps.webSearchBudget,
     artifactStore: deps.artifactStore,
+    sessionControl: sessionControlForRuntime(
+      deps.sessionControl,
+      runtime.config.taskType,
+      runtime.sessionId,
+    ),
     automationPort: deps.automationPort,
     topicResourcePort: deps.topicResourcePort,
-    usageQueryPort: deps.usageQueryPort,
+    usageQueryPort: deps.usageQueryPort,    pluginDiscoveryPort: deps.pluginDiscoveryPort,
     sessionStore: deps.sessionStore,
     sessionModePort: createRuntimeSessionModePort(runtime),
     workflowPort: deps.workflowPort,
@@ -217,6 +234,7 @@ function createRuntimeToolExecutor(
     setWorkingDirectory: runtime.setWorkingDirectory.bind(runtime),
     getWorkspaceRoot: () => runtime.workspaceRoot,
     workspaceIdentity: runtime.config.workspaceIdentity?.toString(),
+    workspaceKey: runtime.config.workspaceKey,
     remoteSessionId: runtime.config.remoteSessionId,
     clientMode: runtime.config.clientMode,
     deliveryKind: runtime.config.deliveryKind,

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { createPackageWithOptions } from "@electron/asar";
@@ -23,6 +23,7 @@ afterEach(async () => {
 describe.each([
   { os: "darwin", arch: "arm64", builderArch: 3 },
   { os: "win32", arch: "x64", builderArch: 1 },
+  { os: "win32", arch: "arm64", builderArch: 3 },
   { os: "linux", arch: "x64", builderArch: 1 },
 ])("electron-builder afterPack ($os-$arch)", ({ os, arch, builderArch }) => {
   it.each(["valid", "wrong-platform", "packed"] as const)(
@@ -45,6 +46,16 @@ describe.each([
       await mkdir(dirname(prebuild), { recursive: true });
       await mkdir(resourcesDir, { recursive: true });
       await writeFile(prebuild, "fixture-native-file");
+      // 上游 v3.18.1：win32 afterPack 会校验并登记 installer process helper（CR-01）。
+      // valid 场景需在夹具中放置该 helper；缺失即拒 pack（真实构建由 windows-runtime-host 产出）。
+      if (os === "win32") {
+        const helper = resolve(
+          resourcesDir,
+          "tools/runtime-host/zcode-installer-process-helper.exe",
+        );
+        await mkdir(dirname(helper), { recursive: true });
+        await writeFile(helper, "fixture-installer-helper");
+      }
 
       if (scenario === "wrong-platform") {
         const foreignKey = os === "win32" ? "darwin-arm64" : "win32-x64";
@@ -65,14 +76,30 @@ describe.each([
       );
 
       // 3.17.1 整合曾只删掉策略函数的 import，工具函数测试仍绿；必须调用真正的 hook 才能发现遗漏。
+      const buildResourcesDir = resolve(root, "build");
       const result = config.afterPack({
         appOutDir,
         electronPlatformName: os,
         arch: builderArch,
-        packager: { appInfo: { productFilename: "Fixture" } },
+        packager: { appInfo: { productFilename: "Fixture" }, buildResourcesDir },
       });
       if (scenario === "valid") {
         await expect(result).resolves.toBeUndefined();
+        if (os === "win32") {
+          // NSIS 按架构名 include；实际 runner 传入的是 electron-builder 的数字枚举。
+          const define = resolve(
+            buildResourcesDir,
+            "generated",
+            `zcode-process-helper-${arch}.nsh`,
+          );
+          const helper = resolve(
+            resourcesDir,
+            "tools/runtime-host/zcode-installer-process-helper.exe",
+          );
+          expect(await readFile(define, "utf8")).toContain(
+            `ZCODE_INSTALLER_PROCESS_HELPER "${helper}"`,
+          );
+        }
       } else {
         await expect(result).rejects.toThrow(
           scenario === "wrong-platform"

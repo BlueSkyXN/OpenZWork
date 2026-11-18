@@ -421,6 +421,8 @@ export function createBrowserWindow(options: {
     screen.getPrimaryDisplay().workAreaSize,
   );
   const win = new BrowserWindow({
+    // OW-P029：macOS runner 会把测试视口钳到显示器工作区，E2E 需要按场景尺寸布局。
+    enableLargerThanScreen: Boolean(process.env.ZCODE_E2E_RUN_ID?.trim()),
     width: initialWindowSize.width,
     height: initialWindowSize.height,
     minWidth: MIN_DESKTOP_WINDOW_WIDTH,

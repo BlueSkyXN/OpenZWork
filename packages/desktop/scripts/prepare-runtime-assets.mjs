@@ -24,7 +24,8 @@ const shouldPrepareWindowsBrowserImportHelper =
 // 运行时由 app 的 Electron Node runtime 执行。Source Server 资源由独立 stage:remote-assets 入口负责。
 const localRuntimeScripts = [
   "prepare:agent-bundle",
-  ...(nativeSearchReleasePlan.enabled ? ["prepare:native-search"] : []),
+  ...(target.os === "win32" ? ["prepare:windows-runtime-host"] : []),
+    ...(nativeSearchReleasePlan.enabled ? ["prepare:native-search"] : []),
   ...(shouldPrepareWindowsBrowserImportHelper ? ["prepare:browser-import-helper"] : []),
 ];
 

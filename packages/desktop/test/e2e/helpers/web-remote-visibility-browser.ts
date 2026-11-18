@@ -58,10 +58,11 @@ export async function createWebRemoteVisibilityBrowser(
     );
     return logFlight;
   };
-  const record = async (stage: string) =>
-    recordEvent(stage, {
-      visibility: await page.evaluate(() => document.visibilityState),
-    });
+  const recordVisibility = async (stage: string, visibility: DocumentVisibilityState) => {
+    // OW-P032：页面可能在确认可见后立即导航，记录刚观察到的状态，避免再次访问已销毁的文档。
+    await page.waitForFunction((expected) => document.visibilityState === expected, visibility);
+    await recordEvent(stage, { visibility });
+  };
   page.on("framenavigated", (frame) => {
     if (frame === page.mainFrame())
       void recordEvent("main-frame-navigated", { path: new URL(frame.url()).pathname });
@@ -101,7 +102,7 @@ export async function createWebRemoteVisibilityBrowser(
       else await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
       await useNativeVisibility(page);
       await page.bringToFront();
-      await record("native-navigation");
+      await recordVisibility("native-navigation", "visible");
     },
     async click(selector: string) {
       await page.locator(selector).first().click();
@@ -110,13 +111,11 @@ export async function createWebRemoteVisibilityBrowser(
       cover ??= await context.newPage();
       await useNativeVisibility(cover);
       await cover.bringToFront();
-      await page.waitForFunction(() => document.visibilityState === "hidden");
-      await record("native-background");
+      await recordVisibility("native-background", "hidden");
     },
     async show() {
       await page.bringToFront();
-      await page.waitForFunction(() => document.visibilityState === "visible");
-      await record("native-foreground");
+      await recordVisibility("native-foreground", "visible");
     },
     async escape() {
       await page.keyboard.press("Escape");

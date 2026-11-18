@@ -29,7 +29,7 @@ export const NODE_REPL_SERVER_INSTRUCTIONS =
   "including general-purpose JavaScript, filesystem, shell, package inspection, or data processing. " +
   `Calls default to a ${NODE_REPL_DEFAULT_TIMEOUT_MS} ms timeout. ` +
   "Always provide `title` as a short user-facing description in the user's language. " +
-  "Every `js` call starts fresh; reconstruct browser wrappers and recover persistent tabs from current BrowserControl facts.";
+  "Every `js` call starts fresh.";
 
 export const JS_TOOL_DESCRIPTION =
   "Browser Use only. Run JavaScript in a fresh Node-backed kernel with top-level await only as " +

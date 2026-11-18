@@ -101,4 +101,11 @@ export {
 } from "./lib/uiFontSize.js";
 export { generateMobileDeviceFingerprint, setStreamClientId } from "./lib/streamClientId.js";
 export { GlobalDatabaseStartupLoading } from "./root/GlobalDatabaseStartupLoading.js";
-export { ensurePendingTaskDraft } from "@/v4/composer/composerDraftStore.js";
+
+export type { LocalTtftObserver } from "@/v4/telemetry/local-ttft/contract.js";
+export { setLocalTtftObserver } from "@/v4/telemetry/local-ttft/contract.js";
+export {
+  ensurePendingTaskDraft,
+  readPendingTaskDraft,
+  readComposerWorkspaceScope,
+} from "@/v4/composer/composerDraftStore.js";

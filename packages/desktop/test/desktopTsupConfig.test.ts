@@ -10,12 +10,14 @@ it("loads all desktop build targets with shared defines and no telemetry injecti
   const config = await import("../tsup.config.js");
   expect(Array.isArray(config.default)).toBe(true);
   if (!Array.isArray(config.default)) throw new Error("Expected desktop build targets");
+  // OpenZWork（T08）：吸收上游 Extension Host，新增 extension-host 构建目标。
   expect(config.default.map((target) => target.name)).toEqual([
     "main",
     "preload",
     "plugin-sandbox-alias",
     "host",
     "scheduler",
+    "extension-host",
   ]);
   for (const target of config.default) {
     expect(target.define).toHaveProperty("__ZCODE_VERSION__");

@@ -53,6 +53,7 @@ export function TaskActionMenuContent({
   disableTaskTargetActions = false,
   disablePinTaskAction = false,
   disabledReason,
+  archiveDisabledReason,
   hideMobileUnsupportedActions = false,
   Item,
   Separator,
@@ -92,12 +93,15 @@ export function TaskActionMenuContent({
   disableTaskTargetActions?: boolean;
   disablePinTaskAction?: boolean;
   disabledReason?: string;
+  /** 归档专属的禁用原因（运行中任务）；其余操作不受影响。 */
+  archiveDisabledReason?: string;
   hideMobileUnsupportedActions?: boolean;
   Item: React.ComponentType<TaskActionMenuItemProps>;
   Separator: React.ComponentType<TaskActionMenuSeparatorProps>;
   onTogglePinTask: () => void;
   onStartRenameTask: () => void;
-  onArchiveTask: () => void;
+  /** 不传则不展示归档项：Header 拿不到实时运行态，归档只在侧栏提供。 */
+  onArchiveTask?: () => void;
   onMarkTaskAsUnread: () => void;
   onRestartTask?: () => void;
   restartPending?: boolean;
@@ -151,18 +155,23 @@ export function TaskActionMenuContent({
       >
         {intl.formatMessage({ id: "taskList.rename" })}
       </Item>
-      <Item
-        variant={isArchived ? "default" : "destructive"}
-        disabled={taskTargetActionsDisabled}
-        title={disabledReason}
-        onSelect={() => {
-          if (!taskTargetActionsDisabled) {
-            onArchiveTask();
-          }
-        }}
-      >
-        {intl.formatMessage({ id: isArchived ? "taskList.unarchive" : "taskList.archive" })}
-      </Item>
+      {onArchiveTask ? (
+        <Item
+          // 修复依据（OZ-F006，v3.18.0 merge 丢失回补）：归档未归档任务会把它移出主列表，
+          // v3.17.1 起以 destructive 样式警示（3402c963 同文件同位）；v3.18.0 上游重写该
+          // 文件时此行在冲突裁决中丢失，OCC E2E 五用例断言 destructive 菜单项失败。
+          variant={isArchived ? "default" : "destructive"}
+          disabled={taskTargetActionsDisabled || Boolean(archiveDisabledReason)}
+          title={disabledReason ?? archiveDisabledReason}
+          onSelect={() => {
+            if (!taskTargetActionsDisabled && !archiveDisabledReason) {
+              onArchiveTask();
+            }
+          }}
+        >
+          {intl.formatMessage({ id: isArchived ? "taskList.unarchive" : "taskList.archive" })}
+        </Item>
+      ) : null}
       <Item
         disabled={taskTargetActionsDisabled}
         title={disabledReason}

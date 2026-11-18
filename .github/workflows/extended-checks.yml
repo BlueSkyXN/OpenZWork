@@ -137,6 +137,10 @@ jobs:
       - name: Build remote server bundle
         run: pnpm --filter @zcode/server build:remote
 
+      - name: Prepare Windows runtime host and installer process helper
+        if: runner.os == 'Windows' && (matrix.shard == 'services' || matrix.shard == 'supporting')
+        run: node scripts/build-windows-runtime-host.mjs --ensure
+
       - name: Full historical unit suite (grouped)
         id: full_tests
         # 分片内部保留组级时限与串行执行；独立 runner 提供并行。

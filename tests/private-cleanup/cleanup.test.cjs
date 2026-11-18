@@ -606,11 +606,15 @@ test("[structural, not runtime] WP-06: CUA / clientScenes / plugin-creator surfa
     "apps/zcode-cli/packages/node-repl-host/src/server.ts",
     "apps/zcode-cli/packages/cli/src/plugin-host-command.ts",
   ];
+  // 修复依据（OpenZWork，2026-11-15 T15）：v3.18.0 同步恢复 plugin-creator 本地创建链
+  // （4d9a8c12 修 WP-06 裁剪与注册恢复的不一致；i18n 键族随上游回补，PluginAddMenu/
+  // usePluginCreator 现用）。WP-06 的 pluginCreator 字面量禁令随之解除；CUA/
+  // clientScenes/computerUse 等其余官方能力面保持零残留。
   for (const file of surfaces) {
     const text = fs.readFileSync(path.join(root, file), "utf8");
     assert.doesNotMatch(
       text,
-      /cuaPermission|CuaPermission|cuaAccessibility|CuaOsSupport|computerUse|ComputerUse|clientScenes|ClientScenes|pluginCreator|trustedOfficialCua|syncActiveTaskSession|ZCODE_CUA_/,
+      /cuaPermission|CuaPermission|cuaAccessibility|CuaOsSupport|computerUse|ComputerUse|clientScenes|ClientScenes|trustedOfficialCua|syncActiveTaskSession|ZCODE_CUA_/,
       file,
     );
   }
@@ -794,8 +798,14 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       ['"https://zcode.z.ai/remote/v4"'],
     ],
     [
-      "packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts",
+      "packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/web-remote-v1-connections.test.ts",
       ['"https://zcode.z.ai"'],
+    ],
+    // v3.18.0 上游新增的远端安装更新用例（pending 准入）：NO_PROXY 列表里的官方域后缀
+    // 只是代理旁路配置，不是产品连接端点；仅登记这一完整字面量。
+    [
+      "packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-r3-update-cancel.test.ts",
+      ['".bigmodel.cn"'],
     ],
     // 官方连接说明改写后，旧整句许可已失效；仅同步这两句，继续检查同文件内的其他地址。
     [
@@ -1124,11 +1134,16 @@ test("[structural, not runtime] WP-09: off-peak domain fully removed from source
   })
     .split("\n")
     .filter(Boolean);
+  // 2026-11-13 与 re-clean 门禁同口径：apps/zcode-cli/docs/ 是上游 CLI 设计文档（vendored，
+  // 保持原作者原文，OZK-DEC-009），其中上游自身的设计叙述可能提及官方域名词，不视为我方残留。
+  const isVendoredCliDoc = (rel) =>
+    rel.startsWith("docs/") || rel.startsWith("apps/zcode-cli/docs/");
   for (const rel of tracked) {
     if (
       !scanExtensions.test(rel) ||
       allowFiles.has(rel) ||
       pristineUpstreamDocs().has(rel) ||
+      isVendoredCliDoc(rel) ||
       rel === "tests/private-cleanup/cleanup.test.cjs"
     )
       continue;
@@ -1224,8 +1239,16 @@ test("[structural, not runtime] WP-03: user-level data root references stay unde
     .split("\n")
     .filter(Boolean);
   const violations = [];
+  // 2026-11-13 与 re-clean 门禁同口径：apps/zcode-cli/docs/ 为上游 CLI 设计文档（vendored，
+  // 保持原作者原文 OZK-DEC-009），其中的旧根字面量属上游叙述，不视为我方残留。
+  const isVendoredCliDocWp03 = (rel) => rel.startsWith("apps/zcode-cli/docs/");
   for (const rel of tracked) {
-    if (!scanExtensions.test(rel) || allowFiles.has(rel) || pristineUpstreamDocs().has(rel))
+    if (
+      !scanExtensions.test(rel) ||
+      allowFiles.has(rel) ||
+      pristineUpstreamDocs().has(rel) ||
+      isVendoredCliDocWp03(rel)
+    )
       continue;
     const file = path.join(root, rel);
     // 工作区里已删除但未提交的追踪文件：门禁跟着提交内容走，本地未提交的删除不该让读崩。

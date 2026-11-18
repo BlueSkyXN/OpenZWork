@@ -69,7 +69,7 @@ export async function verifySessionCreationRetries() {
     );
   };
   const cliFacts = () => {
-    const db = new DatabaseSync(join(host.home, ".zcode/cli/db/db.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(host.home, ".openzwork/cli/db/db.sqlite"), { readOnly: true });
     try {
       return {
         sessions: db.prepare("SELECT * FROM session ORDER BY id").all(),

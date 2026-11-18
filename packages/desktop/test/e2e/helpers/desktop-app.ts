@@ -1,3 +1,4 @@
+import { createSystemCredentialCipher } from "@zcode/shared/credential-security";
 /* eslint-disable max-lines -- 测试相关的代码，忽略 */
 import { execFileSync } from "node:child_process";
 import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -25,6 +26,7 @@ import {
   type E2EBrowserTargetInfo,
 } from "./e2e-window-target.js";
 import { dismissOccupationOnboarding } from "./occupation-onboarding.js";
+import { clearRendererViewport } from "./renderer-viewport.js";
 import { sel } from "./selectors.js";
 import { projectSectionSelector } from "./project-sidebar.js";
 
@@ -531,6 +533,14 @@ export function getE2EAppDataPaths() {
   };
 }
 
+/** 行为断言读取解密值；磁盘格式与损坏值断言继续直接读取原始文件。 */
+export async function readE2ECredentialValue(key: string): Promise<string | undefined> {
+  const record = JSON.parse(await readFile(CREDENTIALS_FILE, "utf8")) as Record<string, string>;
+  const value = record[key];
+  if (value === undefined) return undefined;
+  return createSystemCredentialCipher({ filePath: CREDENTIALS_FILE }).decrypt(value);
+}
+
 export async function clearAppData() {
   if (process.env.ZCODE_E2E_DEFER_APP_DATA_CLEANUP === "1") {
     // 修复原因：普通 spec 的 after hook 先 app.quit 会抢在 ChromeDriver
@@ -828,11 +838,45 @@ export async function readModelProvider(
 }
 
 export async function seedSettings(partial: Partial<AppSettings>): Promise<Partial<AppSettings>> {
-  const current = await readSettings();
+  const current: Record<string, unknown> = await readSettings();
+  // setting.json 的真实界面语言优先存在 uiLocale/uiLocalePreference（旧字段只存中英以兼容降级）。
+  // 用例只种旧字段时要清掉上一个用例残留的新字段，否则 app 会按新字段优先读到旧语言。
+  if ("locale" in partial && !("uiLocale" in partial)) delete current.uiLocale;
+  if ("localePreference" in partial && !("uiLocalePreference" in partial)) {
+    delete current.uiLocalePreference;
+  }
   const next = { ...current, ...partial };
   await ensureAppDataDir();
   await writeFile(SETTINGS_FILE, JSON.stringify(next), "utf-8");
   return next;
+}
+
+type E2ELocale = "zh-CN" | "en-US";
+type LocaleTestActions = { getLocale(): E2ELocale; setLocale(locale: E2ELocale): void };
+
+/**
+ * 运行中把界面语言固定为 locale，并等 renderer 生效。
+ * 首帧跟随宿主系统语言：容器、英文系统下是英文，断言中文文案的 spec 必须自己固定语言。
+ * 走真实的 setLocale（写进设置文件）；clearAppData 会清掉它，之后的 case 要重新调用。
+ */
+export async function pinE2ELocale(locale: E2ELocale): Promise<void> {
+  const readLocale = () =>
+    browser.execute(
+      () =>
+        (window as Window & { __testActions?: LocaleTestActions }).__testActions?.getLocale() ??
+        null,
+    );
+  await browser.waitUntil(async () => (await readLocale()) !== null, {
+    timeout: 30000,
+    timeoutMsg: "renderer 没有注册 __testActions，无法固定界面语言",
+  });
+  await browser.execute((next) => {
+    (window as Window & { __testActions?: LocaleTestActions }).__testActions?.setLocale(next);
+  }, locale);
+  await browser.waitUntil(async () => (await readLocale()) === locale, {
+    timeout: 15000,
+    timeoutMsg: `界面语言没有切到 ${locale}`,
+  });
 }
 
 export async function seedCliConfig(
@@ -1119,6 +1163,11 @@ export async function setCurrentElectronRendererContentSize(
   width: number,
   height?: number,
 ): Promise<ElectronRendererContentSizeSnapshot> {
+  // OW-P026：上一用例可能遗留 Emulation.setDeviceMetricsOverride（CSS 覆盖会钉住
+  // innerWidth/innerHeight），此后窗口尺寸再怎么变，本 helper 的「renderer viewport 必须跟随
+  // 窗口尺寸」收敛等待都永远失败。先清除覆盖再调窗口尺寸；未设置覆盖时清除为无害 no-op，
+  // 既有「先 setPluginPresentation 后 setRendererViewport」的顺序不受影响。
+  await clearRendererViewport();
   const currentUrl = await browser.getUrl();
   const result = await browser.electron.execute(
     (electron, targetUrl, nextWidth, nextHeight) => {

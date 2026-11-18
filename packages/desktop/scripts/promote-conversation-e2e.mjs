@@ -14,7 +14,6 @@ import { rewriteFormalSpecImports } from "./lib/e2e-promotion-spec-imports.mjs";
 const desktopDir = resolve(import.meta.dirname, "..");
 const repoRoot = resolve(desktopDir, "../..");
 const conversationDir = resolve(desktopDir, "test/e2e/conversation-session");
-const pendingDir = resolve(conversationDir, "manual-review/pending");
 const providerFixtureDir = resolve(desktopDir, "test/e2e/fixtures/upstream/conversation-session");
 const caseManifestDir = resolve(desktopDir, "test/e2e/fixtures/cases/conversation-session");
 // OpenZWork(OZ-F001): 上游文档原文不动，OpenZWork 版本另存为同目录的 -openzwork 文件；存在时读写 OpenZWork 版本。
@@ -86,7 +85,7 @@ function parseArgs(args) {
 
 function printUsage() {
   console.log(`Usage:
-  pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/manual-review/pending/<case>.test.ts --reviewed --apply
+  pnpm --filter @zcode/desktop e2e:promote -- --spec ./test/e2e/conversation-session/<scenario>/manual-review/pending/<case>.test.ts --reviewed --apply
 
 Options:
   --apply     Write changes. Without this flag the tool only prints a dry run.
@@ -102,8 +101,12 @@ async function promote({ apply, force, reviewed, spec }) {
   let audit = null;
   const sourcePath = resolve(process.cwd(), spec);
 
-  const relSourceFromPending = relative(pendingDir, sourcePath);
-  if (relSourceFromPending.startsWith("..") || isAbsolute(relSourceFromPending)) {
+  const relSourceFromPending = relative(conversationDir, sourcePath).replaceAll("\\", "/");
+  if (
+    relSourceFromPending.startsWith("..") ||
+    isAbsolute(relSourceFromPending) ||
+    !/(?:^|\/)manual-review\/pending\/[^/]+\.test\.ts$/u.test(relSourceFromPending)
+  ) {
     errors.push(`Spec must be under manual-review/pending: ${relative(repoRoot, sourcePath)}`);
   }
   if (!sourcePath.endsWith(".test.ts")) {
@@ -118,12 +121,17 @@ async function promote({ apply, force, reviewed, spec }) {
 
   const fileName = basename(sourcePath);
   const caseName = fileName.replace(/\.test\.ts$/, "");
-  const targetPath = resolve(conversationDir, fileName);
+  const targetPath = resolve(
+    conversationDir,
+    relSourceFromPending.replace(/(?:^|\/)manual-review\/pending\//u, (match) =>
+      match.startsWith("/") ? "/" : "",
+    ),
+  );
   const providerFixturePath = resolve(providerFixtureDir, `${caseName}.json`);
   const caseManifestPath = resolve(caseManifestDir, `${caseName}.json`);
-  const specRelFromDesktop = `./test/e2e/conversation-session/${fileName}`;
-  const pendingRelFromRepo = `packages/desktop/test/e2e/conversation-session/manual-review/pending/${fileName}`;
-  const targetRelFromRepo = `packages/desktop/test/e2e/conversation-session/${fileName}`;
+  const specRelFromDesktop = `./${relative(desktopDir, targetPath).replaceAll("\\", "/")}`;
+  const pendingRelFromRepo = relative(repoRoot, sourcePath).replaceAll("\\", "/");
+  const targetRelFromRepo = relative(repoRoot, targetPath).replaceAll("\\", "/");
 
   validateExistingFixtureIdentity(
     {
@@ -352,7 +360,7 @@ function printResult(result) {
     return;
   }
 
-  const specArg = `./test/e2e/conversation-session/${result.caseName}.test.ts`;
+  const specArg = `./${relative(desktopDir, result.targetPath).replaceAll("\\", "/")}`;
   if (!result.apply) {
     const pendingSpecArg = `./${relative(desktopDir, result.specPath).replaceAll("\\", "/")}`;
     console.log("\nNext:");

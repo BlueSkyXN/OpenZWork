@@ -1,7 +1,7 @@
 {
   "version": 1,
   "caseName": "conversation-session-native-metrics",
-  "spec": "./test/e2e/conversation-session/conversation-session-native-metrics.test.ts",
+  "spec": "./test/e2e/conversation-session/remote/installation/conversation-session-native-metrics.test.ts",
   "fixtures": [
     {
       "id": "native-metrics-first",

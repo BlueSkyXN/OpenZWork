@@ -51,7 +51,7 @@ ugrep 的 BSD-3-Clause 版权、条件和免责声明完整保留。ripgrep 保�
 - ARMS 按当前生产依赖图进入声明，部分原始材料仍待补齐；不沿用其他分支已移除它的结论。`@dukelib/sheets-wasm@0.1.21` 已取得 `wasm-v0.1.21` 对应 commit 的原始 LICENSE。
 - 当前有 21 个包未取得对应版本的完整 LICENSE 文件，保留发布方许可标识、可取得的 README 许可段及标准条款，逐项记录在 `npm-overrides.json` 的 `evidenceKind` 字段。`reviewEvidence` 保存本次 npm 归档哈希及可取得的固定上游树证据。标准条款不能冒称上游原始版权声明；它们继续出现在清单的 `reviewRequired`，严格检查失败。其中 6 个是 sharp 预编译的 `@img/sharp-libvips-*`（只由真实 Computer Use 包引入）：发布方只声明 LGPL-3.0-or-later，并在 README 许可段列出 aom、cairo、glib 等约 28 个内置库，各内置库对应版本的原文尚未收集；标准条款取自 SPDX license-list-data v3.27.0（其 LGPL-3.0 文本已内含 GPL-3.0 全文）。
 - `embedded-components.json` 记录 Canvas 0.1.100 的 Skia 子模块和 quickjs-wasi 2.2.0 的 QuickJS-NG 子模块固定 revision 及完整原文。现已补充固定 Skia DEPS 中的字体、图片、压缩库材料，以及 QuickJS 的 WASI libc、LLVM runtime、Mbed TLS、Project Everest 和 Ada URL parser 材料；`buildEvidence` 保存构建脚本和 SDK submodule 来源，按原文字节校验。Mbed TLS 采用 Apache-2.0 选项，FreeType 采用 FTL 选项。各平台最终二进制、Rust/C++ 运行库及全部嵌套依赖的对应关系仍未完成核验，两项 reviewRequired 保留。
-- 原生来源清单中的 Rust 标准库 revision `6a6eaca656978778f7c1c750ee0c3db87f8bffb2` 尚无原文快照。本次从两个 Windows ripgrep 输入归档的 PE 文件重新提取出相同 revision，但公开 rust-lang/rust 无对应 commit；没有用其他 Rust 版本的材料替代。连同上述 npm 包、复制源码、内嵌组件与链接来源问题，`inventory.json` 的 `reviewRequired` 当前共 25 项。
+- 原生来源清单中的 Rust 标准库 revision `6a6eaca656978778f7c1c750ee0c3db87f8bffb2` 尚无原文快照。本次从两个 Windows ripgrep 输入归档的 PE 文件重新提取出相同 revision，但公开 rust-lang/rust 无对应 commit；没有用其他 Rust 版本的材料替代。连同上述 npm 包、复制源码、内嵌组件与链接来源问题，`inventory.json` 的 `reviewRequired` 历史峰值共 25 项；2026-11-17 复核后为 12 项（boolbase@1.0.0 与 @hono/node-ws@1.3.0 已按发布方自身 LICENSE 原文快照闭合，时间线与来源记于 `npm-overrides.json` 的 reviewEvidence；其余 8 个 npm 包当日经 GitHub tree API 在版本 ref 重验仍无任何 LICENSE/COPYING/NOTICE 文件）。
 - shadcn、AI Elements、Fig 注册表和 Material Icon Theme 的当前文件及核验许可证均已记录。当前 checkout 没有最初复制 revision，因此 `importRevision` 为 null；固定的许可参考 commit 不冒充最初复制版本。
 - 预编译原生工具的编译器/PCRE2 字符串与构建输入已记录。musl 的精确补丁版本未能从现有二进制恢复，保留上游 COPYRIGHT 参考并明确标记。源码配置和材料清单不等于每个平台最终安装包的完整链接审计。
 
@@ -65,15 +65,15 @@ ugrep 的 BSD-3-Clause 版权、条件和免责声明完整保留。ripgrep 保�
 
 Knip 文档镜像现已登记：原始导入的 169 个文件与上游 Knip 6.0.6 的固定参考提交逐一匹配，补齐 ISC 原文；随镜像复制的 Source Sans Pro 与 Hack 字体按字体内版本单独登记原始许可。来源、版本与本地改动说明见 [镜像 README](../docs/knip/docs/README.md)。
 
-Apache-2.0 复制内容中的 148 个已确认改编文件包含文件内来源和 `Modified by ZCode:` 声明，并登记到 `modifiedFiles`；生成时校验该声明仍存在。Markdown frontmatter、脚本 shebang 和 JavaScript directive 保持有效。未确认源自上游的自有文件不追加上游归属。
+Apache-2.0 复制内容中的 147 个已确认改编文件包含文件内来源和 `Modified by ZCode:` 声明，并登记到 `modifiedFiles`；生成时校验该声明仍存在。Markdown frontmatter、脚本 shebang 和 JavaScript directive 保持有效。未确认源自上游的自有文件不追加上游归属。
 
-| 内容                                  | 本地范围                                                                                           | 上游许可与修改说明                                                                                                                                   |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| shadcn/ui                             | `packages/ui/src/components/ui/`、`packages/ui/src/styles.css` 的上游衍生部分                      | MIT；本地修改包含样式、国际化和组件组合，自有组件不归属于上游。                                                                                      |
-| AI Elements                           | `packages/ui/src/components/ai-elements/`、`.agents/skills/ai-elements/`（含 references、scripts） | Apache-2.0，Copyright 2023 Vercel, Inc.；本地修改包含样式、导入路径、组件扩展及技能使用说明，参考 commit 中包含技能正文。                            |
-| agent-browser、dogfood、electron 技能 | `.agents/skills/` 下对应三个目录                                                                   | Apache-2.0，Copyright 2025 Vercel Inc.；固定 v0.20.0 的实际 commit 核对原技能和 LICENSE，本地说明和使用约定有修改。                                  |
-| VS Code IPC 与基础工具                | `packages/rpc/src/`、`packages/rpc/examples/` 中的衍生部分，及 `wire-codec.ts` 对该传输格式的适配  | MIT，保留 Microsoft 原始版权行；本地进行了模块拆分、传输扩展、注释和封装修改，不将所有本地实现归属于上游。                                           |
-| Superpowers 技能描述                  | `packages/ui/src/lib/builtinSkillI18n.ts` 中的 Superpowers 描述及翻译                              | MIT，Copyright (c) 2025 Jesse Vincent；对应上游 v5.1.0。原插件目录当前仅余 LICENSE，不声明仍分发已删除的整包实现。该文件其他技能描述不在此授权范围。 |
+| 内容                        | 本地范围                                                                                           | 上游许可与修改说明                                                                                                                                   |
+| --------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| shadcn/ui                   | `packages/ui/src/components/ui/`、`packages/ui/src/styles.css` 的上游衍生部分                      | MIT；本地修改包含样式、国际化和组件组合，自有组件不归属于上游。                                                                                      |
+| AI Elements                 | `packages/ui/src/components/ai-elements/`、`.agents/skills/ai-elements/`（含 references、scripts） | Apache-2.0，Copyright 2023 Vercel, Inc.；本地修改包含样式、导入路径、组件扩展及技能使用说明，参考 commit 中包含技能正文。                            |
+| agent-browser、dogfood 技能 | `.agents/skills/` 下对应两个目录                                                                   | Apache-2.0，Copyright 2025 Vercel Inc.；固定 v0.20.0 的实际 commit 核对原技能和 LICENSE，本地说明和使用约定有修改。                                  |
+| VS Code IPC 与基础工具      | `packages/rpc/src/`、`packages/rpc/examples/` 中的衍生部分，及 `wire-codec.ts` 对该传输格式的适配  | MIT，保留 Microsoft 原始版权行；本地进行了模块拆分、传输扩展、注释和封装修改，不将所有本地实现归属于上游。                                           |
+| Superpowers 技能描述        | `packages/ui/src/lib/builtinSkillI18n.ts` 中的 Superpowers 描述及翻译                              | MIT，Copyright (c) 2025 Jesse Vincent；对应上游 v5.1.0。原插件目录当前仅余 LICENSE，不声明仍分发已删除的整包实现。该文件其他技能描述不在此授权范围。 |
 
 已核对 `@pierre/diffs@1.1.22` 的实际安装包：生产依赖声明已经包含其 Apache-2.0 标识及原始 LICENSE，不另造一份重复声明。
 

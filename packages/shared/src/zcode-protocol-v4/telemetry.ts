@@ -146,13 +146,7 @@ const toolLifecycleFactSchema = z
       // 移除上报模块时丢失了原版 redactTelemetryText 的密钥拒绝规则；字段校验仍需保留。
       // 其余 URL/路径/空白模式已由上面的标识字符合同拒绝。
       .refine(
-        (value) =>
-          ![
-            /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/iu,
-            /\bgh[pousr]_[A-Za-z0-9]{20,}\b/u,
-            /\bAKIA[A-Z0-9]{16}\b/u,
-            /\bAIza[0-9A-Za-z_-]{30,}\b/u,
-          ].some((pattern) => pattern.test(value)),
+        (value) => !looksLikeSecretIdentifier(value),
         "skillName must be a bounded, safe resolved Skill identifier",
       )
       .optional(),
@@ -327,6 +321,52 @@ export type ConversationTelemetryFact =
   | Exclude<ConversationTelemetryFactBase, { kind: "turn.started" }>
   | TurnStartedConversationTelemetryFact;
 
+
+/**
+ * 密钥形态标识拒绝（OpenZWork）：v3.18.0 合并期曾把该规则只留在 schema refine，
+ * 投影侧内联过滤缺同款检查，命中密钥形态的 skillName 会让整条事实被 schema
+ * parse 丢弃（v4-gateway 技能隐私用例失败）。两处共用本谓词（v3.18.1 同步收口）。
+ */
+export function looksLikeSecretIdentifier(value: string): boolean {
+  return [
+    /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{12,}\b/iu,
+    /\bgh[pousr]_[A-Za-z0-9]{20,}\b/u,
+    /\bAKIA[A-Z0-9]{16}\b/u,
+    /\bAIza[0-9A-Za-z_-]{30,}\b/u,
+  ].some((pattern) => pattern.test(value));
+}
+
 export const conversationTelemetryFactSchema = conversationTelemetryFactRuntimeSchema.transform(
   (fact): ConversationTelemetryFact => fact as ConversationTelemetryFact,
 );
+
+/**
+ * 模型请求指标：一次成功完成的模型请求的耗时与服务商 usage，供扩展进程算生成速率。
+ * 规格：docs/monitoring/conversation-telemetry-v4.md「模型请求指标」。
+ *
+ * 兼容性：不进 `ConversationTelemetryFact` union，也不加到 `model.request.status`。
+ * 上面每个分支都是 strict，旧 App 解析到未知字段会丢掉整条事实；它走独立通知
+ * `V4_NOTIFICATIONS.modelRequestMetrics`，旧 App 对未知通知方法不做处理。
+ * 只带 id、模型身份、耗时与 token 数，不带正文、header、URL 或 finish reason。
+ */
+export const modelRequestMetricsFactSchema = z
+  .object({
+    ...factBaseFields,
+    kind: z.literal("model.request.metrics"),
+    requestId: z.string().min(1),
+    providerId: z.string(),
+    modelId: z.string(),
+    // 请求用途：main_turn / session_title / compact / subagent …，来自请求 trace 属性。
+    querySource: z.string().optional(),
+    queryId: z.string().min(1).optional(),
+    durationMs: z.number().nonnegative(),
+    timeToFirstContentMs: z.number().nonnegative().optional(),
+    inputTokens: z.number().nonnegative().optional(),
+    outputTokens: z.number().nonnegative().optional(),
+    reasoningTokens: z.number().nonnegative().optional(),
+    cacheReadTokens: z.number().nonnegative().optional(),
+    cacheWriteTokens: z.number().nonnegative().optional(),
+    totalTokens: z.number().nonnegative().optional(),
+  })
+  .strict();
+export type ModelRequestMetricsFact = z.infer<typeof modelRequestMetricsFactSchema>;

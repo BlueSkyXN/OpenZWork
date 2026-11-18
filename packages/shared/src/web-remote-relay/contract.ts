@@ -120,3 +120,61 @@ export const WEB_REMOTE_CONTROL_RELAY_V2_HTTP = {
   delete: { method: "POST", path: "/api/v1/remote/device/delete" },
   token: { method: "POST", path: "/api/v1/remote/token" },
 } as const;
+export const WEB_REMOTE_CONTROL_RELAY_V2_WS_PATH = "/api/v1/remote/ws2";
+export type WebRemoteControlRelayV2HttpOperation = keyof typeof WEB_REMOTE_CONTROL_RELAY_V2_HTTP;
+
+const httpRequests = {
+  register: z.strictObject({ device_mid: identifier }),
+  list: z.strictObject({}),
+  delete: z.strictObject({ device_sid: identifier }),
+  token: z.strictObject({ role }),
+};
+// 服务端新增响应字段应向后兼容；z.object 校验已声明字段并剥离未知字段，嵌套对象同理。
+const device = z.object({
+  device_sid: deviceSid,
+  device_mid: identifier,
+  online: z.boolean(),
+  created_at: unixSeconds,
+  meta: z.object(meta.shape),
+});
+const token = z.object({
+  // 16 字节无填充 Base64URL 的末字符只能使用高两位。
+  token: z.string().regex(/^[A-Za-z0-9_-]{21}[AQgw]$/),
+  expires_in: z.number().int().positive(),
+});
+const httpError = z.object({
+  code: z
+    .number()
+    .int()
+    .refine((value) => value !== 0),
+  msg: z.string(),
+  data: z.null().optional(),
+});
+function response<T extends z.ZodType>(data: T) {
+  return z.union([z.object({ code: z.literal(0), msg: z.string(), data }), httpError]);
+}
+const httpResponses = {
+  register: response(device),
+  list: response(z.array(device)),
+  // Go Response.Data 带 omitempty：删除成功/失败可能省略 data。
+  delete: response(z.null().optional()),
+  token: response(token),
+};
+export type WebRemoteControlRelayV2Device = z.infer<typeof device>;
+export type WebRemoteControlRelayV2Token = z.infer<typeof token>;
+export type WebRemoteControlRelayV2HttpError = z.infer<typeof httpError>;
+export type WebRemoteControlRelayV2HttpRequest<K extends WebRemoteControlRelayV2HttpOperation> =
+  z.infer<(typeof httpRequests)[K]>;
+export type WebRemoteControlRelayV2HttpResponse<K extends WebRemoteControlRelayV2HttpOperation> =
+  z.infer<(typeof httpResponses)[K]>;
+
+/** HTTP 错误只保留分类，避免 JWT、token URL 或服务端正文进入日志与 renderer。 */
+export class WebRemoteControlV2ConnectionError extends Error {
+  constructor(
+    readonly reason: "auth-required" | "relay-unavailable",
+    readonly retryable = false,
+  ) {
+    super(reason);
+    this.name = "WebRemoteControlV2ConnectionError";
+  }
+}

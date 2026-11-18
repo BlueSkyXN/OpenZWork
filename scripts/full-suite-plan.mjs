@@ -19,7 +19,17 @@ export const FULL_SUITE_GROUPS = [
   { name: "ui-and-web", filter: ["packages/ui", "packages/web", "apps/dev-docs"], minutes: 30 },
   {
     name: "root-scripts",
-    filter: ["packages/shared/src/node/genUiPaths.test.ts", "packages/services/src/gen-ui"],
+    // v3.18.0 整合：上游 engineering 清单收编 .agents 技能脚本测试，root-scripts 补上
+    // 该前缀，保持分片并集等于全量发现（tests/ci/extended-parallel 分片守卫）。
+    filter: [
+      "packages/shared/src/node/genUiPaths.test.ts",
+      "packages/services/src/gen-ui",
+      ".agents",
+      // v3.18.0 新包：session-control 与 plugin-api 的测试由 root-scripts 兜底，
+      // 保持分片并集等于全量发现。
+      "packages/session-control",
+      "packages/plugin-api",
+    ],
     minutes: 10,
   },
 ];

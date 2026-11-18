@@ -1,15 +1,19 @@
+import designIconUrl from "@/assets/plugin-icons/design.png";
 import documentsIconUrl from "@/assets/plugin-icons/documents.png";
 import pdfIconUrl from "@/assets/plugin-icons/pdf.png";
 import presentationsIconUrl from "@/assets/plugin-icons/presentations.png";
 import spreadsheetsIconUrl from "@/assets/plugin-icons/spreadsheets.png";
+import visualizeIconUrl from "@/assets/plugin-icons/visualize.png";
 import { isTrustedImageUrl } from "@/lib/trustedImageUrl.js";
 
 const OFFICIAL_PLUGIN_ICON_BY_ID: Readonly<Record<string, string>> = {
+  "design@zcode-plugins-official": designIconUrl,
   "documents@zcode-plugins-official": documentsIconUrl,
   // OpenZWork(OZ-D009): image-search 已删除，不打包其图标。
   "pdf@zcode-plugins-official": pdfIconUrl,
   "presentations@zcode-plugins-official": presentationsIconUrl,
   "spreadsheets@zcode-plugins-official": spreadsheetsIconUrl,
+  "visualize@zcode-plugins-official": visualizeIconUrl,
 };
 
 const TRUSTED_BUNDLED_PLUGIN_ICONS = new Set(Object.values(OFFICIAL_PLUGIN_ICON_BY_ID));

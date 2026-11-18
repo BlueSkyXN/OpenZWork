@@ -196,7 +196,7 @@ V1-01 同时覆盖三种说明随选择切换，官方网页版本与共享常�
 
 V2/OAuth 用例不进入此功能矩阵；真实公网部署、手机硬件与不同网络运营商的可达性另行验收。候选 E2E 放入 manual-review/pending，不自动提升为正式套件。
 
-候选交互用例：`packages/desktop/test/e2e/conversation-session/manual-review/pending/web-remote-v1-connections.test.ts`。隔离 HOME、合成 relay、真实桌面与浏览器；不依赖真实模型请求。
+候选交互用例：`packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/web-remote-v1-connections.test.ts`。隔离 HOME、合成 relay、真实桌面与浏览器；不依赖真实模型请求。
 
 从仓库根目录运行三种连接方式的候选验收（包含真实官方中继与网页）：
 

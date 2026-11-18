@@ -8,9 +8,8 @@
 // background.ts 继续对外 re-export 这些名字，所以 agent-runtime.ts /
 // internal-turn-methods.ts 的既有 import 路径不变。
 
-import type { BackgroundTaskInfo, BackgroundTaskInfoStatus } from "../deps.js";
+import type {BackgroundTaskInfo, BackgroundTaskInfoStatus, TraceContext} from "../deps.js";
 import type { RuntimeTaskSnapshot, RuntimeTaskType } from "../../runtime-task/registry.js";
-import type { TraceContext } from "../deps.js";
 
 export type RuntimeBackgroundStopFailureReason =
   | "background_task_cancel_not_supported"
@@ -45,6 +44,7 @@ export type RuntimeBackgroundStopResult =
 export type RuntimeBackgroundStopInitiator = "user" | "model";
 
 export interface RuntimeBackgroundStopOptions {
+  expectedExecutionId?: string;
   initiator?: RuntimeBackgroundStopInitiator;
   strict?: boolean;
   traceContext?: TraceContext;

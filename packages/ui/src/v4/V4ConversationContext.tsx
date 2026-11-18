@@ -47,6 +47,8 @@ import { acquireWorkspaceConnection } from "@/v4/workspaceConnectionRegistry.js"
 import type { AttachmentUploadOptions } from "@/v4/attachmentUploadTransaction.js";
 
 export interface V4ConversationContextValue {
+  /** Provider 实际解析的远端 session scope；供 pane-local 诊断使用，不作为 V4 transport 路由输入。 */
+  remoteSessionId: string | null;
   layer: SessionDataLayer;
   sendCommand(
     envelope: CommandEnvelope,
@@ -172,6 +174,7 @@ function ReadyV4ConversationProvider({
     });
     const layer = new SessionDataLayer({ transport });
     return {
+      remoteSessionId,
       layer,
       sendCommand: (envelope: CommandEnvelope, context?: { projectId?: string | null }) =>
         transport.sendCommand(envelope, context),
@@ -396,6 +399,7 @@ function ReadyV4PaneConversationProvider({
                 lease.transport.onRuntimeLifecycle?.(listener) ?? (() => {}),
             }
           : {}),
+        remoteSessionId: scope.remoteSessionId ?? null,
       } satisfies V4ConversationContextValue,
     };
   }, [

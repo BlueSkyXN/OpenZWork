@@ -21,6 +21,22 @@ export async function openFirstBrowserTab(): Promise<void> {
   await waitForTabCount(1);
 }
 
+// OW-P034：从宿主的当前标签读取已提交的页面标题，导航中无需向旧 guest 发脚本。
+export function readActiveBrowserTabTitle(root: ParentNode = document): string | null {
+  return root.querySelector(
+    '[data-side-pane-tab-id^="browser:"][data-state="active"] [data-side-pane-tab-title]',
+  )?.textContent ?? null;
+}
+
+export async function submitBrowserAddress(input: ReturnType<typeof $>, url: string): Promise<void> {
+  // OW-P034：标签恢复时焦点可能回到 guest。按用户编辑顺序替换地址，向同一输入框发送回车。
+  await input.click();
+  await browser.keys([process.platform === "darwin" ? "Meta" : "Control", "a"]);
+  await input.addValue(url);
+  if ((await input.getValue()) !== url) throw new Error("浏览器地址栏未保留本次输入的目标地址");
+  await input.addValue("\uE007");
+}
+
 export async function clickCloseButton(tabId: string): Promise<void> {
   const clicked = await browser.execute((targetTabId) => {
     const trigger = document.querySelector<HTMLElement>(`[data-side-pane-tab-id="${targetTabId}"]`);
@@ -44,14 +60,16 @@ export async function ensureSidePaneEntryVisible(): Promise<void> {
         ),
       );
       if (visible) return true;
-      // 与产品 ⌥⌘B 共用真实 workspace shortcut，初始收起态与已展开态都兼容。
+      // 与产品快捷键共用真实 workspace shortcut（macOS ⌥⌘B，Windows/Linux Ctrl+Alt+B），初始收起态与已展开态都兼容。
       await browser.execute(() => {
+        const mac = navigator.platform.startsWith("Mac");
         window.dispatchEvent(
           new KeyboardEvent("keydown", {
             key: "b",
             code: "KeyB",
             altKey: true,
-            metaKey: true,
+            metaKey: mac,
+            ctrlKey: !mac,
             bubbles: true,
             cancelable: true,
           }),

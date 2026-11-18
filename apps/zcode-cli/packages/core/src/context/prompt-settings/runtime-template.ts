@@ -42,8 +42,9 @@ export function getRuntimePromptTemplate(
       return {
         ...template,
         available: context.presentationSurface === "zcode_desktop",
-        defaultContent: buildDesktopContextSection(context.genUiOutputDirectory).content,
-        runtimeBefore: buildDesktopRuntimeContent(context.genUiOutputDirectory),
+        // v3.18.0 起 Desktop 段按 boolean 取写法；目录本身随环境公告发送，不再内嵌模板。
+        defaultContent: buildDesktopContextSection(Boolean(context.genUiOutputDirectory)).content,
+        runtimeBefore: buildDesktopRuntimeContent(Boolean(context.genUiOutputDirectory)),
       };
     case "memory":
       return {

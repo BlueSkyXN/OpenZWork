@@ -15,16 +15,18 @@ OpenZWork is an AI coding workspace with desktop, browser, and terminal interfac
 
 ## Updates
 
+- **2026-11-19** The source now tracks ZCode v3.18.2. When the desktop app moves its data directory, it also transfers the key needed to read saved credentials. [Integration notes](docs/openzwork/upstream/v3.18.2-integration.md)
+- **2026-11-15**: Updated to ZCode v3.18.1 (local memory diagnostics, mobile history navigation, Windows installer and streaming presentation fixes; see the [integration spec](docs/openzwork/upstream/v3.18.1-integration.md)).
+- **2026-11-11**: Updated to ZCode v3.18.0.
 - **2026-11-05**: Based on ZCode v3.17.2, with subagent and Plan permission fixes, draft authorization and remote session ownership fixes, and isolated local HTML previews. See the [integration spec](docs/openzwork/upstream/v3.17.2-integration.md) and [published releases](https://github.com/BlueSkyXN/OpenZWork/releases).
-- 2026-10-30: upstream ZCode v3.17.1 released.
-- 2026-10-19: Updated to ZCode v3.16.2.
+- 2026-10-30: upstream ZCode v3.17.1 released.- 2026-10-19: Updated to ZCode v3.16.2.
 - 2026-10-16: Updated to ZCode v3.16.1.
 - 2026-10-10: Updated to ZCode v3.15.1.
 - 2026-9-23: Updated to ZCode v3.14.3.
 
 ## Setup
 
-Install Git, Node.js **24.14.0**, and pnpm **10.33.2**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.
+Install Git, Node.js **24.14.0**, and pnpm **11.28.6**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.
 
 ```bash
 pnpm bootstrap

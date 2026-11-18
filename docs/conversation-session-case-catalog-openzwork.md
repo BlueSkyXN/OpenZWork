@@ -22,7 +22,7 @@ NCM01–NCM11 为 accepted，范围、设置、动作、断言与剪枝见 [指�
 | SID04 | 手机打开两种旧 ID，引用发送后刷新                                      | 原 ID 与新增消息保留，引用保持 session 类型                                                                                                                                                                       |
 | SID05 | 旧客户端不带 sessionId，重复、并发、完整 Host/CLI 重启和预留后崩溃重放 | 同命令只预留一个 UUID；CLI 输入不重复执行；已有 session\_ 精确沿用；已接纳未执行的 firstInput 重启后点击横幅重发使用新 commandId、新 UUID，只执行一次；workspace rekey 保留映射，冲突整笔回滚；隔离和删除保护成立 |
 
-候选位于 `conversation-session/manual-review/pending/conversation-session-id-compatibility.test.ts`；
+候选位于 `conversation-session/remote/installation/manual-review/pending/conversation-session-id-compatibility.test.ts`；
 CLI 定向回归覆盖工具 schema/精确查询、混合引用去重和邮箱隔离。手机交互验证单独登记。
 
 ## Web 远控大 RPC 容量（MRL，2026-10-27 accepted）
@@ -103,15 +103,15 @@ MRO04（accepted / pending）：固定回放建立已有会话，桌面打开终
 侧栏迟到关闭回归（accepted / pending）：固定回放建立原任务，主进程关闭回执受控延迟时，经过真实登录入口重挂 App 并返回原任务，
 新增终端 B，再释放旧回执并再次重挂，B 的标签和历史仍保留；旧关闭继续释放指定资源。
 原有浏览器标签壳同步问题不纳入本次断言。
-对应候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-side-pane-late-close.test.ts`。
+对应候选：`packages/desktop/test/e2e/conversation-session/branching/conversation-session-side-pane-late-close.test.ts`。
 仅外部账号与 relay 使用 loopback fixture，
 模型只用固定回放建立会话，不评价生成质量。Host RPC 补充输入、输出、resize、dispose、其他频道拒绝和桌面对照。
-候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-web-remote-terminal.test.ts`。
+候选：`packages/desktop/test/e2e/conversation-session/remote/mobile/manual-review/pending/conversation-session-web-remote-terminal.test.ts`。
 规格见 [上游远控架构：启动调用边界与 Office XSS 关系](web-remote-control/web-remote-control-architecture.md#启动调用边界与-office-xss-关系)。
 
 ## Gen UI 输入上下文分离（GUC，2026-10-20）
 
-GUC01–GUC08 的设置、动作、断言与证据层见 [Gen UI 输入上下文规格](specs/gen-ui-model-context.md#用例与剪枝)。
+GUC01–GUC08 的设置、动作、断言与证据层见 [Gen UI 输入上下文规格](specs/gen-ui-model-context-openzwork.md#用例与剪枝)。
 已确认目标：App 不把状态拼进正文，CLI 复用 system reminder，所有可见出口消费干净正文。
 输入快照沿用 canonical intent；retry/历史编辑复用，队列撤回重发重新采集。重启丢弃未执行队列的既有语义不变。
 旧格式以字段缺失为兼容判据；新格式空数组保留用户字面标签。带状态输入经过 Host/CLI 两跳能力检查。
@@ -132,7 +132,7 @@ MP01–MP12 的前置、动作、断言与证据见[移动端事件推送规格]
 
 ## 项目与任务草稿生命周期（2026-10-16）
 
-PD13–PD16（2026-10-30，accepted / pending）：远端草稿在 projectId 就绪后才预热和首发；覆盖保留作用域的完整冷启动、只删除导航作用域后的冷启动与 Enter 拦截、显式项目新建后的真实首发、手机 shared-host 恢复及本地未归类首发。候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-remote-draft-prewarm.test.ts`；covered（候选未转正）：`packages/desktop/.e2e-artifacts/local-docker-20261030074146-15e10a` 完整通过，含真实 Provider 请求和 Host 项目归属断言。macOS Electron → SSH Linux arm64；手机为 Chrome 390px 触摸视口与真实 relay/Host，缺归属为受控 store 前置；不是实体手机或 Windows/Linux 桌面证据。缺失作用域不归因于升级。
+PD13–PD16（2026-10-30，accepted / pending）：远端草稿在 projectId 就绪后才预热和首发；覆盖保留作用域的完整冷启动、只删除导航作用域后的冷启动与 Enter 拦截、显式项目新建后的真实首发、手机 shared-host 恢复及本地未归类首发。候选 `packages/desktop/test/e2e/conversation-session/remote/connection/conversation-session-remote-draft-prewarm.test.ts`；covered（候选未转正）：`packages/desktop/.e2e-artifacts/local-docker-20261030074146-15e10a` 完整通过，含真实 Provider 请求和 Host 项目归属断言。macOS Electron → SSH Linux arm64；手机为 Chrome 390px 触摸视口与真实 relay/Host，缺归属为受控 store 前置；不是实体手机或 Windows/Linux 桌面证据。缺失作用域不归因于升级。
 
 PD01–PD12 的前置、动作、断言与证据要求见 [统一生命周期规格](ui/project-task-draft-lifecycle.md)。产品语义 accepted；自动化保持 manual-review/pending，运行证据见 coverage matrix 与规格的验证记录，不代表已转正或发布。覆盖项目/任务新建、同目录项目隔离、接纳后默认配置、目录复用、迟到回执、手机独立恢复及旧数据认领。
 
@@ -158,7 +158,7 @@ PD12 集成边界：新建项目交接正文与内存附件（同目录也交接
 - mobile replayable：输入进入同一 Agent，历史组装由 Core/SQLite roundtrip 覆盖；本次不改变客户端交互或 replay 订阅，不扩展手机整机 E2E。
 - PDF、混合媒体、附件-only、文本、MCS 和旧 metadata 由 22 项 CLI 附件专项回归覆盖。
 - 本次修复覆盖普通首发与普通队列输入的历史组装；steer 组装改动已回退，附件 guide 不在该专项覆盖范围内。
-- pending spec：`packages/desktop/test/e2e/conversation-session/conversation-session-attachment-resume.test.ts`；验证状态见 coverage matrix。
+- pending spec：`packages/desktop/test/e2e/conversation-session/attachments/conversation-session-attachment-resume.test.ts`；验证状态见 coverage matrix。
 
 ## Composer 当前项目快捷编辑（2026-10-13 accepted）
 
@@ -191,7 +191,7 @@ VP15 扩展：原生 session 拖入项目时覆盖标题和任务列表的蓝色
 当前契约与 GRP01–GRP10 的设置、动作、断言见[分组视图](ui/task-grouped-view.md#恢复验收)。
 GRP11（accepted）：按删除前源码恢复分组 UI/交互，覆盖 Hash 入口、颜色圆标、名称输入与颜色菜单并存、右键操作、空态新建、草稿行、整行拖动与取消、组折叠/数量/吸顶；沿用真实 Host 和当前单节点命令。
 GRP06/CR-01（accepted）：首发 accepted 后挂起组织登记，取消原 pane 并产生新的项目目录事实；共享目录仍刷新、原首发 UI 等待结束。释放登记后原任务按原 placement 入组一次，不重新导航或创建 session。分组重读挂起与确认前取消另由真实 hook 故障注入覆盖。
-新增 `conversation-session/manual-review/pending/conversation-session-task-groups.test.ts`：
+新增 `conversation-session/remote/installation/manual-review/pending/conversation-session-task-groups.test.ts`：
 旧 grouped 偏好升级、新选择重载优先、三视图菜单、组名/颜色/取消组、组内首发、
 置顶/归档恢复、手柄拖拽和千行虚拟列表/吸顶/折叠；使用真实 Host/CLI 和固定回复回放。
 手机 GRP09 扩展已有 `conversation-session-virtual-project-mobile.test.ts`，经过实际手机 Web、
@@ -204,11 +204,11 @@ GRP06/CR-01（accepted）：首发 accepted 后挂起组织登记，取消原 pa
 
 ## 远程视觉与无障碍（RDUX-A11Y，accepted）
 
-RDUX-HIDE-DEVICE（accepted / pending）：默认关闭；远程设备设置中开启后，所有桌面项目行隐藏设备名（包括同名、置顶、离线和待处理），图标、状态、未读及完整身份详情保留。关闭恢复，重载与重建 store 保留偏好，两个桌面窗口同步且不回播；手机/Web 项目行及聊天项目菜单不隐藏。UT 验证公开 store 与项目行/设置 UI；浏览器候选 `packages/ui/test/browser/manual-review/pending/project-device-visibility.test.mjs` 验证真实组件交互、多窗口、重载与中英文/深浅/窄屏；桌面候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-project-device-visibility.test.ts` 验证设置入口与重载持久化。未涉及 SSH 拨号、会话协议或数据迁移，不为这些组合重复连接用例。
+RDUX-HIDE-DEVICE（accepted / pending）：默认关闭；远程设备设置中开启后，所有桌面项目行隐藏设备名（包括同名、置顶、离线和待处理），图标、状态、未读及完整身份详情保留。关闭恢复，重载与重建 store 保留偏好，两个桌面窗口同步且不回播；手机/Web 项目行及聊天项目菜单不隐藏。UT 验证公开 store 与项目行/设置 UI；浏览器候选 `packages/ui/test/browser/manual-review/pending/project-device-visibility.test.mjs` 验证真实组件交互、多窗口、重载与中英文/深浅/窄屏；桌面候选 `packages/desktop/test/e2e/conversation-session/projects/manual-review/pending/conversation-session-project-device-visibility.test.ts` 验证设置入口与重载持久化。未涉及 SSH 拨号、会话协议或数据迁移，不为这些组合重复连接用例。
 
 2026-10-24 验证：受影响单测 534 个规格、5667 条用例通过；浏览器候选 9/9 通过，包含中英文 × 深浅主题 × 390/1200px 布局、同名/置顶/离线/待更新项目、多窗口广播、刷新恢复、详情与手机隔离；截图在 `packages/desktop/.e2e-artifacts/project-device-visibility/`。macOS Desktop 候选 1/1 通过，run `desktop-e2e-20261024002055372-p97632-c28804c7ff42dc30`，验证真实设置入口、开关与刷新持久化；没有模型请求。pending 回放需指定 `E2E_PROVIDER_HTTP_MODE=replay E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/common.json`。未实跑原生 Windows/Linux 或实体手机；候选保持 pending，不据此声明 SSH 连接覆盖。
 
-RDUX-HIDE-DEVICE-SSH（accepted / pending）：在本机新建的隔离 SSH 容器上使用真实 Electron、Host、远端 Server/CLI 和受控模型回放，以两个独立远端账号（两个 Source）创建两个远程项目与任务；项目同名并置顶后切换隐藏偏好，断言项目身份、任务历史、设备设置与完整详情保留。隐藏时通过项目菜单切换、选任务和续发，主动断开、容器停止/启动后重连原目录，并完整重启 Electron 后验证偏好及历史；关闭偏好恢复行内设备名。候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-project-device-visibility-ssh.test.ts`。既有 `conversation-session-ssh-remote-connection-p0.test.ts` 回归错误密码/正确密码连接，`conversation-session-remote-sidebar-menus.test.ts` 回归默认设备名、在线/离线详情、项目菜单、搜索与重连。本轮只新增验证，不改变产品行为；旧的受控浏览器证据不替代真实 SSH 证据。
+RDUX-HIDE-DEVICE-SSH（accepted / pending）：在本机新建的隔离 SSH 容器上使用真实 Electron、Host、远端 Server/CLI 和受控模型回放，以两个独立远端账号（两个 Source）创建两个远程项目与任务；项目同名并置顶后切换隐藏偏好，断言项目身份、任务历史、设备设置与完整详情保留。隐藏时通过项目菜单切换、选任务和续发，主动断开、容器停止/启动后重连原目录，并完整重启 Electron 后验证偏好及历史；关闭偏好恢复行内设备名。候选 `packages/desktop/test/e2e/conversation-session/remote/navigation/manual-review/pending/conversation-session-project-device-visibility-ssh.test.ts`。既有 `conversation-session-ssh-remote-connection-p0.test.ts` 回归错误密码/正确密码连接，`conversation-session-remote-sidebar-menus.test.ts` 回归默认设备名、在线/离线详情、项目菜单、搜索与重连。本轮只新增验证，不改变产品行为；旧的受控浏览器证据不替代真实 SSH 证据。
 
 2026-10-24 真实 SSH 补验：macOS Desktop → 新建 Ubuntu 22.04 arm64 容器，源码基线 `208ff0d2711`（业务源码指纹 `6d2b521ff612`）。`local-docker-20261024002749-4228be` 的既有连接 P0、项目菜单用例 2/2 通过；`local-docker-20261024004332-e851c0` 的 RDUX-HIDE-DEVICE-SSH 1/1 全流程通过，真实双窗口、两个独立账号/Source 的同名项目、置顶、设备详情、草稿项目搜索、任务首发/续发及历史隔离、主动断开/重连、完整 Electron 冷重启和容器停启后恢复均有断言。模型响应为 case-local 回放；连接、远端 Server/CLI、项目和会话存储均走真实链路。工件位于 `packages/desktop/.e2e-artifacts/<run-id>/`，综合用例保存 `device-ssh-evidence.json` 和 8 张截图；两个完成批次的容器均已自动删除。
 
@@ -253,7 +253,7 @@ RDUX-BASELINE（accepted / pending）：侧栏项目行与聊天框项目列表�
 
 Issue 02：真实 SSH 未占用端口 5 秒内出现“无法连接到主机”；反馈预填只含脱敏的可见连接日志，不默认附带全量诊断。首装/失败/重试完整链路的所有用户日志均不含配置、绝对路径、凭据或设备标识，安装确认记录为 info。
 
-验证：`packages/desktop/test/e2e/conversation-session/conversation-session-remote-connection-log-contract.test.ts`（pending，未人工转正）；已有 `conversation-session-ssh-remote-connection-p0.test.ts` 增强日志断言。2026-09-27 与 SSH-P0-CONN-01/02 一起实跑 2/2 通过；1400/480px 深浅主题已核对，手机 replayable 未实跑。
+验证：`packages/desktop/test/e2e/conversation-session/remote/connection/conversation-session-remote-connection-log-contract.test.ts`（pending，未人工转正）；已有 `conversation-session-ssh-remote-connection-p0.test.ts` 增强日志断言。2026-09-27 与 SSH-P0-CONN-01/02 一起实跑 2/2 通过；1400/480px 深浅主题已核对，手机 replayable 未实跑。
 
 ## 远端安装进度（RDUX-16，accepted）
 
@@ -265,7 +265,7 @@ Issue 02：真实 SSH 未占用端口 5 秒内出现“无法连接到主机”�
 - HF02：初始化失败；历史/草稿/滚动保留，输入框上方重试；重复点击及双连接只启动一次新尝试。证据：gateway/resume 单测 + UI E2E。
 - HF03：分页、快速切换、warm/live child、compact 修复、远端 identity、continuous/replayable 与旧能力组合。复用现有 cold-resume/transport 回归，补足初始化窗口断言。
 - 剪枝：附件/工作流详情及 App 提前加载不在本轮；不新增全局缓存、队列或初始化 phase。
-- pending spec：`packages/desktop/test/e2e/conversation-session/conversation-session-history-first.test.ts`。HF01/HF02 已在 macOS 本分支构建产物上通过（2/2），仍待人工审核，未晋升 formal/Docker gate。完整验证与限制见冷恢复 spec §8。
+- pending spec：`packages/desktop/test/e2e/conversation-session/history/conversation-session-history-first.test.ts`。HF01/HF02 已在 macOS 本分支构建产物上通过（2/2），仍待人工审核，未晋升 formal/Docker gate。完整验证与限制见冷恢复 spec §8。
 
 SHR22 补充验收：用户／项目自定义 profile 只支持 agents 根目录直接文件。服务与独立 CLI 测试覆盖初始化、热更新、重扫和插件递归发现不变；现有双 Host Desktop 用例加入深层用户文件，核对初始化及后续父轮实际 provider 请求不包含该定义，不新增 fixture 或 CI 准入。
 
@@ -1619,7 +1619,7 @@ O19 的 E2E 剪枝：只覆盖两个真实可达的 tool execution error：TaskO
 BDO01–BDO06 复用已经确认的 Bash 直写、5 GiB 软阈值和根退出结算合同，具体 setup/action/
 assertions 与覆盖率口径见 [Bash 直接文件输出 E2E](./testing/bash-direct-output-e2e-coverage.md)。
 状态为 accepted；2026-09-08 用户 review 后授权转正，正式 spec 为
-`packages/desktop/test/e2e/conversation-session/conversation-session-bash-direct-output.test.ts`。
+`packages/desktop/test/e2e/conversation-session/tools/conversation-session-bash-direct-output.test.ts`。
 只增加本地 Desktop 的确定性代表，不扩展手机恢复、平台杀树或磁盘耗尽的产品语义。
 BDO07 按用户补充要求验证同一前台 Bash 的三段实时输出：每段都先确认文件和展开预览
 已更新、进程仍存活且工具尚未返回，再放行下一段；展开态连续刷新，收起不渲染输出，再展开显示最新值。
@@ -2280,7 +2280,7 @@ pending spec 中覆盖 live、switch 和 cold resume。provider family、video �
 追加一条 mixed-media 代表：同一历史包含 PNG+MP4，media-capable 首轮固定两个
 provider block 与两个 path，切换 text-only 后固定两个 omitted 与原 path；unknown capability、inline
 cold rebuild 和 provider family 继续由 focused tests 证明。pending spec 为
-`packages/desktop/test/e2e/conversation-session/conversation-session-mixed-media-path-strip.test.ts`。
+`packages/desktop/test/e2e/conversation-session/attachments/conversation-session-mixed-media-path-strip.test.ts`。
 
 VI06/VI07 的状态组合已按用户确认剪枝：Desktop local 增加 authorized local-source query；手机 Web
 与 SSH/WSL/Docker 保持 shared-host chunk query，不与 provider、模型能力、theme 或 locale 做笛卡尔积；
@@ -3028,7 +3028,7 @@ projectWorkspaceTabs = project only
 | CWP20 | Desktop 聊天菜单打开设备管理分类表单                                                                                                                | 单击/双击可见类型分段，切换另一类型后再次双击，取消返回聊天后重开                                | remoteKindDoubleClickOpensSettings         | 分段保持可见，选中态与 SSH / Docker / Windows WSL / 开发态 Server 对应字段一致；全程零表单提交，不建立连接或进入目录；保留平台展示门禁                                                                                                                                                                                                                              | accepted |
 
 CWP13–16/19 的 accepted/missing 是历史登记，不再表示待实现的产品合同；本次不移动 spec、不转正。
-原代表 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-remote-project-conversation-scope.test.ts`
+原代表 `packages/desktop/test/e2e/conversation-session/remote/configuration/manual-review/pending/conversation-session-ssh-remote-project-conversation-scope.test.ts`
 于 2026-08-28 真实 SSH Electron 回放 1 passing，artifact 为
 `desktop-e2e-20260828023242575-p87386-071a9e0ea38732ee`，仍 pending。
 该结果只证明当时 connect-and-chat 语义，不能替代当前项目导航验收；完整前置与断言见
@@ -3804,13 +3804,13 @@ WFS03（accepted）：Snippet 运行→完成/失败；运行摘要计时且代�
 
 权威语义：`docs/superpowers/specs/2026-09-09-virtual-project-design.md`；覆盖剪枝及完整 VP01–VP10 在实施记录。下列候选未转正，不计 formal gate。
 
-| Case | 状态                                                | Setup → Action → Assertion                                                           | 入口                                                                                          |
-| ---- | --------------------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| VP01 | partial：首窗两库 ledger E2E 通过（仍 pending）     | 首个窗口可用 → 只读隔离 HOME 两库 ledger → app v3 与 CLI 0020 均已完成；无须创建会话 | `packages/desktop/test/e2e/conversation-session/conversation-session-virtual-project.test.ts` |
-| VP04 | partial：空 roots CRUD/恢复 E2E 已通过              | 空项目 → 新建/编辑多 roots/软删/同集恢复 → 名称、主要目录、roots 与恢复 ID 一致      | `packages/desktop/test/e2e/conversation-session/conversation-session-virtual-project.test.ts` |
-| VP05 | pending：未发送草稿复用 cwd，按当前生命周期重新验证 | 同 cwd 双项目与未归类任务 → 创建/移动/重启 → cwd 不变，明确归属保留，NULL 不重新归类 | 同上 + storage contract                                                                       |
-| VP06 | planned                                             | 双 root 项目 → create/resume/cold subscribe → 附加目录可用且配置仍按 cwd             | CLI/Host focused + 待补 GUI                                                                   |
-| VP08 | partial：桌面离线移除/重载 E2E 已通过               | 删除本机远端入口 → 迟到刷新/重连 → 不复活、不改远端事实                              | storage + pending virtual-project E2E；真重连/手机待补                                        |
+| Case | 状态                                                | Setup → Action → Assertion                                                           | 入口                                                                                                   |
+| ---- | --------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| VP01 | partial：首窗两库 ledger E2E 通过（仍 pending）     | 首个窗口可用 → 只读隔离 HOME 两库 ledger → app v3 与 CLI 0020 均已完成；无须创建会话 | `packages/desktop/test/e2e/conversation-session/projects/conversation-session-virtual-project.test.ts` |
+| VP04 | partial：空 roots CRUD/恢复 E2E 已通过              | 空项目 → 新建/编辑多 roots/软删/同集恢复 → 名称、主要目录、roots 与恢复 ID 一致      | `packages/desktop/test/e2e/conversation-session/projects/conversation-session-virtual-project.test.ts` |
+| VP05 | pending：未发送草稿复用 cwd，按当前生命周期重新验证 | 同 cwd 双项目与未归类任务 → 创建/移动/重启 → cwd 不变，明确归属保留，NULL 不重新归类 | 同上 + storage contract                                                                                |
+| VP06 | planned                                             | 双 root 项目 → create/resume/cold subscribe → 附加目录可用且配置仍按 cwd             | CLI/Host focused + 待补 GUI                                                                            |
+| VP08 | partial：桌面离线移除/重载 E2E 已通过               | 删除本机远端入口 → 迟到刷新/重连 → 不复活、不改远端事实                              | storage + pending virtual-project E2E；真重连/手机待补                                                 |
 
 | VP10 | partial：定时项目选择/提交 E2E 已通过 | 虚拟项目 → 定时/闲时定义 → 改 roots → 派发/恢复继续保存的 cwd 和附加目录 | scheduled service/adapter tests + pending virtual-project E2E |
 
@@ -3828,13 +3828,13 @@ VP12 实测：`desktop-e2e-20260910234135216-p700-9ed05502a4283931` 八例通过
 
 MRO01（accepted / pending，2026-10-13）：手机已有本地任务时点击另一个远程项目任务 → 等待 bridge 时留在列表；结构化失败展示 message、不展示 `[object Object]` 或旧本地聊天；重试成功后以完整远程身份打开目标任务；同 workspace 再打开不新建 bridge。spec：`docs/web-remote-control/mobile-task-home-design.md`；候选：`packages/web/test/e2e/manual-review/pending/remote-task-open.mjs`。真实 Web 入口、受控桌面 RPC/relay，深浅主题与中英文；服务集成回归覆盖真实存储与身份适配器、错误身份/目录拒绝。未计入 formal / Docker 或真实 SSH、真机覆盖。
 
-MRO02（accepted / pending，2026-10-13）：宽屏与窄屏 Web 从本机切入远端任务及刷新后，仍显示窗口本机项目、置顶与已添加远端入口，未添加远端项目不出现；窗口项目修改同步，工作区原 project/broadcast 查询保持 Source 语义。错误能力声明必须失败，旧 bridge 回包与事件不得污染新目录。候选 `packages/web/test/e2e/manual-review/pending/remote-project-directory.mjs`；shared/schema、Host RPC、Client 能力和 UI owner 定向测试补充非 UI 证据。真实远端闭环由 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-web-remote-project-directory.test.ts` 使用隔离 Electron、loopback relay 与独立 SSH 容器验证：建本机/置顶/保留远端及未保留项目，经真实 bridge 导航和 reload 后检查 UI 集合、Host 目录及源服务身份。不以受控桥接替代；本项不修改 Root 重挂载、账号归属和未读规则。 Header 补充回归（2026-10-14）：远控打开任务后连接状态和设备名正确；宽窄屏、深浅主题、中英文共 8 组受控 bridge 浏览器回归通过，宽屏另验刷新后 Header，窄屏刷新后验目录；未重跑真实 SSH。 Header 断言分别等待连接状态和设备名就绪；bridge 登记早于目录读取完成时，不以占位名称判失败，名称未达到预期仍须超时失败。
+MRO02（accepted / pending，2026-10-13）：宽屏与窄屏 Web 从本机切入远端任务及刷新后，仍显示窗口本机项目、置顶与已添加远端入口，未添加远端项目不出现；窗口项目修改同步，工作区原 project/broadcast 查询保持 Source 语义。错误能力声明必须失败，旧 bridge 回包与事件不得污染新目录。候选 `packages/web/test/e2e/manual-review/pending/remote-project-directory.mjs`；shared/schema、Host RPC、Client 能力和 UI owner 定向测试补充非 UI 证据。真实远端闭环由 `packages/desktop/test/e2e/conversation-session/remote/mobile/manual-review/pending/conversation-session-web-remote-project-directory.test.ts` 使用隔离 Electron、loopback relay 与独立 SSH 容器验证：建本机/置顶/保留远端及未保留项目，经真实 bridge 导航和 reload 后检查 UI 集合、Host 目录及源服务身份。不以受控桥接替代；本项不修改 Root 重挂载、账号归属和未读规则。 Header 补充回归（2026-10-14）：远控打开任务后连接状态和设备名正确；宽窄屏、深浅主题、中英文共 8 组受控 bridge 浏览器回归通过，宽屏另验刷新后 Header，窄屏刷新后验目录；未重跑真实 SSH。 Header 断言分别等待连接状态和设备名就绪；bridge 登记早于目录读取完成时，不以占位名称判失败，名称未达到预期仍须超时失败。
 
 MRO02 追加回归（accepted / pending）：目录就绪期间丢失首个能力请求，恢复后由 pending bridge 重放并正常打开；不延长原恢复期限。
 
 MRO02 验证（2026-10-13）：受控 Web 1024/390px × 中英文 × 深浅主题 8/8，通过真实 RPC、项目服务和隔离 SQLite 验证目录集合、窗口变化、项目置顶与 Source 查询隔离（`.tmp/remote-project-directory-summary.json`）。真实 Electron + Chrome 1440/390px + 独立 Linux SSH 容器用例 1/1 PASS，运行 `r3-server-wrc-directory-20261013-p2d`，同时断言窗口目录与 Source 实际项目集合。新 Source 的首次引导经真实 Escape 退出作为用例前置；先前两轮停在引导遮挡，不计通过。仍为 pending，不计实体手机、Windows/WSL 或 formal/Docker 准入；无模型请求。
 
-MRO03（accepted / pending，2026-10-13）：桌面查看其它任务、Web/手机前台实际显示 T，T 完成后不写未读；退首页、后台或断线时完成则写未读，返回前台/重连重新声明后按权威 marker 清除。宽窄屏覆盖草稿晋升，同路径不同 Source 由定向时序测试覆盖。单一 desktop writer 的定向时序测试证明：写入途中查看、写入已回包后查看、慢读取期间离开再完成保留新 marker、过期 owner/bridge 不提交、重复有效查看不擦除手动未读。E2E 使用隔离桌面、loopback relay 与 case-local 受控回放，断言 UI、状态事件和持久 marker；无真实模型额度，不修改 sidebar 生命周期或 Controller gap 恢复。候选 `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-web-remote-unread.test.ts`，Web reporter 与协议/schema测试补充事件/前台边界；同一候选增加真实 SSH Source 的前台完成保持已读、离开后完成置未读、返回后清除的核心闭环，使用独立容器与受控回放，不将 MRO02 的目录导航当成远端未读覆盖。
+MRO03（accepted / pending，2026-10-13）：桌面查看其它任务、Web/手机前台实际显示 T，T 完成后不写未读；退首页、后台或断线时完成则写未读，返回前台/重连重新声明后按权威 marker 清除。宽窄屏覆盖草稿晋升，同路径不同 Source 由定向时序测试覆盖。单一 desktop writer 的定向时序测试证明：写入途中查看、写入已回包后查看、慢读取期间离开再完成保留新 marker、过期 owner/bridge 不提交、重复有效查看不擦除手动未读。E2E 使用隔离桌面、loopback relay 与 case-local 受控回放，断言 UI、状态事件和持久 marker；无真实模型额度，不修改 sidebar 生命周期或 Controller gap 恢复。候选 `packages/desktop/test/e2e/conversation-session/remote/mobile/manual-review/pending/conversation-session-web-remote-unread.test.ts`，Web reporter 与协议/schema测试补充事件/前台边界；同一候选增加真实 SSH Source 的前台完成保持已读、离开后完成置未读、返回后清除的核心闭环，使用独立容器与受控回放，不将 MRO02 的目录导航当成远端未读覆盖。
 
 MRO03 追加回归（accepted / pending）：Web 连续查看同一任务时，桌面手动标未读后跨 767px 断点往返，持久 marker 与蓝点保持；真正返回 Home 后再进入任务仍清除未读。查看上报 owner 不随宽窄布局换代。初始聊天意图只随导航变化消费，Home → 宽屏 → 窄屏不得重放旧意图。
 
@@ -3848,7 +3848,7 @@ MRO03 验证（2026-10-14）：最新构建运行 `r3-server-wrc-unread-20261013
 
 VP13（pending）：390px 手机通过实际 relay/shared-host 配对本地桌面 → 显示同一虚拟项目（含未开 tab 的 root）→ 项目新建草稿进入新 cwd 且保留 projectId → 返回首页全局新建分配另一个未归类 cwd → 桌面 tab 与 Host 数不因手机导航增加。远端无 tab Source admission/失效由独立回归验证，真实 URL/SSH 手机执行仍另列待补。项目/provider/mention 交接由 Root 回归覆盖，不以纯草稿 GUI 声称 CLI 已执行。
 
-VP13 实测：`packages/desktop/test/e2e/conversation-session/conversation-session-virtual-project-mobile.test.ts`，运行 `desktop-e2e-20260911004852556-p11949-7e2838ab53de5f5b` 1 pass；本地 390px 手机、实际 relay/shared-host、项目/全局草稿、桌面 tab/Host 数均已断言。仍为 pending，不计 formal gate；远端手机执行与冷恢复另列待补。
+VP13 实测：`packages/desktop/test/e2e/conversation-session/projects/conversation-session-virtual-project-mobile.test.ts`，运行 `desktop-e2e-20260911004852556-p11949-7e2838ab53de5f5b` 1 pass；本地 390px 手机、实际 relay/shared-host、项目/全局草稿、桌面 tab/Host 数均已断言。仍为 pending，不计 formal gate；远端手机执行与冷恢复另列待补。
 
 VP13 扩展（已实测，仍 pending）：项目草稿用 case-local synthetic provider 完成一轮，手机切到全局新目录后从项目树重开该既有任务，断言原 taskId/cwd 与回复均保留；该目录从未成为桌面 tab。新增 fixture/manifest 只验证持久化任务与导航，不评估模型生成质量，不等价于冷进程恢复。
 
@@ -3882,11 +3882,11 @@ VP17/18 验证回写：第 53 轮 `desktop-e2e-20260911030852184-p21904-e7779266
 - VP20：项目/任务分区折叠与顺序偏好；hover/focus/touch 和不同新建图标；项目行右键；时间线与底部连接入口隐藏。
 - VP21：空/悬空/仅已删成员 Group 跳过，归档成员保留（storage migration 单测）；用户空项目合法。
 
-E2E 更新到 packages/desktop/test/e2e/conversation-session/conversation-session-virtual-project.test.ts，沿用 case-local replay fixture；新增 UI 检查不请求模型。第 62 轮 `desktop-e2e-20260911042339326-p86585-46199afefdcc6fd0` 桌面主文件 9/9 通过，包含新建/编辑、Host 目录选择、分区折叠、远端执行与冷恢复及 1200/390px 明暗主题布局。相关单测 29 文件 / 129 项通过，含 VP21。第 60 轮其余桌面/引用/Bot 通过，手机 VP13 在 relay TLS 握手失败，新增手机创建/选目录断言尚未执行；保持 pending，不自动晋升。
+E2E 更新到 packages/desktop/test/e2e/conversation-session/projects/conversation-session-virtual-project.test.ts，沿用 case-local replay fixture；新增 UI 检查不请求模型。第 62 轮 `desktop-e2e-20260911042339326-p86585-46199afefdcc6fd0` 桌面主文件 9/9 通过，包含新建/编辑、Host 目录选择、分区折叠、远端执行与冷恢复及 1200/390px 明暗主题布局。相关单测 29 文件 / 129 项通过，含 VP21。第 60 轮其余桌面/引用/Bot 通过，手机 VP13 在 relay TLS 握手失败，新增手机创建/选目录断言尚未执行；保持 pending，不自动晋升。
 
 VP20 项目行验收补充：无独立箭头，单 root Folder/FolderOpen、多 root Folders/FoldersOpen 随折叠切换；hover 三按钮（Ellipsis/ListTree/MessageCirclePlus）和右键功能并存。验证下拉/右键打开编辑器后的指针恢复，单/多 root 文件树选择与新建任务、空 root 禁用、远端身份不回落本机。主文件 `desktop-e2e-20260911045528228-p14085-79b286cd69402942` 10/10 通过，新增项目行用例验证多 root 实际读取、返回后保持折叠，URL Source 用例验证未打开远端 root 的实际读取；单 root/空 root/手机 shared-host 路由由单测覆盖。沿用 pending 与 case-local fixture，新增 UI 检查不请求模型；本轮未验证实际手机查看文件。
 
-VP-WIDTH-01（accepted/pending）：修复长标题及走马灯副本反向撑开 Grid 分区造成的“显示更多”闪动/偏右。独立用例 `packages/desktop/test/e2e/conversation-session/conversation-session-sidebar-width-stability.test.ts` 验证静止宽度、居中、两分区分页及明暗主题/窄分区；隔离 HOME 合成索引，无模型请求。边界见 `docs/superpowers/specs/2026-09-11-project-sidebar-width-stability.md`。 验证：修复前溢出 686px；修复后 `desktop-e2e-20260911045425289-p13513-f9e2908aae9f6465` 通过，四组布局采样均无溢出/宽度跳变，居中误差小于 0.004px，两区 20→25 分页通过。保持 pending。
+VP-WIDTH-01（accepted/pending）：修复长标题及走马灯副本反向撑开 Grid 分区造成的“显示更多”闪动/偏右。独立用例 `packages/desktop/test/e2e/conversation-session/task-management/conversation-session-sidebar-width-stability.test.ts` 验证静止宽度、居中、两分区分页及明暗主题/窄分区；隔离 HOME 合成索引，无模型请求。边界见 `docs/superpowers/specs/2026-09-11-project-sidebar-width-stability.md`。 验证：修复前溢出 686px；修复后 `desktop-e2e-20260911045425289-p13513-f9e2908aae9f6465` 通过，四组布局采样均无溢出/宽度跳变，居中误差小于 0.004px，两区 20→25 分页通过。保持 pending。
 
 VP22（accepted/pending，2026-09-11）：编辑器零 root 空态与有 root 列表/末行添加切换；目录名、主要标记与设为主要按钮；选择 B 后保存重开仍为 B，新任务 cwd 为 B；移除主要回落首项、取消不写入。编辑器删除复用 Host 软删除，目录/既有任务不删，远端携原 hostId，失败保留弹窗。沿用主文件与 case-local replay；增补明暗主题和 390px 列表布局，不把布局检查计作实际手机远控验证。`desktop-e2e-20260911051449253-p26668-5ffc16408305af4f` 主文件 11/11 通过，含 VP22 真实保存/重开/新任务 cwd/删除后文件与 roots 保留；组件和服务相关单测 19 文件 / 63 项通过。仍为 pending。
 
@@ -3944,7 +3944,7 @@ PJM07（pending，2026-10-24）：确认对话框勾选「同时删除它们的 
 
 ### 当前任务标题与自动归档收尾（AMT，2026-09-11）
 
-合同见 virtual-project-design 的“当前任务元数据与自动归档收尾”。pending case：`packages/desktop/test/e2e/conversation-session/conversation-session-active-task-metadata.test.ts`，只创建隔离 HOME 历史 fixture，不请求模型；不晋升 formal。
+合同见 virtual-project-design 的“当前任务元数据与自动归档收尾”。pending case：`packages/desktop/test/e2e/conversation-session/task-management/conversation-session-active-task-metadata.test.ts`，只创建隔离 HOME 历史 fixture，不请求模型；不晋升 formal。
 
 | Case  | 设置 → 动作 → 断言                                                                                                                                                                            | 状态                                             |
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
@@ -3987,7 +3987,7 @@ GLOBALDB-27/28（2026-09-15）：27 先完成启动，再终止同窗口 Host、
 
 ## 2026-09-15：Todo 146 静默启动
 
-SILENTDB-01～08 场景已按用户确认语义接纳，定义见 `docs/working-memory/provider-refactor/steps/todo-146-silent-database-startup.md`。启动 E2E 沿用 `packages/desktop/test/e2e/conversation-session/conversation-session-database-startup.test.ts`，状态 pending。GLOBALDB-01/27 无待迁移等锁时改为验证无文字 Logo 与 Root 不挂载；旧库确有待迁移才显示等待文字。新增已完成账本重启无文字、刷新保留静默、释放锁后进入且账本未变的断言。不继承旧 GUI 通过证据。
+SILENTDB-01～08 场景已按用户确认语义接纳，定义见 `docs/working-memory/provider-refactor/steps/todo-146-silent-database-startup.md`。启动 E2E 沿用 `packages/desktop/test/e2e/conversation-session/runtime/conversation-session-database-startup.test.ts`，状态 pending。GLOBALDB-01/27 无待迁移等锁时改为验证无文字 Logo 与 Root 不挂载；旧库确有待迁移才显示等待文字。新增已完成账本重启无文字、刷新保留静默、释放锁后进入且账本未变的断言。不继承旧 GUI 通过证据。
 
 ### 2026-09-11 来源提示对齐增量
 
@@ -4048,7 +4048,7 @@ message，有无 summary 时 child 正文相同。E2E 用空白 summary 验证�
 全绿。当前证据仅覆盖 macOS Electron desktop-continuous，不扩展为手机真机、Windows
 或 Linux 验证。
 
-VP-MORE-01（accepted/pending，2026-09-15）：侧栏“显示更多”与任务标题、空态同字号，与“暂无任务”同默认颜色，hover/键盘聚焦提亮。候选 `packages/desktop/test/e2e/conversation-session/conversation-session-sidebar-show-more-typography.test.ts` 覆盖明暗主题、1200/390px、14/18px 界面字号与 5→6 分页，无 provider 请求；窄屏不代表手机远控实机。spec：`docs/ui/sidebar-show-more-typography.md`。
+VP-MORE-01（accepted/pending，2026-09-15）：侧栏“显示更多”与任务标题、空态同字号，与“暂无任务”同默认颜色，hover/键盘聚焦提亮。候选 `packages/desktop/test/e2e/conversation-session/task-management/conversation-session-sidebar-show-more-typography.test.ts` 覆盖明暗主题、1200/390px、14/18px 界面字号与 5→6 分页，无 provider 请求；窄屏不代表手机远控实机。spec：`docs/ui/sidebar-show-more-typography.md`。
 
 ## 草稿首发可见性（FSV，2026-09-15）
 
@@ -4091,11 +4091,11 @@ SSH 代表完整 Electron E2E；WSL/Docker 复用同一 adapter/backend 合同�
 
 ## Desktop 设置权威回归（A2）
 
-| ID                            | Setup                                           | Action                                                                                      | Assertion                                                                                            | 决策                                                                                                                                                                                      |
-| ----------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R3A-DEV-06-desktop-authority  | 隔离 Desktop profile + SSH Source，远程项目激活 | 设置桌面硬件加速/浏览器策略，修改 Source 自动归档；本机 picker 选空数据目录保存并立即冷重启 | 桌面字段只落本机；自动归档只落 Source；本机 canary 被复制，Source 指针不变；新 Main 使用本机新配置   | accepted                                                                                                                                                                                  |
-| R3A-DEV-06-authority-contract | 分离本机/Source 服务                            | 调用真实设置页的 Shell、托盘、网络、数据目录回调及失败路径                                  | 读写同端、失败无成功反馈、不回落另一端；终端 Profile/归档保留目标 Environment                        | accepted（focused contract）                                                                                                                                                              |
-| R3A-DEV-06-hooks-local-scope  | 远端项目 A 激活，本机项目在目录中               | Hooks 设置选本机项目 scope 新建并保存；再选远端项目 A scope 新建并保存                      | 本机 scope 只写本机 `.zcode/config.json`，远端无该钩子、无 EACCES；远端 scope 只写远端 A，本机不含它 | accepted；`packages/desktop/test/e2e/conversation-session/conversation-session-r3-hooks-local-scope.test.ts`，2026-10-15 本地 Docker SSH 目标 PASS（`fixverify-20261015-160011`），未转正 |
+| ID                            | Setup                                           | Action                                                                                      | Assertion                                                                                            | 决策                                                                                                                                                                                                           |
+| ----------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R3A-DEV-06-desktop-authority  | 隔离 Desktop profile + SSH Source，远程项目激活 | 设置桌面硬件加速/浏览器策略，修改 Source 自动归档；本机 picker 选空数据目录保存并立即冷重启 | 桌面字段只落本机；自动归档只落 Source；本机 canary 被复制，Source 指针不变；新 Main 使用本机新配置   | accepted                                                                                                                                                                                                       |
+| R3A-DEV-06-authority-contract | 分离本机/Source 服务                            | 调用真实设置页的 Shell、托盘、网络、数据目录回调及失败路径                                  | 读写同端、失败无成功反馈、不回落另一端；终端 Profile/归档保留目标 Environment                        | accepted（focused contract）                                                                                                                                                                                   |
+| R3A-DEV-06-hooks-local-scope  | 远端项目 A 激活，本机项目在目录中               | Hooks 设置选本机项目 scope 新建并保存；再选远端项目 A scope 新建并保存                      | 本机 scope 只写本机 `.zcode/config.json`，远端无该钩子、无 EACCES；远端 scope 只写远端 A，本机不含它 | accepted；`packages/desktop/test/e2e/conversation-session/remote/configuration/conversation-session-r3-hooks-local-scope.test.ts`，2026-10-15 本地 Docker SSH 目标 PASS（`fixverify-20261015-160011`），未转正 |
 
 ## RPN. 平铺项目导航与远程项目优先
 
@@ -4123,7 +4123,7 @@ SSH 代表完整 Electron E2E；WSL/Docker 复用同一 adapter/backend 合同�
 
 RPN-16 回归（2026-09-16）：`remoteWorkspacePreparation.test.ts` 覆盖真实目录删除后的手动/自动恢复、恢复目录后重试与取消；`serverRemoteConnection.test.ts` 覆盖真实 File RPC 的 ENOENT 与共享连接存活；`remoteWorkspaceDirectoryRecovery.test.ts` 覆盖失败发起项目与两个 sibling 的隔离。185 条相关测试通过。本地项目导航 E2E 重跑 1/1 通过，run `desktop-e2e-20260916150456883-p88284-c3ee928bcbf4fc2e`；它只证明导航/离线条目保留，不能替代真实 SSH 三项目删除场景或手机 E2E。
 
-本地 E2E：`packages/desktop/test/e2e/conversation-session/conversation-session-rpn-project-navigation.test.ts`；run `desktop-e2e-20260916060143354-p74119-7eab82eb8a75775c` 通过。未执行人工转正或 Docker 准入；本地 fixture 不等于真实远端验证。
+本地 E2E：`packages/desktop/test/e2e/conversation-session/projects/conversation-session-rpn-project-navigation.test.ts`；run `desktop-e2e-20260916060143354-p74119-7eab82eb8a75775c` 通过。未执行人工转正或 Docker 准入；本地 fixture 不等于真实远端验证。
 
 2026-09-16 连接意图修复：RPN-05/06/08 补充真实表单组件回归，覆盖跨设备凭据清理、明确新建/改选线路取消旧目录、原目录跨安装重试保留、已有下载方式回填与收起保留。上述 pending E2E 已补设备 A → B 密码清空及新旧线路下载方式断言，run `desktop-e2e-20260916065031134-p97183-32bff41d1e35e7a9` 通过；成功连接后的目录绑定仍为组件边界验证，未扩大真实 transport / 手机验证范围。
 
@@ -4192,7 +4192,7 @@ Memory MEM08 埋点补充（2026-09-17）：现有 Desktop Memory 用例同时�
 
 | Case              | 前置 / 操作 / 断言                                                                                                                                                       | 证据                                                                                                                                                                                                             |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RDUX-08-01        | SSH 项目草稿 → 设置设备卡主动断开并返回 → 横幅、占位、草稿可见且不能发送                                                                                                 | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-disconnect-experience.test.ts`，真实 SSH PASS（`r3-server-rdux08-visual-20260928-04`）；未转正                                          |
+| RDUX-08-01        | SSH 项目草稿 → 设置设备卡主动断开并返回 → 横幅、占位、草稿可见且不能发送                                                                                                 | `packages/desktop/test/e2e/conversation-session/remote/connection/conversation-session-ssh-disconnect-experience.test.ts`，真实 SSH PASS（`r3-server-rdux08-visual-20260928-04`）；未转正                        |
 | RDUX-08-02        | 已保存完整凭据 → 项目行重连 → 全过程无向导、恢复同一项目、草稿不自动发送且无排队                                                                                         | 同上，真实 SSH PASS；未转正                                                                                                                                                                                      |
 | RDUX-08-03        | 设置页重连 → 关闭向导并留在设备管理 → 无新增项目、设备保持连接，返回后原草稿保留                                                                                         | 同上，真实 SSH PASS；未转正                                                                                                                                                                                      |
 | RDUX-08-04        | 普通失败查看 / 缺凭据 / 安装 / 升级 / 身份等待 → 连接步骤、日志、保留原目录                                                                                              | `remoteProjectReconnectIntent`、`sshDialogFlow` 单测；SSH 凭据路径沿用 SSH-P0-CONN-06                                                                                                                            |
@@ -4209,15 +4209,15 @@ RDUX-MOBILE-DRAFT 复用 RDUX-08-07 已定义的“保持当前聊天 owner”�
 
 复用 `SSH-P0-LIFE-01` 的真实 SSH 冷启动用例。2026-10-19 用户裁决：冷启动进入原项目草稿，手动打开原任务；历史 PASS 仅证明当时规则，不作为新契约证据。
 
-| 场景               | Setup / Action / Assertions                                                                                                                                                                           | 状态                                                                                                                                                                                                                               |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 重连保留选择       | A/B 已有会话，B 激活 → 断开并原地重连 B → 不点击任务即可显示 B 原会话                                                                                                                                 | pending；real SSH E2E PASS                                                                                                                                                                                                         |
-| 冷启动进入草稿     | B 激活并持久化 → 完整 Electron/Main/Host 重启 → 原 B 项目草稿 → 手动打开 B 原任务，历史与终态保留                                                                                                     | pending；real SSH E2E PASS                                                                                                                                                                                                         |
-| 未挂回与终态未连接 | 关闭启动自动重连并重启 → 原 B 页签横幅/占位，无远端 pane；再次连接时连接占位先于内容，随后进入 B 草稿；点击原任务后显示历史                                                                           | pending；real SSH E2E PASS                                                                                                                                                                                                         |
-| 目标会话不存在     | 冷启动不消费持久化会话选择；已删除任务不会被自动打开；运行期间目标查空的回退由独立会话删除覆盖                                                                                                        | pending；real SSH E2E PASS                                                                                                                                                                                                         |
-| 手机恢复边界       | 桌面 pane 恢复不读写手机 replayable 选择；回归现有手机远控测试                                                                                                                                        | pending；真实 relay + SSH E2E PASS                                                                                                                                                                                                 |
-| 横幅重连经向导恢复 | A 已有会话 → 链路被对端重置（ECONNRESET）至在线恢复预算耗尽 → 会话横幅显示“无法连接到主机”而非安装预检失败 → 恢复链路，点横幅“重新连接”再点向导“重试” → 不点击任务即回到 A 原会话                     | pending；`packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-banner-reconnect.test.ts`；2026-10-15 本地 Docker SSH 目标 + macOS Electron PASS（`fixverify-20261015-155653`），不据此宣称转正或 CI 准入 |
-| 横幅：握手前断开   | 接上一行，A 已重新上线 → 链路被对端正常关闭（FIN，ssh2 报 Connection lost before handshake，无系统错误码）至在线恢复预算耗尽 → 会话横幅显示“自动恢复已停止”的处理说明，不显示“设备环境不满足安装要求” | pending；同一 spec 第二条用例；2026-10-15 本地 Docker SSH 目标 + macOS Electron PASS（`fixverify-probe-20261015-165129`），修复前代码同用例 FAIL（显示安装预检失败），不据此宣称转正或 CI 准入                                     |
+| 场景               | Setup / Action / Assertions                                                                                                                                                                           | 状态                                                                                                                                                                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 重连保留选择       | A/B 已有会话，B 激活 → 断开并原地重连 B → 不点击任务即可显示 B 原会话                                                                                                                                 | pending；real SSH E2E PASS                                                                                                                                                                                                                           |
+| 冷启动进入草稿     | B 激活并持久化 → 完整 Electron/Main/Host 重启 → 原 B 项目草稿 → 手动打开 B 原任务，历史与终态保留                                                                                                     | pending；real SSH E2E PASS                                                                                                                                                                                                                           |
+| 未挂回与终态未连接 | 关闭启动自动重连并重启 → 原 B 页签横幅/占位，无远端 pane；再次连接时连接占位先于内容，随后进入 B 草稿；点击原任务后显示历史                                                                           | pending；real SSH E2E PASS                                                                                                                                                                                                                           |
+| 目标会话不存在     | 冷启动不消费持久化会话选择；已删除任务不会被自动打开；运行期间目标查空的回退由独立会话删除覆盖                                                                                                        | pending；real SSH E2E PASS                                                                                                                                                                                                                           |
+| 手机恢复边界       | 桌面 pane 恢复不读写手机 replayable 选择；回归现有手机远控测试                                                                                                                                        | pending；真实 relay + SSH E2E PASS                                                                                                                                                                                                                   |
+| 横幅重连经向导恢复 | A 已有会话 → 链路被对端重置（ECONNRESET）至在线恢复预算耗尽 → 会话横幅显示“无法连接到主机”而非安装预检失败 → 恢复链路，点横幅“重新连接”再点向导“重试” → 不点击任务即回到 A 原会话                     | pending；`packages/desktop/test/e2e/conversation-session/remote/connection/conversation-session-ssh-remote-banner-reconnect.test.ts`；2026-10-15 本地 Docker SSH 目标 + macOS Electron PASS（`fixverify-20261015-155653`），不据此宣称转正或 CI 准入 |
+| 横幅：握手前断开   | 接上一行，A 已重新上线 → 链路被对端正常关闭（FIN，ssh2 报 Connection lost before handshake，无系统错误码）至在线恢复预算耗尽 → 会话横幅显示“自动恢复已停止”的处理说明，不显示“设备环境不满足安装要求” | pending；同一 spec 第二条用例；2026-10-15 本地 Docker SSH 目标 + macOS Electron PASS（`fixverify-probe-20261015-165129`），修复前代码同用例 FAIL（显示安装预检失败），不据此宣称转正或 CI 准入                                                       |
 
 本地证据：冷启动/重连 `r3-server-rdux09-cold-20260928-03`；混合 open set 与原远程焦点 `r3-server-rdux09-mixed-20260928-01`。均为隔离 Linux Docker SSH 目标 + macOS Electron，不据此宣称人工转正或 CI 准入。
 
@@ -4227,12 +4227,12 @@ RDUX-09 手机联动证据：`r3-server-rdux09-mobile-20260928-01`，Chrome 手�
 
 2026-10-12：设置入口已按 RDUX15 改为分类添加，以下候选语义同步更新；历史运行记录只证明当时版本，不证明本轮修改后的候选通过。
 
-| Case       | Setup / Action / Assertions                                                                                                                                                                            | 自动化                                                                                                         |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| RDUX-10-01 | 隔离 SSH 首装目标 + 设置分类表单的 config Host → 只填写目标 / 输入密码 / 显式添加 / 安装确认 → 留在设置并定位设备；不再固定旧三屏点击数量                                                              | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-three-screen.test.ts`，Pending |
-| RDUX-10-02 | 旧统一列表最近目录路径由 RDUX15 项目流程替代；当前候选改验设置内同一 SSH Profile 的离线添加重连不产生重复设备                                                                                          | 同上，Pending                                                                                                  |
-| RDUX-10-03 | 独立 TCP 目标 pending → 从设置收起后返回项目区，后台不弹窗 → 返回远程设备设置查看同一进度与失败 → 查看不重复拨号；再次收起并显式取消旧操作后，新入口进入分类表单，连接完成留在设置；关闭后新建表单为空 | 同上，Pending                                                                                                  |
-| RDUX-10-04 | 设置分类表单、完成设备卡、收起失败卡片；浅色/深色 × 1440/900px；新表单另由 RDUX15 覆盖中英文和窄窗口                                                                                                   | 同上，Pending；手机 `/remote` 沿现有回归边界                                                                   |
+| Case       | Setup / Action / Assertions                                                                                                                                                                            | 自动化                                                                                                                           |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| RDUX-10-01 | 隔离 SSH 首装目标 + 设置分类表单的 config Host → 只填写目标 / 输入密码 / 显式添加 / 安装确认 → 留在设置并定位设备；不再固定旧三屏点击数量                                                              | `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-ssh-remote-three-screen.test.ts`，Pending |
+| RDUX-10-02 | 旧统一列表最近目录路径由 RDUX15 项目流程替代；当前候选改验设置内同一 SSH Profile 的离线添加重连不产生重复设备                                                                                          | 同上，Pending                                                                                                                    |
+| RDUX-10-03 | 独立 TCP 目标 pending → 从设置收起后返回项目区，后台不弹窗 → 返回远程设备设置查看同一进度与失败 → 查看不重复拨号；再次收起并显式取消旧操作后，新入口进入分类表单，连接完成留在设置；关闭后新建表单为空 | 同上，Pending                                                                                                                    |
+| RDUX-10-04 | 设置分类表单、完成设备卡、收起失败卡片；浅色/深色 × 1440/900px；新表单另由 RDUX15 覆盖中英文和窄窗口                                                                                                   | 同上，Pending；手机 `/remote` 沿现有回归边界                                                                                     |
 
 上述组合由 issue 10 与父规格既定接缝确认，不扩展 SSH/Host 的恢复语义；首装目标为独立容器，不修改共享 SSH 容器的密码或 sshd。
 
@@ -4240,20 +4240,20 @@ RDUX-09 手机联动证据：`r3-server-rdux09-mobile-20260928-01`，Chrome 手�
 
 ### RDUX-11 连接中与目录屏验收（accepted）
 
-| Case       | Setup / Action / Assertions                                                                                                                                                                                            | 自动化                                                                                                                                     |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| RDUX-11-01 | 独立用户首装 → 阶段内安装确认显示发布版本、远端 home 下的实际安装位置和真实包大小；第一阶段无遮挡；设置连接完成后定位设备；目录边界提示由项目流程覆盖                                                                  | `packages/desktop/test/e2e/conversation-session/conversation-session-ssh-remote-three-screen.test.ts`，Pending                             |
-| RDUX-11-02 | 错误密码 → 当前连接阶段内补密码 → 原目标成功；错误详情与日志可见，不回到配置表单                                                                                                                                       | `conversation-session-ssh-remote-connection-p0.test.ts`，沿用 SSH-P0-CONN-01/02                                                            |
-| RDUX-11-03 | TCP 拒绝连接 → 分类原因、重试与返回配置；日志自动展开                                                                                                                                                                  | `packages/desktop/test/e2e/conversation-session/conversation-session-remote-connection-log-contract.test.ts`，Pending                      |
-| RDUX-11-04 | 目录显示完整路径与名称保存反馈；首次介绍点击「知道了」才写新标记 1，第二项目及重启不重复；最近/远端 chip 导航和读取失败由向导 DOM 回归覆盖；连接/目录屏浅色深色 × 1440/900px 截图                                      | 三屏 pending spec + `remoteConnectionDirectoryNavigation.test.ts`                                                                          |
-| RDUX-11-05 | 2FA 主机（keyboard-interactive 先问密码再问动态口令）+ 正确密码 → 连接中屏显示“服务器要求额外验证”与改用私钥说明；不显示密码输入框，不提示“检查用户名、密码或私钥”                                                     | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-unsupported-target-errors.test.ts`，Pending |
-| RDUX-11-06 | 已撤销（2026-10-20）：旧 glibc / musl 改为只在连接日志警告并继续安装或连接，不再显示“设备的系统版本不受支持”；警告路径由 R3A-BLD-09 old-glibc 子用例（`conversation-session-r3-install-environment.test.ts`）覆盖      | retired                                                                                                                                    |
-| RDUX-11-07 | 登录 shell 模拟中文 Windows PowerShell（`/bin/sh` 找不到，GBK 报错并带英文 `CommandNotFoundException` 特征）→ 显示“不支持该设备的系统”与改用 WSL 说明；原因不是乱码；RDUX-11-05～09 错误屏浅色/深色 × 1440/900px 截图  | 同上，Pending                                                                                                                              |
-| RDUX-11-08 | 登录 shell 只输出 GBK 报错（如中文 cmd 的“系统找不到指定的路径。”）并非零退出 → 显示预检失败并保留原始 stderr 诊断；不显示“不支持该设备的系统”，乱码不作为 Windows 证据                                                | 同上，Pending                                                                                                                              |
-| RDUX-11-09 | 同一轮 keyboard-interactive 里重复问 `Password:` 的主机（用例内启动的 ssh2 模拟服务端，非 OpenSSH）+ 错误密码 → 显示“SSH 认证失败”，连接中屏就地出现密码输入框；不显示“服务器要求额外验证”，提示轮数不作为二次验证证据 | 同上，Pending                                                                                                                              |
-| RDUX-11-10 | `uname -m` 被包装成 riscv64 的 Linux 主机（真实 OpenSSH）→ 确认安装后显示“不支持该设备的系统”，不显示下载失败；详细信息保留完整原因（“…只提供 Linux、macOS 的 x64 与 arm64 版本”），不出现 `[redacted-path]`           | 同上，Pending                                                                                                                              |
-| RDUX-11-11 | 真实 SSH 容器的探测输出为空、缺少 PLATFORM / ARCH / ROOT / INSTALLED / END、INSTALLED 非法或 uname 失败 → 显示预检失败与具体原因；不显示系统不支持，不进入安装确认                                                     | `packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-ssh-probe-validation.test.ts`，Pending          |
-| RDUX-11-12 | 正常首装及项目绑定 → 主动断开 → 已有设备的 INSTALLED 输出丢失 → 连接失败但 Source 身份、已安装状态和项目历史不变 → 恢复输出后同一 Source 重连成功且不重装                                                              | 同上，Pending                                                                                                                              |
+| Case       | Setup / Action / Assertions                                                                                                                                                                                            | 自动化                                                                                                                                                         |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RDUX-11-01 | 独立用户首装 → 阶段内安装确认显示发布版本、远端 home 下的实际安装位置和真实包大小；第一阶段无遮挡；设置连接完成后定位设备；目录边界提示由项目流程覆盖                                                                  | `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-ssh-remote-three-screen.test.ts`，Pending                               |
+| RDUX-11-02 | 错误密码 → 当前连接阶段内补密码 → 原目标成功；错误详情与日志可见，不回到配置表单                                                                                                                                       | `conversation-session-ssh-remote-connection-p0.test.ts`，沿用 SSH-P0-CONN-01/02                                                                                |
+| RDUX-11-03 | TCP 拒绝连接 → 分类原因、重试与返回配置；日志自动展开                                                                                                                                                                  | `packages/desktop/test/e2e/conversation-session/remote/connection/conversation-session-remote-connection-log-contract.test.ts`，Pending                        |
+| RDUX-11-04 | 目录显示完整路径与名称保存反馈；首次介绍点击「知道了」才写新标记 1，第二项目及重启不重复；最近/远端 chip 导航和读取失败由向导 DOM 回归覆盖；连接/目录屏浅色深色 × 1440/900px 截图                                      | 三屏 pending spec + `remoteConnectionDirectoryNavigation.test.ts`                                                                                              |
+| RDUX-11-05 | 2FA 主机（keyboard-interactive 先问密码再问动态口令）+ 正确密码 → 连接中屏显示“服务器要求额外验证”与改用私钥说明；不显示密码输入框，不提示“检查用户名、密码或私钥”                                                     | `packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-ssh-unsupported-target-errors.test.ts`，Pending |
+| RDUX-11-06 | 已撤销（2026-10-20）：旧 glibc / musl 改为只在连接日志警告并继续安装或连接，不再显示“设备的系统版本不受支持”；警告路径由 R3A-BLD-09 old-glibc 子用例（`conversation-session-r3-install-environment.test.ts`）覆盖      | retired                                                                                                                                                        |
+| RDUX-11-07 | 登录 shell 模拟中文 Windows PowerShell（`/bin/sh` 找不到，GBK 报错并带英文 `CommandNotFoundException` 特征）→ 显示“不支持该设备的系统”与改用 WSL 说明；原因不是乱码；RDUX-11-05～09 错误屏浅色/深色 × 1440/900px 截图  | 同上，Pending                                                                                                                                                  |
+| RDUX-11-08 | 登录 shell 只输出 GBK 报错（如中文 cmd 的“系统找不到指定的路径。”）并非零退出 → 显示预检失败并保留原始 stderr 诊断；不显示“不支持该设备的系统”，乱码不作为 Windows 证据                                                | 同上，Pending                                                                                                                                                  |
+| RDUX-11-09 | 同一轮 keyboard-interactive 里重复问 `Password:` 的主机（用例内启动的 ssh2 模拟服务端，非 OpenSSH）+ 错误密码 → 显示“SSH 认证失败”，连接中屏就地出现密码输入框；不显示“服务器要求额外验证”，提示轮数不作为二次验证证据 | 同上，Pending                                                                                                                                                  |
+| RDUX-11-10 | `uname -m` 被包装成 riscv64 的 Linux 主机（真实 OpenSSH）→ 确认安装后显示“不支持该设备的系统”，不显示下载失败；详细信息保留完整原因（“…只提供 Linux、macOS 的 x64 与 arm64 版本”），不出现 `[redacted-path]`           | 同上，Pending                                                                                                                                                  |
+| RDUX-11-11 | 真实 SSH 容器的探测输出为空、缺少 PLATFORM / ARCH / ROOT / INSTALLED / END、INSTALLED 非法或 uname 失败 → 显示预检失败与具体原因；不显示系统不支持，不进入安装确认                                                     | `packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-ssh-probe-validation.test.ts`，Pending          |
+| RDUX-11-12 | 正常首装及项目绑定 → 主动断开 → 已有设备的 INSTALLED 输出丢失 → 连接失败但 Source 身份、已安装状态和项目历史不变 → 恢复输出后同一 Source 重连成功且不重装                                                              | 同上，Pending                                                                                                                                                  |
 
 2026-10-27 探测校验（ZCT-2114700808714715136，RDUX-11-11/12）验证：
 
@@ -4275,7 +4275,7 @@ R3A-UI-04 / RDUX-11-04 回归（2026-10-12 macOS 真实 SSH 1/1 PASS，仍 pendi
 
 | 用例       | 设置、动作与断言                                                                                                                                                                                                                      | 证据入口                                                                                                                                                                                                                     |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| RDUX-13-01 | 真实 SSH 成功后设备行展开显示连接、项目；在线缺少草稿缓存、断线后残留其他项目缓存时，点击最近项目直接打开原项目并校正草稿范围，项目 ID 与入口数不变，不出现创建弹窗；更多菜单含设备信息                                               | `packages/desktop/test/e2e/conversation-session/conversation-session-remote-device-cards.test.ts`                                                                                                                            |
+| RDUX-13-01 | 真实 SSH 成功后设备行展开显示连接、项目；在线缺少草稿缓存、断线后残留其他项目缓存时，点击最近项目直接打开原项目并校正草稿范围，项目 ID 与入口数不变，不出现创建弹窗；更多菜单含设备信息                                               | `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-remote-device-cards.test.ts`                                                                                                          |
 | RDUX-13-02 | 未占用端口连接失败 → 设置页无新增设备卡 → 默认折叠未完成区域 → 展开、删除/清理                                                                                                                                                        | 同上                                                                                                                                                                                                                         |
 | RDUX-13-03 | 浅色/深色 × 1440/900/480px，设备列表（展开、高亮）与未完成列表截图                                                                                                                                                                    | 同上；480px 是桌面窄屏，手机不开放设备管理                                                                                                                                                                                   |
 | RDUX-13-04 | 同设备跨连接/重连/重启去重；稍后仅本次运行；可选更新不弹 toast；强制更新任务清单                                                                                                                                                      | 独立断言待补；历史单测：`retired:packages/ui/test/sourceServerUpdateNotifications.test.ts`、`retired:packages/ui/test/sourceServerUpdatePreferences.test.ts`、`retired:packages/ui/test/sourceServerManagementPanel.test.ts` |
@@ -4452,9 +4452,9 @@ RPN-06 追加回归：默认 Profile 不受备用线路旧失败影响；绑定�
 
 ### RDUX15 设置连接独立完成（accepted，pending）
 
-| Case                  | 范围                                                                                                                                                                | 自动化入口                                                                                                   |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| RDUX15-10/18/20/21/22 | 设置新增 SSH、普通 Profile 重连、同 SSH Source 在线复用、Docker 独立环境添加、Esc 取消；安装确认沿用真实链路；不打开目录、不新增项目/聊天；中英文、深浅主题和窄窗口 | `packages/desktop/test/e2e/conversation-session/conversation-session-settings-connection-completion.test.ts` |
+| Case                  | 范围                                                                                                                                                                | 自动化入口                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| RDUX15-10/18/20/21/22 | 设置新增 SSH、普通 Profile 重连、同 SSH Source 在线复用、Docker 独立环境添加、Esc 取消；安装确认沿用真实链路；不打开目录、不新增项目/聊天；中英文、深浅主题和窄窗口 | `packages/desktop/test/e2e/conversation-session/runtime/conversation-session-settings-connection-completion.test.ts` |
 
 时序及迟到结果、原项目安装/升级完成意图由 `packages/ui/test/remoteConnectionFlowRecovery.test.ts` 回归。真实 WSL、Windows/Linux 和手机 relay 未在本票当前运行环境验证。
 
@@ -4462,25 +4462,25 @@ RPN-06 追加回归：默认 Profile 不受备用线路旧失败影响；绑定�
 
 ### RDUX15 分类添加远程设备（accepted，pending）
 
-| Case               | 验证切入点                                                                                                                        | 候选用例                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| RDUX15-04/05/23/24 | 真实设置新建直达默认 SSH；真实 SSH config 与 Docker 发现只填写，显式提交；SSH/Docker 手填与完成；中英文、深浅主题、480px 窗口表单 | `packages/desktop/test/e2e/conversation-session/conversation-session-settings-connection-completion.test.ts` |
+| Case               | 验证切入点                                                                                                                        | 候选用例                                                                                                             |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| RDUX15-04/05/23/24 | 真实设置新建直达默认 SSH；真实 SSH config 与 Docker 发现只填写，显式提交；SSH/Docker 手填与完成；中英文、深浅主题、480px 窗口表单 | `packages/desktop/test/e2e/conversation-session/runtime/conversation-session-settings-connection-completion.test.ts` |
 
 候选沿用 #16 的独立完成检查及 case-local fixture，不代表 formal/CI 准入。Windows WSL 与手机真实环境按本轮用户要求保留 TODO，不以 macOS 类型门禁或 SSH/Docker 结果替代。发现失败、迟到响应与目标凭据隔离由 `remoteConnectionFlowRecovery.test.ts` 的公开 UI/flow 接口验证。
 
 ### RDUX27 编辑连接校验焦点（accepted，pending）
 
-| Case     | 范围                                                                                                                                                                        | 自动化入口                                                                                                   |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| RDUX27-1 | 已保存 SSH 线路主机改为 `.invalid`，真实 `ENOTFOUND` 给出「修改主机」；从该入口打开编辑弹窗后清空用户名并保存，错误显示在用户名下方，焦点落在用户名，不被主机的入口提示抢走 | `packages/desktop/test/e2e/conversation-session/conversation-session-settings-connection-completion.test.ts` |
+| Case     | 范围                                                                                                                                                                        | 自动化入口                                                                                                           |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| RDUX27-1 | 已保存 SSH 线路主机改为 `.invalid`，真实 `ENOTFOUND` 给出「修改主机」；从该入口打开编辑弹窗后清空用户名并保存，错误显示在用户名下方，焦点落在用户名，不被主机的入口提示抢走 | `packages/desktop/test/e2e/conversation-session/runtime/conversation-session-settings-connection-completion.test.ts` |
 
 2026-10-14：macOS Desktop → 隔离 Linux arm64 SSH 容器，整份 spec 3/3 通过；把聚焦选择器临时改回修复前写法时该 case 失败（焦点落在主机）。仍为 pending。Docker 空容器下拉文案依赖本机 Docker 状态，由 `packages/ui/test/remoteNewConnectionForm.test.ts` 覆盖。
 
 ### RDUX15 项目设备选择（accepted，pending）
 
-| 场景                     | 覆盖                                                                                                                                     | candidate                                                                                              |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| RDUX15-01/06/07/08/09/17 | 真实侧栏加号、零/多目录、换设备确认、Source 已识别无项目成员、在线浏览、离线目录/已有项目连接期间保持原页签、中文/英文、深浅主题及窄窗口 | `packages/desktop/test/e2e/conversation-session/conversation-session-project-device-selection.test.ts` |
+| 场景                     | 覆盖                                                                                                                                     | candidate                                                                                                       |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| RDUX15-01/06/07/08/09/17 | 真实侧栏加号、零/多目录、换设备确认、Source 已识别无项目成员、在线浏览、离线目录/已有项目连接期间保持原页签、中文/英文、深浅主题及窄窗口 | `packages/desktop/test/e2e/conversation-session/projects/conversation-session-project-device-selection.test.ts` |
 
 WSL、手机实机验证按用户决定留 TODO；本票不以 macOS SSH 运行替代。
 
@@ -4496,9 +4496,9 @@ WSL、手机实机验证按用户决定留 TODO；本票不以 macOS SSH 运行�
 
 ### RDUX15 添加已有远程项目（accepted，pending）
 
-| 场景            | 覆盖                                                                                                         | candidate                                                                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| RDUX15-15/16/20 | 原项目身份、同目录双项目、历史任务归属、重复添加和取消后列表迟到；只读兼容由 UI/服务合同覆盖，真实旧远端待验 | `packages/desktop/test/e2e/conversation-session/conversation-session-existing-remote-project.test.ts` |
+| 场景            | 覆盖                                                                                                         | candidate                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| RDUX15-15/16/20 | 原项目身份、同目录双项目、历史任务归属、重复添加和取消后列表迟到；只读兼容由 UI/服务合同覆盖，真实旧远端待验 | `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-existing-remote-project.test.ts` |
 
 2026-10-12：已有远程项目 E2E 在合入 #20 后通过（`desktop-e2e-20261012110913073-p90850-7427869e2d36d636`）。核对原 projectId、taskId 与归属，同目录双项目、重复入口幂等、草稿返回与取消迟到；离线连接后继续列表。8 组中英/深浅/宽窄截图与逐行内容边界断言通过。旧端兼容使用 legacy 服务/UI fixture；旧二进制、WSL、手机未实跑；仍为 pending。
 
@@ -4534,14 +4534,14 @@ WSL、手机实机验证按用户决定留 TODO；本票不以 macOS SSH 运行�
 
 #### #24 多项目明确选择候选
 
-- `packages/desktop/test/e2e/conversation-session/conversation-session-chat-remote-project-choice.test.ts`：真实聊天菜单与 SSH 连接，同目录两个长名称项目分别选择和真实发送；精确目录排除父／子目录及软删项；保留两项目任务身份；顶层 Escape 恢复原草稿；候选在选择前被删除时错误、保持禁发；中英文、深浅主题与窄窗列表。
+- `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-chat-remote-project-choice.test.ts`：真实聊天菜单与 SSH 连接，同目录两个长名称项目分别选择和真实发送；精确目录排除父／子目录及软删项；保留两项目任务身份；顶层 Escape 恢复原草稿；候选在选择前被删除时错误、保持禁发；中英文、深浅主题与窄窗列表。
 - `packages/ui/test/chatRemoteFolderChoice.test.ts`：已有 UI／服务端口复验取消、请求过期、Host membership 换代、双击、候选重读与只读能力；重读后仅剩一个候选也不替换用户原选择。
 - GREEN `desktop-e2e-20261014053401905-p70011-e4130be481e13bf0`：macOS Desktop → Linux arm64 SSH，1/1 通过，身份结果与中英／深浅主题／窄窗截图已核对。UI 端口 9 tests 通过；完整检查与未运行平台见 #24。候选保持 pending，不自动转正或加入容器套件。
 
 ### #23 实施与验证（2026-10-14）
 
-- 候选 `packages/desktop/test/e2e/conversation-session/conversation-session-chat-remote-folder.test.ts`：真实聊天菜单、SSH 连接与在线复用、无项目／远程项目草稿取消、必选目录、按钮／Enter／form 提交禁发、无效长路径错误、唯一项目首发、再次选目录保留项目和历史任务身份、不重复登记入口。
-- 更新 `packages/desktop/test/e2e/conversation-session/conversation-session-chat-device-return.test.ts`：本地项目草稿的连接失败重试、连接前后取消、正文／附件／原任务归属，以及中英 × 深浅主题 × 1440／480px 的目录弹窗与焦点。
+- 候选 `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-chat-remote-folder.test.ts`：真实聊天菜单、SSH 连接与在线复用、无项目／远程项目草稿取消、必选目录、按钮／Enter／form 提交禁发、无效长路径错误、唯一项目首发、再次选目录保留项目和历史任务身份、不重复登记入口。
+- 更新 `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-chat-device-return.test.ts`：本地项目草稿的连接失败重试、连接前后取消、正文／附件／原任务归属，以及中英 × 深浅主题 × 1440／480px 的目录弹窗与焦点。
 - 真实 RED `desktop-e2e-20261014044755117-p28723-fd57f544f073042f`：`old-local-submission.json` 证明旧流程在连接后向本地无项目任务提交了该条消息。GREEN `desktop-e2e-20261014050039448-p42395-acef074fec4b900a`：两候选 2/2 通过，远程首发的 Host／项目／任务／cwd／identity 见 `remote-first-submission.json`；代表截图已审阅。
 - UI／服务端口回归覆盖不同 Host、父目录、前缀及已删除项目不误匹配；列表错误与准备失败不解除门禁；取消后迟到结果、Store 提交到 React 渲染前的旧请求失效；attachment 绑定前复验成员与项目，失败仅释放独占资源。旧远端只读目录浏览继续经远端文件服务，Windows 路径规则由远端平台确定。
 - 实机范围：macOS 客户端 → Linux arm64 的真实 SSH。Docker 在本轮作为独占 SSH fixture，不算 Docker 传输验收；WSL／Windows／Linux 客户端与物理手机未执行。共享 Web／手机壳层能力门禁保留 UI 回归，集成后的共享手机回归由母任务记录。
@@ -4549,7 +4549,7 @@ WSL、手机实机验证按用户决定留 TODO；本票不以 macOS SSH 运行�
 
 ### #26 后台显式继续实施与验证（2026-10-14）
 
-- 更新 `packages/desktop/test/e2e/conversation-session/conversation-session-background-connection.test.ts` 与 case-local fixture：后台完成仅提示且不锁原草稿，显式继续必选目录，取消保留正文／附件与在线 Source，过期草稿继续失效；确认唯一项目后真实首发，核对 Host／项目／task／cwd／identity、原本地任务不新增、远端项目不重复及本机入口唯一。
+- 更新 `packages/desktop/test/e2e/conversation-session/background/conversation-session-background-connection.test.ts` 与 case-local fixture：后台完成仅提示且不锁原草稿，显式继续必选目录，取消保留正文／附件与在线 Source，过期草稿继续失效；确认唯一项目后真实首发，核对 Host／项目／task／cwd／identity、原本地任务不新增、远端项目不重复及本机入口唯一。
 - 原设置／项目表单／已有项目目录来源与后台认证失败保持回归；真实 SSH、Docker 均执行。运行 `desktop-e2e-20261014054619416-p77568-1b2f973228b64db0` 1/1 PASS，`background-remote-first-submission.json` 与 7 张提示／目录／中英深浅窄窗／Docker 截图已核对。此前失败分别是 fixture 归档 hash、旧前置未处理介绍、重复附加已保留文件，详见 ticket #26，不能记作整批全绿。
 - UI／flow 端口验证后台提交门禁、成员移除／换代与异步校验后草稿失效；目录继续继承原成员资格。沿用已有 Source 离线、迟到失败、重复继续及共享 attachment 回归。根／E2E 类型、lint、架构、fixture 与官方受影响 UT（环境修复后定向复跑）通过。
 - 本轮为 macOS Desktop + Linux arm64 目标；Windows／Linux Desktop、WSL、实体手机未执行。共享 Web／手机回归由母任务记录，候选仍 pending，未获 formal／CI 准入。
@@ -4558,9 +4558,9 @@ WSL、手机实机验证按用户决定留 TODO；本票不以 macOS SSH 运行�
 
 以下旧验收与运行记录保留供追溯；“成功回原聊天，再显式创建”的断言须按 RDUX21 更新，不能证明新流程已覆盖。
 
-| ID           | 验证范围                                                                                            | 当前候选                                                                                         |
-| ------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| RDUX15-04/14 | 真实聊天项目菜单 → 设置分类添加；取消／成功返回保留文字、附件与项目；显式继续才预选实际设备创建项目 | `packages/desktop/test/e2e/conversation-session/conversation-session-chat-device-return.test.ts` |
+| ID           | 验证范围                                                                                            | 当前候选                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| RDUX15-04/14 | 真实聊天项目菜单 → 设置分类添加；取消／成功返回保留文字、附件与项目；显式继续才预选实际设备创建项目 | `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-chat-device-return.test.ts` |
 
 WSL、真实手机验证按用户要求暂缓，保留 TODO；本票 Desktop 结果在 ticket 记录，pending 不表示 formal 准入。
 
@@ -4568,9 +4568,9 @@ WSL、真实手机验证按用户要求暂缓，保留 TODO；本票 Desktop 结
 
 ### RDUX15 后台连接与显式继续（#22，accepted，pending）
 
-| 场景               | 覆盖                                                                                                                                                                                           | candidate                                                                                           |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| RDUX15-19/20/23/24 | 设置、项目草稿与目录、已有项目、聊天发起后转后台；真实 SSH/Docker；完成不导航，显式继续保持原意图；普通设置入口在连接中和完成后恢复同一流程；失败/待安装继续、取消与过期动作由 UI 时序共同验证 | `packages/desktop/test/e2e/conversation-session/conversation-session-background-connection.test.ts` |
+| 场景               | 覆盖                                                                                                                                                                                           | candidate                                                                                                      |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| RDUX15-19/20/23/24 | 设置、项目草稿与目录、已有项目、聊天发起后转后台；真实 SSH/Docker；完成不导航，显式继续保持原意图；普通设置入口在连接中和完成后恢复同一流程；失败/待安装继续、取消与过期动作由 UI 时序共同验证 | `packages/desktop/test/e2e/conversation-session/background/conversation-session-background-connection.test.ts` |
 
 WSL、真实手机按用户决定保留 TODO。候选运行证据只代表实际执行范围，未转正或加入 CI。
 
@@ -4639,7 +4639,7 @@ SHARE-TOOLS01 补充 accepted：Write/Diff 等工具的图片正文缺少公开�
 
 ### RDUX21 #25：零匹配创建候选
 
-- 新增 `packages/desktop/test/e2e/conversation-session/conversation-session-chat-remote-folder-create.test.ts`，从真实聊天菜单连接 SSH，确认无匹配目录，验证默认名称、固定单 root、嵌套信任 Escape、创建后远端首发及再次连接复用项目。对应 RDUX21-07/08/14；英文浅色宽窗与中文深色窄窗检查确认按钮与完整长路径。
+- 新增 `packages/desktop/test/e2e/conversation-session/remote/navigation/conversation-session-chat-remote-folder-create.test.ts`，从真实聊天菜单连接 SSH，确认无匹配目录，验证默认名称、固定单 root、嵌套信任 Escape、创建后远端首发及再次连接复用项目。对应 RDUX21-07/08/14；英文浅色宽窗与中文深色窄窗检查确认按钮与完整长路径。
 - `chatRemoteFolderCreation.test.ts` 使用既有 UI／服务端口补 RDUX21-10/16/17/21：恢复或继续新建、保存失败、目录权限失败、只读能力限制、登记重试同 ID，以及保存／查询迟到后的 owner 和 membership 失效。
 - 本轮 macOS → Linux arm64 SSH 创建候选 1/1 PASS：`desktop-e2e-20261014055401059-p80988-2f9ef70df764ec75`。已审阅英文浅色宽窗和中文深色窄窗截图；UI／服务端口与相邻分派回归 52 条通过。Windows/WSL、Docker 创建和实体手机未执行。候选仍为 pending，未运行平台不继承历史 PASS，不自动转正或获得 CI 准入。
 
@@ -4691,7 +4691,7 @@ SHARE34 选择面板补充：固定顶部全选（支持半选）、中间列表
 
 裁剪：颜色/语言/字号档位复跑作为同一行为的视觉证据，不扩大分母；无限轮次数按空/运行/单轮/同轮多query/长列表等价类取代表；formal-proof 当前聚焦 compact/fork/goal/队列，不把分享矩阵伪装为该枚举器证明。公开发布及真实系统剪贴板仍需单独端到端证据。新增候选保持 pending，人工转正和 CI 准入另行处理。
 
-SHARE34 转正（2026-09-23，用户确认）：Desktop spec 已迁入 `packages/desktop/test/e2e/conversation-session/conversation-session-share-popover.test.ts`。浏览器组件候选继续保留原路径；转正不包含 SHARE18/28 的真实发布/SSH 链路，也不表示 Docker preset 已准入。
+SHARE34 转正（2026-09-23，用户确认）：Desktop spec 已迁入 `packages/desktop/test/e2e/conversation-session/sharing/conversation-session-share-popover.test.ts`。浏览器组件候选继续保留原路径；转正不包含 SHARE18/28 的真实发布/SSH 链路，也不表示 Docker preset 已准入。
 
 SHARE34 / CR-01 回归：编辑选择时从预检问题浮层执行「取消选择此轮」，同一 product turn 的所有 query 仅从 pending 移除；确认后生效，取消恢复 confirmed 并保留披露确认。配置阶段直接移除才重置披露，发布中不得移除。沿用子项 07 的范围事务，不扩大 24 项分母。
 
@@ -4734,7 +4734,7 @@ TD01–TD08 均 accepted，详见 [规则与用例](ui/composer-text-draft-persi
 | SPR01 | 生产 renderer、8 个固定已完成历史会话；真实点击切换 136 次；8/40/72/136 次及停止切换后，等待 35 秒并强制 GC 两次 | 非当前会话 snapshot 与已关闭 store 为零，当前 store 恰好一个；历史正文每次可见；保存各检查点 heap snapshot，不用 RSS 或切换耗时阈值代替对象释放断言。 |
 | SPR02 | lease owner 切换、草稿晋升后返回草稿、layer 换代、Suspense 中止 render                                           | 新 owner 的首帧不能读取旧 lease；同 lease 的草稿晋升不重挂 Composer；中止 render 不替换已提交 owner。                                                 |
 
-SPR01 已于 2026-10-19 经用户人工复核。staging `52cd1bc1d3` 的生产构建仍暴露模型轨迹 E2E store，前置断言失败，继续保留 `test/e2e/conversation-session/manual-review/pending/conversation-session-snapshot-retention.test.ts`，未转正。使用 `pnpm --filter @zcode/desktop test:e2e:retention` 连接隔离生产 Electron；开始前断言未暴露 E2E store bridge，避免误连普通 E2E 构建后污染堆对象统计；包括前置断言失败在内，均须释放 CDP 连接，使失败报告正常结束。不进入 WDIO 或 Docker preset，无模型请求。SPR02 沿用 SessionPane 组件回归与 lease owner 单测。共享 UI 引用边界适用于 desktop continuous / mobile replayable；本项不改变 Host、协议或身份路由，真实手机传输验证单独记录。
+SPR01 已于 2026-10-19 经用户人工复核。staging `52cd1bc1d3` 的生产构建仍暴露模型轨迹 E2E store，前置断言失败，继续保留 `test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-snapshot-retention.test.ts`，未转正。使用 `pnpm --filter @zcode/desktop test:e2e:retention` 连接隔离生产 Electron；开始前断言未暴露 E2E store bridge，避免误连普通 E2E 构建后污染堆对象统计；包括前置断言失败在内，均须释放 CDP 连接，使失败报告正常结束。不进入 WDIO 或 Docker preset，无模型请求。SPR02 沿用 SessionPane 组件回归与 lease owner 单测。共享 UI 引用边界适用于 desktop continuous / mobile replayable；本项不改变 Host、协议或身份路由，真实手机传输验证单独记录。
 
 VP-ROOT-01 的零 root 对照从冷态持久项目准备；PCD01 创建后自动选中会调用 prepareSession 并补齐目录，不能再把该项目当作零 root 对照。VP14 创建成功按 PCD01 验证选中新项目，取消仍保持原草稿。PLAN151-01 tooltip 使用当前“取消下一次提交的计划模式”，仍验证仅影响下一次提交标记而不改权限或触发模型。
 
@@ -4761,7 +4761,7 @@ YC06 视觉验收包含桌面 448px 宽度上限、两端 text-ui-lg 标题、�
 规格见 [侧栏悬停提示](ui/sidebar-tooltips.md)。SBT01–04 为 accepted，候选保持 pending。
 
 - 浏览器：`packages/ui/test/browser/manual-review/pending/sidebar-tooltips.test.mjs`，真实侧栏组件，桌面/手机布局、中英文及深浅主题；受控服务数据，不覆盖远程传输。
-- Desktop：`packages/desktop/test/e2e/ui-shell/sidebar-tooltips.test.ts`，完整应用的项目行、分区、搜索/筛选、底部及文件树入口。
+- Desktop：`packages/desktop/test/e2e/ui-shell/navigation/sidebar-tooltips.test.ts`，完整应用的项目行、分区、搜索/筛选、底部及文件树入口。
 
 验证（2026-10-16）：浏览器 Tooltip 12 项及 SPT03 性能回归 4 项通过，包含桌面/手机布局、中英文、深浅主题、触屏点击和键盘 focus；新增分组操作断言复测通过。macOS 完整桌面 E2E 通过，12 个入口实测 304–309ms，覆盖相邻提示切换、提前移出、文件树菜单和清空搜索。受影响单测 285 文件 / 3671 项、typecheck、E2E typecheck、lint、架构及改动代码格式检查通过。候选保持 pending；未覆盖 Windows/Linux 整机或真实手机远控传输。
 
@@ -5093,7 +5093,7 @@ MRO04-06（2026-10-24，accepted / pending）对应 挂起保留连接的可靠�
 
 MRO04-07（2026-10-24，accepted / pending）对应 挂起保留连接的可靠帧 的「重复 INTERNAL 结果相同」。loopback relay 在桌面断开时发 DEVICE_OFFLINE 并关闭手机 socket，走不到 INTERNAL 路径；因此在手机侧线级按 hub 契约注入（桌面不在时每条 data 回 INTERNAL、不关闭 socket）。桌面与 relay 的真实连接不变；握手与配对查询照常转发，只把回包改为 waiting，保证 relay 侧会话始终已认证。回前台只保持 10 秒，使恢复仍落在 15 秒 recover 窗口内，按原 workspace/task 恢复；修复前后的区分靠首次偏离：修复前第二个 INTERNAL 在后台关闭原 socket，回前台首次探测落在新 socket。修复前的失败页不作为本用例断言：真实 App 中 15 秒 recover 超时后的后台重连和 bridge 降级触发的恢复都会重新计 30 秒 waiting，失败页时间不固定；保持更久还会触发原有的导航丢失（见[覆盖矩阵](testing/conversation-session-e2e-coverage-matrix-openzwork.md) MRO04-07 长窗口观察）。真实 hub 是否对每个 ACK 回 INTERNAL 需生产 relay 实测确认，本用例不代表该事实。
 
-候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-web-remote-recovery.test.ts`。采用隔离 Electron、真实 Web、loopback relay 与 case-local 受控回放；使用原生 visibility helper，禁止以伪造 visibility getter/event 代替真实后台。Host 身份隔离、任务不存在与远端 session 换代由定向边界测试补充。本次登记不代表已运行、人工审核或 formal/CI 准入；生产 relay 实机证据另记录具体构建和场景。
+候选：`packages/desktop/test/e2e/conversation-session/remote/mobile/conversation-session-web-remote-recovery.test.ts`。采用隔离 Electron、真实 Web、loopback relay 与 case-local 受控回放；使用原生 visibility helper，禁止以伪造 visibility getter/event 代替真实后台。Host 身份隔离、任务不存在与远端 session 换代由定向边界测试补充。本次登记不代表已运行、人工审核或 formal/CI 准入；生产 relay 实机证据另记录具体构建和场景。
 
 ## 工作区 MCP 手动信任（WMT，2026-10-23）
 
@@ -5238,13 +5238,13 @@ SLR09 已实跑通过：`desktop-e2e-20261028044310791-p116682-50c5abe8b4f1cc6f`
 | CST04 | 暂挂首发，切到新草稿并输入，再释放旧发送             | 旧接纳不修改新草稿；回到原任务无已发送正文残留                                       |
 | CST05 | 实际手机 Web 配对后新建草稿，Enter 换行，再点击发送  | Enter 不发送；按钮首发完成后正文清空，placeholder 不闪回新任务；深浅主题仍可继续输入 |
 
-候选：`packages/desktop/test/e2e/conversation-session/manual-review/pending/conversation-session-composer-settlement.test.ts`。
+候选：`packages/desktop/test/e2e/conversation-session/composer/manual-review/pending/conversation-session-composer-settlement.test.ts`。
 既有 A01/PD08 继续验证预热创建单飞；R3A-B-07 继续验证 ACK 丢失与卸载重挂。
 
 ### 远控侧栏主导航边界（2026-10-29）
 
 - RSNAV01（accepted / pending）：390/1024px、深浅主题、中英文，home-only 与 workspace bridge 的首次连接、切换设备和刷新后，自动化及插件市场入口均不存在；设备切换、新建任务保留。复用 `packages/web/test/e2e/manual-review/pending/remote-device-switch.mjs`。
-- SNAV01（accepted / pending）：桌面深浅主题、中英文，自动化及插件市场入口均可见，点击后目标导航保持选中，新建任务保留。候选 `packages/desktop/test/e2e/ui-shell/manual-review/pending/sidebar-primary-navigation.test.ts`。
+- SNAV01（accepted / pending）：桌面深浅主题、中英文，自动化及插件市场入口均可见，点击后目标导航保持选中，新建任务保留。候选 `packages/desktop/test/e2e/ui-shell/navigation/manual-review/pending/sidebar-primary-navigation.test.ts`。
 
 规格：`docs/web-remote-control/mobile-task-home-design.md`。本组不扩大远控能力，不改变桌面导航或 continuous/replayable 边界；不计入 formal / Docker 准入。
 

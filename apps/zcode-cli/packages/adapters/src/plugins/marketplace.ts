@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
@@ -20,7 +20,7 @@ import {
 import { enumeratePluginComponents, type PluginComponentGroup } from "./plugin-components.js";
 import { applyNetworkEgressEnv } from "../network/subprocess-env.js";
 import { createNodeWebFetchHttpClientAdapter } from "../http/index.js";
-import { writeCdnOfficialMarketplacePartitionSync } from "./official-marketplace.js";
+import { writeCdnOfficialMarketplacePartition } from "./official-marketplace.js";
 import {
   isZipPluginUrlSource,
   readZipPluginSourceSha256,
@@ -29,6 +29,8 @@ import {
 import {
   activateDirectoryAtomically,
   recoverAtomicTargetSync,
+  readStandaloneAtomicFile,
+  resolveAtomicReadPath,
   writeFileAtomically,
   type AtomicDirectoryActivation,
 } from "./atomic-directory.js";
@@ -67,12 +69,7 @@ const CLAUDE_MARKETPLACE_REFRESH_TIMEOUT_MS = 30_000;
 const MARKETPLACE_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const PLUGIN_NAME_PATTERN = /^[a-z0-9][a-z0-9._-]{0,127}$/;
 const SOURCE_SHA256_PATTERN = /^[a-f0-9]{64}$/u;
-const UNSUPPORTED_MANIFEST_FIELDS = [
-  "channels",
-  "lspServers",
-  "outputStyles",
-  "settings",
-] as const;
+const UNSUPPORTED_MANIFEST_FIELDS = ["channels", "lspServers", "outputStyles", "settings"] as const;
 
 export type MarketplaceSource =
   | { source: "url"; headers?: Record<string, string>; url: string }
@@ -345,7 +342,9 @@ export function loadKnownMarketplacesSync(storageRoot: string): KnownMarketplace
   return [];
 }
 
-export function ensureDefaultPluginMarketplaces(storageRoot: string): KnownMarketplaceRecord[] {
+export async function ensureDefaultPluginMarketplaces(
+  storageRoot: string,
+): Promise<KnownMarketplaceRecord[]> {
   const known = loadKnownMarketplacesSync(storageRoot);
   const existingIds = new Set(known.map((record) => record.id));
   const now = new Date().toISOString();
@@ -364,7 +363,8 @@ export function ensureDefaultPluginMarketplaces(storageRoot: string): KnownMarke
   );
   if (missing.length === 0) return known;
   const next = [...known, ...missing];
-  writeKnownMarketplacesSync(storageRoot, next);
+  // 热查询不持锁，首次登记也必须发布完整一代，不能让读者看见半份 JSON。
+  await writeKnownMarketplaces(storageRoot, next);
   return next;
 }
 
@@ -374,7 +374,7 @@ export async function ensureMarketplaceManifestAvailable(input: {
   storageRoot: string;
 }): Promise<KnownMarketplaceRecord | null> {
   throwIfPluginOperationAborted(input.signal);
-  ensureDefaultPluginMarketplaces(input.storageRoot);
+  await ensureDefaultPluginMarketplaces(input.storageRoot);
   if (loadMarketplaceManifestSync(input.storageRoot, input.marketplace)) {
     return (
       loadKnownMarketplacesSync(input.storageRoot).find(
@@ -455,7 +455,7 @@ export async function addMarketplace(input: {
     const persistedManifest =
       loaded.manifest.name === ZCODE_OFFICIAL_PLUGIN_MARKETPLACE
         ? parseRequiredMarketplaceManifest(
-            writeCdnOfficialMarketplacePartitionSync({
+            await writeCdnOfficialMarketplacePartition({
               manifest: loaded.manifest.raw,
               storageRoot: input.storageRoot,
             }),
@@ -670,7 +670,7 @@ export async function updateMarketplace(input: {
   signal?: AbortSignal;
   storageRoot: string;
 }): Promise<KnownMarketplaceRecord[]> {
-  ensureDefaultPluginMarketplaces(input.storageRoot);
+  await ensureDefaultPluginMarketplaces(input.storageRoot);
   const known = loadKnownMarketplacesSync(input.storageRoot);
   const selected = input.marketplace
     ? known.filter((record) => record.id === input.marketplace)
@@ -754,6 +754,16 @@ export function resolveInstalledPluginRoot(
     record.installPath ||
     getPluginCacheDir(storageRoot, record.marketplace, record.name, record.version);
   return recoverAtomicTargetSync(root);
+}
+
+export async function resolveInstalledPluginRootAsync(
+  storageRoot: string,
+  record: InstalledPluginRecord,
+): Promise<string> {
+  const root =
+    record.installPath ||
+    getPluginCacheDir(storageRoot, record.marketplace, record.name, record.version);
+  return resolveAtomicReadPath(root);
 }
 
 export async function installMarketplacePlugin(input: {
@@ -892,12 +902,12 @@ export async function validateMarketplacePlugin(input: {
       storageRoot: input.storageRoot,
     });
     diagnostics.push(
-      ...validatePluginRoot({
+      ...(await validatePluginRoot({
         entry: plugin,
         marketplace: input.marketplace,
         rootPath: resolved.path,
         storageRoot: input.storageRoot,
-      }),
+      })),
     );
   } catch (error) {
     diagnostics.push(toValidationDiagnostic(error, `${input.name}@${input.marketplace}`));
@@ -932,7 +942,7 @@ export async function describeMarketplacePlugin(input: {
   if (installedRecord) {
     const rootPath = resolveInstalledPluginRoot(input.storageRoot, installedRecord);
     if (directoryExists(rootPath)) {
-      const read = readComponentsAtRoot({
+      const read = await readComponentsAtRoot({
         diagnostics,
         marketplace: input.marketplace,
         rootPath,
@@ -992,7 +1002,7 @@ export async function describeMarketplacePlugin(input: {
       marketplace: input.marketplace,
       storageRoot: input.storageRoot,
     });
-    const read = readComponentsAtRoot({
+    const read = await readComponentsAtRoot({
       diagnostics,
       entry,
       marketplace: input.marketplace,
@@ -1012,12 +1022,12 @@ export async function describeMarketplacePlugin(input: {
 }
 
 /** 读插件根目录的 manifest（失败按 null 降级），再交给纯枚举器列出组件名称+描述。 */
-function readComponentsAtRoot(input: {
+async function readComponentsAtRoot(input: {
   diagnostics: PluginValidationDiagnostic[];
   entry?: PluginMarketplaceEntry;
   marketplace: string;
   rootPath: string;
-}): { components: PluginComponentGroup[]; metadata?: PluginManifestDisplayMetadata } {
+}): Promise<{ components: PluginComponentGroup[]; metadata?: PluginManifestDisplayMetadata }> {
   let loadedManifest: { manifest: PluginManifest; manifestPath?: string } | null = null;
   try {
     loadedManifest = readPluginManifestFromRoot(
@@ -1038,10 +1048,14 @@ function readComponentsAtRoot(input: {
         source: "cache" as const,
       }
     : undefined;
-  const components = enumeratePluginComponents(input.rootPath, loadedManifest?.manifest ?? null, {
-    diagnostics: input.diagnostics as PluginDiagnostic[],
-    ...(loaded ? { loaded } : {}),
-  });
+  const components = await enumeratePluginComponents(
+    input.rootPath,
+    loadedManifest?.manifest ?? null,
+    {
+      diagnostics: input.diagnostics as PluginDiagnostic[],
+      ...(loaded ? { loaded } : {}),
+    },
+  );
   const metadata = loadedManifest ? toManifestDisplayMetadata(loadedManifest.manifest) : undefined;
   return { components, ...(metadata ? { metadata } : {}) };
 }
@@ -1142,12 +1156,12 @@ export async function validateMarketplaceSource(input: {
           storageRoot: input.storageRoot,
         });
         diagnostics.push(
-          ...validatePluginRoot({
+          ...(await validatePluginRoot({
             entry,
             marketplace: loaded.manifest.name,
             rootPath: resolved.path,
             storageRoot: input.storageRoot,
-          }),
+          })),
         );
       } catch (error) {
         diagnostics.push(toValidationDiagnostic(error, `${entry.name}@${loaded.manifest.name}`));
@@ -1190,9 +1204,11 @@ export async function validateLocalPluginPath(input: {
       },
     ];
   }
-  const rootPath = statSync(resolved).isDirectory() ? resolved : resolveManifestRootFromFile(resolved);
+  const rootPath = statSync(resolved).isDirectory()
+    ? resolved
+    : resolveManifestRootFromFile(resolved);
   if (findMarketplaceManifestPath(rootPath)) {
-    return validateMarketplaceSource({
+    return await validateMarketplaceSource({
       signal: input.signal,
       source: { source: "directory", path: rootPath },
       storageRoot: input.storageRoot,
@@ -1225,7 +1241,7 @@ export async function validateLocalPluginPath(input: {
   }
   // 本地目录没有 marketplace 条目：用 manifest 自己的 name 合成一个 strict 条目，
   // 让 validatePluginRoot 走与已安装插件完全相同的 manifest/MCP 校验。
-  return validatePluginRoot({
+  return await validatePluginRoot({
     entry: { name: name || basename(rootPath), raw: {} },
     marketplace: "inline",
     rootPath,
@@ -1678,6 +1694,8 @@ function createManifestFromMarketplaceEntry(
   delete raw.examplePrompts;
   delete raw.examplePrompts_i18n;
   delete raw.requiresPaidPlan;
+  // 扩展摘要也是目录层的信息（docs/plugins/plugin-publishing.md §4.2），不是清单的 extension 键。
+  delete raw.extensionSummary;
   return {
     ...raw,
     name: entry.name,
@@ -2059,26 +2077,6 @@ async function writeKnownMarketplaces(
   });
 }
 
-function writeKnownMarketplacesSync(
-  storageRoot: string,
-  marketplaces: KnownMarketplaceRecord[],
-): void {
-  const path = join(storageRoot, KNOWN_MARKETPLACES_FILE);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(
-    path,
-    `${JSON.stringify(
-      {
-        version: 1,
-        marketplaces,
-      },
-      null,
-      2,
-    )}\n`,
-    "utf8",
-  );
-}
-
 function defaultMarketplaceSourceFromString(source: string): MarketplaceSource {
   const trimmed = source.trim();
   if (/^[^/]+\/[^/]+(?:[#@].+)?$/u.test(trimmed) && !trimmed.includes(":")) {
@@ -2300,6 +2298,29 @@ export function parseEntryStoreListing(
   return Object.keys(listing).length > 0 ? listing : undefined;
 }
 
+/** 目录条目的扩展摘要（docs/plugins/plugin-publishing.md §4.2）。CLI 只透传，不判断兼容。 */
+export interface PluginExtensionSummary {
+  engines: { zcode: string };
+  grants: string[];
+}
+
+/**
+ * 从目录条目读扩展摘要：只认 engines.zcode 是非空字符串的条目，grants 只留字符串，其余键丢掉。
+ * 协议字段是 strict 的，丢掉未知键才不会让 App 解析失败。范围格式不检查，由 App 判断。
+ */
+export function parseEntryExtensionSummary(
+  entry: Record<string, unknown>,
+): PluginExtensionSummary | undefined {
+  const summary = entry.extensionSummary;
+  if (!isRecord(summary) || !isRecord(summary.engines)) return undefined;
+  const range = summary.engines.zcode;
+  if (typeof range !== "string" || range.trim().length === 0) return undefined;
+  const grants = Array.isArray(summary.grants)
+    ? summary.grants.filter((grant): grant is string => typeof grant === "string")
+    : [];
+  return { engines: { zcode: range }, grants };
+}
+
 /** author 字段兼容 string 与 {name,url}（plugin.json 与目录条目共用此规则）。 */
 export function normalizeAuthorValue(value: unknown): { name?: string; url?: string } | undefined {
   if (typeof value === "string") {
@@ -2396,12 +2417,12 @@ function readPluginManifestFromRoot(
   return null;
 }
 
-function validatePluginRoot(input: {
+async function validatePluginRoot(input: {
   entry: PluginMarketplaceEntry;
   marketplace: string;
   rootPath: string;
   storageRoot: string;
-}): PluginValidationDiagnostic[] {
+}): Promise<PluginValidationDiagnostic[]> {
   const diagnostics: PluginValidationDiagnostic[] = [];
   const pluginId = `${input.entry.name}@${input.marketplace}`;
   let loadedManifest: { manifest: PluginManifest; manifestPath?: string } | null = null;
@@ -2446,7 +2467,7 @@ function validatePluginRoot(input: {
     pluginId,
     source: "cache",
   });
-  pushMcpValidationDiagnostics({
+  await pushMcpValidationDiagnostics({
     diagnostics,
     manifest: loadedManifest.manifest,
     manifestPath,
@@ -2498,7 +2519,7 @@ function pushManifestCompatibilityDiagnostics(input: {
   }
 }
 
-function pushMcpValidationDiagnostics(input: {
+async function pushMcpValidationDiagnostics(input: {
   diagnostics: PluginValidationDiagnostic[];
   manifest: PluginManifest;
   manifestPath: string;
@@ -2506,7 +2527,7 @@ function pushMcpValidationDiagnostics(input: {
   pluginId: string;
   rootPath: string;
   storageRoot: string;
-}): void {
+}): Promise<void> {
   const diagnostics = input.diagnostics as PluginDiagnostic[];
   const loaded = {
     id: input.pluginId,
@@ -2516,7 +2537,7 @@ function pushMcpValidationDiagnostics(input: {
     rootPath: input.rootPath,
     source: "cache" as const,
   };
-  const definitions = loadPluginMcpServerDefinitions({ diagnostics, loaded });
+  const definitions = await loadPluginMcpServerDefinitions({ diagnostics, loaded });
   resolvePluginMcpServers({
     dataPath: join(input.storageRoot, "data", sanitizePluginId(input.pluginId)),
     definitions,
@@ -2833,7 +2854,7 @@ function getPluginCacheDir(
 }
 
 export function getPluginDataDir(storageRoot: string, pluginId: string): string {
-  // 与 NodePluginAdapter.discoverPluginsSync 的 dataPath 解析保持一致：<storageRoot>/data/<sanitized-id>。
+  // 与 NodePluginAdapter.discoverPlugins 的 dataPath 解析保持一致：<storageRoot>/data/<sanitized-id>。
   return join(storageRoot, "data", sanitizePluginId(pluginId));
 }
 
@@ -2912,4 +2933,16 @@ function tryParseUrl(input: string): URL | null {
   } catch {
     return null;
   }
+}
+
+export async function listInstalledPluginRecordsAsync(
+  storageRoot: string,
+): Promise<InstalledPluginRecord[]> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readStandaloneAtomicFile(join(storageRoot, INSTALLED_PLUGINS_FILE)));
+  } catch {
+    parsed = undefined;
+  }
+  return normalizeInstalledPluginsState(parsed).plugins;
 }

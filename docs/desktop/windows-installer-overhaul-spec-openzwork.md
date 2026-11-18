@@ -66,6 +66,8 @@ installer-completed (日志可查，完成页直接启动 `$INSTDIR\\ZCode.exe`)
 
 打包阶段生成安装器可读的 ownership manifest，记录相对于 `$INSTDIR` 的应用文件（目录不单独列出）。清单随安装包落盘，供下一次更新使用；不额外承诺文件系统事务或回滚。`customRemoveFiles` 只处理 manifest 中声明的条目；未知条目不删除。
 
+覆盖更新优先读取 `.openzwork-install-manifest`，旧安装目录只有 `.zcode-install-manifest` 时使用旧名。从备份到清理失败后的恢复，全程使用选中的文件名。自引用条目在运行旧卸载器前从工作副本移除，恢复时写回原名和原始字节。
+
 ### 从旧版本升级（后续增量设计）
 
 旧版本没有 manifest 时，目标方案是在调用旧卸载器前把未能证明为应用所有的条目移入独立临时备份；新版本安装完成后只恢复新版本不存在的条目。备份目录不放在 `$PLUGINSDIR`，回滚失败时保留路径并写入日志。本轮尚未接管 electron-builder 外层的 `uninstallOldVersion` 调用，因此无法改变“第一次从无 manifest 版本升级”时旧卸载器的全树清理行为；当前实现对新版本之间的后续更新生效，详见《Windows 更新：安装目录文件保留规范》。

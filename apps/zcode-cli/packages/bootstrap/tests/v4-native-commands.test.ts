@@ -3,7 +3,11 @@
 // 08-phasing M4 完成定义的 L2 层（命令 → core 调用 → 状态推进，不经旧协议代码）。
 import { SessionEventType, type SessionEvent } from "@zcode/contracts";
 import { describe, expect, it, vi } from "vitest";
-import type { CommandEnvelope } from "@zcode/shared/zcode-protocol-v4";
+import { V4InteractionRegistry } from "../src/zcode-protocol-v4/interaction-registry.js";
+import {
+  PERMISSION_FULL_ACCESS_OPTION_ID,
+  type CommandEnvelope,
+} from "@zcode/shared/zcode-protocol-v4";
 import { createInputFacade } from "../src/app/input-facade.js";
 import type { SendInputOptions } from "../src/app/types.js";
 import { V4CommandExecutor } from "../src/zcode-protocol-v4/commands/executor.js";
@@ -95,6 +99,25 @@ function envelope(type: string, payload: unknown): CommandEnvelope {
     baseRevision: 0,
   } as unknown as CommandEnvelope;
 }
+
+it("完全访问仅在实际授权后向发起端返回可保存的权限凭据", async () => {
+  const interactions = new V4InteractionRegistry();
+  interactions.register("permission", vi.fn(), {
+    sessionId: "s1",
+    kind: "other",
+    fullAccess: async () => {},
+  });
+  const executor = new V4CommandExecutor(makeHost(makeRecord(), { interactions }));
+  const command = envelope("resolveInteraction", {
+    interactionId: "permission",
+    answer: { optionId: PERMISSION_FULL_ACCESS_OPTION_ID },
+  });
+  expect(await executor.execute(command)).toMatchObject({
+    type: "resolveInteraction",
+    resolvedBy: { clientId: command.clientId, optionId: PERMISSION_FULL_ACCESS_OPTION_ID },
+  });
+  expect(await executor.execute({ ...command, commandId: "late" })).toBeUndefined();
+});
 
 async function settle() {
   // 后台 turn 是 void 起跑的微任务链，flush 两轮保证 finally 执行完。
@@ -450,9 +473,6 @@ describe("v4 原生 sendText", () => {
     });
     const record = makeRecord({ app });
     const host = makeHost(record, {
-      ensureModelReady: vi.fn().mockImplementation(async () => {
-        order.push(`preflight:${currentModel}`);
-      }),
       afterLegacyStateMutation: vi.fn().mockImplementation(async () => {
         order.push(`ready:${currentModel}`);
       }),
@@ -482,7 +502,6 @@ describe("v4 原生 sendText", () => {
     await settle();
 
     expect(order).toEqual(["send:user-provider/user-model", "ready:user-provider/user-model"]);
-    expect(host.ensureModelReady).not.toHaveBeenCalled();
     expect(capturedOptions?.intent?.modelSelection).toEqual({
       providerId: "personal:execution",
       modelId: "GLM-5.2",
@@ -508,7 +527,6 @@ describe("v4 原生 sendText", () => {
       restoreWarning: { message: "session model unavailable", type: "model_unavailable" },
     });
     const host = makeHost(record, {
-      ensureModelReady: vi.fn(),
       hasUsableRuntimeModelTarget: vi.fn().mockReturnValue(false),
     });
 
@@ -526,7 +544,6 @@ describe("v4 原生 sendText", () => {
     ).resolves.toBeDefined();
     await settle();
 
-    expect(host.ensureModelReady).not.toHaveBeenCalled();
     expect(record.restoreWarning).toEqual({
       message: "session model unavailable",
       type: "model_unavailable",
@@ -562,9 +579,7 @@ describe("v4 原生 sendText", () => {
         }),
       });
       const record = makeRecord({ app });
-      const host = makeHost(record, {
-        ensureModelReady: vi.fn(),
-      });
+      const host = makeHost(record);
 
       await new V4CommandExecutor(host).execute(
         envelope("sendText", {
@@ -1550,6 +1565,9 @@ describe("supports 分流", () => {
       "setAssistantFeedback",
       "sendQueuedNow",
       "editQueueItem",
+      "applyQueueItemsConfig",
+      "lockQueueItemEdit",
+      "releaseQueueItemEdit",
       "reorderQueueItem",
       "deleteQueueItem",
       "setAutoDrain",
