@@ -143,8 +143,9 @@ export function SavedWorkflowProjectGroup({
     refresh,
   });
 
-  // 加载态回报给页；空 = 已加载且没有合法工作流也没有坏文件；count = 合法工作流条数。
-  const empty = state.loaded && state.entries.length === 0 && state.invalid.length === 0;
+  // OW-P024：只有成功的读取才能确认项目为空，否则组内错误和重试入口会一起消失。
+  const empty = state.loaded && !state.error && !state.runsError &&
+    state.entries.length === 0 && state.invalid.length === 0;
   const count = state.loaded ? state.entries.length : 0;
   useEffect(() => {
     onStateChange(workspaceKey, { loaded: state.loaded, empty, count });

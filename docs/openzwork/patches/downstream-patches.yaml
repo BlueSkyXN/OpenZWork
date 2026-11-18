@@ -556,3 +556,22 @@ patches:
     retire: 上游为 workflows/list、workflows/runs 提供等价的单进程/空闲回收读取链（或等效修复启动风暴与回收），A01–A11 适用条目在上游实现上通过。
     refs:
       - docs/specs/saved-workflow-query-lifecycle-openzwork.md
+
+  - id: OW-P027
+    title: Windows 构建预览包时解压预构建工具失败
+    kind: build
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.17.2
+      checked: 3.17.2
+    trigger: Windows runner 的 Windows PowerShell 加载 PowerShell 7 的 Microsoft.PowerShell.Archive 模块。
+    impact: ugrep ZIP 解压失败，Windows 安装包构建中止。
+    cause: Expand-Archive 调用了当前 .NET 运行时缺少的三参数 ExtractToDirectory。
+    evidence: Installers run 44313268186 的首次 Windows 作业在新版镜像失败，同一提交在旧版镜像重试成功。
+    fix: 使用 Windows 系统目录的 bsdtar 解压 ZIP。
+    files:
+      - scripts/prebuilt-binary-extract.mjs
+    regression:
+      - scripts/test/prebuilt-binary-extract.test.mjs
+    retire: 上游支持在没有 PowerShell 归档模块的 Windows runner 上解压所有预构建 ZIP。

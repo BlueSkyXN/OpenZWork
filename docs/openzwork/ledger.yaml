@@ -297,9 +297,11 @@ entries:
       - packages/desktop/scripts/build-metadata.mjs
       - packages/desktop/src/main/about.ts
       - packages/desktop/electron-builder.config.js
+      - scripts/prebuilt-binary-extract.mjs
     tests:
       - scripts/test/automatic-release.test.mjs
       - scripts/test/openzwork-version.test.mjs
+      - scripts/test/prebuilt-binary-extract.test.mjs
       - scripts/test/publish-github-release.test.mjs
       - scripts/test/verify-desktop-release-version.test.mjs
       - scripts/test/zcode-distribution-installer.test.mjs
@@ -546,6 +548,7 @@ entries:
       - packages/shared/src/index.ts
       - packages/ui/src/store/savedWorkflowStore.ts
       - packages/ui/src/settings/saved-workflows/SavedWorkflowProjectGroup.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowGlobalGroup.tsx
       - packages/ui/src/i18n/locales/zh-CN.ts
       - packages/ui/src/i18n/locales/en-US.ts
       - packages/desktop/test/e2e/automations-workflows-hub.test.ts
