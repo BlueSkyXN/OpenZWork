@@ -546,6 +546,7 @@ entries:
       - packages/shared/src/index.ts
       - packages/ui/src/store/savedWorkflowStore.ts
       - packages/ui/src/settings/saved-workflows/SavedWorkflowProjectGroup.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowGlobalGroup.tsx
       - packages/ui/src/i18n/locales/zh-CN.ts
       - packages/ui/src/i18n/locales/en-US.ts
       - packages/desktop/test/e2e/automations-workflows-hub.test.ts

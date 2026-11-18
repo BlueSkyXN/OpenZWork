@@ -223,7 +223,10 @@ export function SavedWorkflowGlobalGroup(props: SavedWorkflowGlobalGroupProps) {
             />
           ))}
         </div>
-      ) : state.errorCode === -32602 ? (
+      ) : null}
+
+      {/* OW-P024：刷新失败时缓存卡片仍可用，列表错误须单独显示。 */}
+      {state.errorCode === -32602 ? (
         <p className="mt-5 text-ui-base text-foreground-subtlest">
           {intl.formatMessage({ id: "workflows.hub.global.unsupported" })}
         </p>
@@ -231,11 +234,11 @@ export function SavedWorkflowGlobalGroup(props: SavedWorkflowGlobalGroupProps) {
         <p className="mt-5 text-ui-sm text-destructive">
           {intl.formatMessage({ id: "workflows.hub.global.noLocalRuntime" })} {state.error}
         </p>
-      ) : (
+      ) : state.entries.length === 0 ? (
         <p className="mt-5 text-ui-base text-foreground-subtlest">
           {intl.formatMessage({ id: "workflows.hub.global.empty" })}
         </p>
-      )}
+      ) : null}
 
       {/* OW-P024 R4：运行历史读取失败不再伪装成「尚未运行」——与项目组同款：
           保留列表与卡片上上次已知 run 的徽标，组上给可重试的错误提示。 */}

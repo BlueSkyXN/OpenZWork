@@ -412,6 +412,34 @@ describe("工作流中枢错误与刷新竞态 E2E（OW-P024 R4）", () => {
         )) as boolean,
       { timeout: 15000, timeoutMsg: "重试成功后没有出现 completed 徽标" },
     );
+
+    // OW-P024：先建立成功的空列表，再分别让列表和历史失败，检查用户可见的提示和总览空态。
+    for (const failure of [null, "list", "runs", null] as const) {
+      await browser.execute((failedRead) => {
+        window.__setControlledSavedWorkflowReadsForE2E?.({
+          listSavedWorkflows: async (target: { workspacePath?: string }) => {
+            if (target.workspacePath && failedRead === "list") throw new Error("empty-project-list-error");
+            return { workflows: [], invalid: [], dir: "" };
+          },
+          listSavedWorkflowRuns: async (target: { workspacePath?: string }) => {
+            if (target.workspacePath && failedRead === "runs") throw new Error("empty-project-runs-error");
+            return { runs: [] };
+          },
+        });
+      }, failure);
+      await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "总览刷新按钮不可用" });
+      if (failure === null) {
+        await waitForTestIdByDom(TID_WORKFLOWS_EMPTY, { timeoutMsg: "成功读取空项目后未恢复空态" });
+        continue;
+      }
+      await browser.waitUntil(() => browser.execute((failedRead, emptyId) => {
+        const group = [...document.querySelectorAll('[data-testid^="workflow-project-group-"]')]
+          .find((element) => element.textContent?.includes(`empty-project-${failedRead}-error`));
+        return Boolean(group) && !document.querySelector(`[data-testid="${emptyId}"]`) &&
+          (failedRead !== "runs" || Boolean(group?.querySelector("[data-workflows-runs-retry]")));
+      }, failure, TID_WORKFLOWS_EMPTY), { timeout: 15000, timeoutMsg: `空项目未显示 ${failure} 读取错误` });
+    }
+    await browser.execute(() => window.__setControlledSavedWorkflowReadsForE2E?.({}));
   });
 
   it("倒序刷新：新请求 B 先完成显示新内容，旧请求 A 最后返回不得覆盖", async function () {
@@ -640,6 +668,28 @@ describe("全局工作流列表错误与重试 E2E（OW-P024 R4）", () => {
       () => document.querySelector('[data-workflow-last-run="completed"]') !== null,
     );
     expect(historyKept).toBe(true);
+
+    // OW-P024：全局列表刷新失败时，即使卡片来自缓存，用户仍能看到本次错误。
+    await browser.execute(() => {
+      window.__setControlledSavedWorkflowReadsForE2E?.({
+        listSavedWorkflows: async () => { throw new Error("global-list-refresh-error"); },
+      });
+    });
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "总览刷新按钮不可用" });
+    await browser.waitUntil(() => browser.execute((id, name) => {
+      const text = document.querySelector(`[data-testid="${id}"]`)?.textContent;
+      return Boolean(text?.includes(name) && text.includes("global-list-refresh-error"));
+    }, TID_WORKFLOW_GLOBAL_GROUP, GLOBAL_LIST_WORKFLOW_NAME), {
+      timeout: 15000, timeoutMsg: "全局列表未同时显示缓存卡片和刷新错误",
+    });
+    await browser.execute(() => window.__setControlledSavedWorkflowReadsForE2E?.({}));
+    await clickTestIdByDom(TID_WORKFLOWS_REFRESH, { timeoutMsg: "总览刷新按钮不可用" });
+    await browser.waitUntil(() => browser.execute((id, name) => {
+      const text = document.querySelector(`[data-testid="${id}"]`)?.textContent;
+      return Boolean(text?.includes(name) && !text.includes("global-list-refresh-error"));
+    }, TID_WORKFLOW_GLOBAL_GROUP, GLOBAL_LIST_WORKFLOW_NAME), {
+      timeout: 15000, timeoutMsg: "全局列表读取成功后仍显示旧错误",
+    });
   });
 });
 
