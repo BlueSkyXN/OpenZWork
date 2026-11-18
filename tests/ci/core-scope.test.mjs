@@ -68,8 +68,13 @@ test("repository Node regressions run in the blocking platform checks", async ()
   const steps = ci.jobs.checks.steps;
   const scriptSteps = steps.filter((step) => step.run === "pnpm test:repo-scripts");
   assert.equal(scriptSteps.length, 1);
-  assert.equal(scriptSteps[0].if, "matrix.lane == 'regressions'");
+  assert.equal(scriptSteps[0].if, "matrix.lane == 'regressions' && runner.os != 'Windows'");
   assert.equal(scriptSteps[0]["continue-on-error"], undefined);
+  const windows = steps.find((step) => step.name === "Windows repository script regressions");
+  assert.equal(windows?.if, "matrix.lane == 'regressions' && runner.os == 'Windows'");
+  assert.equal(windows.shell, "pwsh");
+  assert.match(windows.run, /LeaveDebugMode\(\)[\s\S]+pnpm test:repo-scripts/);
+  assert.equal(windows["continue-on-error"], undefined);
   const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
   assert.match(manifest.scripts["test:repo-scripts"], /scripts\/test\/\*\.test\.mjs/);
   assert.match(manifest.scripts["test:repo-scripts"], /--test-concurrency=1/);
