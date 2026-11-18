@@ -1,4 +1,4 @@
-// OZ-C011：界面语言持久化兼容合同回归（docs/specs/settings-locale-persistence-openzwork.md）。
+// OZ-C012：界面语言持久化兼容合同回归（docs/specs/settings-locale-persistence-openzwork.md）。
 // 驱动真实 createSettingService + 真实 setting.json 写盘队列 + 隔离 HOME/数据根；
 // 不 mock 写盘路径，不读用户真实设置。修复前（v3.18.0 merge 4d263563 起）writeSettingsAt
 // 直写 settings，本文件多语言/迁移用例失败。
@@ -54,7 +54,7 @@ afterEach(async () => {
   await Promise.all(roots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
 });
 
-describe("settings locale persistence (OZ-C011)", () => {
+describe("settings locale persistence (OZ-C012)", () => {
   it.each(["ja-JP", "ru-RU", "ko-KR"] as const)(
     "persists %s with legacy-safe old fields and true uiLocale",
     async (locale) => {

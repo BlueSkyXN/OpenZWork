@@ -720,7 +720,6 @@ modules:
       - shared
       - ui
       - web
-      - web-auth
       - web-remote-relay
     publicEntrypoints:
       - packages/web/src/web-remote-control/index.ts
@@ -859,6 +858,17 @@ modules:
       - packages/services/src/zcode-agent/resident-rows-range/contract.ts
     layers: {app: .}
     owner: remote
+  # workflow-query：已保存工作流两项读取共用的独立查询 lane（spec：docs/specs/saved-workflow-query-lifecycle-openzwork.md）
+  - id: workflow-query
+    roots:
+      - packages/services/src/zcode-agent/workflow-query
+    managed: true
+    requires: [shared, services]
+    publicEntrypoints:
+      - packages/services/src/zcode-agent/workflow-query/contract.ts
+      - packages/services/src/zcode-agent/workflow-query/workflowQueryRuntime.ts
+    layers: {app: .}
+    owner: conversation
   # 官方市场工具只在接到支持卡片的输入时开放，目录排序和安装由 CLI 所有。
   - id: agent-plugin-discovery
     roots:
@@ -1138,22 +1148,6 @@ modules:
     layers:
       app: .
     owner: remote
-  # voice-input-service：Composer 语音输入的本机 Host ASR 连接（docs/chat/composer-voice-input.md）
-  - id: voice-input-service
-    roots:
-      - packages/services/src/voice-input
-    managed: true
-    requires:
-      - services
-      - shared
-      - rpc
-    publicEntrypoints:
-      - packages/services/src/voice-input/index.ts
-      - packages/services/src/voice-input/contract.ts
-      - packages/services/src/voice-input/node.ts
-    layers:
-      adapters: .
-    owner: desktop
   # provider-provisioning-status：数据同步页模型提供商读取 / 重试 Main 协调器的 Provisioning lane（R3 §8.3.6）
   - id: provider-provisioning-status
     roots:
@@ -1189,25 +1183,6 @@ modules:
       ui: .
     layerOrder: [contract, domain, app, ui]
     owner: remote
-  # voice-input：Composer 语音输入按钮、状态机与麦克风采集（docs/chat/composer-voice-input.md）
-  - id: voice-input
-    roots:
-      - packages/ui/src/voice-input
-    managed: true
-    requires:
-      - services
-      - shared
-      - ui
-    publicEntrypoints:
-      - packages/ui/src/voice-input/index.ts
-      - packages/ui/src/voice-input/contract.ts
-    layers:
-      contract: contract.ts
-      domain: domain
-      adapters: adapters
-      ui: .
-    layerOrder: [contract, domain, adapters, ui]
-    owner: desktop
   # settings-scope：设置页 Scope 菜单按设备分组（docs/remote/data-sync.md「Scope 菜单按设备分组」）
   - id: settings-scope
     roots:
@@ -1666,7 +1641,6 @@ modules:
       - shared
       - ui
       - web
-      - web-auth
     publicEntrypoints:
       - packages/web/src/share-manage/index.ts
       - packages/web/src/share-manage/contract.ts
@@ -1879,20 +1853,6 @@ modules:
       ui: .
     owner: conversation
 
-  - id: web-auth
-    roots:
-      - packages/web/src/auth
-    managed: true
-    requires:
-      - mobile-ui
-      - shared
-      - ui
-    publicEntrypoints:
-      - packages/web/src/auth/index.ts
-      - packages/web/src/auth/contract.ts
-    layers:
-      app: .
-    owner: identity
 
   - id: credential-security
     roots:

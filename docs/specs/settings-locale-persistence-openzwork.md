@@ -2,7 +2,7 @@
 
 - 状态：实现规格（2026-11-17 J1 返工）
 - 上游合同：`docs/i18n/ui-locales.md`（上游 v3.18.0 引入，权威原文不改写）
-- 登记条目：ledger OZ-C011；回归 `packages/services/test/settingsLocalePersistence.test.ts`（核心 CI `retained-provider-protocol-and-user-storage`）
+- 登记条目：ledger OZ-C012；回归 `packages/services/test/settingsLocalePersistence.test.ts`（核心 CI `retained-provider-protocol-and-user-storage`）
 
 ## 1. 问题与根因
 

@@ -4,7 +4,7 @@
  */
 export const webShareManageModule = {
   id: "web-share-manage",
-  requires: ["shared", "ui", "web", "web-auth"],
+  requires: ["shared", "ui", "web"],
   provides: ["web-share-manage"],
   publicEntrypoints: ["index.ts", "contract.ts", "mockConversationShareManageClient.ts"],
 } as const;

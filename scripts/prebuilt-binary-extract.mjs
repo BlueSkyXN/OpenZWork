@@ -39,14 +39,10 @@ export function extractPrebuiltArchive({ archivePath, archiveExt, extractDir, cw
   mkdirSync(extractDir, { recursive: true });
   if (archiveExt === "zip") {
     if (process.platform === "win32") {
-      runCommand("powershell.exe", [
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        `Expand-Archive -LiteralPath '${archivePath.replaceAll("'", "''")}' -DestinationPath '${extractDir.replaceAll("'", "''")}' -Force`,
-      ]);
+      // OW-P027：runner 上 Windows PowerShell 可能载入 PowerShell 7 的归档模块。
+      // 系统自带的 bsdtar 支持 ZIP；固定程序路径也避开 Git Bash 的 GNU tar。
+      const tar = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "tar.exe");
+      runCommand(tar, ["-xf", archivePath, "-C", extractDir]);
       return;
     }
 

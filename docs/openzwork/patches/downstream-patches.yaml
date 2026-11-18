@@ -514,6 +514,49 @@ patches:
     refs:
       - docs/feature-boundary-graph-visualization.md
 
+  - id: OW-P024
+    title: 工作流总览按项目批量拉起 chat CLI 且无空闲回收
+    kind: product
+    status: fixed
+    priority: P1
+    upstream:
+      since: 3.14.0
+      checked: 3.18.2
+    trigger: 打开「自动化 → 工作流」，项目组挂载时每项调用 workflows/list 与 workflows/runs 两次读取。
+    impact: 每个带 workspace 的项目各拉起并登记一个 chat lane CLI（start-if-needed），manager 无 idleTimeoutMs，打开一次总览即按项目数产生启动风暴并长期常驻；运行历史读取失败被静默转换为空数组，强制刷新并发时旧结果可覆盖新结果。
+    cause: resolveSavedWorkflowCarrier 对带 workspace 的读取一律 getOrStartReadOnlyClient（chat lane、无空闲回收）；savedWorkflowStore 把 runs 失败吞为 []、写回无请求代际。上游 3.18.1 仍是同一读取链。
+    fix: 独立 workflow-query lane：Desktop 固定 DB 条件下共用管理面 carrier（单 key 单进程、默认 5 分钟 idle 回收，Host 装配 shareLocalWorkflowQueryRuntime 裁决；非共享分支保留完整 workspaceIdentity），Server/远端按项目 key 同样回收；savedWorkflowStore 分离 runsError 并按请求代际写回，卡片/详情/全局组的错误态不把失败断言成空历史。spec：docs/specs/saved-workflow-query-lifecycle-openzwork.md。
+    evidence: 改前基线 50 项目冷加载中位 9399ms、50 chat spawn、树内存约 8.8GB。返工后（R1–R6 复测）：共享态项目组中位 623ms、1 workflow-query spawn、树内存约 780–800MB（采样自检 RSS>0 生效）；查询触发 chat spawn=0；同路径双身份分开 spawn=2（身份隔离）；非空 journal 同库共享/非共享读取一致；默认 300000ms idle 从最后一项读取完成起算 300157ms 整树退出（idle-timeout、后代零存活）；hub E2E 真实通过（项目准备经 settings 恢复项目；fork 语义下灰度断言移除）；聊天冷启动实测 835ms/719ms。返工 2（REVIEW-2）：缓存历史存在时错误可见并可重试（组件反例+E2E 场景 1）；倒序刷新 E2E（请求代际）；50 项目真实总览 E2E（renderer 项目服务桥真实 saveProject 注册，50 组 loaded+refresh 收敛）；真实运行任务（startSavedWorkflow sleep 常量工作流）跨查询与查询 lane 回收 running→completed；受控后代随进程组整树回收真实进程证据；性能恢复全并发为默认（分批仅显式诊断模式），50 CLI 全并发冷启的一次采样出现 15/50 读取失败，日志关联 admission 锁等待超时；锁机制（b36db2f6/PR#54）早于任务基线，受控旧/新读取路由单轮均为 0/50 失败，尚未排除新调用路径在其他负载下放大竞争。hub E2E 整文件的 8 个失败场景中，仅「全局工作流中枢」已在旧基线 fe9b9d98 复现，其余未逐项复现，不属于本次目标集合，保留原记录。遗留单列：跨版本 lane 枚举（旧 Desktop Main 收新枚举）未实测。
+    files:
+      - packages/services/src/zcode-agent/zcodeAgentService.ts
+      - packages/services/src/zcode-agent/workflow-query/contract.ts
+      - packages/services/src/zcode-agent/workflow-query/workflowQueryRuntime.ts
+      - packages/services/src/node.ts
+      - packages/desktop/src/host/index.ts
+      - packages/shared/src/processResourceTelemetry.ts
+      - packages/shared/src/index.ts
+      - packages/ui/src/store/savedWorkflowStore.ts
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowProjectGroup.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowCard.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowDetailView.tsx
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowRunHistoryPanel.tsx
+      - packages/desktop/src/renderer/src/main.tsx
+      - packages/desktop/test/e2e/automations/workflows/automations-workflows-hub.test.ts
+      - packages/desktop/wdio.conf.ts
+      - packages/ui/src/settings/saved-workflows/SavedWorkflowGlobalGroup.tsx
+      - scripts/check-e2e-required-cases.mjs
+      - .github/workflows/ci.yml
+    regression:
+      - packages/services/test/workflowQueryRuntime.test.ts
+      - packages/ui/test/savedWorkflowRefresh.test.ts
+      - packages/ui/test/savedWorkflowProjectGroupRunsError.test.ts
+      - packages/ui/test/savedWorkflowGlobalGroupRunsError.test.ts
+      - scripts/test/check-e2e-required-cases.test.mjs
+      - apps/zcode-cli/packages/adapters/tests/workflow-query-session-db.test.ts
+    retire: 上游为 workflows/list、workflows/runs 提供等价的单进程/空闲回收读取链（或等效修复启动风暴与回收），A01–A11 适用条目在上游实现上通过。
+    refs:
+      - docs/specs/saved-workflow-query-lifecycle-openzwork.md
+
   - id: OW-P025
     title: 插件市场已是主视图时从设置页再次进入市场被切回对话
     kind: product
@@ -551,3 +594,22 @@ patches:
     regression:
       - packages/desktop/test/e2eViewportOverrideRelease.test.ts
     retire: 上游在窗口尺寸调整前释放设备度量覆盖，或覆盖设置器改为用例级自动清理，顺序执行同等场景通过。
+
+  - id: OW-P027
+    title: Windows 构建预览包时解压预构建工具失败
+    kind: build
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.17.2
+      checked: 3.18.2
+    trigger: Windows runner 的 Windows PowerShell 加载 PowerShell 7 的 Microsoft.PowerShell.Archive 模块。
+    impact: ugrep ZIP 解压失败，Windows 安装包构建中止。
+    cause: Expand-Archive 调用了当前 .NET 运行时缺少的三参数 ExtractToDirectory。
+    evidence: Installers run 44313268186 的首次 Windows 作业在新版镜像失败，同一提交在旧版镜像重试成功。
+    fix: 使用 Windows 系统目录的 bsdtar 解压 ZIP。
+    files:
+      - scripts/prebuilt-binary-extract.mjs
+    regression:
+      - scripts/test/prebuilt-binary-extract.test.mjs
+    retire: 上游支持在没有 PowerShell 归档模块的 Windows runner 上解压所有预构建 ZIP。

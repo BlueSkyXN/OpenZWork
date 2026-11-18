@@ -2470,7 +2470,7 @@ function seedE2EStartupState(specs: string[] = []) {
     mkdirSync(legacyDefaultProjectPath, { recursive: true });
   }
   if (!useFreshConversationWorkspace && !agentWarmupFixture) {
-    // 既有 E2E 大量以一个已打开项目为前置；产品首次启动已改为 conversation，
+    // OW-P024：工作流总览等 E2E 以已打开的项目为前置；产品首次启动已改为 conversation，
     // 测试基线显式 seed 项目会话，避免把“老 case 的 fixture”误当成新用户默认行为。
     mkdirSync(legacyDefaultProjectPath, { recursive: true });
   }

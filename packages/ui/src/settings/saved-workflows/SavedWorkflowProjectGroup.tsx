@@ -143,8 +143,9 @@ export function SavedWorkflowProjectGroup({
     refresh,
   });
 
-  // 加载态回报给页；空 = 已加载且没有合法工作流也没有坏文件；count = 合法工作流条数。
-  const empty = state.loaded && state.entries.length === 0 && state.invalid.length === 0;
+  // OW-P024：只有成功的读取才能确认项目为空，否则组内错误和重试入口会一起消失。
+  const empty = state.loaded && !state.error && !state.runsError &&
+    state.entries.length === 0 && state.invalid.length === 0;
   const count = state.loaded ? state.entries.length : 0;
   useEffect(() => {
     onStateChange(workspaceKey, { loaded: state.loaded, empty, count });
@@ -327,6 +328,8 @@ export function SavedWorkflowProjectGroup({
         projectLabel={project.label}
         entry={entry}
         runs={state.runs.filter((run) => run.name === mode.name)}
+        runsError={state.runsError}
+        onRunsRetry={() => void refresh({ bypassCache: true })}
         now={now}
         busy={busyName === mode.name}
         canOpenRun={Boolean(onOpenWorkflowRun)}
@@ -354,6 +357,11 @@ export function SavedWorkflowProjectGroup({
     <div
       data-testid={testId(TID_WORKFLOW_PROJECT_GROUP, workspaceKey)}
       data-workflow-project-current={isCurrent ? "true" : undefined}
+      // OW-P024 R4：组级可观察状态（E2E/浏览器验收用稳定标记，不匹配语言片段）。
+      data-workflows-loading={state.loading ? "true" : undefined}
+      data-workflows-loaded={state.loaded ? "true" : undefined}
+      data-workflows-load-error={state.error ? "true" : undefined}
+      data-workflows-runs-error={state.runsError ? "true" : undefined}
       className="mt-8 first:mt-0"
     >
       <div className="flex items-center justify-between gap-3">
@@ -390,6 +398,7 @@ export function SavedWorkflowProjectGroup({
               key={entry.path}
               entry={entry}
               lastRun={lastRuns.get(entry.name)}
+              runsError={state.runsError}
               now={now}
               busy={busyName === entry.name}
               onOpen={handleOpen}
@@ -406,6 +415,26 @@ export function SavedWorkflowProjectGroup({
       {state.error ? (
         <p className="mt-4 text-ui-sm text-destructive">
           {intl.formatMessage({ id: "workflows.hub.loadError" }, { error: state.error })}
+        </p>
+      ) : null}
+
+      {/* OW-P024：运行历史读取失败不再伪装成「尚未运行」——保留列表与上次已知 runs，给可重试的提示。 */}
+      {state.runsError ? (
+        <p className="mt-2 flex items-center gap-2 text-ui-sm text-warning">
+          <span>
+            {intl.formatMessage({ id: "workflows.hub.runsError" }, { error: state.runsError })}
+          </span>
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto p-0 text-ui-sm"
+            // OW-P024 R4：组级重试的稳定选择器（E2E/浏览器验收；不依赖语言片段）。
+            data-workflows-runs-retry="true"
+            onClick={() => void refresh({ bypassCache: true })}
+          >
+            {intl.formatMessage({ id: "workflows.hub.retry" })}
+          </Button>
         </p>
       ) : null}
 

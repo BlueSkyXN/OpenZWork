@@ -7,7 +7,7 @@
 // ② 反向合同：把 endpoint 指向观测 server 后，client/configs 全程零请求（远端拉取已删除）；
 // ③ OZ-CLH-02（2026-11-17 J1 补齐）：UI 选非中英语言后，setting.json 按上游兼容合同落盘
 //   （旧字段只写中英、真实选择写 uiLocale/uiLocalePreference；合同见
-//   docs/specs/settings-locale-persistence-openzwork.md / OZ-C011）。
+//   docs/specs/settings-locale-persistence-openzwork.md / OZ-C012）。
 //
 // 历史缺口处置：
 // - uiLocale 落盘差异（2026-11-16 记录）已定性为 v3.18.0 merge 4d263563 冲突裁决丢失的
