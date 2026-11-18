@@ -15,7 +15,9 @@ describe("pane runtime identity E2E 装配矩阵", () => {
     expect(shouldEnablePaneRuntimeIdentityE2E({ bridgeFlagEnabled: false, runId: null })).toBe(
       false,
     );
-    expect(shouldEnablePaneRuntimeIdentityE2E({ bridgeFlagEnabled: false })).toBe(false);
+    expect(shouldEnablePaneRuntimeIdentityE2E({ bridgeFlagEnabled: false, runId: undefined })).toBe(
+      false,
+    );
   });
 
   it("flag 开但无有效 run ID（缺失/空白）时不启用——与 Host gate 同条件", async () => {
@@ -39,19 +41,53 @@ describe("pane runtime identity E2E 装配矩阵", () => {
     );
   });
 
-  it("run ID 从页面 URL 参数读取（desktop 注入 / 手机配对 URL 追加同一参数名）", async () => {
+  it("桌面 URL 的 run ID 优先于 sessionStorage", async () => {
     const { readPaneRuntimeIdentityE2ERunId, PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM } =
       await gate();
     expect(PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM).toBe("zcodeE2eRunId");
     vi.stubGlobal("window", {
       location: { search: "?a=1&zcodeE2eRunId=run-xyz" },
+      sessionStorage: { getItem: () => "run-storage" },
     } as unknown as Window);
     try {
       expect(readPaneRuntimeIdentityE2ERunId()).toBe("run-xyz");
     } finally {
       vi.unstubAllGlobals();
     }
-    vi.stubGlobal("window", { location: { search: "" } } as unknown as Window);
+  });
+
+  it("手机 URL 没有查询参数也从 sessionStorage 读取 run ID", async () => {
+    const { readPaneRuntimeIdentityE2ERunId, shouldEnablePaneRuntimeIdentityE2E } = await gate();
+    const getItem = vi.fn(() => " run-storage ");
+    vi.stubGlobal("window", { location: { search: "" }, sessionStorage: { getItem } });
+    try {
+      const runId = readPaneRuntimeIdentityE2ERunId();
+      expect(runId).toBe("run-storage");
+      expect(getItem).toHaveBeenCalledWith("zcodeE2eRunId");
+      expect(shouldEnablePaneRuntimeIdentityE2E({ bridgeFlagEnabled: true, runId })).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("缺省 location 和 storage 时没有可用 run ID", async () => {
+    const { readPaneRuntimeIdentityE2ERunId } = await gate();
+    vi.stubGlobal("window", {});
+    try {
+      expect(readPaneRuntimeIdentityE2ERunId()).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("浏览器拒绝存储访问时关闭诊断", async () => {
+    const { readPaneRuntimeIdentityE2ERunId } = await gate();
+    vi.stubGlobal("window", {
+      location: { search: "" },
+      get sessionStorage() {
+        throw new DOMException("Storage is unavailable", "SecurityError");
+      },
+    });
     try {
       expect(readPaneRuntimeIdentityE2ERunId()).toBeNull();
     } finally {

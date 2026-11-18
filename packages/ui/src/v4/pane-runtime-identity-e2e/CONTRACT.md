@@ -8,7 +8,9 @@ E2E 可经 `window.__zcodePaneRuntimeIdentityE2ERefresh[paneKey]` 在同一挂�
 
 ## 合同
 
-- 仅 E2E 构建（`shouldExposeE2EStoreBridge`）启用；生产构建运行时恒 no-op。
+- E2E 构建开关（`shouldExposeE2EStoreBridge`）打开后才读取 run ID。优先从 URL 读
+  `zcodeE2eRunId`，URL 缺少该值时读 `sessionStorage` 的同名键，空查询串也适用。
+  没有有效 run ID 时关闭诊断。
 - 查询走 pane 注入的 `zcodeSessionService`（与 V4 会话订阅同一 accessor/服务端口），
   existing-only 语义；失败按 error 条目记录，验收端把缺证据/错误判失败。
 - 注册与重查入口随 pane 生命周期清理，不读切页前的闭包；active=false 或缺 workspacePath

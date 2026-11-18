@@ -349,9 +349,9 @@ entries:
       - packages/desktop/test/e2e/helpers/session-runtime-association.ts
       - packages/desktop/test/sessionRuntimeAssociation.test.ts
       # WT04 direct 关联判定合同回归（2026-11-16 受控同步自 C）：反例拒绝同代异实例/
-      # 缺 attachment/scope 不匹配/订阅结束/查询不可用/缺 artifact/gate 未启用/同值代填。
+      # 缺 attachment/scope 不匹配/原桌面订阅结束后重订阅/查询不可用/缺 artifact/gate 未启用/同值代填。
       - packages/desktop/test/directAttachmentAssociation.test.ts
-      # pane 诊断装配矩阵（2026-11-17 J2）：flag+run ID 双条件，生产关闭态单列。
+      # pane 诊断装配矩阵：flag+run ID 双条件，含空查询串读取手机 sessionStorage。
       - packages/ui/test/paneRuntimeIdentityE2EGate.test.ts
       # CLH 补充（2026-11-17 J1.4，对齐 C 线登记）：openCommunity 本地配置链受控回归。
       - packages/desktop/test/communityLocalConfig.test.ts

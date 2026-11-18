@@ -4,12 +4,12 @@
 // 并把结果注册到 window 诊断表；注册随 pane 生命周期清理，查询失败按错误条目记录
 // （验收端把缺证据/错误明确判失败）。任一条件缺失（含生产构建）不注册诊断入口、
 // 不做额外查询。桌面 renderer 的 run ID 由 main 经加载 URL 参数注入
-// （desktopHostProcess 的 zcodeE2eRunId）；手机 Web 由 E2E helper 在配对 URL 追加。
+// （desktopHostProcess 的 zcodeE2eRunId）；手机 Web 由 E2E helper 写入 sessionStorage。
 import { useEffect, useMemo } from "react";
 import { shouldExposeE2EStoreBridge } from "@/lib/e2eStoreBridge.js";
 import { useOptionalServices } from "@/hooks/useServices.js";
 
-/** renderer URL 中携带 E2E run ID 的参数名（main/测试 helper 注入，生产构建不存在）。 */
+/** 桌面 URL 参数和手机 sessionStorage 共用的 E2E run ID 键。 */
 export const PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM = "zcodeE2eRunId";
 
 /** pane 诊断启用判定（纯函数，供装配矩阵测试）：build flag 与有效 run ID 缺一不可。 */
@@ -21,17 +21,18 @@ export function shouldEnablePaneRuntimeIdentityE2E(input: {
 }
 
 export function readPaneRuntimeIdentityE2ERunId(): string | null {
-  // 测试环境（jsdom 缺省无完整 location）与极端加载时序下 window.location 可缺。
-  if (typeof window === "undefined" || !window.location?.search) return null;
-  // 桌面 renderer：main 经加载 URL 注入。手机 Web：SPA 路由会重写 URL，配对 URL 也
-  // 不能附加参数（一次性 token 对参数敏感，实测附加即配对失败）；E2E 上下文经
-  // addInitScript 种入 sessionStorage（与凭据种子同模式），生产环境两者皆不存在。
-  const fromUrl = new URLSearchParams(window.location.search).get(
-    PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM,
-  );
-  if (fromUrl?.trim()) return fromUrl;
-  const fromStorage = window.sessionStorage?.getItem(PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM);
-  return fromStorage?.trim() || null;
+  if (typeof window === "undefined") return null;
+  // 桌面从 URL 读取。手机路由可没有查询参数，此时仍应读取 E2E helper 写入的存储。
+  const fromUrl = new URLSearchParams(window.location?.search)
+    .get(PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM)
+    ?.trim();
+  if (fromUrl) return fromUrl;
+  try {
+    return window.sessionStorage?.getItem(PANE_RUNTIME_IDENTITY_E2E_RUN_ID_PARAM)?.trim() || null;
+  } catch {
+    // 浏览器拒绝访问存储时关闭诊断，避免诊断读取中断 pane 渲染。
+    return null;
+  }
 }
 
 export interface PaneRuntimeIdentityE2ETarget {
@@ -97,9 +98,10 @@ export function usePaneRuntimeIdentityE2E(input: {
   active: boolean;
 }): void {
   const services = useOptionalServices();
+  const bridgeFlagEnabled = shouldExposeE2EStoreBridge();
   const enabled = shouldEnablePaneRuntimeIdentityE2E({
-    bridgeFlagEnabled: shouldExposeE2EStoreBridge(),
-    runId: readPaneRuntimeIdentityE2ERunId(),
+    bridgeFlagEnabled,
+    runId: bridgeFlagEnabled ? readPaneRuntimeIdentityE2ERunId() : null,
   });
   const target = useMemo<PaneRuntimeIdentityE2ETarget>(
     () => ({

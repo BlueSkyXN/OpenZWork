@@ -37,6 +37,7 @@ sequenceDiagram
     H-->>D: ACK subscriptionId
     H->>probe: record subscribed(seq↑, attachmentId, scope, ACK, runtimeIdentity)
     Note over D: 桌面查询①：pane 独立 getWorkspaceRuntimeIdentity
+    Note over D,probe: 取得桌面订阅记录后保存查看前 seq，固定原订阅
     M->>H: attach（registry：attachmentId/scope/clientMode/generation）
     M->>H: subscribeConversationV4（查看期间真实订阅）
     H-->>M: ACK subscriptionId
@@ -64,8 +65,8 @@ pane 诊断双条件（2026-11-17 J2 补齐，与 Host 同口径）：
 1. 同一 build flag（renderer/Web 构建期注入）。
 2. 页面携带有效 run ID：桌面 renderer 由 main 在加载 URL 注入 `zcodeE2eRunId`
    （desktopHostProcess，仅在 Host 同一 gate 命中时下发）；手机 Web 由 E2E helper
-   在配对 URL 追加同名参数。任一缺失（含生产构建）不注册 `__zcodePaneRuntimeIdentityE2E*`
-   诊断入口、不做额外查询。
+   写入 `sessionStorage` 的同名键。优先读 URL，查询参数为空或未提供 run ID 时读存储。
+   任一条件缺失（含生产构建）不注册 `__zcodePaneRuntimeIdentityE2E*` 诊断入口、不做额外查询。
 
 Host 侧 probe 记录写入 `<artifactDir>/host-probes/host-attachment-subscriptions-<hostPid>.ndjson`，
 每行一条 JSON（seq 单调递增、recordedAt ISO 时间、event、attachmentId、clientMode、
@@ -82,8 +83,9 @@ dormant runtime））。写入串行化（write chain），诊断失败不改变
 3. workspace key 一致：`workspaceIdentity?.trim() || workspacePath`；本地 workspace 两侧
    identity 同为空合法；同路径不同 identity 仍严格隔离（单侧不一致判失败）。
 4. 桌面记录：clientMode=desktop-continuous、scope 与桌面 pane 解析一致（本地 workspace
-   为 local）、scopeMatchesTarget=true、订阅在查看期间未收到 unsubscribed/attachment-disposed
-   （订阅有效性以记录序列还原）。
+   为 local）、scopeMatchesTarget=true。手机开始查看前须取得对应桌面订阅记录，按
+   `seq <= lastSeqBeforeView` 固定最后一次订阅。该订阅开始后到查看结束前收到
+   unsubscribed/attachment-disposed 即失败，之后的新订阅不更改已固定的记录。
 5. 手机记录：clientMode=web-remote-replayable、scope 与手机 pane 解析一致——本地配对
    查看桌面 workspace 走 shared Host attachment（scope=local，attachmentId 形如
    `shared-host-attachment-*`）；查看远端 workspace 时 scope=remote 且 remoteSessionId 与
@@ -99,7 +101,8 @@ dormant runtime））。写入串行化（write chain），诊断失败不改变
    查询返回的 workspaceKey 互证（Host 查回 other-workspace 而 pane 查回本 workspace
    即拒绝）。不同 runtime 即使 generation/state 相同也因 identity 不同被拒绝。
 7. 反例回归必须能拒绝：同 generation/state 不同 identity、缺少一侧 attachment、
-   scope/会话不匹配、订阅（任一端）查看中已结束、两端 attachment/连接/订阅关系复用、
+   scope/会话不匹配、订阅（任一端）查看中已结束、桌面断开后重订阅、桌面仅在查看中订阅、
+   两端 attachment/连接/订阅关系复用、
    查询不可用、缺 artifact、E2E gate 未启用、seq 非单调、窗口快照自相矛盾，以及
    旧「两侧赋同一 sharedInstanceKey」代填（无 Host 记录支撑即拒绝）。
 8. Host 记录文件行序与 seq 单调一致（单一写链合同）；不一致判观察不可靠。

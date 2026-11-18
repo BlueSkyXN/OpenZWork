@@ -93,7 +93,7 @@ export function verifyDirectAttachmentAssociation(input: {
   mobileQuery: DirectPaneRuntimeQuery | null;
   /** Host probe 记录（查看结束、收尾之前的完整序列）。 */
   hostRecords: HostAttachmentSubscriptionRecord[];
-  /** 手机查看开始前最后一条记录的 seq（含）；窗口内订阅要求 seq > 该值。 */
+  /** 查看前最后一条记录的 seq。桌面订阅取该值及之前，手机订阅取该值之后。 */
   lastSeqBeforeView: number;
   /** 查看结束快照的 seq（含）；结束事件只在 (subscribed.seq, lastSeqInViewEnd] 内算查看中结束。 */
   lastSeqInViewEnd: number;
@@ -155,7 +155,8 @@ export function verifyDirectAttachmentAssociation(input: {
       sessionId: input.sessionId,
       clientMode: "desktop-continuous",
       scopeKind: desktopScopeKind,
-      maxSeq: input.lastSeqInViewEnd,
+      // 固定查看前的订阅，避免查看期间断开后用后续重订阅掩盖中断。
+      maxSeq: input.lastSeqBeforeView,
     });
     const mobileSubscribed = pickSubscribedRecord(hostRecords, {
       sessionId: input.sessionId,
@@ -169,7 +170,7 @@ export function verifyDirectAttachmentAssociation(input: {
     if (!desktopSubscribed) {
       failures.push({
         code: "desktop-attachment-missing",
-        detail: `no desktop-continuous/${desktopScopeKind} subscribed record for session ${input.sessionId} within view window (lastSeqInViewEnd=${input.lastSeqInViewEnd})`,
+        detail: `no desktop-continuous/${desktopScopeKind} subscribed record for session ${input.sessionId} before view start (lastSeqBeforeView=${input.lastSeqBeforeView})`,
       });
     }
     // 手机 attachment：web-remote-replayable + 与 pane 解析一致的 scope + 查看窗口内
@@ -200,7 +201,7 @@ export function verifyDirectAttachmentAssociation(input: {
       if (ended) {
         failures.push({
           code: "subscription-ended",
-          detail: `${label} subscription ${record.subscriptionId} ended while viewing (event=${ended.event}, seq=${ended.seq}, windowEnd=${input.lastSeqInViewEnd})`,
+          detail: `${label} subscription ${record.subscriptionId} ended before view completed (event=${ended.event}, seq=${ended.seq}, windowEnd=${input.lastSeqInViewEnd})`,
         });
       }
     }
@@ -370,6 +371,6 @@ function pickSubscribedRecord(
       (filter.maxSeq === undefined || record.seq <= filter.maxSeq),
   );
   if (candidates.length === 0) return null;
-  // 取窗口内最后一次订阅（重订阅以最新为准）。
+  // 只在调用方给定的 seq 范围内取最近的订阅。
   return candidates.reduce((latest, record) => (record.seq > latest.seq ? record : latest));
 }
