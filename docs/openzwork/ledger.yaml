@@ -411,6 +411,7 @@ entries:
       - packages/shared/src/node/userHomeBoundary.ts
     hooks:
       - packages/desktop/build/installer.nsh
+      - packages/desktop/test/fixtures/installer-preserve-files.nsi
       - packages/services/src/paths.ts
       - packages/zcode-server-cli/src/runtime/paths.ts
       - scripts/zcode-distribution/installer.mjs
@@ -426,6 +427,7 @@ entries:
       - packages/shared/src/node.ts
     source: "PR #21、PR #69"
     tests:
+      - packages/desktop/test/windowsInstallerPreserveFiles.test.ts
       - packages/services/test/data-sync-user-root.test.ts
       - packages/services/test/desktop-agent-storage.test.ts
       - packages/services/test/home-resource-isolation.test.ts

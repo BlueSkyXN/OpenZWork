@@ -191,6 +191,8 @@ if (process.platform !== "win32") {
         `/DZCODE_INSTALLER_DEFAULT_LOG_PATH=${installerLogPath}`,
         `/DOLD_CLEANUP_EXE=${installSucceeds ? legacySelfUninstaller : failureOutputPath}`,
       );
+      // 成功路径运行历史卸载器，自引用恢复还须核对旧名清单的原始字节。
+      if (installSucceeds || scenario === "self-manifest-recovery") recoveryArgs.push("/DLEGACY_MANIFEST");
       if (scenario.startsWith("self-manifest")) recoveryArgs.push("/DSELF_MANIFEST");
       if (backupFails) recoveryArgs.push("/DBACKUP_FAILURE");
       if (scenario === "restore-failure") recoveryArgs.push("/DRESTORE_FAILURE");

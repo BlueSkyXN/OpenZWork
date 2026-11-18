@@ -124,6 +124,7 @@
       StrCmp $R1 "${UNINSTALL_FILENAME}" zcodeManifestRead
       ; 清单是当前打开的元数据，自引用条目不能当作普通载荷删除。
       StrCmp $R1 "${ZCODE_INSTALL_MANIFEST_NAME}" zcodeManifestRead
+      StrCmp $R1 "${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}" zcodeManifestRead
       GetFullPathName $R2 "$INSTDIR\$R1"
       StrCmp $R2 "$INSTDIR\$R1" 0 zcodeManifestRead
 
@@ -360,6 +361,7 @@
   Var ZCodeCleanupMode
   Var ZCodeCleanupFailed
   Var ZCodeCleanupManifest
+  Var ZCodeCleanupManifestName
   Var ZCodeCleanupManifestHasSelf
 
   ; 修复原因：PowerShell 或 Add-Type 被禁用时不能阻断已退出应用的更新；随包 helper 按路径验证句柄。
@@ -400,7 +402,12 @@
     StrCmp $ZCodeCleanupMode "restore" zcodeSnapshotRead
     StrCpy $ZCodeCleanupBackup ""
     StrCpy $ZCodeCleanupManifestHasSelf "0"
-    IfFileExists "$ZCodeCleanupSource\${ZCODE_INSTALL_MANIFEST_NAME}" 0 zcodeSnapshotDone
+    ; 旧版安装目录使用旧名，备份、移除自引用和失败恢复都须操作同一份清单。
+    StrCpy $ZCodeCleanupManifestName "${ZCODE_INSTALL_MANIFEST_NAME}"
+    IfFileExists "$ZCodeCleanupSource\$ZCodeCleanupManifestName" zcodeSnapshotManifestFound
+    StrCpy $ZCodeCleanupManifestName "${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}"
+    IfFileExists "$ZCodeCleanupSource\$ZCodeCleanupManifestName" 0 zcodeSnapshotDone
+    zcodeSnapshotManifestFound:
     ${GetParent} $ZCodeCleanupSource $R0
     ClearErrors
     GetTempFileName $ZCodeCleanupBackup $R0
@@ -408,7 +415,7 @@
     Delete "$ZCodeCleanupBackup"
     CreateDirectory "$ZCodeCleanupBackup"
     IfErrors zcodeSnapshotFailed
-    System::Call 'kernel32::CopyFileW(w "$ZCodeCleanupSource\${ZCODE_INSTALL_MANIFEST_NAME}", w "$ZCodeCleanupBackup\${ZCODE_INSTALL_MANIFEST_NAME}", i 1) i.R3 ?e'
+    System::Call 'kernel32::CopyFileW(w "$ZCodeCleanupSource\$ZCodeCleanupManifestName", w "$ZCodeCleanupBackup\$ZCodeCleanupManifestName", i 1) i.R3 ?e'
     Pop $R4
     StrCmp $R3 "0" zcodeSnapshotFailed
     GetTempFileName $ZCodeCleanupManifest "$ZCodeCleanupBackup"
@@ -419,7 +426,7 @@
     zcodeSnapshotRead:
       StrCmp $ZCodeCleanupBackup "" zcodeSnapshotDone
       ClearErrors
-      FileOpen $R0 "$ZCodeCleanupBackup\${ZCODE_INSTALL_MANIFEST_NAME}" r
+      FileOpen $R0 "$ZCodeCleanupBackup\$ZCodeCleanupManifestName" r
       IfErrors zcodeSnapshotFailed
     zcodeSnapshotNext:
       ClearErrors
@@ -428,7 +435,7 @@
       StrCpy $R1 $R1 -2
       StrCmp $R1 "" zcodeSnapshotNext
       StrCmp $ZCodeCleanupMode "restore" zcodeSnapshotValidateEntry
-      StrCmp $R1 "${ZCODE_INSTALL_MANIFEST_NAME}" zcodeSnapshotSelfEntry
+      StrCmp $R1 "$ZCodeCleanupManifestName" zcodeSnapshotSelfEntry
       FileWrite $R5 "$R1$\r$\n"
       IfErrors zcodeSnapshotFailedClose
       Goto zcodeSnapshotValidateEntry
@@ -447,7 +454,7 @@
       StrCmp $R2 ".." zcodeSnapshotNext
       StrCmp $R1 "${UNINSTALL_FILENAME}" zcodeSnapshotNext
       ; 清单已在循环前单独备份；自引用时再次排他复制会因目标存在而中止更新。
-      StrCmp $R1 "${ZCODE_INSTALL_MANIFEST_NAME}" zcodeSnapshotNext
+      StrCmp $R1 "$ZCodeCleanupManifestName" zcodeSnapshotNext
       ; Windows NSIS 对已删除的目标返回空路径；恢复时校验仍存在的备份，不能跳过待补回文件。
       StrCpy $R3 "$ZCodeCleanupSource"
       StrCmp $ZCodeCleanupMode "restore" 0 +2
@@ -502,12 +509,12 @@
       StrCmp $ZCodeCleanupFailed "1" zcodeSnapshotDone
       StrCmp $ZCodeCleanupManifestHasSelf "1" 0 zcodeSnapshotDone
       ; 旧卸载器也会删除打开中的清单。完整备份后，仅原子移除自引用项供旧代码读取。
-      System::Call 'kernel32::MoveFileExW(w "$ZCodeCleanupManifest", w "$ZCodeCleanupSource\${ZCODE_INSTALL_MANIFEST_NAME}", i 9) i.R3 ?e'
+      System::Call 'kernel32::MoveFileExW(w "$ZCodeCleanupManifest", w "$ZCodeCleanupSource\$ZCodeCleanupManifestName", i 9) i.R3 ?e'
       Pop $R4
       StrCmp $R3 "0" zcodeSnapshotFailed zcodeSnapshotDone
     zcodeSnapshotRestoreManifest:
       ; 旧清单可能仍存在但已去掉自引用；失败回滚须恢复原始字节，而非仅补不存在的文件。
-      System::Call 'kernel32::CopyFileW(w "$ZCodeCleanupBackup\${ZCODE_INSTALL_MANIFEST_NAME}", w "$ZCodeCleanupSource\${ZCODE_INSTALL_MANIFEST_NAME}", i 0) i.R3 ?e'
+      System::Call 'kernel32::CopyFileW(w "$ZCodeCleanupBackup\$ZCodeCleanupManifestName", w "$ZCodeCleanupSource\$ZCodeCleanupManifestName", i 0) i.R3 ?e'
       Pop $R4
       StrCmp $R3 "0" zcodeSnapshotFailed zcodeSnapshotDone
     zcodeSnapshotFailed:

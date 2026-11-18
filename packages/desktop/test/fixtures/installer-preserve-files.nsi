@@ -39,16 +39,23 @@ Var appExe
   FunctionEnd
 !endif
 
+; 旧卸载器只识别旧清单名，恢复夹具必须写入对应版本实际使用的名称。
+!ifdef LEGACY_MANIFEST
+  !define FIXTURE_MANIFEST_NAME "${ZCODE_LEGACY_INSTALL_MANIFEST_NAME}"
+!else
+  !define FIXTURE_MANIFEST_NAME "${ZCODE_INSTALL_MANIFEST_NAME}"
+!endif
+
 Section
   SetOutPath "$INSTDIR"
   File /oname=ZCode.exe "${FIXTURE_EXE}"
   StrCpy $appExe "$INSTDIR\ZCode.exe"
   !ifndef OMIT_MANIFEST
-    FileOpen $0 "$INSTDIR\.openzwork-install-manifest" w
+    FileOpen $0 "$INSTDIR\${FIXTURE_MANIFEST_NAME}" w
     FileWrite $0 "ZCode.exe$\r$\n"
     FileWrite $0 "owned-by-zcode.txt$\r$\n"
     !ifdef SELF_MANIFEST
-      FileWrite $0 ".zcode-install-manifest$\r$\n"
+      FileWrite $0 "${FIXTURE_MANIFEST_NAME}$\r$\n"
     !endif
     FileWrite $0 "..\user-data.txt$\r$\n"
     FileClose $0
