@@ -10,3 +10,5 @@ export { extractSkillSyncArchive } from "../skill-sync/skillSyncArchive.js";
 export { parseSkillMetadata } from "../skill-sync/skillSyncService.js";
 export { parseSubagentMarkdown } from "../subagents/subagentMarkdown.js";
 export { hashDirectoryContent } from "./directoryContent.js";
+export { walkSkillMarkdownPaths } from "../skills/skillDiscoveryWalk.js";
+export { createSubagentDataSyncMethods } from "./subagentDataSync.js";

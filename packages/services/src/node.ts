@@ -341,7 +341,7 @@ import { IPluginSyncService } from "./plugin-sync/pluginSync.js";
 import { IConfigPackageService } from "./config-package/index.js";
 import { createConfigPackageService, userCategory } from "./config-package/node.js";
 import { IUserConfigSyncService } from "./data-sync/contract.js";
-import { createUserConfigSyncService } from "./data-sync/userConfigSyncService.js";
+import { createSubagentDataSyncMethods, createUserConfigSyncService } from "./data-sync/node.js";
 import { IPluginsService } from "./plugins/plugins.js";
 import { IPluginManagementService } from "./plugins/pluginManagement.js";
 import { ISubagentsService } from "./subagents/subagents.js";
@@ -1455,7 +1455,7 @@ export function createLocalServices(options: {
   // OpenZWork(OZ-F014): 独立 Server 和远端 attachment 不持有本机配置包通道。
   if (options.agentRuntimeContext?.runtimeSurface === "desktop_local_host" && options.serviceAuthorityMode === "desktop-local") {
     services.register(IConfigPackageService, createConfigPackageService({
-      owners: { subagents: userCategory(userConfigSyncService, "subagents"), commands: userCategory(userConfigSyncService, "commands"),
+      owners: { subagents: createSubagentDataSyncMethods("original-bytes"), commands: userCategory(userConfigSyncService, "commands"),
         hooks: userCategory(userConfigSyncService, "hooks"), mcp: mcpSyncService, skills: skillSyncService },
       source: providerProvisioningSource, settings: settingService,
     }));

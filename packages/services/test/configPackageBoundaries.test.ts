@@ -8,9 +8,50 @@ import { IConfigPackageService } from "../src/config-package/index.js";
 import { CONFIG_PACKAGE_CATEGORIES } from "@zcode/shared";
 import { exposeWindowHostAttachmentServices } from "../../desktop/src/host/windowHostAttachmentRpcPolicy.js";
 import { writePrivatePackage } from "../src/config-package/privateFile.js";
-import { seed, sandbox, privateValues } from "./configPackageFixture.js";
+import { ownerAt, put, seed, sandbox, privateValues } from "./configPackageFixture.js";
+import { readPackage } from "../src/config-package/node.js";
 
 describe("配置包边界", () => {
+  it("CP-01 子智能体按原字节导出且保留旧版状态文件", async () => {
+    const dir = await sandbox(),
+      home = join(dir, "source"),
+      path = join(dir, "agents.gz");
+    const agent = join(home, ".openzwork/agents/Reader.md");
+    const state = join(home, ".openzwork/v2/agents-state.json");
+    const original =
+      "---\nname: Reader\ndescription: fixture\nmodel: builtin:zai/sample\n---\nbody\n";
+    const legacy = JSON.stringify({ builtInModelOverrides: { Explore: "builtin:zai/sample" } });
+    await put(agent, original);
+    await put(state, legacy);
+    await ownerAt(home).service.exportToFile(path, ["subagents"]);
+    const group = (await readPackage(path)).categories.subagents!;
+    expect(group.entries.map((row) => row.key)).toEqual(["reader"]);
+    expect(Buffer.from(group.payload.items[0]!.content, "base64").toString()).toBe(original);
+    expect(await readFile(agent, "utf8")).toBe(original);
+    expect(await readFile(state, "utf8")).toBe(legacy);
+  });
+
+  it("CP-06 父目录内有未登记的同名安装时拒绝成包并保留旧文件", async () => {
+    const dir = await sandbox(),
+      home = join(dir, "source"),
+      path = join(dir, "skills.gz");
+    for (const [location, name] of [
+      ["a-common", "common"],
+      ["b-parent", "parent"],
+      ["b-parent/child", "common"],
+    ] as const) {
+      await put(
+        join(home, ".openzwork/skills", location, "SKILL.md"),
+        "---\nname: " + name + "\ndescription: fixture\n---\n" + location,
+      );
+    }
+    await put(path, "previous");
+    await expect(ownerAt(home).service.exportToFile(path, ["skills"])).rejects.toThrow(
+      "config-package.skill-paths",
+    );
+    expect(await readFile(path, "utf8")).toBe("previous");
+  });
+
   it.each(["new", "previous", "concurrent"] as const)(
     "CP-01 Windows 最终 ACL 失败撤回本次明文：%s",
     async (scenario) => {
