@@ -250,9 +250,18 @@ test("修订版协调器接受同源正式事件，版本后缀不一致时拒�
 test("automatic drafts use generated notes and recover lost create responses; explicit notes and existing drafts are retained", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "openzwork-draft-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
-  for (const mode of ["new", "response-lost", "existing", "custom"]) {
+  const releaseTag = "v3.18.2+openzwork.1";
+  const guidePath = "docs/openzwork/release/unsigned-macos-distribution.md";
+  const guideInfo = `repos/${repo}/contents/${guidePath}?ref=${encodeURIComponent(releaseTag)}`;
+  const guide = await readFile(new URL(`../../${guidePath}`, import.meta.url), "utf8");
+  const quarantine = 'sudo xattr -rd com.apple.quarantine "/Applications/OpenZWork.app"';
+  assert.ok(guide.includes(quarantine));
+  assert.ok(guide.includes('"/Applications/OpenZWork Preview.app"'));
+  for (const mode of ["new", "response-lost", "old-tag", "existing", "custom"]) {
     let release =
-      mode === "existing" ? { id: 1, tag_name: tag, body: "Reviewed notes", draft: true } : null;
+      mode === "existing"
+        ? { id: 1, tag_name: releaseTag, body: "Reviewed notes", draft: true }
+        : null;
     const calls = [];
     const gh = async (...args) => {
       calls.push(args);
@@ -260,9 +269,13 @@ test("automatic drafts use generated notes and recover lost create responses; ex
         return JSON.stringify([release ? [release] : []]);
       if (args[0] === "api" && args.includes("POST"))
         return JSON.stringify({ body: "Merged changes" });
+      if (args[0] === "api" && args.includes(guideInfo)) {
+        if (mode === "old-tag") throw Object.assign(new Error("Not Found"), { stderr: "HTTP 404" });
+        return "";
+      }
       if (args.slice(0, 2).join(" ") === "release create") {
         assert.ok(args.includes("--draft") && args.includes("--verify-tag"));
-        release = { id: 2, tag_name: tag, draft: true };
+        release = { id: 2, tag_name: releaseTag, draft: true };
         if (mode === "response-lost") throw new Error("response lost");
         return "";
       }
@@ -272,8 +285,8 @@ test("automatic drafts use generated notes and recover lost create responses; ex
     const id = await ensureReleaseDraft(
       {
         repo,
-        tag,
-        version: "3.16.3",
+        tag: releaseTag,
+        version: "3.18.2+openzwork.1",
         notes: mode === "custom" ? "Custom notes" : "",
         allowCreate: true,
         notesFile,
@@ -282,17 +295,19 @@ test("automatic drafts use generated notes and recover lost create responses; ex
     );
     assert.equal(id, mode === "existing" ? 1 : 2);
     const notes = await readFile(notesFile, "utf8");
-    assert.ok(
-      notes.includes(
-        mode === "existing"
-          ? "Reviewed notes"
-          : mode === "custom"
-            ? "Custom notes"
-            : "Merged changes",
-      ),
-    );
-    if (mode === "existing" || mode === "custom")
-      assert.ok(!calls.some((args) => args.includes("POST")));
+    if (mode === "existing" || mode === "custom") {
+      assert.equal(notes, mode === "existing" ? "Reviewed notes" : "Custom notes");
+      assert.ok(!calls.some((args) => args.includes("POST") || args.includes(guideInfo)));
+    } else {
+      const guideRef = mode === "old-tag" ? "HEAD" : encodeURIComponent(releaseTag);
+      assert.ok(notes.startsWith("Merged changes"));
+      assert.ok(notes.includes(`\`${quarantine}\``));
+      assert.ok(notes.includes(`](https://github.com/${repo}/blob/${guideRef}/${guidePath})`));
+      assert.doesNotMatch(
+        notes,
+        /\bZCode\.app\b|OpenZWork Preview\.app|xattr -cr|codesign --force/,
+      );
+    }
   }
   await assert.rejects(
     ensureReleaseDraft(

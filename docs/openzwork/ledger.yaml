@@ -281,6 +281,7 @@ entries:
     spec:
       - docs/openzwork/release/openzwork-release-version.md
       - docs/openzwork/release/automatic-github-release.md
+      - docs/openzwork/release/unsigned-macos-distribution.md
       - docs/git/release-build-publish-separation-openzwork.md
     paths:
       - .github/workflows/installers.yml

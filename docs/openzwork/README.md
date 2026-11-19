@@ -103,6 +103,7 @@
 ### 发行
 
 - [OpenZWork 发行版本](release/openzwork-release-version.md)
+- [macOS 未签名包：首次打开与局域网连接](release/unsigned-macos-distribution.md)
 - [正式 tag 自动发布 GitHub Release](release/automatic-github-release.md)
 
 ### CI 与测试基础设施

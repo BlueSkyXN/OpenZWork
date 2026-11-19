@@ -13,6 +13,7 @@ import {
   parseOpenZWorkTag,
   parseOpenZWorkVersion,
 } from "./openzwork-version.mjs";
+import { desktopProductIdentities } from "../packages/desktop/scripts/desktop-product-identity.mjs";
 import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
 import { matchesReleaseWorkflow } from "./release-workflows.mjs";
 import { FULL_SUITE_GROUPS } from "./full-suite-plan.mjs";
@@ -64,7 +65,18 @@ export async function ensureReleaseDraft(
         `tag_name=${tag}`,
       ),
     );
-    body = `${generated.body}\n\n安装包：macOS arm64、Windows x64、Linux x64。当前为未签名构建，macOS 未公证，应用采用手动安装更新。来源与文件摘要见 PROVENANCE.json 和 SHA256SUMS。\n`;
+    const appPath = `/Applications/${desktopProductIdentities.production.productName}.app`;
+    const guidePath = "docs/openzwork/release/unsigned-macos-distribution.md";
+    let guideRef = encodeURIComponent(tag);
+    try {
+      await gh("api", "--silent", `repos/${repo}/contents/${guidePath}?ref=${guideRef}`);
+    } catch (error) {
+      // 自动发布可补发旧 tag；这时引导用户查看默认分支上的排查文档。
+      if (!error.stderr?.includes("HTTP 404")) throw error;
+      guideRef = "HEAD";
+    }
+    const guideUrl = `https://github.com/${repo}/blob/${guideRef}/${guidePath}`;
+    body = `${generated.body}\n\n安装包：macOS arm64、Windows x64、Linux x64。当前为未签名构建，macOS 未公证，应用采用手动安装更新。来源与文件摘要见 PROVENANCE.json 和 SHA256SUMS。\n\nmacOS 首次打开被拦截时，确认下载来源及校验和后，可执行 \`sudo xattr -rd com.apple.quarantine "${appPath}"\` 再打开。若 SSH 报 \`EHOSTUNREACH\`，先检查连通性和系统本地网络权限，详见 [macOS 安装与局域网排查](${guideUrl})。\n`;
   }
   await writeFile(notesFile, body);
   if (releases.length === 0) {
