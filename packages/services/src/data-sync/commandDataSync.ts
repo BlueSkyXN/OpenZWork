@@ -57,11 +57,15 @@ function toCommandKey(relativePath: string): string {
 /** 递归收集 `.md` 文件，跳过 `.` 开头的条目；用 lstat，不进入软链目录（与设置服务的扫描规则一致）。 */
 async function collectCommandFiles(
   dir: string,
+  requireComplete: boolean,
+  optionalRoot = false,
 ): Promise<Array<{ path: string; isSymlink: boolean }>> {
   let entries: string[];
   try {
     entries = (await readdir(dir)).sort();
-  } catch {
+  } catch (error) {
+    // OZ-F014：备份可以遇到尚未创建的命令根，已有目录的读取错误必须交给导出方。
+    if (requireComplete && !(optionalRoot && (error as NodeJS.ErrnoException).code === "ENOENT")) throw error;
     return [];
   }
   const files: Array<{ path: string; isSymlink: boolean }> = [];
@@ -71,11 +75,12 @@ async function collectCommandFiles(
     let stat;
     try {
       stat = await lstat(path);
-    } catch {
+    } catch (error) {
+      if (requireComplete) throw error;
       continue;
     }
     if (stat.isDirectory()) {
-      files.push(...(await collectCommandFiles(path)));
+      files.push(...(await collectCommandFiles(path, requireComplete)));
     } else if (COMMAND_EXTENSION.test(entry)) {
       files.push({ path, isSymlink: stat.isSymbolicLink() });
     }
@@ -87,11 +92,11 @@ async function collectCommandFiles(
  * 本端用户命令：`~/.openzwork/commands` 与 `~/.agents/commands` 合并，与 CLI 运行时一致，
  * 同 key 时 `.openzwork` 优先（先扫描者胜出）。
  */
-async function resolveUserCommands(): Promise<Map<string, ResolvedUserCommand>> {
+async function resolveUserCommands(requireComplete: boolean): Promise<Map<string, ResolvedUserCommand>> {
   const commands = new Map<string, ResolvedUserCommand>();
   for (const source of ["openzwork", "agents"] as const) {
     const root = commandsRoot(source);
-    for (const file of await collectCommandFiles(root)) {
+    for (const file of await collectCommandFiles(root, requireComplete, true)) {
       const relativePath = relative(root, file.path)
         .split(/[\\/]+/u)
         .join("/");
@@ -100,8 +105,9 @@ async function resolveUserCommands(): Promise<Map<string, ResolvedUserCommand>> 
       let content: Buffer;
       try {
         content = await readFile(file.path);
-      } catch {
-        continue; // 悬空软链或无权限：跳过
+      } catch (error) {
+        if (requireComplete) throw error;
+        continue; // 设备同步沿用可读条目列表。
       }
       const parsed = CommandFileParser.parseCommandFile(content.toString("utf-8"), file.path);
       if (!parsed) continue;
@@ -198,11 +204,11 @@ async function applyCreatedEnabledState(
   }
 }
 
-export function createCommandDataSyncMethods(): IDataSyncCategoryService<CommandDataSyncPayload> {
+export function createCommandDataSyncMethods({ requireComplete = false } = {}): IDataSyncCategoryService<CommandDataSyncPayload> {
   return {
     async listSyncItems() {
       const [commands, overrides] = await Promise.all([
-        resolveUserCommands(),
+        resolveUserCommands(requireComplete),
         readCommandEnabledOverridesFromUserConfig(),
       ]);
       const items: DataSyncListItem[] = [...commands.values()].map((command) => ({
@@ -224,7 +230,7 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
     },
 
     async getSyncContentHashes(params) {
-      const commands = await resolveUserCommands();
+      const commands = await resolveUserCommands(requireComplete);
       const hashes: Record<string, string> = {};
       for (const key of params.keys) {
         const command = commands.get(key);
@@ -242,7 +248,7 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
 
     async exportSyncItems(params) {
       const [commands, overrides] = await Promise.all([
-        resolveUserCommands(),
+        resolveUserCommands(requireComplete),
         readCommandEnabledOverridesFromUserConfig(),
       ]);
       return {
@@ -262,7 +268,7 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
     },
 
     async importSyncItems(params) {
-      const current = await resolveUserCommands();
+      const current = await resolveUserCommands(requireComplete);
       const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
       const results: ImportResult[] = [];
       for (const item of params.items) {

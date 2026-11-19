@@ -403,7 +403,7 @@ entries:
     kind: feature
     status: active
     title: 桌面多机配置包
-    summary: 本机 Host 私有导出七类配置，按原始字节读取子智能体，核对技能归档的实际目录与清单并检测来源变化。
+    summary: 本机 Host 私有导出七类配置，按原始字节读取子智能体，检查命令来源完整性、跨根技能的归档落点与执行权限。
     spec:
       - docs/specs/config-package-openzwork.md
     modules: [config-package-contract, config-package-service]

@@ -81,7 +81,7 @@ export function createConfigPackageService(options: ConfigPackageOptions): IConf
         } catch (error) {
           if (error instanceof Error && error.message === "config-package.source-changed")
             throw error;
-          throw new Error("config-package.export-blocked");
+          throw new Error(category === "commands" ? "config-package.commands-read" : "config-package.export-blocked");
         }
       }
       const bytes = await writePackage(path, {

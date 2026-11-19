@@ -1,17 +1,122 @@
-import { open, readFile, readdir, stat, writeFile, rename } from "node:fs/promises";
+import {
+  chmod,
+  open,
+  readFile,
+  readdir,
+  stat,
+  writeFile,
+  rename,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
-import { ChannelServer, ChannelClient, Emitter, type VSBuffer } from "@zcode/rpc";
+import {
+  ChannelServer,
+  ChannelClient,
+  Emitter,
+  type VSBuffer,
+} from "@zcode/rpc";
 import { ServiceCollection } from "../src/collection.js";
 import { IConfigPackageService } from "../src/config-package/index.js";
 import { CONFIG_PACKAGE_CATEGORIES } from "@zcode/shared";
 import { exposeWindowHostAttachmentServices } from "../../desktop/src/host/windowHostAttachmentRpcPolicy.js";
+import { extractSkillSyncArchive } from "../src/data-sync/node.js";
 import { writePrivatePackage } from "../src/config-package/privateFile.js";
-import { ownerAt, put, seed, sandbox, privateValues } from "./configPackageFixture.js";
+import {
+  ownerAt,
+  put,
+  seed,
+  sandbox,
+  privateValues,
+} from "./configPackageFixture.js";
 import { readPackage } from "../src/config-package/node.js";
 
 describe("配置包边界", () => {
+  it("CP-13 命令来源目录无法枚举时保留已有导出", async () => {
+    const root = await sandbox(),
+      home = join(root, "source"),
+      file = join(root, "backup.gz");
+    await put(join(home, ".openzwork/commands/readable.md"), "fixture command");
+    await put(join(home, ".agents/commands"), "not a directory");
+    await put(file, "previous export");
+    await expect(
+      ownerAt(home).service.exportToFile(file, ["commands"]),
+    ).rejects.toThrow("commands-read");
+    expect(await readFile(file, "utf8")).toBe("previous export");
+  });
+
+  it.skipIf(process.platform === "win32" || process.getuid?.() === 0)(
+    "CP-13 已发现的命令不可读时中止导出",
+    async () => {
+      const root = await sandbox(),
+        home = join(root, "source"),
+        denied = join(home, ".openzwork/commands/second.md");
+      await put(join(home, ".openzwork/commands/first.md"), "one");
+      await put(denied, "two");
+      try {
+        await chmod(denied, 0);
+        await expect(
+          ownerAt(home).service.exportToFile(join(root, "commands.gz"), [
+            "commands",
+          ]),
+        ).rejects.toThrow("commands-read");
+      } finally {
+        await chmod(denied, 0o600);
+      }
+    },
+  );
+
+  // OW-P041：跨根的相对路径重叠不构成物理父子关系。
+  it("CP-01 两个来源根的独立技能可同时成包，兼容前缀避开已有目录", async () => {
+    const root = await sandbox(),
+      home = join(root, "source"),
+      file = join(root, "skills.gz");
+    const skill = (path: string, name: string) =>
+      put(
+        join(home, path, "SKILL.md"),
+        "---\nname: " + name + "\ndescription: fixture\n---\n",
+      );
+    await skill(".openzwork/skills/toolkit", "toolkit");
+    await skill(".openzwork/skills/agents", "reserved");
+    await skill(".agents/skills/toolkit/child", "child");
+    await skill(".agents/skills/toolkit/child/deep", "deep");
+    await ownerAt(home).service.exportToFile(file, ["skills"]);
+    const { items } = (await readPackage(file)).categories.skills!.payload;
+    expect(
+      Object.fromEntries(items.map((i) => [i.key, i.directoryName])),
+    ).toEqual({
+      toolkit: "toolkit",
+      reserved: "agents",
+      child: "agents-2/toolkit/child",
+      deep: "agents-2/toolkit/child/deep",
+    });
+  });
+
+  it.skipIf(process.platform === "win32")(
+    "CP-01 技能归档保留普通文件的执行位",
+    async () => {
+      // OW-P043：tar 已携带执行位，解包后的辅助程序须按相同方式调用。
+      const root = await sandbox(),
+        home = join(root, "source"),
+        file = join(root, "skills.gz");
+      const skill = join(home, ".openzwork/skills/check"),
+        extracted = join(root, "extracted");
+      await put(join(skill, "SKILL.md"), "fixture");
+      await put(join(skill, "helper"), "fixture helper");
+      await chmod(join(skill, "helper"), 0o751);
+      await ownerAt(home).service.exportToFile(file, ["skills"]);
+      const archive = (await readPackage(file)).categories.skills!.payload
+        .archive;
+      await extractSkillSyncArchive(Buffer.from(archive, "base64"), extracted);
+      expect((await stat(join(extracted, "check/helper"))).mode & 0o111).toBe(
+        0o111,
+      );
+      expect((await stat(join(extracted, "check/SKILL.md"))).mode & 0o111).toBe(
+        0,
+      );
+    },
+  );
+
   it("CP-01 子智能体按原字节导出且保留旧版状态文件", async () => {
     const dir = await sandbox(),
       home = join(dir, "source"),
@@ -20,13 +125,17 @@ describe("配置包边界", () => {
     const state = join(home, ".openzwork/v2/agents-state.json");
     const original =
       "---\nname: Reader\ndescription: fixture\nmodel: builtin:zai/sample\n---\nbody\n";
-    const legacy = JSON.stringify({ builtInModelOverrides: { Explore: "builtin:zai/sample" } });
+    const legacy = JSON.stringify({
+      builtInModelOverrides: { Explore: "builtin:zai/sample" },
+    });
     await put(agent, original);
     await put(state, legacy);
     await ownerAt(home).service.exportToFile(path, ["subagents"]);
     const group = (await readPackage(path)).categories.subagents!;
     expect(group.entries.map((row) => row.key)).toEqual(["reader"]);
-    expect(Buffer.from(group.payload.items[0]!.content, "base64").toString()).toBe(original);
+    expect(
+      Buffer.from(group.payload.items[0]!.content, "base64").toString(),
+    ).toBe(original);
     expect(await readFile(agent, "utf8")).toBe(original);
     expect(await readFile(state, "utf8")).toBe(legacy);
   });
@@ -46,9 +155,9 @@ describe("配置包边界", () => {
       );
     }
     await put(path, "previous");
-    await expect(ownerAt(home).service.exportToFile(path, ["skills"])).rejects.toThrow(
-      "config-package.skill-paths",
-    );
+    await expect(
+      ownerAt(home).service.exportToFile(path, ["skills"]),
+    ).rejects.toThrow("config-package.skill-paths");
     expect(await readFile(path, "utf8")).toBe("previous");
   });
 
@@ -59,7 +168,8 @@ describe("配置包边界", () => {
         path = join(dir, "transfer.gz"),
         contents = Buffer.from("fixture-export-bytes");
       if (scenario !== "new") await writeFile(path, "original file");
-      const previous = scenario !== "new" ? await stat(path, { bigint: true }) : undefined;
+      const previous =
+        scenario !== "new" ? await stat(path, { bigint: true }) : undefined;
       let publishedBytes: Buffer | undefined;
       const acl = async (file: string, create: boolean) => {
         if (create) {
@@ -99,10 +209,13 @@ describe("配置包边界", () => {
       vi.spyOn(console, level).mockImplementation((...args) => {
         logs.push(JSON.stringify(args));
       });
-    const report = await source.service.exportToFile(path, [...CONFIG_PACKAGE_CATEGORIES]);
+    const report = await source.service.exportToFile(path, [
+      ...CONFIG_PACKAGE_CATEGORIES,
+    ]);
     expect(Object.values(report.counts)).toEqual(Array(7).fill(1));
     expect(report.bytes).toBe((await stat(path)).size);
-    if (process.platform !== "win32") expect((await stat(path)).mode & 0o777).toBe(0o600);
+    if (process.platform !== "win32")
+      expect((await stat(path)).mode & 0o777).toBe(0o600);
     const json = gunzipSync(await readFile(path)).toString();
     for (const value of [
       privateValues.key,
@@ -118,7 +231,10 @@ describe("配置包边界", () => {
   it("CP-11 手机 attachment 的配置包调用经真实 RPC 拒绝", async () => {
     const mobile = new Emitter<VSBuffer>(),
       host = new Emitter<VSBuffer>();
-    const client = new ChannelClient({ onMessage: mobile.event, send: (msg) => host.fire(msg) });
+    const client = new ChannelClient({
+      onMessage: mobile.event,
+      send: (msg) => host.fire(msg),
+    });
     const server = new ChannelServer(
       { onMessage: host.event, send: (msg) => mobile.fire(msg) },
       "mobile",
@@ -128,7 +244,10 @@ describe("配置包边界", () => {
       const service = { exportToFile: vi.fn() };
       exposeWindowHostAttachmentServices({
         server,
-        services: new ServiceCollection().register(IConfigPackageService, service),
+        services: new ServiceCollection().register(
+          IConfigPackageService,
+          service,
+        ),
         clientMode: "web-remote-replayable",
       });
       await expect(
