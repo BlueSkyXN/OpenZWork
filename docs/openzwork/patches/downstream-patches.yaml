@@ -766,3 +766,23 @@ patches:
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游开发配置避免在首次远控任务中为该动态入口触发整页刷新，冷缓存手机恢复用例通过。
+
+  - id: OW-P036
+    title: 空 Bash 命令进入审批并可生成工具级授权
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.17.2
+      checked: 3.18.2
+    trigger: 在 Build 模式下调用 Bash，command 为空字符串或只有空白。
+    impact: 无操作也弹审批；选择项目级始终允许可保存没有命令范围的 Bash 规则。
+    cause: handler 会返回空输出，但普通审批先发生；空命令没有规则建议，协议默认选项退回到工具级规则。
+    evidence: 在 3.18.2 主线复现，空字符串和纯空白各调用 broker 一次；非空命令与权限判定的对照用例通过。
+    fix: Bash 的 prepareApproval 只短路与 handler 同判定的合法空命令；普通非空询问和权限服务的拒绝路径不变。
+    files:
+      - apps/zcode-cli/packages/core/src/tool/handlers/bash.ts
+    regression:
+      - apps/zcode-cli/packages/core/tests/bash-empty-command-approval.test.ts
+    refs:
+      - docs/specs/bash-empty-command-approval-openzwork.md
+    retire: 上游空命令不会产生审批、保存规则或调用执行端口，同时非空命令审批保持有效。

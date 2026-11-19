@@ -231,6 +231,10 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/v4-native-interaction-background.test.ts tests/guarded-permission-options.test.ts --bail=1
 
+      - name: Bash approval regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/core exec vitest run tests/bash-empty-command-approval.test.ts
+
       - name: CLI workflow option regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts

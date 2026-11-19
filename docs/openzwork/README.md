@@ -140,6 +140,7 @@
 - [本地首次引导偏好](../specs/onboarding-local-settings-openzwork.md)
 - [设置页布局与远控快捷入口](../specs/settings-visual-polish-openzwork.md)
 - [普通 Node CLI/Web 发行的内置技能资产](../specs/node-distribution-bundled-skills-openzwork.md)
+- [空 Bash 命令的审批边界](../specs/bash-empty-command-approval-openzwork.md)
 
 ## 测试计划与专题文档
 
