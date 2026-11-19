@@ -145,10 +145,13 @@ export class AiSdkModelAdapter {
   }
 
   createModel(options: CreateAiSdkModelOptions): Model {
+    const requiresRequestAuth = Object.hasOwn(options.requestDependencies ?? {}, "requestAuth");
+    const authSource = options.requestDependencies?.requestAuth?.source;
     const boundResolution = this.execution.bindModel({
       providerId: options.providerId,
       modelId: options.modelId,
       providerConfig: options.providerConfig,
+      requiresRequestAuth,
       supportsJsonSchemaOutput: options.modelConfig.properties.supportsJsonSchemaOutput,
       optionSpecs: options.modelConfig.optionSpecs,
     });
@@ -161,6 +164,19 @@ export class AiSdkModelAdapter {
         : {}),
     };
     const optionSpecs = options.modelConfig.optionSpecs;
+    // OpenZWork(OZ-C003): 创建时绑定来源，每次真正发送前取值，避免重试复用旧凭据。
+    const refreshBoundAuth = requiresRequestAuth
+      ? async (input: ModelRequestAuthSourceInput) => {
+          const requestAuth = await authSource?.resolve(input);
+          if (!hasRequestAuth(requestAuth)) {
+            throw new ModelProtocolError(
+              ModelErrorCode.ModelRequestAuthMissing,
+              `Model request auth is unavailable: ${resolved.providerId}/${resolved.modelId}`,
+            );
+          }
+          return { headersApplied: true, requestAuth };
+        }
+      : undefined;
     const toLegacyRequest = (request: ModelExecutionRequest): AiSdkModelTextRequest => {
       const context = getCurrentModelInvocationContext();
       const {
@@ -171,18 +187,21 @@ export class AiSdkModelAdapter {
       const selectedReasoningLevel = request.options.reasoningLevel;
       // 调用级 runtime header Port 只服务绑定完整 Account Access 的账号型 Model；
       // 普通 API-key Model 若也消费该 Port，会把静态鉴权误送到 Host 刷新并在请求前失败。
-      // 私有化分支：OpenZWork 无官方账号/套餐，闲时任务/加速卡派生鉴权链一并移除，
-      // 账号型 Model 只保留调用侧注入的刷新端口语义。
-      const refreshRuntimeHeadersBeforeAttempt =
-        options.providerConfig.access.type === "zhipu-account"
-          ? (contextRefreshRuntimeHeadersBeforeAttempt ??
-            (async () => {
+      const refreshRuntimeHeadersBeforeAttempt = refreshBoundAuth ??
+        (resolved.accountAccess
+          ? async (input: ModelRequestAuthSourceInput) => {
+              if (contextRefreshRuntimeHeadersBeforeAttempt) {
+                return contextRefreshRuntimeHeadersBeforeAttempt({
+                  ...input,
+                  accountAccess: resolved.accountAccess,
+                });
+              }
               throw new ModelProtocolError(
                 ModelErrorCode.ModelRequestAuthMissing,
                 `Account model request auth is unavailable: ${resolved.providerId}/${resolved.modelId}`,
               );
-            }))
-          : undefined;
+            }
+          : undefined);
       return {
         toolSearchEnabled: request.toolSearchEnabled,
         messages: request.messages,
@@ -204,17 +223,7 @@ export class AiSdkModelAdapter {
               },
             }
           : {}),
-        ...(refreshRuntimeHeadersBeforeAttempt
-          ? {
-              refreshRuntimeHeadersBeforeAttempt: (input) =>
-                refreshRuntimeHeadersBeforeAttempt({
-                  ...input,
-                  ...(options.providerConfig.access.type === "zhipu-account"
-                    ? { accountAccess: options.providerConfig.access }
-                    : {}),
-                }),
-            }
-          : {}),
+        ...(refreshRuntimeHeadersBeforeAttempt ? { refreshRuntimeHeadersBeforeAttempt } : {}),
       };
     };
     const resolveForRequest = (

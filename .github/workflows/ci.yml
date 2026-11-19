@@ -143,7 +143,11 @@ jobs:
 
       - name: Model capability request mapping regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/adapters exec vitest run tests/model-capability-wire.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+        run: pnpm --filter @zcode/adapters exec vitest run tests/model-capability-wire.test.ts tests/model.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+
+      - name: Model factory request authentication regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-builtin-model-runtime-integration.test.ts tests/session-selection-protocol.test.ts tests/v4-native-commands.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
 
       - name: Conversation usage accuracy regression
         if: matrix.lane == 'regressions'
