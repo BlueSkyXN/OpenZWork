@@ -460,6 +460,14 @@ entries:
       - packages/provider/src/resolver.ts
       - packages/ui/src/settings/model-provider-section/ProviderLogo.tsx
       - packages/ui/src/settings/model-provider-section/ProviderTemplatePicker.tsx
+      - apps/zcode-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner.ts
+      - apps/zcode-cli/packages/adapters/src/model/model-execution.ts
+    tests:
+      - apps/zcode-cli/packages/bootstrap/tests/zcode-builtin-model-runtime-integration.test.ts
+      - apps/zcode-cli/packages/bootstrap/tests/session-selection-protocol.test.ts
+      - apps/zcode-cli/packages/bootstrap/tests/v4-native-commands.test.ts
+      - apps/zcode-cli/packages/adapters/tests/model.test.ts
     source: "PR #53"
   - id: OZ-C004
     kind: change

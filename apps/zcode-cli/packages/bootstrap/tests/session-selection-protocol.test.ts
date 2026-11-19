@@ -205,6 +205,7 @@ describe("Session 原选择与输入协议", () => {
       workspace: { workspacePath: "/fixture", workspaceKey: "/fixture" },
     });
     const selection = {
+      providerId: "fixture-personal",
       modelId: "fixture-model",
       options: { reasoningLevel: "high" },
     };

@@ -1,14 +1,14 @@
-import type { CreateAiSdkModelOptions } from "@zcode/adapters/model";
+import { AiSdkModelAdapter, type CreateAiSdkModelOptions } from "@zcode/adapters/model";
 import type { Model } from "@zcode/contracts";
 import { fileURLToPath } from "node:url";
 import {
   ApiKeyAccessConfig,
   ModelConfigRules,
+  ProviderApiConfig,
   ProviderConfig,
   ProviderConfigMap,
   ProviderConfigResolver,
   ProviderRegistry,
-  ZhipuAccountAccessConfig,
   type ProviderId,
 } from "@zcode/provider";
 import {
@@ -25,6 +25,10 @@ const source = new NodeZCodeBuiltinProviderConfigSource({
   bundledFilePath: zcodeBuiltinProviderConfigFilePath,
   watch: false,
 });
+const templateId = "standard-openai-chat-completions";
+const providerId = "fixture-personal";
+const modelId = "fixture-model";
+const baseUrl = "https://provider.example.test/v1";
 let zcodeBuiltin: ZCodeBuiltinProviderConfigSnapshot;
 
 beforeAll(async () => {
@@ -35,25 +39,7 @@ afterAll(() => source.dispose());
 
 describe("真实 ZCode Built-in Config 到 Active Model", () => {
   it("API Key Personal Overlay 经 Registry 原样装配到 Adapter", () => {
-    const providerId = "zai-api";
-    const modelId = "glm-5.3";
-    const registry = resolveOneBuiltinProvider(providerId, {
-      personalProviders: new ProviderConfigMap([
-        [
-          providerId,
-          // 实例在创建时复制模板；Resolver 不会从已退场的 templateId 字段隐式继承。
-          zcodeBuiltin.providerTemplates
-            .get("zai-api")!
-            .config.withPersonalModelIds([modelId])
-            .overlay(
-              new ProviderConfig({
-                group: "standard-personal",
-                access: new ApiKeyAccessConfig({ apiKey: "test-zai-api-key" }),
-              }),
-            ),
-        ],
-      ]),
-    });
+    const registry = resolveRegistry(standardProvider().withPersonalModelIds([modelId]));
     const capture = captureRuntime(registry);
 
     const model = capture.runtime.modelFactory({
@@ -63,38 +49,27 @@ describe("真实 ZCode Built-in Config 到 Active Model", () => {
     const registryModel = registry.getModel(providerId, modelId);
 
     expect(model).toBe(capture.models[0]);
+    expect(capture.created[0]).not.toHaveProperty("requestDependencies");
     expect(capture.created[0]?.providerConfig).toBe(registryProvider?.config);
     expect(capture.created[0]?.modelConfig).toBe(registryModel?.config);
     expect(capture.created[0]).toMatchObject({
       providerId,
       modelId,
       providerConfig: {
-        access: { type: "api-key", apiKey: "test-zai-api-key" },
+        access: { type: "api-key", apiKey: "fixture-static" },
         api: {
-          type: zcodeBuiltin.providerTemplates.get("zai-api")?.config.api?.type,
-          baseUrl: zcodeBuiltin.providerTemplates.get("zai-api")?.config.api?.baseUrl,
+          type: "openai-chat-completions",
+          baseUrl,
         },
       },
     });
   });
 
-  it("Account 约束 Built-in 成员后仍由 Personal Overlay 最后覆盖", () => {
-    const providerId = "account:zai-start-plan";
-    const modelId = "GLM-5.2";
-    const registry = resolveOneBuiltinProvider(providerId, {
-      accountProviders: new ProviderConfigMap([
-        [
-          providerId,
-          new ProviderConfig({
-            builtinModelIds: [modelId],
-            access: new ZhipuAccountAccessConfig({ entitled: true }),
-          }),
-        ],
-      ]),
-      personalProviders: new ProviderConfigMap([
-        [providerId, new ProviderConfig({ visibility: "hidden" })],
-      ]),
-    });
+  it("Personal 覆盖可见性后仍保留原 Provider 的模型成员与协议", () => {
+    const registry = resolveRegistry(
+      new ProviderConfig({ visibility: "hidden" }),
+      standardProvider().overlay(new ProviderConfig({ builtinModelIds: [modelId] })),
+    );
     const capture = captureRuntime(registry);
 
     capture.runtime.modelFactory({
@@ -106,27 +81,14 @@ describe("真实 ZCode Built-in Config 到 Active Model", () => {
     ]);
     expect(capture.created[0]?.providerConfig).toMatchObject({
       visibility: "hidden",
-      access: {
-        type: "zhipu-account",
-        accountType: "zai",
-        mode: "start-plan",
-      },
+      access: { type: "api-key", apiKey: "fixture-static" },
     });
     expect(capture.created[0]?.modelConfig).toBe(registry.getModel(providerId, modelId)?.config);
   });
 
   it("隐藏 Request Auth Provider 仍由普通 Registry 精确创建 Model", () => {
-    const modelId = "GLM-5.3";
-    const registry = resolveOneBuiltinProvider(providerId, {
-      accountProviders: new ProviderConfigMap([
-        [
-          providerId,
-          new ProviderConfig({
-            access: new ZhipuAccountAccessConfig({ entitled: true }),
-          }),
-        ],
-      ]),
-    });
+    const personal = standardProvider().withPersonalModelIds([modelId]);
+    const registry = resolveRegistry(personal.overlay(new ProviderConfig({ visibility: "hidden" })));
     const capture = captureRuntime(registry);
     const requestAuthSource = { resolve: vi.fn() };
 
@@ -145,6 +107,71 @@ describe("真实 ZCode Built-in Config 到 Active Model", () => {
     expect(capture.created[0]?.providerConfig).toBe(registry.getProvider(providerId)?.config);
     expect(capture.created[0]?.modelConfig).toBe(registry.getModel(providerId, modelId)?.config);
   });
+
+  it.each(["generate", "stream"])("%s 经过真实工厂和 SDK，重试时切换为本次的 header 凭据", async (method) => {
+    const registry = resolveRegistry(standardProvider().withPersonalModelIds([modelId]));
+    const requests: Request[] = [];
+    const modelAdapter = new AiSdkModelAdapter({
+      env: {},
+      retry: { maxAttempts: 2, baseDelayMs: 0, jitter: false },
+      transport: async (input, init) => {
+        requests.push(new Request(input, init));
+        if (requests.length === 1) {
+          return Response.json({ error: { message: "try again" } }, { status: 503 });
+        }
+        const message = { role: "assistant", content: "ok" };
+        const choice = {
+          index: 0,
+          finish_reason: "stop",
+          ...(method === "stream" ? { delta: message } : { message }),
+        };
+        const data = { id: "fixture-chat", created: 1, model: modelId, choices: [choice] };
+        return method === "stream"
+          ? new Response(`data: ${JSON.stringify(data)}\n\ndata: [DONE]\n\n`, {
+              headers: { "content-type": "text/event-stream" },
+            })
+          : Response.json(data);
+      },
+    });
+    const runtime = new ApiProviderModelRuntime({ registry, modelAdapter });
+    runtime.start();
+    try {
+      const resolve = vi.fn()
+        .mockResolvedValueOnce({ apiKey: "fixture-first" })
+        .mockResolvedValueOnce({ headers: { "X-Execution-Ticket": "fixture-second" } });
+      const model = runtime.modelFactory({
+        selection: selectionWithHighestReasoning(registry, providerId, modelId),
+        requestDependencies: { requestAuth: { source: { resolve } } },
+      });
+      const request = {
+        messages: [{ role: "user" as const, content: "hello" }],
+        options: { maxOutputTokens: 128 },
+      };
+      if (method === "stream") {
+        const events = [];
+        for await (const event of model.streamText(request)) events.push(event);
+        expect(events.at(-1)).toMatchObject({ type: "finish", finishReason: "stop" });
+      } else {
+        await expect(model.generateText(request)).resolves.toMatchObject({ text: "ok" });
+      }
+      const attempts = resolve.mock.calls.map(([input]) => [input.providerId, input.modelId, input.attempt]);
+      expect(attempts).toEqual([
+        [providerId, modelId, 1],
+        [providerId, modelId, 2],
+      ]);
+      expect(requests.map(({ headers }) => [
+        headers.get("authorization"),
+        headers.get("x-api-key"),
+        headers.get("x-execution-ticket"),
+        headers.get("x-static"),
+      ])).toEqual([
+        ["Bearer fixture-first", null, null, "retained"],
+        [null, null, "fixture-second", "retained"],
+      ]);
+    } finally {
+      runtime.dispose();
+    }
+  });
 });
 
 function selectionWithHighestReasoning(
@@ -159,28 +186,32 @@ function selectionWithHighestReasoning(
   return { providerId, modelId, options: { reasoningLevel } };
 }
 
-function resolveOneBuiltinProvider(
-  providerId: ProviderId,
-  overlays: {
-    accountProviders?: ProviderConfigMap;
-    personalProviders?: ProviderConfigMap;
-    models?: ModelConfigRules;
-  } = {},
-): ProviderRegistry {
-  const provider = zcodeBuiltin.providers.get(providerId);
-  const personalProvider = overlays.personalProviders?.get(providerId);
-  if (!provider && !personalProvider) {
-    throw new Error(`测试引用的 Built-in Provider 或 Personal 实例不存在: ${providerId}`);
-  }
+function standardProvider() {
+  const template = zcodeBuiltin.providerTemplates.get(templateId);
+  if (!template) throw new Error(`缺少标准模板 ${templateId}`);
+  return template.config.overlay(
+    new ProviderConfig({
+      group: "standard-personal",
+      access: new ApiKeyAccessConfig({ apiKey: "fixture-static" }),
+      api: new ProviderApiConfig({
+        baseUrl,
+        headers: {
+          authorization: "Bearer fixture-old",
+          "X-Api-Key": "fixture-old",
+          "X-Static": "retained",
+        },
+      }),
+    }),
+  );
+}
+
+function resolveRegistry(personal: ProviderConfig, builtin?: ProviderConfig): ProviderRegistry {
   const resolution = new ProviderConfigResolver().resolve({
-    zcodeBuiltinProviders: provider
-      ? new ProviderConfigMap([[providerId, provider]])
-      : ProviderConfigMap.empty(),
+    zcodeBuiltinProviders: builtin ? new ProviderConfigMap([[providerId, builtin]]) : zcodeBuiltin.providers,
     zcodeBuiltinProviderTemplates: zcodeBuiltin.providerTemplates,
-    accountProviders: overlays.accountProviders ?? ProviderConfigMap.empty(),
-    personalProviders: overlays.personalProviders ?? ProviderConfigMap.empty(),
+    personalProviders: new ProviderConfigMap([[providerId, personal]]),
     zcodeBuiltinModelRules: zcodeBuiltin.models,
-    personalModels: overlays.models ?? ModelConfigRules.empty(),
+    personalModels: ModelConfigRules.empty(),
   });
   expect(resolution.issues).toEqual([]);
   return new ProviderRegistry(resolution.registryProviders);

@@ -384,6 +384,7 @@ describe("Model", () => {
       runtime,
     });
     const model = adapter.createModel({
+      accountMode: "individual-coding-plan",
       providerId: "account" as never,
       modelId: "model-a" as never,
       optionSpecs: {
@@ -496,6 +497,7 @@ describe("Model", () => {
       }),
       runtime,
     });
+    const requestDependencies = { requestAuth: { source: { resolve } } };
     const model = adapter.createModel({
       providerId: "request" as never,
       modelId: "model-a" as never,
@@ -503,12 +505,19 @@ describe("Model", () => {
         maxOutputTokens: { max: 8_000 },
       },
       properties,
-      requestDependencies: { requestAuth: { source: { resolve } } },
+      requestDependencies,
     });
     const request = { messages: [{ role: "user" as const, content: "hello" }] };
 
+    const replacement = vi.fn();
+    requestDependencies.requestAuth.source = { resolve: replacement };
+    const refresh = vi.fn();
+    await runWithModelInvocationContext({ refreshRuntimeHeadersBeforeAttempt: refresh }, () =>
+      model.generateText(request),
+    );
     await model.generateText(request);
-    await model.generateText(request);
+    expect(replacement).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
 
     expect(resolve).toHaveBeenNthCalledWith(
       1,
@@ -637,12 +646,12 @@ describe("Model", () => {
     // 回归：执行作用域 requestAuth（逐请求 JWT + 定制 header）必须完整下发；
     // 门禁漏认会导致请求缺鉴权头被网关判 401。
     const resolve = vi.fn().mockResolvedValue({
-      apiKey: "zcode-jwt",
+      apiKey: "fixture-current",
       headers: {
-        Authorization: "Bearer zcode-jwt",
-        "X-Bigmodel-Authorization": "Bearer coding-plan-jwt",
-        "Bigmodel-Target-Type": "PERSONAL",
-        "X-Request-Card-ID": "hsc-1",
+        Authorization: "Bearer fixture-current",
+        "X-Execution-Ticket": "Bearer fixture-ticket",
+        "X-Execution-Group": "PERSONAL",
+        "X-Request-Id": "fixture-1",
       },
     });
     const receivedHeaders: unknown[] = [];
@@ -687,55 +696,123 @@ describe("Model", () => {
 
     expect(resolve).toHaveBeenCalledTimes(1);
     expect(receivedHeaders[0]).toMatchObject({
-      Authorization: "Bearer zcode-jwt",
-      "X-Bigmodel-Authorization": "Bearer coding-plan-jwt",
-      "Bigmodel-Target-Type": "PERSONAL",
-      "X-Request-Card-ID": "hsc-1",
+      Authorization: "Bearer fixture-current",
+      "X-Execution-Ticket": "Bearer fixture-ticket",
+      "X-Execution-Group": "PERSONAL",
+      "X-Request-Id": "fixture-1",
       "X-Static": "yes",
     });
   });
 
-  it("fails closed before network when request auth is unavailable", async () => {
-    const generateText = vi.fn();
-    const streamText = vi.fn();
+  it.each([
+    { requestAuth: undefined },
+    { requestAuth: { source: { resolve: async () => undefined } } },
+    { requestAuth: { source: {
+      resolve: async () => ({ apiKey: " ", headers: { "X-Ticket": " " } }),
+    } } },
+  ])("fails closed for an explicit but unusable auth binding", async (requestDependencies) => {
+    const transport = vi.fn();
     const adapter = new AiSdkModelAdapter({
-      registry: new TestProviderConfigFixture({
-        providers: {
-          request: {
-            kind: "custom",
-            createLanguageModel: () =>
-              ({ specificationVersion: "v3", provider: "request", modelId: "a" }) as never,
-          },
-        },
-      }),
-      runtime: {
-        generateText,
-        streamText,
-      },
+      registry: new TestProviderConfigFixture({ providers: { request: { kind: "openai" } } }),
+      transport,
+      env: {},
     });
     const model = adapter.createModel({
-      providerId: "request" as never,
-      modelId: "model-a" as never,
-      optionSpecs: {
-        maxOutputTokens: { max: 8_000 },
-      },
-      properties,
-      requestDependencies: { requestAuth: {} },
+      providerId: "request",
+      modelId: "model-a",
+      requestDependencies,
     });
-
-    await expect(
-      model.generateText({ messages: [{ role: "user", content: "hello" }] }),
-    ).rejects.toMatchObject({ code: ModelErrorCode.ModelRequestAuthMissing });
-    await expect(async () => {
-      for await (const _event of model.streamText({
-        messages: [{ role: "user", content: "hello" }],
-      })) {
-        // 请求必须在产生首个网络事件前 fail-closed。
-      }
-    }).rejects.toMatchObject({ code: ModelErrorCode.ModelRequestAuthMissing });
-    expect(generateText).not.toHaveBeenCalled();
-    expect(streamText).not.toHaveBeenCalled();
+    const request = { messages: [{ role: "user" as const, content: "hello" }] };
+    await expect(model.generateText(request)).rejects.toMatchObject({
+      code: ModelErrorCode.ModelRequestAuthMissing,
+    });
+    await expect(model.streamText(request)[Symbol.asyncIterator]().next()).rejects.toMatchObject({
+      code: ModelErrorCode.ModelRequestAuthMissing,
+    });
+    expect(transport).not.toHaveBeenCalled();
   });
+
+  it.each(["generate", "stream"])("cancels %s while the bound auth source is pending", async (method) => {
+    const transport = vi.fn();
+    const adapter = new AiSdkModelAdapter({
+      registry: new TestProviderConfigFixture({ providers: { request: { kind: "openai" } } }),
+      transport,
+      env: {},
+    });
+    const controller = new AbortController();
+    const started = Promise.withResolvers<void>();
+    const credential = Promise.withResolvers<{ apiKey: string }>();
+    const resolve = vi.fn(() => {
+      started.resolve();
+      return credential.promise;
+    });
+    const model = adapter.createModel({
+      providerId: "request",
+      modelId: "model-a",
+      requestDependencies: { requestAuth: { source: { resolve } } },
+    });
+    const request = {
+      messages: [{ role: "user" as const, content: "hello" }],
+      abortSignal: controller.signal,
+    };
+    const pending = method === "generate"
+      ? model.generateText(request)
+      : model.streamText(request)[Symbol.asyncIterator]().next();
+    await started.promise;
+    controller.abort();
+    try {
+      await expect(pending).rejects.toMatchObject({ code: ModelErrorCode.ModelRequestCancelled });
+      expect(resolve).toHaveBeenCalledWith(
+        expect.objectContaining({ abortSignal: controller.signal }),
+      );
+    } finally {
+      credential.resolve({ apiKey: "fixture-late" });
+    }
+    expect(transport).not.toHaveBeenCalled();
+  });
+
+  it.each(["openai", "anthropic", "openai-compatible"] as const)(
+    "%s sends header-only credentials without adding a saved or SDK default key",
+    async (kind) => {
+      const requests: Headers[] = [];
+      const adapter = new AiSdkModelAdapter({
+        registry: new TestProviderConfigFixture({
+          providers: { request: { kind, apiKey: "fixture-stored", headers: { "X-Static": "keep" } } },
+        }),
+        env: {},
+        retry: { maxAttempts: 1 },
+        transport: async (input, init) => {
+          requests.push(new Request(input, init).headers);
+          return Response.json({ error: { message: "fixture response" } }, { status: 400 });
+        },
+      });
+      const resolve = vi.fn()
+        .mockResolvedValueOnce({ headers: { "X-Ticket": "fixture-ticket" } })
+        .mockResolvedValueOnce({ headers: { AUTHORIZATION: "Bearer fixture-bound", "X-API-KEY": "fixture-bound" } });
+      const selection = { providerId: "request", modelId: "model-a" };
+      const model = adapter.createModel({
+        ...selection,
+        requestDependencies: { requestAuth: { source: { resolve } } },
+      });
+      const request = { messages: [{ role: "user" as const, content: "hello" }] };
+      const personal = adapter.createModel(selection);
+      for (const bound of [model, model, personal]) {
+        await expect(bound.generateText(request)).rejects.toMatchObject({
+          code: ModelErrorCode.InvalidModelRequest,
+        });
+      }
+      expect(requests.map((headers) => [
+        headers.get("authorization"),
+        headers.get("x-api-key"),
+        headers.get("x-ticket"),
+        headers.get("x-static"),
+      ])).toEqual([
+        [null, null, "fixture-ticket", "keep"],
+        ["Bearer fixture-bound", "fixture-bound", null, "keep"],
+        ["Bearer fixture-stored", kind === "anthropic" ? "fixture-stored" : null, null, "keep"],
+      ]);
+    },
+  );
 
   it("keeps bound provider facts stable while applying request auth", async () => {
     const firstLanguageModel = {
@@ -776,6 +853,7 @@ describe("Model", () => {
     });
     const adapter = new AiSdkModelAdapter({ registry, runtime });
     const model = adapter.createModel({
+      accountMode: "individual-coding-plan",
       providerId: "account" as never,
       modelId: "model-a" as never,
       optionSpecs: {
