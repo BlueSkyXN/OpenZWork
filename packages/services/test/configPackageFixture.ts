@@ -3,10 +3,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, vi } from "vitest";
-import {
-  NodeProviderRegistryRuntime,
-  decodeProviderConfigFile,
-} from "@zcode/provider-node";
+import { NodeProviderRegistryRuntime, decodeProviderConfigFile } from "@zcode/provider-node";
 import { createDefaultSystemPromptSettings } from "@zcode/shared";
 import {
   createUserConfigSyncService,
@@ -46,16 +43,8 @@ export const privateValues = {
   body: "fixture-markdown-body",
   prompt: "fixture-system-prompt",
 };
-export function ownerAt(
-  home: string,
-  platform: ConfigPackageOptions["platform"] = "darwin",
-) {
-  for (const key of [
-    "HOME",
-    "USERPROFILE",
-    "ZCODE_DATA_BASE_DIR",
-    "ZCODE_DESKTOP_HOME_DIR",
-  ])
+export function ownerAt(home: string, platform: ConfigPackageOptions["platform"] = "darwin") {
+  for (const key of ["HOME", "USERPROFILE", "ZCODE_DATA_BASE_DIR", "ZCODE_DESKTOP_HOME_DIR"])
     vi.stubEnv(key, home);
   const filePath = join(home, ".openzwork", "v2", "provider_config.json");
   const runtime = new NodeProviderRegistryRuntime({
