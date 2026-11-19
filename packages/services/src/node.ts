@@ -1457,7 +1457,10 @@ export function createLocalServices(options: {
     services.register(IConfigPackageService, createConfigPackageService({
       owners: { subagents: userCategory(userConfigSyncService, "subagents"), commands: userCategory(userConfigSyncService, "commands"),
         hooks: userCategory(userConfigSyncService, "hooks"), mcp: mcpSyncService, skills: skillSyncService },
-      source: providerProvisioningSource, settings: settingService,
+      source: providerProvisioningSource,
+      // 直接交给持锁比较期望值的设置所有者。通知包装器只转发普通 patch。
+      settings: options.settingService ?? localSettings!.service,
+      repo: providerConfigRuntime.personalRepository, registry: providerRuntime.registryService,
     }));
   }
   providerProvisioningSources.set(services, providerProvisioningSource);

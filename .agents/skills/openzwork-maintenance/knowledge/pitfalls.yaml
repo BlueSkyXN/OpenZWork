@@ -182,3 +182,15 @@ entries:
     since: 2026-11-10
     checked: 3.17.2
     status: active
+  - id: OZK-PIT-017
+    title: 跨进程配置刷新要观察实际模型请求
+    when: 桌面 Host 写入个人配置，需要确认正在运行的 CLI 会话何时采用新值。
+    do: 使用隔离目录和合成凭据，由独立 Host 进程写入。用回环接收端挂起一个请求，等 CLI 的注册表观察到文件变化，再核对旧会话下一轮与重建会话的请求头和系统消息。
+    why: Provider 凭据按请求从注册表读取，系统提示词在创建会话时确定。仅检查 Host 写入后的注册表会漏掉这两个生效时机的差异。
+    evidence:
+      - apps/zcode-cli/packages/bootstrap/tests/config-package-runtime.test.ts
+      - packages/services/test/configPackageHostImport.ts
+      - docs/specs/config-package-openzwork.md
+    since: 2026-11-18
+    checked: 3.17.2
+    status: active

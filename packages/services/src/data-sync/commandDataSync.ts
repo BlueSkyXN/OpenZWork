@@ -13,7 +13,7 @@ import {
   setUserCommandEnabledOverrides,
 } from "#src/commands/commandsService.js";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
-import { pathExists, writeFileAtomically } from "#src/fs/atomicFileUtils.js";
+import { pathExists, withUserMarkdownLock, writeFileAtomically } from "#src/fs/atomicFileUtils.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import { resolveUserHomeDir } from "#src/subagents/subagentStorage.js";
 import type { IDataSyncCategoryService } from "./contract.js";
@@ -87,7 +87,7 @@ async function collectCommandFiles(
  * 本端用户命令：`~/.openzwork/commands` 与 `~/.agents/commands` 合并，与 CLI 运行时一致，
  * 同 key 时 `.openzwork` 优先（先扫描者胜出）。
  */
-async function resolveUserCommands(): Promise<Map<string, ResolvedUserCommand>> {
+async function resolveUserCommands(onlyKey?: string): Promise<Map<string, ResolvedUserCommand>> {
   const commands = new Map<string, ResolvedUserCommand>();
   for (const source of ["openzwork", "agents"] as const) {
     const root = commandsRoot(source);
@@ -96,7 +96,7 @@ async function resolveUserCommands(): Promise<Map<string, ResolvedUserCommand>> 
         .split(/[\\/]+/u)
         .join("/");
       const key = toCommandKey(relativePath);
-      if (commands.has(key)) continue;
+      if ((onlyKey !== undefined && onlyKey !== key) || commands.has(key)) continue;
       let content: Buffer;
       try {
         content = await readFile(file.path);
@@ -262,13 +262,17 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
     },
 
     async importSyncItems(params) {
-      const current = await resolveUserCommands();
       const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
       const results: ImportResult[] = [];
       for (const item of params.items) {
-        results.push(await importOne(item, payloadByKey.get(item.key), current));
+        // OW-P036：上一项提交期间另一个窗口可能保存了这一项。读、比较、替换和启用状态同锁。
+        results.push(await withUserMarkdownLock(resolveUserHomeDir(), "commands", async () => {
+          const current = await resolveUserCommands(item.key);
+          const result = await importOne(item, payloadByKey.get(item.key), current);
+          if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey);
+          return result;
+        }));
       }
-      await applyCreatedEnabledState(results, payloadByKey);
       return { results: results.map(({ createdPath: _createdPath, ...result }) => result) };
     },
   };

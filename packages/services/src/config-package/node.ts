@@ -6,31 +6,24 @@ import {
   providerProvisioningPersonalConfigSchema,
   ZCODE_VERSION,
   type ConfigCategory,
-  type ConfigCounts,
   type ConfigGroups,
   type ConfigPackage,
-  type ProviderProvisioningEnvelope,
-  type AppSettings,
 } from "@zcode/shared";
 import type { IConfigPackageService } from "./contract.js";
 import { exportSyncCategory, type SyncOwners } from "./categories.js";
 import { writePackage } from "./file.js";
 import { contentHash, personalData, providerEntries, stableJson } from "./personal.js";
 
+import { countsOf, createPreviewMethods } from "./preview.js";
+
 export { userCategory } from "./categories.js";
 export { readPackage } from "./file.js";
-export interface ConfigPackageOptions {
+import type { PersonalOwners } from "./personalImport.js";
+export interface ConfigPackageOptions extends PersonalOwners {
   owners: SyncOwners;
-  source: { read(syncId: string): Promise<ProviderProvisioningEnvelope> };
-  settings: { get(): Promise<AppSettings> };
   platform?: ConfigPackage["sourcePlatform"];
   home?: string;
   appVersion?: string;
-}
-export function countsOf(groups: ConfigGroups): ConfigCounts {
-  return Object.fromEntries(
-    Object.entries(groups).map(([category, group]) => [category, group.entries.length]),
-  );
 }
 export function createConfigPackageService(options: ConfigPackageOptions): IConfigPackageService {
   const home =
@@ -38,6 +31,7 @@ export function createConfigPackageService(options: ConfigPackageOptions): IConf
   const platform = options.platform ?? process.platform;
   const appVersion = options.appVersion ?? ZCODE_VERSION;
   return {
+    ...createPreviewMethods({ ...options, home }, platform, appVersion),
     async exportToFile(path: string, requested: ConfigCategory[]) {
       const categories = configCategoriesSchema.safeParse(requested);
       if (!categories.success) throw new Error("config-package.categories");

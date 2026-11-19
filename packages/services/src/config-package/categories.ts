@@ -1,3 +1,4 @@
+import { posix, win32 } from "node:path";
 import type {
   CommandDataSyncPayload,
   ConfigEntry,
@@ -117,6 +118,54 @@ export function decodeHooks(group: NonNullable<ConfigGroups["hooks"]>): HookData
 }
 export function decodeSkills(group: NonNullable<ConfigGroups["skills"]>): SkillDataSyncPayload {
   return { ...group.payload, archive: Buffer.from(group.payload.archive, "base64") };
+}
+
+export function decodeMcp(
+  group: NonNullable<ConfigGroups["mcp"]>,
+  targetHome: string,
+): McpDataSyncPayload {
+  const { sourceHomeDir, items } = group.payload;
+  const sourcePath =
+    posix.isAbsolute(sourceHomeDir) && !sourceHomeDir.startsWith("//") ? posix : win32;
+  const targetPath = posix.isAbsolute(targetHome) && !targetHome.startsWith("//") ? posix : win32;
+  function rewrite(value: string) {
+    if (
+      !sourcePath.isAbsolute(sourceHomeDir) ||
+      !sourcePath.isAbsolute(value) ||
+      value.split(sourcePath === win32 ? /[\\/]/u : "/").includes("..")
+    )
+      return value;
+    const relative = sourcePath.relative(sourceHomeDir, value);
+    if (
+      relative === ".." ||
+      relative.startsWith(".." + sourcePath.sep) ||
+      sourcePath.isAbsolute(relative)
+    )
+      return value;
+    return targetPath.join(targetHome, ...relative.split(sourcePath.sep));
+  }
+  const variables = (env: Record<string, string>) =>
+    Object.fromEntries(Object.entries(env).map(([key, value]) => [key, rewrite(value)]));
+  // 在原分类写入者之前完成 v1 的字段投影。载荷上的 home 随之更新，嵌套目标 home 也只改写一次。
+  return {
+    sourceHomeDir: targetHome,
+    items: items.map((item) => {
+      const c = item.config;
+      const transport = typeof c.type === "string" ? c.type.trim().toLowerCase() : "";
+      const stdio = transport ? transport === "stdio" : Boolean(c.command && !c.url);
+      if (!stdio) return item;
+      return {
+        ...item,
+        config: {
+          ...c,
+          ...(c.args && { args: c.args.map(rewrite) }),
+          ...(typeof c.cwd === "string" && { cwd: rewrite(c.cwd) }),
+          ...(c.env && { env: variables(c.env) }),
+          ...(c.environment && { environment: variables(c.environment) }),
+        },
+      };
+    }),
+  };
 }
 
 export async function exportSyncCategory(

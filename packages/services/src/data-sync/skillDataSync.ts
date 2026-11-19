@@ -8,6 +8,7 @@ import type {
   SkillDataSyncPayload,
 } from "@zcode/shared";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import { withFileLock } from "@zcode/shared/node";
 import { pathExists, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
@@ -124,6 +125,7 @@ async function readSkillStoreVersion(directoryPath: string): Promise<string | un
 
 /** 本次导入中已写入目标端的技能：来源相对目录（`/` 分隔）→ 目标端落位目录。 */
 interface PlacedSkill {
+  before: Map<string, ResolvedUserSkill>;
   directoryName: string;
   path: string;
 }
@@ -428,50 +430,68 @@ export function createSkillDataSyncMethods(options: {
         await extractSkillSyncArchive(params.payload.archive, incomingRoot, {
           maxExtractedBytes: maxItemBytes,
         });
-        const current = await resolveUserSkills();
-        const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
-        const results: Array<DataSyncImportResultItem & { createdPath?: string }> = [];
-        // 修复（F2）：每项原来按传入顺序各自从同一棵解压树 rename 走自己的子树。来源嵌套
-        // （parent 与 parent/child 同推）时：child 先处理会建出 target/parent，parent 再 rename 到非空目录失败；
-        // parent 先处理会带走 child 的文件，child 找不到 SKILL.md 失败。服务是边界，不依赖 UI 顺序：
-        // 现在按来源目录层级先上级后下级处理，并记录已落位的上级；下级在已落位上级之内时，
-        // 文件已随上级写入，按「上级落位路径 + 相对路径」确认结果（见 importOne）。
-        const placed: PlacedSkill[] = [];
-        const ordered = [...params.items.entries()].sort(
-          ([, left], [, right]) =>
-            directoryDepth(payloadByKey.get(left.key)?.directoryName) -
-            directoryDepth(payloadByKey.get(right.key)?.directoryName),
-        );
-        for (const [index, item] of ordered) {
-          const payloadItem = payloadByKey.get(item.key);
-          const result = await importOne({
-            item,
-            index,
-            payloadItem,
-            incomingRoot,
-            tempRoot,
-            targetRoot,
-            current,
-            placedAncestor: payloadItem
-              ? findPlacedAncestor(placed, payloadItem.directoryName)
-              : undefined,
-            keepTempRoot: () => {
-              keepTempRoot = true;
-            },
-          });
-          results[index] = result;
-          const placedPath =
-            result.status === "created"
-              ? result.createdPath
-              : result.status === "updated"
-                ? current.get(item.key)?.directoryPath
-                : undefined;
-          if (payloadItem && placedPath) {
-            placed.push({ directoryName: payloadItem.directoryName, path: placedPath });
+        return await withFileLock(join(targetRoot, ".sync-import"), async () => {
+          const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
+          const results: Array<DataSyncImportResultItem & { createdPath?: string }> = [];
+          // 修复（F2）：每项原来按传入顺序各自从同一棵解压树 rename 走自己的子树。来源嵌套
+          // （parent 与 parent/child 同推）时：child 先处理会建出 target/parent，parent 再 rename 到非空目录失败；
+          // parent 先处理会带走 child 的文件，child 找不到 SKILL.md 失败。服务是边界，不依赖 UI 顺序：
+          // 现在按来源目录层级先上级后下级处理，并记录已落位的上级；下级在已落位上级之内时，
+          // 文件已随上级写入，按「上级落位路径 + 相对路径」确认结果（见 importOne）。
+          const selected = new Map(params.items.map(item => [item.key, item]));
+          const blocked = new Map<string, DataSyncImportResultItem>();
+          const placed: PlacedSkill[] = [];
+          const ordered = [...params.items.entries()].sort(
+            ([, left], [, right]) =>
+              directoryDepth(payloadByKey.get(left.key)?.directoryName) -
+              directoryDepth(payloadByKey.get(right.key)?.directoryName),
+          );
+          for (const [index, item] of ordered) {
+            const incoming = payloadByKey.get(item.key);
+            const ancestor = incoming && findPlacedAncestor(placed, incoming.directoryName);
+            const children = incoming && !ancestor ? params.payload.items.filter(child =>
+              child.directoryName.startsWith(incoming.directoryName + "/")) : [];
+            const current = ancestor?.before ?? await resolveUserSkills();
+            // OW-P037：父目录整体移动，先验证所有会随它落地的子项。已存在的子目录沿用独立写入保护。
+            for (const child of children) {
+              const choice = selected.get(child.key);
+              const existing = current.get(child.key);
+              if (choice && (choice.mode === "createOnly" ? existing !== undefined :
+                  !existing || await hashSkill(existing) !== choice.expectedTargetHash)) {
+                blocked.set(child.key, { key: child.key, status: "conflict" });
+              }
+              if (!choice || existing || blocked.has(child.key)) {
+                blocked.set(item.key, { key: item.key, status: "failed",
+                  error: choice ? "nested-target" : "nested-selection" });
+              }
+            }
+            const result: DataSyncImportResultItem & { createdPath?: string } = blocked.get(item.key) ?? await importOne({
+              item, index, payloadItem: incoming, incomingRoot, tempRoot, targetRoot, current,
+              placedAncestor: ancestor,
+              keepTempRoot: () => {
+                keepTempRoot = true;
+              },
+            });
+            results[index] = result;
+            const placedPath =
+              result.status === "created"
+                ? result.createdPath
+                : result.status === "updated"
+                  ? current.get(item.key)?.directoryPath
+                  : undefined;
+            if (incoming && placedPath) {
+              placed.push({ directoryName: incoming.directoryName, path: placedPath, before: current });
+            } else {
+              for (const child of children) {
+                if (!blocked.has(child.key)) blocked.set(child.key, {
+                  key: child.key, status: "failed", error: "nested-target",
+                });
+              }
+            }
           }
-        }
-        await applyCreatedEnabledState(results, payloadByKey);
-        return { results: results.map(({ createdPath: _createdPath, ...result }) => result) };
+          await applyCreatedEnabledState(results, payloadByKey);
+          return { results: results.map(({ createdPath: _createdPath, ...result }) => result) };
+        });
       } finally {
         if (!keepTempRoot) await rm(tempRoot, { recursive: true, force: true });
       }

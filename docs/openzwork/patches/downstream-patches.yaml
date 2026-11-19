@@ -766,3 +766,41 @@ patches:
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游开发配置避免在首次远控任务中为该动态入口触发整页刷新，冷缓存手机恢复用例通过。
+
+  - id: OW-P036
+    title: 批量导入命令与子智能体时覆盖后续项的新编辑
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.17.2
+      checked: 3.18.2
+    trigger: 一窗口导入多个 Markdown 条目，另一窗口在批次处理期间保存后面的同名条目。
+    impact: 旧快照通过期望哈希检查，新编辑被覆盖，回执误报成功。
+    evidence: 3.18.2 的两个分类在循环外读取目标字节。隔离目录回归在第一项写入后编辑第二项，旧实现对第二项也返回 updated。
+    fix: 设置页与导入共享按用户和分类的跨进程锁。导入逐项在锁内读取实际目标、比较哈希、替换文件并处理新建项的启用状态。
+    files:
+      - packages/services/src/data-sync/commandDataSync.ts
+      - packages/services/src/data-sync/subagentDataSync.ts
+      - packages/services/src/commands/commandsService.ts
+      - packages/services/src/subagents/subagentsService.ts
+      - packages/services/src/fs/atomicFileUtils.ts
+    regression:
+      - packages/services/test/configPackageConflicts.test.ts
+    retire: 上游的导入与设置写入能在同一提交边界保住批内新编辑，两个分类的并发回归均通过。
+
+  - id: OW-P037
+    title: 父技能的目录移动提前写入冲突子技能
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.17.2
+      checked: 3.18.2
+    trigger: 导入嵌套技能，目标在其他目录已有同名子项，或部分子项未选、预览后发生变化。
+    impact: 原实现先移动父目录，随后才报告子项失败，目标留下同名副本。
+    evidence: 两个隔离用户目录中同时选择父子及一个独立项，原实现已写入父目录，异位子项随后报告失败。
+    fix: 技能写入者在移动前校验整棵子树的选择与目标状态，跳过无法安全提交的子树，保留其他独立项的结果。
+    files:
+      - packages/services/src/data-sync/skillDataSync.ts
+    regression:
+      - packages/services/test/configPackageConflicts.test.ts
+    retire: 上游在父目录移动前校验子项落位，异位同名、过期、局部选择及正常新增回归均通过。

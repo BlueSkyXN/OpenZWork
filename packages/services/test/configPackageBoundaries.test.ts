@@ -8,7 +8,7 @@ import { IConfigPackageService } from "../src/config-package/index.js";
 import { CONFIG_PACKAGE_CATEGORIES } from "@zcode/shared";
 import { exposeWindowHostAttachmentServices } from "../../desktop/src/host/windowHostAttachmentRpcPolicy.js";
 import { writePrivatePackage } from "../src/config-package/privateFile.js";
-import { seed, sandbox, privateValues } from "./configPackageFixture.js";
+import { seed, sandbox, privateValues, ownerAt } from "./configPackageFixture.js";
 
 describe("配置包边界", () => {
   it.each(["new", "previous", "concurrent"] as const)(
@@ -49,7 +49,7 @@ describe("配置包边界", () => {
       }
     },
   );
-  it("CP-01/09 七类真实来源导出为私有文件，回执和日志没有载荷", async () => {
+  it("CP-01/09 七类导出为私有文件，导出、预览和导入的回执与日志省去载荷", async () => {
     const dir = await sandbox(),
       source = await seed(join(dir, "a")),
       path = join(dir, "example.gz");
@@ -71,8 +71,15 @@ describe("配置包边界", () => {
       privateValues.prompt,
     ])
       expect(json).toContain(value);
-    for (const value of Object.values(privateValues))
-      expect(JSON.stringify([logs, report])).not.toContain(value);
+    const target = ownerAt(join(dir, "b"));
+    const preview = await target.service.previewFile(path);
+    const applied = await target.service.applyPreview(preview.previewId, preview.rows);
+    expect(applied.items.map((row) => row.status)).toEqual(Array(7).fill("created"));
+    for (const value of [
+      ...Object.values(privateValues),
+      Buffer.from(privateValues.body).toString("base64"),
+    ])
+      expect(JSON.stringify([logs, report, preview, applied])).not.toContain(value);
   });
   it("CP-11 手机 attachment 的配置包调用经真实 RPC 拒绝", async () => {
     const mobile = new Emitter<VSBuffer>(),
@@ -84,7 +91,12 @@ describe("配置包边界", () => {
       10,
     );
     try {
-      const service = { exportToFile: vi.fn() };
+      const service = {
+        exportToFile: vi.fn(),
+        previewFile: vi.fn(),
+        applyPreview: vi.fn(),
+        releasePreview: vi.fn(),
+      };
       exposeWindowHostAttachmentServices({
         server,
         services: new ServiceCollection().register(IConfigPackageService, service),

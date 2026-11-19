@@ -19,6 +19,7 @@ import {
   pathExists,
   readJsonObjectFileForUpdate,
   updateJsonObjectFile,
+  withUserMarkdownLock,
   writeFileAtomically,
 } from "#src/fs/atomicFileUtils.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
@@ -315,14 +316,18 @@ export function createSubagentDataSyncMethods(): IDataSyncCategoryService<Subage
 
     async importSyncItems(params) {
       // 目标端同样先迁移再计算哈希，与列表时给出的 expectedTargetHash 口径一致。
-      const { root, agents } = await resolveUserSubagents();
       const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
       const results: Array<DataSyncImportResultItem & { createdPath?: string }> = [];
       for (const item of params.items) {
         if (BUILT_IN_OVERRIDE_KEYS.has(item.key)) continue;
-        results.push(await importOne(item, payloadByKey.get(item.key), root, agents));
+        // OW-P036：name 和文件名可以不同。每项在同一磁盘锁内重新解析实际目标并比较哈希。
+        results.push(await withUserMarkdownLock(resolveUserHomeDir(), "subagents", async () => {
+          const { root, agents } = await resolveUserSubagents();
+          const result = await importOne(item, payloadByKey.get(item.key), root, agents);
+          if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey);
+          return result;
+        }));
       }
-      await applyCreatedEnabledState(results, payloadByKey);
       const overrideResults = await importBuiltInModelOverrides(
         params.items.filter((item) => BUILT_IN_OVERRIDE_KEYS.has(item.key)),
         params.payload.builtInModelOverrides,

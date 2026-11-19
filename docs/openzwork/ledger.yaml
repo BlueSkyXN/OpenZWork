@@ -403,7 +403,7 @@ entries:
     kind: feature
     status: active
     title: 桌面多机配置包
-    summary: 本机 Host 可将七类个人配置导出为私有文件，校验包格式并检测导出期间的来源变化。
+    summary: 桌面用户按项迁移七类个人配置。Provider 锁内合并并在刷新失败时做版本回滚，系统提示词由设置服务比较后写入。
     spec:
       - docs/specs/config-package-openzwork.md
     modules: [config-package-contract, config-package-service]
@@ -414,12 +414,18 @@ entries:
       - packages/services/src/node.ts
       - packages/services/src/data-sync/node.ts
       - packages/services/src/data-sync/*DataSync.ts
+      - packages/services/src/commands/commandsService.ts
+      - packages/services/src/subagents/subagentsService.ts
+      - packages/services/src/fs/atomicFileUtils.ts
       - packages/services/src/model-provider/providerProvisioningSource.ts
       - packages/services/src/model-provider/providerProvisioningTarget.ts
       - packages/services/src/setting/settingService.ts
     paths:
       - packages/services/test/configPackageFixture.ts
+      - packages/services/test/configPackageHostImport.ts
     tests:
+      - apps/zcode-cli/packages/bootstrap/tests/config-package-runtime.test.ts
+      - packages/services/test/configPackageRoundTrip.test.ts
       - packages/services/test/configPackageConflicts.test.ts
       - packages/services/test/configPackageBoundaries.test.ts
     source: docs/specs/config-package-openzwork.md

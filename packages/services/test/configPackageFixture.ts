@@ -70,6 +70,8 @@ export function ownerAt(home: string, platform: ConfigPackageOptions["platform"]
       personalConfigFilePath: filePath,
       credentialFilePath: join(home, "unused"),
     }),
+    repo,
+    registry: runtime.registryService,
     settings: createSettingService(),
   };
   return { options, repo, runtime, service: createConfigPackageService(options) };
