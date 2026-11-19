@@ -138,7 +138,7 @@ describe("OpenAI Responses WebSearch wire (WSR-01/04/08/09)", () => {
 
   it("never calls transport for a non-empty block list", async () => {
     const requests: unknown[] = [];
-    await expect(streamFromFixture({ nativeSearch: true, blockedDomains: ["example.test"], requests }))
+    await expect(streamFromFixture({ nativeSearch: true, blockedDomains: ["example.test"] }, requests))
       .rejects.toThrow(/does not support blocked_domains/u);
     expect(requests).toHaveLength(0);
   });
