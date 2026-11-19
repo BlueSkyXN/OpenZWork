@@ -255,7 +255,9 @@ export function createSkillDataSyncMethods(options: {
       enabled: child.enabled,
     }));
     if (creating) states.push({ directory: logicalPath, enabled: incoming.enabled });
-    await prepareSyncWriteParent(targetRoot, logicalPath);
+    if (await prepareSyncWriteParent(targetRoot, logicalPath) !== targetPath) {
+      return failed("target directory changed");
+    }
     if (existing) await rename(targetPath, backupPath);
     let published = false;
     try {

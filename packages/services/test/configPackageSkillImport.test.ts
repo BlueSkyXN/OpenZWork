@@ -159,6 +159,27 @@ describe("配置包技能提交", () => {
     );
   });
 
+  it.skipIf(process.platform === "win32")("CP-13 导出期间只改变执行位也会中止", async () => {
+    const root = await sandbox(),
+      a = join(root, "a"),
+      file = join(root, "backup.gz");
+    await putSkill(a, "runner", "runner", "ordinary");
+    const helper = join(skillDir(a, "runner"), "helper");
+    await put(helper, "helper");
+    await chmod(helper, 0o644);
+    await put(file, "previous export");
+    const source = ownerAt(a),
+      owner = source.options.owners.skills;
+    const original = owner.exportSyncItems.bind(owner);
+    vi.spyOn(owner, "exportSyncItems").mockImplementation(async (params) => {
+      const payload = await original(params);
+      await chmod(helper, 0o755);
+      return payload;
+    });
+    await expect(source.service.exportToFile(file, ["skills"])).rejects.toThrow("source-changed");
+    expect(await readFile(file, "utf8")).toBe("previous export");
+  });
+
   it.skipIf(process.platform === "win32")(
     "CP-01/03 旧 v1 技能包能修复执行位且保护新改动",
     async () => {

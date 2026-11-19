@@ -51,7 +51,12 @@ export async function collectCategory<T>(
   if (items.some((item) => item.exportBlockedReason))
     throw new Error("config-package.export-blocked");
   const keys = items.map((item) => item.key);
-  const before = (await owner.getSyncContentHashes({ keys })).hashes;
+  // POSIX 上执行位也属于导出的技能。v1 清单只写内容摘要，写包前比较完整快照。
+  const request = {
+    keys,
+    ...(category === "skills" && process.platform !== "win32" && { includeExecutableBits: true }),
+  };
+  const before = (await owner.getSyncContentHashes(request)).hashes;
   requireUnchanged(
     keys.every((key) => Object.hasOwn(before, key) && typeof before[key] === "string"),
   );
@@ -59,11 +64,11 @@ export async function collectCategory<T>(
   try {
     payload = await owner.exportSyncItems({ keys });
   } catch {
-    const after = (await owner.getSyncContentHashes({ keys })).hashes;
+    const after = (await owner.getSyncContentHashes(request)).hashes;
     requireUnchanged(keys.every((key) => before[key] === after[key]));
     throw new Error("config-package.export-blocked");
   }
-  const after = (await owner.getSyncContentHashes({ keys })).hashes;
+  const after = (await owner.getSyncContentHashes(request)).hashes;
   const current = new Map((await owner.listSyncItems()).items.map((item) => [item.key, item]));
   const entries: ConfigEntry[] = items.map((item: DataSyncListItem) => {
     const latest = current.get(item.key);
@@ -76,7 +81,7 @@ export async function collectCategory<T>(
     return {
       key: item.key,
       name: category === "hooks" ? item.name.split(" · ")[0]! : item.name,
-      hash: before[item.key]!,
+      hash: before[item.key]!.split(":")[0]!,
     };
   });
   return { entries, payload };
