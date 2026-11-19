@@ -787,3 +787,25 @@ patches:
     retire: 上游两处声明采用相同且不低于 1.74.0 的稳定版本，包内保留修复。
     refs:
       - docs/openzwork/patches/feishu-sdk-long-connection.md
+
+  - id: OW-P039
+    title: Host 写日志遇到断开的输出管道后退出
+    kind: product
+    status: fixed
+    priority: P3
+    upstream:
+      since: 3.14.3
+      checked: 3.18.2
+    trigger: Host 继承的 stdout 或 stderr 为管道，读端先退出后 Host 继续写日志。
+    impact: 未捕获的 EPIPE 使 Host 退出，依赖 Host 的窗口操作失去后端。
+    cause: 3.18.2 仅 Main 处理自身输出流的错误，Host 没有对应监听器。
+    evidence: 核心回归在同一轮分别关闭子进程的 stdout 与 stderr 读端，核对无护栏的未捕获 EPIPE 和有护栏时的存活结果。
+    fix: Host 在首次日志前给 stdout 和 stderr 安装 error 监听，只忽略 EPIPE，其他错误原样抛出。
+    files:
+      - packages/desktop/src/host/hostBrokenPipeGuard.ts
+      - packages/desktop/src/host/index.ts
+    regression:
+      - packages/desktop/test/hostBrokenPipeGuard.test.ts
+    retire: 上游在 Host 侧提供等效护栏。
+    refs:
+      - docs/openzwork/patches/host-broken-pipe-guard.md

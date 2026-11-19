@@ -162,6 +162,7 @@ import { shouldReportHostConsoleError, stringifyHostLogArg } from "./hostLog.js"
 import { flushHostE2ECoverage } from "./e2eCoverage.js";
 import { runHostShutdownPhases, type HostShutdownResult } from "./hostShutdownPhases.js";
 import { initializeHostApiNetworkTransportOwner } from "./hostInitialization.js";
+import { installHostBrokenPipeGuard } from "./hostBrokenPipeGuard.js";
 import { createHostUncaughtExceptionHandler } from "./hostUncaughtExceptionGuard.js";
 import {
   recordCronRunOutcomeBestEffort,
@@ -264,6 +265,8 @@ const remoteMediaRangePreviewEnabled =
 
 type RemoteAssetDirs = import("./windowRemoteConnectionRegistry.js").WindowRemoteAssetDirs;
 
+// OW-P039：在首次日志之前保护 Host 自己的 stdout 和 stderr，避免读端退出终止 Host。
+installHostBrokenPipeGuard();
 const { parentPort } = process;
 const credentialCipherBridge = createCredentialCipherBridge((request) => {
   if (!parentPort) throw new Error("parentPort unavailable");

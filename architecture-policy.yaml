@@ -2443,3 +2443,7 @@ exceptions:
       永久缺失（PD 必需场景 PD01-03 断言失败）。本文件与上游 v3.18.0 逐字节一致（无官方
       依赖，PLUGIN_CREATOR_ID 仅本地插件 id），与 usePluginCreator/PluginAddMenu 同批恢复；
       接管 packages/ui/src/settings 不在本次范围内。
+  - id: host-broken-pipe-guard-unmanaged-new-file
+    rule: unmanaged-new-file
+    paths: [packages/desktop/src/host/hostBrokenPipeGuard.ts]
+    reason: Host 输出流的断管护栏是自包含的进程入口辅助文件，不新增状态所有者或模块间依赖；收编整个 Host 目录需要独立的模块边界调整。
