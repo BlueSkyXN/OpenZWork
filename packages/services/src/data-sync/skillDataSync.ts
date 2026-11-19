@@ -11,6 +11,7 @@ import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import { withFileLock } from "@zcode/shared/node";
 import { pathExists, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import { walkSkillMarkdownPaths } from "#src/skills/skillDiscoveryWalk.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import {
   createSkillSyncArchive,
@@ -282,15 +283,20 @@ export function createSkillDataSyncMethods(options: {
     // 修复：覆盖是整目录替换，原来不检查目标端嵌套在该目录里的其他技能（例如 parent/child），
     // 替换后这些独立条目被删除，或被来源版本改写（来源也有 child、但用户没勾选 child 时）。
     // 父目录哈希包含子目录，expectedTargetHash 防不住。现在在哈希检查之前拒绝：该项失败，目录不动。
-    const nested = [...current.values()].find(
-      (skill) => skill !== existing && isPathWithin(existing.directoryPath, skill.directoryPath),
-    );
-    if (nested) {
-      return failed(`target directory contains another skill: ${nested.directoryPath}`);
-    }
-    const currentHash = await hashDirectoryContent(existing.directoryPath);
-    if (!item.expectedTargetHash || currentHash !== item.expectedTargetHash) {
-      return { key: item.key, status: "conflict" };
+    try {
+      // OW-P037：按名称去重会隐藏同名的第二份安装，整目录替换须检查实际落盘路径。
+      for await (const path of walkSkillMarkdownPaths(existing.directoryPath, {
+        onError: (_path, error) => { throw error; },
+      })) {
+        if (dirname(path) !== existing.directoryPath) {
+          return failed(`target directory contains another skill: ${dirname(path)}`);
+        }
+      }
+      if (!item.expectedTargetHash || await hashDirectoryContent(existing.directoryPath) !== item.expectedTargetHash) {
+        return { key: item.key, status: "conflict" };
+      }
+    } catch (error) {
+      return failed(errorMessage(error));
     }
     // 覆盖：新目录已解压在同盘临时目录；原目录先改名为备份，再把新目录换上。
     // 换上失败时把备份改回原位，目标保持原样；成功后备份随临时目录删除。

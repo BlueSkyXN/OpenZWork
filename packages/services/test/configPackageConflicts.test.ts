@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
 import * as atomicFiles from "../src/fs/atomicFileUtils.js";
+import { collectCategory } from "../src/config-package/categories.js";
 import { createCommandsService } from "../src/commands/commandsService.js";
 import { createSubagentsService } from "../src/subagents/subagentsService.js";
 import { decodeProviderConfigFile, encodeProviderConfigFile } from "@zcode/provider-node";
@@ -18,6 +19,109 @@ import {
 } from "./configPackageFixture.js";
 
 describe("配置包文件与并发", () => {
+  it("CP-06 旧 v1 包遗漏同名嵌套技能的路径时拒绝预览", async () => {
+    const root = await sandbox(),
+      a = join(root, "source"),
+      b = join(root, "target");
+    for (const [dir, name] of [
+      ["a-common", "common"],
+      ["parent", "parent"],
+      ["parent/nested", "common"],
+    ] as const) {
+      await put(
+        join(a, ".openzwork/skills", dir, "SKILL.md"),
+        "---\nname: " + name + "\ndescription: fixture\n---\n" + dir,
+      );
+    }
+    const source = ownerAt(a);
+    // 前版 v1 用按名称去重的清单，父目录仍以完整归档保存。
+    const { entries, payload } = await collectCategory(source.options.owners.skills, "skills");
+    const file = join(root, "legacy.gz");
+    await writeFile(
+      file,
+      gzipSync(
+        JSON.stringify({
+          formatVersion: 1,
+          appVersion: "3.18.2",
+          sourcePlatform: "darwin",
+          sourceHomeDir: a,
+          exportedAt: new Date().toISOString(),
+          categories: {
+            skills: {
+              entries,
+              payload: { ...payload, archive: Buffer.from(payload.archive).toString("base64") },
+            },
+          },
+        }),
+      ),
+    );
+    await expect(ownerAt(b).service.previewFile(file)).rejects.toThrow(
+      "config-package.skill-paths",
+    );
+    await expect(stat(join(b, ".openzwork/skills"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+  it.each(["commands", "subagents"] as const)(
+    "OW-P036 %s 批中一项拿锁失败后保留成功回执并继续",
+    async (category) => {
+      const root = await sandbox(),
+        a = join(root, "a"),
+        b = join(root, "b"),
+        file = join(root, "move.gz");
+      const path = (home: string, name: string) =>
+        join(home, ".openzwork", category === "commands" ? "commands" : "agents", name + ".md");
+      const body = (name: string, value: string) =>
+        "---\nname: " + name + "\ndescription: example\n---\n" + value;
+      const names = ["first", "second", "third"];
+      for (const name of names) {
+        await put(path(a, name), body(name, "incoming"));
+        await put(path(b, name), body(name, "before"));
+      }
+      await ownerAt(a).service.exportToFile(file, [category]);
+      const svc = ownerAt(b).service,
+        preview = await svc.previewFile(file);
+      const lock = atomicFiles.withUserMarkdownLock;
+      const calls = vi
+        .spyOn(atomicFiles, "withUserMarkdownLock")
+        .mockImplementationOnce(lock)
+        .mockRejectedValueOnce(new Error("lock unavailable"));
+      const receipt = await svc.applyPreview(preview.previewId, preview.rows);
+      expect(receipt.items.map((i) => i.status)).toEqual(["updated", "failed", "updated"]);
+      expect(await svc.applyPreview(preview.previewId, preview.rows)).toEqual(receipt);
+      expect(calls).toHaveBeenCalledTimes(3);
+      for (const name of names) {
+        expect(await readFile(path(b, name), "utf8")).toBe(
+          body(name, name === "second" ? "before" : "incoming"),
+        );
+      }
+    },
+  );
+
+  it("OW-P037 覆盖父项时保护本机目录内按名称去重前的另一份安装", async () => {
+    const root = await sandbox(),
+      a = join(root, "a"),
+      b = join(root, "b"),
+      file = join(root, "skills.gz");
+    const path = (home: string, dir: string) => join(home, ".openzwork/skills", dir, "SKILL.md");
+    const md = (name: string, value: string) =>
+      "---\nname: " + name + "\ndescription: example\n---\n" + value;
+    await put(path(a, "b-parent"), md("parent", "incoming"));
+    await put(path(a, "independent"), md("independent", "incoming"));
+    await put(path(b, "a-common"), md("common", "outside"));
+    await put(path(b, "b-parent"), md("parent", "before"));
+    await put(path(b, "b-parent/owned"), md("common", "only here"));
+    await ownerAt(a).service.exportToFile(file, ["skills"]);
+    const svc = ownerAt(b).service,
+      preview = await svc.previewFile(file);
+    const receipt = await svc.applyPreview(preview.previewId, preview.rows);
+    expect(receipt.items.find((i) => i.key === "parent")).toMatchObject({
+      status: "failed",
+      reason: "nested-target",
+    });
+    expect(receipt.items.find((i) => i.key === "independent")?.status).toBe("created");
+    expect(await readFile(path(b, "b-parent/owned"), "utf8")).toBe(md("common", "only here"));
+    expect(await readFile(path(b, "a-common"), "utf8")).toBe(md("common", "outside"));
+    expect(await readFile(path(b, "b-parent"), "utf8")).toBe(md("parent", "before"));
+  });
   // OW-P036：在真实分类已经写入第一项后保存第二项，确保批内后续写入重新核对目标。
   it.each(["commands", "subagents"] as const)("CP-03 %s 批内后项保留新编辑", async (category) => {
     const root = await sandbox(),
@@ -380,8 +484,32 @@ describe("个人配置的锁内比较与回滚", () => {
     await target.repo.update((current) => ({ ...current, defaultModelSelection: undefined }));
     const same = await target.service.previewFile(file);
     expect(same.rows[0]?.status).toBe("same");
-    await target.service.applyPreview(same.previewId, []);
+    expect(same.defaultModelCandidate).toEqual({ providerId: id, modelId: "sample" });
+    const adopted = await target.service.applyPreview(same.previewId, []);
+    expect(adopted).toEqual({
+      items: [],
+      defaultModelApplied: { providerId: id, modelId: "sample" },
+    });
     expect((await target.repo.read()).defaultModelSelection?.modelId).toBe("sample");
+    const alreadySet = await target.service.previewFile(file);
+    expect(alreadySet.defaultModelCandidate).toBeUndefined();
+    await target.repo.update((current) => ({ ...current, defaultModelSelection: undefined }));
+    const afterClear = await target.service.applyPreview(alreadySet.previewId, []);
+    expect(afterClear.defaultModelApplied).toBeUndefined();
+    expect((await target.repo.read()).defaultModelSelection).toBeUndefined();
+    const rollback = await target.service.previewFile(file);
+    vi.spyOn(target.runtime.registryService, "refresh").mockRejectedValueOnce(
+      new Error("refresh failed"),
+    );
+    const failed = await target.service.applyPreview(rollback.previewId, []);
+    expect(failed.defaultModelApplied).toBeUndefined();
+    expect(failed.items).toContainEqual({
+      category: "providers",
+      key: id,
+      status: "failed",
+      reason: "refresh-rolled-back",
+    });
+    expect((await target.repo.read()).defaultModelSelection).toBeUndefined();
 
     const bad = ownerAt(join(root, "a"));
     await bad.repo.update((current) => ({

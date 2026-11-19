@@ -327,12 +327,18 @@ export function createSubagentDataSyncMethods(
       for (const item of params.items) {
         if (BUILT_IN_OVERRIDE_KEYS.has(item.key)) continue;
         // OW-P036：name 和文件名可以不同。每项在同一磁盘锁内重新解析实际目标并比较哈希。
-        results.push(await withUserMarkdownLock(resolveUserHomeDir(), "subagents", async () => {
-          const { root, agents } = await resolveUserSubagents(readMode);
-          const result = await importOne(item, payloadByKey.get(item.key), root, agents);
-          if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey, readMode);
-          return result;
-        }));
+        // 拿锁或重读失败只计入当前项，保留已提交回执并继续后续项。
+        try {
+          const committed = await withUserMarkdownLock(resolveUserHomeDir(), "subagents", async () => {
+            const { root, agents } = await resolveUserSubagents(readMode);
+            const result = await importOne(item, payloadByKey.get(item.key), root, agents);
+            if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey, readMode);
+            return result;
+          });
+          results.push(committed);
+        } catch (error) {
+          results.push({ key: item.key, status: "failed", error: errorMessage(error) });
+        }
       }
       const overrideResults = await importBuiltInModelOverrides(
         params.items.filter((item) => BUILT_IN_OVERRIDE_KEYS.has(item.key)),

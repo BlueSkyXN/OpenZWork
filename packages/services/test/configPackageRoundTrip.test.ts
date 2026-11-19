@@ -6,6 +6,71 @@ import { CONFIG_PACKAGE_CATEGORIES, type ConfigCategory } from "@zcode/shared";
 
 const categories: ConfigCategory[] = [...CONFIG_PACKAGE_CATEGORIES];
 describe("两个隔离的用户目录", () => {
+  it("CP-02/12 预览、取消及导入其他项时保留目标独有的旧版子智能体", async () => {
+    const root = await sandbox(),
+      a = join(root, "a"),
+      b = join(root, "b"),
+      file = join(root, "agents.gz");
+    const legacy =
+      "---\nname: legacy\ndescription: fixture\nmodel: builtin:zai/sample\n---\noriginal\n";
+    const path = join(b, ".openzwork/agents/legacy.md"),
+      state = join(b, ".openzwork/v2/agents-state.json");
+    const originalState = JSON.stringify({
+      builtInModelOverrides: { Explore: "builtin:zai/sample" },
+    });
+    await put(path, legacy);
+    await put(state, originalState);
+    const source = await seed(a);
+    await source.service.exportToFile(file, ["subagents"]);
+    const target = ownerAt(b).service,
+      first = await target.previewFile(file);
+    await target.releasePreview(first.previewId);
+    expect(await readFile(path, "utf8")).toBe(legacy);
+    expect(await readFile(state, "utf8")).toBe(originalState);
+    const next = await target.previewFile(file);
+    expect((await target.applyPreview(next.previewId, next.rows)).items[0]?.status).toBe("created");
+    expect(await readFile(path, "utf8")).toBe(legacy);
+    expect(await readFile(state, "utf8")).toBe(originalState);
+  });
+  it("CP-12 从 v1 载荷区分同事件钩子及相同摘要，按选择写入", async () => {
+    const root = await sandbox(),
+      a = join(root, "a"),
+      b = join(root, "b"),
+      file = join(root, "hooks.gz");
+    const path = (home: string) => join(home, ".openzwork/cli/config.json");
+    const hook = (arg: string) => ({
+      type: "process",
+      command: "/fixture/bin/formatter",
+      args: [arg],
+    });
+    await put(
+      path(a),
+      JSON.stringify({
+        hooks: {
+          events: {
+            PreToolUse: [
+              { matcher: "Read", hooks: [hook("private-first"), hook("private-second")] },
+              { matcher: "Write", hooks: [hook("private-third")] },
+            ],
+          },
+        },
+      }),
+    );
+    await ownerAt(a).service.exportToFile(file, ["hooks"]);
+    const target = ownerAt(b).service,
+      pre = await target.previewFile(file);
+    expect(pre.rows.map((i) => i.name)).toEqual([
+      "PreToolUse · Read · formatter (1/2)",
+      "PreToolUse · Read · formatter (2/2)",
+      "PreToolUse · Write · formatter",
+    ]);
+    expect(JSON.stringify(pre)).not.toMatch(/private-|\/fixture/u);
+    await target.applyPreview(pre.previewId, [pre.rows[2]!]);
+    expect(JSON.parse(await readFile(path(b), "utf8")).hooks.events.PreToolUse).toEqual([
+      { matcher: "Write", hooks: [hook("private-third")] },
+    ]);
+  });
+
   it("CP-01 在 3.18.2 继续读写 v1 用户子智能体文件，保留目标内置模型覆盖", async () => {
     const dir = await sandbox(),
       a = join(dir, "a"),

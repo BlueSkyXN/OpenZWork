@@ -19,6 +19,7 @@ import {
   decodeHooks,
   decodeMcp,
   decodeSkills,
+  hookPreviewNames,
   type SyncOwners,
 } from "./categories.js";
 import type { IConfigPackageService } from "./contract.js";
@@ -75,6 +76,7 @@ async function buildPreview(
   const rows: ConfigRow[] = [],
     expected = new Map<string, string>();
   const pathWarnings = new Set<string>();
+  const hookNames = hookPreviewNames(file.categories.hooks);
   if (file.sourcePlatform !== platform) {
     for (const item of file.categories.hooks?.payload.items ?? [])
       if (hasPath(item.definition))
@@ -109,7 +111,7 @@ async function buildPreview(
       rows.push({
         category,
         key,
-        name,
+        name: category === "hooks" ? (hookNames.get(key) ?? name) : name,
         status,
         ...(reason ? { reason } : {}),
         ...(pathWarnings.has(id) ? { absolutePath: true } : {}),
@@ -182,6 +184,7 @@ async function apply(
           const outcome = await applyProviders(options, state.personal, group, items ?? []);
           result.items.push(...outcome.items);
           if (outcome.defaultModelSkipped) result.defaultModelSkipped = true;
+          if (outcome.defaultModelApplied) result.defaultModelApplied = outcome.defaultModelApplied;
         } catch {
           result.items.push(
             ...(items ?? []).map(({ key }) => ({
@@ -220,9 +223,12 @@ async function apply(
           ...(status === "failed"
             ? {
                 reason:
-                  row?.error === "nested-selection" || row?.error === "nested-target"
+                  row?.error === "nested-selection"
                     ? row.error
-                    : "target-write",
+                    : row?.error === "nested-target" ||
+                        row?.error?.startsWith("target directory contains another skill: ")
+                      ? "nested-target"
+                      : "target-write",
               }
             : {}),
         });
@@ -263,6 +269,9 @@ export function createPreviewMethods(
         appVersion: file.appVersion,
         differentPlatform: file.sourcePlatform !== platform,
         differentVersion: file.appVersion !== appVersion,
+        ...(state.personal.defaultModelCandidate && {
+          defaultModelCandidate: state.personal.defaultModelCandidate,
+        }),
       } satisfies ConfigPreview;
     },
     async applyPreview(previewId, selected) {

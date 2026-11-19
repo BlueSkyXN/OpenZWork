@@ -116,6 +116,24 @@ export function decodeHooks(group: NonNullable<ConfigGroups["hooks"]>): HookData
     })),
   };
 }
+export function hookPreviewNames(group: ConfigGroups["hooks"]) {
+  // v1 的清单只存事件名，完整命令与参数留在 Host。匹配条件和程序名来自已校验的载荷。
+  const labels = Map.groupBy(group?.payload.items ?? [], ({ event, matcher, definition }) => {
+    const executable =
+      definition.type === "process" && typeof definition.command === "string"
+        ? definition.command.split(/[\\/]/u).at(-1)
+        : undefined;
+    const program = executable && /^[\w.-]+$/u.test(executable) ? executable : undefined;
+    return [event, matcher, program].filter(Boolean).join(" · ");
+  });
+  const names = new Map<string, string>();
+  for (const [label, items] of labels) {
+    items.forEach((item, index) =>
+      names.set(item.key, items.length > 1 ? `${label} (${index + 1}/${items.length})` : label),
+    );
+  }
+  return names;
+}
 export function decodeSkills(group: NonNullable<ConfigGroups["skills"]>): SkillDataSyncPayload {
   return { ...group.payload, archive: Buffer.from(group.payload.archive, "base64") };
 }
