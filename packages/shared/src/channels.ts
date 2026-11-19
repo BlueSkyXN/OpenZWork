@@ -144,6 +144,8 @@ export const ServiceChannels = {
   /** SSH 远程 skills 同步服务 */
   SkillSync: "skill-sync",
   /** SSH 远程 MCP 同步服务 */
+  // OpenZWork(OZ-F014): 配置包仅由桌面本机 Host 注册。
+  ConfigPackage: "config-package",
   McpSync: "mcp-sync",
   /** SSH 远程 plugin 同步服务 */
   PluginSync: "plugin-sync",

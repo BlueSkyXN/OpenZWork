@@ -1,0 +1,106 @@
+import { open, readFile, readdir, stat, writeFile, rename } from "node:fs/promises";
+import { join } from "node:path";
+import { gunzipSync } from "node:zlib";
+import { describe, expect, it, vi } from "vitest";
+import { ChannelServer, ChannelClient, Emitter, type VSBuffer } from "@zcode/rpc";
+import { ServiceCollection } from "../src/collection.js";
+import { IConfigPackageService } from "../src/config-package/index.js";
+import { CONFIG_PACKAGE_CATEGORIES } from "@zcode/shared";
+import { exposeWindowHostAttachmentServices } from "../../desktop/src/host/windowHostAttachmentRpcPolicy.js";
+import { writePrivatePackage } from "../src/config-package/privateFile.js";
+import { seed, sandbox, privateValues } from "./configPackageFixture.js";
+
+describe("配置包边界", () => {
+  it.each(["new", "previous", "concurrent"] as const)(
+    "CP-01 Windows 最终 ACL 失败撤回本次明文：%s",
+    async (scenario) => {
+      const dir = await sandbox(),
+        path = join(dir, "transfer.gz"),
+        contents = Buffer.from("fixture-export-bytes");
+      if (scenario !== "new") await writeFile(path, "original file");
+      const previous = scenario !== "new" ? await stat(path, { bigint: true }) : undefined;
+      let publishedBytes: Buffer | undefined;
+      const acl = async (file: string, create: boolean) => {
+        if (create) {
+          await (await open(file, "wx", 0o600)).close();
+          return;
+        }
+        publishedBytes = await readFile(file);
+        if (scenario === "concurrent") {
+          await rename(file, join(dir, "moved"));
+          await writeFile(file, "newer writer");
+        }
+        throw new Error("fixture final ACL failure");
+      };
+      await expect(writePrivatePackage(path, contents, acl)).rejects.toThrow(
+        "config-package.private-file",
+      );
+      expect(publishedBytes).toEqual(contents);
+      if (scenario === "new") expect(await readdir(dir)).toEqual([]);
+      if (scenario === "previous") {
+        expect(await readdir(dir)).toEqual(["transfer.gz"]);
+        expect((await stat(path, { bigint: true })).ino).toBe(previous!.ino);
+        expect(await readFile(path, "utf8")).toBe("original file");
+      }
+      if (scenario === "concurrent") {
+        expect((await readdir(dir)).sort()).toEqual(["moved", "transfer.gz"]);
+        expect(await readFile(path, "utf8")).toBe("newer writer");
+        expect((await stat(join(dir, "moved"))).size).toBe(0);
+      }
+    },
+  );
+  it("CP-01/09 七类真实来源导出为私有文件，回执和日志没有载荷", async () => {
+    const dir = await sandbox(),
+      source = await seed(join(dir, "a")),
+      path = join(dir, "example.gz");
+    const logs: string[] = [];
+    for (const level of ["log", "info", "warn", "error", "debug"] as const)
+      vi.spyOn(console, level).mockImplementation((...args) => {
+        logs.push(JSON.stringify(args));
+      });
+    const report = await source.service.exportToFile(path, [...CONFIG_PACKAGE_CATEGORIES]);
+    expect(Object.values(report.counts)).toEqual(Array(7).fill(1));
+    expect(report.bytes).toBe((await stat(path)).size);
+    if (process.platform !== "win32") expect((await stat(path)).mode & 0o777).toBe(0o600);
+    const json = gunzipSync(await readFile(path)).toString();
+    for (const value of [
+      privateValues.key,
+      privateValues.env,
+      privateValues.header,
+      privateValues.command,
+      privateValues.prompt,
+    ])
+      expect(json).toContain(value);
+    for (const value of Object.values(privateValues))
+      expect(JSON.stringify([logs, report])).not.toContain(value);
+  });
+  it("CP-11 手机 attachment 的配置包调用经真实 RPC 拒绝", async () => {
+    const mobile = new Emitter<VSBuffer>(),
+      host = new Emitter<VSBuffer>();
+    const client = new ChannelClient({ onMessage: mobile.event, send: (msg) => host.fire(msg) });
+    const server = new ChannelServer(
+      { onMessage: host.event, send: (msg) => mobile.fire(msg) },
+      "mobile",
+      10,
+    );
+    try {
+      const service = { exportToFile: vi.fn() };
+      exposeWindowHostAttachmentServices({
+        server,
+        services: new ServiceCollection().register(IConfigPackageService, service),
+        clientMode: "web-remote-replayable",
+      });
+      await expect(
+        client
+          .getChannel(IConfigPackageService.channelName)
+          .call("exportToFile", ["unused", ["commands"]]),
+      ).rejects.toThrow();
+      expect(service.exportToFile).not.toHaveBeenCalled();
+    } finally {
+      client.dispose();
+      server.dispose();
+      mobile.dispose();
+      host.dispose();
+    }
+  });
+});

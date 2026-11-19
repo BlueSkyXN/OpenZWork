@@ -1933,6 +1933,32 @@ modules:
       adapters: .
     owner: agent
 
+  # config-package-contract：由 architecture:adopt 登记
+  - id: config-package-contract
+    roots:
+      - packages/shared/src/config-package
+    managed: true
+    requires: ["shared", "system-prompt-contract"]
+    publicEntrypoints:
+      - packages/shared/src/config-package/index.ts
+      - packages/shared/src/config-package/contract.ts
+    layers:
+      domain: .
+    owner: desktop-settings
+  # config-package-service：由 architecture:adopt 登记
+  - id: config-package-service
+    roots:
+      - packages/services/src/config-package
+    managed: true
+    requires: ["shared", "services", "config-package-contract", "data-sync-service", "provider-node", "provider"]
+    publicEntrypoints:
+      - packages/services/src/config-package/index.ts
+      - packages/services/src/config-package/contract.ts
+      - packages/services/src/config-package/node.ts
+    layers:
+      adapters: .
+    owner: desktop-settings
+
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。
   # 基于领先 staging 很多的分支开工时，merge-base 之前的"新增"文件不应被追溯。

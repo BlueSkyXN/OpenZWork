@@ -67,6 +67,7 @@
 | OZ-F011 | OpenZWork 构建与发行流程                                                         | 发行版本、安装包校验与正式 tag 自动发布。                  | [发行规范](release/openzwork-release-version.md)               |
 | OZ-F012 | CI 与桌面验证工程                                                                | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。 | [CI 规范](ci/ci-job-orchestration.md)                          |
 | OZ-F013 | 本地内存诊断与 sampler 节拍（`.openzwork/cli` 数据根、节拍恢复；官方上传链裁剪） | v3.18.1 同步                                               |
+| OZ-F014 | 多机配置包                                                                       | 本机 Host 可导出七类用户配置并校验文件。                   | [规格](../specs/config-package-openzwork.md)                   |
 
 ### 上游已删除、OpenZWork 保留
 
@@ -134,6 +135,7 @@
 - [会话累计用量展示](../specs/session-usage-summary-openzwork.md)
 - [原生会话指标栏](../specs/native-conversation-metrics-openzwork.md)
 - [对话复制、筛选与项目排序](../specs/conversation-controls-openzwork.md)
+- [多机配置包](../specs/config-package-openzwork.md)
 - [外部会话多源导入](../specs/external-session-import-openzwork.md)
 - [自定义命令改名与保存失败](../specs/command-file-update-openzwork.md)
 - [技能开关](../specs/skills-toggle-openzwork.md)

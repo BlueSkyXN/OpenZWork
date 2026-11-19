@@ -399,6 +399,30 @@ entries:
       - packages/ui/src/v4/SessionPane.tsx
       - packages/ui/src/v4/V4ConversationContext.tsx
     source: 现有 CI/E2E 规范；889fe19d6 的 runner 登记；补登已有验证材料
+  - id: OZ-F014
+    kind: feature
+    status: active
+    title: 桌面多机配置包
+    summary: 本机 Host 可将七类个人配置导出为私有文件，校验包格式并检测导出期间的来源变化。
+    spec:
+      - docs/specs/config-package-openzwork.md
+    modules: [config-package-contract, config-package-service]
+    hooks:
+      - packages/shared/src/channels.ts
+      - packages/shared/src/index.ts
+      - packages/services/src/index.ts
+      - packages/services/src/node.ts
+      - packages/services/src/data-sync/node.ts
+      - packages/services/src/data-sync/*DataSync.ts
+      - packages/services/src/model-provider/providerProvisioningSource.ts
+      - packages/services/src/model-provider/providerProvisioningTarget.ts
+      - packages/services/src/setting/settingService.ts
+    paths:
+      - packages/services/test/configPackageFixture.ts
+    tests:
+      - packages/services/test/configPackageConflicts.test.ts
+      - packages/services/test/configPackageBoundaries.test.ts
+    source: docs/specs/config-package-openzwork.md
   - id: OZ-C001
     kind: change
     status: active
