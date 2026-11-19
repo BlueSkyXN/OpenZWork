@@ -77,7 +77,9 @@ describe("internal provider-native WebSearch model tools", () => {
     });
   });
 
-  it.each(["openai", "openai-compatible"] as const)(
+  // OpenZWork(OZ-C013): providerKind=openai（OpenAI Responses）现在编码服务端搜索，
+  // 其行为由 websearch-openai-responses.test.ts 定义；此处只保留仍不支持的 kind。
+  it.each(["openai-compatible"] as const)(
     "fails closed for a configured native WebSearch capability unsupported by API kind %s",
     (providerKind) => {
       expect(() =>

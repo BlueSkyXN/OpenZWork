@@ -31,6 +31,7 @@ import {
 } from "../../embedded-search/shell.js";
 import type { CommandExecutionSpanWriter } from "@zcode/contracts";
 import type {
+  ToolApprovalGate,
   ToolEntry,
   ToolExecutionContext,
   ToolHandler,
@@ -115,6 +116,14 @@ export function checkBashInputPermissions(input: unknown): { behavior: "allow" }
 export function prepareBashPermissionMatcher(input: unknown): BashPermissionMatcher | undefined {
   const command = readStringProperty(input, "command");
   return command === undefined ? undefined : prepareBashPermissionMatcherForCommand(command);
+}
+
+// OW-P040：handler 对空命令只返回空输出；不要让审批为无操作保存 Bash 规则。
+function prepareBashApproval(input: unknown): ToolApprovalGate {
+  const command = readStringProperty(input, "command");
+  return command !== undefined && command.trim().length === 0
+    ? { gate: "proceed" }
+    : { gate: "ask" };
 }
 
 export function resolveBashPermissionCapability(
@@ -571,6 +580,7 @@ export const bashToolEntry: ToolEntry = {
   resolveTimeoutBudgetMs: createBashTimeoutBudgetResolver(DEFAULT_BASH_TIMEOUT_POLICY),
   resolvePermissionCapability: resolveBashPermissionCapability,
   resolvePermissionRulePolicy: resolveBashPermissionRulePolicy,
+  prepareApproval: prepareBashApproval,
   inputSchema: BashInputJsonSchema,
   outputSchema: BashOutputJsonSchema,
   runtimeInputSchema: BashInputSchema,

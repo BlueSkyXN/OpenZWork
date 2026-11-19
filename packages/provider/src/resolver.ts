@@ -21,6 +21,8 @@ import {
   type ProviderId,
 } from "./config/index.js";
 import { resolveOwnedOrder } from "./owned-order.js";
+// OpenZWork(OZ-C013): Responses 协议的原生搜索。
+import { applyProtocolNativeWebSearchCapability } from "./protocol-capabilities.js";
 
 export type RegistryZhipuAccountAccessConfig = ZhipuAccountAccessConfig &
   z.infer<typeof completeZhipuAccountAccessDataSchema>;
@@ -327,11 +329,15 @@ export class ProviderConfigResolver {
       const validModels = models
         .filter((model) => model.executable)
         .map(({ modelId, config: modelConfig }) => {
-          const result = createRegistryModelConfig(modelConfig, [
-            ...providerPath,
-            "models",
-            modelId,
-          ]);
+          // OpenZWork(OZ-C013): Responses 协议的原生搜索。执行注册表在唯一一处合取
+          // 协议白名单与模型开关；候选视图（设置页）与个人层原始配置不受影响。
+          const result = createRegistryModelConfig(
+            applyProtocolNativeWebSearchCapability(
+              modelConfig,
+              registryProviderResult.config.api.type,
+            ),
+            [...providerPath, "models", modelId],
+          );
           if (!result.ok)
             throw new Error(`Registry Model 完整性结果不一致: ${providerId}/${modelId}`);
           return Object.freeze({ modelId, config: result.config });

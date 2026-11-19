@@ -12,6 +12,8 @@ const RETRY_SAFE_PRELUDE_STREAM_EVENT_TYPES = new Set<ModelStreamEvent["type"]>(
   "tool_input_start",
   "tool_input_delta",
   "tool_input_end",
+  // OpenZWork(OZ-C013): 搜索引用先随本次尝试暂存，正文前断流时可安全重试。
+  "source",
 ]);
 
 export function isRetrySafePreludeStreamEvent(event: ModelStreamEvent): boolean {

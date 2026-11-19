@@ -2447,3 +2447,10 @@ exceptions:
     rule: unmanaged-new-file
     paths: [packages/desktop/src/host/hostBrokenPipeGuard.ts]
     reason: Host 输出流的断管护栏是自包含的进程入口辅助文件，不新增状态所有者或模块间依赖；收编整个 Host 目录需要独立的模块边界调整。
+
+  - id: oz-c013-websearch-responses-unmanaged-file
+    rule: unmanaged-new-file
+    paths:
+      - packages/provider/src/protocol-capabilities.ts
+      - apps/zcode-cli/packages/adapters/src/model/openai-responses-websearch.ts
+    reason: OZ-C013 在既有模块增加执行能力合取及 Responses 工具、URL 来源转换；不接管整个 provider 或 zcode-cli。

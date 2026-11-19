@@ -231,6 +231,10 @@
       "files": ["packages/ui/test/v4SessionPaneOwner.test.ts"]
     },
     {
+      "capability": "websearch-responses",
+      "files": ["packages/provider/test/nativeWebSearchCapabilities.test.ts"]
+    },
+    {
       "capability": "retained-bot-delivery-and-runtime",
       "files": ["packages/services/test/feishuSdkVersion.test.ts"]
     },

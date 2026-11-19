@@ -165,6 +165,12 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/workflow-query-session-db.test.ts --bail=1
 
+      - name: Provider-native WebSearch regression
+        if: matrix.lane == 'regressions'
+        run: |
+          pnpm --filter @zcode/adapters exec vitest run tests/websearch.test.ts tests/websearch-openai-responses.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+          pnpm --filter @zcode/core exec vitest run tests/websearch.test.ts tests/websearch-openai-responses.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+
       - name: System prompt context regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
@@ -230,6 +236,10 @@ jobs:
       - name: CLI background approval regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/v4-native-interaction-background.test.ts tests/guarded-permission-options.test.ts --bail=1
+
+      - name: Bash approval regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/core exec vitest run tests/bash-empty-command-approval.test.ts
 
       - name: CLI workflow option regression
         if: matrix.lane == 'regressions'
