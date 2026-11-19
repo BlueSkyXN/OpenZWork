@@ -232,7 +232,7 @@
     },
     {
       "capability": "retained-bot-delivery-and-runtime",
-      "files": []
+      "files": ["packages/services/test/feishuSdkVersion.test.ts"]
     },
     {
       "capability": "feature-boundary-graph-visualization",

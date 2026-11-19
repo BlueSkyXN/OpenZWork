@@ -766,3 +766,24 @@ patches:
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游开发配置避免在首次远控任务中为该动态入口触发整页刷新，冷缓存手机恢复用例通过。
+
+  - id: OW-P038
+    title: 飞书 SDK 提前关闭连接可能让 Host 退出，入站帧异常未记录
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.14.3
+      checked: 3.18.2
+    trigger: 飞书机器人启动超时或取消时关闭仍在握手的 WebSocket，或入站帧在解码或分派时抛错。
+    impact: 关闭过程中的 socket error 可使 Host 退出；入站帧处理异常没有日志。
+    cause: 3.18.2 的 services SDK 1.64.0 与 desktop SDK 1.61.1 均缺少关闭时的 error 监听和入站帧捕获。
+    evidence: SDK 提交 37d241ee、af41737d；3.18.2 原版本声明回归因两处不一致而失败。
+    fix: 两处 SDK 固定为 1.74.0，由发布包提供两项修复，保留现有连接探测方式。
+    files:
+      - packages/desktop/scripts/bundle.mjs
+    regression:
+      - packages/services/test/feishuSdkVersion.test.ts
+    retire: 上游两处声明采用相同且不低于 1.74.0 的稳定版本，包内保留修复。
+    refs:
+      - docs/openzwork/patches/feishu-sdk-long-connection.md

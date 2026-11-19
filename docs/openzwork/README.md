@@ -97,6 +97,7 @@
 - [共享文件锁的 Windows 创建竞争](patches/shared-file-lock-acquisition.md)
 - [Source Server 数据目录锁的取得顺序](patches/source-server-lock-acquisition.md)
 - [Source Server 状态快照的原子替换](patches/source-server-status-persistence.md)
+- [飞书 SDK 长连接缺陷（OW-P038）](patches/feishu-sdk-long-connection.md)
 
 ### 发行
 
