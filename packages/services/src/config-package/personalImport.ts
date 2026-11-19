@@ -197,6 +197,9 @@ function merge(
     )
       return { next: { ...next, defaultModelSelection: desired }, report, changed: true };
     report.defaultModelSkipped = true;
+  } else if (expected.defaultModelCandidate) {
+    // 预览后的另一个窗口已设置默认模型。即使只确认了模型，也要回报这次跳过。
+    report.defaultModelSkipped = true;
   }
   return { next, report, changed: imported.size > 0 };
 }
