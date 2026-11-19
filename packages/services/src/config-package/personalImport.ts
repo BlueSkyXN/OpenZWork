@@ -12,6 +12,7 @@ import { decodeProviderConfigFile, encodeProviderConfigFile } from "@zcode/provi
 import {
   type AppSettings,
   type ConfigApplyResult,
+  type ConfigDefaultModel,
   type ConfigResultItem,
   type ConfigPackage,
   type ConfigRow,
@@ -44,6 +45,7 @@ export interface PersonalPreview {
   rows: ConfigRow[];
   prompt: SystemPromptSettings | null;
   hashes: Map<string, string>;
+  defaultModelCandidate?: ConfigDefaultModel;
 }
 export async function previewPersonal(
   file: ConfigPackage,
@@ -57,6 +59,17 @@ export async function previewPersonal(
       if (category === "providers") {
         const local = personalData((await owners.source.read(randomUUID())).personalConfig);
         state.hashes = new Map(providerEntries(local).map((item) => [item.key, item.hash]));
+        const desired = file.categories.providers?.payload.defaultModelSelection;
+        if (
+          !local.defaultModelSelection &&
+          desired &&
+          group.entries.some((row) => row.key === desired.providerId)
+        ) {
+          state.defaultModelCandidate = {
+            providerId: desired.providerId,
+            modelId: desired.modelId,
+          };
+        }
       } else {
         state.prompt = (await owners.settings.get()).systemPromptSettings ?? null;
       }
@@ -177,7 +190,11 @@ function merge(
         (row) =>
           row.category === "providers" && row.key === desired.providerId && row.status === "same",
       ) && localHashes.get(desired.providerId) === expected.hashes.get(desired.providerId);
-    if ((imported.has(desired.providerId) || wasSame) && canAdopt(next, desired))
+    if (
+      expected.defaultModelCandidate &&
+      (imported.has(desired.providerId) || wasSame) &&
+      canAdopt(next, desired)
+    )
       return { next: { ...next, defaultModelSelection: desired }, report, changed: true };
     report.defaultModelSkipped = true;
   }
@@ -216,6 +233,11 @@ export async function applyProviders(
   }
   try {
     await owners.registry.refresh("config-package");
+    // 默认值可以是唯一改动。刷新成功后才把实际提交的模型写进回执。
+    if (!before?.defaultModelSelection && committed.defaultModelSelection) {
+      const { providerId, modelId } = committed.defaultModelSelection;
+      report.defaultModelApplied = { providerId, modelId };
+    }
     return report;
   } catch {
     let reason = "refresh-rolled-back";

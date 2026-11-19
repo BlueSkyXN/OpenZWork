@@ -266,12 +266,18 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
       const results: ImportResult[] = [];
       for (const item of params.items) {
         // OW-P036：上一项提交期间另一个窗口可能保存了这一项。读、比较、替换和启用状态同锁。
-        results.push(await withUserMarkdownLock(resolveUserHomeDir(), "commands", async () => {
-          const current = await resolveUserCommands(item.key);
-          const result = await importOne(item, payloadByKey.get(item.key), current);
-          if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey);
-          return result;
-        }));
+        // 拿锁或重读失败只计入当前项，保留已提交回执并继续后续项。
+        try {
+          const committed = await withUserMarkdownLock(resolveUserHomeDir(), "commands", async () => {
+            const current = await resolveUserCommands(item.key);
+            const result = await importOne(item, payloadByKey.get(item.key), current);
+            if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey);
+            return result;
+          });
+          results.push(committed);
+        } catch (error) {
+          results.push({ key: item.key, status: "failed", error: errorMessage(error) });
+        }
       }
       return { results: results.map(({ createdPath: _createdPath, ...result }) => result) };
     },

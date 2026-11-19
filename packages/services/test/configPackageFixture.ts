@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import { afterEach, vi } from "vitest";
 import { NodeProviderRegistryRuntime, decodeProviderConfigFile } from "@zcode/provider-node";
 import { createDefaultSystemPromptSettings } from "@zcode/shared";
-import { createUserConfigSyncService, createMcpDataSyncMethods } from "../src/data-sync/node.js";
+import {
+  createUserConfigSyncService,
+  createMcpDataSyncMethods,
+  createSubagentDataSyncMethods,
+} from "../src/data-sync/node.js";
 import { createSkillSyncService } from "../src/skill-sync/skillSyncService.js";
 import { createSettingService } from "../src/setting/settingService.js";
 import { createProviderProvisioningSource } from "../src/model-provider/providerProvisioningSource.js";
@@ -59,7 +63,7 @@ export function ownerAt(home: string, platform: ConfigPackageOptions["platform"]
     platform,
     appVersion: "3.17.2",
     owners: {
-      subagents: userCategory(user, "subagents"),
+      subagents: createSubagentDataSyncMethods("original-bytes"),
       commands: userCategory(user, "commands"),
       hooks: userCategory(user, "hooks"),
       mcp: createMcpDataSyncMethods(),

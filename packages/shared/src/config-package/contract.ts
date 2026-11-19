@@ -166,10 +166,16 @@ export type ConfigPreview = {
   appVersion: string;
   differentVersion: boolean;
   differentPlatform: boolean;
+  defaultModelCandidate?: ConfigDefaultModel;
 };
+export type ConfigDefaultModel = { providerId: string; modelId: string };
 export type ConfigSelection = Pick<ConfigRow, "category" | "key">;
 export type ConfigResultItem = ConfigSelection & {
   status: "created" | "updated" | "failed" | "conflict" | "skipped";
   reason?: string;
 };
-export type ConfigApplyResult = { items: ConfigResultItem[]; defaultModelSkipped?: boolean };
+export type ConfigApplyResult = {
+  items: ConfigResultItem[];
+  defaultModelSkipped?: boolean;
+  defaultModelApplied?: ConfigDefaultModel;
+};

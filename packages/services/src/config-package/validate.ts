@@ -1,6 +1,6 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import { promisify } from "node:util";
 import { gunzip } from "node:zlib";
 import {
@@ -15,10 +15,12 @@ import {
   hashDirectoryContent,
   parseSkillMetadata,
   parseSubagentMarkdown,
+  walkSkillMarkdownPaths,
 } from "../data-sync/node.js";
 import { decodeHooks, decodeSkills } from "./categories.js";
 import { contentHash, personalData, providerEntries, stableJson } from "./personal.js";
 
+const SKILL_PATHS_ERROR = "config-package.skill-paths";
 function check(value: unknown): asserts value {
   if (!value) throw new Error("config-package.invalid");
 }
@@ -41,15 +43,23 @@ async function validateSkills(group: NonNullable<ConfigPackage["categories"]["sk
       maxExtractedBytes: SKILL_DATA_SYNC_MAX_ITEM_BYTES,
     });
     const expected: ConfigEntry[] = [];
-    for (const item of items) {
-      const dir = join(scratch, item.directoryName);
-      const metadata = parseSkillMetadata(
-        await readFile(join(dir, "SKILL.md"), "utf8"),
-        basename(dir),
-      );
+    // 按物理路径核对，按 name 去重的来源列表可能漏掉父目录中夹带的同名安装。
+    const declared = new Map(items.map((item) => [item.directoryName, item]));
+    for await (const markdown of walkSkillMarkdownPaths(scratch, {
+      onError: (_path, error) => {
+        throw error;
+      },
+    })) {
+      const dir = dirname(markdown);
+      const directoryName = relative(scratch, dir).split(sep).join("/");
+      const item = declared.get(directoryName);
+      if (!item) throw new Error(SKILL_PATHS_ERROR);
+      declared.delete(directoryName);
+      const metadata = parseSkillMetadata(await readFile(markdown, "utf8"), basename(dir));
       check(item.name === metadata.name && item.key === metadata.name.trim().toLowerCase());
       expected.push({ key: item.key, name: item.name, hash: await hashDirectoryContent(dir) });
     }
+    if (declared.size) throw new Error(SKILL_PATHS_ERROR);
     match(group.entries, expected);
   } finally {
     await rm(scratch, { recursive: true, force: true });
@@ -144,7 +154,8 @@ export async function validatePackage(value: unknown): Promise<ConfigPackage> {
           : [],
       );
     return file;
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === SKILL_PATHS_ERROR) throw error;
     throw new Error("config-package.invalid");
   }
 }
