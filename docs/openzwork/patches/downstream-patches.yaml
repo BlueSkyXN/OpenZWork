@@ -806,3 +806,39 @@ patches:
     regression:
       - packages/services/test/configPackageConflicts.test.ts
     retire: 上游在父目录移动前校验子项落位，异位同名、过期、局部选择及正常新增回归均通过。
+
+  - id: OW-P041
+    title: 两个技能根的独立目录归档后重叠
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: OpenZWork 与兼容技能根存在相对路径为父子的独立目录。
+    impact: 展开归档改变了父技能的内容，配置包校验失败。
+    cause: 顶层按物理路径去重，但打包只使用各自根下的相对路径。
+    evidence: 隔离两根中的 toolkit 和 toolkit/child，原服务可枚举二者，成包时哈希不符。
+    fix: 只为有重叠的兼容根子树分配无冲突的前缀，清单和归档共用落点。
+    files:
+      - packages/services/src/data-sync/skillDataSync.ts
+    regression:
+      - packages/services/test/configPackageBoundaries.test.ts
+    retire: 上游支持跨根重叠路径并通过同一往返回归。
+
+  - id: OW-P043
+    title: 技能归档解包时丢失辅助文件执行位
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 在 POSIX 系统迁移含可执行脚本的用户技能。
+    impact: 写入成功后辅助程序无法直接运行。
+    cause: 归档写入 mode，解包只写文件字节。
+    evidence: 独立目录往返后普通脚本权限从 0755 变为 0644。
+    fix: 解包普通文件时恢复执行位，读写位沿用目标文件权限。
+    files:
+      - packages/services/src/skill-sync/skillSyncArchive.ts
+    regression:
+      - packages/services/test/configPackageBoundaries.test.ts
+    retire: 上游解包器保留 POSIX 执行位并通过往返回归。

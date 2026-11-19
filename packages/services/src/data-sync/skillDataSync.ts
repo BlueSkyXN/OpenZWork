@@ -384,6 +384,18 @@ export function createSkillDataSyncMethods(options: {
             (other) => other !== skill && isPathWithin(other.directoryPath, skill.directoryPath),
           ),
       );
+      // OW-P041：物理上独立的两个来源根可能投影到同一归档子树，展开后会改变父技能的哈希。
+      const nativeRoots = packed.filter(skill => skill.location === "zcode");
+      const overlaps = (left: string, right: string) =>
+        left === right || left.startsWith(right + "/") || right.startsWith(left + "/");
+      const relocated = packed.filter(skill => skill.location === "agents" &&
+        nativeRoots.some(other => overlaps(other.directoryName.toLowerCase(), skill.directoryName.toLowerCase())));
+      const reserved = new Set(selected.map(skill => skill.directoryName.split("/")[0]!.toLowerCase()));
+      let prefix = "agents";
+      for (let n = 2; reserved.has(prefix); n++) prefix = "agents-" + n;
+      const archivePath = (skill: ResolvedUserSkill) =>
+        relocated.some(root => root === skill || isPathWithin(root.directoryPath, skill.directoryPath))
+          ? posix.join(prefix, skill.directoryName) : skill.directoryName;
       const entries = await Promise.all(
         packed.map(async (skill) => {
           const sourcePath = await realpath(skill.directoryPath);
@@ -395,7 +407,7 @@ export function createSkillDataSyncMethods(options: {
               phase: "selected-content",
             });
           }
-          return { sourcePath, archivePath: skill.directoryName };
+          return { sourcePath, archivePath: archivePath(skill) };
         }),
       );
       const archive = await createSkillSyncArchive(entries);
@@ -412,7 +424,7 @@ export function createSkillDataSyncMethods(options: {
         items: selected.map((skill) => ({
           key: skill.key,
           name: skill.name,
-          directoryName: skill.directoryName,
+          directoryName: archivePath(skill),
           enabled: isSkillEnabled(overrides, skill.skillFilePath),
         })),
       };

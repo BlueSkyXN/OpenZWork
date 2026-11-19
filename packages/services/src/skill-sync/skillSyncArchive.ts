@@ -1,4 +1,4 @@
-import { lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join, posix, resolve } from "node:path";
 import { Readable } from "node:stream";
 import { promisify } from "node:util";
@@ -94,6 +94,12 @@ export async function extractSkillSyncArchive(
       await reader.skipExactly(tarPaddedBytes(size) - size);
       await mkdir(dirname(targetPath), { recursive: true });
       await writeFile(targetPath, data);
+      // OW-P043：保留 tar 普通文件的执行位。读写权限遵循本机 umask，特殊权限不迁移。
+      if (process.platform !== "win32") {
+        const executable = readTarOctal(header, 100, 8) & 0o111;
+        const current = (await lstat(targetPath)).mode;
+        if ((current & 0o111) !== executable) await chmod(targetPath, (current & 0o666) | executable);
+      }
       extractedBytes = nextExtractedBytes;
     }
   } finally {
