@@ -40,7 +40,7 @@ const enUS: Record<string, string> = {
   "configPackage.platform": "Source platform: {platform}.",
   "configPackage.version": "Exported by app version {version}.",
   "configPackage.absolutePath": "Contains an absolute path. Check that it works on this device.",
-  "configPackage.defaultSkipped": "The package default was skipped. Its provider was skipped or changed, or the model is unavailable.",
+  "configPackage.defaultSkipped": "The package default was skipped. Check the current default and available models in Model settings.",
   "configPackage.defaultPreview": "This device has no default model. If available, {providerId} / {modelId} will become the default.",
   "configPackage.applyDefault": "Use default model",
   "configPackage.defaultApplied": "The default model is now {providerId} / {modelId}.",

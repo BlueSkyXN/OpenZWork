@@ -253,6 +253,7 @@ describe("E2E_T4_CONFIG_PACKAGE", () => {
     const config = JSON.parse(originalCli ?? "{}");
     const pkg = join(homeDir, "model-hooks.openzwork-config.gz");
     const desired = { providerId: "personal:t4-review", modelId: "sample" };
+    const localChoice = { ...desired, modelId: "local-choice" };
     const rules = ["Read", "Write"].map((matcher) => ({
       matcher,
       hooks: [{ type: "process", command: "t4-formatter", args: [matcher], enabled: false }],
@@ -266,7 +267,7 @@ describe("E2E_T4_CONFIG_PACKAGE", () => {
         apiFormat: "openai-responses",
         apiKey: "e2e-fixture",
         baseURL: "https://example.invalid/v1",
-        models: [{ id: desired.modelId }],
+        models: [{ id: desired.modelId }, { id: localChoice.modelId }],
       });
       await repo.update((current) => ({ ...current, defaultModelSelection: desired }));
       await mkdir(join(storageRoot, "cli"), { recursive: true });
@@ -317,6 +318,18 @@ describe("E2E_T4_CONFIG_PACKAGE", () => {
       expect(JSON.parse(await readFile(cliPath, "utf8")).hooks.events.PreToolUse).toEqual([
         rules[1],
       ]);
+      await click("close");
+      await repo.update((current) => ({ ...current, defaultModelSelection: undefined }));
+      await choosePackage();
+      await hookRow("Read").$("input").click();
+      await tid("default-preview").waitForDisplayed();
+      await repo.update((current) => ({ ...current, defaultModelSelection: localChoice }));
+      await click("apply");
+      await tid("imported").waitForDisplayed();
+      expect(await tid("imported").getText()).toContain("未采用包中的默认模型");
+      expect(await tid("imported").getText()).not.toContain("没有要新增或覆盖的条目");
+      expect(await tid("default-applied").isExisting()).toBe(false);
+      expect((await repo.read()).defaultModelSelection).toMatchObject(localChoice);
       await click("close");
     } finally {
       await repo.update(() => originalProviders);

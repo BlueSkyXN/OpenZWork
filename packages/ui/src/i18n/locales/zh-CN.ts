@@ -40,7 +40,7 @@ const zhCN: Record<string, string> = {
   "configPackage.platform": "来源平台为 {platform}。",
   "configPackage.version": "文件来自应用版本 {version}。",
   "configPackage.absolutePath": "含绝对路径，请确认此设备可用。",
-  "configPackage.defaultSkipped": "未采用包中的默认模型。对应供应商未导入、内容有变化或模型不可用。",
+  "configPackage.defaultSkipped": "未采用包中的默认模型。可在模型设置中核对本机默认值和供应商的可用模型。",
   "configPackage.defaultPreview": "本机尚无默认模型。模型可用时将采用 {providerId} / {modelId}。",
   "configPackage.applyDefault": "采用默认模型",
   "configPackage.defaultApplied": "本机默认模型已设为 {providerId} / {modelId}。",
