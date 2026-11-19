@@ -64,13 +64,14 @@ describe("两个隔离的用户目录", () => {
       ["created", "created", "created"],
     );
     const { servers } = JSON.parse(await readFile(configPath(b), "utf8")).mcp;
+    // 迁入目标 home 的路径按目标机分隔符比较，其余字段逐字核对来源值。
     for (const name of ["custom", "filesystem"])
       expect(servers[name]).toMatchObject({
         ...common,
-        args: [b, b + "/with spaces", a + "-other/item", "--flag=" + a + "/x", "/opt/app"],
-        cwd: b + "/cwd",
-        env: { DATA: b + "/data", NOTE: "use " + a + "/x" },
-        environment: { CACHE: b + "/cache" },
+        args: [b, join(b, "with spaces"), a + "-other/item", "--flag=" + a + "/x", "/opt/app"],
+        cwd: join(b, "cwd"),
+        env: { DATA: join(b, "data"), NOTE: "use " + a + "/x" },
+        environment: { CACHE: join(b, "cache") },
       });
     expect(servers.web).toMatchObject(http);
   });
@@ -108,7 +109,7 @@ describe("两个隔离的用户目录", () => {
     expect(await readFile(join(b, ".openzwork/commands/only.md"), "utf8")).toBe("keep");
     const local = JSON.parse(await readFile(join(b, ".openzwork/cli/config.json"), "utf8"));
     expect(local.mcp.servers.filesystem).toMatchObject({
-      args: [b + "/folder", "/opt/fixed"],
+      args: [join(b, "folder"), "/opt/fixed"],
       env: { EXAMPLE: privateValues.env },
       headers: { Example: privateValues.header },
       enabled: false,
