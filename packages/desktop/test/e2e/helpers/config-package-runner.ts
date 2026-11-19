@@ -122,12 +122,12 @@ async function runDesktop() {
     );
     const [code] = await once(desktop, "exit");
     if (code !== 0) throw new Error(`WDIO exited with ${code ?? "a signal"} (${runId})`);
-    // 启动阶段也可能返回 0。只有本轮报告记录了两条用例通过，才算完成验收。
+    // 启动阶段也可能返回 0。逐个核对场景，避免漏跑另一个 CP-12。
     const summary: E2EReportSummary = JSON.parse(
       await readFile(join(artifactDir, "summary.json"), "utf8"),
     );
     const { tests } = summary;
-    const expectedCases = ["CP-11", "CP-12"];
+    const expectedCases = ["CP-11 已配对", "CP-12 在远端工作区", "CP-12 单独采用默认模型"];
     if (
       summary.runId !== runId ||
       summary.exitCode !== 0 ||
@@ -135,7 +135,7 @@ async function runDesktop() {
       tests.passed !== expectedCases.length ||
       tests.total !== expectedCases.length ||
       !expectedCases.every((id) =>
-        tests.results.some((test) => test.passed && test.title.startsWith(id + " ")),
+        tests.results.some((test) => test.passed && test.title.startsWith(id)),
       )
     ) {
       throw new Error(`CP-11/CP-12 acceptance incomplete: ${join(artifactDir, "summary.json")}`);

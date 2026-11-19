@@ -5575,5 +5575,6 @@ CLI 定向回归已通过：V4 两种投递模式的并发 workspace 隔离、�
 | ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
 | CP-11 | 配对 390px 手机 Web，进入设置，检查数据同步页和配置包入口。通道拒绝由核心回归覆盖。                                                           | covered（pending） |
 | CP-12 | 在远端工作区的设置页操作本机文件。核对明文确认、选择器取消、默认勾选新增、手动覆盖差异、结果及重启提示。比对两端文件并检查中英文 390px 弹窗。 | covered（pending） |
+| CP-12 | 供应商配置一致时单独采用来源默认模型，核对预览、回执和磁盘。同一事件的两条钩子按匹配条件选择，核对实际写入的定义。                            | covered（pending） |
 
-候选 `conversation-session/remote/data-sync/manual-review/pending/config-package.test.ts`。3.18.2 的 macOS Electron 与触屏 Chromium 在 `packages/desktop/.e2e-artifacts/config-package-1795054036656` 通过 2 项，系统文件选择器由 WDIO 提供选定路径与取消返回值。产品规则见[多机配置包](../specs/config-package-openzwork.md)。
+候选 `conversation-session/remote/data-sync/manual-review/pending/config-package.test.ts`。3.18.2 的 macOS Electron 与触屏 Chromium 在 `packages/desktop/.e2e-artifacts/config-package-1795068385636` 通过 3 项，系统文件选择器由 WDIO 提供选定路径与取消返回值。产品规则见[多机配置包](../specs/config-package-openzwork.md)。

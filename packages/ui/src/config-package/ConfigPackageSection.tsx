@@ -21,6 +21,18 @@ export function ConfigPackageSection({ service }: ConfigPackageSectionProps) {
   const invoker = useRef<HTMLButtonElement | null>(null);
   if (!ui.available) return null;
   const { screen } = ui;
+  const preview = screen.page === "preview" ? screen.preview : undefined;
+  const candidate = preview?.defaultModelCandidate;
+  const defaultModel =
+    candidate &&
+    preview.rows.some(
+      (row) =>
+        row.category === "providers" &&
+        row.key === candidate.providerId &&
+        (row.status === "same" || ui.selected.has(rowId(row))),
+    )
+      ? candidate
+      : undefined;
   const categoryName = (id: ConfigCategory) => t("category." + id);
   const description =
     screen.page === "preview"
@@ -104,6 +116,11 @@ export function ConfigPackageSection({ service }: ConfigPackageSectionProps) {
                 {screen.preview.differentPlatform && (
                   <p>{t("platform", { platform: screen.preview.sourcePlatform })}</p>
                 )}
+                {defaultModel && (
+                  <p data-testid="config-package-default-preview">
+                    {t("defaultPreview", defaultModel)}
+                  </p>
+                )}
                 {CONFIG_PACKAGE_CATEGORIES.filter((id) => id in screen.preview.counts).map((id) => (
                   <fieldset className="min-w-0 space-y-1" key={id}>
                     <legend className="font-medium">
@@ -169,7 +186,14 @@ export function ConfigPackageSection({ service }: ConfigPackageSectionProps) {
                   </p>
                 ))}
                 {screen.result.defaultModelSkipped && <p>{t("defaultSkipped")}</p>}
-                {!screen.result.items.length && <p>{t("noSelected")}</p>}
+                {screen.result.defaultModelApplied && (
+                  <p data-testid="config-package-default-applied">
+                    {t("defaultApplied", screen.result.defaultModelApplied)}
+                  </p>
+                )}
+                {!screen.result.items.length &&
+                  !screen.result.defaultModelApplied &&
+                  !screen.result.defaultModelSkipped && <p>{t("noSelected")}</p>}
                 <p>{t("restart")}</p>
               </div>
             )}
@@ -198,15 +222,12 @@ export function ConfigPackageSection({ service }: ConfigPackageSectionProps) {
             {screen.page === "preview" && (
               <Button
                 data-testid="config-package-apply"
-                disabled={
-                  !ui.selected.size &&
-                  !screen.preview.rows.some(
-                    (r) => r.category === "providers" && r.status === "same",
-                  )
-                }
+                disabled={!ui.selected.size && !defaultModel}
                 onClick={() => void ui.apply()}
               >
-                {t("apply", { count: ui.selected.size })}
+                {defaultModel && !ui.selected.size
+                  ? t("applyDefault")
+                  : t("apply", { count: ui.selected.size })}
               </Button>
             )}
             {["exported", "imported", "error"].includes(screen.page) && (

@@ -2,6 +2,8 @@ import { mkdir, readFile, unlink, writeFile, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { chromium } from "playwright-core";
+import { NodePersonalProviderConfigRepository } from "@zcode/provider-node";
+import { seedPersonalProviderConfig } from "#e2e/helpers/model-provider-restart-config";
 import {
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
@@ -233,6 +235,98 @@ describe("E2E_T4_CONFIG_PACKAGE", () => {
     expect(await readFile(remoteCommand, "utf8")).toBe("remote marker");
     await click("close");
     await resizeWindow(1200);
+  });
+
+  it("CP-12 单独采用默认模型并按匹配条件选择同事件钩子", async function () {
+    this.timeout(120000);
+    const { homeDir, storageRoot, configFile } = getE2EAppDataPaths();
+    const repo = new NodePersonalProviderConfigRepository({
+      filePath: configFile,
+      pollingIntervalMs: false,
+    });
+    const originalProviders = await repo.read();
+    const cliPath = join(storageRoot, "cli", "config.json");
+    const originalCli = await readFile(cliPath, "utf8").catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    const config = JSON.parse(originalCli ?? "{}");
+    const pkg = join(homeDir, "model-hooks.openzwork-config.gz");
+    const desired = { providerId: "personal:t4-review", modelId: "sample" };
+    const rules = ["Read", "Write"].map((matcher) => ({
+      matcher,
+      hooks: [{ type: "process", command: "t4-formatter", args: [matcher], enabled: false }],
+    }));
+    const save = await browser.electron.mock("dialog", "showSaveDialog");
+    const open = await browser.electron.mock("dialog", "showOpenDialog");
+    try {
+      await seedPersonalProviderConfig(configFile, {
+        id: desired.providerId,
+        label: "T4 Review",
+        apiFormat: "openai-responses",
+        apiKey: "e2e-fixture",
+        baseURL: "https://example.invalid/v1",
+        models: [{ id: desired.modelId }],
+      });
+      await repo.update((current) => ({ ...current, defaultModelSelection: desired }));
+      await mkdir(join(storageRoot, "cli"), { recursive: true });
+      await writeFile(
+        cliPath,
+        JSON.stringify({ ...config, hooks: { events: { PreToolUse: rules } } }),
+      );
+      await language("zh-CN", "zai-light");
+      await openSettings();
+      await click("export");
+      for (const group of ["skills", "systemPrompt", "subagents", "mcp", "commands"])
+        await click("category-" + group);
+      await click("next");
+      await save.mockResolvedValueOnce({ canceled: false, filePath: pkg });
+      await click("save");
+      await tid("exported").waitForDisplayed();
+      await click("close");
+      await repo.update((current) => ({ ...current, defaultModelSelection: undefined }));
+      await writeFile(cliPath, JSON.stringify({ ...config, hooks: { events: {} } }));
+      const choosePackage = async () => {
+        await open.mockResolvedValueOnce({ canceled: false, filePaths: [pkg] });
+        await click("import");
+        await tid("row").waitForDisplayed();
+      };
+      const hookRow = (matcher: string) => $("label*=PreToolUse · " + matcher + " · t4-formatter");
+      await choosePackage();
+      await hookRow("Read").$("input").click();
+      await hookRow("Write").$("input").click();
+      expect(await tid("default-preview").getText()).toContain(
+        desired.providerId + " / " + desired.modelId,
+      );
+      expect(await tid("apply").getText()).toBe("采用默认模型");
+      await click("apply");
+      await tid("imported").waitForDisplayed();
+      expect(await tid("default-applied").getText()).toContain(
+        desired.providerId + " / " + desired.modelId,
+      );
+      expect(await tid("imported").getText()).not.toContain("没有要新增或覆盖的条目");
+      expect((await repo.read()).defaultModelSelection).toMatchObject(desired);
+      await capture("T4-default-applied");
+      await click("close");
+      await choosePackage();
+      await hookRow("Read").$("input").click();
+      expect(await tid("default-preview").isExisting()).toBe(false);
+      await click("apply");
+      await tid("imported").waitForDisplayed();
+      expect(await tid("imported").getText()).toContain("PreToolUse · Write · t4-formatter");
+      expect(JSON.parse(await readFile(cliPath, "utf8")).hooks.events.PreToolUse).toEqual([
+        rules[1],
+      ]);
+      await click("close");
+    } finally {
+      await repo.update(() => originalProviders);
+      repo.dispose();
+      if (originalCli !== undefined) await writeFile(cliPath, originalCli);
+      else
+        await unlink(cliPath).catch((error: NodeJS.ErrnoException) => {
+          if (error.code !== "ENOENT") throw error;
+        });
+    }
   });
 
   it("CP-11 已配对的手机 Web 界面没有桌面配置包入口", async function () {
