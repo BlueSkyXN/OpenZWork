@@ -49,7 +49,7 @@
     "test:native-search:e2e": "node scripts/test-native-search-tools-e2e.mjs",
     "test:sea-runtime-tools:e2e": "node scripts/test-sea-runtime-tools-e2e.mjs",
     "clean": "node scripts/clean.mjs",
-    "typecheck": "pnpm --filter @zcode/session-control typecheck && tsc -b packages/shared/tsconfig.testing.json packages/rpc packages/provider packages/provider-node packages/shared packages/design-runtime packages/services packages/client packages/server packages/zcode-server-cli packages/ui packages/web apps/dev-docs packages/e2e-report packages/desktop/tsconfig.main.json packages/desktop/tsconfig.host.json packages/desktop/tsconfig.renderer-services.json packages/plugin-api && tsc -p packages/desktop/tsconfig.remote-main.json --noEmit",
+    "typecheck": "pnpm --filter @zcode/session-control typecheck && tsc -b packages/shared/tsconfig.testing.json packages/rpc packages/provider packages/provider-node packages/shared packages/design-runtime packages/services packages/client packages/server packages/zcode-server-cli packages/ui packages/web apps/dev-docs packages/e2e-report packages/desktop/tsconfig.main.json packages/desktop/tsconfig.host.json packages/desktop/tsconfig.renderer-services.json packages/plugin-api && tsc -p packages/desktop/tsconfig.remote-main.json --noEmit && tsc -p packages/desktop/tsconfig.preload.json --noEmit",
     "bundle:desktop": "pnpm --filter @zcode/desktop run bundle --",
     "fmt": "node .agents/skills/openzwork-maintenance/scripts/format.mjs",
     "fmt:check": "node .agents/skills/openzwork-maintenance/scripts/format.mjs --check",

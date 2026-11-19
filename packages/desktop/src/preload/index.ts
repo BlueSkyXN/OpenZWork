@@ -80,6 +80,7 @@ import type {
   CaptureBrowserGuestPageRequest,
   CaptureBrowserGuestPageResult,
   SSHConfigAliasOption,
+  WebRemoteControlConnectionProfileMutation,
   WebRemoteControlContext,
   WebRemoteControlReconnectWorkspaceRequest,
   WebRemoteControlReconnectWorkspaceResult,
@@ -249,7 +250,7 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlConnectionSettings),
   getWebRemoteControlConnections: () =>
     ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlConnections),
-  updateWebRemoteControlConnectionProfile: (profiles) =>
+  updateWebRemoteControlConnectionProfile: (profiles: WebRemoteControlConnectionProfileMutation) =>
     ipcRenderer.invoke(PlatformChannels.UpdateWebRemoteControlConnectionProfile, profiles),
   getWebRemoteControlStatus: () => ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlStatus),
   onWebRemoteControlStatusChanged: (
