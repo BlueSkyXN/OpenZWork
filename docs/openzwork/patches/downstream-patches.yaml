@@ -927,3 +927,23 @@ patches:
       - packages/services/test/configPackageBoundaries.test.ts
       - packages/services/test/configPackageSkillImport.test.ts
     retire: 上游解包器保留 POSIX 执行位并通过往返回归。
+
+  - id: OW-P044
+    title: Claude 图标迁移测试提前删除临时目录
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 图标迁移在后台运行，测试读取清单后开始清理临时插件目录。
+    impact: Windows 核心回归偶发 EPERM，失败位置为插件存储锁目录。
+    cause: 通过清单内容判断迁移结束，未等待后台任务释放存储锁。
+    evidence: Windows 回归在无本地缓存的用例中，于删除 installed_plugins.json.lock 时失败。上游同一用例以清单读回代替后台任务的完成信号。
+    fix: 测试捕获并等待真实迁移的 Promise，再验证无缓存时的清单和联网边界并清理目录。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    retire: 上游用例在清理临时目录前等待后台迁移完全结束。
+    refs:
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/44563487444/job/135698826664
