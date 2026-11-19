@@ -12,7 +12,13 @@ type Channel = (typeof channels)[number];
 const childScript = `
 const [channel, guardUrl] = process.argv.slice(1);
 const stream = process[channel];
-const finish = (message, status) => process.send(message, () => process.exit(status));
+let reported = false;
+const finish = (message, status) => {
+  // Windows 等待致命回执发完时，写入回调安排的 setImmediate 仍可能执行。
+  if (reported) return;
+  reported = true;
+  process.send(message, () => process.exit(status));
+};
 process.on("uncaughtException", (error) => {
   finish({ uncaught: error.code ?? null }, error.code === "EPIPE" ? 42 : 43);
 });
