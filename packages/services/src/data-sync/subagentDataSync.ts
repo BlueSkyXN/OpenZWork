@@ -41,6 +41,7 @@ import { errorMessage, stableStringify } from "./syncUtils.js";
 const logger = createServiceLogger("subagent-data-sync");
 
 const AGENT_FILE_NAME = /^[^/\\]+\.(md|markdown)$/iu;
+type SubagentReadMode = "migrate-legacy" | "original-bytes";
 
 const BUILT_IN_AGENT_NAMES: readonly BuiltInSubagentName[] = ["general-purpose", "Explore"];
 
@@ -50,7 +51,7 @@ interface ResolvedUserSubagent {
   description: string;
   filePath: string;
   dependencies?: DataSyncItemDependencies;
-  /** 迁移之后的文件字节。 */
+  /** 以调用方的读取口径计算哈希、比较和导出。 */
   content: Buffer;
 }
 
@@ -126,17 +127,20 @@ function toModelOverrideSummary(selection: ModelSelection): DataSyncModelOverrid
 
 /**
  * 本端用户子智能体，按 name 转小写对齐。根目录按本端 config.json 的 storage.dir 解析，两端可以不同。
- * 先完成本端 markdown 迁移再读字节：迁移只改写旧 Provider 身份，未迁移的一端与已迁移的一端
+ * 设备同步先完成本端 markdown 迁移再读字节：迁移只改写旧 Provider 身份，未迁移的一端与已迁移的一端
  * 内容实际相同，不先迁移就会被误判为「内容不同」。同名时保留排序中的第一个文件。
  */
-async function resolveUserSubagents(): Promise<{
+async function resolveUserSubagents(readMode: SubagentReadMode): Promise<{
   root: string;
   agents: Map<string, ResolvedUserSubagent>;
 }> {
   const root = await resolveUserSubagentRoot();
-  const migration = await migrateUserSubagentMarkdown(root);
-  for (const failure of migration.failures) {
-    logger.warn(undefined, "用户 Subagent Markdown 迁移失败，按原文件计算", failure);
+  // OZ-F014：配置包导出和预览必须读取原字节，设备同步继续迁移旧标识。
+  if (readMode === "migrate-legacy") {
+    const migration = await migrateUserSubagentMarkdown(root);
+    for (const failure of migration.failures) {
+      logger.warn(undefined, "用户 Subagent Markdown 迁移失败，按原文件计算", failure);
+    }
   }
   const agents = new Map<string, ResolvedUserSubagent>();
   for (const filePath of await collectAgentMarkdownPaths(root)) {
@@ -164,13 +168,13 @@ async function resolveUserSubagents(): Promise<{
 }
 
 /** 只读展示：状态文件缺失或损坏时视为全部启用、没有内置覆盖。写入走 updateJsonObjectFile。 */
-async function readSubagentState(): Promise<{
+async function readSubagentState(readMode: SubagentReadMode): Promise<{
   disabled: Set<string>;
   builtInOverrides: Map<string, ResolvedBuiltInOverride>;
 }> {
   const stateFile = await resolveSubagentStateFile();
   try {
-    await migrateSubagentStateFile(stateFile);
+    if (readMode === "migrate-legacy") await migrateSubagentStateFile(stateFile);
     const parsed = JSON.parse(await readFile(stateFile, "utf-8")) as {
       disabledAgentIds?: unknown;
       builtInModelSelectionOverrides?: unknown;
@@ -190,7 +194,9 @@ async function readSubagentState(): Promise<{
   }
 }
 
-export function createSubagentDataSyncMethods(): IDataSyncCategoryService<SubagentDataSyncPayload> {
+export function createSubagentDataSyncMethods(
+  readMode: SubagentReadMode = "migrate-legacy",
+): IDataSyncCategoryService<SubagentDataSyncPayload> {
   async function importOne(
     item: DataSyncImportItem,
     payloadItem: SubagentDataSyncPayload["items"][number] | undefined,
@@ -239,8 +245,8 @@ export function createSubagentDataSyncMethods(): IDataSyncCategoryService<Subage
   return {
     async listSyncItems() {
       const [{ agents }, { disabled, builtInOverrides }] = await Promise.all([
-        resolveUserSubagents(),
-        readSubagentState(),
+        resolveUserSubagents(readMode),
+        readSubagentState(readMode),
       ]);
       const userItems: DataSyncListItem[] = [...agents.values()].map((agent) => ({
         key: agent.key,
@@ -265,8 +271,8 @@ export function createSubagentDataSyncMethods(): IDataSyncCategoryService<Subage
 
     async getSyncContentHashes(params) {
       const [{ agents }, { builtInOverrides }] = await Promise.all([
-        resolveUserSubagents(),
-        readSubagentState(),
+        resolveUserSubagents(readMode),
+        readSubagentState(readMode),
       ]);
       const hashes: Record<string, string> = {};
       for (const key of params.keys) {
@@ -286,8 +292,8 @@ export function createSubagentDataSyncMethods(): IDataSyncCategoryService<Subage
 
     async exportSyncItems(params) {
       const [{ agents }, { disabled, builtInOverrides }] = await Promise.all([
-        resolveUserSubagents(),
-        readSubagentState(),
+        resolveUserSubagents(readMode),
+        readSubagentState(readMode),
       ]);
       return {
         sourceHomeDir: resolveUserHomeDir(),
@@ -315,16 +321,16 @@ export function createSubagentDataSyncMethods(): IDataSyncCategoryService<Subage
     },
 
     async importSyncItems(params) {
-      // 目标端同样先迁移再计算哈希，与列表时给出的 expectedTargetHash 口径一致。
+      // 目标端按预览时相同的读取口径重新计算哈希。
       const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
       const results: Array<DataSyncImportResultItem & { createdPath?: string }> = [];
       for (const item of params.items) {
         if (BUILT_IN_OVERRIDE_KEYS.has(item.key)) continue;
         // OW-P036：name 和文件名可以不同。每项在同一磁盘锁内重新解析实际目标并比较哈希。
         results.push(await withUserMarkdownLock(resolveUserHomeDir(), "subagents", async () => {
-          const { root, agents } = await resolveUserSubagents();
+          const { root, agents } = await resolveUserSubagents(readMode);
           const result = await importOne(item, payloadByKey.get(item.key), root, agents);
-          if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey);
+          if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey, readMode);
           return result;
         }));
       }
@@ -356,8 +362,9 @@ export function createSubagentDataSyncMethods(): IDataSyncCategoryService<Subage
 async function applyCreatedEnabledState(
   results: Array<DataSyncImportResultItem & { createdPath?: string }>,
   payloadByKey: Map<string, SubagentDataSyncPayload["items"][number]>,
+  readMode: SubagentReadMode,
 ): Promise<void> {
-  const currentDisabled = (await readSubagentState()).disabled;
+  const currentDisabled = (await readSubagentState(readMode)).disabled;
   const entries = results.flatMap((result) => {
     if (result.status !== "created" || !result.createdPath) return [];
     const id = toUserAgentStateId(result.key);
@@ -367,7 +374,7 @@ async function applyCreatedEnabledState(
   if (entries.length === 0) return;
   const stateFile = await resolveSubagentStateFile();
   try {
-    await migrateSubagentStateFile(stateFile);
+    if (readMode === "migrate-legacy") await migrateSubagentStateFile(stateFile);
     await updateJsonObjectFile(stateFile, (state) => {
       const disabledIds = new Set(
         Array.isArray(state.disabledAgentIds)

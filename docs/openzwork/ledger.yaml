@@ -403,7 +403,7 @@ entries:
     kind: feature
     status: active
     title: 桌面多机配置包
-    summary: 桌面用户按项迁移七类个人配置。Provider 锁内合并并在刷新失败时做版本回滚，系统提示词由设置服务比较后写入。
+    summary: 桌面用户按项迁移七类个人配置，命令和子智能体按原字节比较，技能按目录核对。Provider 锁内合并与回滚，系统提示词由设置服务比较后写入。
     spec:
       - docs/specs/config-package-openzwork.md
     modules: [config-package-contract, config-package-service]
