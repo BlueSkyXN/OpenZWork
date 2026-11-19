@@ -14,6 +14,7 @@ import {
   createCoreError,
   runWithModelInvocationContext,
   toWebSearchProviderNativeArgs,
+  type ModelSource,
   type ModelStreamEvent,
   type ModelTextResult,
   type ModelToolCall,
@@ -179,6 +180,7 @@ async function collectWebSearchStreamResult(input: {
   let providerMetadata: Record<string, unknown> | undefined;
   let usage: ModelUsage = {};
   const toolCalls: ModelToolCall[] = [];
+  const sources: ModelSource[] = [];
 
   for await (const event of input.events) {
     switch (event.type) {
@@ -187,6 +189,10 @@ async function collectWebSearchStreamResult(input: {
         break;
       case "tool_call":
         toolCalls.push(event.toolCall);
+        break;
+      // OpenZWork(OZ-C013): 结构化来源进入现有结果构建器，与正文链接一起去重。
+      case "source":
+        sources.push(event.source);
         break;
       case "finish":
         finishReason = event.finishReason;
@@ -201,6 +207,7 @@ async function collectWebSearchStreamResult(input: {
   return {
     finishReason,
     providerMetadata,
+    sources: sources.length > 0 ? sources : undefined,
     text,
     toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
     usage,

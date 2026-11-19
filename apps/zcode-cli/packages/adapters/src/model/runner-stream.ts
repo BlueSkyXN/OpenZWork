@@ -54,6 +54,7 @@ import {
   retryBudgetMaxAttempts,
 } from "./retry-budget.js";
 import { toModelStreamEvent } from "./runner-normalization.js";
+import { toOpenAiResponsesWebSearchSource } from "./openai-responses-websearch.js";
 import type { EnvRecord } from "./model-execution.js";
 import { detectProviderBusinessFinishError } from "./provider-finish-business-error.js";
 import {
@@ -1079,8 +1080,14 @@ async function handleStreamChunk(input: {
       providerBusinessFinishError,
     );
   }
-  // OW-P020：最终流事件与完成状态使用同一份 step 缓存存在性。
-  const event = toModelStreamEvent(input.chunk, input.diagnostics.cacheUsageAvailability);
+  // OpenZWork(OZ-C013): SDK 的来源只交给 Responses 内部搜索，不改变普通对话或 Anthropic 流。
+  const event =
+    input.chunk.type === "source" &&
+    input.statusContext.providerKind === "openai" &&
+    input.input.request.modelCall?.operation === "web_search"
+      ? toOpenAiResponsesWebSearchSource(input.chunk)
+      // OW-P020：最终流事件与完成状态使用同一份 step 缓存存在性。
+      : toModelStreamEvent(input.chunk, input.diagnostics.cacheUsageAvailability);
   if (event?.type === "error") {
     return handleStreamErrorEvent({ ...input, emittedRetryBoundaryEvent }, event.error);
   }

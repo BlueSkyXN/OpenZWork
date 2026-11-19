@@ -865,6 +865,8 @@ export type ModelStreamEvent =
       output: unknown;
       isError: boolean;
     }
+  // OpenZWork(OZ-C013): 内部搜索流复用非流式结果的来源契约，不投影到 UI 协议。
+  | { type: "source"; source: ModelSource }
   | {
       type: "finish";
       finishReason: string;

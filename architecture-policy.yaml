@@ -2443,3 +2443,9 @@ exceptions:
       永久缺失（PD 必需场景 PD01-03 断言失败）。本文件与上游 v3.18.0 逐字节一致（无官方
       依赖，PLUGIN_CREATOR_ID 仅本地插件 id），与 usePluginCreator/PluginAddMenu 同批恢复；
       接管 packages/ui/src/settings 不在本次范围内。
+  - id: oz-c013-websearch-responses-unmanaged-file
+    rule: unmanaged-new-file
+    paths:
+      - packages/provider/src/protocol-capabilities.ts
+      - apps/zcode-cli/packages/adapters/src/model/openai-responses-websearch.ts
+    reason: OZ-C013 在既有模块增加执行能力合取及 Responses 工具、URL 来源转换；不接管整个 provider 或 zcode-cli。

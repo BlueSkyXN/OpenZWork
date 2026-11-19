@@ -630,6 +630,28 @@ entries:
       - packages/services/test/settingsLocalePersistence.test.ts
       - packages/desktop/test/e2e/settings/general/settings-client-language-header-openzwork.test.ts
     source: 上游 docs/i18n/ui-locales.md 合同；J1 返工（NEXT-FINISH-LOCALE-DIRECT-CI-20261117）
+  - id: OZ-C013
+    kind: change
+    status: active
+    title: Responses 原生联网搜索
+    summary: 执行模型开关与协议白名单合取，Responses 编码服务端 web_search 并将结构化 URL 引用和正文链接合并去重；Chat Completions 不暴露，Anthropic 沿用原行为。
+    spec: docs/specs/websearch-openai-responses-openzwork.md
+    paths:
+      - packages/provider/src/protocol-capabilities.ts
+      - apps/zcode-cli/packages/adapters/src/model/openai-responses-websearch.ts
+    hooks:
+      - packages/provider/src/resolver.ts
+      - apps/zcode-cli/packages/adapters/src/model/tool-transform.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner-stream.ts
+      - apps/zcode-cli/packages/contracts/src/model/index.ts
+      - apps/zcode-cli/packages/core/src/tool/handlers/websearch.ts
+      - apps/zcode-cli/packages/core/src/tool/handlers/websearch-results.ts
+      - apps/zcode-cli/packages/adapters/tests/websearch.test.ts
+    tests:
+      - packages/provider/test/nativeWebSearchCapabilities.test.ts
+      - apps/zcode-cli/packages/adapters/tests/websearch-openai-responses.test.ts
+      - apps/zcode-cli/packages/core/tests/websearch-openai-responses.test.ts
+    source: T2 Responses 原生搜索任务书与中组评审返修
   - id: OZ-D001
     kind: drop
     status: active

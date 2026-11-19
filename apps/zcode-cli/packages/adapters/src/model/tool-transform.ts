@@ -6,6 +6,8 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { jsonSchema, tool, type ToolSet } from "ai";
 import { ModelErrorCode, type JsonSchema, type ModelToolContract } from "@zcode/contracts";
 import { AiSdkModelAdapterError } from "./errors.js";
+// OpenZWork(OZ-C013): Responses 协议的原生搜索。
+import { toOpenAiResponsesWebSearchTool } from "./openai-responses-websearch.js";
 import { isAnthropicFirstPartyModelId, toStrictToolSchema } from "./strict-tool-schema.js";
 
 export interface AiSdkToolTransformOptions {
@@ -273,6 +275,16 @@ function toAiSdkProviderNativeTool(
         allowedDomains,
         blockedDomains,
       }) as ToolSet[string];
+
+    // OpenZWork(OZ-C013): Responses 协议的原生搜索。
+    case "openai":
+      if (!options.supportsNativeWebSearch) {
+        throw new AiSdkModelAdapterError(
+          ModelErrorCode.InvalidModelRequest,
+          "Effective Model Config does not support provider-native WebSearch",
+        );
+      }
+      return toOpenAiResponsesWebSearchTool({ allowedDomains, blockedDomains });
 
     default:
       throw new AiSdkModelAdapterError(
