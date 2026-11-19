@@ -128,6 +128,8 @@ export class TestAiSdkModelAdapter extends ProductionAiSdkModelAdapter {
     if (!fixture) throw new Error("Test Provider Config fixture is required");
     const resolved = fixture.resolveConfig(
       { providerId: options.providerId, modelId: options.modelId },
+      // 测试调用显式选择的账号模式必须进入模型绑定，重试才会经过相应的刷新端口。
+      options.accountMode,
     );
     // 净化后只透传显式请求依赖；残留的账号 fallback 三元表达式会阻断整个 Adapter 测试夹具。
     const requestDependencies = options.requestDependencies;

@@ -1017,7 +1017,7 @@ describe("AiSdkModelAdapter", () => {
       expect(record.response.headers["x-request-id"]).toBe("req_1");
       expect(record.response.reasoningText).toBe("inspect request\nthen answer\n\nverify result");
       expect(content).not.toContain("coding-plan-secret");
-      expect(content).not.toContain("ticket-secret");
+      expect(content).not.toContain("fixture-diagnostic-request");
       expect(content).not.toContain("Bearer secret");
     } finally {
       await rm(debugDir, { recursive: true, force: true });
@@ -1251,7 +1251,7 @@ describe("AiSdkModelAdapter", () => {
       expect(record.response.headers.authorization).toBe("[redacted]");
       expect(record.response.headers["x-request-id"]).toBe("req_1");
       expect(content).not.toContain("coding-plan-secret");
-      expect(content).not.toContain("ticket-secret");
+      expect(content).not.toContain("fixture-diagnostic-request");
       expect(content).not.toContain("Bearer secret");
     } finally {
       await rm(debugDir, { recursive: true, force: true });
@@ -7326,6 +7326,8 @@ function modelIODebugRegistry(): TestProviderConfigFixture {
         kind: "custom",
         createLanguageModel: (modelId) => ({ modelId }) as never,
         headers: {
+          // 回归检查请求侧脱敏，需要在请求中实际设置合成鉴权头。
+          Authorization: "Bearer fixture-diagnostic-request",
           "X-Coding-Plan-Api-Key": "coding-plan-secret",
           "X-Diagnostic-Request": "visible",
         },
