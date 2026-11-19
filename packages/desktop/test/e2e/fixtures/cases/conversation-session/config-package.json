@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "caseName": "config-package",
+  "spec": "./test/e2e/conversation-session/remote/data-sync/config-package.test.ts",
+  "providerFixtures": ["./test/e2e/fixtures/upstream/conversation-session/config-package.json"],
+  "providerRequestPolicy": "none",
+  "fileFixtures": [],
+  "requests": []
+}

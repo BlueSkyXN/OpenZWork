@@ -37,7 +37,7 @@ import {
   type SubagentStorageOptions,
 } from "./subagentStorage.js";
 import type { ISubagentsService } from "./subagents.js";
-import { atomicWriteText } from "#src/fs/atomicFileUtils.js";
+import { atomicWriteText, withUserMarkdownLock } from "#src/fs/atomicFileUtils.js";
 import {
   migrateUserSubagentMarkdown,
   migrateSubagentStateFile,
@@ -808,11 +808,20 @@ export function createSubagentsService(options?: SubagentsServiceOptions): ISuba
       await writeAgentStateFile(state, storageOptions);
     },
   };
+  // OW-P036：保留实例的缓存失效顺序，用户文件与其他窗口的导入共用磁盘锁。
+  function editMarkdown<T>(workspace: boolean, edit: () => Promise<T>): Promise<T> {
+    return mutate(() => workspace
+      ? edit()
+      : withUserMarkdownLock(resolveUserHomeDir(storageOptions), "subagents", edit));
+  }
   return {
     ...service,
-    createAgent: (params: AgentCreateParams) => mutate(() => service.createAgent(params)),
-    updateAgent: (params: AgentUpdateParams) => mutate(() => service.updateAgent(params)),
-    deleteAgent: (params: AgentDeleteParams) => mutate(() => service.deleteAgent(params)),
+    createAgent: params => editMarkdown(params.scope === "workspace", () => service.createAgent(params)),
+    updateAgent: params => editMarkdown(params.scope === "workspace", () => service.updateAgent(params)),
+    deleteAgent: async params => {
+      const userRoot = await resolveUserSubagentRoot(storageOptions);
+      return editMarkdown(relative(userRoot, dirname(params.filePath)) !== "", () => service.deleteAgent(params));
+    },
   };
 }
 

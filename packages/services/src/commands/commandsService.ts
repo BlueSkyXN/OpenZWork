@@ -34,7 +34,7 @@ import { isUserHomeDirectory } from "@zcode/shared/node";
 import type { ICommandsService } from "./commands.js";
 import { CommandFileParser, type CommandFileFormat } from "./commandFileParser.js";
 import { readInstalledPluginRoots } from "#src/plugins/installedPluginRoots.js";
-import { updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
+import { updateJsonObjectFile, withUserMarkdownLock } from "#src/fs/atomicFileUtils.js";
 
 function resolveUserHomeDir() {
   const envHome = process.env.HOME?.trim() || process.env.USERPROFILE?.trim();
@@ -802,11 +802,19 @@ export function createCommandsService(_options?: CommandsServiceOptions): IComma
     return { path };
   }
 
+  // OW-P036：用户命令编辑与导入共用写锁，包括改名占用的两个路径。
+  function editMarkdown<T>(project: boolean, edit: () => Promise<T>): Promise<T> {
+    return project ? edit() : withUserMarkdownLock(resolveUserHomeDir(), "commands", edit);
+  }
   return {
     list,
-    writeCommandFile,
-    updateCommandFile,
-    deleteCommandFile,
+    writeCommandFile: params => editMarkdown(params.storageLevel === "project", () => writeCommandFile(params)),
+    updateCommandFile: params => editMarkdown(params.storageLevel === "project", () => updateCommandFile(params)),
+    deleteCommandFile: params => {
+      const path = relative(getUserCommandsRoot(params.agentSource), params.filePath);
+      const outsideUserRoot = path === ".." || path.startsWith(".." + sep) || isAbsolute(path);
+      return editMarkdown(outsideUserRoot, () => deleteCommandFile(params));
+    },
     setCommandEnabled,
     getPrimaryUserCommandsDirectory,
   };

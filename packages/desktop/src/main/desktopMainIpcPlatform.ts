@@ -132,6 +132,14 @@ export function registerPlatformIpcHandlers(options: {
     return result.canceled ? [] : result.filePaths;
   });
 
+  // OpenZWork(OZ-F014): Main 只选择路径，Host 负责格式、覆盖与权限。
+  ipcMain.handle(PlatformChannels.SelectSaveFilePath, async (event, suggestedName: unknown) => {
+    const options = { defaultPath: nonEmptyStringSchema.parse(suggestedName) };
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    const result = owner ? await dialog.showSaveDialog(owner, options) : await dialog.showSaveDialog(options);
+    return result.canceled ? null : result.filePath ?? null;
+  });
+
   ipcMain.handle(PlatformChannels.SelectFile, async () => {
     const result = await dialog.showOpenDialog({
       properties: ["openFile"],

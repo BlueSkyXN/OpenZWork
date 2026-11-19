@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, realpath, rename, rm } from "node:fs/promises";
+import { readFile, realpath, rename, rm } from "node:fs/promises";
 import { dirname, join, posix } from "node:path";
 import type {
   DataSyncImportItem,
@@ -8,8 +8,10 @@ import type {
   SkillDataSyncPayload,
 } from "@zcode/shared";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+import { withFileLock } from "@zcode/shared/node";
 import { pathExists, updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import { createServiceLogger } from "#src/logger/serviceLogger.js";
+import { walkSkillMarkdownPaths } from "#src/skills/skillDiscoveryWalk.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import {
   createSkillSyncArchive,
@@ -30,6 +32,7 @@ import {
   hashDirectoryContent,
   hasSymlinkWithin,
   isPathWithin,
+  prepareSyncWriteParent,
   scanDirectoryContent,
 } from "./directoryContent.js";
 import { errorMessage } from "./syncUtils.js";
@@ -122,31 +125,24 @@ async function readSkillStoreVersion(directoryPath: string): Promise<string | un
   }
 }
 
-/** 本次导入中已写入目标端的技能：来源相对目录（`/` 分隔）→ 目标端落位目录。 */
-interface PlacedSkill {
-  directoryName: string;
-  path: string;
-}
+type IncomingSkill = SkillDataSyncPayload["items"][number];
+type CreatedSkillState = { directory: string; enabled: boolean };
 
 function directoryDepth(directoryName: string | undefined): number {
   return directoryName ? directoryName.split("/").length : 0;
 }
 
-/** 来源目录包含 `directoryName` 的最近一个已落位技能。 */
-function findPlacedAncestor(
-  placed: readonly PlacedSkill[],
-  directoryName: string,
-): PlacedSkill | undefined {
-  let nearest: PlacedSkill | undefined;
-  for (const candidate of placed) {
-    if (
-      directoryName.startsWith(`${candidate.directoryName}/`) &&
-      (!nearest || candidate.directoryName.length > nearest.directoryName.length)
-    ) {
-      nearest = candidate;
+/** 从归档路径建立后代索引，物理父目录的一次提交覆盖它携带的全部选中后代。 */
+function indexSkillDescendants(items: readonly IncomingSkill[]) {
+  const index = new Map<string, IncomingSkill[]>();
+  for (const item of items) {
+    for (let dir = posix.dirname(item.directoryName); dir !== "." && dir !== "/"; dir = posix.dirname(dir)) {
+      const children = index.get(dir) ?? [];
+      children.push(item);
+      index.set(dir, children);
     }
   }
-  return nearest;
+  return index;
 }
 
 /** 同一端内目录包含 `skill` 目录的最近一个技能（列表的 parentKey）。 */
@@ -204,123 +200,83 @@ export function createSkillDataSyncMethods(options: {
   }
 
   /** 超限项不计算哈希（性能措施 3）。 */
-  async function hashSkill(skill: ResolvedUserSkill): Promise<string | undefined> {
+  async function hashSkill(skill: ResolvedUserSkill, includeExecutableBits = false): Promise<string | undefined> {
     const contentRoot = await realpath(skill.directoryPath);
     const scan = await scanDirectoryContent(contentRoot);
-    return scan.totalBytes > maxItemBytes ? undefined : await hashDirectoryContent(contentRoot);
+    return scan.totalBytes > maxItemBytes ? undefined : await hashDirectoryContent(contentRoot, { includeExecutableBits });
   }
 
   async function importOne(params: {
     item: DataSyncImportItem;
-    index: number;
-    payloadItem: SkillDataSyncPayload["items"][number] | undefined;
+    incoming: IncomingSkill;
+    existing?: ResolvedUserSkill;
+    children: IncomingSkill[];
     incomingRoot: string;
-    tempRoot: string;
     targetRoot: string;
-    current: Map<string, ResolvedUserSkill>;
-    /** 本次导入中已写入目标端、来源目录包含本项目录的最近上级。 */
-    placedAncestor: PlacedSkill | undefined;
-    /** 还原备份失败时调用：临时目录里留着原内容，不能删除。 */
+    backupPath: string;
     keepTempRoot: () => void;
-  }): Promise<DataSyncImportResultItem & { createdPath?: string }> {
-    const { item, payloadItem, current, placedAncestor } = params;
-    const failed = (error: string) => ({ key: item.key, status: "failed" as const, error });
-    if (!payloadItem) return failed("skill is missing from the sync payload");
-    // 本项目录在已落位上级之内：文件已随上级目录写入，位置 = 上级落位路径 + 相对路径。
-    const followedPath = placedAncestor
-      ? resolveSkillSyncPathWithin(
-          placedAncestor.path,
-          payloadItem.directoryName.slice(placedAncestor.directoryName.length + 1),
-        )
-      : undefined;
-    const extractedPath =
-      followedPath ?? resolveSkillSyncPathWithin(params.incomingRoot, payloadItem.directoryName);
-    const content = await readSkillFileOrNull(join(extractedPath, SKILL_FILE_NAME));
-    if (content === null) return failed("SKILL.md is missing");
-    // 修复：缺省名称原来取完整 directoryName（如 `group/plain`），扫描侧取目录最后一段（`plain`），
-    // 嵌套且没有 frontmatter name 的技能 key 必然对不上，导入一律失败。现在两侧都取最后一段；key 校验保留。
-    const metadata = parseSkillMetadata(content, posix.basename(payloadItem.directoryName));
-    if (normalizeSkillNameKey(metadata.name) !== item.key) {
-      return failed("skill name does not match the sync key");
-    }
-    const existing = current.get(item.key);
-
-    if (followedPath) {
-      // 目标端原来已有该技能（在其他目录）：不覆盖它；随上级写入的这份文件留在上级目录里。
-      if (existing) {
-        return failed(
-          `written along with its parent skill, but the target already has this skill at ${existing.directoryPath}; it was not overwritten`,
-        );
-      }
-      return { key: item.key, status: "created", createdPath: followedPath };
-    }
-
-    if (item.mode === "createOnly") {
-      // 列表加载后目标端出现同名技能：不写入，提示刷新后重试。
-      if (existing) return { key: item.key, status: "conflict" };
-      const targetPath = resolveSkillSyncPathWithin(params.targetRoot, payloadItem.directoryName);
-      // 修复：原来先用同步 existsSync 检查再 rename。existsSync 跟随软链，悬空软链被当成空位；
-      // 检查与写入之间也有竞态。现在直接 rename：目标是非空目录、文件或软链时 rename 会失败，
-      // 失败后再用 lstat 判断是不是「已被占用」（空目录会被直接替换，里面没有内容可丢）。
-      try {
-        await mkdir(dirname(targetPath), { recursive: true });
-        await rename(extractedPath, targetPath);
-        return { key: item.key, status: "created", createdPath: targetPath };
-      } catch (error) {
-        if (await pathExists(targetPath))
-          return failed(`target path already exists: ${targetPath}`);
-        return failed(errorMessage(error));
+  }): Promise<DataSyncImportResultItem> {
+    const { item, incoming, existing, incomingRoot, targetRoot, children, backupPath } = params;
+    const failed = (error: string): DataSyncImportResultItem => ({ key: item.key, status: "failed", error });
+    const creating = item.mode === "createOnly";
+    if ((creating && existing) || (!creating && !existing)) return { key: item.key, status: "conflict" };
+    if (existing && (existing.location !== "zcode" || existing.isSymlink)) return failed("nested-target");
+    const logicalPath = existing?.directoryPath ?? resolveSkillSyncPathWithin(targetRoot, incoming.directoryName);
+    // OW-P042：命令与技能的新增和覆盖均在实际目标父目录内发布。
+    const targetPath = await prepareSyncWriteParent(targetRoot, logicalPath);
+    const staged = resolveSkillSyncPathWithin(incomingRoot, incoming.directoryName);
+    for (const entry of [incoming, ...children]) {
+      const dir = resolveSkillSyncPathWithin(incomingRoot, entry.directoryName);
+      const content = await readSkillFileOrNull(join(dir, SKILL_FILE_NAME));
+      if (content === null) return failed("SKILL.md is missing");
+      const metadata = parseSkillMetadata(content, posix.basename(entry.directoryName));
+      if (normalizeSkillNameKey(metadata.name) !== entry.key) {
+        return failed("invalid skill metadata");
       }
     }
+    if (existing) {
+      if (!(await pathExists(targetPath))) return { key: item.key, status: "conflict" };
+      // OW-P037：以实际目录核验目标独有的子技能，包括按名称去重后隐藏的安装。
+      if (await hasSymlinkWithin(targetRoot, logicalPath)) return failed("nested-target");
+      for await (const path of walkSkillMarkdownPaths(logicalPath, { onError: (_path, error) => { throw error; } })) {
+        if (dirname(path) !== logicalPath) return failed("nested-target");
+      }
+      const expected = item.expectedTargetHash;
+      const actualHash = await hashDirectoryContent(logicalPath, { includeExecutableBits: expected?.includes(":") });
+      if (!expected || actualHash !== expected) {
+        return { key: item.key, status: "conflict" };
+      }
+    } else if (await pathExists(targetPath)) {
+      return failed("target path already exists");
+    }
 
-    if (!existing) return { key: item.key, status: "conflict" };
-    if (existing.location !== "zcode" || existing.isSymlink) {
-      return failed(`target cannot be overwritten: ${existing.directoryPath}`);
-    }
-    // 修复：覆盖是整目录替换，原来不检查目标端嵌套在该目录里的其他技能（例如 parent/child），
-    // 替换后这些独立条目被删除，或被来源版本改写（来源也有 child、但用户没勾选 child 时）。
-    // 父目录哈希包含子目录，expectedTargetHash 防不住。现在在哈希检查之前拒绝：该项失败，目录不动。
-    const nested = [...current.values()].find(
-      (skill) => skill !== existing && isPathWithin(existing.directoryPath, skill.directoryPath),
-    );
-    if (nested) {
-      return failed(`target directory contains another skill: ${nested.directoryPath}`);
-    }
-    const currentHash = await hashDirectoryContent(existing.directoryPath);
-    if (!item.expectedTargetHash || currentHash !== item.expectedTargetHash) {
-      return { key: item.key, status: "conflict" };
-    }
-    // 覆盖：新目录已解压在同盘临时目录；原目录先改名为备份，再把新目录换上。
-    // 换上失败时把备份改回原位，目标保持原样；成功后备份随临时目录删除。
-    const backupPath = join(params.tempRoot, `backup-${params.index}`);
+    const states: CreatedSkillState[] = children.map(child => ({
+      directory: resolveSkillSyncPathWithin(logicalPath, posix.relative(incoming.directoryName, child.directoryName)),
+      enabled: child.enabled,
+    }));
+    if (creating) states.push({ directory: logicalPath, enabled: incoming.enabled });
+    await prepareSyncWriteParent(targetRoot, logicalPath);
+    if (existing) await rename(targetPath, backupPath);
+    let published = false;
     try {
-      await rename(existing.directoryPath, backupPath);
+      await rename(staged, targetPath);
+      published = true;
+      await persistCreatedSkillStates(states);
     } catch (error) {
+      // 物理子树和它的启用设置是同一提交。失败时撤回新树并恢复覆盖前的原件。
+      try {
+        if (published) await rename(targetPath, staged);
+        if (existing) await rename(backupPath, targetPath);
+      } catch (restoreError) {
+        params.keepTempRoot();
+        logger.error(undefined, "技能导入失败且无法恢复原目录", {
+          backupPath, error: errorMessage(restoreError),
+        });
+        return failed("rollback-incomplete");
+      }
       return failed(errorMessage(error));
     }
-    try {
-      await rename(extractedPath, existing.directoryPath);
-      return { key: item.key, status: "updated" };
-    } catch (error) {
-      const message = errorMessage(error);
-      try {
-        await rename(backupPath, existing.directoryPath);
-      } catch (restoreError) {
-        // 修复：还原失败时异常原来直接抛出，finally 删除临时目录，备份（原内容）随之丢失。
-        // 现在保留临时目录，该项失败并在原因中写明备份位置，交给用户手动恢复。
-        params.keepTempRoot();
-        logger.error(undefined, "技能覆盖失败且还原备份失败，已保留备份", {
-          target: existing.directoryPath,
-          backupPath,
-          error: message,
-          restoreError: errorMessage(restoreError),
-        });
-        return failed(
-          `${message}; restoring the original failed, original content kept at ${backupPath}`,
-        );
-      }
-      return failed(message);
-    }
+    return { key: item.key, status: creating ? "created" : "updated" };
   }
 
   return {
@@ -344,7 +300,7 @@ export function createSkillDataSyncMethods(options: {
       await Promise.all(
         params.keys.map(async (key) => {
           const skill = skills.get(key);
-          const hash = skill ? await hashSkill(skill) : undefined;
+          const hash = skill ? await hashSkill(skill, params.includeExecutableBits) : undefined;
           if (hash) hashes[key] = hash;
         }),
       );
@@ -352,6 +308,9 @@ export function createSkillDataSyncMethods(options: {
     },
 
     async checkSyncWriteAccess() {
+      const root = getUserZcodeSkillRoot();
+      try { await prepareSyncWriteParent(root, join(root, ".sync-preflight")); }
+      catch (error) { return { ok: false, path: root, error: errorMessage(error) }; }
       return await checkRemoteSyncDirectoriesWriteAccess([
         getUserZcodeSkillRoot(),
         dirname(getCliConfigPath()),
@@ -376,6 +335,18 @@ export function createSkillDataSyncMethods(options: {
             (other) => other !== skill && isPathWithin(other.directoryPath, skill.directoryPath),
           ),
       );
+      // OW-P041：物理上独立的两个来源根可能投影到同一归档子树，展开后会改变父技能的哈希。
+      const nativeRoots = packed.filter(skill => skill.location === "zcode");
+      const overlaps = (left: string, right: string) =>
+        left === right || left.startsWith(right + "/") || right.startsWith(left + "/");
+      const relocated = packed.filter(skill => skill.location === "agents" &&
+        nativeRoots.some(other => overlaps(other.directoryName.toLowerCase(), skill.directoryName.toLowerCase())));
+      const reserved = new Set(selected.map(skill => skill.directoryName.split("/")[0]!.toLowerCase()));
+      let prefix = "agents";
+      for (let n = 2; reserved.has(prefix); n++) prefix = "agents-" + n;
+      const archivePath = (skill: ResolvedUserSkill) =>
+        relocated.some(root => root === skill || isPathWithin(root.directoryPath, skill.directoryPath))
+          ? posix.join(prefix, skill.directoryName) : skill.directoryName;
       const entries = await Promise.all(
         packed.map(async (skill) => {
           const sourcePath = await realpath(skill.directoryPath);
@@ -387,7 +358,7 @@ export function createSkillDataSyncMethods(options: {
               phase: "selected-content",
             });
           }
-          return { sourcePath, archivePath: skill.directoryName };
+          return { sourcePath, archivePath: archivePath(skill) };
         }),
       );
       const archive = await createSkillSyncArchive(entries);
@@ -404,7 +375,7 @@ export function createSkillDataSyncMethods(options: {
         items: selected.map((skill) => ({
           key: skill.key,
           name: skill.name,
-          directoryName: skill.directoryName,
+          directoryName: archivePath(skill),
           enabled: isSkillEnabled(overrides, skill.skillFilePath),
         })),
       };
@@ -419,122 +390,113 @@ export function createSkillDataSyncMethods(options: {
         });
       }
       const targetRoot = getUserZcodeSkillRoot();
-      await mkdir(targetRoot, { recursive: true });
       // 临时目录放在技能根内，保证与目标同盘，rename 是原子替换。点目录不会被技能扫描读到。
-      const tempRoot = join(targetRoot, `.sync-tmp-${randomUUID()}`);
+      const tempRoot = await prepareSyncWriteParent(targetRoot, join(targetRoot, `.sync-tmp-${randomUUID()}`));
       const incomingRoot = join(tempRoot, "incoming");
       let keepTempRoot = false;
+      const outcomes = new Map<string, DataSyncImportResultItem>();
       try {
         await extractSkillSyncArchive(params.payload.archive, incomingRoot, {
           maxExtractedBytes: maxItemBytes,
         });
-        const current = await resolveUserSkills();
-        const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
-        const results: Array<DataSyncImportResultItem & { createdPath?: string }> = [];
-        // 修复（F2）：每项原来按传入顺序各自从同一棵解压树 rename 走自己的子树。来源嵌套
-        // （parent 与 parent/child 同推）时：child 先处理会建出 target/parent，parent 再 rename 到非空目录失败；
-        // parent 先处理会带走 child 的文件，child 找不到 SKILL.md 失败。服务是边界，不依赖 UI 顺序：
-        // 现在按来源目录层级先上级后下级处理，并记录已落位的上级；下级在已落位上级之内时，
-        // 文件已随上级写入，按「上级落位路径 + 相对路径」确认结果（见 importOne）。
-        const placed: PlacedSkill[] = [];
-        const ordered = [...params.items.entries()].sort(
-          ([, left], [, right]) =>
-            directoryDepth(payloadByKey.get(left.key)?.directoryName) -
-            directoryDepth(payloadByKey.get(right.key)?.directoryName),
-        );
-        for (const [index, item] of ordered) {
-          const payloadItem = payloadByKey.get(item.key);
-          const result = await importOne({
-            item,
-            index,
-            payloadItem,
-            incomingRoot,
-            tempRoot,
-            targetRoot,
-            current,
-            placedAncestor: payloadItem
-              ? findPlacedAncestor(placed, payloadItem.directoryName)
-              : undefined,
-            keepTempRoot: () => {
-              keepTempRoot = true;
-            },
-          });
-          results[index] = result;
-          const placedPath =
-            result.status === "created"
-              ? result.createdPath
-              : result.status === "updated"
-                ? current.get(item.key)?.directoryPath
-                : undefined;
-          if (payloadItem && placedPath) {
-            placed.push({ directoryName: payloadItem.directoryName, path: placedPath });
+        return await withFileLock(join(dirname(tempRoot), ".sync-import"), async () => {
+          const byKey = new Map(params.payload.items.map(item => [item.key, item]));
+          const selected = new Map(params.items.map(item => [item.key, item]));
+          const descendants = indexSkillDescendants(params.payload.items);
+          // OW-P037：并发导入共用锁。只在锁内建立一次目录索引，写前重读本项和受影响的子树。
+          const current = await resolveUserSkills();
+          const ordered = [...params.items].sort((a, b) =>
+            directoryDepth(byKey.get(a.key)?.directoryName) - directoryDepth(byKey.get(b.key)?.directoryName));
+          for (const [index, item] of ordered.entries()) {
+            if (outcomes.has(item.key)) continue;
+            const incoming = byKey.get(item.key);
+            if (!incoming) {
+              outcomes.set(item.key, { key: item.key, status: "failed", error: "missing skill payload" });
+              continue;
+            }
+            const children = descendants.get(incoming.directoryName) ?? [];
+            const existing = current.get(item.key);
+            let intendedPath: string | undefined;
+            try {
+              intendedPath = existing?.directoryPath ?? resolveSkillSyncPathWithin(targetRoot, incoming.directoryName);
+              let reason: string | undefined;
+              for (const child of children) {
+                const choice = selected.get(child.key);
+                const local = current.get(child.key);
+                if (!choice) {
+                  reason = "nested-selection";
+                  continue;
+                }
+                if ((choice.mode === "createOnly" && local) || (choice.mode === "overwrite" && !local)) {
+                  outcomes.set(child.key, { key: child.key, status: "conflict" });
+                  reason = "nested-target";
+                } else if (local) {
+                  // 子项已有独立所有者。父目录保留；只有同址的已选子项可以独立检查、覆盖。
+                  reason = "nested-target";
+                }
+              }
+              const result = reason
+                ? { key: item.key, status: "failed" as const, error: reason }
+                : await importOne({
+                    item, incoming, existing, children, incomingRoot, targetRoot,
+                    backupPath: join(tempRoot, "backup-" + index),
+                    keepTempRoot: () => { keepTempRoot = true; },
+                  });
+              outcomes.set(item.key, result);
+              if (result.status === "created" || result.status === "updated") {
+                for (const child of children) outcomes.set(child.key, { key: child.key, status: "created" });
+                continue;
+              }
+            } catch (error) {
+              outcomes.set(item.key, { key: item.key, status: "failed", error: errorMessage(error) });
+            }
+            for (const child of children) {
+              if (!selected.has(child.key) || outcomes.has(child.key)) continue;
+              const local = current.get(child.key);
+              const suffix = posix.relative(incoming.directoryName, child.directoryName);
+              const sameLocation = intendedPath && local?.directoryPath === join(intendedPath, ...suffix.split("/"));
+              if (sameLocation && selected.get(child.key)?.mode === "overwrite") continue;
+              outcomes.set(child.key, { key: child.key, status: "failed", error: "nested-target" });
+            }
           }
-        }
-        await applyCreatedEnabledState(results, payloadByKey);
-        return { results: results.map(({ createdPath: _createdPath, ...result }) => result) };
+          return { results: params.items.map(item => outcomes.get(item.key)!) };
+        });
+      } catch (error) {
+        if (!outcomes.size) throw error;
+        logger.warn(undefined, "技能批次在部分提交后结束", { error: errorMessage(error) });
+        const message = errorMessage(error);
+        return {
+          results: params.items.map(({ key }) => outcomes.get(key) ?? { key, status: "failed", error: message }),
+        };
       } finally {
-        if (!keepTempRoot) await rm(tempRoot, { recursive: true, force: true });
+        if (!keepTempRoot) {
+          await rm(tempRoot, { recursive: true, force: true }).catch(error => {
+            logger.warn(undefined, "技能导入临时目录清理失败", { error: errorMessage(error) });
+          });
+        }
       }
     },
   };
 }
 
-/**
- * 启用状态：新建项带上来源的启用状态，键换算为目标端 SKILL.md 路径；更新项不动，保留目标端状态。
- * config.json 写入失败（例如文件损坏）时删除需要写状态的新建项目录并标为失败，避免远端出现状态不对的技能。
- *
- * 修复：原来只给来源禁用的新建项写 `{ enable: false }`；目标端同路径残留的 `enable:false`（例如以前删除的
- * 技能留下的）不清除，来源启用的新建项在远端仍是禁用，列表哈希不含启用状态，还显示「已同步」。
- * 现在与 subagentDataSync 一致：先读目标端当前 override，只处理来源状态与目标状态不一致的新建项
- * （来源禁用→写 `{ enable: false }`；来源启用→删除该 key，开启态不落盘，见 skillsService 的 writeSkillEnabledMap）。
- * 来源启用且没有残留的新建项不写 config：文件损坏时按全部启用读取，这些项照常新建。
- */
-async function applyCreatedEnabledState(
-  results: Array<DataSyncImportResultItem & { createdPath?: string }>,
-  payloadByKey: Map<string, SkillDataSyncPayload["items"][number]>,
-): Promise<void> {
-  const overrides = await readSkillEnabledOverrides();
-  const entries = results.flatMap((result) => {
-    if (result.status !== "created" || !result.createdPath) return [];
-    const skillFilePath = join(result.createdPath, SKILL_FILE_NAME);
-    const disabled = payloadByKey.get(result.key)?.enabled === false;
-    return disabled === !isSkillEnabled(overrides, skillFilePath)
-      ? []
-      : [{ result, configKey: normalizeSkillConfigPath(skillFilePath), disabled }];
+/** 新目录使用来源开关。覆盖项保留目标开关，没有差异时不触碰配置文件。 */
+async function persistCreatedSkillStates(states: CreatedSkillState[]): Promise<void> {
+  if (!states.length) return;
+  const current = await readSkillEnabledOverrides();
+  const changes = states.map(state => ({
+    key: normalizeSkillConfigPath(join(state.directory, SKILL_FILE_NAME)), enabled: state.enabled,
+  })).filter(({ key, enabled }) => isSkillEnabled(current, key) !== enabled);
+  if (!changes.length) return;
+  await updateJsonObjectFile(getCliConfigPath(), config => {
+    const skills = config.skills && typeof config.skills === "object" && !Array.isArray(config.skills)
+      ? { ...(config.skills as Record<string, unknown>) } : {};
+    for (const { key, enabled } of changes) {
+      if (enabled) delete skills[key];
+      else skills[key] = { enable: false };
+    }
+    const next = { ...config };
+    if (Object.keys(skills).length) next.skills = skills;
+    else delete next.skills;
+    return next;
   });
-  if (entries.length === 0) return;
-  try {
-    await updateJsonObjectFile(getCliConfigPath(), (config) => {
-      const next = { ...config };
-      const skills =
-        config.skills && typeof config.skills === "object" && !Array.isArray(config.skills)
-          ? { ...(config.skills as Record<string, unknown>) }
-          : {};
-      for (const { configKey, disabled } of entries) {
-        if (disabled) skills[configKey] = { enable: false };
-        else delete skills[configKey];
-      }
-      if (Object.keys(skills).length > 0) next.skills = skills;
-      else delete next.skills;
-      return next;
-    });
-  } catch (error) {
-    const removed = entries.map(({ result }) => result.createdPath!);
-    for (const { result } of entries) {
-      await rm(result.createdPath!, { recursive: true, force: true });
-      result.status = "failed";
-      result.error = errorMessage(error);
-    }
-    // 随被删除的上级目录一起写入的下级新建项，文件也已不在，同样标为失败。
-    for (const result of results) {
-      if (
-        result.status === "created" &&
-        result.createdPath &&
-        removed.some((path) => isPathWithin(path, result.createdPath!))
-      ) {
-        result.status = "failed";
-        result.error = errorMessage(error);
-      }
-    }
-  }
 }

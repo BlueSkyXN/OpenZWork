@@ -2,6 +2,15 @@
   "version": 1,
   "suites": [
     {
+      "capability": "config-package",
+      "files": [
+        "packages/services/test/configPackageRoundTrip.test.ts",
+        "packages/services/test/configPackageBoundaries.test.ts",
+        "packages/services/test/configPackageSkillImport.test.ts",
+        "packages/services/test/configPackageConflicts.test.ts"
+      ]
+    },
+    {
       "capability": "cua-placeholder-boundary",
       "files": [
         "packages/desktop/test/placeholderProducerDetection.test.ts",
