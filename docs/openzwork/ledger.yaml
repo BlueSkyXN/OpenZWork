@@ -859,6 +859,10 @@ entries:
     paths:
       - packages/desktop/src/main/webRemoteControlTransport.ts
       - packages/desktop/test/e2e/conversation-session/permissions/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts
+      - packages/desktop/test/e2e/conversation-session/permissions/manual-review/pending/conversation-session-permission-hook-race.test.ts
+      - packages/desktop/test/e2e/helpers/permission-hook-race-fixture.ts
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-permission-hook-race.json
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-permission-hook-race.json
       - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-auto-drain.test.ts
       - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-bash-read-state.test.ts
       - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-claude-anthropic-reasoning-budget.test.ts
