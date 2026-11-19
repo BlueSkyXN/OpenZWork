@@ -58,11 +58,16 @@ function hasPath(value: unknown): boolean {
   return !!value && typeof value === "object" && Object.values(value).some(hasPath);
 }
 
-async function syncState(owner: SyncOwners[keyof SyncOwners], keys: string[]): Promise<LocalState> {
+async function syncState(
+  owner: SyncOwners[keyof SyncOwners],
+  keys: string[],
+  includeExecutableBits = false,
+): Promise<LocalState> {
   const list = await owner.listSyncItems();
   const exists = new Set(list.items.map((item) => item.key));
   const { hashes } = await owner.getSyncContentHashes({
     keys: keys.filter((key) => exists.has(key)),
+    ...(includeExecutableBits && { includeExecutableBits }),
   });
   return { list, hashes };
 }
@@ -71,6 +76,7 @@ async function buildPreview(
   file: ConfigPackage,
   options: Owners,
   platform: string,
+  skillComparison: Map<string, string>,
 ): Promise<PreviewState> {
   const personal = await previewPersonal(file, options);
   const rows: ConfigRow[] = [],
@@ -96,6 +102,7 @@ async function buildPreview(
     const state = await syncState(
       options.owners[category],
       group.entries.map((item) => item.key),
+      category === "skills" && skillComparison.size > 0,
     ).catch(() => undefined);
     const existing = new Map(state?.list.items.map((item) => [item.key, item]));
     for (const { key, name, hash } of group.entries) {
@@ -107,7 +114,14 @@ async function buildPreview(
         : (state.list.importBlockedReason ??
           local?.overwriteBlockedReason ??
           (local && !current ? "target-read" : undefined));
-      const status = reason ? "blocked" : !local ? "new" : current === hash ? "same" : "different";
+      const incoming = category === "skills" ? (skillComparison.get(key) ?? hash) : hash;
+      const status = reason
+        ? "blocked"
+        : !local
+          ? "new"
+          : current === incoming
+            ? "same"
+            : "different";
       rows.push({
         category,
         key,
@@ -223,12 +237,14 @@ async function apply(
           ...(status === "failed"
             ? {
                 reason:
-                  row?.error === "nested-selection"
-                    ? row.error
-                    : row?.error === "nested-target" ||
-                        row?.error?.startsWith("target directory contains another skill: ")
-                      ? "nested-target"
-                      : "target-write",
+                  row?.error === "rollback-incomplete"
+                    ? "skill-rollback-incomplete"
+                    : row?.error === "nested-selection"
+                      ? row.error
+                      : row?.error === "nested-target" ||
+                          row?.error?.startsWith("target directory contains another skill: ")
+                        ? "nested-target"
+                        : "target-write",
               }
             : {}),
         });
@@ -256,8 +272,9 @@ export function createPreviewMethods(
     running = new Map<string, Promise<ConfigApplyResult>>();
   return {
     async previewFile(path) {
-      const file = await readPackage(path);
-      const state = await buildPreview(file, options, platform);
+      const skillComparison = new Map<string, string>();
+      const file = await readPackage(path, platform === "win32" ? undefined : skillComparison);
+      const state = await buildPreview(file, options, platform, skillComparison);
       const previewId = randomUUID();
       if (previews.size >= 4) previews.delete(previews.keys().next().value!);
       previews.set(previewId, state);

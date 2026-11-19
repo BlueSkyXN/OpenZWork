@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { lstat, mkdir, readFile, readdir, rm } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { lstat, readFile, readdir, rm } from "node:fs/promises";
+import { join, relative } from "node:path";
 import type {
   CommandDataSyncPayload,
   DataSyncImportItem,
@@ -17,6 +17,7 @@ import { pathExists, withUserMarkdownLock, writeFileAtomically } from "#src/fs/a
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import { resolveUserHomeDir } from "#src/subagents/subagentStorage.js";
 import type { IDataSyncCategoryService } from "./contract.js";
+import { prepareSyncWriteParent } from "./directoryContent.js";
 import { errorMessage } from "./syncUtils.js";
 
 const COMMAND_EXTENSION = /\.md$/iu;
@@ -153,11 +154,13 @@ async function importOne(
     if (item.mode === "createOnly") {
       // 列表加载后目标端出现同 key 命令（任一目录）：不写入，提示刷新后重试。
       if (existing) return { key: item.key, status: "conflict" };
-      const targetPath = join(commandsRoot("openzwork"), ...segments);
+      // OW-P042：创建项也核对实际父目录，目录别名不能成为写入落点。
+      const root = commandsRoot("openzwork");
+      const logicalPath = join(root, ...segments);
+      const targetPath = await prepareSyncWriteParent(root, logicalPath);
       if (await pathExists(targetPath)) return failed(`target path already exists: ${targetPath}`);
-      await mkdir(dirname(targetPath), { recursive: true });
       await writeFileAtomically(targetPath, content);
-      return { key: item.key, status: "created", createdPath: targetPath };
+      return { key: item.key, status: "created", createdPath: logicalPath };
     }
     if (!existing || !item.expectedTargetHash) return { key: item.key, status: "conflict" };
     // 服务端兜底：兼容目录和软链目标不覆盖（列表已标为不能同步）。
@@ -168,8 +171,9 @@ async function importOne(
     if (hashContent(existing.content) !== item.expectedTargetHash) {
       return { key: item.key, status: "conflict" };
     }
-    const { mode } = await lstat(existing.filePath);
-    await writeFileAtomically(existing.filePath, content, mode);
+    const targetPath = await prepareSyncWriteParent(commandsRoot("openzwork"), existing.filePath);
+    const { mode } = await lstat(targetPath);
+    await writeFileAtomically(targetPath, content, mode);
     return { key: item.key, status: "updated" };
   } catch (error) {
     return failed(errorMessage(error));
@@ -240,6 +244,9 @@ export function createCommandDataSyncMethods({ requireComplete = false } = {}): 
     },
 
     async checkSyncWriteAccess() {
+      const root = commandsRoot("openzwork");
+      try { await prepareSyncWriteParent(root, join(root, ".sync-preflight")); }
+      catch (error) { return { ok: false, path: root, error: errorMessage(error) }; }
       return await checkRemoteSyncDirectoriesWriteAccess([
         commandsRoot("openzwork"),
         join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "cli"),

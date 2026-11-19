@@ -6,6 +6,28 @@ import { CONFIG_PACKAGE_CATEGORIES, type ConfigCategory } from "@zcode/shared";
 
 const categories: ConfigCategory[] = [...CONFIG_PACKAGE_CATEGORIES];
 describe("两个隔离的用户目录", () => {
+  it("CP-12 同事件简单 shell 钩子显示程序名，参数保留在 Host", async () => {
+    const root = await sandbox(),
+      a = join(root, "source"),
+      file = join(root, "hooks.gz");
+    const hooks = [
+      "printf private-argument",
+      "/bin/pwd",
+      "'/fixture path/bin/tool' private-argument",
+    ].map((command) => ({ type: "command", command }));
+    await put(
+      join(a, ".openzwork/cli/config.json"),
+      JSON.stringify({ hooks: { events: { Stop: [{ hooks }] } } }),
+    );
+    await ownerAt(a).service.exportToFile(file, ["hooks"]);
+    const preview = await ownerAt(join(root, "target")).service.previewFile(file);
+    expect(preview.rows.map((row) => row.name)).toEqual([
+      "Stop · printf",
+      "Stop · pwd",
+      "Stop · tool",
+    ]);
+    expect(JSON.stringify(preview)).not.toContain("private-argument");
+  });
   it("CP-02/12 预览、取消及导入其他项时保留目标独有的旧版子智能体", async () => {
     const root = await sandbox(),
       a = join(root, "a"),

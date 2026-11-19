@@ -20,7 +20,10 @@ export async function writePackage(path: string, file: ConfigPackage) {
   return bytes.length;
 }
 
-export async function readPackage(path: string): Promise<ConfigPackage> {
+export async function readPackage(
+  path: string,
+  skillComparison?: Map<string, string>,
+): Promise<ConfigPackage> {
   checkPath(path);
   let parsed: unknown;
   try {
@@ -56,5 +59,5 @@ export async function readPackage(path: string): Promise<ConfigPackage> {
       throw new Error("config-package.size");
     throw new Error("config-package.unreadable");
   }
-  return validatePackage(parsed);
+  return validatePackage(parsed, skillComparison);
 }

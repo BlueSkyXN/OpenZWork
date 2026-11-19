@@ -27,6 +27,8 @@ export interface IDataSyncCategoryService<TPayload> {
   getSyncContentHashes(params: {
     keys: string[];
     targetHomeDir?: string;
+    /** 本机 POSIX 配置包的技能比较使用文件执行位，归档 v1 内容哈希沿用原格式。 */
+    includeExecutableBits?: boolean;
     workspace?: DataSyncWorkspaceMapping;
   }): Promise<DataSyncContentHashesResult>;
   checkSyncWriteAccess(): Promise<RemoteSyncWriteAccessResult>;

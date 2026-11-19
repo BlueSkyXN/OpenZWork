@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import {
   ProviderConfigResolver,
   ProviderRegistry,
+  resolveInitialModelSelection,
   type ModelSelection,
   type PersonalProviderConfigRepository,
   type ProviderConfigLayerSnapshot,
@@ -59,16 +60,21 @@ export async function previewPersonal(
       if (category === "providers") {
         const local = personalData((await owners.source.read(randomUUID())).personalConfig);
         state.hashes = new Map(providerEntries(local).map((item) => [item.key, item.hash]));
-        const desired = file.categories.providers?.payload.defaultModelSelection;
+        const payload = file.categories.providers!.payload;
+        const desired = payload.defaultModelSelection;
         if (
           !local.defaultModelSelection &&
           desired &&
           group.entries.some((row) => row.key === desired.providerId)
         ) {
-          state.defaultModelCandidate = {
-            providerId: desired.providerId,
-            modelId: desired.modelId,
-          };
+          await owners.registry.start();
+          const proposed = decodeProviderConfigFile({ schemaVersion: 1, config: payload });
+          if (canResolve(owners.registry, proposed, desired)) {
+            state.defaultModelCandidate = {
+              providerId: desired.providerId,
+              modelId: desired.modelId,
+            };
+          }
         }
       } else {
         state.prompt = (await owners.settings.get()).systemPromptSettings ?? null;
@@ -137,8 +143,11 @@ function canResolve(
     personalProviderOrder: candidate.providerOrder,
   });
   const view = new ProviderRegistry(resolution.registryProviders);
-  const model = view.getModel(selection.providerId, selection.modelId);
-  return !!model && (!selection.options?.reasoningLevel || view.validateSelection(selection).ok);
+  // 使用新草稿相同的判定，隐藏的供应商和缺少有效档位的选择都不能回报已采用。
+  return (
+    resolveInitialModelSelection({ configuredDefault: selection, registry: view.getView() })
+      .source === "configured-default"
+  );
 }
 
 // 合并只操作正式 codec 的规范化数据；目标已有顺序、两组精确规则和默认模型均在同一锁内读取。

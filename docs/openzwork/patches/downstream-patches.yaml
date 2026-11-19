@@ -805,6 +805,7 @@ patches:
       - packages/services/src/data-sync/skillDataSync.ts
     regression:
       - packages/services/test/configPackageConflicts.test.ts
+      - packages/services/test/configPackageSkillImport.test.ts
     retire: 上游在父目录移动前校验子项落位，异位同名、过期、局部选择及正常新增回归均通过。
 
   - id: OW-P041
@@ -825,6 +826,26 @@ patches:
       - packages/services/test/configPackageBoundaries.test.ts
     retire: 上游支持跨根重叠路径并通过同一往返回归。
 
+  - id: OW-P042
+    title: 命令与技能写入者未检查目标父目录的实际归属
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 配置根的目标父目录是符号链接或 junction。
+    impact: 新条目可能写入配置根以外的位置。
+    cause: 原实现检查相对路径和最终目标，仅按字符串拼接父目录。
+    evidence: 两个分类的同根目录别名夹具覆盖新增项的物理父目录判定。
+    fix: 预检配置根，逐段核实父目录，使用核实后的物理路径发布文件。
+    files:
+      - packages/services/src/data-sync/commandDataSync.ts
+      - packages/services/src/data-sync/skillDataSync.ts
+      - packages/services/src/data-sync/directoryContent.ts
+    regression:
+      - packages/services/test/configPackageSkillImport.test.ts
+    retire: 上游创建和替换时核验实际父目录并通过分类回归。
+
   - id: OW-P043
     title: 技能归档解包时丢失辅助文件执行位
     kind: product
@@ -841,4 +862,5 @@ patches:
       - packages/services/src/skill-sync/skillSyncArchive.ts
     regression:
       - packages/services/test/configPackageBoundaries.test.ts
+      - packages/services/test/configPackageSkillImport.test.ts
     retire: 上游解包器保留 POSIX 执行位并通过往返回归。

@@ -32,7 +32,10 @@ function match(entries: ConfigEntry[], expected: ConfigEntry[]) {
     check(item && item.hash === entry.hash && item.name === entry.name);
   }
 }
-async function validateSkills(group: NonNullable<ConfigPackage["categories"]["skills"]>) {
+async function validateSkills(
+  group: NonNullable<ConfigPackage["categories"]["skills"]>,
+  comparison?: Map<string, string>,
+) {
   const { items, archive } = decodeSkills(group);
   check(archive.byteLength <= SKILL_DATA_SYNC_MAX_ITEM_BYTES);
   // 同步包内层也是 gzip。先约束含 tar 头和填充的展开量，再交给原解包器检查路径与实际文件总量。
@@ -57,7 +60,9 @@ async function validateSkills(group: NonNullable<ConfigPackage["categories"]["sk
       declared.delete(directoryName);
       const metadata = parseSkillMetadata(await readFile(markdown, "utf8"), basename(dir));
       check(item.name === metadata.name && item.key === metadata.name.trim().toLowerCase());
-      expected.push({ key: item.key, name: item.name, hash: await hashDirectoryContent(dir) });
+      const hash = await hashDirectoryContent(dir, { includeExecutableBits: !!comparison });
+      comparison?.set(item.key, hash);
+      expected.push({ key: item.key, name: item.name, hash: hash.split(":")[0]! });
     }
     if (declared.size) throw new Error(SKILL_PATHS_ERROR);
     match(group.entries, expected);
@@ -66,7 +71,10 @@ async function validateSkills(group: NonNullable<ConfigPackage["categories"]["sk
   }
 }
 
-export async function validatePackage(value: unknown): Promise<ConfigPackage> {
+export async function validatePackage(
+  value: unknown,
+  skillComparison?: Map<string, string>,
+): Promise<ConfigPackage> {
   if (
     value &&
     typeof value === "object" &&
@@ -138,7 +146,8 @@ export async function validatePackage(value: unknown): Promise<ConfigPackage> {
           return { key, name, hash: contentHash(stableJson(comparable)) };
         }),
       );
-    if (skills) await validateSkills(skills);
+    if (skills)
+      await validateSkills(skills, file.sourcePlatform === "win32" ? undefined : skillComparison);
     if (providers) match(providers.entries, providerEntries(personalData(providers.payload)));
     if (systemPrompt)
       match(
