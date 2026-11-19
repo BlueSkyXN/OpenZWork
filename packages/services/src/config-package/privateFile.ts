@@ -74,8 +74,10 @@ async function publishWindows(
           await handle.truncate(0);
           await handle.sync();
         } finally {
-          const current = await lstat(path, { bigint: true });
           const staged = await handle.stat({ bigint: true });
+          // Windows 可能拒绝用备份替换仍然打开的目标。先保存文件身份，关闭句柄后再核对路径。
+          await handle.close();
+          const current = await lstat(path, { bigint: true });
           if (current.dev === staged.dev && current.ino === staged.ino) {
             if (hasBackup) await rename(backup, path);
             else await rm(path);
@@ -117,7 +119,7 @@ export async function writePrivatePackage(
         owned = false;
       }
     } finally {
-      await handle.close();
+      if (handle.fd !== -1) await handle.close();
     }
     if (!acl) {
       await rename(temporary, path);
