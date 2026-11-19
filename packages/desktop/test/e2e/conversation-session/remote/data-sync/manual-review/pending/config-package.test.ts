@@ -252,13 +252,19 @@ describe("E2E_T4_CONFIG_PACKAGE", () => {
     });
     const config = JSON.parse(originalCli ?? "{}");
     const pkg = join(homeDir, "model-hooks.openzwork-config.gz");
-    const desired = { providerId: "personal:t4-review", modelId: "sample", options: { reasoningLevel: "disabled" } };
+    const desired = {
+      providerId: "personal:t4-review",
+      modelId: "sample",
+      options: { reasoningLevel: "disabled" },
+    };
     const localChoice = { ...desired, modelId: "local-choice" };
     const rules = ["Read", "Write"].map((matcher) => ({
       matcher,
-      hooks: [matcher === "Read"
-        ? { type: "process", command: "t4-formatter", args: [matcher], enabled: false }
-        : { type: "command", command: "t4-shell-formatter --private-fixture", enabled: false }],
+      hooks: [
+        matcher === "Read"
+          ? { type: "process", command: "t4-formatter", args: [matcher], enabled: false }
+          : { type: "command", command: "t4-shell-formatter --private-fixture", enabled: false },
+      ],
     }));
     const save = await browser.electron.mock("dialog", "showSaveDialog");
     const open = await browser.electron.mock("dialog", "showOpenDialog");
@@ -294,7 +300,13 @@ describe("E2E_T4_CONFIG_PACKAGE", () => {
         await click("import");
         await tid("row").waitForDisplayed();
       };
-      const hookRow = (matcher: string) => $("label*=PreToolUse · " + matcher + " · " + (matcher === "Read" ? "t4-formatter" : "t4-shell-formatter"));
+      const hookRow = (matcher: string) =>
+        $(
+          "label*=PreToolUse · " +
+            matcher +
+            " · " +
+            (matcher === "Read" ? "t4-formatter" : "t4-shell-formatter"),
+        );
       await choosePackage();
       await hookRow("Read").$("input").click();
       expect(await hookRow("Write").getText()).not.toContain("--private-fixture");
