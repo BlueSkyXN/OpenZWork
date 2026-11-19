@@ -261,6 +261,8 @@ export {
 export { createFsVolumeProbe } from "./storage/adapters/volumeProbe.js";
 export { runStorageScan } from "./storage/adapters/inProcessScanRunner.js";
 export { createSkillsService } from "./skills/skillsService.js";
+// OpenZWork(OZ-F014): 本机窗口连接拥有其预览的释放边界。
+export { attachConfigPackage } from "./config-package/node.js";
 export { createSkillSyncService } from "./skill-sync/skillSyncService.js";
 export { createDeviceSyncStateService, createUserConfigSyncService } from "./data-sync/node.js";
 export { createHostProviderProvisioningStatus } from "./provider-provisioning-status/node.js";
@@ -337,8 +339,11 @@ import { ISkillsService } from "./skills/skills.js";
 import { ISkillSyncService } from "./skill-sync/skillSync.js";
 import { IMcpSyncService } from "./mcp-sync/mcpSync.js";
 import { IPluginSyncService } from "./plugin-sync/pluginSync.js";
+// OpenZWork(OZ-F014): 只在桌面本机装配配置包，并复用已注册分类的实例。
+import { IConfigPackageService } from "./config-package/index.js";
+import { createConfigPackageService, userCategory } from "./config-package/node.js";
 import { IUserConfigSyncService } from "./data-sync/contract.js";
-import { createUserConfigSyncService } from "./data-sync/userConfigSyncService.js";
+import { createCommandDataSyncMethods, createSubagentDataSyncMethods, createUserConfigSyncService } from "./data-sync/node.js";
 import { IPluginsService } from "./plugins/plugins.js";
 import { IPluginManagementService } from "./plugins/pluginManagement.js";
 import { ISubagentsService } from "./subagents/subagents.js";
@@ -807,6 +812,8 @@ export function createLocalServices(options: {
     options.sourceServerWorkspaceService ?? createSourceServerWorkspaceService();
   // mcpSync/hooks 里引用 zcodeAgentService 的闭包是惰性调用，声明顺序不影响初始化。
   const skillsService = createSkillsService({ isDesktopRuntime: true });
+  const skillSyncService = createSkillSyncService();
+  const userConfigSyncService = createUserConfigSyncService();
   const mcpSyncService = createMcpSyncService({
     // mcp/list 的 host 消费点收拢到 mcpSync 服务；真实状态检查仍在 agent 进程。
     listMcpServerStatuses: (params) => zcodeAgentService.listMcpServerStatuses(params),
@@ -1403,8 +1410,9 @@ export function createLocalServices(options: {
     )
     .register(IFileWatcherService, createFileWatcherService())
     .register(ISourceServerWorkspaceService, sourceServerWorkspaceService)
-    .register(IAppUsageService, appUsageService)    .register(ISkillsService, skillsService)
-    .register(ISkillSyncService, createSkillSyncService())
+    .register(IAppUsageService, appUsageService)
+    .register(ISkillsService, skillsService)
+    .register(ISkillSyncService, skillSyncService)
     .register(IMcpSyncService, mcpSyncService)
     // 合并 MCP/Plugin Management 服务装配时误删了 plugin-sync 注册，
     // RemoteServiceAccess 仍会请求该频道，导致本地候选枚举超时、远端同步无法开始。
@@ -1421,7 +1429,7 @@ export function createLocalServices(options: {
     .register(IPluginUiAppToolsService, pluginUiAppToolsService)
     // OpenZWork：IPluginSyncService 已在上方 data-sync 域注册（避免重复注册）；
     // IUserConfigSyncService 为上游补注册的 data-sync 保留域服务，保留。
-    .register(IUserConfigSyncService, createUserConfigSyncService())
+    .register(IUserConfigSyncService, userConfigSyncService)
     .register(IPluginsService, createPluginsService({ isDesktopRuntime: true }))
     // 设置页插件管理薄服务——plugins/* 旧协议词的 host 侧唯一消费点。
     // OpenZWork（T15 修复）：onMutationSucceeded 传递在合并时丢失，插件变更信号
@@ -1446,6 +1454,17 @@ export function createLocalServices(options: {
   if (pluginUserOptionsReader) pluginUserOptionsReaders.set(services, pluginUserOptionsReader);
 
   providerRuntimes.set(services, providerRuntime);
+  // OpenZWork(OZ-F014): 独立 Server 和远端 attachment 不持有本机配置包通道。
+  if (options.agentRuntimeContext?.runtimeSurface === "desktop_local_host" && options.serviceAuthorityMode === "desktop-local") {
+    services.register(IConfigPackageService, createConfigPackageService({
+      owners: { subagents: createSubagentDataSyncMethods("original-bytes"), commands: createCommandDataSyncMethods({ requireComplete: true }),
+        hooks: userCategory(userConfigSyncService, "hooks"), mcp: mcpSyncService, skills: skillSyncService },
+      source: providerProvisioningSource,
+      // 直接交给持锁比较期望值的设置所有者。通知包装器只转发普通 patch。
+      settings: options.settingService ?? localSettings!.service,
+      repo: providerConfigRuntime.personalRepository, registry: providerRuntime.registryService,
+    }));
+  }
   providerProvisioningSources.set(services, providerProvisioningSource);
   providerProvisioningTriggerDisposers.set(services, providerProvisioningDisposers);
   // desktop-attached-remote 的组织态在远端 Host 库里，由远端自己的扫描器归档；本机不扫。

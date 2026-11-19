@@ -37,6 +37,8 @@ import { materializeBrowserRecordingArtifact } from "./browserRecordingArtifactM
 import { mainToExtensionWindowMessageSchema } from "@zcode/shared/extension-host";
 import {
   ServiceCollection,
+  // OpenZWork(OZ-F014): 本机桌面端口持有自己的配置包预览。
+  IConfigPackageService,
   IBotsService,
   ICredentialService,
   IFileService,
@@ -69,6 +71,7 @@ import {
 } from "@zcode/services";
 import {
   createLocalServices,
+  attachConfigPackage,
   createProjectWorkspaceNavigation,
   createRemoteProjectConnectionAdmission,
   releaseRemoteProjectProfileHost,
@@ -162,6 +165,7 @@ import { shouldReportHostConsoleError, stringifyHostLogArg } from "./hostLog.js"
 import { flushHostE2ECoverage } from "./e2eCoverage.js";
 import { runHostShutdownPhases, type HostShutdownResult } from "./hostShutdownPhases.js";
 import { initializeHostApiNetworkTransportOwner } from "./hostInitialization.js";
+import { installHostBrokenPipeGuard } from "./hostBrokenPipeGuard.js";
 import { createHostUncaughtExceptionHandler } from "./hostUncaughtExceptionGuard.js";
 import {
   recordCronRunOutcomeBestEffort,
@@ -264,6 +268,8 @@ const remoteMediaRangePreviewEnabled =
 
 type RemoteAssetDirs = import("./windowRemoteConnectionRegistry.js").WindowRemoteAssetDirs;
 
+// OW-P039：在首次日志之前保护 Host 自己的 stdout 和 stderr，避免读端退出终止 Host。
+installHostBrokenPipeGuard();
 const { parentPort } = process;
 const credentialCipherBridge = createCredentialCipherBridge((request) => {
   if (!parentPort) throw new Error("parentPort unavailable");
@@ -2307,6 +2313,11 @@ function exposeServicesOnMessagePort(
     // dispose 只属于 Host attachment 生命周期，不暴露为 Renderer RPC。
     overrides.set(IPromptAttachmentTransferService.channelName, promptAttachmentService);
   }
+  // OpenZWork(OZ-F014): 关闭窗口端口时释放其预览，远程 workspace 不参与。
+  const packageOwner = attachmentScope.kind === "local" && clientMode === "desktop-continuous"
+    ? services.getOptional(IConfigPackageService) : undefined;
+  const packageAttachment = packageOwner ? attachConfigPackage(packageOwner) : undefined;
+  if (packageAttachment) overrides.set(IConfigPackageService.channelName, packageAttachment.service);
   const taskService = services.getOptional(IZCodeTaskService);
   if (taskService) {
     overrides.set(
@@ -2388,6 +2399,7 @@ function exposeServicesOnMessagePort(
       if (disposed) return;
       disposed = true;
       flowStateDisposable.dispose();
+      packageAttachment?.dispose();
       controllerAttachment.dispose();
       legacyTerminalScope?.dispose();
       // WT04 direct 证据：attachment 生命周期结束时记录仍未退订的 subscription，

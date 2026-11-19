@@ -336,3 +336,6 @@ export {
   sanitizeTelemetryEventDetail,
   sanitizeTelemetrySkillName,
 } from "./conversation-telemetry/eventShapes.js";
+
+// OpenZWork(OZ-F014): 配置包 RPC 投影与文件契约。
+export * from "./config-package/index.js";

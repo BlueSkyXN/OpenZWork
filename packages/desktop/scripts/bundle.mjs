@@ -102,6 +102,7 @@ const requiredRuntimeModules = [
   "yauzl",
   // Bugfix: 飞书 SDK 为了避开 Electron ESM 动态 require 崩溃会作为外部依赖保留，
   // 生产包必须显式校验 app.asar 中存在该 scoped 包。
+  // OW-P038：安装包由 desktop 声明选取 SDK，须与 services 一致并包含两处长连接修复。
   "@larksuiteoapi/node-sdk",
   // 26.17.0 的 pnpm collector 仍可能漏掉 deduped 传递依赖；最终包从 updater 入口校验完整闭包。
   "electron-updater",

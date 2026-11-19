@@ -766,3 +766,184 @@ patches:
     regression:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游开发配置避免在首次远控任务中为该动态入口触发整页刷新，冷缓存手机恢复用例通过。
+
+  - id: OW-P036
+    title: 批量导入命令与子智能体时覆盖后续项的新编辑
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.17.2
+      checked: 3.18.2
+    trigger: 一窗口导入多个 Markdown 条目，另一窗口在批次处理期间保存后面的同名条目。
+    impact: 旧快照通过期望哈希检查，新编辑被覆盖，回执误报成功。
+    cause: 导入在循环外缓存了目标内容，逐项比较哈希时沿用批次开始的快照。设置保存与导入替换也没有共用跨进程写锁。
+    evidence: 3.18.2 的两个分类在循环外读取目标字节。隔离目录回归在第一项写入后编辑第二项，旧实现对第二项也返回 updated。
+    fix: 设置页与导入共享按用户和分类的跨进程锁。导入逐项在锁内读取实际目标、比较哈希、替换文件并处理新建项的启用状态。单项拿锁或读取失败时保留已提交回执，继续尝试后面的条目。
+    files:
+      - packages/services/src/data-sync/commandDataSync.ts
+      - packages/services/src/data-sync/subagentDataSync.ts
+      - packages/services/src/commands/commandsService.ts
+      - packages/services/src/subagents/subagentsService.ts
+      - packages/services/src/fs/atomicFileUtils.ts
+    regression:
+      - packages/services/test/configPackageConflicts.test.ts
+    retire: 上游的导入与设置写入能在同一提交边界保住批内新编辑，两个分类的并发回归均通过。
+
+  - id: OW-P037
+    title: 父技能的目录移动提前写入冲突子技能
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.17.2
+      checked: 3.18.2
+    trigger: 导入嵌套技能，目标在其他目录已有同名子项，或部分子项未选、预览后发生变化。
+    impact: 原实现先移动父目录，随后才报告子项失败，目标留下同名副本。
+    cause: 父目录整体移动前只检查子技能是否勾选，未核对落位和预览哈希。按名称去重的目标列表还会遗漏同名的嵌套安装，整目录覆盖可能将其删除。
+    evidence: 两个隔离用户目录中同时选择父子及一个独立项，原实现已写入父目录，异位子项随后报告失败。
+    fix: 技能写入者在移动前校验整棵子树的选择与目标状态。替换已有父目录前，按实际路径枚举其中的子技能，保留同名安装及其他独立项的结果。
+    files:
+      - packages/services/src/data-sync/skillDataSync.ts
+    regression:
+      - packages/services/test/configPackageConflicts.test.ts
+      - packages/services/test/configPackageSkillImport.test.ts
+    retire: 上游在父目录移动前校验子项落位，异位同名、过期、局部选择及正常新增回归均通过。
+
+  - id: OW-P038
+    title: 飞书 SDK 提前关闭连接可能让 Host 退出，入站帧异常未记录
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.14.3
+      checked: 3.18.2
+    trigger: 飞书机器人启动超时或取消时关闭仍在握手的 WebSocket，或入站帧在解码或分派时抛错。
+    impact: 关闭过程中的 socket error 可使 Host 退出；入站帧处理异常没有日志。
+    cause: 3.18.2 的 services SDK 1.64.0 与 desktop SDK 1.61.1 均缺少关闭时的 error 监听和入站帧捕获。
+    evidence: SDK 提交 37d241ee、af41737d；3.18.2 原版本声明回归因两处不一致而失败。
+    fix: 两处 SDK 固定为 1.74.0，由发布包提供两项修复，保留现有连接探测方式。
+    files:
+      - packages/desktop/scripts/bundle.mjs
+    regression:
+      - packages/services/test/feishuSdkVersion.test.ts
+    retire: 上游两处声明采用相同且不低于 1.74.0 的稳定版本，包内保留修复。
+    refs:
+      - docs/openzwork/patches/feishu-sdk-long-connection.md
+
+  - id: OW-P039
+    title: Host 写日志遇到断开的输出管道后退出
+    kind: product
+    status: fixed
+    priority: P3
+    upstream:
+      since: 3.14.3
+      checked: 3.18.2
+    trigger: Host 继承的 stdout 或 stderr 为管道，读端先退出后 Host 继续写日志。
+    impact: 未捕获的 EPIPE 使 Host 退出，依赖 Host 的窗口操作失去后端。
+    cause: 3.18.2 仅 Main 处理自身输出流的错误，Host 没有对应监听器。
+    evidence: 核心回归在同一轮分别关闭子进程的 stdout 与 stderr 读端，核对无护栏的未捕获 EPIPE 和有护栏时的存活结果。
+    fix: Host 在首次日志前给 stdout 和 stderr 安装 error 监听，只忽略 EPIPE，其他错误原样抛出。
+    files:
+      - packages/desktop/src/host/hostBrokenPipeGuard.ts
+      - packages/desktop/src/host/index.ts
+    regression:
+      - packages/desktop/test/hostBrokenPipeGuard.test.ts
+    retire: 上游在 Host 侧提供等效护栏。
+    refs:
+      - docs/openzwork/patches/host-broken-pipe-guard.md
+
+  - id: OW-P040
+    title: 空 Bash 命令进入审批并可生成工具级授权
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.17.2
+      checked: 3.18.2
+    trigger: 在 Build 模式下调用 Bash，command 为空字符串或只有空白。
+    impact: 无操作也弹审批；选择项目级始终允许可保存没有命令范围的 Bash 规则。
+    cause: handler 会返回空输出，但普通审批先发生；空命令没有规则建议，协议默认选项退回到工具级规则。
+    evidence: 在 3.18.2 主线复现，空字符串和纯空白各调用 broker 一次；非空命令与权限判定的对照用例通过。
+    fix: Bash 的 prepareApproval 只短路与 handler 同判定的合法空命令；普通非空询问和权限服务的拒绝路径不变。
+    files:
+      - apps/zcode-cli/packages/core/src/tool/handlers/bash.ts
+    regression:
+      - apps/zcode-cli/packages/core/tests/bash-empty-command-approval.test.ts
+    refs:
+      - docs/specs/bash-empty-command-approval-openzwork.md
+    retire: 上游空命令不会产生审批、保存规则或调用执行端口，同时非空命令审批保持有效。
+
+  - id: OW-P041
+    title: 两个技能根的独立目录归档后重叠
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: OpenZWork 与兼容技能根存在相对路径为父子的独立目录。
+    impact: 展开归档改变了父技能的内容，配置包校验失败。
+    cause: 顶层按物理路径去重，但打包只使用各自根下的相对路径。
+    evidence: 隔离两根中的 toolkit 和 toolkit/child，原服务可枚举二者，成包时哈希不符。
+    fix: 只为有重叠的兼容根子树分配无冲突的前缀，清单和归档共用落点。
+    files:
+      - packages/services/src/data-sync/skillDataSync.ts
+    regression:
+      - packages/services/test/configPackageBoundaries.test.ts
+    retire: 上游支持跨根重叠路径并通过同一往返回归。
+
+  - id: OW-P042
+    title: 命令与技能写入者未检查目标父目录的实际归属
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 配置根的目标父目录是符号链接或 junction。
+    impact: 新条目可能写入配置根以外的位置。
+    cause: 原实现检查相对路径和最终目标，仅按字符串拼接父目录。
+    evidence: 两个分类的同根目录别名夹具覆盖新增项的物理父目录判定。
+    fix: 预检配置根，逐段核实父目录，使用核实后的物理路径发布文件。
+    files:
+      - packages/services/src/data-sync/commandDataSync.ts
+      - packages/services/src/data-sync/skillDataSync.ts
+      - packages/services/src/data-sync/directoryContent.ts
+    regression:
+      - packages/services/test/configPackageSkillImport.test.ts
+    retire: 上游创建和替换时核验实际父目录并通过分类回归。
+
+  - id: OW-P043
+    title: 技能归档解包时丢失辅助文件执行位
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 在 POSIX 系统迁移含可执行脚本的用户技能。
+    impact: 写入成功后辅助程序无法直接运行。
+    cause: 归档写入 mode，解包只写文件字节。
+    evidence: 独立目录往返后普通脚本权限从 0755 变为 0644。
+    fix: 解包普通文件时恢复执行位，读写位沿用目标文件权限。
+    files:
+      - packages/services/src/skill-sync/skillSyncArchive.ts
+    regression:
+      - packages/services/test/configPackageBoundaries.test.ts
+      - packages/services/test/configPackageSkillImport.test.ts
+    retire: 上游解包器保留 POSIX 执行位并通过往返回归。
+
+  - id: OW-P044
+    title: Claude 图标迁移测试提前删除临时目录
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 图标迁移在后台运行，测试读取清单后开始清理临时插件目录。
+    impact: Windows 核心回归偶发 EPERM，失败位置为插件存储锁目录。
+    cause: 通过清单内容判断迁移结束，未等待后台任务释放存储锁。
+    evidence: Windows 回归在无本地缓存的用例中，于删除 installed_plugins.json.lock 时失败。上游同一用例以清单读回代替后台任务的完成信号。
+    fix: 测试捕获并等待真实迁移的 Promise，再验证无缓存时的清单和联网边界并清理目录。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    retire: 上游用例在清理临时目录前等待后台迁移完全结束。
+    refs:
+      - https://github.com/BlueSkyXN/OpenZWork/actions/runs/44563487444/job/135698826664

@@ -186,6 +186,7 @@ export class AiSdkModelExecution {
     readonly providerId: string;
     readonly modelId: string;
     readonly providerConfig: RegistryProviderConfig;
+    readonly requiresRequestAuth?: boolean;
     readonly supportsJsonSchemaOutput: boolean;
     readonly optionSpecs: {
       readonly reasoningLevel: { readonly map: string };
@@ -206,6 +207,7 @@ export class AiSdkModelExecution {
     readonly providerId: string;
     readonly modelId: string;
     readonly providerConfig: RegistryProviderConfig;
+    readonly requiresRequestAuth?: boolean;
     readonly supportsJsonSchemaOutput: boolean;
   }): AiSdkModelSnapshot {
     const configuredProvider = toAiSdkProviderConfig(input.providerId, input.providerConfig);
@@ -214,8 +216,15 @@ export class AiSdkModelExecution {
       this.defaultHeaders,
       configuredProvider.headers,
     );
+    const requiresRequestAuth = input.requiresRequestAuth === true;
+    if (requiresRequestAuth) {
+      // OpenZWork(OZ-C003): 逐请求鉴权的快照移除已存认证头。显式空 Key 防止 SDK 改读环境变量。
+      configuredProvider.apiKey = "";
+      configuredProvider.headers = withoutModelAuthHeaders(configuredProvider.headers);
+    }
     const apiKey = this.resolveApiKey(configuredProvider);
     return {
+      requiresRequestAuth,
       providerConfig: {
         ...configuredProvider,
         ...(apiKey ? { apiKey } : {}),
@@ -249,6 +258,7 @@ export class AiSdkModelExecution {
       rawRequestBodyCapture,
       streamTiming,
       snapshot.supportsJsonSchemaOutput,
+      snapshot.requiresRequestAuth ? requestAuth : undefined,
     );
     return {
       baseURL: providerConfig.baseURL,
@@ -271,6 +281,7 @@ export class AiSdkModelExecution {
     rawRequestBodyCapture: RawRequestBodyCapture,
     streamTiming: NonNullable<AiSdkResolvedModel["streamTiming"]>,
     supportsJsonSchemaOutput: boolean,
+    scopedAuth?: ModelRequestAuth,
   ): LanguageModelFactory {
     const apiKey = this.resolveApiKey(providerConfig);
     // SDK 会合并 factory 默认 header；必须在这里去掉静态来源，才能保证缺失时真正省略。
@@ -280,7 +291,7 @@ export class AiSdkModelExecution {
       this.logger,
       providerId,
     );
-    const providerTransport = networkTransport;
+    const providerTransport = withScopedAuthTransport(networkTransport, providerConfig.kind, scopedAuth);
     const fetch = createProviderBusinessErrorFetch({
       fetch: providerTransport,
       providerId,
@@ -362,6 +373,7 @@ export class AiSdkModelExecution {
 }
 
 interface AiSdkModelSnapshot {
+  readonly requiresRequestAuth: boolean;
   readonly supportsJsonSchemaOutput: boolean;
   readonly providerConfig: AiSdkProviderConfig;
   readonly providerId: ModelProviderId;
@@ -397,13 +409,30 @@ function applyModelRequestAuth(
   requestAuth: ModelRequestAuth | undefined,
 ): AiSdkProviderConfig {
   if (!requestAuth) return providerConfig;
-  // Private fork: merge only caller-supplied headers; no account dynamic-identity header stripping.
   return {
     ...providerConfig,
-    ...(requestAuth.apiKey ? { apiKey: requestAuth.apiKey } : {}),
+    ...(requestAuth.apiKey?.trim() ? { apiKey: requestAuth.apiKey } : {}),
     ...(requestAuth.headers
       ? { headers: mergeModelRequestHeaders(providerConfig.headers, requestAuth.headers) }
       : {}),
+  };
+}
+
+function withScopedAuthTransport(
+  fetch: ProviderFetch,
+  kind: AiSdkProviderKind,
+  auth?: ModelRequestAuth,
+): ProviderFetch {
+  if (!auth || auth.apiKey?.trim() || kind === "openai-compatible") return fetch;
+  // OpenAI 与 Anthropic SDK 即使收到空 Key 也会生成认证头。仅由自定义头鉴权时去掉 SDK 的空头。
+  const sdkHeader = kind === "anthropic" ? "x-api-key" : "authorization";
+  if (hasHeader(auth.headers, sdkHeader)) return fetch;
+  return (input, init) => {
+    const headers = new Headers(
+      init?.headers ?? (input instanceof Request ? input.headers : undefined),
+    );
+    headers.delete(sdkHeader);
+    return fetch(input, { ...init, headers });
   };
 }
 

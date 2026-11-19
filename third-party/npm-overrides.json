@@ -465,5 +465,19 @@
     "package": "khroma@2.1.0",
     "license": "MIT",
     "evidence": "The package does not declare a license field; its license contains the MIT grant and copyright notice."
+  },
+  {
+    "package": "agent-base@6.0.2",
+    "file": "third-party/upstream/5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f.txt",
+    "sha256": "5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f",
+    "source": "https://registry.npmjs.org/agent-base/-/agent-base-6.0.2.tgz",
+    "evidence": "Verbatim complete MIT license from package/README.md in the npm archive verified against the lockfile. The archive has no standalone LICENSE."
+  },
+  {
+    "package": "https-proxy-agent@5.0.1",
+    "file": "third-party/upstream/5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f.txt",
+    "sha256": "5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f",
+    "source": "https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-5.0.1.tgz",
+    "evidence": "Verbatim complete MIT license from package/README.md in the npm archive verified against the lockfile. The archive has no standalone LICENSE."
   }
 ]

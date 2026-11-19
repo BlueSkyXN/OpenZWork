@@ -37,6 +37,8 @@ export function createDesktopPlatform(options: {
     isLocalDevelopmentRuntime: options.isLocalDevelopmentRuntime,
     selectDirectory: () => window.zcode.selectDirectory(),
     selectDirectories: () => window.zcode.selectDirectories(),
+    // OpenZWork(OZ-F014): 文件由当前窗口的本机 Host 写入。
+    selectSaveFilePath: (suggestedName) => window.zcode.selectSaveFilePath?.(suggestedName) ?? Promise.resolve(null),
     selectFile: () => window.zcode.selectFile(),
     selectFiles: () => window.zcode.selectFiles?.() ?? Promise.resolve([]),
     createTempTextAttachment: (payload) => window.zcode.createTempTextAttachment(payload),

@@ -146,6 +146,8 @@ declare global {
       selectDirectories(): Promise<string[]>;
       /** 打开系统文件选择框，返回选中文件路径或 null */
       selectFile(): Promise<string | null>;
+      /** OpenZWork(OZ-F014): 选择本地保存位置；取消返回 null。 */
+      selectSaveFilePath?(suggestedName: string): Promise<string | null>;
       /** 打开系统多文件选择框，返回选中文件路径；取消时返回空数组 */
       selectFiles?(): Promise<string[]>;
       /** 通过系统原生另存为对话框保存文件 */

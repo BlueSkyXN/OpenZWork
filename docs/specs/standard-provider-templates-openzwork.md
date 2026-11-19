@@ -33,6 +33,19 @@ OpenZWork 的内置 Provider 目录只提供三个中性协议模板：
 
 旧 `templateId` 不做隐藏兼容基线，避免厂商配置继续随产品分发。完整的 Personal Provider 遇到未知 `templateId` 时按无模板基线执行，保留 ID 和原记录；缺少必要配置时仍展示缺项并禁止执行。内置 Provider 的模板引用错误仍由目录完整性校验拒绝。
 
+## 单次执行的请求鉴权
+
+普通模型使用 Personal Provider 保存的 API Key 和请求头。执行方显式传入 `requestDependencies.requestAuth` 时，模型在创建时绑定该来源。每次流式、非流式请求及其重试都用已绑定的 Provider ID、模型 ID、尝试序号和取消信号重新取凭据。来源可以返回 API Key、自定义鉴权头或两者。该次发送的 API Key、`Authorization` 和 `x-api-key` 由返回值决定，其他静态请求头继续生效。
+
+```text
+Bootstrap 冻结本轮材料 → Core 传入选择和依赖 → Registry 工厂创建模型并绑定来源
+每次发送 → Adapter 向绑定来源取凭据 → SDK 向已选 endpoint 发送
+                                     ↳ 来源缺失或凭据为空 → ModelRequestAuthMissing
+                                     ↳ 等待期间取消 → 结束请求
+```
+
+凭据只用于这一次发送。读取失败或取消时停止发送，Provider 配置与其他模型各自保留原有鉴权。
+
 ## 状态所有者
 
 | 状态                           | 唯一所有者                                     |

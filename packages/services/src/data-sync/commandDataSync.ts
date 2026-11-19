@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import { lstat, mkdir, readFile, readdir, rm } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { lstat, readFile, readdir, rm } from "node:fs/promises";
+import { join, relative } from "node:path";
 import type {
   CommandDataSyncPayload,
   DataSyncImportItem,
@@ -13,10 +13,11 @@ import {
   setUserCommandEnabledOverrides,
 } from "#src/commands/commandsService.js";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
-import { pathExists, writeFileAtomically } from "#src/fs/atomicFileUtils.js";
+import { pathExists, withUserMarkdownLock, writeFileAtomically } from "#src/fs/atomicFileUtils.js";
 import { checkRemoteSyncDirectoriesWriteAccess } from "#src/remote-sync/remoteSyncWriteAccess.js";
 import { resolveUserHomeDir } from "#src/subagents/subagentStorage.js";
 import type { IDataSyncCategoryService } from "./contract.js";
+import { prepareSyncWriteParent } from "./directoryContent.js";
 import { errorMessage } from "./syncUtils.js";
 
 const COMMAND_EXTENSION = /\.md$/iu;
@@ -57,11 +58,15 @@ function toCommandKey(relativePath: string): string {
 /** 递归收集 `.md` 文件，跳过 `.` 开头的条目；用 lstat，不进入软链目录（与设置服务的扫描规则一致）。 */
 async function collectCommandFiles(
   dir: string,
+  requireComplete: boolean,
+  optionalRoot = false,
 ): Promise<Array<{ path: string; isSymlink: boolean }>> {
   let entries: string[];
   try {
     entries = (await readdir(dir)).sort();
-  } catch {
+  } catch (error) {
+    // OZ-F014：备份可以遇到尚未创建的命令根，已有目录的读取错误必须交给导出方。
+    if (requireComplete && !(optionalRoot && (error as NodeJS.ErrnoException).code === "ENOENT")) throw error;
     return [];
   }
   const files: Array<{ path: string; isSymlink: boolean }> = [];
@@ -71,11 +76,12 @@ async function collectCommandFiles(
     let stat;
     try {
       stat = await lstat(path);
-    } catch {
+    } catch (error) {
+      if (requireComplete) throw error;
       continue;
     }
     if (stat.isDirectory()) {
-      files.push(...(await collectCommandFiles(path)));
+      files.push(...(await collectCommandFiles(path, requireComplete)));
     } else if (COMMAND_EXTENSION.test(entry)) {
       files.push({ path, isSymlink: stat.isSymbolicLink() });
     }
@@ -87,21 +93,22 @@ async function collectCommandFiles(
  * 本端用户命令：`~/.openzwork/commands` 与 `~/.agents/commands` 合并，与 CLI 运行时一致，
  * 同 key 时 `.openzwork` 优先（先扫描者胜出）。
  */
-async function resolveUserCommands(): Promise<Map<string, ResolvedUserCommand>> {
+async function resolveUserCommands(requireComplete: boolean, onlyKey?: string): Promise<Map<string, ResolvedUserCommand>> {
   const commands = new Map<string, ResolvedUserCommand>();
   for (const source of ["openzwork", "agents"] as const) {
     const root = commandsRoot(source);
-    for (const file of await collectCommandFiles(root)) {
+    for (const file of await collectCommandFiles(root, requireComplete, true)) {
       const relativePath = relative(root, file.path)
         .split(/[\\/]+/u)
         .join("/");
       const key = toCommandKey(relativePath);
-      if (commands.has(key)) continue;
+      if ((onlyKey !== undefined && onlyKey !== key) || commands.has(key)) continue;
       let content: Buffer;
       try {
         content = await readFile(file.path);
-      } catch {
-        continue; // 悬空软链或无权限：跳过
+      } catch (error) {
+        if (requireComplete) throw error;
+        continue; // 设备同步沿用可读条目列表。
       }
       const parsed = CommandFileParser.parseCommandFile(content.toString("utf-8"), file.path);
       if (!parsed) continue;
@@ -147,11 +154,13 @@ async function importOne(
     if (item.mode === "createOnly") {
       // 列表加载后目标端出现同 key 命令（任一目录）：不写入，提示刷新后重试。
       if (existing) return { key: item.key, status: "conflict" };
-      const targetPath = join(commandsRoot("openzwork"), ...segments);
+      // OW-P042：创建项也核对实际父目录，目录别名不能成为写入落点。
+      const root = commandsRoot("openzwork");
+      const logicalPath = join(root, ...segments);
+      const targetPath = await prepareSyncWriteParent(root, logicalPath);
       if (await pathExists(targetPath)) return failed(`target path already exists: ${targetPath}`);
-      await mkdir(dirname(targetPath), { recursive: true });
       await writeFileAtomically(targetPath, content);
-      return { key: item.key, status: "created", createdPath: targetPath };
+      return { key: item.key, status: "created", createdPath: logicalPath };
     }
     if (!existing || !item.expectedTargetHash) return { key: item.key, status: "conflict" };
     // 服务端兜底：兼容目录和软链目标不覆盖（列表已标为不能同步）。
@@ -162,8 +171,9 @@ async function importOne(
     if (hashContent(existing.content) !== item.expectedTargetHash) {
       return { key: item.key, status: "conflict" };
     }
-    const { mode } = await lstat(existing.filePath);
-    await writeFileAtomically(existing.filePath, content, mode);
+    const targetPath = await prepareSyncWriteParent(commandsRoot("openzwork"), existing.filePath);
+    const { mode } = await lstat(targetPath);
+    await writeFileAtomically(targetPath, content, mode);
     return { key: item.key, status: "updated" };
   } catch (error) {
     return failed(errorMessage(error));
@@ -198,11 +208,11 @@ async function applyCreatedEnabledState(
   }
 }
 
-export function createCommandDataSyncMethods(): IDataSyncCategoryService<CommandDataSyncPayload> {
+export function createCommandDataSyncMethods({ requireComplete = false } = {}): IDataSyncCategoryService<CommandDataSyncPayload> {
   return {
     async listSyncItems() {
       const [commands, overrides] = await Promise.all([
-        resolveUserCommands(),
+        resolveUserCommands(requireComplete),
         readCommandEnabledOverridesFromUserConfig(),
       ]);
       const items: DataSyncListItem[] = [...commands.values()].map((command) => ({
@@ -224,7 +234,7 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
     },
 
     async getSyncContentHashes(params) {
-      const commands = await resolveUserCommands();
+      const commands = await resolveUserCommands(requireComplete);
       const hashes: Record<string, string> = {};
       for (const key of params.keys) {
         const command = commands.get(key);
@@ -234,6 +244,9 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
     },
 
     async checkSyncWriteAccess() {
+      const root = commandsRoot("openzwork");
+      try { await prepareSyncWriteParent(root, join(root, ".sync-preflight")); }
+      catch (error) { return { ok: false, path: root, error: errorMessage(error) }; }
       return await checkRemoteSyncDirectoriesWriteAccess([
         commandsRoot("openzwork"),
         join(resolveUserHomeDir(), OPENZWORK_DATA_DIR_NAME, "cli"),
@@ -242,7 +255,7 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
 
     async exportSyncItems(params) {
       const [commands, overrides] = await Promise.all([
-        resolveUserCommands(),
+        resolveUserCommands(requireComplete),
         readCommandEnabledOverridesFromUserConfig(),
       ]);
       return {
@@ -262,13 +275,23 @@ export function createCommandDataSyncMethods(): IDataSyncCategoryService<Command
     },
 
     async importSyncItems(params) {
-      const current = await resolveUserCommands();
       const payloadByKey = new Map(params.payload.items.map((item) => [item.key, item]));
       const results: ImportResult[] = [];
       for (const item of params.items) {
-        results.push(await importOne(item, payloadByKey.get(item.key), current));
+        // OW-P036：上一项提交期间另一个窗口可能保存了这一项。读、比较、替换和启用状态同锁。
+        // 拿锁或重读失败只计入当前项，保留已提交回执并继续后续项。
+        try {
+          const committed = await withUserMarkdownLock(resolveUserHomeDir(), "commands", async () => {
+            const current = await resolveUserCommands(requireComplete, item.key);
+            const result = await importOne(item, payloadByKey.get(item.key), current);
+            if (result.status === "created") await applyCreatedEnabledState([result], payloadByKey);
+            return result;
+          });
+          results.push(committed);
+        } catch (error) {
+          results.push({ key: item.key, status: "failed", error: errorMessage(error) });
+        }
       }
-      await applyCreatedEnabledState(results, payloadByKey);
       return { results: results.map(({ createdPath: _createdPath, ...result }) => result) };
     },
   };

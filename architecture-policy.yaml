@@ -1933,6 +1933,46 @@ modules:
       adapters: .
     owner: agent
 
+  # config-package-contract：由 architecture:adopt 登记
+  - id: config-package-contract
+    roots:
+      - packages/shared/src/config-package
+    managed: true
+    requires: ["shared", "system-prompt-contract"]
+    publicEntrypoints:
+      - packages/shared/src/config-package/index.ts
+      - packages/shared/src/config-package/contract.ts
+    layers:
+      domain: .
+    owner: desktop-settings
+  # config-package-service：由 architecture:adopt 登记
+  - id: config-package-service
+    roots:
+      - packages/services/src/config-package
+    managed: true
+    requires: ["shared", "services", "config-package-contract", "data-sync-service", "provider-node", "provider"]
+    publicEntrypoints:
+      - packages/services/src/config-package/index.ts
+      - packages/services/src/config-package/contract.ts
+      - packages/services/src/config-package/node.ts
+    layers:
+      adapters: .
+    owner: desktop-settings
+
+  # config-package-ui：由 architecture:adopt 登记
+  - id: config-package-ui
+    roots:
+      - packages/ui/src/config-package
+    managed: true
+    requires: [ui, services, shared, config-package-contract, config-package-service]
+    publicEntrypoints:
+      - packages/ui/src/config-package/index.ts
+      - packages/ui/src/config-package/contract.ts
+    layers:
+      contract: contract.ts
+      ui: .
+    owner: desktop-settings
+
 global:
   # 临时时间戳（2026-09-10）：unmanaged-new-file 只约束此日期之后首次入库的文件。
   # 基于领先 staging 很多的分支开工时，merge-base 之前的"新增"文件不应被追溯。
@@ -2443,3 +2483,14 @@ exceptions:
       永久缺失（PD 必需场景 PD01-03 断言失败）。本文件与上游 v3.18.0 逐字节一致（无官方
       依赖，PLUGIN_CREATOR_ID 仅本地插件 id），与 usePluginCreator/PluginAddMenu 同批恢复；
       接管 packages/ui/src/settings 不在本次范围内。
+  - id: host-broken-pipe-guard-unmanaged-new-file
+    rule: unmanaged-new-file
+    paths: [packages/desktop/src/host/hostBrokenPipeGuard.ts]
+    reason: Host 输出流的断管护栏是自包含的进程入口辅助文件，不新增状态所有者或模块间依赖；收编整个 Host 目录需要独立的模块边界调整。
+
+  - id: oz-c013-websearch-responses-unmanaged-file
+    rule: unmanaged-new-file
+    paths:
+      - packages/provider/src/protocol-capabilities.ts
+      - apps/zcode-cli/packages/adapters/src/model/openai-responses-websearch.ts
+    reason: OZ-C013 在既有模块增加执行能力合取及 Responses 工具、URL 来源转换；不接管整个 provider 或 zcode-cli。

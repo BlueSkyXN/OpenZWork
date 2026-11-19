@@ -210,6 +210,8 @@ export { isValidCronExpr } from "./session/automationCronValidation.js";
 export { ISkillsService } from "./skills/skills.js";
 export { ISkillSyncService } from "./skill-sync/skillSync.js";
 export { IDeviceSyncStateService, IUserConfigSyncService } from "./data-sync/index.js";
+// OpenZWork(OZ-F014): 本机配置包服务描述符。
+export { IConfigPackageService } from "./config-package/index.js";
 export type { IDataSyncCategoryService } from "./data-sync/index.js";
 export { IProviderProvisioningStatusService } from "./provider-provisioning-status/index.js";
 export {

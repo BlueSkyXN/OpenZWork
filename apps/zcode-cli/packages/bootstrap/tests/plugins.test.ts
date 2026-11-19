@@ -9,6 +9,7 @@ import { tmpdir } from "node:os";
 import { basename, dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createConfig } from "@zcode/adapters/config";
+import * as pluginAdapters from "@zcode/adapters/plugins";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
 import { ZCODE_PLUGIN_HOST_COMMAND } from "@zcode/contracts";
 import type { Logger, PluginDiscoverRequest } from "@zcode/contracts";
@@ -181,6 +182,7 @@ describe("ZCode plugins", () => {
   it("starts cached Claude icon migration without blocking overview callers", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-claude-icons-"));
     const marketplaceRoot = join(root, "plugins", "marketplaces", "claude-plugins-official");
+    const migrateIcons = vi.spyOn(pluginAdapters, "enrichCachedClaudeMarketplaceIcons");
 
     try {
       await writeTestFile(
@@ -195,25 +197,23 @@ describe("ZCode plugins", () => {
       const fetchSpy = vi.fn();
       vi.stubGlobal("fetch", fetchSpy);
 
-      expect(
-        enrichCachedClaudeMarketplaceIconsForOverview({
-          env: {},
-          pluginStorageRoot: join(root, "plugins"),
-          skipUserConfig: true,
-          workingDirectory: root,
-        }),
-      ).toBeUndefined();
-
-      expect(fetchSpy).not.toHaveBeenCalled();
-      await vi.waitFor(async () => {
-        const saved = JSON.parse(
-          await readFile(join(marketplaceRoot, "marketplace.json"), "utf8"),
-        ) as { plugins: Array<{ icon?: string }> };
-        expect(saved.plugins[0]?.icon).toBeUndefined();
+      const overviewResult = enrichCachedClaudeMarketplaceIconsForOverview({
+        env: {},
+        pluginStorageRoot: join(root, "plugins"),
+        skipUserConfig: true,
+        workingDirectory: root,
       });
-      // 不恢复全局 fetch 会污染同文件后续需要真实网络的用例（zip 安装等）。
-      vi.unstubAllGlobals();
+      // OW-P044：等待实际迁移释放存储锁，避免 Windows 在后台写锁期间清理临时目录。
+      await migrateIcons.mock.results[0]?.value;
+      expect(overviewResult).toBeUndefined();
+      expect(migrateIcons).toHaveBeenCalledOnce();
+      expect(fetchSpy).not.toHaveBeenCalled();
+      const saved = JSON.parse(
+        await readFile(join(marketplaceRoot, "marketplace.json"), "utf8"),
+      ) as { plugins: Array<{ icon?: string }> };
+      expect(saved.plugins[0]?.icon).toBeUndefined();
     } finally {
+      migrateIcons.mockRestore();
       vi.unstubAllGlobals();
       await rm(root, { force: true, recursive: true });
     }

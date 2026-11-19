@@ -144,6 +144,8 @@ export const ServiceChannels = {
   /** SSH 远程 skills 同步服务 */
   SkillSync: "skill-sync",
   /** SSH 远程 MCP 同步服务 */
+  // OpenZWork(OZ-F014): 配置包仅由桌面本机 Host 注册。
+  ConfigPackage: "config-package",
   McpSync: "mcp-sync",
   /** SSH 远程 plugin 同步服务 */
   PluginSync: "plugin-sync",
@@ -196,6 +198,8 @@ export const PlatformChannels = {
   /** 打开系统多目录选择框 */
   SelectDirectories: "zcode:select-directories",
   /** 打开系统文件选择框 */
+  // OpenZWork(OZ-F014): 原生对话框仅返回路径，私有写入归 Host。
+  SelectSaveFilePath: "zcode:select-save-file-path",
   SelectFile: "zcode:select-file",
   /** 打开系统多文件选择框 */
   SelectFiles: "zcode:select-files",

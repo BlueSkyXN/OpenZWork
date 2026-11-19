@@ -50,6 +50,7 @@
 | OZ-C010 | 发行许可与上游声明       | GPL-3.0 整体声明、上游 Apache-2.0 原文与 NOTICE 入口。                 | [分支声明](../../NOTICE.md)                                  |
 | OZ-C011 | 工作流查询进程与生命周期 | 工作流总览读取共用独立查询 lane 并空闲回收，UI 读状态分代际。          | [spec](../specs/saved-workflow-query-lifecycle-openzwork.md) |
 | OZ-C012 | 界面语言持久化兼容合同   | 保留上游 uiLocale 落盘兼容与旧格式迁移（merge 丢失后恢复）。           | [spec](../specs/settings-locale-persistence-openzwork.md)    |
+| OZ-C013 | Responses 原生联网搜索   | 支持协议与模型开关共同启用搜索，结构化来源与正文链接合并去重。         | [spec](../specs/websearch-openai-responses-openzwork.md)     |
 
 ### OpenZWork 新增的功能
 
@@ -67,6 +68,7 @@
 | OZ-F011 | OpenZWork 构建与发行流程                                                         | 发行版本、安装包校验与正式 tag 自动发布。                  | [发行规范](release/openzwork-release-version.md)               |
 | OZ-F012 | CI 与桌面验证工程                                                                | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。 | [CI 规范](ci/ci-job-orchestration.md)                          |
 | OZ-F013 | 本地内存诊断与 sampler 节拍（`.openzwork/cli` 数据根、节拍恢复；官方上传链裁剪） | v3.18.1 同步                                               |
+| OZ-F014 | 多机配置包                                                                       | 桌面手动迁移七类用户配置，预览后按项导入。                 | [规格](../specs/config-package-openzwork.md)                   |
 
 ### 上游已删除、OpenZWork 保留
 
@@ -97,10 +99,13 @@
 - [共享文件锁的 Windows 创建竞争](patches/shared-file-lock-acquisition.md)
 - [Source Server 数据目录锁的取得顺序](patches/source-server-lock-acquisition.md)
 - [Source Server 状态快照的原子替换](patches/source-server-status-persistence.md)
+- [飞书 SDK 长连接缺陷（OW-P038）](patches/feishu-sdk-long-connection.md)
+- [Host 断管护栏（OW-P039）](patches/host-broken-pipe-guard.md)
 
 ### 发行
 
 - [OpenZWork 发行版本](release/openzwork-release-version.md)
+- [macOS 未签名包：首次打开与局域网连接](release/unsigned-macos-distribution.md)
 - [正式 tag 自动发布 GitHub Release](release/automatic-github-release.md)
 
 ### CI 与测试基础设施
@@ -134,12 +139,14 @@
 - [会话累计用量展示](../specs/session-usage-summary-openzwork.md)
 - [原生会话指标栏](../specs/native-conversation-metrics-openzwork.md)
 - [对话复制、筛选与项目排序](../specs/conversation-controls-openzwork.md)
+- [多机配置包](../specs/config-package-openzwork.md)
 - [外部会话多源导入](../specs/external-session-import-openzwork.md)
 - [自定义命令改名与保存失败](../specs/command-file-update-openzwork.md)
 - [技能开关](../specs/skills-toggle-openzwork.md)
 - [本地首次引导偏好](../specs/onboarding-local-settings-openzwork.md)
 - [设置页布局与远控快捷入口](../specs/settings-visual-polish-openzwork.md)
 - [普通 Node CLI/Web 发行的内置技能资产](../specs/node-distribution-bundled-skills-openzwork.md)
+- [空 Bash 命令的审批边界](../specs/bash-empty-command-approval-openzwork.md)
 
 ## 测试计划与专题文档
 

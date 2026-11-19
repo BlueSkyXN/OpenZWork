@@ -2,6 +2,15 @@
   "version": 1,
   "suites": [
     {
+      "capability": "config-package",
+      "files": [
+        "packages/services/test/configPackageRoundTrip.test.ts",
+        "packages/services/test/configPackageBoundaries.test.ts",
+        "packages/services/test/configPackageSkillImport.test.ts",
+        "packages/services/test/configPackageConflicts.test.ts"
+      ]
+    },
+    {
       "capability": "cua-placeholder-boundary",
       "files": [
         "packages/desktop/test/placeholderProducerDetection.test.ts",
@@ -231,8 +240,16 @@
       "files": ["packages/ui/test/v4SessionPaneOwner.test.ts"]
     },
     {
+      "capability": "websearch-responses",
+      "files": ["packages/provider/test/nativeWebSearchCapabilities.test.ts"]
+    },
+    {
       "capability": "retained-bot-delivery-and-runtime",
-      "files": []
+      "files": ["packages/services/test/feishuSdkVersion.test.ts"]
+    },
+    {
+      "capability": "host-broken-pipe-guard",
+      "files": ["packages/desktop/test/hostBrokenPipeGuard.test.ts"]
     },
     {
       "capability": "feature-boundary-graph-visualization",

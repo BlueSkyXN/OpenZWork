@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "inputHashEncoding": "UTF-8 with CRLF normalized to LF; notice and source snapshot hashes remain byte-exact",
   "scope": "Production dependency union across current workspace projects, copied source/assets and native tools; not a per-installer SBOM or a certification of all licensing obligations.",
-  "noticesSha256": "ee908ae22c78a0c6542684dd21e8124b3470fe50c5c20ce15c4d93398551339d",
+  "noticesSha256": "fee51da7015995b84599884b6f33b7e254d448d97b3f28571be78ef7b5fde8ca",
   "inputs": {
     ".agents/skills/agent-browser/references/authentication.md": "e2c3b0f4a1dc1368dee821f03c000d818a48421d09f3872525dddffe73f2112b",
     ".agents/skills/agent-browser/references/commands.md": "17522fc56d742663f47231ff06c4811abc87e12c7f78e11f94d253ddd540a909",
@@ -791,10 +791,10 @@
     "docs/knip/docs/src/styles/theme-light.css": "e2e85900fd43b5b563f56b9ce7e2a09f07d7420a78e80f0133efffeb8fce2aa0",
     "docs/knip/docs/src/util/post.ts": "6d7c45bd29035a73f1b67d24524760c7e317f367d32216de2c9a240dda7a40d1",
     "docs/knip/docs/tsconfig.json": "662b1f10a5e572b49a45669e4be9ee46c22f987dcf277c204948777b367df1cd",
-    "package.json": "2530bcfaa1449cb8155979d06a391bd3732c8b53fb5b9e67631514d54a0207bf",
+    "package.json": "f40f3ac35204465c3095cfdfe9c32bca47b1abca3538d9bb04fc4ce5c77245d7",
     "packages/client/package.json": "e76f441549130dc3e5e68072a36b6cb9044e19a6625f1e813f19a4def2b1b689",
     "packages/design-runtime/package.json": "647d36a7bb3b5b13f87ddb8a94811152a1a024f0293eebd0b16032e1c0976d9c",
-    "packages/desktop/package.json": "397f5bb3c22d008c77eb3d02d35f23f9076b744deb3ae6d371bc031d1bfce1ae",
+    "packages/desktop/package.json": "29568b44adcc3760ae517a2de82d81ac9b8bd01513fd55f16415a9bd914987c7",
     "packages/desktop/src/renderer/public/material-icons/3d.svg": "9527b849f0fba57ca7640e2717b3a19cb5f5e046712cbbd8b75d73af338c68fb",
     "packages/desktop/src/renderer/public/material-icons/abap.svg": "1335bd7eb9a0ed49deb622330d680c2e97731726a7a5eee8e4f46dc1e5db4de4",
     "packages/desktop/src/renderer/public/material-icons/abc.svg": "d1a68020e8f020ef29dca5f94dc8613b7ae8fb5b212d8b1cc23b0f975ac7acda",
@@ -1968,7 +1968,7 @@
     "packages/rpc/src/remote.ts": "a11e072d5df7e1c1ce64814a68f72afc081246b364f0da409b5c9d22bc815957",
     "packages/rpc/src/serialization.ts": "fd41df3ba2c5e88a52c6b8045b9e0a663b8ee27b54c0f1e146f10d03f6f773bd",
     "packages/server/package.json": "b765183aec7623f6859148d14d1a2f719d5805a69d511de29712600d8b5db90c",
-    "packages/services/package.json": "900bea0c41350810e8a9607baf2ac290b6510456bf91b81311e50c182d0b7d8e",
+    "packages/services/package.json": "b9d505150697d73191a817268cf7741afeb408346bb5a4570e92941a32e6658d",
     "packages/session-control/package.json": "abe4e64b8ceebb9fa9240e6c88d2b9f5bfa55fc15733f70a51b7502294aef8f3",
     "packages/shared/package.json": "a2d434887623a31f45d9ec4ae6eb64794e3939d0bd724ddfd43f178704965fe9",
     "packages/shared/src/zcode-protocol-v4/wire-codec.ts": "ac2494a3acc795c809c94ee9393f50271a9c2a0fd33813459e5ab93842ceef75",
@@ -3233,7 +3233,7 @@
     "packages/web/public/material-icons/zig.svg": "37be0ce02cf471b18d86150b3c38e80caa7c16c49a15078e7db6f1f41788d101",
     "packages/web/public/material-icons/zip.svg": "dad79a45f756542d37abd422502ecfbea15720b92ea1c9d80ef0439ab6b9448a",
     "packages/zcode-server-cli/package.json": "438730dd8a1ff60a9251d24072ca4b2306b8a535460772dfa1ad13a3b3df17cb",
-    "pnpm-lock.yaml": "b85d3bee6402ac2a2cf4d117d27dab965667b6eb17f5a54c9519476387569be5",
+    "pnpm-lock.yaml": "872041adbc547f230f8405e5eee3a572be77430c0701a3e1c1ce92b318a406ed",
     "pnpm-workspace.yaml": "283903f64fe97d9e6223affd609bcced01d90f91a62db8839b858bdc7d335b60",
     "scripts/license-texts/Apache-2.0.txt": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
     "scripts/native-search-tools-config.mjs": "7cadab538877a3f64a3161f1c64ec50fe06c83aa32dbebef3553941c314a689a",
@@ -3355,7 +3355,7 @@
     "third-party/native-search/licenses/f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af.txt": "f9bc4423732350eb0b3f7ed7e91d530298476f8fec0c6c427a1c04ade22655af",
     "third-party/native-search/licenses/f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505.txt": "f9c375a1be4a41f7b70301dd83c91cb89e41567478859b77eef375a52d782505",
     "third-party/native-search/sources.json": "3ed43433e5a4c684c0d751bc03facc3f020d5077d8ffd299156a54b51a1ec6d9",
-    "third-party/npm-overrides.json": "9578204cb535628666d0790ee09179cb1526b9847ffbc1bffb7624db7231942d",
+    "third-party/npm-overrides.json": "e7dd91c5141e6ebc3660568e6faa232c692b1140b9ff2a22a200759bd624f6cd",
     "third-party/runtime/node-22.16.0-LICENSE.txt": "1ae62e2015784ba438db7b04ebd33f3c4ff3efdb824c111c4ececd99945fd52d",
     "third-party/runtime/node-24.14.0-LICENSE.txt": "4573185d56580da2b890ba34a85a409257640f1c5632eade4300137266194d18",
     "third-party/runtime/sources.json": "b27bc8d81aeb71108e523602364ffbb6a1b19c2d5d47733fd43094b769006741",
@@ -3391,6 +3391,7 @@
     "third-party/upstream/58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd.txt": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
     "third-party/upstream/59c38e93a395817bc9d674d868af7c062fcea8b37468af8b3f6f075133eb1756.txt": "59c38e93a395817bc9d674d868af7c062fcea8b37468af8b3f6f075133eb1756",
     "third-party/upstream/5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f.txt": "5a5ee54c5001bbad1cdc1a57cc3dd4c42199b2da09d39c7ee41fab002d02967f",
+    "third-party/upstream/5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f.txt": "5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f",
     "third-party/upstream/5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf.txt": "5aec868f669e384a22372a4e8a1a6cd7d44c64cd451f960ca69cc170d1e13acf",
     "third-party/upstream/5f745b8244890bde0a2258fe32342d60c577fad043e8601d923690a5bfe1b54f.txt": "5f745b8244890bde0a2258fe32342d60c577fad043e8601d923690a5bfe1b54f",
     "third-party/upstream/5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd.txt": "5f787c1dee3c56547f09ccc2906ab5f5293c4d8dd6c8654e573216c38e908dbd",
@@ -4915,23 +4916,9 @@
     },
     {
       "name": "@larksuiteoapi/node-sdk",
-      "version": "1.61.1",
+      "version": "1.74.0",
       "license": "MIT",
-      "notices": [
-        {
-          "member": "LICENSE",
-          "sha256": "f9bfd5e309b1523a2dd3937b44f516e6018605eb05b35336485b0a34cbd9f373"
-        },
-        {
-          "member": "README.md (license section)",
-          "sha256": "d0de7064760700e47a0fdedd12ae4e027146e16e9cec0233505fe7c4ed5b3344"
-        }
-      ]
-    },
-    {
-      "name": "@larksuiteoapi/node-sdk",
-      "version": "1.64.0",
-      "license": "MIT",
+      "repository": "https://github.com/larksuite/node-sdk.git",
       "notices": [
         {
           "member": "LICENSE",
@@ -8132,6 +8119,22 @@
     },
     {
       "name": "agent-base",
+      "version": "6.0.2",
+      "license": "MIT",
+      "repository": "git://github.com/TooTallNate/node-agent-base.git",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "9392da8d1d2ccb224d60025fee4d6223ae0b863469fcd8c6b9461145723cf1c4"
+        },
+        {
+          "member": "https://registry.npmjs.org/agent-base/-/agent-base-6.0.2.tgz",
+          "sha256": "5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f"
+        }
+      ]
+    },
+    {
+      "name": "agent-base",
       "version": "7.1.4",
       "license": "MIT",
       "repository": "https://github.com/TooTallNate/proxy-agents.git",
@@ -8417,6 +8420,22 @@
     {
       "name": "axios",
       "version": "1.13.6",
+      "license": "MIT",
+      "repository": "https://github.com/axios/axios.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "82761059eaedacb3356803aea8a170d8298609f91b14fc32ee1bfb40d690183c"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "8473eb9be53be85369a78427af60d82922bf44da8c3a16d6ebe643badd150f31"
+        }
+      ]
+    },
+    {
+      "name": "axios",
+      "version": "1.21.1",
       "license": "MIT",
       "repository": "https://github.com/axios/axios.git",
       "notices": [
@@ -11195,8 +11214,40 @@
       ]
     },
     {
+      "name": "follow-redirects",
+      "version": "1.16.3",
+      "license": "MIT",
+      "repository": "git+ssh://git@github.com/follow-redirects/follow-redirects.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "bfa8a54bb952ccda79f0f1889721d108f5b605babbb2b8a3705ffb52f4132eb7"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "abd3792ba3b4f3da7f4ed431de50254c3e748bba1596bc7f36937b97767e02d2"
+        }
+      ]
+    },
+    {
       "name": "form-data",
       "version": "4.0.5",
+      "license": "MIT",
+      "repository": "git://github.com/form-data/form-data.git",
+      "notices": [
+        {
+          "member": "License",
+          "sha256": "e5b780d4f38d1d3328e3e53186c4e62d3fa149ea6f2bacd5de5ad0c30ac85343"
+        },
+        {
+          "member": "README.md (license section)",
+          "sha256": "8d4313d2ec98dee47b0c630ccfe5ca0b6e7c60e8d74cf460db5bcb271f908c14"
+        }
+      ]
+    },
+    {
+      "name": "form-data",
+      "version": "4.0.6",
       "license": "MIT",
       "repository": "git://github.com/form-data/form-data.git",
       "notices": [
@@ -11571,6 +11622,18 @@
       ]
     },
     {
+      "name": "hasown",
+      "version": "2.0.4",
+      "license": "MIT",
+      "repository": "git+https://github.com/inspect-js/hasOwn.git",
+      "notices": [
+        {
+          "member": "LICENSE",
+          "sha256": "bf9b0d665be2a689851eea667ca9f42066ea1d903b38349c51e6a44b2577680a"
+        }
+      ]
+    },
+    {
       "name": "hast-util-from-dom",
       "version": "5.0.1",
       "license": "ISC",
@@ -11923,6 +11986,22 @@
         {
           "member": "LICENSE",
           "sha256": "71368fd0f5b4129191e9afcd1e1ef2dc89a9090d3e4d80bbab92dafd032b3bef"
+        }
+      ]
+    },
+    {
+      "name": "https-proxy-agent",
+      "version": "5.0.1",
+      "license": "MIT",
+      "repository": "git://github.com/TooTallNate/node-https-proxy-agent.git",
+      "notices": [
+        {
+          "member": "README.md (license section)",
+          "sha256": "58f4074efa400c8397add18c6561d0a17e4721e24bfd1b4d1e8ca764a8cb3eca"
+        },
+        {
+          "member": "https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-5.0.1.tgz",
+          "sha256": "5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f"
         }
       ]
     },

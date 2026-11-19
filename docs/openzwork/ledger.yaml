@@ -281,6 +281,7 @@ entries:
     spec:
       - docs/openzwork/release/openzwork-release-version.md
       - docs/openzwork/release/automatic-github-release.md
+      - docs/openzwork/release/unsigned-macos-distribution.md
       - docs/git/release-build-publish-separation-openzwork.md
     paths:
       - .github/workflows/installers.yml
@@ -399,6 +400,52 @@ entries:
       - packages/ui/src/v4/SessionPane.tsx
       - packages/ui/src/v4/V4ConversationContext.tsx
     source: 现有 CI/E2E 规范；889fe19d6 的 runner 登记；补登已有验证材料
+  - id: OZ-F014
+    kind: feature
+    status: active
+    title: 桌面多机配置包
+    summary: 桌面用户按项迁移七类个人配置，命令和子智能体按原字节比较，技能按物理子树提交并保留启用状态和执行位。默认模型沿用新会话选择规则，系统提示词由设置服务比较后写入。
+    spec:
+      - docs/specs/config-package-openzwork.md
+    modules: [config-package-contract, config-package-service, config-package-ui]
+    hooks:
+      - packages/shared/src/channels.ts
+      - packages/shared/src/index.ts
+      - packages/services/src/index.ts
+      - packages/services/src/node.ts
+      - packages/services/src/data-sync/node.ts
+      - packages/services/src/data-sync/*DataSync.ts
+      - packages/services/src/commands/commandsService.ts
+      - packages/services/src/subagents/subagentsService.ts
+      - packages/services/src/fs/atomicFileUtils.ts
+      - packages/client/src/globals.d.ts
+      - packages/client/src/remoteServiceAccess.ts
+      - packages/services/src/accessor.ts
+      - packages/shared/src/platform.ts
+      - packages/desktop/src/host/index.ts
+      - packages/desktop/src/preload/index.ts
+      - packages/desktop/src/renderer/src/desktopPlatform.ts
+      - packages/desktop/src/main/desktopMainIpcPlatform.ts
+      - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/i18n/locales/zh-CN.ts
+      - packages/ui/src/i18n/locales/en-US.ts
+      - packages/services/src/model-provider/providerProvisioningSource.ts
+      - packages/services/src/model-provider/providerProvisioningTarget.ts
+      - packages/services/src/setting/settingService.ts
+    paths:
+      - packages/services/test/configPackageFixture.ts
+      - packages/services/test/configPackageHostImport.ts
+      - packages/desktop/test/e2e/helpers/config-package-runner.ts
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/config-package.json
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/config-package.json
+      - packages/desktop/test/e2e/conversation-session/remote/data-sync/manual-review/pending/config-package.test.ts
+    tests:
+      - apps/zcode-cli/packages/bootstrap/tests/config-package-runtime.test.ts
+      - packages/services/test/configPackageRoundTrip.test.ts
+      - packages/services/test/configPackageConflicts.test.ts
+      - packages/services/test/configPackageBoundaries.test.ts
+      - packages/services/test/configPackageSkillImport.test.ts
+    source: docs/specs/config-package-openzwork.md
   - id: OZ-C001
     kind: change
     status: active
@@ -460,6 +507,14 @@ entries:
       - packages/provider/src/resolver.ts
       - packages/ui/src/settings/model-provider-section/ProviderLogo.tsx
       - packages/ui/src/settings/model-provider-section/ProviderTemplatePicker.tsx
+      - apps/zcode-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner.ts
+      - apps/zcode-cli/packages/adapters/src/model/model-execution.ts
+    tests:
+      - apps/zcode-cli/packages/bootstrap/tests/zcode-builtin-model-runtime-integration.test.ts
+      - apps/zcode-cli/packages/bootstrap/tests/session-selection-protocol.test.ts
+      - apps/zcode-cli/packages/bootstrap/tests/v4-native-commands.test.ts
+      - apps/zcode-cli/packages/adapters/tests/model.test.ts
     source: "PR #53"
   - id: OZ-C004
     kind: change
@@ -573,6 +628,8 @@ entries:
       # 2026-11-17 J5：licenses strict 复核闭合 boolbase/@hono node-ws 的发布方原文快照。
       - third-party/upstream/cdf4d87ae0a6c160227263bf4e39a0a10e30e89ae7256e0f7ac7bde0836552c6.txt
       - third-party/upstream/6895190430d809c4c57a7582ecc2f99acbc2ea39a5dfad20262a41d5b3e91733.txt
+      # 飞书 SDK 传递依赖的两份发布方 README 包含相同的完整 MIT 原文。
+      - third-party/upstream/5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f.txt
     hooks:
       - LICENSE
       - NOTICE.md
@@ -630,6 +687,29 @@ entries:
       - packages/services/test/settingsLocalePersistence.test.ts
       - packages/desktop/test/e2e/settings/general/settings-client-language-header-openzwork.test.ts
     source: 上游 docs/i18n/ui-locales.md 合同；J1 返工（NEXT-FINISH-LOCALE-DIRECT-CI-20261117）
+  - id: OZ-C013
+    kind: change
+    status: active
+    title: Responses 原生联网搜索
+    summary: 执行模型开关与协议白名单合取，Responses 编码服务端 web_search 并将结构化 URL 引用和正文链接合并去重；Chat Completions 不暴露，Anthropic 沿用原行为。
+    spec: docs/specs/websearch-openai-responses-openzwork.md
+    paths:
+      - packages/provider/src/protocol-capabilities.ts
+      - apps/zcode-cli/packages/adapters/src/model/openai-responses-websearch.ts
+    hooks:
+      - packages/provider/src/resolver.ts
+      - apps/zcode-cli/packages/adapters/src/model/tool-transform.ts
+      - apps/zcode-cli/packages/adapters/src/model/runner-stream.ts
+      - apps/zcode-cli/packages/adapters/src/model/stream-retry-boundary.ts
+      - apps/zcode-cli/packages/contracts/src/model/index.ts
+      - apps/zcode-cli/packages/core/src/tool/handlers/websearch.ts
+      - apps/zcode-cli/packages/core/src/tool/handlers/websearch-results.ts
+      - apps/zcode-cli/packages/adapters/tests/websearch.test.ts
+    tests:
+      - packages/provider/test/nativeWebSearchCapabilities.test.ts
+      - apps/zcode-cli/packages/adapters/tests/websearch-openai-responses.test.ts
+      - apps/zcode-cli/packages/core/tests/websearch-openai-responses.test.ts
+    source: T2 Responses 原生搜索任务书与中组评审返修
   - id: OZ-D001
     kind: drop
     status: active
@@ -837,6 +917,10 @@ entries:
     paths:
       - packages/desktop/src/main/webRemoteControlTransport.ts
       - packages/desktop/test/e2e/conversation-session/permissions/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts
+      - packages/desktop/test/e2e/conversation-session/permissions/manual-review/pending/conversation-session-permission-hook-race.test.ts
+      - packages/desktop/test/e2e/helpers/permission-hook-race-fixture.ts
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/conversation-session-permission-hook-race.json
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/conversation-session-permission-hook-race.json
       - packages/desktop/test/e2e/conversation-session/queue/manual-review/pending/conversation-session-auto-drain.test.ts
       - packages/desktop/test/e2e/conversation-session/tools/manual-review/pending/conversation-session-bash-read-state.test.ts
       - packages/desktop/test/e2e/conversation-session/models/manual-review/pending/conversation-session-claude-anthropic-reasoning-budget.test.ts

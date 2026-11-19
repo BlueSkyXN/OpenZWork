@@ -238,9 +238,7 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - @kurkle/color@0.3.4 — MIT
 
-- @larksuiteoapi/node-sdk@1.61.1 — MIT
-
-- @larksuiteoapi/node-sdk@1.64.0 — MIT
+- @larksuiteoapi/node-sdk@1.74.0 — MIT
 
 - @lexical/clipboard@0.42.0 — MIT
 
@@ -750,6 +748,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - acorn@8.16.0 — MIT
 
+- agent-base@6.0.2 — MIT
+
 - agent-base@7.1.4 — MIT
 
 - agent-base@9.0.0 — MIT
@@ -793,6 +793,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - await-to-js@3.0.0 — MIT
 
 - axios@1.13.6 — MIT
+
+- axios@1.21.1 — MIT
 
 - bail@2.0.2 — MIT
 
@@ -1198,7 +1200,11 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - follow-redirects@1.16.0 — MIT
 
+- follow-redirects@1.16.3 — MIT
+
 - form-data@4.0.5 — MIT
+
+- form-data@4.0.6 — MIT
 
 - formdata-polyfill@4.0.10 — MIT
 
@@ -1254,6 +1260,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 
 - hasown@2.0.2 — MIT
 
+- hasown@2.0.4 — MIT
+
 - hast-util-from-dom@5.0.1 — ISC
 
 - hast-util-from-html-isomorphic@2.0.0 — MIT
@@ -1299,6 +1307,8 @@ Original copyright, license and NOTICE text is retained below. Identical text is
 - http-mitm-proxy@1.1.0 — MIT
 
 - http-proxy-agent@9.0.0 — MIT
+
+- https-proxy-agent@5.0.1 — MIT
 
 - https-proxy-agent@7.0.6 — MIT
 
@@ -4111,9 +4121,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ### Notice f9bfd5e309b1523a2dd3937b44f516e6018605eb05b35336485b0a34cbd9f373
 
-- @larksuiteoapi/node-sdk@1.61.1: LICENSE
-
-- @larksuiteoapi/node-sdk@1.64.0: LICENSE
+- @larksuiteoapi/node-sdk@1.74.0: LICENSE
 
 
 
@@ -4131,9 +4139,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ### Notice d0de7064760700e47a0fdedd12ae4e027146e16e9cec0233505fe7c4ed5b3344
 
-- @larksuiteoapi/node-sdk@1.61.1: README.md (license section)
-
-- @larksuiteoapi/node-sdk@1.64.0: README.md (license section)
+- @larksuiteoapi/node-sdk@1.74.0: README.md (license section)
 
 
 
@@ -32282,6 +32288,84 @@ THE SOFTWARE.
 
 ````
 
+### Notice 9392da8d1d2ccb224d60025fee4d6223ae0b863469fcd8c6b9461145723cf1c4
+
+- agent-base@6.0.2: README.md (license section)
+
+
+
+````text
+License
+-------
+
+(The MIT License)
+
+Copyright (c) 2013 Nathan Rajlich &lt;nathan@tootallnate.net&gt;
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[http-proxy-agent]: https://github.com/TooTallNate/node-http-proxy-agent
+[https-proxy-agent]: https://github.com/TooTallNate/node-https-proxy-agent
+[pac-proxy-agent]: https://github.com/TooTallNate/node-pac-proxy-agent
+[socks-proxy-agent]: https://github.com/TooTallNate/node-socks-proxy-agent
+[http.Agent]: https://nodejs.org/api/http.html#http_class_http_agent
+
+````
+
+### Notice 5aa012c5c5e970177d1ff9144121a598fa082434391061504b2d77a70289097f
+
+- agent-base@6.0.2: https://registry.npmjs.org/agent-base/-/agent-base-6.0.2.tgz
+
+- https-proxy-agent@5.0.1: https://registry.npmjs.org/https-proxy-agent/-/https-proxy-agent-5.0.1.tgz
+
+
+
+````text
+License
+-------
+
+(The MIT License)
+
+Copyright (c) 2013 Nathan Rajlich &lt;nathan@tootallnate.net&gt;
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+````
+
 ### Notice 8d8c55319c7729d57be811c747452636688d54f19701ee0752b6b15ad3771d9a
 
 - agent-base@7.1.4: LICENSE
@@ -33213,6 +33297,8 @@ MIT © [Dima Grossman](http://blog.grossman.io) && Tomer Barnea
 
 - axios@1.13.6: LICENSE
 
+- axios@1.21.1: LICENSE
+
 
 
 ````text
@@ -33229,6 +33315,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ### Notice 8473eb9be53be85369a78427af60d82922bf44da8c3a16d6ebe643badd150f31
 
 - axios@1.13.6: README.md (license section)
+
+- axios@1.21.1: README.md (license section)
 
 
 
@@ -41177,6 +41265,8 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 - follow-redirects@1.16.0: LICENSE
 
+- follow-redirects@1.16.3: LICENSE
+
 
 
 ````text
@@ -41205,6 +41295,8 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 - follow-redirects@1.16.0: README.md (license section)
 
+- follow-redirects@1.16.3: README.md (license section)
+
 
 
 ````text
@@ -41217,6 +41309,8 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ### Notice e5b780d4f38d1d3328e3e53186c4e62d3fa149ea6f2bacd5de5ad0c30ac85343
 
 - form-data@4.0.5: License
+
+- form-data@4.0.6: License
 
 
 
@@ -41246,6 +41340,8 @@ Copyright (c) 2012 Felix Geisendörfer (felix@debuggable.com) and contributors
 ### Notice 8d4313d2ec98dee47b0c630ccfe5ca0b6e7c60e8d74cf460db5bcb271f908c14
 
 - form-data@4.0.5: README.md (license section)
+
+- form-data@4.0.6: README.md (license section)
 
 
 
@@ -41954,6 +42050,8 @@ SOFTWARE.
 ### Notice bf9b0d665be2a689851eea667ca9f42066ea1d903b38349c51e6a44b2577680a
 
 - hasown@2.0.2: LICENSE
+
+- hasown@2.0.4: LICENSE
 
 
 
@@ -43655,6 +43753,43 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
 CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+````
+
+### Notice 58f4074efa400c8397add18c6561d0a17e4721e24bfd1b4d1e8ca764a8cb3eca
+
+- https-proxy-agent@5.0.1: README.md (license section)
+
+
+
+````text
+License
+-------
+
+(The MIT License)
+
+Copyright (c) 2013 Nathan Rajlich &lt;nathan@tootallnate.net&gt;
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+[CONNECT]: http://en.wikipedia.org/wiki/HTTP_tunnel#HTTP_CONNECT_Tunneling
 
 ````
 

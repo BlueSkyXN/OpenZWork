@@ -143,7 +143,11 @@ jobs:
 
       - name: Model capability request mapping regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/adapters exec vitest run tests/model-capability-wire.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+        run: pnpm --filter @zcode/adapters exec vitest run tests/model-capability-wire.test.ts tests/model.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+
+      - name: Model factory request authentication regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-builtin-model-runtime-integration.test.ts tests/session-selection-protocol.test.ts tests/v4-native-commands.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
 
       - name: Conversation usage accuracy regression
         if: matrix.lane == 'regressions'
@@ -165,6 +169,12 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/workflow-query-session-db.test.ts --bail=1
 
+      - name: Provider-native WebSearch regression
+        if: matrix.lane == 'regressions'
+        run: |
+          pnpm --filter @zcode/adapters exec vitest run tests/websearch.test.ts tests/websearch-openai-responses.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+          pnpm --filter @zcode/core exec vitest run tests/websearch.test.ts tests/websearch-openai-responses.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+
       - name: System prompt context regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
@@ -185,7 +195,7 @@ jobs:
         if: matrix.lane == 'regressions'
         # 真实 SQLite 冷恢复在多文件同时转换和启动运行时时重复触发默认 5 秒期限。
         # 保留用例与期限，限制这个集成步骤的文件并发；平台和 Extended runner 仍并行。
-        run: pnpm --filter @zcode/bootstrap exec vitest run tests/provider-registry-app-runtime.test.ts tests/v4-cold-resume.test.ts tests/workflow-concurrency-governor.test.ts tests/workflow-effective-selection.test.ts tests/workflow-fault-matrix.stop.test.ts tests/zcode-protocol-transport.test.ts --no-file-parallelism --maxWorkers=1 --bail=1
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/provider-registry-app-runtime.test.ts tests/config-package-runtime.test.ts tests/v4-cold-resume.test.ts tests/workflow-concurrency-governor.test.ts tests/workflow-effective-selection.test.ts tests/workflow-fault-matrix.stop.test.ts tests/zcode-protocol-transport.test.ts --no-file-parallelism --maxWorkers=1 --bail=1
 
       - name: Local bundled plugins and metadata regression
         if: matrix.lane == 'regressions'
@@ -230,6 +240,10 @@ jobs:
       - name: CLI background approval regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/bootstrap exec vitest run tests/v4-native-interaction-background.test.ts tests/guarded-permission-options.test.ts --bail=1
+
+      - name: Bash approval regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/core exec vitest run tests/bash-empty-command-approval.test.ts
 
       - name: CLI workflow option regression
         if: matrix.lane == 'regressions'

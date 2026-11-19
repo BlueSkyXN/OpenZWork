@@ -24,6 +24,8 @@ import {
   IProviderProvisioningTargetService,
   ISourceServerWorkspaceService,
   ISourceServerManagementService,
+  // OpenZWork(OZ-F014): 本机桌面 attachment 的配置包描述符。
+  IConfigPackageService,
   // OpenZWork：data-sync 域保留（本机→远端设备推送）；usage-stats/coding-plan/client-config/
   // 客户端场景/云内容/营销触达/闲时任务/加速卡属官方净化域，不接入。
   IDeviceSyncStateService,
@@ -89,6 +91,7 @@ export class RemoteServiceAccess implements IServiceAccessor {
   readonly providerProvisioningTargetService!: IProviderProvisioningTargetService;
   readonly sourceServerWorkspaceService: ISourceServerWorkspaceService;
   readonly sourceServerManagementService?: ISourceServerManagementService;
+  readonly configPackageService?: IConfigPackageService;
   // OpenZWork：数据同步页两个 Host-only 服务（同属 data-sync 保留域）；其余官方服务不接入。
   /** 仅 desktop base attachment 注册：数据同步页的设备同步状态。 */
   readonly deviceSyncStateService?: IDeviceSyncStateService;
@@ -226,6 +229,12 @@ export class RemoteServiceAccess implements IServiceAccessor {
     this.sourceServerManagementService = options.sourceServerManagementService
       ? ProxyChannel.toService<ISourceServerManagementService>(
           channelClient.getChannel(ISourceServerManagementService.channelName),
+        )
+      : undefined;
+    // OpenZWork(OZ-F014): 只有本机 base 连接持有此代理。
+    this.configPackageService = options.deviceSyncStateService
+      ? ProxyChannel.toService<IConfigPackageService>(
+          channelClient.getChannel(IConfigPackageService.channelName),
         )
       : undefined;
     // OpenZWork：数据同步页服务与设备同步状态共用开关（只在桌面 base 连接打开）。

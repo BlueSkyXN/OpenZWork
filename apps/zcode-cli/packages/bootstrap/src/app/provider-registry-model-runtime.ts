@@ -76,6 +76,8 @@ export class ApiProviderModelRuntime {
       modelId: registryModel.modelId,
       providerConfig: provider.config,
       modelConfig: config,
+      // OpenZWork(OZ-C003): 执行方绑定的鉴权来源属于这个句柄，重建静态配置时也要透传。
+      ...(target.requestDependencies ? { requestDependencies: target.requestDependencies } : {}),
       options: {
         reasoningLevel: normalReasoningLevel,
       },
