@@ -497,6 +497,15 @@ describe("个人配置的锁内比较与回滚", () => {
     const afterClear = await target.service.applyPreview(alreadySet.previewId, []);
     expect(afterClear.defaultModelApplied).toBeUndefined();
     expect((await target.repo.read()).defaultModelSelection).toBeUndefined();
+    const changed = await target.service.previewFile(file);
+    const localDefault = { providerId: "target-only", modelId: "local-choice" };
+    await target.repo.update((current) => ({ ...current, defaultModelSelection: localDefault }));
+    expect(await target.service.applyPreview(changed.previewId, [])).toEqual({
+      items: [],
+      defaultModelSkipped: true,
+    });
+    expect((await target.repo.read()).defaultModelSelection).toMatchObject(localDefault);
+    await target.repo.update((current) => ({ ...current, defaultModelSelection: undefined }));
     const rollback = await target.service.previewFile(file);
     vi.spyOn(target.runtime.registryService, "refresh").mockRejectedValueOnce(
       new Error("refresh failed"),
