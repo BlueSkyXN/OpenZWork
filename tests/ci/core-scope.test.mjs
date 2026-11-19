@@ -160,6 +160,7 @@ for (const [name, stepName, files] of [
     "Workflow scheduling and auxiliary session regression",
     [
       "tests/provider-registry-app-runtime.test.ts",
+      "tests/config-package-runtime.test.ts",
       "tests/v4-cold-resume.test.ts",
       "tests/workflow-concurrency-governor.test.ts",
       "tests/workflow-effective-selection.test.ts",
