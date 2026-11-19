@@ -88,6 +88,8 @@ export interface IServiceAccessor {
   // OpenZWork：data-sync 域保留（本机→远端设备推送）；usage-stats/coding-plan/client-config/
   // client-scenes/闲时任务/加速卡属官方净化域，不进聚合面。
   /** 仅桌面本机 Host 注册：数据同步页的设备同步状态。 */
+  // OpenZWork(OZ-F014): 只在桌面 base attachment 装配。
+  readonly configPackageService?: import("./config-package/index.js").IConfigPackageService;
   readonly deviceSyncStateService?: IDeviceSyncStateService;
   /** 仅桌面本机 Host 注册：数据同步页模型提供商的 Provisioning lane 状态与重试。 */
   readonly providerProvisioningStatusService?: IProviderProvisioningStatusService;

@@ -9,11 +9,12 @@ const extended = parseDocument(
   await readFile(new URL(".github/workflows/extended-checks.yml", root), "utf8"),
 ).toJS();
 
-test("application typecheck retains Main, remote Main and shared testing", () => {
+test("application typecheck retains Main, remote Main, preload and shared testing", () => {
   const command = manifest.scripts.typecheck;
   for (const target of [
     "packages/desktop/tsconfig.main.json",
     "packages/desktop/tsconfig.remote-main.json",
+    "packages/desktop/tsconfig.preload.json",
     "packages/shared/tsconfig.testing.json",
   ])
     assert.ok(command.includes(target), target);

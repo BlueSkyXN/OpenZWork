@@ -261,6 +261,8 @@ export {
 export { createFsVolumeProbe } from "./storage/adapters/volumeProbe.js";
 export { runStorageScan } from "./storage/adapters/inProcessScanRunner.js";
 export { createSkillsService } from "./skills/skillsService.js";
+// OpenZWork(OZ-F014): 本机窗口连接拥有其预览的释放边界。
+export { attachConfigPackage } from "./config-package/node.js";
 export { createSkillSyncService } from "./skill-sync/skillSyncService.js";
 export { createDeviceSyncStateService, createUserConfigSyncService } from "./data-sync/node.js";
 export { createHostProviderProvisioningStatus } from "./provider-provisioning-status/node.js";

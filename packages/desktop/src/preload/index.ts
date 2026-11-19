@@ -80,6 +80,7 @@ import type {
   CaptureBrowserGuestPageRequest,
   CaptureBrowserGuestPageResult,
   SSHConfigAliasOption,
+  WebRemoteControlConnectionProfileMutation,
   WebRemoteControlContext,
   WebRemoteControlReconnectWorkspaceRequest,
   WebRemoteControlReconnectWorkspaceResult,
@@ -249,7 +250,7 @@ contextBridge.exposeInMainWorld("zcode", {
     ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlConnectionSettings),
   getWebRemoteControlConnections: () =>
     ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlConnections),
-  updateWebRemoteControlConnectionProfile: (profiles) =>
+  updateWebRemoteControlConnectionProfile: (profiles: WebRemoteControlConnectionProfileMutation) =>
     ipcRenderer.invoke(PlatformChannels.UpdateWebRemoteControlConnectionProfile, profiles),
   getWebRemoteControlStatus: () => ipcRenderer.invoke(PlatformChannels.GetWebRemoteControlStatus),
   onWebRemoteControlStatusChanged: (
@@ -283,6 +284,9 @@ contextBridge.exposeInMainWorld("zcode", {
   selectDirectories: (): Promise<string[]> =>
     ipcRenderer.invoke(PlatformChannels.SelectDirectories),
   /** 打开系统文件选择框，返回选中文件路径或 null */
+  // OpenZWork(OZ-F014): 只跨 IPC 返回用户选定的路径。
+  selectSaveFilePath: (suggestedName: string): Promise<string | null> =>
+    ipcRenderer.invoke(PlatformChannels.SelectSaveFilePath, suggestedName),
   selectFile: (): Promise<string | null> => ipcRenderer.invoke(PlatformChannels.SelectFile),
   /** 打开系统多文件选择框，返回选中文件路径；取消时返回空数组 */
   selectFiles: (): Promise<string[]> => ipcRenderer.invoke(PlatformChannels.SelectFiles),

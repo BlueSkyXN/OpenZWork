@@ -5568,3 +5568,12 @@ CLI 定向回归已通过：V4 两种投递模式的并发 workspace 隔离、�
 | SP16      | apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts              | passed：完整协议套件 121/121，含显式重启采用新配置、保留历史与另一会话；该行是协议证据，不代表 Windows GUI 验收                                                                     |
 
 首次 Desktop run `desktop-e2e-20261106134053575-p92202-3a0c5e3f1473b847` 在 renderer bridge preflight 执行页面脚本超时，业务断言未运行。单独重跑得到上述通过产物。Windows 原生安装包、实体手机及远程 Host 本轮未执行；候选保留 pending，不自动晋升正式 E2E 或 Docker suite。
+
+## 多机配置包
+
+| 用例  | 操作与断言                                                                                                                                    | 状态               |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| CP-11 | 配对 390px 手机 Web，进入设置，检查数据同步页和配置包入口。通道拒绝由核心回归覆盖。                                                           | covered（pending） |
+| CP-12 | 在远端工作区的设置页操作本机文件。核对明文确认、选择器取消、默认勾选新增、手动覆盖差异、结果及重启提示。比对两端文件并检查中英文 390px 弹窗。 | covered（pending） |
+
+候选 `conversation-session/remote/data-sync/manual-review/pending/config-package.test.ts`。3.18.2 的 macOS Electron 与触屏 Chromium 在 `packages/desktop/.e2e-artifacts/config-package-1795054036656` 通过 2 项，系统文件选择器由 WDIO 提供选定路径与取消返回值。产品规则见[多机配置包](../specs/config-package-openzwork.md)。

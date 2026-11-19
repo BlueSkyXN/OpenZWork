@@ -1,6 +1,8 @@
 // 双保留：systemPrompt 为本仓特有；DataSyncSection 属 data-sync 保留域。
 // 净化保留：SettingsMachinesProvider 模块已随上游删除，import 不再保留。
 import { SystemPromptSettingsSection } from "@/settings/system-prompt/contract.js";
+// OpenZWork(OZ-F014): 入口只挂在桌面数据同步页。
+import { ConfigPackageSection } from "@/config-package/index.js";
 import { DataSyncSection } from "@/data-sync/index.js";
 import { getWorkspaceSourceServerId } from "@/conversation-workspace-target/sourceIdentity.js";
 /* oxlint-disable eslint(max-lines) */
@@ -1212,12 +1214,15 @@ export function SettingsPage({
                           ) : activeSection === "dataSync" ? (
                             // data-sync 保留域：迁移向导入口复用 store 的 requestOnboardingDialog。
                             isDesktop ? (
+                              <>
                               <DataSyncSection
                                 snapshot={sourceManagementSnapshot}
                                 deviceSyncStateService={localHostServices.deviceSyncStateService}
                                 onOpenRemoteConnection={onOpenRemoteWorkspace}
                                 onOpenMigration={requestMigrationDialog}
                               />
+                              <ConfigPackageSection service={localHostServices.configPackageService} />
+                              </>
                             ) : null
                           ) : activeSection === "remoteControl" ? (
                             isDesktop && remoteControlEnabled ? (

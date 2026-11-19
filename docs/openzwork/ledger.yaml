@@ -406,7 +406,7 @@ entries:
     summary: 桌面用户按项迁移七类个人配置。Provider 锁内合并并在刷新失败时做版本回滚，系统提示词由设置服务比较后写入。
     spec:
       - docs/specs/config-package-openzwork.md
-    modules: [config-package-contract, config-package-service]
+    modules: [config-package-contract, config-package-service, config-package-ui]
     hooks:
       - packages/shared/src/channels.ts
       - packages/shared/src/index.ts
@@ -417,12 +417,27 @@ entries:
       - packages/services/src/commands/commandsService.ts
       - packages/services/src/subagents/subagentsService.ts
       - packages/services/src/fs/atomicFileUtils.ts
+      - packages/client/src/globals.d.ts
+      - packages/client/src/remoteServiceAccess.ts
+      - packages/services/src/accessor.ts
+      - packages/shared/src/platform.ts
+      - packages/desktop/src/host/index.ts
+      - packages/desktop/src/preload/index.ts
+      - packages/desktop/src/renderer/src/desktopPlatform.ts
+      - packages/desktop/src/main/desktopMainIpcPlatform.ts
+      - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/i18n/locales/zh-CN.ts
+      - packages/ui/src/i18n/locales/en-US.ts
       - packages/services/src/model-provider/providerProvisioningSource.ts
       - packages/services/src/model-provider/providerProvisioningTarget.ts
       - packages/services/src/setting/settingService.ts
     paths:
       - packages/services/test/configPackageFixture.ts
       - packages/services/test/configPackageHostImport.ts
+      - packages/desktop/test/e2e/helpers/config-package-runner.ts
+      - packages/desktop/test/e2e/fixtures/upstream/conversation-session/config-package.json
+      - packages/desktop/test/e2e/fixtures/cases/conversation-session/config-package.json
+      - packages/desktop/test/e2e/conversation-session/remote/data-sync/manual-review/pending/config-package.test.ts
     tests:
       - apps/zcode-cli/packages/bootstrap/tests/config-package-runtime.test.ts
       - packages/services/test/configPackageRoundTrip.test.ts

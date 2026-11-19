@@ -90,3 +90,5 @@ export function createConfigPackageService(options: ConfigPackageOptions): IConf
     },
   };
 }
+
+export { attachConfigPackage } from "./attachment.js";

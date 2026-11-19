@@ -7,6 +7,7 @@ import { ServiceCollection } from "../src/collection.js";
 import { IConfigPackageService } from "../src/config-package/index.js";
 import { CONFIG_PACKAGE_CATEGORIES } from "@zcode/shared";
 import { exposeWindowHostAttachmentServices } from "../../desktop/src/host/windowHostAttachmentRpcPolicy.js";
+import { attachConfigPackage } from "../src/config-package/node.js";
 import { writePrivatePackage } from "../src/config-package/privateFile.js";
 import { seed, sandbox, privateValues, ownerAt } from "./configPackageFixture.js";
 
@@ -114,5 +115,34 @@ describe("配置包边界", () => {
       mobile.dispose();
       host.dispose();
     }
+  });
+  it("关闭桌面连接后清除已返回与在途的预览", async () => {
+    const dir = await sandbox(),
+      source = await seed(join(dir, "a")),
+      path = join(dir, "transfer.gz");
+    await source.service.exportToFile(path, ["providers"]);
+    const target = ownerAt(join(dir, "b")),
+      connection = attachConfigPackage(target.service);
+    const ready = await connection.service.previewFile(path);
+    const read = target.options.source.read.bind(target.options.source);
+    const started = Promise.withResolvers<void>(),
+      resume = Promise.withResolvers<void>();
+    vi.spyOn(target.options.source, "read").mockImplementationOnce(async (id) => {
+      started.resolve();
+      await resume.promise;
+      return read(id);
+    });
+    const release = vi.spyOn(target.service, "releasePreview");
+    const pending = connection.service.previewFile(path);
+    await started.promise;
+    connection.dispose();
+    resume.resolve();
+    await expect(pending).rejects.toThrow("expired");
+    const released = release.mock.calls.map(([id]) => id);
+    expect(released).toContain(ready.previewId);
+    expect(new Set(released).size).toBe(2);
+    for (const id of released)
+      await expect(target.service.applyPreview(id, ready.rows)).rejects.toThrow("expired");
+    expect((await target.repo.read()).providers.keys()).toEqual([]);
   });
 });

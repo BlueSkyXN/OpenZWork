@@ -198,6 +198,8 @@ export const PlatformChannels = {
   /** 打开系统多目录选择框 */
   SelectDirectories: "zcode:select-directories",
   /** 打开系统文件选择框 */
+  // OpenZWork(OZ-F014): 原生对话框仅返回路径，私有写入归 Host。
+  SelectSaveFilePath: "zcode:select-save-file-path",
   SelectFile: "zcode:select-file",
   /** 打开系统多文件选择框 */
   SelectFiles: "zcode:select-files",
