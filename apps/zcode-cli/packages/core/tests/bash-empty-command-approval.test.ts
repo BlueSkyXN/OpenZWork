@@ -62,7 +62,7 @@ describe("Bash empty command approval", () => {
     const { events, executor, grantSessionPermission, requestPermission, run, store } = setup();
     const result = await execute(executor, command);
 
-    // OW-P036：空命令不会到达投影「始终允许」选项或写回授权规则的路径。
+    // OW-P040：空命令不会到达投影「始终允许」选项或写回授权规则的路径。
     expect(requestPermission).not.toHaveBeenCalled();
     expect(events.some((event) => event.type === SessionEventType.PermissionRequested)).toBe(false);
     expect(store.saveProjectPermission).not.toHaveBeenCalled();

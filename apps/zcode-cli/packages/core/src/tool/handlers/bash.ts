@@ -118,7 +118,7 @@ export function prepareBashPermissionMatcher(input: unknown): BashPermissionMatc
   return command === undefined ? undefined : prepareBashPermissionMatcherForCommand(command);
 }
 
-// OW-P036：handler 对空命令只返回空输出；不要让审批为无操作保存 Bash 规则。
+// OW-P040：handler 对空命令只返回空输出；不要让审批为无操作保存 Bash 规则。
 function prepareBashApproval(input: unknown): ToolApprovalGate {
   const command = readStringProperty(input, "command");
   return command !== undefined && command.trim().length === 0

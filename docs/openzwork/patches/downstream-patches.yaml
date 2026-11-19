@@ -767,7 +767,7 @@ patches:
       - scripts/test/desktop-e2e-case-config.test.mjs
     retire: 上游开发配置避免在首次远控任务中为该动态入口触发整页刷新，冷缓存手机恢复用例通过。
 
-  - id: OW-P036
+  - id: OW-P040
     title: 空 Bash 命令进入审批并可生成工具级授权
     kind: product
     status: fixed
