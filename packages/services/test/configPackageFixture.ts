@@ -9,6 +9,7 @@ import {
   createUserConfigSyncService,
   createMcpDataSyncMethods,
   createSubagentDataSyncMethods,
+  createCommandDataSyncMethods,
 } from "../src/data-sync/node.js";
 import { createSkillSyncService } from "../src/skill-sync/skillSyncService.js";
 import { createSettingService } from "../src/setting/settingService.js";
@@ -64,7 +65,7 @@ export function ownerAt(home: string, platform: ConfigPackageOptions["platform"]
     appVersion: "3.17.2",
     owners: {
       subagents: createSubagentDataSyncMethods("original-bytes"),
-      commands: userCategory(user, "commands"),
+      commands: createCommandDataSyncMethods({ requireComplete: true }),
       hooks: userCategory(user, "hooks"),
       mcp: createMcpDataSyncMethods(),
       skills: createSkillSyncService(),
@@ -78,7 +79,12 @@ export function ownerAt(home: string, platform: ConfigPackageOptions["platform"]
     registry: runtime.registryService,
     settings: createSettingService(),
   };
-  return { options, repo, runtime, service: createConfigPackageService(options) };
+  return {
+    options,
+    repo,
+    runtime,
+    service: createConfigPackageService(options),
+  };
 }
 export function providerData(id: string, key: string) {
   return {
@@ -122,7 +128,15 @@ export async function seed(home: string) {
         enabled: true,
         events: {
           Stop: [
-            { hooks: [{ type: "process", command: privateValues.command, args: ["--example"] }] },
+            {
+              hooks: [
+                {
+                  type: "process",
+                  command: privateValues.command,
+                  args: ["--example"],
+                },
+              ],
+            },
           ],
         },
       },
@@ -136,7 +150,10 @@ export async function seed(home: string) {
         providerConfigRules: {
           providerRules: [providerData("personal:fixture", privateValues.key)],
         },
-        modelConfigRules: { providerModelRules: [], manualProviderModelRules: [] },
+        modelConfigRules: {
+          providerModelRules: [],
+          manualProviderModelRules: [],
+        },
         providerOrder: ["personal:fixture"],
         defaultModelSelection: {
           providerId: "personal:fixture",

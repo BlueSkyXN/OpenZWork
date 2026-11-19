@@ -119,10 +119,16 @@ export function decodeHooks(group: NonNullable<ConfigGroups["hooks"]>): HookData
 export function hookPreviewNames(group: ConfigGroups["hooks"]) {
   // v1 的清单只存事件名，完整命令与参数留在 Host。匹配条件和程序名来自已校验的载荷。
   const labels = Map.groupBy(group?.payload.items ?? [], ({ event, matcher, definition }) => {
-    const executable =
-      definition.type === "process" && typeof definition.command === "string"
-        ? definition.command.split(/[\\/]/u).at(-1)
-        : undefined;
+    const command = typeof definition.command === "string" ? definition.command.trim() : "";
+    // 只从可辨识的静态首词取程序名。完整 shell 文本、展开表达式与参数不离开 Host。
+    const first =
+      definition.type === "process"
+        ? command
+        : /^(?:"([^"\x24`]+)"|'([^']+)'|([A-Za-z0-9_./\\:-]+))(?=\s|$)/u
+            .exec(command)
+            ?.slice(1)
+            .find(Boolean);
+    const executable = first?.split(/[\\/]/u).at(-1);
     const program = executable && /^[\w.-]+$/u.test(executable) ? executable : undefined;
     return [event, matcher, program].filter(Boolean).join(" · ");
   });

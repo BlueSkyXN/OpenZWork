@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { lstat, readFile, readdir, readlink } from "node:fs/promises";
+import { lstat, mkdir, realpath, readFile, readdir, readlink } from "node:fs/promises";
 import { dirname, isAbsolute, join, posix, relative, sep } from "node:path";
 import type { DataSyncItemSignature } from "@zcode/shared";
 
@@ -13,11 +13,13 @@ interface DirectoryContentEntry {
   kind: "file" | "directory" | "symlink";
   absolutePath: string;
   size: number;
+  executableBits?: number;
 }
 
 export interface DirectoryContentOptions {
   /** 排除的顶层条目名（例如 inline 插件的 `data/`），签名、哈希和导出保持同一口径。 */
   excludeTopLevel?: readonly string[];
+  includeExecutableBits?: boolean;
 }
 
 /** `path` 严格位于 `root` 之内（不含 root 本身）。 */
@@ -39,6 +41,34 @@ export async function hasSymlinkWithin(root: string, path: string): Promise<bool
     current = dirname(current);
   }
   return false;
+}
+
+/**
+ * OW-P042：创建与复核都从已配置的根逐段检查。目录链接和 Windows junction 不作为可写父目录。
+ * 返回实际父目录，后续写入不再经过用户传入的路径别名。
+ */
+export async function prepareSyncWriteParent(root: string, target: string): Promise<string> {
+  if (!isPathWithin(root, target)) throw new Error("target outside sync root");
+  await mkdir(root, { recursive: true });
+  if (!(await lstat(root)).isDirectory()) throw new Error("target directory is not writable");
+  const physicalRoot = await realpath(root);
+  const segments = relative(root, target).split(sep);
+  const leaf = segments.pop()!;
+  let parent = physicalRoot;
+  for (const segment of segments) {
+    parent = join(parent, segment);
+    try {
+      await mkdir(parent);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    }
+    if (!(await lstat(parent)).isDirectory()) throw new Error("target directory is not writable");
+  }
+  const [actualParent, actualRoot] = await Promise.all([realpath(parent), realpath(root)]);
+  if (relative(parent, actualParent) !== "" || relative(physicalRoot, actualRoot) !== "") {
+    throw new Error("target directory changed");
+  }
+  return join(parent, leaf);
 }
 
 /**
@@ -71,7 +101,7 @@ async function listDirectoryContent(
         stack.push({ absolutePath, relativePath });
       } else if (child.isFile()) {
         const stat = await lstat(absolutePath);
-        entries.push({ relativePath, kind: "file", absolutePath, size: stat.size });
+        entries.push({ relativePath, kind: "file", absolutePath, size: stat.size, executableBits: stat.mode & 0o111 });
       }
     }
   }
@@ -109,9 +139,12 @@ export async function hashDirectoryContent(
   options?: DirectoryContentOptions,
 ): Promise<string> {
   const hash = createHash("sha256");
+  // v1 的内容摘要不变，额外的执行位摘要只用于本机预览和写前比较。
+  const modes = options?.includeExecutableBits ? createHash("sha256") : undefined;
   for (const entry of await listDirectoryContent(rootPath, options)) {
     hash.update(`${entry.kind}\0${entry.relativePath}\0`);
     if (entry.kind === "file") {
+      modes?.update(`${entry.relativePath}\0${entry.executableBits}\0`);
       const content = await readFile(entry.absolutePath);
       hash.update(`${content.length}\0`);
       hash.update(content);
@@ -120,5 +153,6 @@ export async function hashDirectoryContent(
     }
     hash.update("\0");
   }
-  return hash.digest("hex");
+  const content = hash.digest("hex");
+  return modes ? content + ":" + modes.digest("hex") : content;
 }

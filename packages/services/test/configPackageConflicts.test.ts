@@ -1,4 +1,4 @@
-import { readFile, stat, truncate, unlink, writeFile } from "node:fs/promises";
+import { readFile, realpath, stat, truncate, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
@@ -143,7 +143,8 @@ describe("配置包文件与并发", () => {
     const edit = content("second", "fresh edit");
     vi.spyOn(atomicFiles, "writeFileAtomically").mockImplementation(async (dest, bytes, mode) => {
       await write(dest, bytes, mode);
-      if (dest === path(b, "first")) await writeFile(path(b, "second"), edit);
+      if ((await realpath(dest)) === (await realpath(path(b, "first"))))
+        await writeFile(path(b, "second"), edit);
     });
     const result = await target.applyPreview(pre.previewId, pre.rows);
     expect(result.items.map((row) => row.status)).toEqual(["updated", "conflict"]);
@@ -361,6 +362,42 @@ describe("个人配置的锁内比较与回滚", () => {
       }),
     );
   }
+  it.each(["missing-level", "hidden"])("CP-05 跳过新草稿无法采用的默认模型 %s", async (kind) => {
+    const root = await sandbox(),
+      source = ownerAt(join(root, "source")),
+      path = join(root, "providers.gz");
+    const rule = providerData(id, "fixture");
+    await source.repo.update(() =>
+      decodeProviderConfigFile({
+        schemaVersion: 1,
+        config: {
+          providerOrder: [id],
+          providerConfigRules: {
+            providerRules: [
+              {
+                ...rule,
+                config: { ...rule.config, ...(kind === "hidden" ? { visibility: "hidden" } : {}) },
+              },
+            ],
+          },
+          modelConfigRules: { providerModelRules: [], manualProviderModelRules: [] },
+          defaultModelSelection: {
+            providerId: id,
+            modelId: "sample",
+            ...(kind === "hidden" ? { options: { reasoningLevel: "disabled" } } : {}),
+          },
+        },
+      }),
+    );
+    await source.service.exportToFile(path, ["providers"]);
+    const target = ownerAt(join(root, "target")),
+      preview = await target.service.previewFile(path);
+    expect(preview.defaultModelCandidate).toBeUndefined();
+    const result = await target.service.applyPreview(preview.previewId, preview.rows);
+    expect(result.defaultModelApplied).toBeUndefined();
+    expect(result.defaultModelSkipped).toBe(true);
+    expect((await target.repo.read()).defaultModelSelection).toBeUndefined();
+  });
   it("CP-04/05 按 ID 成组合并普通和手动规则、顺序与默认模型", async () => {
     const root = await sandbox(),
       source = await seed(join(root, "a")),

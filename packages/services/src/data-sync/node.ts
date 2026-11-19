@@ -12,3 +12,4 @@ export { parseSubagentMarkdown } from "../subagents/subagentMarkdown.js";
 export { hashDirectoryContent } from "./directoryContent.js";
 export { walkSkillMarkdownPaths } from "../skills/skillDiscoveryWalk.js";
 export { createSubagentDataSyncMethods } from "./subagentDataSync.js";
+export { createCommandDataSyncMethods } from "./commandDataSync.js";

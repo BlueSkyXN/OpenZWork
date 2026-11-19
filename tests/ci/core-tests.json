@@ -6,6 +6,7 @@
       "files": [
         "packages/services/test/configPackageRoundTrip.test.ts",
         "packages/services/test/configPackageBoundaries.test.ts",
+        "packages/services/test/configPackageSkillImport.test.ts",
         "packages/services/test/configPackageConflicts.test.ts"
       ]
     },
