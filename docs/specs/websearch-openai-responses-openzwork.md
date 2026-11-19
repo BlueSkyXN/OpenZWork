@@ -25,8 +25,14 @@ sequenceDiagram
     R-->>H: 有效能力 = 模型开关 ∧ 协议受支持
     H->>A: 已标识 web_search 的内部请求
     A->>P: 编码 web_search 并发起流式请求
-    P-->>A: 正文与 URL citation
-    A-->>H: text_delta 及 source(ModelSource)
+    P-->>A: 正文前的 URL citation
+    A->>A: 暂存本次尝试的来源
+    opt 正文前发生可重试的流错误
+        A->>A: 丢弃本次暂存的来源
+        A->>P: 按现有规则重试
+    end
+    P-->>A: 正文、后续引用与完成事件
+    A-->>H: 按流顺序转发本次有效输出和来源
     H->>H: 合并结构化来源和正文链接，复用现有去重
 ```
 
@@ -37,6 +43,8 @@ sequenceDiagram
 | CLI Core          | 从本次流收集来源到 `ModelTextResult.sources`，由现有 `buildWebSearchOutput` 构建最终结果 |
 
 正文没有 Markdown 链接时仍可输出结构化来源；同一 URL 同时出现在 SDK citation 与正文时仅保留一项，优先结构化标题。正文、结果 schema 和现有去重规则不变。不用示例 URL 补缺失来源；不扩大到普通对话引用或其他 Provider，不改桌面/手机协议。
+
+首个有效输出前收到的 URL 引用由 Adapter 暂存，随有效输出或正常完成一并释放。只有引用时，流错误仍按现有规则判定能否重试。失败尝试的暂存来源随该次尝试丢弃，下一次请求从空列表开始。
 
 ## 验收
 
@@ -49,5 +57,6 @@ sequenceDiagram
 | WSR-06 | 已授权真实 Responses 渠道：桌面至少返回一条来源，手机打开同一会话显示一致；与离线 CI 分开记录。                                    |
 | WSR-07 | 真实 resolver 三协议 × 开关矩阵；有效能力、Core 暴露与调用一致，个人配置不被改写。                                                 |
 | WSR-08 | SDK 用合成 Responses SSE 解析 `url_citation`；无 Markdown 时最终来源仍含 URL，重复来源只出现一次；普通对话和文档注解不新增流来源。 |
+| WSR-09 | 第一轮只收到 URL 引用便断流时仍能重试，第二轮返回正文及自己的引用，第一轮的引用不进入结果。                                        |
 
 Provider 的 `nativeWebSearchCapabilities.test.ts` 进入固定核心清单。Adapter 与 Core 各自的 `websearch-openai-responses.test.ts` 和既有 `websearch.test.ts` 在核心 CI 点名。

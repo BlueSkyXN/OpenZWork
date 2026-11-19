@@ -643,6 +643,7 @@ entries:
       - packages/provider/src/resolver.ts
       - apps/zcode-cli/packages/adapters/src/model/tool-transform.ts
       - apps/zcode-cli/packages/adapters/src/model/runner-stream.ts
+      - apps/zcode-cli/packages/adapters/src/model/stream-retry-boundary.ts
       - apps/zcode-cli/packages/contracts/src/model/index.ts
       - apps/zcode-cli/packages/core/src/tool/handlers/websearch.ts
       - apps/zcode-cli/packages/core/src/tool/handlers/websearch-results.ts

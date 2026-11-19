@@ -10,6 +10,7 @@ import {
   type ModelStreamEvent,
   type ModelToolContract,
 } from "@zcode/contracts";
+import { setImmediate } from "node:timers/promises";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { toAiSdkTools } from "../src/model/index.js";
 import { executeAdapterStreamText } from "./test-adapter-model.js";
@@ -101,7 +102,7 @@ describe("OpenAI Responses provider-native WebSearch encoding (WSR-01/WSR-04)", 
   });
 });
 
-describe("OpenAI Responses WebSearch wire (WSR-01/04/08)", () => {
+describe("OpenAI Responses WebSearch wire (WSR-01/04/08/09)", () => {
   it("emits the SDK URL citation even when the answer contains no links", async () => {
     const { events, requests } = await streamFromFixture({ nativeSearch: true });
     expect(requests).toEqual([
@@ -121,6 +122,20 @@ describe("OpenAI Responses WebSearch wire (WSR-01/04/08)", () => {
     expect(events.at(-1)?.type).toBe("finish");
   });
 
+  it("retries after a citation-only attempt disconnects and discards its source", async () => {
+    const { events, requests } = await streamFromFixture({
+      nativeSearch: true,
+      firstResponse: interruptedCitationResponse(),
+    });
+
+    expect(requests).toHaveLength(2);
+    const sources = events.filter((event) => event.type === "source");
+    expect(sources.map((event) => event.source.url)).toEqual([CITATION_URL]);
+    const text = events.filter((event) => event.type === "text_delta");
+    expect(text.map((event) => event.text).join("")).toBe(SUMMARY);
+    expect(events.at(-1)?.type).toBe("finish");
+  });
+
   it("never calls transport for a non-empty block list", async () => {
     const requests: unknown[] = [];
     await expect(streamFromFixture({ nativeSearch: true, blockedDomains: ["example.test"], requests }))
@@ -130,14 +145,18 @@ describe("OpenAI Responses WebSearch wire (WSR-01/04/08)", () => {
 });
 
 async function streamFromFixture(
-  { nativeSearch, blockedDomains }: { nativeSearch: boolean; blockedDomains?: string[] },
+  { nativeSearch, blockedDomains, firstResponse }: {
+    nativeSearch: boolean;
+    blockedDomains?: string[];
+    firstResponse?: Response;
+  },
   requests: unknown[] = [],
 ) {
   const transport: typeof fetch = async (input, init) => {
     const request = new Request(input, init);
     expect(new URL(request.url).pathname).toBe("/v1/responses");
     requests.push(await request.json());
-    return citationResponse();
+    return requests.length === 1 && firstResponse ? firstResponse : citationResponse();
   };
   vi.stubGlobal("fetch", transport);
   const adapter = new TestAiSdkModelAdapter({
@@ -145,7 +164,7 @@ async function streamFromFixture(
       env: {},
       providers: { fixture: { kind: "openai", apiKey: "fixture-key", baseURL: "https://provider.example.test/v1" } },
     }),
-    retry: { maxAttempts: 1 },
+    retry: { maxAttempts: firstResponse ? 2 : 1, baseDelayMs: 0, jitter: false },
   });
   const events: ModelStreamEvent[] = [];
   for await (const event of executeAdapterStreamText(adapter, {
@@ -163,6 +182,51 @@ async function streamFromFixture(
     events.push(event);
   }
   return { events, requests };
+}
+
+function interruptedCitationResponse(): Response {
+  const messageId = "msg_interrupted";
+  const frames = [
+    {
+      type: "response.created",
+      response: { id: "resp_interrupted", created_at: 1, model: "search-model" },
+    },
+    {
+      type: "response.output_item.added",
+      output_index: 0,
+      item: { id: messageId, type: "message", role: "assistant", status: "in_progress", content: [] },
+    },
+    {
+      type: "response.output_text.annotation.added",
+      item_id: messageId,
+      output_index: 0,
+      content_index: 0,
+      annotation: {
+        type: "url_citation",
+        start_index: 0,
+        end_index: 1,
+        url: "https://example.test/interrupted-result",
+        title: "Interrupted citation",
+      },
+    },
+  ];
+  const prefix = new TextEncoder().encode(
+    frames.map((frame) => `data: ${JSON.stringify(frame)}\n\n`).join(""),
+  );
+  let sent = false;
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (!sent) {
+        sent = true;
+        controller.enqueue(prefix);
+        return;
+      }
+      // 让 SDK 消费已排队的引文，再模拟正文前的连接中断。
+      await setImmediate();
+      controller.error(Object.assign(new Error("socket hang up"), { code: "ECONNRESET" }));
+    },
+  });
+  return new Response(stream, { headers: { "content-type": "text/event-stream" } });
 }
 
 function citationResponse(): Response {
