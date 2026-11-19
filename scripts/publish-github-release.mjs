@@ -71,12 +71,13 @@ export async function ensureReleaseDraft(
     try {
       await gh("api", "--silent", `repos/${repo}/contents/${guidePath}?ref=${guideRef}`);
     } catch (error) {
-      // 自动发布可补发旧 tag；这时引导用户查看默认分支上的排查文档。
-      if (!error.stderr?.includes("HTTP 404")) throw error;
-      guideRef = "HEAD";
+      // 旧 tag 缺文档时指向默认分支；文档查询的其他故障不阻止草稿创建。
+      guideRef = error?.stderr?.includes("HTTP 404") ? "HEAD" : null;
     }
-    const guideUrl = `https://github.com/${repo}/blob/${guideRef}/${guidePath}`;
-    body = `${generated.body}\n\n安装包：macOS arm64、Windows x64、Linux x64。当前为未签名构建，macOS 未公证，应用采用手动安装更新。来源与文件摘要见 PROVENANCE.json 和 SHA256SUMS。\n\nmacOS 首次打开被拦截时，确认下载来源及校验和后，可执行 \`sudo xattr -rd com.apple.quarantine "${appPath}"\` 再打开。若 SSH 报 \`EHOSTUNREACH\`，先检查连通性和系统本地网络权限，详见 [macOS 安装与局域网排查](${guideUrl})。\n`;
+    const guideLink = guideRef
+      ? `，详见 [macOS 安装与局域网排查](https://github.com/${repo}/blob/${guideRef}/${guidePath})`
+      : "";
+    body = `${generated.body}\n\n安装包：macOS arm64、Windows x64、Linux x64。当前为未签名构建，macOS 未公证，应用采用手动安装更新。来源与文件摘要见 PROVENANCE.json 和 SHA256SUMS。\n\nmacOS 首次打开被拦截时，确认下载来源及校验和后，可执行 \`sudo xattr -rd com.apple.quarantine "${appPath}"\` 再打开。若 SSH 报 \`EHOSTUNREACH\`，先检查连通性和系统本地网络权限${guideLink}。\n`;
   }
   await writeFile(notesFile, body);
   if (releases.length === 0) {

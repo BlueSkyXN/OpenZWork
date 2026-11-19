@@ -257,7 +257,14 @@ test("automatic drafts use generated notes and recover lost create responses; ex
   const quarantine = 'sudo xattr -rd com.apple.quarantine "/Applications/OpenZWork.app"';
   assert.ok(guide.includes(quarantine));
   assert.ok(guide.includes('"/Applications/OpenZWork Preview.app"'));
-  for (const mode of ["new", "response-lost", "old-tag", "existing", "custom"]) {
+  for (const mode of [
+    "new",
+    "response-lost",
+    "old-tag",
+    "guide-unavailable",
+    "existing",
+    "custom",
+  ]) {
     let release =
       mode === "existing"
         ? { id: 1, tag_name: releaseTag, body: "Reviewed notes", draft: true }
@@ -271,10 +278,13 @@ test("automatic drafts use generated notes and recover lost create responses; ex
         return JSON.stringify({ body: "Merged changes" });
       if (args[0] === "api" && args.includes(guideInfo)) {
         if (mode === "old-tag") throw Object.assign(new Error("Not Found"), { stderr: "HTTP 404" });
+        if (mode === "guide-unavailable")
+          throw Object.assign(new Error("Service Unavailable"), { stderr: "HTTP 503" });
         return "";
       }
       if (args.slice(0, 2).join(" ") === "release create") {
         assert.ok(args.includes("--draft") && args.includes("--verify-tag"));
+        assert.equal(args[args.indexOf("--notes-file") + 1], notesFile);
         release = { id: 2, tag_name: releaseTag, draft: true };
         if (mode === "response-lost") throw new Error("response lost");
         return "";
@@ -302,7 +312,17 @@ test("automatic drafts use generated notes and recover lost create responses; ex
       const guideRef = mode === "old-tag" ? "HEAD" : encodeURIComponent(releaseTag);
       assert.ok(notes.startsWith("Merged changes"));
       assert.ok(notes.includes(`\`${quarantine}\``));
-      assert.ok(notes.includes(`](https://github.com/${repo}/blob/${guideRef}/${guidePath})`));
+      assert.ok(notes.includes("先检查连通性和系统本地网络权限"));
+      if (mode === "guide-unavailable") {
+        assert.ok(!notes.includes(guidePath));
+        assert.ok(!notes.includes("详见"));
+        assert.equal(
+          calls.filter((args) => args.slice(0, 2).join(" ") === "release create").length,
+          1,
+        );
+      } else {
+        assert.ok(notes.includes(`](https://github.com/${repo}/blob/${guideRef}/${guidePath})`));
+      }
       assert.doesNotMatch(
         notes,
         /\bZCode\.app\b|OpenZWork Preview\.app|xattr -cr|codesign --force/,
