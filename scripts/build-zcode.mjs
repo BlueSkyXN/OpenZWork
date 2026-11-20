@@ -10,6 +10,7 @@ import {
   patchNodePtyPrebuilds,
   stageTuiRuntime,
   stageBundledSkills,
+  tarSupportsForceLocal,
   tarCreateArgs,
 } from "./zcode-distribution/assets.mjs";
 import { hostTarget } from "../apps/zcode-cli/packages/cli/scripts/sea-targets.mjs";
@@ -246,7 +247,8 @@ async function createTarball({ packageParent, releaseDir, tarballName }) {
   await rm(tarball, {
     force: true,
   });
-  run("tar", tarCreateArgs({ tarball, packageParent, packageDirName }), {
+  const forceLocal = await tarSupportsForceLocal();
+  run("tar", tarCreateArgs({ tarball, packageParent, packageDirName, forceLocal }), {
     env: { ...process.env, COPYFILE_DISABLE: "1" },
   });
   return tarball;

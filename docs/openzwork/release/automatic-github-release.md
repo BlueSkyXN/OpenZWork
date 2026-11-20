@@ -14,7 +14,7 @@ Extended 的七组单测按[平台与分片并行规范](../ci/extended-ci-paral
 
 启用 CLI 附件的构建使用 `pnpm build:zcode --archive-only`，输出运行包和摘要。该模式默认写入 `dist/zcode-archive/`。自托管下载继续使用 `pnpm build:zcode --base-url <url>` 生成安装脚本和版本索引。显式提供下载根时，macOS 与 Linux 的构建会另外保留这一份自托管目录，并复用构建结果生成平台附件。历史 tag 的附件范围由其源码决定。
 
-CLI tar 的创建与解包命令必须把绝对归档路径当作本地文件处理。Windows runner 的 GNU tar 会把 `D:\...` 中的盘符解析成远程主机，因此构建、内容校验和 smoke 解包都显式携带 `--force-local`；解包目录由子进程 `cwd` 提供，不再传给 `-C`。该要求由独立 CLI 分发回归测试锁定。
+CLI tar 的创建与解包命令必须按实际选中的 tar 实现处理 Windows 绝对归档路径。Git GNU tar 会把 `D:\...` 中的盘符解析成远程主机，需要显式携带 `--force-local`；Windows System32 tar 支持盘符路径但不支持该参数，不能携带。解包目录由子进程 `cwd` 提供，不再传给 `-C`。该要求由独立 CLI 分发回归测试锁定。
 
 Windows smoke 验收会在当前进程加载 `node-pty` 的 `conpty.node`；该 native 模块在进程退出前保持文件锁。验收结束后的临时目录清理因此按 best-effort 处理：仅 Windows 的 `EPERM` 允许保留锁定文件，其他平台或清理错误仍使验收失败。
 
@@ -26,7 +26,7 @@ Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP�
 
 正式附件按构建主机的平台和架构选择 OpenTUI、Node FFI、PTY 的原生文件。Linux 优先使用与所装 node-pty 同版本的原生模块。校验器核对包内目标与来源清单，拒绝其他目标的原生 TUI/PTY、编译中间文件和已裁剪的 CUA 插件。Node 24 的 OpenTUI 依赖 koffi 与 unsafe-pointer。面向自托管的 install.sh 仍使用原下载布局。
 
-解压后在项目目录执行解压路径下的 `zcode`（Windows 为 `zcode.cmd`）。启动器使用 PATH 中的 Node.js，保留参数、退出码和工作目录。每个平台在同一次构建中验收实际压缩包的 PTY 启动、resize、退出与 Web 启动。
+解压后在项目目录执行解压路径下的 `zcode`（Windows 为 `zcode.cmd`）。启动器使用 PATH 中的 Node.js，保留参数、退出码和工作目录。每个平台在同一次构建中验收实际压缩包的 PTY 启动、resize、退出与 Web 启动；空用户目录的首启界面必须进入无可用模型状态，配置文件路径在终端布局中的显示位置不作为平台门禁。
 
 Web 启动顺序为 `启动器 → HTTP 子进程准备凭据 → 子进程监听成功 → IPC 通知启动器 → 显示地址并按需打开浏览器`。启动失败时向 stderr 报告原因并返回非零。启动器仅为新环境调用既有凭据准备流程，已绑定的来源和现存密文遵循原有恢复语义。
 

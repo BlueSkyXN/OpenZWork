@@ -12,6 +12,7 @@ import { pathToFileURL } from "node:url";
 
 import {
   shouldIgnoreSmokeCleanupError,
+  tarSupportsForceLocal,
   tarExtractArgs,
 } from "./zcode-distribution/assets.mjs";
 
@@ -37,7 +38,8 @@ let web;
 let terminal;
 let cleanupError;
 try {
-  await exec("tar", tarExtractArgs({ archive: resolve(archive) }), { cwd: directory });
+  const forceLocal = await tarSupportsForceLocal();
+  await exec("tar", tarExtractArgs({ archive: resolve(archive), forceLocal }), { cwd: directory });
   await mkdir(workspace);
   const version = (
     await exec(process.execPath, [runner, "--version"], { cwd: workspace, env })
@@ -90,7 +92,7 @@ try {
   const visible = stripVTControlCharacters(screen);
   assert.match(visible, /OpenZWork/);
   assert.ok(visible.includes(version), "Sidebar must show the distribution version");
-  assert.match(visible, /provider_config\.json/);
+  assert.match(visible, /No available models\./i);
   terminal.resize(80, 24);
   assert.equal(terminalExit, undefined, screen);
   assert.doesNotMatch(screen, /Cannot find (?:module|package)|ERR_MODULE_NOT_FOUND/);

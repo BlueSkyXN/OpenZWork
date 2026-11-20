@@ -13,6 +13,7 @@ import {
   shouldIgnoreSmokeCleanupError,
   tarCreateArgs,
   tarExtractArgs,
+  tarSupportsForceLocal,
 } from "../zcode-distribution/assets.mjs";
 
 async function temp(t) {
@@ -53,7 +54,7 @@ test("platform archives use matching Linux PTY, keep Windows runtime files and o
   await readFile(join(windows, "conpty/conpty.dll"));
 });
 
-test("CLI tar commands keep Windows drive-letter paths local", () => {
+test("CLI tar commands follow the selected Windows tar implementation", async () => {
   const tarball = "D:\\a\\OpenZWork\\zcode-1.2.3.tar.gz";
   const packageParent = "D:\\a\\OpenZWork\\.work";
   const windows = { platform: "win32" };
@@ -61,9 +62,10 @@ test("CLI tar commands keep Windows drive-letter paths local", () => {
     tarball,
     packageParent,
     packageDirName: "zcode",
+    forceLocal: true,
     ...windows,
   });
-  const extractArgs = tarExtractArgs({ archive: tarball, ...windows });
+  const extractArgs = tarExtractArgs({ archive: tarball, forceLocal: true, ...windows });
 
   for (const args of [createArgs, extractArgs]) {
     assert.equal(args[0], "--force-local");
@@ -72,13 +74,31 @@ test("CLI tar commands keep Windows drive-letter paths local", () => {
   }
 
   assert.equal(
-    tarCreateArgs({ tarball, packageParent, packageDirName: "zcode", platform: "darwin" }).includes(
-      "--force-local",
-    ),
+    tarCreateArgs({
+      tarball,
+      packageParent,
+      packageDirName: "zcode",
+      forceLocal: false,
+      ...windows,
+    }).includes("--force-local"),
     false,
   );
   assert.equal(
-    tarExtractArgs({ archive: tarball, platform: "darwin" }).includes("--force-local"),
+    tarExtractArgs({ archive: tarball, forceLocal: false, ...windows }).includes("--force-local"),
+    false,
+  );
+  assert.equal(
+    await tarSupportsForceLocal({
+      platform: "win32",
+      execVersion: async () => ({ stdout: "tar (GNU tar) 1.35\n" }),
+    }),
+    true,
+  );
+  assert.equal(
+    await tarSupportsForceLocal({
+      platform: "win32",
+      execVersion: async () => ({ stdout: "bsdtar 3.7\n" }),
+    }),
     false,
   );
 });

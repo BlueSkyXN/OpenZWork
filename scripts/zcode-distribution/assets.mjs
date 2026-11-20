@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import { chmod, cp, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, relative, resolve, sep } from "node:path";
@@ -11,22 +12,36 @@ import {
   bundledSkillPackSkillsDirectory,
 } from "../../apps/zcode-cli/packages/cli/scripts/sea-bundled-skill-assets.mjs";
 import { stagePlatformPty } from "./platform-archive-openzwork.mjs";
+import { promisify } from "node:util";
+
 const root = resolve(import.meta.dirname, "../..");
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 
-function forceLocalTarArgs(platform) {
-  return platform === "win32" ? ["--force-local"] : [];
+const execTarVersion = promisify(execFile);
+
+function forceLocalTarArgs(forceLocal, platform) {
+  return forceLocal ?? platform === "win32" ? ["--force-local"] : [];
+}
+
+export async function tarSupportsForceLocal({
+  execVersion = execTarVersion,
+  platform = process.platform,
+} = {}) {
+  if (platform !== "win32") return false;
+  const { stdout } = await execVersion("tar", ["--version"]);
+  return stdout.includes("GNU tar");
 }
 
 export function tarCreateArgs({
   tarball,
   packageParent,
   packageDirName,
+  forceLocal,
   platform = process.platform,
 }) {
   // Windows GNU tar 会把 "D:\..." 的盘符当作远程主机，必须显式按本地文件处理。
   return [
-    ...forceLocalTarArgs(platform),
+    ...forceLocalTarArgs(forceLocal, platform),
     "--exclude",
     "._*",
     "--exclude",
@@ -39,8 +54,8 @@ export function tarCreateArgs({
   ];
 }
 
-export function tarExtractArgs({ archive, platform = process.platform }) {
-  return [...forceLocalTarArgs(platform), "-xzf", archive];
+export function tarExtractArgs({ archive, forceLocal, platform = process.platform }) {
+  return [...forceLocalTarArgs(forceLocal, platform), "-xzf", archive];
 }
 
 export function shouldIgnoreSmokeCleanupError(error, platform = process.platform) {
