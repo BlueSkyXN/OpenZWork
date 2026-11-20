@@ -59,12 +59,12 @@ test("CLI tar commands keep Windows drive-letter paths local", () => {
     packageDirName: "zcode",
     ...windows,
   });
-  const extractArgs = tarExtractArgs({ archive: tarball, directory: packageParent, ...windows });
+  const extractArgs = tarExtractArgs({ archive: tarball, ...windows });
 
   for (const args of [createArgs, extractArgs]) {
     assert.equal(args[0], "--force-local");
     assert.ok(args.includes(tarball));
-    assert.ok(args.includes(packageParent));
+    if (args === createArgs) assert.ok(args.includes(packageParent));
   }
 
   assert.equal(
@@ -74,9 +74,7 @@ test("CLI tar commands keep Windows drive-letter paths local", () => {
     false,
   );
   assert.equal(
-    tarExtractArgs({ archive: tarball, directory: packageParent, platform: "darwin" }).includes(
-      "--force-local",
-    ),
+    tarExtractArgs({ archive: tarball, platform: "darwin" }).includes("--force-local"),
     false,
   );
 });

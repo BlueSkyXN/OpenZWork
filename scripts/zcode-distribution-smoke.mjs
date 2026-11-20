@@ -33,7 +33,7 @@ const env = {
 let web;
 let terminal;
 try {
-  await exec("tar", tarExtractArgs({ archive: resolve(archive), directory }));
+  await exec("tar", tarExtractArgs({ archive: resolve(archive) }), { cwd: directory });
   await mkdir(workspace);
   const version = (
     await exec(process.execPath, [runner, "--version"], { cwd: workspace, env })

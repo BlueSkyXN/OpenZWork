@@ -39,8 +39,8 @@ export function tarCreateArgs({
   ];
 }
 
-export function tarExtractArgs({ archive, directory, platform = process.platform }) {
-  return [...forceLocalTarArgs(platform), "-xzf", archive, "-C", directory];
+export function tarExtractArgs({ archive, platform = process.platform }) {
+  return [...forceLocalTarArgs(platform), "-xzf", archive];
 }
 
 const runtimePackageNames = [
