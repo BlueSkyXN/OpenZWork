@@ -483,6 +483,15 @@ test("installer-provenance covers build-only and release routes with source bind
   );
 });
 
+test("a formal tag without a Node download root still schedules desktop installers", () => {
+  assert.equal(workflow.jobs.installer.if, "${{ !inputs.publish_installer_run }}");
+  assert.equal(
+    workflow.jobs["agent-node-dist"].if,
+    "${{ !inputs.publish_installer_run && " +
+      "(github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') }}",
+  );
+});
+
 test("agent node dist job builds and verifies the independent distribution", () => {
   const job = workflow.jobs["agent-node-dist"];
   assert.ok(job, "agent-node-dist job exists");
