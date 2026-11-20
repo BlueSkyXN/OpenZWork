@@ -16,6 +16,7 @@ import {
   shouldIgnoreSmokeCleanupError,
   tarSupportsForceLocal,
   tarExtractArgs,
+  withSmokeTimeout,
 } from "./zcode-distribution/assets.mjs";
 
 const exec = promisify(execFile);
@@ -154,16 +155,32 @@ try {
     () => webOutput,
   );
   assert.equal(info.workspaces[0].path, workspace);
-  const html = await fetch(base);
+  const html = await withSmokeTimeout(
+    fetch(base, { signal: AbortSignal.timeout(8000) }),
+    "Web HTML",
+    10000,
+    () => webOutput,
+  );
   assert.equal(html.status, 200);
-  assert.match(await html.text(), /<title>OpenZWork<\/title>/);
+  assert.match(
+    await withSmokeTimeout(html.text(), "Web HTML body", 10000, () => webOutput),
+    /<title>OpenZWork<\/title>/,
+  );
   const { default: WebSocket } = await import(pathToFileURL(require.resolve("ws")).href);
   const socket = new WebSocket(new URL("ws", base.replace("http:", "ws:")));
-  await once(socket, "open");
-  await closeSmokeWebSocket(socket);
+  await withSmokeTimeout(once(socket, "open"), "WebSocket open", 10000, () => webOutput);
+  await withSmokeTimeout(
+    closeSmokeWebSocket(socket),
+    "WebSocket close",
+    10000,
+    () => webOutput,
+  );
   const exited = once(web, "exit");
   web.disconnect();
-  assert.deepEqual(await exited, [0, null]);
+  assert.deepEqual(
+    await withSmokeTimeout(exited, "Web shutdown", 10000, () => webOutput),
+    [0, null],
+  );
   web = undefined;
   console.log(
     JSON.stringify({

@@ -81,6 +81,21 @@ export async function closeSmokeWebSocket(socket, timeoutMs = 2000) {
   ]);
 }
 
+export async function withSmokeTimeout(promise, label, timeoutMs, diagnostic = () => "") {
+  let timeout;
+  const deadline = new Promise((_, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out:\n${diagnostic()}`)),
+      timeoutMs,
+    );
+  });
+  try {
+    return await Promise.race([promise, deadline]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 const runtimePackageNames = [
   "@hono/node-server",
   "@hono/node-ws",

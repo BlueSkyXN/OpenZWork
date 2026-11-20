@@ -20,6 +20,8 @@ Windows smoke 验收会在当前进程加载 `node-pty` 的 `conpty.node`；该 
 
 Windows 的 WebSocket close 事件可能不随本地 `close()` 调用收敛。smoke 在发起正常关闭后限时等待，超时仅终止测试客户端 socket，不改变服务端；HTTP、server-info、workspace、WebSocket 连接和 Web 子进程退出仍须通过。
 
+smoke 的 Web HTML、HTML body、WebSocket open/close 和 Web 子进程退出都必须带阶段标签与超时。平台差异只能改变可接受的退出事件形态，不能让验收无限等待。
+
 下载、校验、上传全部在 GitHub runner 完成。新流程要求七个桌面安装文件、三个 CLI 包、来源清单和校验和。历史 tag 按原九附件范围校验。
 
 Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP。解压结果须能通过已有的二进制目标检查，runner 上 PowerShell 归档模块的版本不参与构建。

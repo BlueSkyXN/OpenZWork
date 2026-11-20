@@ -17,6 +17,7 @@ import {
   tarCreateArgs,
   tarExtractArgs,
   tarSupportsForceLocal,
+  withSmokeTimeout,
 } from "../zcode-distribution/assets.mjs";
 
 async function temp(t) {
@@ -138,6 +139,14 @@ test("CLI smoke WebSocket close falls back to terminating a stalled client", asy
 
   await closeSmokeWebSocket(createSocket(true), 20);
   await closeSmokeWebSocket(createSocket(false), 20);
+});
+
+test("CLI smoke timeout reports the stalled stage", async () => {
+  await assert.rejects(
+    withSmokeTimeout(new Promise(() => {}), "stalled stage", 10, () => "diagnostic"),
+    /stalled stage timed out:\ndiagnostic/u,
+  );
+  assert.equal(await withSmokeTimeout(Promise.resolve("done"), "fast stage", 10), "done");
 });
 
 test("archive verifier distinguishes required TUI FFI from the removed CUA plugin", async (t) => {
