@@ -7,12 +7,13 @@ export const enUS: ZCodeCopy = {
       localeUnsupported: (value) =>
         `Unsupported --locale value: ${value}. Supported locales: en-US, zh-CN, auto.`,
     },
-    help: (version) => `zcode ${version}
+    providerConfigGuide: "Personal model configuration example",
+    help: (version, productName, distributionVersion) => `${productName} ${distributionVersion ?? `Agent CLI ${version}`}
 
 Usage:
   zcode [command] [options]
 
-With no command, zcode opens the full-screen TUI.
+With no command, zcode opens the full-screen TUI. Use zcode -p "<prompt>" for a single reply and zcode app-server for stdio.${distributionVersion ? "\n  zcode --web       Open the Web UI (zcode --web --help for options)" : ""}
 
 Commands:
   app-server Run the ZCode Protocol stdio app server
@@ -21,7 +22,7 @@ Commands:
   plugins    Manage plugins and marketplaces (\`plugins list|install|uninstall|enable|disable|update|validate|marketplace ...\`; alias: plugin)
   skills     List local skills (\`skills list\`)
   tui        Open the terminal UI
-  version    Print the CLI version
+  version    Print the embedded Agent CLI version
 
 Options:
   -h, --help       Show help
@@ -96,10 +97,10 @@ Slash Commands:
       typePrompt: "Type a question and press Enter.",
     },
     loginRequired: {
-      help: "Use /model to view models; configure an available model provider first.",
+      help: "See zcode --help for a configuration example. Save, restart, then use /model.",
       message:
-        "No available models. Configure a model provider (personal provider config or env vars) and retry.",
-      status: "No available models. Configure a model provider and retry.",
+        "No available models. Configure a provider in your personal model settings.",
+      status: "No available models.",
       title: "model setup required",
     },
     model: {
@@ -238,7 +239,7 @@ Slash Commands:
     },
     terminal: {
       requiresInteractive: "TUI requires an interactive terminal.",
-      starting: "Starting ZCode... Ctrl+C to exit",
+      starting: "Starting… Ctrl+C to exit",
     },
     transcript: {
       compact: {

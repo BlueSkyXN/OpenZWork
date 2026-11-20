@@ -317,6 +317,7 @@ export type TuiOptions = {
   initialThemeMode?: UiThemeMode;
   developerMode?: boolean;
   version?: string;
+  providerConfigPath?: string;
   workspaceDirectory?: string;
   workspaceGitBranch?: string;
   noColor: boolean;

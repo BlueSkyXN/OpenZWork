@@ -237,6 +237,7 @@ test("发布器绑定 CLI 包、内容报告、源码及构建平台", () => {
     tarballSha256: "d".repeat(64),
   };
   const verification = {
+    runtimeTarget: "darwin-arm64",
     ok: true,
     version: source.version,
     expectedVersion: source.version,
@@ -256,6 +257,7 @@ test("发布器绑定 CLI 包、内容报告、源码及构建平台", () => {
     assert.throws(() => validateCliDistribution({ ...cli, ...patch }, verification, source));
   for (const patch of [
     { ok: false },
+    { runtimeTarget: "win32-x64" },
     { version: "3.17.2" },
     { expectedVersion: "3.17.2" },
     { tarballSha256: "e".repeat(64) },

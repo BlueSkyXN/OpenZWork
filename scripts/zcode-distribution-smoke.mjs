@@ -17,11 +17,15 @@ const directory = await realpath(await mkdtemp(join(tmpdir(), "zcode-release-smo
 const root = join(directory, "zcode");
 const runner = join(root, "bin/zcode.mjs");
 const workspace = join(directory, "workspace");
+// OpenZWork(OZ-F011)：在空用户目录验证首次启动，避免使用开发机的密钥与模型配置。
 const env = {
-  ...process.env,
-  ZCODE_DATA_BASE_DIR: join(directory, "data"),
-  NODE_PATH: "",
-  NODE_OPTIONS: "",
+  ...Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+    /^(PATH|PATHEXT|SYSTEMROOT|COMSPEC|WINDIR|TEMP|TMP|TMPDIR|SYSTEMDRIVE)$/i.test(key))),
+  HOME: directory,
+  USERPROFILE: directory,
+  APPDATA: join(directory, "AppData", "Roaming"),
+  LOCALAPPDATA: join(directory, "AppData", "Local"),
+  LANG: "en_US.UTF-8",
   TERM: "xterm-256color",
 };
 let web;
@@ -29,10 +33,22 @@ let terminal;
 try {
   await exec("tar", ["-xzf", resolve(archive), "-C", directory]);
   await mkdir(workspace);
-  await exec(process.execPath, [runner, "--help"], { cwd: workspace, env });
   const version = (
     await exec(process.execPath, [runner, "--version"], { cwd: workspace, env })
   ).stdout.trim();
+  for (const locale of ["en-US", "zh-CN"]) {
+    const { stdout } = await exec(process.execPath, [runner, "--locale", locale, "--help"], { cwd: workspace, env });
+    assert.ok(stdout.includes(`OpenZWork ${version}`));
+    assert.match(stdout, /zcode --web/);
+  }
+  const launcher = join(root, "zcode");
+  const invoke = (args) => process.platform === "win32"
+    ? exec(process.env.ComSpec ?? "cmd.exe", ["/d", "/c", "zcode.cmd", ...args], { cwd: root, env })
+    : exec(launcher, args, { cwd: workspace, env });
+  assert.equal((await invoke(["--version"])).stdout.trim(), version);
+  const diagnostics = JSON.parse((await invoke(["--cwd", workspace, "doctor", "--json"])).stdout);
+  assert.equal(diagnostics.runtime.cwd, workspace);
+  assert.equal(diagnostics.cli.version, (await exec(process.execPath, [runner, "version"], { cwd: workspace, env })).stdout.trim());
   const require = createRequire(join(root, "package.json"));
   const pty = require("node-pty");
   const runtimeCheck = join(root, "agent/check-tui.mjs");
@@ -43,7 +59,7 @@ try {
   const imported = await exec(process.execPath, [runtimeCheck], { cwd: workspace, env });
   assert.match(imported.stdout, /tui-runtime-ok/);
 
-  terminal = pty.spawn(process.execPath, [runner], { cwd: workspace, env, cols: 110, rows: 32 });
+  terminal = pty.spawn(process.execPath, [runner], { cwd: workspace, env, cols: 132, rows: 34 });
   let screen = "";
   let terminalExit;
   terminal.onData((data) => {
@@ -60,11 +76,16 @@ try {
       // 修复：TUI 渲染器会在相邻字符之间插入 SGR/光标定位序列，原始 PTY 输出里的提示词不连续；
       // 先去掉终端控制序列再匹配可见文本，避免界面已就绪却被判定为超时。
       const visible = stripVTControlCharacters(screen);
-      return /ZCode/.test(visible) && /(?:登录|\/login|输入提示词|Type a prompt)/i.test(visible);
+      return /输入提示词|Type a prompt/i.test(visible);
     },
     "TUI initialized render",
     () => stripVTControlCharacters(screen),
   );
+  const visible = stripVTControlCharacters(screen);
+  assert.match(visible, /OpenZWork/);
+  assert.ok(visible.includes(version), "Sidebar must show the distribution version");
+  assert.match(visible, /provider_config\.json/);
+  terminal.resize(80, 24);
   assert.equal(terminalExit, undefined, screen);
   assert.doesNotMatch(screen, /Cannot find (?:module|package)|ERR_MODULE_NOT_FOUND/);
   // 保留真实键盘退出链路；不发送 prompt，不调用模型。
@@ -84,7 +105,7 @@ try {
   web = spawn(process.execPath, [runner, "--web", "--workspace", workspace, "--no-open"], {
     cwd: workspace,
     env,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
   });
   web.stdout.on("data", (data) => {
     webOutput += data;
@@ -121,14 +142,14 @@ try {
   assert.equal(info.workspaces[0].path, workspace);
   const html = await fetch(base);
   assert.equal(html.status, 200);
-  assert.match(await html.text(), /<html/i);
+  assert.match(await html.text(), /<title>OpenZWork<\/title>/);
   const { default: WebSocket } = await import(pathToFileURL(require.resolve("ws")).href);
   const socket = new WebSocket(new URL("ws", base.replace("http:", "ws:")));
   await once(socket, "open");
   socket.close();
   await once(socket, "close");
   const exited = once(web, "exit");
-  web.kill("SIGTERM");
+  web.disconnect();
   assert.deepEqual(await exited, [0, null]);
   web = undefined;
   console.log(

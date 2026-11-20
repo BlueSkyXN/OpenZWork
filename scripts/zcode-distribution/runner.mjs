@@ -2,13 +2,12 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
-import { createServer } from "node:net";
 import { networkInterfaces } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const { version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+const { productName, version } = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
 const serverEntry = join(root, "server", "entry-http.js");
 const webRoot = join(root, "web");
 const agentEntry = join(root, "agent", "zcode.cjs");
@@ -110,24 +109,6 @@ function createToken() {
   return randomBytes(24).toString("base64url");
 }
 
-function pickPort(host) {
-  return new Promise((resolvePort, reject) => {
-    const server = createServer();
-    server.once("error", reject);
-    server.listen(0, host, () => {
-      const address = server.address();
-      const port = typeof address === "object" && address ? address.port : 0;
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolvePort(port);
-      });
-    });
-  });
-}
-
 function formatUrl(host, port, token) {
   const displayHost = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
   const base = `http://${displayHost}:${port}/`;
@@ -169,17 +150,15 @@ async function assertRuntimeFiles() {
 
 async function serve(options) {
   await assertRuntimeFiles();
-  const port = options.port && options.port > 0 ? options.port : await pickPort(options.host);
   const protect = options.tokenEnabled ?? shouldProtectHost(options.host);
   const token = protect ? (options.token ?? createToken()) : "";
   const open = options.open ?? isLocalHost(options.host);
-  const localUrl = formatUrl(options.host, port, token);
 
-  const child = spawn(process.execPath, [serverEntry], {
+  const child = spawn(process.execPath, [serverEntry, "--prepare-credentials"], {
     cwd: options.workspace,
     env: {
       ...process.env,
-      PORT: String(port),
+      PORT: String(options.port ?? 0),
       ZCODE_AGENT_SERVER_ARGS_JSON: JSON.stringify([agentEntry, "app-server", "--stdio"]),
       ZCODE_AGENT_SERVER_COMMAND: process.execPath,
       ZCODE_SERVER_HOST: options.host,
@@ -188,9 +167,10 @@ async function serve(options) {
       // 显式关闭 token 时必须清空继承值，否则 --no-token 仍会开启后端鉴权。
       ZCODE_SERVER_AUTH_TOKEN: token,
     },
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
   });
   let shuttingDown = false;
+  let ready = false;
   child.on("error", (error) => {
     console.error(`Unable to start Web server: ${error.message}`);
     process.exit(1);
@@ -198,30 +178,33 @@ async function serve(options) {
 
   child.stdout.on("data", (chunk) => process.stdout.write(chunk));
   child.stderr.on("data", (chunk) => process.stderr.write(chunk));
-  child.on("exit", (code, signal) => {
+  child.on("close", (code, signal) => {
     if (shuttingDown) {
       process.exit(0);
     }
     if (signal) {
       process.exit(1);
     }
+    if (!ready && code === 0) {
+      console.error("Web server exited before listening.");
+      process.exit(1);
+    }
     process.exit(code ?? 0);
   });
 
-  console.log("");
-  console.log("ZCode Web is running");
-  console.log(`Local:   ${localUrl}`);
-  if (options.host === "0.0.0.0" || options.host === "::") {
-    for (const url of networkUrls(port, token)) {
-      console.log(`Network: ${url}`);
+  // OW-P045：仅接受本次 HTTP 子进程的监听回执，避免端口冲突时误报成功。
+  child.on("message", (message) => {
+    if (ready || shuttingDown || message?.type !== "web-listening" || !Number.isInteger(message.port)) return;
+    ready = true;
+    const localUrl = formatUrl(options.host, message.port, token);
+    console.log(`\n${productName} Web is running`);
+    console.log(`Local:   ${localUrl}`);
+    if (options.host === "0.0.0.0" || options.host === "::") {
+      for (const url of networkUrls(message.port, token)) console.log(`Network: ${url}`);
     }
-  }
-  console.log("Press Ctrl+C to stop.");
-  console.log("");
-
-  if (open) {
-    setTimeout(() => openBrowser(localUrl), 500);
-  }
+    console.log("Press Ctrl+C to stop.\n");
+    if (open) openBrowser(localUrl);
+  });
 
   const shutdown = () => {
     if (shuttingDown) {
@@ -231,6 +214,7 @@ async function serve(options) {
     child.kill("SIGTERM");
     setTimeout(() => process.exit(0), 1500).unref();
   };
+  if (process.connected) process.once("disconnect", shutdown);
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
   if (process.stdin.isTTY) {
@@ -259,9 +243,8 @@ try {
     else if (options.command === "version") console.log(version);
     else await serve(options);
   } else {
-    if (argv.length === 1 && ["--help", "-h"].includes(argv[0])) {
-      console.log("Web mode: zcode --web [options] (zcode --web --help for details)\n");
-    }
+    // OpenZWork(OZ-C001)：帮助和 TUI 使用本次压缩包的发行号。
+    process.env.OPENZWORK_CLI_RELEASE_VERSION = version;
     // CLI 自启动子进程依赖 argv[1]；统一指向真正的 Agent 入口，保留 TTY 与所有原始参数。
     process.argv[1] = agentEntry;
     await import(pathToFileURL(agentEntry).href);

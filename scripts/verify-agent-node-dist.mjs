@@ -18,6 +18,9 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
+import { cliRuntimeTargets } from "./release-workflows.mjs";
+import { verifyPlatformRuntime } from "./zcode-distribution/platform-archive-openzwork.mjs";
+
 const exec = promisify(execFile);
 
 export const FORBIDDEN_AGENT_MARKERS = [
@@ -56,6 +59,7 @@ function countOccurrences(haystack, needle) {
 export async function verifyAgentNodeDist({
   tarball,
   expectedVersion = "",
+  expectedPlatform,
   forbiddenMarkers = FORBIDDEN_AGENT_MARKERS,
   keepWorkspace = false,
 }) {
@@ -81,6 +85,12 @@ export async function verifyAgentNodeDist({
     const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
     if (expectedVersion && pkg.version !== expectedVersion)
       failures.push(`packaged version ${pkg.version} != ${expectedVersion}`);
+    if (expectedPlatform) {
+      const target = cliRuntimeTargets[expectedPlatform];
+      if (!target || pkg.runtimeTarget !== target)
+        failures.push(`Package target ${pkg.runtimeTarget} does not match ${expectedPlatform}`);
+      if (target) failures.push(...(await verifyPlatformRuntime(root, target)));
+    }
     const agent = await readFile(join(root, "agent", "zcode.cjs"), "utf8");
     const forbidden = {};
     for (const marker of forbiddenMarkers) {
@@ -99,6 +109,7 @@ export async function verifyAgentNodeDist({
       dataRootHits,
       forbiddenMarkers: forbidden,
       requiredEntries: REQUIRED_ENTRIES,
+      runtimeTarget: pkg.runtimeTarget,
       ok: failures.length === 0,
       failures,
     };
@@ -117,6 +128,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       if (arg === "--tarball" || arg.startsWith("--tarball=")) options.tarball = value;
       else if (arg === "--expected-version" || arg.startsWith("--expected-version="))
         options.expectedVersion = value;
+      else if (arg === "--expected-platform" || arg.startsWith("--expected-platform="))
+        options.expectedPlatform = value;
       else if (arg === "--report" || arg.startsWith("--report=")) options.report = value;
     }
     return options;

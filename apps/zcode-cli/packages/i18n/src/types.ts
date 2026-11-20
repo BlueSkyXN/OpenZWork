@@ -12,7 +12,8 @@ export interface CliCopy {
   errors: {
     localeUnsupported(value: string): string;
   };
-  help(version: string): string;
+  providerConfigGuide: string;
+  help(version: string, productName: string, distributionVersion?: string): string;
 }
 
 export interface TuiCopy {

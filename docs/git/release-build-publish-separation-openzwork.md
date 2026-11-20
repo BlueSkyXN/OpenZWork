@@ -32,7 +32,7 @@
 
 三份工作流并行执行，完成事件唤起 Release 协调器。它只选择该 tag/SHA 的最新运行，任一检查缺失、失败或运行中均不公开。Extended 虽名为 non-blocking，在正式发行中仍是必需门禁。
 
-runner 验证测试报告、来源及文件摘要后，自动创建或续传草稿。已有草稿正文保留；否则使用 GitHub 按 tag 生成的版本说明。七个安装文件、`PROVENANCE.json` 和 `SHA256SUMS` 为基础附件。支持独立 CLI 发行的 tag 还包含 macOS arm64 和 Linux x64 的两个 CLI 包。全部附件回读一致后公开，较新的版本保持 Latest。
+runner 验证测试报告、来源及文件摘要后，自动创建或续传草稿。已有草稿正文保留；否则使用 GitHub 按 tag 生成的版本说明。七个安装文件、`PROVENANCE.json` 和 `SHA256SUMS` 为基础附件。支持独立 CLI 发行的 tag 还包含 macOS arm64、Linux x64 和 Windows x64 的三个 CLI 包。全部附件回读一致后公开，较新的版本保持 Latest。
 
 ```mermaid
 flowchart LR

@@ -555,6 +555,15 @@ test("正式 tag 未配置下载根时构建独立 CLI，历史 tag 仍可仅重
   };
   const tag = "v3.18.2+openzwork.1";
   assert.equal(await resolveMode({ cliArchives: true, event: "push", tag }), "mode=archive");
+  assert.equal(
+    await resolveMode({
+      cliArchives: true,
+      event: "push",
+      tag,
+      variable: "https://dist.example.org/zcode/",
+    }),
+    "mode=both",
+  );
   assert.equal(await resolveMode({ event: "push", tag }), "mode=skip");
   const input = workflow.on.workflow_dispatch.inputs.zcode_dist_base_url.default;
   assert.equal(
@@ -575,6 +584,12 @@ test("agent node dist job builds and verifies the independent distribution", asy
   const pkg = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
   const { cliReleaseAssets } = await import("../../scripts/release-workflows.mjs");
   assert.equal(pkg.openzworkRelease.cliArchives, true);
+  assert.deepEqual(
+    cliReleaseAssets(pkg)
+      .map(({ platform }) => platform)
+      .sort(),
+    ["linux-amd64", "macos-arm64", "windows-amd64"],
+  );
   assert.deepEqual(
     job.strategy.matrix.include.map(({ platform }) => platform),
     cliReleaseAssets(pkg).map(({ platform }) => platform),

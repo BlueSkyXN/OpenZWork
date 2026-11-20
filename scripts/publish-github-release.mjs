@@ -15,7 +15,11 @@ import {
 } from "./openzwork-version.mjs";
 import { desktopProductIdentities } from "../packages/desktop/scripts/desktop-product-identity.mjs";
 import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
-import { cliReleaseAssets, matchesReleaseWorkflow } from "./release-workflows.mjs";
+import {
+  cliReleaseAssets,
+  cliRuntimeTargets,
+  matchesReleaseWorkflow,
+} from "./release-workflows.mjs";
 import { FULL_SUITE_GROUPS } from "./full-suite-plan.mjs";
 import { validateSummary, validateTests } from "./test-report-validation.mjs";
 export { validateSummary, validateTests } from "./test-report-validation.mjs";
@@ -80,7 +84,7 @@ export async function ensureReleaseDraft(
     body = `${generated.body}\n\n安装包：macOS arm64、Windows x64、Linux x64。当前为未签名构建，macOS 未公证，应用采用手动安装更新。来源与文件摘要见 PROVENANCE.json 和 SHA256SUMS。\n\nmacOS 首次打开被拦截时，确认下载来源及校验和后，可执行 \`sudo xattr -rd com.apple.quarantine "${appPath}"\` 再打开。若 SSH 报 \`EHOSTUNREACH\`，先检查连通性和系统本地网络权限${guideLink}。\n`;
     if (hasCliArchives)
       body +=
-        "\n使用终端交互界面时，下载对应平台（macOS arm64 或 Linux x64）的 `OpenZWork-CLI-*.tar.gz`。解压后用 Node.js 24.14.0 运行 `node zcode/bin/zcode.mjs`。\n";
+        "\n使用终端交互界面时，下载对应平台（macOS arm64、Linux x64 或 Windows x64）的 `OpenZWork-CLI-*.tar.gz`。解压并安装 Node.js 24.14.0，在项目目录运行解压包里的 `zcode`（Windows 使用 `zcode.cmd`）。\n";
   }
   await writeFile(notesFile, body);
   if (releases.length === 0) {
@@ -159,6 +163,11 @@ export function validateCliDistribution(manifest, report, expected) {
   assert.equal(manifest.tarball, `zcode-${expected.version}.tar.gz`);
   assert.ok(Number.isSafeInteger(manifest.tarballSize) && manifest.tarballSize > 0);
   assert.match(manifest.tarballSha256, sha256Pattern);
+  assert.equal(
+    report.runtimeTarget,
+    cliRuntimeTargets[expected.platform],
+    "CLI runtime target mismatch",
+  );
   assert.equal(report.ok, true, "CLI archive failed content verification");
   assert.equal(report.version, expected.version);
   assert.equal(report.expectedVersion, expected.version);

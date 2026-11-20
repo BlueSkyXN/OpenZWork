@@ -85,7 +85,7 @@ After changing Agent source code, run `pnpm --filter @zcode/cli... build` and re
 ### OpenZWork CLI distribution
 
 <!-- OpenZWork(OZ-F011): GitHub Releases provide standalone CLI archives. -->
-For versions with an `OpenZWork-CLI-*.tar.gz` attachment on [Releases](https://github.com/BlueSkyXN/OpenZWork/releases), download the macOS arm64 or Linux x64 archive and extract it. Use the version of Node.js specified in [mise.toml](mise.toml) to run `node zcode/bin/zcode.mjs`. Add `--help` for non-interactive and protocol server options.
+For versions with an `OpenZWork-CLI-*.tar.gz` attachment on [Releases](https://github.com/BlueSkyXN/OpenZWork/releases), extract the archive for macOS arm64, Linux x64 (glibc), or Windows x64 and install Node.js 24.14.0. From your project directory, run `/path/to/extracted/zcode/zcode` or, in PowerShell, `& "C:\path to extracted\zcode\zcode.cmd"`. To set up a model, follow the [personal configuration example](apps/zcode-cli/docs/usage/03-config.md) or add a provider in the desktop model settings.
 
 The command-line distribution includes the TUI, Web client, and Agent behind one `zcode` command. With no arguments it starts the TUI; a leading `--web` starts Web mode; all other arguments go to the existing Agent CLI. Both modes run locally without Electron.
 

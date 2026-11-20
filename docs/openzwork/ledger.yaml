@@ -293,6 +293,8 @@ entries:
       - scripts/verify-desktop-release-version.mjs
       - scripts/verify-desktop-package.mjs
       - scripts/installer-provenance.mjs
+      - scripts/zcode-distribution/platform-archive-openzwork.mjs
+      - scripts/test/openzwork-cli-distribution.test.mjs
       - packages/desktop/src/renderer/env.d.ts
     hooks:
       - package.json
@@ -300,12 +302,15 @@ entries:
       - README.en.md
       - scripts/build-zcode.mjs
       - scripts/zcode-distribution-smoke.mjs
+      - scripts/zcode-distribution/assets.mjs
+      - packages/server/src/entry-http.ts
       - packages/desktop/package.json
       - packages/desktop/scripts/build-metadata.mjs
       - packages/desktop/src/main/about.ts
       - packages/desktop/electron-builder.config.js
       - scripts/prebuilt-binary-extract.mjs
     tests:
+      - scripts/test/openzwork-cli-distribution.test.mjs
       - scripts/test/automatic-release.test.mjs
       - scripts/test/openzwork-version.test.mjs
       - scripts/test/prebuilt-binary-extract.test.mjs
@@ -454,7 +459,7 @@ entries:
     kind: change
     status: active
     title: 产品身份与用户级数据根
-    summary: 用户级数据根改为 .openzwork，产品身份与 ZCode 隔离。
+    summary: 用户级数据根改为 .openzwork，桌面、CLI/TUI 和 Web 入口使用本产品身份。
     spec: docs/specs/identity-and-data-isolation-openzwork.md
     paths:
       - packages/desktop/test/windowsInstallerNshStructure.test.ts
@@ -462,6 +467,25 @@ entries:
       - packages/shared/src/productIdentity.ts
       - packages/shared/src/node/userHomeBoundary.ts
     hooks:
+      - apps/zcode-cli/packages/cli/src/main.ts
+      - apps/zcode-cli/packages/cli/src/cli-types.ts
+      - apps/zcode-cli/packages/cli/src/run.ts
+      - apps/zcode-cli/packages/cli/src/help.ts
+      - apps/zcode-cli/packages/cli/src/tui-command.ts
+      - apps/zcode-cli/packages/cli/src/command-center/handlers/model.ts
+      - apps/zcode-cli/packages/tui/src/app-components.tsx
+      - apps/zcode-cli/packages/tui/src/app-empty-transcript.tsx
+      - apps/zcode-cli/packages/tui/src/app-sidebar.tsx
+      - apps/zcode-cli/packages/tui/src/app-startup.tsx
+      - apps/zcode-cli/packages/tui/src/app-view.tsx
+      - apps/zcode-cli/packages/tui/src/types.ts
+      - apps/zcode-cli/packages/i18n/src/types.ts
+      - apps/zcode-cli/packages/i18n/src/locales/en-US.ts
+      - apps/zcode-cli/packages/i18n/src/locales/zh-CN.ts
+      - packages/web/src/main.tsx
+      - packages/web/index.html
+      - packages/web/src/web-remote-control/ui/webRemoteControlBrand.tsx
+      - scripts/zcode-distribution/runner.mjs
       - packages/desktop/build/installer.nsh
       - packages/desktop/test/fixtures/installer-preserve-files.nsi
       - packages/services/src/paths.ts
@@ -479,6 +503,7 @@ entries:
       - packages/shared/src/node.ts
     source: "PR #21、PR #69"
     tests:
+      - scripts/test/openzwork-cli-distribution.test.mjs
       - packages/desktop/test/windowsInstallerPreserveFiles.test.ts
       - packages/services/test/data-sync-user-root.test.ts
       - packages/services/test/desktop-agent-storage.test.ts

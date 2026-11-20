@@ -342,6 +342,8 @@ jobs:
             platform: macos-arm64
           - os: ubuntu-latest
             platform: linux-amd64
+          - os: windows-2022
+            platform: windows-amd64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -368,6 +370,7 @@ jobs:
         id: cli-dist
         shell: bash
         env:
+          DIST_PLATFORM: ${{ matrix.platform }}
           EVENT_NAME: ${{ github.event_name }}
           INPUT_BASE_URL: ${{ inputs.zcode_dist_base_url }}
           VARS_BASE_URL: ${{ vars.ZCODE_DIST_BASE_URL }}
@@ -378,10 +381,10 @@ jobs:
           const { EVENT_NAME, RELEASE_TAG, INPUT_BASE_URL, VARS_BASE_URL } = process.env;
           const input = (EVENT_NAME === 'workflow_dispatch' ? INPUT_BASE_URL : VARS_BASE_URL)?.trim();
           const download = input && input !== 'https://example.invalid/zcode/deps/zcode/';
-          // 历史 tag 仍可只恢复桌面包。启用 CLI 的 tag 在没有下载根时直接构建压缩包。
-          const mode = RELEASE_TAG && !download
-            ? (pkg.openzworkRelease?.cliArchives === true ? 'archive' : 'skip')
-            : 'download';
+          // 启用独立包的源码始终构建本平台附件；历史版本沿用既有下载目标。
+          const mode = pkg.openzworkRelease?.cliArchives === true
+            ? (download && process.env.DIST_PLATFORM !== 'windows-amd64' ? 'both' : 'archive')
+            : (process.env.DIST_PLATFORM === 'windows-amd64' || (RELEASE_TAG && !download) ? 'skip' : 'download');
           console.log(`mode=${mode}`);
           NODE
 
@@ -391,7 +394,7 @@ jobs:
 
       # 有下载根的构建输出安装脚本。分支预览沿用默认占位地址。
       - name: Resolve agent dist download base URL
-        if: steps.cli-dist.outputs.mode == 'download'
+        if: steps.cli-dist.outputs.mode == 'download' || steps.cli-dist.outputs.mode == 'both'
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -425,11 +428,14 @@ jobs:
         env:
           DIST_MODE: ${{ steps.cli-dist.outputs.mode }}
         run: |
-          if [ "$DIST_MODE" = 'archive' ]; then
-            pnpm build:zcode --archive-only --out-dir dist/zcode
-          else
-            pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL"
-          fi
+          case "$DIST_MODE" in
+            archive) pnpm build:zcode --archive-only --out-dir dist/zcode ;;
+            both)
+              pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL" --out-dir dist/zcode-download
+              pnpm build:zcode --skip-build --archive-only --out-dir dist/zcode
+              ;;
+            download) pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL" ;;
+          esac
 
       # 产物选择与来源清单：与本次版本唯一对应的 tarball，附 source/tree/workflow SHA、
       # 平台、工具链与 hash；不用 `find | head -1` 忽略多产物。
@@ -444,11 +450,16 @@ jobs:
           TARBALL=$(node scripts/agent-node-dist.mjs --release-root "dist/zcode/releases/$VERSION" --version "$VERSION")
           export VERSION TARBALL
           mkdir -p dist/agent-node-dist
-          node scripts/verify-agent-node-dist.mjs --tarball "$TARBALL" --expected-version "$VERSION" --report dist/agent-node-dist/AGENT-DIST-REPORT.json
-          # CI runner 没有解锁的系统凭据存储，隔离的 Web 启动使用一次性测试密钥。
-          smoke_secret=$(node -p "require('node:crypto').randomBytes(32).toString('hex')")
-          env -u ZCODE_CREDENTIAL_SECRET_FILE ZCODE_CREDENTIAL_SECRET="$smoke_secret" \
+          platform_args=()
+          if [ "${{ steps.cli-dist.outputs.mode }}" != 'download' ]; then platform_args=(--expected-platform "$DIST_PLATFORM"); fi
+          node scripts/verify-agent-node-dist.mjs "${platform_args[@]}" --tarball "$TARBALL" --expected-version "$VERSION" --report dist/agent-node-dist/AGENT-DIST-REPORT.json
+          if [ "${{ steps.cli-dist.outputs.mode }}" != 'download' ]; then
             node scripts/zcode-distribution-smoke.mjs "$TARBALL"
+          else
+            # 旧版 HTTP 启动器使用显式凭据来源。测试值仅在该进程树内有效。
+            env -u ZCODE_CREDENTIAL_SECRET_FILE ZCODE_CREDENTIAL_SECRET="$(node -p "require('node:crypto').randomBytes(32).toString('hex')")" \
+              node scripts/zcode-distribution-smoke.mjs "$TARBALL"
+          fi
           cp "$TARBALL" "dist/zcode/releases/$VERSION/sha256.txt" dist/agent-node-dist/
           PNPM_VERSION=$(pnpm --version)
           export PNPM_VERSION

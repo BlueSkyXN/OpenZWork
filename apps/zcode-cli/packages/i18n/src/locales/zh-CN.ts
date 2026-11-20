@@ -7,12 +7,13 @@ export const zhCN: ZCodeCopy = {
       localeUnsupported: (value) =>
         `不支持的 --locale 值：${value}。支持的语言：en-US、zh-CN、auto。`,
     },
-    help: (version) => `zcode ${version}
+    providerConfigGuide: "个人模型配置示例",
+    help: (version, productName, distributionVersion) => `${productName} ${distributionVersion ?? `Agent CLI ${version}`}
 
 用法:
   zcode [command] [options]
 
-不传 command 时，zcode 会打开全屏 TUI。
+运行 zcode 打开终端界面，zcode -p "<问题>" 执行单次提问，zcode app-server 启动 stdio 服务。${distributionVersion ? "\n  zcode --web       打开 Web 界面（zcode --web --help 查看参数）" : ""}
 
 命令:
   app-server 运行 ZCode Protocol stdio app server
@@ -21,7 +22,7 @@ export const zhCN: ZCodeCopy = {
   plugins    管理插件与市场（\`plugins list|install|uninstall|enable|disable|update|validate|marketplace ...\`；别名 plugin）
   skills     列出本地 skills（\`skills list\`）
   tui        打开终端 UI
-  version    打印 CLI 版本
+  version    打印内置 Agent CLI 版本
 
 选项:
   -h, --help       显示帮助
@@ -95,9 +96,9 @@ Slash Commands:
       typePrompt: "输入问题后按 Enter。",
     },
     loginRequired: {
-      help: "输入 /model 查看模型；请先配置可用的模型 Provider。",
-      message: "没有可用模型，请配置模型 Provider（个人 Provider 配置或环境变量）后重试。",
-      status: "没有可用模型，请配置模型 Provider 后重试。",
+      help: "配置示例见 zcode --help。保存后重启，输入 /model 选择模型。",
+      message: "没有可用模型。请在个人模型配置中添加供应商。",
+      status: "没有可用模型",
       title: "需要配置模型",
     },
     model: {
@@ -235,7 +236,7 @@ Slash Commands:
       turnFailed: "本轮失败。",
     },
     terminal: {
-      starting: "正在启动 ZCode… Ctrl+C 退出",
+      starting: "正在启动… 按 Ctrl+C 退出",
       requiresInteractive: "TUI 需要交互式终端。",
     },
     transcript: {

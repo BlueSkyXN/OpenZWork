@@ -7,7 +7,7 @@
 import "core-js/stable/array/to-sorted";
 import "core-js/stable/array/to-reversed";
 import "core-js/stable/object/group-by";
-import { resolveWebRemoteControlBrowserRelayUrl } from "@zcode/shared";
+import { OPENZWORK_APP_NAME, resolveWebRemoteControlBrowserRelayUrl } from "@zcode/shared";
 import {
   WEB_REMOTE_CONTROL_WORKSPACE_RECONNECT_TIMEOUT_MS,
   parseWebRemoteControlExternalQrParams,
@@ -782,7 +782,7 @@ function renderWebRemoteControlLoading(
   state: WebRemoteControlTerminalTransportState,
   device: WebRemoteControlConnectingDevice,
 ): void {
-  document.title = "ZCode - Web Remote Control";
+  document.title = `${OPENZWORK_APP_NAME} - Web Remote Control`;
   root.render(
     <WebRemoteControlLoadingScreen
       state={state}
@@ -1511,7 +1511,7 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
   ) => {
     if (terminated || versionGuard.isBlocked()) return;
     ready = true;
-    document.title = "ZCode - Web Remote Control";
+    document.title = `${OPENZWORK_APP_NAME} - Web Remote Control`;
     root.render(
       <AppErrorBoundary key={bridge.bridgeSessionId}>
         <ZCodeIntlProvider
@@ -1634,7 +1634,7 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
     currentWorkspaceKey = workspaceKey;
     currentTaskId = taskId;
     await updateMobileViewState(workspaceKey, taskId);
-    document.title = "ZCode - Web Remote Control";
+    document.title = `${OPENZWORK_APP_NAME} - Web Remote Control`;
     if (terminated || versionGuard.isBlocked()) return;
     // Bug 原因：staging 合并 a861a83cbc 丢了这里的 ready 标记，home-only 挂载后每次配对状态抖动
     // 都会被 onStateChange 当成首屏重渲染加载页，配对恢复后再整页重挂，引导与本地状态全部丢失。
@@ -1803,7 +1803,7 @@ async function bootstrapWebApp() {
       onClose: () => {},
     });
     const platform = createWebPlatform();
-    document.title = "ZCode - Web + Server";
+    document.title = `${OPENZWORK_APP_NAME} - Web`;
 
     root.render(
       <AppErrorBoundary>

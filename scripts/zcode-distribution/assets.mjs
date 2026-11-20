@@ -10,6 +10,7 @@ import {
   bundledSkillPackRequiredPaths,
   bundledSkillPackSkillsDirectory,
 } from "../../apps/zcode-cli/packages/cli/scripts/sea-bundled-skill-assets.mjs";
+import { stagePlatformPty } from "./platform-archive-openzwork.mjs";
 const root = resolve(import.meta.dirname, "../..");
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 
@@ -57,11 +58,11 @@ export async function stageBundledSkills(
   await validate(targetRoot);
 }
 
-export async function stageTuiRuntime(packageRoot) {
+export async function stageTuiRuntime(packageRoot, targets = supportedTargets) {
   const stagingDirectory = resolve(packageRoot, "../tui-staging");
   const copied = new Map();
   try {
-    for (const target of supportedTargets) {
+    for (const target of targets) {
       const { assets, manifest } = await collectSeaTuiAssets({
         root: resolve(root, "apps/zcode-cli"),
         stagingDirectory,
@@ -98,7 +99,9 @@ function shouldCopyPackagePath(packageDirectory, source) {
     return true;
   }
   const parts = rel.split(sep);
-  return !parts.includes("node_modules") && !parts.includes(".git");
+  // OpenZWork(OZ-F011)：可选 native 依赖也可能在安装时留下调试符号与编译中间文件。
+  return !parts.includes("node_modules") && !parts.includes(".git") &&
+    !/\.(?:o|obj|pdb)$/i.test(parts.at(-1));
 }
 
 async function resolvePackageJsonPath(requireFrom, packageName) {
@@ -181,10 +184,17 @@ async function copyRuntimePackageTree({ packageName, packageRoot, requireFrom, s
   }
 }
 
-export async function copyRuntimeNodeModules(packageRoot) {
+export async function copyRuntimeNodeModules(packageRoot, runtimeTarget) {
   const requireFromServer = createRequire(resolve(root, "packages", "server", "package.json"));
   const seen = new Set();
   for (const packageName of runtimePackageNames) {
+    // OpenZWork(OZ-F011)：平台附件只复制本平台 PTY 的运行文件。
+    if (runtimeTarget && packageName === "node-pty") {
+      const source = dirname(await resolvePackageJsonPath(requireFromServer, packageName));
+      await stagePlatformPty(source, resolve(packageRoot, "node_modules/node-pty"), runtimeTarget);
+      seen.add(packageName);
+      continue;
+    }
     await copyRuntimePackageTree({
       packageName,
       packageRoot,

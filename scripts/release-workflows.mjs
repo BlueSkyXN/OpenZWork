@@ -4,9 +4,15 @@ export const RELEASE_WORKFLOWS = [
   ["installers", "Installers", "installers.yml"],
 ];
 
+export const cliRuntimeTargets = {
+  "macos-arm64": "darwin-arm64",
+  "linux-amd64": "linux-x64",
+  "windows-amd64": "win32-x64",
+};
+
 export function cliReleaseAssets({ version, openzworkRelease }) {
   if (openzworkRelease?.cliArchives !== true) return [];
-  return ["macos-arm64", "linux-amd64"].map((platform) => ({
+  return Object.keys(cliRuntimeTargets).map((platform) => ({
     platform,
     name: `OpenZWork-CLI-${version}-${platform}.tar.gz`,
   }));

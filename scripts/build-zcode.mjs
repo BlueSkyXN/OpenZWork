@@ -11,6 +11,9 @@ import {
   stageTuiRuntime,
   stageBundledSkills,
 } from "./zcode-distribution/assets.mjs";
+import { hostTarget } from "../apps/zcode-cli/packages/cli/scripts/sea-targets.mjs";
+import { OPENZWORK_APP_NAME } from "../packages/shared/src/productIdentity.ts";
+import { runCommand } from "./spawn-command.mjs";
 import { installScriptSource } from "./zcode-distribution/installer.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -29,7 +32,7 @@ Options:
   --version <text>    Release version. Defaults to root package.json version.
   --out-dir <path>    Output directory. Defaults to dist/zcode.
   --base-url <url>    Default install.sh download base URL.
-  --archive-only     Write the runtime archive and checksum to dist/zcode-archive without an install script.
+  --archive-only     Write the current platform runtime archive and checksum to dist/zcode-archive without an install script.
   --help, -h          Show this help.
 `;
 
@@ -108,6 +111,7 @@ function commandText(command, args) {
 
 function run(command, args, options = {}) {
   console.log(`[zcode] ${commandText(command, args)}`);
+  if (command === "pnpm") return runCommand(command, args, { cwd: root, ...options });
   const result = spawnSync(command, args, {
     cwd: root,
     stdio: "inherit",
@@ -162,7 +166,7 @@ async function buildOutputs(skipBuild) {
   run("pnpm", ["--filter", "@zcode/web", "build"]);
 }
 
-async function stageZCodePackage({ packageRoot, version }) {
+async function stageZCodePackage({ packageRoot, version, platformArchive }) {
   const webDist = resolve(root, "packages", "web", "dist");
   const serverDist = resolve(root, "packages", "server", "dist");
   const agentBundle = resolve(root, "apps", "zcode-cli", "packages", "cli", "dist", "zcode.cjs");
@@ -201,9 +205,11 @@ async function stageZCodePackage({ packageRoot, version }) {
   await chmod(resolve(packageRoot, "agent", "zcode.cjs"), 0o755);
 
   await stageBundledSkills(packageRoot);
-  await stageTuiRuntime(packageRoot);
-  await copyRuntimeNodeModules(packageRoot);
-  await patchNodePtyPrebuilds(packageRoot);
+  // OpenZWork(OZ-F011)：Release 按主机原生 ABI 打包，自托管下载目录沿用原布局。
+  const runtimeTarget = platformArchive ? process.platform + "-" + process.arch : undefined;
+  await stageTuiRuntime(packageRoot, platformArchive ? [hostTarget()] : undefined);
+  await copyRuntimeNodeModules(packageRoot, runtimeTarget);
+  if (!platformArchive) await patchNodePtyPrebuilds(packageRoot);
 
   await mkdir(resolve(packageRoot, "bin"), {
     recursive: true,
@@ -211,12 +217,16 @@ async function stageZCodePackage({ packageRoot, version }) {
   const runner = resolve(packageRoot, "bin", "zcode.mjs");
   await cp(resolve(root, "scripts/zcode-distribution/runner.mjs"), runner);
   await chmod(runner, 0o755);
+  await writeFile(resolve(packageRoot, "zcode"), '#!/usr/bin/env node\nimport "./bin/zcode.mjs";\n', { mode: 0o755 });
+  await writeFile(resolve(packageRoot, "zcode.cmd"), '@echo off\r\nnode "%~dp0bin\\zcode.mjs" %*\r\nexit /b %errorlevel%\r\n');
 
   await writeFile(
     resolve(packageRoot, "package.json"),
     JSON.stringify(
       {
         name: "zcode-runtime",
+        productName: OPENZWORK_APP_NAME,
+        runtimeTarget,
         private: true,
         type: "module",
         version,
@@ -235,7 +245,9 @@ async function createTarball({ packageParent, releaseDir, tarballName }) {
   await rm(tarball, {
     force: true,
   });
-  run("tar", ["-czf", tarball, "-C", packageParent, packageDirName]);
+  run("tar", ["--exclude", "._*", "--exclude", ".DS_Store", "-czf", tarball, "-C", packageParent, packageDirName], {
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  });
   return tarball;
 }
 
@@ -271,6 +283,7 @@ async function main() {
   await stageZCodePackage({
     packageRoot,
     version,
+    platformArchive: options.archiveOnly,
   });
   const tarball = await createTarball({
     packageParent,

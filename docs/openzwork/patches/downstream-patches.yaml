@@ -947,3 +947,23 @@ patches:
     retire: 上游用例在清理临时目录前等待后台迁移完全结束。
     refs:
       - https://github.com/BlueSkyXN/OpenZWork/actions/runs/44563487444/job/135698826664
+
+  - id: OW-P045
+    title: 独立 Web 入口在监听失败前显示可用地址
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.18.2
+      checked: 3.18.2
+    trigger: 独立 CLI 的 Web 子进程初始化失败，或指定端口已被其他进程占用。
+    impact: 用户看到成功提示并可能打开了不属于本次启动的页面。
+    cause: 发行启动器在 spawn 后直接显示地址并定时打开浏览器，未等待监听进程的回执。
+    fix: HTTP 子进程绑定端口后通过私有 IPC 返回监听端口，启动器收到本次子进程的回执后显示地址并按需打开浏览器。
+    evidence: 本地候选包在占用端口和缺少凭据存储时均先报告成功再以 1 退出，启动器夹具在修复前复现。
+    files:
+      - packages/server/src/entry-http.ts
+      - scripts/zcode-distribution/runner.mjs
+    regression:
+      - scripts/test/openzwork-cli-distribution.test.mjs
+    retire: 上游从实际监听进程确认就绪，且启动失败的回归继续通过。

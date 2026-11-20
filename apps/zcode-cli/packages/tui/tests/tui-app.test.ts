@@ -5,6 +5,7 @@ import { testRender } from "@mbears/opentui-react/test-utils";
 import { getZCodeCopy } from "@zcode/i18n";
 import { TuiApp } from "../src/app.js";
 import { LoginRequiredPanel } from "../src/app-components.js";
+import { displayWidth } from "../src/app-terminal-width.js";
 import { ZCODE_LOGO_LINES } from "../src/app-empty-transcript.js";
 import { InputPane } from "../src/app-input-pane.js";
 import { InputActiveStatus } from "../src/app-input-status.js";
@@ -61,6 +62,29 @@ test("starts without a runtime readiness system message", async () => {
     await act(async () => {
       view?.renderer.destroy();
     });
+  }
+});
+
+test("wraps a personal config path within the Chinese model notice", async () => {
+  const width = 48;
+  const providerConfigPath = "/workspace/模型配置/long-directory-with-spaces and models/provider_config.json";
+  const view = await testRender(
+    React.createElement(LoginRequiredPanel, { copy: getZCodeCopy("zh-CN").tui, providerConfigPath }),
+    { width, height: 20 },
+  );
+  try {
+    await act(() => view.renderOnce());
+    const rows = view.captureCharFrame().split("\n").filter((row) => row.startsWith("│"));
+    assert.ok(rows.length > 3);
+    for (const row of rows) {
+      assert.equal(displayWidth(row.trimEnd()), width);
+      assert.ok(row.trimEnd().endsWith("│"));
+    }
+    const text = rows.map((row) => row.slice(1, row.lastIndexOf("│")).trim()).join("");
+    assert.ok(text.includes(providerConfigPath));
+    assert.ok(text.includes("/model"));
+  } finally {
+    await act(() => view.renderer.destroy());
   }
 });
 

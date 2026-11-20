@@ -186,11 +186,12 @@ test("annotated tags resolve to commits and completed releases replay without re
   assert.equal(result.status, "published");
 });
 
-test("支持 CLI 发行的 tag 必须公开两个对应平台的压缩包", async () => {
+test("支持 CLI 发行的 tag 必须公开三个对应平台的压缩包", async () => {
   const { input } = planner();
   const assets = [
     ...Array.from({ length: 9 }, (_, i) => ({ name: `asset-${i}`, state: "uploaded" })),
     { name: "OpenZWork-CLI-3.16.3-macos-arm64.tar.gz", state: "uploaded" },
+    { name: "OpenZWork-CLI-3.16.3-windows-amd64.tar.gz", state: "uploaded" },
     { name: "OpenZWork-CLI-3.16.3-linux-amd64.tar.gz", state: "uploaded" },
   ];
   const replay = (releasedAssets) =>
@@ -337,7 +338,8 @@ test("automatic drafts use generated notes and recover lost create responses; ex
     );
     assert.equal(id, mode === "existing" ? 1 : 2);
     const notes = await readFile(notesFile, "utf8");
-    assert.equal(notes.includes("node zcode/bin/zcode.mjs"), mode === "new");
+    assert.equal(notes.includes("zcode.cmd"), mode === "new");
+    assert.equal(notes.includes("Node.js 24.14.0"), mode === "new");
     if (mode === "existing" || mode === "custom") {
       assert.equal(notes, mode === "existing" ? "Reviewed notes" : "Custom notes");
       assert.ok(!calls.some((args) => args.includes("POST") || args.includes(guideInfo)));

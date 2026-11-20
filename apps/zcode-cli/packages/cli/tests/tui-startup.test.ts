@@ -104,7 +104,8 @@ test("native first paint precedes initialization and theme detection; ready opti
   try {
     await terminal.action(() => terminal.renderOnce());
     assert.equal(calls, 1);
-    assert.match(frameAtStartup, /Starting ZCode/);
+    assert.match(frameAtStartup, /OpenZWork/);
+    assert.match(frameAtStartup, /Starting…/);
     assert.match(terminal.captureCharFrame(), /\/test\/workspace/);
     assert.doesNotMatch(terminal.captureCharFrame(), /Type a prompt/);
     await terminal.action(() =>
@@ -119,7 +120,7 @@ test("native first paint precedes initialization and theme detection; ready opti
         ],
       }),
     );
-    assert.doesNotMatch(terminal.captureCharFrame(), /Starting ZCode/);
+    assert.doesNotMatch(terminal.captureCharFrame(), /Starting…/);
     assert.match(terminal.captureCharFrame(), /startup-model/);
     assert.match(terminal.captureCharFrame(), /personal \| high/);
     await terminal.action(() => terminal.mockInput.typeText("/startup"));
@@ -142,7 +143,7 @@ test("ready app owns Ctrl+C after the startup screen unmounts", async () => {
   try {
     await terminal.action(() => terminal.renderOnce());
     await terminal.action(() => startup.resolve({ loginRequired: false }));
-    assert.doesNotMatch(terminal.captureCharFrame(), /Starting ZCode/);
+    assert.doesNotMatch(terminal.captureCharFrame(), /Starting…/);
     await terminal.action(() => terminal.mockInput.pressCtrlC());
     assert.equal(terminal.renderer.isDestroyed, false);
     await terminal.action(() => terminal.mockInput.pressCtrlC());

@@ -89,7 +89,7 @@ Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服�
 ### OpenZWork 命令行版
 
 <!-- OpenZWork(OZ-F011): Release 提供可直接解压的独立 CLI。 -->
-在 [Releases](https://github.com/BlueSkyXN/OpenZWork/releases) 中有 `OpenZWork-CLI-*.tar.gz` 附件的版本可直接下载。选择 macOS arm64 或 Linux x64 的附件，解压后用 [mise.toml](mise.toml) 指定的 Node.js 版本运行 `node zcode/bin/zcode.mjs`。在命令末尾加 `--help` 可查看非交互模式和协议服务的用法。
+在 [Releases](https://github.com/BlueSkyXN/OpenZWork/releases) 中有 `OpenZWork-CLI-*.tar.gz` 附件的版本可直接下载。选择 macOS arm64、Linux x64（glibc）或 Windows x64 附件，安装 Node.js 24.14.0 并解压。在自己的项目目录执行 `/解压位置/zcode/zcode`，Windows PowerShell 使用 `& "C:\解压位置\zcode\zcode.cmd"`。首次使用先按[个人模型配置示例](apps/zcode-cli/docs/usage/03-config.md)添加供应商和模型，也可以在桌面端的「设置 → 模型设置」中添加。
 
 命令行发行包包含 TUI、Web 和 Agent，统一使用 `zcode` 启动：无参数进入 TUI；第一个参数为 `--web` 时启动 Web；其他参数交给现有 Agent CLI 处理。两种模式都在本机运行，无需 Electron。
 
