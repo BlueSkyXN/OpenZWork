@@ -43,6 +43,10 @@ export function tarExtractArgs({ archive, platform = process.platform }) {
   return [...forceLocalTarArgs(platform), "-xzf", archive];
 }
 
+export function shouldIgnoreSmokeCleanupError(error, platform = process.platform) {
+  return platform === "win32" && error?.code === "EPERM";
+}
+
 const runtimePackageNames = [
   "@hono/node-server",
   "@hono/node-ws",

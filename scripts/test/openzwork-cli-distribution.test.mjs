@@ -9,7 +9,11 @@ import {
   stagePlatformPty,
   verifyPlatformRuntime,
 } from "../zcode-distribution/platform-archive-openzwork.mjs";
-import { tarCreateArgs, tarExtractArgs } from "../zcode-distribution/assets.mjs";
+import {
+  shouldIgnoreSmokeCleanupError,
+  tarCreateArgs,
+  tarExtractArgs,
+} from "../zcode-distribution/assets.mjs";
 
 async function temp(t) {
   const root = await mkdtemp(join(tmpdir(), "oz-cli-"));
@@ -75,6 +79,16 @@ test("CLI tar commands keep Windows drive-letter paths local", () => {
   );
   assert.equal(
     tarExtractArgs({ archive: tarball, platform: "darwin" }).includes("--force-local"),
+    false,
+  );
+});
+
+test("CLI smoke cleanup tolerates only a locked Windows native module", () => {
+  const error = Object.assign(new Error("locked"), { code: "EPERM" });
+  assert.equal(shouldIgnoreSmokeCleanupError(error, "win32"), true);
+  assert.equal(shouldIgnoreSmokeCleanupError(error, "darwin"), false);
+  assert.equal(
+    shouldIgnoreSmokeCleanupError(Object.assign(new Error("denied"), { code: "EACCES" }), "win32"),
     false,
   );
 });

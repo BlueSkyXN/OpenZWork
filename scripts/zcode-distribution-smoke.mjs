@@ -10,7 +10,10 @@ import { setTimeout } from "node:timers/promises";
 import { promisify, stripVTControlCharacters } from "node:util";
 import { pathToFileURL } from "node:url";
 
-import { tarExtractArgs } from "./zcode-distribution/assets.mjs";
+import {
+  shouldIgnoreSmokeCleanupError,
+  tarExtractArgs,
+} from "./zcode-distribution/assets.mjs";
 
 const exec = promisify(execFile);
 const archive = process.argv[2];
@@ -32,6 +35,7 @@ const env = {
 };
 let web;
 let terminal;
+let cleanupError;
 try {
   await exec("tar", tarExtractArgs({ archive: resolve(archive) }), { cwd: directory });
   await mkdir(workspace);
@@ -167,8 +171,14 @@ try {
 } finally {
   terminal?.kill();
   web?.kill();
-  await rm(directory, { recursive: true, force: true });
+  try {
+    await rm(directory, { recursive: true, force: true });
+  } catch (error) {
+    // OpenZWork(OZ-F011)：Windows 加载 conpty.node 后，同进程无法解锁删除；仅该平台 EPERM 允许保留临时目录。
+    if (!shouldIgnoreSmokeCleanupError(error)) cleanupError = error;
+  }
 }
+if (cleanupError) throw cleanupError;
 
 async function until(check, label, diagnostic) {
   const deadline = Date.now() + 20000;

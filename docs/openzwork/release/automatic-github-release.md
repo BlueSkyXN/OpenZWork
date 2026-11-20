@@ -16,6 +16,8 @@ Extended 的七组单测按[平台与分片并行规范](../ci/extended-ci-paral
 
 CLI tar 的创建与解包命令必须把绝对归档路径当作本地文件处理。Windows runner 的 GNU tar 会把 `D:\...` 中的盘符解析成远程主机，因此构建、内容校验和 smoke 解包都显式携带 `--force-local`；解包目录由子进程 `cwd` 提供，不再传给 `-C`。该要求由独立 CLI 分发回归测试锁定。
 
+Windows smoke 验收会在当前进程加载 `node-pty` 的 `conpty.node`；该 native 模块在进程退出前保持文件锁。验收结束后的临时目录清理因此按 best-effort 处理：仅 Windows 的 `EPERM` 允许保留锁定文件，其他平台或清理错误仍使验收失败。
+
 下载、校验、上传全部在 GitHub runner 完成。新流程要求七个桌面安装文件、三个 CLI 包、来源清单和校验和。历史 tag 按原九附件范围校验。
 
 Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP。解压结果须能通过已有的二进制目标检查，runner 上 PowerShell 归档模块的版本不参与构建。
