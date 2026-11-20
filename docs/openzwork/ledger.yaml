@@ -277,7 +277,7 @@ entries:
     kind: feature
     status: active
     title: OpenZWork 构建与发行流程
-    summary: 发行版本解析、三平台安装包校验和正式 tag 自动发布。
+    summary: 发行版本解析、三平台安装包校验和正式 tag 自动发布。独立 Node 分发按下载根配置启用。
     spec:
       - docs/openzwork/release/openzwork-release-version.md
       - docs/openzwork/release/automatic-github-release.md
