@@ -10,6 +10,8 @@ import { setTimeout } from "node:timers/promises";
 import { promisify, stripVTControlCharacters } from "node:util";
 import { pathToFileURL } from "node:url";
 
+import { tarExtractArgs } from "./zcode-distribution/assets.mjs";
+
 const exec = promisify(execFile);
 const archive = process.argv[2];
 assert.ok(archive, "Usage: node scripts/zcode-distribution-smoke.mjs <archive.tar.gz>");
@@ -31,7 +33,7 @@ const env = {
 let web;
 let terminal;
 try {
-  await exec("tar", ["-xzf", resolve(archive), "-C", directory]);
+  await exec("tar", tarExtractArgs({ archive: resolve(archive), directory }));
   await mkdir(workspace);
   const version = (
     await exec(process.execPath, [runner, "--version"], { cwd: workspace, env })

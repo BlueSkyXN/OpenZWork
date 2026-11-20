@@ -9,7 +9,7 @@ import {
   stagePlatformPty,
   verifyPlatformRuntime,
 } from "../zcode-distribution/platform-archive-openzwork.mjs";
-import { tarArchiveArgs } from "../build-zcode.mjs";
+import { tarCreateArgs, tarExtractArgs } from "../zcode-distribution/assets.mjs";
 
 async function temp(t) {
   const root = await mkdtemp(join(tmpdir(), "oz-cli-"));
@@ -49,14 +49,36 @@ test("platform archives use matching Linux PTY, keep Windows runtime files and o
   await readFile(join(windows, "conpty/conpty.dll"));
 });
 
-test("CLI tar command keeps Windows drive-letter archives local", () => {
+test("CLI tar commands keep Windows drive-letter paths local", () => {
   const tarball = "D:\\a\\OpenZWork\\zcode-1.2.3.tar.gz";
   const packageParent = "D:\\a\\OpenZWork\\.work";
-  const args = tarArchiveArgs({ tarball, packageParent });
+  const windows = { platform: "win32" };
+  const createArgs = tarCreateArgs({
+    tarball,
+    packageParent,
+    packageDirName: "zcode",
+    ...windows,
+  });
+  const extractArgs = tarExtractArgs({ archive: tarball, directory: packageParent, ...windows });
 
-  assert.equal(args[0], "--force-local");
-  assert.ok(args.includes(tarball));
-  assert.ok(args.includes(packageParent));
+  for (const args of [createArgs, extractArgs]) {
+    assert.equal(args[0], "--force-local");
+    assert.ok(args.includes(tarball));
+    assert.ok(args.includes(packageParent));
+  }
+
+  assert.equal(
+    tarCreateArgs({ tarball, packageParent, packageDirName: "zcode", platform: "darwin" }).includes(
+      "--force-local",
+    ),
+    false,
+  );
+  assert.equal(
+    tarExtractArgs({ archive: tarball, directory: packageParent, platform: "darwin" }).includes(
+      "--force-local",
+    ),
+    false,
+  );
 });
 
 test("archive verifier distinguishes required TUI FFI from the removed CUA plugin", async (t) => {

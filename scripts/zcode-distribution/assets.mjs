@@ -14,6 +14,35 @@ import { stagePlatformPty } from "./platform-archive-openzwork.mjs";
 const root = resolve(import.meta.dirname, "../..");
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
 
+function forceLocalTarArgs(platform) {
+  return platform === "win32" ? ["--force-local"] : [];
+}
+
+export function tarCreateArgs({
+  tarball,
+  packageParent,
+  packageDirName,
+  platform = process.platform,
+}) {
+  // Windows GNU tar 会把 "D:\..." 的盘符当作远程主机，必须显式按本地文件处理。
+  return [
+    ...forceLocalTarArgs(platform),
+    "--exclude",
+    "._*",
+    "--exclude",
+    ".DS_Store",
+    "-czf",
+    tarball,
+    "-C",
+    packageParent,
+    packageDirName,
+  ];
+}
+
+export function tarExtractArgs({ archive, directory, platform = process.platform }) {
+  return [...forceLocalTarArgs(platform), "-xzf", archive, "-C", directory];
+}
+
 const runtimePackageNames = [
   "@hono/node-server",
   "@hono/node-ws",

@@ -19,6 +19,7 @@ import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { cliRuntimeTargets } from "./release-workflows.mjs";
+import { tarExtractArgs } from "./zcode-distribution/assets.mjs";
 import { verifyPlatformRuntime } from "./zcode-distribution/platform-archive-openzwork.mjs";
 
 const exec = promisify(execFile);
@@ -67,7 +68,7 @@ export async function verifyAgentNodeDist({
   const tarballSha256 = await sha256(tarball);
   const workspace = await mkdtemp(join(tmpdir(), "openzwork-agent-dist-"));
   try {
-    await exec("tar", ["-xzf", resolve(tarball), "-C", workspace]);
+    await exec("tar", tarExtractArgs({ archive: resolve(tarball), directory: workspace }));
     const root = join(workspace, PACKAGE_DIR);
     // 用 fs.access 而非 `test -e`：repo-scripts 在 macOS/Windows/Linux 三平台运行，
     // 命令行的 test 不是 Windows shell 内建。
