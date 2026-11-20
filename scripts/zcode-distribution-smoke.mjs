@@ -204,6 +204,8 @@ try {
   }
 }
 if (cleanupError) throw cleanupError;
+// Windows ConPTY native handle 会维持事件循环；验收成功后显式收敛 job。
+if (shouldSkipSmokeCleanup()) process.exit(0);
 
 async function until(check, label, diagnostic) {
   const deadline = Date.now() + 20000;

@@ -18,6 +18,8 @@ CLI tar 的创建与解包命令必须按实际选中的 tar 实现处理 Window
 
 Windows smoke 验收会在当前进程加载 `node-pty` 的 `conpty.node`；该 native 模块在进程退出前保持文件锁。Windows 在加载 ConPTY 后不尝试递归删除 smoke 临时目录，由 runner 生命周期回收；其他平台仍必须清理临时目录，清理错误使验收失败。Windows ConPTY 关闭 socket 时可能先触发 exit event，此时 node-pty 尚未写入数值退出码；键盘退出验收接受这一平台事件，其他平台仍要求退出码为 0。
 
+Windows smoke 通过全部验收并输出结果后必须显式退出 Node 进程；ConPTY native handle 不能阻止 Installers job 收敛。
+
 Windows 的 WebSocket close 事件可能不随本地 `close()` 调用收敛。smoke 在发起正常关闭后限时等待，超时仅终止测试客户端 socket，不改变服务端；HTTP、server-info、workspace、WebSocket 连接和 Web 子进程退出仍须通过。
 
 smoke 的 Web HTML、HTML body、WebSocket open/close 和 Web 子进程退出都必须带阶段标签与超时。平台差异只能改变可接受的退出事件形态，不能让验收无限等待。
