@@ -5,6 +5,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import { parse } from "yaml";
 
@@ -79,7 +80,19 @@ async function fixture(t, version = "3.15.1") {
   const sha = (await git("rev-parse", "HEAD")).stdout.trim();
   await git("tag", "v3.15.1-openzwork");
   await git("tag", "v3.16.1-openzwork");
-  if (version.includes("+openzwork.")) await git("tag", `v${version}`);
+  if (version.includes("+openzwork.")) {
+    await git(
+      "-c",
+      "user.name=Release fixture",
+      "-c",
+      "user.email=release@example.invalid",
+      "tag",
+      "-a",
+      `v${version}`,
+      "-m",
+      "fixture",
+    );
+  }
   const env = {
     ...process.env,
     RELEASE_TAG: version.includes("+openzwork.") ? `v${version}` : "v3.15.1-openzwork",
@@ -124,6 +137,35 @@ test("release source validation accepts the exact tag and rejects incomplete or 
     { RELEASE_TAG: "main" },
   ])
     await assert.rejects(f.run(name, overrides));
+});
+
+test("release validation needs the annotated tag ref in a shallow checkout", async (t) => {
+  const version = "3.18.2+openzwork.1";
+  const tag = `v${version}`;
+  const ref = `refs/tags/${tag}`;
+  const source = await fixture(t, version);
+  const cwd = await mkdtemp(join(tmpdir(), "openzwork-shallow-release-"));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  const git = (...args) => exec("git", args, { cwd });
+  const sourceUrl = pathToFileURL(source.cwd).href;
+  const verify = () =>
+    exec(process.execPath, ["--input-type=module", "--eval", script("Verify release source")], {
+      cwd,
+      env: { ...process.env, RELEASE_TAG: tag, RELEASE_COMMIT: source.sha },
+    });
+
+  await git("init");
+  await git("fetch", "--no-tags", "--depth=1", sourceUrl, source.sha);
+  await git("checkout", "--detach", "FETCH_HEAD");
+  await assert.rejects(verify(), /refs\/tags\/v3\.18\.2\+openzwork\.1/);
+
+  await git("fetch", "--no-tags", "--depth=1", sourceUrl, `${ref}:${ref}`);
+  await git("checkout", "--detach", ref);
+  assert.deepEqual(JSON.parse((await verify()).stdout), {
+    tag,
+    sourceCommit: source.sha,
+    version,
+  });
 });
 
 test("修订版完整版本贯穿源码校验、安装文件名与来源清单", async (t) => {
@@ -187,7 +229,8 @@ test("production installers use verified tag sources before installing dependenc
   // 2026-11-15（CI-FIRST §2.7）：来源钉定到不可变提交，不再用浮动分支名。
   assert.equal(
     steps[0].with.ref,
-    "${{ inputs.release_tag || inputs.source_commit || github.sha }}",
+    "${{ (inputs.release_tag && format('refs/tags/{0}', inputs.release_tag)) || " +
+      "inputs.source_commit || (github.ref_type == 'tag' && github.ref) || github.sha }}",
   );
   const verify = steps.findIndex((step) => step.name === "Verify release source");
   const install = steps.findIndex((step) => step.run === "pnpm install --frozen-lockfile");
@@ -488,7 +531,9 @@ test("a formal tag without a Node download root still schedules desktop installe
   assert.equal(
     workflow.jobs["agent-node-dist"].if,
     "${{ !inputs.publish_installer_run && " +
-      "(github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') }}",
+      "(github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') && " +
+      "(github.event_name != 'workflow_dispatch' || " +
+      "(!inputs.release_tag && github.ref_type != 'tag') || inputs.zcode_dist_base_url != '') }}",
   );
 });
 

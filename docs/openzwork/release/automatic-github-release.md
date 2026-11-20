@@ -10,7 +10,7 @@ CI、Extended 和 Installers 在 tag 上各运行一次。Release 工作流由�
 
 Extended 的七组单测按[平台与分片并行规范](../ci/extended-ci-parallel.md)执行。每个平台汇总其全部分片（macOS 两个、Linux 三个、Windows 四个）后仍输出 `extended-tests-<platform>`；发布器继续验证同源码来源、完整七组 summary 和逐组 JSON。缺失、失败或来源不一致的分片会使汇总及工作流失败。
 
-正式 tag 推送时，独立 Node 分发 job 由仓库变量 `ZCODE_DIST_BASE_URL` 启用。变量为空时仅跳过这项构建，三平台桌面安装包仍在 `Installers` 中完成构建与校验。分支预览与手动构建沿用各自的下载地址解析规则。
+正式 tag 推送时，独立 Node 分发 job 由仓库变量 `ZCODE_DIST_BASE_URL` 启用。变量为空时仅跳过这项构建，三平台桌面安装包仍在 `Installers` 中完成构建与校验。手动按正式 tag 重建桌面安装包时，可以显式传空的 `zcode_dist_base_url` 跳过独立 Node 作业。分支预览采用自己的下载地址解析规则。
 
 安装文件下载、校验、上传全部在 GitHub runner 完成。自动流程沿用 production 身份、七个安装文件、来源清单和校验和；未签名构建、手动安装更新的产品规则不变。
 
@@ -18,6 +18,7 @@ Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP�
 
 ## 所有者与事件顺序
 
+- 正式桌面构建显式检出完整的 tag ref，将标签本身取入浅克隆。源码校验对照标签指向、实际 HEAD 和请求的完整 SHA。
 - 三份原工作流拥有测试和构建步骤；通过明确的运行标题 `Release <tag> / <workflow>` 标识 tag 运行，不复用同提交的分支 Preview。
 - 工作流身份按固定的 workflow 文件路径核对。GitHub 的 run `name` 可能返回静态工作流名，也可能返回完整运行标题；两种均可接受，但 tag 选择仍须同时匹配完整 `display_title`、`head_branch === tag`、源码 SHA、仓库与 push 事件。缺失或不匹配的 ref 不作为发行门禁；同 SHA、同标题的 main 运行也不能代替 tag 运行。
 - 自动完成事件先核对 `head_branch` 与标题解析出的 tag，一致后才读取 tag 和发行状态。手动恢复继续选择真实 tag 运行；更晚的无关分支运行不覆盖既有 tag 门禁，真正的新 tag 运行失败仍阻止发布。

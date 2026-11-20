@@ -92,11 +92,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
-      # 来源钉定（CI-FIRST §2.7）：tag > 显式 source_commit > 事件提交。绝不用浮动
-      # 分支名——dispatch 后分支前进会让构建源与 run.head_sha 漂移。
+      # OZ-F011：按 SHA 浅检出会缺少正式 tag 引用，导致后续源码校验失败。
+      # 正式构建取完整标签 ref，并在下一步与期望的提交核对。
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ inputs.release_tag || inputs.source_commit || github.sha }}
+          ref: >-
+            ${{ (inputs.release_tag && format('refs/tags/{0}', inputs.release_tag)) ||
+            inputs.source_commit || (github.ref_type == 'tag' && github.ref) || github.sha }}
           persist-credentials: false
 
       - uses: pnpm/action-setup@v6.1.0
@@ -329,7 +331,9 @@ jobs:
     # OZ-F011：正式 tag 缺独立 Node 下载根时，桌面安装包仍可进入发行校验。
     if: >-
       ${{ !inputs.publish_installer_run &&
-      (github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') }}
+      (github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') &&
+      (github.event_name != 'workflow_dispatch' ||
+      (!inputs.release_tag && github.ref_type != 'tag') || inputs.zcode_dist_base_url != '') }}
     name: agent node dist (${{ matrix.platform }})
     strategy:
       fail-fast: false
