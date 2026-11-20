@@ -3,14 +3,11 @@ import type { DraftPluginUiOpenRequest } from "@/plugin-ui/contract.js";
 import { PluginAddMenu } from "@/conversation-workspace-target/PluginAddMenu.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw, Store } from "lucide-react";
-import {
-  normalizeUnknownError,
-  ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE,
-} from "@zcode/shared";
+import { ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE } from "@zcode/shared";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
-import { useZCodeIntl } from "@/i18n/IntlProvider.js";
+import { useZCodeIntl, type IntlInstance } from "@/i18n/IntlProvider.js";
 import { useServices } from "@/hooks/useServices.js";
 import { useScopedPluginManagementStore } from "@/store/pluginManagementStore.js";
 import { useMarketPluginUi } from "@/plugin-ui/index.js";
@@ -50,6 +47,16 @@ import {
   buildPluginStoreTryMention,
   buildPluginStoreTryPrompt,
 } from "@/settings/pluginStoreTryPrompt.js";
+
+function resolveMarketplaceError(
+  intl: IntlInstance,
+  message: string | null,
+  code: string | null,
+): string | null {
+  return message !== null && code === ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE
+    ? intl.formatMessage({ id: "settings.plugins.marketplaces.reservedName" })
+    : message;
+}
 
 interface PluginStorePageProps {
   isDesktop?: boolean;
@@ -108,7 +115,9 @@ export function PluginStorePage({
   const loading = usePluginManagementStore((state) => state.loading);
   const loadedWorkspacePath = usePluginManagementStore((state) => state.workspacePath);
   const loadedWorkspaceIdentity = usePluginManagementStore((state) => state.workspaceIdentity);
-  const error = usePluginManagementStore((state) => state.error);
+  const error = usePluginManagementStore((state) =>
+    resolveMarketplaceError(intl, state.error, state.errorCode),
+  );
   const activeOperations = usePluginManagementStore((state) => state.activeOperations);
   const describeCache = usePluginManagementStore((state) => state.describeCache);
   const initialize = usePluginManagementStore((state) => state.initialize);
@@ -131,7 +140,10 @@ export function PluginStorePage({
   const [refreshing, setRefreshing] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
   const [addSourceOpen, setAddSourceOpen] = useState(false);
-  const [addMarketplaceError, setAddMarketplaceError] = useState<string | null>(null);
+  const [addMarketplaceError, setAddMarketplaceError] = useState<{
+    message: string;
+    code: string | null;
+  } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   // 返回列表页时恢复进入详情前的滚动位置（设置页 main 容器滚动）。
   const storeScrollTopRef = useRef(0);
@@ -347,22 +359,17 @@ export function PluginStorePage({
 
   const handleAddMarketplace = useCallback(
     async (source: string) => {
-      const succeeded = await addMarketplace(source, operationService, (error) => {
-        // OpenZWork(OZ-C014): Host 通过协议附带业务码，旧 Host 仍使用原错误消息。
-        const details = error && typeof error === "object" && "data" in error ? error.data : error;
-        return normalizeUnknownError(details).code === ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE
-          ? intl.formatMessage({ id: "settings.plugins.marketplaces.reservedName" })
-          : undefined;
-      });
-      // 添加市场源的错误要和提交入口同层展示；否则全局错误条会被 Dialog 遮罩压到下面。
+      const succeeded = await addMarketplace(source, operationService);
+      const { error, errorCode } = usePluginManagementStore.getState();
+      // 添加市场源的错误要和提交入口同层展示；保留原文和业务码以响应跨窗口语言更新。
       setAddMarketplaceError(
-        succeeded ? null : (usePluginManagementStore.getState().error ?? null),
+        succeeded || error === null ? null : { message: error, code: errorCode },
       );
       // 自定义市场不属于公开分段；添加成功后直接切到「个人」，让用户立刻看到刚加的来源。
       if (succeeded) setSegment("personal");
       return succeeded;
     },
-    [addMarketplace, intl, operationService, usePluginManagementStore],
+    [addMarketplace, operationService, usePluginManagementStore],
   );
 
   const handleUsePrompt = useCallback(
@@ -742,7 +749,11 @@ export function PluginStorePage({
         onOpenChange={setAddSourceOpen}
         onAddMarketplace={handleAddMarketplace}
         activeOperations={activeOperations}
-        error={addMarketplaceError}
+        error={resolveMarketplaceError(
+          intl,
+          addMarketplaceError?.message ?? null,
+          addMarketplaceError?.code ?? null,
+        )}
       />
     </div>
   );

@@ -724,6 +724,7 @@ entries:
       - packages/ui/src/settings/PluginStorePage.tsx
       - packages/ui/src/store/pluginManagementStore.ts
       - packages/ui/src/store/pluginManagementStoreLoading.ts
+      - packages/ui/src/store/pluginManagementStoreEnabled.ts
       - packages/ui/src/i18n/locales/en-US.ts
       - packages/ui/src/i18n/locales/ja-JP.ts
       - packages/ui/src/i18n/locales/ko-KR.ts

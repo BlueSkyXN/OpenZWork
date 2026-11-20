@@ -73,6 +73,7 @@ export async function setPluginEnabledOptimistically(
   set({
     togglingPluginId: pluginId,
     error: null,
+    errorCode: null,
     lastFailedPluginId: null,
     ...(previousPlugin
       ? {
@@ -129,6 +130,7 @@ export async function setPluginEnabledOptimistically(
     if (isCurrentRequest()) {
       set({
         error: toMessage(error),
+        errorCode: null,
         lastFailedPluginId: pluginId,
         ...(previousPlugin
           ? {

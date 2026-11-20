@@ -150,6 +150,8 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
     const collision = await createInvalidOfficialCollisionFixture();
     // 其他用例复用生命周期市场。用独立市场 ID 验证这次重试确实新增了来源。
     const regularMarketId = "e2e-marketplace-79";
+    const englishReservedNameHint =
+      "This source uses a marketplace name reserved by OpenZWork. Add another compatible marketplace source.";
     const regularSource = join(dirname(collision), "marketplace-79-regular.json");
     await writeFile(regularSource, JSON.stringify({ name: regularMarketId, plugins: [] }));
 
@@ -177,20 +179,35 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
     );
     expect((await getPluginOverview()).marketplaces).toEqual(before.marketplaces);
     await capturePluginManualReview("PLUGIN-MARKETPLACE-79", "zh-light-reserved-name");
-    await browser.keys("Escape");
 
+    // OpenZWork(OZ-C014): 模拟跨窗口语言更新，当前弹窗保留输入并刷新提示。
     await setPluginPresentation({ locale: "en-US", theme: "zai-dark", width: 480, height: 800 });
+    expect(await getPluginControlText("plugin-store-add-source-dialog")).toContain("Add marketplace");
+    expect(await getPluginControlText("plugin-store-add-source-error")).toBe(englishReservedNameHint);
+    expect(
+      await browser.$('[data-testid="plugin-store-add-source-input"]').getValue(),
+    ).toBe(collision);
+    await capturePluginManualReview("PLUGIN-MARKETPLACE-79", "reserved-name-after-locale-change");
+    await browser.keys("Escape");
+    expect(await getPluginControlText("plugin-store-error")).toBe(englishReservedNameHint);
+
     await setRendererViewport(390, 844);
     expect(await getPluginControlText("plugin-store-create")).toBe("Add");
     await addMarketplaceSourceThroughUi(collision);
     await waitForPluginControl("plugin-store-add-source-error");
-    expect(await getPluginControlText("plugin-store-add-source-error")).toBe(
-      "This source uses a marketplace name reserved by OpenZWork. Add another compatible marketplace source.",
-    );
+    expect(await getPluginControlText("plugin-store-add-source-error")).toBe(englishReservedNameHint);
     expect(
       await browser.$('[data-testid="plugin-store-add-source-input"]').getValue(),
     ).toBe(collision);
     await capturePluginManualReview("PLUGIN-MARKETPLACE-79", "en-dark-narrow-reserved-name");
+
+    const missingSource = join(dirname(collision), "marketplace-79-missing.json");
+    await setInputValueByTestIdDom("plugin-store-add-source-input", missingSource);
+    await clickPluginControl("plugin-store-add-source-submit");
+    await browser.waitUntil(
+      async () => (await getPluginControlText("plugin-store-add-source-error")).includes(missingSource),
+      { timeout: 15000, timeoutMsg: "普通来源错误没有显示原始消息" },
+    );
 
     await setInputValueByTestIdDom("plugin-store-add-source-input", regularSource);
     await clickPluginControl("plugin-store-add-source-submit");
