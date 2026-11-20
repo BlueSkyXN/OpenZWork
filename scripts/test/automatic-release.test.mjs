@@ -186,6 +186,37 @@ test("annotated tags resolve to commits and completed releases replay without re
   assert.equal(result.status, "published");
 });
 
+test("支持 CLI 发行的 tag 必须公开两个对应平台的压缩包", async () => {
+  const { input } = planner();
+  const assets = [
+    ...Array.from({ length: 9 }, (_, i) => ({ name: `asset-${i}`, state: "uploaded" })),
+    { name: "OpenZWork-CLI-3.16.3-macos-arm64.tar.gz", state: "uploaded" },
+    { name: "OpenZWork-CLI-3.16.3-linux-amd64.tar.gz", state: "uploaded" },
+  ];
+  const replay = (releasedAssets) =>
+    planAutomaticRelease({
+      ...input,
+      api: async (path) => {
+        if (path.startsWith("contents/"))
+          return {
+            content: Buffer.from(
+              JSON.stringify({ version: "3.16.3", openzworkRelease: { cliArchives: true } }),
+            ).toString("base64"),
+          };
+        if (path === `releases/tags/${tag}`)
+          return { tag_name: tag, draft: false, prerelease: false, assets: releasedAssets };
+        return input.api(path);
+      },
+      listRuns: async () => assert.fail("published release must not require build artifacts"),
+    });
+  assert.equal((await replay(assets)).status, "published");
+  await assert.rejects(replay(assets.slice(0, -1)), /Published release/);
+  await assert.rejects(
+    replay([...assets.slice(0, -1), { name: "wrong-platform.tar.gz", state: "uploaded" }]),
+    /OpenZWork-CLI-3\.16\.3-linux-amd64\.tar\.gz/,
+  );
+});
+
 test("numeric semantic version comparison never makes a late older release Latest", () => {
   assert.equal(shouldMakeLatest(tag, null), true);
   assert.equal(shouldMakeLatest(tag, { tag_name: "v3.16.2-openzwork" }), true);
@@ -300,11 +331,13 @@ test("automatic drafts use generated notes and recover lost create responses; ex
         notes: mode === "custom" ? "Custom notes" : "",
         allowCreate: true,
         notesFile,
+        hasCliArchives: mode === "new",
       },
       gh,
     );
     assert.equal(id, mode === "existing" ? 1 : 2);
     const notes = await readFile(notesFile, "utf8");
+    assert.equal(notes.includes("node zcode/bin/zcode.mjs"), mode === "new");
     if (mode === "existing" || mode === "custom") {
       assert.equal(notes, mode === "existing" ? "Reviewed notes" : "Custom notes");
       assert.ok(!calls.some((args) => args.includes("POST") || args.includes(guideInfo)));

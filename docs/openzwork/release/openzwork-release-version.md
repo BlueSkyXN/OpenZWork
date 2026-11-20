@@ -36,7 +36,7 @@ flowchart LR
     V --> L[官方基准加修订号排序]
     T --> G[同标签和提交的 Core、Extended、Installers]
     B --> G
-    G --> R[来源与九附件校验]
+    G --> R[来源与完整附件校验]
     L --> R
     R --> U[正式 Release 与 Latest]
 ```

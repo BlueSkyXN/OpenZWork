@@ -28,7 +28,14 @@ export const FORBIDDEN_AGENT_MARKERS = [
 
 // tarball 顶层目录名与必备结构（F4 解包核验口径）。
 const PACKAGE_DIR = "zcode";
-const REQUIRED_ENTRIES = ["agent/zcode.cjs", "package.json", "server", "web"];
+const REQUIRED_ENTRIES = [
+  "bin/zcode.mjs",
+  "agent/zcode.cjs",
+  "agent/node_modules/@zcode/tui/dist/index.js",
+  "package.json",
+  "server",
+  "web",
+];
 
 async function sha256(path) {
   const hash = createHash("sha256");

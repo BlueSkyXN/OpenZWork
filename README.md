@@ -88,6 +88,9 @@ Agent 源码修改后，执行 `pnpm --filter @zcode/cli... build` 并重启服�
 
 ### OpenZWork 命令行版
 
+<!-- OpenZWork(OZ-F011): Release 提供可直接解压的独立 CLI。 -->
+在 [Releases](https://github.com/BlueSkyXN/OpenZWork/releases) 中有 `OpenZWork-CLI-*.tar.gz` 附件的版本可直接下载。选择 macOS arm64 或 Linux x64 的附件，解压后用 [mise.toml](mise.toml) 指定的 Node.js 版本运行 `node zcode/bin/zcode.mjs`。在命令末尾加 `--help` 可查看非交互模式和协议服务的用法。
+
 命令行发行包包含 TUI、Web 和 Agent，统一使用 `zcode` 启动：无参数进入 TUI；第一个参数为 `--web` 时启动 Web；其他参数交给现有 Agent CLI 处理。两种模式都在本机运行，无需 Electron。
 
 ```bash
@@ -174,7 +177,7 @@ sudo xattr -rd com.apple.quarantine /Applications/OpenZWork.app
 
 构建入口为 `pnpm build:zcode`。脚本会依次构建 CLI/TUI、后端和 Web，收集 TUI 的原生库、worker 与运行时依赖，再组装发行包；运行发行包仍需要 Node.js，版本以 `mise.toml` 为准。
 
-打包前必须设置下载根地址 `ZCODE_DIST_BASE_URL`（可放在 `.env`、`.env.local` 或环境变量中），也可以通过 `--base-url` 传入。以下地址是占位示例，发布时替换为实际托管地址：
+如需生成安装脚本和版本索引，请在 `.env`、`.env.local` 或环境变量中设置实际下载根地址 `ZCODE_DIST_BASE_URL`，也可以通过 `--base-url` 传入。只需要运行包时使用 `--archive-only`。
 
 ```bash
 pnpm build:zcode --base-url https://downloads.example.com/zcode/
@@ -184,6 +187,9 @@ pnpm build:zcode
 
 # 仅重新组包，复用已有的 Agent、后端和 Web 构建产物
 pnpm build:zcode --skip-build
+
+# 只构建可解压运行的压缩包和校验和，输出到 dist/zcode-archive/
+pnpm build:zcode --archive-only
 
 # 查看版本、输出目录等可选参数
 pnpm build:zcode --help

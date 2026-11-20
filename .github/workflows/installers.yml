@@ -111,7 +111,8 @@ jobs:
           cache: pnpm
 
       # dispatch 钉定来源的完整性：checkout 必须逐字等于请求的完整 SHA。
-      - name: Verify dispatch source
+      - &verify-dispatch-source
+        name: Verify dispatch source
         shell: bash
         run: |
           node --input-type=module <<'NODE'
@@ -146,7 +147,8 @@ jobs:
           echo "production build-only from $SOURCE_COMMIT (unsigned, not published)"
 
       # Workflow 可以来自更新的主干，源码必须固定到已有 tag；不能把 run.head_sha 当源码 SHA。
-      - name: Verify release source
+      - &verify-release-source
+        name: Verify release source
         shell: bash
         run: |
           node --input-type=module <<'NODE'
@@ -324,20 +326,14 @@ jobs:
             packages/desktop/dist/PK01-REPORT.json
           if-no-files-found: error
 
-  # 独立 Node 分发（build:zcode tarball）云构建与内容核验（CI-FIRST §2.5，F4 同口径）：
-  # 结构/版本/数据根/裁剪域标记 + tarball sha256，结构化报告进 summary 与 artifact。
-  # install.sh 的下载基地址是分发期属性，显式输入占位，不伪装成正式地址。
+  # OZ-F011：正式 CLI 压缩包直接从 Release 下载。下载根仅供生成 install.sh。
   agent-node-dist:
-    # OZ-F011：正式发行缺独立 Node 下载根时，仅构建桌面包。
-    # workflow_dispatch 的空输入会回填为分支预览的默认占位地址。
-    if: >-
-      ${{ !inputs.publish_installer_run &&
-      (github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') &&
-      (github.event_name != 'workflow_dispatch' ||
-      (!inputs.release_tag && github.ref_type != 'tag') ||
-      (inputs.zcode_dist_base_url != '' &&
-      inputs.zcode_dist_base_url != 'https://example.invalid/zcode/deps/zcode/')) }}
+    if: ${{ !inputs.publish_installer_run }}
     name: agent node dist (${{ matrix.platform }})
+    env:
+      SOURCE_COMMIT: ${{ inputs.source_commit }}
+      RELEASE_TAG: ${{ inputs.release_tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
+      RELEASE_COMMIT: ${{ inputs.release_commit || (github.ref_type == 'tag' && github.sha) || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -351,7 +347,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
         with:
-          ref: ${{ inputs.release_tag || inputs.source_commit || github.sha }}
+          ref: >-
+            ${{ (inputs.release_tag && format('refs/tags/{0}', inputs.release_tag)) ||
+            inputs.source_commit || (github.ref_type == 'tag' && github.ref) || github.sha }}
           persist-credentials: false
 
       - uses: pnpm/action-setup@v6.1.0
@@ -363,28 +361,37 @@ jobs:
           node-version: 24.14.0
           cache: pnpm
 
-      - name: Verify dispatch source
+      - *verify-dispatch-source
+      - *verify-release-source
+
+      - name: Select independent Node distribution mode
+        id: cli-dist
         shell: bash
         env:
-          SOURCE_COMMIT: ${{ inputs.source_commit }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_BASE_URL: ${{ inputs.zcode_dist_base_url }}
+          VARS_BASE_URL: ${{ vars.ZCODE_DIST_BASE_URL }}
         run: |
-          node --input-type=module <<'NODE'
-          import { execFile } from 'node:child_process';
-          import { promisify } from 'node:util';
-          const exec = promisify(execFile);
-          const expected = process.env.SOURCE_COMMIT || '';
-          if (!expected) process.exit(0);
-          if (!/^[0-9a-f]{40}$/.test(expected)) throw new Error('source_commit must be a full 40-hex commit SHA');
-          const head = (await exec('git', ['rev-parse', 'HEAD'])).stdout.trim();
-          if (head !== expected) throw new Error(`dispatch checkout ${head} does not match requested source ${expected}`);
-          console.log(JSON.stringify({ sourceCommit: head }));
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFile } from 'node:fs/promises';
+          const pkg = JSON.parse(await readFile('package.json', 'utf8'));
+          const { EVENT_NAME, RELEASE_TAG, INPUT_BASE_URL, VARS_BASE_URL } = process.env;
+          const input = (EVENT_NAME === 'workflow_dispatch' ? INPUT_BASE_URL : VARS_BASE_URL)?.trim();
+          const download = input && input !== 'https://example.invalid/zcode/deps/zcode/';
+          // 历史 tag 仍可只恢复桌面包。启用 CLI 的 tag 在没有下载根时直接构建压缩包。
+          const mode = RELEASE_TAG && !download
+            ? (pkg.openzworkRelease?.cliArchives === true ? 'archive' : 'skip')
+            : 'download';
+          console.log(`mode=${mode}`);
           NODE
 
       - name: Install dependencies (frozen lockfile, with scripts)
+        if: steps.cli-dist.outputs.mode != 'skip'
         run: pnpm install --frozen-lockfile
 
-      # 分支预览从本次 Actions 运行下载。清单同时记录下载地址和解析出的来源。
+      # 有下载根的构建输出安装脚本。分支预览沿用默认占位地址。
       - name: Resolve agent dist download base URL
+        if: steps.cli-dist.outputs.mode == 'download'
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -409,14 +416,25 @@ jobs:
 
       # 与 B/C 本地构建同链：先备 shared 声明与 CLI 包，再 build:zcode 出 tarball。
       - name: Prepare agent workspace build
+        if: steps.cli-dist.outputs.mode != 'skip'
         run: pnpm build:sea:prepare
 
       - name: Build independent Node distribution
-        run: pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL"
+        if: steps.cli-dist.outputs.mode != 'skip'
+        shell: bash
+        env:
+          DIST_MODE: ${{ steps.cli-dist.outputs.mode }}
+        run: |
+          if [ "$DIST_MODE" = 'archive' ]; then
+            pnpm build:zcode --archive-only --out-dir dist/zcode
+          else
+            pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL"
+          fi
 
       # 产物选择与来源清单：与本次版本唯一对应的 tarball，附 source/tree/workflow SHA、
       # 平台、工具链与 hash；不用 `find | head -1` 忽略多产物。
       - name: Verify agent node dist contents
+        if: steps.cli-dist.outputs.mode != 'skip'
         shell: bash
         env:
           DIST_PLATFORM: ${{ matrix.platform }}
@@ -425,8 +443,15 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           TARBALL=$(node scripts/agent-node-dist.mjs --release-root "dist/zcode/releases/$VERSION" --version "$VERSION")
           export VERSION TARBALL
-          node scripts/verify-agent-node-dist.mjs --tarball "$TARBALL" --expected-version "$VERSION" --report dist/zcode/releases/AGENT-DIST-REPORT.json | tee /tmp/agent-dist-report.json
-          export PNPM_VERSION=$(pnpm --version)
+          mkdir -p dist/agent-node-dist
+          node scripts/verify-agent-node-dist.mjs --tarball "$TARBALL" --expected-version "$VERSION" --report dist/agent-node-dist/AGENT-DIST-REPORT.json
+          # CI runner 没有解锁的系统凭据存储，隔离的 Web 启动使用一次性测试密钥。
+          smoke_secret=$(node -p "require('node:crypto').randomBytes(32).toString('hex')")
+          env -u ZCODE_CREDENTIAL_SECRET_FILE ZCODE_CREDENTIAL_SECRET="$smoke_secret" \
+            node scripts/zcode-distribution-smoke.mjs "$TARBALL"
+          cp "$TARBALL" "dist/zcode/releases/$VERSION/sha256.txt" dist/agent-node-dist/
+          PNPM_VERSION=$(pnpm --version)
+          export PNPM_VERSION
           node --input-type=module <<'NODE' | tee /tmp/agent-dist-manifest.json
           import { execFile } from 'node:child_process';
           import { promisify } from 'node:util';
@@ -434,7 +459,7 @@ jobs:
           const exec = promisify(execFile);
           const git = async (...args) => (await exec('git', args)).stdout.trim();
           const { manifest } = await writeAgentDistManifest({
-            releaseRoot: 'dist/zcode/releases',
+            releaseRoot: 'dist/agent-node-dist',
             tarball: process.env.TARBALL,
             version: process.env.VERSION,
             platform: process.env.DIST_PLATFORM,
@@ -455,18 +480,14 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # 实际交付物必须留档：只上传报告会让 runner 退出后无法取用 tarball。
+      # 验收成功后上传实际运行包与报告，发布器按同一运行的归档读取。
       - name: Upload agent node distribution
-        if: always()
+        if: steps.cli-dist.outputs.mode != 'skip'
         uses: actions/upload-artifact@v7.0.1
         with:
           name: agent-node-dist-${{ matrix.platform }}
           archive: true
-          path: |
-            dist/zcode/releases/*/zcode-*.tar.gz
-            dist/zcode/releases/*/sha256.txt
-            dist/zcode/releases/AGENT-DIST-REPORT.json
-            dist/zcode/releases/AGENT-DIST-MANIFEST.json
+          path: dist/agent-node-dist/
           if-no-files-found: error
 
   publish:

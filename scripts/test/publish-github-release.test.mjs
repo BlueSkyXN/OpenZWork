@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { parse } from "yaml";
 import {
+  validateCliDistribution,
   validateExistingAssets,
   validateManifest,
   validateRun,
@@ -219,6 +220,47 @@ test("all seven Extended groups must finish with successful process exits", () =
     Object.assign(bad.groups[0], patch);
     assert.throws(() => validateSummary(bad));
   }
+});
+
+test("发布器绑定 CLI 包、内容报告、源码及构建平台", () => {
+  const source = {
+    version: "3.18.2+openzwork.1",
+    platform: "macos-arm64",
+    sourceCommit: expected.sourceCommit,
+    sourceTree: expected.sourceTree,
+    workflowCommit: expected.workflowCommit,
+  };
+  const cli = {
+    ...source,
+    tarball: `zcode-${source.version}.tar.gz`,
+    tarballSize: 123,
+    tarballSha256: "d".repeat(64),
+  };
+  const verification = {
+    ok: true,
+    version: source.version,
+    expectedVersion: source.version,
+    tarballSha256: cli.tarballSha256,
+  };
+  validateCliDistribution(cli, verification, source);
+  for (const patch of [
+    { platform: "linux-amd64" },
+    { version: "3.17.2" },
+    { sourceCommit: "e".repeat(40) },
+    { sourceTree: "e".repeat(40) },
+    { workflowCommit: "e".repeat(40) },
+    { tarball: "../archive.tar.gz" },
+    { tarballSize: 0 },
+    { tarballSha256: "invalid" },
+  ])
+    assert.throws(() => validateCliDistribution({ ...cli, ...patch }, verification, source));
+  for (const patch of [
+    { ok: false },
+    { version: "3.17.2" },
+    { expectedVersion: "3.17.2" },
+    { tarballSha256: "e".repeat(64) },
+  ])
+    assert.throws(() => validateCliDistribution(cli, { ...verification, ...patch }, source));
 });
 
 test("draft resume reuses identical assets and rejects overwrite or incomplete publication", () => {

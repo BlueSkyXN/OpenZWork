@@ -15,7 +15,7 @@ import {
 } from "./openzwork-version.mjs";
 import { desktopProductIdentities } from "../packages/desktop/scripts/desktop-product-identity.mjs";
 import { validatePackagedVersion } from "./verify-desktop-release-version.mjs";
-import { matchesReleaseWorkflow } from "./release-workflows.mjs";
+import { cliReleaseAssets, matchesReleaseWorkflow } from "./release-workflows.mjs";
 import { FULL_SUITE_GROUPS } from "./full-suite-plan.mjs";
 import { validateSummary, validateTests } from "./test-report-validation.mjs";
 export { validateSummary, validateTests } from "./test-report-validation.mjs";
@@ -39,7 +39,7 @@ export function shouldMakeLatest(tag, latest) {
 }
 
 export async function ensureReleaseDraft(
-  { repo, tag, version, notes, allowCreate, notesFile },
+  { repo, tag, version, notes, allowCreate, notesFile, hasCliArchives = false },
   gh,
 ) {
   const list = async () =>
@@ -78,6 +78,9 @@ export async function ensureReleaseDraft(
       ? `，详见 [macOS 安装与局域网排查](https://github.com/${repo}/blob/${guideRef}/${guidePath})`
       : "";
     body = `${generated.body}\n\n安装包：macOS arm64、Windows x64、Linux x64。当前为未签名构建，macOS 未公证，应用采用手动安装更新。来源与文件摘要见 PROVENANCE.json 和 SHA256SUMS。\n\nmacOS 首次打开被拦截时，确认下载来源及校验和后，可执行 \`sudo xattr -rd com.apple.quarantine "${appPath}"\` 再打开。若 SSH 报 \`EHOSTUNREACH\`，先检查连通性和系统本地网络权限${guideLink}。\n`;
+    if (hasCliArchives)
+      body +=
+        "\n使用终端交互界面时，下载对应平台（macOS arm64 或 Linux x64）的 `OpenZWork-CLI-*.tar.gz`。解压后用 Node.js 24.14.0 运行 `node zcode/bin/zcode.mjs`。\n";
   }
   await writeFile(notesFile, body);
   if (releases.length === 0) {
@@ -148,6 +151,18 @@ export function validateManifest(manifest, expected) {
     assert.ok(Number.isSafeInteger(asset.size) && asset.size > 0);
     assert.match(asset.sha256, sha256Pattern);
   }
+}
+
+export function validateCliDistribution(manifest, report, expected) {
+  for (const key of ["version", "platform", "sourceCommit", "sourceTree", "workflowCommit"])
+    assert.equal(manifest[key], expected[key], `CLI distribution ${key}`);
+  assert.equal(manifest.tarball, `zcode-${expected.version}.tar.gz`);
+  assert.ok(Number.isSafeInteger(manifest.tarballSize) && manifest.tarballSize > 0);
+  assert.match(manifest.tarballSha256, sha256Pattern);
+  assert.equal(report.ok, true, "CLI archive failed content verification");
+  assert.equal(report.version, expected.version);
+  assert.equal(report.expectedVersion, expected.version);
+  assert.equal(report.tarballSha256, manifest.tarballSha256);
 }
 
 export function validateExistingAssets(remoteAssets, expected, requireAll = false) {
@@ -221,10 +236,9 @@ export async function publishRelease(env = process.env) {
   const tree = (await api(`git/commits/${commit}`)).tree.sha;
   const readSourceJson = async (path) =>
     JSON.parse(Buffer.from((await api(`contents/${path}?ref=${commit}`)).content, "base64"));
-  assert.equal(
-    parseOpenZWorkVersion((await readSourceJson("package.json")).version).version,
-    version,
-  );
+  const metadata = await readSourceJson("package.json");
+  assert.equal(parseOpenZWorkVersion(metadata.version).version, version);
+  const cliAssets = cliReleaseAssets(metadata);
   const policy = await readSourceJson("tests/ci/core-tests.json");
   const declared = policy.suites.flatMap((suite) => suite.files);
   const root = await mkdtemp(join(env.RUNNER_TEMP || tmpdir(), "openzwork-publish-"));
@@ -232,6 +246,12 @@ export async function publishRelease(env = process.env) {
   await mkdir(assetsDir);
   const jsonInZip = async (file, name) =>
     JSON.parse((await exec("unzip", ["-p", file, name], { maxBuffer: 64 * 1024 * 1024 })).stdout);
+  const stageAsset = async (file, entry, { name, size, sha256 }) => {
+    const target = join(assetsDir, name);
+    await streamCommand("unzip", ["-p", file, entry], target);
+    assert.equal((await stat(target)).size, size, `${name}: size`);
+    assert.equal(await digest(target), sha256, `${name}: SHA256`);
+  };
   const getArtifact = async (runId, name) => {
     const candidates = (await api(`actions/runs/${runId}/artifacts?per_page=100`)).artifacts.filter(
       (artifact) => artifact.name === name,
@@ -311,15 +331,28 @@ export async function publishRelease(env = process.env) {
       platform,
       runUrl: installerRun.html_url,
     });
-    for (const asset of manifest.assets) {
-      const target = join(assetsDir, asset.name);
-      await streamCommand("unzip", ["-p", file, asset.name], target);
-      assert.equal((await stat(target)).size, asset.size);
-      assert.equal(await digest(target), asset.sha256);
-    }
+    for (const asset of manifest.assets) await stageAsset(file, asset.name, asset);
     manifests.push(manifest);
     archives.push({ id: artifact.id, name: artifact.name, sha256: artifact.digest.slice(7) });
     console.log(`${platform}: tests, source and installers verified`);
+  }
+  const cli = [];
+  for (const { name, platform } of cliAssets) {
+    const { artifact, file } = await getArtifact(env.INSTALLERS_RUN, `agent-node-dist-${platform}`);
+    const manifest = await jsonInZip(file, "AGENT-DIST-MANIFEST.json");
+    const report = await jsonInZip(file, "AGENT-DIST-REPORT.json");
+    validateCliDistribution(manifest, report, {
+      version,
+      platform,
+      sourceCommit: commit,
+      sourceTree: tree,
+      workflowCommit: installerRun.head_sha,
+    });
+    const asset = { name, size: manifest.tarballSize, sha256: manifest.tarballSha256 };
+    await stageAsset(file, manifest.tarball, asset);
+    cli.push({ platform, ...asset });
+    archives.push({ id: artifact.id, name: artifact.name, sha256: artifact.digest.slice(7) });
+    console.log(`${platform}: CLI archive verified`);
   }
   const provenance = {
     repository: repo,
@@ -333,6 +366,7 @@ export async function publishRelease(env = process.env) {
     workflowCommit: installerRun.head_sha,
     archives,
     platforms: manifests,
+    ...(cli.length > 0 ? { cli } : {}),
     validation: {
       coreRun: coreRun.html_url,
       extendedRun: extendedRun.html_url,
@@ -342,9 +376,10 @@ export async function publishRelease(env = process.env) {
   await writeFile(join(assetsDir, "PROVENANCE.json"), JSON.stringify(provenance, null, 2) + "\n");
   const names = [
     ...manifests.flatMap((manifest) => manifest.assets.map((asset) => asset.name)),
+    ...cli.map((asset) => asset.name),
     "PROVENANCE.json",
   ].sort();
-  assert.equal(new Set(names).size, 8);
+  assert.equal(new Set(names).size, names.length);
   const expected = new Map();
   for (const name of names)
     expected.set(name, {
@@ -369,6 +404,7 @@ export async function publishRelease(env = process.env) {
       notes: env.RELEASE_NOTES,
       allowCreate,
       notesFile,
+      hasCliArchives: cli.length > 0,
     },
     gh,
   );

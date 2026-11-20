@@ -32,7 +32,7 @@
 
 三份工作流并行执行，完成事件唤起 Release 协调器。它只选择该 tag/SHA 的最新运行，任一检查缺失、失败或运行中均不公开。Extended 虽名为 non-blocking，在正式发行中仍是必需门禁。
 
-runner 验证测试报告、来源及文件摘要后，自动创建或续传草稿。已有草稿正文保留；否则使用 GitHub 按 tag 生成的版本说明。七个安装文件、`PROVENANCE.json`、`SHA256SUMS` 回读一致后公开。旧版本晚完成时保留较新的 Latest。本机无需下载安装包。
+runner 验证测试报告、来源及文件摘要后，自动创建或续传草稿。已有草稿正文保留；否则使用 GitHub 按 tag 生成的版本说明。七个安装文件、`PROVENANCE.json` 和 `SHA256SUMS` 为基础附件。支持独立 CLI 发行的 tag 还包含 macOS arm64 和 Linux x64 的两个 CLI 包。全部附件回读一致后公开，较新的版本保持 Latest。
 
 ```mermaid
 flowchart LR
@@ -43,7 +43,7 @@ flowchart LR
     E --> G
     I --> G
     G --> V[报告与安装文件校验]
-    V --> D[自动草稿及九附件]
+    V --> D[自动草稿及版本所需附件]
     D --> R[公开版本]
 ```
 
@@ -57,7 +57,7 @@ gh workflow run release.yml -R BlueSkyXN/OpenZWork -f release_tag=v3.16.2+openzw
 
 只读取门禁与发布状态时，额外传 `-F verify_only=true`。已公开版本重放直接返回完成；同名附件有冲突则失败，不覆盖或删除。不同版本的发布串行执行；GitHub 并发组最多保留一个待运行任务。
 
-旧版本可以继续使用 Installers 的手动正式构建与精确运行编号发布入口。`release_tag`、`release_commit` 固定来源；`publish_installer_run`、`core_run`、`extended_run` 与 `release_notes` 指定既有证据和说明。手动正式构建沿用 `zcode_dist_base_url` 的默认占位值时，仅构建所选 tag 的桌面安装包。手动发布使用该 tag 的 Core 和 Extended 证据，并要求已有草稿。Preview 包不能通过改名转成正式包。
+Installers 的手动正式构建使用 `release_tag` 和 `release_commit` 固定来源。`publish_installer_run`、`core_run`、`extended_run` 与 `release_notes` 指定既有证据和说明。沿用 `zcode_dist_base_url` 的默认值时，支持 CLI 发行的 tag 构建可直接解压的 CLI 包及桌面安装包，旧 tag 只构建桌面安装包。手动发布使用该 tag 的 Core 和 Extended 证据，并要求已有草稿。
 
 ## 命令边界与重试
 

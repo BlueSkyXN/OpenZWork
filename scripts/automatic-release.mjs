@@ -8,7 +8,11 @@ import {
   formatOpenZWorkTag,
   parseOpenZWorkTag,
 } from "./openzwork-version.mjs";
-import { RELEASE_WORKFLOWS, matchesReleaseWorkflow } from "./release-workflows.mjs";
+import {
+  RELEASE_WORKFLOWS,
+  cliReleaseAssets,
+  matchesReleaseWorkflow,
+} from "./release-workflows.mjs";
 
 const definitions = RELEASE_WORKFLOWS;
 
@@ -70,15 +74,24 @@ export async function planAutomaticRelease({ repo, eventName, event, tag, api, l
   assert.match(commit, /^[a-f0-9]{40}$/);
   if (triggeringCommit)
     assert.equal(commit, triggeringCommit, "Release tag changed after the triggering run");
-  const metadata = await api(`contents/package.json?ref=${commit}`);
-  const { version } = JSON.parse(Buffer.from(metadata.content, "base64"));
+  const source = await api(`contents/package.json?ref=${commit}`);
+  const metadata = JSON.parse(Buffer.from(source.content, "base64"));
+  const { version } = metadata;
   assert.equal(tag, formatOpenZWorkTag(version));
   const release = await api(`releases/tags/${tag}`);
   if (release && !release.draft) {
     assert.equal(release.tag_name, tag);
     assert.equal(release.prerelease, false);
-    assert.equal(release.assets.length, 9, "Published release must contain all nine assets");
-    assert.equal(new Set(release.assets.map((asset) => asset.name)).size, 9);
+    const cliAssets = cliReleaseAssets(metadata);
+    const assetNames = new Set(release.assets.map((asset) => asset.name));
+    assert.equal(release.assets.length, 9 + cliAssets.length, "Published release asset count");
+    assert.equal(
+      assetNames.size,
+      release.assets.length,
+      "Published release asset names must be unique",
+    );
+    for (const { name } of cliAssets)
+      assert.ok(assetNames.has(name), `Published release is missing ${name}`);
     assert.ok(release.assets.every((asset) => asset.state === "uploaded"));
     return { status: "published", tag, commit };
   }
