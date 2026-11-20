@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { EventEmitter } from "node:events";
 import { once } from "node:events";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -10,6 +11,7 @@ import {
   verifyPlatformRuntime,
 } from "../zcode-distribution/platform-archive-openzwork.mjs";
 import {
+  closeSmokeWebSocket,
   didTuiExitSuccessfully,
   shouldIgnoreSmokeCleanupError,
   tarCreateArgs,
@@ -120,6 +122,22 @@ test("CLI smoke accepts a ConPTY exit without a numeric exit code", () => {
   assert.equal(didTuiExitSuccessfully({ exitCode: 1 }, "win32"), false);
   assert.equal(didTuiExitSuccessfully({ exitCode: undefined }, "darwin"), false);
   assert.equal(didTuiExitSuccessfully(undefined, "win32"), false);
+});
+
+test("CLI smoke WebSocket close falls back to terminating a stalled client", async () => {
+  const createSocket = (terminateCloses) => {
+    const socket = new EventEmitter();
+    socket.close = () => {
+      if (terminateCloses) socket.emit("close");
+    };
+    socket.terminate = () => {
+      socket.emit("close");
+    };
+    return socket;
+  };
+
+  await closeSmokeWebSocket(createSocket(true), 20);
+  await closeSmokeWebSocket(createSocket(false), 20);
 });
 
 test("archive verifier distinguishes required TUI FFI from the removed CUA plugin", async (t) => {

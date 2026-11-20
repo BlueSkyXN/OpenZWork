@@ -11,6 +11,7 @@ import { promisify, stripVTControlCharacters } from "node:util";
 import { pathToFileURL } from "node:url";
 
 import {
+  closeSmokeWebSocket,
   didTuiExitSuccessfully,
   shouldIgnoreSmokeCleanupError,
   tarSupportsForceLocal,
@@ -159,8 +160,7 @@ try {
   const { default: WebSocket } = await import(pathToFileURL(require.resolve("ws")).href);
   const socket = new WebSocket(new URL("ws", base.replace("http:", "ws:")));
   await once(socket, "open");
-  socket.close();
-  await once(socket, "close");
+  await closeSmokeWebSocket(socket);
   const exited = once(web, "exit");
   web.disconnect();
   assert.deepEqual(await exited, [0, null]);

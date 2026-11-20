@@ -18,6 +18,8 @@ CLI tar 的创建与解包命令必须按实际选中的 tar 实现处理 Window
 
 Windows smoke 验收会在当前进程加载 `node-pty` 的 `conpty.node`；该 native 模块在进程退出前保持文件锁。验收结束后的临时目录清理因此按 best-effort 处理：仅 Windows 的 `EPERM` 允许保留锁定文件，其他平台或清理错误仍使验收失败。Windows ConPTY 关闭 socket 时可能先触发 exit event，此时 node-pty 尚未写入数值退出码；键盘退出验收接受这一平台事件，其他平台仍要求退出码为 0。
 
+Windows 的 WebSocket close 事件可能不随本地 `close()` 调用收敛。smoke 在发起正常关闭后限时等待，超时仅终止测试客户端 socket，不改变服务端；HTTP、server-info、workspace、WebSocket 连接和 Web 子进程退出仍须通过。
+
 下载、校验、上传全部在 GitHub runner 完成。新流程要求七个桌面安装文件、三个 CLI 包、来源清单和校验和。历史 tag 按原九附件范围校验。
 
 Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP。解压结果须能通过已有的二进制目标检查，runner 上 PowerShell 归档模块的版本不参与构建。

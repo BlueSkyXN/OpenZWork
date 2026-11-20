@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { once } from "node:events";
 import { chmod, cp, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, relative, resolve, sep } from "node:path";
@@ -13,6 +14,7 @@ import {
 } from "../../apps/zcode-cli/packages/cli/scripts/sea-bundled-skill-assets.mjs";
 import { stagePlatformPty } from "./platform-archive-openzwork.mjs";
 import { promisify } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
 
 const root = resolve(import.meta.dirname, "../..");
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
@@ -65,6 +67,18 @@ export function shouldIgnoreSmokeCleanupError(error, platform = process.platform
 export function didTuiExitSuccessfully(event, platform = process.platform) {
   return event != null && (event.exitCode === 0 ||
     (platform === "win32" && event.exitCode === undefined));
+}
+
+export async function closeSmokeWebSocket(socket, timeoutMs = 2000) {
+  const closed = once(socket, "close");
+  socket.close();
+  await Promise.race([
+    closed,
+    delay(timeoutMs).then(async () => {
+      socket.terminate();
+      await closed;
+    }),
+  ]);
 }
 
 const runtimePackageNames = [
