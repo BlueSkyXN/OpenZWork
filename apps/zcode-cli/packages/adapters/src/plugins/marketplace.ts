@@ -6,7 +6,11 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { PluginDiagnostic, PluginManifest, PluginStoreListing } from "@zcode/contracts";
 import { isOfficialMarketplaceId, ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
-import { DEFAULT_PLUGIN_MARKETPLACES, sanitizeZCodeRuntimeEnv } from "@zcode/shared";
+import {
+  DEFAULT_PLUGIN_MARKETPLACES,
+  sanitizeZCodeRuntimeEnv,
+  ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE,
+} from "@zcode/shared";
 import { loadPluginMcpServerDefinitions, resolvePluginMcpServers } from "./mcp.js";
 import {
   appendPluginSourceCleanupError,
@@ -429,8 +433,10 @@ export async function addMarketplace(input: {
     });
     throwIfPluginOperationAborted(operationSignal);
     if (isOfficialMarketplaceId(loaded.manifest.name) && loaded.manifest.name !== input.trustedId) {
-      throw new Error(
-        `Cannot add a marketplace named "${loaded.manifest.name}": that id is reserved for the official marketplace.`,
+      // OpenZWork(OZ-C014): 保留拒绝行为，界面通过业务码选择提示。
+      throw Object.assign(
+        new Error(`Cannot add a marketplace named "${loaded.manifest.name}": that id is reserved for the official marketplace.`),
+        { code: ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE },
       );
     }
     if (input.expectedId && loaded.manifest.name !== input.expectedId) {

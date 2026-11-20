@@ -1,6 +1,7 @@
 import type { IPluginManagementService } from "@zcode/services";
 import {
   remoteHostIdFromWorkspaceIdentity,
+  normalizeUnknownError,
   parseRemoteWorkspaceIdentity,
   type ZCodePluginScope,
 } from "@zcode/shared";
@@ -96,6 +97,7 @@ export function beginPluginOperation(
     activeOperations: [...get().activeOperations, entry],
     operationVersion: get().operationVersion + 1,
     error: null,
+    errorCode: null,
     lastFailedPluginId: null,
   });
   return () => {
@@ -160,10 +162,14 @@ export async function runWorkspaceOperation(
     return isCurrentContext();
   } catch (error) {
     // marketplace add/update 等通用操作失败：无插件目标，归属清空。
-    logger.error("[plugins] operation failed", { operationId, error: toMessage(error) });
+    const message = toMessage(error);
+    logger.error("[plugins] operation failed", { operationId, error: message });
     // 旧操作不能覆盖同一配置层中新操作的错误态；只有最近发起的操作才回写。
     if (ownsVisibleOperation()) {
-      set({ error: toMessage(error), lastFailedPluginId: null });
+      // OpenZWork(OZ-C014): 保留 Host 的原文和业务码，界面按渲染时的语言翻译。
+      const details = error && typeof error === "object" && "data" in error ? error.data : error;
+      const errorCode = normalizeUnknownError(details).code ?? null;
+      set({ error: message, errorCode, lastFailedPluginId: null });
     }
     return false;
   } finally {
@@ -217,7 +223,12 @@ export async function loadInto(
     // 其它视图的成功操作只刷新数据，不能抹掉本视图尚未处理的操作错误。
     set(
       params.background && current.error
-        ? { ...result, error: current.error, lastFailedPluginId: current.lastFailedPluginId }
+        ? {
+            ...result,
+            error: current.error,
+            errorCode: current.errorCode,
+            lastFailedPluginId: current.lastFailedPluginId,
+          }
         : result,
     );
   } finally {
@@ -270,5 +281,6 @@ async function runLoadInto(
     loading: false,
     lastFailedPluginId: null,
     error: errors.length > 0 ? errors.join("\n") : null,
+    errorCode: null,
   };
 }

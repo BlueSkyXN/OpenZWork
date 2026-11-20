@@ -51,6 +51,7 @@
 | OZ-C011 | 工作流查询进程与生命周期 | 工作流总览读取共用独立查询 lane 并空闲回收，UI 读状态分代际。          | [spec](../specs/saved-workflow-query-lifecycle-openzwork.md) |
 | OZ-C012 | 界面语言持久化兼容合同   | 保留上游 uiLocale 落盘兼容与旧格式迁移（merge 丢失后恢复）。           | [spec](../specs/settings-locale-persistence-openzwork.md)    |
 | OZ-C013 | Responses 原生联网搜索   | 支持协议与模型开关共同启用搜索，结构化来源与正文链接合并去重。         | [spec](../specs/websearch-openai-responses-openzwork.md)     |
+| OZ-C014 | 插件市场来源             | 默认登记 Claude 公开市场，添加保留名称时显示本地化提示。               | [spec](../specs/plugin-marketplace-sources-openzwork.md)     |
 
 ### OpenZWork 新增的功能
 

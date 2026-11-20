@@ -52,7 +52,7 @@ import {
   updatePlugin,
 } from "../src/zcode-protocol/plugins.js";
 import { withPluginStorageLock } from "../src/lib/plugin-storage-lock.js";
-import type { ZCodeProtocolAgentServerContext } from "../src/zcode-protocol/server-types.js";
+import { toProtocolError, type ZCodeProtocolAgentServerContext } from "../src/zcode-protocol/server-types.js";
 
 afterAll(async () => {
   await rm(FAKE_HOME, { force: true, recursive: true });
@@ -287,6 +287,47 @@ describe("plugins protocol contracts", () => {
     } finally {
       lock.resolve();
       await blocker;
+      if (previousStorageDir === undefined) delete process.env.ZCODE_STORAGE_DIR;
+      else process.env.ZCODE_STORAGE_DIR = previousStorageDir;
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("returns a structured reserved marketplace error and preserves registered sources", async () => {
+    const root = await mkdtemp(join(tmpdir(), "zcode-protocol-marketplace-reserved-"));
+    const previousStorageDir = process.env.ZCODE_STORAGE_DIR;
+    const storageDir = join(root, "storage");
+    process.env.ZCODE_STORAGE_DIR = storageDir;
+
+    try {
+      const reservedId = "zcode-plugins-official";
+      const pluginStorageRoot = getPluginStorageRoot(getCliStorageRoot(storageDir));
+      const builtinPath = join(pluginStorageRoot, "marketplaces", reservedId, "marketplace.json");
+      const knownPath = join(pluginStorageRoot, "known_marketplaces.json");
+      const builtin = JSON.stringify({ name: reservedId, plugins: [{ name: "builtin" }] });
+      const known = JSON.stringify({ marketplaces: [] });
+      const source = join(root, "local-test-source");
+      await writeTestFile(builtinPath, builtin);
+      await writeTestFile(knownPath, known);
+      await writeTestFile(
+        join(source, ".claude-plugin", "marketplace.json"),
+        JSON.stringify({ name: reservedId, plugins: [] }),
+      );
+
+      const response = await addPluginMarketplace({} as ZCodeProtocolAgentServerContext, {
+        workspace: { workspacePath: root, workspaceKey: root },
+        source,
+      }).catch(toProtocolError);
+
+      // OpenZWork(OZ-C014): UI 按协议错误码显示提示，不依赖英文报错内容。
+      expect(response).toMatchObject({
+        code: -32603,
+        message: expect.stringContaining(reservedId),
+        data: { code: "ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID" },
+      });
+      expect(await readFile(builtinPath, "utf8")).toBe(builtin);
+      expect(await readFile(knownPath, "utf8")).toBe(known);
+    } finally {
       if (previousStorageDir === undefined) delete process.env.ZCODE_STORAGE_DIR;
       else process.env.ZCODE_STORAGE_DIR = previousStorageDir;
       await rm(root, { force: true, recursive: true });

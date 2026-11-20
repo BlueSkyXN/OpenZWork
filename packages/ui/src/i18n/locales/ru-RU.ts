@@ -5174,6 +5174,8 @@ const ruRU: Record<string, string> = {
   "settings.plugins.marketplaces.dropHint": "Перетащите сюда файл или папку либо выберите каталог.",
   "settings.plugins.marketplaces.validate": "Проверить маркетплейс",
   "settings.plugins.marketplaces.add": "Добавить маркетплейс",
+  "settings.plugins.marketplaces.reservedName":
+    "Это название маркетплейса зарезервировано в OpenZWork. Добавьте другой совместимый источник.",
   "settings.plugins.marketplaces.riskWarning":
     "Неофициальные маркетплейсы плагинов могут содержать вредоносные плагины, способные навредить устройству. Перед добавлением проверьте источник и примите меры предосторожности.",
   "settings.plugins.marketplaces.riskAcknowledgement":

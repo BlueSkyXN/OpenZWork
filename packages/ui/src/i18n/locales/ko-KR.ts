@@ -5060,6 +5060,8 @@ const koKR: Record<string, string> = {
     "파일이나 폴더를 여기로 끌어오거나 디렉터리를 선택하세요.",
   "settings.plugins.marketplaces.validate": "마켓플레이스 검증",
   "settings.plugins.marketplaces.add": "마켓플레이스 추가",
+  "settings.plugins.marketplaces.reservedName":
+    "이 소스의 마켓플레이스 이름은 OpenZWork에서 예약되어 있습니다. 호환되는 다른 마켓플레이스 소스를 추가하세요.",
   "settings.plugins.marketplaces.riskWarning":
     "비공식 플러그인 마켓플레이스에는 기기에 해를 끼칠 수 있는 악성 플러그인이 포함되어 있을 수 있습니다. 추가하기 전에 출처를 확인하고 예방 조치를 취하세요.",
   "settings.plugins.marketplaces.riskAcknowledgement":

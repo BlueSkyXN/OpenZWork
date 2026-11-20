@@ -48,6 +48,8 @@ export interface PluginManagementState {
   diagnostics: ZCodePluginDiagnostic[];
   loading: boolean;
   error: string | null;
+  /** 当前错误的业务码，与原始消息一起写入和清空。 */
+  errorCode: string | null;
   /**
    * 最近一次失败操作的归属插件：带 pluginId 的操作（如 setEnabled）失败写该
    * id；无插件目标的操作（marketplace add/update/validate、列表加载、refresh）写 null。
@@ -148,6 +150,7 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
     diagnostics: [],
     loading: false,
     error: null,
+    errorCode: null,
     lastFailedPluginId: null,
     togglingPluginId: null,
     activeOperations: [],
@@ -186,6 +189,7 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
         loading: !hasCache,
         marketplaceAvailabilityKnown: hasCache ? current.marketplaceAvailabilityKnown : false,
         error: null,
+        errorCode: null,
         lastFailedPluginId: null,
         // 配置保存后的 overview 刷新可能还没结束，用户已切到另一层配置视图；
         // 旧层的 activeOperations 不能继续把新层的输入控件置灰。旧操作结束时由独立条目防止
@@ -219,7 +223,7 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
       const { workspacePath, workspaceIdentity, authorityKey, configScope } = get();
       if (!workspacePath || !pluginService) return;
       lastService = pluginService;
-      if (!options.background) set({ error: null, lastFailedPluginId: null });
+      if (!options.background) set({ error: null, errorCode: null, lastFailedPluginId: null });
       await loadInto(set, get, {
         workspacePath,
         workspaceIdentity,
@@ -284,7 +288,7 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
       );
       if (succeeded && refreshError) {
         // 列表刷新失败无插件目标，归属清空（不指向任何插件）。
-        set({ error: refreshError, lastFailedPluginId: null });
+        set({ error: refreshError, errorCode: null, lastFailedPluginId: null });
         return false;
       }
       return succeeded;
@@ -421,7 +425,7 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
       } catch (error) {
         logger.error("[plugins] validate source failed", { source, error: toMessage(error) });
         if (get().operationVersion === version) {
-          set({ error: toMessage(error), lastFailedPluginId: null });
+          set({ error: toMessage(error), errorCode: null, lastFailedPluginId: null });
         }
       } finally {
         finish();

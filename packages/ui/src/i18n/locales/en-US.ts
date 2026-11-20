@@ -5626,6 +5626,8 @@ const enUS: Record<string, string> = {
   "settings.plugins.marketplaces.dropHint": "Drag a file or folder here, or choose a directory.",
   "settings.plugins.marketplaces.validate": "Validate marketplace",
   "settings.plugins.marketplaces.add": "Add marketplace",
+  "settings.plugins.marketplaces.reservedName":
+    "This source uses a marketplace name reserved by OpenZWork. Add another compatible marketplace source.",
   "settings.plugins.marketplaces.riskWarning":
     "Unofficial plugin marketplaces may contain malicious plugins that can harm your device. Verify the source and take precautions before adding.",
   "settings.plugins.marketplaces.riskAcknowledgement":

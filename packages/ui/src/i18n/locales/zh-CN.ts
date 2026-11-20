@@ -5307,6 +5307,8 @@ const zhCN: Record<string, string> = {
   "settings.plugins.marketplaces.dropHint": "拖入文件或文件夹，或选择目录。",
   "settings.plugins.marketplaces.validate": "校验插件市场",
   "settings.plugins.marketplaces.add": "添加插件市场",
+  "settings.plugins.marketplaces.reservedName":
+    "此来源使用了 OpenZWork 内置市场的保留名称。请添加其他兼容的市场源。",
   "settings.plugins.marketplaces.riskWarning":
     "非官方插件市场可能包含恶意插件，损害设备。请先核实来源并做好风险防范，再添加。",
   "settings.plugins.marketplaces.riskAcknowledgement": "我已了解风险，并已核实来源、做好风险防范。",
