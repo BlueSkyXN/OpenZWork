@@ -10,6 +10,7 @@ import {
   verifyPlatformRuntime,
 } from "../zcode-distribution/platform-archive-openzwork.mjs";
 import {
+  didTuiExitSuccessfully,
   shouldIgnoreSmokeCleanupError,
   tarCreateArgs,
   tarExtractArgs,
@@ -111,6 +112,14 @@ test("CLI smoke cleanup tolerates only a locked Windows native module", () => {
     shouldIgnoreSmokeCleanupError(Object.assign(new Error("denied"), { code: "EACCES" }), "win32"),
     false,
   );
+});
+
+test("CLI smoke accepts a ConPTY exit without a numeric exit code", () => {
+  assert.equal(didTuiExitSuccessfully({ exitCode: 0 }, "win32"), true);
+  assert.equal(didTuiExitSuccessfully({ exitCode: undefined }, "win32"), true);
+  assert.equal(didTuiExitSuccessfully({ exitCode: 1 }, "win32"), false);
+  assert.equal(didTuiExitSuccessfully({ exitCode: undefined }, "darwin"), false);
+  assert.equal(didTuiExitSuccessfully(undefined, "win32"), false);
 });
 
 test("archive verifier distinguishes required TUI FFI from the removed CUA plugin", async (t) => {

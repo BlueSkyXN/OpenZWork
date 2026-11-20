@@ -11,6 +11,7 @@ import { promisify, stripVTControlCharacters } from "node:util";
 import { pathToFileURL } from "node:url";
 
 import {
+  didTuiExitSuccessfully,
   shouldIgnoreSmokeCleanupError,
   tarSupportsForceLocal,
   tarExtractArgs,
@@ -106,7 +107,11 @@ try {
       throw new Error("TUI keyboard exit timed out");
     }),
   ]);
-  assert.equal(tuiExit.exitCode, 0, screen);
+  // Windows ConPTY 关闭 socket 时可能先触发 exit event，此时 node-pty 尚未写入退出码。
+  assert.ok(
+    didTuiExitSuccessfully(tuiExit),
+    `${JSON.stringify(tuiExit)}\n${stripVTControlCharacters(screen)}`,
+  );
   terminal = undefined;
 
   let webOutput = "";

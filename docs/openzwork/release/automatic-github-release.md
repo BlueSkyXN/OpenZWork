@@ -16,7 +16,7 @@ Extended 的七组单测按[平台与分片并行规范](../ci/extended-ci-paral
 
 CLI tar 的创建与解包命令必须按实际选中的 tar 实现处理 Windows 绝对归档路径。Git GNU tar 会把 `D:\...` 中的盘符解析成远程主机，需要显式携带 `--force-local`；Windows System32 tar 支持盘符路径但不支持该参数，不能携带。解包目录由子进程 `cwd` 提供，不再传给 `-C`。该要求由独立 CLI 分发回归测试锁定。
 
-Windows smoke 验收会在当前进程加载 `node-pty` 的 `conpty.node`；该 native 模块在进程退出前保持文件锁。验收结束后的临时目录清理因此按 best-effort 处理：仅 Windows 的 `EPERM` 允许保留锁定文件，其他平台或清理错误仍使验收失败。
+Windows smoke 验收会在当前进程加载 `node-pty` 的 `conpty.node`；该 native 模块在进程退出前保持文件锁。验收结束后的临时目录清理因此按 best-effort 处理：仅 Windows 的 `EPERM` 允许保留锁定文件，其他平台或清理错误仍使验收失败。Windows ConPTY 关闭 socket 时可能先触发 exit event，此时 node-pty 尚未写入数值退出码；键盘退出验收接受这一平台事件，其他平台仍要求退出码为 0。
 
 下载、校验、上传全部在 GitHub runner 完成。新流程要求七个桌面安装文件、三个 CLI 包、来源清单和校验和。历史 tag 按原九附件范围校验。
 

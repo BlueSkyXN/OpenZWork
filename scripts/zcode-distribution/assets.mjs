@@ -62,6 +62,11 @@ export function shouldIgnoreSmokeCleanupError(error, platform = process.platform
   return platform === "win32" && error?.code === "EPERM";
 }
 
+export function didTuiExitSuccessfully(event, platform = process.platform) {
+  return event != null && (event.exitCode === 0 ||
+    (platform === "win32" && event.exitCode === undefined));
+}
+
 const runtimePackageNames = [
   "@hono/node-server",
   "@hono/node-ws",
