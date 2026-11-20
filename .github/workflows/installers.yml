@@ -328,12 +328,15 @@ jobs:
   # 结构/版本/数据根/裁剪域标记 + tarball sha256，结构化报告进 summary 与 artifact。
   # install.sh 的下载基地址是分发期属性，显式输入占位，不伪装成正式地址。
   agent-node-dist:
-    # OZ-F011：正式 tag 缺独立 Node 下载根时，桌面安装包仍可进入发行校验。
+    # OZ-F011：正式发行缺独立 Node 下载根时，仅构建桌面包。
+    # workflow_dispatch 的空输入会回填为分支预览的默认占位地址。
     if: >-
       ${{ !inputs.publish_installer_run &&
       (github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') &&
       (github.event_name != 'workflow_dispatch' ||
-      (!inputs.release_tag && github.ref_type != 'tag') || inputs.zcode_dist_base_url != '') }}
+      (!inputs.release_tag && github.ref_type != 'tag') ||
+      (inputs.zcode_dist_base_url != '' &&
+      inputs.zcode_dist_base_url != 'https://example.invalid/zcode/deps/zcode/')) }}
     name: agent node dist (${{ matrix.platform }})
     strategy:
       fail-fast: false

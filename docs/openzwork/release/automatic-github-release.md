@@ -10,7 +10,7 @@ CI、Extended 和 Installers 在 tag 上各运行一次。Release 工作流由�
 
 Extended 的七组单测按[平台与分片并行规范](../ci/extended-ci-parallel.md)执行。每个平台汇总其全部分片（macOS 两个、Linux 三个、Windows 四个）后仍输出 `extended-tests-<platform>`；发布器继续验证同源码来源、完整七组 summary 和逐组 JSON。缺失、失败或来源不一致的分片会使汇总及工作流失败。
 
-正式 tag 推送时，独立 Node 分发 job 由仓库变量 `ZCODE_DIST_BASE_URL` 启用。变量为空时仅跳过这项构建，三平台桌面安装包仍在 `Installers` 中完成构建与校验。手动按正式 tag 重建桌面安装包时，可以显式传空的 `zcode_dist_base_url` 跳过独立 Node 作业。分支预览采用自己的下载地址解析规则。
+正式 tag 推送时，独立 Node 分发 job 由仓库变量 `ZCODE_DIST_BASE_URL` 启用。变量为空时仅跳过这项构建，三平台桌面安装包仍在 `Installers` 中完成构建与校验。手动按正式 tag 重建时，使用 `zcode_dist_base_url` 的默认占位地址只构建桌面安装包。GitHub 将空输入回填为该默认值。分支预览采用自己的下载地址解析规则。
 
 安装文件下载、校验、上传全部在 GitHub runner 完成。自动流程沿用 production 身份、七个安装文件、来源清单和校验和；未签名构建、手动安装更新的产品规则不变。
 

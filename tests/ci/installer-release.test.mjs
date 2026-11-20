@@ -527,13 +527,16 @@ test("installer-provenance covers build-only and release routes with source bind
 });
 
 test("a formal tag without a Node download root still schedules desktop installers", () => {
+  const previewUrl = workflow.on.workflow_dispatch.inputs.zcode_dist_base_url.default;
   assert.equal(workflow.jobs.installer.if, "${{ !inputs.publish_installer_run }}");
   assert.equal(
     workflow.jobs["agent-node-dist"].if,
     "${{ !inputs.publish_installer_run && " +
       "(github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') && " +
       "(github.event_name != 'workflow_dispatch' || " +
-      "(!inputs.release_tag && github.ref_type != 'tag') || inputs.zcode_dist_base_url != '') }}",
+      "(!inputs.release_tag && github.ref_type != 'tag') || " +
+      "(inputs.zcode_dist_base_url != '' && " +
+      `inputs.zcode_dist_base_url != '${previewUrl}')) }}`,
   );
 });
 
