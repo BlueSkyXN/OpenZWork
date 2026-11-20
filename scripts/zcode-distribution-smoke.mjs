@@ -13,7 +13,7 @@ import { pathToFileURL } from "node:url";
 import {
   closeSmokeWebSocket,
   didTuiExitSuccessfully,
-  shouldIgnoreSmokeCleanupError,
+  shouldSkipSmokeCleanup,
   tarSupportsForceLocal,
   tarExtractArgs,
   withSmokeTimeout,
@@ -195,11 +195,12 @@ try {
 } finally {
   terminal?.kill();
   web?.kill();
-  try {
-    await rm(directory, { recursive: true, force: true });
-  } catch (error) {
-    // OpenZWork(OZ-F011)：Windows 加载 conpty.node 后，同进程无法解锁删除；仅该平台 EPERM 允许保留临时目录。
-    if (!shouldIgnoreSmokeCleanupError(error)) cleanupError = error;
+  if (!shouldSkipSmokeCleanup()) {
+    try {
+      await rm(directory, { recursive: true, force: true });
+    } catch (error) {
+      cleanupError = error;
+    }
   }
 }
 if (cleanupError) throw cleanupError;

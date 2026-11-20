@@ -60,8 +60,9 @@ export function tarExtractArgs({ archive, forceLocal, platform = process.platfor
   return [...forceLocalTarArgs(forceLocal, platform), "-xzf", archive];
 }
 
-export function shouldIgnoreSmokeCleanupError(error, platform = process.platform) {
-  return platform === "win32" && error?.code === "EPERM";
+// OpenZWork(OZ-F011): Windows 递归删除 ConPTY 锁定目录时可能无限等待。
+export function shouldSkipSmokeCleanup(platform = process.platform) {
+  return platform === "win32";
 }
 
 export function didTuiExitSuccessfully(event, platform = process.platform) {

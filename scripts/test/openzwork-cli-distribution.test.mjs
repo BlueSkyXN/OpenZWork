@@ -13,7 +13,7 @@ import {
 import {
   closeSmokeWebSocket,
   didTuiExitSuccessfully,
-  shouldIgnoreSmokeCleanupError,
+  shouldSkipSmokeCleanup,
   tarCreateArgs,
   tarExtractArgs,
   tarSupportsForceLocal,
@@ -107,14 +107,10 @@ test("CLI tar commands follow the selected Windows tar implementation", async ()
   );
 });
 
-test("CLI smoke cleanup tolerates only a locked Windows native module", () => {
-  const error = Object.assign(new Error("locked"), { code: "EPERM" });
-  assert.equal(shouldIgnoreSmokeCleanupError(error, "win32"), true);
-  assert.equal(shouldIgnoreSmokeCleanupError(error, "darwin"), false);
-  assert.equal(
-    shouldIgnoreSmokeCleanupError(Object.assign(new Error("denied"), { code: "EACCES" }), "win32"),
-    false,
-  );
+test("CLI smoke skips cleanup only after Windows loads ConPTY", () => {
+  assert.equal(shouldSkipSmokeCleanup("win32"), true);
+  assert.equal(shouldSkipSmokeCleanup("linux"), false);
+  assert.equal(shouldSkipSmokeCleanup("darwin"), false);
 });
 
 test("CLI smoke accepts a ConPTY exit without a numeric exit code", () => {
