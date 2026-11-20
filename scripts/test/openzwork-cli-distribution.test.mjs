@@ -9,6 +9,7 @@ import {
   stagePlatformPty,
   verifyPlatformRuntime,
 } from "../zcode-distribution/platform-archive-openzwork.mjs";
+import { tarArchiveArgs } from "../build-zcode.mjs";
 
 async function temp(t) {
   const root = await mkdtemp(join(tmpdir(), "oz-cli-"));
@@ -46,6 +47,16 @@ test("platform archives use matching Linux PTY, keep Windows runtime files and o
   const windows = join(root, "win32-x64/prebuilds/win32-x64");
   assert.deepEqual((await readdir(windows)).sort(), ["conpty", "conpty.node"]);
   await readFile(join(windows, "conpty/conpty.dll"));
+});
+
+test("CLI tar command keeps Windows drive-letter archives local", () => {
+  const tarball = "D:\\a\\OpenZWork\\zcode-1.2.3.tar.gz";
+  const packageParent = "D:\\a\\OpenZWork\\.work";
+  const args = tarArchiveArgs({ tarball, packageParent });
+
+  assert.equal(args[0], "--force-local");
+  assert.ok(args.includes(tarball));
+  assert.ok(args.includes(packageParent));
 });
 
 test("archive verifier distinguishes required TUI FFI from the removed CUA plugin", async (t) => {

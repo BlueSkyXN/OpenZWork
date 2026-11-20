@@ -14,6 +14,8 @@ Extended 的七组单测按[平台与分片并行规范](../ci/extended-ci-paral
 
 启用 CLI 附件的构建使用 `pnpm build:zcode --archive-only`，输出运行包和摘要。该模式默认写入 `dist/zcode-archive/`。自托管下载继续使用 `pnpm build:zcode --base-url <url>` 生成安装脚本和版本索引。显式提供下载根时，macOS 与 Linux 的构建会另外保留这一份自托管目录，并复用构建结果生成平台附件。历史 tag 的附件范围由其源码决定。
 
+CLI tar 命令必须把绝对输出路径当作本地文件处理。Windows runner 的 GNU tar 会把 `D:\...` 中的盘符解析成远程主机，因此构建参数显式携带 `--force-local`；该要求由独立 CLI 分发回归测试锁定。
+
 下载、校验、上传全部在 GitHub runner 完成。新流程要求七个桌面安装文件、三个 CLI 包、来源清单和校验和。历史 tag 按原九附件范围校验。
 
 Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP。解压结果须能通过已有的二进制目标检查，runner 上 PowerShell 归档模块的版本不参与构建。

@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import {
   copyRuntimeNodeModules,
@@ -107,6 +108,22 @@ function parseArgs(argv) {
 
 function commandText(command, args) {
   return [command, ...args].join(" ");
+}
+
+export function tarArchiveArgs({ tarball, packageParent }) {
+  // Windows GNU tar 会把 "D:\..." 的盘符当作远程主机；所有平台统一按本地文件打包。
+  return [
+    "--force-local",
+    "--exclude",
+    "._*",
+    "--exclude",
+    ".DS_Store",
+    "-czf",
+    tarball,
+    "-C",
+    packageParent,
+    packageDirName,
+  ];
 }
 
 function run(command, args, options = {}) {
@@ -245,7 +262,7 @@ async function createTarball({ packageParent, releaseDir, tarballName }) {
   await rm(tarball, {
     force: true,
   });
-  run("tar", ["--exclude", "._*", "--exclude", ".DS_Store", "-czf", tarball, "-C", packageParent, packageDirName], {
+  run("tar", tarArchiveArgs({ tarball, packageParent }), {
     env: { ...process.env, COPYFILE_DISABLE: "1" },
   });
   return tarball;
@@ -323,4 +340,6 @@ async function main() {
   console.log(`[zcode] sha256: ${sha256}`);
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
+}
