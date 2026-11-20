@@ -5186,6 +5186,8 @@ const jaJP: Record<string, string> = {
     "ファイルまたはフォルダをここにドラッグするか、ディレクトリを選択してください。",
   "settings.plugins.marketplaces.validate": "マーケットプレイスを検証",
   "settings.plugins.marketplaces.add": "マーケットプレイスを追加",
+  "settings.plugins.marketplaces.reservedName":
+    "このソースのマーケットプレイス名は OpenZWork で予約されています。別の対応マーケットプレイスを追加してください。",
   "settings.plugins.marketplaces.riskWarning":
     "非公式のプラグインマーケットプレイスには、デバイスに損害を与える悪意のあるプラグインが含まれている可能性があります。追加する前に提供元を確認し、対策を講じてください。",
   "settings.plugins.marketplaces.riskAcknowledgement":

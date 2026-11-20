@@ -3,6 +3,10 @@ import type { DraftPluginUiOpenRequest } from "@/plugin-ui/contract.js";
 import { PluginAddMenu } from "@/conversation-workspace-target/PluginAddMenu.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, RefreshCw, Store } from "lucide-react";
+import {
+  normalizeUnknownError,
+  ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE,
+} from "@zcode/shared";
 import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { Button } from "@/components/ui/button.js";
 import { toast } from "@/components/ui/toast.js";
@@ -343,7 +347,13 @@ export function PluginStorePage({
 
   const handleAddMarketplace = useCallback(
     async (source: string) => {
-      const succeeded = await addMarketplace(source, operationService);
+      const succeeded = await addMarketplace(source, operationService, (error) => {
+        // OpenZWork(OZ-C014): Host 通过协议附带业务码，旧 Host 仍使用原错误消息。
+        const details = error && typeof error === "object" && "data" in error ? error.data : error;
+        return normalizeUnknownError(details).code === ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE
+          ? intl.formatMessage({ id: "settings.plugins.marketplaces.reservedName" })
+          : undefined;
+      });
       // 添加市场源的错误要和提交入口同层展示；否则全局错误条会被 Dialog 遮罩压到下面。
       setAddMarketplaceError(
         succeeded ? null : (usePluginManagementStore.getState().error ?? null),
@@ -352,7 +362,7 @@ export function PluginStorePage({
       if (succeeded) setSegment("personal");
       return succeeded;
     },
-    [addMarketplace, operationService],
+    [addMarketplace, intl, operationService, usePluginManagementStore],
   );
 
   const handleUsePrompt = useCallback(

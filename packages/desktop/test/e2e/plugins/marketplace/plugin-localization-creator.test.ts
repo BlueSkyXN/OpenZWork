@@ -1,3 +1,5 @@
+import { writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { setRendererViewport, clearRendererViewport } from "#e2e/helpers/renderer-viewport";
 import { clearAppData, setInputValueByTestIdDom } from "#e2e/helpers/desktop-app";
 import { resolveE2EToolPath } from "#e2e/helpers/e2e-runtime-paths";
@@ -10,9 +12,11 @@ import {
   PLUGIN_LIFECYCLE_ID,
   PLUGIN_LIFECYCLE_MARKETPLACE_ID,
   addLifecycleMarketplaceThroughUi,
+  addMarketplaceSourceThroughUi,
   assertPluginStoreFitsViewport,
   capturePluginManualReview,
   clickPluginControl,
+  createInvalidOfficialCollisionFixture,
   createPluginLifecycleFixture,
   getPluginControlText,
   getPluginOverview,
@@ -20,6 +24,7 @@ import {
   installPluginThroughUi,
   openPluginManagementSettings,
   openPluginSettings,
+  openSourcesDialog,
   requirePluginManualReview,
   setPluginPresentation,
   waitForPluginControl,
@@ -137,6 +142,65 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
         `${presentation.locale}-${presentation.theme}-${presentation.width}-error`,
       );
     }
+  });
+
+  it("插件市场 #79：添加菜单、默认来源和保留名称提示", async function () {
+    this.timeout(120000);
+    requirePluginManualReview();
+    const collision = await createInvalidOfficialCollisionFixture();
+    // 其他用例复用生命周期市场。用独立市场 ID 验证这次重试确实新增了来源。
+    const regularMarketId = "e2e-marketplace-79";
+    const regularSource = join(dirname(collision), "marketplace-79-regular.json");
+    await writeFile(regularSource, JSON.stringify({ name: regularMarketId, plugins: [] }));
+
+    await openPluginSettings();
+    await setPluginPresentation({ locale: "zh-CN", theme: "zai-light", width: 1200, height: 800 });
+    expect(await getPluginControlText("plugin-store-create")).toBe("添加");
+    await openSourcesDialog();
+    await waitForPluginControl("plugin-store-source-row", { marketplaceId: "claude-plugins-official" });
+    const before = await getPluginOverview();
+    expect(before.marketplaces.some(({ id }) => id === regularMarketId)).toBe(false);
+    await browser.keys("Escape");
+
+    await openPluginManagementSettings();
+    await waitForPluginControl("plugin-settings-add");
+    expect(await getPluginControlText("plugin-settings-add")).toBe("添加");
+    await openAddMenu("plugin-settings-add");
+    await clickPluginControl("plugin-store-add-source-menu-item");
+    await waitForPluginControl("plugin-store-add-source-dialog");
+    await setInputValueByTestIdDom("plugin-store-add-source-input", collision);
+    await clickPluginControl("plugin-store-add-source-risk-acknowledgement");
+    await clickPluginControl("plugin-store-add-source-submit");
+    await waitForPluginControl("plugin-store-add-source-error");
+    expect(await getPluginControlText("plugin-store-add-source-error")).toBe(
+      "此来源使用了 OpenZWork 内置市场的保留名称。请添加其他兼容的市场源。",
+    );
+    expect((await getPluginOverview()).marketplaces).toEqual(before.marketplaces);
+    await capturePluginManualReview("PLUGIN-MARKETPLACE-79", "zh-light-reserved-name");
+    await browser.keys("Escape");
+
+    await setPluginPresentation({ locale: "en-US", theme: "zai-dark", width: 480, height: 800 });
+    await setRendererViewport(390, 844);
+    expect(await getPluginControlText("plugin-store-create")).toBe("Add");
+    await addMarketplaceSourceThroughUi(collision);
+    await waitForPluginControl("plugin-store-add-source-error");
+    expect(await getPluginControlText("plugin-store-add-source-error")).toBe(
+      "This source uses a marketplace name reserved by OpenZWork. Add another compatible marketplace source.",
+    );
+    expect(
+      await browser.$('[data-testid="plugin-store-add-source-input"]').getValue(),
+    ).toBe(collision);
+    await capturePluginManualReview("PLUGIN-MARKETPLACE-79", "en-dark-narrow-reserved-name");
+
+    await setInputValueByTestIdDom("plugin-store-add-source-input", regularSource);
+    await clickPluginControl("plugin-store-add-source-submit");
+    await waitUntilPluginOverview(
+      (overview) => overview.marketplaces.some(({ id }) => id === regularMarketId),
+      "更换来源后未能添加普通市场",
+    );
+    await browser.waitUntil(async () => !(await hasPluginControl("plugin-store-add-source-dialog")));
+    expect(await hasPluginControl("plugin-store-error")).toBe(false);
+    await clearRendererViewport();
   });
 
   it("非官方市场必须确认风险才能添加，关闭后重新确认", async function () {

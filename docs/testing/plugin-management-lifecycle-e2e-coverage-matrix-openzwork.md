@@ -146,6 +146,12 @@ PLM-LC-018/019/020：`plugins/plugin-localization-creator.test.ts`，pending、�
 
 2026-09-16 补充：公开分类与个人市场分组默认全部展开，保留手动收起/展开。PLM-LC-001 的断言同步；plugin-localization-creator E2E 增加 8→6→8 张卡片回归，公开/个人与中英组合由组件交互单测覆盖。
 
+## 插件市场来源反馈 #79
+
+- 桌面验收覆盖两处添加菜单、Claude Code 市场源、中文和英文的保留名称提示，以及改用普通来源后重试成功。入口为 `plugins/marketplace/plugin-localization-creator.test.ts` 中的 #79 场景。
+- CLI 回归覆盖纯净与已有来源的存储、默认来源离线登记、保留名称错误码和拒绝后的目录保留。
+- macOS Electron 候选回放 1 项通过，0 项跳过。产物位于 `packages/desktop/.e2e-artifacts/desktop-e2e-20261120-023538-016/`。中文浅色和英文深色 390px 截图位于 `packages/desktop/.e2e-artifacts/plugin-management/plugin-marketplace-79/`。该用例仍按人工验收入口执行。[OpenZWork 来源规范](../specs/plugin-marketplace-sources-openzwork.md)
+
 ## PLM-MISSING-CONFIG
 
 - 状态：manual-review（非正式 CI 转正）。

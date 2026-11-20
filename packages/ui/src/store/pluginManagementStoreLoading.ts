@@ -110,6 +110,7 @@ export async function runWorkspaceOperation(
   operationId: string,
   operation: (workspace: { workspacePath: string; workspaceIdentity?: string }) => Promise<void>,
   scope: ZCodePluginScope = "user",
+  formatError?: (error: unknown) => string | undefined,
 ): Promise<boolean> {
   const { workspacePath, workspaceIdentity, authorityKey, configScope } = get();
   if (!workspacePath) return false;
@@ -160,10 +161,11 @@ export async function runWorkspaceOperation(
     return isCurrentContext();
   } catch (error) {
     // marketplace add/update 等通用操作失败：无插件目标，归属清空。
-    logger.error("[plugins] operation failed", { operationId, error: toMessage(error) });
+    const message = toMessage(error);
+    logger.error("[plugins] operation failed", { operationId, error: message });
     // 旧操作不能覆盖同一配置层中新操作的错误态；只有最近发起的操作才回写。
     if (ownsVisibleOperation()) {
-      set({ error: toMessage(error), lastFailedPluginId: null });
+      set({ error: formatError?.(error) ?? message, lastFailedPluginId: null });
     }
     return false;
   } finally {

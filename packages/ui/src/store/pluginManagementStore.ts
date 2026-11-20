@@ -70,7 +70,11 @@ export interface PluginManagementState {
     pluginService?: IPluginManagementService,
     options?: { background?: boolean },
   ) => Promise<void>;
-  addMarketplace: (source: string, pluginService: IPluginManagementService) => Promise<boolean>;
+  addMarketplace: (
+    source: string,
+    pluginService: IPluginManagementService,
+    formatError?: (error: unknown) => string | undefined,
+  ) => Promise<boolean>;
   updateMarketplace: (
     marketplace: string | null,
     pluginService: IPluginManagementService,
@@ -239,7 +243,7 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
         });
     },
 
-    async addMarketplace(source, pluginService) {
+    async addMarketplace(source, pluginService, formatError) {
       return runWorkspaceOperation(
         set,
         get,
@@ -251,6 +255,8 @@ export const createPluginManagementStore = (initialService?: IPluginManagementSe
             source,
           });
         },
+        "user",
+        formatError,
       );
     },
 

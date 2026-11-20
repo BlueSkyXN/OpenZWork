@@ -665,34 +665,54 @@ describe("ZCode plugins", () => {
     }
   });
 
-  it("includes the merged ZCode official marketplace and Claude marketplace for empty storage", async () => {
-    const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-default-marketplace-"));
+  it.each(["fresh", "legacy"])(
+    "registers the default Claude marketplace without fetching when storage is %s",
+    async (profile) => {
+      const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-default-marketplace-"));
 
-    try {
-      const pluginStorageRoot = join(root, "plugins");
-      // OpenZWork(D004，2026-11-14 T15 修正）：官方市场为本地同步分区实现，无 CDN 默认远端
-      // （WP-08 保持）；Claude 官方目录恢复默认注册（GitHub shorthand，非官方产品域），
-      // 空存储本地登记该条目、不写远端快照、不发网络请求；首次刷新才拉取 catalog。
-      const fetchSpy = vi.fn();
-      vi.stubGlobal("fetch", fetchSpy);
-      const overview = await getZCodePluginsOverview({
-        env: {},
-        pluginStorageRoot,
-        skipUserConfig: true,
-        workingDirectory: root,
-      });
+      try {
+        const pluginStorageRoot = join(root, "plugins");
+        const legacyMarketplaces =
+          profile === "legacy"
+            ? [{
+                id: "saved-marketplace",
+                source: { source: "directory", path: join(root, "saved-market") },
+                name: "Saved Marketplace",
+                addedAt: "2026-11-06T00:00:00.000Z",
+                pluginCount: 0,
+              }]
+            : [];
+        // OpenZWork(OZ-C014): 旧版已经登记的来源随默认市场补登记保留。
+        if (legacyMarketplaces.length > 0) {
+          await writeKnownMarketplaces(pluginStorageRoot, legacyMarketplaces);
+        }
+        const fetchSpy = vi.fn();
+        vi.stubGlobal("fetch", fetchSpy);
+        const options = {
+          env: {},
+          pluginStorageRoot,
+          skipUserConfig: true,
+          workingDirectory: root,
+        };
+        const expectedIds = [...legacyMarketplaces.map(({ id }) => id), "claude-plugins-official"];
 
-      expect(overview.marketplaces).toEqual([
-        expect.objectContaining({ id: "claude-plugins-official" }),
-      ]);
-      expect(fetchSpy).not.toHaveBeenCalled();
-      expect(existsSync(join(pluginStorageRoot, "known_marketplaces.json"))).toBe(true);
-    } finally {
-      // 恢复全局 fetch，避免污染后续需要真实网络的用例（zip 安装等）。
-      vi.unstubAllGlobals();
-      await rm(root, { force: true, recursive: true });
-    }
-  });
+        const overview = await getZCodePluginsOverview(options);
+        expect(overview.marketplaces.map(({ id }) => id)).toEqual(expectedIds);
+        const reopened = await getZCodePluginsOverview(options);
+        expect(reopened.marketplaces.map(({ id }) => id)).toEqual(expectedIds);
+        expect(fetchSpy).not.toHaveBeenCalled();
+
+        const known = JSON.parse(await readFile(join(pluginStorageRoot, "known_marketplaces.json"), "utf8"));
+        expect(known.marketplaces).toEqual([
+          ...legacyMarketplaces,
+          expect.objectContaining({ id: "claude-plugins-official" }),
+        ]);
+      } finally {
+        vi.unstubAllGlobals();
+        await rm(root, { force: true, recursive: true });
+      }
+    },
+  );
 
   it("installs from a known marketplace by lazy-loading its missing manifest", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-bootstrap-lazy-marketplace-install-"));

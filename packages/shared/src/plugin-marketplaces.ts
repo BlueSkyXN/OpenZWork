@@ -9,6 +9,9 @@ export interface DefaultPluginMarketplace {
 
 export const ZCODE_OFFICIAL_PLUGIN_MARKETPLACE_ID = "zcode-plugins-official";
 
+// OpenZWork(OZ-C014): 添加来源失败时经协议 error.data.code 返回给界面。
+export const ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID_ERROR_CODE = "ZCODE_PLUGIN_MARKETPLACE_RESERVED_ID";
+
 /**
  * Claude Code 官方市场（GitHub git 源）。它不是 ZCode 的强依赖：GitHub 不可达时刷新必然失败，
  * 该失败不应作为错误提示打扰用户，UI 侧按此 id 静默处理其刷新失败（任何原因）。
