@@ -204,8 +204,9 @@ const writeHelp = (
   stdout: NodeJS.WriteStream,
   locale?: UiLocale,
   detectedLocale?: GlobalOptions["detectedLocale"],
+  distributionVersion?: string,
 ): void => {
-  stdout.write(formatCliHelp(version, locale, detectedLocale));
+  stdout.write(formatCliHelp(version, locale, detectedLocale, distributionVersion));
 };
 
 const runDoctor = (ctx: RunContext, options: GlobalOptions, workingDirectory: string): number => {
@@ -391,7 +392,7 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     ctx.stderr.write(`${message}\n\n`);
-    writeHelp(ctx.stderr);
+    writeHelp(ctx.stderr, undefined, undefined, deps.distributionVersion);
     return 1;
   }
 
@@ -502,7 +503,7 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
   }
 
   if (parsed.values.help === true) {
-    writeHelp(ctx.stdout, options.locale, options.detectedLocale);
+    writeHelp(ctx.stdout, options.locale, options.detectedLocale, deps.distributionVersion);
     return 0;
   }
 
@@ -624,7 +625,7 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
 
   switch (commandName(parsed.positionals)) {
     case "help":
-      writeHelp(ctx.stdout, options.locale, options.detectedLocale);
+      writeHelp(ctx.stdout, options.locale, options.detectedLocale, deps.distributionVersion);
       return 0;
     case "version":
       ctx.stdout.write(`${version}\n`);
@@ -668,7 +669,7 @@ export const run = async (ctx: RunContext, deps: RunDependencies = {}): Promise<
       );
     default:
       ctx.stderr.write(`Unknown command: ${commandName(parsed.positionals)}\n\n`);
-      writeHelp(ctx.stderr, options.locale, options.detectedLocale);
+      writeHelp(ctx.stderr, options.locale, options.detectedLocale, deps.distributionVersion);
       return 1;
   }
 };

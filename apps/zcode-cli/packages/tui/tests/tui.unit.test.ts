@@ -106,10 +106,11 @@ test("renders a prominent non-modal login notice", () => {
 });
 
 test("renders localized Chinese login notice copy", () => {
-  const lines = collectTextLines(LoginRequiredPanel({ copy: ZH_COPY }));
+  const lines = collectTextLines(LoginRequiredPanel({ copy: ZH_COPY, providerConfigPath: "/tmp/模型/config.json" }));
+  assert.ok(lines.includes("/tmp/模型/config.json"));
 
   assert.ok(lines.some((line) => line.includes("没有可用模型")));
-  assert.ok(lines.some((line) => line.includes("输入 /model 查看模型")));
+  assert.ok(lines.some((line) => line.includes("输入 /model 选择模型")));
 });
 
 test("clears the transcript when a session reset has no restored messages", () => {
@@ -290,7 +291,7 @@ test("renders the product version header and workspace directory footer", () => 
   assert.ok(workspaceLine);
   assert.equal(workspaceLine.length, SIDEBAR_CONTENT_WIDTH);
   assert.match(workspaceLine, /\.\.\.$/);
-  assert.ok(lines.includes("ZCode"));
+  assert.ok(lines.includes("OpenZWork"));
   assert.ok(lines.includes(" 0.0.0"));
 });
 

@@ -1,3 +1,4 @@
+import { getZCodeCopy } from "@zcode/i18n";
 import type { TuiSubmitPromptResult } from "@zcode/tui";
 import { parseModelPickerValue, type ModelSelection } from "@zcode/shared/model-selection";
 import { listAppEffortOptions } from "../effort-options.js";
@@ -27,7 +28,7 @@ export async function handleModelCommand(
       mode: deps.getMode?.(),
       model: current,
       modelOptions: options,
-      response: formatModelList(current, options),
+      response: options.length ? formatModelList(current, options) : getZCodeCopy(deps.getLocale?.()).tui.loginRequired.message,
       thoughtLevel: app.getThoughtLevel?.(),
     };
   }
@@ -92,9 +93,6 @@ export function resolveTuiModelSelection(
 
 function formatModelList(current: string | undefined, options: CommandCenterModelOption[]): string {
   const currentLine = `Current model: ${current || "not selected"}.`;
-  if (options.length === 0) {
-    return `${currentLine}\nNo selectable models are configured.`;
-  }
 
   const lines = options.map((option) => {
     const id = `${option.ref.providerId}/${option.ref.modelId}`;

@@ -10,6 +10,15 @@ import { setTimeout } from "node:timers/promises";
 import { promisify, stripVTControlCharacters } from "node:util";
 import { pathToFileURL } from "node:url";
 
+import {
+  closeSmokeWebSocket,
+  didTuiExitSuccessfully,
+  shouldSkipSmokeCleanup,
+  tarSupportsForceLocal,
+  tarExtractArgs,
+  withSmokeTimeout,
+} from "./zcode-distribution/assets.mjs";
+
 const exec = promisify(execFile);
 const archive = process.argv[2];
 assert.ok(archive, "Usage: node scripts/zcode-distribution-smoke.mjs <archive.tar.gz>");
@@ -17,24 +26,44 @@ const directory = await realpath(await mkdtemp(join(tmpdir(), "zcode-release-smo
 const root = join(directory, "zcode");
 const runner = join(root, "bin/zcode.mjs");
 const workspace = join(directory, "workspace");
+// OpenZWork(OZ-F011)：在空用户目录验证首次启动，避免使用开发机的密钥与模型配置。
 const env = {
-  ...process.env,
-  ZCODE_DATA_BASE_DIR: join(directory, "data"),
-  NODE_PATH: "",
-  NODE_OPTIONS: "",
+  ...Object.fromEntries(Object.entries(process.env).filter(([key]) =>
+    /^(PATH|PATHEXT|SYSTEMROOT|COMSPEC|WINDIR|TEMP|TMP|TMPDIR|SYSTEMDRIVE)$/i.test(key))),
+  HOME: directory,
+  USERPROFILE: directory,
+  APPDATA: join(directory, "AppData", "Roaming"),
+  LOCALAPPDATA: join(directory, "AppData", "Local"),
+  LANG: "en_US.UTF-8",
   TERM: "xterm-256color",
 };
 let web;
 let terminal;
+let cleanupError;
+let conptyLoaded = false;
 try {
-  await exec("tar", ["-xzf", resolve(archive), "-C", directory]);
+  const forceLocal = await tarSupportsForceLocal();
+  await exec("tar", tarExtractArgs({ archive: resolve(archive), forceLocal }), { cwd: directory });
   await mkdir(workspace);
-  await exec(process.execPath, [runner, "--help"], { cwd: workspace, env });
   const version = (
     await exec(process.execPath, [runner, "--version"], { cwd: workspace, env })
   ).stdout.trim();
+  for (const locale of ["en-US", "zh-CN"]) {
+    const { stdout } = await exec(process.execPath, [runner, "--locale", locale, "--help"], { cwd: workspace, env });
+    assert.ok(stdout.includes(`OpenZWork ${version}`));
+    assert.match(stdout, /zcode --web/);
+  }
+  const launcher = join(root, "zcode");
+  const invoke = (args) => process.platform === "win32"
+    ? exec(process.env.ComSpec ?? "cmd.exe", ["/d", "/c", "zcode.cmd", ...args], { cwd: root, env })
+    : exec(launcher, args, { cwd: workspace, env });
+  assert.equal((await invoke(["--version"])).stdout.trim(), version);
+  const diagnostics = JSON.parse((await invoke(["--cwd", workspace, "doctor", "--json"])).stdout);
+  assert.equal(diagnostics.runtime.cwd, workspace);
+  assert.equal(diagnostics.cli.version, (await exec(process.execPath, [runner, "version"], { cwd: workspace, env })).stdout.trim());
   const require = createRequire(join(root, "package.json"));
   const pty = require("node-pty");
+  conptyLoaded = true;
   const runtimeCheck = join(root, "agent/check-tui.mjs");
   await writeFile(
     runtimeCheck,
@@ -43,7 +72,7 @@ try {
   const imported = await exec(process.execPath, [runtimeCheck], { cwd: workspace, env });
   assert.match(imported.stdout, /tui-runtime-ok/);
 
-  terminal = pty.spawn(process.execPath, [runner], { cwd: workspace, env, cols: 110, rows: 32 });
+  terminal = pty.spawn(process.execPath, [runner], { cwd: workspace, env, cols: 132, rows: 34 });
   let screen = "";
   let terminalExit;
   terminal.onData((data) => {
@@ -60,11 +89,16 @@ try {
       // 修复：TUI 渲染器会在相邻字符之间插入 SGR/光标定位序列，原始 PTY 输出里的提示词不连续；
       // 先去掉终端控制序列再匹配可见文本，避免界面已就绪却被判定为超时。
       const visible = stripVTControlCharacters(screen);
-      return /ZCode/.test(visible) && /(?:登录|\/login|输入提示词|Type a prompt)/i.test(visible);
+      return /输入提示词|Type a prompt/i.test(visible);
     },
     "TUI initialized render",
     () => stripVTControlCharacters(screen),
   );
+  const visible = stripVTControlCharacters(screen);
+  assert.match(visible, /OpenZWork/);
+  assert.ok(visible.includes(version), "Sidebar must show the distribution version");
+  assert.match(visible, /No available models\./i);
+  terminal.resize(80, 24);
   assert.equal(terminalExit, undefined, screen);
   assert.doesNotMatch(screen, /Cannot find (?:module|package)|ERR_MODULE_NOT_FOUND/);
   // 保留真实键盘退出链路；不发送 prompt，不调用模型。
@@ -77,14 +111,18 @@ try {
       throw new Error("TUI keyboard exit timed out");
     }),
   ]);
-  assert.equal(tuiExit.exitCode, 0, screen);
+  // Windows ConPTY 关闭 socket 时可能先触发 exit event，此时 node-pty 尚未写入退出码。
+  assert.ok(
+    didTuiExitSuccessfully(tuiExit),
+    `${JSON.stringify(tuiExit)}\n${stripVTControlCharacters(screen)}`,
+  );
   terminal = undefined;
 
   let webOutput = "";
   web = spawn(process.execPath, [runner, "--web", "--workspace", workspace, "--no-open"], {
     cwd: workspace,
     env,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "pipe", "pipe", "ipc"],
   });
   web.stdout.on("data", (data) => {
     webOutput += data;
@@ -119,17 +157,32 @@ try {
     () => webOutput,
   );
   assert.equal(info.workspaces[0].path, workspace);
-  const html = await fetch(base);
+  const html = await withSmokeTimeout(
+    fetch(base, { signal: AbortSignal.timeout(8000) }),
+    "Web HTML",
+    10000,
+    () => webOutput,
+  );
   assert.equal(html.status, 200);
-  assert.match(await html.text(), /<html/i);
+  assert.match(
+    await withSmokeTimeout(html.text(), "Web HTML body", 10000, () => webOutput),
+    /<title>OpenZWork<\/title>/,
+  );
   const { default: WebSocket } = await import(pathToFileURL(require.resolve("ws")).href);
   const socket = new WebSocket(new URL("ws", base.replace("http:", "ws:")));
-  await once(socket, "open");
-  socket.close();
-  await once(socket, "close");
+  await withSmokeTimeout(once(socket, "open"), "WebSocket open", 10000, () => webOutput);
+  await withSmokeTimeout(
+    closeSmokeWebSocket(socket),
+    "WebSocket close",
+    10000,
+    () => webOutput,
+  );
   const exited = once(web, "exit");
-  web.kill("SIGTERM");
-  assert.deepEqual(await exited, [0, null]);
+  web.disconnect();
+  assert.deepEqual(
+    await withSmokeTimeout(exited, "Web shutdown", 10000, () => webOutput),
+    [0, null],
+  );
   web = undefined;
   console.log(
     JSON.stringify({
@@ -144,8 +197,17 @@ try {
 } finally {
   terminal?.kill();
   web?.kill();
-  await rm(directory, { recursive: true, force: true });
+  if (!shouldSkipSmokeCleanup({ conptyLoaded })) {
+    try {
+      await rm(directory, { recursive: true, force: true });
+    } catch (error) {
+      cleanupError = error;
+    }
+  }
 }
+if (cleanupError) throw cleanupError;
+// Windows ConPTY native handle 会维持事件循环；验收成功后显式收敛 job。
+if (shouldSkipSmokeCleanup({ conptyLoaded })) process.exit(0);
 
 async function until(check, label, diagnostic) {
   const deadline = Date.now() + 20000;

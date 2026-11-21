@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // 独立 Node 分发（build:zcode tarball）的 CI 参数解析与产物选择（CI-FIRST §2.5/H4）。
 //
-// 分支预览由 Actions 保存 tarball；正式 tag 的安装脚本使用配置好的下载地址。
+// 独立包可直接解压，生成安装脚本时记录实际使用的下载地址。
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { readdir, stat, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -112,10 +112,10 @@ export async function writeAgentDistManifest({
     platform,
     tarball: basename(tarball),
     tarballSha256: await sha256(tarball),
-    tarballSize: (await readFile(tarball)).length,
-    baseUrl,
-    baseUrlKind: isPlaceholderBaseUrl(baseUrl) ? "placeholder" : "configured",
-    baseUrlSource,
+    tarballSize: (await stat(tarball)).size,
+    baseUrl: baseUrl || null,
+    baseUrlKind: baseUrl ? (isPlaceholderBaseUrl(baseUrl) ? "placeholder" : "configured") : null,
+    baseUrlSource: baseUrlSource || "archive-only",
     sourceCommit,
     sourceTree,
     workflowCommit,

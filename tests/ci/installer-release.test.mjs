@@ -22,7 +22,7 @@ function script(name, sourceSteps = steps) {
   const step = sourceSteps.find((entry) => entry.name === name);
   assert.ok(step, name);
   // 步骤可在 heredoc 前后带 shell 前言/收尾（set -euo pipefail、job summary），只取 Node 段。
-  const match = step.run.match(/node --input-type=module <<'NODE'\n([\s\S]*?)\n\s*NODE\b/);
+  const match = step.run.match(/node --input-type=module <<'NODE'[^\n]*\n([\s\S]*?)\n\s*NODE\b/);
   assert.ok(match, `${name}: executable Node script`);
   return match[1];
 }
@@ -526,32 +526,83 @@ test("installer-provenance covers build-only and release routes with source bind
   );
 });
 
-test("a formal tag without a Node download root still schedules desktop installers", () => {
-  const previewUrl = workflow.on.workflow_dispatch.inputs.zcode_dist_base_url.default;
+test("独立 CLI 构建与桌面包同时调度，发布入口只读取已有产物", () => {
   assert.equal(workflow.jobs.installer.if, "${{ !inputs.publish_installer_run }}");
-  assert.equal(
-    workflow.jobs["agent-node-dist"].if,
-    "${{ !inputs.publish_installer_run && " +
-      "(github.event_name != 'push' || github.ref_type != 'tag' || vars.ZCODE_DIST_BASE_URL != '') && " +
-      "(github.event_name != 'workflow_dispatch' || " +
-      "(!inputs.release_tag && github.ref_type != 'tag') || " +
-      "(inputs.zcode_dist_base_url != '' && " +
-      `inputs.zcode_dist_base_url != '${previewUrl}')) }}`,
-  );
+  assert.equal(workflow.jobs["agent-node-dist"].if, "${{ !inputs.publish_installer_run }}");
 });
 
-test("agent node dist job builds and verifies the independent distribution", () => {
+test("正式 tag 未配置下载根时构建独立 CLI，历史 tag 仍可仅重建桌面包", async (t) => {
+  const cwd = await mkdtemp(join(tmpdir(), "openzwork-cli-mode-"));
+  t.after(() => rm(cwd, { recursive: true, force: true }));
+  const packagePath = join(cwd, "package.json");
+  const resolver = script(
+    "Select independent Node distribution mode",
+    workflow.jobs["agent-node-dist"].steps,
+  );
+  const resolveMode = async ({ cliArchives, event, tag, input = "", variable = "" }) => {
+    await writeFile(packagePath, JSON.stringify({ openzworkRelease: { cliArchives } }));
+    const { stdout } = await exec(process.execPath, ["--input-type=module", "-e", resolver], {
+      cwd,
+      env: {
+        ...process.env,
+        EVENT_NAME: event,
+        RELEASE_TAG: tag,
+        INPUT_BASE_URL: input,
+        VARS_BASE_URL: variable,
+      },
+    });
+    return stdout.trim();
+  };
+  const tag = "v3.18.2+openzwork.1";
+  assert.equal(await resolveMode({ cliArchives: true, event: "push", tag }), "mode=archive");
+  assert.equal(
+    await resolveMode({
+      cliArchives: true,
+      event: "push",
+      tag,
+      variable: "https://dist.example.org/zcode/",
+    }),
+    "mode=both",
+  );
+  assert.equal(await resolveMode({ event: "push", tag }), "mode=skip");
+  const input = workflow.on.workflow_dispatch.inputs.zcode_dist_base_url.default;
+  assert.equal(
+    await resolveMode({ cliArchives: true, event: "workflow_dispatch", tag, input }),
+    "mode=archive",
+  );
+  assert.equal(await resolveMode({ event: "workflow_dispatch", tag, input }), "mode=skip");
+  assert.equal(
+    await resolveMode({ event: "push", tag, variable: "https://dist.example.org/zcode/" }),
+    "mode=download",
+  );
+  assert.equal(await resolveMode({ event: "push", tag: "" }), "mode=download");
+});
+
+test("agent node dist job builds and verifies the independent distribution", async () => {
   const job = workflow.jobs["agent-node-dist"];
   assert.ok(job, "agent-node-dist job exists");
-  assert.equal(
-    job.steps[0].with.ref,
-    "${{ inputs.release_tag || inputs.source_commit || github.sha }}",
+  const pkg = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8"));
+  const { cliReleaseAssets } = await import("../../scripts/release-workflows.mjs");
+  assert.equal(pkg.openzworkRelease.cliArchives, true);
+  assert.deepEqual(
+    cliReleaseAssets(pkg)
+      .map(({ platform }) => platform)
+      .sort(),
+    ["linux-amd64", "macos-arm64", "windows-amd64"],
   );
+  assert.deepEqual(
+    job.strategy.matrix.include.map(({ platform }) => platform),
+    cliReleaseAssets(pkg).map(({ platform }) => platform),
+  );
+  assert.equal(job.steps[0].with.ref, steps[0].with.ref);
+  assert.equal(job.env.RELEASE_COMMIT, workflow.jobs.installer.env.RELEASE_COMMIT);
+  assert.equal(script("Verify release source", job.steps), script("Verify release source"));
   const runs = job.steps.map((step) => step.run ?? "").join("\n");
   assert.match(runs, /pnpm build:sea:prepare/);
   // 下载基地址由显式解析步骤提供，不再直接把 dispatch 输入塞进构建命令（push/tag 无该输入）。
   assert.match(runs, /scripts\/agent-node-dist\.mjs/);
   assert.match(runs, /pnpm build:zcode --base-url "\$AGENT_DIST_BASE_URL"/);
+  assert.match(runs, /pnpm build:zcode --archive-only /);
   assert.doesNotMatch(
     runs,
     /pnpm build:zcode --base-url "\$\{\{ inputs\.zcode_dist_base_url \}\}"/,
@@ -559,12 +610,16 @@ test("agent node dist job builds and verifies the independent distribution", () 
   assert.match(runs, /scripts\/verify-agent-node-dist\.mjs/);
   assert.match(runs, /--release-root "dist\/zcode\/releases\/\$VERSION" --version "\$VERSION"/);
   assert.match(runs, /AGENT-DIST-REPORT\.json/);
+  const verify = job.steps.findIndex((step) => step.run?.includes("zcode-distribution-smoke.mjs"));
+  assert.ok(verify >= 0);
   // 实际交付物留档：tarball 与 sha256 进 artifact，不只上传报告。
-  const upload = job.steps.find((step) => step.uses?.startsWith("actions/upload-artifact"));
+  const upload = job.steps[verify + 1];
+  assert.match(upload.uses, /^actions\/upload-artifact@/);
+  assert.doesNotMatch(upload.if, /always\(/);
   assert.equal(upload.with["if-no-files-found"], "error");
-  assert.match(upload.with.path, /zcode-\*\.tar\.gz/);
-  assert.match(upload.with.path, /sha256\.txt/);
-  assert.match(upload.with.path, /AGENT-DIST-MANIFEST\.json/);
+  assert.equal(upload.with.path, "dist/agent-node-dist/");
+  assert.match(job.steps[verify].run, /cp .*sha256\.txt/);
+  assert.match(job.steps[verify].run, /releaseRoot: 'dist\/agent-node-dist'/);
 });
 
 test("agent dist base URL resolution requires an explicit source per event", async () => {

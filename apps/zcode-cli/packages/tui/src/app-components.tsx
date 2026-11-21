@@ -198,8 +198,10 @@ export function actionPanelContentWidthForTerminal(
 
 export function LoginRequiredPanel({
   copy = DEFAULT_TUI_COPY,
+  providerConfigPath,
 }: {
   copy?: TuiCopy;
+  providerConfigPath?: string;
 } = {}): React.ReactElement {
   return h(
     "box",
@@ -209,8 +211,10 @@ export function LoginRequiredPanel({
         backgroundColor: palette.panel,
         border: true,
         borderColor: palette.warning,
+        // OpenZWork(OZ-C001)：中文和配置路径按可用宽度换行，提示框随内容增高。
+        flexShrink: 0,
         flexDirection: "column",
-        height: 5,
+        minHeight: 5,
         marginBottom: 1,
         paddingLeft: 1,
         paddingRight: 1,
@@ -218,6 +222,7 @@ export function LoginRequiredPanel({
       },
     },
     h("text", { style: { fg: palette.warning } }, copy.loginRequired.message),
+    providerConfigPath ? h("text", { style: { fg: palette.text, wrapMode: "char" } }, providerConfigPath) : null,
     h("text", { style: { fg: palette.muted } }, copy.loginRequired.help),
   );
 }

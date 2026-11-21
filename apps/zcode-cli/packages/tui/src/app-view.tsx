@@ -215,6 +215,7 @@ export function AppView(props: {
               fileMention: props.fileMention,
               inputCursorToEndVersion: props.inputCursorToEndVersion,
               loginRequired: props.loginRequired,
+              providerConfigPath: props.options.providerConfigPath,
               mode: props.mode,
               modeOptions: props.modeOptions,
               modeSelection: props.modeSelection,
@@ -246,6 +247,7 @@ export function ComposerInputArea(props: {
   fileMention?: FileMentionState;
   inputCursorToEndVersion: number;
   loginRequired: boolean;
+  providerConfigPath?: string;
   mode: string;
   modeOptions: readonly TuiModeOption[];
   modeSelection?: ModeCommandSelectionState;
@@ -263,7 +265,7 @@ export function ComposerInputArea(props: {
   return h(
     React.Fragment,
     null,
-    props.loginRequired ? h(LoginRequiredPanel, { copy: props.copy }) : null,
+    props.loginRequired ? h(LoginRequiredPanel, { copy: props.copy, providerConfigPath: props.providerConfigPath }) : null,
     props.fileMention
       ? h(FileMentionPanel, {
           contentWidth: props.contentWidth,

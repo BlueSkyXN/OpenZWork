@@ -86,7 +86,9 @@ export const runTuiCommand = async (
         },
         locale: startupLocale,
         developerMode,
-        version,
+        // OpenZWork(OZ-C001)：模型与协议仍使用 Agent 版本，终端标题使用发行版本。
+        version: deps.distributionVersion ?? version,
+        providerConfigPath: env.ZCODE_PERSONAL_PROVIDER_CONFIG_FILE,
         workspaceDirectory,
         noColor: options.noColor,
         readClipboardImage: deps.readClipboardImage ?? createNodeClipboardImageReader(),

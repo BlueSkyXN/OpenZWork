@@ -18,6 +18,10 @@ import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
+import { cliRuntimeTargets } from "./release-workflows.mjs";
+import { tarExtractArgs, tarSupportsForceLocal } from "./zcode-distribution/assets.mjs";
+import { verifyPlatformRuntime } from "./zcode-distribution/platform-archive-openzwork.mjs";
+
 const exec = promisify(execFile);
 
 export const FORBIDDEN_AGENT_MARKERS = [
@@ -28,7 +32,14 @@ export const FORBIDDEN_AGENT_MARKERS = [
 
 // tarball 顶层目录名与必备结构（F4 解包核验口径）。
 const PACKAGE_DIR = "zcode";
-const REQUIRED_ENTRIES = ["agent/zcode.cjs", "package.json", "server", "web"];
+const REQUIRED_ENTRIES = [
+  "bin/zcode.mjs",
+  "agent/zcode.cjs",
+  "agent/node_modules/@zcode/tui/dist/index.js",
+  "package.json",
+  "server",
+  "web",
+];
 
 async function sha256(path) {
   const hash = createHash("sha256");
@@ -49,6 +60,7 @@ function countOccurrences(haystack, needle) {
 export async function verifyAgentNodeDist({
   tarball,
   expectedVersion = "",
+  expectedPlatform,
   forbiddenMarkers = FORBIDDEN_AGENT_MARKERS,
   keepWorkspace = false,
 }) {
@@ -56,7 +68,10 @@ export async function verifyAgentNodeDist({
   const tarballSha256 = await sha256(tarball);
   const workspace = await mkdtemp(join(tmpdir(), "openzwork-agent-dist-"));
   try {
-    await exec("tar", ["-xzf", resolve(tarball), "-C", workspace]);
+    const forceLocal = await tarSupportsForceLocal();
+    await exec("tar", tarExtractArgs({ archive: resolve(tarball), forceLocal }), {
+      cwd: workspace,
+    });
     const root = join(workspace, PACKAGE_DIR);
     // 用 fs.access 而非 `test -e`：repo-scripts 在 macOS/Windows/Linux 三平台运行，
     // 命令行的 test 不是 Windows shell 内建。
@@ -74,6 +89,12 @@ export async function verifyAgentNodeDist({
     const pkg = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
     if (expectedVersion && pkg.version !== expectedVersion)
       failures.push(`packaged version ${pkg.version} != ${expectedVersion}`);
+    if (expectedPlatform) {
+      const target = cliRuntimeTargets[expectedPlatform];
+      if (!target || pkg.runtimeTarget !== target)
+        failures.push(`Package target ${pkg.runtimeTarget} does not match ${expectedPlatform}`);
+      if (target) failures.push(...(await verifyPlatformRuntime(root, target)));
+    }
     const agent = await readFile(join(root, "agent", "zcode.cjs"), "utf8");
     const forbidden = {};
     for (const marker of forbiddenMarkers) {
@@ -92,6 +113,7 @@ export async function verifyAgentNodeDist({
       dataRootHits,
       forbiddenMarkers: forbidden,
       requiredEntries: REQUIRED_ENTRIES,
+      runtimeTarget: pkg.runtimeTarget,
       ok: failures.length === 0,
       failures,
     };
@@ -110,6 +132,8 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       if (arg === "--tarball" || arg.startsWith("--tarball=")) options.tarball = value;
       else if (arg === "--expected-version" || arg.startsWith("--expected-version="))
         options.expectedVersion = value;
+      else if (arg === "--expected-platform" || arg.startsWith("--expected-platform="))
+        options.expectedPlatform = value;
       else if (arg === "--report" || arg.startsWith("--report=")) options.report = value;
     }
     return options;

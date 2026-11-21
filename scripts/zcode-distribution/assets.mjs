@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { once } from "node:events";
 import { chmod, cp, mkdir, readdir, readFile, rm, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, relative, resolve, sep } from "node:path";
@@ -10,8 +12,93 @@ import {
   bundledSkillPackRequiredPaths,
   bundledSkillPackSkillsDirectory,
 } from "../../apps/zcode-cli/packages/cli/scripts/sea-bundled-skill-assets.mjs";
+import { stagePlatformPty } from "./platform-archive-openzwork.mjs";
+import { promisify } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
+
 const root = resolve(import.meta.dirname, "../..");
 const readJson = async (file) => JSON.parse(await readFile(file, "utf8"));
+
+const execTarVersion = promisify(execFile);
+
+function forceLocalTarArgs(forceLocal, platform) {
+  return forceLocal ?? platform === "win32" ? ["--force-local"] : [];
+}
+
+export async function tarSupportsForceLocal({
+  execVersion = execTarVersion,
+  platform = process.platform,
+} = {}) {
+  if (platform !== "win32") return false;
+  const { stdout } = await execVersion("tar", ["--version"]);
+  return stdout.includes("GNU tar");
+}
+
+export function tarCreateArgs({
+  tarball,
+  packageParent,
+  packageDirName,
+  forceLocal,
+  platform = process.platform,
+}) {
+  // Windows GNU tar 会把 "D:\..." 的盘符当作远程主机，必须显式按本地文件处理。
+  return [
+    ...forceLocalTarArgs(forceLocal, platform),
+    "--exclude",
+    "._*",
+    "--exclude",
+    ".DS_Store",
+    "-czf",
+    tarball,
+    "-C",
+    packageParent,
+    packageDirName,
+  ];
+}
+
+export function tarExtractArgs({ archive, forceLocal, platform = process.platform }) {
+  return [...forceLocalTarArgs(forceLocal, platform), "-xzf", archive];
+}
+
+// OpenZWork(OZ-F011): Windows 递归删除 ConPTY 锁定目录时可能无限等待。
+export function shouldSkipSmokeCleanup({
+  platform = process.platform,
+  conptyLoaded = false,
+} = {}) {
+  return conptyLoaded && platform === "win32";
+}
+
+export function didTuiExitSuccessfully(event, platform = process.platform) {
+  return event != null && (event.exitCode === 0 ||
+    (platform === "win32" && event.exitCode === undefined));
+}
+
+export async function closeSmokeWebSocket(socket, timeoutMs = 2000) {
+  const closed = once(socket, "close");
+  socket.close();
+  await Promise.race([
+    closed,
+    delay(timeoutMs).then(async () => {
+      socket.terminate();
+      await closed;
+    }),
+  ]);
+}
+
+export async function withSmokeTimeout(promise, label, timeoutMs, diagnostic = () => "") {
+  let timeout;
+  const deadline = new Promise((_, reject) => {
+    timeout = setTimeout(
+      () => reject(new Error(`${label} timed out:\n${diagnostic()}`)),
+      timeoutMs,
+    );
+  });
+  try {
+    return await Promise.race([promise, deadline]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 const runtimePackageNames = [
   "@hono/node-server",
@@ -57,11 +144,11 @@ export async function stageBundledSkills(
   await validate(targetRoot);
 }
 
-export async function stageTuiRuntime(packageRoot) {
+export async function stageTuiRuntime(packageRoot, targets = supportedTargets) {
   const stagingDirectory = resolve(packageRoot, "../tui-staging");
   const copied = new Map();
   try {
-    for (const target of supportedTargets) {
+    for (const target of targets) {
       const { assets, manifest } = await collectSeaTuiAssets({
         root: resolve(root, "apps/zcode-cli"),
         stagingDirectory,
@@ -98,7 +185,9 @@ function shouldCopyPackagePath(packageDirectory, source) {
     return true;
   }
   const parts = rel.split(sep);
-  return !parts.includes("node_modules") && !parts.includes(".git");
+  // OpenZWork(OZ-F011)：可选 native 依赖也可能在安装时留下调试符号与编译中间文件。
+  return !parts.includes("node_modules") && !parts.includes(".git") &&
+    !/\.(?:o|obj|pdb)$/i.test(parts.at(-1));
 }
 
 async function resolvePackageJsonPath(requireFrom, packageName) {
@@ -181,10 +270,17 @@ async function copyRuntimePackageTree({ packageName, packageRoot, requireFrom, s
   }
 }
 
-export async function copyRuntimeNodeModules(packageRoot) {
+export async function copyRuntimeNodeModules(packageRoot, runtimeTarget) {
   const requireFromServer = createRequire(resolve(root, "packages", "server", "package.json"));
   const seen = new Set();
   for (const packageName of runtimePackageNames) {
+    // OpenZWork(OZ-F011)：平台附件只复制本平台 PTY 的运行文件。
+    if (runtimeTarget && packageName === "node-pty") {
+      const source = dirname(await resolvePackageJsonPath(requireFromServer, packageName));
+      await stagePlatformPty(source, resolve(packageRoot, "node_modules/node-pty"), runtimeTarget);
+      seen.add(packageName);
+      continue;
+    }
     await copyRuntimePackageTree({
       packageName,
       packageRoot,

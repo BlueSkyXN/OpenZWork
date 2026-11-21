@@ -4,6 +4,20 @@ export const RELEASE_WORKFLOWS = [
   ["installers", "Installers", "installers.yml"],
 ];
 
+export const cliRuntimeTargets = {
+  "macos-arm64": "darwin-arm64",
+  "linux-amd64": "linux-x64",
+  "windows-amd64": "win32-x64",
+};
+
+export function cliReleaseAssets({ version, openzworkRelease }) {
+  if (openzworkRelease?.cliArchives !== true) return [];
+  return Object.keys(cliRuntimeTargets).map((platform) => ({
+    platform,
+    name: `OpenZWork-CLI-${version}-${platform}.tar.gz`,
+  }));
+}
+
 export function matchesReleaseWorkflow(run, name, tag) {
   const definition = RELEASE_WORKFLOWS.find(([, expected]) => expected === name);
   if (!definition || run.path !== `.github/workflows/${definition[2]}`) return false;

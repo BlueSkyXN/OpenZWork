@@ -16,6 +16,9 @@ import { isProtocolServerInvocation } from "./arguments.js";
 void main();
 
 async function main(): Promise<void> {
+  // OpenZWork(OZ-C001)：发行器只向当前进程交付展示版本，避免它进入嵌套 CLI 或模型请求。
+  const distributionVersion = process.env.OPENZWORK_CLI_RELEASE_VERSION;
+  delete process.env.OPENZWORK_CLI_RELEASE_VERSION;
   const argv = process.argv.slice(2);
   const isStorageCommand =
     argv[0] === STORAGE_MIGRATION_COMMAND || argv[0] === STORAGE_RELOCATION_COMMAND;
@@ -81,6 +84,7 @@ async function main(): Promise<void> {
     const { run } = await import("./run.js");
     lifecycle?.signal.throwIfAborted();
     const exitCode = await run(context, {
+      distributionVersion,
       protocolLifecycle: lifecycle,
       protocolInput: lifecycle?.input,
     });

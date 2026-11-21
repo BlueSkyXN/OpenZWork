@@ -84,6 +84,9 @@ After changing Agent source code, run `pnpm --filter @zcode/cli... build` and re
 
 ### OpenZWork CLI distribution
 
+<!-- OpenZWork(OZ-F011): GitHub Releases provide standalone CLI archives. -->
+For versions with an `OpenZWork-CLI-*.tar.gz` attachment on [Releases](https://github.com/BlueSkyXN/OpenZWork/releases), extract the archive for macOS arm64, Linux x64 (glibc), or Windows x64 and install Node.js 24.14.0. From your project directory, run `/path/to/extracted/zcode/zcode` or, in PowerShell, `& "C:\path to extracted\zcode\zcode.cmd"`. To set up a model, follow the [personal configuration example](apps/zcode-cli/docs/usage/03-config.md) or add a provider in the desktop model settings.
+
 The command-line distribution includes the TUI, Web client, and Agent behind one `zcode` command. With no arguments it starts the TUI; a leading `--web` starts Web mode; all other arguments go to the existing Agent CLI. Both modes run locally without Electron.
 
 ```bash
@@ -164,7 +167,7 @@ The default target is macOS arm64, and the default output directory is `packages
 
 Run `pnpm build:zcode` to build the CLI/TUI, backend, and Web client, collect the TUI native libraries, workers, and runtime dependencies, then assemble the distribution. Running the distribution still requires Node.js; use the version specified in `mise.toml`.
 
-Before packaging, set the download base URL with `ZCODE_DIST_BASE_URL` in `.env`, `.env.local`, or the process environment, or pass it through `--base-url`. The URL below is a placeholder; replace it with your hosting URL when publishing:
+To generate the installer script and version index, set the real download base URL with `ZCODE_DIST_BASE_URL` in `.env`, `.env.local`, or the process environment, or pass it through `--base-url`. Use `--archive-only` to build the runtime archive alone.
 
 ```bash
 pnpm build:zcode --base-url https://downloads.example.com/zcode/
@@ -174,6 +177,9 @@ pnpm build:zcode
 
 # Repackage existing Agent, backend, and Web build outputs
 pnpm build:zcode --skip-build
+
+# Build the extractable runtime archive and checksum in dist/zcode-archive/
+pnpm build:zcode --archive-only
 
 # Show options for the version, output directory, and more
 pnpm build:zcode --help

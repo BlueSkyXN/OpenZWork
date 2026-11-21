@@ -4,6 +4,9 @@
   "private": true,
   "license": "GPL-3.0",
   "type": "module",
+  "openzworkRelease": {
+    "cliArchives": true
+  },
   "scripts": {
     "dev:web": "concurrently -k -n server,web -c blue,green \"pnpm --filter @zcode/server dev\" \"pnpm --filter @zcode/web dev\"",
     "dev:docs": "pnpm --filter @zcode/dev-docs dev",

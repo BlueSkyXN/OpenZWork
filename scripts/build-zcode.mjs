@@ -10,7 +10,12 @@ import {
   patchNodePtyPrebuilds,
   stageTuiRuntime,
   stageBundledSkills,
+  tarSupportsForceLocal,
+  tarCreateArgs,
 } from "./zcode-distribution/assets.mjs";
+import { hostTarget } from "../apps/zcode-cli/packages/cli/scripts/sea-targets.mjs";
+import { OPENZWORK_APP_NAME } from "../packages/shared/src/productIdentity.ts";
+import { runCommand } from "./spawn-command.mjs";
 import { installScriptSource } from "./zcode-distribution/installer.mjs";
 
 const root = resolve(import.meta.dirname, "..");
@@ -29,6 +34,7 @@ Options:
   --version <text>    Release version. Defaults to root package.json version.
   --out-dir <path>    Output directory. Defaults to dist/zcode.
   --base-url <url>    Default install.sh download base URL.
+  --archive-only     Write the current platform runtime archive and checksum to dist/zcode-archive without an install script.
   --help, -h          Show this help.
 `;
 
@@ -51,9 +57,10 @@ function readArgValue(argv, arg, index) {
 
 function parseArgs(argv) {
   const options = {
+    archiveOnly: false,
     baseUrl: defaultBaseUrl,
     help: false,
-    outDir: defaultOutDir,
+    outDir: undefined,
     skipBuild: false,
     version: undefined,
   };
@@ -69,6 +76,11 @@ function parseArgs(argv) {
     }
     if (arg === "--skip-build") {
       options.skipBuild = true;
+      continue;
+    }
+    // OpenZWork(OZ-F011): GitHub Release 直接分发运行包，无需为安装脚本配置下载根。
+    if (arg === "--archive-only") {
+      options.archiveOnly = true;
       continue;
     }
     if (arg === "--version" || arg.startsWith("--version=")) {
@@ -101,6 +113,7 @@ function commandText(command, args) {
 
 function run(command, args, options = {}) {
   console.log(`[zcode] ${commandText(command, args)}`);
+  if (command === "pnpm") return runCommand(command, args, { cwd: root, ...options });
   const result = spawnSync(command, args, {
     cwd: root,
     stdio: "inherit",
@@ -155,7 +168,7 @@ async function buildOutputs(skipBuild) {
   run("pnpm", ["--filter", "@zcode/web", "build"]);
 }
 
-async function stageZCodePackage({ packageRoot, version }) {
+async function stageZCodePackage({ packageRoot, version, platformArchive }) {
   const webDist = resolve(root, "packages", "web", "dist");
   const serverDist = resolve(root, "packages", "server", "dist");
   const agentBundle = resolve(root, "apps", "zcode-cli", "packages", "cli", "dist", "zcode.cjs");
@@ -194,9 +207,11 @@ async function stageZCodePackage({ packageRoot, version }) {
   await chmod(resolve(packageRoot, "agent", "zcode.cjs"), 0o755);
 
   await stageBundledSkills(packageRoot);
-  await stageTuiRuntime(packageRoot);
-  await copyRuntimeNodeModules(packageRoot);
-  await patchNodePtyPrebuilds(packageRoot);
+  // OpenZWork(OZ-F011)：Release 按主机原生 ABI 打包，自托管下载目录沿用原布局。
+  const runtimeTarget = platformArchive ? process.platform + "-" + process.arch : undefined;
+  await stageTuiRuntime(packageRoot, platformArchive ? [hostTarget()] : undefined);
+  await copyRuntimeNodeModules(packageRoot, runtimeTarget);
+  if (!platformArchive) await patchNodePtyPrebuilds(packageRoot);
 
   await mkdir(resolve(packageRoot, "bin"), {
     recursive: true,
@@ -204,12 +219,16 @@ async function stageZCodePackage({ packageRoot, version }) {
   const runner = resolve(packageRoot, "bin", "zcode.mjs");
   await cp(resolve(root, "scripts/zcode-distribution/runner.mjs"), runner);
   await chmod(runner, 0o755);
+  await writeFile(resolve(packageRoot, "zcode"), '#!/usr/bin/env node\nimport "./bin/zcode.mjs";\n', { mode: 0o755 });
+  await writeFile(resolve(packageRoot, "zcode.cmd"), '@echo off\r\nnode "%~dp0bin\\zcode.mjs" %*\r\nexit /b %errorlevel%\r\n');
 
   await writeFile(
     resolve(packageRoot, "package.json"),
     JSON.stringify(
       {
         name: "zcode-runtime",
+        productName: OPENZWORK_APP_NAME,
+        runtimeTarget,
         private: true,
         type: "module",
         version,
@@ -228,13 +247,16 @@ async function createTarball({ packageParent, releaseDir, tarballName }) {
   await rm(tarball, {
     force: true,
   });
-  run("tar", ["-czf", tarball, "-C", packageParent, packageDirName]);
+  const forceLocal = await tarSupportsForceLocal();
+  run("tar", tarCreateArgs({ tarball, packageParent, packageDirName, forceLocal }), {
+    env: { ...process.env, COPYFILE_DISABLE: "1" },
+  });
   return tarball;
 }
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  if (!options.help && !options.baseUrl)
+  if (!options.help && !options.archiveOnly && !options.baseUrl)
     throw new Error("Configure ZCODE_DIST_BASE_URL in .env or pass --base-url");
   if (options.help) {
     console.log(usage);
@@ -249,7 +271,8 @@ async function main() {
 
   await buildOutputs(options.skipBuild);
 
-  const outDir = options.outDir;
+  const outDir =
+    options.outDir ?? (options.archiveOnly ? resolve(root, "dist/zcode-archive") : defaultOutDir);
   const workDir = resolve(outDir, ".work");
   const packageParent = workDir;
   const packageRoot = resolve(packageParent, packageDirName);
@@ -263,6 +286,7 @@ async function main() {
   await stageZCodePackage({
     packageRoot,
     version,
+    platformArchive: options.archiveOnly,
   });
   const tarball = await createTarball({
     packageParent,
@@ -272,24 +296,26 @@ async function main() {
   const sha256 = await sha256File(tarball);
   await writeFile(resolve(releaseDir, "sha256.txt"), `${sha256}  ${tarballName}\n`);
 
-  await writeFile(
-    resolve(outDir, "latest.json"),
-    JSON.stringify(
-      {
-        baseUrl: options.baseUrl,
-        createdAt: new Date().toISOString(),
-        name: "zcode",
-        sha256,
-        tarball: tarballName,
-        version,
-      },
-      null,
-      2,
-    ),
-  );
-  const installScript = resolve(outDir, "install.sh");
-  await writeFile(installScript, installScriptSource(options.baseUrl));
-  await chmod(installScript, 0o755);
+  if (!options.archiveOnly) {
+    await writeFile(
+      resolve(outDir, "latest.json"),
+      JSON.stringify(
+        {
+          baseUrl: options.baseUrl,
+          createdAt: new Date().toISOString(),
+          name: "zcode",
+          sha256,
+          tarball: tarballName,
+          version,
+        },
+        null,
+        2,
+      ),
+    );
+    const installScript = resolve(outDir, "install.sh");
+    await writeFile(installScript, installScriptSource(options.baseUrl));
+    await chmod(installScript, 0o755);
+  }
   await rm(workDir, {
     force: true,
     recursive: true,

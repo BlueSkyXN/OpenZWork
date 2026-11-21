@@ -1,3 +1,4 @@
+import { OPENZWORK_APP_NAME } from "@zcode/shared";
 import React from "react";
 import { palette } from "./app-model.js";
 import { ShimmerText, useShimmerFrame } from "./app-motion.js";
@@ -8,14 +9,8 @@ const h = React.createElement as (
   ...children: React.ReactNode[]
 ) => React.ReactElement;
 
-export const ZCODE_LOGO_LINES = [
-  "███████╗ ██████╗ ██████╗ ██████╗ ███████╗",
-  "   ███╔╝██╔════╝██╔═══██╗██╔══██╗██╔════╝",
-  "  ███╔╝ ██║     ██║   ██║██║  ██║█████╗  ",
-  " ███╔╝  ██║     ██║   ██║██║  ██║██╔══╝  ",
-  "███████╗╚██████╗╚██████╔╝██████╔╝███████╗",
-  "╚══════╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝",
-] as const;
+// OpenZWork(OZ-C001)：窄终端也使用与桌面一致的单行产品名。
+export const ZCODE_LOGO_LINES = [OPENZWORK_APP_NAME] as const;
 
 const EMPTY_TRANSCRIPT_LOGO_MIN_HEIGHT = ZCODE_LOGO_LINES.length;
 

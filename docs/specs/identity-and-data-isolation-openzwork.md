@@ -267,3 +267,9 @@ E2E_PROVIDER_REPLAY_FIXTURE_PATH=packages/desktop/test/e2e/fixtures/upstream/com
   的入口；其他文件或符号链接必须保留并报错，用户可选择已有 `ZCODE_DIST_BIN_DIR` 安装位置。
 - 数据根迁移由设置服务保存计划，完整重启后、Host/Agent/调度器启动前执行。复制范围、失败恢复
   和验收见 [数据目录说明](../desktop/configurable-data-directory-openzwork.md)。Main 只编排启动，不修改会话事实。
+
+## 独立 CLI、终端与 Web
+
+独立包的产品名使用 `OPENZWORK_APP_NAME`。发布启动器提供包内发行号，帮助和宽屏侧栏展示产品身份。独立包的 `--version` 输出发行号，`version` 和诊断中的 Agent 版本使用 CLI 构建号。中英文帮助均说明 TUI、单次 prompt、Web 和 stdio 服务的入口。命令示例使用实际名称 `zcode`。
+
+TUI 启动画面和空会话使用单行产品名。无可选模型时显示当前进程实际采用的个人模型配置路径与配置方法，`/model` 的空列表按当前界面语言提示。终端分栏或使用中文时，路径可折行，提示保持在输入框上方。发行验收分开断言输入就绪和产品身份。Web 启动消息、初始页面和连接后的标签页使用同一品牌。

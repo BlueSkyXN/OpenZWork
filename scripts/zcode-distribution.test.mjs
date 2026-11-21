@@ -21,11 +21,11 @@ async function fixture(t) {
     await mkdir(join(root, name), { recursive: true });
   }
   await cp(runnerSource, join(root, "bin/zcode.mjs"));
-  await writeFile(join(root, "package.json"), JSON.stringify({ type: "module", version: "1.2.3" }));
+  await writeFile(join(root, "package.json"), JSON.stringify({ type: "module", productName: "OpenZWork", version: "1.2.3" }));
   await writeFile(
     join(root, "agent/zcode.cjs"),
     `
-process.stdout.write(JSON.stringify({ argv: process.argv.slice(2), entry: process.argv[1], cwd: process.cwd() }));
+process.stdout.write(JSON.stringify({ release: process.env.OPENZWORK_CLI_RELEASE_VERSION, argv: process.argv.slice(2), entry: process.argv[1], cwd: process.cwd() }));
 process.exitCode = Number(process.env.FIXTURE_EXIT_CODE || 0);
 `,
   );
@@ -39,6 +39,8 @@ await writeFile(process.env.FIXTURE_WEB_RESULT, JSON.stringify({
   command: process.env.ZCODE_AGENT_SERVER_COMMAND, args: JSON.parse(process.env.ZCODE_AGENT_SERVER_ARGS_JSON),
   token: process.env.ZCODE_SERVER_AUTH_TOKEN,
 }));
+process.send?.({ type: 'web-listening', port: Number(process.env.PORT) });
+process.on('disconnect', () => process.exit(0));
 process.on('SIGTERM', () => process.exit(0));
 setInterval(() => {}, 1000);
 `,
@@ -51,6 +53,7 @@ test("default launch and CLI arguments reuse the Agent entry without starting We
   for (const args of [[], ["tui"], ["--prompt", "--web"], ["app-server", "--stdio"]]) {
     const result = await exec(process.execPath, [runner, ...args], { cwd: directory });
     assert.deepEqual(JSON.parse(result.stdout), {
+      release: "1.2.3",
       argv: args,
       entry: join(root, "agent/zcode.cjs"),
       cwd: directory,
@@ -66,7 +69,7 @@ test("help exposes Web mode and preserves CLI help; version uses the distributio
   const { runner } = await fixture(t);
   assert.equal((await exec(process.execPath, [runner, "--version"])).stdout.trim(), "1.2.3");
   const help = (await exec(process.execPath, [runner, "--help"])).stdout;
-  assert.match(help, /zcode --web/);
+  assert.match(help, /"release":"1.2.3"/);
   assert.match(help, /"argv":\["--help"\]/);
   const webHelp = (await exec(process.execPath, [runner, "--web", "--help"])).stdout;
   assert.match(webHelp, /--workspace/);
