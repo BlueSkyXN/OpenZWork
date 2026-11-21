@@ -34,6 +34,13 @@ const ENV_PREVIEW = { ZCODE_ENV: "test" };
 const ENV_PRODUCTION = { ZCODE_ENV: "production" };
 const ENV_PRODUCTION_PREVIEW_IDENTITY = { ZCODE_ENV: "production", ZCODE_PREVIEW_IDENTITY: "1" };
 
+// 合成项目与包内元数据共用固定版本，避免仓库升版让 PK01 夹具版本失配。
+const FIXTURE_VERSION = {
+  appVersion: "1.2.3+openzwork.7",
+  upstreamVersion: "1.2.3",
+  releaseRevision: "7",
+};
+
 async function temp() {
   return mkdtemp(join(tmpdir(), "verify-desktop-package-test-"));
 }
@@ -41,12 +48,7 @@ async function temp() {
 /** 合成最小桌面包：真实 asar（真实 @electron/asar 打包）+ 版本元数据 + 资源件。 */
 async function syntheticPackage(
   root,
-  {
-    buildCommitId = "a1b2c3d4",
-    version = "3.18.2+openzwork.1",
-    flavor = "production",
-    platform = "macos-arm64",
-  } = {},
+  { buildCommitId = "a1b2c3d4", flavor = "production", platform = "macos-arm64" } = {},
 ) {
   // 目录名必须与被核验身份的 productName 一致，否则脚本解析不到包内路径。
   const productName = desktopProductIdentities[flavor].productName;
@@ -73,16 +75,11 @@ async function syntheticPackage(
   }
   await writeFile(
     join(staging, "package.json"),
-    JSON.stringify({ version, zcodeProductFlavor: flavor }),
+    JSON.stringify({ version: FIXTURE_VERSION.appVersion, zcodeProductFlavor: flavor }),
   );
   await writeFile(
     join(staging, "out/metadata/build-meta.json"),
-    JSON.stringify({
-      appVersion: version,
-      upstreamVersion: "3.18.2",
-      releaseRevision: "1",
-      buildCommitId,
-    }),
+    JSON.stringify({ ...FIXTURE_VERSION, buildCommitId }),
   );
   await writeFile(
     join(staging, "out/main/index.js"),
@@ -119,8 +116,10 @@ async function syntheticPackage(
 
 async function projectRoot(packageRoot) {
   const root = await temp();
-  // verifyDesktopPackage 只读根 package.json 版本与 desktop 包结构；复制真实根清单最小化。
-  await cp(join(repoRoot, "package.json"), join(root, "package.json"));
+  await writeFile(
+    join(root, "package.json"),
+    JSON.stringify({ version: FIXTURE_VERSION.appVersion }),
+  );
   await mkdir(join(root, "packages/desktop/dist-pkg"), { recursive: true });
   // 用 Node fs API 而非 `cp -R`：repo-scripts 在 macOS/Windows/Linux 三平台运行。
   await cp(packageRoot, join(root, "packages/desktop/dist-pkg"), { recursive: true });
