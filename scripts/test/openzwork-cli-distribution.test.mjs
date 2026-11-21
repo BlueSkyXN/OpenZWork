@@ -108,9 +108,10 @@ test("CLI tar commands follow the selected Windows tar implementation", async ()
 });
 
 test("CLI smoke skips cleanup only after Windows loads ConPTY", () => {
-  assert.equal(shouldSkipSmokeCleanup("win32"), true);
-  assert.equal(shouldSkipSmokeCleanup("linux"), false);
-  assert.equal(shouldSkipSmokeCleanup("darwin"), false);
+  assert.equal(shouldSkipSmokeCleanup({ platform: "win32", conptyLoaded: false }), false);
+  assert.equal(shouldSkipSmokeCleanup({ platform: "win32", conptyLoaded: true }), true);
+  assert.equal(shouldSkipSmokeCleanup({ platform: "linux", conptyLoaded: true }), false);
+  assert.equal(shouldSkipSmokeCleanup({ platform: "darwin", conptyLoaded: true }), false);
 });
 
 test("CLI smoke accepts a ConPTY exit without a numeric exit code", () => {

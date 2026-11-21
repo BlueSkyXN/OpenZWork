@@ -40,6 +40,7 @@ const env = {
 let web;
 let terminal;
 let cleanupError;
+let conptyLoaded = false;
 try {
   const forceLocal = await tarSupportsForceLocal();
   await exec("tar", tarExtractArgs({ archive: resolve(archive), forceLocal }), { cwd: directory });
@@ -62,6 +63,7 @@ try {
   assert.equal(diagnostics.cli.version, (await exec(process.execPath, [runner, "version"], { cwd: workspace, env })).stdout.trim());
   const require = createRequire(join(root, "package.json"));
   const pty = require("node-pty");
+  conptyLoaded = true;
   const runtimeCheck = join(root, "agent/check-tui.mjs");
   await writeFile(
     runtimeCheck,
@@ -195,7 +197,7 @@ try {
 } finally {
   terminal?.kill();
   web?.kill();
-  if (!shouldSkipSmokeCleanup()) {
+  if (!shouldSkipSmokeCleanup({ conptyLoaded })) {
     try {
       await rm(directory, { recursive: true, force: true });
     } catch (error) {
@@ -205,7 +207,7 @@ try {
 }
 if (cleanupError) throw cleanupError;
 // Windows ConPTY native handle 会维持事件循环；验收成功后显式收敛 job。
-if (shouldSkipSmokeCleanup()) process.exit(0);
+if (shouldSkipSmokeCleanup({ conptyLoaded })) process.exit(0);
 
 async function until(check, label, diagnostic) {
   const deadline = Date.now() + 20000;
