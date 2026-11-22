@@ -1,6 +1,6 @@
 {
   "name": "zcode",
-  "version": "3.18.2+openzwork.3",
+  "version": "3.18.2+openzwork.4",
   "private": true,
   "license": "GPL-3.0",
   "type": "module",
