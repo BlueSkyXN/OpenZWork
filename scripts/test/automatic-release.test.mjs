@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import timers from "node:timers/promises";
 import { planAutomaticRelease, selectReleaseRuns } from "../automatic-release.mjs";
 import { ensureReleaseDraft, shouldMakeLatest } from "../publish-github-release.mjs";
 
@@ -377,4 +378,80 @@ test("automatic drafts use generated notes and recover lost create responses; ex
       async () => "[[]]",
     ),
   );
+});
+
+test("draft creation waits for a unique matching release without sending another create request", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "openzwork-draft-readback-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const draft = { id: 42, tag_name: tag, draft: true };
+  const otherRelease = { id: 41, tag_name: "v3.16.2-openzwork", draft: true };
+  const createError = new Error("create response lost");
+  const fullBackoff = [1000, 2000, 4000, 8000];
+  const scenarios = [
+    {
+      name: "successful creation becomes visible later",
+      listings: [[otherRelease], [otherRelease, draft]],
+      waits: [1000],
+    },
+    {
+      name: "lost create response becomes visible later",
+      createError,
+      listings: [[], [otherRelease], [draft]],
+      waits: [1000, 2000],
+    },
+    {
+      name: "missing draft after successful creation gives a replay instruction",
+      listings: [[otherRelease]],
+      waits: fullBackoff,
+      failure: /v3\.16\.3-openzwork.*rerun.*Release/i,
+    },
+    {
+      name: "missing draft after a create error reports the original error",
+      createError,
+      listings: [],
+      waits: fullBackoff,
+      failure: (error) => error === createError,
+    },
+    {
+      name: "duplicate tag matches stop recovery",
+      listings: [[], [draft, { ...draft, id: 43 }]],
+      waits: [1000],
+      failure: /Duplicate release tag/,
+    },
+  ];
+  for (const scenario of scenarios) {
+    await t.test(scenario.name, async (t) => {
+      const wait = t.mock.method(timers, "setTimeout", async () => {});
+      let creates = 0;
+      let readbacks = 0;
+      const gh = async (...args) => {
+        if (args[0] === "api" && args.includes("--slurp")) {
+          return JSON.stringify([creates ? (scenario.listings[readbacks++] ?? []) : []]);
+        }
+        assert.deepEqual(args.slice(0, 2), ["release", "create"]);
+        creates++;
+        if (scenario.createError) throw scenario.createError;
+        return "";
+      };
+      const result = ensureReleaseDraft(
+        {
+          repo,
+          tag,
+          version: "3.16.3",
+          notes: "Reviewed notes",
+          allowCreate: true,
+          notesFile: join(dir, "notes.md"),
+        },
+        gh,
+      );
+      if (scenario.failure) await assert.rejects(result, scenario.failure);
+      else assert.equal(await result, draft.id);
+      assert.equal(creates, 1);
+      assert.equal(readbacks, scenario.waits.length + 1);
+      assert.deepEqual(
+        wait.mock.calls.map((call) => call.arguments[0]),
+        scenario.waits,
+      );
+    });
+  }
 });
