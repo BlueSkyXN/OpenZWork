@@ -66,7 +66,7 @@
 | OZ-F008 | 模型列表拉取与项目用量                                                           | 拉取模型目录、按项目查询用量。                             | [spec](../specs/model-discovery-project-usage-openzwork.md)    |
 | OZ-F009 | Node 发行内置技能资产                                                            | 普通 Node CLI/Web 发行包携带内置技能。                     | [spec](../specs/node-distribution-bundled-skills-openzwork.md) |
 | OZ-F010 | V1 远控连接方式                                                                  | 官方 V1 远控页的多种连接方式与多入口。                     | [spec](../web-remote-control/v1-connection-modes-openzwork.md) |
-| OZ-F011 | OpenZWork 构建与发行流程                                                         | 桌面安装包和独立 CLI 校验，正式 tag 自动发布。             | [发行规范](release/automatic-github-release.md)                |
+| OZ-F011 | OpenZWork 构建与发行流程                                                         | 桌面与 CLI 自动发行。独立 Web 监听前准备凭据。             | [发行规范](release/automatic-github-release.md)                |
 | OZ-F012 | CI 与桌面验证工程                                                                | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。 | [CI 规范](ci/ci-job-orchestration.md)                          |
 | OZ-F013 | 本地内存诊断与 sampler 节拍（`.openzwork/cli` 数据根、节拍恢复；官方上传链裁剪） | v3.18.1 同步                                               |
 | OZ-F014 | 多机配置包                                                                       | 桌面手动迁移七类用户配置，预览后按项导入。                 | [规格](../specs/config-package-openzwork.md)                   |

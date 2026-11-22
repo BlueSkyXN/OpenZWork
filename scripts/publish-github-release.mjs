@@ -6,6 +6,7 @@ import { mkdir, mkdtemp, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { pipeline } from "node:stream/promises";
+import timers from "node:timers/promises";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 import {
@@ -88,6 +89,7 @@ export async function ensureReleaseDraft(
   }
   await writeFile(notesFile, body);
   if (releases.length === 0) {
+    let createError;
     try {
       await gh(
         "release",
@@ -103,12 +105,22 @@ export async function ensureReleaseDraft(
         notesFile,
       );
     } catch (error) {
-      // 创建响应丢失后先回读，避免重试时创建第二份草稿。
-      if ((await list()).length !== 1) throw error;
+      createError = error;
     }
-    releases = await list();
+    // GitHub 的列表可能暂未显示刚创建的草稿。仅回读同一 tag，避免重复创建。
+    for (const delayMs of [0, 1000, 2000, 4000, 8000]) {
+      if (delayMs > 0) await timers.setTimeout(delayMs);
+      releases = await list();
+      if (releases.length > 0) break;
+    }
+    if (releases.length === 0) {
+      if (createError) throw createError;
+      throw new Error(
+        `Release draft for ${tag} is not visible after creation. Rerun the Release workflow for this tag.`,
+      );
+    }
   }
-  assert.equal(releases.length, 1);
+  assert.equal(releases.length, 1, `Duplicate release tag: ${tag}`);
   return releases[0].id;
 }
 
