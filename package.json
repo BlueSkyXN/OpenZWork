@@ -1,6 +1,6 @@
 {
   "name": "zcode",
-  "version": "3.18.2+openzwork.4",
+  "version": "4.0.0+openzwork.1",
   "private": true,
   "license": "GPL-3.0",
   "type": "module",
@@ -34,7 +34,7 @@
     "test:coverage": "vitest run --coverage --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
     "test:unit": "vitest run --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
     "test:ci:core": "vitest run --config vitest.core.config.ts",
-    "test:repo-scripts": "node --test --test-concurrency=1 scripts/test/*.test.mjs",
+    "test:repo-scripts": "node scripts/run-repo-script-tests.mjs --test-concurrency=1 scripts/test/*.test.mjs",
     "test:docker:web-app-gateway": "node scripts/test-web-app-gateway-reset.mjs",
     "build": "pnpm -r build",
     "build:desktop-agent:bytecode": "node scripts/build-desktop-agent-bytecode.mjs",
@@ -62,7 +62,7 @@
     "prepare:remote-assets:linux": "pnpm --filter @zcode/server-cli stage:remote-assets --linux",
     "ci:assert-node": "node scripts/assert-node-version.mjs",
     "doctor:macos-release": "bash scripts/doctor-macos-release-app.sh",
-    "lint": "oxlint && node scripts/architecture/session-control-boundary.mjs",
+    "lint": "oxlint && node scripts/architecture/session-control-boundary.mjs && node scripts/check-document-libreoffice.mjs && node scripts/check-document-python.mjs",
     "lint:fix": "oxlint --fix --fix-suggestions",
     "bootstrap": "node scripts/bootstrap.mjs",
     "bootstrap:with-remote": "node scripts/bootstrap.mjs --with-remote",
@@ -81,6 +81,7 @@
     "db:schema:update": "pnpm --dir apps/zcode-cli exec tsx ../../scripts/check-sqlite-schema.ts --update",
     "provider:regression:report": "tsx apps/zcode-cli/tools/provider-regression/src/report-cli.ts",
     "provider:regression": "pnpm --filter @zcode/bootstrap... build && tsx apps/zcode-cli/tools/provider-regression/src/cli.ts",
+    "test:git-invocation": "node --import tsx --test scripts/test/git-product-invocation.test.ts",
     "test:engineering": "vitest run --project engineering",
     "test:engineering:affected": "node scripts/run-affected-engineering-tests.mjs",
     "test:engineering-tools": "node --test scripts/test/affected-engineering-test-cli.test.mjs scripts/test/pre-push-worktree.test.mjs scripts/test/retired-app-unit-evidence.test.mjs scripts/test/e2e-remote-targets-check.test.mjs",
@@ -98,6 +99,7 @@
     "@tanstack/react-virtual": "^3.13.23",
     "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "^4.1.1",
+    "@zcode/shared": "workspace:*",
     "concurrently": "^9.1.2",
     "conventional-changelog-conventionalcommits": "^9.3.1",
     "conventional-changelog-writer": "^8.4.0",
@@ -115,7 +117,8 @@
     "turbo": "^2.4.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.1",
-    "yaml": "2.9.0"
+    "yaml": "2.9.0",
+    "zod": "4.6.5"
   },
   "peerDependencies": {
     "@tanstack/react-virtual": "^3.13.23"

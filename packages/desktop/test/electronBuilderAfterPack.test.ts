@@ -4,15 +4,26 @@ import { dirname, resolve } from "node:path";
 import { createPackageWithOptions } from "@electron/asar";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-// 此回归只检查最终包的 native 边界；依赖注入的闭包收集有独立工程测试。
+const runCommandMock = vi.fn();
+
+// 此回归只检查最终包的 native 边界与 afterSign 签名校验装配；依赖注入的闭包收集有独立工程测试。
 // asar 读写、真实 afterPack 与资源策略均保持实际实现。
 vi.mock("../scripts/runtime-dependency-closure.mjs", () => ({
   collectRuntimeModuleClosureEntries: () => [],
 }));
+vi.mock("../../../scripts/spawn-command.mjs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../scripts/spawn-command.mjs")>();
+  return {
+    ...actual,
+    runCommand: (...args: Parameters<typeof actual.runCommand>) => runCommandMock(...args),
+  };
+});
 
 const temporaryRoots: string[] = [];
 
 afterEach(async () => {
+  runCommandMock.mockReset();
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.resetModules();
   await Promise.all(
@@ -46,15 +57,21 @@ describe.each([
       await mkdir(dirname(prebuild), { recursive: true });
       await mkdir(resourcesDir, { recursive: true });
       await writeFile(prebuild, "fixture-native-file");
-      // 上游 v3.18.1：win32 afterPack 会校验并登记 installer process helper（CR-01）。
-      // valid 场景需在夹具中放置该 helper；缺失即拒 pack（真实构建由 windows-runtime-host 产出）。
+      // 上游 v3.18.1 / v4.0.0：win32 afterPack 会校验 installer process helper 与 preinstalled entry shim。
+      // valid 场景需在夹具中放置这两个二进制；缺失即拒 pack（真实构建由对应脚本产出）。
       if (os === "win32") {
         const helper = resolve(
           resourcesDir,
           "tools/runtime-host/zcode-installer-process-helper.exe",
         );
+        const preinstalledShim = resolve(
+          resourcesDir,
+          "preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe",
+        );
         await mkdir(dirname(helper), { recursive: true });
+        await mkdir(dirname(preinstalledShim), { recursive: true });
         await writeFile(helper, "fixture-installer-helper");
+        await writeFile(preinstalledShim, "fixture-preinstalled-entry-shim");
       }
 
       if (scenario === "wrong-platform") {
@@ -109,4 +126,47 @@ describe.each([
       }
     },
   );
+});
+
+describe("electron-builder afterSign (win32)", () => {
+  it("开启 ZCODE_ENABLE_WINDOWS_SIGN=1 时校验原生 helper 签名且不调用已裁剪的更新发布器", async () => {
+    const originalPlatform = Object.getOwnPropertyDescriptor(process, "platform");
+    Object.defineProperty(process, "platform", { value: "win32", configurable: true });
+    try {
+      vi.stubEnv("ZCODE_TARGET_OS", "win32");
+      vi.stubEnv("ZCODE_TARGET_ARCH", "x64");
+      vi.stubEnv("ZCODE_ENV", "test");
+      vi.stubEnv("ZCODE_ENABLE_WINDOWS_SIGN", "1");
+      runCommandMock.mockImplementation(() => undefined);
+
+      const { default: config } = await import("../electron-builder.config.js");
+      const appOutDir = await mkdtemp(resolve(tmpdir(), "openzwork-after-sign-"));
+      temporaryRoots.push(appOutDir);
+
+      await expect(
+        config.afterSign({
+          appOutDir,
+          electronPlatformName: "win32",
+          arch: 1,
+          packager: { appInfo: { productFilename: "Fixture" } },
+        }),
+      ).resolves.toBeUndefined();
+
+      expect(runCommandMock).toHaveBeenCalledTimes(3);
+      for (const [command, args] of runCommandMock.mock.calls) {
+        expect(command).toBe("powershell.exe");
+        expect(args).toEqual([
+          "-NoLogo",
+          "-NoProfile",
+          "-NonInteractive",
+          "-EncodedCommand",
+          expect.any(String),
+        ]);
+      }
+    } finally {
+      if (originalPlatform) {
+        Object.defineProperty(process, "platform", originalPlatform);
+      }
+    }
+  });
 });

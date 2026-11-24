@@ -1,10 +1,20 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {createContextBuilder, buildCliPrefixSection, buildEnvInfoSection, buildGitSystemContextSection, buildIdentitySection, buildSkillsSection} from "../src/context/index.js";
+import {
+  createContextBuilder,
+  buildCliPrefixSection,
+  buildEnvInfoSection,
+  buildGitSystemContextSection,
+  buildIdentitySection,
+} from "../src/context/index.js";
 import { createTestRuntimeModel } from "./test-runtime-model.js";
 
 import { buildMemorySection } from "../src/context/sections/memory.js";
+import {
+  buildSkillsContent,
+  DEFAULT_SKILL_METADATA_BUDGET,
+} from "../src/context/sections/skills.js";
 import { readToolEntry } from "../src/tool/handlers/read.js";
 import { createToolRegistry } from "../src/tool/registry.js";
 import type { ContextBuildResult, ContextMetaUserAttachmentSource } from "../src/context/types.js";
@@ -45,7 +55,26 @@ const DEFAULT_CONTEXT_MANAGEMENT_PROMPT = [
 const ADDITIONAL_ACT_DONT_REDERIVE_PROMPT =
   "When you have enough information to act, act. Do not re-derive facts already established in the conversation, re-litigate a decision the user has already made, or narrate options you will not pursue. If you are weighing a choice, give a recommendation, not an exhaustive survey";
 
-const TOTAL_TOKENS_LINE = "<total_tokens>15000000 tokens left</total_tokens>";
+// 主会话 system[2] 在 Context management 之后的两段（system-prompt-contract.md「Finishing work and memory notes」）。
+const EXPECTED_FINISHING_WORK_PROMPT =
+  "# Finishing work\nEnding your turn means your work stops there until asked to continue, and you should not stop unless needed. Please avoid stopping while work the user asked for is still owed. Status notes are welcome, and so are your recommendations on open decisions, but do not stop unnecessarily and carry on with whatever does not depend on the user's answer. If you notice yourself inviting the user to redirect you or offering to wait, instead proceed on the next part of the task. You may meet ordinary obstacles like errors, timeouts, locked files, empty results or failing tools. Diagnose them first, and when they are not real blockers, work through them with the access you have (wait and retry, fix the request, use another tool or source) rather than stopping or checking in. If someone clearly decided something is a hard blocker, such as a file marked not to be touched, access that was intentionally withheld, or a safety guardrail, leave it alone, say plainly what you found, and look for another way to finish the task. Stopping before the task is complete can rarely be merited, i.e. when the task can't move forward without user input, or where the blocker is deliberate and should not be worked past. This does not override the need for confirmation on risky or destructive actions.";
+
+const EXPECTED_MEMORY_NOTES_PROMPT = [
+  "# Memory, notes and feedback",
+  "This adds to the Memory section and takes precedence over it. The rules about saving apply only if this session has a directory for saving memories.",
+  "",
+  "Save only what is applicable and durable:",
+  "applicable: it would directly change your behavior in future sessions, such as an approach the user corrected or steered you away from, or a standing preference they expressed. Not ambient code context or state.",
+  "durable: it applies to multiple future sessions and tasks, not just this one. Not transient task plans or status. If you are uncertain whether something is durable, assume it is not and do not save it.",
+  "",
+  "Avoid saving an unnecessary record of completed work (commits, merges, review outcomes, status summaries). Pointers to external resources and environment facts the user would otherwise have to restate are still worth saving.",
+  "",
+  "Don't overindex on soft feedback - give it the appropriate weight based on the context, and if you can't tell whether it's an instruction or just a comment, ask once but carry on. When saving feedback, record the specifics (what, who, when, why, scope) and label your own interpretations as yours.",
+  "",
+  "Same for your notes - if they contain some caution or limitation, question whether the reason still holds and drop it if not. This isn't a reason to take risky, irreversible, destructive actions without confirmation though, and an old or general go-ahead doesn't count as confirmation, so if the caution is about these kinds of actions then keep it until a human gives confirmation (even if you wrote it yourself).",
+  "",
+  "Don't create planning, decision, or analysis documents unless the user asks for them \u2014 work from the context, not intermediate files.",
+].join("\n");
 
 const REMOVED_AUTONOMY_PARAGRAPHS = [
   "You are operating autonomously.",
@@ -66,8 +95,13 @@ const RUNTIME_ANNOUNCED_SECTIONS = {
 
 function metaAttachment(
   result: ContextBuildResult,
-  source: ContextMetaUserAttachmentSource,
+  source: ContextMetaUserAttachmentSource | keyof typeof RUNTIME_ANNOUNCED_SECTIONS,
 ): string {
+  if (source in RUNTIME_ANNOUNCED_SECTIONS) {
+    const sectionSource =
+      RUNTIME_ANNOUNCED_SECTIONS[source as keyof typeof RUNTIME_ANNOUNCED_SECTIONS];
+    return result.sections.find((section) => section.source === sectionSource)?.content ?? "";
+  }
   return (
     result.metaUserAttachments.find((attachment) => attachment.source === source)?.content ?? ""
   );
@@ -152,7 +186,7 @@ describe("ContextBuilder meta user context", () => {
     );
   });
 
-  it("keeps act guidance after context management and ends with the token budget line", () => {
+  it("keeps act guidance after context management without autonomy appendices", () => {
     const result = createContextBuilder({
       workingDirectory: "/workspace",
       envInfo: {
@@ -173,12 +207,71 @@ describe("ContextBuilder meta user context", () => {
       `${DEFAULT_CONTEXT_MANAGEMENT_PROMPT}\n\n${ADDITIONAL_ACT_DONT_REDERIVE_PROMPT}`,
     );
     expect(
-      dynamicSystem.endsWith(`${ADDITIONAL_ACT_DONT_REDERIVE_PROMPT}\n\n${TOTAL_TOKENS_LINE}`),
+      dynamicSystem.endsWith(
+        `${ADDITIONAL_ACT_DONT_REDERIVE_PROMPT}\n\n${EXPECTED_FINISHING_WORK_PROMPT}\n\n${EXPECTED_MEMORY_NOTES_PROMPT}`,
+      ),
     ).toBe(true);
     expect(dynamicSystem.split(ADDITIONAL_ACT_DONT_REDERIVE_PROMPT)).toHaveLength(2);
-    expect(dynamicSystem.split(TOTAL_TOKENS_LINE)).toHaveLength(2);
     for (const paragraph of REMOVED_AUTONOMY_PARAGRAPHS) {
       expect(dynamicSystem).not.toContain(paragraph);
+    }
+  });
+
+  it("sends Finishing work and memory notes after context management, with or without a Memory root", () => {
+    for (const memoryRoot of [undefined, "/workspace/.zcode/memory"]) {
+      const dynamicSystem = String(
+        createContextBuilder({
+          workingDirectory: "/workspace",
+          envInfo: {
+            cwd: "/workspace",
+            platform: "darwin",
+            shell: "zsh",
+            osVersion: "Darwin 25.4.0",
+            nodeVersion: "v24.14.0",
+          },
+          ...(memoryRoot ? { memoryRoot } : {}),
+        }).build().systemMessages[2]?.content ?? "",
+      );
+
+      // 不按模型区分；没有 Memory 目录时也发，段内第一句说明保存规则只在有目录时适用。
+      expect(
+        dynamicSystem.endsWith(
+          `${ADDITIONAL_ACT_DONT_REDERIVE_PROMPT}\n\n${EXPECTED_FINISHING_WORK_PROMPT}\n\n${EXPECTED_MEMORY_NOTES_PROMPT}`,
+        ),
+      ).toBe(true);
+      expect(dynamicSystem.includes("# Memory\n")).toBe(memoryRoot !== undefined);
+    }
+  });
+
+  it("does not send Finishing work or memory notes for workflow actors or a custom system prompt", () => {
+    const envInfo = {
+      cwd: "/workspace",
+      platform: "darwin",
+      shell: "zsh",
+      osVersion: "Darwin 25.4.0",
+      nodeVersion: "v24.14.0",
+    } as const;
+    const actorSystem = createContextBuilder({
+      workingDirectory: "/workspace",
+      envInfo,
+      workflowActor: { name: "reviewer" },
+    })
+      .build()
+      .systemMessages.map((message) => String(message.content))
+      .join("");
+    const customSystem = createContextBuilder({
+      workingDirectory: "/workspace",
+      envInfo,
+      customSystemPrompt: "You are concise for this task.",
+    })
+      .build()
+      .systemMessages.map((message) => String(message.content))
+      .join("");
+
+    expect(actorSystem.endsWith(ADDITIONAL_ACT_DONT_REDERIVE_PROMPT)).toBe(true);
+    for (const system of [actorSystem, customSystem]) {
+      expect(system).not.toContain("# Finishing work");
+      expect(system).not.toContain("# Memory, notes and feedback");
     }
   });
 
@@ -350,7 +443,6 @@ describe("ContextBuilder meta user context", () => {
         },
       },
       currentDate: "2026-06-04",
-      language: "Chinese",
       outputStyle: {
         name: "Terse",
         prompt: "Keep responses short.",
@@ -431,7 +523,6 @@ describe("ContextBuilder meta user context", () => {
         osVersion: "Linux 6.6.0",
         nodeVersion: "v24.14.0",
       },
-      language: "Chinese",
       outputStyle: {
         name: "Learning",
         prompt: "Explain tradeoffs while solving the task.",
@@ -495,7 +586,8 @@ describe("ContextBuilder meta user context", () => {
     );
     const memorySection = result.sections.find((section) => section.source === "memory");
     expect(memorySection?.content).toBe(expected);
-    expect(String(result.systemMessages[2]?.content ?? "").match(/# Memory/g)).toHaveLength(1);
+    // 只数 Memory 段标题本身；`# Memory, notes and feedback` 是另一段。
+    expect(String(result.systemMessages[2]?.content ?? "").match(/^# Memory$/gm)).toHaveLength(1);
   });
 
   it("renders the two project Memory retrieval prompts from the same branch contract", () => {
@@ -604,7 +696,6 @@ describe("ContextBuilder meta user context", () => {
         gitStatusLines: [" M package.json"],
         recentCommits: ["abc123 test commit"],
       },
-      language: "Chinese",
     }).build();
 
     expect(result.systemMessages.map((message) => message.role)).toEqual([
@@ -732,7 +823,6 @@ describe("ContextBuilder meta user context", () => {
         osVersion: "Linux 6.6.0",
         nodeVersion: "v24.14.0",
       },
-      language: "日本語",
     }).build();
 
     const dynamic = String(result.systemMessages[2]?.content ?? "");
@@ -865,16 +955,16 @@ describe("ContextBuilder meta user context", () => {
       injectionTarget: section.injectionTarget,
       cacheHint: section.cacheHint,
     }));
-    expect(sectionTargets.slice(0, 3)).toEqual([
+    expect(sectionTargets.slice(0, 4)).toEqual([
       { name: "CLI Prefix", injectionTarget: "system", cacheHint: "stable" },
       { name: "Agent Identity", injectionTarget: "system", cacheHint: "stable" },
       { name: "Dynamic Behavior", injectionTarget: "system", cacheHint: "dynamic" },
+      { name: "Context Management", injectionTarget: "system", cacheHint: "dynamic" },
     ]);
     expect(sectionTargets).toEqual(
       expect.arrayContaining([
         { name: "Environment Info", injectionTarget: "meta_user", cacheHint: "dynamic" },
         { name: "Context Management", injectionTarget: "system", cacheHint: "dynamic" },
-        { name: "Total Tokens", injectionTarget: "system", cacheHint: "dynamic" },
         { name: "Request User Context", injectionTarget: "meta_user", cacheHint: "dynamic" },
         { name: "Current Date", injectionTarget: "meta_user", cacheHint: "dynamic" },
       ]),
@@ -1099,7 +1189,7 @@ describe("ContextBuilder meta user context", () => {
     expect(promptContext).not.toContain("Read-only:");
   });
 
-  it("renders skills as a separate meta user system reminder", () => {
+  it("keeps the skill listing out of the builder and only adds the slash skill guidance", () => {
     const result = createContextBuilder({
       workingDirectory: "/workspace",
       currentDate: "2026-05-04",
@@ -1136,9 +1226,11 @@ describe("ContextBuilder meta user context", () => {
       "system",
       "system",
     ]);
-    expect(result.metaUserAttachments.map((attachment) => attachment.source)).toEqual([
-      "skills_listing",
-    ]);
+    // 列表由 runtime 的 skills_listing 收集器追加增量；builder 不再渲染（docs/skills-live-catalog.md）。
+    expect(result.metaUserAttachments).toEqual([]);
+    expect(result.sections.map((section) => section.content).join("\n")).not.toContain(
+      "The following skills are available",
+    );
     expect(result.systemMessages[0]?.content).not.toContain("demo-skill");
     expect(result.systemMessages[2]?.content).toContain("# Session-specific guidance");
     expect(result.systemMessages[2]?.content).toContain("When the user types `/<skill-name>`");
@@ -1149,15 +1241,8 @@ describe("ContextBuilder meta user context", () => {
     expect(result.systemMessages[2]?.content).not.toContain(
       "Use the Agent tool with specialized agents",
     );
-    expect(metaAttachment(result, "skills_listing")).not.toContain("<system-reminder>");
-    expect(metaAttachment(result, "skills_listing")).toContain(
-      "The following skills are available",
-    );
-    expect(metaAttachment(result, "skills_listing")).toContain("demo-skill");
-    // 无指令内容时没有 context_prefix；日期是独立公告段。
-    expect(result.sections.find((section) => section.source === "current_date")?.content).toBe(
-      "Today's date is 2026-05-04.",
-    );
+    expect(metaAttachment(result, "context_prefix")).toBe("");
+    expect(metaAttachment(result, "date")).toMatch(/^Today's date is /);
   });
 
   it("does not mirror available subagents into meta user context", () => {
@@ -1409,57 +1494,51 @@ describe("ContextBuilder meta user context", () => {
   });
 
   it("includes slash skill guidance in the available-skills metadata", () => {
-    const section = buildSkillsSection({
-      outcome: {
-        diagnostics: [],
-        totalDiscovered: 1,
-        skills: [
-          {
-            name: "demo-skill",
-            description: "Use this for demos",
-            path: "/workspace/.zcode/skills/demo/SKILL.md",
-            directory: "/workspace/.zcode/skills/demo",
-            rootPath: "/workspace/.zcode/skills",
-            scope: "project",
-            source: "zcode",
-            safeToAutoLoad: true,
-            frontmatterKeys: [],
-            policy: { allowImplicitInvocation: true },
-          },
-        ],
-      },
-    });
+    const content = buildSkillsContent(
+      [
+        {
+          name: "demo-skill",
+          description: "Use this for demos",
+          path: "/workspace/.zcode/skills/demo/SKILL.md",
+          directory: "/workspace/.zcode/skills/demo",
+          rootPath: "/workspace/.zcode/skills",
+          scope: "project",
+          source: "zcode",
+          safeToAutoLoad: true,
+          frontmatterKeys: [],
+          policy: { allowImplicitInvocation: true },
+        },
+      ],
+      DEFAULT_SKILL_METADATA_BUDGET,
+    );
 
-    expect(section?.content).not.toContain("`/<skill-name>`");
-    expect(section?.content).not.toContain("Do not guess missing skill names.");
+    expect(content).not.toContain("`/<skill-name>`");
+    expect(content).not.toContain("Do not guess missing skill names.");
   });
 
   it("shows plugin-qualified skill names in the available-skills metadata", () => {
-    const section = buildSkillsSection({
-      outcome: {
-        diagnostics: [],
-        totalDiscovered: 1,
-        skills: [
-          {
-            name: "test-driven-development",
-            description: "Use this for TDD workflows",
-            pluginName: "superpowers",
-            qualifiedName: "superpowers:test-driven-development",
-            path: "/plugins/superpowers/skills/test-driven-development/SKILL.md",
-            directory: "/plugins/superpowers/skills/test-driven-development",
-            rootPath: "/plugins/superpowers/skills",
-            scope: "system",
-            source: "plugin",
-            safeToAutoLoad: true,
-            frontmatterKeys: [],
-            policy: { allowImplicitInvocation: true },
-          },
-        ],
-      },
-    });
+    const content = buildSkillsContent(
+      [
+        {
+          name: "test-driven-development",
+          description: "Use this for TDD workflows",
+          pluginName: "superpowers",
+          qualifiedName: "superpowers:test-driven-development",
+          path: "/plugins/superpowers/skills/test-driven-development/SKILL.md",
+          directory: "/plugins/superpowers/skills/test-driven-development",
+          rootPath: "/plugins/superpowers/skills",
+          scope: "system",
+          source: "plugin",
+          safeToAutoLoad: true,
+          frontmatterKeys: [],
+          policy: { allowImplicitInvocation: true },
+        },
+      ],
+      DEFAULT_SKILL_METADATA_BUDGET,
+    );
 
-    expect(section?.content).toContain("superpowers:test-driven-development");
-    expect(section?.content).toContain("also loadable as test-driven-development");
+    expect(content).toContain("superpowers:test-driven-development");
+    expect(content).toContain("also loadable as test-driven-development");
   });
 });
 
@@ -1587,42 +1666,21 @@ describe("context builder — workflow actor identity", () => {
     expect(text).not.toContain("a capability your tools do not give you");
   });
 
-  it("lists skills only when the Skill tool is actually registered", () => {
-    const skills = {
-      skills: [
-        {
-          name: "demo-skill",
-          description: "Demo skill",
-          path: "/workspace/.zcode/skills/demo/SKILL.md",
-          directory: "/workspace/.zcode/skills/demo",
-          rootPath: "/workspace/.zcode/skills",
-          scope: "project" as const,
-          source: "zcode" as const,
-          safeToAutoLoad: true,
-          frontmatterKeys: [],
-          policy: { allowImplicitInvocation: true },
-        },
-      ],
-      diagnostics: [],
-      totalDiscovered: 1,
-    };
-    const sources = (guidanceToolNames: readonly string[] | undefined) =>
-      createContextBuilder({
-        workingDirectory: "/workspace",
-        envInfo,
-        skills: skills as never,
-        workflowActor: { name: "judge" },
-        ...(guidanceToolNames === undefined ? {} : { guidanceToolNames }),
-      })
-        .build()
-        .metaUserAttachments.map((attachment) => attachment.source);
+  it("sends the custom system prompt as given without trimming", () => {
+    const custom = createContextBuilder({
+      workingDirectory: "/workspace",
+      envInfo,
+      customSystemPrompt: "  Keep it short.\n",
+    }).build();
+    // 自定义 prompt 原样发送；开头的 \n 是本块左边界（OpenAI 兼容拼接）。
+    expect(custom.systemMessages[1]?.content).toBe("\n  Keep it short.\n");
 
-    // 工具表里没有 Skill → 不列技能（列了只会让它相信自己有一个没有的工具）。
-    expect(sources(["submit_result", "escalate"])).not.toContain("skills_listing");
-    // Skill 在表里 → 照列。
-    expect(sources(["Skill", "submit_result", "escalate"])).toContain("skills_listing");
-    // 工具表缺席（旧调用方 / 测试）→ 维持旧行为。
-    expect(sources(undefined)).toContain("skills_listing");
+    const blank = createContextBuilder({
+      workingDirectory: "/workspace",
+      envInfo,
+      customSystemPrompt: " \n",
+    }).build();
+    expect(blank.sections.some((section) => section.source === "custom_system_prompt")).toBe(false);
   });
 
   it("refuses workflowActor together with customSystemPrompt", () => {

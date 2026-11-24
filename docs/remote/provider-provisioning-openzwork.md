@@ -21,6 +21,7 @@ v0 能力不提供远程配置管理 UI；本地 Environment 是编辑权威，�
 - 不向 Remote Worker 注入完整 Registry、Runtime Model、API Key 快照或动态 Header。
 - Provisioning 不经过 relay，不在 Desktop Main、Renderer 或远端任务状态中持久化 Secret。
 - Personal Provider 的显式 Key 随 Personal Config 同步；独立 Credential Store 保持原样。
+- Desktop 对 SSH/WSL/Docker 按需启动显式传入 `--prepare-credentials`，初始化目标 Environment 的凭据密钥。远端与同一用户的 Desktop 共用 `~/.openzwork/v2`，且 Desktop 已把凭据库固定为系统库来源时，准备命令改为创建 `<server-root>/credentials/`，Server 在其中使用自有凭据文件和 `credential-secret`，Provisioning 写入该文件，不改动 Desktop 的共享库。远端配置了显式密钥且共享库已有该密钥写入的 `enc:v2:env:` 条目时，保持共享库（见[系统凭证存储](../plans/2026-10-29-system-credential-storage.md#同机共用数据根server-自有凭据库2026-11-11)）。
 - Desktop `continuous`、Mobile `replayable` 任务流和现有 workspace identity 路由保持不变。
 
 ## 触发与范围
@@ -250,7 +251,7 @@ V4 `switchModelConfig` 与输入命令共用该刷新屏障：刷新成功后才
     └─ /ws       web-remote-replayable ─► { apply: () => throw }（stub；手机 allowlist 亦不含该 channel）
   ```
 
-- Remote Workspace 已连接后的自动同步失败记录结构化 warning，不拆除现有连接，也不改变本地保存成功反馈；不新增 Banner，也不在模型设置页新增入口。Main 协调器按 lane 在内存中保留最近一次执行结果（时间、成功 / 失败、固定阶段码），只供数据同步页「模型提供商」分类读取；该分类在设备有 lane 且最近一次失败时提供「重试」，重试推进同一条 lane（trigger `user-retry`），不新增同步链路，见 [R3 §8.3.6](../architecture/r3-source-server-remote-architecture.md) 与 [数据同步](data-sync.md)。
+- Remote Workspace 已连接后的自动同步失败记录结构化 warning，不拆除现有连接，也不改变本地保存成功反馈；不新增 Banner，也不在模型设置页新增入口。Main 协调器按 lane 在内存中保留最近一次执行结果（时间、成功 / 失败、固定阶段码），供数据同步页「模型提供商」分类读取，切换连接保存后也可经 `waitForIdle` 读取它作为下发屏障（见 [Composer 模型与思考档位](../composer-model-thinking.md)「保存后等待远端下发结果」）；该分类在设备有 lane 且最近一次失败时提供「重试」，重试推进同一条 lane（trigger `user-retry`），不新增同步链路，见 [R3 §8.3.6](../architecture/r3-source-server-remote-architecture.md) 与 [数据同步](data-sync.md)。
 - 网络断开导致结果未知时，以 `syncId` 重试；目标端重复收到任意已完成 `syncId` 时返回之前结果，
   不会因后续同步覆盖幂等记录而重新应用旧 Envelope。
 - Environment 离线时保留一次待同步意图，重新上线后读取最新本地状态执行；普通失败不循环

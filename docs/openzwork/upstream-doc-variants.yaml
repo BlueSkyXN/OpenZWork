@@ -16,7 +16,7 @@ variants:
       - apps/dev-docs/test/featureBoundaryGraph.test.ts
       - apps/dev-docs/vite.config.ts
     kind: content
-    upstreamBlob: b2a1c1962018c69d3e98ece467df12b9c1008e91
+    upstreamBlob: 049a227f4de89c2301605d236459695063a3dbb5
   - upstream: docs/builtin-provider-config-build-environments.md
     variant: docs/builtin-provider-config-build-environments-openzwork.md
     role: maintained
@@ -38,12 +38,12 @@ variants:
     usedBy:
       - scripts/audit-conversation-session-case-coverage.mjs
     kind: content
-    upstreamBlob: 3969d2fa8ef03dac32a15e70f18834b8c85ff91f
+    upstreamBlob: 3b50adbf1699a9b430d3b22b2e63b581ec67f06f
   - upstream: docs/desktop-ci-cd.md
     variant: docs/desktop-ci-cd-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 8ec5d50bfcfe8c53a79efd74b1fd5e25ec1df99b
+    upstreamBlob: 67a3e7e31dc363b5f895e74d12c5bdf2ed8ef8ab
   - upstream: docs/desktop/configurable-data-directory.md
     variant: docs/desktop/configurable-data-directory-openzwork.md
     role: rule
@@ -75,7 +75,7 @@ variants:
     variant: docs/feedback-log-export-alignment-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: f5fbfbe47dedefa9c88df857b04e66d2cdd2e101
+    upstreamBlob: e751fd718ebf04ee8f96f05fd0723a7f6b339017
   - upstream: docs/git/release-build-publish-separation.md
     variant: docs/git/release-build-publish-separation-openzwork.md
     role: maintained
@@ -85,12 +85,12 @@ variants:
     variant: docs/mcp-oauth-two-phase-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 8a7b92d2c98a2e259a4b214e4849142f12453131
+    upstreamBlob: 6c07ad9f6571da73b3de41134bf7e3468d07e721
   - upstream: docs/mcp-stateless-node-repl.md
     variant: docs/mcp-stateless-node-repl-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: ec7e2d961d471c4f0bf0ff434375766de51489ef
+    upstreamBlob: dff769075eb6133d4e24e72ac3d56ec1f377a72a
   - upstream: docs/model-provider-presets.md
     variant: docs/model-provider-presets-openzwork.md
     role: maintained
@@ -110,7 +110,7 @@ variants:
     variant: docs/monitoring/memory-diagnostics-log-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 5e2d3ae6f55e6db37e6eaa52e40452517e9a13ea
+    upstreamBlob: b2eda8123dd74548de00d28583ada2590d96966a
   - upstream: docs/monitoring/README.md
     variant: docs/monitoring/README-openzwork.md
     role: maintained
@@ -125,17 +125,17 @@ variants:
     variant: docs/remote/provider-provisioning-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 095f97282dcc7feadd457f9ceadfeacd38f325a1
+    upstreamBlob: 552b5fc7bf3ba2caa6bb1e0f22f1dae8798ca4bb
   - upstream: docs/superpowers/specs/2026-09-09-virtual-project-design.md
     variant: docs/superpowers/specs/2026-09-09-virtual-project-design-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: f6430d7cd8d2cbaa2950038816793939cbf39200
+    upstreamBlob: 2068e1e7cccae32c10f00d4d5e53cf4c918ac9fa
   - upstream: docs/testing/bots-e2e-coverage-matrix.md
     variant: docs/testing/bots-e2e-coverage-matrix-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 1e1b2cdcf5b1d8b3bbe454a32dcd4c799882df04
+    upstreamBlob: 2bcc3a5aae5398f741e5d976395ba727d3149d72
   - upstream: docs/testing/conversation-session-decision-e2e-roadmap.md
     variant: docs/testing/conversation-session-decision-e2e-roadmap-openzwork.md
     role: tool
@@ -166,12 +166,12 @@ variants:
       - scripts/test/conversation-session-formal-admission-audit.test.mjs
       - docs/specs/memory-migration-openzwork.md
     kind: content
-    upstreamBlob: 099cb195b475d4c1d73f60d3041f618627c3dca8
+    upstreamBlob: 9517fda47aec324b90114f773946c33ba0050a91
   - upstream: docs/testing/conversation-session-e2e-development-workflow.md
     variant: docs/testing/conversation-session-e2e-development-workflow-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: 8a346f6b6dd79c956a91af618ef289e8afa72a2b
+    upstreamBlob: bc0c631c2b266d1ee1f3ba8d023dfecc8f1ba6bd
   - upstream: docs/testing/conversation-session-next-decision-answer-template.md
     variant: docs/testing/conversation-session-next-decision-answer-template-openzwork.md
     role: tool
@@ -192,7 +192,7 @@ variants:
     usedBy:
       - packages/desktop/scripts/promote-plugin-e2e.mjs
     kind: content
-    upstreamBlob: a9a0e41a05a4082789f92f5652f8245bf11b7d7b
+    upstreamBlob: fbe7863324221f3e62d0c04e5c0394138a1262fe
   - upstream: docs/testing/pre-push-hook.md
     variant: docs/testing/pre-push-hook-openzwork.md
     role: rule
@@ -276,7 +276,7 @@ variants:
     variant: docs/testing/subagents-built-in-model-overrides-e2e-coverage-matrix-openzwork.md
     role: maintained
     kind: content
-    upstreamBlob: f94112f1e518e7c0a09fdfb200d51136ccaac63d
+    upstreamBlob: 18f5a24e674e4f3b5fe86ea8409382f58e7d37b9
   - upstream: docs/testing/workspace-file-tree-e2e-coverage.md
     variant: docs/testing/workspace-file-tree-e2e-coverage-openzwork.md
     role: maintained

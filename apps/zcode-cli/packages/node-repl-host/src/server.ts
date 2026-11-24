@@ -31,7 +31,6 @@ import {
   createNodeReplCallLedger,
   type NodeReplBrowserBrokerUpstream,
 } from "./call-ledger/contract.js";
-import { createNoProgressGuard } from "./no-progress-guard.js";
 // OpenZWork 净化：上游另导入 cua-bridge/cua-broker（官方 CUA 域）；两文件已随净化删除。
 import {
   isDirectMcpEntrypoint,
@@ -160,13 +159,10 @@ export function createNodeReplMcpRuntime(
     executeJs?: NodeReplExecutor;
     /** ZCode 主进程浏览器 broker 的地址和 token；默认从环境变量读取（测试注入假 broker）。 */
     browserBrokerUpstream?: NodeReplBrowserBrokerUpstream;
-    writeStderr?: (text: string) => void;
   } = {},
 ): NodeReplMcpRuntime {
   const executeJs = input.executeJs ?? executeJsInWorker;
-  const writeStderr = input.writeStderr ?? ((text: string) => void process.stderr.write(text));
-  const noProgressGuard = createNoProgressGuard();
-  // OpenZWork 净化：上游在此按环境捕获桌面自动化运行时并创建官方 CUA broker（官方 CUA 域）；已净化。
+  // OpenZWork 净化：上游在此按环境捕获桌面自动化运行时并创建官方 broker（官方桌面自动化域）；已净化。
   // 本次调用的可信事实只由主线程的 browser broker 记进账本（20-node-repl-call-ledger.md）。
   const ledger = createNodeReplCallLedger();
   const browserBrokerUpstream =
@@ -243,16 +239,7 @@ export function createNodeReplMcpRuntime(
                 }
               : {}),
           });
-          const result = toMcpRunResult(run, call.facts);
-          const hint = noProgressGuard.observe({ requestMeta, code: args.code, result });
-          if (hint) {
-            result.content.push({ type: "text", text: hint.text });
-            writeStderr(
-              `[node_repl] no-progress hint kind=${hint.kind} count=${hint.count} ` +
-                `session=${String(requestMeta.session_id)} turn=${String(requestMeta.turn_id)}\n`,
-            );
-          }
-          return result;
+          return toMcpRunResult(run, call.facts);
         } finally {
           call.close();
           activeCalls.delete(callController);
@@ -406,6 +393,7 @@ if (!isMainThread && isWorkerCallData(workerData)) {
       } satisfies NodeReplRunResult);
     });
 }
+
 
 function isWorkerCallData(value: unknown): value is WorkerCallData {
   if (!value || typeof value !== "object") return false;

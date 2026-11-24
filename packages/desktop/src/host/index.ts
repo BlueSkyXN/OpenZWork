@@ -1,3 +1,6 @@
+import { resolvePreinstalledToolsRelease } from "@zcode/shared/preinstalled-tools";
+import { resolvePreinstalledToolsBinDir } from "@zcode/shared/preinstalled-tools/node";
+import { ZCODE_PRODUCT_FLAVOR, resolveZCodeRuntimeEnv } from "@zcode/shared";
 import { normalizeRemoteConnectionError, sanitizeRemoteConnectionLog } from "@zcode/shared";
 import { createCredentialCipherBridge } from "@zcode/shared/credential-security";
 import { join } from "node:path";
@@ -95,6 +98,7 @@ import {
   type AppControlServiceHandle,
   type WindowHostExtensions,
   getAppConfigDir,
+  getZCodeDataRootDir,
   type BotProjectConnection,
   type HostApiNetworkTransport,
   // OW-P024：工作流查询 lane 的共享资格判定（纯函数，装配时一次）。
@@ -743,7 +747,7 @@ async function dispatchCronRun(request: CronRunDispatchRequest): Promise<{
       automationId: request.automationId,
     });
     // prompt 创建的定时任务带 targetTaskId，追加原会话不能计成 session_create。
-    // OpenZWork(D001)：session_create 遥测上报不引入。
+    // OpenZWork(OZ-D001)：session_create 遥测上报不引入。
     return { taskId: task.taskId, sessionId: task.taskId };
   } catch (error) {
     if (trackedKey) disposeCronRunSubscription(trackedKey);
@@ -870,16 +874,16 @@ const runtimeProcessLifecycleReporter = {
   },
 } satisfies NonNullable<Parameters<typeof createLocalServices>[0]>["processLifecycleReporter"];
 
+let activeV4SessionCount = 0;
+let legacyRuntimeTaskCount = 0;
 const runtimeTaskReporter = {
+  onActiveSessionCountChanged(event: { runningTaskCount: number }) {
+    activeV4SessionCount = event.runningTaskCount;
+    reportHostRunningTaskCount();
+  },
   onRunningTaskCountChanged(event) {
-    if (!parentPort) {
-      return;
-    }
-
-    parentPort.postMessage({
-      type: HostResponseTypes.AgentRunningTaskCountChanged,
-      runningTaskCount: event.runningTaskCount,
-    });
+    legacyRuntimeTaskCount = event.runningTaskCount;
+    reportHostRunningTaskCount();
   },
 } satisfies NonNullable<Parameters<typeof createLocalServices>[0]>["taskRuntimeReporter"];
 
@@ -891,8 +895,14 @@ const quitBlockerReporter = {
 
 let untrackedPromptRpcCount = 0;
 function reportHostRunningTaskCount(): void {
-  runtimeTaskReporter.onRunningTaskCountChanged({
-    runningTaskCount: workspaceTaskTracker.getTotalRunningTaskCount() + untrackedPromptRpcCount,
+  // v4 会话与旧代理分别报告，统一出口避免旧 ready 归零覆盖仍在执行的后台工作。
+  parentPort?.postMessage({
+    type: HostResponseTypes.AgentRunningTaskCountChanged,
+    runningTaskCount:
+      activeV4SessionCount +
+      legacyRuntimeTaskCount +
+      workspaceTaskTracker.getTotalRunningTaskCount() +
+      untrackedPromptRpcCount,
   });
 }
 
@@ -1366,6 +1376,11 @@ let persistedApplicationLocale: Locale | undefined;
 function resolveHostClientLanguage(): Locale | undefined {
   return applicationLocale ?? persistedApplicationLocale;
 }
+/**
+ * Agent 回复语言（null 为未设置），应答 CLI 的 session/readReplyLanguage。
+ * 值由 Main 持有；这里只认 InitLocal 初值与 reply-language-changed，不读 setting.json。
+ */
+let replyLanguage: string | null = null;
 let activeHostApiNetworkTransport: HostApiNetworkTransport | null = null;
 let sourceServerDirectory: SourceServerDirectory | null = null;
 let sourceServerConnectionManager: SourceServerConnectionManager | null = null;
@@ -2276,6 +2291,10 @@ function exposeServicesOnMessagePort(
   // 未读自动写入只归窗口 base renderer；手机和 remote facade 不能重复消费同一完成信号。
   const controllerAttachment = windowHostControllerRuntime.createAttachmentService(
     clientMode === "desktop-continuous" && attachmentScope.kind === "local",
+    // 侧栏手动顺序只在桌面 renderer 偏好里；桌面上报后叠加到手机 readTree，手机 attachment 不能写。
+    clientMode === "desktop-continuous"
+      ? { onProjectDisplayOrder: (order) => webRemoteProjectTreeActivity.setProjectOrder(order) }
+      : {},
   );
   // WT04 direct 证据：E2E gate 全开时以只读 proxy 观察本 attachment 的真实 V4 订阅面；
   // 诊断不改产品 ACK/背压/路由语义，gate 关闭时保持原服务引用（零包装）。
@@ -2729,6 +2748,13 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   // 在任何 await 之前同步赋值：InitLocal 与变更消息同端口按序到达，初值不会覆盖较新的变更。
   if (msg.type === HostMessageTypes.InitLocal && msg.locale) {
     applicationLocale = msg.locale;
+  }
+  if (msg.type === HostMessageTypes.InitLocal) {
+    replyLanguage = msg.replyLanguage ?? null;
+  }
+  if (msg.type === HostMessageTypes.ReplyLanguageChanged) {
+    replyLanguage = msg.replyLanguage;
+    return;
   }
   if (msg.type === HostMessageTypes.ApplicationLocaleChanged) {
     applicationLocale = msg.locale;
@@ -3510,6 +3536,15 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           log: (message, details) => logger.warn(message, details),
           establishOwner: () => {
             const initializedServices = createLocalServices({
+              // 固定目录与发布目标无关；准备完成后，既有会话下一条命令即可找到入口。
+              // OpenZWork(OZ-C015)：Host 只传递固定 bin 目录，由 services 按下载源配置或已安装入口决定是否注入 AVAILABLE。
+              preinstalledToolsBinDir: resolvePreinstalledToolsBinDir({
+                dataRoot: getZCodeDataRootDir(),
+                release: resolvePreinstalledToolsRelease({
+                  runtimeEnv: resolveZCodeRuntimeEnv(process.env),
+                  productFlavor: ZCODE_PRODUCT_FLAVOR,
+                }),
+              }),
               onAppControlServiceCreated: (handle) => {
                 appControlForExtensions = handle;
               },
@@ -3699,6 +3734,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               settingService,
               hostApiNetworkTransport,
               resolveClientLanguage: resolveHostClientLanguage,
+              resolveReplyLanguage: () => replyLanguage,
               authorizeLocalMediaPreviewPath,
               // launch.md「The user's choice」：本机用户选择变化后，推给本窗口所有在线的远程 Host。
               forwardDynamicWorkflowUserMode: (mode) => {
@@ -3735,7 +3771,7 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
               processLifecycleReporter: runtimeProcessLifecycleReporter,
               taskRuntimeReporter: runtimeTaskReporter,
               quitBlockerReporter,
-              // OpenZWork（D004）：官方反馈通道不接入。
+              // OpenZWork(OZ-D004)：官方反馈通道不接入。
               forwardSessionMessageSendRequested: (request) => {
                 parentPort?.postMessage({
                   type: HostResponseTypes.SessionMessageSendRequested,

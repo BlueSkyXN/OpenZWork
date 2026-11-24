@@ -5,7 +5,7 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_DIR_NAME = "packages";
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES = [
   "android-emulator-plugin",
   "browser-use-plugin",
-  // OpenZWork：zcode-cua-plugin 已随 WP-06 删除（D-14），远端资产合同不再包含它。
+  // OpenZWork(OZ-D005): zcode-cua-plugin 已随 WP-06 删除（D-14），远端资产合同不再包含它。
   "documents-plugin",
   "pdf-plugin",
   "presentations-plugin",
@@ -17,7 +17,7 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_PACKAGE_NAMES = [
   "plugin-creator-plugin",
   "zcode-guide-plugin",
   "visualize-plugin",
-  "zcode-site-plugin",
+  // OpenZWork(OZ-D006): zcode-site-plugin 已删除，远端资产合同不包含它。
   "design-plugin",
 ] as const;
 
@@ -38,6 +38,16 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_INCLUDED_TOP_LEVEL_PATHS = [
   "scripts",
   "skills",
   "templates",
+] as const;
+
+const officeInvocationPaths = [
+  "scripts/zcode_libreoffice.py",
+  "scripts/libreoffice-profile/user/registrymodifications.xcu",
+  "scripts/libreoffice-profile/user/basic/script.xlc",
+  "scripts/libreoffice-profile/user/basic/dialog.xlc",
+  "scripts/libreoffice-profile/user/basic/Standard/script.xlb",
+  "scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
+  "scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
 ] as const;
 
 export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
@@ -90,27 +100,26 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
   "browser-use-plugin/scripts/browser-client.mjs",
   "browser-use-plugin/skills/control-browser/SKILL.md",
   "browser-use-plugin/skills/web-gui-tester/SKILL.md",
-  // 修复原因：仅校验 manifest 无法发现文档插件缺少技能正文或视觉评审 Agent。
+  // 修复原因：仅校验 manifest 无法发现文档插件缺少技能正文。
   // 文档插件 0.2.0 起带查看面板，远端还必须有 office-runtime 构建出的 server 与面板资源。
-  "documents-plugin/agents/visual-judge.md",
+  ...["documents", "pdf", "presentations", "spreadsheets"].flatMap((name) =>
+    officeInvocationPaths.map((path) => `${name}-plugin/${path}`),
+  ),
   "documents-plugin/skills/docx/SKILL.md",
   "documents-plugin/skills/docx-viewer/SKILL.md",
   "documents-plugin/dist/server.mjs",
   "documents-plugin/dist/ui/assets.json",
   "documents-plugin/dist/ui/panel.html",
-  "pdf-plugin/agents/visual-judge.md",
   "pdf-plugin/skills/pdf/SKILL.md",
   "pdf-plugin/skills/pdf-viewer/SKILL.md",
   "pdf-plugin/dist/server.mjs",
   "pdf-plugin/dist/ui/assets.json",
   "pdf-plugin/dist/ui/panel.html",
-  "presentations-plugin/agents/visual-judge.md",
   "presentations-plugin/skills/pptx/SKILL.md",
   "presentations-plugin/skills/pptx-viewer/SKILL.md",
   "presentations-plugin/dist/server.mjs",
   "presentations-plugin/dist/ui/assets.json",
   "presentations-plugin/dist/ui/panel.html",
-  "spreadsheets-plugin/agents/visual-judge.md",
   "spreadsheets-plugin/skills/xlsx/SKILL.md",
   "spreadsheets-plugin/skills/xlsx-viewer/SKILL.md",
   "spreadsheets-plugin/dist/server.mjs",
@@ -119,23 +128,28 @@ export const REMOTE_AGENT_OFFICIAL_PLUGIN_REQUIRED_RELATIVE_PATHS = [
   // design 列全本地 seed 必需路径（bootstrap OFFICIAL_DESIGN_REQUIRED_SEED_PATHS，server/test 机械对照），
   // 不像其他插件只列哨兵：hook 找不到 SKILL.md 时静默退出，规则文件与脚本按需读取/执行，缺一份都只在会话里失败。
   "design-plugin/skills/design/SKILL.md",
+  "design-plugin/skills/design/references/app.md",
   "design-plugin/skills/design/references/catalog.md",
   "design-plugin/skills/design/references/check.md",
   "design-plugin/skills/design/references/create.md",
+  "design-plugin/skills/design/references/deck.md",
   "design-plugin/skills/design/references/design-system.md",
+  "design-plugin/skills/design/references/image.md",
   "design-plugin/skills/design/references/interact.md",
-  "design-plugin/skills/design/references/output.md",
+  "design-plugin/skills/design/references/motion.md",
+  "design-plugin/skills/design/references/page.md",
   "design-plugin/skills/design/references/redesign.md",
   "design-plugin/skills/design/scripts/adapt-canvas.mjs",
+  "design-plugin/skills/design/scripts/audit-page.js",
+  "design-plugin/skills/design/scripts/audit.mjs",
   "design-plugin/skills/design/scripts/design-lint.mjs",
   "design-plugin/skills/design/scripts/design-tokens.mjs",
   "design-plugin/skills/design/scripts/import-design-system.mjs",
+  "design-plugin/skills/design/scripts/probe.js",
   "design-plugin/hooks/hooks.json",
   "design-plugin/hooks/run-hook.cmd",
   "design-plugin/hooks/design-rules",
-  "zcode-cua-plugin/docs/computer-use.md",
-  "zcode-cua-plugin/scripts/computer-use-client.mjs",
-  "zcode-cua-plugin/skills/computer-use/SKILL.md",
+  // OpenZWork(OZ-D005): zcode-cua-plugin 已删除，远端资产合同不包含其文档与技能路径。
 ] as const;
 
 export function buildRemoteAgentOfficialPluginDir(remoteProviderDir: string): string {

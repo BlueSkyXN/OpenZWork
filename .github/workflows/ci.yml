@@ -164,6 +164,10 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/project-config-compatibility.test.ts tests/storage-relocation.test.ts --bail=1
 
+      - name: Skill catalog and desktop credential fallback regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/adapters exec vitest run tests/skill-catalog.test.ts tests/credential-security-desktop-fallback.test.ts tests/openai-responses-encrypted-reasoning-wire.test.ts --bail=1
+
       # OW-P024：Main 固定 DB 的 Env 优先级是工作流查询共享载体的前提（真实临时用户/项目配置）。
       - name: Workflow query session db priority regression
         if: matrix.lane == 'regressions'
@@ -247,11 +251,15 @@ jobs:
 
       - name: CLI workflow option regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts
+        run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts tests/tui-model-selection.test.ts
 
       - name: CLI artifact workflow option
         if: matrix.lane == 'regressions'
         run: node --test tests/private-cleanup/cli-artifact-workflow.test.mjs
+
+      - name: CLI plugin-host isolation and SEA asset gate
+        if: matrix.lane == 'regressions'
+        run: pnpm build:sea:prepare && node --test apps/zcode-cli/packages/cli/tests/plugin-host-entry.test.mjs apps/zcode-cli/packages/cli/tests/sea-official-plugin-assets.test.mjs apps/zcode-cli/packages/cli/tests/build-sea.test.mjs
 
       - name: Host UI composition regression
         if: matrix.lane == 'regressions'

@@ -17,7 +17,11 @@ export async function prepareWebRemoteControlAuthGateFixture(options: {
         spec.endsWith("conversation-session-new-task-missing-root-mobile.test.ts") ||
         spec.endsWith("command-center-history-search.test.ts") ||
         spec.endsWith("conversation-session-web-remote-terminal.test.ts") ||
+        spec.endsWith("conversation-session-web-remote-terminal-ssh.test.ts") ||
+        spec.endsWith("conversation-session-archive-management.test.ts") ||
         spec.endsWith("conversation-session-runtime-restart.test.ts") ||
+        spec.endsWith("conversation-session-fork-cold-start-membership.test.ts") ||
+        spec.endsWith("conversation-session-background.test.ts") ||
         spec.endsWith("conversation-session-shared-cli.test.ts") ||
         // 修复依据（OpenZWork）：app-control 三个 spec 与 mobile-event-push 等在净化裁剪时被从
         // 手机配对 fixture 的 spec 名单移除，但 spec 本体保留且依赖 loopback Web 前端
@@ -33,8 +37,18 @@ export async function prepareWebRemoteControlAuthGateFixture(options: {
         spec.endsWith("conversation-session-remote-draft-prewarm.test.ts") ||
         spec.endsWith("conversation-session-web-remote-recovery.test.ts") ||
         spec.endsWith("conversation-session-web-remote-unread.test.ts") ||
+        spec.endsWith("conversation-session-web-remote-unread-ssh.test.ts") ||
+        spec.endsWith("conversation-session-workspace-mcp-trust.test.ts") ||
         spec.endsWith("conversation-session-id-compatibility.test.ts") ||
         spec.endsWith("conversation-session-gen-ui-context.test.ts") ||
+        spec.endsWith("conversation-session-v4-session-action-locks.test.ts") ||
+        spec.endsWith("conversation-session-assistant-block-order.test.ts") ||
+        spec.endsWith("conversation-session-hooks-mobile.test.ts") ||
+        // HK19：手机远控设置页的 Workspace Hook 信任行；配对两端需要同一测试登录态。
+        spec.endsWith("conversation-session-hook-trust.test.ts") ||
+        spec.endsWith("conversation-session-pdf-preview-mobile.test.ts") ||
+        spec.endsWith("conversation-session-mcp-async-startup-wait.test.ts") ||
+        // PLM-EXT-P3C：扩展发的消息在手机上也显示「来自插件」。
         spec.endsWith("plugin-extension-sessions-write.test.ts") ||
         // WT04（受管 worktree 手机查看）：依赖 loopback Web 前端与本地 relay，
         // 与上面保留场景同一配对链路；官方登录桩仍不恢复。
@@ -49,11 +63,27 @@ export async function prepareWebRemoteControlAuthGateFixture(options: {
         (options.specs.some(
           (spec) =>
             spec.endsWith("conversation-session-web-remote-terminal.test.ts") ||
+            spec.endsWith("conversation-session-web-remote-terminal-ssh.test.ts") ||
+            spec.endsWith("conversation-session-archive-management.test.ts") ||
             spec.endsWith("conversation-session-composer-settlement.test.ts") ||
             spec.endsWith("conversation-session-switch-stability.test.ts") ||
             spec.endsWith("conversation-session-runtime-restart.test.ts") ||
+            spec.endsWith("conversation-session-fork-cold-start-membership.test.ts") ||
+            spec.endsWith("conversation-session-background.test.ts") ||
             spec.endsWith("conversation-session-shared-cli.test.ts") ||
-            spec.endsWith("conversation-session-new-task-missing-root-mobile.test.ts"),
+            spec.endsWith("conversation-session-queue-edit-freeze-mobile.test.ts") ||
+            spec.endsWith("conversation-session-status-panel-inline-layout.test.ts") ||
+            spec.endsWith("conversation-session-background-history-layout.test.ts") ||
+            spec.endsWith("conversation-session-v4-queue.test.ts") ||
+            spec.endsWith("conversation-session-v4-composer-toolbar.test.ts") ||
+            spec.endsWith("conversation-session-r3-mobile-startup-restore.test.ts") ||
+            spec.endsWith("conversation-session-project-management.test.ts") ||
+            spec.endsWith("conversation-session-new-task-missing-root-mobile.test.ts") ||
+            spec.endsWith("conversation-session-v4-session-action-locks.test.ts") ||
+            spec.endsWith("conversation-session-hooks-mobile.test.ts") ||
+            spec.endsWith("conversation-session-hook-trust.test.ts") ||
+            spec.endsWith("conversation-session-pdf-preview-mobile.test.ts") ||
+            spec.endsWith("plugin-extension-sessions-write.test.ts"),
         )
           ? "http://127.0.0.1:0/remote/v4"
           : "http://127.0.0.1:5173/remote/v4"),
@@ -62,5 +92,11 @@ export async function prepareWebRemoteControlAuthGateFixture(options: {
     return prepareWebRemoteControlSessionEventsFixture({ ...options, mobilePush: true });
   if (options.specs.some((spec) => spec.endsWith("web-remote-control-session-events.test.ts")))
     return prepareWebRemoteControlSessionEventsFixture(options);
+  if (options.specs.some((spec) => spec.endsWith("web-remote-control-startup-restore.test.ts")))
+    return prepareWebRemoteControlSessionEventsFixture({
+      ...options,
+      // 上次在另一个项目开启远控；重启只恢复激活的 workspacePath，该项目不在窗口里。
+      lastEnabledWorkspacePath: `${options.workspacePath}-previous`,
+    });
   return null;
 }

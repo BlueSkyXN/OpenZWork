@@ -20,6 +20,7 @@ import { DatabaseSync, backup } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join, relative, sep, win32 } from "node:path";
 import { homedir } from "node:os";
+import { readAssignedCredentialsFile } from "@zcode/shared/credential-security";
 import {
   DATA_BASE_DIR_FORBIDDEN_WINDOWS_INSTALL_DIR_ERROR_CODE,
   OPENZWORK_DATA_DIR_NAME,
@@ -81,6 +82,15 @@ export function getConversationWorkspaceDir(): string {
 /** {dataBaseDir}/.openzwork/v2 */
 export function getAppConfigDir(): string {
   return join(getZCodeDataRootDir(), "v2");
+}
+
+/**
+ * 本进程读写的凭据文件，所有凭据读写方的唯一解析入口。
+ * 进程装配的 ZCODE_CREDENTIALS_FILE 优先（只有使用自有凭据库的 Source Server Core 设置，
+ * 其 Agent 继承）；否则为 {appConfigDir}/credentials.json。调用时读取，不在模块加载时缓存。
+ */
+export function getCredentialsFilePath(): string {
+  return readAssignedCredentialsFile(process.env) ?? join(getAppConfigDir(), "credentials.json");
 }
 
 /**

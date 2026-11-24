@@ -152,7 +152,8 @@ export type ContextContentProps = ComponentProps<typeof HoverCardContent>;
 export const ContextContent = ({ className, ...props }: ContextContentProps) => (
   <HoverCardContent
     className={cn(
-      "!w-64 overflow-hidden rounded-lg border border-border bg-tooltip p-0 text-tooltip-foreground shadow-none ring-0 outline-0",
+      // OpenZWork(OZ-F004)：叠加会话累计用量后高度增加，限制可用视口高度并允许纵向滚动。
+      "!w-64 max-h-[min(26rem,calc(var(--radix-hover-card-content-available-height,26rem)-0.5rem))] overflow-x-hidden overflow-y-auto rounded-lg border border-border bg-tooltip p-0 text-tooltip-foreground shadow-none ring-0 outline-0",
       className,
     )}
     {...props}

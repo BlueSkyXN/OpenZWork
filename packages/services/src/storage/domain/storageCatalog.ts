@@ -33,6 +33,7 @@ const CLEANABILITY: Record<StorageCategoryId, StorageCleanability> = {
   backups: "confirm",
   exports: "safe",
   runtimes: "none",
+  preinstalledTools: "none",
   config: "none",
   other: "none",
 };
@@ -93,6 +94,7 @@ const PREFIX_RULES: Record<Exclude<StorageCategoryId, "other">, string[]> = {
   logs: ["v2/logs", "cli/log", "logs", "v2/crash", "v2/perf", "feedback/logs"],
   backups: ["backup", "v2/backup", "v2/migrations", "cli/db/backup", "cli/db/backups"],
   exports: ["export-log", "export-log-stage", "feedback"],
+  preinstalledTools: ["preinstalled-tools"],
   runtimes: ["agents", "bundled-agents", "lite", "cli/plugins"],
   // cli/plugins 整体（含 cache）不可清理，插件缓存归运行时。
   config: [
@@ -139,7 +141,7 @@ const PROTECTED_BASENAMES = new Set([
   ".tokens",
   "zcode-stdio-tap.json",
 ]);
-const PROTECTED_PREFIXES = ["v2/crash/live"];
+const PROTECTED_PREFIXES = ["v2/crash/live", "preinstalled-tools"];
 
 export function normalizeStorageRelativePath(relativePath: string): string {
   return relativePath.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");

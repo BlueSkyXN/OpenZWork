@@ -106,6 +106,13 @@ async function syntheticPackage(
   }
   const runtimePaths = ["glm/node-runtime/npm", "tools/ripgrep", "tools/ugrep"];
   if (platform === "macos-arm64") runtimePaths.push("tools/bfs");
+  if (platform === "windows-amd64") {
+    runtimePaths.push(
+      "preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe",
+      "tools/runtime-host/zcode-runtime-host.exe",
+      "tools/runtime-host/zcode-installer-process-helper.exe",
+    );
+  }
   for (const relative of runtimePaths) {
     const target = join(resources, relative);
     await mkdir(join(target, ".."), { recursive: true });
@@ -378,7 +385,7 @@ test("verify-desktop-package rejects a missing runtime library", async () => {
   }
 });
 
-test("Windows package verification requires its native search tools and accepts a package without bfs", async (t) => {
+test("Windows package verification requires its native search tools, runtime-host helpers, and preinstalled entry shim without bfs", async (t) => {
   const packageRoot = await temp();
   t.after(() => rm(packageRoot, { recursive: true, force: true }));
   await syntheticPackage(packageRoot, { platform: "windows-amd64" });
@@ -396,8 +403,32 @@ test("Windows package verification requires its native search tools and accepts 
   assert.equal(Object.hasOwn(report.runtimePaths, "tools/bfs"), false);
   assert.equal(report.runtimePaths["tools/ripgrep"], true);
   assert.equal(report.runtimePaths["tools/ugrep"], true);
+  assert.equal(
+    report.runtimePaths["preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe"],
+    true,
+  );
+  assert.equal(report.runtimePaths["tools/runtime-host/zcode-runtime-host.exe"], true);
+  assert.equal(report.runtimePaths["tools/runtime-host/zcode-installer-process-helper.exe"], true);
   await rm(join(root, options.distRoot, "win-unpacked/resources/tools/ugrep"));
+  await rm(
+    join(
+      root,
+      options.distRoot,
+      "win-unpacked/resources/preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe",
+    ),
+  );
+  await rm(
+    join(
+      root,
+      options.distRoot,
+      "win-unpacked/resources/tools/runtime-host/zcode-runtime-host.exe",
+    ),
+  );
   const missing = await verifyDesktopPackage(options);
   assert.equal(missing.ok, false);
-  assert.deepEqual(missing.failures, ["required runtime path missing: tools/ugrep"]);
+  assert.deepEqual(missing.failures, [
+    "required runtime path missing: tools/ugrep",
+    "required runtime path missing: preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe",
+    "required runtime path missing: tools/runtime-host/zcode-runtime-host.exe",
+  ]);
 });

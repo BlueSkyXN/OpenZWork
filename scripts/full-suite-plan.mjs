@@ -29,6 +29,8 @@ export const FULL_SUITE_GROUPS = [
       // 保持分片并集等于全量发现。
       "packages/session-control",
       "packages/plugin-api",
+      // v4.0.0 整合：上游 engineering 清单新增 scripts/** 工程测试，纳入 root-scripts 保持分片并集覆盖全量。
+      "scripts",
     ],
     minutes: 10,
   },

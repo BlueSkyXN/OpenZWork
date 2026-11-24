@@ -104,8 +104,7 @@ const requiredRuntimeModules = [
   // 生产包必须显式校验 app.asar 中存在该 scoped 包。
   // OW-P038：安装包由 desktop 声明选取 SDK，须与 services 一致并包含两处长连接修复。
   "@larksuiteoapi/node-sdk",
-  // 26.17.0 的 pnpm collector 仍可能漏掉 deduped 传递依赖；最终包从 updater 入口校验完整闭包。
-  "electron-updater",
+  // OpenZWork(OZ-D004)：应用内自动更新已裁剪，不再校验 electron-updater 闭包。
   // ssh2 的关键依赖链（asn1/bcrypt-pbkdf/tweetnacl）若缺失，
   // 连接远程 workspace 时会在 keyParser 阶段直接抛 MODULE_NOT_FOUND。
   // 这里把 ssh2 关键依赖链纳入机械校验，避免坏包流出。
@@ -756,12 +755,25 @@ async function main() {
     process.exit(0);
   }
 
+  if (os === "win" && process.platform !== "win32") {
+    const preinstalledEntryShimPath = resolve(
+      desktopRoot,
+      `bundled-tools/win32-${arch}/preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe`,
+    );
+    if (!existsSync(preinstalledEntryShimPath)) {
+      throw new Error(
+        `跨平台打包 Windows (${arch}) 缺少预编译入口 shim: ${preinstalledEntryShimPath}（build-windows-preinstalled-entry-shim.mjs 仅支持在 Windows 主机编译）`,
+      );
+    }
+  }
+
   if (!skipPrepare) {
     run(pnpmCommand, ["prepare:runtime-assets"], buildEnv);
   }
 
   if (!skipBuild) {
-    run(pnpmCommand, ["build"], buildEnv);
+    // prepare:runtime-assets 已在上方按 skipPrepare 单独执行，避免 pnpm build 再次重复执行。
+    run(pnpmCommand, ["run", "build:no-runtime-assets"], buildEnv);
   }
 
   await runTimedAsync("bundle:electron-builder", () =>

@@ -1,4 +1,13 @@
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
@@ -363,4 +372,86 @@ it("copies the credential-source marker so the target keeps the os source bindin
   const marker = await readFile(join(target, ".openzwork", "v2", "credential-source"), "utf8");
   expect(marker).toBe(await readFile(join(home, ".openzwork", "v2", "credential-source"), "utf8"));
   expect(marker).toBe("os\n");
+});
+
+// OZ-C009 + P1-1 回归：源目录已有 OS 密文与 "os\n" 标记，且源 cipher 已缓存密钥；随后恢复代次变化、
+// Linux 私有文件密钥回退开启、同时系统钥匙串变为不可读（锁屏/未解锁）。迁移读取源密钥触发代际重读时，
+// getKey(false, allowAutoReset=false) 递归必须保留 allowAutoReset=false，绝不把源 credentials.json
+// 自动清空为 "{}\n" 或生成 .bak、删除 credential-source。
+it("preserves OS-bound source credentials when generation changes and keyring locks under private-file fallback", async () => {
+  const { home, services, bootstrap } = await runtime();
+  const credentialSecurity = await import("@zcode/shared/credential-security");
+  const onReset = vi.fn();
+  expect(credentialSecurity.enablePrivateFileKeyFallback({ onReset })).toBe(true);
+
+  const target = await temp();
+  let savedKey: string | null = null;
+  let keyringLocked = false;
+  const calls = { get: 0, set: 0 };
+  const sourceKeyStore: CredentialKeyStore = {
+    get: async () => {
+      calls.get += 1;
+      if (keyringLocked) {
+        throw new Error("GNOME Keyring locked");
+      }
+      return savedKey;
+    },
+    set: async (value: string) => {
+      calls.set += 1;
+      savedKey = value;
+    },
+  };
+  const targetStore = countingKeyStore();
+
+  const sourceV2Dir = join(home, ".openzwork", "v2");
+  const credentialsPath = join(sourceV2Dir, "credentials.json");
+  const sourceMarkerPath = join(sourceV2Dir, "credential-source");
+  const sourceCipher = credentialSecurity.createSystemCredentialCipher({
+    filePath: credentialsPath,
+    env: {},
+    keyStore: sourceKeyStore,
+  });
+
+  // 1) 源目录写入 OS 密文与 "os\n" 标记，并通过先期读取确认密钥已缓存在同一 keyStore 桶内。
+  const token = await sourceCipher.encrypt("source-login");
+  const originalCredentialsRaw = `${JSON.stringify({ token }, null, 2)}\n`;
+  await writeFile(credentialsPath, originalCredentialsRaw);
+  expect(await readFile(sourceMarkerPath, "utf8")).toBe("os\n");
+  const getCallsAfterSeed = calls.get;
+  expect(await sourceCipher.decrypt(token)).toBe("source-login");
+  expect(calls.get).toBe(getCallsAfterSeed);
+
+  const service = services.createSettingService();
+  await service.update({ locale: "en-US", dataBaseDir: home });
+  await service.updateDataBaseDir(target);
+
+  // 2) 磁盘恢复代次变化，使已缓存密钥在下次 getKey 时走代际失效递归分支。
+  await writeFile(`${credentialsPath}.recovery-generation`, "generation-after-bump");
+
+  // 3) 迁移执行时源钥匙串不可读（get() 抛错，诊断阶段为 read）。
+  keyringLocked = true;
+  await expect(
+    services.applyPendingDataBaseDirMigration(undefined, {
+      shareCredentialKeyWithDataRoot: shareWith(bootstrap, {
+        sourceKeyStore,
+        targetKeyStore: targetStore.store,
+      }),
+    }),
+  ).rejects.toMatchObject({ code: "CREDENTIAL_SECURE_STORAGE_UNAVAILABLE" });
+
+  // 等待后台微任务/文件锁排空，确认 pendingKey.catch 未调度 resetBoundCredentialStore。
+  await new Promise((resolveTimer) => setTimeout(resolveTimer, 50));
+
+  // 4) 确认发生了代际重读，但迁移安全中止，且源凭据原件、无 .bak 与来源标记完整保留。
+  expect(calls.get).toBeGreaterThan(getCallsAfterSeed);
+  expect(onReset).not.toHaveBeenCalled();
+  expect(targetStore.calls.set).toBe(0);
+  expect(await readFile(credentialsPath, "utf8")).toBe(originalCredentialsRaw);
+  expect(await readFile(sourceMarkerPath, "utf8")).toBe("os\n");
+  const sourceEntries = await readdir(sourceV2Dir);
+  expect(sourceEntries.filter((name) => name.includes(".bak"))).toEqual([]);
+
+  const aborted = await services.createSettingService().get();
+  expect(aborted.dataBaseDir).toBe(home);
+  expect(aborted.pendingDataBaseDirMigration?.targetBaseDir).toBe(target);
 });

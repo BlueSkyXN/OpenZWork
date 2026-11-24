@@ -12,7 +12,7 @@ entries:
       - docs/openzwork/upstream/v3.17.2-integration.md
       - packages/services/src/zcode-agent/zcodeAgentService.ts
     since: 2026-11-05
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-002
     title: 收尾时格式化上游文件
@@ -23,7 +23,7 @@ entries:
       - 5ac3b4596
       - docs/openzwork/maintenance-model.md
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-003
     title: CI 检查名不代表实际执行内容
@@ -35,7 +35,7 @@ entries:
       - .github/workflows/ci.yml
       - scripts/test/openzwork-maintenance-scan.test.mjs
     since: 2026-10-19
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-004
     title: CI 结果只认最终 head
@@ -46,7 +46,7 @@ entries:
       - PR #25
       - PR #26
     since: 2026-10-19
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-005
     title: 重跑通过不等于问题已修复
@@ -57,7 +57,7 @@ entries:
       - PR #30
       - PR #31
     since: 2026-10-23
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-006
     title: CLI lint 可能一个文件都没扫
@@ -68,7 +68,7 @@ entries:
       - PR #65
       - scripts/cli-lint-admission.mjs
     since: 2026-11-05
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-007
     title: 只搜旧用户级根的路径文本会漏掉拼接写法
@@ -79,7 +79,7 @@ entries:
       - PR #69
       - tests/private-cleanup/cleanup.test.cjs
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-008
     title: 复用的依赖可能早于当前 lockfile
@@ -90,7 +90,7 @@ entries:
       - pnpm-lock.yaml
       - packages/desktop/package.json
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-009
     title: 核心套件需要先构建 CLI
@@ -101,7 +101,7 @@ entries:
       - scripts/build-desktop-agent-cli.mjs
       - packages/services/test/dataDirectoryMigration.test.ts
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-010
     title: 上游可能用同一 tag 重推内容
@@ -111,7 +111,7 @@ entries:
     evidence:
       - docs/openzwork/patches/downstream-patch-registry.md
     since: 2026-10-23
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-011
     title: 维护文件也会触发净化门禁
@@ -122,7 +122,7 @@ entries:
       - PR #70
       - tests/private-cleanup/cleanup.test.cjs
     since: 2026-11-08
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-012
     title: 恢复上游原文后自有文档的链接仍指向原文
@@ -133,7 +133,7 @@ entries:
       - PR #70
       - docs/openzwork/upstream-doc-variants.yaml
     since: 2026-11-08
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-013
     title: 字符串命中不能证明实际读取关系
@@ -144,7 +144,7 @@ entries:
       - .agents/skills/openzwork-maintenance/scripts/scan.mjs
       - scripts/test/openzwork-maintenance-scan.test.mjs
     since: 2026-11-10
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-014
     title: 格式化夹带少量改动会躲过格式噪声检查
@@ -157,7 +157,7 @@ entries:
       - .agents/skills/openzwork-maintenance/scripts/unformat.mjs
       - scripts/test/openzwork-maintenance-scan.test.mjs
     since: 2026-11-10
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-015
     title: 基于提交生成的结果会覆盖工作区改动
@@ -168,7 +168,7 @@ entries:
       - .agents/skills/openzwork-maintenance/scripts/unformat.mjs
       - scripts/test/openzwork-maintenance-scan.test.mjs
     since: 2026-11-10
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-016
     title: Git 失败后的空输出不能当作检查通过
@@ -180,7 +180,7 @@ entries:
       - .agents/skills/openzwork-maintenance/scripts/scan.mjs
       - scripts/test/openzwork-maintenance-scan.test.mjs
     since: 2026-11-10
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-PIT-017
     title: 跨进程配置刷新要观察实际模型请求
@@ -192,5 +192,41 @@ entries:
       - packages/services/test/configPackageHostImport.ts
       - docs/specs/config-package-openzwork.md
     since: 2026-11-18
-    checked: 3.17.2
+    checked: 4.0.0
+    status: active
+  - id: OZK-PIT-018
+    title: node --test 不支持感叹号取反排除文件
+    when: 用 node --test 批量运行测试目录，并需要排除其中改用 Vitest 等其他运行器的文件。
+    do: 用包装脚本先展开文件列表并按工程测试清单过滤后再调用 node --test，不在命令行传 !pattern 取反参数。
+    why: v4.0.0 上游将 audit-conversation-session-json-out.test.mjs 迁入工程 Vitest；test:repo-scripts 传入感叹号排除模式后 Node 24 仍执行该文件并报错，改用 run-repo-script-tests.mjs 过滤后通过。
+    evidence:
+      - scripts/run-repo-script-tests.mjs
+      - scripts/engineering-test-files.json
+      - package.json
+    since: 2026-11-24
+    checked: 4.0.0
+    status: active
+  - id: OZK-PIT-019
+    title: 子进程轻量入口顶层值导入共享包会拉入重依赖
+    when: 在 CLI 主入口、SEA 工具或插件宿主（__zcode-plugin-host）共用模块中引用 @zcode/shared 的常量名。
+    do: 只用字符串常量时写本地字面量，并用 satisfies typeof import("@zcode/shared/...")[...] 做编译期同源校验，不在顶层值导入共享子包。
+    why: v4.0.0 新增插件宿主包体隔离门禁；@zcode/shared/data-directory 经 @zcode/shared/node 传递求值凭据模块，顶层值导入使 plugin-host-entry.test.mjs 失败。
+    evidence:
+      - apps/zcode-cli/packages/cli/src/main.ts
+      - apps/zcode-cli/packages/cli/src/sea-runtime-tools.ts
+      - apps/zcode-cli/packages/cli/tests/plugin-host-entry.test.mjs
+    since: 2026-11-24
+    checked: 4.0.0
+    status: active
+  - id: OZK-PIT-020
+    title: 复核下游构建补丁时要同扫上游新增同类脚本
+    when: 合入上游新版本并按 downstream-patches.yaml 复核构建或打包类补丁。
+    do: 除检查补丁已登记的 files 外，还在上游新增（added）脚本中搜索该补丁修复的反模式，命中同类新脚本时一并修复并纳入同一补丁与回归测试。
+    why: v4.0.0 上游原封未改 scripts/build-windows-runtime-host.mjs，同时新增 build-windows-preinstalled-entry-shim.mjs 复现了硬编码 Visual Studio 17 2022 生成器；合并前同扫新增脚本才避免 Windows 构建再次失败。
+    evidence:
+      - docs/openzwork/patches/downstream-patches.yaml
+      - packages/desktop/scripts/build-windows-preinstalled-entry-shim.mjs
+      - scripts/test/windows-runtime-host-build.test.mjs
+    since: 2026-11-24
+    checked: 4.0.0
     status: active

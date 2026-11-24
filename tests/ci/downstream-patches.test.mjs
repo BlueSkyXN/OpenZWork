@@ -153,17 +153,31 @@ async function ciScope() {
   };
 }
 
+function unquoteWord(word) {
+  return word.replace(/^['"]|['"]$/g, "");
+}
+
+function globMatches(pattern, file) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replaceAll("*", "[^/]*");
+  return new RegExp(`^${escaped}$`).test(file);
+}
+
 /** 回归登记在根 Vitest 核心清单，或出现在 ci.yml 步骤中：根路径，或 --filter 包名加包内路径。 */
 function isCovered(file, { coreFiles, runs }, pkg) {
   if (coreFiles.has(file) || runs.some((words) => words.includes(file))) return true;
   if (
     /^scripts\/test\/[^/]+\.test\.mjs$/.test(file) &&
-    runs.some(
-      (words) =>
-        words[0] === "node" &&
-        words.includes("--test") &&
-        words.includes("scripts/test/*.test.mjs"),
-    )
+    runs.some((words) => {
+      const normalized = words.map(unquoteWord);
+      const isNodeTestRunner =
+        normalized[0] === "node" &&
+        (normalized.includes("--test") || normalized[1] === "scripts/run-repo-script-tests.mjs");
+      return (
+        isNodeTestRunner &&
+        normalized.includes("scripts/test/*.test.mjs") &&
+        !normalized.some((word) => word.startsWith("!") && globMatches(word.slice(1), file))
+      );
+    })
   )
     return true;
   if (!pkg) return false;

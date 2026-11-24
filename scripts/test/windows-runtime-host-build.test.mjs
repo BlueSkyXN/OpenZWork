@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { resolveRuntimeHostBuild, verifyRuntimeHostPe } from "../build-windows-runtime-host.mjs";
 
@@ -27,4 +28,15 @@ test("packaging rejects wrong-architecture and corrupt PE binaries", () => {
   verifyRuntimeHostPe(bytes, "x64");
   assert.throws(() => verifyRuntimeHostPe(bytes, "arm64"), /architecture/);
   assert.throws(() => verifyRuntimeHostPe(Buffer.from("bad"), "x64"), /PE/);
+});
+test("Windows preinstalled entry shim build does not hardcode a Visual Studio generator", async () => {
+  // OW-P028：v4.0.0 新增的 preinstalled-entry-shim CMake 调用同样必须交由宿主 CMake 选择 VS，并保留 -A 与 PE 校验。
+  const source = await readFile(
+    new URL("../../packages/desktop/scripts/build-windows-preinstalled-entry-shim.mjs", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(source, /["']Visual Studio 17 2022["']/);
+  assert.doesNotMatch(source, /["']-G["']/);
+  assert.match(source, /"-A"/);
+  assert.match(source, /verifyPe\(/);
 });

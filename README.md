@@ -15,11 +15,13 @@ OpenZWork 是 AI 编程工作台，提供桌面应用、浏览器界面和终端
 
 ## 更新
 
+- **2026-11-24**　源码同步至 ZCode v4.0.0，整合工作区插件手动信任、Hook 入口脚本内容绑定、产品 Git 调用加固、预装文档工具中立框架与同机 Server 凭据隔离。 [整合说明](docs/openzwork/upstream/v4.0.0-integration.md)
 - **2026-11-19**　源码同步至 ZCode v3.18.2。桌面端切换数据目录时会一并迁移已存凭据所需的密钥。 [整合说明](docs/openzwork/upstream/v3.18.2-integration.md)
 - **2026-11-15**：更新至 ZCode v3.18.1 版本（本地内存诊断、手机历史导航、Windows 安装与流式呈现修复；OpenZWork 裁剪口径见 [整合规范](docs/openzwork/upstream/v3.18.1-integration.md)）。
 - **2026-11-11**：更新至 ZCode v3.18.0 版本。
 - **2026-11-05**：基于 ZCode v3.17.2，包含子代理与 Plan 权限修复、草稿授权和远端会话归属修复、本地 HTML 预览隔离。范围见[整合规范](docs/openzwork/upstream/v3.17.2-integration.md)，已发布版本见 [Releases](https://github.com/BlueSkyXN/OpenZWork/releases)。
-- 2026-10-30：上游 ZCode v3.17.1 发布。- 2026-10-19：更新至 ZCode v3.16.2 版本。
+- 2026-10-30：上游 ZCode v3.17.1 发布。
+- 2026-10-19：更新至 ZCode v3.16.2 版本。
 - 2026-10-16：更新至 ZCode v3.16.1 版本。
 - 2026-10-10：更新至 ZCode v3.15.1 版本。
 - 2026-9-23：更新至 ZCode v3.14.3 版本。
@@ -41,7 +43,7 @@ Agent CLI 与运行时源码位于 [apps/zcode-cli/](apps/zcode-cli/)，作为�
 | 命令                           | 用途                                                              |
 | ------------------------------ | ----------------------------------------------------------------- |
 | `pnpm install`                 | 安装依赖                                                          |
-| `pnpm prepare:desktop-runtime` | 准备桌面运行资源，默认包含远程资源准备                            |
+| `pnpm prepare:desktop-runtime` | 准备桌面本机运行资源（远程运行资源由 `pnpm prepare:remote-assets` 单独准备） |
 | `pnpm prepare:remote-assets`   | 单独准备远程运行资源                                              |
 | `pnpm bootstrap:with-remote`   | 初始化依赖、本地与远程资源，并串行构建相关包；跳过桌面应用 bundle |
 | `pnpm build`                   | 递归执行各 workspace 包的构建脚本，包括包内的资源准备步骤         |

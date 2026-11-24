@@ -12,7 +12,10 @@ import {
 import { modelSelectionSchema, type ModelSelection, type ZCodeModelOption } from "@zcode/shared";
 import { createCommandCenter, type CommandCenterApp } from "../src/command-center.js";
 import { handleModelCommand } from "../src/command-center/handlers/model.js";
-import { createTuiModelAvailabilityChecker } from "../src/tui-login-state.js";
+// OpenZWork(OZ-D003)：tui-login-state.ts 已随官方登录域裁剪，对齐 tui-prompt-handler 的模型可用性检查。
+const createTuiModelAvailabilityChecker =
+  (getApp: () => Promise<CommandCenterApp>) => async (): Promise<boolean> =>
+    ((await (await getApp()).listModels?.()) ?? []).some((option) => !option.disabledReason);
 import { readTuiSessionMetadata } from "../src/tui-prompt-handler-queries.js";
 import { filterModelOptions, toPromptInput } from "../../tui/src/app-input.js";
 import { completeModelCommand } from "../../tui/src/app-keyboard-helpers.js";

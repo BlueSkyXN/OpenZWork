@@ -15,11 +15,13 @@ OpenZWork is an AI coding workspace with desktop, browser, and terminal interfac
 
 ## Updates
 
+- **2026-11-24** The source now tracks ZCode v4.0.0, integrating workspace plugin directory trust, Hook script content binding, product Git invocation hardening, neutral preinstalled document tools support, and same-machine Server credential isolation. [Integration notes](docs/openzwork/upstream/v4.0.0-integration.md)
 - **2026-11-19** The source now tracks ZCode v3.18.2. When the desktop app moves its data directory, it also transfers the key needed to read saved credentials. [Integration notes](docs/openzwork/upstream/v3.18.2-integration.md)
 - **2026-11-15**: Updated to ZCode v3.18.1 (local memory diagnostics, mobile history navigation, Windows installer and streaming presentation fixes; see the [integration spec](docs/openzwork/upstream/v3.18.1-integration.md)).
 - **2026-11-11**: Updated to ZCode v3.18.0.
 - **2026-11-05**: Based on ZCode v3.17.2, with subagent and Plan permission fixes, draft authorization and remote session ownership fixes, and isolated local HTML previews. See the [integration spec](docs/openzwork/upstream/v3.17.2-integration.md) and [published releases](https://github.com/BlueSkyXN/OpenZWork/releases).
-- 2026-10-30: upstream ZCode v3.17.1 released.- 2026-10-19: Updated to ZCode v3.16.2.
+- 2026-10-30: upstream ZCode v3.17.1 released.
+- 2026-10-19: Updated to ZCode v3.16.2.
 - 2026-10-16: Updated to ZCode v3.16.1.
 - 2026-10-10: Updated to ZCode v3.15.1.
 - 2026-9-23: Updated to ZCode v3.14.3.
@@ -41,7 +43,7 @@ Additional setup and build commands:
 | Command                        | Purpose                                                                                                                             |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm install`                 | Install dependencies                                                                                                                |
-| `pnpm prepare:desktop-runtime` | Prepare desktop runtime assets, including remote assets by default                                                                  |
+| `pnpm prepare:desktop-runtime` | Prepare local desktop runtime assets (use `pnpm prepare:remote-assets` for remote runtime assets)                                   |
 | `pnpm prepare:remote-assets`   | Prepare remote runtime assets separately                                                                                            |
 | `pnpm bootstrap:with-remote`   | Set up dependencies and local and remote assets, then build the relevant packages sequentially; skip the desktop application bundle |
 | `pnpm build`                   | Recursively run each workspace package's build script, including its asset preparation steps                                        |
@@ -64,8 +66,12 @@ pnpm dev:desktop:test
 Set `ZCODE_DATA_BASE_DIR` to use a separate development data directory. For example, on macOS / Linux:
 
 ```bash
-ZCODE_DATA_BASE_DIR="$HOME/.zcode-dev-home" pnpm dev:desktop:test
+ZCODE_DATA_BASE_DIR="$HOME/.openzwork-dev-home" pnpm dev:desktop:test
 ```
+
+### Remote (SSH/WSL)
+
+Run `pnpm bootstrap:with-remote` first to prepare remote runtime assets (`mock-cdn`), then run `pnpm dev:desktop`. When connecting to a remote project, select "Download locally then upload" for runtime assets. In development mode, assets are loaded from `packages/desktop/mock-cdn` and local build outputs and uploaded over SFTP without accessing a CDN.
 
 ### Web Development
 

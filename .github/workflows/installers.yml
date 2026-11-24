@@ -417,10 +417,10 @@ jobs:
           console.log(`AGENT_DIST_BASE_URL_SOURCE=${resolved.source}`);
           NODE
 
-      # 与 B/C 本地构建同链：先备 shared 声明与 CLI 包，再 build:zcode 出 tarball。
+      # 与 B/C 本地构建同链：先备 shared/CLI 包及 server/web 产物，再 --skip-build 组装 tarball，避免重复编译 @zcode/cli...。
       - name: Prepare agent workspace build
         if: steps.cli-dist.outputs.mode != 'skip'
-        run: pnpm build:sea:prepare
+        run: pnpm build:sea:prepare && pnpm --filter @zcode/server run build && pnpm --filter @zcode/web run build
 
       - name: Build independent Node distribution
         if: steps.cli-dist.outputs.mode != 'skip'
@@ -429,12 +429,12 @@ jobs:
           DIST_MODE: ${{ steps.cli-dist.outputs.mode }}
         run: |
           case "$DIST_MODE" in
-            archive) pnpm build:zcode --archive-only --out-dir dist/zcode ;;
+            archive) pnpm build:zcode --archive-only --skip-build --out-dir dist/zcode ;;
             both)
-              pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL" --out-dir dist/zcode-download
-              pnpm build:zcode --skip-build --archive-only --out-dir dist/zcode
+              pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL" --skip-build --out-dir dist/zcode-download
+              pnpm build:zcode --archive-only --skip-build --out-dir dist/zcode
               ;;
-            download) pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL" ;;
+            download) pnpm build:zcode --base-url "$AGENT_DIST_BASE_URL" --skip-build ;;
           esac
 
       # 产物选择与来源清单：与本次版本唯一对应的 tarball，附 source/tree/workflow SHA、

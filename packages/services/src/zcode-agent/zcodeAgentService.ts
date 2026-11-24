@@ -1,6 +1,9 @@
 import {
+  V4_SESSION_DELETION_PREVIEW_BATCH_MAX,
   v4SessionDeletionPreviewSchema,
+  v4SessionDeletionPreviewBatchResultSchema,
   v4SessionDeletionResultSchema,
+  type V4SessionDeletionPreviewBatchItem,
 } from "@zcode/shared/zcode-protocol-v4";
 import { sessionLifecycleSnapshotSchema, type SessionLifecycleSnapshot } from "@zcode/shared";
 import { credentialCipherRequestSchema } from "@zcode/shared";
@@ -91,6 +94,7 @@ import type {
 import {
   subagentRuntimeConfigSchema,
   zcodeSubagentsReadRuntimeConfigParamsSchema,
+  zcodeSessionReadReplyLanguageParamsSchema,
   type SubagentRuntimeConfig,
   ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS,
   formatLogPrefix,
@@ -141,6 +145,7 @@ import {
   zcodePluginOperationProgressNotificationSchema,
   zcodePluginsRestoreBuiltinResultSchema,
   zcodePluginsSetEnabledResultSchema,
+  zcodePluginsWorkspaceTrustResultSchema,
   zcodePluginsCancelOperationResultSchema,
   zcodePluginsUninstallResultSchema,
   zcodePluginsValidateResultSchema,
@@ -252,6 +257,7 @@ import type {
   ZCodeAgentSetModeParams,
   ZCodeAgentSetModelParams,
   ZCodeAgentSetPluginEnabledParams,
+  ZCodeAgentSetWorkspacePluginTrustParams,
   ZCodeAgentSetThoughtLevelParams,
   ZCodeAgentPluginReferenceCatalogParams,
   ZCodeAgentSkillReferenceCatalogParams,
@@ -334,6 +340,7 @@ import {
   parseWorkspaceConfigTopic,
   conversationTopicWireCandidateSchema,
   conversationTelemetryFactSchema,
+  turnAdmissionTelemetrySchema,
   sessionsIndexTopic,
   sessionsIndexReconcileResultSchema,
   sessionsIndexTopicWireCandidateSchema,
@@ -381,7 +388,7 @@ import {
   ZCodeAttachmentFaultError,
   type CommandAck,
   type ConversationTopicWireCandidate,
-  type ConversationTelemetryFact,
+  type ConversationTelemetryInput,
   type SessionsIndexTopicWireCandidate,
   type WorkspaceConfigTopicWireCandidate,
   type CommandEnvelope,
@@ -1075,6 +1082,11 @@ interface CreateZCodeAgentServiceBaseOptions extends Omit<
     workspacePath: string;
     workspaceIdentity?: string;
   }) => Promise<SubagentRuntimeConfig>;
+  /**
+   * Agent 回复语言（同步、只读内存，null 为未设置），应答 CLI 的 session/readReplyLanguage。
+   * 只有 Desktop Host 注入（值由 Main 持有并推送）；未注入的 Host（远端、Web）回答 null。
+   */
+  resolveReplyLanguage?: () => string | null;
   sessionRuntimePreferencesAuthority?: "local" | "external";
   prepareProjectExecution?: (
     projectId: string,
@@ -1283,8 +1295,12 @@ const pluginUiToolResultEmitter = new Emitter<
   }>();
   const conversationFrameEmitters = new Map<string, Emitter<ConversationTopicWireCandidate>>();
   const localTtftFactsEmitter = new Emitter<{ workspaceKey: string; facts: LocalTtftFacts }>();
-  const conversationTelemetryFactEmitters = new Map<string, Emitter<ConversationTelemetryFact>>();
+  const conversationTelemetryFactEmitters = new Map<string, Emitter<ConversationTelemetryInput>>();
   const contextComposition = createContextCompositionClient({
+    onModelRequestMetrics: (workspace, fact) => {
+      if (!collectRemoteConversationFact(workspace, fact))
+        getConversationTelemetryFactEmitter(workspace).fire(fact);
+    },
     getExistingClient: (target) => getReadOnlyClient(target, "existing-only"),
     isRuntimeUnavailableError: (error) =>
       error instanceof Error &&
@@ -1302,7 +1318,7 @@ const pluginUiToolResultEmitter = new Emitter<
   const remoteConversationTelemetry = new Map<string, RemoteConversationTelemetry>();
   function collectRemoteConversationFact(
     workspace: ZCodeAgentWorkspaceTarget,
-    fact: ConversationTelemetryFact,
+    fact: ConversationTelemetryInput,
   ): boolean {
     const key = resolveWorkspaceKey(workspace);
     let collector = remoteConversationTelemetry.get(key);
@@ -1537,6 +1553,7 @@ const pluginUiToolResultEmitter = new Emitter<
   });
 
   // OpenZWork 净化：账号鉴权解析（accountRequestAuthService 官方域，WP-04 删除）整块不引入。
+
   function takePendingSessionRuntimePreferences(
     requestId: string,
   ): PendingSessionRuntimePreferencesRequest | undefined {
@@ -1735,7 +1752,7 @@ const pluginUiToolResultEmitter = new Emitter<
     const key = resolveWorkspaceKey(workspace);
     const existing = conversationTelemetryFactEmitters.get(key);
     if (existing) return existing;
-    const created = new Emitter<ConversationTelemetryFact>();
+    const created = new Emitter<ConversationTelemetryInput>();
     conversationTelemetryFactEmitters.set(key, created);
     return created;
   }
@@ -2276,10 +2293,20 @@ const pluginUiToolResultEmitter = new Emitter<
             });
           return;
         }
+        if (message.method === V4_NOTIFICATIONS.turnAdmissionTelemetry) {
+          const parsed = turnAdmissionTelemetrySchema.safeParse(message.params);
+          if (parsed.success) {
+            if (!collectRemoteConversationFact(workspace, parsed.data))
+              getConversationTelemetryFactEmitter(workspace).fire(parsed.data);
+          } else logger.debug(undefined, "丢弃无效会话接纳遥测通知");
+          return;
+        }
         if (contextComposition.handleNotification(workspace, message)) return;
         if (message.method === V4_NOTIFICATIONS.conversationTelemetryFact) {
           const parsed = conversationTelemetryFactSchema.safeParse(message.params);
-          if (parsed.success) {
+          if (parsed.success && parsed.data.kind === "plugin.discovery") {
+            // OpenZWork(OZ-D001): 插件发现遥测上报已随 WP-05 移除，静默忽略不进 renderer/远控引擎。
+          } else if (parsed.success) {
             // 远控事实由执行服务独占，避免桌面同时打开该会话时重复计 step。
             if (!collectRemoteConversationFact(workspace, parsed.data))
               getConversationTelemetryFactEmitter(workspace).fire(parsed.data);
@@ -2383,6 +2410,24 @@ const pluginUiToolResultEmitter = new Emitter<
           // 该私有能力属于已建立的 stdio 进程连接，不转发至 UI，也不记录载荷。
           void executeCredentialCipherRequest(options.credentialCipherProvider, parsed.data)
             .then((reply) => client.respond(request.id, reply))
+            .catch(() => {});
+          return;
+        }
+        // 回复语言是 Host 级的值，不按 workspace 路由；放在守卫之后，服务多个 workspace 的
+        // CLI 会被误拒。从内存同步应答，不做 IO（docs/i18n/agent-reply-language.md）。
+        if (request.method === zcodeProtocolMethods.sessionReadReplyLanguage) {
+          if (!zcodeSessionReadReplyLanguageParamsSchema.safeParse(request.params).success) {
+            void client
+              .respondError(request.id, {
+                code: -32602,
+                message: "Invalid reply language request",
+              })
+              .catch(() => {});
+            return;
+          }
+          // 注入的值已在 Host 收消息时按 replyLanguageSchema 校验，这里不再重复。
+          void client
+            .respond(request.id, { language: options?.resolveReplyLanguage?.() ?? null })
             .catch(() => {});
           return;
         }
@@ -3433,6 +3478,15 @@ const pluginUiToolResultEmitter = new Emitter<
     );
   }
 
+  /** 归档永久删除的 CLI 载体：本机优先已有 runtime，没有就用管理面进程；远端只用已有连接。 */
+  async function sessionDeletionClient(
+    workspace: ZCodeAgentWorkspaceTarget,
+  ): Promise<ZCodeProtocolClient> {
+    return isLocalActiveWorkspaceClient(workspace)
+      ? await getReadOnlyClient(workspace, "existing-only").catch(() => getPluginManagementClient())
+      : await getReadOnlyClient(workspace, "existing-only");
+  }
+
   async function resolveGlobalSavedWorkflowCarrier(): Promise<{
     client: ZCodeProtocolClient;
     workspace: ZCodeWorkspaceRef;
@@ -4031,23 +4085,83 @@ const pluginUiToolResultEmitter = new Emitter<
     },
 
     async previewSessionDeletion(params) {
-      const client = isLocalActiveWorkspaceClient(params.workspace)
-        ? await getReadOnlyClient(params.workspace, "existing-only").catch(() =>
-            getPluginManagementClient(),
-          )
-        : await getReadOnlyClient(params.workspace, "existing-only");
+      const client = await sessionDeletionClient(params.workspace);
       return client.request(
         V4_METHODS.sessionDeletionPreview,
         params,
         v4SessionDeletionPreviewSchema,
       );
     },
+    async previewSessionDeletions(params) {
+      // 修复原因：逐项预检让 CLI 每项各扫一遍全表（N×13 次同步扫描）。按实际 CLI client 分组，
+      // 同一 client 整批一次扫描；某组失败只把该组各项记为错误，不影响其他组。
+      const results: V4SessionDeletionPreviewBatchItem[] = [];
+      const clients = new Map<string, Promise<ZCodeProtocolClient>>();
+      const groups = new Map<ZCodeProtocolClient, number[]>();
+      for (const [index, item] of params.items.entries()) {
+        const key = JSON.stringify([
+          item.workspace.workspacePath,
+          item.workspace.workspaceIdentity ?? "",
+        ]);
+        let client = clients.get(key);
+        if (!client) {
+          client = sessionDeletionClient(item.workspace);
+          clients.set(key, client);
+        }
+        try {
+          const resolved = await client;
+          groups.set(resolved, [...(groups.get(resolved) ?? []), index]);
+        } catch (error) {
+          results[index] = { error: { code: sessionDeletionErrorCode(error) } };
+        }
+      }
+      for (const [client, group] of groups)
+        for (let start = 0; start < group.length; start += V4_SESSION_DELETION_PREVIEW_BATCH_MAX) {
+          const indexes = group.slice(start, start + V4_SESSION_DELETION_PREVIEW_BATCH_MAX);
+          const items = indexes.map((index) => params.items[index]!);
+          let batch: V4SessionDeletionPreviewBatchItem[];
+          try {
+            batch = await client
+              .request(
+                V4_METHODS.sessionDeletionPreviewBatch,
+                { items },
+                v4SessionDeletionPreviewBatchResultSchema,
+              )
+              .then((result) => result.results)
+              .catch(async (error: unknown) => {
+                // 旧 CLI 不认识批量方法时逐项回退，结果语义不变。
+                if (!isProtocolMethodNotFoundError(error)) throw error;
+                const fallback: V4SessionDeletionPreviewBatchItem[] = [];
+                for (const item of items)
+                  fallback.push(
+                    await client
+                      .request(
+                        V4_METHODS.sessionDeletionPreview,
+                        item,
+                        v4SessionDeletionPreviewSchema,
+                      )
+                      .then(
+                        (preview) => ({ preview }),
+                        (itemError: unknown) => ({
+                          error: { code: sessionDeletionErrorCode(itemError) },
+                        }),
+                      ),
+                  );
+                return fallback;
+              });
+            if (batch.length !== items.length) throw new Error("session-data.unavailable");
+          } catch (error) {
+            const code = sessionDeletionErrorCode(error);
+            batch = items.map(() => ({ error: { code } }));
+          }
+          indexes.forEach((index, position) => {
+            results[index] = batch[position]!;
+          });
+        }
+      return { results };
+    },
     async executeSessionDeletion(params) {
-      const client = isLocalActiveWorkspaceClient(params.workspace)
-        ? await getReadOnlyClient(params.workspace, "existing-only").catch(() =>
-            getPluginManagementClient(),
-          )
-        : await getReadOnlyClient(params.workspace, "existing-only");
+      const client = await sessionDeletionClient(params.workspace);
       return client.request(
         V4_METHODS.sessionDeletionExecute,
         params,
@@ -5095,6 +5209,21 @@ const pluginUiToolResultEmitter = new Emitter<
           ...(params.scope ? { scope: params.scope } : {}),
         },
         zcodePluginsSetEnabledResultSchema,
+        { timeoutMs: PLUGIN_MANAGEMENT_REQUEST_TIMEOUT_MS },
+      );
+    },
+
+    async setWorkspacePluginTrust(params: ZCodeAgentSetWorkspacePluginTrustParams) {
+      const client = await getPluginManagementClient();
+      return client.request(
+        zcodeProtocolMethods.pluginsWorkspaceTrust,
+        {
+          workspace: buildWorkspaceRef(params),
+          pluginRoot: params.pluginRoot,
+          declarationDigest: params.declarationDigest,
+          trusted: params.trusted,
+        },
+        zcodePluginsWorkspaceTrustResultSchema,
         { timeoutMs: PLUGIN_MANAGEMENT_REQUEST_TIMEOUT_MS },
       );
     },
@@ -7017,4 +7146,10 @@ function sessionTargetOf(
     ...(workspace.workspaceIdentity ? { workspaceIdentity: workspace.workspaceIdentity } : {}),
     sessionId,
   };
+}
+
+/** JSON-RPC method-not-found：旧 CLI 不认识新方法。 */
+/** 批量预检的单项错误码：取错误消息（如 session-data.identity-mismatch），读不到时记为不可用。 */
+function sessionDeletionErrorCode(error: unknown): string {
+  return (error instanceof Error && error.message) || "session-data.unavailable";
 }

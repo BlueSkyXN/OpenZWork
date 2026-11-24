@@ -11,7 +11,7 @@ import type {
   ZCodeUsage,
 } from "@zcode/shared";
 import { normalizeTelemetryUiMode } from "@zcode/shared";
-import type { ConversationTelemetryFact } from "@zcode/shared/zcode-protocol-v4";
+import type { ConversationTelemetryInput } from "@zcode/shared/zcode-protocol-v4";
 import {
   activatePromptTelemetry,
   activateDetachedAgentStepTelemetry,
@@ -36,6 +36,8 @@ import {
   recordPromptPermissionRequest,
   recordPromptPermissionResponse,
   recordPromptTokenUsageDelta,
+  recordPromptAdmissionTelemetry,
+  recordPromptRequestMetrics,
   resetComposerInputStart,
 } from "./messageTelemetry.js";
 import { resolveLegacyRuntimeModelValue } from "./runtimeModelTelemetry.js";
@@ -67,6 +69,8 @@ export type ConversationTelemetryObservation =
 const MAX_DEDUPE_KEYS = 2_000;
 const MAX_BUFFERED_FACTS_PER_COMMAND = 128;
 const MAX_BUFFERED_COMMANDS = 200;
+/** workflow_run_result 的子 agent 计数最多跟踪这么多个 run；超出时丢最早登记的 run。 */
+const MAX_TRACKED_WORKFLOW_RUNS = 256;
 
 // OpenZWork 净化：platform 只剩结构性 no-op 上报位（ARMS 成员已从 IPlatformService 剥离）。
 export type TelemetryPlatform = {
@@ -129,10 +133,16 @@ export type ConversationSendAckOutcome =
 export function resolveSendAckSettlement(ack: {
   status: string;
   reasonCode?: string;
+  result?: { type: string; disposition?: string };
 }): ConversationSendAckOutcome | null {
   // 必须先于 status 判断：这条 ACK 的 status 本身非 accepted，
   // 一旦落定，first-wins 会把用户确认后的真实成败结果吃掉。
   if (ack.reasonCode === HELD_QUEUE_CONFIRMATION_STALE_REASON) return null;
+  // 「对话 + 文件」编辑遇到文件冲突：ACK 是 accepted，但没有发出新一轮、不会渲染用户消息；
+  // 不能转入待渲染，否则 30s 后被误记为 render_timeout。
+  if (ack.result?.type === "editUserQuery" && ack.result.disposition === "blocked") {
+    return { kind: "settle", status: "fail", ackStatus: ack.status, reasonCode: "blocked" };
+  }
   // accepted/duplicate 只代表 Host 收下了命令，此时屏幕上还什么都没有；
   // z-code 没有乐观渲染，要等投影回流出 userInput row 才算发送成功。
   if (ack.status === "accepted" || ack.status === "duplicate") {
@@ -154,7 +164,7 @@ interface PendingSendRenderWait {
 }
 
 function backgroundSeedFromTurnStarted(
-  fact: Extract<ConversationTelemetryFact, { kind: "turn.started" }>,
+  fact: Extract<ConversationTelemetryInput, { kind: "turn.started" }>,
 ): AcceptedConversationPromptTelemetrySeed | null {
   if (!fact.sourceCommandId) return null;
   // OpenZWork 净化：闲时后台归因分支（idle plan 票据域）已删，只保留 automation/background 归因。
@@ -199,6 +209,8 @@ const STEP_SOURCE_DETAIL_KEYS = [
   "ui_mode",
   "memory_enabled",
   "message_source",
+  // 用户发送方式（normal / edit），编辑重发轮的每条 step 都要能单独筛出。
+  "send_type",
   "task_trigger",
   "automation_id",
 ] as const;
@@ -232,7 +244,7 @@ interface PromptLifecycle {
 }
 
 interface BufferedFact {
-  fact: ConversationTelemetryFact;
+  fact: ConversationTelemetryInput;
   receivedAt: number;
   foregroundAtReceipt: boolean;
 }
@@ -290,7 +302,7 @@ interface PendingFinalizedStep {
 
 interface DeferredTerminal {
   lifecycle: PromptLifecycle;
-  fact: Extract<ConversationTelemetryFact, { kind: "turn.terminal" }>;
+  fact: Extract<ConversationTelemetryInput, { kind: "turn.terminal" }>;
   receivedAt: number;
   foregroundAtReceipt: boolean;
 }
@@ -323,7 +335,7 @@ class BoundedKeySet {
 }
 
 function toLegacyNetworkEvent(
-  fact: Extract<ConversationTelemetryFact, { kind: "model.request.status" }>,
+  fact: Extract<ConversationTelemetryInput, { kind: "model.request.status" }>,
 ): Extract<ZCodeStreamEvent, { type: "task_network_debug_status" }> {
   return {
     type: "task_network_debug_status",
@@ -399,27 +411,29 @@ function childStepExtraDetail(child: BackgroundSubagentTelemetry): Record<string
   };
 }
 
-/** detached 子会话终态汇总的输入：谁触发（eventId）、成败、错误原文。 */
+/** detached 子会话终态汇总的输入：谁触发（eventId）、成败、错误原文和错误码。 */
 interface DetachedChildTerminalOutcome {
   eventId: string;
   success: boolean;
   errorMessage?: string;
+  errorCode?: string;
 }
 
 function terminalOutcomeOf(
-  fact: Extract<ConversationTelemetryFact, { kind: "turn.terminal" | "subagent.lifecycle" }>,
+  fact: Extract<ConversationTelemetryInput, { kind: "turn.terminal" | "subagent.lifecycle" }>,
 ): DetachedChildTerminalOutcome {
-  const errorMessage =
-    fact.errorMessage ?? (fact.kind === "turn.terminal" ? fact.errorCode : undefined);
+  const errorCode = fact.kind === "turn.terminal" ? fact.errorCode : undefined;
+  const errorMessage = fact.errorMessage ?? errorCode;
   return {
     eventId: fact.eventId,
     success: fact.status === "success" || fact.status === "completed",
     ...(errorMessage === undefined ? {} : { errorMessage }),
+    ...(errorCode === undefined ? {} : { errorCode }),
   };
 }
 
 function toToolLifecycleEvent(input: {
-  fact: Extract<ConversationTelemetryFact, { kind: "tool.lifecycle" }>;
+  fact: Extract<ConversationTelemetryInput, { kind: "tool.lifecycle" }>;
   toolId: string;
   inputId?: string;
   hasStarted: boolean;
@@ -467,6 +481,7 @@ function toToolLifecycleEvent(input: {
     toolName: fact.toolName,
     kind: fact.toolName,
     error: fact.errorMessage,
+    ...(fact.errorCode ? { errorCode: fact.errorCode } : {}),
     raw: {},
     ...(skillMetadata ? { skillMetadata } : {}),
     ...(fact.pluginId
@@ -475,7 +490,7 @@ function toToolLifecycleEvent(input: {
   } as Extract<ZCodeStreamEvent, { type: "tool_call_update" }>;
 }
 
-function toUsage(fact: Extract<ConversationTelemetryFact, { kind: "usage.delta" }>): ZCodeUsage {
+function toUsage(fact: Extract<ConversationTelemetryInput, { kind: "usage.delta" }>): ZCodeUsage {
   return {
     inputTokens: fact.inputTokens,
     outputTokens: fact.outputTokens,
@@ -508,13 +523,13 @@ function mergeUsage(left: ZCodeUsage | null, right: ZCodeUsage): ZCodeUsage {
 }
 
 function isToolTimeout(
-  fact: Extract<ConversationTelemetryFact, { kind: "tool.lifecycle" }>,
+  fact: Extract<ConversationTelemetryInput, { kind: "tool.lifecycle" }>,
 ): boolean {
   return fact.errorCode === "tool_timeout" || fact.performance?.timedOut === true;
 }
 
 function terminalStatus(
-  status: Extract<ConversationTelemetryFact, { kind: "turn.terminal" }>["status"],
+  status: Extract<ConversationTelemetryInput, { kind: "turn.terminal" }>["status"],
 ): "success" | "fail" | "user_interrupt" {
   if (status === "success") return "success";
   return status === "interrupted" ? "user_interrupt" : "fail";
@@ -569,6 +584,11 @@ export class ConversationTelemetryEngine {
   >();
   /** 每个在飞 run 已登记的子代理会话（run-settled 时逐个结算）。 */
   private readonly workflowActorsByRun = new Map<string, Set<string>>();
+  /**
+   * 每个 run 在本窗口见过的子 agent（agentId 去重），供 workflow_run_result 的 actor_count。
+   * 与上面的结算账本分开：账本在 run-settled 后清空、且同一子会话只建一次，这里要跨 resume 累计。
+   */
+  private readonly workflowActorIdsByRun = new Map<string, Set<string>>();
   private readonly backgroundSubagentTelemetryByChildSession = new Map<
     string,
     BackgroundSubagentTelemetry
@@ -832,10 +852,13 @@ export class ConversationTelemetryEngine {
     return () => this.detachForeground(owner);
   }
 
-  handleFact(fact: ConversationTelemetryFact): void {
+  handleFact(fact: ConversationTelemetryInput): void {
     // 主 session 与 detached child 的 eventId 都只保证各自 session 内唯一；
     // 若只按 eventId 去重，同号 child fact 会在 renderer 再次被主会话事实误杀。
-    const eventKey = `${fact.sessionId}\0${fact.eventId}`;
+    // 同源 started/admission、completed/metrics 可共用 eventId，独立通知不能互相去重。
+    const channel =
+      fact.kind === "turn.admission" || fact.kind === "model.request.metrics" ? fact.kind : "fact";
+    const eventKey = `${channel}\0${fact.sessionId}\0${fact.eventId}`;
     if (this.disposed || !this.eventIds.remember(eventKey)) {
       return;
     }
@@ -911,7 +934,7 @@ export class ConversationTelemetryEngine {
   }
 
   private handleSubagentLifecycle(
-    fact: Extract<ConversationTelemetryFact, { kind: "subagent.lifecycle" }>,
+    fact: Extract<ConversationTelemetryInput, { kind: "subagent.lifecycle" }>,
     receivedAt: number,
   ): void {
     if (fact.phase === "spawned") {
@@ -1000,7 +1023,7 @@ export class ConversationTelemetryEngine {
 
   private handleForegroundSubagentFact(
     child: ForegroundSubagentUsage,
-    fact: ConversationTelemetryFact,
+    fact: ConversationTelemetryInput,
   ): void {
     if (fact.kind === "model.request.status") {
       if (fact.status !== "model_request_started") return;
@@ -1045,7 +1068,7 @@ export class ConversationTelemetryEngine {
 
   private handleBackgroundSubagentFact(
     child: BackgroundSubagentTelemetry,
-    fact: ConversationTelemetryFact,
+    fact: ConversationTelemetryInput,
     receivedAt: number,
   ): void {
     switch (fact.kind) {
@@ -1116,12 +1139,13 @@ export class ConversationTelemetryEngine {
    * detached 账本，差异只在登记事实、终态时机与 step 上的归属字段。
    */
   private handleWorkflowLifecycle(
-    fact: Extract<ConversationTelemetryFact, { kind: "workflow.lifecycle" }>,
+    fact: Extract<ConversationTelemetryInput, { kind: "workflow.lifecycle" }>,
     receivedAt: number,
   ): void {
     if (fact.phase === "actor-spawned") {
       // 缺锚点（升级前的 run）或缺子会话身份：不猜测归属，不上报。
       if (!fact.sourceCommandId || !fact.childSessionId || !fact.agentId) return;
+      this.rememberWorkflowActor(fact.runId, fact.agentId);
       // resume 会再发一遍 actor-created；同一子会话的账本只建一次。
       if (this.backgroundSubagentTelemetryByChildSession.has(fact.childSessionId)) return;
       const parentLifecycle = this.lifecyclesByCommandId.get(fact.sourceCommandId);
@@ -1162,6 +1186,9 @@ export class ConversationTelemetryEngine {
       return;
     }
 
+    // OpenZWork(OZ-D001): workflow_run_result ARMS 遥测已随 WP-05 移除，不再构造或入队上报。
+    void fact;
+
     // run-settled：该 run 全部子代理的终态。每个子代理一条汇总 step，然后排空迟到工具终态后清理。
     const actors = this.workflowActorsByRun.get(fact.runId);
     if (!actors) return;
@@ -1179,6 +1206,18 @@ export class ConversationTelemetryEngine {
         receivedAt,
       );
       this.maybeCleanupBackgroundSubagentTelemetry(child);
+    }
+  }
+
+  private rememberWorkflowActor(runId: string, agentId: string): void {
+    const actors = this.workflowActorIdsByRun.get(runId);
+    if (actors) {
+      actors.add(agentId);
+      return;
+    }
+    this.workflowActorIdsByRun.set(runId, new Set([agentId]));
+    if (this.workflowActorIdsByRun.size > MAX_TRACKED_WORKFLOW_RUNS) {
+      this.workflowActorIdsByRun.delete(this.workflowActorIdsByRun.keys().next().value!);
     }
   }
 
@@ -1234,6 +1273,7 @@ export class ConversationTelemetryEngine {
         raw: {},
         status: outcome.success ? "completed" : "failed",
         error: outcome.errorMessage,
+        ...(outcome.errorCode ? { errorCode: outcome.errorCode } : {}),
       },
       now: receivedAt,
     });
@@ -1242,7 +1282,7 @@ export class ConversationTelemetryEngine {
 
   private handleBackgroundToolLifecycle(
     child: BackgroundSubagentTelemetry,
-    fact: Extract<ConversationTelemetryFact, { kind: "tool.lifecycle" }>,
+    fact: Extract<ConversationTelemetryInput, { kind: "tool.lifecycle" }>,
     receivedAt: number,
   ): void {
     // stopped 后仅排空已经开始的工具，避免重放/迟到事件重新创建已收口的 step。
@@ -1397,6 +1437,7 @@ export class ConversationTelemetryEngine {
     this.foregroundSubagentUsageByChildSession.clear();
     this.backgroundSubagentTelemetryByChildSession.clear();
     this.workflowActorsByRun.clear();
+    this.workflowActorIdsByRun.clear();
     this.deferredTerminalsByCommandId.clear();
     this.foregroundOwnerSessions.clear();
     this.foregroundSessionCounts.clear();
@@ -1430,7 +1471,7 @@ export class ConversationTelemetryEngine {
     return (this.foregroundSessionCounts.get(sessionId) ?? 0) > 0;
   }
 
-  private shouldIgnoreBackgroundMirror(fact: ConversationTelemetryFact): boolean {
+  private shouldIgnoreBackgroundMirror(fact: ConversationTelemetryInput): boolean {
     if (fact.kind !== "tool.lifecycle" && fact.kind !== "permission.lifecycle") return false;
     return (
       fact.background === true &&
@@ -1456,7 +1497,7 @@ export class ConversationTelemetryEngine {
     this.observe("clearStreamStallTracking", this.taskKey(sessionId));
   }
 
-  private resolveCommandId(fact: ConversationTelemetryFact): string | undefined {
+  private resolveCommandId(fact: ConversationTelemetryInput): string | undefined {
     if (fact.sourceCommandId) return fact.sourceCommandId;
     return fact.turnId
       ? this.commandIdByTurnKey.get(`${fact.sessionId}\u0000${fact.turnId}`)
@@ -1535,7 +1576,7 @@ export class ConversationTelemetryEngine {
 
   private processPromptFact(
     lifecycle: PromptLifecycle,
-    fact: ConversationTelemetryFact,
+    fact: ConversationTelemetryInput,
     receivedAt: number,
     foregroundAtReceipt: boolean,
   ): void {
@@ -1551,6 +1592,19 @@ export class ConversationTelemetryEngine {
           );
         }
         activatePromptTelemetry(lifecycle.taskKey, lifecycle.sourceCommandId);
+        return;
+
+      case "turn.admission":
+        recordPromptAdmissionTelemetry(lifecycle.taskKey, fact);
+        return;
+      case "model.request.metrics":
+        if (!fact.querySource || fact.querySource === "main_turn")
+          recordPromptRequestMetrics({
+            taskId: lifecycle.taskKey,
+            requestId: fact.requestId,
+            inputTokens: fact.inputTokens,
+            cacheReadTokens: fact.cacheReadTokens,
+          });
         return;
 
       case "model.request.status": {
@@ -1655,7 +1709,7 @@ export class ConversationTelemetryEngine {
 
   private handleToolLifecycle(
     lifecycle: PromptLifecycle,
-    fact: Extract<ConversationTelemetryFact, { kind: "tool.lifecycle" }>,
+    fact: Extract<ConversationTelemetryInput, { kind: "tool.lifecycle" }>,
     receivedAt: number,
     foregroundAtReceipt: boolean,
   ): void {
@@ -1778,7 +1832,7 @@ export class ConversationTelemetryEngine {
 
   private handleTerminal(
     lifecycle: PromptLifecycle,
-    fact: Extract<ConversationTelemetryFact, { kind: "turn.terminal" }>,
+    fact: Extract<ConversationTelemetryInput, { kind: "turn.terminal" }>,
     receivedAt: number,
     foregroundAtReceipt: boolean,
   ): void {
@@ -1949,7 +2003,7 @@ export class ConversationTelemetryEngine {
   }
 
   private handleCompaction(
-    fact: Extract<ConversationTelemetryFact, { kind: "compaction.terminal" }>,
+    fact: Extract<ConversationTelemetryInput, { kind: "compaction.terminal" }>,
     foregroundAtReceipt: boolean,
   ): void {
     const dedupeKey = `${fact.sessionId}\u0000${fact.operationId}\u0000context_compaction`;

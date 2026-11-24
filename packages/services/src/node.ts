@@ -1,3 +1,4 @@
+import { ZCODE_PREINSTALLED_TOOLS_AVAILABLE_ENV } from "@zcode/shared/preinstalled-tools";
 import {
   readTopicResourceFromRelay,
   validateTopicResourceFromRelay,
@@ -58,17 +59,19 @@ import { createGenUiService } from "./gen-ui/node.js";
 // Node.js service implementations — NOT safe to import in browser code
 import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { IChannel } from "@zcode/rpc";
 import type { DynamicWorkflowMode } from "@zcode/shared";
 import type { PluginSandboxHandle, PluginSandboxRegisterInput } from "@zcode/shared/mcp-apps";
+import { prependPathEntries } from "#src/runtime-tools/runtimeToolResolver.js";
 import {
   createNodeProviderRuntimePathEnv,
   NodeModelSelectionConfigRepository,
   PERSONAL_PROVIDER_CONFIG_FILE_NAME,
 } from "@zcode/provider-node";
-import { getAppConfigDir as resolveAppConfigDir } from "./paths.js";
+import { getAppConfigDir as resolveAppConfigDir, getCredentialsFilePath } from "./paths.js";
 import {
   createSystemCredentialCipher,
   createServerCredentialCipher,
@@ -138,6 +141,7 @@ export {
   getZCodeDataRootDir,
   getConversationWorkspaceDir,
   getAppConfigDir,
+  getCredentialsFilePath,
   getExportLogStageDir,
   getExportLogDir,
   getFeedbackRootDir,
@@ -214,7 +218,6 @@ export type {
 export {
   createProviderProvisioningSource,
   listProviderProvisioningCredentialKeys,
-  resolveCredentialFilePath,
   type ProviderProvisioningSource,
   type ProviderProvisioningSourceOptions,
 } from "./model-provider/providerProvisioningSource.js";
@@ -406,7 +409,6 @@ import { createProviderSettingsConnectivityTester } from "./model-provider/provi
 import {
   createProviderProvisioningSource,
   listProviderProvisioningCredentialKeys,
-  resolveCredentialFilePath,
   type ProviderProvisioningSource,
 } from "./model-provider/providerProvisioningSource.js";
 import { createProviderProvisioningTarget } from "./model-provider/providerProvisioningTarget.js";
@@ -571,6 +573,8 @@ export function createLocalServices(options: {
   hostApiNetworkTransport?: HostApiNetworkTransport;
   /** Desktop Host 注入 Main 推送的实时界面语言，供 ZCode endpoint 的 X-Client-Language；远端 server 不注入。 */
   resolveClientLanguage?: () => string | undefined;
+  /** Desktop Host 注入 Main 推送的 Agent 回复语言（null 为未设置）；远端与 Web 不注入，CLI 读到 null。 */
+  resolveReplyLanguage?: () => string | null;
   /** Desktop Host 请求 Main 登记 Agent 已授权的精确本地视频路径。 */
   authorizeLocalMediaPreviewPath?: (path: string) => Promise<string>;
   /**
@@ -614,6 +618,8 @@ export function createLocalServices(options: {
   shareLocalWorkflowQueryRuntime?: boolean;
   /** Desktop Main 提前异步采集的本机 runtime 环境；Local Host 注入后不再同步启动 login shell。 */
   runtimeProcessEnvPatch?: Record<string, string>;
+  /** 仅桌面 Local Host 有本机发布目标时注入；安装前路径固定，仅定位程序，不下发给远端或 Web。 */
+  preinstalledToolsBinDir?: string;
   /** 本地桌面上次 workspace 缺失时，仅用于 Agent 子进程 spawn.cwd 兜底。 */
   zcodeAgentSpawnFallbackCwd?: string;
   /** desktop-attached remote server 从 Desktop Host 收到的一次性 Agent 网络配置。 */
@@ -715,7 +721,7 @@ export function createLocalServices(options: {
   const provisioningOAuthKeys = new Set<string>();
   const credentialCipherProvider =
     options.credentialCipherProvider ??
-    createSystemCredentialCipher({ filePath: join(resolveAppConfigDir(), "credentials.json") });
+    createSystemCredentialCipher({ filePath: getCredentialsFilePath() });
   const credentialService = createCredentialService({
     cipherProvider: credentialCipherProvider,
     onDidMutate: ({ keys, operation }) => {
@@ -779,7 +785,7 @@ export function createLocalServices(options: {
   const providerProvisioningSource = createProviderProvisioningSource({
     cipherProvider: credentialCipherProvider,
     personalRepository: providerConfigRuntime.personalRepository,
-    credentialFilePath: resolveCredentialFilePath(resolveAppConfigDir()),
+    credentialFilePath: getCredentialsFilePath(),
     personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
   });
   const providerProvisioningDisposers = [
@@ -987,7 +993,8 @@ export function createLocalServices(options: {
         appUsageService.getAppUsageSessions({ ...query, offset: 0, limit: 50 }),
       ]);
       return buildAppUsageToolReport(snapshot, page);
-    },    credentialCipherProvider,
+    },
+    credentialCipherProvider,
     runSessionOperation: (target, operation) =>
       worktreeRemovalGate.runSessionOperation(
         target.sessionId,
@@ -1112,7 +1119,18 @@ export function createLocalServices(options: {
       // Host 是旧配置迁移的唯一写入者。Agent spawn 前等待初始化完成，避免 Worker
       // 先拿到尚不存在的 provider_config.json 并发布短暂空 Registry。
       await providerConfigRuntime.start();
+      // OpenZWork(OZ-C015)：默认无官方预装 CDN；仅在配置了自定义源或 binDir 已有已安装入口时声明预装可用，
+      // 避免文档/表格/PDF/演示插件在无源且未安装时误拦系统工具引导。
+      const preinstalledToolsAvailable =
+        !isDesktopAttachedRemote &&
+        Boolean(options.preinstalledToolsBinDir) &&
+        (Boolean(process.env.ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL?.trim()) ||
+          (await hasInstalledPreinstalledToolEntries(options.preinstalledToolsBinDir)));
       return {
+        [ZCODE_PREINSTALLED_TOOLS_AVAILABLE_ENV]: preinstalledToolsAvailable ? "1" : undefined,
+        ...(!isDesktopAttachedRemote && options.preinstalledToolsBinDir
+          ? { PATH: prependPathEntries(process.env.PATH ?? "", [options.preinstalledToolsBinDir]) }
+          : {}),
         ...buildAgentRuntimeEnv({
           httpProxy: agentNetwork.httpProxy,
           noProxy: agentNetwork.noProxy,
@@ -1139,6 +1157,8 @@ export function createLocalServices(options: {
           readSubagentRuntimeConfig: subagentsService.readRuntimeConfig,
         }
       : {}),
+    // 只有 Desktop Host 注入回复语言；远端与 Web 不注入，CLI 读到 null 后按对话语言回复。
+    resolveReplyLanguage: options?.resolveReplyLanguage,
     ...(isDesktopAttachedRemote
       ? { sessionRuntimePreferencesAuthority: "external" as const }
       : {
@@ -1152,6 +1172,8 @@ export function createLocalServices(options: {
                 settings.askUserQuestionAutoResolutionEnabled !== false,
               nativeSearchEnhancementsEnabled: settings.nativeSearchEnhancementsEnabled !== false,
               toolSearchMode: settings.toolSearchMode ?? DEFAULT_APP_TOOL_SEARCH_MODE,
+              totalTokensReminderEnabled: settings.totalTokensReminderEnabled === true,
+              agentAlwaysBackgroundEnabled: settings.agentAlwaysBackgroundEnabled !== false,
               memoryEnabled: settings.memoryEnabled === true,
               ...(scope === "runtime-materialization" && settings.systemPromptSettings
                 ? { systemPromptSettings: settings.systemPromptSettings }
@@ -1176,6 +1198,11 @@ export function createLocalServices(options: {
   const zcodeTaskIndexSyncer = createZCodeTaskIndexSyncer({
     agentService: zcodeAgentService,
     taskIndexRepo,
+    // v4 命令只返回准入回执，退出保护必须消费权威会话状态而不是 RPC 在途数。
+    reportActiveSessionCount: options?.taskRuntimeReporter?.onActiveSessionCountChanged
+      ? (runningTaskCount) =>
+          options.taskRuntimeReporter?.onActiveSessionCountChanged?.({ runningTaskCount })
+      : undefined,
   });
   // 自动归档只由这里的定时扫描触发（启动首轮 + 每小时 + 设置变更补扫）；readTree 与任务点击
   // 都不再执行 archiveInactive。判据仍排除 syncer 观察到的非终态会话，不为扫描启动 CLI。
@@ -1493,7 +1520,7 @@ export function createLocalServices(options: {
         personalConfigFilePath: join(resolveAppConfigDir(), PERSONAL_PROVIDER_CONFIG_FILE_NAME),
         stateFilePath: join(resolveAppConfigDir(), "runtime", "provider", "provisioning.json"),
         listProvisioningCredentialKeys: () =>
-          listProviderProvisioningCredentialKeys(resolveCredentialFilePath(resolveAppConfigDir())),
+          listProviderProvisioningCredentialKeys(getCredentialsFilePath()),
       }),
     );
   }
@@ -1626,9 +1653,7 @@ export async function createServerHostServices(options: {
   // 无桌面环境不能等到首次登录或 Provisioning 才发现系统库缺失。
   const credentialCipherProvider =
     options.credentialCipherProvider ??
-    (await createServerCredentialCipher({
-      filePath: join(resolveAppConfigDir(), "credentials.json"),
-    }));
+    (await createServerCredentialCipher({ filePath: getCredentialsFilePath() }));
   const projectStorageHostId = remoteHostIdFromWorkspaceIdentity(
     buildServerRemoteWorkspaceIdentity({ serverId: options.sourceServerId, workspacePath: "/" }),
   );
@@ -1678,4 +1703,13 @@ export async function createServerHostServices(options: {
 function buildAgentClientLanguageEnv(locale: string | undefined): Record<string, string> {
   const value = locale?.trim();
   return value && /^[\x20-\x7e]+$/.test(value) ? { [ZCODE_CLIENT_LANGUAGE_ENV]: value } : {};
+}
+
+async function hasInstalledPreinstalledToolEntries(binDir: string | undefined): Promise<boolean> {
+  if (!binDir) return false;
+  try {
+    return (await readdir(binDir)).some((name) => !name.startsWith("."));
+  } catch {
+    return false;
+  }
 }

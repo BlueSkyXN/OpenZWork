@@ -12,6 +12,8 @@ import {
   bundledSkillPackRequiredPaths,
   bundledSkillPackSkillsDirectory,
 } from "../../apps/zcode-cli/packages/cli/scripts/sea-bundled-skill-assets.mjs";
+import { officialSeaPlugins } from "../../apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs";
+import { stageCredentialKeyring } from "../stage-credential-keyring.mjs";
 import { stagePlatformPty } from "./platform-archive-openzwork.mjs";
 import { promisify } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
@@ -142,6 +144,84 @@ export async function stageBundledSkills(
     { recursive: true },
   );
   await validate(targetRoot);
+}
+
+const officialPluginTopLevelAllowlist = [
+  ".mcp.json",
+  ".zcode-plugin",
+  "README.md",
+  "agents",
+  "commands",
+  "dist",
+  "docs",
+  "hooks",
+  "output-styles",
+  "package.json",
+  "scripts",
+  "skills",
+  "templates",
+];
+
+const excludedOfficialPluginEntryNames = new Set([
+  ".DS_Store",
+  ".turbo",
+  ".venv",
+  "__pycache__",
+  "coverage",
+  "node_modules",
+]);
+
+function shouldCopyOfficialPluginAsset(pluginDirectory, source) {
+  const rel = relative(pluginDirectory, source);
+  if (!rel) return true;
+  const parts = rel.split(sep);
+  return (
+    parts.every((part) => !excludedOfficialPluginEntryNames.has(part)) &&
+    !parts.at(-1).endsWith(".pyc")
+  );
+}
+
+// OpenZWork(OZ-F011)：独立 CLI 归档不是 SEA，必须与桌面包一致携带 13 个保留官方插件与 node-repl-host。
+export async function stageOfficialPlugins(
+  packageRoot,
+  cliRoot = resolve(root, "apps/zcode-cli"),
+) {
+  for (const plugin of officialSeaPlugins) {
+    const sourceRoot = resolve(cliRoot, plugin.rootPath);
+    const manifestFile = resolve(sourceRoot, ".zcode-plugin/plugin.json");
+    if (!(await stat(manifestFile).catch(() => undefined))?.isFile()) {
+      throw new Error(`Missing official plugin manifest: ${manifestFile}`);
+    }
+    const requiredFiles = [
+      ...(plugin.requiresRuntime !== false
+        ? (plugin.requiredRuntimePaths ?? ["dist/mcp/server.js"])
+        : []),
+      ...(plugin.requiredSeedPaths ?? []),
+    ];
+    for (const relPath of requiredFiles) {
+      const sourceAsset = resolve(sourceRoot, ...relPath.split("/"));
+      if (!(await stat(sourceAsset).catch(() => undefined))?.isFile()) {
+        throw new Error(`Missing official plugin asset for ${plugin.name}: ${sourceAsset}`);
+      }
+    }
+    const targetRoot = resolve(packageRoot, "agent", plugin.rootPath);
+    await mkdir(targetRoot, { recursive: true });
+    for (const entryName of officialPluginTopLevelAllowlist) {
+      const entrySource = resolve(sourceRoot, entryName);
+      if (!(await pathExists(entrySource))) continue;
+      await cp(entrySource, resolve(targetRoot, entryName), {
+        dereference: true,
+        recursive: true,
+        filter: (source) => shouldCopyOfficialPluginAsset(sourceRoot, source),
+      });
+    }
+    for (const relPath of requiredFiles) {
+      const stagedAsset = resolve(targetRoot, ...relPath.split("/"));
+      if (!(await stat(stagedAsset).catch(() => undefined))?.isFile()) {
+        throw new Error(`Missing staged official plugin asset for ${plugin.name}: ${stagedAsset}`);
+      }
+    }
+  }
 }
 
 export async function stageTuiRuntime(packageRoot, targets = supportedTargets) {
@@ -294,6 +374,19 @@ export async function copyRuntimeNodeModules(packageRoot, runtimeTarget) {
     packageRoot: resolve(packageRoot, "agent"),
     requireFrom: createRequire(resolve(root, "apps/zcode-cli/packages/cli/package.json")),
     seen: new Set(),
+  });
+  // OpenZWork(OZ-F011)：CLI/TUI 与独立 Server 均将 @napi-rs/keyring 设为外部依赖，必须随包携带平台原生绑定。
+  const keyringPlatformKey = runtimeTarget ?? `${process.platform}-${process.arch}`;
+  const sharedRoot = resolve(root, "packages/shared");
+  await stageCredentialKeyring({
+    sourceRoot: sharedRoot,
+    targetRoot: packageRoot,
+    platformKey: keyringPlatformKey,
+  });
+  await stageCredentialKeyring({
+    sourceRoot: sharedRoot,
+    targetRoot: resolve(packageRoot, "agent"),
+    platformKey: keyringPlatformKey,
   });
 }
 

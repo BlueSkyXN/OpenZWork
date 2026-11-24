@@ -10,7 +10,7 @@ entries:
     evidence:
       - docs/openzwork/upstream/v3.17.2-integration.md
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DIF-002
     title: 预演合并要基于当前 origin/main
@@ -20,7 +20,7 @@ entries:
     evidence:
       - PR #65
     since: 2026-11-05
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DIF-003
     title: 格式差异要逐字节判定
@@ -30,7 +30,7 @@ entries:
     evidence:
       - .agents/skills/openzwork-maintenance/scripts/scan.mjs
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DIF-004
     title: 我方已删的文件也要读上游改动
@@ -40,7 +40,7 @@ entries:
     evidence:
       - docs/openzwork/upstream/v3.17.1-integration.md
     since: 2026-10-31
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DIF-005
     title: 双方都改的文件以上游为底
@@ -50,7 +50,7 @@ entries:
     evidence:
       - docs/openzwork/upstream/v3.17.1-integration.md
     since: 2026-10-31
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DIF-006
     title: 上游已有目录不放 OpenZWork 文件
@@ -61,7 +61,7 @@ entries:
       - docs/upstream/mcp-sdk-probe-malformed-response-issue.md
       - docs/openzwork/maintenance-model.md
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DIF-007
     title: PR 改动的文件不能直接算作功能归属
@@ -73,5 +73,29 @@ entries:
       - PR #38
       - docs/openzwork/ledger.yaml
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
+    status: active
+  - id: OZK-DIF-008
+    title: Git 重命名跟踪会把保留的待审用例移进正式目录
+    when: 合入上游批量转正测试的版本，且台账 retain 条目把部分上游已转正用例留在 manual-review/pending 并删掉了正式清单。
+    do: 合并提交前运行准入审计（如 audit-conversation-session-case-coverage.mjs --check），核查 retain 用例是否被 Git 重命名合并带入正式目录；命中时移回 manual-review/pending。
+    why: v4.0.0 合并时 Git 重命名检测把 OZ-R001 留在 pending 的 3 份桌面 E2E 移到正式目录，而已删除的 fixtures/cases 清单仍缺失，触发 MISSING_CASE_MANIFEST。
+    evidence:
+      - docs/openzwork/upstream/v4.0.0-integration.md
+      - docs/openzwork/ledger.yaml
+      - scripts/audit-conversation-session-case-coverage.mjs
+    since: 2026-11-24
+    checked: 4.0.0
+    status: active
+  - id: OZK-DIF-009
+    title: 大型删段变体用格式化后的 diff3 重放上游增量
+    when: 重放上游改动到删过裁剪域章节的大型 -openzwork 文档或图谱变体。
+    do: 先用 oxfmt 统一我方变体、旧上游基准与新上游原文的排版，再用 git merge-file --diff3 提取旧基准到新原文的纯增量；我方已删章节里的顺手改动保持删除，只吸收保留域新增与路径迁移。
+    why: v4.0.0 重放 14 份变体时，上游在已裁剪章节内改一行会让普通三方合并把整段旧基准放进冲突侧；用 --diff3 分离旧基准后避免了分享、CUA 和套餐章节回流。
+    evidence:
+      - docs/openzwork/upstream-doc-variants.yaml
+      - docs/conversation-session-case-catalog-openzwork.md
+      - docs/testing/conversation-session-e2e-coverage-matrix-openzwork.md
+    since: 2026-11-24
+    checked: 4.0.0
     status: active

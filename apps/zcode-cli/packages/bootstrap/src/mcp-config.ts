@@ -1,5 +1,9 @@
-
-import type { McpPort, McpServerConfig, McpServerStatus } from "@zcode/contracts";
+import type {
+  McpConfigurationSnapshot,
+  McpPort,
+  McpServerConfig,
+  McpServerStatus,
+} from "@zcode/contracts";
 
 
 export async function listMcpServerStatuses(
@@ -46,4 +50,35 @@ function getConfiguredServerStatus(
 ): McpServerStatus["status"] {
   if (config.enabled === false) return "disabled";
   return untrustedServerNames.has(name) ? "untrusted" : "disconnected";
+}
+
+function getConfiguredServerError(
+  name: string,
+  config: McpServerConfig,
+  untrustedServerNames: ReadonlySet<string>,
+): string | undefined {
+  if (config.enabled === false || !untrustedServerNames.has(name)) return undefined;
+  return "Project MCP server requires explicit connection before use.";
+}
+
+/** 用户覆盖插件，宿主身份最后合并；首次加载和热更新共用。 */
+export function resolveEffectiveMcpConfiguration(input: {
+  enabled: boolean;
+  servers: Record<string, McpServerConfig>;
+  pluginServers?: Record<string, McpServerConfig>;
+  explicit?: Partial<McpConfigurationSnapshot>;
+  builtInServers?: Record<string, McpServerConfig>;
+}): { configuredServers: Record<string, McpServerConfig>; mcp: McpConfigurationSnapshot } {
+  const configured = {
+    ...input.pluginServers,
+    ...(input.explicit?.servers ?? input.servers),
+    ...input.builtInServers,
+  };
+  return {
+    configuredServers: configured,
+    mcp: {
+      enabled: input.explicit?.enabled ?? input.enabled,
+      servers: configured,
+    },
+  };
 }

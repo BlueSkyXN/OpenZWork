@@ -31,7 +31,7 @@
   1200px/en-US/浅色与 390px/zh-CN/深色，分别验证服务实例替换、Scope 切换后切回、
   管理视图卸载时旧批次停止，以及不切换时两项正常完成。使用真实 `PluginList` 和 scoped store，
   服务响应由 fixture 控制；这不是实际 SSH/手机 Host 连接验证。
-- `plugins/plugin-management-personal-lifecycle.test.ts`：macOS replay 1/1 通过（34.6s），
+- `plugins/lifecycle/plugin-management-personal-lifecycle.test.ts`：macOS replay 1/1 通过（34.6s），
   保留行内更新、全部更新成功、v2 runtime 与卸载验证。
 - `plugins/manual-review/pending/plugin-update-all-failure.test.ts`：macOS replay 1/1 通过（10.6s）。
   真实目录源故障：列表首项保留 v1，后项到 v2，warning toast 含成功/失败数量和失败插件名；
@@ -67,24 +67,24 @@
 
 ## Candidate spec paths
 
-Todo103 新增/迁接候选：PLM-LC-018/019（插件商店自动刷新）与 PLM-LC-020（subagent 冷启动 override）曾对应 pending spec；v3.17.1 同步净化后 018/019 依赖官方 CDN 市场刷新（plugin-store-auto-refresh-{throttled,on-enter}.test.ts 退役），020 保留。PLM-LC-020 对应 `plugins/plugin-subagent-override-cold.test.ts`，Pro `desktop-e2e-20260909-152419-828` 冷启动 child/父 continuation 请求验证通过，case-local fixture check 通过。三项均未人工晋级；019 保持公网 smoke、不进入正式 CI。
+Todo103 新增/迁接候选：PLM-LC-018/019（插件商店自动刷新）与 PLM-LC-020（subagent 冷启动 override）曾对应 pending spec；v3.17.1 同步净化后 018/019 依赖官方 CDN 市场刷新（plugin-store-auto-refresh-{throttled,on-enter}.test.ts 退役），020 保留。PLM-LC-020 对应 `plugins/runtime/plugin-subagent-override-cold.test.ts`，Pro `desktop-e2e-20260909-152419-828` 冷启动 child/父 continuation 请求验证通过，case-local fixture check 通过；内置文档插件移除 visual-judge 后，该例样本改为夹具插件 `e2e-subagent-refresh:reviewer`，迁移后的结果待重跑。三项均未人工晋级；019 保持公网 smoke、不进入正式 CI。
 
 | Abbreviation | Pending spec                                                                                            |
 | ------------ | ------------------------------------------------------------------------------------------------------- |
-| `PD` / `PP`  | `plugins/plugin-management-discovery-presentation.test.ts`                                              |
+| `PD` / `PP`  | `plugins/marketplace/plugin-management-discovery-presentation.test.ts`                                  |
 | `PM`         | `plugins/plugin-management-personal-lifecycle.test.ts`                                                  |
-| `PV` / `PO`  | `plugins/plugin-management-persistence-source.test.ts`                                                  |
-| `PB` / `PI`  | `plugins/plugin-management-builtin-inline.test.ts`                                                      |
+| `PV` / `PO`  | `plugins/lifecycle/plugin-management-persistence-source.test.ts`                                        |
+| `PB` / `PI`  | `plugins/builtin/plugin-management-builtin-inline.test.ts`                                              |
 | `PC`         | retired（v3.17.1 同步净化：官方 CDN ZIP 市场安装依赖 zcode-plugins-official 官方 CDN 域，随净化域退役） |
 | `PCS`        | retired（v3.17.1 同步净化：官方 CDN smoke 同上退役）                                                    |
 | `PF`         | `plugins/manual-review/pending/plugin-management-recoverable-failures.test.ts`                          |
-| `PEA`        | `plugins/plugin-runtime-env-agent-projection.test.ts`                                                   |
-| `PGA`        | `plugins/plugin-no-git-github-archive.test.ts`                                                          |
+| `PEA`        | `plugins/runtime/plugin-runtime-env-agent-projection.test.ts`                                           |
+| `PGA`        | `plugins/marketplace/plugin-no-git-github-archive.test.ts`                                              |
 | `PRA`        | `plugins/manual-review/pending/plugin-refresh-atomic-cache.test.ts`                                     |
 | `PBD`        | `plugins/manual-review/pending/plugin-management-builtin-detail-parity.test.ts`                         |
 | `PBO`        | `plugins/manual-review/pending/plugin-management-bundled-install-ownership.test.ts`                     |
 | `PBS`        | `plugins/manual-review/pending/plugin-management-seed-runtime-separation.test.ts`                       |
-| `PML`        | `plugins/plugin-management-installed-menu-layout.test.ts`                                               |
+| `PML`        | `plugins/settings/plugin-management-installed-menu-layout.test.ts`                                      |
 
 ## Latest targeted verification
 
@@ -210,7 +210,7 @@ PLM-LC-018/019/020：`plugins/plugin-localization-creator.test.ts`，pending、�
 
 ### 打开 UI 收敛到会话右侧市场（2026-10-12）
 
-- 规则：主导航市场的卡片与管理页行整行进入详情，没有「打开」「详情」按钮，详情主按钮为「立即试用」；会话右侧市场的卡片、详情、管理页行多一个「打开」（暂停态「启用」，先启用再打开）。
+- 规则：主导航市场的卡片与管理页行整行进入详情，没有「打开」「详情」按钮，详情主按钮为「立即试用」；会话右侧市场的卡片、详情、管理页行多一个「打开」（User 未启用时为「启用」，先启用 User 再打开；当前项目覆盖禁用导致无法打开时提示并引导到插件管理，不改写项目覆盖）。
 - 浏览器卡片/详情 14/14：新增 `PLM-UI-MAIN-NAV`（主导航无打开、整行进详情、详情为立即试用）；`PLM-UI-DETAILS` 改为键盘回车整卡进详情。
 - PLM-UI-001 run `desktop-e2e-20261012-104955-651`、`desktop-e2e-20261012-105655-477`、`desktop-e2e-20261012-105824-912` 通过；步骤截图 06–16 改为主导航无打开 → 右侧市场打开 → 右侧管理页打开 → 项目暂停后右侧「启用」并打开 → 管理页整行进详情恢复继承。用例在主导航断言前关闭右侧市场标签：会话视图后台保持挂载，两份市场并存会让按 testid 取到隐藏的那份。
 - 已知偶发：`desktop-e2e-20261012-105221-558` 在主导航第二次进入管理页时等待 `plugin-store-manage` 超时，随后 3 次连跑未复现，原因未定位。
@@ -281,6 +281,10 @@ React 面板等待连接后自动运行、无错误闪现和重复实例。2026-
 
 WPL-009 与 PGA 的 Agent bridge setup 先通过侧栏进入指定项目草稿，使 workspace App 注册真实服务入口。全局未归类草稿没有这组 action，不能用轮询时长替代前置导航。
 
+WPL-009 市场卡片启停作用域（2026-11-13）：项目上下文中在市场卡片关闭再开启，关闭须写 User=false，开启后 Workspace 无 enabled 条目且来源为 user。修复后运行 `desktop-e2e-20261113072926568-p18941-5e9a0d8cde75e1c3` 通过；还原 `PluginStorePage` 旧实现后运行 `desktop-e2e-20261113072614664-p13112-4e1a091210e46205` 在关闭断言失败（User 配置仍为 true）。「打开」改为方案 B 后在远端 macOS 复跑 `desktop-e2e-20261113100632231-p86635-c202e97adc8d1297` 通过。仅 macOS 桌面深色主题，本地中文、远端英文界面；手机远控、Windows/Linux 未执行。
+
+PLM-UI-001 项目覆盖与市场「打开」（2026-11-13）：右侧市场卡片读 User 层，按钮按 User 状态显示。三种组合：User 开 × 项目关，点「打开」不写配置，提示“当前项目已禁用”并提供「插件管理」入口（生效视图仍为禁用、User 仍为启用、无插件 UI 标签），入口进入「本机 · OpenZWorkProject」视图（截图 14、15、15b）；User 关 × 项目关，点「启用」先写 User=true，生效视图仍为禁用，再提示并引导（截图 15c）；User 关 × 项目开，点「启用」写 User=true，项目覆盖保持启用，面板标签打开，按钮变为「打开」（截图 15d，回归评审 CR-01：曾按生效状态跳过 User 写入）。15d 不等沙箱握手：step 10 留在后台的页面在 step 12 禁用时被撤销并停在错误态，重开同一面板不自动重建，这是发布基线已有的问题，见 [插件 UI 页生命周期 01](../issues/plugin-ui-page-lifecycle/01-disabled-page-stays-error-after-reenable.md)。生效状态只在打开失败后查询，查询之后不写配置（评审 CR-02：曾在写入前插入查询，迟到结果可覆盖后续启停）；该竞态由结构消除，没有用延迟注入做 E2E。首版（打开前预查询）运行 `desktop-e2e-20261113080845481-p88872-ee16eaf160c78100` 通过；修订后运行 `desktop-e2e-20261113100430717-p85049-e23b805eae0cb952`（远端 macOS，英文界面）通过。仅 macOS 桌面深色主题；手机远控、Windows/Linux 未执行。
+
 ## PLM-BUILTIN-UI-UNINSTALL：内置 UI 插件卸载后的分组
 
 - 桌面候选：`plugins/manual-review/pending/plugin-builtin-ui-uninstall.test.ts`。macOS Electron + 真实 CLI，卸载 `documents@zcode-plugins-official` 后卡片仍在 UI 插件专区。修复后运行 `desktop-e2e-20261019071852360-p65132-d5426628aee5a21e` 通过，截图 `.e2e-artifacts/plugin-management/plm-builtin-ui-uninstall/restorable-in-ui-section.png`；还原 CLI 修复后运行 `desktop-e2e-20261019072006864-p72979-1022c7e87a447a4e` 在 restorable 阶段失败（卡片不在 UI 插件专区）。
@@ -292,6 +296,7 @@ WPL-009 与 PGA 的 Agent bridge setup 先通过侧栏进入指定项目草稿�
 - `desktop-e2e-20261022-064056-895`：PD/PP 通过。市场与管理返回、搜索/分段保留、中英文和宽窄窗口通过；开关透明点击区收紧至卡片边距后不再产生 4px 横向溢出。
 - `desktop-e2e-20261022-063909-309`：PLM-LC-017 通过。开关外显、无逐行来源标签、菜单仅卸载且文字不折行。
 - WPL 的 workspace-enabled / workspace-inherited 两个额外 pending 用例在 beforeSession 缺少隔离 HOME 的 `cli/config.json` 时停止；未执行到 UI 断言，不记为通过。其来源标签断言已对齐当前列表，Agent 配置来源断言保留。
+- 2026-11-16：`conversation-session-plugin-mcp-skill-workspace-enabled` 增加仓库选项拒绝、设置页显式保存普通/敏感项目值、项目文件不含保存值及实际 MCP 启动回归。macOS run `kicad-options-final-1116-e348` 1/1 首次通过，MCP 返回确认标记证明私有值进入实际子进程；证据位于 `.e2e-artifacts/kicad-options-final-1116-e348/`。Windows/Linux 与真实手机远控未运行。
 - 全部用例仍保持 manual-review/pending，不据此自动晋级三平台正式门禁。真实手机远控未验证。
 
 - `desktop-e2e-20261022-064824-136`：PLM-LC-008 通过。无效来源/来源冲突、刷新/describe/安装/升级失败与重试通过；用例等待列表初始化，使用弹窗错误提示、现有刷新与详情更新入口。
@@ -338,3 +343,9 @@ WPL-009 与 PGA 的 Agent bridge setup 先通过侧栏进入指定项目草稿�
 ### 2026-10-30 v3.17.2 移植验收
 
 `PLM-UI-001` 在 hotfix 基线移植后首次运行通过（1/1、0 skipped），macOS arm64 / Electron 44.7.0。证据目录：`packages/desktop/.e2e-artifacts/desktop-e2e-20261030044614273-p5180-8d87823b0b07505c`，包含录屏、草稿授权后与首发后关键帧。原草稿入口、审批、零正式任务、跨工作区返回、首发同 guest、完整视图及旧打开请求取消断言全部执行。CLI 138 项、浏览器 8 项及类型/lint/架构/fixture 检查通过；不将历史 App 单测或工程 affected 未选中结果算作本轮通过测试。桌面为中文深色，审批浏览器覆盖 390/1200px、深浅主题；真实手机、Windows/Linux 和长时回收未验证。
+
+## PLM-EXT-2A：扩展宿主运行时（2026-11-10）
+
+正式桌面入口：`packages/desktop/test/e2e/plugins/extensions/plugin-extension-host-runtime.test.ts`，场景见 [case catalog](../plugin-management-lifecycle-case-catalog.md) 的 PLM-EXT-2A。
+
+启动页在窄屏收起后须按当前系统的真实快捷键展开：macOS 使用 `Meta+Alt+B`，Windows/Linux 使用 `Ctrl+Alt+B`；以可见性判定完成，不能把仍保留的 DOM 当作已展开。2026-11-10 Windows CI `ci-conversation-windows-334899-1114406-1-1` 在重启预算耗尽后的启动页等待失败：用例写死了 macOS 修饰键。修复后 `packages/desktop/.e2e-artifacts/local-docker-20261110120527-2f8651` 中本用例在 macOS 1/1 通过、零跳过，含深浅主题、中英文、窄屏（500px 收起）、崩溃预算与命令中心重新加载；Windows 结果另由 MR CI 验证。

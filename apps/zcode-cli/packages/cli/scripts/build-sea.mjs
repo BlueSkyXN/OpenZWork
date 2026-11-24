@@ -47,7 +47,11 @@ const usage = `Usage:
   node scripts/build-sea.mjs --target linux-x64 --target win-x64
   node scripts/build-sea.mjs --targets linux-x64,win-x64
   node scripts/build-sea.mjs --all
+  node scripts/build-sea.mjs --all --darwin --linux
   node scripts/build-sea.mjs --node-binary linux-x64=/abs/path/node
+
+Platform flags (--darwin, --linux, --win) keep only the targets of those platforms.
+\`pnpm build:sea --linux\` appends them after the script's --all.
 
 Supported targets:
   ${supportedTargets.join(", ")}
@@ -154,6 +158,7 @@ const prepareSeaBlob = async (target, nodeVersion) => {
     requireRuntime: true,
     root,
     stagingDirectory: seaAssetStagingForTarget(`${target}-official-plugins`),
+    target,
   });
   const { assets: bundledSkillAssets, manifest: bundledSkillManifest } =
     await collectSeaBundledSkillAssets({

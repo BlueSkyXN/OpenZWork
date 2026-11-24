@@ -89,11 +89,13 @@ const conversationMock = vi.hoisted(() => {
     release: vi.fn(),
     store: {
       expectAcceptedInputProjection: vi.fn(),
+      getState: vi.fn(() => projectionState.current),
       markCommandPending: vi.fn(),
       recoverFromStaleAuthority: vi.fn(),
       onOnlineModelTransition: vi.fn(() => () => {}),
       refreshPlans: vi.fn(async () => {}),
       settleCommand: vi.fn(),
+      subscribe: vi.fn(() => () => {}),
     },
   };
   const sendCommand = vi.fn(async (envelope: { commandId: string }) => ({
@@ -340,7 +342,14 @@ vi.mock("@/v4/ConversationHeader.js", () => ({
   ConversationHeader: () => createElement("div", null),
 }));
 
+vi.mock("@/GitBranchSwitcher.js", () => ({
+  GitBranchActionsHost: ({ children }: { children?: ReactNode }) =>
+    createElement("div", null, children),
+}));
+
 vi.mock("@/v4/ConversationStatusPanel.js", () => ({
+  ComposerStatusRow: ({ children }: { children?: ReactNode }) =>
+    createElement("div", null, children),
   ConversationStatusPanel: (props: {
     onTerminalSectionOpenChange?: (open: boolean) => void;
     terminalSectionOpen?: boolean;

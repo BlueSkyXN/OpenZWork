@@ -23,7 +23,8 @@ export async function prepareWebRemoteControlSessionEventsFixture(options: {
   regionalDesktop?: boolean;
 }): Promise<() => Promise<void>> {
   void options.mobilePush;
-  const relay = await createLocalPairingRelay();  const envPatch = {
+  const relay = await createLocalPairingRelay();
+  const envPatch = {
     ...(options.webUrl ? { VITE_ZCODE_E2E_STORE_BRIDGE: "1" } : {}),
     ZCODE_ENDPOINT_ORIGIN: relay.httpUrl,
     ZCODE_WEB_REMOTE_CONTROL_RELAY_WS_URL: relay.wsUrl,

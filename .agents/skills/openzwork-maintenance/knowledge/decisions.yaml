@@ -5,13 +5,15 @@ kind: decision
 entries:
   - id: OZK-DEC-001
     title: 只有子项依赖官方服务时保留主体
-    when: 上游新功能的一部分依赖官方账号、网关或下发通道。
-    do: 吸收不依赖官方服务的主体，只裁掉依赖官方的子项，并在整合 spec 中写明裁掉了哪个子项。
-    why: v3.17.1 保留了 data-sync 的配置推送；其中模型配置 Provisioning 下发若依赖官方通道则单独裁剪。
+    when: 上游新功能的一部分依赖官方账号、网关、默认官方 CDN 或下发通道。
+    do: 吸收不依赖官方服务的主体，裁掉依赖官方的子项；若是按需下载的资源管理框架，置空默认官方 CDN 基址、按实际配置或本地安装态收敛环境变量与界面开关，并保留显式环境变量镜像覆盖与本地工具回退，在整合 spec 与台账中写明边界。
+    why: v3.17.1 保留了 data-sync 配置推送并单裁官方通道项；v4.0.0 预装文档工具（OZ-C015）置空官方默认 CDN、禁用无源状态下的无效开关且不注入可用标记，首启零外联并平滑回退系统工具。
     evidence:
       - docs/openzwork/upstream/v3.17.1-integration.md
+      - docs/openzwork/upstream/v4.0.0-integration.md
+      - packages/desktop/src/preinstalled-tools/catalog.ts
     since: 2026-10-31
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-002
     title: 观测链按用途决定去留
@@ -22,7 +24,7 @@ entries:
       - 5ac3b4596
       - packages/shared/src/processResourceTelemetry.ts
     since: 2026-10-31
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-003
     title: 裁剪官方 MCP 身份头，保留通用 MCP 诊断
@@ -32,7 +34,7 @@ entries:
     evidence:
       - docs/openzwork/upstream/v3.17.2-integration.md
     since: 2026-11-05
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-004
     title: 原生 CUA 只保留兼容占位
@@ -43,7 +45,7 @@ entries:
       - docs/openzwork/upstream/v3.17.1-integration.md
       - docs/specs/cua-placeholder-boundary-openzwork.md
     since: 2026-11-05
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-005
     title: 上游实现了我方已有功能时改用上游
@@ -53,7 +55,7 @@ entries:
     evidence:
       - docs/openzwork/patches/downstream-patch-registry.md
     since: 2026-10-23
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-006
     title: 依赖锁文件不手改
@@ -63,7 +65,7 @@ entries:
     evidence:
       - docs/openzwork/upstream/v3.17.1-integration.md
     since: 2026-10-31
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-007
     title: 上游退役的测试按 OpenZWork 口径保留
@@ -74,7 +76,7 @@ entries:
       - AGENTS.md
       - docs/openzwork/ledger.yaml
     since: 2026-10-31
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-008
     title: spec 与代码矛盾时登记为待定
@@ -84,7 +86,7 @@ entries:
     evidence:
       - docs/openzwork/ledger.yaml
     since: 2026-11-07
-    checked: 3.17.2
+    checked: 4.0.0
     status: active
   - id: OZK-DEC-009
     title: 上游文档原文不动，差异集中写一处
@@ -96,5 +98,17 @@ entries:
       - docs/openzwork/upstream-doc-variants.yaml
       - docs/openzwork/README.md
     since: 2026-11-08
-    checked: 3.17.2
+    checked: 4.0.0
+    status: active
+  - id: OZK-DEC-010
+    title: 系统凭据异常回退与自动重置默认收缩边界
+    when: 上游为系统钥匙串读取失败新增私有文件密钥回退、自动备份清空（reset）或真实钥匙串 E2E。
+    do: "数据目录迁移源读取（allowAutoReset=false，含代次刷新递归透传）禁止触发自动清空；Linux 桌面仅对未绑定目录启用私有文件回退并显式设 allowBoundStoreAutoReset: false，防止钥匙串未解锁时清空已绑定凭据库；macOS 与 Windows 保持失败显错，不与 keyStore 测试注入耦合；接触宿主机登录钥匙串且耦合官方登录的测试裁剪。"
+    why: v4.0.0 在钥匙串读取失败时调用 resetBoundCredentialStore，若在 OZ-C009 迁移源读取或 Linux 桌面锁屏启动时触发会清空已绑定凭据库，而用 !options.keyStore 判定又会误伤注入模拟钥匙串的回退单测。
+    evidence:
+      - docs/openzwork/upstream/v4.0.0-integration.md
+      - packages/shared/src/credential-security/systemCredentialCipher.ts
+      - packages/desktop/src/main/index.ts
+    since: 2026-11-24
+    checked: 4.0.0
     status: active

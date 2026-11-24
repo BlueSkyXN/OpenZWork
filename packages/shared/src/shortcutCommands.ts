@@ -37,6 +37,7 @@ export type ShortcutCommandId =
   | "resetZoom"
   | "composerSend"
   | "composerInsertNewline";
+// OpenZWork(OZ-D006): toggleVoiceInput 已随语音输入裁剪移除。
 
 /**
  * 命令作用域：global = 全局分发（useAppKeyboard / 菜单 accelerator）；
@@ -100,6 +101,7 @@ export const SHORTCUT_COMMANDS: readonly ShortcutCommandEntry[] = [
   },
   { id: "toggleInterfaceMode", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+u"] },
   { id: "openOnboarding", channel: "window", defaultBindings: ["CmdOrCtrl+Shift+o"] },
+  // OpenZWork(OZ-D006): toggleVoiceInput 随语音输入裁剪移除，避免占用 CmdOrCtrl+Shift+d 并暴露缺失翻译键。
 ];
 
 /** 按命令 ID 取默认绑定；未知命令返回空数组（生效表 resolve 对未知命令整体忽略）。 */

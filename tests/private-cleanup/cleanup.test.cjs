@@ -801,10 +801,10 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       "packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/web-remote-v1-connections.test.ts",
       ['"https://zcode.z.ai"'],
     ],
-    // v3.18.0 上游新增的远端安装更新用例（pending 准入）：NO_PROXY 列表里的官方域后缀
+    // v3.18.0 上游新增的远端安装更新用例（v4.0.0 晋升正式路径）：NO_PROXY 列表里的官方域后缀
     // 只是代理旁路配置，不是产品连接端点；仅登记这一完整字面量。
     [
-      "packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-r3-update-cancel.test.ts",
+      "packages/desktop/test/e2e/conversation-session/remote/installation/conversation-session-r3-update-cancel.test.ts",
       ['".bigmodel.cn"'],
     ],
     // 官方连接说明改写后，旧整句许可已失效；仅同步这两句，继续检查同文件内的其他地址。

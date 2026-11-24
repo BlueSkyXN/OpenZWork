@@ -1,12 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
+  createSessionId,
+  modelMessageContentToText,
+  type ModelRequest,
+  type SkillPort,
+} from "@zcode/contracts";
+import {
   createDefaultSystemPromptSettings,
+  DEFAULT_SYSTEM_PROMPT_PREVIEW_SCENARIO,
   resolveSystemPromptRuntimeSection,
   systemPromptCatalogSchema,
+  systemPromptDocumentText,
 } from "@zcode/shared";
 import { createContextBuilder } from "../src/context/builder.js";
+import { buildSystemPromptPreview } from "../src/context/prompt-settings/index.js";
 import { resolveAnnouncedOutputStyleInstructions } from "../src/runtime/methods/context-refresh.js";
 import { getSystemPromptCatalog } from "../src/context/prompt-settings/contract.js";
+import { createTestAgentRuntime } from "./test-agent-runtime.js";
+import { createTestSessionEventStore } from "./test-event-store.js";
+import { createTestModelFactory } from "./test-runtime-model.js";
 
 const base = {
   workingDirectory: "/fixture",
@@ -303,4 +315,104 @@ describe("main session prompt customization", () => {
     expect(system(result).endsWith("EXTRA_RULE")).toBe(true);
     for (const section of result.sections) expect(section.chars).toBe(section.content.length);
   });
+  it.each([
+    { mode: "sections" as const, skillsDisabled: true, expectSkills: false },
+    { mode: "replace" as const, skillsDisabled: true, expectSkills: false },
+    { mode: "sections" as const, skillsDisabled: false, expectSkills: true },
+    { mode: "replace" as const, skillsDisabled: false, expectSkills: true },
+  ])(
+    "enforces skills announcement switch on real AgentRuntime requests in $mode mode (disabled=$skillsDisabled) while keeping Skill tool registered",
+    async ({ mode, skillsDisabled, expectSkills }) => {
+      const settings = {
+        ...createDefaultSystemPromptSettings(),
+        mode,
+        ...(mode === "replace" ? { replacement: "CUSTOM_WHOLE_PROMPT" } : {}),
+        sections: skillsDisabled
+          ? { skills: { mode: "disabled" as const, content: "" } }
+          : {},
+      };
+      const skillPath = "/example/skills/example-review/SKILL.md";
+      const skillPort: SkillPort = {
+        async discoverSkills() {
+          return {
+            skills: [
+              {
+                name: "example-review",
+                description: "Review an example change and report evidence.",
+                path: skillPath,
+                directory: "/example/skills/example-review",
+                rootPath: "/example/skills",
+                scope: "project",
+                source: "agents",
+                safeToAutoLoad: false,
+                frontmatterKeys: ["name", "description"],
+              },
+            ],
+            diagnostics: [],
+            totalDiscovered: 1,
+          };
+        },
+        async loadSkill() {
+          return {
+            metadata: {
+              name: "example-review",
+              description: "Review an example change and report evidence.",
+              path: skillPath,
+              directory: "/example/skills/example-review",
+              rootPath: "/example/skills",
+              scope: "project",
+              source: "agents",
+              safeToAutoLoad: false,
+              frontmatterKeys: ["name", "description"],
+            },
+            content: "body",
+          };
+        },
+      };
+      const requests: ModelRequest[] = [];
+      const runtime = createTestAgentRuntime(
+        createSessionId(),
+        {
+          workingDirectory: base.workingDirectory,
+          envInfo: base.envInfo,
+          mode: "yolo",
+          modelStreaming: "off",
+          compact: { enabled: false },
+          titleGeneration: { enabled: false },
+          systemPromptSettings: settings,
+        },
+        {
+          eventStore: createTestSessionEventStore(),
+          skillPort,
+          modelFactory: createTestModelFactory({
+            async generateText(request) {
+              requests.push(request);
+              return {
+                finishReason: "stop",
+                text: "DONE",
+                usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+              };
+            },
+          }),
+        },
+      );
+      await runtime.executeTurn("Check available skills");
+      expect(requests).toHaveLength(1);
+      const request = requests[0]!;
+      expect(request.tools?.map((tool) => tool.name)).toContain("Skill");
+      const sentText = request.messages
+        .map((message) => modelMessageContentToText(message.content))
+        .join("\n");
+      const previewText = systemPromptDocumentText(
+        buildSystemPromptPreview({
+          settings,
+          scenario: DEFAULT_SYSTEM_PROMPT_PREVIEW_SCENARIO,
+        }).after,
+      );
+      expect(previewText.includes("The following skills are available")).toBe(expectSkills);
+      expect(sentText.includes("The following skills are available")).toBe(expectSkills);
+      expect(sentText.includes(skillPath)).toBe(expectSkills);
+      expect(sentText.includes("example-review")).toBe(expectSkills);
+    },
+  );
 });

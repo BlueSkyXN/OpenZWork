@@ -101,13 +101,17 @@
       "files": [
         "packages/desktop/test/desktopTsupConfig.test.ts",
         "packages/desktop/test/electronBuilderAfterPack.test.ts",
-        "packages/desktop/test/run-production-build.test.ts"
+        "packages/desktop/test/preinstalledToolsCatalog.test.ts",
+        "packages/desktop/test/run-production-build.test.ts",
+        "scripts/preinstalled-tools/catalog.test.ts"
       ]
     },
     {
       "capability": "remote-access",
       "files": [
+        "packages/server/test/entryHttpCredentials.test.ts",
         "packages/server/test/liteTokenCookie.test.ts",
+        "packages/server/test/remoteOfficialPluginAssets.test.ts",
         "packages/zcode-server-cli/test/statusSnapshotPersistence.test.ts",
         "packages/zcode-server-cli/test/dataRootLockInitialization.test.ts"
       ]

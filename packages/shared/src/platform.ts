@@ -1,4 +1,8 @@
 // Modified for the private fork, 2026-09-21: remove product/telemetry wiring in this file.
+import type {
+  PreinstalledToolsState,
+  PreinstalledToolsCommand,
+} from "@zcode/shared/preinstalled-tools";
 /* eslint-disable max-lines -- 跨端 platform contract 集中声明 renderer 能力；OAuth 与 browser lifecycle 必须保持 desktop/web 类型合同，本 MR 不拆分平台边界。 */
 import type {
   DockerConnectOptions,
@@ -740,6 +744,7 @@ export const DesktopCommandIds = {
   ZoomOut: "zoomOut",
   ShowAbout: "showAbout",
   RelaunchApp: "relaunchApp",
+  RestartAfterCrash: "restartAfterCrash",
   OpenCommunity: "openCommunity",
   ExportLogs: "exportLogs",
   PullMobileLogs: "pullMobileLogs",
@@ -765,6 +770,9 @@ export type DesktopCommandId = (typeof DesktopCommandIds)[keyof typeof DesktopCo
  * 业务服务（文件、终端、凭据等）走 IServiceAccessor 的 RPC 通道。
  */
 export interface IPlatformService {
+  getPreinstalledToolsState?(): Promise<PreinstalledToolsState>;
+  executePreinstalledToolsCommand?(command: PreinstalledToolsCommand): Promise<void>;
+  onPreinstalledToolsState?(callback: (state: PreinstalledToolsState) => void): () => void;
   /** 是否支持当前客户端本机文件的默认应用与目录操作；Web 不具备此能力。 */
   canOpenLocalFiles?: boolean;
 
@@ -1258,6 +1266,12 @@ export interface IPlatformService {
 
   /** 同步应用菜单语言，驱动 main 进程重建原生菜单 */
   setApplicationLocale(locale: Locale): Promise<void>;
+
+  /**
+   * 保存 Agent 回复语言（空串清除）；Main 写盘后推送给各窗口 Host。
+   * 只有桌面端实现：Web 远控不写本机设置，设置页按方法缺失显示本机提示。
+   */
+  setReplyLanguage?(language: string): Promise<void>;
 
   /** 同步桌面标题栏亮/暗色，驱动原生窗口控制按钮配色 */
   setTitleBarTheme(theme: DesktopTitleBarTheme): Promise<void>;
