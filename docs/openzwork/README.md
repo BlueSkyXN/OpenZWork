@@ -100,6 +100,7 @@
 - [ZCode v3.18.2 整合](upstream/v3.18.2-integration.md)
 - [ZCode v3.18.2 整合验证](upstream/v3.18.2-validation.md)
 - [ZCode v4.0.0 整合](upstream/v4.0.0-integration.md)
+- [ZCode v4.0.0 整合验证](upstream/v4.0.0-validation.md)
 
 ### 下游补丁
 
