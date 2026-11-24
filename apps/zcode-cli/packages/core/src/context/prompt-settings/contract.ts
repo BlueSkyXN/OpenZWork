@@ -7,6 +7,7 @@ import {
   type SystemPromptSettings,
 } from "@zcode/shared";
 import type { ContextBuilderConfig, ContextSection } from "../types.js";
+import type { AgentRuntimeConfig } from "../../runtime/types.js";
 import { estimateTokens } from "../utils.js";
 import { buildCliPrefixSection } from "../sections/cli-prefix.js";
 import { buildRolePrompt, buildSecurityNotice, buildHarnessBlock } from "../sections/identity.js";
@@ -20,6 +21,49 @@ import {
   getPersistencePrompt,
   buildSessionGuidanceSection,
 } from "../dynamic-sections.js";
+
+// OpenZWork(OZ-F002)：会话的规则、技能公告和快照复用共用同一设置作用域。
+type PromptPreferenceConfig = Pick<
+  AgentRuntimeConfig,
+  "subagentContext" | "taskType" | "workflowActor" | "systemPrompt" | "systemPromptSettings"
+>;
+
+function usesMainSessionSettings(config: PromptPreferenceConfig): boolean {
+  return (
+    !config.subagentContext &&
+    (config.taskType ?? "interactive") === "interactive" &&
+    config.workflowActor === undefined &&
+    !config.systemPrompt?.trim()
+  );
+}
+
+export function mainSessionPromptSettings(
+  config: PromptPreferenceConfig,
+): SystemPromptSettings | undefined {
+  return usesMainSessionSettings(config) ? config.systemPromptSettings : undefined;
+}
+
+export function mainSessionIncludesSkillsListing(config: PromptPreferenceConfig): boolean {
+  return Boolean(resolveSystemPromptSection(mainSessionPromptSettings(config), "skills", "skills"));
+}
+
+export function promptSettingsCacheInput(config: PromptPreferenceConfig): string | undefined {
+  if (!usesMainSessionSettings(config)) return undefined;
+  const settings = config.systemPromptSettings;
+  const whole = settings?.mode === "replace";
+  const ids = whole ? GENERATED_SYSTEM_PROMPT_SECTIONS : SYSTEM_PROMPT_SECTION_IDS;
+  const overrides = ids.flatMap((id) => {
+    const rule = settings?.sections[id];
+    if (!rule || rule.mode === "default") return [];
+    return [[id, rule.mode, rule.mode === "disabled" ? "" : rule.content.trim()]];
+  });
+  // 编辑器的默认原文快照与对象键序都不影响请求；附加章节则按用户配置的顺序发送。
+  return JSON.stringify([
+    whole ? settings.replacement.trim() : null,
+    overrides,
+    whole ? [] : (settings?.customSections ?? []).map(({ title, content }) => [title, content]),
+  ]);
+}
 
 export function getSystemPromptCatalog(): SystemPromptCatalog {
   const defaults: Partial<Record<(typeof SYSTEM_PROMPT_SECTION_IDS)[number], string>> = {

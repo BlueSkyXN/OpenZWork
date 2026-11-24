@@ -2,7 +2,6 @@ import { formatLocalIsoDate, type TraceContext } from "@zcode/contracts";
 // OpenZWork(OZ-F002)：公告侧消费主会话系统提示词设置的 output_style 与 skills 章节定制。
 import {
   resolveSystemPromptRuntimeSection,
-  resolveSystemPromptSection,
   type SystemPromptSettings,
 } from "@zcode/shared";
 import { buildCurrentDateSection } from "../../context/sections/current-date.js";
@@ -51,6 +50,7 @@ import { persistRuntimeReminderMessage } from "./runtime-reminder-persistence.js
 import { supersedeContextComposition } from "../context-composition/state.js";
 import { promptSnapshotFor } from "../helpers/prompt-snapshot.js";
 import { resolveGenUiOutputDirectory } from "../helpers/gen-ui-output.js";
+import { mainSessionIncludesSkillsListing } from "../../context/prompt-settings/contract.js";
 import { collectSkillsListingAttachment } from "../../skills/listing.js";
 import { currentSkillCatalog } from "./context.js";
 
@@ -369,28 +369,13 @@ export function buildChildEnvironmentUpdate(
  * 输入附件收集对比整段历史，compaction 对比保留段（否则 compact 后第一次请求没有 skill 名单）。
  * 已恢复的列表不改写：冷恢复、rewind 后变化的行由下一次收集追加，prompt 前缀保持字节稳定。
  */
-function mainSessionSystemPromptSettings(
-  runtime: AgentRuntimeInternal,
-): SystemPromptSettings | undefined {
-  if (
-    runtime.config.subagentContext ||
-    (runtime.config.taskType ?? "interactive") !== "interactive" ||
-    runtime.config.workflowActor !== undefined ||
-    Boolean(runtime.config.systemPrompt?.trim())
-  ) {
-    return undefined;
-  }
-  return runtime.config.systemPromptSettings;
-}
-
 export function collectSkillsListing(
   runtime: AgentRuntimeInternal,
   entries: readonly RuntimeMessageEntry[],
   tools: readonly { name: string }[],
 ): RuntimeAttachmentEntry | undefined {
   // OpenZWork(OZ-F002)：主会话系统提示词设置关闭技能清单时（逐章与整体替换共用动态数据开关），跳过公告但保留 Skill 工具本身注册。
-  const promptSettings = mainSessionSystemPromptSettings(runtime);
-  if (promptSettings && !resolveSystemPromptSection(promptSettings, "skills", "skills")) {
+  if (!mainSessionIncludesSkillsListing(runtime.config)) {
     return undefined;
   }
   return collectSkillsListingAttachment({

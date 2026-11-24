@@ -1,5 +1,13 @@
+import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { HostMessageTypes, hostIncomingMessageSchema } from "@zcode/shared";
+import { preinstalledToolsAgentAvailability } from "@zcode/shared/preinstalled-tools/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadPreinstalledToolsCatalog } from "#src/preinstalled-tools/catalog.js";
+import {
+  hasPreinstalledToolsDownloadTarget,
+  loadPreinstalledToolsCatalog,
+} from "#src/preinstalled-tools/catalog.js";
 
 describe("loadPreinstalledToolsCatalog (OZ-C015)", () => {
   afterEach(() => {
@@ -60,5 +68,74 @@ describe("loadPreinstalledToolsCatalog (OZ-C015)", () => {
     expect(error.mock.calls[0]?.[0]).toContain("invalid ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL");
     expect(tools).toHaveLength(5);
     expect(tools?.every((tool) => tool.manifest === null)).toBe(true);
+  });
+  it.each([
+    ["linux", "https://mirror.example.invalid/tools", undefined],
+    ["darwin", "not-a-url", undefined],
+    ["darwin", "", undefined],
+    ["darwin", "https://mirror.example.invalid/tools", "1"],
+  ] as const)(
+    "derives the Agent flag from resolved %s targets with source %s",
+    async (platform, mirror, expected) => {
+      vi.stubEnv("ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL", mirror);
+      const binDir = await mkdtemp(join(tmpdir(), "openzwork-preinstalled-bin-"));
+      try {
+        const hasTarget = loadPreinstalledToolsCatalog({ error: vi.fn() }, platform, "x64").then(
+          hasPreinstalledToolsDownloadTarget,
+        );
+        expect(await preinstalledToolsAgentAvailability(binDir, hasTarget)).toBe(expected);
+        expect(await preinstalledToolsAgentAvailability(undefined, hasTarget)).toBeUndefined();
+      } finally {
+        await rm(binDir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it("delivers the resolved catalog to the first local Agent without gating a non-desktop launch", async () => {
+    const target = Promise.withResolvers<boolean>();
+    const init = hostIncomingMessageSchema.parse({
+      type: HostMessageTypes.InitLocal,
+      zcodeBuiltinProviderConfigFilePath: "/fixture/provider.json",
+      preinstalledToolsTargetPending: true,
+    });
+    expect(init.type === HostMessageTypes.InitLocal && init.preinstalledToolsTargetPending).toBe(
+      true,
+    );
+    expect(await preinstalledToolsAgentAvailability(undefined, target.promise)).toBeUndefined();
+    const flag = preinstalledToolsAgentAvailability(
+      "unused-for-a-downloadable-target",
+      target.promise,
+    );
+    const decision = hostIncomingMessageSchema.parse({
+      type: HostMessageTypes.PreinstalledToolsDownloadTarget,
+      hasTarget: true,
+    });
+    if (decision.type !== HostMessageTypes.PreinstalledToolsDownloadTarget)
+      throw new Error("unexpected Host message");
+    target.resolve(decision.hasTarget);
+    expect(await flag).toBe("1");
+  });
+
+  it("checks installed entries again when a new Agent starts without a download target", async () => {
+    vi.stubEnv("ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL", "");
+    const binDir = await mkdtemp(join(tmpdir(), "openzwork-preinstalled-entry-"));
+    const hasTarget = loadPreinstalledToolsCatalog({ error: vi.fn() }).then(
+      hasPreinstalledToolsDownloadTarget,
+    );
+    try {
+      await mkdir(join(binDir, "leftover-directory"));
+      await writeFile(join(binDir, "orphan.shim"), "{}");
+      expect(await preinstalledToolsAgentAvailability(binDir, hasTarget)).toBeUndefined();
+      const name = process.platform === "win32" ? "zcode-python.exe" : "zcode-python";
+      const path = join(binDir, name);
+      await writeFile(path, "fixture");
+      await chmod(path, 0o755);
+      if (process.platform === "win32") await writeFile(join(binDir, "zcode-python.shim"), "{}");
+      expect(await preinstalledToolsAgentAvailability(binDir, hasTarget)).toBe("1");
+      await rm(path);
+      expect(await preinstalledToolsAgentAvailability(binDir, hasTarget)).toBeUndefined();
+    } finally {
+      await rm(binDir, { recursive: true, force: true });
+    }
   });
 });

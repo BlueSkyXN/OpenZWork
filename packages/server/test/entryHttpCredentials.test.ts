@@ -119,7 +119,7 @@ describe("entry-http standalone Web credential isolation", () => {
       "credential-secret",
     );
 
-    const preparedPath = await prepareEntryHttpCredentials({ standalone: true });
+    const preparedPath = await prepareEntryHttpCredentials();
     expect(preparedPath).toBe(expectedServerCredentialsPath);
     expect(process.env[ZCODE_CREDENTIALS_FILE_ENV]).toBe(expectedServerCredentialsPath);
     // getCredentialsFilePath() 必须实时读取 ZCODE_CREDENTIALS_FILE，使 Server 与子进程 Agent 同源。
@@ -152,11 +152,29 @@ describe("entry-http standalone Web credential isolation", () => {
     );
     expect(await desktopCipher.decrypt(desktopEncrypted)).toBe("desktop-provider-api-key");
 
-    // 后续非 standalone 启动（如 dev:web）也只读识别已隔离目录并注入 ZCODE_CREDENTIALS_FILE。
+    // 新进程再次启动时继续选择同一个已发布的隔离目录。
     delete process.env[ZCODE_CREDENTIALS_FILE_ENV];
-    const resolvedOnRestart = await prepareEntryHttpCredentials({ standalone: false });
+    const resolvedOnRestart = await prepareEntryHttpCredentials();
     expect(resolvedOnRestart).toBe(expectedServerCredentialsPath);
     expect(process.env[ZCODE_CREDENTIALS_FILE_ENV]).toBe(expectedServerCredentialsPath);
+  });
+
+  it("prepares the isolated store on the first dev:web start after Desktop pinned the shared store", async () => {
+    for (const key of ENV_KEYS) delete process.env[key];
+    setDataBaseDir(await createTempDataBaseDir());
+    const desktopDir = getAppConfigDir();
+    await mkdir(desktopDir, { recursive: true });
+    await writeFile(join(desktopDir, "credential-source"), "os\n");
+    const desktopFile = join(desktopDir, "credentials.json");
+    await writeFile(desktopFile, "{}\n");
+    const serverDir = join(getZCodeDataRootDir(), "server", "credentials");
+    await expect(stat(serverDir)).rejects.toHaveProperty("code", "ENOENT");
+
+    expect(await prepareEntryHttpCredentials()).toBe(join(serverDir, "credentials.json"));
+    expect(getCredentialsFilePath()).toBe(join(serverDir, "credentials.json"));
+    expect((await stat(join(serverDir, "credential-secret"))).isFile()).toBe(true);
+    expect(await readFile(desktopFile, "utf8")).toBe("{}\n");
+    expect(await readFile(join(desktopDir, "credential-source"), "utf8")).toBe("os\n");
   });
 
   it("prepares shared v2 credential-secret without setting ZCODE_CREDENTIALS_FILE on a clean headless host", async () => {
@@ -165,7 +183,7 @@ describe("entry-http standalone Web credential isolation", () => {
     setDataBaseDir(baseDir);
 
     const sharedCredentialsPath = join(getAppConfigDir(), "credentials.json");
-    const preparedPath = await prepareEntryHttpCredentials({ standalone: true });
+    const preparedPath = await prepareEntryHttpCredentials();
     expect(preparedPath).toBe(sharedCredentialsPath);
     expect(process.env[ZCODE_CREDENTIALS_FILE_ENV]).toBeUndefined();
     expect(getCredentialsFilePath()).toBe(sharedCredentialsPath);
@@ -195,7 +213,7 @@ describe("entry-http standalone Web credential isolation", () => {
     const customFile = join(customDir, "credentials.json");
     process.env[ZCODE_CREDENTIALS_FILE_ENV] = customFile;
 
-    const preparedPath = await prepareEntryHttpCredentials({ standalone: true });
+    const preparedPath = await prepareEntryHttpCredentials();
     expect(preparedPath).toBe(customFile);
     expect(process.env[ZCODE_CREDENTIALS_FILE_ENV]).toBe(customFile);
     expect((await stat(join(customDir, "credential-secret"))).isFile()).toBe(true);

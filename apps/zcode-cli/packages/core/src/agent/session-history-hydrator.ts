@@ -87,6 +87,7 @@ export async function hydrateMessageHistoryFromSession(input: {
   artifactStore?: ToolArtifactStorePort;
   branchCutAfterMessageId?: MessageId;
   history: MessageHistory;
+  includeSkillsListing?: boolean;
   messages: MessageWithParts[];
   rewindCreatedMessageId?: MessageId;
   rewindKeptMessageIds?: readonly MessageId[];
@@ -110,18 +111,17 @@ export async function hydrateMessageHistoryFromSession(input: {
       message.info.source === "bot_topic_context"
     )
       continue;
-    const parts = dedupeParts(message.parts).filter(
-      (part) =>
-        !(
-          part.type === "text" &&
-          part.synthetic &&
-          (metadataFromSyntheticTextPart(part).source === "bot_topic_context" ||
-            // 旧状态正文包含已移除工具的指令，只过滤恢复投影，不改写存储。
-            part.metadata?.source === "mcp_server_status" ||
-            (isRecord(part.metadata?.runtimeMessage) &&
-              part.metadata.runtimeMessage.source === "mcp_server_status"))
-        ),
-    );
+    const parts = dedupeParts(message.parts).filter((part) => {
+      if (part.type !== "text" || !part.synthetic) return true;
+      const source = metadataFromSyntheticTextPart(part).source;
+      // OpenZWork(OZ-F002)：按公告身份过滤，包括旧包装和与用户正文同条的 part；原始会话记录保留。
+      if (input.includeSkillsListing === false && source === "skills_listing") return false;
+      // 旧状态正文包含已移除工具的指令，只过滤恢复投影，不改写存储。
+      return (
+        source !== "bot_topic_context" && part.metadata?.source !== "mcp_server_status" &&
+        !(isRecord(part.metadata?.runtimeMessage) && part.metadata.runtimeMessage.source === "mcp_server_status")
+      );
+    });
     partCount += parts.length;
     // 条目时间取这条持久化记录的时间（assistant 取完成时间），与 live 加入历史的时间对应；
     // 静默提醒按它计时（meta-user-context.md「Silent-turn reminder」）。

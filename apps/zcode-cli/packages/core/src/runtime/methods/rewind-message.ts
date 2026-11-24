@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- rewind message primitive 与 cascade 封装共享 conversation/workspace 语义，避免拆分时误改原 /rewind 行为。 */
+import { mainSessionIncludesSkillsListing } from "../../context/prompt-settings/contract.js";
 import {
   RewindScope,
   RewindStrategy,
@@ -697,6 +698,7 @@ async function rebuildConversationDerivedState(
   // branch 重建，避免 compact/microcompact/read cache 或 provider usage 泄漏旧分支。
   this.messageHistory.reset();
   await hydrateMessageHistoryFromSession({
+    includeSkillsListing: mainSessionIncludesSkillsListing(this.config),
     artifactStore: this.artifactStore,
     history: this.messageHistory,
     messages: options.persistedMessages,

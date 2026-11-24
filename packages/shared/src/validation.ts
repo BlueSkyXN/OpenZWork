@@ -745,6 +745,7 @@ export const hostInitLocalMessageSchema = z.object({
   /** spawn 时刻 Main 持有的 Agent 回复语言（null 为未设置）；后续变化由 reply-language-changed 推送。 */
   replyLanguage: replyLanguageSchema.nullable().optional(),
   zcodeBuiltinProviderConfigFilePath: nonEmptyStringSchema,
+  preinstalledToolsTargetPending: z.boolean().optional(),
   runtimeProcessEnvPatch: z
     .record(z.string().regex(/^[A-Za-z_][A-Za-z0-9_]*$/), z.string())
     .optional(),
@@ -1198,6 +1199,7 @@ export const hostIncomingMessageSchema = z.discriminatedUnion("type", [
   hostPluginSandboxRegisterResultMessageSchema,
   hostApplicationLocaleChangedMessageSchema,
   hostReplyLanguageChangedMessageSchema,
+  z.object({ type: z.literal("preinstalled-tools-download-target"), hasTarget: z.boolean() }).strict(),
   hostProviderProvisioningExecuteMessageSchema,
   hostProviderProvisioningLaneResultMessageSchema,
 ]);

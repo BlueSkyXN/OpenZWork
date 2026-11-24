@@ -1,3 +1,4 @@
+import { mainSessionIncludesSkillsListing } from "../../context/prompt-settings/contract.js";
 import { restorePermissionGrantMarker } from "../helpers/permission-grant-resume.js";
 import { executionStateSchema, resolveExecutionState } from "@zcode/shared";
 import { SESSION_ENTRY_EXECUTION_STATE } from "@zcode/contracts";
@@ -184,6 +185,7 @@ export async function resumeFromStore(
     traceContext,
   );
   const hydration = await hydrateMessageHistoryFromSession({
+    includeSkillsListing: mainSessionIncludesSkillsListing(this.config),
     logger: this.logger,
     artifactStore: this.artifactStore,
     branchCutAfterMessageId,

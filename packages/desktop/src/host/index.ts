@@ -461,6 +461,8 @@ const logger = {
   error: (...args: unknown[]) => writeHostLog("error", ...args),
 };
 
+const preinstalledToolsDownloadTarget = Promise.withResolvers<boolean>();
+
 const cronAutomationRepo = new AutomationRepo();
 const cronRunSubscriptions = new Map<string, { dispose(): void }>();
 
@@ -2752,6 +2754,10 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
   if (msg.type === HostMessageTypes.InitLocal) {
     replyLanguage = msg.replyLanguage ?? null;
   }
+  if (msg.type === HostMessageTypes.PreinstalledToolsDownloadTarget) {
+    preinstalledToolsDownloadTarget.resolve(msg.hasTarget);
+    return;
+  }
   if (msg.type === HostMessageTypes.ReplyLanguageChanged) {
     replyLanguage = msg.replyLanguage;
     return;
@@ -3537,7 +3543,10 @@ parentPort.on("message", async (e: Electron.MessageEvent) => {
           establishOwner: () => {
             const initializedServices = createLocalServices({
               // 固定目录与发布目标无关；准备完成后，既有会话下一条命令即可找到入口。
-              // OpenZWork(OZ-C015)：Host 只传递固定 bin 目录，由 services 按下载源配置或已安装入口决定是否注入 AVAILABLE。
+              // OpenZWork(OZ-C015)：镜像有值时本平台也可能没有资源，提供经清单解析的实际结果。
+              preinstalledToolsDownloadTarget: msg.preinstalledToolsTargetPending
+                ? preinstalledToolsDownloadTarget.promise
+                : undefined,
               preinstalledToolsBinDir: resolvePreinstalledToolsBinDir({
                 dataRoot: getZCodeDataRootDir(),
                 release: resolvePreinstalledToolsRelease({

@@ -1,8 +1,15 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createSqliteSessionStore } from "../../adapters/src/storage/session-store/sqlite-session-store.js";
 import {
+  createPartId,
   createSessionId,
+  SESSION_ENTRY_PROMPT_SNAPSHOT,
   modelMessageContentToText,
   type ModelRequest,
+  type SkillMetadata,
   type SkillPort,
 } from "@zcode/contracts";
 import {
@@ -43,6 +50,27 @@ const base = {
 };
 const system = (result: ReturnType<ReturnType<typeof createContextBuilder>["build"]>) =>
   result.systemMessages.map((message) => message.content).join("\n");
+
+const skillPath = "/example/skills/example-review/SKILL.md";
+const skill: SkillMetadata = {
+  name: "example-review",
+  description: "Review an example change and report evidence.",
+  path: skillPath,
+  directory: "/example/skills/example-review",
+  rootPath: "/example/skills",
+  scope: "project",
+  source: "agents",
+  safeToAutoLoad: false,
+  frontmatterKeys: ["name", "description"],
+};
+const skillPort: SkillPort = {
+  async discoverSkills() {
+    return { skills: [skill], diagnostics: [], totalDiscovered: 1 };
+  },
+  async loadSkill() {
+    return { metadata: skill, content: "body" };
+  },
+};
 
 describe("main session prompt customization", () => {
   it("leaves the entire default result byte-identical", () => {
@@ -331,44 +359,6 @@ describe("main session prompt customization", () => {
           ? { skills: { mode: "disabled" as const, content: "" } }
           : {},
       };
-      const skillPath = "/example/skills/example-review/SKILL.md";
-      const skillPort: SkillPort = {
-        async discoverSkills() {
-          return {
-            skills: [
-              {
-                name: "example-review",
-                description: "Review an example change and report evidence.",
-                path: skillPath,
-                directory: "/example/skills/example-review",
-                rootPath: "/example/skills",
-                scope: "project",
-                source: "agents",
-                safeToAutoLoad: false,
-                frontmatterKeys: ["name", "description"],
-              },
-            ],
-            diagnostics: [],
-            totalDiscovered: 1,
-          };
-        },
-        async loadSkill() {
-          return {
-            metadata: {
-              name: "example-review",
-              description: "Review an example change and report evidence.",
-              path: skillPath,
-              directory: "/example/skills/example-review",
-              rootPath: "/example/skills",
-              scope: "project",
-              source: "agents",
-              safeToAutoLoad: false,
-              frontmatterKeys: ["name", "description"],
-            },
-            content: "body",
-          };
-        },
-      };
       const requests: ModelRequest[] = [];
       const runtime = createTestAgentRuntime(
         createSessionId(),
@@ -413,6 +403,131 @@ describe("main session prompt customization", () => {
       expect(sentText.includes("The following skills are available")).toBe(expectSkills);
       expect(sentText.includes(skillPath)).toBe(expectSkills);
       expect(sentText.includes("example-review")).toBe(expectSkills);
+    },
+  );
+  it.each(["sections", "replace"] as const)(
+    "reloads saved %s rules and projects historical skill announcements from SQLite",
+    async (mode) => {
+      const directory = await mkdtemp(join(tmpdir(), "openzwork-prompt-reload-"));
+      const dbPath = join(directory, "session.sqlite");
+      const sessionId = createSessionId();
+      async function runTurn(rule: string, listing: boolean, resume: boolean) {
+        const settings = createDefaultSystemPromptSettings();
+        settings.mode = mode;
+        if (mode === "replace") settings.replacement = rule;
+        else settings.sections.role = { mode: "replace", content: rule };
+        if (!listing) settings.sections.skills = { mode: "disabled", content: "" };
+        const store = await createSqliteSessionStore({ dbPath });
+        const requests: ModelRequest[] = [];
+        try {
+          const runtime = createTestAgentRuntime(
+            sessionId,
+            {
+              workingDirectory: directory,
+              envInfo: base.envInfo,
+              systemPromptSettings: settings,
+              modelStreaming: "off",
+              titleGeneration: { enabled: false },
+              compact: { enabled: false },
+            },
+            {
+              sessionStore: store,
+              eventStore: createTestSessionEventStore(),
+              skillPort,
+              modelFactory: createTestModelFactory({
+                async generateText(request) {
+                  requests.push(request);
+                  return {
+                    finishReason: "stop",
+                    text: "DONE",
+                    usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+                  };
+                },
+              }),
+            },
+          );
+          if (resume) await runtime.resumeFromStore();
+          await runtime.executeTurn(resume ? "continue" : "original user message");
+          expect(requests).toHaveLength(1);
+          const request = requests[0]!;
+          const messages = request.messages.map((m) => modelMessageContentToText(m.content));
+          expect(messages.join("\n")).toContain("original user message");
+          expect(request.tools?.some((tool) => tool.name === "Skill")).toBe(true);
+          const transcript = await store.messages({ sessionID: sessionId });
+          const listings = transcript
+            .flatMap((row) => row.parts)
+            .filter(
+              (part) => part.type === "text" && part.synthetic && part.text.includes(skillPath),
+            );
+          expect(listings).toHaveLength(1);
+          if (!listing) expect(messages.join("\n")).not.toContain("LEGACY_SKILL_ANNOUNCEMENT");
+          return {
+            system: request.messages
+              .filter((m) => m.role === "system")
+              .map((m) => modelMessageContentToText(m.content))
+              .join("\n"),
+            announcements: messages.filter((text) => text.includes(skillPath)).length,
+          };
+        } finally {
+          await store.close();
+        }
+      }
+      try {
+        expect((await runTurn("ROLE_BEFORE_SAVE", true, false)).announcements).toBe(1);
+        const firstStore = await createSqliteSessionStore({ dbPath });
+        try {
+          const original = (await firstStore.messages({ sessionID: sessionId })).find((row) =>
+            row.parts.some((part) => part.type === "text" && part.text === "original user message"),
+          );
+          await firstStore.savePart({
+            id: createPartId(),
+            messageID: original!.info.id,
+            sessionID: sessionId,
+            type: "text",
+            synthetic: true,
+            text: "<system-reminder>LEGACY_SKILL_ANNOUNCEMENT</system-reminder>",
+            metadata: { runtimeMessage: { source: "skills_listing" } },
+          });
+        } finally {
+          await firstStore.close();
+        }
+        const restarted = await runTurn("ROLE_AFTER_SAVE", false, true);
+        expect(restarted.announcements).toBe(0);
+        expect(restarted.system).toContain("ROLE_AFTER_SAVE");
+        expect(restarted.system).not.toContain("ROLE_BEFORE_SAVE");
+        expect((await runTurn("ROLE_AFTER_SAVE", true, true)).announcements).toBe(1);
+
+        // 模拟旧程序渲染过的 system：设置相同应复用字节，缺失设置标识的旧记录应按当前规则重建。
+        async function seedSnapshot(systemText: string, legacy: boolean) {
+          const store = await createSqliteSessionStore({ dbPath });
+          try {
+            const [entry] = await store.sessionEntries({
+              sessionID: sessionId,
+              type: SESSION_ENTRY_PROMPT_SNAPSHOT,
+            });
+            const saved = entry!.data as { model: unknown; settingsHash?: string };
+            expect(saved.settingsHash).toEqual(expect.any(String));
+            await store.saveSessionEntry({
+              ...entry!,
+              data: {
+                model: saved.model,
+                system: [{ role: "system", content: systemText }],
+                ...(legacy ? {} : { settingsHash: saved.settingsHash }),
+              },
+            });
+          } finally {
+            await store.close();
+          }
+        }
+        await seedSnapshot("CACHED_RULE_FROM_PRIOR_BUILD", false);
+        expect((await runTurn("ROLE_AFTER_SAVE", true, true)).system).toContain(
+          "CACHED_RULE_FROM_PRIOR_BUILD",
+        );
+        await seedSnapshot("LEGACY_RULE_WITHOUT_SETTINGS", true);
+        expect((await runTurn("ROLE_AFTER_SAVE", true, true)).system).toContain("ROLE_AFTER_SAVE");
+      } finally {
+        await rm(directory, { recursive: true, force: true });
+      }
     },
   );
 });

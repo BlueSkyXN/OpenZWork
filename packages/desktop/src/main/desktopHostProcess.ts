@@ -93,7 +93,8 @@ export interface HostInitMessage {
   replyLanguage: string | null;
   /** Main 解析后的 ZCode Built-in Provider Config 路径；Host/Services 不感知 Electron 安装布局。 */
   zcodeBuiltinProviderConfigFilePath: string;
-  /** 构建固定目标，不包含安装状态；本机 Host 用共享纯函数解析记录地址。 */
+  /** Main 将在本地目录清单解析完成后投递可下载状态。 */
+  preinstalledToolsTargetPending?: boolean;
   /** Main 提前异步采集并过滤的本机 runtime 环境；只允许传给 InitLocal。 */
   runtimeProcessEnvPatch?: Record<string, string>;
 }
@@ -172,6 +173,7 @@ export function spawnHostProcess(
   initMessage: HostInitMessage,
   dependencies: {
     hostProcessLocalEnv: Record<string, string>;
+    preinstalledToolsDownloadTarget?: Promise<boolean>;
     /** Main 进程已完成服务端灰度裁决；Host 只消费这个快照，不自行请求或分桶。 */
     desktopContextPromptEnabled?: () => boolean;
     logger: {
@@ -612,6 +614,16 @@ export function spawnHostProcess(
         deliveryKind: options?.taskRealtime?.deliveryKind,
       }
     : { ...initMessage, databaseStartupId: databaseStartupRelay.startupId };
+
+  if (dependencies.preinstalledToolsDownloadTarget) {
+    // OpenZWork(OZ-C015)：先发送 InitLocal，清单就绪后只发判定结果；Host 启动与工具进程初始化独立。
+    hostInitMessage.preinstalledToolsTargetPending = true;
+    void dependencies.preinstalledToolsDownloadTarget
+      .then((hasTarget) => {
+        child.postMessage({ type: HostMessageTypes.PreinstalledToolsDownloadTarget, hasTarget });
+      })
+      .catch((error: unknown) => dependencies.logger.warn("[preinstalled-tools] Host capability delivery failed", error));
+  }
 
   if (options?.attachInitialServicePort === false) {
     child.postMessage(hostInitMessage);

@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { mainSessionPromptSettings } from "../../context/prompt-settings/contract.js";
 
 import { CONTEXT_SOURCE_INSTRUCTIONS_READ_FAILED } from "@zcode/contracts";
 import {
@@ -182,9 +183,7 @@ export function createContextBuilderFromSnapshot(
     agentProfiles: this.config.subagents?.profiles,
     embeddedSearchEnabled: resolveRuntimeEmbeddedSearchEnabled(this),
     customSystemPrompt: this.config.systemPrompt,
-    systemPromptSettings: (this.config.taskType ?? "interactive") === "interactive"
-      ? this.config.systemPromptSettings
-      : undefined,
+    systemPromptSettings: mainSessionPromptSettings(this.config),
     workflowActor: this.config.workflowActor,
     outputStyle: this.config.outputStyle,
     compact: this.config.compact,

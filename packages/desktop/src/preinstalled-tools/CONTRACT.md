@@ -2,7 +2,7 @@
 # 本机预装工具进程
 
 - Main 只读取并装配 catalog，管理 utilityProcess 生命周期及消息转发，不保存工具状态。
-- Host 按发布身份计算固定 `bin/`，仅在配置了 `ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL` 或 `bin/` 已有已安装入口时向 Agent 注入 AVAILABLE，不接收 catalog，也不等待准备。
+- Main 从同一份已解析清单取得本平台是否有下载目标，异步把这个布尔值传给每个本地 Host。每次启动 Agent 时按发布身份检查固定 `bin/` 的可执行入口。有目标或已发布入口时向 Agent 注入 AVAILABLE。工具下载和预装进程初始化独立运行。
 - `process.ts` 校验初始化与命令；`coordinator.ts` 拥有全局自动预装设置、owner 表和唯一串行准备队列。
 - `installation.ts` 每工具一个 owner，拥有该工具的记录、状态和准备/删除归属。目录位于 `tools/<toolId>/`。
 

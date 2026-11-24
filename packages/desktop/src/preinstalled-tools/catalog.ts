@@ -27,9 +27,13 @@ function resolvePreinstalledToolsCdnBaseUrls(): string[] {
  * 修复原因：此前任何装配失败都在 Main 变成空列表，预装进程把它当作全部工具移出 catalog，
  * 撤销入口并删除已安装资源（含 Python 附加区）。
  */
-export async function loadPreinstalledToolsCatalog(logger: {
-  error(...args: unknown[]): void;
-}): Promise<PreinstalledToolConfiguration[] | null> {
+type CatalogLogger = { error(...args: unknown[]): void };
+
+export async function loadPreinstalledToolsCatalog(
+  logger: CatalogLogger,
+  platform = process.platform,
+  arch = process.arch,
+): Promise<PreinstalledToolConfiguration[] | null> {
   try {
     const catalog: unknown =
       typeof __ZCODE_PREINSTALL_TEST_BUILD__ !== "undefined" &&
@@ -40,8 +44,8 @@ export async function loadPreinstalledToolsCatalog(logger: {
     const cdnBaseUrls = resolvePreinstalledToolsCdnBaseUrls();
     const { tools, downloadBaseUrlsError } = resolvePreinstalledToolsCatalog(
       catalog,
-      process.platform,
-      process.arch,
+      platform,
+      arch,
       cdnBaseUrls,
     );
     // OpenZWork(OZ-C015)：未设置 ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL 时 cdnBaseUrls 为空属预期状态，仅显式配置的值校验失败时记 error。
@@ -55,4 +59,8 @@ export async function loadPreinstalledToolsCatalog(logger: {
     logger.error("[preinstalled-tools] invalid static target configuration", error);
     return null;
   }
+}
+
+export function hasPreinstalledToolsDownloadTarget(tools: PreinstalledToolConfiguration[] | null): boolean {
+  return tools?.some((tool) => tool.manifest !== null) ?? false;
 }

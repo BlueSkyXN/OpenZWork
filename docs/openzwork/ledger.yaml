@@ -53,8 +53,13 @@ entries:
       - apps/zcode-cli/packages/core/src/context/sections/desktop.ts
       - apps/zcode-cli/packages/core/src/context/sections/env-info.ts
       - apps/zcode-cli/packages/core/src/context/sections/memory.ts
+      - apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts
       - apps/zcode-cli/packages/core/src/runtime/helpers/provider-request-messages.ts
+      - apps/zcode-cli/packages/core/src/runtime/helpers/prompt-snapshot.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/context.ts
       - apps/zcode-cli/packages/core/src/runtime/methods/context-refresh.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/resume.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/rewind-message.ts
       - packages/ui/src/SettingsPage.tsx
     tests:
       - apps/zcode-cli/packages/core/tests/system-prompt-editor.test.ts
@@ -786,13 +791,19 @@ entries:
     kind: change
     status: active
     title: 预装文档工具本地回退与无官方 CDN 默认态
-    summary: 剥离预装文档工具默认官方 CDN 基址，仅在显式配置 ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL 或本地已安装预装工具时向 Agent 注入可用标记，管理弹窗在无下载源时禁用无效开关并说明默认使用本机已有工具。
+    summary: 剥离预装文档工具默认官方 CDN 基址，仅在当前平台有通过清单校验的下载目标或本地有可执行入口时向 Agent 注入可用标记，管理弹窗在无下载源时禁用无效开关并说明默认使用本机已有工具。
     spec: docs/openzwork/upstream/v4.0.0-integration.md
     paths:
       - packages/desktop/test/preinstalledToolsCatalog.test.ts
     hooks:
       - packages/desktop/src/preinstalled-tools/catalog.ts
+      - packages/desktop/src/preinstalled-tools/index.ts
       - packages/desktop/src/preinstalled-tools/CONTRACT.md
+      - packages/desktop/src/main/index.ts
+      - packages/desktop/src/main/desktopHostProcess.ts
+      - packages/shared/src/channels.ts
+      - packages/shared/src/validation.ts
+      - packages/shared/src/preinstalled-tools/node.ts
       - packages/desktop/src/host/index.ts
       - packages/services/src/node.ts
       - packages/ui/src/preinstalled-tools/PreinstalledToolsDialog.tsx

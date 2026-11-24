@@ -5,6 +5,7 @@
 import { resolvePreinstalledToolsRelease } from "@zcode/shared/preinstalled-tools";
 import {
   spawnPreinstalledToolsProcess,
+  hasPreinstalledToolsDownloadTarget,
   loadPreinstalledToolsCatalog,
   type PreinstalledToolsProcessHandle,
 } from "@desktop/preinstalled-tools/index.js";
@@ -663,6 +664,8 @@ const hostQuitBlockersMap = new Map<ElectronUtilityProcess, HostQuitBlocker[]>()
 // 常驻 cron scheduler 进程句柄；app ready 后拉起，退出前销毁。
 let cronScheduler: CronSchedulerHandle | null = null;
 let preinstalledToolsProcess: PreinstalledToolsProcessHandle | undefined;
+// OpenZWork(OZ-C015)：同一份已解析清单供工具进程与本地 Agent 使用，窗口 Host 可在清单就绪前启动。
+const preinstalledToolsDownloadTarget = Promise.withResolvers<boolean>();
 // 全 App 唯一的扩展进程监管器（docs/plugins/extension-host.md §12.1）。
 // 先于任何窗口创建，以便登记每个 Window Host；扩展进程在首个 Window Host 就绪时才拉起。
 // 每次启动扩展进程前读一次设置页的网络出口（§18.1 H3）；读取发生在拉起时，晚于 mainSettingService 初始化。
@@ -1408,6 +1411,7 @@ function createWindowInstance(startupBootstrap: StartupWindowBootstrap = {}) {
         },
         {
           hostProcessLocalEnv,
+          preinstalledToolsDownloadTarget: preinstalledToolsDownloadTarget.promise,
           logger,
           broadcastHub,
           taskRealtimeBus,
@@ -1710,7 +1714,9 @@ app.whenReady().then(async () => {
   applicationLocaleResolved = true;
 
   // 清单只属于预装进程；异步读取不能成为 Host 或聊天的启动屏障。
-  const preinstalledToolsConfiguration = loadPreinstalledToolsCatalog(logger).then((tools) => ({
+  const catalog = loadPreinstalledToolsCatalog(logger);
+  preinstalledToolsDownloadTarget.resolve(catalog.then(hasPreinstalledToolsDownloadTarget, () => false));
+  const preinstalledToolsConfiguration = catalog.then((tools) => ({
     dataRoot: getZCodeDataRootDir(),
     release: resolvePreinstalledToolsRelease({
       runtimeEnv: desktopRuntimeEnv,

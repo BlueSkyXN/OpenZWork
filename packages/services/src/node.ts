@@ -59,7 +59,7 @@ import { createGenUiService } from "./gen-ui/node.js";
 // Node.js service implementations — NOT safe to import in browser code
 import { createHash, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { preinstalledToolsAgentAvailability } from "@zcode/shared/preinstalled-tools/node";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { IChannel } from "@zcode/rpc";
@@ -620,6 +620,7 @@ export function createLocalServices(options: {
   runtimeProcessEnvPatch?: Record<string, string>;
   /** 仅桌面 Local Host 有本机发布目标时注入；安装前路径固定，仅定位程序，不下发给远端或 Web。 */
   preinstalledToolsBinDir?: string;
+  preinstalledToolsDownloadTarget?: Promise<boolean>;
   /** 本地桌面上次 workspace 缺失时，仅用于 Agent 子进程 spawn.cwd 兜底。 */
   zcodeAgentSpawnFallbackCwd?: string;
   /** desktop-attached remote server 从 Desktop Host 收到的一次性 Agent 网络配置。 */
@@ -1119,15 +1120,13 @@ export function createLocalServices(options: {
       // Host 是旧配置迁移的唯一写入者。Agent spawn 前等待初始化完成，避免 Worker
       // 先拿到尚不存在的 provider_config.json 并发布短暂空 Registry。
       await providerConfigRuntime.start();
-      // OpenZWork(OZ-C015)：默认无官方预装 CDN；仅在配置了自定义源或 binDir 已有已安装入口时声明预装可用，
-      // 避免文档/表格/PDF/演示插件在无源且未安装时误拦系统工具引导。
-      const preinstalledToolsAvailable =
-        !isDesktopAttachedRemote &&
-        Boolean(options.preinstalledToolsBinDir) &&
-        (Boolean(process.env.ZCODE_PREINSTALLED_TOOLS_CDN_BASE_URL?.trim()) ||
-          (await hasInstalledPreinstalledToolEntries(options.preinstalledToolsBinDir)));
+      // OpenZWork(OZ-C015)：可下载目标由本地桌面解析，远端和 Web 只使用各自的工具环境。
+      const preinstalledAvailability = await preinstalledToolsAgentAvailability(
+        isDesktopAttachedRemote ? undefined : options.preinstalledToolsBinDir,
+        options.preinstalledToolsDownloadTarget,
+      );
       return {
-        [ZCODE_PREINSTALLED_TOOLS_AVAILABLE_ENV]: preinstalledToolsAvailable ? "1" : undefined,
+        [ZCODE_PREINSTALLED_TOOLS_AVAILABLE_ENV]: preinstalledAvailability,
         ...(!isDesktopAttachedRemote && options.preinstalledToolsBinDir
           ? { PATH: prependPathEntries(process.env.PATH ?? "", [options.preinstalledToolsBinDir]) }
           : {}),
@@ -1703,13 +1702,4 @@ export async function createServerHostServices(options: {
 function buildAgentClientLanguageEnv(locale: string | undefined): Record<string, string> {
   const value = locale?.trim();
   return value && /^[\x20-\x7e]+$/.test(value) ? { [ZCODE_CLIENT_LANGUAGE_ENV]: value } : {};
-}
-
-async function hasInstalledPreinstalledToolEntries(binDir: string | undefined): Promise<boolean> {
-  if (!binDir) return false;
-  try {
-    return (await readdir(binDir)).some((name) => !name.startsWith("."));
-  } catch {
-    return false;
-  }
 }
