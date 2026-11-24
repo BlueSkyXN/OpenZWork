@@ -203,6 +203,7 @@ export class SystemPromptObservation {
     settings: SystemPromptSettings,
   ): SystemPromptPreviewDocument | null {
     const builder = saved.builder!;
+    if (!builder.supportsPromptSettings()) return null;
     const baseline = builder.build();
     const next = builder.copyForPromptPreview(settings).build();
     const actual = saved.snapshot.actual.blocks;

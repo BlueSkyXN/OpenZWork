@@ -229,4 +229,65 @@ describe("prompt previews and actual request observation", () => {
       reason: "expired",
     });
   });
+
+  it("SPE07 marks comparison unavailable when a main session uses legacy config.systemPrompt alongside systemPromptSettings", async () => {
+    const hybridSettings = createDefaultSystemPromptSettings();
+    hybridSettings.sections.role = { mode: "replace", content: "IGNORED_SETTINGS_ROLE" };
+    hybridSettings.sections.env_info = { mode: "disabled", content: "" };
+    const runtime = createTestAgentRuntime(
+      createSessionId(),
+      {
+        workingDirectory: envInfo.cwd,
+        envInfo,
+        mode: "yolo",
+        modelStreaming: "off",
+        compact: { enabled: false },
+        titleGeneration: { enabled: false },
+        systemPrompt: "LEGACY_CUSTOM_SYSTEM_PROMPT",
+        systemPromptSettings: hybridSettings,
+      },
+      {
+        eventStore: createTestSessionEventStore(),
+        modelFactory: createTestModelFactory({
+          async generateText(_request, observation) {
+            await observation.invocationContext?.statusSink?.publish({
+              type: "model_request_started",
+              requestId: "legacy-request-1",
+              attempt: 1,
+              maxAttempts: 1,
+              providerId: observation.model.providerId,
+              modelId: observation.model.modelId,
+              timestamp: new Date().toISOString(),
+              transport: ModelTransportKind.Sse,
+              traceId: createTraceId("legacy-prompt-observation"),
+            });
+            return {
+              finishReason: "stop",
+              text: "DONE",
+              usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+            };
+          },
+        }),
+      },
+    );
+    await runtime.executeTurn("USER_TURN");
+    const actual = runtime.readSystemPromptObservation({});
+    expect(actual.status).toBe("available");
+    if (actual.status !== "available") throw new Error("request was not observed");
+    expect(systemPromptDocumentText(actual.actual)).toContain("LEGACY_CUSTOM_SYSTEM_PROMPT");
+    expect(systemPromptDocumentText(actual.actual)).not.toContain("IGNORED_SETTINGS_ROLE");
+    expect(systemPromptDocumentText(actual.actual)).toContain(envInfo.cwd);
+
+    for (const draft of [createDefaultSystemPromptSettings(), hybridSettings]) {
+      const compared = runtime.readSystemPromptObservation({
+        snapshotId: actual.snapshotId,
+        settings: draft,
+      });
+      expect(compared.status).toBe("available");
+      if (compared.status !== "available") throw new Error("observation missing");
+      expect(compared.comparison).toBeUndefined();
+      expect(compared.comparisonUnavailable).toBe("context_unavailable");
+      expect(systemPromptDocumentText(compared.actual)).toContain("LEGACY_CUSTOM_SYSTEM_PROMPT");
+    }
+  });
 });

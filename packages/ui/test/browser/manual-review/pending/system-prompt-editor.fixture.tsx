@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import {
   createDefaultSystemPromptSettings,
   systemPromptSettingsSchema,
+  type Locale,
   type SystemPromptCatalog,
   type SystemPromptPreviewParams,
   type SystemPromptSettings,
@@ -103,11 +104,20 @@ function Fixture() {
   );
 }
 
+const requestedLocale = params.get("locale");
+const initialLocale: Locale =
+  requestedLocale === "en-US" ||
+  requestedLocale === "ja-JP" ||
+  requestedLocale === "ko-KR" ||
+  requestedLocale === "ru-RU"
+    ? requestedLocale
+    : "zh-CN";
+
 createRoot(document.getElementById("root")!).render(
   <ServiceProvider services={services}>
     <StoreContext.Provider value={store}>
       <TabStoreProvider>
-        <ZCodeIntlProvider initialLocale={params.get("locale") === "en-US" ? "en-US" : "zh-CN"}>
+        <ZCodeIntlProvider initialLocale={initialLocale}>
           <TooltipProvider>
             <Fixture />
           </TooltipProvider>

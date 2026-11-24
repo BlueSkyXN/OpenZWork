@@ -518,12 +518,16 @@ export function loadCiTests(context) {
             /--dir[=\s]+(\S+)/.exec(command)?.[1] ??
             (filter ? packageDirs.get(unquote(filter)) : undefined);
           const words = command.split(/\s+/).map(unquote);
+          const entryIndex =
+            words[0] === "node"
+              ? words.findIndex((word, index) => index > 0 && word && !word.startsWith("-"))
+              : -1;
           const isRepoScriptWrapper =
-            words[0] === "node" &&
-            posix.normalize(words[1] ?? "") === "scripts/run-repo-script-tests.mjs";
+            entryIndex > 0 &&
+            posix.normalize(words[entryIndex]) === "scripts/run-repo-script-tests.mjs";
           let hasExplicitTestToken = false;
           for (const token of words) {
-            if (!token.includes("/") || !TEST_FILE.test(token)) continue;
+            if (!token.includes("/") || token.startsWith("!") || !TEST_FILE.test(token)) continue;
             hasExplicitTestToken = true;
             name(posix.normalize(dir ? `${unquote(dir)}/${token}` : token), where, {
               excludeEngineering: isRepoScriptWrapper,

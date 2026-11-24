@@ -126,7 +126,13 @@ export function applySystemPromptSettings(
         if (id && GENERATED_SYSTEM_PROMPT_SECTIONS.includes(id)) {
           return withContent(section, resolveSystemPromptSection(settings, id, section.content));
         }
-        return withContent(section, section.injectionTarget === "meta_user" ? section.content : "");
+        // token 预算头是运行时 totalTokensReminder 开关的会话事实，不随规则整段替换剥离。
+        return withContent(
+          section,
+          section.injectionTarget === "meta_user" || section.source === "total_tokens"
+            ? section.content
+            : "",
+        );
       }
       // identity/dynamic_behavior/context_management 的子章在各自 builder 中解析。
       if (!id || id === "context_management") return section;
@@ -151,22 +157,27 @@ export function applySystemPromptSettings(
       ...result,
     ];
   }
-  for (const custom of settings.customSections) {
-    result.push(
-      withContent(
-        {
-          name: custom.title,
-          source: "user_prompt_section",
-          injectionTarget: "system",
-          cacheHint: "dynamic",
-          chars: 0,
-          tokens: 0,
-          content: "",
-          preview: "",
-        },
-        ["# " + custom.title, custom.content].join("\n\n"),
-      ),
-    );
+  const userSections = settings.customSections.map((custom) =>
+    withContent(
+      {
+        name: custom.title,
+        source: "user_prompt_section",
+        injectionTarget: "system",
+        cacheHint: "dynamic",
+        chars: 0,
+        tokens: 0,
+        content: "",
+        preview: "",
+      },
+      ["# " + custom.title, custom.content].join("\n\n"),
+    ),
+  );
+  // 维持 system-prompt-contract.md §9 不变量：total_tokens 启用时始终位于动态 system 段最末。
+  const totalTokensIndex = result.findIndex((section) => section.source === "total_tokens");
+  if (totalTokensIndex >= 0) {
+    result.splice(totalTokensIndex, 0, ...userSections);
+  } else {
+    result.push(...userSections);
   }
   return result;
 }

@@ -313,3 +313,70 @@ test(
     }
   },
 );
+
+for (const [locale, expectedFinishing, expectedMemoryNotes] of [
+  ["ja-JP", "作業の完了", "メモリ・ノート・フィードバック"],
+  ["ko-KR", "작업 마무리", "메모리, 노트 및 피드백"],
+  ["ru-RU", "Завершение работы", "Память, заметки и обратная связь"],
+]) {
+  test(
+    `SP08/SP18 ${locale} renders all 19 localized chapters on desktop and 390px mobile without overflow`,
+    { timeout: 90_000 },
+    async () => {
+      const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+      page.setDefaultTimeout(15_000);
+      const errors = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      try {
+        await page.goto(`${origin}fixture?locale=${locale}&theme=light`);
+        await page.getByTestId("system-prompt-editor").waitFor();
+        const chapterButtons = page.locator(
+          '[data-testid="system-prompt-chapter-list"] [data-testid^="system-prompt-chapter-"]',
+        );
+        // 19 built-in chapters + 1 custom chapters button = 20 items in desktop nav.
+        assert.equal(await chapterButtons.count(), 20);
+        assert.match(
+          await page.getByTestId("system-prompt-chapter-finishing_work").textContent(),
+          new RegExp(expectedFinishing),
+        );
+        assert.match(
+          await page.getByTestId("system-prompt-chapter-memory_notes").textContent(),
+          new RegExp(expectedMemoryNotes),
+        );
+        await page.getByTestId("system-prompt-chapter-finishing_work").click();
+        assert.match(
+          await page.getByTestId("system-prompt-preview").textContent(),
+          /# Finishing work/,
+        );
+        await page.getByTestId("system-prompt-chapter-memory_notes").click();
+        assert.match(
+          await page.getByTestId("system-prompt-preview").textContent(),
+          /# Memory, notes and feedback/,
+        );
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          true,
+        );
+
+        await page.setViewportSize({ width: 390, height: 900 });
+        await page.getByTestId("system-prompt-chapter-select").click();
+        await page.getByRole("option", { name: expectedFinishing, exact: true }).click();
+        assert.match(
+          await page.getByTestId("system-prompt-preview").textContent(),
+          /# Finishing work/,
+        );
+        assert.equal(
+          await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+          true,
+        );
+        await page.screenshot({
+          path: join(artifacts, `chapters-${locale}.png`),
+          fullPage: true,
+        });
+        assert.deepEqual(errors, []);
+      } finally {
+        await page.close();
+      }
+    },
+  );
+}

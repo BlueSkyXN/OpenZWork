@@ -1,5 +1,7 @@
 import type { MessageId } from "@zcode/contracts";
+// OpenZWork(OZ-F002): 捕获主会话实际请求提示词投影并对齐主会话设置作用域。
 import type { SystemPromptPreviewBlock } from "@zcode/shared";
+import { mainSessionPromptSettings } from "../../context/prompt-settings/contract.js";
 import { committedToolSearchDelivery } from "./turn-output-token-continuation.js";
 import type { ToolSearchExecutionContext } from "@zcode/contracts";
 import { getTurnTools } from "./turn-tool-visibility.js";
@@ -217,7 +219,9 @@ async function runModelBackedTurnStepImpl(
   let latestModelRequestId: string | undefined;
   let latestFailedModelRequestId: string | undefined;
   const promptBuilder =
-    querySource === "main_turn" ? (this.contextBuilder?.copyForPromptPreview() ?? null) : null;
+    querySource === "main_turn" && !this.config.systemPrompt?.trim()
+      ? (this.contextBuilder?.copyForPromptPreview() ?? null)
+      : null;
   const recordModelNetworkStatus = (event: ModelNetworkStatusEvent): void => {
     if (event.type === "model_request_started") {
       latestModelRequestId = event.requestId;
@@ -234,7 +238,7 @@ async function runModelBackedTurnStepImpl(
           blocks: options.promptBlocks ?? [],
           complete: options.promptComplete === true,
           builder: promptBuilder,
-          settings: this.config.systemPromptSettings,
+          settings: mainSessionPromptSettings(this.config),
         });
       }
       return;

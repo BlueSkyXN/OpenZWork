@@ -45,6 +45,11 @@ export class ContextBuilder {
     this.config = config;
   }
 
+  /** 仅主会话默认提示词分支消费 SystemPromptSettings；customSystemPrompt 与 workflowActor 不参与比较重放。 */
+  supportsPromptSettings(): boolean {
+    return !this.config.customSystemPrompt?.trim() && this.config.workflowActor === undefined;
+  }
+
   /** 预览捕获当次构建输入；模型对象只读复用，数据复制后不追随后续环境或设置变化。 */
   copyForPromptPreview(settings = this.config.systemPromptSettings): ContextBuilder {
     const config = this.config;

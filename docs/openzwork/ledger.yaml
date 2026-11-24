@@ -60,6 +60,7 @@ entries:
       - apps/zcode-cli/packages/core/src/runtime/methods/context-refresh.ts
       - apps/zcode-cli/packages/core/src/runtime/methods/resume.ts
       - apps/zcode-cli/packages/core/src/runtime/methods/rewind-message.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step.ts
       - packages/ui/src/SettingsPage.tsx
       - packages/ui/src/i18n/locales/en-US.ts
       - packages/ui/src/i18n/locales/ja-JP.ts

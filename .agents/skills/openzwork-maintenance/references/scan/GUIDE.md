@@ -56,7 +56,7 @@
 
 - `tests/ci/core-tests.json` 列出的文件；
 - `ci.yml` 各步骤 `run` 中出现的测试文件路径（文件名含 `.test.` 或 `.spec.`）。命令带 `--filter <包名>` 或 `--dir <目录>` 时，路径相对该包目录；路径含 `*` 时按通配符匹配；
-- `run` 中的 `pnpm <脚本>` 展开为根 `package.json` 的脚本内容后按同样规则读取。
+- `run` 中的 `pnpm <脚本>` 展开为根 `package.json` 的脚本内容后按同样规则读取；`node scripts/run-repo-script-tests.mjs` 缺省展开 `scripts/test/*.test.mjs`，并扣除 `scripts/engineering-test-files.json` 列出的工程 Vitest 文件。
 
 子包 `package.json` 脚本内部启动的测试不在识别范围内；需要计入时在 `ci.yml` 中点名文件，或列入 `core-tests.json`。
 

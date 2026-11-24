@@ -348,6 +348,36 @@ describe("main session prompt customization", () => {
     expect(wholeReplaced).not.toContain("# Finishing work");
     expect(wholeReplaced).not.toContain("# Memory, notes and feedback");
 
+    // When totalTokensReminder is enabled, total_tokens stays the final dynamic system block after customSections and in whole replacement.
+    const withCustomAndTokens = createContextBuilder({
+      ...base,
+      totalTokensReminder: true,
+      systemPromptSettings: {
+        ...createDefaultSystemPromptSettings(),
+        customSections: [{ id: "tail-check", title: "Tail Rule", content: "CUSTOM_BEFORE_BUDGET" }],
+      },
+    }).build();
+    const dynamicTail = modelMessageContentToText(withCustomAndTokens.systemMessages.at(-1)!.content);
+    expect(dynamicTail).toContain("# Tail Rule\n\nCUSTOM_BEFORE_BUDGET");
+    expect(
+      dynamicTail.endsWith(
+        "# Tail Rule\n\nCUSTOM_BEFORE_BUDGET\n\n<total_tokens>15000000 tokens left</total_tokens>",
+      ),
+    ).toBe(true);
+    const wholeWithTokens = system(
+      createContextBuilder({
+        ...base,
+        totalTokensReminder: true,
+        systemPromptSettings: {
+          ...createDefaultSystemPromptSettings(),
+          mode: "replace",
+          replacement: "WHOLE_WITH_BUDGET",
+        },
+      }).build(),
+    );
+    expect(wholeWithTokens).toContain("WHOLE_WITH_BUDGET");
+    expect(wholeWithTokens.endsWith("<total_tokens>15000000 tokens left</total_tokens>")).toBe(true);
+
     // Backward compatibility: legacy sparse setting.json and Profile JSON keep default finishing_work & memory_notes.
     const legacyParsed = systemPromptSettingsSchema.parse({
       version: 1,
