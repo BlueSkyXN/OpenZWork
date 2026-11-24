@@ -70,6 +70,9 @@ const jaJP: Record<string, string> = {
   "preinstalledTools.error.runtime":
     "このコンピュータでツールを実行できません。「ヘルプ → ログをエクスポート」から問題を報告してください。",
   "preinstalledTools.error.unsupported": "現在のシステムにはまだ対応していません。",
+  // OpenZWork(OZ-F002)：v4.0.0 新增系统提示词章节五语种标签。
+  "settings.systemPrompt.chapter.finishing_work": "作業の完了",
+  "settings.systemPrompt.chapter.memory_notes": "メモリ・ノート・フィードバック",
   "chat.capsule.todo.running": "進行中",
   "chat.capsule.todo.completed": "完了",
   "chat.capsule.todo.pending": "待機中",

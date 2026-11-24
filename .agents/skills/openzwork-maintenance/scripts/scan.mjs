@@ -30,6 +30,7 @@ const VARIANT_ROLES = new Set(["tool", "rule", "maintained", "pending"]);
 export const README_PATH = "docs/openzwork/README.md";
 const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
 const CORE_TESTS_PATH = "tests/ci/core-tests.json";
+const ENGINEERING_TESTS_PATH = "scripts/engineering-test-files.json";
 const INTEGRATION_DOC = (version) => `docs/openzwork/upstream/v${version}-integration.md`;
 const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const MAX_ACTIVE_KNOWLEDGE = 40;
@@ -451,10 +452,22 @@ function matchPaths(context, globs) {
 export function loadCiTests(context) {
   const { repo, head, headTree } = context;
   const named = new Map();
+  const missingNamed = new Map();
   const globs = [];
-  const name = (path, where) => {
-    if (path.includes("*")) globs.push(globToRegExp(path));
-    else if (!named.has(path)) named.set(path, where);
+  const engineeringRaw = readAt(repo, head, ENGINEERING_TESTS_PATH);
+  const engineeringTests = new Set(
+    engineeringRaw !== undefined
+      ? (JSON.parse(engineeringRaw) ?? []).map((entry) => posix.normalize(String(entry)))
+      : [],
+  );
+  const name = (path, where, { excludeEngineering = false } = {}) => {
+    if (path.includes("*")) {
+      globs.push({ regex: globToRegExp(path), excludeEngineering });
+      return;
+    }
+    if (!missingNamed.has(path)) missingNamed.set(path, where);
+    if (excludeEngineering && engineeringTests.has(path)) return;
+    if (!named.has(path)) named.set(path, where);
   };
   const core = readAt(repo, head, CORE_TESTS_PATH);
   if (core !== undefined)
@@ -504,18 +517,33 @@ export function loadCiTests(context) {
           const dir =
             /--dir[=\s]+(\S+)/.exec(command)?.[1] ??
             (filter ? packageDirs.get(unquote(filter)) : undefined);
-          for (const word of command.split(/\s+/)) {
-            const token = unquote(word);
+          const words = command.split(/\s+/).map(unquote);
+          const isRepoScriptWrapper =
+            words[0] === "node" &&
+            posix.normalize(words[1] ?? "") === "scripts/run-repo-script-tests.mjs";
+          let hasExplicitTestToken = false;
+          for (const token of words) {
             if (!token.includes("/") || !TEST_FILE.test(token)) continue;
-            name(posix.normalize(dir ? `${unquote(dir)}/${token}` : token), where);
+            hasExplicitTestToken = true;
+            name(posix.normalize(dir ? `${unquote(dir)}/${token}` : token), where, {
+              excludeEngineering: isRepoScriptWrapper,
+            });
+          }
+          if (isRepoScriptWrapper && !hasExplicitTestToken) {
+            name("scripts/test/*.test.mjs", where, { excludeEngineering: true });
           }
         }
       }
     }
   }
   return {
-    runs: (path) => named.has(path) || globs.some((regex) => regex.test(path)),
-    missing: [...named]
+    runs: (path) =>
+      named.has(path) ||
+      globs.some(
+        ({ regex, excludeEngineering }) =>
+          regex.test(path) && !(excludeEngineering && engineeringTests.has(path)),
+      ),
+    missing: [...missingNamed]
       .filter(([path]) => !headTree.has(path))
       .map(([path, where]) => ({ path, where })),
   };

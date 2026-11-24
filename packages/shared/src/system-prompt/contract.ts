@@ -14,6 +14,8 @@ export const SYSTEM_PROMPT_SECTION_IDS = [
   "output_style",
   "context_management",
   "persistence",
+  "finishing_work",
+  "memory_notes",
   "system_context",
   "skills",
   "request_user_context",

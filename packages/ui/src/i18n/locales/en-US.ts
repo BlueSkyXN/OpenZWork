@@ -225,6 +225,7 @@ const enUS: Record<string, string> = {
   "metrics.display.field.cache": "Cache hit rate",
   "metrics.display.field.sessionTokens": "Session main-chain total",
   "metrics.display.field.toolCalls": "Tool call count",
+  // OpenZWork(OZ-F002): 系统提示词设置与编辑器（含 v4.0.0 新增章节）。
   "settings.systemPrompt.editor.fullPreview": "Full preview",
   "settings.systemPrompt.editor.import": "Import Profile",
   "settings.systemPrompt.editor.export": "Export draft",
@@ -350,10 +351,88 @@ const enUS: Record<string, string> = {
   "settings.systemPrompt.chapter.output_style": "Output style",
   "settings.systemPrompt.chapter.context_management": "Context management",
   "settings.systemPrompt.chapter.persistence": "Task persistence",
+  "settings.systemPrompt.chapter.finishing_work": "Finishing work",
+  "settings.systemPrompt.chapter.memory_notes": "Memory, notes and feedback",
   "settings.systemPrompt.chapter.system_context": "Git context",
   "settings.systemPrompt.chapter.skills": "Skill listing",
   "settings.systemPrompt.chapter.request_user_context": "User and project instructions",
   "settings.systemPrompt.chapter.current_date": "Current date",
+  "settings.systemPrompt.editor.applyHint":
+    "Review the changes, apply to the draft, then use Save on the settings page.",
+  "settings.systemPrompt.editor.copyError":
+    "Copy failed. Select the text to copy it or download the file.",
+  "settings.systemPrompt.editor.conversionWarning":
+    "The generated text includes section rules and custom sections. Conditional rules will always apply, and chapter variables such as memoryRoot will remain literal text. Review them before applying.",
+  "settings.systemPrompt.editor.wholeWarning":
+    "Default behavior rules, including security instructions, will be replaced. Section settings remain stored but are inactive in this mode.",
+  "settings.systemPrompt.editor.sectionsWarning":
+    "Switching to sections reactivates the stored section rules and custom sections.",
+  "settings.systemPrompt.editor.securityWarning":
+    "Default security instructions will be replaced or disabled.",
+  "settings.systemPrompt.editor.instructionsWarning":
+    "New or rematerialized main sessions will stop injecting AGENTS.md and other user/project instructions, along with the project memory index.",
+  "settings.systemPrompt.editor.noSessions":
+    "No sessions available. Open a workspace containing a session first.",
+  "settings.systemPrompt.editor.actualError":
+    "Could not read this session. Check that the target is connected and its runtime is available, then retry.",
+  "settings.systemPrompt.editor.unsupported":
+    "This Agent does not support this preview. Update it and retry.",
+  "settings.systemPrompt.editor.no_request":
+    "No actual request has been captured. Viewing this preview does not send a request.",
+  "settings.systemPrompt.editor.expired":
+    "This request snapshot has been replaced. Refresh the actual content before comparing.",
+  "settings.systemPrompt.editor.incomplete":
+    "The prompt exceeds the preview limit or cannot be extracted completely. A complete comparison is unavailable.",
+  "settings.systemPrompt.editor.context_unavailable":
+    "This snapshot cannot replay the dynamic context affected by this change. Read the actual content and inspect your changes in the draft preview.",
+  "settings.systemPrompt.editor.comparisonStale":
+    "The draft has changed. Select Compare with draft to update the diff.",
+  "settings.systemPrompt.editor.previewError":
+    "Could not build the full preview. Check that the Agent is updated and retry; your draft is retained.",
+  "settings.systemPrompt.editor.exampleSource":
+    "Current draft · Example environment. Paths, skills, instructions and the date are illustrative.",
+  "settings.systemPrompt.editor.actualHint":
+    "Read the selected session’s latest captured request, or compare the current draft using the same context.",
+  "settings.systemPrompt.editor.template.concise.body":
+    "Lead with the conclusion, followed by necessary evidence. Keep simple answers short and expand complex answers as needed.",
+  "settings.systemPrompt.editor.template.explain.body":
+    "Explain the evidence, assumptions and tradeoffs behind key decisions. For code or data, include verifiable sources and validation results.",
+  "settings.systemPrompt.editor.template.verify.body":
+    "Define acceptance criteria before execution. Run checks relevant to the change and report the actual results and remaining gaps.",
+  "settings.systemPrompt.editor.disabledExample":
+    "This item is disabled. The example shows what would be injected when enabled.",
+  "settings.systemPrompt.scenarioHint":
+    "Uses an example environment. Scenario selections are not saved.",
+  "settings.systemPrompt.scope":
+    "New main sessions use the saved settings. For an existing session, choose Restart task from its menu or use /reload. Restart stops the task's execution and preserves its history.",
+  "settings.systemPrompt.replaceHint":
+    "Replaces default behavior rules while keeping current capabilities, memory location and output style. Choose which dynamic context to include below.",
+  "settings.systemPrompt.customHint":
+    "These sections are appended to the system prompt in list order.",
+  "settings.systemPrompt.defaultsChanged":
+    "Defaults have changed · View the default saved with your edit",
+  "settings.systemPrompt.conflict":
+    "Another window updated this configuration. Reload it before editing.",
+  "settings.systemPrompt.invalid":
+    "Complete custom content and section titles. Each section allows 32,000 characters; a replacement allows 64,000.",
+  "settings.systemPrompt.condition.memory":
+    "Applies when memory is enabled. The runtime supplies the location and index requirements; custom rules may reference {variable}.",
+  "settings.systemPrompt.condition.desktop_context":
+    "Applies to desktop sessions. The current session supplies visualization availability and its output directory.",
+  "settings.systemPrompt.condition.session_guidance":
+    "Included when skills are available and the Skill tool is enabled.",
+  "settings.systemPrompt.condition.output_style":
+    "Customize additional rules. The currently selected output style is still injected automatically.",
+  "settings.systemPrompt.generated.env_info":
+    "Working directory, operating system, shell and model come from the execution environment.",
+  "settings.systemPrompt.generated.system_context":
+    "Git branch, status and recent commits come from the workspace snapshot at session start.",
+  "settings.systemPrompt.generated.skills":
+    "Generated by skill discovery. Manage skill content in Skills.",
+  "settings.systemPrompt.generated.request_user_context":
+    "Loaded from user and project AGENTS.md files and memory indexes. Edit the source files or open Memory.",
+  "settings.systemPrompt.generated.current_date":
+    "The date is supplied by the session environment.",
   "preview.image.copy": "Copy image",
   "preview.image.actions": "Image actions",
   "preview.image.added": "Added to chat",

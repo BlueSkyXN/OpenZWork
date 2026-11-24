@@ -1,13 +1,41 @@
+import { EventEmitter } from "node:events";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { HostMessageTypes, hostIncomingMessageSchema } from "@zcode/shared";
 import { preinstalledToolsAgentAvailability } from "@zcode/shared/preinstalled-tools/node";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const forkUtilityProcess = vi.hoisted(() => vi.fn());
+
+vi.mock("electron", () => ({
+  app: {
+    isPackaged: false,
+    getAppPath: () => process.cwd(),
+    getPath: () => tmpdir(),
+  },
+  BrowserWindow: {
+    fromId: () => null,
+    getAllWindows: () => [],
+  },
+  ipcMain: {
+    on: vi.fn(),
+    removeListener: vi.fn(),
+  },
+  utilityProcess: {
+    fork: forkUtilityProcess,
+  },
+  MessageChannelMain: class {
+    port1 = {};
+    port2 = {};
+  },
+}));
+
 import {
   hasPreinstalledToolsDownloadTarget,
   loadPreinstalledToolsCatalog,
 } from "#src/preinstalled-tools/catalog.js";
+import { spawnHostProcess } from "#src/main/desktopHostProcess.js";
 
 describe("loadPreinstalledToolsCatalog (OZ-C015)", () => {
   afterEach(() => {
@@ -137,5 +165,102 @@ describe("loadPreinstalledToolsCatalog (OZ-C015)", () => {
     } finally {
       await rm(binDir, { recursive: true, force: true });
     }
+  });
+
+  it("skips asynchronous PreinstalledToolsDownloadTarget postMessage after the Host process exits", async () => {
+    const createMockChild = () => {
+      const child = new EventEmitter() as EventEmitter & {
+        pid: number;
+        stdout: EventEmitter;
+        stderr: EventEmitter;
+        postMessage: ReturnType<typeof vi.fn>;
+        kill: ReturnType<typeof vi.fn>;
+      };
+      let exited = false;
+      child.pid = 4242;
+      child.stdout = new EventEmitter();
+      child.stderr = new EventEmitter();
+      child.on("exit", () => {
+        exited = true;
+      });
+      child.postMessage = vi.fn(() => {
+        if (exited) throw new Error("Object has been destroyed");
+      });
+      child.kill = vi.fn();
+      return child;
+    };
+    const createMockWindow = (id: number) =>
+      Object.assign(new EventEmitter(), {
+        id,
+        isDestroyed: () => false,
+        webContents: Object.assign(new EventEmitter(), {
+          id,
+          isDestroyed: () => false,
+          send: vi.fn(),
+          postMessage: vi.fn(),
+        }),
+      });
+
+    const exitedChild = createMockChild();
+    forkUtilityProcess.mockReturnValueOnce(exitedChild);
+    const pendingExitedTarget = Promise.withResolvers<boolean>();
+    const warn = vi.fn();
+    spawnHostProcess(
+      createMockWindow(101) as never,
+      "exited-host",
+      {
+        type: HostMessageTypes.InitLocal,
+        replyLanguage: null,
+        zcodeBuiltinProviderConfigFilePath: "/fixture/provider.json",
+      },
+      {
+        hostProcessLocalEnv: {},
+        preinstalledToolsDownloadTarget: pendingExitedTarget.promise,
+        logger: { info: vi.fn(), warn },
+        broadcastHub: { register: vi.fn(), unregister: vi.fn() } as never,
+        windowHostProcessMap: new Map(),
+        hostRunningTaskCountMap: new Map(),
+        hostQuitBlockersMap: new Map(),
+      },
+      { attachInitialServicePort: false, registerBroadcast: false },
+    );
+    expect(exitedChild.postMessage).toHaveBeenCalledTimes(1);
+    exitedChild.emit("exit", 0);
+    pendingExitedTarget.resolve(true);
+    await pendingExitedTarget.promise;
+    await Promise.resolve();
+    expect(exitedChild.postMessage).toHaveBeenCalledTimes(1);
+    expect(warn).not.toHaveBeenCalled();
+
+    const activeChild = createMockChild();
+    forkUtilityProcess.mockReturnValueOnce(activeChild);
+    const pendingActiveTarget = Promise.withResolvers<boolean>();
+    spawnHostProcess(
+      createMockWindow(102) as never,
+      "active-host",
+      {
+        type: HostMessageTypes.InitLocal,
+        replyLanguage: null,
+        zcodeBuiltinProviderConfigFilePath: "/fixture/provider.json",
+      },
+      {
+        hostProcessLocalEnv: {},
+        preinstalledToolsDownloadTarget: pendingActiveTarget.promise,
+        logger: { info: vi.fn(), warn },
+        broadcastHub: { register: vi.fn(), unregister: vi.fn() } as never,
+        windowHostProcessMap: new Map(),
+        hostRunningTaskCountMap: new Map(),
+        hostQuitBlockersMap: new Map(),
+      },
+      { attachInitialServicePort: false, registerBroadcast: false },
+    );
+    pendingActiveTarget.resolve(true);
+    await pendingActiveTarget.promise;
+    await Promise.resolve();
+    expect(activeChild.postMessage).toHaveBeenCalledWith({
+      type: HostMessageTypes.PreinstalledToolsDownloadTarget,
+      hasTarget: true,
+    });
+    activeChild.emit("exit", 0);
   });
 });

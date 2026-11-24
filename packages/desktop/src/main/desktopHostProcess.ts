@@ -620,7 +620,9 @@ export function spawnHostProcess(
     hostInitMessage.preinstalledToolsTargetPending = true;
     void dependencies.preinstalledToolsDownloadTarget
       .then((hasTarget) => {
-        child.postMessage({ type: HostMessageTypes.PreinstalledToolsDownloadTarget, hasTarget });
+        if (!exitedHostProcesses.has(child)) {
+          child.postMessage({ type: HostMessageTypes.PreinstalledToolsDownloadTarget, hasTarget });
+        }
       })
       .catch((error: unknown) => dependencies.logger.warn("[preinstalled-tools] Host capability delivery failed", error));
   }

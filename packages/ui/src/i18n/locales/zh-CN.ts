@@ -214,6 +214,7 @@ const zhCN: Record<string, string> = {
   "metrics.display.field.cache": "缓存命中率",
   "metrics.display.field.sessionTokens": "会话主链累计",
   "metrics.display.field.toolCalls": "工具调用数",
+  // OpenZWork(OZ-F002): 系统提示词设置与编辑器（含 v4.0.0 新增章节）。
   "settings.systemPrompt.editor.fullPreview": "完整预览",
   "settings.systemPrompt.editor.import": "导入 Profile",
   "settings.systemPrompt.editor.export": "导出草稿",
@@ -355,10 +356,56 @@ const zhCN: Record<string, string> = {
   "settings.systemPrompt.chapter.output_style": "输出风格",
   "settings.systemPrompt.chapter.context_management": "上下文管理",
   "settings.systemPrompt.chapter.persistence": "持续执行",
+  "settings.systemPrompt.chapter.finishing_work": "工作收尾",
+  "settings.systemPrompt.chapter.memory_notes": "记忆、笔记与反馈",
   "settings.systemPrompt.chapter.system_context": "Git 上下文",
   "settings.systemPrompt.chapter.skills": "技能清单",
   "settings.systemPrompt.chapter.request_user_context": "用户与项目指令",
   "settings.systemPrompt.chapter.current_date": "当前日期",
+  "settings.systemPrompt.editor.conversionWarning":
+    "生成正文包含章节规则和自定义章。原有条件规则将始终生效，memoryRoot 等章节变量会保留为普通文本，请检查后应用。",
+  "settings.systemPrompt.editor.wholeWarning":
+    "默认行为规则（含安全提示词）将退出；原章节配置保留，整段替换期间暂停使用。",
+  "settings.systemPrompt.editor.sectionsWarning":
+    "切回按章节定制后，保留的章节规则和自定义章节将重新生效。",
+  "settings.systemPrompt.editor.instructionsWarning":
+    "新建或重新物化的主会话将停止自动注入 AGENTS.md 等用户／项目指令和项目记忆索引。",
+  "settings.systemPrompt.editor.actualError":
+    "无法读取会话内容。请确认目标仍连接且会话 runtime 可用，然后重试。",
+  "settings.systemPrompt.editor.incomplete":
+    "提示词内容超过预览上限或无法完整提取，不能进行完整比较。",
+  "settings.systemPrompt.editor.context_unavailable":
+    "该快照不足以重放本次修改的动态上下文。可以查看实际原文，并在草稿预览中检查修改。",
+  "settings.systemPrompt.editor.previewError":
+    "无法生成完整预览。请确认 Agent 已更新并重试；草稿仍保留。",
+  "settings.systemPrompt.editor.exampleSource":
+    "当前草稿 · 示例环境。示例路径、技能、指令和日期用于说明拼接结果。",
+  "settings.systemPrompt.editor.actualHint":
+    "查看所选会话最近一次捕获的实际内容，或使用同一上下文比较当前草稿。",
+  "settings.systemPrompt.editor.template.concise.body":
+    "先给出结论，再补充必要依据。简单问题简短回答；复杂问题按读者需要展开。",
+  "settings.systemPrompt.editor.template.explain.body":
+    "说明关键判断的依据、假设和取舍。涉及代码或数据时给出可核对的来源与验证结果。",
+  "settings.systemPrompt.editor.template.verify.body":
+    "执行前明确验收标准。优先运行与改动相关的检查，交付时说明实际结果和未验证项。",
+  "settings.systemPrompt.scope":
+    "保存后，新建主会话使用新配置。已有会话可通过任务菜单“重启任务”或 /reload 应用；重启会停止当前任务的执行并保留历史。",
+  "settings.systemPrompt.replaceHint":
+    "替换默认行为规则，保留当前能力、记忆位置和输出风格。下方选择要注入的动态上下文。",
+  "settings.systemPrompt.invalid":
+    "请补全自定义内容和章节标题。每章最多 32,000 字符，整体替换最多 64,000 字符。",
+  "settings.systemPrompt.condition.memory":
+    "记忆启用时应用。目录与索引要求由运行时提供；自定义规则可引用 {variable}。",
+  "settings.systemPrompt.condition.desktop_context":
+    "用于桌面会话。可视化是否可用及输出目录由当前会话提供。",
+  "settings.systemPrompt.generated.env_info":
+    "工作目录、操作系统、Shell 和当前模型由实际运行环境生成。",
+  "settings.systemPrompt.generated.system_context":
+    "Git 分支、状态和最近提交来自会话开始时的工作区快照。",
+  "settings.systemPrompt.generated.skills":
+    "可用技能清单由技能发现生成。请在“技能”中管理技能内容。",
+  "settings.systemPrompt.generated.request_user_context":
+    "从用户和项目的 AGENTS.md 及记忆索引加载。修改内容请编辑原文件或前往“记忆”。",
   "preview.image.copy": "复制图片",
   "preview.image.actions": "图片操作",
   "preview.image.added": "已添加到聊天",

@@ -19,6 +19,8 @@ import {
   getExecutionPrompt,
   getContextManagementPrompt,
   getPersistencePrompt,
+  buildFinishingWorkSection,
+  buildMemoryNotesSection,
   buildSessionGuidanceSection,
 } from "../dynamic-sections.js";
 
@@ -78,6 +80,8 @@ export function getSystemPromptCatalog(): SystemPromptCatalog {
     memory: buildMemoryRules(),
     context_management: getContextManagementPrompt(),
     persistence: getPersistencePrompt(),
+    finishing_work: buildFinishingWorkSection().content,
+    memory_notes: buildMemoryNotesSection().content,
   };
   return {
     version: 2,

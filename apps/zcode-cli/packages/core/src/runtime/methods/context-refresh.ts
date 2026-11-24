@@ -50,7 +50,10 @@ import { persistRuntimeReminderMessage } from "./runtime-reminder-persistence.js
 import { supersedeContextComposition } from "../context-composition/state.js";
 import { promptSnapshotFor } from "../helpers/prompt-snapshot.js";
 import { resolveGenUiOutputDirectory } from "../helpers/gen-ui-output.js";
-import { mainSessionIncludesSkillsListing } from "../../context/prompt-settings/contract.js";
+import {
+  mainSessionIncludesSkillsListing,
+  mainSessionPromptSettings,
+} from "../../context/prompt-settings/contract.js";
 import { collectSkillsListingAttachment } from "../../skills/listing.js";
 import { currentSkillCatalog } from "./context.js";
 
@@ -210,7 +213,10 @@ export function buildRuntimeContextAnnouncements(
     // 章节定制改在公告侧消费；resolveSystemPromptRuntimeSection 保证替换/关闭规则
     // 不会把当次会话的活跃风格（运行时事实）挤掉。
     const instructions =
-      resolveAnnouncedOutputStyleInstructions(runtime.config.systemPromptSettings, input.outputStyle) ??
+      resolveAnnouncedOutputStyleInstructions(
+        mainSessionPromptSettings(runtime.config),
+        input.outputStyle,
+      ) ??
       (previousStyle === undefined ? undefined : OUTPUT_STYLE_RESET_REMINDER);
     if (instructions !== undefined && instructions !== previousStyle) {
       attachments.push(systemReminderAttachmentEntry("output_style_instructions", instructions));

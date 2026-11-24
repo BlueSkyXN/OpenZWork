@@ -61,7 +61,13 @@ entries:
       - apps/zcode-cli/packages/core/src/runtime/methods/resume.ts
       - apps/zcode-cli/packages/core/src/runtime/methods/rewind-message.ts
       - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/i18n/locales/en-US.ts
+      - packages/ui/src/i18n/locales/ja-JP.ts
+      - packages/ui/src/i18n/locales/ko-KR.ts
+      - packages/ui/src/i18n/locales/ru-RU.ts
+      - packages/ui/src/i18n/locales/zh-CN.ts
     tests:
+      - apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-editor.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-observation.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-settings.test.ts

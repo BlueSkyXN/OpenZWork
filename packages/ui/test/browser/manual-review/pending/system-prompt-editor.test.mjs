@@ -304,6 +304,8 @@ test(
       await page.getByTestId("system-prompt-profile-apply").click();
       const replacement = await page.getByTestId("system-prompt-replacement").inputValue();
       assert.match(replacement, /interactive ZCode agent/);
+      assert.match(replacement, /# Finishing work/);
+      assert.match(replacement, /# Memory, notes and feedback/);
       assert.equal(replacement.includes("/example/project"), false);
       assert.deepEqual(errors, []);
     } finally {

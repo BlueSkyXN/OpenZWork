@@ -141,10 +141,12 @@ async function nearestPackage(file) {
 
 async function ciScope() {
   const core = JSON.parse(await readText("tests/ci/core-tests.json"));
+  const engineering = JSON.parse((await readText("scripts/engineering-test-files.json")) ?? "[]");
   const ci = parseDocument(await readText(".github/workflows/ci.yml")).toJS();
   const { scripts } = JSON.parse(await readText("package.json"));
   return {
     coreFiles: new Set(core.suites.flatMap((suite) => suite.files)),
+    engineeringFiles: new Set(engineering.map((entry) => posix.normalize(String(entry)))),
     runs: ci.jobs.checks.steps.flatMap((step) => {
       if (!step.run) return [];
       const script = step.run.match(/^pnpm (?:run )?([\w:-]+)$/)?.[1];
@@ -162,19 +164,40 @@ function globMatches(pattern, file) {
   return new RegExp(`^${escaped}$`).test(file);
 }
 
+function isRepoScriptWrapper(normalized) {
+  return (
+    normalized[0] === "node" &&
+    posix.normalize(normalized[1] ?? "") === "scripts/run-repo-script-tests.mjs"
+  );
+}
+
 /** 回归登记在根 Vitest 核心清单，或出现在 ci.yml 步骤中：根路径，或 --filter 包名加包内路径。 */
-function isCovered(file, { coreFiles, runs }, pkg) {
-  if (coreFiles.has(file) || runs.some((words) => words.includes(file))) return true;
+function isCovered(file, { coreFiles, engineeringFiles = new Set(), runs }, pkg) {
+  if (coreFiles.has(file)) return true;
+  if (
+    runs.some((words) => {
+      const normalized = words.map(unquoteWord);
+      if (isRepoScriptWrapper(normalized) && engineeringFiles.has(file)) return false;
+      return normalized.includes(file);
+    })
+  )
+    return true;
   if (
     /^scripts\/test\/[^/]+\.test\.mjs$/.test(file) &&
     runs.some((words) => {
       const normalized = words.map(unquoteWord);
+      const viaWrapper = isRepoScriptWrapper(normalized);
+      if (viaWrapper && engineeringFiles.has(file)) return false;
       const isNodeTestRunner =
-        normalized[0] === "node" &&
-        (normalized.includes("--test") || normalized[1] === "scripts/run-repo-script-tests.mjs");
+        viaWrapper || (normalized[0] === "node" && normalized.includes("--test"));
+      const targets = viaWrapper
+        ? normalized.slice(2).filter((word) => word && !word.startsWith("-"))
+        : normalized;
+      const effectiveTargets =
+        viaWrapper && targets.length === 0 ? ["scripts/test/*.test.mjs"] : targets;
       return (
         isNodeTestRunner &&
-        normalized.includes("scripts/test/*.test.mjs") &&
+        effectiveTargets.includes("scripts/test/*.test.mjs") &&
         !normalized.some((word) => word.startsWith("!") && globMatches(word.slice(1), file))
       );
     })
@@ -327,10 +350,11 @@ test("a fixed patch loses its guard when a marker or CI coverage disappears", ()
 test("CI coverage accepts the core list, root paths and filtered package steps", () => {
   const scope = {
     coreFiles: new Set(["packages/a/test/core.test.ts"]),
+    engineeringFiles: new Set(["scripts/test/audit-conversation-session-json-out.test.mjs"]),
     runs: [
       "pnpm exec vitest run packages/a/test/root.test.ts",
       "pnpm --filter @zcode/cli-a exec vitest run tests/cli.test.ts",
-      "node --test --test-concurrency=1 scripts/test/*.test.mjs",
+      "node scripts/run-repo-script-tests.mjs --test-concurrency=1 scripts/test/*.test.mjs",
     ].map((run) => run.split(" ")),
   };
   const cliA = { dir: "apps/cli/packages/a", name: "@zcode/cli-a" };
@@ -341,6 +365,20 @@ test("CI coverage accepts the core list, root paths and filtered package steps",
   assert.equal(isCovered("apps/cli/packages/b/tests/cli.test.ts", scope, cliB), false);
   assert.equal(isCovered("packages/a/test/other.test.ts", scope), false);
   assert.equal(isCovered("scripts/test/affected-unit-test-cli.test.mjs", scope), true);
+  assert.equal(
+    isCovered("scripts/test/audit-conversation-session-json-out.test.mjs", scope),
+    false,
+  );
+  assert.equal(
+    isCovered("scripts/test/audit-conversation-session-json-out.test.mjs", {
+      ...scope,
+      coreFiles: new Set([
+        ...scope.coreFiles,
+        "scripts/test/audit-conversation-session-json-out.test.mjs",
+      ]),
+    }),
+    true,
+  );
   assert.equal(isCovered("scripts/test/nested/example.test.mjs", scope), false);
 });
 

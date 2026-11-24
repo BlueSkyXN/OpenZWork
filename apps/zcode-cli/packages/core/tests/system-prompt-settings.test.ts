@@ -14,18 +14,25 @@ import {
 } from "@zcode/contracts";
 import {
   createDefaultSystemPromptSettings,
+  createSystemPromptReplacement,
   DEFAULT_SYSTEM_PROMPT_PREVIEW_SCENARIO,
+  mergeSystemPromptProfile,
+  parseSystemPromptProfile,
   resolveSystemPromptRuntimeSection,
   systemPromptCatalogSchema,
   systemPromptDocumentText,
+  systemPromptSettingsSchema,
 } from "@zcode/shared";
 import { createContextBuilder } from "../src/context/builder.js";
 import { buildSystemPromptPreview } from "../src/context/prompt-settings/index.js";
-import { resolveAnnouncedOutputStyleInstructions } from "../src/runtime/methods/context-refresh.js";
+import {
+  buildRuntimeContextAnnouncements,
+  resolveAnnouncedOutputStyleInstructions,
+} from "../src/runtime/methods/context-refresh.js";
 import { getSystemPromptCatalog } from "../src/context/prompt-settings/contract.js";
 import { createTestAgentRuntime } from "./test-agent-runtime.js";
 import { createTestSessionEventStore } from "./test-event-store.js";
-import { createTestModelFactory } from "./test-runtime-model.js";
+import { createTestModelFactory, createTestRuntimeModel } from "./test-runtime-model.js";
 
 const base = {
   workingDirectory: "/fixture",
@@ -249,7 +256,7 @@ describe("main session prompt customization", () => {
   });
   it("exports actual defaults and marks generated context without exposing user data", () => {
     const catalog = systemPromptCatalogSchema.parse(getSystemPromptCatalog());
-    expect(new Set(catalog.sections.map((entry) => entry.id)).size).toBe(17);
+    expect(new Set(catalog.sections.map((entry) => entry.id)).size).toBe(19);
     const defaults = system(createContextBuilder(base).build());
     for (const id of [
       "role",
@@ -259,10 +266,164 @@ describe("main session prompt customization", () => {
       "execution",
       "context_management",
       "persistence",
+      "finishing_work",
+      "memory_notes",
     ]) {
       expect(defaults).toContain(catalog.sections.find((entry) => entry.id === id)?.content);
     }
     expect(catalog.sections.find((entry) => entry.id === "env_info")?.generated).toBe(true);
+    expect(catalog.sections.find((entry) => entry.id === "finishing_work")?.generated).toBe(false);
+    expect(catalog.sections.find((entry) => entry.id === "memory_notes")?.generated).toBe(false);
+    expect(catalog.sections.find((entry) => entry.id === "finishing_work")?.runtime).toBe(false);
+    expect(catalog.sections.find((entry) => entry.id === "memory_notes")?.runtime).toBe(false);
+  });
+  it("customizes finishing_work and memory_notes independently, keeps memory_notes memoryRoot-independent, and covers whole-rule conversion and legacy configs", () => {
+    const catalog = getSystemPromptCatalog();
+    // Without memoryRoot: memory chapter stays absent, while memory_notes & finishing_work inject and customize.
+    const withoutMemoryRoot = createDefaultSystemPromptSettings();
+    withoutMemoryRoot.sections = {
+      memory: { mode: "replace", content: "GATED_MEMORY_RULE" },
+      finishing_work: { mode: "append", content: "APPENDED_FINISHING_RULE" },
+      memory_notes: { mode: "replace", content: "REPLACED_MEMORY_NOTES_RULE" },
+    };
+    const noRootBuilt = system(
+      createContextBuilder({ ...base, systemPromptSettings: withoutMemoryRoot }).build(),
+    );
+    expect(noRootBuilt).not.toContain("GATED_MEMORY_RULE");
+    expect(noRootBuilt).toContain("# Finishing work");
+    expect(noRootBuilt).toContain("APPENDED_FINISHING_RULE");
+    expect(noRootBuilt).toContain("REPLACED_MEMORY_NOTES_RULE");
+    expect(noRootBuilt).not.toContain("# Memory, notes and feedback");
+
+    // Disabling finishing_work and memory_notes omits only those two chapters, even when memoryRoot is enabled.
+    const disabled = createDefaultSystemPromptSettings();
+    disabled.sections = {
+      finishing_work: { mode: "disabled", content: "" },
+      memory_notes: { mode: "disabled", content: "" },
+    };
+    const withMemoryRoot = system(
+      createContextBuilder({
+        ...base,
+        memoryRoot: "/fixture/memory",
+        systemPromptSettings: disabled,
+      }).build(),
+    );
+    expect(withMemoryRoot).toContain("/fixture/memory/");
+    expect(withMemoryRoot).not.toContain("# Finishing work");
+    expect(withMemoryRoot).not.toContain("# Memory, notes and feedback");
+
+    // Preview with scenario.memory=false still includes default memory_notes unless disabled/replaced.
+    const previewWithoutMemory = systemPromptDocumentText(
+      buildSystemPromptPreview({
+        settings: createDefaultSystemPromptSettings(),
+        scenario: { ...DEFAULT_SYSTEM_PROMPT_PREVIEW_SCENARIO, memory: false },
+      }).after,
+    );
+    expect(previewWithoutMemory).toContain("# Finishing work");
+    expect(previewWithoutMemory).toContain("# Memory, notes and feedback");
+    expect(previewWithoutMemory).not.toContain("/example/memory");
+
+    // createSystemPromptReplacement covers both chapters in catalog order, and whole replacement excludes section defaults.
+    const convertedFromDefault = createSystemPromptReplacement(
+      createDefaultSystemPromptSettings(),
+      catalog,
+    );
+    expect(convertedFromDefault.replacement).toContain("# Finishing work");
+    expect(convertedFromDefault.replacement).toContain("# Memory, notes and feedback");
+    const convertedFromCustom = createSystemPromptReplacement(withoutMemoryRoot, catalog);
+    expect(convertedFromCustom.replacement).toContain("APPENDED_FINISHING_RULE");
+    expect(convertedFromCustom.replacement).toContain("REPLACED_MEMORY_NOTES_RULE");
+
+    const wholeReplaced = system(
+      createContextBuilder({
+        ...base,
+        systemPromptSettings: {
+          ...createDefaultSystemPromptSettings(),
+          mode: "replace",
+          replacement: "WHOLE_ONLY_PROMPT",
+        },
+      }).build(),
+    );
+    expect(wholeReplaced).toContain("WHOLE_ONLY_PROMPT");
+    expect(wholeReplaced).not.toContain("# Finishing work");
+    expect(wholeReplaced).not.toContain("# Memory, notes and feedback");
+
+    // Backward compatibility: legacy sparse setting.json and Profile JSON keep default finishing_work & memory_notes.
+    const legacyParsed = systemPromptSettingsSchema.parse({
+      version: 1,
+      mode: "sections",
+      sections: { communication: { mode: "append", content: "LEGACY_COMM" } },
+      replacement: "",
+      customSections: [],
+    });
+    const legacyMerged = mergeSystemPromptProfile(
+      createDefaultSystemPromptSettings(),
+      parseSystemPromptProfile(
+        JSON.stringify({
+          schema: "openzwork.system-prompt-profile",
+          schemaVersion: 1,
+          id: "legacy-profile",
+          name: "Legacy",
+          settings: legacyParsed,
+        }),
+      ),
+      catalog,
+    );
+    const legacyBuilt = system(
+      createContextBuilder({ ...base, systemPromptSettings: legacyMerged }).build(),
+    );
+    expect(legacyBuilt).toContain("LEGACY_COMM");
+    expect(legacyBuilt).toContain("# Finishing work");
+    expect(legacyBuilt).toContain("# Memory, notes and feedback");
+  });
+  it("scopes announced output_style overrides to interactive main sessions via mainSessionPromptSettings", () => {
+    const settings = createDefaultSystemPromptSettings();
+    settings.sections.output_style = { mode: "replace", content: "MAIN_ONLY_STYLE_RULE" };
+    const style = { name: "Concise", prompt: "BASE_STYLE_PROMPT" };
+    const model = createTestRuntimeModel({
+      async generateText() {
+        throw new Error("unused");
+      },
+    });
+    const contextResult = createContextBuilder(base).build();
+
+    const announceFor = (extraConfig: Record<string, unknown>) => {
+      const runtime = createTestAgentRuntime(
+        createSessionId(),
+        {
+          workingDirectory: base.workingDirectory,
+          envInfo: base.envInfo,
+          systemPromptSettings: settings,
+          ...extraConfig,
+        },
+        {
+          eventStore: createTestSessionEventStore(),
+          modelFactory: createTestModelFactory({}),
+        },
+      );
+      const attachments = buildRuntimeContextAnnouncements(runtime as never, [], {
+        contextResult,
+        environment: undefined,
+        model,
+        outputStyle: style,
+      });
+      return attachments.find((entry) => entry.metadata.source === "output_style_instructions")
+        ?.content;
+    };
+
+    const mainAnnouncement = announceFor({});
+    expect(mainAnnouncement).toContain("MAIN_ONLY_STYLE_RULE");
+    expect(mainAnnouncement).toContain("BASE_STYLE_PROMPT");
+
+    for (const nonMainConfig of [
+      { systemPrompt: "LEGACY_CUSTOM_SYSTEM_PROMPT" },
+      { workflowActor: { name: "reviewer" } },
+      { subagentContext: { agentName: "Explore", agentPrompt: "Explore" } },
+    ]) {
+      const nonMainAnnouncement = announceFor(nonMainConfig);
+      expect(nonMainAnnouncement).toBe("# Output Style: Concise\nBASE_STYLE_PROMPT");
+      expect(nonMainAnnouncement).not.toContain("MAIN_ONLY_STYLE_RULE");
+    }
   });
   it.each(["default", "append", "replace", "disabled"] as const)(
     "uses the same desktop preview and runtime result in %s mode",

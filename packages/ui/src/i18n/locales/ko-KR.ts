@@ -68,6 +68,9 @@ const koKR: Record<string, string> = {
   "preinstalledTools.error.runtime":
     "이 컴퓨터에서 도구를 실행할 수 없습니다. '도움말 → 로그 내보내기'를 통해 문제를 제보해 주세요.",
   "preinstalledTools.error.unsupported": "현재 시스템은 아직 지원되지 않습니다.",
+  // OpenZWork(OZ-F002)：v4.0.0 新增系统提示词章节五语种标签。
+  "settings.systemPrompt.chapter.finishing_work": "작업 마무리",
+  "settings.systemPrompt.chapter.memory_notes": "메모리, 노트 및 피드백",
   "chat.capsule.todo.running": "진행 중",
   "chat.capsule.todo.completed": "완료",
   "chat.capsule.todo.pending": "대기 중",

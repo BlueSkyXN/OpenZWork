@@ -69,6 +69,9 @@ const ruRU: Record<string, string> = {
   "preinstalledTools.error.runtime":
     "Инструмент не может быть запущен на этом компьютере. Сообщите о проблеме через «Справка → Экспорт логов».",
   "preinstalledTools.error.unsupported": "Эта система пока не поддерживается.",
+  // OpenZWork(OZ-F002)：v4.0.0 新增系统提示词章节五语种标签。
+  "settings.systemPrompt.chapter.finishing_work": "Завершение работы",
+  "settings.systemPrompt.chapter.memory_notes": "Память, заметки и обратная связь",
   "chat.capsule.todo.running": "Выполняется",
   "chat.capsule.todo.completed": "Завершено",
   "chat.capsule.todo.pending": "Ожидание",

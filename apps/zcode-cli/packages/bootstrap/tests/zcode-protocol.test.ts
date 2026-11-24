@@ -3831,7 +3831,8 @@ describe("ZCodeProtocolAgentServer", () => {
     const catalog = systemPromptCatalogSchema.parse(await requestResult(server, {
       id: "prompt-catalog", method: zcodeProtocolMethods.systemPromptCatalog, params: {},
     }));
-    expect(catalog.sections).toHaveLength(17);
+    // OpenZWork(OZ-F002): v4.0.0 起目录包含 finishing_work 与 memory_notes 共 19 个内置章节。
+    expect(catalog.sections).toHaveLength(19);
     expect(createApp).not.toHaveBeenCalled();
   });
 
