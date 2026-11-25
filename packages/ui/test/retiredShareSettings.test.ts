@@ -2,6 +2,7 @@
 import { afterEach, expect, it } from "vitest";
 import { LOCALE_MESSAGES } from "../src/i18n/localeMessages.js";
 import { consumeInitialSettingsSection } from "../src/lib/settingsNavigation.js";
+import { SETTINGS_SEARCH_ITEMS } from "../src/settings-search/settingsSearchIndex.js";
 import {
   createSettingsPageConfig,
   isSettingsSectionAvailable,
@@ -20,6 +21,17 @@ it("桌面可见的设置分区都有显示名，侧栏和搜索的来源不包�
   for (const { titleId } of visible) {
     for (const messages of Object.values(LOCALE_MESSAGES)) {
       expect(messages[titleId], titleId).toBeTruthy();
+    }
+  }
+});
+
+it("设置搜索不提供已裁剪的自动更新入口，其余设置项都有名称", () => {
+  const ids = SETTINGS_SEARCH_ITEMS.map(({ id }) => id);
+  expect(ids).not.toContain("settings.receivePreviewUpdates");
+  expect(ids).not.toContain("settings.autoDownloadAndInstallUpdates");
+  for (const id of ids) {
+    for (const messages of Object.values(LOCALE_MESSAGES)) {
+      expect(messages[id], id).toBeTruthy();
     }
   }
 });

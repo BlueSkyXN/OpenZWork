@@ -79,18 +79,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     visibility: "desktop",
   },
   {
-    id: "settings.receivePreviewUpdates",
-    section: "general",
-    description: "settings.receivePreviewUpdatesDescription",
-    visibility: "desktop",
-  },
-  {
-    id: "settings.autoDownloadAndInstallUpdates",
-    section: "general",
-    description: "settings.autoDownloadAndInstallUpdatesDescription",
-    visibility: "desktop",
-  },
-  {
     id: "settings.notification",
     section: "general",
     description: "settings.notificationDescription",

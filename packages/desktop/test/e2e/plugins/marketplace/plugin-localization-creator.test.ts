@@ -1,7 +1,7 @@
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { setRendererViewport, clearRendererViewport } from "#e2e/helpers/renderer-viewport";
-import { clearAppData, setInputValueByTestIdDom } from "#e2e/helpers/desktop-app";
+import { clearAppData, getE2EAppDataPaths, setInputValueByTestIdDom } from "#e2e/helpers/desktop-app";
 import { resolveE2EToolPath } from "#e2e/helpers/e2e-runtime-paths";
 import {
   getV4ComposerText,
@@ -223,13 +223,17 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
   it("非官方市场必须确认风险才能添加，关闭后重新确认", async function () {
     this.timeout(120000);
     requirePluginManualReview();
-    const fixture = await createPluginLifecycleFixture();
+    // 同一套件的首例已经登记生命周期市场。使用独立清单，才能验证按 Enter 没有添加来源。
+    const marketId = "e2e-marketplace-consent";
+    const source = join(getE2EAppDataPaths().homeDir, "marketplace-consent.json");
+    await writeFile(source, JSON.stringify({ name: marketId, plugins: [] }));
     await openPluginSettings();
     await setPluginPresentation({ locale: "zh-CN", theme: "zai-light", width: 1200, height: 800 });
     await openAddMenu("plugin-store-create");
     await clickPluginControl("plugin-store-add-source-menu-item");
     await waitForPluginControl("plugin-store-add-source-dialog");
-    await setInputValueByTestIdDom("plugin-store-add-source-input", fixture.marketplaceRoot);
+    await setInputValueByTestIdDom("plugin-store-add-source-input", source);
+    expect((await getPluginOverview()).marketplaces.some(({ id }) => id === marketId)).toBe(false);
     const acknowledgement = browser.$(
       '[data-testid="plugin-store-add-source-risk-acknowledgement"]',
     );
@@ -243,7 +247,7 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
     await browser.keys("Enter");
     expect(
       (await getPluginOverview()).marketplaces.some(
-        (marketplace) => marketplace.id === PLUGIN_LIFECYCLE_MARKETPLACE_ID,
+        (marketplace) => marketplace.id === marketId,
       ),
     ).toBe(false);
     await clickPluginControl("plugin-store-add-source-risk-acknowledgement");
@@ -253,7 +257,7 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
     await waitUntilPluginOverview(
       (overview) =>
         overview.marketplaces.some(
-          (marketplace) => marketplace.id === PLUGIN_LIFECYCLE_MARKETPLACE_ID,
+          (marketplace) => marketplace.id === marketId,
         ),
       "确认风险后未添加市场",
     );

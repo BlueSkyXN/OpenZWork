@@ -27,8 +27,10 @@ describe("预装工具尚无发布资源（待审核）", () => {
     await $('[data-testid="workspace-help-menu-trigger"]').click();
     await $('[data-testid="workspace-help-menu-preinstalled-tools"]').click();
     await $('[data-testid="preinstalled-tools-dialog"]').waitForDisplayed();
+    // 先等本机目录读取完成，再核对 OpenZWork 未配置下载源时的提示。
+    await $('[data-testid="preinstalled-tools-card"]').waitForDisplayed();
     expect(await $('[data-testid="preinstalled-tools-dialog"]').getText()).toContain(
-      "当前版本暂未提供此工具。",
+      "未配置预装工具下载源，OpenZWork 默认使用这台电脑上已有的工具。",
     );
     const state = await browser.execute(() =>
       (window as Window & { zcode?: IPlatformService }).zcode?.getPreinstalledToolsState?.(),

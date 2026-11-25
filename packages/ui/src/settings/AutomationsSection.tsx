@@ -904,7 +904,8 @@ export function AutomationsSection({
                 )}
                 onClick={() => setTab(key)}
               >
-                {intl.formatMessage({ id: `automations.tabs.${key}` })}
+                {/* OpenZWork 仅保留定时任务，沿用五种语言已有的列表名称。 */}
+                {intl.formatMessage({ id: "automations.list.title" })}
               </button>
             ))}
           </div>
