@@ -7686,7 +7686,7 @@ const koKR: Record<string, string> = {
   "automations.noWorkspace": "예약된 작업을 관리하려면 워크스페이스를 여세요.",
   "automations.workspace.label": "프로젝트",
   "automations.description":
-    "반복 작업을 예약하거나 유휴 시간에 실행되는 백그라운드 작업을 대기열에 추가합니다.",
+    "일정에 따라 실행할 작업을 만드세요.",
   "automations.description.populated": "일정에 따라 또는 필요할 때마다 작업을 실행합니다.",
   "automations.refresh": "새로고침",
   "automations.refreshing": "새로고침 중…",

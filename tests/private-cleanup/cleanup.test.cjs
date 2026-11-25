@@ -1091,6 +1091,15 @@ test("[structural, not runtime] WP-09: empty-model guidance and starter prompts 
     "utf8",
   );
   assert.doesNotMatch(prompts, /闲时任务|idle[- ]time task|off[- ]peak/i);
+  for (const locale of ["zh-CN", "en-US", "ja-JP", "ko-KR", "ru-RU"]) {
+    const source = fs.readFileSync(
+      path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`),
+      "utf8",
+    );
+    const description = source.match(/"automations\.description":\s*"([^"]+)"/);
+    assert.ok(description, `${locale}: missing scheduled task description`);
+    assert.doesNotMatch(description[1], /闲时|idle time|アイドル時間|유휴 시간|время простоя/i);
+  }
   for (const locale of ["zh-CN", "en-US"]) {
     const source = fs.readFileSync(
       path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`),

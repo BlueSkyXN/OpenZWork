@@ -7874,7 +7874,7 @@ const jaJP: Record<string, string> = {
   "automations.noWorkspace": "ワークスペースを開くと、そのスケジュールタスクを管理できます。",
   "automations.workspace.label": "プロジェクト",
   "automations.description":
-    "定期的なタスクをスケジュールしたり、アイドル時間に実行するバックグラウンド作業をキューに入れたりできます。",
+    "スケジュールに沿って実行するタスクを作成します。",
   "automations.description.populated":
     "スケジュールに沿って、または必要なときにいつでもタスクを実行します。",
   "automations.refresh": "更新",

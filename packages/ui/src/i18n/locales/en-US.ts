@@ -8008,7 +8008,7 @@ const enUS: Record<string, string> = {
   "automations.noWorkspace": "Open a workspace to manage its scheduled tasks.",
   "automations.workspace.label": "Project",
   "automations.description":
-    "Schedule recurring tasks or queue background work that runs during idle time.",
+    "Create tasks that run on a schedule.",
   "automations.description.populated": "Run tasks on a schedule or whenever you need them.",
   "automations.refresh": "Refresh",
   "automations.refreshing": "Refreshing…",

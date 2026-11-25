@@ -7839,7 +7839,7 @@ const ruRU: Record<string, string> = {
     "Откройте рабочее пространство, чтобы управлять его запланированными задачами.",
   "automations.workspace.label": "Проект",
   "automations.description":
-    "Планируйте регулярные задачи или ставьте в очередь фоновую работу на время простоя.",
+    "Создавайте задачи, которые выполняются по расписанию.",
   "automations.description.populated": "Запускайте задачи по расписанию или когда нужно.",
   "automations.refresh": "Обновить",
   "automations.refreshing": "Обновление…",

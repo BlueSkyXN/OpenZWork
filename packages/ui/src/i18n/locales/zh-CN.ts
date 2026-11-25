@@ -7623,7 +7623,7 @@ const zhCN: Record<string, string> = {
   "automations.noWorkspace": "打开一个工作区以管理它的定时任务。",
   "automations.workspace.label": "项目",
   // 页头只说明任务创建方式，避免把服务端滚动配额频次固化在全局空态文案中。
-  "automations.description": "创建定时任务，或排队在闲时算力空闲时后台执行。",
+  "automations.description": "创建按计划运行的任务。",
   "automations.description.populated": "按计划运行任务，或在需要时随时执行。",
   "automations.refresh": "刷新",
   "automations.refreshing": "刷新中…",

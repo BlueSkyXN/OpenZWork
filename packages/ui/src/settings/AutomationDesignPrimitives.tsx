@@ -88,6 +88,8 @@ export function AutomationKeepAwakeNotice({
   onChange: (value: boolean) => void;
 }) {
   const { intl } = useZCodeIntl();
+  // 闲时任务裁剪后，定时任务页与常规设置仍控制同一个桌面唤醒开关。
+  const label = intl.formatMessage({ id: "settings.keepAwakeWhileRunning" });
   // 桌面断点曾清空提示栏的垂直内边距，导致实际样式偏离 12px 规格。
   return (
     <div
@@ -101,11 +103,11 @@ export function AutomationKeepAwakeNotice({
         <AutomationInfoIcon className="size-4" />
       </span>
       <p className="min-w-0 flex-1 text-ui-base leading-5">
-        {intl.formatMessage({ id: "automations.keepAwakeBanner" })}
+        {label}
       </p>
       <AutomationSwitchToggle
         checked={checked}
-        ariaLabel={intl.formatMessage({ id: "automations.keepAwakeBanner" })}
+        ariaLabel={label}
         onChange={onChange}
         color="blue"
         size="sm"

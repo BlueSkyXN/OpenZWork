@@ -156,6 +156,7 @@
         "packages/ui/test/appUsageServiceAccess.test.ts",
         "packages/ui/test/botLocalBoundaries.test.ts",
         "packages/ui/test/onboardingVisibility.test.ts",
+        "packages/ui/test/automationKeepAwakeCopy.test.ts",
         "packages/ui/test/retiredShareSettings.test.ts",
         "packages/desktop/test/communityLocalConfig.test.ts",
         "packages/ui/test/sessionUsageSummary.test.ts"

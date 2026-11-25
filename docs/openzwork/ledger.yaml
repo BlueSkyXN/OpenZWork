@@ -849,8 +849,12 @@ entries:
     status: active
     title: 官方套餐、加速卡与闲时任务
     summary: 移除 Coding Plan、Start Plan、Highspeed 加速卡与闲时任务。
+    spec: docs/specs/scheduled-task-copy-openzwork.md
     hooks:
       - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
+      - packages/ui/src/settings/AutomationDesignPrimitives.tsx
+    tests:
+      - packages/ui/test/automationKeepAwakeCopy.test.ts
     paths:
       - packages/services/src/coding-plan-subscription/**
       - packages/services/src/highspeed/**
