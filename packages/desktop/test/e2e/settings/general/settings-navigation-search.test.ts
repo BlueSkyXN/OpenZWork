@@ -88,7 +88,10 @@ describe("设置项模糊搜索", () => {
     await $('[data-testid="settings-search-empty"]').waitForDisplayed();
     await input().setValue("归档管理");
     await result("archives").waitForDisplayed();
-    await browser.keys("Escape");
+    await result("archives").click();
+    await $('[data-testid="settings-search-dialog"]').waitForDisplayed({ reverse: true });
+    expect(await page().getAttribute("data-active-section")).toBe("archives");
+    await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "general"));
   });
 
   it("SS01：搜索具体设置名称、拼音、英文与说明，显示所属分类", async () => {

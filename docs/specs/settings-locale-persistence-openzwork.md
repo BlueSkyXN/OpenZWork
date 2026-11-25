@@ -29,7 +29,8 @@ ui-locales.md「setting.json 存储格式与降级兼容」节描述的丢失场
 
 1. `settingService` 是语言字段落盘的唯一转换入口：任何写盘（update、迁移重写）都经
    `toPersistedSettingsLocaleFields` 产出四个字段；不在别处手写该格式。
-2. 内存 `AppSettings` 保留真实选择（`ja-JP`/`ru-RU`/`ko-KR`/`zh-CN`/`en-US`），落盘
+2. 常规设置和设置页左下角的语言菜单均接受系统默认与五种界面语言，选中后立即切换。
+   内存 `AppSettings` 保留真实选择（`ja-JP`/`ru-RU`/`ko-KR`/`zh-CN`/`en-US`），落盘
    旧字段只写旧版可解析的值：`locale`→`toZhOrEnLocale`（中文 zh、其余 en）、
    `localePreference`→`system`/`zh-CN`/`en-US`（非中英偏好写 `en-US`）。
 3. 真实选择写 `uiLocale`/`uiLocalePreference`；读取经 schema preprocess

@@ -22,7 +22,6 @@ import type {
   DesktopCloseToTrayCapability,
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
-  Locale,
   ZCodeInteractionBehavior,
 } from "@zcode/shared";
 import {
@@ -101,7 +100,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { useSelectDirectory } from "@/hooks/usePlatform.js";
 import { ServiceProvider, useServices } from "@/hooks/useServices.js";
-import { DEFAULT_APP_TOOL_SEARCH_MODE, type AppToolSearchMode } from "@zcode/shared";
+import { DEFAULT_APP_TOOL_SEARCH_MODE, isLocalePreference, type AppToolSearchMode } from "@zcode/shared";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CreateTaskRequest, RemoteConnectionOpenPreference } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
@@ -778,13 +777,8 @@ export function SettingsPage({
   );
   const handleFooterLocaleChange = useCallback(
     (value: string) => {
-      if (value === "system") {
-        setLocalePreference("system");
-        return;
-      }
-      if (value === "zh-CN" || value === "en-US") {
-        setLocalePreference(value as Locale);
-      }
+      // OpenZWork(OZ-C012)：两个入口列出全部支持的语言，只有落盘旧字段需要降为中英文。
+      if (isLocalePreference(value)) setLocalePreference(value);
     },
     [setLocalePreference],
   );

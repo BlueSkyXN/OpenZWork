@@ -743,6 +743,7 @@ entries:
       - docs/specs/settings-locale-persistence-openzwork.md
     hooks:
       - packages/services/src/setting/settingService.ts
+      - packages/ui/src/SettingsPage.tsx
     tests:
       - packages/services/test/settingsLocalePersistence.test.ts
       - packages/desktop/test/e2e/settings/general/settings-client-language-header-openzwork.test.ts
