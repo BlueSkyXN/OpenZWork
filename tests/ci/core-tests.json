@@ -156,6 +156,7 @@
         "packages/ui/test/appUsageServiceAccess.test.ts",
         "packages/ui/test/botLocalBoundaries.test.ts",
         "packages/ui/test/onboardingVisibility.test.ts",
+        "packages/ui/test/retiredShareSettings.test.ts",
         "packages/desktop/test/communityLocalConfig.test.ts",
         "packages/ui/test/sessionUsageSummary.test.ts"
       ]
@@ -210,6 +211,7 @@
       "capability": "retained-ui-and-desktop-repair",
       "files": [
         "packages/ui/test/pluginStoreSettingsExit.test.ts",
+        "packages/ui/test/claudeMarketplaceIcon.test.ts",
         "packages/desktop/test/e2eViewportOverrideRelease.test.ts"
       ]
     },

@@ -15,6 +15,8 @@
 
 ## 2. 产品规则
 
+首次启动、未选择项目或所有会话已关闭时，使用统计仍从本机管理进程读取实际快照。项目筛选和会话明细使用同一查询截止时间与同一组会话 ID；所选项目没有会话时返回空统计。
+
 1. **只展示本地 App Usage。** 页面不展示供应商端点用量、远端额度、Coding Plan/个人套餐、账号登录或购买入口。若既有 i18n 中还留有相关键，不代表本页可以调用或呈现其能力。
 2. **范围选项沿用协议**：`all`、`7d`、`30d`，不加入自定义日期或其他窗口。`all` 表示当前 usage store 尚保留的全部数据，不能文案承诺永久/终身历史：写入路径会滚动清理 30 天之前记录（`apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts:16-18,334-350`）。
 3. **本地时区归桶。** UI 在请求时传入 IANA 时区；若浏览器无法提供有效时区则回退 `UTC`。快照携带 `timeZone` 和 `generatedAt`，图表日期按该时区解释。当前存储查询用调用时提供的固定偏移计算本地日；已有实现注明 DST 跨日最多约一小时误差（`apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts:383-390`），本工作包不改其聚合口径。

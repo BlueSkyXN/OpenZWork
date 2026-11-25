@@ -21,7 +21,6 @@ export type SettingsSectionId =
   | "plugins"
   | "projects"
   | "archives"
-  | "shares"
   | "usage"
   | "subagents"
   | "commands"
@@ -90,7 +89,6 @@ function isSettingsSectionId(value: string): value is SettingsSectionId {
     value === "plugins" ||
     value === "projects" ||
     value === "archives" ||
-    value === "shares" ||
     value === "usage" ||
     value === "subagents" ||
     value === "commands" ||
@@ -154,6 +152,7 @@ export function readLastSettingsSectionPreference(
       storage.setItem(SETTINGS_LAST_SECTION_STORAGE_KEY, "appearance");
       return "appearance";
     }
+    // OpenZWork(OZ-D004)：分享管理已裁剪，旧分区按下方的失效偏好清理并回到默认页。
     if (raw && isSettingsSectionId(raw)) {
       return resolveSettingsSection(raw, fallbackSection);
     }

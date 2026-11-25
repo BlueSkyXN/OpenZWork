@@ -7813,7 +7813,7 @@ const zhCN: Record<string, string> = {
   "remoteSync.device.status.online": "已连接",
   "remoteSync.empty.title": "暂无已连接设备",
   "remoteSync.empty.description":
-    "连接 SSH、WSL 或 Docker 设备后，可以把本机配置推送到该设备的 ~/.zcode 目录。",
+    "连接 SSH、WSL 或 Docker 设备后，可以把本机配置推送到该设备的 ~/.openzwork 目录。",
   "remoteSync.empty.connect": "连接远端设备",
   "remoteSync.device.neverSynced": "尚未同步",
   "remoteSync.device.lastSynced.today": "今天 {time} 已同步",

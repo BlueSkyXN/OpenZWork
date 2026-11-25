@@ -8204,7 +8204,7 @@ const enUS: Record<string, string> = {
   "remoteSync.device.status.online": "Connected",
   "remoteSync.empty.title": "No connected devices",
   "remoteSync.empty.description":
-    "Connect an SSH, WSL, or Docker device to push this device's configuration to its ~/.zcode directory.",
+    "Connect an SSH, WSL, or Docker device to push this device's configuration to its ~/.openzwork directory.",
   "remoteSync.empty.connect": "Connect remote device",
   "remoteSync.device.neverSynced": "Not synced yet",
   "remoteSync.device.lastSynced.today": "Synced today at {time}",

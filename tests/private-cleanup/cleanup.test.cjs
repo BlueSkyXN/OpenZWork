@@ -1294,6 +1294,17 @@ test("[structural, not runtime] startup never restores the retired legacy-memory
 });
 
 test("[structural, not runtime] WP-03: remote deploy/startup and distribution defaults share the .openzwork root", () => {
+  for (const locale of ["zh-CN", "en-US", "ja-JP", "ko-KR", "ru-RU"]) {
+    const messages = fs.readFileSync(
+      path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`),
+      "utf8",
+    );
+    const description = messages.match(/"remoteSync\.empty\.description":\s*"([^"]*)"/)?.[1];
+    assert.ok(
+      description?.includes("~/.openzwork"),
+      `${locale}: data sync must name the remote user directory`,
+    );
+  }
   // 远端链：部署（deploy.ts 经 REMOTE_BASE 上传）与启动（connect.ts 拼 shell 命令）必须同源，
   // 否则首连必失败且复用官方命名空间。双引号 env 串里 ~ 不展开，用 $HOME 展开形。
   const deployShared = fs.readFileSync(

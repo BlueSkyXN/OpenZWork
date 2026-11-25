@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import {
+  TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
@@ -72,6 +73,22 @@ describe("设置项模糊搜索", () => {
   after(async () => {
     await browser.electron.restoreAllMocks();
     await clearAppData();
+  });
+
+  it("OpenZWork #92：升级前的分享页偏好回到常规，导航与搜索只列可用分区", async () => {
+    await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON);
+    await page().waitForDisplayed({ reverse: true });
+    await browser.execute(() => localStorage.setItem("zcode-settings-last-section", "shares"));
+    await clickTestIdByDom(TID_TASK_SETTINGS_BUTTON);
+    await page().waitForDisplayed();
+    expect(await page().getAttribute("data-active-section")).toBe("general");
+    expect(await $('[data-settings-section-nav="shares"]').isExisting()).toBe(false);
+    await openSearch();
+    await input().setValue("conversationShare.manage.nav");
+    await $('[data-testid="settings-search-empty"]').waitForDisplayed();
+    await input().setValue("归档管理");
+    await result("archives").waitForDisplayed();
+    await browser.keys("Escape");
   });
 
   it("SS01：搜索具体设置名称、拼音、英文与说明，显示所属分类", async () => {

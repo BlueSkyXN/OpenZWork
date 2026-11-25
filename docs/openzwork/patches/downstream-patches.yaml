@@ -968,3 +968,22 @@ patches:
     regression:
       - scripts/test/openzwork-cli-distribution.test.mjs
     retire: 上游从实际监听进程确认就绪，且启动失败的回归继续通过。
+
+  - id: OW-P046
+    title: 没有活跃工作区时使用统计读取失败
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 3.18.2
+      checked: 4.0.0
+    trigger: 用户在首启或关闭所有会话后打开使用统计，或按项目筛选用量。
+    impact: 没有活跃工作区时显示读取失败；有工作区时项目筛选和截止时间可能被忽略。
+    cause: 统计概览从任意活跃工作区选取 CLI，并只传递时间范围和时区。
+    fix: 概览和会话明细共用本机管理进程，按现有协议传递查询截止时间和会话范围。
+    evidence: v4.0.0 候选桌面客户端在空配置中打开使用统计并重试，Host 两次返回 no_active_workspace。
+    files:
+      - packages/services/src/zcode-agent/zcodeAgentService.ts
+    regression:
+      - packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts
+    retire: 上游应用级查询可独立于活跃工作区读取本机统计，并完整传递已有过滤条件。

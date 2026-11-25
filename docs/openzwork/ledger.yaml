@@ -97,6 +97,7 @@ entries:
       - packages/services/test/appUsageService.test.ts
       - packages/ui/test/appUsageModel.test.ts
       - packages/ui/test/appUsageServiceAccess.test.ts
+      - packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts
       - packages/ui/test/fixtures/appUsageSnapshot.ts
       - packages/ui/test/useAppUsageSessions.test.ts
       - packages/ui/test/useAppUsageStats.test.ts
@@ -780,6 +781,7 @@ entries:
     hooks:
       - packages/shared/src/plugin-marketplaces.ts
       - apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
+      - packages/ui/src/lib/pluginIconSource.ts
       - packages/ui/src/settings/PluginStorePage.tsx
       - packages/ui/src/store/pluginManagementStore.ts
       - packages/ui/src/store/pluginManagementStoreLoading.ts
@@ -792,6 +794,7 @@ entries:
     tests:
       - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
       - apps/zcode-cli/packages/bootstrap/tests/plugins-protocol.test.ts
+      - packages/ui/test/claudeMarketplaceIcon.test.ts
       - packages/desktop/test/e2e/plugins/marketplace/plugin-localization-creator.test.ts
     source: https://github.com/BlueSkyXN/OpenZWork/issues/79
   - id: OZ-C015
@@ -893,9 +896,15 @@ entries:
     status: active
     title: 云端分享、反馈与自动更新
     summary: 移除会话云端分享、云端反馈与应用自动更新。
+    spec: docs/specs/settings-visual-polish-openzwork.md
     hooks:
       - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
       - packages/shared/src/semverCompare.ts
+      - packages/ui/src/lib/settingsNavigation.ts
+      - packages/ui/src/settings/settingsPageConfig.ts
+    tests:
+      - packages/ui/test/retiredShareSettings.test.ts
+      - packages/desktop/test/e2e/settings/general/settings-navigation-search.test.ts
     paths:
       - packages/services/src/conversation-share/**
       - packages/services/test/helpers/conversationShareMockApiClient.ts

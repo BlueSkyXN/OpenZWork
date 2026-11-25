@@ -219,7 +219,6 @@ import type {
   ZCodeSessionRuntimePreferencesResult,
 } from "@zcode/shared";
 import type {
-  ZCodeAgentAppUsageParams,
   IZCodeAgentService,
   ZCodeAgentBackgroundBashOutputParams,
   ZCodeAgentAppRuntimePreferences,
@@ -4069,17 +4068,17 @@ const pluginUiToolResultEmitter = new Emitter<
       );
     },
 
-    async getAppUsageStats(params: ZCodeAgentAppUsageParams) {
-      // usage 表位于全局 session 库；复用任意已连接的 workspace client 即可拿到全应用范围数据。
-      const active = activeClientsByWorkspaceKey.values().next().value;
-      if (!active) {
-        throw new Error("no_active_workspace");
-      }
-      // usage/stats → v4/usage/stats（additive query，事实源在 CLI usage store，
-      // 载荷同形；旧词消费清零，CLI 旧 case 留到旧词删除之时）。
-      return active.client.request(
+    async getAppUsageStats(params: AppUsageStatsParams) {
+      // OW-P046：概览与明细读取同一本机用量库，首启时也无需活跃项目；空会话集合是有效筛选。
+      const client = await getPluginManagementClient();
+      return client.request(
         V4_METHODS.usageStats,
-        { range: params.range, timeZone: params.timeZone },
+        {
+          range: params.range,
+          timeZone: params.timeZone,
+          ...(params.until !== undefined ? { until: params.until } : {}),
+          ...(params.sessionIds !== undefined ? { sessionIds: params.sessionIds } : {}),
+        },
         v4UsageStatsResultSchema,
       );
     },
