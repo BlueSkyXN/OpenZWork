@@ -697,13 +697,6 @@ export function SettingsPage({
     },
     [updateSharedSettings],
   );
-  // 本机 offline push 开关：设置文件是唯一数据源，Main 每次上报前读取，不需要额外通知 Main。
-  const handleMobilePushEnabledChange = useCallback(
-    async (enabled: boolean) => {
-      await updateSharedSettings({ mobilePushEnabled: enabled });
-    },
-    [updateSharedSettings],
-  );
   const handleDesktopChromiumHardwareAccelerationChange = useCallback(
     async (enabled: boolean) => {
       await localHostServices.settingService.update({
@@ -1141,8 +1134,6 @@ export function SettingsPage({
                               notificationSoundEnabled={notificationSoundEnabled}
                               closeToTrayOnWindows={closeToTrayOnWindows}
                               keepAwakeWhileRunning={sharedSettings?.keepAwakeWhileRunning ?? false}
-                              mobilePushEnabled={sharedSettings?.mobilePushEnabled ?? true}
-                              onMobilePushEnabledChange={handleMobilePushEnabledChange}
                               desktopChromiumHardwareAccelerationEnabled={
                                 desktopChromiumHardwareAccelerationEnabled
                               }

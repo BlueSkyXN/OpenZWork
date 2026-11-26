@@ -36,6 +36,13 @@ it("设置搜索不提供已裁剪的自动更新入口，其余设置项都有�
   }
 });
 
+it("常规通知搜索只提供本机任务通知与声音", () => {
+  const ids = SETTINGS_SEARCH_ITEMS.map(({ id }) => id);
+  expect(ids).toContain("settings.notification");
+  expect(ids).toContain("settings.notificationSound");
+  expect(ids).not.toContain("settings.mobilePush");
+});
+
 it("旧分享页偏好回到常规，过期的单次跳转保留用户上次有效的分区", () => {
   localStorage.setItem("zcode-settings-last-section", "shares");
   expect(consumeInitialSettingsSection()).toBe("general");

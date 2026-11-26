@@ -903,8 +903,12 @@ entries:
       - apps/zcode-cli/packages/cli/tests/tui-model-selection.test.ts
       - packages/services/src/model-provider/providerProvisioningSource.ts
       - packages/services/src/model-provider/providerProvisioningTarget.ts
+      - packages/ui/src/settingsPageHelpers.tsx
+      - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/settings-search/settingsSearchIndex.ts
     paths:
       - packages/services/src/oauth/**
+      - packages/desktop/src/main/web-remote-relay/mobilePushConnection.ts
       - packages/services/src/bigmodel/**
       - packages/ui/src/login/**
       - packages/web/src/auth/**
@@ -913,9 +917,13 @@ entries:
       - "WP-08: official product endpoints are absent outside the explicit exemption list"
       - "WP-08: removed login/startPlan key families stay absent"
     source: 净化工作包 WP-08
-    spec: docs/remote/provider-provisioning-openzwork.md
+    spec:
+      - docs/remote/provider-provisioning-openzwork.md
+      - docs/specs/settings-visual-polish-openzwork.md
     tests:
       - packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts
+      - packages/ui/test/retiredShareSettings.test.ts
+      - packages/desktop/test/e2e/settings/general/settings-navigation-search.test.ts
   - id: OZ-D004
     kind: drop
     status: active

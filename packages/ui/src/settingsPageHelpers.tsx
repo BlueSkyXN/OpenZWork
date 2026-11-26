@@ -150,8 +150,6 @@ export function GeneralSectionContent({
   notificationSoundEnabled,
   closeToTrayOnWindows,
   keepAwakeWhileRunning = false,
-  mobilePushEnabled = true,
-  onMobilePushEnabledChange = async () => {},
   desktopChromiumHardwareAccelerationEnabled = true,
   dataBaseDir,
   terminalInheritSystemProfile = true,
@@ -198,9 +196,6 @@ export function GeneralSectionContent({
   notificationSoundEnabled: boolean;
   closeToTrayOnWindows: boolean;
   keepAwakeWhileRunning?: boolean;
-  /** 本机 offline push 上报开关（spec：docs/web-remote-control/mobile-event-push.md 6.4），仅桌面端展示 */
-  mobilePushEnabled?: boolean;
-  onMobilePushEnabledChange?: (enabled: boolean) => Promise<void>;
   desktopChromiumHardwareAccelerationEnabled?: boolean;
   dataBaseDir: string;
   terminalInheritSystemProfile: boolean;
@@ -643,6 +638,7 @@ export function GeneralSectionContent({
             />
           </>
         ) : null}
+        {/* OpenZWork(OZ-D003)：官方账号推送通道已裁剪，此处提供本机任务通知与声音。 */}
         <SettingsRow
           searchId="settings.notification"
           label={intl.formatMessage({ id: "settings.notification" })}
@@ -667,23 +663,6 @@ export function GeneralSectionContent({
             />
           }
         />
-        {isDesktop ? (
-          <SettingsRow
-            searchId="settings.mobilePush"
-            label={intl.formatMessage({ id: "settings.mobilePush" })}
-            description={intl.formatMessage({ id: "settings.mobilePushDescription" })}
-            control={
-              <Switch
-                aria-label={intl.formatMessage({ id: "settings.mobilePush" })}
-                data-testid="settings-mobile-push-switch"
-                checked={mobilePushEnabled}
-                onCheckedChange={(checked) => {
-                  void onMobilePushEnabledChange(checked);
-                }}
-              />
-            }
-          />
-        ) : null}
         {isWindowsDesktop || isLinuxDesktop ? (
           <SettingsRow
             searchId="settings.closeToTrayOnWindows"

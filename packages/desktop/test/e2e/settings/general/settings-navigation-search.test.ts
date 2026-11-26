@@ -94,6 +94,30 @@ describe("设置项模糊搜索", () => {
     await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "general"));
   });
 
+  it("OpenZWork 常规设置保留桌面通知与声音，收起已裁剪的官方手机推送", async () => {
+    await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "general"));
+    expect(await anchor("settings.mobilePush").isExisting()).toBe(false);
+    const notifications = await anchor("settings.notification").$('[role="switch"]');
+    const sound = await anchor("settings.notificationSound").$('[role="switch"]');
+    const originallyEnabled = (await notifications.getAttribute("aria-checked")) === "true";
+    expect(await sound.isEnabled()).toBe(originallyEnabled);
+    try {
+      await notifications.click();
+      await browser.waitUntil(async () => (await sound.isEnabled()) !== originallyEnabled);
+    } finally {
+      if (((await notifications.getAttribute("aria-checked")) === "true") !== originallyEnabled) {
+        await notifications.click();
+      }
+    }
+    await openSearch();
+    await input().setValue("手机推送通知");
+    expect(await result("settings.mobilePush").isExisting()).toBe(false);
+    await input().setValue("任务通知");
+    await result("settings.notification").waitForDisplayed();
+    await result("settings.notification").click();
+    await expectLocated("settings.notification");
+  });
+
   it("SS01：搜索具体设置名称、拼音、英文与说明，显示所属分类", async () => {
     await openSearch();
     for (const query of [
