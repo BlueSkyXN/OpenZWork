@@ -213,6 +213,7 @@
       "files": [
         "packages/ui/test/pluginStoreSettingsExit.test.ts",
         "packages/ui/test/claudeMarketplaceIcon.test.ts",
+        "packages/ui/test/pluginViewerFallback.test.ts",
         "packages/desktop/test/e2eViewportOverrideRelease.test.ts"
       ]
     },

@@ -987,3 +987,25 @@ patches:
     regression:
       - packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts
     retire: 上游应用级查询可独立于活跃工作区读取本机统计，并完整传递已有过滤条件。
+
+  - id: OW-P047
+    title: 文件树中的插件查看器失败后仍停在插件标签
+    kind: product
+    status: fixed
+    priority: P2
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: 从文件树打开 XLSX，插件已经打开标签，随后打开文件的调用失败。
+    impact: 用户看到空的插件页或运行时错误，未能看到工作簿。
+    cause: 失败回调只更新后台文件管理器的预览内容，前台仍为插件标签。
+    fix: 若失败的标签仍在前台，在原会话中打开并激活原文件的内置预览；用户已切换时保留其选择。
+    evidence: macOS 打包应用打开有效的测试工作簿，单次拒绝插件调用后文件树预览仍在后台。
+    files:
+      - packages/ui/src/hooks/useAppPanels.ts
+      - packages/ui/src/plugin-ui/officeViewerOpen.ts
+    regression:
+      - packages/ui/test/pluginViewerFallback.test.ts
+    retire: 上游从前台插件错误回到可见的文件预览，并保留其他标签的焦点。
+    refs:
+      - docs/specs/plugin-file-preview-fallback-openzwork.md

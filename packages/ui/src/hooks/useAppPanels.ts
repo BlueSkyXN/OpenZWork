@@ -109,6 +109,7 @@ import type { ExtensionViewSidePaneTab } from "@/extension-slots/contract.js";
 import { buildFileViewerTab, useFileViewerRouter } from "@/extension-slots/index.js";
 import {
   matchOfficeViewerSurfaceRoute,
+  openFilePreviewAfterPluginFailure,
   queueOfficeViewerPendingOpen,
   resolveOfficeViewerDocumentPath,
 } from "@/plugin-ui/officeViewerOpen.js";
@@ -781,11 +782,16 @@ export function useAppPanels(options: {
             path: source.path,
             workspaceKey: workspaceIdentity?.trim() || workspaceAbsPath,
           });
+          const tabId = buildPluginUiSidePaneTabId(request);
           queueOfficeViewerPendingOpen({
-            tabId: buildPluginUiSidePaneTabId(request),
+            tabId,
             relativePath,
             source,
-            onFallback: fallback,
+            // OW-P047：插件已接管后，只有仍在查看该标签时才将原文件预览带到前台。
+            onFallback: () =>
+              commitOpenedSidePaneState((current) =>
+                openFilePreviewAfterPluginFailure(current, tabId, source, currentSidePaneScope()),
+              ),
           });
         } catch (error) {
           logger.warn("[office-viewer] 分流到查看面板失败，回退 Preview Pane 预览", {
@@ -800,6 +806,7 @@ export function useAppPanels(options: {
     [
       commitOpenedSidePaneState,
       handleOpenExtensionView,
+      currentSidePaneScope,
       optionalPlatform,
       pluginUiTarget.sessionId,
       revealSidePaneForCurrentOwner,
