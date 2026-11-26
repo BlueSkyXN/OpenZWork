@@ -104,6 +104,7 @@ frame.src = '/panel';
   write: false,
 });
 
+let workbookRevisionChecks = 0;
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://localhost");
@@ -123,6 +124,13 @@ const server = createServer(async (request, response) => {
       let body = "";
       for await (const chunk of request) body += chunk;
       const { method, args } = JSON.parse(body);
+      if (
+        method === "callTool" &&
+        args.name === "check_document" &&
+        args.arguments?.path === "docs/budget.xlsx"
+      ) {
+        workbookRevisionChecks++;
+      }
       const result =
         method === "readResource" ? await client.readResource(args) : await client.callTool(args);
       response.setHeader("Content-Type", "application/json");
@@ -471,6 +479,23 @@ try {
     await frame.page().mouse.click(grid.x + grid.width * 0.4, grid.y + grid.height * 0.25);
     await bar.locator(".where", { hasText: /^Notes · [A-Z]+\d+$/ }).waitFor();
     await shot("xlsx-panel.png");
+    // OZ-C016：修改磁盘副本后跨过两个旧轮询周期，工作簿只在用户点菜单后刷新。
+    const { default: ExcelJS } = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const workbookPath = join(workspace, "docs/budget.xlsx");
+    await workbook.xlsx.readFile(workbookPath);
+    workbook.addWorksheet("Manual refresh").getCell("A1").value = 84;
+    await workbook.xlsx.writeFile(workbookPath);
+    await new Promise((done) => setTimeout(done, 8500));
+    assert.equal(workbookRevisionChecks, 0, "an idle workbook must not request a revision check");
+    const addedSheet = frame.locator(".sheet-tabs button", { hasText: "Manual refresh" });
+    assert.equal(await addedSheet.count(), 0);
+    await frame.getByRole("button", { name: "More" }).click();
+    await frame.getByRole("menuitem", { name: "Reload from disk" }).click();
+    await addedSheet.waitFor();
+    await addedSheet.click();
+    await frame.locator(".sheet-tabs button.active", { hasText: "Manual refresh" }).waitFor();
+    await shot("xlsx-manual-reload.png");
   }
 
   // capture_view refuses a document that is not open.

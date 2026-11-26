@@ -53,6 +53,7 @@
 | OZ-C013 | Responses 原生联网搜索                  | 支持协议与模型开关共同启用搜索，结构化来源与正文链接合并去重。                   | [spec](../specs/websearch-openai-responses-openzwork.md)     |
 | OZ-C014 | 插件市场来源                            | 默认登记 Claude 公开市场，添加保留名称时显示本地化提示。                         | [spec](../specs/plugin-marketplace-sources-openzwork.md)     |
 | OZ-C015 | 预装文档工具本地回退与无官方 CDN 默认态 | 默认不内置官方下载源、不注入可用标记，无源时禁用无效开关并直接使用本机已有工具。 | [整合说明](upstream/v4.0.0-integration.md)                   |
+| OZ-C016 | XLSX 手动刷新                           | 工作簿通过「更多」菜单从磁盘重新加载，按现有插件规则确认。                       | [规格](../specs/plugin-file-preview-fallback-openzwork.md)   |
 
 ### OpenZWork 新增的功能
 

@@ -254,7 +254,7 @@ describe("ZCode plugins", () => {
       ["documents", "0.2.10"],
       ["pdf", "0.2.11"],
       ["presentations", "0.2.10"],
-      ["spreadsheets", "0.2.10"],
+      ["spreadsheets", "0.2.11-openzwork.1"],
     ]) {
       const plugin = OFFICIAL_PLUGIN_DEFINITIONS.find((item) => item.name === name);
       expect(plugin?.version, name).toBe(version);

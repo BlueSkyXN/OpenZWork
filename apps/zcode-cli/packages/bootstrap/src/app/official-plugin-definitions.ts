@@ -225,7 +225,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       ["documents", "docx", "Documents", "Word文档", "0.2.10"],
       ["pdf", "pdf", "PDF", "PDF", "0.2.11"],
       ["presentations", "pptx", "Presentations", "演示文档", "0.2.10"],
-      ["spreadsheets", "xlsx", "Spreadsheets", "电子表格", "0.2.10"],
+      ["spreadsheets", "xlsx", "Spreadsheets", "电子表格", "0.2.11-openzwork.1"],
     ] as const
   ).map(
     ([name, skill, displayName, chineseName, version]): OfficialPluginDefinition => ({

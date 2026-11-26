@@ -303,7 +303,8 @@ function Shell() {
 
   // Notice when the file changes on disk under the panel.
   useEffect(() => {
-    if (!doc || inline) return;
+    // OpenZWork(OZ-C016)：表格由「从磁盘重新加载」刷新，后台版本检查会重复请求工具授权。
+    if (!doc || inline || doc.info.kind === "xlsx") return;
     const timer = setInterval(() => {
       if (document.visibilityState !== "visible") return;
       void call<{ revision: string }>("check_document", { path: doc.info.path }).then(
