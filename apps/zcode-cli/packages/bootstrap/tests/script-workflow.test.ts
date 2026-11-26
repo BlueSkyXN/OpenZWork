@@ -8,7 +8,12 @@ import { resolveEffectiveBashShellSelection } from "@zcode/adapters/exec";
 
 import { createNodeFileSystemAdapter } from "@zcode/adapters/fs";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
-import { createRootTraceContext, createSessionId, type Model } from "@zcode/contracts";
+import {
+  createRootTraceContext,
+  createSessionId,
+  type Model,
+  WINDOWS_CMD_SHELL_DISPLAY_NAME,
+} from "@zcode/contracts";
 import {
   ModelConfig,
   ModelOptionSpecsConfig,
@@ -257,7 +262,7 @@ describe("script workflow runtime", () => {
     const zshPath = join(shellDir, "zsh");
     const isWindows = process.platform === "win32";
     const configuredShellName = isWindows ? "powershell.exe" : "fish";
-    const resolvedShellName = isWindows ? "CMD" : "zsh";
+    const resolvedShellName = isWindows ? WINDOWS_CMD_SHELL_DISPLAY_NAME : "zsh";
     const env = { PATH: shellDir, SHELL: join(shellDir, configuredShellName) };
     const store = await createSqliteSessionStore({ dbPath: ":memory:" });
     await mkdir(workflowDir, { recursive: true });
@@ -298,8 +303,9 @@ describe("script workflow runtime", () => {
         // Windows 自动探测会选 Git Bash；显式选 CMD，才能区分父快照继承与默认解析。
         ...(isWindows
           ? {
-              resolveInitialBashShellSelection: async () =>
-                resolveEffectiveBashShellSelection({
+              resolveInitialBashShellSelection: async () => {
+                // v4 的解析器异步返回选择；取得结果后再传给父会话。
+                const { selection } = await resolveEffectiveBashShellSelection({
                   env,
                   platform: process.platform,
                   override: {
@@ -308,7 +314,9 @@ describe("script workflow runtime", () => {
                     path: "cmd.exe",
                     source: "user-config",
                   },
-                }).selection,
+                });
+                return selection;
+              },
             }
           : {}),
         modelExecutor: {
