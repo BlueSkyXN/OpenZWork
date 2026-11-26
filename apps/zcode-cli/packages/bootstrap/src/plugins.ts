@@ -433,27 +433,33 @@ export async function getZCodePluginsOverview(
   );
   const loadedById = new Map(outcome.plugins.map((plugin) => [plugin.id, plugin]));
 
-  // 被抑制（uninstall）的内置（官方）插件可一键恢复：从 OFFICIAL_PLUGIN_DEFINITIONS
-  // 里挑出 id 落在 suppressedBuiltins 集合内的，映射成 available 形态供 UI 的「恢复」入口使用。
-  // 完整 Catalog/cache 仍然保留，restorable 只是 Runtime 抑制态的投影，商店信息直接取定义里的 listing seed。
+  // OpenZWork(OZ-C014)：随包市场没有可刷新来源，已发现的内置插件也需要 seed 中的名称与说明。
+  // 按完整 ID 保留已有目录条目，卸载后的内置插件只进入恢复列表。
   const suppressed = new Set(configResult.config.plugins.suppressedBuiltins);
-  const restorableBuiltins: ZCodeAvailablePluginData[] = OFFICIAL_PLUGIN_DEFINITIONS.filter(
-    (def) => suppressed.has(`${def.name}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`),
-  ).map((def) => {
+  const restorableBuiltins: ZCodeAvailablePluginData[] = [];
+  for (const def of OFFICIAL_PLUGIN_DEFINITIONS) {
+    const id = `${def.name}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`;
+    const restorable = suppressed.has(id);
+    const discovered = loadedById.get(id);
+    const needsBundledListing =
+      def.listing && discovered?.source === "official" && !latestPinByPluginId.has(id);
+    if (!restorable && !needsBundledListing) continue;
     const listing = def.listing
       ? parseEntryStoreListing({ name: def.name, ...def.listing })
       : undefined;
-    return {
-      id: `${def.name}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`,
+    const entries = restorable ? restorableBuiltins : availablePlugins;
+    entries.push({
+      id,
       name: def.name,
       marketplace: ZCODE_OFFICIAL_PLUGIN_MARKETPLACE,
       version: def.version,
-      installed: false,
+      installed: !restorable,
+      ...(discovered?.description ? { description: discovered.description } : {}),
       // Bugfix：可恢复条目只带 listing 时丢了 "ui"，卸载后的文档插件从「UI 插件」掉进分类分组。
       ...(def.componentTypes ? { componentTypes: [...def.componentTypes] } : {}),
       ...(listing ? { listing } : {}),
-    };
-  });
+    });
+  }
 
   return {
     marketplaces: catalogs.map((catalog) => catalog.summary),

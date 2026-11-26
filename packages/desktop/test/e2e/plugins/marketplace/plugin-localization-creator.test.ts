@@ -158,6 +158,17 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
     await openPluginSettings();
     await setPluginPresentation({ locale: "zh-CN", theme: "zai-light", width: 1200, height: 800 });
     expect(await getPluginControlText("plugin-store-create")).toBe("添加");
+    // OpenZWork(OZ-C014)：随包目录提供中文名称和说明，即使其 ID 不在可刷新来源中。
+    const sheet = { pluginId: "spreadsheets@zcode-plugins-official" };
+    await clickPluginControl("plugin-store-segment-public");
+    await setInputValueByTestIdDom("plugin-store-search", "电子表格");
+    await waitForPluginControl("plugin-store-card", sheet);
+    expect(await getPluginControlText("plugin-store-card", sheet)).toContain("电子表格");
+    await clickPluginControl("plugin-store-card", sheet);
+    await waitForPluginControl("plugin-store-detail", sheet);
+    expect(await getPluginControlText("plugin-store-description")).toContain("创建、编辑与审阅电子表格");
+    await clickPluginControl("plugin-store-detail-back");
+    await setInputValueByTestIdDom("plugin-store-search", "");
     await openSourcesDialog();
     await waitForPluginControl("plugin-store-source-row", { marketplaceId: "claude-plugins-official" });
     const before = await getPluginOverview();

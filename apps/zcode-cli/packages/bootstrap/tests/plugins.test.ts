@@ -771,6 +771,13 @@ describe("ZCode plugins", () => {
 
         const overview = await getZCodePluginsOverview(options);
         expect(overview.marketplaces.map(({ id }) => id)).toEqual(expectedIds);
+        // OpenZWork(OZ-C014)：本地目录的商店信息与可刷新来源分别投影。
+        expect(overview.availablePlugins.find(({ id }) => id === DOCUMENTS_PLUGIN_ID)).toMatchObject({
+          installed: true,
+          componentTypes: ["ui"],
+          listing: { displayName: "Documents", displayNameI18n: { "zh-CN": "Word文档" } },
+        });
+        expect(overview.availablePlugins.some(({ name }) => name === "node-repl-host")).toBe(false);
         const reopened = await getZCodePluginsOverview(options);
         expect(reopened.marketplaces.map(({ id }) => id)).toEqual(expectedIds);
         expect(fetchSpy).not.toHaveBeenCalled();

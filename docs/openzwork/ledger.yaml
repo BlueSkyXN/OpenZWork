@@ -775,12 +775,13 @@ entries:
     kind: change
     status: active
     title: 插件市场来源与保留名称
-    summary: 随应用提供内置插件，默认登记 Claude 公开市场，添加来源使用保留 ID 时显示本地化提示。
+    summary: 随应用提供内置插件及其本地化商店信息，默认登记 Claude 公开市场，添加来源使用保留 ID 时显示本地化提示。
     spec: docs/specs/plugin-marketplace-sources-openzwork.md
     paths:
       - docs/specs/plugin-marketplace-sources-openzwork.md
     hooks:
       - packages/shared/src/plugin-marketplaces.ts
+      - apps/zcode-cli/packages/bootstrap/src/plugins.ts
       - apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
       - packages/ui/src/lib/pluginIconSource.ts
       - packages/ui/src/settings/PluginStorePage.tsx
