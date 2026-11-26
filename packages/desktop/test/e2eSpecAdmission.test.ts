@@ -138,9 +138,6 @@ describe("desktop E2E environment-gated formal spec admission", () => {
     expect(
       readBudget([formal, "conversation-session-preinstalled-tools-real-loopback.test.ts"]),
     ).toBe(25 * 60_000);
-    expect(
-      readBudget([formal, "conversation-session-preinstalled-tools-builtin-cdn.test.ts"]),
-    ).toBe(60 * 60_000);
     expect(readBudget(["smoke.test.ts"])).toBe(120_000);
     expect(
       readBudget([
@@ -164,9 +161,10 @@ describe("desktop E2E environment-gated formal spec admission", () => {
       applyWorkerBudget(config, [spec]);
       expect(config.mochaOpts.timeout).toBe(40 * 60_000);
     }
+    // OpenZWork(OZ-C015)：原版 CDN 用例已裁剪，使用现存的数据同步用例验证分片取较长预算。
     expect(
-      readBudget([relative, "conversation-session-preinstalled-tools-builtin-cdn.test.ts"]),
-    ).toBe(60 * 60_000);
+      readBudget([relative, "conversation-session-remote-data-sync-demo-walkthrough.test.ts"]),
+    ).toBe(90 * 60_000);
     expect(readBudget(["smoke.test.ts"])).toBe(120_000);
   });
 
