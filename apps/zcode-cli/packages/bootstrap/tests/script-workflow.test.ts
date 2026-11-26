@@ -15,6 +15,7 @@ import {
   ModelPropertiesConfig,
   ProviderRegistry,
 } from "@zcode/provider";
+import type { ZCodeApp } from "../src/app/types.js";
 import { createRegistryBackedTestApp as createZCodeApp } from "./helpers/registry-backed-test-app.js";
 import { readWorkflowScriptDocument } from "../src/app/script-workflow-meta.js";
 import { runScriptWorkflowChild } from "../src/app/script-workflow-process.js";
@@ -290,8 +291,9 @@ describe("script workflow runtime", () => {
     );
     const requestTexts: string[] = [];
 
+    let app: ZCodeApp | undefined;
     try {
-      const app = await createZCodeApp({
+      app = await createZCodeApp({
         env,
         // Windows 自动探测会选 Git Bash；显式选 CMD，才能区分父快照继承与默认解析。
         ...(isWindows
@@ -354,6 +356,8 @@ describe("script workflow runtime", () => {
       expect(providerText).not.toContain(`- Shell: ${configuredShellName}`);
       if (isWindows) expect(providerText).not.toContain("- Shell: Git Bash");
     } finally {
+      // OW-P050：先关闭仍使用工作区的 App，再释放测试存储并删除目录。
+      await app?.close?.();
       store.close();
       await rm(tempRoot, { force: true, recursive: true });
     }
@@ -440,8 +444,9 @@ describe("script workflow runtime", () => {
       "utf8",
     );
 
+    let app: ZCodeApp | undefined;
     try {
-      const app = await createZCodeApp({
+      app = await createZCodeApp({
         env: {},
         modelAdapter: {
           addStatusSink() {},
@@ -461,8 +466,8 @@ describe("script workflow runtime", () => {
 
       expect(result?.status).toBe("completed");
       expect(createdModels.length).toBeGreaterThan(0);
-      await app.close?.();
     } finally {
+      await app?.close?.();
       store.close();
       await rm(tempRoot, { force: true, recursive: true });
     }

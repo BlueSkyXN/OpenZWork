@@ -1046,3 +1046,21 @@ patches:
     regression:
       - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
     retire: 上游回归能在 Windows 与 POSIX 上核对工作区私有值及嵌套工作区隔离。
+
+  - id: OW-P050
+    title: 工作流子会话用例在 App 关闭前删除工作区
+    kind: test
+    status: fixed
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: 在临时工作区运行带子会话的脚本工作流后清理测试资源。
+    impact: Windows 核心回归删除临时工作区时可能收到 EBUSY，覆盖了业务断言的结果。
+    cause: 用例的 finally 删除目录，测试基座随后才在 afterEach 关闭持有工作区资源的 App。
+    evidence: GitHub Actions 45746812617 在子会话持久化场景删除临时根目录时报告 EBUSY。
+    fix: 在用例的 finally 内等待 App 关闭，再关闭外部注入的存储并删除工作区。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/script-workflow.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/script-workflow.test.ts
+    retire: 上游回归在删除工作区前释放 App 及其持有的资源。
