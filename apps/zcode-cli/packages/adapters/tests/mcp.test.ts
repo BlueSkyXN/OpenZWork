@@ -3059,7 +3059,7 @@ describe("createMcpAdapter", () => {
         expect(row?.tools?.map((item) => item.toolName)).toEqual(["oauth_ping"]);
       } finally {
         gate.resolve(new Error("closed"));
-        // 链接出现时后台授权仍持有文件租约，等同配置的连接任务收尾后再清理临时目录。
+        // OW-P048：链接出现时后台授权仍持有文件租约，等同配置的连接任务收尾后再清理临时目录。
         await adapter.connectServer("runtime", OAUTH_SERVER).finally(() => adapter.close());
       }
     });

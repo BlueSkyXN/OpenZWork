@@ -1009,3 +1009,40 @@ patches:
     retire: 上游从前台插件错误回到可见的文件预览，并保留其他标签的焦点。
     refs:
       - docs/specs/plugin-file-preview-fallback-openzwork.md
+
+  - id: OW-P048
+    title: MCP 再次授权用例在文件租约释放前清理目录
+    kind: test
+    status: fixed
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: 再次执行工具时仍需授权，用例观察到授权链接后结束模拟授权。
+    impact: 删除测试目录时后台任务仍在清理授权数据，Linux 核心回归偶发 ENOTEMPTY。
+    cause: 等待授权链接的调用会提前返回，直接关闭适配器未等到这次连接释放租约。
+    evidence: GitHub Actions 45741206643 的 Linux MCP 用例在删除临时目录的 v2 子目录时失败。
+    fix: 等待同配置的连接任务完成，再关闭适配器和删除临时目录。
+    files:
+      - apps/zcode-cli/packages/adapters/tests/mcp.test.ts
+    regression:
+      - apps/zcode-cli/packages/adapters/tests/mcp.test.ts
+    retire: 上游用例能够等待本轮后台授权收尾，并在真实临时目录中稳定完成。
+
+  - id: OW-P049
+    title: 插件配置回归使用原始 Windows 文件路径读取工作区私有值
+    kind: test
+    status: fixed
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: 在 Windows 工作区保存插件选项，随后核对私有配置文件。
+    impact: 已按工作区保存的选项在测试中被判为缺失。
+    cause: 存储把 Windows 路径转为小写并统一为正斜杠，回归断言直接用临时目录路径索引 JSON。
+    evidence: GitHub Actions 45743190248 的 Windows 插件回归在读取工作区私有值时得到 undefined。
+    fix: 使用存储的路径规范化函数核对新写入的工作区键，并用显式 Windows 样例验证规范化结果。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+      - apps/zcode-cli/packages/bootstrap/tests/plugin-secrets.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+    retire: 上游回归能在 Windows 与 POSIX 上核对工作区私有值及嵌套工作区隔离。

@@ -8,7 +8,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createConfig } from "@zcode/adapters/config";
+import { createConfig, normalizePluginConfigPathForComparison } from "@zcode/adapters/config";
 import * as pluginAdapters from "@zcode/adapters/plugins";
 import { DEFAULT_ENABLED_OFFICIAL_PLUGIN_IDS } from "@zcode/shared";
 import { ZCODE_PLUGIN_HOST_COMMAND } from "@zcode/contracts";
@@ -2263,11 +2263,11 @@ describe("ZCode plugins", () => {
       expect(workspaceConfig.plugins?.enabledPlugins?.[pluginId]).toBe(true);
       expect(workspaceConfig.plugins?.options?.[pluginId]?.token).toBeUndefined();
       expect(workspaceConfig.plugins?.options?.[pluginId]?.region).toBeUndefined();
-      expect(
-        JSON.parse(await readFile(join(root, "plugin-secrets.json"), "utf8")).workspaces[root][
-          pluginId
-        ],
-      ).toEqual({ region: "eu-west-1" });
+      // OW-P049：Windows 私有文件按规范化工作区键落盘，同时核对根目录和值。
+      const privateConfig = JSON.parse(await readFile(join(root, "plugin-secrets.json"), "utf8"));
+      expect(privateConfig.workspaces).toEqual({
+        [normalizePluginConfigPathForComparison(root)]: { [pluginId]: { region: "eu-west-1" } },
+      });
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -2849,6 +2849,10 @@ describe("ZCode plugins", () => {
   });
 
   it("matches Workspace config paths case-insensitively on Windows", () => {
+    // OW-P049：在各平台固定核对同一 Windows 路径的落盘拼写。
+    expect(normalizePluginConfigPathForComparison("D:\\Temp\\MixedCase", "win32")).toBe(
+      "d:/temp/mixedcase",
+    );
     expect(isWorkspacePluginConfigPath("C:\\repo\\.ZCODE\\CONFIG.JSON", "win32")).toBe(true);
     expect(isWorkspacePluginConfigPath("C:\\repo\\zcode.json", "win32")).toBe(false);
   });

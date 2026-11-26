@@ -632,7 +632,8 @@ describe("plugins protocol contracts", () => {
   });
 
   it("reads back plugin toggles when user hooks have empty matchers", async () => {
-    const userConfigPath = join(FAKE_HOME, ".zcode", "cli", "config.json");
+    // OpenZWork(OZ-C001)：把空 matcher 写入实际读取的用户配置，让开关回读覆盖该场景。
+    const userConfigPath = join(FAKE_HOME, ".openzwork", "cli", "config.json");
     const workspace = { workspacePath: FAKE_HOME, workspaceKey: FAKE_HOME };
     const context = {} as ZCodeProtocolAgentServerContext;
     const pluginId = "android-emulator@zcode-plugins-official";
