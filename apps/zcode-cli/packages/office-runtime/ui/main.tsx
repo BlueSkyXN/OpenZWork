@@ -34,7 +34,6 @@ import { baseName, call } from "#ui/rpc.ts";
 import { InlineShell } from "#ui/shell/inline.tsx";
 import { MoreMenu, SwitchMenu } from "#ui/shell/menus.tsx";
 import {
-  ChangedBanner,
   Drawer,
   EmptyState,
   useNativeFileInput,
@@ -96,7 +95,6 @@ function Shell() {
   const [barMode, setBarMode] = useState<BarMode>("bar");
   const [copied, setCopied] = useState(false);
   const [agent, setAgent] = useState<AgentPointer | null>(null);
-  const [changed, setChanged] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [recent, setRecent] = useState(readRecent);
   const [wide, setWide] = useState(false);
@@ -115,7 +113,6 @@ function Shell() {
   const loadingPath = useRef<string | null>(null);
   const loadKey = useRef(0);
   const references = useRef<Reference[]>([]);
-  const dismissedRevision = useRef<string | null>(null);
   const onOpenFind = useCallback(() => {
     viewer.current?.clearReveal();
     viewer.current?.clearSelection();
@@ -171,9 +168,8 @@ function Shell() {
     setLocation(null);
     setPage(null);
     setZoom(null);
-    setChanged(null);
     setFind(CLOSED_FIND);
-  }, []);
+  }, [setFind, setOffscreen]);
 
   const load = useCallback(
     async (target: string, reveal?: { targets: ShowTarget[]; note: string | null } | null) => {
@@ -195,7 +191,6 @@ function Shell() {
         ]);
         if (mine !== loadSeq.current) return;
         resetDocumentState();
-        dismissedRevision.current = null;
         setDoc({ info: loaded.info, bytes, blocks: loaded.blocks, key: ++loadKey.current });
         host.saveDocument(loaded.info.path);
         setRecent((items) => {
@@ -300,24 +295,6 @@ function Shell() {
     }, 400);
     return () => clearTimeout(timer);
   }, [doc, location, selection]);
-
-  // Notice when the file changes on disk under the panel.
-  useEffect(() => {
-    // OpenZWork(OZ-C016)：表格由「从磁盘重新加载」刷新，后台版本检查会重复请求工具授权。
-    if (!doc || inline || doc.info.kind === "xlsx") return;
-    const timer = setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      void call<{ revision: string }>("check_document", { path: doc.info.path }).then(
-        ({ revision }) => {
-          if (docRef.current !== doc) return;
-          if (revision !== doc.info.revision && revision !== dismissedRevision.current)
-            setChanged(revision);
-        },
-        () => undefined,
-      );
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [doc, inline]);
 
   useCaptureView(docRef, viewer);
 
@@ -644,16 +621,6 @@ function Shell() {
           ) : null}
         </header>
       )}
-      {changed ? (
-        <ChangedBanner
-          t={t}
-          onReload={() => doc && void load(doc.info.path)}
-          onDismiss={() => {
-            dismissedRevision.current = changed;
-            setChanged(null);
-          }}
-        />
-      ) : null}
       {nothing ? (
         <EmptyState t={t} importing={filePicker.importing} onBrowse={filePicker.browse} />
       ) : (
@@ -778,6 +745,7 @@ function Shell() {
           }}
           onFind={openFind}
           onReload={() => {
+            // OpenZWork(OZ-C016)：用户主动刷新时才重新读盘，避免轮询反复请求单次授权。
             setMenu(null);
             void load(doc.info.path);
           }}

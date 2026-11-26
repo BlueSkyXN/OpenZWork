@@ -5,7 +5,7 @@ import { type Strings } from "#ui/i18n.ts";
 import { Icon } from "#ui/icons.tsx";
 import type { PageState, ViewerHandle } from "#ui/viewers/types.ts";
 
-// 面板的文档导航与状态界面（抽屉、文件选择、空态、骨架、错误、文件变更提示），从 parts.tsx 拆出以控制单文件规模。
+// 面板的文档导航与状态界面（抽屉、文件选择、空态、骨架、错误），从 parts.tsx 拆出以控制单文件规模。
 
 /* ---------------------------------------------------------------- Drawer */
 
@@ -254,34 +254,6 @@ export function ErrorState({
       </div>
       <button type="button" className="btn secondary" onClick={onOpenAnother}>
         {t.openAnother}
-      </button>
-    </div>
-  );
-}
-
-export function ChangedBanner({
-  t,
-  onReload,
-  onDismiss,
-}: {
-  t: Strings;
-  onReload(): void;
-  onDismiss(): void;
-}) {
-  return (
-    <div className="banner" role="status">
-      <span>{t.changed}</span>
-      <button type="button" className="btn sm primary" onClick={onReload}>
-        {t.reloadShort}
-      </button>
-      <button
-        type="button"
-        className="btn icon sm dim"
-        title={t.dismiss}
-        aria-label={t.dismiss}
-        onClick={onDismiss}
-      >
-        <Icon name="x" />
       </button>
     </div>
   );

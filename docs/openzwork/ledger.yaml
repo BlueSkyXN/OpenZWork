@@ -825,14 +825,20 @@ entries:
   - id: OZ-C016
     kind: change
     status: active
-    title: XLSX 手动刷新
-    summary: 内置电子表格查看器通过菜单重新加载工作簿，停留期间不轮询磁盘版本。
+    title: Office 插件面板手动刷新
+    summary: Word、PDF、演示文稿和电子表格通过菜单重新读取当前文件，停留期间不轮询磁盘版本。
     spec: docs/specs/plugin-file-preview-fallback-openzwork.md
     paths:
       - docs/specs/plugin-file-preview-fallback-openzwork.md
     hooks:
       - apps/zcode-cli/packages/office-runtime/ui/main.tsx
       - apps/zcode-cli/packages/office-runtime/ui/shell/menus.tsx
+      - apps/zcode-cli/packages/documents-plugin/package.json
+      - apps/zcode-cli/packages/documents-plugin/.zcode-plugin/plugin.json
+      - apps/zcode-cli/packages/pdf-plugin/package.json
+      - apps/zcode-cli/packages/pdf-plugin/.zcode-plugin/plugin.json
+      - apps/zcode-cli/packages/presentations-plugin/package.json
+      - apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json
       - apps/zcode-cli/packages/spreadsheets-plugin/package.json
       - apps/zcode-cli/packages/spreadsheets-plugin/.zcode-plugin/plugin.json
       - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts

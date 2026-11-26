@@ -1,6 +1,6 @@
 {
   "name": "presentations",
-  "version": "0.2.10",
+  "version": "0.2.11-openzwork.1",
   "description": "PPTX presentation production skills and a PowerPoint viewer panel, published as an official ZCode plugin.",
   "description_i18n": {
     "en": "Presentation production skills for PPTX: create, edit, and lay out decks. View decks in a side panel: reference slides in chat, and the agent can read, search, point at and capture them.",

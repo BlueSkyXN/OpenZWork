@@ -82,9 +82,6 @@ const en = {
   nextTarget: "Next",
   moreOn: (count: number, label: string) => (count === 1 ? `1 more on ${label}` : `${count} more`),
   close: "Close",
-  changed: "This file changed on disk.",
-  reloadShort: "Reload",
-  dismiss: "Dismiss",
   openAnother: "Open another file",
   sidePanel: "Open in side panel",
   meta: {
@@ -182,9 +179,6 @@ const zh: typeof en = {
   nextTarget: "下一处",
   moreOn: (count, label) => (count === 1 ? `${label}还有 1 处` : `还有 ${count} 处`),
   close: "关闭",
-  changed: "文件已在磁盘上更改。",
-  reloadShort: "重新加载",
-  dismiss: "忽略",
   openAnother: "打开其他文件",
   sidePanel: "在侧栏打开",
   meta: {

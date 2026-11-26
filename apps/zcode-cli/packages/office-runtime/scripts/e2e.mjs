@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import {
-  appendFile,
   copyFile,
   cp,
   mkdir,
@@ -15,6 +14,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { chromium } from "playwright-core";
+import JSZip from "jszip";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { readPluginName } from "./plugin-name.mjs";
@@ -104,7 +104,8 @@ frame.src = '/panel';
   write: false,
 });
 
-let workbookRevisionChecks = 0;
+let revisionChecks = 0;
+let documentLoads = 0;
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://localhost");
@@ -124,13 +125,8 @@ const server = createServer(async (request, response) => {
       let body = "";
       for await (const chunk of request) body += chunk;
       const { method, args } = JSON.parse(body);
-      if (
-        method === "callTool" &&
-        args.name === "check_document" &&
-        args.arguments?.path === "docs/budget.xlsx"
-      ) {
-        workbookRevisionChecks++;
-      }
+      if (method === "callTool" && args.name === "check_document") revisionChecks++;
+      if (method === "callTool" && args.name === "load_document") documentLoads++;
       const result =
         method === "readResource" ? await client.readResource(args) : await client.callTool(args);
       response.setHeader("Content-Type", "application/json");
@@ -204,6 +200,31 @@ const waitForView = async (pattern) => {
   throw new Error(`view never matched ${pattern}: ${await getView()}`);
 };
 
+async function replaceOfficeText(file, part, original, updated) {
+  const filePath = join(workspace, file);
+  const archive = await JSZip.loadAsync(await readFile(filePath));
+  const xml = await archive.file(part).async("string");
+  assert.ok(xml.includes(original), `fixture text missing in ${part}`);
+  archive.file(part, xml.replace(original, updated));
+  await writeFile(filePath, await archive.generateAsync({ type: "nodebuffer" }));
+}
+
+// OZ-C016：文件改动后跨过两个旧轮询周期，只有点击菜单才读取并展示磁盘上的新版本。
+async function verifyManualReload(frame, before, after, edit) {
+  await before.first().waitFor();
+  const initialLoads = documentLoads;
+  await edit();
+  await new Promise((done) => setTimeout(done, 8500));
+  assert.equal(revisionChecks, 0, "an idle document must not request a revision check");
+  assert.equal(documentLoads, initialLoads, "an idle document must not reload");
+  assert.ok(await before.first().isVisible());
+  assert.equal(await after.count(), 0);
+  await frame.getByRole("button", { name: "More" }).click();
+  await frame.getByRole("menuitem", { name: "Reload from disk" }).click();
+  await after.first().waitFor();
+  assert.equal(documentLoads, initialLoads + 1);
+}
+
 try {
   const width = Number(process.env.OFFICE_E2E_WIDTH || 900);
   let { outer, frame } = await open();
@@ -243,13 +264,15 @@ try {
     await frame.locator(".pill").waitFor();
     await frame.locator('[data-at="p:4"]').first().click();
     await bar.locator(".where", { hasText: "Paragraph 4" }).waitFor();
+    // 添加引用会在反馈结束后清除选区，先确认选中的段落已上报。
+    await waitForView(/User selection: docs\/report\.docx#p:4/);
     await bar.getByRole("button", { name: "Add to chat" }).click();
     await outer.waitForFunction(() => window.__context !== null);
     const context = await outer.evaluate(() => window.__context);
     assert.match(context.content[0].text, /docs\/report\.docx#p:4: "Revenue grew by 12 percent/);
     await bar.getByText("Added to chat").waitFor();
     await bar.waitFor({ state: "detached", timeout: 4000 });
-    await waitForView(/User selection: docs\/report\.docx#p:4/);
+    await waitForView(/No selection\./);
     // A table cell click addresses the cell.
     await frame.locator('[data-at="t:1"] td', { hasText: "South" }).click();
     await bar.locator(".where", { hasText: "Table 1 · R3C1" }).waitFor();
@@ -274,6 +297,14 @@ try {
     assert.match(
       await capture(outer, { anchor: "docs/report.docx#p:6" }, "docx.png"),
       /Captured docs\/report\.docx#p:6/,
+    );
+    const heading = frame.locator('[data-at="p:1"]');
+    await verifyManualReload(
+      frame,
+      heading.filter({ hasText: "Quarterly Report" }),
+      heading.filter({ hasText: "Revised Report" }),
+      () =>
+        replaceOfficeText("docs/report.docx", "word/document.xml", "Quarterly Report", "Revised Report"),
     );
   }
 
@@ -460,6 +491,15 @@ try {
       /slide:3/,
     );
     await shot("pptx-panel.png");
+    const title = frame.locator('.slide-frame[data-at="slide:1"] .slide-host');
+    await title.scrollIntoViewIfNeeded();
+    await verifyManualReload(
+      frame,
+      title.getByText("Product Launch", { exact: true }),
+      title.getByText("Revised Launch", { exact: true }),
+      () =>
+        replaceOfficeText("docs/launch.pptx", "ppt/slides/slide1.xml", "Product Launch", "Revised Launch"),
+    );
   }
 
   // 4. Spreadsheet (wasm under CSP): reveal a range, select cells, capture.
@@ -479,20 +519,16 @@ try {
     await frame.page().mouse.click(grid.x + grid.width * 0.4, grid.y + grid.height * 0.25);
     await bar.locator(".where", { hasText: /^Notes · [A-Z]+\d+$/ }).waitFor();
     await shot("xlsx-panel.png");
-    // OZ-C016：修改磁盘副本后跨过两个旧轮询周期，工作簿只在用户点菜单后刷新。
     const { default: ExcelJS } = await import("exceljs");
-    const workbook = new ExcelJS.Workbook();
-    const workbookPath = join(workspace, "docs/budget.xlsx");
-    await workbook.xlsx.readFile(workbookPath);
-    workbook.addWorksheet("Manual refresh").getCell("A1").value = 84;
-    await workbook.xlsx.writeFile(workbookPath);
-    await new Promise((done) => setTimeout(done, 8500));
-    assert.equal(workbookRevisionChecks, 0, "an idle workbook must not request a revision check");
     const addedSheet = frame.locator(".sheet-tabs button", { hasText: "Manual refresh" });
-    assert.equal(await addedSheet.count(), 0);
-    await frame.getByRole("button", { name: "More" }).click();
-    await frame.getByRole("menuitem", { name: "Reload from disk" }).click();
-    await addedSheet.waitFor();
+    const currentSheet = frame.locator(".sheet-tabs button.active", { hasText: "Notes" });
+    await verifyManualReload(frame, currentSheet, addedSheet, async () => {
+      const workbook = new ExcelJS.Workbook();
+      const workbookPath = join(workspace, "docs/budget.xlsx");
+      await workbook.xlsx.readFile(workbookPath);
+      workbook.addWorksheet("Manual refresh").getCell("A1").value = 84;
+      await workbook.xlsx.writeFile(workbookPath);
+    });
     await addedSheet.click();
     await frame.locator(".sheet-tabs button.active", { hasText: "Manual refresh" }).waitFor();
     await shot("xlsx-manual-reload.png");
@@ -529,22 +565,21 @@ try {
   assert.ok(ambiguous.structuredContent.views.some((view) => view.viewId === "other-window"));
   await client.callTool({ name: "release_view", arguments: { viewId: "other-window" } });
 
-  // 5. The file changes on disk: a notice offers to reload.
+  // 5. Open a new path and replace its contents while it is visible.
   if (has("pdf")) {
     await copyFile(join(workspace, "docs/paper.pdf"), join(workspace, "docs/draft.pdf"));
     await agent(outer, "open_document", { path: "docs/draft.pdf" });
     // Wait for the panel to report the new file: the previous PDF's canvas matches too, and
-    // editing the file before the panel loads it would leave nothing to notice.
+    // Editing earlier would let the initial read observe the replacement file.
     await waitForView(/Visible location: docs\/draft\.pdf/);
     await frame.locator('.pdf-page[data-at="page:1"] canvas').waitFor({ timeout: 20000 });
-    await appendFile(join(workspace, "docs/draft.pdf"), "\n% edited\n");
-    await frame
-      .locator(".banner", { hasText: "This file changed on disk." })
-      .waitFor({ timeout: 10000 });
-    await shot("changed.png");
-    await frame.locator(".banner").getByRole("button", { name: "Reload" }).click();
-    await frame.locator(".banner").waitFor({ state: "detached" });
-    await frame.locator('.pdf-page[data-at="page:1"] canvas').waitFor({ timeout: 20000 });
+    await verifyManualReload(
+      frame,
+      frame.locator(".textLayer span", { hasText: "Abstract" }),
+      frame.locator(".textLayer span", { hasText: "天地玄黄" }),
+      () => copyFile(join(workspace, "docs/cjk.pdf"), join(workspace, "docs/draft.pdf")),
+    );
+    await shot("pdf-manual-reload.png");
 
     // 6. A damaged file shows a plain error with one way forward.
     await writeFile(join(workspace, "docs/broken.pdf"), "not a pdf");

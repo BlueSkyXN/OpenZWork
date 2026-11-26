@@ -297,26 +297,6 @@ button.doctitle:hover,
   white-space: nowrap;
 }
 
-/* Changed on disk: accent tint under the bar. */
-.banner {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 6px 0 12px;
-  background: var(--accent);
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-}
-.banner span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .stage {
   flex: 1;
   min-height: 0;
