@@ -70,3 +70,16 @@ Web 端没有该桥时不写桌面日志。
 验证门控时覆盖首次、阈值上下界、计数器变化、300 秒心跳与单个 provider 抛错；
 验证采样器时覆盖停止后不再采样、读取或写盘失败不影响业务。进程接入验收还需确认
 真实启动入口调用采样器，以及进程退出时回收定时器。
+
+## CLI 分配诊断（3.18.1 / 4.0.0）
+
+CLI 进程使用受控堆分配采样定位高内存热点，诊断文件写入 `~/.openzwork/cli/memory-diagnostics`（自定义数据根下跟随对应 CLI 目录）：
+
+- 每轮最多一个采集/写盘操作，忙时丢本轮，不排队。单次同步采样/投影超过 25ms 或节点数超限，本进程永久降级为纯指标；采样异常同样降级，不向任务抛错。启动和退出不等待磁盘采集。
+- Inspector adapter 在同步调用边界计时，recorder 只累计 adapter 的同步耗时与本轮指标/投影耗时；`await` 后恢复前的其他业务工作不计入诊断预算。25ms 是完成后的熔断判据，不能中断已在执行的 V8 操作，不声明硬实时上限。
+- 降级后的记录保留最后一次有效热点及其采集时间，避免纯指标轮转覆盖已有证据。当轮结果已完成有界投影但实际耗时超预算时，保存这份有效结果后熔断；节点超限或堆压力下未取得有效投影时，仍只保留此前结果。
+- sampler 可选 `degradation` 保存首次降级的 `reason`、`at`、`durationMs`；原因限定为 `start-budget`、`start-failed`、`profile-budget`、`profile-node-limit`、`heap-pressure`、`write-backpressure`、`profile-error`。后续纯指标轮次不覆盖这些字段；旧记录没有此字段仍可导出。
+- 堆使用达到上限的 80% 后同样降级，不在临近 OOM 时物化 profile。写盘在途而采样窗口到期时释放 profiler，慢磁盘不能导致采样状态无限积累。
+- `stop` 仅停止既有采集资源，不等待在途写盘；不修改进程退出、重启、信号、协议关闭、stderr drain 或进程树回收，不新增退出取样、强制 GC 或 heap snapshot。远端 CLI 在远端记录，手机复用 Host，不增加重复采集器。
+
+诊断证据回归：`node packages/desktop/scripts/cli-diagnostic-evidence-smoke.mjs` 使用实际 Inspector、文件保存和本地 ZIP 归档，验证忙碌调度不误停采、真实分配位置、受限堆 OOM/未捕获异常、大日志尾部及崩溃安全投影、正常/异常退出与诊断失败。

@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import {
+  TID_SETTINGS_BACK_BUTTON,
   TID_SETTINGS_PAGE,
   TID_SETTINGS_SECTION_NAV,
   TID_TASK_SETTINGS_BUTTON,
@@ -72,6 +73,49 @@ describe("设置项模糊搜索", () => {
   after(async () => {
     await browser.electron.restoreAllMocks();
     await clearAppData();
+  });
+
+  it("OpenZWork #92：升级前的分享页偏好回到常规，导航与搜索只列可用分区", async () => {
+    await clickTestIdByDom(TID_SETTINGS_BACK_BUTTON);
+    await page().waitForDisplayed({ reverse: true });
+    await browser.execute(() => localStorage.setItem("zcode-settings-last-section", "shares"));
+    await clickTestIdByDom(TID_TASK_SETTINGS_BUTTON);
+    await page().waitForDisplayed();
+    expect(await page().getAttribute("data-active-section")).toBe("general");
+    expect(await $('[data-settings-section-nav="shares"]').isExisting()).toBe(false);
+    await openSearch();
+    await input().setValue("conversationShare.manage.nav");
+    await $('[data-testid="settings-search-empty"]').waitForDisplayed();
+    await input().setValue("归档管理");
+    await result("archives").waitForDisplayed();
+    await result("archives").click();
+    await $('[data-testid="settings-search-dialog"]').waitForDisplayed({ reverse: true });
+    expect(await page().getAttribute("data-active-section")).toBe("archives");
+    await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "general"));
+  });
+
+  it("OpenZWork 常规设置保留桌面通知与声音，收起已裁剪的官方手机推送", async () => {
+    await clickTestIdByDom(testId(TID_SETTINGS_SECTION_NAV, "general"));
+    expect(await anchor("settings.mobilePush").isExisting()).toBe(false);
+    const notifications = await anchor("settings.notification").$('[role="switch"]');
+    const sound = await anchor("settings.notificationSound").$('[role="switch"]');
+    const originallyEnabled = (await notifications.getAttribute("aria-checked")) === "true";
+    expect(await sound.isEnabled()).toBe(originallyEnabled);
+    try {
+      await notifications.click();
+      await browser.waitUntil(async () => (await sound.isEnabled()) !== originallyEnabled);
+    } finally {
+      if (((await notifications.getAttribute("aria-checked")) === "true") !== originallyEnabled) {
+        await notifications.click();
+      }
+    }
+    await openSearch();
+    await input().setValue("手机推送通知");
+    expect(await result("settings.mobilePush").isExisting()).toBe(false);
+    await input().setValue("任务通知");
+    await result("settings.notification").waitForDisplayed();
+    await result("settings.notification").click();
+    await expectLocated("settings.notification");
   });
 
   it("SS01：搜索具体设置名称、拼音、英文与说明，显示所属分类", async () => {

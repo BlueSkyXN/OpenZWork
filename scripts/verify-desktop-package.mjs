@@ -99,11 +99,23 @@ export const REQUIRED_PLUGIN_ENTRY_POINTS = {
   "node-repl-host": "./dist/mcp/server.js",
 };
 
-/** 运行时材料：agent 运行时、内置 Node/npm、原生搜索工具。 */
+/** 运行时材料：agent 运行时、内置 Node/npm、原生搜索工具与平台专属 helper/shim。 */
 function requiredRuntimePaths(platform) {
-  // Windows 发行包只携带 ripgrep 和 ugrep，核验与打包共用原生搜索工具清单。
-  const tools = getNativeSearchRuntimeToolIdsForPlatform(platform.split("-")[0]);
-  return ["glm/zcode.cjs", "glm/node-runtime/npm", ...tools.map((tool) => `tools/${tool}`)];
+  // Windows 发行包只携带 ripgrep 和 ugrep，核验与打包共用原生搜索工具清单，并额外核验 runtime-host 与预装入口 shim。
+  const os = platform.split("-")[0];
+  const tools = getNativeSearchRuntimeToolIdsForPlatform(os);
+  return [
+    "glm/zcode.cjs",
+    "glm/node-runtime/npm",
+    ...tools.map((tool) => `tools/${tool}`),
+    ...(os === "windows" || os === "win32"
+      ? [
+          "preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe",
+          "tools/runtime-host/zcode-runtime-host.exe",
+          "tools/runtime-host/zcode-installer-process-helper.exe",
+        ]
+      : []),
+  ];
 }
 
 async function sha256(path) {

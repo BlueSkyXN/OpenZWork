@@ -36,46 +36,48 @@
 
 ### 改变了行为的上游功能
 
-| 编号    | 名称                     | 说明                                                                       | 依据                                                         |
-| ------- | ------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| OZ-C001 | 产品身份与用户级数据根   | 用户数据根为 .openzwork，桌面、独立 CLI/TUI 和 Web 使用 OpenZWork 显示名。 | [spec](../specs/identity-and-data-isolation-openzwork.md)    |
-| OZ-C002 | 旧 ZCode 记忆隔离        | 不再隐式复制旧 ZCode 记忆，保留已导入数据。                                | [spec](../specs/memory-migration-openzwork.md)               |
-| OZ-C003 | 标准 Provider 模板       | 内置 Provider 入口只保留三种标准协议模板。                                 | [spec](../specs/standard-provider-templates-openzwork.md)    |
-| OZ-C004 | 模型能力与渠道匹配       | 恢复模型与站点的能力规则和推理映射。                                       | [spec](../specs/model-capability-matching-openzwork.md)      |
-| OZ-C005 | 本地引导与 Bot 数据边界  | 本地首次偏好、Bot 凭据迁移和显式注册/启用边界。                            | [spec](../specs/onboarding-local-settings-openzwork.md)      |
-| OZ-C006 | 自定义命令改名与保存     | 命令改名不丢数据，保存失败如实返回。                                       | [spec](../specs/command-file-update-openzwork.md)            |
-| OZ-C007 | 技能开关链路             | 内置技能开关的规则、所有者与回归。                                         | [spec](../specs/skills-toggle-openzwork.md)                  |
-| OZ-C008 | 设置页布局与远控入口     | 设置页内容布局调整，恢复侧栏底部的远控入口。                               | [spec](../specs/settings-visual-polish-openzwork.md)         |
-| OZ-C009 | 业务数据目录完整迁移     | 保存迁移计划，重启前置阶段复制并转换 CLI/Host 数据，发布后切换数据根。     | [spec](../desktop/configurable-data-directory-openzwork.md)  |
-| OZ-C010 | 发行许可与上游声明       | GPL-3.0 整体声明、上游 Apache-2.0 原文与 NOTICE 入口。                     | [分支声明](../../NOTICE.md)                                  |
-| OZ-C011 | 工作流查询进程与生命周期 | 工作流总览读取共用独立查询 lane 并空闲回收，UI 读状态分代际。              | [spec](../specs/saved-workflow-query-lifecycle-openzwork.md) |
-| OZ-C012 | 界面语言持久化兼容合同   | 保留上游 uiLocale 落盘兼容与旧格式迁移（merge 丢失后恢复）。               | [spec](../specs/settings-locale-persistence-openzwork.md)    |
-| OZ-C013 | Responses 原生联网搜索   | 支持协议与模型开关共同启用搜索，结构化来源与正文链接合并去重。             | [spec](../specs/websearch-openai-responses-openzwork.md)     |
-| OZ-C014 | 插件市场来源             | 默认登记 Claude 公开市场，添加保留名称时显示本地化提示。                   | [spec](../specs/plugin-marketplace-sources-openzwork.md)     |
+| 编号    | 名称                                    | 说明                                                                             | 依据                                                         |
+| ------- | --------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| OZ-C001 | 产品身份与用户级数据根                  | 用户数据根为 .openzwork，桌面、独立 CLI/TUI 和 Web 使用 OpenZWork 显示名。       | [spec](../specs/identity-and-data-isolation-openzwork.md)    |
+| OZ-C002 | 旧 ZCode 记忆隔离                       | 不再隐式复制旧 ZCode 记忆，保留已导入数据。                                      | [spec](../specs/memory-migration-openzwork.md)               |
+| OZ-C003 | 标准 Provider 模板                      | 内置 Provider 入口只保留三种标准协议模板。                                       | [spec](../specs/standard-provider-templates-openzwork.md)    |
+| OZ-C004 | 模型能力与渠道匹配                      | 恢复模型与站点的能力规则和推理映射。                                             | [spec](../specs/model-capability-matching-openzwork.md)      |
+| OZ-C005 | 本地引导与 Bot 数据边界                 | 本地首次偏好、Bot 凭据迁移和显式注册/启用边界。                                  | [spec](../specs/onboarding-local-settings-openzwork.md)      |
+| OZ-C006 | 自定义命令改名与保存                    | 命令改名不丢数据，保存失败如实返回。                                             | [spec](../specs/command-file-update-openzwork.md)            |
+| OZ-C007 | 技能开关链路                            | 内置技能开关的规则、所有者与回归。                                               | [spec](../specs/skills-toggle-openzwork.md)                  |
+| OZ-C008 | 设置页布局与远控入口                    | 设置页内容布局调整，恢复侧栏底部的远控入口。                                     | [spec](../specs/settings-visual-polish-openzwork.md)         |
+| OZ-C009 | 业务数据目录完整迁移                    | 保存迁移计划，重启前置阶段复制并转换 CLI/Host 数据，发布后切换数据根。           | [spec](../desktop/configurable-data-directory-openzwork.md)  |
+| OZ-C010 | 发行许可与上游声明                      | GPL-3.0 整体声明、上游 Apache-2.0 原文与 NOTICE 入口。                           | [分支声明](../../NOTICE.md)                                  |
+| OZ-C011 | 工作流查询进程与生命周期                | 工作流总览读取共用独立查询 lane 并空闲回收，UI 读状态分代际。                    | [spec](../specs/saved-workflow-query-lifecycle-openzwork.md) |
+| OZ-C012 | 界面语言持久化兼容合同                  | 保留上游 uiLocale 落盘兼容与旧格式迁移（merge 丢失后恢复）。                     | [spec](../specs/settings-locale-persistence-openzwork.md)    |
+| OZ-C013 | Responses 原生联网搜索                  | 支持协议与模型开关共同启用搜索，结构化来源与正文链接合并去重。                   | [spec](../specs/websearch-openai-responses-openzwork.md)     |
+| OZ-C014 | 插件市场来源                            | 默认登记 Claude 公开市场，添加保留名称时显示本地化提示。                         | [spec](../specs/plugin-marketplace-sources-openzwork.md)     |
+| OZ-C015 | 预装文档工具本地回退与无官方 CDN 默认态 | 默认不内置官方下载源、不注入可用标记，无源时禁用无效开关并直接使用本机已有工具。 | [整合说明](upstream/v4.0.0-integration.md)                   |
+| OZ-C016 | Office 插件面板手动刷新                 | Word、PDF、演示文稿和电子表格在「更多」中重新读盘，按现有插件规则确认。          | [规格](../specs/plugin-file-preview-fallback-openzwork.md)   |
 
 ### OpenZWork 新增的功能
 
-| 编号    | 名称                                                                             | 说明                                                       | 依据                                                           |
-| ------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------- |
-| OZ-F002 | 系统提示词设置与编辑器                                                           | 系统提示词设置、完整预览、差异与模板。                     | [spec](../specs/system-prompt-settings-openzwork.md)           |
-| OZ-F003 | 本地使用统计页                                                                   | 使用统计页按本机度量重建。                                 | [spec](../specs/app-usage-settings-openzwork.md)               |
-| OZ-F004 | 会话累计用量                                                                     | 输入框工具栏显示会话累计用量。                             | [spec](../specs/session-usage-summary-openzwork.md)            |
-| OZ-F005 | 原生会话指标栏                                                                   | 会话指标栏与自选指标。                                     | [spec](../specs/native-conversation-metrics-openzwork.md)      |
-| OZ-F006 | 对话复制、筛选与项目排序                                                         | 对话 Markdown 复制、任务筛选与项目活动排序。               | [spec](../specs/conversation-controls-openzwork.md)            |
-| OZ-F007 | 外部会话多源导入                                                                 | 从多个外部客户端导入会话。                                 | [spec](../specs/external-session-import-openzwork.md)          |
-| OZ-F008 | 模型列表拉取与项目用量                                                           | 拉取模型目录、按项目查询用量。                             | [spec](../specs/model-discovery-project-usage-openzwork.md)    |
-| OZ-F009 | Node 发行内置技能资产                                                            | 普通 Node CLI/Web 发行包携带内置技能。                     | [spec](../specs/node-distribution-bundled-skills-openzwork.md) |
-| OZ-F010 | V1 远控连接方式                                                                  | 官方 V1 远控页的多种连接方式与多入口。                     | [spec](../web-remote-control/v1-connection-modes-openzwork.md) |
-| OZ-F011 | OpenZWork 构建与发行流程                                                         | 桌面与 CLI 自动发行。独立 Web 监听前准备凭据。             | [发行规范](release/automatic-github-release.md)                |
-| OZ-F012 | CI 与桌面验证工程                                                                | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。 | [CI 规范](ci/ci-job-orchestration.md)                          |
-| OZ-F013 | 本地内存诊断与 sampler 节拍（`.openzwork/cli` 数据根、节拍恢复；官方上传链裁剪） | v3.18.1 同步                                               |
-| OZ-F014 | 多机配置包                                                                       | 桌面手动迁移七类用户配置，预览后按项导入。                 | [规格](../specs/config-package-openzwork.md)                   |
+| 编号    | 名称                     | 说明                                                                           | 依据                                                           |
+| ------- | ------------------------ | ------------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| OZ-F002 | 系统提示词设置与编辑器   | 系统提示词设置、完整预览、差异与模板。                                         | [spec](../specs/system-prompt-settings-openzwork.md)           |
+| OZ-F003 | 本地使用统计页           | 使用统计页按本机度量重建。                                                     | [spec](../specs/app-usage-settings-openzwork.md)               |
+| OZ-F004 | 会话累计用量             | 输入框工具栏显示会话累计用量。                                                 | [spec](../specs/session-usage-summary-openzwork.md)            |
+| OZ-F005 | 原生会话指标栏           | 会话指标栏与自选指标。                                                         | [spec](../specs/native-conversation-metrics-openzwork.md)      |
+| OZ-F006 | 对话复制、筛选与项目排序 | 对话 Markdown 复制、任务筛选与项目活动排序。                                   | [spec](../specs/conversation-controls-openzwork.md)            |
+| OZ-F007 | 外部会话多源导入         | 从多个外部客户端导入会话。                                                     | [spec](../specs/external-session-import-openzwork.md)          |
+| OZ-F008 | 模型列表拉取与项目用量   | 拉取模型目录、按项目查询用量。                                                 | [spec](../specs/model-discovery-project-usage-openzwork.md)    |
+| OZ-F009 | Node 发行内置技能资产    | 普通 Node CLI/Web 发行包携带内置技能。                                         | [spec](../specs/node-distribution-bundled-skills-openzwork.md) |
+| OZ-F010 | V1 远控连接方式          | 官方 V1 远控页的多种连接方式与多入口。                                         | [spec](../web-remote-control/v1-connection-modes-openzwork.md) |
+| OZ-F011 | OpenZWork 构建与发行流程 | 桌面与 CLI 自动发行。独立 Web 监听前准备凭据。                                 | [发行规范](release/automatic-github-release.md)                |
+| OZ-F012 | CI 与桌面验证工程        | Core/Extended 编排、报告校验、桌面 runner 与已有回放材料。                     | [CI 规范](ci/ci-job-orchestration.md)                          |
+| OZ-F013 | 本地内存诊断与采样节拍   | 保留本地内存诊断与 60s 采样节拍，落盘根改为 `.openzwork/cli`，裁剪官方上传链。 | [整合说明](upstream/v3.18.1-integration.md)                    |
+| OZ-F014 | 多机配置包               | 桌面手动迁移七类用户配置，预览后按项导入。                                     | [规格](../specs/config-package-openzwork.md)                   |
 
 ### 上游已删除、OpenZWork 保留
 
 | 编号    | 名称                           | 说明                                                                          | 依据                                                                            |
 | ------- | ------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| OZ-R001 | 上游已退役的桌面测试与兼容源码 | 上游后续版本删除、OpenZWork 继续使用的桌面 E2E 用例、夹具与三个兼容源码文件。 | v3.17.1 整合（上游退役 App 单测与部分 E2E，OpenZWork 保留 CLI、E2E 与门禁测试） |
+| OZ-R001 | 上游已退役的桌面测试与兼容源码 | 上游后续版本删除、OpenZWork 继续使用的桌面 E2E 用例、夹具与四个兼容源码文件。 | v3.17.1 整合（上游退役 App 单测与部分 E2E，OpenZWork 保留 CLI、E2E 与门禁测试） |
 
 维护体系本身（OZ-F001）见 [维护模型](maintenance-model.md)。
 
@@ -92,6 +94,14 @@
 - [ZCode v3.17.1 整合验收](upstream/v3.17.1-integration.md)
 - [ZCode v3.17.2 整合](upstream/v3.17.2-integration.md)
 - [ZCode v3.17.2 整合验证](upstream/v3.17.2-validation.md)
+- [ZCode v3.18.0 整合](upstream/v3.18.0-integration.md)
+- [ZCode v3.18.0 整合验证](upstream/v3.18.0-validation.md)
+- [ZCode v3.18.1 整合](upstream/v3.18.1-integration.md)
+- [ZCode v3.18.1 整合验证](upstream/v3.18.1-validation.md)
+- [ZCode v3.18.2 整合](upstream/v3.18.2-integration.md)
+- [ZCode v3.18.2 整合验证](upstream/v3.18.2-validation.md)
+- [ZCode v4.0.0 整合](upstream/v4.0.0-integration.md)
+- [ZCode v4.0.0 整合验证](upstream/v4.0.0-validation.md)
 
 ### 下游补丁
 
@@ -148,6 +158,7 @@
 - [设置页布局与远控快捷入口](../specs/settings-visual-polish-openzwork.md)
 - [普通 Node CLI/Web 发行的内置技能资产](../specs/node-distribution-bundled-skills-openzwork.md)
 - [空 Bash 命令的审批边界](../specs/bash-empty-command-approval-openzwork.md)
+- [WT04 direct runtime 关联判定合同](../specs/wt04-direct-runtime-association-openzwork.md)
 
 ## 测试计划与专题文档
 

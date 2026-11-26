@@ -15,8 +15,10 @@
 
 ## 2. 产品规则
 
+首次启动、未选择项目或所有会话已关闭时，使用统计仍从本机管理进程读取实际快照。项目筛选和会话明细使用同一查询截止时间与同一组会话 ID；所选项目没有会话时返回空统计。
+
 1. **只展示本地 App Usage。** 页面不展示供应商端点用量、远端额度、Coding Plan/个人套餐、账号登录或购买入口。若既有 i18n 中还留有相关键，不代表本页可以调用或呈现其能力。
-2. **范围选项沿用协议**：`all`、`7d`、`30d`，不加入自定义日期或其他窗口。`all` 表示当前 usage store 尚保留的全部数据，不能文案承诺永久/终身历史：写入路径会滚动清理 30 天之前记录（`apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts:16-18,334-350`）。
+2. **时间范围**。`all` 查询本机存储的全部用量记录，`7d` 和 `30d` 按时间筛选。写入新用量时保留更早的记录。概览与会话明细共用所选范围。
 3. **本地时区归桶。** UI 在请求时传入 IANA 时区；若浏览器无法提供有效时区则回退 `UTC`。快照携带 `timeZone` 和 `generatedAt`，图表日期按该时区解释。当前存储查询用调用时提供的固定偏移计算本地日；已有实现注明 DST 跨日最多约一小时误差（`apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts:383-390`），本工作包不改其聚合口径。
 4. **读取是只读、显式刷新。** 初次进入和改变范围时读取一次；用户触发刷新后重新查询，范围选择保持不变。不得由页面写 usage store、改写历史或启用后台轮询。刷新并发时仅最新请求可以更新可见状态。
 5. **空数据与错误分开。** 合法空快照显示空态；RPC/服务失败显示错误状态和重试入口，不得把失败伪装成零用量。现有 RPC 在 usage store 不可用时会构造零值快照以便空态（`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts:1781-1816`）；实现应保持该协议行为。
@@ -140,7 +142,7 @@ UI 不调用 active remote services / useWorkspaceServices；仍只调用 Base/l
 ## 9. 依据与复核说明
 
 - 工作包范围和明确本地、不重建云上报：`local/feature-eval-20260922/DECISIONS-AND-PLAN.md:29-33,122-127`；同一文件 `:138` 记录 E1b 当前存活/删除面及 4 个 UI 文件重写、services 聚合恢复要求。
-- 写入事实：`apps/zcode-cli/packages/core/src/runtime/methods/usage-observability.ts:54-119,130-199,201-331`；store 与 30 天保留：`apps/zcode-cli/packages/adapters/src/storage/session-store/repositories/usage.ts:16-18,334-350,383-390`。
+- 用量写入见 `apps/zcode-cli/packages/core/src/runtime/methods/usage-observability.ts`。跨年记录写入、重开和时间筛选见 `apps/zcode-cli/packages/adapters/tests/usage-query.test.ts`。
 - 存储端口：`apps/zcode-cli/packages/contracts/src/interfaces/session-store.port.ts:982-1051,1070-1076`。
 - builder / RPC：`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/usage-stats-builder.ts:82-240`；`apps/zcode-cli/packages/bootstrap/src/zcode-protocol/server-operations.ts:1763-1817`。
 - schema 与 v4：`packages/shared/src/usage-stats.ts:5-7,15-95`；`packages/shared/src/zcode-protocol-v4/transport.ts:338-342,737-748`。

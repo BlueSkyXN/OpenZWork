@@ -1,6 +1,13 @@
 import { pluginUiPages } from "@/plugin-ui/adapters/pluginUiPageRegistry.js";
 import { logger } from "@/logger.js";
 import type { CodeViewerSource } from "@/lib/codeViewer.js";
+import {
+  getActiveSidePaneTab,
+  isSidePaneTabVisibleInScope,
+  openCodeViewerSidePane,
+  type SidePaneVisibilityScope,
+  type WorkspaceSidePaneState,
+} from "@/lib/workspaceSidePane.js";
 import { decodeFilePathUriEscapes, isAbsoluteFilePath, joinFilePath } from "@/lib/path.js";
 
 /**
@@ -19,6 +26,24 @@ const OFFICE_VIEWER_SURFACE_ROUTES = [
 ] as const;
 
 export type OfficeViewerSurfaceRoute = (typeof OFFICE_VIEWER_SURFACE_ROUTES)[number];
+
+/** OW-P047：插件标签已经在前台时，仅更新后台文件树不会显示回退预览。 */
+export function openFilePreviewAfterPluginFailure(
+  current: WorkspaceSidePaneState | null,
+  failedTabId: string,
+  source: CodeViewerSource,
+  scope: SidePaneVisibilityScope,
+): WorkspaceSidePaneState | null {
+  const active = getActiveSidePaneTab(current);
+  if (
+    active?.type !== "plugin-ui" ||
+    active.id !== failedTabId ||
+    !isSidePaneTabVisibleInScope(active, scope)
+  ) {
+    return current;
+  }
+  return openCodeViewerSidePane(current, source, scope.ownerTaskId);
+}
 
 const OFFICE_VIEWER_ROUTE_BY_EXTENSION = new Map<string, OfficeViewerSurfaceRoute>(
   OFFICE_VIEWER_SURFACE_ROUTES.flatMap((route) =>

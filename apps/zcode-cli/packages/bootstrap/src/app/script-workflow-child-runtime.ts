@@ -15,7 +15,6 @@ import {
   type PermissionService,
 } from "@zcode/core";
 import {
-  type AgentExecutionTelemetryPort,
   type BrowserControlPort,
   type ContextSourcePort,
   type FileSystemPort,
@@ -24,7 +23,6 @@ import {
   type JsonSchema,
   type PdfDocumentPort,
   type Logger,
-  type McpPort,
   type ModelRequestAdmission,
   type SessionId,
   type SessionStorePort,
@@ -52,7 +50,6 @@ export interface ScriptWorkflowAgentRuntimeDeps {
   imageProcessorPort: ImageProcessorPort;
   pdfDocumentPort?: PdfDocumentPort;
   logger: Logger;
-  mcpPort?: McpPort;
   /** 父会话的 model factory：child 与主 turn 从同一份 Registry 视图造 Model，不各自冻结。 */
   modelFactory: NonNullable<AgentRuntimeDeps["modelFactory"]>;
   permissionService: PermissionService;
@@ -69,7 +66,7 @@ export interface ScriptWorkflowAgentRuntimeDeps {
   workingDirectory: string;
 }
 
-export function createScriptWorkflowAgentRuntime(input: {
+export async function createScriptWorkflowAgentRuntime(input: {
   childSessionId: SessionId;
   deps: ScriptWorkflowAgentRuntimeDeps;
   request: WorkflowAgentCallInput;
@@ -117,7 +114,7 @@ export function createScriptWorkflowAgentRuntime(input: {
    * （apps/zcode-cli/packages/dynamic-workflow/docs/execution-engine.md「Subagent sessions」）。
    */
   browserControlPort?: BrowserControlPort;
-}): AgentRuntime {
+}): Promise<AgentRuntime> {
   // dwf actor 经 configOverrides.workflowActor 走 builder 的叠加路径，此时 systemPrompt 必须
   // 缺席（builder 对二者同在抛错）——父会话自带的 custom system prompt 不得漏给子代理，所以
   // 从继承的配置里把它剥掉，而不是靠后面的覆盖。
@@ -126,6 +123,7 @@ export function createScriptWorkflowAgentRuntime(input: {
     input.configOverrides?.workflowActor === undefined
       ? (input.request.opts?.systemPrompt ?? inheritedSystemPrompt)
       : undefined;
+  const childMcp = await input.deps.runtime.createChildMcpAccess();
   const parentSelection = input.deps.runtime.getSessionModelSelection();
   const requestedSelection = input.request.opts?.model
     ? parseProviderQualifiedModelSelection(input.request.opts.model)
@@ -141,6 +139,9 @@ export function createScriptWorkflowAgentRuntime(input: {
       ...(systemPrompt === undefined ? {} : { systemPrompt }),
       agentName: input.request.opts?.agentType ?? "zcode-workflow",
       maxTurns: input.request.opts?.maxTurns ?? input.deps.runtimeConfig.maxTurns,
+      // 基线 YOLO，父任务仍保留自己的 Guarded。legacy script workflow child 就停在这里；dwf actor
+      // 经 configOverrides 覆盖成 run 记下的模式（docs/dynamic-workflow/launch.md
+      // 「Permissions inside a run」）。
       mode: "yolo",
       modelSelection,
       // 父 Shell 在首条输入才解析，子会话须继承父 runtime 已初始化的 shell。
@@ -148,9 +149,13 @@ export function createScriptWorkflowAgentRuntime(input: {
       parentSessionId: input.deps.sessionId,
       subagents: { enabled: false },
       taskType: "workflow_child",
+      // actor 只存在于一次 run 之下，天然「已激活」（launch.md「On demand: activation」Children 段）：
+      // 不继承父会话的按需标志，否则 spread 会把 onDemand 带进来而子会话里没有任何激活入口。
+      dynamicWorkflowToolsOnDemand: false,
       toolAllowlist: input.request.opts?.tools,
       workingDirectory: input.deps.workingDirectory,
       ...input.configOverrides,
+      mcp: childMcp.config,
     },
     {
       ...createRuntimeDeps(input.deps, input.traceContext, input.childSessionId, {
@@ -170,6 +175,7 @@ export function createScriptWorkflowAgentRuntime(input: {
           ? {}
           : { parentTurnId: input.traceContext.turnId }),
       }),
+      ...childMcp.deps,
       ...(input.browserControlPort === undefined
         ? {}
         : {
@@ -255,7 +261,6 @@ function createRuntimeDeps(
     imageProcessorPort: deps.imageProcessorPort,
     pdfDocumentPort: deps.pdfDocumentPort,
     logger: deps.logger,
-    mcpPort: deps.mcpPort,
     modelFactory: deps.modelFactory,
     resolveEffectiveModelSelection: deps.appOptions.resolveEffectiveModelSelection,
     // permissionBroker + providerRuntimeHeadersPort 都在这里面：父 runtime 派生，路由身份已改写成父会话。
@@ -275,7 +280,7 @@ function createRuntimeDeps(
  */
 export function createWorkflowChildSkillPort(
   deps: Pick<ScriptWorkflowAgentRuntimeDeps, "appOptions" | "configResult" | "pluginSkillRoots">,
-) {
+): SkillPort | undefined {
   if (!deps.configResult.config.features.skill || !deps.configResult.config.skills.enabled) {
     return undefined;
   }

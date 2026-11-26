@@ -1,4 +1,9 @@
-import {createDefaultSystemPromptSettings, systemPromptCatalogSchema, type SystemPromptSettings, ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS, zcodeProtocolMethods, zcodeMessagePartSchema, zcodeSessionCancelBackgroundTaskResultSchema, zcodeSessionCompactResultSchema, zcodeSessionEventsResultSchema, zcodeSessionEventSchema, zcodeSessionForkResultSchema, zcodeSessionGoalResultSchema, zcodeSessionListResultSchema, zcodeSessionStateSnapshotSchema, zcodeSessionSubscribeResultSchema, zcodeProviderTestModelConnectivityResultSchema, zcodeProviderRefreshRegistryResultSchema, zcodeWorkspaceGenerateTextResultSchema, zcodeWorkspaceCancelGenerateTextResultSchema, zcodeWorkspacePresentationSchema, zcodeWorkspaceUpdateInteractionPreferencesResultSchema, type ZCodeProtocolMessage, type ZCodeProtocolNotification} from "@zcode/shared";
+import {
+  workspace,
+  requestResult,
+  attachSessionRuntimePreferencesResponder,
+  createShellRecordingFakeApp,
+} from "./zcode-protocol-fixture.js";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -6,6 +11,32 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { describe, expect, it, vi } from "vitest";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
+import {
+  createDefaultSystemPromptSettings,
+  elideSessionSnapshotForIndex,
+  systemPromptCatalogSchema,
+  type SystemPromptSettings,
+  ZCODE_SESSION_RUNTIME_PREFERENCES_REQUEST_TIMEOUT_MS,
+  zcodeProtocolMethods,
+  zcodeMessagePartSchema,
+  zcodeSessionCancelBackgroundTaskResultSchema,
+  zcodeSessionCompactResultSchema,
+  zcodeSessionEventsResultSchema,
+  zcodeSessionEventSchema,
+  zcodeSessionForkResultSchema,
+  zcodeSessionGoalResultSchema,
+  zcodeSessionListResultSchema,
+  zcodeSessionStateSnapshotSchema,
+  zcodeSessionSubscribeResultSchema,
+  zcodeProviderTestModelConnectivityResultSchema,
+  zcodeProviderRefreshRegistryResultSchema,
+  zcodeWorkspaceGenerateTextResultSchema,
+  zcodeWorkspaceCancelGenerateTextResultSchema,
+  zcodeWorkspacePresentationSchema,
+  zcodeWorkspaceUpdateInteractionPreferencesResultSchema,
+  type ZCodeProtocolMessage,
+  type ZCodeProtocolNotification,
+} from "@zcode/shared";
 import {
   V4_METHODS,
   V4_NOTIFICATIONS,
@@ -38,7 +69,6 @@ import {
   type LoggerFactory,
   type McpPort,
   type McpServerConfig,
-  type ExecutionShellSelection,
 } from "@zcode/contracts";
 import { InMemoryWorkspaceHookPolicyProvider } from "@zcode/core";
 import {
@@ -65,13 +95,9 @@ import {
   mapSessionSettings,
 } from "../src/zcode-protocol/mapper.js";
 import { createWorkspaceZCodeApp } from "../src/zcode-protocol/workspace-model-runtime.js";
+import { answerReplyLanguageRequest } from "./helpers/fake-host-requests.js";
 import { createFakeApp } from "./helpers/fake-zcode-app.js";
 import { createApiKeyProviderConfig } from "./provider-config-fixtures.js";
-
-const workspace = {
-  workspacePath: "/workspace/app",
-  workspaceKey: "/workspace/app",
-};
 
 function currentOnlyModelOption() {
   return {
@@ -3265,7 +3291,21 @@ describe("ZCodeProtocolAgentServer", () => {
     const big = "y".repeat(512 * 1024);
     try {
       const server = new ZCodeProtocolAgentServer({
-        createZCodeApp: (options) => createFakeApp(options),
+        createZCodeApp: (options) => {
+          const app = createFakeApp(options);
+          app.readTarget = async () => ({
+            sessionID: app.sessionId,
+            targetID: "goal_index_profile" as never,
+            objective: "查一下订单",
+            summaryTitle: null,
+            status: "active",
+            tokenBudget: 100_000,
+            tokensUsed: 0,
+            timeUsedSeconds: 0,
+            time: { created: 10, updated: 30 },
+          });
+          return app;
+        },
         cwd: workspace.workspacePath,
         sessionStore: store,
         version: "test-version",
@@ -3352,6 +3392,23 @@ describe("ZCodeProtocolAgentServer", () => {
         type: "text",
         text: "订单在 orderService",
       });
+      await store.savePart({
+        id: "part_index_todos" as never,
+        messageID: assistantId,
+        sessionID,
+        type: "tool",
+        callID: "call_index_todos",
+        tool: "TodoWrite",
+        state: {
+          status: "completed",
+          input: { todos: [{ content: "检查订单", status: "in_progress", priority: "high" }] },
+          output: big,
+          title: "TodoWrite",
+          metadata: {},
+          time: { start: 24, end: 25 },
+        },
+      });
+      const messageReads = vi.spyOn(store, "messages");
 
       const readWith = async (id: number, extra: Record<string, unknown>) =>
         zcodeSessionStateSnapshotSchema.parse(
@@ -3363,6 +3420,12 @@ describe("ZCodeProtocolAgentServer", () => {
         );
       const full = await readWith(2, {});
       const index = await readWith(3, { contentProfile: "index" });
+
+      expect(messageReads).toHaveBeenLastCalledWith({ sessionID, contentProfile: "index" });
+      // 不能只比较 message 形状：过早裁掉 TodoWrite input 会静默丢失历史分组。
+      expect(index.todoGroups.some((group) => group.todos.length > 0)).toBe(true);
+      expect(index.goalStats).toBeDefined();
+      expect(index).toEqual(elideSessionSnapshotForIndex(full));
 
       expect(JSON.stringify(full).length).toBeGreaterThan(big.length * 2);
       expect(JSON.stringify(index).length).toBeLessThan(big.length / 4);
@@ -3768,7 +3831,8 @@ describe("ZCodeProtocolAgentServer", () => {
     const catalog = systemPromptCatalogSchema.parse(await requestResult(server, {
       id: "prompt-catalog", method: zcodeProtocolMethods.systemPromptCatalog, params: {},
     }));
-    expect(catalog.sections).toHaveLength(17);
+    // OpenZWork(OZ-F002): v4.0.0 起目录包含 finishing_work 与 memory_notes 共 19 个内置章节。
+    expect(catalog.sections).toHaveLength(19);
     expect(createApp).not.toHaveBeenCalled();
   });
 
@@ -3776,6 +3840,8 @@ describe("ZCodeProtocolAgentServer", () => {
     const createdAppOptions: ZCodeAppOptions[] = [];
     let nativeSearchEnabled = false;
     let toolSearchMode: "off" | "local" = "off";
+    let totalTokensReminderEnabled = false;
+    let agentAlwaysBackgroundEnabled = false;
     let memoryEnabled = false;
     let systemPromptSettings: SystemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "FIRST_PROMPT" };
     let modelContextBudgetStrategy: "legacy" | "preflight-v1" = "legacy";
@@ -3790,6 +3856,8 @@ describe("ZCodeProtocolAgentServer", () => {
     const preferenceRequests = attachSessionRuntimePreferencesResponder(server, () => ({
       nativeSearchEnhancementsEnabled: nativeSearchEnabled,
       toolSearchMode,
+      totalTokensReminderEnabled,
+      agentAlwaysBackgroundEnabled,
       memoryEnabled,
       systemPromptSettings,
       modelContextBudgetStrategy,
@@ -3804,6 +3872,8 @@ describe("ZCodeProtocolAgentServer", () => {
     );
     nativeSearchEnabled = true;
     toolSearchMode = "local";
+    totalTokensReminderEnabled = true;
+    agentAlwaysBackgroundEnabled = true;
     memoryEnabled = true;
     systemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "SECOND_PROMPT" };
     modelContextBudgetStrategy = "preflight-v1";
@@ -3826,6 +3896,10 @@ describe("ZCodeProtocolAgentServer", () => {
     expect(createdAppOptions[1]?.runtimeConfig?.systemPromptSettings?.replacement).toBe("SECOND_PROMPT");
     expect(createdAppOptions[0]?.runtimeConfig?.toolSearch).toEqual({ mode: "off" });
     expect(createdAppOptions[1]?.runtimeConfig?.toolSearch).toEqual({ mode: "local" });
+    expect(createdAppOptions[0]?.runtimeConfig?.totalTokensReminder).toEqual({ enabled: false });
+    expect(createdAppOptions[1]?.runtimeConfig?.totalTokensReminder).toEqual({ enabled: true });
+    expect(createdAppOptions[0]?.runtimeConfig?.subagents?.alwaysBackground).toBe(false);
+    expect(createdAppOptions[1]?.runtimeConfig?.subagents?.alwaysBackground).toBe(true);
     expect(createdAppOptions[0]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(false);
     expect(createdAppOptions[0]?.runtimeConfig?.memory?.enabled).toBe(false);
     expect(createdAppOptions[0]?.runtimeConfig?.modelContextBudgetStrategy).toBe("preflight-v1");
@@ -3940,6 +4014,8 @@ describe("ZCodeProtocolAgentServer", () => {
       const preferenceRequests = attachSessionRuntimePreferencesResponder(server, () => ({
         nativeSearchEnhancementsEnabled: false,
         toolSearchMode: "auto",
+        totalTokensReminderEnabled: true,
+        agentAlwaysBackgroundEnabled: false,
         memoryEnabled: false,
         modelContextBudgetStrategy: "preflight-v1",
       }));
@@ -3952,6 +4028,8 @@ describe("ZCodeProtocolAgentServer", () => {
 
       expect(preferenceRequests).toHaveLength(1);
       expect(createdAppOptions[0]?.runtimeConfig?.toolSearch).toEqual({ mode: "auto" });
+      expect(createdAppOptions[0]?.runtimeConfig?.totalTokensReminder).toEqual({ enabled: true });
+      expect(createdAppOptions[0]?.runtimeConfig?.subagents?.alwaysBackground).toBe(false);
       expect(createdAppOptions[0]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(false);
       expect(createdAppOptions[0]?.runtimeConfig?.memory?.enabled).toBe(false);
       expect(createdAppOptions[0]?.runtimeConfig?.modelContextBudgetStrategy).toBe("preflight-v1");
@@ -4091,6 +4169,9 @@ describe("ZCodeProtocolAgentServer", () => {
       params: { workspace },
     });
     expect(oldHostOptions[0]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(true);
+    expect(oldHostOptions[0]?.runtimeConfig?.totalTokensReminder).toEqual({ enabled: false });
+    // 旧 Host 不知道 Agent 后台开关，按产品缺省开启。
+    expect(oldHostOptions[0]?.runtimeConfig?.subagents?.alwaysBackground).toBe(true);
     expect(oldHostOptions[0]?.runtimeConfig?.memory?.enabled).toBe(false);
     expect(oldHostOptions[0]?.runtimeConfig?.modelContextBudgetStrategy).toBe("preflight-v1");
 
@@ -4378,62 +4459,6 @@ describe("ZCodeProtocolAgentServer", () => {
         source: "user-config",
       },
     ]);
-  });
-
-  it("does not initialize an unavailable configured integrated terminal shell as the effective snapshot", async () => {
-    const createdAppOptions: ZCodeAppOptions[] = [];
-    const shellInitializations: unknown[] = [];
-    const unavailablePath = "Z:\\Missing\\Git\\bin\\bash.exe";
-    const server = new ZCodeProtocolAgentServer({
-      createZCodeApp: (options) =>
-        createShellRecordingFakeApp(options, shellInitializations, createdAppOptions),
-      cwd: workspace.workspacePath,
-      env: { PATH: "" },
-      platform: "win32",
-      version: "test-version",
-    });
-    attachSessionRuntimePreferencesResponder(server, (scope) => ({
-      nativeSearchEnhancementsEnabled: true,
-      ...(scope === "user-execution"
-        ? {
-            integratedTerminalShell: {
-              mode: "shell" as const,
-              dialect: "git-bash" as const,
-              id: `git-bash:${unavailablePath}`,
-              label: "Git Bash",
-              path: unavailablePath,
-            },
-          }
-        : {}),
-    }));
-
-    const created = zcodeSessionStateSnapshotSchema.parse(
-      await requestResult(server, {
-        id: 1,
-        method: zcodeProtocolMethods.sessionCreate,
-        params: {
-          workspace,
-        },
-      }),
-    );
-
-    await requestResult(server, {
-      id: 2,
-      method: zcodeProtocolMethods.sessionSend,
-      params: {
-        sessionId: created.session.sessionId,
-        inputId: "input_unavailable_shell",
-        content: "first prompt",
-      },
-    });
-
-    expect(createdAppOptions[0]?.runtimeConfig?.bashShellSelection).toBeUndefined();
-    expect(shellInitializations[0]).toMatchObject({
-      source: expect.not.stringMatching(/^user-config$/u),
-    });
-    expect((shellInitializations[0] as { path?: string } | undefined)?.path).not.toBe(
-      unavailablePath,
-    );
   });
 
   it("keeps an existing session on its first prompt shell when later sends carry a newer shell setting", async () => {
@@ -7672,10 +7697,14 @@ describe("ZCodeProtocolAgentServer", () => {
       });
       let toolSearchMode: "local" | "off" = "local";
       let systemPromptSettings: SystemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "PARENT_PROMPT" };
+      let totalTokensReminderEnabled = true;
+      let agentAlwaysBackgroundEnabled = false;
       const preferenceRequests = attachSessionRuntimePreferencesResponder(server, () => ({
         nativeSearchEnhancementsEnabled: false,
         toolSearchMode,
         systemPromptSettings,
+        totalTokensReminderEnabled,
+        agentAlwaysBackgroundEnabled,
         memoryEnabled: false,
         subagentRuntimeConfigEnabled: true,
         modelContextBudgetStrategy: "preflight-v1",
@@ -7742,6 +7771,8 @@ describe("ZCodeProtocolAgentServer", () => {
 
       toolSearchMode = "off";
       systemPromptSettings = { ...createDefaultSystemPromptSettings(), mode: "replace", replacement: "NEW_GLOBAL_PROMPT" };
+      totalTokensReminderEnabled = false;
+      agentAlwaysBackgroundEnabled = true;
       const result = zcodeSessionForkResultSchema.parse(
         await requestResult(server, {
           id: 6,
@@ -7772,6 +7803,8 @@ describe("ZCodeProtocolAgentServer", () => {
       expect(preferenceRequests).toHaveLength(1);
       expect(createdAppOptions[1]?.runtimeConfig?.toolSearch).toEqual({ mode: "local" });
       expect(createdAppOptions[1]?.runtimeConfig?.systemPromptSettings?.replacement).toBe("PARENT_PROMPT");
+      expect(createdAppOptions[1]?.runtimeConfig?.totalTokensReminder).toEqual({ enabled: true });
+      expect(createdAppOptions[1]?.runtimeConfig?.subagents?.alwaysBackground).toBe(false);
       expect(createdAppOptions[1]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(false);
       expect(createdAppOptions[1]?.runtimeConfig?.memory?.enabled).toBe(false);
       expect(createdAppOptions[1]?.runtimeConfig?.modelContextBudgetStrategy).toBe("preflight-v1");
@@ -7813,6 +7846,8 @@ describe("ZCodeProtocolAgentServer", () => {
       expect(createdAppOptions[2]?.readSubagentRuntimeConfig).toBeTypeOf("function");
       expect(preferenceRequests).toHaveLength(1);
       expect(createdAppOptions[2]?.runtimeConfig?.toolSearch).toEqual({ mode: "local" });
+      expect(createdAppOptions[2]?.runtimeConfig?.totalTokensReminder).toEqual({ enabled: true });
+      expect(createdAppOptions[2]?.runtimeConfig?.subagents?.alwaysBackground).toBe(false);
       expect(createdAppOptions[2]?.runtimeConfig?.nativeSearchEnhancementsEnabled).toBe(false);
       expect(createdAppOptions[2]?.runtimeConfig?.memory?.enabled).toBe(false);
       expect(createdAppOptions[2]?.runtimeConfig?.modelContextBudgetStrategy).toBe("preflight-v1");
@@ -8115,19 +8150,12 @@ function messageTexts(
   );
 }
 
-async function requestResult(server: ZCodeProtocolAgentServer, message: ZCodeProtocolMessage) {
-  const response = await server.handleMessage(message);
-  if (!response || !("result" in response)) {
-    throw new Error(`Expected protocol success response: ${JSON.stringify(response)}`);
-  }
-  return response.result;
-}
-
 function setTestNotificationSink(
   server: ZCodeProtocolAgentServer,
   sink: Parameters<ZCodeProtocolAgentServer["setNotificationSink"]>[0],
 ): void {
   server.setNotificationSink((message) => {
+    if (answerReplyLanguageRequest(server, message)) return;
     if (
       "id" in message &&
       message.method === zcodeProtocolMethods.sessionRequestRuntimePreferences
@@ -8142,45 +8170,6 @@ function setTestNotificationSink(
   });
 }
 
-function attachSessionRuntimePreferencesResponder(
-  server: ZCodeProtocolAgentServer,
-  resolvePreferences: (scope: "runtime-materialization" | "user-execution") => {
-    nativeSearchEnhancementsEnabled: boolean;
-    toolSearchMode?: "auto" | "local" | "off";
-    memoryEnabled?: boolean;
-    systemPromptSettings?: SystemPromptSettings;
-    subagentRuntimeConfigEnabled?: boolean;
-    modelContextBudgetStrategy?: "legacy" | "preflight-v1";
-    integratedTerminalShell?:
-      | {
-          mode: "auto";
-        }
-      | {
-          mode: "shell";
-          dialect: "git-bash" | "cmd";
-          id: string;
-          label: string;
-          path: string;
-        };
-  },
-): ZCodeProtocolMessage[] {
-  const requests: ZCodeProtocolMessage[] = [];
-  server.setNotificationSink((message) => {
-    if (
-      "id" in message &&
-      message.method === zcodeProtocolMethods.sessionRequestRuntimePreferences
-    ) {
-      requests.push(message);
-      const scope = (message.params as { scope: "runtime-materialization" | "user-execution" })
-        .scope;
-      void server.handleMessage({
-        id: message.id,
-        result: resolvePreferences(scope),
-      });
-    }
-  });
-  return requests;
-}
 
 interface RecordedLog {
   context: Record<string, unknown>;
@@ -8391,66 +8380,6 @@ function createProtocolPendingAuthorizationMcpPort(
     },
     async status() {
       return statuses;
-    },
-  };
-}
-
-type ShellInitializationCandidate = Parameters<
-  ZCodeApp["runtime"]["initializeSessionShellEnvironmentIfNeeded"]
->[0];
-
-function resolveShellInitializationCandidate(
-  candidate: ShellInitializationCandidate,
-): ExecutionShellSelection {
-  return typeof candidate === "function" ? candidate() : candidate;
-}
-
-function createShellRecordingFakeApp(
-  options: ZCodeAppOptions,
-  shellInitializations: unknown[],
-  createdAppOptions?: ZCodeAppOptions[],
-): ZCodeApp {
-  createdAppOptions?.push(options);
-  const app = createFakeApp(options);
-  let effectiveShellSelection = options.runtimeConfig?.bashShellSelection;
-  let shellInitialized = effectiveShellSelection !== undefined;
-  let shellInitializationPromise: Promise<void> | undefined;
-  const recordShellInitialization = (selection: ShellInitializationCandidate) => {
-    if (shellInitialized) {
-      return false;
-    }
-    const resolvedSelection = resolveShellInitializationCandidate(selection);
-    effectiveShellSelection = resolvedSelection;
-    shellInitialized = true;
-    shellInitializations.push(resolvedSelection);
-    return true;
-  };
-  const initializeFromStartupPreferences = async () => {
-    if (shellInitialized) {
-      return;
-    }
-    shellInitializationPromise ??= (async () => {
-      const selection = await options.resolveInitialBashShellSelection?.();
-      if (selection) {
-        recordShellInitialization(selection);
-      }
-    })();
-    await shellInitializationPromise;
-  };
-  return {
-    ...app,
-    resume: async (resumeOptions) => {
-      await initializeFromStartupPreferences();
-      return app.resume(resumeOptions);
-    },
-    runtime: {
-      ...app.runtime,
-      getSessionShellSelection: () => effectiveShellSelection,
-      initializeSessionShellEnvironmentIfNeeded: recordShellInitialization,
-    } as never,
-    sendInput: async (input, sendOptions) => {
-      await initializeFromStartupPreferences();
-      return app.sendInput(input, sendOptions);
     },
   };
 }

@@ -4,9 +4,16 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createDefaultSystemPromptSettings,
+  SYSTEM_PROMPT_SECTION_IDS,
+  type Locale,
   type SystemPromptCatalog,
   type SystemPromptSettings,
 } from "@zcode/shared";
+import { LOCALE_MESSAGES } from "@/i18n/localeMessages.js";
+import zhCN from "@/i18n/locales/zh-CN.js";
+import jaJP from "@/i18n/locales/ja-JP.js";
+import koKR from "@/i18n/locales/ko-KR.js";
+import ruRU from "@/i18n/locales/ru-RU.js";
 vi.mock("@/i18n/IntlProvider.js", () => ({
   useZCodeIntl: () => ({ intl: { formatMessage: ({ id }: { id: string }) => id } }),
 }));
@@ -212,5 +219,34 @@ describe("system prompt editor", () => {
     expect((screen.getByTestId("system-prompt-chapter-content") as HTMLTextAreaElement).value).toBe(
       "SAVED_RULE",
     );
+  });
+  it("provides 5-locale labels for all 19 chapters and navigation chrome without English leakage, plus complete zh-CN/en-US systemPrompt i18n parity", () => {
+    const locales: readonly Locale[] = ["zh-CN", "en-US", "ja-JP", "ko-KR", "ru-RU"];
+    const navKeys = [
+      "settings.systemPrompt.title",
+      "settings.systemPrompt.chapters",
+      "settings.systemPrompt.modified",
+      "settings.systemPrompt.customChapters",
+      "settings.systemPrompt.editor.ruleChapters",
+      "settings.systemPrompt.editor.generatedChapters",
+      ...SYSTEM_PROMPT_SECTION_IDS.map((id) => `settings.systemPrompt.chapter.${id}`),
+    ];
+    for (const key of navKeys) {
+      for (const locale of locales) {
+        expect(LOCALE_MESSAGES[locale][key]).toBeTruthy();
+        expect(LOCALE_MESSAGES[locale][key]).not.toBe(key);
+      }
+      for (const dict of [zhCN, jaJP, koKR, ruRU]) {
+        expect(dict[key]).toBeTruthy();
+        expect(dict[key]).not.toBe(LOCALE_MESSAGES["en-US"][key]);
+      }
+    }
+    const zhPromptKeys = Object.keys(LOCALE_MESSAGES["zh-CN"])
+      .filter((key) => key.startsWith("settings.systemPrompt."))
+      .sort();
+    const enPromptKeys = Object.keys(LOCALE_MESSAGES["en-US"])
+      .filter((key) => key.startsWith("settings.systemPrompt."))
+      .sort();
+    expect(enPromptKeys).toEqual(zhPromptKeys);
   });
 });

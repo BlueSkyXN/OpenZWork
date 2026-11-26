@@ -508,7 +508,7 @@ class FakeHttpClient implements HttpClientPort {
   }
 }
 
-function jsonResponse(body: unknown): HttpClientResponse {
+function jsonResponse(body: unknown, init: { status?: number } = {}): HttpClientResponse {
   const encoded = new TextEncoder().encode(JSON.stringify(body));
   return {
     body: encoded,
@@ -517,8 +517,8 @@ function jsonResponse(body: unknown): HttpClientResponse {
     headers: {
       "content-type": "application/json",
     },
-    status: 200,
-    statusText: "OK",
+    status: init.status ?? 200,
+    statusText: init.status && init.status >= 400 ? "Bad Request" : "OK",
     url: "https://zcode.example/api/v1",
   };
 }

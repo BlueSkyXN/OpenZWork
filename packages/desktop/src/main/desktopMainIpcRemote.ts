@@ -20,6 +20,7 @@ import {
   type WebRemoteControlIpcManager,
 } from "./desktopWebRemoteControlIpc.js";
 import { openFileUrlInDefaultApp, openPathInDefaultApp } from "./desktopMainIpcHelpers.js";
+import type { ConfirmExecutableFileOpen } from "@desktop/main/file-open-apps/index.js";
 
 function isPublicRemoteReasonCode(code: string | undefined): code is string {
   // Bug 原因：前缀 OR 形成第二份公开码真源，任何内部 source-server-* 字符串都会穿透
@@ -98,6 +99,8 @@ export function registerRemoteIpcHandlers(options: {
     warn: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
   };
+  /** 系统默认打开可执行类文件前的用户确认（见 file-open-apps/executableOpenGuard）。 */
+  confirmExecutableFileOpen: ConfirmExecutableFileOpen;
   webRemoteControlManager: WebRemoteControlIpcManager;
   createRemoteWorkspaceSession: (
     win: BrowserWindow,
@@ -173,7 +176,7 @@ export function registerRemoteIpcHandlers(options: {
     }
     // 净化购买跳转逻辑时误删了通用 file URL 分流；按上游保留路径解码和本地打开入口。
     if (new URL(url).protocol === "file:") {
-      void openFileUrlInDefaultApp(url, options.logger);
+      void openFileUrlInDefaultApp(url, options.logger, options.confirmExecutableFileOpen);
       return;
     }
     void Promise.resolve(shell.openExternal(url)).catch((error: unknown) => {
@@ -185,7 +188,7 @@ export function registerRemoteIpcHandlers(options: {
   });
 
   ipcMain.handle(PlatformChannels.OpenExternalFile, async (_event, rawPath: string) =>
-    openPathInDefaultApp(rawPath, options.logger),
+    openPathInDefaultApp(rawPath, options.logger, options.confirmExecutableFileOpen),
   );
 
   ipcMain.on(PlatformChannels.RendererReady, (event) => {

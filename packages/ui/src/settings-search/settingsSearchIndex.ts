@@ -79,18 +79,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     visibility: "desktop",
   },
   {
-    id: "settings.receivePreviewUpdates",
-    section: "general",
-    description: "settings.receivePreviewUpdatesDescription",
-    visibility: "desktop",
-  },
-  {
-    id: "settings.autoDownloadAndInstallUpdates",
-    section: "general",
-    description: "settings.autoDownloadAndInstallUpdatesDescription",
-    visibility: "desktop",
-  },
-  {
     id: "settings.notification",
     section: "general",
     description: "settings.notificationDescription",
@@ -101,12 +89,6 @@ export const SETTINGS_SEARCH_ITEMS = [
     section: "general",
     description: "settings.notificationSoundDescription",
     visibility: "all",
-  },
-  {
-    id: "settings.mobilePush",
-    section: "general",
-    description: "settings.mobilePushDescription",
-    visibility: "desktop",
   },
   {
     id: "settings.closeToTrayOnWindows",
@@ -142,6 +124,25 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "settings.nativeSearchEnhancements",
     section: "agentBehavior",
     description: "settings.nativeSearchEnhancementsDescription",
+    visibility: "all",
+  },
+  {
+    id: "settings.totalTokensReminder",
+    section: "agentBehavior",
+    description: "settings.totalTokensReminderDescription",
+    visibility: "all",
+  },
+  {
+    id: "settings.agentAlwaysBackground",
+    section: "agentBehavior",
+    description: "settings.agentAlwaysBackgroundDescription",
+    visibility: "all",
+  },
+  {
+    // Web 远控也能搜到：该行在 Web 上显示本机提示。
+    id: "settings.replyLanguage",
+    section: "agentBehavior",
+    description: "settings.replyLanguageDescription",
     visibility: "all",
   },
   {

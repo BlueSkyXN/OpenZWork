@@ -4,6 +4,9 @@ import { DatabaseSync } from "node:sqlite";
 import { chromium } from "playwright-core";
 import { TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
 import { join, basename } from "node:path";
+import { projectDeletionFlagsMatch } from "#e2e/helpers/project-sidebar";
+import { isE2EHomeDirName } from "#e2e/helpers/e2e-runtime-paths";
+import { e2eMobileBrowserLaunchOptions } from "#e2e/helpers/e2e-mobile-browser-executable";
 import { obtainUnreadPairingUrl } from "#e2e/helpers/web-remote-unread";
 import { openMobilePairingPage, seedMobileFixtureLogin } from "#e2e/helpers/mobile-pairing";
 import { restartIntoWorkspacePreservingProfile } from "#e2e/helpers/model-provider-restart-runtime";
@@ -91,11 +94,18 @@ async function openProjectEditor(id: string) {
 
 describe("项目管理", () => {
   let pairingUrl: string;
+  let testWindow: { id: number; throttled: boolean } | undefined;
   before(async function () {
     this.timeout(60000);
-    // 修复原因：转正后默认 formal 单跑使用 `.e2e-home`（无 runId 后缀），旧守卫只认
-    // `.e2e-home-`，会让正式用例在隔离 HOME 下误报。两种目录名都只存在于 E2E runner。
-    if (!home || !/^(?:zcode-project-management-e2e-|\.e2e-home(?:-|$))/u.test(basename(home)))
+    // 修复原因：旧守卫只认 `.e2e-home-` 前缀，Windows CI 未设 ZCODE_E2E_HOME_DIR 时默认 HOME 是
+    // `.e2e-home`，before 直接抛错。统一用 isE2EHomeDirName，只接受 `.e2e-home` 与 `.e2e-home-*`。
+    if (
+      !home ||
+      !(
+        isE2EHomeDirName(basename(home)) ||
+        basename(home).startsWith("zcode-project-management-e2e-")
+      )
+    )
       throw new Error("isolated project management HOME required");
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE, {
@@ -179,10 +189,35 @@ describe("项目管理", () => {
     });
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     await setLocaleAndTheme("zh-CN", "zai-light");
+    // OW-P052：冷重启会换窗口。后台渲染页可能停住关闭动画，留下仍拦截点击的遮罩。
+    testWindow = await browser.electron.execute((electron, rendererUrl) => {
+      const win = electron.BrowserWindow.getAllWindows().find(
+        (candidate) => !candidate.isDestroyed() && candidate.webContents.getURL() === rendererUrl,
+      );
+      if (!win) throw new Error("Project management test window not found");
+      const throttled = win.webContents.getBackgroundThrottling();
+      if (win.isMinimized()) win.restore();
+      electron.app.focus({ steal: true });
+      win.show();
+      win.focus();
+      win.webContents.focus();
+      win.webContents.setBackgroundThrottling(false);
+      return { id: win.id, throttled };
+    }, await browser.getUrl());
+    await browser.waitUntil(() => browser.execute(() => document.visibilityState === "visible"), {
+      timeoutMsg: "The restarted project management window did not become visible",
+    });
     // 在进入设置前从首页配对；设置页和首页各有 footer，不能用全局定位器猜测当前入口。
     pairingUrl = await obtainUnreadPairingUrl(
       new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
     );
+  });
+
+  after(async () => {
+    if (!testWindow) return;
+    await browser.electron.execute((electron, original) => {
+      electron.BrowserWindow.fromId(original.id)?.webContents.setBackgroundThrottling(original.throttled);
+    }, testWindow);
   });
 
   it("PJM01：侧栏更多菜单与设置导航都进入项目管理页，页头说明移除后果", async () => {
@@ -236,11 +271,14 @@ describe("项目管理", () => {
     await $('[data-testid="virtual-project-name"]').waitForExist({ reverse: true });
     await expect(row("pjm-active")).toHaveText(expect.stringContaining("PJM 编辑完成"));
     await expect(row("pjm-active").$("span[title]")).toHaveAttribute("title", "PJM 编辑完成");
-    await expect(row("pjm-active").$(`span[title="${editRoot()}"]`)).toBeDisplayed();
+    // 修复原因：Windows 下 editRoot 是 `C:\...` 路径，CSS 属性字符串里的 `\` 会被当作转义，
+    // 选择器永远不匹配（PJM08 Windows CI 失败）；按 CSS 字符串规则转义 `\` 与 `"`。
+    const editRootTitle = editRoot().replace(/[\\"]/g, "\\$&");
+    await expect(row("pjm-active").$(`span[title="${editRootTitle}"]`)).toBeDisplayed();
     await $('[data-project-name="PJM 编辑完成"]').waitForExist();
     await expect(row("pjm-keep")).toHaveText(expect.stringContaining("PJM 保留"));
     expect(readTaskProject("pjm-active-task")).toBe("pjm-active");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), { readOnly: true });
     try {
       expect(
         db.prepare("SELECT root_path FROM tasks WHERE task_id='pjm-active-task'").get(),
@@ -289,7 +327,7 @@ describe("项目管理", () => {
     );
   });
 
-  it("PJM03：确认对话框按设备拆分，确认后软删除且会话归属不变", async () => {
+  it("PJM03/PJM04：按设备确认批量移除，在结果提示中撤销本批项目并保留会话归属", async () => {
     await $('[data-testid="project-management-remove"]').click();
     const dialog = $('[data-testid="project-management-confirm"]');
     await dialog.waitForDisplayed();
@@ -300,33 +338,40 @@ describe("项目管理", () => {
     await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM03-confirm.png"));
     await dialog.$('[data-testid="project-management-confirm-remove"]').click();
     await dialog.waitForExist({ reverse: true });
-    await browser.waitUntil(() => readProjects()["pjm-idle"] === 1);
-    expect(readProjects()).toMatchObject({
+    // OW-P051：先完成的项目不能代表整批移除或撤销已经落盘。
+    const removed = {
       "pjm-missing": 1,
       "pjm-idle": 1,
       "pjm-empty": 1,
       "pjm-keep": 0,
       "pjm-pinned": 0,
       "pjm-active": 0,
+    };
+    await browser.waitUntil(() => projectDeletionFlagsMatch(readProjects(), removed), {
+      timeoutMsg: "移除后的项目状态未全部写入",
     });
     // 软删除只拿掉容器：会话仍归属原项目，侧栏不再显示被移除的项目。
     expect(readTaskProject("pjm-idle-task")).toBe("pjm-idle");
     await $('[data-project-name="PJM 久未使用"]').waitForExist({ reverse: true });
     await expect(row("pjm-keep")).toBeDisplayed();
     expect(await $('[data-testid="project-management-selection-bar"]').isExisting()).toBe(false);
-  });
-
-  it("PJM04：toast 撤销只恢复本批项目", async () => {
+    // OW-P052：撤销入口在结果提示消失前有效，连续核对同一批次，避免用例间清理耗尽操作时间。
     const undo = $("button=撤销");
-    await undo.waitForDisplayed();
+    await undo.waitForClickable();
     await undo.click();
-    await browser.waitUntil(() => readProjects()["pjm-idle"] === 0);
-    expect(readProjects()).toMatchObject({
+    const restored = {
       "pjm-missing": 0,
       "pjm-idle": 0,
       "pjm-empty": 0,
+      "pjm-keep": 0,
+      "pjm-pinned": 0,
+      "pjm-active": 0,
       "pjm-removed": 1,
+    };
+    await browser.waitUntil(() => projectDeletionFlagsMatch(readProjects(), restored), {
+      timeoutMsg: "撤销后的项目状态未全部写入",
     });
+    expect(readTaskProject("pjm-idle-task")).toBe("pjm-idle");
     await $('[data-project-name="PJM 久未使用"]').waitForExist();
   });
 
@@ -495,10 +540,11 @@ describe("项目管理", () => {
 
   it("PJM09：手机远控从项目管理编辑，共享 Host 保存后桌面同步", async function () {
     this.timeout(120_000);
+    // 修复原因：浏览器子进程继承 wdio 改写的 USERPROFILE，Windows 版 Chrome 启动即报
+    // "DevTools remote debugging requires a non-default data directory"（PJM09 Windows CI）；
+    // 复用共享启动选项还原真实用户目录。
     const mobile = await chromium.launch({
-      ...(process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE
-        ? { executablePath: process.env.ZCODE_E2E_MOBILE_BROWSER_EXECUTABLE }
-        : { channel: "chrome" }),
+      ...e2eMobileBrowserLaunchOptions(),
       headless: true,
     });
     try {

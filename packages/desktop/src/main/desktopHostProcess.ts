@@ -1,10 +1,10 @@
-import type { HostQuitBlocker, HostRemoteConversationTelemetryResponse } from "@zcode/shared";
+import type { HostQuitBlocker } from "@zcode/shared";
 import {
   createSystemCredentialCipher,
   executeCredentialCipherRequest,
 } from "@zcode/shared/credential-security";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
-import { getAppConfigDir } from "@zcode/services/node";
+import { getCredentialsFilePath } from "@zcode/services/node";
 import { bindAppControlNavigationHost } from "#src/app-control-navigation/main.js";
 /* eslint-disable max-lines -- host process 统一处理 main↔host 生命周期、日志、ZCode Agent，拆分前先保持跨进程消息收口。 */
 import {
@@ -89,8 +89,12 @@ export interface HostInitMessage {
   }>;
   agentSpawnFallbackCwd?: string;
   remoteAssets?: RemoteAssetDirs;
+  /** Main 持有的 Agent 回复语言（null 为未设置）；后续变化由 reply-language-changed 推送。 */
+  replyLanguage: string | null;
   /** Main 解析后的 ZCode Built-in Provider Config 路径；Host/Services 不感知 Electron 安装布局。 */
   zcodeBuiltinProviderConfigFilePath: string;
+  /** Main 将在本地目录清单解析完成后投递可下载状态。 */
+  preinstalledToolsTargetPending?: boolean;
   /** Main 提前异步采集并过滤的本机 runtime 环境；只允许传给 InitLocal。 */
   runtimeProcessEnvPatch?: Record<string, string>;
 }
@@ -169,6 +173,7 @@ export function spawnHostProcess(
   initMessage: HostInitMessage,
   dependencies: {
     hostProcessLocalEnv: Record<string, string>;
+    preinstalledToolsDownloadTarget?: Promise<boolean>;
     /** Main 进程已完成服务端灰度裁决；Host 只消费这个快照，不自行请求或分桶。 */
     desktopContextPromptEnabled?: () => boolean;
     logger: {
@@ -267,9 +272,8 @@ export function spawnHostProcess(
 ): ElectronUtilityProcess {
   const hostId = randomUUID();
   // 系统库只由 Main 访问；路径在 fork 时绑定，Host 不能指定其他凭据目录。
-  const credentialCipher = createSystemCredentialCipher({
-    filePath: join(getAppConfigDir(), "credentials.json"),
-  });
+  // 与 Host 凭据服务共用同一路径解析入口，保证 Main 绑定的 cipher 与 Host 读写的文件一致。
+  const credentialCipher = createSystemCredentialCipher({ filePath: getCredentialsFilePath() });
   const glmBinaryPath = resolveBundledGlmBinaryPath();
   const execArgv = [
     ...(RUNTIME_ZCODE_DEBUG ? [`--inspect-brk=${RUNTIME_ZCODE_DEBUG}`] : []),
@@ -610,6 +614,18 @@ export function spawnHostProcess(
         deliveryKind: options?.taskRealtime?.deliveryKind,
       }
     : { ...initMessage, databaseStartupId: databaseStartupRelay.startupId };
+
+  if (dependencies.preinstalledToolsDownloadTarget) {
+    // OpenZWork(OZ-C015)：先发送 InitLocal，清单就绪后只发判定结果；Host 启动与工具进程初始化独立。
+    hostInitMessage.preinstalledToolsTargetPending = true;
+    void dependencies.preinstalledToolsDownloadTarget
+      .then((hasTarget) => {
+        if (!exitedHostProcesses.has(child)) {
+          child.postMessage({ type: HostMessageTypes.PreinstalledToolsDownloadTarget, hasTarget });
+        }
+      })
+      .catch((error: unknown) => dependencies.logger.warn("[preinstalled-tools] Host capability delivery failed", error));
+  }
 
   if (options?.attachInitialServicePort === false) {
     child.postMessage(hostInitMessage);

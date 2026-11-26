@@ -18,14 +18,8 @@ import {
   type SeedReplayProviderModel,
 } from "./model-provider-restart-config.js";
 import { getV4DraftThoughtState } from "./v4-conversation.js";
-import { skipOccupationOnboardingIfPresent } from "./occupation-onboarding.js";
 
 const paths = getE2EAppDataPaths();
-const SETTINGS_FILE = join(paths.appDataDir, "setting.json");
-const CREDENTIALS_FILE = paths.credentialsFile;
-// 设备级引导记录跟随 dataBaseDir，E2E 隔离 HOME 下即 appDataDir。
-const ONBOARDING_RECORD_FILE = join(paths.appDataDir, "onboarding-record.json");
-const BIGMODEL_E2E_USER_ID = "bigmodel-e2e-user";
 async function currentComposerRecentKey(): Promise<string> {
   return browser.execute((workspacePath) => {
     // 首次草稿可能尚无导航缓存；直接读当前草稿 owner，不能用旧 workspace 键或猜测项目。
@@ -50,6 +44,7 @@ export async function seedReplayProvider(params: {
   id: string;
   models: readonly SeedReplayProviderModel[];
   name: string;
+  templateId?: string;
 }) {
   const baseURL = params.baseURL ?? (await resolveSeededReplayBaseUrl());
   if (!baseURL) {
@@ -58,6 +53,7 @@ export async function seedReplayProvider(params: {
   const provider: PersonalProviderConfigSeed = {
     id: params.id,
     label: params.name,
+    ...(params.templateId ? { templateId: params.templateId } : {}),
     // 内建 account provider 的模型规则按 anthropic-messages 匹配；若用 OpenAI Chat Completions
     // 格式覆盖连接配置，GLM builtin model rules 不会命中，模型在 Registry 中
     // 会因缺少完整 option/properties 被过滤，UI 菜单就看不到该计划模型。

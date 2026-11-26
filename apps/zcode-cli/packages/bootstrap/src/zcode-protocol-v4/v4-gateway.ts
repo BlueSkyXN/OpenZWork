@@ -54,7 +54,10 @@ import { SessionsIndexPublisher } from "./sessions-index-publisher.js";
 import { SessionsIndexPublisherRegistry } from "./sessions-index-publisher-registry.js";
 import { WorkspaceConfigPublisher } from "./workspace-config-publisher.js";
 import type { TopicFrameReservation } from "./topic-frame-reservation.js";
-import { ConversationTelemetryFactNormalizer } from "./conversation-telemetry-facts.js";
+import {
+  ConversationTelemetryFactNormalizer,
+  PluginDiscoveryFactNormalizer,
+} from "./conversation-telemetry-facts.js";
 import { V4CapabilityUnsupportedError } from "./commands/handlers/interaction-background.js";
 
 function toRuntimeTurnId(turnId: string | null): TurnId | null {
@@ -83,6 +86,7 @@ interface PersistedEventsLoadResult {
   synthesized: boolean;
   /** durable transcript 重放后、live buffer 补回前注入的 store-verified child manifest。 */
   subagentsSeed?: SessionSubagentsSeed;
+  workflowActivityHistory?: import("@zcode/contracts").DynamicWorkflowActivityHistory | null;
   /** shared_context 不生成可见 row；只把脱敏 handover metadata 下发。 */
   sharedContextImport?: ConversationSnapshot["sharedContextImport"];
   /** memory eventStore 取快照时已包含的 raw sequence 水位。 */
@@ -143,6 +147,10 @@ export interface V4GatewayHost {
   emitWireFrame(frame: RoutedTopicWireFrame): void;
   /** 当前进程 live ingest 的无正文事实；不缓存、不进入 topic replay。 */
   emitConversationTelemetryFact?(fact: ConversationTelemetryFact): void;
+  /** 接纳归属在原版 started 后独立通知，不扩展旧 strict fact。 */
+  emitTurnAdmissionTelemetry?(
+    fact: import("@zcode/shared/zcode-protocol-v4").TurnAdmissionTelemetry,
+  ): void;
   /** 当前进程 live 的模型请求指标；独立通知，不进 telemetry fact union。 */
   emitModelRequestMetrics?(
     fact: import("@zcode/shared/zcode-protocol-v4").ModelRequestMetricsFact,
@@ -579,6 +587,7 @@ export class ConversationV4Gateway {
   private readonly now: () => number;
   private readonly createLogEpoch: (sessionId: string) => string;
   private readonly telemetryNormalizer = new ConversationTelemetryFactNormalizer();
+  private readonly pluginDiscoveryNormalizer = new PluginDiscoveryFactNormalizer();
   private readonly telemetryEventIds = new Set<string>();
   private disposed = false;
 
@@ -833,6 +842,8 @@ export class ConversationV4Gateway {
       if (fact) {
         this.host.emitConversationTelemetryFact?.(fact);
       }
+      const admission = this.telemetryNormalizer.normalizeTurnAdmission(sessionId, event);
+      if (admission) this.host.emitTurnAdmissionTelemetry?.(admission);
       const metrics = this.telemetryNormalizer.normalizeModelRequestMetrics(sessionId, event, {
         memoryEnabled: this.host.getSessionMemoryEnabled?.(sessionId),
       });
@@ -840,6 +851,13 @@ export class ConversationV4Gateway {
     } catch (error) {
       // 轮次事实绝不能反向阻断 conversation 投影；严格 schema 失败只记录诊断。
       this.host.onError?.("v4.telemetry.normalize", error);
+    }
+    try {
+      // 同一事件可同时产生工具事实与插件推荐事实；后者由桌面 Host 单点转成插件业务埋点。
+      const pluginFact = this.pluginDiscoveryNormalizer.normalize(sessionId, event);
+      if (pluginFact) this.host.emitConversationTelemetryFact?.(pluginFact);
+    } catch (error) {
+      this.host.onError?.("v4.telemetry.pluginDiscovery", error);
     }
   }
 
@@ -3417,7 +3435,9 @@ export class ConversationV4Gateway {
     if (loaded.sharedContextImport) {
       publisher.seedSharedContextImport(loaded.sharedContextImport);
     }
-    if (loaded.subagentsSeed) publisher.seedSubagents(loaded.subagentsSeed);
+    if (loaded.subagentsSeed || loaded.workflowActivityHistory !== undefined) {
+      publisher.seedSubagents(loaded.subagentsSeed, loaded.workflowActivityHistory);
+    }
     // 同次恢复的种子先应用，再补 live buffer；较新的使用量和选模事件始终获胜。
     if (loaded.usageSeed) publisher.seedUsage(loaded.usageSeed);
     const sourceEventSeq = Math.max(

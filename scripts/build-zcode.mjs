@@ -10,6 +10,7 @@ import {
   patchNodePtyPrebuilds,
   stageTuiRuntime,
   stageBundledSkills,
+  stageOfficialPlugins,
   tarSupportsForceLocal,
   tarCreateArgs,
 } from "./zcode-distribution/assets.mjs";
@@ -159,7 +160,8 @@ async function buildOutputs(skipBuild) {
     return;
   }
 
-  run("pnpm", ["--filter", "@zcode/cli...", "build"]);
+  // OpenZWork(OZ-F011)：干净检出必须先构建 @zcode/shared、@zcode/session-control、@zcode/tui 与官方插件产物。
+  run("pnpm", ["run", "build:sea:prepare"]);
   await rm(resolve(root, "packages", "server", "dist"), {
     force: true,
     recursive: true,
@@ -207,6 +209,7 @@ async function stageZCodePackage({ packageRoot, version, platformArchive }) {
   await chmod(resolve(packageRoot, "agent", "zcode.cjs"), 0o755);
 
   await stageBundledSkills(packageRoot);
+  await stageOfficialPlugins(packageRoot);
   // OpenZWork(OZ-F011)：Release 按主机原生 ABI 打包，自托管下载目录沿用原布局。
   const runtimeTarget = platformArchive ? process.platform + "-" + process.arch : undefined;
   await stageTuiRuntime(packageRoot, platformArchive ? [hostTarget()] : undefined);

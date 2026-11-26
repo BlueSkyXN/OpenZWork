@@ -187,7 +187,7 @@ export const ConversationMetricsBar = memo(function ConversationMetricsBar(
         }}
       />
       {expanded ? (
-        <div id={id} className="max-h-72 overflow-y-auto overscroll-contain pt-2">
+        <div id={id} className="max-h-40 sm:max-h-72 overflow-y-auto overscroll-contain pt-2">
           <MetricsExpanded key={scope} {...props} />
         </div>
       ) : null}

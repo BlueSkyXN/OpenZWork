@@ -1,4 +1,5 @@
 /* eslint-disable max-lines -- rewind message primitive 与 cascade 封装共享 conversation/workspace 语义，避免拆分时误改原 /rewind 行为。 */
+import { mainSessionIncludesSkillsListing } from "../../context/prompt-settings/contract.js";
 import {
   RewindScope,
   RewindStrategy,
@@ -40,7 +41,7 @@ import type {
   WorkspaceRewindResult,
 } from "../types.js";
 import type { AgentRuntimeInternal } from "../internal.js";
-import { rebuildContextPrefix, refreshRestoredAnnouncements } from "./context-refresh.js";
+import { rebuildContextPrefix } from "./context-refresh.js";
 import { mainTurnCacheHitAggregateFromMessages } from "./turn-model-step-usage.js";
 
 export async function rewindToMessage(
@@ -393,6 +394,7 @@ type ConversationRewindPlan =
       kind: "available";
       persistedMessages: MessageWithParts[];
       removedTurnIds: string[];
+      removedMessageIds: string[];
       rewindId: string;
     }
   | {
@@ -531,6 +533,7 @@ async function buildConversationRewindPlan(
     keptMessages: activeMessages.slice(0, targetIndex),
     kind: "available",
     persistedMessages,
+    removedMessageIds: activeMessages.slice(targetIndex).map((message) => String(message.info.id)),
     removedTurnIds: activeMessages
       .slice(targetIndex)
       .flatMap((message) =>
@@ -558,6 +561,7 @@ async function applyConversationRewindPlan(
     keptMessages,
     persistedMessages,
     removedTurnIds,
+    removedMessageIds,
     rewindId,
   } = options.plan;
   await cancelRemovedBranchBackgroundTasks.call(this, {
@@ -599,6 +603,8 @@ async function applyConversationRewindPlan(
       compactBoundaryId: evaluation.compactBoundaryId,
       branchCutAfterMessageId,
       branchGeneration,
+      // 完整 child 身份可能没有投影行；用已提交分支的实际后缀证明哪些来源被撤销。
+      removedMessageIds,
       reason: evaluation.reason,
     },
     options.traceContext,
@@ -692,6 +698,7 @@ async function rebuildConversationDerivedState(
   // branch 重建，避免 compact/microcompact/read cache 或 provider usage 泄漏旧分支。
   this.messageHistory.reset();
   await hydrateMessageHistoryFromSession({
+    includeSkillsListing: mainSessionIncludesSkillsListing(this.config),
     artifactStore: this.artifactStore,
     history: this.messageHistory,
     messages: options.persistedMessages,
@@ -707,7 +714,6 @@ async function rebuildConversationDerivedState(
     ...branchOptions,
   });
   rebuildContextPrefix(this);
-  refreshRestoredAnnouncements(this);
   this.injectTargetStateIntoMessageHistory(
     await this.readSessionTargetForContext(options.traceContext),
   );

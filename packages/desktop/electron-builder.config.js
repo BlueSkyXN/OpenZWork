@@ -45,6 +45,7 @@ import {
   patchNsisInstallUtilFile,
   restoreNsisInstallSectionFileSync,
 } from "./scripts/patch-nsis-install-section.mjs";
+import { createWindowsPowerShellSecurityArgs } from "./scripts/powershell-command.mjs";
 
 const buildMetadata = getBuildMetadata();
 const desktopVersion = getDesktopVersion(buildMetadata.appVersion);
@@ -85,6 +86,8 @@ const shouldEnableMacSigning =
   process.env.ZCODE_ENABLE_MAC_SIGN === "1" && Boolean(macSigningIdentity);
 const workspaceRoot = resolve(import.meta.dirname, "../..");
 const desktopPackageRoot = import.meta.dirname;
+// 预装工具的 Windows 入口 shim 会被复制到用户的预装 bin 目录，由 Agent 直接运行，必须与 App 同一签名。
+const PREINSTALLED_ENTRY_SHIM = "preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe";
 const runtimeModuleLookupRoots = [
   desktopPackageRoot,
   workspaceRoot,
@@ -216,25 +219,13 @@ function assertPackagedMacElectronLocales(context) {
   }
 }
 
-function assertPackagedCuaHelper(context) {
-  if (targetPlatform.os !== "darwin" || !shouldPackageComputerUseHelper) return;
-  const appPath = join(
-    context.appOutDir,
-    `${desktopProductIdentity.productName}.app`,
-    "Contents",
-    "Resources",
-    "cua-helper",
-    HELPER_APP_NAME,
-  );
-  if (!existsSync(appPath)) {
-    throw new Error(`Packaged ZCode is missing bundled Computer Use Helper: ${appPath}`);
-  }
-}
+// OpenZWork(OZ-D005)：Computer Use Helper 已裁剪，不保留死断言函数。
 // 上游 v3.18.1：Windows Chrome 导入入口隐藏后默认不携带/签名/校验原生 helper，
 // 供应链保留在显式 opt-in（ZCODE_ENABLE_WINDOWS_BROWSER_IMPORT=1）后。
 const shouldPackageWindowsBrowserImportHelper =
   targetPlatform.os === "win32" && process.env.ZCODE_ENABLE_WINDOWS_BROWSER_IMPORT === "1";
 const HELPER_FILENAME = "zcode-browser-import-helper.exe";
+const BROWSER_IMPORT_HELPER = `browser-import/${HELPER_FILENAME}`;
 const shouldEnableWindowsVsign =
   process.platform === "win32" && process.env.ZCODE_ENABLE_WINDOWS_SIGN === "1";
 const commandStdoutMaxBuffer = 64 * 1024 * 1024;
@@ -734,7 +725,17 @@ export default {
     }
     if (shouldPackageWindowsBrowserImportHelper) {
       runTimedSync("afterPack:signWindowsBrowserImportHelper", () =>
-        signWindowsHelper(context, `browser-import/${HELPER_FILENAME}`),
+        signWindowsHelper(context, BROWSER_IMPORT_HELPER),
+      );
+    }
+    if (targetPlatform.os === "win32") {
+      // extraResources 缺源文件时 electron-builder 不报错；没有 shim，Windows 预装入口全部无法写入。
+      const shimPath = resolve(context.appOutDir, "resources", PREINSTALLED_ENTRY_SHIM);
+      if (!existsSync(shimPath)) {
+        throw new Error(`Preinstalled entry shim is missing in the packaged app: ${shimPath}`);
+      }
+      runTimedSync("afterPack:signPreinstalledEntryShim", () =>
+        signWindowsHelper(context, PREINSTALLED_ENTRY_SHIM),
       );
     }
   },
@@ -742,23 +743,17 @@ export default {
     if (context.electronPlatformName === "win32") {
       assertSignedWindowsHelper(context, "tools/runtime-host/zcode-runtime-host.exe");
       assertSignedWindowsHelper(context, "tools/runtime-host/zcode-installer-process-helper.exe");
+      runTimedSync("afterSign:assertSignedPreinstalledEntryShim", () =>
+        assertSignedWindowsHelper(context, PREINSTALLED_ENTRY_SHIM),
+      );
     }
     if (shouldPackageWindowsBrowserImportHelper) {
       runTimedSync("afterSign:assertSignedWindowsBrowserImportHelper", () =>
-        assertSignedWindowsHelper(context, `browser-import/${HELPER_FILENAME}`),
+        assertSignedWindowsHelper(context, BROWSER_IMPORT_HELPER),
       );
     }
-    if (context.electronPlatformName === "win32" && shouldEnableWindowsVsign) {
-      await runTimedAsync("afterSign:writeWindowsUpdatePublisher", () =>
-        writeWindowsUpdatePublisher({
-          appOutDir: context.appOutDir,
-          executableName: context.packager.appInfo.productFilename,
-        }),
-      );
-    }
+    // OpenZWork(OZ-D004)：Windows 自动更新发布器（writeWindowsUpdatePublisher）属应用内更新裁剪域，不随入。
   },
-  // fork 净化：上游新增 afterSign 钩子做 Windows 浏览器导入 helper 签名断言与
-  // 自动更新发布器（writeWindowsUpdatePublisher）写入，属 CUA/updater 净化域，不随入。
   extraResources: [
     ...(targetPlatform.os === "win32"
       ? [
@@ -811,6 +806,15 @@ export default {
             // 这里不复用窗口 PNG，避免通知区域在高 DPI 下退化成模糊缩放图。
             from: "build/icon.ico",
             to: "tray_icon.ico",
+          },
+        ]
+      : []),
+    ...(targetPlatform.os === "win32"
+      ? [
+          {
+            // 预装工具入口 shim；Main 按 process.resourcesPath 解析后交给预装进程。
+            from: `bundled-tools/${targetPlatform.key}/preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe`,
+            to: PREINSTALLED_ENTRY_SHIM,
           },
         ]
       : []),

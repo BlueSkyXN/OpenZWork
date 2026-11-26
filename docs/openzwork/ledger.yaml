@@ -4,8 +4,8 @@
 version: 1
 upstream:
   repository: https://github.com/zai-org/ZCode
-  version: 3.18.2
-  commit: fec975905a2abd4c07e35c40d51fa097a2258ec9
+  version: 4.0.0
+  commit: a4b4445141eb7d3b3e99eada9292775383bfc44e
 entries:
   - id: OZ-F001
     kind: feature
@@ -53,9 +53,22 @@ entries:
       - apps/zcode-cli/packages/core/src/context/sections/desktop.ts
       - apps/zcode-cli/packages/core/src/context/sections/env-info.ts
       - apps/zcode-cli/packages/core/src/context/sections/memory.ts
+      - apps/zcode-cli/packages/core/src/agent/session-history-hydrator.ts
       - apps/zcode-cli/packages/core/src/runtime/helpers/provider-request-messages.ts
+      - apps/zcode-cli/packages/core/src/runtime/helpers/prompt-snapshot.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/context.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/context-refresh.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/resume.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/rewind-message.ts
+      - apps/zcode-cli/packages/core/src/runtime/methods/turn-model-step.ts
       - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/i18n/locales/en-US.ts
+      - packages/ui/src/i18n/locales/ja-JP.ts
+      - packages/ui/src/i18n/locales/ko-KR.ts
+      - packages/ui/src/i18n/locales/ru-RU.ts
+      - packages/ui/src/i18n/locales/zh-CN.ts
     tests:
+      - apps/zcode-cli/packages/bootstrap/tests/zcode-protocol.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-editor.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-observation.test.ts
       - apps/zcode-cli/packages/core/tests/system-prompt-settings.test.ts
@@ -84,6 +97,7 @@ entries:
       - packages/services/test/appUsageService.test.ts
       - packages/ui/test/appUsageModel.test.ts
       - packages/ui/test/appUsageServiceAccess.test.ts
+      - packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts
       - packages/ui/test/fixtures/appUsageSnapshot.ts
       - packages/ui/test/useAppUsageSessions.test.ts
       - packages/ui/test/useAppUsageStats.test.ts
@@ -322,6 +336,7 @@ entries:
       - tests/ci/installer-release.test.mjs
       - packages/desktop/test/desktopTsupConfig.test.ts
       - packages/desktop/test/electronBuilderAfterPack.test.ts
+      - packages/server/test/entryHttpCredentials.test.ts
     source: 现有发行规范与自动发布工作流；补登已有实现
   - id: OZ-F012
     kind: feature
@@ -342,6 +357,7 @@ entries:
       - .github/workflows/extended-checks.yml
       - scripts/merge-full-suite-reports.mjs
       - scripts/run-full-suite-groups.mjs
+      - scripts/run-repo-script-tests.mjs
       - scripts/test-report-validation.mjs
       - scripts/agent-node-dist.mjs
       - scripts/verify-agent-node-dist.mjs
@@ -501,8 +517,18 @@ entries:
       - packages/services/src/plugin-sync/pluginSyncService.ts
       - packages/services/src/skill-sync/skillSyncService.ts
       - packages/shared/src/node.ts
+      - packages/shared/src/credential-security/credentialFile.ts
+      - apps/zcode-cli/packages/adapters/src/browser/storage-state.ts
+      - apps/zcode-cli/packages/adapters/src/skills/catalog.ts
+      - apps/zcode-cli/packages/cli/src/sea-runtime-tools.ts
+      - apps/zcode-cli/packages/adapters/src/mcp/config-loader.ts
+      - apps/zcode-cli/packages/bootstrap/src/app/dynamic-mcp-config.ts
+      - apps/zcode-cli/packages/bootstrap/tests/dynamic-mcp-config.test.ts
+      - packages/desktop/src/main/file-open-apps/executableOpenGuard.ts
+      - packages/desktop/src/main/desktopCommandHandlers.ts
     source: "PR #21、PR #69"
     tests:
+      - apps/zcode-cli/packages/adapters/tests/skill-catalog.test.ts
       - scripts/test/openzwork-cli-distribution.test.mjs
       - packages/desktop/test/windowsInstallerPreserveFiles.test.ts
       - packages/services/test/data-sync-user-root.test.ts
@@ -553,6 +579,8 @@ entries:
     spec: docs/specs/model-capability-matching-openzwork.md
     paths:
       - scripts/model-capability-rules.mjs
+    hooks:
+      - apps/zcode-cli/packages/adapters/tests/openai-responses-encrypted-reasoning-wire.test.ts
     tests:
       - apps/zcode-cli/packages/adapters/tests/model-capability-wire.test.ts
       - packages/provider-node/test/fixtures/model-capability-cases.json
@@ -634,6 +662,9 @@ entries:
       - cli-storage-relocation
       - host-storage-relocation
     hooks:
+      - apps/zcode-cli/packages/cli/src/main.ts
+      - packages/shared/src/credential-security/contract.ts
+      - packages/shared/src/credential-security/systemCredentialCipher.ts
       - packages/services/src/setting/settingService.ts
       - packages/services/src/paths.ts
       - packages/services/src/startup-storage/index.ts
@@ -712,7 +743,14 @@ entries:
       - docs/specs/settings-locale-persistence-openzwork.md
     hooks:
       - packages/services/src/setting/settingService.ts
+      - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/i18n/locales/en-US.ts
+      - packages/ui/src/i18n/locales/ja-JP.ts
+      - packages/ui/src/i18n/locales/ko-KR.ts
+      - packages/ui/src/i18n/locales/ru-RU.ts
+      - packages/ui/src/i18n/locales/zh-CN.ts
     tests:
+      - packages/ui/test/settingsLocaleCoverage.test.ts
       - packages/services/test/settingsLocalePersistence.test.ts
       - packages/desktop/test/e2e/settings/general/settings-client-language-header-openzwork.test.ts
     source: 上游 docs/i18n/ui-locales.md 合同；J1 返工（NEXT-FINISH-LOCALE-DIRECT-CI-20261117）
@@ -743,13 +781,16 @@ entries:
     kind: change
     status: active
     title: 插件市场来源与保留名称
-    summary: 随应用提供内置插件，默认登记 Claude 公开市场，添加来源使用保留 ID 时显示本地化提示。
+    summary: 随应用提供内置插件及其本地化商店信息，默认登记 Claude 公开市场，添加来源使用保留 ID 时显示本地化提示。
     spec: docs/specs/plugin-marketplace-sources-openzwork.md
     paths:
       - docs/specs/plugin-marketplace-sources-openzwork.md
     hooks:
       - packages/shared/src/plugin-marketplaces.ts
+      - apps/zcode-cli/packages/bootstrap/src/plugins.ts
       - apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
+      - packages/ui/src/lib/pluginIconSource.ts
+      - packages/ui/src/components/PluginIcon.tsx
       - packages/ui/src/settings/PluginStorePage.tsx
       - packages/ui/src/store/pluginManagementStore.ts
       - packages/ui/src/store/pluginManagementStoreLoading.ts
@@ -762,8 +803,59 @@ entries:
     tests:
       - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
       - apps/zcode-cli/packages/bootstrap/tests/plugins-protocol.test.ts
+      - packages/ui/test/claudeMarketplaceIcon.test.ts
       - packages/desktop/test/e2e/plugins/marketplace/plugin-localization-creator.test.ts
     source: https://github.com/BlueSkyXN/OpenZWork/issues/79
+  - id: OZ-C015
+    kind: change
+    status: active
+    title: 预装文档工具本地回退与无官方 CDN 默认态
+    summary: 剥离预装文档工具默认官方 CDN 基址，仅在当前平台有通过清单校验的下载目标或本地有可执行入口时向 Agent 注入可用标记，管理弹窗在无下载源时禁用无效开关并说明默认使用本机已有工具。
+    spec: docs/openzwork/upstream/v4.0.0-integration.md
+    paths:
+      - packages/desktop/test/preinstalledToolsCatalog.test.ts
+    hooks:
+      - packages/desktop/src/preinstalled-tools/catalog.ts
+      - packages/desktop/src/preinstalled-tools/index.ts
+      - packages/desktop/src/preinstalled-tools/CONTRACT.md
+      - packages/desktop/src/main/index.ts
+      - packages/desktop/src/main/desktopHostProcess.ts
+      - packages/shared/src/channels.ts
+      - packages/shared/src/validation.ts
+      - packages/shared/src/preinstalled-tools/node.ts
+      - packages/desktop/src/host/index.ts
+      - packages/services/src/node.ts
+      - packages/ui/src/preinstalled-tools/PreinstalledToolsDialog.tsx
+    tests:
+      - packages/desktop/test/preinstalledToolsCatalog.test.ts
+      - scripts/preinstalled-tools/catalog.test.ts
+    source: v4.0.0 同步（OZK-DEC-001、WP-08）
+  - id: OZ-C016
+    kind: change
+    status: active
+    title: Office 插件面板手动刷新
+    summary: 四种 Office 面板通过菜单刷新当前文件，等待和拒绝时保留已打开的内容，切换文件后丢弃过期结果。
+    spec: docs/specs/plugin-file-preview-fallback-openzwork.md
+    paths:
+      - docs/specs/plugin-file-preview-fallback-openzwork.md
+    hooks:
+      - apps/zcode-cli/packages/office-runtime/ui/main.tsx
+      - apps/zcode-cli/packages/office-runtime/ui/i18n.ts
+      - apps/zcode-cli/packages/office-runtime/ui/shell/menus.tsx
+      - apps/zcode-cli/packages/documents-plugin/package.json
+      - apps/zcode-cli/packages/documents-plugin/.zcode-plugin/plugin.json
+      - apps/zcode-cli/packages/pdf-plugin/package.json
+      - apps/zcode-cli/packages/pdf-plugin/.zcode-plugin/plugin.json
+      - apps/zcode-cli/packages/presentations-plugin/package.json
+      - apps/zcode-cli/packages/presentations-plugin/.zcode-plugin/plugin.json
+      - apps/zcode-cli/packages/spreadsheets-plugin/package.json
+      - apps/zcode-cli/packages/spreadsheets-plugin/.zcode-plugin/plugin.json
+      - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
+      - apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs
+    tests:
+      - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
+      - apps/zcode-cli/packages/office-runtime/scripts/e2e.mjs
+    source: 桌面客户端验收决策，2026-11-26
   - id: OZ-D001
     kind: drop
     status: active
@@ -776,6 +868,11 @@ entries:
       - apps/zcode-cli/packages/telemetry/**
       - apps/zcode-cli/packages/core/src/telemetry/**
       - packages/services/src/telemetry/**
+      - packages/shared/src/conversation-telemetry/conversationRewindTelemetry.ts
+      - packages/shared/src/conversation-telemetry/permissionPromptTelemetry.ts
+      - packages/shared/src/conversation-telemetry/workflowRunTelemetry.ts
+      - packages/shared/test/messageTelemetry.test.ts
+      - packages/shared/vitest.config.ts
     gates:
       - WP-05 telemetry full-chain sources are physically absent
       - Desktop OTLP initialization and IPC bridge methods are removed
@@ -786,8 +883,13 @@ entries:
     status: active
     title: 官方套餐、加速卡与闲时任务
     summary: 移除 Coding Plan、Start Plan、Highspeed 加速卡与闲时任务。
+    spec: docs/specs/scheduled-task-copy-openzwork.md
     hooks:
       - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
+      - packages/ui/src/settings/AutomationDesignPrimitives.tsx
+      - packages/ui/src/settings/AutomationsSection.tsx
+    tests:
+      - packages/ui/test/automationKeepAwakeCopy.test.ts
     paths:
       - packages/services/src/coding-plan-subscription/**
       - packages/services/src/highspeed/**
@@ -813,10 +915,15 @@ entries:
     hooks:
       - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
       - apps/zcode-cli/packages/bootstrap/src/session-execution/refresh-provider-registry.ts
+      - apps/zcode-cli/packages/cli/tests/tui-model-selection.test.ts
       - packages/services/src/model-provider/providerProvisioningSource.ts
       - packages/services/src/model-provider/providerProvisioningTarget.ts
+      - packages/ui/src/settingsPageHelpers.tsx
+      - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/settings-search/settingsSearchIndex.ts
     paths:
       - packages/services/src/oauth/**
+      - packages/desktop/src/main/web-remote-relay/mobilePushConnection.ts
       - packages/services/src/bigmodel/**
       - packages/ui/src/login/**
       - packages/web/src/auth/**
@@ -825,19 +932,31 @@ entries:
       - "WP-08: official product endpoints are absent outside the explicit exemption list"
       - "WP-08: removed login/startPlan key families stay absent"
     source: 净化工作包 WP-08
-    spec: docs/remote/provider-provisioning-openzwork.md
+    spec:
+      - docs/remote/provider-provisioning-openzwork.md
+      - docs/specs/settings-visual-polish-openzwork.md
     tests:
       - packages/services/test/zcodeAgentService.providerRefreshBarrier.test.ts
+      - packages/ui/test/retiredShareSettings.test.ts
+      - packages/desktop/test/e2e/settings/general/settings-navigation-search.test.ts
   - id: OZ-D004
     kind: drop
     status: active
     title: 云端分享、反馈与自动更新
     summary: 移除会话云端分享、云端反馈与应用自动更新。
+    spec: docs/specs/settings-visual-polish-openzwork.md
     hooks:
       - .agents/skills/feature-boundary-planner/references/zcode-feature-graph-openzwork.yaml
       - packages/shared/src/semverCompare.ts
+      - packages/ui/src/lib/settingsNavigation.ts
+      - packages/ui/src/settings-search/settingsSearchIndex.ts
+      - packages/ui/src/settings/settingsPageConfig.ts
+    tests:
+      - packages/ui/test/retiredShareSettings.test.ts
+      - packages/desktop/test/e2e/settings/general/settings-navigation-search.test.ts
     paths:
       - packages/services/src/conversation-share/**
+      - packages/services/test/helpers/conversationShareMockApiClient.ts
       - packages/ui/src/conversation-share-interaction/**
       - packages/share-ui/**
       - packages/web-share/**
@@ -867,12 +986,15 @@ entries:
     paths:
       - packages/zcode-cua/**
       - apps/zcode-cli/packages/zcode-cua-plugin/**
+      - apps/zcode-cli/packages/cli/scripts/sea-cua-runtime-assets.mjs
+      - apps/zcode-cli/packages/node-repl-host/test/in-process-cua-runtime.test.ts
       - packages/services/src/cua-permission-broker/**
       - packages/ui/src/cua-permission/**
       - docs/cua/**
       - docs/cua-permission-broker/**
     tests:
       - apps/zcode-cli/packages/bootstrap/tests/bundled-plugins-resilience.test.ts
+      - packages/server/test/remoteOfficialPluginAssets.test.ts
       - packages/ui/test/browser/manual-review/pending/plugin-picker-order.test.mjs
     gates:
       - "WP-06: CUA / clientScenes / plugin-creator surfaces are gone"
@@ -882,12 +1004,18 @@ entries:
     status: active
     title: 官方 MCP 鉴权与官方端点配置
     summary: 移除官方 MCP 身份头、客户端配置下发、场景配置与官方命令端点。
+    hooks:
+      - packages/shared/src/shortcutCommands.ts
+      - packages/server/src/remote/zcodeAgentOfficialPluginAssets.ts
     paths:
       - packages/services/src/official-mcp/**
       - packages/services/src/client-config/**
       - packages/services/src/client-scenes/**
+      - packages/ui/src/voice-input/**
+      - packages/ui/src/v4/composer/draftModelMigration.ts
       - apps/zcode-cli/packages/bootstrap/src/official-command-endpoint/**
       - apps/zcode-cli/packages/bootstrap/tests/official-command-endpoint/**
+      - apps/zcode-cli/packages/bootstrap/tests/process-provider-builtin-refresh-cadence.test.ts
       - apps/zcode-cli/packages/adapters/src/model/endpoint-routing-edition/**
       - apps/zcode-cli/packages/zcode-site-plugin/**
     gates:
@@ -911,6 +1039,7 @@ entries:
       - packages/ui/src/request-security-edition/**
       - packages/desktop/src/main/request-security-edition/**
       - apps/zcode-cli/packages/adapters/src/model/request-security-edition/**
+      - apps/zcode-cli/packages/adapters/tests/project-token-network-retry.test.ts
       - packages/desktop/test/e2e/helpers/request-security-edition/**
     gates:
       - "re-clean gate: highspeed card chain / request-security-edition / marketingTouch / rewardsEmbedded / project-access-token stay absent"
@@ -967,9 +1096,12 @@ entries:
     kind: retain
     status: active
     title: 上游已退役的桌面测试与兼容源码
-    summary: 上游后续版本删除、OpenZWork 继续使用的桌面 E2E 用例、夹具与三个兼容源码文件。
+    summary: 上游后续版本删除、OpenZWork 继续使用的桌面 E2E 用例、夹具与四个兼容源码文件。
     paths:
       - packages/desktop/src/main/webRemoteControlTransport.ts
+      - packages/desktop/test/e2e/conversation-session/plugins/manual-review/pending/conversation-session-plugin-remote-explicit-sync-workspace.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/connection/manual-review/pending/conversation-session-ssh-remote-cancel-retry.test.ts
+      - packages/desktop/test/e2e/conversation-session/remote/connection/manual-review/pending/conversation-session-ssh-remote-cold-reconnect.test.ts
       - packages/desktop/test/e2e/conversation-session/permissions/manual-review/pending/conversation-session-ask-user-question-answer-visible.test.ts
       - packages/desktop/test/e2e/conversation-session/permissions/manual-review/pending/conversation-session-permission-hook-race.test.ts
       - packages/desktop/test/e2e/helpers/permission-hook-race-fixture.ts
@@ -1036,4 +1168,5 @@ entries:
       - packages/desktop/test/webRemoteControlSharedHostAttachments.test.ts
       - packages/services/src/device/deviceMid.ts
       - packages/shared/src/sessionCreateSource.ts
+      - packages/ui/src/lib/documentHiddenMotionPause.ts
     source: v3.17.1 整合（上游退役 App 单测与部分 E2E，OpenZWork 保留 CLI、E2E 与门禁测试）

@@ -50,6 +50,7 @@ function parseEmbeddedMcpResult(value: string): EmbeddedMcpResult | undefined {
   }
 }
 
+
 const NO_CALL_FACTS: NodeReplCallFacts = {
   cuaApps: [],
   browserScreenshots: [],
@@ -96,22 +97,8 @@ export function toMcpRunResult(
   delete responseMeta[ZCODE_MCP_NODE_REPL_COMPUTER_USE_META_KEY];
   if (facts.browserUse) responseMeta[ZCODE_MCP_NODE_REPL_BROWSER_USE_META_KEY] = true;
   if (facts.computerUse) responseMeta[ZCODE_MCP_NODE_REPL_COMPUTER_USE_META_KEY] = true;
-
-  // Anthropic 兼容网关（如 bigmodel MaaS）只解析 tool_result.content 开头的连续
-  // image block，一旦先遇到 text 就丢弃后面的图，模型只能看到 image_ref 元数据而看不到画面
-  // （实测 [image]/[image,text] 可见，[text,image]/[text,image,text] 不可见）。
-  // 把 image 排在 text 之前即可让图稳定到达模型；顺序在 Anthropic 规范里本就是自由的。
-  // image 因此从 content[0] 起连续排列，image 下标与 content 下标相等，无需再做 +1 偏移。
-
-  // 按字节把 run.images 对应到账本里代理转发过的真实截图；cell 即使冒充结果放进截图字节，
-  // 被标出的也确实是那张截图。
-  const browserScreenshotContentIndices = matchBrowserScreenshotImageIndices(
-    run.images ?? [],
-    facts.browserScreenshots,
-  );
   const structuredContent = structuredResults.flatMap(
     (structured) => structured.content as EmbeddedContentBlock[],
-
   );
   const structuredContentResult = [...structuredResults]
     .reverse()
@@ -119,8 +106,8 @@ export function toMcpRunResult(
   const structuredIsError = structuredResults.some((structured) => structured.isError === true);
   if (run.error) {
     // node_repl 若用 message-only 隐藏通用 MCP 失败前缀，只消费
-    // 模型结果文本的分析链路无法区分成功与失败。继续只返回结构化 error.message，
-    // 不混入错误类型、堆栈或失败前日志，并让通用 bridge 根据 isError 投影稳定标记。
+    // 模型结果文本的分析链路无法区分成功与失败。返回 error.message 和失败工具的恢复说明，
+    // 通用 bridge 根据 isError 投影稳定标记，错误类型、堆栈和失败前日志继续省略。
     textParts.push(run.error.message);
   } else {
     if (run.logs) textParts.push(run.logs);
@@ -129,9 +116,20 @@ export function toMcpRunResult(
     }
   }
 
+  // SDK 抛错后仍需传递失败工具的恢复说明，排除重复错误消息。
+  const failedContent = structuredResults
+    .filter((result) => result.isError === true)
+    .flatMap((result) => result.content as EmbeddedContentBlock[])
+    .filter(
+      (block) =>
+        block.type === "text" &&
+        typeof block.text === "string" &&
+        block.text !== run.error?.message,
+    );
+
   const content = [
     ...(run.error
-      ? []
+      ? failedContent
       : structuredResults.length > 0
         ? structuredContent
         : (run.images ?? []).map((image) => ({
@@ -141,7 +139,6 @@ export function toMcpRunResult(
           }))),
     ...(structuredResults.length > 0
       ? // 结构化观察已携带截图；模型再次 emitImage 同一张图时，只保留结构化结果中的副本。
-        // 去重必须逐字节相等：保留截图原始像素及其 frame_id 绑定，不同图片仍交由帧校验拒绝。
         (run.images ?? [])
           .filter(
             (image) =>
@@ -161,8 +158,26 @@ export function toMcpRunResult(
     ...(textParts.length > 0 ? [{ type: "text" as const, text: textParts.join("\n") }] : []),
   ];
 
+  // 文本领先会使部分兼容网关丢弃后续图片，将图片块排在文本块之前。
+  const mediaBlocks: EmbeddedContentBlock[] = [];
+  const remainingBlocks: EmbeddedContentBlock[] = [];
+  for (const block of content) {
+    if (block.type === "image") mediaBlocks.push(block);
+    else remainingBlocks.push(block);
+  }
+  const orderedContent = [...mediaBlocks, ...remainingBlocks];
+  // 只用账本确认的截图字节，按最终位置回写索引，避免排序后误标其他图片。
+  const images = orderedContent.flatMap((block, index) =>
+    block.type === "image" ? [{ index, base64: block.data, mimeType: block.mimeType }] : [],
+  );
+  const browserScreenshotContentIndices = matchBrowserScreenshotImageIndices(
+    images,
+    facts.browserScreenshots,
+  ).map((index) => images[index]!.index);
+
   return {
-    content: content.length > 0 ? content : [{ type: "text" as const, text: "(no output)" }],
+    content:
+      orderedContent.length > 0 ? orderedContent : [{ type: "text" as const, text: "(no output)" }],
     ...(run.error || embedded?.isError || structuredIsError ? { isError: true } : {}),
     ...(structuredContentResult?.structuredContent !== undefined
       ? { structuredContent: structuredContentResult.structuredContent }

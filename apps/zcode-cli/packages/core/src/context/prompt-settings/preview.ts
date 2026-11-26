@@ -13,6 +13,7 @@ import {
 } from "@zcode/shared";
 import { modelMessageContentToText } from "@zcode/contracts";
 import { ContextBuilder } from "../builder.js";
+import { buildSkillsContent, DEFAULT_SKILL_METADATA_BUDGET } from "../sections/skills.js";
 import type { ContextBuildResult, ContextBuilderConfig } from "../types.js";
 
 function promptDocumentFromBuild(
@@ -101,11 +102,26 @@ export function buildSystemPromptPreview(
       totalDiscovered: scenario.skills ? 1 : 0,
     },
   };
-  const build = (value: SystemPromptSettings) =>
-    promptDocumentFromBuild(
-      new ContextBuilder({ ...config, systemPromptSettings: value }).build(),
-      value,
-    );
+  const build = (value: SystemPromptSettings) => {
+    const builder = new ContextBuilder({ ...config, systemPromptSettings: value });
+    if ((config.skills?.skills.length ?? 0) > 0) {
+      const skillsContent = buildSkillsContent(
+        config.skills!.skills,
+        DEFAULT_SKILL_METADATA_BUDGET,
+      );
+      if (skillsContent) {
+        builder.addSection({
+          name: "Available Skills",
+          source: "skills",
+          injectionTarget: "meta_user",
+          cacheHint: "dynamic",
+          content: skillsContent,
+          preview: skillsContent.slice(0, 100),
+        });
+      }
+    }
+    return promptDocumentFromBuild(builder.build(), value);
+  };
   return { after: build(settings), ...(baseline ? { before: build(baseline) } : {}) };
 }
 
@@ -187,6 +203,7 @@ export class SystemPromptObservation {
     settings: SystemPromptSettings,
   ): SystemPromptPreviewDocument | null {
     const builder = saved.builder!;
+    if (!builder.supportsPromptSettings()) return null;
     const baseline = builder.build();
     const next = builder.copyForPromptPreview(settings).build();
     const actual = saved.snapshot.actual.blocks;

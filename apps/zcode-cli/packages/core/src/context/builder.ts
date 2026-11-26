@@ -17,7 +17,6 @@ import { buildCliPrefixSection } from "./sections/cli-prefix.js";
 import { buildIdentitySection } from "./sections/identity.js";
 import { buildWorkflowActorIdentitySection } from "./sections/workflow-actor.js";
 import { buildEnvironmentSections, buildGitSystemContextSection } from "./sections/env-info.js";
-import { buildSkillsSection } from "./sections/skills.js";
 import { buildRequestUserContextSection } from "./sections/request-user-context.js";
 import { buildCurrentDateSection } from "./sections/current-date.js";
 import { buildMemorySection } from "./sections/memory.js";
@@ -26,6 +25,8 @@ import { buildDesktopContextSection } from "./sections/desktop.js";
 import {
   buildContextManagementSection,
   buildDynamicBehaviorSection,
+  buildFinishingWorkSection,
+  buildMemoryNotesSection,
   buildSessionGuidanceSection,
   buildTotalTokensSection,
 } from "./dynamic-sections.js";
@@ -35,8 +36,6 @@ import {
 // -----------------------------------------------
 
 const EPHEMERAL_CACHE_CONTROL = { type: "ephemeral" as const };
-/** Skill 工具的注册名（与 tool/handlers/skill.ts 的 metadata.name 同字面；contracts 没有常量）。 */
-const SKILL_TOOL_NAME = "Skill";
 
 export class ContextBuilder {
   private config: ContextBuilderConfig;
@@ -44,6 +43,11 @@ export class ContextBuilder {
 
   constructor(config: ContextBuilderConfig) {
     this.config = config;
+  }
+
+  /** 仅主会话默认提示词分支消费 SystemPromptSettings；customSystemPrompt 与 workflowActor 不参与比较重放。 */
+  supportsPromptSettings(): boolean {
+    return !this.config.customSystemPrompt?.trim() && this.config.workflowActor === undefined;
   }
 
   /** 预览捕获当次构建输入；模型对象只读复用，数据复制后不追随后续环境或设置变化。 */
@@ -107,8 +111,9 @@ export class ContextBuilder {
     const activeOutputStyle = this.config.outputStyle?.prompt.trim()
       ? this.config.outputStyle
       : undefined;
-    const customSystemPrompt = this.config.customSystemPrompt?.trim();
-    const hasCustomSystemPrompt = Boolean(customSystemPrompt);
+    // 自定义 system prompt 原样发送，不 trim；只有全空白时视为未设置。
+    const customSystemPrompt = this.config.customSystemPrompt;
+    const hasCustomSystemPrompt = Boolean(customSystemPrompt?.trim());
     // 工作流子代理身份：第三条路径。与
     // customSystemPrompt 互斥——两者同在只可能是接线错误（persona 该经 workflowActor 进来，
     // 不该再塞 systemPrompt），大声失败而不是默默二选一。
@@ -141,7 +146,9 @@ export class ContextBuilder {
         }),
       );
     } else if (workflowActor !== undefined) {
-      sections.push(buildWorkflowActorIdentitySection(workflowActor));
+      sections.push(
+        buildWorkflowActorIdentitySection(workflowActor, this.config.midConversationSystem !== false),
+      );
     } else {
       sections.push(
         buildIdentitySection(
@@ -165,7 +172,8 @@ export class ContextBuilder {
     // stable body，而是跳过默认 system prompt 体系和 systemContext；否则用户提供
     // custom prompt 后仍会混入 Session Guidance / output style 等动态 system 段。
     // 工作流子代理跳过其中面向「与用户对话」的三段（desktop、Dynamic Behavior、session
-    // guidance——契约里已把 Report outcomes faithfully 搬过去），保留 memory 与其后各段。
+    // guidance——契约里已把 Report outcomes faithfully 搬过去），也跳过 Finishing work 与
+    // memory notes 两段；保留 memory、Context management 与 token 预算行。
     if (!hasCustomSystemPrompt) {
       if (!isWorkflowActor && this.config.presentationSurface === "zcode_desktop") {
         sections.push(buildDesktopContextSection(Boolean(this.config.genUiOutputDirectory)));
@@ -203,8 +211,15 @@ export class ContextBuilder {
       // output_style_instructions 公告按变化送达（context-refresh），身份段只换 intro 行。
 
       // Context Management
-    sections.push(buildContextManagementSection(promptSettings));
-    sections.push(buildTotalTokensSection());
+      sections.push(buildContextManagementSection(promptSettings));
+      // 工作流子代理有自己的收尾契约，不收主会话的这两段。
+      if (!isWorkflowActor) {
+        sections.push(buildFinishingWorkSection(), buildMemoryNotesSection());
+      }
+      const totalTokensSection = buildTotalTokensSection(this.config.totalTokensReminder === true);
+      if (totalTokensSection) {
+        sections.push(totalTokensSection);
+      }
 
       const gitSystemContextSection = buildGitSystemContextSection(this.config.envInfo);
       if (gitSystemContextSection) {
@@ -216,19 +231,9 @@ export class ContextBuilder {
       sections.push(...environmentSections);
     }
 
-    // 4. Skills appear as a meta user system-reminder, matching provider block layout.
-    // guidanceToolNames 是 runtime 当下的
-    // 工具表；一个 Skill 工具未注册的工作流子代理被告知「以下技能可经 Skill 工具使用」，
-    // 只会让它相信自己有一个没有的工具。表缺席（测试 / 旧调用方）时保持既有行为。
-    if (this.config.skills && this.skillToolAvailable()) {
-      const skillsSection = buildSkillsSection({
-        outcome: this.config.skills,
-        metadataBudget: this.config.skillMetadataBudget,
-      });
-      if (skillsSection) {
-        sections.push(skillsSection);
-      }
-    }
+    // 4. Skill 列表不在这里渲染：由 runtime 的 skills_listing 收集器按实时目录追加增量
+    //（根目录 docs/skills-live-catalog.md）。这里曾按会话开始时的目录再渲染一份完整列表，
+    // 改为增量后没有读取方，删除。
 
     // 5. Meta user context: workspace instructions/project memory first, date second.
     const requestUserContextSection = buildRequestUserContextSection({
@@ -266,11 +271,6 @@ export class ContextBuilder {
       systemMessages,
       metaUserAttachments,
     };
-  }
-
-  private skillToolAvailable(): boolean {
-    const names = this.config.guidanceToolNames;
-    return names === undefined || names.includes(SKILL_TOOL_NAME);
   }
 
   private assembleSystemMessages(sections: ContextSection[]): ModelInputMessage[] {
@@ -326,7 +326,6 @@ export function buildMetaUserAttachments(sections: ContextSection[]): ContextMet
   // 来源明确分流；不再把日期、环境和 Git 折进指令 carrier。
   const sourceMap: Partial<Record<ContextSection["source"], ContextMetaUserAttachment["source"]>> =
     {
-      skills: "skills_listing",
       request_user_context: "context_prefix",
       session_context: "session_context",
     };

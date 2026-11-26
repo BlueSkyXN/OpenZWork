@@ -2,6 +2,80 @@
 import { desktopMenuMessages } from "@zcode/shared";
 
 const zhCN: Record<string, string> = {
+  "preinstalledTools.purpose.python": "用于运行文档插件的脚本，并提供表格、Word、PDF 处理库",
+  "preinstalledTools.purpose.qpdf": "用于 PDF 拆分、合并、加密和修复",
+  "preinstalledTools.purpose.pandoc": "用于读取 Word 文档的内容",
+  "preinstalledTools.purpose.poppler": "用于 PDF 转图片和提取文字",
+  "preinstalledTools.phase.queued": "等待其他工具准备完成…",
+  "preinstalledTools.update": "更新",
+  "preinstalledTools.status.update-available": "可更新",
+  "preinstalledTools.currentInfo": "正在使用版本 {current}。",
+  "preinstalledTools.updateInfo":
+    "正在使用版本 {current}。新版本 {version} 需要下载约 {download} MB，安装后约 {installed} GB",
+  "preinstalledTools.delete": "删除",
+  "preinstalledTools.deleteTitle": "删除 {name}？",
+  "preinstalledTools.deleteDescription": "将释放约 {size} GB 磁盘空间。",
+  "preinstalledTools.deleteAutoNotice": "自动预装开启时，下次启动 OpenZWork 会重新下载。",
+  "preinstalledTools.deleteNotice.python": "Agent 额外安装的 Python 包也会删除。",
+  "preinstalledTools.deleteCancel": "取消",
+  "preinstalledTools.deletionBlocked": "{name} 正在被 Agent 使用，请稍后再试。",
+  "resourceManager.storage.category.preinstalledTools": "预装工具",
+  "resourceManager.storage.categoryDescription.preinstalledTools":
+    "受管文档工具。请在“帮助 → 预装工具”中删除。",
+  "preinstalledTools.autoInstall": "自动预装",
+  "preinstalledTools.entryOutOfSync": "开关已保存，但尚未生效，请重试。",
+  "preinstalledTools.agentEnabled": "Agent 使用预装版本",
+  "preinstalledTools.agentEnabledDescription": "关闭后，Agent 使用这台电脑上已有的 {name}。",
+  "preinstalledTools.autoInstallDescription":
+    "启动 OpenZWork 时自动在后台准备。关闭后不再自动下载，已安装的工具仍可使用。",
+  "preinstalledTools.remoteNotice": "当前打开的是远端工作区。这里管理的是本机，不会安装到远端。",
+  "preinstalledTools.download": "下载",
+  "preinstalledTools.cancel": "取消下载",
+  "preinstalledTools.retry": "重试",
+  "preinstalledTools.commandFailed": "操作未完成，请重试。",
+  "preinstalledTools.title": "预装工具",
+  "preinstalledTools.description": "这些工具安装在本机，供文档任务使用。",
+  "preinstalledTools.purpose.libreoffice": "用于文档转 PDF、PPT 转换和表格公式重算",
+  "preinstalledTools.loading": "正在读取…",
+  "preinstalledTools.loadFailed":
+    "预装工具未能启动。请重启 OpenZWork 后再试；如果仍然失败，请通过“帮助 → 导出日志”反馈问题。",
+  // OpenZWork(OZ-C015)：默认不内置预装下载源，明确说明默认直接使用本机已安装工具。
+  "preinstalledTools.unavailable": "未配置预装工具下载源，OpenZWork 默认使用这台电脑上已有的工具。",
+  "preinstalledTools.readyInfo": "版本 {version} · 占用 {size} GB",
+  "preinstalledTools.downloadInfo": "正在下载 {loaded} / {total} MB",
+  "preinstalledTools.sizeInfo": "需要下载约 {download} MB，安装后约 {installed} GB",
+  "preinstalledTools.status.not-installed": "未安装",
+  "preinstalledTools.status.preparing": "准备中",
+  "preinstalledTools.status.ready": "已就绪",
+  "preinstalledTools.status.failed": "准备失败",
+  "preinstalledTools.phase.verifying": "正在校验文件…",
+  "preinstalledTools.phase.extracting": "正在解压…",
+  "preinstalledTools.phase.checking": "正在检查能否运行…",
+  "preinstalledTools.error.network": "无法连接下载服务器。请检查网络或代理设置。",
+  "preinstalledTools.error.interrupted": "下载中断，请重试。",
+  "preinstalledTools.error.disk-space": "磁盘空间不足，需要约 {size} GB 可用空间。",
+  "preinstalledTools.error.checksum": "下载的文件已损坏，请重试。",
+  "preinstalledTools.error.extract": "解压失败，请重试。",
+  "preinstalledTools.error.runtime": "工具无法在这台电脑上运行。请通过“帮助 → 导出日志”反馈问题。",
+  "preinstalledTools.error.unsupported": "暂不支持当前系统。",
+  "chat.capsule.todo.running": "处理中",
+  "chat.capsule.todo.completed": "已完成",
+  "chat.capsule.todo.pending": "待处理",
+  "chat.capsule.files": "{count} 个文件变更",
+  "chat.capsule.activity.completed": "已完成",
+  "chat.capsule.activity.stopped": "已停止",
+  "chat.capsule.activity.failed": "失败",
+  "chat.capsule.activity.running": "活跃中",
+  "chat.capsule.activityLabel": "活跃",
+  "chat.capsule.staged": "已暂存",
+  "chat.capsule.unstaged": "未暂存",
+  "chat.capsule.fileChanged": "已变更",
+  "chat.capsule.goal.failed": "失败",
+  "chat.capsule.goal.verified": "已完成",
+  "chat.capsule.goal.verifying": "验证中",
+  "chat.capsule.goal.paused": "已暂停",
+  "chat.capsule.goal.notSatisfied": "未达成",
+
   "plugin.discovery.installAndEnable": "安装并在当前工作区启用",
   "plugin.discovery.enableInWorkspace": "在当前工作区启用",
   "plugin.discovery.workspaceInstall":
@@ -140,6 +214,7 @@ const zhCN: Record<string, string> = {
   "metrics.display.field.cache": "缓存命中率",
   "metrics.display.field.sessionTokens": "会话主链累计",
   "metrics.display.field.toolCalls": "工具调用数",
+  // OpenZWork(OZ-F002): 系统提示词设置与编辑器（含 v4.0.0 新增章节）。
   "settings.systemPrompt.editor.fullPreview": "完整预览",
   "settings.systemPrompt.editor.import": "导入 Profile",
   "settings.systemPrompt.editor.export": "导出草稿",
@@ -281,10 +356,56 @@ const zhCN: Record<string, string> = {
   "settings.systemPrompt.chapter.output_style": "输出风格",
   "settings.systemPrompt.chapter.context_management": "上下文管理",
   "settings.systemPrompt.chapter.persistence": "持续执行",
+  "settings.systemPrompt.chapter.finishing_work": "工作收尾",
+  "settings.systemPrompt.chapter.memory_notes": "记忆、笔记与反馈",
   "settings.systemPrompt.chapter.system_context": "Git 上下文",
   "settings.systemPrompt.chapter.skills": "技能清单",
   "settings.systemPrompt.chapter.request_user_context": "用户与项目指令",
   "settings.systemPrompt.chapter.current_date": "当前日期",
+  "settings.systemPrompt.editor.conversionWarning":
+    "生成正文包含章节规则和自定义章。原有条件规则将始终生效，memoryRoot 等章节变量会保留为普通文本，请检查后应用。",
+  "settings.systemPrompt.editor.wholeWarning":
+    "默认行为规则（含安全提示词）将退出；原章节配置保留，整段替换期间暂停使用。",
+  "settings.systemPrompt.editor.sectionsWarning":
+    "切回按章节定制后，保留的章节规则和自定义章节将重新生效。",
+  "settings.systemPrompt.editor.instructionsWarning":
+    "新建或重新物化的主会话将停止自动注入 AGENTS.md 等用户／项目指令和项目记忆索引。",
+  "settings.systemPrompt.editor.actualError":
+    "无法读取会话内容。请确认目标仍连接且会话 runtime 可用，然后重试。",
+  "settings.systemPrompt.editor.incomplete":
+    "提示词内容超过预览上限或无法完整提取，不能进行完整比较。",
+  "settings.systemPrompt.editor.context_unavailable":
+    "该快照不足以重放本次修改的动态上下文。可以查看实际原文，并在草稿预览中检查修改。",
+  "settings.systemPrompt.editor.previewError":
+    "无法生成完整预览。请确认 Agent 已更新并重试；草稿仍保留。",
+  "settings.systemPrompt.editor.exampleSource":
+    "当前草稿 · 示例环境。示例路径、技能、指令和日期用于说明拼接结果。",
+  "settings.systemPrompt.editor.actualHint":
+    "查看所选会话最近一次捕获的实际内容，或使用同一上下文比较当前草稿。",
+  "settings.systemPrompt.editor.template.concise.body":
+    "先给出结论，再补充必要依据。简单问题简短回答；复杂问题按读者需要展开。",
+  "settings.systemPrompt.editor.template.explain.body":
+    "说明关键判断的依据、假设和取舍。涉及代码或数据时给出可核对的来源与验证结果。",
+  "settings.systemPrompt.editor.template.verify.body":
+    "执行前明确验收标准。优先运行与改动相关的检查，交付时说明实际结果和未验证项。",
+  "settings.systemPrompt.scope":
+    "保存后，新建主会话使用新配置。已有会话可通过任务菜单“重启任务”或 /reload 应用；重启会停止当前任务的执行并保留历史。",
+  "settings.systemPrompt.replaceHint":
+    "替换默认行为规则，保留当前能力、记忆位置和输出风格。下方选择要注入的动态上下文。",
+  "settings.systemPrompt.invalid":
+    "请补全自定义内容和章节标题。每章最多 32,000 字符，整体替换最多 64,000 字符。",
+  "settings.systemPrompt.condition.memory":
+    "记忆启用时应用。目录与索引要求由运行时提供；自定义规则可引用 {variable}。",
+  "settings.systemPrompt.condition.desktop_context":
+    "用于桌面会话。可视化是否可用及输出目录由当前会话提供。",
+  "settings.systemPrompt.generated.env_info":
+    "工作目录、操作系统、Shell 和当前模型由实际运行环境生成。",
+  "settings.systemPrompt.generated.system_context":
+    "Git 分支、状态和最近提交来自会话开始时的工作区快照。",
+  "settings.systemPrompt.generated.skills":
+    "可用技能清单由技能发现生成。请在“技能”中管理技能内容。",
+  "settings.systemPrompt.generated.request_user_context":
+    "从用户和项目的 AGENTS.md 及记忆索引加载。修改内容请编辑原文件或前往“记忆”。",
   "preview.image.copy": "复制图片",
   "preview.image.actions": "图片操作",
   "preview.image.added": "已添加到聊天",
@@ -1760,14 +1881,11 @@ const zhCN: Record<string, string> = {
   "subagentDirectory.status.failed": "失败",
   "subagentDirectory.status.cancelled": "已取消",
   "subagentDirectory.status.lost": "已丢失",
-  "chat.statusPanel.endedAgents": "已结束",
   // workflow run 目录（任务页脚行 → 这一页 → 详情页）。状态词复用
   // chat.toolCall.workflow.run.status.*，这里只有页面自己的结构文案。
   //
   // 页脚行刻意是「已结束的工作流」而不是「已完成」：这个桶里也有失败与取消的 run，
   // 而恰恰是它们最值得回去看（可恢复的那些）。
-  "chat.statusPanel.endedWorkflows": "已结束的工作流",
-  "chat.statusPanel.workflowsLive": "{count} 个运行中",
   "workflowDirectory.title": "工作流实例",
   "workflowDirectory.running": "正在运行",
   "workflowDirectory.runningEmpty": "没有正在运行的工作流",
@@ -1790,6 +1908,7 @@ const zhCN: Record<string, string> = {
   "chat.selections.commentAdd": "添加评论",
   "chat.selections.commentDeleted": "已删除注释",
   "chat.selections.commentUndo": "撤销",
+  "chat.selections.sentTitle": "已随消息发送",
   "chat.selections.listHeader": "下一条消息将携带 {count} 条注释",
   "chat.selections.listHint": "编号对应正文",
   "chat.selections.removeAll": "移除全部注释",
@@ -2436,6 +2555,8 @@ const zhCN: Record<string, string> = {
     "刚才的页面错误已经被拦住了，所以不会直接白屏。你可以先重试；如果问题持续，再刷新应用恢复界面。",
   "appError.retry": "重试",
   "appError.reload": "刷新应用",
+  "appError.restart": "重启应用",
+  "appError.restartHint": "重启将关闭所有应用窗口，未保存的内容可能丢失。",
   "appError.hint": "错误详情已记录到诊断日志里，方便继续排查。",
   "appError.details": "查看组件堆栈",
   "appError.unknown": "未知错误",
@@ -3445,6 +3566,18 @@ const zhCN: Record<string, string> = {
   "settings.nativeSearchEnhancements": "增强 Find 和 Grep",
   "settings.nativeSearchEnhancementsDescription":
     "在新建会话或应用重启后恢复的会话中使用增强 Find 和 Grep。当前会话保持现有设置；Windows 的 Find 保持不变。",
+  "settings.totalTokensReminder": "Token 预算提醒",
+  "settings.totalTokensReminderDescription":
+    "在新建会话或应用重启后恢复的会话中，向模型提供固定的 token 预算，并在每轮附带剩余量。只是提醒，不限制实际用量。当前会话保持现有设置。",
+  "settings.agentAlwaysBackground": "子智能体总在后台运行",
+  "settings.agentAlwaysBackgroundDescription":
+    "子智能体总在后台启动，结果在之后的回合送回，运行期间可以继续交代其他工作。关闭后由模型选择：默认在前台运行，模型要求时才在后台运行。在新建会话或应用重启后恢复的会话中生效；当前会话保持现有设置。",
+  "settings.replyLanguage": "回复语言",
+  "settings.replyLanguageDescription": "Agent 用这个语言回复。留空时跟随对话语言。",
+  "settings.replyLanguagePlaceholder": "例如：简体中文、English、日本語",
+  "settings.replyLanguageSaveError": "保存回复语言失败",
+  "settings.replyLanguageLocalOnly":
+    "回复语言仅支持在本地桌面端设置，请前往本地桌面端的“行为与工具”设置。",
   "settings.memory": "记忆",
   "settings.personalization.title": "个性化",
   "settings.personalization.description":
@@ -4715,7 +4848,7 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.testModel.localWorkspaceUnavailable":
     "本地工作区不可用，无法测试模型连通性。",
   "settings.usage.sectionTitle": "使用统计",
-  "settings.usage.sectionDescription": "汇总本机记录的会话用量，明细保留 30 天。",
+  "settings.usage.sectionDescription": "汇总本机记录的会话用量。",
   "settings.usage.tab.appUsage": "应用用量",
   "settings.usage.tab.codingPlan": "个人套餐",
   "settings.usage.sectionDescriptionRemote": "来自当前供应商统计接口，统计真实 Token 与工具调用。",
@@ -5229,6 +5362,8 @@ const zhCN: Record<string, string> = {
   "settings.plugins.store.ui.unsupported": "当前环境暂不支持打开插件界面，请在桌面本地项目中使用。",
   "settings.plugins.store.ui.needsSession": "请在当前项目的可用会话中打开插件界面。",
   "settings.plugins.store.ui.unavailable": "当前项目没有可用的插件界面，请检查启用状态。",
+  "settings.plugins.store.ui.disabledInWorkspace":
+    "该插件在当前项目已禁用，请到插件管理的当前项目中启用后再打开。",
   "settings.plugins.store.ui.chooseSurface": "选择插件界面",
   "settings.plugins.store.ui.preview": "放大效果图",
   "settings.plugins.store.ui.capability": "提供可在侧边面板打开的交互界面。",
@@ -5349,6 +5484,13 @@ const zhCN: Record<string, string> = {
   "settings.plugins.updateAll.partial": "已更新 {succeeded} 个，{failed} 个失败：{plugins}",
   "settings.plugins.updateAll.aborted": "插件范围已切换，全部更新已中止；已更新 {count} 个插件",
   "settings.plugins.list.updateAvailable": "可更新",
+  "settings.plugins.workspaceTrust.pending": "待信任",
+  "settings.plugins.workspaceTrust.pendingHint":
+    "这个插件来自项目配置，信任前不会加载。信任后，新会话会运行它的 Hook、MCP、技能、命令和 Agent。",
+  "settings.plugins.workspaceTrust.trust": "信任",
+  "settings.plugins.workspaceTrust.trusted": "已信任 {plugin}，新会话生效",
+  "settings.plugins.workspaceTrust.changed": "{plugin} 的声明已变化，请确认后重新信任",
+  "settings.plugins.workspaceTrust.failed": "无法信任 {plugin}",
   "settings.plugins.list.versionChanged": "版本变化",
   "settings.plugins.restore": "恢复",
   "settings.plugins.restorableBuiltins.title": "恢复内置插件",
@@ -5527,7 +5669,9 @@ const zhCN: Record<string, string> = {
 
   "settings.hooks.review.trust": "信任",
   "settings.hooks.review.notice": "钩子可在沙盒外运行，因此，请审查最近安装或修改的所有钩子",
+  "settings.hooks.review.worktreeNotice": "信任将同时作用于源仓库 {path} 及其 worktree",
   "settings.hooks.review.unavailable": "当前连接不支持信任此 Hook。",
+  "settings.hooks.review.scriptUnavailable": "入口脚本不存在或无法读取",
   "settings.hooks.review.reason.review_superseded": "审核已更新，请重新确认",
   "settings.hooks.review.reason.snapshot_mismatch": "Hook 配置已变化，需要重新审核",
   "settings.hooks.review.reason.bundle_changed": "Hook 配置已变化，需要重新审核",
@@ -5804,7 +5948,7 @@ const zhCN: Record<string, string> = {
   "chat.message.forking": "正在分叉...",
   "chat.message.fork.unavailable": "任务结束后可分叉",
   "chat.message.fork.unsupported": "当前agent暂不支持分叉功能",
-  "chat.message.fork.failed": "分叉会话失败：{error}",
+  "chat.message.fork.failed": "分叉会话失败，请稍后重试。",
   "chat.message.fork.derivedFrom": "从对话中派生",
   "chat.message.fork.derivedFromMissing": "派生自旧对话（已丢失追溯信息）",
   "chat.message.fork.parentMissing": "原对话已不存在",
@@ -6021,64 +6165,24 @@ const zhCN: Record<string, string> = {
   "chat.target.status.paused": "已暂停",
   "chat.target.status.budget_limited": "预算受限",
   "chat.target.status.complete": "已完成",
-  "chat.target.pause": "暂停目标",
-  "chat.target.resume": "继续目标",
+  "chat.target.elapsed": "已运行 {duration}",
+  "chat.target.pause": "暂停",
+  "chat.target.resume": "继续",
   "chat.target.clear": "清空目标",
-  "chat.summaryPanel.title": "状态",
   "chat.summaryPanel.duration.hours": "小时",
   "chat.summaryPanel.duration.minutes": "分",
   "chat.summaryPanel.duration.seconds": "秒",
-  "chat.summaryPanel.showMini": "收起为胶囊",
-  "chat.summaryPanel.showPanel": "展开状态",
-  "chat.summaryPanel.displayMode": "状态面板展开策略",
-  "chat.summaryPanel.displayModeAuto": "自动展开",
-  "chat.summaryPanel.displayModeExpanded": "始终展开",
-  "chat.summaryPanel.displayModeCollapsed": "始终收起",
-  "chat.summaryPanel.runningBackgroundTasks": "运行中的后台任务",
-  "chat.summaryPanel.runningBackgroundTasksMiniValue": "{count} 后台",
-  "chat.summaryPanel.runningBackgroundTasksMiniValuePlural": "{count} 后台",
   "chat.summaryPanel.stopRunningBackgroundTask": "停止运行中的后台任务",
   "chat.summaryPanel.stopRunningSubagent": "停止运行中的智能体",
   "chat.summaryPanel.stopSubagentFailed": "未能停止智能体，请重试。",
   "chat.summaryPanel.openRunningSubagentSession": "打开子智能体会话",
-  "chat.composer.backgroundWorks.tooltipTerminal": "运行中的终端",
-  "chat.composer.backgroundWorks.tooltipAgent": "打开运行中的智能体",
   // workflow 从 bash 拆出后 badge 有三类：
   // 恰好一类时用该类文案，混合仍走 tooltipMixed——三类两两组合再各写一句只会堆出六条同义句。
-  "chat.composer.backgroundWorks.tooltipWorkflow": "打开运行中的工作流",
   // 唯一在跑的工作流直达详情页时，徽标如实说出落点。
-  "chat.composer.backgroundWorks.tooltipWorkflowDetails": "打开工作流详情",
-  "chat.composer.backgroundWorks.tooltipMixed": "打开运行中的终端与智能体",
-  "chat.composer.backgroundWorks.ariaLabel":
-    "打开运行中的后台任务：Bash {bashCount} 个，工作流 {workflowCount} 个，子智能体 {subagentCount} 个，共 {count} 个",
   "chat.summaryPanel.goalIterationValue": "第 {count} 次迭代",
-  "chat.summaryPanel.todoGoalIterationGroup": "第 {count} 轮迭代",
-  "chat.summaryPanel.todoSessionGroup": "整个会话",
-  "chat.statusPanel.environment": "Git 工具",
-  "chat.statusPanel.changes": "更改",
-  "chat.statusPanel.branch": "分支",
-  "chat.statusPanel.commitPush": "提交 / 推送",
-  "chat.statusPanel.clean": "干净",
-  "chat.statusPanel.goal": "目标",
-  "chat.statusPanel.sessionPlans": "计划",
-  "chat.statusPanel.planFallback": "计划",
-  "chat.statusPanel.openPlan": "打开计划：{title}",
-  "chat.statusPanel.todo": "进程",
-  "chat.statusPanel.todoCompletedExpanded": "收起 {count} 项已完成",
-  "chat.statusPanel.todoCompletedFold": "已完成 {count} 项",
-  "chat.statusPanel.todoEarlierFold": "前面 {count} 项",
-  "chat.statusPanel.todoLaterFold": "后面 {count} 项",
-  "chat.statusPanel.todoWaitingExpanded": "收起 {count} 项待处理",
-  "chat.statusPanel.todoWaitingFold": "待处理 {count} 项",
-  "chat.statusPanel.terminals": "终端",
-  "chat.statusPanel.agents": "智能体",
+  "chat.statusPanel.viewAllChanges": "查看全部变更",
   // Workflows 分区：与 Terminals / Agents 并列的
   // 第三类实时活动。行内的状态词与步数复用 chat.toolCall.workflow.* 那一组，不另造词汇。
-  "chat.statusPanel.workflows": "工作流",
-  "chat.statusPanel.runningStatusValue": "{count} 个后台运行",
-  "chat.statusPanel.runningStatusValuePlural": "{count} 个后台运行",
-  "chat.statusPanel.runningAgentsValue": "{count} 运行",
-  "chat.statusPanel.runningAgentsValuePlural": "{count} 运行",
   "chat.statusPanel.runningStop": "停止",
   "chat.toolbar.connection.switchFailed": "切换连接失败，请重新选择后重试。",
   "chat.toolbar.combined.provider": "供应商",
@@ -6092,6 +6196,7 @@ const zhCN: Record<string, string> = {
   "chat.agentSwitch.success": "已切换到 {provider}",
   "chat.agentSwitch.failed": "切换 Agent 失败",
   "chat.toolbar.model.manageModels": "管理模型",
+  "chat.toolbar.model.clearSearch": "清除搜索",
   "chat.toolbar.model.searchPlaceholder": "搜索模型...",
   "chat.toolbar.model.empty": "未找到匹配模型",
   "chat.toolbar.modelSwitch.stage.settingModel": "正在切换模型...",
@@ -6104,6 +6209,7 @@ const zhCN: Record<string, string> = {
   "chat.toolbar.modelSwitch.lockedByRunningTask.short": "任务运行中",
   "chat.goal.runningBlocked": "请结束任务后设定目标。",
   "chat.goal.planModeBlocked": "Goal 无法在 Plan 模式下使用，请切换模式。",
+  "chat.slash.app.plan.label": "计划模式",
   "chat.slash.app.plan.description": "开启计划模式",
   "chat.compact.runningBlocked": "运行中不能压缩上下文，请等待当前任务结束。",
   "chat.compact.queued": "已加入队列，将按顺序压缩上下文。",
@@ -7517,7 +7623,7 @@ const zhCN: Record<string, string> = {
   "automations.noWorkspace": "打开一个工作区以管理它的定时任务。",
   "automations.workspace.label": "项目",
   // 页头只说明任务创建方式，避免把服务端滚动配额频次固化在全局空态文案中。
-  "automations.description": "创建定时任务，或排队在闲时算力空闲时后台执行。",
+  "automations.description": "创建按计划运行的任务。",
   "automations.description.populated": "按计划运行任务，或在需要时随时执行。",
   "automations.refresh": "刷新",
   "automations.refreshing": "刷新中…",
@@ -7541,6 +7647,7 @@ const zhCN: Record<string, string> = {
   "automations.runNowQueued": "已触发，即将运行",
   "automations.runNowAlreadyRunning": "上一条正在运行中，请稍后再试",
   "automations.runNowFailed": "触发运行失败",
+  "automations.runNowHostMismatch": "任务所属设备不符，无法运行",
   "automations.error.create": "创建失败，请重试",
   "automations.error.createLimit":
     "最多可保留 {limit} 个定时任务（包含已暂停、已完成和失败任务），请先删除一个任务后再创建。",
@@ -7706,7 +7813,7 @@ const zhCN: Record<string, string> = {
   "remoteSync.device.status.online": "已连接",
   "remoteSync.empty.title": "暂无已连接设备",
   "remoteSync.empty.description":
-    "连接 SSH、WSL 或 Docker 设备后，可以把本机配置推送到该设备的 ~/.zcode 目录。",
+    "连接 SSH、WSL 或 Docker 设备后，可以把本机配置推送到该设备的 ~/.openzwork 目录。",
   "remoteSync.empty.connect": "连接远端设备",
   "remoteSync.device.neverSynced": "尚未同步",
   "remoteSync.device.lastSynced.today": "今天 {time} 已同步",
@@ -7769,7 +7876,7 @@ const zhCN: Record<string, string> = {
   "remoteSync.blocked.targetSymlink": "远端同名项是软链，不能覆盖",
   "remoteSync.blocked.compatDirectory": "远端同名项位于 ~/.agents 兼容目录，不能覆盖",
   "remoteSync.blocked.externalDirectory":
-    "远端同名插件位于 ~/.zcode/plugins 以外的目录（例如开发中的 checkout），不能更新",
+    "远端同名插件位于 ~/.openzwork/plugins 以外的目录（例如开发中的 checkout），不能更新",
   "remoteSync.blocked.targetCompatConfig": "远端使用 ~/.agents 兼容配置，推送会使其失效",
   "remoteSync.blocked.sourceRemoved": "来源已删除，不能同步",
   "remoteSync.blocked.remoteLatestMismatch": "远端来源的最新版本与本机不一致",

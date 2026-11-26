@@ -1,9 +1,14 @@
 import { STORAGE_MIGRATION_COMMAND } from "@zcode/shared/sqlite-migrations";
-import { STORAGE_RELOCATION_COMMAND } from "@zcode/shared/data-directory";
+import { ZCODE_PLUGIN_ID_ENV_KEY } from "@zcode/shared/mcp";
+
+// OpenZWork(OZ-C009)：v4.0.0 起 @zcode/shared/data-directory 经 @zcode/shared/node 拉起
+// credential-security 与 shared 主入口，入口顶层值导入会破坏 __zcode-plugin-host 轻量隔离；用类型锁死字面量。
+const STORAGE_RELOCATION_COMMAND =
+  "storage-relocate" satisfies typeof import("@zcode/shared/data-directory").STORAGE_RELOCATION_COMMAND;
 import { interceptTuiStderr, isTuiInvocation } from "./tui-stderr.js";
 import { interceptKnownRuntimeWarnings } from "./runtime-warnings.js";
 import { installStderrConsoleBoundary } from "./protocol-console.js";
-import { setCliProcessTitle } from "./process-name.js";
+import { setCliProcessTitle, setPluginHostProcessTitle } from "./process-name.js";
 import { applyCliRuntimeEnvSanitization } from "./env.js";
 import { ensureSeaRuntimeTools } from "./sea-runtime-tools.js";
 import { isPluginHostInvocation, runPluginHostCommand } from "./plugin-host-command.js";
@@ -23,7 +28,14 @@ async function main(): Promise<void> {
   const isStorageCommand =
     argv[0] === STORAGE_MIGRATION_COMMAND || argv[0] === STORAGE_RELOCATION_COMMAND;
   // 存储模式也可运行在 Host Worker 中，不能修改整个 Host 的进程名称。
-  if (!isStorageCommand && !argv.includes("--prepare-storage")) setCliProcessTitle();
+  if (!isStorageCommand && !argv.includes("--prepare-storage")) {
+    // 插件宿主复用 CLI 入口；统一改名会把 MCP 进程误标成 Agent，须在加载插件前按角色命名。
+    if (isPluginHostInvocation(argv)) {
+      setPluginHostProcessTitle(process.env[ZCODE_PLUGIN_ID_ENV_KEY]);
+    } else {
+      setCliProcessTitle();
+    }
+  }
   // 真实 zcode CLI 进程里仍可能有少量路径直接读取 process.env。
   // 入口先清洗用户 shell 注入的 NODE_ENV、代理和证书变量；网络变量只封存给后续 Bash/tool 子进程恢复。
   applyCliRuntimeEnvSanitization(process.env);

@@ -3,7 +3,11 @@ import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/pro
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { getRuntimeToolRuntime, type RuntimeToolId } from "@zcode/shared/runtime-tool-runtime";
-import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
+
+// OpenZWork(OZ-C001)：本模块被 main.ts 顶层静态引入，__zcode-plugin-host 门禁禁止在插件宿主入口求值
+// packages/shared/src/index.ts（plugin-host-entry.test.mjs）；用 satisfies 类型锁死数据目录字面量。
+const OPENZWORK_DATA_DIR_NAME =
+  ".openzwork" satisfies typeof import("@zcode/shared").OPENZWORK_DATA_DIR_NAME;
 
 type CliEnv = Record<string, string | undefined>;
 

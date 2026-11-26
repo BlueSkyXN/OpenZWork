@@ -21,7 +21,23 @@ import {
   type PermissionService,
   type WorkflowAgentRunner,
 } from "@zcode/core";
-import { createChildTraceContext, createSessionId, type ContextSourcePort, type ExecutionPort, type FileSystemPort, type HttpClientPort, type ImageProcessorPort, type PdfDocumentPort, type Logger, type McpPort, type SessionEventSink, type SessionId, type SessionStorePort, type ToolArtifactStorePort, type TraceContext, type WorkflowDefinition } from "@zcode/contracts";
+import {
+  createChildTraceContext,
+  createSessionId,
+  type ContextSourcePort,
+  type ExecutionPort,
+  type FileSystemPort,
+  type HttpClientPort,
+  type ImageProcessorPort,
+  type PdfDocumentPort,
+  type Logger,
+  type SessionEventSink,
+  type SessionId,
+  type SessionStorePort,
+  type ToolArtifactStorePort,
+  type TraceContext,
+  type WorkflowDefinition,
+} from "@zcode/contracts";
 import { collectDisabledPaths } from "../skill-command-overrides.js";
 import type { PrepareUserExecutionBoundary, ZCodeAppOptions } from "./types.js";
 import { createWorkflowMethods, type WorkflowFacade } from "./workflow-methods.js";
@@ -40,7 +56,6 @@ interface CreateWorkflowFacadeDeps {
   imageProcessorPort: ImageProcessorPort;
   pdfDocumentPort?: PdfDocumentPort;
   logger: Logger;
-  mcpPort?: McpPort;
   /** 父会话的 model factory（与 script-workflow-child-runtime.ts 同一约定）。 */
   modelFactory: NonNullable<AgentRuntimeDeps["modelFactory"]>;
   permissionService: PermissionService;
@@ -88,7 +103,7 @@ export function createWorkflowFacade(deps: CreateWorkflowFacadeDeps): WorkflowFa
         sessionId: childSessionId,
         traceId: childTraceContext.traceId,
       });
-      const childRuntime = createWorkflowChildRuntime(deps, {
+      const childRuntime = await createWorkflowChildRuntime(deps, {
         childSessionId,
         childTraceContext,
         workflowKind,
@@ -257,18 +272,20 @@ export function createWorkflowFacade(deps: CreateWorkflowFacadeDeps): WorkflowFa
   });
 }
 
-function createWorkflowChildRuntime(
+async function createWorkflowChildRuntime(
   deps: CreateWorkflowFacadeDeps,
   options: {
     childSessionId: SessionId;
     childTraceContext: TraceContext;
     workflowKind: string;
   },
-): AgentRuntime {
+): Promise<AgentRuntime> {
+  const childMcp = await deps.runtime.createChildMcpAccess();
   return new AgentRuntime(
     options.childSessionId,
     {
       ...deps.runtimeConfig,
+      mcp: childMcp.config,
       agentName: options.workflowKind === "expert" ? "zcode-expert" : "zcode-workflow",
       // workflow child 不在 Guarded 合同内；只隔离父任务模式，不继承审批。
       mode: "yolo",
@@ -321,7 +338,7 @@ function createWorkflowChildRuntime(
               disabledPaths: collectDisabledPaths(deps.configResult.config.skillOverrides),
             }))
           : undefined,
-      mcpPort: deps.mcpPort,
+      ...childMcp.deps,
       eventSink: deps.eventSink,
       modelFactory: deps.modelFactory,
       resolveEffectiveModelSelection: deps.appOptions.resolveEffectiveModelSelection,

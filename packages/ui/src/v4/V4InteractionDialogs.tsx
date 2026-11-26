@@ -236,6 +236,7 @@ export function V4InteractionDialogs({
         }
         return {
           accepted,
+          ackStatus: ack.status,
           committedMode:
             mode && ack.status === "failed"
               ? committedPermissionGrantMode(ack.reasonCode)
@@ -243,7 +244,7 @@ export function V4InteractionDialogs({
         };
       } catch (error) {
         logger.error("[v4-interaction] resolveInteraction 失败", { interactionId, error });
-        return { accepted: false, committedMode: undefined };
+        return { accepted: false, ackStatus: "failed", committedMode: undefined };
       } finally {
         onCommandSettled?.(envelope.commandId);
       }

@@ -21,6 +21,7 @@ OpenZWork 是 ZCode 开源版本的净化＋特调版。产品必须在用户机
   `ZCODE_DATA_BASE_DIR` 链）。例外：`setting.json` 固定
   `{resolveUserHomeDir()}/.openzwork/v2/setting.json`。
 - 远端链（SSH/WSL/Docker workspace）同源约束：
+  - 数据同步页在尚未连接设备时，所有界面语言均显示远端用户目录 `~/.openzwork`。
   - 部署目标与启动命令必须共用 `packages/server/src/remote/deployShared.ts` 的
     `REMOTE_BASE = "~/.openzwork/server"`；
   - shell 双引号串内 `~` 不展开，env 赋值用 `REMOTE_BASE_HOME_EXPR`（`$HOME/.openzwork/server`）；

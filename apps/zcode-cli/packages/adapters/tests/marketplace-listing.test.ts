@@ -43,7 +43,13 @@ describe("marketplace store listing", () => {
             displayName: "Example Plugin",
             displayName_i18n: { "zh-CN": "示例插件" },
             version: "0.1.1",
+            author: { name: "Example Publisher", url: "https://publisher.example.invalid" },
             category: "template",
+            icon: "https://cdn.example.invalid/icons/example.png",
+            homepage: "https://publisher.example.invalid/plugins/example",
+            privacyPolicy: "https://publisher.example.invalid/privacy",
+            termsOfService: "https://publisher.example.invalid/terms",
+            heroImage: "https://cdn.example.invalid/hero/example.png",
             examplePrompts: ["Try the example"],
             examplePrompts_i18n: { "zh-CN": ["试试这个示例"] },
             requiresPaidPlan: true,
@@ -79,8 +85,14 @@ describe("marketplace store listing", () => {
       displayName: "Example Plugin",
       displayNameI18n: { "zh-CN": "示例插件" },
       descriptionI18n: { "zh-CN": "一个最小模板插件" },
+      icon: "https://cdn.example.invalid/icons/example.png",
       category: "template",
-      author: "Z.ai",
+      author: "Example Publisher",
+      authorUrl: "https://publisher.example.invalid",
+      homepage: "https://publisher.example.invalid/plugins/example",
+      privacyPolicy: "https://publisher.example.invalid/privacy",
+      termsOfService: "https://publisher.example.invalid/terms",
+      heroImage: "https://cdn.example.invalid/hero/example.png",
       examplePrompts: ["Try the example"],
       examplePromptsI18n: { "zh-CN": ["试试这个示例"] },
       requiresPaidPlan: true,
@@ -95,7 +107,9 @@ describe("marketplace store listing", () => {
 
   it("normalizes author from string and object forms", () => {
     expect(normalizeAuthorValue("Acme")).toEqual({ name: "Acme" });
-      name: "Z.ai",
+    expect(normalizeAuthorValue({ name: "Example Publisher", url: "https://publisher.example.invalid" })).toEqual({
+      name: "Example Publisher",
+      url: "https://publisher.example.invalid",
     });
     expect(normalizeAuthorValue("   ")).toBeUndefined();
     expect(normalizeAuthorValue(42)).toBeUndefined();
@@ -109,6 +123,24 @@ describe("marketplace store listing", () => {
       .toEqual({ publisherType: "official" });
     expect(parseEntryStoreListing({ publisherType: "personal" })).toBeUndefined();
     expect(parseEntryStoreListing({ publisherType: true })).toBeUndefined();
+  });
+
+  // 按登录区域定向展示（docs/plugin-marketplace-ui-ux.md）：只保留 cn/global 并去重；
+  // 未知值忽略不报错，缺省、非数组、过滤后为空都不写，表示全部区域可见。
+  it("keeps only known store regions and omits the field when nothing is left", () => {
+    expect(parseEntryStoreListing({ regions: ["cn"] })).toEqual({ regions: ["cn"] });
+    expect(parseEntryStoreListing({ regions: ["global"] })).toEqual({ regions: ["global"] });
+    expect(parseEntryStoreListing({ regions: ["global", "cn", "cn"] })).toEqual({
+      regions: ["cn", "global"],
+    });
+    expect(parseEntryStoreListing({ regions: ["cn", "mars", 1, null] })).toEqual({
+      regions: ["cn"],
+    });
+    expect(parseEntryStoreListing({ name: "x" })).toBeUndefined();
+    expect(parseEntryStoreListing({ regions: [] })).toBeUndefined();
+    expect(parseEntryStoreListing({ regions: ["mars"] })).toBeUndefined();
+    expect(parseEntryStoreListing({ regions: "cn" })).toBeUndefined();
+    expect(parseEntryStoreListing({ regions: { cn: true } })).toBeUndefined();
   });
 
   // 扩展摘要（docs/plugins/plugin-publishing.md §4.2–4.3）：CLI 只透传，只留 engines.zcode 与字符串 grants，

@@ -139,40 +139,139 @@ async function nearestPackage(file) {
   return undefined;
 }
 
+function expandStepCommands(stepRun, scripts = {}) {
+  const expand = (command, depth = 0) => {
+    const out = [command];
+    if (depth < 3) {
+      for (const match of command.matchAll(/\bpnpm (?:run )?([\w:.-]+)/g)) {
+        if (typeof scripts[match[1]] === "string") {
+          out.push(...expand(scripts[match[1]], depth + 1));
+        }
+      }
+    }
+    return out;
+  };
+  return stepRun
+    .split("\n")
+    .flatMap((line) => expand(line))
+    .flatMap((line) => line.split("&&"))
+    .map((raw) => raw.trim())
+    .filter((command) => command && !command.startsWith("#") && !/^echo\b/.test(command))
+    .map((command) => command.split(/\s+/));
+}
+
+// 桌面场景由独立的必跑任务启动 Electron。只认完整 spec，按用例标题筛选的步骤无法保证整份回归。
+function requiredDesktopSpecs(job) {
+  if (!job || job.if || job["continue-on-error"]) return [];
+  const specs = [];
+  for (const step of job.steps) {
+    if (step.if || step["continue-on-error"] || typeof step.run !== "string") continue;
+    const command = step.run.trim().replace(/\s+/g, " ");
+    if (
+      !/^pnpm --filter @zcode\/desktop exec wdio run wdio\.conf\.ts(?: --spec \S+)+$/.test(command)
+    )
+      continue;
+    for (const [, file] of command.matchAll(/ --spec (\S+)/g)) {
+      specs.push(posix.join("packages/desktop", unquoteWord(file)));
+    }
+  }
+  return specs;
+}
+
 async function ciScope() {
   const core = JSON.parse(await readText("tests/ci/core-tests.json"));
+  const engineering = JSON.parse((await readText("scripts/engineering-test-files.json")) ?? "[]");
   const ci = parseDocument(await readText(".github/workflows/ci.yml")).toJS();
   const { scripts } = JSON.parse(await readText("package.json"));
   return {
-    coreFiles: new Set(core.suites.flatMap((suite) => suite.files)),
-    runs: ci.jobs.checks.steps.flatMap((step) => {
-      if (!step.run) return [];
-      const script = step.run.match(/^pnpm (?:run )?([\w:-]+)$/)?.[1];
-      return [step.run, script && scripts[script]].filter(Boolean).map((run) => run.split(/\s+/));
-    }),
+    coreFiles: new Set([
+      ...core.suites.flatMap((suite) => suite.files),
+      ...requiredDesktopSpecs(ci.jobs["workflows-hub-e2e"]),
+    ]),
+    engineeringFiles: new Set(engineering.map((entry) => posix.normalize(String(entry)))),
+    runs: ci.jobs.checks.steps.flatMap((step) =>
+      typeof step?.run === "string" ? expandStepCommands(step.run, scripts) : [],
+    ),
   };
 }
 
+function unquoteWord(word) {
+  return word.replace(/^['"]|['"]$/g, "");
+}
+
+function globMatches(pattern, file) {
+  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, "\\$&").replaceAll("*", "[^/]*");
+  return new RegExp(`^${escaped}$`).test(file);
+}
+
+function repoScriptWrapperIndex(normalized) {
+  if (normalized[0] !== "node") return -1;
+  const entryIndex = normalized.findIndex(
+    (word, index) => index > 0 && word && !word.startsWith("-"),
+  );
+  return entryIndex > 0 &&
+    posix.normalize(normalized[entryIndex]) === "scripts/run-repo-script-tests.mjs"
+    ? entryIndex
+    : -1;
+}
+
 /** 回归登记在根 Vitest 核心清单，或出现在 ci.yml 步骤中：根路径，或 --filter 包名加包内路径。 */
-function isCovered(file, { coreFiles, runs }, pkg) {
-  if (coreFiles.has(file) || runs.some((words) => words.includes(file))) return true;
+function isCovered(file, { coreFiles, engineeringFiles = new Set(), runs }, pkg) {
+  if (coreFiles.has(file)) return true;
+  if (
+    runs.some((words) => {
+      const normalized = words.map(unquoteWord);
+      if (repoScriptWrapperIndex(normalized) > 0 && engineeringFiles.has(file)) return false;
+      return normalized.some(
+        (word) => !word.startsWith("-") && !word.startsWith("!") && posix.normalize(word) === file,
+      );
+    })
+  )
+    return true;
   if (
     /^scripts\/test\/[^/]+\.test\.mjs$/.test(file) &&
-    runs.some(
-      (words) =>
-        words[0] === "node" &&
-        words.includes("--test") &&
-        words.includes("scripts/test/*.test.mjs"),
-    )
+    runs.some((words) => {
+      const normalized = words.map(unquoteWord);
+      const wrapperIndex = repoScriptWrapperIndex(normalized);
+      const viaWrapper = wrapperIndex > 0;
+      if (viaWrapper && engineeringFiles.has(file)) return false;
+      const isNodeTestRunner =
+        viaWrapper || (normalized[0] === "node" && normalized.includes("--test"));
+      const targets = viaWrapper
+        ? normalized.slice(wrapperIndex + 1).filter((word) => word && !word.startsWith("-"))
+        : normalized
+            .slice(1)
+            .filter((word) => word && !word.startsWith("-") && !word.startsWith("!"));
+      const effectiveTargets =
+        viaWrapper && targets.length === 0 ? ["scripts/test/*.test.mjs"] : targets;
+      return (
+        isNodeTestRunner &&
+        effectiveTargets.some(
+          (pattern) => pattern.includes("*") && globMatches(posix.normalize(pattern), file),
+        ) &&
+        !normalized.some(
+          (word) => word.startsWith("!") && globMatches(posix.normalize(word.slice(1)), file),
+        )
+      );
+    })
   )
     return true;
   if (!pkg) return false;
   const local = posix.relative(pkg.dir, file);
-  return runs.some(
-    (words) =>
-      words.includes(local) &&
-      words.some((word, index) => word === pkg.name && words[index - 1] === "--filter"),
-  );
+  return runs.some((words) => {
+    const normalized = words.map(unquoteWord);
+    const hasFilter = normalized.some(
+      (word, index) =>
+        (word === pkg.name && normalized[index - 1] === "--filter") ||
+        word === `--filter=${pkg.name}`,
+    );
+    return (
+      hasFilter &&
+      normalized.some(
+        (word) => !word.startsWith("-") && !word.startsWith("!") && posix.normalize(word) === local,
+      )
+    );
+  });
 }
 
 async function trackedMarkers() {
@@ -310,13 +409,35 @@ test("a fixed patch loses its guard when a marker or CI coverage disappears", ()
   assert.match(fixture({ regression: [] }).join("\n"), /须登记 regression/);
 });
 
+test("desktop patch coverage requires whole specs in a mandatory WebDriver step", () => {
+  const run =
+    "pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec ./test/a.ts --spec ./test/b.ts";
+  const step = { run };
+  assert.deepEqual(requiredDesktopSpecs({ steps: [step] }), [
+    "packages/desktop/test/a.ts",
+    "packages/desktop/test/b.ts",
+  ]);
+  assert.deepEqual(
+    requiredDesktopSpecs({
+      steps: [
+        { run: run + " --mochaOpts.grep one" },
+        { ...step, if: "always()" },
+        { ...step, "continue-on-error": true },
+      ],
+    }),
+    [],
+  );
+  assert.deepEqual(requiredDesktopSpecs({ if: "manual", steps: [step] }), []);
+});
+
 test("CI coverage accepts the core list, root paths and filtered package steps", () => {
   const scope = {
     coreFiles: new Set(["packages/a/test/core.test.ts"]),
+    engineeringFiles: new Set(["scripts/test/audit-conversation-session-json-out.test.mjs"]),
     runs: [
       "pnpm exec vitest run packages/a/test/root.test.ts",
       "pnpm --filter @zcode/cli-a exec vitest run tests/cli.test.ts",
-      "node --test --test-concurrency=1 scripts/test/*.test.mjs",
+      "node scripts/run-repo-script-tests.mjs --test-concurrency=1 scripts/test/*.test.mjs",
     ].map((run) => run.split(" ")),
   };
   const cliA = { dir: "apps/cli/packages/a", name: "@zcode/cli-a" };
@@ -327,7 +448,54 @@ test("CI coverage accepts the core list, root paths and filtered package steps",
   assert.equal(isCovered("apps/cli/packages/b/tests/cli.test.ts", scope, cliB), false);
   assert.equal(isCovered("packages/a/test/other.test.ts", scope), false);
   assert.equal(isCovered("scripts/test/affected-unit-test-cli.test.mjs", scope), true);
+  assert.equal(
+    isCovered("scripts/test/audit-conversation-session-json-out.test.mjs", scope),
+    false,
+  );
+  assert.equal(
+    isCovered("scripts/test/audit-conversation-session-json-out.test.mjs", {
+      ...scope,
+      coreFiles: new Set([
+        ...scope.coreFiles,
+        "scripts/test/audit-conversation-session-json-out.test.mjs",
+      ]),
+    }),
+    true,
+  );
   assert.equal(isCovered("scripts/test/nested/example.test.mjs", scope), false);
+
+  // Multi-line PowerShell step, &&-chained step with Node flags + ./ path, and cross-line --filter isolation.
+  const multiLineScope = {
+    coreFiles: new Set(),
+    engineeringFiles: new Set(["scripts/test/audit-conversation-session-json-out.test.mjs"]),
+    runs: [
+      ...expandStepCommands(
+        [
+          "if ((whoami /priv) -match '\\bSeDebugPrivilege\\b') { [System.Diagnostics.Process]::LeaveDebugMode() }",
+          "pnpm test:repo-scripts",
+          "exit $LASTEXITCODE",
+        ].join("\n"),
+        { "test:repo-scripts": "node --no-warnings ./scripts/run-repo-script-tests.mjs" },
+      ),
+      ...expandStepCommands(
+        [
+          "pnpm --filter @zcode/cli-a exec vitest run tests/only-a.test.ts",
+          "pnpm --filter @zcode/cli-b exec vitest run tests/only-b.test.ts",
+          "pnpm build:sea:prepare && node --test scripts/test/openzwork-*.test.mjs",
+        ].join("\n"),
+        {},
+      ),
+    ],
+  };
+  assert.equal(isCovered("scripts/test/affected-unit-test-cli.test.mjs", multiLineScope), true);
+  assert.equal(
+    isCovered("scripts/test/audit-conversation-session-json-out.test.mjs", multiLineScope),
+    false,
+  );
+  assert.equal(isCovered("scripts/test/openzwork-maintenance-scan.test.mjs", multiLineScope), true);
+  assert.equal(isCovered("apps/cli/packages/a/tests/only-a.test.ts", multiLineScope, cliA), true);
+  assert.equal(isCovered("apps/cli/packages/b/tests/only-a.test.ts", multiLineScope, cliB), false);
+  assert.equal(isCovered("apps/cli/packages/a/tests/only-b.test.ts", multiLineScope, cliA), false);
 });
 
 test("markers must point to registered files of a registered patch", () => {

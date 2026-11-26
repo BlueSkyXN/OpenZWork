@@ -801,13 +801,13 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       "packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/web-remote-v1-connections.test.ts",
       ['"https://zcode.z.ai"'],
     ],
-    // v3.18.0 上游新增的远端安装更新用例（pending 准入）：NO_PROXY 列表里的官方域后缀
+    // v3.18.0 上游新增的远端安装更新用例（v4.0.0 晋升正式路径）：NO_PROXY 列表里的官方域后缀
     // 只是代理旁路配置，不是产品连接端点；仅登记这一完整字面量。
     [
-      "packages/desktop/test/e2e/conversation-session/remote/installation/manual-review/pending/conversation-session-r3-update-cancel.test.ts",
+      "packages/desktop/test/e2e/conversation-session/remote/installation/conversation-session-r3-update-cancel.test.ts",
       ['".bigmodel.cn"'],
     ],
-    // 官方连接说明改写后，旧整句许可已失效；仅同步这两句，继续检查同文件内的其他地址。
+    // 官方连接说明只放行各语言的完整译句，同文件内的其他地址继续检查。
     [
       "packages/ui/src/i18n/locales/en-US.ts",
       [
@@ -818,6 +818,24 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       "packages/ui/src/i18n/locales/zh-CN.ts",
       [
         '"通过 ZCode 官方中继连接，使用官方 V1 网页 {version}。手机和电脑都需能访问 zcode.z.ai；扫码配对无需登录。"',
+      ],
+    ],
+    [
+      "packages/ui/src/i18n/locales/ja-JP.ts",
+      [
+        '"ZCode の公式リレーと公式 V1 ページ {version} を使用します。両方の端末から zcode.z.ai に接続できる必要があります。サインインせずにスキャンしてペアリングできます。"',
+      ],
+    ],
+    [
+      "packages/ui/src/i18n/locales/ko-KR.ts",
+      [
+        '"ZCode 공식 릴레이와 공식 V1 페이지 {version}을 사용합니다. 두 기기에서 모두 zcode.z.ai에 접속할 수 있어야 합니다. 로그인 없이 스캔하여 페어링하세요."',
+      ],
+    ],
+    [
+      "packages/ui/src/i18n/locales/ru-RU.ts",
+      [
+        '"Используются официальный ретранслятор ZCode и официальная страница V1 {version}. Оба устройства должны иметь доступ к zcode.z.ai. Для сопряжения отсканируйте код, вход не требуется."',
       ],
     ],
   ]);
@@ -857,7 +875,7 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
     removeAllowedV1Literals(capabilityCases, '"https://api.z.ai/api/anthropic/other"'),
     officialDomainRe,
   );
-  for (const locale of ["en-US", "zh-CN"]) {
+  for (const locale of ["en-US", "zh-CN", "ja-JP", "ko-KR", "ru-RU"]) {
     const file = `packages/ui/src/i18n/locales/${locale}.ts`;
     const [help] = allowedV1Literals.get(file);
     assert.doesNotMatch(removeAllowedV1Literals(file, help), officialDomainRe);
@@ -1091,6 +1109,15 @@ test("[structural, not runtime] WP-09: empty-model guidance and starter prompts 
     "utf8",
   );
   assert.doesNotMatch(prompts, /闲时任务|idle[- ]time task|off[- ]peak/i);
+  for (const locale of ["zh-CN", "en-US", "ja-JP", "ko-KR", "ru-RU"]) {
+    const source = fs.readFileSync(
+      path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`),
+      "utf8",
+    );
+    const description = source.match(/"automations\.description":\s*"([^"]+)"/);
+    assert.ok(description, `${locale}: missing scheduled task description`);
+    assert.doesNotMatch(description[1], /闲时|idle time|アイドル時間|유휴 시간|время простоя/i);
+  }
   for (const locale of ["zh-CN", "en-US"]) {
     const source = fs.readFileSync(
       path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`),
@@ -1294,6 +1321,17 @@ test("[structural, not runtime] startup never restores the retired legacy-memory
 });
 
 test("[structural, not runtime] WP-03: remote deploy/startup and distribution defaults share the .openzwork root", () => {
+  for (const locale of ["zh-CN", "en-US", "ja-JP", "ko-KR", "ru-RU"]) {
+    const messages = fs.readFileSync(
+      path.join(root, `packages/ui/src/i18n/locales/${locale}.ts`),
+      "utf8",
+    );
+    const description = messages.match(/"remoteSync\.empty\.description":\s*"([^"]*)"/)?.[1];
+    assert.ok(
+      description?.includes("~/.openzwork"),
+      `${locale}: data sync must name the remote user directory`,
+    );
+  }
   // 远端链：部署（deploy.ts 经 REMOTE_BASE 上传）与启动（connect.ts 拼 shell 命令）必须同源，
   // 否则首连必失败且复用官方命名空间。双引号 env 串里 ~ 不展开，用 $HOME 展开形。
   const deployShared = fs.readFileSync(

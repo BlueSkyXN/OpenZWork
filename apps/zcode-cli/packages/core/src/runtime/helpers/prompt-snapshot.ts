@@ -6,6 +6,8 @@
 // 存在 session_entry（每个会话一行，覆盖写）；runtime.promptSnapshot 是内存副本，
 // undefined 表示还没有快照，null 表示 compaction 已清掉。
 
+import { createHash } from "node:crypto";
+import { promptSettingsCacheInput } from "../../context/prompt-settings/contract.js";
 import { SESSION_ENTRY_PROMPT_SNAPSHOT, type ModelInputMessage } from "@zcode/contracts";
 import {
   countContextPrefixMessages,
@@ -20,6 +22,12 @@ type ModelIdentity = Pick<Model, "providerId" | "modelId">;
 export interface PromptSnapshot {
   model: { providerId: string; modelId: string };
   system: ModelInputMessage[];
+  settingsHash?: string;
+}
+
+function settingsHash(runtime: AgentRuntimeInternal): string | undefined {
+  const input = promptSettingsCacheInput(runtime.config);
+  return input === undefined ? undefined : createHash("sha256").update(input).digest("hex");
 }
 
 /** 只有带 session store 的主会话使用快照；子 agent 与工作流 actor 不用。 */
@@ -53,7 +61,9 @@ export async function loadPromptSnapshot(
       sessionID: runtime.sessionId,
       type: SESSION_ENTRY_PROMPT_SNAPSHOT,
     });
-    runtime.promptSnapshot = parsePromptSnapshot(entries?.at(-1)?.data);
+    const snapshot = parsePromptSnapshot(entries?.at(-1)?.data);
+    // OpenZWork(OZ-F002)：同一模型也可能在重启后采用不同的主会话规则。旧记录没有设置标识，先重建一次。
+    if (!snapshot || snapshot.settingsHash === settingsHash(runtime)) runtime.promptSnapshot = snapshot;
   } catch (error) {
     runtime.logger?.warn("Prompt snapshot read failed", {
       ...traceContextToLogContext(traceContext),
@@ -78,9 +88,11 @@ export async function recordPromptSnapshot(
 ): Promise<void> {
   if (!usesPromptSnapshot(runtime) || promptSnapshotFor(runtime, input.model)) return;
   if (input.modelSelectionScope === "execution" || !isSessionModel(runtime, input.model)) return;
+  const hash = settingsHash(runtime);
   const snapshot: PromptSnapshot = {
     model: { providerId: input.model.providerId, modelId: input.model.modelId },
     system: leadingSystemMessages(input.entries),
+    ...(hash === undefined ? {} : { settingsHash: hash }),
   };
   runtime.promptSnapshot = snapshot;
   await savePromptSnapshotEntry(runtime, snapshot, input.traceContext);
@@ -208,6 +220,7 @@ export function parsePromptSnapshot(data: unknown): PromptSnapshot | null | unde
   return {
     model: { providerId: model.providerId, modelId: model.modelId },
     system: system as ModelInputMessage[],
+    ...(typeof data.settingsHash === "string" ? { settingsHash: data.settingsHash } : {}),
   };
 }
 

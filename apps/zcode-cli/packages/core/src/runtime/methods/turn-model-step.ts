@@ -1,5 +1,8 @@
 import type { MessageId } from "@zcode/contracts";
+// OpenZWork(OZ-F002): 捕获主会话实际请求提示词投影并对齐主会话设置作用域。
 import type { SystemPromptPreviewBlock } from "@zcode/shared";
+import { mainSessionPromptSettings } from "../../context/prompt-settings/contract.js";
+import { committedToolSearchDelivery } from "./turn-output-token-continuation.js";
 import type { ToolSearchExecutionContext } from "@zcode/contracts";
 import { getTurnTools } from "./turn-tool-visibility.js";
 
@@ -99,18 +102,6 @@ import {
 } from "./turn-output-token-continuation.js";
 
 type ModelStepResult = "continue" | "output_continuation" | "break";
-type ModelStepOptions = {
-  drainedSteerForNextRequest?: DrainedPendingInputDiagnostics;
-  latestRealUserMessageIndex?: number;
-  messages: RunModelTextRequestOptions["messages"];
-  sourceEntries: readonly (RuntimeMessageEntry | undefined)[];
-  promptBlocks?: SystemPromptPreviewBlock[];
-  promptComplete?: boolean;
-  recordedMessages: RunModelTextRequestOptions["messages"];
-  requestEntries: readonly RuntimeMessageEntry[];
-  tools: ModelToolContract[];
-  toolSearch?: ToolSearchExecutionContext;
-};
 
 export async function runModelBackedTurnStep(
   this: AgentRuntimeInternal,
@@ -124,7 +115,6 @@ export async function runModelBackedTurnStep(
     // OpenZWork（F002）：系统提示词预览观测输入（与上游 originEntries 并存）。
     promptBlocks?: SystemPromptPreviewBlock[];
     promptComplete?: boolean;
-    recordedMessages: RunModelTextRequestOptions["messages"];
     requestEntries: readonly RuntimeMessageEntry[];
     tools: ModelToolContract[];
     toolSearch?: ToolSearchExecutionContext;
@@ -148,7 +138,6 @@ async function runModelBackedTurnStepImpl(
     // OpenZWork（F002）：系统提示词预览观测输入（与上游 originEntries 并存）。
     promptBlocks?: SystemPromptPreviewBlock[];
     promptComplete?: boolean;
-    recordedMessages: RunModelTextRequestOptions["messages"];
     requestEntries: readonly RuntimeMessageEntry[];
     tools: ModelToolContract[];
     toolSearch?: ToolSearchExecutionContext;
@@ -205,8 +194,7 @@ async function runModelBackedTurnStepImpl(
   const modelRequestEvent = this.createEvent(
     SessionEventType.ModelRequest,
     {
-      // 自动续写提示只属于本次请求，不应写入持久化的 ModelRequest 轨迹。
-      messages: options.recordedMessages,
+      messages: options.messages,
       providerId: String(model.providerId),
       modelId: String(model.modelId),
       querySource,
@@ -231,7 +219,9 @@ async function runModelBackedTurnStepImpl(
   let latestModelRequestId: string | undefined;
   let latestFailedModelRequestId: string | undefined;
   const promptBuilder =
-    querySource === "main_turn" ? (this.contextBuilder?.copyForPromptPreview() ?? null) : null;
+    querySource === "main_turn" && !this.config.systemPrompt?.trim()
+      ? (this.contextBuilder?.copyForPromptPreview() ?? null)
+      : null;
   const recordModelNetworkStatus = (event: ModelNetworkStatusEvent): void => {
     if (event.type === "model_request_started") {
       latestModelRequestId = event.requestId;
@@ -248,7 +238,7 @@ async function runModelBackedTurnStepImpl(
           blocks: options.promptBlocks ?? [],
           complete: options.promptComplete === true,
           builder: promptBuilder,
-          settings: this.config.systemPromptSettings,
+          settings: mainSessionPromptSettings(this.config),
         });
       }
       return;
@@ -320,6 +310,7 @@ async function runModelBackedTurnStepImpl(
       }
       return "continue";
     }
+
     const admissionRetryDelayMs = getStartPlanBusyAdmissionRetryDelayMs({
       error: finalError,
       providerId: executionModelSelection.providerId,
@@ -355,6 +346,7 @@ async function runModelBackedTurnStepImpl(
         state.userMessageId,
         assistantCreatedAt,
         {
+          toolSearchDelivery: committedToolSearchDelivery(state.turnRequestState),
           completed: Date.now(),
           finish: "start_plan_admission_retry_discarded",
         },
@@ -472,6 +464,7 @@ async function runModelBackedTurnStepImpl(
       state.userMessageId,
       assistantCreatedAt,
       {
+        toolSearchDelivery: committedToolSearchDelivery(state.turnRequestState),
         completed: Date.now(),
         error: {
           name: finalError instanceof Error ? finalError.name : "UnknownError",
@@ -765,7 +758,7 @@ async function runModelBackedTurnStepImpl(
     });
     if (assistantCommitted) recordModelHistoryRound(state);
     if (outputTokenContinuation === "continue") {
-      appendOutputTokenContinuation(state.turnRequestState);
+      await appendOutputTokenContinuation(this, state);
       state.reactiveCompactAttemptedInCurrentModelStep = false;
       state.turnMachine = new TurnMachineImpl(state.turnMachine.aggregateResults());
       return "output_continuation";

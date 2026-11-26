@@ -31,7 +31,8 @@ await build({
   bundle: true,
   platform: "node",
   format: "esm",
-  external: ["@zcode/server/remote"],
+  // 存储路径用例只用到凭据文件路径，系统钥匙串由 Node 在实际访问时加载。
+  external: ["@zcode/server/remote", "@napi-rs/keyring"],
   plugins: [
     {
       name: "node-desktop-test-boundaries",

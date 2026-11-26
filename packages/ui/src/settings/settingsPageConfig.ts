@@ -1,6 +1,5 @@
 import {
   Archive,
-  Share2,
   Folders,
   Monitor,
   MonitorSmartphone,
@@ -211,13 +210,6 @@ const BASE_SETTINGS_SECTIONS: SettingsSectionDefinition[] = [
     titleId: "archives.nav",
     groupId: "dataAndStats",
   },
-  // 分享管理排在归档管理之后，仅桌面端（docs/conversation-share-v1.md「设置页分享管理」）。
-  {
-    id: "shares",
-    icon: Share2,
-    titleId: "conversationShare.manage.nav",
-    groupId: "dataAndStats",
-  },
   // 暂时隐藏设置页里的 Migration 入口，只保留页面实现，后续可以直接恢复这一项。
   // {
   //   id: "migration",
@@ -272,7 +264,6 @@ export type { SettingsSectionId };
 const DESKTOP_ONLY_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "remoteDevices",
   "dataSync",
-  "shares",
 ]);
 
 export function isSettingsSectionAvailable(

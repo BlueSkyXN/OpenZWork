@@ -20,7 +20,7 @@ vi.mock("node:os", async (importOriginal) => {
   return { ...actual, homedir: () => FAKE_HOME };
 });
 
-import { createConfig } from "@zcode/adapters/config";
+import { createConfig, normalizePluginConfigPathForComparison } from "@zcode/adapters/config";
 import type { Logger } from "@zcode/contracts";
 import { zcodePluginsListResultSchema } from "@zcode/shared";
 import { resolveStartupPlugins } from "../src/app/startup-marks.js";
@@ -50,6 +50,73 @@ afterAll(async () => {
 });
 
 describe("plugin sensitive option storage", () => {
+  it("ignores repository options and stores only explicitly saved workspace values", async () => {
+    await withFixture(async (fixture) => {
+      const configPath = join(fixture.root, ".zcode", "config.json");
+      await fixture.writeUserConfig({
+        [PLUGIN_ID]: { token: "user-secret", region: "user-region" },
+      });
+      const repositoryConfig = JSON.stringify({
+        plugins: {
+          options: {
+            [PLUGIN_ID]: {
+              token: "repository-secret",
+              region: "repository-region",
+              pythonPath: "./repository-runner",
+            },
+          },
+        },
+      });
+      await writeTestFile(configPath, repositoryConfig);
+
+      const before = await resolveZCodePlugins(fixture.userOptions());
+      expect(authorizationHeader(before.mcpServers[API_SERVER])).toBe("Bearer user-secret");
+      expect(before.plugins.find((plugin) => plugin.id === PLUGIN_ID)?.configuredOptions).toEqual({
+        token: "user-secret",
+        region: "user-region",
+      });
+      expect(await readFile(configPath, "utf8")).toBe(repositoryConfig);
+      expect(existsSync(fixture.secretsPath)).toBe(false);
+
+      await configureZCodePlugin({
+        ...fixture.userOptions(),
+        pluginId: PLUGIN_ID,
+        scope: "workspace",
+        options: { region: "saved-region" },
+      });
+      // OW-P049：按存储使用的工作区键核对写入结果。
+      expect((await readJson(fixture.secretsPath)).workspaces).toEqual({
+        [normalizePluginConfigPathForComparison(fixture.root)]: {
+          [PLUGIN_ID]: { region: "saved-region" },
+        },
+      });
+      expect(JSON.parse(await readFile(configPath, "utf8")).plugins.options[PLUGIN_ID]).toEqual({});
+      const after = await resolveZCodePlugins(fixture.userOptions());
+      expect(after.plugins.find((plugin) => plugin.id === PLUGIN_ID)?.configuredOptions).toEqual({
+        token: "user-secret",
+        region: "saved-region",
+      });
+      const otherRoot = join(fixture.root, "other-repository");
+      await mkdir(join(otherRoot, ".git"), { recursive: true });
+      const other = await resolveZCodePlugins(fixture.userOptions(otherRoot));
+      expect(
+        other.plugins.find((plugin) => plugin.id === PLUGIN_ID)?.configuredOptions.region,
+      ).toBe("user-region");
+
+      await configureZCodePlugin({
+        ...fixture.userOptions(),
+        pluginId: PLUGIN_ID,
+        scope: "workspace",
+        options: {},
+        clearOptionKeys: ["region"],
+      });
+      const cleared = await resolveZCodePlugins(fixture.userOptions());
+      expect(
+        cleared.plugins.find((plugin) => plugin.id === PLUGIN_ID)?.configuredOptions.region,
+      ).toBe("user-region");
+    });
+  });
+
   it("1. stores a configured sensitive key only in the private file", async () => {
     await withFixture(async (fixture) => {
       await configureZCodePlugin({
@@ -140,6 +207,8 @@ describe("plugin sensitive option storage", () => {
     await withFixture(async (fixture) => {
       const repositoryRoot = join(fixture.root, "repository");
       const nestedRoot = join(repositoryRoot, "packages", "app");
+      const repositoryKey = normalizePluginConfigPathForComparison(repositoryRoot);
+      const nestedKey = normalizePluginConfigPathForComparison(nestedRoot);
       await mkdir(join(repositoryRoot, ".git"), { recursive: true });
       await mkdir(nestedRoot, { recursive: true });
 
@@ -157,8 +226,8 @@ describe("plugin sensitive option storage", () => {
       });
 
       expect((await readJson(fixture.secretsPath)).workspaces).toEqual({
-        [repositoryRoot]: { [PLUGIN_ID]: { token: "outer-secret" } },
-        [nestedRoot]: { [PLUGIN_ID]: { token: "inner-secret" } },
+        [repositoryKey]: { [PLUGIN_ID]: { token: "outer-secret" } },
+        [nestedKey]: { [PLUGIN_ID]: { token: "inner-secret" } },
       });
       for (const workspaceRoot of [repositoryRoot, nestedRoot]) {
         const workspaceConfig = await readFile(
@@ -185,15 +254,17 @@ describe("plugin sensitive option storage", () => {
       const fallback = await resolveZCodePlugins(fixture.userOptions(nestedRoot));
       expect(authorizationHeader(fallback.mcpServers[API_SERVER])).toBe("Bearer outer-secret");
       expect((await readJson(fixture.secretsPath)).workspaces).toEqual({
-        [repositoryRoot]: { [PLUGIN_ID]: { token: "outer-secret" } },
+        [repositoryKey]: { [PLUGIN_ID]: { token: "outer-secret" } },
       });
     });
   });
 
   it("5. keeps plugins/list filtered and returns user values from plugins/readUserOptions", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-plugin-secrets-protocol-"));
-    const userConfigPath = join(FAKE_HOME, ".openzwork", "v2", "config.json");
-    const secretsPath = join(FAKE_HOME, ".openzwork", "v2", SECRETS_FILE);
+    // OpenZWork(OZ-C001)：协议从 CLI 用户配置加载插件，夹具和私有选项须使用同一数据根。
+    const cliDir = join(FAKE_HOME, ".openzwork", "cli");
+    const userConfigPath = join(cliDir, "config.json");
+    const secretsPath = join(cliDir, SECRETS_FILE);
     const pluginRoot = join(root, PLUGIN_NAME);
     const context = {} as ZCodeProtocolAgentServerContext;
     const workspace = { workspacePath: root, workspaceKey: root };
@@ -226,7 +297,7 @@ describe("plugin sensitive option storage", () => {
         readPluginUserOptions(context, { pluginId: "missing@inline" }),
       ).rejects.toMatchObject({ code: -32602, data: { code: "plugin_not_found" } });
     } finally {
-      await rm(join(FAKE_HOME, ".zcode"), { force: true, recursive: true });
+      await rm(cliDir, { force: true, recursive: true });
       await rm(root, { force: true, recursive: true });
     }
   });
@@ -252,7 +323,9 @@ describe("plugin sensitive option storage", () => {
         scope: "workspace",
       });
       expect((await readJson(fixture.secretsPath)).workspaces).toEqual({
-        [fixture.root]: { [PLUGIN_ID]: { token: "workspace-secret" } },
+        [normalizePluginConfigPathForComparison(fixture.root)]: {
+          [PLUGIN_ID]: { token: "workspace-secret" },
+        },
       });
       await resetZCodePluginConfig({ ...fixture.userOptions(), pluginId: PLUGIN_ID });
       expect((await readJson(fixture.secretsPath)).user).toEqual({});

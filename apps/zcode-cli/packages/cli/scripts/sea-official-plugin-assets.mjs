@@ -18,6 +18,16 @@ const browserUseRequiredRuntimePaths = [
 ];
 
 // 文档插件查看面板的构建产物（office-runtime 输出到各插件 dist/）。
+const officeInvocationPaths = [
+  "scripts/zcode_libreoffice.py",
+  "scripts/libreoffice-profile/user/registrymodifications.xcu",
+  "scripts/libreoffice-profile/user/basic/script.xlc",
+  "scripts/libreoffice-profile/user/basic/dialog.xlc",
+  "scripts/libreoffice-profile/user/basic/Standard/script.xlb",
+  "scripts/libreoffice-profile/user/basic/Standard/dialog.xlb",
+  "scripts/libreoffice-profile/user/basic/Standard/ZCode.xba",
+];
+
 const officeViewerRuntimePaths = ["dist/server.mjs", "dist/ui/assets.json", "dist/ui/panel.html"];
 
 export const officialSeaPlugins = [
@@ -56,16 +66,16 @@ export const officialSeaPlugins = [
     version: "0.1.2",
   },
   {
-    // node_repl 宿主：Browser Use 与 Computer Use 共用的运行时产物，自己不是面向用户的插件
-    // （无 skill、无市场 listing）。它必须始终随发布物嵌入，否则任一能力启用时都没有宿主可跑。
-    // OpenZWork(OZ-D005): 仓内宿主保持在 0.6.1；上游 0.7.0 的 CUA 域差异不随本仓发布。
+    // node_repl 宿主：Browser Use 共用的运行时产物，自己不是面向用户的插件
+    // （无 skill、无市场 listing）。它必须始终随发布物嵌入，否则能力启用时没有宿主可跑。
+    // OpenZWork(OZ-D005): 同步升级至 0.7.1（移除无进展守卫），上游 CUA 进程内 broker 不随本仓发布。
     marketplace: "zcode-plugins-official",
     name: "node-repl-host",
     packageName: "@zcode/node-repl-host",
     requiresRuntime: true,
     requiredRuntimePaths: ["dist/mcp/server.js"],
     rootPath: join("packages", "node-repl-host"),
-    version: "0.6.1",
+    version: "0.7.1",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -74,7 +84,7 @@ export const officialSeaPlugins = [
     requiresRuntime: true,
     requiredRuntimePaths: ["dist/mcp/server.js"],
     rootPath: join("packages", "android-emulator-plugin"),
-    version: "0.1.1",
+    version: "0.1.3",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -84,13 +94,13 @@ export const officialSeaPlugins = [
     requiresRuntime: true,
     requiredRuntimePaths: officeViewerRuntimePaths,
     requiredSeedPaths: [
-      "agents/visual-judge.md",
       "skills/docx/SKILL.md",
       "skills/docx-viewer/SKILL.md",
+      ...officeInvocationPaths,
     ],
     rootPath: join("packages", "documents-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.2",
+    version: "0.2.11-openzwork.2",
   },
   // OpenZWork(OZ-D009): image-search 插件已删除，不嵌入 SEA。
   {
@@ -101,13 +111,13 @@ export const officialSeaPlugins = [
     requiresRuntime: true,
     requiredRuntimePaths: officeViewerRuntimePaths,
     requiredSeedPaths: [
-      "agents/visual-judge.md",
       "skills/pdf/SKILL.md",
       "skills/pdf-viewer/SKILL.md",
+      ...officeInvocationPaths,
     ],
     rootPath: join("packages", "pdf-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.3",
+    version: "0.2.12-openzwork.2",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -117,13 +127,13 @@ export const officialSeaPlugins = [
     requiresRuntime: true,
     requiredRuntimePaths: officeViewerRuntimePaths,
     requiredSeedPaths: [
-      "agents/visual-judge.md",
       "skills/pptx/SKILL.md",
       "skills/pptx-viewer/SKILL.md",
+      ...officeInvocationPaths,
     ],
     rootPath: join("packages", "presentations-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.2",
+    version: "0.2.11-openzwork.2",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -133,13 +143,13 @@ export const officialSeaPlugins = [
     requiresRuntime: true,
     requiredRuntimePaths: officeViewerRuntimePaths,
     requiredSeedPaths: [
-      "agents/visual-judge.md",
       "skills/xlsx/SKILL.md",
       "skills/xlsx-viewer/SKILL.md",
+      ...officeInvocationPaths,
     ],
     rootPath: join("packages", "spreadsheets-plugin"),
     // 修复原因：SEA manifest 必须与 package、plugin manifest 和官方 definition 同步，避免发布产物嵌入旧版本。
-    version: "0.2.2",
+    version: "0.2.11-openzwork.3",
   },
   {
     // browser-use 使用真实 node_repl MCP runtime，SEA 必须校验并嵌入 server.js。
@@ -153,7 +163,7 @@ export const officialSeaPlugins = [
     rootPath: join("packages", "browser-use-plugin"),
     // SEA 清单仍指向旧版时，runtime 会与官方 definition 精确匹配失败，
     // 导致发布产物不 seed browser-use，进而无法装配宿主 node_repl MCP。
-    version: "0.5.1",
+    version: "0.5.2",
   },
   {
     marketplace: "zcode-plugins-official",
@@ -202,7 +212,7 @@ export const officialSeaPlugins = [
     rootPath: join("packages", "zcode-guide-plugin"),
     version: "0.3.0",
   },
-    {
+  {
     // design：纯内容型（技能 + 设计资源 + SessionStart hook），requiresRuntime:false。
     // requiredSeedPaths 与 official-plugin-definitions.ts 的 OFFICIAL_DESIGN_REQUIRED_SEED_PATHS 一致；
     // 版本与 package.json / plugin.json / definitions 同步 bump。
@@ -212,31 +222,41 @@ export const officialSeaPlugins = [
     requiresRuntime: false,
     requiredSeedPaths: [
       "skills/design/SKILL.md",
+      "skills/design/references/app.md",
       "skills/design/references/catalog.md",
       "skills/design/references/check.md",
       "skills/design/references/create.md",
+      "skills/design/references/deck.md",
       "skills/design/references/design-system.md",
+      "skills/design/references/image.md",
       "skills/design/references/interact.md",
-      "skills/design/references/output.md",
+      "skills/design/references/motion.md",
+      "skills/design/references/page.md",
       "skills/design/references/redesign.md",
       "skills/design/scripts/adapt-canvas.mjs",
+      "skills/design/scripts/audit-page.js",
+      "skills/design/scripts/audit.mjs",
       "skills/design/scripts/design-lint.mjs",
       "skills/design/scripts/design-tokens.mjs",
       "skills/design/scripts/import-design-system.mjs",
+      "skills/design/scripts/probe.js",
       "hooks/hooks.json",
       "hooks/run-hook.cmd",
       "hooks/design-rules",
     ],
     rootPath: join("packages", "design-plugin"),
-    version: "0.7.2",
+    version: "0.8.0",
   },
+  // OpenZWork(OZ-D005, OZ-D006): zcode-site 与 computer-use 已裁剪，不打入 SEA 资源清单。
   // superpowers 已从内置插件下线，改走 UI 推荐区按需安装；这里不再打入 SEA 资源清单。
 ];
 
 export const collectSeaOfficialPluginAssets = async ({
+  cuaRuntime,
   requireRuntime = false,
   root,
   stagingDirectory,
+  target,
 } = {}) => {
   const files = [];
   const assets = {};
@@ -248,6 +268,16 @@ export const collectSeaOfficialPluginAssets = async ({
   });
 
   for (const plugin of officialSeaPlugins) {
+    if (plugin.targets && !plugin.targets.includes(target)) continue;
+    const runtimeFiles = plugin.collectRuntimeFiles
+      ? await plugin.collectRuntimeFiles({
+          ...cuaRuntime,
+          root,
+          stagingDirectory: join(stagingDirectory, plugin.name),
+          target,
+        })
+      : [];
+    if (runtimeFiles === null) continue;
     const pluginRoot = resolve(root, plugin.rootPath);
     assertPluginRoot(pluginRoot, plugin);
     assertPluginRequiredSeedAssets(pluginRoot, plugin);
@@ -256,10 +286,15 @@ export const collectSeaOfficialPluginAssets = async ({
     if (requireRuntime && plugin.requiresRuntime !== false) assertPluginRuntime(pluginRoot, plugin);
 
     const pluginFiles = [];
+    const pluginSources = [];
     for await (const sourcePath of walkFiles(pluginRoot)) {
       const relativePath = relative(pluginRoot, sourcePath);
-      if (!shouldIncludePluginFile(relativePath)) continue;
-
+      if (shouldIncludePluginFile(relativePath)) pluginSources.push({ relativePath, sourcePath });
+    }
+    for (const file of runtimeFiles) {
+      pluginSources.push({ relativePath: file.path.split("/").join(sep), sourcePath: file.sourcePath });
+    }
+    for (const { relativePath, sourcePath } of pluginSources) {
       const bytes = await readFile(sourcePath);
       const sourceStats = await stat(sourcePath);
       const assetPath = toPosixPath(

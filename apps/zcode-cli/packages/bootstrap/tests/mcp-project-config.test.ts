@@ -230,6 +230,9 @@ function createRecordingMcpPort(
     async disconnectServer() {
       return undefined;
     },
+    getToolSnapshot() {
+      return {};
+    },
     async listTools() {
       return [];
     },

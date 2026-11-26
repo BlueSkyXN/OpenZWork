@@ -14,11 +14,13 @@ import {
   closeSmokeWebSocket,
   didTuiExitSuccessfully,
   shouldSkipSmokeCleanup,
+  stageOfficialPlugins,
   tarCreateArgs,
   tarExtractArgs,
   tarSupportsForceLocal,
   withSmokeTimeout,
 } from "../zcode-distribution/assets.mjs";
+import { officialSeaPlugins } from "../../apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs";
 
 async function temp(t) {
   const root = await mkdtemp(join(tmpdir(), "oz-cli-"));
@@ -146,12 +148,14 @@ test("CLI smoke timeout reports the stalled stage", async () => {
   assert.equal(await withSmokeTimeout(Promise.resolve("done"), "fast stage", 10), "done");
 });
 
-test("archive verifier distinguishes required TUI FFI from the removed CUA plugin", async (t) => {
+test("archive verifier distinguishes required TUI FFI and keyring binding from removed plugins", async (t) => {
   const root = await temp(t);
   for (const path of [
     "zcode",
     "zcode.cmd",
     "agent/node_modules/@mbears/opentui-core-linux-x64/libopentui.so",
+    "agent/node_modules/@napi-rs/keyring/index.js",
+    "agent/node_modules/@napi-rs/keyring-linux-x64-gnu/keyring.linux-x64-gnu.node",
     "agent/node_modules/koffi/build/koffi/linux_x64/koffi.node",
     "agent/node_modules/unsafe-pointer/prebuilds/linux-x64/unsafe-pointer.glibc.node",
     "node_modules/node-pty/prebuilds/linux-x64/pty.node",
@@ -159,12 +163,53 @@ test("archive verifier distinguishes required TUI FFI from the removed CUA plugi
     await write(root, path);
   assert.deepEqual(await verifyPlatformRuntime(root, "linux-x64"), []);
   await write(root, "agent/node_modules/@zcode/zcode-cua-plugin/package.json");
+  await write(root, "agent/packages/zcode-site-plugin/package.json");
+  await write(root, "agent/node_modules/@napi-rs/keyring-darwin-arm64/keyring.darwin-arm64.node");
   await write(root, "agent/node_modules/@mbears/opentui-core-win32-x64/opentui.dll");
   await write(root, "node_modules/node-pty/build/Release/obj/foo.o");
   const errors = (await verifyPlatformRuntime(root, "linux-x64")).join("\n");
   assert.match(errors, /zcode-cua-plugin/);
+  assert.match(errors, /zcode-site-plugin/);
+  assert.match(errors, /keyring-darwin-arm64/);
   assert.match(errors, /opentui-core-win32-x64/);
   assert.match(errors, /node-pty[/\\]build/);
+});
+
+test("stageOfficialPlugins stages all retained official plugins and node-repl-host without stripped plugins", async (t) => {
+  const root = await temp(t);
+  const cliRoot = join(root, "cli");
+  const packageRoot = join(root, "pkg");
+  for (const plugin of officialSeaPlugins) {
+    const pluginRoot = join(cliRoot, plugin.rootPath);
+    await write(pluginRoot, ".zcode-plugin/plugin.json", JSON.stringify({ name: plugin.name }));
+    await write(pluginRoot, "package.json", JSON.stringify({ name: plugin.packageName }));
+    await write(pluginRoot, "node_modules/ignored/index.js", "ignored");
+    const required = [
+      ...(plugin.requiresRuntime !== false
+        ? (plugin.requiredRuntimePaths ?? ["dist/mcp/server.js"])
+        : []),
+      ...(plugin.requiredSeedPaths ?? []),
+    ];
+    for (const relPath of required) {
+      await write(pluginRoot, relPath, "asset");
+    }
+  }
+  await stageOfficialPlugins(packageRoot, cliRoot);
+  const stagedPackages = (await readdir(join(packageRoot, "agent/packages"))).sort();
+  assert.equal(stagedPackages.length, 14);
+  assert.ok(stagedPackages.includes("browser-use-plugin"));
+  assert.ok(stagedPackages.includes("node-repl-host"));
+  assert.ok(stagedPackages.includes("documents-plugin"));
+  assert.ok(stagedPackages.includes("design-plugin"));
+  assert.ok(!stagedPackages.includes("zcode-cua-plugin"));
+  assert.ok(!stagedPackages.includes("zcode-site-plugin"));
+  assert.ok(!stagedPackages.includes("image-search-plugin"));
+  assert.equal(
+    (await readdir(join(packageRoot, "agent/packages/browser-use-plugin"))).includes(
+      "node_modules",
+    ),
+    false,
+  );
 });
 
 test("Web only advertises the port confirmed by its own child", { timeout: 15000 }, async (t) => {

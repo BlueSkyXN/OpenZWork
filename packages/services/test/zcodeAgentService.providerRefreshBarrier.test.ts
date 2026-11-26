@@ -116,6 +116,24 @@ function command(type: CommandEnvelope["type"]): CommandEnvelope {
   };
 }
 
+it("OW-P046：没有会话时也通过本机管理进程读取项目用量及相同截止时间", async () => {
+  const coldService = createZCodeAgentService();
+  try {
+    for (const sessionIds of [[], ["session-a"]]) {
+      const params = { range: "7d" as const, timeZone: "UTC", until: 12345, sessionIds };
+      getClient.mockClear();
+      request.mockResolvedValueOnce({ source: "agent-db" });
+      await expect(coldService.getAppUsageStats(params)).resolves.toEqual({ source: "agent-db" });
+      expect(getClient).toHaveBeenCalledWith({
+        workspacePath: join(root, ".openzwork", "plugin-workspace"),
+      });
+      expect(request).toHaveBeenLastCalledWith(V4_METHODS.usageStats, params, expect.any(Object));
+    }
+  } finally {
+    coldService.disposeAll();
+  }
+});
+
 describe.each(["desktop-continuous", "web-remote-replayable"] as const)(
   "Worker Personal Config barrier: %s",
   (clientMode) => {

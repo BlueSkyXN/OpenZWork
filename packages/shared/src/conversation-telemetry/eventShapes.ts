@@ -46,6 +46,65 @@ export function sanitizeTelemetrySkillName(value: string): string {
   return trimmed.length > 128 ? trimmed.slice(0, 128) : trimmed;
 }
 
+const TOOL_ERROR_NAMED_CODES: ReadonlySet<string> = new Set([
+  "session_not_found",
+  "session_already_exists",
+  "session_corrupted",
+  "turn_not_found",
+  "turn_in_progress",
+  "invalid_turn_phase",
+  "turn_cancelled",
+  "model_error",
+  "model_timeout",
+  "model_rate_limited",
+  "model_context_exceeded",
+  "tool_not_found",
+  "tool_execution_failed",
+  "tool_timeout",
+  "tool_cancelled",
+  "tool_max_calls",
+  "invalid_input",
+  "permission_denied",
+  "permission_escalation",
+  "permission_timeout",
+  "invalid_state_transition",
+  "event_out_of_order",
+  "projection_corrupted",
+  "storage_error",
+  "configuration_error",
+  "cancelled",
+  "unknown_error",
+  "agent_subagent_unavailable",
+  "agent_background_unavailable",
+  "agent_unknown_type",
+  "agent_child_runtime_failed",
+  "user_interrupt",
+]);
+const TOOL_HANDLER_NUMERIC_CODE_PATTERN = /^\d{1,4}$/u;
+const TOOL_ERROR_HANDLER_CODE_PATTERN = /^h\d{1,4}$/u;
+
+export function normalizeToolErrorCode(code: string | null | undefined): string {
+  const trimmed = code?.trim();
+  if (!trimmed) return "unknown";
+  const lower = trimmed.toLowerCase();
+  if (TOOL_ERROR_NAMED_CODES.has(lower)) return lower;
+  if (TOOL_HANDLER_NUMERIC_CODE_PATTERN.test(trimmed)) return `h${trimmed}`;
+  return "other";
+}
+
+export function sanitizeToolErrorCode(value: string): string {
+  if (
+    value === "" ||
+    value === "other" ||
+    value === "unknown" ||
+    TOOL_ERROR_NAMED_CODES.has(value) ||
+    TOOL_ERROR_HANDLER_CODE_PATTERN.test(value)
+  ) {
+    return value;
+  }
+  return "other";
+}
+
 // 上游 PlanIdentitySnapshot 取自 usage-stats（官方套餐域）。净化后远端事件只保留
 // 归因所需的两个字段；无套餐上下文时由调用方传 null。
 export interface PlanIdentitySnapshot {

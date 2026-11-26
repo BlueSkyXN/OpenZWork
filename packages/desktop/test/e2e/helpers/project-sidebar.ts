@@ -117,6 +117,14 @@ export async function waitForProjectRowGone(
   });
 }
 
+// OW-P051：同一批项目逐个落库，只有本次快照中的所有预期标志都匹配才算完成。
+export function projectDeletionFlagsMatch(
+  snapshot: Readonly<Record<string, number>>,
+  expected: Readonly<Record<string, number>>,
+): boolean {
+  return Object.entries(expected).every(([id, flag]) => snapshot[id] === flag);
+}
+
 /** 等待一组 workspace 对应的项目行全部出现在侧栏（启动恢复 / 首次迁移完成）。 */
 export async function waitForRestoredProjects(
   workspacePaths: string[],
@@ -246,6 +254,7 @@ export async function startDraftFromProject(
   options: { workspaceIdentity?: string } = {},
 ): Promise<void> {
   let workspaceIdentity = options.workspaceIdentity?.trim();
+  let projectName = projectNameForWorkspace(workspacePath);
   if (!workspaceIdentity) {
     const project = $(projectSectionSelector(workspacePath));
     await project.waitForDisplayed({ timeout: 30_000 });
@@ -268,6 +277,10 @@ export async function startDraftFromProject(
     // 跨 Source 可以有同名同路径项目；显式 identity 时不能落到名称匹配的第一行。
     const project = $(`[data-project-workspace-identity=${JSON.stringify(workspaceIdentity)}]`);
     await project.waitForDisplayed({ timeout: 30_000 });
+    // 复用远端服务器时项目名可能自动追加重名后缀；导航由 identity 定位，展示断言须读取真实名称。
+    const actualProjectName = await project.getAttribute("data-project-name");
+    if (!actualProjectName) throw new Error(`远端项目缺少显示名: ${workspaceIdentity}`);
+    projectName = actualProjectName;
     await project.moveTo();
     await project.$(`[data-testid="${TID_VIRTUAL_PROJECT_CREATE_TASK}"]`).click();
   } else {
@@ -319,7 +332,7 @@ export async function startDraftFromProject(
         TID_V4_COMPOSER_INPUT,
         TID_V4_SESSION_PANE,
         TID_COMPOSER_WORKSPACE_TRIGGER,
-        projectNameForWorkspace(workspacePath),
+        projectName,
         workspaceIdentity,
         draftKey,
         previousDraftVersion,

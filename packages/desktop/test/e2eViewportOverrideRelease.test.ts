@@ -13,6 +13,7 @@ describe("e2e 窗口尺寸调整先清除设备度量覆盖（OW-P026）", () =>
     const order: string[] = [];
     let contentSize: [number, number] = [1280, 844];
     const win = {
+      id: 1,
       isDestroyed: () => false,
       webContents: {
         getURL: () => "file:///e2e/index.html",
@@ -26,6 +27,7 @@ describe("e2e 窗口尺寸调整先清除设备度量覆盖（OW-P026）", () =>
           },
         },
       },
+      getBounds: () => ({ x: 0, y: 0, width: contentSize[0], height: contentSize[1] }),
       getContentSize: () => [...contentSize] as [number, number],
       setContentSize: (width: number, height: number) => {
         order.push(`setContentSize:${width}x${height}`);
@@ -33,7 +35,10 @@ describe("e2e 窗口尺寸调整先清除设备度量覆盖（OW-P026）", () =>
       },
       focus: () => {},
     };
-    const electron = { BrowserWindow: { getAllWindows: () => [win] } };
+    const electron = {
+      BrowserWindow: { getAllWindows: () => [win] },
+      screen: { getDisplayMatching: () => ({ scaleFactor: 1 }) },
+    };
     vi.stubGlobal("browser", {
       getUrl: async () => "file:///e2e/index.html",
       electron: {

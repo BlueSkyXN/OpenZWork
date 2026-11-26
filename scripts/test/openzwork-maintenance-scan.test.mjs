@@ -465,11 +465,16 @@ test("runCheck 要求 active 条目有核心 CI 中运行的保证或写明 ungu
   repo.write("packages/pkg/package.json", JSON.stringify({ name: "@x/pkg" }));
   repo.write("packages/pkg/tests/a.test.ts", "export {};\n");
   repo.write("scripts/test/b.test.mjs", "export {};\n");
+  repo.write("scripts/test/eng.test.mjs", "export {};\n");
+  repo.write(
+    "scripts/engineering-test-files.json",
+    JSON.stringify(["./scripts/test/eng.test.mjs"]),
+  );
   repo.write(
     "package.json",
     JSON.stringify({
       version: "1.1.0+openzwork.1",
-      scripts: { "test:repo-scripts": "node --test scripts/test/*.test.mjs" },
+      scripts: { "test:repo-scripts": "node --no-warnings ./scripts/run-repo-script-tests.mjs" },
     }),
   );
   repo.write(
@@ -489,8 +494,16 @@ test("runCheck 要求 active 条目有核心 CI 中运行的保证或写明 ungu
     'paths: ["docs/old.md"]',
     'paths: ["docs/old.md"]\n    tests: ["scripts/test/b.test.mjs"]',
   );
-  claimPaths(repo, ["packages/pkg/package.json", "src/ours.test.ts"]);
+  claimPaths(repo, [
+    "packages/pkg/package.json",
+    "src/ours.test.ts",
+    "scripts/engineering-test-files.json",
+    "scripts/test/eng.test.mjs",
+  ]);
   repo.commit("guards from ci.yml");
+  const ciFromWrapper = loadCiTests(classify(repo.dir, repo.v2));
+  assert.equal(ciFromWrapper.runs("scripts/test/b.test.mjs"), true);
+  assert.equal(ciFromWrapper.runs("scripts/test/eng.test.mjs"), false);
   errors = check(repo);
   // OZ-F001 由 ci.yml 点名的包内测试保证；OZ-R001 有了保证却还留着 unguarded。
   assert.equal(errors.length, 1, errors.join("\n"));

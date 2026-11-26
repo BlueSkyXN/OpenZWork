@@ -143,11 +143,11 @@ jobs:
 
       - name: Model capability request mapping regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/adapters exec vitest run tests/model-capability-wire.test.ts tests/model.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+        run: pnpm --filter @zcode/adapters exec vitest run tests/model-capability-wire.test.ts tests/model.test.ts tests/model-execution.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
 
       - name: Model factory request authentication regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-builtin-model-runtime-integration.test.ts tests/session-selection-protocol.test.ts tests/v4-native-commands.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-builtin-model-runtime-integration.test.ts tests/session-selection-protocol.test.ts tests/v4-native-commands.test.ts tests/v4-native-session-mgmt.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
 
       - name: Conversation usage accuracy regression
         if: matrix.lane == 'regressions'
@@ -163,6 +163,10 @@ jobs:
       - name: Project configuration and storage relocation regression
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/adapters exec vitest run tests/project-config-compatibility.test.ts tests/storage-relocation.test.ts --bail=1
+
+      - name: Skill catalog and desktop credential fallback regression
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/adapters exec vitest run tests/skill-catalog.test.ts tests/credential-security-desktop-fallback.test.ts tests/auth.test.ts tests/marketplace-listing.test.ts tests/openai-responses-encrypted-reasoning-wire.test.ts --bail=1
 
       # OW-P024：Main 固定 DB 的 Env 优先级是工作流查询共享载体的前提（真实临时用户/项目配置）。
       - name: Workflow query session db priority regression
@@ -247,11 +251,15 @@ jobs:
 
       - name: CLI workflow option regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts
+        run: pnpm --filter @zcode/cli exec node --import tsx --test tests/workflow-mode-option.test.ts tests/headless-workflow-option.test.ts tests/tui-model-selection.test.ts
 
       - name: CLI artifact workflow option
         if: matrix.lane == 'regressions'
         run: node --test tests/private-cleanup/cli-artifact-workflow.test.mjs
+
+      - name: CLI plugin-host isolation and SEA asset gate
+        if: matrix.lane == 'regressions'
+        run: pnpm build:sea:prepare && node --test apps/zcode-cli/packages/cli/tests/plugin-host-entry.test.mjs apps/zcode-cli/packages/cli/tests/sea-official-plugin-assets.test.mjs apps/zcode-cli/packages/cli/tests/build-sea.test.mjs
 
       - name: Host UI composition regression
         if: matrix.lane == 'regressions'
@@ -355,6 +363,17 @@ jobs:
       - name: Require the target E2E cases to actually pass
         if: always() && steps.hub_e2e.outcome != 'skipped'
         run: node scripts/check-e2e-required-cases.mjs packages/desktop/.e2e-artifacts
+
+      - name: Verify project undo and plugin state across restarts
+        env:
+          E2E_PROVIDER_HTTP_MODE: replay
+          ZCODE_E2E_HOME_DIR: ${{ runner.temp }}/.e2e-home-desktop-restart
+        run: >
+          pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
+          --spec ./test/e2e/conversation-session/projects/conversation-session-project-management.test.ts
+          --spec ./test/e2e/plugins/installation/plugin-management-persistence-source.test.ts
+          --spec ./test/e2e/plugins/installation/plugin-management-builtin-inline.test.ts
+          --spec ./test/e2e/plugins/marketplace/plugin-management-installed-menu-layout.test.ts
 
       - name: Upload E2E artifacts
         if: always() && steps.hub_e2e.outcome != 'skipped'

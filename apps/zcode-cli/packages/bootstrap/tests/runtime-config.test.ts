@@ -1,6 +1,7 @@
+import { resolveEffectiveMcpConfiguration } from "../src/mcp-config.js";
+import type { McpServerConfig } from "@zcode/contracts";
 import { describe, expect, it } from "vitest";
 import { createConfig } from "@zcode/adapters/config";
-import { ZCODE_CUA_OFFICIAL_PLUGIN_ID, ZCODE_PLUGIN_ID_ENV_KEY } from "@zcode/shared";
 import { ProviderRegistry } from "@zcode/provider";
 import {
   resolveAppRuntimeConfig as resolveProductionAppRuntimeConfig,
@@ -13,17 +14,33 @@ const testModelSelection = {
   modelId: "test-model",
 } as const;
 
-function resolveAppRuntimeConfig(input: Parameters<typeof resolveProductionAppRuntimeConfig>[0]) {
-  return resolveProductionAppRuntimeConfig({
-    ...input,
-    options: {
-      ...input.options,
-      runtimeConfig: {
-        modelSelection: testModelSelection,
-        ...input.options.runtimeConfig,
-      },
-    },
+function resolveAppRuntimeConfig(
+  input: Omit<Parameters<typeof resolveProductionAppRuntimeConfig>[0], "mcpConfiguration"> & {
+    pluginMcpServers?: Record<string, McpServerConfig>;
+    builtInMcpServers?: Record<string, McpServerConfig>;
+  },
+) {
+  const effective = resolveEffectiveMcpConfiguration({
+    enabled: input.configResult.config.features.mcp,
+    servers: input.configResult.config.mcp.servers,
+    pluginServers: input.pluginMcpServers,
+    builtInServers: input.builtInMcpServers,
+    explicit: input.options.runtimeConfig?.mcp,
   });
+  return {
+    configuredMcpServers: effective.configuredServers,
+    ...resolveProductionAppRuntimeConfig({
+      mcpConfiguration: effective.mcp,
+      ...input,
+      options: {
+        ...input.options,
+        runtimeConfig: {
+          modelSelection: testModelSelection,
+          ...input.options.runtimeConfig,
+        },
+      },
+    }),
+  };
 }
 
 function createConfigResult() {
@@ -587,52 +604,6 @@ describe("resolveAppRuntimeConfig", () => {
     expect(resolved.runtimeConfig.mcp?.servers).toEqual(resolved.configuredMcpServers);
   });
 
-  it("keeps official CUA provenance only while the bundled plugin config is unmodified", () => {
-    const name = "plugin:computer-use:computer-use";
-    const officialPluginConfig = {
-      type: "stdio" as const,
-      command: "/Applications/ZCode Computer Use.app/Contents/MacOS/server",
-      env: { [ZCODE_PLUGIN_ID_ENV_KEY]: ZCODE_CUA_OFFICIAL_PLUGIN_ID },
-    };
-    const baseInput = {
-      cliStorageRoot: "/tmp/zcode-cli",
-      configResult: createConfigResult(),
-      pluginMcpServers: { [name]: officialPluginConfig },
-      subagentOutputRootDir: "/tmp/zcode-cli/agents-output",
-      subagentProfiles: [],
-      workingDirectory,
-    };
-
-    const official = resolveAppRuntimeConfig({
-      ...baseInput,
-      options: { runtimeConfig: { mcp: { enabled: true } }, workingDirectory },
-    });
-    expect(official.runtimeConfig.mcp?.trustedOfficialCuaServerNames).toEqual([name]);
-
-    const projectSpoof = resolveAppRuntimeConfig({
-      ...baseInput,
-      options: {
-        runtimeConfig: {
-          mcp: {
-            enabled: true,
-            servers: {
-              [name]: {
-                type: "stdio",
-                command: "/tmp/attacker-command",
-                env: { [ZCODE_PLUGIN_ID_ENV_KEY]: ZCODE_CUA_OFFICIAL_PLUGIN_ID },
-              },
-            },
-          },
-          workingDirectory,
-        },
-      },
-    });
-    expect(projectSpoof.runtimeConfig.mcp?.trustedOfficialCuaServerNames).toEqual([]);
-    expect(projectSpoof.configuredMcpServers[name]).toMatchObject({
-      command: "/tmp/attacker-command",
-    });
-  });
-
   it("keeps the host node_repl identity reserved from user MCP overrides", () => {
     const builtInNodeRepl = {
       type: "stdio" as const,
@@ -659,23 +630,6 @@ describe("resolveAppRuntimeConfig", () => {
     });
 
     expect(resolved.configuredMcpServers.node_repl).toEqual(builtInNodeRepl);
-  });
-
-  it("injects CUA bridge credentials without granting node_repl official-frame authority", () => {
-    const resolved = resolveAppRuntimeConfig({
-      builtInMcpServers: {
-        node_repl: { type: "stdio", command: process.execPath, args: ["/runtime/node-repl.js"] },
-      },
-      cliStorageRoot: "/tmp/zcode-cli",
-      configResult: createConfigResult(),
-      options: { runtimeConfig: { mcp: { enabled: true } }, workingDirectory },
-      pluginRuntimeFeatures: { computerUse: true },
-      subagentOutputRootDir: "/tmp/zcode-cli/agents-output",
-      workingDirectory,
-    });
-
-    // node_repl 仍可被 bridge 注入，但不能把通用 JS server 标成 official CUA server。
-    expect(resolved.runtimeConfig.mcp?.trustedOfficialCuaServerNames).toEqual([]);
   });
 
   it("merges loaded subagent profiles into runtime config", () => {

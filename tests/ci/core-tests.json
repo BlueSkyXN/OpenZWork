@@ -101,13 +101,17 @@
       "files": [
         "packages/desktop/test/desktopTsupConfig.test.ts",
         "packages/desktop/test/electronBuilderAfterPack.test.ts",
-        "packages/desktop/test/run-production-build.test.ts"
+        "packages/desktop/test/preinstalledToolsCatalog.test.ts",
+        "packages/desktop/test/run-production-build.test.ts",
+        "scripts/preinstalled-tools/catalog.test.ts"
       ]
     },
     {
       "capability": "remote-access",
       "files": [
+        "packages/server/test/entryHttpCredentials.test.ts",
         "packages/server/test/liteTokenCookie.test.ts",
+        "packages/server/test/remoteOfficialPluginAssets.test.ts",
         "packages/zcode-server-cli/test/statusSnapshotPersistence.test.ts",
         "packages/zcode-server-cli/test/dataRootLockInitialization.test.ts"
       ]
@@ -152,6 +156,9 @@
         "packages/ui/test/appUsageServiceAccess.test.ts",
         "packages/ui/test/botLocalBoundaries.test.ts",
         "packages/ui/test/onboardingVisibility.test.ts",
+        "packages/ui/test/automationKeepAwakeCopy.test.ts",
+        "packages/ui/test/retiredShareSettings.test.ts",
+        "packages/ui/test/settingsLocaleCoverage.test.ts",
         "packages/desktop/test/communityLocalConfig.test.ts",
         "packages/ui/test/sessionUsageSummary.test.ts"
       ]
@@ -206,6 +213,8 @@
       "capability": "retained-ui-and-desktop-repair",
       "files": [
         "packages/ui/test/pluginStoreSettingsExit.test.ts",
+        "packages/ui/test/claudeMarketplaceIcon.test.ts",
+        "packages/ui/test/pluginViewerFallback.test.ts",
         "packages/desktop/test/e2eViewportOverrideRelease.test.ts"
       ]
     },

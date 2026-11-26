@@ -1,5 +1,6 @@
 import { chmod, copyFile, cp, mkdir, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
+import { keyringPlatformPackage } from "../stage-credential-keyring.mjs";
 
 // OpenZWork(OZ-F011)：Node 包的 PTY JS 与 native 必须取自同一个已安装版本。
 export async function stagePlatformPty(source, destination, target) {
@@ -37,6 +38,9 @@ export async function verifyPlatformRuntime(root, target) {
   const [platform, arch] = target.split("-");
   const agent = join(root, "agent/node_modules");
   const pty = join(root, "node_modules/node-pty");
+  const keyringPackage = keyringPlatformPackage(target);
+  const keyringDir = keyringPackage.slice("@napi-rs/".length);
+  const keyringSuffix = keyringDir.slice("keyring-".length);
   // 真正被裁剪的是 CUA 插件。OpenTUI 的 Node FFI 使用 koffi 与 unsafe-pointer。
   const libraries = { darwin: "libopentui.dylib", linux: "libopentui.so", win32: "opentui.dll" };
   const directories = [
@@ -45,6 +49,7 @@ export async function verifyPlatformRuntime(root, target) {
       `opentui-core-${target}`,
       (name) => /^opentui-core-(linux|darwin|win32)-/.test(name),
     ],
+    [join(agent, "@napi-rs"), keyringDir, (name) => name.startsWith("keyring-")],
     [join(agent, "koffi/build/koffi"), `${platform}_${arch}`, () => true],
     [join(agent, "unsafe-pointer/prebuilds"), target, () => true],
     [join(pty, "prebuilds"), target, () => true],
@@ -63,6 +68,8 @@ export async function verifyPlatformRuntime(root, target) {
   }
   const required = [
     join(agent, "@mbears", `opentui-core-${target}`, libraries[platform]),
+    join(agent, "@napi-rs/keyring/index.js"),
+    join(agent, keyringPackage, `keyring.${keyringSuffix}.node`),
     join(agent, "koffi/build/koffi", `${platform}_${arch}`, "koffi.node"),
     join(
       agent,
@@ -85,6 +92,8 @@ export async function verifyPlatformRuntime(root, target) {
     join(agent, "@zcode/zcode-cua-plugin"),
     join(agent, "@zcode/zcode-cua"),
     join(root, "agent/packages/zcode-cua-plugin"),
+    join(root, "agent/packages/zcode-site-plugin"),
+    join(root, "agent/packages/image-search-plugin"),
     join(root, "node_modules/@zcode/zcode-cua-plugin"),
   ]) {
     if (await stat(path).catch(() => undefined))

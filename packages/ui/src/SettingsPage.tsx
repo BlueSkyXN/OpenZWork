@@ -22,7 +22,6 @@ import type {
   DesktopCloseToTrayCapability,
   IntegratedTerminalShellOption,
   IntegratedTerminalShellSelection,
-  Locale,
   ZCodeInteractionBehavior,
 } from "@zcode/shared";
 import {
@@ -41,12 +40,14 @@ import { getPathLeaf } from "@/lib/path.js";
 import {
   addPendingSettingsSectionListener,
   clearPendingSettingsPluginOrigin,
+  clearPendingSettingsHookWorkspacePath,
   clearPendingSettingsPluginScopeKey,
   consumeInitialSettingsSection,
   consumePendingSettingsModelProviderTarget,
   consumePendingSettingsSourceServerId,
   consumePendingSettingsSourceServerDetails,
   consumePendingSettingsPluginOrigin,
+  consumePendingSettingsHookWorkspacePath,
   consumePendingSettingsPluginScopeKey,
   consumePendingSettingsPluginTab,
   resolveSettingsSection,
@@ -99,7 +100,7 @@ import { ControlHintTooltip } from "@/ControlHintTooltip.js";
 import { cn } from "@/components/lib/utils.js";
 import { useSelectDirectory } from "@/hooks/usePlatform.js";
 import { ServiceProvider, useServices } from "@/hooks/useServices.js";
-import { DEFAULT_APP_TOOL_SEARCH_MODE, type AppToolSearchMode } from "@zcode/shared";
+import { DEFAULT_APP_TOOL_SEARCH_MODE, isLocalePreference, type AppToolSearchMode } from "@zcode/shared";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CreateTaskRequest, RemoteConnectionOpenPreference } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
@@ -274,12 +275,16 @@ export function SettingsPage({
   const [pendingModelProviderTarget, setPendingModelProviderTarget] = useState(() =>
     consumePendingSettingsModelProviderTarget(),
   );
+  const [hookWorkspacePath, setHookWorkspacePath] = useState(() =>
+    consumePendingSettingsHookWorkspacePath(),
+  );
   const [settingsSectionNavigationVersion, setSettingsSectionNavigationVersion] = useState(0);
   useEffect(() => {
     // React Strict Mode 会双执行 state initializer；来源和 scopeKey 都在挂载完成后再清理，
     // Marketplace 只返回 User 已安装视图；Workspace 仍通过设置页自身的配置层切换进入。
     clearPendingSettingsPluginOrigin();
     clearPendingSettingsPluginScopeKey();
+    clearPendingSettingsHookWorkspacePath();
   }, []);
   const [settingsBreadcrumbItems, setSettingsBreadcrumbItems] = useState<
     readonly SettingsBreadcrumbItem[]
@@ -317,6 +322,8 @@ export function SettingsPage({
   const navigateToSettingsSection = (section: SettingsSectionId, setting?: SettingsSearchId) => {
     setPluginNavigationOrigin(undefined);
     setTargetSourceServerId(undefined);
+    // SG-01：worktree 审核上下文只属于「去审核」那次导航；侧栏或搜索进入钩子时按普通入口。
+    setHookWorkspacePath(undefined);
     setSettingsSectionNavigationVersion((version) => version + 1);
     setActiveSettingsSection(section);
     if (setting) setSearchTarget({ id: setting });
@@ -407,6 +414,8 @@ export function SettingsPage({
   }, [sharedSettings?.recentProjects, workspaceTabs]);
   const toolSearchMode = sharedSettings?.toolSearchMode ?? DEFAULT_APP_TOOL_SEARCH_MODE;
   const nativeSearchEnhancementsEnabled = sharedSettings?.nativeSearchEnhancementsEnabled !== false;
+  const totalTokensReminderEnabled = sharedSettings?.totalTokensReminderEnabled === true;
+  const agentAlwaysBackgroundEnabled = sharedSettings?.agentAlwaysBackgroundEnabled !== false;
   const askUserQuestionAutoResolutionEnabled =
     sharedSettings?.askUserQuestionAutoResolutionEnabled !== false;
   const modelIoFullRetentionEnabled = sharedSettings?.modelIoFullRetentionEnabled === true;
@@ -456,6 +465,7 @@ export function SettingsPage({
         // 净化保留：上游 usage entitlement tab 链未随合并落地，不并入；MCP 分区工作区意图保留。
         // MCP 独立分区也接收工作区意图，否则会话内审核会误落到用户配置。
         setPluginScopeKey(detail?.pluginScopeKey);
+        setHookWorkspacePath(detail?.hookWorkspacePath);
         if (resolveSettingsSection(section) === "plugin" && detail?.pluginTab) {
           setPluginTab(detail.pluginTab);
           setPluginNavigationOrigin(detail.pluginOrigin);
@@ -578,6 +588,18 @@ export function SettingsPage({
     },
     [updateSharedSettings],
   );
+  const handleTotalTokensReminderEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await updateSharedSettings({ totalTokensReminderEnabled: enabled });
+    },
+    [updateSharedSettings],
+  );
+  const handleAgentAlwaysBackgroundEnabledChange = useCallback(
+    async (enabled: boolean) => {
+      await updateSharedSettings({ agentAlwaysBackgroundEnabled: enabled });
+    },
+    [updateSharedSettings],
+  );
   const handleAskUserQuestionAutoResolutionEnabledChange = useCallback(
     async (enabled: boolean) => {
       await updateSharedSettings({ askUserQuestionAutoResolutionEnabled: enabled });
@@ -675,13 +697,6 @@ export function SettingsPage({
     },
     [updateSharedSettings],
   );
-  // 本机 offline push 开关：设置文件是唯一数据源，Main 每次上报前读取，不需要额外通知 Main。
-  const handleMobilePushEnabledChange = useCallback(
-    async (enabled: boolean) => {
-      await updateSharedSettings({ mobilePushEnabled: enabled });
-    },
-    [updateSharedSettings],
-  );
   const handleDesktopChromiumHardwareAccelerationChange = useCallback(
     async (enabled: boolean) => {
       await localHostServices.settingService.update({
@@ -755,13 +770,8 @@ export function SettingsPage({
   );
   const handleFooterLocaleChange = useCallback(
     (value: string) => {
-      if (value === "system") {
-        setLocalePreference("system");
-        return;
-      }
-      if (value === "zh-CN" || value === "en-US") {
-        setLocalePreference(value as Locale);
-      }
+      // OpenZWork(OZ-C012)：两个入口列出全部支持的语言，只有落盘旧字段需要降为中英文。
+      if (isLocalePreference(value)) setLocalePreference(value);
     },
     [setLocalePreference],
   );
@@ -1124,8 +1134,6 @@ export function SettingsPage({
                               notificationSoundEnabled={notificationSoundEnabled}
                               closeToTrayOnWindows={closeToTrayOnWindows}
                               keepAwakeWhileRunning={sharedSettings?.keepAwakeWhileRunning ?? false}
-                              mobilePushEnabled={sharedSettings?.mobilePushEnabled ?? true}
-                              onMobilePushEnabledChange={handleMobilePushEnabledChange}
                               desktopChromiumHardwareAccelerationEnabled={
                                 desktopChromiumHardwareAccelerationEnabled
                               }
@@ -1190,6 +1198,14 @@ export function SettingsPage({
                               onNativeSearchEnhancementsEnabledChange={
                                 handleNativeSearchEnhancementsEnabledChange
                               }
+                              totalTokensReminderEnabled={totalTokensReminderEnabled}
+                              onTotalTokensReminderEnabledChange={
+                                handleTotalTokensReminderEnabledChange
+                              }
+                              agentAlwaysBackgroundEnabled={agentAlwaysBackgroundEnabled}
+                              onAgentAlwaysBackgroundEnabledChange={
+                                handleAgentAlwaysBackgroundEnabledChange
+                              }
                               messageStreamShowReasoning={messageStreamShowReasoning}
                               messageStreamShowTodos={messageStreamShowTodos}
                               zcodeInteractionBehavior={zcodeInteractionBehavior}
@@ -1210,6 +1226,7 @@ export function SettingsPage({
                               onModelIoFullRetentionEnabledChange={
                                 handleModelIoFullRetentionEnabledChange
                               }
+                              replyLanguage={sharedSettings?.replyLanguage}
                             />
                           ) : activeSection === "dataSync" ? (
                             // data-sync 保留域：迁移向导入口复用 store 的 requestOnboardingDialog。
@@ -1323,22 +1340,8 @@ export function SettingsPage({
                                   );
                                   onBack?.();
                                   if (target) {
+                                    // 已确认只需返回设备工作区；旧项目 DOM 标识已移除，不再异步查找并抢占焦点。
                                     activateTab(target.id);
-                                    requestAnimationFrame(() => {
-                                      const row = Array.from(
-                                        document.querySelectorAll<HTMLElement>(
-                                          "[data-remote-project-identity]",
-                                        ),
-                                      ).find(
-                                        (element) =>
-                                          element.dataset.remoteProjectIdentity ===
-                                          target.workspaceIdentity,
-                                      );
-                                      row?.scrollIntoView({ block: "center" });
-                                      row
-                                        ?.querySelector<HTMLElement>('[role="button"]')
-                                        ?.focus({ preventScroll: true });
-                                    });
                                   }
                                 }}
                                 settings={sharedSettings}
@@ -1500,6 +1503,10 @@ export function SettingsPage({
                             />
                           ) : activeSection === "hooks" ? (
                             <HooksSection
+                              key={`hooks:${settingsSectionNavigationVersion}`}
+                              // 只有 worktree 审核意图才固定范围；其他入口保持原有默认范围。
+                              initialScopeKey={hookWorkspacePath ? pluginScopeKey : undefined}
+                              reviewWorkspacePath={hookWorkspacePath}
                               workspacePath={activeWorkspacePath}
                               workspaceIdentity={activeWorkspaceIdentity}
                             />

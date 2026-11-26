@@ -204,10 +204,10 @@ import { OFFICIAL_PLUGIN_DEFINITIONS } from "../src/app/official-plugin-definiti
 import { resolveZCodePlugins } from "../src/plugins.js";
 
 const OFFICIAL_CACHE_ROOT = join("cache", "zcode-plugins-official");
-const BROWSER_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "browser-use", "0.5.1");
-const DOCUMENTS_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "documents", "0.2.2");
+const BROWSER_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "browser-use", "0.5.2");
+const DOCUMENTS_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "documents", "0.2.11-openzwork.2");
 const DOCUMENTS_MANIFEST_SUFFIX = join(DOCUMENTS_CACHE_SUFFIX, ".zcode-plugin", "plugin.json");
-const ANDROID_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "android-emulator", "0.1.1");
+const ANDROID_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "android-emulator", "0.1.3");
 const SKILL_CREATOR_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "skill-creator", "0.1.0");
 
 describe("bundled official plugin cache resilience", () => {
@@ -866,7 +866,7 @@ describe("bundled official plugin cache resilience", () => {
     await mkdir(join(incompletePluginRoot, ".zcode-plugin"), { recursive: true });
     await writeFile(
       join(incompletePluginRoot, ".zcode-plugin", "plugin.json"),
-      JSON.stringify({ name: "browser-use", version: "0.5.1" }),
+      JSON.stringify({ name: "browser-use", version: "0.5.2" }),
     );
     process.argv[1] = join(entrypointRoot, "zcode.cjs");
     const logger = createLogger();
@@ -911,7 +911,7 @@ describe("bundled official plugin cache resilience", () => {
     await mkdir(join(incompletePluginRoot, ".zcode-plugin"), { recursive: true });
     await writeFile(
       join(incompletePluginRoot, ".zcode-plugin", "plugin.json"),
-      JSON.stringify({ name: "browser-use", version: "0.5.1" }),
+      JSON.stringify({ name: "browser-use", version: "0.5.2" }),
     );
     process.argv[1] = join(entrypointRoot, "zcode.cjs");
     const logger = createLogger();

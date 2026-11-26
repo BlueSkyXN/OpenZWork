@@ -8,13 +8,19 @@ import { resolveEffectiveBashShellSelection } from "@zcode/adapters/exec";
 
 import { createNodeFileSystemAdapter } from "@zcode/adapters/fs";
 import { createSqliteSessionStore } from "@zcode/adapters/storage";
-import { createRootTraceContext, createSessionId, type Model } from "@zcode/contracts";
+import {
+  createRootTraceContext,
+  createSessionId,
+  type Model,
+  WINDOWS_CMD_SHELL_DISPLAY_NAME,
+} from "@zcode/contracts";
 import {
   ModelConfig,
   ModelOptionSpecsConfig,
   ModelPropertiesConfig,
   ProviderRegistry,
 } from "@zcode/provider";
+import type { ZCodeApp } from "../src/app/types.js";
 import { createRegistryBackedTestApp as createZCodeApp } from "./helpers/registry-backed-test-app.js";
 import { readWorkflowScriptDocument } from "../src/app/script-workflow-meta.js";
 import { runScriptWorkflowChild } from "../src/app/script-workflow-process.js";
@@ -256,7 +262,7 @@ describe("script workflow runtime", () => {
     const zshPath = join(shellDir, "zsh");
     const isWindows = process.platform === "win32";
     const configuredShellName = isWindows ? "powershell.exe" : "fish";
-    const resolvedShellName = isWindows ? "CMD" : "zsh";
+    const resolvedShellName = isWindows ? WINDOWS_CMD_SHELL_DISPLAY_NAME : "zsh";
     const env = { PATH: shellDir, SHELL: join(shellDir, configuredShellName) };
     const store = await createSqliteSessionStore({ dbPath: ":memory:" });
     await mkdir(workflowDir, { recursive: true });
@@ -290,14 +296,16 @@ describe("script workflow runtime", () => {
     );
     const requestTexts: string[] = [];
 
+    let app: ZCodeApp | undefined;
     try {
-      const app = await createZCodeApp({
+      app = await createZCodeApp({
         env,
         // Windows 自动探测会选 Git Bash；显式选 CMD，才能区分父快照继承与默认解析。
         ...(isWindows
           ? {
-              resolveInitialBashShellSelection: async () =>
-                resolveEffectiveBashShellSelection({
+              resolveInitialBashShellSelection: async () => {
+                // v4 的解析器异步返回选择；取得结果后再传给父会话。
+                const { selection } = await resolveEffectiveBashShellSelection({
                   env,
                   platform: process.platform,
                   override: {
@@ -306,7 +314,9 @@ describe("script workflow runtime", () => {
                     path: "cmd.exe",
                     source: "user-config",
                   },
-                }).selection,
+                });
+                return selection;
+              },
             }
           : {}),
         modelExecutor: {
@@ -354,6 +364,8 @@ describe("script workflow runtime", () => {
       expect(providerText).not.toContain(`- Shell: ${configuredShellName}`);
       if (isWindows) expect(providerText).not.toContain("- Shell: Git Bash");
     } finally {
+      // OW-P050：先关闭仍使用工作区的 App，再释放测试存储并删除目录。
+      await app?.close?.();
       store.close();
       await rm(tempRoot, { force: true, recursive: true });
     }
@@ -440,8 +452,9 @@ describe("script workflow runtime", () => {
       "utf8",
     );
 
+    let app: ZCodeApp | undefined;
     try {
-      const app = await createZCodeApp({
+      app = await createZCodeApp({
         env: {},
         modelAdapter: {
           addStatusSink() {},
@@ -461,8 +474,8 @@ describe("script workflow runtime", () => {
 
       expect(result?.status).toBe("completed");
       expect(createdModels.length).toBeGreaterThan(0);
-      await app.close?.();
     } finally {
+      await app?.close?.();
       store.close();
       await rm(tempRoot, { force: true, recursive: true });
     }
@@ -654,8 +667,9 @@ it("legacy workflow keeps a successful activity when child cleanup fails, then r
   let attempts = 0;
   const spy = vi
     .spyOn(childFactory, "createScriptWorkflowAgentRuntime")
-    .mockImplementation((input) => {
-      const child = original(input);
+    .mockImplementation(async (input) => {
+      // 子 runtime 创建要先建立 MCP 访问，工厂返回 Promise。
+      const child = await original(input);
       const close = child.closeBrowserSession.bind(child);
       child.closeBrowserSession = async () => {
         if (++attempts === 1) throw new Error("transient release failure");

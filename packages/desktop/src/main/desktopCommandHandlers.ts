@@ -7,6 +7,7 @@ import { app, BrowserWindow, dialog, shell } from "electron";
 import type { MessageBoxOptions } from "electron";
 import {
   DesktopCommandIds,
+  OPENZWORK_APP_NAME,
   getCommunityUrlFromConfigs,
   normalizeZCodeEndpointOrigin,
   PlatformChannels,
@@ -34,6 +35,103 @@ export const HELP_TOGGLE_DEV_TOOLS_MENU_ID = "help.toggle-dev-tools";
 export const HELP_TOGGLE_ZCODE_STDIO_TAP_MENU_ID = "help.toggle-zcode-stdio-tap";
 const ZCODE_ENDPOINT_PROMPT_WIDTH = 460;
 const ZCODE_ENDPOINT_PROMPT_HEIGHT = 210;
+
+let crashRestartRequested = false;
+let crashRecoveryDialogOpen = false;
+
+const CRASH_RECOVERY_MESSAGES: Record<
+  Locale,
+  { message: string; detail: string; restart: string; later: string }
+> = {
+  "zh-CN": {
+    message: "应用界面已崩溃",
+    detail: "可以重启 OpenZWork 继续使用。所有应用窗口将关闭，未保存的内容可能丢失。",
+    restart: "重启应用",
+    later: "稍后",
+  },
+  "en-US": {
+    message: "The app window has crashed",
+    detail: "Restart OpenZWork to continue. All app windows will close. Unsaved changes may be lost.",
+    restart: "Restart app",
+    later: "Later",
+  },
+  "ja-JP": {
+    message: "アプリ画面がクラッシュしました",
+    detail:
+      "OpenZWork を再起動して続行できます。すべてのアプリウィンドウが閉じ、未保存の内容が失われる場合があります。",
+    restart: "アプリを再起動",
+    later: "後で",
+  },
+  "ru-RU": {
+    message: "Окно приложения аварийно завершило работу",
+    detail:
+      "Перезапустите OpenZWork, чтобы продолжить. Все окна приложения будут закрыты. Несохранённые изменения могут быть потеряны.",
+    restart: "Перезапустить приложение",
+    later: "Позже",
+  },
+  "ko-KR": {
+    message: "앱 화면이 비정상 종료되었습니다",
+    detail:
+      "OpenZWork를 다시 시작하여 계속할 수 있습니다. 모든 앱 창이 닫히며 저장하지 않은 내용이 손실될 수 있습니다.",
+    restart: "앱 다시 시작",
+    later: "나중에",
+  },
+};
+
+export function restartAppAfterCrash(logger: { info: (...args: unknown[]) => void }) {
+  if (crashRestartRequested) return;
+  crashRestartRequested = true;
+  try {
+    logger.info("[crash-recovery] restarting application");
+    // 崩溃后 renderer 或 Host 可能无法完成退出屏障；用户选择紧急重启时直接退出，
+    // 不再走普通 quit 的确认和清理等待，否则重启按钮仍可能卡住。
+    app.relaunch();
+    app.exit(0);
+  } catch (error) {
+    crashRestartRequested = false;
+    throw error;
+  }
+}
+
+export async function showRendererCrashDialog(options: {
+  window: BrowserWindow;
+  locale: Locale;
+  isQuitting: () => boolean;
+  logger: { info: (...args: unknown[]) => void; error: (...args: unknown[]) => void };
+}): Promise<void> {
+  const { window: win, logger } = options;
+  if (crashRecoveryDialogOpen || crashRestartRequested || win.isDestroyed() || options.isQuitting())
+    return;
+  crashRecoveryDialogOpen = true;
+  try {
+    const messages = CRASH_RECOVERY_MESSAGES[options.locale];
+    if (win.isMinimized()) win.restore();
+    win.show();
+    const result = await dialog.showMessageBox(win, {
+      type: "error",
+      title: OPENZWORK_APP_NAME,
+      message: messages.message,
+      detail: messages.detail,
+      buttons: [messages.restart, messages.later],
+      defaultId: 0,
+      cancelId: 1,
+      noLink: true,
+    });
+    // 弹窗等待期间用户可能已关窗、刷新或退出；旧响应不能再重启一个已恢复的实例。
+    if (
+      result.response === 0 &&
+      !win.isDestroyed() &&
+      win.webContents.isCrashed() &&
+      !options.isQuitting()
+    ) {
+      restartAppAfterCrash(logger);
+    }
+  } catch (error) {
+    logger.error("[crash-recovery] recovery dialog failed:", error);
+  } finally {
+    crashRecoveryDialogOpen = false;
+  }
+}
 
 function resolveTargetWindow(senderWindow?: BrowserWindow | null) {
   if (senderWindow && !senderWindow.isDestroyed()) {
@@ -72,6 +170,7 @@ function showMessageBoxWithOptionalParent(
 }
 async function clearAllDataAndRelaunch(options: {
   credentialsDir: string;
+  beforeClearAllData: () => Promise<void>;
   logger: {
     info: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
@@ -91,6 +190,8 @@ async function clearAllDataAndRelaunch(options: {
     return;
   }
 
+  // 旧入口直接 exit 会跳过预装进程收尾；先停掉写入方，再清除 v2，避免退出时晚写。
+  await options.beforeClearAllData();
   await getPluginSandboxHost()?.clearBrowserData();
   const { rm } = await import("node:fs/promises");
   try {
@@ -346,6 +447,7 @@ export async function executeDesktopCommand(options: {
   onDesktopZoomChanged?: (zoomLevel: number) => Promise<void> | void;
   onZCodeEndpointChanged: () => Promise<void> | void;
   onRelaunchApp: () => Promise<void>;
+  beforeClearAllData: () => Promise<void>;
   settingService: {
     get(): Promise<Pick<AppSettings, "zcodeEndpointOrigin" | "desktopZoomLevel">>;
     update(
@@ -443,6 +545,9 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.RelaunchApp:
       await options.onRelaunchApp();
       return;
+    case DesktopCommandIds.RestartAfterCrash:
+      restartAppAfterCrash(options.logger);
+      return;
     case DesktopCommandIds.OpenCommunity:
       await openCommunity(options.currentApplicationLocale, options.logger);
       return;
@@ -507,6 +612,7 @@ export async function executeDesktopCommand(options: {
     case DesktopCommandIds.ClearAllData:
       await clearAllDataAndRelaunch({
         credentialsDir: options.credentialsDir,
+        beforeClearAllData: options.beforeClearAllData,
         logger: options.logger,
       });
       return;

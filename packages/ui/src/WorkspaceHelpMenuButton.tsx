@@ -1,3 +1,5 @@
+import { PreinstalledToolsDialog } from "@/preinstalled-tools/index.js";
+import { useState } from "react";
 import { DesktopCommandIds } from "@zcode/shared";
 import {
   TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER,
@@ -32,6 +34,7 @@ export function WorkspaceHelpMenuButton({
 }) {
   const { intl } = useZCodeIntl();
   const platform = usePlatform();
+  const [preinstalledToolsOpen, setPreinstalledToolsOpen] = useState(false);
   const helpMenuLabel = intl.formatMessage({ id: "workspaceHeader.help.menu" });
   const handleOpenCommunity = () => {
     void platform.openCommunity();
@@ -52,58 +55,73 @@ export function WorkspaceHelpMenuButton({
   };
 
   return (
-    <DropdownMenu>
-      <ControlHintTooltip title={helpMenuLabel} side="bottom">
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-md"
-            // Settings 页会把帮助按钮绝对定位在 Electron 顶部拖拽区上方。
-            // 只依赖外层容器 no-drag 时，真实 trigger 仍可能被标题栏 drag 区吞掉点击。
-            className={cn(
-              "text-foreground hover:bg-hover hover:text-foreground [app-region:no-drag]",
-              className,
-            )}
-            aria-label={helpMenuLabel}
-            data-testid={TID_WORKSPACE_HELP_MENU_TRIGGER}
-          >
-            <CircleHelpIcon className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-      </ControlHintTooltip>
-      <DropdownMenuContent
-        align="end"
-        className="min-w-0 w-max [&_[data-slot=dropdown-menu-item]]:pr-6"
-      >
-        <DropdownMenuItem onSelect={handleOpenCommunity}>
-          <UsersIcon className="size-4" />
-          {intl.formatMessage({ id: "workspaceHeader.help.community" })}
-        </DropdownMenuItem>
-        {/* Windows/Linux 没有原生菜单栏，自绘标题栏箭头菜单也已下线，
-            资源管理器只能从这里进；Web 端没有该窗口，不渲染。 */}
-        {isDesktop ? (
-          <>
-            <DropdownMenuSeparator />
-            {/* 独立导出入口曾被移除；复用原菜单动作，保持打包、系统定位与提示一致。 */}
-            <DropdownMenuItem onSelect={handleExportLogs}>
-              <DownloadIcon className="size-4" />
-              {intl.formatMessage({ id: "titleBar.menu.help.exportLogs" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              data-testid={TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER}
-              onSelect={handleOpenResourceManager}
+    <>
+      <DropdownMenu>
+        <ControlHintTooltip title={helpMenuLabel} side="bottom">
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-md"
+              // Settings 页会把帮助按钮绝对定位在 Electron 顶部拖拽区上方。
+              // 只依赖外层容器 no-drag 时，真实 trigger 仍可能被标题栏 drag 区吞掉点击。
+              className={cn(
+                "text-foreground hover:bg-hover hover:text-foreground [app-region:no-drag]",
+                className,
+              )}
+              aria-label={helpMenuLabel}
+              data-testid={TID_WORKSPACE_HELP_MENU_TRIGGER}
             >
-              <ActivityIcon className="size-4" />
-              {intl.formatMessage({ id: "titleBar.menu.help.resourceManager" })}
-            </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleShowAbout}>
-              <InfoIcon className="size-4" />
-              {intl.formatMessage({ id: "titleBar.menu.help.about" })}
-            </DropdownMenuItem>
-          </>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+              <CircleHelpIcon className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+        </ControlHintTooltip>
+        <DropdownMenuContent
+          align="end"
+          className="min-w-0 w-max [&_[data-slot=dropdown-menu-item]]:pr-6"
+        >
+          <DropdownMenuItem onSelect={handleOpenCommunity}>
+            <UsersIcon className="size-4" />
+            {intl.formatMessage({ id: "workspaceHeader.help.community" })}
+          </DropdownMenuItem>
+          {/* Windows/Linux 没有原生菜单栏，自绘标题栏箭头菜单也已下线，
+              资源管理器只能从这里进；Web 端没有该窗口，不渲染。 */}
+          {isDesktop ? (
+            <>
+              <DropdownMenuSeparator />
+              {/* 独立导出入口曾被移除；复用原菜单动作，保持打包、系统定位与提示一致。 */}
+              <DropdownMenuItem onSelect={handleExportLogs}>
+                <DownloadIcon className="size-4" />
+                {intl.formatMessage({ id: "titleBar.menu.help.exportLogs" })}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid={TID_WORKSPACE_HELP_MENU_RESOURCE_MANAGER}
+                onSelect={handleOpenResourceManager}
+              >
+                <ActivityIcon className="size-4" />
+                {intl.formatMessage({ id: "titleBar.menu.help.resourceManager" })}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                data-testid="workspace-help-menu-preinstalled-tools"
+                onSelect={() => setPreinstalledToolsOpen(true)}
+              >
+                <DownloadIcon className="size-4" />
+                {intl.formatMessage({ id: "preinstalledTools.title" })}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleShowAbout}>
+                <InfoIcon className="size-4" />
+                {intl.formatMessage({ id: "titleBar.menu.help.about" })}
+              </DropdownMenuItem>
+            </>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {isDesktop ? (
+        <PreinstalledToolsDialog
+          open={preinstalledToolsOpen}
+          onOpenChange={setPreinstalledToolsOpen}
+        />
+      ) : null}
+    </>
   );
 }

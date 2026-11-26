@@ -29,6 +29,12 @@ export function resolveServerOsUser(): string {
   }
 }
 
+export {
+  discoverWindowsGitBash,
+  type WindowsGitBashDiscoveryOptions,
+  type WindowsGitBashInstallation,
+} from "./node/windowsGitBashDiscovery/contract.js";
+
 export { acquireFileLock } from "./node/atomicFileLock.js";
 export { isUserHomeDirectory } from "./node/userHomeBoundary.js";
 // OpenZWork 净化口径修订：desktop 主链的网络诊断面板（main handler/UI 面板）已删，
@@ -52,6 +58,7 @@ export {
   withFileLock,
   withCredentialFileRead,
   withCredentialFileMutation,
+  withCredentialGeneration,
   captureCredentialFileGuard,
   type CredentialFileGuard,
   type SharedFileLockOptions,
