@@ -34,12 +34,12 @@ import {
   clearAppData,
   clickTestIdByDom,
   clickTestIdByWebDriver,
-  quitElectronAppGracefully,
   readSettings,
   seedSettings,
   waitForDefaultWorkspaceReady,
   waitForWorkspaceApp,
 } from "#e2e/helpers/desktop-app";
+import { reloadElectronSessionPreservingBrowserProfile } from "#e2e/helpers/e2e-electron-reload";
 import { startHelpConfigFixture } from "#e2e/helpers/help-client-config-fixture";
 
 const HELP_MENU_TRIGGER = 'button[data-testid="workspace-help-menu-trigger"]';
@@ -139,8 +139,8 @@ describe("OpenZWork 语言切换与本地帮助配置（OZ-D008 裁剪后合同�
         raw.uiLocalePreference === "ja-JP"
       );
     });
-    await quitElectronAppGracefully();
-    await browser.reloadSession();
+    // 验证同一份语言配置的冷恢复，等旧进程退出并重建新进程的测试桥接。
+    await reloadElectronSessionPreservingBrowserProfile(browser);
     await waitForDefaultWorkspaceReady(30000);
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 30000);
     await expect($(HELP_MENU_TRIGGER)).toHaveAttribute("aria-label", "ヘルプ");

@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { setRendererViewport, clearRendererViewport } from "#e2e/helpers/renderer-viewport";
 import { clearAppData, getE2EAppDataPaths, setInputValueByTestIdDom } from "#e2e/helpers/desktop-app";
@@ -225,7 +225,9 @@ describe("PLM-LC-018/019/020 本地化与插件创建入口", () => {
     requirePluginManualReview();
     // 同一套件的首例已经登记生命周期市场。使用独立清单，才能验证按 Enter 没有添加来源。
     const marketId = "e2e-marketplace-consent";
-    const source = join(getE2EAppDataPaths().homeDir, "marketplace-consent.json");
+    const catalogDir = join(getE2EAppDataPaths().homeDir, "fixtures", marketId);
+    await mkdir(catalogDir, { recursive: true });
+    const source = join(catalogDir, "marketplace.json");
     await writeFile(source, JSON.stringify({ name: marketId, plugins: [] }));
     await openPluginSettings();
     await setPluginPresentation({ locale: "zh-CN", theme: "zai-light", width: 1200, height: 800 });

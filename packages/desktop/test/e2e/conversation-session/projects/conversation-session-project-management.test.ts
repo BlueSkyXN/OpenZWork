@@ -251,7 +251,7 @@ describe("项目管理", () => {
     await $('[data-project-name="PJM 编辑完成"]').waitForExist();
     await expect(row("pjm-keep")).toHaveText(expect.stringContaining("PJM 保留"));
     expect(readTaskProject("pjm-active-task")).toBe("pjm-active");
-    const db = new DatabaseSync(join(home, ".zcode/v2/tasks-index.sqlite"), { readOnly: true });
+    const db = new DatabaseSync(join(home, ".openzwork/v2/tasks-index.sqlite"), { readOnly: true });
     try {
       expect(
         db.prepare("SELECT root_path FROM tasks WHERE task_id='pjm-active-task'").get(),

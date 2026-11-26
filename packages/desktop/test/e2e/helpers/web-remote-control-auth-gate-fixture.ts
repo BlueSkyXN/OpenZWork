@@ -19,6 +19,8 @@ export async function prepareWebRemoteControlAuthGateFixture(options: {
         spec.endsWith("conversation-session-web-remote-terminal.test.ts") ||
         spec.endsWith("conversation-session-web-remote-terminal-ssh.test.ts") ||
         spec.endsWith("conversation-session-archive-management.test.ts") ||
+        // 项目管理用例在创建本机数据后会通过手机配对核对同一项目列表。
+        spec.endsWith("conversation-session-project-management.test.ts") ||
         spec.endsWith("conversation-session-runtime-restart.test.ts") ||
         spec.endsWith("conversation-session-fork-cold-start-membership.test.ts") ||
         spec.endsWith("conversation-session-background.test.ts") ||
