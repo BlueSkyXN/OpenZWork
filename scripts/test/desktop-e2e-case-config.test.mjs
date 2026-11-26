@@ -207,3 +207,17 @@ test("the mobile dev server prebundles the diff worker before a paired page send
   );
   assert.ok(result?.config.optimizeDeps?.include?.includes("@pierre/diffs/worker/worker.js"));
 });
+
+test("project batch checks wait for all changed rows and preserve unrelated removals", async () => {
+  // OW-P051：用回放中读到的中间状态验证批量撤销的完成条件。
+  const { tsImport } = await import("tsx/esm/api");
+  const { projectDeletionFlagsMatch } = await tsImport(
+    "../../packages/desktop/test/e2e/helpers/project-sidebar.ts",
+    import.meta.url,
+  );
+  const expected = { missing: 0, idle: 0, empty: 0, previouslyRemoved: 1 };
+  assert.equal(projectDeletionFlagsMatch({ ...expected, empty: 1 }, expected), false);
+  assert.equal(projectDeletionFlagsMatch({ ...expected, previouslyRemoved: 0 }, expected), false);
+  assert.equal(projectDeletionFlagsMatch({ idle: 0 }, expected), false);
+  assert.equal(projectDeletionFlagsMatch({ ...expected, pinned: 0 }, expected), true);
+});

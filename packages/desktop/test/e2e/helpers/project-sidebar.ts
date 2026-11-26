@@ -117,6 +117,14 @@ export async function waitForProjectRowGone(
   });
 }
 
+// OW-P051：同一批项目逐个落库，只有本次快照中的所有预期标志都匹配才算完成。
+export function projectDeletionFlagsMatch(
+  snapshot: Readonly<Record<string, number>>,
+  expected: Readonly<Record<string, number>>,
+): boolean {
+  return Object.entries(expected).every(([id, flag]) => snapshot[id] === flag);
+}
+
 /** 等待一组 workspace 对应的项目行全部出现在侧栏（启动恢复 / 首次迁移完成）。 */
 export async function waitForRestoredProjects(
   workspacePaths: string[],

@@ -1064,3 +1064,22 @@ patches:
     regression:
       - apps/zcode-cli/packages/bootstrap/tests/script-workflow.test.ts
     retire: 上游回归在删除工作区前释放 App 及其持有的资源。
+
+  - id: OW-P051
+    title: 项目管理回放在批量移除或撤销进行中检查最终状态
+    kind: test
+    status: fixed
+    upstream:
+      since: 3.18.0
+      checked: 4.0.0
+    trigger: 批量操作涉及三个项目，某一行先完成写入，其余项目仍在处理。
+    impact: 项目最终全部恢复时，桌面回放仍可能报告部分项目未恢复。
+    cause: 用例只等待一个项目的删除标志改变，随后即断言整批项目的数据库状态。
+    evidence: macOS 打包客户端的 PJM04 在最后一行更新前失败。界面显示已恢复三个项目时，数据库中三个目标均已恢复，原来移除的项目仍为已移除。
+    fix: 每次读取一份项目快照，并在同一次读取中核对全部目标和应保留原状态的项目。
+    files:
+      - packages/desktop/test/e2e/conversation-session/projects/conversation-session-project-management.test.ts
+      - packages/desktop/test/e2e/helpers/project-sidebar.ts
+    regression:
+      - scripts/test/desktop-e2e-case-config.test.mjs
+    retire: 上游的批量移除和撤销回放等待整批状态收敛。

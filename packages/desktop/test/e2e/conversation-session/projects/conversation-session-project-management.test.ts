@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { chromium } from "playwright-core";
 import { TID_TASK_SETTINGS_BUTTON } from "@zcode/shared/test-ids";
 import { join, basename } from "node:path";
+import { projectDeletionFlagsMatch } from "#e2e/helpers/project-sidebar";
 import { isE2EHomeDirName } from "#e2e/helpers/e2e-runtime-paths";
 import { e2eMobileBrowserLaunchOptions } from "#e2e/helpers/e2e-mobile-browser-executable";
 import { obtainUnreadPairingUrl } from "#e2e/helpers/web-remote-unread";
@@ -311,14 +312,17 @@ describe("项目管理", () => {
     await browser.saveScreenshot(join(process.env.ZCODE_E2E_ARTIFACT_DIR!, "PJM03-confirm.png"));
     await dialog.$('[data-testid="project-management-confirm-remove"]').click();
     await dialog.waitForExist({ reverse: true });
-    await browser.waitUntil(() => readProjects()["pjm-idle"] === 1);
-    expect(readProjects()).toMatchObject({
+    // OW-P051：先完成的项目不能代表整批移除或撤销已经落盘。
+    const removed = {
       "pjm-missing": 1,
       "pjm-idle": 1,
       "pjm-empty": 1,
       "pjm-keep": 0,
       "pjm-pinned": 0,
       "pjm-active": 0,
+    };
+    await browser.waitUntil(() => projectDeletionFlagsMatch(readProjects(), removed), {
+      timeoutMsg: "移除后的项目状态未全部写入",
     });
     // 软删除只拿掉容器：会话仍归属原项目，侧栏不再显示被移除的项目。
     expect(readTaskProject("pjm-idle-task")).toBe("pjm-idle");
@@ -331,12 +335,14 @@ describe("项目管理", () => {
     const undo = $("button=撤销");
     await undo.waitForDisplayed();
     await undo.click();
-    await browser.waitUntil(() => readProjects()["pjm-idle"] === 0);
-    expect(readProjects()).toMatchObject({
+    const restored = {
       "pjm-missing": 0,
       "pjm-idle": 0,
       "pjm-empty": 0,
       "pjm-removed": 1,
+    };
+    await browser.waitUntil(() => projectDeletionFlagsMatch(readProjects(), restored), {
+      timeoutMsg: "撤销后的项目状态未全部写入",
     });
     await $('[data-project-name="PJM 久未使用"]').waitForExist();
   });
