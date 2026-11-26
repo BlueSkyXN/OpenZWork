@@ -4848,7 +4848,7 @@ const zhCN: Record<string, string> = {
   "settings.modelProvider.testModel.localWorkspaceUnavailable":
     "本地工作区不可用，无法测试模型连通性。",
   "settings.usage.sectionTitle": "使用统计",
-  "settings.usage.sectionDescription": "汇总本机记录的会话用量，明细保留 30 天。",
+  "settings.usage.sectionDescription": "汇总本机记录的会话用量。",
   "settings.usage.tab.appUsage": "应用用量",
   "settings.usage.tab.codingPlan": "个人套餐",
   "settings.usage.sectionDescriptionRemote": "来自当前供应商统计接口，统计真实 Token 与工具调用。",
@@ -7876,7 +7876,7 @@ const zhCN: Record<string, string> = {
   "remoteSync.blocked.targetSymlink": "远端同名项是软链，不能覆盖",
   "remoteSync.blocked.compatDirectory": "远端同名项位于 ~/.agents 兼容目录，不能覆盖",
   "remoteSync.blocked.externalDirectory":
-    "远端同名插件位于 ~/.zcode/plugins 以外的目录（例如开发中的 checkout），不能更新",
+    "远端同名插件位于 ~/.openzwork/plugins 以外的目录（例如开发中的 checkout），不能更新",
   "remoteSync.blocked.targetCompatConfig": "远端使用 ~/.agents 兼容配置，推送会使其失效",
   "remoteSync.blocked.sourceRemoved": "来源已删除，不能同步",
   "remoteSync.blocked.remoteLatestMismatch": "远端来源的最新版本与本机不一致",

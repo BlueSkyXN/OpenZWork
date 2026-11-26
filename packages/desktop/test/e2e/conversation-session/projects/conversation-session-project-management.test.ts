@@ -94,6 +94,7 @@ async function openProjectEditor(id: string) {
 
 describe("项目管理", () => {
   let pairingUrl: string;
+  let testWindow: { id: number; throttled: boolean } | undefined;
   before(async function () {
     this.timeout(60000);
     // 修复原因：旧守卫只认 `.e2e-home-` 前缀，Windows CI 未设 ZCODE_E2E_HOME_DIR 时默认 HOME 是
@@ -188,10 +189,35 @@ describe("项目管理", () => {
     });
     await waitForWorkspaceApp(DEFAULT_WORKSPACE, 45000);
     await setLocaleAndTheme("zh-CN", "zai-light");
+    // OW-P052：冷重启会换窗口。后台渲染页可能停住关闭动画，留下仍拦截点击的遮罩。
+    testWindow = await browser.electron.execute((electron, rendererUrl) => {
+      const win = electron.BrowserWindow.getAllWindows().find(
+        (candidate) => !candidate.isDestroyed() && candidate.webContents.getURL() === rendererUrl,
+      );
+      if (!win) throw new Error("Project management test window not found");
+      const throttled = win.webContents.getBackgroundThrottling();
+      if (win.isMinimized()) win.restore();
+      electron.app.focus({ steal: true });
+      win.show();
+      win.focus();
+      win.webContents.focus();
+      win.webContents.setBackgroundThrottling(false);
+      return { id: win.id, throttled };
+    }, await browser.getUrl());
+    await browser.waitUntil(() => browser.execute(() => document.visibilityState === "visible"), {
+      timeoutMsg: "The restarted project management window did not become visible",
+    });
     // 在进入设置前从首页配对；设置页和首页各有 footer，不能用全局定位器猜测当前入口。
     pairingUrl = await obtainUnreadPairingUrl(
       new URL(process.env.ZCODE_WEB_REMOTE_CONTROL_URL!).origin,
     );
+  });
+
+  after(async () => {
+    if (!testWindow) return;
+    await browser.electron.execute((electron, original) => {
+      electron.BrowserWindow.fromId(original.id)?.webContents.setBackgroundThrottling(original.throttled);
+    }, testWindow);
   });
 
   it("PJM01：侧栏更多菜单与设置导航都进入项目管理页，页头说明移除后果", async () => {
@@ -301,7 +327,7 @@ describe("项目管理", () => {
     );
   });
 
-  it("PJM03：确认对话框按设备拆分，确认后软删除且会话归属不变", async () => {
+  it("PJM03/PJM04：按设备确认批量移除，在结果提示中撤销本批项目并保留会话归属", async () => {
     await $('[data-testid="project-management-remove"]').click();
     const dialog = $('[data-testid="project-management-confirm"]');
     await dialog.waitForDisplayed();
@@ -329,21 +355,23 @@ describe("项目管理", () => {
     await $('[data-project-name="PJM 久未使用"]').waitForExist({ reverse: true });
     await expect(row("pjm-keep")).toBeDisplayed();
     expect(await $('[data-testid="project-management-selection-bar"]').isExisting()).toBe(false);
-  });
-
-  it("PJM04：toast 撤销只恢复本批项目", async () => {
+    // OW-P052：撤销入口在结果提示消失前有效，连续核对同一批次，避免用例间清理耗尽操作时间。
     const undo = $("button=撤销");
-    await undo.waitForDisplayed();
+    await undo.waitForClickable();
     await undo.click();
     const restored = {
       "pjm-missing": 0,
       "pjm-idle": 0,
       "pjm-empty": 0,
+      "pjm-keep": 0,
+      "pjm-pinned": 0,
+      "pjm-active": 0,
       "pjm-removed": 1,
     };
     await browser.waitUntil(() => projectDeletionFlagsMatch(readProjects(), restored), {
       timeoutMsg: "撤销后的项目状态未全部写入",
     });
+    expect(readTaskProject("pjm-idle-task")).toBe("pjm-idle");
     await $('[data-project-name="PJM 久未使用"]').waitForExist();
   });
 

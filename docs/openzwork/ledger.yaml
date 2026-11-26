@@ -744,7 +744,13 @@ entries:
     hooks:
       - packages/services/src/setting/settingService.ts
       - packages/ui/src/SettingsPage.tsx
+      - packages/ui/src/i18n/locales/en-US.ts
+      - packages/ui/src/i18n/locales/ja-JP.ts
+      - packages/ui/src/i18n/locales/ko-KR.ts
+      - packages/ui/src/i18n/locales/ru-RU.ts
+      - packages/ui/src/i18n/locales/zh-CN.ts
     tests:
+      - packages/ui/test/settingsLocaleCoverage.test.ts
       - packages/services/test/settingsLocalePersistence.test.ts
       - packages/desktop/test/e2e/settings/general/settings-client-language-header-openzwork.test.ts
     source: 上游 docs/i18n/ui-locales.md 合同；J1 返工（NEXT-FINISH-LOCALE-DIRECT-CI-20261117）
@@ -784,6 +790,7 @@ entries:
       - apps/zcode-cli/packages/bootstrap/src/plugins.ts
       - apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
       - packages/ui/src/lib/pluginIconSource.ts
+      - packages/ui/src/components/PluginIcon.tsx
       - packages/ui/src/settings/PluginStorePage.tsx
       - packages/ui/src/store/pluginManagementStore.ts
       - packages/ui/src/store/pluginManagementStoreLoading.ts
@@ -827,12 +834,13 @@ entries:
     kind: change
     status: active
     title: Office 插件面板手动刷新
-    summary: Word、PDF、演示文稿和电子表格通过菜单重新读取当前文件，停留期间不轮询磁盘版本。
+    summary: 四种 Office 面板通过菜单刷新当前文件，等待和拒绝时保留已打开的内容，切换文件后丢弃过期结果。
     spec: docs/specs/plugin-file-preview-fallback-openzwork.md
     paths:
       - docs/specs/plugin-file-preview-fallback-openzwork.md
     hooks:
       - apps/zcode-cli/packages/office-runtime/ui/main.tsx
+      - apps/zcode-cli/packages/office-runtime/ui/i18n.ts
       - apps/zcode-cli/packages/office-runtime/ui/shell/menus.tsx
       - apps/zcode-cli/packages/documents-plugin/package.json
       - apps/zcode-cli/packages/documents-plugin/.zcode-plugin/plugin.json

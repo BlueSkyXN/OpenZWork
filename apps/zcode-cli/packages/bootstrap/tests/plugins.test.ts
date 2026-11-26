@@ -251,10 +251,10 @@ describe("ZCode plugins", () => {
 
   it("declares the LibreOffice launcher and full private profile for every document cache", () => {
     for (const [name, version] of [
-      ["documents", "0.2.11-openzwork.1"],
-      ["pdf", "0.2.12-openzwork.1"],
-      ["presentations", "0.2.11-openzwork.1"],
-      ["spreadsheets", "0.2.11-openzwork.2"],
+      ["documents", "0.2.11-openzwork.2"],
+      ["pdf", "0.2.12-openzwork.2"],
+      ["presentations", "0.2.11-openzwork.2"],
+      ["spreadsheets", "0.2.11-openzwork.3"],
     ]) {
       const plugin = OFFICIAL_PLUGIN_DEFINITIONS.find((item) => item.name === name);
       expect(plugin?.version, name).toBe(version);

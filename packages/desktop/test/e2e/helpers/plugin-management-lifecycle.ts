@@ -23,8 +23,8 @@ import {
   setCurrentElectronRendererContentSize,
   setInputValueByTestIdDom,
   waitForTestIdByDom,
-  waitForWorkspaceApp,
 } from "./desktop-app.js";
+import { restartIntoWorkspacePreservingProfile } from "./model-provider-restart-runtime.js";
 import { dismissOccupationOnboarding } from "#e2e/helpers/occupation-onboarding";
 
 export const PLUGIN_LIFECYCLE_MARKETPLACE_ID = "e2e-plugin-lifecycle-market";
@@ -869,21 +869,8 @@ export async function capturePluginManualReview(caseId: string, label: string): 
 }
 
 export async function restartPluginLifecycleApp(): Promise<void> {
-  await browser.reloadSession();
-  await browser.waitUntil(
-    async () => {
-      try {
-        return (await browser.getUrl()).startsWith("file://");
-      } catch {
-        return false;
-      }
-    },
-    {
-      timeout: 60000,
-      timeoutMsg: "Electron renderer did not recover after reloadSession",
-    },
-  );
-  await waitForWorkspaceApp(DEFAULT_WORKSPACE, 60000);
+  // OW-P052：独立启动的 Electron 需要先释放旧进程，再恢复同一配置和新驱动连接。
+  await restartIntoWorkspacePreservingProfile(DEFAULT_WORKSPACE);
 }
 
 export async function getPluginOverview(

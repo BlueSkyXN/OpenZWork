@@ -91,10 +91,9 @@ describe("AI SDK Provider execution", () => {
   });
   it("adds Authorization alongside x-api-key for Anthropic provider requests", async () => {
     const receivedHeaders: http.IncomingHttpHeaders[] = [];
-    const endpointRoutingPort = {
-      resolve: vi.fn(async (url: string) => ({ routed: false, url })),
-    };
+    const receivedTargets: string[] = [];
     const server = http.createServer((request, response) => {
+      receivedTargets.push(request.url ?? "");
       receivedHeaders.push(request.headers);
       request.resume();
       response.writeHead(200, { "content-type": "application/json" });
@@ -113,9 +112,8 @@ describe("AI SDK Provider execution", () => {
     });
 
     try {
-      const baseURL = await listenServer(server);
+      const baseURL = (await listenServer(server)) + "/fixture/v1";
       const registry = new TestProviderConfigFixture({
-        endpointRoutingPort,
         env: {},
         providers: {
           anthropic: {
@@ -137,10 +135,7 @@ describe("AI SDK Provider execution", () => {
         "x-api-key": "anthropic-key",
         "anthropic-version": "2023-06-01",
       });
-      expect(endpointRoutingPort.resolve).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.not.objectContaining({ apiKey: expect.any(String) }),
-      );
+      expect(receivedTargets).toEqual(["/fixture/v1/messages"]);
     } finally {
       await closeServer(server);
     }
@@ -250,6 +245,7 @@ describe("AI SDK Provider execution", () => {
       providerKind: "anthropic",
     });
 
+    await expect(fetch("https://provider.example.invalid/v1/messages")).rejects.toMatchObject({
       providerCode: "1305",
       responseHeaders: {
         "retry-after": "41",
@@ -276,6 +272,7 @@ describe("AI SDK Provider execution", () => {
       providerKind: "anthropic",
     });
 
+    await expect(fetch("https://provider.example.invalid/v1/messages")).rejects.toMatchObject({
       cause: { cause: tlsCause },
       code: "MODEL_TLS_VALIDATION_FAILED",
     });
@@ -316,6 +313,7 @@ describe("AI SDK Provider execution", () => {
         providerKind: "anthropic",
       });
 
+      const request = fetch("https://provider.example.invalid/v1/messages");
       const rejection = expect(request).rejects.toMatchObject({
         message: "平台流量限制，请稍后重试",
         name: "ProviderBusinessError",

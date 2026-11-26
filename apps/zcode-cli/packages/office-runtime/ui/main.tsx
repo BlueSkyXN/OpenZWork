@@ -65,6 +65,9 @@ import type {
 
 const host = getHost();
 
+// OZ-C016：异步错误按当前界面语言显示；切换语言不能重新注册打开文件的回调。
+const panelStrings = () => strings(host.context?.locale ?? navigator.language);
+
 const PAGED: DocKind[] = ["pdf", "docx", "pptx"];
 /** Viewers with fit modes and zoom in the page control. */
 const ZOOMABLE: DocKind[] = ["pdf", "docx"];
@@ -73,7 +76,7 @@ const DOCK_WIDTH = 720;
 const INLINE_HEIGHT = 380;
 function Shell() {
   const context = useHostContext();
-  const t = strings(context?.locale ?? navigator.language);
+  const t = panelStrings();
   const dark = context?.theme === "dark";
   const inline = context?.displayMode === "inline";
 
@@ -172,19 +175,25 @@ function Shell() {
   }, [setFind, setOffscreen]);
 
   const load = useCallback(
-    async (target: string, reveal?: { targets: ShowTarget[]; note: string | null } | null) => {
+    async (
+      target: string,
+      reveal?: { targets: ShowTarget[]; note: string | null } | null,
+      intent: "open" | "reload" = "open",
+    ) => {
       const mine = ++loadSeq.current;
       if (reveal) pendingReveal.current = reveal;
       else if (loadingPath.current !== target) pendingReveal.current = null;
       loadingPath.current = target;
       setPending(target);
       setFailure(null);
+      setNotice(null);
       try {
         const loaded = await call<{
           info: DocumentInfo;
           file: FileHandle;
           blocks?: DocxBlockKey[];
         }>("load_document", { path: target });
+        if (mine !== loadSeq.current) return;
         const [bytes] = await Promise.all([
           readFileBytes(loaded.file),
           VIEWERS[loaded.info.kind]?.prepare?.(),
@@ -203,9 +212,15 @@ function Shell() {
         });
       } catch (error) {
         if (mine !== loadSeq.current) return;
+        const messages = panelStrings();
+        // OZ-C016：刷新被拒绝时，已授权加载的文档和阅读位置仍然有效。
+        if (intent === "reload" && docRef.current?.info.path === target) {
+          showNotice(messages.reloadFailed);
+          return;
+        }
         setDoc(null);
         resetDocumentState();
-        setFailure(describeFailure(t, error, target));
+        setFailure(describeFailure(messages, error, target));
       } finally {
         if (mine === loadSeq.current) {
           setPending(null);
@@ -213,7 +228,7 @@ function Shell() {
         }
       }
     },
-    [resetDocumentState, t],
+    [resetDocumentState, showNotice],
   );
 
   const runReveal = useCallback(async (targets: ShowTarget[], note: string | null) => {
@@ -229,7 +244,7 @@ function Shell() {
         ? { note, targets: results, index: 0, visible: Boolean(note) || results.length > 1 }
         : null,
     );
-  }, []);
+  }, [setFind]);
 
   const applyReveal = useCallback(
     (targets: ShowTarget[], note: string | null) => {
@@ -487,14 +502,28 @@ function Shell() {
 
   const openPath = useCallback(
     (target: string) => {
+      // 选文即使旧请求失效，避免新文件等待打开授权时，旧刷新的结果又改写面板。
+      const mine = ++loadSeq.current;
+      loadingPath.current = null;
+      pendingReveal.current = null;
+      setPending(target);
+      setNotice(null);
+      setFailure(null);
       setMenu(null);
-      void call<ViewerSnapshot>("open_document", { path: target }).then(applySnapshot, (error) => {
-        // The user asked for another file: close this one and say why that one did not open.
-        loadSeq.current++;
-        setDoc(null);
-        resetDocumentState();
-        setFailure(describeFailure(t, error, target));
-      });
+      void call<ViewerSnapshot>("open_document", { path: target }).then(
+        (snapshot) => {
+          if (mine !== loadSeq.current) return;
+          setPending(null);
+          applySnapshot(snapshot);
+        },
+        (error) => {
+          if (mine !== loadSeq.current) return;
+          setPending(null);
+          setDoc(null);
+          resetDocumentState();
+          setFailure(describeFailure(t, error, target));
+        },
+      );
     },
     [applySnapshot, resetDocumentState, t],
   );
@@ -520,14 +549,14 @@ function Shell() {
             onLink: (url: string) => void host.app.openLink({ url }).catch(() => undefined),
             onReady,
             onError: (error: Error) =>
-              setFailure(describeFailure(t, error, docRef.current?.info.path ?? null)),
+              setFailure(describeFailure(panelStrings(), error, docRef.current?.info.path ?? null)),
           }
         : null,
-    // `t` only words errors; a locale change does not need a new viewer.
     [doc, dark, inline, onReady, onSelect, onRevealHit],
   );
 
-  const showSkeleton = !failure && (Boolean(pending) || Boolean(doc && !ready));
+  const showSkeleton =
+    !failure && (Boolean(pending && pending !== doc?.info.path) || Boolean(doc && !ready));
   const nothing = !doc && !pending && !failure;
   const label = picked ? describeAt(picked.selection.at, t) : "";
 
@@ -610,6 +639,7 @@ function Shell() {
                 className={`btn icon dim${menu === "more" ? " active" : ""}`}
                 title={t.more}
                 aria-label={t.more}
+                disabled={Boolean(pending)}
                 aria-haspopup="menu"
                 aria-expanded={menu === "more"}
                 data-menu-trigger=""
@@ -717,7 +747,7 @@ function Shell() {
                 onFit={() => viewer.current?.fit("width")}
               />
             ) : null}
-            {notice ? <div className="chip notice">{notice}</div> : null}
+            {notice ? <div className="chip notice" role="status">{notice}</div> : null}
           </div>
         </div>
       )}
@@ -747,7 +777,7 @@ function Shell() {
           onReload={() => {
             // OpenZWork(OZ-C016)：用户主动刷新时才重新读盘，避免轮询反复请求单次授权。
             setMenu(null);
-            void load(doc.info.path);
+            void load(doc.info.path, null, "reload");
           }}
           onClose={() => setMenu(null)}
         />

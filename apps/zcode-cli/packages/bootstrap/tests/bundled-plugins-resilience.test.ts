@@ -205,7 +205,7 @@ import { resolveZCodePlugins } from "../src/plugins.js";
 
 const OFFICIAL_CACHE_ROOT = join("cache", "zcode-plugins-official");
 const BROWSER_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "browser-use", "0.5.2");
-const DOCUMENTS_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "documents", "0.2.11-openzwork.1");
+const DOCUMENTS_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "documents", "0.2.11-openzwork.2");
 const DOCUMENTS_MANIFEST_SUFFIX = join(DOCUMENTS_CACHE_SUFFIX, ".zcode-plugin", "plugin.json");
 const ANDROID_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "android-emulator", "0.1.3");
 const SKILL_CREATOR_CACHE_SUFFIX = join(OFFICIAL_CACHE_ROOT, "skill-creator", "0.1.0");

@@ -69,7 +69,7 @@ sequenceDiagram
 - overview 使用 getAppUsageStats(includeProjects)，不读会话明细。新增 getAppUsageSessions 与 v4/usage/sessions / usage/sessions，入参 range、timeZone?、until?、sessionIds?、offset、limit（1–100），严格运行时 schema。
 - 明细返回本页 rows、totalCount、childSessionCount、全量 totals、offset/limit 及查询时间。同一 SQL 快照内计算页与合计，越界仍返回总数和合计。Host 为行附加 membership/projectId/projectName。
 - 两种查询共用时间窗口解析；明细继承概览 generatedAt 作为 until，筛选/刷新重置页码和时间窗口，AI 查询在同一 until 下组合汇总与第一页（50 行）。动态写入期间不同查询时间的快照不强行宣称相同。
-- QueryUsage 保留只读工具合同，返回完整汇总、明细合计、第一页与总条数；报告超过 120,000 UTF-8 字节裁剪列表并标记 truncated。源数据仍保持原 30 天保留，不作表结构迁移。
+- QueryUsage 返回所选时间范围的完整汇总、明细合计、第一页与总条数。报告超过 120,000 UTF-8 字节时裁剪列表并标记 truncated。「全部时间」涵盖本机存储的全部用量记录。
 - 明细标题为「会话明细」，说明 N 个主会话及子任务归并关系；不把明细行数当作原卡片 count(distinct session_id)。统计说明陈述本机数据与保留期。
 
 ```mermaid

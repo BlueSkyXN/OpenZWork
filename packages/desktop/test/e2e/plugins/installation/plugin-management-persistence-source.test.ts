@@ -57,6 +57,7 @@ describe("PLM-LC-004/005 插件持久化、跨本地 workspace 与来源孤立 E
     await selectPluginSettingsScope("user");
     await setPluginEnabledThroughUi(PLUGIN_LIFECYCLE_ID, false, "manage");
 
+    // OW-P052：真实冷重启后继续核对用户范围的启停和配置持久化。
     await restartPluginLifecycleApp();
     await openPluginSettings();
     expect(

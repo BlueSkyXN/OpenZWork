@@ -70,12 +70,239 @@ const ruRU: Record<string, string> = {
     "Инструмент не может быть запущен на этом компьютере. Сообщите о проблеме через «Справка → Экспорт логов».",
   "preinstalledTools.error.unsupported": "Эта система пока не поддерживается.",
   // OpenZWork(OZ-F002)：系统提示词导航与全部 19 个内置章节五语种标签。
+  "settings.systemPrompt.editor.generated": "Автоматическая генерация · включение в промпт",
+  "settings.systemPrompt.editor.mixed": "Правила и данные среды выполнения",
+  "settings.systemPrompt.editor.rule": "Редактируемые правила",
   "settings.systemPrompt.title": "Системные промпты",
+  "settings.systemPrompt.scenario.style_none": "Пример без стиля ответа",
+  "settings.systemPrompt.scenario.style_active": "Пример с короткими абзацами",
+  "settings.systemPrompt.scenario.skills_unavailable": "Инструмент Skill или навыки недоступны",
+  "settings.systemPrompt.scenario.skills_available": "Инструмент Skill и навыки доступны",
+  "settings.systemPrompt.scenario.memory_disabled": "Память отключена",
+  "settings.systemPrompt.scenario.memory_enabled": "Память включена",
+  "settings.systemPrompt.scenario.terminal": "Сеанс терминала",
+  "settings.systemPrompt.scenario.gen_ui_unavailable":
+    "Настольное приложение · визуализация недоступна",
+  "settings.systemPrompt.scenario.gen_ui_available":
+    "Настольное приложение · визуализация доступна",
+  "settings.systemPrompt.notInjectedInScenario": "В этих условиях содержимое не добавляется.",
+  "settings.systemPrompt.scenario": "Моделируемые условия выполнения",
+  "settings.systemPrompt.dynamicContext": "Динамический контекст",
+  "settings.systemPrompt.runtimeContent": "Данные среды выполнения · сохраняются всегда",
+  "settings.systemPrompt.ruleMode.disabled": "Отключить правила раздела",
+  "settings.systemPrompt.ruleMode.replace": "Заменить правила раздела",
+  "settings.systemPrompt.loading": "Загрузка промптов по умолчанию…",
+  "settings.systemPrompt.loadError":
+    "Не удалось загрузить промпты по умолчанию. Обновите агент и повторите попытку.",
+  "settings.systemPrompt.retry": "Повторить",
+  "settings.systemPrompt.editingMode": "Режим редактирования",
+  "settings.systemPrompt.mode.sections": "Настроить разделы",
+  "settings.systemPrompt.mode.replace": "Заменить правила поведения",
+  "settings.systemPrompt.unsaved": "Несохранённые изменения",
+  "settings.systemPrompt.savedConfig": "Сохранённая конфигурация",
+  "settings.systemPrompt.replacement": "Свой системный промпт",
+  "settings.systemPrompt.chars": "Символов: {count}",
   "settings.systemPrompt.chapters": "Разделы промпта",
   "settings.systemPrompt.modified": "Изменено",
   "settings.systemPrompt.customChapters": "Пользовательские разделы",
+  "configPackage.title": "Пакет настроек",
+  "configPackage.export": "Экспортировать настройки",
+  "configPackage.import": "Импортировать настройки",
+  "configPackage.page.closed": "Пакет настроек",
+  "configPackage.page.categories": "Выберите категории для экспорта",
+  "configPackage.page.confirm": "Подтвердите экспорт без шифрования",
+  "configPackage.page.preview": "Проверка настроек",
+  "configPackage.page.loading": "Обработка настроек…",
+  "configPackage.page.exported": "Экспорт завершён",
+  "configPackage.page.imported": "Результаты импорта",
+  "configPackage.page.error": "Ошибка пакета настроек",
+  "configPackage.chooseHelp": "Выберите локальные настройки, которые нужно сохранить в файле.",
+  "configPackage.plaintext":
+    "Настройки будут сохранены без шифрования. Выберите место, доступное только вам.",
+  "configPackage.sensitive.providers": "Ключи API и настройки подключения к провайдерам моделей",
+  "configPackage.sensitive.mcp":
+    "Настройки MCP-серверов, включая переменные окружения, заголовки запросов и секреты клиентов",
+  "configPackage.sensitive.hooks": "Полные команды и аргументы хуков",
+  "configPackage.previewHelp":
+    "Новые элементы уже выбраны. Выберите отличающийся элемент, чтобы перезаписать его локальные настройки.",
+  "configPackage.platform": "Исходная платформа — {platform}.",
+  "configPackage.version": "Экспортировано из приложения версии {version}.",
+  "configPackage.absolutePath":
+    "В пакете есть абсолютный путь. Проверьте, что он доступен на этом устройстве.",
+  "configPackage.defaultSkipped":
+    "Модель по умолчанию из пакета пропущена. Проверьте выбранную модель и список доступных моделей в настройках.",
+  "configPackage.defaultPreview":
+    "На этом устройстве нет модели по умолчанию. Если {providerId} / {modelId} доступна, она станет моделью по умолчанию.",
+  "configPackage.applyDefault": "Использовать модель по умолчанию",
+  "configPackage.defaultApplied": "Модель по умолчанию теперь {providerId} / {modelId}.",
+  "configPackage.noSelected": "Нет элементов для добавления или перезаписи.",
+  "configPackage.restart":
+    "Перезапустите приложение, чтобы все настройки применились к новым сеансам. Открытые сеансы сохранят свои системные промпты. После обновления реестра провайдеров новые запросы будут использовать обновлённые учётные данные.",
+  "configPackage.continue": "Продолжить",
+  "configPackage.back": "Назад",
+  "configPackage.save": "Подтвердить и выбрать место сохранения",
+  "configPackage.apply": "Импортировать выбранные ({count})",
+  "configPackage.done": "Готово",
+  "configPackage.category.subagents": "Субагенты",
+  "configPackage.category.commands": "Команды",
+  "configPackage.category.hooks": "Хуки",
+  "configPackage.category.mcp": "MCP-серверы",
+  "configPackage.category.skills": "Навыки",
+  "configPackage.category.providers": "Провайдеры моделей",
+  "configPackage.category.systemPrompt": "Системный промпт",
+  "configPackage.status.new": "Новый",
+  "configPackage.status.same": "Совпадает",
+  "configPackage.status.different": "Отличается",
+  "configPackage.status.blocked": "Недоступен",
+  "configPackage.status.created": "Добавлен",
+  "configPackage.status.updated": "Перезаписан",
+  "configPackage.status.conflict": "Конфликт с изменениями локальных настроек",
+  "configPackage.status.failed": "Ошибка",
+  "configPackage.status.skipped": "Пропущен",
+  "configPackage.reason.size-limit": "Превышен лимит размера для категории",
+  "configPackage.reason.contains-symlink": "В каталоге есть символическая ссылка",
+  "configPackage.reason.target-symlink": "Локальный объект является символической ссылкой",
+  "configPackage.reason.compat-directory":
+    "Локальный элемент находится в каталоге совместимости",
+  "configPackage.reason.target-compat-config":
+    "Локальные настройки MCP используют каталог совместимости",
+  "configPackage.reason.target-read": "Проверьте локальные настройки и повторите предпросмотр",
+  "configPackage.reason.target-access": "Проверьте права на запись в локальный каталог",
+  "configPackage.reason.target-write":
+    "Проверьте локальные настройки и каталог, затем повторите попытку",
+  "configPackage.reason.nested-target":
+    "Вложенный навык уже существует или был изменён. Проверьте его и импортируйте отдельно.",
+  "configPackage.reason.nested-selection":
+    "В родительском элементе есть невыбранный навык. Проверьте выбор.",
+  "configPackage.reason.refresh-rolled-back":
+    "Обновление не удалось. Предыдущие настройки провайдера восстановлены.",
+  "configPackage.reason.skill-rollback-incomplete":
+    "Не удалось восстановить каталог навыков. Проверьте локальные навыки и восстановите исходный каталог из сохранённой резервной копии.",
+  "configPackage.reason.rollback-incomplete":
+    "Не удалось обновить настройки и полностью восстановить их прежнее состояние. Проверьте локальные настройки провайдера.",
+  "configPackage.error.operation":
+    "Проверьте файл и локальный каталог, затем повторите попытку.",
+  "configPackage.error.categories": "Выберите хотя бы одну доступную категорию.",
+  "configPackage.error.invalid": "Пакет не прошёл проверку. Экспортируйте новую копию.",
+  "configPackage.error.skill-paths":
+    "Список навыков не совпадает с каталогами. Проверьте одноимённые вложенные навыки на исходном устройстве или повторите экспорт без навыков.",
+  "configPackage.error.unreadable":
+    "Не удалось прочитать или распаковать файл. Выберите неповреждённый пакет.",
+  "configPackage.error.future-version":
+    "Пакет использует более новый формат. Обновите приложение перед импортом.",
+  "configPackage.error.source-changed":
+    "Исходные настройки изменились во время экспорта. Повторите экспорт.",
+  "configPackage.error.commands-read":
+    "Не удалось прочитать все пользовательские команды. Проверьте права на файлы и каталоги, затем повторите экспорт.",
+  "configPackage.error.export-blocked":
+    "Проверьте выбранные категории на наличие недоступных для чтения элементов, превышений размера и символических ссылок.",
+  "configPackage.error.private-file":
+    "Не удалось сохранить файл с ограниченным доступом. Проверьте права на каталог и повторите попытку.",
+  "configPackage.error.size":
+    "Пакет превышает допустимый размер. Экспортируйте меньше категорий.",
+  "configPackage.error.expired": "Срок предпросмотра истёк. Выберите файл заново.",
+  "configPackage.error.selection": "Выбранные элементы устарели. Повторите предпросмотр файла.",
+  "configPackage.error.path": "Выберите путь к локальному файлу.",
+  "configPackage.error.platform": "На этой платформе экспорт настроек недоступен.",
+  "metrics.display.title": "Показатели диалога",
+  "metrics.display.enabled": "Показывать панель показателей диалога",
+  "metrics.display.fields": "Отображаемые показатели",
+  "metrics.display.group.performance": "Производительность",
+  "metrics.display.group.usage": "Использование ресурсов и инструментов",
+  "metrics.display.preview": "Пример отображения",
+  "metrics.display.reset": "Восстановить значения по умолчанию",
+  "metrics.display.empty": "Выберите показатели для отображения",
+  "metrics.display.hidden": "Панель показателей скрыта",
+  "metrics.display.field.statusDuration": "Состояние и длительность",
+  "metrics.display.field.speed": "Скорость генерации",
+  "metrics.display.field.firstText": "Время до первого текста",
+  "metrics.display.field.turnTokens": "Токены за ход",
+  "metrics.display.field.cache": "Доля попаданий в кэш",
+  "metrics.display.field.sessionTokens": "Всего токенов в основной цепочке сеанса",
+  "metrics.display.field.toolCalls": "Число вызовов инструментов",
+  "settings.systemPrompt.editor.fullPreview": "Полный предпросмотр",
+  "settings.systemPrompt.editor.import": "Импортировать профиль",
+  "settings.systemPrompt.editor.export": "Экспортировать черновик",
+  "settings.systemPrompt.editor.reset": "Восстановить значения по умолчанию",
+  "settings.systemPrompt.editor.fromDefault": "Начать с правил по умолчанию",
+  "settings.systemPrompt.editor.fromCurrent": "Использовать текущие правила",
+  "settings.systemPrompt.editor.profileNameDefault": "Мой профиль промпта",
+  "settings.systemPrompt.editor.exportHint":
+    "Экспортирует правила и состояния переключателей из текущего черновика.",
+  "settings.systemPrompt.editor.chooseFile": "Выбрать файл JSON",
+  "settings.systemPrompt.editor.pasteJson": "Вставить JSON профиля",
+  "settings.systemPrompt.editor.review": "Просмотреть изменения",
+  "settings.systemPrompt.editor.profileName": "Название профиля",
+  "settings.systemPrompt.editor.download": "Сохранить файл JSON",
+  "settings.systemPrompt.editor.copy": "Скопировать текст",
+  "settings.systemPrompt.editor.cancel": "Отмена",
+  "settings.systemPrompt.editor.apply": "Применить к черновику",
+  "settings.systemPrompt.editor.before": "До",
+  "settings.systemPrompt.editor.after": "После",
+  "settings.systemPrompt.editor.unified": "Вместе",
+  "settings.systemPrompt.editor.split": "Рядом",
+  "settings.systemPrompt.editor.removed": "Удалено",
+  "settings.systemPrompt.editor.added": "Добавлено",
+  "settings.systemPrompt.editor.modified": "Изменено",
+  "settings.systemPrompt.editor.noChanges": "Изменений нет",
+  "settings.systemPrompt.editor.loading": "Подготовка предпросмотра…",
+  "settings.systemPrompt.editor.contextWarning":
+    "Этот динамический контекст больше не будет добавляться.",
+  "settings.systemPrompt.editor.customOrder": "Свой порядок разделов",
+  "settings.systemPrompt.editor.search": "Искать в тексте предпросмотра",
+  "settings.systemPrompt.editor.systemMessages": "Системный промпт",
+  "settings.systemPrompt.editor.attachments": "Дополнительный контекст",
+  "settings.systemPrompt.editor.chooseSession": "Выберите сеанс в открытой рабочей области",
+  "settings.systemPrompt.editor.refreshActual": "Загрузить или обновить фактическое содержимое",
+  "settings.systemPrompt.editor.compareDraft": "Сравнить с черновиком",
+  "settings.systemPrompt.editor.requestBoundary": "Фрагменты промпта в запросе приложения",
+  "settings.systemPrompt.editor.draft": "Текущий черновик",
+  "settings.systemPrompt.editor.actual": "Фактическое содержимое сеанса",
+  "settings.systemPrompt.editor.conditions": "Моделируемые условия выполнения",
+  "settings.systemPrompt.editor.desktop": "Сеанс настольного приложения",
+  "settings.systemPrompt.editor.condition.memory": "Пример с включённой памятью",
+  "settings.systemPrompt.editor.condition.skills": "Пример с доступными навыками",
+  "settings.systemPrompt.editor.condition.outputStyle": "Пример стиля ответа — короткие абзацы",
+  "settings.systemPrompt.editor.condition.git": "Пример репозитория Git",
+  "settings.systemPrompt.editor.condition.visualization": "Пример с доступной визуализацией",
+  "settings.systemPrompt.editor.content": "Полный текст",
+  "settings.systemPrompt.editor.savedDiff": "Различия с сохранённой версией",
+  "settings.systemPrompt.editor.configurationChanges": "Изменения настроек",
+  "settings.systemPrompt.editor.chapterTemplates": "Шаблоны разделов",
+  "settings.systemPrompt.editor.template.concise.name": "Краткие ответы",
+  "settings.systemPrompt.editor.template.explain.name": "Обоснование решений",
+  "settings.systemPrompt.editor.template.verify.name": "Проверка перед сдачей",
+  "settings.systemPrompt.editor.defaultDiff": "Сравнить с настройками раздела по умолчанию",
+  "settings.systemPrompt.editor.expandExample": "Развернуть пример",
+  "settings.systemPrompt.editor.emptyContext": "Для этих условий в примере нет содержимого.",
   "settings.systemPrompt.editor.ruleChapters": "Редактируемые правила",
   "settings.systemPrompt.editor.generatedChapters": "Генерируемый контекст",
+  "settings.systemPrompt.customTitle": "Заголовок раздела {index}",
+  "settings.systemPrompt.customBody": "Содержимое раздела {index}",
+  "settings.systemPrompt.removeChapter": "Удалить раздел",
+  "settings.systemPrompt.newChapter": "Новый раздел",
+  "settings.systemPrompt.addChapter": "Добавить раздел",
+  "settings.systemPrompt.chapterMode": "Режим раздела",
+  "settings.systemPrompt.chapterMode.default": "Использовать по умолчанию",
+  "settings.systemPrompt.chapterMode.append": "Дополнить текст",
+  "settings.systemPrompt.chapterMode.replace": "Заменить раздел",
+  "settings.systemPrompt.chapterMode.disabled": "Исключить раздел",
+  "settings.systemPrompt.resetChapter": "Восстановить раздел по умолчанию",
+  "settings.systemPrompt.customContent": "Свой текст",
+  "settings.systemPrompt.defaultContent": "Правила по умолчанию",
+  "settings.systemPrompt.emptyDefault": "По умолчанию дополнительного текста нет",
+  "settings.systemPrompt.preview": "Предпросмотр раздела",
+  "settings.systemPrompt.notInjected": "Этот раздел исключён.",
+  "settings.systemPrompt.runtimeGenerated": "Генерируется и добавляется при выполнении.",
+  "settings.systemPrompt.systemLayer": "Системные правила",
+  "settings.systemPrompt.userContextLayer": "Контекст пользователя",
+  "settings.systemPrompt.save": "Сохранить",
+  "settings.systemPrompt.saving": "Сохранение…",
+  "settings.systemPrompt.discard": "Отменить изменения",
+  "settings.systemPrompt.reload": "Загрузить сохранённую конфигурацию",
+  "settings.systemPrompt.saved": "Сохранено",
+  "settings.systemPrompt.saveError":
+    "Не удалось сохранить. Ваши изменения сохранены в черновике. Повторите попытку.",
   "settings.systemPrompt.chapter.cli_prefix": "Идентичность продукта",
   "settings.systemPrompt.chapter.role": "Роль и обязанности",
   "settings.systemPrompt.chapter.security": "Безопасность и авторизация",
@@ -119,6 +346,81 @@ const ruRU: Record<string, string> = {
     "Установить плагин и включить его в этой рабочей области. Настройки других рабочих областей не изменятся. Может потребоваться настройка или авторизация.",
   "plugins.startupTimeout":
     "Истекло время загрузки плагинов. В этом запуске навыки, команды, MCP-серверы и хуки плагинов недоступны. Перезапустите приложение и повторите попытку.",
+  "settings.systemPrompt.editor.applyHint":
+    "Проверьте изменения, примените их к черновику и нажмите «Сохранить» на странице настроек.",
+  "settings.systemPrompt.editor.copyError":
+    "Не удалось скопировать. Выделите и скопируйте текст или скачайте файл.",
+  "settings.systemPrompt.editor.conversionWarning":
+    "В текст войдут правила разделов и пользовательские разделы. Условные правила будут применяться всегда, а переменные разделов, например memoryRoot, останутся обычным текстом. Проверьте результат перед применением.",
+  "settings.systemPrompt.editor.wholeWarning":
+    "Правила поведения по умолчанию, включая инструкции по безопасности, будут заменены. Настройки разделов сохранятся, но в этом режиме действовать не будут.",
+  "settings.systemPrompt.editor.sectionsWarning":
+    "При переходе в режим разделов сохранённые правила и пользовательские разделы снова вступят в силу.",
+  "settings.systemPrompt.editor.securityWarning":
+    "Инструкции по безопасности по умолчанию будут заменены или отключены.",
+  "settings.systemPrompt.editor.instructionsWarning":
+    "В новые и заново созданные основные сеансы больше не будут добавляться AGENTS.md, другие инструкции пользователя и проекта, а также индекс памяти проекта.",
+  "settings.systemPrompt.editor.noSessions":
+    "Доступных сеансов нет. Сначала откройте рабочую область с сеансом.",
+  "settings.systemPrompt.editor.actualError":
+    "Не удалось прочитать сеанс. Проверьте подключение к целевому устройству и доступность его среды выполнения, затем повторите попытку.",
+  "settings.systemPrompt.editor.unsupported":
+    "Агент не поддерживает этот предпросмотр. Обновите его и повторите попытку.",
+  "settings.systemPrompt.editor.no_request":
+    "Фактических запросов пока не зафиксировано. Открытие предпросмотра не отправляет запрос.",
+  "settings.systemPrompt.editor.expired":
+    "Снимок запроса заменён. Обновите фактическое содержимое перед сравнением.",
+  "settings.systemPrompt.editor.incomplete":
+    "Промпт превышает лимит предпросмотра или извлечён лишь частично. Полное сравнение недоступно.",
+  "settings.systemPrompt.editor.context_unavailable":
+    "По этому снимку нельзя воспроизвести затронутый динамический контекст. Откройте фактическое содержимое и проверьте изменения в предпросмотре черновика.",
+  "settings.systemPrompt.editor.comparisonStale":
+    "Черновик изменился. Нажмите «Сравнить с черновиком», чтобы обновить различия.",
+  "settings.systemPrompt.editor.previewError":
+    "Не удалось подготовить полный предпросмотр. Проверьте версию агента и повторите попытку. Черновик сохранён.",
+  "settings.systemPrompt.editor.exampleSource":
+    "Текущий черновик · демонстрационная среда. Пути, навыки, инструкции и дата приведены для примера.",
+  "settings.systemPrompt.editor.actualHint":
+    "Просмотрите последний зафиксированный запрос выбранного сеанса или сравните его с текущим черновиком в том же контексте.",
+  "settings.systemPrompt.editor.template.concise.body":
+    "Начните с вывода, затем приведите необходимые основания. На простые вопросы отвечайте кратко, сложные раскрывайте по мере необходимости.",
+  "settings.systemPrompt.editor.template.explain.body":
+    "Объясните, на каких данных и предположениях основаны ключевые решения и какие компромиссы учтены. Для кода и данных приведите проверяемые источники и результаты проверок.",
+  "settings.systemPrompt.editor.template.verify.body":
+    "До начала работы определите критерии приёмки. Проведите проверки, относящиеся к изменению, и сообщите фактические результаты и что осталось проверить.",
+  "settings.systemPrompt.editor.disabledExample":
+    "Элемент отключён. В примере показано, что будет добавлено после включения.",
+  "settings.systemPrompt.scenarioHint":
+    "Используется демонстрационная среда. Выбранные условия не сохраняются.",
+  "settings.systemPrompt.scope":
+    "Новые основные сеансы используют сохранённые настройки. Для существующего сеанса выберите перезапуск задачи в меню или введите /reload. Текущее выполнение остановится, история сохранится.",
+  "settings.systemPrompt.replaceHint":
+    "Заменяет правила поведения по умолчанию и сохраняет текущие возможности, расположение памяти и стиль ответа. Ниже выберите динамический контекст для включения.",
+  "settings.systemPrompt.customHint":
+    "Эти разделы добавляются в конец системного промпта в порядке списка.",
+  "settings.systemPrompt.defaultsChanged":
+    "Настройки по умолчанию изменились · Показать значения, сохранённые при редактировании",
+  "settings.systemPrompt.conflict":
+    "Конфигурация изменена в другом окне. Загрузите её заново перед редактированием.",
+  "settings.systemPrompt.invalid":
+    "Заполните пользовательский текст и заголовки разделов. Допускается до 32 000 символов в разделе и до 64 000 в тексте полной замены.",
+  "settings.systemPrompt.condition.memory":
+    "Применяется при включённой памяти. Среда выполнения задаёт расположение и требования к индексу. В своих правилах можно ссылаться на {variable}.",
+  "settings.systemPrompt.condition.desktop_context":
+    "Применяется к сеансам настольного приложения. Доступность визуализации и каталог вывода определяются текущим сеансом.",
+  "settings.systemPrompt.condition.session_guidance":
+    "Добавляется, когда доступны навыки и включён инструмент Skill.",
+  "settings.systemPrompt.condition.output_style":
+    "Здесь можно настроить дополнительные правила. Выбранный стиль ответа добавляется автоматически.",
+  "settings.systemPrompt.generated.env_info":
+    "Рабочий каталог, ОС, оболочка и модель определяются средой выполнения.",
+  "settings.systemPrompt.generated.system_context":
+    "Ветка Git, состояние и последние коммиты берутся из снимка рабочей области на момент начала сеанса.",
+  "settings.systemPrompt.generated.skills":
+    "Формируется при обнаружении навыков. Их содержимым можно управлять в разделе навыков.",
+  "settings.systemPrompt.generated.request_user_context":
+    "Загружается из файлов AGENTS.md пользователя и проекта, а также из индексов памяти. Измените исходные файлы или откройте раздел памяти.",
+  "settings.systemPrompt.generated.current_date": "Дата задаётся средой сеанса.",
   "preview.image.copy": "Копировать изображение",
   "preview.image.actions": "Действия с изображением",
   "preview.image.added": "Добавлено в чат",
@@ -2556,6 +2858,36 @@ const ruRU: Record<string, string> = {
   "webRemoteControl.title": "Мобильное управление",
   "webRemoteControl.description":
     "Отсканируйте QR-код или откройте ссылку на телефоне, чтобы управлять этим рабочим пространством.",
+  "webRemoteControl.connection.mode": "Режим подключения",
+  "webRemoteControl.connection.updateUnavailable":
+    "Обновите настольное приложение для редактирования профилей доступа.",
+  "webRemoteControl.connection.profiles": "Профили доступа",
+  "webRemoteControl.connection.addProfile": "Добавить подключение",
+  "webRemoteControl.connection.deleteProfile": "Удалить {name}",
+  "webRemoteControl.connection.profileName": "Название подключения",
+  "webRemoteControl.connection.profileNameHelp":
+    "Дайте подключениям имена, чтобы различать локальную сеть, туннели и ретрансляторы.",
+  "webRemoteControl.connection.direct": "Прямое подключение",
+  "webRemoteControl.connection.self-hosted": "Собственный ретранслятор",
+  "webRemoteControl.connection.official": "Официальный ретранслятор",
+  "webRemoteControl.connection.listenHost": "Адрес прослушивания",
+  "webRemoteControl.connection.port": "Порт (0 — автоматически)",
+  "webRemoteControl.connection.publicUrl": "URL для телефона (необязательно)",
+  "webRemoteControl.connection.relayUrl": "URL WebSocket V1",
+  "webRemoteControl.connection.pageUrl": "URL мобильной страницы",
+  "webRemoteControl.connection.directHelp":
+    "Используется страница OpenZWork из настольного приложения. Телефон должен иметь доступ к этому компьютеру по локальной сети, VPN или через обратный прокси.",
+  "webRemoteControl.connection.publicUrlHelp":
+    "Оставьте URL для телефона пустым, чтобы использовать IP и порт этого компьютера. Для публичного обратного прокси используйте HTTPS.",
+  "webRemoteControl.connection.selfHostedHelp":
+    "Используются указанные вами ретранслятор V1 и мобильная страница. Телефон должен иметь доступ к странице, а оба устройства — к ретранслятору. Для страницы HTTPS нужен ретранслятор WSS.",
+  "webRemoteControl.connection.officialHelp":
+    "Используются официальный ретранслятор ZCode и официальная страница V1 {version}. Оба устройства должны иметь доступ к zcode.z.ai. Для сопряжения отсканируйте код, вход не требуется.",
+  "webRemoteControl.connection.workspaceRequired":
+    "Откройте рабочую область, чтобы подключить телефон.",
+  "webRemoteControl.connection.start": "Запустить удалённое управление",
+  "webRemoteControl.connection.ready":
+    "Запустите подключение для отображения QR-кода сопряжения",
   "webRemoteControl.statusLabel": "Статус сеанса",
   "webRemoteControl.status.idle": "Ожидание",
   "webRemoteControl.status.starting": "Запуск",
@@ -2698,6 +3030,7 @@ const ruRU: Record<string, string> = {
   "settings.source.versionDetails":
     "Текущая v{current} · Минимальная совместимая v{minimum} · Во время обновления удалённые задачи ненадолго приостанавливаются",
   "settings.source.managementTitle": "Удалённые подключения",
+  "settings.remoteControlTitle": "Удалённое управление",
   "settings.remoteDevicesTitle": "Удалённые устройства",
   "settings.remoteDevicesDescription":
     "Управляйте серверами, дистрибутивами WSL и контейнерами Docker.",
@@ -3568,6 +3901,29 @@ const ruRU: Record<string, string> = {
   "settings.migration.failedTitle": "Ошибки",
   "settings.migration.reason.session_not_found_or_workspace_mismatch":
     "Исходный сеанс не найден или больше не соответствует текущему фильтру рабочего пространства.",
+  "settings.usage.project": "Проект",
+  "settings.usage.allProjects": "Все проекты",
+  "settings.usage.unassigned": "Без проекта",
+  "settings.usage.sessionDetails.open": "Подробнее",
+  "settings.usage.sessionDetails.openAria": "Посмотреть сведения о сеансе",
+  "settings.usage.sessionDetails.title": "Сведения о сеансах",
+  "settings.usage.sessionDetails.summary":
+    "{scope} · {range} · Основных сеансов: {count}. Расход подзадач включён в основной сеанс",
+  "settings.usage.sessionDetails.project": "Проект",
+  "settings.usage.sessionDetails.untitled": "Сеанс без названия",
+  "settings.usage.sessionDetails.notInTaskList": "Больше нет в списке задач",
+  "settings.usage.sessionDetails.totalRow": "Итого по основным сеансам ({count})",
+  "settings.usage.sessionDetails.pageStatus": "{from}–{to} из {total}",
+  "settings.usage.sessionDetails.prevPage": "Назад",
+  "settings.usage.sessionDetails.nextPage": "Далее",
+  "settings.usage.sessionDetails.mainShort": "Основной",
+  "settings.usage.sessionDetails.childrenShort": "Подзадачи",
+  "settings.usage.projectEmpty": "За выбранный период у проекта нет данных об использовании.",
+  "settings.usage.projectRemoved": "Выбранный проект удалён. Показаны все проекты.",
+  "settings.usage.sessionDetails.session": "Сеанс",
+  "settings.usage.sessionDetails.main": "Токены основного сеанса",
+  "settings.usage.sessionDetails.children": "Токены подзадач",
+  "settings.usage.sessionDetails.total": "Всего токенов",
   "settings.usageTitle": "Статистика использования",
   "settings.usageDescription":
     "Примерная активность и использование моделей по данным локальных сеансов.",
@@ -4823,6 +5179,15 @@ const ruRU: Record<string, string> = {
   "settings.usage.healthProMaxDecode": "Средняя скорость декодирования Max&Pro в пик",
   "settings.usage.healthLiteDecode": "Средняя скорость декодирования Lite в пик",
   "settings.usage.refresh": "Обновить",
+  "settings.usage.turns": "ходов",
+  "settings.usage.modelErrorRate": "Доля ошибок модели",
+  "settings.usage.avgTimeToFirstToken": "Среднее время до первого токена",
+  "settings.usage.avgTurnDuration": "Средняя длительность хода",
+  "settings.usage.peakDayTokens": "Пиковый день: {tokens} токенов",
+  "settings.usage.errorRate": "Доля ошибок",
+  "settings.usage.retry": "Повторить",
+  "settings.usage.localUnavailable":
+    "В этой среде не удалось подтвердить подключение к локальному хосту настольного приложения. Локальная статистика использования недоступна.",
   "settings.usage.loadingTitle": "Подсчёт использования",
   "settings.usage.appUsageLoadingDescription":
     "Читаем локальную историю сеансов приложения — это может занять немного времени.",
@@ -4860,6 +5225,7 @@ const ruRU: Record<string, string> = {
   "settings.usage.peakHour": "Пиковый час",
   "settings.usage.peakHourTokens": "Токенов: {tokens}",
   "settings.usage.unknownModel": "Неизвестная модель",
+  "settings.usage.noData": "Нет данных",
   "settings.usage.heatmapTitle": "Активность по токенам",
   "settings.usage.heatmapCell": "{date}\nТокенов: {tokens} · сообщений: {turns}",
   "settings.usage.heatmapToolCell": "{date}\nТокенов: {tokens} · инструментов: {tools}",

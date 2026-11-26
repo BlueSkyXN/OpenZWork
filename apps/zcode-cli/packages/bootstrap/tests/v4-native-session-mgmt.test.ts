@@ -257,16 +257,6 @@ describe("v4 原生 createSession", () => {
     expect(sendInput).not.toHaveBeenCalled();
   });
 
-    const record = makeRecord({ app: makeApp(), persistence: "deferred" });
-    const { host, createSessionRecord } = makeCreateHost(record);
-
-    await new V4CommandExecutor(host).execute(
-    );
-
-    expect(createSessionRecord).toHaveBeenCalledWith(
-    );
-  });
-
   it("带 firstInput：经原生 prompt turn 提交（draft 提升 + inputId=commandId 锚点）", async () => {
     const app = makeApp({
       sendInput: vi.fn().mockImplementation(async (_input, options) => {

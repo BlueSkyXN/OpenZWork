@@ -60,6 +60,8 @@ OZ-CLH-01（UI 实时切换 + client/configs 零请求）不变。上游
 
 ## 4. 维护规则
 
+五种界面语言都提供使用统计的项目筛选、时间范围、会话明细，以及设置中的会话指标、系统提示词编辑、配置包和远控连接文案。回归读取各自的原始词表，核对插值参数，并在客户端切换语言查看对应控件。
+
 - 上游同步触及 `writeSettingsAt`/`shouldPersistSettingsMigrations` 时，必须保住第 2 节
   六条行为；冲突裁决后跑 `settingsLocalePersistence.test.ts`。
 - `docs/i18n/ui-locales.md` 为上游文档，OpenZWork 差异只在第 6 条（账号回滚域缺席），

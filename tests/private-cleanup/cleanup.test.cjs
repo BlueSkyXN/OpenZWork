@@ -807,7 +807,7 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       "packages/desktop/test/e2e/conversation-session/remote/installation/conversation-session-r3-update-cancel.test.ts",
       ['".bigmodel.cn"'],
     ],
-    // 官方连接说明改写后，旧整句许可已失效；仅同步这两句，继续检查同文件内的其他地址。
+    // 官方连接说明只放行各语言的完整译句，同文件内的其他地址继续检查。
     [
       "packages/ui/src/i18n/locales/en-US.ts",
       [
@@ -818,6 +818,24 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
       "packages/ui/src/i18n/locales/zh-CN.ts",
       [
         '"通过 ZCode 官方中继连接，使用官方 V1 网页 {version}。手机和电脑都需能访问 zcode.z.ai；扫码配对无需登录。"',
+      ],
+    ],
+    [
+      "packages/ui/src/i18n/locales/ja-JP.ts",
+      [
+        '"ZCode の公式リレーと公式 V1 ページ {version} を使用します。両方の端末から zcode.z.ai に接続できる必要があります。サインインせずにスキャンしてペアリングできます。"',
+      ],
+    ],
+    [
+      "packages/ui/src/i18n/locales/ko-KR.ts",
+      [
+        '"ZCode 공식 릴레이와 공식 V1 페이지 {version}을 사용합니다. 두 기기에서 모두 zcode.z.ai에 접속할 수 있어야 합니다. 로그인 없이 스캔하여 페어링하세요."',
+      ],
+    ],
+    [
+      "packages/ui/src/i18n/locales/ru-RU.ts",
+      [
+        '"Используются официальный ретранслятор ZCode и официальная страница V1 {version}. Оба устройства должны иметь доступ к zcode.z.ai. Для сопряжения отсканируйте код, вход не требуется."',
       ],
     ],
   ]);
@@ -857,7 +875,7 @@ test("[structural, not runtime] WP-08: official product endpoints are absent out
     removeAllowedV1Literals(capabilityCases, '"https://api.z.ai/api/anthropic/other"'),
     officialDomainRe,
   );
-  for (const locale of ["en-US", "zh-CN"]) {
+  for (const locale of ["en-US", "zh-CN", "ja-JP", "ko-KR", "ru-RU"]) {
     const file = `packages/ui/src/i18n/locales/${locale}.ts`;
     const [help] = allowedV1Literals.get(file);
     assert.doesNotMatch(removeAllowedV1Literals(file, help), officialDomainRe);

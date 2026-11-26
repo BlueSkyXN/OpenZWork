@@ -5148,7 +5148,7 @@ const enUS: Record<string, string> = {
   "settings.modelProvider.presetTitle": "Providers",
   "settings.usage.sectionTitle": "Usage stats",
   "settings.usage.sectionDescription":
-    "Usage recorded on this device. Detailed records are retained for 30 days.",
+    "Usage recorded on this device.",
   "settings.usage.tab.appUsage": "App usage",
   "settings.usage.tab.codingPlan": "Individual Plan",
   "settings.usage.sectionDescriptionRemote":
@@ -8271,7 +8271,7 @@ const enUS: Record<string, string> = {
   "remoteSync.blocked.compatDirectory":
     "The remote item is in the ~/.agents compatibility directory and cannot be overwritten",
   "remoteSync.blocked.externalDirectory":
-    "The remote plugin with the same name is outside ~/.zcode/plugins (for example a development checkout) and cannot be updated",
+    "The remote plugin with the same name is outside ~/.openzwork/plugins (for example a development checkout) and cannot be updated",
   "remoteSync.blocked.targetCompatConfig":
     "The remote device uses the ~/.agents compatibility config; pushing would disable it",
   "remoteSync.blocked.sourceRemoved": "The source was removed and cannot be synced",

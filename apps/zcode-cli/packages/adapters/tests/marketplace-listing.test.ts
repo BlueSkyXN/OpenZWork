@@ -43,7 +43,13 @@ describe("marketplace store listing", () => {
             displayName: "Example Plugin",
             displayName_i18n: { "zh-CN": "示例插件" },
             version: "0.1.1",
+            author: { name: "Example Publisher", url: "https://publisher.example.invalid" },
             category: "template",
+            icon: "https://cdn.example.invalid/icons/example.png",
+            homepage: "https://publisher.example.invalid/plugins/example",
+            privacyPolicy: "https://publisher.example.invalid/privacy",
+            termsOfService: "https://publisher.example.invalid/terms",
+            heroImage: "https://cdn.example.invalid/hero/example.png",
             examplePrompts: ["Try the example"],
             examplePrompts_i18n: { "zh-CN": ["试试这个示例"] },
             requiresPaidPlan: true,
@@ -79,8 +85,14 @@ describe("marketplace store listing", () => {
       displayName: "Example Plugin",
       displayNameI18n: { "zh-CN": "示例插件" },
       descriptionI18n: { "zh-CN": "一个最小模板插件" },
+      icon: "https://cdn.example.invalid/icons/example.png",
       category: "template",
-      author: "Z.ai",
+      author: "Example Publisher",
+      authorUrl: "https://publisher.example.invalid",
+      homepage: "https://publisher.example.invalid/plugins/example",
+      privacyPolicy: "https://publisher.example.invalid/privacy",
+      termsOfService: "https://publisher.example.invalid/terms",
+      heroImage: "https://cdn.example.invalid/hero/example.png",
       examplePrompts: ["Try the example"],
       examplePromptsI18n: { "zh-CN": ["试试这个示例"] },
       requiresPaidPlan: true,
@@ -95,7 +107,9 @@ describe("marketplace store listing", () => {
 
   it("normalizes author from string and object forms", () => {
     expect(normalizeAuthorValue("Acme")).toEqual({ name: "Acme" });
-      name: "Z.ai",
+    expect(normalizeAuthorValue({ name: "Example Publisher", url: "https://publisher.example.invalid" })).toEqual({
+      name: "Example Publisher",
+      url: "https://publisher.example.invalid",
     });
     expect(normalizeAuthorValue("   ")).toBeUndefined();
     expect(normalizeAuthorValue(42)).toBeUndefined();

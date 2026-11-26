@@ -91,6 +91,7 @@ bridge.oninitialized = () => { window.__initializations++; };
 window.__sendToolResult = (result) => bridge.sendToolResult(result);
 window.__callPageTool = (name, args) => bridge.callTool({ name, arguments: args });
 window.__listPageTools = () => bridge.listTools({});
+window.__setLocale = locale => bridge.setHostContext({ ...context, locale });
 const frame = document.querySelector('iframe');
 await bridge.connect(new PostMessageTransport(frame.contentWindow, frame.contentWindow));
 frame.src = '/panel';
@@ -106,6 +107,7 @@ frame.src = '/panel';
 
 let revisionChecks = 0;
 let documentLoads = 0;
+let denyNextLoad = false;
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://localhost");
@@ -126,7 +128,16 @@ const server = createServer(async (request, response) => {
       for await (const chunk of request) body += chunk;
       const { method, args } = JSON.parse(body);
       if (method === "callTool" && args.name === "check_document") revisionChecks++;
-      if (method === "callTool" && args.name === "load_document") documentLoads++;
+      if (method === "callTool" && args.name === "load_document") {
+        documentLoads++;
+        if (denyNextLoad) {
+          denyNextLoad = false;
+          response.writeHead(200, { "Content-Type": "application/json" }).end(JSON.stringify({
+            isError: true, content: [{ type: "text", text: "Test host rejected this tool call" }],
+          }));
+          return;
+        }
+      }
       const result =
         method === "readResource" ? await client.readResource(args) : await client.callTool(args);
       response.setHeader("Content-Type", "application/json");
@@ -213,16 +224,35 @@ async function replaceOfficeText(file, part, original, updated) {
 async function verifyManualReload(frame, before, after, edit) {
   await before.first().waitFor();
   const initialLoads = documentLoads;
+  // 切换界面语言只更新标签，已打开文件的授权仍由下一次手动刷新触发。
+  await frame.page().evaluate(() => window.__setLocale("zh-CN"));
+  await frame.getByRole("button", { name: "更多", exact: true }).waitFor();
+  await frame.page().evaluate(() => window.__setLocale("en-US"));
+  await frame.getByRole("button", { name: "More", exact: true }).waitFor();
   await edit();
   await new Promise((done) => setTimeout(done, 8500));
   assert.equal(revisionChecks, 0, "an idle document must not request a revision check");
   assert.equal(documentLoads, initialLoads, "an idle document must not reload");
   assert.ok(await before.first().isVisible());
   assert.equal(await after.count(), 0);
-  await frame.getByRole("button", { name: "More" }).click();
-  await frame.getByRole("menuitem", { name: "Reload from disk" }).click();
-  await after.first().waitFor();
+  const reload = async () => {
+    await frame.getByRole("button", { name: "More" }).click();
+    await frame.getByRole("menuitem", { name: "Reload from disk" }).click();
+  };
+  // OZ-C016：拒绝重读时保留同一个查看器及其选区，随后仍可主动重试。
+  const previous = await before.first().elementHandle();
+  denyNextLoad = true;
+  await reload();
+  await frame.getByRole("status").filter({ hasText: "Could not reload" }).waitFor();
+  assert.ok(await previous.evaluate(node => node.isConnected));
+  await previous.dispose();
+  assert.ok(await before.first().isVisible());
+  assert.equal(await after.count(), 0);
+  assert.equal(await frame.getByText("Test host rejected this tool call").count(), 0);
   assert.equal(documentLoads, initialLoads + 1);
+  await reload();
+  await after.first().waitFor();
+  assert.equal(documentLoads, initialLoads + 2);
 }
 
 try {
@@ -532,6 +562,44 @@ try {
     await addedSheet.click();
     await frame.locator(".sheet-tabs button.active", { hasText: "Manual refresh" }).waitFor();
     await shot("xlsx-manual-reload.png");
+
+    // OZ-C016：旧文件的拒绝迟于用户选中新文件，但早于新文件获得打开授权。
+    const nextFile = join(workspace, "next.xlsx");
+    await copyFile(join(root, "fixtures/budget.xlsx"), nextFile);
+    const oldRead = Promise.withResolvers();
+    const nextOpen = Promise.withResolvers();
+    await outer.route("**/rpc", (route) => {
+      const { method, args } = route.request().postDataJSON();
+      if (method === "callTool" && args.name === "load_document" && args.arguments.path === "docs/budget.xlsx")
+        oldRead.resolve(route);
+      else if (method === "callTool" && args.name === "open_document" && args.arguments.path.endsWith("/next.xlsx"))
+        nextOpen.resolve(route);
+      else return route.continue();
+    });
+    await frame.getByRole("button", { name: "More" }).click();
+    await frame.getByRole("menuitem", { name: "Reload from disk" }).click();
+    const heldRead = await oldRead.promise;
+    await frame.locator('input[type="file"]').setInputFiles(nextFile);
+    const heldOpen = await nextOpen.promise;
+    const staleMessage = "previous workbook read denied";
+    await frame.evaluate((marker) => {
+      window.previousReadDelivered = new Promise((done) => {
+        function received(event) {
+          if (event.data?.result?.content?.[0]?.text !== marker) return;
+          window.removeEventListener("message", received);
+          requestAnimationFrame(() => requestAnimationFrame(done));
+        }
+        window.addEventListener("message", received);
+      });
+    }, staleMessage);
+    await heldRead.fulfill({ json: { isError: true, content: [{ type: "text", text: staleMessage }] } });
+    await frame.waitForFunction(() => window.previousReadDelivered.then(() => true), null, { timeout: 10000 });
+    assert.equal(await frame.locator(".notice, .failed").count(), 0);
+    await heldOpen.continue();
+    await outer.unroute("**/rpc");
+    await frame.locator('.doctitle[title$="/next.xlsx"]').waitFor();
+    await frame.locator(".sheet-tabs button.active", { hasText: "Revenue" }).waitFor();
+    assert.equal(await addedSheet.count(), 0);
   }
 
   // capture_view refuses a document that is not open.
