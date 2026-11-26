@@ -160,13 +160,34 @@ function expandStepCommands(stepRun, scripts = {}) {
     .map((command) => command.split(/\s+/));
 }
 
+// 桌面场景由独立的必跑任务启动 Electron。只认完整 spec，按用例标题筛选的步骤无法保证整份回归。
+function requiredDesktopSpecs(job) {
+  if (!job || job.if || job["continue-on-error"]) return [];
+  const specs = [];
+  for (const step of job.steps) {
+    if (step.if || step["continue-on-error"] || typeof step.run !== "string") continue;
+    const command = step.run.trim().replace(/\s+/g, " ");
+    if (
+      !/^pnpm --filter @zcode\/desktop exec wdio run wdio\.conf\.ts(?: --spec \S+)+$/.test(command)
+    )
+      continue;
+    for (const [, file] of command.matchAll(/ --spec (\S+)/g)) {
+      specs.push(posix.join("packages/desktop", unquoteWord(file)));
+    }
+  }
+  return specs;
+}
+
 async function ciScope() {
   const core = JSON.parse(await readText("tests/ci/core-tests.json"));
   const engineering = JSON.parse((await readText("scripts/engineering-test-files.json")) ?? "[]");
   const ci = parseDocument(await readText(".github/workflows/ci.yml")).toJS();
   const { scripts } = JSON.parse(await readText("package.json"));
   return {
-    coreFiles: new Set(core.suites.flatMap((suite) => suite.files)),
+    coreFiles: new Set([
+      ...core.suites.flatMap((suite) => suite.files),
+      ...requiredDesktopSpecs(ci.jobs["workflows-hub-e2e"]),
+    ]),
     engineeringFiles: new Set(engineering.map((entry) => posix.normalize(String(entry)))),
     runs: ci.jobs.checks.steps.flatMap((step) =>
       typeof step?.run === "string" ? expandStepCommands(step.run, scripts) : [],
@@ -386,6 +407,27 @@ test("a fixed patch loses its guard when a marker or CI coverage disappears", ()
   assert.match(overwritten.join("\n"), /src\/a\.ts 缺少编号标记/);
   assert.match(fixture({}, { covered: () => false }).join("\n"), /回归未进入核心 CI/);
   assert.match(fixture({ regression: [] }).join("\n"), /须登记 regression/);
+});
+
+test("desktop patch coverage requires whole specs in a mandatory WebDriver step", () => {
+  const run =
+    "pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts --spec ./test/a.ts --spec ./test/b.ts";
+  const step = { run };
+  assert.deepEqual(requiredDesktopSpecs({ steps: [step] }), [
+    "packages/desktop/test/a.ts",
+    "packages/desktop/test/b.ts",
+  ]);
+  assert.deepEqual(
+    requiredDesktopSpecs({
+      steps: [
+        { run: run + " --mochaOpts.grep one" },
+        { ...step, if: "always()" },
+        { ...step, "continue-on-error": true },
+      ],
+    }),
+    [],
+  );
+  assert.deepEqual(requiredDesktopSpecs({ if: "manual", steps: [step] }), []);
 });
 
 test("CI coverage accepts the core list, root paths and filtered package steps", () => {
