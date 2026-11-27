@@ -9,7 +9,7 @@ export const queryUsageToolEntry: ToolEntry = {
     name: "QueryUsage",
     shouldDefer: true,
     description:
-      "Read the local Host's recorded token usage for all projects or one project. Omit projectId to get totals and available project IDs; pass an ID from that result to filter, or null for unassigned sessions. The same data powers Settings > Usage. Includes model and session/subtask breakdowns, reported failed-request usage, query time and retention. Records are retained for 30 days; this is token consumption, not a monetary bill or provider balance. Never guess a project ID.",
+      "Read the local Host's recorded token usage for all projects or one project. Omit projectId to get totals and available project IDs; pass an ID from that result to filter, or null for unassigned sessions. The same data powers Settings > Usage. Includes model and session/subtask breakdowns, reported failed-request usage, query time and retention. Totals use the locally recorded usage available for the requested time range. Never guess a project ID.",
     readOnly: true,
     destructive: false,
     concurrentSafe: true,

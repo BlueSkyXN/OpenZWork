@@ -44,9 +44,9 @@ type TrustRecord = z.infer<typeof recordSchema>;
 type WorkspaceTarget = WorkspacePluginTrustTarget;
 
 /** 与 Hook 信任存储同目录；项目配置不能改写用户存储根。 */
-async function resolveStorePath(userConfigPath: string | undefined): Promise<string> {
+async function resolveStorePath(userConfigPath: string | undefined, env?: NodeJS.ProcessEnv): Promise<string> {
   return join(
-    dirname(await resolveWorkspaceHookTrustStorePath({ userConfigPath })),
+    dirname(await resolveWorkspaceHookTrustStorePath({ userConfigPath, env })),
     STORE_NAME,
   );
 }
@@ -85,7 +85,7 @@ export async function resolveWorkspacePluginDiscovery(
   try {
     const identity = await resolveTrustIdentity(input);
     const records = await readRecords(
-      await resolveStorePath(input.configResult.sources.user.path),
+      await resolveStorePath(input.configResult.sources.user.path, input.env),
     );
     trusted = records
       .filter((record) => record.workspaceIdentity === identity)
@@ -115,7 +115,7 @@ export async function setWorkspacePluginTrust(
   let path: string;
   try {
     identity = await resolveTrustIdentity(input);
-    path = await resolveStorePath(input.userConfigPath);
+    path = await resolveStorePath(input.userConfigPath, input.env);
   } catch {
     return { accepted: false, reasonCode: "workspace_plugin_trust_unavailable" };
   }

@@ -441,12 +441,16 @@ export async function getZCodePluginsOverview(
     const id = `${def.name}@${ZCODE_OFFICIAL_PLUGIN_MARKETPLACE}`;
     const restorable = suppressed.has(id);
     const discovered = loadedById.get(id);
+    const hasCatalogEntry = latestPinByPluginId.has(id);
     const needsBundledListing =
-      def.listing && discovered?.source === "official" && !latestPinByPluginId.has(id);
+      def.listing && discovered?.source === "official" && !hasCatalogEntry;
+    const raw = { name: def.name, ...def.listing };
+    const listing = def.listing ? parseEntryStoreListing(raw) : undefined;
+    const extensionSummary = parseEntryExtensionSummary(raw);
+    // OZ-C014：离线安装记录也用同 ID 的随包目录；已有市场条目时扩展声明由该条目决定。
+    if (listing && !listingByPluginId.has(id)) listingByPluginId.set(id, listing);
+    if (extensionSummary && !hasCatalogEntry) extensionSummaryByPluginId.set(id, extensionSummary);
     if (!restorable && !needsBundledListing) continue;
-    const listing = def.listing
-      ? parseEntryStoreListing({ name: def.name, ...def.listing })
-      : undefined;
     const entries = restorable ? restorableBuiltins : availablePlugins;
     entries.push({
       id,
@@ -458,6 +462,7 @@ export async function getZCodePluginsOverview(
       // Bugfix：可恢复条目只带 listing 时丢了 "ui"，卸载后的文档插件从「UI 插件」掉进分类分组。
       ...(def.componentTypes ? { componentTypes: [...def.componentTypes] } : {}),
       ...(listing ? { listing } : {}),
+      ...(extensionSummary ? { extensionSummary } : {}),
     });
   }
 

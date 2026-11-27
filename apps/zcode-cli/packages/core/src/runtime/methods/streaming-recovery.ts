@@ -48,7 +48,8 @@ export function hasStreamRecoveryBudget(state: RegularTurnLoopState): boolean {
   return state.streamRecoveryRetryCount < STREAM_RECOVERY_MAX_RETRIES;
 }
 
-export function isStartPlanBusyStreamRecoveryFailure(error: unknown): boolean {
+export function isStartPlanBusyStreamRecoveryFailure(error: unknown, providerId?: string): boolean {
+  if (providerId !== undefined && !START_PLAN_BUSY_RETRY_PROVIDER_IDS.has(providerId)) return false;
   for (const record of walkErrorRecords(error)) {
     const context = asRecord(record.context);
     const providerCode =

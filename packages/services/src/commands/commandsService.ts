@@ -5,7 +5,6 @@ import {
   mkdir,
   readFile,
   readdir,
-  realpath,
   rename,
   rm,
   writeFile,
@@ -34,7 +33,7 @@ import { isUserHomeDirectory } from "@zcode/shared/node";
 import type { ICommandsService } from "./commands.js";
 import { CommandFileParser, type CommandFileFormat } from "./commandFileParser.js";
 import { readInstalledPluginRoots } from "#src/plugins/installedPluginRoots.js";
-import { updateJsonObjectFile, withUserMarkdownLock } from "#src/fs/atomicFileUtils.js";
+import { updateJsonObjectFile, isSameRegularFile, withUserMarkdownLock } from "#src/fs/atomicFileUtils.js";
 
 function resolveUserHomeDir() {
   const envHome = process.env.HOME?.trim() || process.env.USERPROFILE?.trim();
@@ -528,17 +527,6 @@ function getCommandFileName(config: CommandConfig, agentSource: CommandAgentSour
   return `${relativeName}${descriptor.fileExtension}`;
 }
 
-async function isSameCommandFile(oldPath: string, newPath: string): Promise<boolean> {
-  const paths = await Promise.all([
-    lstat(oldPath),
-    lstat(newPath),
-    realpath(oldPath),
-    realpath(newPath),
-  ]).catch(() => undefined);
-  // 大小写不敏感的文件系统上，改名可能仍指向同一普通文件；链接不作同文件豁免。
-  return paths !== undefined && paths[0].isFile() && paths[1].isFile() && paths[2] === paths[3];
-}
-
 function getWritableCommandConfig(
   config: CommandConfig,
   descriptor: CommandAgentSourceDescriptor,
@@ -695,7 +683,7 @@ export function createCommandsService(_options?: CommandsServiceOptions): IComma
     const pathChanged = newFilePath !== params.oldFilePath;
     const aliasesSameFile =
       pathChanged && params.oldFilePath
-        ? await isSameCommandFile(params.oldFilePath, newFilePath)
+        ? await isSameRegularFile(params.oldFilePath, newFilePath)
         : false;
 
     const content = CommandFileParser.generateCommandFileContent(

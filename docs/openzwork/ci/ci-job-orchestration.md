@@ -40,3 +40,5 @@ Extended 保持九个测试 runner：macOS 两个、Linux 三个、Windows 四�
 2. Windows UI 通过真实 Vitest discovery 证明两半互斥且并集与原组一致；故障夹具验证合并不能掩盖失败、缺片和来源不一致。
 3. 执行 Node 回归、actionlint、typecheck、lint、架构检查和正常 pre-push。
 4. PR 实跑三平台，逐用例与基线比较报告；通过后验证合并提交的 Core、Extended、Installers 和同 SHA Preview artifacts。记录实测耗时，不创建正式 tag 或 Release。
+
+常规桌面重启回归在独立的报告目录核对四份 spec 的必跑标题，漏跑、跳过或失败会阻断对应的桌面任务，三个 checks 汇总同时要求桌面任务成功。Office 面板在 regressions lane 执行单测与表格面板的浏览器回放。

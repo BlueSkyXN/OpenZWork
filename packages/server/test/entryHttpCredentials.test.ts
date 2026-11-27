@@ -1,4 +1,8 @@
-import { mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { fork } from "node:child_process";
+import { once } from "node:events";
+import { fileURLToPath } from "node:url";
+import { dataDirectory } from "@zcode/shared/data-directory";
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -9,6 +13,7 @@ import {
   type CredentialKeyStore,
 } from "@zcode/shared/credential-security";
 import {
+  copyDataDirectory,
   getAppConfigDir,
   getCredentialsFilePath,
   getZCodeDataRootDir,
@@ -219,3 +224,156 @@ describe("entry-http standalone Web credential isolation", () => {
     expect((await stat(join(customDir, "credential-secret"))).isFile()).toBe(true);
   });
 });
+
+// 每个子进程使用相同的临时 HOME 与业务根，预加载的是发行构建使用的内置配置。
+async function serverFixture() {
+  const base = await createTempDataBaseDir();
+  const root = join(base, ".openzwork");
+  const config = new URL("../../../config/provider/zcode-builtin.json", import.meta.url);
+  const preload =
+    "import {readFileSync} from 'node:fs';globalThis.__ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__=readFileSync(new URL(" +
+    JSON.stringify(config.href) +
+    "),'utf8')";
+  const children: ReturnType<typeof fork>[] = [];
+  const leases = async () =>
+    (await readdir(join(base, ".openzwork.data-access"))).filter((name) =>
+      name.startsWith("user-"),
+    );
+  function start(entry: string, args: string[] = [], port = 0) {
+    const child = fork(fileURLToPath(new URL(entry, import.meta.url)), args, {
+      execArgv: [
+        "--import",
+        import.meta.resolve("tsx"),
+        "--import",
+        "data:text/javascript," + encodeURIComponent(preload),
+      ],
+      cwd: base,
+      env: {
+        ...process.env,
+        HOME: base,
+        USERPROFILE: base,
+        ZCODE_DESKTOP_HOME_DIR: base,
+        ZCODE_DATA_BASE_DIR: base,
+        ZCODE_STORAGE_DIR: root,
+        ZCODE_CREDENTIALS_FILE: join(root, "v2/credentials.json"),
+        ZCODE_CREDENTIAL_SECRET: "fixture".repeat(8),
+        ZCODE_CREDENTIAL_SECRET_FILE: "",
+        ZCODE_SERVER_CREDENTIAL_FORMAT: "2",
+        ZCODE_SERVER_ROOT: join(root, "server"),
+        PORT: String(port),
+        ZCODE_SERVER_HOST: "127.0.0.1",
+        ZCODE_SERVER_AUTH_TOKEN: "",
+      },
+      stdio: ["pipe", "pipe", "pipe", "ipc"],
+    });
+    children.push(child);
+    let stderr = "";
+    let readyStdio!: () => void;
+    const stdioReady = new Promise<void>((resolve) => {
+      readyStdio = resolve;
+    });
+    child.stderr!.on("data", (chunk) => {
+      stderr += chunk;
+      if (stderr.includes("stdio mode ready")) readyStdio();
+    });
+    const exited = once(child, "exit").then(([code]) => ({ code, stderr }));
+    function beforeExit<T>(event: Promise<T>): Promise<T> {
+      return Promise.race([
+        event,
+        exited.then(() => {
+          throw new Error("Server exited before ready: " + stderr);
+        }),
+      ]);
+    }
+    return { child, exited, beforeExit, stdioReady };
+  }
+  async function close() {
+    await Promise.all(
+      children
+        .filter((child) => child.exitCode === null && child.signalCode === null)
+        .map(async (child) => {
+          const closed = once(child, "exit");
+          child.kill("SIGKILL");
+          await closed;
+        }),
+    );
+  }
+  return { base, root, leases, start, close };
+}
+
+it("OZ-C009：独立 Web 在线时阻止迁移，断连和监听失败均释放租约，旧根封存后拒绝启动", async () => {
+  const fixture = await serverFixture();
+  const { base, leases } = fixture;
+  const target = await createTempDataBaseDir();
+  const start = (port: number) =>
+    fixture.start("../src/entry-http.ts", ["--prepare-credentials"], port);
+  try {
+    const { child, exited, beforeExit } = start(0);
+    const [ready] = await beforeExit(once(child, "message"));
+    const url = `http://127.0.0.1:${ready.port}/api/server-info`;
+    expect((await fetch(url)).status).toBe(200);
+    await expect(copyDataDirectory(base, target)).rejects.toMatchObject({
+      code: "DATA_DIRECTORY_IN_USE",
+    });
+    const occupied = await start(ready.port).exited;
+    expect(occupied.code).toBe(1);
+    expect(occupied.stderr).toContain("in use");
+    expect(await leases()).toHaveLength(1);
+    child.disconnect();
+    expect((await exited).code).toBe(0);
+    expect(await leases()).toEqual([]);
+    await copyDataDirectory(base, target);
+    const sealed = await start(0).exited;
+    expect(sealed.code).toBe(1);
+    expect(sealed.stderr).toContain("relocated");
+    await expect(
+      dataDirectory.exclusive(join(target, ".openzwork"), async () => true),
+    ).resolves.toBe(true);
+  } finally {
+    await fixture.close();
+  }
+}, 60_000);
+
+it("OZ-C009：stdio 和 Core 各自持有业务根，关闭后释放，封存后的凭据准备也须拒绝", async () => {
+  const fixture = await serverFixture();
+  try {
+    const stdio = fixture.start("../src/entry-stdio.ts", ["--prepare-credentials"]);
+    await stdio.beforeExit(once(stdio.child.stdout!, "data"));
+    stdio.child.stdin!.write(
+      JSON.stringify({ type: "zcode-hello-ack", version: "4.0.0", clientId: "fixture" }) + "\n",
+    );
+    await stdio.beforeExit(stdio.stdioReady);
+    await expect(dataDirectory.exclusive(fixture.root, async () => {})).rejects.toMatchObject({
+      code: "DATA_DIRECTORY_IN_USE",
+    });
+    stdio.child.stdin!.end();
+    expect((await stdio.exited).code).toBe(0);
+    expect(await fixture.leases()).toEqual([]);
+
+    const { ensureServerInstallOwnership } =
+      await import("../../zcode-server-cli/src/runtime/installationOwnership.js");
+    const { resolveServerLayout } = await import("@zcode/server-cli");
+    await ensureServerInstallOwnership(resolveServerLayout(join(fixture.root, "server")));
+    const core = fixture.start("../../zcode-server-cli/src/server-core/entry.ts");
+    const [message] = await core.beforeExit(once(core.child, "message"));
+    if (message.type === "fatal") throw new Error(message.message);
+    expect(message).toMatchObject({ type: "ready" });
+    await expect(dataDirectory.exclusive(fixture.root, async () => {})).rejects.toMatchObject({
+      code: "DATA_DIRECTORY_IN_USE",
+    });
+    core.child.disconnect();
+    expect((await core.exited).code).toBe(0);
+    expect(await fixture.leases()).toEqual([]);
+
+    await copyDataDirectory(fixture.base, await createTempDataBaseDir());
+    const prepare = fixture.start("../../zcode-server-cli/src/main.ts", [
+      "serve",
+      "--prepare-credentials",
+    ]);
+    const result = await prepare.exited;
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("relocated");
+  } finally {
+    await fixture.close();
+  }
+}, 60_000);

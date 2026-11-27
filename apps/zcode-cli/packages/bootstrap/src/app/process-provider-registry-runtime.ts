@@ -35,25 +35,28 @@ export async function startProcessProviderRegistryRuntime(
         }
       : {}),
   });
-  await runtime.start();
-  const snapshot = runtime.registryService.getSnapshot()!;
-  const modelSelectionConfigRepository = new NodeModelSelectionConfigRepository({
-    personalRepository: runtime.personalRepository,
-  });
+  // OZ-C003：start 读取内置配置之前已注册监听，失败时调用方尚未持有释放句柄。
+  let modelSelectionConfigRepository: NodeModelSelectionConfigRepository | undefined;
+  function dispose() {
+    modelSelectionConfigRepository?.dispose();
+    runtime.dispose();
+  }
   try {
+    await runtime.start();
+    const snapshot = runtime.registryService.getSnapshot()!;
+    modelSelectionConfigRepository = new NodeModelSelectionConfigRepository({
+      personalRepository: runtime.personalRepository,
+    });
     const configuredDefaultModelSelection = await modelSelectionConfigRepository.read();
     return Object.freeze({
-      dispose() {
-        modelSelectionConfigRepository.dispose();
-        runtime.dispose();
-      },
+      dispose,
       runtime,
       snapshot,
       modelSelectionConfigRepository,
       configuredDefaultModelSelection,
     });
   } catch (error) {
-    modelSelectionConfigRepository.dispose();
+    dispose();
     throw error;
   }
 }

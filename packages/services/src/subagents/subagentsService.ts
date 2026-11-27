@@ -37,7 +37,7 @@ import {
   type SubagentStorageOptions,
 } from "./subagentStorage.js";
 import type { ISubagentsService } from "./subagents.js";
-import { atomicWriteText, withUserMarkdownLock } from "#src/fs/atomicFileUtils.js";
+import { atomicWriteText, isSameRegularFile, withUserMarkdownLock } from "#src/fs/atomicFileUtils.js";
 import {
   migrateUserSubagentMarkdown,
   migrateSubagentStateFile,
@@ -781,7 +781,11 @@ export function createSubagentsService(options?: SubagentsServiceOptions): ISuba
       const filePath = join(agentDir, `${params.config.name.trim().toLowerCase()}.md`);
       await mkdir(agentDir, { recursive: true });
 
-      if (params.oldFilePath && params.oldFilePath !== filePath && (await exists(filePath))) {
+      // OW-P042：导入返回物理路径，编辑器可能由 HOME 的逻辑路径进入同一文件。
+      // 两个不同文件仍是名称冲突；同一普通文件保存后不能再按旧路径删除。
+      const oldPath = params.oldFilePath !== filePath ? params.oldFilePath : undefined;
+      const sameFile = oldPath ? await isSameRegularFile(oldPath, filePath) : false;
+      if (oldPath && !sameFile && (await exists(filePath))) {
         throw new Error(`Agent file "${basename(filePath)}" already exists`);
       }
 
@@ -792,8 +796,8 @@ export function createSubagentsService(options?: SubagentsServiceOptions): ISuba
       // enabled 状态按 agent id 存储；重命名会生成新 id，必须迁移旧禁用记录，
       // 否则用户禁用的 agent 改名后会被 runtime 当成新启用 profile 重新加载。
       await migrateDisabledAgentId(params.agentId, agent.id, storageOptions);
-      if (params.oldFilePath && params.oldFilePath !== filePath) {
-        await rm(params.oldFilePath, { force: true });
+      if (oldPath && !sameFile) {
+        await rm(oldPath, { force: true });
       }
       return { agent };
     },

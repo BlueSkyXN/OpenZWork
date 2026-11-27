@@ -16,8 +16,11 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
 import { cliStorageRelocation } from "@zcode/adapters/storage";
 import { dataDirectory, DATA_ROOT_RELOCATED_MARKER } from "@zcode/shared/data-directory";
+import { isSamePath } from "@zcode/shared/managed-worktree";
+import { parseWorktreeListPorcelain } from "../src/git/managed-worktree/index.js";
 
 const runFile = promisify(execFile);
 const envKeys = ["HOME", "ZCODE_DESKTOP_HOME_DIR", "ZCODE_DATA_BASE_DIR"] as const;
@@ -427,4 +430,207 @@ describe("data directory migration", () => {
     expect((await service.get()).pendingDataBaseDirMigration).toBeUndefined();
     expect(await readdir(target)).toEqual([]);
   });
+});
+
+it("OZ-C009：列出已登记形态的受管工作树，处理后允许保存计划", async () => {
+  const context = await runtime();
+  const target = await temp();
+  const tree = "worktrees/0fab/sample";
+  const repository = await temp();
+  const checkout = join(context.home, ".openzwork", tree);
+  await runFile("git", ["init", "-q", repository]);
+  await runFile("git", [
+    "-C",
+    repository,
+    "-c",
+    "user.name=Fixture",
+    "-c",
+    "user.email=fixture@example.invalid",
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "--allow-empty",
+    "-qm",
+    "fixture",
+  ]);
+  await mkdir(join(checkout, ".."), { recursive: true });
+  await runFile("git", ["-C", repository, "worktree", "add", "--detach", checkout, "HEAD"]);
+  const service = context.createSettingService();
+  await expect(service.updateDataBaseDir(target)).rejects.toMatchObject({
+    code: "DATA_DIRECTORY_MANAGED_WORKTREES",
+    details: [join(context.home, ".openzwork", tree)],
+  });
+  expect((await service.get()).pendingDataBaseDirMigration).toBeUndefined();
+  // Git for Windows 的登记路径使用正斜杠，按本机路径语义核对实际工作树。
+  const { stdout } = await runFile("git", [
+    "-C",
+    repository,
+    "worktree",
+    "list",
+    "--porcelain",
+    "-z",
+  ]);
+  const registered = parseWorktreeListPorcelain(stdout).find(({ path }) =>
+    isSamePath(path, checkout),
+  );
+  expect(registered).toMatchObject({ prunable: false, bare: false });
+  await runFile("git", ["-C", repository, "worktree", "remove", checkout]);
+  await service.updateDataBaseDir(target);
+  expect((await service.get()).pendingDataBaseDirMigration).toBeTruthy();
+});
+
+it("读取未知提示词章节后更新其他设置，保留已知章节、代理和已提交数据目录", async () => {
+  const context = await runtime();
+  const service = context.createSettingService();
+  const known = { mode: "append", content: "fixture instructions" };
+  const future = { ...known, content: "future fixture" };
+  const systemPromptSettings = {
+    version: 1,
+    mode: "sections",
+    sections: { role: known, future_section: future },
+    replacement: "",
+    customSections: [],
+  };
+  await fixture(
+    context.home,
+    "v2/setting.json",
+    JSON.stringify({
+      locale: "en-US",
+      httpProxy: "http://localhost:8642",
+      dataBaseDir: context.home,
+      systemPromptSettings,
+    }),
+  );
+  await service.update({ memoryEnabled: true });
+  const saved = await service.get();
+  expect(saved.httpProxy).toBe("http://localhost:8642");
+  expect(saved.dataBaseDir).toBe(context.home);
+  expect(saved.systemPromptSettings?.sections).toEqual({ role: known });
+  await expect(service.update({ systemPromptSettings } as never)).rejects.toThrow();
+});
+
+it("OZ-C009：读取活动业务根，旧 HOME 的已迁移目录不再参与分类清理", async () => {
+  const context = await runtime();
+  const target = await temp();
+  context.setDataBaseDir(target);
+  const business = join(target, ".openzwork");
+  const { resolveSubagentStateFile, resolveUserSubagentRoot } =
+    await import("../src/subagents/subagentStorage.js");
+  const { classifyStoragePath } = await import("../src/storage/domain/storageCatalog.js");
+  expect(await resolveSubagentStateFile()).toBe(join(business, "v2", "agents-state.json"));
+  expect(await resolveUserSubagentRoot()).toBe(join(context.home, ".openzwork", "agents"));
+  const homeSnapshot = { rootId: "home", hasCustomDataBaseDir: true } as const;
+  for (const path of ["cli/log/sample.log", "backup/sample.bak", "v2/logs/sample.log"]) {
+    expect(classifyStoragePath(path, homeSnapshot).categoryId).toBe("other");
+  }
+  expect(classifyStoragePath("cli/config.json", homeSnapshot).categoryId).toBe("config");
+});
+
+it("迁移 Host 待删状态、仅存的删除记录与创建回执，保留远端键并回滚冲突", async () => {
+  const context = await runtime();
+  const target = await temp();
+  const original = join(context.home, ".openzwork/workspace/project");
+  const next = join(target, ".openzwork/workspace/project");
+  const receipt = join(context.home, ".openzwork/workspace/creation-only");
+  const nextReceipt = join(target, ".openzwork/workspace/creation-only");
+  const remote = buildServerRemoteWorkspaceIdentity({
+    serverId: "fixture",
+    workspacePath: original,
+  });
+  const external = await temp();
+  const dbFile = "v2/tasks-index.sqlite";
+  const source = new DatabaseSync(join(context.home, ".openzwork", dbFile));
+  try {
+    source.exec(
+      await readFile(
+        new URL("../src/project-storage/schema.baseline.sql", import.meta.url),
+        "utf8",
+      ),
+    );
+    source
+      .prepare(
+        "INSERT INTO tasks(workspace_key,workspace_path,task_id,archived,created_at,updated_at) VALUES(?,?,'active',1,1,1)",
+      )
+      .run(original, original);
+    const purge = source.prepare("INSERT INTO task_purge VALUES(?,?,?)");
+    purge.run(original, "active", "pending");
+    purge.run(original, "removed", "deleted");
+    purge.run(remote, "remote", "deleted");
+    purge.run(external, "external", "pending");
+    const create = source.prepare(
+      "INSERT INTO session_creation_commands VALUES(?,'client','command',?)",
+    );
+    create.run(receipt, "session");
+    create.run(nextReceipt, "other-session");
+
+    await expect(context.copyDataDirectory(context.home, target)).rejects.toThrow(/UNIQUE/);
+    await expect(readdir(join(target, ".openzwork"))).rejects.toMatchObject({ code: "ENOENT" });
+    expect(
+      source.prepare("SELECT archived FROM tasks WHERE workspace_key=?").get(original),
+    ).toMatchObject({ archived: 1 });
+    source.prepare("DELETE FROM session_creation_commands WHERE workspace_key=?").run(nextReceipt);
+  } finally {
+    source.close();
+  }
+  await context.copyDataDirectory(context.home, target);
+  const migrated = new DatabaseSync(join(target, ".openzwork", dbFile));
+  try {
+    expect(
+      migrated.prepare("SELECT workspace_key,task_id,state FROM task_purge ORDER BY task_id").all(),
+    ).toEqual([
+      { workspace_key: next, task_id: "active", state: "pending" },
+      { workspace_key: external, task_id: "external", state: "pending" },
+      { workspace_key: remote, task_id: "remote", state: "deleted" },
+      { workspace_key: next, task_id: "removed", state: "deleted" },
+    ]);
+    expect(() =>
+      migrated.prepare("UPDATE tasks SET archived=0 WHERE workspace_key=?").run(next),
+    ).toThrow("permanent-deletion-pending");
+    expect(() =>
+      migrated
+        .prepare(
+          "INSERT INTO tasks(workspace_key,workspace_path,task_id,created_at,updated_at) VALUES(?,?,'removed',1,1)",
+        )
+        .run(next, next),
+    ).toThrow("permanently-deleted");
+    expect(migrated.prepare("SELECT * FROM session_creation_commands").all()).toEqual([
+      {
+        workspace_key: nextReceipt,
+        client_id: "client",
+        command_id: "command",
+        session_id: "session",
+      },
+    ]);
+  } finally {
+    migrated.close();
+  }
+});
+
+it("仅信任记录需要 CLI 转换，固定 HOME 配置和无关文件可以独立迁移", async () => {
+  const context = await runtime();
+  const target = await temp();
+  const name = "security/workspace-mcp-trust-v1.json";
+  const workspace = join(context.home, ".openzwork/workspace/project");
+  const record = { workspaceIdentity: workspace, sourcePathAtGrant: workspace, digest: "fixture" };
+  await fixture(context.home, "cli/config.json", "{}");
+  await fixture(context.home, name, JSON.stringify({ records: [record] }));
+  await expect(context.copyDataDirectory(context.home, target)).rejects.toMatchObject({
+    code: "DATA_DIRECTORY_AGENT_REQUIRED",
+  });
+  await expect(readdir(join(target, ".openzwork"))).rejects.toMatchObject({ code: "ENOENT" });
+  await context.copyDataDirectory(context.home, target, randomUUID(), {
+    relocateAgent: cliStorageRelocation.relocate,
+  });
+  const moved = join(target, ".openzwork/workspace/project");
+  expect(JSON.parse(await readFile(join(target, ".openzwork", name), "utf8"))).toEqual({
+    records: [{ ...record, workspaceIdentity: moved, sourcePathAtGrant: moved }],
+  });
+  const other = await temp();
+  await fixture(other, "cli/config.json", "{}");
+  await fixture(other, "security/notes.txt", "fixture");
+  const destination = await temp();
+  await context.copyDataDirectory(other, destination);
+  expect(await readFile(join(destination, ".openzwork/security/notes.txt"), "utf8")).toBe(
+    "fixture",
+  );
 });

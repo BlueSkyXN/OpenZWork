@@ -110,7 +110,7 @@ const en = {
     path_outside_workspace: ["This file is outside the workspace", ""],
   } as Record<string, [string, string]>,
   sendFailed: "The message was not sent.",
-  contextFailed: "ZCode did not accept the reference.",
+  contextFailed: "OpenZWork did not accept the reference.",
   where: {
     page: (n: string) => `Page ${n}`,
     pages: (a: string, b: string) => `Pages ${a}–${b}`,
@@ -199,7 +199,7 @@ const zh: typeof en = {
     path_outside_workspace: ["该文件不在工作区内", ""],
   },
   sendFailed: "消息未发送。",
-  contextFailed: "ZCode 未接受该引用。",
+  contextFailed: "OpenZWork 未接受该引用。",
   where: {
     page: (n) => `第 ${n} 页`,
     pages: (a, b) => `第 ${a}–${b} 页`,

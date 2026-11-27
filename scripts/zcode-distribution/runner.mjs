@@ -2,8 +2,10 @@
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { access, readFile } from "node:fs/promises";
+import { isIPv6 } from "node:net";
 import { networkInterfaces } from "node:os";
 import { dirname, join, resolve } from "node:path";
+import { finished } from "node:stream/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -111,7 +113,8 @@ function createToken() {
 
 function formatUrl(host, port, token) {
   const displayHost = host === "0.0.0.0" || host === "::" ? "127.0.0.1" : host;
-  const base = `http://${displayHost}:${port}/`;
+  // OW-P045：监听参数使用裸地址，URL 中的 IPv6 字面量需要方括号。
+  const base = `http://${isIPv6(displayHost) ? `[${displayHost}]` : displayHost}:${port}/`;
   return token ? `${base}?token=${encodeURIComponent(token)}` : base;
 }
 
@@ -154,7 +157,10 @@ async function serve(options) {
   const token = protect ? (options.token ?? createToken()) : "";
   const open = options.open ?? isLocalHost(options.host);
 
-  const child = spawn(process.execPath, [serverEntry, "--prepare-credentials"], {
+  // OW-P054：将显式局域网兼容选项传给监听进程，空 token 本身不表示用户授权。
+  const serverArgs = [serverEntry, "--prepare-credentials"];
+  if (options.tokenEnabled === false) serverArgs.push("--no-token");
+  const child = spawn(process.execPath, serverArgs, {
     cwd: options.workspace,
     env: {
       ...process.env,
@@ -178,7 +184,9 @@ async function serve(options) {
 
   child.stdout.on("data", (chunk) => process.stdout.write(chunk));
   child.stderr.on("data", (chunk) => process.stderr.write(chunk));
-  child.on("close", (code, signal) => {
+  // 父端主动关闭 IPC 时应等待进程 exit 及输出流结束，某些 Node 版本不会再发 close。
+  child.once("exit", async (code, signal) => {
+    await Promise.allSettled([finished(child.stdout), finished(child.stderr)]);
     if (shuttingDown) {
       process.exit(0);
     }
@@ -211,8 +219,10 @@ async function serve(options) {
       return;
     }
     shuttingDown = true;
-    child.kill("SIGTERM");
-    setTimeout(() => process.exit(0), 1500).unref();
+    // OZ-C009：Windows 的 kill 不会运行子进程清理，先关闭 IPC，等子进程归还租约后退出。
+    if (child.connected) child.disconnect();
+    else child.kill("SIGTERM");
+    setTimeout(() => child.kill("SIGKILL"), 5000).unref();
   };
   if (process.connected) process.once("disconnect", shutdown);
   process.on("SIGINT", shutdown);

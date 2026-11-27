@@ -173,6 +173,7 @@ function RootInner({
   isWindowsDesktop,
   restoreSession = true,
   supportsSettings = true,
+  systemPromptHostAvailable = true,
   allowOpenWorkspace = true,
   preferDirectoryBrowser,
   supportsEmbeddedBrowser: explicitSupportsEmbeddedBrowser,
@@ -1177,6 +1178,7 @@ function RootInner({
   );
 
   const settingsLayerProps = {
+    systemPromptHostAvailable,
     isDesktop,
     isMacDesktop,
     isWindowsDesktop,

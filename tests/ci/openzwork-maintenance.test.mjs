@@ -64,7 +64,19 @@ test("loadCiTests 与 runCheck 排除 run-repo-script-tests.mjs 过滤的工程 
     );
     write(
       ".github/workflows/ci.yml",
-      'name: CI\njobs:\n  checks:\n    steps:\n      - name: scripts\n        run: "pnpm test:repo-scripts"\n',
+      [
+        "name: CI",
+        "jobs:",
+        "  checks:",
+        "    steps:",
+        "      - name: scripts",
+        '        run: "pnpm test:repo-scripts"',
+        '      - run: "pnpm exec wdio --spec samples/filtered.test.ts --mochaOpts.grep one"',
+        "  manual:",
+        "    if: github.event_name == 'workflow_dispatch'",
+        "    steps:",
+        '      - run: "pnpm exec vitest run samples/manual.test.ts"',
+      ].join("\n"),
     );
     write("src/feat.ts", "export const feat = 1;\n");
     write("scripts/test/node-runner.test.mjs", "export {};\n");
@@ -117,6 +129,8 @@ test("loadCiTests 与 runCheck 排除 run-repo-script-tests.mjs 过滤的工程 
     commit("engineering test excluded");
 
     const ci = loadCiTests(classify(dir, base));
+    assert.equal(ci.runs("samples/filtered.test.ts"), false);
+    assert.equal(ci.runs("samples/manual.test.ts"), false);
     assert.equal(ci.runs("scripts/test/node-runner.test.mjs"), true);
     assert.equal(ci.runs("scripts/test/eng-only.test.mjs"), false);
     assert.match(

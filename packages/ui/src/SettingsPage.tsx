@@ -166,6 +166,7 @@ export function SettingsPage({
   isWindowsDesktop,
   isMacDesktop,
   isWebRemoteControl = false,
+  systemPromptHostAvailable = true,
   windowsWindowControlsRightPaddingPx: _windowsWindowControlsRightPaddingPx,
   captionWorkspacePath,
   onBack,
@@ -176,6 +177,7 @@ export function SettingsPage({
   isWindowsDesktop?: boolean;
   isMacDesktop?: boolean;
   isWebRemoteControl?: boolean;
+  systemPromptHostAvailable?: boolean;
   windowsWindowControlsRightPaddingPx?: number;
   captionWorkspacePath?: string | null;
   onBack?: () => void;
@@ -1398,7 +1400,7 @@ export function SettingsPage({
                             />
                           ) : activeSection === "systemPrompt" ? (
                             <ServiceProvider services={localHostServices}>
-                              <SystemPromptSettingsSection />
+                              <SystemPromptSettingsSection hostAvailable={systemPromptHostAvailable} />
                             </ServiceProvider>
                           ) : activeSection === "memory" ? (
                             <MemorySettingsPage

@@ -1190,7 +1190,8 @@ function worktreeCreatingDetailLine(count: number, isZh: boolean): string | null
 
 /** 只关闭一个窗口时：仅当该窗口的 Host 有正在创建的 worktree 才确认，否则直接放行。 */
 function confirmWindowCloseWithQuitBlockers(win: BrowserWindow): boolean {
-  const host = windowHostProcessMap.get(win.id);
+  // OW-P055：窗口注册 Host 时使用 webContents.id，辅助视图会使它与 BrowserWindow.id 分离。
+  const host = windowHostProcessMap.get(win.webContents.id);
   const count = host ? getCreatingWorktreeCount([host]) : 0;
   if (count === 0) return true;
   const isZh = currentApplicationLocale === "zh-CN";
@@ -1233,7 +1234,7 @@ function confirmAppQuit(originWindow?: BrowserWindow | null) {
     defaultId: 1,
     cancelId: 1,
     title: isZh ? "退出确认" : "Confirm Quit",
-    message: isZh ? "确认退出 Z Code?" : "Quit Z Code?",
+    message: isZh ? "确认退出 OpenZWork？" : "Quit OpenZWork?",
     detail: detailLines.join("\n"),
     icon: nativeImage.createFromPath(iconPath),
   };
@@ -1617,7 +1618,7 @@ app.whenReady().then(async () => {
       break;
     } catch (error) {
       const locale = (await mainSettingService.get()).locale;
-      const chinese = locale !== "en-US";
+      const chinese = locale === "zh-CN";
       const choice = await dialog.showMessageBox({
         type: "error",
         title: chinese ? "OpenZWork 数据迁移失败" : "OpenZWork data migration failed",

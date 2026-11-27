@@ -78,6 +78,8 @@ export interface RootProps {
   restoreSession?: boolean;
   /** 是否允许访问本地设置服务，远程窗口 false */
   supportsSettings?: boolean;
+  /** 当前连接能否访问持有全局系统提示词的控制端。 */
+  systemPromptHostAvailable?: boolean;
   /** 是否允许在当前壳层里切换/新开工作区 */
   allowOpenWorkspace?: boolean;
   /** 是否优先使用服务端目录浏览器，Web 普通模式不能依赖系统目录选择框 */

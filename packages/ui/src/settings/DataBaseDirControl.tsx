@@ -1,6 +1,6 @@
 import { FolderOpen, LoaderCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { isDataBaseDirForbiddenWindowsInstallDirError } from "@zcode/shared";
+import { getBlockingManagedWorktrees, isDataBaseDirForbiddenWindowsInstallDirError } from "@zcode/shared";
 import {
   TID_SETTINGS_DATA_BASE_DIR_BROWSE,
   TID_SETTINGS_DATA_BASE_DIR_INPUT,
@@ -27,7 +27,7 @@ export function DataBaseDirControl({
   const [localDataBaseDir, setLocalDataBaseDir] = useState(effectiveDir);
   const [isPickingDataBaseDir, setIsPickingDataBaseDir] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [errorMessageId, setErrorMessageId] = useState("settings.dataBaseDirCopyFailed");
+  const [failure, setFailure] = useState<{ id: string; worktrees?: string[] }>({ id: "settings.dataBaseDirCopyFailed" });
 
   useEffect(() => {
     if (saveState !== "saved") {
@@ -66,11 +66,12 @@ export function DataBaseDirControl({
       await onDataBaseDirChange(newValue);
       setSaveState("saved");
     } catch (error) {
-      setErrorMessageId(
-        isDataBaseDirForbiddenWindowsInstallDirError(error)
+      const worktrees = getBlockingManagedWorktrees(error);
+      setFailure(worktrees ? { id: "settings.dataBaseDirManagedWorktrees", worktrees } : {
+        id: isDataBaseDirForbiddenWindowsInstallDirError(error)
           ? "settings.dataBaseDirForbiddenInstallDir"
           : "settings.dataBaseDirCopyFailed",
-      );
+      });
       setSaveState("error");
     }
   }, [defaultHomeDir, localDataBaseDir, onDataBaseDirChange]);
@@ -136,7 +137,8 @@ export function DataBaseDirControl({
           data-state="error"
           className="text-ui-base text-destructive"
         >
-          {intl.formatMessage({ id: errorMessageId })}
+          {intl.formatMessage({ id: failure.id })}
+          {failure.worktrees?.map((path) => <span className="block break-all" key={path}>{path}</span>)}
         </p>
       ) : null}
     </div>

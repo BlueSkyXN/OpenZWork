@@ -92,6 +92,14 @@ export async function relocateHostStorage(plan: DataRelocationPlan): Promise<voi
           }
           if ("meta_json" in row) row.meta_json = metadata(row.meta_json!, plan);
         });
+      // 永久删除凭证和创建回执可独立于任务行存在，按自身键转换并参与同一事务。
+      for (const table of ["task_purge", "session_creation_commands"])
+        updateRows(db, table, (row) => {
+          if (typeof row.workspace_key !== "string") return;
+          const previous = row.workspace_key;
+          row.workspace_key = relocateDataPath(previous, plan);
+          if (row.workspace_key !== previous) keyMap.set(previous, row.workspace_key);
+        });
       for (const table of [
         "automation_runs",
         "task_group_admissions",

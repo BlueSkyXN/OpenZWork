@@ -1,9 +1,11 @@
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
+import type { PluginExtensionSummary } from "@zcode/adapters/plugins";
 
 // 内置插件的商店信息 seed（原样写入官方 marketplace.json 的条目 raw，键名与 CDN 目录
 // schema 一致：displayName_i18n / examplePrompts_i18n 等），解析复用 adapter 的
 // parseEntryStoreListing。icon 不再指向官方 assets CDN；UI 使用默认图标降级。
 export interface OfficialPluginListingSeed {
+  extensionSummary?: PluginExtensionSummary;
   displayName?: string;
   displayName_i18n?: Record<string, string>;
   description_i18n?: Record<string, string>;
@@ -202,7 +204,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       displayName: "Browser Use",
       displayName_i18n: { "zh-CN": "浏览器操作" },
       description_i18n: {
-        "zh-CN": "操作 ZCode 内置浏览器，检查网页并验证交互。",
+        "zh-CN": "操作 OpenZWork 内置浏览器，检查网页并验证交互。",
       },
     },
     name: OFFICIAL_BROWSER_USE_PLUGIN_NAME,
@@ -272,7 +274,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       // 创建器使用客户端自带图标，不再借用 skill-creator 的远端图片。
       displayName_i18n: { "zh-CN": "插件创建器" },
       description_i18n: {
-        "zh-CN": "开发、校验 ZCode 插件，完成本地 dev 市场安装、试用与更新。",
+        "zh-CN": "开发、校验 OpenZWork 插件，完成本地 dev 市场安装、试用与更新。",
       },
     },
     rootCandidates: [
@@ -299,7 +301,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       category: "utilities",
       displayName: "Skill Creator",
       displayName_i18n: { "zh-CN": "技能创建器" },
-      description_i18n: { "zh-CN": "创建、编辑和验证可复用的 ZCode 技能。" },
+      description_i18n: { "zh-CN": "创建、编辑和验证可复用的 OpenZWork 技能。" },
     },
     name: "skill-creator",
     requiredSeedPaths: ["skills/skill-creator/SKILL.md"],
@@ -318,17 +320,17 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
     listing: {
       author: { name: "Z.ai" },
       category: "utilities",
-      displayName: "ZCode Guide",
-      displayName_i18n: { "zh-CN": "ZCode 使用指南" },
+      displayName: "OpenZWork Guide",
+      displayName_i18n: { "zh-CN": "OpenZWork 使用指南" },
       description_i18n: {
-        "zh-CN": "提供 ZCode 配置指南与插件、技能、MCP、命令和钩子诊断。",
+        "zh-CN": "提供 OpenZWork 配置指南与插件、技能、MCP、命令和钩子诊断。",
       },
       examplePrompts: [
-        "How do I configure MCP servers in ZCode?",
-        "Diagnose my current ZCode setup",
+        "How do I configure MCP servers in OpenZWork?",
+        "Diagnose my current OpenZWork setup",
       ],
       examplePrompts_i18n: {
-        "zh-CN": ["ZCode 里怎么配置 MCP 服务器？", "帮我诊断当前的 ZCode 配置"],
+        "zh-CN": ["OpenZWork 里怎么配置 MCP 服务器？", "帮我诊断当前的 OpenZWork 配置"],
       },
     },
     name: "zcode-guide",
@@ -415,7 +417,7 @@ export const OFFICIAL_PLUGIN_DEFINITIONS: readonly OfficialPluginDefinition[] = 
       displayName: "Restore Legacy Sessions",
       displayName_i18n: { "zh-CN": "恢复旧版会话" },
       description_i18n: {
-        "zh-CN": "将旧版会话恢复为 ZCode 任务与会话记录。",
+        "zh-CN": "将旧版会话恢复为 OpenZWork 任务与会话记录。",
       },
     },
     name: "restore-legacy-sessions",

@@ -673,6 +673,8 @@ test("[structural, not runtime] WP-07: conversation-share / cloud feedback / app
     v4 + "conversationShareSelectionPanelLayout.ts",
     v4 + "useConversationShareSelectionOutsideDismiss.ts",
     web + "share",
+    web + "share-manage",
+    "packages/web/test/e2e/sharing/content/manual-review/pending/share-manage.mjs",
     // 云端反馈工单与 UI（保留本地日志导出 feedbackLogArchive）
     fb + "feedbackHttpClient.ts",
     fb + "feedbackService.ts",
@@ -685,6 +687,14 @@ test("[structural, not runtime] WP-07: conversation-share / cloud feedback / app
     web + "auth", // OAuthCredentialRepo 最后残留
   ];
   for (const file of removed) assert.equal(fs.existsSync(path.join(root, file)), false, file);
+  const webConfig = ts.readConfigFile(
+    path.join(root, "packages/web/tsconfig.json"),
+    ts.sys.readFile,
+  );
+  assert.ifError(webConfig.error);
+  for (const pattern of webConfig.config.exclude ?? []) {
+    assert.ok(!pattern.split("/").includes("share-manage"), "Web 类型检查仍排除已裁剪的分享管理页");
+  }
 });
 
 test("[structural, not runtime] WP-07: updater dependencies and share/feedback/update channel surface are gone", () => {

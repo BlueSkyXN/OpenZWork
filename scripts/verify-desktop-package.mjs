@@ -11,6 +11,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { keyringPlatformPackage } from "./stage-credential-keyring.mjs";
 import { getDesktopVersion } from "./openzwork-version.mjs";
 import { getNativeSearchRuntimeToolIdsForPlatform } from "./native-search-tools-config.mjs";
 import { resolveDesktopProductIdentity } from "../packages/desktop/scripts/desktop-product-identity.mjs";
@@ -104,8 +105,16 @@ function requiredRuntimePaths(platform) {
   // Windows 发行包只携带 ripgrep 和 ugrep，核验与打包共用原生搜索工具清单，并额外核验 runtime-host 与预装入口 shim。
   const os = platform.split("-")[0];
   const tools = getNativeSearchRuntimeToolIdsForPlatform(os);
+  const target = platform
+    .replace("macos-", "darwin-")
+    .replace("windows-", "win32-")
+    .replace("-amd64", "-x64");
+  const keyring = keyringPlatformPackage(target);
+  const nativeSuffix = keyring.slice("@napi-rs/keyring-".length);
   return [
     "glm/zcode.cjs",
+    "glm/node_modules/@napi-rs/keyring/index.js",
+    `glm/node_modules/${keyring}/keyring.${nativeSuffix}.node`,
     "glm/node-runtime/npm",
     ...tools.map((tool) => `tools/${tool}`),
     ...(os === "windows" || os === "win32"

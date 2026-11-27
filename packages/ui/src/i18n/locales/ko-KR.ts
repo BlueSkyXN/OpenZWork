@@ -1,5 +1,13 @@
 /** Korean translations（缺失 key 由 IntlProvider 回退到 en-US） */
 const koKR: Record<string, string> = {
+  "chat.error.copy.heading": "OpenZWork 오류 정보",
+  "chat.error.copy.summary": "오류 요약",
+  "chat.error.copy.traceId": "추적 ID: {traceId}",
+  "chat.error.copy.detail": "세부 정보",
+  "settings.systemPrompt.hostUnavailable": "시스템 프롬프트를 편집하려면 제어 데스크톱에서 설정을 열거나 해당 데스크톱의 로컬 작업 공간에 연결하세요.",
+  "metrics.requestScope": "속도와 첫 텍스트까지의 시간은 최근 완료된 요청을 기준으로 합니다. 시간은 요청 시작부터 측정합니다.",
+  "zcode.error.providerBusiness.3007": "공급자가 보안 검사를 거부했습니다. 요청을 확인하거나 공급자에게 문의하세요.",
+  "settings.dataBaseDirManagedWorktrees": "다음 관리형 Git 작업 트리를 처리한 후 마이그레이션을 다시 시도하세요.",
   // OpenZWork(OZ-C015)：v4.0.0 新增预装工具与模型搜索键五语种补齐，并对齐无默认下载源提示。
   "preinstalledTools.purpose.python":
     "문서 플러그인 스크립트를 실행하고 스프레드시트, Word, PDF 처리 라이브러리를 제공합니다",
@@ -921,7 +929,7 @@ const koKR: Record<string, string> = {
   "startup.global.starting": "로컬 데이터 준비 중",
   "startup.global.preparing_host_storage": "작업 인덱스 준비 중",
   "startup.global.preparing_session_storage": "채팅 기록 준비 중",
-  "startup.global.starting_services": "ZCode 시작 중",
+  "startup.global.starting_services": "OpenZWork 시작 중",
   "startup.global.ready": "로컬 데이터 준비 완료",
   "startup.global.failed": "시작 준비 실패",
   "startup.global.help":
@@ -3700,16 +3708,16 @@ const koKR: Record<string, string> = {
   "settings.taskAutoArchiveDays.option.30": "30일 후 보관",
   "settings.dataBaseDir": "데이터 저장 경로",
   "settings.dataBaseDirDescription":
-    "앱 데이터의 루트 디렉터리입니다(기본값: 사용자 홈 디렉터리). 기존 데이터가 새 위치로 복사됩니다. .zcode/v2 접미사는 변경할 수 없습니다.",
+    "앱 데이터의 기본 폴더를 선택하세요. 재시작하면 .openzwork 폴더로 복사되며 원본은 보존됩니다.",
   "settings.dataBaseDirPlaceholder": "기본값: 사용자 홈 디렉터리",
   "settings.dataBaseDirBrowse": "폴더 선택",
   "settings.dataBaseDirSave": "저장",
-  "settings.dataBaseDirCopying": "데이터를 복사하는 중입니다. 앱을 닫지 마세요...",
-  "settings.dataBaseDirCopyFailed": "데이터 복사에 실패했습니다. 경로가 변경되지 않았습니다.",
+  "settings.dataBaseDirCopying": "이전 계획을 저장하는 중…",
+  "settings.dataBaseDirCopyFailed": "이전 계획을 저장하지 못했습니다. 대상 폴더와 접근 권한을 확인하세요.",
   "settings.dataBaseDirForbiddenInstallDir":
-    "Windows에서는 데이터 디렉터리를 ZCode 설치 폴더로 지정할 수 없습니다. 앱 설치 위치 밖의 폴더를 선택하세요.",
+    "Windows에서는 데이터 디렉터리를 OpenZWork 설치 폴더로 지정할 수 없습니다. 앱 설치 위치 밖의 폴더를 선택하세요.",
   "settings.dataBaseDirRestartRequired":
-    "데이터가 저장되었습니다. 적용하려면 앱을 다시 시작하세요.",
+    "앱을 다시 시작하면 데이터가 이전됩니다.",
   "settings.locale.system": "시스템 기본값",
   "settings.locale.zh-CN": "中文简体",
   "settings.locale.en-US": "English",
@@ -3801,14 +3809,14 @@ const koKR: Record<string, string> = {
   "settings.usage.sessionDetails.total": "총 토큰",
   "settings.usageTitle": "사용량 통계",
   "settings.usageDescription": "로컬 세션에서 집계한 대략적인 활동 및 모델 사용량을 확인합니다.",
-  "resourceManager.storage.summaryTotal": "ZCode 총 사용량",
+  "resourceManager.storage.summaryTotal": "OpenZWork 총 사용량",
   "resourceManager.storage.scanning": "계산 중…",
   "resourceManager.storage.lastScanned": "마지막 계산 {time}",
   "resourceManager.storage.idle": "아직 계산되지 않음",
   "resourceManager.storage.failed": "계산 실패",
   "resourceManager.storage.rescan": "다시 계산",
   "resourceManager.storage.disk": "디스크",
-  "resourceManager.storage.diskUsage": "ZCode 사용량 {used}",
+  "resourceManager.storage.diskUsage": "OpenZWork 사용량 {used}",
   "resourceManager.storage.diskFree": "{total} 중 {free} 사용 가능",
   "resourceManager.storage.diskUnknown": "디스크 용량을 확인할 수 없음",
   "resourceManager.storage.roots": "데이터 디렉터리",
@@ -3857,7 +3865,7 @@ const koKR: Record<string, string> = {
   "resourceManager.storage.categoryDescription.exports":
     "내보낸 로그 번들과 피드백 첨부 파일입니다.",
   "resourceManager.storage.categoryDescription.runtimes":
-    "번들된 에이전트 런타임, Computer Use 구성 요소, 플러그인입니다.",
+    "번들 에이전트 런타임 및 플러그인.",
   "resourceManager.storage.categoryDescription.config":
     "설정, 자격 증명, 메모리, 기본 워크스페이스 파일입니다.",
   "resourceManager.storage.categoryDescription.other":
@@ -3882,7 +3890,7 @@ const koKR: Record<string, string> = {
   "settings.embeddedBrowserAllowInsecureCertificatesSavedHint":
     "인증서 설정이 저장되었습니다. 앱을 다시 시작해야 적용됩니다.",
   "settings.browser.data.section": "브라우저 데이터",
-  "settings.browser.desktopOnly": "브라우저 데이터는 ZCode 데스크톱 앱에서만 관리할 수 있습니다.",
+  "settings.browser.desktopOnly": "브라우저 데이터는 OpenZWork 데스크톱 앱에서만 관리할 수 있습니다.",
   "settings.browser.import.title": "Chrome 로그인 상태 가져오기",
   "settings.browser.import.description":
     "Chrome 로그인 상태를 내장 브라우저로 한 번 가져와, AI가 이미 로그인된 사이트를 열고 더 원활하게 작업할 수 있게 합니다.",
@@ -4776,7 +4784,7 @@ const koKR: Record<string, string> = {
   "settings.modelProvider.help.advanced":
     "**MFJS 도구 스키마**: Moonshot Flavored JSON Schema 호환성을 사용합니다. 주로 Moonshot의 Kimi 모델 API에서 사용됩니다. 모델 API가 이 형식을 요구할 때만 사용하세요.",
   "settings.modelProvider.help.followRecommendedConfig":
-    "모델 ID, Base URL, API 형식을 기준으로 권장 구성을 매칭합니다. ZCode는 권장 구성을 지속적으로 업데이트하고 자동으로 동기화합니다.\n설정을 직접 변경하면 해당 설정은 수동 관리로 전환되어 권장 구성 업데이트를 더 이상 따르지 않으며, 나머지 설정은 계속 스마트 구성으로 관리됩니다.",
+    "모델 ID, API 형식 및 엔드포인트에 따라 내장 규칙을 적용합니다. 직접 수정한 항목에는 사용자 설정을 사용합니다.",
   "settings.modelProvider.modelDefaultsLoaded": "이 모델에 대한 스마트 구성이 매칭되었습니다",
   "settings.modelProvider.modelConfigIncomplete": "모델 구성이 완전하지 않습니다",
   "settings.modelProvider.models": "모델 목록",
@@ -7345,7 +7353,7 @@ const koKR: Record<string, string> = {
   "chat.error.feedback": "문제 신고",
   "chat.error.feedbackOpened": "오류 컨텍스트가 첨부된 피드백을 열었습니다",
   "chat.error.noAvailableModel":
-    "사용 가능한 모델이 없습니다. 업그레이드하거나 사용자 지정 모델을 설정하세요.",
+    "사용 가능한 모델이 없습니다. 사용자 지정 모델을 설정하세요.",
   "chat.error.remoteNoAvailableModel":
     "이 원격 기기에는 아직 사용 가능한 모델이 없습니다. 먼저 이 컴퓨터에서 모델을 구성하세요. 저장하면 원격 기기에 자동으로 동기화됩니다.",
   "chat.error.sendFailed": "보내지 못했습니다. 잠시 후 다시 시도하세요.",
@@ -7583,7 +7591,7 @@ const koKR: Record<string, string> = {
     "Claude Code가 {command}(인수: {args})을(를) 인식하지 못합니다. 명령 이름을 확인하거나, 이를 지원하는 에이전트/스킬로 전환한 후 다시 시도하세요.",
   "zcode.error.providerBusiness.1006": "로그인 세션이 만료되었습니다. 다시 로그인하세요.",
   "zcode.error.providerBusiness.1005":
-    "오늘의 무료 플랜 할당량을 모두 사용했습니다. Coding Plan 구독이나 다른 모델로 전환하거나 할당량이 초기화될 때까지 기다리세요.",
+    "할당량을 모두 사용했습니다. 공급자의 할당량을 확인하거나 모델을 변경하세요.",
   "zcode.error.providerBusiness.3006":
     "현재 모델은 이 플랜에 포함되어 있지 않습니다. 허용된 모델로 전환한 후 다시 시도하세요.",
   "zcode.error.providerBusiness.3002":
@@ -7591,11 +7599,11 @@ const koKR: Record<string, string> = {
   "zcode.error.providerBusiness.3001":
     "요청 매개변수가 올바르지 않습니다. 입력을 확인한 후 다시 시도하세요.",
   "zcode.error.providerBusiness.3008":
-    "시스템이 혼잡합니다. 모델을 전환하거나, Coding Plan 구독으로 전환하거나, 잠시 후 다시 시도하세요.",
+    "공급자가 사용 중입니다. 나중에 다시 시도하거나 모델을 변경하세요.",
   "zcode.error.providerBusiness.3009":
-    "시스템이 혼잡합니다. 모델을 전환하거나, Coding Plan 구독으로 전환하거나, 잠시 후 다시 시도하세요.",
+    "공급자가 사용 중입니다. 나중에 다시 시도하거나 모델을 변경하세요.",
   "zcode.error.providerBusiness.3010":
-    "시스템이 혼잡합니다. 모델을 전환하거나, Coding Plan 구독으로 전환하거나, 잠시 후 다시 시도하세요.",
+    "공급자가 사용 중입니다. 나중에 다시 시도하거나 모델을 변경하세요.",
   "zcode.error.providerBusiness.3102":
     "이 작업이 대기열 맨 앞에 도달했을 때 기기가 오프라인 상태였습니다. 할당량은 반환되었습니다. 기기를 온라인 상태로 유지하고 새 유휴 시간 작업을 만드세요.",
   "zcode.error.providerBusiness.3106":
@@ -7632,7 +7640,7 @@ const koKR: Record<string, string> = {
   "resourceManager.network.empty": "새 네트워크 요청 대기 중…",
   "resourceManager.network.noMatches": "일치하는 요청이 없습니다",
   "resourceManager.storage": "저장 공간",
-  "resourceManager.appUsage": "ZCode",
+  "resourceManager.appUsage": "OpenZWork",
   "resourceManager.systemUsage": "시스템",
   "resourceManager.category.base": "기본 서비스",
   "resourceManager.category.task": "작업 프로세스",

@@ -1,7 +1,8 @@
 /* eslint-disable max-lines -- HTTP、WebSocket 与静态资源路由集中注册，保持同一鉴权顺序。 */
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { readFile, stat } from "node:fs/promises";
-import { hostname } from "node:os";
+import { hostname, networkInterfaces } from "node:os";
 import { resolveServerOsUser } from "@zcode/shared/node";
 import * as nodePath from "node:path";
 import { basename, extname, resolve } from "node:path";
@@ -149,6 +150,7 @@ export interface HttpServerOptions {
   name?: string;
   host?: string;
   authRequired?: boolean;
+  allowUnauthenticatedLan?: boolean;
   authToken?: string;
   spaFallback?: boolean;
   staticRoot?: string;
@@ -187,7 +189,7 @@ function createServerInfo(options: HttpServerOptions): ServerRemoteInfo {
       : {}),
     version: ZCODE_VERSION,
     protocolVersion: SERVER_REMOTE_PROTOCOL_VERSION,
-    authRequired: options.authRequired ?? Boolean(readTrimmedEnv("ZCODE_SERVER_TOKEN")),
+    authRequired: Boolean(options.authToken?.trim()),
     workspaces: resolveServerWorkspaces(options),
     compatibility: ZCODE_COMPATIBILITY_MANIFEST,
     migration: { failedPathCount: options.migrationFailedPathCount ?? 0 },
@@ -243,16 +245,64 @@ function parseCookieHeader(header: string | undefined): Map<string, string> {
   return cookies;
 }
 
+function hostnameKey(value: string): string {
+  return value.toLowerCase().replace(/^\[|\]$/g, "");
+}
+
+function isLoopback(host: string): boolean {
+  return host === "localhost" || host === "::1" || (isIP(host) === 4 && host.startsWith("127."));
+}
+
+/** OW-P054：原生客户端可以不带 Origin；浏览器应通过其实际访问的 Host 和端口进入。 */
+export function createHttpRequestAccess(
+  host: string,
+  authenticated: boolean,
+  allowUnauthenticatedLan: boolean,
+) {
+  const bound = hostnameKey(host);
+  const loopback = isLoopback(bound);
+  if (!loopback && !authenticated && !allowUnauthenticatedLan) {
+    throw new Error(
+      "Set ZCODE_SERVER_AUTH_TOKEN for LAN access, or use zcode --web --no-token explicitly.",
+    );
+  }
+  const trusted = new Set([bound]);
+  if (bound === "0.0.0.0" || bound === "::") {
+    trusted.add(hostnameKey(hostname()));
+    for (const group of Object.values(networkInterfaces())) {
+      for (const address of group ?? []) trusted.add(hostnameKey(address.address));
+    }
+  }
+  return (authority: string | undefined, origin: string | undefined, protocol: string): boolean => {
+    if (!authority || /[\s/@\\?#,]/.test(authority)) return false;
+    try {
+      const target = new URL(protocol + "//" + authority);
+      const name = hostnameKey(target.hostname);
+      if (!authenticated && !isLoopback(name) && !trusted.has(name)) return false;
+      return origin === undefined || origin === target.origin;
+    } catch {
+      return false;
+    }
+  };
+}
+
+function matchesLiteToken(candidate: string | null | undefined, token: string): boolean {
+  if (!candidate) return false;
+  const actual = Buffer.from(candidate);
+  const expected = Buffer.from(token);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
 function hasValidLiteToken(c: Context, token: string): boolean {
   const authorization = c.req.header("authorization");
   if (
     authorization?.startsWith("Bearer ") &&
-    authorization.slice("Bearer ".length).trim() === token
+    matchesLiteToken(authorization.slice("Bearer ".length).trim(), token)
   ) {
     return true;
   }
   const url = new URL(c.req.url);
-  if (url.searchParams.get("token") === token) {
+  if (matchesLiteToken(url.searchParams.get("token"), token)) {
     c.header(
       "Set-Cookie",
       `${zcodeLiteTokenCookieName}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax`,
@@ -263,7 +313,7 @@ function hasValidLiteToken(c: Context, token: string): boolean {
   if (cookie === undefined) return false;
   try {
     // OW-P002：与写 Cookie 时的编码对应，只解码一次，保留 token 中的字面百分号。
-    return decodeURIComponent(cookie) === token;
+    return matchesLiteToken(decodeURIComponent(cookie), token);
   } catch {
     // 畸形 Cookie 按鉴权失败处理，避免 URIError 让请求返回 500。
     return false;
@@ -360,6 +410,17 @@ export function createHttpServer(
   const hostCapabilities = createHostCapabilityStore();
 
   const authToken = options.authToken?.trim();
+  if (options.authRequired && !authToken) throw new Error("Set authToken to require authentication.");
+  const listenHost = options.host?.trim() || "127.0.0.1";
+  // OW-P054：开发代理保留原始 Host。HTTP 和 WS upgrade 共用检查，插件或本机页面无法跨端口借用 Cookie。
+  const acceptsRequest = createHttpRequestAccess(listenHost, Boolean(authToken), options.allowUnauthenticatedLan === true);
+  app.use("*", async (c, next) => {
+    const protocol = c.req.header("x-forwarded-proto") === "https" ? "https:" : "http:";
+    if (!acceptsRequest(c.req.header("host"), c.req.header("origin"), protocol)) {
+      return c.text("Use the Web address printed by OpenZWork.", 403);
+    }
+    await next();
+  });
   if (authToken) {
     app.use("*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
@@ -478,11 +539,11 @@ export function createHttpServer(
     });
   }
 
-  const server = serve({ fetch: app.fetch, hostname: options.host, port }, () => {
+  const server = serve({ fetch: app.fetch, hostname: listenHost, port }, () => {
     const address = server.address();
     const listenPort = typeof address === "object" && address ? address.port : port;
-    const listenHost = options.host?.trim() || "localhost";
-    log(`http://${listenHost}:${listenPort}`);
+    // OW-P045：显示的监听地址须能被标准 URL 解析器读取。
+    log(`http://${isIP(listenHost) === 6 ? `[${listenHost}]` : listenHost}:${listenPort}`);
   });
 
   injectWebSocket(server);

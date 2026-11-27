@@ -154,7 +154,14 @@ jobs:
         run: |
           pnpm --filter @zcode/adapters exec vitest run tests/runner-stream-timing-wire.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
           pnpm --filter @zcode/bootstrap exec vitest run tests/native-conversation-metrics.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
-          pnpm --filter @zcode/core exec vitest run tests/session-history-rewind.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+          pnpm --filter @zcode/core exec vitest run tests/session-history-rewind.test.ts tests/runtime-stream-recovery.test.ts --pool=threads --no-file-parallelism --maxWorkers=1
+
+      - name: Office panel manual refresh regression
+        if: matrix.lane == 'regressions'
+        run: |
+          pnpm --filter @zcode/office-runtime test
+          pnpm --filter @zcode/spreadsheets-plugin build
+          pnpm --filter @zcode/spreadsheets-plugin test:e2e
 
       - name: Workflow child interaction regression
         if: matrix.lane == 'regressions'
@@ -365,15 +372,24 @@ jobs:
         run: node scripts/check-e2e-required-cases.mjs packages/desktop/.e2e-artifacts
 
       - name: Verify project undo and plugin state across restarts
+        id: restart_e2e
         env:
           E2E_PROVIDER_HTTP_MODE: replay
           ZCODE_E2E_HOME_DIR: ${{ runner.temp }}/.e2e-home-desktop-restart
+          ZCODE_E2E_ARTIFACT_DIR: ${{ github.workspace }}/packages/desktop/.e2e-artifacts/desktop-e2e-restarts
         run: >
           pnpm --filter @zcode/desktop exec wdio run wdio.conf.ts
           --spec ./test/e2e/conversation-session/projects/conversation-session-project-management.test.ts
           --spec ./test/e2e/plugins/installation/plugin-management-persistence-source.test.ts
           --spec ./test/e2e/plugins/installation/plugin-management-builtin-inline.test.ts
           --spec ./test/e2e/plugins/marketplace/plugin-management-installed-menu-layout.test.ts
+
+      - name: Verify all restart scenarios completed
+        if: always() && steps.restart_e2e.outcome != 'skipped'
+        run: >
+          node scripts/verify-e2e-summary.mjs
+          --summary packages/desktop/.e2e-artifacts/desktop-e2e-restarts/summary.json
+          --require-file tests/ci/desktop-restart-cases.json
 
       - name: Upload E2E artifacts
         if: always() && steps.hub_e2e.outcome != 'skipped'
@@ -388,7 +404,7 @@ jobs:
   check-results:
     name: checks (${{ matrix.platform }})
     if: always()
-    needs: checks
+    needs: [checks, workflows-hub-e2e]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     strategy:
@@ -401,7 +417,8 @@ jobs:
         shell: bash
         env:
           CHECKS_RESULT: ${{ needs.checks.result }}
-        run: test "$CHECKS_RESULT" = success
+          DESKTOP_RESULT: ${{ needs.workflows-hub-e2e.result }}
+        run: test "$CHECKS_RESULT" = success && test "$DESKTOP_RESULT" = success
 
   # 交互 E2E（云优先验收入口）：真实 Electron + 窗口 Local Host + 内置 CLI、隔离 HOME、
   # 受控回放 fixture。不进 PR 自动门禁（时长），仅 workflow_dispatch 显式触发；spec 与

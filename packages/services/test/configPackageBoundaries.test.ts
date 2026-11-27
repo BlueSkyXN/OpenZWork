@@ -1,4 +1,14 @@
-import { chmod, open, readFile, readdir, stat, writeFile, rename } from "node:fs/promises";
+import {
+  chmod,
+  mkdir,
+  open,
+  readFile,
+  readdir,
+  stat,
+  symlink,
+  writeFile,
+  rename,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
@@ -261,4 +271,21 @@ describe("配置包边界", () => {
       await expect(target.service.applyPreview(id, ready.rows)).rejects.toThrow("expired");
     expect((await target.repo.read()).providers.keys()).toEqual([]);
   });
+});
+
+it("OW-P042：子智能体预检发现别名目录时禁止写入", async () => {
+  const root = await sandbox();
+  const home = join(root, "target");
+  const other = join(root, "separate");
+  await mkdir(join(home, ".openzwork"), { recursive: true });
+  await mkdir(other);
+  await symlink(
+    other,
+    join(home, ".openzwork", "agents"),
+    process.platform === "win32" ? "junction" : "dir",
+  );
+  ownerAt(home);
+  const { createSubagentDataSyncMethods } = await import("../src/data-sync/subagentDataSync.js");
+  expect((await createSubagentDataSyncMethods().checkSyncWriteAccess()).ok).toBe(false);
+  expect(await readdir(other)).toEqual([]);
 });

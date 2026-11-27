@@ -234,6 +234,7 @@ export async function listPlugins(
   // optionSources 要包含已迁进私有文件的敏感键（值仍过滤），否则设置页的 scope 标记与
   // 「清除」按钮会在迁移后消失；所以投影用叠加私有文件后的配置视图。
   const configResult = await resolveZCodePluginConfigWithSecrets({
+    env: context.deps?.env,
     configResult: await createPluginConfigView(
       context,
       params.workspace.workspacePath,
@@ -242,6 +243,7 @@ export async function listPlugins(
     workingDirectory: params.workspace.workspacePath,
   });
   const outcome = await resolveZCodePlugins({
+    env: context.deps?.env,
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,
     workspaceIdentity: params.workspace.workspaceIdentity,
@@ -273,6 +275,7 @@ export async function setPluginEnabled(
   const params = parseParams(zcodePluginsSetEnabledParamsSchema, rawParams);
   abortSignal?.throwIfAborted();
   const result = await setZCodePluginEnabled({
+    env: context.deps?.env,
     abortSignal,
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,
@@ -325,10 +328,12 @@ export async function getPluginsOverview(
   const params = parseParams(zcodePluginsOverviewParamsSchema, rawParams);
   context.deps?.pluginPreparation?.signal.throwIfAborted();
   enrichCachedClaudeMarketplaceIconsForOverview({
+    env: context.deps?.env,
     logger: context.logger,
     workingDirectory: params.workspace.workspacePath,
   });
   const overview = await getZCodePluginsOverview({
+    env: context.deps?.env,
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,
     workspaceIdentity: params.workspace.workspaceIdentity,
@@ -369,6 +374,7 @@ export async function addPluginMarketplace(
 ): Promise<ZCodePluginsMarketplaceMutationResult> {
   const params = parseParams(zcodePluginsMarketplaceAddParamsSchema, rawParams);
   const marketplace = await addZCodePluginMarketplace({
+    env: context.deps?.env,
     abortSignal,
     dryRun: params.dryRun,
     logger: context.logger,
@@ -384,6 +390,7 @@ export async function removePluginMarketplace(
 ): Promise<ZCodePluginsMarketplaceMutationResult> {
   const params = parseParams(zcodePluginsMarketplaceRemoveParamsSchema, rawParams);
   await removeZCodePluginMarketplace({
+    env: context.deps?.env,
     logger: context.logger,
     marketplace: params.marketplace,
     workingDirectory: params.workspace.workspacePath,
@@ -398,6 +405,7 @@ export async function updatePluginMarketplace(
 ): Promise<ZCodePluginsMarketplaceMutationResult> {
   const params = parseParams(zcodePluginsMarketplaceUpdateParamsSchema, rawParams);
   const result = await updateZCodePluginMarketplace({
+    env: context.deps?.env,
     abortSignal,
     logger: context.logger,
     marketplace: params.marketplace,
@@ -416,6 +424,7 @@ export async function installPlugin(
 ): Promise<ZCodePluginsInstallResult> {
   const params = parseParams(zcodePluginsInstallParamsSchema, rawParams);
   const result = await installZCodeMarketplacePlugin({
+    env: context.deps?.env,
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,
     workspaceIdentity: params.workspace.workspaceIdentity,
@@ -441,6 +450,7 @@ export async function uninstallPlugin(
 ): Promise<ZCodePluginsUninstallResult> {
   const params = parseParams(zcodePluginsUninstallParamsSchema, rawParams);
   const removed = await uninstallZCodeMarketplacePlugin({
+    env: context.deps?.env,
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,
     workspaceIdentity: params.workspace.workspaceIdentity,
@@ -463,7 +473,7 @@ export async function updatePlugin(
   rawParams: unknown,
 ): Promise<ZCodePluginsInstallResult> {
   const params = parseParams(zcodePluginsUpdateParamsSchema, rawParams);
-  const pluginStorageRoot = resolvePluginStorageRoot(params.workspace.workspacePath);
+  const pluginStorageRoot = resolvePluginStorageRoot(params.workspace.workspacePath, context.deps?.env);
   // 在同一把写锁内选择待更新记录，避免把等锁期间卸载的插件重新装回去。
   return withPluginStorageLock(pluginStorageRoot, async (lock) => {
     const installed = listInstalledPluginRecords(pluginStorageRoot).filter((record) => {
@@ -480,6 +490,7 @@ export async function updatePlugin(
     const diagnostics: ZCodePluginDiagnostic[] = [];
     for (const record of installed) {
       const result = await installZCodeMarketplacePlugin({
+        env: context.deps?.env,
         pluginStorageRoot: lock.root,
         pluginStorageLock: lock,
         pluginPreparation: context.deps?.pluginPreparation,
@@ -508,6 +519,7 @@ export async function restoreBuiltinPlugin(
 ): Promise<ZCodePluginsRestoreBuiltinResult> {
   const params = parseParams(zcodePluginsRestoreBuiltinParamsSchema, rawParams);
   await restoreBuiltinPluginCore({
+    env: context.deps?.env,
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,
     workspaceIdentity: params.workspace.workspaceIdentity,
@@ -525,6 +537,7 @@ export async function configurePlugin(
 ): Promise<ZCodePluginsConfigureResult> {
   const params = parseParams(zcodePluginsConfigureParamsSchema, rawParams);
   await configureZCodePlugin({
+    env: context.deps?.env,
     pluginPreparation: context.deps?.pluginPreparation,
     pluginDiscovery: context.deps?.pluginDiscovery,
     workspaceIdentity: params.workspace.workspaceIdentity,
@@ -546,6 +559,7 @@ export async function resetPluginConfig(
 ): Promise<ZCodePluginsConfigureResult> {
   const params = parseParams(zcodePluginsResetConfigParamsSchema, rawParams);
   await resetZCodePluginConfig({
+    env: context.deps?.env,
     logger: context.logger,
     pluginId: params.pluginId,
     scope: params.scope,
@@ -560,6 +574,7 @@ export async function validatePlugin(
 ): Promise<ZCodePluginsValidateResult> {
   const params = parseParams(zcodePluginsValidateParamsSchema, rawParams);
   const diagnostics = await validateZCodePlugin({
+    env: context.deps?.env,
     logger: context.logger,
     marketplace: params.marketplace,
     pluginName: params.pluginName,
@@ -584,6 +599,7 @@ export async function describePlugin(
   const params = parseParams(zcodePluginsDescribeParamsSchema, rawParams);
   // 已安装目录、已缓存 manifest 与临时 source 解析都不持锁；只有懒加载 manifest 写入进锁。
   const result = await describeZCodePlugin({
+    env: context.deps?.env,
     logger: context.logger,
     marketplace: params.marketplace,
     pluginName: params.pluginName,
@@ -692,8 +708,8 @@ function toInstalledPluginSummary(input: {
   };
 }
 
-function resolvePluginStorageRoot(workingDirectory: string): string {
-  const config = createConfig({ workingDirectory });
+function resolvePluginStorageRoot(workingDirectory: string, env?: NodeJS.ProcessEnv): string {
+  const config = createConfig({ workingDirectory, env });
   const storageRoot = resolvePath(config.config.storage.dir);
   return getPluginStorageRoot(getCliStorageRoot(storageRoot));
 }

@@ -1,18 +1,16 @@
+import { once } from "node:events";
+import type { Socket } from "node:net";
+import { withDataDirectoryUse } from "@zcode/shared/data-directory";
 import { realpathSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import {
-  prepareServerCredentialFile,
-  prepareServerCredentialStorage,
-  readAssignedCredentialsFile,
-  ZCODE_CREDENTIALS_FILE_ENV,
-} from "@zcode/shared/credential-security";
+import { prepareServerEntryCredentials } from "./stdioServices.js";
 import {
   createServerHostServices,
   createTopicResourcePeers,
   getAppConfigDir,
-  getCredentialsFilePath,
   getZCodeDataRootDir,
+  disposeServiceResourcesAndWait,
 } from "@zcode/services/node";
 import {
   materializeBundledZCodeBuiltinProviderConfig,
@@ -20,34 +18,32 @@ import {
 } from "./bundledZCodeBuiltinProviderConfig.js";
 import { createHttpServer, resolveHttpServerId } from "./http.js";
 
-// OpenZWork(OZ-F011)：独立 Web 入口与 zcode-server-cli 对齐同机凭据隔离：
-// 当共享库已被 Desktop 固定为 OS 来源且未配置外部管理密钥时，原子发布 <dataRoot>/server/credentials/
-// 并写入 ZCODE_CREDENTIALS_FILE，使 Server 服务与拉起的 Agent 子进程继承同一隔离凭据文件。
-export async function prepareEntryHttpCredentials(options?: {
-  env?: NodeJS.ProcessEnv;
-  dataRootDir?: string;
-  sharedFilePath?: string;
-}): Promise<string> {
-  const env = options?.env ?? process.env;
-  const assignedFilePath = readAssignedCredentialsFile(env);
-  if (assignedFilePath) {
-    await prepareServerCredentialStorage({ filePath: assignedFilePath, env });
-    return assignedFilePath;
-  }
-  const dataRootDir = options?.dataRootDir ?? getZCodeDataRootDir();
-  const sharedFilePath = options?.sharedFilePath ?? getCredentialsFilePath();
-  const serverFilePath = resolve(join(dataRootDir, "server", "credentials", "credentials.json"));
-  // OpenZWork(OZ-F011)：dev:web 首次启动时也要准备凭据，只有监听就绪通知依赖发行版父进程。
-  const selectedFilePath = await prepareServerCredentialFile({ sharedFilePath, serverFilePath, env });
-  if (selectedFilePath === serverFilePath) {
-    env[ZCODE_CREDENTIALS_FILE_ENV] = selectedFilePath;
-  }
-  return selectedFilePath;
-}
+export { prepareServerEntryCredentials as prepareEntryHttpCredentials } from "./stdioServices.js";
 
 async function main(): Promise<void> {
   const standalone = process.argv.includes("--prepare-credentials");
-  await prepareEntryHttpCredentials();
+  const supervised = standalone && typeof process.send === "function";
+  const shutdown = new AbortController();
+  const stop = () => shutdown.abort();
+  if (supervised) process.once("disconnect", stop);
+  process.on("SIGTERM", stop);
+  process.on("SIGINT", stop);
+  try {
+    // OZ-C009：独立 Web 会在准备凭据时写根目录，租约必须覆盖准备、监听和关闭。
+    await withDataDirectoryUse(getZCodeDataRootDir(), () => serveHttp(standalone, supervised, shutdown));
+  } finally {
+    process.off("disconnect", stop);
+    process.off("SIGTERM", stop);
+    process.off("SIGINT", stop);
+  }
+}
+
+async function serveHttp(
+  standalone: boolean,
+  supervised: boolean,
+  shutdown: AbortController,
+): Promise<void> {
+  await prepareServerEntryCredentials();
   const zcodeBuiltinProviderConfigFilePath = await materializeBundledZCodeBuiltinProviderConfig({
     environmentConfigRoot: getAppConfigDir(),
     content: readBundledZCodeBuiltinProviderConfig(),
@@ -66,30 +62,46 @@ async function main(): Promise<void> {
       providerProvisioningTargetEnabled: Boolean(authToken),
     });
 
-  const server = createHttpServer(services, port, {
-    serverId,
-    workspaceIdentityMapper,
-    migrationFailedPathCount,
-    virtualProjects: true,
-    topicResourcePeers,
-    ...(host ? { host } : {}),
-    ...(staticRoot ? { staticRoot, spaFallback: true } : {}),
-    ...(authToken ? { authToken, authRequired: true } : {}),
-  });
-  if (standalone && process.send) {
-    // OW-P045：端口归监听进程所有；父进程只在绑定完成后显示地址。
-    const startupError = (error: NodeJS.ErrnoException) => {
-      console.error(error.code === "EADDRINUSE" ? `Port ${port} is in use. Choose another port with --port.` : error.message);
-      process.exit(1);
-    };
-    server.once("error", startupError);
-    server.once("listening", () => {
-      server.off("error", startupError);
-      if (!process.connected) process.exit(0);
-      process.once("disconnect", () => process.exit(0));
-      const address = server.address();
-      if (address && typeof address !== "string") process.send?.({ type: "web-listening", port: address.port });
+  try {
+    const server = createHttpServer(services, port, {
+      serverId,
+      workspaceIdentityMapper,
+      migrationFailedPathCount,
+      virtualProjects: true,
+      topicResourcePeers,
+      ...(host ? { host } : {}),
+      ...(staticRoot ? { staticRoot, spaFallback: true } : {}),
+      // OW-P054：无令牌局域网监听须由发行启动器显式传递用户选择。
+      allowUnauthenticatedLan: standalone && process.argv.includes("--no-token"),
+      ...(authToken ? { authToken, authRequired: true } : {}),
     });
+    const sockets = new Set<Socket>();
+    server.on("connection", (socket: Socket) => {
+      sockets.add(socket);
+      socket.once("close", () => sockets.delete(socket));
+    });
+    try {
+      // OW-P045：端口归监听进程所有；父进程只在绑定完成后显示地址。
+      await once(server, "listening");
+      if (shutdown.signal.aborted) return;
+      if (supervised) {
+        if (!process.connected) return;
+        const address = server.address();
+        if (address && typeof address !== "string") {
+          process.send?.({ type: "web-listening", port: address.port }, (error: Error | null) => {
+            if (error) shutdown.abort();
+          });
+        }
+      }
+      if (!shutdown.signal.aborted) await once(shutdown.signal, "abort");
+    } finally {
+      const closed = new Promise<void>((done) => server.close(() => done()));
+      // HTTP close 会等待已升级的 WebSocket；关闭传输后才能回收对应的服务资源。
+      for (const socket of sockets) socket.destroy();
+      await closed;
+    }
+  } finally {
+    await disposeServiceResourcesAndWait(services);
   }
 }
 
@@ -104,8 +116,13 @@ function isEntryHttpMainModule(): boolean {
 }
 
 if (isEntryHttpMainModule()) {
-  void main().catch((error: unknown) => {
-    console.error("[zcode-server:http] startup failed", error);
-    process.exitCode = 1;
-  });
+  void main().then(
+    () => process.exit(0),
+    (error: NodeJS.ErrnoException) => {
+      console.error("[zcode-server:http] startup failed", error.code === "EADDRINUSE"
+        ? `Port ${process.env.PORT || 3030} is in use. Choose another port with --port.`
+        : error);
+      process.exit(1);
+    },
+  );
 }

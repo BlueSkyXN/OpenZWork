@@ -60,8 +60,8 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         // 将 /ws 和 /api 请求代理到 server（默认 3030 端口）
-        "/ws": { target: "ws://localhost:3030", ws: true },
-        "/api": { target: "http://localhost:3030" },
+        "/ws": { target: "ws://127.0.0.1:3030", ws: true },
+        "/api": { target: "http://127.0.0.1:3030" },
       },
     },
     optimizeDeps: {

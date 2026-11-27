@@ -3,10 +3,19 @@ import { mkdir, readFile, readdir, realpath, rm } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { acquireFileLock, atomicWritePrivateTextFile } from "@zcode/shared/node";
+import { OPENZWORK_DATA_DIR_NAME } from "../productIdentity.js";
 import { BUSINESS_DATA_ENTRIES, DATA_ROOT_RELOCATED_MARKER } from "./contract.js";
 import type { DataDirectoryContract, DataRelocationPlan } from "./contract.js";
 export * from "./contract.js";
 export { localProjectId, projectMemoryDirectoryName } from "./identity.js";
+
+/** Host 下发的业务根优先于 CLI 配置；独立进程未指定时保留其用户配置。 */
+export function resolveEnvironmentStorageRoot(env: NodeJS.ProcessEnv): string | undefined {
+  const storageRoot = env.ZCODE_STORAGE_DIR?.trim();
+  if (storageRoot) return storageRoot;
+  const base = env.ZCODE_DATA_BASE_DIR?.trim();
+  return base ? join(base, OPENZWORK_DATA_DIR_NAME) : undefined;
+}
 
 /** 只转换已复制业务范围内的绝对引用，前缀相似目录、远端 URI 和用户正文均不匹配。 */
 export function relocateDataPath(value: string, plan: DataRelocationPlan): string {
@@ -125,3 +134,16 @@ export const dataDirectory: DataDirectoryContract = {
     }
   },
 };
+
+/** 调用方的操作覆盖完整使用期，包括服务关闭和启动失败后的资源回收。 */
+export async function withDataDirectoryUse<T>(
+  root: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  const release = await dataDirectory.acquireUse(root);
+  try {
+    return await operation();
+  } finally {
+    await release();
+  }
+}

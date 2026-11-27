@@ -5,6 +5,7 @@ import { once } from "node:events";
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { finished } from "node:stream/promises";
 import { test } from "node:test";
 import {
   stagePlatformPty,
@@ -225,15 +226,34 @@ test("Web only advertises the port confirmed by its own child", { timeout: 15000
   const runner = join(root, "bin/zcode.mjs");
   await mkdir(dirname(runner));
   await cp(new URL("../zcode-distribution/runner.mjs", import.meta.url), runner);
-  for (const failure of [true, false]) {
+  for (const { failure, args, lanOptOut, hasToken } of [
+    { failure: true, args: [], lanOptOut: false, hasToken: false },
+    { failure: false, args: [], lanOptOut: false, hasToken: false },
+    { failure: false, args: ["--host", "::1"], lanOptOut: false, hasToken: false },
+    {
+      failure: false,
+      args: ["--host", "2001:db8::2", "--token", "fixture"],
+      lanOptOut: false,
+      hasToken: true,
+    },
+    { failure: false, args: ["--host", "::"], lanOptOut: false, hasToken: true },
+    { failure: false, args: ["--host", "0.0.0.0"], lanOptOut: false, hasToken: true },
+    { failure: false, args: ["--host", "0.0.0.0", "--no-token"], lanOptOut: true, hasToken: false },
+  ]) {
     await write(
       root,
       "server/entry-http.js",
       failure
         ? "process.exit(1)"
-        : "process.send({ type: 'web-listening', port: 48123 }); process.on('disconnect', () => process.exit(0));",
+        : [
+            "import assert from 'node:assert/strict';",
+            "assert.equal(process.argv.includes('--no-token'), " + lanOptOut + ");",
+            "assert.equal(Boolean(process.env.ZCODE_SERVER_AUTH_TOKEN), " + hasToken + ");",
+            "process.send({ type: 'web-listening', port: 48123 });",
+            "process.on('disconnect', () => process.stdout.write('fixture shutdown complete\\n', () => process.exit(0)));",
+          ].join("\n"),
     );
-    const child = spawn(process.execPath, [runner, "--web", "--no-open"], {
+    const child = spawn(process.execPath, [runner, "--web", "--no-open", ...args], {
       cwd: root,
       stdio: ["ignore", "pipe", "pipe", "ipc"],
     });
@@ -243,12 +263,23 @@ test("Web only advertises the port confirmed by its own child", { timeout: 15000
     let stdout = "";
     child.stdout.on("data", (chunk) => {
       stdout += chunk;
-      if (!failure && child.connected && stdout.includes("http://127.0.0.1:48123/"))
-        child.disconnect();
+      if (!failure && child.connected && stdout.includes("Local:")) child.disconnect();
     });
     const [code] = await once(child, "exit");
+    await finished(child.stdout);
     assert.equal(code, failure ? 1 : 0);
     if (failure) assert.doesNotMatch(stdout, /Local:|is running/);
-    else assert.match(stdout, /OpenZWork Web is running/);
+    else {
+      assert.match(stdout, /OpenZWork Web is running/);
+      assert.match(stdout, /fixture shutdown complete/);
+      const url = new URL(stdout.match(/Local:\s+(\S+)/)[1]);
+      const host = args[1];
+      assert.equal(
+        url.hostname,
+        host === "::1" || host === "2001:db8::2" ? `[${host}]` : "127.0.0.1",
+      );
+      assert.equal(url.port, "48123");
+      assert.equal(url.searchParams.has("token"), hasToken);
+    }
   }
 });

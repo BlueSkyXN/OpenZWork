@@ -19,6 +19,8 @@ vi.mock("electron", () => ({
     getAllWindows: () => [],
   },
   ipcMain: {
+    handle: vi.fn(),
+    removeHandler: vi.fn(),
     on: vi.fn(),
     removeListener: vi.fn(),
   },
@@ -201,6 +203,7 @@ describe("loadPreinstalledToolsCatalog (OZ-C015)", () => {
         }),
       });
 
+    const quitBlockers = new Map();
     const exitedChild = createMockChild();
     forkUtilityProcess.mockReturnValueOnce(exitedChild);
     const pendingExitedTarget = Promise.withResolvers<boolean>();
@@ -220,12 +223,20 @@ describe("loadPreinstalledToolsCatalog (OZ-C015)", () => {
         broadcastHub: { register: vi.fn(), unregister: vi.fn() } as never,
         windowHostProcessMap: new Map(),
         hostRunningTaskCountMap: new Map(),
-        hostQuitBlockersMap: new Map(),
+        hostQuitBlockersMap: quitBlockers,
       },
       { attachInitialServicePort: false, registerBroadcast: false },
     );
     expect(exitedChild.postMessage).toHaveBeenCalledTimes(1);
+    // OW-P055：从真实消息分发口接收、解除并在进程退出时撤销阻塞记录。
+    const blockers = [{ kind: "worktree-creating", count: 2 }];
+    exitedChild.emit("message", { type: "quit-blockers-changed", blockers });
+    expect(quitBlockers.get(exitedChild)).toEqual(blockers);
+    exitedChild.emit("message", { type: "quit-blockers-changed", blockers: [] });
+    expect(quitBlockers.has(exitedChild)).toBe(false);
+    exitedChild.emit("message", { type: "quit-blockers-changed", blockers });
     exitedChild.emit("exit", 0);
+    expect(quitBlockers.has(exitedChild)).toBe(false);
     pendingExitedTarget.resolve(true);
     await pendingExitedTarget.promise;
     await Promise.resolve();
@@ -263,4 +274,52 @@ describe("loadPreinstalledToolsCatalog (OZ-C015)", () => {
     });
     activeChild.emit("exit", 0);
   });
+});
+
+it("OW-P056：初始化后连续崩溃只重试三次，退避期间退出取消重启", async () => {
+  const { spawnPreinstalledToolsProcess } = await import("../src/preinstalled-tools/mainBridge.js");
+  vi.useFakeTimers();
+  try {
+    const children: Array<EventEmitter & { postMessage: ReturnType<typeof vi.fn> }> = [];
+    forkUtilityProcess.mockImplementation(() => {
+      const proc = Object.assign(new EventEmitter(), { postMessage: vi.fn(), kill: vi.fn() });
+      children.push(proc);
+      return proc;
+    });
+    const start = () =>
+      spawnPreinstalledToolsProcess({
+        hostProcessLocalEnv: {},
+        configuration: Promise.resolve({} as never),
+        windows: () => [],
+        logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      });
+    const bridge = start();
+    await Promise.resolve();
+    for (const delay of [250, 500, 1000]) {
+      const count = children.length;
+      children.at(-1)!.emit("message", { type: "initialized" });
+      children.at(-1)!.emit("exit", 1);
+      await vi.advanceTimersByTimeAsync(delay - 1);
+      expect(children).toHaveLength(count);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(children).toHaveLength(count + 1);
+    }
+    children.at(-1)!.emit("message", { type: "initialized" });
+    children.at(-1)!.emit("exit", 1);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(children).toHaveLength(4);
+    await expect(bridge.getState()).rejects.toThrow();
+    await bridge.dispose();
+
+    const closing = start();
+    await Promise.resolve();
+    children.at(-1)!.emit("message", { type: "initialized" });
+    children.at(-1)!.emit("exit", 1);
+    await closing.dispose();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(children).toHaveLength(5);
+  } finally {
+    forkUtilityProcess.mockReset();
+    vi.useRealTimers();
+  }
 });

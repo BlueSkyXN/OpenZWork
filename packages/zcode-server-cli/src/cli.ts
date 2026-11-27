@@ -4,9 +4,10 @@ import { access, mkdir, readdir, readFile, rename, rm, writeFile } from "node:fs
 import { fileURLToPath } from "node:url";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { Readable, Writable } from "node:stream";
-import { isPublicZCodeErrorCode, ZCODE_VERSION } from "@zcode/shared";
+import { isPublicZCodeErrorCode, OPENZWORK_DATA_DIR_NAME, ZCODE_VERSION } from "@zcode/shared";
+import { withDataDirectoryUse } from "@zcode/shared/data-directory";
 import { prepareServerCredentialFile } from "@zcode/shared/credential-security";
-import { SourceServerWorkspaceAliasRepo } from "@zcode/services/node";
+import { getZCodeDataRootDir, SourceServerWorkspaceAliasRepo } from "@zcode/services/node";
 import {
   CORE_KILL_TIMEOUT_MS,
   CORE_READY_TIMEOUT_MS,
@@ -147,10 +148,13 @@ export async function runServerCli(
       // Desktop 的在线更新先于 ensureDaemon；候选 Core 启动前也必须准备同一持久密钥。
       // 共享库已被同机 Desktop 固定为系统库时改用 Server 自有库（ZCT-2120452663971209216），
       // Core 启动时按同一事实选择凭据文件。
-      await prepareServerCredentialFile({
-        sharedFilePath: layout.sharedCredentialsFile,
-        serverFilePath: layout.serverCredentialsFile,
-      });
+      // OZ-C009：首启和更新准备凭据早于 Core 启动，按相同业务根准入。
+      await withDataDirectoryUse(join(layout.dataBaseDir, OPENZWORK_DATA_DIR_NAME), () =>
+        prepareServerCredentialFile({
+          sharedFilePath: layout.sharedCredentialsFile,
+          serverFilePath: layout.serverCredentialsFile,
+        }),
+      );
     }
     if (proxyStdioRequested) {
       try {
@@ -173,9 +177,9 @@ export async function runServerCli(
       const workspacePath = pathIndex >= 0 ? parsed.argv[pathIndex + 1] : undefined;
       if (!workspacePath) throw new Error("migrate retry requires --path");
       if (!isAbsolute(workspacePath)) throw new Error("migrate retry --path must be absolute");
-      const result = await (
-        runtimeOptions.workspaceAliasRepo ?? new SourceServerWorkspaceAliasRepo()
-      ).retryFailedWorkspace(workspacePath);
+      const result = await withDataDirectoryUse(getZCodeDataRootDir(), () =>
+        (runtimeOptions.workspaceAliasRepo ?? new SourceServerWorkspaceAliasRepo()).retryFailedWorkspace(workspacePath),
+      );
       stdout(io, json ? { ok: true, ...result } : `Migration recovered: ${result.canonicalKey}`);
       return 0;
     }

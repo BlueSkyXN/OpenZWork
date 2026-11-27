@@ -1,0 +1,29 @@
+{
+  "specs": [
+    {
+      "spec": "test/e2e/conversation-session/projects/conversation-session-project-management.test.ts",
+      "cases": [
+        "PJM01：侧栏更多菜单与设置导航都进入项目管理页，页头说明移除后果",
+        "PJM08：行菜单复用首页编辑器，取消不落盘，保存只修改选中项目",
+        "PJM02：复核建议预选全部候选，取消一项后只剩三项待移除",
+        "PJM03/PJM04：按设备确认批量移除，在结果提示中撤销本批项目并保留会话归属",
+        "PJM05：已移除区默认收起，恢复目录缺失的项目",
+        "PJM06：中英文、明暗主题与窄屏不横向溢出",
+        "PJM07：勾选同时删除数据，输入确认词后删除会话、会话文件与项目行",
+        "PJM09：手机远控从项目管理编辑，共享 Host 保存后桌面同步"
+      ]
+    },
+    {
+      "spec": "test/e2e/plugins/installation/plugin-management-persistence-source.test.ts",
+      "cases": ["重启保留 user-scope 状态，删除来源后保留安装并可重新关联"]
+    },
+    {
+      "spec": "test/e2e/plugins/installation/plugin-management-builtin-inline.test.ts",
+      "cases": ["Builtin 卸载跨重启抑制并干净恢复，inline 在 Personal/Detail/Manage 可见"]
+    },
+    {
+      "spec": "test/e2e/plugins/marketplace/plugin-management-installed-menu-layout.test.ts",
+      "cases": ["Workspace 覆盖下开关外显、菜单只含卸载且保持单行"]
+    }
+  ]
+}

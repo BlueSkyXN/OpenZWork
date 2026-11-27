@@ -158,3 +158,10 @@ describe("AgentRuntime reasoning-only stream recovery", () => {
     },
   );
 });
+
+it("自定义渠道的繁忙错误保留供应商原始原因", async () => {
+  const { isStartPlanBusyStreamRecoveryFailure } = await import("../src/runtime/methods/streaming-recovery.js");
+  for (const providerCode of ["3008", "3009", "3010"]) {
+    expect(isStartPlanBusyStreamRecoveryFailure({ providerCode }, "personal:example")).toBe(false);
+  }
+});

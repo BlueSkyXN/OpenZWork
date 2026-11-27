@@ -521,15 +521,15 @@ function Shell() {
           setPending(null);
           setDoc(null);
           resetDocumentState();
-          setFailure(describeFailure(t, error, target));
+          setFailure(describeFailure(panelStrings(), error, target));
         },
       );
     },
-    [applySnapshot, resetDocumentState, t],
+    [applySnapshot, resetDocumentState],
   );
 
   const filePicker = useNativeFileInput(t, openPath, (error, name) =>
-    setFailure(describeFailure(t, error, name)),
+    setFailure(describeFailure(panelStrings(), error, name)),
   );
   const Viewer = doc ? (VIEWERS[doc.info.kind]?.view ?? null) : null;
   const viewerProps = useMemo(

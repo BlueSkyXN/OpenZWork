@@ -106,7 +106,7 @@ export const SETTINGS_SEARCH_ITEMS = [
     id: "settings.dataBaseDir",
     section: "general",
     description: "settings.dataBaseDirDescription",
-    visibility: "all",
+    visibility: "desktop",
   },
   {
     id: "settings.onboarding",

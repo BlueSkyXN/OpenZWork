@@ -367,14 +367,14 @@ function buildErrorCopyText({
   formatMessage: (id: string, values?: Record<string, string>) => string;
 }) {
   return [
-    formatMessage("feedback.submit.template.section.copyErrorHeading"),
+    formatMessage("chat.error.copy.heading"),
     "",
-    formatMessage("feedback.submit.template.section.errorSummary"),
+    formatMessage("chat.error.copy.summary"),
     message,
     "",
-    traceId ? formatMessage("feedback.submit.template.section.errorTraceId", { traceId }) : null,
+    traceId ? formatMessage("chat.error.copy.traceId", { traceId }) : null,
     detail
-      ? ["", formatMessage("feedback.submit.template.section.errorDetail"), detail].join("\n")
+      ? ["", formatMessage("chat.error.copy.detail"), detail].join("\n")
       : null,
   ]
     .filter((line): line is string => line != null)

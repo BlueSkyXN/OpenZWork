@@ -108,6 +108,8 @@ export function registerStdioProcessLifecycle(options: StdioProcessLifecycleOpti
     log("stdin error, shutting down", error);
     requestShutdown(1);
   });
+  // OZ-C009：初始化期间已收到 EOF 时也须关闭服务，归还本次使用租约。
+  if (stdin.readableEnded) requestShutdown(0);
   for (const signal of TERMINATION_SIGNALS) {
     signalSource.on(signal, () => {
       // SSH 断连在不同 sshd/shell 上可能表现为 stdin EOF，也可能先向前台进程发送信号。

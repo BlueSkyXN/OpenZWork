@@ -20,14 +20,18 @@ import { DatabaseSync, backup } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
 import { dirname, isAbsolute, join, relative, sep, win32 } from "node:path";
 import { homedir } from "node:os";
+import { isManagedWorktreeBucket, resolveManagedWorktreeRoot } from "@zcode/shared/managed-worktree";
 import { readAssignedCredentialsFile } from "@zcode/shared/credential-security";
 import {
   DATA_BASE_DIR_FORBIDDEN_WINDOWS_INSTALL_DIR_ERROR_CODE,
+  DATA_DIRECTORY_MANAGED_WORKTREES,
   OPENZWORK_DATA_DIR_NAME,
   ZCODE_AGENT_RUNTIME,
 } from "@zcode/shared";
 import {
   BUSINESS_DATA_ENTRIES,
+  RELOCATABLE_TRUST_FILES,
+  resolveEnvironmentStorageRoot,
   DATA_ROOT_RELOCATED_MARKER,
   dataDirectory,
   relocateDataPath,
@@ -67,6 +71,10 @@ export function getDataBaseDir(): string {
   // 服务实例会启动后台刷新任务；若每次调用都动态读取 HOME，
   // 测试或宿主切换环境变量后，旧实例可能把数据写到新实例目录。
   return defaultDataBaseDir;
+}
+
+export function getStorageRootOverride(): string | undefined {
+  return _dataBaseDir ? getZCodeDataRootDir() : resolveEnvironmentStorageRoot(process.env);
 }
 
 /** {dataBaseDir}/.openzwork */
@@ -325,12 +333,37 @@ async function resolveMigrationSourceRoot(baseDir: string): Promise<string> {
   }
 }
 
+// OZ-C009：受管工作树的 Git 登记属于原项目。保存计划和重启执行前都检查，列出需处理的目录。
+async function checkManagedWorktreesBeforeMigration(baseDir: string): Promise<void> {
+  const root = resolveManagedWorktreeRoot(baseDir);
+  const occupied: string[] = [];
+  for (const bucket of (await directoryEntries(root)).filter(isManagedWorktreeBucket).sort()) {
+    const bucketPath = join(root, bucket);
+    if (!(await lstat(bucketPath)).isDirectory()) continue;
+    for (const name of (await directoryEntries(bucketPath)).sort()) {
+      const path = join(bucketPath, name);
+      if (!(await lstat(path)).isDirectory()) continue;
+      try {
+        if ((await lstat(join(path, ".git"))).isFile()) occupied.push(path);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+      }
+    }
+  }
+  if (occupied.length) {
+    throw Object.assign(migrationError(DATA_DIRECTORY_MANAGED_WORKTREES,
+      "Resolve these managed Git worktrees before retrying the migration:\n" + occupied.join("\n")),
+      { details: occupied });
+  }
+}
+
 /** 校验实际路径，不能把目标放进源数据树或借符号链接覆盖原目录。 */
 export async function validateDataDirectoryMigration(
   oldBaseDir: string,
   newBaseDir: string,
 ): Promise<void> {
   const source = await resolveMigrationSourceRoot(oldBaseDir);
+  await checkManagedWorktreesBeforeMigration(oldBaseDir);
   const target = join(await realpath(newBaseDir), OPENZWORK_DATA_DIR_NAME);
   const isWithin = (parent: string, child: string) => {
     const rel = relative(parent, child);
@@ -536,7 +569,9 @@ async function copyExclusiveDataDirectory(
     const relocation = plan(stage);
     await relocateHostStorage(relocation);
     const cliEntries = await directoryEntries(join(stage, "cli"));
-    if (cliEntries.length) {
+    // 信任文件由 CLI 转换，但独立存放在 security 中，固定 HOME 配置不计入 CLI 业务数据。
+    const securityEntries = await directoryEntries(join(stage, "security"));
+    if (cliEntries.length || RELOCATABLE_TRUST_FILES.some((name) => securityEntries.includes(name))) {
       if (!options.relocateAgent)
         throw migrationError(
           "DATA_DIRECTORY_AGENT_REQUIRED",

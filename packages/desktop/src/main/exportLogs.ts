@@ -1,19 +1,18 @@
 /* eslint-disable max-lines -- 导出日志流程涉及文件收集、脱敏与打包，集中维护便于排查与一致性 */
-import { constants, createReadStream, createWriteStream } from "node:fs";
+import { constants, createWriteStream } from "node:fs";
 import {
-  access,
-  copyFile,
+  lstat,
   mkdir,
   mkdtemp,
   open,
   readdir,
   realpath,
   rm,
-  stat,
   writeFile,
+  type FileHandle,
 } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join, posix } from "node:path";
+import { basename, dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { ZipFile } from "yazl";
@@ -22,6 +21,8 @@ import { CLI_MEMORY_DIAGNOSTIC_DIRECTORY, CLI_MEMORY_FILE_PATTERN } from "@zcode
 import {
   createFeedbackDiagnosticArchive,
   getAppConfigDir,
+  getCredentialsFilePath,
+  getZCodeDataRootDir,
   getExportLogDir as getDefaultExportLogDir,
   getExportLogStageDir as getDefaultExportLogStageDir,
   getFeedbackLogArchiveDir as getDefaultFeedbackLogArchiveDir,
@@ -35,16 +36,28 @@ function getZCodeDataDir() {
 }
 
 function getZCodeCliDir() {
-  return join(homedir(), OPENZWORK_DATA_DIR_NAME, "cli");
+  return join(getZCodeDataRootDir(), "cli");
 }
 
 function getZCodeCliLogDir() {
   return join(getZCodeCliDir(), "log");
 }
 
+interface LogArchiveSource {
+  anchor: string;
+  directory: string;
+  prefix: string;
+  names?: string | RegExp;
+}
+
 interface LogArchiveFileEntry {
+  applyRetention: boolean;
   absolutePath: string;
   archivePath: string;
+  realPath: string;
+  dev: bigint;
+  ino: bigint;
+  mtimeMs: number;
 }
 
 interface LogArchiveArtifacts {
@@ -135,7 +148,8 @@ const NON_LOG_STATE_ARCHIVE_PATHS = [
   "session-bindings",
   "checkpoints",
 ] as const;
-const SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAMES = new Set(["credentials.json", ".credentials.json"]);
+// OW-P053：文件密钥和重置备份没有可供内容脱敏的字段名，在枚举阶段排除整族文件。
+const SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAME = /^(?:\.?credentials\.json|credential-(?:secret|source)|plugin-secrets\.json)(?:\.|$)/i;
 const EXCLUDED_ARCHIVE_DIRECTORY_NAMES = new Set(["debug"]);
 const DEFAULT_LOG_EXPORT_LOOKBACK_DAYS = 3;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -838,18 +852,10 @@ function detectTextFileEncoding(sample: Buffer): TextFileEncodingInfo | null {
   return { encoding: utf16Encoding, bomLength: 0, bomBytes: EMPTY_BOM };
 }
 
-async function readFileSample(
-  absolutePath: string,
-  sampleBytes = TEXT_DETECTION_SAMPLE_BYTES,
-): Promise<Buffer> {
-  const fileHandle = await open(absolutePath, "r");
-  try {
-    const buffer = Buffer.alloc(sampleBytes);
-    const { bytesRead } = await fileHandle.read(buffer, 0, sampleBytes, 0);
-    return buffer.subarray(0, bytesRead);
-  } finally {
-    await fileHandle.close();
-  }
+async function readFileSample(file: FileHandle): Promise<Buffer> {
+  const buffer = Buffer.alloc(TEXT_DETECTION_SAMPLE_BYTES);
+  const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
+  return buffer.subarray(0, bytesRead);
 }
 
 function encodeTextWithEncoding(text: string, encoding: SupportedTextEncoding): Buffer {
@@ -927,14 +933,15 @@ function createSensitiveContentSanitizerTransform(encoding: SupportedTextEncodin
 }
 
 async function sanitizeTextLogFileToDestination(
-  sourcePath: string,
+  file: FileHandle,
   destinationPath: string,
   encodingInfo: TextFileEncodingInfo,
 ): Promise<void> {
-  const readStream = createReadStream(sourcePath, {
+  const readStream = file.createReadStream({
+    autoClose: false,
     start: encodingInfo.bomLength,
   });
-  const writeStream = createWriteStream(destinationPath);
+  const writeStream = createWriteStream(destinationPath, { flags: "wx", mode: 0o600 });
 
   if (encodingInfo.bomLength > 0) {
     writeStream.write(encodingInfo.bomBytes);
@@ -994,7 +1001,7 @@ function isNonLogStateArchivePath(relativePath: string): boolean {
 function isSensitiveCredentialArchivePath(relativePath: string): boolean {
   const normalizedRelativePath = normalizeArchivePath(relativePath).toLowerCase();
   const fileName = normalizedRelativePath.split("/").at(-1) ?? "";
-  return SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAMES.has(fileName);
+  return SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAME.test(fileName);
 }
 
 function isExcludedDirectoryArchivePath(relativePath: string): boolean {
@@ -1054,10 +1061,10 @@ function shouldApplyLogExportRetention(archivePath: string): boolean {
   return false;
 }
 
-async function filterRecentLogArchiveFiles(
+function filterRecentLogArchiveFiles(
   files: LogArchiveFileEntry[],
   options: CreateLogArchiveArtifactsOptions = {},
-): Promise<LogArchiveFileEntry[]> {
+): LogArchiveFileEntry[] {
   const lookbackDays = options.lookbackDays ?? DEFAULT_LOG_EXPORT_LOOKBACK_DAYS;
   if (lookbackDays <= 0) {
     return files;
@@ -1068,16 +1075,15 @@ async function filterRecentLogArchiveFiles(
   const recentFiles: LogArchiveFileEntry[] = [];
 
   for (const file of files) {
-    if (!shouldApplyLogExportRetention(file.archivePath)) {
+    if (!file.applyRetention) {
       recentFiles.push(file);
       continue;
     }
 
-    const fileStats = await stat(file.absolutePath).catch(() => null);
     // 导出日志过去按目录全量打包，长时间运行后旧 diagnostics 会把日志包放大到数百 MB。
     // 这里仅对“可由时间窗口复现现场”的日志类文件按 mtime 保留近 3 天；
     // settings 等排障配置不参与过滤，避免久未修改但仍影响当前行为的配置丢失。
-    if (fileStats?.isFile() && fileStats.mtimeMs >= cutoffMs) {
+    if (file.mtimeMs >= cutoffMs) {
       recentFiles.push(file);
     }
   }
@@ -1106,174 +1112,139 @@ function logSkippedLogArchiveDirectory(
   });
 }
 
-async function walkLogArchiveDirectory(
-  absoluteDir: string,
-  relativeDir: string,
-  visitedDirs: Set<string>,
-  files: LogArchiveFileEntry[],
-): Promise<void> {
-  const resolvedDir = await realpath(absoluteDir).catch(() => absoluteDir);
-  if (visitedDirs.has(resolvedDir)) {
-    return;
+async function credentialArchiveExclusions(): Promise<(path: string) => boolean> {
+  const paths = new Set<string>();
+  for (const configured of [getCredentialsFilePath(), process.env.ZCODE_CREDENTIAL_SECRET_FILE]) {
+    if (!configured) continue;
+    const path = resolve(configured);
+    const parent = await realpath(dirname(path)).catch(() => undefined);
+    const target = await realpath(path).catch(() => undefined);
+    for (const value of [path, parent && join(parent, basename(path)), target]) {
+      if (value) paths.add(value.toLowerCase());
+    }
   }
-  visitedDirs.add(resolvedDir);
+  return (path) => {
+    const name = basename(path).toLowerCase();
+    const directory = dirname(path).toLowerCase();
+    for (const credential of paths) {
+      if (dirname(credential) !== directory) continue;
+      const key = basename(credential);
+      if (name === key || name.startsWith(key + ".") || name.startsWith("." + key + ".")) return true;
+    }
+    return false;
+  };
+}
 
-  const dirents = await readdir(absoluteDir, { withFileTypes: true }).catch((error: unknown) => {
-    // 用户目录下的日志来源可能包含被系统或第三方 CLI 限制权限的子目录。
-    // 单个目录 scandir 失败时跳过该目录，避免一次 EACCES 把整个日志包导出中断。
-    logSkippedLogArchiveDirectory(absoluteDir, relativeDir, error);
-    return null;
-  });
-  if (!dirents) {
-    return;
+async function collectDiagnosticFiles(
+  sources: LogArchiveSource[],
+): Promise<LogArchiveFileEntry[]> {
+  const files: LogArchiveFileEntry[] = [];
+  const protectedFile = await credentialArchiveExclusions();
+  for (const source of sources) {
+    const anchor = await realpath(source.anchor).catch(() => undefined);
+    if (!anchor) continue;
+    const root = join(anchor, source.directory);
+    const visited = new Set<string>();
+
+    async function visit(path: string, archivePath: string): Promise<void> {
+      if (isExcludedRelativePath(archivePath) || protectedFile(path)) return;
+      const target = await realpath(path).catch(() => undefined);
+      if (!target || protectedFile(target)) return;
+      const rel = relative(root, target);
+      // OW-P053：来源的子目录和链接不能把可导出的物理边界移到其他目录。
+      if (isAbsolute(rel) || rel === ".." || rel.startsWith(".." + sep)) return;
+      const targetArchivePath = posix.join(source.prefix, rel.split(sep).join("/"));
+      if (isExcludedRelativePath(targetArchivePath)) return;
+      if (source.names && target !== path) return;
+      const info = await lstat(target, { bigint: true }).catch(() => undefined);
+      if (!info) return;
+      if (info.isDirectory()) {
+        if ((source.names && rel) || visited.has(target)) return;
+        visited.add(target);
+        if (typeof source.names === "string") {
+          await visit(join(path, source.names), posix.join(archivePath, source.names));
+          return;
+        }
+        const names = await readdir(path).catch((error: unknown) => {
+          logSkippedLogArchiveDirectory(path, archivePath, error);
+          return [];
+        });
+        for (const name of names.sort()) {
+          if (source.names && !source.names.test(name)) continue;
+          await visit(join(path, name), posix.join(archivePath, name));
+        }
+      } else if (rel && info.isFile() && info.nlink === 1n) {
+        files.push({
+          absolutePath: path,
+          archivePath,
+          realPath: target,
+          dev: info.dev,
+          ino: info.ino,
+          mtimeMs: Number(info.mtimeMs),
+          applyRetention: shouldApplyLogExportRetention(archivePath) || shouldApplyLogExportRetention(targetArchivePath),
+        });
+      }
+    }
+
+    await visit(root, source.prefix);
   }
-  dirents.sort((left, right) => left.name.localeCompare(right.name));
+  return files.sort((a, b) => a.archivePath.localeCompare(b.archivePath));
+}
 
-  for (const dirent of dirents) {
-    const archivePath = relativeDir ? posix.join(relativeDir, dirent.name) : dirent.name;
-    if (isExcludedRelativePath(archivePath)) {
-      continue;
+/** OW-P053：文件轮转、改名或换链后跳过旧清单项，采样和后续读取共用此句柄。 */
+async function openArchiveFile(
+  file: LogArchiveFileEntry,
+  protectedFile: (path: string) => boolean,
+): Promise<FileHandle> {
+  const target = await realpath(file.absolutePath);
+  if (target !== file.realPath || protectedFile(target) || protectedFile(file.absolutePath)) {
+    throw new Error("Log source changed before export");
+  }
+  const handle = await open(
+    target,
+    constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0) | (constants.O_NONBLOCK ?? 0),
+  );
+  try {
+    const info = await handle.stat({ bigint: true });
+    if (
+      !info.isFile() || info.nlink !== 1n ||
+      info.dev !== file.dev || info.ino !== file.ino ||
+      (await realpath(file.absolutePath)) !== target
+    ) {
+      throw new Error("Log source changed before export");
     }
-
-    const absolutePath = join(absoluteDir, dirent.name);
-    if (dirent.isDirectory()) {
-      await walkLogArchiveDirectory(absolutePath, archivePath, visitedDirs, files);
-      continue;
-    }
-
-    if (dirent.isFile()) {
-      files.push({ absolutePath, archivePath });
-      continue;
-    }
-
-    if (!dirent.isSymbolicLink()) {
-      continue;
-    }
-
-    const targetStats = await stat(absolutePath).catch(() => null);
-    if (!targetStats) {
-      continue;
-    }
-
-    // 日志目录里存在 provider 共享资源的软链入口。
-    // 这里按目标类型处理并配合 realpath 去重，避免递归跟随时把同一份内容重复打进包，甚至形成循环遍历。
-    if (targetStats.isDirectory()) {
-      await walkLogArchiveDirectory(absolutePath, archivePath, visitedDirs, files);
-      continue;
-    }
-
-    if (targetStats.isFile()) {
-      files.push({ absolutePath, archivePath });
-    }
+    return handle;
+  } catch (error) {
+    await handle.close();
+    throw error;
   }
 }
 
-async function collectLogArchiveFilesFromDirectory(
-  absoluteDir: string,
-  relativeDir: string,
-  visitedDirs: Set<string>,
-  files: LogArchiveFileEntry[],
-): Promise<void> {
-  const directoryStats = await stat(absoluteDir).catch(() => null);
-  if (!directoryStats?.isDirectory()) {
-    return;
-  }
-
-  await walkLogArchiveDirectory(absoluteDir, relativeDir, visitedDirs, files);
-}
-
-async function collectLogArchiveFile(
-  absolutePath: string,
-  archivePath: string,
-  files: LogArchiveFileEntry[],
-): Promise<void> {
-  if (isExcludedRelativePath(archivePath)) {
-    return;
-  }
-  const fileStats = await stat(absolutePath).catch(() => null);
-  if (!fileStats?.isFile()) {
-    return;
-  }
-  files.push({ absolutePath, archivePath });
-}
-
-// 上游 v3.18.1 新增：按文件名谓词收集目录（memory-diagnostics 采集用）；
-// 依赖下方 collectLogArchiveFile，与上游同名同语义。
-async function collectLogArchiveFilesByName(
-  absoluteDir: string,
-  relativeDir: string,
-  isCollectableFileName: (fileName: string) => boolean,
-  files: LogArchiveFileEntry[],
-): Promise<void> {
-  const dirents = await readdir(absoluteDir, { withFileTypes: true }).catch(() => null);
-  if (!dirents) {
-    return;
-  }
-  dirents.sort((left, right) => left.name.localeCompare(right.name));
-  for (const dirent of dirents) {
-    if (!dirent.isFile() || !isCollectableFileName(dirent.name)) {
-      continue;
-    }
-    await collectLogArchiveFile(
-      join(absoluteDir, dirent.name),
-      posix.join(relativeDir, dirent.name),
-      files,
-    );
-  }
+function mainLogSource(sourceDir: string): LogArchiveSource {
+  const path = resolve(sourceDir);
+  return { anchor: dirname(path), directory: basename(path), prefix: "" };
 }
 
 export async function collectLogArchiveFiles(sourceDir: string): Promise<LogArchiveFileEntry[]> {
-  const files: LogArchiveFileEntry[] = [];
-  const visitedDirs = new Set<string>();
-  await collectLogArchiveFilesFromDirectory(sourceDir, "", visitedDirs, files);
-  files.sort((left, right) => left.archivePath.localeCompare(right.archivePath));
-  return files;
+  return collectDiagnosticFiles([mainLogSource(sourceDir)]);
 }
 
 export async function createLogArchiveArtifacts(
   sourceDir: string,
   options: CreateLogArchiveArtifactsOptions = {},
 ): Promise<LogArchiveArtifacts> {
-  const files: LogArchiveFileEntry[] = [];
-  const visitedDirs = new Set<string>();
-
-  await collectLogArchiveFilesFromDirectory(sourceDir, "", visitedDirs, files);
-
-  const zcodeCliLogDir = getZCodeCliLogDir();
-  // GLM / zcode-cli 的运行日志写在 ~/.openzwork/cli/log，不在应用主数据目录 ~/.openzwork/v2 下。
-  // 如果导出日志只扫描 v2，定位 agent CLI 启动、协议或崩溃问题时会缺少最关键的原生侧日志。
-  await collectLogArchiveFilesFromDirectory(
-    zcodeCliLogDir,
-    posix.join(OPENZWORK_DATA_DIR_NAME, "cli", "log"),
-    visitedDirs,
-    files,
-  );
-
-  const zcodeCliDir = getZCodeCliDir();
-  await collectLogArchiveFilesByName(
-    join(zcodeCliDir, CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
-    // OpenZWork（WP-03）：归档内路径标签与实际数据根 .openzwork 一致，避免误导排查。
-    posix.join(OPENZWORK_DATA_DIR_NAME, "cli", CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
-    (name: string) => CLI_MEMORY_FILE_PATTERN.test(name),
-    files,
-  );
-  // 排查 agent CLI 问题还需要它的运行配置与模型 IO 轨迹。
-  // config.json 是当前生效配置；rollout 是 model-io 调用轨迹，
-  // 二者都不在 ~/.openzwork/cli/log 下，需要额外收集才能完整还原现场。
-  await collectLogArchiveFile(
-    join(zcodeCliDir, "config.json"),
-    posix.join(OPENZWORK_DATA_DIR_NAME, "cli", "config.json"),
-    files,
-  );
-  await collectLogArchiveFilesFromDirectory(
-    join(zcodeCliDir, "rollout"),
-    posix.join(OPENZWORK_DATA_DIR_NAME, "cli", "rollout"),
-    visitedDirs,
-    files,
-  );
-
-  const recentFiles = await filterRecentLogArchiveFiles(files, options);
-  recentFiles.sort((left, right) => left.archivePath.localeCompare(right.archivePath));
+  // OW-P053：业务根与固定 HOME 分别授权；固定 HOME 仅收集指定的 CLI 配置。
+  const anchor = getZCodeDataRootDir();
+  const prefix = posix.join(OPENZWORK_DATA_DIR_NAME, "cli");
+  const files = await collectDiagnosticFiles([
+    mainLogSource(sourceDir),
+    { anchor, directory: "cli/log", prefix: posix.join(prefix, "log") },
+    { anchor, directory: join("cli", CLI_MEMORY_DIAGNOSTIC_DIRECTORY),
+      prefix: posix.join(prefix, CLI_MEMORY_DIAGNOSTIC_DIRECTORY), names: CLI_MEMORY_FILE_PATTERN },
+    { anchor: homedir(), directory: join(OPENZWORK_DATA_DIR_NAME, "cli"), prefix, names: "config.json" },
+    { anchor, directory: "cli/rollout", prefix: posix.join(prefix, "rollout") },
+  ]);
+  const recentFiles = filterRecentLogArchiveFiles(files, options);
 
   return {
     files: recentFiles,
@@ -1287,69 +1258,31 @@ async function copyLogArchiveFilesToDirectory(
 ): Promise<LogArchiveSkippedFileEntry[]> {
   const skippedFiles: LogArchiveSkippedFileEntry[] = [];
 
+  const protectedFile = await credentialArchiveExclusions();
   for (const file of files) {
-    const destinationPath = join(outputPath, ...file.archivePath.split("/"));
-    await mkdir(dirname(destinationPath), { recursive: true });
-
-    const sourceStats = await stat(file.absolutePath).catch((error: unknown) => {
+    const handle = await openArchiveFile(file, protectedFile).catch((error: unknown) => {
       skippedFiles.push({
         absolutePath: file.absolutePath,
         archivePath: file.archivePath,
         error: formatErrorMessage(error),
       });
-      return null;
+      return undefined;
     });
-    if (!sourceStats?.isFile()) {
-      continue;
-    }
-
-    const sourceReadable = await access(file.absolutePath, constants.R_OK)
-      .then(() => true)
-      .catch((error: unknown) => {
-        skippedFiles.push({
-          absolutePath: file.absolutePath,
-          archivePath: file.archivePath,
-          error: formatErrorMessage(error),
-        });
-        return false;
-      });
-    if (!sourceReadable) {
-      continue;
-    }
-
+    if (!handle) continue;
     try {
-      // 这里改为“采样识别编码 + 流式脱敏”，避免全量 readFile 带来的大文件内存峰值。
-      // 同时显式支持 UTF-16 文本（含 BOM/无 BOM 常见形态），防止被误判成二进制后原样泄露敏感字段。
-      const sourceSample = await readFileSample(file.absolutePath);
-      const textEncodingInfo = detectTextFileEncoding(sourceSample);
-      if (!textEncodingInfo) {
-        await copyFile(file.absolutePath, destinationPath);
+      const destinationPath = join(outputPath, ...file.archivePath.split("/"));
+      await mkdir(dirname(destinationPath), { recursive: true, mode: 0o700 });
+      const encoding = detectTextFileEncoding(await readFileSample(handle));
+      if (encoding) {
+        await sanitizeTextLogFileToDestination(handle, destinationPath, encoding);
       } else {
-        await sanitizeTextLogFileToDestination(
-          file.absolutePath,
-          destinationPath,
-          textEncodingInfo,
+        await pipeline(
+          handle.createReadStream({ start: 0, autoClose: false }),
+          createWriteStream(destinationPath, { flags: "wx", mode: 0o600 }),
         );
       }
-    } catch (error) {
-      const sourceStatsAfterFailure = await stat(file.absolutePath).catch(() => null);
-      const sourceReadableAfterFailure = sourceStatsAfterFailure?.isFile()
-        ? await access(file.absolutePath, constants.R_OK)
-            .then(() => true)
-            .catch(() => false)
-        : false;
-      // telemetry/agent 日志文件可能在“扫描完待导出列表”之后被后台轮转、删除或改权限，
-      // 软链目标也可能在这段窗口里失效。复制失败后再核一次源文件可读性；
-      // 如果源头已经不可读，就把它当成坏文件跳过，避免单个 ENOENT/EACCES 让导出整体失败。
-      if (!sourceReadableAfterFailure) {
-        skippedFiles.push({
-          absolutePath: file.absolutePath,
-          archivePath: file.archivePath,
-          error: formatErrorMessage(error),
-        });
-        continue;
-      }
-      throw error;
+    } finally {
+      await handle.close();
     }
   }
 
@@ -1373,23 +1306,28 @@ export async function writeLogArchiveZip(
   options: WriteLogArchiveZipOptions = {},
 ): Promise<void> {
   const stageRootDir = options.stageRootDir ?? getDefaultExportLogStageDir();
-  await mkdir(stageRootDir, { recursive: true });
+  await mkdir(stageRootDir, { recursive: true, mode: 0o700 });
   const stagingDir = await mkdtemp(join(stageRootDir, "stage-"));
   try {
-    // yazl.addFile 内部会再次对源路径执行 fs.stat/createReadStream。
-    // 对于软链目标或正在被轮转的 telemetry 文件，这一步仍然可能异步抛错并触发未监听的 error 事件。
-    // 这里先把可读文件稳定复制到临时目录，再从临时目录压缩，保证 zip 阶段只面对我们自己控制的常规文件。
+    // OW-P053：先脱敏到私有目录，压缩时逐个打开已核验的暂存文件。
     await writeLogArchiveDirectory(stagingDir, artifacts);
 
     const zipFile = new ZipFile();
     const stageFiles = await collectLogArchiveFiles(stagingDir);
-    const outputStream = createWriteStream(outputPath);
+    const protectedFile = await credentialArchiveExclusions();
+    const outputStream = createWriteStream(outputPath, { flags: "wx", mode: 0o600 });
     zipFile.once("error", (error) => {
       outputStream.destroy(error instanceof Error ? error : new Error(String(error)));
     });
 
     for (const file of stageFiles) {
-      zipFile.addFile(file.absolutePath, file.archivePath);
+      zipFile.addReadStreamLazy(file.archivePath, { mtime: new Date(file.mtimeMs), mode: 0o100600 }, (ready) => {
+        void openArchiveFile(file, protectedFile).then((handle) => {
+          const stream = handle.createReadStream();
+          stream.once("error", (error) => zipFile.emit("error", error));
+          ready(null, stream);
+        }).catch((error: unknown) => zipFile.emit("error", error));
+      });
     }
 
     const writePromise = pipeline(zipFile.outputStream, outputStream);
@@ -1404,7 +1342,7 @@ export async function writeLogArchiveDirectory(
   outputPath: string,
   artifacts: LogArchiveArtifacts,
 ): Promise<void> {
-  await mkdir(outputPath, { recursive: true });
+  await mkdir(outputPath, { recursive: true, mode: 0o700 });
   const skippedFiles = await copyLogArchiveFilesToDirectory(outputPath, artifacts.files);
   logSkippedLogArchiveFiles(skippedFiles);
 
@@ -1426,7 +1364,7 @@ export async function createFeedbackLogArchiveFromExportLogs(
       { directory: join(sourceDir, "logs"), archivePrefix: "logs" },
       { directory: getZCodeCliLogDir(), archivePrefix: OPENZWORK_DATA_DIR_NAME + "/cli/log" },
       {
-        directory: getZCodeCliDir(),
+        directory: join(homedir(), OPENZWORK_DATA_DIR_NAME, "cli"),
         archivePrefix: OPENZWORK_DATA_DIR_NAME + "/cli",
         includeFileNames: ["config.json"],
         onlyCurrentDay: false,
@@ -1461,7 +1399,7 @@ export async function exportLogs(
     const timestamp = formatTimestamp(now());
     const exportBaseName = `zcode-logs-${timestamp}`;
     const outputRootDir = getOutputRootDir();
-    await mkdir(outputRootDir, { recursive: true });
+    await mkdir(outputRootDir, { recursive: true, mode: 0o700 });
     const outputDir = await mkdtemp(join(outputRootDir, `${exportBaseName}-`));
     const zipPath = join(outputDir, `${exportBaseName}.zip`);
     const directoryPath = join(outputDir, exportBaseName);

@@ -2,6 +2,14 @@
 import { desktopMenuMessages } from "@zcode/shared";
 
 const zhCN: Record<string, string> = {
+  "chat.error.copy.heading": "OpenZWork 错误信息",
+  "chat.error.copy.summary": "错误摘要",
+  "chat.error.copy.traceId": "追踪号：{traceId}",
+  "chat.error.copy.detail": "详细信息",
+  "settings.systemPrompt.hostUnavailable": "请在控制端或连接其本地工作区后编辑系统提示词。",
+  "zcode.error.providerBusiness.3007": "供应商拒绝了本次安全校验，请检查请求或联系服务提供方。",
+  "settings.dataBaseDirManagedWorktrees": "请先处理以下受管 Git 工作树，再重试迁移。",
+  "settings.plugins.marketplace.recommendTitle": "推荐",
   "preinstalledTools.purpose.python": "用于运行文档插件的脚本，并提供表格、Word、PDF 处理库",
   "preinstalledTools.purpose.qpdf": "用于 PDF 拆分、合并、加密和修复",
   "preinstalledTools.purpose.pandoc": "用于读取 Word 文档的内容",
@@ -7544,14 +7552,14 @@ const zhCN: Record<string, string> = {
     "Claude Code 未知命令 {command}（参数：{args}）。请确认命令名称，或切换到支持该命令的 Agent/技能后重试。",
   "zcode.error.providerBusiness.1006": "登录状态已失效，请重新登录后再试。",
   "zcode.error.providerBusiness.1005":
-    "今日免费计划额度已用完。请切换到 Coding Plan 订阅、更换模型，或等待额度恢复。",
+    "当前配额已用完，请检查供应商额度或切换模型。",
   "zcode.error.providerBusiness.3006": "当前模型不在可用范围内，请切换到允许的模型后重试。",
   "zcode.error.providerBusiness.3002": "请求过于频繁，请稍后重试。",
   "zcode.error.providerBusiness.3001": "请求参数错误，请检查输入后重试。",
   // 净化保留：并发上限沿用本仓文案（不带 Coding Plan 引导）；3102/3106 闲时词条不并入。
-  "zcode.error.providerBusiness.3008": "当前系统繁忙，请切换模型、升级账户，或稍后再试。",
-  "zcode.error.providerBusiness.3009": "当前系统繁忙，请切换模型、升级账户，或稍后再试。",
-  "zcode.error.providerBusiness.3010": "当前系统繁忙，请切换模型、升级账户，或稍后再试。",
+  "zcode.error.providerBusiness.3008": "供应商繁忙，请稍后重试或切换模型。",
+  "zcode.error.providerBusiness.3009": "供应商繁忙，请稍后重试或切换模型。",
+  "zcode.error.providerBusiness.3010": "供应商繁忙，请稍后重试或切换模型。",
   "zcode.error.modelSuspiciousEmpty": "模型未返回任何内容。",
   "zcode.error.providerBusiness.2007": "上游服务暂时不可用，请稍后重试。",
   "zcode.error.providerBusiness.429": "请求过于频繁，请稍后重试。",

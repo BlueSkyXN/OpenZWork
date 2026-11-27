@@ -828,6 +828,12 @@ export default {
       filter: ["**/*", "!**/*.map"],
     },
     {
+      // OZ-F011：extraResources 从 glm 根复制时会跳过顶层 node_modules。
+      from: `bundled-agents/${targetPlatform.key}/glm/node_modules`,
+      to: "glm/node_modules",
+      filter: ["@napi-rs/keyring*/**/*", "!**/*.map"],
+    },
+    {
       // agent shell 之前完全依赖宿主系统 PATH，GUI 启动时经常拿不到用户自己装的 rg。
       // 这里把 ripgrep 作为桌面端内置 runtime tool 打进 resources/tools，
       // 后续 host/server 把该目录追加到 PATH；用户版本优先，缺失时再由随包 rg 兜底。

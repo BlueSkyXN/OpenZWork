@@ -1,9 +1,17 @@
+import { join, resolve } from "node:path";
 import {
   createLocalServices,
+  getZCodeDataRootDir,
   getCredentialsFilePath,
   type ZCodeAgentCommandResolver,
 } from "@zcode/services/node";
-import { createServerCredentialCipher } from "@zcode/shared/credential-security";
+import {
+  createServerCredentialCipher,
+  prepareServerCredentialFile,
+  prepareServerCredentialStorage,
+  readAssignedCredentialsFile,
+  ZCODE_CREDENTIALS_FILE_ENV,
+} from "@zcode/shared/credential-security";
 import type { IChannel } from "@zcode/rpc";
 import {
   parseServiceAuthorityMode,
@@ -11,6 +19,35 @@ import {
   ZCODE_REMOTE_NO_PROXY_ENV_KEY,
   ZCODE_REMOTE_RUNTIME_NETWORK_AUTHORITY_ENV_KEY,
 } from "@zcode/shared";
+
+// OpenZWork(OZ-F011)：Web 与 stdio 在创建服务前完成同机凭据隔离：
+// 当共享库已被 Desktop 固定为 OS 来源且未配置外部管理密钥时，原子发布 <dataRoot>/server/credentials/
+// 并写入 ZCODE_CREDENTIALS_FILE，使 Server 服务与拉起的 Agent 子进程继承同一隔离凭据文件。
+export async function prepareServerEntryCredentials(options?: {
+  env?: NodeJS.ProcessEnv;
+  dataRootDir?: string;
+  sharedFilePath?: string;
+}): Promise<string> {
+  const env = options?.env ?? process.env;
+  const assignedFilePath = readAssignedCredentialsFile(env);
+  if (assignedFilePath) {
+    await prepareServerCredentialStorage({ filePath: assignedFilePath, env });
+    return assignedFilePath;
+  }
+  const dataRootDir = options?.dataRootDir ?? getZCodeDataRootDir();
+  const sharedFilePath = options?.sharedFilePath ?? getCredentialsFilePath();
+  const serverFilePath = resolve(join(dataRootDir, "server", "credentials", "credentials.json"));
+  // OpenZWork(OZ-F011)：dev:web 首次启动时也要准备凭据，只有监听就绪通知依赖发行版父进程。
+  const selectedFilePath = await prepareServerCredentialFile({
+    sharedFilePath,
+    serverFilePath,
+    env,
+  });
+  if (selectedFilePath === serverFilePath) {
+    env[ZCODE_CREDENTIALS_FILE_ENV] = selectedFilePath;
+  }
+  return selectedFilePath;
+}
 
 export interface CreateStdioServicesOptions {
   topicResourceRelayChannel?: () => IChannel;

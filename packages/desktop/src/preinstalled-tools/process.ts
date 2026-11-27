@@ -1,4 +1,5 @@
 import { dirname } from "node:path";
+import { installHostBrokenPipeGuard } from "../host/hostBrokenPipeGuard.js";
 import {
   mainToPreinstalledToolsSchema,
   type MainToPreinstalledToolsMessage,
@@ -11,6 +12,9 @@ import {
   setDataBaseDir,
 } from "@zcode/services/node";
 import { PreinstalledToolsCoordinator } from "@desktop/preinstalled-tools/coordinator.js";
+
+// OW-P039：独立 UtilityProcess 与 Host 一样可能在输出管道关闭后继续写日志。
+installHostBrokenPipeGuard();
 
 declare const __ZCODE_PREINSTALL_TEST_BUILD__: boolean;
 

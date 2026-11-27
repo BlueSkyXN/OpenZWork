@@ -272,7 +272,7 @@ test("Core lanes retain independent prerequisites and a fail-closed named gate",
   assert.equal(upload.with.name, "core-tests-${{ matrix.platform }}");
   const gate = ci.jobs["check-results"];
   assert.equal(gate.name, "checks (${{ matrix.platform }})");
-  assert.equal(gate.needs, "checks");
+  assert.deepEqual(gate.needs, ["checks", "workflows-hub-e2e"]);
   assert.equal(gate.if, "always()");
   assert.equal(gate["runs-on"], "ubuntu-latest");
   assert.deepEqual(gate.strategy.matrix.platform, checks.strategy.matrix.platform);
@@ -280,12 +280,13 @@ test("Core lanes retain independent prerequisites and a fail-closed named gate",
   const step = gate.steps[0];
   assert.equal(step.env.CHECKS_RESULT, "${{ needs.checks.result }}");
   assert.equal(step.shell, "bash");
-  assert.equal(step.run, 'test "$CHECKS_RESULT" = success');
+  assert.equal(step.env.DESKTOP_RESULT, "${{ needs.workflows-hub-e2e.result }}");
+  assert.equal(step.run, 'test "$CHECKS_RESULT" = success && test "$DESKTOP_RESULT" = success');
   if (process.platform !== "win32") {
     const exec = promisify(execFile);
     for (const status of ["success", "failure", "skipped", "cancelled", ""]) {
       const run = exec("bash", ["-e", "-c", step.run], {
-        env: { ...process.env, CHECKS_RESULT: status },
+        env: { ...process.env, CHECKS_RESULT: status, DESKTOP_RESULT: "success" },
       });
       if (status === "success") await run;
       else await assert.rejects(run, { code: 1 });
@@ -295,4 +296,29 @@ test("Core lanes retain independent prerequisites and a fail-closed named gate",
     assert.equal(job["continue-on-error"], undefined);
     for (const step of job.steps) assert.equal(step["continue-on-error"], undefined);
   }
+});
+
+test("OZ-C016 Office 回归 lane 构建并运行实际表格面板回放", async () => {
+  const ci = await workflow("ci.yml");
+  const step = ci.jobs.checks.steps.find(
+    (item) => item.name === "Office panel manual refresh regression",
+  );
+  assert.ok(step);
+  assert.equal(step.if, "matrix.lane == 'regressions'");
+  assert.ok(!step["continue-on-error"]);
+  assert.deepEqual(
+    step.run
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => line.trim()),
+    [
+      "pnpm --filter @zcode/office-runtime test",
+      "pnpm --filter @zcode/spreadsheets-plugin build",
+      "pnpm --filter @zcode/spreadsheets-plugin test:e2e",
+    ],
+  );
+  const plugin = JSON.parse(
+    await readFile(join(root, "apps/zcode-cli/packages/spreadsheets-plugin/package.json"), "utf8"),
+  );
+  assert.equal(plugin.scripts["test:e2e"], "node ../office-runtime/scripts/e2e.mjs");
 });

@@ -9,12 +9,13 @@ const state = vi.hoisted(() => ({
   },
   getSystemPromptCatalog: vi.fn(async () => ({ version: 1, sections: [] })),
 }));
-vi.mock("@/hooks/useServices.js", () => ({
-  useServices: () => ({
+vi.mock("@/hooks/useServices.js", () => {
+  const services = {
     zcodeAgentService: { getSystemPromptCatalog: state.getSystemPromptCatalog },
     settingService: { get: vi.fn() },
-  }),
-}));
+  };
+  return { useServices: () => services };
+});
 vi.mock("@/hooks/useSettingService.js", () => ({
   useSettings: () => ({ ...state.snapshot, update: vi.fn(), refresh: vi.fn() }),
 }));
@@ -32,4 +33,10 @@ describe("prompt settings loading boundary", () => {
     rerender();
     expect(result.current.error).toBeNull();
   });
+});
+
+it("目录服务未连接时显示可重试错误", async () => {
+  state.getSystemPromptCatalog.mockResolvedValueOnce(undefined as never);
+  const { result } = renderHook(() => useSystemPromptSettings());
+  await vi.waitFor(() => expect(result.current.error).toBeTruthy());
 });

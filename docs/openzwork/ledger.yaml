@@ -311,6 +311,8 @@ entries:
       - scripts/test/openzwork-cli-distribution.test.mjs
       - packages/desktop/src/renderer/env.d.ts
     hooks:
+      - packages/server/src/stdioServices.ts
+      - packages/server/src/entry-stdio.ts
       - package.json
       - README.md
       - README.en.md
@@ -353,6 +355,7 @@ entries:
       - host-e2e-attachment-probe
       - pane-runtime-identity-e2e
     paths:
+      - tests/ci/desktop-restart-cases.json
       - .github/workflows/ci.yml
       - .github/workflows/extended-checks.yml
       - scripts/merge-full-suite-reports.mjs
@@ -563,6 +566,7 @@ entries:
       - packages/ui/src/settings/model-provider-section/ProviderLogo.tsx
       - packages/ui/src/settings/model-provider-section/ProviderTemplatePicker.tsx
       - apps/zcode-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts
+      - apps/zcode-cli/packages/bootstrap/src/app/process-provider-registry-runtime.ts
       - apps/zcode-cli/packages/adapters/src/model/runner.ts
       - apps/zcode-cli/packages/adapters/src/model/model-execution.ts
     tests:
@@ -662,6 +666,11 @@ entries:
       - cli-storage-relocation
       - host-storage-relocation
     hooks:
+      - packages/shared/src/settings-errors.ts
+      - packages/services/src/storage/domain/storageCatalog.ts
+      - packages/services/src/subagents/subagentStorage.ts
+      - packages/services/src/hooks/hooksService.ts
+      - packages/ui/src/settings/DataBaseDirControl.tsx
       - apps/zcode-cli/packages/cli/src/main.ts
       - packages/shared/src/credential-security/contract.ts
       - packages/shared/src/credential-security/systemCredentialCipher.ts
@@ -670,7 +679,15 @@ entries:
       - packages/services/src/startup-storage/index.ts
       - packages/desktop/src/main/index.ts
       - packages/desktop/src/main/desktopDataBaseDirBootstrap.ts
+      - packages/server/src/entry-http.ts
+      - packages/server/src/entry-stdio.ts
+      - packages/server/src/stdio-lifecycle.ts
+      - scripts/zcode-distribution/runner.mjs
+      - packages/zcode-server-cli/src/cli.ts
+      - packages/zcode-server-cli/src/server-core/core.ts
     tests:
+      - packages/server/test/entryHttpCredentials.test.ts
+      - scripts/test/openzwork-cli-distribution.test.mjs
       - packages/services/test/dataDirectoryMigration.test.ts
       - packages/services/test/dataDirectoryTrueMigration.test.ts
       - packages/desktop/test/credentialMigrationDataRootShare.test.ts
@@ -787,6 +804,7 @@ entries:
       - docs/specs/plugin-marketplace-sources-openzwork.md
     hooks:
       - packages/shared/src/plugin-marketplaces.ts
+      - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
       - apps/zcode-cli/packages/bootstrap/src/plugins.ts
       - apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
       - packages/ui/src/lib/pluginIconSource.ts
@@ -853,6 +871,7 @@ entries:
       - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
       - apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs
     tests:
+      - tests/ci/core-scope.test.mjs
       - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
       - apps/zcode-cli/packages/office-runtime/scripts/e2e.mjs
     source: 桌面客户端验收决策，2026-11-26
@@ -961,6 +980,8 @@ entries:
       - packages/share-ui/**
       - packages/web-share/**
       - packages/web/src/share/**
+      - packages/web/src/share-manage/**
+      - packages/web/test/e2e/sharing/content/manual-review/pending/share-manage.mjs
       - packages/ui/src/feedback/**
       - packages/desktop/test/e2e/feedback/**
       - docs/web-share/**

@@ -1,9 +1,10 @@
-import { lstat, realpath, rename, writeFile } from "node:fs/promises";
+import { lstat, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { isRemoteWorkspaceIdentity } from "@zcode/shared";
 import { workspaceCheckpointArtifactSchema } from "@zcode/contracts";
 import {
+  RELOCATABLE_TRUST_FILES,
   dataRelocationPlanSchema,
   localProjectId,
   projectMemoryDirectoryName,
@@ -74,6 +75,7 @@ export const cliStorageRelocation: CliStorageRelocationContract = {
     const dbPath = join(plan.stageRoot, "cli", "db", "db.sqlite");
     const checkpointRefs = new Set<string>();
     if (await exists(dbPath)) relocateDatabase(dbPath, plan, workspaces, checkpointRefs);
+    await relocateWorkspaceSettings(plan);
     for (const uri of checkpointRefs) {
       if (!readArtifact)
         throw new Error("Checkpoint relocation requires the artifact store reader");
@@ -107,6 +109,41 @@ export const cliStorageRelocation: CliStorageRelocationContract = {
   },
 };
 
+/** 只在未发布副本中重写定义为工作区位置的键。声明摘要和私有值原样保留。 */
+async function relocateWorkspaceSettings(plan: DataRelocationPlan): Promise<void> {
+  if (!(await exists(plan.stageRoot))) return;
+  const root = await realpath(plan.stageRoot);
+  const files = ["cli/plugin-secrets.json", ...RELOCATABLE_TRUST_FILES.map((name) => `security/${name}`)];
+  for (const name of files) {
+    const path = join(root, name);
+    if (!(await exists(path))) continue;
+    if (!(await lstat(path)).isFile() || (await realpath(path)) !== path)
+      throw new Error("Expected a regular settings file in the relocation staging directory: " + name);
+    const raw = await readFile(path, "utf8");
+    const settings = record(JSON.parse(raw));
+    if (!settings) throw new Error("Invalid workspace settings: " + name);
+    const original = JSON.stringify(settings);
+    if (name === "cli/plugin-secrets.json") {
+      const workspaces = record(settings.workspaces);
+      if (!workspaces) continue;
+      const moved = new Map<string, unknown>();
+      for (const [key, value] of Object.entries(workspaces)) {
+        const next = relocateDataPath(key, plan);
+        if (moved.has(next)) throw new Error("Conflicting workspace plugin settings during relocation");
+        moved.set(next, value);
+      }
+      settings.workspaces = Object.fromEntries(moved);
+    } else if (Array.isArray(settings.records)) {
+      for (const item of settings.records) {
+        const entry = record(item);
+        if (!entry || isRemoteWorkspaceIdentity(String(entry.workspaceIdentity ?? ""))) continue;
+        mapFields(entry, ["workspaceIdentity", "sourcePathAtGrant"], plan);
+      }
+    }
+    if (JSON.stringify(settings) !== original) await writeFile(path, JSON.stringify(settings), { mode: 0o600 });
+  }
+}
+
 function relocateDatabase(
   dbPath: string,
   plan: DataRelocationPlan,
@@ -118,6 +155,13 @@ function relocateDatabase(
   const projectIds = new Map<string, string>();
   try {
     db.exec("BEGIN IMMEDIATE");
+    // OZ-C009：独占暂存库内重定位会话及跨会话引用时，0025 会拒绝改写待删除数据。
+    // 将删除记录暂存在连接私有表，原触发器保留；提交前还原，失败时 SQLite 回滚整个事务。
+    const hasPurge = columns(db, "session_purge").size > 0;
+    if (hasPurge) {
+      db.exec("CREATE TEMP TABLE relocation_purge AS SELECT * FROM main.session_purge");
+      db.exec("DELETE FROM main.session_purge");
+    }
     rewriteRows(db, "session", (row) => {
       if (isRemoteWorkspaceIdentity(String(row.workspace_id ?? ""))) return;
       localSessions.add(String(row.id));
@@ -197,6 +241,16 @@ function relocateDatabase(
       if (typeof row.script_path === "string")
         row.script_path = relocateDataPath(row.script_path, plan);
     });
+    if (hasPurge) {
+      db.exec("INSERT INTO main.session_purge SELECT * FROM temp.relocation_purge");
+      db.exec("DROP TABLE temp.relocation_purge");
+      rewriteRows(db, "session_purge", (row) => {
+        if (isRemoteWorkspaceIdentity(String(row.workspace_identity ?? ""))) return;
+        for (const key of ["workspace_path", "workspace_identity"]) {
+          if (typeof row[key] === "string") row[key] = relocateDataPath(row[key], plan);
+        }
+      });
+    }
     db.exec("COMMIT");
     const checks = db.prepare("PRAGMA quick_check").all();
     if (checks.length !== 1 || Object.values(checks[0]!)[0] !== "ok")

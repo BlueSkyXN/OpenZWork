@@ -380,3 +380,25 @@ for (const [locale, expectedFinishing, expectedMemoryNotes] of [
     },
   );
 }
+
+test("SP08 手机缺少控制端连接时说明如何编辑，且不发起配置读写", async () => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  try {
+    const errors = [];
+    const calls = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("request", (request) => {
+      if (new URL(request.url()).pathname.startsWith("/prompt-")) calls.push(request.url());
+    });
+    await page.goto(origin + "fixture?locale=zh-CN&host=unavailable");
+    await page
+      .getByRole("status")
+      .filter({ hasText: /控制端/ })
+      .waitFor();
+    assert.equal(await page.getByTestId("system-prompt-editor").count(), 0);
+    assert.deepEqual(calls, []);
+    assert.deepEqual(errors, []);
+  } finally {
+    await page.close();
+  }
+});

@@ -26,7 +26,7 @@ import {
 import { parseWorkspaceHookTrustStoreContent } from "@zcode/shared/workspace-hook-trust-store-file";
 import { createServiceLogger, type ServiceLogger } from "#src/logger/serviceLogger.js";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
-import { getDataBaseDir } from "#src/paths.js";
+import { getDataBaseDir, getStorageRootOverride } from "#src/paths.js";
 import type { IHooksService } from "./hooks.js";
 import { updateJsonObjectFile } from "#src/fs/atomicFileUtils.js";
 import {
@@ -176,13 +176,13 @@ async function readPersistentWorkspaceHookTrustDigests(
   const storage = isRecord(userConfig.storage) ? userConfig.storage : {};
   const configured = typeof storage.dir === "string" ? storage.dir.trim() : "";
   const home = resolveUserHomeDir();
-  const storageRoot = configured
+  const storageRoot = getStorageRootOverride() ?? (configured
     ? configured.startsWith("~/")
       ? join(home, configured.slice(2))
       : isAbsolute(configured)
         ? resolve(configured)
         : resolve(home, configured)
-    : join(home, OPENZWORK_DATA_DIR_NAME);
+    : join(home, OPENZWORK_DATA_DIR_NAME));
   const trustFilePath = join(storageRoot, "security", "workspace-hook-trust-v1.json");
 
   // 异步读取 + ENOENT 区分：不用 existsSync 预检——同步调用会阻塞服务
