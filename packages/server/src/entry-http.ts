@@ -1,7 +1,7 @@
 import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { prepareServerEntryCredentials } from "./prepareServerEntryCredentialsOpenzwork.js";
+import { prepareServerEntryCredentials } from "./stdioServices.js";
 import {
   createServerHostServices,
   createTopicResourcePeers,
@@ -13,7 +13,7 @@ import {
 } from "./bundledZCodeBuiltinProviderConfig.js";
 import { createHttpServer, resolveHttpServerId } from "./http.js";
 
-export { prepareServerEntryCredentials as prepareEntryHttpCredentials } from "./prepareServerEntryCredentialsOpenzwork.js";
+export { prepareServerEntryCredentials as prepareEntryHttpCredentials } from "./stdioServices.js";
 
 async function main(): Promise<void> {
   const standalone = process.argv.includes("--prepare-credentials");

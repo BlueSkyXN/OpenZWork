@@ -3,7 +3,7 @@ import { AddressInfo } from "node:net";
 import { once } from "node:events";
 import WebSocket from "ws";
 import { ServiceCollection } from "@zcode/services";
-import { createHttpServer } from "../src/http.js";
+import { createHttpServer, createHttpRequestAccess } from "../src/http.js";
 
 // v3.17.1 同步复核：上游退役了原 serverInfoHttp.test.ts 全文件，
 // 本文件按 OW-P002 原触发场景（含 +、/、= 的 token 经 Cookie 鉴权失败）重建回归。
@@ -84,7 +84,6 @@ it("OW-P054：开发监听默认使用回环，服务状态来自实际认证设
 });
 
 it("OW-P054：来源与浏览器地址匹配，包括经代理保留的端口与显式局域网访问", async () => {
-  const { createHttpRequestAccess } = await import("../src/httpRequestAccessOpenzwork.js");
   const local = createHttpRequestAccess("127.0.0.1", false, false);
   expect(local("localhost:5173", "http://localhost:5173", "http:")).toBe(true);
   expect(local("localhost:3030", "http://localhost:5173", "http:")).toBe(false);

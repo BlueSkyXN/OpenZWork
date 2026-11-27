@@ -166,7 +166,7 @@ modules:
   - id: storage
     roots: [packages/services/src/storage]
     managed: true
-    requires: [shared, rpc, services]
+    requires: [shared, rpc, services, data-directory]
     publicEntrypoints: [packages/services/src/storage/contract.ts]
     layers: {domain: domain, app: app, adapters: adapters}
     layerOrder: [domain, app, adapters]

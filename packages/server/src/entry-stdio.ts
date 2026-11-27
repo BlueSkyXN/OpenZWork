@@ -13,10 +13,9 @@ import {
   helloAckMessageSchema,
 } from "@zcode/shared";
 import type { HelloMessage, HelloAckMessage } from "@zcode/shared";
-import { prepareServerEntryCredentials } from "./prepareServerEntryCredentialsOpenzwork.js";
 import { createStdioServer } from "./stdio.js";
 import { registerStdioProcessLifecycle } from "./stdio-lifecycle.js";
-import { createStdioServices } from "./stdioServices.js";
+import { createStdioServices, prepareServerEntryCredentials } from "./stdioServices.js";
 import { ensureRemoteServerDeviceMid } from "./stdioDeviceMid.js";
 import {
   materializeBundledZCodeBuiltinProviderConfig,
