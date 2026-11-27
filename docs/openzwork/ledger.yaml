@@ -298,7 +298,6 @@ entries:
       - docs/openzwork/release/unsigned-macos-distribution.md
       - docs/git/release-build-publish-separation-openzwork.md
     paths:
-      - packages/server/src/prepareServerEntryCredentialsOpenzwork.ts
       - .github/workflows/installers.yml
       - .github/workflows/release.yml
       - scripts/automatic-release.mjs
@@ -312,6 +311,8 @@ entries:
       - scripts/test/openzwork-cli-distribution.test.mjs
       - packages/desktop/src/renderer/env.d.ts
     hooks:
+      - packages/server/src/stdioServices.ts
+      - packages/server/src/entry-stdio.ts
       - package.json
       - README.md
       - README.en.md
@@ -860,6 +861,7 @@ entries:
       - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
       - apps/zcode-cli/packages/cli/scripts/sea-official-plugin-assets.mjs
     tests:
+      - tests/ci/core-scope.test.mjs
       - apps/zcode-cli/packages/bootstrap/tests/plugins.test.ts
       - apps/zcode-cli/packages/office-runtime/scripts/e2e.mjs
     source: 桌面客户端验收决策，2026-11-26

@@ -297,3 +297,28 @@ test("Core lanes retain independent prerequisites and a fail-closed named gate",
     for (const step of job.steps) assert.equal(step["continue-on-error"], undefined);
   }
 });
+
+test("OZ-C016 Office 回归 lane 构建并运行实际表格面板回放", async () => {
+  const ci = await workflow("ci.yml");
+  const step = ci.jobs.checks.steps.find(
+    (item) => item.name === "Office panel manual refresh regression",
+  );
+  assert.ok(step);
+  assert.equal(step.if, "matrix.lane == 'regressions'");
+  assert.ok(!step["continue-on-error"]);
+  assert.deepEqual(
+    step.run
+      .trim()
+      .split(/\r?\n/)
+      .map((line) => line.trim()),
+    [
+      "pnpm --filter @zcode/office-runtime test",
+      "pnpm --filter @zcode/spreadsheets-plugin build",
+      "pnpm --filter @zcode/spreadsheets-plugin test:e2e",
+    ],
+  );
+  const plugin = JSON.parse(
+    await readFile(join(root, "apps/zcode-cli/packages/spreadsheets-plugin/package.json"), "utf8"),
+  );
+  assert.equal(plugin.scripts["test:e2e"], "node ../office-runtime/scripts/e2e.mjs");
+});

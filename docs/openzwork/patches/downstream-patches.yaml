@@ -904,6 +904,7 @@ patches:
     evidence: 两个分类的同根目录别名夹具覆盖新增项的物理父目录判定。
     fix: 预检配置根，逐段核实父目录，使用核实后的物理路径发布文件。
     files:
+      - packages/services/src/subagents/subagentsService.ts
       - packages/services/src/data-sync/subagentDataSync.ts
       - packages/services/src/data-sync/commandDataSync.ts
       - packages/services/src/data-sync/skillDataSync.ts
@@ -1138,7 +1139,6 @@ patches:
     evidence: 开发入口、发行启动器和共用服务的正常连接及来源策略回归。
     fix: 默认回环，依据实际令牌报告状态，按 Host 校验浏览器来源。发行版保留显式局域网选项。
     files:
-      - packages/server/src/httpRequestAccessOpenzwork.ts
       - packages/server/src/http.ts
       - packages/server/src/entry-http.ts
       - scripts/zcode-distribution/runner.mjs
