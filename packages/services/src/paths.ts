@@ -30,6 +30,7 @@ import {
 } from "@zcode/shared";
 import {
   BUSINESS_DATA_ENTRIES,
+  RELOCATABLE_TRUST_FILES,
   resolveEnvironmentStorageRoot,
   DATA_ROOT_RELOCATED_MARKER,
   dataDirectory,
@@ -568,7 +569,9 @@ async function copyExclusiveDataDirectory(
     const relocation = plan(stage);
     await relocateHostStorage(relocation);
     const cliEntries = await directoryEntries(join(stage, "cli"));
-    if (cliEntries.length) {
+    // 信任文件由 CLI 转换，但独立存放在 security 中，固定 HOME 配置不计入 CLI 业务数据。
+    const securityEntries = await directoryEntries(join(stage, "security"));
+    if (cliEntries.length || RELOCATABLE_TRUST_FILES.some((name) => securityEntries.includes(name))) {
       if (!options.relocateAgent)
         throw migrationError(
           "DATA_DIRECTORY_AGENT_REQUIRED",

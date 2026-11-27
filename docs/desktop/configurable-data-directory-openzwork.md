@@ -22,6 +22,9 @@ flowchart LR
   F --> G[发布完整目标目录]
   G --> H[最后提交数据根并清除计划]
   H --> I[Main 将新根传给 Host Agent 与调度器]
+  S[独立服务启动] --> K[首次业务读写前取得使用租约]
+  K --> L[关闭连接与业务资源]
+  L --> M[释放租约后允许下一次迁移]
   E -->|失败| J[重试 取消迁移或退出]
   F -->|失败| J
   G -->|失败| J
@@ -36,12 +39,12 @@ flowchart LR
 
 - 复制 `v2`、`cli`、`workspace`、`agent-memory` 及关联的 `clipboard`、`git-checkpoint-index`、`backup`、`tmp`、`cache`、`mailbox`、`security`，覆盖会话正文、工具输出、用户级子代理记忆、信任记录和引用文件。
 - 不复制固定 HOME 的 `v2/setting.json`、它的锁和临时文件；CLI 用户配置 `cli/config.json` 及其临时/备份文件仍留 HOME。Server/发行 runtime、全局 Skills/commands/AGENTS 不在搬迁清单中。
-- 应用的 `v2/*.sqlite` 与 `cli/db/db.sqlite` 用备份接口生成含已提交 WAL 的一致副本并执行 `quick_check`，不把 live WAL/SHM 当普通文件拼接；工作区中的普通文件即使以 `.sqlite` 命名也按原文件复制。Main 与独立 CLI 在启动业务前登记同根使用租约，迁移取得排他门禁后检查存活使用者；有使用者时保留计划并提示退出相关进程后重试。正常退出释放租约，崩溃租约按 PID 回收。旧版本进程无法参与新门禁，迁移前也须完整退出。
+- 应用的 `v2/*.sqlite` 与 `cli/db/db.sqlite` 用备份接口生成含已提交 WAL 的一致副本并执行 `quick_check`，不把 live WAL/SHM 当普通文件拼接；工作区中的普通文件即使以 `.sqlite` 命名也按原文件复制。Main、独立 CLI、Web HTTP、远端 stdio 和 Source Server Core 在首次业务读写前登记同根使用租约，迁移取得排他门禁后检查存活使用者；有使用者时保留计划并提示退出相关进程后重试。正常退出释放租约，崩溃租约按 PID 回收。旧版本进程无法参与新门禁，迁移前也须完整退出。
 - 目标 `.openzwork` 必须不存在或为空；非空目标拒绝，不合并 SQLite，也不按逐文件“目标优先”处理。源和目标不得相同或互相嵌套；符号链接别名按真实路径检查。
 - 使用目标卷上的临时目录完成复制，成功后发布；失败只清理当前操作创建的临时目录，不删除源或其他目标数据。
 - 保留工作区中的符号链接；历史 `v2/agent-config` 内可重建的共享资源链接继续跳过。不能以 Windows 不能创建链接为由静默丢掉工作文件链接，失败应保留原根。
-- 在 staging 中转换本机业务数据的结构化路径：Host 任务/项目/定时定义的本地目录，CLI 会话 cwd、附件、本应用工具输出与运行快照。只转换迁移清单内的旧根路径，不替换用户消息、命令、脚本或任意 JSON 字符串；外部项目、远端 workspaceIdentity 与远端目录保持原值。路径派生的本地 workspace key、project ID、旧会话文件 hash 和项目记忆目录同步转换；会话 ID、消息 ID 和业务内容保持原值。
-- CLI 存储转换由 CLI adapter 的离线 `storage-relocate` 命令执行，services 通过既有 startup-storage 子进程入口等待严格完成回执；Host 组织态由 project-storage 转换。共享路径映射与租约模块不拥有业务 SQL。所有转换针对目标副本，出错不发布目标。没有 CLI 转换端口而存在 CLI 数据时明确失败。
+- 在 staging 中转换本机业务数据的结构化路径：Host 任务/项目/定时定义的本地目录，CLI 会话 cwd、附件、本应用工具输出与运行快照。只转换迁移清单内的旧根路径，不替换用户消息、命令、脚本或任意 JSON 字符串；外部项目、远端 workspaceIdentity 与远端目录保持原值。路径派生的本地 workspace key、project ID、旧会话文件 hash 和项目记忆目录同步转换；会话 ID、消息 ID 和业务内容保持原值。Host 按每条永久删除记录和创建回执自身的工作区键迁移，保留删除状态和命令去重，即使对应任务行已清除。键冲突时回滚并保留原根。
+- CLI 存储转换由 CLI adapter 的离线 `storage-relocate` 命令执行，services 通过既有 startup-storage 子进程入口等待严格完成回执；Host 组织态由 project-storage 转换。共享路径映射与租约模块不拥有业务 SQL。所有转换针对目标副本，出错不发布目标。只要副本含 CLI 业务数据或任一工作区信任记录，就需要 CLI 转换端口。仅有固定 HOME 配置时可直接迁移。
 - 完成后新根独立承载业务读取和写入。源根保留为快照，并登记迁移去向，参与门禁的旧根写者拒绝继续启动；重试仅接受同一迁移计划。固定 HOME 设置中的本地工作区引用与数据根指针一起提交。连续 A→B→C 以当前根为源，不依赖 A 或 B 可访问。
 - 冷恢复给模型的本地附件说明和后台 Bash 输出提示同步转换：只改与结构化引用一致的应用生成路径行，保留降级原因、读取提示、预览与用户内容。验收调用真实生成器与 file-part hydration，避免只证明磁盘文件可读却仍把旧地址交给模型。
 - 此功能保持 Desktop 数据根同源：`ZCODE_DATA_BASE_DIR`、`ZCODE_STORAGE_DIR`、`ZCODE_SESSION_DB_PATH` 同时由 Main 下发。固定 HOME 用户资源、独立 CLI 的显式配置优先级和远端 authority 保留。

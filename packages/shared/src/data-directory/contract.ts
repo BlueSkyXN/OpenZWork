@@ -32,6 +32,12 @@ export const BUSINESS_DATA_ENTRIES = [
   "mailbox",
   "security",
 ] as const;
+/** 复制准入和 CLI 离线转换使用同一份工作区信任文件清单。 */
+export const RELOCATABLE_TRUST_FILES = [
+  "workspace-hook-trust-v1.json",
+  "workspace-plugin-trust-v1.json",
+  "workspace-mcp-trust-v1.json",
+] as const;
 export const DATA_ROOT_RELOCATED_MARKER = ".data-directory-relocated.json";
 
 /** 租约只协调同根使用者；业务库和转换格式分别由其 owner 管理。 */

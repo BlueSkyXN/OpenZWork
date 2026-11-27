@@ -2,7 +2,9 @@ import { migrateApplicationStorage, createSettingService } from "@zcode/services
 import {
   disposeServiceResourcesAndWait,
   getAppConfigDir,
+  getZCodeDataRootDir,
 } from "@zcode/services/node";
+import { withDataDirectoryUse } from "@zcode/shared/data-directory";
 import type { IChannel } from "@zcode/rpc";
 import {
   ZCODE_VERSION,
@@ -57,6 +59,11 @@ async function main() {
   const ack = await waitForAck();
   log(`client connected: ${ack.clientId} (v${ack.version})`);
 
+  // OZ-C009：握手之后才启动写者；关闭 RPC 和服务后再允许迁移。
+  return withDataDirectoryUse(getZCodeDataRootDir(), startStdio);
+}
+
+async function startStdio(): Promise<number> {
   // 远端主机没有 Desktop main，没人写 telemetry-state.json，services 发往 ZCode endpoint
   // 的请求缺 X-Device-Mid，Start Plan 的 billing/balance 被拒。远端 server 是本机设备身份的
   // 生命周期所有者，必须在 services 创建前确保 deviceMid 存在（详见 stdioDeviceMid.ts）。
@@ -94,20 +101,30 @@ async function main() {
         }
       : undefined,
   );
-  registerStdioProcessLifecycle({
-    stdin: process.stdin,
-    signalSource: process,
-    log,
-    stopRpc: () => stdioServer.stop(),
-    // Desktop Host 已经会等待 disposeServiceResourcesAndWait，远端 stdio
-    // entry 却仍直接 process.exit，导致其托管的 workspace Agent 来不及完成进程树清理。
-    // 远端 server 也是 ServiceCollection owner，退出前必须遵守同一异步回收契约。
-    dispose: () => disposeServiceResourcesAndWait(services),
-    exit: (code) => process.exit(code),
+  return new Promise<number>((resolve) => {
+    let disposed = false;
+    registerStdioProcessLifecycle({
+      stdin: process.stdin,
+      signalSource: process,
+      log,
+      stopRpc: () => stdioServer.stop(),
+      // Desktop Host 已经会等待 disposeServiceResourcesAndWait，远端 stdio
+      // entry 却仍直接 process.exit，导致其托管的 workspace Agent 来不及完成进程树清理。
+      // 远端 server 也是 ServiceCollection owner，退出前必须遵守同一异步回收契约。
+      dispose: async () => {
+        await disposeServiceResourcesAndWait(services);
+        disposed = true;
+      },
+      exit: (code) => {
+        // 异常超时由退出进程收口，不能在后台写者尚未停止时提前释放租约。
+        if (!disposed) process.exit(code);
+        resolve(code);
+      },
+    });
+    // ready 日志必须在退出监听注册之后；否则 SSH 恰好在 ready 后断开时，
+    // SIGHUP/SIGTERM 仍可能落入 Node 默认处理并绕过 Agent cleanup。
+    log("stdio mode ready");
   });
-  // ready 日志必须在退出监听注册之后；否则 SSH 恰好在 ready 后断开时，
-  // SIGHUP/SIGTERM 仍可能落入 Node 默认处理并绕过 Agent cleanup。
-  log("stdio mode ready");
 }
 
 function waitForAck(): Promise<HelloAckMessage> {
@@ -150,7 +167,7 @@ function waitForAck(): Promise<HelloAckMessage> {
   });
 }
 
-main().catch((err) => {
+void main().then((code) => process.exit(code), (err) => {
   log("fatal:", err);
   process.exit(1);
 });

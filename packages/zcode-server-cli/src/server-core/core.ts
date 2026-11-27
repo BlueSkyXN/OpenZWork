@@ -1,3 +1,4 @@
+import { withDataDirectoryUse } from "@zcode/shared/data-directory";
 import { hostname } from "node:os";
 import {
   createLegacyServerCredentialCipher,
@@ -9,6 +10,7 @@ import {
   disposeServiceResourcesAndWait,
   materializeZCodeBuiltinProviderConfig,
   getAppConfigDir,
+  getZCodeDataRootDir,
   getCredentialsFilePath,
   ZCODE_BUILTIN_PROVIDER_CONFIG_FILE_ENV,
   createTopicResourcePeers,
@@ -29,7 +31,36 @@ import { resolveServerLayout } from "../runtime/paths.js";
 
 declare const __ZCODE_BUILTIN_PROVIDER_CONFIG_JSON__: string | undefined;
 
+function send(message: unknown): Promise<void> {
+  if (typeof process.send !== "function" || process.connected === false) return Promise.resolve();
+  return new Promise((resolve) => {
+    try {
+      process.send?.(message, () => resolve());
+    } catch {
+      // 父进程断连后的最后一条生命周期消息不应阻塞资源释放。
+      resolve();
+    }
+  });
+}
+
 export async function runServerCore(generation: number): Promise<void> {
+  // OZ-C009：Core 是独立的 Host 写者，停服回执发出前先关闭业务资源并释放租约。
+  const reason = await withDataDirectoryUse(getZCodeDataRootDir(), () => serveCore(generation));
+  await send({ type: "shutdown-ack" });
+  await send({ type: "exit", reason });
+  try {
+    process.disconnect?.();
+  } catch {
+    // 父进程已断连时 disconnect 可能报告 IPC_CHANNEL_CLOSED；不影响资源已释放后的退出。
+  }
+  // 仅设置 exitCode 无法关闭 Agent/SQLite 等仍持有的事件循环；Supervisor 的有界停止
+  // 会因此等待到超时。资源释放完成后显式退出，确保 stop/restart/uninstall 真正收口。
+  process.exit(0);
+}
+
+async function serveCore(generation: number): Promise<string> {
+  let finish!: (reason: string) => void;
+  const stopped = new Promise<string>((resolve) => { finish = resolve; });
   // Bug 原因：Agent 的模型请求头从 ZCODE_APP_VERSION 读 App 版本，缺失时回退到 CLI 包版本
   // （0.17.0）。本地由 Desktop main 注入；远端 Core 由 SSH/WSL/Docker exec → Supervisor fork 拉起，
   // 整条链都没有这个 env，远端请求于是报 0.17.0（按客户端版本拦截的网关会拒绝）。升级时旧 Supervisor
@@ -89,26 +120,22 @@ export async function runServerCore(generation: number): Promise<void> {
       credentialCipherProvider,
       topicResourceRelayChannel: (request) => topicResourcePeers.getChannel(request),
     });
-  const taskActivityTracker = createTaskActivityTracker(services.getOptional(IZCodeAgentService));
-  const ingressToken = await createIngressToken(layout);
-  const http = await createCoreHttpServer(services, {
-    serverId: sourceServerId,
-    ingressToken,
-    migrationFailedPathCount,
-    workspaceIdentityMapper,
-    topicResourcePeers,
-  });
-  const send = (message: unknown): Promise<void> => {
-    if (typeof process.send !== "function" || process.connected === false) return Promise.resolve();
-    return new Promise((resolve) => {
-      try {
-        process.send?.(message, () => resolve());
-      } catch {
-        // 父进程断连后的最后一条生命周期消息不应阻塞资源释放。
-        resolve();
-      }
+  let http: Awaited<ReturnType<typeof createCoreHttpServer>>;
+  try {
+    const ingressToken = await createIngressToken(layout);
+    http = await createCoreHttpServer(services, {
+      serverId: sourceServerId,
+      ingressToken,
+      migrationFailedPathCount,
+      workspaceIdentityMapper,
+      topicResourcePeers,
     });
-  };
+  } catch (error) {
+    disposeParentDisconnectHandler();
+    await disposeServiceResourcesAndWait(services);
+    throw error;
+  }
+  const taskActivityTracker = createTaskActivityTracker(services.getOptional(IZCodeAgentService));
   // ready.version 的语义是 Core 版本；不能误发 Node runtime 版本常量
   // （22.16.0），否则消费方读取会拿到错误值。
   await send({
@@ -174,18 +201,9 @@ export async function runServerCore(generation: number): Promise<void> {
     taskActivityTracker.dispose();
     await http.close().catch(() => undefined);
     await disposeServiceResourcesAndWait(services).catch(() => undefined);
-    await send({ type: "shutdown-ack" });
-    await send({ type: "exit", reason });
-    try {
-      process.disconnect?.();
-    } catch {
-      // 父进程已断连时 disconnect 可能报告 IPC_CHANNEL_CLOSED；不影响资源已释放后的退出。
-    }
-    // 仅设置 exitCode 无法关闭 Agent/SQLite 等仍持有的事件循环；Supervisor 的有界停止
-    // 会因此等待到超时。资源释放完成后显式退出，确保 stop/restart/uninstall 真正收口。
-    process.exit(0);
+    finish(reason);
   };
-  if (parentDisconnected) void shutdown("parent-disconnected");
+  if (parentDisconnected || process.connected === false) void shutdown("parent-disconnected");
   process.on("message", (message: unknown) => {
     if (
       typeof message === "object" &&
@@ -198,4 +216,5 @@ export async function runServerCore(generation: number): Promise<void> {
   });
   process.once("SIGTERM", () => void shutdown("SIGTERM"));
   process.once("SIGINT", () => void shutdown("SIGINT"));
+  return stopped;
 }

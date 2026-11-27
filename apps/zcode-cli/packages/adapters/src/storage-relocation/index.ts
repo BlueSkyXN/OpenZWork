@@ -4,6 +4,7 @@ import { DatabaseSync } from "node:sqlite";
 import { isRemoteWorkspaceIdentity } from "@zcode/shared";
 import { workspaceCheckpointArtifactSchema } from "@zcode/contracts";
 import {
+  RELOCATABLE_TRUST_FILES,
   dataRelocationPlanSchema,
   localProjectId,
   projectMemoryDirectoryName,
@@ -112,8 +113,8 @@ export const cliStorageRelocation: CliStorageRelocationContract = {
 async function relocateWorkspaceSettings(plan: DataRelocationPlan): Promise<void> {
   if (!(await exists(plan.stageRoot))) return;
   const root = await realpath(plan.stageRoot);
-  for (const name of ["cli/plugin-secrets.json", "security/workspace-hook-trust-v1.json",
-    "security/workspace-plugin-trust-v1.json", "security/workspace-mcp-trust-v1.json"]) {
+  const files = ["cli/plugin-secrets.json", ...RELOCATABLE_TRUST_FILES.map((name) => `security/${name}`)];
+  for (const name of files) {
     const path = join(root, name);
     if (!(await exists(path))) continue;
     if (!(await lstat(path)).isFile() || (await realpath(path)) !== path)
