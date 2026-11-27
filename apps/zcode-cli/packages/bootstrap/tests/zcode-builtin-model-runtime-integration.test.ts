@@ -1,6 +1,9 @@
 import { AiSdkModelAdapter, type CreateAiSdkModelOptions } from "@zcode/adapters/model";
 import type { Model } from "@zcode/contracts";
 import { fileURLToPath } from "node:url";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   ApiKeyAccessConfig,
   ModelConfigRules,
@@ -13,6 +16,8 @@ import {
 } from "@zcode/provider";
 import {
   NodeZCodeBuiltinProviderConfigSource,
+  NodeModelSelectionConfigRepository,
+  NodeProviderRegistryRuntime,
   type ZCodeBuiltinProviderConfigSnapshot,
 } from "@zcode/provider-node";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -260,3 +265,22 @@ function createCapturedModel(options: CreateAiSdkModelOptions): Model {
   };
   return model;
 }
+
+it("启动读取模型选择失败时释放已经启动的 Provider 监听", async () => {
+  const { startProcessProviderRegistryRuntime } = await import("../src/app/process-provider-registry-runtime.js");
+  const root = await mkdtemp(join(tmpdir(), "oz-provider-startup-"));
+  const failure = new Error("fixture-selection-read");
+  const read = vi.spyOn(NodeModelSelectionConfigRepository.prototype, "read").mockRejectedValueOnce(failure);
+  const dispose = vi.spyOn(NodeProviderRegistryRuntime.prototype, "dispose");
+  try {
+    await expect(startProcessProviderRegistryRuntime({
+      ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: zcodeBuiltinProviderConfigFilePath,
+      ZCODE_PERSONAL_PROVIDER_CONFIG_FILE: join(root, "personal.json"),
+    })).rejects.toBe(failure);
+    expect(dispose).toHaveBeenCalledOnce();
+  } finally {
+    read.mockRestore();
+    dispose.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});

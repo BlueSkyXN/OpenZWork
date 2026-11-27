@@ -53,7 +53,9 @@ export async function startProcessProviderRegistryRuntime(
       configuredDefaultModelSelection,
     });
   } catch (error) {
+    // 启动中读取选择失败后，调用方尚未取得 dispose 句柄，需在这里释放监听器。
     modelSelectionConfigRepository.dispose();
+    runtime.dispose();
     throw error;
   }
 }
