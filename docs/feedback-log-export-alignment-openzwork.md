@@ -22,3 +22,5 @@ Windows helper 的退出摘要和 Main 调度延迟汇总以固定标记及独�
 源码与测试入口：`packages/services/src/feedback/feedbackLogArchive.ts`、`packages/desktop/test/exportLogs.test.ts`。资源、使用统计与开发诊断的职责对照见[本地诊断职责](electron/resource-manager-openzwork.md#本地诊断职责)。
 
 手动导出在收集文件时排除凭据库、文件密钥、来源标记、插件密钥及这些文件的所有备份。ZIP 与目录回退使用同一份清单。POSIX 下归档目录仅所有者可进入，ZIP 仅所有者可读写。CLI 日志和轨迹取自活动业务根，CLI 用户配置取自固定 HOME。
+
+手动导出按来源核对文件的真实位置。共享日志链接须指向允许收集的日志或配置，固定 HOME 只收集指定的 CLI 配置文件。当前配置指定的凭据库、密钥及其备份也须排除。写入 ZIP 或目录前再次核对文件身份，采样、脱敏及二进制复制使用同一个已打开的文件。轮转或换链导致身份变化时跳过该项。

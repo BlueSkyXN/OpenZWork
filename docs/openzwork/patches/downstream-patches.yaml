@@ -1118,9 +1118,9 @@ patches:
       checked: 4.0.0
     trigger: 用户导出包含文件密钥或重置备份的数据目录。
     impact: 诊断包可能携带私有凭据材料。
-    cause: 原收集器只精确排除了两个凭据库文件名。
+    cause: 原收集器只按归档名排除凭据，采样和写出时会重新打开路径。
     evidence: 发布树的收集器和备份命名规则，以及临时目录归档回归。
-    fix: 枚举阶段排除凭据文件族，在 POSIX 建立私有目录和 ZIP。
+    fix: 核验每个来源的物理范围、配置指定的凭据与备份及文件身份。采样与写出复用句柄，轮转条目跳过，POSIX 使用私有目录和 ZIP。
     files:
       - packages/desktop/src/main/exportLogs.ts
     regression:
