@@ -7,6 +7,7 @@ import {
   rename,
   rm,
   readdir,
+  realpath,
   readFile,
   stat,
 } from "node:fs/promises";
@@ -306,4 +307,15 @@ export async function updateJsonObjectFile(
 ): Promise<void> {
   const next = update(await readJsonObjectFileForUpdate(filePath));
   await atomicWritePrivateTextFile(filePath, `${JSON.stringify(next, null, 2)}\n`, []);
+}
+
+export async function isSameRegularFile(oldPath: string, newPath: string): Promise<boolean> {
+  const paths = await Promise.all([
+    lstat(oldPath),
+    lstat(newPath),
+    realpath(oldPath),
+    realpath(newPath),
+  ]).catch(() => undefined);
+  // 大小写不敏感的文件系统上，改名可能仍指向同一普通文件；链接不作同文件豁免。
+  return paths !== undefined && paths[0].isFile() && paths[1].isFile() && paths[2] === paths[3];
 }
