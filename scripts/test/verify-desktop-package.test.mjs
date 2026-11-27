@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, writeFile, rm, cp } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile, rm, cp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
@@ -105,6 +105,16 @@ async function syntheticPackage(
     }
   }
   const runtimePaths = ["glm/node-runtime/npm", "tools/ripgrep", "tools/ugrep"];
+  // OZ-F011：成品核验从内置 Agent 目录解析平台绑定。
+  const suffix = {
+    "macos-arm64": "darwin-arm64",
+    "windows-amd64": "win32-x64-msvc",
+    "linux-amd64": "linux-x64-gnu",
+  }[platform];
+  runtimePaths.push(
+    "glm/node_modules/@napi-rs/keyring/index.js",
+    `glm/node_modules/@napi-rs/keyring-${suffix}/keyring.${suffix}.node`,
+  );
   if (platform === "macos-arm64") runtimePaths.push("tools/bfs");
   if (platform === "windows-amd64") {
     runtimePaths.push(
@@ -431,4 +441,44 @@ test("Windows package verification requires its native search tools, runtime-hos
     "required runtime path missing: preinstalled-entry-shim/zcode-preinstalled-entry-shim.exe",
     "required runtime path missing: tools/runtime-host/zcode-runtime-host.exe",
   ]);
+});
+
+test("OZ-F011：electron-builder 将 Agent 钥匙串加载器和目标平台二进制复制进成品目录", async () => {
+  const { getFileMatchers, copyFiles } = createRequire(import.meta.url)(
+    "app-builder-lib/out/fileMatcher.js",
+  );
+  const { default: config } = await import("../../packages/desktop/electron-builder.config.js");
+  const { keyringPlatformPackage } = await import("../stage-credential-keyring.mjs");
+  const { getTargetPlatform } = await import("../../packages/desktop/scripts/target-platform.mjs");
+  const dir = await mkdtemp(join(tmpdir(), "oz-agent-keyring-package-"));
+  try {
+    const key = getTargetPlatform().key;
+    const native = keyringPlatformPackage(key);
+    const nativeSuffix = native.slice("@napi-rs/keyring-".length);
+    const files = [
+      "zcode.cjs",
+      "node_modules/@napi-rs/keyring/index.js",
+      "node_modules/" + native + "/keyring." + nativeSuffix + ".node",
+    ];
+    for (const path of files) {
+      const file = join(dir, "bundled-agents", key, "glm", path);
+      await mkdir(join(file, ".."), { recursive: true });
+      await writeFile(file, "fixture");
+    }
+    const output = join(dir, "Resources");
+    const extraResources = config.extraResources.filter(
+      (rule) => typeof rule === "object" && (rule.to === "glm" || rule.to?.startsWith("glm/")),
+    );
+    const matchers = getFileMatchers({ extraResources }, "extraResources", output, {
+      defaultSrc: dir,
+      globalOutDir: output,
+      macroExpander: (value) => value,
+      customBuildOptions: {},
+    });
+    await copyFiles(matchers, null, false);
+    for (const path of files)
+      assert.equal(await readFile(join(output, "glm", path), "utf8"), "fixture");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
