@@ -1,5 +1,13 @@
 /** Russian translations（缺失 key 由 IntlProvider 回退到 en-US） */
 const ruRU: Record<string, string> = {
+  "chat.error.copy.heading": "Ошибка OpenZWork",
+  "chat.error.copy.summary": "Описание ошибки",
+  "chat.error.copy.traceId": "Идентификатор трассировки: {traceId}",
+  "chat.error.copy.detail": "Подробности",
+  "settings.systemPrompt.hostUnavailable": "Чтобы изменить системные инструкции, откройте настройки на управляющем компьютере или подключитесь к его локальному рабочему пространству.",
+  "metrics.requestScope": "Скорость и время до первого текста относятся к последнему завершённому запросу. Время отсчитывается от начала запроса.",
+  "zcode.error.providerBusiness.3007": "Проверка безопасности у поставщика не пройдена. Проверьте запрос или обратитесь к поставщику.",
+  "settings.dataBaseDirManagedWorktrees": "Завершите работу с этими управляемыми рабочими деревьями Git и повторите перенос.",
   // OpenZWork(OZ-C015)：v4.0.0 新增预装工具与模型搜索键五语种补齐，并对齐无默认下载源提示。
   "preinstalledTools.purpose.python":
     "Запускает скрипты плагинов для работы с документами и предоставляет библиотеки для таблиц, Word и PDF",
@@ -975,11 +983,11 @@ const ruRU: Record<string, string> = {
   "startup.global.saving": "Сохранение обновлений",
   "startup.global.finishing": "Завершение запуска",
   "startup.global.servicesFailed":
-    "Локальные данные готовы, но сервисы приложения не запустились. Скопируйте диагностику, затем закройте и снова откройте ZCode.",
+    "Локальные данные готовы, но сервисы приложения не запустились. Скопируйте диагностику, затем закройте и снова откройте OpenZWork.",
   "startup.global.starting": "Подготовка локальных данных",
   "startup.global.preparing_host_storage": "Подготовка индекса задач",
   "startup.global.preparing_session_storage": "Подготовка истории чатов",
-  "startup.global.starting_services": "Запуск ZCode",
+  "startup.global.starting_services": "Запуск OpenZWork",
   "startup.global.ready": "Локальные данные готовы",
   "startup.global.failed": "Ошибка подготовки к запуску",
   "startup.global.help":
@@ -1012,11 +1020,11 @@ const ruRU: Record<string, string> = {
   "startup.global.error.sql_failed":
     "Подготовка не завершена. Скопируйте диагностику и проверьте логи. Устраните проблему и повторите вручную. Приложение не будет повторять автоматически.",
   "startup.global.error.startup_status_timeout":
-    "Статус запуска не получен. Закройте и снова откройте ZCode. Если ошибка повторится, передайте диагностику в поддержку.",
+    "Статус запуска не получен. Закройте и снова откройте OpenZWork. Если ошибка повторится, передайте диагностику в поддержку.",
   "startup.global.error.transport_closed":
-    "Процесс подготовки завершился или отключился. Закройте и снова откройте ZCode, чтобы заново проверить записи миграций.",
+    "Процесс подготовки завершился или отключился. Закройте и снова откройте OpenZWork, чтобы заново проверить записи миграций.",
   "startup.global.error.unsupported_runtime":
-    "Настроенный агент не поддерживает подготовку хранилища. Восстановите встроенный агент и снова откройте ZCode.",
+    "Настроенный агент не поддерживает подготовку хранилища. Восстановите встроенный агент и снова откройте OpenZWork.",
 
   "startup.database.checking": "Проверка истории",
   "startup.database.waiting_for_lock": "Ожидание подготовки данных другим окном",
@@ -1613,7 +1621,7 @@ const ruRU: Record<string, string> = {
   "bots.deleteFailed": "Не удалось удалить бота: {error}",
 
   // Welcome / Login
-  "welcome.title": "Добро пожаловать в ZCode",
+  "welcome.title": "Добро пожаловать в OpenZWork",
   "welcome.username": "Имя пользователя",
   "welcome.password": "Пароль",
   "welcome.loggingIn": "Вход...",
@@ -1625,7 +1633,7 @@ const ruRU: Record<string, string> = {
   // App header
   "app.currentTheme": "Текущая: {theme}",
   "app.logout": "Отключиться",
-  "logout.confirm.title": "Отключиться и перезапустить ZCode?",
+  "logout.confirm.title": "Отключиться и перезапустить OpenZWork?",
   "logout.confirm.descriptionWithRunningSessions":
     "Запущено сеансов: {count}. Отключение прервёт их и перезапустит приложение.",
   "logout.confirm.descriptionDefault":
@@ -2664,7 +2672,7 @@ const ruRU: Record<string, string> = {
   "remote.error.retryableHint": "Можно повторить попытку позже.",
   "remote.error.connectionClosed": "Удалённое подключение закрыто",
   "workspaceSidebar.unavailableLocalDirectory":
-    "Папка рабочего пространства не существует или недоступна. Сейчас можно только просматривать историю. Восстановите папку и перезапустите ZCode, чтобы продолжить.",
+    "Папка рабочего пространства не существует или недоступна. Сейчас можно только просматривать историю. Восстановите папку и перезапустите OpenZWork, чтобы продолжить.",
   "workspaceSidebar.toggleSidebar": "Показать/скрыть боковую панель",
   "workspaceSidebar.resizeSidebar": "Изменить ширину боковой панели",
   "workspaceSidebar.showFileTree": "Показать файлы",
@@ -3823,16 +3831,16 @@ const ruRU: Record<string, string> = {
   "settings.taskAutoArchiveDays.option.30": "Архивировать через 30 дней",
   "settings.dataBaseDir": "Путь хранения данных",
   "settings.dataBaseDirDescription":
-    "Корневая папка данных приложения (по умолчанию домашняя папка пользователя). Существующие данные будут скопированы в новое место. Суффикс .zcode/v2 изменить нельзя.",
+    "Выберите базовую папку данных. После перезапуска данные будут скопированы в её папку .openzwork с сохранением исходных файлов.",
   "settings.dataBaseDirPlaceholder": "По умолчанию: домашняя папка пользователя",
   "settings.dataBaseDirBrowse": "Выбрать папку",
   "settings.dataBaseDirSave": "Сохранить",
-  "settings.dataBaseDirCopying": "Копирование данных, не закрывайте приложение...",
-  "settings.dataBaseDirCopyFailed": "Не удалось скопировать данные. Путь не изменён.",
+  "settings.dataBaseDirCopying": "Сохранение плана переноса…",
+  "settings.dataBaseDirCopyFailed": "Не удалось сохранить план переноса. Проверьте папку назначения и права доступа.",
   "settings.dataBaseDirForbiddenInstallDir":
-    "В Windows папка данных не может совпадать с папкой установки ZCode. Выберите папку вне места установки приложения.",
+    "В Windows папка данных не может совпадать с папкой установки OpenZWork. Выберите папку вне места установки приложения.",
   "settings.dataBaseDirRestartRequired":
-    "Данные сохранены. Перезапустите приложение, чтобы изменения вступили в силу.",
+    "План переноса сохранён. Перезапустите приложение для переноса данных.",
   "settings.locale.system": "Как в системе",
   "settings.locale.zh-CN": "中文简体",
   "settings.locale.en-US": "English",
@@ -3927,14 +3935,14 @@ const ruRU: Record<string, string> = {
   "settings.usageTitle": "Статистика использования",
   "settings.usageDescription":
     "Примерная активность и использование моделей по данным локальных сеансов.",
-  "resourceManager.storage.summaryTotal": "Всего занято ZCode",
+  "resourceManager.storage.summaryTotal": "Всего занято OpenZWork",
   "resourceManager.storage.scanning": "Подсчёт…",
   "resourceManager.storage.lastScanned": "Последний подсчёт {time}",
   "resourceManager.storage.idle": "Ещё не подсчитано",
   "resourceManager.storage.failed": "Ошибка подсчёта",
   "resourceManager.storage.rescan": "Пересчитать",
   "resourceManager.storage.disk": "Диск",
-  "resourceManager.storage.diskUsage": "ZCode занимает {used}",
+  "resourceManager.storage.diskUsage": "OpenZWork занимает {used}",
   "resourceManager.storage.diskFree": "Свободно {free} из {total}",
   "resourceManager.storage.diskUnknown": "Ёмкость диска недоступна",
   "resourceManager.storage.roots": "Папки данных",
@@ -3983,7 +3991,7 @@ const ruRU: Record<string, string> = {
   "resourceManager.storage.categoryDescription.exports":
     "Экспортированные пакеты логов и вложения обратной связи.",
   "resourceManager.storage.categoryDescription.runtimes":
-    "Встроенные среды выполнения агентов, компоненты Computer Use и плагины.",
+    "Встроенные среды выполнения агента и плагины.",
   "resourceManager.storage.categoryDescription.config":
     "Настройки, учётные данные, память и файлы рабочего пространства по умолчанию.",
   "resourceManager.storage.categoryDescription.other":
@@ -4010,7 +4018,7 @@ const ruRU: Record<string, string> = {
     "Настройка сертификатов сохранена. Перезапустите приложение, чтобы она вступила в силу.",
   "settings.browser.data.section": "Данные браузера",
   "settings.browser.desktopOnly":
-    "Данными браузера можно управлять только в настольном приложении ZCode.",
+    "Данными браузера можно управлять только в настольном приложении OpenZWork.",
   "settings.browser.import.title": "Импорт состояния входа Chrome",
   "settings.browser.import.description":
     "Однократно перенести состояние входа Chrome во встроенный браузер, чтобы AI мог открывать сайты, где вы уже вошли, и работать без лишних шагов.",
@@ -4136,7 +4144,7 @@ const ruRU: Record<string, string> = {
     "Откройте авторизацию, чтобы завершить подключение MCP-сервера плагина.",
   "settings.mcp.oauth.openAuthorization": "Открыть авторизацию",
   "settings.mcp.statusOnlyUnsupported":
-    "Этот ZCode Agent не умеет обновлять статус OAuth. Обновите или перезапустите ZCode и снова откройте настройки MCP для полного обновления.",
+    "Этот ZCode Agent не умеет обновлять статус OAuth. Обновите или перезапустите OpenZWork и снова откройте настройки MCP для полного обновления.",
   "settings.mcp.refreshFailed": "Не удалось обновить статус MCP: {error}",
   "settings.mcp.status.toolCount": "Инструментов: {count}",
   "settings.mcp.status.connectedReason": "Подключён и доступен.",
@@ -4932,7 +4940,7 @@ const ruRU: Record<string, string> = {
   "settings.modelProvider.help.advanced":
     "**MFJS tool schema**: включает совместимость с Moonshot Flavored JSON Schema, которую обычно использует API моделей Kimi от Moonshot. Включайте, только если API модели требует этот формат.",
   "settings.modelProvider.help.followRecommendedConfig":
-    "Подбирает рекомендуемую конфигурацию по ID модели, Base URL и формату API. ZCode постоянно обновляет рекомендации и автоматически синхронизирует их.\nЕсли вы вручную измените параметр, он перейдёт в ручное управление и перестанет следовать обновлениям рекомендаций; остальные параметры останутся под управлением умной настройки.",
+    "Встроенные правила выбираются по идентификатору модели, формату API и адресу сервера. Для полей, изменённых вручную, используются ваши значения.",
   "settings.modelProvider.modelDefaultsLoaded": "Для этой модели подобрана умная настройка",
   "settings.modelProvider.modelConfigIncomplete": "Конфигурация модели неполная",
   "settings.modelProvider.models": "Список моделей",
@@ -7542,7 +7550,7 @@ const ruRU: Record<string, string> = {
   "chat.error.feedback": "Сообщить о проблеме",
   "chat.error.feedbackOpened": "Открыта форма обратной связи с приложенным контекстом ошибки",
   "chat.error.noAvailableModel":
-    "Нет доступной модели. Повысьте тариф или настройте пользовательскую модель.",
+    "Нет доступных моделей. Настройте пользовательскую модель.",
   "chat.error.remoteNoAvailableModel":
     "На этом удалённом устройстве пока нет доступной модели. Сначала настройте модели на этом компьютере — после сохранения они автоматически синхронизируются с удалённым устройством.",
   "chat.error.sendFailed": "Не удалось отправить. Повторите попытку позже.",
@@ -7784,7 +7792,7 @@ const ruRU: Record<string, string> = {
     "Claude Code не распознаёт {command} (аргументы: {args}). Проверьте имя команды или переключитесь на агент/навык, который её поддерживает, и повторите попытку.",
   "zcode.error.providerBusiness.1006": "Сеанс входа истёк. Войдите снова.",
   "zcode.error.providerBusiness.1005":
-    "Сегодняшняя квота бесплатного тарифа израсходована. Перейдите на подписку Coding Plan или другую модель либо дождитесь сброса квоты.",
+    "Квота исчерпана. Проверьте лимиты у поставщика или выберите другую модель.",
   "zcode.error.providerBusiness.3006":
     "Текущая модель не входит в этот тариф. Переключитесь на разрешённую модель и повторите попытку.",
   "zcode.error.providerBusiness.3002":
@@ -7792,11 +7800,11 @@ const ruRU: Record<string, string> = {
   "zcode.error.providerBusiness.3001":
     "Недопустимые параметры запроса. Проверьте ввод и повторите попытку.",
   "zcode.error.providerBusiness.3008":
-    "Система занята. Смените модель, перейдите на подписку Coding Plan или повторите попытку позже.",
+    "Поставщик занят. Повторите попытку позже или выберите другую модель.",
   "zcode.error.providerBusiness.3009":
-    "Система занята. Смените модель, перейдите на подписку Coding Plan или повторите попытку позже.",
+    "Поставщик занят. Повторите попытку позже или выберите другую модель.",
   "zcode.error.providerBusiness.3010":
-    "Система занята. Смените модель, перейдите на подписку Coding Plan или повторите попытку позже.",
+    "Поставщик занят. Повторите попытку позже или выберите другую модель.",
   "zcode.error.providerBusiness.3102":
     "Ваше устройство было не в сети, когда задача дошла до начала очереди. Квота возвращена. Оставайтесь в сети и создайте новую задачу на время простоя.",
   "zcode.error.providerBusiness.3106":
@@ -7833,7 +7841,7 @@ const ruRU: Record<string, string> = {
   "resourceManager.network.empty": "Ожидание новых сетевых запросов…",
   "resourceManager.network.noMatches": "Нет подходящих запросов",
   "resourceManager.storage": "Хранилище",
-  "resourceManager.appUsage": "ZCode",
+  "resourceManager.appUsage": "OpenZWork",
   "resourceManager.systemUsage": "Система",
   "resourceManager.category.base": "Базовые службы",
   "resourceManager.category.task": "Процессы задач",

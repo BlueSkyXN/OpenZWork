@@ -17,7 +17,10 @@ import { StoreContext } from "@/store/StoreProvider.js";
 import { createZCodeStore } from "@/store/index.js";
 import { TabStoreProvider, useTabStoreApi } from "@/store/TabStoreProvider.js";
 import { TooltipProvider } from "@/components/ui/tooltip.js";
-import { SystemPromptEditor } from "@/settings/system-prompt/contract.js";
+import {
+  SystemPromptEditor,
+  SystemPromptSettingsSection,
+} from "@/settings/system-prompt/contract.js";
 import "@/styles.css";
 
 const params = new URLSearchParams(location.search);
@@ -119,7 +122,11 @@ createRoot(document.getElementById("root")!).render(
       <TabStoreProvider>
         <ZCodeIntlProvider initialLocale={initialLocale}>
           <TooltipProvider>
-            <Fixture />
+            {params.get("host") === "unavailable" ? (
+              <SystemPromptSettingsSection hostAvailable={false} />
+            ) : (
+              <Fixture />
+            )}
           </TooltipProvider>
         </ZCodeIntlProvider>
       </TabStoreProvider>

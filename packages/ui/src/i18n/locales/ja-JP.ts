@@ -1,5 +1,13 @@
 /** Japanese translations（缺失 key 由 IntlProvider 回退到 en-US） */
 const jaJP: Record<string, string> = {
+  "chat.error.copy.heading": "OpenZWork エラー情報",
+  "chat.error.copy.summary": "エラーの概要",
+  "chat.error.copy.traceId": "トレース ID: {traceId}",
+  "chat.error.copy.detail": "詳細",
+  "settings.systemPrompt.hostUnavailable": "システムプロンプトを編集するには、操作元のデスクトップで設定を開くか、そのローカルワークスペースに接続してください。",
+  "metrics.requestScope": "速度と最初のテキストまでの時間は直近の完了リクエストの値です。時間はリクエスト開始時から計測します。",
+  "zcode.error.providerBusiness.3007": "プロバイダーのセキュリティチェックで拒否されました。リクエストを確認するか、プロバイダーにお問い合わせください。",
+  "settings.dataBaseDirManagedWorktrees": "以下の管理対象 Git ワークツリーを処理してから、移行を再試行してください。",
   // OpenZWork(OZ-C015)：v4.0.0 新增预装工具与模型搜索键五语种补齐，并对齐无默认下载源提示。
   "preinstalledTools.purpose.python":
     "ドキュメントプラグインのスクリプトを実行し、表計算・Word・PDF 処理ライブラリを提供します",
@@ -937,11 +945,11 @@ const jaJP: Record<string, string> = {
   "startup.global.saving": "更新を保存中",
   "startup.global.finishing": "起動処理を完了中",
   "startup.global.servicesFailed":
-    "ローカルデータの準備はできましたが、アプリのサービスを起動できませんでした。診断情報をコピーしてから、ZCode を終了して再度開いてください。",
+    "ローカルデータの準備はできましたが、アプリのサービスを起動できませんでした。診断情報をコピーしてから、OpenZWork を終了して再度開いてください。",
   "startup.global.starting": "ローカルデータを準備中",
   "startup.global.preparing_host_storage": "タスクのインデックスを準備中",
   "startup.global.preparing_session_storage": "チャット履歴を準備中",
-  "startup.global.starting_services": "ZCode を起動中",
+  "startup.global.starting_services": "OpenZWork を起動中",
   "startup.global.ready": "ローカルデータの準備ができました",
   "startup.global.failed": "起動の準備に失敗しました",
   "startup.global.help":
@@ -974,11 +982,11 @@ const jaJP: Record<string, string> = {
   "startup.global.error.sql_failed":
     "準備が完了しませんでした。診断情報をコピーしてログを確認し、問題を解決してから手動で再試行してください。アプリは自動では再試行しません。",
   "startup.global.error.startup_status_timeout":
-    "起動ステータスを受信できませんでした。ZCode を終了して再度開いてください。再び失敗する場合は、診断情報をサポートに提供してください。",
+    "起動ステータスを受信できませんでした。OpenZWork を終了して再度開いてください。再び失敗する場合は、診断情報をサポートに提供してください。",
   "startup.global.error.transport_closed":
-    "準備プロセスが終了したか、接続が切れました。ZCode を終了して再度開き、移行記録をもう一度確認してください。",
+    "準備プロセスが終了したか、接続が切れました。OpenZWork を終了して再度開き、移行記録をもう一度確認してください。",
   "startup.global.error.unsupported_runtime":
-    "構成されているエージェントはストレージの準備に対応していません。同梱のエージェントに戻してから、ZCode を再度開いてください。",
+    "構成されているエージェントはストレージの準備に対応していません。同梱のエージェントに戻してから、OpenZWork を再度開いてください。",
 
   "startup.database.checking": "履歴を確認中",
   "startup.database.waiting_for_lock": "別のウィンドウでのデータ準備を待っています",
@@ -1582,7 +1590,7 @@ const jaJP: Record<string, string> = {
   "bots.deleteFailed": "ボットを削除できませんでした: {error}",
 
   // Welcome / Login
-  "welcome.title": "ZCode へようこそ",
+  "welcome.title": "OpenZWork へようこそ",
   "welcome.username": "ユーザー名",
   "welcome.password": "パスワード",
   "welcome.loggingIn": "サインイン中...",
@@ -1594,7 +1602,7 @@ const jaJP: Record<string, string> = {
   // App header
   "app.currentTheme": "現在: {theme}",
   "app.logout": "接続を解除",
-  "logout.confirm.title": "接続を解除して ZCode を再起動しますか？",
+  "logout.confirm.title": "接続を解除して OpenZWork を再起動しますか？",
   "logout.confirm.descriptionWithRunningSessions":
     "現在 {count} 件のセッションが実行中です。接続を解除するとそれらは中断され、アプリが再起動します。",
   "logout.confirm.descriptionDefault":
@@ -2638,7 +2646,7 @@ const jaJP: Record<string, string> = {
   "remote.error.retryableHint": "しばらくしてからもう一度お試しください。",
   "remote.error.connectionClosed": "リモート接続が閉じられました",
   "workspaceSidebar.unavailableLocalDirectory":
-    "ワークスペースのディレクトリが存在しないか、アクセスできません。現在は履歴の閲覧のみ可能です。続行するにはディレクトリを復元して ZCode を再起動してください。",
+    "ワークスペースのディレクトリが存在しないか、アクセスできません。現在は履歴の閲覧のみ可能です。続行するにはディレクトリを復元して OpenZWork を再起動してください。",
   "workspaceSidebar.toggleSidebar": "サイドバーの表示切り替え",
   "workspaceSidebar.resizeSidebar": "サイドバーのサイズを変更",
   "workspaceSidebar.showFileTree": "ファイルを表示",
@@ -3790,16 +3798,16 @@ const jaJP: Record<string, string> = {
   "settings.taskAutoArchiveDays.option.30": "30 日後にアーカイブ",
   "settings.dataBaseDir": "データの保存先",
   "settings.dataBaseDirDescription":
-    "アプリデータのルートディレクトリ（デフォルトはユーザーのホームディレクトリ）。既存のデータは新しい場所にコピーされます。.zcode/v2 のサフィックスは変更できません。",
+    "アプリのデータ保存先を選択します。再起動時に .openzwork フォルダーへコピーされ、元のデータは保持されます。",
   "settings.dataBaseDirPlaceholder": "デフォルト: ユーザーのホームディレクトリ",
   "settings.dataBaseDirBrowse": "フォルダを選択",
   "settings.dataBaseDirSave": "保存",
-  "settings.dataBaseDirCopying": "データをコピー中です。アプリを閉じないでください...",
-  "settings.dataBaseDirCopyFailed": "データのコピーに失敗しました。パスは変更されていません。",
+  "settings.dataBaseDirCopying": "移行計画を保存中…",
+  "settings.dataBaseDirCopyFailed": "移行計画を保存できませんでした。アクセス権と移行先を確認してください。",
   "settings.dataBaseDirForbiddenInstallDir":
-    "Windows では、データディレクトリを ZCode のインストールフォルダにすることはできません。アプリのインストール先以外のフォルダを選択してください。",
+    "Windows では、データディレクトリを OpenZWork のインストールフォルダにすることはできません。アプリのインストール先以外のフォルダを選択してください。",
   "settings.dataBaseDirRestartRequired":
-    "データを保存しました。反映するにはアプリを再起動してください。",
+    "再起動するとデータが移行されます。",
   "settings.locale.system": "システムのデフォルト",
   "settings.locale.zh-CN": "中文简体",
   "settings.locale.en-US": "English",
@@ -3893,14 +3901,14 @@ const jaJP: Record<string, string> = {
   "settings.usageTitle": "使用状況",
   "settings.usageDescription":
     "ローカルのセッションから集計したおおよそのアクティビティとモデルの使用量を確認します。",
-  "resourceManager.storage.summaryTotal": "ZCode の合計使用量",
+  "resourceManager.storage.summaryTotal": "OpenZWork の合計使用量",
   "resourceManager.storage.scanning": "計算中…",
   "resourceManager.storage.lastScanned": "最終計算 {time}",
   "resourceManager.storage.idle": "まだ計算していません",
   "resourceManager.storage.failed": "計算に失敗しました",
   "resourceManager.storage.rescan": "再計算",
   "resourceManager.storage.disk": "ディスク",
-  "resourceManager.storage.diskUsage": "ZCode の使用量 {used}",
+  "resourceManager.storage.diskUsage": "OpenZWork の使用量 {used}",
   "resourceManager.storage.diskFree": "{total} 中 {free} 空き",
   "resourceManager.storage.diskUnknown": "ディスク容量を取得できません",
   "resourceManager.storage.roots": "データディレクトリ",
@@ -3950,7 +3958,7 @@ const jaJP: Record<string, string> = {
   "resourceManager.storage.categoryDescription.exports":
     "エクスポートしたログバンドルとフィードバックの添付ファイル。",
   "resourceManager.storage.categoryDescription.runtimes":
-    "同梱のエージェントランタイム、Computer Use コンポーネント、プラグイン。",
+    "同梱のエージェントランタイムとプラグイン。",
   "resourceManager.storage.categoryDescription.config":
     "設定、認証情報、メモリ、デフォルトのワークスペースファイル。",
   "resourceManager.storage.categoryDescription.other":
@@ -3976,7 +3984,7 @@ const jaJP: Record<string, string> = {
   "settings.embeddedBrowserAllowInsecureCertificatesSavedHint":
     "証明書の設定を保存しました。反映にはアプリの再起動が必要です。",
   "settings.browser.data.section": "ブラウザデータ",
-  "settings.browser.desktopOnly": "ブラウザデータは ZCode デスクトップアプリでのみ管理できます。",
+  "settings.browser.desktopOnly": "ブラウザデータは OpenZWork デスクトップアプリでのみ管理できます。",
   "settings.browser.import.title": "Chrome のサインイン状態をインポート",
   "settings.browser.import.description":
     "Chrome のサインイン状態を内蔵ブラウザに一度取り込むと、AI がサインイン済みのサイトを開けるようになり、作業がスムーズになります。",
@@ -4103,7 +4111,7 @@ const jaJP: Record<string, string> = {
     "認可を開いて、このプラグインの MCP サーバーへの接続を完了してください。",
   "settings.mcp.oauth.openAuthorization": "認可を開く",
   "settings.mcp.statusOnlyUnsupported":
-    "この ZCode Agent は OAuth の状態を更新できません。ZCode をアップグレードまたは再起動してから、MCP 設定を開き直して完全な更新を実行してください。",
+    "この ZCode Agent は OAuth の状態を更新できません。OpenZWork をアップグレードまたは再起動してから、MCP 設定を開き直して完全な更新を実行してください。",
   "settings.mcp.refreshFailed": "MCP の状態を更新できませんでした: {error}",
   "settings.mcp.status.toolCount": "{count} 個のツール",
   "settings.mcp.status.connectedReason": "接続済みで利用できます。",
@@ -4889,7 +4897,7 @@ const jaJP: Record<string, string> = {
   "settings.modelProvider.help.advanced":
     "**MFJS tool schema**: Moonshot Flavored JSON Schema との互換性を有効にします。主に Moonshot の Kimi モデル API で使用されます。モデル API がこの形式を必要とする場合にのみ有効にしてください。",
   "settings.modelProvider.help.followRecommendedConfig":
-    "モデル ID、Base URL、API 形式をもとに推奨構成を照合します。ZCode は推奨構成を継続的に更新し、自動的に同期します。\n設定を手動で変更すると、その設定は手動管理となり、推奨構成の更新に追従しなくなります。その他の設定は引き続きスマート構成で管理されます。",
+    "モデル ID、API 形式、接続先に応じて同梱ルールを適用します。手動で変更した項目には設定した値が使われます。",
   "settings.modelProvider.modelDefaultsLoaded": "このモデルのスマート構成が適用されました",
   "settings.modelProvider.modelConfigIncomplete": "モデルの構成が不完全です",
   "settings.modelProvider.models": "モデル一覧",
@@ -7512,7 +7520,7 @@ const jaJP: Record<string, string> = {
   "chat.error.feedback": "問題を報告",
   "chat.error.feedbackOpened": "エラーのコンテキストを添付してフィードバックを開きました",
   "chat.error.noAvailableModel":
-    "利用可能なモデルがありません。アップグレードするか、カスタムモデルを設定してください。",
+    "利用可能なモデルがありません。カスタムモデルを設定してください。",
   "chat.error.remoteNoAvailableModel":
     "このリモートデバイスにはまだ利用可能なモデルがありません。まずこのコンピューターでモデルを構成してください。保存後、リモートデバイスに自動的に同期されます。",
   "chat.error.sendFailed": "送信に失敗しました。しばらくしてからもう一度お試しください。",
@@ -7759,7 +7767,7 @@ const jaJP: Record<string, string> = {
   "zcode.error.providerBusiness.1006":
     "サインインの有効期限が切れました。もう一度サインインしてください。",
   "zcode.error.providerBusiness.1005":
-    "本日の無料プランのクォータを使い切りました。Coding Plan サブスクリプションまたは別のモデルに切り替えるか、クォータのリセットをお待ちください。",
+    "利用枠を使い切りました。プロバイダーの利用枠を確認するか、モデルを切り替えてください。",
   "zcode.error.providerBusiness.3006":
     "現在のモデルはこのプランに含まれていません。許可されているモデルに切り替えてから、もう一度お試しください。",
   "zcode.error.providerBusiness.3002":
@@ -7767,11 +7775,11 @@ const jaJP: Record<string, string> = {
   "zcode.error.providerBusiness.3001":
     "リクエストのパラメーターが無効です。入力内容を確認してから、もう一度お試しください。",
   "zcode.error.providerBusiness.3008":
-    "システムが混雑しています。モデルを切り替えるか、Coding Plan サブスクリプションに切り替えるか、しばらくしてからもう一度お試しください。",
+    "プロバイダーが混雑しています。しばらくしてから再試行するか、モデルを切り替えてください。",
   "zcode.error.providerBusiness.3009":
-    "システムが混雑しています。モデルを切り替えるか、Coding Plan サブスクリプションに切り替えるか、しばらくしてからもう一度お試しください。",
+    "プロバイダーが混雑しています。しばらくしてから再試行するか、モデルを切り替えてください。",
   "zcode.error.providerBusiness.3010":
-    "システムが混雑しています。モデルを切り替えるか、Coding Plan サブスクリプションに切り替えるか、しばらくしてからもう一度お試しください。",
+    "プロバイダーが混雑しています。しばらくしてから再試行するか、モデルを切り替えてください。",
   "zcode.error.providerBusiness.3102":
     "このタスクがキューの先頭に来たとき、デバイスがオフラインでした。クォータは返却されました。デバイスをオンラインのままにして、新しいアイドル時間タスクを作成してください。",
   "zcode.error.providerBusiness.3106":
@@ -7810,7 +7818,7 @@ const jaJP: Record<string, string> = {
   "resourceManager.network.empty": "新しいネットワークリクエストを待っています…",
   "resourceManager.network.noMatches": "一致するリクエストはありません",
   "resourceManager.storage": "ストレージ",
-  "resourceManager.appUsage": "ZCode",
+  "resourceManager.appUsage": "OpenZWork",
   "resourceManager.systemUsage": "システム",
   "resourceManager.category.base": "基本サービス",
   "resourceManager.category.task": "タスクプロセス",

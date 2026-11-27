@@ -1530,6 +1530,7 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
             // code-comment 投影，导致 replay hydration 暴露原始 directive。该开关只修正展示能力，
             // 不进入 relay、Host 或 replayable 状态。
             assistantCodeCommentCardsEnabled
+            systemPromptHostAvailable={bridge.kind === "local"}
             initialWorkspaceAbsPath={bridge.workspacePath}
             initialWorkspaceIdentity={
               bridge.kind === "remote" ? bridge.workspaceIdentity : undefined
@@ -1645,6 +1646,7 @@ async function bootstrapExternalRelayWebRemoteControl(params: URLSearchParams): 
         <ZCodeIntlProvider>
           <Root
             composerClientNamespace={`mobile:${relayParams.deviceMid ?? relayParams.deviceSid}`}
+            systemPromptHostAvailable={false}
             services={createHomeOnlyWebRemoteControlServices()}
             platform={createWebPlatform({
               externalWebRemoteControlProxy: {

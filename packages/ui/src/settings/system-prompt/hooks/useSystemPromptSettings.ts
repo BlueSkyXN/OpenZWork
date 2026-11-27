@@ -20,7 +20,11 @@ export function useSystemPromptSettings() {
     setCatalogError(null);
     void zcodeAgentService.getSystemPromptCatalog().then(
       (result) => {
-        if (active) setCatalog(result);
+        if (!active) return;
+        // 占位服务可能返回空目录；结束加载并允许重试。
+        if (!Array.isArray(result?.sections))
+          setCatalogError(new Error("system-prompt.catalog-unavailable"));
+        else setCatalog(result);
       },
       (error: unknown) => {
         if (active) setCatalogError(error);

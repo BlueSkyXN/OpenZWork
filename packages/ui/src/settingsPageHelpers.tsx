@@ -711,23 +711,25 @@ export function GeneralSectionContent({
         ) : null}
       </SettingsGroupCard>
 
-      <SettingsGroupCard>
-        <SettingsRow
-          searchId="settings.dataBaseDir"
-          label={intl.formatMessage({ id: "settings.dataBaseDir" })}
-          description={intl.formatMessage({
-            id: "settings.dataBaseDirDescription",
-          })}
-          control={
-            <DataBaseDirControl
-              dataBaseDir={dataBaseDir}
-              defaultHomeDir={defaultHomeDir}
-              onDataBaseDirChange={onDataBaseDirChange}
-              onSelectDataBaseDir={onSelectDataBaseDir}
-            />
-          }
-        />
-      </SettingsGroupCard>
+      {isDesktop ? (
+        <SettingsGroupCard>
+          <SettingsRow
+            searchId="settings.dataBaseDir"
+            label={intl.formatMessage({ id: "settings.dataBaseDir" })}
+            description={intl.formatMessage({
+              id: "settings.dataBaseDirDescription",
+            })}
+            control={
+              <DataBaseDirControl
+                dataBaseDir={dataBaseDir}
+                defaultHomeDir={defaultHomeDir}
+                onDataBaseDirChange={onDataBaseDirChange}
+                onSelectDataBaseDir={onSelectDataBaseDir}
+              />
+            }
+          />
+        </SettingsGroupCard>
+      ) : null}
 
       <SettingsGroupCard>
         <SettingsRow

@@ -66,3 +66,5 @@ OZ-CLH-01（UI 实时切换 + client/configs 零请求）不变。上游
   六条行为；冲突裁决后跑 `settingsLocalePersistence.test.ts`。
 - `docs/i18n/ui-locales.md` 为上游文档，OpenZWork 差异只在第 6 条（账号回滚域缺席），
   不在本文档重复其字段表。
+
+复制完整错误在五种语言中保留实际追踪号；会话指标范围和数据目录说明使用本产品的路径与措辞。异步打开文档失败时按错误发生时选择的面板语言显示。

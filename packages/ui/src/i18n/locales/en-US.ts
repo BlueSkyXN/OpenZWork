@@ -2,6 +2,14 @@
 import { desktopMenuMessages } from "@zcode/shared";
 
 const enUS: Record<string, string> = {
+  "chat.error.copy.heading": "OpenZWork error",
+  "chat.error.copy.summary": "Error summary",
+  "chat.error.copy.traceId": "Trace ID: {traceId}",
+  "chat.error.copy.detail": "Details",
+  "settings.systemPrompt.hostUnavailable": "To edit system prompts, open settings on the controlling desktop or connect to one of its local workspaces.",
+  "metrics.requestScope": "Speed and time to first text use the last settled request. First text is timed from the start of the request.",
+  "zcode.error.providerBusiness.3007": "The provider rejected the security check. Review the request or contact your provider.",
+  "settings.dataBaseDirManagedWorktrees": "Resolve these managed Git worktrees before retrying the migration.",
   "preinstalledTools.purpose.python":
     "Runs document plugin scripts and provides spreadsheet, Word, and PDF libraries",
   "preinstalledTools.purpose.qpdf": "Splits, merges, encrypts, and repairs PDF files",
@@ -7916,7 +7924,7 @@ const enUS: Record<string, string> = {
     "Claude Code does not recognize {command} (args: {args}). Check the command name, or switch to an Agent/skill that supports it and try again.",
   "zcode.error.providerBusiness.1006": "Your login session has expired. Please sign in again.",
   "zcode.error.providerBusiness.1005":
-    "Today's free plan quota has been used up. Switch to a Coding Plan subscription or another model, or wait for the quota to reset.",
+    "The current quota is exhausted. Check the quota with your provider or switch models.",
   "zcode.error.providerBusiness.3006":
     "The current model is not included in this plan. Switch to an allowed model and try again.",
   "zcode.error.providerBusiness.3002":
@@ -7924,12 +7932,11 @@ const enUS: Record<string, string> = {
   "zcode.error.providerBusiness.3001":
     "The request parameters are invalid. Check the input and try again.",
   "zcode.error.providerBusiness.3008":
-    "The system is busy. Please switch models, switch to a Coding Plan subscription, or try again later.",
+    "The provider is busy. Try again later or switch models.",
   "zcode.error.providerBusiness.3009":
-    "The system is busy. Please switch models, switch to a Coding Plan subscription, or try again later.",
+    "The provider is busy. Try again later or switch models.",
   "zcode.error.providerBusiness.3010":
-    // Purged: 3102/3106 idle-time entries stay out; keep local wording for 3010 (no subscription upsell).
-    "The system is busy. Please switch models, upgrade your account, or try again later.",
+    "The provider is busy. Try again later or switch models.",
   "zcode.error.modelSuspiciousEmpty": "The model returned no content.",
   "zcode.error.providerBusiness.2007":
     "The upstream service is temporarily unavailable. Please try again later.",

@@ -8,12 +8,19 @@ import zhCN from "../src/i18n/locales/zh-CN.js";
 const sections = [
   "settings.usage.",
   "metrics.display.",
+  "chat.error.copy.",
   "settings.systemPrompt.",
   "configPackage.",
   "webRemoteControl.connection.",
 ];
 const ids = Object.keys(enUS).filter(
-  (id) => id === "settings.remoteControlTitle" || sections.some((prefix) => id.startsWith(prefix)),
+  (id) =>
+    [
+      "metrics.requestScope",
+      "settings.remoteControlTitle",
+      "zcode.error.providerBusiness.3007",
+      "settings.dataBaseDirManagedWorktrees",
+    ].includes(id) || sections.some((prefix) => id.startsWith(prefix)),
 );
 const parameters = (text: string) => [...new Set(text.match(/\{\w+\}/g) ?? [])].sort();
 
@@ -30,5 +37,13 @@ it.each(Object.entries({ enUS, jaJP, koKR, ruRU, zhCN }))(
   "%s 的同步错误指向受管插件目录",
   (_, messages) => {
     expect(messages["remoteSync.blocked.externalDirectory"]).toContain("~/.openzwork/plugins");
+  },
+);
+
+it.each(Object.entries({ enUS, jaJP, koKR, ruRU, zhCN }))(
+  "%s 的错误复制和迁移说明使用真实追踪号与活动数据根",
+  (_, messages) => {
+    expect(messages["chat.error.copy.traceId"]).toContain("{traceId}");
+    expect(messages["settings.dataBaseDirDescription"]).toContain(".openzwork");
   },
 );

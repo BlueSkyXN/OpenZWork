@@ -29,7 +29,16 @@ import type { SystemPromptEditorProps } from "./types.js";
 import { useSystemPromptSettings } from "./hooks/useSystemPromptSettings.js";
 import { SystemPromptContextSwitches } from "./SystemPromptContextSwitches.js";
 
-export function SystemPromptSettingsSection() {
+export function SystemPromptSettingsSection({ hostAvailable = true }: { hostAvailable?: boolean }) {
+  const { intl } = useZCodeIntl();
+  if (!hostAvailable)
+    return (
+      <p role="status">{intl.formatMessage({ id: "settings.systemPrompt.hostUnavailable" })}</p>
+    );
+  return <ConnectedSystemPromptSettingsSection />;
+}
+
+function ConnectedSystemPromptSettingsSection() {
   const state = useSystemPromptSettings();
   const { intl } = useZCodeIntl();
   if (state.error)
