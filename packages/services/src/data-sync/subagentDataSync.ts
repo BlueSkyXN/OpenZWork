@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { lstat, mkdir, readFile, rm } from "node:fs/promises";
+import { lstat, readFile, rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import {
   createAgentStateId,
@@ -36,6 +36,7 @@ import {
   normalizeBuiltInSelectionOverrides,
 } from "#src/subagents/subagentsService.js";
 import type { IDataSyncCategoryService } from "./contract.js";
+import { prepareSyncWriteParent } from "./directoryContent.js";
 import { errorMessage, stableStringify } from "./syncUtils.js";
 
 const logger = createServiceLogger("subagent-data-sync");
@@ -222,10 +223,10 @@ export function createSubagentDataSyncMethods(
       if (item.mode === "createOnly") {
         // 列表加载后目标端出现同名子智能体：不写入，提示刷新后重试。
         if (existing) return { key: item.key, status: "conflict" };
-        const targetPath = join(root, payloadItem.fileName);
+        // OW-P042：预检和实际写入都确认父目录归属。
+        const targetPath = await prepareSyncWriteParent(root, join(root, payloadItem.fileName));
         if (await pathExists(targetPath))
           return failed(`target path already exists: ${targetPath}`);
-        await mkdir(root, { recursive: true });
         await writeFileAtomically(targetPath, content);
         return { key: item.key, status: "created", createdPath: targetPath };
       }
@@ -234,8 +235,10 @@ export function createSubagentDataSyncMethods(
         return { key: item.key, status: "conflict" };
       }
       // 替换目标端该 name 对应的实际文件（文件名可能与来源不同），不另建新文件。
-      const { mode } = await lstat(existing.filePath);
-      await writeFileAtomically(existing.filePath, content, mode);
+      const targetPath = await prepareSyncWriteParent(root, existing.filePath);
+      const stat = await lstat(targetPath);
+      if (!stat.isFile()) return failed("target is not a regular file");
+      await writeFileAtomically(targetPath, content, stat.mode);
       return { key: item.key, status: "updated" };
     } catch (error) {
       return failed(errorMessage(error));
@@ -284,8 +287,11 @@ export function createSubagentDataSyncMethods(
     },
 
     async checkSyncWriteAccess() {
+      const root = await resolveUserSubagentRoot();
+      try { await prepareSyncWriteParent(root, join(root, ".sync-preflight")); }
+      catch (error) { return { ok: false, path: root, error: errorMessage(error) }; }
       return await checkRemoteSyncDirectoriesWriteAccess([
-        await resolveUserSubagentRoot(),
+        root,
         dirname(await resolveSubagentStateFile()),
       ]);
     },
