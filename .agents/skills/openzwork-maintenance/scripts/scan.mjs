@@ -502,8 +502,19 @@ export function loadCiTests(context) {
       return out;
     };
     for (const [jobId, job] of Object.entries(workflow.jobs ?? {})) {
+      if (job.if || job["continue-on-error"]) continue;
       for (const step of job?.steps ?? []) {
-        if (typeof step?.run !== "string") continue;
+        if (typeof step?.run !== "string" || step["continue-on-error"]) continue;
+        // 核心矩阵允许按已定义的 lane 分配回归，手动或可跳过的条件不能认领整文件。
+        if (step.if) {
+          const lane = /^matrix\.lane\s*==\s*'([^']+)'$/.exec(step.if)?.[1];
+          const matrix = job.strategy?.matrix;
+          if (
+            !lane ||
+            !(matrix?.lane?.includes(lane) || matrix?.include?.some((item) => item.lane === lane))
+          )
+            continue;
+        }
         const where = `${CI_WORKFLOW_PATH} 步骤「${step.name ?? jobId}」`;
         const commands = step.run
           .split("\n")
@@ -513,6 +524,8 @@ export function loadCiTests(context) {
           const command = raw.trim();
           // 注释与 echo 里出现的文件名不是点名。
           if (!command || command.startsWith("#") || /^echo\b/.test(command)) continue;
+          if (/(?:^|\s)(?:--mochaOpts\.grep|--grep|-t|--testNamePattern)(?:\s|=|$)/u.test(command))
+            continue;
           const filter = /--filter[=\s]+(\S+)/.exec(command)?.[1];
           const dir =
             /--dir[=\s]+(\S+)/.exec(command)?.[1] ??

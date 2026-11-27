@@ -844,6 +844,7 @@ patches:
     evidence: 核心回归在同一轮分别关闭子进程的 stdout 与 stderr 读端，核对无护栏的未捕获 EPIPE 和有护栏时的存活结果。
     fix: Host 在首次日志前给 stdout 和 stderr 安装 error 监听，只忽略 EPIPE，其他错误原样抛出。
     files:
+      - packages/desktop/src/preinstalled-tools/process.ts
       - packages/desktop/src/host/hostBrokenPipeGuard.ts
       - packages/desktop/src/host/index.ts
     regression:
@@ -903,10 +904,12 @@ patches:
     evidence: 两个分类的同根目录别名夹具覆盖新增项的物理父目录判定。
     fix: 预检配置根，逐段核实父目录，使用核实后的物理路径发布文件。
     files:
+      - packages/services/src/data-sync/subagentDataSync.ts
       - packages/services/src/data-sync/commandDataSync.ts
       - packages/services/src/data-sync/skillDataSync.ts
       - packages/services/src/data-sync/directoryContent.ts
     regression:
+      - packages/services/test/configPackageBoundaries.test.ts
       - packages/services/test/configPackageSkillImport.test.ts
     retire: 上游创建和替换时核验实际父目录并通过分类回归。
 
@@ -1103,3 +1106,79 @@ patches:
       - packages/desktop/test/e2e/conversation-session/projects/conversation-session-project-management.test.ts
       - packages/desktop/test/e2e/plugins/installation/plugin-management-persistence-source.test.ts
     retire: 上游的插件冷重启可恢复隔离配置和驱动连接，项目管理可在可见窗口稳定完成整批移除与撤销。
+
+  - id: OW-P053
+    title: 完整诊断归档收集凭据密钥与备份
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 4.0.0
+    trigger: 用户导出包含文件密钥或重置备份的数据目录。
+    impact: 诊断包可能携带私有凭据材料。
+    cause: 原收集器只精确排除了两个凭据库文件名。
+    evidence: 发布树的收集器和备份命名规则，以及临时目录归档回归。
+    fix: 枚举阶段排除凭据文件族，在 POSIX 建立私有目录和 ZIP。
+    files:
+      - packages/desktop/src/main/exportLogs.ts
+    regression:
+      - packages/desktop/test/diagnosticExportScope.test.ts
+    retire: 上游在完整导出和回退目录实施等效排除与权限控制。
+
+  - id: OW-P054
+    title: 通用 Web 监听与浏览器来源校验
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 4.0.0
+    trigger: 开发服务未配置监听地址，或浏览器从其他来源访问本机服务。
+    impact: 本地服务可以接收预期范围之外的连接。
+    cause: 监听地址缺省且鉴权状态和来源校验分离。
+    evidence: 开发入口、发行启动器和共用服务的正常连接及来源策略回归。
+    fix: 默认回环，依据实际令牌报告状态，按 Host 校验浏览器来源。发行版保留显式局域网选项。
+    files:
+      - packages/server/src/httpRequestAccessOpenzwork.ts
+      - packages/server/src/http.ts
+      - packages/server/src/entry-http.ts
+      - scripts/zcode-distribution/runner.mjs
+    regression:
+      - packages/server/test/liteTokenCookie.test.ts
+    retire: 上游为通用服务提供等效监听、来源与认证规则。
+
+  - id: OW-P055
+    title: 创建受管工作树时的关闭保护
+    kind: product
+    status: fixed
+    upstream:
+      since: 3.18.2
+      checked: 4.0.0
+    trigger: 工作树正在创建，用户关闭对应窗口或退出应用。
+    impact: 创建中的任务可能被中断。
+    cause: 窗口存在两种 ID，关窗查询与 Host 注册不同源，且下游消息分发缺少阻塞更新。
+    evidence: 上一正式版和本版的 Host 报告、Main 映射与窗口注册键。
+    fix: 按 Host 更新阻塞列表，按 WebContents ID 查找该窗口的 Host。
+    files:
+      - packages/desktop/src/main/desktopHostProcess.ts
+      - packages/desktop/src/main/index.ts
+    regression:
+      - packages/desktop/test/preinstalledToolsCatalog.test.ts
+    retire: 上游修正关窗索引，合入时保留阻塞消息分发。
+
+  - id: OW-P056
+    title: 预装工具进程连续退出时限制重启
+    kind: product
+    status: fixed
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: 独立进程反复在完成初始化后退出。
+    impact: 主进程持续分配已知会立即退出的子进程。
+    cause: 原退出监听器立即再 fork，缺少重启次数和取消机制。
+    evidence: 预装工具桥接生命周期及带受控时钟的退出回归。
+    fix: 一分钟内按退避最多重试三次，应用退出时取消定时器。
+    files:
+      - packages/desktop/src/preinstalled-tools/mainBridge.ts
+    regression:
+      - packages/desktop/test/preinstalledToolsCatalog.test.ts
+    retire: 上游为连续退出提供等效的退避、次数限制与退出取消。

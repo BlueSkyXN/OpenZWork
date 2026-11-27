@@ -298,6 +298,7 @@ entries:
       - docs/openzwork/release/unsigned-macos-distribution.md
       - docs/git/release-build-publish-separation-openzwork.md
     paths:
+      - packages/server/src/prepareServerEntryCredentialsOpenzwork.ts
       - .github/workflows/installers.yml
       - .github/workflows/release.yml
       - scripts/automatic-release.mjs
@@ -353,6 +354,7 @@ entries:
       - host-e2e-attachment-probe
       - pane-runtime-identity-e2e
     paths:
+      - tests/ci/desktop-restart-cases.json
       - .github/workflows/ci.yml
       - .github/workflows/extended-checks.yml
       - scripts/merge-full-suite-reports.mjs
@@ -662,6 +664,11 @@ entries:
       - cli-storage-relocation
       - host-storage-relocation
     hooks:
+      - packages/shared/src/settings-errors.ts
+      - packages/services/src/storage/domain/storageCatalog.ts
+      - packages/services/src/subagents/subagentStorage.ts
+      - packages/services/src/hooks/hooksService.ts
+      - packages/ui/src/settings/DataBaseDirControl.tsx
       - apps/zcode-cli/packages/cli/src/main.ts
       - packages/shared/src/credential-security/contract.ts
       - packages/shared/src/credential-security/systemCredentialCipher.ts
