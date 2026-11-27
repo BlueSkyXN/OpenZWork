@@ -382,7 +382,7 @@ async function runModelBackedTurnStepImpl(
     if (
       state.streamRecoveryRetryCount > 0 &&
       !state.turnAbortSignal.aborted &&
-      isStartPlanBusyStreamRecoveryFailure(finalError)
+      isStartPlanBusyStreamRecoveryFailure(finalError, executionModelSelection.providerId)
     ) {
       // Start Plan 运行中断流会先走 core stream recovery；恢复次数耗尽后，
       // 继续抛原 provider 文案会和首轮繁忙失败无法区分，UI 也就不能展示“自动重试达到最大次数”。
