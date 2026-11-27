@@ -795,6 +795,7 @@ entries:
       - docs/specs/plugin-marketplace-sources-openzwork.md
     hooks:
       - packages/shared/src/plugin-marketplaces.ts
+      - apps/zcode-cli/packages/bootstrap/src/app/official-plugin-definitions.ts
       - apps/zcode-cli/packages/bootstrap/src/plugins.ts
       - apps/zcode-cli/packages/adapters/src/plugins/marketplace.ts
       - packages/ui/src/lib/pluginIconSource.ts

@@ -41,6 +41,7 @@ import {
 import { getCliStorageRoot, getPluginStorageRoot } from "../src/app/paths.js";
 import { installZCodeMarketplacePlugin, resolveZCodePlugins } from "../src/plugins.js";
 import { createOfficialPluginPreparation } from "../src/app/bundled-plugins.js";
+import { OFFICIAL_PLUGIN_DEFINITIONS } from "../src/app/official-plugin-definitions.js";
 import {
   addPluginMarketplace,
   describePlugin,
@@ -1175,6 +1176,50 @@ describe("plugins/overview extension summary", () => {
       expect(plain?.listing).toBeUndefined();
       expect(plain?.componentTypes ?? []).not.toContain("extension");
     } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("OZ-C014：离线随包目录按协议协商为可用条目和已有安装记录提供扩展摘要", async () => {
+    const seed = OFFICIAL_PLUGIN_DEFINITIONS.find((plugin) => plugin.name === "documents")!;
+    const original = seed.listing!;
+    const root = await mkdtemp(join(tmpdir(), "openzwork-bundled-summary-"));
+    const storage = join(root, "cli");
+    const context = { deps: { env: { ZCODE_STORAGE_DIR: storage } } } as ZCodeProtocolAgentServerContext;
+    const workspace = { workspacePath: root, workspaceKey: root };
+    const marketplace = "zcode-plugins-official";
+    const id = `${seed.name}@${marketplace}`;
+    const summary = { engines: { zcode: "^1.4.0" }, grants: ["sessions.fullAccess"] };
+    try {
+      // 用带摘要的测试目录走真实的种子准备和协议查询，产品目录无需声明测试权限。
+      seed.listing = { ...original, extensionSummary: summary };
+      const params = { workspace, includeExtensionSummary: true };
+      const available = await getPluginsOverview(context, params);
+      const bundled = available.availablePlugins.find((plugin) => plugin.id === id);
+      expect(bundled?.listing?.extensionSummary).toEqual(summary);
+      const plugins = getPluginStorageRoot(getCliStorageRoot(storage));
+      const record = {
+        id,
+        name: seed.name,
+        marketplace,
+        version: seed.version,
+        scope: "user",
+        installPath: join(plugins, "cache", marketplace, seed.name, seed.version),
+        installedAt: "2026-01-01T00:00:00.000Z",
+      };
+      await writeTestFile(
+        join(plugins, "installed_plugins.json"),
+        JSON.stringify({ version: 1, plugins: [record] }),
+      );
+      const legacy = await getPluginsOverview(context, { workspace });
+      expect(JSON.stringify(legacy)).not.toContain("extensionSummary");
+      const installed = zcodePluginsOverviewResultSchema.parse(await getPluginsOverview(context, params));
+      expect(installed.installedPlugins.find((plugin) => plugin.id === id)?.listing).toMatchObject({
+        displayName: original.displayName,
+        extensionSummary: summary,
+      });
+    } finally {
+      seed.listing = original;
       await rm(root, { force: true, recursive: true });
     }
   });

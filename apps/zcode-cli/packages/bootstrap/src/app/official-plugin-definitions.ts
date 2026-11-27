@@ -1,9 +1,11 @@
 import { ZCODE_OFFICIAL_PLUGIN_MARKETPLACE } from "@zcode/contracts";
+import type { PluginExtensionSummary } from "@zcode/adapters/plugins";
 
 // 内置插件的商店信息 seed（原样写入官方 marketplace.json 的条目 raw，键名与 CDN 目录
 // schema 一致：displayName_i18n / examplePrompts_i18n 等），解析复用 adapter 的
 // parseEntryStoreListing。icon 不再指向官方 assets CDN；UI 使用默认图标降级。
 export interface OfficialPluginListingSeed {
+  extensionSummary?: PluginExtensionSummary;
   displayName?: string;
   displayName_i18n?: Record<string, string>;
   description_i18n?: Record<string, string>;
