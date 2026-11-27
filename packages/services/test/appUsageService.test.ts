@@ -94,7 +94,7 @@ test("tool report retains query scope and totals while bounding UTF-8 lists", ()
 test("small tool report keeps every entry and declares its retention", () => {
   const report = JSON.parse(buildAppUsageToolReport(EMPTY_SNAPSHOT, EMPTY_PAGE));
   assert.equal(report.truncated, false);
-  assert.equal(report.retentionDays, 30);
+  assert.equal(report.retentionDays, null);
   assert.equal(report.generatedAt, EMPTY_SNAPSHOT.generatedAt);
   assert.deepEqual(report.summary, EMPTY_SNAPSHOT.summary);
 });

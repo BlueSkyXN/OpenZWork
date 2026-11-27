@@ -22,8 +22,8 @@ export function buildAppUsageToolReport(
   const report = {
     range: snapshot.range,
     timeZone: snapshot.timeZone,
+    retentionDays: null,
     generatedAt: snapshot.generatedAt,
-    retentionDays: 30,
     source: snapshot.source,
     projectId: snapshot.projectId,
     summary: snapshot.summary,
