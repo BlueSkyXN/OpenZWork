@@ -1727,22 +1727,6 @@ modules:
     layers:
       adapters: .
     owner: desktop
-  # web-share-manage：由 architecture:adopt 登记
-  - id: web-share-manage
-    roots:
-      - packages/web/src/share-manage
-    managed: true
-    requires:
-      - shared
-      - ui
-      - web
-    publicEntrypoints:
-      - packages/web/src/share-manage/index.ts
-      - packages/web/src/share-manage/contract.ts
-      - packages/web/src/share-manage/mockConversationShareManageClient.ts
-    layers:
-      ui: .
-    owner: conversation
   # managed-worktree-shared：由 architecture:adopt 登记
   - id: managed-worktree-shared
     roots:

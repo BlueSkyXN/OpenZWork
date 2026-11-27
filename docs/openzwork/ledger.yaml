@@ -970,6 +970,8 @@ entries:
       - packages/share-ui/**
       - packages/web-share/**
       - packages/web/src/share/**
+      - packages/web/src/share-manage/**
+      - packages/web/test/e2e/sharing/content/manual-review/pending/share-manage.mjs
       - packages/ui/src/feedback/**
       - packages/desktop/test/e2e/feedback/**
       - docs/web-share/**
