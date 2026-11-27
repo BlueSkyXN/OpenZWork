@@ -19,6 +19,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildServerRemoteWorkspaceIdentity } from "@zcode/shared";
 import { cliStorageRelocation } from "@zcode/adapters/storage";
 import { dataDirectory, DATA_ROOT_RELOCATED_MARKER } from "@zcode/shared/data-directory";
+import { isSamePath } from "@zcode/shared/managed-worktree";
+import { parseWorktreeListPorcelain } from "../src/git/managed-worktree/index.js";
 
 const runFile = promisify(execFile);
 const envKeys = ["HOME", "ZCODE_DESKTOP_HOME_DIR", "ZCODE_DATA_BASE_DIR"] as const;
@@ -459,9 +461,19 @@ it("OZ-C009：列出已登记形态的受管工作树，处理后允许保存计
     details: [join(context.home, ".openzwork", tree)],
   });
   expect((await service.get()).pendingDataBaseDirMigration).toBeUndefined();
-  expect(
-    (await runFile("git", ["-C", repository, "worktree", "list", "--porcelain"])).stdout,
-  ).toContain(checkout);
+  // Git for Windows 的登记路径使用正斜杠，按本机路径语义核对实际工作树。
+  const { stdout } = await runFile("git", [
+    "-C",
+    repository,
+    "worktree",
+    "list",
+    "--porcelain",
+    "-z",
+  ]);
+  const registered = parseWorktreeListPorcelain(stdout).find(({ path }) =>
+    isSamePath(path, checkout),
+  );
+  expect(registered).toMatchObject({ prunable: false, bare: false });
   await runFile("git", ["-C", repository, "worktree", "remove", checkout]);
   await service.updateDataBaseDir(target);
   expect((await service.get()).pendingDataBaseDirMigration).toBeTruthy();
