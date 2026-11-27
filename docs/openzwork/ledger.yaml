@@ -566,6 +566,7 @@ entries:
       - packages/ui/src/settings/model-provider-section/ProviderLogo.tsx
       - packages/ui/src/settings/model-provider-section/ProviderTemplatePicker.tsx
       - apps/zcode-cli/packages/bootstrap/src/app/provider-registry-model-runtime.ts
+      - apps/zcode-cli/packages/bootstrap/src/app/process-provider-registry-runtime.ts
       - apps/zcode-cli/packages/adapters/src/model/runner.ts
       - apps/zcode-cli/packages/adapters/src/model/model-execution.ts
     tests:

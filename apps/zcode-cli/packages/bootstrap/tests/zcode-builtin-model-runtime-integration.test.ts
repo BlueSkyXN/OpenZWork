@@ -1,7 +1,7 @@
 import { AiSdkModelAdapter, type CreateAiSdkModelOptions } from "@zcode/adapters/model";
 import type { Model } from "@zcode/contracts";
 import { fileURLToPath } from "node:url";
-import { mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -280,6 +280,28 @@ it("启动读取模型选择失败时释放已经启动的 Provider 监听", asy
     expect(dispose).toHaveBeenCalledOnce();
   } finally {
     read.mockRestore();
+    dispose.mockRestore();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+it("OZ-C003：内置配置损坏时逐次释放监听，配置修正后可以再次启动", async () => {
+  const { startProcessProviderRegistryRuntime } = await import("../src/app/process-provider-registry-runtime.js");
+  const root = await mkdtemp(join(tmpdir(), "oz-registry-retry-"));
+  const builtin = join(root, "builtin.json");
+  const env = { ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: builtin, ZCODE_PERSONAL_PROVIDER_CONFIG_FILE: join(root, "personal.json") };
+  const dispose = vi.spyOn(NodeZCodeBuiltinProviderConfigSource.prototype, "dispose");
+  try {
+    await writeFile(builtin, "invalid");
+    for (const attempt of [1, 2]) {
+      await expect(startProcessProviderRegistryRuntime(env)).rejects.toThrow();
+      expect(dispose).toHaveBeenCalledTimes(attempt);
+    }
+    await copyFile(zcodeBuiltinProviderConfigFilePath, builtin);
+    const started = await startProcessProviderRegistryRuntime(env);
+    started.dispose();
+    expect(dispose).toHaveBeenCalledTimes(3);
+  } finally {
     dispose.mockRestore();
     await rm(root, { recursive: true, force: true });
   }
