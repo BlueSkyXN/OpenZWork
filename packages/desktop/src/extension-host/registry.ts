@@ -88,7 +88,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
  * 声明里没有它说明 plugins/list 来自不报告 dataPath 的旧 CLI。错误只带错误码：路径在用户目录下。
  */
 async function ensureDataPath(dataPath: string | undefined): Promise<void> {
-  if (!dataPath) throw new Error("the agent did not report the plugin data path; update ZCode");
+  if (!dataPath) throw new Error("the agent did not report the plugin data path; update OpenZWork");
   try {
     await mkdir(dataPath, { recursive: true });
   } catch (error) {

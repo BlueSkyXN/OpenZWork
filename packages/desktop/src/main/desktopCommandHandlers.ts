@@ -169,6 +169,7 @@ function showMessageBoxWithOptionalParent(
     : dialog.showMessageBox(options);
 }
 async function clearAllDataAndRelaunch(options: {
+  locale: Locale;
   credentialsDir: string;
   beforeClearAllData: () => Promise<void>;
   logger: {
@@ -176,15 +177,15 @@ async function clearAllDataAndRelaunch(options: {
     error: (...args: unknown[]) => void;
   };
 }) {
+  const zh = options.locale === "zh-CN";
   const { response } = await dialog.showMessageBox({
     type: "warning",
-    buttons: ["Cancel", "Clear All"],
+    buttons: zh ? ["取消", "清除数据"] : ["Cancel", "Clear Data"],
     defaultId: 0,
     cancelId: 0,
-    title: "Clear All Data",
-    message: "确定要清除所有数据吗？",
-    detail:
-      "将删除 ~/.openzwork/v2（配置、凭据、日志）和浏览器缓存（localStorage）。操作不可恢复，清除后应用将自动重启。",
+    title: zh ? "清除应用数据" : "Clear app data",
+    message: zh ? "永久删除配置、凭据、日志和浏览器缓存？" : "Permanently delete settings, credentials, logs and browser storage?",
+    detail: (zh ? "清除以下目录后应用将重启。" : "The app will restart after clearing this directory.") + "\n" + options.credentialsDir,
   });
   if (response !== 1) {
     return;
@@ -196,9 +197,9 @@ async function clearAllDataAndRelaunch(options: {
   const { rm } = await import("node:fs/promises");
   try {
     await rm(options.credentialsDir, { recursive: true, force: true });
-    options.logger.info("[clear-all-data] deleted ~/.openzwork/v2");
+    options.logger.info("[clear-all-data] cleared app data directory");
   } catch (error) {
-    options.logger.error("[clear-all-data] failed to delete ~/.openzwork/v2:", error);
+    options.logger.error("[clear-all-data] failed to clear app data directory:", error);
   }
 
   for (const win of BrowserWindow.getAllWindows()) {
@@ -611,6 +612,7 @@ export async function executeDesktopCommand(options: {
       return;
     case DesktopCommandIds.ClearAllData:
       await clearAllDataAndRelaunch({
+        locale: options.currentApplicationLocale,
         credentialsDir: options.credentialsDir,
         beforeClearAllData: options.beforeClearAllData,
         logger: options.logger,

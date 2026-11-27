@@ -13,6 +13,9 @@ import { buildHostProcessEnv } from "@desktop/main/desktopRuntimeEnv.js";
 import { isMainApplicationWindowWebContents } from "@desktop/main/resourceManagerWindow.js";
 import type { PreinstalledToolsProcessHandle } from "@desktop/preinstalled-tools/contract.js";
 
+const RESTART_WINDOW_MS = 60_000;
+const RESTART_DELAYS_MS = [250, 500, 1000] as const;
+
 export function spawnPreinstalledToolsProcess(options: {
   hostProcessLocalEnv: Record<string, string>;
   configuration: Promise<
@@ -28,6 +31,8 @@ export function spawnPreinstalledToolsProcess(options: {
   let child: UtilityProcess | undefined;
   let disposing = false;
   let childInitialized = false;
+  let restartTimer: ReturnType<typeof setTimeout> | undefined;
+  let recentExits: number[] = [];
   let disposal: Promise<void> | undefined;
   let resolveInitialized!: () => void;
   const initialized = new Promise<void>((resolve) => {
@@ -109,8 +114,25 @@ export function spawnPreinstalledToolsProcess(options: {
         resolveInitialized();
         return;
       }
-      // 新进程恢复磁盘事实，但自动准备只属于真正的 App 启动，避免故障循环重复下载。
-      fork(false, configuration);
+      // OW-P056：初始化成功后连续退出也须限流，稳定运行一分钟后重新取得重试额度。
+      child = undefined;
+      const now = Date.now();
+      recentExits = recentExits.filter((time) => now - time < RESTART_WINDOW_MS);
+      const delay = RESTART_DELAYS_MS[recentExits.length];
+      if (delay === undefined) {
+        options.logger.error("[preinstalled-tools] repeated exits; restart stopped");
+        return;
+      }
+      recentExits.push(now);
+      restartTimer = setTimeout(() => {
+        restartTimer = undefined;
+        if (disposing) return;
+        try {
+          fork(false, configuration);
+        } catch (error) {
+          options.logger.error("[preinstalled-tools] could not restart process", error);
+        }
+      }, delay);
     });
   };
   const request = async (command?: PreinstalledToolsCommand) => {
@@ -159,6 +181,7 @@ export function spawnPreinstalledToolsProcess(options: {
     dispose() {
       if (disposal) return disposal;
       disposing = true;
+      clearTimeout(restartTimer);
       // 清单读取或子进程初始化尚未结束时，等待中的查询也必须随退出结束。
       resolveInitialized();
       ipcMain.removeHandler(PlatformChannels.GetPreinstalledToolsState);
