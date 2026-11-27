@@ -599,6 +599,11 @@ export async function uninstallPluginThroughUi(pluginId: string, confirm: boolea
     confirm ? "plugin-store-uninstall-confirm" : "plugin-store-uninstall-cancel",
   );
   if (confirm) {
+    // OW-P052：抑制标记先于数据清理写入，等界面收到卸载结果并关闭弹窗后再核对磁盘。
+    await browser.waitUntil(async () => !(await hasPluginControl("plugin-store-uninstall-dialog")), {
+      timeout: 120000,
+      timeoutMsg: `Plugin uninstall dialog remained open: ${pluginId}`,
+    });
     await waitUntilPluginOverview(
       (overview) => !overview.installedPlugins.some((plugin) => plugin.id === pluginId),
       `Plugin remained installed after confirmation: ${pluginId}`,

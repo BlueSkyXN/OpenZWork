@@ -1099,13 +1099,14 @@ patches:
     impact: 插件回放在新会话建立时超时。项目管理的关闭动画可能停住，遮罩拦截后续点击。
     cause: 插件回放直接重新创建 WebDriver 会话。项目回放只等待工作区加载，渲染页可能仍处于后台。
     evidence: macOS 打包回放中，失败时弹窗已经关闭但渲染页为 hidden，遮罩仍可拦截点击；恢复到 visible 后可以移除并撤销整批项目。
-    fix: 插件回放复用保留配置的进程重启流程；项目回放在新窗口可见后连续验证移除和撤销，结束时恢复该测试窗口原来的节流设置。
+    fix: 插件回放等待卸载弹窗关闭后核对磁盘，复用保留配置的进程重启流程。项目回放在新窗口可见后连续验证移除和撤销，结束时恢复该测试窗口原来的节流设置。
     files:
       - packages/desktop/test/e2e/helpers/plugin-management-lifecycle.ts
       - packages/desktop/test/e2e/conversation-session/projects/conversation-session-project-management.test.ts
     regression:
       - packages/desktop/test/e2e/conversation-session/projects/conversation-session-project-management.test.ts
       - packages/desktop/test/e2e/plugins/installation/plugin-management-persistence-source.test.ts
+      - packages/desktop/test/e2e/plugins/installation/plugin-management-builtin-inline.test.ts
     retire: 上游的插件冷重启可恢复隔离配置和驱动连接，项目管理可在可见窗口稳定完成整批移除与撤销。
 
   - id: OW-P053
