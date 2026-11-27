@@ -727,6 +727,31 @@ try {
       0,
       "the document bar stays at the top after all interactions",
     );
+  if (has("xlsx")) {
+    // OZ-C016：宿主返回选文授权结果时，文件导入和打开失败都应使用此刻的面板语言。
+    for (const [tool, locale, switchLabel, errorTitle] of [
+      ["open_document", "zh-CN", /^切换文档/, "无法打开该文档"],
+      ["begin_file_import", "en-US", /^Switch document/, "Couldn’t open this document"],
+    ]) {
+      const matchesTool = (request) =>
+        request.url() === `${base}/rpc` && request.postDataJSON()?.args?.name === tool;
+      const held = Promise.withResolvers();
+      const hold = (route) => {
+        if (!matchesTool(route.request())) return route.continue();
+        held.resolve(route);
+      };
+      await outer.route("**/rpc", hold);
+      const requested = outer.waitForRequest(matchesTool);
+      await frame.locator('input[type="file"]').setInputFiles(join(workspace, "docs/budget.xlsx"));
+      await requested;
+      const route = await held.promise;
+      await outer.evaluate((value) => window.__setLocale(value), locale);
+      await frame.getByRole("button", { name: switchLabel }).waitFor();
+      await route.fulfill({ json: { isError: true, content: [{ type: "text", text: "Denied" }] } });
+      await frame.getByRole("alert").getByRole("heading", { name: errorTitle, exact: true }).waitFor();
+      await outer.unroute("**/rpc", hold);
+    }
+  }
   assert.deepEqual(errors, []);
   process.stdout.write(`${name} e2e (${kinds.join(", ")}): ok (screenshots in ${artifacts})\n`);
 } catch (error) {
