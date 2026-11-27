@@ -1,5 +1,6 @@
 /* eslint-disable max-lines -- HTTP、WebSocket 与静态资源路由集中注册，保持同一鉴权顺序。 */
-import { randomUUID } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
+import { createHttpRequestAccess } from "./httpRequestAccessOpenzwork.js";
 import { readFile, stat } from "node:fs/promises";
 import { hostname } from "node:os";
 import { resolveServerOsUser } from "@zcode/shared/node";
@@ -149,6 +150,7 @@ export interface HttpServerOptions {
   name?: string;
   host?: string;
   authRequired?: boolean;
+  allowUnauthenticatedLan?: boolean;
   authToken?: string;
   spaFallback?: boolean;
   staticRoot?: string;
@@ -187,7 +189,7 @@ function createServerInfo(options: HttpServerOptions): ServerRemoteInfo {
       : {}),
     version: ZCODE_VERSION,
     protocolVersion: SERVER_REMOTE_PROTOCOL_VERSION,
-    authRequired: options.authRequired ?? Boolean(readTrimmedEnv("ZCODE_SERVER_TOKEN")),
+    authRequired: Boolean(options.authToken?.trim()),
     workspaces: resolveServerWorkspaces(options),
     compatibility: ZCODE_COMPATIBILITY_MANIFEST,
     migration: { failedPathCount: options.migrationFailedPathCount ?? 0 },
@@ -243,16 +245,23 @@ function parseCookieHeader(header: string | undefined): Map<string, string> {
   return cookies;
 }
 
+function matchesLiteToken(candidate: string | null | undefined, token: string): boolean {
+  if (!candidate) return false;
+  const actual = Buffer.from(candidate);
+  const expected = Buffer.from(token);
+  return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
 function hasValidLiteToken(c: Context, token: string): boolean {
   const authorization = c.req.header("authorization");
   if (
     authorization?.startsWith("Bearer ") &&
-    authorization.slice("Bearer ".length).trim() === token
+    matchesLiteToken(authorization.slice("Bearer ".length).trim(), token)
   ) {
     return true;
   }
   const url = new URL(c.req.url);
-  if (url.searchParams.get("token") === token) {
+  if (matchesLiteToken(url.searchParams.get("token"), token)) {
     c.header(
       "Set-Cookie",
       `${zcodeLiteTokenCookieName}=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax`,
@@ -263,7 +272,7 @@ function hasValidLiteToken(c: Context, token: string): boolean {
   if (cookie === undefined) return false;
   try {
     // OW-P002：与写 Cookie 时的编码对应，只解码一次，保留 token 中的字面百分号。
-    return decodeURIComponent(cookie) === token;
+    return matchesLiteToken(decodeURIComponent(cookie), token);
   } catch {
     // 畸形 Cookie 按鉴权失败处理，避免 URIError 让请求返回 500。
     return false;
@@ -360,6 +369,17 @@ export function createHttpServer(
   const hostCapabilities = createHostCapabilityStore();
 
   const authToken = options.authToken?.trim();
+  if (options.authRequired && !authToken) throw new Error("Set authToken to require authentication.");
+  const listenHost = options.host?.trim() || "127.0.0.1";
+  // OW-P054：开发代理保留原始 Host。HTTP 和 WS upgrade 共用检查，插件或本机页面无法跨端口借用 Cookie。
+  const acceptsRequest = createHttpRequestAccess(listenHost, Boolean(authToken), options.allowUnauthenticatedLan === true);
+  app.use("*", async (c, next) => {
+    const protocol = c.req.header("x-forwarded-proto") === "https" ? "https:" : "http:";
+    if (!acceptsRequest(c.req.header("host"), c.req.header("origin"), protocol)) {
+      return c.text("Use the Web address printed by OpenZWork.", 403);
+    }
+    await next();
+  });
   if (authToken) {
     app.use("*", async (c, next) => {
       const pathname = new URL(c.req.url).pathname;
@@ -478,10 +498,9 @@ export function createHttpServer(
     });
   }
 
-  const server = serve({ fetch: app.fetch, hostname: options.host, port }, () => {
+  const server = serve({ fetch: app.fetch, hostname: listenHost, port }, () => {
     const address = server.address();
     const listenPort = typeof address === "object" && address ? address.port : port;
-    const listenHost = options.host?.trim() || "localhost";
     log(`http://${listenHost}:${listenPort}`);
   });
 

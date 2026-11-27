@@ -2,7 +2,6 @@ import { migrateApplicationStorage, createSettingService } from "@zcode/services
 import {
   disposeServiceResourcesAndWait,
   getAppConfigDir,
-  getCredentialsFilePath,
 } from "@zcode/services/node";
 import type { IChannel } from "@zcode/rpc";
 import {
@@ -14,7 +13,7 @@ import {
   helloAckMessageSchema,
 } from "@zcode/shared";
 import type { HelloMessage, HelloAckMessage } from "@zcode/shared";
-import { prepareServerCredentialStorage } from "@zcode/shared/credential-security";
+import { prepareServerEntryCredentials } from "./prepareServerEntryCredentialsOpenzwork.js";
 import { createStdioServer } from "./stdio.js";
 import { registerStdioProcessLifecycle } from "./stdio-lifecycle.js";
 import { createStdioServices } from "./stdioServices.js";
@@ -64,7 +63,8 @@ async function main() {
   // 生命周期所有者，必须在 services 创建前确保 deviceMid 存在（详见 stdioDeviceMid.ts）。
   await ensureRemoteServerDeviceMid({ log });
   if (process.argv.includes("--prepare-credentials")) {
-    await prepareServerCredentialStorage({ filePath: getCredentialsFilePath() });
+    // OZ-F011：同机 SSH 与 Web 复用 Server 凭据选择和对子进程的传递。
+    await prepareServerEntryCredentials();
   }
 
   // Phase 3: Initialize services and start stdio RPC server

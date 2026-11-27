@@ -154,7 +154,10 @@ async function serve(options) {
   const token = protect ? (options.token ?? createToken()) : "";
   const open = options.open ?? isLocalHost(options.host);
 
-  const child = spawn(process.execPath, [serverEntry, "--prepare-credentials"], {
+  // OW-P054：将显式局域网兼容选项传给监听进程，空 token 本身不表示用户授权。
+  const serverArgs = [serverEntry, "--prepare-credentials"];
+  if (options.tokenEnabled === false) serverArgs.push("--no-token");
+  const child = spawn(process.execPath, serverArgs, {
     cwd: options.workspace,
     env: {
       ...process.env,
