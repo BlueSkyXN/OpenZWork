@@ -22,6 +22,7 @@ import { CLI_MEMORY_DIAGNOSTIC_DIRECTORY, CLI_MEMORY_FILE_PATTERN } from "@zcode
 import {
   createFeedbackDiagnosticArchive,
   getAppConfigDir,
+  getZCodeDataRootDir,
   getExportLogDir as getDefaultExportLogDir,
   getExportLogStageDir as getDefaultExportLogStageDir,
   getFeedbackLogArchiveDir as getDefaultFeedbackLogArchiveDir,
@@ -35,7 +36,7 @@ function getZCodeDataDir() {
 }
 
 function getZCodeCliDir() {
-  return join(homedir(), OPENZWORK_DATA_DIR_NAME, "cli");
+  return join(getZCodeDataRootDir(), "cli");
 }
 
 function getZCodeCliLogDir() {
@@ -135,7 +136,8 @@ const NON_LOG_STATE_ARCHIVE_PATHS = [
   "session-bindings",
   "checkpoints",
 ] as const;
-const SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAMES = new Set(["credentials.json", ".credentials.json"]);
+// OW-P053：文件密钥和重置备份没有可供内容脱敏的字段名，在枚举阶段排除整族文件。
+const SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAME = /^(?:\.?credentials\.json|credential-(?:secret|source)|plugin-secrets\.json)(?:\.|$)/i;
 const EXCLUDED_ARCHIVE_DIRECTORY_NAMES = new Set(["debug"]);
 const DEFAULT_LOG_EXPORT_LOOKBACK_DAYS = 3;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -994,7 +996,7 @@ function isNonLogStateArchivePath(relativePath: string): boolean {
 function isSensitiveCredentialArchivePath(relativePath: string): boolean {
   const normalizedRelativePath = normalizeArchivePath(relativePath).toLowerCase();
   const fileName = normalizedRelativePath.split("/").at(-1) ?? "";
-  return SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAMES.has(fileName);
+  return SENSITIVE_CREDENTIAL_ARCHIVE_FILE_NAME.test(fileName);
 }
 
 function isExcludedDirectoryArchivePath(relativePath: string): boolean {
@@ -1261,7 +1263,7 @@ export async function createLogArchiveArtifacts(
   // config.json 是当前生效配置；rollout 是 model-io 调用轨迹，
   // 二者都不在 ~/.openzwork/cli/log 下，需要额外收集才能完整还原现场。
   await collectLogArchiveFile(
-    join(zcodeCliDir, "config.json"),
+    join(homedir(), OPENZWORK_DATA_DIR_NAME, "cli", "config.json"),
     posix.join(OPENZWORK_DATA_DIR_NAME, "cli", "config.json"),
     files,
   );
@@ -1373,7 +1375,7 @@ export async function writeLogArchiveZip(
   options: WriteLogArchiveZipOptions = {},
 ): Promise<void> {
   const stageRootDir = options.stageRootDir ?? getDefaultExportLogStageDir();
-  await mkdir(stageRootDir, { recursive: true });
+  await mkdir(stageRootDir, { recursive: true, mode: 0o700 });
   const stagingDir = await mkdtemp(join(stageRootDir, "stage-"));
   try {
     // yazl.addFile 内部会再次对源路径执行 fs.stat/createReadStream。
@@ -1383,7 +1385,7 @@ export async function writeLogArchiveZip(
 
     const zipFile = new ZipFile();
     const stageFiles = await collectLogArchiveFiles(stagingDir);
-    const outputStream = createWriteStream(outputPath);
+    const outputStream = createWriteStream(outputPath, { flags: "wx", mode: 0o600 });
     zipFile.once("error", (error) => {
       outputStream.destroy(error instanceof Error ? error : new Error(String(error)));
     });
@@ -1404,7 +1406,7 @@ export async function writeLogArchiveDirectory(
   outputPath: string,
   artifacts: LogArchiveArtifacts,
 ): Promise<void> {
-  await mkdir(outputPath, { recursive: true });
+  await mkdir(outputPath, { recursive: true, mode: 0o700 });
   const skippedFiles = await copyLogArchiveFilesToDirectory(outputPath, artifacts.files);
   logSkippedLogArchiveFiles(skippedFiles);
 
@@ -1426,7 +1428,7 @@ export async function createFeedbackLogArchiveFromExportLogs(
       { directory: join(sourceDir, "logs"), archivePrefix: "logs" },
       { directory: getZCodeCliLogDir(), archivePrefix: OPENZWORK_DATA_DIR_NAME + "/cli/log" },
       {
-        directory: getZCodeCliDir(),
+        directory: join(homedir(), OPENZWORK_DATA_DIR_NAME, "cli"),
         archivePrefix: OPENZWORK_DATA_DIR_NAME + "/cli",
         includeFileNames: ["config.json"],
         onlyCurrentDay: false,
@@ -1461,7 +1463,7 @@ export async function exportLogs(
     const timestamp = formatTimestamp(now());
     const exportBaseName = `zcode-logs-${timestamp}`;
     const outputRootDir = getOutputRootDir();
-    await mkdir(outputRootDir, { recursive: true });
+    await mkdir(outputRootDir, { recursive: true, mode: 0o700 });
     const outputDir = await mkdtemp(join(outputRootDir, `${exportBaseName}-`));
     const zipPath = join(outputDir, `${exportBaseName}.zip`);
     const directoryPath = join(outputDir, exportBaseName);

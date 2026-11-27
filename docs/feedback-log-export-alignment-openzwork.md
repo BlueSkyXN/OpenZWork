@@ -20,3 +20,5 @@ Windows helper 的退出摘要和 Main 调度延迟汇总以固定标记及独�
 运行时验收：`node packages/desktop/scripts/cli-diagnostic-evidence-smoke.mjs`，覆盖真实子进程异常/OOM 到本地 ZIP 的证据链、full/compact 大日志、`agentCrash.errorStack` 帧完整性、脱敏与采样位置；原始采样验证见[内存诊断规格](monitoring/memory-diagnostics-log-openzwork.md)。
 
 源码与测试入口：`packages/services/src/feedback/feedbackLogArchive.ts`、`packages/desktop/test/exportLogs.test.ts`。资源、使用统计与开发诊断的职责对照见[本地诊断职责](electron/resource-manager-openzwork.md#本地诊断职责)。
+
+手动导出在收集文件时排除凭据库、文件密钥、来源标记、插件密钥及这些文件的所有备份。ZIP 与目录回退使用同一份清单。POSIX 下归档目录仅所有者可进入，ZIP 仅所有者可读写。CLI 日志和轨迹取自活动业务根，CLI 用户配置取自固定 HOME。
