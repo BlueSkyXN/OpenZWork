@@ -7,6 +7,7 @@ import { homedir, uptime } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { WorkspaceHookTrustRecord, WorkspaceHookTrustStoreFile } from "@zcode/contracts";
+import { resolveEnvironmentStorageRoot } from "@zcode/shared/data-directory";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 import {
   WORKSPACE_HOOK_TRUST_STORE_SCHEMA_VERSION,
@@ -124,6 +125,7 @@ export interface WorkspaceHookTrustStoreRevokeOptions {
 }
 
 export interface WorkspaceHookTrustStorePathOptions {
+  env?: NodeJS.ProcessEnv;
   homeDir?: string;
   userConfigPath?: string;
 }
@@ -138,7 +140,8 @@ export async function resolveWorkspaceHookTrustStorePath(
   const config = await readUserConfig(userConfigPath);
   const storage = isRecord(config.storage) ? config.storage : {};
   const configured = typeof storage.dir === "string" ? storage.dir.trim() : "";
-  const storageRoot = configured ? resolveTrustedUserPath(configured, home) : join(home, OPENZWORK_DATA_DIR_NAME);
+  const storageRoot = resolveEnvironmentStorageRoot(options.env ?? process.env) ??
+    (configured ? resolveTrustedUserPath(configured, home) : join(home, OPENZWORK_DATA_DIR_NAME));
   return join(storageRoot, SECURITY_DIRECTORY, TRUST_STORE_FILE);
 }
 

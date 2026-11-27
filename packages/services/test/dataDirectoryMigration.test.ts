@@ -428,3 +428,87 @@ describe("data directory migration", () => {
     expect(await readdir(target)).toEqual([]);
   });
 });
+
+it("OZ-C009：列出已登记形态的受管工作树，处理后允许保存计划", async () => {
+  const context = await runtime();
+  const target = await temp();
+  const tree = "worktrees/0fab/sample";
+  const repository = await temp();
+  const checkout = join(context.home, ".openzwork", tree);
+  await runFile("git", ["init", "-q", repository]);
+  await runFile("git", [
+    "-C",
+    repository,
+    "-c",
+    "user.name=Fixture",
+    "-c",
+    "user.email=fixture@example.invalid",
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "--allow-empty",
+    "-qm",
+    "fixture",
+  ]);
+  await mkdir(join(checkout, ".."), { recursive: true });
+  await runFile("git", ["-C", repository, "worktree", "add", "--detach", checkout, "HEAD"]);
+  const service = context.createSettingService();
+  await expect(service.updateDataBaseDir(target)).rejects.toMatchObject({
+    code: "DATA_DIRECTORY_MANAGED_WORKTREES",
+    details: [join(context.home, ".openzwork", tree)],
+  });
+  expect((await service.get()).pendingDataBaseDirMigration).toBeUndefined();
+  expect(
+    (await runFile("git", ["-C", repository, "worktree", "list", "--porcelain"])).stdout,
+  ).toContain(checkout);
+  await runFile("git", ["-C", repository, "worktree", "remove", checkout]);
+  await service.updateDataBaseDir(target);
+  expect((await service.get()).pendingDataBaseDirMigration).toBeTruthy();
+});
+
+it("读取未知提示词章节后更新其他设置，保留已知章节、代理和已提交数据目录", async () => {
+  const context = await runtime();
+  const service = context.createSettingService();
+  const known = { mode: "append", content: "fixture instructions" };
+  const future = { ...known, content: "future fixture" };
+  const systemPromptSettings = {
+    version: 1,
+    mode: "sections",
+    sections: { role: known, future_section: future },
+    replacement: "",
+    customSections: [],
+  };
+  await fixture(
+    context.home,
+    "v2/setting.json",
+    JSON.stringify({
+      locale: "en-US",
+      httpProxy: "http://localhost:8642",
+      dataBaseDir: context.home,
+      systemPromptSettings,
+    }),
+  );
+  await service.update({ memoryEnabled: true });
+  const saved = await service.get();
+  expect(saved.httpProxy).toBe("http://localhost:8642");
+  expect(saved.dataBaseDir).toBe(context.home);
+  expect(saved.systemPromptSettings?.sections).toEqual({ role: known });
+  await expect(service.update({ systemPromptSettings } as never)).rejects.toThrow();
+});
+
+it("OZ-C009：读取活动业务根，旧 HOME 的已迁移目录不再参与分类清理", async () => {
+  const context = await runtime();
+  const target = await temp();
+  context.setDataBaseDir(target);
+  const business = join(target, ".openzwork");
+  const { resolveSubagentStateFile, resolveUserSubagentRoot } =
+    await import("../src/subagents/subagentStorage.js");
+  const { classifyStoragePath } = await import("../src/storage/domain/storageCatalog.js");
+  expect(await resolveSubagentStateFile()).toBe(join(business, "v2", "agents-state.json"));
+  expect(await resolveUserSubagentRoot()).toBe(join(context.home, ".openzwork", "agents"));
+  const homeSnapshot = { rootId: "home", hasCustomDataBaseDir: true } as const;
+  for (const path of ["cli/log/sample.log", "backup/sample.bak", "v2/logs/sample.log"]) {
+    expect(classifyStoragePath(path, homeSnapshot).categoryId).toBe("other");
+  }
+  expect(classifyStoragePath("cli/config.json", homeSnapshot).categoryId).toBe("config");
+});

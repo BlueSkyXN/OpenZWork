@@ -3,7 +3,7 @@ import {
   webRemoteControlConnectionSettingsSchema,
 } from "./web-remote-relay/index.js";
 /* oxlint-disable eslint(max-lines) -- AppSettings schema 聚合历史迁移、默认值和 patch 校验，拆分会削弱设置迁移的单一入口。 */
-import { systemPromptSettingsSchema } from "./system-prompt/contract.js";
+import { systemPromptSectionIdSchema, systemPromptSettingsSchema } from "./system-prompt/contract.js";
 import { z } from "zod";
 import {
   appToolSearchModeSchema,
@@ -574,7 +574,14 @@ const appSettingsObjectSchema = z.object({
   onboardingOccupation: appSettingsOccupationSchema.nullish(),
   proactiveSuggestionsEnabled: z.boolean().optional(),
   occupationOnboardingDismissed: z.boolean().optional(),
-  systemPromptSettings: systemPromptSettingsSchema.optional(),
+  // OZ-F002：读取旧版或手改设置时单独处理提示词字段，保留其他设置和可识别章节。
+  systemPromptSettings: z.preprocess((value: unknown) => {
+    if (!value || typeof value !== "object" || !("sections" in value)) return value;
+    const sections = value.sections;
+    if (!sections || typeof sections !== "object" || Array.isArray(sections)) return value;
+    return { ...value, sections: Object.fromEntries(Object.entries(sections)
+      .filter(([id]) => systemPromptSectionIdSchema.safeParse(id).success)) };
+  }, systemPromptSettingsSchema.optional()).catch(undefined),
   memoryEnabled: z.boolean().default(false),
   // 手改出的非法值（空串、超长）按未设置处理，不能让这一项把整份设置读坏。
   replyLanguage: replyLanguageSchema.optional().catch(undefined),

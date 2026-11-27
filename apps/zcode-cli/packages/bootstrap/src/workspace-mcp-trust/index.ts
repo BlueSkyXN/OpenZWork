@@ -51,6 +51,7 @@ export function createWorkspaceMcpTrust(
       dirname(
         await resolveWorkspaceHookTrustStorePath({
           userConfigPath: options.userConfigPath,
+          env: options.env,
         }),
       ),
       STORE_NAME,

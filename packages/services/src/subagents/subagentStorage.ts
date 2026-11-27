@@ -3,6 +3,8 @@ import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { OPENZWORK_DATA_DIR_NAME } from "@zcode/shared";
 
+import { getStorageRootOverride } from "#src/paths.js";
+
 const HOME_PREFIX = "~/";
 
 export interface SubagentStorageOptions {
@@ -18,7 +20,8 @@ export function resolveUserHomeDir(options?: SubagentStorageOptions): string {
 }
 
 export async function resolveUserSubagentRoot(options?: SubagentStorageOptions): Promise<string> {
-  return join(await resolveZCodeStorageRoot(options), "agents");
+  // 用户编写的 Markdown 属于全局配置，业务根只承载运行状态和插件。
+  return join(await resolveConfiguredStorageRoot(options), "agents");
 }
 
 export function resolveWorkspaceSubagentRoot(workspacePath: string): string {
@@ -30,6 +33,10 @@ export async function resolveSubagentStateFile(options?: SubagentStorageOptions)
 }
 
 export async function resolveZCodeStorageRoot(options?: SubagentStorageOptions): Promise<string> {
+  return getStorageRootOverride() ?? resolveConfiguredStorageRoot(options);
+}
+
+async function resolveConfiguredStorageRoot(options?: SubagentStorageOptions): Promise<string> {
   const config = await readUserCliConfig(options);
   const storage = isObjectRecord(config.storage) ? config.storage : {};
   const storageDir =

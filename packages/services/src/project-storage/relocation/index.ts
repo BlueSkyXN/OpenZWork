@@ -95,6 +95,7 @@ export async function relocateHostStorage(plan: DataRelocationPlan): Promise<voi
       for (const table of [
         "automation_runs",
         "task_group_admissions",
+        "session_creation_commands",
         "task_group_workspace_bootstraps",
       ])
         updateRows(db, table, (row) => {

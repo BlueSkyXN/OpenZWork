@@ -5,6 +5,8 @@
  */
 import type { StorageCategoryId, StorageCleanability, StorageRootId } from "@zcode/shared";
 
+import { BUSINESS_DATA_ENTRIES } from "@zcode/shared/data-directory";
+
 export interface StorageCatalogContext {
   rootId: StorageRootId;
   hasCustomDataBaseDir: boolean;
@@ -162,9 +164,12 @@ export function classifyStoragePath(
   context: StorageCatalogContext,
 ): StorageClassification {
   const path = normalizeStorageRelativePath(rawPath);
-  // 启用自定义数据路径后，home 根下的 v2 是迁移遗留的旧副本，整体归「其他」，不提供清理。
-  if (context.rootId === "home" && context.hasCustomDataBaseDir && isUnderPrefix(path, "v2")) {
-    return { categoryId: "other", entryKey: "v2" };
+  // OZ-C009：HOME 的已迁移目录属于原始快照，清理分类必须与复制清单同源。
+  const entry = path.split("/")[0] ?? path;
+  const staysAtHome = /^(?:v2\/setting|cli\/config)\.json(?:\.|$)/.test(path);
+  if (context.rootId === "home" && context.hasCustomDataBaseDir && !staysAtHome &&
+      BUSINESS_DATA_ENTRIES.some((name) => name === entry)) {
+    return { categoryId: "other", entryKey: entry };
   }
   // agent/ 是 ACP 时代残留，当前代码无写入方，同样归「其他」。
   if (isUnderPrefix(path, "agent")) {
