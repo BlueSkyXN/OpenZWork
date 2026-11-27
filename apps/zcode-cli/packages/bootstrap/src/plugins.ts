@@ -447,6 +447,7 @@ export async function getZCodePluginsOverview(
     const listing = def.listing
       ? parseEntryStoreListing({ name: def.name, ...def.listing })
       : undefined;
+    if (listing && !listingByPluginId.has(id)) listingByPluginId.set(id, listing);
     const entries = restorable ? restorableBuiltins : availablePlugins;
     entries.push({
       id,

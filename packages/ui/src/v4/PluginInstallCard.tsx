@@ -38,7 +38,7 @@ export function PluginInstallCard({
       className="mx-auto flex max-h-96 w-full max-w-xl flex-col gap-3 overflow-y-auto rounded-xl border border-card-border bg-card p-4 text-ui-base text-foreground"
     >
       <div className="flex min-w-0 items-start gap-3">
-        <PluginIcon src={request.icon} className="size-9 rounded-lg" />
+        <PluginIcon pluginId={request.pluginId} src={request.icon} className="size-9 rounded-lg" />
         <div className="min-w-0 flex-1">
           <div className="font-medium">{name}</div>
           <div className="text-ui-sm text-foreground-subtle">

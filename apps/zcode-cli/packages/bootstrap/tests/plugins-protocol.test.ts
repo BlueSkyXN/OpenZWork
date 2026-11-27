@@ -166,11 +166,10 @@ describe("plugins protocol contracts", () => {
 
   it("serializes marketplace mutations behind the workspace plugin storage lock", async () => {
     const root = await mkdtemp(join(tmpdir(), "zcode-protocol-marketplace-lock-"));
-    const previousStorageDir = process.env.ZCODE_STORAGE_DIR;
-    process.env.ZCODE_STORAGE_DIR = join(root, "storage");
-    const pluginStorageRoot = getPluginStorageRoot(
-      getCliStorageRoot(process.env.ZCODE_STORAGE_DIR),
-    );
+    // 调用者注入的根同时决定配置视图和市场写锁。
+    const env = { ...process.env, ZCODE_STORAGE_DIR: join(root, "storage") };
+    const context = { deps: { env } } as ZCodeProtocolAgentServerContext;
+    const pluginStorageRoot = getPluginStorageRoot(getCliStorageRoot(env.ZCODE_STORAGE_DIR));
     let releaseLock = (): void => {};
     let markLockEntered = (): void => {};
     const lockEntered = new Promise<void>((resolve) => {
@@ -185,7 +184,7 @@ describe("plugins protocol contracts", () => {
 
     try {
       await lockEntered;
-      const mutation = addPluginMarketplace({} as ZCodeProtocolAgentServerContext, {
+      const mutation = addPluginMarketplace(context, {
         workspace: { workspacePath: root, workspaceKey: root },
         source: "unsupported-marketplace-source",
       }).then(
@@ -208,8 +207,6 @@ describe("plugins protocol contracts", () => {
     } finally {
       releaseLock();
       await blocker;
-      if (previousStorageDir === undefined) delete process.env.ZCODE_STORAGE_DIR;
-      else process.env.ZCODE_STORAGE_DIR = previousStorageDir;
       await rm(root, { force: true, recursive: true });
     }
   });
