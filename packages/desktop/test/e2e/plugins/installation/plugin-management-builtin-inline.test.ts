@@ -46,7 +46,7 @@ describe("PLM-LC-006/009 Builtin 抑制恢复与 inline smoke E2E", () => {
     expect(pluginPathExists(builtinCachePath!)).toBe(true);
     await seedBuiltinUserState();
     await uninstallPluginThroughUi(BUILTIN_ID, true);
-    // 内置插件原本就不在 installedPlugins；等待真正的抑制状态，避免卸载 RPC 尚未完成就检查清理。
+    // OW-P052：确认弹窗关闭后，分别核对可恢复条目和磁盘清理结果。
     await waitUntilPluginOverview(
       (overview) => overview.restorableBuiltins.some((plugin) => plugin.id === BUILTIN_ID),
       "Builtin uninstall did not become restorable",
