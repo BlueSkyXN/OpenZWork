@@ -136,10 +136,13 @@ export const dataDirectory: DataDirectoryContract = {
 };
 
 /** 调用方的操作覆盖完整使用期，包括服务关闭和启动失败后的资源回收。 */
-export async function withDataDirectoryUse<T>(root: string, use: () => Promise<T>): Promise<T> {
+export async function withDataDirectoryUse<T>(
+  root: string,
+  operation: () => Promise<T>,
+): Promise<T> {
   const release = await dataDirectory.acquireUse(root);
   try {
-    return await use();
+    return await operation();
   } finally {
     await release();
   }
