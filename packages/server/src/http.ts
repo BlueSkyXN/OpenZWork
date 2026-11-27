@@ -542,7 +542,8 @@ export function createHttpServer(
   const server = serve({ fetch: app.fetch, hostname: listenHost, port }, () => {
     const address = server.address();
     const listenPort = typeof address === "object" && address ? address.port : port;
-    log(`http://${listenHost}:${listenPort}`);
+    // OW-P045：显示的监听地址须能被标准 URL 解析器读取。
+    log(`http://${isIP(listenHost) === 6 ? `[${listenHost}]` : listenHost}:${listenPort}`);
   });
 
   injectWebSocket(server);
