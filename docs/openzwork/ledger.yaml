@@ -598,7 +598,7 @@ entries:
     kind: change
     status: active
     title: 本地引导与 Bot 数据边界
-    summary: 本地首次偏好、Bot 凭据迁移和显式注册/启用边界。
+    summary: 本地首次偏好、混合来源 Bot 凭据迁移、绑定码启停与 Telegram 菜单清理。
     spec: docs/specs/onboarding-local-settings-openzwork.md
     paths:
       - packages/ui/src/onboarding/onboardingVisibility.ts

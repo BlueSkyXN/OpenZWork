@@ -1,5 +1,5 @@
 /* eslint-disable max-lines -- BotsDialog 现在保留数据加载、保存和轮询编排；右侧卡片已拆到 BotsDialog/* 子组件，后续再继续下沉状态 hook。 */
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import QRCode from "qrcode";
 import { Bot, LoaderCircle, Plus } from "lucide-react";
 import type {
@@ -105,7 +105,7 @@ export function BotsDialog({
   const [creatingBot, setCreatingBot] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [creatingProvider, setCreatingProvider] = useState<BotProvider | null>(null);
-  const [issuedBindCode, setBindCode] = useState<BindCodeState | null>(null);
+  const [issuedBindCode, setBindCode] = useState<(BindCodeState & { scope: string }) | null>(null);
   const [feishuRegistration, setFeishuRegistration] = useState<FeishuRegistrationState | null>(
     null,
   );
@@ -124,7 +124,7 @@ export function BotsDialog({
   } | null>(null);
   const [renamingBotId, setRenamingBotId] = useState<string | null>(null);
   const botNameCompositionActiveRef = useRef(false);
-  const autoBindCreatingBotIdsRef = useRef(new Set<string>());
+  const pendingBindRequest = useRef<symbol | null>(null);
   const handledEntryProviderRef = useRef<BotProvider | null>(null);
 
   const selectedBot = config.bots.find((bot) => bot.id === selectedBotId) ?? null;
@@ -137,14 +137,22 @@ export function BotsDialog({
     id: "bots.newBot.fallbackName",
   });
   const selectedBotDisplayName = formatBotDisplayName(selectedBotName, fallbackBotName);
-  // OpenZWork(OZ-C005)：迟到的签发结果只能在原机器人仍启用且等待绑定时显示和轮询。
-  const bindCode =
-    selectedBot?.enabled &&
-    selectedBot.credentialRef &&
-    !selectedBot.providerUserId &&
-    issuedBindCode?.botId === selectedBot.id
-      ? issuedBindCode
+  // OZ-C005：禁用再启用时 id 可保持不变。每次离开启用状态，都要使在途签发和旧工作区范围失效。
+  const bindScope =
+    open && !creatingBot && selectedBot?.enabled && selectedBot.credentialRef &&
+    !selectedBot.providerUserId && (isFeishuBotProvider(selectedBot.provider) || selectedBot.provider === "telegram")
+      ? JSON.stringify([
+          selectedBot.id, selectedBot.provider, selectedBot.feishuAppId,
+          selectedBot.credentialRef, selectedBot.allowedWorkspaces,
+        ])
       : null;
+  const bindCode = issuedBindCode?.scope === bindScope ? issuedBindCode : null;
+  useLayoutEffect(() => {
+    setBindCode(null);
+    return () => {
+      pendingBindRequest.current = null;
+    };
+  }, [bindScope, botsService]);
   const bindRemainingMs = bindCode ? Math.max(0, bindCode.expiresAt - nowMs) : 0;
   const bindExpired = Boolean(bindCode && bindRemainingMs <= 0);
   const bindCountdownProgress = bindCode
@@ -193,10 +201,6 @@ export function BotsDialog({
       window.clearInterval(timer);
     };
   }, [bindCode, bindExpired, botsService, open]);
-
-  useEffect(() => {
-    if (issuedBindCode && !bindCode) setBindCode(null);
-  }, [bindCode, issuedBindCode]);
 
   useEffect(() => {
     setCredentialValue("");
@@ -322,25 +326,36 @@ export function BotsDialog({
     [botsService, refresh],
   );
 
-  const createBindCodeForBot = useCallback(
-    async (bot: BotConfig) => {
-      const createdAt = Date.now();
+  const requestBindCode = useCallback(async () => {
+    if (!selectedBot || !bindScope || pendingBindRequest.current) return;
+    const request = Symbol();
+    pendingBindRequest.current = request;
+    const createdAt = Date.now();
+    try {
       const result = await botsService.createBindCode({
-        botId: bot.id,
+        botId: selectedBot.id,
         ttlMs: BIND_CODE_TTL_MS,
-        allowedWorkspaces: bot.allowedWorkspaces,
+        allowedWorkspaces: selectedBot.allowedWorkspaces,
       });
-      setNowMs(createdAt);
+      if (pendingBindRequest.current !== request) return;
+      setNowMs(Date.now());
       setBindCode({
-        botId: bot.id,
+        scope: bindScope,
+        botId: selectedBot.id,
         code: result.code,
         createdAt,
         expiresAt: result.expiresAt,
         ttlMs: Math.max(1, result.expiresAt - createdAt),
       });
-    },
-    [botsService],
-  );
+    } catch (error) {
+      if (pendingBindRequest.current === request) {
+        const message = error instanceof Error ? error.message : String(error);
+        toast(intl.formatMessage({ id: "bots.bindCodeFailed" }, { error: message }));
+      }
+    } finally {
+      if (pendingBindRequest.current === request) pendingBindRequest.current = null;
+    }
+  }, [bindScope, botsService, intl, selectedBot]);
 
   useEffect(() => {
     const registration = feishuRegistration;
@@ -446,7 +461,7 @@ export function BotsDialog({
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [botsService, createBindCodeForBot, feishuRegistration, intl, open, saveBot, selectedBot]);
+  }, [botsService, feishuRegistration, intl, open, saveBot, selectedBot]);
 
   useEffect(() => {
     const registration = weixinRegistration;
@@ -726,11 +741,6 @@ export function BotsDialog({
     void handleAddBot(entry.provider);
   }, [config.bots, configLoaded, entryProvider, handleAddBot, open]);
 
-  const handleCreateBindCode = async () => {
-    if (!selectedBot) return;
-    await createBindCodeForBot(selectedBot);
-  };
-
   const handleSaveSecret = async () => {
     if (!selectedBot || secretSaving) return;
     setSecretSaving(true);
@@ -823,85 +833,8 @@ export function BotsDialog({
   }, [botsService, intl, selectedBot]);
 
   useEffect(() => {
-    if (!open || creatingBot || !selectedBot?.enabled) {
-      return;
-    }
-
-    if (isFeishuBotProvider(selectedBot.provider)) {
-      if (!selectedBot.credentialRef) {
-        if (feishuRegistrationLoading) {
-          return;
-        }
-        if (feishuRegistration?.botId === selectedBot.id) {
-          return;
-        }
-
-        // 第三方应用注册会主动访问渠道账号端点，只允许用户显式点击扫码按钮触发。
-        return;
-      }
-
-      if (!selectedBot.providerUserId) {
-        if (bindCode?.botId === selectedBot.id && !bindExpired) {
-          return;
-        }
-        if (autoBindCreatingBotIdsRef.current.has(selectedBot.id)) {
-          return;
-        }
-
-        // Bugfix: 飞书/Lark 的接入凭据和聊天绑定是两个阶段；已有凭据但未绑定时需要自动展示 /bind。
-        // 绑定码现在只有 30 秒有效期，过期后如果还停在旧码会打断自动绑定流程；这里自动续一枚新码。
-        autoBindCreatingBotIdsRef.current.add(selectedBot.id);
-        void createBindCodeForBot(selectedBot).finally(() => {
-          autoBindCreatingBotIdsRef.current.delete(selectedBot.id);
-        });
-      }
-      return;
-    }
-
-    if (selectedBot.provider === "telegram") {
-      if (!selectedBot.credentialRef || selectedBot.providerUserId) {
-        return;
-      }
-      if (bindCode?.botId === selectedBot.id && !bindExpired) {
-        return;
-      }
-      if (autoBindCreatingBotIdsRef.current.has(selectedBot.id)) {
-        return;
-      }
-
-      // Bugfix: Telegram 和飞书/Lark 一样分成凭据接入与私聊绑定两步；
-      // token 保存后自动展示 /bind；绑定码过期也自动续码，避免 30 秒有效期让用户卡在旧码上。
-      autoBindCreatingBotIdsRef.current.add(selectedBot.id);
-      void createBindCodeForBot(selectedBot).finally(() => {
-        autoBindCreatingBotIdsRef.current.delete(selectedBot.id);
-      });
-      return;
-    }
-
-    if (selectedBot.provider !== "weixin") {
-      return;
-    }
-    if (selectedBot.credentialRef || weixinRegistrationLoading) {
-      return;
-    }
-    if (weixinRegistration?.botId === selectedBot.id) {
-      return;
-    }
-
-    // 第三方账号端点的扫码注册只由用户显式点击触发，进入 Bot 设置不自动联网。
-    return;
-  }, [
-    creatingBot,
-    feishuRegistration,
-    feishuRegistrationLoading,
-    bindCode,
-    bindExpired,
-    createBindCodeForBot,
-    open,
-    selectedBot,
-    weixinRegistration,
-    weixinRegistrationLoading,
-  ]);
+    if (bindScope && (!bindCode || bindExpired)) void requestBindCode();
+  }, [bindCode, bindExpired, bindScope, requestBindCode]);
 
   const handleOpenTelegramBotFather = () => {
     platform.openExternal(TELEGRAM_BOTFATHER_URL);
@@ -933,7 +866,6 @@ export function BotsDialog({
     if (!selectedBot) return;
     try {
       const saved = await botsService.removeBotSecret(selectedBot.id);
-      autoBindCreatingBotIdsRef.current.delete(selectedBot.id);
       setConfig((previous) => ({
         ...previous,
         bots: previous.bots.map((item) => (item.id === saved.id ? saved : item)),
@@ -1198,7 +1130,7 @@ export function BotsDialog({
                 onOpenTelegramBotFather={handleOpenTelegramBotFather}
                 onStartWeixinRegistration={() => void handleStartWeixinRegistration()}
                 onStartFeishuRegistration={() => void handleStartFeishuRegistration()}
-                onCreateBindCode={() => void handleCreateBindCode()}
+                onCreateBindCode={() => void requestBindCode()}
                 onUnbind={() => void handleUnbind()}
                 onCopyBindCommand={() => void copyBindCommand()}
               />

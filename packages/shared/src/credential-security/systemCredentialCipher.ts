@@ -2,7 +2,13 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import { homedir, platform, userInfo } from "node:os";
 import { link, lstat, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
-import { CREDENTIAL_DECRYPT_ERROR_CODE, CREDENTIAL_DECRYPT_ERROR_PREFIX } from "@zcode/shared";
+import {
+  CREDENTIAL_DECRYPT_ERROR_CODE,
+  CREDENTIAL_DECRYPT_ERROR_PREFIX,
+  CREDENTIAL_SOURCE_MISMATCH,
+  CREDENTIAL_SOURCE_MISMATCH_MESSAGE,
+  isCredentialSourceMismatch,
+} from "@zcode/shared";
 import {
   atomicWritePrivateTextFile,
   credentialGeneration,
@@ -561,7 +567,12 @@ export function createSystemCredentialCipher(
       )
         throw decryptError();
       const { key, source } = await getKey(false);
-      if (parts[0] !== source) throw unavailable();
+      // OW-P059：同机共享库允许 OS 和托管来源共存。保留库不可用错误码，只标记本条来源不同。
+      if (parts[0] !== source) {
+        throw Object.assign(new Error(CREDENTIAL_SOURCE_MISMATCH_MESSAGE), {
+          code: UNAVAILABLE_CODE, reason: CREDENTIAL_SOURCE_MISMATCH,
+        });
+      }
       if (keyFingerprint(key) !== parts[1]) throw unavailable();
       return open(parts[2], key);
     },
@@ -729,13 +740,23 @@ export async function migrateCredentialRecord(
   if (!needsMigration) return null;
   if (!Object.values(record).some((value) => needsMigration(value))) return null;
   // 混合新旧容器先验证已有新格式的密钥来源；不能迁移一半后才发现原密钥不可用。
+  let verifiedCurrentKey = false;
+  let hasForeignSource = false;
   for (const value of Object.values(record)) {
     if (needsMigration(value)) continue;
     try {
       await cipher.decrypt(value);
+      verifiedCurrentKey = true;
     } catch (error) {
-      if ((error as { code?: unknown })?.code !== CREDENTIAL_DECRYPT_ERROR_CODE) throw error;
+      if (isCredentialSourceMismatch(error)) hasForeignSource = true;
+      else if ((error as { code?: unknown })?.code !== CREDENTIAL_DECRYPT_ERROR_CODE) throw error;
     }
+  }
+  // OW-P059：两种来源并存时保留整库的旧格式，由各自的 owner 读写指定条目。
+  // 本端未能验证任何 v2 条目时，仍拒绝整库迁移，不能将预检失败归给本次请求的单个 key。
+  if (hasForeignSource) {
+    if (verifiedCurrentKey) return null;
+    throw unavailable();
   }
   const next = { ...record };
   let changed = false;

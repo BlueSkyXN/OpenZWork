@@ -143,3 +143,36 @@ it("飞书绑定码在停用后返回时，关闭的面板不显示旧码或开�
   await view.findByText("/bind TESTBIND");
   expect(service.createBindCode).toHaveBeenCalledTimes(2);
 });
+
+it.each(["feishu", "telegram"] as const)(
+  "%s 重新启用后的绑定码不会被上一次启用的迟到回包覆盖",
+  async (provider) => {
+    bots.push(configuredBot(provider, true));
+    const previous = Promise.withResolvers<{ code: string; expiresAt: number }>();
+    service.createBindCode.mockReturnValueOnce(previous.promise);
+    const view = openBot(provider);
+    const toggle = await view.findByRole("switch");
+    await waitFor(() => expect(service.createBindCode).toHaveBeenCalledOnce());
+    fireEvent.click(toggle);
+    await view.findByText("bots.enableToConnect");
+    // 模拟停用期间修改了工作区范围，重新启用的保存回执带回当前配置。
+    service.saveBot.mockImplementationOnce(async ({ bot }) => {
+      const saved = { ...bot, allowedWorkspaces: ["project-b"] };
+      bots.splice(0, bots.length, saved);
+      return saved;
+    });
+    fireEvent.click(toggle);
+    await view.findByText("/bind TESTBIND");
+    expect(service.createBindCode).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ allowedWorkspaces: ["project-b"] }),
+    );
+    await act(async () => {
+      previous.resolve({ code: "OBSOLETE", expiresAt: Date.now() + 30_000 });
+      await previous.promise;
+    });
+    expect(view.queryByText("/bind OBSOLETE")).toBeNull();
+    expect(view.getByText("/bind TESTBIND")).toBeTruthy();
+    expect(service.createBindCode).toHaveBeenCalledTimes(2);
+  },
+);

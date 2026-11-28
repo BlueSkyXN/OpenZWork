@@ -1,4 +1,4 @@
-import { isCredentialDecryptError } from "@zcode/shared";
+import { isCredentialDecryptError, isCredentialSourceMismatch } from "@zcode/shared";
 
 export interface BotCredentialKeyMigrationBot {
   id: string;
@@ -24,7 +24,7 @@ export async function loadBotRuntimeCredential(
   try {
     return await store.load(key);
   } catch (error) {
-    if (!isCredentialDecryptError(error)) throw error;
+    if (!isCredentialDecryptError(error) && !isCredentialSourceMismatch(error)) throw error;
     return null;
   }
 }
@@ -68,7 +68,7 @@ export async function migrateBotCredentialKeys<
       try {
         storedValue = await params.credentialStore.load(legacyKey);
       } catch (error) {
-        if (!isCredentialDecryptError(error)) throw error;
+        if (!isCredentialDecryptError(error) && !isCredentialSourceMismatch(error)) throw error;
         params.warn(
           `legacy Bot credential decrypt failed key=${legacyKey}; retaining reference`,
           error,

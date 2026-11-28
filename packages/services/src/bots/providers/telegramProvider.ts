@@ -378,28 +378,19 @@ export function createTelegramBotProvider(deps: TelegramProviderDeps): BotProvid
       if (!token?.trim()) {
         return;
       }
-      if (!bot.enabled) {
-        await fetchBotProvider(`https://api.telegram.org/bot${token}/deleteMyCommands`, {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({}),
-        }).catch(() => undefined);
-        return;
-      }
-
-      const defaultCommands = buildTelegramCommands(bot);
+      const method = bot.enabled ? "setMyCommands" : "deleteMyCommands";
       // Bugfix: Telegram 菜单不会自动从我们支持的 slash commands 推导。
       // 这里只同步默认英文菜单；中文命令由 parser 支持，避免 Telegram 客户端菜单显示中英混杂。
       const response = await fetchBotProviderJson<{ ok?: boolean }>(
-        `https://api.telegram.org/bot${token}/setMyCommands`,
+        `https://api.telegram.org/bot${token}/${method}`,
         {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ commands: defaultCommands }),
+          body: JSON.stringify(bot.enabled ? { commands: buildTelegramCommands(bot) } : {}),
         },
       );
-      if (!response.ok || !response.payload?.ok) {
-        throw new Error(`Telegram rejected setMyCommands (HTTP ${response.status}).`);
+      if (!response.ok || response.payload?.ok !== true) {
+        throw new Error(`Telegram rejected ${method} (HTTP ${response.status}).`);
       }
     },
 

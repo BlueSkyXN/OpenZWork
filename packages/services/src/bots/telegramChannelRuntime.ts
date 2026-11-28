@@ -30,6 +30,7 @@ interface TelegramGetUpdatesResponse {
 // Telegram 服务端长轮询最多等待 25 秒；客户端额外预留传输时间，但必须覆盖响应体读取，
 // 避免半开连接永久占用 polling lock，导致配置刷新无法接管 runtime。
 const TELEGRAM_LONG_POLL_REQUEST_TIMEOUT_MS = 40_000;
+const TELEGRAM_MENU_DELETE_MAX_ATTEMPTS = 3;
 
 interface TelegramChannelRuntimeDeps {
   runBackgroundTasks?: boolean;
@@ -62,7 +63,17 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
   const runtimes = new Map<string, RuntimeEntry>();
   const refreshQueue = createLatestRuntimeRefreshQueue();
   // OW-P057：命令菜单独立于轮询锁；仅跟踪本 Host 已登记的凭据，冷启动的停用配置没有菜单要清理。
-  const registeredMenuFingerprints = new Map<string, string>();
+  const registeredMenus = new Map<string, {
+    fingerprint: string;
+    deleteAttempts: number;
+    retry?: ReturnType<typeof setTimeout>;
+  }>();
+  let disposed = false;
+
+  function forgetMenu(botId: string): void {
+    clearTimeout(registeredMenus.get(botId)?.retry);
+    registeredMenus.delete(botId);
+  }
 
   async function readConnection(bot: BotConfig) {
     const credential = bot.credentialRef
@@ -88,6 +99,40 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
       );
       return false;
     }
+  }
+
+  async function clearDisabledMenu(bot: BotConfig, isLatest: () => boolean): Promise<void> {
+    const menu = registeredMenus.get(bot.id);
+    if (!menu || menu.retry) return;
+    const { credential, fingerprint } = await readConnection(bot);
+    if (!isLatest()) return;
+    if (!credential || fingerprint !== menu.fingerprint) {
+      forgetMenu(bot.id);
+      return;
+    }
+
+    menu.deleteAttempts++;
+    const cleared = await syncCommands(bot, credential);
+    if (disposed) return;
+    if (cleared || menu.deleteAttempts >= TELEGRAM_MENU_DELETE_MAX_ATTEMPTS) {
+      forgetMenu(bot.id);
+      return;
+    }
+    // OW-P057：失败后只重试该菜单。重新读配置和凭据，避免定时器清掉已重新启用或换号的菜单。
+    menu.retry = setTimeout(() => {
+      menu.retry = undefined;
+      void refreshQueue.afterPending(async (isCurrent) => {
+        if (!isCurrent() || registeredMenus.get(bot.id) !== menu) return;
+        const config = await deps.readConfig();
+        const current = config.bots.find((item) => item.id === bot.id);
+        if (isCurrent() && current?.provider === "telegram" && !current.enabled) {
+          await clearDisabledMenu(current, isCurrent);
+        }
+      }).catch((error: unknown) => {
+        deps.logger.warn(undefined, `retry Telegram menu cleanup failed bot=${bot.id}: ${String(error)}`);
+      });
+    }, getBotPollingRetryDelayMs(menu.deleteAttempts));
+    menu.retry.unref();
   }
 
   async function pollBot(bot: BotConfig, signal: AbortSignal): Promise<void> {
@@ -351,9 +396,9 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
     if (!isLatest()) {
       return;
     }
-    for (const id of registeredMenuFingerprints.keys()) {
+    for (const id of registeredMenus.keys()) {
       if (!currentConfig.bots.some((bot) => bot.id === id && bot.provider === "telegram" && bot.credentialRef)) {
-        registeredMenuFingerprints.delete(id);
+        forgetMenu(id);
       }
     }
     const activeTelegramIds = new Set(
@@ -376,8 +421,16 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
       if (bot.provider === "telegram" && bot.enabled && bot.credentialRef) {
         const { credential, fingerprint } = await readConnection(bot);
         if (!isLatest()) return;
-        if (credential?.trim() && (await syncCommands(bot, credential))) {
-          registeredMenuFingerprints.set(bot.id, fingerprint);
+        const menu = registeredMenus.get(bot.id);
+        if (menu?.fingerprint === fingerprint) {
+          clearTimeout(menu.retry);
+          menu.retry = undefined;
+          menu.deleteAttempts = 0;
+        } else {
+          forgetMenu(bot.id);
+        }
+        if (credential?.trim() && (await syncCommands(bot, credential)) && !disposed) {
+          registeredMenus.set(bot.id, { fingerprint, deleteAttempts: 0 });
         }
         if (!isLatest()) {
           return;
@@ -393,14 +446,8 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
         }
         startPolling(bot, fingerprint);
       } else if (bot.provider === "telegram" && !bot.enabled) {
-        if (registeredMenuFingerprints.has(bot.id)) {
-          const { credential, fingerprint } = await readConnection(bot);
-          if (!isLatest()) return;
-          const previous = registeredMenuFingerprints.get(bot.id);
-          registeredMenuFingerprints.delete(bot.id);
-          // token 可在同一引用下替换；用刚核对的 token 清理，避免误改另一账号的菜单。
-          if (credential && fingerprint === previous) await syncCommands(bot, credential);
-        }
+        await clearDisabledMenu(bot, isLatest);
+        if (!isLatest()) return;
         deps.statusSink.setRuntimeStatus({
           botId: bot.id,
           provider: "telegram",
@@ -413,6 +460,7 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
   }
 
   function refresh(config?: BotsConfigFile): Promise<void> {
+    if (disposed) return Promise.resolve();
     return refreshQueue.enqueue((isLatest) => reconcile(config, isLatest));
   }
 
@@ -431,7 +479,9 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
   }
 
   async function dispose(): Promise<void> {
+    disposed = true;
     refreshQueue.invalidate();
+    for (const id of registeredMenus.keys()) forgetMenu(id);
     const activeRuntimes = [...runtimes.values()];
     for (const runtime of activeRuntimes) {
       runtime.controller.abort();

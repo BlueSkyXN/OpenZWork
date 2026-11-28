@@ -7,6 +7,9 @@ import {
   credentialPlaintextSchema,
   credentialCiphertextSchema,
   CREDENTIAL_DECRYPT_ERROR_PREFIX,
+  CREDENTIAL_SOURCE_MISMATCH,
+  CREDENTIAL_SOURCE_MISMATCH_MESSAGE,
+  isCredentialSourceMismatch,
   type CredentialCipherRequest,
   type CredentialCipherReply,
 } from "@zcode/shared";
@@ -72,10 +75,15 @@ export function createCredentialCipherBridge(send: (request: CredentialCipherReq
       if (!entry) return;
       pending.delete(parsed.requestId);
       if (parsed.result.ok) entry.resolve(parsed.result.value);
-      else
-        entry.reject(
-          Object.assign(new Error(parsed.result.error.message), { code: parsed.result.error.code }),
-        );
+      else {
+        const { code, message } = parsed.result.error;
+        const error = Object.assign(new Error(message), { code });
+        // OW-P059：旧桥只接受 code、message。用固定的受控消息还原子原因，保留原错误码。
+        if (code === "CREDENTIAL_SECURE_STORAGE_UNAVAILABLE" && message === CREDENTIAL_SOURCE_MISMATCH_MESSAGE) {
+          Object.assign(error, { reason: CREDENTIAL_SOURCE_MISMATCH });
+        }
+        entry.reject(error);
+      }
     },
     dispose() {
       disposed = true;
@@ -111,6 +119,9 @@ export async function executeCredentialCipherRequest(
     const code = (error as { code?: string })?.code;
     const decryptFailed = code === "ZCODE_CREDENTIAL_DECRYPT_FAILED";
     const invalid = code === "CREDENTIAL_CIPHER_INVALID_PAYLOAD";
+    const storageMessage = isCredentialSourceMismatch(error)
+      ? CREDENTIAL_SOURCE_MISMATCH_MESSAGE
+      : "System credential storage is unavailable. Unlock the OS credential store and restart the application or CLI to retry.";
     // 只返回受控错误；原生异常可能含系统细节，不能穿过凭据桥或进入日志。
     return {
       requestId: input.requestId,
@@ -122,7 +133,7 @@ export async function executeCredentialCipherRequest(
             ? "Invalid credential cipher payload"
             : decryptFailed
               ? `${CREDENTIAL_DECRYPT_ERROR_PREFIX}Invalid encrypted credential`
-              : "System credential storage is unavailable. Unlock the OS credential store and restart the application or CLI to retry.",
+              : storageMessage,
         },
       },
     };

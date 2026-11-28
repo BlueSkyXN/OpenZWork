@@ -106,6 +106,15 @@ describe("Feishu runtime error Desktop UI", () => {
     if (artifactDir) {
       await browser.saveScreenshot(join(artifactDir, "BOT-E2E-CF-01-feishu-runtime-error.png"));
     }
+
+    // 同一窗口再次启停，旧连接错误和绑定提示应随配置收起，原绑定身份仍可管理。
+    const toggle = await $('[data-testid="bots-settings"] [role="switch"]');
+    await toggle.click();
+    await browser.waitUntil(() => botsSettingsIncludes("机器人已停用"));
+    expect(await readBotsSettingsText()).not.toContain("/bind ");
+    expect(await readBotsSettingsText()).not.toContain("连接中断");
+    await toggle.click();
+    await waitForBoundConnectionError();
   });
 });
 
