@@ -1694,6 +1694,7 @@ const enUS: Record<string, string> = {
   "bots.telegramBotFatherScanHint": "Scan to open BotFather, create a bot, and paste the token.",
   "bots.openBotFather": "Open BotFather",
   "bots.connected": "Connected",
+  "bots.enableToConnect": "Credentials saved. Turn on the bot above to connect.",
   "bots.notConnected": "Not connected",
   "bots.runtime.telegramLongPollingRunning": "Telegram long polling is running.",
   "bots.runtime.telegramLongPollingStarting": "Telegram long polling is starting.",

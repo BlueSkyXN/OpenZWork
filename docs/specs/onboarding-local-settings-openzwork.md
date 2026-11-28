@@ -54,3 +54,30 @@ OccupationOnboarding / SettingsPage / WorkspaceSidebarFooter
   → 用户显式启用 → 本地 provider runtime 连接渠道 API
   （device-code 注册结果仅在显式流程中暂存于 Bot UI 当前内存，随后由 UI 调用 host `saveBot` / `ICredentialService` 加密写入本机；Bot JSON 只存 credentialRef，secret 不进 settings-sync、遥测或 relay）
 ```
+
+### 停用、绑定与旧凭据
+
+- Host 迁移旧凭据时，单条凭据解密失败只保留该条旧引用并记录警告。其余可读凭据继续迁移，用户仍可打开列表并替换失效凭据。凭据库读取失败、复制失败或配置提交失败沿用原有的报错和重试路径。
+- 设置页以已保存的 `BotConfig.enabled` 决定是否展示聊天动作。关闭时仍可配置、替换或移除凭据。已有凭据的飞书、Lark、Telegram 机器人启用后才签发并展示绑定码；停用即收起绑定码。已保存微信凭据的机器人启用后才提示发送首条激活消息。
+- Telegram Host 冷启动或重新读取已停用的配置，只更新本地状态。运行中从启用切到停用时，清理该 Host 已为同一凭据同步过的命令菜单一次。显式移除凭据、删除机器人沿用原来的清理入口。
+
+| 验收场景                                                               | 核心回归                                                 |
+| ---------------------------------------------------------------------- | -------------------------------------------------------- |
+| 四个渠道开关控制绑定或激活提示，飞书在停用后收到旧绑定码时保持停用状态 | `packages/ui/test/botLocalBoundaries.test.ts`            |
+| 冷启动、重复读取停用配置、同引用更换 token 和菜单登记失败时都不清菜单  | `packages/services/test/telegramDisabledRuntime.test.ts` |
+| 单条旧凭据无法解密时保留旧引用并迁移健康凭据，整库读取错误仍然上抛     | `packages/services/test/botCredentialKey.test.ts`        |
+
+```mermaid
+sequenceDiagram
+    participant UI as 设置页
+    participant Host as Bot 服务
+    participant IM as 渠道
+    UI->>Host: 保存凭据或启用状态
+    Host-->>UI: 已保存的 BotConfig
+    alt 已启用且凭据就绪
+        Host->>IM: 启动接收
+        UI->>Host: 飞书、Lark、Telegram 申请绑定码
+    else 已停用
+        UI->>UI: 显示停用状态，收起聊天动作
+    end
+```

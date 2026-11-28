@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import test from "node:test";
@@ -125,7 +125,28 @@ test("system prompt regressions run in core and independent CLI gates", async ()
     context.run,
     /@zcode\/core.*tests\/system-prompt-settings\.test\.ts.*tests\/context-builder\.test\.ts/,
   );
-  assert.match(protocol.run, /@zcode\/bootstrap.*tests\/zcode-protocol\.test\.ts --bail=1$/);
+  const manifest = JSON.parse(await readFile(join(root, "package.json"), "utf8"));
+  assert.ok(manifest.scripts["verify:pre-push"].includes("pnpm run test:bot-turn-protocol"));
+  const types = steps.find((step) => step.name === "CLI turn payload typecheck");
+  assert.equal(types.if, protocol.if);
+  assert.equal(types["continue-on-error"], undefined);
+  assert.equal(
+    types.run,
+    "pnpm --filter @zcode/bootstrap exec tsc -p tsconfig.bot-turn-openzwork.json",
+  );
+  assert.ok(steps.indexOf(types) < steps.indexOf(protocol));
+  assert.match(
+    manifest.scripts["test:bot-turn-protocol"],
+    /^pnpm --filter-prod "@zcode\/bootstrap\^\.\.\." run build &&/,
+  );
+  assert.ok(manifest.scripts["test:bot-turn-protocol"].includes(types.run));
+  for (const run of [protocol.run, manifest.scripts["test:bot-turn-protocol"]]) {
+    assert.match(
+      run,
+      /@zcode\/bootstrap exec vitest run [^\n]*tests\/session-mapper-turn-payload\.test\.ts --bail=1/,
+    );
+  }
+  assert.ok(protocol.run.includes("tests/zcode-protocol.test.ts"));
   assert.doesNotMatch(protocol.run, /(?: -t |testNamePattern)/);
 });
 
@@ -321,4 +342,24 @@ test("OZ-C016 Office 回归 lane 构建并运行实际表格面板回放", async
     await readFile(join(root, "apps/zcode-cli/packages/spreadsheets-plugin/package.json"), "utf8"),
   );
   assert.equal(plugin.scripts["test:e2e"], "node ../office-runtime/scripts/e2e.mjs");
+});
+
+test("每个仍引用 Bot 场景数据的桌面用例都能读取自己的合成夹具", async () => {
+  const base = join(root, "packages/desktop/test/e2e");
+  const specs = await readdir(join(base, "bots"), { recursive: true });
+  const references = new Set();
+  for (const file of specs.filter((name) => name.endsWith(".test.ts"))) {
+    const source = await readFile(join(base, "bots", file), "utf8");
+    for (const match of source.matchAll(
+      /(?:readBotSyntheticFixture\(\s*["']|fixtures\/bots\/)([\w-]+\.json)["']/g,
+    )) {
+      references.add(match[1]);
+    }
+  }
+  assert.ok(references.size > 0);
+  for (const name of references) {
+    const fixture = JSON.parse(await readFile(join(base, "fixtures/bots", name), "utf8"));
+    assert.equal(fixture.classification, "synthetic", name);
+    assert.ok(fixture.caseId && fixture.syntheticReason, name);
+  }
 });

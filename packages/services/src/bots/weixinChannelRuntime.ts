@@ -19,7 +19,7 @@ import {
 
 interface WeixinChannelRuntimeDeps {
   runBackgroundTasks?: boolean;
-  credentialService: ICredentialService;
+  credentialService: Pick<ICredentialService, "load">;
   logger: BotRuntimeLogger;
   statusSink: BotRuntimeStatusSink;
   ensureBotStorageMigrated(): Promise<void>;

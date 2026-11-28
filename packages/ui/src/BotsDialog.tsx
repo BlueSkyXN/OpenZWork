@@ -105,7 +105,7 @@ export function BotsDialog({
   const [creatingBot, setCreatingBot] = useState(false);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [creatingProvider, setCreatingProvider] = useState<BotProvider | null>(null);
-  const [bindCode, setBindCode] = useState<BindCodeState | null>(null);
+  const [issuedBindCode, setBindCode] = useState<BindCodeState | null>(null);
   const [feishuRegistration, setFeishuRegistration] = useState<FeishuRegistrationState | null>(
     null,
   );
@@ -137,6 +137,14 @@ export function BotsDialog({
     id: "bots.newBot.fallbackName",
   });
   const selectedBotDisplayName = formatBotDisplayName(selectedBotName, fallbackBotName);
+  // OpenZWork(OZ-C005)：迟到的签发结果只能在原机器人仍启用且等待绑定时显示和轮询。
+  const bindCode =
+    selectedBot?.enabled &&
+    selectedBot.credentialRef &&
+    !selectedBot.providerUserId &&
+    issuedBindCode?.botId === selectedBot.id
+      ? issuedBindCode
+      : null;
   const bindRemainingMs = bindCode ? Math.max(0, bindCode.expiresAt - nowMs) : 0;
   const bindExpired = Boolean(bindCode && bindRemainingMs <= 0);
   const bindCountdownProgress = bindCode
@@ -187,13 +195,8 @@ export function BotsDialog({
   }, [bindCode, bindExpired, botsService, open]);
 
   useEffect(() => {
-    if (!bindCode || bindCode.botId !== selectedBot?.id || !selectedBot.providerUserId) {
-      return;
-    }
-    // Bugfix: /bind 成功是服务层异步回写配置；即使轮询刚好被切换/刷新打断，
-    // 只要当前 Bot 已经带 providerUserId，就应该立即收起旧绑定码。
-    setBindCode(null);
-  }, [bindCode, selectedBot?.id, selectedBot?.providerUserId]);
+    if (issuedBindCode && !bindCode) setBindCode(null);
+  }, [bindCode, issuedBindCode]);
 
   useEffect(() => {
     setCredentialValue("");
@@ -252,6 +255,7 @@ export function BotsDialog({
     if (
       !open ||
       selectedBot?.provider !== "weixin" ||
+      !selectedBot.enabled ||
       !selectedBot.credentialRef ||
       selectedBotState?.weixinActivatedAt
     ) {
@@ -283,7 +287,7 @@ export function BotsDialog({
     botsService,
     open,
     selectedBot?.credentialRef,
-    selectedBot?.id,
+    selectedBot?.enabled,
     selectedBot?.provider,
     selectedBotState?.weixinActivatedAt,
   ]);
@@ -819,7 +823,7 @@ export function BotsDialog({
   }, [botsService, intl, selectedBot]);
 
   useEffect(() => {
-    if (!open || creatingBot || !selectedBot) {
+    if (!open || creatingBot || !selectedBot?.enabled) {
       return;
     }
 

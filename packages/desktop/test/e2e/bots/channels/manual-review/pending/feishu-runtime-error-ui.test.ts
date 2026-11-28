@@ -51,6 +51,13 @@ describe("Feishu runtime error Desktop UI", () => {
       timeoutMsg: "机器人设置页没有加载隔离的 Feishu E2E 配置",
     });
 
+    // OpenZWork(OZ-C005)：凭据和绑定都已保留，关闭态仍须准确显示，允许用户管理绑定。
+    const disabledText = await readBotsSettingsText();
+    expect(disabledText).toContain("机器人已停用");
+    expect(disabledText).not.toContain("已连通");
+    expect(disabledText).not.toContain("/bind ");
+    expect(disabledText).toContain("解绑");
+
     const enabled = await browser.execute(() => {
       const content = document.querySelector<HTMLElement>('[data-testid="bots-settings"]');
       const toggle = content?.querySelector<HTMLElement>('[role="switch"]');

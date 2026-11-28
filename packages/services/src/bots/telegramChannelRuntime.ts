@@ -33,7 +33,7 @@ const TELEGRAM_LONG_POLL_REQUEST_TIMEOUT_MS = 40_000;
 
 interface TelegramChannelRuntimeDeps {
   runBackgroundTasks?: boolean;
-  credentialService: ICredentialService;
+  credentialService: Pick<ICredentialService, "load">;
   telegramProvider: BotProviderAdapter | null;
   logger: BotRuntimeLogger;
   statusSink: BotRuntimeStatusSink;
@@ -61,30 +61,33 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
 
   const runtimes = new Map<string, RuntimeEntry>();
   const refreshQueue = createLatestRuntimeRefreshQueue();
+  // OW-P057：命令菜单独立于轮询锁；仅跟踪本 Host 已登记的凭据，冷启动的停用配置没有菜单要清理。
+  const registeredMenuFingerprints = new Map<string, string>();
 
-  async function getConnectionFingerprint(bot: BotConfig): Promise<string> {
+  async function readConnection(bot: BotConfig) {
     const credential = bot.credentialRef
       ? await deps.credentialService.load(bot.credentialRef)
       : null;
-    return createBotConnectionFingerprint([
+    const fingerprint = createBotConnectionFingerprint([
       bot.provider,
       bot.credentialRef ?? "",
       credential ?? "",
     ]);
+    return { credential, fingerprint };
   }
 
-  async function syncCommands(bot: BotConfig): Promise<void> {
-    if (deps.runBackgroundTasks === false) {
-      // 修复原因：desktop-attached 远端不拥有 Telegram runtime；
-      // 删除或禁用 bot 时也不能为了清命令访问第三方 API。
-      return;
-    }
-    await deps.telegramProvider?.syncCommands?.(bot).catch((error: unknown) => {
+  async function syncCommands(bot: BotConfig, credential?: string): Promise<boolean> {
+    if (deps.runBackgroundTasks === false || !deps.telegramProvider?.syncCommands) return false;
+    try {
+      await deps.telegramProvider.syncCommands(bot, credential);
+      return true;
+    } catch (error) {
       deps.logger.warn(
         undefined,
         `sync Telegram commands failed bot=${bot.id}: ${error instanceof Error ? error.message : String(error)}`,
       );
-    });
+      return false;
+    }
   }
 
   async function pollBot(bot: BotConfig, signal: AbortSignal): Promise<void> {
@@ -348,6 +351,11 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
     if (!isLatest()) {
       return;
     }
+    for (const id of registeredMenuFingerprints.keys()) {
+      if (!currentConfig.bots.some((bot) => bot.id === id && bot.provider === "telegram" && bot.credentialRef)) {
+        registeredMenuFingerprints.delete(id);
+      }
+    }
     const activeTelegramIds = new Set(
       currentConfig.bots
         .filter(
@@ -366,11 +374,11 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
     }
     for (const bot of currentConfig.bots) {
       if (bot.provider === "telegram" && bot.enabled && bot.credentialRef) {
-        await syncCommands(bot);
-        if (!isLatest()) {
-          return;
+        const { credential, fingerprint } = await readConnection(bot);
+        if (!isLatest()) return;
+        if (credential?.trim() && (await syncCommands(bot, credential))) {
+          registeredMenuFingerprints.set(bot.id, fingerprint);
         }
-        const fingerprint = await getConnectionFingerprint(bot);
         if (!isLatest()) {
           return;
         }
@@ -385,7 +393,14 @@ export function createTelegramChannelRuntime(deps: TelegramChannelRuntimeDeps) {
         }
         startPolling(bot, fingerprint);
       } else if (bot.provider === "telegram" && !bot.enabled) {
-        await syncCommands(bot);
+        if (registeredMenuFingerprints.has(bot.id)) {
+          const { credential, fingerprint } = await readConnection(bot);
+          if (!isLatest()) return;
+          const previous = registeredMenuFingerprints.get(bot.id);
+          registeredMenuFingerprints.delete(bot.id);
+          // token 可在同一引用下替换；用刚核对的 token 清理，避免误改另一账号的菜单。
+          if (credential && fingerprint === previous) await syncCommands(bot, credential);
+        }
         deps.statusSink.setRuntimeStatus({
           botId: bot.id,
           provider: "telegram",

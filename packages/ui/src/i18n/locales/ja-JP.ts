@@ -1493,6 +1493,7 @@ const jaJP: Record<string, string> = {
     "スキャンして BotFather を開き、ボットを作成してトークンを貼り付けます。",
   "bots.openBotFather": "BotFather を開く",
   "bots.connected": "接続済み",
+  "bots.enableToConnect": "認証情報を保存しました。接続するには上のスイッチをオンにしてください。",
   "bots.notConnected": "未接続",
   "bots.runtime.telegramLongPollingRunning": "Telegram のロングポーリングを実行中です。",
   "bots.runtime.telegramLongPollingStarting": "Telegram のロングポーリングを開始しています。",

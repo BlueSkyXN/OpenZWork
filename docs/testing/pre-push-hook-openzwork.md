@@ -6,7 +6,7 @@
 - `pre-push` 会执行 `pnpm run verify:pre-push`。
 - 根 `pnpm test` 现在只跑单测，不再误把桌面端 `packages/desktop/test/e2e` 当成 Vitest 用例。
 - Bugfix：单测脚本里的 E2E exclude glob 必须加引号；否则 shell 会先把 `packages/desktop/test/e2e/**/*.test.ts` 展开成真实文件列表，导致 Vitest 把多余文件当成 filters，同时又被 exclude 排除，最终报 `No test files found` 并阻止 push。
-- `verify:pre-push` 依次执行工作区检查（`scripts/check-push-worktree.mjs`，已吸收自上游）、`lint`、`db:schema:check`、`test:architecture`、`architecture:check -- --changed` 和固定核心套件 `test:ci:core`；任一步失败都会阻止 push。
+- `verify:pre-push` 依次检查工作区和 E2E 远程目标，执行 lint、数据库 schema 与架构检查，再运行回合开始协议回归和固定核心套件 `test:ci:core`。任一步失败都会阻止 push。
 - 核心 CI 另通过 `test:repo-scripts` 串行执行 `scripts/test/*.test.mjs`，覆盖该目录全部现存 Node 测试。ARMS 安装补丁已随依赖退役，对应旧测试已清理。
 - 上游 v3.17.1 在同一链路新增两道门禁，OpenZWork 暂未纳入 `verify:pre-push`，按需独立执行：
   - 过时文档措辞检查（`pnpm docs:stale-phrases:check`，`scripts/check-stale-doc-phrases.mjs`）：脚本登记已作废的说法，扫描 `docs/` 与 `apps/zcode-cli/docs/` 的 Markdown，出现即失败并指向现行规则；`docs/plans/`、`docs/v4-refactor/` 是历史记录，不检查。改规则时把旧说法加进登记表。
@@ -24,7 +24,7 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 开发者准备 Node / pnpm（mise、nvm 或其他方式）
     → Git hook 保留 push ref 信息并清理 Git local env
     → pnpm run verify:pre-push
-    → 工作区检查 → lint → schema → 架构治理测试 → 架构检查 → 固定核心单测
+    → 工作区检查 → lint → schema → 架构治理测试 → 架构检查 → 回合开始协议 → 固定核心单测
 ```
 
 - 仓库负责声明工具版本和执行检查；个人环境负责让合适的 Node / pnpm 可被 Git 找到。
@@ -35,6 +35,8 @@ pre-push 直接使用当前 `PATH` 中的 pnpm / Node，不强制依赖 mise。�
 - Node / pnpm 版本以 `mise.toml` 和 `package.json` 为准；hook 沿用调用方准备好的环境。
 
 ## 测试边界
+
+本地可单独运行 `pnpm test:bot-turn-protocol`。pre-push 用它构建当前工作区的 CLI 依赖，检查开始事件样例是否包含 CLI 声明的全部字段，再验证 App 能解析映射后的事件。CI 在已有的 CLI 构建之后运行同一份类型检查和用例。
 
 CI 的 `Local bundled plugins and metadata regression` 步骤执行真实文件系统集成：
 `plugins.test.ts` 与 `plugins-protocol.test.ts` 使用 30 秒单例期限，包含冷缓存播种、恢复和清理。

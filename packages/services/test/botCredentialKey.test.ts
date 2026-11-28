@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
-import { test } from "vitest";
-import { migrateBotCredentialKeys } from "../src/bots/credentialKeyMigration.ts";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  createLegacyCredentialCipher,
+  ZCODE_CREDENTIALS_FILE_ENV,
+} from "@zcode/shared/credential-security";
+import { createCredentialService } from "../src/credential/credentialService.js";
+import { test, vi } from "vitest";
+import {
+  loadBotRuntimeCredential,
+  migrateBotCredentialKeys,
+} from "../src/bots/credentialKeyMigration.ts";
 
 const buildCredentialKey = (botId: string) => `openzwork-bot:${botId}:credential`;
 const buildWebhookSecretKey = (botId: string) => `openzwork-bot:${botId}:webhook-secret`;
@@ -188,4 +198,55 @@ test("current credential references do not rewrite config or trigger external cl
   assert.equal(result.changed, false);
   assert.equal(configWrites, 0);
   assert.equal(credentialDeletes, 0);
+});
+
+test("单条旧凭据无法解密时，健康引用仍能迁移，凭据库读取错误仍上抛", async () => {
+  const base = await mkdtemp(join(tmpdir(), "openzwork-bot-credentials-"));
+  const file = join(base, "credentials.json");
+  vi.stubEnv(ZCODE_CREDENTIALS_FILE_ENV, file);
+  try {
+    const cipher = createLegacyCredentialCipher({ ZCODE_CREDENTIAL_SECRET: "synthetic-fixture" });
+    const brokenKey = "bot:broken:credential";
+    const healthyKey = "bot:healthy:webhook-secret";
+    await writeFile(
+      file,
+      JSON.stringify({ [brokenKey]: "enc:v1:invalid", [healthyKey]: cipher.encrypt("fixture") }),
+    );
+    const store = createCredentialService({ cipherProvider: cipher });
+    const config = {
+      bots: [
+        { id: "broken", credentialRef: brokenKey },
+        { id: "healthy", webhookSecretRef: healthyKey },
+      ],
+    };
+    const warnings: string[] = [];
+    const migrate = () =>
+      migrateBotCredentialKeys({
+        config,
+        credentialStore: store,
+        writeConfig: async (next) => next,
+        buildCredentialKey,
+        buildWebhookSecretKey,
+        warn: (message) => warnings.push(message),
+      });
+    const result = await migrate();
+    assert.equal(result.config.bots[0]?.credentialRef, brokenKey);
+    assert.equal(result.config.bots[1]?.webhookSecretRef, buildWebhookSecretKey("healthy"));
+    assert.equal(await store.load(buildWebhookSecretKey("healthy")), "fixture");
+    assert.equal(await store.load(healthyKey), null);
+    assert.equal(JSON.parse(await readFile(file, "utf8"))[brokenKey], "enc:v1:invalid");
+    assert.equal(warnings.length, 1);
+    assert.equal(await loadBotRuntimeCredential(store, brokenKey), null);
+    assert.equal(
+      await loadBotRuntimeCredential(store, buildWebhookSecretKey("healthy")),
+      "fixture",
+    );
+
+    await writeFile(file, "{");
+    await assert.rejects(migrate());
+    await assert.rejects(loadBotRuntimeCredential(store, brokenKey));
+  } finally {
+    vi.unstubAllEnvs();
+    await rm(base, { recursive: true, force: true });
+  }
 });
