@@ -107,16 +107,24 @@ export async function ensureReleaseDraft(
     } catch (error) {
       createError = error;
     }
-    // GitHub 的列表可能暂未显示刚创建的草稿。仅回读同一 tag，避免重复创建。
+    // 创建响应丢失时草稿可能已存在。列表查询失败或暂缺该 tag 时，只重试回读。
+    let lastReadError;
     for (const delayMs of [0, 1000, 2000, 4000, 8000]) {
       if (delayMs > 0) await timers.setTimeout(delayMs);
-      releases = await list();
+      try {
+        releases = await list();
+      } catch (error) {
+        lastReadError = error;
+        continue;
+      }
+      lastReadError = undefined;
       if (releases.length > 0) break;
     }
     if (releases.length === 0) {
       if (createError) throw createError;
       throw new Error(
-        `Release draft for ${tag} is not visible after creation. Rerun the Release workflow for this tag.`,
+        `Could not confirm the release draft for ${tag} after creation. Rerun the Release workflow for this tag.`,
+        lastReadError ? { cause: lastReadError } : undefined,
       );
     }
   }
