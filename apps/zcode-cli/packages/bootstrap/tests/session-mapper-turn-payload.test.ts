@@ -65,7 +65,18 @@ describe("legacy turn payload 映射", () => {
       backgroundSource: "subagent",
       targetId: "target-1",
       attachments: [{ fileName: "a.png", mime: "image/png", bytes: 1 }],
-      intent: { planEnabled: true },
+      // OW-P058：用真实 admission 必填字段构造 intent，全字段样例才能由 tsc 校验。
+      intent: {
+        planEnabled: true,
+        sourceCommandId: "cmd-1",
+        queueItemId: "queue_cmd-1",
+        clientId: "bot-client",
+        kind: "sendText",
+        admissionSeq: 1,
+        admittedAt: 1_700_000_000_000,
+        requestedDelivery: "auto",
+        admittedDelivery: "startNow",
+      },
     };
 
     const mapped = mapSessionEvent(turnEvent(SessionEventType.TurnStarted, { ...payload }));

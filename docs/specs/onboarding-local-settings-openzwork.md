@@ -54,3 +54,37 @@ OccupationOnboarding / SettingsPage / WorkspaceSidebarFooter
   → 用户显式启用 → 本地 provider runtime 连接渠道 API
   （device-code 注册结果仅在显式流程中暂存于 Bot UI 当前内存，随后由 UI 调用 host `saveBot` / `ICredentialService` 加密写入本机；Bot JSON 只存 credentialRef，secret 不进 settings-sync、遥测或 relay）
 ```
+
+### 停用、绑定与旧凭据
+
+- Host 迁移旧凭据时，保留损坏条目以及由另一种来源密钥加密的条目和旧引用，其余可读凭据继续迁移。系统密钥与托管密钥共存时，由凭据所有者在成功取得当前密钥后识别条目的来源。密钥库未解锁、同来源密钥指纹不符、整库读取或提交失败均向调用方报错。
+- 混合来源库还含旧格式时，凭据服务先验证本端已有的 v2 密文。验证成功后保留整库的原格式，由调用方读写各自的条目。无法验证本端密钥时，整库预检失败。Desktop 私有凭据桥保留既有错误码和载荷格式。
+- 设置页以已保存的 `BotConfig.enabled` 决定是否展示聊天动作。关闭时仍可配置、替换或移除凭据。已有凭据的飞书、Lark、Telegram 机器人启用后才签发并展示绑定码；停用即收起绑定码。已保存微信凭据的机器人启用后才提示发送首条激活消息。
+- 停用、切换机器人或更改允许的工作区后，设置页丢弃前一次绑定码请求的回包。重新启用时立即按当前工作区范围签发新码，手动签发与自动续码使用同一条请求路径。
+- Telegram Host 冷启动时只读取已停用的配置。运行中停用时，仅清理该 Host 已为同一凭据登记的菜单。收到 Telegram 成功回执后结束清理，失败时记录告警并退避重试，连同首次请求最多三次。每次重试复核启用状态和凭据，Host 退出时取消重试。显式移除凭据、删除机器人沿用原来的清理入口。
+
+| 验收场景                                                               | 核心回归                                                 |
+| ---------------------------------------------------------------------- | -------------------------------------------------------- |
+| 四个渠道开关控制绑定或激活提示，飞书在停用后收到旧绑定码时保持停用状态 | `packages/ui/test/botLocalBoundaries.test.ts`            |
+| 冷启动、重复读取停用配置、同引用更换 token 和菜单登记失败时都不清菜单  | `packages/services/test/telegramDisabledRuntime.test.ts` |
+| 单条旧凭据无法解密时保留旧引用并迁移健康凭据，整库读取错误仍然上抛     | `packages/services/test/botCredentialKey.test.ts`        |
+
+```mermaid
+sequenceDiagram
+    participant UI as 设置页
+    participant Host as Bot 服务
+    participant IM as 渠道
+    UI->>Host: 保存凭据或启用状态
+    Host-->>UI: 已保存的 BotConfig
+    alt 已启用且凭据就绪
+        Host->>IM: 启动接收
+        UI->>Host: 飞书、Lark、Telegram 申请绑定码
+    else 已停用
+        UI->>UI: 收起绑定码，使在途签发失效
+        opt 本 Host 已登记该 Telegram 菜单
+            Host->>IM: 用已核对的凭据删除菜单
+            IM-->>Host: 删除结果
+            Host->>Host: 成功结束，失败则限次重试
+        end
+    end
+```

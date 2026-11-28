@@ -1,5 +1,14 @@
 # Bots E2E Coverage Matrix
 
+## 飞书连接与多轮投递回放
+
+| 场景                                    | 回放断言                                                                 | 桌面 E2E 用例                                                                 |
+| --------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| 已绑定的飞书机器人在同一设置页反复启停  | 停用时保留解绑入口，收起连接错误与绑定提示。重新启用后再次显示连接结果。 | `bots/channels/manual-review/pending/feishu-runtime-error-ui.test.ts`（候选） |
+| 私聊任务连续产生 IM、桌面和手机三轮回复 | 在受控渠道中创建三条独立消息，下一轮正文与上一轮分开。                   | `bots/delivery/bot-private-task-sync.test.ts`                                 |
+
+群聊权限与话题路由、投递失败恢复、任务删除后的重复投递分别由 `BOT-E2E-GR-01`、`BOT-E2E-TP-03`、`BOT-E2E-DF-01`、`BOT-E2E-DT-01` 回放。上述五份渠道场景数据均取自上游 v4.0.0 的合成夹具。
+
 2026-11-12：BOT-E2E-RW-03 已转正，独立夹具与默认回放各 1/1 通过；产物为 `packages/desktop/.e2e-artifacts/r3-server-p1112-formal-strict-botprivateclientid` 与 `r3-server-p1112-formal-default-botprivateclientid`。验证合成 Bot 输入经真实 SSH CLI 的私聊身份，不代表真实 Telegram 平台投递。
 
 2026-11-10：`bots/delivery/bot-large-attachment.test.ts` 已人工复核并转正，独立夹具与默认回放

@@ -60,8 +60,10 @@ export function BotSummaryCard({
   const [nameEditorWidth, setNameEditorWidth] = useState<number | null>(null);
   const isBound = Boolean(bot.providerUserId);
   // 修复原因：连接失败会直接阻断 /bind，不能再用“未绑定”覆盖真正的阻塞状态。
-  const summaryStatusText =
-    runtime?.status === "error"
+  // OpenZWork(OZ-C005)：配置停用后立即更新状态，即使上一轮长连接状态仍在刷新。
+  const summaryStatusText = !bot.enabled
+    ? intl.formatMessage({ id: "bots.runtime.botDisabled" })
+    : runtime?.status === "error"
       ? intl.formatMessage({
           id:
             bot.provider === "feishu"
@@ -176,6 +178,7 @@ export function BotSummaryCard({
       </div>
       <div className="shrink-0">
         <Switch
+          aria-label={intl.formatMessage({ id: "bots.enabledToggle" }, { name: selectedBotDisplayName })}
           checked={bot.enabled}
           onCheckedChange={(enabled) => onPatchBot({ enabled })}
         />

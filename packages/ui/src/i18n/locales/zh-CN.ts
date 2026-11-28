@@ -1575,6 +1575,7 @@ const zhCN: Record<string, string> = {
   "bots.telegramBotFatherScanHint": "扫码打开 BotFather，创建机器人并粘贴 token。",
   "bots.openBotFather": "打开 BotFather",
   "bots.connected": "已连通",
+  "bots.enableToConnect": "凭据已保存。打开上方的机器人开关即可连接。",
   "bots.notConnected": "未连通",
   "bots.runtime.telegramLongPollingRunning": "Telegram 长轮询运行中。",
   "bots.runtime.telegramLongPollingStarting": "Telegram 长轮询启动中。",

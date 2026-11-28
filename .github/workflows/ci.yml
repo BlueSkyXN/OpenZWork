@@ -190,9 +190,13 @@ jobs:
         if: matrix.lane == 'regressions'
         run: pnpm --filter @zcode/core exec vitest run tests/system-prompt-settings.test.ts tests/context-builder.test.ts --bail=1
 
+      - name: CLI turn payload typecheck
+        if: matrix.lane == 'regressions'
+        run: pnpm --filter @zcode/bootstrap exec tsc -p tsconfig.bot-turn-openzwork.json
+
       - name: CLI protocol regression
         if: matrix.lane == 'regressions'
-        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts --bail=1
+        run: pnpm --filter @zcode/bootstrap exec vitest run tests/zcode-protocol.test.ts tests/session-mapper-turn-payload.test.ts --bail=1
 
       - name: Legacy memory isolation regression
         if: matrix.lane == 'regressions'

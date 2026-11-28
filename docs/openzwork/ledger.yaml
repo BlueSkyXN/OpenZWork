@@ -358,6 +358,7 @@ entries:
       - tests/ci/desktop-restart-cases.json
       - .github/workflows/ci.yml
       - .github/workflows/extended-checks.yml
+      - apps/zcode-cli/packages/bootstrap/tsconfig.bot-turn-openzwork.json
       - scripts/merge-full-suite-reports.mjs
       - scripts/run-full-suite-groups.mjs
       - scripts/run-repo-script-tests.mjs
@@ -597,7 +598,7 @@ entries:
     kind: change
     status: active
     title: 本地引导与 Bot 数据边界
-    summary: 本地首次偏好、Bot 凭据迁移和显式注册/启用边界。
+    summary: 本地首次偏好、混合来源 Bot 凭据迁移、绑定码启停与 Telegram 菜单清理。
     spec: docs/specs/onboarding-local-settings-openzwork.md
     paths:
       - packages/ui/src/onboarding/onboardingVisibility.ts
@@ -605,6 +606,7 @@ entries:
     tests:
       - packages/ui/test/onboardingVisibility.test.ts
       - packages/services/test/botCredentialKey.test.ts
+      - packages/services/test/telegramDisabledRuntime.test.ts
       - packages/ui/test/botLocalBoundaries.test.ts
       - packages/desktop/test/e2e/bots/channels/manual-review/pending/feishu-runtime-error-ui.test.ts
     source: "PR #17；ad4f5b943；onboarding-local-settings-openzwork.md 的 WP-E7 规则"
@@ -612,6 +614,13 @@ entries:
       - packages/services/src/bots/config.ts
       - packages/ui/src/BotsDialog.tsx
       - packages/ui/src/BotsDialog/ProviderSettingsCard.tsx
+      - packages/ui/src/BotsDialog/BotSummaryCard.tsx
+      - packages/ui/src/BotsDialog/shared.tsx
+      - packages/services/src/bots/botsService.ts
+      - packages/services/src/bots/telegramChannelRuntime.ts
+      - packages/services/src/bots/feishuChannelRuntime.ts
+      - packages/services/src/bots/weixinChannelRuntime.ts
+      - packages/services/src/bots/providers/types.ts
       - packages/ui/src/onboarding/OccupationOnboarding.tsx
   - id: OZ-C006
     kind: change

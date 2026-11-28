@@ -1449,6 +1449,7 @@ const koKR: Record<string, string> = {
     "스캔하여 BotFather를 열고 봇을 만든 다음 토큰을 붙여 넣으세요.",
   "bots.openBotFather": "BotFather 열기",
   "bots.connected": "연결됨",
+  "bots.enableToConnect": "인증 정보를 저장했습니다. 연결하려면 위의 봇 스위치를 켜세요.",
   "bots.notConnected": "연결되지 않음",
   "bots.runtime.telegramLongPollingRunning": "Telegram 롱 폴링이 실행 중입니다.",
   "bots.runtime.telegramLongPollingStarting": "Telegram 롱 폴링을 시작하는 중입니다.",

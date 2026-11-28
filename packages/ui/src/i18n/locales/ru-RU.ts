@@ -1526,6 +1526,7 @@ const ruRU: Record<string, string> = {
     "Отсканируйте, чтобы открыть BotFather, создайте бота и вставьте token.",
   "bots.openBotFather": "Открыть BotFather",
   "bots.connected": "Подключён",
+  "bots.enableToConnect": "Учётные данные сохранены. Чтобы подключиться, включите бота переключателем выше.",
   "bots.notConnected": "Не подключён",
   "bots.runtime.telegramLongPollingRunning": "Telegram long polling работает.",
   "bots.runtime.telegramLongPollingStarting": "Telegram long polling запускается.",

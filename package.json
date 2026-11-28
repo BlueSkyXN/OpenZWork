@@ -33,6 +33,7 @@
     "test:e2e:container:plugins": "bash scripts/test-desktop-e2e-container.sh plugins-verified",
     "test:coverage": "vitest run --coverage --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
     "test:unit": "vitest run --exclude \"packages/desktop/test/e2e/**/*.test.ts\"",
+    "test:bot-turn-protocol": "pnpm --filter-prod \"@zcode/bootstrap^...\" run build && pnpm --filter @zcode/bootstrap exec tsc -p tsconfig.bot-turn-openzwork.json && pnpm --filter @zcode/bootstrap exec vitest run tests/session-mapper-turn-payload.test.ts --bail=1",
     "test:ci:core": "vitest run --config vitest.core.config.ts",
     "test:repo-scripts": "node scripts/run-repo-script-tests.mjs --test-concurrency=1 scripts/test/*.test.mjs",
     "test:docker:web-app-gateway": "node scripts/test-web-app-gateway-reset.mjs",
@@ -86,7 +87,7 @@
     "test:engineering:affected": "node scripts/run-affected-engineering-tests.mjs",
     "test:engineering-tools": "node --test scripts/test/affected-engineering-test-cli.test.mjs scripts/test/pre-push-worktree.test.mjs scripts/test/retired-app-unit-evidence.test.mjs scripts/test/e2e-remote-targets-check.test.mjs",
     "check:e2e-remote-targets": "node scripts/check-e2e-remote-targets.mjs",
-    "verify:pre-push": "node scripts/check-push-worktree.mjs && pnpm run check:e2e-remote-targets && pnpm run lint && pnpm run db:schema:check && pnpm run test:architecture && pnpm run architecture:check -- --changed && pnpm run test:ci:core"
+    "verify:pre-push": "node scripts/check-push-worktree.mjs && pnpm run check:e2e-remote-targets && pnpm run lint && pnpm run db:schema:check && pnpm run test:architecture && pnpm run architecture:check -- --changed && pnpm run test:bot-turn-protocol && pnpm run test:ci:core"
   },
   "dependencies": {
     "border-beam": "^1.0.1",

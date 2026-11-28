@@ -1184,3 +1184,61 @@ patches:
     regression:
       - packages/desktop/test/preinstalledToolsCatalog.test.ts
     retire: 上游为连续退出提供等效的退避、次数限制与退出取消。
+
+  - id: OW-P057
+    title: Telegram 冷启动时清除已停用机器人的菜单
+    kind: product
+    status: fixed
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: Host 启动或刷新已停用且留有 token 的 Telegram 机器人。
+    impact: Telegram 默认命令菜单可能被清空。
+    cause: 停用分支每次 reconcile 都执行 syncCommands，provider 据此调用 deleteMyCommands。
+    evidence: 受控 Telegram HTTP 在连续两次读取关闭态时记录到两次删除请求。
+    fix: 运行时按机器人与凭据记录已登记的菜单，收到删除成功回执后结束。失败时重新核对停用状态和凭据，并在同一串行队列限次退避重试。
+    files:
+      - packages/services/src/bots/telegramChannelRuntime.ts
+      - packages/services/src/bots/providers/telegramProvider.ts
+      - packages/services/src/bots/channelRuntime.ts
+    regression:
+      - packages/services/test/telegramDisabledRuntime.test.ts
+    retire: 上游的停用配置可静默加载，运行中停用仍能清理当前账号菜单。
+
+  - id: OW-P058
+    title: 回合开始事件的全字段测试缺少输入接纳字段
+    kind: test
+    status: fixed
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: 对 session-mapper-turn-payload 的全字段样例执行类型检查。
+    impact: Vitest 可运行样例，但无法靠该样例的类型约束发现新增且未覆盖的字段。
+    cause: 样例只填写了 intent.planEnabled，缺少 TurnInputIntentMetadata 的接纳信息。
+    evidence: 原样例在独立 TypeScript 检查中报 TS2740。
+    fix: 填写合法的接纳记录，CLI 协议回归先做类型检查，再运行同一测试文件。
+    files:
+      - apps/zcode-cli/packages/bootstrap/tests/session-mapper-turn-payload.test.ts
+    regression:
+      - apps/zcode-cli/packages/bootstrap/tests/session-mapper-turn-payload.test.ts
+    retire: 上游测试样例可独立通过类型检查并覆盖开始事件字段。
+
+  - id: OW-P059
+    title: 同机混合来源凭据库阻断 Bot 列表
+    kind: product
+    status: fixed
+    upstream:
+      since: 4.0.0
+      checked: 4.0.0
+    trigger: 共享库同时含 OS 与托管密钥的 v2 条目，Host 初始化仍有旧引用的机器人。
+    impact: 健康凭据无法迁移，机器人配置和状态读取失败。
+    cause: 单条密文的来源与当前密钥不符时，凭据所有者返回与整库不可用相同的错误。
+    evidence: 合成混合库经实际 Server 密钥与 Desktop 凭据桥回放，覆盖旧格式共存、来源不匹配和同来源错误密钥。
+    fix: 凭据所有者标记单条来源不符，Bot 保留该引用并继续。已验证本端 v2 的混合库保留原容器格式，各端按条目操作。
+    files:
+      - packages/shared/src/oauth.ts
+      - packages/shared/src/credential-security/systemCredentialCipher.ts
+      - packages/shared/src/credential-security/bridge.ts
+    regression:
+      - packages/services/test/botCredentialKey.test.ts
+    retire: 上游能区分库故障与非本端来源条目，并保留混合库中的其他凭据。

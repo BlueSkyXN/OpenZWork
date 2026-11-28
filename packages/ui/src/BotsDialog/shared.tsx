@@ -120,11 +120,11 @@ export function runtimeDot(
   runtime: BotServiceStatus["botRuntime"][number] | undefined,
   enabled: boolean,
 ): string {
+  if (!enabled) return "bg-border";
   if (runtime?.status === "error") return "bg-destructive";
   if (runtime?.status === "polling" || runtime?.status === "connected")
     return "bg-success";
-  if (enabled) return "bg-foreground-subtle";
-  return "bg-border";
+  return "bg-foreground-subtle";
 }
 
 export function formatBindCountdown(ms: number): string {

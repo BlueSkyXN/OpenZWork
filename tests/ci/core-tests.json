@@ -255,7 +255,10 @@
     },
     {
       "capability": "retained-bot-delivery-and-runtime",
-      "files": ["packages/services/test/feishuSdkVersion.test.ts"]
+      "files": [
+        "packages/services/test/feishuSdkVersion.test.ts",
+        "packages/services/test/telegramDisabledRuntime.test.ts"
+      ]
     },
     {
       "capability": "host-broken-pipe-guard",

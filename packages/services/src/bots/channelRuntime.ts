@@ -50,16 +50,20 @@ export function createLatestRuntimeRefreshQueue() {
   let generation = 0;
   let queue: Promise<void> = Promise.resolve();
 
+  function append(reconcile: (isLatest: () => boolean) => Promise<void>, currentGeneration: number) {
+    const result = queue.then(() => reconcile(() => currentGeneration === generation));
+    // 一轮失败后仍允许后续刷新继续。
+    queue = result.catch(() => undefined);
+    return result;
+  }
+
   return {
     enqueue(reconcile: (isLatest: () => boolean) => Promise<void>): Promise<void> {
-      const currentGeneration = ++generation;
-      const result = queue
-        .catch(() => undefined)
-        .then(() => reconcile(() => currentGeneration === generation));
-      // Bugfix: 配置保存会连续触发 fire-and-forget refresh。串行队列既要让后一轮等待
-      // 前一轮释放连接，又不能因前一轮失败永久阻断后续最新配置。
-      queue = result.catch(() => undefined);
-      return result;
+      return append(reconcile, ++generation);
+    },
+    // OW-P057：单个菜单的重试排在配置刷新之后，不能使整轮配置的其他机器人失效。
+    afterPending(reconcile: (isLatest: () => boolean) => Promise<void>): Promise<void> {
+      return append(reconcile, generation);
     },
     invalidate(): void {
       generation += 1;

@@ -135,7 +135,7 @@ import {
 import { BOT_MENU_COMMAND_ORDER } from "./commandOrder.js";
 import { parseBotCommand } from "./commandParser.js";
 import { BotsRepo } from "./repo.js";
-import { migrateBotCredentialKeys } from "./credentialKeyMigration.js";
+import { loadBotRuntimeCredential, migrateBotCredentialKeys } from "./credentialKeyMigration.js";
 import { createCredentialCipherProvider } from "../credential/providers/credentialCipherProvider.js";
 import type {
   BotProviderAdapter,
@@ -883,9 +883,13 @@ export function createBotsService(
     },
     setRuntimeStatus,
   };
+  // OpenZWork(OZ-C005)：轮询和长连接按账号处理不可用凭据；入站鉴权仍使用原凭据服务。
+  const channelCredentials = {
+    load: (key: string) => loadBotRuntimeCredential(deps.credentialService, key),
+  };
   const telegramRuntime = createTelegramChannelRuntime({
     runBackgroundTasks: runStartupBackgroundTasks,
-    credentialService: deps.credentialService,
+    credentialService: channelCredentials,
     telegramProvider: providers.telegram,
     logger: botsLogger,
     statusSink,
@@ -897,7 +901,7 @@ export function createBotsService(
   });
   const weixinRuntime = createWeixinChannelRuntime({
     runBackgroundTasks: runStartupBackgroundTasks,
-    credentialService: deps.credentialService,
+    credentialService: channelCredentials,
     logger: botsLogger,
     statusSink,
     ensureBotStorageMigrated,
@@ -908,7 +912,7 @@ export function createBotsService(
   });
   const feishuRuntime = createFeishuChannelRuntime({
     runBackgroundTasks: runStartupBackgroundTasks,
-    credentialService: deps.credentialService,
+    credentialService: channelCredentials,
     logger: botsLogger,
     statusSink,
     ensureBotStorageMigrated,

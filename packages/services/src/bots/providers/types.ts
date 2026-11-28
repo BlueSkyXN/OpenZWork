@@ -69,7 +69,7 @@ export interface BotProviderAdapter {
   ): Promise<{ name: string; chatMode?: "group" | "topic" }>;
   test(bot: BotConfig): Promise<{ ok: boolean; message: string }>;
   resolveName?(bot: BotConfig): Promise<string | null>;
-  syncCommands?(bot: BotConfig): Promise<void>;
+  syncCommands?(bot: BotConfig, credential?: string): Promise<void>;
   send(
     bot: BotConfig,
     message: BotOutboundMessage,

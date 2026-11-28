@@ -22,7 +22,7 @@ import {
 interface FeishuChannelRuntimeDeps {
   runBackgroundTasks?: boolean;
   onConnectionInvalidated?(botId: string): void;
-  credentialService: ICredentialService;
+  credentialService: Pick<ICredentialService, "load">;
   logger: BotRuntimeLogger;
   statusSink: BotRuntimeStatusSink;
   ensureBotStorageMigrated(): Promise<void>;

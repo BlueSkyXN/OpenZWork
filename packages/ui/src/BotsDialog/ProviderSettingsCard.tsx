@@ -165,9 +165,11 @@ export function ProviderSettingsCard({
   const isFeishuLike = isFeishuBotProvider(bot.provider);
   const isWeixin = bot.provider === "weixin";
   const isConnected = isWeixin ? hasSecret : Boolean(bot.providerUserId);
-  const hasRuntimeError = runtime?.status === "error";
-  const descriptionText =
-    isFeishuLike && hasRuntimeError
+  // OpenZWork(OZ-C005)：保存凭据和启用接收分属两个动作；停用时仍保留解绑和移除凭据。
+  const hasRuntimeError = bot.enabled && runtime?.status === "error";
+  const descriptionText = !bot.enabled && hasSecret
+    ? intl.formatMessage({ id: "bots.enableToConnect" })
+    : isFeishuLike && hasRuntimeError
       ? intl.formatMessage({
           id: isConnected
             ? "bots.runtime.boundConnectionInterruptedDescription"
@@ -178,7 +180,7 @@ export function ProviderSettingsCard({
         });
   const hasActiveFeishuRegistration = feishuRegistration?.botId === bot.id;
   const hasActiveWeixinRegistration = weixinRegistration?.botId === bot.id;
-  const showBindCode = bindCode?.botId === bot.id;
+  const showBindCode = bot.enabled && bindCode?.botId === bot.id;
 
   let control: ReactNode = null;
   let detail: ReactNode = null;
@@ -186,21 +188,23 @@ export function ProviderSettingsCard({
   if (isConnected) {
     control = (
       <div className="flex items-center justify-end gap-3">
-        <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-ui-base text-foreground-subtle">
-          <span
-            className={cn("size-2 rounded-full", hasRuntimeError ? "bg-destructive" : "bg-success")}
-          />
-          {intl.formatMessage({
-            id: hasRuntimeError ? "bots.runtime.boundConnectionInterrupted" : "bots.connected",
-          })}
-        </span>
+        {bot.enabled ? (
+          <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-ui-base text-foreground-subtle">
+            <span
+              className={cn("size-2 rounded-full", hasRuntimeError ? "bg-destructive" : "bg-success")}
+            />
+            {intl.formatMessage({
+              id: hasRuntimeError ? "bots.runtime.boundConnectionInterrupted" : "bots.connected",
+            })}
+          </span>
+        ) : null}
         <Button variant="outline" size="lg" onClick={isWeixin ? onRemoveSecret : onUnbind}>
           <Unlink className="size-4" />
           {intl.formatMessage({ id: "bots.unbind" })}
         </Button>
       </div>
     );
-    if (isWeixin && !weixinActivated) {
+    if (bot.enabled && isWeixin && !weixinActivated) {
       detail = (
         <DetailPanel>
           <div className="text-ui-base text-foreground-subtle">
@@ -240,7 +244,7 @@ export function ProviderSettingsCard({
   } else {
     control = (
       <div className="flex w-full flex-wrap justify-end gap-2">
-        {!showBindCode && !hasRuntimeError ? (
+        {bot.enabled && !showBindCode && !hasRuntimeError ? (
           <Button variant="outline" size="lg" onClick={onCreateBindCode}>
             {intl.formatMessage({ id: "bots.bind" })}
           </Button>

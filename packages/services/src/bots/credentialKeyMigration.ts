@@ -1,3 +1,5 @@
+import { isCredentialDecryptError, isCredentialSourceMismatch } from "@zcode/shared";
+
 export interface BotCredentialKeyMigrationBot {
   id: string;
   credentialRef?: string;
@@ -12,6 +14,19 @@ export interface BotCredentialKeyStore {
   load(key: string): Promise<string | null>;
   save(key: string, value: string): Promise<void>;
   delete(key: string): Promise<void>;
+}
+
+/** 轮询启动按单个渠道处理不可读 token；该渠道沿用缺少凭据的错误，其他机器人的刷新继续。 */
+export async function loadBotRuntimeCredential(
+  store: Pick<BotCredentialKeyStore, "load">,
+  key: string,
+) {
+  try {
+    return await store.load(key);
+  } catch (error) {
+    if (!isCredentialDecryptError(error) && !isCredentialSourceMismatch(error)) throw error;
+    return null;
+  }
 }
 
 // 本地 v3 bot-config 只在首次读取时导入；secret refs 随配置迁移，绝不联网获取或上报。
@@ -48,7 +63,18 @@ export async function migrateBotCredentialKeys<
     ]) {
       const legacyKey = `bot:${bot.id}:${entry.suffix}`;
       if (nextBot[entry.field] !== legacyKey) continue;
-      const storedValue = await params.credentialStore.load(legacyKey);
+      // OZ-C005：真实凭据服务在 load 内解密。单条坏密文保留原引用，库级故障继续交给调用方重试。
+      let storedValue: string | null;
+      try {
+        storedValue = await params.credentialStore.load(legacyKey);
+      } catch (error) {
+        if (!isCredentialDecryptError(error) && !isCredentialSourceMismatch(error)) throw error;
+        params.warn(
+          `legacy Bot credential decrypt failed key=${legacyKey}; retaining reference`,
+          error,
+        );
+        continue;
+      }
       if (storedValue === null) {
         params.warn(`legacy Bot credential missing key=${legacyKey}; retaining reference`);
         continue;
