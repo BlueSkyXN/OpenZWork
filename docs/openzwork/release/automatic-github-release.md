@@ -34,9 +34,9 @@ Windows 安装包构建使用系统自带的 tar.exe 解压预构建工具 ZIP�
 
 解压后在项目目录执行解压路径下的 `zcode`（Windows 为 `zcode.cmd`）。启动器使用 PATH 中的 Node.js，保留参数、退出码和工作目录。每个平台在同一次构建中验收实际压缩包的 PTY 启动、resize、退出与 Web 启动；空用户目录的首启界面必须进入无可用模型状态，配置文件路径在终端布局中的显示位置不作为平台门禁。
 
-`zcode --web` 向 HTTP 子进程传入 `--prepare-credentials`。子进程在监听前对当前数据根调用 `prepareServerCredentialStorage`，然后通过 IPC 回报实际端口，由启动器显示地址并按需打开浏览器。IPv6 字面地址在显示和打开的 URL 中使用方括号，绑定地址保留原始主机名。准备或监听失败时向 stderr 报告原因并返回非零。关闭启动器时先通知监听进程关闭连接和业务资源，等待子进程退出。
+`zcode --web` 以 `--prepare-credentials` 启动 HTTP 子进程。发行版与 `pnpm dev:web` 都通过 `prepareServerEntryCredentials` 在创建 Host 前选定并准备凭据文件。发行版子进程监听就绪后通过 IPC 回报实际端口，由启动器显示地址并按需打开浏览器。IPv6 字面地址在显示和打开的 URL 中使用方括号，绑定地址保留原始主机名。准备或监听失败时向 stderr 报告原因并返回非零。关闭启动器时先通知监听进程关闭连接和业务资源，等待子进程退出。
 
-凭据准备流程保留显式密钥配置、既有 `credential-secret`、已绑定的系统凭据来源和现存 v2 密文。数据根尚未绑定凭据来源时，按既有锁序生成私有密钥文件。未传准备参数的 HTTP 入口沿用 Server 的凭据来源选择规则。[上游凭据模块契约](../../../packages/shared/src/credential-security/CONTRACT.md)
+HTTP 入口优先使用 `ZCODE_CREDENTIALS_FILE` 指定的绝对路径，否则按同机隔离规则选择共享库或 Server 自有库。准备过程中保留既有 `credential-secret`、已绑定的系统凭据来源和 v2 密文。新建共享库且未配置托管密钥时，按凭据锁、密钥锁的顺序生成私有密钥文件。[同机隔离规则见 v4.0.0 整合说明 §3.1](../upstream/v4.0.0-integration.md)
 
 ## 所有者与事件顺序
 
