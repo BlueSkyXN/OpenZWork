@@ -380,12 +380,31 @@ test("automatic drafts use generated notes and recover lost create responses; ex
   );
 });
 
+test("a failed initial release lookup stops before draft creation", async (t) => {
+  const lookupError = new Error("initial lookup returned HTTP 503");
+  const gh = t.mock.fn(async () => {
+    throw lookupError;
+  });
+  await assert.rejects(
+    ensureReleaseDraft({ repo, tag, allowCreate: true }, gh),
+    (error) => error === lookupError,
+  );
+  assert.deepEqual(
+    gh.mock.calls.map((call) => call.arguments[0]),
+    ["api"],
+  );
+});
+
 test("draft creation waits for a unique matching release without sending another create request", async (t) => {
   const dir = await mkdtemp(join(tmpdir(), "openzwork-draft-readback-"));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const draft = { id: 42, tag_name: tag, draft: true };
   const otherRelease = { id: 41, tag_name: "v3.16.2-openzwork", draft: true };
   const createError = new Error("create response lost");
+  const listError = new Error("release list returned HTTP 503");
+  const finalListError = new Error("release list connection reset");
+  const failedListings = [listError, listError, listError, listError, finalListError];
+  const replayInstruction = /v3\.16\.3-openzwork.*rerun.*Release/i;
   const fullBackoff = [1000, 2000, 4000, 8000];
   const scenarios = [
     {
@@ -400,10 +419,21 @@ test("draft creation waits for a unique matching release without sending another
       waits: [1000, 2000],
     },
     {
+      name: "successful creation recovers from a failed readback",
+      listings: [listError, [draft]],
+      waits: [1000],
+    },
+    {
+      name: "lost create response recovers after a failed and an empty readback",
+      createError,
+      listings: [listError, [], [draft]],
+      waits: [1000, 2000],
+    },
+    {
       name: "missing draft after successful creation gives a replay instruction",
-      listings: [[otherRelease]],
+      listings: [listError, [otherRelease]],
       waits: fullBackoff,
-      failure: /v3\.16\.3-openzwork.*rerun.*Release/i,
+      failure: (error) => replayInstruction.test(error.message) && error.cause === undefined,
     },
     {
       name: "missing draft after a create error reports the original error",
@@ -413,8 +443,21 @@ test("draft creation waits for a unique matching release without sending another
       failure: (error) => error === createError,
     },
     {
+      name: "failed readbacks preserve the original create error",
+      createError,
+      listings: failedListings,
+      waits: fullBackoff,
+      failure: (error) => error === createError,
+    },
+    {
+      name: "failed readbacks after successful creation give the final error and replay instruction",
+      listings: failedListings,
+      waits: fullBackoff,
+      failure: (error) => replayInstruction.test(error.message) && error.cause === finalListError,
+    },
+    {
       name: "duplicate tag matches stop recovery",
-      listings: [[], [draft, { ...draft, id: 43 }]],
+      listings: [listError, [draft, { ...draft, id: 43 }]],
       waits: [1000],
       failure: /Duplicate release tag/,
     },
@@ -426,7 +469,9 @@ test("draft creation waits for a unique matching release without sending another
       let readbacks = 0;
       const gh = async (...args) => {
         if (args[0] === "api" && args.includes("--slurp")) {
-          return JSON.stringify([creates ? (scenario.listings[readbacks++] ?? []) : []]);
+          const listing = creates ? (scenario.listings[readbacks++] ?? []) : [];
+          if (listing instanceof Error) throw listing;
+          return JSON.stringify([listing]);
         }
         assert.deepEqual(args.slice(0, 2), ["release", "create"]);
         creates++;
